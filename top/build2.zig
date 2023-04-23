@@ -247,7 +247,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             .up_addr = arena_up_addr,
             .errors = spec.address_space.errors.noexcept,
             .logging = spec.address_space.logging.silent,
-            .options = .{ .thread_safe = true, .require_map = true, .require_unmap = true },
+            .options = addrspace_options,
         });
         pub const ThreadSpace = mem.GenericRegularAddressSpace(.{
             .label = "stack",
@@ -257,7 +257,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             .up_addr = stack_up_addr,
             .errors = spec.address_space.errors.noexcept,
             .logging = spec.address_space.logging.silent,
-            .options = .{ .thread_safe = true },
+            .options = threadspace_options,
         });
         pub const Allocator = mem.GenericRtArenaAllocator(.{
             .AddressSpace = AddressSpace,
@@ -274,7 +274,44 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         pub const arena_lb_addr: u64 = stack_up_addr;
         pub const stack_up_addr: u64 = stack_lb_addr + (max_thread_count * stack_aligned_bytes);
         pub const arena_up_addr: u64 = arena_lb_addr + (max_arena_count * arena_aligned_bytes);
-        pub usingnamespace decls;
+        const path_spec: file.PathSpec = builder_spec.path();
+        const close_spec: file.CloseSpec = builder_spec.close();
+        const map_spec: mem.MapSpec = builder_spec.map();
+        const stat_spec: file.StatusSpec = builder_spec.stat();
+        const unmap_spec: mem.UnmapSpec = builder_spec.unmap();
+        const clock_spec: time.ClockSpec = builder_spec.clock();
+        const sleep_spec: time.SleepSpec = builder_spec.sleep();
+        const clone_spec: proc.CloneSpec = builder_spec.clone();
+        const write_spec: file.WriteSpec = builder_spec.write();
+        const write_spec2: file.WriteSpec = builder_spec.write2();
+        const create_spec: file.CreateSpec = builder_spec.create();
+        const mkdir_spec: file.MakeDirSpec = builder_spec.mkdir();
+        const fork_spec: proc.ForkSpec = builder_spec.fork();
+        const execve_spec: file.ExecuteSpec = builder_spec.execve();
+        const waitpid_spec: proc.WaitSpec = builder_spec.waitpid();
+        const mknod_spec: file.MakeNodeSpec = builder_spec.mknod();
+        const dup3_spec: file.DuplicateSpec = builder_spec.dup3();
+        const poll_spec: file.PollSpec = builder_spec.poll();
+        const pipe_spec: file.MakePipeSpec = builder_spec.pipe();
+        const read_spec: file.ReadSpec = builder_spec.read();
+        const read_spec2: file.ReadSpec = builder_spec.read2();
+        const read_spec3: file.ReadSpec = builder_spec.read3();
+        const update_exit_message: [2]types.Message.ClientHeader = .{
+            .{ .tag = .update, .bytes_len = 0 },
+            .{ .tag = .exit, .bytes_len = 0 },
+        };
+        const addrspace_options: mem.ArenaOptions = .{
+            .thread_safe = true,
+            .require_map = true,
+            .require_unmap = true,
+        };
+        const threadspace_options: mem.ArenaOptions = .{
+            .thread_safe = true,
+        };
+        const fstat_spec: file.StatusSpec = .{
+            .logging = .{ .Error = false, .Fault = true },
+            .errors = .{ .throw = sys.stat_errors },
+        };
         pub const Target = struct {
             name: [:0]const u8,
             descr: ?[:0]const u8 = null,
