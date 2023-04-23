@@ -877,22 +877,22 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             const cache_root: [:0]const u8 = meta.manyToSlice(args[3]);
             const global_cache_root: [:0]const u8 = meta.manyToSlice(args[4]);
             if (max_thread_count != 0) {
-                try meta.wrap(mem.map(decls.map_spec, stack_lb_addr, stack_up_addr -% stack_lb_addr));
+                try meta.wrap(mem.map(map_spec, stack_lb_addr, stack_up_addr -% stack_lb_addr));
             }
-            const build_root_fd: u64 = try meta.wrap(file.path(decls.path_spec, build_root));
-            const cache_root_fd: u64 = try meta.wrap(file.path(decls.path_spec, cache_root));
-            const env_fd: u64 = try meta.wrap(file.createAt(decls.create_spec, cache_root_fd, builder_spec.options.env_name, file.file_mode));
+            const build_root_fd: u64 = try meta.wrap(file.path(path_spec, build_root));
+            const cache_root_fd: u64 = try meta.wrap(file.path(path_spec, cache_root));
+            const env_fd: u64 = try meta.wrap(file.createAt(create_spec, cache_root_fd, builder_spec.options.env_name, file.file_mode));
             for ([_][]const u8{
                 "pub const zig_exe: [:0]const u8 = \"",               zig_exe,
                 "\";\npub const build_root: [:0]const u8 = \"",       build_root,
                 "\";\npub const cache_dir: [:0]const u8 = \"",        cache_root,
                 "\";\npub const global_cache_dir: [:0]const u8 = \"", global_cache_root,
                 "\";\n",
-            }) |s| try meta.wrap(file.write(decls.write_spec, env_fd, s.ptr, s.len));
-            try meta.wrap(file.close(decls.close_spec, env_fd));
-            try meta.wrap(file.close(decls.close_spec, cache_root_fd));
-            try meta.wrap(file.makeDirAt(decls.mkdir_spec, build_root_fd, builder_spec.options.zig_out_dir, file.dir_mode));
-            try meta.wrap(file.makeDirAt(decls.mkdir_spec, build_root_fd, builder_spec.options.exe_out_dir, file.dir_mode));
+            }) |s| try meta.wrap(file.write(write_spec, env_fd, s.ptr, s.len));
+            try meta.wrap(file.close(close_spec, env_fd));
+            try meta.wrap(file.close(close_spec, cache_root_fd));
+            try meta.wrap(file.makeDirAt(mkdir_spec, build_root_fd, builder_spec.options.zig_out_dir, file.dir_mode));
+            try meta.wrap(file.makeDirAt(mkdir_spec, build_root_fd, builder_spec.options.exe_out_dir, file.dir_mode));
             return .{
                 .zig_exe = zig_exe,
                 .build_root = build_root,
@@ -937,27 +937,27 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
         }
         fn assertKindOrNothing(dir_fd: u64, name: [:0]const u8, kind: file.Kind) void {
-            file.assertAt(decls.fstat_spec, dir_fd, name, kind) catch |stat_error| {
+            file.assertAt(fstat_spec, dir_fd, name, kind) catch |stat_error| {
                 builtin.assert(stat_error == error.NoSuchFileOrDirectory);
             };
         }
         fn getFileStatus(builder: *Builder, name: [:0]const u8) ?file.Status {
-            return file.statusAt(decls.fstat_spec, builder.dir_fd, name) catch null;
+            return file.statusAt(fstat_spec, builder.dir_fd, name) catch null;
         }
         fn getFileSize(builder: *Builder, name: [:0]const u8) u64 {
             return if (getFileStatus(builder, name)) |st| st.size else 0;
         }
-        fn makeZigCacheDir(builder: *Builder) sys.Call(decls.mkdir_spec.errors, void) {
-            try meta.wrap(file.makeDirAt(decls.mkdir_spec, builder.dir_fd, builder_spec.options.zig_cache_dir, file.dir_mode));
+        fn makeZigCacheDir(builder: *Builder) sys.Call(mkdir_spec.errors, void) {
+            try meta.wrap(file.makeDirAt(mkdir_spec, builder.dir_fd, builder_spec.options.zig_cache_dir, file.dir_mode));
         }
-        fn makeZigOutDir(builder: *Builder) sys.Call(decls.mkdir_spec.errors, void) {
-            try meta.wrap(file.makeDirAt(decls.mkdir_spec, builder.dir_fd, builder_spec.options.zig_out_dir, file.dir_mode));
+        fn makeZigOutDir(builder: *Builder) sys.Call(mkdir_spec.errors, void) {
+            try meta.wrap(file.makeDirAt(mkdir_spec, builder.dir_fd, builder_spec.options.zig_out_dir, file.dir_mode));
         }
-        fn makeBinDir(builder: *Builder) sys.Call(decls.mkdir_spec.errors, void) {
-            try meta.wrap(file.makeDirAt(decls.mkdir_spec, builder.dir_fd, builder_spec.options.zig_exe_out_dir, file.dir_mode));
+        fn makeBinDir(builder: *Builder) sys.Call(mkdir_spec.errors, void) {
+            try meta.wrap(file.makeDirAt(mkdir_spec, builder.dir_fd, builder_spec.options.zig_exe_out_dir, file.dir_mode));
         }
-        fn makeAuxDir(builder: *Builder) sys.Call(decls.mkdir_spec.errors, void) {
-            try meta.wrap(file.makeDirAt(decls.mkdir_spec, builder.dir_fd, builder_spec.options.zig_aux_out_dir, file.dir_mode));
+        fn makeAuxDir(builder: *Builder) sys.Call(mkdir_spec.errors, void) {
+            try meta.wrap(file.makeDirAt(mkdir_spec, builder.dir_fd, builder_spec.options.zig_aux_out_dir, file.dir_mode));
         }
         fn dependencyWait(target: *Target, task: types.Task, arena_index: AddressSpace.Index) bool {
             for (target.buildDependencies()) |*dep| {
@@ -1006,45 +1006,15 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             return false;
         }
-        const decls = struct {
-            pub const path_spec: file.PathSpec = builder_spec.path();
-            pub const close_spec: file.CloseSpec = builder_spec.close();
-            pub const map_spec: mem.MapSpec = builder_spec.map();
-            pub const stat_spec: file.StatusSpec = builder_spec.stat();
-            pub const unmap_spec: mem.UnmapSpec = builder_spec.unmap();
-            pub const clock_spec: time.ClockSpec = builder_spec.clock();
-            pub const sleep_spec: time.SleepSpec = builder_spec.sleep();
-            pub const clone_spec: proc.CloneSpec = builder_spec.clone();
-            pub const write_spec: file.WriteSpec = builder_spec.write();
-            pub const write_spec2: file.WriteSpec = builder_spec.write2();
-            pub const create_spec: file.CreateSpec = builder_spec.create();
-            pub const mkdir_spec: file.MakeDirSpec = builder_spec.mkdir();
-            pub const fork_spec: proc.ForkSpec = builder_spec.fork();
-            pub const execve_spec: file.ExecuteSpec = builder_spec.execve();
-            pub const waitpid_spec: proc.WaitSpec = builder_spec.waitpid();
-            pub const mknod_spec: file.MakeNodeSpec = builder_spec.mknod();
-            pub const dup3_spec: file.DuplicateSpec = builder_spec.dup3();
-            pub const poll_spec: file.PollSpec = builder_spec.poll();
-            pub const pipe_spec: file.MakePipeSpec = builder_spec.pipe();
-            pub const read_spec: file.ReadSpec = builder_spec.read();
-            pub const read_spec2: file.ReadSpec = builder_spec.read2();
-            pub const read_spec3: file.ReadSpec = builder_spec.read3();
-            const command_spec: proc.CommandSpec = .{
-                .errors = .{ .fork = fork_spec.errors, .waitpid = waitpid_spec.errors, .execve = execve_spec.errors },
-                .logging = .{ .fork = fork_spec.logging, .waitpid = waitpid_spec.logging, .execve = execve_spec.logging },
-            };
-            const time_spec: time.TimeSpec = .{ .nsec = builder_spec.options.sleep_nanoseconds };
-            const fstat_spec: file.StatusSpec = .{
-                .logging = .{ .Error = false, .Fault = true },
-                .errors = .{ .throw = sys.stat_errors },
-            };
-        };
+
         pub const debug = struct {
             const about_run_s: [:0]const u8 = builtin.debug.about("run");
             const about_build_s: [:0]const u8 = builtin.debug.about("build");
             const about_format_s: [:0]const u8 = builtin.debug.about("format");
             const about_state_0_s: [:0]const u8 = builtin.debug.about("state");
             const about_state_1_s: [:0]const u8 = builtin.debug.about("state-fault");
+            const error_s: *const [5:0]u8 = "error";
+            const note_s: *const [4:0]u8 = "note";
             pub fn exchangeNotice(target: *Target, task: types.Task, old_state: types.State, new_state: types.State) void {
                 @setRuntimeSafety(false);
                 var buf: [32768]u8 = undefined;
@@ -1085,25 +1055,27 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 var buf: [32768]u8 = undefined;
                 var len: u64 = mach.memcpyMulti(&buf, &.{ about_build_s, name, ", " });
                 if (old_size == 0) {
-                    len +%= mach.memcpyMulti(buf[len..].ptr, &.{ "\x1b[93m", builtin.fmt.ud64(new_size).readAll(), "*\x1b[0m bytes " });
+                    len = len +% mach.memcpyMulti(buf[len..].ptr, &.{
+                        "\x1b[93m", builtin.fmt.ud64(new_size).readAll(), "*\x1b[0m bytes ",
+                    });
                 } else if (new_size == old_size) {
-                    len +%= mach.memcpyMulti(buf[len..].ptr, &.{
+                    len = len +% mach.memcpyMulti(buf[len..].ptr, &.{
                         builtin.fmt.ud64(new_size).readAll(), " bytes, ",
                     });
                 } else if (new_size > old_size) {
-                    len +%= mach.memcpyMulti(buf[len..].ptr, &.{
+                    len = len +% mach.memcpyMulti(buf[len..].ptr, &.{
                         builtin.fmt.ud64(old_size).readAll(),             "(\x1b[91m+",
                         builtin.fmt.ud64(new_size -% old_size).readAll(), "\x1b[0m) => ",
                         builtin.fmt.ud64(new_size).readAll(),             " bytes, ",
                     });
                 } else {
-                    len +%= mach.memcpyMulti(buf[len..].ptr, &.{
+                    len = len +% mach.memcpyMulti(buf[len..].ptr, &.{
                         builtin.fmt.ud64(old_size).readAll(),             "(\x1b[92m-",
                         builtin.fmt.ud64(old_size -% new_size).readAll(), "\x1b[0m) => ",
                         builtin.fmt.ud64(new_size).readAll(),             " bytes, ",
                     });
                 }
-                len +%= mach.memcpyMulti(buf[len..].ptr, &.{
+                len = len +% mach.memcpyMulti(buf[len..].ptr, &.{
                     builtin.fmt.ud64(durat.sec).readAll(),        ".",
                     builtin.fmt.nsec(durat.nsec).readAll()[0..3], "s\n",
                 });
@@ -1113,7 +1085,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 @setRuntimeSafety(false);
                 var buf: [32768]u8 = undefined;
                 var len: u64 = mach.memcpyMulti(&buf, &.{ about, name, ", " });
-                len +%= mach.memcpyMulti(buf[len..].ptr, &.{
+                len = len +% mach.memcpyMulti(buf[len..].ptr, &.{
                     "rc=", builtin.fmt.ud64(rc).readAll(),
                     ", ",  builtin.fmt.ud64(durat.sec).readAll(),
                     ".",   builtin.fmt.nsec(durat.nsec).readAll()[0..3],
