@@ -8,6 +8,7 @@ const lit = @import("./lit.zig");
 const file = @import("./file.zig");
 const meta = @import("./meta.zig");
 const spec = @import("./spec.zig");
+const algo = @import("./algo.zig");
 const builtin = @import("./builtin.zig");
 
 fn arrayOfCharsLength(s: []const u8) u64 {
@@ -76,6 +77,30 @@ pub fn expectEqualMany(comptime T: type, arg1: []const T, arg2: []const T) built
                 showSpecialCase(T, arg1, arg2);
             }
             return error.UnexpectedValue;
+        }
+    }
+}
+pub fn arbitraryFieldOrder(comptime T: type) void {
+    const s = struct {
+        fn ascName(comptime x: builtin.Type.StructField, comptime y: builtin.Type.StructField) bool {
+            const min = @min(x.name.len, y.name.len);
+            for (x.name[0..min], y.name[0..min]) |xx, yy| {
+                if (xx > yy) return true;
+                if (yy > xx) return false;
+            }
+        }
+        fn ascSize(comptime x: builtin.Type.StructField, comptime y: builtin.Type.StructField) bool {
+            return algo.asc(@bitSizeOf(x.type), @bitSizeOf(y.type));
+        }
+    };
+    const fields: []const builtin.Type.StructField = @typeInfo(T).Struct.fields;
+    var values: [fields.len]builtin.Type.StructField =
+        @ptrCast(*const [fields.len]builtin.Type.StructField, fields.ptr).*;
+    algo.shellSort(builtin.Type.StructField, s.ascName, builtin.identity, &values);
+    algo.shellSort(builtin.Type.StructField, s.ascSize, builtin.identity, &values);
+    for (values, 0..) |field, index| {
+        if (!mem.testEqualMany(u8, field.name, fields[index].name)) {
+            @compileError("bad name: expected " ++ field.name ++ ", found " ++ fields[index].name);
         }
     }
 }
