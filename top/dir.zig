@@ -7,7 +7,6 @@ const builtin = @import("./builtin.zig");
 
 pub const DirStreamSpec = struct {
     Allocator: type,
-    initial_size: u64 = 1024,
     errors: DirStreamErrors = .{},
     options: DirStreamOptions = .{},
     logging: DirStreamLogging = .{},
@@ -19,6 +18,7 @@ pub const DirStreamErrors = struct {
     getdents: sys.ErrorPolicy = .{ .throw = sys.getdents_errors },
 };
 pub const DirStreamOptions = struct {
+    initial_size: u64 = 1024,
     init_read_all: bool = true,
     shrink_after_read: bool = true,
     make_list: bool = true,
@@ -111,8 +111,8 @@ pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
         }
         pub fn initAt(allocator: *Allocator, dirfd: ?u64, name: [:0]const u8) !DirStream {
             const fd: u64 = try file.openAt(dir_open_spec, dirfd orelse sys.AT.FDCWD, name);
-            const blk: Block = try meta.wrap(allocator.allocateMany(Block, .{ .bytes = dir_spec.initial_size }));
-            clear(blk.aligned_byte_address(), dir_spec.initial_size);
+            const blk: Block = try meta.wrap(allocator.allocateMany(Block, .{ .bytes = dir_spec.options.initial_size }));
+            clear(blk.aligned_byte_address(), dir_spec.options.initial_size);
             var ret: DirStream = .{ .path = name, .fd = fd, .blk = blk, .count = 1 };
             if (dir_spec.options.init_read_all) {
                 try ret.readAll(allocator);
@@ -128,8 +128,8 @@ pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
         }
         pub fn init(allocator: *Allocator, pathname: [:0]const u8) !DirStream {
             const fd: u64 = try file.open(dir_open_spec, pathname);
-            const blk: Block = try meta.wrap(allocator.allocateMany(Block, .{ .bytes = dir_spec.initial_size }));
-            clear(blk.aligned_byte_address(), dir_spec.initial_size);
+            const blk: Block = try meta.wrap(allocator.allocateMany(Block, .{ .bytes = dir_spec.options.initial_size }));
+            clear(blk.aligned_byte_address(), dir_spec.options.initial_size);
             var ret: DirStream = .{ .path = pathname, .fd = fd, .blk = blk, .count = 1 };
             if (dir_spec.options.init_read_all) {
                 try ret.readAll(allocator);
