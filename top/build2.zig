@@ -882,9 +882,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             .abort = clock_spec.errors.abort ++
                 fork_spec.errors.abort ++ execve_spec.errors.abort ++ waitpid_spec.errors.abort,
         }, bool) {
-            var run_time: time.TimeSpec = undefined;
             target.addRunArguments(allocator, builder);
             const args: [][*:0]u8 = target.runArguments();
+            var run_time: time.TimeSpec = undefined;
             const rc: u8 = try meta.wrap(
                 builder.system(args, &run_time),
             );
@@ -1237,16 +1237,16 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 @memcpy(buf + len, "\x1b[0;1m", 6);
                 return len +% 6;
             }
-            fn writeTopSrcLoc(buf: [*]u8, hdr: *types.Message.ErrorHeader, err_msg_idx: u32) u64 {
+            fn writeTopSrcLoc(buf: [*]u8, extra: [*]u32, bytes: [*:0]u8, err_msg_idx: u32) u64 {
                 @setRuntimeSafety(false);
-                const err_msg: *types.ErrorMessage = hdr.cast(types.ErrorMessage, err_msg_idx);
-                const src: *types.SourceLocation = hdr.cast(types.SourceLocation, err_msg.src_loc);
+                const err: *types.ErrorMessage = builtin.ptrCast(*types.ErrorMessage, extra + err_msg_idx);
+                const src: *types.SourceLocation = builtin.ptrCast(*types.SourceLocation, extra + err.src_loc);
                 var len: u64 = 4;
                 @memcpy(buf + len, "\x1b[1m", 4);
-                if (err_msg.src_loc != 0) {
+                if (err.src_loc != 0) {
                     len = len +% writeSourceLocation(
                         buf + len,
-                        hdr.string(src.src_path),
+                        meta.manyToSlice(bytes + src.src_path),
                         src.line +% 1,
                         src.column +% 1,
                     );
@@ -1255,22 +1255,23 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
                 return len;
             }
-            fn writeError(buf: [*]u8, hdr: *types.Message.ErrorHeader, err_msg_idx: u32, about: [:0]const u8) u64 {
+            fn writeError(buf: [*]u8, extra: [*]u32, bytes: [*:0]u8, err_msg_idx: u32, about: [:0]const u8) u64 {
                 @setRuntimeSafety(false);
-                const err_msg: *types.ErrorMessage = hdr.cast(types.ErrorMessage, err_msg_idx);
-                const src: *types.SourceLocation = hdr.cast(types.SourceLocation, err_msg.src_loc);
-                var len: u64 = writeTopSrcLoc(buf, hdr, err_msg_idx);
+                const err: *types.ErrorMessage = builtin.ptrCast(*types.ErrorMessage, extra + err_msg_idx);
+                const src: *types.SourceLocation = builtin.ptrCast(*types.SourceLocation, extra + err.src_loc);
+                const notes: [*]u32 = extra + err_msg_idx + types.ErrorMessage.len;
+                var len: u64 = writeTopSrcLoc(buf, extra, bytes, err_msg_idx);
                 const pos: u64 = len +% about.len -% 2;
                 len = len +% writeAbout(buf + len, about);
-                len = len +% writeMessage(buf + len, hdr, err_msg.start, pos);
-                if (err_msg.count != 1)
-                    len = len +% writeTimes(buf + len, err_msg.count);
-                if (err_msg.src_loc != 0 and src.src_line != 0)
-                    len = len +% writeCaret(buf + len, hdr, src);
-                for (hdr.notes(err_msg_idx)) |note|
-                    len = len +% writeError(buf + len, hdr, note, note_s);
-                if (err_msg.src_loc != 0 and src.ref_len != 0)
-                    len = len +% writeTrace(buf + len, hdr, err_msg.src_loc, src.ref_len);
+                len = len +% writeMessage(buf + len, bytes, err.start, pos);
+                if (err.count != 1)
+                    len = len +% writeTimes(buf + len, err.count);
+                if (err.src_loc != 0 and src.src_line != 0)
+                    len = len +% writeCaret(buf + len, bytes, src);
+                for (0..err.notes_len) |idx|
+                    len = len +% writeError(buf + len, extra, bytes, notes[idx], note_s);
+                if (err.src_loc != 0 and src.ref_len != 0)
+                    len = len +% writeTrace(buf + len, extra, bytes, err.src_loc, src.ref_len);
                 return len;
             }
             fn writeSourceLocation(buf: [*]u8, pathname: [:0]const u8, line: u64, column: u64) u64 {
@@ -1299,9 +1300,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 len = len +% 12;
                 return len;
             }
-            fn writeCaret(buf: [*]u8, hdr: *types.Message.ErrorHeader, src: *types.SourceLocation) u64 {
-                const line: [:0]u8 = hdr.string(src.src_line);
+            fn writeCaret(buf: [*]u8, bytes: [*:0]u8, src: *types.SourceLocation) u64 {
                 @setRuntimeSafety(false);
+                const line: [:0]u8 = meta.manyToSlice(bytes + src.src_line);
                 const before_caret: u64 = src.span_main -% src.span_start;
                 const indent: u64 = src.column -% before_caret;
                 const after_caret: u64 = src.span_end -% src.span_main -| 1;
@@ -1324,12 +1325,11 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 buf[len] = '\n';
                 return len +% 1;
             }
-            fn writeMessage(buf: [*]u8, hdr: *types.Message.ErrorHeader, start: u64, indent: u64) u64 {
+            fn writeMessage(buf: [*]u8, bytes: [*:0]u8, start: u64, indent: u64) u64 {
                 @setRuntimeSafety(false);
                 var len: u64 = 0;
                 var next: u64 = start;
                 var idx: u64 = start;
-                const bytes: [*]u8 = hdr.bytes();
                 while (bytes[idx] != 0) : (idx +%= 1) {
                     if (bytes[idx] == '\n') {
                         const line: []u8 = bytes[next..idx];
@@ -1350,7 +1350,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 buf[len] = '\n';
                 return len +% 1;
             }
-            fn writeTrace(buf: [*]u8, hdr: *types.Message.ErrorHeader, start: u64, ref_len: u64) u64 {
+            fn writeTrace(buf: [*]u8, extra: [*]u32, bytes: [*:0]u8, start: u64, ref_len: u64) u64 {
                 @setRuntimeSafety(false);
                 var ref_idx: u64 = start +% types.SourceLocation.len;
                 var idx: u64 = 0;
@@ -1360,11 +1360,11 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 @memcpy(buf + len, "referenced by:\n", 15);
                 len = len +% 15;
                 while (idx != ref_len) : (idx +%= 1) {
-                    const ref_trc: *types.ReferenceTrace = hdr.cast(types.ReferenceTrace, ref_idx);
+                    const ref_trc: *types.ReferenceTrace = builtin.ptrCast(*types.ReferenceTrace, extra + ref_idx);
                     if (ref_trc.src_loc != 0) {
-                        const ref_src: *types.SourceLocation = hdr.cast(types.SourceLocation, ref_trc.src_loc);
-                        const src_file: [:0]u8 = hdr.string(ref_src.src_path);
-                        const decl_name: [:0]u8 = hdr.string(ref_trc.decl_name);
+                        const ref_src: *types.SourceLocation = builtin.ptrCast(*types.SourceLocation, extra + ref_trc.src_loc);
+                        const src_file: [:0]u8 = meta.manyToSlice(bytes + ref_src.src_path);
+                        const decl_name: [:0]u8 = meta.manyToSlice(bytes + ref_trc.decl_name);
                         @memset(buf + len, ' ', 4);
                         len = len +% 4;
                         @memcpy(buf + len, decl_name.ptr, decl_name.len);
@@ -1383,13 +1383,15 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             fn writeErrors(allocator: *Allocator, hdr: *types.Message.ErrorHeader) void {
                 @setRuntimeSafety(false);
                 var buf: [*]u8 = allocate(allocator, u8, 1024 *% 1024).ptr;
+                const extra: [*]u32 = hdr.extra();
+                const bytes: [*:0]u8 = hdr.bytes();
+                const list: *types.ErrorMessageList = builtin.ptrCast(*types.ErrorMessageList, extra);
                 var len: u64 = 0;
-                const list: *types.ErrorMessageList = hdr.cast(types.ErrorMessageList, 0);
-                for ((hdr.extra() + list.start)[0..list.len]) |err_msg_idx| {
-                    len = len +% writeError(buf + len, hdr, err_msg_idx, error_s);
+                for ((extra + list.start)[0..list.len]) |err_msg_idx| {
+                    len = len +% writeError(buf + len, extra, bytes, err_msg_idx, error_s);
                 }
                 builtin.debug.write(buf[0..len]);
-                builtin.debug.write(hdr.string(list.compile_log_text));
+                builtin.debug.write(meta.manyToSlice(bytes + list.compile_log_text));
             }
         };
         fn strdup(allocator: *Allocator, values: []const u8) [:0]u8 {
