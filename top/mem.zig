@@ -1575,11 +1575,11 @@ pub const SimpleAllocator = struct {
         const ret_addr: u64 = allocator.reallocateInternal(@ptrToInt(buf.ptr), buf.len *% @sizeOf(T), count *% @sizeOf(T), @alignOf(T));
         return @intToPtr([*]T, ret_addr)[0..count];
     }
-    pub inline fn save(allocator: *const SimpleAllocator) SimpleAllocator.Save {
-        return .{ .next = allocator.next };
+    pub inline fn save(allocator: *const SimpleAllocator) Save {
+        return .{allocator.next};
     }
-    pub inline fn restore(allocator: *SimpleAllocator, state: SimpleAllocator.Save) void {
-        allocator.next = state.next;
+    pub inline fn restore(allocator: *SimpleAllocator, state: Save) void {
+        allocator.next = state[0];
     }
     pub inline fn restart(allocator: *SimpleAllocator) void {
         allocator.next = allocator.start;
@@ -1588,7 +1588,7 @@ pub const SimpleAllocator = struct {
     pub fn unmap(allocator: *SimpleAllocator) void {
         sys.call(.munmap, .{}, void, allocator.start, allocator.finish - allocator.start);
     }
-    pub const Save = struct { next: u64 };
+    pub const Save = struct { u64 };
 
     // PROT_READ|PROT_WRITE
     const flags: u64 = 0x1 | 0x2;
@@ -1596,7 +1596,7 @@ pub const SimpleAllocator = struct {
     const prot: u64 = 0x20 | 0x02 | 0x100000;
     const zero: u64 = 0;
 
-    inline fn mapRange(old_finish: u64, new_finish: u64) u64 {
+    inline fn map(old_finish: u64, new_finish: u64) u64 {
         sys.call(.mmap, .{}, void, old_finish, new_finish - old_finish, flags, prot, ~zero, zero);
         return new_finish;
     }
@@ -1616,7 +1616,7 @@ pub const SimpleAllocator = struct {
         const aligned: u64 = alignAbove(start, align_of);
         const finish: u64 = aligned +% size_of;
         if (finish > allocator.finish) {
-            allocator.finish = mapRange(allocator.finish, alignAbove(finish, 4096));
+            allocator.finish = SimpleAllocator.map(allocator.finish, alignAbove(finish, 4096));
         }
         allocator.next = finish;
         return aligned;
@@ -1632,7 +1632,7 @@ pub const SimpleAllocator = struct {
         const new_finish: u64 = old_aligned +% new_size_of;
         if (allocator.next == old_finish) {
             if (new_finish > allocator.finish) {
-                allocator.finish = map(allocator.finish, alignAbove(new_finish, 4096));
+                allocator.finish = SimpleAllocator.map(allocator.finish, alignAbove(new_finish, 4096));
             }
             allocator.next = new_finish;
             return old_aligned;
