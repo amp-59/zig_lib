@@ -3,11 +3,8 @@ const mach = @import("../mach.zig");
 const meta = @import("../meta.zig");
 const spec = @import("../spec.zig");
 const builtin = @import("../builtin.zig");
-
 const tasks = @import("./tasks.zig");
-
 pub usingnamespace tasks;
-
 pub const Task = enum(u8) {
     build = 1,
     run = 2,
@@ -23,7 +20,6 @@ pub const State = enum(u8) {
 pub const state_list: []const State = meta.tagList(State);
 pub const task_list: []const Task = meta.tagList(Task);
 pub const Lock = mem.ThreadSafeSet(state_list.len, State, Task);
-
 pub const Path = struct {
     absolute: [:0]const u8,
     relative: ?[:0]const u8 = null,
@@ -244,26 +240,20 @@ pub const Message = struct {
     pub const ErrorHeader = extern struct {
         extra_len: u32,
         bytes_len: u32,
-        pub const size: u64 = @sizeOf(ServerHeader);
+        pub const size: u64 = @sizeOf(ErrorHeader);
+        pub fn create(msg: []u8) *ErrorHeader {
+            @setRuntimeSafety(false);
+            return @ptrCast(*ErrorHeader, @alignCast(4, msg.ptr));
+        }
+        pub fn extra(hdr: *ErrorHeader) [*]u32 {
+            @setRuntimeSafety(false);
+            return @intToPtr([*]u32, @ptrToInt(hdr) +% size);
+        }
+        pub fn bytes(hdr: *ErrorHeader) [*:0]u8 {
+            @setRuntimeSafety(false);
+            return @intToPtr([*:0]u8, @ptrToInt(hdr) +% size +% (hdr.extra_len *% 4));
+        }
     };
-};
-pub const Errors = struct {
-    extra: [*]u32,
-    bytes: [*:0]u8,
-
-    pub fn create(msg: []u8) Errors {
-        @setRuntimeSafety(false);
-        const errors_header: *Message.ErrorHeader = @ptrCast(*Message.ErrorHeader, @alignCast(4, msg.ptr));
-        const data_addr: u64 = @ptrToInt(msg.ptr) + @sizeOf(Message.ErrorHeader);
-        return .{
-            .extra = @intToPtr([*]u32, data_addr),
-            .bytes = @intToPtr([*:0]u8, data_addr +% errors_header.extra_len *% 4),
-        };
-    }
-    pub inline fn cast(errors: Errors, comptime T: type, idx: u64) *T {
-        @setRuntimeSafety(false);
-        return @ptrCast(*T, errors.extra + idx);
-    }
 };
 pub const EmitBin = extern struct {
     flags: Flags,
@@ -317,13 +307,3 @@ pub const ReferenceTrace = struct {
     };
     pub const len: u64 = 2;
 };
-pub fn version(message: *Message.ServerHeader) [:0]const u8 {
-    @setRuntimeSafety(false);
-    const string_addr: u64 = @ptrToInt(message) +% Message.ServerHeader.len;
-    return @intToPtr([*:0]u8, string_addr)[0..message.bytes_len :0];
-}
-pub fn pathname(message: *Message.ServerHeader) [:0]const u8 {
-    @setRuntimeSafety(false);
-    const string_addr: u64 = @ptrToInt(message) +% Message.ServerHeader.len +% EmitBin.len;
-    return meta.manyToSlice(@intToPtr([*:0]u8, string_addr));
-}
