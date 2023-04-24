@@ -1041,24 +1041,7 @@ pub const TRAP = struct {
     pub const BRANCH: usize = 0x3;
     pub const HWBKPT: usize = 0x4;
 };
-pub const FUTEX = struct {
-    pub const FD: usize = 0x2;
-    pub const UNLOCK_PI: usize = 0x7;
-    pub const TRYLOCK_PI: usize = 0x8;
-    pub const WAIT = struct {
-        pub const REQUEUE_PI: usize = 0xb;
-        pub const BITSET: usize = 0x9;
-    };
-    pub const CMP_REQUEUE_PI: usize = 0xc;
-    pub const REQUEUE: usize = 0x3;
-    pub const CLOCK_REALTIME: usize = 0x100;
-    pub const WAKE = struct {
-        pub const BITSET: usize = 0xa;
-        pub const OP: usize = 0x5;
-    };
-    pub const PRIVATE_FLAG: usize = 0x80;
-    pub const LOCK_PI: usize = 0x6;
-};
+pub const FUTEX = struct {};
 pub const SO = struct {
     pub const DEBUG: u64 = 0x1;
     pub const REUSEADDR: u64 = 0x2;
