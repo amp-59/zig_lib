@@ -21,12 +21,7 @@ export fn forwardToExecuteCloneThreadedDirty(
     depth: u64,
     stack_address: u64,
 ) void {
-    proc.callClone(.{ .errors = .{}, .return_type = void }, stack_address, Builder.stack_aligned_bytes, {}, Builder.executeCommandThreaded, .{
+    proc.callClone(.{ .errors = .{}, .return_type = void }, stack_address, Builder.stack_aligned_bytes, {}, Builder.impl.executeCommandThreaded, .{
         builder, address_space, thread_space, target, task, arena_index, depth,
     });
 }
-
-const debug = struct {
-    const about_target_0_s: [:0]const u8 = builtin.debug.about("target");
-    const about_target_1_s: [:0]const u8 = builtin.debug.about("target-error");
-};
