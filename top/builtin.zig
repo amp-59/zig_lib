@@ -544,6 +544,14 @@ pub fn isComptime() bool {
     var b: bool = false;
     return @TypeOf(if (b) @as(u32, 0) else @as(u8, 0)) == u8;
 }
+pub inline fn ptrCast(comptime T: type, any: anytype) T {
+    @setRuntimeSafety(false);
+    if (@typeInfo(@TypeOf(any)).Pointer.size == .Slice) {
+        return @ptrCast(T, @alignCast(@typeInfo(T).Pointer.alignment, any.ptr));
+    } else {
+        return @ptrCast(T, @alignCast(@typeInfo(T).Pointer.alignment, any));
+    }
+}
 pub inline fn zero(comptime T: type) T {
     const data: [@sizeOf(T)]u8 align(@alignOf(T)) = .{@as(u8, 0)} ** @sizeOf(T);
     return @ptrCast(*const T, &data).*;
@@ -1254,23 +1262,23 @@ pub const debug = opaque {
     }
     fn comparisonFailedString(comptime T: type, what: []const u8, symbol: []const u8, buf: []u8, arg1: T, arg2: T, help_read: bool) u64 {
         const notation: []const u8 = if (help_read) ", i.e. " else "\n";
-        var len: u64 = writeMulti(buf, &[_][]const u8{
+        var len: u64 = writeMulti(buf.ptr, &[_][]const u8{
             what,     itos(T, arg1).readAll(),
             symbol,   itos(T, arg2).readAll(),
             notation,
         });
         if (help_read) {
             if (arg1 > arg2) {
-                len += writeMulti(buf[len..], &[_][]const u8{ itos(T, arg1 -% arg2).readAll(), symbol, "0\n" });
+                len += writeMulti(buf[len..].ptr, &[_][]const u8{ itos(T, arg1 -% arg2).readAll(), symbol, "0\n" });
             } else {
-                len += writeMulti(buf[len..], &[_][]const u8{ "0", symbol, itos(T, arg2 -% arg1).readAll(), "\n" });
+                len += writeMulti(buf[len..].ptr, &[_][]const u8{ "0", symbol, itos(T, arg2 -% arg1).readAll(), "\n" });
             }
         }
         return len;
     }
     fn intCastTruncatedBitsString(comptime T: type, comptime U: type, buf: []u8, arg1: U) u64 {
         const minimum: T = 0;
-        return writeMulti(buf, &[_][]const u8{
+        return writeMulti(buf.ptr, &[_][]const u8{
             about_fault_p0_s,            "integer cast truncated bits: ",
             itos(U, arg1).readAll(),     " greater than " ++ @typeName(T) ++ " maximum (",
             itos(T, ~minimum).readAll(), ")\n",
@@ -1279,20 +1287,20 @@ pub const debug = opaque {
     fn subCausedOverflowString(comptime T: type, what: []const u8, msg: []u8, arg1: T, arg2: T, help_read: bool) u64 {
         const endl: []const u8 = if (help_read) ", i.e. " else "\n";
         var len: u64 = 0;
-        len += writeMulti(msg, &[_][]const u8{
+        len += writeMulti(msg.ptr, &[_][]const u8{
             what,                    " integer overflow: ",
             itos(T, arg1).readAll(), " - ",
             itos(T, arg2).readAll(), endl,
         });
         if (help_read) {
-            len += writeMulti(msg[len..], &[_][]const u8{ "0 - ", itos(T, arg2 -% arg1).readAll(), "\n" });
+            len += writeMulti(msg[len..].ptr, &[_][]const u8{ "0 - ", itos(T, arg2 -% arg1).readAll(), "\n" });
         }
         return len;
     }
     fn addCausedOverflowString(comptime T: type, what: []const u8, msg: []u8, arg1: T, arg2: T, help_read: bool) u64 {
         const endl: []const u8 = if (help_read) ", i.e. " else "\n";
         var len: u64 = 0;
-        len += writeMulti(msg, &[_][]const u8{
+        len += writeMulti(msg.ptr, &[_][]const u8{
             what,                    " integer overflow: ",
             itos(T, arg1).readAll(), " + ",
             itos(T, arg2).readAll(), endl,
@@ -1300,19 +1308,19 @@ pub const debug = opaque {
         if (help_read) {
             const argl: T = ~@as(T, 0);
             const argr: T = (arg2 +% arg1) -% argl;
-            len += writeMulti(msg[len..], &[_][]const u8{ itos(T, argl).readAll(), " + ", itos(T, argr).readAll(), "\n" });
+            len += writeMulti(msg[len..].ptr, &[_][]const u8{ itos(T, argl).readAll(), " + ", itos(T, argr).readAll(), "\n" });
         }
         return len;
     }
     fn mulCausedOverflowString(comptime T: type, what: []const u8, buf: []u8, arg1: T, arg2: T) u64 {
-        return writeMulti(buf, &[_][]const u8{
+        return writeMulti(buf.ptr, &[_][]const u8{
             what,                    ": integer overflow: ",
             itos(T, arg1).readAll(), " * ",
             itos(T, arg2).readAll(), "\n",
         });
     }
     fn exactDivisionWithRemainderString(comptime T: type, what: []const u8, buf: []u8, arg1: T, arg2: T, result: T, remainder: T) u64 {
-        return writeMulti(buf, &[_][]const u8{
+        return writeMulti(buf.ptr, &[_][]const u8{
             what,                         ": exact division had a remainder: ",
             itos(T, arg1).readAll(),      "/",
             itos(T, arg2).readAll(),      " == ",
@@ -1321,7 +1329,7 @@ pub const debug = opaque {
         });
     }
     fn incorrectAlignmentString(comptime Pointer: type, what: []const u8, buf: []u8, address: usize, alignment: usize, remainder: u64) u64 {
-        return writeMulti(buf, &[_][]const u8{
+        return writeMulti(buf.ptr, &[_][]const u8{
             what,                                      ": incorrect alignment: ",
             @typeName(Pointer),                        " align(",
             itos(u64, alignment).readAll(),            "): ",
@@ -1485,16 +1493,16 @@ pub const debug = opaque {
         );
         return if (rc < 0) ~@as(u64, 0) else @intCast(u64, rc);
     }
-    pub fn writeMany(buf: []u8, s: []const u8) u64 {
-        @memcpy(buf.ptr, s.ptr, s.len);
+    pub fn writeMany(buf: [*]u8, s: []const u8) u64 {
+        @memcpy(buf, s.ptr, s.len);
         return s.len;
     }
-    pub fn writeRepeat(buf: []u8, c: u8, count: u64) u64 {
-        @memset(buf.ptr, c, count);
+    pub fn writeRepeat(buf: [*]u8, c: u8, count: u64) u64 {
+        @memset(buf, c, count);
         return count;
     }
-    pub fn writeMulti(buf: []u8, ss: []const []const u8) u64 {
-        return mach.memcpyMulti(buf.ptr, ss);
+    pub fn writeMulti(buf: [*]u8, ss: []const []const u8) u64 {
+        return mach.memcpyMulti(buf, ss);
     }
     pub inline fn logAlways(buf: []const u8) void {
         write(buf);
@@ -1517,32 +1525,32 @@ pub const debug = opaque {
     pub fn logAbort(buf: []u8, symbol: []const u8) noreturn {
         @setRuntimeSafety(false);
         var len: u64 = 0;
-        len +%= writeMany(buf[len..], about_error_p0_s);
+        len +%= writeMany(buf[len..].ptr, about_error_p0_s);
         len +%= about_error_p0_s.len;
         len +%= name(buf[len..]);
-        len +%= writeMulti(buf[len..], &[_][]const u8{ " (", symbol, ")\n" });
+        len +%= writeMulti(buf[len..].ptr, &[_][]const u8{ " (", symbol, ")\n" });
         logFault(buf[0..len]);
         proc.exit(2);
     }
     pub fn logAlwaysAIO(buf: []u8, slices: []const []const u8) void {
-        write(buf[0..writeMulti(buf, slices)]);
+        write(buf[0..writeMulti(buf.ptr, slices)]);
     }
     pub fn logSuccessAIO(buf: []u8, slices: []const []const u8) void {
-        logSuccess(buf[0..writeMulti(buf, slices)]);
+        logSuccess(buf[0..writeMulti(buf.ptr, slices)]);
     }
     pub fn logAcquireAIO(buf: []u8, slices: []const []const u8) void {
-        logAcquire(buf[0..writeMulti(buf, slices)]);
+        logAcquire(buf[0..writeMulti(buf.ptr, slices)]);
     }
     pub fn logReleaseAIO(buf: []u8, slices: []const []const u8) void {
-        logRelease(buf[0..writeMulti(buf, slices)]);
+        logRelease(buf[0..writeMulti(buf.ptr, slices)]);
     }
     pub fn logErrorAIO(buf: []u8, slices: []const []const u8) void {
-        logError(buf[0..writeMulti(buf, slices)]);
+        logError(buf[0..writeMulti(buf.ptr, slices)]);
     }
     pub fn logFaultAIO(buf: []u8, slices: []const []const u8) void {
         @setCold(true);
         @setRuntimeSafety(false);
-        logFault(buf[0..writeMulti(buf, slices)]);
+        logFault(buf[0..writeMulti(buf.ptr, slices)]);
     }
     pub noinline fn panic(msg: []const u8, _: @TypeOf(@errorReturnTrace()), _: ?usize) noreturn {
         @setCold(true);
