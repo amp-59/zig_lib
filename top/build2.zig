@@ -628,22 +628,46 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             .throw = close_spec.errors.throw ++ dup3_spec.errors.throw,
             .abort = close_spec.errors.abort ++ dup3_spec.errors.abort,
         }, void) {
-            try meta.wrap(file.close(close_spec, in.write));
-            try meta.wrap(file.close(close_spec, out.read));
-            try meta.wrap(file.close(close_spec, err.read));
-            try meta.wrap(file.duplicateTo(dup3_spec, in.read, 0));
-            try meta.wrap(file.duplicateTo(dup3_spec, out.write, 1));
-            try meta.wrap(file.duplicateTo(dup3_spec, err.write, 2));
+            try meta.wrap(
+                file.close(close_spec, in.write),
+            );
+            try meta.wrap(
+                file.close(close_spec, out.read),
+            );
+            try meta.wrap(
+                file.close(close_spec, err.read),
+            );
+            try meta.wrap(
+                file.duplicateTo(dup3_spec, in.read, 0),
+            );
+            try meta.wrap(
+                file.duplicateTo(dup3_spec, out.write, 1),
+            );
+            try meta.wrap(
+                file.duplicateTo(dup3_spec, err.write, 2),
+            );
         }
         fn openParent(in: file.Pipe, out: file.Pipe, err: file.Pipe) sys.Call(close_spec.errors, void) {
-            try meta.wrap(file.close(close_spec, in.read));
-            try meta.wrap(file.close(close_spec, out.write));
-            try meta.wrap(file.close(close_spec, err.write));
+            try meta.wrap(
+                file.close(close_spec, in.read),
+            );
+            try meta.wrap(
+                file.close(close_spec, out.write),
+            );
+            try meta.wrap(
+                file.close(close_spec, err.write),
+            );
         }
         fn closeParent(in: file.Pipe, out: file.Pipe, err: file.Pipe) sys.Call(close_spec.errors, void) {
-            try meta.wrap(file.close(close_spec, in.write));
-            try meta.wrap(file.close(close_spec, out.read));
-            try meta.wrap(file.close(close_spec, err.read));
+            try meta.wrap(
+                file.close(close_spec, in.write),
+            );
+            try meta.wrap(
+                file.close(close_spec, out.read),
+            );
+            try meta.wrap(
+                file.close(close_spec, err.read),
+            );
         }
         fn clientLoop(allocator: *Allocator, out: file.Pipe) void {
             var fds: [1]file.PollFd = .{
@@ -669,7 +693,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     .test_metadata => break,
                     .test_results => break,
                     .error_bundle => break {
-                        debug.writeErrors(allocator, types.Errors.create(msg));
+                        debug.writeErrors(allocator, types.Message.ErrorHeader.create(msg));
                     },
                 }
             }
@@ -1014,6 +1038,18 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             const about_state_1_s: [:0]const u8 = builtin.debug.about("state-fault");
             const error_s: *const [5:0]u8 = "error";
             const note_s: *const [4:0]u8 = "note";
+            inline fn tildeStyle() [:0]const u8 {
+                return "\x1b[38;5;46m";
+            }
+            inline fn errorStyle() [:0]const u8 {
+                return "\x1b[38;5;208m";
+            }
+            inline fn noteStyle() [:0]const u8 {
+                return "\x1b[38;5;123m";
+            }
+            inline fn traceStyle() [:0]const u8 {
+                return "\x1b[38;5;247m";
+            }
             pub fn exchangeNotice(target: *Target, task: types.Task, old_state: types.State, new_state: types.State) void {
                 @setRuntimeSafety(false);
                 var buf: [32768]u8 = undefined;
@@ -1093,28 +1129,28 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 builtin.debug.logAlways(buf[0..len]);
             }
             pub fn writeAndWalk(target: *Target) void {
-                var buf0: [1024 * 1024]u8 = undefined;
+                var buf0: [1048576]u8 = undefined;
                 var buf1: [32768]u8 = undefined;
                 @memcpy(&buf0, target.name.ptr, target.name.len);
                 var len: u64 = target.name.len;
                 len = writeAndWalkInternal(&buf0, len, &buf1, 0, target);
                 builtin.debug.logAlways(buf0[0..len]);
             }
-            fn writeAndWalkInternal(buf0: *[1024 * 1024]u8, len0: u64, buf1: *[32768]u8, len1: u64, target: *Builder.Target) u64 {
+            fn writeAndWalkInternal(buf0: [*]u8, len0: u64, buf1: [*]u8, len1: u64, target: *Builder.Target) u64 {
                 @setRuntimeSafety(false);
                 const deps: []Target.Dependency = target.buildDependencies();
                 var len: u64 = len0;
                 buf0[len] = '\n';
                 len = len +% 1;
                 for (deps, 0..) |dep, idx| {
-                    @memcpy(buf1[len1..].ptr, if (idx == deps.len -% 1) "  " else "| ", 2);
-                    @memcpy(buf0[len..].ptr, buf1, len1 +% 2);
+                    @memcpy(buf1 + len1, if (idx == deps.len -% 1) "  " else "| ", 2);
+                    @memcpy(buf0 + len, buf1, len1 +% 2);
                     len = len +% len1 +% 2;
-                    @memcpy(buf0[len..].ptr, if (idx == deps.len -% 1) "\x08\x08`-" else "\x08\x08|-", 4);
+                    @memcpy(buf0 + len, if (idx == deps.len -% 1) "\x08\x08`-" else "\x08\x08|-", 4);
                     len = len +% 4;
-                    @memcpy(buf0[len..].ptr, if (dep.target.deps_len == 0) "> " else "+ ", 2);
+                    @memcpy(buf0 + len, if (dep.target.deps_len == 0) "> " else "+ ", 2);
                     len = len +% 2;
-                    @memcpy(buf0[len..].ptr, dep.target.name.ptr, dep.target.name.len);
+                    @memcpy(buf0 + len, dep.target.name.ptr, dep.target.name.len);
                     len = len +% target.name.len;
                     len = writeAndWalkInternal(buf0, len, buf1, len1 +% 2, dep.target);
                 }
@@ -1185,56 +1221,53 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 @setRuntimeSafety(false);
                 var len: u64 = 0;
                 if (about.ptr == error_s) {
-                    @memcpy(buf + len, "\x1b[91m", 5);
-                    len = len +% 5;
-                }
-                if (about.ptr == note_s) {
-                    @memcpy(buf + len, "\x1b[96m", 5);
-                    len = len +% 5;
+                    @memcpy(buf + len, errorStyle().ptr, errorStyle().len);
+                    len = len +% errorStyle().len;
+                } else if (about.ptr == note_s) {
+                    @memcpy(buf + len, noteStyle().ptr, noteStyle().len);
+                    len = len +% noteStyle().len;
                 }
                 @memcpy(buf + len, about.ptr, about.len);
                 len = len +% about.len;
-                @memcpy(buf + len, ":\x1b[0;1m ", 8);
-                len = len +% 8;
-                return len;
+                @memcpy(buf + len, ": ", 2);
+                len = len +% 2;
+                @memcpy(buf + len, "\x1b[0;1m", 6);
+                return len +% 6;
             }
-            fn writeError(buf: [*]u8, errors: types.Errors, err_msg_idx: u32, about: [:0]const u8) u64 {
+            fn writeTopSrcLoc(buf: [*]u8, hdr: *types.Message.ErrorHeader, err_msg_idx: u32) u64 {
                 @setRuntimeSafety(false);
-                const bytes: [*]u8 = errors.bytes;
-                const err_msg: *types.ErrorMessage = errors.cast(types.ErrorMessage, err_msg_idx);
-                const note_start: u64 = err_msg_idx +% types.ErrorMessage.len;
-                const notes: []u32 = errors.extra[note_start .. note_start +% err_msg.notes_len];
-                var len: u64 = 0;
-                if (err_msg.src_loc == 0) {
-                    const name: [:0]const u8 = terminate(bytes + err_msg.start);
-                    len = len +% writeAbout(buf + len, about);
-                    @memcpy(buf + len, name.ptr, name.len);
-                    len = len +% name.len;
-                    len = len +% writeMessage(buf + len, bytes, err_msg.start, 0);
-                    if (err_msg.count != 1)
-                        len = len +% writeTimes(buf + len, err_msg.count);
-                    for (notes) |note|
-                        len = len +% writeError(buf + len, errors, note, note_s);
-                } else {
-                    const src: *types.SourceLocation = errors.cast(types.SourceLocation, err_msg.src_loc);
-                    const src_end: u64 = err_msg.src_loc +% types.SourceLocation.len;
-                    const src_file: [:0]u8 = terminate(bytes + src.src_path);
-                    @memcpy(buf + len, "\x1b[1m", 4);
-                    len = len +% 4;
-                    len = len +% writeSourceLocation(buf + len, src_file, src.line +% 1, src.column +% 1);
+                const err_msg: *types.ErrorMessage = hdr.cast(types.ErrorMessage, err_msg_idx);
+                const src: *types.SourceLocation = hdr.cast(types.SourceLocation, err_msg.src_loc);
+                var len: u64 = 4;
+                @memcpy(buf + len, "\x1b[1m", 4);
+                if (err_msg.src_loc != 0) {
+                    len = len +% writeSourceLocation(
+                        buf + len,
+                        hdr.string(src.src_path),
+                        src.line +% 1,
+                        src.column +% 1,
+                    );
                     @memcpy(buf + len, ": ", 2);
                     len = len +% 2;
-                    len = len +% writeAbout(buf + len, about);
-                    len = len +% writeMessage(buf + len, bytes, err_msg.start, len -% 15);
-                    if (err_msg.count != 1)
-                        len = len +% writeTimes(buf + len, err_msg.count);
-                    if (src.src_line != 0)
-                        len = len +% writeCaret(buf + len, terminate(bytes + src.src_line), src);
-                    for (notes) |note|
-                        len = len +% writeError(buf + len, errors, note, note_s);
-                    if (src.ref_len > 0)
-                        len = len +% writeReferenceTrace(buf + len, errors, bytes, src_end, src.ref_len);
                 }
+                return len;
+            }
+            fn writeError(buf: [*]u8, hdr: *types.Message.ErrorHeader, err_msg_idx: u32, about: [:0]const u8) u64 {
+                @setRuntimeSafety(false);
+                const err_msg: *types.ErrorMessage = hdr.cast(types.ErrorMessage, err_msg_idx);
+                const src: *types.SourceLocation = hdr.cast(types.SourceLocation, err_msg.src_loc);
+                var len: u64 = writeTopSrcLoc(buf, hdr, err_msg_idx);
+                const pos: u64 = len +% about.len -% 2;
+                len = len +% writeAbout(buf + len, about);
+                len = len +% writeMessage(buf + len, hdr, err_msg.start, pos);
+                if (err_msg.count != 1)
+                    len = len +% writeTimes(buf + len, err_msg.count);
+                if (err_msg.src_loc != 0 and src.src_line != 0)
+                    len = len +% writeCaret(buf + len, hdr, src);
+                for (hdr.notes(err_msg_idx)) |note|
+                    len = len +% writeError(buf + len, hdr, note, note_s);
+                if (err_msg.src_loc != 0 and src.ref_len != 0)
+                    len = len +% writeTrace(buf + len, hdr, err_msg.src_loc, src.ref_len);
                 return len;
             }
             fn writeSourceLocation(buf: [*]u8, pathname: [:0]const u8, line: u64, column: u64) u64 {
@@ -1250,8 +1283,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 buf[len] = ':';
                 len = len +% 1;
                 @memcpy(buf + len, column_s.ptr, column_s.len);
-                len = len +% column_s.len;
-                return len;
+                return len +% column_s.len;
             }
             fn writeTimes(buf: [*]u8, count: u64) u64 {
                 @setRuntimeSafety(false);
@@ -1264,7 +1296,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 len = len +% 12;
                 return len;
             }
-            fn writeCaret(buf: [*]u8, line: [:0]const u8, src: *types.SourceLocation) u64 {
+            fn writeCaret(buf: [*]u8, hdr: *types.Message.ErrorHeader, src: *types.SourceLocation) u64 {
+                const line: [:0]u8 = hdr.string(src.src_line);
                 @setRuntimeSafety(false);
                 const before_caret: u64 = src.span_main -% src.span_start;
                 const indent: u64 = src.column -% before_caret;
@@ -1275,8 +1308,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 len = len +% 1;
                 @memset(buf + len, ' ', indent);
                 len = len +% indent;
-                @memcpy(buf + len, "\x1b[95m", 5);
-                len = len +% 5;
+                @memcpy(buf + len, tildeStyle().ptr, tildeStyle().len);
+                len = len +% tildeStyle().len;
                 @memset(buf + len, '~', before_caret);
                 len = len +% before_caret;
                 buf[len] = '^';
@@ -1288,16 +1321,19 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 buf[len] = '\n';
                 return len +% 1;
             }
-            fn writeMessage(buf: [*]u8, bytes: [*]u8, start: u64, indent: u64) u64 {
+            fn writeMessage(buf: [*]u8, hdr: *types.Message.ErrorHeader, start: u64, indent: u64) u64 {
                 @setRuntimeSafety(false);
                 var len: u64 = 0;
                 var next: u64 = start;
                 var idx: u64 = start;
+                const bytes: [*]u8 = hdr.bytes();
                 while (bytes[idx] != 0) : (idx +%= 1) {
                     if (bytes[idx] == '\n') {
-                        const line: []u8 = bytes[next .. idx +% 1];
+                        const line: []u8 = bytes[next..idx];
                         @memcpy(buf + len, line.ptr, line.len);
                         len = len +% line.len;
+                        buf[len] = '\n';
+                        len = len +% 1;
                         @memset(buf + len, ' ', indent);
                         len = len +% indent;
                         next = idx +% 1;
@@ -1311,53 +1347,46 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 buf[len] = '\n';
                 return len +% 1;
             }
-            fn writeReferenceTrace(buf: [*]u8, errors: types.Errors, bytes: [*]u8, start: u64, ref_len: u64) u64 {
+            fn writeTrace(buf: [*]u8, hdr: *types.Message.ErrorHeader, start: u64, ref_len: u64) u64 {
                 @setRuntimeSafety(false);
-                var ref_idx: u64 = start;
+                var ref_idx: u64 = start +% types.SourceLocation.len;
                 var idx: u64 = 0;
-                @memcpy(buf, "\x1b[2m", 4);
-                var len: u64 = 4;
+                var len: u64 = 0;
+                @memcpy(buf + len, traceStyle().ptr, traceStyle().len);
+                len +%= traceStyle().len;
                 @memcpy(buf + len, "referenced by:\n", 15);
                 len = len +% 15;
                 while (idx != ref_len) : (idx +%= 1) {
-                    const ref_trc: *types.ReferenceTrace =
-                        errors.cast(types.ReferenceTrace, ref_idx);
-                    const src_idx: u64 = ref_trc.src_loc;
-                    if (src_idx != 0) {
-                        const ref_src: *types.SourceLocation =
-                            errors.cast(types.SourceLocation, src_idx);
-                        const src_file: [:0]u8 = terminate(bytes + ref_src.src_path);
-                        const decl_name: [:0]u8 = terminate(bytes + ref_trc.decl_name);
+                    const ref_trc: *types.ReferenceTrace = hdr.cast(types.ReferenceTrace, ref_idx);
+                    if (ref_trc.src_loc != 0) {
+                        const ref_src: *types.SourceLocation = hdr.cast(types.SourceLocation, ref_trc.src_loc);
+                        const src_file: [:0]u8 = hdr.string(ref_src.src_path);
+                        const decl_name: [:0]u8 = hdr.string(ref_trc.decl_name);
                         @memset(buf + len, ' ', 4);
                         len = len +% 4;
                         @memcpy(buf + len, decl_name.ptr, decl_name.len);
                         len = len +% decl_name.len;
                         @memcpy(buf + len, ": ", 2);
                         len = len +% 2;
-                        len = len +% writeSourceLocation(buf + len, src_file, ref_src.line + 1, ref_src.column + 1);
+                        len = len +% writeSourceLocation(buf + len, src_file, ref_src.line +% 1, ref_src.column +% 1);
                         buf[len] = '\n';
                         len = len +% 1;
                     }
                     ref_idx +%= types.ReferenceTrace.len;
                 }
                 @memcpy(buf + len, "\x1b[0m\n", 5);
-                len = len +% 5;
-                return len;
+                return len +% 5;
             }
-            fn writeErrors(allocator: *Allocator, errors: types.Errors) void {
+            fn writeErrors(allocator: *Allocator, hdr: *types.Message.ErrorHeader) void {
                 @setRuntimeSafety(false);
-                var buf: []u8 = allocate(allocator, u8, 1024 *% 1024);
+                var buf: [*]u8 = allocate(allocator, u8, 1024 *% 1024).ptr;
                 var len: u64 = 0;
-                const list: *types.ErrorMessageList = errors.cast(types.ErrorMessageList, 0);
-                for (errors.extra[list.start .. list.start +% list.len]) |err_msg_idx| {
-                    len = len +% writeError(buf.ptr, errors, err_msg_idx, error_s);
+                const list: *types.ErrorMessageList = hdr.cast(types.ErrorMessageList, 0);
+                for ((hdr.extra() + list.start)[0..list.len]) |err_msg_idx| {
+                    len = len +% writeError(buf + len, hdr, err_msg_idx, error_s);
                 }
                 builtin.debug.write(buf[0..len]);
-            }
-            fn terminate(bytes: [*]u8) [:0]u8 {
-                var len: u64 = 0;
-                while (bytes[len] != 0) len = len +% 1;
-                return bytes[0..len :0];
+                builtin.debug.write(hdr.string(list.compile_log_text));
             }
         };
         fn strdup(allocator: *Allocator, values: []const u8) [:0]u8 {
