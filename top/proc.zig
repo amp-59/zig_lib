@@ -1032,46 +1032,46 @@ const debug = opaque {
         builtin.debug.logFaultAIO(&buf, &[_][]const u8{ debug.about_fault_s, symbol, " at address ", builtin.fmt.ux64(fault_addr).readAll(), "\n" });
     }
     fn forkNotice(pid: u64) void {
-        var buf: [16 +% 32 +% 512]u8 = undefined;
+        var buf: [560]u8 = undefined;
         builtin.debug.logErrorAIO(&buf, &[_][]const u8{ about_fork_0_s, "pid=", builtin.fmt.ud64(pid).readAll(), "\n" });
     }
     fn forkError(fork_error: anytype) void {
-        var buf: [16 +% 32 +% 512]u8 = undefined;
+        var buf: [560]u8 = undefined;
         builtin.debug.logErrorAIO(&buf, &[_][]const u8{ about_fork_1_s, " (", @errorName(fork_error), ")\n" });
     }
     fn waitError(wait_error: anytype) void { // TODO: Report more information, such as pid, idtype, conditions
-        var buf: [16 +% 32 +% 512]u8 = undefined;
+        var buf: [560]u8 = undefined;
         builtin.debug.logErrorAIO(&buf, &[_][]const u8{ about_wait_1_s, " (", @errorName(wait_error), ")\n" });
     }
     fn optionError(comptime Options: type, all_options: []const Options.Map, arg: [:0]const u8) void {
-        var buf: [4096 +% 128]u8 = undefined;
+        var buf: [4224]u8 = undefined;
         var len: u64 = 0;
         const bad_opt: []const u8 = getBadOpt(arg);
-        len += builtin.debug.writeMulti(buf[len..], &[_][]const u8{ about_opt_1_s, "'", bad_opt, "'\n" });
+        len += builtin.debug.writeMulti(buf[len..].ptr, &[_][]const u8{ about_opt_1_s, "'", bad_opt, "'\n" });
         for (all_options) |option| {
             const min: u64 = len;
             if (option.long) |long_switch| {
                 const mats: u64 = matchLongSwitch(bad_opt, long_switch);
                 if (builtin.diff(u64, mats, long_switch.len) < 3) {
-                    len += builtin.debug.writeMany(buf[len..], about_opt_0_s);
+                    len += builtin.debug.writeMany(buf[len..].ptr, about_opt_0_s);
                     if (option.short) |short_switch| {
-                        len += builtin.debug.writeMulti(buf[len..], &.{ "'", short_switch, "', '" });
+                        len += builtin.debug.writeMulti(buf[len..].ptr, &.{ "'", short_switch, "', '" });
                     }
-                    len += builtin.debug.writeMany(buf[len..], long_switch);
+                    len += builtin.debug.writeMany(buf[len..].ptr, long_switch);
                 }
             }
             if (min != len) {
-                len += builtin.debug.writeMany(buf[len..], "'");
+                len += builtin.debug.writeMany(buf[len..].ptr, "'");
                 if (option.descr) |descr| {
                     buf[len] = '\t';
                     len += 1;
-                    len += builtin.debug.writeMany(buf[len..], descr);
+                    len += builtin.debug.writeMany(buf[len..].ptr, descr);
                 }
                 buf[len] = '\n';
                 len += 1;
             }
         }
-        len += builtin.debug.writeMany(buf[len..], about_stop_s);
+        len += builtin.debug.writeMany(buf[len..].ptr, about_stop_s);
         builtin.debug.write(buf[0..len]);
     }
     fn getBadOpt(arg: [:0]const u8) []const u8 {
