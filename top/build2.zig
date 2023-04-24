@@ -83,9 +83,6 @@ pub const BuilderSpec = struct {
         sleep: sys.ErrorPolicy,
         clock: sys.ErrorPolicy,
     };
-    comptime {
-        @import("./testing.zig").arbitraryFieldOrder(Logging);
-    }
     const thread_map_options: mem.MapSpec.Options = .{
         .grows_down = true,
     };
