@@ -1,6 +1,7 @@
-const builtin = @import("./builtin.zig");
-const meta = @import("./meta.zig");
-const proc = @import("./proc.zig");
+const top = @import("../zig_lib.zig");
+const builtin = top.builtin;
+const meta = top.meta;
+const proc = top.proc;
 
 pub usingnamespace proc.start;
 

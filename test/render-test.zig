@@ -1,14 +1,15 @@
-const mem = @import("./mem.zig");
-const fmt = @import("./fmt.zig");
-const lit = @import("./lit.zig");
-const proc = @import("./proc.zig");
-const meta = @import("./meta.zig");
-const file = @import("./file.zig");
-const render = @import("./render.zig");
-const spec = @import("./spec.zig");
-const builtin = @import("./builtin.zig");
-const testing = @import("./testing.zig");
-const tokenizer = @import("./tokenizer.zig");
+const top = @import("../zig_lib.zig");
+const mem = top.mem;
+const fmt = top.fmt;
+const lit = top.lit;
+const proc = top.proc;
+const meta = top.meta;
+const file = top.file;
+const render = fmt;
+const spec = top.spec;
+const builtin = top.builtin;
+const testing = top.testing;
+const tokenizer = top.tokenizer;
 
 const virtual_test = @import("./virtual-test.zig");
 
@@ -237,7 +238,7 @@ pub fn testHugeCase() !void {
     var address_space: builtin.AddressSpace() = .{};
     var allocator: Allocator = try Allocator.init(&address_space);
     var unlimited_array: Allocator.StructuredVector(u8) = try Allocator.StructuredVector(u8).init(&allocator, 1024 * 1024);
-    const sys = @import("./sys.zig");
+    const sys = top.sys;
     try unlimited_array.appendAny(spec.reinterpret.fmt, &allocator, comptime render.TypeFormat(.{ .omit_container_decls = false, .radix = 2 }){ .value = sys });
     builtin.debug.write(unlimited_array.readAll());
     builtin.debug.write("\n");

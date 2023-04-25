@@ -1,6 +1,7 @@
-const proc = @import("./proc.zig");
-const builtin = @import("./builtin.zig");
-const testing = @import("./testing.zig");
+const top = @import("../zig_lib.zig");
+const proc = top.proc;
+const builtin = top.builtin;
+const testing = top.testing;
 
 pub usingnamespace proc.start;
 

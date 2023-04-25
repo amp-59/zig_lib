@@ -1,17 +1,18 @@
-const mem = @import("./mem.zig");
-const zig = @import("./zig.zig");
-const fmt = @import("./fmt.zig");
-const file = @import("./file.zig");
-const proc = @import("./proc.zig");
-const meta = @import("./meta.zig");
-const time = @import("./time.zig");
-const mach = @import("./mach.zig");
-const parse = @import("./parse.zig");
-const spec = @import("./spec.zig");
-const testing = @import("./testing.zig");
-const builtin = @import("./builtin.zig");
-const abstract = @import("./abstract.zig");
-const tokenizer = @import("./tokenizer.zig");
+const top = @import("../zig_lib.zig");
+const mem = top.mem;
+const zig = top.zig;
+const fmt = top.fmt;
+const file = top.file;
+const proc = top.proc;
+const meta = top.meta;
+const time = top.time;
+const mach = top.mach;
+const parse = top.parse;
+const spec = top.spec;
+const testing = top.testing;
+const builtin = top.builtin;
+const abstract = top.abstract;
+const tokenizer = top.tokenizer;
 
 pub usingnamespace proc.start;
 

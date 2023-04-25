@@ -1,17 +1,18 @@
-const mem = @import("./mem.zig");
-const fmt = @import("./fmt.zig");
-const proc = @import("./proc.zig");
-const file = @import("./file.zig");
-const mach = @import("./mach.zig");
-const meta = @import("./meta.zig");
-const spec = @import("./spec.zig");
-const build = @import("./build2.zig");
-const serial = @import("./serial.zig");
-const builtin = @import("./builtin.zig");
-const testing = @import("./testing.zig");
+const top = @import("../zig_lib.zig");
+const mem = top.mem;
+const fmt = top.fmt;
+const proc = top.proc;
+const file = top.file;
+const mach = top.mach;
+const meta = top.meta;
+const spec = top.spec;
+const build = top.build2;
+const serial = top.serial;
+const builtin = top.builtin;
+const testing = top.testing;
 
-const attr = @import("./mem/attr.zig");
-const mem_types = @import("./mem/types.zig");
+const attr = @import("../top/mem/attr.zig");
+const mem_types = @import("../top/mem/types.zig");
 const build_test = @import("./build2-test.zig");
 
 pub usingnamespace proc.start;

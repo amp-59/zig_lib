@@ -1,14 +1,15 @@
-const mem = @import("./mem.zig");
-const fmt = @import("./fmt.zig");
-const exe = @import("./exe.zig");
-const proc = @import("./proc.zig");
-const time = @import("./time.zig");
-const meta = @import("./meta.zig");
-const file = @import("./file.zig");
-const spec = @import("./spec.zig");
-const build = @import("./build2.zig");
-const builtin = @import("./builtin.zig");
-const testing = @import("./testing.zig");
+const top = @import("../zig_lib.zig");
+const mem = top.mem;
+const fmt = top.fmt;
+const exe = top.exe;
+const proc = top.proc;
+const time = top.time;
+const meta = top.meta;
+const file = top.file;
+const spec = top.spec;
+const build = top.build2;
+const builtin = top.builtin;
+const testing = top.testing;
 
 pub usingnamespace proc.start;
 
@@ -92,17 +93,17 @@ fn sectionAddress(ehdr_addr: u64, symbol: [:0]const u8) ?u64 {
 
 var vdso_clock_gettime: ?*fn (time.Kind, *time.TimeSpec) void = null;
 
-pub fn main(_: [][*:0]u8, vars: [][*:0]u8, aux: *const anyopaque) !void {
-    const home: ?[:0]const u8 = proc.environmentValue(vars, "HOME");
-    _ = home;
+pub fn main(args: [][*:0]u8, _: [][*:0]u8, aux: *const anyopaque) !void {
     const vdso_addr: u64 = proc.auxiliaryValue(aux, .vdso_addr).?;
-    if (sectionAddress(vdso_addr, "cock_gettime")) |addr| {
-        if (programOffset(vdso_addr)) |offset| {
-            vdso_clock_gettime = @intToPtr(*fn (time.Kind, *time.TimeSpec) void, addr +% offset);
+    for (args[1..]) |arg| {
+        if (sectionAddress(vdso_addr, meta.manyToSlice(arg))) |addr| {
+            if (programOffset(vdso_addr)) |offset| {
+                vdso_clock_gettime = @intToPtr(*fn (time.Kind, *time.TimeSpec) void, addr +% offset);
+            }
         }
-    }
-    if (vdso_clock_gettime) |clock_gettime| {
-        var ts: time.TimeSpec = undefined;
-        clock_gettime(.realtime, &ts);
+        if (vdso_clock_gettime) |clock_gettime| {
+            var ts: time.TimeSpec = undefined;
+            clock_gettime(.realtime, &ts);
+        }
     }
 }

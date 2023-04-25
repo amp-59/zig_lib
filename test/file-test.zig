@@ -1,13 +1,14 @@
-const sys = @import("./sys.zig");
-const mem = @import("./mem.zig");
-const fmt = @import("./fmt.zig");
-const file = @import("./file.zig");
-const meta = @import("./meta.zig");
-const time = @import("./time.zig");
-const proc = @import("./proc.zig");
-const spec = @import("./spec.zig");
-const builtin = @import("./builtin.zig");
-const testing = @import("./testing.zig");
+const top = @import("../zig_lib.zig");
+const sys = top.sys;
+const mem = top.mem;
+const fmt = top.fmt;
+const file = top.file;
+const meta = top.meta;
+const time = top.time;
+const proc = top.proc;
+const spec = top.spec;
+const builtin = top.builtin;
+const testing = top.testing;
 
 pub usingnamespace proc.start;
 
