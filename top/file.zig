@@ -167,10 +167,10 @@ pub const Status = extern struct {
     ino: u64,
     nlink: u64,
     mode: Mode,
-    @"0": u16,
+    @"0": [2]u8,
     uid: u32,
     gid: u32,
-    @"1": u32,
+    @"1": [4]u8,
     rdev: u64,
     size: u64,
     blksize: u64,
@@ -997,7 +997,10 @@ fn writePath(buf: *[4096]u8, pathname: []const u8) [:0]u8 {
     buf[pathname.len] = 0;
     return buf[0..pathname.len :0];
 }
-fn makePathInternal(comptime spec: MakePathSpec, pathname: [:0]u8, comptime mode: Mode) sys.Call(spec.errors.mkdir, sys.Call(spec.errors.stat, void)) {
+fn makePathInternal(comptime spec: MakePathSpec, pathname: [:0]u8, comptime mode: Mode) sys.Call(.{
+    .throw = spec.errors.mkdir.throw ++ spec.errors.stat.throw,
+    .abort = spec.errors.mkdir.abort ++ spec.errors.stat.abort,
+}, void) {
     const stat_spec: StatusSpec = spec.stat();
     const make_dir_spec: MakeDirSpec = spec.mkdir();
     const st: Status = pathStatus(stat_spec, pathname) catch |err| blk: {
