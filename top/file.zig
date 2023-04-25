@@ -1020,7 +1020,10 @@ fn makePathInternal(comptime spec: MakePathSpec, pathname: [:0]u8, comptime mode
         return error.NotADirectory;
     }
 }
-pub fn makePath(comptime spec: MakePathSpec, pathname: []const u8, comptime mode: Mode) sys.Call(spec.errors.mkdir, sys.Call(spec.errors.stat, void)) {
+pub fn makePath(comptime spec: MakePathSpec, pathname: []const u8, comptime mode: Mode) sys.Call(.{
+    .throw = spec.errors.mkdir.throw ++ spec.errors.stat.throw,
+    .abort = spec.errors.mkdir.abort ++ spec.errors.stat.abort,
+}, void) {
     var buf: [4096:0]u8 = undefined;
     const name: [:0]u8 = writePath(&buf, pathname);
     return makePathInternal(spec, name, mode);
