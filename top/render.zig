@@ -703,7 +703,7 @@ fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
             comptime var i: u64 = enum_info.Enum.fields.len;
             inline while (i != 0) {
                 i -= 1;
-                const field: builtin.EnumField = enum_info.Enum.fields[i];
+                const field: builtin.Type.EnumField = enum_info.Enum.fields[i];
                 const field_name_format: fmt.IdentifierFormat = .{ .value = field.name };
                 if (field.value != 0 or w == 0) {
                     const y: enum_info.Enum.tag_type = @field(format.value, fields[1].name) & field.value;
@@ -769,9 +769,9 @@ fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
         }
         pub fn formatWrite(format: anytype, array: anytype) void {
             if (show_enum_field) {
-                formatWriteEnumField(format, array);
+                format.formatWriteEnumField(array);
             } else if (tag_type == null) {
-                formatWriteUntagged(format, array);
+                format.formatWriteUntagged(array);
             } else if (fields.len == 0) {
                 array.writeMany(type_name ++ "{}");
             } else {
