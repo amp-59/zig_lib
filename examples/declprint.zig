@@ -1,87 +1,30 @@
-const srg = @import("../zig_lib.zig");
-const mem = srg.mem;
-const fmt = srg.fmt;
-const proc = srg.proc;
-const meta = srg.meta;
-const file = srg.file;
-const spec = srg.spec;
-const builtin = srg.builtin;
+const top = @import("../zig_lib.zig");
+const mem = top.mem;
+const fmt = top.fmt;
+const proc = top.proc;
+const meta = top.meta;
+const file = top.file;
+const spec = top.spec;
+const builtin = top.builtin;
 
 pub usingnamespace proc.start;
 
-fn recursivePrint(comptime T: type) void {
-    inline for (comptime meta.resolve(@typeInfo(T)).decls) |decl| {
-        if (decl.is_pub) {
-            const field = @field(T, decl.name);
-            const Field = @TypeOf(field);
-            var array: mem.StaticString(4096) = .{};
-            switch (@typeInfo(Field)) {
-                .Int => |int_info| {
-                    const I = @Type(.{ .Int = .{
-                        .bits = int_info.bits,
-                        .signedness = .unsigned,
-                    } });
-                    array.writeAny(spec.reinterpret.fmt, comptime .{
-                        "pub const ",
-                        fmt.IdentifierFormat{ .value = decl.name },
-                        ": " ++ @typeName(I) ++ " = ",
-                        fmt.ub(@bitCast(I, field)),
-                        ";\n",
-                    });
-                    file.writeSlice(.{ .errors = .{} }, 1, array.readAll());
-                },
-                .ComptimeInt => {
-                    const int_fmt = blk_0: {
-                        const tmp_0 = fmt.ub(@as(comptime_int, field));
-                        const IntFmt = fmt.PolynomialFormat(blk_1: {
-                            var tmp_1 = @TypeOf(tmp_0).fmt_spec;
-                            tmp_1.width = .min;
-                            break :blk_1 tmp_1;
-                        });
-                        break :blk_0 IntFmt{ .value = tmp_0.value };
-                    };
-                    array.writeAny(spec.reinterpret.fmt, comptime .{
-                        "pub const ",
-                        fmt.IdentifierFormat{ .value = decl.name },
-                        ": " ++ @typeName(@TypeOf(int_fmt.value)) ++ " = ",
-                        int_fmt,
-                        ";\n",
-                    });
-                    file.writeSlice(.{ .errors = .{} }, 1, array.readAll());
-                },
-                .Struct, .Array, .Pointer => {
-                    array.writeAny(spec.reinterpret.fmt, comptime .{
-                        "pub const ",
-                        fmt.IdentifierFormat{ .value = decl.name },
-                        ": " ++ @typeName(Field) ++ " = ",
-                        fmt.render(.{ .omit_default_fields = false, .infer_type_names = true }, field),
-                        ";\n",
-                    });
-                    file.writeSlice(.{ .errors = .{} }, 1, array.readAll());
-                },
-                .Type => {
-                    if (comptime meta.isContainer(field)) {
-                        array.writeAny(spec.reinterpret.fmt, .{
-                            "pub const ",
-                            fmt.IdentifierFormat{ .value = decl.name },
-                            " = " ++ comptime builtin.fmt.typeDeclSpecifier(@typeInfo(field)) ++ " {\n",
-                        });
-                        builtin.debug.write(array.readAll());
-                        array.undefineAll();
-                        recursivePrint(field);
-                        array.writeMany("};\n");
-                        file.writeSlice(.{ .errors = .{} }, 1, array.readAll());
-                    }
-                },
-                else => {},
-            }
-        }
-    }
-}
-pub fn main() void {
-    recursivePrint(srg.spec.builder);
-    recursivePrint(srg.spec.address_space.errors);
-    recursivePrint(srg.spec.address_space.logging);
-    recursivePrint(srg.spec.allocator);
-    recursivePrint(srg.spec.dir);
+pub const AddressSpace = spec.address_space.exact_8;
+
+pub fn main() !void {
+    const Allocator = mem.GenericArenaAllocator(.{
+        .AddressSpace = AddressSpace,
+        .arena_index = 0,
+    });
+    var address_space: AddressSpace = .{};
+    var allocator: Allocator = try Allocator.init(&address_space);
+    defer allocator.deinit(&address_space);
+    var array: Allocator.StructuredHolder(u8) = Allocator.StructuredHolder(u8).init(&allocator);
+
+    try array.appendAny(spec.reinterpret.fmt, &allocator, comptime fmt.render(.{
+        .omit_container_decls = false,
+        .inline_field_types = false,
+        .infer_type_names = false,
+    }, top.file));
+    builtin.debug.write(array.readAll(allocator));
 }
