@@ -1678,24 +1678,24 @@ pub const Type = struct {
     pub const Idsize = @TypeOf(idsize(undefined));
     pub const Ixsize = @TypeOf(ixsize(undefined));
     pub fn Ib(comptime Int: type) type {
-        return ib(@as(Int, undefined));
+        return @TypeOf(ib(@as(Int, undefined)));
     }
     pub fn Id(comptime Int: type) type {
-        return id(@as(Int, undefined));
+        return @TypeOf(id(@as(Int, undefined)));
     }
     pub fn Ix(comptime Int: type) type {
-        return ix(@as(Int, undefined));
+        return @TypeOf(ix(@as(Int, undefined)));
     }
     pub fn Ub(comptime Int: type) type {
-        return ub(@as(Int, undefined));
+        return @TypeOf(ub(@as(Int, undefined)));
     }
     pub fn Uo(comptime Int: type) type {
-        return uo(@as(Int, undefined));
+        return @TypeOf(uo(@as(Int, undefined)));
     }
     pub fn Ud(comptime Int: type) type {
-        return ud(@as(Int, undefined));
+        return @TypeOf(ud(@as(Int, undefined)));
     }
     pub fn Ux(comptime Int: type) type {
-        return ux(@as(Int, undefined));
+        return @TypeOf(ux(@as(Int, undefined)));
     }
 };
