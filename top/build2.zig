@@ -1261,14 +1261,21 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 const pos: u64 = len +% about.len -% 2;
                 len = len +% writeAbout(buf + len, about);
                 len = len +% writeMessage(buf + len, bytes, err.start, pos);
-                if (err.count != 1)
-                    len = len +% writeTimes(buf + len, err.count);
-                if (err.src_loc != 0 and src.src_line != 0)
-                    len = len +% writeCaret(buf + len, bytes, src);
-                for (0..err.notes_len) |idx|
-                    len = len +% writeError(buf + len, extra, bytes, notes[idx], note_s);
-                if (err.src_loc != 0 and src.ref_len != 0)
-                    len = len +% writeTrace(buf + len, extra, bytes, err.src_loc, src.ref_len);
+                if (err.src_loc == 0) {
+                    if (err.count != 1)
+                        len = len +% writeTimes(buf + len, err.count);
+                    for (0..err.notes_len) |idx|
+                        len = len +% writeError(buf + len, extra, bytes, notes[idx], note_s);
+                } else {
+                    if (err.count != 1)
+                        len = len +% writeTimes(buf + len, err.count);
+                    if (src.src_line != 0)
+                        len = len +% writeCaret(buf + len, bytes, src);
+                    for (0..err.notes_len) |idx|
+                        len = len +% writeError(buf + len, extra, bytes, notes[idx], note_s);
+                    if (src.ref_len != 0)
+                        len = len +% writeTrace(buf + len, extra, bytes, err.src_loc, src.ref_len);
+                }
                 return len;
             }
             fn writeSourceLocation(buf: [*]u8, pathname: [:0]const u8, line: u64, column: u64) u64 {
@@ -1389,6 +1396,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
                 builtin.debug.write(buf[0..len]);
                 builtin.debug.write(meta.manyToSlice(bytes + list.compile_log_text));
+                builtin.proc.exitGroup(2);
             }
         };
         fn strdup(allocator: *Allocator, values: []const u8) [:0]u8 {
