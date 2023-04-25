@@ -91,8 +91,6 @@ pub const Term = opaque {
         strip = IN.STRIP,
         ignore_carriage_return = IN.IGNCR,
         translate_carriage_return = IN.CRNL,
-        lower = IN.UCLC,
-        upper = IN.LCUC,
         const IN = sys.TC.I;
     });
     pub const Output = meta.EnumBitField(enum(u32) {
@@ -100,8 +98,6 @@ pub const Term = opaque {
         translate_carriage_return = OUT.CRNL,
         no_carriage_return = OUT.NOCR,
         newline_return = OUT.NLRET,
-        lower = OUT.UCLC,
-        upper = OUT.LCUC,
         const OUT = sys.TC.O;
     });
     pub const Control = meta.EnumBitField(enum(u32) {
