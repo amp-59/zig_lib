@@ -551,7 +551,7 @@ pub fn SectionHeaderIterator(comptime Memory: type) type {
             return .{ .elf_header = elf_header, .array = array };
         }
         pub fn next(itr: *Iterator) ?Elf64_Shdr {
-            if (itr.index == itr.elf_header.phnum) {
+            if (itr.index == itr.elf_header.shnum) {
                 return null;
             }
             itr.index += 1;
