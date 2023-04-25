@@ -274,9 +274,8 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                 array.writeMany(": ");
                 writeFormat(array, type_format);
             } else {
-                const field_type_name: []const u8 = comptime typeName(field_type, field_type_spec);
                 writeFormat(array, field_name_format);
-                array.writeMany(": " ++ field_type_name);
+                array.writeMany(": " ++ @typeName(field_type));
             }
             if (field_default_value) |default_value| {
                 const field_format: AnyFormat(default_value_spec, field_type) = .{ .value = default_value };
@@ -297,9 +296,8 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                     const type_format: TypeFormat(field_type_spec) = .{ .value = field_type };
                     writeFormat(array, type_format);
                 } else {
-                    const field_type_name: []const u8 = typeName(field_type, field_type_spec);
                     writeFormat(array, field_name_format);
-                    array.writeMany(": " ++ field_type_name);
+                    array.writeMany(": " ++ @typeName(field_type));
                 }
                 array.writeCount(2, ", ".*);
             }
