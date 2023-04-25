@@ -379,7 +379,7 @@ pub const TC = struct {
         pub const XANY: u32 = 0x800;
         pub const XOFF: u32 = 0x1000;
         pub const MAXBEL: u32 = 0x2000;
-        pub const UTF8: u32 = undefined;
+        pub const UTF8: u32 = 0;
     };
     pub const O = struct {
         pub const POST: u32 = 0x1;
@@ -1041,7 +1041,54 @@ pub const TRAP = struct {
     pub const BRANCH: usize = 0x3;
     pub const HWBKPT: usize = 0x4;
 };
-pub const FUTEX = struct {};
+pub const FUTEX = struct {
+    pub const BITSET_MATCH_ANY: usize = 0xffffffff;
+    pub const CLOCK_REALTIME: usize = 0x100;
+    pub const CMP = struct {
+        pub const REQUEUE: usize = 0x4;
+        pub const REQUEUE_PI: usize = 0xc;
+    };
+    pub const FD: usize = 0x2;
+    pub const LOCK = struct {
+        pub const PI: usize = 0x6;
+        pub const PI2: usize = 0xd;
+    };
+    pub const OP = struct {
+        pub const ADD: usize = 0x1;
+        pub const ANDN: usize = 0x3;
+        pub const CMP = struct {
+            pub const EQ: usize = 0x0;
+            pub const GE: usize = 0x5;
+            pub const GT: usize = 0x4;
+            pub const LE: usize = 0x3;
+            pub const LT: usize = 0x2;
+            pub const NE: usize = 0x1;
+        };
+        pub const OR: usize = 0x2;
+        pub const SET: usize = 0x0;
+        pub const XOR: usize = 0x4;
+    };
+    pub const OWNER_DIED: usize = 0x40000000;
+    pub const PRIVATE_FLAG: usize = 0x80;
+    pub const REQUEUE: usize = 0x3;
+    pub const TRYLOCK_PI: usize = 0x8;
+    pub const UNLOCK_PI: usize = 0x7;
+
+    pub const WAITERS: usize = 0x80000000;
+
+    pub const WAIT = struct {
+        // pub const WAIT: usize = 0x0;
+        pub const BITSET: usize = 0x9;
+        pub const PRIVATE: usize = 0x80;
+        pub const REQUEUE_PI: usize = 0xb;
+    };
+    // pub const WAKE: usize = 0x1;
+    pub const WAKE = struct {
+        pub const BITSET: usize = 0xa;
+        pub const OP: usize = 0x5;
+        pub const PRIVATE: usize = 0x81;
+    };
+};
 pub const SO = struct {
     pub const DEBUG: u64 = 0x1;
     pub const REUSEADDR: u64 = 0x2;
