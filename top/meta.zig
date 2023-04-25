@@ -189,7 +189,7 @@ pub fn tupleInfo(comptime fields: []const builtin.Type.StructField) builtin.Type
 }
 pub fn defaultValue(comptime struct_field: builtin.Type.StructField) ?struct_field.type {
     if (struct_field.default_value) |default_value_ptr| {
-        return @ptrCast(*const struct_field.type, @alignCast(@alignOf(struct_field.type), default_value_ptr)).*;
+        return @ptrCast(*const struct_field.type, @alignCast(@max(1, @alignOf(struct_field.type)), default_value_ptr)).*;
     }
     return null;
 }
@@ -354,6 +354,9 @@ pub fn LeastBitSize(comptime value: anytype) type {
 /// Return the smallest register sized integer type capable of storing `value`
 pub fn LeastRealBitSize(comptime value: anytype) type {
     const T: type = @TypeOf(value);
+    if (T == type) {
+        return LeastBitSize(@as(value, undefined));
+    }
     if (@sizeOf(T) == 0) {
         if (value < 0) {
             var U: type = i8;
