@@ -1410,77 +1410,6 @@ pub fn poll(comptime poll_spec: PollSpec, fds: []PollFd, timeout: u32) sys.Call(
         return poll_error;
     }
 }
-// Soon.
-fn ioctl(comptime _: IOControlSpec, _: u64) TerminalAttributes {}
-fn getTerminalAttributes() void {}
-fn setTerminalAttributes() void {}
-pub fn readRandom(buf: []u8) void {
-    sys.call(.getrandom, .{}, void, .{ @ptrToInt(buf.ptr), buf.len, if (builtin.is_fast)
-        sys.GRND.INSECURE
-    else
-        sys.GRND.RANDOM });
-}
-pub fn DeviceRandomBytes(comptime bytes: u64) type {
-    return struct {
-        data: mem.StaticString(bytes) = .{},
-        const Random = @This();
-        const dev: u64 = if (builtin.is_fast)
-            sys.GRND.INSECURE
-        else
-            sys.GRND.RANDOM;
-        pub fn readOne(random: *Random, comptime T: type) T {
-            const child: type = meta.AlignSizeAW(T);
-            const high_alignment: u64 = @sizeOf(child);
-            const low_alignment: u64 = @alignOf(child);
-            if (random.data.len() == 0) {
-                sys.call(.getrandom, .{}, void, .{ random.data.impl.aligned_byte_address(), bytes, dev });
-            }
-            if (high_alignment +% low_alignment > bytes) {
-                @compileError("requested type " ++ @typeName(T) ++ " is too large");
-            }
-            const s_lb_addr: u64 = random.data.impl.undefined_byte_address();
-            const s_ab_addr: u64 = mach.alignA64(s_lb_addr, low_alignment);
-            const s_up_addr: u64 = s_ab_addr +% high_alignment;
-            if (s_up_addr >= random.data.impl.unwritable_byte_address()) {
-                random.data.undefineAll();
-                const t_lb_addr: u64 = random.data.impl.undefined_byte_address();
-                const t_ab_addr: u64 = mach.alignA64(t_lb_addr, low_alignment);
-                const t_up_addr: u64 = t_ab_addr +% high_alignment;
-                sys.call(.getrandom, .{}, void, .{ random.data.impl.aligned_byte_address(), bytes, dev });
-                random.data.define(t_up_addr - t_lb_addr);
-                return @truncate(T, @intToPtr(*const child, t_ab_addr).*);
-            }
-            random.data.impl.define(s_up_addr - s_lb_addr);
-            return @truncate(T, @intToPtr(*const child, s_ab_addr).*);
-        }
-        pub fn readOneConditionally(random: *Random, comptime T: type, comptime function: anytype) T {
-            var ret: T = random.readOne(T);
-            if (meta.Return(function) == bool) {
-                if (meta.FnParam0(function) != *T) {
-                    while (!function(ret)) {
-                        ret = random.readOne(T);
-                    }
-                } else while (!function(&ret)) {}
-            } else if (meta.Return(function) == T) {
-                return function(ret);
-            } else {
-                @compileError("condition function must return " ++
-                    @typeName(T) ++ " or " ++ @typeName(bool));
-            }
-            return ret;
-        }
-        pub fn readCount(random: *Random, comptime T: type, comptime count: u64) [count]T {
-            var ret: [count]T = undefined;
-            for (&ret) |*value| value.* = random.readOne(T);
-            return ret;
-        }
-        pub fn readCountConditionally(random: *Random, comptime T: type, comptime count: u64) [count]T {
-            var ret: [count]T = undefined;
-            for (&ret) |*value| value.* = random.readOneConditionally(T);
-            return ret;
-        }
-    };
-}
 pub fn pathIs(comptime stat_spec: StatusSpec, pathname: [:0]const u8, kind: Kind) sys.Call(
     stat_spec.errors,
     stat_spec.return_type orelse bool,
@@ -1620,6 +1549,78 @@ pub fn assertNot(comptime stat_spec: StatusSpec, fd: u64, kind: Kind) sys.Call(
         return mach.cmovV(return_type == Status, st);
     }
 }
+// Soon.
+fn ioctl(comptime _: IOControlSpec, _: u64) TerminalAttributes {}
+fn getTerminalAttributes() void {}
+fn setTerminalAttributes() void {}
+pub fn readRandom(buf: []u8) void {
+    sys.call(.getrandom, .{}, void, .{ @ptrToInt(buf.ptr), buf.len, if (builtin.is_fast)
+        sys.GRND.INSECURE
+    else
+        sys.GRND.RANDOM });
+}
+pub fn DeviceRandomBytes(comptime bytes: u64) type {
+    return struct {
+        data: mem.StaticString(bytes) = .{},
+        const Random = @This();
+        const dev: u64 = if (builtin.is_fast)
+            sys.GRND.INSECURE
+        else
+            sys.GRND.RANDOM;
+        pub fn readOne(random: *Random, comptime T: type) T {
+            const child: type = meta.AlignSizeAW(T);
+            const high_alignment: u64 = @sizeOf(child);
+            const low_alignment: u64 = @alignOf(child);
+            if (random.data.len() == 0) {
+                sys.call(.getrandom, .{}, void, .{ random.data.impl.aligned_byte_address(), bytes, dev });
+            }
+            if (high_alignment +% low_alignment > bytes) {
+                @compileError("requested type " ++ @typeName(T) ++ " is too large");
+            }
+            const s_lb_addr: u64 = random.data.impl.undefined_byte_address();
+            const s_ab_addr: u64 = mach.alignA64(s_lb_addr, low_alignment);
+            const s_up_addr: u64 = s_ab_addr +% high_alignment;
+            if (s_up_addr >= random.data.impl.unwritable_byte_address()) {
+                random.data.undefineAll();
+                const t_lb_addr: u64 = random.data.impl.undefined_byte_address();
+                const t_ab_addr: u64 = mach.alignA64(t_lb_addr, low_alignment);
+                const t_up_addr: u64 = t_ab_addr +% high_alignment;
+                sys.call(.getrandom, .{}, void, .{ random.data.impl.aligned_byte_address(), bytes, dev });
+                random.data.define(t_up_addr - t_lb_addr);
+                return @truncate(T, @intToPtr(*const child, t_ab_addr).*);
+            }
+            random.data.impl.define(s_up_addr - s_lb_addr);
+            return @truncate(T, @intToPtr(*const child, s_ab_addr).*);
+        }
+        pub fn readOneConditionally(random: *Random, comptime T: type, comptime function: anytype) T {
+            var ret: T = random.readOne(T);
+            if (meta.Return(function) == bool) {
+                if (meta.FnParam0(function) != *T) {
+                    while (!function(ret)) {
+                        ret = random.readOne(T);
+                    }
+                } else while (!function(&ret)) {}
+            } else if (meta.Return(function) == T) {
+                return function(ret);
+            } else {
+                @compileError("condition function must return " ++
+                    @typeName(T) ++ " or " ++ @typeName(bool));
+            }
+            return ret;
+        }
+        pub fn readCount(random: *Random, comptime T: type, comptime count: u64) [count]T {
+            var ret: [count]T = undefined;
+            for (&ret) |*value| value.* = random.readOne(T);
+            return ret;
+        }
+        pub fn readCountConditionally(random: *Random, comptime T: type, comptime count: u64) [count]T {
+            var ret: [count]T = undefined;
+            for (&ret) |*value| value.* = random.readOneConditionally(T);
+            return ret;
+        }
+    };
+}
+
 const debug = opaque {
     const about_dup_0_s: [:0]const u8 = builtin.debug.about("dup");
     const about_dup_1_s: [:0]const u8 = builtin.debug.about("dup-error");
