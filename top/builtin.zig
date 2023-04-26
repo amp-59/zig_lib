@@ -1481,7 +1481,7 @@ pub const debug = opaque {
             ),
         };
     }
-    inline fn name(buf: []u8) u64 {
+    pub inline fn name(buf: []u8) u64 {
         const rc: i64 = asm volatile (
             \\syscall
             : [_] "={rax}" (-> isize),
