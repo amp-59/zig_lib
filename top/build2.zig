@@ -135,7 +135,7 @@ pub const BuilderSpec = struct {
         return .{
             .errors = builder_spec.errors.read,
             .logging = builder_spec.logging.read,
-            .return_type = void,
+            .return_type = u64,
         };
     }
     fn read3(comptime builder_spec: BuilderSpec) file.ReadSpec {
@@ -683,9 +683,12 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 );
                 const msg: []u8 = allocate(allocator, u8, hdr.bytes_len);
                 mach.memset(msg.ptr, 0, msg.len);
-                try meta.wrap(
-                    file.readSlice(read_spec2, out.read, msg),
-                );
+                var len: u64 = 0;
+                while (len != hdr.bytes_len) {
+                    len +%= try meta.wrap(
+                        file.readMany(read_spec2, out.read, msg.ptr + len, hdr.bytes_len),
+                    );
+                }
                 switch (hdr.tag) {
                     .zig_version => continue,
                     .progress => continue,
@@ -777,7 +780,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     unreachable;
                 }
                 var allocator: Allocator = Allocator.init(address_space, arena_index);
-                defer allocator.deinit(address_space, arena_index);
                 if (switch (task) {
                     .build => meta.wrap(
                         executeBuildCommand(builder, &allocator, target, depth),
@@ -790,6 +792,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 } else {
                     target.assertExchange(task, .blocking, .failed);
                 }
+                allocator.deinit(address_space, arena_index);
                 builtin.assert(thread_space.atomicUnset(arena_index));
             }
             fn executeCommand(
