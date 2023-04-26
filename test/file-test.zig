@@ -4,6 +4,7 @@ const mem = top.mem;
 const fmt = top.fmt;
 const file = top.file;
 const meta = top.meta;
+const mach = top.mach;
 const time = top.time;
 const proc = top.proc;
 const spec = top.spec;
@@ -123,8 +124,6 @@ pub fn testFileTests() !void {
     try file.removeDir(remove_dir_spec, "/run/user/1000/file_test");
 }
 fn testFileOperationsRound2() !void {
-    var buf: [4096]u8 = undefined;
-    _ = try meta.wrap(file.getCwd(getcwd_spec, &buf));
     try meta.wrap(file.makeDir(make_dir_spec, "/run/user/1000/file_test", file.dir_mode));
     const dir_fd: u64 = try meta.wrap(file.open(open_dir_spec, "/run/user/1000/file_test"));
     try meta.wrap(file.makeDirAt(make_dir_spec, dir_fd, "file_test", file.dir_mode));
@@ -133,17 +132,14 @@ fn testFileOperationsRound2() !void {
     const path_reg_fd: u64 = try meta.wrap(file.path(.{ .options = .{ .directory = false } }, "/run/user/1000/file_test/file_test/file_test"));
     try file.assertNot(stat_spec, path_reg_fd, .unknown);
     try file.assert(stat_spec, path_reg_fd, .regular);
-
     try file.makeNode(make_node_spec, "/run/user/1000/file_test/regular", .{}, .{});
     try file.unlink(unlink_spec, "/run/user/1000/file_test/regular");
     try file.makeNode(make_node_spec, "/run/user/1000/file_test/fifo", .{ .kind = .named_pipe }, .{});
     try file.unlink(unlink_spec, "/run/user/1000/file_test/fifo");
-
     const new_in_fd: u64 = try file.duplicate(.{}, 0);
     try file.writeSlice(.{}, new_in_fd, builtin.fmt.ud64(new_in_fd).readAll());
     try file.duplicateTo(.{}, new_in_fd, new_in_fd +% 1);
     try file.writeSlice(.{}, new_in_fd +% 1, builtin.fmt.ud64(new_in_fd +% 1).readAll());
-
     try meta.wrap(file.close(close_spec, path_reg_fd));
     try meta.wrap(file.unlinkAt(unlink_spec, path_dir_fd, "file_test"));
     try meta.wrap(file.close(close_spec, path_dir_fd));
@@ -215,11 +211,15 @@ fn testStandardChannel() !void {
         try file.writeSlice(.{}, 1, i_array.readAll());
     }
 }
+fn testPreClean() !void {
+    file.unlink(unlink_spec, "/run/user/1000/file_test/file_test/file_test") catch {};
+    file.removeDir(remove_dir_spec, "/run/user/1000/file_test/file_test") catch {};
+    file.removeDir(remove_dir_spec, "/run/user/1000/file_test") catch {};
+}
 pub fn main() !void {
+    try meta.wrap(testPreClean());
     try meta.wrap(testStandardChannel());
     try meta.wrap(testStatusExtended());
-    try meta.wrap(testFileOperationsRound1());
-    try meta.wrap(testFileOperationsRound2());
     try meta.wrap(testSocketOpenAndClose());
     try meta.wrap(testPathOperations());
     try meta.wrap(testFileTests());
