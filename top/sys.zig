@@ -2185,7 +2185,7 @@ const syscalls = .{
     syscall6,
 };
 pub fn call(comptime tag: Fn, comptime errors: ErrorPolicy, comptime return_type: type, args: [tag.args()]usize) Call(errors, return_type) {
-    const ret: isize = syscalls[tag.args()](tag, args);
+    const ret: isize = (comptime syscalls[tag.args()])(tag, args);
     if (return_type == noreturn) {
         unreachable;
     }
