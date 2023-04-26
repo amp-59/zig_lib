@@ -74,15 +74,28 @@ pub const SignalInfo = extern struct {
         arch: u32,
     };
 };
+const Futex = struct {
+    const Options = packed struct(u2) {
+        private: bool = false,
+        clock_realtime: bool = false,
+    };
+    const WakeOp = packed struct(u32) {
+        op: enum(u3) { set = 0, add = 1, @"or" = 2, andn = 3, xor = 4 } = .set,
+        shl: bool = false,
+        cmp: enum(u4) { eq = 0, ne = 1, lt = 2, le = 3, gt = 4, ge = 5 } = .eq,
+        oparg: u12 = 0,
+        cmparg: u12 = 0,
+    };
+    const FUTEX = sys.FUTEX;
+};
 const FutexSpec = struct {
-    errors: sys.ErrorPolicy,
-    logging: builtin.Logging.AttemptAcquireError,
-    const Operation = struct {};
+    errors: sys.ErrorPolicy = .{ .throw = sys.futex_errors },
+    logging: builtin.Logging.AttemptAcquireError = .{},
 };
 fn futex(
     comptime futex_spec: FutexSpec,
     addr: *u32,
-    comptime operation: u64,
+    comptime operation: Futex,
     operand: u64,
 ) void {
     const logging: builtin.Logging.AttemptAcquireError = comptime futex_spec.logging.override();
