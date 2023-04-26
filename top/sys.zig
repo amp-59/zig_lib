@@ -2063,6 +2063,10 @@ pub const write_errors: []const ErrorCode = &[_]ErrorCode{
     .AGAIN, .BADF, .DESTADDRREQ, .DQUOT, .FAULT, .FBIG, .INTR, .INVAL, .IO,
     .NOSPC, .PERM, .PIPE,
 };
+pub const futex_errors = &.{
+    .ACCES, .AGAIN, .DEADLK, .FAULT, .INTR, .INVAL,    .NFILE,
+    .NOMEM, .NOSYS, .PERM,   .PERM,  .SRCH, .TIMEDOUT,
+};
 pub const no_errors: []const ErrorCode = &[_]ErrorCode{};
 
 //    Arch/ABI      arg1  arg2  arg3  arg4  arg5  arg6  arg7  Notes
