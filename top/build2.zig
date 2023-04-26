@@ -1048,7 +1048,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 return "\x1b[0;1m";
             }
             inline fn noteStyle() [:0]const u8 {
-                return "\x1b[38;5;123m";
+                return "\x1b[0;38;5;250;1m";
             }
             inline fn traceStyle() [:0]const u8 {
                 return "\x1b[38;5;247m";
@@ -1288,8 +1288,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 @setRuntimeSafety(false);
                 const line_s: []const u8 = builtin.fmt.ud64(line).readAll();
                 const column_s: []const u8 = builtin.fmt.ud64(column).readAll();
-                var len: u64 = locationStyle().len;
-                @memcpy(buf, locationStyle().ptr, locationStyle().len);
+                var len: u64 = 0;
+                @memcpy(buf + len, traceStyle().ptr, traceStyle().len);
+                len +%= traceStyle().len;
                 @memcpy(buf + len, pathname.ptr, pathname.len);
                 len = len +% pathname.len;
                 buf[len] = ':';
@@ -1398,9 +1399,11 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 const extra: [*]u32 = hdr.extra();
                 const bytes: [*:0]u8 = hdr.bytes();
                 const list: *types.ErrorMessageList = builtin.ptrCast(*types.ErrorMessageList, extra);
+                var len: u64 = 0;
                 for ((extra + list.start)[0..list.len]) |err_msg_idx| {
-                    builtin.debug.write(buf[0..writeError(buf, extra, bytes, err_msg_idx, error_s)]);
+                    len = len +% writeError(buf + len, extra, bytes, err_msg_idx, error_s);
                 }
+                builtin.debug.write(buf[0..len]);
                 builtin.debug.write(meta.manyToSlice(bytes + list.compile_log_text));
                 builtin.proc.exitGroup(2);
             }
