@@ -248,33 +248,55 @@ fn testUtilityTestFunctions() !void {
         }
     }
 }
+
 const AllocatorL = struct {}.GenericLinkedAllocator(.{
     .AddressSpace = AddressSpace,
     .arena_index = 0,
 });
 fn testLallocator() !void {
+    var rng: file.DeviceRandomBytes(4096) = .{};
     var address_space: AddressSpace = .{};
     var allocator: AllocatorL = try AllocatorL.init(&address_space);
     defer allocator.deinit(&address_space);
-    var allocations: [256][]u8 = undefined;
+    var allocations: [256]?[]u8 = .{null} ** 256;
     for (&allocations, 0..) |*buf, idx| {
         buf.* = try allocator.allocate(u8, idx +% 1);
     }
-    AllocatorL.Graphics.graphPartitions(allocator);
-    for (&allocations, 0..) |*buf, idx| {
-        if (idx % 3 != 0) {
-            allocator.free(buf);
-        } else {
-            buf.* = try allocator.reallocate(u8, buf.*, buf.len * 2);
+    while (true) {
+        for (&allocations) |*buf| {
+            if (buf.*) |allocation| {
+                const sz: u16 = rng.readOne(u16);
+                switch (rng.readOne(enum { Deallocate, Reallocate })) {
+                    .Deallocate => {
+                        allocator.free(allocation);
+                        buf.* = null;
+                    },
+                    .Reallocate => {
+                        if (sz > allocation.len) {
+                            if (allocator.reallocate(u8, allocation, sz)) |ret| {
+                                buf.* = ret;
+                            } else |_| {
+                                allocator.free(allocation);
+                                buf.* = null;
+                                buf.* = try allocator.allocate(u8, rng.readOne(u16));
+                            }
+                        }
+                    },
+                }
+            } else {
+                if (rng.readOne(u8) != 0) {
+                    buf.* = try allocator.allocate(u8, rng.readOne(u16));
+                }
+            }
         }
+        allocator.consolidate();
+        AllocatorL.Graphics.graphPartitions(allocator);
     }
-    AllocatorL.Graphics.graphPartitions(allocator);
-    allocator.consolidate();
-    AllocatorL.Graphics.graphPartitions(allocator);
     allocator.freeAll();
     AllocatorL.Graphics.graphPartitions(allocator);
 }
 pub fn main() !void {
+    //try meta.wrap(testLallocator());
     try meta.wrap(testMapGenericOverhead());
     try meta.wrap(testProtect());
     try meta.wrap(testLowSystemMemoryOperations());
