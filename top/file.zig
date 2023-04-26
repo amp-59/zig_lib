@@ -178,6 +178,7 @@ pub const Status = extern struct {
     atime: time.TimeSpec,
     mtime: time.TimeSpec,
     ctime: time.TimeSpec,
+    @"2": [24]u8,
     pub fn isExecutable(st: Status, user_id: u16, group_id: u16) bool {
         if (user_id == st.uid) {
             return st.mode.owner.execute;
@@ -1216,7 +1217,7 @@ pub fn removeDir(comptime spec: RemoveDirSpec, pathname: [:0]const u8) sys.Call(
         return rmdir_error;
     }
 }
-pub inline fn pathStatus(comptime spec: StatusSpec, pathname: [:0]const u8) sys.Call(spec.errors, Status) {
+pub fn pathStatus(comptime spec: StatusSpec, pathname: [:0]const u8) sys.Call(spec.errors, Status) {
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
     var st: Status = undefined;
     const st_buf_addr: u64 = @ptrToInt(&st);
@@ -1233,7 +1234,7 @@ pub inline fn pathStatus(comptime spec: StatusSpec, pathname: [:0]const u8) sys.
     }
     return st;
 }
-pub inline fn status(comptime spec: StatusSpec, fd: u64) sys.Call(spec.errors, Status) {
+pub fn status(comptime spec: StatusSpec, fd: u64) sys.Call(spec.errors, Status) {
     var st: Status = undefined;
     const st_buf_addr: u64 = @ptrToInt(&st);
     const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
@@ -1249,7 +1250,7 @@ pub inline fn status(comptime spec: StatusSpec, fd: u64) sys.Call(spec.errors, S
     }
     return st;
 }
-pub inline fn statusAt(comptime spec: StatusSpec, dir_fd: u64, name: [:0]const u8) sys.Call(spec.errors, Status) {
+pub fn statusAt(comptime spec: StatusSpec, dir_fd: u64, name: [:0]const u8) sys.Call(spec.errors, Status) {
     var st: Status = undefined;
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
     const st_buf_addr: u64 = @ptrToInt(&st);
@@ -1267,7 +1268,7 @@ pub inline fn statusAt(comptime spec: StatusSpec, dir_fd: u64, name: [:0]const u
     }
     return st;
 }
-pub inline fn statusExtended(comptime spec: StatusExtendedSpec, fd: u64, pathname: [:0]const u8) sys.Call(spec.errors, StatusExtended) {
+pub fn statusExtended(comptime spec: StatusExtendedSpec, fd: u64, pathname: [:0]const u8) sys.Call(spec.errors, StatusExtended) {
     var st: StatusExtended = undefined;
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
     const st_buf_addr: u64 = @ptrToInt(&st);
@@ -1492,7 +1493,7 @@ pub fn pathIs(comptime stat_spec: StatusSpec, pathname: [:0]const u8, kind: Kind
     }
     return st.mode.kind == kind;
 }
-pub inline fn pathIsNot(comptime stat_spec: StatusSpec, pathname: [:0]const u8, kind: Kind) sys.Call(
+pub fn pathIsNot(comptime stat_spec: StatusSpec, pathname: [:0]const u8, kind: Kind) sys.Call(
     stat_spec.errors,
     stat_spec.return_type orelse bool,
 ) {
@@ -1573,7 +1574,7 @@ pub fn is(comptime stat_spec: StatusSpec, fd: u64, kind: Kind) sys.Call(
     }
     return st.mode.kind == kind;
 }
-pub inline fn isNot(comptime stat_spec: StatusSpec, kind: Kind, fd: u64) sys.Call(
+pub fn isNot(comptime stat_spec: StatusSpec, kind: Kind, fd: u64) sys.Call(
     stat_spec.errors,
     stat_spec.return_type orelse bool,
 ) {
