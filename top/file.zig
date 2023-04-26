@@ -1568,7 +1568,7 @@ pub fn DeviceRandomBytes(comptime bytes: u64) type {
         else
             sys.GRND.RANDOM;
         pub fn readOne(random: *Random, comptime T: type) T {
-            const child: type = meta.AlignSizeAW(T);
+            const child: type = T;
             const high_alignment: u64 = @sizeOf(child);
             const low_alignment: u64 = @alignOf(child);
             if (random.data.len() == 0) {
@@ -1587,10 +1587,10 @@ pub fn DeviceRandomBytes(comptime bytes: u64) type {
                 const t_up_addr: u64 = t_ab_addr +% high_alignment;
                 sys.call(.getrandom, .{}, void, .{ random.data.impl.aligned_byte_address(), bytes, dev });
                 random.data.define(t_up_addr - t_lb_addr);
-                return @truncate(T, @intToPtr(*const child, t_ab_addr).*);
+                return @intToPtr(*const child, t_ab_addr).*;
             }
             random.data.impl.define(s_up_addr - s_lb_addr);
-            return @truncate(T, @intToPtr(*const child, s_ab_addr).*);
+            return @intToPtr(*const child, s_ab_addr).*;
         }
         pub fn readOneConditionally(random: *Random, comptime T: type, comptime function: anytype) T {
             var ret: T = random.readOne(T);
