@@ -74,6 +74,31 @@ pub const SignalInfo = extern struct {
         arch: u32,
     };
 };
+const FutexSpec = struct {
+    errors: sys.ErrorPolicy,
+    logging: builtin.Logging.AttemptAcquireError,
+    const Operation = struct {};
+};
+fn futex(
+    comptime futex_spec: FutexSpec,
+    addr: *u32,
+    comptime operation: u64,
+    operand: u64,
+) void {
+    const logging: builtin.Logging.AttemptAcquireError = comptime futex_spec.logging.override();
+    if (logging.Attempt) {
+        //
+    }
+    if (meta.sys.call(.futex, futex_spec.errors, futex_spec.return_type, .{ addr, operation, operand })) {
+        if (logging.Acquire) {
+            //
+        }
+    } else {
+        if (logging.Error) {
+            //
+        }
+    }
+}
 pub const AuxiliaryVectorEntry = enum(u64) {
     null = 0,
     exec_fd = AT.EXECFD,
@@ -556,13 +581,14 @@ pub const exception = opaque {
     }
     pub fn exceptionHandler(sig: sys.SignalCode, info: *const SignalInfo, _: ?*const anyopaque) noreturn {
         resetExceptionHandlers();
-        debug.exceptionFaultAtAddress(switch (sig) {
+        const symbol: [:0]const u8 = switch (sig) {
             .SEGV => "SIGSEGV",
             .ILL => "SIGILL",
             .BUS => "SIGBUS",
             .FPE => "SIGFPE",
-        }, info.fields.fault.addr);
-        builtin.proc.exit(2);
+        };
+        debug.exceptionFaultAtAddress(symbol, info.fields.fault.addr);
+        builtin.proc.exitGroup(2);
     }
     pub fn restoreRunTime() callconv(.Naked) void {
         switch (builtin.zig.zig_backend) {
@@ -1028,8 +1054,14 @@ const debug = opaque {
         builtin.debug.write(buf);
     }
     fn exceptionFaultAtAddress(symbol: []const u8, fault_addr: u64) void {
-        var buf: [4096]u8 = undefined;
-        builtin.debug.logFaultAIO(&buf, &[_][]const u8{ debug.about_fault_s, symbol, " at address ", builtin.fmt.ux64(fault_addr).readAll(), "\n" });
+        var buf: [8192]u8 = undefined;
+        var pathname: [4096]u8 = undefined;
+        builtin.debug.logFaultAIO(&buf, &[_][]const u8{
+            debug.about_fault_s, symbol,
+            " at address ",      builtin.fmt.ux64(fault_addr).readAll(),
+            ", ",                pathname[0..builtin.debug.name(&pathname)],
+            "\n",
+        });
     }
     fn forkNotice(pid: u64) void {
         var buf: [560]u8 = undefined;
