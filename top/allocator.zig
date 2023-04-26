@@ -89,13 +89,13 @@ pub const AllocatorLogging = packed struct {
     branches: bool = builtin.logging_general.Success,
     illegal: bool = builtin.logging_general.Fault,
     /// Report `mmap` Acquire and Release.
-    map: builtin.Logging.AcquireError = .{},
+    map: builtin.Logging.Field(mem.MapSpec) = .{},
     /// Report `munmap` Release and Error.
-    unmap: builtin.Logging.ReleaseError = .{},
+    unmap: builtin.Logging.Field(mem.UnmapSpec) = .{},
     /// Report `mremap` Success and Error.
-    remap: builtin.Logging.SuccessError = .{},
+    remap: builtin.Logging.Field(mem.RemapSpec) = .{},
     /// Report `madvise` Success and Error.
-    advise: builtin.Logging.SuccessError = .{},
+    advise: builtin.Logging.Field(mem.AdviseSpec) = .{},
     /// Report when a reference is created.
     allocate: bool = builtin.logging_general.Acquire,
     /// Report when a reference is modified (move/resize).
