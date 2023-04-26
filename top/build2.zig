@@ -1045,13 +1045,16 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 return "\x1b[38;5;46m";
             }
             inline fn errorStyle() [:0]const u8 {
-                return "\x1b[38;5;208m";
+                return "\x1b[0;1m";
             }
             inline fn noteStyle() [:0]const u8 {
                 return "\x1b[38;5;123m";
             }
             inline fn traceStyle() [:0]const u8 {
                 return "\x1b[38;5;247m";
+            }
+            inline fn locationStyle() [:0]const u8 {
+                return "\x1b[2m";
             }
             pub fn exchangeNotice(target: *Target, task: types.Task, old_state: types.State, new_state: types.State) void {
                 @setRuntimeSafety(false);
@@ -1285,8 +1288,10 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 @setRuntimeSafety(false);
                 const line_s: []const u8 = builtin.fmt.ud64(line).readAll();
                 const column_s: []const u8 = builtin.fmt.ud64(column).readAll();
-                @memcpy(buf, pathname.ptr, pathname.len);
-                var len: u64 = pathname.len;
+                var len: u64 = locationStyle().len;
+                @memcpy(buf, locationStyle().ptr, locationStyle().len);
+                @memcpy(buf + len, pathname.ptr, pathname.len);
+                len = len +% pathname.len;
                 buf[len] = ':';
                 len = len +% 1;
                 @memcpy(buf + len, line_s.ptr, line_s.len);
@@ -1393,11 +1398,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 const extra: [*]u32 = hdr.extra();
                 const bytes: [*:0]u8 = hdr.bytes();
                 const list: *types.ErrorMessageList = builtin.ptrCast(*types.ErrorMessageList, extra);
-                var len: u64 = 0;
                 for ((extra + list.start)[0..list.len]) |err_msg_idx| {
-                    len = len +% writeError(buf + len, extra, bytes, err_msg_idx, error_s);
+                    builtin.debug.write(buf[0..writeError(buf, extra, bytes, err_msg_idx, error_s)]);
                 }
-                builtin.debug.write(buf[0..len]);
                 builtin.debug.write(meta.manyToSlice(bytes + list.compile_log_text));
                 builtin.proc.exitGroup(2);
             }
