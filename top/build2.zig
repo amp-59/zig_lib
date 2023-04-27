@@ -1271,7 +1271,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 const src: *types.SourceLocation = builtin.ptrCast(*types.SourceLocation, extra + err.src_loc);
                 const notes: [*]u32 = extra + err_msg_idx + types.ErrorMessage.len;
                 var len: u64 = writeTopSrcLoc(buf, extra, bytes, err_msg_idx);
-                const pos: u64 = len +% about.len -% 2;
+                const pos: u64 = len +% about.len -% traceStyle().len -% 2;
                 len = len +% writeAbout(buf + len, about);
                 len = len +% writeMessage(buf + len, bytes, err.start, pos);
                 if (err.src_loc == 0) {
