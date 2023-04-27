@@ -13,28 +13,28 @@ pub const Allocator = struct {
         .arena_index = 0,
         .options = spec.allocator.options.small,
         .logging = spec.allocator.logging.silent,
-        .errors = spec.allocator.errors.uniform,
+        .errors = spec.allocator.errors.noexcept,
     });
     pub const Error = mem.GenericArenaAllocator(.{
         .AddressSpace = AddressSpace,
         .arena_index = 1,
         .options = spec.allocator.options.small,
         .logging = spec.allocator.logging.silent,
-        .errors = spec.allocator.errors.uniform,
+        .errors = spec.allocator.errors.noexcept,
     });
     pub const Extra = mem.GenericArenaAllocator(.{
         .AddressSpace = AddressSpace,
         .arena_index = 2,
         .options = spec.allocator.options.small,
         .logging = spec.allocator.logging.silent,
-        .errors = spec.allocator.errors.uniform,
+        .errors = spec.allocator.errors.noexcept,
     });
     pub const State = mem.GenericArenaAllocator(.{
         .AddressSpace = AddressSpace,
         .arena_index = 3,
         .options = spec.allocator.options.small,
         .logging = spec.allocator.logging.silent,
-        .errors = spec.allocator.errors.uniform,
+        .errors = spec.allocator.errors.noexcept,
     });
 };
 
