@@ -50,7 +50,7 @@ fn packAlignedApproxA(n_bytes: u64) u64 {
 }
 /// Shifts and unpacks the approximation counts, and computes the approximation.
 pub fn unpackAlignedApproxA(s_counts_h: u64) u64 {
-    const s_counts_l: u16 = builtin.shrY(u64, u16, s_counts_h, 48);
+    const s_counts_l: u16 = mach.shr64T(u16, s_counts_h, 48);
     return unpackSingleApproxB(s_counts_l);
 }
 pub fn alignedApprox(n_bytes: u64) u64 {
