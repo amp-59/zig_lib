@@ -55,14 +55,6 @@ pub fn get(comptime spec: ClockSpec, kind: Kind) sys.Call(spec.errors, TimeSpec)
         return clock_error;
     }
 }
-pub fn nanoSleepB(req: TimeSpec) !void {
-    try sys.nanosleep(@ptrToInt(&req), 0);
-}
-pub fn nanoSleepA(req: TimeSpec) !TimeSpec {
-    var rem: TimeSpec = undefined;
-    try sys.nanosleep(@ptrToInt(&req), @ptrToInt(&rem));
-    return rem;
-}
 pub const SleepSpec = struct {
     return_type: type = void,
     errors: sys.ErrorPolicy = .{ .throw = sys.nanosleep_errors },
