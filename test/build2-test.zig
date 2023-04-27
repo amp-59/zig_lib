@@ -233,6 +233,13 @@ fn testBuildRunner(args: [][*:0]u8, vars: [][*:0]u8, comptime main_fn: anytype) 
         }
     }
 }
+fn testCompileError() void {
+    @compileError(
+        \\0
+        \\1
+        \\2
+    );
+}
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     try testBuildRunner(args, vars, @import("../build.zig").buildMain);
 }
