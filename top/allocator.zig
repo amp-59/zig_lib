@@ -4138,7 +4138,7 @@ const debug = opaque {
         builtin.debug.write(array.readAll());
     }
     fn showFiloDeallocateViolationAndExit(allocator: anytype, s_up_addr: u64, src: builtin.SourceLocation) void {
-        if (comptime @TypeOf(allocator).allocator_spec.logging.illegal) {
+        if (comptime @TypeOf(allocator.*).allocator_spec.logging.illegal) {
             const src_fmt: fmt.SourceLocationFormat = fmt.src(src, @returnAddress());
             const s_ua_addr: u64 = allocator.unallocated_byte_address();
             const d_aligned_bytes: u64 = s_ua_addr -% s_up_addr;
@@ -4153,7 +4153,7 @@ const debug = opaque {
         builtin.proc.exit(2);
     }
     fn showFiloResizeViolationAndExit(allocator: anytype, s_up_addr: u64, src: builtin.SourceLocation) void {
-        if (comptime @TypeOf(allocator).allocator_spec.logging.illegal) {
+        if (comptime @TypeOf(allocator.*).allocator_spec.logging.illegal) {
             const src_fmt: fmt.SourceLocationFormat = fmt.src(src, @returnAddress());
             const s_ua_addr: u64 = allocator.unallocated_byte_address();
             const d_aligned_bytes: u64 = s_ua_addr -% s_up_addr;
