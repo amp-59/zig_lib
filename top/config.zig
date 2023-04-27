@@ -97,8 +97,8 @@ pub fn AddressSpace() type {
     if (!@hasDecl(root, "AddressSpace")) {
         @compileError(
             "toplevel address space required:\n" ++
-                debug.title_s ++ "declare 'pub const AddressSpace = <zig_lib>.spec.address_space.regular_128;' in program root\n" ++
-                debug.title_s ++ "address spaces are required by high level features with managed memory",
+                "declare 'pub const AddressSpace = <zig_lib>.spec.address_space.regular_128;' in program root\n" ++
+                "address spaces are required by high level features with managed memory",
         );
     }
     return root.AddressSpace;
@@ -469,14 +469,11 @@ pub fn defineExtra(
     return default;
 }
 const debug = struct {
-    const title_s: []const u8 = "\r\t\x1b[96;1mnote\x1b[0;1m: ";
-    const point_s: []const u8 = "\r\t    : ";
-    const space_s: []const u8 = "\r\t       ";
     const path = opaque {
         inline fn buildRoot() noreturn {
             @compileError(
                 "program requires build root:\n" ++
-                    title_s ++ "add '-Dbuild_root=<project_build_root>' to compile flags\n",
+                    "add '-Dbuild_root=<project_build_root>' to compile flags\n",
             );
         }
     };
@@ -487,9 +484,9 @@ const debug = struct {
                     "expected field 'AddressSpace' in '" ++ @typeName(Struct) ++ "'"
                 else
                     "toplevel address space required by default field value:\n" ++
-                        title_s ++ "declare 'pub const AddressSpace = <zig_lib>.spec.address_space.regular_128;' in program root\n" ++
-                        point_s ++ "initialize field 'AddressSpace' in '" ++ @typeName(Struct) ++ "' explicitly\n" ++
-                        title_s ++ "address spaces are required by high level features with managed memory",
+                        "declare 'pub const AddressSpace = <zig_lib>.spec.address_space.regular_128;' in program root\n" ++
+                        "initialize field 'AddressSpace' in '" ++ @typeName(Struct) ++ "' explicitly\n" ++
+                        "address spaces are required by high level features with managed memory",
             );
         }
     };
