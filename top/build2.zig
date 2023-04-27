@@ -46,10 +46,10 @@ pub const BuilderSpec = struct {
         implib_ext: [:0]const u8 = ".lib",
 
         fn exeOutDir(comptime options: Options) [:0]const u8 {
-            return options.zig_out_dir ++ "/" ++ options.exe_out_name;
+            return options.zig_out_dir ++ options.exe_out_name ++ "/";
         }
         fn auxOutDir(comptime options: Options) [:0]const u8 {
-            return options.zig_out_dir ++ "/" ++ options.aux_out_name;
+            return options.zig_out_dir ++ options.aux_out_name ++ "/";
         }
     };
     pub const Logging = packed struct(u34) {

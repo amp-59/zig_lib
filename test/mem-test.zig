@@ -248,7 +248,6 @@ fn testUtilityTestFunctions() !void {
         }
     }
 }
-
 const AllocatorL = struct {}.GenericLinkedAllocator(.{
     .AddressSpace = AddressSpace,
     .arena_index = 0,
