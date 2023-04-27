@@ -329,3 +329,29 @@ pub fn uniqueSet(comptime T: type, set: []const T) void {
         }
     }
 }
+const black_list: []const []const u8 = &.{
+    "panicUnwrapError",
+};
+pub fn refAllDecls(comptime T: type) void {
+    @setEvalBranchQuota(~@as(u32, 0));
+    comptime {
+        if (@typeInfo(T) == .Struct or
+            @typeInfo(T) == .Union or
+            @typeInfo(T) == .Enum or
+            @typeInfo(T) == .Opaque)
+        {
+            lo: inline for (meta.resolve(@typeInfo(T)).decls) |decl| {
+                for (black_list) |name| {
+                    if (builtin.testEqualMemory([]const u8, decl.name, name)) {
+                        continue :lo;
+                    }
+                }
+                if (@hasDecl(T, decl.name)) {
+                    if (@TypeOf(@field(T, decl.name)) == type) {
+                        refAllDecls(@field(T, decl.name));
+                    }
+                }
+            }
+        }
+    }
+}
