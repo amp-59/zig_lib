@@ -824,11 +824,11 @@ pub const ArgsIterator = struct {
         return .{ .args = args };
     }
     pub fn readOne(itr: *ArgsIterator) ?[:0]const u8 {
-        if (itr.index <= itr.args.len) {
-            const arg: [*:0]const u8 = itr.args[itr.index];
+        if (itr.args_idx <= itr.args.len) {
+            const arg: [*:0]const u8 = itr.args[itr.args_idx];
             itr.args_idx +%= 1;
             var arg_len: u64 = 0;
-            while (itr.args[itr.args_idx] != 0) arg_len +%= 1;
+            while (itr.args[itr.args_idx][arg_len] != 0) arg_len +%= 1;
             return arg[0..arg_len :0];
         }
         return null;
