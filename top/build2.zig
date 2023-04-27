@@ -31,10 +31,10 @@ pub const BuilderSpec = struct {
         show_state: bool = false,
         env_name: [:0]const u8 = "env.zig",
         build_name: [:0]const u8 = "build.zig",
-        zig_out_dir: [:0]const u8 = "zig-out/",
-        zig_cache_dir: [:0]const u8 = "zig-cache/",
-        exe_out_dir: [:0]const u8 = "zig-out/bin/",
-        aux_out_dir: [:0]const u8 = "zig-out/aux/",
+        zig_out_name: [:0]const u8 = "zig-out",
+        zig_cache_name: [:0]const u8 = "zig-cache",
+        exe_out_name: [:0]const u8 = "bin",
+        aux_out_name: [:0]const u8 = "aux",
         h_ext: [:0]const u8 = ".h",
         lib_ext: [:0]const u8 = ".so",
         obj_ext: [:0]const u8 = ".o",
@@ -412,57 +412,58 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             fn binaryRelative(target: *Target, allocator: *Allocator) [:0]const u8 {
                 switch (target.build_cmd.kind) {
                     .exe => return concatenate(allocator, &.{
-                        builder_spec.options.exe_out_dir,
+                        builder_spec.options.zig_out_name, "/",
+                        builder_spec.options.exe_out_name, "/",
                         target.name,
                     }),
                     .lib => return concatenate(allocator, &.{
-                        builder_spec.options.exe_out_dir,
-                        target.name,
-                        builder_spec.options.lib_ext,
+                        builder_spec.options.zig_out_name, "/",
+                        builder_spec.options.exe_out_name, "/",
+                        target.name,                       builder_spec.options.lib_ext,
                     }),
                     .obj => return concatenate(allocator, &.{
-                        builder_spec.options.exe_out_dir,
-                        target.name,
-                        builder_spec.options.obj_ext,
+                        builder_spec.options.zig_out_name, "/",
+                        builder_spec.options.exe_out_name, "/",
+                        target.name,                       builder_spec.options.obj_ext,
                     }),
                 }
             }
             fn auxiliaryRelative(target: *Target, allocator: *Allocator, kind: types.AuxOutputMode) [:0]const u8 {
                 switch (kind) {
                     .@"asm" => return concatenate(allocator, &.{
-                        builder_spec.options.aux_out_dir,
-                        target.name,
-                        builder_spec.options.asm_ext,
+                        builder_spec.options.zig_out_name, "/",
+                        builder_spec.options.aux_out_name, "/",
+                        target.name,                       builder_spec.options.asm_ext,
                     }),
                     .llvm_ir => return concatenate(allocator, &.{
-                        builder_spec.options.aux_out_dir,
-                        target.name,
-                        builder_spec.options.llvm_ir_ext,
+                        builder_spec.options.zig_out_name, "/",
+                        builder_spec.options.aux_out_name, "/",
+                        target.name,                       builder_spec.options.llvm_ir_ext,
                     }),
                     .llvm_bc => return concatenate(allocator, &.{
-                        builder_spec.options.aux_out_dir,
-                        target.name,
-                        builder_spec.options.llvm_bc_ext,
+                        builder_spec.options.zig_out_name, "/",
+                        builder_spec.options.aux_out_name, "/",
+                        target.name,                       builder_spec.options.llvm_bc_ext,
                     }),
                     .h => return concatenate(allocator, &.{
-                        builder_spec.options.aux_out_dir,
-                        target.name,
-                        builder_spec.options.h_ext,
+                        builder_spec.options.zig_out_name, "/",
+                        builder_spec.options.aux_out_name, "/",
+                        target.name,                       builder_spec.options.h_ext,
                     }),
                     .docs => return concatenate(allocator, &.{
-                        builder_spec.options.aux_out_dir,
-                        target.name,
-                        builder_spec.options.docs_ext,
+                        builder_spec.options.zig_out_name, "/",
+                        builder_spec.options.aux_out_name, "/",
+                        target.name,                       builder_spec.options.docs_ext,
                     }),
                     .analysis => return concatenate(allocator, &.{
-                        builder_spec.options.aux_out_dir,
-                        target.name,
-                        builder_spec.options.analysis_ext,
+                        builder_spec.options.zig_out_name, "/",
+                        builder_spec.options.aux_out_name, "/",
+                        target.name,                       builder_spec.options.analysis_ext,
                     }),
                     .implib => return concatenate(allocator, &.{
-                        builder_spec.options.aux_out_dir,
-                        target.name,
-                        builder_spec.options.implib_ext,
+                        builder_spec.options.zig_out_name, "/",
+                        builder_spec.options.aux_out_name, "/",
+                        target.name,                       builder_spec.options.implib_ext,
                     }),
                 }
             }
@@ -918,8 +919,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }) |s| try meta.wrap(file.write(write_spec, env_fd, s.ptr, s.len));
             try meta.wrap(file.close(close_spec, env_fd));
             try meta.wrap(file.close(close_spec, cache_root_fd));
-            try meta.wrap(file.makeDirAt(mkdir_spec, build_root_fd, builder_spec.options.zig_out_dir, file.dir_mode));
-            try meta.wrap(file.makeDirAt(mkdir_spec, build_root_fd, builder_spec.options.exe_out_dir, file.dir_mode));
+            try meta.wrap(file.makeDirAt(mkdir_spec, build_root_fd, builder_spec.options.zig_out_name, file.dir_mode));
             return .{
                 .zig_exe = zig_exe,
                 .build_root = build_root,
@@ -975,16 +975,21 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             return if (getFileStatus(builder, name)) |st| st.size else 0;
         }
         fn makeZigCacheDir(builder: *Builder) sys.Call(mkdir_spec.errors, void) {
-            try meta.wrap(file.makeDirAt(mkdir_spec, builder.dir_fd, builder_spec.options.zig_cache_dir, file.dir_mode));
+            try meta.wrap(file.makeDirAt(mkdir_spec, builder.dir_fd, builder_spec.options.zig_cache_name, file.dir_mode));
         }
         fn makeZigOutDir(builder: *Builder) sys.Call(mkdir_spec.errors, void) {
-            try meta.wrap(file.makeDirAt(mkdir_spec, builder.dir_fd, builder_spec.options.zig_out_dir, file.dir_mode));
+            try meta.wrap(file.makeDirAt(mkdir_spec, builder.dir_fd, builder_spec.options.zig_out_name, file.dir_mode));
         }
-        fn makeBinDir(builder: *Builder) sys.Call(mkdir_spec.errors, void) {
-            try meta.wrap(file.makeDirAt(mkdir_spec, builder.dir_fd, builder_spec.options.zig_exe_out_dir, file.dir_mode));
+        fn makeOutSubDir(builder: *Builder, name: [:0]const u8) void {
+            const out_dir_fd: u64 = try meta.wrap(file.pathAt(path_spec, builder.dir_fd, builder_spec.options.zig_out_name));
+            try meta.wrap(file.makeDirAt(mkdir_spec, out_dir_fd, name, file.dir_mode));
+            file.close(close_spec, out_dir_fd);
         }
-        fn makeAuxDir(builder: *Builder) sys.Call(mkdir_spec.errors, void) {
-            try meta.wrap(file.makeDirAt(mkdir_spec, builder.dir_fd, builder_spec.options.zig_aux_out_dir, file.dir_mode));
+        inline fn makeBinDir(builder: *Builder) sys.Call(mkdir_spec.errors, void) {
+            builder.makeOutSubDir(builder_spec.options.aux_out_name);
+        }
+        inline fn makeAuxDir(builder: *Builder) sys.Call(mkdir_spec.errors, void) {
+            builder.makeOutSubDir(builder_spec.options.exe_out_name);
         }
         fn dependencyWait(target: *Target, task: types.Task, arena_index: AddressSpace.Index) bool {
             for (target.buildDependencies()) |*dep| {
