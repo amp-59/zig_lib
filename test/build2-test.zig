@@ -93,7 +93,7 @@ pub fn testBuildProgram(allocator: *Builder.Allocator, builder: *Builder) !void 
     const mg_abstract_specs: *Builder.Target =  try mg.addTarget(allocator, obj_default,    "mg_abstract_specs",    "top/mem/serial_abstract_specs.zig");
     const mg_impl_detail: *Builder.Target =     try mg.addTarget(allocator, obj_default,    "mg_impl_detail",       "top/mem/serial_impl_detail.zig");
     const mg_ctn_detail: *Builder.Target =      try mg.addTarget(allocator, obj_default,    "mg_ctn_detail",        "top/mem/serial_ctn_detail.zig");
-    const mg_new_type_specs: *Builder.Target =  try mg.addTarget(allocator, exe_default,    "mg_new_type_specs",    "top/mem/new_type_specs-aux.zig");
+    const mg_type_specs: *Builder.Target =  try mg.addTarget(allocator, exe_default,    "mg_type_specs",    "top/mem/type_specs-aux.zig");
     const mg_reference_impls: *Builder.Target = try mg.addTarget(allocator, exe_default,    "mg_reference_impls",   "top/mem/reference_impls-aux.zig");
     const mg_container_impls: *Builder.Target = try mg.addTarget(allocator, exe_default,    "mg_container_impls",   "top/mem/container_impls-aux.zig");
     const mg_container_kinds: *Builder.Target = try mg.addTarget(allocator, exe_default,    "mg_container_kinds",   "top/mem/container_kinds-aux.zig");
@@ -140,7 +140,7 @@ pub fn testBuildProgram(allocator: *Builder.Allocator, builder: *Builder) !void 
     mg_abstract_specs.descr =   "Serialiser for `[]const AbstractSpecification`";
     mg_impl_detail.descr =      "Serialiser for `[]const Implementation`";
     mg_ctn_detail.descr =       "Serialiser for `[]const Container`";
-    mg_new_type_specs.descr =   "Generate data and container->reference deductions";
+    mg_type_specs.descr =   "Generate data and container->reference deductions";
     mg_container_kinds.descr =  "Generate function kind switch functions for container functions";
     mg_allocator_kinds.descr =  "Generate function kind switch functions for allocator functions";
     mg_reference_impls.descr =  "Generate reference implementations";
@@ -149,13 +149,13 @@ pub fn testBuildProgram(allocator: *Builder.Allocator, builder: *Builder) !void 
 
     // Dependencies:
     mg_container_impls.dependOnRun(allocator,       mg_container_kinds);
-    mg_new_type_specs.dependOnRun(allocator,        mg_touch);
-    mg_new_type_specs.dependOnObject(allocator,     mg_options);
-    mg_new_type_specs.dependOnObject(allocator,     mg_params);
-    mg_new_type_specs.dependOnObject(allocator,     mg_techs);
-    mg_new_type_specs.dependOnObject(allocator,     mg_specs);
-    mg_new_type_specs.dependOnObject(allocator,     mg_ctn_detail);
-    mg_new_type_specs.dependOnObject(allocator,     mg_impl_detail);
+    mg_type_specs.dependOnRun(allocator,        mg_touch);
+    mg_type_specs.dependOnObject(allocator,     mg_options);
+    mg_type_specs.dependOnObject(allocator,     mg_params);
+    mg_type_specs.dependOnObject(allocator,     mg_techs);
+    mg_type_specs.dependOnObject(allocator,     mg_specs);
+    mg_type_specs.dependOnObject(allocator,     mg_ctn_detail);
+    mg_type_specs.dependOnObject(allocator,     mg_impl_detail);
     mg_container_impls.dependOnObject(allocator,    mg_ctn_detail);
     mg_container_impls.dependOnObject(allocator,    mg_impl_detail);
     mg_reference_impls.dependOnObject(allocator,    mg_ctn_detail);

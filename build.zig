@@ -35,6 +35,7 @@ const PartialCommand = struct {
     modules: []const build.Module = mods,
     dependencies: []const build.ModuleDependency = mod_deps,
 };
+
 const exe_default: PartialCommand = .{ .kind = .exe, .mode = .ReleaseSmall };
 const exe_fast: PartialCommand = .{ .kind = .exe, .mode = .ReleaseFast };
 const obj_default: PartialCommand = .{ .kind = .obj, .mode = .ReleaseSmall };
@@ -45,6 +46,7 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     // Groups:
     const tests: *Builder.Group =               try builder.addGroup(allocator,             "tests");
     const build_test: *Builder.Target =         try tests.addTarget(allocator, exe_build,   "build_test",   "build_runner.zig");
+    const decl_test: *Builder.Target =          try tests.addTarget(allocator, exe_default, "decl_test",    "test/decl-test.zig");
     const builtin_test: *Builder.Target =       try tests.addTarget(allocator, exe_default, "builtin_test", "test/builtin-test.zig");
     const meta_test: *Builder.Target =          try tests.addTarget(allocator, exe_default, "meta_test",    "test/meta-test.zig");
     const mem_test: *Builder.Target =           try tests.addTarget(allocator, exe_default, "mem_test",     "test/mem-test.zig");
@@ -81,7 +83,7 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     const mg_params: *Builder.Target =          try mg.addTarget(allocator, obj_default,    "mg_params",            "top/mem/serial_params.zig");
     const mg_options: *Builder.Target =         try mg.addTarget(allocator, obj_default,    "mg_options",           "top/mem/serial_options.zig");
     const mg_abstract_specs: *Builder.Target =  try mg.addTarget(allocator, obj_default,    "mg_abstract_specs",    "top/mem/serial_abstract_specs.zig");
-    const mg_new_type_specs: *Builder.Target =  try mg.addTarget(allocator, exe_debug,      "mg_new_type_specs",    "top/mem/new_type_specs-aux.zig");
+    const mg_type_specs: *Builder.Target =  try mg.addTarget(allocator, exe_debug,      "mg_type_specs",    "top/mem/type_specs-aux.zig");
     const mg_reference_impls: *Builder.Target = try mg.addTarget(allocator, exe_default,    "mg_reference_impls",   "top/mem/reference_impls-aux.zig");
     const mg_container_impls: *Builder.Target = try mg.addTarget(allocator, exe_debug,      "mg_container_impls",   "top/mem/container_impls-aux.zig");
     const mg_container_kinds: *Builder.Target = try mg.addTarget(allocator, exe_default,    "mg_container_kinds",   "top/mem/container_kinds-aux.zig");
@@ -99,6 +101,7 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     render_test.descr =         "Test library value rendering functions";
     proc_test.descr =           "Test process related functions";
     build_test.descr =          "Test the library build runner and build program";
+    decl_test.descr =           "Test compilation of all public declarations recursively";
     build2_test.descr =         "Test the special test build program";
     serial_test.descr =         "Test data serialisation functions";
     thread_test.descr =         "Test clone and thread-safe compound/tagged sets";
@@ -124,21 +127,21 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     mg_params.descr =           "Serialiser for `[]const [] Specifier`";
     mg_options.descr =          "Serialiser for `[]const []const Technique`";
     mg_abstract_specs.descr =   "Serialiser for `[]const AbstractSpecification`";
-    mg_new_type_specs.descr =   "Generate data and container->reference deductions";
+    mg_type_specs.descr =   "Generate data and container->reference deductions";
     mg_container_kinds.descr =  "Generate function kind switch functions for container functions";
     mg_allocator_kinds.descr =  "Generate function kind switch functions for allocator functions";
     mg_reference_impls.descr =  "Generate reference implementations";
     mg_container_impls.descr =  "Generate container implementations";
     generate_build.descr =      "Generate builder command line implementation";
     // Dependencies:
-    mg_new_type_specs.dependOnRun(allocator,        mg_touch);
-    mg_new_type_specs.dependOnObject(allocator,     mg_options);
-    mg_new_type_specs.dependOnObject(allocator,     mg_params);
-    mg_new_type_specs.dependOnObject(allocator,     mg_techs);
-    mg_new_type_specs.dependOnObject(allocator,     mg_specs);
-    mg_container_impls.dependOnRun(allocator,       mg_new_type_specs);
+    mg_type_specs.dependOnRun(allocator,        mg_touch);
+    mg_type_specs.dependOnObject(allocator,     mg_options);
+    mg_type_specs.dependOnObject(allocator,     mg_params);
+    mg_type_specs.dependOnObject(allocator,     mg_techs);
+    mg_type_specs.dependOnObject(allocator,     mg_specs);
+    mg_container_impls.dependOnRun(allocator,       mg_type_specs);
     mg_container_impls.dependOnRun(allocator,       mg_container_kinds);
-    mg_reference_impls.dependOnRun(allocator,       mg_new_type_specs);
+    mg_reference_impls.dependOnRun(allocator,       mg_type_specs);
     addEnvPathArgs(allocator, builder, build_test);
     addEnvPathArgs(allocator, builder, build2_test);
     addEnvPathArgs(allocator, builder, serial_test);
