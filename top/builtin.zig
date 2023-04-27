@@ -1724,9 +1724,8 @@ pub const debug = opaque {
         }
     };
 };
-pub const parse = opaque {
+pub const parse = struct {
     pub const E = error{BadParse};
-    pub const error_policy: *InternalError(E) = createErrorPolicy(parse, .{ .throw = E.BadParse });
 
     pub fn ub(comptime T: type, str: []const u8) T {
         static.assert(@typeInfo(T).Int.signedness == .unsigned);
