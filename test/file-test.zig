@@ -127,8 +127,10 @@ fn testFileOperationsRound2() !void {
     try meta.wrap(file.makeDir(make_dir_spec, "/run/user/1000/file_test", file.dir_mode));
     const dir_fd: u64 = try meta.wrap(file.open(open_dir_spec, "/run/user/1000/file_test"));
     try meta.wrap(file.makeDirAt(make_dir_spec, dir_fd, "file_test", file.dir_mode));
-    const path_dir_fd: u64 = try meta.wrap(file.path(.{}, "/run/user/1000/file_test/file_test"));
+    var path_dir_fd: u64 = try meta.wrap(file.path(.{}, "/run/user/1000/file_test/file_test"));
     try meta.wrap(file.close(close_spec, try meta.wrap(file.create(create_spec, "/run/user/1000/file_test/file_test/file_test", file.file_mode))));
+    path_dir_fd = try meta.wrap(file.path(.{}, "file_test"));
+    try meta.wrap(file.close(close_spec, path_dir_fd));
     const path_reg_fd: u64 = try meta.wrap(file.path(.{ .options = .{ .directory = false } }, "/run/user/1000/file_test/file_test/file_test"));
     try file.assertNot(stat_spec, path_reg_fd, .unknown);
     try file.assert(stat_spec, path_reg_fd, .regular);
