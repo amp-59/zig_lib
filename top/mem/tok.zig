@@ -41,14 +41,14 @@ pub const impl_const_ptr_type_name: [:0]const u8 = constPointerTo(impl_type_name
 pub const impl_param: [:0]const u8 = paramDecl(impl_name, impl_ptr_type_name);
 pub const impl_field: [:0]const u8 = paramDecl(impl_name, impl_type_name);
 pub const impl_const_param: [:0]const u8 = paramDecl(impl_name, impl_const_ptr_type_name);
-pub const spec_name: [:0]const u8 = "spec";
+pub const ctn_spec_name: [:0]const u8 = "ctn_spec";
+pub const impl_spec_name: [:0]const u8 = "impl_spec";
 pub const generic_spec_type_name: [:0]const u8 = "Specification";
 pub const low_alignment_name: [:0]const u8 = "low_alignment";
 pub const high_alignment_name: [:0]const u8 = "high_alignment";
 pub const unit_alignment_name: [:0]const u8 = "unit_alignment";
 pub const auto_alignment_name: [:0]const u8 = "auto_alignment";
 pub const sentinel_ptr_name: [:0]const u8 = "sentinel";
-
 pub const parametric_type_name: []const u8 = "Parametric";
 pub const automatic_type_name: []const u8 = "Automatic";
 pub const dynamic_type_name: []const u8 = "Dynamic";
@@ -65,15 +65,20 @@ pub const unit_alignment_type_name: []const u8 = "UnitAlignment";
 pub const disjunct_alignment_type_name: []const u8 = "DisjunctAlignment";
 pub const double_packed_approximate_capacity_type_name: []const u8 = "DoublePackedApproximateCapacity";
 pub const single_packed_approximate_capacity_type_name: []const u8 = "SinglePackedApproximateCapacity";
-
-pub const sentinel_specifier_name: [:0]const u8 = fieldAccess(spec_name, sentinel_ptr_name);
-pub const arena_specifier_name: [:0]const u8 = fieldAccess(spec_name, "arena");
-pub const count_specifier_name: [:0]const u8 = fieldAccess(spec_name, "count");
-pub const low_alignment_specifier_name: [:0]const u8 = fieldAccess(spec_name, low_alignment_name);
-pub const high_alignment_specifier_name: [:0]const u8 = fieldAccess(spec_name, high_alignment_name);
-pub const child_specifier_name: [:0]const u8 = fieldAccess(spec_name, child_type_name);
+pub const sentinel_ctn_specifier_name: [:0]const u8 = fieldAccess(ctn_spec_name, sentinel_ptr_name);
+pub const arena_ctn_specifier_name: [:0]const u8 = fieldAccess(ctn_spec_name, "arena");
+pub const count_ctn_specifier_name: [:0]const u8 = fieldAccess(ctn_spec_name, "count");
+pub const low_ctn_alignment_specifier_name: [:0]const u8 = fieldAccess(ctn_spec_name, low_alignment_name);
+pub const high_ctn_alignment_specifier_name: [:0]const u8 = fieldAccess(ctn_spec_name, high_alignment_name);
+pub const child_ctn_specifier_name: [:0]const u8 = fieldAccess(ctn_spec_name, child_type_name);
+pub const sentinel_impl_specifier_name: [:0]const u8 = fieldAccess(impl_spec_name, sentinel_ptr_name);
+pub const arena_impl_specifier_name: [:0]const u8 = fieldAccess(impl_spec_name, "arena");
+pub const count_impl_specifier_name: [:0]const u8 = fieldAccess(impl_spec_name, "count");
+pub const low_impl_alignment_specifier_name: [:0]const u8 = fieldAccess(impl_spec_name, low_alignment_name);
+pub const high_impl_alignment_specifier_name: [:0]const u8 = fieldAccess(impl_spec_name, high_alignment_name);
+pub const child_impl_specifier_name: [:0]const u8 = fieldAccess(impl_spec_name, child_type_name);
 pub const slave_specifier_name: [:0]const u8 = "allocator";
-pub const slave_specifier_type_name: [:0]const u8 = fieldAccess(spec_name, "Allocator");
+pub const slave_specifier_type_name: [:0]const u8 = fieldAccess(ctn_spec_name, "Allocator");
 pub const slave_specifier_ptr_type_name: [:0]const u8 = pointerTo(slave_specifier_type_name);
 pub const slave_specifier_const_ptr_type_name: [:0]const u8 = constPointerTo(slave_specifier_type_name);
 pub const slave_specifier_param: [:0]const u8 = paramDecl(slave_specifier_name, slave_specifier_type_name);
@@ -82,8 +87,10 @@ pub const slave_specifier_const_ptr_param: [:0]const u8 = paramDecl(slave_specif
 pub const slave_specifier_call_unallocated_byte_address: [:0]const u8 = callSimple(fieldAccess(slave_specifier_name, unallocated_byte_address_name));
 pub const slave_specifier_call_unmapped_byte_address: [:0]const u8 = callSimple(fieldAccess(slave_specifier_name, unmapped_byte_address_name));
 pub const slave_specifier_call_unaddressable_byte_address: [:0]const u8 = callSimple(fieldAccess(slave_specifier_name, unaddressable_byte_address_name));
-pub const automatic_storage_type_name: [:0]const u8 = arrayType(child_specifier_name, count_specifier_name, null);
-pub const automatic_storage_with_sentinel_type_name: [:0]const u8 = arrayType(child_specifier_name, count_specifier_name, sentinel_specifier_name);
+pub const automatic_storage_type_name: [:0]const u8 =
+    arrayType(child_impl_specifier_name, count_impl_specifier_name, null);
+pub const automatic_storage_with_sentinel_type_name: [:0]const u8 =
+    arrayType(child_impl_specifier_name, count_impl_specifier_name, sentinel_impl_specifier_name);
 pub const automatic_storage_field_name: [:0]const u8 = "auto";
 pub const automatic_storage_access: [:0]const u8 = fieldAccess(impl_name, automatic_storage_field_name);
 pub const automatic_storage_ptr: [:0]const u8 = impl_name ++ addressOf(automatic_storage_access);
@@ -107,7 +114,7 @@ pub const unallocated_byte_address_word_ptr: [:0]const u8 = addressOf(unallocate
 pub const unallocated_byte_address_word_field: [:0]const u8 = paramDecl(unallocated_byte_address_word_field_name, word_type_name);
 pub const address_of_impl: [:0]const u8 = callPtrToInt(impl_name);
 pub const call_sizeof_child: [:0]const u8 = callSizeOf(child_type_name);
-pub const call_sizeof_child_specifier: [:0]const u8 = callSizeOf(child_specifier_name);
+pub const call_sizeof_child_specifier: [:0]const u8 = callSizeOf(child_impl_specifier_name);
 pub const offset_of_automatic_storage: [:0]const u8 = callOffsetOf(impl_type_name, automatic_storage_field_name);
 
 // Container
