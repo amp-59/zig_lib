@@ -776,16 +776,15 @@ pub fn TaggedUnion(comptime Union: type) type {
 pub fn Field(comptime T: type, comptime field_name: []const u8) type {
     return @TypeOf(@field(@as(T, undefined), field_name));
 }
-pub fn unionFields(comptime Union: type) []const builtin.UnionField {
+pub fn unionFields(comptime Union: type) []const builtin.Type.UnionField {
     return @typeInfo(Union).Union.fields;
 }
-pub fn enumFields(comptime Enum: type) []const builtin.EnumField {
+pub fn enumFields(comptime Enum: type) []const builtin.Type.EnumField {
     return @typeInfo(Enum).Enum.fields;
 }
 pub fn structFields(comptime Struct: type) []const builtin.Type.StructField {
     return @typeInfo(Struct).Struct.fields;
 }
-
 pub fn FieldN(comptime T: type, comptime field_index: usize) type {
     switch (@typeInfo(T)) {
         else => |type_info| {
