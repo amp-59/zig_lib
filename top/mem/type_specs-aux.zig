@@ -520,7 +520,7 @@ fn writeDeductionCompareEnumerationInternal(
     );
     array.writeMany("},\n");
     try meta.wrap(
-        writeDeductionCompareEnumerationInternal(allocator, array, abstract_spec, tech_set_top, p_info, filtered[0], q_info, indices, tag_index + 1),
+        writeDeductionCompareEnumerationInternal(allocator, array, abstract_spec, tech_set_top, p_info, filtered[0], q_info, indices, tag_index +% 1),
     );
 }
 fn writeDeductionCompareEnumeration(
@@ -648,11 +648,11 @@ fn writeSpecificationDeduction(
     q_info: []const types.Technique,
     indices: *types.Implementation.Indices,
 ) Allocator.allocate_void {
-    array.writeMany("const Specification");
-    array.writeFormat(fmt.ud64(indices.spec));
+    array.writeMany("const Parameters");
+    array.writeFormat(fmt.ud64(indices.params));
     array.writeMany("=struct{\n");
     writeParametersFields(array, p_info);
-    array.writeMany("const Specification=@This();\nfn Implementation(spec:Specification)type{\n");
+    array.writeMany("const Parameters=@This();\nfn Implementation(spec:Parameters)type{\n");
     try meta.wrap(
         writeSpecificationDeductionInternal(allocator, array, abstract_spec, p_info, spec_set, tech_set, q_info, indices),
     );
@@ -663,7 +663,6 @@ fn writeSpecifications(
     array: *Array,
 ) Allocator.allocate_void {
     var indices: types.Implementation.Indices = .{};
-
     for (types.Kind.list) |kind| {
         for (attr.abstract_specs, data.x_p_infos, data.spec_sets, data.tech_sets, data.x_q_infos) |abstract_spec, p_info, spec_set, tech_set, q_info| {
             if (abstract_spec.kind == kind) {
