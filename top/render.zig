@@ -1425,6 +1425,7 @@ pub const TypeDescrFormatSpec = struct {
         token: type = []const u8,
         depth: u64 = 0,
         default_field_values: bool = false,
+        identifier_name: bool = false,
     };
     const Tokens = struct {
         lbrace: [:0]const u8 = " {\n",
@@ -1475,7 +1476,11 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
             default_value: ?spec.options.token = null,
             const Format = @This();
             pub fn formatWrite(format: Format, array: anytype) void {
-                array.writeMany(format.name);
+                if (spec.options.identifier_name) {
+                    array.writeFormat(fmt.IdentifierFormat{ .value = format.name });
+                } else {
+                    array.writeMany(format.name);
+                }
                 array.writeMany(spec.tokens.colon);
                 writeFormat(array, format.type);
                 if (format.default_value) |default_value| {
@@ -1487,7 +1492,11 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
             }
             pub fn formatLength(format: Format) u64 {
                 var len: u64 = 0;
-                len +%= format.name.len;
+                if (spec.options.identifier_name) {
+                    len +%= (fmt.IdentifierFormat{ .value = format.name }).formatLength();
+                } else {
+                    len +%= format.name.len;
+                }
                 len +%= spec.tokens.colon.len;
                 len +%= format.type.formatLength();
                 if (format.default_value) |default_value| {
@@ -1538,11 +1547,11 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                     type_refer.type.formatWrite(array);
                 },
                 .type_decl => |type_decl| {
+                    if (spec.options.depth != 0 and
+                        spec.options.depth != depth)
+                        for (0..depth) |_| array.writeMany(spec.tokens.indent);
                     switch (type_decl) {
                         .Composition => |struct_defn| {
-                            if (spec.options.depth != 0 and
-                                spec.options.depth == depth)
-                                for (0..depth) |_| array.writeMany(spec.tokens.indent);
                             array.writeMany(struct_defn.spec);
                             depth +%= 1;
                             array.writeMany(spec.tokens.lbrace);
@@ -1555,9 +1564,6 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                             depth -%= 1;
                         },
                         .Enumeration => |enum_defn| {
-                            if (spec.options.depth != 0 and
-                                spec.options.depth == depth)
-                                for (0..depth) |_| array.writeMany(spec.tokens.indent);
                             array.writeMany(enum_defn.spec);
                             depth +%= 1;
                             array.writeMany(spec.tokens.lbrace);
