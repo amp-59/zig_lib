@@ -1238,10 +1238,10 @@ pub const debug = opaque {
         }
         return lhs ++ " " ** (config.message_indent - len);
     }
-    inline fn typeFault(comptime T: type) []const u8 {
+    pub inline fn typeFault(comptime T: type) []const u8 {
         return about_fault_p0_s ++ @typeName(T);
     }
-    inline fn typeError(comptime T: type) []const u8 {
+    pub inline fn typeError(comptime T: type) []const u8 {
         return about_error_p0_s ++ @typeName(T);
     }
     fn exitNotice(rc: u8) void {
