@@ -438,8 +438,10 @@ fn writeOptionalSwitchOpen(array: *Array, tag_name: []const u8) void {
     array.writeMany(tag_name);
     array.writeMany("){\n");
 }
-fn writeSpecificationType(array: *Array, specs: []const types.Specifier) void {
-    array.writeMany("struct {");
+fn writeSpecificationType(array: *Array, specs: []const types.Specifier, spec_idx: u16) void {
+    array.writeMany("pub const Specification");
+    array.writeFormat(fmt.ud16(spec_idx));
+    array.writeMany("=struct{");
     writeSpecificationFields(array, specs);
     array.writeMany("};\n");
 }
