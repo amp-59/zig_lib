@@ -3,7 +3,7 @@ const mach = @import("../mach.zig");
 const meta = @import("../meta.zig");
 const spec = @import("../spec.zig");
 const builtin = @import("../builtin.zig");
-const tasks = @import("./tasks3.zig");
+const tasks = @import("./tasks.zig");
 pub usingnamespace tasks;
 pub const Task = enum(u8) {
     build = 1,
@@ -31,15 +31,6 @@ pub const Path = struct {
             array.writeMany(relative);
         }
     }
-    pub fn formatLength(format: Format) u64 {
-        var len: u64 = 0;
-        len +%= format.absolute.len;
-        if (format.relative) |relative| {
-            len +%= 1;
-            len +%= relative.len;
-        }
-        return len;
-    }
     pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
         var len: u64 = format.absolute.len;
         @memcpy(buf, format.absolute.ptr, format.absolute.len);
@@ -47,6 +38,15 @@ pub const Path = struct {
             buf[len] = '/';
             len = len +% 1;
             @memcpy(buf + len, relative.ptr, relative.len);
+        }
+        return len;
+    }
+    pub fn formatLength(format: Format) u64 {
+        var len: u64 = 0;
+        len +%= format.absolute.len;
+        if (format.relative) |relative| {
+            len +%= 1;
+            len +%= relative.len;
         }
         return len;
     }
@@ -96,7 +96,6 @@ pub const Module = struct {
         buf[len] = 0;
         return len +% 1;
     }
-
     pub fn formatLength(mod: Module) u64 {
         var len: u64 = 0;
         len +%= 6;
@@ -117,7 +116,7 @@ pub const Module = struct {
         return len;
     }
 };
-pub const Modules = SliceOf(Module);
+pub const Modules = Aggregate(Module);
 pub const ModuleDependency = struct {
     import: ?[]const u8 = null,
     name: []const u8,
@@ -180,9 +179,6 @@ pub const Macro = struct {
         array.writeMany(format.name);
         array.writeMany("=");
         switch (format.value) {
-            .constant => |constant| {
-                array.writeAny(spec.reinterpret.print, constant);
-            },
             .string => |string| {
                 array.writeOne('"');
                 array.writeMany(string);
@@ -253,28 +249,7 @@ pub const Macro = struct {
         return len;
     }
 };
-pub const Macros = SliceOf(Macro);
-
-pub fn SliceOf(comptime T: type) type {
-    return struct {
-        value: []const T,
-        const Format = @This();
-        pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
-            var len: u64 = 0;
-            for (format.value) |value| {
-                len = len +% value.formatWriteBuf(buf + len);
-            }
-            return len;
-        }
-        pub fn formatLength(format: Format) u64 {
-            var len: u64 = 0;
-            for (format.value) |value| {
-                len = len +% value.formatLength();
-            }
-            return len;
-        }
-    };
-}
+pub const Macros = Aggregate(Macro);
 pub const CFlags = struct {
     flags: []const []const u8,
     const Format = @This();
@@ -337,6 +312,31 @@ pub const Files = struct {
         return len;
     }
 };
+fn Aggregate(comptime T: type) type {
+    return struct {
+        value: []const T,
+        const Format = @This();
+        pub fn formatWrite(format: Format, array: anytype) u64 {
+            for (format.value) |value| {
+                value.formatWrite(array);
+            }
+        }
+        pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
+            var len: u64 = 0;
+            for (format.value) |value| {
+                len = len +% value.formatWriteBuf(buf + len);
+            }
+            return len;
+        }
+        pub fn formatLength(format: Format) u64 {
+            var len: u64 = 0;
+            for (format.value) |value| {
+                len = len +% value.formatLength();
+            }
+            return len;
+        }
+    };
+}
 pub const Message = struct {
     pub const ClientHeader = extern struct {
         tag: Tag,
