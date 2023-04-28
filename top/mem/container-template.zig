@@ -547,7 +547,7 @@ pub const reinterpret = opaque {
                 const len_1: u64 = memory.impl.undefined_byte_address();
                 const t_len: u64 = builtin.sub(u64, len_1, len_0);
                 if (s_len < t_len) {
-                    badFormatLength(what, " >= ", s_len, t_len);
+                    formatLengthFault(what, " >= ", s_len, t_len);
                 }
             } else {
                 const s_len: u64 = format.formatLength();
@@ -556,14 +556,14 @@ pub const reinterpret = opaque {
                 const len_1: u64 = memory.impl.undefined_byte_address();
                 const t_len: u64 = builtin.sub(u64, len_1, len_0);
                 if (t_len != s_len) {
-                    badFormatLength(what, " == ", s_len, t_len);
+                    formatLengthFault(what, " == ", s_len, t_len);
                 }
             }
         } else {
             format.formatWrite(memory);
         }
     }
-    fn badFormatLength(format_type_name: []const u8, operator_symbol: []const u8, s_len: u64, t_len: u64) noreturn {
+    fn formatLengthFault(format_type_name: []const u8, operator_symbol: []const u8, s_len: u64, t_len: u64) noreturn {
         const help_read: bool = t_len > 99_999;
         const notation: []const u8 = if (help_read) ", i.e. " else "\n";
         var buf: [512]u8 = undefined;
