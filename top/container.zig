@@ -537,23 +537,47 @@ pub const reinterpret = opaque {
         if (!@hasDecl(Format, "formatWrite")) {
             @compileError("formatter type '" ++ @typeName(Format) ++ "' requires declaration 'formatWrite'");
         }
-        if (builtin.runtime_assertions and (builtin.is_fast or builtin.is_small)) {
-            const s_len: u64 = format.formatLength();
-            const len_0: u64 = memory.impl.undefined_byte_address();
-            format.formatWrite(memory);
-            const len_1: u64 = memory.impl.undefined_byte_address();
-            const t_len: u64 = builtin.sub(u64, len_1, len_0);
-            builtin.assertBelowOrEqual(u64, t_len, s_len);
-        } else if (builtin.runtime_assertions) {
-            const s_len: u64 = format.formatLength();
-            const len_0: u64 = memory.impl.undefined_byte_address();
-            format.formatWrite(memory);
-            const len_1: u64 = memory.impl.undefined_byte_address();
-            const t_len: u64 = builtin.sub(u64, len_1, len_0);
-            builtin.assertEqual(u64, s_len, t_len);
+        if (builtin.runtime_assertions) {
+            const what: []const u8 = builtin.debug.typeFault(Format) ++ ".length(), ";
+            if (builtin.is_fast or builtin.is_small) {
+                const s_len: u64 = format.formatLength();
+                const len_0: u64 = memory.impl.undefined_byte_address();
+                format.formatWrite(memory);
+                const len_1: u64 = memory.impl.undefined_byte_address();
+                const t_len: u64 = builtin.sub(u64, len_1, len_0);
+                if (s_len < t_len) {
+                    badFormatLength(what, " >= ", s_len, t_len);
+                }
+            } else {
+                const s_len: u64 = format.formatLength();
+                const len_0: u64 = memory.impl.undefined_byte_address();
+                format.formatWrite(memory);
+                const len_1: u64 = memory.impl.undefined_byte_address();
+                const t_len: u64 = builtin.sub(u64, len_1, len_0);
+                if (t_len != s_len) {
+                    badFormatLength(what, " == ", s_len, t_len);
+                }
+            }
         } else {
             format.formatWrite(memory);
         }
+    }
+    fn badFormatLength(format_type_name: []const u8, operator_symbol: []const u8, s_len: u64, t_len: u64) noreturn {
+        const help_read: bool = t_len > 99_999;
+        const notation: []const u8 = if (help_read) ", i.e. " else "\n";
+        var buf: [512]u8 = undefined;
+        var len: u64 = builtin.debug.writeMulti(&buf, &[_][]const u8{
+            format_type_name, builtin.fmt.ud64(t_len).readAll(),
+            operator_symbol,  builtin.fmt.ud64(s_len).readAll(),
+            notation,
+        });
+        if (help_read) {
+            len += builtin.debug.writeMulti(buf[len..].ptr, &[_][]const u8{
+                "0", operator_symbol, builtin.fmt.ud64(t_len -% s_len).readAll(), "\n",
+            });
+        }
+        builtin.debug.write(buf[0..len]);
+        builtin.proc.exit(2);
     }
     pub fn lengthAny(comptime child: type, comptime write_spec: ReinterpretSpec, any: anytype) u64 {
         const dst_type: type = child;
