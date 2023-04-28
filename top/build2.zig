@@ -1072,10 +1072,11 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             const about_state_1_s: [:0]const u8 = builtin.debug.about("state-fault");
             const error_s: *const [5:0]u8 = "error";
             const note_s: *const [4:0]u8 = "note";
+            const fancy_hl_line: bool = false;
             inline fn tildeStyle() [:0]const u8 {
                 return "\x1b[38;5;46m";
             }
-            inline fn errorStyle() [:0]const u8 {
+            inline fn boldStyle() [:0]const u8 {
                 return "\x1b[0;1m";
             }
             inline fn noteStyle() [:0]const u8 {
@@ -1084,8 +1085,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             inline fn traceStyle() [:0]const u8 {
                 return "\x1b[38;5;247m";
             }
-            inline fn locationStyle() [:0]const u8 {
-                return "\x1b[2m";
+            inline fn hiRedStyle() [:0]const u8 {
+                return "\x1b[38;5;196m";
             }
             pub fn exchangeNotice(target: *Target, task: types.Task, old_state: types.State, new_state: types.State) void {
                 @setRuntimeSafety(false);
@@ -1258,8 +1259,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 @setRuntimeSafety(false);
                 var len: u64 = 0;
                 if (about.ptr == error_s) {
-                    @memcpy(buf + len, errorStyle().ptr, errorStyle().len);
-                    len = len +% errorStyle().len;
+                    @memcpy(buf + len, boldStyle().ptr, boldStyle().len);
+                    len = len +% boldStyle().len;
                 } else if (about.ptr == note_s) {
                     @memcpy(buf + len, noteStyle().ptr, noteStyle().len);
                     len = len +% noteStyle().len;
@@ -1268,8 +1269,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 len = len +% about.len;
                 @memcpy(buf + len, ": ", 2);
                 len = len +% 2;
-                @memcpy(buf + len, "\x1b[0;1m", 6);
-                return len +% 6;
+                @memcpy(buf + len, boldStyle().ptr, boldStyle().len);
+                return len +% boldStyle().len;
             }
             fn writeTopSrcLoc(buf: [*]u8, extra: [*]u32, bytes: [*:0]u8, err_msg_idx: u32) u64 {
                 @setRuntimeSafety(false);
@@ -1350,10 +1351,32 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 const before_caret: u64 = src.span_main -% src.span_start;
                 const indent: u64 = src.column -% before_caret;
                 const after_caret: u64 = src.span_end -% src.span_main -| 1;
-                @memcpy(buf, line.ptr, line.len);
-                var len: u64 = line.len;
-                buf[len] = '\n';
-                len = len +% 1;
+                var len: u64 = 0;
+                if (fancy_hl_line) {
+                    var pos: u64 = indent +% before_caret;
+                    @memcpy(buf, line.ptr, indent);
+                    len = len +% indent;
+                    @memcpy(buf + len, boldStyle().ptr, boldStyle().len);
+                    len = len +% boldStyle().len;
+                    @memcpy(buf + len, line[indent..pos].ptr, before_caret);
+                    len = len +% before_caret;
+                    @memcpy(buf + len, hiRedStyle().ptr, hiRedStyle().len);
+                    len = len +% hiRedStyle().len;
+                    buf[len] = line[pos];
+                    pos = pos +% 1;
+                    len = len +% 1;
+                    @memcpy(buf + len, boldStyle().ptr, boldStyle().len);
+                    len = len +% boldStyle().len;
+                    @memcpy(buf + len, line[pos .. pos + after_caret].ptr, after_caret);
+                    len = len +% after_caret;
+                    buf[len] = '\n';
+                    len = len +% 1;
+                } else {
+                    @memcpy(buf, line.ptr, line.len);
+                    len = line.len;
+                    buf[len] = '\n';
+                    len = len +% 1;
+                }
                 @memset(buf + len, ' ', indent);
                 len = len +% indent;
                 @memcpy(buf + len, tildeStyle().ptr, tildeStyle().len);
