@@ -1452,7 +1452,11 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
             const Format = @This();
             pub fn formatWrite(format: Format, array: anytype) void {
                 const int_format: fmt.Type.Ud64 = fmt.ud64(format.value);
-                array.writeMany(format.name);
+                if (spec.options.identifier_name) {
+                    array.writeFormat(fmt.IdentifierFormat{ .value = format.name });
+                } else {
+                    array.writeMany(format.name);
+                }
                 array.writeMany(spec.tokens.equal);
                 writeFormat(array, int_format);
                 array.writeMany(spec.tokens.next);
@@ -1461,7 +1465,11 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
             pub fn formatLength(format: Format) u64 {
                 const int_format: fmt.Type.Ud64 = fmt.ud64(format.value);
                 var len: u64 = 0;
-                len +%= format.name.len;
+                if (spec.options.identifier_name) {
+                    len +%= (fmt.IdentifierFormat{ .value = format.name }).formatLength();
+                } else {
+                    len +%= format.name.len;
+                }
                 len +%= spec.tokens.equal.len;
                 len +%= int_format.formatLength();
                 len +%= spec.tokens.next.len;
