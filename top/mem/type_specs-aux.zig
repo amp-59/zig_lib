@@ -671,17 +671,31 @@ fn writeSpecifications(
                 try meta.wrap(
                     writeSpecificationDeduction(allocator, array, abstract_spec, p_info, spec_set, tech_set, q_info, &indices),
                 );
-                indices.spec +%= 1;
+                indices.params +%= 1;
             }
         }
-        switch (kind) {
-            .automatic => gen.writeSourceFile(config.automatic_container_path, u8, array.readAll()),
-            .static => gen.writeSourceFile(config.static_container_path, u8, array.readAll()),
-            .dynamic => gen.writeSourceFile(config.dynamic_container_path, u8, array.readAll()),
-            .parametric => gen.writeSourceFile(config.parametric_container_path, u8, array.readAll()),
+        if (write_separate_source_files) {
+            switch (kind) {
+                .automatic => gen.writeSourceFile(config.automatic_container_path, u8, array.readAll()),
+                .static => gen.writeSourceFile(config.static_container_path, u8, array.readAll()),
+                .dynamic => gen.writeSourceFile(config.dynamic_container_path, u8, array.readAll()),
+                .parametric => gen.writeSourceFile(config.parametric_container_path, u8, array.readAll()),
+            }
+            array.undefineAll();
         }
-        array.undefineAll();
     }
+    if (!write_separate_source_files) {
+        gen.writeSourceFile(config.container_file_path, u8, array.readAll());
+    }
+    array.undefineAll();
+    var spec_idx: u16 = 0;
+    for (data.spec_sets) |spec_set| {
+        for (spec_set) |specs| {
+            writeSpecificationType(array, specs, spec_idx);
+            spec_idx +%= 1;
+        }
+    }
+    gen.writeSourceFile(config.reference_file_path, u8, array.readAll());
 }
 fn nonEqualIndices(name: []const u8, any: anytype) void {
     var array: mem.StaticString(4096) = undefined;
@@ -803,7 +817,6 @@ const data = blk: {
         .tech_sets = tech_sets,
     };
 };
-
 pub fn newNewTypeSpecs() !void {
     var address_space: AddressSpace = .{};
     var allocator: Allocator = try meta.wrap(Allocator.init(&address_space));
@@ -811,24 +824,22 @@ pub fn newNewTypeSpecs() !void {
     @setEvalBranchQuota(1500);
     var array: Array = undefined;
     array.undefineAll();
-
     try gen.readFile(&array, config.container_template_path);
-    gen.writeSourceFile(config.container_common_path, u8, array.readAll());
-    array.undefineAll();
-
+    if (write_separate_source_files) {
+        gen.writeSourceFile(config.container_common_path, u8, array.readAll());
+        array.undefineAll();
+    }
     try meta.wrap(writeSpecifications(&allocator, &array));
     var impl_details: ImplementationDetails = try meta.wrap(ImplementationDetails.init(&allocator, 0x400));
-
     var spec_idx: u16 = 0;
     var ctn_idx: u16 = 0;
     var impl_idx: u16 = 0;
-
     inline for (attr.ctn_groups) |abstract_specs| {
         inline for (abstract_specs) |abstract_spec| {
             for (data.spec_sets[spec_idx]) |specs| {
                 for (data.tech_sets[spec_idx]) |techs| {
                     impl_details.writeOne(types.Implementation.init(abstract_spec, specs, techs, .{
-                        .spec = spec_idx,
+                        .params = spec_idx,
                         .ctn = ctn_idx,
                         .impl = impl_idx,
                     }));
@@ -841,7 +852,6 @@ pub fn newNewTypeSpecs() !void {
     }
     gen.writeSourceFile(config.impl_detail_path, types.Implementation, impl_details.readAll());
     gen.writeSourceFile(config.ctn_detail_path, types.Container, attr.ctn_details);
-
     try validateAllSerial(&allocator, data.x_p_infos, data.x_q_infos, data.spec_sets, data.tech_sets, impl_details);
 }
 pub const main = newNewTypeSpecs;
