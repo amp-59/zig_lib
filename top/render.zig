@@ -1445,7 +1445,6 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
         var depth: u64 = spec.options.depth;
         pub const Reference = struct { spec: spec.options.token, type: *const TypeDescrFormat };
         pub const Enumeration = struct { spec: spec.options.token, fields: []const Decl };
-        pub const Conjunction = struct { spec: spec.options.token, fields: []const Member };
         pub const Composition = struct { spec: spec.options.token, fields: []const Field };
         pub const Decl = struct {
             name: spec.options.token,
@@ -1472,7 +1471,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
         };
         pub const Field = struct {
             name: spec.options.token,
-            type: TypeDescrFormat,
+            type: ?TypeDescrFormat = null,
             default_value: ?spec.options.token = null,
             const Format = @This();
             pub fn formatWrite(format: Format, array: anytype) void {
@@ -1481,8 +1480,10 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                 } else {
                     array.writeMany(format.name);
                 }
-                array.writeMany(spec.tokens.colon);
-                writeFormat(array, format.type);
+                if (format.type) |field_type| {
+                    array.writeMany(spec.tokens.colon);
+                    writeFormat(array, field_type);
+                }
                 if (format.default_value) |default_value| {
                     array.writeMany(spec.tokens.equal);
                     array.writeMany(default_value);
@@ -1497,8 +1498,10 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                 } else {
                     len +%= format.name.len;
                 }
-                len +%= spec.tokens.colon.len;
-                len +%= format.type.formatLength();
+                if (format.type) |field_type| {
+                    len +%= spec.tokens.colon.len;
+                    len +%= field_type.formatLength();
+                }
                 if (format.default_value) |default_value| {
                     len +%= spec.tokens.equal.len;
                     len +%= default_value.len;
@@ -1588,11 +1591,11 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                     len +%= type_refer.type.formatLength();
                 },
                 .type_decl => |type_decl| {
+                    if (spec.options.depth != 0 and
+                        spec.options.depth != depth)
+                        len +%= depth *% spec.tokens.indent.len;
                     switch (type_decl) {
                         .Composition => |struct_defn| {
-                            if (spec.options.depth != 0 and
-                                spec.options.depth == depth)
-                                len +%= depth *% spec.tokens.indent.len;
                             len +%= struct_defn.spec.len;
                             depth +%= 1;
                             len +%= spec.tokens.lbrace.len;
@@ -1605,9 +1608,6 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                             depth -%= 1;
                         },
                         .Enumeration => |enum_defn| {
-                            if (spec.options.depth != 0 and
-                                spec.options.depth == depth)
-                                len +%= depth *% spec.tokens.indent.len;
                             len +%= enum_defn.spec.len;
                             depth +%= 1;
                             len +%= spec.tokens.lbrace.len;
