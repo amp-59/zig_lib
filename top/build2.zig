@@ -44,7 +44,6 @@ pub const BuilderSpec = struct {
         analysis_ext: [:0]const u8 = ".json",
         docs_ext: [:0]const u8 = ".html",
         implib_ext: [:0]const u8 = ".lib",
-
         fn exeOutDir(comptime options: Options) [:0]const u8 {
             return options.zig_out_dir ++ options.exe_out_name ++ "/";
         }
@@ -273,6 +272,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             .options = spec.allocator.options.small_composed,
         });
         pub const Args = Allocator.StructuredVectorLowAlignedWithSentinel(u8, 0, 8);
+        pub const CompilerFn = fn (*Builder, *Target, *Allocator, types.Path) [:0]u8;
         pub const max_thread_count: u64 = builder_spec.options.max_thread_count;
         pub const max_arena_count: u64 = if (max_thread_count == 0) 4 else max_thread_count + 1;
         pub const stack_aligned_bytes: u64 = builder_spec.options.stack_aligned_bytes;
@@ -325,6 +325,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             root: [:0]const u8,
             lock: types.Lock,
             build_cmd: *types.BuildCommand,
+            format_cmd: *types.FormatCommand,
             deps: []Dependency = &.{},
             deps_len: u64 = 0,
             args: [][*:0]u8 = &.{},
@@ -789,7 +790,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 var allocator: Allocator = Allocator.init(address_space, arena_index);
                 if (switch (task) {
                     .build => meta.wrap(
-                        executeBuildCommand(builder, &allocator, target, depth),
+                        executeCompilerCommand(builder, &allocator, target, depth, buildWrite),
                     ) catch false,
                     .run => meta.wrap(
                         executeRunCommand(builder, &allocator, target, depth),
@@ -816,7 +817,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }, void) {
                 if (switch (task) {
                     .build => try meta.wrap(
-                        executeBuildCommand(builder, allocator, target, depth),
+                        executeCompilerCommand(builder, allocator, target, depth, buildWrite),
                     ),
                     .run => try meta.wrap(
                         executeRunCommand(builder, allocator, target, depth),
@@ -852,7 +853,30 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             len = len +% 1;
             return len;
         }
-        fn executeBuildCommand(builder: *Builder, allocator: *Allocator, target: *Target, depth: u64) sys.Call(.{
+        fn formatWrite(builder: *Builder, target: *Target, allocator: *Allocator, root_path: types.Path) [:0]u8 {
+            @setRuntimeSafety(false);
+            var ret: Args = Args.init(allocator, formatLength(builder, target, root_path));
+            ret.writeMany(builder.zig_exe);
+            ret.writeOne(0);
+            ret.writeMany("fmt");
+            ret.writeOne(0);
+            command_line.formatWrite(target.format_cmd, &ret);
+            ret.writeFormat(root_path);
+            ret.writeOne(0);
+            ret.writeOne(0);
+            ret.undefine(1);
+            return ret.referAllDefinedWithSentinel(0);
+        }
+        fn formatLength(builder: *Builder, target: *Target, root_path: types.Path) u64 {
+            if (builder_spec.options.max_command_line) |len| return len;
+            var len: u64 = builder.zig_exe.len +% 1;
+            len = len +% 4;
+            len = len +% command_line.formatLength(target.format_cmd);
+            len = len +% root_path.formatLength();
+            len = len +% 1;
+            return len;
+        }
+        fn executeCompilerCommand(builder: *Builder, allocator: *Allocator, target: *Target, depth: u64, cmd: *const CompilerFn) sys.Call(.{
             .throw = clock_spec.errors.throw ++
                 fork_spec.errors.throw ++ execve_spec.errors.throw ++ waitpid_spec.errors.throw,
             .abort = clock_spec.errors.abort ++
@@ -865,7 +889,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             const root_path: types.Path = target.rootSourcePath(builder);
             target.build_cmd.listen = .@"-";
             const args: [:0]u8 = try meta.wrap(
-                builder.buildWrite(target, allocator, root_path),
+                cmd(builder, target, allocator, root_path),
             );
             const ptrs: [][*:0]u8 = try meta.wrap(
                 makeArgPtrs(allocator, args),
