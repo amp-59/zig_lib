@@ -279,7 +279,7 @@ pub const Container = packed struct {
     }
 };
 pub const Implementation = packed struct {
-    spec: u16,
+    params: u16,
     ctn: u16,
     impl: u16,
     kind: Kind,
@@ -290,7 +290,7 @@ pub const Implementation = packed struct {
     specs: Specifiers,
     const Format = @This();
     pub const Indices = struct {
-        spec: u16 = 0,
+        params: u16 = 0,
         ctn: u16 = 0,
         impl: u16 = 0,
     };
@@ -298,10 +298,10 @@ pub const Implementation = packed struct {
         abstract_spec: AbstractSpecification,
         specs: []const Specifier,
         techs: []const Technique,
-        indices: anytype,
+        indices: Indices,
     ) Implementation {
         return .{
-            .spec = indices.spec,
+            .params = indices.params,
             .ctn = indices.ctn,
             .impl = indices.impl,
             .kind = abstract_spec.kind,
