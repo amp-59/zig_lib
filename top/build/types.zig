@@ -38,6 +38,7 @@ pub const Path = struct {
             buf[len] = '/';
             len = len +% 1;
             @memcpy(buf + len, relative.ptr, relative.len);
+            len = len +% relative.len;
         }
         return len;
     }
@@ -232,9 +233,6 @@ pub const Macro = struct {
         len +%= format.name.len;
         len +%= 1;
         switch (format.value) {
-            .constant => |constant| {
-                len +%= mem.reinterpret.lengthAny(u8, spec.reinterpret.print, constant);
-            },
             .string => |string| {
                 len +%= 1 +% string.len +% 1;
             },
