@@ -12,7 +12,6 @@ const tok = @import("./tok.zig");
 const attr = @import("./attr.zig");
 const types = @import("./types.zig");
 const config = @import("./config.zig");
-
 pub usingnamespace proc.start;
 
 pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
@@ -23,9 +22,8 @@ const Allocator = config.Allocator;
 const AddressSpace = Allocator.AddressSpace;
 const Array = mem.StaticString(1024 * 1024);
 const ImplementationDetails = Allocator.StructuredVector(types.Implementation);
-
 const validate_all_serial: bool = false;
-
+const write_separate_source_files: bool = false;
 pub fn limits(
     spec_sets: []const []const []const types.Specifier,
     tech_sets: []const []const []const types.Technique,
