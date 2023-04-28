@@ -1678,7 +1678,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                                 .value = field.value,
                             }};
                         }
-                        return .{ .type_decl = .{ .Enum = .{
+                        return .{ .type_decl = .{ .Enumeration = .{
                             .spec = builtin.fmt.typeDeclSpecifier(type_info),
                             .fields = type_decl,
                         } } };
