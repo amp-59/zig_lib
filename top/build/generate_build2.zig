@@ -16,6 +16,7 @@ pub const is_verbose: bool = false;
 pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
 pub const runtime_assertions: bool = false;
 const prefer_inline: bool = true;
+const prefer_primitive: bool = true;
 const write_fn_name: bool = false;
 const commit_write: bool = true;
 const build_root: [:0]const u8 = builtin.buildRoot();
@@ -1710,7 +1711,7 @@ fn srcArray(comptime count: usize, comptime pathname: [:0]const u8) !mem.StaticA
 }
 fn writeFile(allocator: Allocator, array: Array, pathname: [:0]const u8) !void {
     const build_fd: u64 = try file.create(.{ .options = .{ .exclusive = false } }, pathname, file.file_mode);
-    try file.write(.{}, build_fd, array.readAll(allocator));
+    try file.writeSlice(.{}, build_fd, array.readAll(allocator));
     try file.close(.{}, build_fd);
 }
 fn killIndent(src: []const u8) []const u8 {
@@ -1737,7 +1738,7 @@ pub fn main() !void {
 
     var st: file.Status = try file.pathStatus(.{}, tasks_template_path);
     var fd: u64 = try file.open(.{}, tasks_template_path);
-    array.define(try file.read(.{}, fd, array.referAllUndefined(allocator), st.size));
+    array.define(try file.read(.{}, fd, array.referAllUndefined(allocator).ptr, st.size));
     try file.close(.{}, fd);
 
     array.writeMany("pub const BuildCommand = struct {\n");
@@ -1752,7 +1753,7 @@ pub fn main() !void {
 
     st = try file.pathStatus(.{}, command_line_path);
     fd = try file.open(.{}, command_line_template_path);
-    array.define(try file.read(.{}, fd, array.referAllUndefined(allocator), st.size));
+    array.define(try file.read(.{}, fd, array.referAllUndefined(allocator).ptr, st.size));
     try file.close(.{}, fd);
 
     array.writeMany("pub fn buildLength(cmd: *const types.BuildCommand) u64 {\n");
