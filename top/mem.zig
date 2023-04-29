@@ -1594,7 +1594,7 @@ pub const SimpleAllocator = struct {
     const zero: u64 = 0;
 
     inline fn map(old_finish: u64, new_finish: u64) u64 {
-        sys.call(.mmap, .{}, void, .{ old_finish, new_finish - old_finish, flags, prot, ~zero, zero });
+        sys.call(.mmap, .{}, void, .{ old_finish, new_finish -% old_finish, flags, prot, ~zero, zero });
         return new_finish;
     }
     inline fn alignAbove(value: u64, alignment: u64) u64 {
