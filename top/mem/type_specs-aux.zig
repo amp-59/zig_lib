@@ -13,11 +13,8 @@ const attr = @import("./attr.zig");
 const types = @import("./types.zig");
 const config = @import("./config.zig");
 pub usingnamespace proc.start;
-
 pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
-
 pub const runtime_assertions: bool = false;
-
 const Allocator = config.Allocator;
 const AddressSpace = Allocator.AddressSpace;
 const Array = mem.StaticString(1024 * 1024);
