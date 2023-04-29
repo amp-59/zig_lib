@@ -90,8 +90,11 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     const mg_container_kinds: *Builder.Target = try mg.addTarget(allocator, exe_default,    "mg_container_kinds",   "top/mem/container_kinds-aux.zig");
     const mg_allocator_kinds: *Builder.Target = try mg.addTarget(allocator, exe_default,    "mg_allocator_kinds",   "top/mem/allocator_kinds-aux.zig");
     const bg: *Builder.Group =                  try builder.addGroup(allocator,             "buildgen");
+
     const generate_build: *Builder.Target =     try bg.addTarget(allocator, exe_default,    "generate_build",       "top/build/generate_build2.zig");
-    const generate_build2: *Builder.Target =    try bg.addTarget(allocator, exe_default,    "generate_build2",      "top/build/generate_build3.zig");
+
+    const bg_tasks: *Builder.Target =           try bg.addTarget(allocator, exe_default,    "bg_tasks",             "top/build/bg-tasks-aux.zig");
+    const bg_cmdline: *Builder.Target =         try bg.addTarget(allocator, exe_default,    "bg_cmdline",           "top/build/bg-cmdline-aux.zig");
     // Descriptions:
     builtin_test.descr =        "Test builtin functions";
     meta_test.descr =           "Test meta functions";
@@ -136,7 +139,8 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     mg_reference_impls.descr =  "Generate reference implementations";
     mg_container_impls.descr =  "Generate container implementations";
     generate_build.descr =      "Generate builder command line implementation";
-    generate_build2.descr =     "Generate primitive builder command line implementation";
+    bg_tasks.descr =            "Generate builder command data structures";
+    bg_cmdline.descr =          "Generate builder command line writer functions";
     // Dependencies:
     mg_type_specs.dependOnRun(allocator,        mg_touch);
     mg_type_specs.dependOnObject(allocator,     mg_options);
