@@ -27,42 +27,42 @@ pub const BuildCommand = struct {
     } = null,
     /// (default=yes) Output machine code
     emit_bin: ?union(enum) {
-        yes: types.Path,
+        yes: ?types.Path,
         no,
     } = null,
     /// (default=no) Output assembly code (.s)
     emit_asm: ?union(enum) {
-        yes: types.Path,
+        yes: ?types.Path,
         no,
     } = null,
     /// (default=no) Output optimized LLVM IR (.ll)
     emit_llvm_ir: ?union(enum) {
-        yes: types.Path,
+        yes: ?types.Path,
         no,
     } = null,
     /// (default=no) Output optimized LLVM BC (.bc)
     emit_llvm_bc: ?union(enum) {
-        yes: types.Path,
+        yes: ?types.Path,
         no,
     } = null,
     /// (default=no) Output a C header file (.h)
     emit_h: ?union(enum) {
-        yes: types.Path,
+        yes: ?types.Path,
         no,
     } = null,
     /// (default=no) Output documentation (.html)
     emit_docs: ?union(enum) {
-        yes: types.Path,
+        yes: ?types.Path,
         no,
     } = null,
     /// (default=no) Output analysis (.json)
     emit_analysis: ?union(enum) {
-        yes: types.Path,
+        yes: ?types.Path,
         no,
     } = null,
     /// (default=yes) Output an import when building a Windows DLL (.lib)
     emit_implib: ?union(enum) {
-        yes: types.Path,
+        yes: ?types.Path,
         no,
     } = null,
     /// Override the local cache directory
