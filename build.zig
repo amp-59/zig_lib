@@ -92,9 +92,8 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     const bg: *Builder.Group =                  try builder.addGroup(allocator,             "buildgen");
 
     const generate_build: *Builder.Target =     try bg.addTarget(allocator, exe_default,    "generate_build",       "top/build/generate_build2.zig");
-
-    const bg_tasks: *Builder.Target =           try bg.addTarget(allocator, exe_default,    "bg_tasks",             "top/build/bg-tasks-aux.zig");
-    const bg_cmdline: *Builder.Target =         try bg.addTarget(allocator, exe_default,    "bg_cmdline",           "top/build/bg-cmdline-aux.zig");
+    const bg_tasks: *Builder.Target =           try bg.addTarget(allocator, exe_default,    "bg_tasks",             "top/build/tasks-aux.zig");
+    const bg_command_line: *Builder.Target =    try bg.addTarget(allocator, exe_default,    "bg_command_line",      "top/build/command_line-aux.zig");
     // Descriptions:
     builtin_test.descr =        "Test builtin functions";
     meta_test.descr =           "Test meta functions";
