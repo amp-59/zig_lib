@@ -52,7 +52,8 @@ pub const Path = struct {
             len +%= 1;
             len +%= relative.len;
         }
-        return len +% 1;
+        //return len +% 1;
+        return len;
     }
 };
 pub const Module = struct {
