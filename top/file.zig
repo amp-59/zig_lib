@@ -1777,7 +1777,7 @@ const debug = opaque {
         const fds_len_s: []const u8 = builtin.fmt.ud64(pollfds.len).readAll();
         const timeout_s: []const u8 = builtin.fmt.ud64(timeout).readAll();
         var buf: [32768]u8 = undefined;
-        var len: u64 = builtin.debug.writeMulti(&buf, &.{
+        var len: u64 = builtin.debug.writeMulti(&buf, &[_][]const u8{
             about_poll_0_s, "fds=",
             fds_len_s,      ", t=",
             timeout_s,      "ms\n",
@@ -2074,7 +2074,7 @@ const debug = opaque {
     }
     pub fn executeErrorBrief(exec_error: anytype, filename: [:0]const u8) void {
         var buf: [4096 +% 128]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, [_][]const u8{ about_execve_1_s, "(", @errorName(exec_error), ") ", filename });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_execve_1_s, "(", @errorName(exec_error), ") ", filename });
     }
     pub fn executeError(exec_error: anytype, filename: [:0]const u8, args: []const [*:0]const u8) void {
         @setRuntimeSafety(false);
@@ -2088,9 +2088,9 @@ const debug = opaque {
         len +%= about_execve_1_s.len;
         @memcpy(buf[len..].ptr, "(", 1);
         len +%= 1;
-        @memcpy(buf[len..], error_name.ptr, error_name.len);
+        @memcpy(buf[len..].ptr, error_name.ptr, error_name.len);
         len +%= error_name.len;
-        @memcpy(buf[len..], ")", 1);
+        @memcpy(buf[len..].ptr, ")", 1);
         len +%= 1;
         @memcpy(buf[len..].ptr, filename.ptr, filename.len);
         len +%= filename.len;
