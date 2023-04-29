@@ -29,16 +29,21 @@ pub fn buildWrite(cmd: *const tasks.BuildCommand, buf: [*]u8) u64 {
         @memcpy(buf + len, "--color\x00", 8);
         len = len +% 8;
         @memcpy(buf + len, @tagName(color).ptr, @tagName(color).len);
-        len = len +% 6;
+        len = len +% @tagName(color).len;
         buf[len] = 0;
         len = len +% 1;
     }
     if (cmd.emit_bin) |emit_bin| {
         switch (emit_bin) {
             .yes => |yes_arg| {
-                @memcpy(buf + len, "-femit-bin\x00", 11);
-                len = len +% 11;
-                len = len +% yes_arg.formatWriteBuf(buf + len);
+                if (yes_arg) |yes_optional_arg| {
+                    @memcpy(buf + len, "-femit-bin=", 11);
+                    len = len +% 11;
+                    len = len +% yes_optional_arg.formatWriteBuf(buf + len);
+                } else {
+                    @memcpy(buf + len, "-femit-bin\x00", 11);
+                    len = len +% 11;
+                }
             },
             .no => {
                 @memcpy(buf + len, "-fno-emit-bin\x00", 14);
@@ -49,9 +54,14 @@ pub fn buildWrite(cmd: *const tasks.BuildCommand, buf: [*]u8) u64 {
     if (cmd.emit_asm) |emit_asm| {
         switch (emit_asm) {
             .yes => |yes_arg| {
-                @memcpy(buf + len, "-femit-asm\x00", 11);
-                len = len +% 11;
-                len = len +% yes_arg.formatWriteBuf(buf + len);
+                if (yes_arg) |yes_optional_arg| {
+                    @memcpy(buf + len, "-femit-asm=", 11);
+                    len = len +% 11;
+                    len = len +% yes_optional_arg.formatWriteBuf(buf + len);
+                } else {
+                    @memcpy(buf + len, "-femit-asm\x00", 11);
+                    len = len +% 11;
+                }
             },
             .no => {
                 @memcpy(buf + len, "-fno-emit-asm\x00", 14);
@@ -62,9 +72,14 @@ pub fn buildWrite(cmd: *const tasks.BuildCommand, buf: [*]u8) u64 {
     if (cmd.emit_llvm_ir) |emit_llvm_ir| {
         switch (emit_llvm_ir) {
             .yes => |yes_arg| {
-                @memcpy(buf + len, "-femit-llvm-ir\x00", 15);
-                len = len +% 15;
-                len = len +% yes_arg.formatWriteBuf(buf + len);
+                if (yes_arg) |yes_optional_arg| {
+                    @memcpy(buf + len, "-femit-llvm-ir=", 15);
+                    len = len +% 15;
+                    len = len +% yes_optional_arg.formatWriteBuf(buf + len);
+                } else {
+                    @memcpy(buf + len, "-femit-llvm-ir\x00", 15);
+                    len = len +% 15;
+                }
             },
             .no => {
                 @memcpy(buf + len, "-fno-emit-llvm-ir\x00", 18);
@@ -75,9 +90,14 @@ pub fn buildWrite(cmd: *const tasks.BuildCommand, buf: [*]u8) u64 {
     if (cmd.emit_llvm_bc) |emit_llvm_bc| {
         switch (emit_llvm_bc) {
             .yes => |yes_arg| {
-                @memcpy(buf + len, "-femit-llvm-bc\x00", 15);
-                len = len +% 15;
-                len = len +% yes_arg.formatWriteBuf(buf + len);
+                if (yes_arg) |yes_optional_arg| {
+                    @memcpy(buf + len, "-femit-llvm-bc=", 15);
+                    len = len +% 15;
+                    len = len +% yes_optional_arg.formatWriteBuf(buf + len);
+                } else {
+                    @memcpy(buf + len, "-femit-llvm-bc\x00", 15);
+                    len = len +% 15;
+                }
             },
             .no => {
                 @memcpy(buf + len, "-fno-emit-llvm-bc\x00", 18);
@@ -88,9 +108,14 @@ pub fn buildWrite(cmd: *const tasks.BuildCommand, buf: [*]u8) u64 {
     if (cmd.emit_h) |emit_h| {
         switch (emit_h) {
             .yes => |yes_arg| {
-                @memcpy(buf + len, "-femit-h\x00", 9);
-                len = len +% 9;
-                len = len +% yes_arg.formatWriteBuf(buf + len);
+                if (yes_arg) |yes_optional_arg| {
+                    @memcpy(buf + len, "-femit-h=", 9);
+                    len = len +% 9;
+                    len = len +% yes_optional_arg.formatWriteBuf(buf + len);
+                } else {
+                    @memcpy(buf + len, "-femit-h\x00", 9);
+                    len = len +% 9;
+                }
             },
             .no => {
                 @memcpy(buf + len, "-fno-emit-h\x00", 12);
@@ -101,9 +126,14 @@ pub fn buildWrite(cmd: *const tasks.BuildCommand, buf: [*]u8) u64 {
     if (cmd.emit_docs) |emit_docs| {
         switch (emit_docs) {
             .yes => |yes_arg| {
-                @memcpy(buf + len, "-femit-docs\x00", 12);
-                len = len +% 12;
-                len = len +% yes_arg.formatWriteBuf(buf + len);
+                if (yes_arg) |yes_optional_arg| {
+                    @memcpy(buf + len, "-femit-docs=", 12);
+                    len = len +% 12;
+                    len = len +% yes_optional_arg.formatWriteBuf(buf + len);
+                } else {
+                    @memcpy(buf + len, "-femit-docs\x00", 12);
+                    len = len +% 12;
+                }
             },
             .no => {
                 @memcpy(buf + len, "-fno-emit-docs\x00", 15);
@@ -114,9 +144,14 @@ pub fn buildWrite(cmd: *const tasks.BuildCommand, buf: [*]u8) u64 {
     if (cmd.emit_analysis) |emit_analysis| {
         switch (emit_analysis) {
             .yes => |yes_arg| {
-                @memcpy(buf + len, "-femit-analysis\x00", 16);
-                len = len +% 16;
-                len = len +% yes_arg.formatWriteBuf(buf + len);
+                if (yes_arg) |yes_optional_arg| {
+                    @memcpy(buf + len, "-femit-analysis=", 16);
+                    len = len +% 16;
+                    len = len +% yes_optional_arg.formatWriteBuf(buf + len);
+                } else {
+                    @memcpy(buf + len, "-femit-analysis\x00", 16);
+                    len = len +% 16;
+                }
             },
             .no => {
                 @memcpy(buf + len, "-fno-emit-analysis\x00", 19);
@@ -127,9 +162,14 @@ pub fn buildWrite(cmd: *const tasks.BuildCommand, buf: [*]u8) u64 {
     if (cmd.emit_implib) |emit_implib| {
         switch (emit_implib) {
             .yes => |yes_arg| {
-                @memcpy(buf + len, "-femit-implib\x00", 14);
-                len = len +% 14;
-                len = len +% yes_arg.formatWriteBuf(buf + len);
+                if (yes_arg) |yes_optional_arg| {
+                    @memcpy(buf + len, "-femit-implib=", 14);
+                    len = len +% 14;
+                    len = len +% yes_optional_arg.formatWriteBuf(buf + len);
+                } else {
+                    @memcpy(buf + len, "-femit-implib\x00", 14);
+                    len = len +% 14;
+                }
             },
             .no => {
                 @memcpy(buf + len, "-fno-emit-implib\x00", 17);
@@ -165,7 +205,7 @@ pub fn buildWrite(cmd: *const tasks.BuildCommand, buf: [*]u8) u64 {
         @memcpy(buf + len, "--listen\x00", 9);
         len = len +% 9;
         @memcpy(buf + len, @tagName(listen).ptr, @tagName(listen).len);
-        len = len +% 7;
+        len = len +% @tagName(listen).len;
         buf[len] = 0;
         len = len +% 1;
     }
@@ -189,7 +229,7 @@ pub fn buildWrite(cmd: *const tasks.BuildCommand, buf: [*]u8) u64 {
         @memcpy(buf + len, "-mcmodel\x00", 9);
         len = len +% 9;
         @memcpy(buf + len, @tagName(code_model).ptr, @tagName(code_model).len);
-        len = len +% 11;
+        len = len +% @tagName(code_model).len;
         buf[len] = 0;
         len = len +% 1;
     }
@@ -247,7 +287,7 @@ pub fn buildWrite(cmd: *const tasks.BuildCommand, buf: [*]u8) u64 {
         @memcpy(buf + len, "-O\x00", 3);
         len = len +% 3;
         @memcpy(buf + len, @tagName(mode).ptr, @tagName(mode).len);
-        len = len +% 5;
+        len = len +% @tagName(mode).len;
         buf[len] = 0;
         len = len +% 1;
     }
@@ -416,7 +456,7 @@ pub fn buildWrite(cmd: *const tasks.BuildCommand, buf: [*]u8) u64 {
         @memcpy(buf + len, "-ofmt\x00", 6);
         len = len +% 6;
         @memcpy(buf + len, @tagName(fmt).ptr, @tagName(fmt).len);
-        len = len +% 4;
+        len = len +% @tagName(fmt).len;
         buf[len] = 0;
         len = len +% 1;
     }
@@ -573,7 +613,7 @@ pub fn buildWrite(cmd: *const tasks.BuildCommand, buf: [*]u8) u64 {
         @memcpy(buf + len, "--compress-debug-sections\x00", 26);
         len = len +% 26;
         @memcpy(buf + len, @tagName(compress_debug_sections).ptr, @tagName(compress_debug_sections).len);
-        len = len +% 24;
+        len = len +% @tagName(compress_debug_sections).len;
         buf[len] = 0;
         len = len +% 1;
     }
@@ -640,7 +680,7 @@ pub fn buildWrite(cmd: *const tasks.BuildCommand, buf: [*]u8) u64 {
         @memcpy(buf + len, "-z\x00", 3);
         len = len +% 3;
         @memcpy(buf + len, @tagName(z).ptr, @tagName(z).len);
-        len = len +% 2;
+        len = len +% @tagName(z).len;
         buf[len] = 0;
         len = len +% 1;
     }
@@ -659,8 +699,12 @@ pub fn buildLength(cmd: *const tasks.BuildCommand) u64 {
     if (cmd.emit_bin) |emit_bin| {
         switch (emit_bin) {
             .yes => |yes_arg| {
-                len = len +% 11;
-                len = len +% yes_arg.formatLength();
+                if (yes_arg) |yes_optional_arg| {
+                    len = len +% 11;
+                    len = len +% yes_optional_arg.formatLength();
+                } else {
+                    len = len +% 11;
+                }
             },
             .no => {
                 len = len +% 14;
@@ -670,8 +714,12 @@ pub fn buildLength(cmd: *const tasks.BuildCommand) u64 {
     if (cmd.emit_asm) |emit_asm| {
         switch (emit_asm) {
             .yes => |yes_arg| {
-                len = len +% 11;
-                len = len +% yes_arg.formatLength();
+                if (yes_arg) |yes_optional_arg| {
+                    len = len +% 11;
+                    len = len +% yes_optional_arg.formatLength();
+                } else {
+                    len = len +% 11;
+                }
             },
             .no => {
                 len = len +% 14;
@@ -681,8 +729,12 @@ pub fn buildLength(cmd: *const tasks.BuildCommand) u64 {
     if (cmd.emit_llvm_ir) |emit_llvm_ir| {
         switch (emit_llvm_ir) {
             .yes => |yes_arg| {
-                len = len +% 15;
-                len = len +% yes_arg.formatLength();
+                if (yes_arg) |yes_optional_arg| {
+                    len = len +% 15;
+                    len = len +% yes_optional_arg.formatLength();
+                } else {
+                    len = len +% 15;
+                }
             },
             .no => {
                 len = len +% 18;
@@ -692,8 +744,12 @@ pub fn buildLength(cmd: *const tasks.BuildCommand) u64 {
     if (cmd.emit_llvm_bc) |emit_llvm_bc| {
         switch (emit_llvm_bc) {
             .yes => |yes_arg| {
-                len = len +% 15;
-                len = len +% yes_arg.formatLength();
+                if (yes_arg) |yes_optional_arg| {
+                    len = len +% 15;
+                    len = len +% yes_optional_arg.formatLength();
+                } else {
+                    len = len +% 15;
+                }
             },
             .no => {
                 len = len +% 18;
@@ -703,8 +759,12 @@ pub fn buildLength(cmd: *const tasks.BuildCommand) u64 {
     if (cmd.emit_h) |emit_h| {
         switch (emit_h) {
             .yes => |yes_arg| {
-                len = len +% 9;
-                len = len +% yes_arg.formatLength();
+                if (yes_arg) |yes_optional_arg| {
+                    len = len +% 9;
+                    len = len +% yes_optional_arg.formatLength();
+                } else {
+                    len = len +% 9;
+                }
             },
             .no => {
                 len = len +% 12;
@@ -714,8 +774,12 @@ pub fn buildLength(cmd: *const tasks.BuildCommand) u64 {
     if (cmd.emit_docs) |emit_docs| {
         switch (emit_docs) {
             .yes => |yes_arg| {
-                len = len +% 12;
-                len = len +% yes_arg.formatLength();
+                if (yes_arg) |yes_optional_arg| {
+                    len = len +% 12;
+                    len = len +% yes_optional_arg.formatLength();
+                } else {
+                    len = len +% 12;
+                }
             },
             .no => {
                 len = len +% 15;
@@ -725,8 +789,12 @@ pub fn buildLength(cmd: *const tasks.BuildCommand) u64 {
     if (cmd.emit_analysis) |emit_analysis| {
         switch (emit_analysis) {
             .yes => |yes_arg| {
-                len = len +% 16;
-                len = len +% yes_arg.formatLength();
+                if (yes_arg) |yes_optional_arg| {
+                    len = len +% 16;
+                    len = len +% yes_optional_arg.formatLength();
+                } else {
+                    len = len +% 16;
+                }
             },
             .no => {
                 len = len +% 19;
@@ -736,8 +804,12 @@ pub fn buildLength(cmd: *const tasks.BuildCommand) u64 {
     if (cmd.emit_implib) |emit_implib| {
         switch (emit_implib) {
             .yes => |yes_arg| {
-                len = len +% 14;
-                len = len +% yes_arg.formatLength();
+                if (yes_arg) |yes_optional_arg| {
+                    len = len +% 14;
+                    len = len +% yes_optional_arg.formatLength();
+                } else {
+                    len = len +% 14;
+                }
             },
             .no => {
                 len = len +% 17;
@@ -1137,7 +1209,7 @@ pub fn formatWrite(cmd: *const tasks.FormatCommand, buf: [*]u8) u64 {
         @memcpy(buf + len, "--color\x00", 8);
         len = len +% 8;
         @memcpy(buf + len, @tagName(color).ptr, @tagName(color).len);
-        len = len +% 6;
+        len = len +% @tagName(color).len;
         buf[len] = 0;
         len = len +% 1;
     }
