@@ -1,4 +1,5 @@
 const mem = @import("../mem.zig");
+const fmt = @import("../fmt.zig");
 const mach = @import("../mach.zig");
 const meta = @import("../meta.zig");
 const spec = @import("../spec.zig");
@@ -30,6 +31,7 @@ pub const Path = struct {
             array.writeOne('/');
             array.writeMany(relative);
         }
+        // array.writeOne(0);
     }
     pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
         var len: u64 = format.absolute.len;
@@ -40,7 +42,8 @@ pub const Path = struct {
             @memcpy(buf + len, relative.ptr, relative.len);
             len = len +% relative.len;
         }
-        return len;
+        buf[len] = 0;
+        return len +% 1;
     }
     pub fn formatLength(format: Format) u64 {
         var len: u64 = 0;
@@ -49,7 +52,7 @@ pub const Path = struct {
             len +%= 1;
             len +%= relative.len;
         }
-        return len;
+        return len +% 1;
     }
 };
 pub const Module = struct {
@@ -79,6 +82,7 @@ pub const Module = struct {
         @memcpy(buf + len, mod.name.ptr, mod.name.len);
         len = len +% mod.name.len;
         buf[len] = ':';
+        len +%= 1;
         if (mod.deps) |deps| {
             for (deps) |dep_name| {
                 @memcpy(buf + len, dep_name.ptr, dep_name.len);
@@ -137,8 +141,8 @@ pub const ModuleDependencies = struct {
         array.overwriteOneBack(0);
     }
     pub fn formatWriteBuf(mod_deps: ModuleDependencies, buf: [*]u8) u64 {
-        var len: u64 = 6;
-        @memcpy(buf, "--deps\x00", 6);
+        var len: u64 = 7;
+        @memcpy(buf, "--deps\x00", 7);
         for (mod_deps.value) |mod_dep| {
             if (mod_dep.import) |name| {
                 @memcpy(buf + len, name.ptr, name.len);
@@ -431,4 +435,111 @@ pub const ReferenceTrace = struct {
         end: u64,
     };
     pub const len: u64 = 2;
+};
+
+pub const Variant = enum(u1) {
+    length,
+    write,
+};
+pub const ProtoTypeDescr = fmt.GenericTypeDescrFormat(.{
+    .options = .{
+        .default_field_values = true,
+        .identifier_name = true,
+    },
+    .tokens = .{
+        .lbrace = "{\n",
+        .equal = "=",
+        .rbrace = "}",
+        .next = ",\n",
+        .colon = ":",
+        .indent = "",
+    },
+});
+pub const ArgInfo = struct {
+    /// Describes how the argument should be written to the command line buffer
+    tag: Tag,
+    /// Describes how the field type should be written to the command struct
+    type: ProtoTypeDescr,
+
+    const Tag = enum(u8) {
+        boolean = 0,
+        string = 1,
+        tag = 2,
+        integer = 3,
+        formatter = 4,
+        mapped = 5,
+        optional_boolean = 8,
+        optional_string = 9,
+        optional_tag = 10,
+        optional_integer = 11,
+        optional_formatter = 12,
+        optional_mapped = 13,
+    };
+    fn optionalTypeDescr(any: anytype) ProtoTypeDescr {
+        if (@TypeOf(any) == type) {
+            return optional(&ProtoTypeDescr.init(any));
+        } else {
+            return optional(&.{ .type_name = any });
+        }
+    }
+    pub fn boolean() ArgInfo {
+        return .{ .tag = .boolean, .type = ProtoTypeDescr.init(bool) };
+    }
+    pub fn string(comptime T: type) ArgInfo {
+        return .{ .tag = .string, .type = ProtoTypeDescr.init(T) };
+    }
+    pub fn tag(comptime T: type) ArgInfo {
+        return .{ .tag = .tag, .type = ProtoTypeDescr.init(T) };
+    }
+    pub fn integer(comptime T: type) ArgInfo {
+        return .{ .tag = .integer, .type = ProtoTypeDescr.init(T) };
+    }
+    pub fn formatter(comptime type_name: [:0]const u8) ArgInfo {
+        return .{ .tag = .formatter, .type = .{ .type_name = type_name } };
+    }
+    pub fn mapped(comptime type_name: [:0]const u8) ArgInfo {
+        return .{ .tag = .mapped, .type = .{ .type_name = type_name } };
+    }
+    pub fn optional(@"type": *const ProtoTypeDescr) ProtoTypeDescr {
+        return .{ .type_refer = .{ .spec = "?", .type = @"type" } };
+    }
+    pub fn optional_boolean() ArgInfo {
+        return .{ .tag = .optional_boolean, .type = optionalTypeDescr(bool) };
+    }
+    pub fn optional_string(comptime any: anytype) ArgInfo {
+        return .{ .tag = .optional_string, .type = optionalTypeDescr(any) };
+    }
+    pub fn optional_tag(comptime any: anytype) ArgInfo {
+        return .{ .tag = .optional_tag, .type = optionalTypeDescr(any) };
+    }
+    pub fn optional_integer(comptime any: anytype) ArgInfo {
+        return .{ .tag = .optional_integer, .type = optionalTypeDescr(any) };
+    }
+    pub fn optional_formatter(comptime any: anytype) ArgInfo {
+        return .{ .tag = .optional_formatter, .type = optionalTypeDescr(any) };
+    }
+    pub fn optional_mapped(comptime any: anytype) ArgInfo {
+        return .{ .tag = .optional_mapped, .type = optionalTypeDescr(any) };
+    }
+};
+pub const OptionSpec = struct {
+    /// Command struct field name
+    name: []const u8,
+    /// Command line flag/switch
+    string: ?[]const u8 = null,
+    /// Simple argument type
+    arg_info: ArgInfo = ArgInfo.boolean(),
+    /// For options with -f<name> and -fno-<name> variants
+    and_no: ?InverseOptionSpec = null,
+    /// Maybe define default value of this field. Should be false or null, but
+    /// allow the exception.
+    default_value: ?[]const u8 = null,
+    /// Description to be inserted above the field as documentation comment
+    descr: ?[]const []const u8 = null,
+};
+pub const InverseOptionSpec = struct {
+    /// Command line flag/switch
+    string: ?[]const u8 = null,
+    /// Simple argument type
+    arg_info: ArgInfo = ArgInfo.boolean(),
 };
