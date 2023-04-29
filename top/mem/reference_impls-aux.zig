@@ -15,14 +15,11 @@ const attr = @import("./attr.zig");
 const types = @import("./types.zig");
 const config = @import("./config.zig");
 const impl_fn = @import("./impl_fn.zig");
-
 pub usingnamespace proc.start;
-
 pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
-
+const write_separate_source_files: bool = false;
 const Allocator = config.Allocator;
 const AddressSpace = Allocator.AddressSpace;
-
 const Array = Allocator.StructuredVector(u8);
 const Fn = impl_fn.Fn;
 const Expr = expr.Expr;
@@ -93,7 +90,6 @@ fn resizeInitializer(allocator: *Allocator, impl_variant: *const types.Implement
         buf[len] = expr.join(init_up_word);
         len +%= 1;
     }
-
     return dupe(allocator, expr.initializer(expr.list(buf[0..len])));
 }
 fn constructInitializer(allocator: *Allocator, impl_variant: *const types.Implementation, impl_fn_info: Fn) *[3]Expr {
@@ -291,7 +287,7 @@ fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: 
         impl_variant.kind == .automatic or
         impl_variant.techs.unit_alignment;
     var sub_1: [3]Expr = expr.sub(
-        expr.symbol(tok.low_alignment_specifier_name),
+        expr.symbol(tok.low_alignment_impl_specifier_name),
         expr.constant(1),
     );
     var shl_65535_48: [3]Expr = expr.shl(
@@ -303,18 +299,17 @@ fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: 
         expr.constant(16),
     );
     var pointer_opaque_call_sentinel: [3]Expr = expr.pointerOpaque(
-        expr.symbol(tok.child_specifier_name),
-        expr.symbol(tok.sentinel_specifier_name),
+        expr.symbol(tok.child_impl_specifier_name),
+        expr.symbol(tok.sentinel_impl_specifier_name),
     );
     var pointer_one_call_undefined: [3]Expr = expr.pointerOne(
-        expr.symbol(tok.child_specifier_name),
+        expr.symbol(tok.child_impl_specifier_name),
         undefined_byte_address_call,
     );
     var pointer_opaque_call_sentinel_deref_stx: [2]Expr =
         expr.dereference(expr.call(&pointer_opaque_call_sentinel));
     var pointer_one_call_undefined_deref_stx: [2]Expr =
         expr.dereference(expr.call(&pointer_one_call_undefined));
-
     switch (impl_fn_info) {
         .allocated_byte_address => {
             array.writeMany(tok.return_keyword);
@@ -392,7 +387,7 @@ fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: 
                 if (impl_variant.techs.lazy_alignment) {
                     var aligna_unallocated_low_alignment: [3]Expr = expr.alignA(
                         expr.symbol(tok.slave_specifier_call_unallocated_byte_address),
-                        expr.symbol(tok.low_alignment_specifier_name),
+                        expr.symbol(tok.low_alignment_impl_specifier_name),
                     );
                     array.writeFormat(expr.call(&aligna_unallocated_low_alignment));
                     return array.writeMany(tok.end_expr);
@@ -402,7 +397,7 @@ fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: 
             if (impl_variant.techs.lazy_alignment) {
                 var aligna_allocated_low_alignment: [3]Expr = expr.alignA(
                     allocated_byte_address_call,
-                    expr.symbol(tok.low_alignment_specifier_name),
+                    expr.symbol(tok.low_alignment_impl_specifier_name),
                 );
                 array.writeFormat(expr.call(&aligna_allocated_low_alignment));
                 return array.writeMany(tok.end_expr);
@@ -466,7 +461,7 @@ fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: 
                 if (impl_variant.specs.sentinel) {
                     var sub_unallocated_high_alignment: [3]Expr = expr.sub(
                         unallocated_byte_address_call,
-                        expr.symbol(tok.high_alignment_specifier_name),
+                        expr.symbol(tok.high_alignment_impl_specifier_name),
                     );
                     array.writeFormat(expr.call(&sub_unallocated_high_alignment));
                     return array.writeMany(tok.end_expr);
@@ -477,7 +472,7 @@ fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: 
                 if (impl_variant.specs.sentinel) {
                     var sub_unallocated_high_alignment: [3]Expr = expr.sub(
                         expr.symbol(tok.unallocated_byte_address_word_access),
-                        expr.symbol(tok.high_alignment_specifier_name),
+                        expr.symbol(tok.high_alignment_impl_specifier_name),
                     );
                     array.writeFormat(expr.call(&sub_unallocated_high_alignment));
                     return array.writeMany(tok.end_expr);
@@ -546,7 +541,7 @@ fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: 
             if (impl_variant.specs.sentinel) {
                 var add_aligned_count_high_alignment: [3]Expr = expr.add(
                     aligned_byte_count_call,
-                    expr.symbol(tok.high_alignment_specifier_name),
+                    expr.symbol(tok.high_alignment_impl_specifier_name),
                 );
                 array.writeFormat(expr.call(&add_aligned_count_high_alignment));
                 return array.writeMany(tok.end_expr);
@@ -565,7 +560,7 @@ fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: 
             }
             if (has_static_maximum_length) {
                 var mul_count_sizeof: [3]Expr = expr.mul(
-                    expr.symbol(tok.count_specifier_name),
+                    expr.symbol(tok.count_impl_specifier_name),
                     expr.symbol(tok.call_sizeof_child_specifier),
                 );
                 array.writeFormat(expr.call(&mul_count_sizeof));
@@ -576,18 +571,18 @@ fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: 
                 if (impl_variant.specs.sentinel) {
                     var alignb_unpck1x_high_alignment: [3]Expr = expr.alignB(
                         expr.call(&unpck1x),
-                        expr.symbol(tok.high_alignment_specifier_name),
+                        expr.symbol(tok.high_alignment_impl_specifier_name),
                     );
                     var sub_alignb_high_alignment: [3]Expr = expr.sub(
                         expr.call(&alignb_unpck1x_high_alignment),
-                        expr.symbol(tok.high_alignment_specifier_name),
+                        expr.symbol(tok.high_alignment_impl_specifier_name),
                     );
                     array.writeFormat(expr.call(&sub_alignb_high_alignment));
                     return array.writeMany(tok.end_expr);
                 } else {
                     var alignb_unpck1x_high_alignment: [3]Expr = expr.alignB(
                         expr.call(&unpck1x),
-                        expr.symbol(tok.high_alignment_specifier_name),
+                        expr.symbol(tok.high_alignment_impl_specifier_name),
                     );
                     array.writeFormat(expr.call(&alignb_unpck1x_high_alignment));
                     return array.writeMany(tok.end_expr);
@@ -600,18 +595,18 @@ fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: 
                 if (impl_variant.specs.sentinel) {
                     var alignb_unpck2x_high_alignment: [3]Expr = expr.alignB(
                         expr.call(&unpck2x_call),
-                        expr.symbol(tok.high_alignment_specifier_name),
+                        expr.symbol(tok.high_alignment_impl_specifier_name),
                     );
                     var sub_alignb_high_alignment: [3]Expr = expr.sub(
                         expr.call(&alignb_unpck2x_high_alignment),
-                        expr.symbol(tok.high_alignment_specifier_name),
+                        expr.symbol(tok.high_alignment_impl_specifier_name),
                     );
                     array.writeFormat(expr.call(&sub_alignb_high_alignment));
                     return array.writeMany(tok.end_expr);
                 } else {
                     var alignb_unpck2x_high_alignment: [3]Expr = expr.alignB(
                         expr.call(&unpck2x_call),
-                        expr.symbol(tok.high_alignment_specifier_name),
+                        expr.symbol(tok.high_alignment_impl_specifier_name),
                     );
                     array.writeFormat(expr.call(&alignb_unpck2x_high_alignment));
                     return array.writeMany(tok.end_expr);
@@ -619,7 +614,7 @@ fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: 
             } else if (impl_variant.specs.sentinel) {
                 var sub_allocated_high_alignment: [3]Expr = expr.sub(
                     allocated_byte_count_call,
-                    expr.symbol(tok.high_alignment_specifier_name),
+                    expr.symbol(tok.high_alignment_impl_specifier_name),
                 );
                 if (has_unit_alignment) {
                     array.writeFormat(expr.call(&sub_allocated_high_alignment));
@@ -817,7 +812,7 @@ fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: 
                 aligned_byte_address_call,
                 aligned_byte_count_call,
                 target_aligned_byte_address_call,
-                expr.symbol(tok.high_alignment_specifier_name),
+                expr.symbol(tok.high_alignment_impl_specifier_name),
             );
             array.writeFormat(expr.join(&s_impl_decl));
             array.writeFormat(expr.join(&t_impl_decl));
@@ -828,7 +823,6 @@ fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: 
         .deallocate => return,
     }
 }
-
 fn writeFunctions(allocator: *Allocator, array: *Array, impl_variant: *const types.Implementation) void {
     for (impl_fn.key) |impl_fn_info| {
         if (impl_fn_info == .deallocate) {
@@ -866,7 +860,7 @@ fn writeDeclarations(array: *Array, impl_variant: *const types.Implementation) v
         if (impl_variant.techs.unit_alignment) {
             const_decl_name.* = expr.symbol(tok.unit_alignment_name);
             const_decl_type_name.* = expr.symbol(tok.word_type_name);
-            const_decl_value.* = expr.symbol(tok.low_alignment_specifier_name);
+            const_decl_value.* = expr.symbol(tok.low_alignment_impl_specifier_name);
             return array.writeFormat(expr.join(&const_decl));
         }
     } else {
@@ -878,7 +872,7 @@ fn writeDeclarations(array: *Array, impl_variant: *const types.Implementation) v
         if (impl_variant.techs.auto_alignment) {
             const_decl_name.* = expr.symbol(tok.auto_alignment_name);
             const_decl_type_name.* = expr.symbol(tok.word_type_name);
-            const_decl_value.* = expr.symbol(tok.low_alignment_specifier_name);
+            const_decl_value.* = expr.symbol(tok.low_alignment_impl_specifier_name);
             array.writeFormat(expr.join(&const_decl));
         }
     }
@@ -942,9 +936,9 @@ inline fn writeFields(array: *Array, impl_variant: *const types.Implementation) 
     writeComptimeField(array, impl_variant, Fn.aligned_byte_count);
 }
 inline fn writeTypeFunction(allocator: *Allocator, array: *Array, impl_variant: *const types.Implementation) void {
-    array.writeMany("fn ");
-    impl_variant.formatWrite(array);
-    array.writeMany("(" ++ tok.comptime_keyword ++ tok.spec_name ++ tok.colon_operator ++ tok.generic_spec_type_name);
+    array.writeMany("pub fn ");
+    array.writeFormat(impl_variant.*);
+    array.writeMany("(" ++ tok.comptime_keyword ++ tok.impl_spec_name ++ tok.colon_operator ++ tok.generic_spec_type_name);
     gen.fmt.ud64(impl_variant.ctn).formatWrite(array);
     array.writeMany(")type{\nreturn(struct{\n");
     writeFields(array, impl_variant);
@@ -956,26 +950,28 @@ pub fn generateReferences() !void {
     var address_space: AddressSpace = .{};
     var allocator: Allocator = Allocator.init(&address_space);
     defer allocator.deinit(&address_space);
-
     var array: Array = Array.init(&allocator, 1024 * 4096);
     array.undefineAll();
-
     var details: Allocator.StructuredVector(types.Implementation) =
         try gen.readTrivialSerial(&allocator, types.Implementation, config.impl_detail_path);
-
     for (types.Kind.list) |kind| {
         for (details.readAll()) |*impl_detail| {
             if (impl_detail.kind == kind) {
                 writeTypeFunction(&allocator, &array, impl_detail);
             }
         }
-        switch (kind) {
-            .automatic => gen.writeSourceFile(config.automatic_reference_path, u8, array.readAll()),
-            .static => gen.writeSourceFile(config.static_reference_path, u8, array.readAll()),
-            .dynamic => gen.writeSourceFile(config.dynamic_reference_path, u8, array.readAll()),
-            .parametric => gen.writeSourceFile(config.parametric_reference_path, u8, array.readAll()),
+        if (write_separate_source_files) {
+            switch (kind) {
+                .automatic => gen.writeSourceFile(config.automatic_reference_path, u8, array.readAll()),
+                .static => gen.writeSourceFile(config.static_reference_path, u8, array.readAll()),
+                .dynamic => gen.writeSourceFile(config.dynamic_reference_path, u8, array.readAll()),
+                .parametric => gen.writeSourceFile(config.parametric_reference_path, u8, array.readAll()),
+            }
+            array.undefineAll();
         }
-        array.undefineAll();
+    }
+    if (!write_separate_source_files) {
+        gen.appendSourceFile(config.reference_file_path, array.readAll());
     }
     gen.appendSourceFile(config.reference_common_path, array.readAll());
 }
