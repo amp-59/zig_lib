@@ -419,16 +419,16 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             fn binaryRelative(target: *Target, allocator: *Allocator) [:0]const u8 {
                 switch (target.build_cmd.kind) {
-                    .exe => return concatenate(allocator, &.{
+                    .exe => return concatenate(allocator, &[_][]const u8{
                         builder_spec.options.exeOutDir(),
                         target.name,
                     }),
-                    .lib => return concatenate(allocator, &.{
+                    .lib => return concatenate(allocator, &[_][]const u8{
                         builder_spec.options.exeOutDir(),
                         target.name,
                         builder_spec.options.lib_ext,
                     }),
-                    .obj => return concatenate(allocator, &.{
+                    .obj => return concatenate(allocator, &[_][]const u8{
                         builder_spec.options.exeOutDir(),
                         target.name,
                         builder_spec.options.obj_ext,
@@ -437,37 +437,37 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             fn auxiliaryRelative(target: *Target, allocator: *Allocator, kind: types.AuxOutputMode) [:0]const u8 {
                 switch (kind) {
-                    .@"asm" => return concatenate(allocator, &.{
+                    .@"asm" => return concatenate(allocator, &[_][]const u8{
                         builder_spec.options.auxOutDir(),
                         target.name,
                         builder_spec.options.asm_ext,
                     }),
-                    .llvm_ir => return concatenate(allocator, &.{
+                    .llvm_ir => return concatenate(allocator, &[_][]const u8{
                         builder_spec.options.auxOutDir(),
                         target.name,
                         builder_spec.options.llvm_ir_ext,
                     }),
-                    .llvm_bc => return concatenate(allocator, &.{
+                    .llvm_bc => return concatenate(allocator, &[_][]const u8{
                         builder_spec.options.auxOutDir(),
                         target.name,
                         builder_spec.options.llvm_bc_ext,
                     }),
-                    .h => return concatenate(allocator, &.{
+                    .h => return concatenate(allocator, &[_][]const u8{
                         builder_spec.options.auxOutDir(),
                         target.name,
                         builder_spec.options.h_ext,
                     }),
-                    .docs => return concatenate(allocator, &.{
+                    .docs => return concatenate(allocator, &[_][]const u8{
                         builder_spec.options.auxOutDir(),
                         target.name,
                         builder_spec.options.docs_ext,
                     }),
-                    .analysis => return concatenate(allocator, &.{
+                    .analysis => return concatenate(allocator, &[_][]const u8{
                         builder_spec.options.auxOutDir(),
                         target.name,
                         builder_spec.options.analysis_ext,
                     }),
-                    .implib => return concatenate(allocator, &.{
+                    .implib => return concatenate(allocator, &[_][]const u8{
                         builder_spec.options.auxOutDir(),
                         target.name,
                         builder_spec.options.implib_ext,
@@ -991,7 +991,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             if (in.build_cmd.kind == .exe) {
                 const bin_path: types.Path = in.binaryPath();
                 assertKindOrNothing(builder.dir_fd, bin_path.relative.?, .regular);
-                in.addRunArgument(allocator, concatenate(allocator, &.{ bin_path.absolute, "/", bin_path.relative.? }));
+                in.addRunArgument(allocator, concatenate(allocator, &[_][]const u8{ bin_path.absolute, "/", bin_path.relative.? }));
             }
         }
         fn assertKindOrNothing(dir_fd: u64, name: [:0]const u8, kind: file.Kind) void {
@@ -1091,7 +1091,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             pub fn exchangeNotice(target: *Target, task: types.Task, old_state: types.State, new_state: types.State) void {
                 @setRuntimeSafety(false);
                 var buf: [32768]u8 = undefined;
-                builtin.debug.logAlwaysAIO(&buf, &.{
+                builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
                     about_state_0_s, target.name,
                     ".",             @tagName(task),
                     ", ",            @tagName(old_state),
@@ -1102,7 +1102,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             pub fn noExchangeNotice(target: *Target, task: types.Task, old_state: types.State, new_state: types.State) void {
                 @setRuntimeSafety(false);
                 var buf: [32768]u8 = undefined;
-                builtin.debug.logAlwaysAIO(&buf, &.{
+                builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
                     about_state_0_s, target.name,
                     ".",             @tagName(task),
                     ", (",           @tagName(target.lock.get(task)),
@@ -1114,7 +1114,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             pub fn noExchangeFault(target: *Target, task: types.Task, old_state: types.State, new_state: types.State) void {
                 @setRuntimeSafety(false);
                 var buf: [32768]u8 = undefined;
-                builtin.debug.logAlwaysAIO(&buf, &.{
+                builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
                     about_state_1_s, target.name,
                     ".",             @tagName(task),
                     ", (",           @tagName(target.lock.get(task)),
@@ -1126,29 +1126,29 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             fn buildNotice(name: [:0]const u8, durat: time.TimeSpec, old_size: u64, new_size: u64) void {
                 @setRuntimeSafety(false);
                 var buf: [32768]u8 = undefined;
-                var len: u64 = mach.memcpyMulti(&buf, &.{ about_build_s, name, ", " });
+                var len: u64 = mach.memcpyMulti(&buf, &[_][]const u8{ about_build_s, name, ", " });
                 if (old_size == 0) {
                     len = len +% mach.memcpyMulti(buf[len..].ptr, &.{
                         "\x1b[93m", builtin.fmt.ud64(new_size).readAll(), "*\x1b[0m bytes ",
                     });
                 } else if (new_size == old_size) {
-                    len = len +% mach.memcpyMulti(buf[len..].ptr, &.{
+                    len = len +% mach.memcpyMulti(buf[len..].ptr, &[_][]const u8{
                         builtin.fmt.ud64(new_size).readAll(), " bytes, ",
                     });
                 } else if (new_size > old_size) {
-                    len = len +% mach.memcpyMulti(buf[len..].ptr, &.{
+                    len = len +% mach.memcpyMulti(buf[len..].ptr, &[_][]const u8{
                         builtin.fmt.ud64(old_size).readAll(),             "(\x1b[91m+",
                         builtin.fmt.ud64(new_size -% old_size).readAll(), "\x1b[0m) => ",
                         builtin.fmt.ud64(new_size).readAll(),             " bytes, ",
                     });
                 } else {
-                    len = len +% mach.memcpyMulti(buf[len..].ptr, &.{
+                    len = len +% mach.memcpyMulti(buf[len..].ptr, &[_][]const u8{
                         builtin.fmt.ud64(old_size).readAll(),             "(\x1b[92m-",
                         builtin.fmt.ud64(old_size -% new_size).readAll(), "\x1b[0m) => ",
                         builtin.fmt.ud64(new_size).readAll(),             " bytes, ",
                     });
                 }
-                len = len +% mach.memcpyMulti(buf[len..].ptr, &.{
+                len = len +% mach.memcpyMulti(buf[len..].ptr, &[_][]const u8{
                     builtin.fmt.ud64(durat.sec).readAll(),        ".",
                     builtin.fmt.nsec(durat.nsec).readAll()[0..3], "s\n",
                 });
@@ -1157,8 +1157,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             fn simpleTimedNotice(about: [:0]const u8, name: [:0]const u8, durat: time.TimeSpec, rc: u8) void {
                 @setRuntimeSafety(false);
                 var buf: [32768]u8 = undefined;
-                var len: u64 = mach.memcpyMulti(&buf, &.{ about, name, ", " });
-                len = len +% mach.memcpyMulti(buf[len..].ptr, &.{
+                var len: u64 = mach.memcpyMulti(&buf, &[_][]const u8{ about, name, ", " });
+                len = len +% mach.memcpyMulti(buf[len..].ptr, &[_][]const u8{
                     "rc=", builtin.fmt.ud64(rc).readAll(),
                     ", ",  builtin.fmt.ud64(durat.sec).readAll(),
                     ".",   builtin.fmt.nsec(durat.nsec).readAll()[0..3],
