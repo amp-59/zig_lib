@@ -9,6 +9,8 @@ const spec = top.spec;
 const builtin = top.builtin;
 const testing = top.testing;
 
+const experimental = @import("../top/mem/container.zig");
+
 pub usingnamespace proc.start;
 
 pub const runtime_assertions: bool = true;
@@ -294,7 +296,13 @@ fn testLallocator() !void {
     allocator.freeAll();
     AllocatorL.Graphics.graphPartitions(allocator);
 }
+fn testExperimentalContainer() void {
+    // const Auto = experimental.AutomaticStructuredReadWrite(.{});
+    // _ = Auto;
+}
+
 pub fn main() !void {
+    testExperimentalContainer();
     //try meta.wrap(testLallocator());
     try meta.wrap(testMapGenericOverhead());
     try meta.wrap(testProtect());
