@@ -17,19 +17,16 @@ const types = @import("./types.zig");
 const config = @import("./config.zig");
 const ctn_fn = @import("./ctn_fn.zig");
 const impl_fn = @import("./impl_fn.zig");
-
 pub usingnamespace proc.start;
-
 pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
 pub const runtime_assertions: bool = false;
 pub const show_expressions: bool = false;
-
+const write_separate_source_files: bool = false;
 const Allocator = config.Allocator;
 const AddressSpace = config.AddressSpace;
 const Array = Allocator.StructuredVector(u8);
 const Fn = ctn_fn.Fn;
 const Expr = expr.Expr;
-
 fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const types.Container, ctn_fn_info: Fn) void {
     if (Expr.debug.show_expressions) {
         Expr.debug.showFunction(ctn_fn_info);
@@ -948,7 +945,7 @@ fn writeDeclarations(allocator: *Allocator, array: *Array, ctn_detail: *const ty
         const_decl.* = expr.ConstDecl{
             .val_name = tok.child_type_name,
             .type_name = tok.type_type_name,
-            .expr1 = expr.symbol(tok.child_specifier_name),
+            .expr1 = expr.symbol(tok.child_ctn_specifier_name),
         };
         array.writeFormat(const_decl.*);
         const_decl.* = expr.ConstDecl{
@@ -972,16 +969,16 @@ fn writeDeclarations(allocator: *Allocator, array: *Array, ctn_detail: *const ty
     const_decl.* = expr.ConstDecl{
         .val_name = tok.impl_type_name,
         .type_name = tok.type_type_name,
-        .expr1 = expr.symbol("spec.Implementation()"),
+        .expr1 = expr.symbol(tok.ctn_spec_name ++ ".Implementation()"),
     };
     array.writeFormat(const_decl.*);
 }
-fn writeTypeFunction(allocator: *Allocator, array: *Array, ctn_detail: *const types.Container) void {
+fn writeTypeFunction(allocator: *Allocator, array: *Array, ctn_detail: *const types.Container, ctn_idx: u64) void {
     array.writeMany("pub fn ");
     ctn_detail.formatWrite(array);
-    array.writeMany("(comptime " ++ tok.spec_name ++ ":");
-    ctn_detail.formatWrite(array);
-    array.writeMany("Spec)type{\nreturn(struct{\n");
+    array.writeMany("(comptime " ++ tok.ctn_spec_name ++ ": Specification");
+    array.writeFormat(fmt.ud64(ctn_idx));
+    array.writeMany(")type{\nreturn(struct{\n");
     array.writeMany(tok.impl_field);
     array.writeMany(tok.end_elem);
     writeDeclarations(allocator, array, ctn_detail);
@@ -993,23 +990,28 @@ pub fn generateContainers() !void {
     var allocator: Allocator = Allocator.init(&address_space);
     defer allocator.deinit(&address_space);
     var array: Array = Array.init(&allocator, 1024 * 4096);
-
     var details: Allocator.StructuredVector(types.Container) =
         try gen.readTrivialSerial(&allocator, types.Container, config.ctn_detail_path);
-
-    inline for (types.Kind.list) |kind| {
+    var ctn_idx: u64 = 0;
+    for (types.Kind.list) |kind| {
         for (details.readAll()) |*ctn_detail| {
             if (ctn_detail.kind == kind) {
-                writeTypeFunction(&allocator, &array, ctn_detail);
+                writeTypeFunction(&allocator, &array, ctn_detail, ctn_idx);
+                ctn_idx +%= 1;
             }
         }
-        switch (kind) {
-            .automatic => gen.appendSourceFile(config.automatic_container_path, array.readAll()),
-            .static => gen.appendSourceFile(config.static_container_path, array.readAll()),
-            .dynamic => gen.appendSourceFile(config.dynamic_container_path, array.readAll()),
-            .parametric => gen.appendSourceFile(config.parametric_container_path, array.readAll()),
+        if (write_separate_source_files) {
+            switch (kind) {
+                .automatic => gen.appendSourceFile(config.automatic_container_path, array.readAll()),
+                .static => gen.appendSourceFile(config.static_container_path, array.readAll()),
+                .dynamic => gen.appendSourceFile(config.dynamic_container_path, array.readAll()),
+                .parametric => gen.appendSourceFile(config.parametric_container_path, array.readAll()),
+            }
+            array.undefineAll();
         }
-        array.undefineAll();
+    }
+    if (!write_separate_source_files) {
+        gen.appendSourceFile(config.container_file_path, array.readAll());
     }
 }
 pub const main = generateContainers;
