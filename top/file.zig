@@ -1223,7 +1223,7 @@ pub fn pathStatus(comptime spec: StatusSpec, pathname: [:0]const u8) sys.Call(sp
     var st: Status = undefined;
     const st_buf_addr: u64 = @ptrToInt(&st);
     const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
-    if (sys.call(.stat, spec.errors, void, .{ pathname_buf_addr, st_buf_addr })) {
+    if (meta.wrap(sys.call(.stat, spec.errors, void, .{ pathname_buf_addr, st_buf_addr }))) {
         if (logging.Success) {
             debug.pathStatusNotice(pathname, st.mode);
         }
