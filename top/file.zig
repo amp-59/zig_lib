@@ -410,6 +410,7 @@ pub const WriteSpec = struct {
 };
 pub const PollSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.poll_errors },
+    return_type: type = void,
     logging: builtin.Logging.AttemptSuccessError = .{},
 };
 pub const StatusSpec = struct {
@@ -1242,8 +1243,8 @@ pub fn removeDir(comptime spec: RemoveDirSpec, pathname: [:0]const u8) sys.Call(
     }
 }
 pub fn pathStatus(comptime spec: StatusSpec, pathname: [:0]const u8) sys.Call(spec.errors, Status) {
-    const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
     var st: Status = undefined;
+    const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
     const st_buf_addr: u64 = @ptrToInt(&st);
     const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
     if (meta.wrap(sys.call(.stat, spec.errors, void, .{ pathname_buf_addr, st_buf_addr }))) {
@@ -1407,8 +1408,8 @@ pub fn duplicateTo(comptime dup3_spec: DuplicateSpec, old_fd: u64, new_fd: u64) 
 }
 pub fn makePipe(comptime pipe2_spec: MakePipeSpec) sys.Call(pipe2_spec.errors, Pipe) {
     var pipefd: Pipe = undefined;
-    const flags: Open = comptime pipe2_spec.flags();
     const pipefd_addr: u64 = @ptrToInt(&pipefd);
+    const flags: Open = comptime pipe2_spec.flags();
     const logging: builtin.Logging.AcquireError = comptime pipe2_spec.logging.override();
     if (meta.wrap(sys.call(.pipe2, pipe2_spec.errors, void, .{ pipefd_addr, flags.val }))) {
         if (logging.Acquire) {
@@ -1421,14 +1422,26 @@ pub fn makePipe(comptime pipe2_spec: MakePipeSpec) sys.Call(pipe2_spec.errors, P
     }
     return pipefd;
 }
-pub fn poll(comptime poll_spec: PollSpec, fds: []PollFd, timeout: u32) sys.Call(poll_spec.errors, void) {
+inline fn expected(fds: []PollFd) bool {
+    for (fds) |pollfd| {
+        if (@bitCast(u16, pollfd.expect) != @bitCast(u16, pollfd.actual)) {
+            return false;
+        }
+    }
+    return true;
+}
+pub fn poll(comptime poll_spec: PollSpec, fds: []PollFd, timeout: u32) sys.Call(poll_spec.errors, poll_spec.return_type) {
+    const fds_addr: u64 = @ptrToInt(fds.ptr);
     const logging: builtin.Logging.AttemptSuccessError = comptime poll_spec.logging.override();
     if (logging.Attempt) {
         debug.pollNotice(fds, timeout);
     }
-    if (meta.wrap(sys.call(.poll, poll_spec.errors, void, .{ @ptrToInt(fds.ptr), fds.len, timeout }))) {
+    if (meta.wrap(sys.call(.poll, poll_spec.errors, void, .{ fds_addr, fds.len, timeout }))) {
         if (logging.Success) {
             debug.pollNotice(fds, timeout);
+        }
+        if (poll_spec.return_type == bool) {
+            return expected(fds);
         }
     } else |poll_error| {
         return poll_error;
