@@ -2,18 +2,3 @@ const mem = @import("../mem.zig");
 const spec = @import("../spec.zig");
 const builtin = @import("../builtin.zig");
 const types = @import("./types.zig");
-
-pub const OutputMode = enum {
-    exe,
-    lib,
-    obj,
-};
-pub const AuxOutputMode = enum {
-    @"asm",
-    llvm_ir,
-    llvm_bc,
-    h,
-    docs,
-    analysis,
-    implib,
-};
