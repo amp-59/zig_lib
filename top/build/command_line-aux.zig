@@ -10,10 +10,11 @@ const attr = @import("./attr.zig");
 const types = @import("./types.zig");
 
 pub usingnamespace proc.start;
+
 pub const runtime_assertions: bool = false;
 pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
-
-pub const primitive: bool = false;
+const primitive: bool = true;
+const compile: bool = false;
 
 const Array = mem.StaticString(1024 * 1024);
 const build_root: [:0]const u8 = builtin.buildRoot();
