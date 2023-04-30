@@ -1117,12 +1117,12 @@ pub fn getDirectoryEntries(comptime getdents_spec: GetDirectoryEntriesSpec, dir_
     const logging: builtin.Logging.SuccessError = comptime getdents_spec.logging.override();
     if (meta.wrap(sys.call(.getdents64, getdents_spec.errors, getdents_spec.return_type, .{ dir_fd, stream_buf_addr, stream_buf.len }))) |ret| {
         if (logging.Success) {
-            // debug.getDirectoryEntriesNotice(dir_fd);
+            debug.getDirectoryEntriesNotice(dir_fd, stream_buf.len, ret);
         }
         return ret;
     } else |getdents_error| {
         if (logging.Error) {
-            // debug.getDirectoryEntriesError(getdents_error);
+            debug.getDirectoryEntriesError(getdents_error, dir_fd);
         }
         return getdents_error;
     }
@@ -1683,6 +1683,8 @@ const debug = opaque {
     const about_getcwd_1_s: [:0]const u8 = builtin.debug.about("getcwd-error");
     const about_unlink_0_s: [:0]const u8 = builtin.debug.about("unlink");
     const about_unlink_1_s: [:0]const u8 = builtin.debug.about("unlink-error");
+    const about_getdents_0_s: [:0]const u8 = builtin.debug.about("getdents");
+    const about_getdents_1_s: [:0]const u8 = builtin.debug.about("getdents-error");
     const about_unlinkat_0_s: [:0]const u8 = builtin.debug.about("unlink");
     const about_unlinkat_1_s: [:0]const u8 = builtin.debug.about("unlink-error");
     const about_readlink_1_s: [:0]const u8 = builtin.debug.about("readlink-error");
@@ -1829,6 +1831,9 @@ const debug = opaque {
     inline fn writeNotice(fd: u64, len: u64) void {
         fdLenAboutNotice(fd, len, about_write_0_s);
     }
+    inline fn getDirectoryEntriesNotice(dir_fd: u64, max_len: u64, len: u64) void {
+        fdMaxLenLenAboutNotice(dir_fd, max_len, len, about_getdents_0_s);
+    }
     inline fn createNotice(pathname: [:0]const u8, fd: u64, mode: Mode) void {
         pathnameFdModeAboutNotice(pathname, fd, mode, about_create_0_s);
     }
@@ -1969,6 +1974,9 @@ const debug = opaque {
     }
     inline fn readError(read_error: anytype, fd: u64) void {
         fdAboutError(fd, about_read_1_s, @errorName(read_error));
+    }
+    inline fn getDirectoryEntriesError(getdents_error: anytype, dir_fd: u64) void {
+        fdAboutError(dir_fd, about_getdents_1_s, @errorName(getdents_error));
     }
     inline fn writeError(write_error: anytype, fd: u64) void {
         fdAboutError(fd, about_write_1_s, @errorName(write_error));
