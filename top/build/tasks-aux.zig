@@ -91,7 +91,7 @@ pub fn main() !void {
     const fd: u64 = file.open(open_spec, tasks_template_path);
     array.define(file.readSlice(read_spec, fd, array.referAllUndefined()[0..st.size]));
     file.close(close_spec, fd);
-    array.writeMany("pub const BuildCommand=struct{\nkind:OutputMode,\n");
+    array.writeMany("pub const BuildCommand=struct{\nkind:types.OutputMode,\n");
     writeFields(&array, attr.build_command_options);
     array.writeMany("};\npub const FormatCommand=struct{\n");
     writeFields(&array, attr.format_command_options);
