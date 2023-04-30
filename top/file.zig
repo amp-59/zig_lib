@@ -565,6 +565,11 @@ pub const MakeDirSpec = struct {
     return_type: type = void,
     logging: builtin.Logging.SuccessError = .{},
 };
+pub const GetDirectoryEntriesSpec = struct {
+    errors: sys.ErrorPolicy = .{ .throw = sys.getdents_errors },
+    return_type: type = u64,
+    logging: builtin.Logging.SuccessError = .{},
+};
 pub const MakePathSpec = struct {
     errors: MakePathErrors = .{},
     logging: MakePathLogging = .{},
@@ -1105,6 +1110,21 @@ pub fn makeDirAt(comptime spec: MakeDirSpec, dir_fd: u64, name: [:0]const u8, co
             debug.makeDirAtError(mkdir_error, dir_fd, name);
         }
         return mkdir_error;
+    }
+}
+pub fn getDirectoryEntries(comptime getdents_spec: GetDirectoryEntriesSpec, dir_fd: u64, stream_buf: []u8) sys.Call(getdents_spec.errors, getdents_spec.return_type) {
+    const stream_buf_addr: u64 = @ptrToInt(stream_buf.ptr);
+    const logging: builtin.Logging.SuccessError = comptime getdents_spec.logging.override();
+    if (meta.wrap(sys.call(.getdents64, getdents_spec.errors, getdents_spec.return_type, .{ dir_fd, stream_buf_addr, stream_buf.len }))) |ret| {
+        if (logging.Success) {
+            // debug.getDirectoryEntriesNotice(dir_fd);
+        }
+        return ret;
+    } else |getdents_error| {
+        if (logging.Error) {
+            // debug.getDirectoryEntriesError(getdents_error);
+        }
+        return getdents_error;
     }
 }
 pub fn makeNode(comptime spec: MakeNodeSpec, pathname: [:0]const u8, comptime mode: Mode, comptime dev: Device) sys.Call(spec.errors, spec.return_type) {
