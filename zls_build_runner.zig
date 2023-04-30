@@ -13,7 +13,7 @@ const mach = srg.mach;
 const file = srg.file;
 const meta = srg.meta;
 const spec = srg.spec;
-const build = srg.build2;
+const build = srg.build;
 const builtin = srg.builtin;
 
 pub usingnamespace proc.start;
