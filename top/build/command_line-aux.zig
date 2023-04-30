@@ -196,7 +196,7 @@ fn writeOne(array: *Array, one: u8, variant: types.Variant) void {
         .write => if (primitive) {
             array.writeMany("buf[len]=");
             array.writeFormat(fmt.ud8(one));
-            array.writeMany(";len=len+%1\n");
+            array.writeMany(";\nlen=len+%1\n");
         } else {
             array.writeMany("array.writeOne(");
             array.writeFormat(fmt.ud8(one));
@@ -210,8 +210,9 @@ fn writeIntegerString(array: *Array, arg_string: []const u8, variant: types.Vari
         .write => if (primitive) {
             array.writeMany("const s: []const u8 = builtin.fmt.ud64(");
             array.writeMany(arg_string);
-            array.writeMany(").readAll();\n@memcpy(buf+len,s.ptr,s.len);\n");
-            writeOptString(array, arg_string, .length);
+            array.writeMany(").readAll();");
+            array.writeMany("@memcpy(buf+len,s.ptr,s.len);\n");
+            array.writeMany("len=len+s.len;\n");
         } else {
             array.writeMany("array.writeFormat(fmt.ud64(");
             array.writeMany(arg_string);
