@@ -286,7 +286,7 @@ pub const build_command_options: []const types.OptionSpec = &.{
         .descr = &.{"Enable formatted safety panics"},
     },
     .{
-        .name = "fmt",
+        .name = "format",
         .string = "-ofmt",
         .arg_info = types.ArgInfo.optional_tag(enum { elf, c, wasm, coff, macho, spirv, plan9, hex, raw }),
         .descr = &.{
