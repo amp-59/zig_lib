@@ -20,6 +20,7 @@ const mod_deps: []const build.ModuleDependency = &.{
     .{ .name = "@build" },
     .{ .name = "env" },
 };
+
 const PartialCommand = struct {
     kind: build.OutputMode,
     mode: builtin.Mode,
@@ -41,6 +42,7 @@ const exe_fast: PartialCommand = .{ .kind = .exe, .mode = .ReleaseFast };
 const obj_default: PartialCommand = .{ .kind = .obj, .mode = .ReleaseSmall };
 const exe_debug: PartialCommand = .{ .kind = .exe, .mode = .Debug };
 const exe_build: PartialCommand = .{ .kind = .exe, .mode = .Debug, .strip = false };
+
 pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     // zig fmt: off
     // Groups:
@@ -90,10 +92,9 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     const mg_container_kinds: *Builder.Target = try mg.addTarget(allocator, exe_default,    "mg_container_kinds",   "top/mem/container_kinds-aux.zig");
     const mg_allocator_kinds: *Builder.Target = try mg.addTarget(allocator, exe_default,    "mg_allocator_kinds",   "top/mem/allocator_kinds-aux.zig");
     const bg: *Builder.Group =                  try builder.addGroup(allocator,             "buildgen");
-
-    const generate_build: *Builder.Target =     try bg.addTarget(allocator, exe_default,    "generate_build",       "top/build/generate_build2.zig");
     const bg_tasks: *Builder.Target =           try bg.addTarget(allocator, exe_default,    "bg_tasks",             "top/build/tasks-aux.zig");
     const bg_command_line: *Builder.Target =    try bg.addTarget(allocator, exe_default,    "bg_command_line",      "top/build/command_line-aux.zig");
+
     // Descriptions:
     builtin_test.descr =        "Test builtin functions";
     meta_test.descr =           "Test meta functions";
@@ -137,9 +138,8 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     mg_allocator_kinds.descr =  "Generate function kind switch functions for allocator functions";
     mg_reference_impls.descr =  "Generate reference implementations";
     mg_container_impls.descr =  "Generate container implementations";
-    generate_build.descr =      "Generate builder command line implementation";
     bg_tasks.descr =            "Generate builder command data structures";
-    bg_cmdline.descr =          "Generate builder command line writer functions";
+    bg_command_line.descr =     "Generate builder command line writer functions";
     // Dependencies:
     mg_type_specs.dependOnRun(allocator,        mg_touch);
     mg_type_specs.dependOnObject(allocator,     mg_options);
@@ -160,3 +160,4 @@ fn addEnvPathArgs(allocator: *Builder.Allocator, builder: *Builder, target: *Bui
     target.addRunArgument(allocator, builder.cache_root);
     target.addRunArgument(allocator, builder.global_cache_root);
 }
+//
