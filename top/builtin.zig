@@ -547,9 +547,9 @@ pub fn isComptime() bool {
 pub inline fn ptrCast(comptime T: type, any: anytype) T {
     @setRuntimeSafety(false);
     if (@typeInfo(@TypeOf(any)).Pointer.size == .Slice) {
-        return @ptrCast(T, @alignCast(@typeInfo(T).Pointer.alignment, any.ptr));
+        return @ptrCast(T, @alignCast(@typeInfo(T).Pointer.alignment, @constCast(any.ptr)));
     } else {
-        return @ptrCast(T, @alignCast(@typeInfo(T).Pointer.alignment, any));
+        return @ptrCast(T, @alignCast(@typeInfo(T).Pointer.alignment, @constCast(any)));
     }
 }
 pub inline fn zero(comptime T: type) T {
