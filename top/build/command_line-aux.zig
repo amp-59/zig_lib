@@ -500,6 +500,104 @@ fn writeFile(array: Array, pathname: [:0]const u8) void {
     file.writeSlice(write_spec, build_fd, array.readAll());
     file.close(close_spec, build_fd);
 }
+fn writeBuildWrite(array: *Array) void {
+    if (primitive) {
+        array.writeMany(
+            \\pub fn buildWriteBuf(cmd:*const tasks.BuildCommand,zig_exe:[]const u8,root_path:types.Path,buf:[*]u8)u64{
+            \\@memcpy(buf,zig_exe.ptr,zig_exe.len);
+            \\var len:u64=zig_exe.len;
+            \\buf[len]=0;
+            \\len=len+%1;
+            \\@memcpy(buf+len,"build-",6);
+            \\len=len+%6;
+            \\@memcpy(buf+len,@tagName(cmd.kind).ptr,@tagName(cmd.kind).len);
+            \\len=len+%@tagName(cmd.kind).len;
+            \\buf[len]=0;
+            \\len=len+%1;
+        );
+    } else {
+        array.writeMany(
+            \\pub fn buildWrite(cmd:*const tasks.BuildCommand,zig_exe:[]const u8,root_path:types.Path,array:anytype)void{
+            \\array.writeMany(zig_exe);
+            \\array.writeOne(0);
+            \\array.writeMany("build-");
+            \\array.writeMany(@tagName(cmd.kind));
+            \\array.writeOne(0);
+        );
+    }
+    writeFunctionBody(array, attr.build_command_options, .write);
+    if (primitive) {
+        array.writeMany(
+            \\len=len+%root_path.formatWriteBuf(buf+len);
+            \\buf[len]=0;
+            \\return len;
+        );
+    } else {
+        array.writeMany(
+            \\array.writeFormat(root_path);
+        );
+    }
+    array.writeMany("}\n");
+}
+fn writeBuildLength(array: *Array) void {
+    array.writeMany(
+        \\pub fn buildLength(cmd:*const tasks.BuildCommand,zig_exe:[]const u8,root_path:types.Path)u64{
+        \\@setRuntimeSafety(false);
+        \\var len:u64=zig_exe.len+%@tagName(cmd.kind).len+%8;
+    );
+    writeFunctionBody(array, attr.build_command_options, .length);
+    array.writeMany(
+        \\return len+%root_path.formatLength()+%1;
+    );
+    array.writeMany("}\n");
+}
+fn writeFormatWrite(array: *Array) void {
+    if (primitive) {
+        array.writeMany(
+            \\pub fn formatWriteBuf(cmd:*const tasks.FormatCommand,zig_exe:[]const u8,root_path:types.Path,buf:[*]u8)u64{
+            \\@setRuntimeSafety(false);
+            \\@memcpy(buf,zig_exe.ptr,zig_exe.len);
+            \\var len:u64=zig_exe.len;
+            \\buf[len]=0;
+            \\len=len+%1;
+            \\@memcpy(buf+len,"fmt\\x00",4);
+            \\len=len+%4;
+        );
+    } else {
+        array.writeMany(
+            \\pub fn formatWrite(cmd:*const tasks.FormatCommand,zig_exe:[]const u8,root_path:types.Path,array:anytype)void{
+            \\@setRuntimeSafety(false);
+            \\array.writeMany(zig_exe);
+            \\array.writeOne(0);
+            \\array.writeMany("fmt\x00");
+        );
+    }
+    writeFunctionBody(array, attr.format_command_options, .write);
+    if (primitive) {
+        array.writeMany(
+            \\len=len+%root_path.formatWriteBuf(buf+len);
+            \\buf[len]=0;
+            \\return len;
+        );
+    } else {
+        array.writeMany(
+            \\array.writeFormat(root_path);
+        );
+    }
+    array.writeMany("}\n");
+}
+fn writeFormatLength(array: *Array) void {
+    array.writeMany(
+        \\pub fn formatLength(cmd:*const tasks.FormatCommand,zig_exe:[]const u8,root_path:types.Path)u64{
+        \\@setRuntimeSafety(false);
+        \\var len:u64=zig_exe.len+%5;
+    );
+    writeFunctionBody(array, attr.format_command_options, .length);
+    array.writeMany(
+        \\return len+%root_path.formatLength()+%1;
+    );
+    array.writeMany("}\n");
+}
 pub fn main() !void {
     var array: Array = undefined;
     array.undefineAll();
@@ -507,31 +605,16 @@ pub fn main() !void {
     var fd: u64 = file.open(open_spec, command_line_template_path);
     array.define(file.readSlice(read_spec, fd, array.referAllUndefined()[0..st.size]));
     file.close(close_spec, fd);
-
-    array.writeMany("pub fn buildWrite(cmd:*const tasks.BuildCommand,buf:[*]u8)u64{\n");
-    array.writeMany("var len:u64=0;\n");
-    writeFunctionBody(&array, attr.build_command_options, .write);
-    array.writeMany("return len;\n");
-    array.writeMany("}\n");
-
-    array.writeMany("pub fn buildLength(cmd: *const tasks.BuildCommand)u64{\n");
-    array.writeMany("var len:u64=0;\n");
-    writeFunctionBody(&array, attr.build_command_options, .length);
-    array.writeMany("return len;\n");
-    array.writeMany("}\n");
-
-    array.writeMany("pub fn formatLength(cmd:*const tasks.FormatCommand)u64{\n");
-    array.writeMany("var len: u64 = 0;\n");
-    writeFunctionBody(&array, attr.format_command_options, .length);
-    array.writeMany("return len;\n");
-    array.writeMany("}\n");
-
-    array.writeMany("pub fn formatWrite(cmd:*const tasks.FormatCommand,buf:[*]u8)u64{\n");
-    array.writeMany("var len: u64 = 0;\n");
-    writeFunctionBody(&array, attr.format_command_options, .write);
-    array.writeMany("return len;\n");
-    array.writeMany("}\n");
-
+    writeBuildWrite(&array);
+    writeBuildLength(&array);
+    writeFormatWrite(&array);
+    writeFormatLength(&array);
+    if (compile) {
+        array.writeMany("comptime {" ++
+            (if (primitive) "_ = buildWriteBuf;" else "_ = buildWrite;") ++ "_ = buildLength;" ++
+            (if (primitive) "_ = formatWriteBuf;" else "_ = formatWrite;") ++ "_ = formatLength;" ++
+            "}\n");
+    }
     writeFile(array, command_line_path);
     array.undefineAll();
 }
