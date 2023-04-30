@@ -134,10 +134,10 @@ pub fn ThreadSafeSet(comptime elements: u16, comptime val_type: type, comptime i
                 safe_set.refer(index).* = 0;
             }
             pub inline fn atomicSet(safe_set: *SafeSet, index: idx_type) bool {
-                return common.atomicByteTransform(&safe_set.bytes[index], 0, 255);
+                return common.atomicByteExchange(&safe_set.bytes[index], 0, 255);
             }
             pub inline fn atomicUnset(safe_set: *SafeSet, index: idx_type) bool {
-                return common.atomicByteTransform(&safe_set.bytes[index], 255, 0);
+                return common.atomicByteExchange(&safe_set.bytes[index], 255, 0);
             }
         });
     } else if (val_type == bool and idx_info == .Enum) {
@@ -157,10 +157,10 @@ pub fn ThreadSafeSet(comptime elements: u16, comptime val_type: type, comptime i
                 safe_set.refer(index).* = 0;
             }
             pub inline fn atomicSet(safe_set: *SafeSet, index: idx_type) bool {
-                return common.atomicByteTransform(safe_set.refer(index), 0, 255);
+                return common.atomicByteExchange(safe_set.refer(index), 0, 255);
             }
             pub inline fn atomicUnset(safe_set: *SafeSet, index: idx_type) bool {
-                return common.atomicByteTransform(safe_set.refer(index), 255, 0);
+                return common.atomicByteExchange(safe_set.refer(index), 255, 0);
             }
         });
     } else if (val_type != bool and idx_info != .Enum) {
@@ -786,20 +786,20 @@ pub fn GenericRegularAddressSpace(comptime spec: RegularAddressSpaceSpec) type {
         pub const Index: type = spec.idx_type;
         pub const Value: type = spec.val_type;
         pub const addr_spec: RegularAddressSpaceSpec = spec;
-        pub fn get(address_space: *const RegularAddressSpace, index: Index) Value {
+        pub inline fn get(address_space: *const RegularAddressSpace, index: Index) Value {
             return address_space.impl.get(index);
         }
-        pub fn unset(address_space: *RegularAddressSpace, index: Index) bool {
+        pub inline fn unset(address_space: *RegularAddressSpace, index: Index) bool {
             const ret: bool = address_space.impl.get(index);
             if (ret) address_space.impl.unset(index);
             return ret;
         }
-        pub fn set(address_space: *RegularAddressSpace, index: Index) bool {
+        pub inline fn set(address_space: *RegularAddressSpace, index: Index) bool {
             const ret: bool = address_space.impl.get(index);
             if (!ret) address_space.impl.set(index);
             return !ret;
         }
-        pub fn transform(
+        pub inline fn exchange(
             address_space: *RegularAddressSpace,
             index: Index,
             if_state: Value,
@@ -809,13 +809,13 @@ pub fn GenericRegularAddressSpace(comptime spec: RegularAddressSpaceSpec) type {
             if (ret == if_state) address_space.impl.set(index, to_state);
             return !ret;
         }
-        pub fn atomicUnset(address_space: *RegularAddressSpace, index: Index) bool {
+        pub inline fn atomicUnset(address_space: *RegularAddressSpace, index: Index) bool {
             return spec.options.thread_safe and address_space.impl.atomicUnset(index);
         }
-        pub fn atomicSet(address_space: *RegularAddressSpace, index: Index) bool {
+        pub inline fn atomicSet(address_space: *RegularAddressSpace, index: Index) bool {
             return spec.options.thread_safe and address_space.impl.atomicSet(index);
         }
-        pub fn atomicExchange(
+        pub inline fn atomicExchange(
             address_space: *RegularAddressSpace,
             index: Index,
             comptime if_state: spec.val_type,
@@ -896,13 +896,13 @@ pub fn GenericDiscreteAddressSpace(comptime spec: DiscreteAddressSpaceSpec) type
             return spec.list[index].options.thread_safe and
                 address_space.impl.atomicExchange(index, if_state, to_state);
         }
-        pub fn low(comptime index: Index) u64 {
+        pub inline fn low(comptime index: Index) u64 {
             return spec.low(index);
         }
-        pub fn high(comptime index: Index) u64 {
+        pub inline fn high(comptime index: Index) u64 {
             return spec.high(index);
         }
-        pub fn arena(comptime index: Index) Arena {
+        pub inline fn arena(comptime index: Index) Arena {
             return spec.arena(index);
         }
         pub fn count(address_space: *DiscreteAddressSpace) u64 {
@@ -954,15 +954,15 @@ pub fn GenericElementaryAddressSpace(comptime spec: ElementaryAddressSpaceSpec) 
             return !ret;
         }
         pub fn atomicSet(address_space: *ElementaryAddressSpace) bool {
-            return common.atomicByteTransform(&address_space.impl, 0, 255);
+            return common.atomicByteExchange(&address_space.impl, 0, 255);
         }
         pub fn atomicUnset(address_space: *ElementaryAddressSpace) bool {
-            return common.atomicByteTransform(&address_space.impl, 255, 0);
+            return common.atomicByteExchange(&address_space.impl, 255, 0);
         }
-        fn low() u64 {
+        inline fn low() u64 {
             return spec.lb_addr;
         }
-        fn high() u64 {
+        inline fn high() u64 {
             return spec.up_addr;
         }
         pub fn arena() Arena {
@@ -981,9 +981,8 @@ pub fn GenericElementaryAddressSpace(comptime spec: ElementaryAddressSpaceSpec) 
     };
     return Type;
 }
-
 const common = struct {
-    fn atomicByteTransform(byte_ptr: *u8, if_state: u8, to_state: u8) bool {
+    fn atomicByteExchange(byte_ptr: *u8, if_state: u8, to_state: u8) bool {
         return asm volatile (
             \\mov           %[if_state],    %al
             \\mov           %[to_state],    %dl
@@ -996,7 +995,7 @@ const common = struct {
             : "rax", "rdx", "memory"
         );
     }
-    fn atomicWordTransform(word_ptr: *u16, if_state: u16, to_state: u16) bool {
+    fn atomicWordExchange(word_ptr: *u16, if_state: u16, to_state: u16) bool {
         return asm volatile (
             \\mov           %[if_state],    %ax
             \\mov           %[to_state],    %dx
@@ -1009,7 +1008,7 @@ const common = struct {
             : "rax", "rdx", "memory"
         );
     }
-    fn atomicDwordTransform(dword_ptr: *u32, if_state: u32, to_state: u32) bool {
+    fn atomicDwordExchange(dword_ptr: *u32, if_state: u32, to_state: u32) bool {
         return asm volatile (
             \\mov           %[if_state],    %eax
             \\mov           %[to_state],    %edx
@@ -1022,7 +1021,7 @@ const common = struct {
             : "rax", "rdx", "memory"
         );
     }
-    fn atomicQwordTransform(qword_ptr: *u64, if_state: u64, to_state: u64) bool {
+    fn atomicQwordExchange(qword_ptr: *u64, if_state: u64, to_state: u64) bool {
         return asm volatile (
             \\mov           %[if_state],    %rax
             \\mov           %[to_state],    %rdx
