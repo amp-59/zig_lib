@@ -1444,11 +1444,11 @@ pub const PF_MASKOS = 0x0ff00000;
 /// Bits for processor-specific semantics.
 pub const PF_MASKPROC = 0xf0000000;
 pub const PF = meta.EnumBitField(enum(u32) {
-    X = PF_X,
-    W = PF_W,
-    R = PF_R,
-    MASKOS = PF_MASKOS,
-    MASKPROC = PF_MASKPROC,
+    X = 1,
+    W = 2,
+    R = 4,
+    MASKOS = 0x0ff00000,
+    MASKPROC = 0xf0000000,
 });
 // Special section indexes used in Elf{32,64}_Sym.
 pub const SHN_UNDEF = 0;
