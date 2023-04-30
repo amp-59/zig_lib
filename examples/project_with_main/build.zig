@@ -7,7 +7,7 @@
 pub const zig_lib = @import("zig_lib/zig_lib.zig");
 
 const spec = zig_lib.spec;
-const build = zig_lib.build2;
+const build = zig_lib.build;
 
 pub const Builder: type = build.GenericBuilder(spec.builder.default);
 

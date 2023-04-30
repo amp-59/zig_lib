@@ -14,7 +14,7 @@ pub usingnamespace srg.proc.start;
 const Builder = if (@hasDecl(root, "Builder"))
     root.Builder
 else
-    srg.build2.Builder(srg.spec.builder.default);
+    srg.build.Builder(srg.spec.builder.default);
 
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     var address_space: Builder.AddressSpace = .{};
