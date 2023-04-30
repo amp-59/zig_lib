@@ -2,23 +2,8 @@ const mem = @import("../mem.zig");
 const spec = @import("../spec.zig");
 const builtin = @import("../builtin.zig");
 const types = @import("./types.zig");
-
-pub const OutputMode = enum {
-    exe,
-    lib,
-    obj,
-};
-pub const AuxOutputMode = enum {
-    @"asm",
-    llvm_ir,
-    llvm_bc,
-    h,
-    docs,
-    analysis,
-    implib,
-};
 pub const BuildCommand = struct {
-    kind: OutputMode,
+    kind: types.OutputMode,
     /// Enable or disable colored error messages
     color: ?enum(u2) {
         on = 0,
@@ -155,7 +140,7 @@ pub const BuildCommand = struct {
     /// plan9                  Plan 9 from Bell Labs object format
     /// hex (planned feature)  Intel IHEX
     /// raw (planned feature)  Dump machine code directly
-    fmt: ?enum(u4) {
+    format: ?enum(u4) {
         elf = 0,
         c = 1,
         wasm = 2,
