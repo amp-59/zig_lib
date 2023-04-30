@@ -50,6 +50,7 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     const build_test: *Builder.Target =         try tests.addTarget(allocator, exe_build,   "build_test",   "build_runner.zig");
     const decl_test: *Builder.Target =          try tests.addTarget(allocator, exe_default, "decl_test",    "test/decl-test.zig");
     const builtin_test: *Builder.Target =       try tests.addTarget(allocator, exe_default, "builtin_test", "test/builtin-test.zig");
+    const serial_test: *Builder.Target =        try tests.addTarget(allocator, exe_default, "serial_test",  "test/serial-test.zig");
     const meta_test: *Builder.Target =          try tests.addTarget(allocator, exe_default, "meta_test",    "test/meta-test.zig");
     const mem_test: *Builder.Target =           try tests.addTarget(allocator, exe_default, "mem_test",     "test/mem-test.zig");
     const algo_test: *Builder.Target =          try tests.addTarget(allocator, exe_default, "algo_test",    "test/algo-test.zig");
@@ -58,9 +59,7 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     const fmt_test: *Builder.Target =           try tests.addTarget(allocator, exe_default, "fmt_test",     "test/fmt-test.zig");
     const render_test: *Builder.Target =        try tests.addTarget(allocator, exe_default, "render_test",  "test/render-test.zig");
     const build2_test: *Builder.Target =        try tests.addTarget(allocator, exe_build,   "build2_test",  "test/build2-test.zig");
-    const build3_test: *Builder.Target =        try tests.addTarget(allocator, exe_build,   "build3_test",  "test/build3-test.zig");
-    const proc_test: *Builder.Target =          try tests.addTarget(allocator, exe_default, "proc_test",    "test/proc-test.zig");
-    const serial_test: *Builder.Target =        try tests.addTarget(allocator, exe_default, "serial_test",  "test/serial-test.zig");
+    const proc_test: *Builder.Target =          try tests.addTarget(allocator, exe_fast,    "proc_test",    "test/proc-test.zig");
     const thread_test: *Builder.Target =        try tests.addTarget(allocator, exe_default, "thread_test",  "test/thread-test.zig");
     const virtual_test: *Builder.Target =       try tests.addTarget(allocator, exe_default, "virtual_test", "test/virtual-test.zig");
     const size_test: *Builder.Target =          try tests.addTarget(allocator, exe_default, "size_test",    "test/size_per_config.zig");
@@ -108,7 +107,6 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     build_test.descr =          "Test the library build runner and build program";
     decl_test.descr =           "Test compilation of all public declarations recursively";
     build2_test.descr =         "Test the special test build program";
-    build3_test.descr =         "Test primitive build runner command line";
     serial_test.descr =         "Test data serialisation functions";
     thread_test.descr =         "Test clone and thread-safe compound/tagged sets";
     virtual_test.descr =        "Test address spaces, sub address spaces, and arenas";
