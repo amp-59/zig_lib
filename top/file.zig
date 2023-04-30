@@ -729,6 +729,9 @@ pub fn execAt(comptime spec: ExecuteSpec, dir_fd: u64, name: [:0]const u8, args:
     const vars_addr: u64 = @ptrToInt(vars.ptr);
     const flags: At = comptime spec.flags();
     const logging: builtin.Logging.AttemptError = comptime spec.logging.override();
+    if (logging.Attempt) {
+        debug.executeNotice(name, args);
+    }
     if (meta.wrap(sys.call(.execveat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, args_addr, vars_addr, flags.val }))) {
         unreachable;
     } else |execve_error| {
