@@ -7,7 +7,7 @@ const time = top.time;
 const meta = top.meta;
 const file = top.file;
 const spec = top.spec;
-const build = top.build2;
+const build = top.build;
 const builtin = top.builtin;
 const testing = top.testing;
 
