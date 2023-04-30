@@ -45,26 +45,26 @@ pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
 
         pub const Entry = opaque {
             pub fn possess(dirent: *const Entry, dir: *DirStream) void {
-                @intToPtr(*const Block, @ptrToInt(dirent) + 0).* = dir.blk;
+                @intToPtr(*const Block, @ptrToInt(dirent) +% 0).* = dir.blk;
                 file.close(dir_close_spec, dir.fd);
             }
             pub fn entries(dirent: *const Entry) Block {
-                return @intToPtr(*const Block, @ptrToInt(dirent) + 0).*;
+                return @intToPtr(*const Block, @ptrToInt(dirent)).*;
             }
             pub fn len(dirent: *const Entry) u16 {
-                return @intToPtr(*const u16, @ptrToInt(dirent) + 8).*;
+                return @intToPtr(*const u16, @ptrToInt(dirent) +% 8).*;
             }
             pub fn kind(dirent: *const Entry) file.Kind {
-                return @intToPtr(*const file.Kind, @ptrToInt(dirent) + 10).*;
+                return @intToPtr(*const file.Kind, @ptrToInt(dirent) +% 10).*;
             }
             pub fn name(dirent: *const Entry) [:0]const u8 {
-                return @intToPtr([*:0]u8, @ptrToInt(dirent) + 11)[0..dirent.len() :0];
+                return @intToPtr([*:0]u8, @ptrToInt(dirent) +% 11)[0..dirent.len() :0];
             }
         };
         fn links(blk: Block) ListView.Links {
             return .{
                 .major = blk.aligned_byte_address(),
-                .minor = blk.aligned_byte_address() + 48,
+                .minor = blk.aligned_byte_address() +% 48,
             };
         }
         pub const dir_spec: DirStreamSpec = spec;
@@ -95,7 +95,7 @@ pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
             const t_bytes: u64 = s_bytes * 2;
             const s_impl: Block = dir.blk;
             try meta.wrap(allocator.resizeManyAbove(Block, &dir.blk, .{ .bytes = t_bytes }));
-            clear(s_impl.unwritable_byte_address(), dir.blk.unwritable_byte_address() - s_impl.unwritable_byte_address());
+            clear(s_impl.unwritable_byte_address(), dir.blk.unwritable_byte_address() -% s_impl.unwritable_byte_address());
         }
         fn readAll(dir: *DirStream, allocator: *Allocator) !void {
             dir.blk.define(try dir.getDirectoryEntries());
@@ -105,7 +105,7 @@ pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
             }
             if (dir_spec.options.shrink_after_read) {
                 allocator.resizeManyBelow(Block, &dir.blk, .{
-                    .bytes = mach.alignA(dir.blk.defined_byte_count() + 48, 8),
+                    .bytes = mach.alignA(dir.blk.defined_byte_count() +% 48, 8),
                 });
             }
         }
@@ -170,18 +170,18 @@ const List = opaque {
         const major_save: [24]u8 = @intToPtr(*const [24]u8, major_src_addr).*;
         const major_dst_addr: u64 = s_lb_addr;
         const minor_save: [24]u8 = @intToPtr(*const [24]u8, minor_src_addr).*;
-        const minor_dst_addr: u64 = s_lb_addr + 24;
+        const minor_dst_addr: u64 = s_lb_addr +% 24;
         const upper_src_addr: u64 = @max(major_src_addr, minor_src_addr);
         const lower_src_addr: u64 = @min(major_src_addr, minor_src_addr);
         var t_lb_addr: u64 = upper_src_addr;
-        while (t_lb_addr != lower_src_addr + 24) {
+        while (t_lb_addr != lower_src_addr +% 24) {
             t_lb_addr -= 8;
-            @intToPtr(*u64, t_lb_addr + 24).* = @intToPtr(*u64, t_lb_addr).*;
+            @intToPtr(*u64, t_lb_addr +% 24).* = @intToPtr(*u64, t_lb_addr).*;
         }
         t_lb_addr = lower_src_addr;
         while (t_lb_addr != major_dst_addr) {
             t_lb_addr -= 8;
-            @intToPtr(*u64, t_lb_addr + 48).* = @intToPtr(*u64, t_lb_addr).*;
+            @intToPtr(*u64, t_lb_addr +% 48).* = @intToPtr(*u64, t_lb_addr).*;
         }
         @intToPtr(*[24]u8, major_dst_addr).* = major_save;
         @intToPtr(*[24]u8, minor_dst_addr).* = minor_save;
@@ -194,23 +194,23 @@ const List = opaque {
     // and "..\0", and cmoving the relevant index. I suppose this
     // respects endian, but have never tested it.
     fn classifyNameExperimental(addrs: *[3]u64, s_lb_addr: u64) void {
-        const w0: u16 = @intToPtr(*const u16, s_lb_addr + 18).*;
-        const w1: u16 = @intToPtr(*const u16, s_lb_addr + 20).*;
+        const w0: u16 = @intToPtr(*const u16, s_lb_addr +% 18).*;
+        const w1: u16 = @intToPtr(*const u16, s_lb_addr +% 20).*;
         const j0: u8 = @boolToInt(w0 == if (builtin.is_little) 11780 else 1070);
         const j1: u8 = j0 << @boolToInt(w1 == if (builtin.is_little) 46 else 11776);
         const j2: u8 = j1 & (@as(u8, 1) << @boolToInt(w1 != 0));
         addrs[j2] = s_lb_addr;
     }
     fn mangle(s_lb_addr: u64) void {
-        const len: u16 = @intToPtr(*u16, s_lb_addr + 16).*;
-        const a_0: u64 = (s_lb_addr + len) -% 8;
+        const len: u16 = @intToPtr(*u16, s_lb_addr +% 16).*;
+        const a_0: u64 = (s_lb_addr +% len) -% 8;
         const a_1: u16 = 64 -% @clz(@intToPtr(*const u64, a_0).*);
-        const a_2: u16 = (len + (1 + (a_1 / 8))) - (name_offset + 8);
-        const a_3: *u8 = @intToPtr(*u8, s_lb_addr + name_offset + (a_2 - 1));
+        const a_2: u16 = (len +% (1 +% (a_1 / 8))) -% (name_offset +% 8);
+        const a_3: *u8 = @intToPtr(*u8, s_lb_addr +% name_offset +% (a_2 -% 1));
         const name_len: u16 = a_2 -% @boolToInt(a_3.* == 0);
-        @intToPtr(*u8, s_lb_addr + name_offset + name_len).* = 0;
-        @intToPtr(*u16, s_lb_addr + reclen_offset).* = name_len;
-        @intToPtr(*u64, s_lb_addr + offset_offset).* = 0;
+        @intToPtr(*u8, s_lb_addr +% name_offset +% name_len).* = 0;
+        @intToPtr(*u16, s_lb_addr +% reclen_offset).* = name_len;
+        @intToPtr(*u64, s_lb_addr +% offset_offset).* = 0;
     }
     fn rectifyEntryOrder(s_lb_addr: u64) void {
         var addrs: [3]u64 = .{0} ** 3;
@@ -221,7 +221,7 @@ const List = opaque {
         while (addrs[1] *% addrs[2] == 0) : (t_lb_addr = nextAddress(t_lb_addr)) {
             classifyNameExperimental(&addrs, t_lb_addr);
         }
-        if (!(builtin.int2a(bool, addrs[1] == s_lb_addr, addrs[2] == s_lb_addr + 24))) {
+        if (!(builtin.int2a(bool, addrs[1] == s_lb_addr, addrs[2] == s_lb_addr +% 24))) {
             shiftBothBlocks(s_lb_addr, addrs[1], addrs[2]);
         }
     }
@@ -251,6 +251,6 @@ const List = opaque {
         return count;
     }
     pub fn nextAddress(s_lb_addr: u64) u64 {
-        return s_lb_addr + @intToPtr(*u16, s_lb_addr + reclen_offset).*;
+        return s_lb_addr +% @intToPtr(*u16, s_lb_addr +% reclen_offset).*;
     }
 };
