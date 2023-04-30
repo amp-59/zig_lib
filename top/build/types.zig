@@ -312,7 +312,6 @@ pub const Files = struct {
     pub fn formatWrite(format: Format, array: anytype) void {
         for (format.value) |path| {
             array.writeFormat(path);
-            array.writeOne(0);
         }
     }
     pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
@@ -320,8 +319,6 @@ pub const Files = struct {
         var len: u64 = 0;
         for (format.value) |path| {
             len = len +% path.formatWriteBuf(buf + len);
-            buf[len] = 0;
-            len = len +% 1;
         }
         return len;
     }
@@ -329,7 +326,6 @@ pub const Files = struct {
         var len: u64 = 0;
         for (format.value) |path| {
             len +%= path.formatLength();
-            len +%= 1;
         }
         return len;
     }
