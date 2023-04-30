@@ -50,6 +50,66 @@ const stat_spec: file.StatusSpec = .{
     .errors = .{},
     .logging = .{},
 };
+fn writeFormatterYes2No1(buf: [*]u8, path: anytype, yes: []const u8, no: []const u8) u64 {
+    var len: u64 = 0;
+    switch (path) {
+        .yes => |yes_arg| {
+            if (yes_arg) |yes_optional_arg| {
+                @memcpy(buf + len, yes.ptr, yes.len);
+                len = len +% yes.len;
+                buf[len] = '=';
+                len = len +% 1;
+                len = len +% yes_optional_arg.formatWriteBuf(buf + len);
+            } else {
+                @memcpy(buf + len, yes.ptr, yes.len);
+                len = len +% yes.len;
+                buf[len] = 0;
+                len = len +% 1;
+            }
+        },
+        .no => {
+            @memcpy(buf + len, no.ptr, no.len);
+            len = len +% no.len;
+            buf[len] = 0;
+            len = len +% 1;
+        },
+    }
+    return len;
+}
+fn writeFormatterYes2No2(buf: [*]u8, any: anytype, yes: []const u8, no: []const u8) u64 {
+    var len: u64 = 0;
+    switch (any) {
+        .yes => |yes_arg| {
+            if (yes_arg) |yes_optional_arg| {
+                @memcpy(buf + len, yes.ptr, yes.len);
+                len = len +% yes.len;
+                buf[len] = '=';
+                len = len +% 1;
+                len = len +% yes_optional_arg.formatWriteBuf(buf + len);
+            } else {
+                @memcpy(buf + len, yes.ptr, yes.len);
+                len = len +% yes.len;
+                buf[len] = 0;
+                len = len +% 1;
+            }
+        },
+        .no => |no_arg| {
+            if (no_arg) |no_optional_arg| {
+                @memcpy(buf + len, no.ptr, no.len);
+                len = len +% no.len;
+                buf[len] = '=';
+                len = len +% 1;
+                len = len +% no_optional_arg.formatWriteBuf(buf + len);
+            } else {
+                @memcpy(buf + len, no.ptr, no.len);
+                len = len +% no.len;
+                buf[len] = 0;
+                len = len +% 1;
+            }
+        },
+    }
+    return len;
+}
 fn writeIf(array: *Array, value_name: []const u8) void {
     array.writeMany("if(");
     array.writeMany(value_name);
