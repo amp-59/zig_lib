@@ -232,6 +232,12 @@ pub const BuilderSpec = struct {
             .vars_type = [][*:0]u8,
         };
     }
+    fn fstat() file.StatusSpec {
+        return .{
+            .logging = .{ .Error = false, .Fault = true },
+            .errors = .{ .throw = sys.stat_errors },
+        };
+    }
 };
 pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
     const Type = struct {
@@ -282,44 +288,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         pub const arena_lb_addr: u64 = stack_up_addr;
         pub const stack_up_addr: u64 = stack_lb_addr + (max_thread_count * stack_aligned_bytes);
         pub const arena_up_addr: u64 = arena_lb_addr + (max_arena_count * arena_aligned_bytes);
-        const path_spec: file.PathSpec = builder_spec.path();
-        const close_spec: file.CloseSpec = builder_spec.close();
-        const map_spec: mem.MapSpec = builder_spec.map();
-        const stat_spec: file.StatusSpec = builder_spec.stat();
-        const unmap_spec: mem.UnmapSpec = builder_spec.unmap();
-        const clock_spec: time.ClockSpec = builder_spec.clock();
-        const sleep_spec: time.SleepSpec = builder_spec.sleep();
-        const clone_spec: proc.CloneSpec = builder_spec.clone();
-        const write_spec: file.WriteSpec = builder_spec.write();
-        const write_spec2: file.WriteSpec = builder_spec.write2();
-        const create_spec: file.CreateSpec = builder_spec.create();
-        const mkdir_spec: file.MakeDirSpec = builder_spec.mkdir();
-        const fork_spec: proc.ForkSpec = builder_spec.fork();
-        const execve_spec: file.ExecuteSpec = builder_spec.execve();
-        const waitpid_spec: proc.WaitSpec = builder_spec.waitpid();
-        const mknod_spec: file.MakeNodeSpec = builder_spec.mknod();
-        const dup3_spec: file.DuplicateSpec = builder_spec.dup3();
-        const poll_spec: file.PollSpec = builder_spec.poll();
-        const pipe_spec: file.MakePipeSpec = builder_spec.pipe();
-        const read_spec: file.ReadSpec = builder_spec.read();
-        const read_spec2: file.ReadSpec = builder_spec.read2();
-        const read_spec3: file.ReadSpec = builder_spec.read3();
-        const update_exit_message: [2]types.Message.ClientHeader = .{
-            .{ .tag = .update, .bytes_len = 0 },
-            .{ .tag = .exit, .bytes_len = 0 },
-        };
-        const addrspace_options: mem.ArenaOptions = .{
-            .thread_safe = true,
-            .require_map = true,
-            .require_unmap = true,
-        };
-        const threadspace_options: mem.ArenaOptions = .{
-            .thread_safe = true,
-        };
-        const fstat_spec: file.StatusSpec = .{
-            .logging = .{ .Error = false, .Fault = true },
-            .errors = .{ .throw = sys.stat_errors },
-        };
         pub const Target = struct {
             name: [:0]const u8,
             descr: ?[:0]const u8 = null,
@@ -633,39 +601,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             @setRuntimeSafety(false);
             return builder.grps[0..builder.grps_len];
         }
-        fn openChild(in: file.Pipe, out: file.Pipe) sys.Call(.{
-            .throw = close_spec.errors.throw ++ dup3_spec.errors.throw,
-            .abort = close_spec.errors.abort ++ dup3_spec.errors.abort,
-        }, void) {
-            try meta.wrap(
-                file.close(close_spec, in.write),
-            );
-            try meta.wrap(
-                file.close(close_spec, out.read),
-            );
-            try meta.wrap(
-                file.duplicateTo(dup3_spec, in.read, 0),
-            );
-            try meta.wrap(
-                file.duplicateTo(dup3_spec, out.write, 1),
-            );
-        }
-        fn openParent(in: file.Pipe, out: file.Pipe) sys.Call(close_spec.errors, void) {
-            try meta.wrap(
-                file.close(close_spec, in.read),
-            );
-            try meta.wrap(
-                file.close(close_spec, out.write),
-            );
-        }
-        fn closeParent(in: file.Pipe, out: file.Pipe) sys.Call(close_spec.errors, void) {
-            try meta.wrap(
-                file.close(close_spec, in.write),
-            );
-            try meta.wrap(
-                file.close(close_spec, out.read),
-            );
-        }
         fn clientLoop(allocator: *Allocator, out: file.Pipe) u8 {
             var fds: [1]file.PollFd = .{
                 .{ .fd = out.read, .expect = .{ .input = true } },
@@ -949,31 +884,27 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             ret.* = .{ .name = name, .builder = builder, .trgs = &.{}, .trgs_len = 0 };
             return ret;
         }
-        fn createTarget(
-            builder: *Builder,
-            allocator: *Allocator,
-            name: [:0]const u8,
-            root: [:0]const u8,
-            in: *Target,
-        ) void {
+        fn createTarget(builder: *Builder, allocator: *Allocator, name: [:0]const u8, root: [:0]const u8, in: *Target) void {
             in.name = name;
             in.root = root;
             in.assertExchange(.build, .unavailable, .ready);
             in.emitBinary(allocator, builder);
-            in.build_cmd.name = in.name;
-            in.build_cmd.main_pkg_path = builder.build_root;
-            in.build_cmd.cache_root = builder.cache_root;
-            in.build_cmd.global_cache_root = builder.global_cache_root;
+            if (in.build_cmd.name == null) {
+                in.build_cmd.name = in.name;
+            }
+            if (in.build_cmd.main_pkg_path == null) {
+                in.build_cmd.main_pkg_path = builder.build_root;
+            }
+            if (in.build_cmd.cache_root == null) {
+                in.build_cmd.cache_root = builder.cache_root;
+            }
+            if (in.build_cmd.global_cache_root == null) {
+                in.build_cmd.global_cache_root = builder.global_cache_root;
+            }
             if (in.build_cmd.kind == .exe) {
                 const bin_path: types.Path = in.binaryPath();
-                assertKindOrNothing(builder.dir_fd, bin_path.relative.?, .regular);
                 in.addRunArgument(allocator, concatenate(allocator, &[_][]const u8{ bin_path.absolute, "/", bin_path.relative.? }));
             }
-        }
-        fn assertKindOrNothing(dir_fd: u64, name: [:0]const u8, kind: file.Kind) void {
-            file.assertAt(fstat_spec, dir_fd, name, kind) catch |stat_error| {
-                builtin.assert(stat_error == error.NoSuchFileOrDirectory);
-            };
         }
         fn getFileStatus(builder: *Builder, name: [:0]const u8) ?file.Status {
             return file.statusAt(fstat_spec, builder.dir_fd, name) catch null;
@@ -1085,6 +1016,74 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             return false;
         }
+        fn openChild(in: file.Pipe, out: file.Pipe) sys.Call(.{
+            .throw = close_spec.errors.throw ++ dup3_spec.errors.throw,
+            .abort = close_spec.errors.abort ++ dup3_spec.errors.abort,
+        }, void) {
+            try meta.wrap(
+                file.close(close_spec, in.write),
+            );
+            try meta.wrap(
+                file.close(close_spec, out.read),
+            );
+            try meta.wrap(
+                file.duplicateTo(dup3_spec, in.read, 0),
+            );
+            try meta.wrap(
+                file.duplicateTo(dup3_spec, out.write, 1),
+            );
+        }
+        fn openParent(in: file.Pipe, out: file.Pipe) sys.Call(close_spec.errors, void) {
+            try meta.wrap(
+                file.close(close_spec, in.read),
+            );
+            try meta.wrap(
+                file.close(close_spec, out.write),
+            );
+        }
+        fn closeParent(in: file.Pipe, out: file.Pipe) sys.Call(close_spec.errors, void) {
+            try meta.wrap(
+                file.close(close_spec, in.write),
+            );
+            try meta.wrap(
+                file.close(close_spec, out.read),
+            );
+        }
+        const update_exit_message: [2]types.Message.ClientHeader = .{
+            .{ .tag = .update, .bytes_len = 0 },
+            .{ .tag = .exit, .bytes_len = 0 },
+        };
+        const addrspace_options: mem.ArenaOptions = .{
+            .thread_safe = true,
+            .require_map = true,
+            .require_unmap = true,
+        };
+        const threadspace_options: mem.ArenaOptions = .{
+            .thread_safe = true,
+        };
+        const path_spec: file.PathSpec = builder_spec.path();
+        const close_spec: file.CloseSpec = builder_spec.close();
+        const map_spec: mem.MapSpec = builder_spec.map();
+        const stat_spec: file.StatusSpec = builder_spec.stat();
+        const unmap_spec: mem.UnmapSpec = builder_spec.unmap();
+        const clock_spec: time.ClockSpec = builder_spec.clock();
+        const sleep_spec: time.SleepSpec = builder_spec.sleep();
+        const clone_spec: proc.CloneSpec = builder_spec.clone();
+        const write_spec: file.WriteSpec = builder_spec.write();
+        const write_spec2: file.WriteSpec = builder_spec.write2();
+        const create_spec: file.CreateSpec = builder_spec.create();
+        const mkdir_spec: file.MakeDirSpec = builder_spec.mkdir();
+        const fork_spec: proc.ForkSpec = builder_spec.fork();
+        const execve_spec: file.ExecuteSpec = builder_spec.execve();
+        const waitpid_spec: proc.WaitSpec = builder_spec.waitpid();
+        const mknod_spec: file.MakeNodeSpec = builder_spec.mknod();
+        const dup3_spec: file.DuplicateSpec = builder_spec.dup3();
+        const poll_spec: file.PollSpec = builder_spec.poll();
+        const pipe_spec: file.MakePipeSpec = builder_spec.pipe();
+        const read_spec: file.ReadSpec = builder_spec.read();
+        const read_spec2: file.ReadSpec = builder_spec.read2();
+        const read_spec3: file.ReadSpec = builder_spec.read3();
+        const fstat_spec: file.StatusSpec = BuilderSpec.fstat();
         pub const debug = struct {
             const about_run_s: [:0]const u8 = builtin.debug.about("run");
             const about_build_s: [:0]const u8 = builtin.debug.about("build");
@@ -1094,6 +1093,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             const error_s: *const [5:0]u8 = "error";
             const note_s: *const [4:0]u8 = "note";
             const fancy_hl_line: bool = false;
+            inline fn resetStyle() [:0]const u8 {
+                return "\x1b[0m";
+            }
             inline fn tildeStyle() [:0]const u8 {
                 return "\x1b[38;5;46m";
             }
@@ -1195,7 +1197,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 len = writeAndWalkInternal(&buf0, len, &buf1, 0, target);
                 builtin.debug.logAlways(buf0[0..len]);
             }
-            fn writeAndWalkInternal(buf0: [*]u8, len0: u64, buf1: [*]u8, len1: u64, target: *Builder.Target) u64 {
+            fn writeAndWalkInternal(buf0: [*]u8, len0: u64, buf1: [*]u8, len1: u64, target: *Target) u64 {
                 @setRuntimeSafety(false);
                 const deps: []Target.Dependency = target.buildDependencies();
                 var len: u64 = len0;
