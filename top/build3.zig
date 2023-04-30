@@ -697,9 +697,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     .zig_version => continue,
                     .progress => continue,
                     .emit_bin_path => break,
-                    .test_metadata => break,
-                    .test_results => break,
-                    .error_bundle => break {
+                    .test_metadata => continue,
+                    .test_results => continue,
+                    .error_bundle => {
                         debug.writeErrors(allocator, types.Message.ErrorHeader.create(msg));
                     },
                 }
