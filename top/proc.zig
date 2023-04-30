@@ -199,6 +199,10 @@ pub const Wait = meta.EnumBitField(enum(u64) {
     untraced = WAIT.UNTRACED,
     const WAIT = sys.WAIT;
 });
+pub const Return = struct {
+    pid: u32,
+    status: u32,
+};
 pub const CloneArgs = extern struct {
     /// Flags bit mask
     flags: Clone,
@@ -244,10 +248,10 @@ pub const WaitSpec = struct {
     };
     fn pid(id: For) u64 {
         const val: isize = switch (id) {
-            .pid => |val| @intCast(isize, val),
-            .pgid => |val| @intCast(isize, val),
             .ppid => 0,
             .any => -1,
+            .pid => |val| @intCast(isize, val),
+            .pgid => |val| @intCast(isize, val),
         };
         return @bitCast(usize, val);
     }
@@ -331,10 +335,17 @@ pub const CommandSpec = struct {
         waitpid: sys.ErrorPolicy = .{ .throw = sys.wait_errors },
     };
     fn fork(comptime spec: CommandSpec) ForkSpec {
-        return .{ .errors = spec.errors.fork, .logging = spec.logging.fork };
+        return .{
+            .errors = spec.errors.fork,
+            .logging = spec.logging.fork,
+        };
     }
     fn waitpid(comptime spec: CommandSpec) WaitSpec {
-        return .{ .errors = spec.errors.waitpid, .logging = spec.logging.waitpid, .return_type = void };
+        return .{
+            .errors = spec.errors.waitpid,
+            .logging = spec.logging.waitpid,
+            .return_type = void,
+        };
     }
     fn exec(comptime spec: CommandSpec) file.ExecuteSpec {
         comptime return .{
@@ -457,11 +468,16 @@ pub fn getEffectiveGroupId() u16 {
     return @truncate(u16, sys.call(.getegid, .{}, u64, .{}));
 }
 
-pub fn waitPid(comptime spec: WaitSpec, id: WaitSpec.For, status_opt: ?*u32) sys.Call(spec.errors, spec.return_type) {
+pub fn waitPid(comptime spec: WaitSpec, id: WaitSpec.For) sys.Call(spec.errors, Return) {
     const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
-    const status: u64 = if (status_opt) |status| @ptrToInt(status) else 0;
-    if (meta.wrap(sys.call(.wait4, spec.errors, spec.return_type, .{ WaitSpec.pid(id), status, 0, 0, 0 }))) |pid| {
-        return pid;
+    var ret: Return = undefined;
+    const status_addr: u64 = @ptrToInt(&ret.status);
+    if (meta.wrap(sys.call(.wait4, spec.errors, u32, .{ WaitSpec.pid(id), status_addr, 0, 0, 0 }))) |pid| {
+        ret.pid = pid;
+        if (logging.Success) {
+            debug.waitNotice(id, ret);
+        }
+        return ret;
     } else |wait_error| {
         if (logging.Error) {
             debug.waitError(wait_error);
@@ -508,9 +524,8 @@ pub fn command(comptime spec: CommandSpec, pathname: [:0]const u8, args: spec.ar
     if (pid == 0) {
         try meta.wrap(file.execPath(exec_spec, pathname, args, vars));
     }
-    var status: u32 = 0;
-    try meta.wrap(waitPid(wait_spec, .{ .pid = pid }, &status));
-    return Status.exit(status);
+    const ret: Return = try meta.wrap(waitPid(wait_spec, .{ .pid = pid }));
+    return Status.exit(ret.status);
 }
 pub fn commandAt(comptime spec: CommandSpec, dir_fd: u64, name: [:0]const u8, args: spec.args_type, vars: spec.vars_type) sys.Call(.{
     .throw = spec.errors.execve.throw ++ spec.errors.fork.throw ++ spec.errors.waitpid.throw,
@@ -1079,6 +1094,12 @@ const debug = opaque {
     fn forkNotice(pid: u64) void {
         var buf: [560]u8 = undefined;
         builtin.debug.logErrorAIO(&buf, &[_][]const u8{ about_fork_0_s, "pid=", builtin.fmt.ud64(pid).readAll(), "\n" });
+    }
+    fn waitNotice(id: WaitSpec.For, ret: Return) void {
+        const pid_s: []const u8 = builtin.fmt.ud64(ret.pid).readAll();
+        const status_s: []const u8 = builtin.fmt.ud64(ret.status).readAll();
+        var buf: [560]u8 = undefined;
+        builtin.debug.logErrorAIO(&buf, &[_][]const u8{ about_wait_0_s, @tagName(id), ", pid=", pid_s, ", status=", status_s, "\n" });
     }
     fn forkError(fork_error: anytype) void {
         var buf: [560]u8 = undefined;
