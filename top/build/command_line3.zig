@@ -1,16 +1,8 @@
 const mem = @import("../mem.zig");
-const spec = @import("../spec.zig");
+const fmt = @import("../fmt.zig");
 const builtin = @import("../builtin.zig");
 const types = @import("./types.zig");
 const tasks = @import("./tasks3.zig");
-const reinterpret_spec: mem.ReinterpretSpec = blk: {
-    var tmp: mem.ReinterpretSpec = spec.reinterpret.print;
-    tmp.composite.map = &.{
-        .{ .in = []const types.ModuleDependency, .out = types.ModuleDependencies },
-        .{ .in = []const types.Path, .out = types.Files },
-    };
-    break :blk tmp;
-};
 fn FormatMap(comptime T: type) type {
     switch (T) {
         []const types.ModuleDependency => return types.ModuleDependencies,
@@ -23,8 +15,17 @@ fn FormatMap(comptime T: type) type {
 fn formatMap(any: anytype) FormatMap(@TypeOf(any)) {
     return .{ .value = any };
 }
-pub fn buildWrite(cmd: *const tasks.BuildCommand, buf: [*]u8) u64 {
-    var len: u64 = 0;
+pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_path: types.Path, buf: [*]u8) u64 {
+    @memcpy(buf, zig_exe.ptr, zig_exe.len);
+    var len: u64 = zig_exe.len;
+    buf[len] = 0;
+    len = len +% 1;
+    @memcpy(buf + len, "build-", 6);
+    len = len +% 6;
+    @memcpy(buf + len, @tagName(cmd.kind).ptr, @tagName(cmd.kind).len);
+    len = len +% @tagName(cmd.kind).len;
+    buf[len] = 0;
+    len = len +% 1;
     if (cmd.color) |color| {
         @memcpy(buf + len, "--color\x00", 8);
         len = len +% 8;
@@ -452,11 +453,11 @@ pub fn buildWrite(cmd: *const tasks.BuildCommand, buf: [*]u8) u64 {
             len = len +% 22;
         }
     }
-    if (cmd.fmt) |fmt| {
+    if (cmd.format) |format| {
         @memcpy(buf + len, "-ofmt\x00", 6);
         len = len +% 6;
-        @memcpy(buf + len, @tagName(fmt).ptr, @tagName(fmt).len);
-        len = len +% @tagName(fmt).len;
+        @memcpy(buf + len, @tagName(format).ptr, @tagName(format).len);
+        len = len +% @tagName(format).len;
         buf[len] = 0;
         len = len +% 1;
     }
@@ -631,7 +632,7 @@ pub fn buildWrite(cmd: *const tasks.BuildCommand, buf: [*]u8) u64 {
         len = len +% 8;
         const s: []const u8 = builtin.fmt.ud64(stack).readAll();
         @memcpy(buf + len, s.ptr, s.len);
-        len = len +% 6;
+        len = len + s.len;
         buf[len] = 0;
         len = len +% 1;
     }
@@ -640,7 +641,7 @@ pub fn buildWrite(cmd: *const tasks.BuildCommand, buf: [*]u8) u64 {
         len = len +% 13;
         const s: []const u8 = builtin.fmt.ud64(image_base).readAll();
         @memcpy(buf + len, s.ptr, s.len);
-        len = len +% 11;
+        len = len + s.len;
         buf[len] = 0;
         len = len +% 1;
     }
@@ -687,10 +688,13 @@ pub fn buildWrite(cmd: *const tasks.BuildCommand, buf: [*]u8) u64 {
     if (cmd.files) |files| {
         len = len +% formatMap(files).formatWriteBuf(buf + len);
     }
+    len = len +% root_path.formatWriteBuf(buf + len);
+    buf[len] = 0;
     return len;
 }
-pub fn buildLength(cmd: *const tasks.BuildCommand) u64 {
-    var len: u64 = 0;
+pub fn buildLength(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_path: types.Path) u64 {
+    @setRuntimeSafety(false);
+    var len: u64 = zig_exe.len +% @tagName(cmd.kind).len +% 8;
     if (cmd.color) |color| {
         len = len +% 8;
         len = len +% @tagName(color).len;
@@ -1016,9 +1020,9 @@ pub fn buildLength(cmd: *const tasks.BuildCommand) u64 {
             len = len +% 22;
         }
     }
-    if (cmd.fmt) |fmt| {
+    if (cmd.format) |format| {
         len = len +% 6;
-        len = len +% @tagName(fmt).len;
+        len = len +% @tagName(format).len;
         len = len +% 1;
     }
     if (cmd.dirafter) |dirafter| {
@@ -1178,33 +1182,16 @@ pub fn buildLength(cmd: *const tasks.BuildCommand) u64 {
     if (cmd.files) |files| {
         len = len +% formatMap(files).formatLength();
     }
-    return len;
+    return len +% root_path.formatLength() +% 1;
 }
-pub fn formatLength(cmd: *const tasks.FormatCommand) u64 {
-    var len: u64 = 0;
-    if (cmd.color) |color| {
-        len = len +% 8;
-        len = len +% @tagName(color).len;
-        len = len +% 1;
-    }
-    if (cmd.stdin) {
-        len = len +% 8;
-    }
-    if (cmd.check) {
-        len = len +% 8;
-    }
-    if (cmd.ast_check) {
-        len = len +% 12;
-    }
-    if (cmd.exclude) |exclude| {
-        len = len +% 10;
-        len = len +% exclude.len;
-        len = len +% 1;
-    }
-    return len;
-}
-pub fn formatWrite(cmd: *const tasks.FormatCommand, buf: [*]u8) u64 {
-    var len: u64 = 0;
+pub fn formatWriteBuf(cmd: *const tasks.FormatCommand, zig_exe: []const u8, root_path: types.Path, buf: [*]u8) u64 {
+    @setRuntimeSafety(false);
+    @memcpy(buf, zig_exe.ptr, zig_exe.len);
+    var len: u64 = zig_exe.len;
+    buf[len] = 0;
+    len = len +% 1;
+    @memcpy(buf + len, "fmt\\x00", 4);
+    len = len +% 4;
     if (cmd.color) |color| {
         @memcpy(buf + len, "--color\x00", 8);
         len = len +% 8;
@@ -1233,5 +1220,31 @@ pub fn formatWrite(cmd: *const tasks.FormatCommand, buf: [*]u8) u64 {
         buf[len] = 0;
         len = len +% 1;
     }
+    len = len +% root_path.formatWriteBuf(buf + len);
+    buf[len] = 0;
     return len;
+}
+pub fn formatLength(cmd: *const tasks.FormatCommand, zig_exe: []const u8, root_path: types.Path) u64 {
+    @setRuntimeSafety(false);
+    var len: u64 = zig_exe.len +% 5;
+    if (cmd.color) |color| {
+        len = len +% 8;
+        len = len +% @tagName(color).len;
+        len = len +% 1;
+    }
+    if (cmd.stdin) {
+        len = len +% 8;
+    }
+    if (cmd.check) {
+        len = len +% 8;
+    }
+    if (cmd.ast_check) {
+        len = len +% 12;
+    }
+    if (cmd.exclude) |exclude| {
+        len = len +% 10;
+        len = len +% exclude.len;
+        len = len +% 1;
+    }
+    return len +% root_path.formatLength() +% 1;
 }
