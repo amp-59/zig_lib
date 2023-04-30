@@ -2,7 +2,7 @@ pub const srg = @import("./zig_lib.zig");
 const proc = srg.proc;
 const spec = srg.spec;
 const meta = srg.meta;
-const build = srg.build2;
+const build = srg.build;
 const builtin = srg.builtin;
 pub const runtime_assertions: bool = false;
 pub const Builder: type = build.GenericBuilder(spec.builder.default);
@@ -160,4 +160,3 @@ fn addEnvPathArgs(allocator: *Builder.Allocator, builder: *Builder, target: *Bui
     target.addRunArgument(allocator, builder.cache_root);
     target.addRunArgument(allocator, builder.global_cache_root);
 }
-//
