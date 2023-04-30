@@ -556,7 +556,6 @@ pub fn buildWrite(cmd: *const types.BuildCommand, array: anytype) void {
                 if (yes_optional_arg) |yes_arg| {
                     array.writeMany("-femit-bin=");
                     array.writeAny(reinterpret_spec, yes_arg);
-                    array.writeOne('\x00');
                 } else {
                     array.writeMany("-femit-bin\x00");
                 }
@@ -572,7 +571,6 @@ pub fn buildWrite(cmd: *const types.BuildCommand, array: anytype) void {
                 if (yes_optional_arg) |yes_arg| {
                     array.writeMany("-femit-asm=");
                     array.writeAny(reinterpret_spec, yes_arg);
-                    array.writeOne('\x00');
                 } else {
                     array.writeMany("-femit-asm\x00");
                 }
@@ -588,7 +586,6 @@ pub fn buildWrite(cmd: *const types.BuildCommand, array: anytype) void {
                 if (yes_optional_arg) |yes_arg| {
                     array.writeMany("-femit-llvm-ir=");
                     array.writeAny(reinterpret_spec, yes_arg);
-                    array.writeOne('\x00');
                 } else {
                     array.writeMany("-femit-llvm-ir\x00");
                 }
@@ -620,7 +617,6 @@ pub fn buildWrite(cmd: *const types.BuildCommand, array: anytype) void {
                 if (yes_optional_arg) |yes_arg| {
                     array.writeMany("-femit-h=");
                     array.writeAny(reinterpret_spec, yes_arg);
-                    array.writeOne('\x00');
                 } else {
                     array.writeMany("-femit-h\x00");
                 }
@@ -636,7 +632,6 @@ pub fn buildWrite(cmd: *const types.BuildCommand, array: anytype) void {
                 if (yes_optional_arg) |yes_arg| {
                     array.writeMany("-femit-docs=");
                     array.writeAny(reinterpret_spec, yes_arg);
-                    array.writeOne('\x00');
                 } else {
                     array.writeMany("-femit-docs\x00");
                 }
@@ -652,7 +647,6 @@ pub fn buildWrite(cmd: *const types.BuildCommand, array: anytype) void {
                 if (yes_optional_arg) |yes_arg| {
                     array.writeMany("-femit-analysis=");
                     array.writeAny(reinterpret_spec, yes_arg);
-                    array.writeOne('\x00');
                 } else {
                     array.writeMany("-femit-analysis\x00");
                 }
@@ -668,7 +662,6 @@ pub fn buildWrite(cmd: *const types.BuildCommand, array: anytype) void {
                 if (yes_optional_arg) |yes_arg| {
                     array.writeMany("-femit-implib=");
                     array.writeAny(reinterpret_spec, yes_arg);
-                    array.writeOne('\x00');
                 } else {
                     array.writeMany("-femit-implib\x00");
                 }
