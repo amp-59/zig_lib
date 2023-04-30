@@ -4,11 +4,26 @@ const mach = @import("../mach.zig");
 const meta = @import("../meta.zig");
 const spec = @import("../spec.zig");
 const builtin = @import("../builtin.zig");
-const tasks = @import("./tasks.zig");
+const tasks = @import("./tasks3.zig");
 pub usingnamespace tasks;
+pub const OutputMode = enum {
+    exe,
+    lib,
+    obj,
+};
+pub const AuxOutputMode = enum {
+    @"asm",
+    llvm_ir,
+    llvm_bc,
+    h,
+    docs,
+    analysis,
+    implib,
+};
 pub const Task = enum(u8) {
     build = 1,
     run = 2,
+    pub const list: []const Task = meta.tagList(Task);
 };
 pub const State = enum(u8) {
     unavailable = 0,
@@ -17,10 +32,9 @@ pub const State = enum(u8) {
     blocking = 3,
     invalid = 4,
     finished = 255,
+    pub const list: []const State = meta.tagList(State);
 };
-pub const state_list: []const State = meta.tagList(State);
-pub const task_list: []const Task = meta.tagList(Task);
-pub const Lock = mem.ThreadSafeSet(state_list.len, State, Task);
+pub const Lock = mem.ThreadSafeSet(State.list.len, State, Task);
 pub const Path = struct {
     absolute: [:0]const u8,
     relative: ?[:0]const u8 = null,
@@ -31,9 +45,10 @@ pub const Path = struct {
             array.writeOne('/');
             array.writeMany(relative);
         }
-        // array.writeOne(0);
+        array.writeOne(0);
     }
     pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
+        @setRuntimeSafety(false);
         var len: u64 = format.absolute.len;
         @memcpy(buf, format.absolute.ptr, format.absolute.len);
         if (format.relative) |relative| {
@@ -52,8 +67,7 @@ pub const Path = struct {
             len +%= 1;
             len +%= relative.len;
         }
-        //return len +% 1;
-        return len;
+        return len +% 1;
     }
 };
 pub const Module = struct {
@@ -78,6 +92,7 @@ pub const Module = struct {
         array.writeOne(0);
     }
     pub fn formatWriteBuf(mod: Module, buf: [*]u8) u64 {
+        @setRuntimeSafety(false);
         var len: u64 = 6;
         @memcpy(buf, "--mod\x00", 6);
         @memcpy(buf + len, mod.name.ptr, mod.name.len);
@@ -142,6 +157,7 @@ pub const ModuleDependencies = struct {
         array.overwriteOneBack(0);
     }
     pub fn formatWriteBuf(mod_deps: ModuleDependencies, buf: [*]u8) u64 {
+        @setRuntimeSafety(false);
         var len: u64 = 7;
         @memcpy(buf, "--deps\x00", 7);
         for (mod_deps.value) |mod_dep| {
@@ -202,6 +218,7 @@ pub const Macro = struct {
         array.writeOne(0);
     }
     pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
+        @setRuntimeSafety(false);
         var len: u64 = 2;
         @memcpy(buf, "-D", 2);
         @memcpy(buf + len, format.name.ptr, format.name.len);
@@ -266,6 +283,7 @@ pub const CFlags = struct {
         array.writeMany("--\x00");
     }
     pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
+        @setRuntimeSafety(false);
         var len: u64 = 8;
         @memcpy(buf, "-cflags\x00", 8);
         for (format.flags) |flag| {
@@ -298,6 +316,7 @@ pub const Files = struct {
         }
     }
     pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
+        @setRuntimeSafety(false);
         var len: u64 = 0;
         for (format.value) |path| {
             len = len +% path.formatWriteBuf(buf + len);
@@ -319,12 +338,13 @@ fn Aggregate(comptime T: type) type {
     return struct {
         value: []const T,
         const Format = @This();
-        pub fn formatWrite(format: Format, array: anytype) u64 {
+        pub fn formatWrite(format: Format, array: anytype) void {
             for (format.value) |value| {
                 value.formatWrite(array);
             }
         }
         pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
+            @setRuntimeSafety(false);
             var len: u64 = 0;
             for (format.value) |value| {
                 len = len +% value.formatWriteBuf(buf + len);
