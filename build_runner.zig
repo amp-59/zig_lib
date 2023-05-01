@@ -7,14 +7,10 @@ const srg = blk: {
         break :blk root.zig_lib;
     }
 };
-
 pub usingnamespace root;
 pub usingnamespace srg.proc.start;
 
-const Builder = if (@hasDecl(root, "Builder"))
-    root.Builder
-else
-    srg.build.Builder(srg.spec.builder.default);
+const Builder = if (@hasDecl(root, "Builder")) root.Builder else srg.build.GenericBuilder(srg.spec.builder.default);
 
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     var address_space: Builder.AddressSpace = .{};
