@@ -458,6 +458,10 @@ pub const Variant = enum(u1) {
     length,
     write,
 };
+pub const Characteristic = enum(u1) {
+    assign,
+    argument,
+};
 pub const ProtoTypeDescr = fmt.GenericTypeDescrFormat(.{
     .options = .{
         .default_field_values = true,
@@ -477,21 +481,24 @@ pub const ArgInfo = struct {
     tag: Tag,
     /// Describes how the field type should be written to the command struct
     type: ProtoTypeDescr,
+    /// Specifies whether option arguments are separated with '\x00' or '='
+    char: ?Characteristic = null,
 
     const Tag = enum(u8) {
         boolean = 0,
-        string = 1,
-        tag = 2,
-        integer = 3,
-        formatter = 4,
-        mapped = 5,
-        optional_boolean = 8,
-        optional_string = 9,
-        optional_repeatable = 10,
-        optional_tag = 11,
-        optional_integer = 12,
-        optional_formatter = 13,
-        optional_mapped = 14,
+        string,
+        tag,
+        integer,
+        formatter,
+        mapped,
+        optional_boolean,
+        optional_string,
+        optional_tag,
+        optional_integer,
+        optional_formatter,
+        optional_mapped,
+        repeatable_string,
+        repeatable_tag,
     };
     fn optionalTypeDescr(any: anytype) ProtoTypeDescr {
         if (@TypeOf(any) == type) {
@@ -527,9 +534,6 @@ pub const ArgInfo = struct {
     pub fn optional_string(comptime any: anytype) ArgInfo {
         return .{ .tag = .optional_string, .type = optionalTypeDescr(any) };
     }
-    pub fn optional_repeatable(comptime any: anytype) ArgInfo {
-        return .{ .tag = .optional_repeatable, .type = optionalTypeDescr(any) };
-    }
     pub fn optional_tag(comptime any: anytype) ArgInfo {
         return .{ .tag = .optional_tag, .type = optionalTypeDescr(any) };
     }
@@ -541,6 +545,12 @@ pub const ArgInfo = struct {
     }
     pub fn optional_mapped(comptime any: anytype) ArgInfo {
         return .{ .tag = .optional_mapped, .type = optionalTypeDescr(any) };
+    }
+    pub fn repeatable_string(comptime any: anytype) ArgInfo {
+        return .{ .tag = .repeatable_string, .type = optionalTypeDescr(any) };
+    }
+    pub fn repeatable_tag(comptime any: anytype) ArgInfo {
+        return .{ .tag = .repeatable_tag, .type = optionalTypeDescr(any) };
     }
 };
 pub const OptionSpec = struct {
