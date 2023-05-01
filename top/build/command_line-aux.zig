@@ -12,7 +12,6 @@ const types = @import("./types.zig");
 pub usingnamespace proc.start;
 
 pub const runtime_assertions: bool = false;
-pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
 const primitive: bool = true;
 const compile: bool = false;
 
@@ -129,6 +128,13 @@ fn writeIfOptionalField(array: *Array, field_name: []const u8) void {
 }
 fn writeIfOptional(array: *Array, value_name: []const u8, capture_name: []const u8) void {
     array.writeMany("if(");
+    array.writeMany(value_name);
+    array.writeMany(")|");
+    array.writeMany(capture_name);
+    array.writeMany("|{\n");
+}
+fn writeForEach(array: *Array, value_name: []const u8, capture_name: []const u8) void {
+    array.writeMany("for(");
     array.writeMany(value_name);
     array.writeMany(")|");
     array.writeMany(capture_name);
@@ -450,6 +456,14 @@ pub fn writeFunctionBody(array: *Array, options: []const types.OptionSpec, varia
             if (opt_spec.arg_info.tag == .optional_string) {
                 writeIfOptionalField(array, opt_spec.name);
                 writeOptArgString(array, opt_spec.string.?, opt_spec.name, variant);
+                writeIfClose(array);
+                continue;
+            }
+            if (opt_spec.arg_info.tag == .optional_repeatable) {
+                writeIfOptionalField(array, opt_spec.name);
+                writeForEach(array, opt_spec.name, "value");
+                writeOptArgString(array, opt_spec.string.?, "value", variant);
+                writeIfClose(array);
                 writeIfClose(array);
                 continue;
             }
