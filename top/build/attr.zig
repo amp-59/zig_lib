@@ -1,12 +1,6 @@
 const types = @import("./types.zig");
 pub const build_command_options: []const types.OptionSpec = &.{
     .{
-        .name = "color",
-        .string = "--color",
-        .arg_info = types.ArgInfo.optional_tag(enum { on, off, auto }),
-        .descr = &.{"Enable or disable colored error messages"},
-    },
-    .{
         .name = "emit_bin",
         .string = "-femit-bin",
         .arg_info = types.ArgInfo.optional_formatter("types.Path"),
@@ -481,7 +475,13 @@ pub const build_command_options: []const types.OptionSpec = &.{
         .arg_info = types.ArgInfo.optional_mapped("[]const types.Path"),
         .descr = &.{"Add auxiliary files to the current target"},
     },
-    // Debug Options (Zig Compiler Development):
+    // Other options
+    .{
+        .name = "color",
+        .string = "--color",
+        .arg_info = types.ArgInfo.optional_tag(enum { on, off, auto }),
+        .descr = &.{"Enable or disable colored error messages"},
+    },
     .{
         .name = "time_report",
         .string = "-ftime-report",
