@@ -271,12 +271,12 @@ pub const Macro = struct {
 };
 pub const Macros = Aggregate(Macro);
 pub const CFlags = struct {
-    flags: []const []const u8,
+    value: []const []const u8,
     const Format = @This();
     pub fn formatWrite(format: Format, array: anytype) void {
         array.writeMany("-cflags");
         array.writeOne(0);
-        for (format.flags) |flag| {
+        for (format.value) |flag| {
             array.writeMany(flag);
             array.writeOne(0);
         }
@@ -286,7 +286,7 @@ pub const CFlags = struct {
         @setRuntimeSafety(false);
         var len: u64 = 8;
         @memcpy(buf, "-cflags\x00", 8);
-        for (format.flags) |flag| {
+        for (format.value) |flag| {
             @memcpy(buf + len, flag.ptr, flag.len);
             len = len +% flag.len;
             buf[len] = 0;
@@ -298,7 +298,7 @@ pub const CFlags = struct {
     pub fn formatLength(format: Format) u64 {
         var len: u64 = 0;
         len +%= 8;
-        for (format.flags) |flag| {
+        for (format.value) |flag| {
             len +%= flag.len;
             len +%= 1;
         }
@@ -487,10 +487,11 @@ pub const ArgInfo = struct {
         mapped = 5,
         optional_boolean = 8,
         optional_string = 9,
-        optional_tag = 10,
-        optional_integer = 11,
-        optional_formatter = 12,
-        optional_mapped = 13,
+        optional_repeatable = 10,
+        optional_tag = 11,
+        optional_integer = 12,
+        optional_formatter = 13,
+        optional_mapped = 14,
     };
     fn optionalTypeDescr(any: anytype) ProtoTypeDescr {
         if (@TypeOf(any) == type) {
@@ -525,6 +526,9 @@ pub const ArgInfo = struct {
     }
     pub fn optional_string(comptime any: anytype) ArgInfo {
         return .{ .tag = .optional_string, .type = optionalTypeDescr(any) };
+    }
+    pub fn optional_repeatable(comptime any: anytype) ArgInfo {
+        return .{ .tag = .optional_repeatable, .type = optionalTypeDescr(any) };
     }
     pub fn optional_tag(comptime any: anytype) ArgInfo {
         return .{ .tag = .optional_tag, .type = optionalTypeDescr(any) };
