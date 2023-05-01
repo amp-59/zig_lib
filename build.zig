@@ -47,7 +47,9 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     // zig fmt: off
     // Groups:
     const tests: *Builder.Group =               try builder.addGroup(allocator,             "tests");
-    const build_test: *Builder.Target =         try tests.addTarget(allocator, exe_build,   "build_test",   "build_runner.zig");
+    const build0_test: *Builder.Target =         try tests.addTarget(allocator, exe_build,  "build0_test",  "build_runner.zig");
+    const build1_test: *Builder.Target =         try tests.addTarget(allocator, exe_build,  "build1_test",  "test/build1-test.zig");
+    const build2_test: *Builder.Target =        try tests.addTarget(allocator, exe_build,   "build2_test",  "test/build2-test.zig");
     const decl_test: *Builder.Target =          try tests.addTarget(allocator, exe_default, "decl_test",    "test/decl-test.zig");
     const builtin_test: *Builder.Target =       try tests.addTarget(allocator, exe_default, "builtin_test", "test/builtin-test.zig");
     const serial_test: *Builder.Target =        try tests.addTarget(allocator, exe_default, "serial_test",  "test/serial-test.zig");
@@ -58,7 +60,6 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     const list_test: *Builder.Target =          try tests.addTarget(allocator, exe_default, "list_test",    "test/list-test.zig");
     const fmt_test: *Builder.Target =           try tests.addTarget(allocator, exe_default, "fmt_test",     "test/fmt-test.zig");
     const render_test: *Builder.Target =        try tests.addTarget(allocator, exe_default, "render_test",  "test/render-test.zig");
-    const build2_test: *Builder.Target =        try tests.addTarget(allocator, exe_build,   "build2_test",  "test/build2-test.zig");
     const proc_test: *Builder.Target =          try tests.addTarget(allocator, exe_fast,    "proc_test",    "test/proc-test.zig");
     const thread_test: *Builder.Target =        try tests.addTarget(allocator, exe_default, "thread_test",  "test/thread-test.zig");
     const virtual_test: *Builder.Target =       try tests.addTarget(allocator, exe_default, "virtual_test", "test/virtual-test.zig");
@@ -104,7 +105,9 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     fmt_test.descr =            "Test user formatting functions";
     render_test.descr =         "Test library value rendering functions";
     proc_test.descr =           "Test process related functions";
-    build_test.descr =          "Test the library build runner and build program";
+    build0_test.descr =         "Test the library build runner and build program. Used to show size and compile time";
+    build1_test.descr =         "Test the library builder command line functions";
+    build2_test.descr =         "Test the library build runner and build program";
     decl_test.descr =           "Test compilation of all public declarations recursively";
     build2_test.descr =         "Test the special test build program";
     serial_test.descr =         "Test data serialisation functions";
@@ -147,7 +150,8 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     mg_container_impls.dependOnRun(allocator,       mg_type_specs);
     mg_container_impls.dependOnRun(allocator,       mg_container_kinds);
     mg_reference_impls.dependOnRun(allocator,       mg_type_specs);
-    addEnvPathArgs(allocator, builder, build_test);
+    addEnvPathArgs(allocator, builder, build0_test);
+    addEnvPathArgs(allocator, builder, build1_test);
     addEnvPathArgs(allocator, builder, build2_test);
     addEnvPathArgs(allocator, builder, serial_test);
     // zig fmt: on
