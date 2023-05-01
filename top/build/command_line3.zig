@@ -9,6 +9,7 @@ fn FormatMap(comptime T: type) type {
         []const types.Path => return types.Files,
         []const types.Macro => return types.Macros,
         []const types.Module => return types.Modules,
+        []const []const u8 => return types.CFlags,
         else => @compileError(@typeName(T)),
     }
 }
@@ -454,8 +455,8 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len = len +% 1;
     }
     if (cmd.dirafter) |dirafter| {
-        @memcpy(buf + len, "-dirafter\x00", 10);
-        len = len +% 10;
+        @memcpy(buf + len, "-idirafter\x00", 11);
+        len = len +% 11;
         @memcpy(buf + len, dirafter.ptr, dirafter.len);
         len = len +% dirafter.len;
         buf[len] = 0;
@@ -494,20 +495,24 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len = len +% 1;
     }
     if (cmd.needed_library) |needed_library| {
-        @memcpy(buf + len, "--needed-library\x00", 17);
-        len = len +% 17;
-        @memcpy(buf + len, needed_library.ptr, needed_library.len);
-        len = len +% needed_library.len;
-        buf[len] = 0;
-        len = len +% 1;
+        for (needed_library) |value| {
+            @memcpy(buf + len, "--needed-library\x00", 17);
+            len = len +% 17;
+            @memcpy(buf + len, value.ptr, value.len);
+            len = len +% value.len;
+            buf[len] = 0;
+            len = len +% 1;
+        }
     }
     if (cmd.library_directory) |library_directory| {
-        @memcpy(buf + len, "--library-directory\x00", 20);
-        len = len +% 20;
-        @memcpy(buf + len, library_directory.ptr, library_directory.len);
-        len = len +% library_directory.len;
-        buf[len] = 0;
-        len = len +% 1;
+        for (library_directory) |value| {
+            @memcpy(buf + len, "--library-directory\x00", 20);
+            len = len +% 20;
+            @memcpy(buf + len, value.ptr, value.len);
+            len = len +% value.len;
+            buf[len] = 0;
+            len = len +% 1;
+        }
     }
     if (cmd.link_script) |link_script| {
         @memcpy(buf + len, "--script\x00", 9);
@@ -603,12 +608,13 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         }
     }
     if (cmd.compress_debug_sections) |compress_debug_sections| {
-        @memcpy(buf + len, "--compress-debug-sections\x00", 26);
-        len = len +% 26;
-        @memcpy(buf + len, @tagName(compress_debug_sections).ptr, @tagName(compress_debug_sections).len);
-        len = len +% @tagName(compress_debug_sections).len;
-        buf[len] = 0;
-        len = len +% 1;
+        if (compress_debug_sections) {
+            @memcpy(buf + len, "--compress-debug-sections=zlib\x00", 31);
+            len = len +% 31;
+        } else {
+            @memcpy(buf + len, "--compress-debug-sections=none\x00", 31);
+            len = len +% 31;
+        }
     }
     if (cmd.gc_sections) |gc_sections| {
         if (gc_sections) {
@@ -647,7 +653,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len = len +% formatMap(dependencies).formatWriteBuf(buf + len);
     }
     if (cmd.cflags) |cflags| {
-        len = len +% cflags.formatWriteBuf(buf + len);
+        len = len +% formatMap(cflags).formatWriteBuf(buf + len);
     }
     if (cmd.link_libc) {
         @memcpy(buf + len, "-lc\x00", 4);
@@ -1073,7 +1079,7 @@ pub fn buildLength(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_pat
         len = len +% 1;
     }
     if (cmd.dirafter) |dirafter| {
-        len = len +% 10;
+        len = len +% 11;
         len = len +% dirafter.len;
         len = len +% 1;
     }
@@ -1098,14 +1104,18 @@ pub fn buildLength(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_pat
         len = len +% 1;
     }
     if (cmd.needed_library) |needed_library| {
-        len = len +% 17;
-        len = len +% needed_library.len;
-        len = len +% 1;
+        for (needed_library) |value| {
+            len = len +% 17;
+            len = len +% value.len;
+            len = len +% 1;
+        }
     }
     if (cmd.library_directory) |library_directory| {
-        len = len +% 20;
-        len = len +% library_directory.len;
-        len = len +% 1;
+        for (library_directory) |value| {
+            len = len +% 20;
+            len = len +% value.len;
+            len = len +% 1;
+        }
     }
     if (cmd.link_script) |link_script| {
         len = len +% 9;
@@ -1173,9 +1183,11 @@ pub fn buildLength(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_pat
         }
     }
     if (cmd.compress_debug_sections) |compress_debug_sections| {
-        len = len +% 26;
-        len = len +% @tagName(compress_debug_sections).len;
-        len = len +% 1;
+        if (compress_debug_sections) {
+            len = len +% 31;
+        } else {
+            len = len +% 31;
+        }
     }
     if (cmd.gc_sections) |gc_sections| {
         if (gc_sections) {
@@ -1204,7 +1216,7 @@ pub fn buildLength(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_pat
         len = len +% formatMap(dependencies).formatLength();
     }
     if (cmd.cflags) |cflags| {
-        len = len +% cflags.formatLength();
+        len = len +% formatMap(cflags).formatLength();
     }
     if (cmd.link_libc) {
         len = len +% 4;
