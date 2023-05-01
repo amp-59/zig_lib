@@ -26,14 +26,6 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
     len = len +% @tagName(cmd.kind).len;
     buf[len] = 0;
     len = len +% 1;
-    if (cmd.color) |color| {
-        @memcpy(buf + len, "--color\x00", 8);
-        len = len +% 8;
-        @memcpy(buf + len, @tagName(color).ptr, @tagName(color).len);
-        len = len +% @tagName(color).len;
-        buf[len] = 0;
-        len = len +% 1;
-    }
     if (cmd.emit_bin) |emit_bin| {
         switch (emit_bin) {
             .yes => |yes_arg| {
@@ -688,6 +680,14 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
     if (cmd.files) |files| {
         len = len +% formatMap(files).formatWriteBuf(buf + len);
     }
+    if (cmd.color) |color| {
+        @memcpy(buf + len, "--color\x00", 8);
+        len = len +% 8;
+        @memcpy(buf + len, @tagName(color).ptr, @tagName(color).len);
+        len = len +% @tagName(color).len;
+        buf[len] = 0;
+        len = len +% 1;
+    }
     if (cmd.time_report) {
         @memcpy(buf + len, "-ftime-report\x00", 14);
         len = len +% 14;
@@ -747,11 +747,6 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
 pub fn buildLength(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_path: types.Path) u64 {
     @setRuntimeSafety(false);
     var len: u64 = zig_exe.len +% @tagName(cmd.kind).len +% 8;
-    if (cmd.color) |color| {
-        len = len +% 8;
-        len = len +% @tagName(color).len;
-        len = len +% 1;
-    }
     if (cmd.emit_bin) |emit_bin| {
         switch (emit_bin) {
             .yes => |yes_arg| {
@@ -1233,6 +1228,11 @@ pub fn buildLength(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_pat
     }
     if (cmd.files) |files| {
         len = len +% formatMap(files).formatLength();
+    }
+    if (cmd.color) |color| {
+        len = len +% 8;
+        len = len +% @tagName(color).len;
+        len = len +% 1;
     }
     if (cmd.time_report) {
         len = len +% 14;

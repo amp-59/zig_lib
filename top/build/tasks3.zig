@@ -4,12 +4,6 @@ const builtin = @import("../builtin.zig");
 const types = @import("./types.zig");
 pub const BuildCommand = struct {
     kind: types.OutputMode,
-    /// Enable or disable colored error messages
-    color: ?enum(u2) {
-        on = 0,
-        off = 1,
-        auto = 2,
-    } = null,
     /// (default=yes) Output machine code
     emit_bin: ?union(enum) {
         yes: ?types.Path,
@@ -245,6 +239,12 @@ pub const BuildCommand = struct {
     } = null,
     /// Add auxiliary files to the current target
     files: ?[]const types.Path = null,
+    /// Enable or disable colored error messages
+    color: ?enum(u2) {
+        on = 0,
+        off = 1,
+        auto = 2,
+    } = null,
     /// Print timing diagnostics
     time_report: bool = false,
     /// Print stack size diagnostics
