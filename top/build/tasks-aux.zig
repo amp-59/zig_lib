@@ -5,42 +5,16 @@ const spec = @import("../spec.zig");
 const builtin = @import("../builtin.zig");
 const attr = @import("./attr.zig");
 const types = @import("./types.zig");
+const config = @import("./config.zig");
 pub usingnamespace proc.start;
 pub const runtime_assertions: bool = false;
 pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
 const Array = mem.StaticString(1024 * 1024);
-const build_root: [:0]const u8 = builtin.buildRoot();
-const tasks_path: [:0]const u8 = build_root ++ "/top/build/tasks3.zig";
-const tasks_template_path: [:0]const u8 = build_root ++ "/top/build/tasks-template.zig";
-const open_spec: file.OpenSpec = .{
-    .errors = .{},
-    .logging = .{},
-};
-const creat_spec: file.CreateSpec = .{
-    .errors = .{},
-    .logging = .{},
-    .options = .{ .exclusive = false },
-};
-const write_spec: file.WriteSpec = .{
-    .errors = .{},
-    .logging = .{},
-};
-const read_spec: file.ReadSpec = .{
-    .errors = .{},
-    .logging = .{},
-};
-const close_spec: file.CloseSpec = .{
-    .errors = .{},
-    .logging = .{},
-};
-const path_spec: file.PathSpec = .{
-    .errors = .{},
-    .logging = .{},
-};
-const stat_spec: file.StatusSpec = .{
-    .errors = .{},
-    .logging = .{},
-};
+const open_spec: file.OpenSpec = .{ .errors = .{}, .logging = .{} };
+const creat_spec: file.CreateSpec = .{ .errors = .{}, .logging = .{}, .options = .{ .exclusive = false } };
+const write_spec: file.WriteSpec = .{ .errors = .{}, .logging = .{} };
+const read_spec: file.ReadSpec = .{ .errors = .{}, .logging = .{} };
+const close_spec: file.CloseSpec = .{ .errors = .{}, .logging = .{} };
 fn writeFile(array: Array, pathname: [:0]const u8) void {
     const build_fd: u64 = file.create(creat_spec, pathname, file.file_mode);
     file.writeSlice(write_spec, build_fd, array.readAll());
@@ -87,15 +61,14 @@ fn writeFields(array: *Array, opt_specs: []const types.OptionSpec) void {
 pub fn main() !void {
     var array: Array = undefined;
     array.undefineAll();
-    const st: file.Status = file.pathStatus(stat_spec, tasks_template_path);
-    const fd: u64 = file.open(open_spec, tasks_template_path);
-    array.define(file.readSlice(read_spec, fd, array.referAllUndefined()[0..st.size]));
+    const fd: u64 = file.open(open_spec, config.tasks_template_path);
+    array.define(file.readSlice(read_spec, fd, array.referAllUndefined()));
     file.close(close_spec, fd);
     array.writeMany("pub const BuildCommand=struct{\nkind:types.OutputMode,\n");
     writeFields(&array, attr.build_command_options);
     array.writeMany("};\npub const FormatCommand=struct{\n");
     writeFields(&array, attr.format_command_options);
     array.writeMany("};\n");
-    writeFile(array, tasks_path);
+    writeFile(array, config.tasks_path);
     array.undefineAll();
 }
