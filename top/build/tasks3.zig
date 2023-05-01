@@ -1,6 +1,3 @@
-const mem = @import("../mem.zig");
-const spec = @import("../spec.zig");
-const builtin = @import("../builtin.zig");
 const types = @import("./types.zig");
 pub const BuildCommand = struct {
     kind: types.OutputMode,
@@ -87,7 +84,7 @@ pub const BuildCommand = struct {
     /// ReleaseSafe    Optimizations on, safety on
     /// ReleaseFast    Optimizations on, safety off
     /// ReleaseSmall   Size optimizations on, safety off
-    mode: ?builtin.Mode = null,
+    mode: ?@TypeOf(@import("builtin").mode) = null,
     /// Set the directory of the root package
     main_pkg_path: ?[]const u8 = null,
     /// Enable Position Independent Code
@@ -223,7 +220,7 @@ pub const BuildCommand = struct {
     /// norelro                    Don't force all relocations to be read-only after processing
     /// common-page-size=[bytes]   Set the common page size for ELF binaries
     /// max-page-size=[bytes]      Set the max page size for ELF binaries
-    z: ?enum(u4) {
+    z: ?[]const enum(u4) {
         nodelete = 0,
         notext = 1,
         defs = 2,
