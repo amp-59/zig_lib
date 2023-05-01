@@ -688,6 +688,58 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
     if (cmd.files) |files| {
         len = len +% formatMap(files).formatWriteBuf(buf + len);
     }
+    if (cmd.time_report) {
+        @memcpy(buf + len, "-ftime-report\x00", 14);
+        len = len +% 14;
+    }
+    if (cmd.stack_report) {
+        @memcpy(buf + len, "-fstack-report\x00", 15);
+        len = len +% 15;
+    }
+    if (cmd.verbose_link) {
+        @memcpy(buf + len, "--verbose-link\x00", 15);
+        len = len +% 15;
+    }
+    if (cmd.verbose_cc) {
+        @memcpy(buf + len, "--verbose-cc\x00", 13);
+        len = len +% 13;
+    }
+    if (cmd.verbose_air) {
+        @memcpy(buf + len, "--verbose-air\x00", 14);
+        len = len +% 14;
+    }
+    if (cmd.verbose_mir) {
+        @memcpy(buf + len, "--verbose-mir\x00", 14);
+        len = len +% 14;
+    }
+    if (cmd.verbose_llvm_ir) {
+        @memcpy(buf + len, "--verbose-llvm-ir\x00", 18);
+        len = len +% 18;
+    }
+    if (cmd.verbose_cimport) {
+        @memcpy(buf + len, "--verbose-cimport\x00", 18);
+        len = len +% 18;
+    }
+    if (cmd.verbose_llvm_cpu_features) {
+        @memcpy(buf + len, "--verbose-llvm-cpu-features\x00", 28);
+        len = len +% 28;
+    }
+    if (cmd.debug_log) |debug_log| {
+        @memcpy(buf + len, "--debug-log\x00", 12);
+        len = len +% 12;
+        @memcpy(buf + len, debug_log.ptr, debug_log.len);
+        len = len +% debug_log.len;
+        buf[len] = 0;
+        len = len +% 1;
+    }
+    if (cmd.debug_compiler_errors) {
+        @memcpy(buf + len, "--debug-compile-errors\x00", 23);
+        len = len +% 23;
+    }
+    if (cmd.debug_link_snapshot) {
+        @memcpy(buf + len, "--debug-link-snapshot\x00", 22);
+        len = len +% 22;
+    }
     len = len +% root_path.formatWriteBuf(buf + len);
     buf[len] = 0;
     return len;
@@ -1181,6 +1233,44 @@ pub fn buildLength(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_pat
     }
     if (cmd.files) |files| {
         len = len +% formatMap(files).formatLength();
+    }
+    if (cmd.time_report) {
+        len = len +% 14;
+    }
+    if (cmd.stack_report) {
+        len = len +% 15;
+    }
+    if (cmd.verbose_link) {
+        len = len +% 15;
+    }
+    if (cmd.verbose_cc) {
+        len = len +% 13;
+    }
+    if (cmd.verbose_air) {
+        len = len +% 14;
+    }
+    if (cmd.verbose_mir) {
+        len = len +% 14;
+    }
+    if (cmd.verbose_llvm_ir) {
+        len = len +% 18;
+    }
+    if (cmd.verbose_cimport) {
+        len = len +% 18;
+    }
+    if (cmd.verbose_llvm_cpu_features) {
+        len = len +% 28;
+    }
+    if (cmd.debug_log) |debug_log| {
+        len = len +% 12;
+        len = len +% debug_log.len;
+        len = len +% 1;
+    }
+    if (cmd.debug_compiler_errors) {
+        len = len +% 23;
+    }
+    if (cmd.debug_link_snapshot) {
+        len = len +% 22;
     }
     return len +% root_path.formatLength() +% 1;
 }
