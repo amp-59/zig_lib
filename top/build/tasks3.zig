@@ -156,9 +156,9 @@ pub const BuildCommand = struct {
     /// Link against system library (only if actually used)
     library: ?[]const u8 = null,
     /// Link against system library (even if unused)
-    needed_library: ?[]const u8 = null,
+    needed_library: ?[]const []const u8 = null,
     /// Add a directory to the library search path
-    library_directory: ?[]const u8 = null,
+    library_directory: ?[]const []const u8 = null,
     /// Use a custom linker script
     link_script: ?[]const u8 = null,
     /// Provide a version .map file
@@ -184,10 +184,7 @@ pub const BuildCommand = struct {
     /// Debug section compression:
     /// none   No compression
     /// zlib   Compression with deflate/inflate
-    compress_debug_sections: ?enum(u1) {
-        none = 0,
-        zlib = 1,
-    } = null,
+    compress_debug_sections: ?bool = null,
     /// Force removal of functions and data that are unreachable
     /// by the entry point or exported symbols
     gc_sections: ?bool = null,
@@ -202,7 +199,7 @@ pub const BuildCommand = struct {
     /// Define module dependencies for the current target
     dependencies: ?[]const types.ModuleDependency = null,
     /// Set extra flags for the next position C source files
-    cflags: ?types.CFlags = null,
+    cflags: ?[]const []const u8 = null,
     /// Link libc
     link_libc: bool = false,
     /// Add all symbols to the dynamic symbol table
