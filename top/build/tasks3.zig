@@ -245,6 +245,30 @@ pub const BuildCommand = struct {
     } = null,
     /// Add auxiliary files to the current target
     files: ?[]const types.Path = null,
+    /// Print timing diagnostics
+    time_report: bool = false,
+    /// Print stack size diagnostics
+    stack_report: bool = false,
+    /// Display linker invocations
+    verbose_link: bool = false,
+    /// Display C compiler invocations
+    verbose_cc: bool = false,
+    /// Enable compiler debug output for Zig AIR
+    verbose_air: bool = false,
+    /// Enable compiler debug output for Zig MIR
+    verbose_mir: bool = false,
+    /// Enable compiler debug output for LLVM IR
+    verbose_llvm_ir: bool = false,
+    /// Enable compiler debug output for C imports
+    verbose_cimport: bool = false,
+    /// Enable compiler debug output for LLVM CPU features
+    verbose_llvm_cpu_features: bool = false,
+    /// Enable printing debug/info log messages for scope
+    debug_log: ?[]const u8 = null,
+    /// Crash with helpful diagnostics at the first compile error
+    debug_compiler_errors: bool = false,
+    /// Enable dumping of the linker's state in JSON
+    debug_link_snapshot: bool = false,
 };
 pub const FormatCommand = struct {
     /// Enable or disable colored error messages
