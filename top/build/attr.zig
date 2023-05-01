@@ -268,7 +268,7 @@ pub const build_command_options: []const types.OptionSpec = &.{
     },
     .{
         .name = "dirafter",
-        .string = "-dirafter",
+        .string = "-idirafter",
         .arg_info = types.ArgInfo.optional_string([]const u8),
         .descr = &.{"Add directory to AFTER include search path"},
     },
@@ -299,13 +299,13 @@ pub const build_command_options: []const types.OptionSpec = &.{
     .{
         .name = "needed_library",
         .string = "--needed-library",
-        .arg_info = types.ArgInfo.optional_string([]const u8),
+        .arg_info = types.ArgInfo.optional_repeatable([]const []const u8),
         .descr = &.{"Link against system library (even if unused)"},
     },
     .{
         .name = "library_directory",
         .string = "--library-directory",
-        .arg_info = types.ArgInfo.optional_string([]const u8),
+        .arg_info = types.ArgInfo.optional_repeatable([]const []const u8),
         .descr = &.{"Add a directory to the library search path"},
     },
     .{
@@ -376,8 +376,8 @@ pub const build_command_options: []const types.OptionSpec = &.{
     },
     .{
         .name = "compress_debug_sections",
-        .string = "--compress-debug-sections",
-        .arg_info = types.ArgInfo.optional_tag(enum { none, zlib }),
+        .string = "--compress-debug-sections=zlib",
+        .and_no = .{ .string = "--compress-debug-sections=none" },
         .descr = &.{
             "Debug section compression:",
             "none   No compression",
@@ -422,7 +422,7 @@ pub const build_command_options: []const types.OptionSpec = &.{
     },
     .{
         .name = "cflags",
-        .arg_info = types.ArgInfo.optional_formatter("types.CFlags"),
+        .arg_info = types.ArgInfo.optional_mapped([]const []const u8),
         .descr = &.{"Set extra flags for the next position C source files"},
     },
     .{
