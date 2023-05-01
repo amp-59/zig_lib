@@ -132,7 +132,7 @@ pub const build_command_options: []const types.OptionSpec = &.{
     .{
         .name = "mode",
         .string = "-O",
-        .arg_info = types.ArgInfo.optional_tag("builtin.Mode"),
+        .arg_info = types.ArgInfo.optional_tag("@TypeOf(@import(\"builtin\").mode)"),
         .descr = &.{
             "Choose what to optimize for:",
             "Debug          Optimizations off, safety on",
@@ -252,7 +252,9 @@ pub const build_command_options: []const types.OptionSpec = &.{
     .{
         .name = "format",
         .string = "-ofmt",
-        .arg_info = types.ArgInfo.optional_tag(enum { elf, c, wasm, coff, macho, spirv, plan9, hex, raw }),
+        .arg_info = .{ .tag = .optional_tag, .char = .assign, .type = types.ProtoTypeDescr.init(
+            ?enum { elf, c, wasm, coff, macho, spirv, plan9, hex, raw },
+        ) },
         .descr = &.{
             "Override target object format:",
             "elf                    Executable and Linking Format",
@@ -299,13 +301,13 @@ pub const build_command_options: []const types.OptionSpec = &.{
     .{
         .name = "needed_library",
         .string = "--needed-library",
-        .arg_info = types.ArgInfo.optional_repeatable([]const []const u8),
+        .arg_info = types.ArgInfo.repeatable_string([]const []const u8),
         .descr = &.{"Link against system library (even if unused)"},
     },
     .{
         .name = "library_directory",
         .string = "--library-directory",
-        .arg_info = types.ArgInfo.optional_repeatable([]const []const u8),
+        .arg_info = types.ArgInfo.repeatable_string([]const []const u8),
         .descr = &.{"Add a directory to the library search path"},
     },
     .{
@@ -453,7 +455,7 @@ pub const build_command_options: []const types.OptionSpec = &.{
     .{
         .name = "z",
         .string = "-z",
-        .arg_info = types.ArgInfo.optional_tag(enum { nodelete, notext, defs, origin, nocopyreloc, now, lazy, relro, norelro }),
+        .arg_info = types.ArgInfo.repeatable_tag([]const enum { nodelete, notext, defs, origin, nocopyreloc, now, lazy, relro, norelro }),
         .descr = &.{
             "Set linker extension flags:",
             "nodelete                   Indicate that the object cannot be deleted from a process",
