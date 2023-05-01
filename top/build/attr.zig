@@ -512,16 +512,65 @@ pub const build_command_options: []const types.OptionSpec = &.{
         .descr = &.{"Add auxiliary files to the current target"},
     },
     // Debug Options (Zig Compiler Development):
-    //   -ftime-report                Print timing diagnostics
-    //   -fstack-report               Print stack size diagnostics
-    //   --verbose-link               Display linker invocations
-    //   --verbose-cc                 Display C compiler invocations
-    //   --verbose-air                Enable compiler debug output for Zig AIR
-    //   --verbose-mir                Enable compiler debug output for Zig MIR
-    //   --verbose-llvm-ir            Enable compiler debug output for LLVM IR
-    //   --verbose-cimport            Enable compiler debug output for C imports
-    //   --verbose-llvm-cpu-features  Enable compiler debug output for LLVM CPU features
-    //   --debug-log [scope]          Enable printing debug/info log messages for scope
-    //   --debug-compile-errors       Crash with helpful diagnostics at the first compile error
-    //   --debug-link-snapshot        Enable dumping of the linker's state in JSON
+    .{
+        .name = "time_report",
+        .string = "-ftime-report",
+        .descr = &.{"Print timing diagnostics"},
+    },
+    .{
+        .name = "stack_report",
+        .string = "-fstack-report",
+        .descr = &.{"Print stack size diagnostics"},
+    },
+    .{
+        .name = "verbose_link",
+        .string = "--verbose-link",
+        .descr = &.{"Display linker invocations"},
+    },
+    .{
+        .name = "verbose_cc",
+        .string = "--verbose-cc",
+        .descr = &.{"Display C compiler invocations"},
+    },
+    .{
+        .name = "verbose_air",
+        .string = "--verbose-air",
+        .descr = &.{"Enable compiler debug output for Zig AIR"},
+    },
+    .{
+        .name = "verbose_mir",
+        .string = "--verbose-mir",
+        .descr = &.{"Enable compiler debug output for Zig MIR"},
+    },
+    .{
+        .name = "verbose_llvm_ir",
+        .string = "--verbose-llvm-ir",
+        .descr = &.{"Enable compiler debug output for LLVM IR"},
+    },
+    .{
+        .name = "verbose_cimport",
+        .string = "--verbose-cimport",
+        .descr = &.{"Enable compiler debug output for C imports"},
+    },
+    .{
+        .name = "verbose_llvm_cpu_features",
+        .string = "--verbose-llvm-cpu-features",
+        .descr = &.{"Enable compiler debug output for LLVM CPU features"},
+    },
+    .{
+        .name = "debug_log",
+        .arg_info = types.ArgInfo.optional_string([]const u8),
+        .string = "--debug-log",
+        .descr = &.{"Enable printing debug/info log messages for scope"},
+    },
+    .{
+        .name = "debug_compiler_errors",
+        .string = "--debug-compile-errors",
+        .descr = &.{"Crash with helpful diagnostics at the first compile error"},
+    },
+    .{
+        .name = "debug_link_snapshot",
+        .string = "--debug-link-snapshot",
+        .descr = &.{"Enable dumping of the linker's state in JSON"},
+    },
 };
