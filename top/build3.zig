@@ -506,7 +506,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     builtin.proc.exit(2);
                 }
             }
-            fn addFile(target: *Target, allocator: *Allocator, path: types.Path) void {
+            pub fn addFile(target: *Target, allocator: *Allocator, path: types.Path) void {
                 @setRuntimeSafety(false);
                 if (target.build_cmd.files) |*files| {
                     const buf: []types.Path = reallocate(allocator, types.Path, @constCast(files.*), files.len +% 1);
