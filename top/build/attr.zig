@@ -1,34 +1,4 @@
 const types = @import("./types.zig");
-pub const format_command_options: []const types.OptionSpec = &.{
-    .{
-        .name = "color",
-        .string = "--color",
-        .arg_info = types.ArgInfo.optional_tag(enum { auto, off, on }),
-        .descr = &.{"Enable or disable colored error messages"},
-    },
-    .{
-        .name = "stdin",
-        .string = "--stdin",
-        .descr = &.{"Format code from stdin; output to stdout"},
-    },
-    .{
-        .name = "check",
-        .string = "--check",
-        .descr = &.{"List non-conforming files and exit with an error if the list is non-empty"},
-    },
-    .{
-        .name = "ast_check",
-        .string = "--ast-check",
-        .default_value = "true",
-        .descr = &.{"Run zig ast-check on every file"},
-    },
-    .{
-        .name = "exclude",
-        .string = "--exclude",
-        .arg_info = types.ArgInfo.optional_string([]const u8),
-        .descr = &.{"Exclude file or directory from formatting"},
-    },
-};
 pub const build_command_options: []const types.OptionSpec = &.{
     .{
         .name = "color",
@@ -572,5 +542,35 @@ pub const build_command_options: []const types.OptionSpec = &.{
         .name = "debug_link_snapshot",
         .string = "--debug-link-snapshot",
         .descr = &.{"Enable dumping of the linker's state in JSON"},
+    },
+};
+pub const format_command_options: []const types.OptionSpec = &.{
+    .{
+        .name = "color",
+        .string = "--color",
+        .arg_info = types.ArgInfo.optional_tag(enum { auto, off, on }),
+        .descr = &.{"Enable or disable colored error messages"},
+    },
+    .{
+        .name = "stdin",
+        .string = "--stdin",
+        .descr = &.{"Format code from stdin; output to stdout"},
+    },
+    .{
+        .name = "check",
+        .string = "--check",
+        .descr = &.{"List non-conforming files and exit with an error if the list is non-empty"},
+    },
+    .{
+        .name = "ast_check",
+        .string = "--ast-check",
+        .default_value = "true",
+        .descr = &.{"Run zig ast-check on every file"},
+    },
+    .{
+        .name = "exclude",
+        .string = "--exclude",
+        .arg_info = types.ArgInfo.optional_string([]const u8),
+        .descr = &.{"Exclude file or directory from formatting"},
     },
 };
