@@ -327,8 +327,15 @@ pub const Fn = enum(u5) {
         array.writeMany("pub inline fn ");
         array.writeMany(impl_fn_info.fnName());
         array.writeMany("(");
-        for (list.readAll()) |arg| gen.writeArgument(array, arg);
-        array.writeMany(") ");
+        const args: []const [:0]const u8 = list.readAll();
+        for (args) |arg| {
+            array.writeMany(arg);
+            array.writeMany(",");
+        }
+        if (args.len != 0) {
+            array.undefine(1);
+        }
+        array.writeMany(")");
         array.writeMany(list.ret);
     }
 };
