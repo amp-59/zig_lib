@@ -252,7 +252,7 @@ pub const build_command_options: []const types.OptionSpec = &.{
     .{
         .name = "format",
         .string = "-ofmt",
-        .arg_info = .{ .tag = .optional_tag, .char = .assign, .type = types.ProtoTypeDescr.init(
+        .arg_info = .{ .tag = .optional_tag, .char = '=', .type = types.ProtoTypeDescr.init(
             ?enum { elf, c, wasm, coff, macho, spirv, plan9, hex, raw },
         ) },
         .descr = &.{
