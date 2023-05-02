@@ -179,7 +179,7 @@ pub const Status = extern struct {
     mtime: time.TimeSpec,
     ctime: time.TimeSpec,
     @"2": [24]u8,
-    pub fn isExecutable(st: Status, user_id: u16, group_id: u16) bool {
+    pub fn isExecutable(st: *const Status, user_id: u16, group_id: u16) bool {
         if (user_id == st.uid) {
             return st.mode.owner.execute;
         }
@@ -188,7 +188,7 @@ pub const Status = extern struct {
         }
         return st.mode.other.execute;
     }
-    pub fn isReadable(st: Status, user_id: u16, group_id: u16) bool {
+    pub fn isReadable(st: *const Status, user_id: u16, group_id: u16) bool {
         if (user_id == st.uid) {
             return st.mode.owner.read;
         }
@@ -197,7 +197,7 @@ pub const Status = extern struct {
         }
         return st.mode.other.read;
     }
-    pub fn isWritable(st: Status, user_id: u16, group_id: u16) bool {
+    pub fn isWritable(st: *const Status, user_id: u16, group_id: u16) bool {
         if (user_id == st.uid) {
             return st.mode.owner.read;
         }
@@ -205,6 +205,9 @@ pub const Status = extern struct {
             return st.mode.group.read;
         }
         return st.mode.other.read;
+    }
+    pub fn count(st: *const Status, comptime T: type) u64 {
+        return st.size / @sizeOf(T);
     }
 };
 pub const StatusExtended = extern struct {
