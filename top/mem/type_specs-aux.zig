@@ -1,13 +1,13 @@
-const gen = @import("./gen.zig");
-const mem = gen.mem;
-const fmt = gen.fmt;
-const proc = gen.proc;
-const meta = gen.meta;
-const file = gen.file;
-const spec = gen.spec;
-const serial = gen.serial;
-const builtin = gen.builtin;
-const testing = gen.testing;
+const mem = @import("../mem.zig");
+const fmt = @import("../fmt.zig");
+const gen = @import("../gen.zig");
+const proc = @import("../proc.zig");
+const file = @import("../file.zig");
+const meta = @import("../meta.zig");
+const spec = @import("../spec.zig");
+const serial = @import("../serial.zig");
+const testing = @import("../testing.zig");
+const builtin = @import("../builtin.zig");
 const tok = @import("./tok.zig");
 const attr = @import("./attr.zig");
 const types = @import("./types.zig");
@@ -680,14 +680,16 @@ fn writeSpecifications(
                 .dynamic => config.dynamic_container_path,
                 .parametric => config.parametric_container_path,
             };
-            truncateFile(spec.generic.noexcept, pathname, array.readAll());
+            gen.truncateFile(spec.generic.noexcept, pathname, array.readAll());
             array.undefineAll();
         }
     }
     if (!write_separate_source_files) {
-        truncateFile(spec.generic.noexcept, config.container_file_path, array.readAll());
+        gen.truncateFile(spec.generic.noexcept, config.container_file_path, array.readAll());
     }
     array.undefineAll();
+    const fd: u64 = file.open(spec.generic.noexcept, config.reference_template_path);
+    array.define(file.readSlice(spec.generic.noexcept, fd, array.referAllUndefined()));
     var spec_idx: u16 = 0;
     for (data.spec_sets) |spec_set| {
         for (spec_set) |specs| {
@@ -695,7 +697,7 @@ fn writeSpecifications(
             spec_idx +%= 1;
         }
     }
-    truncateFile(spec.generic.noexcept, config.reference_file_path, array.readAll());
+    gen.truncateFile(spec.generic.noexcept, config.reference_file_path, array.readAll());
 }
 fn nonEqualIndices(name: []const u8, any: anytype) void {
     var array: mem.StaticString(4096) = undefined;
@@ -817,11 +819,6 @@ const data = blk: {
         .tech_sets = tech_sets,
     };
 };
-fn truncateFile(comptime write_spec: file.WriteSpec, pathname: [:0]const u8, buf: []const write_spec.child) void {
-    const fd: u64 = file.create(spec.create.truncate_noexcept, pathname, file.file_mode);
-    file.writeSlice(write_spec, fd, buf);
-    file.close(spec.generic.noexcept, fd);
-}
 pub fn newNewTypeSpecs() !void {
     var address_space: AddressSpace = .{};
     var allocator: Allocator = try meta.wrap(Allocator.init(&address_space));
@@ -829,7 +826,9 @@ pub fn newNewTypeSpecs() !void {
     @setEvalBranchQuota(1500);
     var array: Array = undefined;
     array.undefineAll();
-    try gen.readFile(&array, config.container_template_path);
+
+    array.define(gen.readFile(spec.generic.noexcept, config.container_template_path, array.referAllUndefined()));
+
     if (write_separate_source_files) {
         gen.writeSourceFile(config.container_common_path, u8, array.readAll());
         array.undefineAll();
@@ -855,8 +854,8 @@ pub fn newNewTypeSpecs() !void {
             spec_idx +%= 1;
         }
     }
-    truncateFile(write_impl_spec, config.impl_detail_path, impl_details.readAll());
-    truncateFile(write_ctn_spec, config.ctn_detail_path, attr.ctn_details);
+    gen.truncateFile(write_impl_spec, config.impl_detail_path, impl_details.readAll());
+    gen.truncateFile(write_ctn_spec, config.ctn_detail_path, attr.ctn_details);
 
     try validateAllSerial(&allocator, data.x_p_infos, data.x_q_infos, data.spec_sets, data.tech_sets, impl_details);
 }
