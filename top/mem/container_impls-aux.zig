@@ -1,15 +1,13 @@
-const gen = @import("./gen.zig");
-const mem = gen.mem;
-const fmt = gen.fmt;
-const file = gen.file;
-const mach = gen.mach;
-const algo = gen.algo;
-const proc = gen.proc;
-const meta = gen.meta;
-const spec = gen.spec;
-const serial = gen.serial;
-const builtin = gen.builtin;
-const testing = gen.testing;
+const mem = @import("../mem.zig");
+const fmt = @import("../fmt.zig");
+const gen = @import("../gen.zig");
+const proc = @import("../proc.zig");
+const file = @import("../file.zig");
+const meta = @import("../meta.zig");
+const spec = @import("../spec.zig");
+const serial = @import("../serial.zig");
+const testing = @import("../testing.zig");
+const builtin = @import("../builtin.zig");
 const tok = @import("./tok.zig");
 const expr = @import("./expr.zig");
 const attr = @import("./attr.zig");
@@ -21,6 +19,7 @@ pub usingnamespace proc.start;
 pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
 pub const runtime_assertions: bool = false;
 pub const show_expressions: bool = false;
+const read_ctn_spec: file.ReadSpec = .{ .child = types.Container, .errors = .{}, .return_type = void };
 const write_separate_source_files: bool = false;
 const Allocator = config.Allocator;
 const AddressSpace = config.AddressSpace;
@@ -906,7 +905,7 @@ fn writeFunctions(allocator: *Allocator, array: *Array, ctn_detail: *const types
             continue;
         }
         const len_0: u64 = array.len();
-        writeSignature(array, ctn_fn_info, ctn_detail);
+        ctn_fn_info.writeSignature(array, ctn_detail);
         array.writeMany("{\n");
         const len_1: u64 = array.len();
         writeFunctionBody(allocator, array, ctn_detail, ctn_fn_info);
@@ -918,19 +917,6 @@ fn writeFunctions(allocator: *Allocator, array: *Array, ctn_detail: *const types
             array.writeMany("}\n");
         }
     }
-}
-fn writeSignature(array: anytype, ctn_fn_info: Fn, ctn_detail: *const types.Container) void {
-    const list: gen.ArgList = ctn_fn_info.argList(ctn_detail, .Parameter);
-    if (ctn_fn.kind.helper(ctn_fn_info)) {
-        array.writeMany("fn ");
-    } else {
-        array.writeMany("pub fn ");
-    }
-    array.writeMany(ctn_fn_info.fnName());
-    array.writeMany("(");
-    for (list.readAll()) |arg| gen.writeArgument(array, arg);
-    array.writeMany(") ");
-    array.writeMany(list.ret);
 }
 fn writeDeclarations(allocator: *Allocator, array: *Array, ctn_detail: *const types.Container) void {
     const save: Allocator.Save = allocator.save();
@@ -990,28 +976,35 @@ pub fn generateContainers() !void {
     var allocator: Allocator = Allocator.init(&address_space);
     defer allocator.deinit(&address_space);
     var array: Array = Array.init(&allocator, 1024 * 4096);
-    var details: Allocator.StructuredVector(types.Container) =
-        try gen.readTrivialSerial(&allocator, types.Container, config.ctn_detail_path);
+    var fd: u64 = file.open(spec.generic.noexcept, config.ctn_detail_path);
+    const st: file.Status = file.status(spec.generic.noexcept, fd);
+    const details: []types.Container = allocator.allocateIrreversible(
+        types.Container,
+        st.count(types.Container),
+    );
+    file.readSlice(read_ctn_spec, fd, details);
+    file.close(spec.generic.noexcept, fd);
     var ctn_idx: u64 = 0;
     for (types.Kind.list) |kind| {
-        for (details.readAll()) |*ctn_detail| {
+        for (details) |*ctn_detail| {
             if (ctn_detail.kind == kind) {
                 writeTypeFunction(&allocator, &array, ctn_detail, ctn_idx);
                 ctn_idx +%= 1;
             }
         }
         if (write_separate_source_files) {
-            switch (kind) {
-                .automatic => gen.appendSourceFile(config.automatic_container_path, array.readAll()),
-                .static => gen.appendSourceFile(config.static_container_path, array.readAll()),
-                .dynamic => gen.appendSourceFile(config.dynamic_container_path, array.readAll()),
-                .parametric => gen.appendSourceFile(config.parametric_container_path, array.readAll()),
-            }
+            const pathname: [:0]const u8 = switch (kind) {
+                .automatic => config.automatic_container_path,
+                .static => config.static_container_path,
+                .dynamic => config.dynamic_container_path,
+                .parametric => config.parametric_container_path,
+            };
+            gen.appendFile(spec.generic.noexcept, pathname, array.readAll());
             array.undefineAll();
         }
     }
     if (!write_separate_source_files) {
-        gen.appendSourceFile(config.container_file_path, array.readAll());
+        gen.appendFile(spec.generic.noexcept, config.container_file_path, array.readAll());
     }
 }
 pub const main = generateContainers;

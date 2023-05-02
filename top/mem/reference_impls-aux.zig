@@ -24,10 +24,7 @@ const Array = Allocator.StructuredVector(u8);
 const Details = Allocator.StructuredVector(types.Implementation);
 const Fn = impl_fn.Fn;
 const Expr = expr.Expr;
-const open_spec: file.OpenSpec = .{ .errors = .{} };
-const stat_spec: file.StatusSpec = .{ .errors = .{} };
-const read_impl_spec: file.ReadSpec = .{ .child = types.Implementation, .errors = .{} };
-const close_spec: file.CloseSpec = .{ .errors = .{} };
+const read_impl_spec: file.ReadSpec = .{ .child = types.Implementation, .errors = .{}, .return_type = void };
 const Info = struct {
     start: u64,
     alias: ?Fn = null,
@@ -35,34 +32,6 @@ const Info = struct {
         info.alias = impl_fn_info;
     }
 };
-pub fn comptimeField(arg_list: gen.ArgList) bool {
-    switch (arg_list.kind) {
-        .Parameter => {
-            if (arg_list.ret.ptr == tok.impl_type_name.ptr) {
-                return false;
-            }
-            for (arg_list.readAll()) |arg| {
-                if (arg.ptr == tok.impl_const_param.ptr) {
-                    return false;
-                }
-                if (arg.ptr == tok.impl_param.ptr) {
-                    return false;
-                }
-            }
-        },
-        .Argument => {
-            if (arg_list.ret.ptr == tok.impl_type_name.ptr) {
-                return false;
-            }
-            for (arg_list.readAll()) |arg| {
-                if (arg.ptr == tok.impl_name.ptr) {
-                    return false;
-                }
-            }
-        },
-    }
-    return true;
-}
 fn dupe(allocator: *Allocator, value: anytype) Allocator.allocate_payload(*@TypeOf(value)) {
     return allocator.duplicateIrreversible(@TypeOf(value), value);
 }
@@ -923,7 +892,7 @@ fn writeSimpleRedecl(array: *Array, impl_fn_info: *const Fn, info: *Info) void {
 }
 inline fn writeComptimeField(array: *Array, impl_variant: *const types.Implementation, impl_fn_info: Fn) void {
     const args_list: gen.ArgList = impl_fn_info.argList(impl_variant, .Parameter);
-    if (comptimeField(args_list)) {
+    if (expr.comptimeField(args_list)) {
         array.writeMany(tok.comptime_keyword);
         array.writeMany(impl_fn_info.fnName());
         if (impl_variant.kind == .parametric) {
@@ -979,37 +948,22 @@ inline fn writeTypeFunction(allocator: *Allocator, array: *Array, impl_variant: 
     writeFunctions(allocator, array, impl_variant);
     array.writeMany("});\n}\n");
 }
-fn truncateFile(comptime write_spec: file.WriteSpec, pathname: [:0]const u8, buf: []const write_spec.child) void {
-    const fd: u64 = file.create(spec.create.truncate_noexcept, pathname, file.file_mode);
-    file.writeSlice(write_spec, fd, buf);
-    file.close(spec.generic.noexcept, fd);
-}
-fn appendFile(comptime write_spec: file.WriteSpec, pathname: [:0]const u8, buf: []const write_spec.child) void {
-    const fd: u64 = file.open(spec.open.append_noexcept, pathname);
-    file.writeSlice(spec.generic.noexcept, fd, buf);
-    file.close(spec.generic.noexcept, fd);
-}
-fn readFile(comptime read_spec: file.ReadSpec, pathname: [:0]const u8, buf: []read_spec.child) void {
-    const fd: u64 = file.open(spec.generic.noexcept, pathname);
-    file.readSlice(read_spec, fd, buf);
-    file.close(spec.generic.noexcept, fd);
-}
-
 pub fn generateReferences() !void {
     var address_space: AddressSpace = .{};
     var allocator: Allocator = Allocator.init(&address_space);
     defer allocator.deinit(&address_space);
     var array: Array = Array.init(&allocator, 1024 * 4096);
     array.undefineAll();
-
-    var fd: u64 = file.open(open_spec, config.impl_detail_path);
-    const st: file.Status = file.status(stat_spec, fd);
-    var details: Details = Details.init(&allocator, @divExact(st.size, @sizeOf(types.Implementation)));
-    details.define(file.readSlice(read_spec, fd, details.referAllUndefined()));
-    file.close(close_spec, fd);
-
+    var fd: u64 = file.open(spec.generic.noexcept, config.impl_detail_path);
+    const st: file.Status = file.status(spec.generic.noexcept, fd);
+    const details: []types.Implementation = allocator.allocateIrreversible(
+        types.Implementation,
+        st.count(types.Implementation),
+    );
+    file.readSlice(read_impl_spec, fd, details);
+    file.close(spec.generic.noexcept, fd);
     for (types.Kind.list) |kind| {
-        for (details.readAll()) |*impl_detail| {
+        for (details) |*impl_detail| {
             if (impl_detail.kind == kind) {
                 writeTypeFunction(&allocator, &array, impl_detail);
             }
@@ -1021,12 +975,12 @@ pub fn generateReferences() !void {
                 .dynamic => config.dynamic_container_path,
                 .parametric => config.parametric_container_path,
             };
-            appendFile(spec.generic.noexcept, pathname, array.readAll());
+            gen.appendFile(spec.generic.noexcept, pathname, array.readAll());
             array.undefineAll();
         }
     }
     if (!write_separate_source_files) {
-        appendFile(spec.generic.noexcept, config.reference_file_path, array.readAll());
+        gen.appendFile(spec.generic.noexcept, config.reference_file_path, array.readAll());
     }
 }
 pub const main = generateReferences;
