@@ -1577,6 +1577,9 @@ pub const SimpleAllocator = struct {
         const ret_addr: u64 = allocator.reallocateInternal(@ptrToInt(buf.ptr), buf.len *% @sizeOf(T), count *% @sizeOf(T), @alignOf(T));
         return @intToPtr([*]T, ret_addr)[0..count];
     }
+    pub inline fn deallocate(allocator: *Allocator, comptime T: type, buf: []T) void {
+        allocator.deallocateInternal(@ptrToInt(buf.ptr), buf.len *% @sizeOf(T));
+    }
     pub inline fn save(allocator: *const Allocator) Save {
         return .{allocator.next};
     }
@@ -1616,7 +1619,7 @@ pub const SimpleAllocator = struct {
     inline fn copy(dest: u64, src: u64, len: u64) void {
         @memcpy(@intToPtr([*]u8, dest), @intToPtr([*]const u8, src), len);
     }
-    fn allocateInternal(
+    export fn allocateInternal(
         allocator: *Allocator,
         size_of: u64,
         align_of: u64,
@@ -1630,7 +1633,7 @@ pub const SimpleAllocator = struct {
         allocator.next = finish;
         return aligned;
     }
-    fn reallocateInternal(
+    export fn reallocateInternal(
         allocator: *Allocator,
         old_aligned: u64,
         old_size_of: u64,
@@ -1649,5 +1652,15 @@ pub const SimpleAllocator = struct {
         const new_aligned: u64 = allocator.allocateInternal(new_size_of, align_of);
         copy(new_aligned, old_aligned, old_size_of);
         return new_aligned;
+    }
+    export fn deallocateInternal(
+        allocator: *Allocator,
+        old_aligned: u64,
+        old_size_of: u64,
+    ) void {
+        const old_finish: u64 = old_aligned +% old_size_of;
+        if (allocator.next == old_finish) {
+            allocator.next = old_aligned;
+        }
     }
 };
