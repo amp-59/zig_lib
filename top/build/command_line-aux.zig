@@ -14,6 +14,7 @@ pub const logging_override: builtin.Logging.Override = spec.logging.override.sil
 const primitive: bool = true;
 const abstract: bool = false;
 const compile: bool = false;
+const prefer_ptrcast: bool = true;
 const max_len: u64 = attr.format_command_options.len + attr.build_command_options.len;
 const Array = mem.StaticString(1024 * 1024);
 const Arrays = mem.StaticArray([]const u8, max_len);
@@ -253,11 +254,20 @@ fn writeOptString(
             if (abstract) {
                 array.writeMany("@memcpy(buf+len,opt_switch.ptr,opt_switch.len);\n");
             } else {
-                array.writeMany("@memcpy(buf+len,\"");
-                array.writeMany(opt_string);
-                array.writeMany("\",");
-                array.writeFormat(fmt.ud64(opt_string.len));
-                array.writeMany(");\n");
+                if (prefer_ptrcast) {
+                    array.writeMany("@ptrCast(");
+                    array.writeMany("*[");
+                    array.writeFormat(fmt.ud64(opt_string.len));
+                    array.writeMany("]u8,buf+len).*=\"");
+                    array.writeMany(opt_string);
+                    array.writeMany("\".*;\n");
+                } else {
+                    array.writeMany("@memcpy(buf+len,\"");
+                    array.writeMany(opt_string);
+                    array.writeMany("\",");
+                    array.writeFormat(fmt.ud64(opt_string.len));
+                    array.writeMany(");\n");
+                }
             }
             writeOptString(array, opt_string, .length);
         } else {
@@ -580,6 +590,7 @@ fn writeBuildWrite(array: *Array, arrays: *Arrays, indices: *Indices) void {
         if (primitive) {
             array.writeMany(
                 \\pub fn buildWriteBuf(cmd:*const tasks.BuildCommand,zig_exe:[]const u8,root_path:types.Path,buf:[*]u8)u64{
+                \\@setRuntimeSafety(false);
                 \\@memcpy(buf,zig_exe.ptr,zig_exe.len);
                 \\var len:u64=zig_exe.len;
                 \\buf[len]=0;
