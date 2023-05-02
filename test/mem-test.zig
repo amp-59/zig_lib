@@ -9,8 +9,6 @@ const spec = top.spec;
 const builtin = top.builtin;
 const testing = top.testing;
 
-const experimental = @import("../top/mem/container.zig");
-
 pub usingnamespace proc.start;
 
 pub const runtime_assertions: bool = true;
