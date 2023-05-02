@@ -1,9 +1,8 @@
-const gen = @import("./gen.zig");
-const mem = gen.mem;
-const fmt = gen.fmt;
-const mach = gen.mach;
-const builtin = gen.builtin;
-
+const mem = @import("../mem.zig");
+const fmt = @import("../fmt.zig");
+const gen = @import("../gen.zig");
+const mach = @import("../mach.zig");
+const builtin = @import("../builtin.zig");
 const tok = @import("./tok.zig");
 const attr = @import("./attr.zig");
 const types = @import("./types.zig");
