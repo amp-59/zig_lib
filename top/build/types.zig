@@ -458,10 +458,6 @@ pub const Variant = enum(u1) {
     length,
     write,
 };
-pub const Characteristic = enum(u1) {
-    assign,
-    argument,
-};
 pub const ProtoTypeDescr = fmt.GenericTypeDescrFormat(.{
     .options = .{
         .default_field_values = true,
@@ -482,7 +478,7 @@ pub const ArgInfo = struct {
     /// Describes how the field type should be written to the command struct
     type: ProtoTypeDescr,
     /// Specifies whether option arguments are separated with '\x00' or '='
-    char: ?Characteristic = null,
+    char: ?u8 = null,
 
     const Tag = enum(u8) {
         boolean = 0,
