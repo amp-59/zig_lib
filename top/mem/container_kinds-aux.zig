@@ -1,9 +1,9 @@
-const gen = @import("./gen.zig");
-const mem = gen.mem;
-const proc = gen.proc;
-const algo = gen.algo;
-const spec = gen.spec;
-const builtin = gen.builtin;
+const mem = @import("../mem.zig");
+const file = @import("../file.zig");
+const proc = @import("../proc.zig");
+const algo = @import("../algo.zig");
+const spec = @import("../spec.zig");
+const builtin = @import("../builtin.zig");
 const attr = @import("./attr.zig");
 const config = @import("./config.zig");
 const ctn_fn = @import("./ctn_fn.zig");
@@ -38,7 +38,7 @@ fn concat(comptime Tags: type, allocator: *Allocator, sets: []const Tags) Tags {
 pub fn main() void {
     var array: Array = undefined;
     array.undefineAll();
-    gen.writeImport(&array, "ctn_fn", "../../ctn_fn.zig");
+    array.writeMany("const ctn_fn = @import(\"../../ctn_fn.zig\");\n");
     const writeKind = attr.Fn.static.writeKindSwitch;
     const Pair = attr.Fn.static.Pair(ctn_fn.Fn);
     const read: Pair = attr.Fn.static.prefixSubTagNew(ctn_fn.Fn, .read);
@@ -111,5 +111,7 @@ pub fn main() void {
     writeKind(ctn_fn.Fn, &array, .offset, offset_defined[1] ++ offset_undefined[1] ++ offset_streamed[1] ++ offset_unstreamed[1]);
     writeKind(ctn_fn.Fn, &array, .special, helper[0]);
 
-    gen.writeSourceFile(config.container_kinds_path, u8, array.readAll());
+    const fd: u64 = file.create(spec.create.truncate_noexcept, config.container_kinds_path, file.file_mode);
+    file.writeSlice(spec.generic.noexcept, fd, array.readAll());
+    file.close(spec.generic.noexcept, fd);
 }
