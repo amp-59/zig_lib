@@ -1,9 +1,9 @@
-const gen = @import("./gen.zig");
-const mem = gen.mem;
-const proc = gen.proc;
-const algo = gen.algo;
-const spec = gen.spec;
-const builtin = gen.builtin;
+const mem = @import("../mem.zig");
+const file = @import("../file.zig");
+const proc = @import("../proc.zig");
+const algo = @import("../algo.zig");
+const spec = @import("../spec.zig");
+const builtin = @import("../builtin.zig");
 
 const attr = @import("./attr.zig");
 const config = @import("./config.zig");
@@ -16,7 +16,8 @@ const Array = mem.StaticString(1024 * 1024);
 pub fn main() void {
     var array: Array = undefined;
     array.undefineAll();
-    gen.writeImport(&array, "alloc_fn", "../../alloc_fn.zig");
+    array.writeMany("const alloc_fn = @import(\"../../alloc_fn.zig\");\n");
+
     const writeKind = attr.Fn.static.writeKindSwitch;
 
     const Pair = attr.Fn.static.Pair(alloc_fn.Fn);
@@ -30,5 +31,7 @@ pub fn main() void {
     writeKind(alloc_fn.Fn, &array, .reallocate, reallocate[1]);
     writeKind(alloc_fn.Fn, &array, .resize, resize[1]);
 
-    gen.writeSourceFile(config.allocator_kinds_path, u8, array.readAll());
+    const fd: u64 = file.create(spec.create.truncate_noexcept, config.allocator_kinds_path, file.file_mode);
+    file.writeSlice(spec.generic.noexcept, fd, array.readAll());
+    file.close(spec.generic.noexcept, fd);
 }
