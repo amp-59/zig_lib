@@ -1,5 +1,6 @@
 const top = @import("../zig_lib.zig");
 const mem = top.mem;
+const sys = top.sys;
 const fmt = top.fmt;
 const exe = top.exe;
 const proc = top.proc;
@@ -90,10 +91,50 @@ fn sectionAddress(ehdr_addr: u64, symbol: [:0]const u8) ?u64 {
     }
     return null;
 }
-
+const Mapping = extern struct {
+    lb_addr: u64,
+    up_addr: u64,
+    perms: packed struct {
+        read: bool,
+        write: bool,
+        execute: bool,
+        shared: bool,
+        private: bool,
+    },
+    offset: u32,
+    device: struct {
+        minor: u8,
+        major: u8,
+    },
+    inode: u64,
+    pathname: []const u8,
+};
+fn testCheckResourcesNoErrors() void {
+    var buf: [4096]u8 = undefined;
+    const dir_fd: u64 = file.open(.{ .errors = .{}, .options = .{ .directory = true } }, "/proc/self/fd");
+    var len: u64 = file.getDirectoryEntries(.{ .errors = .{} }, dir_fd, &buf);
+    var off: u64 = 0;
+    while (off != len) {
+        const ent: file.DirectoryEntry = builtin.ptrCast(*const file.DirectoryEntry, buf[off..]).*;
+        const name: [:0]const u8 = meta.manyToSlice(builtin.ptrCast([*:0]u8, &ent.array));
+        if (ent.kind == sys.S.IFLNKR) {
+            const pathname: [:0]const u8 = file.readLinkAt(.{ .errors = .{} }, dir_fd, name, buf[len..]);
+            builtin.debug.write(name);
+            builtin.debug.write(" -> ");
+            builtin.debug.write(pathname);
+            builtin.debug.write("\n");
+        }
+        off +%= ent.reclen;
+    }
+    file.close(.{ .errors = .{} }, dir_fd);
+    const maps_fd: u64 = file.open(.{ .errors = .{} }, "/proc/self/maps");
+    len = file.readSlice(.{ .errors = .{} }, maps_fd, &buf);
+    builtin.debug.write(buf[0..len]);
+    file.close(.{ .errors = .{} }, maps_fd);
+}
 var vdso_clock_gettime: ?*fn (time.Kind, *time.TimeSpec) void = null;
-
 pub fn main(args: [][*:0]u8, _: [][*:0]u8, aux: *const anyopaque) !void {
+    testCheckResourcesNoErrors();
     const vdso_addr: u64 = proc.auxiliaryValue(aux, .vdso_addr).?;
     for (args[1..]) |arg| {
         if (sectionAddress(vdso_addr, meta.manyToSlice(arg))) |addr| {
