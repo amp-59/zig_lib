@@ -5,125 +5,39 @@ const file = @import("../file.zig");
 const spec = @import("../spec.zig");
 const testing = @import("../testing.zig");
 const builtin = @import("../builtin.zig");
-
 const attr = @import("./attr.zig");
 const types = @import("./types.zig");
-
+const config = @import("./config.zig");
 pub usingnamespace proc.start;
-
 pub const runtime_assertions: bool = false;
+pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
 const primitive: bool = true;
+const abstract: bool = false;
 const compile: bool = false;
-
+const max_len: u64 = attr.format_command_options.len + attr.build_command_options.len;
 const Array = mem.StaticString(1024 * 1024);
-const build_root: [:0]const u8 = builtin.buildRoot();
-const command_line_path: [:0]const u8 = build_root ++ "/top/build/command_line3.zig";
-const command_line_template_path: [:0]const u8 = build_root ++ "/top/build/command_line-template.zig";
-
-const open_spec: file.OpenSpec = .{
-    .errors = .{},
-    .logging = .{},
-};
-const creat_spec: file.CreateSpec = .{
-    .errors = .{},
-    .logging = .{},
-    .options = .{ .exclusive = false },
-};
-const write_spec: file.WriteSpec = .{
-    .errors = .{},
-    .logging = .{},
-};
-const read_spec: file.ReadSpec = .{
-    .errors = .{},
-    .logging = .{},
-};
-const close_spec: file.CloseSpec = .{
-    .errors = .{},
-    .logging = .{},
-};
-const path_spec: file.PathSpec = .{
-    .errors = .{},
-    .logging = .{},
-};
-const stat_spec: file.StatusSpec = .{
-    .errors = .{},
-    .logging = .{},
-};
-fn writeFormatterYes2No1(buf: [*]u8, path: anytype, yes: []const u8, no: []const u8) u64 {
-    var len: u64 = 0;
-    switch (path) {
-        .yes => |yes_arg| {
-            if (yes_arg) |yes_optional_arg| {
-                @memcpy(buf + len, yes.ptr, yes.len);
-                len = len +% yes.len;
-                buf[len] = '=';
-                len = len +% 1;
-                len = len +% yes_optional_arg.formatWriteBuf(buf + len);
-            } else {
-                @memcpy(buf + len, yes.ptr, yes.len);
-                len = len +% yes.len;
-                buf[len] = 0;
-                len = len +% 1;
-            }
-        },
-        .no => {
-            @memcpy(buf + len, no.ptr, no.len);
-            len = len +% no.len;
-            buf[len] = 0;
-            len = len +% 1;
-        },
-    }
-    return len;
-}
-fn writeFormatterYes2No2(buf: [*]u8, any: anytype, yes: []const u8, no: []const u8) u64 {
-    var len: u64 = 0;
-    switch (any) {
-        .yes => |yes_arg| {
-            if (yes_arg) |yes_optional_arg| {
-                @memcpy(buf + len, yes.ptr, yes.len);
-                len = len +% yes.len;
-                buf[len] = '=';
-                len = len +% 1;
-                len = len +% yes_optional_arg.formatWriteBuf(buf + len);
-            } else {
-                @memcpy(buf + len, yes.ptr, yes.len);
-                len = len +% yes.len;
-                buf[len] = 0;
-                len = len +% 1;
-            }
-        },
-        .no => |no_arg| {
-            if (no_arg) |no_optional_arg| {
-                @memcpy(buf + len, no.ptr, no.len);
-                len = len +% no.len;
-                buf[len] = '=';
-                len = len +% 1;
-                len = len +% no_optional_arg.formatWriteBuf(buf + len);
-            } else {
-                @memcpy(buf + len, no.ptr, no.len);
-                len = len +% no.len;
-                buf[len] = 0;
-                len = len +% 1;
-            }
-        },
-    }
-    return len;
-}
+const Arrays = mem.StaticArray([]const u8, max_len);
+const Indices = mem.StaticArray(u64, max_len);
+const open_spec: file.OpenSpec = .{ .errors = .{}, .logging = .{} };
+const creat_spec: file.CreateSpec = .{ .errors = .{}, .logging = .{}, .options = .{ .exclusive = false } };
+const write_spec: file.WriteSpec = .{ .errors = .{}, .logging = .{} };
+const read_spec: file.ReadSpec = .{ .errors = .{}, .logging = .{} };
+const close_spec: file.CloseSpec = .{ .errors = .{}, .logging = .{} };
 fn writeIf(array: *Array, value_name: []const u8) void {
     array.writeMany("if(");
     array.writeMany(value_name);
     array.writeMany("){\n");
 }
 fn writeIfField(array: *Array, field_name: []const u8) void {
-    array.writeMany("if(cmd.");
+    array.writeMany(if (abstract) "if(" else "if(cmd.");
     array.writeMany(field_name);
     array.writeMany("){\n");
 }
-fn writeIfOptionalField(array: *Array, field_name: []const u8) void {
-    array.writeMany("if(cmd.");
+fn writeIfOptionalField(array: *Array, field_name: []const u8, capture_name: []const u8) void {
+    array.writeMany(if (abstract) "if(" else "if(cmd.");
     array.writeMany(field_name);
     array.writeMany(")|");
-    array.writeMany(field_name);
+    array.writeMany(capture_name);
     array.writeMany("|{\n");
 }
 fn writeIfOptional(array: *Array, value_name: []const u8, capture_name: []const u8) void {
@@ -133,47 +47,29 @@ fn writeIfOptional(array: *Array, value_name: []const u8, capture_name: []const 
     array.writeMany(capture_name);
     array.writeMany("|{\n");
 }
-fn writeForEach(array: *Array, value_name: []const u8, capture_name: []const u8) void {
+fn writeForEach(array: *Array, values_name: []const u8, value_name: []const u8) void {
     array.writeMany("for(");
-    array.writeMany(value_name);
+    array.writeMany(values_name);
     array.writeMany(")|");
-    array.writeMany(capture_name);
+    array.writeMany(value_name);
     array.writeMany("|{\n");
 }
-fn writeYesOptionalIf(array: *Array) void {
-    array.writeMany("if(yes_optional_arg)|yes_arg|{\n");
-}
-fn writeNoOptionalIf(array: *Array) void {
-    array.writeMany("if(no_optional_arg)|no_arg|{\n");
-}
-fn writeSwitch(array: *Array, field_name: []const u8) void {
+fn writeSwitch(array: *Array, value_name: []const u8) void {
     array.writeMany("switch(");
-    array.writeMany(field_name);
+    array.writeMany(value_name);
     array.writeMany("){\n");
 }
-fn writeDefaultProng(array: *Array) void {
-    array.writeMany(".default=>{\n");
+fn writeProng(array: *Array, tag_name: []const u8) void {
+    array.writeMany(".");
+    array.writeMany(tag_name);
+    array.writeMany("=>{\n");
 }
-fn writeExplicitProng(array: *Array) void {
-    array.writeMany(".explicit=>|how|{\n");
-}
-fn writeNoProng(array: *Array) void {
-    array.writeMany(".no=>{\n");
-}
-fn writeYesProng(array: *Array) void {
-    array.writeMany(".yes=>{\n");
-}
-fn writeNoRequiredProng(array: *Array) void {
-    array.writeMany(".no=>|no_arg|{\n");
-}
-fn writeYesRequiredProng(array: *Array) void {
-    array.writeMany(".yes=>|yes_arg|{\n");
-}
-fn writeYesOptionalProng(array: *Array) void {
-    array.writeMany(".yes=>|yes_optional_arg|{\n");
-}
-fn writeNoOptionalProng(array: *Array) void {
-    array.writeMany(".no=>|no_optional_arg|{\n");
+fn writeRequiredProng(array: *Array, tag_name: []const u8, capture_name: []const u8) void {
+    array.writeMany(".");
+    array.writeMany(tag_name);
+    array.writeMany("=>|");
+    array.writeMany(capture_name);
+    array.writeMany("|{\n");
 }
 fn writeElse(array: *Array) void {
     array.writeMany("}else{\n");
@@ -252,48 +148,6 @@ fn writeTagString(array: *Array, arg_string: []const u8, variant: types.Variant)
         },
     }
 }
-fn writeOptString(array: *Array, opt_string: []const u8, variant: types.Variant) void {
-    switch (variant) {
-        .write => if (primitive) {
-            array.writeMany("@memcpy(buf+len,\"");
-            array.writeMany(opt_string);
-            array.writeMany("\\x00\",");
-            array.writeFormat(fmt.ud64(opt_string.len +% 1));
-            array.writeMany(");\n");
-            writeOptString(array, opt_string, .length);
-        } else {
-            array.writeMany("array.writeMany(\"");
-            array.writeMany(opt_string);
-            array.writeMany("\\x00\");\n");
-        },
-        .length => {
-            array.writeMany("len=len+%");
-            array.writeFormat(fmt.ud64(opt_string.len +% 1));
-            array.writeMany(";\n");
-        },
-    }
-}
-fn writeOptAssignString(array: *Array, opt_string: []const u8, variant: types.Variant) void {
-    switch (variant) {
-        .write => if (primitive) {
-            array.writeMany("@memcpy(buf+len,\"");
-            array.writeMany(opt_string);
-            array.writeMany("=\",");
-            array.writeFormat(fmt.ud64(opt_string.len +% 1));
-            array.writeMany(");\n");
-            writeOptAssignString(array, opt_string, .length);
-        } else {
-            array.writeMany("array.writeMany(\"");
-            array.writeMany(opt_string);
-            array.writeMany("=\");\n");
-        },
-        .length => {
-            array.writeMany("len=len+%");
-            array.writeFormat(fmt.ud64(opt_string.len +% 1));
-            array.writeMany(";\n");
-        },
-    }
-}
 fn writeArgString(array: *Array, arg_string: []const u8, variant: types.Variant) void {
     switch (variant) {
         .write => if (primitive) {
@@ -333,7 +187,14 @@ fn writeFormatterInternal(array: *Array, arg_string: []const u8, variant: types.
         },
     }
 }
-fn writeMapped(array: *Array, opt_switch_string: ?[]const u8, arg_string: []const u8, variant: types.Variant) void {
+fn writeMapped(
+    array: *Array,
+    opt_switch_string: ?[]const u8,
+    arg_string: []const u8,
+    variant: types.Variant,
+    char: u8,
+) void {
+    _ = char;
     if (opt_switch_string) |switch_string| {
         writeOptString(array, switch_string, variant);
     }
@@ -354,141 +215,341 @@ fn writeMapped(array: *Array, opt_switch_string: ?[]const u8, arg_string: []cons
         },
     }
 }
-fn writeOptArgInteger(array: *Array, opt_string: []const u8, arg_string: []const u8, variant: types.Variant) void {
+fn writeCharacteristic(array: *Array, variant: types.Variant, char: u8) void {
+    switch (variant) {
+        .write => {
+            if (abstract) {
+                if (primitive) {
+                    array.writeMany("buf[len]=c;\n");
+                    writeCharacteristic(array, .length, char);
+                } else {
+                    array.writeMany("array.writeOne(c);\n");
+                }
+            } else {
+                if (primitive) {
+                    array.writeMany("buf[len]=");
+                    array.writeFormat(fmt.ud8(char));
+                    array.writeMany(";\n");
+                    writeCharacteristic(array, .length, char);
+                } else {
+                    array.writeMany("array.writeOne(");
+                    array.writeFormat(fmt.ud8(char));
+                    array.writeMany(");\n");
+                }
+            }
+        },
+        .length => {
+            array.writeMany("len=len+%1;\n");
+        },
+    }
+}
+fn writeOptString(
+    array: *Array,
+    opt_string: []const u8,
+    variant: types.Variant,
+) void {
+    switch (variant) {
+        .write => if (primitive) {
+            if (abstract) {
+                array.writeMany("@memcpy(buf+len,opt_switch.ptr,opt_switch.len);\n");
+            } else {
+                array.writeMany("@memcpy(buf+len,\"");
+                array.writeMany(opt_string);
+                array.writeMany("\",");
+                array.writeFormat(fmt.ud64(opt_string.len));
+                array.writeMany(");\n");
+            }
+            writeOptString(array, opt_string, .length);
+        } else {
+            if (abstract) {
+                array.writeMany("array.writeMany(opt_switch);\n");
+            } else {
+                array.writeMany("array.writeMany(\"");
+                array.writeMany(opt_string);
+                array.writeMany("\");\n");
+            }
+        },
+        .length => {
+            if (abstract) {
+                array.writeMany("len=len+%opt_switch.len;\n");
+            } else {
+                array.writeMany("len=len+%");
+                array.writeFormat(fmt.ud64(opt_string.len));
+                array.writeMany(";\n");
+            }
+        },
+    }
+}
+fn writeOptArgInteger(
+    array: *Array,
+    opt_string: []const u8,
+    arg_string: []const u8,
+    variant: types.Variant,
+    char: u8,
+) void {
     writeOptString(array, opt_string, variant);
+    writeCharacteristic(array, variant, char);
     writeIntegerString(array, arg_string, variant);
     writeNull(array, variant);
 }
-fn writeOptArgString(array: *Array, opt_string: []const u8, arg_string: []const u8, variant: types.Variant) void {
+fn writeOptArgString(
+    array: *Array,
+    opt_string: []const u8,
+    arg_string: []const u8,
+    variant: types.Variant,
+    char: u8,
+) void {
     writeOptString(array, opt_string, variant);
+    writeCharacteristic(array, variant, char);
     writeArgString(array, arg_string, variant);
     writeNull(array, variant);
 }
-fn writeOptTagString(array: *Array, opt_string: []const u8, arg_string: []const u8, variant: types.Variant) void {
+fn writeOptTagString(
+    array: *Array,
+    opt_string: []const u8,
+    arg_string: []const u8,
+    variant: types.Variant,
+    char: u8,
+) void {
     writeOptString(array, opt_string, variant);
+    writeCharacteristic(array, variant, char);
     writeTagString(array, arg_string, variant);
     writeNull(array, variant);
 }
-fn writeFormatter(array: *Array, opt_switch_string: ?[]const u8, arg_string: []const u8, variant: types.Variant) void {
+fn writeFormatter(
+    array: *Array,
+    opt_switch_string: ?[]const u8,
+    arg_string: []const u8,
+    variant: types.Variant,
+    char: u8,
+) void {
     if (opt_switch_string) |switch_string| {
         writeOptString(array, switch_string, variant);
+        writeCharacteristic(array, variant, char);
     }
     writeFormatterInternal(array, arg_string, variant);
 }
-fn writeOptionalFormatter(array: *Array, opt_switch_string: ?[]const u8, arg_string: []const u8, variant: types.Variant) void {
+fn writeOptionalFormatter(
+    array: *Array,
+    opt_switch_string: ?[]const u8,
+    arg_string: []const u8,
+    variant: types.Variant,
+    char: u8,
+) void {
     if (opt_switch_string) |switch_string| {
-        writeOptAssignString(array, switch_string, variant);
+        writeOptString(array, switch_string, variant);
+        writeCharacteristic(array, variant, char);
     }
     writeFormatterInternal(array, arg_string, variant);
 }
-pub fn writeFunctionBody(array: *Array, options: []const types.OptionSpec, variant: types.Variant) void {
-    for (options) |opt_spec| {
+fn writeFunctionSignature(array: *Array, opt_spec: types.OptionSpec, variant: types.Variant) void {
+    if (abstract) {
+        array.writeMany("fn ");
+        array.writeMany(@tagName(variant));
+        array.writeMany("_");
+        array.writeMany(@tagName(opt_spec.arg_info.tag));
+        switch (variant) {
+            .write => {
+                if (opt_spec.arg_info.tag == .boolean) {
+                    array.writeMany("(buf:[*]u8,opt_switch:[]const u8,boolean:bool)u64{\n");
+                } else {
+                    array.writeMany("(buf:[*]u8,opt_switch:[]const u8,optional:anytype,c:u8)u64{\n");
+                }
+            },
+            .length => {
+                if (opt_spec.arg_info.tag == .boolean) {
+                    array.writeMany("(opt_switch:[]const u8,boolean:bool)u64{\n");
+                } else {
+                    array.writeMany("(opt_switch:[]const u8,optional:anytype)u64{\n");
+                }
+            },
+        }
+        array.writeMany("var len:u64=0;\n");
+    }
+}
+fn writeFunctionSignature2(array: *Array, opt_spec: types.OptionSpec, no_opt_spec: types.InverseOptionSpec, variant: types.Variant) void {
+    if (abstract) {
+        array.writeMany("fn ");
+        array.writeMany(@tagName(variant));
+        array.writeMany("_");
+        array.writeMany(@tagName(opt_spec.arg_info.tag));
+        array.writeMany("_");
+        array.writeMany(@tagName(no_opt_spec.arg_info.tag));
+        if (variant == .write) {
+            array.writeMany("(buf:[*]u8,opt_switch:[]const u8,optional:anytype,c:u8)u64{\n");
+        } else {
+            array.writeMany("(opt_switch:[]const u8,optional:anytype)u64{\n");
+        }
+        array.writeMany("var len:u64=0;\n");
+    }
+}
+fn writeFunctionReturn(array: *Array) void {
+    if (abstract) {
+        array.writeMany("return len;\n");
+        array.writeMany("}\n");
+    }
+}
+fn writeUniqueBlock(array: *Array, arrays: *Arrays, indices: *Indices, off: u64, idx: u64) u64 {
+    const new_blk: []const u8 = array.readManyBack(array.len() -% off);
+    if (abstract) {
+        for (arrays.readAll(), 0..) |unique_blk, unique_idx| {
+            if (builtin.testEqualMemory([]const u8, unique_blk, new_blk)) {
+                indices.overwriteOneAt(idx, unique_idx);
+                array.undefine(new_blk.len);
+                return off;
+            }
+        } else {
+            arrays.writeOne(new_blk);
+        }
+    }
+    return off +% new_blk.len;
+}
+pub fn writeFunctionBody(array: *Array, options: []const types.OptionSpec, variant: types.Variant, arrays: *Arrays, indices: *Indices) void {
+    var off: u64 = array.len();
+    for (options, 0..) |opt_spec, idx| {
+        off = writeUniqueBlock(array, arrays, indices, off, idx);
+        const if_boolean_field_value: []const u8 = if (abstract) "boolean" else opt_spec.name;
+        const if_optional_field_value: []const u8 = if (abstract) "optional" else opt_spec.name;
+        const if_optional_field_capture: []const u8 = if (abstract) "capture" else opt_spec.name;
         if (opt_spec.and_no) |no_opt_spec| {
-            if (opt_spec.arg_info.tag == .boolean) {
-                if (no_opt_spec.arg_info.tag == .boolean) {
-                    writeIfOptionalField(array, opt_spec.name);
-                    writeIf(array, opt_spec.name);
-                    writeOptString(array, opt_spec.string.?, variant);
-                    writeElse(array);
-                    writeOptString(array, no_opt_spec.string.?, variant);
-                    writeIfClose(array);
-                    writeIfClose(array);
-                    continue;
-                }
+            if (opt_spec.arg_info.tag == .boolean and no_opt_spec.arg_info.tag == .boolean) {
+                writeFunctionSignature2(array, opt_spec, no_opt_spec, variant);
+                writeIfOptionalField(array, if_optional_field_value, if_optional_field_capture);
+                writeIf(array, if_optional_field_capture);
+                writeOptString(array, opt_spec.string.?, variant);
+                writeCharacteristic(array, variant, opt_spec.arg_info.char orelse '\x00');
+                writeElse(array);
+                writeOptString(array, no_opt_spec.string.?, variant);
+                writeCharacteristic(array, variant, opt_spec.arg_info.char orelse '\x00');
+                writeIfClose(array);
+                writeIfClose(array);
+                writeFunctionReturn(array);
+                continue;
             }
-            if (opt_spec.arg_info.tag == .string) {
-                if (no_opt_spec.arg_info.tag == .boolean) {
-                    writeIfOptionalField(array, opt_spec.name);
-                    writeSwitch(array, opt_spec.name);
-                    writeYesRequiredProng(array);
-                    writeOptArgString(array, opt_spec.string.?, "yes_arg", variant);
-                    writeProngClose(array);
-                    writeNoProng(array);
-                    writeOptString(array, no_opt_spec.string.?, variant);
-                    writeProngClose(array);
-                    writeIfClose(array);
-                    writeIfClose(array);
-                    continue;
-                }
+            if (opt_spec.arg_info.tag == .string and
+                no_opt_spec.arg_info.tag == .boolean)
+            {
+                writeFunctionSignature2(array, opt_spec, no_opt_spec, variant);
+                writeIfOptionalField(array, if_optional_field_value, if_optional_field_capture);
+                writeSwitch(array, if_optional_field_capture);
+                writeRequiredProng(array, "yes", "arg");
+                writeOptArgString(array, opt_spec.string.?, "arg", variant, opt_spec.arg_info.char orelse '\x00');
+                writeProngClose(array);
+                writeProng(array, "no");
+                writeOptString(array, no_opt_spec.string.?, variant);
+                writeCharacteristic(array, variant, opt_spec.arg_info.char orelse '\x00');
+                writeProngClose(array);
+                writeIfClose(array);
+                writeIfClose(array);
+                writeFunctionReturn(array);
+                continue;
             }
-            if (opt_spec.arg_info.tag == .formatter) {
-                if (no_opt_spec.arg_info.tag == .boolean) {
-                    writeIfOptionalField(array, opt_spec.name);
-                    writeSwitch(array, opt_spec.name);
-                    writeYesRequiredProng(array);
-                    writeFormatter(array, opt_spec.string, "yes_arg", variant);
-                    writeProngClose(array);
-                    writeNoProng(array);
-                    writeOptString(array, no_opt_spec.string.?, variant);
-                    writeProngClose(array);
-                    writeIfClose(array);
-                    writeIfClose(array);
-                    continue;
-                }
+            if (opt_spec.arg_info.tag == .formatter and no_opt_spec.arg_info.tag == .boolean) {
+                writeFunctionSignature2(array, opt_spec, no_opt_spec, variant);
+                writeIfOptionalField(array, if_optional_field_value, if_optional_field_capture);
+                writeSwitch(array, if_optional_field_capture);
+                writeRequiredProng(array, "yes", "arg");
+                writeFormatter(array, opt_spec.string, "arg", variant, opt_spec.arg_info.char orelse '\x00');
+                writeProngClose(array);
+                writeProng(array, "no");
+                writeOptString(array, no_opt_spec.string.?, variant);
+                writeCharacteristic(array, variant, opt_spec.arg_info.char orelse '\x00');
+                writeProngClose(array);
+                writeIfClose(array);
+                writeIfClose(array);
+                writeFunctionReturn(array);
+                continue;
             }
-            if (opt_spec.arg_info.tag == .optional_formatter) {
-                if (no_opt_spec.arg_info.tag == .boolean) {
-                    writeIfOptionalField(array, opt_spec.name);
-                    writeSwitch(array, opt_spec.name);
-                    writeYesRequiredProng(array);
-                    writeIfOptional(array, "yes_arg", "yes_optional_arg");
-                    writeOptionalFormatter(array, opt_spec.string, "yes_optional_arg", variant);
-                    writeElse(array);
-                    writeOptString(array, opt_spec.string.?, variant);
-                    writeIfClose(array);
-                    writeProngClose(array);
-                    writeNoProng(array);
-                    writeOptString(array, no_opt_spec.string.?, variant);
-                    writeProngClose(array);
-                    writeIfClose(array);
-                    writeIfClose(array);
-                    continue;
-                }
+            if (opt_spec.arg_info.tag == .optional_formatter and no_opt_spec.arg_info.tag == .boolean) {
+                writeFunctionSignature2(array, opt_spec, no_opt_spec, variant);
+                writeIfOptionalField(array, if_optional_field_value, if_optional_field_capture);
+                writeSwitch(array, if_optional_field_capture);
+                writeRequiredProng(array, "yes", "yes");
+                writeIfOptional(array, "yes", "arg");
+                writeOptionalFormatter(array, opt_spec.string, "arg", variant, opt_spec.arg_info.char orelse '=');
+                writeElse(array);
+                writeOptString(array, opt_spec.string.?, variant);
+                writeCharacteristic(array, variant, opt_spec.arg_info.char orelse '\x00');
+                writeIfClose(array);
+                writeProngClose(array);
+                writeProng(array, "no");
+                writeOptString(array, no_opt_spec.string.?, variant);
+                writeCharacteristic(array, variant, opt_spec.arg_info.char orelse '\x00');
+                writeProngClose(array);
+                writeIfClose(array);
+                writeIfClose(array);
+                writeFunctionReturn(array);
+                continue;
             }
             unhandledCommandFieldAndNo(opt_spec, no_opt_spec);
         } else {
             if (opt_spec.arg_info.tag == .boolean) {
-                writeIfField(array, opt_spec.name);
+                writeFunctionSignature(array, opt_spec, variant);
+                writeIfField(array, if_boolean_field_value);
                 writeOptString(array, opt_spec.string.?, variant);
+                writeCharacteristic(array, variant, '\x00');
                 writeIfClose(array);
+                writeFunctionReturn(array);
                 continue;
             }
             if (opt_spec.arg_info.tag == .optional_string) {
-                writeIfOptionalField(array, opt_spec.name);
-                writeOptArgString(array, opt_spec.string.?, opt_spec.name, variant);
+                writeFunctionSignature(array, opt_spec, variant);
+                writeIfOptionalField(array, if_optional_field_value, if_optional_field_capture);
+                writeOptArgString(array, opt_spec.string.?, if_optional_field_capture, variant, opt_spec.arg_info.char orelse '\x00');
                 writeIfClose(array);
-                continue;
-            }
-            if (opt_spec.arg_info.tag == .optional_repeatable) {
-                writeIfOptionalField(array, opt_spec.name);
-                writeForEach(array, opt_spec.name, "value");
-                writeOptArgString(array, opt_spec.string.?, "value", variant);
-                writeIfClose(array);
-                writeIfClose(array);
+                writeFunctionReturn(array);
                 continue;
             }
             if (opt_spec.arg_info.tag == .optional_tag) {
-                writeIfOptionalField(array, opt_spec.name);
-                writeOptTagString(array, opt_spec.string.?, opt_spec.name, variant);
+                writeFunctionSignature(array, opt_spec, variant);
+                writeIfOptionalField(array, if_optional_field_value, if_optional_field_capture);
+                writeOptTagString(array, opt_spec.string.?, if_optional_field_capture, variant, opt_spec.arg_info.char orelse '\x00');
                 writeIfClose(array);
+                writeFunctionReturn(array);
                 continue;
             }
             if (opt_spec.arg_info.tag == .optional_integer) {
-                writeIfOptionalField(array, opt_spec.name);
-                writeOptArgInteger(array, opt_spec.string.?, opt_spec.name, variant);
+                writeFunctionSignature(array, opt_spec, variant);
+                writeIfOptionalField(array, if_optional_field_value, if_optional_field_capture);
+                writeOptArgInteger(array, opt_spec.string.?, if_optional_field_capture, variant, opt_spec.arg_info.char orelse '\x00');
                 writeIfClose(array);
+                writeFunctionReturn(array);
                 continue;
             }
             if (opt_spec.arg_info.tag == .optional_formatter) {
-                writeIfOptionalField(array, opt_spec.name);
-                writeFormatter(array, opt_spec.string, opt_spec.name, variant);
+                writeFunctionSignature(array, opt_spec, variant);
+                writeIfOptionalField(array, if_optional_field_value, if_optional_field_capture);
+                writeFormatter(array, opt_spec.string, if_optional_field_capture, variant, opt_spec.arg_info.char orelse '\x00');
                 writeIfClose(array);
+                writeFunctionReturn(array);
                 continue;
             }
             if (opt_spec.arg_info.tag == .optional_mapped) {
-                writeIfOptionalField(array, opt_spec.name);
-                writeMapped(array, opt_spec.string, opt_spec.name, variant);
+                writeFunctionSignature(array, opt_spec, variant);
+                writeIfOptionalField(array, if_optional_field_value, if_optional_field_capture);
+                writeMapped(array, opt_spec.string, if_optional_field_capture, variant, opt_spec.arg_info.char orelse '\x00');
                 writeIfClose(array);
+                writeFunctionReturn(array);
+                continue;
+            }
+            if (opt_spec.arg_info.tag == .repeatable_string) {
+                writeFunctionSignature(array, opt_spec, variant);
+                writeIfOptionalField(array, if_optional_field_value, if_optional_field_capture);
+                writeForEach(array, if_optional_field_capture, "value");
+                writeOptArgString(array, opt_spec.string.?, "value", variant, opt_spec.arg_info.char orelse '\x00');
+                writeIfClose(array);
+                writeIfClose(array);
+                writeFunctionReturn(array);
+                continue;
+            }
+            if (opt_spec.arg_info.tag == .repeatable_tag) {
+                writeFunctionSignature(array, opt_spec, variant);
+                writeIfOptionalField(array, if_optional_field_value, if_optional_field_capture);
+                writeForEach(array, if_optional_field_capture, "value");
+                writeOptTagString(array, opt_spec.string.?, "value", variant, opt_spec.arg_info.char orelse '\x00');
+                writeIfClose(array);
+                writeIfClose(array);
+                writeFunctionReturn(array);
                 continue;
             }
             unhandledCommandField(opt_spec);
@@ -514,121 +575,148 @@ fn writeFile(array: Array, pathname: [:0]const u8) void {
     file.writeSlice(write_spec, build_fd, array.readAll());
     file.close(close_spec, build_fd);
 }
-fn writeBuildWrite(array: *Array) void {
-    if (primitive) {
-        array.writeMany(
-            \\pub fn buildWriteBuf(cmd:*const tasks.BuildCommand,zig_exe:[]const u8,root_path:types.Path,buf:[*]u8)u64{
-            \\@memcpy(buf,zig_exe.ptr,zig_exe.len);
-            \\var len:u64=zig_exe.len;
-            \\buf[len]=0;
-            \\len=len+%1;
-            \\@memcpy(buf+len,"build-",6);
-            \\len=len+%6;
-            \\@memcpy(buf+len,@tagName(cmd.kind).ptr,@tagName(cmd.kind).len);
-            \\len=len+%@tagName(cmd.kind).len;
-            \\buf[len]=0;
-            \\len=len+%1;
-        );
-    } else {
-        array.writeMany(
-            \\pub fn buildWrite(cmd:*const tasks.BuildCommand,zig_exe:[]const u8,root_path:types.Path,array:anytype)void{
-            \\array.writeMany(zig_exe);
-            \\array.writeOne(0);
-            \\array.writeMany("build-");
-            \\array.writeMany(@tagName(cmd.kind));
-            \\array.writeOne(0);
-        );
+fn writeBuildWrite(array: *Array, arrays: *Arrays, indices: *Indices) void {
+    if (!abstract) {
+        if (primitive) {
+            array.writeMany(
+                \\pub fn buildWriteBuf(cmd:*const tasks.BuildCommand,zig_exe:[]const u8,root_path:types.Path,buf:[*]u8)u64{
+                \\@memcpy(buf,zig_exe.ptr,zig_exe.len);
+                \\var len:u64=zig_exe.len;
+                \\buf[len]=0;
+                \\len=len+%1;
+                \\@memcpy(buf+len,"build-",6);
+                \\len=len+%6;
+                \\@memcpy(buf+len,@tagName(cmd.kind).ptr,@tagName(cmd.kind).len);
+                \\len=len+%@tagName(cmd.kind).len;
+                \\buf[len]=0;
+                \\len=len+%1;
+                \\
+            );
+        } else {
+            array.writeMany(
+                \\pub fn buildWrite(cmd:*const tasks.BuildCommand,zig_exe:[]const u8,root_path:types.Path,array:anytype)void{
+                \\array.writeMany(zig_exe);
+                \\array.writeOne('\x00');
+                \\array.writeMany("build-");
+                \\array.writeMany(@tagName(cmd.kind));
+                \\array.writeOne('\x00');
+                \\
+            );
+        }
     }
-    writeFunctionBody(array, attr.build_command_options, .write);
-    if (primitive) {
+    writeFunctionBody(array, attr.build_command_options, .write, arrays, indices);
+    if (!abstract) {
+        if (primitive) {
+            array.writeMany(
+                \\len=len+%root_path.formatWriteBuf(buf+len);
+                \\buf[len]=0;
+                \\return len;
+                \\
+            );
+        } else {
+            array.writeMany(
+                \\array.writeFormat(root_path);
+                \\
+            );
+        }
+        array.writeMany("}\n");
         array.writeMany(
-            \\len=len+%root_path.formatWriteBuf(buf+len);
-            \\buf[len]=0;
-            \\return len;
-        );
-    } else {
-        array.writeMany(
-            \\array.writeFormat(root_path);
-        );
-    }
-    array.writeMany("}\n");
-}
-fn writeBuildLength(array: *Array) void {
-    array.writeMany(
-        \\pub fn buildLength(cmd:*const tasks.BuildCommand,zig_exe:[]const u8,root_path:types.Path)u64{
-        \\@setRuntimeSafety(false);
-        \\var len:u64=zig_exe.len+%@tagName(cmd.kind).len+%8;
-    );
-    writeFunctionBody(array, attr.build_command_options, .length);
-    array.writeMany(
-        \\return len+%root_path.formatLength()+%1;
-    );
-    array.writeMany("}\n");
-}
-fn writeFormatWrite(array: *Array) void {
-    if (primitive) {
-        array.writeMany(
-            \\pub fn formatWriteBuf(cmd:*const tasks.FormatCommand,zig_exe:[]const u8,root_path:types.Path,buf:[*]u8)u64{
+            \\pub fn buildLength(cmd:*const tasks.BuildCommand,zig_exe:[]const u8,root_path:types.Path)u64{
             \\@setRuntimeSafety(false);
-            \\@memcpy(buf,zig_exe.ptr,zig_exe.len);
-            \\var len:u64=zig_exe.len;
-            \\buf[len]=0;
-            \\len=len+%1;
-            \\@memcpy(buf+len,"fmt\\x00",4);
-            \\len=len+%4;
-        );
-    } else {
-        array.writeMany(
-            \\pub fn formatWrite(cmd:*const tasks.FormatCommand,zig_exe:[]const u8,root_path:types.Path,array:anytype)void{
-            \\@setRuntimeSafety(false);
-            \\array.writeMany(zig_exe);
-            \\array.writeOne(0);
-            \\array.writeMany("fmt\x00");
+            \\var len:u64=zig_exe.len+%@tagName(cmd.kind).len+%8;
+            \\
         );
     }
-    writeFunctionBody(array, attr.format_command_options, .write);
-    if (primitive) {
+    writeFunctionBody(array, attr.build_command_options, .length, arrays, indices);
+    if (!abstract) {
         array.writeMany(
-            \\len=len+%root_path.formatWriteBuf(buf+len);
-            \\buf[len]=0;
-            \\return len;
+            \\return len+%root_path.formatLength()+%1;
+            \\
         );
-    } else {
-        array.writeMany(
-            \\array.writeFormat(root_path);
-        );
+        array.writeMany("}\n");
     }
-    array.writeMany("}\n");
 }
-fn writeFormatLength(array: *Array) void {
-    array.writeMany(
-        \\pub fn formatLength(cmd:*const tasks.FormatCommand,zig_exe:[]const u8,root_path:types.Path)u64{
-        \\@setRuntimeSafety(false);
-        \\var len:u64=zig_exe.len+%5;
-    );
-    writeFunctionBody(array, attr.format_command_options, .length);
-    array.writeMany(
-        \\return len+%root_path.formatLength()+%1;
-    );
-    array.writeMany("}\n");
+fn writeFormatWrite(array: *Array, arrays: *Arrays, indices: *Indices) void {
+    if (!abstract) {
+        if (primitive) {
+            array.writeMany(
+                \\pub fn formatWriteBuf(cmd:*const tasks.FormatCommand,zig_exe:[]const u8,root_path:types.Path,buf:[*]u8)u64{
+                \\@setRuntimeSafety(false);
+                \\@memcpy(buf,zig_exe.ptr,zig_exe.len);
+                \\var len:u64=zig_exe.len;
+                \\buf[len]=0;
+                \\len=len+%1;
+                \\@memcpy(buf+len,"fmt\x00",4);
+                \\len=len+%4;
+                \\
+            );
+        } else {
+            array.writeMany(
+                \\pub fn formatWrite(cmd:*const tasks.FormatCommand,zig_exe:[]const u8,root_path:types.Path,array:anytype)void{
+                \\@setRuntimeSafety(false);
+                \\array.writeMany(zig_exe);
+                \\array.writeOne('\x00');
+                \\array.writeMany("fmt\x00");
+                \\
+            );
+        }
+    }
+    writeFunctionBody(array, attr.format_command_options, .write, arrays, indices);
+    if (!abstract) {
+        if (primitive) {
+            array.writeMany(
+                \\len=len+%root_path.formatWriteBuf(buf+len);
+                \\buf[len]=0;
+                \\return len;
+                \\
+            );
+        } else {
+            array.writeMany(
+                \\array.writeFormat(root_path);
+                \\
+            );
+        }
+        array.writeMany("}\n");
+        array.writeMany(
+            \\pub fn formatLength(cmd:*const tasks.FormatCommand,zig_exe:[]const u8,root_path:types.Path)u64{
+            \\@setRuntimeSafety(false);
+            \\var len:u64=zig_exe.len+%5;
+            \\
+        );
+    }
+    writeFunctionBody(array, attr.format_command_options, .length, arrays, indices);
+    if (!abstract) {
+        array.writeMany(
+            \\return len+%root_path.formatLength()+%1;
+            \\
+        );
+        array.writeMany("}\n");
+    }
 }
 pub fn main() !void {
     var array: Array = undefined;
     array.undefineAll();
-    var st: file.Status = file.pathStatus(stat_spec, command_line_path);
-    var fd: u64 = file.open(open_spec, command_line_template_path);
-    array.define(file.readSlice(read_spec, fd, array.referAllUndefined()[0..st.size]));
+    var fd: u64 = file.open(open_spec, config.command_line_template_path);
+    array.define(file.readSlice(read_spec, fd, array.referAllUndefined()));
     file.close(close_spec, fd);
-    writeBuildWrite(&array);
-    writeBuildLength(&array);
-    writeFormatWrite(&array);
-    writeFormatLength(&array);
+    var arrays: Arrays = undefined;
+    arrays.undefineAll();
+    var build_idc: Indices = undefined;
+    build_idc.undefineAll();
+    var format_idc: Indices = undefined;
+    build_idc.undefineAll();
+    writeBuildWrite(&array, &arrays, &build_idc);
+    writeFormatWrite(&array, &arrays, &format_idc);
     if (compile) {
         array.writeMany("comptime {" ++
             (if (primitive) "_ = buildWriteBuf;" else "_ = buildWrite;") ++ "_ = buildLength;" ++
             (if (primitive) "_ = formatWriteBuf;" else "_ = formatWrite;") ++ "_ = formatLength;" ++
             "}\n");
     }
-    writeFile(array, command_line_path);
+    if (abstract) {
+        file.writeSlice(write_spec, 1, array.readAll());
+    } else {
+        writeFile(array, config.command_line_path);
+    }
     array.undefineAll();
 }
