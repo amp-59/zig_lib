@@ -47,24 +47,25 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     // zig fmt: off
     // Groups:
     const tests: *Builder.Group =               try builder.addGroup(allocator,             "tests");
-    const build0_test: *Builder.Target =         try tests.addTarget(allocator, exe_build,  "build0_test",  "build_runner.zig");
-    const build1_test: *Builder.Target =         try tests.addTarget(allocator, exe_build,  "build1_test",  "test/build1-test.zig");
-    const build2_test: *Builder.Target =        try tests.addTarget(allocator, exe_build,   "build2_test",  "test/build2-test.zig");
-    const decl_test: *Builder.Target =          try tests.addTarget(allocator, exe_default, "decl_test",    "test/decl-test.zig");
-    const builtin_test: *Builder.Target =       try tests.addTarget(allocator, exe_default, "builtin_test", "test/builtin-test.zig");
-    const serial_test: *Builder.Target =        try tests.addTarget(allocator, exe_default, "serial_test",  "test/serial-test.zig");
-    const meta_test: *Builder.Target =          try tests.addTarget(allocator, exe_default, "meta_test",    "test/meta-test.zig");
-    const mem_test: *Builder.Target =           try tests.addTarget(allocator, exe_default, "mem_test",     "test/mem-test.zig");
-    const algo_test: *Builder.Target =          try tests.addTarget(allocator, exe_default, "algo_test",    "test/algo-test.zig");
-    const file_test: *Builder.Target =          try tests.addTarget(allocator, exe_default, "file_test",    "test/file-test.zig");
-    const list_test: *Builder.Target =          try tests.addTarget(allocator, exe_default, "list_test",    "test/list-test.zig");
-    const fmt_test: *Builder.Target =           try tests.addTarget(allocator, exe_default, "fmt_test",     "test/fmt-test.zig");
-    const render_test: *Builder.Target =        try tests.addTarget(allocator, exe_default, "render_test",  "test/render-test.zig");
-    const proc_test: *Builder.Target =          try tests.addTarget(allocator, exe_fast,    "proc_test",    "test/proc-test.zig");
-    const thread_test: *Builder.Target =        try tests.addTarget(allocator, exe_default, "thread_test",  "test/thread-test.zig");
-    const virtual_test: *Builder.Target =       try tests.addTarget(allocator, exe_default, "virtual_test", "test/virtual-test.zig");
-    const size_test: *Builder.Target =          try tests.addTarget(allocator, exe_default, "size_test",    "test/size_per_config.zig");
-    const container_test: *Builder.Target =     try tests.addTarget(allocator, exe_default, "container_test", "test/container-test.zig");
+    const build0_test: *Builder.Target =        try tests.addTarget(allocator, exe_build,   "build0_test",      "build_runner.zig");
+    const build1_test: *Builder.Target =        try tests.addTarget(allocator, exe_build,   "build1_test",      "test/build1-test.zig");
+    const build2_test: *Builder.Target =        try tests.addTarget(allocator, exe_build,   "build2_test",      "test/build2-test.zig");
+    const decl_test: *Builder.Target =          try tests.addTarget(allocator, exe_default, "decl_test",        "test/decl-test.zig");
+    const builtin_test: *Builder.Target =       try tests.addTarget(allocator, exe_default, "builtin_test",     "test/builtin-test.zig");
+    const serial_test: *Builder.Target =        try tests.addTarget(allocator, exe_default, "serial_test",      "test/serial-test.zig");
+    const meta_test: *Builder.Target =          try tests.addTarget(allocator, exe_default, "meta_test",        "test/meta-test.zig");
+    const mem_test: *Builder.Target =           try tests.addTarget(allocator, exe_default, "mem_test",         "test/mem-test.zig");
+    const algo_test: *Builder.Target =          try tests.addTarget(allocator, exe_default, "algo_test",        "test/algo-test.zig");
+    const file_test: *Builder.Target =          try tests.addTarget(allocator, exe_default, "file_test",        "test/file-test.zig");
+    const list_test: *Builder.Target =          try tests.addTarget(allocator, exe_default, "list_test",        "test/list-test.zig");
+    const fmt_test: *Builder.Target =           try tests.addTarget(allocator, exe_default, "fmt_test",         "test/fmt-test.zig");
+    const render_test: *Builder.Target =        try tests.addTarget(allocator, exe_default, "render_test",      "test/render-test.zig");
+    const proc_test: *Builder.Target =          try tests.addTarget(allocator, exe_fast,    "proc_test",        "test/proc-test.zig");
+    const thread_test: *Builder.Target =        try tests.addTarget(allocator, exe_default, "thread_test",      "test/thread-test.zig");
+    const virtual_test: *Builder.Target =       try tests.addTarget(allocator, exe_default, "virtual_test",     "test/virtual-test.zig");
+    const size_test: *Builder.Target =          try tests.addTarget(allocator, exe_default, "size_test",        "test/size_per_config.zig");
+    const container_test: *Builder.Target =     try tests.addTarget(allocator, exe_default, "container_test",   "test/container-test.zig");
+
     const examples: *Builder.Group =            try builder.addGroup(allocator,                 "examples");
     const readdir: *Builder.Target =            try examples.addTarget(allocator, exe_default,  "readdir",      "examples/iterate_dir_entries.zig");
     const dynamic: *Builder.Target =            try examples.addTarget(allocator, exe_default,  "dynamic",      "examples/dynamic_alloc.zig");
@@ -79,6 +80,7 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     const readelf: *Builder.Target =            try examples.addTarget(allocator, exe_default,  "readelf",      "examples/readelf.zig");
     const pathsplit: *Builder.Target =          try examples.addTarget(allocator, exe_default,  "pathsplit",    "examples/pathsplit.zig");
     const declprint: *Builder.Target =          try examples.addTarget(allocator, exe_default,  "declprint",    "examples/declprint.zig");
+
     const mg: *Builder.Group =                  try builder.addGroup(allocator,             "memgen");
     const mg_touch: *Builder.Target =           try mg.addTarget(allocator, exe_default,    "mg_touch",             "top/mem/touch-aux.zig");
     const mg_specs: *Builder.Target =           try mg.addTarget(allocator, obj_default,    "mg_specs",             "top/mem/serial_specs.zig");
@@ -86,11 +88,12 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     const mg_params: *Builder.Target =          try mg.addTarget(allocator, obj_default,    "mg_params",            "top/mem/serial_params.zig");
     const mg_options: *Builder.Target =         try mg.addTarget(allocator, obj_default,    "mg_options",           "top/mem/serial_options.zig");
     const mg_abstract_specs: *Builder.Target =  try mg.addTarget(allocator, obj_default,    "mg_abstract_specs",    "top/mem/serial_abstract_specs.zig");
-    const mg_type_specs: *Builder.Target =      try mg.addTarget(allocator, exe_debug,      "mg_type_specs",        "top/mem/type_specs-aux.zig");
+    const mg_type_specs: *Builder.Target =      try mg.addTarget(allocator, exe_default,    "mg_type_specs",        "top/mem/type_specs-aux.zig");
     const mg_reference_impls: *Builder.Target = try mg.addTarget(allocator, exe_default,    "mg_reference_impls",   "top/mem/reference_impls-aux.zig");
-    const mg_container_impls: *Builder.Target = try mg.addTarget(allocator, exe_debug,      "mg_container_impls",   "top/mem/container_impls-aux.zig");
+    const mg_container_impls: *Builder.Target = try mg.addTarget(allocator, exe_default,    "mg_container_impls",   "top/mem/container_impls-aux.zig");
     const mg_container_kinds: *Builder.Target = try mg.addTarget(allocator, exe_default,    "mg_container_kinds",   "top/mem/container_kinds-aux.zig");
     const mg_allocator_kinds: *Builder.Target = try mg.addTarget(allocator, exe_default,    "mg_allocator_kinds",   "top/mem/allocator_kinds-aux.zig");
+
     const bg: *Builder.Group =                  try builder.addGroup(allocator,             "buildgen");
     const bg_tasks: *Builder.Target =           try bg.addTarget(allocator, exe_default,    "bg_tasks",             "top/build/tasks-aux.zig");
     const bg_command_line: *Builder.Target =    try bg.addTarget(allocator, exe_default,    "bg_command_line",      "top/build/command_line-aux.zig");
@@ -142,14 +145,11 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     bg_tasks.descr =            "Generate builder command data structures";
     bg_command_line.descr =     "Generate builder command line writer functions";
     // Dependencies:
-    mg_type_specs.dependOnRun(allocator,        mg_touch);
-    mg_type_specs.dependOnObject(allocator,     mg_options);
-    mg_type_specs.dependOnObject(allocator,     mg_params);
     mg_type_specs.dependOnObject(allocator,     mg_techs);
     mg_type_specs.dependOnObject(allocator,     mg_specs);
-    mg_container_impls.dependOnRun(allocator,       mg_type_specs);
-    mg_container_impls.dependOnRun(allocator,       mg_container_kinds);
-    mg_reference_impls.dependOnRun(allocator,       mg_type_specs);
+    mg_container_impls.dependOnRun(allocator,   mg_type_specs);
+    mg_container_impls.dependOnRun(allocator,   mg_container_kinds);
+    mg_reference_impls.dependOnRun(allocator,   mg_type_specs);
     addEnvPathArgs(allocator, builder, build0_test);
     addEnvPathArgs(allocator, builder, build1_test);
     addEnvPathArgs(allocator, builder, build2_test);
