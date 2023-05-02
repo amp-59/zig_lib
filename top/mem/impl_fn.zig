@@ -1,7 +1,7 @@
+const gen = @import("../gen.zig");
 const builtin = @import("../builtin.zig");
 const testing = @import("../testing.zig");
 
-const gen = @import("./gen.zig");
 const tok = @import("./tok.zig");
 const attr = @import("./attr.zig");
 const types = @import("./types.zig");
@@ -13,9 +13,6 @@ pub const key = blk: {
     }
     break :blk res;
 };
-pub inline fn get(comptime tag: Fn) *const Fn {
-    return &key[@enumToInt(tag)];
-}
 pub const Fn = enum(u5) {
     allocated_byte_address = 0,
     aligned_byte_address = 1,
