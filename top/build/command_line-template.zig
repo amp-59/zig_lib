@@ -1,5 +1,3 @@
-const mem = @import("../mem.zig");
-const fmt = @import("../fmt.zig");
 const builtin = @import("../builtin.zig");
 const types = @import("./types.zig");
 const tasks = @import("./tasks3.zig");

@@ -23,17 +23,14 @@ else
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     var address_space: Builder.AddressSpace = .{};
     var thread_space: Builder.ThreadSpace = .{};
-
     var allocator: Builder.Allocator = try meta.wrap(
         Builder.Allocator.init(&address_space, Builder.max_thread_count),
     );
     defer allocator.deinit(&address_space, Builder.max_thread_count);
-
     if (args.len < 5) {
         return error.MissingEnvironmentPaths;
     }
     var builder: Builder = try meta.wrap(Builder.init(args, vars));
-
     try meta.wrap(
         root.buildMain(&allocator, &builder),
     );
