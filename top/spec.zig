@@ -501,6 +501,9 @@ pub const serializer = struct {
     };
 };
 const sys = struct {
+    pub const generic = struct {
+        pub const noexcept = .{ .errors = .{} };
+    };
     pub const mmap = struct {
         pub const options = struct {
             pub const executable: zig_lib.file.MapSpec.Options = .{
