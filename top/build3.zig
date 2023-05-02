@@ -479,7 +479,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     if (ret) {
                         debug.exchangeNotice(target, task, old_state, new_state);
                     } else {
-                        debug.noExchangeNotice(target, task, old_state, new_state);
+                        debug.noExchangeNotice(target, debug.about_state_1_s, task, old_state, new_state);
                     }
                 }
                 return ret;
@@ -492,7 +492,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     }
                 } else {
                     if (builtin.logging_general.Fault or builder_spec.options.show_state) {
-                        debug.noExchangeFault(target, task, old_state, new_state);
+                        debug.noExchangeNotice(target, debug.about_state_1_s, task, old_state, new_state);
                     }
                     builtin.proc.exitGroup(2);
                 }
@@ -1055,59 +1055,65 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             const about_state_1_s: [:0]const u8 = builtin.debug.about("state-fault");
             const error_s: *const [5:0]u8 = "error";
             const note_s: *const [4:0]u8 = "note";
+            const reset_s: *const [12:0]u8 = "\x1b[0m";
+            const tilde_s: *const [10:0]u8 = "\x1b[38;5;46m";
+            const bold_s: *const [6:0]u8 = "\x1b[0;1m";
+            const faint_s: *const [15:0]u8 = "\x1b[0;38;5;250;1m";
+            const trace_s: *const [11:0]u8 = "\x1b[38;5;247m";
+            const hi_red_s: *const [10:0]u8 = "\x1b[38;5;196m";
             const fancy_hl_line: bool = false;
-            inline fn resetStyle() [12]u8 {
-                comptime return "\x1b[0m".*;
-            }
-            inline fn tildeStyle() [10]u8 {
-                comptime return "\x1b[38;5;46m".*;
-            }
-            inline fn boldStyle() [6]u8 {
-                comptime return "\x1b[0;1m".*;
-            }
-            inline fn noteStyle() [15]u8 {
-                comptime return "\x1b[0;38;5;250;1m".*;
-            }
-            inline fn traceStyle() [11]u8 {
-                comptime return "\x1b[38;5;247m".*;
-            }
-            inline fn hiRedStyle() [12]u8 {
-                comptime return "\x1b[38;5;196m".*;
-            }
             fn exchangeNotice(target: *Target, task: types.Task, old_state: types.State, new_state: types.State) void {
                 @setRuntimeSafety(false);
                 var buf: [32768]u8 = undefined;
-                builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
-                    about_state_0_s, target.name,
-                    ".",             @tagName(task),
-                    ", ",            @tagName(old_state),
-                    " -> ",          @tagName(new_state),
-                    "\n",
-                });
+                var ptr: [*]u8 = &buf;
+                var len: u64 = 0;
+                @ptrCast(*[about_state_0_s.len]u8, ptr).* = about_state_0_s.ptr[0..about_state_0_s.len].*;
+                len = len + about_state_0_s.len;
+                @memcpy(ptr + len, target.name.ptr, target.name.len);
+                len = len +% target.name.len;
+                ptr[len] = '.';
+                len = len +% 1;
+                @memcpy(ptr + len, @tagName(task).ptr, @tagName(task).len);
+                len = len +% @tagName(task).len;
+                @ptrCast(*[2]u8, ptr + len).* = ", ".*;
+                len = len +% 2;
+                @memcpy(ptr + len, @tagName(old_state).ptr, @tagName(old_state).len);
+                len = len +% @tagName(old_state).len;
+                @ptrCast(*[4]u8, ptr + len).* = " -> ".*;
+                len = len +% 4;
+                @memcpy(ptr + len, @tagName(new_state).ptr, @tagName(new_state).len);
+                len = len +% @tagName(new_state).len;
+                ptr[len] = '\n';
+                builtin.debug.write(buf[0 .. len +% 1]);
             }
-            fn noExchangeNotice(target: *Target, task: types.Task, old_state: types.State, new_state: types.State) void {
+            fn noExchangeNotice(target: *Target, about: [:0]const u8, task: types.Task, old_state: types.State, new_state: types.State) void {
                 @setRuntimeSafety(false);
                 var buf: [32768]u8 = undefined;
-                builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
-                    about_state_0_s, target.name,
-                    ".",             @tagName(task),
-                    ", (",           @tagName(target.lock.get(task)),
-                    ") ",            @tagName(old_state),
-                    " -!!-> ",       @tagName(new_state),
-                    "\n",
-                });
-            }
-            fn noExchangeFault(target: *Target, task: types.Task, old_state: types.State, new_state: types.State) void {
-                @setRuntimeSafety(false);
-                var buf: [32768]u8 = undefined;
-                builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
-                    about_state_1_s, target.name,
-                    ".",             @tagName(task),
-                    ", (",           @tagName(target.lock.get(task)),
-                    ") ",            @tagName(old_state),
-                    " -!!-> ",       @tagName(new_state),
-                    "\n",
-                });
+                var ptr: [*]u8 = &buf;
+                const actual: types.State = target.lock.get(task);
+                @memcpy(ptr, about.ptr, about.len);
+                var len: u64 = about.len;
+                @memcpy(ptr + len, target.name.ptr, target.name.len);
+                ptr[len] = '.';
+                len = len +% 1;
+                @memcpy(ptr + len, @tagName(task).ptr, @tagName(task).len);
+                len = len +% @tagName(task).len;
+                @ptrCast(*[2]u8, ptr + len).* = ", ".*;
+                len = len +% 2;
+                @memcpy(ptr + len, @tagName(old_state).ptr, @tagName(old_state).len);
+                len = len +% @tagName(old_state).len;
+                @ptrCast(*[3]u8, ptr + len).* = ", (".*;
+                len = len +% 3;
+                @memcpy(ptr + len, @tagName(actual).ptr, @tagName(actual).len);
+                len = len +% @tagName(actual).len;
+                @ptrCast(*[2]u8, ptr + len).* = ") ".*;
+                len = len +% 2;
+                @ptrCast(*[7]u8, ptr + len).* = " -!!-> ".*;
+                len = len +% 7;
+                @memcpy(ptr, @tagName(new_state).ptr, @tagName(new_state).len);
+                len = len +% @tagName(new_state).len;
+                ptr[len] = '\n';
+                builtin.debug.write(ptr[0 .. len +% 1]);
             }
             fn buildNotice(target: *Target, durat: time.TimeSpec, old_size: u64, new_size: u64) void {
                 @setRuntimeSafety(false);
@@ -1168,7 +1174,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 @ptrCast(*[2]u8, buf[len..].ptr).* = "s\n".*;
                 builtin.debug.logAlways(buf[0 .. len +% 2]);
             }
-            fn simpleTimedNotice(about: [:0]const u8, name: [:0]const u8, durat: time.TimeSpec, rc: u8) void {
+            fn simpleTimedNotice(about: []const u8, name: [:0]const u8, durat: time.TimeSpec, rc: u8) void {
                 @setRuntimeSafety(false);
                 const rc_s: []const u8 = builtin.fmt.ud64(rc).readAll();
                 const sec_s: []const u8 = builtin.fmt.ud64(durat.sec).readAll();
@@ -1288,18 +1294,18 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 @setRuntimeSafety(false);
                 var len: u64 = 0;
                 if (about.ptr == error_s) {
-                    @ptrCast(*@TypeOf(boldStyle()), buf + len).* = boldStyle();
-                    len = len +% boldStyle().len;
+                    @ptrCast(*@TypeOf(bold_s.*), buf + len).* = bold_s.*;
+                    len = len +% bold_s.len;
                 } else if (about.ptr == note_s) {
-                    @ptrCast(*@TypeOf(noteStyle()), buf + len).* = noteStyle();
-                    len = len +% noteStyle().len;
+                    @ptrCast(*@TypeOf(faint_s.*), buf + len).* = faint_s.*;
+                    len = len +% note_s.len;
                 }
                 @memcpy(buf + len, about.ptr, about.len);
                 len = len +% about.len;
                 @ptrCast(*[2]u8, buf + len).* = ": ".*;
                 len = len +% 2;
-                @ptrCast(*@TypeOf(boldStyle()), buf + len).* = boldStyle();
-                return len +% boldStyle().len;
+                @ptrCast(*@TypeOf(bold_s.*), buf + len).* = bold_s.*;
+                return len +% bold_s.*.len;
             }
             inline fn arrcpy(buf: [*]u8, any: anytype) u64 {
                 @ptrCast(*@TypeOf(any), buf).* = any;
@@ -1329,7 +1335,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 const src: *types.SourceLocation = builtin.ptrCast(*types.SourceLocation, extra + err.src_loc);
                 const notes: [*]u32 = extra + err_msg_idx + types.ErrorMessage.len;
                 var len: u64 = writeTopSrcLoc(buf, extra, bytes, err_msg_idx);
-                const pos: u64 = len +% about.len -% traceStyle().len -% 2;
+                const pos: u64 = len +% about.len -% trace_s.len -% 2;
                 len = len +% writeAbout(buf + len, about);
                 len = len +% writeMessage(buf + len, bytes, err.start, pos);
                 if (err.src_loc == 0) {
@@ -1354,8 +1360,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 const line_s: []const u8 = builtin.fmt.ud64(line).readAll();
                 const column_s: []const u8 = builtin.fmt.ud64(column).readAll();
                 var len: u64 = 0;
-                @ptrCast(*@TypeOf(traceStyle()), buf + len).* = comptime traceStyle();
-                len +%= comptime traceStyle().len;
+                @ptrCast(*@TypeOf(trace_s.*), buf + len).* = trace_s.*;
+                len +%= trace_s.len;
                 @memcpy(buf + len, pathname.ptr, pathname.len);
                 len = len +% pathname.len;
                 buf[len] = ':';
@@ -1389,17 +1395,17 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     var pos: u64 = indent +% before_caret;
                     @memcpy(buf, line.ptr, indent);
                     len = len +% indent;
-                    @ptrCast(*@TypeOf(boldStyle()), buf + len).* = comptime boldStyle();
-                    len = len +% comptime boldStyle().len;
+                    @ptrCast(*@TypeOf(bold_s.*), buf + len).* = bold_s.*;
+                    len = len +% bold_s.*.len;
                     @memcpy(buf + len, line[indent..pos].ptr, before_caret);
                     len = len +% before_caret;
-                    @ptrCast(*@TypeOf(hiRedStyle()), buf + len).* = comptime hiRedStyle();
-                    len = len +% comptime hiRedStyle().len;
+                    @ptrCast(*@TypeOf(hi_red_s.*), buf + len).* = hi_red_s.*;
+                    len = len +% hi_red_s.len;
                     buf[len] = line[pos];
                     pos = pos +% 1;
                     len = len +% 1;
-                    @ptrCast(*@TypeOf(boldStyle()), buf + len).* = comptime boldStyle();
-                    len = len +% comptime boldStyle().len;
+                    @ptrCast(*@TypeOf(bold_s.*), buf + len).* = comptime bold_s.*;
+                    len = len +% bold_s.len;
                     @memcpy(buf + len, line[pos .. pos + after_caret].ptr, after_caret);
                     len = len +% after_caret;
                     buf[len] = '\n';
@@ -1412,8 +1418,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
                 @memset(buf + len, ' ', indent);
                 len = len +% indent;
-                @ptrCast(*@TypeOf(tildeStyle()), buf + len).* = comptime tildeStyle();
-                len = len +% comptime tildeStyle().len;
+                @ptrCast(*@TypeOf(tilde_s.*), buf + len).* = tilde_s.*;
+                len = len +% tilde_s.len;
                 @memset(buf + len, '~', before_caret);
                 len = len +% before_caret;
                 buf[len] = '^';
@@ -1451,8 +1457,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 var ref_idx: u64 = start +% types.SourceLocation.len;
                 var idx: u64 = 0;
                 var len: u64 = 0;
-                @ptrCast(*@TypeOf(traceStyle()), buf + len).* = comptime traceStyle();
-                len +%= comptime traceStyle().len;
+                @ptrCast(*@TypeOf(trace_s.*), buf + len).* = trace_s.*;
+                len +%= trace_s.len;
                 @ptrCast(*[15]u8, buf + len).* = "referenced by:\n".*;
                 len = len +% 15;
                 while (idx != ref_len) : (idx +%= 1) {
