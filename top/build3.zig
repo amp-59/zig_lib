@@ -458,7 +458,16 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 target.build_cmd.emit_bin = .{ .yes = createBinaryPath(target, allocator, builder) };
             }
             pub fn emitAuxiliary(target: *Target, allocator: *Allocator, builder: *const Builder, kind: types.AuxOutputMode) void {
-                target.build_cmd.emit_bin = .{ .yes = createAuxiliaryPath(target, allocator, builder, kind) };
+                const aux_path = .{ .yes = createAuxiliaryPath(target, allocator, builder, kind) };
+                switch (kind) {
+                    .@"asm" => target.build_cmd.emit_asm = aux_path,
+                    .llvm_ir => target.build_cmd.emit_llvm_ir = aux_path,
+                    .llvm_bc => target.build_cmd.emit_llvm_bc = aux_path,
+                    .h => target.build_cmd.emit_h = aux_path,
+                    .docs => target.build_cmd.emit_docs = aux_path,
+                    .analysis => target.build_cmd.emit_analysis = aux_path,
+                    .implib => target.build_cmd.emit_implib = aux_path,
+                }
             }
             fn rootSourcePath(target: *Target, builder: *const Builder) types.Path {
                 return .{ .absolute = builder.build_root, .relative = target.root };
