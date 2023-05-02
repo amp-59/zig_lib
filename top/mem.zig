@@ -960,6 +960,9 @@ pub const debug = opaque {
 pub fn view(comptime s: [:0]const u8) mem.StructuredAutomaticView(u8, &@as(u8, 0), s.len, null, .{}) {
     return .{ .impl = .{ .auto = @ptrCast(*const [s.len:0]u8, s.ptr).* } };
 }
+pub fn StaticStream(comptime child: type, comptime count: u64) type {
+    return mem.StructuredAutomaticStreamVector(child, null, count, @alignOf(child), .{});
+}
 pub fn StaticArray(comptime child: type, comptime count: u64) type {
     return mem.StructuredAutomaticVector(child, null, count, @alignOf(child), .{});
 }
