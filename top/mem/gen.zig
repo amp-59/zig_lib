@@ -12,8 +12,6 @@ pub usingnamespace top;
 
 const tok = @import("./tok.zig");
 
-pub const ListKind = enum { Parameter, Argument };
-
 const open_read_spec: file.OpenSpec = .{
     .errors = .{},
     .options = .{ .read = true, .write = null },
@@ -21,10 +19,7 @@ const open_read_spec: file.OpenSpec = .{
 const stat_spec: file.StatusSpec = .{
     .errors = .{},
 };
-const open_append_spec: file.OpenSpec = .{
-    .errors = .{},
-    .options = .{ .write = .append },
-};
+
 const close_spec: file.CloseSpec = .{
     .errors = .{},
 };
@@ -35,10 +30,7 @@ const write_spec: file.WriteSpec = .{
     .logging = .{},
     .errors = .{},
 };
-const create_spec: file.CreateSpec = .{
-    .errors = .{},
-    .options = .{ .write = .truncate, .exclusive = false },
-};
+
 pub const ProtoTypeDescrFormat = fmt.GenericTypeDescrFormat(.{
     .options = .{ .default_field_values = true },
 });
@@ -51,60 +43,6 @@ pub fn writeGenerator(array: anytype, src: builtin.SourceLocation) void {
 pub fn readFile(array: anytype, pathname: [:0]const u8) !void {
     const fd: u64 = try file.open(.{}, pathname);
     array.define(try file.readSlice(.{}, fd, array.referAllUndefined()));
-}
-
-pub fn readTrivialSerial(allocator: anytype, comptime T: type, pathname: [:0]const u8) !@TypeOf(allocator.*).StructuredVector(T) {
-    const Array = @TypeOf(allocator.*).StructuredVector(T);
-    const fd: u64 = try file.open(.{}, pathname);
-    const st: file.Status = try file.status(.{}, fd);
-    var ret: Array = Array.init(allocator, @divExact(st.size, @sizeOf(T)));
-    ret.define(try file.readSlice(.{ .child = T }, fd, ret.referAllUndefined()));
-    try file.close(.{}, fd);
-    return ret;
-}
-pub fn writeImport(array: anytype, name: []const u8, pathname: []const u8) void {
-    array.writeMany("const ");
-    array.writeMany(name);
-    array.writeMany("=@import(\"");
-    array.writeMany(pathname);
-    array.writeMany("\");\n");
-}
-pub fn writeSourceFile(pathname: [:0]const u8, comptime T: type, buf: []const T) void {
-    const fd: u64 = file.create(create_spec, pathname, file.file_mode);
-    defer file.close(close_spec, fd);
-    file.writeSlice(.{ .errors = .{}, .child = T }, fd, buf);
-}
-pub fn appendSourceFile(pathname: [:0]const u8, buf: []const u8) void {
-    const fd: u64 = file.open(open_append_spec, pathname);
-    defer file.close(close_spec, fd);
-    file.writeSlice(write_spec, fd, buf);
-}
-pub fn writeComma(array: anytype) void {
-    const j0: bool = mem.testEqualOneBack(u8, '(', array.readAll());
-    const j1: bool = mem.testEqualManyBack(u8, tok.end_elem, array.readAll());
-    if (builtin.int2a(bool, !j0, !j1)) {
-        array.writeMany(tok.end_elem);
-    }
-}
-pub fn writeArgument(array: anytype, argument_name: [:0]const u8) void {
-    writeComma(array);
-    array.writeMany(argument_name);
-}
-pub fn subTemplate(src: [:0]const u8, comptime sub_name: [:0]const u8) ?[]const u8 {
-    const start_s: []const u8 = "// start-document " ++ sub_name ++ "\n";
-    const finish_s: []const u8 = "// finish-document " ++ sub_name ++ "\n";
-    if (mem.indexOfFirstEqualMany(u8, start_s, src)) |after| {
-        if (mem.indexOfFirstEqualMany(u8, finish_s, src[after..])) |before| {
-            const ret: []const u8 = src[after + start_s.len .. after + before];
-            return ret;
-        } else {
-            builtin.debug.write("missing: " ++ finish_s ++ "\n");
-            return null;
-        }
-    } else {
-        builtin.debug.write("missing: " ++ start_s ++ "\n");
-        return null;
-    }
 }
 pub fn writeFieldOfBool(array: anytype, any: anytype) void {
     inline for (@typeInfo(@TypeOf(any)).Struct.fields) |field| {
@@ -177,63 +115,3 @@ pub fn GenericKeys(comptime Key: type, comptime max_len: u64) type {
         }
     };
 }
-pub const ArgList = struct {
-    args: [16][:0]const u8,
-    len: u8,
-    kind: ListKind,
-    ret: [:0]const u8,
-    pub fn writeOne(arg_list: *ArgList, symbol: [:0]const u8) void {
-        arg_list.args[arg_list.len] = symbol;
-        arg_list.len +%= 1;
-    }
-    pub fn readAll(arg_list: *const ArgList) []const [:0]const u8 {
-        return arg_list.args[0..arg_list.len];
-    }
-    pub fn comptimeField(arg_list: ArgList) bool {
-        switch (arg_list.kind) {
-            .Parameter => {
-                if (arg_list.ret.ptr == tok.impl_type_name.ptr) {
-                    return false;
-                }
-                for (arg_list.readAll()) |arg| {
-                    if (arg.ptr == tok.impl_const_param.ptr) {
-                        return false;
-                    }
-                    if (arg.ptr == tok.impl_param.ptr) {
-                        return false;
-                    }
-                }
-            },
-            .Argument => {
-                if (arg_list.ret.ptr == tok.impl_type_name.ptr) {
-                    return false;
-                }
-                for (arg_list.readAll()) |arg| {
-                    if (arg.ptr == tok.impl_name.ptr) {
-                        return false;
-                    }
-                }
-            },
-        }
-        return true;
-    }
-};
-pub const DeclList = struct {
-    decls: [24][:0]const u8,
-    len: u8,
-    pub fn writeOne(decl_list: *DeclList, symbol: [:0]const u8) void {
-        decl_list.decls[decl_list.len] = symbol;
-        decl_list.len +%= 1;
-    }
-    pub fn readAll(decl_list: *const DeclList) []const [:0]const u8 {
-        return decl_list.decls[0..decl_list.len];
-    }
-    pub fn have(decl_list: *const DeclList, symbol: [:0]const u8) bool {
-        for (decl_list.readAll()) |decl| {
-            if (decl.ptr == symbol.ptr) {
-                return true;
-            }
-        }
-        return false;
-    }
-};
