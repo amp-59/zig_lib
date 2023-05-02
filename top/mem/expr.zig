@@ -324,7 +324,7 @@ const Init = struct {
         var idx: u64 = 0;
         exprs[idx] = Init.symbol(impl_fn_info.fnName());
         idx +%= 1;
-        if (arg_list.comptimeField()) {
+        if (comptimeField(arg_list.*)) {
             exprs[idx] = Init.symbol(switch (arg_list.kind) {
                 .Parameter => tokens.impl_const_param,
                 .Argument => tokens.impl_name,
@@ -361,7 +361,34 @@ const Init = struct {
     }
 };
 pub usingnamespace Init;
-
+pub fn comptimeField(arg_list: gen.ArgList) bool {
+    switch (arg_list.kind) {
+        .Parameter => {
+            if (arg_list.ret.ptr == tok.impl_type_name.ptr) {
+                return false;
+            }
+            for (arg_list.readAll()) |arg| {
+                if (arg.ptr == tok.impl_const_param.ptr) {
+                    return false;
+                }
+                if (arg.ptr == tok.impl_param.ptr) {
+                    return false;
+                }
+            }
+        },
+        .Argument => {
+            if (arg_list.ret.ptr == tok.impl_type_name.ptr) {
+                return false;
+            }
+            for (arg_list.readAll()) |arg| {
+                if (arg.ptr == tok.impl_name.ptr) {
+                    return false;
+                }
+            }
+        },
+    }
+    return true;
+}
 pub const ForLoop = struct {
     expr1: Expr,
     symbol1: [:0]const u8,
@@ -560,14 +587,6 @@ pub inline fn varDecl(name: Expr, type_name: Expr, value: Expr) [7]Expr {
 }
 pub inline fn public(decl_expr: []Expr) [2]Expr {
     return .{ Init.symbol(tok.pub_keyword), Init.join(decl_expr) };
-}
-pub inline fn comptimeField(name: Expr, type_name: Expr, value: Expr) [7]Expr {
-    return .{
-        Init.symbol(tok.comptime_keyword), name,
-        Init.symbol(tok.colon_operator),   type_name,
-        Init.symbol(tok.equal_operator),   value,
-        Init.symbol(tok.end_elem),
-    };
 }
 pub inline fn addEqu(expr1: Expr, expr2: Expr) [3]Expr {
     return fnCall2(tok.add_equ_fn_name, expr1, expr2);
