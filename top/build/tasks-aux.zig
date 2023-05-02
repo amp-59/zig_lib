@@ -23,7 +23,6 @@ fn writeFile(array: Array, pathname: [:0]const u8) void {
     file.writeSlice(write_spec, build_fd, array.readAll());
     file.close(close_spec, build_fd);
 }
-
 fn writeType(array: *Array, opt_spec: types.OptionSpec) void {
     if (opt_spec.and_no) |no_opt_spec| {
         const yes_bool: bool = opt_spec.arg_info.tag == .boolean;
@@ -60,12 +59,13 @@ fn writeFields(array: *Array, opt_specs: []const types.OptionSpec) void {
         // Field type:
         writeType(array, opt_spec);
         // Default value
-        if (opt_spec.arg_info.tag == .boolean) {
-            array.writeMany("=false");
+        if (opt_spec.and_no == null and
+            opt_spec.arg_info.tag == .boolean)
+        {
+            array.writeMany("=false,\n");
         } else {
-            array.writeMany("=null");
+            array.writeMany("=null,\n");
         }
-        array.writeMany(",\n");
     }
 }
 pub fn main() !void {
