@@ -21,6 +21,8 @@ const Array = mem.StaticString(1024 * 1024);
 const ImplementationDetails = Allocator.StructuredVector(types.Implementation);
 const validate_all_serial: bool = false;
 const write_separate_source_files: bool = false;
+const write_impl_spec: file.WriteSpec = .{ .child = types.Implementation, .errors = .{} };
+const write_ctn_spec: file.WriteSpec = .{ .child = types.Container, .errors = .{} };
 pub fn limits(
     spec_sets: []const []const []const types.Specifier,
     tech_sets: []const []const []const types.Technique,
@@ -672,17 +674,18 @@ fn writeSpecifications(
             }
         }
         if (write_separate_source_files) {
-            switch (kind) {
-                .automatic => gen.writeSourceFile(config.automatic_container_path, u8, array.readAll()),
-                .static => gen.writeSourceFile(config.static_container_path, u8, array.readAll()),
-                .dynamic => gen.writeSourceFile(config.dynamic_container_path, u8, array.readAll()),
-                .parametric => gen.writeSourceFile(config.parametric_container_path, u8, array.readAll()),
-            }
+            const pathname: [:0]const u8 = switch (kind) {
+                .automatic => config.automatic_container_path,
+                .static => config.static_container_path,
+                .dynamic => config.dynamic_container_path,
+                .parametric => config.parametric_container_path,
+            };
+            truncateFile(spec.generic.noexcept, pathname, array.readAll());
             array.undefineAll();
         }
     }
     if (!write_separate_source_files) {
-        gen.writeSourceFile(config.container_file_path, u8, array.readAll());
+        truncateFile(spec.generic.noexcept, config.container_file_path, array.readAll());
     }
     array.undefineAll();
     var spec_idx: u16 = 0;
@@ -692,7 +695,7 @@ fn writeSpecifications(
             spec_idx +%= 1;
         }
     }
-    gen.writeSourceFile(config.reference_file_path, u8, array.readAll());
+    truncateFile(spec.generic.noexcept, config.reference_file_path, array.readAll());
 }
 fn nonEqualIndices(name: []const u8, any: anytype) void {
     var array: mem.StaticString(4096) = undefined;
@@ -814,6 +817,11 @@ const data = blk: {
         .tech_sets = tech_sets,
     };
 };
+fn truncateFile(comptime write_spec: file.WriteSpec, pathname: [:0]const u8, buf: []const write_spec.child) void {
+    const fd: u64 = file.create(spec.create.truncate_noexcept, pathname, file.file_mode);
+    file.writeSlice(write_spec, fd, buf);
+    file.close(spec.generic.noexcept, fd);
+}
 pub fn newNewTypeSpecs() !void {
     var address_space: AddressSpace = .{};
     var allocator: Allocator = try meta.wrap(Allocator.init(&address_space));
@@ -847,8 +855,9 @@ pub fn newNewTypeSpecs() !void {
             spec_idx +%= 1;
         }
     }
-    gen.writeSourceFile(config.impl_detail_path, types.Implementation, impl_details.readAll());
-    gen.writeSourceFile(config.ctn_detail_path, types.Container, attr.ctn_details);
+    truncateFile(write_impl_spec, config.impl_detail_path, impl_details.readAll());
+    truncateFile(write_ctn_spec, config.ctn_detail_path, attr.ctn_details);
+
     try validateAllSerial(&allocator, data.x_p_infos, data.x_q_infos, data.spec_sets, data.tech_sets, impl_details);
 }
 pub const main = newNewTypeSpecs;
