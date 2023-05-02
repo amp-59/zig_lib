@@ -1,9 +1,9 @@
-const gen = @import("./gen.zig");
-const fmt = gen.fmt;
-const meta = gen.meta;
-const algo = gen.algo;
-const builtin = gen.builtin;
-const testing = gen.testing;
+const fmt = @import("../fmt.zig");
+const gen = @import("../gen.zig");
+const meta = @import("../meta.zig");
+const algo = @import("../algo.zig");
+const builtin = @import("../builtin.zig");
+const testing = @import("../testing.zig");
 const tok = @import("./tok.zig");
 const attr = @import("./attr.zig");
 const types = @import("./types.zig");
@@ -1013,6 +1013,26 @@ pub const Fn = enum(u8) {
                 return tok.word_type_name;
             },
         }
+    }
+    pub fn writeSignature(ctn_fn_info: Fn, array: anytype, ctn_detail: *const types.Container) void {
+        const list: gen.ArgList = ctn_fn_info.argList(ctn_detail, .Parameter);
+        if (kind.helper(ctn_fn_info)) {
+            array.writeMany("fn ");
+        } else {
+            array.writeMany("pub fn ");
+        }
+        array.writeMany(ctn_fn_info.fnName());
+        array.writeMany("(");
+        const args: []const [:0]const u8 = list.readAll();
+        for (args) |arg| {
+            array.writeMany(arg);
+            array.writeMany(",");
+        }
+        if (args.len != 0) {
+            array.undefine(1);
+        }
+        array.writeMany(")");
+        array.writeMany(list.ret);
     }
 };
 pub const utility = struct {
