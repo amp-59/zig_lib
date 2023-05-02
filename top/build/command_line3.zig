@@ -17,6 +17,7 @@ fn formatMap(any: anytype) FormatMap(@TypeOf(any)) {
     return .{ .value = any };
 }
 pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_path: types.Path, buf: [*]u8) u64 {
+    @setRuntimeSafety(false);
     @memcpy(buf, zig_exe.ptr, zig_exe.len);
     var len: u64 = zig_exe.len;
     buf[len] = 0;
@@ -31,20 +32,20 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         switch (emit_bin) {
             .yes => |yes| {
                 if (yes) |arg| {
-                    @memcpy(buf + len, "-femit-bin", 10);
+                    @ptrCast(*[10]u8, buf + len).* = "-femit-bin".*;
                     len = len +% 10;
                     buf[len] = 61;
                     len = len +% 1;
                     len = len +% arg.formatWriteBuf(buf + len);
                 } else {
-                    @memcpy(buf + len, "-femit-bin", 10);
+                    @ptrCast(*[10]u8, buf + len).* = "-femit-bin".*;
                     len = len +% 10;
                     buf[len] = 0;
                     len = len +% 1;
                 }
             },
             .no => {
-                @memcpy(buf + len, "-fno-emit-bin", 13);
+                @ptrCast(*[13]u8, buf + len).* = "-fno-emit-bin".*;
                 len = len +% 13;
                 buf[len] = 0;
                 len = len +% 1;
@@ -55,20 +56,20 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         switch (emit_asm) {
             .yes => |yes| {
                 if (yes) |arg| {
-                    @memcpy(buf + len, "-femit-asm", 10);
+                    @ptrCast(*[10]u8, buf + len).* = "-femit-asm".*;
                     len = len +% 10;
                     buf[len] = 61;
                     len = len +% 1;
                     len = len +% arg.formatWriteBuf(buf + len);
                 } else {
-                    @memcpy(buf + len, "-femit-asm", 10);
+                    @ptrCast(*[10]u8, buf + len).* = "-femit-asm".*;
                     len = len +% 10;
                     buf[len] = 0;
                     len = len +% 1;
                 }
             },
             .no => {
-                @memcpy(buf + len, "-fno-emit-asm", 13);
+                @ptrCast(*[13]u8, buf + len).* = "-fno-emit-asm".*;
                 len = len +% 13;
                 buf[len] = 0;
                 len = len +% 1;
@@ -79,20 +80,20 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         switch (emit_llvm_ir) {
             .yes => |yes| {
                 if (yes) |arg| {
-                    @memcpy(buf + len, "-femit-llvm-ir", 14);
+                    @ptrCast(*[14]u8, buf + len).* = "-femit-llvm-ir".*;
                     len = len +% 14;
                     buf[len] = 61;
                     len = len +% 1;
                     len = len +% arg.formatWriteBuf(buf + len);
                 } else {
-                    @memcpy(buf + len, "-femit-llvm-ir", 14);
+                    @ptrCast(*[14]u8, buf + len).* = "-femit-llvm-ir".*;
                     len = len +% 14;
                     buf[len] = 0;
                     len = len +% 1;
                 }
             },
             .no => {
-                @memcpy(buf + len, "-fno-emit-llvm-ir", 17);
+                @ptrCast(*[17]u8, buf + len).* = "-fno-emit-llvm-ir".*;
                 len = len +% 17;
                 buf[len] = 0;
                 len = len +% 1;
@@ -103,20 +104,20 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         switch (emit_llvm_bc) {
             .yes => |yes| {
                 if (yes) |arg| {
-                    @memcpy(buf + len, "-femit-llvm-bc", 14);
+                    @ptrCast(*[14]u8, buf + len).* = "-femit-llvm-bc".*;
                     len = len +% 14;
                     buf[len] = 61;
                     len = len +% 1;
                     len = len +% arg.formatWriteBuf(buf + len);
                 } else {
-                    @memcpy(buf + len, "-femit-llvm-bc", 14);
+                    @ptrCast(*[14]u8, buf + len).* = "-femit-llvm-bc".*;
                     len = len +% 14;
                     buf[len] = 0;
                     len = len +% 1;
                 }
             },
             .no => {
-                @memcpy(buf + len, "-fno-emit-llvm-bc", 17);
+                @ptrCast(*[17]u8, buf + len).* = "-fno-emit-llvm-bc".*;
                 len = len +% 17;
                 buf[len] = 0;
                 len = len +% 1;
@@ -127,20 +128,20 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         switch (emit_h) {
             .yes => |yes| {
                 if (yes) |arg| {
-                    @memcpy(buf + len, "-femit-h", 8);
+                    @ptrCast(*[8]u8, buf + len).* = "-femit-h".*;
                     len = len +% 8;
                     buf[len] = 61;
                     len = len +% 1;
                     len = len +% arg.formatWriteBuf(buf + len);
                 } else {
-                    @memcpy(buf + len, "-femit-h", 8);
+                    @ptrCast(*[8]u8, buf + len).* = "-femit-h".*;
                     len = len +% 8;
                     buf[len] = 0;
                     len = len +% 1;
                 }
             },
             .no => {
-                @memcpy(buf + len, "-fno-emit-h", 11);
+                @ptrCast(*[11]u8, buf + len).* = "-fno-emit-h".*;
                 len = len +% 11;
                 buf[len] = 0;
                 len = len +% 1;
@@ -151,20 +152,20 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         switch (emit_docs) {
             .yes => |yes| {
                 if (yes) |arg| {
-                    @memcpy(buf + len, "-femit-docs", 11);
+                    @ptrCast(*[11]u8, buf + len).* = "-femit-docs".*;
                     len = len +% 11;
                     buf[len] = 61;
                     len = len +% 1;
                     len = len +% arg.formatWriteBuf(buf + len);
                 } else {
-                    @memcpy(buf + len, "-femit-docs", 11);
+                    @ptrCast(*[11]u8, buf + len).* = "-femit-docs".*;
                     len = len +% 11;
                     buf[len] = 0;
                     len = len +% 1;
                 }
             },
             .no => {
-                @memcpy(buf + len, "-fno-emit-docs", 14);
+                @ptrCast(*[14]u8, buf + len).* = "-fno-emit-docs".*;
                 len = len +% 14;
                 buf[len] = 0;
                 len = len +% 1;
@@ -175,20 +176,20 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         switch (emit_analysis) {
             .yes => |yes| {
                 if (yes) |arg| {
-                    @memcpy(buf + len, "-femit-analysis", 15);
+                    @ptrCast(*[15]u8, buf + len).* = "-femit-analysis".*;
                     len = len +% 15;
                     buf[len] = 61;
                     len = len +% 1;
                     len = len +% arg.formatWriteBuf(buf + len);
                 } else {
-                    @memcpy(buf + len, "-femit-analysis", 15);
+                    @ptrCast(*[15]u8, buf + len).* = "-femit-analysis".*;
                     len = len +% 15;
                     buf[len] = 0;
                     len = len +% 1;
                 }
             },
             .no => {
-                @memcpy(buf + len, "-fno-emit-analysis", 18);
+                @ptrCast(*[18]u8, buf + len).* = "-fno-emit-analysis".*;
                 len = len +% 18;
                 buf[len] = 0;
                 len = len +% 1;
@@ -199,20 +200,20 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         switch (emit_implib) {
             .yes => |yes| {
                 if (yes) |arg| {
-                    @memcpy(buf + len, "-femit-implib", 13);
+                    @ptrCast(*[13]u8, buf + len).* = "-femit-implib".*;
                     len = len +% 13;
                     buf[len] = 61;
                     len = len +% 1;
                     len = len +% arg.formatWriteBuf(buf + len);
                 } else {
-                    @memcpy(buf + len, "-femit-implib", 13);
+                    @ptrCast(*[13]u8, buf + len).* = "-femit-implib".*;
                     len = len +% 13;
                     buf[len] = 0;
                     len = len +% 1;
                 }
             },
             .no => {
-                @memcpy(buf + len, "-fno-emit-implib", 16);
+                @ptrCast(*[16]u8, buf + len).* = "-fno-emit-implib".*;
                 len = len +% 16;
                 buf[len] = 0;
                 len = len +% 1;
@@ -220,7 +221,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         }
     }
     if (cmd.cache_root) |cache_root| {
-        @memcpy(buf + len, "--cache-dir", 11);
+        @ptrCast(*[11]u8, buf + len).* = "--cache-dir".*;
         len = len +% 11;
         buf[len] = 0;
         len = len +% 1;
@@ -230,7 +231,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len = len +% 1;
     }
     if (cmd.global_cache_root) |global_cache_root| {
-        @memcpy(buf + len, "--global-cache-dir", 18);
+        @ptrCast(*[18]u8, buf + len).* = "--global-cache-dir".*;
         len = len +% 18;
         buf[len] = 0;
         len = len +% 1;
@@ -240,7 +241,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len = len +% 1;
     }
     if (cmd.zig_lib_root) |zig_lib_root| {
-        @memcpy(buf + len, "--zig-lib-dir", 13);
+        @ptrCast(*[13]u8, buf + len).* = "--zig-lib-dir".*;
         len = len +% 13;
         buf[len] = 0;
         len = len +% 1;
@@ -250,7 +251,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len = len +% 1;
     }
     if (cmd.listen) |listen| {
-        @memcpy(buf + len, "--listen", 8);
+        @ptrCast(*[8]u8, buf + len).* = "--listen".*;
         len = len +% 8;
         buf[len] = 0;
         len = len +% 1;
@@ -260,7 +261,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len = len +% 1;
     }
     if (cmd.target) |target| {
-        @memcpy(buf + len, "-target", 7);
+        @ptrCast(*[7]u8, buf + len).* = "-target".*;
         len = len +% 7;
         buf[len] = 0;
         len = len +% 1;
@@ -270,7 +271,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len = len +% 1;
     }
     if (cmd.cpu) |cpu| {
-        @memcpy(buf + len, "-mcpu", 5);
+        @ptrCast(*[5]u8, buf + len).* = "-mcpu".*;
         len = len +% 5;
         buf[len] = 0;
         len = len +% 1;
@@ -280,7 +281,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len = len +% 1;
     }
     if (cmd.code_model) |code_model| {
-        @memcpy(buf + len, "-mcmodel", 8);
+        @ptrCast(*[8]u8, buf + len).* = "-mcmodel".*;
         len = len +% 8;
         buf[len] = 0;
         len = len +% 1;
@@ -291,12 +292,12 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
     }
     if (cmd.red_zone) |red_zone| {
         if (red_zone) {
-            @memcpy(buf + len, "-mred-zone", 10);
+            @ptrCast(*[10]u8, buf + len).* = "-mred-zone".*;
             len = len +% 10;
             buf[len] = 0;
             len = len +% 1;
         } else {
-            @memcpy(buf + len, "-mno-red-zone", 13);
+            @ptrCast(*[13]u8, buf + len).* = "-mno-red-zone".*;
             len = len +% 13;
             buf[len] = 0;
             len = len +% 1;
@@ -304,19 +305,19 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
     }
     if (cmd.omit_frame_pointer) |omit_frame_pointer| {
         if (omit_frame_pointer) {
-            @memcpy(buf + len, "-fomit-frame-pointer", 20);
+            @ptrCast(*[20]u8, buf + len).* = "-fomit-frame-pointer".*;
             len = len +% 20;
             buf[len] = 0;
             len = len +% 1;
         } else {
-            @memcpy(buf + len, "-fno-omit-frame-pointer", 23);
+            @ptrCast(*[23]u8, buf + len).* = "-fno-omit-frame-pointer".*;
             len = len +% 23;
             buf[len] = 0;
             len = len +% 1;
         }
     }
     if (cmd.exec_model) |exec_model| {
-        @memcpy(buf + len, "-mexec-model", 12);
+        @ptrCast(*[12]u8, buf + len).* = "-mexec-model".*;
         len = len +% 12;
         buf[len] = 0;
         len = len +% 1;
@@ -326,7 +327,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len = len +% 1;
     }
     if (cmd.name) |name| {
-        @memcpy(buf + len, "--name", 6);
+        @ptrCast(*[6]u8, buf + len).* = "--name".*;
         len = len +% 6;
         buf[len] = 0;
         len = len +% 1;
@@ -338,7 +339,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
     if (cmd.soname) |soname| {
         switch (soname) {
             .yes => |arg| {
-                @memcpy(buf + len, "-fsoname", 8);
+                @ptrCast(*[8]u8, buf + len).* = "-fsoname".*;
                 len = len +% 8;
                 buf[len] = 0;
                 len = len +% 1;
@@ -348,7 +349,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
                 len = len +% 1;
             },
             .no => {
-                @memcpy(buf + len, "-fno-soname", 11);
+                @ptrCast(*[11]u8, buf + len).* = "-fno-soname".*;
                 len = len +% 11;
                 buf[len] = 0;
                 len = len +% 1;
@@ -356,7 +357,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         }
     }
     if (cmd.mode) |mode| {
-        @memcpy(buf + len, "-O", 2);
+        @ptrCast(*[2]u8, buf + len).* = "-O".*;
         len = len +% 2;
         buf[len] = 0;
         len = len +% 1;
@@ -366,7 +367,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len = len +% 1;
     }
     if (cmd.main_pkg_path) |main_pkg_path| {
-        @memcpy(buf + len, "--main-pkg-path", 15);
+        @ptrCast(*[15]u8, buf + len).* = "--main-pkg-path".*;
         len = len +% 15;
         buf[len] = 0;
         len = len +% 1;
@@ -377,12 +378,12 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
     }
     if (cmd.pic) |pic| {
         if (pic) {
-            @memcpy(buf + len, "-fPIC", 5);
+            @ptrCast(*[5]u8, buf + len).* = "-fPIC".*;
             len = len +% 5;
             buf[len] = 0;
             len = len +% 1;
         } else {
-            @memcpy(buf + len, "-fno-PIC", 8);
+            @ptrCast(*[8]u8, buf + len).* = "-fno-PIC".*;
             len = len +% 8;
             buf[len] = 0;
             len = len +% 1;
@@ -390,12 +391,12 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
     }
     if (cmd.pie) |pie| {
         if (pie) {
-            @memcpy(buf + len, "-fPIE", 5);
+            @ptrCast(*[5]u8, buf + len).* = "-fPIE".*;
             len = len +% 5;
             buf[len] = 0;
             len = len +% 1;
         } else {
-            @memcpy(buf + len, "-fno-PIE", 8);
+            @ptrCast(*[8]u8, buf + len).* = "-fno-PIE".*;
             len = len +% 8;
             buf[len] = 0;
             len = len +% 1;
@@ -403,12 +404,12 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
     }
     if (cmd.lto) |lto| {
         if (lto) {
-            @memcpy(buf + len, "-flto", 5);
+            @ptrCast(*[5]u8, buf + len).* = "-flto".*;
             len = len +% 5;
             buf[len] = 0;
             len = len +% 1;
         } else {
-            @memcpy(buf + len, "-fno-lto", 8);
+            @ptrCast(*[8]u8, buf + len).* = "-fno-lto".*;
             len = len +% 8;
             buf[len] = 0;
             len = len +% 1;
@@ -416,12 +417,12 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
     }
     if (cmd.stack_check) |stack_check| {
         if (stack_check) {
-            @memcpy(buf + len, "-fstack-check", 13);
+            @ptrCast(*[13]u8, buf + len).* = "-fstack-check".*;
             len = len +% 13;
             buf[len] = 0;
             len = len +% 1;
         } else {
-            @memcpy(buf + len, "-fno-stack-check", 16);
+            @ptrCast(*[16]u8, buf + len).* = "-fno-stack-check".*;
             len = len +% 16;
             buf[len] = 0;
             len = len +% 1;
@@ -429,12 +430,12 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
     }
     if (cmd.stack_protector) |stack_protector| {
         if (stack_protector) {
-            @memcpy(buf + len, "-fstack-check", 13);
+            @ptrCast(*[13]u8, buf + len).* = "-fstack-check".*;
             len = len +% 13;
             buf[len] = 0;
             len = len +% 1;
         } else {
-            @memcpy(buf + len, "-fno-stack-protector", 20);
+            @ptrCast(*[20]u8, buf + len).* = "-fno-stack-protector".*;
             len = len +% 20;
             buf[len] = 0;
             len = len +% 1;
@@ -442,12 +443,12 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
     }
     if (cmd.sanitize_c) |sanitize_c| {
         if (sanitize_c) {
-            @memcpy(buf + len, "-fsanitize-c", 12);
+            @ptrCast(*[12]u8, buf + len).* = "-fsanitize-c".*;
             len = len +% 12;
             buf[len] = 0;
             len = len +% 1;
         } else {
-            @memcpy(buf + len, "-fno-sanitize-c", 15);
+            @ptrCast(*[15]u8, buf + len).* = "-fno-sanitize-c".*;
             len = len +% 15;
             buf[len] = 0;
             len = len +% 1;
@@ -455,12 +456,12 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
     }
     if (cmd.valgrind) |valgrind| {
         if (valgrind) {
-            @memcpy(buf + len, "-fvalgrind", 10);
+            @ptrCast(*[10]u8, buf + len).* = "-fvalgrind".*;
             len = len +% 10;
             buf[len] = 0;
             len = len +% 1;
         } else {
-            @memcpy(buf + len, "-fno-valgrind", 13);
+            @ptrCast(*[13]u8, buf + len).* = "-fno-valgrind".*;
             len = len +% 13;
             buf[len] = 0;
             len = len +% 1;
@@ -468,12 +469,12 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
     }
     if (cmd.sanitize_thread) |sanitize_thread| {
         if (sanitize_thread) {
-            @memcpy(buf + len, "-fsanitize-thread", 17);
+            @ptrCast(*[17]u8, buf + len).* = "-fsanitize-thread".*;
             len = len +% 17;
             buf[len] = 0;
             len = len +% 1;
         } else {
-            @memcpy(buf + len, "-fno-sanitize-thread", 20);
+            @ptrCast(*[20]u8, buf + len).* = "-fno-sanitize-thread".*;
             len = len +% 20;
             buf[len] = 0;
             len = len +% 1;
@@ -481,12 +482,12 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
     }
     if (cmd.unwind_tables) |unwind_tables| {
         if (unwind_tables) {
-            @memcpy(buf + len, "-funwind-tables", 15);
+            @ptrCast(*[15]u8, buf + len).* = "-funwind-tables".*;
             len = len +% 15;
             buf[len] = 0;
             len = len +% 1;
         } else {
-            @memcpy(buf + len, "-fno-unwind-tables", 18);
+            @ptrCast(*[18]u8, buf + len).* = "-fno-unwind-tables".*;
             len = len +% 18;
             buf[len] = 0;
             len = len +% 1;
@@ -494,12 +495,12 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
     }
     if (cmd.llvm) |llvm| {
         if (llvm) {
-            @memcpy(buf + len, "-fLLVM", 6);
+            @ptrCast(*[6]u8, buf + len).* = "-fLLVM".*;
             len = len +% 6;
             buf[len] = 0;
             len = len +% 1;
         } else {
-            @memcpy(buf + len, "-fno-LLVM", 9);
+            @ptrCast(*[9]u8, buf + len).* = "-fno-LLVM".*;
             len = len +% 9;
             buf[len] = 0;
             len = len +% 1;
@@ -507,12 +508,12 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
     }
     if (cmd.clang) |clang| {
         if (clang) {
-            @memcpy(buf + len, "-fClang", 7);
+            @ptrCast(*[7]u8, buf + len).* = "-fClang".*;
             len = len +% 7;
             buf[len] = 0;
             len = len +% 1;
         } else {
-            @memcpy(buf + len, "-fno-Clang", 10);
+            @ptrCast(*[10]u8, buf + len).* = "-fno-Clang".*;
             len = len +% 10;
             buf[len] = 0;
             len = len +% 1;
@@ -520,12 +521,12 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
     }
     if (cmd.reference_trace) |reference_trace| {
         if (reference_trace) {
-            @memcpy(buf + len, "-freference-trace", 17);
+            @ptrCast(*[17]u8, buf + len).* = "-freference-trace".*;
             len = len +% 17;
             buf[len] = 0;
             len = len +% 1;
         } else {
-            @memcpy(buf + len, "-fno-reference-trace", 20);
+            @ptrCast(*[20]u8, buf + len).* = "-fno-reference-trace".*;
             len = len +% 20;
             buf[len] = 0;
             len = len +% 1;
@@ -533,12 +534,12 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
     }
     if (cmd.error_tracing) |error_tracing| {
         if (error_tracing) {
-            @memcpy(buf + len, "-ferror-tracing", 15);
+            @ptrCast(*[15]u8, buf + len).* = "-ferror-tracing".*;
             len = len +% 15;
             buf[len] = 0;
             len = len +% 1;
         } else {
-            @memcpy(buf + len, "-fno-error-tracing", 18);
+            @ptrCast(*[18]u8, buf + len).* = "-fno-error-tracing".*;
             len = len +% 18;
             buf[len] = 0;
             len = len +% 1;
@@ -546,12 +547,12 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
     }
     if (cmd.single_threaded) |single_threaded| {
         if (single_threaded) {
-            @memcpy(buf + len, "-fsingle-threaded", 17);
+            @ptrCast(*[17]u8, buf + len).* = "-fsingle-threaded".*;
             len = len +% 17;
             buf[len] = 0;
             len = len +% 1;
         } else {
-            @memcpy(buf + len, "-fno-single-threaded", 20);
+            @ptrCast(*[20]u8, buf + len).* = "-fno-single-threaded".*;
             len = len +% 20;
             buf[len] = 0;
             len = len +% 1;
@@ -559,12 +560,12 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
     }
     if (cmd.function_sections) |function_sections| {
         if (function_sections) {
-            @memcpy(buf + len, "-ffunction-sections", 19);
+            @ptrCast(*[19]u8, buf + len).* = "-ffunction-sections".*;
             len = len +% 19;
             buf[len] = 0;
             len = len +% 1;
         } else {
-            @memcpy(buf + len, "-fno-function-sections", 22);
+            @ptrCast(*[22]u8, buf + len).* = "-fno-function-sections".*;
             len = len +% 22;
             buf[len] = 0;
             len = len +% 1;
@@ -572,12 +573,12 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
     }
     if (cmd.strip) |strip| {
         if (strip) {
-            @memcpy(buf + len, "-fstrip", 7);
+            @ptrCast(*[7]u8, buf + len).* = "-fstrip".*;
             len = len +% 7;
             buf[len] = 0;
             len = len +% 1;
         } else {
-            @memcpy(buf + len, "-fno-strip", 10);
+            @ptrCast(*[10]u8, buf + len).* = "-fno-strip".*;
             len = len +% 10;
             buf[len] = 0;
             len = len +% 1;
@@ -585,19 +586,19 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
     }
     if (cmd.formatted_panics) |formatted_panics| {
         if (formatted_panics) {
-            @memcpy(buf + len, "-fformatted-panics", 18);
+            @ptrCast(*[18]u8, buf + len).* = "-fformatted-panics".*;
             len = len +% 18;
             buf[len] = 0;
             len = len +% 1;
         } else {
-            @memcpy(buf + len, "-fno-formatted-panics", 21);
+            @ptrCast(*[21]u8, buf + len).* = "-fno-formatted-panics".*;
             len = len +% 21;
             buf[len] = 0;
             len = len +% 1;
         }
     }
     if (cmd.format) |format| {
-        @memcpy(buf + len, "-ofmt", 5);
+        @ptrCast(*[5]u8, buf + len).* = "-ofmt".*;
         len = len +% 5;
         buf[len] = 61;
         len = len +% 1;
@@ -607,7 +608,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len = len +% 1;
     }
     if (cmd.dirafter) |dirafter| {
-        @memcpy(buf + len, "-idirafter", 10);
+        @ptrCast(*[10]u8, buf + len).* = "-idirafter".*;
         len = len +% 10;
         buf[len] = 0;
         len = len +% 1;
@@ -617,7 +618,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len = len +% 1;
     }
     if (cmd.system) |system| {
-        @memcpy(buf + len, "-isystem", 8);
+        @ptrCast(*[8]u8, buf + len).* = "-isystem".*;
         len = len +% 8;
         buf[len] = 0;
         len = len +% 1;
@@ -627,7 +628,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len = len +% 1;
     }
     if (cmd.include) |include| {
-        @memcpy(buf + len, "-I", 2);
+        @ptrCast(*[2]u8, buf + len).* = "-I".*;
         len = len +% 2;
         buf[len] = 0;
         len = len +% 1;
@@ -637,7 +638,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len = len +% 1;
     }
     if (cmd.libc) |libc| {
-        @memcpy(buf + len, "--libc", 6);
+        @ptrCast(*[6]u8, buf + len).* = "--libc".*;
         len = len +% 6;
         buf[len] = 0;
         len = len +% 1;
@@ -647,7 +648,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len = len +% 1;
     }
     if (cmd.library) |library| {
-        @memcpy(buf + len, "--library", 9);
+        @ptrCast(*[9]u8, buf + len).* = "--library".*;
         len = len +% 9;
         buf[len] = 0;
         len = len +% 1;
@@ -658,7 +659,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
     }
     if (cmd.needed_library) |needed_library| {
         for (needed_library) |value| {
-            @memcpy(buf + len, "--needed-library", 16);
+            @ptrCast(*[16]u8, buf + len).* = "--needed-library".*;
             len = len +% 16;
             buf[len] = 0;
             len = len +% 1;
@@ -670,7 +671,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
     }
     if (cmd.library_directory) |library_directory| {
         for (library_directory) |value| {
-            @memcpy(buf + len, "--library-directory", 19);
+            @ptrCast(*[19]u8, buf + len).* = "--library-directory".*;
             len = len +% 19;
             buf[len] = 0;
             len = len +% 1;
@@ -681,7 +682,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         }
     }
     if (cmd.link_script) |link_script| {
-        @memcpy(buf + len, "--script", 8);
+        @ptrCast(*[8]u8, buf + len).* = "--script".*;
         len = len +% 8;
         buf[len] = 0;
         len = len +% 1;
@@ -691,7 +692,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len = len +% 1;
     }
     if (cmd.version_script) |version_script| {
-        @memcpy(buf + len, "--version-script", 16);
+        @ptrCast(*[16]u8, buf + len).* = "--version-script".*;
         len = len +% 16;
         buf[len] = 0;
         len = len +% 1;
@@ -701,7 +702,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len = len +% 1;
     }
     if (cmd.dynamic_linker) |dynamic_linker| {
-        @memcpy(buf + len, "--dynamic-linker", 16);
+        @ptrCast(*[16]u8, buf + len).* = "--dynamic-linker".*;
         len = len +% 16;
         buf[len] = 0;
         len = len +% 1;
@@ -711,7 +712,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len = len +% 1;
     }
     if (cmd.sysroot) |sysroot| {
-        @memcpy(buf + len, "--sysroot", 9);
+        @ptrCast(*[9]u8, buf + len).* = "--sysroot".*;
         len = len +% 9;
         buf[len] = 0;
         len = len +% 1;
@@ -721,7 +722,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len = len +% 1;
     }
     if (cmd.entry) |entry| {
-        @memcpy(buf + len, "--entry", 7);
+        @ptrCast(*[7]u8, buf + len).* = "--entry".*;
         len = len +% 7;
         buf[len] = 0;
         len = len +% 1;
@@ -732,12 +733,12 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
     }
     if (cmd.lld) |lld| {
         if (lld) {
-            @memcpy(buf + len, "-fLLD", 5);
+            @ptrCast(*[5]u8, buf + len).* = "-fLLD".*;
             len = len +% 5;
             buf[len] = 0;
             len = len +% 1;
         } else {
-            @memcpy(buf + len, "-fno-LLD", 8);
+            @ptrCast(*[8]u8, buf + len).* = "-fno-LLD".*;
             len = len +% 8;
             buf[len] = 0;
             len = len +% 1;
@@ -745,19 +746,19 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
     }
     if (cmd.compiler_rt) |compiler_rt| {
         if (compiler_rt) {
-            @memcpy(buf + len, "-fcompiler-rt", 13);
+            @ptrCast(*[13]u8, buf + len).* = "-fcompiler-rt".*;
             len = len +% 13;
             buf[len] = 0;
             len = len +% 1;
         } else {
-            @memcpy(buf + len, "-fno-compiler-rt", 16);
+            @ptrCast(*[16]u8, buf + len).* = "-fno-compiler-rt".*;
             len = len +% 16;
             buf[len] = 0;
             len = len +% 1;
         }
     }
     if (cmd.rpath) |rpath| {
-        @memcpy(buf + len, "-rpath", 6);
+        @ptrCast(*[6]u8, buf + len).* = "-rpath".*;
         len = len +% 6;
         buf[len] = 0;
         len = len +% 1;
@@ -768,12 +769,12 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
     }
     if (cmd.each_lib_rpath) |each_lib_rpath| {
         if (each_lib_rpath) {
-            @memcpy(buf + len, "-feach-lib-rpath", 16);
+            @ptrCast(*[16]u8, buf + len).* = "-feach-lib-rpath".*;
             len = len +% 16;
             buf[len] = 0;
             len = len +% 1;
         } else {
-            @memcpy(buf + len, "-fno-each-lib-rpath", 19);
+            @ptrCast(*[19]u8, buf + len).* = "-fno-each-lib-rpath".*;
             len = len +% 19;
             buf[len] = 0;
             len = len +% 1;
@@ -781,12 +782,12 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
     }
     if (cmd.allow_shlib_undefined) |allow_shlib_undefined| {
         if (allow_shlib_undefined) {
-            @memcpy(buf + len, "-fallow-shlib-undefined", 23);
+            @ptrCast(*[23]u8, buf + len).* = "-fallow-shlib-undefined".*;
             len = len +% 23;
             buf[len] = 0;
             len = len +% 1;
         } else {
-            @memcpy(buf + len, "-fno-allow-shlib-undefined", 26);
+            @ptrCast(*[26]u8, buf + len).* = "-fno-allow-shlib-undefined".*;
             len = len +% 26;
             buf[len] = 0;
             len = len +% 1;
@@ -794,12 +795,12 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
     }
     if (cmd.build_id) |build_id| {
         if (build_id) {
-            @memcpy(buf + len, "-fbuild-id", 10);
+            @ptrCast(*[10]u8, buf + len).* = "-fbuild-id".*;
             len = len +% 10;
             buf[len] = 0;
             len = len +% 1;
         } else {
-            @memcpy(buf + len, "-fno-build-id", 13);
+            @ptrCast(*[13]u8, buf + len).* = "-fno-build-id".*;
             len = len +% 13;
             buf[len] = 0;
             len = len +% 1;
@@ -807,12 +808,12 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
     }
     if (cmd.compress_debug_sections) |compress_debug_sections| {
         if (compress_debug_sections) {
-            @memcpy(buf + len, "--compress-debug-sections=zlib", 30);
+            @ptrCast(*[30]u8, buf + len).* = "--compress-debug-sections=zlib".*;
             len = len +% 30;
             buf[len] = 0;
             len = len +% 1;
         } else {
-            @memcpy(buf + len, "--compress-debug-sections=none", 30);
+            @ptrCast(*[30]u8, buf + len).* = "--compress-debug-sections=none".*;
             len = len +% 30;
             buf[len] = 0;
             len = len +% 1;
@@ -820,19 +821,19 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
     }
     if (cmd.gc_sections) |gc_sections| {
         if (gc_sections) {
-            @memcpy(buf + len, "--gc-sections", 13);
+            @ptrCast(*[13]u8, buf + len).* = "--gc-sections".*;
             len = len +% 13;
             buf[len] = 0;
             len = len +% 1;
         } else {
-            @memcpy(buf + len, "--no-gc-sections", 16);
+            @ptrCast(*[16]u8, buf + len).* = "--no-gc-sections".*;
             len = len +% 16;
             buf[len] = 0;
             len = len +% 1;
         }
     }
     if (cmd.stack) |stack| {
-        @memcpy(buf + len, "--stack", 7);
+        @ptrCast(*[7]u8, buf + len).* = "--stack".*;
         len = len +% 7;
         buf[len] = 0;
         len = len +% 1;
@@ -843,7 +844,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len = len +% 1;
     }
     if (cmd.image_base) |image_base| {
-        @memcpy(buf + len, "--image-base", 12);
+        @ptrCast(*[12]u8, buf + len).* = "--image-base".*;
         len = len +% 12;
         buf[len] = 0;
         len = len +% 1;
@@ -866,38 +867,38 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len = len +% formatMap(cflags).formatWriteBuf(buf + len);
     }
     if (cmd.link_libc) {
-        @memcpy(buf + len, "-lc", 3);
+        @ptrCast(*[3]u8, buf + len).* = "-lc".*;
         len = len +% 3;
         buf[len] = 0;
         len = len +% 1;
     }
     if (cmd.rdynamic) {
-        @memcpy(buf + len, "-rdynamic", 9);
+        @ptrCast(*[9]u8, buf + len).* = "-rdynamic".*;
         len = len +% 9;
         buf[len] = 0;
         len = len +% 1;
     }
     if (cmd.dynamic) {
-        @memcpy(buf + len, "-dynamic", 8);
+        @ptrCast(*[8]u8, buf + len).* = "-dynamic".*;
         len = len +% 8;
         buf[len] = 0;
         len = len +% 1;
     }
     if (cmd.static) {
-        @memcpy(buf + len, "-static", 7);
+        @ptrCast(*[7]u8, buf + len).* = "-static".*;
         len = len +% 7;
         buf[len] = 0;
         len = len +% 1;
     }
     if (cmd.symbolic) {
-        @memcpy(buf + len, "-Bsymbolic", 10);
+        @ptrCast(*[10]u8, buf + len).* = "-Bsymbolic".*;
         len = len +% 10;
         buf[len] = 0;
         len = len +% 1;
     }
     if (cmd.z) |z| {
         for (z) |value| {
-            @memcpy(buf + len, "-z", 2);
+            @ptrCast(*[2]u8, buf + len).* = "-z".*;
             len = len +% 2;
             buf[len] = 0;
             len = len +% 1;
@@ -911,7 +912,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len = len +% formatMap(files).formatWriteBuf(buf + len);
     }
     if (cmd.color) |color| {
-        @memcpy(buf + len, "--color", 7);
+        @ptrCast(*[7]u8, buf + len).* = "--color".*;
         len = len +% 7;
         buf[len] = 0;
         len = len +% 1;
@@ -921,61 +922,61 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len = len +% 1;
     }
     if (cmd.time_report) {
-        @memcpy(buf + len, "-ftime-report", 13);
+        @ptrCast(*[13]u8, buf + len).* = "-ftime-report".*;
         len = len +% 13;
         buf[len] = 0;
         len = len +% 1;
     }
     if (cmd.stack_report) {
-        @memcpy(buf + len, "-fstack-report", 14);
+        @ptrCast(*[14]u8, buf + len).* = "-fstack-report".*;
         len = len +% 14;
         buf[len] = 0;
         len = len +% 1;
     }
     if (cmd.verbose_link) {
-        @memcpy(buf + len, "--verbose-link", 14);
+        @ptrCast(*[14]u8, buf + len).* = "--verbose-link".*;
         len = len +% 14;
         buf[len] = 0;
         len = len +% 1;
     }
     if (cmd.verbose_cc) {
-        @memcpy(buf + len, "--verbose-cc", 12);
+        @ptrCast(*[12]u8, buf + len).* = "--verbose-cc".*;
         len = len +% 12;
         buf[len] = 0;
         len = len +% 1;
     }
     if (cmd.verbose_air) {
-        @memcpy(buf + len, "--verbose-air", 13);
+        @ptrCast(*[13]u8, buf + len).* = "--verbose-air".*;
         len = len +% 13;
         buf[len] = 0;
         len = len +% 1;
     }
     if (cmd.verbose_mir) {
-        @memcpy(buf + len, "--verbose-mir", 13);
+        @ptrCast(*[13]u8, buf + len).* = "--verbose-mir".*;
         len = len +% 13;
         buf[len] = 0;
         len = len +% 1;
     }
     if (cmd.verbose_llvm_ir) {
-        @memcpy(buf + len, "--verbose-llvm-ir", 17);
+        @ptrCast(*[17]u8, buf + len).* = "--verbose-llvm-ir".*;
         len = len +% 17;
         buf[len] = 0;
         len = len +% 1;
     }
     if (cmd.verbose_cimport) {
-        @memcpy(buf + len, "--verbose-cimport", 17);
+        @ptrCast(*[17]u8, buf + len).* = "--verbose-cimport".*;
         len = len +% 17;
         buf[len] = 0;
         len = len +% 1;
     }
     if (cmd.verbose_llvm_cpu_features) {
-        @memcpy(buf + len, "--verbose-llvm-cpu-features", 27);
+        @ptrCast(*[27]u8, buf + len).* = "--verbose-llvm-cpu-features".*;
         len = len +% 27;
         buf[len] = 0;
         len = len +% 1;
     }
     if (cmd.debug_log) |debug_log| {
-        @memcpy(buf + len, "--debug-log", 11);
+        @ptrCast(*[11]u8, buf + len).* = "--debug-log".*;
         len = len +% 11;
         buf[len] = 0;
         len = len +% 1;
@@ -985,13 +986,13 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len = len +% 1;
     }
     if (cmd.debug_compiler_errors) {
-        @memcpy(buf + len, "--debug-compile-errors", 22);
+        @ptrCast(*[22]u8, buf + len).* = "--debug-compile-errors".*;
         len = len +% 22;
         buf[len] = 0;
         len = len +% 1;
     }
     if (cmd.debug_link_snapshot) {
-        @memcpy(buf + len, "--debug-link-snapshot", 21);
+        @ptrCast(*[21]u8, buf + len).* = "--debug-link-snapshot".*;
         len = len +% 21;
         buf[len] = 0;
         len = len +% 1;
@@ -1671,7 +1672,7 @@ pub fn formatWriteBuf(cmd: *const tasks.FormatCommand, zig_exe: []const u8, root
     @memcpy(buf + len, "fmt\x00", 4);
     len = len +% 4;
     if (cmd.color) |color| {
-        @memcpy(buf + len, "--color", 7);
+        @ptrCast(*[7]u8, buf + len).* = "--color".*;
         len = len +% 7;
         buf[len] = 0;
         len = len +% 1;
@@ -1681,25 +1682,25 @@ pub fn formatWriteBuf(cmd: *const tasks.FormatCommand, zig_exe: []const u8, root
         len = len +% 1;
     }
     if (cmd.stdin) {
-        @memcpy(buf + len, "--stdin", 7);
+        @ptrCast(*[7]u8, buf + len).* = "--stdin".*;
         len = len +% 7;
         buf[len] = 0;
         len = len +% 1;
     }
     if (cmd.check) {
-        @memcpy(buf + len, "--check", 7);
+        @ptrCast(*[7]u8, buf + len).* = "--check".*;
         len = len +% 7;
         buf[len] = 0;
         len = len +% 1;
     }
     if (cmd.ast_check) {
-        @memcpy(buf + len, "--ast-check", 11);
+        @ptrCast(*[11]u8, buf + len).* = "--ast-check".*;
         len = len +% 11;
         buf[len] = 0;
         len = len +% 1;
     }
     if (cmd.exclude) |exclude| {
-        @memcpy(buf + len, "--exclude", 9);
+        @ptrCast(*[9]u8, buf + len).* = "--exclude".*;
         len = len +% 9;
         buf[len] = 0;
         len = len +% 1;
