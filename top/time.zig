@@ -3,7 +3,28 @@ const mach = @import("./mach.zig");
 const meta = @import("./meta.zig");
 const builtin = @import("./builtin.zig");
 
-pub const TimeSpec = extern struct { sec: u64 = 0, nsec: u64 = 0 };
+pub const TimeSpec = extern struct {
+    sec: u64 = 0,
+    nsec: u64 = 0,
+};
+pub const TimeVal = extern struct {
+    sec: u64 = 0,
+    usec: u64 = 0,
+};
+pub const TimeZone = extern struct {
+    mins: u32 = 0,
+    dst: u32 = 0,
+};
+pub const Weekday = enum(u8) {
+    Sunday = 0,
+    Monday = 1,
+    Tuesday = 2,
+    Wednesday = 3,
+    Thursday = 4,
+    Friday = 5,
+    Saturday = 6,
+};
+
 pub const MonotonicClock = enum { raw, coarse };
 pub const RealClock = enum { alarm, coarse };
 pub const BootClock = enum { alarm };
@@ -47,6 +68,10 @@ pub const Month = enum {
 pub const ClockSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.clock_get_errors },
 };
+
+pub const ClockGetTime = *fn (Kind, *TimeSpec) u64;
+pub const GetTimeOfDay = *fn (*TimeVal, *TimeZone) u64;
+
 pub fn get(comptime spec: ClockSpec, kind: Kind) sys.Call(spec.errors, TimeSpec) {
     var ts: TimeSpec = undefined;
     if (meta.wrap(sys.call(.clock_gettime, spec.errors, void, .{ @enumToInt(kind), @ptrToInt(&ts) }))) {
