@@ -649,6 +649,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 if (hdr.tag == .error_bundle) {
                     return debug.writeErrors(allocator, types.Message.ErrorHeader.create(msg));
                 }
+                if (hdr.tag == .emit_bin_path) {
+                    break;
+                }
             }
             return builder_spec.options.expected_status;
         }
@@ -837,10 +840,11 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             if (depth < builder_spec.options.max_relevant_depth) {
                 debug.buildNotice(target, build_time, old_size, new_size);
             }
-            if (target.build_cmd.kind == .exe) {
+            const ret: bool = rc == builder_spec.options.expected_status;
+            if (ret and target.build_cmd.kind == .exe) {
                 target.assertExchange(.run, .unavailable, .ready);
             }
-            return rc == builder_spec.options.expected_status;
+            return ret;
         }
         fn executeRunCommand(builder: *Builder, allocator: *Allocator, target: *Target, depth: u64) sys.Call(.{
             .throw = builder_spec.errors.clock.throw ++
