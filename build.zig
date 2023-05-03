@@ -51,6 +51,7 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     const build0_test: *Builder.Target =        try tests.addTarget(allocator, exe_build,   "build0_test",      "build_runner.zig");
     const build1_test: *Builder.Target =        try tests.addTarget(allocator, exe_build,   "build1_test",      "test/build1-test.zig");
     const build2_test: *Builder.Target =        try tests.addTarget(allocator, exe_build,   "build2_test",      "test/build2-test.zig");
+    const build_zls_test: *Builder.Target =     try tests.addTarget(allocator, exe_build,   "build_zls_test",   "zls_build_runner.zig");
     const decl_test: *Builder.Target =          try tests.addTarget(allocator, exe_default, "decl_test",        "test/decl-test.zig");
     const builtin_test: *Builder.Target =       try tests.addTarget(allocator, exe_default, "builtin_test",     "test/builtin-test.zig");
     const meta_test: *Builder.Target =          try tests.addTarget(allocator, exe_default, "meta_test",        "test/meta-test.zig");
@@ -113,6 +114,7 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     build0_test.descr =         "Test the library build runner and build program. Used to show size and compile time";
     build1_test.descr =         "Test the library builder command line functions";
     build2_test.descr =         "Test the special build runner build program";
+    build_zls_test.descr =      "Test the ZLS special build runner";
     decl_test.descr =           "Test compilation of all public declarations recursively";
     serial_test.descr =         "Test data serialisation functions";
     thread_test.descr =         "Test clone and thread-safe compound/tagged sets";
@@ -158,6 +160,7 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     addEnvPathArgs(allocator, builder, build1_test);
     addEnvPathArgs(allocator, builder, build2_test);
     addEnvPathArgs(allocator, builder, serial_test);
+    addEnvPathArgs(allocator, builder, build_zls_test);
     // zig fmt: on
 }
 fn addEnvPathArgs(allocator: *Builder.Allocator, builder: *Builder, target: *Builder.Target) void {
