@@ -1913,6 +1913,12 @@ pub const Fn = enum(u9) {
         };
     }
 };
+pub const vFn = enum(u9) {
+    clock_gettime,
+    getcpu,
+    gettimeofday,
+    time,
+};
 pub const brk_errors: []const ErrorCode = &[_]ErrorCode{.NOMEM};
 pub const chdir_errors: []const ErrorCode = &[_]ErrorCode{
     .NAMETOOLONG, .LOOP, .ACCES, .IO, .BADF, .FAULT, .NOTDIR, .NOMEM, .NOENT,
