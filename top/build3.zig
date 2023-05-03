@@ -1062,7 +1062,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             const about_state_1_s: [:0]const u8 = builtin.debug.about("state-fault");
             const error_s: *const [5:0]u8 = "error";
             const note_s: *const [4:0]u8 = "note";
-            const reset_s: *const [12:0]u8 = "\x1b[0m";
+            const next_s: *const [5:0]u8 = "\x1b[0m\n";
+            const reset_s: *const [4:0]u8 = "\x1b[0m";
             const tilde_s: *const [10:0]u8 = "\x1b[38;5;46m";
             const bold_s: *const [6:0]u8 = "\x1b[0;1m";
             const faint_s: *const [15:0]u8 = "\x1b[0;38;5;250;1m";
@@ -1288,8 +1289,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                             @ptrCast(*[4]u8, buf0[len..].ptr).* = "\x1b[2m".*;
                             len +%= 4;
                             len = writeAndWalkInternal(&buf0, len, &buf1, 8, target);
-                            @ptrCast(*[4]u8, buf0[len..].ptr).* = "\x1b[0m".*;
-                            len +%= 4;
+                            @ptrCast(*[4]u8, buf0[len..].ptr).* = reset_s.*;
+                            len +%= reset_s.len;
                         } else {
                             buf0[len] = '\n';
                             len +%= 1;
@@ -1313,7 +1314,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 @ptrCast(*[2]u8, buf + len).* = ": ".*;
                 len +%= 2;
                 @ptrCast(*@TypeOf(bold_s.*), buf + len).* = bold_s.*;
-                return len +% bold_s.*.len;
+                return len +% bold_s.len;
             }
             fn writeTopSrcLoc(buf: [*]u8, extra: [*]u32, bytes: [*:0]u8, err_msg_idx: u32) u64 {
                 @setRuntimeSafety(safe);
@@ -1400,15 +1401,15 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     @memcpy(buf, line.ptr, indent);
                     len +%= indent;
                     @ptrCast(*@TypeOf(bold_s.*), buf + len).* = bold_s.*;
-                    len +%= bold_s.*.len;
+                    len +%= bold_s.len;
                     @memcpy(buf + len, line[indent..pos].ptr, before_caret);
                     len +%= before_caret;
                     @ptrCast(*@TypeOf(hi_red_s.*), buf + len).* = hi_red_s.*;
                     len +%= hi_red_s.len;
                     buf[len] = line[pos];
-                    pos = pos +% 1;
                     len +%= 1;
-                    @ptrCast(*@TypeOf(bold_s.*), buf + len).* = comptime bold_s.*;
+                    pos = pos +% 1;
+                    @ptrCast(*@TypeOf(bold_s.*), buf + len).* = bold_s.*;
                     len +%= bold_s.len;
                     @memcpy(buf + len, line[pos .. pos + after_caret].ptr, after_caret);
                     len +%= after_caret;
@@ -1430,8 +1431,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 len +%= 1;
                 @memset(buf + len, '~', after_caret);
                 len +%= after_caret;
-                @ptrCast(*[5]u8, buf + len).* = "\x1b[0m\n".*;
-                return len +% 5;
+                @ptrCast(*[5]u8, buf + len).* = next_s.*;
+                return len +% next_s.len;
             }
             fn writeMessage(buf: [*]u8, bytes: [*:0]u8, start: u64, indent: u64) u64 {
                 @setRuntimeSafety(safe);
@@ -1453,8 +1454,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 const line: []u8 = bytes[next..idx];
                 @memcpy(buf + len, line.ptr, line.len);
                 len +%= line.len;
-                @ptrCast(*[5]u8, buf + len).* = "\x1b[0m\n".*;
-                return len +% 5;
+                @ptrCast(*[5]u8, buf + len).* = next_s.*;
+                return len +% next_s.len;
             }
             fn writeTrace(buf: [*]u8, extra: [*]u32, bytes: [*:0]u8, start: u64, ref_len: u64) u64 {
                 @setRuntimeSafety(safe);
@@ -1483,7 +1484,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     }
                     ref_idx +%= types.ReferenceTrace.len;
                 }
-                @ptrCast(*[5]u8, buf + len).* = "\x1b[0m\n".*;
+                @ptrCast(*[5]u8, buf + len).* = next_s.*;
                 return len +% 5;
             }
             fn writeErrors(allocator: *Allocator, hdr: *types.Message.ErrorHeader) void {
