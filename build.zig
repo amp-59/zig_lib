@@ -63,6 +63,7 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     const proc_test: *Builder.Target =          try tests.addTarget(allocator, exe_fast,    "proc_test",        "test/proc-test.zig");
     const thread_test: *Builder.Target =        try tests.addTarget(allocator, exe_default, "thread_test",      "test/thread-test.zig");
     const virtual_test: *Builder.Target =       try tests.addTarget(allocator, exe_default, "virtual_test",     "test/virtual-test.zig");
+    const time_test: *Builder.Target =          try tests.addTarget(allocator, exe_default, "time_test",        "test/time-test.zig");
     const size_test: *Builder.Target =          try tests.addTarget(allocator, exe_default, "size_test",        "test/size_per_config.zig");
     const container_test: *Builder.Target =     try tests.addTarget(allocator, exe_default, "container_test",   "test/container-test.zig");
 
@@ -108,6 +109,7 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     fmt_test.descr =            "Test user formatting functions";
     render_test.descr =         "Test library value rendering functions";
     proc_test.descr =           "Test process related functions";
+    time_test.descr =           "Test time related functions";
     build0_test.descr =         "Test the library build runner and build program. Used to show size and compile time";
     build1_test.descr =         "Test the library builder command line functions";
     build2_test.descr =         "Test the special build runner build program";
