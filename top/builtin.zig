@@ -13,7 +13,6 @@ pub const Error = error{
 };
 /// `E` must be an error type.
 pub fn InternalError(comptime E: type) type {
-    static.assert(@typeInfo(E) == .ErrorSet);
     return union(enum) {
         /// Return this error for any exception
         throw: E,
@@ -25,8 +24,6 @@ pub fn InternalError(comptime E: type) type {
 }
 /// `E` must be an Enum type.
 pub fn ExternalError(comptime E: type) type {
-    static.assert(@typeInfo(E) == .Enum);
-    static.assert(@hasDecl(E, "errorName"));
     return struct {
         /// Throw error if unwrapping yields any of these values
         throw: []const E = &.{},
@@ -1123,63 +1120,71 @@ pub fn pack64(h: u32, l: u32) u64 {
 }
 
 pub const proc = struct {
-    pub fn exitWithNotice(return_code: u8) noreturn {
+    pub fn exitNotice(return_code: u8) noreturn {
         @setCold(true);
         if (config.logging_general.Success) {
             debug.exitNotice(return_code);
         }
         exit(return_code);
     }
-    pub fn exitGroupWithNotice(return_code: u8) noreturn {
+    pub fn exitGroupNotice(return_code: u8) noreturn {
         @setCold(true);
         if (config.logging_general.Success) {
             debug.exitNotice(return_code);
         }
         exitGroup(return_code);
     }
-    pub fn exitWithError(exit_error: anytype, return_code: u8) noreturn {
+    pub fn exitError(exit_error: anytype, return_code: u8) noreturn {
         @setCold(true);
-        if (config.logging_general.Error or
-            config.logging_general.Fault)
-        {
+        if (config.logging_general.Fault) {
             debug.exitError(@errorName(exit_error), return_code);
         }
         exit(return_code);
     }
-    pub fn exitGroupWithError(exit_error: anytype, return_code: u8) noreturn {
+    pub fn exitGroupError(exit_error: anytype, return_code: u8) noreturn {
         @setCold(true);
-        if (config.logging_general.Error or
-            config.logging_general.Fault)
-        {
+        if (config.logging_general.Fault) {
             debug.exitError(@errorName(exit_error), return_code);
         }
         exitGroup(return_code);
     }
-    pub fn exitWithFaultMessage(message: []const u8, return_code: u8) noreturn {
+    pub fn exitFault(message: []const u8, return_code: u8) noreturn {
         @setCold(true);
         if (config.logging_general.Fault) {
             debug.exitFault(message, return_code);
         }
         exit(return_code);
     }
-    pub fn exitGroupWithFaultMessage(message: []const u8, return_code: u8) noreturn {
+    pub fn exitGroupFault(message: []const u8, return_code: u8) noreturn {
         @setCold(true);
         if (config.logging_general.Fault) {
             debug.exitFault(message, return_code);
         }
         exitGroup(return_code);
     }
-    pub fn exitWithErrorAndFaultMessage(exit_error: anytype, message: []const u8, return_code: u8) noreturn {
+    pub fn exitErrorFault(exit_error: anytype, message: []const u8, return_code: u8) noreturn {
         @setCold(true);
-        if (config.logging_general.Fault) {
+        if (config.logging_general.Fault and
+            config.logging_general.Error)
+        {
             debug.exitErrorFault(@errorName(exit_error), message, return_code);
+        } else if (config.logging_general.Fault) {
+            debug.exitErrorFault(message, return_code);
+        } else if (config.logging_general.Error) {
+            debug.exitError(@errorName(exit_error), return_code);
         }
-        exit(return_code);
+        exitGroup(return_code);
     }
-    pub fn exitGroupWithErrorAndFaultMessage(exit_error: anytype, message: []const u8, return_code: u8) noreturn {
+    pub fn exitGroupErrorFault(exit_error: anytype, message: []const u8, return_code: u8) noreturn {
         @setCold(true);
-        if (config.logging_general.Fault) {
+        if (config.logging_general.Fault and
+            config.logging_general.Error)
+        {
             debug.exitErrorFault(@errorName(exit_error), message, return_code);
+        } else if (config.logging_general.Fault) {
+            debug.exitErrorFault(message, return_code);
+        } else if (config.logging_general.Error) {
+            debug.exitError(@errorName(exit_error), return_code);
         }
         exitGroup(return_code);
     }
@@ -1253,7 +1258,7 @@ pub const debug = opaque {
     }
     fn exitFault(message: []const u8, rc: u8) void {
         var buf: [4096]u8 = undefined;
-        logAlwaysAIO(&buf, &.{ debug.about_exit_1_s, message, ", rc=", fmt.ud8(rc).readAll(), "\n" });
+        logAlwaysAIO(&buf, &.{ debug.about_exit_2_s, message, ", rc=", fmt.ud8(rc).readAll(), "\n" });
     }
     fn exitErrorFault(error_name: []const u8, message: []const u8, rc: u8) void {
         var buf: [4096]u8 = undefined;
@@ -1575,7 +1580,7 @@ pub const debug = opaque {
                 fmt.ux64(ret_addr).readAll(),     "\n",
             });
         }
-        proc.exitWithError(error.PanicOutOfBounds, 2);
+        proc.exitError(error.PanicOutOfBounds, 2);
     }
     pub noinline fn panicSentinelMismatch(expected: anytype, actual: @TypeOf(expected)) noreturn {
         @setCold(true);
