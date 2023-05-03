@@ -47,14 +47,14 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     // zig fmt: off
     // Groups:
     const tests: *Builder.Group =               try builder.addGroup(allocator,             "tests");
+    const serial_test: *Builder.Target =        try tests.addTarget(allocator, exe_default, "serial_test",      "test/serial-test.zig");
     const build0_test: *Builder.Target =        try tests.addTarget(allocator, exe_build,   "build0_test",      "build_runner.zig");
     const build1_test: *Builder.Target =        try tests.addTarget(allocator, exe_build,   "build1_test",      "test/build1-test.zig");
     const build2_test: *Builder.Target =        try tests.addTarget(allocator, exe_build,   "build2_test",      "test/build2-test.zig");
     const decl_test: *Builder.Target =          try tests.addTarget(allocator, exe_default, "decl_test",        "test/decl-test.zig");
     const builtin_test: *Builder.Target =       try tests.addTarget(allocator, exe_default, "builtin_test",     "test/builtin-test.zig");
-    const serial_test: *Builder.Target =        try tests.addTarget(allocator, exe_default, "serial_test",      "test/serial-test.zig");
     const meta_test: *Builder.Target =          try tests.addTarget(allocator, exe_default, "meta_test",        "test/meta-test.zig");
-    const mem_test: *Builder.Target =           try tests.addTarget(allocator, exe_default, "mem_test",         "test/mem-test.zig");
+    const mem_test: *Builder.Target =           try tests.addTarget(allocator, exe_fast,    "mem_test",         "test/mem-test.zig");
     const algo_test: *Builder.Target =          try tests.addTarget(allocator, exe_default, "algo_test",        "test/algo-test.zig");
     const file_test: *Builder.Target =          try tests.addTarget(allocator, exe_default, "file_test",        "test/file-test.zig");
     const list_test: *Builder.Target =          try tests.addTarget(allocator, exe_default, "list_test",        "test/list-test.zig");
@@ -110,9 +110,8 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     proc_test.descr =           "Test process related functions";
     build0_test.descr =         "Test the library build runner and build program. Used to show size and compile time";
     build1_test.descr =         "Test the library builder command line functions";
-    build2_test.descr =         "Test the library build runner and build program";
+    build2_test.descr =         "Test the special build runner build program";
     decl_test.descr =           "Test compilation of all public declarations recursively";
-    build2_test.descr =         "Test the special test build program";
     serial_test.descr =         "Test data serialisation functions";
     thread_test.descr =         "Test clone and thread-safe compound/tagged sets";
     virtual_test.descr =        "Test address spaces, sub address spaces, and arenas";
@@ -144,7 +143,10 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     mg_container_impls.descr =  "Generate container implementations";
     bg_tasks.descr =            "Generate builder command data structures";
     bg_command_line.descr =     "Generate builder command line writer functions";
+
+    mem_test.emitAuxiliary(allocator, builder, .@"asm");
     // Dependencies:
+    mg_type_specs.dependOnRun(allocator,     mg_touch);
     mg_type_specs.dependOnObject(allocator,     mg_techs);
     mg_type_specs.dependOnObject(allocator,     mg_specs);
     mg_container_impls.dependOnRun(allocator,   mg_type_specs);
