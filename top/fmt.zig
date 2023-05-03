@@ -826,7 +826,7 @@ pub fn PolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
             }
         }
         pub fn formatWrite(format: Format, array: anytype) void {
-            const buf: [*]u8 = array.referAllUndefined().ptr;
+            const buf: [*]u8 = @ptrCast([*]u8, array.referOneUndefined());
             const len: u64 = @call(.always_inline, formatWriteBuf, .{
                 format, buf,
             });
