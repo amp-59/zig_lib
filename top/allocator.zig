@@ -3386,7 +3386,7 @@ const special = opaque {
             }
             return spec.errors.acquire.throw;
         } else if (spec.errors.acquire == .abort) {
-            builtin.proc.exitWithFaultMessage(debug.about_acq_2_s, 2);
+            builtin.proc.exitFault(debug.about_acq_2_s, 2);
         }
     }
     pub fn acquireStatic(comptime AddressSpace: type, address_space: *AddressSpace, comptime index: AddressSpace.Index) AddressSpace.acquire_void(index) {
@@ -3404,7 +3404,7 @@ const special = opaque {
             }
             return spec.errors.acquire.throw;
         } else if (spec.errors.acquire == .abort) {
-            builtin.proc.exitWithFaultMessage(debug.about_acq_2_s, 2);
+            builtin.proc.exitFault(debug.about_acq_2_s, 2);
         }
     }
     pub fn acquireElementary(comptime AddressSpace: type, address_space: *AddressSpace) AddressSpace.acquire_void {
@@ -3422,7 +3422,7 @@ const special = opaque {
             }
             return spec.errors.acquire.throw;
         } else if (spec.errors.acquire == .abort) {
-            builtin.proc.exitWithFaultMessage(debug.about_acq_2_s, 2);
+            builtin.proc.exitFault(debug.about_acq_2_s, 2);
         }
     }
     pub fn release(comptime AddressSpace: type, address_space: *AddressSpace, index: AddressSpace.Index) AddressSpace.release_void {
@@ -3443,7 +3443,7 @@ const special = opaque {
             }
             return spec.errors.release.throw;
         } else if (spec.errors.release == .abort) {
-            builtin.proc.exitWithFaultMessage(debug.about_rel_2_s, 2);
+            builtin.proc.exitFault(debug.about_rel_2_s, 2);
         }
     }
     pub fn releaseStatic(comptime AddressSpace: type, address_space: *AddressSpace, comptime index: AddressSpace.Index) AddressSpace.release_void(index) {
@@ -3461,7 +3461,7 @@ const special = opaque {
             }
             return spec.errors.release.throw;
         } else if (spec.errors.release == .abort) {
-            builtin.proc.exitWithFaultMessage(debug.about_rel_2_s, 2);
+            builtin.proc.exitFault(debug.about_rel_2_s, 2);
         }
     }
     pub fn releaseElementary(comptime AddressSpace: type, address_space: *AddressSpace) AddressSpace.release_void {
@@ -3478,7 +3478,7 @@ const special = opaque {
             }
             return spec.errors.release.throw;
         } else if (spec.errors.release == .abort) {
-            builtin.proc.exitWithFaultMessage(debug.about_rel_2_s, 2);
+            builtin.proc.exitFault(debug.about_rel_2_s, 2);
         }
     }
 };
