@@ -78,53 +78,35 @@ pub const SignalInfo = extern struct {
 };
 pub const Futex = struct {
     word: u32 = 0,
-    pub const Operation = enum(u64) {
-        wait = 0,
-        fd = FUTEX.FD,
-        wake_op = FUTEX.WAKE.OP,
-        requeue = FUTEX.REQUEUE,
-        cmp_requeue = FUTEX.CMP.REQUEUE,
-        wait_bitset = FUTEX.WAIT.BITSET,
-        wake_bitset = FUTEX.WAKE.BITSET,
-        pub const Options = packed struct(u2) {
-            private: bool = false,
-            clock_realtime: bool = false,
-        };
-        pub const WakeOp = packed struct(u32) {
-            from: u12,
-            to: u12,
-            cmp: enum(u4) { eq = 0, ne = 1, lt = 2, le = 3, gt = 4, ge = 5 },
-            shl: bool = false,
-            op: enum(u3) { set = 0, add = 1, @"or" = 2, andn = 3, xor = 4 },
-        };
-        const FUTEX = sys.FUTEX;
+};
+pub const FutexOp = enum(u64) {
+    wait = 0,
+    wake = 1,
+    requeue = 3,
+    cmp_requeue = 4,
+    wake_op = 5,
+    wait_bitset = 9,
+    wake_bitset = 10,
+    wait_requeue_pi = 11,
+    cmp_requeue_pi = 12,
+    lock_pi2 = 13,
+    pub const Options = packed struct(u2) {
+        private: bool = false,
+        clock_realtime: bool = false,
+    };
+    pub const WakeOp = packed struct(u32) {
+        from: u12,
+        to: u12,
+        cmp: enum(u4) { eq = 0, ne = 1, lt = 2, le = 3, gt = 4, ge = 5 },
+        shl: bool = false,
+        op: enum(u3) { set = 0, add = 1, @"or" = 2, andn = 3, xor = 4 },
     };
 };
-
 pub const FutexSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.futex_errors },
     return_type: type = void,
     logging: builtin.Logging.AttemptAcquireError = .{},
-
-    fn Args(comptime op: Futex.Operation) type {
-        switch (op) {
-            .wait => return struct {
-                futex1: *Futex, // uaddr
-                value: u32, // val
-                timeout: u32, // val2
-            },
-            .wake_op => return struct {
-                futex1: *Futex, // uaddr
-                futex2: *Futex, // uaddr2
-                wake1: u32, // val
-                wake2: u32, // val2
-                params: Futex.Operation.WakeOp, // val3
-            },
-            else => @compileError("TODO"),
-        }
-    }
 };
-
 pub fn futexWait(
     comptime futex_spec: FutexSpec,
     futex: *Futex,
@@ -146,13 +128,33 @@ pub fn futexWait(
         return futex_error;
     }
 }
+pub fn futexWake(
+    comptime futex_spec: FutexSpec,
+    futex: *Futex,
+    count: u32,
+) sys.Call(futex_spec.errors, futex_spec.return_type) {
+    const logging: builtin.Logging.AttemptAcquireError = comptime futex_spec.logging.override();
+    if (logging.Attempt) {
+        //
+    }
+    if (meta.wrap(sys.call(.futex, futex_spec.errors, futex_spec.return_type, .{ @ptrToInt(futex), 1, count, 0, 0, 0 }))) {
+        if (logging.Acquire) {
+            //
+        }
+    } else |futex_error| {
+        if (logging.Error) {
+            //
+        }
+        return futex_error;
+    }
+}
 pub fn futexWakeOp(
     comptime futex_spec: FutexSpec,
-    futex1: *Futex, // uaddr
-    futex2: *Futex, // uaddr2
-    max_wake1: u32, // val
-    max_wake2: u32, // val2
-    params: Futex.Operation.WakeOp, // val3
+    futex1: *Futex,
+    futex2: *Futex,
+    max_wake1: u32,
+    max_wake2: u32,
+    params: FutexOp.WakeOp, // val3
 ) sys.Call(futex_spec.errors, futex_spec.return_type) {
     const logging: builtin.Logging.AttemptAcquireError = comptime futex_spec.logging.override();
     if (logging.Attempt) {
@@ -176,6 +178,7 @@ pub fn futexWakeOp(
         return futex_error;
     }
 }
+
 pub const AuxiliaryVectorEntry = enum(u64) {
     null = 0,
     exec_fd = AT.EXECFD,
