@@ -2,6 +2,7 @@ const sys = @import("./sys.zig");
 const lit = @import("./lit.zig");
 const exe = @import("./exe.zig");
 const meta = @import("./meta.zig");
+const time = @import("./time.zig");
 const file = @import("./file.zig");
 const mach = @import("./mach.zig");
 const builtin = @import("./builtin.zig");
@@ -75,42 +76,104 @@ pub const SignalInfo = extern struct {
         arch: u32,
     };
 };
-const Futex = struct {
-    const Options = packed struct(u2) {
-        private: bool = false,
-        clock_realtime: bool = false,
+pub const Futex = struct {
+    word: u32 = 0,
+    pub const Operation = enum(u64) {
+        wait = 0,
+        fd = FUTEX.FD,
+        wake_op = FUTEX.WAKE.OP,
+        requeue = FUTEX.REQUEUE,
+        cmp_requeue = FUTEX.CMP.REQUEUE,
+        wait_bitset = FUTEX.WAIT.BITSET,
+        wake_bitset = FUTEX.WAKE.BITSET,
+        pub const Options = packed struct(u2) {
+            private: bool = false,
+            clock_realtime: bool = false,
+        };
+        pub const WakeOp = packed struct(u32) {
+            from: u12,
+            to: u12,
+            cmp: enum(u4) { eq = 0, ne = 1, lt = 2, le = 3, gt = 4, ge = 5 },
+            shl: bool = false,
+            op: enum(u3) { set = 0, add = 1, @"or" = 2, andn = 3, xor = 4 },
+        };
+        const FUTEX = sys.FUTEX;
     };
-    const WakeOp = packed struct(u32) {
-        op: enum(u3) { set = 0, add = 1, @"or" = 2, andn = 3, xor = 4 } = .set,
-        shl: bool = false,
-        cmp: enum(u4) { eq = 0, ne = 1, lt = 2, le = 3, gt = 4, ge = 5 } = .eq,
-        oparg: u12 = 0,
-        cmparg: u12 = 0,
-    };
-    const FUTEX = sys.FUTEX;
 };
-const FutexSpec = struct {
+
+pub const FutexSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.futex_errors },
+    return_type: type = void,
     logging: builtin.Logging.AttemptAcquireError = .{},
+
+    fn Args(comptime op: Futex.Operation) type {
+        switch (op) {
+            .wait => return struct {
+                futex1: *Futex, // uaddr
+                value: u32, // val
+                timeout: u32, // val2
+            },
+            .wake_op => return struct {
+                futex1: *Futex, // uaddr
+                futex2: *Futex, // uaddr2
+                wake1: u32, // val
+                wake2: u32, // val2
+                params: Futex.Operation.WakeOp, // val3
+            },
+            else => @compileError("TODO"),
+        }
+    }
 };
-fn futex(
+
+pub fn futexWait(
     comptime futex_spec: FutexSpec,
-    addr: *u32,
-    comptime operation: Futex,
-    operand: u64,
-) void {
+    futex: *Futex,
+    value: u32,
+    timeout: *const time.TimeSpec,
+) sys.Call(futex_spec.errors, futex_spec.return_type) {
     const logging: builtin.Logging.AttemptAcquireError = comptime futex_spec.logging.override();
     if (logging.Attempt) {
         //
     }
-    if (meta.sys.call(.futex, futex_spec.errors, futex_spec.return_type, .{ addr, operation, operand })) {
+    if (meta.wrap(sys.call(.futex, futex_spec.errors, futex_spec.return_type, .{ @ptrToInt(futex), 0, value, @ptrToInt(timeout), 0, 0 }))) {
         if (logging.Acquire) {
             //
         }
-    } else {
+    } else |futex_error| {
         if (logging.Error) {
             //
         }
+        return futex_error;
+    }
+}
+pub fn futexWakeOp(
+    comptime futex_spec: FutexSpec,
+    futex1: *Futex, // uaddr
+    futex2: *Futex, // uaddr2
+    max_wake1: u32, // val
+    max_wake2: u32, // val2
+    params: Futex.Operation.WakeOp, // val3
+) sys.Call(futex_spec.errors, futex_spec.return_type) {
+    const logging: builtin.Logging.AttemptAcquireError = comptime futex_spec.logging.override();
+    if (logging.Attempt) {
+        //
+    }
+    if (meta.wrap(sys.call(.futex, futex_spec.errors, futex_spec.return_type, .{
+        @ptrToInt(futex1),
+        sys.FUTEX.WAKE.OP,
+        max_wake1,
+        max_wake2,
+        @ptrToInt(futex2),
+        @bitCast(u32, params),
+    }))) {
+        if (logging.Acquire) {
+            //
+        }
+    } else |futex_error| {
+        if (logging.Error) {
+            //
+        }
+        return futex_error;
     }
 }
 pub const AuxiliaryVectorEntry = enum(u64) {
@@ -229,7 +292,6 @@ pub const CloneArgs = extern struct {
     /// File descriptor for target cgroup
     cgroup: u64 = 0,
 };
-
 pub const WaitSpec = struct {
     options: Options = .{},
     errors: sys.ErrorPolicy = .{ .throw = sys.wait_errors },
@@ -321,7 +383,6 @@ pub const CommandSpec = struct {
     args_type: type = []const [*:0]u8,
     vars_type: type = []const [*:0]u8,
     const Specification = @This();
-
     pub const Options = struct {
         no_follow: bool = false,
     };
@@ -420,7 +481,7 @@ pub const CloneSpec = struct {
     }
     pub inline fn args(comptime spec: CloneSpec, stack_addr: u64, comptime stack_len: u64) CloneArgs {
         return .{
-            .flags = spec.flags(),
+            .flags = comptime spec.flags(),
             .stack_addr = stack_addr,
             .stack_len = stack_len,
             .child_tid_addr = mach.add64(stack_addr, 0x1000 - 0x10),
@@ -431,7 +492,7 @@ pub const CloneSpec = struct {
 };
 pub const Status = struct {
     pub inline fn exit(status: u32) u8 {
-        return @intCast(u8, (status & 0xff00) >> 8);
+        return mach.shr32T(u8, status & 0xff00, 8);
     }
     pub inline fn term(status: u32) u32 {
         return status & 0x7f;
@@ -443,10 +504,10 @@ pub const Status = struct {
         return Status.term(status) == 0;
     }
     pub inline fn ifSignaled(status: u32) bool {
-        return ((status & 0x7f) + 1) >> 1 > 0;
+        return status & 0x7f >= 2;
     }
     pub inline fn ifStopped(status: u32) bool {
-        return (status & 0xff) == 0x7f;
+        return status & 0xff == 0x7f;
     }
     pub inline fn ifContinued(status: u32) bool {
         return status == 0xffff;
@@ -455,7 +516,6 @@ pub const Status = struct {
         return status & 0x80;
     }
 };
-
 pub fn getUserId() u16 {
     return @truncate(u16, sys.call(.getuid, .{}, u64, .{}));
 }
@@ -468,7 +528,6 @@ pub fn getGroupId() u16 {
 pub fn getEffectiveGroupId() u16 {
     return @truncate(u16, sys.call(.getegid, .{}, u64, .{}));
 }
-
 pub fn waitPid(comptime spec: WaitSpec, id: WaitSpec.For) sys.Call(spec.errors, Return) {
     const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
     var ret: Return = undefined;
@@ -723,7 +782,6 @@ pub noinline fn callMain() noreturn {
     }
     builtin.static.assert(main_return_type_info != .ErrorSet);
 }
-
 // If the return value is greater than word size or is a zig error union, this
 // internal call can never be inlined.
 noinline fn callErrorOrMediaReturnValueFunction(comptime Fn: type, result_addr: u64, call_addr: u64, args_addr: u64) void {
@@ -733,7 +791,6 @@ noinline fn callErrorOrMediaReturnValueFunction(comptime Fn: type, result_addr: 
         @intToPtr(*meta.Args(Fn), args_addr).*,
     );
 }
-
 pub noinline fn callClone(
     comptime spec: CloneSpec,
     stack_addr: u64,
@@ -896,7 +953,6 @@ pub fn sectionAddress(ehdr_addr: u64, symbol: [:0]const u8) ?u64 {
     }
     return null;
 }
-
 /// Replaces argument at `index` with argument at `index` +% 1
 /// This is useful for extracting information from the program arguments in
 /// rounds.
@@ -974,7 +1030,6 @@ pub fn GenericOptions(comptime Options: type) type {
         },
         descr: ?[]const u8 = null,
         clobber: bool = true,
-
         const Option = @This();
         comptime {
             builtin.static.assert(@hasDecl(Options, "Map"));
@@ -1154,7 +1209,6 @@ const debug = opaque {
     const about_fork_1_s: []const u8 = builtin.debug.about("fork-error");
     const about_wait_0_s: []const u8 = builtin.debug.about("wait");
     const about_wait_1_s: []const u8 = builtin.debug.about("wait-error");
-
     fn optionNotice(comptime Options: type, comptime opt_map: []const Options.Map) void {
         const buf: []const u8 = comptime Options.Map.helpMessage(opt_map);
         builtin.debug.write(buf);
