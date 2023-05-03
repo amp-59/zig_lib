@@ -703,7 +703,7 @@ pub fn execPath(comptime spec: ExecuteSpec, pathname: [:0]const u8, args: spec.a
         debug.executeNotice(pathname, args);
     }
     if (meta.wrap(sys.call(.execve, spec.errors, spec.return_type, .{ filename_buf_addr, args_addr, vars_addr }))) {
-        unreachable;
+        builtin.proc.exitGroupFault("reached unreachable", 2);
     } else |execve_error| {
         if (logging.Error and logging.Attempt) {
             debug.executeErrorBrief(execve_error, pathname);
@@ -722,7 +722,7 @@ pub fn exec(comptime spec: ExecuteSpec, fd: u64, args: spec.args_type, vars: spe
         debug.executeNotice(args[0], args);
     }
     if (meta.wrap(sys.call(.execveat, spec.errors, spec.return_type, .{ fd, @ptrToInt(""), args_addr, vars_addr, flags.val }))) {
-        unreachable;
+        builtin.proc.exitGroupFault("reached unreachable", 2);
     } else |execve_error| {
         if (logging.Error and logging.Attempt) {
             debug.executeErrorBrief(execve_error, args[0]);
@@ -742,7 +742,7 @@ pub fn execAt(comptime spec: ExecuteSpec, dir_fd: u64, name: [:0]const u8, args:
         debug.executeNotice(name, args);
     }
     if (meta.wrap(sys.call(.execveat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, args_addr, vars_addr, flags.val }))) {
-        unreachable;
+        builtin.proc.exitGroupFault("reached unreachable", 2);
     } else |execve_error| {
         if (logging.Error and logging.Attempt) {
             debug.executeErrorBrief(execve_error, name);
@@ -2167,6 +2167,7 @@ const debug = opaque {
         }
         if (argc != idx) {
             const del_s: []const u8 = builtin.fmt.ud64(argc -% idx).readAll();
+
             @memcpy(buf[len..].ptr, " ... and ", 9);
             len +%= 9;
             @memcpy(buf[len..].ptr, del_s.ptr, del_s.len);
@@ -2224,5 +2225,9 @@ const debug = opaque {
             }
         }
         return len;
+    }
+    inline fn arrcpy(buf: [*]u8, any: anytype) u64 {
+        @ptrCast(*@TypeOf(any), buf).* = any;
+        comptime return any.len;
     }
 };
