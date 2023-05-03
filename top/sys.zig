@@ -1908,7 +1908,9 @@ pub const Fn = enum(u9) {
             .name_to_handle_at,
             => 5,
 
-            .mmap => 6,
+            .futex,
+            .mmap,
+            => 6,
             else => @compileError(@tagName(function)),
         };
     }
