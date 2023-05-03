@@ -1,5 +1,6 @@
 const sys = @import("./sys.zig");
 const lit = @import("./lit.zig");
+const exe = @import("./exe.zig");
 const meta = @import("./meta.zig");
 const file = @import("./file.zig");
 const mach = @import("./mach.zig");
@@ -697,27 +698,27 @@ pub noinline fn callMain() noreturn {
     }
     if (main_return_type == void) {
         @call(.auto, main, params);
-        builtin.proc.exitWithNotice(0);
+        builtin.proc.exitNotice(0);
     }
     if (main_return_type == u8) {
-        builtin.proc.exitWithNotice(@call(.auto, main, params));
+        builtin.proc.exitNotice(@call(.auto, main, params));
     }
     if (main_return_type_info == .ErrorUnion and
         main_return_type_info.ErrorUnion.payload == void)
     {
         if (@call(.auto, main, params)) {
-            builtin.proc.exitWithNotice(0);
+            builtin.proc.exitNotice(0);
         } else |err| {
-            builtin.proc.exitWithError(err, @intCast(u8, @errorToInt(err)));
+            builtin.proc.exitError(err, @intCast(u8, @errorToInt(err)));
         }
     }
     if (main_return_type_info == .ErrorUnion and
         main_return_type_info.ErrorUnion.payload == u8)
     {
         if (@call(.auto, builtin.root.main, params)) |rc| {
-            builtin.proc.exitWithNotice(rc);
+            builtin.proc.exitNotice(rc);
         } else |err| {
-            builtin.proc.exitWithError(err, @intCast(u8, @errorToInt(err)));
+            builtin.proc.exitError(err, @intCast(u8, @errorToInt(err)));
         }
     }
     builtin.static.assert(main_return_type_info != .ErrorSet);
@@ -819,6 +820,83 @@ pub noinline fn callClone(
     }
     unreachable;
 }
+pub fn getVSyscall(comptime Fn: type, vdso_addr: u64, symbol: [:0]const u8) ?Fn {
+    if (programOffset(vdso_addr)) |offset| {
+        if (sectionAddress(vdso_addr, symbol)) |addr| {
+            return @intToPtr(Fn, addr +% offset);
+        }
+    }
+    return null;
+}
+pub fn programOffset(ehdr_addr: u64) ?u64 {
+    const ehdr: *exe.Elf64_Ehdr = @intToPtr(*exe.Elf64_Ehdr, ehdr_addr);
+    var addr: u64 = ehdr_addr +% ehdr.e_phoff;
+    var idx: u64 = 0;
+    while (idx != ehdr.e_phnum) : ({
+        idx +%= 1;
+        addr +%= @sizeOf(exe.Elf64_Phdr);
+    }) {
+        const phdr: *exe.Elf64_Phdr = @intToPtr(*exe.Elf64_Phdr, addr);
+        if (phdr.p_flags.check(.X)) {
+            return phdr.p_offset -% phdr.p_paddr;
+        }
+    }
+    return null;
+}
+pub fn sectionAddress(ehdr_addr: u64, symbol: [:0]const u8) ?u64 {
+    const ehdr: *exe.Elf64_Ehdr = @intToPtr(*exe.Elf64_Ehdr, ehdr_addr);
+    var symtab_addr: u64 = 0;
+    var strtab_addr: u64 = 0;
+    var symtab_ents: u64 = 0;
+    var dynsym_size: u64 = 0;
+    var addr: u64 = ehdr_addr +% ehdr.e_shoff;
+    var idx: u64 = 0;
+    while (idx != ehdr.e_shnum) : ({
+        idx +%= 1;
+        addr = addr +% @sizeOf(exe.Elf64_Shdr);
+    }) {
+        const shdr: *exe.Elf64_Shdr = @intToPtr(*exe.Elf64_Shdr, addr);
+        if (shdr.sh_type == .DYNSYM) {
+            dynsym_size = shdr.sh_size;
+        }
+        if (shdr.sh_type == .DYNAMIC) {
+            const dyn: [*]exe.Elf64_Dyn = @intToPtr([*]exe.Elf64_Dyn, ehdr_addr +% shdr.sh_offset);
+            var dyn_idx: u64 = 0;
+            while (true) : (dyn_idx +%= 1) {
+                if (dyn[dyn_idx].d_tag == .SYMTAB) {
+                    symtab_addr = ehdr_addr +% dyn[dyn_idx].d_val;
+                    dyn_idx +%= 1;
+                }
+                if (dyn[dyn_idx].d_tag == .SYMENT) {
+                    symtab_ents = dyn[dyn_idx].d_val;
+                    dyn_idx +%= 1;
+                }
+                if (dyn[dyn_idx].d_tag == .STRTAB) {
+                    strtab_addr = ehdr_addr +% dyn[dyn_idx].d_val;
+                }
+                if (symtab_addr != 0 and
+                    symtab_ents != 0 and
+                    strtab_addr != 0)
+                {
+                    const strtab: [*:0]u8 = @intToPtr([*:0]u8, strtab_addr);
+                    const symtab: [*]exe.Elf64_Sym = @intToPtr([*]exe.Elf64_Sym, symtab_addr);
+                    var st_idx: u64 = 1;
+                    lo: while (st_idx *% symtab_ents != dynsym_size) : (st_idx +%= 1) {
+                        for (symbol, strtab + symtab[st_idx].st_name) |x, y| {
+                            if (x != y) {
+                                continue :lo;
+                            }
+                        }
+                        return ehdr_addr +% symtab[st_idx].st_value;
+                    }
+                    break;
+                }
+            }
+        }
+    }
+    return null;
+}
+
 /// Replaces argument at `index` with argument at `index` +% 1
 /// This is useful for extracting information from the program arguments in
 /// rounds.
@@ -1057,11 +1135,11 @@ pub inline fn getOpts(comptime Options: type, args: *[][*:0]u8, comptime all_opt
         }
         if (mach.testEqualMany8("--help", arg1)) {
             debug.optionNotice(Options, all_options);
-            builtin.proc.exitWithNotice(0);
+            builtin.proc.exitNotice(0);
         }
         if (arg1.len != 0 and arg1[0] == '-') {
             debug.optionError(Options, all_options, arg1);
-            builtin.proc.exitWithNotice(0);
+            builtin.proc.exitNotice(0);
         }
         index += 1;
     }
