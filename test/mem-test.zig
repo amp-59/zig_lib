@@ -46,7 +46,6 @@ const wr_spec: mem.ReinterpretSpec = .{
     .composite = .{ .format = true },
     .reference = .{ .dereference = &.{} },
 };
-
 fn testProtect() void {
     var addr: u64 = 0x7000000;
     const end: u64 = 0x10000000;
@@ -294,13 +293,13 @@ fn testLallocator() !void {
     allocator.freeAll();
     AllocatorL.Graphics.graphPartitions(allocator);
 }
-fn testExperimentalContainer() void {
-    // const Auto = experimental.AutomaticStructuredReadWrite(.{});
-    // _ = Auto;
+fn testSimpleAllocator() void {
+    var allocator: mem.SimpleAllocator = .{};
+    var buf: []u8 = allocator.allocate(u8, 256);
+    allocator.deallocate(u8, buf);
 }
-
 pub fn main() !void {
-    testExperimentalContainer();
+    testSimpleAllocator();
     //try meta.wrap(testLallocator());
     try meta.wrap(testMapGenericOverhead());
     try meta.wrap(testProtect());
