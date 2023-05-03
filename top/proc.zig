@@ -152,21 +152,42 @@ pub fn futexWakeOp(
     comptime futex_spec: FutexSpec,
     futex1: *Futex,
     futex2: *Futex,
-    max_wake1: u32,
-    max_wake2: u32,
-    params: FutexOp.WakeOp, // val3
+    count1: u32,
+    count2: u32,
+    wake_op: FutexOp.WakeOp, // val3
 ) sys.Call(futex_spec.errors, futex_spec.return_type) {
     const logging: builtin.Logging.AttemptAcquireError = comptime futex_spec.logging.override();
     if (logging.Attempt) {
         //
     }
     if (meta.wrap(sys.call(.futex, futex_spec.errors, futex_spec.return_type, .{
-        @ptrToInt(futex1),
-        sys.FUTEX.WAKE.OP,
-        max_wake1,
-        max_wake2,
-        @ptrToInt(futex2),
-        @bitCast(u32, params),
+        @ptrToInt(futex1), 5, count1, count2, @ptrToInt(futex2), @bitCast(u32, wake_op),
+    }))) {
+        if (logging.Acquire) {
+            //
+        }
+    } else |futex_error| {
+        if (logging.Error) {
+            //
+        }
+        return futex_error;
+    }
+}
+pub fn futexRequeue(
+    comptime futex_spec: FutexSpec,
+    futex1: *Futex,
+    futex2: *Futex,
+    count1: u32,
+    count2: u32,
+    from: ?u32,
+) sys.Call(futex_spec.errors, futex_spec.return_type) {
+    @setRuntimeSafety(false);
+    const logging: builtin.Logging.AttemptAcquireError = comptime futex_spec.logging.override();
+    if (logging.Attempt) {
+        //
+    }
+    if (meta.wrap(sys.call(.futex, futex_spec.errors, futex_spec.return_type, .{
+        @ptrToInt(futex1), 3 +% @boolToInt(from != 0), count1, count2, @ptrToInt(futex2), from.?,
     }))) {
         if (logging.Acquire) {
             //
