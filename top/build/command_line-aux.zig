@@ -571,14 +571,14 @@ fn unhandledCommandFieldAndNo(opt_spec: types.OptionSpec, no_opt_spec: types.Inv
     var len: u64 = builtin.debug.writeMulti(&buf, &.{
         opt_spec.name, ": ", @tagName(opt_spec.arg_info.tag), "+", @tagName(no_opt_spec.arg_info.tag),
     });
-    builtin.proc.exitWithFaultMessage(buf[0..len], 2);
+    builtin.proc.exitFault(buf[0..len], 2);
 }
 fn unhandledCommandField(opt_spec: types.OptionSpec) void {
     var buf: [4096]u8 = undefined;
     var len: u64 = builtin.debug.writeMulti(&buf, &.{
         opt_spec.name, ": ", @tagName(opt_spec.arg_info.tag), "\n",
     });
-    builtin.proc.exitWithFaultMessage(buf[0..len], 2);
+    builtin.proc.exitFault(buf[0..len], 2);
 }
 fn writeFile(array: Array, pathname: [:0]const u8) void {
     const build_fd: u64 = file.create(creat_spec, pathname, file.file_mode);
