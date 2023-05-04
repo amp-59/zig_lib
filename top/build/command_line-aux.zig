@@ -114,7 +114,7 @@ fn writeIntegerString(array: *Array, arg_string: []const u8, variant: types.Vari
             array.writeMany("const s: []const u8 = builtin.fmt.ud64(");
             array.writeMany(arg_string);
             array.writeMany(").readAll();");
-            array.writeMany("@memcpy(buf+len,s.ptr,s.len);\n");
+            array.writeMany("mach.memcpy(buf+len,s.ptr,s.len);\n");
             array.writeMany("len=len+s.len;\n");
         } else {
             array.writeMany("array.writeFormat(fmt.ud64(");
@@ -131,7 +131,7 @@ fn writeIntegerString(array: *Array, arg_string: []const u8, variant: types.Vari
 fn writeTagString(array: *Array, arg_string: []const u8, variant: types.Variant) void {
     switch (variant) {
         .write => if (primitive) {
-            array.writeMany("@memcpy(buf+len,@tagName(");
+            array.writeMany("mach.mempcy(buf+len,@tagName(");
             array.writeMany(arg_string);
             array.writeMany(").ptr,@tagName(");
             array.writeMany(arg_string);
@@ -152,7 +152,7 @@ fn writeTagString(array: *Array, arg_string: []const u8, variant: types.Variant)
 fn writeArgString(array: *Array, arg_string: []const u8, variant: types.Variant) void {
     switch (variant) {
         .write => if (primitive) {
-            array.writeMany("@memcpy(buf+len,");
+            array.writeMany("mach.mempcy(buf+len,");
             array.writeMany(arg_string);
             array.writeMany(".ptr,");
             array.writeMany(arg_string);
@@ -252,7 +252,7 @@ fn writeOptString(
     switch (variant) {
         .write => if (primitive) {
             if (abstract) {
-                array.writeMany("@memcpy(buf+len,opt_switch.ptr,opt_switch.len);\n");
+                array.writeMany("mach.mempcy(buf+len,opt_switch.ptr,opt_switch.len);\n");
             } else {
                 if (prefer_ptrcast) {
                     array.writeMany("@ptrCast(");
@@ -262,7 +262,7 @@ fn writeOptString(
                     array.writeMany(opt_string);
                     array.writeMany("\".*;\n");
                 } else {
-                    array.writeMany("@memcpy(buf+len,\"");
+                    array.writeMany("mach.mempcy(buf+len,\"");
                     array.writeMany(opt_string);
                     array.writeMany("\",");
                     array.writeFormat(fmt.ud64(opt_string.len));
@@ -591,13 +591,13 @@ fn writeBuildWrite(array: *Array, arrays: *Arrays, indices: *Indices) void {
             array.writeMany(
                 \\pub fn buildWriteBuf(cmd:*const tasks.BuildCommand,zig_exe:[]const u8,root_path:types.Path,buf:[*]u8)u64{
                 \\@setRuntimeSafety(false);
-                \\@memcpy(buf,zig_exe.ptr,zig_exe.len);
+                \\mach.mempcy(buf,zig_exe.ptr,zig_exe.len);
                 \\var len:u64=zig_exe.len;
                 \\buf[len]=0;
                 \\len=len+%1;
-                \\@memcpy(buf+len,"build-",6);
+                \\mach.mempcy(buf+len,"build-",6);
                 \\len=len+%6;
-                \\@memcpy(buf+len,@tagName(cmd.kind).ptr,@tagName(cmd.kind).len);
+                \\mach.mempcy(buf+len,@tagName(cmd.kind).ptr,@tagName(cmd.kind).len);
                 \\len=len+%@tagName(cmd.kind).len;
                 \\buf[len]=0;
                 \\len=len+%1;
@@ -653,11 +653,11 @@ fn writeFormatWrite(array: *Array, arrays: *Arrays, indices: *Indices) void {
             array.writeMany(
                 \\pub fn formatWriteBuf(cmd:*const tasks.FormatCommand,zig_exe:[]const u8,root_path:types.Path,buf:[*]u8)u64{
                 \\@setRuntimeSafety(false);
-                \\@memcpy(buf,zig_exe.ptr,zig_exe.len);
+                \\mach.mempcy(buf,zig_exe.ptr,zig_exe.len);
                 \\var len:u64=zig_exe.len;
                 \\buf[len]=0;
                 \\len=len+%1;
-                \\@memcpy(buf+len,"fmt\x00",4);
+                \\mach.mempcy(buf+len,"fmt\x00",4);
                 \\len=len+%4;
                 \\
             );
