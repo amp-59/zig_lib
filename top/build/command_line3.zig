@@ -1,6 +1,7 @@
 const builtin = @import("../builtin.zig");
 const types = @import("./types.zig");
 const tasks = @import("./tasks3.zig");
+const mach = @import("../mach.zig");
 fn FormatMap(comptime T: type) type {
     switch (T) {
         []const types.ModuleDependency => return types.ModuleDependencies,
@@ -16,13 +17,13 @@ fn formatMap(any: anytype) FormatMap(@TypeOf(any)) {
 }
 pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_path: types.Path, buf: [*]u8) u64 {
     @setRuntimeSafety(false);
-    @memcpy(buf, zig_exe.ptr, zig_exe.len);
+    mach.memcpy(buf, zig_exe.ptr, zig_exe.len);
     var len: u64 = zig_exe.len;
     buf[len] = 0;
     len = len +% 1;
-    @memcpy(buf + len, "build-", 6);
+    mach.memcpy(buf + len, "build-", 6);
     len = len +% 6;
-    @memcpy(buf + len, @tagName(cmd.kind).ptr, @tagName(cmd.kind).len);
+    mach.memcpy(buf + len, @tagName(cmd.kind).ptr, @tagName(cmd.kind).len);
     len = len +% @tagName(cmd.kind).len;
     buf[len] = 0;
     len = len +% 1;
@@ -223,7 +224,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len = len +% 11;
         buf[len] = 0;
         len = len +% 1;
-        @memcpy(buf + len, cache_root.ptr, cache_root.len);
+        mach.memcpy(buf + len, cache_root.ptr, cache_root.len);
         len = len +% cache_root.len;
         buf[len] = 0;
         len = len +% 1;
@@ -233,7 +234,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len = len +% 18;
         buf[len] = 0;
         len = len +% 1;
-        @memcpy(buf + len, global_cache_root.ptr, global_cache_root.len);
+        mach.memcpy(buf + len, global_cache_root.ptr, global_cache_root.len);
         len = len +% global_cache_root.len;
         buf[len] = 0;
         len = len +% 1;
@@ -243,7 +244,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len = len +% 13;
         buf[len] = 0;
         len = len +% 1;
-        @memcpy(buf + len, zig_lib_root.ptr, zig_lib_root.len);
+        mach.memcpy(buf + len, zig_lib_root.ptr, zig_lib_root.len);
         len = len +% zig_lib_root.len;
         buf[len] = 0;
         len = len +% 1;
@@ -253,7 +254,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len = len +% 8;
         buf[len] = 0;
         len = len +% 1;
-        @memcpy(buf + len, @tagName(listen).ptr, @tagName(listen).len);
+        mach.memcpy(buf + len, @tagName(listen).ptr, @tagName(listen).len);
         len = len +% @tagName(listen).len;
         buf[len] = 0;
         len = len +% 1;
@@ -263,7 +264,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len = len +% 7;
         buf[len] = 0;
         len = len +% 1;
-        @memcpy(buf + len, target.ptr, target.len);
+        mach.memcpy(buf + len, target.ptr, target.len);
         len = len +% target.len;
         buf[len] = 0;
         len = len +% 1;
@@ -273,7 +274,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len = len +% 5;
         buf[len] = 0;
         len = len +% 1;
-        @memcpy(buf + len, cpu.ptr, cpu.len);
+        mach.memcpy(buf + len, cpu.ptr, cpu.len);
         len = len +% cpu.len;
         buf[len] = 0;
         len = len +% 1;
@@ -283,7 +284,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len = len +% 8;
         buf[len] = 0;
         len = len +% 1;
-        @memcpy(buf + len, @tagName(code_model).ptr, @tagName(code_model).len);
+        mach.memcpy(buf + len, @tagName(code_model).ptr, @tagName(code_model).len);
         len = len +% @tagName(code_model).len;
         buf[len] = 0;
         len = len +% 1;
@@ -319,7 +320,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len = len +% 12;
         buf[len] = 0;
         len = len +% 1;
-        @memcpy(buf + len, exec_model.ptr, exec_model.len);
+        mach.memcpy(buf + len, exec_model.ptr, exec_model.len);
         len = len +% exec_model.len;
         buf[len] = 0;
         len = len +% 1;
@@ -329,7 +330,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len = len +% 6;
         buf[len] = 0;
         len = len +% 1;
-        @memcpy(buf + len, name.ptr, name.len);
+        mach.memcpy(buf + len, name.ptr, name.len);
         len = len +% name.len;
         buf[len] = 0;
         len = len +% 1;
@@ -341,7 +342,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
                 len = len +% 8;
                 buf[len] = 0;
                 len = len +% 1;
-                @memcpy(buf + len, arg.ptr, arg.len);
+                mach.memcpy(buf + len, arg.ptr, arg.len);
                 len = len +% arg.len;
                 buf[len] = 0;
                 len = len +% 1;
@@ -359,7 +360,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len = len +% 2;
         buf[len] = 0;
         len = len +% 1;
-        @memcpy(buf + len, @tagName(mode).ptr, @tagName(mode).len);
+        mach.memcpy(buf + len, @tagName(mode).ptr, @tagName(mode).len);
         len = len +% @tagName(mode).len;
         buf[len] = 0;
         len = len +% 1;
@@ -369,7 +370,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len = len +% 15;
         buf[len] = 0;
         len = len +% 1;
-        @memcpy(buf + len, main_pkg_path.ptr, main_pkg_path.len);
+        mach.memcpy(buf + len, main_pkg_path.ptr, main_pkg_path.len);
         len = len +% main_pkg_path.len;
         buf[len] = 0;
         len = len +% 1;
@@ -600,7 +601,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len = len +% 5;
         buf[len] = 61;
         len = len +% 1;
-        @memcpy(buf + len, @tagName(format).ptr, @tagName(format).len);
+        mach.memcpy(buf + len, @tagName(format).ptr, @tagName(format).len);
         len = len +% @tagName(format).len;
         buf[len] = 0;
         len = len +% 1;
@@ -610,7 +611,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len = len +% 10;
         buf[len] = 0;
         len = len +% 1;
-        @memcpy(buf + len, dirafter.ptr, dirafter.len);
+        mach.memcpy(buf + len, dirafter.ptr, dirafter.len);
         len = len +% dirafter.len;
         buf[len] = 0;
         len = len +% 1;
@@ -620,7 +621,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len = len +% 8;
         buf[len] = 0;
         len = len +% 1;
-        @memcpy(buf + len, system.ptr, system.len);
+        mach.memcpy(buf + len, system.ptr, system.len);
         len = len +% system.len;
         buf[len] = 0;
         len = len +% 1;
@@ -630,7 +631,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len = len +% 2;
         buf[len] = 0;
         len = len +% 1;
-        @memcpy(buf + len, include.ptr, include.len);
+        mach.memcpy(buf + len, include.ptr, include.len);
         len = len +% include.len;
         buf[len] = 0;
         len = len +% 1;
@@ -640,7 +641,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len = len +% 6;
         buf[len] = 0;
         len = len +% 1;
-        @memcpy(buf + len, libc.ptr, libc.len);
+        mach.memcpy(buf + len, libc.ptr, libc.len);
         len = len +% libc.len;
         buf[len] = 0;
         len = len +% 1;
@@ -650,7 +651,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len = len +% 9;
         buf[len] = 0;
         len = len +% 1;
-        @memcpy(buf + len, library.ptr, library.len);
+        mach.memcpy(buf + len, library.ptr, library.len);
         len = len +% library.len;
         buf[len] = 0;
         len = len +% 1;
@@ -661,7 +662,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
             len = len +% 16;
             buf[len] = 0;
             len = len +% 1;
-            @memcpy(buf + len, value.ptr, value.len);
+            mach.memcpy(buf + len, value.ptr, value.len);
             len = len +% value.len;
             buf[len] = 0;
             len = len +% 1;
@@ -673,7 +674,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
             len = len +% 19;
             buf[len] = 0;
             len = len +% 1;
-            @memcpy(buf + len, value.ptr, value.len);
+            mach.memcpy(buf + len, value.ptr, value.len);
             len = len +% value.len;
             buf[len] = 0;
             len = len +% 1;
@@ -684,7 +685,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len = len +% 8;
         buf[len] = 0;
         len = len +% 1;
-        @memcpy(buf + len, link_script.ptr, link_script.len);
+        mach.memcpy(buf + len, link_script.ptr, link_script.len);
         len = len +% link_script.len;
         buf[len] = 0;
         len = len +% 1;
@@ -694,7 +695,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len = len +% 16;
         buf[len] = 0;
         len = len +% 1;
-        @memcpy(buf + len, version_script.ptr, version_script.len);
+        mach.memcpy(buf + len, version_script.ptr, version_script.len);
         len = len +% version_script.len;
         buf[len] = 0;
         len = len +% 1;
@@ -704,7 +705,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len = len +% 16;
         buf[len] = 0;
         len = len +% 1;
-        @memcpy(buf + len, dynamic_linker.ptr, dynamic_linker.len);
+        mach.memcpy(buf + len, dynamic_linker.ptr, dynamic_linker.len);
         len = len +% dynamic_linker.len;
         buf[len] = 0;
         len = len +% 1;
@@ -714,7 +715,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len = len +% 9;
         buf[len] = 0;
         len = len +% 1;
-        @memcpy(buf + len, sysroot.ptr, sysroot.len);
+        mach.memcpy(buf + len, sysroot.ptr, sysroot.len);
         len = len +% sysroot.len;
         buf[len] = 0;
         len = len +% 1;
@@ -724,7 +725,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len = len +% 7;
         buf[len] = 0;
         len = len +% 1;
-        @memcpy(buf + len, entry.ptr, entry.len);
+        mach.memcpy(buf + len, entry.ptr, entry.len);
         len = len +% entry.len;
         buf[len] = 0;
         len = len +% 1;
@@ -760,7 +761,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len = len +% 6;
         buf[len] = 0;
         len = len +% 1;
-        @memcpy(buf + len, rpath.ptr, rpath.len);
+        mach.memcpy(buf + len, rpath.ptr, rpath.len);
         len = len +% rpath.len;
         buf[len] = 0;
         len = len +% 1;
@@ -836,7 +837,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         buf[len] = 0;
         len = len +% 1;
         const s: []const u8 = builtin.fmt.ud64(stack).readAll();
-        @memcpy(buf + len, s.ptr, s.len);
+        mach.memcpy(buf + len, s.ptr, s.len);
         len = len + s.len;
         buf[len] = 0;
         len = len +% 1;
@@ -847,7 +848,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         buf[len] = 0;
         len = len +% 1;
         const s: []const u8 = builtin.fmt.ud64(image_base).readAll();
-        @memcpy(buf + len, s.ptr, s.len);
+        mach.memcpy(buf + len, s.ptr, s.len);
         len = len + s.len;
         buf[len] = 0;
         len = len +% 1;
@@ -900,7 +901,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
             len = len +% 2;
             buf[len] = 0;
             len = len +% 1;
-            @memcpy(buf + len, @tagName(value).ptr, @tagName(value).len);
+            mach.memcpy(buf + len, @tagName(value).ptr, @tagName(value).len);
             len = len +% @tagName(value).len;
             buf[len] = 0;
             len = len +% 1;
@@ -914,7 +915,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len = len +% 7;
         buf[len] = 0;
         len = len +% 1;
-        @memcpy(buf + len, @tagName(color).ptr, @tagName(color).len);
+        mach.memcpy(buf + len, @tagName(color).ptr, @tagName(color).len);
         len = len +% @tagName(color).len;
         buf[len] = 0;
         len = len +% 1;
@@ -978,7 +979,7 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len = len +% 11;
         buf[len] = 0;
         len = len +% 1;
-        @memcpy(buf + len, debug_log.ptr, debug_log.len);
+        mach.memcpy(buf + len, debug_log.ptr, debug_log.len);
         len = len +% debug_log.len;
         buf[len] = 0;
         len = len +% 1;
@@ -1663,18 +1664,18 @@ pub fn buildLength(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_pat
 }
 pub fn formatWriteBuf(cmd: *const tasks.FormatCommand, zig_exe: []const u8, root_path: types.Path, buf: [*]u8) u64 {
     @setRuntimeSafety(false);
-    @memcpy(buf, zig_exe.ptr, zig_exe.len);
+    mach.memcpy(buf, zig_exe.ptr, zig_exe.len);
     var len: u64 = zig_exe.len;
     buf[len] = 0;
     len = len +% 1;
-    @memcpy(buf + len, "fmt\x00", 4);
+    mach.memcpy(buf + len, "fmt\x00", 4);
     len = len +% 4;
     if (cmd.color) |color| {
         @ptrCast(*[7]u8, buf + len).* = "--color".*;
         len = len +% 7;
         buf[len] = 0;
         len = len +% 1;
-        @memcpy(buf + len, @tagName(color).ptr, @tagName(color).len);
+        mach.memcpy(buf + len, @tagName(color).ptr, @tagName(color).len);
         len = len +% @tagName(color).len;
         buf[len] = 0;
         len = len +% 1;
@@ -1702,7 +1703,7 @@ pub fn formatWriteBuf(cmd: *const tasks.FormatCommand, zig_exe: []const u8, root
         len = len +% 9;
         buf[len] = 0;
         len = len +% 1;
-        @memcpy(buf + len, exclude.ptr, exclude.len);
+        mach.memcpy(buf + len, exclude.ptr, exclude.len);
         len = len +% exclude.len;
         buf[len] = 0;
         len = len +% 1;
