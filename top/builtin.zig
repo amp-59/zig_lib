@@ -1498,11 +1498,11 @@ pub const debug = opaque {
         return if (rc < 0) ~@as(u64, 0) else @intCast(u64, rc);
     }
     pub fn writeMany(buf: [*]u8, s: []const u8) u64 {
-        @memcpy(buf, s.ptr, s.len);
+        mach.memcpy(buf, s.ptr, s.len);
         return s.len;
     }
     pub fn writeRepeat(buf: [*]u8, c: u8, count: u64) u64 {
-        @memset(buf, c, count);
+        mach.memset(buf, c, count);
         return count;
     }
     pub fn writeMulti(buf: [*]u8, ss: []const []const u8) u64 {

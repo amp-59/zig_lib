@@ -10,6 +10,7 @@ const zig_lib = blk: {
 const proc = zig_lib.proc;
 const meta = zig_lib.meta;
 const file = zig_lib.file;
+const mach = zig_lib.mach;
 const spec = zig_lib.spec;
 const build = zig_lib.build;
 const builtin = zig_lib.builtin;
@@ -28,8 +29,8 @@ pub const BuildConfig = struct {
         path: []const u8,
     };
 };
-inline fn cpy(buf: [*]u8, any: anytype) u64 {
-    @ptrCast(*@TypeOf(any), buf).* = any;
+inline fn cpy(buf: []u8, any: anytype) u64 {
+    @ptrCast(*@TypeOf(any), buf.ptr).* = any;
     return any.len;
 }
 pub fn lengthJSON(cfg: *const BuildConfig) u64 {
@@ -58,48 +59,48 @@ pub fn lengthJSON(cfg: *const BuildConfig) u64 {
     }
     return len;
 }
-pub fn writeJSON(cfg: *const BuildConfig, buf: [*]u8) u64 {
+pub fn writeJSON(cfg: *const BuildConfig, buf: []u8) u64 {
     @setRuntimeSafety(false);
     var len: u64 = 0;
-    len +%= cpy(buf + len, "{ \"packages\": ".*);
+    len +%= cpy(buf[len..], "{ \"packages\": ".*);
     if (cfg.packages.len == 0) {
-        len +%= cpy(buf + len, "[],".*);
+        len +%= cpy(buf[len..], "[],".*);
     } else {
-        len +%= cpy(buf + len, "[{ \"name\": \"".*);
-        @memcpy(buf + len, cfg.packages[0].name.ptr, cfg.packages[0].name.len);
+        len +%= cpy(buf[len..], "[{ \"name\": \"".*);
+        @memcpy(buf[len..], cfg.packages[0].name);
         len +%= cfg.packages[0].name.len;
-        len +%= cpy(buf + len, "\", \"path\": \"".*);
-        @memcpy(buf + len, cfg.packages[0].path.ptr, cfg.packages[0].path.len);
+        len +%= cpy(buf[len..], "\", \"path\": \"".*);
+        @memcpy(buf[len..], cfg.packages[0].path);
         len +%= cfg.packages[0].path.len;
-        len +%= cpy(buf + len, "\" }".*);
+        len +%= cpy(buf[len..], "\" }".*);
         for (cfg.packages[1..]) |pkg| {
-            len +%= cpy(buf + len, ",\n               { \"name\": \"".*);
-            @memcpy(buf + len, pkg.name.ptr, pkg.name.len);
+            len +%= cpy(buf[len..], ",\n               { \"name\": \"".*);
+            @memcpy(buf[len..], pkg.name);
             len +%= pkg.name.len;
-            len +%= cpy(buf + len, "\", \"path\": \"".*);
-            @memcpy(buf + len, pkg.path.ptr, pkg.path.len);
+            len +%= cpy(buf[len..], "\", \"path\": \"".*);
+            @memcpy(buf[len..], pkg.path);
             len +%= pkg.path.len;
-            len +%= cpy(buf + len, "\" }".*);
+            len +%= cpy(buf[len..], "\" }".*);
         }
-        len +%= cpy(buf + len, "],\n".*);
+        len +%= cpy(buf[len..], "],\n".*);
     }
-    len +%= cpy(buf + len, "  \"include_dirs\": ".*);
+    len +%= cpy(buf[len..], "  \"include_dirs\": ".*);
     if (cfg.include_dirs.len == 0) {
-        len +%= cpy(buf + len, "[]".*);
+        len +%= cpy(buf[len..], "[]".*);
     } else {
-        len +%= cpy(buf + len, "[\"".*);
-        @memcpy(buf + len, cfg.include_dirs[0].ptr, cfg.include_dirs[0].len);
+        len +%= cpy(buf[len..], "[\"".*);
+        @memcpy(buf[len..], cfg.include_dirs[0]);
         len +%= cfg.include_dirs[0].len;
-        len +%= cpy(buf + len, "\"".*);
+        len +%= cpy(buf[len..], "\"".*);
         for (cfg.include_dirs[1..]) |dir| {
-            len +%= cpy(buf + len, ",\n                   \"".*);
-            @memcpy(buf + len, dir.ptr, dir.len);
+            len +%= cpy(buf[len..], ",\n                   \"".*);
+            @memcpy(buf[len..], dir.ptr);
             len +%= dir.len;
-            len +%= cpy(buf + len, "\"".*);
+            len +%= cpy(buf[len..], "\"".*);
         }
-        len +%= cpy(buf + len, "]".*);
+        len +%= cpy(buf[len..], "]".*);
     }
-    len +%= cpy(buf + len, "}\n".*);
+    len +%= cpy(buf[len..], "}\n".*);
     return len;
 }
 fn lengthModules(builder: *Builder) u64 {
@@ -154,5 +155,5 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     const buf: []u8 = try meta.wrap(
         allocator.allocateIrreversible(u8, lengthJSON(&cfg)),
     );
-    try file.writeSlice(.{}, 1, buf[0..writeJSON(&cfg, buf.ptr)]);
+    try file.writeSlice(.{}, 1, buf[0..writeJSON(&cfg, buf)]);
 }
