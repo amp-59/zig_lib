@@ -1077,19 +1077,19 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 var len: u64 = 0;
                 @ptrCast(*[about_state_0_s.len]u8, ptr).* = about_state_0_s.ptr[0..about_state_0_s.len].*;
                 len = len + about_state_0_s.len;
-                @memcpy(ptr + len, target.name.ptr, target.name.len);
+                mach.memcpy(ptr + len, target.name.ptr, target.name.len);
                 len +%= target.name.len;
                 ptr[len] = '.';
                 len +%= 1;
-                @memcpy(ptr + len, @tagName(task).ptr, @tagName(task).len);
+                mach.memcpy(ptr + len, @tagName(task).ptr, @tagName(task).len);
                 len +%= @tagName(task).len;
                 @ptrCast(*[2]u8, ptr + len).* = ", ".*;
                 len +%= 2;
-                @memcpy(ptr + len, @tagName(old_state).ptr, @tagName(old_state).len);
+                mach.memcpy(ptr + len, @tagName(old_state).ptr, @tagName(old_state).len);
                 len +%= @tagName(old_state).len;
                 @ptrCast(*[4]u8, ptr + len).* = " -> ".*;
                 len +%= 4;
-                @memcpy(ptr + len, @tagName(new_state).ptr, @tagName(new_state).len);
+                mach.memcpy(ptr + len, @tagName(new_state).ptr, @tagName(new_state).len);
                 len +%= @tagName(new_state).len;
                 ptr[len] = '\n';
                 builtin.debug.write(buf[0 .. len +% 1]);
@@ -1099,27 +1099,27 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 var buf: [32768]u8 = undefined;
                 var ptr: [*]u8 = &buf;
                 const actual: types.State = target.lock.get(task);
-                @memcpy(ptr, about.ptr, about.len);
+                mach.memcpy(ptr, about.ptr, about.len);
                 var len: u64 = about.len;
-                @memcpy(ptr + len, target.name.ptr, target.name.len);
+                mach.memcpy(ptr + len, target.name.ptr, target.name.len);
                 len +%= target.name.len;
                 ptr[len] = '.';
                 len +%= 1;
-                @memcpy(ptr + len, @tagName(task).ptr, @tagName(task).len);
+                mach.memcpy(ptr + len, @tagName(task).ptr, @tagName(task).len);
                 len +%= @tagName(task).len;
                 @ptrCast(*[2]u8, ptr + len).* = ", ".*;
                 len +%= 2;
-                @memcpy(ptr + len, @tagName(old_state).ptr, @tagName(old_state).len);
+                mach.memcpy(ptr + len, @tagName(old_state).ptr, @tagName(old_state).len);
                 len +%= @tagName(old_state).len;
                 @ptrCast(*[3]u8, ptr + len).* = ", (".*;
                 len +%= 3;
-                @memcpy(ptr + len, @tagName(actual).ptr, @tagName(actual).len);
+                mach.memcpy(ptr + len, @tagName(actual).ptr, @tagName(actual).len);
                 len +%= @tagName(actual).len;
                 @ptrCast(*[2]u8, ptr + len).* = ") ".*;
                 len +%= 2;
                 @ptrCast(*[7]u8, ptr + len).* = " -!!-> ".*;
                 len +%= 7;
-                @memcpy(ptr + len, @tagName(new_state).ptr, @tagName(new_state).len);
+                mach.memcpy(ptr + len, @tagName(new_state).ptr, @tagName(new_state).len);
                 len +%= @tagName(new_state).len;
                 ptr[len] = '\n';
                 builtin.debug.write(ptr[0 .. len +% 1]);
@@ -1133,31 +1133,31 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 const sec_s: []const u8 = builtin.fmt.ud64(durat.sec).readAll();
                 const nsec_s: []const u8 = builtin.fmt.nsec(durat.nsec).readAll();
                 var buf: [32768]u8 = undefined;
-                @memcpy(&buf, about_build_s.ptr, about_build_s.len);
+                mach.memcpy(&buf, about_build_s.ptr, about_build_s.len);
                 var len: u64 = about_build_s.len;
-                @memcpy(buf[len..].ptr, target.name.ptr, target.name.len);
+                mach.memcpy(buf[len..].ptr, target.name.ptr, target.name.len);
                 len +%= target.name.len;
                 @ptrCast(*[2]u8, buf[len..].ptr).* = ", ".*;
                 len +%= 2;
                 const mode: builtin.Mode = target.build_cmd.mode orelse .Debug;
-                @memcpy(buf[len..].ptr, @tagName(mode).ptr, @tagName(mode).len);
+                mach.memcpy(buf[len..].ptr, @tagName(mode).ptr, @tagName(mode).len);
                 len +%= @tagName(mode).len;
                 @ptrCast(*[2]u8, buf[len..].ptr).* = ", ".*;
                 len +%= 2;
                 if (old_size == 0) {
                     @ptrCast(*[5]u8, buf[len..].ptr).* = "\x1b[93m".*;
                     len +%= 5;
-                    @memcpy(buf[len..].ptr, new_size_s.ptr, new_size_s.len);
+                    mach.memcpy(buf[len..].ptr, new_size_s.ptr, new_size_s.len);
                     len +%= new_size_s.len;
                     @ptrCast(*[13]u8, buf[len..].ptr).* = "*\x1b[0m bytes, ".*;
                     len +%= 13;
                 } else if (new_size == old_size) {
-                    @memcpy(buf[len..].ptr, new_size_s.ptr, new_size_s.len);
+                    mach.memcpy(buf[len..].ptr, new_size_s.ptr, new_size_s.len);
                     len +%= new_size_s.len;
                     @ptrCast(*[8]u8, buf[len..].ptr).* = " bytes, ".*;
                     len +%= 8;
                 } else {
-                    @memcpy(buf[len..].ptr, old_size_s.ptr, old_size_s.len);
+                    mach.memcpy(buf[len..].ptr, old_size_s.ptr, old_size_s.len);
                     len +%= old_size_s.len;
                     if (new_size > old_size) {
                         @ptrCast(*[7]u8, buf[len..].ptr).* = "(\x1b[91m+".*;
@@ -1165,20 +1165,20 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         @ptrCast(*[7]u8, buf[len..].ptr).* = "(\x1b[93m-".*;
                     }
                     len +%= 7;
-                    @memcpy(buf[len..].ptr, diff_size_s.ptr, diff_size_s.len);
+                    mach.memcpy(buf[len..].ptr, diff_size_s.ptr, diff_size_s.len);
                     len +%= diff_size_s.len;
                     @ptrCast(*[9]u8, buf[len..].ptr).* = "\x1b[0m) => ".*;
                     len +%= 9;
-                    @memcpy(buf[len..].ptr, new_size_s.ptr, new_size_s.len);
+                    mach.memcpy(buf[len..].ptr, new_size_s.ptr, new_size_s.len);
                     len +%= new_size_s.len;
                     @ptrCast(*[8]u8, buf[len..].ptr).* = " bytes, ".*;
                     len +%= 8;
                 }
-                @memcpy(buf[len..].ptr, sec_s.ptr, sec_s.len);
+                mach.memcpy(buf[len..].ptr, sec_s.ptr, sec_s.len);
                 len +%= sec_s.len;
                 buf[len] = '.';
                 len +%= 1;
-                @memcpy(buf[len..].ptr, nsec_s.ptr, nsec_s.len);
+                mach.memcpy(buf[len..].ptr, nsec_s.ptr, nsec_s.len);
                 len +%= 3;
                 @ptrCast(*[2]u8, buf[len..].ptr).* = "s\n".*;
                 builtin.debug.logAlways(buf[0 .. len +% 2]);
@@ -1189,23 +1189,23 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 const sec_s: []const u8 = builtin.fmt.ud64(durat.sec).readAll();
                 const nsec_s: []const u8 = builtin.fmt.nsec(durat.nsec).readAll();
                 var buf: [32768]u8 = undefined;
-                @memcpy(&buf, about.ptr, about.len);
+                mach.memcpy(&buf, about.ptr, about.len);
                 var len: u64 = about.len;
-                @memcpy(buf[len..].ptr, name.ptr, name.len);
+                mach.memcpy(buf[len..].ptr, name.ptr, name.len);
                 len +%= name.len;
                 @ptrCast(*[2]u8, buf[len..].ptr).* = ", ".*;
                 len +%= 2;
                 @ptrCast(*[3]u8, buf[len..].ptr).* = "rc=".*;
                 len +%= 3;
-                @memcpy(buf[len..].ptr, rc_s.ptr, rc_s.len);
+                mach.memcpy(buf[len..].ptr, rc_s.ptr, rc_s.len);
                 len +%= rc_s.len;
                 @ptrCast(*[2]u8, buf[len..].ptr).* = ", ".*;
                 len +%= 2;
-                @memcpy(buf[len..].ptr, sec_s.ptr, sec_s.len);
+                mach.memcpy(buf[len..].ptr, sec_s.ptr, sec_s.len);
                 len +%= sec_s.len;
                 buf[len] = '.';
                 len +%= 1;
-                @memcpy(buf[len..].ptr, nsec_s.ptr, nsec_s.len);
+                mach.memcpy(buf[len..].ptr, nsec_s.ptr, nsec_s.len);
                 len +%= 3;
                 @ptrCast(*[2]u8, buf[len..].ptr).* = "s\n".*;
                 builtin.debug.logAlways(buf[0 .. len +% 2]);
@@ -1213,7 +1213,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             fn writeAndWalk(target: *Target) void {
                 var buf0: [1048576]u8 = undefined;
                 var buf1: [32768]u8 = undefined;
-                @memcpy(&buf0, target.name.ptr, target.name.len);
+                mach.memcpy(&buf0, target.name.ptr, target.name.len);
                 var len: u64 = target.name.len;
                 len = writeAndWalkInternal(&buf0, len, &buf1, 0, target);
                 builtin.debug.logAlways(buf0[0..len]);
@@ -1225,14 +1225,14 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 buf0[len] = '\n';
                 len +%= 1;
                 for (deps, 0..) |dep, idx| {
-                    @memcpy(buf1 + len1, if (idx == deps.len -% 1) "  " else "| ", 2);
-                    @memcpy(buf0 + len, buf1, len1 +% 2);
+                    mach.memcpy(buf1 + len1, if (idx == deps.len -% 1) "  " else "| ", 2);
+                    mach.memcpy(buf0 + len, buf1, len1 +% 2);
                     len +%= len1 +% 2;
                     @ptrCast(*[4]u8, buf0 + len).* = if (idx == deps.len -% 1) "\x08\x08`-".* else "\x08\x08|-".*;
                     len +%= 4;
                     @ptrCast(*[2]u8, buf0 + len).* = if (dep.target.deps_len == 0) "> ".* else "+ ".*;
                     len +%= 2;
-                    @memcpy(buf0 + len, dep.target.name.ptr, dep.target.name.len);
+                    mach.memcpy(buf0 + len, dep.target.name.ptr, dep.target.name.len);
                     len +%= target.name.len;
                     len = writeAndWalkInternal(buf0, len, buf1, len1 +% 2, dep.target);
                 }
@@ -1258,30 +1258,30 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 root_max_width +%= alignment;
                 name_max_width &= ~(alignment -% 1);
                 root_max_width &= ~(alignment -% 1);
-                @memset(&buf1, ' ', 4);
+                mach.memset(&buf1, ' ', 4);
                 for (builder.groups()) |group| {
-                    @memcpy(buf0[len..].ptr, group.name.ptr, group.name.len);
+                    mach.memcpy(buf0[len..].ptr, group.name.ptr, group.name.len);
                     len +%= group.name.len;
                     @ptrCast(*[2]u8, buf0[len..].ptr).* = ":\n".*;
                     len +%= 2;
                     for (group.targets()) |target| {
-                        @memset(buf0[len..].ptr, ' ', 4);
+                        mach.memset(buf0[len..].ptr, ' ', 4);
                         len +%= 4;
-                        @memcpy(buf0[len..].ptr, target.name.ptr, target.name.len);
+                        mach.memcpy(buf0[len..].ptr, target.name.ptr, target.name.len);
                         len +%= target.name.len;
                         var count: u64 = name_max_width -% target.name.len;
                         if (show_root) {
-                            @memset(buf0[len..].ptr, ' ', count);
+                            mach.memset(buf0[len..].ptr, ' ', count);
                             len +%= count;
-                            @memcpy(buf0[len..].ptr, target.root.ptr, target.root.len);
+                            mach.memcpy(buf0[len..].ptr, target.root.ptr, target.root.len);
                             len +%= target.root.len;
                         }
                         if (show_descr) {
                             count = root_max_width -% target.root.len;
-                            @memset(buf0[len..].ptr, ' ', count);
+                            mach.memset(buf0[len..].ptr, ' ', count);
                             len +%= count;
                             if (target.descr) |descr| {
-                                @memcpy(buf0[len..].ptr, descr.ptr, descr.len);
+                                mach.memcpy(buf0[len..].ptr, descr.ptr, descr.len);
                                 len +%= descr.len;
                             }
                         }
@@ -1309,7 +1309,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     @ptrCast(*@TypeOf(faint_s.*), buf + len).* = faint_s.*;
                     len +%= note_s.len;
                 }
-                @memcpy(buf + len, about.ptr, about.len);
+                mach.memcpy(buf + len, about.ptr, about.len);
                 len +%= about.len;
                 @ptrCast(*[2]u8, buf + len).* = ": ".*;
                 len +%= 2;
@@ -1367,15 +1367,15 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 var len: u64 = 0;
                 @ptrCast(*@TypeOf(trace_s.*), buf + len).* = trace_s.*;
                 len +%= trace_s.len;
-                @memcpy(buf + len, pathname.ptr, pathname.len);
+                mach.memcpy(buf + len, pathname.ptr, pathname.len);
                 len +%= pathname.len;
                 buf[len] = ':';
                 len +%= 1;
-                @memcpy(buf + len, line_s.ptr, line_s.len);
+                mach.memcpy(buf + len, line_s.ptr, line_s.len);
                 len +%= line_s.len;
                 buf[len] = ':';
                 len +%= 1;
-                @memcpy(buf + len, column_s.ptr, column_s.len);
+                mach.memcpy(buf + len, column_s.ptr, column_s.len);
                 return len +% column_s.len;
             }
             fn writeTimes(buf: [*]u8, count: u64) u64 {
@@ -1383,7 +1383,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 const count_s: []const u8 = builtin.fmt.ud64(count).readAll();
                 @ptrCast(*[6]u8, buf).* = "\x1b[2m (".*;
                 var len: u64 = 6;
-                @memcpy(buf + len, count_s.ptr, count_s.len);
+                mach.memcpy(buf + len, count_s.ptr, count_s.len);
                 len +%= count_s.len;
                 @ptrCast(*[12]u8, buf).* = " times)\x1b[0m\n".*;
                 len +%= 12;
@@ -1398,11 +1398,11 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 var len: u64 = 0;
                 if (fancy_hl_line) {
                     var pos: u64 = indent +% before_caret;
-                    @memcpy(buf, line.ptr, indent);
+                    mach.memcpy(buf, line.ptr, indent);
                     len +%= indent;
                     @ptrCast(*@TypeOf(bold_s.*), buf + len).* = bold_s.*;
                     len +%= bold_s.len;
-                    @memcpy(buf + len, line[indent..pos].ptr, before_caret);
+                    mach.memcpy(buf + len, line[indent..pos].ptr, before_caret);
                     len +%= before_caret;
                     @ptrCast(*@TypeOf(hi_red_s.*), buf + len).* = hi_red_s.*;
                     len +%= hi_red_s.len;
@@ -1411,25 +1411,25 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     pos = pos +% 1;
                     @ptrCast(*@TypeOf(bold_s.*), buf + len).* = bold_s.*;
                     len +%= bold_s.len;
-                    @memcpy(buf + len, line[pos .. pos + after_caret].ptr, after_caret);
+                    mach.memcpy(buf + len, line[pos .. pos + after_caret].ptr, after_caret);
                     len +%= after_caret;
                     buf[len] = '\n';
                     len +%= 1;
                 } else {
-                    @memcpy(buf, line.ptr, line.len);
+                    mach.memcpy(buf, line.ptr, line.len);
                     len = line.len;
                     buf[len] = '\n';
                     len +%= 1;
                 }
-                @memset(buf + len, ' ', indent);
+                mach.memset(buf + len, ' ', indent);
                 len +%= indent;
                 @ptrCast(*@TypeOf(tilde_s.*), buf + len).* = tilde_s.*;
                 len +%= tilde_s.len;
-                @memset(buf + len, '~', before_caret);
+                mach.memset(buf + len, '~', before_caret);
                 len +%= before_caret;
                 buf[len] = '^';
                 len +%= 1;
-                @memset(buf + len, '~', after_caret);
+                mach.memset(buf + len, '~', after_caret);
                 len +%= after_caret;
                 @ptrCast(*[5]u8, buf + len).* = next_s.*;
                 return len +% next_s.len;
@@ -1442,17 +1442,17 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 while (bytes[idx] != 0) : (idx +%= 1) {
                     if (bytes[idx] == '\n') {
                         const line: []u8 = bytes[next..idx];
-                        @memcpy(buf + len, line.ptr, line.len);
+                        mach.memcpy(buf + len, line.ptr, line.len);
                         len +%= line.len;
                         buf[len] = '\n';
                         len +%= 1;
-                        @memset(buf + len, ' ', indent);
+                        mach.memset(buf + len, ' ', indent);
                         len +%= indent;
                         next = idx +% 1;
                     }
                 }
                 const line: []u8 = bytes[next..idx];
-                @memcpy(buf + len, line.ptr, line.len);
+                mach.memcpy(buf + len, line.ptr, line.len);
                 len +%= line.len;
                 @ptrCast(*[5]u8, buf + len).* = next_s.*;
                 return len +% next_s.len;
@@ -1472,9 +1472,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         const ref_src: *types.SourceLocation = builtin.ptrCast(*types.SourceLocation, extra + ref_trc.src_loc);
                         const src_file: [:0]u8 = meta.manyToSlice(bytes + ref_src.src_path);
                         const decl_name: [:0]u8 = meta.manyToSlice(bytes + ref_trc.decl_name);
-                        @memset(buf + len, ' ', 4);
+                        mach.memset(buf + len, ' ', 4);
                         len +%= 4;
-                        @memcpy(buf + len, decl_name.ptr, decl_name.len);
+                        mach.memcpy(buf + len, decl_name.ptr, decl_name.len);
                         len +%= decl_name.len;
                         @ptrCast(*[2]u8, buf + len).* = ": ".*;
                         len +%= 2;
@@ -1505,19 +1505,19 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             var len: u64 = 0;
             @ptrCast(*[35]u8, &buf).* = "pub const zig_exe: [:0]const u8 = \"".*;
             len +%= 35;
-            @memcpy(buf[len..].ptr, zig_exe.ptr, zig_exe.len);
+            mach.memcpy(buf[len..].ptr, zig_exe.ptr, zig_exe.len);
             len +%= zig_exe.len;
             @ptrCast(*[41]u8, buf[len..].ptr).* = "\";\npub const build_root: [:0]const u8 = \"".*;
             len +%= 41;
-            @memcpy(buf[len..].ptr, build_root.ptr, build_root.len);
+            mach.memcpy(buf[len..].ptr, build_root.ptr, build_root.len);
             len +%= build_root.len;
             @ptrCast(*[41]u8, buf[len..].ptr).* = "\";\npub const cache_root: [:0]const u8 = \"".*;
             len +%= 41;
-            @memcpy(buf[len..].ptr, cache_root.ptr, cache_root.len);
+            mach.memcpy(buf[len..].ptr, cache_root.ptr, cache_root.len);
             len +%= cache_root.len;
             @ptrCast(*[48]u8, buf[len..].ptr).* = "\";\npub const global_cache_root: [:0]const u8 = \"".*;
             len +%= 48;
-            @memcpy(buf[len..].ptr, global_cache_root.ptr, global_cache_root.len);
+            mach.memcpy(buf[len..].ptr, global_cache_root.ptr, global_cache_root.len);
             len +%= global_cache_root.len;
             @ptrCast(*[3]u8, buf[len..].ptr).* = "\";\n".*;
             len +%= 3;
@@ -1530,7 +1530,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 return @constCast(values.ptr[0..values.len :0]);
             } else {
                 var buf: [:0]u8 = @ptrCast([:0]u8, allocate(allocator, u8, values.len));
-                @memcpy(buf.ptr, values.ptr, values.len);
+                mach.memcpy(buf.ptr, values.ptr, values.len);
                 return buf;
             }
         }
@@ -1550,7 +1550,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             const buf: [:0]u8 = @ptrCast([:0]u8, allocate(allocator, u8, len));
             var idx: u64 = 0;
             for (values) |value| {
-                @memcpy(buf[idx..].ptr, value.ptr, value.len);
+                mach.memcpy(buf[idx..].ptr, value.ptr, value.len);
                 idx +%= value.len;
             }
             return buf;
@@ -1581,14 +1581,14 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         fn reallocate(allocator: *Allocator, comptime T: type, buf: []T, count: u64) []align(@max(@alignOf(T), 8)) T {
             @setRuntimeSafety(safe);
             const ret: []align(@max(@alignOf(T), 8)) T = allocate(allocator, T, count);
-            @memcpy(@ptrCast([*]u8, ret.ptr), @ptrCast([*]const u8, buf.ptr), buf.len *% @sizeOf(T));
+            mach.memcpy(@ptrCast([*]u8, ret.ptr), @ptrCast([*]const u8, buf.ptr), buf.len *% @sizeOf(T));
             return ret;
         }
         fn allocateInternal(allocator: *Allocator, count: u64, size_of: u64, align_of: u64) u64 {
             @setRuntimeSafety(safe);
             const s_ab_addr: u64 = allocator.alignAbove(align_of);
             const s_up_addr: u64 = s_ab_addr +% count *% size_of;
-            @memset(@intToPtr([*]u8, s_up_addr), 0, size_of);
+            mach.memset(@intToPtr([*]u8, s_up_addr), 0, size_of);
             allocator.allocate(s_up_addr +% size_of);
             return s_ab_addr;
         }
@@ -1607,5 +1607,5 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
     return Type;
 }
 fn copy(comptime T: type, dest: *T, src: *const T) void {
-    @memcpy(@ptrCast([*]u8, dest), @ptrCast([*]const u8, src), @sizeOf(T));
+    mach.memcpy(@ptrCast([*]u8, dest), @ptrCast([*]const u8, src), @sizeOf(T));
 }
