@@ -272,12 +272,6 @@ pub const BuilderSpec = struct {
             .vars_type = [][*:0]u8,
         };
     }
-    fn fstat() file.StatusSpec {
-        return .{
-            .logging = .{ .Error = false, .Fault = true },
-            .errors = .{ .throw = sys.stat_errors },
-        };
-    }
 };
 pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
     const Type = struct {
@@ -983,8 +977,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             ret.* = .{ .name = name, .builder = builder, .trgs = &.{}, .trgs_len = 0 };
             return ret;
         }
-        fn getFileStatus(builder: *Builder, name: [:0]const u8) ?file.Status {
-            return file.statusAt(BuilderSpec.fstat(), builder.dir_fd, name) catch null;
+        inline fn getFileStatus(builder: *Builder, name: [:0]const u8) ?file.Status {
+            return file.statusAt(.{ .errors = .{ .throw = sys.stat_errors } }, builder.dir_fd, name) catch null;
         }
         fn getFileSize(builder: *Builder, name: [:0]const u8) u64 {
             return if (getFileStatus(builder, name)) |st| st.size else 0;
