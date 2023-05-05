@@ -17,32 +17,54 @@ pub const BuilderSpec = struct {
     logging: Logging,
     errors: Errors,
     pub const Options = struct {
-        expected_status: u8 = 0,
-        max_command_line: ?u64 = 65536,
-        max_command_args: ?u64 = 1024,
-        max_relevant_depth: u64 = 255,
-        sleep_nanoseconds: u64 = 50000,
-        build_timeout_milliseconds: u64 = 1000 * 60 * 60 * 24,
-        max_thread_count: u64 = 16,
-        stack_aligned_bytes: u64 = 8 * 1024 * 1024,
+        /// The maximum number of threads in addition to main.
+        /// Bytes allowed per thread arena (dynamic maximum)
         arena_aligned_bytes: u64 = 8 * 1024 * 1024,
+        /// Bytes allowed per thread stack (static maximum)
+        stack_aligned_bytes: u64 = 8 * 1024 * 1024,
+        /// max_thread_count=0 is single-threaded.
+        max_thread_count: u64 = 16,
+        /// Lowest allocated byte address for thread stacks. This field and the
+        /// two previous fields derive the arena lowest allocated byte address,
+        /// as this is the first unallocated byte address of the thread space.
         stack_lb_addr: u64 = 0x700000000000,
+        /// This value is compared with return codes to determine whether a
+        /// system or compile command succeeded.
+        expected_status: u8 = 0,
+        /// Assert no command line exceeds this length in bytes, making
+        /// buildLength/formatLength unnecessary.
+        max_command_line: ?u64 = 65536,
+        /// Assert no command line exceeds this number of individual arguments.
+        max_command_args: ?u64 = 1024,
+        /// Sleep this amount of time in nanoseconds between dependency scans.
+        sleep_nanoseconds: u64 = 50000,
+        /// The maximum amount of time allowed per build target in milliseconds.
+        build_timeout_milliseconds: u64 = 1000 * 60 * 60 * 24,
+        /// Enables logging for change of state of targets.
         show_state: bool = false,
+        /// Module containing full paths of zig_exe, build_root, cache_root, and
+        /// global_cache_root. May be useful for metaprogramming.
         env_name: [:0]const u8 = "env.zig",
-        build_name: [:0]const u8 = "build.zig",
-        zig_out_dir: [:0]const u8 = "zig-out/",
-        zig_cache_dir: [:0]const u8 = "zig-cache/",
+        /// Basename of output directory relative to build root.
+        zig_out_dir: [:0]const u8 = "zig-out",
+        /// Basename of cache directory relative to build root.
+        zig_cache_dir: [:0]const u8 = "zig-cache",
+        /// Basename of executables output directory relative to output directory.
         exe_out_name: [:0]const u8 = "bin",
+        /// Basename of auxiliary output directory relative to output directory.
         aux_out_name: [:0]const u8 = "aux",
-        h_ext: [:0]const u8 = ".h",
-        lib_ext: [:0]const u8 = ".so",
-        obj_ext: [:0]const u8 = ".o",
-        asm_ext: [:0]const u8 = ".s",
-        llvm_bc_ext: [:0]const u8 = ".bc",
-        llvm_ir_ext: [:0]const u8 = ".ll",
-        analysis_ext: [:0]const u8 = ".json",
-        docs_ext: [:0]const u8 = ".html",
-        implib_ext: [:0]const u8 = ".lib",
+        /// Configuration for output pathnames
+        out_extensions: Outputs = .{
+            .h = ".h",
+            .lib = ".so",
+            .obj = ".o",
+            .@"asm" = ".s",
+            .llvm_bc = ".bc",
+            .llvm_ir = ".ll",
+            .analysis = ".json",
+            .docs = ".html",
+            .implib = ".lib",
+        },
     };
     pub const Logging = packed struct {
         close: builtin.Logging.Field(file.CloseSpec),
@@ -81,6 +103,17 @@ pub const BuilderSpec = struct {
         poll: sys.ErrorPolicy,
         sleep: sys.ErrorPolicy,
         clock: sys.ErrorPolicy,
+    };
+    const Outputs = struct {
+        h: [:0]const u8,
+        lib: [:0]const u8,
+        obj: [:0]const u8,
+        @"asm": [:0]const u8,
+        llvm_bc: [:0]const u8,
+        llvm_ir: [:0]const u8,
+        analysis: [:0]const u8,
+        docs: [:0]const u8,
+        implib: [:0]const u8,
     };
     const thread_map_options: mem.MapSpec.Options = .{
         .grows_down = true,
@@ -304,7 +337,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 builder: *Builder,
                 task: types.Task,
                 depth: u64,
-            ) sys.Call(.{
+            ) sys.ErrorUnion(.{
                 .throw = builder_spec.errors.clock.throw ++
                     builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
                 .abort = builder_spec.errors.clock.abort ++
@@ -333,7 +366,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 task: types.Task,
                 arena_index: AddressSpace.Index,
                 depth: u64,
-            ) sys.Call(.{
+            ) sys.ErrorUnion(.{
                 .throw = builder_spec.errors.clock.throw ++ builder_spec.errors.sleep.throw ++
                     builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
                 .abort = builder_spec.errors.clock.throw ++ builder_spec.errors.sleep.throw ++
@@ -367,7 +400,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 allocator: *Allocator,
                 builder: *Builder,
                 task: types.Task,
-            ) sys.Call(.{
+            ) sys.ErrorUnion(.{
                 .throw = builder_spec.errors.clock.throw ++ builder_spec.errors.sleep.throw ++
                     builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
                 .abort = builder_spec.errors.clock.throw ++ builder_spec.errors.sleep.throw ++
@@ -387,12 +420,12 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     .lib => return concatenate(allocator, &[_][]const u8{
                         zig_out_exe_dir ++ "/",
                         target.name,
-                        builder_spec.options.lib_ext,
+                        builder_spec.options.out_extensions.lib,
                     }),
                     .obj => return concatenate(allocator, &[_][]const u8{
                         zig_out_exe_dir ++ "/",
                         target.name,
-                        builder_spec.options.obj_ext,
+                        builder_spec.options.out_extensions.obj,
                     }),
                 }
             }
@@ -401,37 +434,37 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     .@"asm" => return concatenate(allocator, &[_][]const u8{
                         zig_out_aux_dir ++ "/",
                         target.name,
-                        builder_spec.options.asm_ext,
+                        builder_spec.options.out_extensions.@"asm",
                     }),
                     .llvm_ir => return concatenate(allocator, &[_][]const u8{
                         zig_out_aux_dir ++ "/",
                         target.name,
-                        builder_spec.options.llvm_ir_ext,
+                        builder_spec.options.out_extensions.llvm_ir,
                     }),
                     .llvm_bc => return concatenate(allocator, &[_][]const u8{
                         zig_out_aux_dir ++ "/",
                         target.name,
-                        builder_spec.options.llvm_bc_ext,
+                        builder_spec.options.out_extensions.llvm_bc,
                     }),
                     .h => return concatenate(allocator, &[_][]const u8{
                         zig_out_aux_dir ++ "/",
                         target.name,
-                        builder_spec.options.h_ext,
+                        builder_spec.options.out_extensions.h,
                     }),
                     .docs => return concatenate(allocator, &[_][]const u8{
                         zig_out_aux_dir ++ "/",
                         target.name,
-                        builder_spec.options.docs_ext,
+                        builder_spec.options.out_extensions.docs,
                     }),
                     .analysis => return concatenate(allocator, &[_][]const u8{
                         zig_out_aux_dir ++ "/",
                         target.name,
-                        builder_spec.options.analysis_ext,
+                        builder_spec.options.out_extensions.analysis,
                     }),
                     .implib => return concatenate(allocator, &[_][]const u8{
                         zig_out_aux_dir ++ "/",
                         target.name,
-                        builder_spec.options.implib_ext,
+                        builder_spec.options.out_extensions.implib,
                     }),
                 }
             }
@@ -663,7 +696,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             );
             return proc.Status.exit(wait.status);
         }
-        fn system(builder: *const Builder, args: [][*:0]u8, ts: *time.TimeSpec) sys.Call(.{
+        fn system(builder: *const Builder, args: [][*:0]u8, ts: *time.TimeSpec) sys.ErrorUnion(.{
             .throw = builder_spec.errors.clock.throw ++
                 builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
             .abort = builder_spec.errors.clock.throw ++
@@ -680,7 +713,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             ts.* = time.diff(try meta.wrap(time.get(builder_spec.clock(), .realtime)), ts.*);
             return proc.Status.exit(ret.status);
         }
-        fn compile(builder: *const Builder, args: [][*:0]u8, ts: *time.TimeSpec) sys.Call(.{
+        fn compile(builder: *const Builder, args: [][*:0]u8, ts: *time.TimeSpec) sys.ErrorUnion(.{
             .throw = builder_spec.errors.clock.throw ++
                 builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
             .abort = builder_spec.errors.clock.throw ++
@@ -699,7 +732,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             ts.* = time.diff(try meta.wrap(time.get(builder_spec.clock(), .realtime)), ts.*);
             return proc.Status.exit(wait.status);
         }
-        fn compileServer(builder: *const Builder, allocator: *Builder.Allocator, args: [][*:0]u8, ts: *time.TimeSpec) sys.Call(.{
+        fn compileServer(builder: *const Builder, allocator: *Builder.Allocator, args: [][*:0]u8, ts: *time.TimeSpec) sys.ErrorUnion(.{
             .throw = builder_spec.errors.clock.throw ++
                 builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
             .abort = builder_spec.errors.clock.throw ++
@@ -775,7 +808,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 target: *Target,
                 task: types.Task,
                 depth: u64,
-            ) sys.Call(.{
+            ) sys.ErrorUnion(.{
                 .throw = builder_spec.errors.clock.throw ++
                     builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
                 .abort = builder_spec.errors.clock.throw ++
@@ -817,7 +850,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 return buf[0..command_line.formatWriteBuf(target.format_cmd, builder.zig_exe, root_path, buf.ptr) :0];
             }
         }
-        fn executeCompilerCommand(builder: *Builder, allocator: *Allocator, target: *Target, depth: u64, cmd: *const CompilerFn) sys.Call(.{
+        fn executeCompilerCommand(builder: *Builder, allocator: *Allocator, target: *Target, _: u64, cmd: *const CompilerFn) sys.ErrorUnion(.{
             .throw = builder_spec.errors.clock.throw ++
                 builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
             .abort = builder_spec.errors.clock.throw ++
@@ -845,16 +878,14 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     builder.compileServer(allocator, ptrs, &build_time),
             );
             const new_size: u64 = builder.getFileSize(bin_path);
-            if (depth < builder_spec.options.max_relevant_depth) {
-                debug.buildNotice(target, build_time, old_size, new_size);
-            }
+            debug.buildNotice(target, build_time, old_size, new_size);
             const ret: bool = rc == builder_spec.options.expected_status;
             if (ret and target.build_cmd.kind == .exe) {
                 target.assertExchange(.run, .unavailable, .ready);
             }
             return ret;
         }
-        fn executeRunCommand(builder: *Builder, allocator: *Allocator, target: *Target, depth: u64) sys.Call(.{
+        fn executeRunCommand(builder: *Builder, allocator: *Allocator, target: *Target, _: u64) sys.ErrorUnion(.{
             .throw = builder_spec.errors.clock.throw ++
                 builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
             .abort = builder_spec.errors.clock.throw ++
@@ -866,13 +897,11 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             const rc: u8 = try meta.wrap(
                 builder.system(args, &run_time),
             );
-            if (rc != 0 or depth <= builder_spec.options.max_relevant_depth) {
-                debug.simpleTimedNotice(debug.about_run_s, target.name, run_time, rc);
-            }
+            debug.simpleTimedNotice(debug.about_run_s, target.name, run_time, rc);
             return rc == builder_spec.options.expected_status;
         }
 
-        pub fn init(args: [][*:0]u8, vars: [][*:0]u8) sys.Call(.{
+        pub fn init(args: [][*:0]u8, vars: [][*:0]u8) sys.ErrorUnion(.{
             .throw = builder_spec.errors.mkdir.throw ++
                 builder_spec.errors.path.throw ++ builder_spec.errors.close.throw ++ builder_spec.errors.create.throw,
             .abort = builder_spec.errors.mkdir.abort ++
@@ -1015,7 +1044,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             return false;
         }
         const dup3_spec: file.DuplicateSpec = builder_spec.dup3();
-        fn openChild(in: file.Pipe, out: file.Pipe) sys.Call(.{
+        fn openChild(in: file.Pipe, out: file.Pipe) sys.ErrorUnion(.{
             .throw = builder_spec.errors.close.throw ++ builder_spec.errors.dup3.throw,
             .abort = builder_spec.errors.close.abort ++ builder_spec.errors.dup3.abort,
         }, void) {
@@ -1032,7 +1061,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 file.duplicateTo(builder_spec.dup3(), out.write, 1),
             );
         }
-        fn openParent(in: file.Pipe, out: file.Pipe) sys.Call(builder_spec.errors.close, void) {
+        fn openParent(in: file.Pipe, out: file.Pipe) sys.ErrorUnion(builder_spec.errors.close, void) {
             try meta.wrap(
                 file.close(builder_spec.close(), in.read),
             );
@@ -1052,8 +1081,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         const threadspace_options: mem.ArenaOptions = .{
             .thread_safe = true,
         };
-        const zig_out_exe_dir: [:0]const u8 = builder_spec.options.zig_out_dir ++ builder_spec.options.exe_out_name;
-        const zig_out_aux_dir: [:0]const u8 = builder_spec.options.zig_out_dir ++ builder_spec.options.aux_out_name;
+        const zig_out_exe_dir: [:0]const u8 = builder_spec.options.zig_out_dir ++ "/" ++ builder_spec.options.exe_out_name;
+        const zig_out_aux_dir: [:0]const u8 = builder_spec.options.zig_out_dir ++ "/" ++ builder_spec.options.aux_out_name;
         pub const debug = struct {
             const about_run_s: [:0]const u8 = builtin.debug.about("run");
             const about_build_s: [:0]const u8 = builtin.debug.about("build");
