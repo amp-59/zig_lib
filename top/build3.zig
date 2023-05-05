@@ -44,31 +44,34 @@ pub const BuilderSpec = struct {
         show_targets: bool = false,
         /// Enables logging for build job statistics.
         show_stats: bool = true,
-        /// Module containing full paths of zig_exe, build_root, cache_root, and
-        /// global_cache_root. May be useful for metaprogramming.
-        env_name: [:0]const u8 = "env.zig",
-        /// Basename of output directory relative to build root.
-        zig_out_dir: [:0]const u8 = "zig-out",
-        /// Basename of cache directory relative to build root.
-        zig_cache_dir: [:0]const u8 = "zig-cache",
-        /// Basename of executables output directory relative to output directory.
-        exe_out_name: [:0]const u8 = "bin",
-        /// Basename of auxiliary output directory relative to output directory.
-        aux_out_name: [:0]const u8 = "aux",
-        /// Basename of statistics output directory relative to global cache root.
-        stats_out_name: [:0]const u8 = "stats",
+        names: struct {
+            /// Module containing full paths of zig_exe, build_root, cache_root, and
+            /// global_cache_root. May be useful for metaprogramming.
+            env: [:0]const u8 = "env",
+            /// Basename of output directory relative to build root.
+            zig_out_dir: [:0]const u8 = "zig-out",
+            /// Basename of cache directory relative to build root.
+            zig_cache_dir: [:0]const u8 = "zig-cache",
+            /// Basename of statistics directory relative to build root.
+            zig_stat_dir: [:0]const u8 = "zig-stat",
+            /// Basename of executables output directory relative to output directory.
+            exe_out_dir: [:0]const u8 = "bin",
+            /// Basename of auxiliary output directory relative to output directory.
+            aux_out_dir: [:0]const u8 = "aux",
+        } = .{},
         /// Configuration for output pathnames
-        out_extensions: Outputs = .{
-            .h = ".h",
-            .lib = ".so",
-            .obj = ".o",
-            .@"asm" = ".s",
-            .llvm_bc = ".bc",
-            .llvm_ir = ".ll",
-            .analysis = ".json",
-            .docs = ".html",
-            .implib = ".lib",
-        },
+        extensions: struct {
+            zig: [:0]const u8 = ".zig",
+            h: [:0]const u8 = ".h",
+            lib: [:0]const u8 = ".so",
+            obj: [:0]const u8 = ".o",
+            @"asm": [:0]const u8 = ".s",
+            llvm_bc: [:0]const u8 = ".bc",
+            llvm_ir: [:0]const u8 = ".ll",
+            analysis: [:0]const u8 = ".json",
+            docs: [:0]const u8 = ".docs",
+            implib: [:0]const u8 = ".lib",
+        } = .{},
     };
     pub const Logging = packed struct {
         close: builtin.Logging.Field(file.CloseSpec),
@@ -108,17 +111,6 @@ pub const BuilderSpec = struct {
         sleep: sys.ErrorPolicy,
         clock: sys.ErrorPolicy,
     };
-    const Outputs = struct {
-        h: [:0]const u8,
-        lib: [:0]const u8,
-        obj: [:0]const u8,
-        @"asm": [:0]const u8,
-        llvm_bc: [:0]const u8,
-        llvm_ir: [:0]const u8,
-        analysis: [:0]const u8,
-        docs: [:0]const u8,
-        implib: [:0]const u8,
-    };
     const thread_map_options: mem.MapSpec.Options = .{
         .grows_down = true,
     };
@@ -128,6 +120,10 @@ pub const BuilderSpec = struct {
     const create_options: file.CreateSpec.Options = .{
         .exclusive = false,
         .write = .truncate,
+    };
+    const create2_options: file.CreateSpec.Options = .{
+        .exclusive = false,
+        .write = .append,
     };
     fn clock(comptime builder_spec: BuilderSpec) time.ClockSpec {
         return .{ .errors = builder_spec.errors.clock };
@@ -158,6 +154,13 @@ pub const BuilderSpec = struct {
             .errors = builder_spec.errors.write,
             .logging = builder_spec.logging.write,
             .child = types.Message.ClientHeader,
+        };
+    }
+    fn write3(comptime builder_spec: BuilderSpec) file.WriteSpec {
+        return .{
+            .errors = builder_spec.errors.write,
+            .logging = builder_spec.logging.write,
+            .child = types.Record,
         };
     }
     fn read(comptime builder_spec: BuilderSpec) file.ReadSpec {
@@ -254,6 +257,13 @@ pub const BuilderSpec = struct {
             .options = create_options,
         };
     }
+    fn create2(comptime builder_spec: BuilderSpec) file.CreateSpec {
+        return .{
+            .errors = builder_spec.errors.create,
+            .logging = builder_spec.logging.create,
+            .options = create2_options,
+        };
+    }
     fn execve(comptime builder_spec: BuilderSpec) file.ExecuteSpec {
         return .{
             .errors = builder_spec.errors.execve,
@@ -275,12 +285,12 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         build_root: [:0]const u8,
         cache_root: [:0]const u8,
         global_cache_root: [:0]const u8,
-        dir_fd: u64,
         args: [][*:0]u8,
         args_len: u64,
         vars: [][*:0]u8,
         grps: []*Group = &.{},
         grps_len: u64 = 0,
+        dir_fd: u64 = undefined,
         const Builder = @This();
         pub const AddressSpace = mem.GenericRegularAddressSpace(.{
             .label = "arena",
@@ -416,12 +426,12 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     .lib => return concatenate(allocator, &[_][]const u8{
                         zig_out_exe_dir ++ "/",
                         target.name,
-                        builder_spec.options.out_extensions.lib,
+                        builder_spec.options.extensions.lib,
                     }),
                     .obj => return concatenate(allocator, &[_][]const u8{
                         zig_out_exe_dir ++ "/",
                         target.name,
-                        builder_spec.options.out_extensions.obj,
+                        builder_spec.options.extensions.obj,
                     }),
                 }
             }
@@ -430,37 +440,37 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     .@"asm" => return concatenate(allocator, &[_][]const u8{
                         zig_out_aux_dir ++ "/",
                         target.name,
-                        builder_spec.options.out_extensions.@"asm",
+                        builder_spec.options.extensions.@"asm",
                     }),
                     .llvm_ir => return concatenate(allocator, &[_][]const u8{
                         zig_out_aux_dir ++ "/",
                         target.name,
-                        builder_spec.options.out_extensions.llvm_ir,
+                        builder_spec.options.extensions.llvm_ir,
                     }),
                     .llvm_bc => return concatenate(allocator, &[_][]const u8{
                         zig_out_aux_dir ++ "/",
                         target.name,
-                        builder_spec.options.out_extensions.llvm_bc,
+                        builder_spec.options.extensions.llvm_bc,
                     }),
                     .h => return concatenate(allocator, &[_][]const u8{
                         zig_out_aux_dir ++ "/",
                         target.name,
-                        builder_spec.options.out_extensions.h,
+                        builder_spec.options.extensions.h,
                     }),
                     .docs => return concatenate(allocator, &[_][]const u8{
                         zig_out_aux_dir ++ "/",
                         target.name,
-                        builder_spec.options.out_extensions.docs,
+                        builder_spec.options.extensions.docs,
                     }),
                     .analysis => return concatenate(allocator, &[_][]const u8{
                         zig_out_aux_dir ++ "/",
                         target.name,
-                        builder_spec.options.out_extensions.analysis,
+                        builder_spec.options.extensions.analysis,
                     }),
                     .implib => return concatenate(allocator, &[_][]const u8{
                         zig_out_aux_dir ++ "/",
                         target.name,
-                        builder_spec.options.out_extensions.implib,
+                        builder_spec.options.extensions.implib,
                     }),
                 }
             }
@@ -663,15 +673,12 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             @setRuntimeSafety(safe);
             return builder.grps[0..builder.grps_len];
         }
-        fn clientLoop(allocator: *Allocator, out: file.Pipe, ts: *time.TimeSpec, pid: u64) u8 {
-            var fds: [1]file.PollFd = .{
-                .{ .fd = out.read, .expect = .{ .input = true } },
-            };
+        inline fn clientLoop(allocator: *Allocator, out: file.Pipe, build_time: *time.TimeSpec, pid: u64) u8 {
             const save: Allocator.Save = allocator.save();
+            var fd: file.PollFd = .{ .fd = out.read, .expect = .{ .input = true } };
             while (try meta.wrap(
-                file.poll(builder_spec.poll(), &fds, builder_spec.options.build_timeout_milliseconds),
-            )) : (fds[0].actual = .{}) {
-                defer allocator.restore(save);
+                file.pollOne(builder_spec.poll(), &fd, builder_spec.options.build_timeout_milliseconds),
+            )) : (fd.actual = .{}) {
                 const hdr: *types.Message.ServerHeader = create(allocator, types.Message.ServerHeader);
                 try meta.wrap(
                     file.readOne(builder_spec.read3(), out.read, hdr),
@@ -690,11 +697,13 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 if (hdr.tag == .error_bundle) {
                     break debug.writeErrors(allocator, types.Message.ErrorHeader.create(msg));
                 }
+                allocator.restore(save);
             }
+            allocator.restore(save);
             const wait: proc.Return = try meta.wrap(
                 proc.waitPid(builder_spec.waitpid(), .{ .pid = pid }),
             );
-            ts.* = time.diff(try meta.wrap(time.get(builder_spec.clock(), .realtime)), ts.*);
+            build_time.* = time.diff(try meta.wrap(time.get(builder_spec.clock(), .realtime)), build_time.*);
             try meta.wrap(
                 file.close(builder_spec.close(), out.read),
             );
@@ -717,7 +726,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             ts.* = time.diff(try meta.wrap(time.get(builder_spec.clock(), .realtime)), ts.*);
             return proc.Status.exit(ret.status);
         }
-        fn compile(builder: *const Builder, args: [][*:0]u8, ts: *time.TimeSpec) sys.ErrorUnion(.{
+        inline fn compile(builder: *const Builder, args: [][*:0]u8, ts: *time.TimeSpec) sys.ErrorUnion(.{
             .throw = builder_spec.errors.clock.throw ++
                 builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
             .abort = builder_spec.errors.clock.throw ++
@@ -736,7 +745,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             ts.* = time.diff(try meta.wrap(time.get(builder_spec.clock(), .realtime)), ts.*);
             return proc.Status.exit(wait.status);
         }
-        fn compileServer(builder: *const Builder, allocator: *Builder.Allocator, args: [][*:0]u8, ts: *time.TimeSpec) sys.ErrorUnion(.{
+        inline fn compileServer(builder: *const Builder, allocator: *Builder.Allocator, args: [][*:0]u8, ts: *time.TimeSpec) sys.ErrorUnion(.{
             .throw = builder_spec.errors.clock.throw ++
                 builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
             .abort = builder_spec.errors.clock.throw ++
@@ -922,31 +931,16 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             if (max_thread_count != 0) {
                 try meta.wrap(mem.map(builder_spec.map(), stack_lb_addr, stack_up_addr -% stack_lb_addr));
             }
-            const build_root: [:0]const u8 = meta.manyToSlice(args[2]);
-            const build_root_fd: u64 = try meta.wrap(
-                file.path(builder_spec.path(), build_root),
-            );
-            const cache_root: [:0]const u8 = meta.manyToSlice(args[3]);
-            const cache_root_fd: u64 = try meta.wrap(
-                file.path(builder_spec.path(), cache_root),
-            );
-            const global_cache_root: [:0]const u8 = meta.manyToSlice(args[4]);
-            const global_cache_root_fd: u64 = try meta.wrap(
-                file.path(builder_spec.path(), global_cache_root),
-            );
             const zig_exe: [:0]const u8 = meta.manyToSlice(args[1]);
-            const env_fd: u64 = try meta.wrap(
-                file.createAt(builder_spec.create(), cache_root_fd, builder_spec.options.env_name, file.file_mode),
-            );
-            writeEnv(env_fd, zig_exe, build_root, cache_root, global_cache_root);
+            const build_root: [:0]const u8 = meta.manyToSlice(args[2]);
+            const cache_root: [:0]const u8 = meta.manyToSlice(args[3]);
+            const global_cache_root: [:0]const u8 = meta.manyToSlice(args[4]);
+            const build_root_fd: u64 = try meta.wrap(file.path(builder_spec.path(), build_root));
             try meta.wrap(
-                file.close(builder_spec.close(), env_fd),
-            );
-            try meta.wrap(
-                file.close(builder_spec.close(), cache_root_fd),
+                file.makeDirAt(builder_spec.mkdir(), build_root_fd, builder_spec.options.names.zig_out_dir, file.dir_mode),
             );
             try meta.wrap(
-                file.makeDirAt(builder_spec.mkdir(), build_root_fd, builder_spec.options.zig_out_dir, file.dir_mode),
+                file.makeDirAt(builder_spec.mkdir(), build_root_fd, builder_spec.options.names.zig_stat_dir, file.dir_mode),
             );
             try meta.wrap(
                 file.makeDirAt(builder_spec.mkdir(), build_root_fd, zig_out_exe_dir, file.dir_mode),
@@ -954,8 +948,18 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             try meta.wrap(
                 file.makeDirAt(builder_spec.mkdir(), build_root_fd, zig_out_aux_dir, file.dir_mode),
             );
+            const cache_root_fd: u64 = try meta.wrap(
+                file.path(builder_spec.path(), cache_root),
+            );
+            const env_fd: u64 = try meta.wrap(
+                file.createAt(builder_spec.create(), cache_root_fd, env_basename, file.file_mode),
+            );
+            writeEnv(env_fd, zig_exe, build_root, cache_root, global_cache_root);
             try meta.wrap(
-                file.makeDirAt(builder_spec.mkdir(), global_cache_root_fd, builder_spec.options.stats_out_name, file.dir_mode),
+                file.close(builder_spec.close(), env_fd),
+            );
+            try meta.wrap(
+                file.close(builder_spec.close(), cache_root_fd),
             );
             return .{
                 .zig_exe = zig_exe,
@@ -1077,7 +1081,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             return false;
         }
-        const dup3_spec: file.DuplicateSpec = builder_spec.dup3();
         fn openChild(in: file.Pipe, out: file.Pipe) sys.ErrorUnion(.{
             .throw = builder_spec.errors.close.throw ++ builder_spec.errors.dup3.throw,
             .abort = builder_spec.errors.close.abort ++ builder_spec.errors.dup3.abort,
@@ -1115,8 +1118,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         const threadspace_options: mem.ArenaOptions = .{
             .thread_safe = true,
         };
-        const zig_out_exe_dir: [:0]const u8 = builder_spec.options.zig_out_dir ++ "/" ++ builder_spec.options.exe_out_name;
-        const zig_out_aux_dir: [:0]const u8 = builder_spec.options.zig_out_dir ++ "/" ++ builder_spec.options.aux_out_name;
+        const zig_out_exe_dir: [:0]const u8 = builder_spec.options.names.zig_out_dir ++ "/" ++ builder_spec.options.names.exe_out_dir;
+        const zig_out_aux_dir: [:0]const u8 = builder_spec.options.names.zig_out_dir ++ "/" ++ builder_spec.options.names.aux_out_dir;
+        const env_basename: [:0]const u8 = builder_spec.options.names.env ++ builder_spec.options.extensions.zig;
         pub const debug = struct {
             const about_run_s: [:0]const u8 = builtin.debug.about("run");
             const about_build_s: [:0]const u8 = builtin.debug.about("build");
@@ -1563,6 +1567,20 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 builtin.debug.write(meta.manyToSlice(bytes + list.compile_log_text));
             }
         };
+        fn writeRecord(builder: *Builder, name: [:0]const u8, record: types.Record) void {
+            var buf: [4096]u8 = undefined;
+            var len: u64 = 0;
+            mach.memcpy(&buf, builder_spec.options.names.zig_stat_dir.ptr, builder_spec.options.names.zig_stat_dir.len);
+            len +%= builder_spec.options.names.zig_stat_dir.len;
+            buf[len] = '/';
+            len +%= 1;
+            mach.memcpy(buf[len..].ptr, name.ptr, name.len);
+            len +%= name.len;
+            buf[len] = 0;
+            const fd: u64 = try meta.wrap(file.createAt(builder_spec.create2(), builder.dir_fd, buf[0..len :0], file.file_mode));
+            try meta.wrap(file.writeOne(builder_spec.write3(), fd, record));
+            try meta.wrap(file.close(builder_spec.close(), fd));
+        }
         inline fn writeEnv(env_fd: u64, zig_exe: []const u8, build_root: []const u8, cache_root: []const u8, global_cache_root: []const u8) void {
             var buf: [4096 *% 8]u8 = undefined;
             var len: u64 = 0;
