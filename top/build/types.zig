@@ -571,18 +571,25 @@ pub const InverseOptionSpec = struct {
     /// Simple argument type
     arg_info: ArgInfo = ArgInfo.boolean(),
 };
-pub const Record = extern struct {
-    /// Date and time of build in epochseconds, 8 bytes
-    epochseconds: u64,
+pub const Record = packed struct {
     /// Build duration in milliseconds, max 50 days
-    duration: u32,
+    durat: u32,
     /// Output size in bytes, max 4GiB
     size: u32,
     /// Extra
-    detail: extern struct {
+    detail: packed struct {
         /// Whether the output was stripped
         strip: bool,
         /// The optimisation/safety mode for the output
         mode: builtin.Mode,
     },
+    pub fn init(ts: time.TimeSpec, size: u64, build_cmd: anytype) Record {
+        const mode = build_cmd.mode orelse .Debug;
+        const strip = build_cmd.strip orelse (mode == .ReleaseSmall);
+        return .{
+            .durat = @intCast(u32, (ts.sec * 1_000) +% (ts.nsec / 1_000_000)),
+            .size = @intCast(u32, size),
+            .detail = .{ .mode = mode, .strip = strip },
+        };
+    }
 };
