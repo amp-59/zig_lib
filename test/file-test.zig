@@ -87,14 +87,12 @@ fn testPoll() !void {
     try file.poll(poll_spec, &pollfds, 100);
 }
 fn testRecords() !void {
-    const global: []const u8 = comptime builtin.globalCacheDir();
     const build_root: []const u8 = comptime builtin.buildRoot();
-
-    const stats_root: []const u8 = global ++ "/stats";
-    const proj_stats_root: []const u8 = comptime stats_root ++ "/" ++ file.basename(build_root);
-
-    builtin.debug.write("stats_root: " ++ stats_root ++ "\n");
-    builtin.debug.write("proj_stats_root: " ++ proj_stats_root ++ "\n");
+    const proj_stats_root: [:0]const u8 = comptime build_root ++ "/zig-stat/file_test";
+    var buf: [4096]build.Record = undefined;
+    const fd: u64 = try file.open(.{}, proj_stats_root);
+    const rcds: []const build.Record = buf[0..try file.readSlice(.{ .child = build.Record }, fd, &buf)];
+    _ = rcds;
 }
 fn testStatusExtended() !void {
     const Fields = @TypeOf(statx_spec.options.fields);
