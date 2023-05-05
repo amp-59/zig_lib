@@ -2176,7 +2176,7 @@ inline fn syscall6(comptime sys_fn_info: Fn, args: [6]usize) isize {
         : "rcx", "r11", "memory"
     );
 }
-pub fn Call(comptime error_policy: ErrorPolicy, comptime return_type: type) type {
+pub fn ErrorUnion(comptime error_policy: ErrorPolicy, comptime return_type: type) type {
     if (error_policy.throw.len != 0) {
         if (@typeInfo(return_type) == .ErrorUnion) {
             return (builtin.ZigError(ErrorCode, error_policy.throw) ||
@@ -2196,7 +2196,7 @@ const syscalls = .{
     syscall4, syscall5,
     syscall6,
 };
-pub fn call(comptime tag: Fn, comptime errors: ErrorPolicy, comptime return_type: type, args: [tag.args()]usize) Call(errors, return_type) {
+pub fn call(comptime tag: Fn, comptime errors: ErrorPolicy, comptime return_type: type, args: [tag.args()]usize) ErrorUnion(errors, return_type) {
     const ret: isize = (comptime syscalls[tag.args()])(tag, args);
     if (return_type == noreturn) {
         unreachable;
