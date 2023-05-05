@@ -199,7 +199,6 @@ pub fn futexRequeue(
         return futex_error;
     }
 }
-
 pub const AuxiliaryVectorEntry = enum(u64) {
     null = 0,
     exec_fd = AT.EXECFD,
@@ -853,36 +852,26 @@ pub noinline fn callClone(
             :
             : "rbp", "rsp", "memory"
         );
-        //
-        const ret_addr: u64 = (tl_stack_addr +% ret_off) - stack_len;
-        const call_addr: u64 = (tl_stack_addr +% call_off) - stack_len;
-        const args_addr: u64 = (tl_stack_addr +% args_off) - stack_len;
+        const ret_addr: u64 = (tl_stack_addr +% ret_off) -% stack_len;
+        const call_addr: u64 = (tl_stack_addr +% call_off) -% stack_len;
+        const args_addr: u64 = (tl_stack_addr +% args_off) -% stack_len;
         if (@TypeOf(result_ptr) != void) {
             if (@sizeOf(@TypeOf(result_ptr.*)) <= @sizeOf(usize) or
                 @typeInfo(@TypeOf(result_ptr.*)) != .ErrorUnion)
             {
-                @intToPtr(**meta.Return(Fn), ret_addr).*.* = @call(
-                    .never_inline,
-                    @intToPtr(**Fn, call_addr).*,
-                    @intToPtr(*meta.Args(Fn), args_addr).*,
-                );
+                @intToPtr(**meta.Return(Fn), ret_addr).*.* =
+                    @call(.never_inline, @intToPtr(**Fn, call_addr).*, @intToPtr(*meta.Args(Fn), args_addr).*);
             } else {
-                @call(
-                    .never_inline,
-                    callErrorOrMediaReturnValueFunction,
-                    .{ @TypeOf(function), ret_addr, call_addr, args_addr },
-                );
+                @call(.never_inline, callErrorOrMediaReturnValueFunction, .{
+                    @TypeOf(function), ret_addr, call_addr, args_addr,
+                });
             }
         } else {
-            @call(
-                .never_inline,
-                @intToPtr(**Fn, call_addr).*,
-                @intToPtr(*meta.Args(Fn), args_addr).*,
-            );
+            @call(.never_inline, @intToPtr(**Fn, call_addr).*, @intToPtr(*meta.Args(Fn), args_addr).*);
         }
         asm volatile (
-            \\movq  $60,    %rax
-            \\movq  $0,     %rdi
+            \\movq  $60,    %%rax
+            \\movq  $0,     %%rdi
             \\syscall # exit
             ::: "rax", "rdi");
         unreachable;
@@ -1040,11 +1029,7 @@ pub fn GenericOptions(comptime Options: type) type {
     return struct {
         field_name: []const u8,
         short: ?[]const u8 = null,
-        // short_prefix: []const u8 = "-",
-        // short_anti_prefix: []const u8 = "+",
         long: ?[]const u8 = null,
-        // long_prefix: []const u8 = "--",
-        // long_anti_prefix: []const u8 = "--no-",
         assign: union(enum) {
             boolean: bool,
             argument: []const u8,
