@@ -322,7 +322,7 @@ pub const SerialSpec = struct {
         };
     }
 };
-pub fn serialWrite(comptime serial_spec: SerialSpec, comptime S: type, allocator: *serial_spec.Allocator, pathname: [:0]const u8, value: S) sys.Call(.{
+pub fn serialWrite(comptime serial_spec: SerialSpec, comptime S: type, allocator: *serial_spec.Allocator, pathname: [:0]const u8, value: S) sys.ErrorUnion(.{
     .throw = serial_spec.Allocator.map_error_policy.throw ++ serial_spec.errors.create.throw ++
         serial_spec.errors.open.throw ++ serial_spec.errors.write.throw ++ serial_spec.errors.close.throw,
     .abort = serial_spec.Allocator.map_error_policy.abort ++ serial_spec.errors.create.abort ++
@@ -347,7 +347,7 @@ pub fn serialWrite(comptime serial_spec: SerialSpec, comptime S: type, allocator
         file.close(close_spec, fd),
     );
 }
-pub fn serialRead(comptime serial_spec: SerialSpec, comptime S: type, allocator: *serial_spec.Allocator, pathname: [:0]const u8) sys.Call(.{
+pub fn serialRead(comptime serial_spec: SerialSpec, comptime S: type, allocator: *serial_spec.Allocator, pathname: [:0]const u8) sys.ErrorUnion(.{
     .throw = serial_spec.Allocator.map_error_policy.throw ++
         serial_spec.errors.open.throw ++ serial_spec.errors.read.throw ++ serial_spec.errors.close.throw,
     .abort = serial_spec.Allocator.map_error_policy.abort ++
