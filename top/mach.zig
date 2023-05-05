@@ -73,6 +73,18 @@ pub inline fn shr16T(comptime T: type, value: u16, shift_amt: u16) T {
 pub inline fn shr8T(comptime T: type, value: u8, shift_amt: u8) T {
     return @intCast(T, value >> @truncate(u3, shift_amt));
 }
+pub inline fn shr64TM(comptime T: type, value: u64, shift_amt: c_uint, comptime pop_count: comptime_int) T {
+    return @intCast(T, value >> shift_amt) & ((1 << pop_count) -% 1);
+}
+pub inline fn shr32TM(comptime T: type, value: u32, shift_amt: c_uint, comptime pop_count: comptime_int) T {
+    return @intCast(T, value >> shift_amt) & ((1 << pop_count) -% 1);
+}
+pub inline fn shr16TM(comptime T: type, value: u16, shift_amt: c_uint, comptime pop_count: comptime_int) T {
+    return @intCast(T, value >> shift_amt) & ((1 << pop_count) -% 1);
+}
+pub inline fn shr8TM(comptime T: type, value: u8, shift_amt: c_uint, comptime pop_count: comptime_int) T {
+    return @intCast(T, value >> shift_amt) & ((1 << pop_count) -% 1);
+}
 
 // Conditional moves--for integers prefer dedicated functions. Prevents lazy-
 // evaluating the conditional values by ordering their evaluation before the
