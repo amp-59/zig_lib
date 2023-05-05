@@ -1009,7 +1009,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         target.assertExchange(task, .blocking, .failed);
                         if (max_thread_count != 0) {
                             if (arena_index != max_thread_count) {
-                                builtin.proc.exitWithError(error.DependencyFailed, 2);
+                                builtin.proc.exitError(error.DependencyFailed, 2);
                             }
                         }
                         return false;
