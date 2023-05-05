@@ -1,4 +1,5 @@
 const builtin = @import("./builtin.zig");
+const mach = @import("./mach.zig");
 
 pub const Empty = struct {};
 pub const empty = &.{};
@@ -1083,7 +1084,7 @@ pub inline fn initializers(comptime T: type, comptime any: anytype) [@typeInfo(@
 pub fn initialize(comptime T: type, inits: []const Initializer) T {
     var ret: T = undefined;
     for (inits) |init| {
-        @memcpy(
+        mach.memcpy(
             @intToPtr([*]u8, @ptrToInt(&ret) +% init.dest_off),
             @intToPtr([*]const u8, init.src_addr),
             init.src_len,
