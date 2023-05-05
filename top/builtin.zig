@@ -1,8 +1,6 @@
 pub const mach = @import("./mach.zig");
 pub const config = @import("./config.zig");
-
 pub usingnamespace config;
-
 pub const Error = error{
     SubCausedOverflow,
     AddCausedOverflow,
