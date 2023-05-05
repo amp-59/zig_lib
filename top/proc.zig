@@ -827,19 +827,19 @@ pub noinline fn callClone(
     const cl_args: CloneArgs = spec.args(stack_addr, stack_len);
     const cl_args_addr: u64 = @ptrToInt(&cl_args);
     const cl_args_size: u64 = @sizeOf(CloneArgs);
-    const cl_sysno: u64 = @enumToInt(sys.Fn.clone3);
     const ret_off: u64 = 0;
     const call_off: u64 = 8;
     const args_off: u64 = 16;
     @intToPtr(**const Fn, stack_addr +% call_off).* = &function;
     @intToPtr(*meta.Args(Fn), stack_addr +% args_off).* = args;
+
     if (@TypeOf(result_ptr) != void) {
         @intToPtr(*u64, stack_addr +% ret_off).* = @ptrToInt(result_ptr);
     }
     const rc: i64 = asm volatile (
         \\syscall # clone3
         : [ret] "={rax}" (-> i64),
-        : [cl_sysno] "{rax}" (cl_sysno),
+        : [cl_sysno] "{rax}" (sys.Fn.clone3),
           [cl_args_addr] "{rdi}" (cl_args_addr),
           [cl_args_size] "{rsi}" (cl_args_size),
         : "rcx", "r11", "memory"
