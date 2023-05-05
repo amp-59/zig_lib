@@ -8,6 +8,7 @@ const mach = top.mach;
 const time = top.time;
 const proc = top.proc;
 const spec = top.spec;
+const build = top.build;
 const builtin = top.builtin;
 const testing = top.testing;
 
@@ -84,6 +85,15 @@ fn testPoll() !void {
         .{ .fd = 2, .expect = .{ .output = true } },
     };
     try file.poll(poll_spec, &pollfds, 100);
+}
+fn testRecords() !void {
+    const global: []const u8 = comptime builtin.globalCacheDir();
+    const build_root: []const u8 = comptime builtin.buildRoot();
+    const stats_root: []const u8 = global ++ "/stats";
+    const proj_stats_root: []const u8 = comptime stats_root ++ "/" ++ file.basename(build_root);
+
+    builtin.debug.write("stats_root: " ++ stats_root ++ "\n");
+    builtin.debug.write("proj_stats_root: " ++ proj_stats_root ++ "\n");
 }
 fn testStatusExtended() !void {
     const Fields = @TypeOf(statx_spec.options.fields);
@@ -219,6 +229,8 @@ fn testPreClean() !void {
     file.removeDir(remove_dir_spec, "/run/user/1000/file_test") catch {};
 }
 pub fn main() !void {
+    try meta.wrap(testRecords());
+    if (return) {}
     try meta.wrap(testPreClean());
     try meta.wrap(testStandardChannel());
     try meta.wrap(testStatusExtended());
