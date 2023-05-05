@@ -2077,14 +2077,14 @@ const debug = opaque {
         var buf: [4096 +% 128]u8 = undefined;
         var len: u64 = 0;
         var idx: u64 = 0;
-        @memcpy(buf[len..].ptr, about_execve_0_s.ptr, about_execve_0_s.len);
+        mach.memcpy(buf[len..].ptr, about_execve_0_s.ptr, about_execve_0_s.len);
         len +%= about_execve_0_s.len;
-        @memcpy(buf[len..].ptr, filename.ptr, filename.len);
+        mach.memcpy(buf[len..].ptr, filename.ptr, filename.len);
         len +%= filename.len;
         buf[len] = ' ';
         len +%= 1;
         if (filename.ptr == args[0]) {
-            @memcpy(buf[len..].ptr, "[0] ", 4);
+            mach.memcpy(buf[len..].ptr, "[0] ", 4);
             len +%= 4;
             idx +%= 1;
         }
@@ -2100,18 +2100,18 @@ const debug = opaque {
             if (len +% arg_len >= buf.len -% 37) {
                 break;
             }
-            @memcpy(buf[len..].ptr, args[idx][0..arg_len].ptr, arg_len);
+            mach.memcpy(buf[len..].ptr, args[idx][0..arg_len].ptr, arg_len);
             len +%= arg_len;
             buf[len] = ' ';
             len +%= 1;
         }
         if (argc != idx) {
             const del_s: []const u8 = builtin.fmt.ud64(argc -% idx).readAll();
-            @memcpy(buf[len..].ptr, " ... and ", 9);
+            mach.memcpy(buf[len..].ptr, " ... and ", 9);
             len +%= 9;
-            @memcpy(buf[len..].ptr, del_s.ptr, del_s.len);
+            mach.memcpy(buf[len..].ptr, del_s.ptr, del_s.len);
             len +%= del_s.len;
-            @memcpy(buf[len..].ptr, " more args ... \n", 16);
+            mach.memcpy(buf[len..].ptr, " more args ... \n", 16);
             len +%= 16;
         } else {
             buf[len] = '\n';
@@ -2131,20 +2131,20 @@ const debug = opaque {
         var buf: [max_len]u8 = undefined;
         var idx: u64 = 0;
         var len: u64 = 0;
-        @memcpy(buf[len..].ptr, about_execve_1_s.ptr, about_execve_1_s.len);
+        mach.memcpy(buf[len..].ptr, about_execve_1_s.ptr, about_execve_1_s.len);
         len +%= about_execve_1_s.len;
-        @memcpy(buf[len..].ptr, "(", 1);
+        mach.memcpy(buf[len..].ptr, "(", 1);
         len +%= 1;
-        @memcpy(buf[len..].ptr, error_name.ptr, error_name.len);
+        mach.memcpy(buf[len..].ptr, error_name.ptr, error_name.len);
         len +%= error_name.len;
-        @memcpy(buf[len..].ptr, ")", 1);
+        mach.memcpy(buf[len..].ptr, ")", 1);
         len +%= 1;
-        @memcpy(buf[len..].ptr, filename.ptr, filename.len);
+        mach.memcpy(buf[len..].ptr, filename.ptr, filename.len);
         len +%= filename.len;
         buf[len] = ' ';
         len +%= 1;
         if (filename.ptr == args[0]) {
-            @memcpy(buf[len..].ptr, "[0] ", 4);
+            mach.memcpy(buf[len..].ptr, "[0] ", 4);
             len +%= 4;
             idx +%= 1;
         }
@@ -2160,7 +2160,7 @@ const debug = opaque {
             if (len +% arg_len >= max_len -% 37) {
                 break;
             }
-            @memcpy(buf[len..].ptr, args[idx][0..arg_len].ptr, arg_len);
+            mach.memcpy(buf[len..].ptr, args[idx][0..arg_len].ptr, arg_len);
             len +%= arg_len;
             buf[len] = ' ';
             len +%= 1;
@@ -2168,11 +2168,11 @@ const debug = opaque {
         if (argc != idx) {
             const del_s: []const u8 = builtin.fmt.ud64(argc -% idx).readAll();
 
-            @memcpy(buf[len..].ptr, " ... and ", 9);
+            mach.memcpy(buf[len..].ptr, " ... and ", 9);
             len +%= 9;
-            @memcpy(buf[len..].ptr, del_s.ptr, del_s.len);
+            mach.memcpy(buf[len..].ptr, del_s.ptr, del_s.len);
             len +%= del_s.len;
-            @memcpy(buf[len..].ptr, " more args ... \n", 16);
+            mach.memcpy(buf[len..].ptr, " more args ... \n", 16);
             len +%= 16;
         } else {
             buf[len] = '\n';
@@ -2192,13 +2192,13 @@ const debug = opaque {
         @setRuntimeSafety(false);
         var len: u64 = 0;
         const fd_s: []const u8 = builtin.fmt.ud64(pollfd.fd).readAll();
-        @memset(buf[len..].ptr, ' ', 4 -% fd_s.len);
+        mach.memset(buf[len..].ptr, ' ', 4 -% fd_s.len);
         len +%= 4 -% fd_s.len;
-        @memcpy(buf[len..].ptr, fd_s.ptr, fd_s.len);
+        mach.memcpy(buf[len..].ptr, fd_s.ptr, fd_s.len);
         len +%= fd_s.len;
         buf[len] = ':';
         len +%= 1;
-        @memset(buf[len..].ptr, ' ', 11);
+        mach.memset(buf[len..].ptr, ' ', 11);
         len +%= 11;
         len +%= writeEvents(buf[len..], pollfd, "expect: ", 4);
         len +%= writeEvents(buf[len..], pollfd, " actual: ", 6);
@@ -2213,14 +2213,14 @@ const debug = opaque {
             return 0;
         }
         var len: u64 = 0;
-        @memcpy(buf.ptr, about.ptr, about.len);
+        mach.memcpy(buf.ptr, about.ptr, about.len);
         len +%= about.len;
         inline for (@typeInfo(Events).Struct.fields) |field| {
             if (field.type != bool) {
                 continue;
             }
             if (@field(events, field.name)) {
-                @memcpy(buf[len..].ptr, field.name ++ ",", field.name.len +% 1);
+                mach.memcpy(buf[len..].ptr, field.name ++ ",", field.name.len +% 1);
                 len +%= field.name.len +% 1;
             }
         }
