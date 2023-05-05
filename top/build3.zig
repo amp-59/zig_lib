@@ -1368,7 +1368,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     len +%= bold_s.len;
                 } else if (about.ptr == note_s) {
                     @ptrCast(*@TypeOf(faint_s.*), buf + len).* = faint_s.*;
-                    len +%= note_s.len;
+                    len +%= faint_s.len;
                 }
                 mach.memcpy(buf + len, about.ptr, about.len);
                 len +%= about.len;
