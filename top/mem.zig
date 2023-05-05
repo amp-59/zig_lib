@@ -1591,7 +1591,7 @@ pub const SimpleAllocator = struct {
         allocator.finish = allocator.start;
     }
     pub fn unmap(allocator: *Allocator) void {
-        sys.call(.munmap, .{}, void, allocator.start, allocator.finish - allocator.start);
+        sys.call(.munmap, .{}, void, .{ allocator.start, allocator.finish - allocator.start });
     }
     pub const Save = struct { u64 };
 
@@ -1617,7 +1617,7 @@ pub const SimpleAllocator = struct {
         return (value +% mask) & ~mask;
     }
     inline fn copy(dest: u64, src: u64, len: u64) void {
-        @memcpy(@intToPtr([*]u8, dest), @intToPtr([*]const u8, src), len);
+        mach.memcpy(@intToPtr([*]u8, dest), @intToPtr([*]const u8, src), len);
     }
     export fn allocateInternal(
         allocator: *Allocator,
