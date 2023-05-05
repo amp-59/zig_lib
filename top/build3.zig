@@ -41,7 +41,9 @@ pub const BuilderSpec = struct {
         /// The maximum amount of time allowed per build target in milliseconds.
         build_timeout_milliseconds: u64 = 1000 * 60 * 60 * 24,
         /// Enables logging for change of state of targets.
-        show_state: bool = false,
+        show_targets: bool = false,
+        /// Enables logging for build job statistics.
+        show_stats: bool = true,
         /// Module containing full paths of zig_exe, build_root, cache_root, and
         /// global_cache_root. May be useful for metaprogramming.
         env_name: [:0]const u8 = "env.zig",
@@ -53,6 +55,8 @@ pub const BuilderSpec = struct {
         exe_out_name: [:0]const u8 = "bin",
         /// Basename of auxiliary output directory relative to output directory.
         aux_out_name: [:0]const u8 = "aux",
+        /// Basename of statistics output directory relative to global cache root.
+        stats_out_name: [:0]const u8 = "stats",
         /// Configuration for output pathnames
         out_extensions: Outputs = .{
             .h = ".h",
@@ -518,7 +522,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             fn exchange(target: *Target, task: types.Task, old_state: types.State, new_state: types.State) bool {
                 const ret: bool = target.lock.atomicExchange(task, old_state, new_state);
-                if (builtin.logging_general.Success or builder_spec.options.show_state) {
+                if (builtin.logging_general.Success or builder_spec.options.show_targets) {
                     if (ret) {
                         debug.exchangeNotice(target, task, old_state, new_state);
                     } else {
@@ -530,11 +534,11 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             fn assertExchange(target: *Target, task: types.Task, old_state: types.State, new_state: types.State) void {
                 const res: bool = target.lock.atomicExchange(task, old_state, new_state);
                 if (res) {
-                    if (builtin.logging_general.Success or builder_spec.options.show_state) {
+                    if (builtin.logging_general.Success or builder_spec.options.show_targets) {
                         debug.exchangeNotice(target, task, old_state, new_state);
                     }
                 } else {
-                    if (builtin.logging_general.Fault or builder_spec.options.show_state) {
+                    if (builtin.logging_general.Fault or builder_spec.options.show_targets) {
                         debug.noExchangeNotice(target, debug.about_state_1_s, task, old_state, new_state);
                     }
                     builtin.proc.exitGroup(2);
@@ -829,6 +833,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
         };
         fn buildWrite(builder: *Builder, target: *Target, allocator: *Allocator, root_path: types.Path) [:0]u8 {
+            @setRuntimeSafety(safe);
             const max_len: u64 = builder_spec.options.max_command_line orelse command_line.buildLength(builder, target, root_path);
             if (@hasDecl(command_line, "buildWrite")) {
                 var array: Args = Args.init(allocator, max_len);
@@ -840,6 +845,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
         }
         fn formatWrite(builder: *Builder, target: *Target, allocator: *Allocator, root_path: types.Path) [:0]u8 {
+            @setRuntimeSafety(safe);
             const max_len: u64 = builder_spec.options.max_command_line orelse command_line.formatLength(builder, target, root_path);
             if (@hasDecl(command_line, "formatWrite")) {
                 var array: Args = Args.init(allocator, max_len);
@@ -856,6 +862,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             .abort = builder_spec.errors.clock.throw ++
                 builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
         }, bool) {
+            @setRuntimeSafety(safe);
             var build_time: time.TimeSpec = undefined;
             const bin_path: [:0]const u8 = try meta.wrap(
                 target.binaryRelative(allocator),
@@ -878,7 +885,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     builder.compileServer(allocator, ptrs, &build_time),
             );
             const new_size: u64 = builder.getFileSize(bin_path);
-            debug.buildNotice(target, build_time, old_size, new_size);
+            if (builder_spec.options.show_stats) {
+                debug.buildNotice(target, build_time, old_size, new_size);
+            }
             const ret: bool = rc == builder_spec.options.expected_status;
             if (ret and target.build_cmd.kind == .exe) {
                 target.assertExchange(.run, .unavailable, .ready);
@@ -891,38 +900,63 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             .abort = builder_spec.errors.clock.throw ++
                 builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
         }, bool) {
+            @setRuntimeSafety(safe);
             target.addRunArguments(allocator, builder);
             const args: [][*:0]u8 = target.runArguments();
             var run_time: time.TimeSpec = undefined;
             const rc: u8 = try meta.wrap(
                 builder.system(args, &run_time),
             );
-            debug.simpleTimedNotice(debug.about_run_s, target.name, run_time, rc);
+            if (builder_spec.options.show_stats) {
+                debug.simpleTimedNotice(debug.about_run_s, target.name, run_time, rc);
+            }
             return rc == builder_spec.options.expected_status;
         }
-
         pub fn init(args: [][*:0]u8, vars: [][*:0]u8) sys.ErrorUnion(.{
             .throw = builder_spec.errors.mkdir.throw ++
                 builder_spec.errors.path.throw ++ builder_spec.errors.close.throw ++ builder_spec.errors.create.throw,
             .abort = builder_spec.errors.mkdir.abort ++
                 builder_spec.errors.path.abort ++ builder_spec.errors.close.abort ++ builder_spec.errors.create.abort,
         }, Builder) {
-            const zig_exe: [:0]const u8 = meta.manyToSlice(args[1]);
-            const build_root: [:0]const u8 = meta.manyToSlice(args[2]);
-            const cache_root: [:0]const u8 = meta.manyToSlice(args[3]);
-            const global_cache_root: [:0]const u8 = meta.manyToSlice(args[4]);
+            @setRuntimeSafety(safe);
             if (max_thread_count != 0) {
                 try meta.wrap(mem.map(builder_spec.map(), stack_lb_addr, stack_up_addr -% stack_lb_addr));
             }
-            const build_root_fd: u64 = try meta.wrap(file.path(builder_spec.path(), build_root));
-            const cache_root_fd: u64 = try meta.wrap(file.path(builder_spec.path(), cache_root));
-            const env_fd: u64 = try meta.wrap(file.createAt(builder_spec.create(), cache_root_fd, builder_spec.options.env_name, file.file_mode));
+            const build_root: [:0]const u8 = meta.manyToSlice(args[2]);
+            const build_root_fd: u64 = try meta.wrap(
+                file.path(builder_spec.path(), build_root),
+            );
+            const cache_root: [:0]const u8 = meta.manyToSlice(args[3]);
+            const cache_root_fd: u64 = try meta.wrap(
+                file.path(builder_spec.path(), cache_root),
+            );
+            const global_cache_root: [:0]const u8 = meta.manyToSlice(args[4]);
+            const global_cache_root_fd: u64 = try meta.wrap(
+                file.path(builder_spec.path(), global_cache_root),
+            );
+            const zig_exe: [:0]const u8 = meta.manyToSlice(args[1]);
+            const env_fd: u64 = try meta.wrap(
+                file.createAt(builder_spec.create(), cache_root_fd, builder_spec.options.env_name, file.file_mode),
+            );
             writeEnv(env_fd, zig_exe, build_root, cache_root, global_cache_root);
-            try meta.wrap(file.close(builder_spec.close(), env_fd));
-            try meta.wrap(file.close(builder_spec.close(), cache_root_fd));
-            try meta.wrap(file.makeDirAt(builder_spec.mkdir(), build_root_fd, builder_spec.options.zig_out_dir, file.dir_mode));
-            try meta.wrap(file.makeDirAt(builder_spec.mkdir(), build_root_fd, zig_out_exe_dir, file.dir_mode));
-            try meta.wrap(file.makeDirAt(builder_spec.mkdir(), build_root_fd, zig_out_aux_dir, file.dir_mode));
+            try meta.wrap(
+                file.close(builder_spec.close(), env_fd),
+            );
+            try meta.wrap(
+                file.close(builder_spec.close(), cache_root_fd),
+            );
+            try meta.wrap(
+                file.makeDirAt(builder_spec.mkdir(), build_root_fd, builder_spec.options.zig_out_dir, file.dir_mode),
+            );
+            try meta.wrap(
+                file.makeDirAt(builder_spec.mkdir(), build_root_fd, zig_out_exe_dir, file.dir_mode),
+            );
+            try meta.wrap(
+                file.makeDirAt(builder_spec.mkdir(), build_root_fd, zig_out_aux_dir, file.dir_mode),
+            );
+            try meta.wrap(
+                file.makeDirAt(builder_spec.mkdir(), global_cache_root_fd, builder_spec.options.stats_out_name, file.dir_mode),
+            );
             return .{
                 .zig_exe = zig_exe,
                 .build_root = build_root,
