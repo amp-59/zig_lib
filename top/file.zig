@@ -694,7 +694,7 @@ pub const ExecuteSpec = struct {
         return flags_bitfield;
     }
 };
-pub fn execPath(comptime spec: ExecuteSpec, pathname: [:0]const u8, args: spec.args_type, vars: spec.vars_type) sys.Call(spec.errors, spec.return_type) {
+pub fn execPath(comptime spec: ExecuteSpec, pathname: [:0]const u8, args: spec.args_type, vars: spec.vars_type) sys.ErrorUnion(spec.errors, spec.return_type) {
     const filename_buf_addr: u64 = @ptrToInt(pathname.ptr);
     const args_addr: u64 = @ptrToInt(args.ptr);
     const vars_addr: u64 = @ptrToInt(vars.ptr);
@@ -713,7 +713,7 @@ pub fn execPath(comptime spec: ExecuteSpec, pathname: [:0]const u8, args: spec.a
         return execve_error;
     }
 }
-pub fn exec(comptime spec: ExecuteSpec, fd: u64, args: spec.args_type, vars: spec.vars_type) sys.Call(spec.errors, spec.return_type) {
+pub fn exec(comptime spec: ExecuteSpec, fd: u64, args: spec.args_type, vars: spec.vars_type) sys.ErrorUnion(spec.errors, spec.return_type) {
     const args_addr: u64 = @ptrToInt(args.ptr);
     const vars_addr: u64 = @ptrToInt(vars.ptr);
     const flags: At = comptime spec.flags();
@@ -732,7 +732,7 @@ pub fn exec(comptime spec: ExecuteSpec, fd: u64, args: spec.args_type, vars: spe
         return execve_error;
     }
 }
-pub fn execAt(comptime spec: ExecuteSpec, dir_fd: u64, name: [:0]const u8, args: spec.args_type, vars: spec.vars_type) sys.Call(spec.errors, spec.return_type) {
+pub fn execAt(comptime spec: ExecuteSpec, dir_fd: u64, name: [:0]const u8, args: spec.args_type, vars: spec.vars_type) sys.ErrorUnion(spec.errors, spec.return_type) {
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
     const args_addr: u64 = @ptrToInt(args.ptr);
     const vars_addr: u64 = @ptrToInt(vars.ptr);
@@ -848,7 +848,7 @@ pub const DuplicateSpec = struct {
         return ret;
     }
 };
-pub fn readMany(comptime spec: ReadSpec, fd: u64, read_buf: [*]spec.child, read_count: u64) sys.Call(spec.errors, spec.return_type) {
+pub fn readMany(comptime spec: ReadSpec, fd: u64, read_buf: [*]spec.child, read_count: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
     const read_buf_addr: u64 = @ptrToInt(read_buf);
     const read_count_mul: u64 = @sizeOf(spec.child);
     const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
@@ -866,15 +866,15 @@ pub fn readMany(comptime spec: ReadSpec, fd: u64, read_buf: [*]spec.child, read_
         return read_error;
     }
 }
-pub inline fn readOne(comptime spec: ReadSpec, fd: u64, read_buf: *spec.child) sys.Call(spec.errors, spec.return_type) {
+pub inline fn readOne(comptime spec: ReadSpec, fd: u64, read_buf: *spec.child) sys.ErrorUnion(spec.errors, spec.return_type) {
     return readMany(spec, fd, @ptrCast([*]spec.child, read_buf), 1);
 }
-pub inline fn readSlice(comptime spec: ReadSpec, fd: u64, read_buf: []spec.child) sys.Call(spec.errors, spec.return_type) {
+pub inline fn readSlice(comptime spec: ReadSpec, fd: u64, read_buf: []spec.child) sys.ErrorUnion(spec.errors, spec.return_type) {
     return readMany(spec, fd, read_buf.ptr, read_buf.len);
 }
 pub const read = readMany;
 
-pub fn writeMany(comptime spec: WriteSpec, fd: u64, write_buf: [*]const spec.child, write_count: u64) sys.Call(spec.errors, spec.return_type) {
+pub fn writeMany(comptime spec: WriteSpec, fd: u64, write_buf: [*]const spec.child, write_count: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
     const write_buf_addr: u64 = @ptrToInt(write_buf);
     const write_count_mul: u64 = @sizeOf(spec.child);
     const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
@@ -892,15 +892,15 @@ pub fn writeMany(comptime spec: WriteSpec, fd: u64, write_buf: [*]const spec.chi
         return write_error;
     }
 }
-pub inline fn writeOne(comptime spec: WriteSpec, fd: u64, write_val: spec.child) sys.Call(spec.errors, spec.return_type) {
+pub inline fn writeOne(comptime spec: WriteSpec, fd: u64, write_val: spec.child) sys.ErrorUnion(spec.errors, spec.return_type) {
     return writeMany(spec, fd, @ptrCast([*]const spec.child, &write_val), 1);
 }
-pub inline fn writeSlice(comptime spec: WriteSpec, fd: u64, write_buf: []const spec.child) sys.Call(spec.errors, spec.return_type) {
+pub inline fn writeSlice(comptime spec: WriteSpec, fd: u64, write_buf: []const spec.child) sys.ErrorUnion(spec.errors, spec.return_type) {
     return writeMany(spec, fd, write_buf.ptr, write_buf.len);
 }
 pub const write = writeMany;
 
-pub fn open(comptime spec: OpenSpec, pathname: [:0]const u8) sys.Call(spec.errors, spec.return_type) {
+pub fn open(comptime spec: OpenSpec, pathname: [:0]const u8) sys.ErrorUnion(spec.errors, spec.return_type) {
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
     const flags: Open = comptime spec.flags();
     const logging: builtin.Logging.AcquireError = comptime spec.logging.override();
@@ -916,7 +916,7 @@ pub fn open(comptime spec: OpenSpec, pathname: [:0]const u8) sys.Call(spec.error
         return open_error;
     }
 }
-pub fn openAt(comptime spec: OpenSpec, dir_fd: u64, name: [:0]const u8) sys.Call(spec.errors, spec.return_type) {
+pub fn openAt(comptime spec: OpenSpec, dir_fd: u64, name: [:0]const u8) sys.ErrorUnion(spec.errors, spec.return_type) {
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
     const flags: Open = comptime spec.flags();
     const logging: builtin.Logging.AcquireError = comptime spec.logging.override();
@@ -932,7 +932,7 @@ pub fn openAt(comptime spec: OpenSpec, dir_fd: u64, name: [:0]const u8) sys.Call
         return open_error;
     }
 }
-pub fn socket(comptime spec: SocketSpec, domain: Domain, connection: Connection) sys.Call(spec.errors, spec.return_type) {
+pub fn socket(comptime spec: SocketSpec, domain: Domain, connection: Connection) sys.ErrorUnion(spec.errors, spec.return_type) {
     const flags: Socket = comptime spec.flags();
     const logging: builtin.Logging.AcquireError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.socket, spec.errors, spec.return_type, .{ @enumToInt(domain), flags.val | @enumToInt(connection), 0 }))) |fd| {
@@ -974,7 +974,7 @@ pub fn dirname(pathname: []const u8) []const u8 {
 pub fn basename(pathname: []const u8) []const u8 {
     return pathname[indexOfBasenameStart(pathname)..];
 }
-pub fn path(comptime spec: PathSpec, pathname: [:0]const u8) sys.Call(spec.errors, spec.return_type) {
+pub fn path(comptime spec: PathSpec, pathname: [:0]const u8) sys.ErrorUnion(spec.errors, spec.return_type) {
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
     const flags: Open = comptime spec.flags();
     const logging: builtin.Logging.AcquireError = comptime spec.logging.override();
@@ -990,7 +990,7 @@ pub fn path(comptime spec: PathSpec, pathname: [:0]const u8) sys.Call(spec.error
         return open_error;
     }
 }
-pub fn pathAt(comptime spec: PathSpec, dir_fd: u64, name: [:0]const u8) sys.Call(spec.errors, spec.return_type) {
+pub fn pathAt(comptime spec: PathSpec, dir_fd: u64, name: [:0]const u8) sys.ErrorUnion(spec.errors, spec.return_type) {
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
     const flags: Open = comptime spec.flags();
     const logging: builtin.Logging.AcquireError = comptime spec.logging.override();
@@ -1011,7 +1011,7 @@ fn writePath(buf: *[4096]u8, pathname: []const u8) [:0]u8 {
     buf[pathname.len] = 0;
     return buf[0..pathname.len :0];
 }
-fn makePathInternal(comptime spec: MakePathSpec, pathname: [:0]u8, comptime mode: Mode) sys.Call(.{
+fn makePathInternal(comptime spec: MakePathSpec, pathname: [:0]u8, comptime mode: Mode) sys.ErrorUnion(.{
     .throw = spec.errors.mkdir.throw ++ spec.errors.stat.throw,
     .abort = spec.errors.mkdir.abort ++ spec.errors.stat.abort,
 }, void) {
@@ -1034,7 +1034,7 @@ fn makePathInternal(comptime spec: MakePathSpec, pathname: [:0]u8, comptime mode
         return error.NotADirectory;
     }
 }
-pub fn makePath(comptime spec: MakePathSpec, pathname: []const u8, comptime mode: Mode) sys.Call(.{
+pub fn makePath(comptime spec: MakePathSpec, pathname: []const u8, comptime mode: Mode) sys.ErrorUnion(.{
     .throw = spec.errors.mkdir.throw ++ spec.errors.stat.throw,
     .abort = spec.errors.mkdir.abort ++ spec.errors.stat.abort,
 }, void) {
@@ -1042,7 +1042,7 @@ pub fn makePath(comptime spec: MakePathSpec, pathname: []const u8, comptime mode
     const name: [:0]u8 = writePath(&buf, pathname);
     return makePathInternal(spec, name, mode);
 }
-pub fn create(comptime spec: CreateSpec, pathname: [:0]const u8, comptime mode: Mode) sys.Call(spec.errors, spec.return_type) {
+pub fn create(comptime spec: CreateSpec, pathname: [:0]const u8, comptime mode: Mode) sys.ErrorUnion(spec.errors, spec.return_type) {
     builtin.static.assertEqual(Kind, .regular, mode.kind);
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
     const flags: Open = comptime spec.flags();
@@ -1059,7 +1059,7 @@ pub fn create(comptime spec: CreateSpec, pathname: [:0]const u8, comptime mode: 
         return open_error;
     }
 }
-pub fn createAt(comptime spec: CreateSpec, dir_fd: u64, name: [:0]const u8, comptime mode: Mode) sys.Call(spec.errors, spec.return_type) {
+pub fn createAt(comptime spec: CreateSpec, dir_fd: u64, name: [:0]const u8, comptime mode: Mode) sys.ErrorUnion(spec.errors, spec.return_type) {
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
     const flags: Open = comptime spec.flags();
     const logging: builtin.Logging.AcquireError = comptime spec.logging.override();
@@ -1075,7 +1075,7 @@ pub fn createAt(comptime spec: CreateSpec, dir_fd: u64, name: [:0]const u8, comp
         return open_error;
     }
 }
-pub fn close(comptime spec: CloseSpec, fd: u64) sys.Call(spec.errors, spec.return_type) {
+pub fn close(comptime spec: CloseSpec, fd: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
     const logging: builtin.Logging.ReleaseError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.close, spec.errors, spec.return_type, .{fd}))) {
         if (logging.Release) {
@@ -1088,7 +1088,7 @@ pub fn close(comptime spec: CloseSpec, fd: u64) sys.Call(spec.errors, spec.retur
         return close_error;
     }
 }
-pub fn makeDir(comptime spec: MakeDirSpec, pathname: [:0]const u8, comptime mode: Mode) sys.Call(spec.errors, spec.return_type) {
+pub fn makeDir(comptime spec: MakeDirSpec, pathname: [:0]const u8, comptime mode: Mode) sys.ErrorUnion(spec.errors, spec.return_type) {
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
     const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.mkdir, spec.errors, spec.return_type, .{ pathname_buf_addr, @bitCast(u16, mode) }))) {
@@ -1102,7 +1102,7 @@ pub fn makeDir(comptime spec: MakeDirSpec, pathname: [:0]const u8, comptime mode
         return mkdir_error;
     }
 }
-pub fn makeDirAt(comptime spec: MakeDirSpec, dir_fd: u64, name: [:0]const u8, comptime mode: Mode) sys.Call(spec.errors, spec.return_type) {
+pub fn makeDirAt(comptime spec: MakeDirSpec, dir_fd: u64, name: [:0]const u8, comptime mode: Mode) sys.ErrorUnion(spec.errors, spec.return_type) {
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
     const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.mkdirat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, @bitCast(u16, mode) }))) {
@@ -1116,7 +1116,7 @@ pub fn makeDirAt(comptime spec: MakeDirSpec, dir_fd: u64, name: [:0]const u8, co
         return mkdir_error;
     }
 }
-pub fn getDirectoryEntries(comptime getdents_spec: GetDirectoryEntriesSpec, dir_fd: u64, stream_buf: []u8) sys.Call(getdents_spec.errors, getdents_spec.return_type) {
+pub fn getDirectoryEntries(comptime getdents_spec: GetDirectoryEntriesSpec, dir_fd: u64, stream_buf: []u8) sys.ErrorUnion(getdents_spec.errors, getdents_spec.return_type) {
     const stream_buf_addr: u64 = @ptrToInt(stream_buf.ptr);
     const logging: builtin.Logging.SuccessError = comptime getdents_spec.logging.override();
     if (meta.wrap(sys.call(.getdents64, getdents_spec.errors, getdents_spec.return_type, .{ dir_fd, stream_buf_addr, stream_buf.len }))) |ret| {
@@ -1131,7 +1131,7 @@ pub fn getDirectoryEntries(comptime getdents_spec: GetDirectoryEntriesSpec, dir_
         return getdents_error;
     }
 }
-pub fn makeNode(comptime spec: MakeNodeSpec, pathname: [:0]const u8, comptime mode: Mode, comptime dev: Device) sys.Call(spec.errors, spec.return_type) {
+pub fn makeNode(comptime spec: MakeNodeSpec, pathname: [:0]const u8, comptime mode: Mode, comptime dev: Device) sys.ErrorUnion(spec.errors, spec.return_type) {
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
     const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.mknod, spec.errors, spec.return_type, .{ pathname_buf_addr, @bitCast(u16, mode), @bitCast(u64, dev) }))) {
@@ -1145,7 +1145,7 @@ pub fn makeNode(comptime spec: MakeNodeSpec, pathname: [:0]const u8, comptime mo
         return mknod_error;
     }
 }
-pub fn makeNodeAt(comptime spec: MakeNodeSpec, dir_fd: u64, name: [:0]const u8, comptime mode: Mode, comptime dev: Device) sys.Call(spec.errors, spec.return_type) {
+pub fn makeNodeAt(comptime spec: MakeNodeSpec, dir_fd: u64, name: [:0]const u8, comptime mode: Mode, comptime dev: Device) sys.ErrorUnion(spec.errors, spec.return_type) {
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
     const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.mknodat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, @bitCast(u16, mode), @bitCast(u64, dev) }))) {
@@ -1159,7 +1159,7 @@ pub fn makeNodeAt(comptime spec: MakeNodeSpec, dir_fd: u64, name: [:0]const u8, 
         return mknod_error;
     }
 }
-pub fn getCwd(comptime spec: GetWorkingDirectorySpec, buf: []u8) sys.Call(spec.errors, [:0]const u8) {
+pub fn getCwd(comptime spec: GetWorkingDirectorySpec, buf: []u8) sys.ErrorUnion(spec.errors, [:0]const u8) {
     const buf_addr: u64 = @ptrToInt(buf.ptr);
     const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.getcwd, spec.errors, spec.return_type, .{ buf_addr, buf.len }))) |len| {
@@ -1176,7 +1176,7 @@ pub fn getCwd(comptime spec: GetWorkingDirectorySpec, buf: []u8) sys.Call(spec.e
         return getcwd_error;
     }
 }
-pub fn readLink(comptime spec: ReadLinkSpec, pathname: [:0]const u8, buf: []u8) sys.Call(spec.errors, [:0]const u8) {
+pub fn readLink(comptime spec: ReadLinkSpec, pathname: [:0]const u8, buf: []u8) sys.ErrorUnion(spec.errors, [:0]const u8) {
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
     const buf_addr: u64 = @ptrToInt(buf.ptr);
     const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
@@ -1189,7 +1189,7 @@ pub fn readLink(comptime spec: ReadLinkSpec, pathname: [:0]const u8, buf: []u8) 
         return readlink_error;
     }
 }
-pub fn readLinkAt(comptime spec: ReadLinkSpec, dir_fd: u64, name: [:0]const u8, buf: []u8) sys.Call(spec.errors, [:0]const u8) {
+pub fn readLinkAt(comptime spec: ReadLinkSpec, dir_fd: u64, name: [:0]const u8, buf: []u8) sys.ErrorUnion(spec.errors, [:0]const u8) {
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
     const buf_addr: u64 = @ptrToInt(buf.ptr);
     const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
@@ -1203,7 +1203,7 @@ pub fn readLinkAt(comptime spec: ReadLinkSpec, dir_fd: u64, name: [:0]const u8, 
         return readlink_error;
     }
 }
-pub fn unlink(comptime spec: UnlinkSpec, pathname: [:0]const u8) sys.Call(spec.errors, spec.return_type) {
+pub fn unlink(comptime spec: UnlinkSpec, pathname: [:0]const u8) sys.ErrorUnion(spec.errors, spec.return_type) {
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
     const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.unlink, spec.errors, spec.return_type, .{pathname_buf_addr}))) {
@@ -1217,7 +1217,7 @@ pub fn unlink(comptime spec: UnlinkSpec, pathname: [:0]const u8) sys.Call(spec.e
         return unlink_error;
     }
 }
-pub fn unlinkAt(comptime spec: UnlinkSpec, dir_fd: u64, name: [:0]const u8) sys.Call(spec.errors, spec.return_type) {
+pub fn unlinkAt(comptime spec: UnlinkSpec, dir_fd: u64, name: [:0]const u8) sys.ErrorUnion(spec.errors, spec.return_type) {
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
     const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.unlinkat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, 0 }))) {
@@ -1231,7 +1231,7 @@ pub fn unlinkAt(comptime spec: UnlinkSpec, dir_fd: u64, name: [:0]const u8) sys.
         return unlink_error;
     }
 }
-pub fn removeDir(comptime spec: RemoveDirSpec, pathname: [:0]const u8) sys.Call(spec.errors, spec.return_type) {
+pub fn removeDir(comptime spec: RemoveDirSpec, pathname: [:0]const u8) sys.ErrorUnion(spec.errors, spec.return_type) {
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
     const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
     if (sys.call(.rmdir, spec.errors, spec.return_type, .{pathname_buf_addr})) {
@@ -1245,7 +1245,7 @@ pub fn removeDir(comptime spec: RemoveDirSpec, pathname: [:0]const u8) sys.Call(
         return rmdir_error;
     }
 }
-pub fn pathStatus(comptime spec: StatusSpec, pathname: [:0]const u8) sys.Call(spec.errors, Status) {
+pub fn pathStatus(comptime spec: StatusSpec, pathname: [:0]const u8) sys.ErrorUnion(spec.errors, Status) {
     var st: Status = undefined;
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
     const st_buf_addr: u64 = @ptrToInt(&st);
@@ -1262,7 +1262,7 @@ pub fn pathStatus(comptime spec: StatusSpec, pathname: [:0]const u8) sys.Call(sp
     }
     return st;
 }
-pub fn status(comptime spec: StatusSpec, fd: u64) sys.Call(spec.errors, Status) {
+pub fn status(comptime spec: StatusSpec, fd: u64) sys.ErrorUnion(spec.errors, Status) {
     var st: Status = undefined;
     const st_buf_addr: u64 = @ptrToInt(&st);
     const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
@@ -1278,7 +1278,7 @@ pub fn status(comptime spec: StatusSpec, fd: u64) sys.Call(spec.errors, Status) 
     }
     return st;
 }
-pub fn statusAt(comptime spec: StatusSpec, dir_fd: u64, name: [:0]const u8) sys.Call(spec.errors, Status) {
+pub fn statusAt(comptime spec: StatusSpec, dir_fd: u64, name: [:0]const u8) sys.ErrorUnion(spec.errors, Status) {
     var st: Status = undefined;
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
     const st_buf_addr: u64 = @ptrToInt(&st);
@@ -1296,7 +1296,7 @@ pub fn statusAt(comptime spec: StatusSpec, dir_fd: u64, name: [:0]const u8) sys.
     }
     return st;
 }
-pub fn statusExtended(comptime spec: StatusExtendedSpec, fd: u64, pathname: [:0]const u8) sys.Call(spec.errors, StatusExtended) {
+pub fn statusExtended(comptime spec: StatusExtendedSpec, fd: u64, pathname: [:0]const u8) sys.ErrorUnion(spec.errors, StatusExtended) {
     var st: StatusExtended = undefined;
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
     const st_buf_addr: u64 = @ptrToInt(&st);
@@ -1323,7 +1323,7 @@ pub fn statusExtended(comptime spec: StatusExtendedSpec, fd: u64, pathname: [:0]
 ///     up_addr: u64 = alignAbove(addr + st.size, page_size),
 /// };
 /// ```
-pub fn map(comptime spec: MapSpec, addr: u64, fd: u64) sys.Call(spec.errors, u64) {
+pub fn map(comptime spec: MapSpec, addr: u64, fd: u64) sys.ErrorUnion(spec.errors, u64) {
     const flags: mem.Map = comptime spec.flags();
     const prot: mem.Prot = comptime spec.prot();
     const logging: builtin.Logging.AcquireError = comptime spec.logging.override();
@@ -1341,7 +1341,7 @@ pub fn map(comptime spec: MapSpec, addr: u64, fd: u64) sys.Call(spec.errors, u64
         return map_error;
     }
 }
-pub fn truncate(comptime spec: TruncateSpec, pathname: [:0]const u8, offset: u64) sys.Call(spec.errors, spec.return_type) {
+pub fn truncate(comptime spec: TruncateSpec, pathname: [:0]const u8, offset: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
     const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.truncate, spec.errors, spec.return_type, .{ pathname, offset }))) |ret| {
         if (logging.Success) {
@@ -1355,7 +1355,7 @@ pub fn truncate(comptime spec: TruncateSpec, pathname: [:0]const u8, offset: u64
         return truncate_error;
     }
 }
-pub fn ftruncate(comptime spec: TruncateSpec, fd: u64, offset: u64) sys.Call(spec.errors, spec.return_type) {
+pub fn ftruncate(comptime spec: TruncateSpec, fd: u64, offset: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
     const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.ftruncate, spec.errors, spec.return_type, .{ fd, offset }))) |ret| {
         if (logging.Success) {
@@ -1379,7 +1379,7 @@ const IOControlSpec = struct {
     const TC = sys.TC;
     const TIOC = sys.TIOC;
 };
-pub fn duplicate(comptime dup_spec: DuplicateSpec, fd: u64) sys.Call(dup_spec.errors, dup_spec.return_type) {
+pub fn duplicate(comptime dup_spec: DuplicateSpec, fd: u64) sys.ErrorUnion(dup_spec.errors, dup_spec.return_type) {
     const logging: builtin.Logging.SuccessError = comptime dup_spec.logging.override();
     if (meta.wrap(sys.call(.dup, dup_spec.errors, dup_spec.return_type, .{fd}))) |ret| {
         if (logging.Success) {
@@ -1395,7 +1395,7 @@ pub fn duplicate(comptime dup_spec: DuplicateSpec, fd: u64) sys.Call(dup_spec.er
         return dup_error;
     }
 }
-pub fn duplicateTo(comptime dup3_spec: DuplicateSpec, old_fd: u64, new_fd: u64) sys.Call(dup3_spec.errors, void) {
+pub fn duplicateTo(comptime dup3_spec: DuplicateSpec, old_fd: u64, new_fd: u64) sys.ErrorUnion(dup3_spec.errors, void) {
     const flags: Open = comptime dup3_spec.flags();
     const logging: builtin.Logging.SuccessError = comptime dup3_spec.logging.override();
     if (meta.wrap(sys.call(.dup3, dup3_spec.errors, void, .{ old_fd, new_fd, flags.val }))) {
@@ -1409,7 +1409,7 @@ pub fn duplicateTo(comptime dup3_spec: DuplicateSpec, old_fd: u64, new_fd: u64) 
         return dup3_error;
     }
 }
-pub fn makePipe(comptime pipe2_spec: MakePipeSpec) sys.Call(pipe2_spec.errors, Pipe) {
+pub fn makePipe(comptime pipe2_spec: MakePipeSpec) sys.ErrorUnion(pipe2_spec.errors, Pipe) {
     var pipefd: Pipe = undefined;
     const pipefd_addr: u64 = @ptrToInt(&pipefd);
     const flags: Open = comptime pipe2_spec.flags();
@@ -1433,7 +1433,7 @@ inline fn expected(fds: []PollFd) bool {
     }
     return true;
 }
-pub fn poll(comptime poll_spec: PollSpec, fds: []PollFd, timeout: u32) sys.Call(poll_spec.errors, poll_spec.return_type) {
+pub fn poll(comptime poll_spec: PollSpec, fds: []PollFd, timeout: u32) sys.ErrorUnion(poll_spec.errors, poll_spec.return_type) {
     const fds_addr: u64 = @ptrToInt(fds.ptr);
     const logging: builtin.Logging.AttemptSuccessError = comptime poll_spec.logging.override();
     if (logging.Attempt) {
@@ -1450,7 +1450,7 @@ pub fn poll(comptime poll_spec: PollSpec, fds: []PollFd, timeout: u32) sys.Call(
         return poll_error;
     }
 }
-pub fn pathIs(comptime stat_spec: StatusSpec, pathname: [:0]const u8, kind: Kind) sys.Call(
+pub fn pathIs(comptime stat_spec: StatusSpec, pathname: [:0]const u8, kind: Kind) sys.ErrorUnion(
     stat_spec.errors,
     stat_spec.return_type orelse bool,
 ) {
@@ -1462,7 +1462,7 @@ pub fn pathIs(comptime stat_spec: StatusSpec, pathname: [:0]const u8, kind: Kind
     }
     return st.mode.kind == kind;
 }
-pub fn pathIsNot(comptime stat_spec: StatusSpec, pathname: [:0]const u8, kind: Kind) sys.Call(
+pub fn pathIsNot(comptime stat_spec: StatusSpec, pathname: [:0]const u8, kind: Kind) sys.ErrorUnion(
     stat_spec.errors,
     stat_spec.return_type orelse bool,
 ) {
@@ -1474,7 +1474,7 @@ pub fn pathIsNot(comptime stat_spec: StatusSpec, pathname: [:0]const u8, kind: K
     }
     return st.mode.kind != kind;
 }
-pub fn pathAssert(comptime stat_spec: StatusSpec, pathname: [:0]const u8, kind: Kind) sys.Call(
+pub fn pathAssert(comptime stat_spec: StatusSpec, pathname: [:0]const u8, kind: Kind) sys.ErrorUnion(
     stat_spec.errors,
     stat_spec.return_type orelse void,
 ) {
@@ -1491,7 +1491,7 @@ pub fn pathAssert(comptime stat_spec: StatusSpec, pathname: [:0]const u8, kind: 
         return mach.cmovV(return_type == Status, st);
     }
 }
-pub fn isAt(comptime stat_spec: StatusSpec, dir_fd: u64, name: [:0]const u8, kind: Kind) sys.Call(
+pub fn isAt(comptime stat_spec: StatusSpec, dir_fd: u64, name: [:0]const u8, kind: Kind) sys.ErrorUnion(
     stat_spec.errors,
     stat_spec.return_type orelse bool,
 ) {
@@ -1503,7 +1503,7 @@ pub fn isAt(comptime stat_spec: StatusSpec, dir_fd: u64, name: [:0]const u8, kin
     }
     return st.mode.kind == kind;
 }
-pub fn isNotAt(comptime stat_spec: StatusSpec, dir_fd: u64, name: [:0]const u8, kind: Kind) sys.Call(
+pub fn isNotAt(comptime stat_spec: StatusSpec, dir_fd: u64, name: [:0]const u8, kind: Kind) sys.ErrorUnion(
     stat_spec.errors,
     stat_spec.return_type orelse bool,
 ) {
@@ -1515,7 +1515,7 @@ pub fn isNotAt(comptime stat_spec: StatusSpec, dir_fd: u64, name: [:0]const u8, 
     }
     return st.mode.kind != kind;
 }
-pub fn assertAt(comptime stat_spec: StatusSpec, dir_fd: u64, name: [:0]const u8, kind: Kind) sys.Call(
+pub fn assertAt(comptime stat_spec: StatusSpec, dir_fd: u64, name: [:0]const u8, kind: Kind) sys.ErrorUnion(
     stat_spec.errors,
     stat_spec.return_type orelse void,
 ) {
@@ -1531,7 +1531,7 @@ pub fn assertAt(comptime stat_spec: StatusSpec, dir_fd: u64, name: [:0]const u8,
         return mach.cmovV(return_type == Status, st);
     }
 }
-pub fn is(comptime stat_spec: StatusSpec, fd: u64, kind: Kind) sys.Call(
+pub fn is(comptime stat_spec: StatusSpec, fd: u64, kind: Kind) sys.ErrorUnion(
     stat_spec.errors,
     stat_spec.return_type orelse bool,
 ) {
@@ -1543,7 +1543,7 @@ pub fn is(comptime stat_spec: StatusSpec, fd: u64, kind: Kind) sys.Call(
     }
     return st.mode.kind == kind;
 }
-pub fn isNot(comptime stat_spec: StatusSpec, kind: Kind, fd: u64) sys.Call(
+pub fn isNot(comptime stat_spec: StatusSpec, kind: Kind, fd: u64) sys.ErrorUnion(
     stat_spec.errors,
     stat_spec.return_type orelse bool,
 ) {
@@ -1555,7 +1555,7 @@ pub fn isNot(comptime stat_spec: StatusSpec, kind: Kind, fd: u64) sys.Call(
     }
     return st.mode.kind != kind;
 }
-pub fn assert(comptime stat_spec: StatusSpec, fd: u64, kind: Kind) sys.Call(
+pub fn assert(comptime stat_spec: StatusSpec, fd: u64, kind: Kind) sys.ErrorUnion(
     stat_spec.errors,
     stat_spec.return_type orelse void,
 ) {
@@ -1572,7 +1572,7 @@ pub fn assert(comptime stat_spec: StatusSpec, fd: u64, kind: Kind) sys.Call(
         return mach.cmovV(return_type == Status, st);
     }
 }
-pub fn assertNot(comptime stat_spec: StatusSpec, fd: u64, kind: Kind) sys.Call(
+pub fn assertNot(comptime stat_spec: StatusSpec, fd: u64, kind: Kind) sys.ErrorUnion(
     stat_spec.errors,
     stat_spec.return_type orelse void,
 ) {

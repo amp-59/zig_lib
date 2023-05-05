@@ -38,14 +38,14 @@ pub fn GenericChannel(comptime chan_spec: ChannelSpec) type {
                 .logging = chan_spec.logging.close,
             };
         };
-        pub fn init() sys.Call(chan_spec.errors.pipe, Channel) {
+        pub fn init() sys.ErrorUnion(chan_spec.errors.pipe, Channel) {
             return .{
                 .in = try meta.wrap(file.makePipe(decls.pipe_spec)),
                 .out = try meta.wrap(file.makePipe(decls.pipe_spec)),
                 .err = try meta.wrap(file.makePipe(decls.pipe_spec)),
             };
         }
-        pub fn init_read(chan: Channel) sys.Call(.{
+        pub fn init_read(chan: Channel) sys.ErrorUnion(.{
             .throw = chan_spec.errors.dup3.throw ++ chan_spec.errors.close.throw,
             .abort = chan_spec.errors.dup3.abort ++ chan_spec.errors.close.abort,
         }, void) {
@@ -56,7 +56,7 @@ pub fn GenericChannel(comptime chan_spec: ChannelSpec) type {
             try meta.wrap(file.duplicateTo(decls.dup3_spec, chan.out.write, 1));
             try meta.wrap(file.duplicateTo(decls.dup3_spec, chan.out.write, 2));
         }
-        pub fn init_write(chan: *Channel) sys.Call(chan_spec.errors.close, void) {
+        pub fn init_write(chan: *Channel) sys.ErrorUnion(chan_spec.errors.close, void) {
             try meta.wrap(file.close(decls.close_spec, chan.in.read));
             try meta.wrap(file.close(decls.close_spec, chan.out.write));
             try meta.wrap(file.close(decls.close_spec, chan.err.write));

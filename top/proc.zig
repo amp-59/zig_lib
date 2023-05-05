@@ -112,7 +112,7 @@ pub fn futexWait(
     futex: *Futex,
     value: u32,
     timeout: *const time.TimeSpec,
-) sys.Call(futex_spec.errors, futex_spec.return_type) {
+) sys.ErrorUnion(futex_spec.errors, futex_spec.return_type) {
     const logging: builtin.Logging.AttemptAcquireError = comptime futex_spec.logging.override();
     if (logging.Attempt) {
         //
@@ -132,7 +132,7 @@ pub fn futexWake(
     comptime futex_spec: FutexSpec,
     futex: *Futex,
     count: u32,
-) sys.Call(futex_spec.errors, futex_spec.return_type) {
+) sys.ErrorUnion(futex_spec.errors, futex_spec.return_type) {
     const logging: builtin.Logging.AttemptAcquireError = comptime futex_spec.logging.override();
     if (logging.Attempt) {
         //
@@ -155,7 +155,7 @@ pub fn futexWakeOp(
     count1: u32,
     count2: u32,
     wake_op: FutexOp.WakeOp, // val3
-) sys.Call(futex_spec.errors, futex_spec.return_type) {
+) sys.ErrorUnion(futex_spec.errors, futex_spec.return_type) {
     const logging: builtin.Logging.AttemptAcquireError = comptime futex_spec.logging.override();
     if (logging.Attempt) {
         //
@@ -180,7 +180,7 @@ pub fn futexRequeue(
     count1: u32,
     count2: u32,
     from: ?u32,
-) sys.Call(futex_spec.errors, futex_spec.return_type) {
+) sys.ErrorUnion(futex_spec.errors, futex_spec.return_type) {
     @setRuntimeSafety(false);
     const logging: builtin.Logging.AttemptAcquireError = comptime futex_spec.logging.override();
     if (logging.Attempt) {
@@ -551,7 +551,7 @@ pub fn getGroupId() u16 {
 pub fn getEffectiveGroupId() u16 {
     return @truncate(u16, sys.call(.getegid, .{}, u64, .{}));
 }
-pub fn waitPid(comptime spec: WaitSpec, id: WaitSpec.For) sys.Call(spec.errors, Return) {
+pub fn waitPid(comptime spec: WaitSpec, id: WaitSpec.For) sys.ErrorUnion(spec.errors, Return) {
     const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
     var ret: Return = undefined;
     const status_addr: u64 = @ptrToInt(&ret.status);
@@ -568,7 +568,7 @@ pub fn waitPid(comptime spec: WaitSpec, id: WaitSpec.For) sys.Call(spec.errors, 
         return wait_error;
     }
 }
-pub fn waitId(comptime spec: WaitIdSpec, id: u64, sig_info: *SignalInfo) sys.Call(spec.errors, spec.return_type) {
+pub fn waitId(comptime spec: WaitIdSpec, id: u64, sig_info: *SignalInfo) sys.ErrorUnion(spec.errors, spec.return_type) {
     const id_type: u64 = @enumToInt(spec.id_type);
     const sig_info_buf_addr: u64 = @ptrToInt(sig_info);
     const flags: WaitId = comptime spec.flags();
@@ -582,7 +582,7 @@ pub fn waitId(comptime spec: WaitIdSpec, id: u64, sig_info: *SignalInfo) sys.Cal
         return wait_error;
     }
 }
-pub fn fork(comptime spec: ForkSpec) sys.Call(spec.errors, spec.return_type) {
+pub fn fork(comptime spec: ForkSpec) sys.ErrorUnion(spec.errors, spec.return_type) {
     const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.fork, spec.errors, spec.return_type, .{}))) |pid| {
         if (logging.Success and pid != 0) {
@@ -596,7 +596,7 @@ pub fn fork(comptime spec: ForkSpec) sys.Call(spec.errors, spec.return_type) {
         return fork_error;
     }
 }
-pub fn command(comptime spec: CommandSpec, pathname: [:0]const u8, args: spec.args_type, vars: spec.vars_type) sys.Call(.{
+pub fn command(comptime spec: CommandSpec, pathname: [:0]const u8, args: spec.args_type, vars: spec.vars_type) sys.ErrorUnion(.{
     .throw = spec.errors.execve.throw ++ spec.errors.fork.throw ++ spec.errors.waitpid.throw,
     .abort = spec.errors.execve.abort ++ spec.errors.fork.abort ++ spec.errors.waitpid.abort,
 }, u8) {
@@ -610,7 +610,7 @@ pub fn command(comptime spec: CommandSpec, pathname: [:0]const u8, args: spec.ar
     const ret: Return = try meta.wrap(waitPid(wait_spec, .{ .pid = pid }));
     return Status.exit(ret.status);
 }
-pub fn commandAt(comptime spec: CommandSpec, dir_fd: u64, name: [:0]const u8, args: spec.args_type, vars: spec.vars_type) sys.Call(.{
+pub fn commandAt(comptime spec: CommandSpec, dir_fd: u64, name: [:0]const u8, args: spec.args_type, vars: spec.vars_type) sys.ErrorUnion(.{
     .throw = spec.errors.execve.throw ++ spec.errors.fork.throw ++ spec.errors.waitpid.throw,
     .abort = spec.errors.execve.abort ++ spec.errors.fork.abort ++ spec.errors.waitpid.abort,
 }, u8) {
@@ -821,7 +821,7 @@ pub noinline fn callClone(
     result_ptr: anytype,
     comptime function: anytype,
     args: anytype,
-) sys.Call(spec.errors, spec.return_type) {
+) sys.ErrorUnion(spec.errors, spec.return_type) {
     @setRuntimeSafety(false);
     const Fn: type = @TypeOf(function);
     const cl_args: CloneArgs = spec.args(stack_addr, stack_len);
