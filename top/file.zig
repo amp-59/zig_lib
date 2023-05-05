@@ -1450,6 +1450,9 @@ pub fn poll(comptime poll_spec: PollSpec, fds: []PollFd, timeout: u32) sys.Error
         return poll_error;
     }
 }
+pub inline fn pollOne(comptime poll_spec: PollSpec, fd: *PollFd, timeout: u32) sys.ErrorUnion(poll_spec.errors, poll_spec.return_type) {
+    return poll(poll_spec, @ptrCast([*]PollFd, fd)[0..1], timeout);
+}
 pub fn pathIs(comptime stat_spec: StatusSpec, pathname: [:0]const u8, kind: Kind) sys.ErrorUnion(
     stat_spec.errors,
     stat_spec.return_type orelse bool,
