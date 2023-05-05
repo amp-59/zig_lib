@@ -89,6 +89,7 @@ fn testPoll() !void {
 fn testRecords() !void {
     const global: []const u8 = comptime builtin.globalCacheDir();
     const build_root: []const u8 = comptime builtin.buildRoot();
+
     const stats_root: []const u8 = global ++ "/stats";
     const proj_stats_root: []const u8 = comptime stats_root ++ "/" ++ file.basename(build_root);
 
@@ -99,6 +100,7 @@ fn testStatusExtended() !void {
     const Fields = @TypeOf(statx_spec.options.fields);
     const nilx_spec: file.StatusExtendedSpec = comptime spec.add(statx_spec, .{ .options = .{ .fields = builtin.zero(Fields) } });
     var st: file.StatusExtended = try meta.wrap(file.statusExtended(nilx_spec, 0, "/home"));
+
     _ = st;
 }
 fn testFileOperationsRound1() !void {
@@ -230,6 +232,7 @@ fn testPreClean() !void {
 }
 pub fn main() !void {
     try meta.wrap(testRecords());
+
     if (return) {}
     try meta.wrap(testPreClean());
     try meta.wrap(testStandardChannel());

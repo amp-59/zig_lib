@@ -310,14 +310,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         });
         pub const Args = Allocator.StructuredVectorLowAlignedWithSentinel(u8, 0, 8);
         pub const CompilerFn = fn (*Builder, *Target, *Allocator, types.Path) [:0]u8;
-        pub const max_thread_count: u64 = builder_spec.options.max_thread_count;
-        pub const max_arena_count: u64 = if (max_thread_count == 0) 4 else max_thread_count + 1;
-        pub const stack_aligned_bytes: u64 = builder_spec.options.stack_aligned_bytes;
-        pub const arena_aligned_bytes: u64 = builder_spec.options.arena_aligned_bytes;
-        pub const stack_lb_addr: u64 = builder_spec.options.stack_lb_addr;
-        pub const arena_lb_addr: u64 = stack_up_addr;
-        pub const stack_up_addr: u64 = stack_lb_addr + (max_thread_count * stack_aligned_bytes);
-        pub const arena_up_addr: u64 = arena_lb_addr + (max_arena_count * arena_aligned_bytes);
         pub const Target = struct {
             name: [:0]const u8,
             descr: ?[:0]const u8 = null,
@@ -659,6 +651,14 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 return group.trgs[0..group.trgs_len];
             }
         };
+        pub const max_thread_count: u64 = builder_spec.options.max_thread_count;
+        pub const max_arena_count: u64 = if (max_thread_count == 0) 4 else max_thread_count + 1;
+        pub const stack_aligned_bytes: u64 = builder_spec.options.stack_aligned_bytes;
+        pub const arena_aligned_bytes: u64 = builder_spec.options.arena_aligned_bytes;
+        pub const stack_lb_addr: u64 = builder_spec.options.stack_lb_addr;
+        pub const arena_lb_addr: u64 = stack_up_addr;
+        pub const stack_up_addr: u64 = stack_lb_addr + (max_thread_count * stack_aligned_bytes);
+        pub const arena_up_addr: u64 = arena_lb_addr + (max_arena_count * arena_aligned_bytes);
         pub fn groups(builder: *const Builder) []*Group {
             @setRuntimeSafety(safe);
             return builder.grps[0..builder.grps_len];
