@@ -69,14 +69,14 @@ pub fn cacheDir() [:0]const u8 {
     if (env.cache_dir[0] != '/') {
         @compileError("'" ++ env.cache_dir ++ "' must be an absolute path");
     }
-    return env.cache_dir;
+    return env.cache_root;
 }
 /// Returns an absolute path to the user (global) cache directory.
 pub fn globalCacheDir() [:0]const u8 {
-    if (env.global_cache_dir[0] != '/') {
-        @compileError("'" ++ env.global_cache_dir ++ "' must be an absolute path");
+    if (env.global_cache_root[0] != '/') {
+        @compileError("'" ++ env.global_cache_root ++ "' must be an absolute path");
     }
-    return env.global_cache_dir;
+    return env.global_cache_root;
 }
 /// The primary reason that these constants exist is to distinguish between
 /// reports from the build runner and reports from a run command.
