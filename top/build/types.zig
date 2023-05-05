@@ -1,6 +1,7 @@
 const mem = @import("../mem.zig");
 const fmt = @import("../fmt.zig");
 const mach = @import("../mach.zig");
+const time = @import("../time.zig");
 const meta = @import("../meta.zig");
 const spec = @import("../spec.zig");
 const builtin = @import("../builtin.zig");
@@ -569,4 +570,19 @@ pub const InverseOptionSpec = struct {
     string: ?[]const u8 = null,
     /// Simple argument type
     arg_info: ArgInfo = ArgInfo.boolean(),
+};
+pub const Record = extern struct {
+    /// Date and time of build in epochseconds, 8 bytes
+    epochseconds: u64,
+    /// Build duration in milliseconds, max 50 days
+    duration: u32,
+    /// Output size in bytes, max 4GiB
+    size: u32,
+    /// Extra
+    detail: extern struct {
+        /// Whether the output was stripped
+        strip: bool,
+        /// The optimisation/safety mode for the output
+        mode: builtin.Mode,
+    },
 };
