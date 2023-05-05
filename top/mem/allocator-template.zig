@@ -294,7 +294,7 @@ fn GenericAllocatorInterface(comptime Allocator: type) type {
                 return special.unmap(Allocator.unmap_spec, unmapped_byte_address(allocator), s_bytes);
             }
         }
-        fn mapInit(allocator: *Allocator) sys.Call(Allocator.map_spec.errors, void) {
+        fn mapInit(allocator: *Allocator) sys.ErrorUnion(Allocator.map_spec.errors, void) {
             if (Allocator.allocator_spec.options.prefer_remap) {
                 const s_bytes: u64 = Allocator.allocator_spec.options.init_commit orelse 4096;
                 try meta.wrap(special.map(Allocator.map_spec, unmapped_byte_address(allocator), s_bytes));
@@ -423,12 +423,12 @@ fn Types(comptime Allocator: type) type {
         };
         /// For allocation operations which return a value
         pub fn allocate_payload(comptime s_impl_type: type) type {
-            return sys.Call(resize_error_policy, s_impl_type);
+            return sys.ErrorUnion(resize_error_policy, s_impl_type);
         }
-        pub const init_void: type = sys.Call(map_error_policy, void);
+        pub const init_void: type = sys.ErrorUnion(map_error_policy, void);
         /// For allocation operations which do not return a value
-        pub const allocate_void: type = sys.Call(resize_error_policy, void);
-        pub const deallocate_void: type = sys.Call(unmap_error_policy, void);
+        pub const allocate_void: type = sys.ErrorUnion(resize_error_policy, void);
+        pub const deallocate_void: type = sys.ErrorUnion(unmap_error_policy, void);
     };
 }
 fn Specs(comptime Allocator: type) type {
@@ -693,7 +693,7 @@ const Branches = struct {
 // finish-document branches-template.zig
 // start-document debug-template.zig
 const special = opaque {
-    fn map(comptime spec: mem.MapSpec, addr: u64, len: u64) sys.Call(spec.errors, spec.return_type) {
+    fn map(comptime spec: mem.MapSpec, addr: u64, len: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
         const mmap_prot: mem.Prot = comptime spec.prot();
         const mmap_flags: mem.Map = comptime spec.flags();
         const logging: builtin.Logging.AcquireErrorFault = comptime spec.logging.override();
@@ -708,7 +708,7 @@ const special = opaque {
             return map_error;
         }
     }
-    fn move(comptime spec: mem.MoveSpec, old_addr: u64, old_len: u64, new_addr: u64) sys.Call(spec.errors, spec.return_type) {
+    fn move(comptime spec: mem.MoveSpec, old_addr: u64, old_len: u64, new_addr: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
         const mremap_flags: mem.Remap = comptime spec.flags();
         const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
         if (meta.wrap(sys.call(.mremap, spec.errors, spec.return_type, .{ old_addr, old_len, old_len, mremap_flags.val, new_addr }))) {
@@ -722,7 +722,7 @@ const special = opaque {
             return mremap_error;
         }
     }
-    fn resize(comptime spec: mem.RemapSpec, old_addr: u64, old_len: u64, new_len: u64) sys.Call(spec.errors, spec.return_type) {
+    fn resize(comptime spec: mem.RemapSpec, old_addr: u64, old_len: u64, new_len: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
         const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
         if (meta.wrap(sys.call(.mremap, spec.errors, spec.return_type, .{ old_addr, old_len, new_len, 0, 0 }))) {
             if (logging.Success) {
@@ -735,7 +735,7 @@ const special = opaque {
             return mremap_error;
         }
     }
-    fn unmap(comptime spec: mem.UnmapSpec, addr: u64, len: u64) sys.Call(spec.errors, spec.return_type) {
+    fn unmap(comptime spec: mem.UnmapSpec, addr: u64, len: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
         const logging: builtin.Logging.ReleaseErrorFault = comptime spec.logging.override();
         if (meta.wrap(sys.call(.munmap, spec.errors, spec.return_type, .{ addr, len }))) {
             if (logging.Release) {
@@ -748,7 +748,7 @@ const special = opaque {
             return unmap_error;
         }
     }
-    fn advise(comptime spec: mem.AdviseSpec, addr: u64, len: u64) sys.Call(spec.errors, spec.return_type) {
+    fn advise(comptime spec: mem.AdviseSpec, addr: u64, len: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
         const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
         const advice: mem.Advice = spec.advice();
         if (meta.wrap(sys.call(.madvise, spec.errors, spec.return_type, .{ addr, len, advice.val }))) {
