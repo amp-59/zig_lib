@@ -516,10 +516,9 @@ pub inline fn testEqualMany8(l_values: []const u8, r_values: []const u8) bool {
 pub inline fn memcpyMulti(noalias dest: [*]u8, src: []const []const u8) u64 {
     return _1.asmMemcpyMulti(dest, src.ptr, src.len);
 }
-pub inline fn manyToSlice80(str: [*]u8) [:0]u8 {
-    const len: u64 = _3.strlen(str);
+pub fn manyToSlice80(str: [*]u8) [:0]u8 {
     @setRuntimeSafety(false);
-    return str[0..len :0];
+    return str[0.._3.strlen(str) :0];
 }
 const _0 = struct {
     extern fn asmTestEqualMany8(_: [*]const u8, _: u64, _: [*]const u8, _: u64) callconv(.C) bool;
