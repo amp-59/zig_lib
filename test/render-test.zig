@@ -10,15 +10,11 @@ const spec = top.spec;
 const builtin = top.builtin;
 const testing = top.testing;
 const tokenizer = top.tokenizer;
-
 const virtual_test = @import("./virtual-test.zig");
-
 pub usingnamespace proc.start;
-
 pub const logging_override: builtin.Logging.Override = spec.logging.override.verbose;
 pub const AddressSpace = spec.address_space.regular_128;
 pub const runtime_assertions: bool = true;
-
 const FakeAllocator = struct {
     pub const arena_index = 127;
 };
@@ -28,12 +24,10 @@ const Allocator = mem.GenericArenaAllocator(.{
     .logging = spec.allocator.logging.silent,
     .options = spec.allocator.options.small,
 });
-
 const Array = Allocator.StructuredHolder(u8);
 const PrintArray = mem.StaticString(1024 * 1024);
 const DynamicArray = mem.StructuredVector(u8, null, 1, FakeAllocator, .{ .unit_alignment = true });
 const StaticArray = mem.StructuredStaticVector(u8, null, 16384, 1, FakeAllocator, .{ .unit_alignment = true });
-
 const use_alloc: bool = false;
 const use_min: bool = false;
 const use_dyn: bool = false;
@@ -48,9 +42,7 @@ const render_spec: fmt.RenderSpec = .{
     .omit_default_fields = false,
     .omit_type_names = false,
 };
-
 const runTest = if (use_alloc) allocateRunTest else minimalRunTest;
-
 fn testLoopFormatAgainstStandard(comptime ThisAddressSpace: type) anyerror!void {
     const max_index: ThisAddressSpace.Index = comptime AddressSpace.addr_spec.count();
     comptime var arena_index: AddressSpace.Index = 0;
@@ -74,7 +66,6 @@ fn testLoopFormatAgainstStandard(comptime ThisAddressSpace: type) anyerror!void 
         builtin.debug.write(array.readAll());
     }
 }
-
 fn testWithComplexList(comptime what: fn (comptime type) anyerror!void) anyerror!void {
     const ThisAddressSpace: type = mem.GenericDiscreteAddressSpace(.{ .list = virtual_test.complex_list });
     return what(ThisAddressSpace);
@@ -180,7 +171,6 @@ fn testSpecificCases() !void {
             };
         }
     };
-
     try runTest(&allocator, &array, render.TypeFormat(.{}){ .value = packed struct(u128) { a: u64, b: u64 } }, "packed struct(u128) { a: u64, b: u64, }");
     try runTest(&allocator, &array, render.TypeFormat(.{}){ .value = packed struct(u64) { a: void, b: u64 } }, "packed struct(u64) { a: void, b: u64, }");
     try runTest(&allocator, &array, render.TypeFormat(.{}){ .value = packed union { a: u64, b: u64 } }, "packed union { a: u64, b: u64, }");
@@ -254,7 +244,7 @@ fn concatFieldNames(comptime T: type) []const u8 {
     return ret;
 }
 fn testRenderLoggingTypes() !void {
-    @setEvalBranchQuota(4000);
+    @setEvalBranchQuota(~@as(u32, 0));
     var array: PrintArray = undefined;
     array.undefineAll();
     const Td = render.GenericTypeDescrFormat(.{});
@@ -270,7 +260,9 @@ fn testRenderLoggingTypes() !void {
             array.writeMany("    ");
             array.writeMany(f.name);
             array.writeMany(": ");
-            array.writeMany(f.type.type_name);
+            if (f.type) |type_descr| {
+                array.writeMany(type_descr.type_name);
+            }
             array.writeMany(" = ");
             array.writeMany("logging_default.");
             array.writeMany(f.name);
@@ -299,16 +291,16 @@ fn testRenderLoggingTypes() !void {
     builtin.debug.write(array.readAll());
 }
 pub fn main() !void {
-    if (cmp_test) {
-        try meta.wrap(testAgainstStandard());
-    } else {
-        try meta.wrap(testSpecificCases());
-        try meta.wrap(testOneBigCase());
+    if (render_logging_types) {
+        return testRenderLoggingTypes();
     }
     if (huge_test) {
-        try meta.wrap(testHugeCase());
+        return meta.wrap(testHugeCase());
     }
-    if (render_logging_types) {
-        try testRenderLoggingTypes();
+    if (cmp_test) {
+        return meta.wrap(testAgainstStandard());
+    } else {
+        try meta.wrap(testSpecificCases());
+        return meta.wrap(testOneBigCase());
     }
 }
