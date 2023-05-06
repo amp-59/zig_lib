@@ -85,6 +85,8 @@ pub const BuildCommand = struct {
     /// ReleaseFast    Optimizations on, safety off
     /// ReleaseSmall   Size optimizations on, safety off
     mode: ?@TypeOf(@import("builtin").mode) = null,
+    /// Only run [limit] first LLVM optimization passes
+    passes: ?u64 = null,
     /// Set the directory of the root package
     main_pkg_path: ?[]const u8 = null,
     /// Enable Position Independent Code
