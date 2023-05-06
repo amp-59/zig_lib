@@ -105,100 +105,8 @@ pub const FutexOp = enum(u64) {
 pub const FutexSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.futex_errors },
     return_type: type = void,
-    logging: builtin.Logging.AttemptAcquireError = .{},
+    logging: builtin.Logging.AttemptSuccessAcquireReleaseError = .{},
 };
-pub fn futexWait(
-    comptime futex_spec: FutexSpec,
-    futex: *Futex,
-    value: u32,
-    timeout: *const time.TimeSpec,
-) sys.ErrorUnion(futex_spec.errors, futex_spec.return_type) {
-    const logging: builtin.Logging.AttemptAcquireError = comptime futex_spec.logging.override();
-    if (logging.Attempt) {
-        //
-    }
-    if (meta.wrap(sys.call(.futex, futex_spec.errors, futex_spec.return_type, .{ @ptrToInt(futex), 0, value, @ptrToInt(timeout), 0, 0 }))) {
-        if (logging.Acquire) {
-            //
-        }
-    } else |futex_error| {
-        if (logging.Error) {
-            //
-        }
-        return futex_error;
-    }
-}
-pub fn futexWake(
-    comptime futex_spec: FutexSpec,
-    futex: *Futex,
-    count: u32,
-) sys.ErrorUnion(futex_spec.errors, futex_spec.return_type) {
-    const logging: builtin.Logging.AttemptAcquireError = comptime futex_spec.logging.override();
-    if (logging.Attempt) {
-        //
-    }
-    if (meta.wrap(sys.call(.futex, futex_spec.errors, futex_spec.return_type, .{ @ptrToInt(futex), 1, count, 0, 0, 0 }))) {
-        if (logging.Acquire) {
-            //
-        }
-    } else |futex_error| {
-        if (logging.Error) {
-            //
-        }
-        return futex_error;
-    }
-}
-pub fn futexWakeOp(
-    comptime futex_spec: FutexSpec,
-    futex1: *Futex,
-    futex2: *Futex,
-    count1: u32,
-    count2: u32,
-    wake_op: FutexOp.WakeOp, // val3
-) sys.ErrorUnion(futex_spec.errors, futex_spec.return_type) {
-    const logging: builtin.Logging.AttemptAcquireError = comptime futex_spec.logging.override();
-    if (logging.Attempt) {
-        //
-    }
-    if (meta.wrap(sys.call(.futex, futex_spec.errors, futex_spec.return_type, .{
-        @ptrToInt(futex1), 5, count1, count2, @ptrToInt(futex2), @bitCast(u32, wake_op),
-    }))) {
-        if (logging.Acquire) {
-            //
-        }
-    } else |futex_error| {
-        if (logging.Error) {
-            //
-        }
-        return futex_error;
-    }
-}
-pub fn futexRequeue(
-    comptime futex_spec: FutexSpec,
-    futex1: *Futex,
-    futex2: *Futex,
-    count1: u32,
-    count2: u32,
-    from: ?u32,
-) sys.ErrorUnion(futex_spec.errors, futex_spec.return_type) {
-    @setRuntimeSafety(false);
-    const logging: builtin.Logging.AttemptAcquireError = comptime futex_spec.logging.override();
-    if (logging.Attempt) {
-        //
-    }
-    if (meta.wrap(sys.call(.futex, futex_spec.errors, futex_spec.return_type, .{
-        @ptrToInt(futex1), 3 +% @boolToInt(from != 0), count1, count2, @ptrToInt(futex2), from.?,
-    }))) {
-        if (logging.Acquire) {
-            //
-        }
-    } else |futex_error| {
-        if (logging.Error) {
-            //
-        }
-        return futex_error;
-    }
-}
 pub const AuxiliaryVectorEntry = enum(u64) {
     null = 0,
     exec_fd = AT.EXECFD,
@@ -625,6 +533,99 @@ pub fn commandAt(comptime spec: CommandSpec, dir_fd: u64, name: [:0]const u8, ar
     try meta.wrap(waitPid(wait_spec, .{ .pid = pid }, &status));
     return Status.exit(status);
 }
+pub fn futexWait(
+    comptime futex_spec: FutexSpec,
+    futex: *Futex,
+    value: u32,
+    timeout: *const time.TimeSpec,
+) sys.ErrorUnion(futex_spec.errors, futex_spec.return_type) {
+    const logging: builtin.Logging.AttemptSuccessAcquireReleaseError = comptime futex_spec.logging.override();
+    if (logging.Attempt) {
+        debug.futexWaitAttempt(futex, value, timeout);
+    }
+    if (meta.wrap(sys.call(.futex, futex_spec.errors, futex_spec.return_type, .{ @ptrToInt(futex), 0, value, @ptrToInt(timeout), 0, 0 }))) {
+        if (logging.Acquire) {
+            debug.futexWaitNotice(futex, value, timeout);
+        }
+    } else |futex_error| {
+        if (logging.Error) {
+            debug.futexWaitError(futex_error, futex, value, timeout);
+        }
+        return futex_error;
+    }
+}
+pub fn futexWake(
+    comptime futex_spec: FutexSpec,
+    futex: *Futex,
+    count: u32,
+) sys.ErrorUnion(futex_spec.errors, futex_spec.return_type) {
+    const logging: builtin.Logging.AttemptAcquireError = comptime futex_spec.logging.override();
+    if (logging.Attempt) {
+        //
+    }
+    if (meta.wrap(sys.call(.futex, futex_spec.errors, futex_spec.return_type, .{ @ptrToInt(futex), 1, count, 0, 0, 0 }))) {
+        if (logging.Release) {
+            //
+        }
+    } else |futex_error| {
+        if (logging.Error) {
+            //
+        }
+        return futex_error;
+    }
+}
+pub fn futexWakeOp(
+    comptime futex_spec: FutexSpec,
+    futex1: *Futex,
+    futex2: *Futex,
+    count1: u32,
+    count2: u32,
+    wake_op: FutexOp.WakeOp, // val3
+) sys.ErrorUnion(futex_spec.errors, futex_spec.return_type) {
+    const logging: builtin.Logging.AttemptSuccessAcquireReleaseError = comptime futex_spec.logging.override();
+    if (logging.Attempt) {
+        //
+    }
+    if (meta.wrap(sys.call(.futex, futex_spec.errors, futex_spec.return_type, .{
+        @ptrToInt(futex1), 5, count1, count2, @ptrToInt(futex2), @bitCast(u32, wake_op),
+    }))) {
+        if (logging.Acquire) {
+            //
+        }
+    } else |futex_error| {
+        if (logging.Error) {
+            //
+        }
+        return futex_error;
+    }
+}
+pub fn futexRequeue(
+    comptime futex_spec: FutexSpec,
+    futex1: *Futex,
+    futex2: *Futex,
+    count1: u32,
+    count2: u32,
+    from: ?u32,
+) sys.ErrorUnion(futex_spec.errors, futex_spec.return_type) {
+    @setRuntimeSafety(false);
+    const logging: builtin.Logging.AttemptSuccessAcquireReleaseError = comptime futex_spec.logging.override();
+    if (logging.Attempt) {
+        //
+    }
+    if (meta.wrap(sys.call(.futex, futex_spec.errors, futex_spec.return_type, .{
+        @ptrToInt(futex1), 3 +% @boolToInt(from != 0), count1, count2, @ptrToInt(futex2), from.?,
+    }))) {
+        if (logging.Acquire) {
+            //
+        }
+    } else |futex_error| {
+        if (logging.Error) {
+            //
+        }
+        return futex_error;
+    }
+}
+
 pub const start = opaque {
     pub export fn _start() callconv(.Naked) noreturn {
         static.stack_addr = asm volatile (
@@ -1025,6 +1026,90 @@ pub fn environmentValue(vars: [][*:0]u8, key: [:0]const u8) ?[:0]const u8 {
     }
     return null;
 }
+const debug = opaque {
+    const about_fault_s: []const u8 = builtin.debug.about_fault_p0_s;
+    const about_fork_0_s: []const u8 = builtin.debug.about("fork");
+    const about_fork_1_s: []const u8 = builtin.debug.about("fork-error");
+    const about_wait_0_s: []const u8 = builtin.debug.about("wait");
+    const about_wait_1_s: []const u8 = builtin.debug.about("wait-error");
+    const about_futex_wait_0_s: []const u8 = builtin.debug.about("futex-wait");
+    const about_futex_wait_1_s: []const u8 = builtin.debug.about("futex-wait-error");
+
+    fn optionNotice(comptime Options: type, comptime opt_map: []const Options.Map) void {
+        const buf: []const u8 = comptime Options.Map.helpMessage(opt_map);
+        builtin.debug.write(buf);
+    }
+    fn exceptionFaultAtAddress(symbol: []const u8, fault_addr: u64) void {
+        var buf: [8192]u8 = undefined;
+        var pathname: [4096]u8 = undefined;
+        builtin.debug.logFaultAIO(&buf, &[_][]const u8{
+            debug.about_fault_s, symbol,
+            " at address ",      builtin.fmt.ux64(fault_addr).readAll(),
+            ", ",                pathname[0..builtin.debug.name(&pathname)],
+            "\n",
+        });
+    }
+    fn forkNotice(pid: u64) void {
+        var buf: [560]u8 = undefined;
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_fork_0_s, "pid=", builtin.fmt.ud64(pid).readAll(), "\n" });
+    }
+    fn waitNotice(id: WaitSpec.For, ret: Return) void {
+        const pid_s: []const u8 = builtin.fmt.ud64(ret.pid).readAll();
+        const status_s: []const u8 = builtin.fmt.ud64(ret.status).readAll();
+        var buf: [560]u8 = undefined;
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_wait_0_s, @tagName(id), ", pid=", pid_s, ", status=", status_s, "\n" });
+    }
+    fn forkError(fork_error: anytype) void {
+        var buf: [560]u8 = undefined;
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_fork_1_s, " (", @errorName(fork_error), ")\n" });
+    }
+    fn waitError(wait_error: anytype) void { // TODO: Report more information, such as pid, idtype, conditions
+        var buf: [560]u8 = undefined;
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_wait_1_s, " (", @errorName(wait_error), ")\n" });
+    }
+    fn futexWaitAttempt(futex: *Futex, value: u32, timeout: *const time.TimeSpec) void {
+        const addr_s: []const u8 = builtin.fmt.ux64(@ptrToInt(futex)).readAll();
+        const word_s: []const u8 = builtin.fmt.ud64(futex.word).readAll();
+        const value_s: []const u8 = builtin.fmt.ud64(value).readAll();
+        const sec_s: []const u8 = builtin.fmt.ud64(timeout.sec).readAll();
+        const nsec_s: []const u8 = builtin.fmt.ud64(timeout.nsec).readAll();
+        var buf: [32768]u8 = undefined;
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
+            about_futex_wait_0_s, "futex=",
+            word_s,               "(@",
+            addr_s,               "), val=",
+            value_s,              ", sec=",
+            sec_s,                ", nsec=",
+            nsec_s,               "\n",
+        });
+    }
+    fn futexWaitNotice(futex: *Futex, value: u32, timeout: *const time.TimeSpec) void {
+        const addr_s: []const u8 = builtin.fmt.ux64(@ptrToInt(futex)).readAll();
+        const word_s: []const u8 = builtin.fmt.ud64(futex.word).readAll();
+        const value_s: []const u8 = builtin.fmt.ud64(value).readAll();
+        const sec_s: []const u8 = builtin.fmt.ud64(timeout.sec).readAll();
+        const nsec_s: []const u8 = builtin.fmt.ud64(timeout.nsec).readAll();
+        _ = word_s;
+        _ = value_s;
+        _ = sec_s;
+        _ = nsec_s;
+        _ = addr_s;
+    }
+    fn futexWaitError(futex_error: anytype, futex: *Futex, value: u32, timeout: *const time.TimeSpec) void {
+        const addr_s: []const u8 = builtin.fmt.ux64(@ptrToInt(futex)).readAll();
+        const word_s: []const u8 = builtin.fmt.ud64(futex.word).readAll();
+        const value_s: []const u8 = builtin.fmt.ud64(value).readAll();
+        const sec_s: []const u8 = builtin.fmt.ud64(timeout.sec).readAll();
+        const nsec_s: []const u8 = builtin.fmt.ud64(timeout.nsec).readAll();
+        const error_s: []const u8 = @errorName(futex_error);
+        _ = word_s;
+        _ = value_s;
+        _ = sec_s;
+        _ = nsec_s;
+        _ = addr_s;
+        _ = error_s;
+    }
+};
 pub fn GenericOptions(comptime Options: type) type {
     return struct {
         field_name: []const u8,
@@ -1146,6 +1231,65 @@ pub fn GenericOptions(comptime Options: type) type {
             }
             return buf;
         }
+        const debug = struct {
+            const about_opt_0_s: []const u8 = builtin.debug.about("opt");
+            const about_opt_1_s: []const u8 = builtin.debug.about("opt-error");
+            const about_stop_s: []const u8 = "\nstop parsing options with '--'\n";
+            fn optionError(all_options: []const Options.Map, arg: [:0]const u8) void {
+                var buf: [4224]u8 = undefined;
+                var len: u64 = 0;
+                const bad_opt: []const u8 = getBadOpt(arg);
+                len += builtin.debug.writeMulti(buf[len..].ptr, &[_][]const u8{ about_opt_1_s, "'", bad_opt, "'\n" });
+                for (all_options) |option| {
+                    const min: u64 = len;
+                    if (option.long) |long_switch| {
+                        const mats: u64 = matchLongSwitch(bad_opt, long_switch);
+                        if (builtin.diff(u64, mats, long_switch.len) < 3) {
+                            len += builtin.debug.writeMany(buf[len..].ptr, about_opt_0_s);
+                            if (option.short) |short_switch| {
+                                len += builtin.debug.writeMulti(buf[len..].ptr, &.{ "'", short_switch, "', '" });
+                            }
+                            len += builtin.debug.writeMany(buf[len..].ptr, long_switch);
+                        }
+                    }
+                    if (min != len) {
+                        len += builtin.debug.writeMany(buf[len..].ptr, "'");
+                        if (option.descr) |descr| {
+                            buf[len] = '\t';
+                            len += 1;
+                            len += builtin.debug.writeMany(buf[len..].ptr, descr);
+                        }
+                        buf[len] = '\n';
+                        len += 1;
+                    }
+                }
+                len += builtin.debug.writeMany(buf[len..].ptr, about_stop_s);
+                builtin.debug.write(buf[0..len]);
+            }
+            fn getBadOpt(arg: [:0]const u8) []const u8 {
+                var idx: u64 = 0;
+                while (idx != arg.len) : (idx += 1) {
+                    if (arg[idx] == '=') {
+                        return arg[0..idx];
+                    }
+                }
+                return arg;
+            }
+            fn matchLongSwitch(bad_opt: []const u8, long_switch: []const u8) u64 {
+                var l_idx: u64 = 0;
+                var mats: u64 = 0;
+                lo: while (true) : (l_idx += 1) {
+                    var r_idx: u64 = 0;
+                    while (r_idx < long_switch.len) : (r_idx += 1) {
+                        if (l_idx +% mats >= bad_opt.len) {
+                            break :lo;
+                        }
+                        mats += @boolToInt(bad_opt[l_idx +% mats] == long_switch[r_idx]);
+                    }
+                }
+                return mats;
+            }
+        };
     };
 }
 pub inline fn getOpts(comptime Options: type, args: *[][*:0]u8, comptime all_options: []const GenericOptions(Options)) Options {
@@ -1209,99 +1353,3 @@ pub inline fn getOpts(comptime Options: type, args: *[][*:0]u8, comptime all_opt
     }
     return options;
 }
-const debug = opaque {
-    const about_stop_s: []const u8 = "\nstop parsing options with '--'\n";
-    const about_fault_s: []const u8 = builtin.debug.about_fault_p0_s;
-    const about_opt_0_s: []const u8 = builtin.debug.about("opt");
-    const about_opt_1_s: []const u8 = builtin.debug.about("opt-error");
-    const about_fork_0_s: []const u8 = builtin.debug.about("fork");
-    const about_fork_1_s: []const u8 = builtin.debug.about("fork-error");
-    const about_wait_0_s: []const u8 = builtin.debug.about("wait");
-    const about_wait_1_s: []const u8 = builtin.debug.about("wait-error");
-    fn optionNotice(comptime Options: type, comptime opt_map: []const Options.Map) void {
-        const buf: []const u8 = comptime Options.Map.helpMessage(opt_map);
-        builtin.debug.write(buf);
-    }
-    fn exceptionFaultAtAddress(symbol: []const u8, fault_addr: u64) void {
-        var buf: [8192]u8 = undefined;
-        var pathname: [4096]u8 = undefined;
-        builtin.debug.logFaultAIO(&buf, &[_][]const u8{
-            debug.about_fault_s, symbol,
-            " at address ",      builtin.fmt.ux64(fault_addr).readAll(),
-            ", ",                pathname[0..builtin.debug.name(&pathname)],
-            "\n",
-        });
-    }
-    fn forkNotice(pid: u64) void {
-        var buf: [560]u8 = undefined;
-        builtin.debug.logErrorAIO(&buf, &[_][]const u8{ about_fork_0_s, "pid=", builtin.fmt.ud64(pid).readAll(), "\n" });
-    }
-    fn waitNotice(id: WaitSpec.For, ret: Return) void {
-        const pid_s: []const u8 = builtin.fmt.ud64(ret.pid).readAll();
-        const status_s: []const u8 = builtin.fmt.ud64(ret.status).readAll();
-        var buf: [560]u8 = undefined;
-        builtin.debug.logErrorAIO(&buf, &[_][]const u8{ about_wait_0_s, @tagName(id), ", pid=", pid_s, ", status=", status_s, "\n" });
-    }
-    fn forkError(fork_error: anytype) void {
-        var buf: [560]u8 = undefined;
-        builtin.debug.logErrorAIO(&buf, &[_][]const u8{ about_fork_1_s, " (", @errorName(fork_error), ")\n" });
-    }
-    fn waitError(wait_error: anytype) void { // TODO: Report more information, such as pid, idtype, conditions
-        var buf: [560]u8 = undefined;
-        builtin.debug.logErrorAIO(&buf, &[_][]const u8{ about_wait_1_s, " (", @errorName(wait_error), ")\n" });
-    }
-    fn optionError(comptime Options: type, all_options: []const Options.Map, arg: [:0]const u8) void {
-        var buf: [4224]u8 = undefined;
-        var len: u64 = 0;
-        const bad_opt: []const u8 = getBadOpt(arg);
-        len += builtin.debug.writeMulti(buf[len..].ptr, &[_][]const u8{ about_opt_1_s, "'", bad_opt, "'\n" });
-        for (all_options) |option| {
-            const min: u64 = len;
-            if (option.long) |long_switch| {
-                const mats: u64 = matchLongSwitch(bad_opt, long_switch);
-                if (builtin.diff(u64, mats, long_switch.len) < 3) {
-                    len += builtin.debug.writeMany(buf[len..].ptr, about_opt_0_s);
-                    if (option.short) |short_switch| {
-                        len += builtin.debug.writeMulti(buf[len..].ptr, &.{ "'", short_switch, "', '" });
-                    }
-                    len += builtin.debug.writeMany(buf[len..].ptr, long_switch);
-                }
-            }
-            if (min != len) {
-                len += builtin.debug.writeMany(buf[len..].ptr, "'");
-                if (option.descr) |descr| {
-                    buf[len] = '\t';
-                    len += 1;
-                    len += builtin.debug.writeMany(buf[len..].ptr, descr);
-                }
-                buf[len] = '\n';
-                len += 1;
-            }
-        }
-        len += builtin.debug.writeMany(buf[len..].ptr, about_stop_s);
-        builtin.debug.write(buf[0..len]);
-    }
-    fn getBadOpt(arg: [:0]const u8) []const u8 {
-        var idx: u64 = 0;
-        while (idx != arg.len) : (idx += 1) {
-            if (arg[idx] == '=') {
-                return arg[0..idx];
-            }
-        }
-        return arg;
-    }
-    fn matchLongSwitch(bad_opt: []const u8, long_switch: []const u8) u64 {
-        var l_idx: u64 = 0;
-        var mats: u64 = 0;
-        lo: while (true) : (l_idx += 1) {
-            var r_idx: u64 = 0;
-            while (r_idx < long_switch.len) : (r_idx += 1) {
-                if (l_idx +% mats >= bad_opt.len) {
-                    break :lo;
-                }
-                mats += @boolToInt(bad_opt[l_idx +% mats] == long_switch[r_idx]);
-            }
-        }
-        return mats;
-    }
-};
