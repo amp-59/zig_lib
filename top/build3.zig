@@ -1129,7 +1129,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             const bold_s: *const [6:0]u8 = "\x1b[0;1m";
             const faint_s: *const [15:0]u8 = "\x1b[0;38;5;250;1m";
             const trace_s: *const [11:0]u8 = "\x1b[38;5;247m";
-            const hi_red_s: *const [10:0]u8 = "\x1b[38;5;196m";
+            const hi_red_s: *const [11:0]u8 = "\x1b[38;5;196m";
             const fancy_hl_line: bool = false;
             fn exchangeNotice(target: *Target, task: types.Task, old_state: types.State, new_state: types.State) void {
                 @setRuntimeSafety(safe);
@@ -1462,16 +1462,16 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     mach.memcpy(buf, line.ptr, indent);
                     len +%= indent;
                     @ptrCast(*@TypeOf(bold_s.*), buf + len).* = bold_s.*;
-                    len +%= bold_s.len;
+                    len +%= comptime bold_s.len;
                     mach.memcpy(buf + len, line[indent..pos].ptr, before_caret);
                     len +%= before_caret;
                     @ptrCast(*@TypeOf(hi_red_s.*), buf + len).* = hi_red_s.*;
-                    len +%= hi_red_s.len;
+                    len +%= comptime hi_red_s.len;
                     buf[len] = line[pos];
                     len +%= 1;
                     pos = pos +% 1;
                     @ptrCast(*@TypeOf(bold_s.*), buf + len).* = bold_s.*;
-                    len +%= bold_s.len;
+                    len +%= comptime bold_s.len;
                     mach.memcpy(buf + len, line[pos .. pos + after_caret].ptr, after_caret);
                     len +%= after_caret;
                     buf[len] = '\n';
@@ -1557,6 +1557,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 for ((extra + list.start)[0..list.len]) |err_msg_idx| {
                     var len: u64 = writeError(buf, extra, bytes, err_msg_idx, error_s);
                     builtin.debug.write(buf[0..len]);
+                    mach.memset(buf, 0, len);
                 }
                 builtin.debug.write(meta.manyToSlice(bytes + list.compile_log_text));
             }
