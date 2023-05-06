@@ -57,6 +57,7 @@ pub inline fn ub(value: anytype) PolynomialFormat(.{
     .radix = 2,
     .signedness = .unsigned,
     .width = .max,
+    .prefix = "0b",
 }) {
     return .{ .value = value };
 }
@@ -73,6 +74,7 @@ pub inline fn ux(value: anytype) PolynomialFormat(.{
     .radix = 16,
     .signedness = .unsigned,
     .width = .min,
+    .prefix = "0x",
 }) {
     return .{ .value = value };
 }
@@ -122,6 +124,7 @@ pub inline fn ib(value: anytype) PolynomialFormat(.{
     .radix = 2,
     .signedness = .signed,
     .width = .max,
+    .prefix = "0b",
 }) {
     return .{ .value = value };
 }
@@ -138,6 +141,7 @@ pub inline fn ix(value: anytype) PolynomialFormat(.{
     .radix = 16,
     .signedness = .signed,
     .width = .min,
+    .prefix = "0x",
 }) {
     return .{ .value = value };
 }
@@ -146,6 +150,7 @@ pub inline fn ib8(value: i8) PolynomialFormat(.{
     .radix = 2,
     .signedness = .signed,
     .width = .max,
+    .prefix = "0b",
 }) {
     return .{ .value = value };
 }
@@ -154,6 +159,7 @@ pub inline fn ib16(value: i16) PolynomialFormat(.{
     .radix = 2,
     .signedness = .signed,
     .width = .max,
+    .prefix = "0b",
 }) {
     return .{ .value = value };
 }
@@ -162,6 +168,7 @@ pub inline fn ib32(value: i32) PolynomialFormat(.{
     .radix = 2,
     .signedness = .signed,
     .width = .max,
+    .prefix = "0b",
 }) {
     return .{ .value = value };
 }
@@ -170,6 +177,7 @@ pub inline fn ib64(value: i64) PolynomialFormat(.{
     .radix = 2,
     .signedness = .signed,
     .width = .max,
+    .prefix = "0b",
 }) {
     return .{ .value = value };
 }
@@ -178,6 +186,7 @@ pub inline fn ib128(value: i128) PolynomialFormat(.{
     .radix = 2,
     .signedness = .signed,
     .width = .max,
+    .prefix = "0b",
 }) {
     return .{ .value = value };
 }
@@ -186,6 +195,7 @@ pub inline fn io8(value: i8) PolynomialFormat(.{
     .radix = 8,
     .signedness = .signed,
     .width = .min,
+    .prefix = "0o",
 }) {
     return .{ .value = value };
 }
@@ -194,6 +204,7 @@ pub inline fn io16(value: i16) PolynomialFormat(.{
     .radix = 8,
     .signedness = .signed,
     .width = .min,
+    .prefix = "0o",
 }) {
     return .{ .value = value };
 }
@@ -202,6 +213,7 @@ pub inline fn io32(value: i32) PolynomialFormat(.{
     .radix = 8,
     .signedness = .signed,
     .width = .min,
+    .prefix = "0o",
 }) {
     return .{ .value = value };
 }
@@ -210,6 +222,7 @@ pub inline fn io64(value: i64) PolynomialFormat(.{
     .radix = 8,
     .signedness = .signed,
     .width = .min,
+    .prefix = "0o",
 }) {
     return .{ .value = value };
 }
@@ -218,6 +231,7 @@ pub inline fn io128(value: i128) PolynomialFormat(.{
     .radix = 8,
     .signedness = .signed,
     .width = .min,
+    .prefix = "0o",
 }) {
     return .{ .value = value };
 }
@@ -266,6 +280,7 @@ pub inline fn ix8(value: i8) PolynomialFormat(.{
     .radix = 16,
     .signedness = .signed,
     .width = .min,
+    .prefix = "0x",
 }) {
     return .{ .value = value };
 }
@@ -274,6 +289,7 @@ pub inline fn ix16(value: i16) PolynomialFormat(.{
     .radix = 16,
     .signedness = .signed,
     .width = .min,
+    .prefix = "0x",
 }) {
     return .{ .value = value };
 }
@@ -282,6 +298,7 @@ pub inline fn ix32(value: i32) PolynomialFormat(.{
     .radix = 16,
     .signedness = .signed,
     .width = .min,
+    .prefix = "0x",
 }) {
     return .{ .value = value };
 }
@@ -290,6 +307,7 @@ pub inline fn ix64(value: i64) PolynomialFormat(.{
     .radix = 16,
     .signedness = .signed,
     .width = .min,
+    .prefix = "0x",
 }) {
     return .{ .value = value };
 }
@@ -298,6 +316,7 @@ pub inline fn ix128(value: i128) PolynomialFormat(.{
     .radix = 16,
     .signedness = .signed,
     .width = .min,
+    .prefix = "0x",
 }) {
     return .{ .value = value };
 }
@@ -306,6 +325,7 @@ pub inline fn iz8(value: i8) PolynomialFormat(.{
     .radix = 36,
     .signedness = .signed,
     .width = .min,
+    .prefix = "0z",
 }) {
     return .{ .value = value };
 }
@@ -314,6 +334,7 @@ pub inline fn iz16(value: i16) PolynomialFormat(.{
     .radix = 36,
     .signedness = .signed,
     .width = .min,
+    .prefix = "0z",
 }) {
     return .{ .value = value };
 }
@@ -322,6 +343,7 @@ pub inline fn iz32(value: i32) PolynomialFormat(.{
     .radix = 36,
     .signedness = .signed,
     .width = .min,
+    .prefix = "0z",
 }) {
     return .{ .value = value };
 }
@@ -330,6 +352,7 @@ pub inline fn iz64(value: i64) PolynomialFormat(.{
     .radix = 36,
     .signedness = .signed,
     .width = .min,
+    .prefix = "0z",
 }) {
     return .{ .value = value };
 }
@@ -338,6 +361,7 @@ pub inline fn iz128(value: i128) PolynomialFormat(.{
     .radix = 36,
     .signedness = .signed,
     .width = .min,
+    .prefix = "0z",
 }) {
     return .{ .value = value };
 }
@@ -346,6 +370,7 @@ pub inline fn ub8(value: u8) PolynomialFormat(.{
     .radix = 2,
     .signedness = .unsigned,
     .width = .max,
+    .prefix = "0b",
 }) {
     return .{ .value = value };
 }
@@ -354,6 +379,7 @@ pub inline fn ub16(value: u16) PolynomialFormat(.{
     .radix = 2,
     .signedness = .unsigned,
     .width = .max,
+    .prefix = "0b",
 }) {
     return .{ .value = value };
 }
@@ -362,6 +388,7 @@ pub inline fn ub32(value: u32) PolynomialFormat(.{
     .radix = 2,
     .signedness = .unsigned,
     .width = .max,
+    .prefix = "0b",
 }) {
     return .{ .value = value };
 }
@@ -370,6 +397,7 @@ pub inline fn ub64(value: u64) PolynomialFormat(.{
     .radix = 2,
     .signedness = .unsigned,
     .width = .max,
+    .prefix = "0b",
 }) {
     return .{ .value = value };
 }
@@ -378,6 +406,7 @@ pub inline fn uo8(value: u8) PolynomialFormat(.{
     .radix = 8,
     .signedness = .unsigned,
     .width = .min,
+    .prefix = "0o",
 }) {
     return .{ .value = value };
 }
@@ -386,6 +415,7 @@ pub inline fn uo16(value: u16) PolynomialFormat(.{
     .radix = 8,
     .signedness = .unsigned,
     .width = .min,
+    .prefix = "0o",
 }) {
     return .{ .value = value };
 }
@@ -394,6 +424,7 @@ pub inline fn uo32(value: u32) PolynomialFormat(.{
     .radix = 8,
     .signedness = .unsigned,
     .width = .min,
+    .prefix = "0o",
 }) {
     return .{ .value = value };
 }
@@ -402,6 +433,7 @@ pub inline fn uo64(value: u64) PolynomialFormat(.{
     .radix = 8,
     .signedness = .unsigned,
     .width = .min,
+    .prefix = "0o",
 }) {
     return .{ .value = value };
 }
@@ -410,6 +442,7 @@ pub inline fn uo128(value: u128) PolynomialFormat(.{
     .radix = 8,
     .signedness = .unsigned,
     .width = .min,
+    .prefix = "0o",
 }) {
     return .{ .value = value };
 }
@@ -458,6 +491,7 @@ pub inline fn ux8(value: u8) PolynomialFormat(.{
     .radix = 16,
     .signedness = .unsigned,
     .width = .min,
+    .prefix = "0x",
 }) {
     return .{ .value = value };
 }
@@ -466,6 +500,7 @@ pub inline fn ux16(value: u16) PolynomialFormat(.{
     .radix = 16,
     .signedness = .unsigned,
     .width = .min,
+    .prefix = "0x",
 }) {
     return .{ .value = value };
 }
@@ -474,6 +509,7 @@ pub inline fn ux32(value: u32) PolynomialFormat(.{
     .radix = 16,
     .signedness = .unsigned,
     .width = .min,
+    .prefix = "0x",
 }) {
     return .{ .value = value };
 }
@@ -482,6 +518,7 @@ pub inline fn ux64(value: u64) PolynomialFormat(.{
     .radix = 16,
     .signedness = .unsigned,
     .width = .min,
+    .prefix = "0x",
 }) {
     return .{ .value = value };
 }
@@ -490,6 +527,7 @@ pub inline fn ux128(value: u128) PolynomialFormat(.{
     .radix = 16,
     .signedness = .unsigned,
     .width = .min,
+    .prefix = "0x",
 }) {
     return .{ .value = value };
 }
@@ -498,6 +536,7 @@ pub inline fn uz8(value: u8) PolynomialFormat(.{
     .radix = 36,
     .signedness = .unsigned,
     .width = .min,
+    .prefix = "0z",
 }) {
     return .{ .value = value };
 }
@@ -506,6 +545,7 @@ pub inline fn uz16(value: u16) PolynomialFormat(.{
     .radix = 36,
     .signedness = .unsigned,
     .width = .min,
+    .prefix = "0z",
 }) {
     return .{ .value = value };
 }
@@ -514,6 +554,7 @@ pub inline fn uz32(value: u32) PolynomialFormat(.{
     .radix = 36,
     .signedness = .unsigned,
     .width = .min,
+    .prefix = "0z",
 }) {
     return .{ .value = value };
 }
@@ -522,6 +563,7 @@ pub inline fn uz64(value: u64) PolynomialFormat(.{
     .radix = 36,
     .signedness = .unsigned,
     .width = .min,
+    .prefix = "0z",
 }) {
     return .{ .value = value };
 }
@@ -530,6 +572,7 @@ pub inline fn uz128(value: u128) PolynomialFormat(.{
     .radix = 36,
     .signedness = .unsigned,
     .width = .min,
+    .prefix = "0z",
 }) {
     return .{ .value = value };
 }
@@ -538,6 +581,7 @@ pub fn ubsize(value: usize) PolynomialFormat(.{
     .radix = 2,
     .signedness = .unsigned,
     .width = .max,
+    .prefix = "0b",
 }) {
     return .{ .value = value };
 }
@@ -546,6 +590,7 @@ pub fn uosize(value: usize) PolynomialFormat(.{
     .radix = 8,
     .signedness = .unsigned,
     .width = .min,
+    .prefix = "0o",
 }) {
     return .{ .value = value };
 }
@@ -562,6 +607,7 @@ pub fn uxsize(value: usize) PolynomialFormat(.{
     .radix = 16,
     .signedness = .unsigned,
     .width = .min,
+    .prefix = "0x",
 }) {
     return .{ .value = value };
 }
@@ -570,6 +616,7 @@ pub fn ibsize(value: usize) PolynomialFormat(.{
     .radix = 2,
     .signedness = .signed,
     .width = .max,
+    .prefix = "0b",
 }) {
     return .{ .value = value };
 }
@@ -771,7 +818,7 @@ pub const PolynomialFormatSpec = struct {
     radix: comptime_int,
     width: Width,
     range: Range = .{},
-    prefix: bool = true,
+    prefix: ?*const [2]u8 = null,
     separator: ?Separator = null,
 };
 pub fn PolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
@@ -784,7 +831,6 @@ pub fn PolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
         const max_abs_value: Abs = fmt_spec.range.max orelse ~@as(Abs, 0);
         const min_digits_count: u16 = builtin.fmt.length(Abs, min_abs_value, fmt_spec.radix);
         const max_digits_count: u16 = builtin.fmt.length(Abs, max_abs_value, fmt_spec.radix);
-        const prefix: []const u8 = lit.int_prefixes[fmt_spec.radix];
         pub const spec: PolynomialFormatSpec = fmt_spec;
         const max_len: u64 = blk: {
             var len: u64 = 0;
@@ -792,9 +838,7 @@ pub fn PolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
                 break :blk len +% 1;
             }
             len +%= max_digits_count;
-            if (fmt_spec.prefix and
-                fmt_spec.radix != 10)
-            {
+            if (fmt_spec.prefix) |prefix| {
                 len +%= prefix.len;
             }
             if (fmt_spec.signedness == .signed) {
@@ -828,58 +872,56 @@ pub fn PolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
             }
         }
         pub fn formatWrite(format: Format, array: anytype) void {
-            const buf: [*]u8 = @ptrCast([*]u8, array.referOneUndefined());
-            const len: u64 = @call(.always_inline, formatWriteBuf, .{
-                format, buf,
-            });
-            array.define(len);
+            array.define(@call(.always_inline, formatWriteBuf, .{
+                format,
+                @ptrCast([*]u8, array.referOneUndefined()),
+            }));
         }
         pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
-            const start: u64 = @ptrToInt(buf);
-            var next: u64 = start;
+            var len: u64 = 0;
             if (Abs != Int) {
-                @intToPtr(*u8, next).* = '-';
+                buf[0] = '-';
             }
-            next +%= @boolToInt(format.value < 0);
-            if (fmt_spec.prefix and fmt_spec.radix != 10) {
-                @intToPtr(*[prefix.len]u8, next).* =
-                    @ptrCast(*const [prefix.len]u8, prefix.ptr).*;
-                next +%= prefix.len;
+            len +%= builtin.int(u64, format.value < 0);
+            if (fmt_spec.prefix) |prefix| {
+                len +%= builtin.arrcpy(buf + len, prefix.*);
             }
             if (fmt_spec.radix > max_abs_value) {
-                @intToPtr(*u8, next).* = @as(u8, '0') +%
-                    @boolToInt(format.value != 0);
-                next +%= 1;
+                buf[len] = '0' +% builtin.int(u8, format.value != 0);
+                len +%= 1;
             } else if (fmt_spec.separator) |separator| {
                 const count: u64 = format.digits();
                 var value: Abs = format.absolute();
-                next +%= count;
-                var len: u64 = 0;
+                len +%= count;
+                var pos: u64 = 0;
                 var sep: u64 = 0;
-                while (sep +% len != count) : (value /= fmt_spec.radix) {
-                    len +%= 1;
-                    @intToPtr(*u8, next -% (sep +% len)).* = separator.character;
-                    const b0: bool = len / separator.digits != 0;
-                    const b1: bool = len % separator.digits == 1;
+                while (sep +% pos != count) : (value /= fmt_spec.radix) {
+                    pos +%= 1;
+                    buf[len - (sep +% pos)] = separator.character;
+                    const b0: bool = pos / separator.digits != 0;
+                    const b1: bool = pos % separator.digits == 1;
                     sep +%= builtin.int2a(u64, b0, b1);
-                    @intToPtr(*u8, next -% (sep +% len)).* =
+                    buf[len - (sep +% pos)] =
                         builtin.fmt.toSymbol(Abs, value, fmt_spec.radix);
                 }
             } else {
                 const count: u64 = format.digits();
                 var value: Abs = format.absolute();
-                next +%= count;
-                var len: u64 = 0;
-                while (len != count) : (value /= fmt_spec.radix) {
-                    len +%= 1;
-                    @intToPtr(*u8, next -% len).* =
+                len +%= count;
+                var pos: u64 = 0;
+                while (pos != count) : (value /= fmt_spec.radix) {
+                    pos +%= 1;
+                    buf[len -% pos] =
                         builtin.fmt.toSymbol(Abs, value, fmt_spec.radix);
                 }
             }
-            return next -% start;
+            return len;
         }
         pub fn formatLength(format: Format) u64 {
-            var len: u64 = if (fmt_spec.prefix) prefix.len else 0;
+            var len: u64 = 0;
+            if (fmt_spec.prefix) |prefix| {
+                len +%= prefix.len;
+            }
             if (format.value < 0) {
                 len +%= 1;
             }
