@@ -250,7 +250,7 @@ const CharacteristicFormat = fmt.PolynomialFormat(.{
     .signedness = .unsigned,
     .width = .max,
     .radix = 16,
-    .prefix = false,
+    .prefix = null,
 });
 fn writeOptStringExtra(
     array: *Array,
