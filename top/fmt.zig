@@ -787,12 +787,14 @@ pub fn PolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
         const prefix: []const u8 = lit.int_prefixes[fmt_spec.radix];
         pub const spec: PolynomialFormatSpec = fmt_spec;
         const max_len: u64 = blk: {
-            var len: u64 = prefix.len;
+            var len: u64 = 0;
             if (fmt_spec.radix > max_abs_value) {
                 break :blk len +% 1;
             }
             len +%= max_digits_count;
-            if (fmt_spec.radix != 10) {
+            if (fmt_spec.prefix and
+                fmt_spec.radix != 10)
+            {
                 len +%= prefix.len;
             }
             if (fmt_spec.signedness == .signed) {
@@ -839,7 +841,7 @@ pub fn PolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
                 @intToPtr(*u8, next).* = '-';
             }
             next +%= @boolToInt(format.value < 0);
-            if (fmt_spec.radix != 10) {
+            if (fmt_spec.prefix and fmt_spec.radix != 10) {
                 @intToPtr(*[prefix.len]u8, next).* =
                     @ptrCast(*const [prefix.len]u8, prefix.ptr).*;
                 next +%= prefix.len;
@@ -877,7 +879,7 @@ pub fn PolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
             return next -% start;
         }
         pub fn formatLength(format: Format) u64 {
-            var len: u64 = prefix.len;
+            var len: u64 = if (fmt_spec.prefix) prefix.len else 0;
             if (format.value < 0) {
                 len +%= 1;
             }
