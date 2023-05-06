@@ -142,6 +142,12 @@ pub const build_command_options: []const types.OptionSpec = &.{
         },
     },
     .{
+        .name = "passes",
+        .string = "-fopt-bisect-limit",
+        .arg_info = .{ .tag = .optional_integer, .char = '=', .type = types.ProtoTypeDescr.init(?u64) },
+        .descr = &.{"Only run [limit] first LLVM optimization passes"},
+    },
+    .{
         .name = "main_pkg_path",
         .string = "--main-pkg-path",
         .arg_info = types.ArgInfo.optional_string([]const u8),
