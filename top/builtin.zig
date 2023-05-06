@@ -572,6 +572,10 @@ pub inline fn identity(any: anytype) @TypeOf(any) {
 pub inline fn equ(comptime T: type, dst: *T, src: T) void {
     dst.* = src;
 }
+pub inline fn arrcpy(buf: [*]u8, comptime any: anytype) u64 {
+    @ptrCast(*@TypeOf(any), buf).* = any;
+    return any.len;
+}
 fn @"test"(b: bool) bool {
     return b;
 }
