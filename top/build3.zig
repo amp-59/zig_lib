@@ -1382,7 +1382,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 const err: *types.ErrorMessage = builtin.ptrCast(*types.ErrorMessage, extra + err_msg_idx);
                 const src: *types.SourceLocation = builtin.ptrCast(*types.SourceLocation, extra + err.src_loc);
                 var len: u64 = 4;
-                @ptrCast(*[4]u8, buf + len).* = "\x1b[1m".*;
+                @ptrCast(*[4]u8, buf).* = "\x1b[1m".*;
                 if (err.src_loc != 0) {
                     len +%= writeSourceLocation(
                         buf + len,
@@ -1557,7 +1557,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 for ((extra + list.start)[0..list.len]) |err_msg_idx| {
                     var len: u64 = writeError(buf, extra, bytes, err_msg_idx, error_s);
                     builtin.debug.write(buf[0..len]);
-                    mach.memset(buf, 0, len);
                 }
                 builtin.debug.write(meta.manyToSlice(bytes + list.compile_log_text));
             }
