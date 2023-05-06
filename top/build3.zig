@@ -1117,7 +1117,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         const env_basename: [:0]const u8 = builder_spec.options.names.env ++ builder_spec.options.extensions.zig;
         pub const debug = struct {
             const about_run_s: [:0]const u8 = builtin.debug.about("run");
-            const about_build_s: [:0]const u8 = builtin.debug.about("build");
+            const about_build_exe_s: [:0]const u8 = builtin.debug.about("build-exe");
+            const about_build_obj_s: [:0]const u8 = builtin.debug.about("build-obj");
+            const about_build_lib_s: [:0]const u8 = builtin.debug.about("build-lib");
             const about_format_s: [:0]const u8 = builtin.debug.about("format");
             const about_state_0_s: [:0]const u8 = builtin.debug.about("state");
             const about_state_1_s: [:0]const u8 = builtin.debug.about("state-fault");
@@ -1194,8 +1196,13 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 const sec_s: []const u8 = builtin.fmt.ud64(durat.sec).readAll();
                 const nsec_s: []const u8 = builtin.fmt.nsec(durat.nsec).readAll();
                 var buf: [32768]u8 = undefined;
-                mach.memcpy(&buf, about_build_s.ptr, about_build_s.len);
-                var len: u64 = about_build_s.len;
+                const about: []const u8 = switch (target.build_cmd.kind) {
+                    .exe => about_build_exe_s,
+                    .obj => about_build_obj_s,
+                    .lib => about_build_lib_s,
+                };
+                mach.memcpy(&buf, about.ptr, about.len);
+                var len: u64 = about.len;
                 mach.memcpy(buf[len..].ptr, target.name.ptr, target.name.len);
                 len +%= target.name.len;
                 @ptrCast(*[2]u8, buf[len..].ptr).* = ", ".*;
@@ -1379,8 +1386,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             fn writeTopSrcLoc(buf: [*]u8, extra: [*]u32, bytes: [*:0]u8, err_msg_idx: u32) u64 {
                 @setRuntimeSafety(safe);
-                const err: *types.ErrorMessage = builtin.ptrCast(*types.ErrorMessage, extra + err_msg_idx);
-                const src: *types.SourceLocation = builtin.ptrCast(*types.SourceLocation, extra + err.src_loc);
+                const err: *types.ErrorMessage = @ptrCast(*types.ErrorMessage, extra + err_msg_idx);
+                const src: *types.SourceLocation = @ptrCast(*types.SourceLocation, extra + err.src_loc);
                 var len: u64 = 4;
                 @ptrCast(*[4]u8, buf).* = "\x1b[1m".*;
                 if (err.src_loc != 0) {
@@ -1397,8 +1404,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             fn writeError(buf: [*]u8, extra: [*]u32, bytes: [*:0]u8, err_msg_idx: u32, about: [:0]const u8) u64 {
                 @setRuntimeSafety(safe);
-                const err: *types.ErrorMessage = builtin.ptrCast(*types.ErrorMessage, extra + err_msg_idx);
-                const src: *types.SourceLocation = builtin.ptrCast(*types.SourceLocation, extra + err.src_loc);
+                const err: *types.ErrorMessage = @ptrCast(*types.ErrorMessage, extra + err_msg_idx);
+                const src: *types.SourceLocation = @ptrCast(*types.SourceLocation, extra + err.src_loc);
                 const notes: [*]u32 = extra + err_msg_idx + types.ErrorMessage.len;
                 var len: u64 = writeTopSrcLoc(buf, extra, bytes, err_msg_idx);
                 const pos: u64 = len +% about.len -% trace_s.len -% 2;
@@ -1528,9 +1535,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 @ptrCast(*[15]u8, buf + len).* = "referenced by:\n".*;
                 len +%= 15;
                 while (idx != ref_len) : (idx +%= 1) {
-                    const ref_trc: *types.ReferenceTrace = builtin.ptrCast(*types.ReferenceTrace, extra + ref_idx);
+                    const ref_trc: *types.ReferenceTrace = @ptrCast(*types.ReferenceTrace, extra + ref_idx);
                     if (ref_trc.src_loc != 0) {
-                        const ref_src: *types.SourceLocation = builtin.ptrCast(*types.SourceLocation, extra + ref_trc.src_loc);
+                        const ref_src: *types.SourceLocation = @ptrCast(*types.SourceLocation, extra + ref_trc.src_loc);
                         const src_file: [:0]u8 = meta.manyToSlice(bytes + ref_src.src_path);
                         const decl_name: [:0]u8 = meta.manyToSlice(bytes + ref_trc.decl_name);
                         mach.memset(buf + len, ' ', 4);
@@ -1553,7 +1560,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 const extra: [*]u32 = hdr.extra();
                 const bytes: [*:0]u8 = hdr.bytes();
                 var buf: [*]u8 = allocate(allocator, u8, 1024 * 1024).ptr;
-                const list: types.ErrorMessageList = builtin.ptrCast(*types.ErrorMessageList, extra).*;
+                const list: types.ErrorMessageList = @ptrCast(*types.ErrorMessageList, extra).*;
                 for ((extra + list.start)[0..list.len]) |err_msg_idx| {
                     var len: u64 = writeError(buf, extra, bytes, err_msg_idx, error_s);
                     builtin.debug.write(buf[0..len]);
