@@ -776,7 +776,7 @@ pub noinline fn callMain() noreturn {
             break :blk_0 .{ args[0..args_len], vars[0..vars_len], auxv };
         }
     };
-    if (meta.leastBitCast(builtin.signal_handlers) != 0) {
+    if (@bitCast(u4, builtin.signal_handlers) != 0) {
         exception.enableExceptionHandlers();
     }
     if (main_return_type == void) {
@@ -1032,8 +1032,8 @@ const debug = opaque {
     const about_fork_1_s: []const u8 = builtin.debug.about("fork-error");
     const about_wait_0_s: []const u8 = builtin.debug.about("wait");
     const about_wait_1_s: []const u8 = builtin.debug.about("wait-error");
-    const about_futex_wait_0_s: []const u8 = builtin.debug.about("futex-wait");
-    const about_futex_wait_1_s: []const u8 = builtin.debug.about("futex-wait-error");
+    const about_futex_wait_0_s: []const u8 = builtin.debug.about("futex");
+    const about_futex_wait_1_s: []const u8 = builtin.debug.about("futex-error");
 
     fn optionNotice(comptime Options: type, comptime opt_map: []const Options.Map) void {
         const buf: []const u8 = comptime Options.Map.helpMessage(opt_map);
@@ -1075,12 +1075,9 @@ const debug = opaque {
         const nsec_s: []const u8 = builtin.fmt.ud64(timeout.nsec).readAll();
         var buf: [32768]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
-            about_futex_wait_0_s, "futex=",
-            word_s,               "(@",
-            addr_s,               "), val=",
-            value_s,              ", sec=",
-            sec_s,                ", nsec=",
-            nsec_s,               "\n",
+            about_futex_wait_0_s, addr_s,  ", word=", word_s,
+            ", val=",             value_s, ", sec=",  sec_s,
+            ", nsec=",            nsec_s,  "\n",
         });
     }
     fn futexWaitNotice(futex: *Futex, value: u32, timeout: *const time.TimeSpec) void {
@@ -1089,11 +1086,12 @@ const debug = opaque {
         const value_s: []const u8 = builtin.fmt.ud64(value).readAll();
         const sec_s: []const u8 = builtin.fmt.ud64(timeout.sec).readAll();
         const nsec_s: []const u8 = builtin.fmt.ud64(timeout.nsec).readAll();
-        _ = word_s;
-        _ = value_s;
-        _ = sec_s;
-        _ = nsec_s;
-        _ = addr_s;
+        var buf: [32768]u8 = undefined;
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
+            about_futex_wait_0_s, addr_s,  ", word=", word_s,
+            ", val=",             value_s, ", sec=",  sec_s,
+            ", nsec=",            nsec_s,  "\n",
+        });
     }
     fn futexWaitError(futex_error: anytype, futex: *Futex, value: u32, timeout: *const time.TimeSpec) void {
         const addr_s: []const u8 = builtin.fmt.ux64(@ptrToInt(futex)).readAll();
@@ -1102,12 +1100,13 @@ const debug = opaque {
         const sec_s: []const u8 = builtin.fmt.ud64(timeout.sec).readAll();
         const nsec_s: []const u8 = builtin.fmt.ud64(timeout.nsec).readAll();
         const error_s: []const u8 = @errorName(futex_error);
-        _ = word_s;
-        _ = value_s;
-        _ = sec_s;
-        _ = nsec_s;
-        _ = addr_s;
-        _ = error_s;
+        var buf: [32768]u8 = undefined;
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
+            about_futex_wait_0_s, addr_s,  ", word=", word_s,
+            ", val=",             value_s, ", sec=",  sec_s,
+            ", nsec=",            nsec_s,  " (",      error_s,
+            ")\n",
+        });
     }
 };
 pub fn GenericOptions(comptime Options: type) type {
