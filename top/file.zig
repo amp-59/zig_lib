@@ -2229,8 +2229,4 @@ const debug = opaque {
         }
         return len;
     }
-    inline fn arrcpy(buf: [*]u8, any: anytype) u64 {
-        @ptrCast(*@TypeOf(any), buf).* = any;
-        comptime return any.len;
-    }
 };
