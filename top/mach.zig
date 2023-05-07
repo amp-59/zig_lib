@@ -503,6 +503,15 @@ comptime {
     asm (
         \\.intel_syntax noprefix
         \\memcpy:
+        \\  mov     rcx, rdx
+        \\  rep     movsb byte ptr es:[rdi], byte ptr [rsi]
+        \\  ret
+    );
+}
+pub extern fn memmove(noalias dest: [*]u8, noalias src: [*]const u8, len: u64) callconv(.C) void;
+comptime {
+    asm (
+        \\.intel_syntax noprefix
         \\memmove:
         \\  mov     rcx, rdx
         \\  rep     movsb byte ptr es:[rdi], byte ptr [rsi]
