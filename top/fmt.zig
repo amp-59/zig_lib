@@ -1248,7 +1248,7 @@ pub fn RangeFormat(comptime fmt_spec: PolynomialFormatSpec) type {
         pub const spec: PolynomialFormatSpec = fmt_spec;
         pub const SubFormat = PolynomialFormat(blk: {
             var tmp: PolynomialFormatSpec = fmt_spec;
-            tmp.prefix = false;
+            tmp.prefix = null;
             break :blk tmp;
         });
         pub const max_len: u64 = (SubFormat.max_len) * 2 +% 4;
