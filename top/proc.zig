@@ -1304,6 +1304,67 @@ pub fn GenericOptions(comptime Options: type) type {
             }
             return buf;
         }
+        pub inline fn getOpts(args: *[][*:0]u8, comptime all_options: []const Option) Options {
+            var options: Options = .{};
+            if (args.len == 0) {
+                return options;
+            }
+            var index: u64 = 1;
+            lo: while (index != args.len) {
+                inline for (all_options) |option| {
+                    if (index == args.len) {
+                        break :lo;
+                    }
+                    const arg1: [:0]const u8 = meta.manyToSlice(args.*[index]);
+                    if (option.long) |long_switch| blk: {
+                        if (mach.testEqualMany8(long_switch, arg1)) {
+                            option.getOptInternal(&options, args, index, 0);
+                            continue :lo;
+                        }
+                        if (option.assign == .boolean) {
+                            break :blk;
+                        }
+                        const assign_long_switch: []const u8 = long_switch ++ "=";
+                        if (arg1.len >= assign_long_switch.len and
+                            mach.testEqualMany8(assign_long_switch, arg1[0..assign_long_switch.len]))
+                        {
+                            option.getOptInternal(&options, args, index, assign_long_switch.len);
+                            continue :lo;
+                        }
+                    }
+                    if (option.short) |short_switch| blk: {
+                        if (mach.testEqualMany8(short_switch, arg1)) {
+                            option.getOptInternal(&options, args, index, 0);
+                            continue :lo;
+                        }
+                        if (option.assign == .boolean) {
+                            break :blk;
+                        }
+                        if (arg1.len >= short_switch.len and
+                            mach.testEqualMany8(short_switch, arg1[0..short_switch.len]))
+                        {
+                            option.getOptInternal(&options, args, index, short_switch.len);
+                            continue :lo;
+                        }
+                    }
+                }
+                const arg1: [:0]const u8 = meta.manyToSlice(args.*[index]);
+                if (mach.testEqualMany8("--", arg1)) {
+                    shift(args, index);
+                    break :lo;
+                }
+                if (mach.testEqualMany8("--help", arg1)) {
+                    Option.debug.optionNotice(Options, all_options);
+                    builtin.proc.exitNotice(0);
+                }
+                if (arg1.len != 0 and arg1[0] == '-') {
+                    Option.debug.optionError(Options, all_options, arg1);
+                    builtin.proc.exitNotice(0);
+                }
+                index += 1;
+            }
+            return options;
+        }
         const debug = struct {
             const about_opt_0_s: []const u8 = builtin.debug.about("opt");
             const about_opt_1_s: []const u8 = builtin.debug.about("opt-error");
@@ -1364,65 +1425,4 @@ pub fn GenericOptions(comptime Options: type) type {
             }
         };
     };
-}
-pub inline fn getOpts(comptime Options: type, args: *[][*:0]u8, comptime all_options: []const GenericOptions(Options)) Options {
-    var options: Options = .{};
-    if (args.len == 0) {
-        return options;
-    }
-    var index: u64 = 1;
-    lo: while (index != args.len) {
-        inline for (all_options) |option| {
-            if (index == args.len) {
-                break :lo;
-            }
-            const arg1: [:0]const u8 = meta.manyToSlice(args.*[index]);
-            if (option.long) |long_switch| blk: {
-                if (mach.testEqualMany8(long_switch, arg1)) {
-                    option.getOptInternal(&options, args, index, 0);
-                    continue :lo;
-                }
-                if (option.assign == .boolean) {
-                    break :blk;
-                }
-                const assign_long_switch: []const u8 = long_switch ++ "=";
-                if (arg1.len >= assign_long_switch.len and
-                    mach.testEqualMany8(assign_long_switch, arg1[0..assign_long_switch.len]))
-                {
-                    option.getOptInternal(&options, args, index, assign_long_switch.len);
-                    continue :lo;
-                }
-            }
-            if (option.short) |short_switch| blk: {
-                if (mach.testEqualMany8(short_switch, arg1)) {
-                    option.getOptInternal(&options, args, index, 0);
-                    continue :lo;
-                }
-                if (option.assign == .boolean) {
-                    break :blk;
-                }
-                if (arg1.len >= short_switch.len and
-                    mach.testEqualMany8(short_switch, arg1[0..short_switch.len]))
-                {
-                    option.getOptInternal(&options, args, index, short_switch.len);
-                    continue :lo;
-                }
-            }
-        }
-        const arg1: [:0]const u8 = meta.manyToSlice(args.*[index]);
-        if (mach.testEqualMany8("--", arg1)) {
-            shift(args, index);
-            break :lo;
-        }
-        if (mach.testEqualMany8("--help", arg1)) {
-            debug.optionNotice(Options, all_options);
-            builtin.proc.exitNotice(0);
-        }
-        if (arg1.len != 0 and arg1[0] == '-') {
-            debug.optionError(Options, all_options, arg1);
-            builtin.proc.exitNotice(0);
-        }
-        index += 1;
-    }
-    return options;
 }
