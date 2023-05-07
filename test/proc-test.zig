@@ -71,6 +71,9 @@ fn printHere(x: u64) void {
     builtin.debug.write(buf[0..len]);
     builtin.debug.write("\n");
 }
+fn testFutexWake(futex2: *proc.Futex) void {
+    proc.futexWake(.{}, futex2, 1) catch {};
+}
 fn testFutexWait(futex1: *proc.Futex) void {
     proc.futexWait(.{}, futex1, 0x10, &.{ .sec = 10 }) catch {};
 }
@@ -80,6 +83,7 @@ fn testFutexWakeOp(futex1: *proc.Futex, futex2: *proc.Futex) void {
 fn testClone() !void {
     var stack_buf1: [4096]u8 align(4096) = undefined;
     var stack_buf2: [4096]u8 align(4096) = undefined;
+    var stack_buf3: [4096]u8 align(4096) = undefined;
     var futex1: proc.Futex = .{ .word = 16 };
     var futex2: proc.Futex = .{ .word = 16 };
 
@@ -87,6 +91,7 @@ fn testClone() !void {
     try time.sleep(.{}, .{ .nsec = 0x10000 });
     try proc.callClone(.{ .return_type = void }, @ptrToInt(&stack_buf2), 4096, {}, testFutexWakeOp, .{ &futex1, &futex2 });
     try time.sleep(.{}, .{ .nsec = 0x20000 });
+    try proc.callClone(.{ .return_type = void }, @ptrToInt(&stack_buf3), 4096, {}, testFutexWake, .{&futex2});
 
     try builtin.expectEqual(u32, 16, futex1.word);
     try builtin.expectEqual(u32, 32, futex2.word);
