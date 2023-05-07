@@ -42,6 +42,7 @@ const exe_fast: PartialCommand = .{ .kind = .exe, .mode = .ReleaseFast };
 const obj_default: PartialCommand = .{ .kind = .obj, .mode = .ReleaseSmall };
 const exe_debug: PartialCommand = .{ .kind = .exe, .mode = .Debug };
 const exe_build: PartialCommand = .{ .kind = .exe, .mode = .Debug, .strip = false };
+const obj_build: PartialCommand = .{ .kind = .obj, .mode = .Debug, .strip = false };
 
 pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     // zig fmt: off
