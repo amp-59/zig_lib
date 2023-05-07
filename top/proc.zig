@@ -559,17 +559,20 @@ pub fn futexWake(
     futex: *Futex,
     count: u32,
 ) sys.ErrorUnion(futex_spec.errors, futex_spec.return_type) {
-    const logging: builtin.Logging.AttemptAcquireError = comptime futex_spec.logging.override();
+    const logging: builtin.Logging.AttemptSuccessAcquireReleaseError = comptime futex_spec.logging.override();
     if (logging.Attempt) {
-        //
+        debug.futexWakeAttempt(futex, count);
     }
-    if (meta.wrap(sys.call(.futex, futex_spec.errors, futex_spec.return_type, .{ @ptrToInt(futex), 1, count, 0, 0, 0 }))) {
+    if (meta.wrap(sys.call(.futex, futex_spec.errors, u32, .{ @ptrToInt(futex), 1, count, 0, 0, 0 }))) |ret| {
         if (logging.Release) {
-            //
+            debug.futexWakeNotice(futex, count, ret);
+        }
+        if (comptime meta.isInteger(futex_spec.return_type)) {
+            return ret;
         }
     } else |futex_error| {
         if (logging.Error) {
-            //
+            debug.futexWakeError(futex_error, futex, count);
         }
         return futex_error;
     }
@@ -1032,8 +1035,9 @@ const debug = opaque {
     const about_fork_1_s: []const u8 = builtin.debug.about("fork-error");
     const about_wait_0_s: []const u8 = builtin.debug.about("wait");
     const about_wait_1_s: []const u8 = builtin.debug.about("wait-error");
-    const about_futex_wait_0_s: []const u8 = builtin.debug.about("futex");
-    const about_futex_wait_1_s: []const u8 = builtin.debug.about("futex-error");
+    const about_futex_wait_0_s: []const u8 = builtin.debug.about("futex-wait");
+    const about_futex_wake_0_s: []const u8 = builtin.debug.about("futex-wake");
+    const about_futex_1_s: []const u8 = builtin.debug.about("futex-error");
 
     fn optionNotice(comptime Options: type, comptime opt_map: []const Options.Map) void {
         const buf: []const u8 = comptime Options.Map.helpMessage(opt_map);
@@ -1102,9 +1106,43 @@ const debug = opaque {
         const error_s: []const u8 = @errorName(futex_error);
         var buf: [32768]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
-            about_futex_wait_0_s, addr_s,  ", word=", word_s,
-            ", val=",             value_s, ", sec=",  sec_s,
-            ", nsec=",            nsec_s,  " (",      error_s,
+            about_futex_1_s, addr_s,  ", word=", word_s,
+            ", val=",        value_s, ", sec=",  sec_s,
+            ", nsec=",       nsec_s,  " (",      error_s,
+            ")\n",
+        });
+    }
+    fn futexWakeAttempt(futex: *Futex, count: u64) void {
+        const addr_s: []const u8 = builtin.fmt.ux64(@ptrToInt(futex)).readAll();
+        const word_s: []const u8 = builtin.fmt.ud64(futex.word).readAll();
+        const count_s: []const u8 = builtin.fmt.ud64(count).readAll();
+        var buf: [32768]u8 = undefined;
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
+            about_futex_wake_0_s, addr_s,  ", word=", word_s,
+            ", max=",             count_s, "\n",
+        });
+    }
+    fn futexWakeNotice(futex: *Futex, count: u64, ret: u64) void {
+        const addr_s: []const u8 = builtin.fmt.ux64(@ptrToInt(futex)).readAll();
+        const word_s: []const u8 = builtin.fmt.ud64(futex.word).readAll();
+        const count_s: []const u8 = builtin.fmt.ud64(count).readAll();
+        const ret_s: []const u8 = builtin.fmt.ud64(ret).readAll();
+        var buf: [32768]u8 = undefined;
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
+            about_futex_wake_0_s, addr_s,  ", word=", word_s,
+            ", max=",             count_s, ", res=",  ret_s,
+            "\n",
+        });
+    }
+    fn futexWakeError(futex_error: anytype, futex: *Futex, count: u64) void {
+        const addr_s: []const u8 = builtin.fmt.ux64(@ptrToInt(futex)).readAll();
+        const word_s: []const u8 = builtin.fmt.ud64(futex.word).readAll();
+        const count_s: []const u8 = builtin.fmt.ud64(count).readAll();
+        const error_s: []const u8 = @errorName(futex_error);
+        var buf: [32768]u8 = undefined;
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
+            about_futex_1_s, addr_s,  ", word=", word_s,
+            ", max=",        count_s, " (",      error_s,
             ")\n",
         });
     }
