@@ -92,7 +92,7 @@ fn loopInner(options: Options, arg: []const u8) !void {
 pub fn main(args_in: [][*:0]u8) !void {
     var args: [][*:0]u8 = args_in;
 
-    const options: Options = proc.getOpts(Options, &args, opt_map);
+    const options: Options = Options.Map.getOpts(&args, opt_map);
 
     var i: u64 = 1;
     while (i != args.len) {
