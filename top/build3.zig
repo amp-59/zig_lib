@@ -279,12 +279,12 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         build_root: [:0]const u8,
         cache_root: [:0]const u8,
         global_cache_root: [:0]const u8,
+        dir_fd: u64,
         args: [][*:0]u8,
         args_len: u64,
         vars: [][*:0]u8,
         grps: []*Group = &.{},
         grps_len: u64 = 0,
-        dir_fd: u64 = undefined,
         const Builder = @This();
         pub const AddressSpace = mem.GenericRegularAddressSpace(.{
             .label = "arena",
