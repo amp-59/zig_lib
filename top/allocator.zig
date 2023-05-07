@@ -4275,7 +4275,7 @@ fn GenericArenaAllocatorGraphics(comptime Allocator: type) type {
                 }
                 if (array.len() != src_fmt.formatLength()) {
                     array.writeOne('\n');
-                    builtin.debug.logSuccess(array.readAll());
+                    builtin.debug.logAlways(array.readAll());
                 }
             } else {
                 return show(allocator, src);
