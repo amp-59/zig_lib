@@ -1039,10 +1039,6 @@ const debug = opaque {
     const about_futex_wake_0_s: []const u8 = builtin.debug.about("futex-wake");
     const about_futex_1_s: []const u8 = builtin.debug.about("futex-error");
 
-    fn optionNotice(comptime Options: type, comptime opt_map: []const Options.Map) void {
-        const buf: []const u8 = comptime Options.Map.helpMessage(opt_map);
-        builtin.debug.write(buf);
-    }
     fn exceptionFaultAtAddress(symbol: []const u8, fault_addr: u64) void {
         var buf: [8192]u8 = undefined;
         var pathname: [4096]u8 = undefined;
@@ -1354,11 +1350,11 @@ pub fn GenericOptions(comptime Options: type) type {
                     break :lo;
                 }
                 if (mach.testEqualMany8("--help", arg1)) {
-                    Option.debug.optionNotice(Options, all_options);
+                    Option.debug.optionNotice(all_options);
                     builtin.proc.exitNotice(0);
                 }
                 if (arg1.len != 0 and arg1[0] == '-') {
-                    Option.debug.optionError(Options, all_options, arg1);
+                    Option.debug.optionError(all_options, arg1);
                     builtin.proc.exitNotice(0);
                 }
                 index += 1;
@@ -1369,6 +1365,10 @@ pub fn GenericOptions(comptime Options: type) type {
             const about_opt_0_s: []const u8 = builtin.debug.about("opt");
             const about_opt_1_s: []const u8 = builtin.debug.about("opt-error");
             const about_stop_s: []const u8 = "\nstop parsing options with '--'\n";
+            fn optionNotice(comptime all_options: []const Options.Map) void {
+                const buf: []const u8 = comptime Options.Map.helpMessage(all_options);
+                builtin.debug.write(buf);
+            }
             fn optionError(all_options: []const Options.Map, arg: [:0]const u8) void {
                 var buf: [4224]u8 = undefined;
                 var len: u64 = 0;
