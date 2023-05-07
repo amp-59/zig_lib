@@ -256,14 +256,14 @@ fn testLallocator() !void {
     var address_space: AddressSpace = .{};
     var allocator: AllocatorL = try AllocatorL.init(&address_space);
     defer allocator.deinit(&address_space);
-    var allocations: [256]?[]u8 = .{null} ** 256;
+    var allocations: [16]?[]u8 = .{null} ** 16;
     for (&allocations, 0..) |*buf, idx| {
         buf.* = try allocator.allocate(u8, idx +% 1);
     }
-    while (true) {
+    for (0..0x10000) |_| {
         for (&allocations) |*buf| {
             if (buf.*) |allocation| {
-                const sz: u16 = rng.readOne(u16);
+                const sz: u16 = rng.readOne(u8);
                 switch (rng.readOne(enum { Deallocate, Reallocate })) {
                     .Deallocate => {
                         allocator.free(allocation);
@@ -276,31 +276,31 @@ fn testLallocator() !void {
                             } else |_| {
                                 allocator.free(allocation);
                                 buf.* = null;
-                                buf.* = try allocator.allocate(u8, rng.readOne(u16));
+                                buf.* = try allocator.allocate(u8, rng.readOne(u8));
                             }
                         }
                     },
                 }
             } else {
                 if (rng.readOne(u8) != 0) {
-                    buf.* = try allocator.allocate(u8, rng.readOne(u16));
+                    buf.* = try allocator.allocate(u8, rng.readOne(u8));
                 }
             }
         }
         allocator.consolidate();
-        AllocatorL.Graphics.graphPartitions(allocator);
     }
-    allocator.freeAll();
     AllocatorL.Graphics.graphPartitions(allocator);
+    allocator.freeAll();
 }
 fn testSimpleAllocator() void {
     var allocator: mem.SimpleAllocator = .{};
     var buf: []u8 = allocator.allocate(u8, 256);
     allocator.deallocate(u8, buf);
+    allocator.unmap();
 }
 pub fn main() !void {
     testSimpleAllocator();
-    //try meta.wrap(testLallocator());
+    // try meta.wrap(testLallocator());
     try meta.wrap(testMapGenericOverhead());
     try meta.wrap(testProtect());
     try meta.wrap(testLowSystemMemoryOperations());
