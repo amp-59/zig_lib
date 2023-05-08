@@ -105,17 +105,6 @@ fn GenericRenderFormat(comptime Format: type) type {
         builtin.static.assertNotEqual(builtin.TypeId, @typeInfo(Format), .Pointer);
     }
     return struct {
-        pub fn formatConvert(format: anytype) mem.StaticString(if (@hasDecl(Format, "max_len"))
-            Format.max_len
-        else
-            Format.formatLength(format.*)) {
-            var array: mem.StaticString(if (@hasDecl(Format, "max_len"))
-                Format.max_len
-            else
-                Format.formatLength(format.*)) = .{};
-            writeFormat(array, format.*);
-            return array;
-        }
         fn checkLen(len: u64) u64 {
             if (@hasDecl(Format, "max_len") and len != Format.max_len) {
                 builtin.debug.logFault("formatter max length exceeded");
