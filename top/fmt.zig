@@ -962,6 +962,32 @@ pub const SourceLocationFormat = struct {
         .radix = 16,
         .width = .min,
     });
+    pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
+        const fn_name: []const u8 = format.functionName();
+        const file_name: []const u8 = format.value.file;
+        const line_fmt: LineColFormat = .{ .value = format.value.line };
+        const column_fmt: LineColFormat = .{ .value = format.value.column };
+        const ret_addr_fmt: AddrFormat = .{ .value = format.return_address };
+        var len: u64 = 4;
+        @ptrCast(*[4]u8, buf).* = "\x1b[1m".*;
+        mach.memcpy(buf + len, file_name.ptr, file_name.len);
+        len +%= len;
+        buf[len] = ':';
+        len +%= 1;
+        len +%= line_fmt.formatWriteBuf(buf + len);
+        buf[len] = ':';
+        len +%= 1;
+        len +%= column_fmt.formatWriteBuf(buf + len);
+        @ptrCast(*[7]u8, buf + len).* = ":\x1b[0;2m".*;
+        len +%= 7;
+        len +%= ret_addr_fmt.formatWriteBuf(buf + len);
+        @ptrCast(*[4]u8, buf + len).* = " in ".*;
+        len +%= 4;
+        mach.memcpy(buf + len, fn_name.ptr, fn_name.len);
+        len +%= fn_name.len;
+        @ptrCast(*[5]u8, buf + len).* = "\x1b[0m\n".*;
+        return len +% 4;
+    }
     pub fn formatWrite(format: Format, array: anytype) void {
         const fn_name: []const u8 = format.functionName();
         const file_name: []const u8 = format.value.file;
