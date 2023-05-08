@@ -1085,6 +1085,16 @@ pub const Bytes = struct {
             array.writeMany(@tagName(format.value.integer.unit));
         }
     }
+    pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
+        var len: u64 = format.formatInteger().formatWriteBuf(buf);
+        if (format.value.remainder.count != 0) {
+            buf[len] = '.';
+            len +%= 1;
+            len +%= format.formatRemainder().formatWriteBuf(buf + len);
+        }
+        mach.memcpy(buf + len, @tagName(format.value.integer.unit).ptr, @tagName(format.value.integer.unit).len);
+        return len +% @tagName(format.value.integer.unit).len;
+    }
     pub fn formatLength(format: Format) u64 {
         var len: u64 = 0;
         if (format.value.remainder.count != 0) {
