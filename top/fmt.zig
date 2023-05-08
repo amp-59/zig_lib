@@ -1150,6 +1150,7 @@ pub fn ChangedIntFormat(comptime fmt_spec: ChangedIntFormatSpec) type {
         const DeltaIntFormat = PolynomialFormat(fmt_spec.del_fmt_spec);
         pub const max_len: u64 = @max(fmt_spec.dec_style.len, fmt_spec.inc_style.len) +%
             OldIntFormat.max_len +% 1 +% DeltaIntFormat.max_len +% 5 +% fmt_spec.no_style.len +% NewIntFormat.max_len;
+
         fn formatWriteDelta(format: Format, array: anytype) void {
             if (format.old_value == format.new_value) {
                 array.writeMany("(+0)");
@@ -1168,6 +1169,36 @@ pub fn ChangedIntFormat(comptime fmt_spec: ChangedIntFormatSpec) type {
                 array.writeMany(fmt_spec.no_style);
                 array.writeOne(')');
             }
+        }
+        fn formatWriteDeltaBuf(format: Format, buf: [*]u8) u64 {
+            var len: u64 = 0;
+            if (format.old_value == format.new_value) {
+                @ptrCast(*[4]u8, buf).* = "(+0)".*;
+                len +%= 4;
+            } else if (format.new_value > format.old_value) {
+                const del_fmt: DeltaIntFormat = .{ .value = format.new_value -% format.old_value };
+                buf[len] = '(';
+                len +%= 1;
+                mach.memcpy(buf + len, fmt_spec.inc_style.ptr, fmt_spec.inc_style.len);
+                len +%= fmt_spec.inc_style.len;
+                len +%= del_fmt.formatWriteBuf(buf + len);
+                mach.memcpy(buf + len, fmt_spec.no_style.ptr, fmt_spec.no_style.len);
+                len +%= fmt_spec.no_style.len;
+                buf[len] = ')';
+                len +%= 1;
+            } else {
+                const del_fmt: DeltaIntFormat = .{ .value = format.old_value -% format.new_value };
+                buf[len] = '(';
+                len +%= 1;
+                mach.memcpy(buf + len, fmt_spec.dec_style.ptr, fmt_spec.dec_style.len);
+                len +%= fmt_spec.dec_style.len;
+                len +%= del_fmt.formatWriteBuf(buf + len);
+                mach.memcpy(buf + len, fmt_spec.no_style.ptr, fmt_spec.no_style.len);
+                len +%= fmt_spec.no_style.len;
+                buf[len] = ')';
+                len +%= 1;
+            }
+            return len;
         }
         fn formatLengthDelta(format: Format) u64 {
             var len: u64 = 0;
@@ -1197,6 +1228,16 @@ pub fn ChangedIntFormat(comptime fmt_spec: ChangedIntFormatSpec) type {
             format.formatWriteDelta(array);
             array.writeMany(fmt_spec.arrow_style);
             array.writeFormat(new_fmt);
+        }
+        pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
+            const old_fmt: OldIntFormat = .{ .value = format.old_value };
+            const new_fmt: NewIntFormat = .{ .value = format.new_value };
+            var len: u64 = old_fmt.formatWriteBuf(buf);
+            len +%= formatWriteDeltaBuf(buf + len);
+            mach.memcpy(buf + len, fmt_spec.arrow_style.ptr, fmt_spec.arrow_style.len);
+            len +%= fmt_spec.arrow_style.len;
+            len +%= new_fmt.formatWriteBuf(buf);
+            return len;
         }
         pub fn formatLength(format: Format) u64 {
             const old_fmt: OldIntFormat = .{ .value = format.old_value };
