@@ -1286,6 +1286,41 @@ pub fn ChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type {
                 new_fmt.formatWrite(array);
             }
         }
+        // TODO: Merge this with the body for ChangedIntFormat.
+        pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
+            const old_fmt: Bytes = bytes(format.old_value);
+            const new_fmt: Bytes = bytes(format.new_value);
+            var len: u64 = old_fmt.formatWriteBuf(buf);
+            if (format.old_value != format.new_value) {
+                if (format.old_value > format.new_value) {
+                    const del_fmt: Bytes = bytes(format.old_value -% format.new_value);
+                    buf[len] = '(';
+                    len +%= 1;
+                    mach.memcpy(buf + len, fmt_spec.dec_style.ptr, fmt_spec.dec_style.len);
+                    len +%= fmt_spec.dec_style.len;
+                    len +%= del_fmt.formatWriteBuf(buf + len);
+                    mach.memcpy(buf + len, fmt_spec.no_style.ptr, fmt_spec.no_style.len);
+                    len +%= fmt_spec.no_style.len;
+                    buf[len] = ')';
+                    len +%= 1;
+                } else {
+                    const del_fmt: Bytes = bytes(format.new_value -% format.old_value);
+                    buf[len] = '(';
+                    len +%= 1;
+                    mach.memcpy(buf + len, fmt_spec.inc_style.ptr, fmt_spec.inc_style.len);
+                    len +%= fmt_spec.inc_style.len;
+                    len +%= del_fmt.formatWriteBuf(buf + len);
+                    mach.memcpy(buf + len, fmt_spec.no_style.ptr, fmt_spec.no_style.len);
+                    len +%= fmt_spec.no_style.len;
+                    buf[len] = ')';
+                    len +%= 1;
+                }
+                @ptrCast(*[4]u8, buf + len).* = " => ".*;
+                len +%= 4;
+                len +%= new_fmt.formatWriteBuf(buf + len);
+            }
+            return len;
+        }
         pub fn formatLength(format: Format) u64 {
             const old_fmt: Bytes = bytes(format.old_value);
             const new_fmt: Bytes = bytes(format.new_value);
@@ -2078,4 +2113,5 @@ pub const Type = struct {
         .new_fmt_spec = .{ .bits = 64, .signedness = .unsigned, .radix = 10, .width = .min },
         .del_fmt_spec = .{ .bits = 64, .signedness = .unsigned, .radix = 10, .width = .min },
     });
+    pub const BytesDel = ChangedBytesFormat(.{});
 };
