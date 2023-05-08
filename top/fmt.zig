@@ -1233,7 +1233,7 @@ pub fn ChangedIntFormat(comptime fmt_spec: ChangedIntFormatSpec) type {
             const old_fmt: OldIntFormat = .{ .value = format.old_value };
             const new_fmt: NewIntFormat = .{ .value = format.new_value };
             var len: u64 = old_fmt.formatWriteBuf(buf);
-            len +%= formatWriteDeltaBuf(buf + len);
+            len +%= format.formatWriteDeltaBuf(buf + len);
             mach.memcpy(buf + len, fmt_spec.arrow_style.ptr, fmt_spec.arrow_style.len);
             len +%= fmt_spec.arrow_style.len;
             len +%= new_fmt.formatWriteBuf(buf);
@@ -2072,4 +2072,10 @@ pub const Type = struct {
     pub fn Ux(comptime Int: type) type {
         return @TypeOf(ux(@as(Int, undefined)));
     }
+
+    pub const UDel = ChangedIntFormat(.{
+        .old_fmt_spec = .{ .bits = 64, .signedness = .unsigned, .radix = 10, .width = .min },
+        .new_fmt_spec = .{ .bits = 64, .signedness = .unsigned, .radix = 10, .width = .min },
+        .del_fmt_spec = .{ .bits = 64, .signedness = .unsigned, .radix = 10, .width = .min },
+    });
 };
