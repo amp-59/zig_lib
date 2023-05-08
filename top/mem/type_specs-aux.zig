@@ -38,7 +38,7 @@ pub fn limits(
             }
             ret.ctn +%= 1;
         }
-        ret.spec +%= 1;
+        ret.params +%= 1;
     }
     return ret;
 }
