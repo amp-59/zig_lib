@@ -589,7 +589,7 @@ pub fn futexWakeOp(
     if (logging.Attempt) {
         debug.futexWakeOpAttempt(futex1, futex2, count1, count2, wake_op);
     }
-    if (meta.wrap(sys.call(.futex, futex_spec.errors, futex_spec.return_type, .{
+    if (meta.wrap(sys.call(.futex, futex_spec.errors, u32, .{
         @ptrToInt(futex1), 5, count1, count2, @ptrToInt(futex2), @bitCast(u32, wake_op),
     }))) |ret| {
         if (logging.Acquire) {
@@ -1037,6 +1037,7 @@ const debug = opaque {
     const about_wait_1_s: []const u8 = builtin.debug.about("wait-error");
     const about_futex_wait_0_s: []const u8 = builtin.debug.about("futex-wait");
     const about_futex_wake_0_s: []const u8 = builtin.debug.about("futex-wake");
+    const about_futex_wake_op_0_s: []const u8 = builtin.debug.about("futex-wake-op");
     const about_futex_1_s: []const u8 = builtin.debug.about("futex-error");
 
     fn exceptionFaultAtAddress(symbol: []const u8, fault_addr: u64) void {
@@ -1138,7 +1139,7 @@ const debug = opaque {
             count2_s,             "\n",
         });
     }
-    fn futexWakeOpNotice(futex1: *Futex, futex2: *Futex, count1: u32, count2: u32, wake_op: FutexOp.WakeOp) void {
+    fn futexWakeOpNotice(futex1: *Futex, futex2: *Futex, count1: u32, count2: u32, wake_op: FutexOp.WakeOp, ret: u64) void {
         _ = wake_op;
         const addr1_s: []const u8 = builtin.fmt.ux64(@ptrToInt(futex1)).readAll();
         const word1_s: []const u8 = builtin.fmt.ud64(futex1.word).readAll();
@@ -1146,6 +1147,7 @@ const debug = opaque {
         const word2_s: []const u8 = builtin.fmt.ud64(futex2.word).readAll();
         const count1_s: []const u8 = builtin.fmt.ud64(count1).readAll();
         const count2_s: []const u8 = builtin.fmt.ud64(count2).readAll();
+        const ret_s: []const u8 = builtin.fmt.ud64(ret).readAll();
         var buf: [32768]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
             about_futex_wake_0_s, "futex1=@",
@@ -1154,7 +1156,8 @@ const debug = opaque {
             count1_s,             ", futex2=@",
             addr2_s,              ", word2=",
             word2_s,              ", max2=",
-            count2_s,             "\n",
+            count2_s,             ", res=",
+            ret_s,                "\n",
         });
     }
     fn futexWakeOpError(futex_error: anytype, futex1: *Futex, futex2: *Futex, count1: u32, count2: u32, wake_op: FutexOp.WakeOp) void {
