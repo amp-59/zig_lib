@@ -611,8 +611,8 @@ pub fn uxsize(value: usize) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub fn ibsize(value: usize) PolynomialFormat(.{
-    .bits = @bitSizeOf(usize),
+pub fn ibsize(value: isize) PolynomialFormat(.{
+    .bits = @bitSizeOf(isize),
     .radix = 2,
     .signedness = .signed,
     .width = .max,
@@ -620,24 +620,24 @@ pub fn ibsize(value: usize) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub fn iosize(value: usize) PolynomialFormat(.{
-    .bits = @bitSizeOf(usize),
+pub fn iosize(value: isize) PolynomialFormat(.{
+    .bits = @bitSizeOf(isize),
     .radix = 8,
     .signedness = .signed,
     .width = .min,
 }) {
     return .{ .value = value };
 }
-pub fn idsize(value: usize) PolynomialFormat(.{
-    .bits = @bitSizeOf(usize),
+pub fn idsize(value: isize) PolynomialFormat(.{
+    .bits = @bitSizeOf(isize),
     .radix = 10,
     .signedness = .signed,
     .width = .min,
 }) {
     return .{ .value = value };
 }
-pub fn ixsize(value: usize) PolynomialFormat(.{
-    .bits = @bitSizeOf(usize),
+pub fn ixsize(value: isize) PolynomialFormat(.{
+    .bits = @bitSizeOf(isize),
     .radix = 16,
     .signedness = .signed,
     .width = .min,
@@ -1568,7 +1568,7 @@ pub fn ListFormat(comptime fmt_spec: ListFormatSpec) type {
         }
     });
 }
-pub fn list(values: []const []const u8) ListFormat(.{}) {
+pub fn list(values: []const []const u8) ListFormat(.{ .item = []const u8 }) {
     return .{ .values = values };
 }
 pub fn DateTimeFormat(comptime DateTime: type) type {
@@ -1577,7 +1577,8 @@ pub fn DateTimeFormat(comptime DateTime: type) type {
         const Format: type = @This();
         pub const max_len: u64 = 19;
         pub fn formatConvert(format: Format) mem.StaticString(max_len) {
-            var array: mem.StaticString(max_len) = .{};
+            var array: mem.StaticString(max_len) = undefined;
+            array.undefineAll();
             format.formatWrite(&array);
             return array;
         }
