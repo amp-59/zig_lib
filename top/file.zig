@@ -1710,30 +1710,6 @@ const debug = opaque {
         .readlink_1_s = builtin.debug.about("readlink-error"),
         .truncate_0_s = builtin.debug.about("truncate"),
         .truncate_1_s = builtin.debug.about("truncate-error"),
-
-        .lf_s = "\n",
-        .next_s = ", ",
-        .fd_s = "fd=",
-        .new_fd_s = "new_fd=",
-        .old_fd_s = "old_fd=",
-        .read_fd_s = "read_fd=",
-        .write_fd_s = "write_fd=",
-        .dir_fd_s = "dir_fd=",
-        .mode_s = "mode=",
-        .offset_s = "offset=",
-        .fds_s = "fds=",
-        .next_timeout_s = ", timeout=",
-        .next_offset_s = ", offset=",
-        .next_mode_s = ", mode=",
-        .next_dev_s = ", dev=",
-        .next_dir_fd_s = ", dir_fd=",
-        .bytes_lf_s = " bytes\n",
-        .ms_lf_s = " ms\n",
-        .cwd_s = "CWD",
-        .lparen_s = " (",
-        .rparen_s = ")\n",
-    };
-    const about2 = .{
         .must_not_be_s = " must not be ",
         .must_be_s = " must be ",
         .is_s = "; is ",
@@ -1749,104 +1725,104 @@ const debug = opaque {
     fn fdAboutNotice(fd: u64, about_s: [:0]const u8) void {
         const fd_s: []const u8 = builtin.fmt.ud64(fd).readAll();
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, about.fd_s, fd_s, about.lf_s });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, "fd=", fd_s, "\n" });
     }
     fn fdModeAboutNotice(fd: u64, mode: Mode, about_s: [:0]const u8) void {
         const fd_s: []const u8 = builtin.fmt.ud64(fd).readAll();
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, about.fd_s, fd_s, about.next_mode_s, &describeMode(mode), about.lf_s });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, "fd=", fd_s, ", mode=", &describeMode(mode), "\n" });
     }
     fn fdLenAboutNotice(fd: u64, len: u64, about_s: [:0]const u8) void {
         const fd_s: []const u8 = builtin.fmt.ud64(fd).readAll();
         const len_s: []const u8 = builtin.fmt.ud64(len).readAll();
         var buf: [32768]u8 = undefined;
-        builtin.debug.logSuccessAIO(&buf, &[_][]const u8{ about_s, about.fd_s, fd_s, about.next_s, len_s, about.bytes_lf_s });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, "fd=", fd_s, ", ", len_s, " bytes\n" });
     }
     fn fdMaxLenLenAboutNotice(fd: u64, max_len: u64, len: u64, about_s: [:0]const u8) void {
         const fd_s: []const u8 = builtin.fmt.ud64(fd).readAll();
         const max_len_s: []const u8 = builtin.fmt.ud64(max_len).readAll();
         const len_s: []const u8 = builtin.fmt.ud64(len).readAll();
         var buf: [32768]u8 = undefined;
-        builtin.debug.logSuccessAIO(&buf, &[_][]const u8{ about_s, about.fd_s, fd_s, about.next_s, len_s, "/", max_len_s, about.bytes_lf_s });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, "fd=", fd_s, ", ", len_s, "/", max_len_s, " bytes\n" });
     }
     fn pathnameAboutNotice(pathname: [:0]const u8, about_s: [:0]const u8) void {
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, pathname, about.lf_s });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, pathname, "\n" });
     }
     fn pathnameModeAboutNotice(pathname: [:0]const u8, mode: Mode, about_s: [:0]const u8) void {
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, pathname, about.next_mode_s, &describeMode(mode), about.lf_s });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, pathname, ", mode=", &describeMode(mode), "\n" });
     }
     fn pathnameFdAboutNotice(pathname: [:0]const u8, fd: u64, about_s: [:0]const u8) void {
         const fd_s: []const u8 = builtin.fmt.ud64(fd).readAll();
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, about.fd_s, fd_s, about.next_s, pathname, about.lf_s });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, "fd=", fd_s, ", ", pathname, "\n" });
     }
     fn pathnameFdModeAboutNotice(pathname: [:0]const u8, fd: u64, mode: Mode, about_s: [:0]const u8) void {
         const fd_s: []const u8 = builtin.fmt.ud64(fd).readAll();
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, about.fd_s, fd_s, about.next_s, pathname, about.next_mode_s, &describeMode(mode), about.lf_s });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, "fd=", fd_s, ", ", pathname, ", mode=", &describeMode(mode), "\n" });
     }
     fn pathnameModeDeviceAboutNotice(pathname: [:0]const u8, mode: Mode, dev: Device, about_s: [:0]const u8) void {
         const maj_s: []const u8 = builtin.fmt.ud64(dev.major).readAll();
         const min_s: []const u8 = builtin.fmt.ud64(dev.minor).readAll();
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, pathname, about.next_mode_s, &describeMode(mode), about.next_dev_s, maj_s, ":", min_s, about.lf_s });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, pathname, ", mode=", &describeMode(mode), ", dev=", maj_s, ":", min_s, "\n" });
     }
     fn dirFdNameModeAboutNotice(dir_fd: u64, name: [:0]const u8, mode: Mode, about_s: [:0]const u8) void {
-        const dir_fd_s: []const u8 = if (dir_fd > 1024) about.cwd_s else builtin.fmt.ud64(dir_fd).readAll();
+        const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, about.dir_fd_s, dir_fd_s, about.next_s, name, about.next_mode_s, &describeMode(mode), about.lf_s });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, "dir_fd=", dir_fd_s, ", ", name, ", mode=", &describeMode(mode), "\n" });
     }
     fn dirFdNameFdAboutNotice(dir_fd: u64, name: [:0]const u8, fd: u64, about_s: [:0]const u8) void {
         const fd_s: []const u8 = builtin.fmt.ud64(fd).readAll();
-        const dir_fd_s: []const u8 = if (dir_fd > 1024) about.cwd_s else builtin.fmt.ud64(dir_fd).readAll();
+        const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, about.fd_s, fd_s, about.next_dir_fd_s, dir_fd_s, about.next_s, name, about.lf_s });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, "fd=", fd_s, ", dir_fd=", dir_fd_s, ", ", name, "\n" });
     }
     fn dirFdNameAboutNotice(dir_fd: u64, name: [:0]const u8, about_s: [:0]const u8) void {
-        const dir_fd_s: []const u8 = if (dir_fd > 1024) about.cwd_s else builtin.fmt.ud64(dir_fd).readAll();
+        const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, about.dir_fd_s, dir_fd_s, about.next_s, name, about.lf_s });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, "dir_fd=", dir_fd_s, ", ", name, "\n" });
     }
     fn fdFdAboutNotice(fd1: u64, fd2: u64, about_s: [:0]const u8, about_fd1_s: [:0]const u8, about_fd2_s: [:0]const u8) void {
         const fd1_s: []const u8 = builtin.fmt.ud64(fd1).readAll();
         const fd2_s: []const u8 = builtin.fmt.ud64(fd2).readAll();
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, about_fd1_s, fd1_s, " => ", about_fd2_s, fd2_s, about.lf_s });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, about_fd1_s, fd1_s, " => ", about_fd2_s, fd2_s, "\n" });
     }
     fn dirFdNameModeDeviceAboutNotice(dir_fd: u64, name: [:0]const u8, mode: Mode, dev: Device, about_s: [:0]const u8) void {
-        const dir_fd_s: []const u8 = if (dir_fd > 1024) about.cwd_s else builtin.fmt.ud64(dir_fd).readAll();
+        const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
         const maj_s: []const u8 = builtin.fmt.ud64(dev.major).readAll();
         const min_s: []const u8 = builtin.fmt.ud64(dev.minor).readAll();
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, about.dir_fd_s, dir_fd_s, about.next_s, name, about.next_mode_s, &describeMode(mode), about.next_dev_s, maj_s, ":", min_s, about.lf_s });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, "dir_fd=", dir_fd_s, ", ", name, ", mode=", &describeMode(mode), ", dev=", maj_s, ":", min_s, "\n" });
     }
     fn socketNotice(fd: u64, dom: Domain, conn: Connection) void {
         const fd_s: []const u8 = builtin.fmt.ud64(fd).readAll();
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about.socket_0_s, about.fd_s, fd_s, about.next_s, @tagName(dom), about.next_s, @tagName(conn), about.lf_s });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about.socket_0_s, "fd=", fd_s, ", ", @tagName(dom), ", ", @tagName(conn), "\n" });
     }
     fn getCwdNotice(pathname: [:0]const u8) void {
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about.getcwd_0_s, pathname, about.lf_s });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about.getcwd_0_s, pathname, "\n" });
     }
     fn truncateNotice(pathname: [:0]const u8, offset: u64) void {
         const offset_s: []const u8 = builtin.fmt.ud64(offset).readAll();
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about.truncate_1_s, pathname, about.next_offset_s, offset_s, about.lf_s });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about.truncate_1_s, pathname, ", offset=", offset_s, "\n" });
     }
     fn ftruncateNotice(fd: u64, offset: u64) void {
         const fd_s: []const u8 = builtin.fmt.ud64(fd).readAll();
         const offset_s: []const u8 = builtin.fmt.ud64(offset).readAll();
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about.truncate_0_s, about.fd_s, fd_s, about.next_offset_s, offset_s, about.lf_s });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about.truncate_0_s, "fd=", fd_s, ", offset=", offset_s, "\n" });
     }
     fn pollNotice(pollfds: []PollFd, timeout: u64) void {
         const fds_len_s: []const u8 = builtin.fmt.ud64(pollfds.len).readAll();
         const timeout_s: []const u8 = builtin.fmt.ud64(timeout).readAll();
         var buf: [32768]u8 = undefined;
-        var len: u64 = builtin.debug.writeMulti(&buf, &[_][]const u8{ about.poll_0_s, about.fds_s, fds_len_s, about.next_timeout_s, timeout_s, about.ms_lf_s });
+        var len: u64 = builtin.debug.writeMulti(&buf, &[_][]const u8{ about.poll_0_s, "fds=", fds_len_s, ", timeout=", timeout_s, "ms\n" });
         len +%= writePollFds(buf[len..], pollfds);
         builtin.debug.write(buf[0..len]);
     }
@@ -1857,13 +1833,13 @@ const debug = opaque {
         fdAboutNotice(fd, about.close_0_s);
     }
     inline fn duplicateNotice(old_fd: u64, new_fd: u64) void {
-        fdFdAboutNotice(old_fd, new_fd, about.dup_0_s, about.old_fd_s, about.new_fd_s);
+        fdFdAboutNotice(old_fd, new_fd, about.dup_0_s, "old_fd=", "new_fd=");
     }
     inline fn duplicateToNotice(old_fd: u64, new_fd: u64) void {
-        fdFdAboutNotice(old_fd, new_fd, about.dup3_0_s, about.old_fd_s, about.new_fd_s);
+        fdFdAboutNotice(old_fd, new_fd, about.dup3_0_s, "old_fd=", "new_fd=");
     }
     inline fn pipeNotice(read_fd: u64, write_fd: u64) void {
-        fdFdAboutNotice(read_fd, write_fd, about.pipe_0_s, about.read_fd_s, about.write_fd_s);
+        fdFdAboutNotice(read_fd, write_fd, about.pipe_0_s, "read_fd=", "write_fd=");
     }
     inline fn readNotice(fd: u64, max_len: u64, len: u64) void {
         fdMaxLenLenAboutNotice(fd, max_len, len, about.read_0_s);
@@ -1912,42 +1888,42 @@ const debug = opaque {
     }
     fn aboutError(about_s: [:0]const u8, error_name: [:0]const u8) void {
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, "(", error_name, about.rparen_s });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, "(", error_name, ")\n" });
     }
     fn dirFdNameAboutError(dir_fd: u64, name: [:0]const u8, about_s: [:0]const u8, error_name: [:0]const u8) void {
-        const dir_fd_s: []const u8 = if (dir_fd > 1024) about.cwd_s else builtin.fmt.ud64(dir_fd).readAll();
+        const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, about.dir_fd_s, dir_fd_s, about.next_s, name, about.lparen_s, error_name, about.rparen_s });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, "dir_fd=", dir_fd_s, ", ", name, " (", error_name, ")\n" });
     }
     fn pathnameAboutError(pathname: [:0]const u8, about_s: [:0]const u8, error_name: [:0]const u8) void {
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, pathname, about.lparen_s, error_name, about.rparen_s });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, pathname, " (", error_name, ")\n" });
     }
     fn fdAboutError(fd: u64, about_s: [:0]const u8, error_name: [:0]const u8) void {
         const fd_s: []const u8 = builtin.fmt.ud64(fd).readAll();
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, about.fd_s, fd_s, about.lparen_s, error_name, about.rparen_s });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, "fd=", fd_s, " (", error_name, ")\n" });
     }
     fn fdFdAboutError(fd1: u64, fd2: u64, about_s: [:0]const u8, about_fd1: [:0]const u8, about_fd2: [:0]const u8, error_name: [:0]const u8) void {
         const fd1_s: []const u8 = builtin.fmt.ud64(fd1).readAll();
         const fd2_s: []const u8 = builtin.fmt.ud64(fd2).readAll();
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, about_fd1, fd1_s, " => ", about_fd2, fd2_s, about.lparen_s, error_name, about.rparen_s });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, about_fd1, fd1_s, " => ", about_fd2, fd2_s, " (", error_name, ")\n" });
     }
     fn socketError(socket_error: anytype, dom: Domain, conn: Connection) void {
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about.socket_1_s, @tagName(dom), about.next_s, @tagName(conn), about.lparen_s, @errorName(socket_error), about.rparen_s });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about.socket_1_s, @tagName(dom), ", ", @tagName(conn), " (", @errorName(socket_error), ")\n" });
     }
     fn truncateError(truncate_error: anytype, pathname: [:0]const u8, offset: u64) void {
         const offset_s: []const u8 = builtin.fmt.ud64(offset).readAll();
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about.truncate_1_s, pathname, about.next_offset_s, offset_s, about.lparen_s, @errorName(truncate_error), about.rparen_s });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about.truncate_1_s, pathname, ", offset=", offset_s, " (", @errorName(truncate_error), ")\n" });
     }
     fn ftruncateError(truncate_error: anytype, fd: u64, offset: u64) void {
         const fd_s: []const u8 = builtin.fmt.ud64(fd).readAll();
         const offset_s: []const u8 = builtin.fmt.ud64(offset).readAll();
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about.truncate_1_s, about.fd_s, fd_s, about.next_offset_s, offset_s, about.lparen_s, @errorName(truncate_error), about.rparen_s });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about.truncate_1_s, "fd=", fd_s, ", offset=", offset_s, " (", @errorName(truncate_error), ")\n" });
     }
     inline fn getCwdError(getcwd_error: anytype) void {
         aboutError(about.getcwd_1_s, @errorName(getcwd_error));
@@ -2029,31 +2005,31 @@ const debug = opaque {
     }
     fn pathMustNotBeFault(pathname: [:0]const u8, kind: Kind) void {
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(buf, &[_][]const u8{ about.file_2_s, "'", pathname, "'", about2.must_not_be_s, describeKind(kind), about.lf_s });
+        builtin.debug.logAlwaysAIO(buf, &[_][]const u8{ about.file_2_s, "'", pathname, "'" ++ about.must_not_be_s, describeKind(kind), "\n" });
     }
     fn pathMustBeFault(pathname: [:0]const u8, kind: Kind, mode: Mode) void {
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about.file_2_s, "'", pathname, "'", about2.must_be_s, describeKind(kind), about2.is_s, describeKind(mode.kind), about.lf_s });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about.file_2_s, "'", pathname, "'" ++ about.must_be_s, describeKind(kind), about.is_s, describeKind(mode.kind), "\n" });
     }
     fn fdNotKindFault(fd: u64, kind: Kind) void {
         const fd_s: []const u8 = builtin.fmt.ud64(fd).readAll();
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about.file_2_s, about.fd_s, fd_s, about2.must_not_be_s, describeKind(kind), about.lf_s });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about.file_2_s, "fd=", fd_s, about.must_not_be_s, describeKind(kind), "\n" });
     }
     fn fdKindModeFault(fd: u64, kind: Kind, mode: Mode) void {
         const fd_s: []const u8 = builtin.fmt.ud64(fd).readAll();
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about.file_2_s, about.fd_s, fd_s, about2.must_be_s, describeKind(kind), about2.is_s, describeKind(mode.kind), about.lf_s });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about.file_2_s, "fd=", fd_s, about.must_be_s, describeKind(kind), about.is_s, describeKind(mode.kind), "\n" });
     }
     fn atDirFdMustBeFault(dir_fd: u64, name: [:0]const u8, kind: Kind, mode: Mode) void {
         const dir_fd_s: []const u8 = builtin.fmt.ud64(dir_fd).readAll();
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about.file_2_s, about.dir_fd_s, dir_fd_s, about.next_s, name, about2.must_be_s, describeKind(kind), "; is ", describeKind(mode.kind), about.lf_s });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about.file_2_s, "dir_fd=", dir_fd_s, ", ", name, about.must_be_s, describeKind(kind), "; is ", describeKind(mode.kind), "\n" });
     }
     fn atDirFdMustNotBeFault(dir_fd: u64, name: [:0]const u8, kind: Kind) void {
         const dir_fd_s: []const u8 = builtin.fmt.ud64(dir_fd).readAll();
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about.file_2_s, about.dir_fd_s, dir_fd_s, about.next_s, name, about2.must_not_be_s, describeKind(kind), about.lf_s });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about.file_2_s, "dir_fd=", dir_fd_s, ", ", name, about.must_not_be_s, describeKind(kind), "\n" });
     }
     fn describePerms(buf: []u8, perms: Perms) void {
         if (perms.read) {
@@ -2085,14 +2061,14 @@ const debug = opaque {
     }
     fn describeKind(kind: Kind) []const u8 {
         switch (kind) {
-            .unknown => return about2.unknown_s,
-            .regular => return about2.regular_s,
-            .directory => return about2.directory_s,
-            .character_special => return about2.character_special_s,
-            .block_special => return about2.block_special_s,
-            .named_pipe => return about2.named_pipe_s,
-            .socket => return about2.socket_s,
-            .symbolic_link => return about2.symbolic_link_s,
+            .unknown => return about.unknown_s,
+            .regular => return about.regular_s,
+            .directory => return about.directory_s,
+            .character_special => return about.character_special_s,
+            .block_special => return about.block_special_s,
+            .named_pipe => return about.named_pipe_s,
+            .socket => return about.socket_s,
+            .symbolic_link => return about.symbolic_link_s,
         }
     }
     pub fn executeNotice(filename: [:0]const u8, args: []const [*:0]const u8) void {
