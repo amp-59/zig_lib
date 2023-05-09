@@ -522,7 +522,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     if (ret) {
                         debug.exchangeNotice(target, task, old_state, new_state);
                     } else {
-                        debug.noExchangeNotice(target, debug.about_state_1_s, task, old_state, new_state);
+                        debug.noExchangeNotice(target, debug.about.state_1_s, task, old_state, new_state);
                     }
                 }
                 return ret;
@@ -535,7 +535,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     }
                 } else {
                     if (builtin.logging_general.Fault or builder_spec.options.show_targets) {
-                        debug.noExchangeNotice(target, debug.about_state_1_s, task, old_state, new_state);
+                        debug.noExchangeNotice(target, debug.about.state_1_s, task, old_state, new_state);
                     }
                     builtin.proc.exitGroup(2);
                 }
@@ -911,7 +911,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 builder.system(args, &run_time),
             );
             if (builder_spec.options.show_stats) {
-                debug.simpleTimedNotice(debug.about_run_s, target.name, run_time, rc);
+                debug.simpleTimedNotice(debug.about.run_s, target.name, run_time, rc);
             }
             return rc == builder_spec.options.expected_status;
         }
@@ -1116,30 +1116,32 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         const zig_out_aux_dir: [:0]const u8 = builder_spec.options.names.zig_out_dir ++ "/" ++ builder_spec.options.names.aux_out_dir;
         const env_basename: [:0]const u8 = builder_spec.options.names.env ++ builder_spec.options.extensions.zig;
         pub const debug = struct {
-            const about_run_s: [:0]const u8 = builtin.debug.about("run");
-            const about_build_exe_s: [:0]const u8 = builtin.debug.about("build-exe");
-            const about_build_obj_s: [:0]const u8 = builtin.debug.about("build-obj");
-            const about_build_lib_s: [:0]const u8 = builtin.debug.about("build-lib");
-            const about_format_s: [:0]const u8 = builtin.debug.about("format");
-            const about_state_0_s: [:0]const u8 = builtin.debug.about("state");
-            const about_state_1_s: [:0]const u8 = builtin.debug.about("state-fault");
-            const error_s: *const [5:0]u8 = "error";
-            const note_s: *const [4:0]u8 = "note";
-            const next_s: *const [5:0]u8 = "\x1b[0m\n";
-            const reset_s: *const [4:0]u8 = "\x1b[0m";
-            const tilde_s: *const [10:0]u8 = "\x1b[38;5;46m";
-            const bold_s: *const [6:0]u8 = "\x1b[0;1m";
-            const faint_s: *const [15:0]u8 = "\x1b[0;38;5;250;1m";
-            const trace_s: *const [11:0]u8 = "\x1b[38;5;247m";
-            const hi_red_s: *const [11:0]u8 = "\x1b[38;5;196m";
+            const about = .{
+                .run_s = builtin.debug.about("run"),
+                .build_exe_s = builtin.debug.about("build-exe"),
+                .build_obj_s = builtin.debug.about("build-obj"),
+                .build_lib_s = builtin.debug.about("build-lib"),
+                .format_s = builtin.debug.about("format"),
+                .state_0_s = builtin.debug.about("state"),
+                .state_1_s = builtin.debug.about("state-fault"),
+                .error_s = "error",
+                .note_s = "note",
+                .next_s = "\x1b[0m\n",
+                .reset_s = "\x1b[0m",
+                .tilde_s = "\x1b[38;5;46m",
+                .bold_s = "\x1b[0;1m",
+                .faint_s = "\x1b[0;38;5;250;1m",
+                .trace_s = "\x1b[38;5;247m",
+                .hi_red_s = "\x1b[38;5;196m",
+            };
             const fancy_hl_line: bool = false;
             fn exchangeNotice(target: *Target, task: types.Task, old_state: types.State, new_state: types.State) void {
                 @setRuntimeSafety(safe);
                 var buf: [32768]u8 = undefined;
                 var ptr: [*]u8 = &buf;
                 var len: u64 = 0;
-                @ptrCast(*[about_state_0_s.len]u8, ptr).* = about_state_0_s.ptr[0..about_state_0_s.len].*;
-                len = len + about_state_0_s.len;
+                @ptrCast(*[about.state_0_s.len]u8, ptr).* = about.state_0_s.ptr[0..about.state_0_s.len].*;
+                len = len + about.state_0_s.len;
                 mach.memcpy(ptr + len, target.name.ptr, target.name.len);
                 len +%= target.name.len;
                 ptr[len] = '.';
@@ -1157,13 +1159,13 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 ptr[len] = '\n';
                 builtin.debug.write(buf[0 .. len +% 1]);
             }
-            fn noExchangeNotice(target: *Target, about: [:0]const u8, task: types.Task, old_state: types.State, new_state: types.State) void {
+            fn noExchangeNotice(target: *Target, about_s: [:0]const u8, task: types.Task, old_state: types.State, new_state: types.State) void {
                 @setRuntimeSafety(safe);
                 var buf: [32768]u8 = undefined;
                 var ptr: [*]u8 = &buf;
                 const actual: types.State = target.lock.get(task);
-                mach.memcpy(ptr, about.ptr, about.len);
-                var len: u64 = about.len;
+                mach.memcpy(ptr, about_s.ptr, about_s.len);
+                var len: u64 = about_s.len;
                 mach.memcpy(ptr + len, target.name.ptr, target.name.len);
                 len +%= target.name.len;
                 ptr[len] = '.';
@@ -1196,13 +1198,13 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 const sec_s: []const u8 = builtin.fmt.ud64(durat.sec).readAll();
                 const nsec_s: []const u8 = builtin.fmt.nsec(durat.nsec).readAll();
                 var buf: [32768]u8 = undefined;
-                const about: []const u8 = switch (target.build_cmd.kind) {
-                    .exe => about_build_exe_s,
-                    .obj => about_build_obj_s,
-                    .lib => about_build_lib_s,
+                const about_s: []const u8 = switch (target.build_cmd.kind) {
+                    .exe => about.build_exe_s,
+                    .obj => about.build_obj_s,
+                    .lib => about.build_lib_s,
                 };
-                mach.memcpy(&buf, about.ptr, about.len);
-                var len: u64 = about.len;
+                mach.memcpy(&buf, about_s.ptr, about_s.len);
+                var len: u64 = about_s.len;
                 mach.memcpy(buf[len..].ptr, target.name.ptr, target.name.len);
                 len +%= target.name.len;
                 @ptrCast(*[2]u8, buf[len..].ptr).* = ", ".*;
@@ -1239,6 +1241,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     len +%= 9;
                     mach.memcpy(buf[len..].ptr, new_size_s.ptr, new_size_s.len);
                     len +%= new_size_s.len;
+
                     @ptrCast(*[8]u8, buf[len..].ptr).* = " bytes, ".*;
                     len +%= 8;
                 }
@@ -1251,14 +1254,14 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 @ptrCast(*[2]u8, buf[len..].ptr).* = "s\n".*;
                 builtin.debug.logAlways(buf[0 .. len +% 2]);
             }
-            fn simpleTimedNotice(about: []const u8, name: [:0]const u8, durat: time.TimeSpec, rc: u8) void {
+            fn simpleTimedNotice(about_s: []const u8, name: [:0]const u8, durat: time.TimeSpec, rc: u8) void {
                 @setRuntimeSafety(safe);
                 const rc_s: []const u8 = builtin.fmt.ud64(rc).readAll();
                 const sec_s: []const u8 = builtin.fmt.ud64(durat.sec).readAll();
                 const nsec_s: []const u8 = builtin.fmt.nsec(durat.nsec).readAll();
                 var buf: [32768]u8 = undefined;
-                mach.memcpy(&buf, about.ptr, about.len);
-                var len: u64 = about.len;
+                mach.memcpy(&buf, about_s.ptr, about_s.len);
+                var len: u64 = about_s.len;
                 mach.memcpy(buf[len..].ptr, name.ptr, name.len);
                 len +%= name.len;
                 @ptrCast(*[2]u8, buf[len..].ptr).* = ", ".*;
@@ -1357,8 +1360,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                             @ptrCast(*[4]u8, buf0[len..].ptr).* = "\x1b[2m".*;
                             len +%= 4;
                             len = writeAndWalkInternal(&buf0, len, &buf1, 8, target);
-                            @ptrCast(*[4]u8, buf0[len..].ptr).* = reset_s.*;
-                            len +%= reset_s.len;
+                            @ptrCast(*[4]u8, buf0[len..].ptr).* = about.reset_s.*;
+                            len +%= about.reset_s.len;
                         } else {
                             buf0[len] = '\n';
                             len +%= 1;
@@ -1367,22 +1370,22 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
                 builtin.debug.write(buf0[0..len]);
             }
-            inline fn writeAbout(buf: [*]u8, about: [:0]const u8) u64 {
+            inline fn writeAbout(buf: [*]u8, about_s: [:0]const u8) u64 {
                 @setRuntimeSafety(safe);
                 var len: u64 = 0;
-                if (about.ptr == error_s) {
-                    @ptrCast(*@TypeOf(bold_s.*), buf + len).* = bold_s.*;
-                    len +%= bold_s.len;
-                } else if (about.ptr == note_s) {
-                    @ptrCast(*@TypeOf(faint_s.*), buf + len).* = faint_s.*;
-                    len +%= faint_s.len;
+                if (about_s.ptr == about.error_s) {
+                    @ptrCast(*@TypeOf(about.bold_s.*), buf + len).* = about.bold_s.*;
+                    len +%= about.bold_s.len;
+                } else if (about_s.ptr == about.note_s) {
+                    @ptrCast(*@TypeOf(about.faint_s.*), buf + len).* = about.faint_s.*;
+                    len +%= about.faint_s.len;
                 }
-                mach.memcpy(buf + len, about.ptr, about.len);
-                len +%= about.len;
+                mach.memcpy(buf + len, about_s.ptr, about_s.len);
+                len +%= about_s.len;
                 @ptrCast(*[2]u8, buf + len).* = ": ".*;
                 len +%= 2;
-                @ptrCast(*@TypeOf(bold_s.*), buf + len).* = bold_s.*;
-                return len +% bold_s.len;
+                @ptrCast(*@TypeOf(about.bold_s.*), buf + len).* = about.bold_s.*;
+                return len +% about.bold_s.len;
             }
             fn writeTopSrcLoc(buf: [*]u8, extra: [*]u32, bytes: [*:0]u8, err_msg_idx: u32) u64 {
                 @setRuntimeSafety(safe);
@@ -1402,27 +1405,27 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
                 return len;
             }
-            fn writeError(buf: [*]u8, extra: [*]u32, bytes: [*:0]u8, err_msg_idx: u32, about: [:0]const u8) u64 {
+            fn writeError(buf: [*]u8, extra: [*]u32, bytes: [*:0]u8, err_msg_idx: u32, about_s: [:0]const u8) u64 {
                 @setRuntimeSafety(safe);
                 const err: *types.ErrorMessage = @ptrCast(*types.ErrorMessage, extra + err_msg_idx);
                 const src: *types.SourceLocation = @ptrCast(*types.SourceLocation, extra + err.src_loc);
                 const notes: [*]u32 = extra + err_msg_idx + types.ErrorMessage.len;
                 var len: u64 = writeTopSrcLoc(buf, extra, bytes, err_msg_idx);
-                const pos: u64 = len +% about.len -% trace_s.len -% 2;
-                len +%= writeAbout(buf + len, about);
+                const pos: u64 = len +% about_s.len -% about.trace_s.len -% 2;
+                len +%= writeAbout(buf + len, about_s);
                 len +%= writeMessage(buf + len, bytes, err.start, pos);
                 if (err.src_loc == 0) {
                     if (err.count != 1)
                         len +%= writeTimes(buf + len, err.count);
                     for (0..err.notes_len) |idx|
-                        len +%= writeError(buf + len, extra, bytes, notes[idx], note_s);
+                        len +%= writeError(buf + len, extra, bytes, notes[idx], about.note_s);
                 } else {
                     if (err.count != 1)
                         len +%= writeTimes(buf + len, err.count);
                     if (src.src_line != 0)
                         len +%= writeCaret(buf + len, bytes, src);
                     for (0..err.notes_len) |idx|
-                        len +%= writeError(buf + len, extra, bytes, notes[idx], note_s);
+                        len +%= writeError(buf + len, extra, bytes, notes[idx], about.note_s);
                     if (src.ref_len != 0)
                         len +%= writeTrace(buf + len, extra, bytes, err.src_loc, src.ref_len);
                 }
@@ -1433,8 +1436,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 const line_s: []const u8 = builtin.fmt.ud64(line).readAll();
                 const column_s: []const u8 = builtin.fmt.ud64(column).readAll();
                 var len: u64 = 0;
-                @ptrCast(*@TypeOf(trace_s.*), buf + len).* = trace_s.*;
-                len +%= trace_s.len;
+                @ptrCast(*@TypeOf(about.trace_s.*), buf + len).* = about.trace_s.*;
+                len +%= about.trace_s.len;
                 mach.memcpy(buf + len, pathname.ptr, pathname.len);
                 len +%= pathname.len;
                 buf[len] = ':';
@@ -1468,17 +1471,17 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     var pos: u64 = indent +% before_caret;
                     mach.memcpy(buf, line.ptr, indent);
                     len +%= indent;
-                    @ptrCast(*@TypeOf(bold_s.*), buf + len).* = bold_s.*;
-                    len +%= comptime bold_s.len;
+                    @ptrCast(*@TypeOf(about.bold_s.*), buf + len).* = about.bold_s.*;
+                    len +%= comptime about.bold_s.len;
                     mach.memcpy(buf + len, line[indent..pos].ptr, before_caret);
                     len +%= before_caret;
-                    @ptrCast(*@TypeOf(hi_red_s.*), buf + len).* = hi_red_s.*;
-                    len +%= comptime hi_red_s.len;
+                    @ptrCast(*@TypeOf(about.hi_red_s.*), buf + len).* = about.hi_red_s.*;
+                    len +%= comptime about.hi_red_s.len;
                     buf[len] = line[pos];
                     len +%= 1;
                     pos = pos +% 1;
-                    @ptrCast(*@TypeOf(bold_s.*), buf + len).* = bold_s.*;
-                    len +%= comptime bold_s.len;
+                    @ptrCast(*@TypeOf(about.bold_s.*), buf + len).* = about.bold_s.*;
+                    len +%= comptime about.bold_s.len;
                     mach.memcpy(buf + len, line[pos .. pos + after_caret].ptr, after_caret);
                     len +%= after_caret;
                     buf[len] = '\n';
@@ -1491,16 +1494,16 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
                 mach.memset(buf + len, ' ', indent);
                 len +%= indent;
-                @ptrCast(*@TypeOf(tilde_s.*), buf + len).* = tilde_s.*;
-                len +%= tilde_s.len;
+                @ptrCast(*@TypeOf(about.tilde_s.*), buf + len).* = about.tilde_s.*;
+                len +%= about.tilde_s.len;
                 mach.memset(buf + len, '~', before_caret);
                 len +%= before_caret;
                 buf[len] = '^';
                 len +%= 1;
                 mach.memset(buf + len, '~', after_caret);
                 len +%= after_caret;
-                @ptrCast(*[5]u8, buf + len).* = next_s.*;
-                return len +% next_s.len;
+                @ptrCast(*[5]u8, buf + len).* = about.next_s.*;
+                return len +% about.next_s.len;
             }
             fn writeMessage(buf: [*]u8, bytes: [*:0]u8, start: u64, indent: u64) u64 {
                 @setRuntimeSafety(safe);
@@ -1522,16 +1525,16 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 const line: []u8 = bytes[next..idx];
                 mach.memcpy(buf + len, line.ptr, line.len);
                 len +%= line.len;
-                @ptrCast(*[5]u8, buf + len).* = next_s.*;
-                return len +% next_s.len;
+                @ptrCast(*[5]u8, buf + len).* = about.next_s.*;
+                return len +% about.next_s.len;
             }
             fn writeTrace(buf: [*]u8, extra: [*]u32, bytes: [*:0]u8, start: u64, ref_len: u64) u64 {
                 @setRuntimeSafety(safe);
                 var ref_idx: u64 = start +% types.SourceLocation.len;
                 var idx: u64 = 0;
                 var len: u64 = 0;
-                @ptrCast(*@TypeOf(trace_s.*), buf + len).* = trace_s.*;
-                len +%= trace_s.len;
+                @ptrCast(*@TypeOf(about.trace_s.*), buf + len).* = about.trace_s.*;
+                len +%= about.trace_s.len;
                 @ptrCast(*[15]u8, buf + len).* = "referenced by:\n".*;
                 len +%= 15;
                 while (idx != ref_len) : (idx +%= 1) {
@@ -1552,7 +1555,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     }
                     ref_idx +%= types.ReferenceTrace.len;
                 }
-                @ptrCast(*[5]u8, buf + len).* = next_s.*;
+                @ptrCast(*[5]u8, buf + len).* = about.next_s.*;
                 return len +% 5;
             }
             fn writeErrors(allocator: *Allocator, hdr: *types.Message.ErrorHeader) void {
@@ -1562,7 +1565,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 var buf: [*]u8 = allocate(allocator, u8, 1024 * 1024).ptr;
                 const list: types.ErrorMessageList = @ptrCast(*types.ErrorMessageList, extra).*;
                 for ((extra + list.start)[0..list.len]) |err_msg_idx| {
-                    var len: u64 = writeError(buf, extra, bytes, err_msg_idx, error_s);
+                    var len: u64 = writeError(buf, extra, bytes, err_msg_idx, about.error_s);
                     builtin.debug.write(buf[0..len]);
                 }
                 builtin.debug.write(meta.manyToSlice(bytes + list.compile_log_text));
