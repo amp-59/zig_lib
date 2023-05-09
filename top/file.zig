@@ -1779,11 +1779,25 @@ const debug = opaque {
         buf[len] = '\n';
         builtin.debug.write(buf[0 .. len +% 1]);
     }
-    fn fdLenAboutNotice(fd: u64, len: u64, about: [:0]const u8) void {
+    fn fdLenAboutNotice(fd: u64, found_len: u64, about_s: [:0]const u8) void {
+        @setRuntimeSafety(false);
         const fd_s: []const u8 = builtin.fmt.ud64(fd).readAll();
-        const len_s: []const u8 = builtin.fmt.ud64(len).readAll();
+        const len_s: []const u8 = builtin.fmt.ud64(found_len).readAll();
         var buf: [32768]u8 = undefined;
-        builtin.debug.logSuccessAIO(&buf, &[_][]const u8{ about, "fd=", fd_s, ", ", len_s, " bytes\n" });
+        var len: u64 = 0;
+        mach.memcpy(buf[len..].ptr, about_s.ptr, about_s.len);
+        len +%= about_s.len;
+        mach.memcpy(buf[len..].ptr, about.fd_s.ptr, about.fd_s.len);
+        len +%= about.fd_s.len;
+        mach.memcpy(buf[len..].ptr, fd_s.ptr, fd_s.len);
+        len +%= fd_s.len;
+        mach.memcpy(buf[len..].ptr, about.next_s.ptr, about.next_s.len);
+        len +%= about.next_s.len;
+        mach.memcpy(buf[len..].ptr, len_s.ptr, len_s.len);
+        len +%= len_s.len;
+        mach.memcpy(buf[len..].ptr, about.bytes_lf_s.ptr, about.bytes_lf_s.len);
+        len +%= about.bytes_lf_s.len;
+        builtin.debug.write(buf[0..len]);
     }
     fn fdMaxLenLenAboutNotice(fd: u64, max_len: u64, len: u64, about: [:0]const u8) void {
         const fd_s: []const u8 = builtin.fmt.ud64(fd).readAll();
