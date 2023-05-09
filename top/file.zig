@@ -1836,9 +1836,22 @@ const debug = opaque {
         len +%= about.lf_s.len;
         builtin.debug.write(buf[0..len]);
     }
-    fn pathnameModeAboutNotice(pathname: [:0]const u8, mode: Mode, about: [:0]const u8) void {
+    fn pathnameModeAboutNotice(pathname: [:0]const u8, mode: Mode, about_s: [:0]const u8) void {
+        @setRuntimeSafety(false);
+        const mode_s: [10]u8 = describeMode(mode);
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about, pathname, ", mode=", &describeMode(mode), "\n" });
+        var len: u64 = 0;
+        mach.memcpy(buf[len..].ptr, about_s.ptr, about_s.len);
+        len +%= about_s.len;
+        mach.memcpy(buf[len..].ptr, pathname.ptr, pathname.len);
+        len +%= pathname.len;
+        mach.memcpy(buf[len..].ptr, about.next_mode_s.ptr, about.next_mode_s.len);
+        len +%= about.next_mode_s.len;
+        mach.memcpy(buf[len..].ptr, &mode_s, 10);
+        len +%= 10;
+        mach.memcpy(buf[len..].ptr, about.lf_s.ptr, about.lf_s.len);
+        len +%= about.lf_s.len;
+        builtin.debug.write(buf[0..len]);
     }
     fn pathnameFdAboutNotice(pathname: [:0]const u8, fd: u64, about: [:0]const u8) void {
         const fd_s: []const u8 = builtin.fmt.ud64(fd).readAll();
