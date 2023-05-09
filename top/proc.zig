@@ -97,9 +97,22 @@ pub const FutexOp = enum(u64) {
     pub const WakeOp = packed struct(u32) {
         from: u12,
         to: u12,
-        cmp: enum(u4) { eq = 0, ne = 1, lt = 2, le = 3, gt = 4, ge = 5 },
+        cmp: enum(u4) {
+            Equal = 0,
+            NotEqual = 1,
+            Below = 2,
+            BelowOrEqual = 3,
+            Above = 4,
+            AboveOrEqual = 5,
+        },
         shl: bool = false,
-        op: enum(u3) { set = 0, add = 1, @"or" = 2, andn = 3, xor = 4 },
+        op: enum(u3) {
+            Assign = 0,
+            Add = 1,
+            Or = 2,
+            AndN = 3,
+            Xor = 4,
+        },
     };
 };
 pub const FutexSpec = struct {
@@ -1030,25 +1043,21 @@ pub fn environmentValue(vars: [][*:0]u8, key: [:0]const u8) ?[:0]const u8 {
     return null;
 }
 const debug = opaque {
-    const about_fault_s: []const u8 = builtin.debug.about_fault_p0_s;
-    const about_fork_0_s: []const u8 = builtin.debug.about("fork");
-    const about_fork_1_s: []const u8 = builtin.debug.about("fork-error");
-    const about_wait_0_s: []const u8 = builtin.debug.about("wait");
-    const about_wait_1_s: []const u8 = builtin.debug.about("wait-error");
-    const about_futex_wait_0_s: []const u8 = builtin.debug.about("futex-wait");
-    const about_futex_wake_0_s: []const u8 = builtin.debug.about("futex-wake");
-    const about_futex_wake_op_0_s: []const u8 = builtin.debug.about("futex-wake-op");
-    const about_futex_1_s: []const u8 = builtin.debug.about("futex-error");
+    const about_fork_0_s: [:0]const u8 = builtin.fmt.about("fork");
+    const about_fork_1_s: [:0]const u8 = builtin.fmt.about("fork-error");
+    const about_wait_0_s: [:0]const u8 = builtin.fmt.about("wait");
+    const about_wait_1_s: [:0]const u8 = builtin.fmt.about("wait-error");
+    const about_futex_wait_0_s: [:0]const u8 = builtin.fmt.about("futex-wait");
+    const about_futex_wake_0_s: [:0]const u8 = builtin.fmt.about("futex-wake");
+    const about_futex_wake_op_0_s: [:0]const u8 = builtin.fmt.about("futex-wake-op");
+    const about_futex_1_s: [:0]const u8 = builtin.fmt.about("futex-error");
 
     fn exceptionFaultAtAddress(symbol: []const u8, fault_addr: u64) void {
+        const fault_addr_s: []const u8 = builtin.fmt.ux64(fault_addr).readAll();
         var buf: [8192]u8 = undefined;
         var pathname: [4096]u8 = undefined;
-        builtin.debug.logFaultAIO(&buf, &[_][]const u8{
-            debug.about_fault_s, symbol,
-            " at address ",      builtin.fmt.ux64(fault_addr).readAll(),
-            ", ",                pathname[0..builtin.debug.name(&pathname)],
-            "\n",
-        });
+        const link_s: []const u8 = pathname[0..builtin.debug.name(&pathname)];
+        builtin.debug.logFaultAIO(&buf, &[_][]const u8{ builtin.debug.about_fault_p0_s, symbol, " at address ", fault_addr_s, ", ", link_s, "\n" });
     }
     fn forkNotice(pid: u64) void {
         var buf: [560]u8 = undefined;
@@ -1365,8 +1374,8 @@ pub fn GenericOptions(comptime Options: type) type {
             return options;
         }
         const debug = struct {
-            const about_opt_0_s: []const u8 = builtin.debug.about("opt");
-            const about_opt_1_s: []const u8 = builtin.debug.about("opt-error");
+            const about_opt_0_s: []const u8 = builtin.fmt.about("opt");
+            const about_opt_1_s: []const u8 = builtin.fmt.about("opt-error");
             const about_stop_s: []const u8 = "\nstop parsing options with '--'\n";
             fn optionNotice(comptime all_options: []const Options.Map) void {
                 const buf: []const u8 = comptime Options.Map.helpMessage(all_options);
@@ -1382,30 +1391,35 @@ pub fn GenericOptions(comptime Options: type) type {
                     if (option.long) |long_switch| {
                         const mats: u64 = matchLongSwitch(bad_opt, long_switch);
                         if (builtin.diff(u64, mats, long_switch.len) < 3) {
-                            len += builtin.debug.writeMany(buf[len..].ptr, about_opt_0_s);
+                            mach.memcpy(buf[len..].ptr, about_opt_0_s.ptr, about_opt_0_s.len);
+                            len +%= about_opt_0_s.len;
                             if (option.short) |short_switch| {
-                                len += builtin.debug.writeMulti(buf[len..].ptr, &.{ "'", short_switch, "', '" });
+                                len +%= builtin.debug.writeMulti(buf[len..].ptr, &.{ "'", short_switch, "', '" });
                             }
-                            len += builtin.debug.writeMany(buf[len..].ptr, long_switch);
+                            mach.memcpy(buf[len..].ptr, long_switch.ptr, long_switch.len);
+                            len +%= long_switch.len;
                         }
                     }
                     if (min != len) {
-                        len += builtin.debug.writeMany(buf[len..].ptr, "'");
+                        buf[len] = '\'';
+                        len +%= 1;
                         if (option.descr) |descr| {
                             buf[len] = '\t';
-                            len += 1;
-                            len += builtin.debug.writeMany(buf[len..].ptr, descr);
+                            len +%= 1;
+                            mach.memcpy(buf[len..].ptr, descr.ptr, descr.len);
+                            len +%= descr.len;
                         }
                         buf[len] = '\n';
-                        len += 1;
+                        len +%= 1;
                     }
                 }
-                len += builtin.debug.writeMany(buf[len..].ptr, about_stop_s);
+                mach.memcpy(buf[len..].ptr, about_stop_s.ptr, about_stop_s.len);
+                len +%= about_stop_s.len;
                 builtin.debug.write(buf[0..len]);
             }
             fn getBadOpt(arg: [:0]const u8) []const u8 {
                 var idx: u64 = 0;
-                while (idx != arg.len) : (idx += 1) {
+                while (idx != arg.len) : (idx +%= 1) {
                     if (arg[idx] == '=') {
                         return arg[0..idx];
                     }
@@ -1415,13 +1429,13 @@ pub fn GenericOptions(comptime Options: type) type {
             fn matchLongSwitch(bad_opt: []const u8, long_switch: []const u8) u64 {
                 var l_idx: u64 = 0;
                 var mats: u64 = 0;
-                lo: while (true) : (l_idx += 1) {
+                lo: while (true) : (l_idx +%= 1) {
                     var r_idx: u64 = 0;
-                    while (r_idx < long_switch.len) : (r_idx += 1) {
+                    while (r_idx < long_switch.len) : (r_idx +%= 1) {
                         if (l_idx +% mats >= bad_opt.len) {
                             break :lo;
                         }
-                        mats += @boolToInt(bad_opt[l_idx +% mats] == long_switch[r_idx]);
+                        mats +%= @boolToInt(bad_opt[l_idx +% mats] == long_switch[r_idx]);
                     }
                 }
                 return mats;
