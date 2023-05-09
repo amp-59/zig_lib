@@ -1824,9 +1824,17 @@ const debug = opaque {
         len +%= about.bytes_lf_s.len;
         builtin.debug.write(buf[0..len]);
     }
-    fn pathnameAboutNotice(pathname: [:0]const u8, about: [:0]const u8) void {
+    fn pathnameAboutNotice(pathname: [:0]const u8, about_s: [:0]const u8) void {
+        @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about, pathname, "\n" });
+        var len: u64 = 0;
+        mach.memcpy(buf[len..].ptr, about_s.ptr, about_s.len);
+        len +%= about_s.len;
+        mach.memcpy(buf[len..].ptr, pathname.ptr, pathname.len);
+        len +%= pathname.len;
+        mach.memcpy(buf[len..].ptr, about.lf_s.ptr, about.lf_s.len);
+        len +%= about.lf_s.len;
+        builtin.debug.write(buf[0..len]);
     }
     fn pathnameModeAboutNotice(pathname: [:0]const u8, mode: Mode, about: [:0]const u8) void {
         var buf: [32768]u8 = undefined;
