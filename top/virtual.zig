@@ -1059,8 +1059,8 @@ fn GenericAddressSpace(comptime AddressSpace: type) type {
             return GenericSubSpace(AddressSpace.addr_spec.subspace.?, label_or_index);
         }
         const debug = struct {
-            const about_set_0_s: []const u8 = builtin.debug.about("set");
-            const about_set_1_s: []const u8 = builtin.debug.about("unset");
+            const about_set_0_s: []const u8 = builtin.fmt.about("set");
+            const about_set_1_s: []const u8 = builtin.fmt.about("unset");
             fn formatWriteRegular(address_space: AddressSpace, array: anytype) void {
                 var arena_index: AddressSpace.Index = 0;
                 array.writeMany(about_set_0_s);
