@@ -1760,10 +1760,24 @@ const debug = opaque {
         buf[len] = '\n';
         builtin.debug.write(buf[0 .. len +% 1]);
     }
-    fn fdModeAboutNotice(fd: u64, mode: Mode, about: [:0]const u8) void {
+    fn fdModeAboutNotice(fd: u64, mode: Mode, about_s: [:0]const u8) void {
+        @setRuntimeSafety(false);
         const fd_s: []const u8 = builtin.fmt.ud64(fd).readAll();
+        const mode_s: [10]u8 = describeMode(mode);
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about, "fd=", fd_s, ", mode=", &describeMode(mode), "\n" });
+        var len: u64 = 0;
+        mach.memcpy(buf[len..].ptr, about_s.ptr, about_s.len);
+        len +%= about_s.len;
+        mach.memcpy(buf[len..].ptr, about.fd_s.ptr, about.fd_s.len);
+        len +%= about.fd_s.len;
+        mach.memcpy(buf[len..].ptr, fd_s.ptr, fd_s.len);
+        len +%= fd_s.len;
+        mach.memcpy(buf[len..].ptr, about.next_mode_s.ptr, about.next_mode_s.len);
+        len +%= about.next_mode_s.len;
+        mach.memcpy(buf[len..].ptr, &mode_s, 10);
+        len +%= 10;
+        buf[len] = '\n';
+        builtin.debug.write(buf[0 .. len +% 1]);
     }
     fn fdLenAboutNotice(fd: u64, len: u64, about: [:0]const u8) void {
         const fd_s: []const u8 = builtin.fmt.ud64(fd).readAll();
