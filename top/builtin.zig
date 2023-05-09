@@ -977,7 +977,7 @@ pub inline fn intCast(comptime T: type, value: anytype) T {
     }
     return @truncate(T, value);
 }
-pub const static = opaque {
+pub const static = struct {
     pub fn assert(comptime b: bool) void {
         if (!b) {
             @compileError("assertion failed");
@@ -1212,12 +1212,10 @@ pub const proc = struct {
         unreachable;
     }
 };
-pub const debug = opaque {
+pub const debug = struct {
     pub const itos = fmt.dec;
     const size: usize = 4096;
-    pub const about_exit_0_s: [:0]const u8 = about("exit");
-    pub const about_exit_1_s: [:0]const u8 = about_error_p0_s;
-    pub const about_exit_2_s: [:0]const u8 = about_fault_p0_s;
+    const about_exit_0_s: [:0]const u8 = fmt.about("exit");
     pub const about_fault_p0_s: [:0]const u8 = blk: {
         var lhs: [:0]const u8 = "fault";
         lhs = config.message_prefix ++ lhs;
@@ -1226,7 +1224,7 @@ pub const debug = opaque {
         lhs = "\x1b[1m" ++ lhs ++ config.message_no_style;
         break :blk lhs ++ " " ** (config.message_indent - len);
     };
-    pub const about_error_p0_s: [:0]const u8 = blk: {
+    const about_error_p0_s: [:0]const u8 = blk: {
         var lhs: [:0]const u8 = "error";
         lhs = config.message_prefix ++ lhs;
         lhs = lhs ++ config.message_suffix;
@@ -1234,19 +1232,6 @@ pub const debug = opaque {
         lhs = "\x1b[1m" ++ lhs ++ config.message_no_style;
         break :blk lhs ++ " " ** (config.message_indent - len);
     };
-    pub fn about(comptime s: [:0]const u8) [:0]const u8 {
-        var lhs: [:0]const u8 = s;
-        lhs = config.message_prefix ++ lhs;
-        lhs = lhs ++ config.message_suffix;
-        const len: u64 = lhs.len;
-        if (config.message_style) |style| {
-            lhs = style ++ lhs ++ config.message_no_style;
-        }
-        if (len >= config.message_indent) {
-            @compileError(s ++ " is too long");
-        }
-        return lhs ++ " " ** (config.message_indent - len);
-    }
     pub inline fn typeFault(comptime T: type) []const u8 {
         return about_fault_p0_s ++ @typeName(T);
     }
@@ -1255,19 +1240,19 @@ pub const debug = opaque {
     }
     fn exitNotice(rc: u8) void {
         var buf: [4096]u8 = undefined;
-        logAlwaysAIO(&buf, &.{ debug.about_exit_0_s, "rc=", fmt.ud8(rc).readAll(), "\n" });
+        logAlwaysAIO(&buf, &.{ about_exit_0_s, "rc=", fmt.ud8(rc).readAll(), "\n" });
     }
     fn exitError(error_name: []const u8, rc: u8) void {
         var buf: [4096]u8 = undefined;
-        logAlwaysAIO(&buf, &.{ debug.about_exit_1_s, "(", error_name, "), rc=", fmt.ud8(rc).readAll(), "\n" });
+        logAlwaysAIO(&buf, &.{ about_error_p0_s, "(", error_name, "), rc=", fmt.ud8(rc).readAll(), "\n" });
     }
     fn exitFault(message: []const u8, rc: u8) void {
         var buf: [4096]u8 = undefined;
-        logAlwaysAIO(&buf, &.{ debug.about_exit_2_s, message, ", rc=", fmt.ud8(rc).readAll(), "\n" });
+        logAlwaysAIO(&buf, &.{ about_fault_p0_s, message, ", rc=", fmt.ud8(rc).readAll(), "\n" });
     }
     fn exitErrorFault(error_name: []const u8, message: []const u8, rc: u8) void {
         var buf: [4096]u8 = undefined;
-        logAlwaysAIO(&buf, &.{ debug.about_exit_1_s, message, " (", error_name, "), rc=", fmt.ud8(rc).readAll(), "\n" });
+        logAlwaysAIO(&buf, &.{ about_error_p0_s, message, " (", error_name, "), rc=", fmt.ud8(rc).readAll(), "\n" });
     }
     fn comparisonFailedString(comptime T: type, what: []const u8, symbol: []const u8, buf: []u8, arg1: T, arg2: T, help_read: bool) u64 {
         const notation: []const u8 = if (help_read) ", i.e. " else "\n";
@@ -1502,10 +1487,6 @@ pub const debug = opaque {
         );
         return if (rc < 0) ~@as(u64, 0) else @intCast(u64, rc);
     }
-    pub fn writeMany(buf: [*]u8, s: []const u8) u64 {
-        mach.memcpy(buf, s.ptr, s.len);
-        return s.len;
-    }
     pub fn writeMulti(buf: [*]u8, ss: []const []const u8) u64 {
         return mach.memcpyMulti(buf, ss);
     }
@@ -1530,7 +1511,7 @@ pub const debug = opaque {
     pub fn logAbort(buf: []u8, symbol: []const u8) noreturn {
         @setRuntimeSafety(false);
         var len: u64 = 0;
-        len +%= writeMany(buf[len..].ptr, about_error_p0_s);
+        mach.memcpy(buf[len..].ptr, about_error_p0_s.ptr, about_error_p0_s.len);
         len +%= about_error_p0_s.len;
         len +%= name(buf[len..]);
         len +%= writeMulti(buf[len..].ptr, &[_][]const u8{ " (", symbol, ")\n" });
@@ -1569,13 +1550,13 @@ pub const debug = opaque {
         var buf: [1024]u8 = undefined;
         if (max_len == 0) {
             logFaultAIO(&buf, &[_][]const u8{
-                debug.about_exit_1_s,         "indexing (",
+                debug.about_error_p0_s,       "indexing (",
                 fmt.ud64(idx).readAll(),      ") into empty array @ ",
                 fmt.ux64(ret_addr).readAll(), "\n",
             });
         } else {
             logFaultAIO(&buf, &[_][]const u8{
-                debug.about_exit_1_s,             "index ",
+                debug.about_error_p0_s,           "index ",
                 fmt.ud64(idx).readAll(),          " above maximum ",
                 fmt.ud64(max_len -% 1).readAll(), " @ ",
                 fmt.ux64(ret_addr).readAll(),     "\n",
@@ -1589,7 +1570,7 @@ pub const debug = opaque {
         const ret_addr: u64 = @returnAddress();
         var buf: [1024]u8 = undefined;
         logFaultAIO(&buf, &[_][]const u8{
-            debug.about_exit_1_s,         "sentinel mismatch: expected ",
+            debug.about_error_p0_s,       "sentinel mismatch: expected ",
             fmt.int(expected).readAll(),  ", found ",
             fmt.int(actual).readAll(),    " @ ",
             fmt.ux64(ret_addr).readAll(), "\n",
@@ -1602,7 +1583,7 @@ pub const debug = opaque {
         const ret_addr: u64 = @returnAddress();
         var buf: [1024]u8 = undefined;
         logFaultAIO(&buf, &[_][]const u8{
-            debug.about_exit_1_s,         "start index ",
+            debug.about_error_p0_s,       "start index ",
             fmt.ud64(lower).readAll(),    " is larger than end index ",
             fmt.ud64(upper).readAll(),    " @ ",
             fmt.ux64(ret_addr).readAll(), "\n",
@@ -1614,7 +1595,7 @@ pub const debug = opaque {
         var buf: [1024]u8 = undefined;
         const ret_addr: u64 = @returnAddress();
         logFaultAIO(&buf, &[_][]const u8{
-            debug.about_exit_1_s,         "access of union field '",
+            debug.about_error_p0_s,       "access of union field '",
             @tagName(wanted),             "' while field '",
             @tagName(active),             "' is active @ ",
             fmt.ux64(ret_addr).readAll(), "\n",
@@ -1624,7 +1605,7 @@ pub const debug = opaque {
     pub noinline fn panicUnwrapError(_: @TypeOf(@errorReturnTrace()), _: anyerror) noreturn {
         @compileError("error is discarded");
     }
-    const static = opaque {
+    const static = struct {
         fn subCausedOverflow(comptime T: type, comptime arg1: T, comptime arg2: T) noreturn {
             comptime {
                 var msg: [size]u8 = undefined;
@@ -1946,7 +1927,26 @@ pub const parse = struct {
         return value;
     }
 };
-pub const fmt = opaque {
+pub const fmt = struct {
+    pub const About = blk: {
+        if (config.message_style) |style| {
+            break :blk *const [config.message_indent +% style.len +% config.message_no_style.len:0]u8;
+        }
+        break :blk *const [config.message_indent:0]u8;
+    };
+    pub fn about(comptime s: [:0]const u8) About {
+        var lhs: [:0]const u8 = s;
+        lhs = config.message_prefix ++ lhs;
+        lhs = lhs ++ config.message_suffix;
+        const len: u64 = lhs.len;
+        if (config.message_style) |style| {
+            lhs = style ++ lhs ++ config.message_no_style;
+        }
+        if (len >= config.message_indent) {
+            @compileError(s ++ " is too long");
+        }
+        return lhs ++ " " ** (config.message_indent - len);
+    }
     fn StaticStringMemo(comptime max_len: u64) type {
         return (extern struct {
             auto: [max_len]u8 align(8),
