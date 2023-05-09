@@ -1751,7 +1751,14 @@ const debug = opaque {
         @setRuntimeSafety(false);
         const fd_s: []const u8 = builtin.fmt.ud64(fd).readAll();
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about, "fd=", fd_s, "\n" });
+        mach.memcpy(&buf, about_s.ptr, about_s.len);
+        var len: u64 = about_s.len;
+        mach.memcpy(buf[len..].ptr, about.fd_s.ptr, about.fd_s.len);
+        len +%= about.fd_s.len;
+        mach.memcpy(buf[len..].ptr, fd_s.ptr, fd_s.len);
+        len +%= fd_s.len;
+        buf[len] = '\n';
+        builtin.debug.write(buf[0 .. len +% 1]);
     }
     fn fdModeAboutNotice(fd: u64, mode: Mode, about: [:0]const u8) void {
         const fd_s: []const u8 = builtin.fmt.ud64(fd).readAll();
