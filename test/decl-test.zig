@@ -14,4 +14,11 @@ pub fn main() void {
     _ = zig_lib.testing.refAllDecls(zig_lib.mach);
     _ = zig_lib.testing.refAllDecls(zig_lib.sys);
     _ = zig_lib.testing.refAllDecls(zig_lib.time);
+    _ = zig_lib.testing.refAllDecls(zig_lib.math);
+    _ = zig_lib.testing.refAllDecls(zig_lib.serial);
+    _ = zig_lib.testing.refAllDecls(zig_lib.fmt);
+    _ = zig_lib.testing.refAllDecls(@import("../top/render.zig"));
+    _ = zig_lib.testing.refAllDecls(@import("../top/mem/allocator-template.zig"));
+    _ = zig_lib.testing.refAllDecls(@import("../top/mem/reference-template.zig"));
+    _ = zig_lib.testing.refAllDecls(@import("../top/mem/type_specs-aux.zig"));
 }
