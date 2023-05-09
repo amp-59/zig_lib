@@ -230,8 +230,6 @@ fn testPreClean() !void {
 }
 pub fn main() !void {
     try meta.wrap(testRecords());
-
-    if (return) {}
     try meta.wrap(testPreClean());
     try meta.wrap(testStandardChannel());
     try meta.wrap(testStatusExtended());
