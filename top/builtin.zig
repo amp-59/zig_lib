@@ -576,6 +576,9 @@ pub inline fn arrcpy(buf: [*]u8, comptime any: anytype) u64 {
     @ptrCast(*@TypeOf(any), buf).* = any;
     return any.len;
 }
+pub inline fn memcpy(buf: [*]u8, slice: []const u8) void {
+    mach.memcpy(buf, slice.ptr, slice.len);
+}
 fn @"test"(b: bool) bool {
     return b;
 }
@@ -1502,10 +1505,6 @@ pub const debug = opaque {
     pub fn writeMany(buf: [*]u8, s: []const u8) u64 {
         mach.memcpy(buf, s.ptr, s.len);
         return s.len;
-    }
-    pub fn writeRepeat(buf: [*]u8, c: u8, count: u64) u64 {
-        mach.memset(buf, c, count);
-        return count;
     }
     pub fn writeMulti(buf: [*]u8, ss: []const []const u8) u64 {
         return mach.memcpyMulti(buf, ss);
