@@ -498,7 +498,6 @@ comptime {
         \\  ret
     );
 }
-pub extern fn memcpy(noalias dest: [*]u8, noalias src: [*]const u8, len: u64) callconv(.C) void;
 //pub fn memcpy(noalias dest: [*]u8, noalias src: [*]const u8, len: u64) void {
 //    asm volatile ("rep movsb"
 //        :
@@ -507,6 +506,7 @@ pub extern fn memcpy(noalias dest: [*]u8, noalias src: [*]const u8, len: u64) ca
 //          [_] "{rcx}" (len),
 //    );
 //}
+pub extern fn memcpy(noalias dest: [*]u8, noalias src: [*]const u8, len: u64) callconv(.C) void;
 comptime {
     asm (
         \\.intel_syntax noprefix
