@@ -123,11 +123,11 @@ const empty_dir_arrow_s: [:0]const u8 = del_s ++ "|-- ";
 const last_empty_dir_arrow_s: [:0]const u8 = del_s ++ "`-- ";
 
 // config constants derived by `message_style` library configuration
-const about_dirs_s: [:0]const u8 = builtin.debug.about("dirs");
-const about_files_s: [:0]const u8 = builtin.debug.about("files");
-const about_links_s: [:0]const u8 = builtin.debug.about("links");
-const about_depth_s: [:0]const u8 = builtin.debug.about("depth");
-const about_errors_s: [:0]const u8 = builtin.debug.about("errors");
+const about_dirs_s: [:0]const u8 = builtin.fmt.about("dirs");
+const about_files_s: [:0]const u8 = builtin.fmt.about("files");
+const about_links_s: [:0]const u8 = builtin.fmt.about("links");
+const about_depth_s: [:0]const u8 = builtin.fmt.about("depth");
+const about_errors_s: [:0]const u8 = builtin.fmt.about("errors");
 
 // user config end
 const write_spec: file.WriteSpec = .{

@@ -115,7 +115,6 @@ pub const POSIX = struct {
         pub const NOREUSE: usize = 0x5;
     };
 };
-
 // zig fmt: off
 pub const S = struct {
     pub const IFMT: u16     = 0b1111000000000000;
