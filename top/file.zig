@@ -1665,63 +1665,90 @@ pub fn DeviceRandomBytes(comptime bytes: u64) type {
 }
 
 const debug = opaque {
-    const about_dup_0_s: [:0]const u8 = builtin.debug.about("dup");
-    const about_dup_1_s: [:0]const u8 = builtin.debug.about("dup-error");
-    const about_dup3_0_s: [:0]const u8 = builtin.debug.about("dup3");
-    const about_dup3_1_s: [:0]const u8 = builtin.debug.about("dup3-error");
-    const about_stat_0_s: [:0]const u8 = builtin.debug.about("stat");
-    const about_open_0_s: [:0]const u8 = builtin.debug.about("open");
-    const about_open_1_s: [:0]const u8 = builtin.debug.about("open-error");
-    const about_file_0_s: [:0]const u8 = builtin.debug.about("file");
-    const about_file_1_s: [:0]const u8 = builtin.debug.about("file-error");
-    const about_file_2_s: [:0]const u8 = builtin.debug.about("file-fault");
-    const about_read_0_s: [:0]const u8 = builtin.debug.about("read");
-    const about_read_1_s: [:0]const u8 = builtin.debug.about("read-error");
-    const about_stat_1_s: [:0]const u8 = builtin.debug.about("stat-error");
-    const about_pipe_0_s: [:0]const u8 = builtin.debug.about("pipe");
-    const about_pipe_1_s: [:0]const u8 = builtin.debug.about("pipe-error");
-    const about_poll_0_s: [:0]const u8 = builtin.debug.about("poll");
-    const about_poll_1_s: [:0]const u8 = builtin.debug.about("poll-error");
-    const about_close_0_s: [:0]const u8 = builtin.debug.about("close");
-    const about_close_1_s: [:0]const u8 = builtin.debug.about("close-error");
-    const about_mkdir_0_s: [:0]const u8 = builtin.debug.about("mkdir");
-    const about_mkdir_1_s: [:0]const u8 = builtin.debug.about("mkdir-error");
-    const about_mknod_0_s: [:0]const u8 = builtin.debug.about("mknod");
-    const about_mknod_1_s: [:0]const u8 = builtin.debug.about("mknod-error");
-    const about_rmdir_0_s: [:0]const u8 = builtin.debug.about("rmdir");
-    const about_rmdir_1_s: [:0]const u8 = builtin.debug.about("rmdir-error");
-    const about_write_0_s: [:0]const u8 = builtin.debug.about("write");
-    const about_write_1_s: [:0]const u8 = builtin.debug.about("write-error");
-    const about_socket_0_s: [:0]const u8 = builtin.debug.about("socket");
-    const about_socket_1_s: [:0]const u8 = builtin.debug.about("socket-error");
-    const about_create_0_s: [:0]const u8 = builtin.debug.about("create");
-    const about_create_1_s: [:0]const u8 = builtin.debug.about("create-error");
-    const about_execve_0_s: [:0]const u8 = builtin.debug.about("execve");
-    const about_execve_1_s: [:0]const u8 = builtin.debug.about("execve-error");
-    const about_getcwd_0_s: [:0]const u8 = builtin.debug.about("getcwd");
-    const about_getcwd_1_s: [:0]const u8 = builtin.debug.about("getcwd-error");
-    const about_unlink_0_s: [:0]const u8 = builtin.debug.about("unlink");
-    const about_unlink_1_s: [:0]const u8 = builtin.debug.about("unlink-error");
-    const about_getdents_0_s: [:0]const u8 = builtin.debug.about("getdents");
-    const about_getdents_1_s: [:0]const u8 = builtin.debug.about("getdents-error");
-    const about_unlinkat_0_s: [:0]const u8 = builtin.debug.about("unlink");
-    const about_unlinkat_1_s: [:0]const u8 = builtin.debug.about("unlink-error");
-    const about_readlink_1_s: [:0]const u8 = builtin.debug.about("readlink-error");
-    const about_truncate_0_s: [:0]const u8 = builtin.debug.about("truncate");
-    const about_truncate_1_s: [:0]const u8 = builtin.debug.about("truncate-error");
-    const unknown_s: [:0]const u8 = "an unknown file";
-    const regular_s: [:0]const u8 = "a regular file";
-    const directory_s: [:0]const u8 = "a directory";
-    const character_special_s: [:0]const u8 = "a character special file";
-    const block_special_s: [:0]const u8 = "a block special file";
-    const named_pipe_s: [:0]const u8 = "a named pipe";
-    const socket_s: [:0]const u8 = "a socket";
-    const symbolic_link_s: [:0]const u8 = "a symbolic link";
-    const new_fd_s: [:0]const u8 = "new_fd=";
-    const old_fd_s: [:0]const u8 = "old_fd=";
-    const read_fd_s: [:0]const u8 = "read_fd=";
-    const write_fd_s: [:0]const u8 = "write_fd=";
-    fn fdAboutNotice(fd: u64, about: [:0]const u8) void {
+    const about = .{
+        .dup_0_s = builtin.debug.about("dup"),
+        .dup_1_s = builtin.debug.about("dup-error"),
+        .dup3_0_s = builtin.debug.about("dup3"),
+        .dup3_1_s = builtin.debug.about("dup3-error"),
+        .stat_0_s = builtin.debug.about("stat"),
+        .open_0_s = builtin.debug.about("open"),
+        .open_1_s = builtin.debug.about("open-error"),
+        .file_0_s = builtin.debug.about("file"),
+        .file_1_s = builtin.debug.about("file-error"),
+        .file_2_s = builtin.debug.about("file-fault"),
+        .read_0_s = builtin.debug.about("read"),
+        .read_1_s = builtin.debug.about("read-error"),
+        .stat_1_s = builtin.debug.about("stat-error"),
+        .pipe_0_s = builtin.debug.about("pipe"),
+        .pipe_1_s = builtin.debug.about("pipe-error"),
+        .poll_0_s = builtin.debug.about("poll"),
+        .poll_1_s = builtin.debug.about("poll-error"),
+        .close_0_s = builtin.debug.about("close"),
+        .close_1_s = builtin.debug.about("close-error"),
+        .mkdir_0_s = builtin.debug.about("mkdir"),
+        .mkdir_1_s = builtin.debug.about("mkdir-error"),
+        .mknod_0_s = builtin.debug.about("mknod"),
+        .mknod_1_s = builtin.debug.about("mknod-error"),
+        .rmdir_0_s = builtin.debug.about("rmdir"),
+        .rmdir_1_s = builtin.debug.about("rmdir-error"),
+        .write_0_s = builtin.debug.about("write"),
+        .write_1_s = builtin.debug.about("write-error"),
+        .socket_0_s = builtin.debug.about("socket"),
+        .socket_1_s = builtin.debug.about("socket-error"),
+        .create_0_s = builtin.debug.about("create"),
+        .create_1_s = builtin.debug.about("create-error"),
+        .execve_0_s = builtin.debug.about("execve"),
+        .execve_1_s = builtin.debug.about("execve-error"),
+        .getcwd_0_s = builtin.debug.about("getcwd"),
+        .getcwd_1_s = builtin.debug.about("getcwd-error"),
+        .unlink_0_s = builtin.debug.about("unlink"),
+        .unlink_1_s = builtin.debug.about("unlink-error"),
+        .getdents_0_s = builtin.debug.about("getdents"),
+        .getdents_1_s = builtin.debug.about("getdents-error"),
+        .unlinkat_0_s = builtin.debug.about("unlink"),
+        .unlinkat_1_s = builtin.debug.about("unlink-error"),
+        .readlink_1_s = builtin.debug.about("readlink-error"),
+        .truncate_0_s = builtin.debug.about("truncate"),
+        .truncate_1_s = builtin.debug.about("truncate-error"),
+
+        .lf_s = "\n",
+        .next_s = ", ",
+        .fd_s = "fd=",
+        .new_fd_s = "new_fd=",
+        .old_fd_s = "old_fd=",
+        .read_fd_s = "read_fd=",
+        .write_fd_s = "write_fd=",
+        .dir_fd_s = "dir_fd=",
+        .mode_s = "mode=",
+        .offset_s = "offset=",
+        .fds_s = "fds=",
+        .next_timeout_s = ", timeout=",
+        .next_offset_s = ", offset=",
+        .next_mode_s = ", mode=",
+        .next_dev_s = ", dev=",
+        .next_dir_fd_s = ", dir_fd=",
+        .bytes_lf_s = " bytes\n",
+        .ms_lf_s = " ms\n",
+        .cwd_s = "CWD",
+        .lparen_s = " (",
+        .rparen_s = ")\n",
+    };
+    const about2 = .{
+        .must_not_be_s = " must not be ",
+        .must_be_s = " must be ",
+        .is_s = "; is ",
+        .unknown_s = "an unknown file",
+        .regular_s = "a regular file",
+        .directory_s = "a directory",
+        .character_special_s = "a character special file",
+        .block_special_s = "a block special file",
+        .named_pipe_s = "a named pipe",
+        .socket_s = "a socket",
+        .symbolic_link_s = "a symbolic link",
+    };
+
+    fn fdAboutNotice(fd: u64, about_s: [:0]const u8) void {
+        @setRuntimeSafety(false);
         const fd_s: []const u8 = builtin.fmt.ud64(fd).readAll();
         var buf: [32768]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about, "fd=", fd_s, "\n" });
