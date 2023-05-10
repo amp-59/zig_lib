@@ -111,7 +111,7 @@ pub fn main() void {
     writeKind(ctn_fn.Fn, &array, .offset, offset_defined[1] ++ offset_undefined[1] ++ offset_streamed[1] ++ offset_unstreamed[1]);
     writeKind(ctn_fn.Fn, &array, .special, helper[0]);
 
-    const fd: u64 = file.create(spec.create.truncate_noexcept, config.container_kinds_path, file.file_mode);
+    const fd: u64 = file.create(spec.create.truncate_noexcept, config.container_kinds_path, file.mode.regular);
     file.write(spec.generic.noexcept, fd, array.readAll());
     file.close(spec.generic.noexcept, fd);
 }
