@@ -266,11 +266,7 @@ const reinterpret_spec: mem.ReinterpretSpec = builtin.define("reinterpret_spec",
 pub fn printN(comptime n: usize, any: anytype) void {
     var array: mem.StaticString(n) = undefined;
     array.undefineAll();
-    if (@hasDecl(builtin.root, "render_spec")) {
-        array.writeFormat(fmt.render(builtin.root.render_spec, any));
-    } else {
-        array.writeAny(reinterpret_spec, any);
-    }
+    array.writeAny(reinterpret_spec, any);
     builtin.debug.write(array.readAll());
 }
 const Static = struct {
@@ -302,12 +298,8 @@ pub fn print(any: anytype) void {
         Static.array = Static.Array.init(allocator, 1024 * 4096);
         break :blk &Static.array.?;
     };
-    defer array.undefineAll();
-    if (@hasDecl(builtin.root, "render_spec")) {
-        array.writeFormat(fmt.render(builtin.root.render_spec, any));
-    } else {
-        array.writeAny(reinterpret_spec, any);
-    }
+    array.undefineAll();
+    array.writeAny(reinterpret_spec, any);
     builtin.debug.write(array.readAll());
 }
 pub fn uniqueSet(comptime T: type, set: []const T) void {
