@@ -69,7 +69,7 @@ pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
         }
         pub const dir_spec: DirStreamSpec = spec;
         const dir_open_spec: file.OpenSpec = .{
-            .options = .{ .write = null, .directory = true, .read = true },
+            .options = .{ .directory = true },
             .errors = dir_spec.errors.open,
             .logging = dir_spec.logging.open,
         };
