@@ -924,7 +924,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             const build_root_fd: u64 = try meta.wrap(file.path(path_spec, build_root));
             const cache_root_fd: u64 = try meta.wrap(file.path(path_spec, cache_root));
-            const env_fd: u64 = try meta.wrap(file.createAt(create_spec, cache_root_fd, builder_spec.options.env_name, file.file_mode));
+            const env_fd: u64 = try meta.wrap(file.createAt(create_spec, cache_root_fd, builder_spec.options.env_name, file.mode.regular));
             for ([_][]const u8{
                 "pub const zig_exe: [:0]const u8 = \"",               zig_exe,
                 "\";\npub const build_root: [:0]const u8 = \"",       build_root,
@@ -934,8 +934,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }) |s| try meta.wrap(file.write(write_spec, env_fd, s.ptr, s.len));
             try meta.wrap(file.close(close_spec, env_fd));
             try meta.wrap(file.close(close_spec, cache_root_fd));
-            try meta.wrap(file.makeDirAt(mkdir_spec, build_root_fd, builder_spec.options.zig_out_dir, file.dir_mode));
-            try meta.wrap(file.makeDirAt(mkdir_spec, build_root_fd, builder_spec.options.exeOutDir(), file.dir_mode));
+            try meta.wrap(file.makeDirAt(mkdir_spec, build_root_fd, builder_spec.options.zig_out_dir, file.mode.directory));
+            try meta.wrap(file.makeDirAt(mkdir_spec, build_root_fd, builder_spec.options.exeOutDir(), file.mode.directory));
             return .{
                 .zig_exe = zig_exe,
                 .build_root = build_root,
@@ -991,16 +991,16 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             return if (getFileStatus(builder, name)) |st| st.size else 0;
         }
         fn makeZigCacheDir(builder: *Builder) sys.Call(mkdir_spec.errors, void) {
-            try meta.wrap(file.makeDirAt(mkdir_spec, builder.dir_fd, builder_spec.options.zig_cache_dir, file.dir_mode));
+            try meta.wrap(file.makeDirAt(mkdir_spec, builder.dir_fd, builder_spec.options.zig_cache_dir, file.mode.directory));
         }
         fn makeZigOutDir(builder: *Builder) sys.Call(mkdir_spec.errors, void) {
-            try meta.wrap(file.makeDirAt(mkdir_spec, builder.dir_fd, builder_spec.options.zig_out_dir, file.dir_mode));
+            try meta.wrap(file.makeDirAt(mkdir_spec, builder.dir_fd, builder_spec.options.zig_out_dir, file.mode.directory));
         }
         fn makeBinDir(builder: *Builder) sys.Call(mkdir_spec.errors, void) {
-            try meta.wrap(file.makeDirAt(mkdir_spec, builder.dir_fd, builder_spec.options.zig_exe_out_dir, file.dir_mode));
+            try meta.wrap(file.makeDirAt(mkdir_spec, builder.dir_fd, builder_spec.options.zig_exe_out_dir, file.mode.directory));
         }
         fn makeAuxDir(builder: *Builder) sys.Call(mkdir_spec.errors, void) {
-            try meta.wrap(file.makeDirAt(mkdir_spec, builder.dir_fd, builder_spec.options.zig_aux_out_dir, file.dir_mode));
+            try meta.wrap(file.makeDirAt(mkdir_spec, builder.dir_fd, builder_spec.options.zig_aux_out_dir, file.mode.directory));
         }
         fn dependencyWait(target: *Target, task: types.Task, arena_index: AddressSpace.Index) bool {
             for (target.buildDependencies()) |*dep| {
@@ -1050,11 +1050,11 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             return false;
         }
         pub const debug = struct {
-            const about_run_s: [:0]const u8 = builtin.debug.about("run");
-            const about_build_s: [:0]const u8 = builtin.debug.about("build");
-            const about_format_s: [:0]const u8 = builtin.debug.about("format");
-            const about_state_0_s: [:0]const u8 = builtin.debug.about("state");
-            const about_state_1_s: [:0]const u8 = builtin.debug.about("state-fault");
+            const about_run_s: [:0]const u8 = builtin.fmt.about("run");
+            const about_build_s: [:0]const u8 = builtin.fmt.about("build");
+            const about_format_s: [:0]const u8 = builtin.fmt.about("format");
+            const about_state_0_s: [:0]const u8 = builtin.fmt.about("state");
+            const about_state_1_s: [:0]const u8 = builtin.fmt.about("state-fault");
             const error_s: *const [5:0]u8 = "error";
             const note_s: *const [4:0]u8 = "note";
             const fancy_hl_line: bool = false;

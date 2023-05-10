@@ -1710,7 +1710,7 @@ fn srcArray(comptime count: usize, comptime pathname: [:0]const u8) !mem.StaticA
     return ret;
 }
 fn writeFile(allocator: Allocator, array: Array, pathname: [:0]const u8) !void {
-    const build_fd: u64 = try file.create(.{ .options = .{ .exclusive = false } }, pathname, file.file_mode);
+    const build_fd: u64 = try file.create(.{ .options = .{ .exclusive = false } }, pathname, file.mode.regular);
     try file.writeSlice(.{}, build_fd, array.readAll(allocator));
     try file.close(.{}, build_fd);
 }
