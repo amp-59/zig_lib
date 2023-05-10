@@ -33,11 +33,11 @@ const create_spec: file.CreateSpec = .{
     .errors = .{ .throw = sys.open_errors },
 };
 const open_spec: file.OpenSpec = .{
-    .options = .{ .read = true, .write = .append },
+    .options = .{ .write = true, .append = true },
     .errors = .{ .throw = sys.open_errors },
 };
 const open_dir_spec: file.OpenSpec = .{
-    .options = .{ .read = true, .write = null, .directory = true },
+    .options = .{ .read = true, .directory = true },
     .errors = .{ .throw = sys.open_errors },
 };
 const remove_dir_spec: file.RemoveDirSpec = .{
@@ -103,9 +103,9 @@ fn testStatusExtended() !void {
 }
 fn testFileOperationsRound1() !void {
     builtin.debug.write(@src().fn_name ++ ":\n");
-    try meta.wrap(file.makeDir(make_dir_spec, "/run/user/1000/file_test", file.dir_mode));
+    try meta.wrap(file.makeDir(make_dir_spec, "/run/user/1000/file_test", file.mode.directory));
     try meta.wrap(file.removeDir(remove_dir_spec, "/run/user/1000/file_test"));
-    const fd: u64 = try meta.wrap(file.create(create_spec, "/run/user/1000/file_test", file.file_mode));
+    const fd: u64 = try meta.wrap(file.create(create_spec, "/run/user/1000/file_test", file.mode.regular));
     try meta.wrap(file.close(close_spec, fd));
     try meta.wrap(file.unlink(unlink_spec, "/run/user/1000/file_test"));
 }
@@ -126,7 +126,7 @@ pub fn testSocketOpenAndClose() !void {
 }
 pub fn testFileTests() !void {
     builtin.debug.write(@src().fn_name ++ ":\n");
-    try file.makeDir(make_dir_spec, "/run/user/1000/file_test", file.dir_mode);
+    try file.makeDir(make_dir_spec, "/run/user/1000/file_test", file.mode.directory);
     try file.pathAssert(stat_spec, "/run/user/1000/file_test", .directory);
     const fd: u64 = try file.open(open_dir_spec, "/run/user/1000/file_test");
     try builtin.expect(try file.pathIs(stat_spec, "/run/user/1000/file_test", .directory));
@@ -138,12 +138,11 @@ pub fn testFileTests() !void {
 }
 fn testFileOperationsRound2() !void {
     builtin.debug.write(@src().fn_name ++ ":\n");
-    try meta.wrap(file.makeDir(make_dir_spec, "/run/user/1000/file_test", file.dir_mode));
+    try meta.wrap(file.makeDir(make_dir_spec, "/run/user/1000/file_test", file.mode.directory));
     const dir_fd: u64 = try meta.wrap(file.open(open_dir_spec, "/run/user/1000/file_test"));
-    try meta.wrap(file.makeDirAt(make_dir_spec, dir_fd, "file_test", file.dir_mode));
+    try meta.wrap(file.makeDirAt(make_dir_spec, dir_fd, "file_test", file.mode.directory));
     var path_dir_fd: u64 = try meta.wrap(file.path(.{}, "/run/user/1000/file_test/file_test"));
-    try meta.wrap(file.close(close_spec, try meta.wrap(file.create(create_spec, "/run/user/1000/file_test/file_test/file_test", file.file_mode))));
-
+    try meta.wrap(file.close(close_spec, try meta.wrap(file.create(create_spec, "/run/user/1000/file_test/file_test/file_test", file.mode.regular))));
     const path_reg_fd: u64 = try meta.wrap(file.path(.{ .options = .{ .directory = false } }, "/run/user/1000/file_test/file_test/file_test"));
     try file.assertNot(stat_spec, path_reg_fd, .unknown);
     try file.assert(stat_spec, path_reg_fd, .regular);
@@ -172,7 +171,7 @@ fn testPathOperations() !void {
     try meta.wrap(testing.expectEqualMany(u8, "/run/user/1000", file.dirname("/run/user/1000/file_test")));
     try meta.wrap(testing.expectEqualMany(u8, "////run/user/1000//", file.dirname("////run/user/1000///file_test///")));
 
-    try file.makePath(make_path_spec, comptime builtin.buildRoot() ++ "/zig-out/bin/something/here", file.dir_mode);
+    try file.makePath(make_path_spec, comptime builtin.buildRoot() ++ "/zig-out/bin/something/here", file.mode.directory);
     try file.removeDir(remove_dir_spec, comptime builtin.buildRoot() ++ "/zig-out/bin/something/here");
     try file.removeDir(remove_dir_spec, comptime builtin.buildRoot() ++ "/zig-out/bin/something");
 }
