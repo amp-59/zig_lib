@@ -681,7 +681,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 var len: u64 = 0;
                 while (len != hdr.bytes_len) {
                     len +%= try meta.wrap(
-                        file.readMany(builder_spec.read2(), out.read, msg.ptr + len, hdr.bytes_len),
+                        file.read(builder_spec.read2(), out.read, msg[len..hdr.bytes_len]),
                     );
                 }
                 if (hdr.tag == .emit_bin_path) {
@@ -756,7 +756,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             try meta.wrap(openParent(in, out));
             try meta.wrap(
-                file.write(builder_spec.write2(), in.write, &update_exit_message, 2),
+                file.write(builder_spec.write2(), in.write, &update_exit_message),
             );
             try meta.wrap(
                 file.close(builder_spec.close(), in.write),
@@ -1136,7 +1136,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             const about_faint_s: *const [15:0]u8 = "\x1b[0;38;5;250;1m";
             const about_trace_s: *const [11:0]u8 = "\x1b[38;5;247m";
             const about_hi_red_s: *const [11:0]u8 = "\x1b[38;5;196m";
-            const fancy_hl_line: bool = true;
+            const fancy_hl_line: bool = false;
             fn exchangeNotice(target: *Target, task: types.Task, old_state: types.State, new_state: types.State) void {
                 @setRuntimeSafety(false);
                 var buf: [32768]u8 = undefined;
@@ -1613,7 +1613,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             len +%= global_cache_root.len;
             @ptrCast(*[3]u8, buf[len..].ptr).* = "\";\n".*;
             len +%= 3;
-            try meta.wrap(file.write(builder_spec.write(), env_fd, &buf, len));
+            try meta.wrap(file.write(builder_spec.write(), env_fd, buf[0..len]));
         }
         inline fn strdup(allocator: *Allocator, values: []const u8) [:0]u8 {
             @setRuntimeSafety(false);
