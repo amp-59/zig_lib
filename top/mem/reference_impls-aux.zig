@@ -960,7 +960,7 @@ pub fn generateReferences() !void {
         types.Implementation,
         st.count(types.Implementation),
     );
-    file.readSlice(read_impl_spec, fd, details);
+    file.read(read_impl_spec, fd, details);
     file.close(spec.generic.noexcept, fd);
     for (types.Kind.list) |kind| {
         for (details) |*impl_detail| {

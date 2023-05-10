@@ -982,7 +982,7 @@ pub fn generateContainers() !void {
         types.Container,
         st.count(types.Container),
     );
-    file.readSlice(read_ctn_spec, fd, details);
+    file.read(read_ctn_spec, fd, details);
     file.close(spec.generic.noexcept, fd);
     var ctn_idx: u64 = 0;
     for (types.Kind.list) |kind| {

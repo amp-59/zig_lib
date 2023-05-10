@@ -32,6 +32,6 @@ pub fn main() void {
     writeKind(alloc_fn.Fn, &array, .resize, resize[1]);
 
     const fd: u64 = file.create(spec.create.truncate_noexcept, config.allocator_kinds_path, file.file_mode);
-    file.writeSlice(spec.generic.noexcept, fd, array.readAll());
+    file.write(spec.generic.noexcept, fd, array.readAll());
     file.close(spec.generic.noexcept, fd);
 }

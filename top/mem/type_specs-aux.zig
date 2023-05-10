@@ -689,7 +689,7 @@ fn writeSpecifications(
     }
     array.undefineAll();
     const fd: u64 = file.open(spec.generic.noexcept, config.reference_template_path);
-    array.define(file.readSlice(spec.generic.noexcept, fd, array.referAllUndefined()));
+    array.define(file.read(spec.generic.noexcept, fd, array.referAllUndefined()));
     var spec_idx: u16 = 0;
     for (data.spec_sets) |spec_set| {
         for (spec_set) |specs| {
