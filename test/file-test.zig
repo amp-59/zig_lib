@@ -91,7 +91,7 @@ fn testRecords() !void {
     const proj_stats_root: [:0]const u8 = comptime build_root ++ "/zig-stat/file_test";
     var buf: [4096]build.Record = undefined;
     const fd: u64 = try file.open(.{}, proj_stats_root);
-    const rcds: []const build.Record = buf[0..try file.readSlice(.{ .child = build.Record }, fd, &buf)];
+    const rcds: []const build.Record = buf[0..try file.read(.{ .child = build.Record }, fd, &buf)];
     _ = rcds;
 }
 fn testStatusExtended() !void {
@@ -102,6 +102,7 @@ fn testStatusExtended() !void {
     _ = st;
 }
 fn testFileOperationsRound1() !void {
+    builtin.debug.write(@src().fn_name ++ ":\n");
     try meta.wrap(file.makeDir(make_dir_spec, "/run/user/1000/file_test", file.dir_mode));
     try meta.wrap(file.removeDir(remove_dir_spec, "/run/user/1000/file_test"));
     const fd: u64 = try meta.wrap(file.create(create_spec, "/run/user/1000/file_test", file.file_mode));
@@ -109,6 +110,7 @@ fn testFileOperationsRound1() !void {
     try meta.wrap(file.unlink(unlink_spec, "/run/user/1000/file_test"));
 }
 pub fn testSocketOpenAndClose() !void {
+    builtin.debug.write(@src().fn_name ++ ":\n");
     const unix_tcp_fd: u64 = try file.socket(.{}, .unix, .tcp);
     const unix_udp_fd: u64 = try file.socket(.{}, .unix, .udp);
     const ipv6_udp_fd: u64 = try file.socket(.{}, .ipv6, .udp);
@@ -123,6 +125,7 @@ pub fn testSocketOpenAndClose() !void {
     try file.close(.{}, unix_tcp_fd);
 }
 pub fn testFileTests() !void {
+    builtin.debug.write(@src().fn_name ++ ":\n");
     try file.makeDir(make_dir_spec, "/run/user/1000/file_test", file.dir_mode);
     try file.pathAssert(stat_spec, "/run/user/1000/file_test", .directory);
     const fd: u64 = try file.open(open_dir_spec, "/run/user/1000/file_test");
@@ -134,13 +137,13 @@ pub fn testFileTests() !void {
     try file.removeDir(remove_dir_spec, "/run/user/1000/file_test");
 }
 fn testFileOperationsRound2() !void {
+    builtin.debug.write(@src().fn_name ++ ":\n");
     try meta.wrap(file.makeDir(make_dir_spec, "/run/user/1000/file_test", file.dir_mode));
     const dir_fd: u64 = try meta.wrap(file.open(open_dir_spec, "/run/user/1000/file_test"));
     try meta.wrap(file.makeDirAt(make_dir_spec, dir_fd, "file_test", file.dir_mode));
     var path_dir_fd: u64 = try meta.wrap(file.path(.{}, "/run/user/1000/file_test/file_test"));
     try meta.wrap(file.close(close_spec, try meta.wrap(file.create(create_spec, "/run/user/1000/file_test/file_test/file_test", file.file_mode))));
-    path_dir_fd = try meta.wrap(file.path(.{}, "file_test"));
-    try meta.wrap(file.close(close_spec, path_dir_fd));
+
     const path_reg_fd: u64 = try meta.wrap(file.path(.{ .options = .{ .directory = false } }, "/run/user/1000/file_test/file_test/file_test"));
     try file.assertNot(stat_spec, path_reg_fd, .unknown);
     try file.assert(stat_spec, path_reg_fd, .regular);
@@ -149,9 +152,9 @@ fn testFileOperationsRound2() !void {
     try file.makeNode(make_node_spec, "/run/user/1000/file_test/fifo", .{ .kind = .named_pipe }, .{});
     try file.unlink(unlink_spec, "/run/user/1000/file_test/fifo");
     const new_in_fd: u64 = try file.duplicate(.{}, 0);
-    try file.writeSlice(.{}, new_in_fd, builtin.fmt.ud64(new_in_fd).readAll());
+    try file.write(.{}, new_in_fd, builtin.fmt.ud64(new_in_fd).readAll());
     try file.duplicateTo(.{}, new_in_fd, new_in_fd +% 1);
-    try file.writeSlice(.{}, new_in_fd +% 1, builtin.fmt.ud64(new_in_fd +% 1).readAll());
+    try file.write(.{}, new_in_fd +% 1, builtin.fmt.ud64(new_in_fd +% 1).readAll());
     try meta.wrap(file.close(close_spec, path_reg_fd));
     try meta.wrap(file.unlinkAt(unlink_spec, path_dir_fd, "file_test"));
     try meta.wrap(file.close(close_spec, path_dir_fd));
@@ -162,6 +165,7 @@ fn testFileOperationsRound2() !void {
     try meta.wrap(file.ftruncate(ftruncate_spec, mem_fd, 4096));
 }
 fn testPathOperations() !void {
+    builtin.debug.write(@src().fn_name ++ ":\n");
     try meta.wrap(testing.expectEqualMany(u8, "file_test", file.basename("/run/user/1000/file_test")));
     try meta.wrap(testing.expectEqualMany(u8, "file_test", file.basename("1000/file_test")));
     try meta.wrap(testing.expectEqualMany(u8, "file", file.basename("file")));
@@ -208,9 +212,9 @@ fn testStandardChannel() !void {
         i_array.undefineAll();
         var o_array: mem.StaticString(4096) = undefined;
         o_array.undefineAll();
-        i_array.define(try file.readSlice(.{}, 0, i_array.referAllUndefined()));
+        i_array.define(try file.read(.{}, 0, i_array.referAllUndefined()));
         o_array.writeAny(spec.reinterpret.fmt, .{ "msg: ", i_array.readAll(), ", len: ", fmt.ud64(i_array.len()), '\n' });
-        try file.writeSlice(.{}, chan.out.write, o_array.readAll());
+        try file.write(.{}, chan.out.write, o_array.readAll());
         builtin.proc.exit(0);
     } else {
         try meta.wrap(file.close(Channel.decls.close_spec, chan.in.read));
@@ -218,9 +222,9 @@ fn testStandardChannel() !void {
         try meta.wrap(file.close(Channel.decls.close_spec, chan.err.write));
         var i_array: mem.StaticString(4096) = undefined;
         i_array.undefineAll();
-        try file.writeSlice(.{}, chan.in.write, "message");
-        i_array.define(try file.readSlice(.{}, chan.out.read, i_array.referAllUndefined()));
-        try file.writeSlice(.{}, 1, i_array.readAll());
+        try file.write(.{}, chan.in.write, "message");
+        i_array.define(try file.read(.{}, chan.out.read, i_array.referAllUndefined()));
+        try file.write(.{}, 1, i_array.readAll());
     }
 }
 fn testPreClean() !void {
@@ -231,6 +235,8 @@ fn testPreClean() !void {
 pub fn main() !void {
     try meta.wrap(testRecords());
     try meta.wrap(testPreClean());
+    try meta.wrap(testFileOperationsRound1());
+    try meta.wrap(testFileOperationsRound2());
     try meta.wrap(testStandardChannel());
     try meta.wrap(testStatusExtended());
     try meta.wrap(testSocketOpenAndClose());
