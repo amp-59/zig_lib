@@ -21,21 +21,12 @@ pub const logging_override: builtin.Logging.Override = .{
 };
 pub const AddressSpace = spec.address_space.regular_128;
 
-const input_open_spec: file.OpenSpec = .{
-    .options = .{
-        .read = true,
-        .write = null,
-    },
-};
+const input_open_spec: file.OpenSpec = .{};
 const input_close_spec: file.CloseSpec = .{
     .errors = .{},
 };
 const output_file_spec: file.CreateSpec = .{
-    .options = .{
-        .read = false,
-        .write = .truncate,
-        .exclusive = false,
-    },
+    .options = .{ .exclusive = false },
 };
 const output_close_spec: file.CloseSpec = .{
     .errors = .{},
@@ -84,7 +75,7 @@ const File = struct {
         filesystem.fd = try file.open(open_spec, filesystem.pathname);
     }
     fn create(filesystem: *File, comptime file_spec: file.CreateSpec) !void {
-        filesystem.fd = try file.create(file_spec, filesystem.pathname, file.file_mode);
+        filesystem.fd = try file.create(file_spec, filesystem.pathname, file.mode.regular);
     }
     fn close(filesystem: *File, comptime close_spec: file.CloseSpec) void {
         if (filesystem.fd) |fd| {
@@ -308,7 +299,7 @@ fn processRequest(options: *const Options, allocator: *Allocator, name: [:0]cons
     var file_buf: FixedString = try fileBuf(allocator, name);
     var segments = try parseInput(allocator, file_buf.readAll());
 
-    const fd: u64 = if (options.output) |output| try file.create(output_file_spec, output, file.file_mode) else 1;
+    const fd: u64 = if (options.output) |output| try file.create(output_file_spec, output, file.mode.regular) else 1;
     defer if (options.output != null) file.close(output_close_spec, fd);
     try writeOutput(allocator, fd, file_buf, &segments);
     segments.deinit(allocator);
