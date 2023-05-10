@@ -354,7 +354,9 @@ pub const OpenSpec = struct {
     const Specification = @This();
     const Options = struct {
         read: bool = true,
-        write: ?Write = null,
+        write: bool = false,
+        append: bool = false,
+        truncate: bool = false,
         directory: bool = false,
         temporary: bool = false,
         no_atime: bool = false,
@@ -364,49 +366,46 @@ pub const OpenSpec = struct {
         no_cache: bool = false,
         close_on_exec: bool = true,
     };
-    const Write = enum { append, truncate };
-    pub fn flags(comptime spec: OpenSpec) Open {
+    pub fn flags(comptime open_spec: Specification) Open {
         comptime var flags_bitfield: Open = .{ .val = 0 };
-        if (spec.options.no_cache) {
+        if (open_spec.options.no_cache) {
             flags_bitfield.set(.no_cache);
         }
-        if (spec.options.no_atime) {
+        if (open_spec.options.no_atime) {
             flags_bitfield.set(.no_atime);
         }
-        if (spec.options.no_follow) {
+        if (open_spec.options.no_follow) {
             flags_bitfield.set(.no_follow);
         }
-        if (spec.options.no_block) {
+        if (open_spec.options.no_block) {
             flags_bitfield.set(.no_block);
         }
-        if (spec.options.no_ctty) {
+        if (open_spec.options.no_ctty) {
             flags_bitfield.set(.no_ctty);
         }
-        if (spec.options.close_on_exec) {
+        if (open_spec.options.close_on_exec) {
             flags_bitfield.set(.close_on_exec);
         }
-        if (spec.options.temporary) {
+        if (open_spec.options.temporary) {
             flags_bitfield.set(.temporary);
         }
-        if (spec.options.directory) {
+        if (open_spec.options.directory) {
             flags_bitfield.set(.directory);
         }
-        if (spec.options.write) |w| {
-            if (spec.options.read) {
-                flags_bitfield.set(.read_write);
-            } else {
-                flags_bitfield.set(.write_only);
-            }
-            switch (w) {
-                .append => {
-                    flags_bitfield.set(.append);
-                },
-                .truncate => {
-                    flags_bitfield.set(.truncate);
-                },
-            }
-        } else if (spec.options.read) {
+        if (open_spec.options.read and
+            open_spec.options.write)
+        {
+            flags_bitfield.set(.read_write);
+        } else if (open_spec.options.read) {
             flags_bitfield.set(.read_only);
+        } else {
+            flags_bitfield.set(.write_only);
+        }
+        if (open_spec.options.append) {
+            flags_bitfield.set(.append);
+        }
+        if (open_spec.options.truncate) {
+            flags_bitfield.set(.truncate);
         }
         return flags_bitfield;
     }
