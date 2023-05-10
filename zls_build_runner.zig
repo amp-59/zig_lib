@@ -155,5 +155,5 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     const buf: []u8 = try meta.wrap(
         allocator.allocateIrreversible(u8, lengthJSON(&cfg)),
     );
-    try file.writeSlice(.{}, 1, buf[0..writeJSON(&cfg, buf)]);
+    try file.write(.{}, 1, buf[0..writeJSON(&cfg, buf)]);
 }

@@ -1134,7 +1134,7 @@ pub fn GenericLinkedListView(comptime list_spec: ListViewSpec) type {
                         });
                     }
                 }
-                builtin.require(file.write(2, array.readAll()));
+                builtin.debug.write(array.readAll());
             }
         };
     });

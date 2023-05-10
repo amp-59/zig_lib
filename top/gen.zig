@@ -41,15 +41,15 @@ pub const DeclList = struct {
 pub fn truncateFile(comptime write_spec: file.WriteSpec, pathname: [:0]const u8, buf: []const write_spec.child) void {
     const fd: u64 = file.create(spec.create.truncate_noexcept, pathname, file.file_mode);
     defer file.close(spec.generic.noexcept, fd);
-    file.writeSlice(write_spec, fd, buf);
+    file.write(write_spec, fd, buf);
 }
 pub fn appendFile(comptime write_spec: file.WriteSpec, pathname: [:0]const u8, buf: []const write_spec.child) void {
     const fd: u64 = file.open(spec.open.append_noexcept, pathname);
     defer file.close(spec.generic.noexcept, fd);
-    file.writeSlice(write_spec, fd, buf);
+    file.write(write_spec, fd, buf);
 }
 pub fn readFile(comptime read_spec: file.ReadSpec, pathname: [:0]const u8, buf: []read_spec.child) u64 {
     const fd: u64 = file.open(spec.open.append_noexcept, pathname);
     defer file.close(spec.generic.noexcept, fd);
-    return file.readSlice(read_spec, fd, buf);
+    return file.read(read_spec, fd, buf);
 }

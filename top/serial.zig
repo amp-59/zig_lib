@@ -341,7 +341,7 @@ pub fn serialWrite(comptime serial_spec: SerialSpec, comptime S: type, allocator
         file.create(create_spec, pathname, file.file_mode),
     );
     try meta.wrap(
-        file.writeSlice(write_spec, fd, bytes),
+        file.write(write_spec, fd, bytes),
     );
     try meta.wrap(
         file.close(close_spec, fd),
@@ -368,7 +368,7 @@ pub fn serialRead(comptime serial_spec: SerialSpec, comptime S: type, allocator:
         allocator.allocateIrreversible(u8, st.size),
     );
     try meta.wrap(
-        file.readMany(read_spec, fd, buf.ptr, st.size),
+        file.read(read_spec, fd, buf[0..st.size]),
     );
     try meta.wrap(
         file.close(close_spec, fd),
