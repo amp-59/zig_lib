@@ -9,7 +9,7 @@ pub usingnamespace proc.start;
 pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
 const Array = mem.StaticString(0);
 const mkdir_spec: file.MakeDirSpec = .{ .errors = .{} };
-const create_spec: file.CreateSpec = .{ .errors = .{}, .options = .{ .write = .truncate, .exclusive = false } };
+const create_spec: file.CreateSpec = .{ .errors = .{}, .options = .{ .exclusive = false } };
 const close_spec: file.CloseSpec = .{ .errors = .{} };
 pub fn main() void {
     file.makeDir(mkdir_spec, config.zig_out_dir, file.mode.directory);
