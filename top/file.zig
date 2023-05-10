@@ -317,32 +317,34 @@ pub const TerminalAttributes = extern struct {
         return termios.special[@enumToInt(tag)];
     }
 };
-pub const dir_mode: Mode = .{
-    .owner = .{ .read = true, .write = true, .execute = true },
-    .group = .{ .read = true, .write = true, .execute = true },
-    .other = .{ .read = false, .write = false, .execute = false },
-    .sticky = false,
-    .set_gid = false,
-    .set_uid = false,
-    .kind = .directory,
-};
-pub const file_mode: Mode = .{
-    .owner = .{ .read = true, .write = true, .execute = false },
-    .group = .{ .read = true, .write = false, .execute = false },
-    .other = .{ .read = false, .write = false, .execute = false },
-    .sticky = false,
-    .set_gid = false,
-    .set_uid = false,
-    .kind = .regular,
-};
-pub const fifo_mode: Mode = .{
-    .owner = .{ .read = true, .write = true, .execute = false },
-    .group = .{ .read = true, .write = false, .execute = false },
-    .other = .{ .read = false, .write = false, .execute = false },
-    .sticky = false,
-    .set_gid = false,
-    .set_uid = false,
-    .kind = .named_pipe,
+pub const mode = struct {
+    pub const regular: Mode = .{
+        .owner = .{ .read = true, .write = true, .execute = false },
+        .group = .{ .read = true, .write = false, .execute = false },
+        .other = .{ .read = false, .write = false, .execute = false },
+        .sticky = false,
+        .set_gid = false,
+        .set_uid = false,
+        .kind = .regular,
+    };
+    pub const named_pipe: Mode = .{
+        .owner = .{ .read = true, .write = true, .execute = false },
+        .group = .{ .read = true, .write = false, .execute = false },
+        .other = .{ .read = false, .write = false, .execute = false },
+        .sticky = false,
+        .set_gid = false,
+        .set_uid = false,
+        .kind = .named_pipe,
+    };
+    pub const directory: Mode = .{
+        .owner = .{ .read = true, .write = true, .execute = true },
+        .group = .{ .read = true, .write = true, .execute = true },
+        .other = .{ .read = false, .write = false, .execute = false },
+        .sticky = false,
+        .set_gid = false,
+        .set_uid = false,
+        .kind = .directory,
+    };
 };
 pub const OpenSpec = struct {
     options: Options = .{},
