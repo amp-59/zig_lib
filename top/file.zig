@@ -25,7 +25,17 @@ pub const Open = meta.EnumBitField(enum(u64) {
     write_only = OPEN.WRONLY,
     read_write = OPEN.RDWR,
     exclusive = OPEN.EXCL,
+    file_sync = OPEN.SYNC,
+    data_sync = OPEN.DSYNC,
     const OPEN = sys.O;
+});
+pub const ReadWrite = meta.EnumBitField(enum(u64) {
+    append = RWF.APPEND,
+    high_priority = RWF.HIPRI,
+    no_wait = RWF.NOWAIT,
+    file_sync = RWF.SYNC,
+    data_sync = RWF.DSYNC,
+    const RWF = sys.RWF;
 });
 pub const Kind = enum(u4) {
     unknown = 0,
