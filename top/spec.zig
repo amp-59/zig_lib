@@ -579,21 +579,21 @@ const sys = struct {
         /// Replace existing file
         pub const truncate_zen: zig_lib.file.CreateSpec = .{
             .errors = .{ .throw = sys.open.errors.all },
-            .options = .{ .write = .truncate, .exclusive = false },
+            .options = .{ .exclusive = false },
         };
         pub const truncate_noexcept: zig_lib.file.CreateSpec = .{
             .errors = .{},
-            .options = .{ .write = .truncate, .exclusive = false },
+            .options = .{ .exclusive = false },
         };
     };
     pub const open = struct {
         pub const append_zen: zig_lib.file.OpenSpec = .{
             .errors = .{ .throw = sys.open.errors.all },
-            .options = .{ .write = .append },
+            .options = .{ .write = true, .append = true },
         };
         pub const append_noexcept: zig_lib.file.OpenSpec = .{
             .errors = .{},
-            .options = .{ .write = .append },
+            .options = .{ .write = true, .append = true },
         };
         pub const errors = struct {
             pub const all: []const zig_lib.sys.ErrorCode = &.{
