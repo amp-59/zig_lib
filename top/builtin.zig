@@ -1101,12 +1101,6 @@ pub const static = struct {
         }
     }
 };
-pub fn shrA(comptime T: type, comptime U: type, value: T, comptime shift_amt: comptime_int) U {
-    return @truncate(U, value >> shift_amt);
-}
-pub fn shrB(comptime T: type, comptime U: type, value: T, comptime shift_amt: comptime_int, comptime pop_count: comptime_int) U {
-    return @truncate(U, value >> shift_amt) & ((@as(U, 1) << pop_count) -% 1);
-}
 // These look stupid but the compiler will optimise various methods with
 // different success for different word size. Doing manual shifts with u8 is
 // much better, whereas bit-casting from a struct with u16 is much better.
@@ -1470,7 +1464,7 @@ pub const debug = struct {
                 : [_] "{rax}" (0), // linux sys_read
                   [_] "{rdi}" (0), // stdin
                   [_] "{rsi}" (&buf),
-                  [_] "{rdx}" (buf.len),
+                  [_] "{rdx}" (n),
                 : "rcx", "r11", "memory"
             ),
         };
