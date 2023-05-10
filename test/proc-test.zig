@@ -60,7 +60,7 @@ fn testCheckResourcesNoErrors() void {
     }
     file.close(.{ .errors = .{} }, dir_fd);
     const maps_fd: u64 = file.open(.{ .errors = .{} }, "/proc/self/maps");
-    len = file.readSlice(.{ .errors = .{} }, maps_fd, &buf);
+    len = file.read(.{ .errors = .{} }, maps_fd, &buf);
     builtin.debug.write(buf[0..len]);
     file.close(.{ .errors = .{} }, maps_fd);
 }
@@ -78,7 +78,7 @@ fn testFutexWait(futex1: *proc.Futex) void {
     proc.futexWait(.{}, futex1, 0x10, &.{ .sec = 10 }) catch {};
 }
 fn testFutexWakeOp(futex1: *proc.Futex, futex2: *proc.Futex) void {
-    proc.futexWakeOp(.{}, futex1, futex2, 1, 1, .{ .op = .set, .cmp = .eq, .to = 0x20, .from = 0x10 }) catch {};
+    proc.futexWakeOp(.{}, futex1, futex2, 1, 1, .{ .op = .Assign, .cmp = .Equal, .to = 0x20, .from = 0x10 }) catch {};
 }
 fn testClone() !void {
     var stack_buf1: [4096]u8 align(4096) = undefined;
