@@ -628,7 +628,7 @@ fn unhandledCommandField(opt_spec: types.OptionSpec) void {
     builtin.proc.exitFault(buf[0..len], 2);
 }
 fn writeFile(array: *Array, pathname: [:0]const u8) void {
-    const build_fd: u64 = file.create(creat_spec, pathname, file.file_mode);
+    const build_fd: u64 = file.create(creat_spec, pathname, file.mode.regular);
     file.writeSlice(write_spec, build_fd, array.readAll());
     file.close(close_spec, build_fd);
 }

@@ -311,14 +311,14 @@ pub const SerialSpec = struct {
         return .{
             .logging = serial_spec.logging.create,
             .errors = serial_spec.errors.create,
-            .options = .{ .exclusive = false, .read = false, .write = .truncate },
+            .options = .{ .exclusive = false },
         };
     }
     fn open(comptime serial_spec: SerialSpec) file.OpenSpec {
         return .{
             .logging = serial_spec.logging.open,
             .errors = serial_spec.errors.open,
-            .options = .{ .read = true, .write = null },
+            .options = .{ .read = true },
         };
     }
 };
@@ -338,7 +338,7 @@ pub fn serialWrite(comptime serial_spec: SerialSpec, comptime S: type, allocator
         genericSerializeInternal(allocator, s_ab_addr, value),
     );
     const fd: u64 = try meta.wrap(
-        file.create(create_spec, pathname, file.file_mode),
+        file.create(create_spec, pathname, file.mode.regular),
     );
     try meta.wrap(
         file.write(write_spec, fd, bytes),
