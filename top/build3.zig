@@ -118,11 +118,12 @@ pub const BuilderSpec = struct {
     };
     const create_truncate_options: file.CreateSpec.Options = .{
         .exclusive = false,
-        .write = .truncate,
+        .truncate = true,
     };
     const create_append_options: file.CreateSpec.Options = .{
         .exclusive = false,
-        .write = .append,
+        .append = true,
+        .truncate = false,
     };
     fn clock(comptime builder_spec: BuilderSpec) time.ClockSpec {
         return .{ .errors = builder_spec.errors.clock };
@@ -930,22 +931,22 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             const global_cache_root: [:0]const u8 = meta.manyToSlice(args[4]);
             const build_root_fd: u64 = try meta.wrap(file.path(builder_spec.path(), build_root));
             try meta.wrap(
-                file.makeDirAt(builder_spec.mkdir(), build_root_fd, builder_spec.options.names.zig_out_dir, file.dir_mode),
+                file.makeDirAt(builder_spec.mkdir(), build_root_fd, builder_spec.options.names.zig_out_dir, file.mode.directory),
             );
             try meta.wrap(
-                file.makeDirAt(builder_spec.mkdir(), build_root_fd, builder_spec.options.names.zig_stat_dir, file.dir_mode),
+                file.makeDirAt(builder_spec.mkdir(), build_root_fd, builder_spec.options.names.zig_stat_dir, file.mode.directory),
             );
             try meta.wrap(
-                file.makeDirAt(builder_spec.mkdir(), build_root_fd, zig_out_exe_dir, file.dir_mode),
+                file.makeDirAt(builder_spec.mkdir(), build_root_fd, zig_out_exe_dir, file.mode.directory),
             );
             try meta.wrap(
-                file.makeDirAt(builder_spec.mkdir(), build_root_fd, zig_out_aux_dir, file.dir_mode),
+                file.makeDirAt(builder_spec.mkdir(), build_root_fd, zig_out_aux_dir, file.mode.directory),
             );
             const cache_root_fd: u64 = try meta.wrap(
                 file.path(builder_spec.path(), cache_root),
             );
             const env_fd: u64 = try meta.wrap(
-                file.createAt(builder_spec.create(), cache_root_fd, env_basename, file.file_mode),
+                file.createAt(builder_spec.create(), cache_root_fd, env_basename, file.mode.regular),
             );
             writeEnv(env_fd, zig_exe, build_root, cache_root, global_cache_root);
             try meta.wrap(
@@ -1200,14 +1201,12 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 const sec_s: []const u8 = builtin.fmt.ud64(durat.sec).readAll();
                 const nsec_s: []const u8 = builtin.fmt.nsec(durat.nsec).readAll();
                 var buf: [32768]u8 = undefined;
-
                 var len: u64 = about_build_exe_s.len;
                 mach.memcpy(&buf, switch (target.build_cmd.kind) {
                     .exe => about_build_exe_s,
                     .obj => about_build_obj_s,
                     .lib => about_build_lib_s,
                 }.ptr, len);
-
                 mach.memcpy(buf[len..].ptr, target.name.ptr, target.name.len);
                 len +%= target.name.len;
                 @ptrCast(*[2]u8, buf[len..].ptr).* = about_next_s.*;
@@ -1588,7 +1587,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             mach.memcpy(buf[len..].ptr, name.ptr, name.len);
             len +%= name.len;
             buf[len] = 0;
-            const fd: u64 = try meta.wrap(file.createAt(builder_spec.create2(), builder.dir_fd, buf[0..len :0], file.file_mode));
+            const fd: u64 = try meta.wrap(file.createAt(builder_spec.create2(), builder.dir_fd, buf[0..len :0], file.mode.regular));
             try meta.wrap(file.writeOne(builder_spec.write3(), fd, record));
             try meta.wrap(file.close(builder_spec.close(), fd));
         }
