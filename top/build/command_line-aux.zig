@@ -1,5 +1,6 @@
 const fmt = @import("../fmt.zig");
 const mem = @import("../mem.zig");
+const gen = @import("../gen.zig");
 const proc = @import("../proc.zig");
 const file = @import("../file.zig");
 const spec = @import("../spec.zig");
@@ -759,7 +760,7 @@ pub fn main() !void {
     const format_idc: *Indices = allocator.create(Indices);
 
     var fd: u64 = file.open(open_spec, config.command_line_template_path);
-    array.define(file.readSlice(read_spec, fd, array.referAllUndefined()));
+    array.define(file.read(read_spec, fd, array.referAllUndefined()));
     file.close(close_spec, fd);
     writeBuildWrite(array, arrays, build_idc);
     writeFormatWrite(array, arrays, format_idc);
@@ -773,9 +774,9 @@ pub fn main() !void {
         array.writeMany("const fmt=@import(\"../fmt.zig\");\n");
     }
     if (abstract) {
-        file.writeSlice(write_spec, 1, array.readAll());
+        file.write(write_spec, 1, array.readAll());
     } else {
-        writeFile(array, config.command_line_path);
+        gen.truncateFile(write_spec, config.command_line_path, array.readAll());
     }
     array.undefineAll();
 }

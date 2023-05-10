@@ -1,4 +1,5 @@
 const mem = @import("../mem.zig");
+const gen = @import("../gen.zig");
 const proc = @import("../proc.zig");
 const file = @import("../file.zig");
 const spec = @import("../spec.zig");
@@ -18,11 +19,6 @@ const creat_spec: file.CreateSpec = .{ .errors = .{}, .logging = .{}, .options =
 const write_spec: file.WriteSpec = .{ .errors = .{}, .logging = .{} };
 const read_spec: file.ReadSpec = .{ .errors = .{}, .logging = .{} };
 const close_spec: file.CloseSpec = .{ .errors = .{}, .logging = .{} };
-fn writeFile(array: Array, pathname: [:0]const u8) void {
-    const build_fd: u64 = file.create(creat_spec, pathname, file.file_mode);
-    file.writeSlice(write_spec, build_fd, array.readAll());
-    file.close(close_spec, build_fd);
-}
 fn writeType(array: *Array, opt_spec: types.OptionSpec) void {
     if (opt_spec.and_no) |no_opt_spec| {
         const yes_bool: bool = opt_spec.arg_info.tag == .boolean;
@@ -45,7 +41,6 @@ fn writeType(array: *Array, opt_spec: types.OptionSpec) void {
 }
 fn writeFields(array: *Array, opt_specs: []const types.OptionSpec) void {
     for (opt_specs) |opt_spec| {
-        // Documentation:
         if (opt_spec.descr) |field_descr| {
             for (field_descr) |line| {
                 array.writeMany("/// ");
@@ -53,12 +48,9 @@ fn writeFields(array: *Array, opt_specs: []const types.OptionSpec) void {
                 array.writeMany("\n");
             }
         }
-        // Field name:
         array.writeMany(opt_spec.name);
         array.writeMany(":");
-        // Field type:
         writeType(array, opt_spec);
-        // Default value
         if (opt_spec.and_no == null and
             opt_spec.arg_info.tag == .boolean)
         {
@@ -73,13 +65,13 @@ pub fn main() !void {
     array.undefineAll();
 
     const fd: u64 = file.open(open_spec, config.tasks_template_path);
-    array.define(file.readSlice(read_spec, fd, array.referAllUndefined()));
+    array.define(file.read(read_spec, fd, array.referAllUndefined()));
     file.close(close_spec, fd);
     array.writeMany("pub const BuildCommand=struct{\nkind:types.OutputMode,\n");
     writeFields(&array, attr.build_command_options);
     array.writeMany("};\npub const FormatCommand=struct{\n");
     writeFields(&array, attr.format_command_options);
     array.writeMany("};\n");
-    writeFile(array, config.tasks_path);
+    gen.truncateFile(write_spec, config.tasks_path, array.readAll());
     array.undefineAll();
 }
