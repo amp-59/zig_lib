@@ -599,6 +599,46 @@ pub const SocketSpec = struct {
         return flags_bitfield;
     }
 };
+const BindSpec = struct {
+    errors: sys.ErrorPolicy = .{ .throw = sys.bind_errors },
+    logging: builtin.Logging.AcquireError = .{},
+};
+const ListenSpec = struct {
+    errors: sys.ErrorPolicy = .{ .throw = sys.listen_errors },
+    logging: builtin.Logging.AttemptSuccessError = .{},
+};
+const AcceptSpec = struct {
+    errors: sys.ErrorPolicy = .{ .throw = sys.accept_errors },
+    logging: builtin.Logging.AttemptSuccessError = .{},
+};
+const ConnectSpec = struct {
+    errors: sys.ErrorPolicy = .{ .throw = sys.connect_errors },
+    logging: builtin.Logging.AttemptSuccessError = .{},
+};
+const GetSockNameSpec = struct {
+    errors: sys.ErrorPolicy = .{ .throw = sys.getsockname_errors },
+    logging: builtin.Logging.SuccessError = .{},
+};
+const ReceiveFromSpec = struct {
+    errors: sys.ErrorPolicy = .{ .throw = sys.recv_errors },
+    logging: builtin.Logging.SuccessError,
+};
+const GetPeerNameSpec = struct {
+    errors: sys.ErrorPolicy = .{ .throw = sys.getpeername_errors },
+    logging: builtin.Logging.SuccessError = .{},
+};
+const SendToSpec = struct {
+    errors: sys.ErrorPolicy = .{ .throw = sys.send_errors },
+    logging: builtin.Logging.SuccessError = .{},
+};
+const SocketOptSpec = struct {
+    errors: sys.ErrorPolicy = .{ .throw = sys.sockopt_errors },
+    logging: builtin.Logging.SuccessError = .{},
+};
+const ShutdownSpec = struct {
+    errors: sys.ErrorPolicy = .{ .throw = sys.shutdown_errors },
+    logging: builtin.Logging.SuccessError = .{},
+};
 pub const MakeDirSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.mkdir_errors },
     return_type: type = void,
@@ -988,95 +1028,174 @@ pub fn socketPair(comptime spec: SocketSpec, domain: Domain, connection: Connect
         @enumToInt(domain), flags.val | @enumToInt(connection), 0, @ptrToInt(fds),
     }))) |fd| {
         if (logging.Acquire) {
-            debug.socketNotice(fd, domain, connection);
+            debug.socketsNotice(fd, domain, connection);
         }
         return fd;
     } else |socket_error| {
         if (logging.Error) {
-            debug.socketError(socket_error, domain, connection);
+            debug.socketsError(socket_error, domain, connection);
         }
         return socket_error;
     }
 }
-fn bind(fd: u64, addr: *Socket.Address, addrlen: *u32) u64 {
+fn bind(comptime bind_spec: BindSpec, fd: u64, addr: *Socket.Address, addrlen: *u32) sys.ErrorUnion(
+    bind_spec.errors,
+    bind_spec.return_type,
+) {
+    const logging: builtin.Logging.AcquireError = comptime bind_spec.logging.override();
+    if (meta.wrap(sys.call(.bind, bind_spec.errors, void, .{ fd, addr, addrlen }))) {
+        //
+    } else |bind_error| {
+        if (logging.Error) {
+            //
+        }
+        return bind_error;
+    }
+}
+fn listen(comptime listen_spec: ListenSpec, fd: u64, backlog: u64) sys.ErrorUnion(
+    listen_spec.errors,
+    listen_spec.return_type,
+) {
+    const logging: builtin.Logging.AcquireError = comptime listen_spec.logging.override();
+    if (meta.wrap(sys.call(.bind, listen_spec.errors, void, .{ fd, backlog }))) {
+        //
+    } else |listen_error| {
+        if (logging.Error) {
+            //
+        }
+        return listen_error;
+    }
+}
+fn accept(comptime accept_spec: AcceptSpec, fd: u64, addr: *Socket.Address, addrlen: *u32) sys.ErrorUnion(
+    accept_spec.errors,
+    accept_spec.return_type,
+) {
+    const logging: builtin.Logging.AcquireError = comptime accept_spec.logging.override();
+    if (meta.wrap(sys.call(.accept, accept_spec.errors, void, .{ fd, @ptrToInt(addr), @ptrToInt(addrlen) }))) {
+        //
+    } else |accept_error| {
+        if (logging.Error) {
+            //
+        }
+        return accept_error;
+    }
+}
+fn connect(comptime conn_spec: ConnectSpec, fd: u64, addr: *Socket.Address, addrlen: *u64) sys.ErrorUnion(
+    conn_spec.errors,
+    conn_spec.return_type,
+) {
+    const logging: builtin.Logging.AcquireError = comptime conn_spec.logging.override();
+    if (meta.wrap(sys.call(.connect, conn_spec.errors, void, .{ fd, @ptrToInt(addr), @ptrToInt(addrlen) }))) {
+        //
+    } else |connect_error| {
+        if (logging.Error) {
+            //
+        }
+        return connect_error;
+    }
+}
+fn sendTo(comptime send_spec: SendToSpec, fd: u64, buf: []u8, flags: u32, addr: *Socket.Address, addrlen: u32) sys.ErrorUnion(
+    send_spec.errors,
+    send_spec.return_type,
+) {
     _ = addrlen;
     _ = addr;
     _ = fd;
-}
-const bind_errors = .{
-    .ACCES,        .ADDRINUSE, .BADF, .INVAL,       .NOTSOCK, .ACCES,
-    .ADDRNOTAVAIL, .FAULT,     .LOOP, .NAMETOOLONG, .NOENT,   .NOMEM,
-    .NOTDIR,       .ROFS,
-};
-fn listen(fd: u64, backlog: u64) u64 {
-    _ = backlog;
-    _ = fd;
-}
-const listen_errors = .{ .ADDRINUSE, .BADF, .NOTSOCK, .OPNOTSUPP };
-fn accept(fd: u64, addr: *Socket.Address, addrlen: *u32) u64 {
-    _ = addrlen;
-    _ = addr;
-    _ = fd;
-}
-const accept_errors = .{
-    .AGAIN, .BADF,  .CONNABORTED, .FAULT, .INTR,    .INVAL,
-    .MFILE, .NFILE, .NOBUFS,      .NOMEM, .NOTSOCK, .OPNOTSUPP,
-    .PERM,  .PROTO,
-};
-
-fn connect(fd: u64, addr: *Socket.Address, addrlen: *u64) u64 {
-    _ = addrlen;
-    _ = addr;
-    _ = fd;
-}
-const connect_errors = .{
-    .ACCES,    .PERM,    .ADDRINUSE,  .ADDRNOTAVAIL, .AFNOSUPPORT,
-    .AGAIN,    .ALREADY, .BADF,       .CONNREFUSED,  .FAULT,
-    .INTR,     .ISCONN,  .NETUNREACH, .NOTSOCK,      .PROTOTYPE,
-    .TIMEDOUT,
-};
-
-fn getsockname(fd: u64, addr: *Socket.Address, addrlen: *u32) u64 {
-    _ = addrlen;
-    _ = addr;
-    _ = fd;
-}
-const getsockname_errors = .{ .BADF, .FAULT, .INVAL, .NOBUFS, .NOTSOCK };
-
-fn getpeername(fd: u64, addr: *Socket.Address, addrlen: *u32) u64 {
-    _ = addrlen;
-    _ = addr;
-    _ = fd;
-}
-fn sendto(fd: u64, buf: []u8, flags: u32, addr: *Socket.Address, addrlen: u32) u64 {
-    _ = addrlen;
-    _ = addr;
     _ = flags;
     _ = buf;
-    _ = fd;
+    const logging: builtin.Logging.AcquireError = comptime send_spec.logging.override();
+    if (meta.wrap(sys.call(.sendto, send_spec.errors, void, .{}))) {
+        //
+    } else |sendto_error| {
+        if (logging.Error) {
+            //
+        }
+        return sendto_error;
+    }
 }
-fn recvfrom(fd: u64, buf: []u8, flags: u32, addr: *Socket.Address, addrlen: *u32) u64 {
+fn receiveFrom(comptime recv_spec: ReceiveFromSpec, fd: u64, buf: []u8, flags: u32, addr: *Socket.Address, addrlen: *u32) sys.ErrorUnion(
+    recv_spec.errors,
+    recv_spec.return_type,
+) {
     _ = addrlen;
     _ = addr;
+    _ = fd;
     _ = flags;
     _ = buf;
-    _ = fd;
+    const logging: builtin.Logging.AcquireError = comptime recv_spec.logging.override();
+    if (meta.wrap(sys.call(.recvfrom, recv_spec.errors, void, .{}))) {
+        //
+    } else |recvfrom_error| {
+        if (logging.Error) {
+            //
+        }
+        return recvfrom_error;
+    }
 }
-fn setsockopt(fd: u64, level: u64, optname: u64, optval: *u8, optlen: u64) u64 {
+fn getsockname(comptime get_spec: GetSockNameSpec, fd: u64, addr: *Socket.Address, addrlen: *u32) sys.ErrorUnion(
+    get_spec.errors,
+    get_spec.return_type,
+) {
+    const logging: builtin.Logging.AcquireError = comptime get_spec.logging.override();
+    if (meta.wrap(sys.call(.getsockname, get_spec.errors, void, .{ fd, @ptrToInt(addr), @ptrToInt(addrlen) }))) {
+        //
+    } else |getsockname_error| {
+        if (logging.Error) {
+            //
+        }
+        return getsockname_error;
+    }
+}
+fn getpeername(comptime get_spec: GetPeerNameSpec, fd: u64, addr: *Socket.Address, addrlen: *u32) sys.ErrorUnion(
+    get_spec.errors,
+    get_spec.return_type,
+) {
+    _ = addrlen;
+    _ = addr;
+    _ = fd;
+    const logging: builtin.Logging.AcquireError = comptime get_spec.logging.override();
+    if (meta.wrap(sys.call(.getpeername, get_spec.errors, void, .{}))) {
+        //
+    } else |getpeername_error| {
+        if (logging.Error) {
+            //
+        }
+        return getpeername_error;
+    }
+}
+fn getsockopt(comptime get_spec: SocketOptSpec, fd: u64, level: u64, optname: u64, optval: *u8, optlen: u64) sys.ErrorUnion(
+    get_spec.errors,
+    get_spec.return_type,
+) {
     _ = optlen;
     _ = optval;
     _ = optname;
     _ = level;
     _ = fd;
 }
-fn getsockopt(fd: u64, level: u64, optname: u64, optval: *u8, optlen: u64) u64 {
+fn setsockopt(comptime set_spec: SocketOptSpec, fd: u64, level: u64, optname: u64, optval: *u8, optlen: u64) sys.ErrorUnion(
+    set_spec.errors,
+    set_spec.return_type,
+) {
     _ = optlen;
     _ = optval;
     _ = optname;
     _ = level;
     _ = fd;
+    const logging: builtin.Logging.AcquireError = comptime set_spec.logging.override();
+    if (meta.wrap(sys.call(.setsockopt, set_spec.errors, void, .{}))) {
+        //
+    } else |setsockopt_error| {
+        if (logging.Error) {
+            //
+        }
+        return setsockopt_error;
+    }
 }
-fn shutdown(fd: u64, how: u64) u64 {
+fn shutdown(comptime shutdown_spec: ShutdownSpec, fd: u64, how: u64) sys.ErrorUnion(
+    shutdown_spec.errors,
+    shutdown_spec.return_type,
+) {
     _ = how;
     _ = fd;
 }
