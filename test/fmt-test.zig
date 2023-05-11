@@ -124,12 +124,19 @@ fn testEquivalentIntToStringFormat() !void {
         try testing.expectEqualMany(u8, builtin.fmt.ix8(sint_8).readAll(), fmt.ix8(sint_8).formatConvert().readAll());
     }
 }
+fn testBytesToHex() !void {
+    const input = "input slice";
+    const encoded = fmt.bytesToHex(input);
+    var decoded: [input.len]u8 = undefined;
+    try builtin.expectEqualMemory([]const u8, input, fmt.hexToBytes(&decoded, &encoded));
+}
 fn testBinarySize() void {
     var array: PrintArray = .{};
     array.writeFormat(fmt.ux64(@ptrToInt(&array)));
     builtin.debug.write(array.readAll());
 }
 pub fn main() !void {
+    try testBytesToHex();
     if (test_size) {
         try meta.wrap(testBinarySize());
     } else {

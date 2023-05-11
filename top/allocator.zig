@@ -3915,7 +3915,7 @@ const debug = opaque {
         builtin.debug.write(array.readAll());
     }
     fn showAllocateOneStructured(comptime s_child: type, s_ab_addr: u64, src: builtin.SourceLocation, ret_addr: u64) void {
-        const src_fmt: fmt.SourceLocationFormat = fmt.src(src, ret_addr);
+        const src_fmt: fmt.SourceLocationFormat = fmt.sourceLocation(src, ret_addr);
         const s_aligned_bytes: u64 = @sizeOf(s_child);
         const s_uw_addr: u64 = s_ab_addr +% s_aligned_bytes;
         var array: PrintArray = undefined;
@@ -3933,7 +3933,7 @@ const debug = opaque {
         src: builtin.SourceLocation,
         ret_addr: u64,
     ) void {
-        const src_fmt: fmt.SourceLocationFormat = fmt.src(src, ret_addr);
+        const src_fmt: fmt.SourceLocationFormat = fmt.sourceLocation(src, ret_addr);
         const s_aligned_bytes: u64 = s_up_addr -% s_ab_addr;
         const s_uw_addr: u64 = s_ab_addr +% s_aligned_bytes;
         var array: PrintArray = undefined;
@@ -3951,7 +3951,7 @@ const debug = opaque {
         src: builtin.SourceLocation,
         ret_addr: u64,
     ) void {
-        const src_fmt: fmt.SourceLocationFormat = fmt.src(src, ret_addr);
+        const src_fmt: fmt.SourceLocationFormat = fmt.sourceLocation(src, ret_addr);
         const s_aligned_bytes: u64 = s_up_addr -% s_ab_addr;
         const s_ua_addr: u64 = s_ab_addr +% s_aligned_bytes;
         var array: PrintArray = undefined;
@@ -3973,7 +3973,7 @@ const debug = opaque {
         src: builtin.SourceLocation,
         ret_addr: u64,
     ) void {
-        const src_fmt: fmt.SourceLocationFormat = fmt.src(src, ret_addr);
+        const src_fmt: fmt.SourceLocationFormat = fmt.sourceLocation(src, ret_addr);
         const s_aligned_bytes: u64 = s_up_addr -% s_ab_addr;
         const t_aligned_bytes: u64 = t_up_addr -% t_ab_addr;
         const s_uw_addr: u64 = s_ab_addr +% s_aligned_bytes;
@@ -4000,7 +4000,7 @@ const debug = opaque {
         src: builtin.SourceLocation,
         ret_addr: u64,
     ) void {
-        const src_fmt: fmt.SourceLocationFormat = fmt.src(src, ret_addr);
+        const src_fmt: fmt.SourceLocationFormat = fmt.sourceLocation(src, ret_addr);
         const s_aligned_bytes: u64 = s_up_addr -% s_ab_addr;
         const t_aligned_bytes: u64 = t_up_addr -% t_ab_addr;
         const s_uw_addr: u64 = s_ab_addr +% s_aligned_bytes;
@@ -4016,7 +4016,7 @@ const debug = opaque {
         builtin.debug.logAlways(array.readAll());
     }
     fn showDeallocateOneStructured(comptime s_child: type, s_ab_addr: u64, src: builtin.SourceLocation, ret_addr: u64) void {
-        const src_fmt: fmt.SourceLocationFormat = fmt.src(src, ret_addr);
+        const src_fmt: fmt.SourceLocationFormat = fmt.sourceLocation(src, ret_addr);
         const s_aligned_bytes: u64 = @sizeOf(s_child);
         const s_uw_addr: u64 = s_ab_addr +% s_aligned_bytes;
         var array: PrintArray = undefined;
@@ -4034,7 +4034,7 @@ const debug = opaque {
         src: builtin.SourceLocation,
         ret_addr: u64,
     ) void {
-        const src_fmt: fmt.SourceLocationFormat = fmt.src(src, ret_addr);
+        const src_fmt: fmt.SourceLocationFormat = fmt.sourceLocation(src, ret_addr);
         const s_aligned_bytes: u64 = s_up_addr -% s_ab_addr;
         const uw_offset: u64 = @sizeOf(s_child) *% @boolToInt(s_sentinel != null);
         const s_uw_addr: u64 = s_up_addr -% uw_offset;
@@ -4053,7 +4053,7 @@ const debug = opaque {
         src: builtin.SourceLocation,
         ret_addr: u64,
     ) void {
-        const src_fmt: fmt.SourceLocationFormat = fmt.src(src, ret_addr);
+        const src_fmt: fmt.SourceLocationFormat = fmt.sourceLocation(src, ret_addr);
         const s_aligned_bytes: u64 = s_up_addr -% s_ab_addr;
         const s_ua_addr: u64 = s_ab_addr +% s_aligned_bytes;
         var array: PrintArray = undefined;
@@ -4064,7 +4064,7 @@ const debug = opaque {
         builtin.debug.write(array.readAll());
     }
     fn showAllocateManyUnstructured(s_ab_addr: u64, s_up_addr: u64, src: builtin.SourceLocation, ret_addr: u64) void {
-        const src_fmt: fmt.SourceLocationFormat = fmt.src(src, ret_addr);
+        const src_fmt: fmt.SourceLocationFormat = fmt.sourceLocation(src, ret_addr);
         const s_aligned_bytes: u64 = s_up_addr -% s_ab_addr;
         const s_uw_addr: u64 = s_ab_addr +% s_aligned_bytes;
         var array: PrintArray = undefined;
@@ -4075,7 +4075,7 @@ const debug = opaque {
         builtin.debug.write(array.readAll());
     }
     fn showReallocateManyUnstructured(s_ab_addr: u64, s_up_addr: u64, t_ab_addr: u64, t_up_addr: u64, src: builtin.SourceLocation, ret_addr: u64) void {
-        const src_fmt: fmt.SourceLocationFormat = fmt.src(src, ret_addr);
+        const src_fmt: fmt.SourceLocationFormat = fmt.sourceLocation(src, ret_addr);
         const s_aligned_bytes: u64 = s_up_addr -% s_ab_addr;
         const t_aligned_bytes: u64 = t_up_addr -% t_ab_addr;
         var array: PrintArray = undefined;
@@ -4088,7 +4088,7 @@ const debug = opaque {
         builtin.debug.write(array.readAll());
     }
     fn showReallocateHolderUnstructured(s_ab_addr: u64, s_up_addr: u64, t_ab_addr: u64, t_up_addr: u64, src: builtin.SourceLocation, ret_addr: u64) void {
-        const src_fmt: fmt.SourceLocationFormat = fmt.src(src, ret_addr);
+        const src_fmt: fmt.SourceLocationFormat = fmt.sourceLocation(src, ret_addr);
         const s_aligned_bytes: u64 = s_up_addr -% s_ab_addr;
         const t_aligned_bytes: u64 = t_up_addr -% t_ab_addr;
         var array: PrintArray = undefined;
@@ -4101,7 +4101,7 @@ const debug = opaque {
         builtin.debug.write(array.readAll());
     }
     fn showAllocateHolderUnstructured(s_ab_addr: u64, s_up_addr: u64, src: builtin.SourceLocation, ret_addr: u64) void {
-        const src_fmt: fmt.SourceLocationFormat = fmt.src(src, ret_addr);
+        const src_fmt: fmt.SourceLocationFormat = fmt.sourceLocation(src, ret_addr);
         const s_aligned_bytes: u64 = s_up_addr -% s_ab_addr;
         const s_ua_addr: u64 = s_ab_addr +% s_aligned_bytes;
         var array: PrintArray = undefined;
@@ -4114,7 +4114,7 @@ const debug = opaque {
         builtin.debug.write(array.readAll());
     }
     fn showDeallocateManyUnstructured(s_ab_addr: u64, s_up_addr: u64, src: builtin.SourceLocation, ret_addr: u64) void {
-        const src_fmt: fmt.SourceLocationFormat = fmt.src(src, ret_addr);
+        const src_fmt: fmt.SourceLocationFormat = fmt.sourceLocation(src, ret_addr);
         const s_aligned_bytes: u64 = s_up_addr -% s_ab_addr;
         var array: PrintArray = undefined;
         array.undefineAll();
@@ -4126,7 +4126,7 @@ const debug = opaque {
         builtin.debug.write(array.readAll());
     }
     fn showDeallocateHolderUnstructured(s_ab_addr: u64, s_up_addr: u64, src: builtin.SourceLocation, ret_addr: u64) void {
-        const src_fmt: fmt.SourceLocationFormat = fmt.src(src, ret_addr);
+        const src_fmt: fmt.SourceLocationFormat = fmt.sourceLocation(src, ret_addr);
         const s_aligned_bytes: u64 = s_up_addr -% s_ab_addr;
         var array: PrintArray = undefined;
         array.undefineAll();
@@ -4139,7 +4139,7 @@ const debug = opaque {
     }
     fn showFiloDeallocateViolationAndExit(allocator: anytype, s_up_addr: u64, src: builtin.SourceLocation) void {
         if (comptime @TypeOf(allocator.*).allocator_spec.logging.illegal) {
-            const src_fmt: fmt.SourceLocationFormat = fmt.src(src, @returnAddress());
+            const src_fmt: fmt.SourceLocationFormat = fmt.sourceLocation(src, @returnAddress());
             const s_ua_addr: u64 = allocator.unallocated_byte_address();
             const d_aligned_bytes: u64 = s_ua_addr -% s_up_addr;
             var array: PrintArray = undefined;
@@ -4154,7 +4154,7 @@ const debug = opaque {
     }
     fn showFiloResizeViolationAndExit(allocator: anytype, s_up_addr: u64, src: builtin.SourceLocation) void {
         if (comptime @TypeOf(allocator.*).allocator_spec.logging.illegal) {
-            const src_fmt: fmt.SourceLocationFormat = fmt.src(src, @returnAddress());
+            const src_fmt: fmt.SourceLocationFormat = fmt.sourceLocation(src, @returnAddress());
             const s_ua_addr: u64 = allocator.unallocated_byte_address();
             const d_aligned_bytes: u64 = s_ua_addr -% s_up_addr;
             var array: PrintArray = undefined;
@@ -4174,7 +4174,7 @@ fn GenericArenaAllocatorGraphics(comptime Allocator: type) type {
 
         pub fn show(allocator: *Allocator, src: builtin.SourceLocation) void {
             if (is_silent) return;
-            const src_fmt: fmt.SourceLocationFormat = fmt.src(src, @returnAddress());
+            const src_fmt: fmt.SourceLocationFormat = fmt.sourceLocation(src, @returnAddress());
             var array: debug.PrintArray = undefined;
             array.undefineAll();
             array.writeFormat(src_fmt);
@@ -4220,7 +4220,7 @@ fn GenericArenaAllocatorGraphics(comptime Allocator: type) type {
         pub fn showWithReference(allocator: *Allocator, src: builtin.SourceLocation) void {
             if (is_silent) return;
             if (Allocator.allocator_spec.options.trace_state) {
-                const src_fmt: fmt.SourceLocationFormat = fmt.src(src, @returnAddress());
+                const src_fmt: fmt.SourceLocationFormat = fmt.sourceLocation(src, @returnAddress());
                 var array: debug.PrintArray = undefined;
                 array.undefineAll();
                 array.writeFormat(src_fmt);
