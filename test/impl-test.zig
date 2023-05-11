@@ -330,7 +330,7 @@ const RWDValues = extern struct {
     const Graphics = struct {
         fn show(values: Values, src: builtin.SourceLocation) void {
             var array: PrintArray = .{};
-            const src_fmt: fmt.SourceLocationFormat = fmt.src(src, @returnAddress());
+            const src_fmt: fmt.SourceLocationFormat = fmt.sourceLocation(src, @returnAddress());
             array.writeFormat(src_fmt);
             _ = values;
             if (array.impl.defined_byte_count() != src_fmt.formatLength()) {
@@ -339,7 +339,7 @@ const RWDValues = extern struct {
         }
         fn showWithReference(s_values: Values, t_values: Values, src: builtin.SourceLocation) void {
             var array: PrintArray = .{};
-            const src_fmt: fmt.SourceLocationFormat = fmt.src(src, @returnAddress());
+            const src_fmt: fmt.SourceLocationFormat = fmt.sourceLocation(src, @returnAddress());
             array.writeFormat(src_fmt);
             s_values.addresses.showWithReferenceWrite(t_values.addresses, &array);
             s_values.offsets.showWithReferenceWrite(t_values.offsets, &array);
@@ -350,7 +350,7 @@ const RWDValues = extern struct {
         }
         fn showTwo(s_values: Values, t_values: Values, src: builtin.SourceLocation) void {
             var array: PrintArray = .{};
-            const src_fmt: fmt.SourceLocationFormat = fmt.src(src, @returnAddress());
+            const src_fmt: fmt.SourceLocationFormat = fmt.sourceLocation(src, @returnAddress());
             array.writeFormat(src_fmt);
             s_values.addresses.showTwo(t_values.addresses, &array);
             s_values.offsets.showTwo(t_values.offsets, &array);
@@ -361,7 +361,7 @@ const RWDValues = extern struct {
         }
         fn showFour(s_values: Values, t_values: Values, u_values: Values, v_values: Values, src: builtin.SourceLocation) void {
             var array: PrintArray = .{};
-            const src_fmt: fmt.SourceLocationFormat = fmt.src(src, @returnAddress());
+            const src_fmt: fmt.SourceLocationFormat = fmt.sourceLocation(src, @returnAddress());
             array.writeFormat(src_fmt);
             s_values.addresses.showFour(t_values.addresses, u_values.addresses, v_values.addresses, &array);
             s_values.offsets.showFour(t_values.offsets, u_values.offsets, v_values.offsets, &array);
@@ -433,7 +433,7 @@ const RWPPDValues = extern struct {
     }
     const Graphics = struct {
         fn show(values: Values, src: builtin.SourceLocation) void {
-            const src_fmt: fmt.SourceLocationFormat = fmt.src(src, @returnAddress());
+            const src_fmt: fmt.SourceLocationFormat = fmt.sourceLocation(src, @returnAddress());
             var array: PrintArray = .{};
             array.writeFormat(src_fmt);
             _ = values;
@@ -442,7 +442,7 @@ const RWPPDValues = extern struct {
             }
         }
         fn showWithReference(s_values: Values, t_values: Values, src: builtin.SourceLocation) void {
-            const src_fmt: fmt.SourceLocationFormat = fmt.src(src, @returnAddress());
+            const src_fmt: fmt.SourceLocationFormat = fmt.sourceLocation(src, @returnAddress());
             var array: PrintArray = .{};
             array.writeFormat(src_fmt);
             s_values.addresses.showWithReferenceWrite(t_values.addresses, &array);
@@ -454,7 +454,7 @@ const RWPPDValues = extern struct {
         }
         fn showTwo(s_values: Values, t_values: Values, src: builtin.SourceLocation) void {
             var array: PrintArray = .{};
-            const src_fmt: fmt.SourceLocationFormat = fmt.src(src, @returnAddress());
+            const src_fmt: fmt.SourceLocationFormat = fmt.sourceLocation(src, @returnAddress());
             array.writeFormat(src_fmt);
             s_values.addresses.showTwo(t_values.addresses, &array);
             s_values.offsets.showTwo(t_values.offsets, &array);
@@ -464,7 +464,7 @@ const RWPPDValues = extern struct {
             }
         }
         fn showFour(s_values: Values, t_values: Values, u_values: Values, v_values: Values, src: builtin.SourceLocation) void {
-            const src_fmt: fmt.SourceLocationFormat = fmt.src(src, @returnAddress());
+            const src_fmt: fmt.SourceLocationFormat = fmt.sourceLocation(src, @returnAddress());
             var array: PrintArray = .{};
             array.writeFormat(src_fmt);
             s_values.addresses.showFour(t_values.addresses, u_values.addresses, v_values.addresses, &array);
@@ -497,7 +497,7 @@ pub const RWPPXValues = extern struct {
     }
     const Graphics = struct {
         fn show(values: Values, src: builtin.SourceLocation) void {
-            const src_fmt: fmt.SourceLocationFormat = fmt.src(src, @returnAddress());
+            const src_fmt: fmt.SourceLocationFormat = fmt.sourceLocation(src, @returnAddress());
             var array: PrintArray = .{};
             array.writeFormat(src_fmt);
             values.addresses.show();
@@ -507,7 +507,7 @@ pub const RWPPXValues = extern struct {
             }
         }
         fn showWithReference(s_values: Values, t_values: Values, src: builtin.SourceLocation) void {
-            const src_fmt: fmt.SourceLocationFormat = fmt.src(src, @returnAddress());
+            const src_fmt: fmt.SourceLocationFormat = fmt.sourceLocation(src, @returnAddress());
             var array: PrintArray = .{};
             array.writeFormat(src_fmt);
             s_values.addresses.showWithReferenceWrite(t_values.addresses, &array);
@@ -518,7 +518,7 @@ pub const RWPPXValues = extern struct {
             }
         }
         fn showFour(s_values: Values, t_values: Values, u_values: Values, v_values: Values, src: builtin.SourceLocation) void {
-            const src_fmt: fmt.SourceLocationFormat = fmt.src(src, @returnAddress());
+            const src_fmt: fmt.SourceLocationFormat = fmt.sourceLocation(src, @returnAddress());
             var array: PrintArray = .{};
             array.writeFormat(src_fmt);
             s_values.addresses.showFour(t_values.addresses, u_values.addresses, v_values.addresses, &array);
