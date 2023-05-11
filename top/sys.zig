@@ -1870,6 +1870,7 @@ pub const Fn = enum(u9) {
             .dup2,
             .clone3,
             .pipe2,
+            .listen,
             => 2,
 
             .dup3,
