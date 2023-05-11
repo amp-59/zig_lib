@@ -22,7 +22,7 @@ const Array = mem.StaticString(64 * 1024 * 1024);
 const Arrays = mem.StaticArray([]const u8, max_len);
 const Indices = mem.StaticArray(u64, max_len);
 const open_spec: file.OpenSpec = .{ .errors = .{}, .logging = .{} };
-const creat_spec: file.CreateSpec = .{ .errors = .{}, .logging = .{}, .options = .{ .exclusive = false } };
+const create_spec: file.CreateSpec = .{ .errors = .{}, .logging = .{}, .options = .{ .exclusive = false } };
 const write_spec: file.WriteSpec = .{ .errors = .{}, .logging = .{} };
 const read_spec: file.ReadSpec = .{ .errors = .{}, .logging = .{} };
 const close_spec: file.CloseSpec = .{ .errors = .{}, .logging = .{} };
@@ -628,7 +628,7 @@ fn unhandledCommandField(opt_spec: types.OptionSpec) void {
     builtin.proc.exitFault(buf[0..len], 2);
 }
 fn writeFile(array: *Array, pathname: [:0]const u8) void {
-    const build_fd: u64 = file.create(creat_spec, pathname, file.mode.regular);
+    const build_fd: u64 = file.create(create_spec, pathname, file.mode.regular);
     file.writeSlice(write_spec, build_fd, array.readAll());
     file.close(close_spec, build_fd);
 }
@@ -758,7 +758,6 @@ pub fn main() !void {
     const arrays: *Arrays = allocator.create(Arrays);
     const build_idc: *Indices = allocator.create(Indices);
     const format_idc: *Indices = allocator.create(Indices);
-
     var fd: u64 = file.open(open_spec, config.command_line_template_path);
     array.define(file.read(read_spec, fd, array.referAllUndefined()));
     file.close(close_spec, fd);

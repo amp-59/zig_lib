@@ -115,7 +115,7 @@ fn GenericRenderFormat(comptime Format: type) type {
     return T;
 }
 fn GenericFormat(comptime spec: RenderSpec) type {
-    const T =  struct {
+    const T = struct {
         value: meta.Generic,
         const Format = @This();
         pub fn formatWrite(comptime format: Format, array: anytype) void {
@@ -813,7 +813,7 @@ fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
         }
         pub usingnamespace GenericRenderFormat(Format);
     };
-        return T;
+    return T;
 }
 fn EnumFormat(comptime Enum: type) type {
     const T = struct {
