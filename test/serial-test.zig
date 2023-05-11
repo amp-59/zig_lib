@@ -13,7 +13,6 @@ const testing = top.testing;
 
 const attr = @import("../top/mem/attr.zig");
 const mem_types = @import("../top/mem/types.zig");
-const build_test = @import("./build2-test.zig");
 
 pub usingnamespace proc.start;
 

@@ -81,10 +81,9 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     const junk_test: *Builder.Target =      try tests.addTarget(allocator, build_cmd,  "junk_test",        "test/junk-test.zig");
     build_cmd.strip = false;
     build_cmd.mode = .Debug;
-    const build0_test: *Builder.Target =    try tests.addTarget(allocator, build_cmd,   "build0_test",      "build_runner.zig");
-    const build1_test: *Builder.Target =    try tests.addTarget(allocator, build_cmd,   "build1_test",      "test/build1-test.zig");
-    const build2_test: *Builder.Target =    try tests.addTarget(allocator, build_cmd,   "build2_test",      "test/build2-test.zig");
-    const build_zls_test: *Builder.Target = try tests.addTarget(allocator, build_cmd,   "build_zls_test",   "zls_build_runner.zig");
+    const build0_test: *Builder.Target =    try tests.addTarget(allocator, build_cmd,   "build_runner_test",        "build_runner.zig");
+    const build_zls_test: *Builder.Target = try tests.addTarget(allocator, build_cmd,   "zls_build_runner_test",    "zls_build_runner.zig");
+    const build1_test: *Builder.Target =    try tests.addTarget(allocator, build_cmd,   "command_line_test",        "test/command_line-test.zig");
     build_cmd.strip = true;
     build_cmd.mode = .ReleaseFast;
     const mem_test: *Builder.Target =       try tests.addTarget(allocator, build_cmd,    "mem_test",         "test/mem-test.zig");
@@ -125,7 +124,6 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     time_test.descr =           "Test time related functions";
     build0_test.descr =         "Test the library build runner and build program. Used to show size and compile time";
     build1_test.descr =         "Test the library builder command line functions";
-    build2_test.descr =         "Test the special build runner build program";
     build_zls_test.descr =      "Test the ZLS special build runner";
     decl_test.descr =           "Test compilation of all public declarations recursively";
     serial_test.descr =         "Test data serialisation functions";
@@ -170,7 +168,6 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     mg_reference_impls.dependOnRun(allocator,   mg_type_specs);
     addEnvPathArgs(allocator, builder, build0_test);
     addEnvPathArgs(allocator, builder, build1_test);
-    addEnvPathArgs(allocator, builder, build2_test);
     addEnvPathArgs(allocator, builder, serial_test);
     addEnvPathArgs(allocator, builder, build_zls_test);
     // zig fmt: on
