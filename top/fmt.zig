@@ -1147,33 +1147,29 @@ pub fn untitle(noalias buf: []u8, noalias name: []const u8) []u8 {
     }
     return buf[0..name.len];
 }
-
-pub fn bytesToHex(dest: []u8, src: []const u8) void {
-    _ = dest;
-    for (src) |value| {
-        builtin.fmt.toSymbol(u8, value >> 0x4, 16);
-        builtin.fmt.toSymbol(u8, value & 0xff, 16);
+/// Encodes a sequence of bytes as hexadecimal digits.
+/// Returns an array containing the encoded bytes.
+pub fn bytesToHex(input: anytype) [input.len * 2]u8 {
+    if (input.len == 0) return [_]u8{};
+    var result: [input.len * 2]u8 = undefined;
+    for (input, 0..) |b, i| {
+        result[i * 2 + 0] = builtin.fmt.toSymbol(u8, b >> 4, 16);
+        result[i * 2 + 1] = builtin.fmt.toSymbol(u8, b & 15, 16);
     }
+    return result;
 }
-
 /// Decodes the sequence of bytes represented by the specified string of
 /// hexadecimal characters.
 /// Returns a slice of the output buffer containing the decoded bytes.
-pub fn hexToBytes(out: []u8, input: []const u8) ![]u8 {
+pub fn hexToBytes(dest: []u8, src: []const u8) []u8 {
     // Expect 0 or n pairs of hexadecimal digits.
-    if (input.len & 1 != 0)
-        return error.InvalidLength;
-    if (out.len * 2 < input.len)
-        return error.NoSpaceLeft;
-
-    var in_i: usize = 0;
-    while (in_i < input.len) : (in_i += 2) {
-        const hi: u8 = try builtin.parse.fromSymbol(input[in_i], 16);
-        const lo: u8 = try builtin.parse.fromSymbol(input[in_i + 1], 16);
-        out[in_i / 2] = (hi << 4) | lo;
+    var idx: usize = 0;
+    while (idx != dest.len) : (idx += 2) {
+        const hi: u8 = builtin.parse.fromSymbol(src[idx +% 0], 16);
+        const lo: u8 = builtin.parse.fromSymbol(src[idx +% 1], 16);
+        dest[idx / 2] = (hi << 4) | lo;
     }
-
-    return out[0 .. in_i / 2];
+    return dest[0 .. idx / 2];
 }
 pub const static = struct {
     fn concatUpper(comptime s: []const u8, comptime c: u8) []const u8 {

@@ -739,12 +739,12 @@ pub fn define(
     if (@hasDecl(root, symbol)) {
         return @field(root, symbol);
     }
-    if (@typeInfo(@TypeOf(default)) == .Fn and
-        @TypeOf(default) != T)
-    {
+    if (@typeInfo(@TypeOf(default)) != .Fn) {
+        return default;
+    }
+    if (@TypeOf(default) != T) {
         return @call(.auto, default, .{});
     }
-    return default;
 }
 pub fn defineExtra(
     comptime symbol: []const u8,
