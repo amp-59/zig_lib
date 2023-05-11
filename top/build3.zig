@@ -611,7 +611,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             pub fn addTarget(
                 group: *Group,
                 allocator: *Allocator,
-                extra: anytype,
+                extra: types.BuildCommand,
                 name: [:0]const u8,
                 root: [:0]const u8,
             ) !*Target {
@@ -624,7 +624,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 group.trgs_len +%= 1;
                 const builder: *const Builder = group.builder;
                 ret.build_cmd = create(allocator, types.BuildCommand);
-                buildExtra(ret.build_cmd, extra);
+                ret.build_cmd.* = extra;
                 ret.name = name;
                 ret.root = root;
                 ret.assertExchange(.build, .unavailable, .ready);
@@ -1663,11 +1663,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             ptrs[len] = builtin.zero([*:0]u8);
             return ptrs[0..len];
-        }
-        inline fn buildExtra(build_cmd: *types.BuildCommand, extra: anytype) void {
-            inline for (@typeInfo(@TypeOf(extra)).Struct.fields) |field| {
-                @field(build_cmd, field.name) = @field(extra, field.name);
-            }
         }
         fn reallocate(allocator: *Allocator, comptime T: type, buf: []T, count: u64) []align(@max(@alignOf(T), 8)) T {
             @setRuntimeSafety(false);
