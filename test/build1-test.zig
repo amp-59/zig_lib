@@ -15,31 +15,34 @@ const Builder = build.GenericBuilder(spec.builder.default);
 
 fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     const g0: *Builder.Group = try builder.addGroup(allocator, "g0");
-    const t0: *Builder.Target = try g0.addTarget(allocator, .{}, "target", @src().file);
+    const t0: *Builder.Target = try g0.addTarget(allocator, .{
+        .kind = .exe,
 
-    t0.build_cmd.allow_shlib_undefined = true;
-    t0.build_cmd.build_id = true;
-    t0.build_cmd.cflags = &.{"-O3"};
-    t0.build_cmd.clang = true;
-    t0.build_cmd.code_model = .default;
-    t0.build_cmd.color = .auto;
-    t0.build_cmd.compiler_rt = false;
-    t0.build_cmd.compress_debug_sections = true;
-    t0.build_cmd.cpu = "x86_64";
-    t0.build_cmd.dynamic = true;
-    t0.build_cmd.dirafter = "after";
-    t0.build_cmd.dynamic_linker = "/usr/bin/ld";
-    t0.build_cmd.library_directory = &.{ "/usr/lib64", "/usr/lib32" };
-    t0.build_cmd.each_lib_rpath = true;
-    t0.build_cmd.entry = "_start";
-    t0.build_cmd.error_tracing = true;
-    t0.build_cmd.format = .elf;
-    t0.build_cmd.verbose_air = true;
-    t0.build_cmd.verbose_cc = true;
-    t0.build_cmd.verbose_cimport = true;
-    t0.build_cmd.z = &.{ .nodelete, .notext };
-    t0.build_cmd.mode = .Debug;
-    t0.build_cmd.strip = true;
+        .allow_shlib_undefined = true,
+        .build_id = true,
+        .cflags = &.{"-O3"},
+        .clang = true,
+        .code_model = .default,
+        .color = .auto,
+        .compiler_rt = false,
+        .compress_debug_sections = true,
+        .cpu = "x86_64",
+        .dynamic = true,
+        .dirafter = "after",
+        .dynamic_linker = "/usr/bin/ld",
+        .library_directory = &.{ "/usr/lib64", "/usr/lib32" },
+        .each_lib_rpath = true,
+        .entry = "_start",
+        .error_tracing = true,
+        .format = .elf,
+        .verbose_air = true,
+        .verbose_cc = true,
+        .verbose_cimport = true,
+        .z = &.{ .nodelete, .notext },
+        .mode = .Debug,
+        .strip = true,
+    }, "target", @src().file);
+
     t0.descr = "Dummy target";
 }
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
