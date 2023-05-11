@@ -124,6 +124,10 @@ pub fn testSocketOpenAndClose() !void {
     try file.close(.{}, unix_udp_fd);
     try file.close(.{}, unix_tcp_fd);
 }
+pub fn testSocketFunctions() !void {
+    const unix_tcp_fd: u64 = try file.socket(.{}, .unix, .tcp);
+    try file.listen(.{}, unix_tcp_fd, 1);
+}
 pub fn testFileTests() !void {
     builtin.debug.write(@src().fn_name ++ ":\n");
     try file.makeDir(make_dir_spec, "/run/user/1000/file_test", file.mode.directory);
@@ -232,6 +236,7 @@ fn testPreClean() !void {
     file.removeDir(remove_dir_spec, "/run/user/1000/file_test") catch {};
 }
 pub fn main() !void {
+    try meta.wrap(testSocketFunctions());
     try meta.wrap(testRecords());
     try meta.wrap(testPreClean());
     try meta.wrap(testFileOperationsRound1());
