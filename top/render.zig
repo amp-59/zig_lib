@@ -104,7 +104,7 @@ fn GenericRenderFormat(comptime Format: type) type {
     comptime {
         builtin.static.assertNotEqual(builtin.TypeId, @typeInfo(Format), .Pointer);
     }
-    return struct {
+    const T = struct {
         fn checkLen(len: u64) u64 {
             if (@hasDecl(Format, "max_len") and len != Format.max_len) {
                 builtin.debug.logFault("formatter max length exceeded");
@@ -112,9 +112,10 @@ fn GenericRenderFormat(comptime Format: type) type {
             return len;
         }
     };
+    return T;
 }
 fn GenericFormat(comptime spec: RenderSpec) type {
-    return struct {
+    const T =  struct {
         value: meta.Generic,
         const Format = @This();
         pub fn formatWrite(comptime format: Format, array: anytype) void {
@@ -126,9 +127,10 @@ fn GenericFormat(comptime spec: RenderSpec) type {
             return type_format.formatLength();
         }
     };
+    return T;
 }
 pub fn ArrayFormat(comptime spec: RenderSpec, comptime Array: type) type {
-    return struct {
+    const T = struct {
         value: Array,
         const Format: type = @This();
         const ChildFormat: type = AnyFormat(child_spec, child);
@@ -187,6 +189,7 @@ pub fn ArrayFormat(comptime spec: RenderSpec, comptime Array: type) type {
         }
         pub usingnamespace GenericRenderFormat(Format);
     };
+    return T;
 }
 pub const BoolFormat = struct {
     value: bool,
@@ -205,7 +208,7 @@ pub const BoolFormat = struct {
     pub usingnamespace GenericRenderFormat(Format);
 };
 pub fn TypeFormat(comptime spec: RenderSpec) type {
-    return struct {
+    const T = struct {
         const Format: type = @This();
         value: type,
 
@@ -474,6 +477,7 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
         }
         pub usingnamespace GenericRenderFormat(Format);
     };
+    return T;
 }
 inline fn formatWriteOmitTrailingComma(array: anytype, comptime omit_trailing_comma: bool, fields_len: u64) void {
     if (fields_len == 0) {
@@ -501,7 +505,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
             return ContainerFormat(spec, Struct);
         }
     }
-    return struct {
+    const T = struct {
         value: Struct,
         const Format: type = @This();
         const type_name: []const u8 = typeName(Struct, spec);
@@ -590,6 +594,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
         }
         pub usingnamespace GenericRenderFormat(Format);
     };
+    return T;
 }
 fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
     if (!spec.ignore_formatter_decls) {
@@ -597,7 +602,7 @@ fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
             return FormatFormat(Union);
         }
     }
-    return struct {
+    const T = struct {
         value: Union,
         const Format: type = @This();
         const fields: []const builtin.Type.UnionField = @typeInfo(Union).Union.fields;
@@ -808,12 +813,13 @@ fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
         }
         pub usingnamespace GenericRenderFormat(Format);
     };
+        return T;
 }
-fn EnumFormat(comptime T: type) type {
-    return struct {
-        value: T,
+fn EnumFormat(comptime Enum: type) type {
+    const T = struct {
+        value: Enum,
         const Format: type = @This();
-        const max_len: u64 = 1 + meta.maxDeclLength(T);
+        const max_len: u64 = 1 + meta.maxDeclLength(Enum);
         pub fn formatWrite(format: Format, array: anytype) void {
             const tag_name_format: fmt.IdentifierFormat = .{ .value = @tagName(format.value) };
             array.writeOne('.');
@@ -825,6 +831,7 @@ fn EnumFormat(comptime T: type) type {
         }
         pub usingnamespace GenericRenderFormat(Format);
     };
+    return T;
 }
 pub const EnumLiteralFormat = struct {
     value: @Type(.EnumLiteral),

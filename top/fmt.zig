@@ -780,7 +780,7 @@ pub fn uxd(old: anytype, new: anytype) blk: {
 }
 
 fn GenericFormat(comptime Format: type) type {
-    return (struct {
+    const T = struct {
         const StaticString = mem.StaticString(Format.max_len);
         pub fn formatConvert(format: Format) StaticString {
             var array: StaticString = .{};
@@ -793,7 +793,8 @@ fn GenericFormat(comptime Format: type) type {
             }
             return len;
         }
-    });
+    };
+    return T;
 }
 const Separator = struct {
     character: u8 = ',',
@@ -822,7 +823,7 @@ pub const PolynomialFormatSpec = struct {
     separator: ?Separator = null,
 };
 pub fn PolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
-    return (struct {
+    const T = struct {
         value: Int,
         const Format: type = @This();
         const Int: type = @Type(.{ .Int = .{ .bits = fmt_spec.bits, .signedness = fmt_spec.signedness } });
@@ -928,7 +929,8 @@ pub fn PolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
             return len +% format.digits();
         }
         pub usingnamespace GenericFormat(Format);
-    });
+    };
+    return T;
 }
 pub fn uo(value: anytype) PolynomialFormat(.{
     .bits = blk: {

@@ -11,7 +11,7 @@ pub const Error = error{
 };
 /// `E` must be an error type.
 pub fn InternalError(comptime E: type) type {
-    return union(enum) {
+    const U = union(enum) {
         /// Return this error for any exception
         throw: E,
         /// Abort the program for any exception
@@ -19,16 +19,18 @@ pub fn InternalError(comptime E: type) type {
         ignore,
         pub const Error = E;
     };
+    return U;
 }
 /// `E` must be an Enum type.
 pub fn ExternalError(comptime E: type) type {
-    return struct {
+    const T = struct {
         /// Throw error if unwrapping yields any of these values
         throw: []const E = &.{},
         /// Abort the program if unwrapping yields any of these values
         abort: []const E = &.{},
         pub const Enum = E;
     };
+    return T;
 }
 pub fn ZigError(comptime Value: type, comptime return_codes: []const Value) type {
     var error_set: type = error{};
@@ -163,10 +165,11 @@ pub fn int3v(comptime T: type, value1: bool, value2: bool, value3: bool) T {
     }
 }
 fn ArithWithOverflowReturn(comptime T: type) type {
-    return struct {
+    const S = struct {
         value: T,
         overflowed: bool,
     };
+    return S;
 }
 inline fn normalAddAssign(comptime T: type, arg1: *T, arg2: T) void {
     arg1.* = normalAddReturn(T, arg1.*, arg2);
@@ -1942,7 +1945,7 @@ pub const fmt = struct {
         return lhs ++ " " ** (config.message_indent - len);
     }
     fn StaticStringMemo(comptime max_len: u64) type {
-        return (extern struct {
+        const T = extern struct {
             auto: [max_len]u8 align(8),
             len: u64,
             const Array = @This();
@@ -1955,7 +1958,8 @@ pub const fmt = struct {
                 @setRuntimeSafety(false);
                 return array.auto[array.len..];
             }
-        });
+        };
+        return T;
     }
     fn StaticString(comptime T: type, comptime radix: u16) type {
         return StaticStringMemo(maxSigFig(T, radix) +% 1);
@@ -2426,7 +2430,8 @@ fn Src() type {
     return @TypeOf(@src());
 }
 fn Overflow(comptime T: type) type {
-    return struct { T, u1 };
+    const S = struct { T, u1 };
+    return S;
 }
 fn indexOfSentinel(any: anytype) usize {
     var idx: usize = 0;
