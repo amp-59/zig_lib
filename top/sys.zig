@@ -1973,20 +1973,46 @@ pub const socket_errors: []const ErrorCode = &[_]ErrorCode{
     .ACCES, .AFNOSUPPORT, .INVAL, .MFILE,
     .NFILE, .NOBUFS,      .NOMEM, .PROTONOSUPPORT,
 };
-pub const bind_errors: []const ErrorCode = &[_]ErrorCode{
-    .ADDRINUSE,   .ADDRNOTAVAIL, .AFNOSUPPORT, .ALREADY,   .BADF,
-    .INPROGRESS,  .INVAL,        .NOBUFS,      .OPNOTSUPP, .ACCES,
-    .DESTADDRREQ, .ISDIR,        .IO,          .LOOP,      .NAMETOOLONG,
-    .NOENT,       .NOTDIR,       .ROFS,        .ISCONN,
+pub const bind_errors: []const ErrorCode = &.{
+    .ACCES,        .ADDRINUSE, .BADF, .INVAL,       .NOTSOCK, .ACCES,
+    .ADDRNOTAVAIL, .FAULT,     .LOOP, .NAMETOOLONG, .NOENT,   .NOMEM,
+    .NOTDIR,       .ROFS,
 };
-pub const listen_errors: []const ErrorCode = &[_]ErrorCode{
-    .BADF,  .DESTADDRREQ, .INVAL, .NOTSOCK, .OPNOTSUPP,
-    .ACCES, .NOBUFS,
+pub const accept_errors: []const ErrorCode = &.{
+    .AGAIN, .BADF,  .CONNABORTED, .FAULT, .INTR,    .INVAL,
+    .MFILE, .NFILE, .NOBUFS,      .NOMEM, .NOTSOCK, .OPNOTSUPP,
+    .PERM,  .PROTO,
 };
-pub const accept_errors: []const ErrorCode = &[_]ErrorCode{
-    .AGAIN, .AGAIN,   .BADF,      .CONNABORTED, .FAULT,
-    .INTR,  .INVAL,   .MFILE,     .NFILE,       .NOBUFS,
-    .NOMEM, .NOTSOCK, .OPNOTSUPP, .PERM,        .PROTO,
+pub const listen_errors: []const ErrorCode = &.{
+    .ADDRINUSE, .BADF, .NOTSOCK, .OPNOTSUPP,
+};
+pub const connect_errors: []const ErrorCode = &.{
+    .ACCES,    .PERM,    .ADDRINUSE,  .ADDRNOTAVAIL, .AFNOSUPPORT,
+    .AGAIN,    .ALREADY, .BADF,       .CONNREFUSED,  .FAULT,
+    .INTR,     .ISCONN,  .NETUNREACH, .NOTSOCK,      .PROTOTYPE,
+    .TIMEDOUT,
+};
+pub const getsockname_errors: []const ErrorCode = &.{
+    .BADF, .FAULT, .INVAL, .NOBUFS, .NOTSOCK,
+};
+pub const getpeername_errors: []const ErrorCode = &.{
+    .BADF, .FAULT, .INVAL, .NOBUFS, .NOTCONN, .NOTSOCK,
+};
+pub const send_errors: []const ErrorCode = &.{
+    .ACCES,       .AGAIN,  .ALREADY, .BADF,    .CONNRESET,
+    .DESTADDRREQ, .FAULT,  .INTR,    .INVAL,   .ISCONN,
+    .MSGSIZE,     .NOBUFS, .NOMEM,   .NOTCONN, .NOTSOCK,
+    .OPNOTSUPP,   .PIPE,
+};
+pub const recv_errors: []const ErrorCode = &.{
+    .AGAIN, .BADF,    .CONNREFUSED, .FAULT, .INTR, .INVAL,
+    .NOMEM, .NOTCONN, .NOTSOCK,
+};
+pub const sockopt_errors: []const ErrorCode = &.{
+    .BADF, .FAULT, .INVAL, .NOPROTOOPT, .NOTSOCK,
+};
+pub const shutdown_errors: []const ErrorCode = &.{
+    .BADF, .INVAL, .NOTCONN, .NOTSOCK,
 };
 pub const madvise_errors: []const ErrorCode = &[_]ErrorCode{
     .ACCES, .AGAIN, .BADF, .INVAL, .IO, .NOMEM, .PERM,
