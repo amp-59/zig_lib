@@ -2531,12 +2531,63 @@ const builder_spec: build.BuilderSpec = .{
 };
 const Builder = build.GenericBuilder(builder_spec);
 
+var build_cmd: build.BuildCommand = .{
+    .kind = .exe,
+    .mode = .ReleaseSmall,
+    .dependencies = &.{
+        .{ .name = "zig_lib" },
+        .{ .name = "@build" },
+        .{ .name = "env" },
+    },
+    .image_base = 0x10000,
+    .strip = true,
+    .static = true,
+    .compiler_rt = false,
+    .reference_trace = true,
+    .single_threaded = true,
+    .function_sections = true,
+    .gc_sections = true,
+    .omit_frame_pointer = false,
+    .modules = &.{ .{
+        .name = "zig_lib",
+        .path = "zig_lib.zig",
+    }, .{
+        .name = "@build",
+        .path = "build.zig",
+    }, .{
+        .name = "env",
+        .path = "zig-cache/env.zig",
+    } },
+};
+pub fn testBuildProgram(allocator: *Builder.Allocator, builder: *Builder) !void {
+    const g3 = try builder.addGroup(allocator, "g3");
+    build_cmd.kind = .obj;
+    const t2: *Builder.Target = try g3.addTarget(allocator, build_cmd, "obj0", "test/src/obj0.zig");
+    const t3: *Builder.Target = try g3.addTarget(allocator, build_cmd, "obj1", "test/src/obj1.zig");
+    const t4: *Builder.Target = try g3.addTarget(allocator, build_cmd, "obj2", "test/src/obj2.zig");
+    const t5: *Builder.Target = try g3.addTarget(allocator, build_cmd, "obj3", "test/src/obj3.zig");
+    const t6: *Builder.Target = try g3.addTarget(allocator, build_cmd, "obj4", "test/src/obj4.zig");
+    const t7: *Builder.Target = try g3.addTarget(allocator, build_cmd, "obj5", "test/src/obj5.zig");
+    const t1: *Builder.Target = try g3.addTarget(allocator, build_cmd, "lib0", "test/src/lib0.zig");
+    const t0: *Builder.Target = try g3.addTarget(allocator, build_cmd, "lib1", "test/src/lib1.zig");
+    build_cmd.kind = .exe;
+    const t: *Builder.Target = try g3.addTarget(allocator, build_cmd, "bin", "test/src/main.zig");
+    t1.dependOnObject(allocator, t2);
+    t1.dependOnObject(allocator, t3);
+    t1.dependOnObject(allocator, t4);
+    t0.dependOnObject(allocator, t1);
+    t0.dependOnObject(allocator, t2);
+    t0.dependOnObject(allocator, t3);
+    t.dependOnObject(allocator, t0);
+    t.dependOnObject(allocator, t5);
+    t.dependOnObject(allocator, t6);
+    t.dependOnObject(allocator, t7);
+}
 pub fn testLargeFlatStructureBuilder(args: anytype, vars: anytype, address_space: *AddressSpace) !void {
     var allocator: Builder.Allocator = Builder.Allocator.init(address_space, Builder.max_thread_count);
     defer allocator.deinit(address_space, Builder.max_thread_count);
     var builder: Builder = try meta.wrap(Builder.init(args, vars));
-    try build_test.testBuildProgram(&allocator, &builder);
-
+    try testBuildProgram(&allocator, &builder);
     var buf: [4096]u8 = undefined;
     for (builder.groups(), 0..) |grp, grp_idx| {
         const pathname: []const u8 = "zig-out/bin/groups";
@@ -2556,8 +2607,8 @@ pub fn testLargeFlatStructureBuilder(args: anytype, vars: anytype, address_space
             const len: u64 = builtin.debug.writeMulti(&buf, &.{ pathname, builtin.fmt.ud64(grp_idx).readAll(), "_", builtin.fmt.ud64(trg_idx).readAll() });
             buf[len] = 0;
 
-            const build_cmd: build.BuildCommand = try serial.serialRead(.{ .Allocator = Builder.Allocator }, build.BuildCommand, &allocator, buf[0..len :0]);
-            try builtin.expectEqualMemory(build.BuildCommand, build_cmd, trg.build_cmd.*);
+            const s_build_cmd: build.BuildCommand = try serial.serialRead(.{ .Allocator = Builder.Allocator }, build.BuildCommand, &allocator, buf[0..len :0]);
+            try builtin.expectEqualMemory(build.BuildCommand, s_build_cmd, trg.build_cmd.*);
         }
     }
 }
