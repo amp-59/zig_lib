@@ -15,7 +15,7 @@ const Builder = build.GenericBuilder(spec.builder.default);
 
 fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     const g0: *Builder.Group = try builder.addGroup(allocator, "g0");
-    const t0: *Builder.Target = try g0.addTarget(allocator, .{
+    const t0: *Builder.Target = try g0.addTarget(allocator, .{ .build = .{
         .kind = .exe,
         .allow_shlib_undefined = true,
         .build_id = true,
@@ -40,7 +40,7 @@ fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
         .z = &.{ .nodelete, .notext },
         .mode = .Debug,
         .strip = true,
-    }, "target", @src().file);
+    } }, "target", @src().file);
     t0.descr = "Dummy target";
 }
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
