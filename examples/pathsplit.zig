@@ -1,4 +1,4 @@
-const srg = @import("zig_lib");
+const srg = @import("../zig_lib.zig");
 const mem = srg.mem;
 const fmt = srg.fmt;
 const proc = srg.proc;
@@ -18,19 +18,22 @@ pub const logging_default: builtin.Logging.Default = .{
     .Error = true,
     .Fault = true,
 };
-
 pub const PathSplitSpec = struct {
     Allocator: type,
 };
 pub fn GenericPathSplit(comptime path_split_spec: PathSplitSpec) type {
-    return struct {
+    return (struct {
         path: [:0]const u8,
         index: u16 = 0,
         max: u16 = 0,
         info: InfoArray,
         const PathSplit = @This();
         const Allocator = path_split_spec.Allocator;
-        const InfoArray = Allocator.StructuredVector(struct { pos: u16 = 0, len: u16 = 0 });
+        const InfoArray = Allocator.StructuredVector(Info);
+        const Info = struct {
+            pos: u16 = 0,
+            len: u16 = 0,
+        };
         pub fn init(allocator: *Allocator, path: [:0]const u8) !PathSplit {
             var info: InfoArray = try InfoArray.init(allocator, 2048);
             var index: u16 = 0;
@@ -66,13 +69,13 @@ pub fn GenericPathSplit(comptime path_split_spec: PathSplitSpec) type {
         pub fn deinit(path_split: *PathSplit, allocator: *Allocator) void {
             path_split.info.deinit(allocator);
         }
-    };
+    });
 }
-
 pub fn main(args: [][*:0]u8) !void {
     const Allocator = mem.GenericArenaAllocator(.{
         .AddressSpace = AddressSpace,
         .arena_index = 0,
+        .options = spec.allocator.options.debug,
     });
     const PathSplit = GenericPathSplit(.{ .Allocator = Allocator });
     var address_space: AddressSpace = .{};
