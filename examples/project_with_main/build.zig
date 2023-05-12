@@ -11,18 +11,15 @@ const build = zig_lib.build;
 
 pub const Builder: type = build.GenericBuilder(spec.builder.default);
 
-const build_cmd: build.BuildCommand = .{
+/// This is a template compile command to build the target.
+var build_cmd: build.BuildCommand = .{
     .kind = .exe,
-    .modules = mods,
-    .dependencies = deps,
+    .mods = &.{.{
+        .name = "zig_lib",
+        .path = "zig_lib/zig_lib.zig",
+    }},
+    .deps = &.{.{ .name = "zig_lib" }},
 };
-
-// zl dependencies and modules:
-const deps: []const build.ModuleDependency = &.{.{ .name = "zig_lib" }};
-const mods: []const build.Module = &.{.{
-    .name = "zig_lib",
-    .path = "zig_lib/zig_lib.zig",
-}};
 
 // zl looks for `buildMain` instead of `build` or `main`, because `main` is
 // actually in build_runner.zig and might be useful for the name of one of the
@@ -31,5 +28,5 @@ const mods: []const build.Module = &.{.{
 pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     const all: *Builder.Group = try builder.addGroup(allocator, "all");
 
-    _ = try all.addTarget(allocator, build_cmd, "main", "./src/main.zig");
+    _ = try all.addTarget(allocator, .{ .build = build_cmd }, "main", "./src/main.zig");
 }
