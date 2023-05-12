@@ -758,7 +758,7 @@ pub fn main() !void {
     const arrays: *Arrays = allocator.create(Arrays);
     const build_idc: *Indices = allocator.create(Indices);
     const format_idc: *Indices = allocator.create(Indices);
-    var fd: u64 = file.open(open_spec, config.command_line_template_path);
+    var fd: u64 = file.open(open_spec, config.cmdline_template_path);
     array.define(file.read(read_spec, fd, array.referAllUndefined()));
     file.close(close_spec, fd);
     writeBuildWrite(array, arrays, build_idc);
@@ -775,7 +775,7 @@ pub fn main() !void {
     if (abstract) {
         file.write(write_spec, 1, array.readAll());
     } else {
-        gen.truncateFile(write_spec, config.command_line_path, array.readAll());
+        gen.truncateFile(write_spec, config.cmdline_path, array.readAll());
     }
     array.undefineAll();
 }
