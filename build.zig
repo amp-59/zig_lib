@@ -38,7 +38,6 @@ var build_cmd: build.BuildCommand = .{
         .path = "zig-cache/env.zig",
     } },
 };
-
 pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     // zig fmt: off
     // Groups:
@@ -48,26 +47,35 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     const bg: *Builder.Group =              try builder.addGroup(allocator, "buildgen");
 
     // Tests
-    const serial_test: *Builder.Target =    try tests.addTarget(allocator, build_cmd, "serial_test",      "test/serial-test.zig");
-    const decl_test: *Builder.Target =      try tests.addTarget(allocator, build_cmd, "decl_test",        "test/decl-test.zig");
-    const builtin_test: *Builder.Target =   try tests.addTarget(allocator, build_cmd, "builtin_test",     "test/builtin-test.zig");
-    const meta_test: *Builder.Target =      try tests.addTarget(allocator, build_cmd, "meta_test",        "test/meta-test.zig");
-    const algo_test: *Builder.Target =      try tests.addTarget(allocator, build_cmd, "algo_test",        "test/algo-test.zig");
-    const file_test: *Builder.Target =      try tests.addTarget(allocator, build_cmd, "file_test",        "test/file-test.zig");
-    const list_test: *Builder.Target =      try tests.addTarget(allocator, build_cmd, "list_test",        "test/list-test.zig");
-    const fmt_test: *Builder.Target =       try tests.addTarget(allocator, build_cmd, "fmt_test",         "test/fmt-test.zig");
-    const render_test: *Builder.Target =    try tests.addTarget(allocator, build_cmd, "render_test",      "test/render-test.zig");
-    const thread_test: *Builder.Target =    try tests.addTarget(allocator, build_cmd, "thread_test",      "test/thread-test.zig");
-    const virtual_test: *Builder.Target =   try tests.addTarget(allocator, build_cmd, "virtual_test",     "test/virtual-test.zig");
-    const time_test: *Builder.Target =      try tests.addTarget(allocator, build_cmd, "time_test",        "test/time-test.zig");
-    const size_test: *Builder.Target =      try tests.addTarget(allocator, build_cmd, "size_test",        "test/size_per_config.zig");
-    const container_test: *Builder.Target = try tests.addTarget(allocator, build_cmd, "container_test",   "test/container-test.zig");
+    const serial_test: *Builder.Target =    try tests.addTarget(allocator, build_cmd, "serial_test",    "test/serial-test.zig");
+    const decl_test: *Builder.Target =      try tests.addTarget(allocator, build_cmd, "decl_test",      "test/decl-test.zig");
+    const builtin_test: *Builder.Target =   try tests.addTarget(allocator, build_cmd, "builtin_test",   "test/builtin-test.zig");
+    const meta_test: *Builder.Target =      try tests.addTarget(allocator, build_cmd, "meta_test",      "test/meta-test.zig");
+    const algo_test: *Builder.Target =      try tests.addTarget(allocator, build_cmd, "algo_test",      "test/algo-test.zig");
+    const math_test: *Builder.Target =      try tests.addTarget(allocator, build_cmd, "math_test",      "test/math-test.zig");
+    const file_test: *Builder.Target =      try tests.addTarget(allocator, build_cmd, "file_test",      "test/file-test.zig");
+    const list_test: *Builder.Target =      try tests.addTarget(allocator, build_cmd, "list_test",      "test/list-test.zig");
+    const fmt_test: *Builder.Target =       try tests.addTarget(allocator, build_cmd, "fmt_test",       "test/fmt-test.zig");
+    const render_test: *Builder.Target =    try tests.addTarget(allocator, build_cmd, "render_test",    "test/render-test.zig");
+    const thread_test: *Builder.Target =    try tests.addTarget(allocator, build_cmd, "thread_test",    "test/thread-test.zig");
+    const virtual_test: *Builder.Target =   try tests.addTarget(allocator, build_cmd, "virtual_test",   "test/virtual-test.zig");
+    const time_test: *Builder.Target =      try tests.addTarget(allocator, build_cmd, "time_test",      "test/time-test.zig");
+    const size_test: *Builder.Target =      try tests.addTarget(allocator, build_cmd, "size_test",      "test/size_per_config.zig");
+    const container_test: *Builder.Target = try tests.addTarget(allocator, build_cmd, "container_test", "test/container-test.zig");
+
+    const dh_test: *Builder.Target =    try tests.addTarget(allocator, build_cmd, "dh_test",    "top/crypto/dh-test.zig");
+    const hash_test: *Builder.Target =    try tests.addTarget(allocator, build_cmd, "hash_test",  "test/hash-test.zig");
+
+    dh_test.descr = "Test curve25519";
+    hash_test.descr = "Test hashing algorithms";
+    math_test.descr = "Test math functions";
 
     // Example programs
     const readdir: *Builder.Target =        try eg.addTarget(allocator, build_cmd,  "readdir",      "examples/iterate_dir_entries.zig");
     const dynamic: *Builder.Target =        try eg.addTarget(allocator, build_cmd,  "dynamic",      "examples/dynamic_alloc.zig");
     const custom: *Builder.Target =         try eg.addTarget(allocator, build_cmd,  "addrspace",    "examples/custom_address_space.zig");
     const allocators: *Builder.Target =     try eg.addTarget(allocator, build_cmd,  "allocators",   "examples/allocators.zig");
+    const display: *Builder.Target =        try eg.addTarget(allocator, build_cmd,  "display",      "examples/display.zig");
     const mca: *Builder.Target =            try eg.addTarget(allocator, build_cmd,  "mca",          "examples/mca.zig");
     const treez: *Builder.Target =          try eg.addTarget(allocator, build_cmd,  "treez",        "examples/treez.zig");
     const itos: *Builder.Target =           try eg.addTarget(allocator, build_cmd,  "itos",         "examples/itos.zig");
@@ -135,6 +143,7 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     dynamic.descr =             "Shows how to allocate dynamic memory";
     custom.descr =              "Shows a complex custom address space";
     allocators.descr =          "Shows how to use many allocators";
+    display.descr =             "Shows using `ioctl` to get display resources (idkso)";
     mca.descr =                 "Example program useful for extracting section from assembly for machine code analysis";
     treez.descr =               "Example program useful for listing the contents of directories in a tree-like format";
     itos.descr =                "Example program useful for converting between a variety of integer formats and bases";
