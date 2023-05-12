@@ -1177,10 +1177,12 @@ pub const AF = struct {
     pub const UNIX: u64 = 0x1;
     pub const INET: u64 = 0x2;
     pub const INET6: u64 = 0xa;
+    pub const NETLINK: u64 = 0x10;
 };
 pub const SOCK = struct {
     pub const STREAM: u64 = 0x1;
     pub const DGRAM: u64 = 0x2;
+    pub const RAW: u64 = 0x3;
     pub const NONBLOCK: u64 = 0x800;
     pub const CLOEXEC: u64 = 0x80000;
 };
