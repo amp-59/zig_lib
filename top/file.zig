@@ -8,35 +8,6 @@ const _dir = @import("./dir.zig");
 const _chan = @import("./chan.zig");
 pub usingnamespace _dir;
 pub usingnamespace _chan;
-pub const Open = meta.EnumBitField(enum(u64) {
-    no_cache = OPEN.DIRECT,
-    no_atime = OPEN.NOATIME,
-    no_follow = OPEN.NOFOLLOW,
-    no_block = OPEN.NONBLOCK,
-    no_ctty = OPEN.NOCTTY,
-    close_on_exec = OPEN.CLOEXEC,
-    temporary = OPEN.TMPFILE,
-    directory = OPEN.DIRECTORY,
-    path = OPEN.PATH,
-    append = OPEN.APPEND,
-    truncate = OPEN.TRUNC,
-    create = OPEN.CREAT,
-    read_only = OPEN.RDONLY,
-    write_only = OPEN.WRONLY,
-    read_write = OPEN.RDWR,
-    exclusive = OPEN.EXCL,
-    file_sync = OPEN.SYNC,
-    data_sync = OPEN.DSYNC,
-    const OPEN = sys.O;
-});
-pub const ReadWrite = meta.EnumBitField(enum(u64) {
-    append = RWF.APPEND,
-    high_priority = RWF.HIPRI,
-    no_wait = RWF.NOWAIT,
-    file_sync = RWF.SYNC,
-    data_sync = RWF.DSYNC,
-    const RWF = sys.RWF;
-});
 pub const Kind = enum(u4) {
     unknown = 0,
     regular = MODE.IFREGR,
@@ -48,6 +19,37 @@ pub const Kind = enum(u4) {
     symbolic_link = MODE.IFLNKR,
     const MODE = sys.S;
 };
+pub const Open = struct {
+    pub const Options = meta.EnumBitField(enum(u64) {
+        no_cache = OPEN.DIRECT,
+        no_atime = OPEN.NOATIME,
+        no_follow = OPEN.NOFOLLOW,
+        no_block = OPEN.NONBLOCK,
+        no_ctty = OPEN.NOCTTY,
+        close_on_exec = OPEN.CLOEXEC,
+        temporary = OPEN.TMPFILE,
+        directory = OPEN.DIRECTORY,
+        path = OPEN.PATH,
+        append = OPEN.APPEND,
+        truncate = OPEN.TRUNC,
+        create = OPEN.CREAT,
+        read_only = OPEN.RDONLY,
+        write_only = OPEN.WRONLY,
+        read_write = OPEN.RDWR,
+        exclusive = OPEN.EXCL,
+        file_sync = OPEN.SYNC,
+        data_sync = OPEN.DSYNC,
+        const OPEN = sys.O;
+    });
+};
+pub const ReadWrite = meta.EnumBitField(enum(u64) {
+    append = RWF.APPEND,
+    high_priority = RWF.HIPRI,
+    no_wait = RWF.NOWAIT,
+    file_sync = RWF.SYNC,
+    data_sync = RWF.DSYNC,
+    const RWF = sys.RWF;
+});
 pub const At = meta.EnumBitField(enum(u64) {
     empty_path = AT.EMPTY_PATH,
     no_follow = AT.SYMLINK.NOFOLLOW,
@@ -139,20 +141,27 @@ pub const Term = opaque {
         const SPEC = sys.TC.V;
     });
 };
-pub const Domain = enum(u64) {
-    unix = AF.UNIX,
-    ipv4 = AF.INET,
-    ipv6 = AF.INET6,
-    const AF = sys.AF;
-};
-pub const Connection = enum(u64) {
-    tcp = SOCK.STREAM,
-    udp = SOCK.DGRAM,
-    const SOCK = sys.SOCK;
-};
-pub const Socket = meta.EnumBitField(enum(u64) {
-    non_block = SOCK.NONBLOCK,
-    close_on_exec = SOCK.CLOEXEC,
+
+pub const Socket = struct {
+    pub const Options = meta.EnumBitField(enum(u64) {
+        non_block = SOCK.NONBLOCK,
+        close_on_exec = SOCK.CLOEXEC,
+        const SOCK = sys.SOCK;
+    });
+    pub const Type = struct {};
+    pub const Domain = enum(u64) {
+        unix = AF.UNIX,
+        ipv4 = AF.INET,
+        ipv6 = AF.INET6,
+        netlink = AF.NETLINK,
+        const AF = sys.AF;
+    };
+    pub const Connection = enum(u64) {
+        tcp = SOCK.STREAM,
+        udp = SOCK.DGRAM,
+        raw = SOCK.RAW,
+        const SOCK = sys.SOCK;
+    };
     pub const Address = extern struct {
         family: u16,
         data: [14]u8,
@@ -170,8 +179,7 @@ pub const Socket = meta.EnumBitField(enum(u64) {
         addr: extern struct { addr: [8]u16 },
         scope_id: u32,
     };
-    const SOCK = sys.SOCK;
-});
+};
 pub const Status = extern struct {
     dev: u64,
     ino: u64,
@@ -352,7 +360,7 @@ pub const OpenSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.open_errors },
     logging: builtin.Logging.AcquireError = .{},
     const Specification = @This();
-    const Options = struct {
+    pub const Options = struct {
         read: bool = true,
         write: bool = false,
         append: bool = false,
@@ -366,8 +374,8 @@ pub const OpenSpec = struct {
         no_cache: bool = false,
         close_on_exec: bool = true,
     };
-    pub fn flags(comptime open_spec: Specification) Open {
-        comptime var flags_bitfield: Open = .{ .val = 0 };
+    pub fn flags(comptime open_spec: Specification) Open.Options {
+        comptime var flags_bitfield: Open.Options = .{ .val = 0 };
         if (open_spec.options.no_cache) {
             flags_bitfield.set(.no_cache);
         }
@@ -439,7 +447,7 @@ pub const WriteExtraSpec = struct {
     return_type: type = void,
     errors: sys.ErrorPolicy = .{ .throw = sys.write_errors },
     logging: builtin.Logging.SuccessError = .{},
-    const Options = packed struct(u4) {
+    pub const Options = packed struct(u4) {
         append: bool = false,
         high_priority: bool = false,
         file_sync: bool = false,
@@ -474,12 +482,12 @@ pub const StatusExtendedSpec = struct {
     logging: builtin.Logging.SuccessErrorFault = .{},
     return_type: ?type = null,
     const Specification = @This();
-    const Options = struct {
+    pub const Options = struct {
         no_follow: bool = false,
         empty_path: bool = false,
         no_auto_mount: bool = true,
         fields: Fields = .{},
-        const Fields = packed struct {
+        pub const Fields = packed struct {
             type: bool = true,
             mode: bool = true,
             nlink: bool = true,
@@ -495,7 +503,7 @@ pub const StatusExtendedSpec = struct {
             mnt_id: bool = false,
         };
     };
-    fn flags(comptime statx_spec: Specification) At {
+    pub fn flags(comptime statx_spec: Specification) At {
         var flags_bitfield: At = .{ .val = 0 };
         if (statx_spec.options.no_follow) {
             flags_bitfield.set(.no_follow);
@@ -508,7 +516,7 @@ pub const StatusExtendedSpec = struct {
         }
         return flags_bitfield;
     }
-    fn fields(comptime statx_spec: Specification) StatusExtended.Fields {
+    pub fn fields(comptime statx_spec: Specification) StatusExtended.Fields {
         var fields_bitfield: StatusExtended.Fields = .{ .val = 0 };
         if (statx_spec.options.fields.type) {
             fields_bitfield.set(.type);
@@ -564,8 +572,8 @@ pub const MakePipeSpec = struct {
         direct: bool = false,
         non_block: bool = false,
     };
-    fn flags(comptime pipe2_spec: Specification) Open {
-        var flags_bitfield: Open = .{ .val = 0 };
+    pub fn flags(comptime pipe2_spec: Specification) Open.Options {
+        var flags_bitfield: Open.Options = .{ .val = 0 };
         if (pipe2_spec.options.close_on_exec) {
             flags_bitfield.set(.close_on_exec);
         }
@@ -588,8 +596,8 @@ pub const SocketSpec = struct {
         non_block: bool = true,
         close_on_exec: bool = true,
     };
-    fn flags(comptime spec: SocketSpec) Socket {
-        comptime var flags_bitfield: Socket = .{ .val = 0 };
+    pub fn flags(comptime spec: SocketSpec) Socket.Options {
+        comptime var flags_bitfield: Socket.Options = .{ .val = 0 };
         if (spec.options.non_block) {
             flags_bitfield.set(.non_block);
         }
@@ -599,43 +607,43 @@ pub const SocketSpec = struct {
         return flags_bitfield;
     }
 };
-const BindSpec = struct {
+pub const BindSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.bind_errors },
     logging: builtin.Logging.AcquireError = .{},
 };
-const ListenSpec = struct {
+pub const ListenSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.listen_errors },
     logging: builtin.Logging.AttemptSuccessError = .{},
 };
-const AcceptSpec = struct {
+pub const AcceptSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.accept_errors },
     logging: builtin.Logging.AttemptSuccessError = .{},
 };
-const ConnectSpec = struct {
+pub const ConnectSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.connect_errors },
     logging: builtin.Logging.AttemptSuccessError = .{},
 };
-const GetSockNameSpec = struct {
+pub const GetSockNameSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.getsockname_errors },
     logging: builtin.Logging.SuccessError = .{},
 };
-const ReceiveFromSpec = struct {
+pub const ReceiveFromSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.recv_errors },
     logging: builtin.Logging.SuccessError,
 };
-const GetPeerNameSpec = struct {
+pub const GetPeerNameSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.getpeername_errors },
     logging: builtin.Logging.SuccessError = .{},
 };
-const SendToSpec = struct {
+pub const SendToSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.send_errors },
     logging: builtin.Logging.SuccessError = .{},
 };
-const SocketOptionSpec = struct {
+pub const SocketOptionSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.sockopt_errors },
     logging: builtin.Logging.SuccessError = .{},
 };
-const ShutdownSpec = struct {
+pub const ShutdownSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.shutdown_errors },
     logging: builtin.Logging.SuccessError = .{},
 };
@@ -690,8 +698,8 @@ pub const CreateSpec = struct {
         write: bool = true,
         read: bool = false,
     };
-    fn flags(comptime creat_spec: Specification) Open {
-        var flags_bitfield: Open = .{ .val = 0 };
+    pub fn flags(comptime creat_spec: Specification) Open.Options {
+        var flags_bitfield: Open.Options = .{ .val = 0 };
         flags_bitfield.set(.create);
         if (creat_spec.options.exclusive) {
             flags_bitfield.set(.exclusive);
@@ -726,13 +734,13 @@ pub const PathSpec = struct {
     return_type: type = u64,
     logging: builtin.Logging.AcquireError = .{},
     const Specification = @This();
-    const Options = struct {
+    pub const Options = struct {
         directory: bool = true,
         no_follow: bool = true,
         close_on_exec: bool = true,
     };
-    pub fn flags(comptime spec: PathSpec) Open {
-        comptime var flags_bitfield: Open = .{ .val = 0 };
+    pub fn flags(comptime spec: PathSpec) Open.Options {
+        comptime var flags_bitfield: Open.Options = .{ .val = 0 };
         flags_bitfield.set(.path);
         if (spec.options.no_follow) {
             flags_bitfield.set(.no_follow);
@@ -917,8 +925,8 @@ pub const DuplicateSpec = struct {
     const Options = struct {
         close_on_exec: bool = false,
     };
-    fn flags(comptime dup3_spec: Specification) Open {
-        var ret: Open = .{ .val = 0 };
+    fn flags(comptime dup3_spec: Specification) Open.Options {
+        var ret: Open.Options = .{ .val = 0 };
         if (dup3_spec.options.close_on_exec) {
             ret.set(.close_on_exec);
         }
@@ -946,10 +954,6 @@ pub fn read(comptime spec: ReadSpec, fd: u64, read_buf: []spec.child) sys.ErrorU
 pub inline fn readOne(comptime spec: ReadSpec, fd: u64, read_buf: *spec.child) sys.ErrorUnion(spec.errors, spec.return_type) {
     return read(spec, fd, @ptrCast([*]spec.child, read_buf)[0..1]);
 }
-
-pub inline fn writeOne(comptime spec: WriteSpec, fd: u64, write_val: spec.child) sys.ErrorUnion(spec.errors, spec.return_type) {
-    return write(spec, fd, @ptrCast([*]const spec.child, &write_val), 1);
-}
 pub fn write(comptime spec: WriteSpec, fd: u64, write_buf: []const spec.child) sys.ErrorUnion(spec.errors, spec.return_type) {
     const write_buf_addr: u64 = @ptrToInt(write_buf.ptr);
     const write_count_mul: u64 = @sizeOf(spec.child);
@@ -968,6 +972,9 @@ pub fn write(comptime spec: WriteSpec, fd: u64, write_buf: []const spec.child) s
         return write_error;
     }
 }
+pub inline fn writeOne(comptime spec: WriteSpec, fd: u64, write_val: spec.child) sys.ErrorUnion(spec.errors, spec.return_type) {
+    return write(spec, fd, @ptrCast([*]const spec.child, &write_val), 1);
+}
 pub fn writeExtra(comptime write_spec: WriteExtraSpec, write_buf: []const write_spec.child) sys.ErrorUnion(
     write_spec.errors,
     write_spec.return_type,
@@ -976,7 +983,7 @@ pub fn writeExtra(comptime write_spec: WriteExtraSpec, write_buf: []const write_
 }
 pub fn open(comptime spec: OpenSpec, pathname: [:0]const u8) sys.ErrorUnion(spec.errors, spec.return_type) {
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
-    const flags: Open = comptime spec.flags();
+    const flags: Open.Options = comptime spec.flags();
     const logging: builtin.Logging.AcquireError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.open, spec.errors, spec.return_type, .{ pathname_buf_addr, flags.val, 0 }))) |fd| {
         if (logging.Acquire) {
@@ -1006,8 +1013,8 @@ pub fn openAt(comptime spec: OpenSpec, dir_fd: u64, name: [:0]const u8) sys.Erro
         return open_error;
     }
 }
-pub fn socket(comptime spec: SocketSpec, domain: Domain, connection: Connection) sys.ErrorUnion(spec.errors, spec.return_type) {
-    const flags: Socket = comptime spec.flags();
+pub fn socket(comptime spec: SocketSpec, domain: Socket.Domain, connection: Socket.Connection) sys.ErrorUnion(spec.errors, spec.return_type) {
+    const flags: Socket.Options = comptime spec.flags();
     const logging: builtin.Logging.AcquireError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.socket, spec.errors, spec.return_type, .{ @enumToInt(domain), flags.val | @enumToInt(connection), 0 }))) |fd| {
         if (logging.Acquire) {
@@ -1021,7 +1028,7 @@ pub fn socket(comptime spec: SocketSpec, domain: Domain, connection: Connection)
         return socket_error;
     }
 }
-pub fn socketPair(comptime spec: SocketSpec, domain: Domain, connection: Connection, fds: *[2]u32) sys.ErrorUnion(spec.errors, spec.return_type) {
+pub fn socketPair(comptime spec: SocketSpec, domain: Socket.Domain, connection: Socket.Connection, fds: *[2]u32) sys.ErrorUnion(spec.errors, spec.return_type) {
     const flags: Socket = comptime spec.flags();
     const logging: builtin.Logging.AcquireError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.socketpair, spec.errors, spec.return_type, .{
@@ -1233,7 +1240,7 @@ pub fn basename(pathname: []const u8) []const u8 {
 }
 pub fn path(comptime spec: PathSpec, pathname: [:0]const u8) sys.ErrorUnion(spec.errors, spec.return_type) {
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
-    const flags: Open = comptime spec.flags();
+    const flags: Open.Options = comptime spec.flags();
     const logging: builtin.Logging.AcquireError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.open, spec.errors, spec.return_type, .{ pathname_buf_addr, flags.val, 0 }))) |fd| {
         if (logging.Acquire) {
@@ -1249,7 +1256,7 @@ pub fn path(comptime spec: PathSpec, pathname: [:0]const u8) sys.ErrorUnion(spec
 }
 pub fn pathAt(comptime spec: PathSpec, dir_fd: u64, name: [:0]const u8) sys.ErrorUnion(spec.errors, spec.return_type) {
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
-    const flags: Open = comptime spec.flags();
+    const flags: Open.Options = comptime spec.flags();
     const logging: builtin.Logging.AcquireError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.openat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, flags.val, 0 }))) |fd| {
         if (logging.Acquire) {
@@ -1302,7 +1309,7 @@ pub fn makePath(comptime spec: MakePathSpec, pathname: []const u8, comptime file
 pub fn create(comptime spec: CreateSpec, pathname: [:0]const u8, comptime file_mode: Mode) sys.ErrorUnion(spec.errors, spec.return_type) {
     builtin.static.assertEqual(Kind, .regular, file_mode.kind);
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
-    const flags: Open = comptime spec.flags();
+    const flags: Open.Options = comptime spec.flags();
     const logging: builtin.Logging.AcquireError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.open, spec.errors, spec.return_type, .{ pathname_buf_addr, flags.val, @bitCast(u16, file_mode) & 0xfff }))) |fd| {
         if (logging.Acquire) {
@@ -1318,7 +1325,7 @@ pub fn create(comptime spec: CreateSpec, pathname: [:0]const u8, comptime file_m
 }
 pub fn createAt(comptime spec: CreateSpec, dir_fd: u64, name: [:0]const u8, comptime file_mode: Mode) sys.ErrorUnion(spec.errors, spec.return_type) {
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
-    const flags: Open = comptime spec.flags();
+    const flags: Open.Options = comptime spec.flags();
     const logging: builtin.Logging.AcquireError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.openat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, flags.val, @bitCast(u16, file_mode) & 0xfff }))) |fd| {
         if (logging.Acquire) {
@@ -1653,7 +1660,7 @@ pub fn duplicate(comptime dup_spec: DuplicateSpec, fd: u64) sys.ErrorUnion(dup_s
     }
 }
 pub fn duplicateTo(comptime dup3_spec: DuplicateSpec, old_fd: u64, new_fd: u64) sys.ErrorUnion(dup3_spec.errors, void) {
-    const flags: Open = comptime dup3_spec.flags();
+    const flags: Open.Options = comptime dup3_spec.flags();
     const logging: builtin.Logging.SuccessError = comptime dup3_spec.logging.override();
     if (meta.wrap(sys.call(.dup3, dup3_spec.errors, void, .{ old_fd, new_fd, flags.val }))) {
         if (logging.Success) {
@@ -1669,7 +1676,7 @@ pub fn duplicateTo(comptime dup3_spec: DuplicateSpec, old_fd: u64, new_fd: u64) 
 pub fn makePipe(comptime pipe2_spec: MakePipeSpec) sys.ErrorUnion(pipe2_spec.errors, Pipe) {
     var pipefd: Pipe = undefined;
     const pipefd_addr: u64 = @ptrToInt(&pipefd);
-    const flags: Open = comptime pipe2_spec.flags();
+    const flags: Open.Options = comptime pipe2_spec.flags();
     const logging: builtin.Logging.AcquireError = comptime pipe2_spec.logging.override();
     if (meta.wrap(sys.call(.pipe2, pipe2_spec.errors, void, .{ pipefd_addr, flags.val }))) {
         if (logging.Acquire) {
@@ -1877,7 +1884,7 @@ fn ioctl(comptime _: IOControlSpec, _: u64) TerminalAttributes {}
 fn getTerminalAttributes() void {}
 fn setTerminalAttributes() void {}
 pub fn readRandom(buf: []u8) !void {
-    sys.call(.getrandom, sys.getrandom_errors, void, .{ @ptrToInt(buf.ptr), buf.len, sys.GRND.RANDOM });
+    return sys.call(.getrandom, .{ .throw = sys.getrandom_errors }, void, .{ @ptrToInt(buf.ptr), buf.len, sys.GRND.RANDOM });
 }
 pub fn DeviceRandomBytes(comptime bytes: u64) type {
     return struct {
@@ -2074,12 +2081,11 @@ const debug = opaque {
         var buf: [32768]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, "dir_fd=", dir_fd_s, ", ", name, ", mode=", &describeMode(file_mode), ", dev=", maj_s, ":", min_s, "\n" });
     }
-    fn socketNotice(fd: u64, dom: Domain, conn: Connection) void {
+    fn socketNotice(fd: u64, dom: Socket.Domain, conn: Socket.Connection) void {
         const fd_s: []const u8 = builtin.fmt.ud64(fd).readAll();
         var buf: [32768]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_socket_0_s, "fd=", fd_s, ", ", @tagName(dom), ", ", @tagName(conn), "\n" });
     }
-
     fn getCwdNotice(pathname: [:0]const u8) void {
         var buf: [32768]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_getcwd_0_s, pathname, "\n" });
@@ -2194,7 +2200,7 @@ const debug = opaque {
         var buf: [32768]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, about_fd1, fd1_s, " => ", about_fd2, fd2_s, " (", error_name, ")\n" });
     }
-    fn socketError(socket_error: anytype, dom: Domain, conn: Connection) void {
+    fn socketError(socket_error: anytype, dom: Socket.Domain, conn: Socket.Connection) void {
         var buf: [32768]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_socket_1_s, @tagName(dom), ", ", @tagName(conn), " (", @errorName(socket_error), ")\n" });
     }
