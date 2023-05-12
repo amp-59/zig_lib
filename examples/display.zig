@@ -34,6 +34,8 @@ const Ioc = packed struct(u32) {
 };
 
 pub fn main() !void {
+    var array: mem.StaticString(4096) = undefined;
+    array.undefineAll();
     var fd = try file.open(.{ .options = .{ .write = true } }, "/dev/dri/card0");
     defer file.close(.{ .errors = .{} }, fd);
     var res = builtin.zero(ModeRes);
@@ -49,5 +51,6 @@ pub fn main() !void {
         @bitCast(u32, ioc),
         @ptrToInt(&res),
     });
-    testing.print(.{ fmt.any(res), '\n' });
+    array.writeFormat(fmt.any(res));
+    array.writeOne('\n');
 }
