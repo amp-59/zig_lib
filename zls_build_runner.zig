@@ -107,8 +107,10 @@ fn lengthModules(builder: *Builder) u64 {
     var len: u64 = 0;
     for (builder.groups()) |group| {
         for (group.targets()) |target| {
-            if (target.build_cmd.modules) |mods| {
-                len +%= mods.len;
+            if (target.cmds.build) |build_cmd| {
+                if (build_cmd.modules) |mods| {
+                    len +%= mods.len;
+                }
             }
         }
     }
@@ -118,13 +120,15 @@ fn writeModules(pkgs: []BuildConfig.Pkg, builder: *Builder) []BuildConfig.Pkg {
     var len: u64 = 0;
     for (builder.groups()) |group| {
         for (group.targets()) |target| {
-            if (target.build_cmd.modules) |mods| {
-                for (mods) |mod| {
-                    pkgs[len] = .{
-                        .name = mod.name,
-                        .path = mod.path,
-                    };
-                    len +%= 1;
+            if (target.cmds.build) |build_cmd| {
+                if (build_cmd.modules) |mods| {
+                    for (mods) |mod| {
+                        pkgs[len] = .{
+                            .name = mod.name,
+                            .path = mod.path,
+                        };
+                        len +%= 1;
+                    }
                 }
             }
         }
