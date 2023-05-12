@@ -1510,6 +1510,77 @@ pub fn readAfterLastEqualOneOrElseWithSentinel(
 ) [:sentinel]const T {
     return readAfterLastEqualOneWithSentinel(T, sentinel, value, values) orelse values;
 }
+pub fn writeIntNative(comptime T: type, buf: *[(@typeInfo(T).Int.bits + 7) / 8]u8, value: T) void {
+    @ptrCast(*align(1) T, buf).* = value;
+}
+pub fn writeIntForeign(comptime T: type, buf: *[@divExact(@typeInfo(T).Int.bits, 8)]u8, value: T) void {
+    writeIntNative(T, buf, @byteSwap(value));
+}
+pub const writeIntBig = switch (builtin.config.native_endian) {
+    .Little => writeIntForeign,
+    .Big => writeIntNative,
+};
+pub const writeIntLittle = switch (builtin.config.native_endian) {
+    .Little => writeIntForeign,
+    .Big => writeIntNative,
+};
+pub fn readIntNative(comptime T: type, bytes: *const [@divExact(@typeInfo(T).Int.bits, 8)]u8) T {
+    return @ptrCast(*align(1) const T, bytes).*;
+}
+pub fn readIntForeign(comptime T: type, bytes: *const [@divExact(@typeInfo(T).Int.bits, 8)]u8) T {
+    return @byteSwap(readIntNative(T, bytes));
+}
+pub const readIntLittle = switch (builtin.config.native_endian) {
+    .Little => readIntNative,
+    .Big => readIntForeign,
+};
+pub const readIntBig = switch (builtin.config.native_endian) {
+    .Little => readIntForeign,
+    .Big => readIntNative,
+};
+pub fn nativeTo(comptime T: type, x: T, desired_endianness: builtin.Endian) T {
+    return switch (desired_endianness) {
+        .Little => nativeToLittle(T, x),
+        .Big => nativeToBig(T, x),
+    };
+}
+pub fn nativeToLittle(comptime T: type, x: T) T {
+    return switch (builtin.config.native_endian) {
+        .Little => x,
+        .Big => @byteSwap(x),
+    };
+}
+pub fn nativeToBig(comptime T: type, x: T) T {
+    return switch (builtin.config.native_endian) {
+        .Little => @byteSwap(x),
+        .Big => x,
+    };
+}
+fn AsBytesReturnType(comptime P: type) type {
+    const type_info: builtin.Type = @typeInfo(P);
+    if (type_info.Pointer.size != .One) {
+        @compileError("expected single item pointer, passed " ++ @typeName(P));
+    }
+    return @Type(.{
+        .Pointer = .{
+            .size = .One,
+            .is_const = type_info.Pointer.is_const,
+            .is_volatile = type_info.Pointer.is_volatile,
+            .is_allowzero = type_info.Pointer.is_allowzero,
+            .alignment = type_info.Pointer.alignment,
+            .address_space = type_info.Pointer.address_space,
+            .child = [@sizeOf(type_info.Pointer.child)]u8,
+            .sentinel = null,
+        },
+    });
+}
+
+/// Given a pointer to a single item, returns a slice of the underlying bytes, preserving pointer attributes.
+pub fn asBytes(ptr: anytype) AsBytesReturnType(@TypeOf(ptr)) {
+    const T = AsBytesReturnType(@TypeOf(ptr));
+    return @ptrCast(T, @alignCast(@typeInfo(T).Pointer.alignment, ptr));
+}
+
 pub fn propagateSearch(comptime T: type, arg1: []const T, arg2: []const T, index: u64) ?u64 {
     const needle: []const u8 = if (arg1.len < arg2.len) arg1 else arg2;
     const haystack: []const u8 = if (arg1.len < arg2.len) arg2 else arg1;
