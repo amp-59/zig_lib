@@ -1,12 +1,16 @@
 const srg = @import("zig_lib");
 const mem = srg.mem;
 const sys = srg.sys;
+const fmt = srg.fmt;
+const proc = srg.proc;
 const mach = srg.mach;
+const time = srg.time;
 const meta = srg.meta;
 const spec = srg.spec;
 const builtin = srg.builtin;
 
 pub usingnamespace mach;
+pub usingnamespace proc.start;
 
 // pub const AddressSpace = mem.GenericRegularAddressSpace(.{
 //    .lb_addr = 0x0,
@@ -100,10 +104,20 @@ noinline fn testDifferenceBetweenHighAndLowLevelMemoryManagement() !void {
         //mem.unmap(unmap_spec, 0x40000000, 4096);
     }
 }
-pub export fn _start() void {
-    try meta.wrap(testImpactOfTrivialForwardedOperations());
-    //try meta.wrap(testDifferenceBetweenHighAndLowLevelMemoryManagement());
-    //try meta.wrap(testDifferenceBetweenMutMethods());
 
-    sys.call(.exit, .{}, noreturn, .{0});
+const Target = struct {
+    name: []const u8,
+
+    build_cmd: struct {
+        kind: enum { exe, obj, lib },
+        mode: enum {
+            Debug,
+            ReleaseSmall,
+            ReleaseFast,
+            RelaseSafe,
+        },
+    },
+};
+pub fn main() void {
+    try testDifferenceBetweenHighAndLowLevelMemoryManagement();
 }

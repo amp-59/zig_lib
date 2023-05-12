@@ -959,10 +959,10 @@ pub fn GenericElementaryAddressSpace(comptime spec: ElementaryAddressSpaceSpec) 
         pub fn atomicUnset(address_space: *ElementaryAddressSpace) bool {
             return common.atomicByteExchange(&address_space.impl, 255, 0);
         }
-        inline fn low() u64 {
+        fn low() u64 {
             return spec.lb_addr;
         }
-        inline fn high() u64 {
+        fn high() u64 {
             return spec.up_addr;
         }
         pub fn arena() Arena {
