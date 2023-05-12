@@ -11,9 +11,10 @@ const build = zig_lib.build;
 
 pub const Builder: type = build.GenericBuilder(spec.builder.default);
 
-const PartialCommand = struct {
-    modules: []const build.Module = mods,
-    dependencies: []const build.ModuleDependency = deps,
+const build_cmd: build.BuildCommand = .{
+    .kind = .exe,
+    .modules = mods,
+    .dependencies = deps,
 };
 
 // zl dependencies and modules:
@@ -30,5 +31,5 @@ const mods: []const build.Module = &.{.{
 pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     const all: *Builder.Group = try builder.addGroup(allocator, "all");
 
-    _ = try all.addTarget(allocator, PartialCommand{}, "main", "./src/main.zig");
+    _ = try all.addTarget(allocator, build_cmd, "main", "./src/main.zig");
 }
