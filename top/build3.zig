@@ -341,7 +341,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 .throw = builder_spec.errors.clock.throw ++
                     builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
                 .abort = builder_spec.errors.clock.abort ++
-                    builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
+                    builder_spec.errors.fork.abort ++ builder_spec.errors.execve.abort ++ builder_spec.errors.waitpid.abort,
             }, void) {
                 if (max_thread_count == 0) {
                     try meta.wrap(impl.executeCommand(builder, allocator, target, task, depth));
@@ -369,8 +369,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             ) sys.ErrorUnion(.{
                 .throw = builder_spec.errors.clock.throw ++ builder_spec.errors.sleep.throw ++
                     builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
-                .abort = builder_spec.errors.clock.throw ++ builder_spec.errors.sleep.throw ++
-                    builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
+                .abort = builder_spec.errors.clock.abort ++ builder_spec.errors.sleep.abort ++
+                    builder_spec.errors.fork.abort ++ builder_spec.errors.execve.abort ++ builder_spec.errors.waitpid.abort,
             }, void) {
                 if (task == .run and target.build_cmd.kind == .exe) {
                     try meta.wrap(target.acquireLock(address_space, thread_space, allocator, builder, .build, arena_index, 0));
@@ -403,8 +403,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             ) sys.ErrorUnion(.{
                 .throw = builder_spec.errors.clock.throw ++ builder_spec.errors.sleep.throw ++
                     builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
-                .abort = builder_spec.errors.clock.throw ++ builder_spec.errors.sleep.throw ++
-                    builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
+                .abort = builder_spec.errors.clock.abort ++ builder_spec.errors.sleep.abort ++
+                    builder_spec.errors.fork.abort ++ builder_spec.errors.execve.abort ++ builder_spec.errors.waitpid.abort,
             }, void) {
                 try meta.wrap(target.acquireLock(address_space, thread_space, allocator, builder, task, max_thread_count, 0));
                 while (builderWait(address_space, thread_space, builder)) {
@@ -601,6 +601,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 allocator: *Allocator,
                 task: types.Task,
             ) !void {
+                @setRuntimeSafety(false);
                 for (group.targets()) |target| {
                     try meta.wrap(target.acquireLock(address_space, thread_space, allocator, group.builder, task, max_thread_count, 1));
                 }
@@ -608,10 +609,14 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     try meta.wrap(time.sleep(builder_spec.sleep(), .{ .nsec = builder_spec.options.sleep_nanoseconds }));
                 }
             }
+            const Commands = struct {
+                build: ?*const types.BuildCommand = null,
+                format: ?*const types.FormatCommand = null,
+            };
             pub fn addTarget(
                 group: *Group,
                 allocator: *Allocator,
-                extra: types.BuildCommand,
+                build_cmd: types.BuildCommand,
                 name: [:0]const u8,
                 root: [:0]const u8,
             ) !*Target {
@@ -624,7 +629,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 group.trgs_len +%= 1;
                 const builder: *const Builder = group.builder;
                 ret.build_cmd = create(allocator, types.BuildCommand);
-                ret.build_cmd.* = extra;
+                ret.build_cmd.* = build_cmd;
                 ret.name = name;
                 ret.root = root;
                 ret.assertExchange(.build, .unavailable, .ready);
@@ -694,14 +699,14 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 allocator.restore(save);
             }
             allocator.restore(save);
-            const wait: proc.Return = try meta.wrap(
+            const ret: proc.Return = try meta.wrap(
                 proc.waitPid(builder_spec.waitpid(), .{ .pid = pid }),
             );
             build_time.* = time.diff(try meta.wrap(time.get(builder_spec.clock(), .realtime)), build_time.*);
             try meta.wrap(
                 file.close(builder_spec.close(), out.read),
             );
-            return proc.Status.exit(wait.status);
+            return proc.Status.exit(ret.status);
         }
         fn system(builder: *const Builder, args: [][*:0]u8, ts: *time.TimeSpec) sys.ErrorUnion(.{
             .throw = builder_spec.errors.clock.throw ++
@@ -733,11 +738,11 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     file.execPath(builder_spec.execve(), builder.zig_exe, args, builder.vars),
                 );
             }
-            const wait: proc.Return = try meta.wrap(
+            const ret: proc.Return = try meta.wrap(
                 proc.waitPid(builder_spec.waitpid(), .{ .pid = pid }),
             );
             ts.* = time.diff(try meta.wrap(time.get(builder_spec.clock(), .realtime)), ts.*);
-            return proc.Status.exit(wait.status);
+            return proc.Status.exit(ret.status);
         }
         inline fn compileServer(builder: *const Builder, allocator: *Builder.Allocator, args: [][*:0]u8, ts: *time.TimeSpec) sys.ErrorUnion(.{
             .throw = builder_spec.errors.clock.throw ++
