@@ -195,6 +195,7 @@ pub const SourceLocationFormat = struct {
         .signedness = .unsigned,
         .radix = 16,
         .width = .min,
+        .prefix = "0x",
     });
     pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
         const fn_name: []const u8 = format.functionName();
