@@ -74,8 +74,8 @@ fn testBytesFormat() !void {
     try testing.expectEqualMany(u8, "15.999EiB", fmt.bytes(~@as(u64, 0)).formatConvert().readAll());
 }
 fn testEquivalentIntToStringFormat() !void {
-    const ubin = fmt.PolynomialFormat(.{ .bits = 1, .radix = 2, .signedness = .unsigned, .width = .max });
-    const sbin = fmt.PolynomialFormat(.{ .bits = 1, .radix = 2, .signedness = .signed, .width = .max });
+    const ubin = fmt.PolynomialFormat(.{ .bits = 1, .radix = 2, .signedness = .unsigned, .width = .max, .prefix = "0b" });
+    const sbin = fmt.PolynomialFormat(.{ .bits = 1, .radix = 2, .signedness = .signed, .width = .max, .prefix = "0b" });
     var uint: u64 = 0;
     try testing.expectEqualMany(u8, "0b0", (sbin{ .value = 0 }).formatConvert().readAll());
     try testing.expectEqualMany(u8, "-0b1", (sbin{ .value = -1 }).formatConvert().readAll());
@@ -124,11 +124,18 @@ fn testEquivalentIntToStringFormat() !void {
         try testing.expectEqualMany(u8, builtin.fmt.ix8(sint_8).readAll(), fmt.ix8(sint_8).formatConvert().readAll());
     }
 }
+
+pub const render_radix: u16 = 16;
+
 fn testBytesToHex() !void {
-    const input = "input slice";
-    const encoded = fmt.bytesToHex(input);
-    var decoded: [input.len]u8 = undefined;
-    try builtin.expectEqualMemory([]const u8, input, fmt.hexToBytes(&decoded, &encoded));
+    const input: []const u8 = "0123456789abcdef";
+    var buf0: [input.len]u8 = undefined;
+    var buf1: [input.len]u8 = undefined;
+    @memset(&buf0, 0);
+    @memset(&buf1, 0);
+    const encoded: []const u8 = fmt.bytesToHex(&buf0, input);
+    const decoded: []const u8 = fmt.hexToBytes(&buf0, encoded);
+    try testing.expectEqualMany(u8, input, decoded);
 }
 fn testBinarySize() void {
     var array: PrintArray = .{};

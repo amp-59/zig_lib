@@ -1148,29 +1148,24 @@ pub fn untitle(noalias buf: []u8, noalias name: []const u8) []u8 {
     }
     return buf[0..name.len];
 }
-/// Encodes a sequence of bytes as hexadecimal digits.
-/// Returns an array containing the encoded bytes.
-pub fn bytesToHex(input: anytype) [input.len * 2]u8 {
-    if (input.len == 0) return [_]u8{};
-    var result: [input.len * 2]u8 = undefined;
-    for (input, 0..) |b, i| {
-        result[i * 2 + 0] = builtin.fmt.toSymbol(u8, b >> 4, 16);
-        result[i * 2 + 1] = builtin.fmt.toSymbol(u8, b & 15, 16);
+/// .{ 0xff, 0xff, 0xff, 0xff } => "ffffffff";
+pub fn bytesToHex(dest: []u8, src: []const u8) []const u8 {
+    var idx: u64 = 0;
+    while (idx < src.len) : (idx +%= 1) {
+        dest[idx * 2 +% 0] = builtin.fmt.toSymbol(u8, src[idx] / 16, 16);
+        dest[idx * 2 +% 1] = builtin.fmt.toSymbol(u8, src[idx] & 15, 16);
     }
-    return result;
+    return dest[0 .. src.len *% 2 +% 1];
 }
-/// Decodes the sequence of bytes represented by the specified string of
-/// hexadecimal characters.
-/// Returns a slice of the output buffer containing the decoded bytes.
-pub fn hexToBytes(dest: []u8, src: []const u8) []u8 {
-    // Expect 0 or n pairs of hexadecimal digits.
+/// "ffffffff" => .{ 0xff, 0xff, 0xff, 0xff };
+pub fn hexToBytes(dest: []u8, src: []const u8) []const u8 {
     var idx: usize = 0;
-    while (idx != dest.len) : (idx += 2) {
-        const hi: u8 = builtin.parse.fromSymbol(src[idx +% 0], 16);
-        const lo: u8 = builtin.parse.fromSymbol(src[idx +% 1], 16);
-        dest[idx / 2] = (hi << 4) | lo;
+    while (idx < src.len) : (idx +%= 2) {
+        dest[idx / 2] =
+            builtin.parse.fromSymbol(src[idx], 16) << 4 |
+            builtin.parse.fromSymbol(src[idx +% 1], 16);
     }
-    return dest[0 .. idx / 2];
+    return dest;
 }
 pub const static = struct {
     fn concatUpper(comptime s: []const u8, comptime c: u8) []const u8 {
