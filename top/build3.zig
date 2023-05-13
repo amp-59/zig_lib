@@ -315,7 +315,10 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             .options = allocator_options,
         });
         pub const Args = Allocator.StructuredVectorLowAlignedWithSentinel(u8, 0, 8);
-        pub const CompilerFn = fn (*Builder, *Target, *Allocator, types.Path) [:0]u8;
+        pub const Commands = struct {
+            build: ?types.BuildCommand = null,
+            format: ?types.FormatCommand = null,
+        };
         pub const Target = struct {
             name: [:0]const u8,
             descr: ?[:0]const u8 = null,
@@ -335,29 +338,16 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 on_task: types.Task,
                 on_state: types.State,
             };
-            pub const Commands = struct {
-                build: ?types.BuildCommand = null,
-                format: ?types.FormatCommand = null,
-            };
-            fn init(
-                target: *Target,
-                allocator: *Allocator,
-                builder: *Builder,
-                cmds: *Commands,
-                name: [:0]const u8,
-                root: [:0]const u8,
-            ) void {
+            fn init(target: *Target, allocator: *Allocator, builder: *Builder, cmds: *Commands, name: [:0]const u8, root: [:0]const u8) void {
                 target.name = name;
                 target.root = root;
                 target.cmds = cmds;
                 if (cmds.build) |*build_cmd| {
-                    target.assertExchange(.build, .no_task, .ready);
-                    if (build_cmd.kind == .exe) {
-                        target.assertExchange(.run, .no_task, .ready);
+                    if (target.exchange(.build, .no_task, .ready)) {
+                        target.emitBinary(allocator, builder);
                     }
-                    target.emitBinary(allocator, builder);
                     if (build_cmd.name == null) {
-                        build_cmd.name = target.name;
+                        build_cmd.name = name;
                     }
                     if (build_cmd.main_pkg_path == null) {
                         build_cmd.main_pkg_path = builder.build_root;
@@ -421,8 +411,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 @setRuntimeSafety(false);
                 if (target.lock.get(task) == .waiting) {
                     for (target.buildDependencies()) |dep| {
-                        if (dep.for_task != task) continue;
-                        if (dep.on_target == target and dep.on_task == task) continue;
+                        if (dep.for_task != task or dep.on_target == target and dep.on_task == task) continue;
                         try meta.wrap(dep.on_target.acquireLock(address_space, thread_space, allocator, builder, dep.on_task, arena_index, depth +% 1));
                     }
                     while (targetWait(target, task, arena_index)) {
@@ -530,9 +519,18 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 return .{ .absolute = builder.build_root, .relative = auxiliaryRelative(target, allocator, kind) };
             }
             pub fn emitBinary(target: *Target, allocator: *Allocator, builder: *const Builder) void {
-                target.cmds.build.?.emit_bin = .{ .yes = createBinaryPath(target, allocator, builder) };
-                if (target.cmds.build.?.kind == .exe) {
-                    target.addDependency(allocator, .{ .for_task = .run, .on_target = target, .on_task = .build, .on_state = .finished });
+                if (target.cmds.build) |*build_cmd| {
+                    build_cmd.emit_bin = .{ .yes = createBinaryPath(target, allocator, builder) };
+                    if (build_cmd.kind != .exe) {
+                        return;
+                    }
+                    target.assertExchange(.run, .no_task, .ready);
+                    target.addDependency(allocator, .{
+                        .for_task = .run,
+                        .on_target = target,
+                        .on_task = .build,
+                        .on_state = .finished,
+                    });
                 }
             }
             pub fn emitAuxiliary(target: *Target, allocator: *Allocator, builder: *const Builder, kind: types.AuxOutputMode) void {
@@ -655,11 +653,10 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     try meta.wrap(time.sleep(builder_spec.sleep(), .{ .nsec = builder_spec.options.sleep_nanoseconds }));
                 }
             }
-
             pub fn addTarget(
                 group: *Group,
                 allocator: *Allocator,
-                commands: Target.Commands,
+                commands: Commands,
                 name: [:0]const u8,
                 root: [:0]const u8,
             ) !*Target {
@@ -670,7 +667,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 const ret: *Target = create(allocator, Target);
                 group.trgs[group.trgs_len] = ret;
                 group.trgs_len +%= 1;
-                ret.init(allocator, group.builder, duplicate(allocator, Target.Commands, commands), name, root);
+                ret.init(allocator, group.builder, duplicate(allocator, Commands, commands), name, root);
                 ret.hidden = group.hidden;
                 return ret;
             }
