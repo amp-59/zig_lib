@@ -26,50 +26,56 @@ pub inline fn absoluteVal(i: anytype) Absolute(@TypeOf(i)) {
     return @intCast(Abs, i);
 }
 pub fn rotr(comptime T: type, value: T, rot_amt: anytype) T {
+    const RotateAmount = @TypeOf(rot_amt);
     if (@typeInfo(T) == .Vector) {
         const C = @typeInfo(T).Vector.child;
+        const len: usize = @typeInfo(T).Vector.len;
         if (C == u0) {
             return 0;
         }
         builtin.assert(@typeInfo(C).Int.signedness != .signed);
         const shift_amt = @intCast(builtin.ShiftAmount(C), @mod(rot_amt, @typeInfo(C).Int.bits));
-        return (value >> @splat(@typeInfo(T).Vector.len, shift_amt)) |
-            (value << @splat(@typeInfo(T).Vector.len, 1 +% ~shift_amt));
+        return (value >> @splat(len, shift_amt)) | (value << @splat(len, 1 +% ~shift_amt));
     } else {
         builtin.assert(@typeInfo(T).Int.signedness != .signed);
+        const ShiftAmount = builtin.ShiftAmount(T);
+        const bit_size_of: u16 = @typeInfo(T).Int.bits;
         if (T == u0) {
             return 0;
         }
-        if (@popCount(@typeInfo(T).Int.bits) == 1) {
-            const shift_amt = @intCast(builtin.ShiftAmount(T), @mod(rot_amt, @typeInfo(T).Int.bits));
+        if (@popCount(bit_size_of) == 1) {
+            const shift_amt: ShiftAmount = @intCast(ShiftAmount, @mod(rot_amt, bit_size_of));
             return value >> shift_amt | value << (1 +% ~shift_amt);
         } else {
-            const shift_amt = @mod(rot_amt, @typeInfo(T).Int.bits);
-            return shr(T, value, shift_amt) | shl(T, value, @typeInfo(T).Int.bits -% shift_amt);
+            const shift_amt: RotateAmount = @mod(rot_amt, bit_size_of);
+            return shr(T, value, shift_amt) | shl(T, value, bit_size_of -% shift_amt);
         }
     }
 }
 pub fn rotl(comptime T: type, value: T, rot_amt: anytype) T {
+    const RotateAmount = @TypeOf(rot_amt);
     if (@typeInfo(T) == .Vector) {
         const C = @typeInfo(T).Vector.child;
+        const len: usize = @typeInfo(T).Vector.len;
         if (C == u0) {
             return 0;
         }
         builtin.assert(@typeInfo(C).Int.signedness != .signed);
         const shift_amt = @intCast(builtin.ShiftAmount(C), @mod(rot_amt, @typeInfo(C).Int.bits));
-        return (value << @splat(@typeInfo(T).Vector.len, shift_amt)) |
-            (value >> @splat(@typeInfo(T).Vector.len, 1 +% ~shift_amt));
+        return (value << @splat(len, shift_amt)) | (value >> @splat(len, 1 +% ~shift_amt));
     } else {
         builtin.assert(@typeInfo(T).Int.signedness != .signed);
+        const ShiftAmount = builtin.ShiftAmount(T);
+        const bit_size_of: u16 = @typeInfo(T).Int.bits;
         if (T == u0) {
             return 0;
         }
-        if (@popCount(@typeInfo(T).Int.bits) == 1) {
-            const shift_amt = @intCast(builtin.ShiftAmount(T), @mod(rot_amt, @typeInfo(T).Int.bits));
+        if (@popCount(bit_size_of) == 1) {
+            const shift_amt: ShiftAmount = @intCast(ShiftAmount, @mod(rot_amt, bit_size_of));
             return value << shift_amt | value >> 1 +% ~shift_amt;
         } else {
-            const shift_amt = @mod(rot_amt, @typeInfo(T).Int.bits);
-            return shl(T, value, shift_amt) | shr(T, value, @typeInfo(T).Int.bits -% shift_amt);
+            const shift_amt: RotateAmount = @mod(rot_amt, bit_size_of);
+            return shl(T, value, shift_amt) | shr(T, value, bit_size_of -% shift_amt);
         }
     }
 }
