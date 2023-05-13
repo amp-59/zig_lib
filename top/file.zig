@@ -1058,6 +1058,159 @@ pub fn listen(comptime listen_spec: ListenSpec, sock_fd: u64, backlog: u64) sys.
         return listen_error;
     }
 }
+pub fn bind(comptime bind_spec: BindSpec, fd: u64, addr: *Socket.Address, addrlen: *u32) sys.ErrorUnion(
+    bind_spec.errors,
+    bind_spec.return_type,
+) {
+    const logging: builtin.Logging.AcquireError = comptime bind_spec.logging.override();
+    if (meta.wrap(sys.call(.bind, bind_spec.errors, void, .{ fd, addr, addrlen }))) {
+        //
+    } else |bind_error| {
+        if (logging.Error) {
+            //
+        }
+        return bind_error;
+    }
+}
+pub fn accept(comptime accept_spec: AcceptSpec, fd: u64, addr: *Socket.Address, addrlen: *u32) sys.ErrorUnion(
+    accept_spec.errors,
+    accept_spec.return_type,
+) {
+    const logging: builtin.Logging.AcquireError = comptime accept_spec.logging.override();
+    if (meta.wrap(sys.call(.accept, accept_spec.errors, void, .{ fd, @ptrToInt(addr), @ptrToInt(addrlen) }))) {
+        //
+    } else |accept_error| {
+        if (logging.Error) {
+            //
+        }
+        return accept_error;
+    }
+}
+pub fn connect(comptime conn_spec: ConnectSpec, fd: u64, addr: *Socket.Address, addrlen: *u64) sys.ErrorUnion(
+    conn_spec.errors,
+    conn_spec.return_type,
+) {
+    const logging: builtin.Logging.AcquireError = comptime conn_spec.logging.override();
+    if (meta.wrap(sys.call(.connect, conn_spec.errors, void, .{ fd, @ptrToInt(addr), @ptrToInt(addrlen) }))) {
+        //
+    } else |connect_error| {
+        if (logging.Error) {
+            //
+        }
+        return connect_error;
+    }
+}
+pub fn sendTo(comptime send_spec: SendToSpec, fd: u64, buf: []u8, flags: u32, addr: *Socket.Address, addrlen: u32) sys.ErrorUnion(
+    send_spec.errors,
+    send_spec.return_type,
+) {
+    _ = addrlen;
+    _ = addr;
+    _ = fd;
+    _ = flags;
+    _ = buf;
+    const logging: builtin.Logging.AcquireError = comptime send_spec.logging.override();
+    if (meta.wrap(sys.call(.sendto, send_spec.errors, void, .{}))) {
+        //
+    } else |sendto_error| {
+        if (logging.Error) {
+            //
+        }
+        return sendto_error;
+    }
+}
+pub fn receiveFrom(comptime recv_spec: ReceiveFromSpec, fd: u64, buf: []u8, flags: u32, addr: *Socket.Address, addrlen: *u32) sys.ErrorUnion(
+    recv_spec.errors,
+    recv_spec.return_type,
+) {
+    _ = addrlen;
+    _ = addr;
+    _ = fd;
+    _ = flags;
+    _ = buf;
+    const logging: builtin.Logging.AcquireError = comptime recv_spec.logging.override();
+    if (meta.wrap(sys.call(.recvfrom, recv_spec.errors, void, .{}))) {
+        //
+    } else |recvfrom_error| {
+        if (logging.Error) {
+            //
+        }
+        return recvfrom_error;
+    }
+}
+pub fn getsockname(comptime get_spec: GetSockNameSpec, fd: u64, addr: *Socket.Address, addrlen: *u32) sys.ErrorUnion(
+    get_spec.errors,
+    get_spec.return_type,
+) {
+    const logging: builtin.Logging.AcquireError = comptime get_spec.logging.override();
+    if (meta.wrap(sys.call(.getsockname, get_spec.errors, void, .{ fd, @ptrToInt(addr), @ptrToInt(addrlen) }))) {
+        //
+    } else |getsockname_error| {
+        if (logging.Error) {
+            //
+        }
+        return getsockname_error;
+    }
+}
+pub fn getpeername(comptime get_spec: GetPeerNameSpec, fd: u64, addr: *Socket.Address, addrlen: *u32) sys.ErrorUnion(
+    get_spec.errors,
+    get_spec.return_type,
+) {
+    const logging: builtin.Logging.AcquireError = comptime get_spec.logging.override();
+    if (meta.wrap(sys.call(.getpeername, get_spec.errors, void, .{ fd, @ptrToInt(addr), @ptrToInt(addrlen) }))) {
+        //
+    } else |getpeername_error| {
+        if (logging.Error) {
+            //
+        }
+        return getpeername_error;
+    }
+}
+pub fn getSocketOption(comptime get_spec: SocketOptionSpec, fd: u64, level: u64, optname: u64, optval: *u8, optlen: u64) sys.ErrorUnion(
+    get_spec.errors,
+    get_spec.return_type,
+) {
+    _ = optlen;
+    _ = optval;
+    _ = optname;
+    _ = level;
+    _ = fd;
+    const logging: builtin.Logging.AcquireError = comptime get_spec.logging.override();
+    if (meta.wrap(sys.call(.getsockopt, get_spec.errors, void, .{}))) {
+        //
+    } else |getsockopt_error| {
+        if (logging.Error) {
+            //
+        }
+        return getsockopt_error;
+    }
+}
+pub fn setSocketOption(comptime set_spec: SocketOptionSpec, fd: u64, level: u64, optname: u64, optval: *u8, optlen: u64) sys.ErrorUnion(
+    set_spec.errors,
+    set_spec.return_type,
+) {
+    _ = optlen;
+    _ = optval;
+    _ = optname;
+    _ = level;
+    _ = fd;
+    const logging: builtin.Logging.AcquireError = comptime set_spec.logging.override();
+    if (meta.wrap(sys.call(.setsockopt, set_spec.errors, void, .{}))) {
+        //
+    } else |setsockopt_error| {
+        if (logging.Error) {
+            //
+        }
+        return setsockopt_error;
+    }
+}
+pub fn shutdown(comptime shutdown_spec: ShutdownSpec, fd: u64, how: u64) sys.ErrorUnion(
+    shutdown_spec.errors,
+    shutdown_spec.return_type,
+) {
+    _ = how;
+    _ = fd;
+}
 fn pathnameLimit(pathname: []const u8) u64 {
     if (pathname.len == 0) {
         return 0;
