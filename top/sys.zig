@@ -1892,6 +1892,7 @@ pub const Fn = enum(u9) {
             .mkdirat,
             .open_by_handle_at,
             .poll,
+            .bind,
             => 3,
 
             .newfstatat,
