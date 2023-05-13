@@ -39,12 +39,9 @@ var build_cmd: build.BuildCommand = .{
     } },
 };
 pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
+    var cmds: Builder.Target.Commands = .{ .build = build_cmd, .format = null };
     // zig fmt: off
     // Groups:
-    var cmds: Builder.Target.Commands = .{
-        .build = build_cmd,
-        .format = null,
-    };
     const fmt = .{ .format = .{} };
     const tests: *Builder.Group =           try builder.addGroup(allocator, "tests");
     const eg: *Builder.Group =              try builder.addGroup(allocator, "examples");
@@ -52,7 +49,6 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     const mg_aux: *Builder.Group =          try builder.addGroup(allocator, "_memgen");
     const buildgen: *Builder.Group =        try builder.addGroup(allocator, "buildgen");
     const bg_aux: *Builder.Group =          try builder.addGroup(allocator, "_buildgen");
-
     // Tests
     const serial_test: *Builder.Target =    try tests.addTarget(allocator, cmds, "serial_test",    "test/serial-test.zig");
     const decl_test: *Builder.Target =      try tests.addTarget(allocator, cmds, "decl_test",      "test/decl-test.zig");
@@ -71,7 +67,6 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     const time_test: *Builder.Target =      try tests.addTarget(allocator, cmds, "time_test",      "test/time-test.zig");
     const size_test: *Builder.Target =      try tests.addTarget(allocator, cmds, "size_test",      "test/size_per_config.zig");
     const container_test: *Builder.Target = try tests.addTarget(allocator, cmds, "container_test", "test/container-test.zig");
-
     // Example programs
     const readdir: *Builder.Target =        try eg.addTarget(allocator, cmds,  "readdir",      "examples/dir_iterator.zig");
     const dynamic: *Builder.Target =        try eg.addTarget(allocator, cmds,  "dynamic",      "examples/dynamic_alloc.zig");
@@ -98,7 +93,6 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     cmds.build.?.mode = .ReleaseFast;
     const mem_test: *Builder.Target =       try tests.addTarget(allocator, cmds,    "mem_test",     "test/mem-test.zig");
     const proc_test: *Builder.Target =      try tests.addTarget(allocator, cmds,    "proc_test",    "test/proc-test.zig");
-
     // Memory implementation generator:
     cmds.build.?.kind = .obj;
     cmds.build.?.mode = .ReleaseSmall;
@@ -115,15 +109,13 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     const mg_container_impls: *Builder.Target =     try mg_aux.addTarget(allocator, cmds,   "mg_container_impls",   "top/mem/container_impls-aux.zig");
     const mg_container_kinds: *Builder.Target =     try mg_aux.addTarget(allocator, cmds,   "mg_container_kinds",   "top/mem/container_kinds-aux.zig");
     const mg_allocator_kinds: *Builder.Target =     try mg_aux.addTarget(allocator, cmds,   "mg_allocator_kinds",   "top/mem/allocator_kinds-aux.zig");
-    const generate_containers: *Builder.Target =    try memgen.addTarget(allocator, fmt,    "generate_containers",  "top/mem/containers.zig");
-    const generate_references: *Builder.Target =    try memgen.addTarget(allocator, fmt,    "generate_references",  "top/mem/references.zig");
-
+    const generate_containers: *Builder.Target =    try memgen.addTarget(allocator, fmt,    "generate_containers",  "top/mem/container.zig");
+    const generate_references: *Builder.Target =    try memgen.addTarget(allocator, fmt,    "generate_references",  "top/mem/reference.zig");
     // Builder implementation generator:
     const bg_tasks: *Builder.Target =           try bg_aux.addTarget(allocator, cmds,   "bg_tasks",         "top/build/tasks-aux.zig");
     const bg_cmdline: *Builder.Target =         try bg_aux.addTarget(allocator, cmds,   "bg_cmdline",       "top/build/cmdline-aux.zig");
     const generate_cmdline: *Builder.Target =   try buildgen.addTarget(allocator, fmt,  "generate_cmdline", "top/build/cmdline3.zig");
     const generate_tasks: *Builder.Target =     try buildgen.addTarget(allocator, fmt,  "generate_tasks",   "top/build/tasks3.zig");
-
     // Descriptions:
     builtin_test.descr =        "Test builtin functions";
     meta_test.descr =           "Test meta functions";
