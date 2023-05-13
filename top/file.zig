@@ -1058,16 +1058,15 @@ pub fn listen(comptime listen_spec: ListenSpec, sock_fd: u64, backlog: u64) sys.
         return listen_error;
     }
 }
-pub fn bind(comptime bind_spec: BindSpec, fd: u64, addr: *Socket.Address, addrlen: *u32) sys.ErrorUnion(
-    bind_spec.errors,
-    bind_spec.return_type,
-) {
+pub fn bind(comptime bind_spec: BindSpec, sock_fd: u64, addr: *Socket.Address, addrlen: *u32) sys.ErrorUnion(bind_spec.errors, void) {
     const logging: builtin.Logging.AcquireError = comptime bind_spec.logging.override();
-    if (meta.wrap(sys.call(.bind, bind_spec.errors, void, .{ fd, addr, addrlen }))) {
-        //
+    if (meta.wrap(sys.call(.bind, bind_spec.errors, void, .{ sock_fd, @ptrToInt(addr), @ptrToInt(addrlen) }))) {
+        if (logging.Acquire) {
+            //debug.bindNotice(sock_fd, addr, addrlen);
+        }
     } else |bind_error| {
         if (logging.Error) {
-            //
+            //debug.bindError(bind_error, sock_fd, addr, addrlen);
         }
         return bind_error;
     }
