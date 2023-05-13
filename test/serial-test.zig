@@ -2560,7 +2560,7 @@ var build_cmd: build.BuildCommand = .{
 };
 pub fn testBuildProgram(allocator: *Builder.Allocator, builder: *Builder) !void {
     const g3 = try builder.addGroup(allocator, "g3");
-    var cmds: Builder.Target.Commands = .{ .build = build_cmd };
+    var cmds: Builder.Commands = .{ .build = build_cmd };
     cmds.build.?.kind = .obj;
     const t2: *Builder.Target = try g3.addTarget(allocator, cmds, "obj0", "test/src/obj0.zig");
     const t3: *Builder.Target = try g3.addTarget(allocator, cmds, "obj1", "test/src/obj1.zig");
