@@ -14,11 +14,11 @@ pub const Builder: type = build.GenericBuilder(spec.builder.default);
 /// This is a template compile command to build the target.
 var build_cmd: build.BuildCommand = .{
     .kind = .exe,
-    .mods = &.{.{
+    .modules = &.{.{
         .name = "zig_lib",
         .path = "zig_lib/zig_lib.zig",
     }},
-    .deps = &.{.{ .name = "zig_lib" }},
+    .dependencies = &.{.{ .name = "zig_lib" }},
 };
 
 // zl looks for `buildMain` instead of `build` or `main`, because `main` is
