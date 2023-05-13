@@ -1988,7 +1988,7 @@ pub const accept_errors: []const ErrorCode = &.{
     .PERM,  .PROTO,
 };
 pub const listen_errors: []const ErrorCode = &.{
-    .ADDRINUSE, .BADF, .NOTSOCK, .OPNOTSUPP,
+    .INVAL, .ADDRINUSE, .BADF, .NOTSOCK, .OPNOTSUPP,
 };
 pub const connect_errors: []const ErrorCode = &.{
     .ACCES,    .PERM,    .ADDRINUSE,  .ADDRNOTAVAIL, .AFNOSUPPORT,
