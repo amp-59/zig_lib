@@ -43,6 +43,8 @@ pub const BuilderSpec = struct {
         show_targets: bool = false,
         /// Enables logging for build job statistics.
         show_stats: bool = true,
+        /// Enables detail for target dependecy listings.
+        show_detailed_deps: bool = true,
         names: struct {
             /// Module containing full paths of zig_exe, build_root, cache_root, and
             /// global_cache_root. May be useful for metaprogramming.
@@ -325,6 +327,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             deps_len: u64 = 0,
             args: [][*:0]u8 = &.{},
             args_len: u64 = 0,
+            hidden: bool = false,
             pub const Dependency = struct {
                 for_task: types.Task,
                 comptime for_state: types.State = .ready,
@@ -619,7 +622,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     target.args = reallocate(allocator, [*:0]u8, target.args, (target.args_len +% 1) *% 2);
                 }
                 target.args[target.args_len] = strdup(allocator, arg).ptr;
-                target.args_len +%= 1;
+                target.args_len +%= @boolToInt(arg.len != 0);
             }
             fn buildDependencies(target: *const Target) []Dependency {
                 @setRuntimeSafety(false);
@@ -668,6 +671,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 group.trgs[group.trgs_len] = ret;
                 group.trgs_len +%= 1;
                 ret.init(allocator, group.builder, duplicate(allocator, Target.Commands, commands), name, root);
+                ret.hidden = group.hidden;
                 return ret;
             }
             pub fn targets(group: *const Group) []*Target {
@@ -933,8 +937,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             for (builder.args[builder.args_len..]) |run_arg| {
                 target.addRunArgument(allocator, meta.manyToSlice(run_arg));
             }
-            target.addRunArgument(allocator, builtin.zero([:0]u8));
-            target.args_len -%= 1;
+            target.addRunArgument(allocator, null_arg);
             const args: [][*:0]u8 = target.runArguments();
             var working_time: time.TimeSpec = undefined;
             const rc: u8 = try meta.wrap(
@@ -1165,6 +1168,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         const zig_out_exe_dir: [:0]const u8 = builder_spec.options.names.zig_out_dir ++ "/" ++ builder_spec.options.names.exe_out_dir;
         const zig_out_aux_dir: [:0]const u8 = builder_spec.options.names.zig_out_dir ++ "/" ++ builder_spec.options.names.aux_out_dir;
         const env_basename: [:0]const u8 = builder_spec.options.names.env ++ builder_spec.options.extensions.zig;
+        const null_arg: [:0]const u8 = builtin.zero([:0]u8);
         pub const debug = struct {
             const about_run_s: builtin.fmt.About = builtin.fmt.about("run");
             const about_format_s: builtin.fmt.About = builtin.fmt.about("fmt");
@@ -1184,7 +1188,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             const about_reset_s: *const [4:0]u8 = "\x1b[0m";
             const about_tilde_s: *const [10:0]u8 = "\x1b[38;5;46m";
             const about_bold_s: *const [4:0]u8 = "\x1b[1m";
-            const about_faint_s: *const [15:0]u8 = "\x1b[0;38;5;250;1m";
+            const about_faint_s: *const [4:0]u8 = "\x1b[2m";
+            const about_grey_s: *const [15:0]u8 = "\x1b[0;38;5;250;1m";
             const about_trace_s: *const [11:0]u8 = "\x1b[38;5;247m";
             const about_hi_red_s: *const [11:0]u8 = "\x1b[38;5;196m";
             const fancy_hl_line: bool = false;
@@ -1344,41 +1349,70 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 mach.memcpy(&buf0, target.name.ptr, target.name.len);
                 builtin.debug.logAlways(buf0[0..writeAndWalkInternal(&buf0, target.name.len, &buf1, 0, target)]);
             }
-            fn writeAndWalkInternal(buf0: [*]u8, len0: u64, buf1: [*]u8, len1: u64, target: *Target) u64 {
+            fn writeAndWalkInternal(buf0: [*]u8, len0: u64, buf1: [*]u8, len1: u64, target: *Target, args: anytype) u64 {
                 @setRuntimeSafety(false);
-                const deps: []Target.Dependency = target.buildDependencies();
+                var deps_idx: u64 = 0;
                 var len: u64 = len0;
                 buf0[len] = '\n';
                 len +%= 1;
-                for (deps, 0..) |dep, idx| {
+                while (deps_idx != target.deps_len) : (deps_idx +%= 1) {
+                    const dep: Target.Dependency = target.deps[deps_idx];
                     if (dep.on_target == target) {
                         continue;
                     }
-                    mach.memcpy(buf1 + len1, if (idx == deps.len -% 1) "  " else "| ", 2);
+                    const is_last: bool = deps_idx == target.deps_len -% 1;
+                    const is_only: bool = dep.on_target.deps_len == 0;
+                    mach.memcpy(buf1 + len1, if (is_last) "  " else "| ", 2);
                     mach.memcpy(buf0 + len, buf1, len1 +% 2);
                     len +%= len1 +% 2;
-                    @ptrCast(*[4]u8, buf0 + len).* = if (idx == deps.len -% 1) "\x08\x08`-".* else "\x08\x08|-".*;
+                    @ptrCast(*[4]u8, buf0 + len).* = if (is_last) "\x08\x08`-".* else "\x08\x08|-".*;
                     len +%= 4;
-                    @ptrCast(*[2]u8, buf0 + len).* = if (dep.on_target.deps_len == 0) "> ".* else "+ ".*;
+                    @ptrCast(*[2]u8, buf0 + len).* = if (is_only) "> ".* else "+ ".*;
                     len +%= 2;
                     mach.memcpy(buf0 + len, dep.on_target.name.ptr, dep.on_target.name.len);
-                    len +%= target.name.len;
-                    len = writeAndWalkInternal(buf0, len, buf1, len1 +% 2, dep.on_target);
+                    len +%= dep.on_target.name.len;
+                    if (builder_spec.options.show_detailed_deps) {
+                        var count: u64 = (args.name_max_width +% 4) -% (dep.on_target.name.len +% len1);
+                        if (dep.on_target.hidden and args.show_root) {
+                            mach.memset(buf0 + len, ' ', count);
+                            len +%= count;
+                            mach.memcpy(buf0 + len, dep.on_target.root.ptr, dep.on_target.root.len);
+                            len +%= dep.on_target.root.len;
+                        }
+                        if (dep.on_target.hidden and args.show_descr) {
+                            count = args.root_max_width -% dep.on_target.root.len;
+                            mach.memset(buf0 + len, ' ', count);
+                            len +%= count;
+                            if (dep.on_target.descr) |descr| {
+                                mach.memcpy(buf0 + len, descr.ptr, descr.len);
+                                len +%= descr.len;
+                            }
+                        }
+                    }
+                    len = writeAndWalkInternal(buf0, len, buf1, len1 +% 2, dep.on_target, args);
                 }
                 return len;
             }
-            fn dependencyMaxWidth(target: *const Target, width: u64) u64 {
+            fn dependencyMaxNameWidth(target: *const Target, width: u64) u64 {
                 var len: u64 = target.name.len;
                 for (target.buildDependencies()) |dep| {
                     if (dep.on_target != target) {
-                        len = @max(len, width +% dependencyMaxWidth(dep.on_target, width +% 2));
+                        len = @max(len, width +% dependencyMaxNameWidth(dep.on_target, width +% 2));
+                    }
+                }
+                return len;
+            }
+            fn dependencyMaxRootWidth(target: *const Target) u64 {
+                var len: u64 = target.root.len;
+                for (target.buildDependencies()) |dep| {
+                    if (dep.on_target != target) {
+                        len = @max(len, dependencyMaxRootWidth(dep.on_target));
                     }
                 }
                 return len;
             }
             pub fn builderCommandNotice(builder: *Builder, show_root: bool, show_descr: bool, show_deps: bool) void {
                 @setRuntimeSafety(false);
-                const alignment: u64 = 8;
                 var buf0: [1024 * 1024]u8 = undefined;
                 var buf1: [32768]u8 = undefined;
                 var len: u64 = 0;
@@ -1389,16 +1423,22 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         continue;
                     }
                     for (group.targets()) |target| {
-                        name_max_width = @max(name_max_width, dependencyMaxWidth(target, 2));
+                        name_max_width = @max(
+                            name_max_width,
+                            dependencyMaxNameWidth(target, 2),
+                        );
                         if (show_root) {
-                            root_max_width = @max(root_max_width, target.root.len);
+                            root_max_width = @max(
+                                root_max_width,
+                                dependencyMaxRootWidth(target),
+                            );
                         }
                     }
                 }
-                name_max_width +%= alignment;
-                root_max_width +%= alignment;
-                name_max_width &= ~(alignment -% 1);
-                root_max_width &= ~(alignment -% 1);
+                name_max_width +%= 4;
+                root_max_width +%= 4;
+                name_max_width &= ~@as(u64, 3);
+                root_max_width &= ~@as(u64, 3);
                 mach.memset(&buf1, ' ', 4);
                 for (builder.groups()) |group| {
                     if (group.hidden) {
@@ -1430,9 +1470,14 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                             }
                         }
                         if (show_deps) {
-                            @ptrCast(*[4]u8, buf0[len..].ptr).* = "\x1b[2m".*;
-                            len +%= 4;
-                            len = writeAndWalkInternal(&buf0, len, &buf1, 8, target);
+                            @ptrCast(*[4]u8, buf0[len..].ptr).* = about_faint_s.*;
+                            len +%= about_faint_s.len;
+                            len = writeAndWalkInternal(&buf0, len, &buf1, 8, target, &.{
+                                .show_descr = show_descr,
+                                .show_root = show_root,
+                                .name_max_width = name_max_width,
+                                .root_max_width = root_max_width,
+                            });
                             @ptrCast(*[4]u8, buf0[len..].ptr).* = about_reset_s.*;
                             len +%= about_reset_s.len;
                         } else {
@@ -1450,8 +1495,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     @ptrCast(*@TypeOf(about_bold_s.*), buf + len).* = about_bold_s.*;
                     len +%= about_bold_s.len;
                 } else if (about_s.ptr == about_note_s) {
-                    @ptrCast(*@TypeOf(about_faint_s.*), buf + len).* = about_faint_s.*;
-                    len +%= about_faint_s.len;
+                    @ptrCast(*@TypeOf(about_grey_s.*), buf + len).* = about_grey_s.*;
+                    len +%= about_grey_s.len;
                 }
                 mach.memcpy(buf + len, about_s.ptr, about_s.len);
                 len +%= about_s.len;
@@ -1464,8 +1509,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 @setRuntimeSafety(false);
                 const err: *types.ErrorMessage = @ptrCast(*types.ErrorMessage, extra + err_msg_idx);
                 const src: *types.SourceLocation = @ptrCast(*types.SourceLocation, extra + err.src_loc);
-                var len: u64 = 4;
-                @ptrCast(*[4]u8, buf).* = "\x1b[1m".*;
+                var len: u64 = about_bold_s.len;
+                @ptrCast(*[4]u8, buf).* = about_bold_s.*;
                 if (err.src_loc != 0) {
                     len +%= writeSourceLocation(
                         buf + len,
@@ -1525,13 +1570,16 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             fn writeTimes(buf: [*]u8, count: u64) u64 {
                 @setRuntimeSafety(false);
                 const count_s: []const u8 = builtin.fmt.ud64(count).readAll();
-                @ptrCast(*[6]u8, buf).* = "\x1b[2m (".*;
-                var len: u64 = 6;
+                @ptrCast(*[4]u8, buf - 1).* = about_faint_s.*;
+                var len: u64 = about_faint_s.len -% 1;
+                @ptrCast(*[2]u8, buf + len).* = " (".*;
+                len +%= 2;
                 mach.memcpy(buf + len, count_s.ptr, count_s.len);
                 len +%= count_s.len;
-                @ptrCast(*[12]u8, buf).* = " times)\x1b[0m\n".*;
-                len +%= 12;
-                return len;
+                mach.memcpy(buf + len, " times)", 7);
+                len +%= 7;
+                @ptrCast(*[5]u8, buf + len).* = about_new_s.*;
+                return len +% 5;
             }
             fn writeCaret(buf: [*]u8, bytes: [*:0]u8, src: *types.SourceLocation) u64 {
                 @setRuntimeSafety(false);
@@ -1658,25 +1706,20 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             try meta.wrap(file.writeOne(builder_spec.write3(), fd, record));
             try meta.wrap(file.close(builder_spec.close(), fd));
         }
-        inline fn writeEnv(env_fd: u64, zig_exe: []const u8, build_root: []const u8, cache_root: []const u8, global_cache_root: []const u8) void {
+        fn writeEnv(env_fd: u64, zig_exe: []const u8, build_root: []const u8, cache_root: []const u8, global_cache_root: []const u8) void {
             var buf: [4096 *% 8]u8 = undefined;
             var len: u64 = 0;
-            @ptrCast(*[35]u8, &buf).* = "pub const zig_exe: [:0]const u8 = \"".*;
-            len +%= 35;
-            mach.memcpy(buf[len..].ptr, zig_exe.ptr, zig_exe.len);
-            len +%= zig_exe.len;
-            @ptrCast(*[41]u8, buf[len..].ptr).* = "\";\npub const build_root: [:0]const u8 = \"".*;
-            len +%= 41;
-            mach.memcpy(buf[len..].ptr, build_root.ptr, build_root.len);
-            len +%= build_root.len;
-            @ptrCast(*[41]u8, buf[len..].ptr).* = "\";\npub const cache_root: [:0]const u8 = \"".*;
-            len +%= 41;
-            mach.memcpy(buf[len..].ptr, cache_root.ptr, cache_root.len);
-            len +%= cache_root.len;
-            @ptrCast(*[48]u8, buf[len..].ptr).* = "\";\npub const global_cache_root: [:0]const u8 = \"".*;
-            len +%= 48;
-            mach.memcpy(buf[len..].ptr, global_cache_root.ptr, global_cache_root.len);
-            len +%= global_cache_root.len;
+            for ([_][]const u8{
+                "pub const zig_exe: [:0]const u8 = \"",         "\";\npub const build_root: [:0]const u8 = \"",
+                "\";\npub const cache_root: [:0]const u8 = \"", "\";\npub const global_cache_root: [:0]const u8 = \"",
+            }, [_][]const u8{
+                zig_exe, build_root, cache_root, global_cache_root,
+            }) |decl, value| {
+                mach.memcpy(buf[len..].ptr, decl.ptr, decl.len);
+                len +%= decl.len;
+                mach.memcpy(buf[len..].ptr, value.ptr, value.len);
+                len +%= value.len;
+            }
             @ptrCast(*[3]u8, buf[len..].ptr).* = "\";\n".*;
             len +%= 3;
             try meta.wrap(file.write(builder_spec.write(), env_fd, buf[0..len]));
