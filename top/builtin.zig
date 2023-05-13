@@ -1,4 +1,5 @@
 pub const mach = @import("./mach.zig");
+pub const math = @import("./math.zig");
 pub const config = @import("./config.zig");
 pub usingnamespace config;
 pub const Error = error{
@@ -1988,7 +1989,7 @@ pub const fmt = struct {
     }
     pub fn bin(comptime Int: type, value: Int) StaticString(Int, 2) {
         const Array = StaticString(Int, 2);
-        const Abs = Absolute(Int);
+        const Abs = math.Absolute(Int);
         var array: Array = undefined;
         array.len = array.auto.len;
         if (value == 0) {
@@ -1999,7 +2000,7 @@ pub const fmt = struct {
             array.writeOneBackwards('0');
             return array;
         }
-        var abs_value: Abs = absoluteValue(Int, Abs, value);
+        var abs_value: Abs = math.absoluteVal(Int, value);
         while (abs_value != 0) : (abs_value /= 2) {
             array.writeOneBackwards(toSymbol(Abs, abs_value, 2));
         }
@@ -2015,7 +2016,7 @@ pub const fmt = struct {
     }
     pub fn oct(comptime Int: type, value: Int) StaticString(Int, 8) {
         const Array = StaticString(Int, 8);
-        const Abs = Absolute(Int);
+        const Abs = math.Absolute(Int);
         var array: Array = undefined;
         array.len = array.auto.len;
         if (value == 0) {
@@ -2024,7 +2025,7 @@ pub const fmt = struct {
             array.writeOneBackwards('0');
             return array;
         }
-        var abs_value: Abs = absoluteValue(Int, Abs, value);
+        var abs_value: Abs = math.absoluteVal(Int, Abs, value);
         while (abs_value != 0) : (abs_value /= 8) {
             array.writeOneBackwards(toSymbol(Abs, abs_value, 8));
         }
@@ -2037,14 +2038,14 @@ pub const fmt = struct {
     }
     pub fn dec(comptime Int: type, value: Int) StaticString(Int, 10) {
         const Array = StaticString(Int, 10);
-        const Abs = Absolute(Int);
+        const Abs = math.Absolute(Int);
         var array: Array = undefined;
         array.len = array.auto.len;
         if (value == 0) {
             array.writeOneBackwards('0');
             return array;
         }
-        var abs_value: Abs = absoluteValue(Int, Abs, value);
+        var abs_value: Abs = math.absoluteVal(value);
         while (abs_value != 0) : (abs_value /= 10) {
             array.writeOneBackwards(toSymbol(Abs, abs_value, 10));
         }
@@ -2055,7 +2056,7 @@ pub const fmt = struct {
     }
     pub fn hex(comptime Int: type, value: Int) StaticString(Int, 16) {
         const Array = StaticString(Int, 16);
-        const Abs = Absolute(Int);
+        const Abs = math.Absolute(Int);
         var array: Array = undefined;
         array.len = array.auto.len;
         if (value == 0) {
@@ -2064,7 +2065,7 @@ pub const fmt = struct {
             array.writeOneBackwards('0');
             return array;
         }
-        var abs_value: Abs = absoluteValue(Int, Abs, value);
+        var abs_value: Abs = math.absoluteVal(value);
         while (abs_value != 0) : (abs_value /= 16) {
             array.writeOneBackwards(toSymbol(Abs, abs_value, 16));
         }
@@ -2202,21 +2203,6 @@ pub const fmt = struct {
             ret.writeOneBackwards('0');
         }
         return ret;
-    }
-    fn Absolute(comptime Int: type) type {
-        return @Type(.{ .Int = .{
-            .bits = @max(@bitSizeOf(Int), 8),
-            .signedness = .unsigned,
-        } });
-    }
-    fn Real(comptime Int: type) type {
-        return @Type(.{ .Int = .{
-            .bits = @max(@bitSizeOf(Int), 8),
-            .signedness = @typeInfo(Int).Int.signedness,
-        } });
-    }
-    fn absoluteValue(comptime Int: type, comptime Abs: type, i: Real(Int)) Abs {
-        return if (i < 0) 1 +% ~@bitCast(Abs, i) else @bitCast(Abs, i);
     }
     fn maxSigFig(comptime T: type, radix: u16) u16 {
         const U = @Type(.{ .Int = .{ .bits = @bitSizeOf(T), .signedness = .unsigned } });
