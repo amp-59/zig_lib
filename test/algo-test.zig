@@ -8,6 +8,7 @@ const algo = top.algo;
 const file = top.file;
 const time = top.time;
 const spec = top.spec;
+const crypto = top.crypto;
 const builtin = top.builtin;
 const testing = top.testing;
 
@@ -50,7 +51,7 @@ fn compareSorts() !void {
     try mem.map(.{ .options = .{} }, size + size, size);
 
     const rnbuf: []u8 = @intToPtr([*]u8, size)[0..size];
-    try file.readRandom(rnbuf);
+    crypto.random.bytes(rnbuf);
 
     const values_1 = @intToPtr([*]T, size)[0..(size / @sizeOf(T))];
     const values_2 = @intToPtr([*]T, size + size)[0..(size / @sizeOf(T))];

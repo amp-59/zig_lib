@@ -1542,8 +1542,8 @@ pub const writeIntBig = switch (builtin.config.native_endian) {
     .Big => writeIntNative,
 };
 pub const writeIntLittle = switch (builtin.config.native_endian) {
-    .Little => writeIntForeign,
-    .Big => writeIntNative,
+    .Little => writeIntNative,
+    .Big => writeIntForeign,
 };
 pub fn writeInt(comptime T: type, buffer: *[@divExact(@typeInfo(T).Int.bits, 8)]u8, value: T, endian: builtin.Endian) void {
     if (endian == builtin.config.native_endian) {
