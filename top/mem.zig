@@ -787,7 +787,6 @@ pub const debug = opaque {
     const about_advice_1_s: [:0]const u8 = builtin.fmt.about("advice-error");
     const about_protect_0_s: [:0]const u8 = builtin.fmt.about("protect");
     const about_protect_1_s: [:0]const u8 = builtin.fmt.about("protect-error");
-
     pub fn mapNotice(addr: u64, len: u64) void {
         var buf: [4096]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
@@ -1510,20 +1509,7 @@ pub fn readAfterLastEqualOneOrElseWithSentinel(
 ) [:sentinel]const T {
     return readAfterLastEqualOneWithSentinel(T, sentinel, value, values) orelse values;
 }
-pub fn writeIntNative(comptime T: type, buf: *[(@typeInfo(T).Int.bits + 7) / 8]u8, value: T) void {
-    @ptrCast(*align(1) T, buf).* = value;
-}
-pub fn writeIntForeign(comptime T: type, buf: *[@divExact(@typeInfo(T).Int.bits, 8)]u8, value: T) void {
-    writeIntNative(T, buf, @byteSwap(value));
-}
-pub const writeIntBig = switch (builtin.config.native_endian) {
-    .Little => writeIntForeign,
-    .Big => writeIntNative,
-};
-pub const writeIntLittle = switch (builtin.config.native_endian) {
-    .Little => writeIntForeign,
-    .Big => writeIntNative,
-};
+
 pub fn readIntNative(comptime T: type, bytes: *const [@divExact(@typeInfo(T).Int.bits, 8)]u8) T {
     return @ptrCast(*align(1) const T, bytes).*;
 }
@@ -1538,10 +1524,56 @@ pub const readIntBig = switch (builtin.config.native_endian) {
     .Little => readIntForeign,
     .Big => readIntNative,
 };
+pub fn readInt(comptime T: type, bytes: *const [@divExact(@typeInfo(T).Int.bits, 8)]u8, endian: builtin.Endian) T {
+    if (endian == builtin.config.native_endian) {
+        return readIntNative(T, bytes);
+    } else {
+        return readIntForeign(T, bytes);
+    }
+}
+pub fn writeIntNative(comptime T: type, buf: *[(@typeInfo(T).Int.bits + 7) / 8]u8, value: T) void {
+    @ptrCast(*align(1) T, buf).* = value;
+}
+pub fn writeIntForeign(comptime T: type, buf: *[@divExact(@typeInfo(T).Int.bits, 8)]u8, value: T) void {
+    writeIntNative(T, buf, @byteSwap(value));
+}
+pub const writeIntBig = switch (builtin.config.native_endian) {
+    .Little => writeIntForeign,
+    .Big => writeIntNative,
+};
+pub const writeIntLittle = switch (builtin.config.native_endian) {
+    .Little => writeIntForeign,
+    .Big => writeIntNative,
+};
+pub fn writeInt(comptime T: type, buffer: *[@divExact(@typeInfo(T).Int.bits, 8)]u8, value: T, endian: builtin.Endian) void {
+    if (endian == builtin.config.native_endian) {
+        return writeIntNative(T, buffer, value);
+    } else {
+        return writeIntForeign(T, buffer, value);
+    }
+}
 pub fn nativeTo(comptime T: type, x: T, desired_endianness: builtin.Endian) T {
     return switch (desired_endianness) {
         .Little => nativeToLittle(T, x),
         .Big => nativeToBig(T, x),
+    };
+}
+pub fn littleToNative(comptime T: type, x: T) T {
+    return switch (builtin.config.native_endian) {
+        .Little => x,
+        .Big => @byteSwap(x),
+    };
+}
+pub fn bigToNative(comptime T: type, x: T) T {
+    return switch (builtin.config.native_endian) {
+        .Little => @byteSwap(x),
+        .Big => x,
+    };
+}
+pub fn toNative(comptime T: type, x: T, endianness_of_x: builtin.Endian) T {
+    return switch (endianness_of_x) {
+        .Little => littleToNative(T, x),
+        .Big => bigToNative(T, x),
     };
 }
 pub fn nativeToLittle(comptime T: type, x: T) T {
@@ -1556,6 +1588,22 @@ pub fn nativeToBig(comptime T: type, x: T) T {
         .Big => x,
     };
 }
+pub fn readIntSliceNative(comptime T: type, bytes: []const u8) T {
+    const n = @divExact(@typeInfo(T).Int.bits, 8);
+    builtin.assert(bytes.len >= n);
+    return readIntNative(T, bytes[0..n]);
+}
+pub fn readIntSliceForeign(comptime T: type, bytes: []const u8) T {
+    return @byteSwap(readIntSliceNative(T, bytes));
+}
+pub const readIntSliceLittle = switch (builtin.config.native_endian) {
+    .Little => readIntSliceNative,
+    .Big => readIntSliceForeign,
+};
+pub const readIntSliceBig = switch (builtin.config.native_endian) {
+    .Little => readIntSliceForeign,
+    .Big => readIntSliceNative,
+};
 fn AsBytesReturnType(comptime P: type) type {
     const type_info: builtin.Type = @typeInfo(P);
     if (type_info.Pointer.size != .One) {
@@ -1580,6 +1628,7 @@ pub fn asBytes(ptr: anytype) AsBytesReturnType(@TypeOf(ptr)) {
     const T = AsBytesReturnType(@TypeOf(ptr));
     return @ptrCast(T, @alignCast(@typeInfo(T).Pointer.alignment, ptr));
 }
+pub const toBytes = meta.toBytes;
 
 pub fn propagateSearch(comptime T: type, arg1: []const T, arg2: []const T, index: u64) ?u64 {
     const needle: []const u8 = if (arg1.len < arg2.len) arg1 else arg2;
