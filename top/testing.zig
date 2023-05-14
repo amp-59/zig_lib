@@ -52,11 +52,15 @@ pub fn showSpecialCase(comptime T: type, arg1: []const T, arg2: []const T) void 
     var len: u64 = 0;
     len += arrayOfCharsWrite(buf[len..], arg1);
     len += arrayOfCharsWrite(buf[len..], arg2);
-    builtin.debug.write(buf[0..len]);
-    builtin.debug.write(arg1);
-    builtin.debug.write("\n");
-    builtin.debug.write(arg2);
-    builtin.debug.write("\n");
+    if (@inComptime()) {
+        @compileError(buf[0..len] ++ arg1 ++ "\n" ++ arg2 ++ "\n");
+    } else {
+        builtin.debug.write(buf[0..len]);
+        builtin.debug.write(arg1);
+        builtin.debug.write("\n");
+        builtin.debug.write(arg2);
+        builtin.debug.write("\n");
+    }
 }
 
 // Q: Why not put this in builtin, according to specification?
@@ -68,7 +72,7 @@ pub fn expectEqualMany(comptime T: type, arg1: []const T, arg2: []const T) built
         if (T == u8) {
             showSpecialCase(T, arg1, arg2);
         }
-        return error.UnexpectedValue;
+        return error.UnexpectedLength;
     }
     var i: u64 = 0;
     while (i != arg1.len) : (i += 1) {
