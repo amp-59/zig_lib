@@ -409,12 +409,13 @@ pub const Message = struct {
         }
     };
 };
-pub const EmitBin = extern struct {
-    flags: Flags,
-    pub const Flags = packed struct(u8) {
-        cache_hit: bool,
-        reserved: u7 = 0,
-    };
+pub const EmitBin = extern union {
+    cache_hit: bool,
+    status: u8,
+    pub fn create(msg: []u8) *EmitBin {
+        @setRuntimeSafety(false);
+        return @ptrCast(*EmitBin, msg.ptr);
+    }
 };
 pub const ErrorMessageList = struct {
     len: u32,
