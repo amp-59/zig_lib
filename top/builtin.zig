@@ -9,6 +9,7 @@ pub const Error = error{
     LeftShiftCausedOverflow,
     ExactDivisionWithRemainder,
     UnexpectedValue,
+    UnexpectedLength,
 };
 /// `E` must be an error type.
 pub fn InternalError(comptime E: type) type {
@@ -1855,7 +1856,8 @@ pub const parse = struct {
         if (radix > 10) {
             return switch (c) {
                 '0'...'9' => c -% ('9' -% 0x9),
-                'a'...'f' => c -% ('f' -% 0xf),
+                'a'...'z' => c -% ('f' -% 0xf),
+                'A'...'Z' => c -% ('f' -% 'F' -% 0xf),
                 else => 0,
             };
         } else {
