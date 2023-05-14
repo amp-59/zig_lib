@@ -19,7 +19,6 @@ fn testShl() !void {
     try builtin.expect(math.shl(@Vector(1, u32), @Vector(1, u32){42}, @as(isize, -1))[0] == @as(u32, 42) >> 1);
     try builtin.expect(math.shl(@Vector(1, u32), @Vector(1, u32){42}, 33)[0] == 0);
 }
-
 fn testShr() !void {
     try builtin.expect(math.shr(u8, 0b11111111, @as(usize, 3)) == 0b00011111);
     try builtin.expect(math.shr(u8, 0b11111111, @as(usize, 8)) == 0);

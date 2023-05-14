@@ -178,7 +178,11 @@ inline fn normalAddAssign(comptime T: type, arg1: *T, arg2: T) void {
 inline fn normalAddReturn(comptime T: type, arg1: T, arg2: T) T {
     const result: Overflow(T) = overflowingAddReturn(T, arg1, arg2);
     if (config.runtime_assertions and result[1] != 0) {
-        debug.addCausedOverflowFault(T, arg1, arg2);
+        if (@inComptime()) {
+            debug.static.addCausedOverflow(T, arg1, arg2);
+        } else {
+            debug.addCausedOverflowFault(T, arg1, arg2);
+        }
     }
     return result[0];
 }
@@ -188,7 +192,11 @@ inline fn normalSubAssign(comptime T: type, arg1: *T, arg2: T) void {
 inline fn normalSubReturn(comptime T: type, arg1: T, arg2: T) T {
     const result: Overflow(T) = overflowingSubReturn(T, arg1, arg2);
     if (config.runtime_assertions and result[1] != 0) {
-        debug.subCausedOverflowFault(T, arg1, arg2);
+        if (@inComptime()) {
+            debug.static.subCausedOverflow(T, arg1, arg2);
+        } else {
+            debug.subCausedOverflowFault(T, arg1, arg2);
+        }
     }
     return result[0];
 }
@@ -198,7 +206,11 @@ inline fn normalMulAssign(comptime T: type, arg1: *T, arg2: T) void {
 inline fn normalMulReturn(comptime T: type, arg1: T, arg2: T) T {
     const result: Overflow(T) = overflowingMulReturn(T, arg1, arg2);
     if (config.runtime_assertions and result[1] != 0) {
-        debug.mulCausedOverflowFault(T, arg1, arg2);
+        if (@inComptime()) {
+            debug.static.mulCausedOverflow(T, arg1, arg2);
+        } else {
+            debug.mulCausedOverflowFault(T, arg1, arg2);
+        }
     }
     return result[0];
 }
@@ -209,7 +221,11 @@ inline fn exactDivisionReturn(comptime T: type, arg1: T, arg2: T) T {
     const result: T = arg1 / arg2;
     const remainder: T = normalSubReturn(T, arg1, (result * arg2));
     if (config.runtime_assertions and remainder != 0) {
-        debug.exactDivisionWithRemainderFault(T, arg1, arg2, result, remainder);
+        if (@inComptime()) {
+            debug.static.exactDivisionWithRemainder(T, arg1, arg2, result, remainder);
+        } else {
+            debug.exactDivisionWithRemainderFault(T, arg1, arg2, result, remainder);
+        }
     }
     return result;
 }
@@ -722,37 +738,65 @@ pub fn testEqual(comptime T: type, arg1: T, arg2: T) bool {
 
 pub fn assert(b: bool) void {
     if (!b) {
-        debug.logFault("assertion failed\n");
+        if (@inComptime()) {
+            @compileError("assertion failed\n");
+        } else {
+            debug.logFault("assertion failed\n");
+        }
     }
 }
 pub fn assertBelow(comptime T: type, arg1: T, arg2: T) void {
     if (config.runtime_assertions and arg1 >= arg2) {
-        debug.comparisonFailedFault(T, " < ", arg1, arg2);
+        if (@inComptime()) {
+            debug.static.comparisonFailedFault(T, " < ", arg1, arg2);
+        } else {
+            debug.comparisonFailedFault(T, " < ", arg1, arg2);
+        }
     }
 }
 pub fn assertBelowOrEqual(comptime T: type, arg1: T, arg2: T) void {
     if (config.runtime_assertions and arg1 > arg2) {
-        debug.comparisonFailedFault(T, " <= ", arg1, arg2);
+        if (@inComptime()) {
+            debug.static.comparisonFailedFault(T, " <= ", arg1, arg2);
+        } else {
+            debug.comparisonFailedFault(T, " <= ", arg1, arg2);
+        }
     }
 }
 pub fn assertEqual(comptime T: type, arg1: T, arg2: T) void {
     if (config.runtime_assertions and !testEqual(T, arg1, arg2)) {
-        debug.comparisonFailedFault(T, " == ", arg1, arg2);
+        if (@inComptime()) {
+            debug.static.comparisonFailedFault(T, " == ", arg1, arg2);
+        } else {
+            debug.comparisonFailedFault(T, " == ", arg1, arg2);
+        }
     }
 }
 pub fn assertNotEqual(comptime T: type, arg1: T, arg2: T) void {
     if (config.runtime_assertions and testEqual(T, arg1, arg2)) {
-        debug.comparisonFailedFault(T, " != ", arg1, arg2);
+        if (@inComptime()) {
+            debug.static.comparisonFailedFault(T, " != ", arg1, arg2);
+        } else {
+            debug.comparisonFailedFault(T, " != ", arg1, arg2);
+        }
     }
 }
 pub fn assertAboveOrEqual(comptime T: type, arg1: T, arg2: T) void {
     if (config.runtime_assertions and arg1 < arg2) {
-        debug.comparisonFailedFault(T, " >= ", arg1, arg2);
+        if (@inComptime()) {
+            debug.static.comparisonFailedFault(T, " >= ", arg1, arg2);
+        } else {
+            debug.comparisonFailedFault(T, " >= ", arg1, arg2);
+        }
     }
 }
 pub fn assertAbove(comptime T: type, arg1: T, arg2: T) void {
     if (config.runtime_assertions and arg1 <= arg2) {
-        debug.comparisonFailedFault(T, " > ", arg1, arg2);
+        if (@inComptime()) {
+            debug.comparisonFailedFault(T, " > ", arg1, arg2);
+        } else {
+            debug.comparisonFailedFault(T, " > ", arg1, arg2);
+        }
     }
 }
 pub fn testEqualMemory(comptime T: type, arg1: T, arg2: T) bool {
@@ -2000,7 +2044,7 @@ pub const fmt = struct {
             array.writeOneBackwards('0');
             return array;
         }
-        var abs_value: Abs = math.absoluteVal(Int, value);
+        var abs_value: Abs = math.absoluteVal(value);
         while (abs_value != 0) : (abs_value /= 2) {
             array.writeOneBackwards(toSymbol(Abs, abs_value, 2));
         }
@@ -2025,7 +2069,7 @@ pub const fmt = struct {
             array.writeOneBackwards('0');
             return array;
         }
-        var abs_value: Abs = math.absoluteVal(Int, Abs, value);
+        var abs_value: Abs = math.absoluteVal(value);
         while (abs_value != 0) : (abs_value /= 8) {
             array.writeOneBackwards(toSymbol(Abs, abs_value, 8));
         }
