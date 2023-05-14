@@ -19,6 +19,7 @@ pub const Kind = enum(u4) {
     symbolic_link = MODE.IFLNKR,
     const MODE = sys.S;
 };
+
 pub const Open = struct {
     pub const Options = meta.EnumBitField(enum(u64) {
         no_cache = OPEN.DIRECT,
@@ -41,6 +42,12 @@ pub const Open = struct {
         data_sync = OPEN.DSYNC,
         const OPEN = sys.O;
     });
+};
+pub const Whence = enum(u64) {
+    set = SEEK.SET,
+    cur = SEEK.CUR,
+    end = SEEK.END,
+    const SEEK = sys.SEEK;
 };
 pub const ReadWrite = meta.EnumBitField(enum(u64) {
     append = RWF.APPEND,
@@ -428,6 +435,11 @@ pub const WriteSpec = struct {
     child: type = u8,
     return_type: type = void,
     errors: sys.ErrorPolicy = .{ .throw = sys.write_errors },
+    logging: builtin.Logging.SuccessError = .{},
+};
+const SeekSpec = struct {
+    errors: sys.ErrorPolicy = .{ .throw = sys.seek_errors },
+    return_type: type = u64,
     logging: builtin.Logging.SuccessError = .{},
 };
 pub const ReadExtraSpec = struct {
@@ -1231,10 +1243,10 @@ pub fn indexOfBasenameStart(pathname: []const u8) u64 {
     const index: u64 = pathnameLimit(pathname);
     return index +% builtin.int(u64, pathname[index] == '/');
 }
-pub fn dirname(pathname: []const u8) []const u8 {
+pub fn dirname(pathname: [:0]const u8) []const u8 {
     return pathname[0..indexOfDirnameFinish(pathname)];
 }
-pub fn basename(pathname: []const u8) []const u8 {
+pub fn basename(pathname: [:0]const u8) [:0]const u8 {
     return pathname[indexOfBasenameStart(pathname)..];
 }
 pub fn path(comptime spec: PathSpec, pathname: [:0]const u8) sys.ErrorUnion(spec.errors, spec.return_type) {
