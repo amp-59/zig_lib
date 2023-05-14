@@ -1616,30 +1616,44 @@ pub fn map(comptime spec: MapSpec, addr: u64, fd: u64) sys.ErrorUnion(spec.error
         return map_error;
     }
 }
-pub fn truncate(comptime spec: TruncateSpec, pathname: [:0]const u8, offset: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
+pub fn seek(comptime seek_spec: SeekSpec, fd: u64, offset: u64, whence: Whence) sys.ErrorUnion(seek_spec.errors, seek_spec.return_type) {
+    const logging: builtin.Logging.SuccessError = comptime seek_spec.logging.override();
+    if (meta.wrap(sys.call(.lseek, seek_spec.errors, seek_spec.return_type, .{ fd, offset, @enumToInt(whence) }))) |ret| {
+        if (logging.Success) {
+            debug.seekNotice(fd, offset, whence, ret);
+        }
+        return ret;
+    } else |seek_error| {
+        if (logging.Error) {
+            debug.seekError(seek_error, fd, offset, whence);
+        }
+        return seek_error;
+    }
+}
+pub fn pathTruncate(comptime spec: TruncateSpec, pathname: [:0]const u8, offset: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
     const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.truncate, spec.errors, spec.return_type, .{ pathname, offset }))) |ret| {
         if (logging.Success) {
-            debug.truncateNotice(pathname, offset);
+            debug.pathTruncateNotice(pathname, offset);
         }
         return ret;
     } else |truncate_error| {
         if (logging.Error) {
-            debug.ftruncateError(truncate_error, pathname, offset);
+            debug.pathTruncateError(truncate_error, pathname, offset);
         }
         return truncate_error;
     }
 }
-pub fn ftruncate(comptime spec: TruncateSpec, fd: u64, offset: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
+pub fn truncate(comptime spec: TruncateSpec, fd: u64, offset: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
     const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.ftruncate, spec.errors, spec.return_type, .{ fd, offset }))) |ret| {
         if (logging.Success) {
-            debug.ftruncateNotice(fd, offset);
+            debug.truncateNotice(fd, offset);
         }
         return ret;
     } else |truncate_error| {
         if (logging.Error) {
-            debug.ftruncateError(truncate_error, fd, offset);
+            debug.truncateError(truncate_error, fd, offset);
         }
         return truncate_error;
     }
@@ -1976,6 +1990,8 @@ const debug = opaque {
     const about_pipe_1_s: [:0]const u8 = builtin.fmt.about("pipe-error");
     const about_poll_0_s: [:0]const u8 = builtin.fmt.about("poll");
     const about_poll_1_s: [:0]const u8 = builtin.fmt.about("poll-error");
+    const about_seek_0_s: [:0]const u8 = builtin.fmt.about("seek");
+    const about_seek_1_s: [:0]const u8 = builtin.fmt.about("seek-error");
     const about_close_0_s: [:0]const u8 = builtin.fmt.about("close");
     const about_close_1_s: [:0]const u8 = builtin.fmt.about("close-error");
     const about_mkdir_0_s: [:0]const u8 = builtin.fmt.about("mkdir");
@@ -2101,16 +2117,23 @@ const debug = opaque {
         var buf: [32768]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_getcwd_0_s, pathname, "\n" });
     }
-    fn truncateNotice(pathname: [:0]const u8, offset: u64) void {
+    fn pathTruncateNotice(pathname: [:0]const u8, offset: u64) void {
         const offset_s: []const u8 = builtin.fmt.ud64(offset).readAll();
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_truncate_1_s, pathname, ", offset=", offset_s, "\n" });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_truncate_0_s, pathname, ", offset=", offset_s, "\n" });
     }
-    fn ftruncateNotice(fd: u64, offset: u64) void {
+    fn truncateNotice(fd: u64, offset: u64) void {
         const fd_s: []const u8 = builtin.fmt.ud64(fd).readAll();
         const offset_s: []const u8 = builtin.fmt.ud64(offset).readAll();
         var buf: [32768]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_truncate_0_s, "fd=", fd_s, ", offset=", offset_s, "\n" });
+    }
+    fn seekNotice(fd: u64, offset: u64, whence: Whence, to: u64) void {
+        const fd_s: []const u8 = builtin.fmt.ud64(fd).readAll();
+        const offset_s: []const u8 = builtin.fmt.ud64(offset).readAll();
+        const to_s: []const u8 = builtin.fmt.ud64(to).readAll();
+        var buf: [32768]u8 = undefined;
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_seek_0_s, "fd=", fd_s, ", cur=", to_s, ", ", @tagName(whence), "+", offset_s, "\n" });
     }
     fn pollNotice(pollfds: []PollFd, timeout: u64) void {
         const fds_len_s: []const u8 = builtin.fmt.ud64(pollfds.len).readAll();
@@ -2215,16 +2238,22 @@ const debug = opaque {
         var buf: [32768]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_socket_1_s, @tagName(dom), ", ", @tagName(conn), " (", @errorName(socket_error), ")\n" });
     }
-    fn truncateError(truncate_error: anytype, pathname: [:0]const u8, offset: u64) void {
+    fn pathTruncateError(truncate_error: anytype, pathname: [:0]const u8, offset: u64) void {
         const offset_s: []const u8 = builtin.fmt.ud64(offset).readAll();
         var buf: [32768]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_truncate_1_s, pathname, ", offset=", offset_s, " (", @errorName(truncate_error), ")\n" });
     }
-    fn ftruncateError(truncate_error: anytype, fd: u64, offset: u64) void {
+    fn truncateError(truncate_error: anytype, fd: u64, offset: u64) void {
         const fd_s: []const u8 = builtin.fmt.ud64(fd).readAll();
         const offset_s: []const u8 = builtin.fmt.ud64(offset).readAll();
         var buf: [32768]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_truncate_1_s, "fd=", fd_s, ", offset=", offset_s, " (", @errorName(truncate_error), ")\n" });
+    }
+    fn seekError(seek_error: anytype, fd: u64, offset: u64, whence: Whence) void {
+        const fd_s: []const u8 = builtin.fmt.ud64(fd).readAll();
+        const offset_s: []const u8 = builtin.fmt.ud64(offset).readAll();
+        var buf: [32768]u8 = undefined;
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_truncate_0_s, "fd=", fd_s, " => ", @tagName(whence), ", offset=", offset_s, " (", @errorName(seek_error), ")\n" });
     }
     fn listenError(listen_error: anytype, sock_fd: u64, backlog: u64) void {
         const sock_fd_s: []const u8 = builtin.fmt.ud64(sock_fd).readAll();
