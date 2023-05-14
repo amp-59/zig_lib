@@ -1893,6 +1893,7 @@ pub const Fn = enum(u9) {
             .open_by_handle_at,
             .poll,
             .bind,
+            .lseek,
             => 3,
 
             .newfstatat,
@@ -2036,6 +2037,7 @@ pub const mmap_errors: []const ErrorCode = &[_]ErrorCode{
     .PERM,  .TXTBSY,
 };
 pub const memfd_create_errors: []const ErrorCode = &[_]ErrorCode{ .FAULT, .INVAL, .MFILE, .NOMEM };
+pub const seek_errors: []const ErrorCode = &[_]ErrorCode{ .BADF, .NXIO, .OVERFLOW, .SPIPE };
 pub const truncate_errors: []const ErrorCode = &[_]ErrorCode{
     .ACCES,  .FAULT, .FBIG, .INTR,   .IO,   .ISDIR, .LOOP, .NAMETOOLONG,
     .NOTDIR, .PERM,  .ROFS, .TXTBSY, .BADF, .INVAL,
