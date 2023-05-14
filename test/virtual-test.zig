@@ -144,7 +144,7 @@ fn testDiscreteAddressSpace(comptime list: anytype) !void {
 fn testDiscreteSubSpaceFromDiscrete(comptime sup_spec: virtual.DiscreteAddressSpaceSpec, comptime sub_spec: virtual.DiscreteAddressSpaceSpec) !void {
     const AddressSpace = comptime blk: {
         var tmp = sup_spec;
-        tmp.subspace = meta.slice(meta.Generic, .{virtual.generic(sub_spec)});
+        tmp.subspace = &[_]meta.Generic{virtual.generic(sub_spec)};
         break :blk virtual.GenericDiscreteAddressSpace(tmp);
     };
     const SubAddressSpace = AddressSpace.SubSpace(0);
@@ -211,12 +211,12 @@ pub fn main() !void {
     try meta.wrap(testDiscreteAddressSpace(simple_list));
     try meta.wrap(testRegularAddressSubSpaceFromDiscrete(.{
         .list = complex_list,
-        .subspace = meta.slice(meta.Generic, .{virtual.generic(.{
+        .subspace = &[_]meta.Generic{virtual.generic(.{
             .lb_addr = complex_list[34].lb_addr,
             .up_addr = complex_list[42].up_addr,
             .divisions = 16,
             .options = .{ .thread_safe = true },
-        })}),
+        })},
     }));
     try meta.wrap(testDiscreteSubSpaceFromDiscrete(.{ .list = simple_list }, .{ .list = rare_sub_list }));
 }
