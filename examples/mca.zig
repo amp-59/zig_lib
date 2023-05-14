@@ -312,9 +312,9 @@ const Options = struct {
 
     const about_output_s: []const u8 = "write output to pathname";
 };
-const opt_map: []const Options.Map = meta.slice(Options.Map, .{
+const opt_map: []const Options.Map = &[_]Options.Map{
     .{ .field_name = "output", .long = "--output", .short = "-o", .assign = .{ .argument = "pathname" }, .descr = Options.about_output_s },
-});
+};
 
 pub fn main(args_in: [][*:0]u8) anyerror!void {
     var args: [][*:0]u8 = args_in;
