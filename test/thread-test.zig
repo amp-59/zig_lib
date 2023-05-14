@@ -18,7 +18,7 @@ pub usingnamespace proc.start;
 pub const logging_override: builtin.Logging.Override = spec.logging.override.verbose;
 pub const runtime_assertions: bool = true;
 
-const discrete_list: []const mem.Arena = meta.slice(mem.Arena, .{
+const discrete_list: []const mem.Arena = &.{
     .{ .lb_addr = 0x00040000000, .up_addr = 0x10000000000 },
     .{ .lb_addr = 0x10000000000, .up_addr = 0x20000000000 },
     .{ .lb_addr = 0x20000000000, .up_addr = 0x30000000000 },
@@ -28,8 +28,8 @@ const discrete_list: []const mem.Arena = meta.slice(mem.Arena, .{
     .{ .lb_addr = 0x60000000000, .up_addr = 0x70000000000 },
     .{ .lb_addr = 0x70000000000, .up_addr = 0x80000000000 },
     .{ .lb_addr = 0x80000000000, .up_addr = 0x90000000000 },
-});
-const list: []const mem.Arena = meta.slice(mem.Arena, .{
+};
+const list: []const mem.Arena = &.{
     .{ .lb_addr = 0x10000000000, .up_addr = 0x10100000000, .options = .{ .thread_safe = true } },
     .{ .lb_addr = 0x10100000000, .up_addr = 0x10200000000, .options = .{ .thread_safe = true } },
     .{ .lb_addr = 0x10200000000, .up_addr = 0x10300000000, .options = .{ .thread_safe = true } },
@@ -46,7 +46,7 @@ const list: []const mem.Arena = meta.slice(mem.Arena, .{
     .{ .lb_addr = 0x40100000000, .up_addr = 0x40200000000, .options = .{ .thread_safe = true } },
     .{ .lb_addr = 0x40200000000, .up_addr = 0x40300000000, .options = .{ .thread_safe = true } },
     .{ .lb_addr = 0x40300000000, .up_addr = 0x40400000000, .options = .{ .thread_safe = true } },
-});
+};
 
 const PrintArray = mem.StaticString(4096);
 const three_state: type = enum(u8) {
@@ -59,14 +59,14 @@ fn testThreadSafeRegular() !void {
     const AddressSpace = mem.GenericDiscreteAddressSpace(.{
         .label = "super",
         .list = discrete_list,
-        .subspace = meta.slice(meta.Generic, .{virtual.generic(.{
+        .subspace = &[_]meta.Generic{virtual.generic(.{
             .label = "thread",
             .val_type = three_state,
             .lb_addr = 0x10000000000,
             .up_addr = 0x40400000000,
             .divisions = 16,
             .options = .{ .thread_safe = true },
-        })}),
+        })},
     });
     const ThreadSpace = AddressSpace.SubSpace(0);
     var thread_space: ThreadSpace = .{};
@@ -87,11 +87,11 @@ fn testThreadSafeDiscrete() !void {
     const AddressSpace = mem.GenericDiscreteAddressSpace(.{
         .label = "super",
         .list = discrete_list,
-        .subspace = meta.slice(meta.Generic, .{virtual.generic(.{
+        .subspace = &[_]meta.Generic{virtual.generic(.{
             .label = "thread",
             .val_type = three_state,
             .list = list,
-        })}),
+        })},
     });
     const ThreadSpace = AddressSpace.SubSpace(0);
     var thread_space: ThreadSpace = .{};
