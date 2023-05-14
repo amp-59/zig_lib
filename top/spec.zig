@@ -25,7 +25,7 @@ pub const address_space = struct {
         .divisions = 128,
     });
     pub const exact_8 = zig_lib.mem.GenericDiscreteAddressSpace(.{
-        .list = zig_lib.meta.slice(zig_lib.mem.Arena, .{
+        .list = &[_]zig_lib.mem.Arena{
             .{ .lb_addr = 0x00040000000, .up_addr = 0x10000000000 },
             .{ .lb_addr = 0x10000000000, .up_addr = 0x20000000000 },
             .{ .lb_addr = 0x20000000000, .up_addr = 0x30000000000 },
@@ -34,7 +34,7 @@ pub const address_space = struct {
             .{ .lb_addr = 0x50000000000, .up_addr = 0x60000000000 },
             .{ .lb_addr = 0x60000000000, .up_addr = 0x70000000000 },
             .{ .lb_addr = 0x70000000000, .up_addr = 0x80000000000 },
-        }),
+        },
     });
     pub const logging = struct {
         pub const verbose: zig_lib.mem.AddressSpaceLogging = .{
