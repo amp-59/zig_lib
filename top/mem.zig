@@ -1712,7 +1712,6 @@ pub const SimpleAllocator = struct {
         const ret_addr: u64 = allocator.reallocateInternal(@ptrToInt(buf.ptr), buf.len *% @sizeOf(T), count *% @sizeOf(T), align_of);
         return @intToPtr([*]align(align_of) T, ret_addr)[0..count];
     }
-
     pub inline fn deallocate(allocator: *Allocator, comptime T: type, buf: []T) void {
         allocator.deallocateInternal(@ptrToInt(buf.ptr), buf.len *% @sizeOf(T));
     }
@@ -1756,9 +1755,9 @@ pub const SimpleAllocator = struct {
         const aligned: u64 = alignAbove(start, align_of);
         const next: u64 = aligned +% size_of;
         if (next > allocator.finish) {
-            const new_finish: u64 = alignAbove(next, 4096);
-            map(noexcept, allocator.finish, allocator.finish -% new_finish);
-            allocator.finish = new_finish;
+            const finish: u64 = alignAbove(next, 4096);
+            map(noexcept, allocator.finish, allocator.finish -% finish);
+            allocator.finish = finish;
         }
         allocator.next = next;
         return aligned;
@@ -1774,9 +1773,9 @@ pub const SimpleAllocator = struct {
         const new_next: u64 = old_aligned +% new_size_of;
         if (allocator.next == old_next) {
             if (new_next > allocator.finish) {
-                const new_finish: u64 = alignAbove(new_next, 4096);
-                map(noexcept, allocator.finish, allocator.finish -% new_finish);
-                allocator.finish = new_finish;
+                const finish: u64 = alignAbove(new_next, 4096);
+                map(noexcept, allocator.finish, allocator.finish -% finish);
+                allocator.finish = finish;
             }
             allocator.next = new_next;
             return old_aligned;
