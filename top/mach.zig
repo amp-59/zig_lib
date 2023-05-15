@@ -461,6 +461,9 @@ pub inline fn mask8H(value: u64) u8 {
     return @truncate(u8, value >> 8);
 }
 inline fn shlx(comptime T: type, value: T, shift_amt: T) T {
+    if (@inComptime()) {
+        return value << shift_amt;
+    }
     return asm ("shlx" ++ switch (T) {
             u32 => "l",
             u64 => "q",
@@ -472,6 +475,9 @@ inline fn shlx(comptime T: type, value: T, shift_amt: T) T {
     );
 }
 inline fn shrx(comptime T: type, value: T, shift_amt: T) T {
+    if (@inComptime()) {
+        return value >> shift_amt;
+    }
     return asm ("shrx" ++ switch (T) {
             u32 => "l",
             u64 => "q",
