@@ -1685,6 +1685,8 @@ pub const SimpleAllocator = struct {
     finish: u64 = 0x40000000,
 
     const Allocator = @This();
+    pub const Save = struct { u64 };
+    const noexcept = .{ .errors = .{} };
 
     pub inline fn create(allocator: *Allocator, comptime T: type) *T {
         const ret_addr: u64 = allocator.allocateInternal(@sizeOf(T), @alignOf(T));
@@ -1707,31 +1709,23 @@ pub const SimpleAllocator = struct {
     pub inline fn restore(allocator: *Allocator, state: Save) void {
         allocator.next = state[0];
     }
-    pub inline fn restart(allocator: *Allocator) void {
+    pub inline fn discard(allocator: *Allocator) void {
+        allocator.next = allocator.start;
+    }
+    pub inline fn unmap(allocator: *Allocator) void {
+        sys.call(.munmap, .{}, void, .{ allocator.start, allocator.finish -% allocator.start });
         allocator.next = allocator.start;
         allocator.finish = allocator.start;
     }
-    pub fn unmap(allocator: *Allocator) void {
-        sys.call(.munmap, .{}, void, .{ allocator.start, allocator.finish - allocator.start });
-    }
-    pub const Save = struct { u64 };
-
-    // PROT_READ|PROT_WRITE
-    const flags: u64 = 0x1 | 0x2;
-    // MAP_PRIVATE|MAP_ANONYMOUS|MAP_FIXED_NOREPLACE
-    const prot: u64 = 0x20 | 0x02 | 0x100000;
-    const zero: u64 = 0;
-
     pub fn init(arena: mem.Arena) Allocator {
+        if (arena.options.require_map) {
+            map(noexcept, arena.lb_addr, 4096);
+        }
         return .{
             .start = arena.lb_addr,
             .next = arena.lb_addr,
-            .finish = if (arena.options.require_map) arena.lb_addr else arena.up_addr,
+            .finish = if (arena.options.require_map) arena.lb_addr +% 4096 else arena.up_addr,
         };
-    }
-    inline fn map(old_finish: u64, new_finish: u64) u64 {
-        sys.call(.mmap, .{}, void, .{ old_finish, new_finish -% old_finish, flags, prot, ~zero, zero });
-        return new_finish;
     }
     inline fn alignAbove(value: u64, alignment: u64) u64 {
         const mask: u64 = alignment -% 1;
@@ -1740,48 +1734,52 @@ pub const SimpleAllocator = struct {
     inline fn copy(dest: u64, src: u64, len: u64) void {
         mach.memcpy(@intToPtr([*]u8, dest), @intToPtr([*]const u8, src), len);
     }
-    export fn allocateInternal(
+    fn allocateInternal(
         allocator: *Allocator,
         size_of: u64,
         align_of: u64,
     ) u64 {
         const start: u64 = allocator.next;
         const aligned: u64 = alignAbove(start, align_of);
-        const finish: u64 = aligned +% size_of;
-        if (finish > allocator.finish) {
-            allocator.finish = Allocator.map(allocator.finish, alignAbove(finish, 4096));
+        const next: u64 = aligned +% size_of;
+        if (next > allocator.finish) {
+            const new_finish: u64 = alignAbove(next, 4096);
+            map(noexcept, allocator.finish, allocator.finish -% new_finish);
+            allocator.finish = new_finish;
         }
-        allocator.next = finish;
+        allocator.next = next;
         return aligned;
     }
-    export fn reallocateInternal(
+    fn reallocateInternal(
         allocator: *Allocator,
         old_aligned: u64,
         old_size_of: u64,
         new_size_of: u64,
         align_of: u64,
     ) u64 {
-        const old_finish: u64 = old_aligned +% old_size_of;
-        const new_finish: u64 = old_aligned +% new_size_of;
-        if (allocator.next == old_finish) {
-            if (new_finish > allocator.finish) {
-                allocator.finish = Allocator.map(allocator.finish, alignAbove(new_finish, 4096));
+        const old_next: u64 = old_aligned +% old_size_of;
+        const new_next: u64 = old_aligned +% new_size_of;
+        if (allocator.next == old_next) {
+            if (new_next > allocator.finish) {
+                const new_finish: u64 = alignAbove(new_next, 4096);
+                map(noexcept, allocator.finish, allocator.finish -% new_finish);
+                allocator.finish = new_finish;
             }
-            allocator.next = new_finish;
+            allocator.next = new_next;
             return old_aligned;
         }
         const new_aligned: u64 = allocator.allocateInternal(new_size_of, align_of);
         copy(new_aligned, old_aligned, old_size_of);
         return new_aligned;
     }
-    export fn deallocateInternal(
+    fn deallocateInternal(
         allocator: *Allocator,
         old_aligned: u64,
         old_size_of: u64,
     ) void {
-        const old_finish: u64 = old_aligned +% old_size_of;
-        if (allocator.next == old_finish) {
-            allocator.next = old_aligned;
+        const old_next: u64 = old_aligned +% old_size_of;
+        if (allocator.next == old_next) {
+            allocator.next = old_next;
         }
     }
 };

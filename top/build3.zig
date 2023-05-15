@@ -1133,7 +1133,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             return false;
         }
-        inline fn status(rc: u8) bool {
+        fn status(rc: u8) bool {
             return rc == builder_spec.options.compiler_cache_hit_status or
                 rc == builder_spec.options.compiler_expected_status or
                 rc == builder_spec.options.system_expected_status;
