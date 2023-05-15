@@ -110,9 +110,6 @@ pub fn untaggedActiveField(comptime value: anytype) builtin.Type.UnionField {
         }
     }
 }
-pub fn slice(comptime T: type, values: anytype) []const T {
-    return &@as([values.len]T, values);
-}
 /// A parceled value can be concatenated using `++`
 pub fn parcel(comptime T: type, arg: T) []const T {
     return &[1]T{arg};
