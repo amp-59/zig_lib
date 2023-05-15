@@ -1268,16 +1268,14 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 ptr[len] = '\n';
                 builtin.debug.write(ptr[0 .. len +% 1]);
             }
-            fn buildNotice(target: *const Target, durat: time.TimeSpec, old_size: u64, new_size: u64, rc: u8) void {
+            fn buildNotice(target: *const Target, working_time: time.TimeSpec, old_size: u64, new_size: u64, rc: u8) void {
                 @setRuntimeSafety(false);
                 const diff_size: u64 = @max(new_size, old_size) -% @min(new_size, old_size);
                 const new_size_s: []const u8 = builtin.fmt.ud64(new_size).readAll();
                 const old_size_s: []const u8 = builtin.fmt.ud64(old_size).readAll();
                 const diff_size_s: []const u8 = builtin.fmt.ud64(diff_size).readAll();
-                const sec_s: []const u8 = builtin.fmt.ud64(durat.sec).readAll();
-                const nsec_s: []const u8 = builtin.fmt.nsec(durat.nsec).readAll();
-                const fast_time: bool = durat.nsec < 45000000;
-                const cache_hit: bool = rc == builder_spec.options.compiler_cache_hit_status;
+                const sec_s: []const u8 = builtin.fmt.ud64(working_time.sec).readAll();
+                const nsec_s: []const u8 = builtin.fmt.nsec(working_time.nsec).readAll();
                 var buf: [32768]u8 = undefined;
                 var len: u64 = about_build_exe_s.len;
                 mach.memcpy(&buf, switch (target.cmds.build.?.kind) {
@@ -1285,7 +1283,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     .obj => about_build_obj_s,
                     .lib => about_build_lib_s,
                 }.ptr, len);
-                if (fast_time or cache_hit) {
+                if (rc == builder_spec.options.compiler_cache_hit_status or working_time.nsec < 45000000 and
+                    rc != builder_spec.options.compiler_error_status)
+                {
                     mach.memcpy(buf[len..].ptr, about_trace_s.ptr, about_trace_s.len);
                     len +%= about_trace_s.len;
                 }
@@ -1344,12 +1344,12 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 @ptrCast(*[4]u8, buf[len..].ptr).* = about_reset_s.*;
                 builtin.debug.logAlways(buf[0 .. len +% about_reset_s.len]);
             }
-            fn simpleTimedNotice(target: *const Target, durat: time.TimeSpec, task: types.Task, rc: u8) void {
+            fn simpleTimedNotice(target: *const Target, working_time: time.TimeSpec, task: types.Task, rc: u8) void {
                 @setRuntimeSafety(false);
                 const about_s: [:0]const u8 = if (task == .run) about_run_s else about_format_s;
                 const rc_s: []const u8 = builtin.fmt.ud64(rc).readAll();
-                const sec_s: []const u8 = builtin.fmt.ud64(durat.sec).readAll();
-                const nsec_s: []const u8 = builtin.fmt.nsec(durat.nsec).readAll();
+                const sec_s: []const u8 = builtin.fmt.ud64(working_time.sec).readAll();
+                const nsec_s: []const u8 = builtin.fmt.nsec(working_time.nsec).readAll();
                 var buf: [32768]u8 = undefined;
                 mach.memcpy(&buf, about_s.ptr, about_s.len);
                 var len: u64 = about_s.len;
