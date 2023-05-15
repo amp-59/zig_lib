@@ -1700,6 +1700,19 @@ pub const SimpleAllocator = struct {
         const ret_addr: u64 = allocator.reallocateInternal(@ptrToInt(buf.ptr), buf.len *% @sizeOf(T), count *% @sizeOf(T), @alignOf(T));
         return @intToPtr([*]T, ret_addr)[0..count];
     }
+    pub inline fn createAligned(allocator: *Allocator, comptime T: type, comptime align_of: u64) *align(align_of) T {
+        const ret_addr: u64 = allocator.allocateInternal(@sizeOf(T), align_of);
+        return @intToPtr(*align(align_of) T, ret_addr);
+    }
+    pub inline fn allocateAligned(allocator: *Allocator, comptime T: type, count: u64, comptime align_of: u64) []align(align_of) T {
+        const ret_addr: u64 = allocator.allocateInternal(@sizeOf(T) *% count, align_of);
+        return @intToPtr([*]align(align_of) T, ret_addr)[0..count];
+    }
+    pub inline fn reallocateAligned(allocator: *Allocator, comptime T: type, buf: []T, count: u64, comptime align_of: u64) []align(align_of) T {
+        const ret_addr: u64 = allocator.reallocateInternal(@ptrToInt(buf.ptr), buf.len *% @sizeOf(T), count *% @sizeOf(T), align_of);
+        return @intToPtr([*]align(align_of) T, ret_addr)[0..count];
+    }
+
     pub inline fn deallocate(allocator: *Allocator, comptime T: type, buf: []T) void {
         allocator.deallocateInternal(@ptrToInt(buf.ptr), buf.len *% @sizeOf(T));
     }
