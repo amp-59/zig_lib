@@ -1645,7 +1645,10 @@ pub const debug = struct {
         });
         proc.exit(2);
     }
-    pub noinline fn panicUnwrapError(_: @TypeOf(@errorReturnTrace()), _: anyerror) noreturn {
+    pub noinline fn panicUnwrapError(_: @TypeOf(@errorReturnTrace()), err: anyerror) noreturn {
+        if (config.discard_errors) {
+            proc.exitError(err, 2);
+        }
         @compileError("error is discarded");
     }
     const static = struct {
