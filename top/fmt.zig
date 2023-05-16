@@ -6,11 +6,8 @@ const mach = @import("./mach.zig");
 const time = @import("./time.zig");
 const spec = @import("./spec.zig");
 const builtin = @import("./builtin.zig");
-
 const _render = @import("./render.zig");
-
 pub usingnamespace _render;
-
 fn GenericFormat(comptime Format: type) type {
     const T = struct {
         const StaticString = mem.StaticString(Format.max_len);
@@ -1155,17 +1152,32 @@ pub fn bytesToHex(dest: []u8, src: []const u8) []const u8 {
         dest[idx * 2 +% 0] = builtin.fmt.toSymbol(u8, src[idx] / 16, 16);
         dest[idx * 2 +% 1] = builtin.fmt.toSymbol(u8, src[idx] & 15, 16);
     }
-    return dest[0 .. src.len *% 2 +% 1];
+    return dest[0 .. src.len *% 2];
+}
+pub fn hexToBytes(dest: []u8, src: []const u8) ![]const u8 {
+    if (src.len & 1 != 0) {
+        return error.InvalidLength;
+    }
+    if (dest.len * 2 < src.len) {
+        return error.NoSpaceLeft;
+    }
+    var idx: u64 = 0;
+    while (idx < src.len) : (idx +%= 2) {
+        dest[idx / 2] =
+            try builtin.parse.fromSymbolChecked(src[idx], 16) << 4 |
+            try builtin.parse.fromSymbolChecked(src[idx +% 1], 16);
+    }
+    return dest[0 .. idx / 2];
 }
 /// "ffffffff" => .{ 0xff, 0xff, 0xff, 0xff };
-pub fn hexToBytes(dest: []u8, src: []const u8) []const u8 {
-    var idx: usize = 0;
+pub fn hexToBytes2(dest: []u8, src: []const u8) []const u8 {
+    var idx: u64 = 0;
     while (idx < src.len) : (idx +%= 2) {
         dest[idx / 2] =
             builtin.parse.fromSymbol(src[idx], 16) << 4 |
             builtin.parse.fromSymbol(src[idx +% 1], 16);
     }
-    return dest;
+    return dest[0 .. idx / 2];
 }
 pub const static = struct {
     fn concatUpper(comptime s: []const u8, comptime c: u8) []const u8 {
