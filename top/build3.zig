@@ -118,175 +118,7 @@ pub const BuilderSpec = struct {
         sleep: sys.ErrorPolicy,
         clock: sys.ErrorPolicy,
     };
-    const thread_map_options: mem.MapSpec.Options = .{
-        .grows_down = true,
-    };
-    const pipe_options: file.MakePipeSpec.Options = .{
-        .close_on_exec = false,
-    };
-    const create_truncate_options: file.CreateSpec.Options = .{
-        .exclusive = false,
-        .truncate = true,
-    };
-    const create_append_options: file.CreateSpec.Options = .{
-        .exclusive = false,
-        .append = true,
-        .truncate = false,
-    };
-    fn clock(comptime builder_spec: BuilderSpec) time.ClockSpec {
-        return .{ .errors = builder_spec.errors.clock };
-    }
-    fn sleep(comptime builder_spec: BuilderSpec) time.SleepSpec {
-        return .{ .errors = builder_spec.errors.sleep };
-    }
-    fn path(comptime builder_spec: BuilderSpec) file.PathSpec {
-        return .{
-            .errors = builder_spec.errors.path,
-            .logging = builder_spec.logging.path,
-        };
-    }
-    fn mkdir(comptime builder_spec: BuilderSpec) file.MakeDirSpec {
-        return .{
-            .errors = builder_spec.errors.mkdir,
-            .logging = builder_spec.logging.mkdir,
-        };
-    }
-    fn write(comptime builder_spec: BuilderSpec) file.WriteSpec {
-        return .{
-            .errors = builder_spec.errors.write,
-            .logging = builder_spec.logging.write,
-        };
-    }
-    fn write2(comptime builder_spec: BuilderSpec) file.WriteSpec {
-        return .{
-            .errors = builder_spec.errors.write,
-            .logging = builder_spec.logging.write,
-            .child = types.Message.ClientHeader,
-        };
-    }
-    fn write3(comptime builder_spec: BuilderSpec) file.WriteSpec {
-        return .{
-            .errors = builder_spec.errors.write,
-            .logging = builder_spec.logging.write,
-            .child = types.Record,
-        };
-    }
-    fn read(comptime builder_spec: BuilderSpec) file.ReadSpec {
-        return .{
-            .errors = builder_spec.errors.read,
-            .logging = builder_spec.logging.read,
-            .return_type = u64,
-        };
-    }
-    fn read2(comptime builder_spec: BuilderSpec) file.ReadSpec {
-        return .{
-            .errors = builder_spec.errors.read,
-            .logging = builder_spec.logging.read,
-            .return_type = u64,
-        };
-    }
-    fn read3(comptime builder_spec: BuilderSpec) file.ReadSpec {
-        return .{
-            .child = types.Message.ServerHeader,
-            .errors = builder_spec.errors.read,
-            .logging = builder_spec.logging.read,
-            .return_type = void,
-        };
-    }
-    fn close(comptime builder_spec: BuilderSpec) file.CloseSpec {
-        return .{
-            .errors = builder_spec.errors.close,
-            .logging = builder_spec.logging.close,
-        };
-    }
-    fn unmap(comptime builder_spec: BuilderSpec) mem.UnmapSpec {
-        return .{
-            .errors = builder_spec.errors.unmap,
-            .logging = builder_spec.logging.unmap,
-        };
-    }
-    fn stat(comptime builder_spec: BuilderSpec) file.StatusSpec {
-        return .{
-            .errors = builder_spec.errors.stat,
-            .logging = builder_spec.logging.stat,
-        };
-    }
-    fn fork(comptime builder_spec: BuilderSpec) proc.ForkSpec {
-        return .{
-            .errors = builder_spec.errors.fork,
-            .logging = builder_spec.logging.fork,
-        };
-    }
-    fn waitpid(comptime builder_spec: BuilderSpec) proc.WaitSpec {
-        return .{
-            .errors = builder_spec.errors.waitpid,
-            .logging = builder_spec.logging.waitpid,
-            .return_type = void,
-        };
-    }
-    fn waitpid2(comptime builder_spec: BuilderSpec) proc.WaitSpec {
-        return .{
-            .errors = builder_spec.errors.waitpid,
-            .logging = builder_spec.logging.waitpid,
-            .return_type = proc.Return,
-        };
-    }
-    fn mknod(comptime builder_spec: BuilderSpec) file.MakeNodeSpec {
-        return .{
-            .errors = builder_spec.errors.mknod,
-            .logging = builder_spec.logging.mknod,
-        };
-    }
-    fn dup3(comptime builder_spec: BuilderSpec) file.DuplicateSpec {
-        return .{
-            .errors = builder_spec.errors.dup3,
-            .logging = builder_spec.logging.dup3,
-            .return_type = void,
-        };
-    }
-    fn poll(comptime builder_spec: BuilderSpec) file.PollSpec {
-        return .{
-            .errors = builder_spec.errors.poll,
-            .logging = builder_spec.logging.poll,
-            .return_type = bool,
-        };
-    }
-    fn pipe(comptime builder_spec: BuilderSpec) file.MakePipeSpec {
-        return .{
-            .errors = builder_spec.errors.pipe,
-            .logging = builder_spec.logging.pipe,
-            .options = pipe_options,
-        };
-    }
-    fn map(comptime builder_spec: BuilderSpec) mem.MapSpec {
-        return .{
-            .errors = builder_spec.errors.map,
-            .logging = builder_spec.logging.map,
-            .options = thread_map_options,
-        };
-    }
-    fn create(comptime builder_spec: BuilderSpec) file.CreateSpec {
-        return .{
-            .errors = builder_spec.errors.create,
-            .logging = builder_spec.logging.create,
-            .options = create_truncate_options,
-        };
-    }
-    fn create2(comptime builder_spec: BuilderSpec) file.CreateSpec {
-        return .{
-            .errors = builder_spec.errors.create,
-            .logging = builder_spec.logging.create,
-            .options = create_append_options,
-        };
-    }
-    fn execve(comptime builder_spec: BuilderSpec) file.ExecuteSpec {
-        return .{
-            .errors = builder_spec.errors.execve,
-            .logging = builder_spec.logging.execve,
-            .args_type = [][*:0]u8,
-            .vars_type = [][*:0]u8,
-        };
-    }
+    usingnamespace Spec;
 };
 pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
     const Type = struct {
@@ -720,13 +552,13 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         file.read(builder_spec.read2(), out.read, msg[len..hdr.bytes_len]),
                     );
                 }
-                if (hdr.tag == .emit_bin_path) break {
+                if (hdr.tag == .emit_bin_path) {
                     ret = msg[0];
-                };
-                if (hdr.tag == .error_bundle) break {
+                }
+                if (hdr.tag == .error_bundle) {
                     debug.writeErrors(allocator, types.Message.ErrorHeader.create(msg));
                     ret = builder_spec.options.compiler_error_status;
-                };
+                }
                 allocator.restore(save);
             }
             allocator.restore(save);
@@ -1858,3 +1690,97 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
     };
     return Type;
 }
+const Spec = struct {
+    fn clock(comptime builder_spec: BuilderSpec) time.ClockSpec {
+        return .{ .errors = builder_spec.errors.clock };
+    }
+    fn sleep(comptime builder_spec: BuilderSpec) time.SleepSpec {
+        return .{ .errors = builder_spec.errors.sleep };
+    }
+    fn path(comptime builder_spec: BuilderSpec) file.PathSpec {
+        return .{ .errors = builder_spec.errors.path, .logging = builder_spec.logging.path };
+    }
+    fn mkdir(comptime builder_spec: BuilderSpec) file.MakeDirSpec {
+        return .{ .errors = builder_spec.errors.mkdir, .logging = builder_spec.logging.mkdir };
+    }
+    fn write(comptime builder_spec: BuilderSpec) file.WriteSpec {
+        return .{ .errors = builder_spec.errors.write, .logging = builder_spec.logging.write };
+    }
+    fn write2(comptime builder_spec: BuilderSpec) file.WriteSpec {
+        return .{ .errors = builder_spec.errors.write, .logging = builder_spec.logging.write, .child = types.Message.ClientHeader };
+    }
+    fn write3(comptime builder_spec: BuilderSpec) file.WriteSpec {
+        return .{ .errors = builder_spec.errors.write, .logging = builder_spec.logging.write, .child = types.Record };
+    }
+    fn read(comptime builder_spec: BuilderSpec) file.ReadSpec {
+        return .{ .errors = builder_spec.errors.read, .logging = builder_spec.logging.read, .return_type = u64 };
+    }
+    fn read2(comptime builder_spec: BuilderSpec) file.ReadSpec {
+        return .{ .errors = builder_spec.errors.read, .logging = builder_spec.logging.read, .return_type = u64 };
+    }
+    fn read3(comptime builder_spec: BuilderSpec) file.ReadSpec {
+        return .{ .child = types.Message.ServerHeader, .errors = builder_spec.errors.read, .logging = builder_spec.logging.read, .return_type = void };
+    }
+    fn close(comptime builder_spec: BuilderSpec) file.CloseSpec {
+        return .{ .errors = builder_spec.errors.close, .logging = builder_spec.logging.close };
+    }
+    fn unmap(comptime builder_spec: BuilderSpec) mem.UnmapSpec {
+        return .{ .errors = builder_spec.errors.unmap, .logging = builder_spec.logging.unmap };
+    }
+    fn stat(comptime builder_spec: BuilderSpec) file.StatusSpec {
+        return .{ .errors = builder_spec.errors.stat, .logging = builder_spec.logging.stat };
+    }
+    fn fork(comptime builder_spec: BuilderSpec) proc.ForkSpec {
+        return .{ .errors = builder_spec.errors.fork, .logging = builder_spec.logging.fork };
+    }
+    fn waitpid(comptime builder_spec: BuilderSpec) proc.WaitSpec {
+        return .{ .errors = builder_spec.errors.waitpid, .logging = builder_spec.logging.waitpid, .return_type = void };
+    }
+    fn waitpid2(comptime builder_spec: BuilderSpec) proc.WaitSpec {
+        return .{ .errors = builder_spec.errors.waitpid, .logging = builder_spec.logging.waitpid, .return_type = proc.Return };
+    }
+    fn mknod(comptime builder_spec: BuilderSpec) file.MakeNodeSpec {
+        return .{ .errors = builder_spec.errors.mknod, .logging = builder_spec.logging.mknod };
+    }
+    fn dup3(comptime builder_spec: BuilderSpec) file.DuplicateSpec {
+        return .{ .errors = builder_spec.errors.dup3, .logging = builder_spec.logging.dup3, .return_type = void };
+    }
+    fn poll(comptime builder_spec: BuilderSpec) file.PollSpec {
+        return .{ .errors = builder_spec.errors.poll, .logging = builder_spec.logging.poll, .return_type = bool };
+    }
+    fn pipe(comptime builder_spec: BuilderSpec) file.MakePipeSpec {
+        return .{ .errors = builder_spec.errors.pipe, .logging = builder_spec.logging.pipe, .options = pipe_options };
+    }
+    fn map(comptime builder_spec: BuilderSpec) mem.MapSpec {
+        return .{ .errors = builder_spec.errors.map, .logging = builder_spec.logging.map, .options = thread_map_options };
+    }
+    fn create(comptime builder_spec: BuilderSpec) file.CreateSpec {
+        return .{ .errors = builder_spec.errors.create, .logging = builder_spec.logging.create, .options = create_truncate_options };
+    }
+    fn create2(comptime builder_spec: BuilderSpec) file.CreateSpec {
+        return .{ .errors = builder_spec.errors.create, .logging = builder_spec.logging.create, .options = create_append_options };
+    }
+    fn execve(comptime builder_spec: BuilderSpec) file.ExecuteSpec {
+        return .{
+            .errors = builder_spec.errors.execve,
+            .logging = builder_spec.logging.execve,
+            .args_type = [][*:0]u8,
+            .vars_type = [][*:0]u8,
+        };
+    }
+    const thread_map_options: mem.MapSpec.Options = .{
+        .grows_down = true,
+    };
+    const pipe_options: file.MakePipeSpec.Options = .{
+        .close_on_exec = false,
+    };
+    const create_truncate_options: file.CreateSpec.Options = .{
+        .exclusive = false,
+        .truncate = true,
+    };
+    const create_append_options: file.CreateSpec.Options = .{
+        .exclusive = false,
+        .append = true,
+        .truncate = false,
+    };
+};
