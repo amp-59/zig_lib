@@ -9,6 +9,7 @@ pub const is_safe: bool = zig.mode == .ReleaseSafe;
 pub const is_small: bool = zig.mode == .ReleaseSmall;
 pub const is_fast: bool = zig.mode == .ReleaseFast;
 pub const is_debug: bool = zig.mode == .Debug;
+pub const discard_errors: bool = define("discard_errors", bool, !(is_debug or is_safe));
 pub const runtime_assertions: bool = define("runtime_assertions", bool, is_debug or is_safe);
 pub const comptime_assertions: bool = define("comptime_assertions", bool, is_debug);
 
