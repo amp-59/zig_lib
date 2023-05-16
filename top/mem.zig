@@ -1689,26 +1689,32 @@ pub const SimpleAllocator = struct {
     const noexcept = .{ .errors = .{} };
 
     pub inline fn create(allocator: *Allocator, comptime T: type) *T {
+        @setRuntimeSafety(false);
         const ret_addr: u64 = allocator.allocateInternal(@sizeOf(T), @alignOf(T));
         return @intToPtr(*T, ret_addr);
     }
     pub inline fn allocate(allocator: *Allocator, comptime T: type, count: u64) []T {
+        @setRuntimeSafety(false);
         const ret_addr: u64 = allocator.allocateInternal(@sizeOf(T) *% count, @alignOf(T));
         return @intToPtr([*]T, ret_addr)[0..count];
     }
     pub inline fn reallocate(allocator: *Allocator, comptime T: type, buf: []T, count: u64) []T {
+        @setRuntimeSafety(false);
         const ret_addr: u64 = allocator.reallocateInternal(@ptrToInt(buf.ptr), buf.len *% @sizeOf(T), count *% @sizeOf(T), @alignOf(T));
         return @intToPtr([*]T, ret_addr)[0..count];
     }
     pub inline fn createAligned(allocator: *Allocator, comptime T: type, comptime align_of: u64) *align(align_of) T {
+        @setRuntimeSafety(false);
         const ret_addr: u64 = allocator.allocateInternal(@sizeOf(T), align_of);
         return @intToPtr(*align(align_of) T, ret_addr);
     }
     pub inline fn allocateAligned(allocator: *Allocator, comptime T: type, count: u64, comptime align_of: u64) []align(align_of) T {
+        @setRuntimeSafety(false);
         const ret_addr: u64 = allocator.allocateInternal(@sizeOf(T) *% count, align_of);
         return @intToPtr([*]align(align_of) T, ret_addr)[0..count];
     }
     pub inline fn reallocateAligned(allocator: *Allocator, comptime T: type, buf: []T, count: u64, comptime align_of: u64) []align(align_of) T {
+        @setRuntimeSafety(false);
         const ret_addr: u64 = allocator.reallocateInternal(@ptrToInt(buf.ptr), buf.len *% @sizeOf(T), count *% @sizeOf(T), align_of);
         return @intToPtr([*]align(align_of) T, ret_addr)[0..count];
     }
@@ -1751,12 +1757,11 @@ pub const SimpleAllocator = struct {
         size_of: u64,
         align_of: u64,
     ) u64 {
-        const start: u64 = allocator.next;
-        const aligned: u64 = alignAbove(start, align_of);
+        const aligned: u64 = alignAbove(allocator.next, align_of);
         const next: u64 = aligned +% size_of;
         if (next > allocator.finish) {
             const finish: u64 = alignAbove(next, 4096);
-            map(noexcept, allocator.finish, allocator.finish -% finish);
+            map(noexcept, allocator.finish, finish -% allocator.finish);
             allocator.finish = finish;
         }
         allocator.next = next;
@@ -1774,7 +1779,7 @@ pub const SimpleAllocator = struct {
         if (allocator.next == old_next) {
             if (new_next > allocator.finish) {
                 const finish: u64 = alignAbove(new_next, 4096);
-                map(noexcept, allocator.finish, allocator.finish -% finish);
+                map(noexcept, allocator.finish, finish -% allocator.finish);
                 allocator.finish = finish;
             }
             allocator.next = new_next;
