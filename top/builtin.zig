@@ -1852,17 +1852,24 @@ pub const parse = struct {
         }
         return if (str[0] == '-') -value else value;
     }
-    pub fn fromSymbol(c: u8, radix: u16) u8 {
+    pub fn fromSymbol(c: u8, comptime radix: u7) u8 {
         if (radix > 10) {
-            return switch (c) {
-                '0'...'9' => c -% ('9' -% 0x9),
-                'a'...'z' => c -% ('f' -% 0xf),
-                'A'...'Z' => c -% ('f' -% 'F' -% 0xf),
-                else => 0,
-            };
+            switch (c) {
+                '0'...'9' => return c -% '0',
+                'a'...'z' => return c -% 'a' +% 0xa,
+                'A'...'Z' => return c -% 'A' +% 0xa,
+                else => return 0xff,
+            }
         } else {
-            return c -% ('9' -% 9);
+            return c -% '0';
         }
+    }
+    pub fn fromSymbolChecked(c: u8, comptime radix: u7) !u8 {
+        const value: u8 = fromSymbol(c, radix);
+        if (value >= radix) {
+            return error.InvalidEncoding;
+        }
+        return value;
     }
     fn nextSigFig(comptime T: type, prev: T, comptime radix: T) ?T {
         const mul_result: Overflow(T) = @mulWithOverflow(prev, radix);
