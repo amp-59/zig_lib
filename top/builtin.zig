@@ -166,6 +166,13 @@ pub fn int3v(comptime T: type, value1: bool, value2: bool, value3: bool) T {
         return intCast(T, ret);
     }
 }
+pub fn ended(comptime T: type, value: T, endian: Endian) T {
+    if (endian == config.native_endian) {
+        return value;
+    } else {
+        return @byteSwap(value);
+    }
+}
 fn ArithWithOverflowReturn(comptime T: type) type {
     const S = struct {
         value: T,
