@@ -604,7 +604,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 );
             }
             const ret: proc.Return = try meta.wrap(
-                proc.waitPid(builder_spec.waitpid(), .{ .pid = pid }),
+                proc.waitPid(builder_spec.waitpid2(), .{ .pid = pid }),
             );
             ts.* = time.diff(try meta.wrap(time.get(builder_spec.clock(), .realtime)), ts.*);
             return proc.Status.exit(ret.status);
