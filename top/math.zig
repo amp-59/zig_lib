@@ -1,13 +1,18 @@
 const mach = @import("./mach.zig");
 const builtin = @import("./builtin.zig");
 
+pub const Order = enum {
+    lt,
+    eq,
+    gt,
+};
 pub fn Absolute(comptime T: type) type {
     const bit_size_of: u16 = @bitSizeOf(T);
     if (bit_size_of == 0) {
         return comptime_int;
     }
     return @Type(.{ .Int = .{
-        .bits = bit_size_of,
+        .bits = @max(8, bit_size_of),
         .signedness = .unsigned,
     } });
 }
@@ -132,4 +137,7 @@ pub fn shr(comptime T: type, a: T, shift_amt: anytype) T {
         }
     }
     return a >> casted_shift_amt;
+}
+pub fn log2(comptime T: type, x: T) builtin.ShiftAmount(T) {
+    return @intCast(builtin.ShiftAmount(T), @typeInfo(T).Int.bits - 1 - @clz(x));
 }
