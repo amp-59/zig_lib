@@ -89,16 +89,17 @@ fn testPoll() !void {
 fn testRecords() !void {
     const build_root: []const u8 = comptime builtin.buildRoot();
     const proj_stats_root: [:0]const u8 = comptime build_root ++ "/zig-stat/file_test";
-    var buf: [4096]build.Record = undefined;
+    var rcd_buf: [4096]build.Record = undefined;
     const fd: u64 = try file.open(.{}, proj_stats_root);
-    const rcds: []const build.Record = buf[0..try file.read(.{ .child = build.Record }, fd, &buf)];
-    _ = rcds;
+    var buf: [4096]u8 = undefined;
+    for (rcd_buf[0..try file.read(.{ .child = build.Record }, fd, &rcd_buf)]) |rcd| {
+        builtin.debug.write(buf[0..builtin.debug.writeMulti(&buf, &.{ @tagName(rcd.detail.mode), "\n" })]);
+    }
 }
 fn testStatusExtended() !void {
     const Fields = @TypeOf(statx_spec.options.fields);
     const nilx_spec: file.StatusExtendedSpec = comptime spec.add(statx_spec, .{ .options = .{ .fields = builtin.zero(Fields) } });
     var st: file.StatusExtended = try meta.wrap(file.statusExtended(nilx_spec, 0, "/home"));
-
     _ = st;
 }
 fn testFileOperationsRound1() !void {
@@ -124,9 +125,17 @@ pub fn testSocketOpenAndClose() !void {
     try file.close(.{}, unix_udp_fd);
     try file.close(.{}, unix_tcp_fd);
 }
+
 pub fn testSocketFunctions() !void {
     const unix_tcp_fd: u64 = try file.socket(.{}, .unix, .tcp);
+    var sockaddr: file.Socket.Address = .{
+        .family = sys.AF.UNIX,
+        .data = undefined,
+    };
+    // Get examples from man 2 bind
+    var addrlen: u32 = 4;
     try file.listen(.{}, unix_tcp_fd, 1);
+    try file.bind(.{}, unix_tcp_fd, &sockaddr, &addrlen);
 }
 pub fn testFileTests() !void {
     builtin.debug.write(@src().fn_name ++ ":\n");
@@ -165,7 +174,7 @@ fn testFileOperationsRound2() !void {
     try meta.wrap(file.removeDir(remove_dir_spec, "/run/user/1000/file_test"));
     try meta.wrap(file.close(close_spec, dir_fd));
     const mem_fd: u64 = try meta.wrap(mem.fd(.{}, "buffer"));
-    try meta.wrap(file.ftruncate(ftruncate_spec, mem_fd, 4096));
+    try meta.wrap(file.truncate(ftruncate_spec, mem_fd, 4096));
 }
 fn testPathOperations() !void {
     builtin.debug.write(@src().fn_name ++ ":\n");
@@ -236,7 +245,7 @@ fn testPreClean() !void {
     file.removeDir(remove_dir_spec, "/run/user/1000/file_test") catch {};
 }
 pub fn main() !void {
-    try meta.wrap(testSocketFunctions());
+    // try meta.wrap(testSocketFunctions());
     try meta.wrap(testRecords());
     try meta.wrap(testPreClean());
     try meta.wrap(testFileOperationsRound1());
