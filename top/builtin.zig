@@ -1471,30 +1471,32 @@ pub const debug = struct {
         var len: u64 = comparisonFailedString(T, typeFault(T) ++ " failed assertion: ", symbol, &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
         logFault(buf[0..len]);
     }
-    inline fn comparisonFailedErrorEnum(comptime T: type, symbol: []const u8, arg1: T, arg2: T) void {
+    inline fn comparisonFailedErrorSymbol(comptime T: type, symbol: []const u8, arg1: []const u8, arg2: []const u8) void {
         var buf: [size]u8 = undefined;
-        const len: u64 = writeMulti(&buf, &[_][]const u8{ typeError(T) ++ " failed test: ", @tagName(arg1), symbol, @tagName(arg2) });
+        const len: u64 = writeMulti(&buf, &[_][]const u8{ typeError(T) ++ " failed test: ", arg1, symbol, arg2 });
         logError(buf[0..len]);
     }
-    inline fn comparisonFailedFaultEnum(comptime T: type, symbol: []const u8, arg1: T, arg2: T) void {
+    inline fn comparisonFailedFaultSymbol(comptime T: type, symbol: []const u8, arg1: []const u8, arg2: []const u8) void {
         var buf: [size]u8 = undefined;
-        const len: u64 = writeMulti(&buf, &[_][]const u8{ typeFault(T) ++ " failed assertion: ", @tagName(arg1), symbol, @tagName(arg2) });
+        const len: u64 = writeMulti(&buf, &[_][]const u8{ typeFault(T) ++ " failed assertion: ", arg1, symbol, arg2 });
         logFault(buf[0..len]);
     }
-    fn comparisonFailedFault(comptime T: type, symbol: []const u8, arg1: T, arg2: T) noreturn {
+    fn comparisonFailedFault(comptime T: type, symbol: []const u8, arg1: anytype, arg2: @TypeOf(arg1)) noreturn {
         @setCold(true);
         switch (@typeInfo(T)) {
             .Int => comparisonFailedFaultInt(T, symbol, arg1, arg2),
-            .Enum => comparisonFailedFaultEnum(T, symbol, arg1, arg2),
+            .Enum => comparisonFailedFaultSymbol(T, symbol, @tagName(arg1), @tagName(arg2)),
+            .Type => comparisonFailedFaultSymbol(T, symbol, @typeName(arg1), @typeName(arg2)),
             else => logFault(about_fault_p0_s ++ "assertion failed\n"),
         }
         proc.exit(2);
     }
-    fn comparisonFailedError(comptime T: type, symbol: []const u8, arg1: T, arg2: T) Error {
+    fn comparisonFailedError(comptime T: type, symbol: []const u8, arg1: anytype, arg2: @TypeOf(arg1)) Error {
         @setCold(true);
         switch (@typeInfo(T)) {
             .Int => comparisonFailedErrorInt(T, symbol, arg1, arg2),
-            .Enum => comparisonFailedErrorEnum(T, symbol, arg1, arg2),
+            .Enum => comparisonFailedErrorSymbol(T, symbol, @tagName(arg1), @tagName(arg2)),
+            .Type => comparisonFailedErrorSymbol(T, symbol, @typeName(arg1), @typeName(arg2)),
             else => logError(about_error_p0_s ++ "unexpected value\n"),
         }
         return error.UnexpectedValue;
