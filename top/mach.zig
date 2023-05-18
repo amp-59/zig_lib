@@ -512,7 +512,7 @@ comptime {
 //          [_] "{rcx}" (len),
 //    );
 //}
-pub extern fn memcpy(noalias dest: *anyopaque, noalias src: *const anyopaque, len: u64) callconv(.C) void;
+pub extern fn memcpy(noalias dest: [*]u8, noalias src: *const anyopaque, len: u64) callconv(.C) void;
 comptime {
     asm (
         \\.intel_syntax noprefix
