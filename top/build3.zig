@@ -22,7 +22,7 @@ pub const BuilderSpec = struct {
         /// Bytes allowed per thread stack (static maximum)
         stack_aligned_bytes: u64 = 8 * 1024 * 1024,
         /// max_thread_count=0 is single-threaded.
-        max_thread_count: u64 = 16,
+        max_thread_count: u64 = 32,
         /// Lowest allocated byte address for thread stacks. This field and the
         /// two previous fields derive the arena lowest allocated byte address,
         /// as this is the first unallocated byte address of the thread space.
