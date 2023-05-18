@@ -134,8 +134,30 @@ fn testBytesToHex() !void {
     @memset(&buf0, 0);
     @memset(&buf1, 0);
     const encoded: []const u8 = fmt.bytesToHex(&buf0, input);
-    const decoded: []const u8 = fmt.hexToBytes(&buf0, encoded);
+    const decoded: []const u8 = fmt.hexToBytes2(&buf0, encoded);
     try testing.expectEqualMany(u8, input, decoded);
+}
+fn testHexToBytes() !void {
+    var buf: [32]u8 = .{0} ** 32;
+    var bytes: [64]u8 = .{0} ** 64;
+    try testing.expectEqualMany(u8, "90" ** 32, fmt.bytesToHex(&bytes, try fmt.hexToBytes(&buf, "90" ** 32)));
+    try testing.expectEqualMany(u8, "abcd", fmt.bytesToHex(&bytes, try fmt.hexToBytes(&buf, "abcd")));
+    try testing.expectEqualMany(u8, "", fmt.bytesToHex(&bytes, try fmt.hexToBytes(&buf, "")));
+    _ = fmt.hexToBytes(&buf, "012z") catch |err| {
+        if (err != error.InvalidEncoding) {
+            return err;
+        }
+    };
+    _ = fmt.hexToBytes(&buf, "aaa") catch |err| {
+        if (err != error.InvalidLength) {
+            return err;
+        }
+    };
+    _ = fmt.hexToBytes(buf[0..1], "abcd") catch |err| {
+        if (err != error.NoSpaceLeft) {
+            return err;
+        }
+    };
 }
 fn testBinarySize() void {
     var array: PrintArray = .{};
@@ -144,6 +166,7 @@ fn testBinarySize() void {
 }
 pub fn main() !void {
     try testBytesToHex();
+    try testHexToBytes();
     if (test_size) {
         try meta.wrap(testBinarySize());
     } else {
