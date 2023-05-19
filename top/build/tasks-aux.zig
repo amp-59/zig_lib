@@ -67,11 +67,17 @@ pub fn main() !void {
     const fd: u64 = file.open(open_spec, config.tasks_template_path);
     array.define(file.read(read_spec, fd, array.referAllUndefined()));
     file.close(close_spec, fd);
+
     array.writeMany("pub const BuildCommand=struct{\nkind:types.OutputMode,\n");
     writeFields(&array, attr.build_command_options);
     array.writeMany("};\npub const FormatCommand=struct{\n");
     writeFields(&array, attr.format_command_options);
+    array.writeMany("};\npub const ArchiveCommand=struct{\n");
+    writeFields(&array, attr.archive_command_options);
+    array.writeMany("};\npub const RanlibCommand=struct{\n");
+    writeFields(&array, attr.ranlib_command_options);
     array.writeMany("};\n");
+
     gen.truncateFile(write_spec, config.tasks_path, array.readAll());
     array.undefineAll();
 }
