@@ -8,7 +8,7 @@ const builtin = zig_lib.builtin;
 
 pub usingnamespace proc.start;
 
-pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
+pub const logging_override: builtin.Logging.Override = spec.logging.override.verbose;
 pub const runtime_assertions: bool = false;
 
 const Builder = build.GenericBuilder(spec.builder.default);
@@ -19,7 +19,11 @@ fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
         .kind = .exe,
         .allow_shlib_undefined = true,
         .build_id = true,
-        .cflags = &.{"-O3"},
+        .cflags = &.{
+            "-O3",
+            "-Wno-parentheses",
+            "-Wno-format-security",
+        },
         .clang = true,
         .code_model = .default,
         .color = .auto,
@@ -30,6 +34,7 @@ fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
         .dirafter = "after",
         .dynamic_linker = "/usr/bin/ld",
         .library_directory = &.{ "/usr/lib64", "/usr/lib32" },
+        .include = &.{ "/usr/include", "/usr/include/c++" },
         .each_lib_rpath = true,
         .entry = "_start",
         .error_tracing = true,
