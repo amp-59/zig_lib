@@ -296,7 +296,7 @@ pub const ArchiveCommand = struct {
     /// Extraction target directory
     output: ?[]const u8 = null,
     /// Create a thin archive
-    thin: ?[]const u8 = null,
+    thin: bool = false,
     /// Put [files] after [relpos]
     after: bool = false,
     /// Put [files] before [relpos] (same as [i])
@@ -317,6 +317,20 @@ pub const ArchiveCommand = struct {
     no_symbol_table: bool = false,
     /// update only [files] newer than archive contents
     update: bool = false,
+    /// d  Delete [files] from the archive
+    /// m  Move [files] in the archive
+    /// q  Quick append [files] to the archive
+    /// r  Replace or insert [files] into the archive
+    /// s  Act as ranlib
+    /// x  Extract [files] from the archive
+    operation: enum(u3) {
+        d = 0,
+        m = 1,
+        q = 2,
+        r = 3,
+        s = 4,
+        x = 5,
+    } = null,
 };
 pub const RanlibCommand = struct {
     /// Use actual timestamps and uids/gids
