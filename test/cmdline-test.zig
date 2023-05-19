@@ -11,7 +11,11 @@ pub usingnamespace proc.start;
 pub const logging_override: builtin.Logging.Override = spec.logging.override.verbose;
 pub const runtime_assertions: bool = true;
 
-const Builder = build.GenericBuilder(spec.builder.default);
+const Builder = build.GenericBuilder(.{
+    .logging = spec.builder.logging.verbose,
+    .errors = spec.builder.errors.noexcept,
+    .options = .{ .max_cmdline_len = null },
+});
 
 fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     const g0: *Builder.Group = try builder.addGroup(allocator, "g0");
