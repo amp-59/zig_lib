@@ -179,7 +179,8 @@ pub const Fn = enum(u8) {
                 ctn_detail.kind == .parametric;
         }
         if (kind.append(ctn_fn_info)) {
-            return (ctn_detail.kind == .dynamic or
+            return ctn_detail.modes.resize and
+                (ctn_detail.kind == .dynamic or
                 ctn_detail.kind == .parametric);
         }
         return true;
