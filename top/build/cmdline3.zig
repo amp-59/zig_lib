@@ -479,14 +479,6 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         buf[len] = 0;
         len +%= 1;
     }
-    if (cmd.include) |include| {
-        @ptrCast(*[3]u8, buf + len).* = "-I\x00".*;
-        len +%= 3;
-        mach.memcpy(buf + len, include.ptr, include.len);
-        len +%= include.len;
-        buf[len] = 0;
-        len +%= 1;
-    }
     if (cmd.libc) |libc| {
         @ptrCast(*[7]u8, buf + len).* = "--libc\x00".*;
         len +%= 7;
@@ -502,6 +494,16 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len +%= library.len;
         buf[len] = 0;
         len +%= 1;
+    }
+    if (cmd.include) |include| {
+        for (include) |value| {
+            @ptrCast(*[3]u8, buf + len).* = "-I\x00".*;
+            len +%= 3;
+            mach.memcpy(buf + len, value.ptr, value.len);
+            len +%= value.len;
+            buf[len] = 0;
+            len +%= 1;
+        }
     }
     if (cmd.needed_library) |needed_library| {
         for (needed_library) |value| {
@@ -1104,11 +1106,6 @@ pub fn buildLength(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_pat
         len +%= system.len;
         len +%= 1;
     }
-    if (cmd.include) |include| {
-        len +%= 3;
-        len +%= include.len;
-        len +%= 1;
-    }
     if (cmd.libc) |libc| {
         len +%= 7;
         len +%= libc.len;
@@ -1118,6 +1115,13 @@ pub fn buildLength(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_pat
         len +%= 10;
         len +%= library.len;
         len +%= 1;
+    }
+    if (cmd.include) |include| {
+        for (include) |value| {
+            len +%= 3;
+            len +%= value.len;
+            len +%= 1;
+        }
     }
     if (cmd.needed_library) |needed_library| {
         for (needed_library) |value| {
