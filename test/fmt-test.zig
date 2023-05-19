@@ -6,21 +6,15 @@ const file = top.file;
 const proc = top.proc;
 const builtin = top.builtin;
 const testing = top.testing;
-
 pub usingnamespace proc.start;
-
 pub const runtime_assertions: bool = test_size;
-
 const PrintArray = mem.StaticString(4096);
-
 const test_size: bool = false;
-
 fn testNonChildIntegers() !void {
     var array: PrintArray = .{};
     array.writeAny(.{ .integral = .{ .format = .hex } }, @as(u64, 0xdeadbeef));
     try testing.expectEqualMany(u8, "0xdeadbeef", array.readAll());
 }
-
 fn testBytesFormat() !void {
     try testing.expectEqualMany(u8, "0B", fmt.bytes(0).formatConvert().readAll());
     try testing.expectEqualMany(u8, "12.224EiB", fmt.bytes(14094246983574119504).formatConvert().readAll());

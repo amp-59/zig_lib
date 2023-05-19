@@ -51,7 +51,7 @@ fn compareSorts() !void {
     try mem.map(.{ .options = .{} }, size + size, size);
 
     const rnbuf: []u8 = @intToPtr([*]u8, size)[0..size];
-    crypto.random.bytes(rnbuf);
+    try file.readRandom(rnbuf);
 
     const values_1 = @intToPtr([*]T, size)[0..(size / @sizeOf(T))];
     const values_2 = @intToPtr([*]T, size + size)[0..(size / @sizeOf(T))];
