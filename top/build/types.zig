@@ -440,6 +440,8 @@ pub const ArgInfo = struct {
     /// Describes how the field type should be written to the command struct
     type: ProtoTypeDescr = ProtoTypeDescr.init(bool),
     /// Specifies whether option arguments are separated with '\x00' or '='
+    /// If `null` the separator is determined by context
+    /// If `immediate` (255) no separator is written
     char: ?u8 = null,
     const Tag = enum(u8) {
         boolean = 0,
@@ -474,14 +476,14 @@ pub const ArgInfo = struct {
     pub fn integer(comptime T: type) ArgInfo {
         return .{ .tag = .integer, .type = ProtoTypeDescr.init(T) };
     }
+    pub fn optional(@"type": *const ProtoTypeDescr) ProtoTypeDescr {
+        return .{ .type_refer = .{ .spec = "?", .type = @"type" } };
+    }
     pub fn formatter(comptime type_name: [:0]const u8) ArgInfo {
         return .{ .tag = .formatter, .type = .{ .type_name = type_name } };
     }
     pub fn mapped(comptime type_name: [:0]const u8) ArgInfo {
         return .{ .tag = .mapped, .type = .{ .type_name = type_name } };
-    }
-    pub fn optional(@"type": *const ProtoTypeDescr) ProtoTypeDescr {
-        return .{ .type_refer = .{ .spec = "?", .type = @"type" } };
     }
     pub fn optional_boolean() ArgInfo {
         return .{ .tag = .optional_boolean, .type = optionalTypeDescr(bool) };
