@@ -657,6 +657,16 @@ pub const archive_command_options: []const types.OptionSpec = &.{
             "x  Extract [files] from the archive",
         },
     },
+    .{
+        .name = "archive",
+        .arg_info = types.ArgInfo.optional_formatter("types.Path"),
+        .descr = &.{"Target archive"},
+    },
+    .{
+        .name = "files",
+        .arg_info = types.ArgInfo.optional_mapped("[]const types.Path"),
+        .descr = &.{"Add auxiliary files to the current target"},
+    },
 };
 
 pub const format_command_options: []const types.OptionSpec = &.{
