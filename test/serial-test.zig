@@ -2560,18 +2560,17 @@ var build_cmd: build.BuildCommand = .{
 };
 pub fn testBuildProgram(allocator: *Builder.Allocator, builder: *Builder) !void {
     const g3 = try builder.addGroup(allocator, "g3");
-    var cmds: Builder.Commands = .{ .build = build_cmd };
-    cmds.build.?.kind = .obj;
-    const t2: *Builder.Target = try g3.addTarget(allocator, cmds, "obj0", "test/src/obj0.zig");
-    const t3: *Builder.Target = try g3.addTarget(allocator, cmds, "obj1", "test/src/obj1.zig");
-    const t4: *Builder.Target = try g3.addTarget(allocator, cmds, "obj2", "test/src/obj2.zig");
-    const t5: *Builder.Target = try g3.addTarget(allocator, cmds, "obj3", "test/src/obj3.zig");
-    const t6: *Builder.Target = try g3.addTarget(allocator, cmds, "obj4", "test/src/obj4.zig");
-    const t7: *Builder.Target = try g3.addTarget(allocator, cmds, "obj5", "test/src/obj5.zig");
-    const t1: *Builder.Target = try g3.addTarget(allocator, cmds, "lib0", "test/src/lib0.zig");
-    const t0: *Builder.Target = try g3.addTarget(allocator, cmds, "lib1", "test/src/lib1.zig");
-    cmds.build.?.kind = .exe;
-    const t: *Builder.Target = try g3.addTarget(allocator, cmds, "bin", "test/src/main.zig");
+    build_cmd.kind = .obj;
+    const t2: *Builder.Target = try g3.addBuild(allocator, build_cmd, "obj0", "test/src/obj0.zig");
+    const t3: *Builder.Target = try g3.addBuild(allocator, build_cmd, "obj1", "test/src/obj1.zig");
+    const t4: *Builder.Target = try g3.addBuild(allocator, build_cmd, "obj2", "test/src/obj2.zig");
+    const t5: *Builder.Target = try g3.addBuild(allocator, build_cmd, "obj3", "test/src/obj3.zig");
+    const t6: *Builder.Target = try g3.addBuild(allocator, build_cmd, "obj4", "test/src/obj4.zig");
+    const t7: *Builder.Target = try g3.addBuild(allocator, build_cmd, "obj5", "test/src/obj5.zig");
+    const t1: *Builder.Target = try g3.addBuild(allocator, build_cmd, "lib0", "test/src/lib0.zig");
+    const t0: *Builder.Target = try g3.addBuild(allocator, build_cmd, "lib1", "test/src/lib1.zig");
+    build_cmd.kind = .exe;
+    const t: *Builder.Target = try g3.addBuild(allocator, build_cmd, "bin", "test/src/main.zig");
     t1.dependOnObject(allocator, t2);
     t1.dependOnObject(allocator, t3);
     t1.dependOnObject(allocator, t4);
@@ -2589,17 +2588,17 @@ pub fn testLargeFlatStructureBuilder(args: anytype, vars: anytype, address_space
     var builder: Builder = try meta.wrap(Builder.init(args, vars));
     try testBuildProgram(&allocator, &builder);
     var buf: [4096]u8 = undefined;
-    for (builder.groups(), 0..) |grp, grp_idx| {
+    for (builder.grps[0..builder.grps_len], 0..) |grp, grp_idx| {
         const pathname: []const u8 = "zig-out/bin/groups";
         for (grp.trgs[0..grp.trgs_len], 0..) |trg, trg_idx| {
             const s = allocator.save();
             defer allocator.restore(s);
             const len: u64 = builtin.debug.writeMulti(&buf, &.{ pathname, builtin.fmt.ud64(grp_idx).readAll(), "_", builtin.fmt.ud64(trg_idx).readAll() });
             buf[len] = 0;
-            try serial.serialWrite(.{ .Allocator = Builder.Allocator }, build.BuildCommand, &allocator, buf[0..len :0], trg.cmds.build.?);
+            try serial.serialWrite(.{ .Allocator = Builder.Allocator }, build.BuildCommand, &allocator, buf[0..len :0], trg.task_data.build.*);
         }
     }
-    for (builder.groups(), 0..) |grp, grp_idx| {
+    for (builder.grps[0..builder.grps_len], 0..) |grp, grp_idx| {
         const pathname: []const u8 = "zig-out/bin/groups";
         for (grp.trgs[0..grp.trgs_len], 0..) |trg, trg_idx| {
             const s = allocator.save();
@@ -2608,7 +2607,7 @@ pub fn testLargeFlatStructureBuilder(args: anytype, vars: anytype, address_space
             buf[len] = 0;
 
             const s_build_cmd: build.BuildCommand = try serial.serialRead(.{ .Allocator = Builder.Allocator }, build.BuildCommand, &allocator, buf[0..len :0]);
-            try builtin.expectEqualMemory(build.BuildCommand, s_build_cmd, trg.cmds.build.?);
+            try builtin.expectEqualMemory(build.BuildCommand, s_build_cmd, trg.task_data.build.*);
         }
     }
 }
