@@ -71,6 +71,7 @@ pub const count_ctn_specifier_name: [:0]const u8 = fieldAccess(ctn_spec_name, "c
 pub const low_alignment_ctn_specifier_name: [:0]const u8 = fieldAccess(ctn_spec_name, low_alignment_name);
 pub const high_alignment_ctn_specifier_name: [:0]const u8 = fieldAccess(ctn_spec_name, high_alignment_name);
 pub const child_ctn_specifier_name: [:0]const u8 = fieldAccess(ctn_spec_name, child_type_name);
+pub const allocator_ctn_specifier_name: [:0]const u8 = fieldAccess(ctn_spec_name, allocator_name);
 pub const sentinel_impl_specifier_name: [:0]const u8 = fieldAccess(impl_spec_name, sentinel_ptr_name);
 pub const arena_impl_specifier_name: [:0]const u8 = fieldAccess(impl_spec_name, "arena");
 pub const count_impl_specifier_name: [:0]const u8 = fieldAccess(impl_spec_name, "count");
@@ -78,7 +79,6 @@ pub const low_alignment_impl_specifier_name: [:0]const u8 = fieldAccess(impl_spe
 pub const high_alignment_impl_specifier_name: [:0]const u8 = fieldAccess(impl_spec_name, high_alignment_name);
 pub const child_impl_specifier_name: [:0]const u8 = fieldAccess(impl_spec_name, child_type_name);
 pub const slave_specifier_name: [:0]const u8 = "allocator";
-
 pub const slave_specifier_type_name: [:0]const u8 = fieldAccess(impl_spec_name, "Allocator");
 pub const slave_specifier_ptr_type_name: [:0]const u8 = pointerTo(slave_specifier_type_name);
 pub const slave_specifier_const_ptr_type_name: [:0]const u8 = constPointerTo(slave_specifier_type_name);
@@ -88,7 +88,6 @@ pub const slave_specifier_const_ptr_param: [:0]const u8 = paramDecl(slave_specif
 pub const slave_specifier_call_unallocated_byte_address: [:0]const u8 = callSimple(fieldAccess(slave_specifier_name, unallocated_byte_address_name));
 pub const slave_specifier_call_unmapped_byte_address: [:0]const u8 = callSimple(fieldAccess(slave_specifier_name, unmapped_byte_address_name));
 pub const slave_specifier_call_unaddressable_byte_address: [:0]const u8 = callSimple(fieldAccess(slave_specifier_name, unaddressable_byte_address_name));
-
 pub const automatic_storage_type_name: [:0]const u8 =
     arrayType(child_impl_specifier_name, count_impl_specifier_name, null);
 pub const automatic_storage_with_sentinel_type_name: [:0]const u8 =
