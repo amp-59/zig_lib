@@ -55,9 +55,9 @@ pub fn main(args_in: [][*:0]u8) !void {
             buf[idx] = buf[beg +% idx];
         }
         if (mem.indexOfLastEqualMany(u8, rm_bits[0], buf)) |pos| {
-            try file.ftruncate(.{}, fd, pos);
+            try file.truncate(.{}, fd, pos);
         } else {
-            try file.ftruncate(.{}, fd, idx);
+            try file.truncate(.{}, fd, idx);
         }
     }
 }

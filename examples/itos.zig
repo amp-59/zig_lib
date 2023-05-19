@@ -70,7 +70,7 @@ const Options = struct {
 fn outputChar() []const u8 {
     return "";
 }
-const opt_map: []const Options.Map = meta.slice(Options.Map, if (single_switch) .{
+const opt_map: []const Options.Map = &if (single_switch) .{
     .{ .field_name = "output", .short = "-o", .long = "--output", .assign = .{ .action = Options.setOutput } },
 } else .{
     .{ .field_name = "output", .short = "-c", .long = "--char", .assign = .{ .any = &(.char) } },
@@ -78,7 +78,7 @@ const opt_map: []const Options.Map = meta.slice(Options.Map, if (single_switch) 
     .{ .field_name = "output", .short = "-d", .long = "--dec", .assign = .{ .any = &(.dec) } },
     .{ .field_name = "output", .short = "-o", .long = "--oct", .assign = .{ .any = &(.oct) } },
     .{ .field_name = "output", .short = "-b", .long = "--bin", .assign = .{ .any = &(.bin) } },
-});
+};
 fn loopInner(options: Options, arg: []const u8) !void {
     file.write(.{ .errors = .{} }, 1, switch (options.output) {
         .hex => builtin.fmt.ux64(try builtin.parse.any(u64, arg)).readAll(),
