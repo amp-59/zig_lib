@@ -197,84 +197,37 @@ pub const ModuleDependencies = struct {
 };
 pub const Macro = struct {
     name: []const u8,
-    value: Value,
+    value: ?[]const u8 = null,
     const Format = @This();
-    const Value = union(enum) {
-        string: [:0]const u8,
-        symbol: [:0]const u8,
-        path: Path,
-    };
     pub fn formatWrite(format: Format, array: anytype) void {
         array.writeMany("-D");
         array.writeMany(format.name);
-        array.writeMany("=");
-        switch (format.value) {
-            .string => |string| {
-                array.writeOne('"');
-                array.writeMany(string);
-                array.writeOne('"');
-            },
-            .path => |path| {
-                array.writeOne('"');
-                array.writeFormat(path);
-                array.writeOne('"');
-            },
-            .symbol => |symbol| {
-                array.writeMany(symbol);
-            },
+        if (format.value) |value| {
+            array.writeMany("=");
+            array.writeMany(value);
         }
         array.writeOne(0);
     }
     pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
         @setRuntimeSafety(false);
-        var len: u64 = 2;
-        mach.memcpy(buf, "-D", 2);
-        mach.memcpy(buf + len, format.name.ptr, format.name.len);
-        len = len +% format.name.len;
-        buf[len] = '=';
-        len = len +% 1;
-        switch (format.value) {
-            .string => |string| {
-                buf[len] = '"';
-                len = len +% 1;
-                mach.memcpy(buf + len, string.ptr, string.len);
-                len = len +% string.len;
-                buf[len] = '"';
-                len = len +% 1;
-            },
-            .path => |path| {
-                buf[len] = '"';
-                len = len +% 1;
-                len = len + path.formatWriteBuf(buf + len);
-                buf[len] = '"';
-                len = len +% 1;
-            },
-            .symbol => |symbol| {
-                mach.memcpy(buf + len, symbol.ptr, symbol.len);
-                len = len +% symbol.len;
-            },
+        @ptrCast(*[2]u8, buf).* = "-D".*;
+        mach.memcpy(buf + 2, format.name.ptr, format.name.len);
+        var len: u64 = 2 +% format.name.len;
+        if (format.value) |value| {
+            buf[len] = '=';
+            len = len +% 1;
+            mach.memcpy(buf + len, value.ptr, value.len);
+            len = len +% value.len;
         }
         buf[len] = 0;
         return len +% 1;
     }
     pub fn formatLength(format: Format) u64 {
-        var len: u64 = 0;
-        len +%= 2;
-        len +%= format.name.len;
-        len +%= 1;
-        switch (format.value) {
-            .string => |string| {
-                len +%= 1 +% string.len +% 1;
-            },
-            .path => |path| {
-                len +%= 1 +% path.formatLength() +% 1;
-            },
-            .symbol => |symbol| {
-                len +%= symbol.len;
-            },
+        var len: u64 = 2 +% format.name.len;
+        if (format.value) |value| {
+            len +%= 1 +% value.len;
         }
-        len +%= 1;
-        return len;
+        return len +% 1;
     }
 };
 pub const Macros = Aggregate(Macro);

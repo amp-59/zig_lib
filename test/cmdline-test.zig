@@ -9,7 +9,7 @@ const builtin = zig_lib.builtin;
 pub usingnamespace proc.start;
 
 pub const logging_override: builtin.Logging.Override = spec.logging.override.verbose;
-pub const runtime_assertions: bool = false;
+pub const runtime_assertions: bool = true;
 
 const Builder = build.GenericBuilder(spec.builder.default);
 
@@ -19,10 +19,11 @@ fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
         .kind = .exe,
         .allow_shlib_undefined = true,
         .build_id = true,
-        .cflags = &.{
-            "-O3",
-            "-Wno-parentheses",
-            "-Wno-format-security",
+        .cflags = &.{ "-O3", "-Wno-parentheses", "-Wno-format-security" },
+        .macros = &.{
+            .{ .name = "true", .value = "false" },
+            .{ .name = "false", .value = "true" },
+            .{ .name = "__zig__" },
         },
         .clang = true,
         .code_model = .default,
