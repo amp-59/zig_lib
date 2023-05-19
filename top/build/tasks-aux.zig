@@ -55,8 +55,10 @@ fn writeFields(array: *Array, opt_specs: []const types.OptionSpec) void {
             opt_spec.arg_info.tag == .boolean)
         {
             array.writeMany("=false,\n");
-        } else {
+        } else if (opt_spec.arg_info.tag != .tag) {
             array.writeMany("=null,\n");
+        } else {
+            array.writeMany(",\n");
         }
     }
 }
