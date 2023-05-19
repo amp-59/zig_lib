@@ -743,6 +743,59 @@ fn writeArchiveWrite(array: *Array, arrays: *Arrays, indices: *Indices) void {
         }
     }
 }
+fn writeRanlibWrite(array: *Array, arrays: *Arrays, indices: *Indices) void {
+    if (!abstract) {
+        if (primitive) {
+            array.writeMany(
+                \\pub fn ranlibWriteBuf(cmd:*const tasks.RanlibCommand,zig_exe:[]const u8,root_path:types.Path,buf:[*]u8)u64{
+                \\@setRuntimeSafety(false);
+                \\
+            );
+            array.writeMany(zig_exe_s);
+            array.writeMany(
+                \\mach.memcpy(buf+len,"ar\x00", 3);
+                \\len+%=3;
+                \\
+            );
+        } else {
+            array.writeMany(
+                \\pub fn ranlibWrite(cmd:*const tasks.RanlibCommand,zig_exe:[]const u8,root_path:types.Path,array:anytype)void{
+                \\@setRuntimeSafety(false);
+                \\
+            );
+            array.writeMany(zig_exe_s);
+            array.writeMany("array.writeMany(\"ar\x00\");\n");
+        }
+    }
+    writeFunctionBody(array, attr.ranlib_command_options, .write, arrays, indices);
+    if (!abstract) {
+        if (primitive) {
+            array.writeMany(
+                \\len+%=root_path.formatWriteBuf(buf+len);
+                \\buf[len]=0;
+                \\return len;
+                \\}
+                \\
+            );
+        } else {
+            array.writeMany("array.writeFormat(root_path);\n");
+        }
+    }
+}
+fn writeRanlibLength(array: *Array, arrays: *Arrays, indices: *Indices) void {
+    if (!abstract) {
+        array.writeMany(
+            \\pub fn ranlibLength(cmd:*const tasks.RanlibCommand,zig_exe:[]const u8,root_path:types.Path)u64{
+            \\@setRuntimeSafety(false);
+            \\var len:u64=zig_exe.len+%3;
+            \\
+        );
+    }
+    writeFunctionBody(array, attr.ranlib_command_options, .length, arrays, indices);
+    if (!abstract) {
+        array.writeMany("return len+%root_path.formatLength()+%1;\n}\n");
+    }
+}
 fn writeArchiveLength(array: *Array, arrays: *Arrays, indices: *Indices) void {
     if (!abstract) {
         array.writeMany(
@@ -832,10 +885,10 @@ fn writeArchiveCommandLine(array: *Array, arrays: *Arrays, indices: *Indices) vo
     writeArchiveWrite(array, arrays, indices);
     writeArchiveLength(array, arrays, indices);
 }
-//fn writeRanlibCommandLine(array: *Array, arrays: *Arrays, indices: *Indices) void {
-//    writeRanlibWrite(array, arrays, indices);
-//    writeRanlibLength(array, arrays, indices);
-//}
+fn writeRanlibCommandLine(array: *Array, arrays: *Arrays, indices: *Indices) void {
+    writeRanlibWrite(array, arrays, indices);
+    writeRanlibLength(array, arrays, indices);
+}
 pub fn main() !void {
     var allocator: mem.SimpleAllocator = .{};
     defer allocator.unmap();
@@ -849,7 +902,7 @@ pub fn main() !void {
 
     writeBuildCommandLine(array, arrays, build_idc);
     writeArchiveCommandLine(array, arrays, build_idc);
-    //writeRanlibWrite(array, arrays, build_idc);
+    writeRanlibCommandLine(array, arrays, build_idc);
     writeFormatCommandLine(array, arrays, format_idc);
 
     if (compile) {
