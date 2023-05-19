@@ -148,12 +148,12 @@ pub const BuildCommand = struct {
     dirafter: ?[]const u8 = null,
     /// Add directory to SYSTEM include search path
     system: ?[]const u8 = null,
-    /// Add directory to include search path
-    include: ?[]const u8 = null,
     /// Provide a file which specifies libc paths
     libc: ?[]const u8 = null,
     /// Link against system library (only if actually used)
     library: ?[]const u8 = null,
+    /// Add directories to include search path
+    include: ?[]const []const u8 = null,
     /// Link against system library (even if unused)
     needed_library: ?[]const []const u8 = null,
     /// Add a directory to the library search path
@@ -281,4 +281,44 @@ pub const FormatCommand = struct {
     ast_check: bool = false,
     /// Exclude file or directory from formatting
     exclude: ?[]const u8 = null,
+};
+pub const ArchiveCommand = struct {
+    /// Archive format to create
+    format: ?enum(u3) {
+        default = 0,
+        gnu = 1,
+        darwin = 2,
+        bsd = 3,
+        bigarchive = 4,
+    } = null,
+    /// Ignored for compatibility
+    plugin: bool = false,
+    /// Extraction target directory
+    output: ?[]const u8 = null,
+    /// Create a thin archive
+    thin: ?[]const u8 = null,
+    /// Put [files] after [relpos]
+    after: bool = false,
+    /// Put [files] before [relpos] (same as [i])
+    before: bool = false,
+    /// Do not warn if archive had to be created
+    create: bool = false,
+    /// Use zero for timestamps and uids/gids (default)
+    zero_ids: bool = false,
+    /// Use actual timestamps and uids/gids
+    real_ids: bool = false,
+    /// Add archive's contents
+    append: bool = false,
+    /// Preserve original dates
+    preserve_dates: bool = false,
+    /// Create an archive index (cf. ranlib)
+    index: bool = false,
+    /// do not build a symbol table
+    no_symbol_table: bool = false,
+    /// update only [files] newer than archive contents
+    update: bool = false,
+};
+pub const RanlibCommand = struct {
+    /// Use actual timestamps and uids/gids
+    real_ids: ?bool = null,
 };
