@@ -436,9 +436,9 @@ pub const ProtoTypeDescr = fmt.GenericTypeDescrFormat(.{
 });
 pub const ArgInfo = struct {
     /// Describes how the argument should be written to the command line buffer
-    tag: Tag,
+    tag: Tag = .boolean,
     /// Describes how the field type should be written to the command struct
-    type: ProtoTypeDescr,
+    type: ProtoTypeDescr = ProtoTypeDescr.init(bool),
     /// Specifies whether option arguments are separated with '\x00' or '='
     char: ?u8 = null,
     const Tag = enum(u8) {
@@ -457,15 +457,13 @@ pub const ArgInfo = struct {
         repeatable_string,
         repeatable_tag,
     };
+    pub const immediate: u8 = 255;
     fn optionalTypeDescr(any: anytype) ProtoTypeDescr {
         if (@TypeOf(any) == type) {
             return optional(&ProtoTypeDescr.init(any));
         } else {
             return optional(&.{ .type_name = any });
         }
-    }
-    pub fn boolean() ArgInfo {
-        return .{ .tag = .boolean, .type = ProtoTypeDescr.init(bool) };
     }
     pub fn string(comptime T: type) ArgInfo {
         return .{ .tag = .string, .type = ProtoTypeDescr.init(T) };
@@ -516,7 +514,7 @@ pub const OptionSpec = struct {
     /// Command line flag/switch
     string: ?[]const u8 = null,
     /// Simple argument type
-    arg_info: ArgInfo = ArgInfo.boolean(),
+    arg_info: ArgInfo = .{},
     /// For options with -f<name> and -fno-<name> variants
     and_no: ?InverseOptionSpec = null,
     /// Maybe define default value of this field. Should be false or null, but
@@ -529,7 +527,7 @@ pub const InverseOptionSpec = struct {
     /// Command line flag/switch
     string: ?[]const u8 = null,
     /// Simple argument type
-    arg_info: ArgInfo = ArgInfo.boolean(),
+    arg_info: ArgInfo = .{},
 };
 pub const Record = packed struct {
     /// Build duration in milliseconds, max 50 days
