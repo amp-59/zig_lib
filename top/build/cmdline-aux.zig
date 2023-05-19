@@ -263,7 +263,9 @@ fn writeOptStringExtra(
         writeOptString(array, opt_string, variant, char);
     } else {
         writeOptString(array, opt_string, variant, char);
-        writeCharacteristic(array, variant, char);
+        if (char != types.ArgInfo.immediate) {
+            writeCharacteristic(array, variant, char);
+        }
     }
 }
 fn writeOptString(
@@ -280,14 +282,14 @@ fn writeOptString(
                 if (prefer_ptrcast) {
                     array.writeMany("@ptrCast(");
                     array.writeMany("*[");
-                    if (combine_char) {
+                    if (combine_char and char != types.ArgInfo.immediate) {
                         array.writeFormat(fmt.ud64(opt_string.len +% 1));
                     } else {
                         array.writeFormat(fmt.ud64(opt_string.len));
                     }
                     array.writeMany("]u8,buf+len).*=\"");
                     array.writeMany(opt_string);
-                    if (combine_char) {
+                    if (combine_char and char != types.ArgInfo.immediate) {
                         array.writeMany("\\x");
                         array.writeFormat(CharacteristicFormat{ .value = char });
                     }
@@ -295,12 +297,12 @@ fn writeOptString(
                 } else {
                     array.writeMany("mach.memcpy(buf+len,\"");
                     array.writeMany(opt_string);
-                    if (combine_char) {
+                    if (combine_char and char != types.ArgInfo.immediate) {
                         array.writeMany("\\x");
                         array.writeFormat(CharacteristicFormat{ .value = char });
                     }
                     array.writeMany("\",");
-                    if (combine_char) {
+                    if (combine_char and char != types.ArgInfo.immediate) {
                         array.writeFormat(fmt.ud64(opt_string.len +% 1));
                     } else {
                         array.writeFormat(fmt.ud64(opt_string.len));
@@ -315,7 +317,7 @@ fn writeOptString(
             } else {
                 array.writeMany("array.writeMany(\"");
                 array.writeMany(opt_string);
-                if (combine_char) {
+                if (combine_char and char != types.ArgInfo.immediate) {
                     array.writeMany("\\x");
                     array.writeFormat(CharacteristicFormat{ .value = char });
                 }
@@ -327,7 +329,7 @@ fn writeOptString(
                 array.writeMany("len+%=opt_switch.len;\n");
             } else {
                 array.writeMany("len+%=");
-                if (combine_char) {
+                if (combine_char and char != types.ArgInfo.immediate) {
                     array.writeFormat(fmt.ud64(opt_string.len +% 1));
                 } else {
                     array.writeFormat(fmt.ud64(opt_string.len));
@@ -535,9 +537,19 @@ pub fn writeFunctionBody(array: *Array, options: []const types.OptionSpec, varia
             unhandledCommandFieldAndNo(opt_spec, no_opt_spec);
         } else {
             if (opt_spec.arg_info.tag == .boolean) {
+                const char: u8 = opt_spec.arg_info.char orelse '\x00';
                 writeFunctionSignature(array, opt_spec, variant);
                 writeIfField(array, if_boolean_field_value);
-                writeOptStringExtra(array, opt_spec.string.?, variant, '\x00');
+                writeOptStringExtra(array, opt_spec.string.?, variant, char);
+                writeIfClose(array);
+                writeFunctionReturn(array);
+                continue;
+            }
+            if (opt_spec.arg_info.tag == .tag) {
+                const char: u8 = opt_spec.arg_info.char orelse '\x00';
+                writeFunctionSignature(array, opt_spec, variant);
+                writeIfField(array, if_boolean_field_value);
+                writeOptStringExtra(array, opt_spec.string.?, variant, char);
                 writeIfClose(array);
                 writeFunctionReturn(array);
                 continue;
@@ -753,8 +765,8 @@ fn writeRanlibWrite(array: *Array, arrays: *Arrays, indices: *Indices) void {
             );
             array.writeMany(zig_exe_s);
             array.writeMany(
-                \\mach.memcpy(buf+len,"ar\x00", 3);
-                \\len+%=3;
+                \\mach.memcpy(buf+len,"ranlib\x00", 7);
+                \\len+%=7;
                 \\
             );
         } else {
@@ -764,7 +776,7 @@ fn writeRanlibWrite(array: *Array, arrays: *Arrays, indices: *Indices) void {
                 \\
             );
             array.writeMany(zig_exe_s);
-            array.writeMany("array.writeMany(\"ar\x00\");\n");
+            array.writeMany("array.writeMany(\"ranlib\x00\");\n");
         }
     }
     writeFunctionBody(array, attr.ranlib_command_options, .write, arrays, indices);
@@ -787,13 +799,13 @@ fn writeRanlibLength(array: *Array, arrays: *Arrays, indices: *Indices) void {
         array.writeMany(
             \\pub fn ranlibLength(cmd:*const tasks.RanlibCommand,zig_exe:[]const u8,root_path:types.Path)u64{
             \\@setRuntimeSafety(false);
-            \\var len:u64=zig_exe.len+%3;
+            \\var len:u64=zig_exe.len+%8;
             \\
         );
     }
     writeFunctionBody(array, attr.ranlib_command_options, .length, arrays, indices);
     if (!abstract) {
-        array.writeMany("return len+%root_path.formatLength()+%1;\n}\n");
+        array.writeMany("return len+%root_path.formatLength();\n}\n");
     }
 }
 fn writeArchiveLength(array: *Array, arrays: *Arrays, indices: *Indices) void {
@@ -801,13 +813,13 @@ fn writeArchiveLength(array: *Array, arrays: *Arrays, indices: *Indices) void {
         array.writeMany(
             \\pub fn archiveLength(cmd:*const tasks.ArchiveCommand,zig_exe:[]const u8,root_path:types.Path)u64{
             \\@setRuntimeSafety(false);
-            \\var len:u64=zig_exe.len+%3;
+            \\var len:u64=zig_exe.len+%4;
             \\
         );
     }
     writeFunctionBody(array, attr.archive_command_options, .length, arrays, indices);
     if (!abstract) {
-        array.writeMany("return len+%root_path.formatLength()+%1;\n}\n");
+        array.writeMany("return len+%root_path.formatLength();\n}\n");
     }
 }
 fn writeFormatWrite(array: *Array, arrays: *Arrays, indices: *Indices) void {
@@ -867,7 +879,7 @@ fn writeFormatLength(array: *Array, arrays: *Arrays, indices: *Indices) void {
     writeFunctionBody(array, attr.format_command_options, .length, arrays, indices);
     if (!abstract) {
         array.writeMany(
-            \\return len+%root_path.formatLength()+%1;
+            \\return len+%root_path.formatLength();
             \\
         );
         array.writeMany("}\n");
