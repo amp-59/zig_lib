@@ -16,11 +16,21 @@ const Builder = build.GenericBuilder(.{
     .errors = spec.builder.errors.noexcept,
     .options = .{ .max_cmdline_len = null },
 });
+pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
+    var address_space: Builder.AddressSpace = .{};
+    var thread_space: Builder.ThreadSpace = .{};
+    var allocator: Builder.Allocator = try meta.wrap(
+        Builder.Allocator.init(&address_space, Builder.max_thread_count),
+    );
+    defer allocator.deinit(&address_space, Builder.max_thread_count);
+    if (args.len < 5) {
+        return error.MissingEnvironmentPaths;
+    }
+    var builder: Builder = try meta.wrap(Builder.init(args, vars));
 
-fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
-    const g0: *Builder.Group = try builder.addGroup(allocator, "g0");
-    const t0: *Builder.Target = try g0.addTarget(allocator, .{ .build = .{
-        .kind = .exe,
+    const g0: *Builder.Group = try builder.addGroup(&allocator, "g0");
+    const t0: *Builder.Target = try g0.addBuild(&allocator, .{
+        .kind = .obj,
         .allow_shlib_undefined = true,
         .build_id = true,
         .cflags = &.{ "-O3", "-Wno-parentheses", "-Wno-format-security" },
@@ -50,20 +60,15 @@ fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
         .z = &.{ .nodelete, .notext },
         .mode = .Debug,
         .strip = true,
-    } }, "target", @src().file);
+    }, "target", @src().file);
     t0.descr = "Dummy target";
-}
-pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
-    var address_space: Builder.AddressSpace = .{};
-    var thread_space: Builder.ThreadSpace = .{};
-    var allocator: Builder.Allocator = try meta.wrap(
-        Builder.Allocator.init(&address_space, Builder.max_thread_count),
-    );
-    defer allocator.deinit(&address_space, Builder.max_thread_count);
-    if (args.len < 5) {
-        return error.MissingEnvironmentPaths;
-    }
-    var builder: Builder = try meta.wrap(Builder.init(args, vars));
-    try buildMain(&allocator, &builder);
-    builder.grps[0].trgs[0].executeToplevel(&address_space, &thread_space, &allocator, &builder, .build);
+    const t1: *Builder.Target = try g0.addArchive(&allocator, .{
+        .operation = .r,
+        .create = true,
+    }, "archive", &.{t0});
+    Builder.debug.builderCommandNotice(&builder, true, true, true);
+    t1.task_data.archive.files = &.{
+        t0.task_data.build.emit_bin.?.yes.?,
+    };
+    t1.executeToplevel(&address_space, &thread_space, &allocator, &builder, .archive);
 }
