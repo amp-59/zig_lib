@@ -513,9 +513,11 @@ comptime {
 //    );
 //}
 pub extern fn memcpy(noalias dest: [*]u8, noalias src: *const anyopaque, len: u64) callconv(.C) void;
+pub extern fn anycpy(noalias dest: *anyopaque, noalias src: *const anyopaque, len: u64) callconv(.C) void;
 comptime {
     asm (
         \\.intel_syntax noprefix
+        \\anycpy:
         \\memcpy:
         \\  mov     rcx, rdx
         \\  rep     movsb byte ptr es:[rdi], byte ptr [rsi]

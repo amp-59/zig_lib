@@ -488,7 +488,6 @@ pub const ArgInfo = struct {
     type: ProtoTypeDescr,
     /// Specifies whether option arguments are separated with '\x00' or '='
     char: ?u8 = null,
-
     const Tag = enum(u8) {
         boolean = 0,
         string,

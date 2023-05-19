@@ -552,6 +552,16 @@ pub const build_command_options: []const types.OptionSpec = &.{
         .descr = &.{"Enable dumping of the linker's state in JSON"},
     },
 };
+pub const ranlib_command_options: []const types.OptionSpec = &.{
+    .{
+        .name = "real_ids",
+        .string = "-U",
+        .descr = &.{"Use actual timestamps and uids/gids"},
+        .and_no = .{
+            .string = "-D",
+        },
+    },
+};
 pub const archive_command_options: []const types.OptionSpec = &.{
     .{
         .name = "format",
