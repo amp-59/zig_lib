@@ -28,5 +28,5 @@ var build_cmd: build.BuildCommand = .{
 pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     const all: *Builder.Group = try builder.addGroup(allocator, "all");
 
-    _ = try all.addTarget(allocator, .{ .build = build_cmd }, "main", "./src/main.zig");
+    _ = try all.addBuild(allocator, build_cmd, "main", "./src/main.zig");
 }
