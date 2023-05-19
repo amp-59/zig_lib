@@ -583,58 +583,79 @@ pub const archive_command_options: []const types.OptionSpec = &.{
     .{
         .name = "thin",
         .string = "--thin",
-        .arg_info = types.ArgInfo.optional_string([]const u8),
         .descr = &.{"Create a thin archive"},
     },
     .{
         .name = "after",
         .string = "a",
+        .arg_info = .{ .char = types.ArgInfo.immediate },
         .descr = &.{"Put [files] after [relpos]"},
     },
     .{
         .name = "before",
         .string = "b",
+        .arg_info = .{ .char = types.ArgInfo.immediate },
         .descr = &.{"Put [files] before [relpos] (same as [i])"},
     },
     .{
         .name = "create",
         .string = "c",
+        .arg_info = .{ .char = types.ArgInfo.immediate },
         .descr = &.{"Do not warn if archive had to be created"},
     },
     .{
         .name = "zero_ids",
         .string = "D",
+        .arg_info = .{ .char = types.ArgInfo.immediate },
         .descr = &.{"Use zero for timestamps and uids/gids (default)"},
     },
     .{
         .name = "real_ids",
         .string = "U",
+        .arg_info = .{ .char = types.ArgInfo.immediate },
         .descr = &.{"Use actual timestamps and uids/gids"},
     },
     .{
         .name = "append",
         .string = "L",
+        .arg_info = .{ .char = types.ArgInfo.immediate },
         .descr = &.{"Add archive's contents"},
     },
     .{
         .name = "preserve_dates",
         .string = "o",
+        .arg_info = .{ .char = types.ArgInfo.immediate },
         .descr = &.{"Preserve original dates"},
     },
     .{
         .name = "index",
         .string = "s",
+        .arg_info = .{ .char = types.ArgInfo.immediate },
         .descr = &.{"Create an archive index (cf. ranlib)"},
     },
     .{
         .name = "no_symbol_table",
         .string = "S",
+        .arg_info = .{ .char = types.ArgInfo.immediate },
         .descr = &.{"do not build a symbol table"},
     },
     .{
         .name = "update",
         .string = "u",
+        .arg_info = .{ .char = types.ArgInfo.immediate },
         .descr = &.{"update only [files] newer than archive contents"},
+    },
+    .{
+        .name = "operation",
+        .arg_info = types.ArgInfo.tag(enum { d, m, q, r, s, x }),
+        .descr = &.{
+            "d  Delete [files] from the archive",
+            "m  Move [files] in the archive",
+            "q  Quick append [files] to the archive",
+            "r  Replace or insert [files] into the archive",
+            "s  Act as ranlib",
+            "x  Extract [files] from the archive",
+        },
     },
 };
 
