@@ -105,12 +105,13 @@ pub fn writeJSON(cfg: *const BuildConfig, buf: []u8) u64 {
 }
 fn lengthModules(builder: *Builder) u64 {
     var len: u64 = 0;
-    for (builder.groups()) |group| {
-        for (group.targets()) |target| {
-            if (target.cmds.build) |build_cmd| {
-                if (build_cmd.modules) |mods| {
-                    len +%= mods.len;
-                }
+    for (builder.grps[0..builder.grps_len]) |group| {
+        for (group.trgs[0..group.trgs_len]) |target| {
+            if (target.task != .build) {
+                continue;
+            }
+            if (target.task_data.build.modules) |mods| {
+                len +%= mods.len;
             }
         }
     }
@@ -118,17 +119,15 @@ fn lengthModules(builder: *Builder) u64 {
 }
 fn writeModules(pkgs: []BuildConfig.Pkg, builder: *Builder) []BuildConfig.Pkg {
     var len: u64 = 0;
-    for (builder.groups()) |group| {
-        for (group.targets()) |target| {
-            if (target.cmds.build) |build_cmd| {
-                if (build_cmd.modules) |mods| {
-                    for (mods) |mod| {
-                        pkgs[len] = .{
-                            .name = mod.name,
-                            .path = mod.path,
-                        };
-                        len +%= 1;
-                    }
+    for (builder.grps[0..builder.grps_len]) |group| {
+        for (group.trgs[0..group.trgs_len]) |target| {
+            if (target.task != .build) {
+                continue;
+            }
+            if (target.task_data.build.modules) |mods| {
+                for (mods) |mod| {
+                    pkgs[len] = .{ .name = mod.name, .path = mod.path };
+                    len +%= 1;
                 }
             }
         }
