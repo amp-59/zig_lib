@@ -287,12 +287,6 @@ pub const build_command_options: []const types.OptionSpec = &.{
         .descr = &.{"Add directory to SYSTEM include search path"},
     },
     .{
-        .name = "include",
-        .string = "-I",
-        .arg_info = types.ArgInfo.optional_string([]const u8),
-        .descr = &.{"Add directory to include search path"},
-    },
-    .{
         .name = "libc",
         .string = "--libc",
         .arg_info = types.ArgInfo.optional_string([]const u8),
@@ -303,6 +297,12 @@ pub const build_command_options: []const types.OptionSpec = &.{
         .string = "--library",
         .arg_info = types.ArgInfo.optional_string([]const u8),
         .descr = &.{"Link against system library (only if actually used)"},
+    },
+    .{
+        .name = "include",
+        .string = "-I",
+        .arg_info = types.ArgInfo.repeatable_string([]const []const u8),
+        .descr = &.{"Add directories to include search path"},
     },
     .{
         .name = "needed_library",
@@ -552,6 +552,82 @@ pub const build_command_options: []const types.OptionSpec = &.{
         .descr = &.{"Enable dumping of the linker's state in JSON"},
     },
 };
+pub const archive_command_options: []const types.OptionSpec = &.{
+    .{
+        .name = "format",
+        .string = "--format",
+        .arg_info = types.ArgInfo.optional_tag(enum { default, gnu, darwin, bsd, bigarchive }),
+        .descr = &.{"Archive format to create"},
+    },
+    .{
+        .name = "plugin",
+        .string = "--plugin",
+        .descr = &.{"Ignored for compatibility"},
+    },
+    .{
+        .name = "output",
+        .string = "--output",
+        .arg_info = types.ArgInfo.optional_string([]const u8),
+        .descr = &.{"Extraction target directory"},
+    },
+    .{
+        .name = "thin",
+        .string = "--thin",
+        .arg_info = types.ArgInfo.optional_string([]const u8),
+        .descr = &.{"Create a thin archive"},
+    },
+    .{
+        .name = "after",
+        .string = "a",
+        .descr = &.{"Put [files] after [relpos]"},
+    },
+    .{
+        .name = "before",
+        .string = "b",
+        .descr = &.{"Put [files] before [relpos] (same as [i])"},
+    },
+    .{
+        .name = "create",
+        .string = "c",
+        .descr = &.{"Do not warn if archive had to be created"},
+    },
+    .{
+        .name = "zero_ids",
+        .string = "D",
+        .descr = &.{"Use zero for timestamps and uids/gids (default)"},
+    },
+    .{
+        .name = "real_ids",
+        .string = "U",
+        .descr = &.{"Use actual timestamps and uids/gids"},
+    },
+    .{
+        .name = "append",
+        .string = "L",
+        .descr = &.{"Add archive's contents"},
+    },
+    .{
+        .name = "preserve_dates",
+        .string = "o",
+        .descr = &.{"Preserve original dates"},
+    },
+    .{
+        .name = "index",
+        .string = "s",
+        .descr = &.{"Create an archive index (cf. ranlib)"},
+    },
+    .{
+        .name = "no_symbol_table",
+        .string = "S",
+        .descr = &.{"do not build a symbol table"},
+    },
+    .{
+        .name = "update",
+        .string = "u",
+        .descr = &.{"update only [files] newer than archive contents"},
+    },
+};
+
 pub const format_command_options: []const types.OptionSpec = &.{
     .{
         .name = "color",
