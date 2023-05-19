@@ -25,6 +25,7 @@ pub const Task = enum(u8) {
     format = 0,
     build = 1,
     run = 2,
+    archive = 3,
     pub const list: []const Task = meta.tagList(Task);
 };
 pub const State = enum(u8) {
@@ -69,11 +70,9 @@ pub const Path = struct {
         return len +% 1;
     }
     pub fn formatLength(format: Format) u64 {
-        var len: u64 = 0;
-        len +%= format.absolute.len;
+        var len: u64 = format.absolute.len;
         if (format.relative) |relative| {
-            len +%= 1;
-            len +%= relative.len;
+            len +%= 1 +% relative.len;
         }
         return len +% 1;
     }
