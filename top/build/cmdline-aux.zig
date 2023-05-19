@@ -632,16 +632,26 @@ fn writeFile(array: *Array, pathname: [:0]const u8) void {
     file.writeSlice(write_spec, build_fd, array.readAll());
     file.close(close_spec, build_fd);
 }
+const zig_exe_s: [:0]const u8 =
+    if (primitive)
+    \\mach.memcpy(buf,zig_exe.ptr,zig_exe.len);
+    \\var len:u64=zig_exe.len;
+    \\buf[len]=0;
+    \\len+%=1;
+else
+    \\array.writeMany(zig_exe);
+    \\array.writeOne('\x00');
+    ;
 fn writeBuildWrite(array: *Array, arrays: *Arrays, indices: *Indices) void {
     if (!abstract) {
         if (primitive) {
             array.writeMany(
                 \\pub fn buildWriteBuf(cmd:*const tasks.BuildCommand,zig_exe:[]const u8,root_path:types.Path,buf:[*]u8)u64{
                 \\@setRuntimeSafety(false);
-                \\mach.memcpy(buf,zig_exe.ptr,zig_exe.len);
-                \\var len:u64=zig_exe.len;
-                \\buf[len]=0;
-                \\len+%=1;
+                \\
+            );
+            array.writeMany(zig_exe_s);
+            array.writeMany(
                 \\mach.memcpy(buf+len,"build-",6);
                 \\len+%=6;
                 \\mach.memcpy(buf+len,@tagName(cmd.kind).ptr,@tagName(cmd.kind).len);
@@ -653,8 +663,11 @@ fn writeBuildWrite(array: *Array, arrays: *Arrays, indices: *Indices) void {
         } else {
             array.writeMany(
                 \\pub fn buildWrite(cmd:*const tasks.BuildCommand,zig_exe:[]const u8,root_path:types.Path,array:anytype)void{
-                \\array.writeMany(zig_exe);
-                \\array.writeOne('\x00');
+                \\@setRuntimeSafety(false);
+                \\
+            );
+            array.writeMany(zig_exe_s);
+            array.writeMany(
                 \\array.writeMany("build-");
                 \\array.writeMany(@tagName(cmd.kind));
                 \\array.writeOne('\x00');
@@ -669,15 +682,16 @@ fn writeBuildWrite(array: *Array, arrays: *Arrays, indices: *Indices) void {
                 \\len+%=root_path.formatWriteBuf(buf+len);
                 \\buf[len]=0;
                 \\return len;
+                \\}
                 \\
             );
         } else {
-            array.writeMany(
-                \\array.writeFormat(root_path);
-                \\
-            );
+            array.writeMany("array.writeFormat(root_path);\n}\n");
         }
-        array.writeMany("}\n");
+    }
+}
+fn writeBuildLength(array: *Array, arrays: *Arrays, indices: *Indices) void {
+    if (!abstract) {
         array.writeMany(
             \\pub fn buildLength(cmd:*const tasks.BuildCommand,zig_exe:[]const u8,root_path:types.Path)u64{
             \\@setRuntimeSafety(false);
@@ -687,11 +701,60 @@ fn writeBuildWrite(array: *Array, arrays: *Arrays, indices: *Indices) void {
     }
     writeFunctionBody(array, attr.build_command_options, .length, arrays, indices);
     if (!abstract) {
+        array.writeMany("return len+%root_path.formatLength();\n}\n");
+    }
+}
+fn writeArchiveWrite(array: *Array, arrays: *Arrays, indices: *Indices) void {
+    if (!abstract) {
+        if (primitive) {
+            array.writeMany(
+                \\pub fn archiveWriteBuf(cmd:*const tasks.ArchiveCommand,zig_exe:[]const u8,root_path:types.Path,buf:[*]u8)u64{
+                \\@setRuntimeSafety(false);
+                \\
+            );
+            array.writeMany(zig_exe_s);
+            array.writeMany(
+                \\mach.memcpy(buf+len,"ar\x00", 3);
+                \\len+%=3;
+                \\
+            );
+        } else {
+            array.writeMany(
+                \\pub fn archiveWrite(cmd:*const tasks.ArchiveCommand,zig_exe:[]const u8,root_path:types.Path,array:anytype)void{
+                \\@setRuntimeSafety(false);
+                \\
+            );
+            array.writeMany(zig_exe_s);
+            array.writeMany("array.writeMany(\"ar\x00\");\n");
+        }
+    }
+    writeFunctionBody(array, attr.archive_command_options, .write, arrays, indices);
+    if (!abstract) {
+        if (primitive) {
+            array.writeMany(
+                \\len+%=root_path.formatWriteBuf(buf+len);
+                \\buf[len]=0;
+                \\return len;
+                \\}
+                \\
+            );
+        } else {
+            array.writeMany("array.writeFormat(root_path);\n");
+        }
+    }
+}
+fn writeArchiveLength(array: *Array, arrays: *Arrays, indices: *Indices) void {
+    if (!abstract) {
         array.writeMany(
-            \\return len+%root_path.formatLength()+%1;
+            \\pub fn archiveLength(cmd:*const tasks.ArchiveCommand,zig_exe:[]const u8,root_path:types.Path)u64{
+            \\@setRuntimeSafety(false);
+            \\var len:u64=zig_exe.len+%3;
             \\
         );
-        array.writeMany("}\n");
+    }
+    writeFunctionBody(array, attr.archive_command_options, .length, arrays, indices);
+    if (!abstract) {
+        array.writeMany("return len+%root_path.formatLength()+%1;\n}\n");
     }
 }
 fn writeFormatWrite(array: *Array, arrays: *Arrays, indices: *Indices) void {
@@ -700,10 +763,10 @@ fn writeFormatWrite(array: *Array, arrays: *Arrays, indices: *Indices) void {
             array.writeMany(
                 \\pub fn formatWriteBuf(cmd:*const tasks.FormatCommand,zig_exe:[]const u8,root_path:types.Path,buf:[*]u8)u64{
                 \\@setRuntimeSafety(false);
-                \\mach.memcpy(buf,zig_exe.ptr,zig_exe.len);
-                \\var len:u64=zig_exe.len;
-                \\buf[len]=0;
-                \\len+%=1;
+                \\
+            );
+            array.writeMany(zig_exe_s);
+            array.writeMany(
                 \\mach.memcpy(buf+len,"fmt\x00",4);
                 \\len+%=4;
                 \\
@@ -712,8 +775,10 @@ fn writeFormatWrite(array: *Array, arrays: *Arrays, indices: *Indices) void {
             array.writeMany(
                 \\pub fn formatWrite(cmd:*const tasks.FormatCommand,zig_exe:[]const u8,root_path:types.Path,array:anytype)void{
                 \\@setRuntimeSafety(false);
-                \\array.writeMany(zig_exe);
-                \\array.writeOne('\x00');
+                \\
+            );
+            array.writeMany(zig_exe_s);
+            array.writeMany(
                 \\array.writeMany("fmt\x00");
                 \\
             );
@@ -735,6 +800,10 @@ fn writeFormatWrite(array: *Array, arrays: *Arrays, indices: *Indices) void {
             );
         }
         array.writeMany("}\n");
+    }
+}
+fn writeFormatLength(array: *Array, arrays: *Arrays, indices: *Indices) void {
+    if (!abstract) {
         array.writeMany(
             \\pub fn formatLength(cmd:*const tasks.FormatCommand,zig_exe:[]const u8,root_path:types.Path)u64{
             \\@setRuntimeSafety(false);
@@ -751,6 +820,22 @@ fn writeFormatWrite(array: *Array, arrays: *Arrays, indices: *Indices) void {
         array.writeMany("}\n");
     }
 }
+fn writeBuildCommandLine(array: *Array, arrays: *Arrays, indices: *Indices) void {
+    writeBuildWrite(array, arrays, indices);
+    writeBuildLength(array, arrays, indices);
+}
+fn writeFormatCommandLine(array: *Array, arrays: *Arrays, indices: *Indices) void {
+    writeFormatWrite(array, arrays, indices);
+    writeFormatLength(array, arrays, indices);
+}
+fn writeArchiveCommandLine(array: *Array, arrays: *Arrays, indices: *Indices) void {
+    writeArchiveWrite(array, arrays, indices);
+    writeArchiveLength(array, arrays, indices);
+}
+//fn writeRanlibCommandLine(array: *Array, arrays: *Arrays, indices: *Indices) void {
+//    writeRanlibWrite(array, arrays, indices);
+//    writeRanlibLength(array, arrays, indices);
+//}
 pub fn main() !void {
     var allocator: mem.SimpleAllocator = .{};
     defer allocator.unmap();
@@ -761,8 +846,12 @@ pub fn main() !void {
     var fd: u64 = file.open(open_spec, config.cmdline_template_path);
     array.define(file.read(read_spec, fd, array.referAllUndefined()));
     file.close(close_spec, fd);
-    writeBuildWrite(array, arrays, build_idc);
-    writeFormatWrite(array, arrays, format_idc);
+
+    writeBuildCommandLine(array, arrays, build_idc);
+    writeArchiveCommandLine(array, arrays, build_idc);
+    //writeRanlibWrite(array, arrays, build_idc);
+    writeFormatCommandLine(array, arrays, format_idc);
+
     if (compile) {
         array.writeMany("comptime {" ++
             (if (primitive) "_ = buildWriteBuf;" else "_ = buildWrite;") ++ "_ = buildLength;" ++
