@@ -1309,7 +1309,7 @@ pub fn buildLength(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_pat
     }
     return len +% root_path.formatLength();
 }
-pub fn archiveWriteBuf(cmd: *const tasks.ArchiveCommand, zig_exe: []const u8, root_path: types.Path, buf: [*]u8) u64 {
+pub fn archiveWriteBuf(cmd: *const tasks.ArchiveCommand, zig_exe: []const u8, buf: [*]u8) u64 {
     @setRuntimeSafety(false);
     mach.memcpy(buf, zig_exe.ptr, zig_exe.len);
     var len: u64 = zig_exe.len;
@@ -1381,15 +1381,20 @@ pub fn archiveWriteBuf(cmd: *const tasks.ArchiveCommand, zig_exe: []const u8, ro
         @ptrCast(*[1]u8, buf + len).* = "u".*;
         len +%= 1;
     }
-    if (cmd.operation) {
-        @ptrCast(*[1]u8, buf + len).* = "\x00".*;
-        len +%= 1;
+    mach.memcpy(buf + len, @tagName(cmd.operation).ptr, @tagName(cmd.operation).len);
+    len +%= @tagName(cmd.operation).len;
+    buf[len] = 0;
+    len +%= 1;
+    if (cmd.archive) |archive| {
+        len +%= archive.formatWriteBuf(buf + len);
     }
-    len +%= root_path.formatWriteBuf(buf + len);
+    if (cmd.files) |files| {
+        len +%= formatMap(files).formatWriteBuf(buf + len);
+    }
     buf[len] = 0;
     return len;
 }
-pub fn archiveLength(cmd: *const tasks.ArchiveCommand, zig_exe: []const u8, root_path: types.Path) u64 {
+pub fn archiveLength(cmd: *const tasks.ArchiveCommand, zig_exe: []const u8) u64 {
     @setRuntimeSafety(false);
     var len: u64 = zig_exe.len +% 4;
     if (cmd.format) |format| {
@@ -1438,43 +1443,15 @@ pub fn archiveLength(cmd: *const tasks.ArchiveCommand, zig_exe: []const u8, root
     if (cmd.update) {
         len +%= 1;
     }
-    if (cmd.operation) {
-        len +%= 1;
-    }
-    return len +% root_path.formatLength();
-}
-pub fn ranlibWriteBuf(cmd: *const tasks.RanlibCommand, zig_exe: []const u8, root_path: types.Path, buf: [*]u8) u64 {
-    @setRuntimeSafety(false);
-    mach.memcpy(buf, zig_exe.ptr, zig_exe.len);
-    var len: u64 = zig_exe.len;
-    buf[len] = 0;
+    len +%= @tagName(cmd.operation).len;
     len +%= 1;
-    mach.memcpy(buf + len, "ranlib\x00", 7);
-    len +%= 7;
-    if (cmd.real_ids) |real_ids| {
-        if (real_ids) {
-            @ptrCast(*[3]u8, buf + len).* = "-U\x00".*;
-            len +%= 3;
-        } else {
-            @ptrCast(*[3]u8, buf + len).* = "-D\x00".*;
-            len +%= 3;
-        }
+    if (cmd.archive) |archive| {
+        len +%= archive.formatLength();
     }
-    len +%= root_path.formatWriteBuf(buf + len);
-    buf[len] = 0;
+    if (cmd.files) |files| {
+        len +%= formatMap(files).formatLength();
+    }
     return len;
-}
-pub fn ranlibLength(cmd: *const tasks.RanlibCommand, zig_exe: []const u8, root_path: types.Path) u64 {
-    @setRuntimeSafety(false);
-    var len: u64 = zig_exe.len +% 8;
-    if (cmd.real_ids) |real_ids| {
-        if (real_ids) {
-            len +%= 3;
-        } else {
-            len +%= 3;
-        }
-    }
-    return len +% root_path.formatLength();
 }
 pub fn formatWriteBuf(cmd: *const tasks.FormatCommand, zig_exe: []const u8, root_path: types.Path, buf: [*]u8) u64 {
     @setRuntimeSafety(false);
