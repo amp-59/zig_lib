@@ -330,7 +330,11 @@ pub const ArchiveCommand = struct {
         r = 3,
         s = 4,
         x = 5,
-    } = null,
+    },
+    /// Target archive
+    archive: ?types.Path = null,
+    /// Add auxiliary files to the current target
+    files: ?[]const types.Path = null,
 };
 pub const RanlibCommand = struct {
     /// Use actual timestamps and uids/gids
