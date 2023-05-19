@@ -651,7 +651,7 @@ fn writeSpecificationDeduction(
     array.writeFormat(fmt.ud64(indices.params));
     array.writeMany("=struct{\n");
     writeParametersFields(array, p_info);
-    array.writeMany("const Parameters=@This();\nfn Implementation(spec:Parameters)type{\n");
+    array.writeMany("const Parameters=@This();\nfn Implementation(comptime spec:Parameters)type{\n");
     try meta.wrap(
         writeSpecificationDeductionInternal(allocator, array, abstract_spec, p_info, spec_set, tech_set, q_info, indices),
     );
@@ -826,9 +826,7 @@ pub fn newNewTypeSpecs() !void {
     @setEvalBranchQuota(1500);
     var array: Array = undefined;
     array.undefineAll();
-
     array.define(gen.readFile(spec.generic.noexcept, config.container_template_path, array.referAllUndefined()));
-
     if (write_separate_source_files) {
         gen.writeSourceFile(config.container_common_path, u8, array.readAll());
         array.undefineAll();
@@ -856,7 +854,6 @@ pub fn newNewTypeSpecs() !void {
     }
     gen.truncateFile(write_impl_spec, config.impl_detail_path, impl_details.readAll());
     gen.truncateFile(write_ctn_spec, config.ctn_detail_path, attr.ctn_details);
-
     try validateAllSerial(&allocator, data.x_p_infos, data.x_q_infos, data.spec_sets, data.tech_sets, impl_details);
 }
 pub const main = newNewTypeSpecs;
