@@ -1336,53 +1336,53 @@ pub fn archiveWriteBuf(cmd: *const tasks.ArchiveCommand, zig_exe: []const u8, ro
         buf[len] = 0;
         len +%= 1;
     }
-    if (cmd.thin) |thin| {
+    if (cmd.thin) {
         @ptrCast(*[7]u8, buf + len).* = "--thin\x00".*;
         len +%= 7;
-        mach.memcpy(buf + len, thin.ptr, thin.len);
-        len +%= thin.len;
-        buf[len] = 0;
-        len +%= 1;
     }
     if (cmd.after) {
-        @ptrCast(*[2]u8, buf + len).* = "a\x00".*;
-        len +%= 2;
+        @ptrCast(*[1]u8, buf + len).* = "a".*;
+        len +%= 1;
     }
     if (cmd.before) {
-        @ptrCast(*[2]u8, buf + len).* = "b\x00".*;
-        len +%= 2;
+        @ptrCast(*[1]u8, buf + len).* = "b".*;
+        len +%= 1;
     }
     if (cmd.create) {
-        @ptrCast(*[2]u8, buf + len).* = "c\x00".*;
-        len +%= 2;
+        @ptrCast(*[1]u8, buf + len).* = "c".*;
+        len +%= 1;
     }
     if (cmd.zero_ids) {
-        @ptrCast(*[2]u8, buf + len).* = "D\x00".*;
-        len +%= 2;
+        @ptrCast(*[1]u8, buf + len).* = "D".*;
+        len +%= 1;
     }
     if (cmd.real_ids) {
-        @ptrCast(*[2]u8, buf + len).* = "U\x00".*;
-        len +%= 2;
+        @ptrCast(*[1]u8, buf + len).* = "U".*;
+        len +%= 1;
     }
     if (cmd.append) {
-        @ptrCast(*[2]u8, buf + len).* = "L\x00".*;
-        len +%= 2;
+        @ptrCast(*[1]u8, buf + len).* = "L".*;
+        len +%= 1;
     }
     if (cmd.preserve_dates) {
-        @ptrCast(*[2]u8, buf + len).* = "o\x00".*;
-        len +%= 2;
+        @ptrCast(*[1]u8, buf + len).* = "o".*;
+        len +%= 1;
     }
     if (cmd.index) {
-        @ptrCast(*[2]u8, buf + len).* = "s\x00".*;
-        len +%= 2;
+        @ptrCast(*[1]u8, buf + len).* = "s".*;
+        len +%= 1;
     }
     if (cmd.no_symbol_table) {
-        @ptrCast(*[2]u8, buf + len).* = "S\x00".*;
-        len +%= 2;
+        @ptrCast(*[1]u8, buf + len).* = "S".*;
+        len +%= 1;
     }
     if (cmd.update) {
-        @ptrCast(*[2]u8, buf + len).* = "u\x00".*;
-        len +%= 2;
+        @ptrCast(*[1]u8, buf + len).* = "u".*;
+        len +%= 1;
+    }
+    if (cmd.operation) {
+        @ptrCast(*[1]u8, buf + len).* = "\x00".*;
+        len +%= 1;
     }
     len +%= root_path.formatWriteBuf(buf + len);
     buf[len] = 0;
@@ -1390,7 +1390,7 @@ pub fn archiveWriteBuf(cmd: *const tasks.ArchiveCommand, zig_exe: []const u8, ro
 }
 pub fn archiveLength(cmd: *const tasks.ArchiveCommand, zig_exe: []const u8, root_path: types.Path) u64 {
     @setRuntimeSafety(false);
-    var len: u64 = zig_exe.len +% 3;
+    var len: u64 = zig_exe.len +% 4;
     if (cmd.format) |format| {
         len +%= 9;
         len +%= @tagName(format).len;
@@ -1404,42 +1404,43 @@ pub fn archiveLength(cmd: *const tasks.ArchiveCommand, zig_exe: []const u8, root
         len +%= output.len;
         len +%= 1;
     }
-    if (cmd.thin) |thin| {
+    if (cmd.thin) {
         len +%= 7;
-        len +%= thin.len;
-        len +%= 1;
     }
     if (cmd.after) {
-        len +%= 2;
+        len +%= 1;
     }
     if (cmd.before) {
-        len +%= 2;
+        len +%= 1;
     }
     if (cmd.create) {
-        len +%= 2;
+        len +%= 1;
     }
     if (cmd.zero_ids) {
-        len +%= 2;
+        len +%= 1;
     }
     if (cmd.real_ids) {
-        len +%= 2;
+        len +%= 1;
     }
     if (cmd.append) {
-        len +%= 2;
+        len +%= 1;
     }
     if (cmd.preserve_dates) {
-        len +%= 2;
+        len +%= 1;
     }
     if (cmd.index) {
-        len +%= 2;
+        len +%= 1;
     }
     if (cmd.no_symbol_table) {
-        len +%= 2;
+        len +%= 1;
     }
     if (cmd.update) {
-        len +%= 2;
+        len +%= 1;
     }
-    return len +% root_path.formatLength() +% 1;
+    if (cmd.operation) {
+        len +%= 1;
+    }
+    return len +% root_path.formatLength();
 }
 pub fn ranlibWriteBuf(cmd: *const tasks.RanlibCommand, zig_exe: []const u8, root_path: types.Path, buf: [*]u8) u64 {
     @setRuntimeSafety(false);
@@ -1447,8 +1448,8 @@ pub fn ranlibWriteBuf(cmd: *const tasks.RanlibCommand, zig_exe: []const u8, root
     var len: u64 = zig_exe.len;
     buf[len] = 0;
     len +%= 1;
-    mach.memcpy(buf + len, "ar\x00", 3);
-    len +%= 3;
+    mach.memcpy(buf + len, "ranlib\x00", 7);
+    len +%= 7;
     if (cmd.real_ids) |real_ids| {
         if (real_ids) {
             @ptrCast(*[3]u8, buf + len).* = "-U\x00".*;
@@ -1464,7 +1465,7 @@ pub fn ranlibWriteBuf(cmd: *const tasks.RanlibCommand, zig_exe: []const u8, root
 }
 pub fn ranlibLength(cmd: *const tasks.RanlibCommand, zig_exe: []const u8, root_path: types.Path) u64 {
     @setRuntimeSafety(false);
-    var len: u64 = zig_exe.len +% 3;
+    var len: u64 = zig_exe.len +% 8;
     if (cmd.real_ids) |real_ids| {
         if (real_ids) {
             len +%= 3;
@@ -1472,7 +1473,7 @@ pub fn ranlibLength(cmd: *const tasks.RanlibCommand, zig_exe: []const u8, root_p
             len +%= 3;
         }
     }
-    return len +% root_path.formatLength() +% 1;
+    return len +% root_path.formatLength();
 }
 pub fn formatWriteBuf(cmd: *const tasks.FormatCommand, zig_exe: []const u8, root_path: types.Path, buf: [*]u8) u64 {
     @setRuntimeSafety(false);
@@ -1536,5 +1537,5 @@ pub fn formatLength(cmd: *const tasks.FormatCommand, zig_exe: []const u8, root_p
         len +%= exclude.len;
         len +%= 1;
     }
-    return len +% root_path.formatLength() +% 1;
+    return len +% root_path.formatLength();
 }
