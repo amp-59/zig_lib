@@ -665,7 +665,7 @@ pub const archive_command_options: []const types.OptionSpec = &.{
     .{
         .name = "files",
         .arg_info = types.ArgInfo.optional_mapped("[]const types.Path"),
-        .descr = &.{"Add auxiliary files to the current target"},
+        .descr = &.{"Add auxiliary files to the current archive"},
     },
 };
 
