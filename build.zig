@@ -114,8 +114,8 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     const generate_containers: *Builder.Target =    try memgen.addFormat(allocator, format_cmd,    "generate_containers",  "top/mem/container.zig");
     const generate_references: *Builder.Target =    try memgen.addFormat(allocator, format_cmd,    "generate_references",  "top/mem/reference.zig");
     // Builder implementation generator:
-    const bg_tasks: *Builder.Target =           try bg_aux.addBuild(allocator, build_cmd,   "bg_tasks",         "top/build/tasks-aux.zig");
-    const bg_cmdline: *Builder.Target =         try bg_aux.addBuild(allocator, build_cmd,   "bg_cmdline",       "top/build/cmdline-aux.zig");
+    const bg_tasks: *Builder.Target =           try bg_aux.addBuild(allocator, build_cmd,   "bg_tasks",         "top/build/gen/tasks-aux.zig");
+    const bg_cmdline: *Builder.Target =         try bg_aux.addBuild(allocator, build_cmd,   "bg_cmdline",       "top/build/gen/cmdline-aux.zig");
     const generate_cmdline: *Builder.Target =   try buildgen.addFormat(allocator, format_cmd,  "generate_cmdline", "top/build/cmdline3.zig");
     const generate_tasks: *Builder.Target =     try buildgen.addFormat(allocator, format_cmd,  "generate_tasks",   "top/build/tasks3.zig");
     // Descriptions:
