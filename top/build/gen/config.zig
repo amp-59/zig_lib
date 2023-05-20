@@ -1,4 +1,4 @@
-const builtin = @import("../builtin.zig");
+const builtin = @import("../../builtin.zig");
 
 /// Auxiliary products of builder implementation generator go here. These are
 /// generated source files (src) or serialised data (bin). They exist to speed
