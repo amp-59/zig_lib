@@ -17,7 +17,7 @@ fn formatMap(any: anytype) FormatMap(@TypeOf(any)) {
     return .{ .value = any };
 }
 pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_path: types.Path, buf: [*]u8) u64 {
-    @setRuntimeSafety(false);
+    @setRuntimeSafety(safety);
     mach.memcpy(buf, zig_exe.ptr, zig_exe.len);
     var len: u64 = zig_exe.len;
     buf[len] = 0;
@@ -1310,7 +1310,7 @@ pub fn buildLength(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_pat
     return len +% root_path.formatLength();
 }
 pub fn archiveWriteBuf(cmd: *const tasks.ArchiveCommand, zig_exe: []const u8, buf: [*]u8) u64 {
-    @setRuntimeSafety(false);
+    @setRuntimeSafety(safety);
     mach.memcpy(buf, zig_exe.ptr, zig_exe.len);
     var len: u64 = zig_exe.len;
     buf[len] = 0;
@@ -1395,7 +1395,7 @@ pub fn archiveWriteBuf(cmd: *const tasks.ArchiveCommand, zig_exe: []const u8, bu
     return len;
 }
 pub fn archiveLength(cmd: *const tasks.ArchiveCommand, zig_exe: []const u8) u64 {
-    @setRuntimeSafety(false);
+    @setRuntimeSafety(safety);
     var len: u64 = zig_exe.len +% 4;
     if (cmd.format) |format| {
         len +%= 9;
@@ -1454,7 +1454,7 @@ pub fn archiveLength(cmd: *const tasks.ArchiveCommand, zig_exe: []const u8) u64 
     return len;
 }
 pub fn formatWriteBuf(cmd: *const tasks.FormatCommand, zig_exe: []const u8, root_path: types.Path, buf: [*]u8) u64 {
-    @setRuntimeSafety(false);
+    @setRuntimeSafety(safety);
     mach.memcpy(buf, zig_exe.ptr, zig_exe.len);
     var len: u64 = zig_exe.len;
     buf[len] = 0;
@@ -1494,7 +1494,7 @@ pub fn formatWriteBuf(cmd: *const tasks.FormatCommand, zig_exe: []const u8, root
     return len;
 }
 pub fn formatLength(cmd: *const tasks.FormatCommand, zig_exe: []const u8, root_path: types.Path) u64 {
-    @setRuntimeSafety(false);
+    @setRuntimeSafety(safety);
     var len: u64 = zig_exe.len +% 5;
     if (cmd.color) |color| {
         len +%= 8;
