@@ -168,7 +168,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             name: [:0]const u8,
             descr: ?[:0]const u8,
             root: [:0]const u8,
-            hidden: bool,
+            paths: []types.Path,
+            paths_len: u64,
             deps: []Dependency,
             deps_len: u64,
             args: [][*:0]u8,
@@ -176,6 +177,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             task: types.Task,
             task_lock: types.Lock,
             task_data: TaskCommand,
+            hidden: bool,
             pub const Dependency = struct {
                 task: types.Task,
                 comptime state: types.State = .ready,
@@ -343,15 +345,11 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             pub fn addFile(target: *Target, allocator: *Allocator, path: types.Path) void {
                 @setRuntimeSafety(false);
-                if (target.task_data.build.files) |*files| {
-                    const buf: []types.Path = reallocate(allocator, types.Path, @constCast(files.*), files.len +% 1);
-                    buf[files.len] = path;
-                    target.task_data.build.files = buf;
-                } else {
-                    const buf: []types.Path = allocate(allocator, types.Path, 1);
-                    buf[0] = path;
-                    target.task_data.build.files = buf;
+                if (target.paths_len == target.paths.len) {
+                    target.paths = reallocate(allocator, types.Path, target.paths, (target.paths_len +% 1) *% 2);
                 }
+                target.paths[target.paths_len] = path;
+                target.paths_len +%= 1;
             }
             fn addDependency(target: *Target, allocator: *Allocator, task: types.Task, on_target: *Target, on_task: types.Task, on_state: types.State) void {
                 @setRuntimeSafety(false);
@@ -678,6 +676,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         fn buildWrite(builder: *Builder, target: *Target, allocator: *Allocator, root_path: types.Path) [:0]u8 {
             const build_cmd: *types.BuildCommand = target.task_data.build;
             @setRuntimeSafety(false);
+            build_cmd.files = target.paths[0..target.paths_len];
             if (max_thread_count != 0) {
                 build_cmd.listen = .@"-";
             }
@@ -702,6 +701,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         fn archiveWrite(builder: *Builder, target: *Target, allocator: *Allocator) [:0]u8 {
             @setRuntimeSafety(false);
             const archive_cmd: *types.ArchiveCommand = target.task_data.archive;
+            archive_cmd.files = target.paths[0..target.paths_len];
             const max_len: u64 = builder_spec.options.max_cmdline_len orelse
                 cmdline.archiveLength(archive_cmd, builder.zig_exe);
             if (@hasDecl(cmdline, "archiveWrite")) {
@@ -1097,6 +1097,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         const env_basename: [:0]const u8 = builder_spec.options.names.env ++ builder_spec.options.extensions.zig;
         const null_arg: [:0]const u8 = builtin.zero([:0]u8);
         pub const debug = struct {
+            const about_ar_s: builtin.fmt.About = builtin.fmt.about("ar");
             const about_run_s: builtin.fmt.About = builtin.fmt.about("run");
             const about_format_s: builtin.fmt.About = builtin.fmt.about("fmt");
             const about_build_exe_s: builtin.fmt.About = builtin.fmt.about("build-exe");
@@ -1252,7 +1253,11 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             fn simpleTimedNotice(target: *const Target, working_time: time.TimeSpec, task: types.Task, rc: u8) void {
                 @setRuntimeSafety(false);
-                const about_s: [:0]const u8 = if (task == .run) about_run_s else about_format_s;
+                const about_s: [:0]const u8 = switch (task) {
+                    .format => about_format_s,
+                    .archive => about_ar_s,
+                    else => about_run_s,
+                };
                 const rc_s: []const u8 = builtin.fmt.ud64(rc).readAll();
                 const sec_s: []const u8 = builtin.fmt.ud64(working_time.sec).readAll();
                 const nsec_s: []const u8 = builtin.fmt.nsec(working_time.nsec).readAll();
