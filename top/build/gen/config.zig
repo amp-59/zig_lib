@@ -11,6 +11,7 @@ pub const build_command_options_path: [:0]const u8 = auxiliaryDataFile("build_co
 pub const format_command_options_path: [:0]const u8 = auxiliaryDataFile("format_command_options");
 
 pub const cmdline_path: [:0]const u8 = primarySourceFile("cmdline3.zig");
+pub const abstract_cmdline_path: [:0]const u8 = primarySourceFile("abstract_cmdline3.zig");
 pub const cmdline_template_path: [:0]const u8 = primarySourceFile("cmdline-template.zig");
 
 pub const tasks_path: [:0]const u8 = primarySourceFile("tasks3.zig");
