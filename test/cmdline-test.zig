@@ -8,7 +8,7 @@ const builtin = zig_lib.builtin;
 
 pub usingnamespace proc.start;
 
-pub const logging_override: builtin.Logging.Override = spec.logging.override.verbose;
+pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
 pub const runtime_assertions: bool = true;
 
 const Builder = build.GenericBuilder(.{
@@ -67,8 +67,5 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
         .create = true,
     }, "archive", &.{t0});
     Builder.debug.builderCommandNotice(&builder, true, true, true);
-    t1.task_data.archive.files = &.{
-        t0.task_data.build.emit_bin.?.yes.?,
-    };
     t1.executeToplevel(&address_space, &thread_space, &allocator, &builder, .archive);
 }
