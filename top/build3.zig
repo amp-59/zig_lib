@@ -310,6 +310,10 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 target.dependOnBuild(allocator, dependency);
                 target.addFile(allocator, dependency.task_data.build.emit_bin.?.yes.?);
             }
+            pub fn dependOnArchive(target: *Target, allocator: *Allocator, dependency: *Target) void {
+                target.dependOnBuild(allocator, dependency);
+                target.addFile(allocator, dependency.task_data.archive.archive.?);
+            }
             fn exchange(target: *Target, task: types.Task, old_state: types.State, new_state: types.State) bool {
                 const ret: bool = target.task_lock.atomicExchange(task, old_state, new_state);
                 if (builtin.logging_general.Success or builder_spec.options.show_targets) {
