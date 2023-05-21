@@ -6,6 +6,7 @@ const meta = @import("./meta.zig");
 const algo = @import("./algo.zig");
 const builtin = @import("./builtin.zig");
 const container = @import("./container.zig");
+const special = mem;
 pub const ArenaAllocatorOptions = struct {
     /// Experimental feature:
     check_parametric: bool = builtin.is_debug,
@@ -3242,10 +3243,10 @@ fn GenericArenaAllocatorImplementation(comptime Allocator: type) type {
         }
     };
 }
-const special = opaque {
+const pretty = opaque {
     fn map(comptime spec: mem.MapSpec, addr: u64, len: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
-        const mmap_prot: mem.Prot = comptime spec.prot();
-        const mmap_flags: mem.Map = comptime spec.flags();
+        const mmap_prot: mem.Prot.Options = comptime spec.prot();
+        const mmap_flags: mem.Map.Options = comptime spec.flags();
         const logging: builtin.Logging.AcquireError = comptime spec.logging.override();
         if (meta.wrap(sys.call(.mmap, spec.errors, spec.return_type, .{ addr, len, mmap_prot.val, mmap_flags.val, ~@as(u64, 0), 0 }))) {
             if (logging.Acquire) {
