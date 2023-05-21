@@ -149,6 +149,7 @@ pub const builder = struct {
             .close = .{},
             .poll = .{},
             .stat = .{},
+            .unlink = .{},
         };
         pub const zen: zig_lib.build.BuilderSpec.Errors = .{
             .write = .{ .abort = sys.write.errors.all },
@@ -169,6 +170,7 @@ pub const builder = struct {
             .mkdir = .{ .throw = sys.mkdir.errors.noexcl },
             .poll = .{ .throw = sys.poll.errors.all },
             .close = .{ .abort = sys.close.errors.all },
+            .unlink = .{ .abort = sys.unlink.errors.all },
         };
         pub const critical: zig_lib.build.BuilderSpec.Errors = add(zen, .{
             .close = .{ .throw = sys.close.errors.all },
@@ -176,24 +178,7 @@ pub const builder = struct {
         });
     };
     pub const logging = struct {
-        pub const verbose: zig_lib.build.BuilderSpec.Logging = .{
-            .write = spec.logging.success_error.verbose,
-            .read = spec.logging.success_error.verbose,
-            .map = spec.logging.acquire_error.verbose,
-            .mknod = spec.logging.success_error.verbose,
-            .dup3 = spec.logging.success_error.verbose,
-            .pipe = spec.logging.acquire_error.verbose,
-            .poll = spec.logging.attempt_success_error.verbose,
-            .unmap = spec.logging.release_error.verbose,
-            .fork = spec.logging.success_error.verbose,
-            .execve = spec.logging.attempt_error.verbose,
-            .waitpid = spec.logging.success_error.verbose,
-            .path = spec.logging.acquire_error.verbose,
-            .stat = spec.logging.success_error_fault.verbose,
-            .create = spec.logging.acquire_error.verbose,
-            .close = spec.logging.release_error.verbose,
-            .mkdir = spec.logging.success_error.verbose,
-        };
+        pub const verbose: zig_lib.build.BuilderSpec.Logging = zig_lib.builtin.all(zig_lib.build.BuilderSpec.Logging);
         pub const silent: zig_lib.build.BuilderSpec.Logging = zig_lib.builtin.zero(zig_lib.build.BuilderSpec.Logging);
     };
 };
