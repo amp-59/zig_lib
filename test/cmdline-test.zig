@@ -60,8 +60,7 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
         .z = &.{ .nodelete, .notext },
         .mode = .Debug,
         .strip = true,
-    }, "target", @src().file);
-    t0.descr = "Dummy target";
+    }, .{ .name = "target", .root = @src().file, .descr = "Dummy target" });
     const t1: *Builder.Target = try g0.addArchive(&allocator, .{
         .operation = .r,
         .create = true,
