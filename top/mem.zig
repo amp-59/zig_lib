@@ -14,75 +14,93 @@ pub usingnamespace _reference;
 pub usingnamespace _container;
 pub usingnamespace _allocator;
 pub usingnamespace _list;
-pub const Map = meta.EnumBitField(enum(u64) {
-    anonymous = MAP.ANONYMOUS,
-    file = MAP.FILE,
-    shared = MAP.SHARED,
-    private = MAP.PRIVATE,
-    shared_validate = MAP.SHARED_VALIDATE,
-    type = MAP.TYPE,
-    fixed = MAP.FIXED,
-    fixed_no_replace = MAP.FIXED_NOREPLACE,
-    grows_down = MAP.GROWSDOWN,
-    deny_write = MAP.DENYWRITE,
-    executable = MAP.EXECUTABLE,
-    locked = MAP.LOCKED,
-    no_reserve = MAP.NORESERVE,
-    populate = MAP.POPULATE,
-    non_block = MAP.NONBLOCK,
-    stack = MAP.STACK,
-    huge_tlb = MAP.HUGETLB,
-    huge_shift = MAP.HUGE_SHIFT,
-    huge_mask = MAP.HUGE_MASK,
-    sync = MAP.SYNC,
-    const MAP = sys.MAP;
-});
-pub const Prot = meta.EnumBitField(enum(u64) {
-    none = PROT.NONE,
-    read = PROT.READ,
-    write = PROT.WRITE,
-    exec = PROT.EXEC,
-    grows_down = PROT.GROWSDOWN,
-    grows_up = PROT.GROWSUP,
-    const PROT = sys.PROT;
-});
-pub const Remap = meta.EnumBitField(enum(u64) {
-    resize = REMAP.RESIZE,
-    may_move = REMAP.MAYMOVE,
-    fixed = REMAP.FIXED,
-    no_unmap = REMAP.DONTUNMAP,
-    const REMAP = sys.REMAP;
-});
-pub const Advice = meta.EnumBitField(enum(u64) {
-    normal = MADV.NORMAL,
-    random = MADV.RANDOM,
-    sequential = MADV.SEQUENTIAL,
-    immediate = MADV.WILLNEED,
-    deferred = MADV.DONTNEED,
-    reclaim = MADV.COLD,
-    free = MADV.FREE,
-    remove = MADV.REMOVE,
-    pageout = MADV.PAGEOUT,
-    poison = MADV.HWPOISON,
-    mergeable = MADV.MERGEABLE,
-    unmergeable = MADV.UNMERGEABLE,
-    hugepage = MADV.HUGEPAGE,
-    no_hugepage = MADV.NOHUGEPAGE,
-    dump = MADV.DODUMP,
-    no_dump = MADV.DONTDUMP,
-    fork = MADV.DOFORK,
-    no_fork = MADV.DONTFORK,
-    wipe_on_fork = MADV.WIPEONFORK,
-    keep_on_fork = MADV.KEEPONFORK,
-    const MADV = sys.MADV;
-    const Tag = @This();
-});
-pub const Fd = meta.EnumBitField(enum(u64) {
-    allow_sealing = MFD.ALLOW_SEALING,
-    huge_tlb = MFD.HUGETLB,
-    close_on_exec = MFD.CLOEXEC,
-    const MFD = sys.MFD;
-});
+pub const Map = struct {
+    pub const Options = meta.EnumBitField(enum(u64) {
+        anonymous = MAP.ANONYMOUS,
+        file = MAP.FILE,
+        shared = MAP.SHARED,
+        private = MAP.PRIVATE,
+        shared_validate = MAP.SHARED_VALIDATE,
+        type = MAP.TYPE,
+        fixed = MAP.FIXED,
+        fixed_no_replace = MAP.FIXED_NOREPLACE,
+        grows_down = MAP.GROWSDOWN,
+        deny_write = MAP.DENYWRITE,
+        executable = MAP.EXECUTABLE,
+        locked = MAP.LOCKED,
+        no_reserve = MAP.NORESERVE,
+        populate = MAP.POPULATE,
+        non_block = MAP.NONBLOCK,
+        stack = MAP.STACK,
+        huge_tlb = MAP.HUGETLB,
+        huge_shift = MAP.HUGE_SHIFT,
+        huge_mask = MAP.HUGE_MASK,
+        sync = MAP.SYNC,
+        const MAP = sys.MAP;
+    });
+};
+pub const Sync = struct {
+    pub const Options = meta.EnumBitField(enum(u64) {
+        synchronous = MS.SYNC,
+        asynchronous = MS.ASYNC,
+        invalidate = MS.INVALIDATE,
+        const MS = sys.MS;
+    });
+};
+pub const Prot = struct {
+    pub const Options = meta.EnumBitField(enum(u64) {
+        none = PROT.NONE,
+        read = PROT.READ,
+        write = PROT.WRITE,
+        exec = PROT.EXEC,
+        grows_down = PROT.GROWSDOWN,
+        grows_up = PROT.GROWSUP,
+        const PROT = sys.PROT;
+    });
+};
+pub const Remap = struct {
+    pub const Options = meta.EnumBitField(enum(u64) {
+        resize = REMAP.RESIZE,
+        may_move = REMAP.MAYMOVE,
+        fixed = REMAP.FIXED,
+        no_unmap = REMAP.DONTUNMAP,
+        const REMAP = sys.REMAP;
+    });
+};
+pub const Advice = struct {
+    pub const Options = meta.EnumBitField(enum(u64) {
+        normal = MADV.NORMAL,
+        random = MADV.RANDOM,
+        sequential = MADV.SEQUENTIAL,
+        immediate = MADV.WILLNEED,
+        deferred = MADV.DONTNEED,
+        reclaim = MADV.COLD,
+        free = MADV.FREE,
+        remove = MADV.REMOVE,
+        pageout = MADV.PAGEOUT,
+        poison = MADV.HWPOISON,
+        mergeable = MADV.MERGEABLE,
+        unmergeable = MADV.UNMERGEABLE,
+        hugepage = MADV.HUGEPAGE,
+        no_hugepage = MADV.NOHUGEPAGE,
+        dump = MADV.DODUMP,
+        no_dump = MADV.DONTDUMP,
+        fork = MADV.DOFORK,
+        no_fork = MADV.DONTFORK,
+        wipe_on_fork = MADV.WIPEONFORK,
+        keep_on_fork = MADV.KEEPONFORK,
+        const MADV = sys.MADV;
+        const Tag = @This();
+    });
+};
+pub const Fd = struct {
+    pub const Options = meta.EnumBitField(enum(u64) {
+        allow_sealing = MFD.ALLOW_SEALING,
+        huge_tlb = MFD.HUGETLB,
+        close_on_exec = MFD.CLOEXEC,
+        const MFD = sys.MFD;
+    });
+};
 pub const MapSpec = struct {
     options: Options = .{},
     errors: sys.ErrorPolicy = .{ .throw = sys.mmap_errors },
