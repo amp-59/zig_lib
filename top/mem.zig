@@ -723,6 +723,23 @@ pub fn map(comptime spec: MapSpec, addr: u64, len: u64) sys.ErrorUnion(spec.erro
         return map_error;
     }
 }
+pub fn sync(comptime sync_spec: SyncSpec, addr: u64, len: u64) sys.ErrorUnion(sync_spec.errors, sync_spec.return_type) {
+    const msync_flags: Sync.Options = comptime sync_spec.flags();
+    const logging: builtin.Logging.AcquireError = comptime sync_spec.logging.override();
+    if (meta.wrap(sys.call(.sync, sync_spec.errors, sync_spec.return_type, .{ addr, len, msync_flags.val }))) |ret| {
+        if (logging.Acquire) {
+            debug.syncNotice(addr, len);
+        }
+        if (sync_spec.return_type != void) {
+            return ret;
+        }
+    } else |sync_error| {
+        if (logging.Error) {
+            debug.syncError(sync_error, addr, len);
+        }
+        return sync_error;
+    }
+}
 pub fn move(comptime spec: MoveSpec, old_addr: u64, old_len: u64, new_addr: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
     const mremap_flags: Remap.Options = comptime spec.flags();
     const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
