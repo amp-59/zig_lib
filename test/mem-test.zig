@@ -46,6 +46,10 @@ const wr_spec: mem.ReinterpretSpec = .{
     .composite = .{ .format = true },
     .reference = .{ .dereference = &.{} },
 };
+const mem_fd_spec: mem.FdSpec = .{
+    .logging = spec.logging.acquire_error.verbose,
+    .errors = .{ .throw = sys.memfd_create_errors },
+};
 fn testProtect() void {
     var addr: u64 = 0x7000000;
     const end: u64 = 0x10000000;
