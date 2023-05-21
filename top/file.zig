@@ -19,7 +19,6 @@ pub const Kind = enum(u4) {
     symbolic_link = MODE.IFLNKR,
     const MODE = sys.S;
 };
-
 pub const Open = struct {
     pub const Options = meta.EnumBitField(enum(u64) {
         no_cache = OPEN.DIRECT,
@@ -382,7 +381,7 @@ pub const OpenSpec = struct {
         close_on_exec: bool = true,
     };
     pub fn flags(comptime open_spec: Specification) Open.Options {
-        comptime var flags_bitfield: Open.Options = .{ .val = 0 };
+        var flags_bitfield: Open.Options = .{ .val = 0 };
         if (open_spec.options.no_cache) {
             flags_bitfield.set(.no_cache);
         }
@@ -422,7 +421,7 @@ pub const OpenSpec = struct {
         if (open_spec.options.truncate) {
             flags_bitfield.set(.truncate);
         }
-        return flags_bitfield;
+        comptime return flags_bitfield;
     }
 };
 pub const ReadSpec = struct {
@@ -485,7 +484,7 @@ pub const StatusSpec = struct {
         if (stat_spec.options.no_follow) {
             flags_bitfield.set(.no_follow);
         }
-        return flags_bitfield;
+        comptime return flags_bitfield;
     }
 };
 pub const StatusExtendedSpec = struct {
@@ -526,7 +525,7 @@ pub const StatusExtendedSpec = struct {
         if (statx_spec.options.empty_path) {
             flags_bitfield.set(.empty_path);
         }
-        return flags_bitfield;
+        comptime return flags_bitfield;
     }
     pub fn fields(comptime statx_spec: Specification) StatusExtended.Fields {
         var fields_bitfield: StatusExtended.Fields = .{ .val = 0 };
@@ -569,7 +568,7 @@ pub const StatusExtendedSpec = struct {
         if (statx_spec.options.fields.mnt_id) {
             fields_bitfield.set(.mnt_id);
         }
-        return fields_bitfield;
+        comptime return fields_bitfield;
     }
 };
 pub const MakePipeSpec = struct {
@@ -595,7 +594,7 @@ pub const MakePipeSpec = struct {
         if (pipe2_spec.options.non_block) {
             flags_bitfield.set(.non_block);
         }
-        return flags_bitfield;
+        comptime return flags_bitfield;
     }
 };
 pub const SocketSpec = struct {
@@ -609,14 +608,14 @@ pub const SocketSpec = struct {
         close_on_exec: bool = true,
     };
     pub fn flags(comptime spec: SocketSpec) Socket.Options {
-        comptime var flags_bitfield: Socket.Options = .{ .val = 0 };
+        var flags_bitfield: Socket.Options = .{ .val = 0 };
         if (spec.options.non_block) {
             flags_bitfield.set(.non_block);
         }
         if (spec.options.close_on_exec) {
             flags_bitfield.set(.close_on_exec);
         }
-        return flags_bitfield;
+        comptime return flags_bitfield;
     }
 };
 pub const BindSpec = struct {
@@ -737,7 +736,7 @@ pub const CreateSpec = struct {
         if (creat_spec.options.truncate) {
             flags_bitfield.set(.truncate);
         }
-        return flags_bitfield;
+        comptime return flags_bitfield;
     }
 };
 pub const PathSpec = struct {
@@ -752,7 +751,7 @@ pub const PathSpec = struct {
         close_on_exec: bool = true,
     };
     pub fn flags(comptime spec: PathSpec) Open.Options {
-        comptime var flags_bitfield: Open.Options = .{ .val = 0 };
+        var flags_bitfield: Open.Options = .{ .val = 0 };
         flags_bitfield.set(.path);
         if (spec.options.no_follow) {
             flags_bitfield.set(.no_follow);
@@ -763,7 +762,7 @@ pub const PathSpec = struct {
         if (spec.options.directory) {
             flags_bitfield.set(.directory);
         }
-        return flags_bitfield;
+        comptime return flags_bitfield;
     }
 };
 pub const MakeNodeSpec = struct {
@@ -788,7 +787,7 @@ pub const ExecuteSpec = struct {
         if (spec.options.no_follow) {
             flags_bitfield.set(.no_follow);
         }
-        return flags_bitfield;
+        comptime return flags_bitfield;
     }
 };
 pub fn execPath(comptime spec: ExecuteSpec, pathname: [:0]const u8, args: spec.args_type, vars: spec.vars_type) sys.ErrorUnion(spec.errors, spec.return_type) {
@@ -876,8 +875,8 @@ pub const MapSpec = struct {
         sync: bool = false,
         const Visibility = enum { shared, shared_validate, private };
     };
-    pub fn flags(comptime map_spec: Specification) mem.Map {
-        var flags_bitfield: mem.Map = .{ .val = 0 };
+    pub fn flags(comptime map_spec: Specification) mem.Map.Options {
+        var flags_bitfield: mem.Map.Options = .{ .val = 0 };
         switch (map_spec.options.visibility) {
             .private => flags_bitfield.set(.private),
             .shared => flags_bitfield.set(.shared),
@@ -892,10 +891,10 @@ pub const MapSpec = struct {
             flags_bitfield.set(.sync);
         }
         flags_bitfield.set(.fixed);
-        return flags_bitfield;
+        comptime return flags_bitfield;
     }
-    pub fn prot(comptime map_spec: Specification) mem.Prot {
-        var prot_bitfield: mem.Prot = .{ .val = 0 };
+    pub fn prot(comptime map_spec: Specification) mem.Prot.Options {
+        var prot_bitfield: mem.Prot.Options = .{ .val = 0 };
         if (map_spec.options.read) {
             prot_bitfield.set(.read);
         }
@@ -905,7 +904,7 @@ pub const MapSpec = struct {
         if (map_spec.options.exec) {
             prot_bitfield.set(.exec);
         }
-        return prot_bitfield;
+        comptime return prot_bitfield;
     }
 };
 pub const CloseSpec = struct {
@@ -1598,17 +1597,14 @@ pub fn statusExtended(comptime spec: StatusExtendedSpec, fd: u64, pathname: [:0]
 ///     up_addr: u64 = alignAbove(addr + st.size, page_size),
 /// };
 /// ```
-pub fn map(comptime spec: MapSpec, addr: u64, fd: u64) sys.ErrorUnion(spec.errors, u64) {
-    const flags: mem.Map = comptime spec.flags();
-    const prot: mem.Prot = comptime spec.prot();
-    const logging: builtin.Logging.AcquireError = comptime spec.logging.override();
-    const st: Status = status(.{ .errors = .{ .abort = &.{sys.ErrorCode.OPAQUE} } }, fd);
-    const len: u64 = mach.alignA64(st.size, 4096);
-    if (meta.wrap(sys.call(.mmap, spec.errors, spec.return_type, .{ addr, len, prot.val, flags.val, fd, 0 }))) {
+pub fn map(comptime map_spec: MapSpec, fd: u64, addr: u64, len: u64) sys.ErrorUnion(map_spec.errors, map_spec.return_type) {
+    const flags: mem.Map.Options = comptime map_spec.flags();
+    const prot: mem.Prot.Options = comptime map_spec.prot();
+    const logging: builtin.Logging.AcquireError = comptime map_spec.logging.override();
+    if (meta.wrap(sys.call(.mmap, map_spec.errors, map_spec.return_type, .{ addr, len, prot.val, flags.val, fd, 0 }))) {
         if (logging.Acquire) {
             mem.debug.mapNotice(addr, len);
         }
-        return addr +% st.size;
     } else |map_error| {
         if (logging.Error) {
             mem.debug.mapError(map_error, addr, len);
