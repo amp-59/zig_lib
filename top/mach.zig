@@ -73,17 +73,17 @@ pub inline fn shr16T(comptime T: type, value: u16, shift_amt: u16) T {
 pub inline fn shr8T(comptime T: type, value: u8, shift_amt: u8) T {
     return @intCast(T, value >> @truncate(u3, shift_amt));
 }
-pub inline fn shr64TM(comptime T: type, value: u64, shift_amt: c_uint, comptime pop_count: comptime_int) T {
-    return @intCast(T, value >> shift_amt) & ((1 << pop_count) -% 1);
+pub inline fn shr64TM(comptime T: type, value: u64, shift_amt: u64, comptime pop_count: comptime_int) T {
+    return @intCast(T, value >> @intCast(u6, shift_amt)) & ((1 << pop_count) -% 1);
 }
-pub inline fn shr32TM(comptime T: type, value: u32, shift_amt: c_uint, comptime pop_count: comptime_int) T {
-    return @intCast(T, value >> shift_amt) & ((1 << pop_count) -% 1);
+pub inline fn shr32TM(comptime T: type, value: u32, shift_amt: u32, comptime pop_count: comptime_int) T {
+    return @intCast(T, value >> @intCast(u5, shift_amt)) & ((1 << pop_count) -% 1);
 }
-pub inline fn shr16TM(comptime T: type, value: u16, shift_amt: c_uint, comptime pop_count: comptime_int) T {
-    return @intCast(T, value >> shift_amt) & ((1 << pop_count) -% 1);
+pub inline fn shr16TM(comptime T: type, value: u16, shift_amt: u16, comptime pop_count: comptime_int) T {
+    return @intCast(T, value >> @intCast(u4, shift_amt)) & ((1 << pop_count) -% 1);
 }
-pub inline fn shr8TM(comptime T: type, value: u8, shift_amt: c_uint, comptime pop_count: comptime_int) T {
-    return @intCast(T, value >> shift_amt) & ((1 << pop_count) -% 1);
+pub inline fn shr8TM(comptime T: type, value: u8, shift_amt: u8, comptime pop_count: comptime_int) T {
+    return @intCast(T, value >> @intCast(u3, shift_amt)) & ((1 << pop_count) -% 1);
 }
 
 // Conditional moves--for integers prefer dedicated functions. Prevents lazy-
@@ -158,7 +158,7 @@ pub inline fn mul64(arg1: u64, arg2: u64) u64 {
 pub inline fn add64(arg1: u64, arg2: u64) u64 {
     return arg1 +% arg2;
 }
-pub inline fn div64(arg1: u64, arg2: u64) u64 {
+pub inline fn divT64(arg1: u64, arg2: u64) u64 {
     return arg1 / arg2;
 }
 pub inline fn sub32(arg1: u32, arg2: u32) u32 {
@@ -170,7 +170,7 @@ pub inline fn mul32(arg1: u32, arg2: u32) u32 {
 pub inline fn add32(arg1: u32, arg2: u32) u32 {
     return arg1 +% arg2;
 }
-pub inline fn div32(arg1: u32, arg2: u32) u32 {
+pub inline fn divT32(arg1: u32, arg2: u32) u32 {
     return arg1 / arg2;
 }
 pub inline fn sub16(arg1: u16, arg2: u16) u16 {
@@ -182,7 +182,7 @@ pub inline fn mul16(arg1: u16, arg2: u16) u16 {
 pub inline fn add16(arg1: u16, arg2: u16) u16 {
     return arg1 +% arg2;
 }
-pub inline fn div16(arg1: u16, arg2: u16) u16 {
+pub inline fn divT16(arg1: u16, arg2: u16) u16 {
     return arg1 / arg2;
 }
 pub inline fn sub8(arg1: u8, arg2: u8) u8 {
@@ -194,7 +194,7 @@ pub inline fn mul8(arg1: u8, arg2: u8) u8 {
 pub inline fn add8(arg1: u8, arg2: u8) u8 {
     return arg1 +% arg2;
 }
-pub inline fn div8(arg1: u8, arg2: u8) u8 {
+pub inline fn divT8(arg1: u8, arg2: u8) u8 {
     return arg1 / arg2;
 }
 /// arg3 +% (arg1 *% arg2)
@@ -262,8 +262,8 @@ pub inline fn mulEqu64(arg1: *u64, arg2: u64) void {
 pub inline fn addEqu64(arg1: *u64, arg2: u64) void {
     arg1.* = add64(arg1.*, arg2);
 }
-pub inline fn divEqu64(arg1: *u64, arg2: u64) void {
-    arg1.* = div64(arg1.*, arg2);
+pub inline fn divTEqu64(arg1: *u64, arg2: u64) void {
+    arg1.* = divT64(arg1.*, arg2);
 }
 pub inline fn subEqu32(arg1: *u32, arg2: u32) void {
     arg1.* = sub32(arg1.*, arg2);
@@ -274,8 +274,8 @@ pub inline fn mulEqu32(arg1: *u32, arg2: u32) void {
 pub inline fn addEqu32(arg1: *u32, arg2: u32) void {
     arg1.* = add32(arg1.*, arg2);
 }
-pub inline fn divEqu32(arg1: *u32, arg2: u32) void {
-    arg1.* = div32(arg1.*, arg2);
+pub inline fn divTEqu32(arg1: *u32, arg2: u32) void {
+    arg1.* = divT32(arg1.*, arg2);
 }
 pub inline fn subEqu16(arg1: *u16, arg2: u16) void {
     arg1.* = sub16(arg1.*, arg2);
@@ -286,8 +286,8 @@ pub inline fn mulEqu16(arg1: *u16, arg2: u16) void {
 pub inline fn addEqu16(arg1: *u16, arg2: u16) void {
     arg1.* = add16(arg1.*, arg2);
 }
-pub inline fn divEqu16(arg1: *u16, arg2: u16) void {
-    arg1.* = div16(arg1.*, arg2);
+pub inline fn divTEqu16(arg1: *u16, arg2: u16) void {
+    arg1.* = divT16(arg1.*, arg2);
 }
 pub inline fn subEqu8(arg1: *u8, arg2: u8) void {
     arg1.* = sub8(arg1.*, arg2);
@@ -298,8 +298,8 @@ pub inline fn mulEqu8(arg1: *u8, arg2: u8) void {
 pub inline fn addEqu8(arg1: *u8, arg2: u8) void {
     arg1.* = add8(arg1.*, arg2);
 }
-pub inline fn divEqu8(arg1: *u8, arg2: u8) void {
-    arg1.* = div8(arg1.*, arg2);
+pub inline fn divTEqu8(arg1: *u8, arg2: u8) void {
+    arg1.* = divT8(arg1.*, arg2);
 }
 pub inline fn mulAddEqu64(arg1: *u64, arg2: u64, arg3: u64) void {
     arg1.* = add64(mul64(arg1.*, arg2), arg3);
@@ -512,12 +512,10 @@ comptime {
 //          [_] "{rcx}" (len),
 //    );
 //}
-pub extern fn memcpy(noalias dest: [*]u8, noalias src: *const anyopaque, len: u64) callconv(.C) void;
-pub extern fn anycpy(noalias dest: *anyopaque, noalias src: *const anyopaque, len: u64) callconv(.C) void;
+pub extern fn memcpy(noalias dest: [*]u8, noalias src: *const anyopaque, len: u64) void;
 comptime {
     asm (
         \\.intel_syntax noprefix
-        \\anycpy:
         \\memcpy:
         \\  mov     rcx, rdx
         \\  rep     movsb byte ptr es:[rdi], byte ptr [rsi]
@@ -546,7 +544,7 @@ pub fn manyToSlice80(str: [*]u8) [:0]u8 {
     return str[0.._3.strlen(str) :0];
 }
 const _0 = struct {
-    extern fn asmTestEqualMany8(_: [*]const u8, _: u64, _: [*]const u8, _: u64) callconv(.C) bool;
+    extern fn asmTestEqualMany8(arg1: [*]const u8, arg1_len: u64, arg2: [*]const u8, arg2_len: u64) callconv(.C) bool;
     comptime {
         asm (
             \\.intel_syntax noprefix
