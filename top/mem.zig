@@ -118,8 +118,8 @@ pub const MapSpec = struct {
         sync: bool = false,
     };
     const Visibility = enum { shared, shared_validate, private };
-    pub fn flags(comptime spec: Specification) Map {
-        comptime var flags_bitfield: Map = .{ .val = 0 };
+    pub fn flags(comptime spec: Specification) Map.Options {
+        var flags_bitfield: Map.Options = .{ .val = 0 };
         flags_bitfield.set(.fixed_no_replace);
         switch (spec.options.visibility) {
             .private => flags_bitfield.set(.private),
@@ -141,10 +141,10 @@ pub const MapSpec = struct {
             builtin.static.assert(spec.options.visibility == .shared_validate);
             flags_bitfield.set(.sync);
         }
-        return flags_bitfield;
+        comptime return flags_bitfield;
     }
-    pub fn prot(comptime spec: Specification) Prot {
-        comptime var prot_bitfield: Prot = .{ .val = 0 };
+    pub fn prot(comptime spec: Specification) Prot.Options {
+        var prot_bitfield: Prot.Options = .{ .val = 0 };
         if (spec.options.read) {
             prot_bitfield.set(.read);
         }
@@ -154,7 +154,30 @@ pub const MapSpec = struct {
         if (spec.options.exec) {
             prot_bitfield.set(.exec);
         }
-        return prot_bitfield;
+        comptime return prot_bitfield;
+    }
+};
+pub const SyncSpec = struct {
+    options: Options = .{},
+    errors: sys.ErrorPolicy = .{ .throw = sys.msync_errors },
+    return_type: type = void,
+    logging: builtin.Logging.AcquireError = .{},
+    const Specification = @This();
+    pub const Options = struct {
+        non_block: bool = false,
+        invalidate: bool = false,
+    };
+    pub fn flags(comptime spec: Specification) Sync.Options {
+        var flags_bitfield: Sync.Options = .{ .val = 0 };
+        if (spec.options.non_block) {
+            flags_bitfield.set(.asynchronous);
+        } else {
+            flags_bitfield.set(.synchronous);
+        }
+        if (spec.options.invalidate) {
+            flags_bitfield.set(.invalidate);
+        }
+        comptime return flags_bitfield;
     }
 };
 pub const MoveSpec = struct {
@@ -164,14 +187,14 @@ pub const MoveSpec = struct {
     logging: builtin.Logging.SuccessError = .{},
     const Specification = @This();
     const Options = struct { no_unmap: bool = false };
-    pub fn flags(comptime spec: Specification) Remap {
-        comptime var flags_bitfield: Remap = .{ .val = 0 };
+    pub fn flags(comptime spec: Specification) Remap.Options {
+        var flags_bitfield: Remap.Options = .{ .val = 0 };
         if (spec.options.no_unmap) {
             flags_bitfield.set(.no_unmap);
         }
         flags_bitfield.set(.fixed);
         flags_bitfield.set(.may_move);
-        return flags_bitfield;
+        comptime return flags_bitfield;
     }
 };
 pub const RemapSpec = struct {
@@ -200,8 +223,8 @@ pub const ProtectSpec = struct {
         grows_up: bool = false,
         grows_down: bool = false,
     };
-    pub fn prot(comptime spec: Specification) Prot {
-        comptime var prot_bitfield: Prot = .{ .val = 0 };
+    pub fn prot(comptime spec: Specification) Prot.Options {
+        var prot_bitfield: Prot.Options = .{ .val = 0 };
         if (spec.options.read) {
             prot_bitfield.set(.read);
         }
@@ -220,7 +243,7 @@ pub const ProtectSpec = struct {
         if (spec.options.grows_up) {
             prot_bitfield.set(.grows_up);
         }
-        return prot_bitfield;
+        comptime return prot_bitfield;
     }
 };
 pub const AdviseSpec = struct {
@@ -236,8 +259,8 @@ pub const AdviseSpec = struct {
     const Usage = enum { normal, random, sequential, immediate, deferred };
     const Action = enum { reclaim, free, remove, pageout, poison };
     const Property = union(enum) { mergeable: bool, hugepage: bool, dump: bool, fork: bool, wipe_on_fork: bool };
-    pub fn advice(comptime spec: AdviseSpec) Advice {
-        comptime var advice_bitfield: Advice = .{ .val = 0 };
+    pub fn advice(comptime spec: AdviseSpec) Advice.Options {
+        var advice_bitfield: Advice.Options = .{ .val = 0 };
         if (spec.options.usage) |usage| {
             switch (usage) {
                 .normal => {
@@ -318,7 +341,7 @@ pub const AdviseSpec = struct {
         if (advice_bitfield.val == 0) {
             advice_bitfield.set(.normal);
         }
-        return advice_bitfield;
+        comptime return advice_bitfield;
     }
     pub fn describe(comptime spec: AdviseSpec) []const u8 {
         if (spec.options.usage) |usage| {
@@ -424,7 +447,7 @@ pub const FdSpec = struct {
         if (spec.options.close_on_exec) {
             flags_bitfield.set(.close_on_exec);
         }
-        return flags_bitfield;
+        comptime return flags_bitfield;
     }
 };
 pub const Bytes = struct {
@@ -683,8 +706,8 @@ pub fn releaseElementary(comptime AddressSpace: type, address_space: *AddressSpa
     }
 }
 pub fn map(comptime spec: MapSpec, addr: u64, len: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
-    const mmap_prot: Prot = comptime spec.prot();
-    const mmap_flags: Map = comptime spec.flags();
+    const mmap_prot: Prot.Options = comptime spec.prot();
+    const mmap_flags: Map.Options = comptime spec.flags();
     const logging: builtin.Logging.AcquireError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.mmap, spec.errors, spec.return_type, .{ addr, len, mmap_prot.val, mmap_flags.val, ~@as(u64, 0), 0 }))) |ret| {
         if (logging.Acquire) {
@@ -701,7 +724,7 @@ pub fn map(comptime spec: MapSpec, addr: u64, len: u64) sys.ErrorUnion(spec.erro
     }
 }
 pub fn move(comptime spec: MoveSpec, old_addr: u64, old_len: u64, new_addr: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
-    const mremap_flags: Remap = comptime spec.flags();
+    const mremap_flags: Remap.Options = comptime spec.flags();
     const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.mremap, spec.errors, spec.return_type, .{ old_addr, old_len, old_len, mremap_flags.val, new_addr }))) {
         if (logging.Success) {
@@ -741,7 +764,7 @@ pub fn unmap(comptime spec: UnmapSpec, addr: u64, len: u64) sys.ErrorUnion(spec.
     }
 }
 pub fn protect(comptime spec: ProtectSpec, addr: u64, len: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
-    const prot: Prot = comptime spec.prot();
+    const prot: Prot.Options = comptime spec.prot();
     const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.mprotect, spec.errors, spec.return_type, .{ addr, len, prot.val }))) {
         if (logging.Success) {
@@ -755,7 +778,7 @@ pub fn protect(comptime spec: ProtectSpec, addr: u64, len: u64) sys.ErrorUnion(s
     }
 }
 pub fn advise(comptime spec: AdviseSpec, addr: u64, len: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
-    const advice: Advice = comptime spec.advice();
+    const advice: Advice.Options = comptime spec.advice();
     const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.madvise, spec.errors, spec.return_type, .{ addr, len, advice.val }))) {
         if (logging.Success) {
