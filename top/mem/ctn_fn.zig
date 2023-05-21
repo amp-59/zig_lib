@@ -299,7 +299,7 @@ pub const Fn = enum(u8) {
             .index,
             .avail,
             => {
-                arg_list.writeOne(arg_list_ptr_symbol);
+                arg_list.writeOne(arg_list_const_ptr_symbol);
                 if (ctn_detail.layout == .unstructured) {
                     arg_list.writeOne(child_type_symbol);
                 }
@@ -970,39 +970,42 @@ pub const Fn = enum(u8) {
                     return tok.void_type_name;
                 }
                 if (kind.sentinel(ctn_fn_info)) {
-                    if (kind.refer_many(ctn_fn_info)) {
+                    if (kind.readAll(ctn_fn_info)) {
+                        return tok.child_const_slice_type_name;
+                    }
+                    if (kind.referMany(ctn_fn_info)) {
                         return tok.child_slice_with_sentinel_type_name;
                     }
-                    if (kind.refer_count(ctn_fn_info)) {
+                    if (kind.referCount(ctn_fn_info)) {
                         return tok.child_array_ptr_with_sentinel_type_name;
                     }
-                    if (kind.read_many(ctn_fn_info)) {
+                    if (kind.readMany(ctn_fn_info)) {
                         return tok.child_const_slice_with_sentinel_type_name;
                     }
-                    if (kind.read_count(ctn_fn_info)) {
+                    if (kind.readCount(ctn_fn_info)) {
                         return tok.child_array_with_sentinel_type_name;
                     }
-                    if (kind.read_one(ctn_fn_info)) {
-                        return tok.child_type_name;
-                    }
                 }
-                if (kind.refer_many(ctn_fn_info)) {
-                    return tok.child_slice_type_name;
-                }
-                if (kind.refer_count(ctn_fn_info)) {
-                    return tok.child_array_ptr_type_name;
-                }
-                if (kind.read_many(ctn_fn_info)) {
+                if (kind.readAll(ctn_fn_info)) {
                     return tok.child_const_slice_type_name;
                 }
-                if (kind.read_count(ctn_fn_info)) {
+                if (kind.readMany(ctn_fn_info)) {
+                    return tok.child_const_slice_type_name;
+                }
+                if (kind.readCount(ctn_fn_info)) {
                     return tok.child_array_type_name;
                 }
-                if (kind.refer_one(ctn_fn_info)) {
-                    return tok.child_ptr_type_name;
-                }
-                if (kind.read_one(ctn_fn_info)) {
+                if (kind.readOne(ctn_fn_info)) {
                     return tok.child_type_name;
+                }
+                if (kind.referMany(ctn_fn_info)) {
+                    return tok.child_slice_type_name;
+                }
+                if (kind.referCount(ctn_fn_info)) {
+                    return tok.child_array_ptr_type_name;
+                }
+                if (kind.referOne(ctn_fn_info)) {
+                    return tok.child_ptr_type_name;
                 }
                 if (kind.append(ctn_fn_info) or
                     ctn_fn_info == .init or
