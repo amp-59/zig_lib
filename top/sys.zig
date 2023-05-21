@@ -677,28 +677,9 @@ pub const SIGEV = struct {
     pub const THREAD_ID: usize = 0x4;
 };
 pub const MS = struct {
-    pub const MANDLOCK: usize = 0x40;
-    pub const LAZYTIME: usize = 0x2000000;
-    pub const REC: usize = 0x4000;
-    pub const RELATIME: usize = 0x200000;
-    pub const RDONLY: usize = 0x1;
-    pub const SILENT: usize = 0x8000;
-    pub const INVALIDATE: usize = 0x2;
-    pub const DIRSYNC: usize = 0x80;
-    pub const SLAVE: usize = 0x80000;
-    pub const NOATIME: usize = 0x400;
-    pub const PRIVATE: usize = 0x40000;
-    pub const NODIRATIME: usize = 0x800;
-    pub const NOSYMFOLLOW: usize = 0x100;
-    pub const UNBINDABLE: usize = 0x20000;
-    pub const NODEV: usize = 0x4;
-    pub const SHARED: usize = 0x100000;
-    pub const SYNC: usize = 0x4;
-    pub const STRICTATIME: usize = 0x1000000;
-    pub const SYNCHRONOUS: usize = 0x10;
     pub const ASYNC: usize = 0x1;
-    pub const NOSUID: usize = 0x2;
-    pub const NOEXEC: usize = 0x8;
+    pub const INVALIDATE: usize = 0x2;
+    pub const SYNC: usize = 0x4;
 };
 pub const ATTR = struct {
     pub const HIDDEN: usize = 0x2;
@@ -1190,6 +1171,7 @@ pub const INADDR = struct {
     pub const ANY: u64 = 0x0;
 };
 pub const ErrorCode = enum(i9) {
+    NULL = 0, // No error
     PERM = -1, // Operation not permitted
     NOENT = -2, // No such file or directory
     SRCH = -3, // No such process
@@ -1328,6 +1310,7 @@ pub const ErrorCode = enum(i9) {
 
     pub inline fn errorName(comptime error_code: ErrorCode) []const u8 {
         switch (error_code) {
+            .NULL => return "NotAnError",
             .PERM => return "OperationNotPermitted",
             .NOENT => return "NoSuchFileOrDirectory",
             .SRCH => return "NoSuchProcess",
@@ -2237,6 +2220,9 @@ pub fn call(comptime tag: Fn, comptime errors: ErrorPolicy, comptime return_type
     }
     if (errors.abort.len != 0) {
         builtin.zigErrorAbort(ErrorCode, errors.abort, ret);
+    }
+    if (@sizeOf(return_type) == @sizeOf(usize)) {
+        return @bitCast(return_type, ret);
     }
     if (return_type != void) {
         return @intCast(return_type, ret);
