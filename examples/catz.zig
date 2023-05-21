@@ -11,18 +11,23 @@ pub fn main(args_in: [][*:0]u8) !void {
     if (args_in.len == 1) {
         return;
     }
+    const addr: u64 = 0x40000000;
     for (args_in[1..]) |arg_in| {
         const arg: [:0]const u8 = meta.manyToSlice(arg_in);
         const fd: u64 = file.open(.{ .options = .{ .read = true, .no_follow = false } }, arg) catch {
             continue;
         };
         defer file.close(.{ .errors = .{} }, fd);
-        const lb_addr: u64 = 0x40000000;
-        const up_addr: u64 = file.map(.{ .options = .{ .visibility = .private } }, lb_addr, fd) catch {
+        const st: file.Status = file.status(.{}, fd) catch {
             continue;
         };
-        const s_bytes: u64 = mach.alignA(up_addr - lb_addr, 4096);
-        defer mem.unmap(.{ .errors = .{} }, lb_addr, s_bytes);
-        file.write(.{ .errors = .{} }, 1, mem.pointerMany(u8, lb_addr)[0..s_bytes]);
+        if (st.mode.kind == .regular) {
+            const len: u64 = mach.alignA64(st.size, 4096);
+            file.map(.{ .options = .{ .visibility = .private } }, fd, addr, len) catch {
+                continue;
+            };
+            defer mem.unmap(.{ .errors = .{} }, addr, len);
+            file.write(.{ .errors = .{} }, 1, mem.pointerMany(u8, addr)[0..st.size]);
+        }
     }
 }
