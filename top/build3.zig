@@ -70,17 +70,26 @@ pub const BuilderSpec = struct {
         } = .{},
         /// Configuration for output pathnames
         extensions: struct {
+            /// Extension for Zig source files
             zig: [:0]const u8 = ".zig",
+            /// Extension for C header source files
             h: [:0]const u8 = ".h",
+            /// Extension for shared object files
             lib: [:0]const u8 = ".so",
+            /// Extension for archives
             ar: [:0]const u8 = ".a",
+            /// Extension for object files
             obj: [:0]const u8 = ".o",
+            /// Extension for assembly source files
             @"asm": [:0]const u8 = ".s",
+            /// Extension for LLVM bitcode files
             llvm_bc: [:0]const u8 = ".bc",
+            /// Extension for LLVM intermediate representation files
             llvm_ir: [:0]const u8 = ".ll",
+            /// Extension for JSON files
             analysis: [:0]const u8 = ".json",
-            docs: [:0]const u8 = ".docs",
-            implib: [:0]const u8 = ".lib",
+            /// Extension for documentation files
+            docs: [:0]const u8 = ".html",
         } = .{},
     };
     pub const Logging = packed struct {
