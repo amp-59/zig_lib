@@ -9,7 +9,7 @@ const testing = gen.testing;
 const tok = @import("./tok.zig");
 const expr = @import("./expr.zig");
 const ctn_fn = @import("./ctn_fn.zig");
-const impl_fn = @import("./impl_fn.zig");
+const ptr_fn = @import("./ptr_fn.zig");
 const out = struct {
     usingnamespace @import("./detail_less.zig");
     usingnamespace @import("./detail_more.zig");
@@ -55,7 +55,7 @@ pub fn main() !void {
         const impl_detail: *const detail.More = &parametric_example;
         {
             defer array.undefineAll();
-            const call: expr.Expr = expr.impl(&allocator, impl_detail, impl_fn.get(.unstreamed_byte_count));
+            const call: expr.Expr = expr.impl(&allocator, impl_detail, ptr_fn.get(.unstreamed_byte_count));
             array.writeFormat(fmt.any(call));
             builtin.debug.write(array.readAll());
             array.undefineAll();
@@ -65,31 +65,31 @@ pub fn main() !void {
         }
         {
             defer array.undefineAll();
-            const call: expr.Expr = expr.impl(&allocator, impl_detail, impl_fn.get(.allocated_byte_address));
+            const call: expr.Expr = expr.impl(&allocator, impl_detail, ptr_fn.get(.allocated_byte_address));
             array.writeFormat(call);
             try testing.expectEqualMany(u8, array.readAll(), "allocated_byte_address(" ++ tok.allocator_name ++ ")");
         }
         {
             defer array.undefineAll();
-            const call: expr.Expr = expr.impl(&allocator, impl_detail, impl_fn.get(.writable_byte_count));
+            const call: expr.Expr = expr.impl(&allocator, impl_detail, ptr_fn.get(.writable_byte_count));
             array.writeFormat(call);
             try testing.expectEqualMany(u8, array.readAll(), "writable_byte_count(" ++ tok.allocator_name ++ ")");
         }
         {
             defer array.undefineAll();
-            const call: expr.Expr = expr.impl(&allocator, impl_detail.less(), impl_fn.get(.unstreamed_byte_count));
+            const call: expr.Expr = expr.impl(&allocator, impl_detail.less(), ptr_fn.get(.unstreamed_byte_count));
             array.writeFormat(call);
             try testing.expectEqualMany(u8, array.readAll(), tok.impl_name ++ ".unstreamed_byte_count()");
         }
         {
             defer array.undefineAll();
-            const call: expr.Expr = expr.impl(&allocator, impl_detail.less(), impl_fn.get(.allocated_byte_address));
+            const call: expr.Expr = expr.impl(&allocator, impl_detail.less(), ptr_fn.get(.allocated_byte_address));
             array.writeFormat(call);
             try testing.expectEqualMany(u8, array.readAll(), tok.impl_name ++ ".allocated_byte_address(" ++ tok.allocator_name ++ ")");
         }
         {
             defer array.undefineAll();
-            const call: expr.Expr = expr.impl(&allocator, impl_detail.less(), impl_fn.get(.writable_byte_count));
+            const call: expr.Expr = expr.impl(&allocator, impl_detail.less(), ptr_fn.get(.writable_byte_count));
             array.writeFormat(call);
             try testing.expectEqualMany(u8, array.readAll(), tok.impl_name ++ ".writable_byte_count(" ++ tok.allocator_name ++ ")");
         }
@@ -107,13 +107,13 @@ pub fn main() !void {
         const impl_detail: *const detail.More = &dynamic_example;
         {
             defer array.undefineAll();
-            const call: expr.Expr = expr.impl(&allocator, impl_detail.less(), impl_fn.get(.construct));
+            const call: expr.Expr = expr.impl(&allocator, impl_detail.less(), ptr_fn.get(.construct));
             array.writeFormat(call);
             try testing.expectEqualMany(u8, array.readAll(), tok.source_impl_type_name ++ ".construct(" ++ tok.source_aligned_byte_address_name ++ ")");
         }
         {
             defer array.undefineAll();
-            const call: expr.Expr = expr.impl(&allocator, impl_detail.less(), impl_fn.get(.reconstruct));
+            const call: expr.Expr = expr.impl(&allocator, impl_detail.less(), ptr_fn.get(.reconstruct));
             array.writeFormat(call);
             try testing.expectEqualMany(u8, array.readAll(), tok.impl_name ++ ".reconstruct(" ++ tok.target_aligned_byte_address_name ++ ")");
         }
@@ -131,37 +131,37 @@ pub fn main() !void {
         const impl_detail: *const detail.More = &parametric_example;
         {
             defer array.undefineAll();
-            const call: expr.Expr = expr.impl(&allocator, impl_detail, impl_fn.get(.unstreamed_byte_count));
+            const call: expr.Expr = expr.impl(&allocator, impl_detail, ptr_fn.get(.unstreamed_byte_count));
             array.writeFormat(call);
             try testing.expectEqualMany(u8, array.readAll(), "unstreamed_byte_count(" ++ tok.impl_name ++ ")");
         }
         {
             defer array.undefineAll();
-            const call: expr.Expr = expr.impl(&allocator, impl_detail, impl_fn.get(.allocated_byte_address));
+            const call: expr.Expr = expr.impl(&allocator, impl_detail, ptr_fn.get(.allocated_byte_address));
             array.writeFormat(call);
             try testing.expectEqualMany(u8, array.readAll(), "allocated_byte_address(" ++ tok.impl_name ++ ")");
         }
         {
             defer array.undefineAll();
-            const call: expr.Expr = expr.impl(&allocator, impl_detail, impl_fn.get(.writable_byte_count));
+            const call: expr.Expr = expr.impl(&allocator, impl_detail, ptr_fn.get(.writable_byte_count));
             array.writeFormat(call);
             try testing.expectEqualMany(u8, array.readAll(), "writable_byte_count()");
         }
         {
             defer array.undefineAll();
-            const call: expr.Expr = expr.impl(&allocator, impl_detail.less(), impl_fn.get(.unstreamed_byte_count));
+            const call: expr.Expr = expr.impl(&allocator, impl_detail.less(), ptr_fn.get(.unstreamed_byte_count));
             array.writeFormat(call);
             try testing.expectEqualMany(u8, array.readAll(), tok.impl_name ++ ".unstreamed_byte_count()");
         }
         {
             defer array.undefineAll();
-            const call: expr.Expr = expr.impl(&allocator, impl_detail.less(), impl_fn.get(.allocated_byte_address));
+            const call: expr.Expr = expr.impl(&allocator, impl_detail.less(), ptr_fn.get(.allocated_byte_address));
             array.writeFormat(call);
             try testing.expectEqualMany(u8, array.readAll(), tok.impl_name ++ ".allocated_byte_address()");
         }
         {
             defer array.undefineAll();
-            const call: expr.Expr = expr.impl(&allocator, impl_detail.less(), impl_fn.get(.writable_byte_count));
+            const call: expr.Expr = expr.impl(&allocator, impl_detail.less(), ptr_fn.get(.writable_byte_count));
             array.writeFormat(call);
             try testing.expectEqualMany(u8, array.readAll(), tok.impl_name ++ ".writable_byte_count()");
         }
