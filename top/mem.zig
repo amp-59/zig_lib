@@ -1794,13 +1794,11 @@ pub const SimpleAllocator = struct {
         allocator.finish = allocator.start;
     }
     pub fn init(arena: mem.Arena) Allocator {
-        if (arena.options.require_map) {
-            map(noexcept, arena.lb_addr, 4096);
-        }
+        map(noexcept, arena.lb_addr, 4096);
         return .{
             .start = arena.lb_addr,
             .next = arena.lb_addr,
-            .finish = if (arena.options.require_map) arena.lb_addr +% 4096 else arena.up_addr,
+            .finish = arena.lb_addr +% 4096,
         };
     }
     inline fn alignAbove(value: u64, alignment: u64) u64 {
