@@ -11,8 +11,8 @@ const serial = top.serial;
 const builtin = top.builtin;
 const testing = top.testing;
 
-const attr = @import("../top/mem/attr.zig");
-const mem_types = @import("../top/mem/types.zig");
+const attr = @import("../top/mem/gen/attr.zig");
+const mem_types = @import("../top/mem/gen/types.zig");
 
 pub usingnamespace proc.start;
 
@@ -2583,30 +2583,35 @@ pub fn testBuildProgram(allocator: *Builder.Allocator, builder: *Builder) !void 
     t.dependOnObject(allocator, t7);
 }
 pub fn testLargeFlatStructureBuilder(args: anytype, vars: anytype, address_space: *AddressSpace) !void {
-    var allocator: Builder.Allocator = Builder.Allocator.init(address_space, Builder.max_thread_count);
-    defer allocator.deinit(address_space, Builder.max_thread_count);
+    var allocator_a: Allocator = Allocator.init(address_space);
+    var allocator_b: Builder.Allocator = if (Builder.Allocator == mem.SimpleAllocator)
+        Builder.Allocator.init_arena(Builder.AddressSpace.arena(Builder.max_thread_count))
+    else
+        Builder.Allocator.init(address_space, Builder.max_thread_count);
+    defer if (Builder.Allocator != mem.SimpleAllocator) {
+        allocator_b.deinit(address_space, Builder.max_thread_count);
+    };
     var builder: Builder = try meta.wrap(Builder.init(args, vars));
-    try testBuildProgram(&allocator, &builder);
+    try testBuildProgram(&allocator_b, &builder);
     var buf: [4096]u8 = undefined;
     for (builder.grps[0..builder.grps_len], 0..) |grp, grp_idx| {
         const pathname: []const u8 = "zig-out/bin/groups";
         for (grp.trgs[0..grp.trgs_len], 0..) |trg, trg_idx| {
-            const s = allocator.save();
-            defer allocator.restore(s);
+            const s = allocator_a.save();
+            defer allocator_a.restore(s);
             const len: u64 = builtin.debug.writeMulti(&buf, &.{ pathname, builtin.fmt.ud64(grp_idx).readAll(), "_", builtin.fmt.ud64(trg_idx).readAll() });
             buf[len] = 0;
-            try serial.serialWrite(.{ .Allocator = Builder.Allocator }, build.BuildCommand, &allocator, buf[0..len :0], trg.task_data.build.*);
+            try serial.serialWrite(.{ .Allocator = Allocator }, build.BuildCommand, &allocator_a, buf[0..len :0], trg.task_data.build.*);
         }
     }
     for (builder.grps[0..builder.grps_len], 0..) |grp, grp_idx| {
         const pathname: []const u8 = "zig-out/bin/groups";
         for (grp.trgs[0..grp.trgs_len], 0..) |trg, trg_idx| {
-            const s = allocator.save();
-            defer allocator.restore(s);
+            const s = allocator_a.save();
+            defer allocator_a.restore(s);
             const len: u64 = builtin.debug.writeMulti(&buf, &.{ pathname, builtin.fmt.ud64(grp_idx).readAll(), "_", builtin.fmt.ud64(trg_idx).readAll() });
             buf[len] = 0;
-
-            const s_build_cmd: build.BuildCommand = try serial.serialRead(.{ .Allocator = Builder.Allocator }, build.BuildCommand, &allocator, buf[0..len :0]);
+            const s_build_cmd: build.BuildCommand = try serial.serialRead(.{ .Allocator = Allocator }, build.BuildCommand, &allocator_a, buf[0..len :0]);
             try builtin.expectEqualMemory(build.BuildCommand, s_build_cmd, trg.task_data.build.*);
         }
     }
