@@ -51,6 +51,9 @@ pub const BuilderSpec = struct {
         show_stats: bool = true,
         /// Enables detail for target dependecy listings.
         show_detailed_deps: bool = true,
+        /// Use `SimpleAllocator` instead of configured generic allocator.
+        /// This will slightly speed compilation.
+        prefer_simple_allocator: bool = true,
         names: struct {
             /// Module containing full paths of zig_exe, build_root, cache_root, and
             /// global_cache_root. May be useful for metaprogramming.
@@ -167,13 +170,15 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             .logging = spec.address_space.logging.silent,
             .options = thread_space_options,
         });
-        pub const Allocator = mem.SimpleAllocator;
-        //mem.GenericRtArenaAllocator(.{
-        //    .AddressSpace = AddressSpace,
-        //    .logging = spec.allocator.logging.silent,
-        //    .errors = spec.allocator.errors.noexcept,
-        //    .options = allocator_options,
-        //});
+        pub const Allocator = if (builder_spec.options.prefer_simple_allocator)
+            mem.SimpleAllocator
+        else
+            mem.GenericRtArenaAllocator(.{
+                .AddressSpace = AddressSpace,
+                .logging = spec.allocator.logging.silent,
+                .errors = spec.allocator.errors.noexcept,
+                .options = allocator_options,
+            });
         pub const Target = struct {
             name: [:0]const u8 = &.{},
             descr: [:0]const u8 = &.{},
@@ -200,7 +205,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 format: *types.FormatCommand,
                 archive: *types.ArchiveCommand,
             };
-
             fn acquireThread(
                 target: *Target,
                 address_space: *AddressSpace,
@@ -220,7 +224,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 } else {
                     var arena_index: AddressSpace.Index = 0;
                     while (arena_index != max_thread_count) : (arena_index +%= 1) {
-                        if (thread_space.atomicSet(arena_index)) {
+                        if (mem.testAcquire(ThreadSpace, thread_space, arena_index)) {
                             return @call(.never_inline, impl.forwardToExecuteCloneThreaded, .{
                                 builder, address_space, thread_space, target, task, arena_index, depth, ThreadSpace.high(arena_index) -% 4096,
                             });
@@ -497,7 +501,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 group.trgs_len +%= 1;
                 return ret;
             }
-
             pub fn executeToplevel(
                 group: *Group,
                 address_space: *AddressSpace,
@@ -542,13 +545,13 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         file.read(builder_spec.read2(), out.read, msg[len..hdr.bytes_len]),
                     );
                 }
-                if (hdr.tag == .emit_bin_path) {
+                if (hdr.tag == .emit_bin_path) break {
                     ret = msg[0];
-                }
-                if (hdr.tag == .error_bundle) {
+                };
+                if (hdr.tag == .error_bundle) break {
                     debug.writeErrors(allocator, types.Message.ErrorHeader.create(msg));
                     ret = builder_spec.options.compiler_error_status;
-                }
+                };
                 allocator.restore(save);
             }
             allocator.restore(save);
@@ -652,11 +655,13 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 arena_index: AddressSpace.Index,
                 depth: u64,
             ) void {
-                _ = address_space;
                 if (max_thread_count == 0) {
                     unreachable;
                 }
-                var allocator: Allocator = Allocator.init(AddressSpace.arena(arena_index));
+                var allocator: Builder.Allocator = if (Builder.Allocator == mem.SimpleAllocator)
+                    Builder.Allocator.init_arena(Builder.AddressSpace.arena(arena_index))
+                else
+                    Builder.Allocator.init(address_space, arena_index);
                 if (if (task == .run) meta.wrap(
                     executeRunCommand(builder, &allocator, target, depth),
                 ) catch false else meta.wrap(
@@ -666,8 +671,11 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 } else {
                     target.assertExchange(task, .working, .failed);
                 }
-                allocator.unmap();
-                builtin.assert(thread_space.atomicUnset(arena_index));
+                if (Builder.Allocator == mem.SimpleAllocator)
+                    allocator.unmap()
+                else
+                    allocator.deinit(address_space, arena_index);
+                mem.release(ThreadSpace, thread_space, arena_index);
             }
             fn executeCommand(
                 builder: *Builder,
@@ -837,14 +845,14 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 builder_spec.errors.path.abort ++ builder_spec.errors.close.abort ++ builder_spec.errors.create.abort,
         }, Builder) {
             @setRuntimeSafety(false);
-            if (max_thread_count != 0) {
-                try meta.wrap(mem.map(builder_spec.map(), stack_lb_addr, stack_up_addr -% stack_lb_addr));
-            }
             const zig_exe: [:0]const u8 = meta.manyToSlice(args[1]);
             const build_root: [:0]const u8 = meta.manyToSlice(args[2]);
             const cache_root: [:0]const u8 = meta.manyToSlice(args[3]);
             const global_cache_root: [:0]const u8 = meta.manyToSlice(args[4]);
             const build_root_fd: u64 = try meta.wrap(file.path(builder_spec.path(), build_root));
+            if (!thread_space_options.require_map) {
+                mem.map(builder_spec.map(), stack_lb_addr, stack_up_addr -% stack_lb_addr);
+            }
             try meta.wrap(
                 file.makeDirAt(builder_spec.mkdir(), build_root_fd, builder_spec.options.names.zig_out_dir, file.mode.directory),
             );
@@ -1092,11 +1100,15 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             .{ .tag = .update, .bytes_len = 0 },
             .{ .tag = .exit, .bytes_len = 0 },
         };
-        const persistent_map: bool = false;
         const address_space_options: mem.ArenaOptions = .{
             .thread_safe = true,
-            .require_map = persistent_map,
-            .require_unmap = persistent_map,
+            .require_map = false,
+            .require_unmap = false,
+        };
+        const thread_space_options: mem.ArenaOptions = .{
+            .thread_safe = true,
+            .require_map = false,
+            .require_unmap = false,
         };
         const allocator_options: mem.ArenaAllocatorOptions = .{
             .count_branches = false,
@@ -1105,12 +1117,10 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             .check_parametric = false,
             .prefer_remap = false,
             .init_commit = arena_aligned_bytes,
-            .require_map = !persistent_map,
-            .require_unmap = !persistent_map,
+            .require_map = !address_space_options.require_map,
+            .require_unmap = !address_space_options.require_unmap,
         };
-        const thread_space_options: mem.ArenaOptions = .{
-            .thread_safe = true,
-        };
+
         const zig_out_exe_dir: [:0]const u8 = builder_spec.options.names.zig_out_dir ++ "/" ++ builder_spec.options.names.exe_out_dir;
         const zig_out_lib_dir: [:0]const u8 = builder_spec.options.names.zig_out_dir ++ "/" ++ builder_spec.options.names.lib_out_dir;
         const zig_out_aux_dir: [:0]const u8 = builder_spec.options.names.zig_out_dir ++ "/" ++ builder_spec.options.names.aux_out_dir;
@@ -1704,14 +1714,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         }
         fn strdup(allocator: *Allocator, values: []const u8) [:0]u8 {
             @setRuntimeSafety(false);
-            const addr: u64 = builtin.addr(values);
-            if (addr < stack_lb_addr or addr >= allocator.start and addr < allocator.next) {
-                return @constCast(values.ptr[0..values.len :0]);
-            } else {
-                var buf: [:0]u8 = @ptrCast([:0]u8, allocator.allocate(u8, values.len));
-                mach.memcpy(buf.ptr, values.ptr, values.len);
-                return buf;
-            }
+            var buf: [:0]u8 = @ptrCast([:0]u8, allocator.allocate(u8, values.len));
+            mach.memcpy(buf.ptr, values.ptr, values.len);
+            return buf;
         }
         fn strdup2(allocator: *Allocator, values: []const []const u8) [][:0]const u8 {
             @setRuntimeSafety(false);
