@@ -333,7 +333,7 @@ pub const ArchiveCommand = struct {
     },
     /// Target archive
     archive: ?types.Path = null,
-    /// Add auxiliary files to the current target
+    /// Add auxiliary files to the current archive
     files: ?[]const types.Path = null,
 };
 pub const RanlibCommand = struct {
