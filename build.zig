@@ -96,15 +96,16 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     const proc_test: *Builder.Target =      try tests.addBuild(allocator, build_cmd,    .{ .name = "proc_test",     .root = "test/proc-test.zig" });
     // Memory implementation generator:
     build_cmd.kind = .exe;
-    build_cmd.mode = .ReleaseSmall;
+    build_cmd.mode = .Debug;
     const mg_touch: *Builder.Target =       try mg_aux.addBuild(allocator, build_cmd,   .{ .name = "mg_touch", .root = "top/mem/gen/touch.zig" });
     const mg_specs: *Builder.Target =       try mg_aux.addBuild(allocator, build_cmd,   .{ .name = "mg_specs", .root = "top/mem/gen/specs.zig" });
     const mg_ctn_kinds: *Builder.Target =   try mg_aux.addBuild(allocator, build_cmd,   .{ .name = "mg_ctn_kinds", .root = "top/mem/gen/ctn_kinds.zig" });
     const mg_ptr_impls: *Builder.Target =   try mg_aux.addBuild(allocator, build_cmd,   .{ .name = "mg_ptr_impls", .root = "top/mem/gen/ptr_impls.zig" });
     const mg_ctn_impls: *Builder.Target =   try mg_aux.addBuild(allocator, build_cmd,   .{ .name = "mg_ctn_impls", .root = "top/mem/gen/ctn_impls.zig" });
-    const mg_ctn: *Builder.Target =         try memgen.addFormat(allocator, format_cmd, .{ .name = "mg_ctn", .root = "top/mem/ctn" });
-    const mg_ptr: *Builder.Target =         try memgen.addFormat(allocator, format_cmd, .{ .name = "mg_ptr", .root = "top/mem/ptr" });
+    const mg_ctn: *Builder.Target =         try memgen.addFormat(allocator, format_cmd, .{ .name = "mg_ctn", .root = "top/mem/ctn.zig" });
+    const mg_ptr: *Builder.Target =         try memgen.addFormat(allocator, format_cmd, .{ .name = "mg_ptr", .root = "top/mem/ptr.zig" });
     // Builder implementation generator:
+    build_cmd.mode = .ReleaseSmall;
     const bg_tasks_impls: *Builder.Target =   try bg_aux.addBuild(allocator, build_cmd, .{ .name = "bg_tasks_impls",
                                                                                            .root = "top/build/gen/tasks_impls.zig" });
     const bg_cmdline_impls: *Builder.Target = try bg_aux.addBuild(allocator, build_cmd, .{ .name = "bg_cmdline_impls",
