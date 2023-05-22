@@ -22,10 +22,11 @@ pub const AuxOutputMode = enum {
     implib,
 };
 pub const Task = enum(u8) {
-    format = 0,
-    build = 1,
-    run = 2,
-    archive = 3,
+    none = 0,
+    format = 1,
+    build = 2,
+    run = 3,
+    archive = 4,
     pub const list: []const Task = meta.tagList(Task);
 };
 pub const State = enum(u8) {
