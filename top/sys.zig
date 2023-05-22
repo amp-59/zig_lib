@@ -2228,3 +2228,15 @@ pub fn call(comptime tag: Fn, comptime errors: ErrorPolicy, comptime return_type
         return @intCast(return_type, ret);
     }
 }
+pub fn call_noexcept(comptime tag: Fn, comptime return_type: type, args: [tag.args()]usize) return_type {
+    const ret: isize = (comptime syscalls[tag.args()])(tag, args);
+    if (return_type == noreturn) {
+        unreachable;
+    }
+    if (@sizeOf(return_type) == @sizeOf(usize)) {
+        return @bitCast(return_type, ret);
+    }
+    if (return_type != void) {
+        return @intCast(return_type, ret);
+    }
+}
