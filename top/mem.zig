@@ -535,7 +535,6 @@ pub noinline fn monitor(comptime T: type, ptr: *T) void {
         else => @compileError("???"),
     }
 }
-
 fn acquireMap(comptime AddressSpace: type, address_space: *AddressSpace) AddressSpace.map_void {
     const spec: mem.RegularAddressSpaceSpec = AddressSpace.addr_spec;
     if (address_space.set(spec.divisions)) {
@@ -615,8 +614,8 @@ pub fn acquire(comptime AddressSpace: type, address_space: *AddressSpace, index:
 }
 pub fn acquireStatic(comptime AddressSpace: type, address_space: *AddressSpace, comptime index: AddressSpace.Index) AddressSpace.acquire_void(index) {
     const spec = AddressSpace.addr_spec;
-    const lb_addr: u64 = AddressSpace.low(index);
-    const up_addr: u64 = AddressSpace.high(index);
+    const lb_addr: u64 = comptime AddressSpace.low(index);
+    const up_addr: u64 = comptime AddressSpace.high(index);
     const logging: builtin.Logging.AcquireErrorFault = comptime spec.logging.acquire.override();
     if (acquireStaticSet(AddressSpace, address_space, index)) {
         if (logging.Acquire) {
@@ -640,7 +639,7 @@ pub fn acquireElementary(comptime AddressSpace: type, address_space: *AddressSpa
         if (logging.Acquire) {
             debug.arenaAcquireNotice(null, lb_addr, up_addr, spec.label);
         }
-    } else if (comptime spec.errors.acquire == .throw) {
+    } else if (spec.errors.acquire == .throw) {
         if (logging.Error) {
             debug.arenaAcquireError(spec.errors.acquire.throw, null, lb_addr, up_addr, spec.label);
         }
@@ -672,8 +671,8 @@ pub fn release(comptime AddressSpace: type, address_space: *AddressSpace, index:
 }
 pub fn releaseStatic(comptime AddressSpace: type, address_space: *AddressSpace, comptime index: AddressSpace.Index) AddressSpace.release_void(index) {
     const spec = AddressSpace.addr_spec;
-    const lb_addr: u64 = AddressSpace.low(index);
-    const up_addr: u64 = AddressSpace.high(index);
+    const lb_addr: u64 = comptime AddressSpace.low(index);
+    const up_addr: u64 = comptime AddressSpace.high(index);
     const logging: builtin.Logging.ReleaseErrorFault = comptime spec.logging.release.override();
     if (releaseStaticUnset(AddressSpace, address_space, index)) {
         if (logging.Release) {
