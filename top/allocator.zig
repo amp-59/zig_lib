@@ -234,10 +234,10 @@ fn GenericAllocatorInterface(comptime Allocator: type) type {
             allocator.ub_addr = mach.alignA64(allocator.ub_addr, alignment);
             return allocator.ub_addr;
         }
-        pub fn allocate(allocator: *Allocator, s_up_addr: u64) void {
+        pub fn increment(allocator: *Allocator, s_up_addr: u64) void {
             allocator.ub_addr = s_up_addr;
         }
-        pub fn deallocate(allocator: *Allocator, s_lb_addr: u64) void {
+        pub fn decrement(allocator: *Allocator, s_lb_addr: u64) void {
             if (Allocator.allocator_spec.options.require_filo_free) {
                 allocator.ub_addr = s_lb_addr;
             } else {
@@ -582,104 +582,128 @@ pub fn GenericRtArenaAllocator(comptime spec: RtArenaAllocatorSpec) type {
 fn GenericIrreversibleInterface(comptime Allocator: type) type {
     return struct {
         const Graphics = GenericArenaAllocatorGraphics(Allocator);
-        pub const Save = struct { ub_addr: u64 };
+        pub const Save = struct { u64 };
+        pub inline fn create(allocator: *Allocator, comptime s_child: type) *s_child {
+            @setRuntimeSafety(false);
+            defer Graphics.showWithReference(allocator, @src());
+            const s_ab_addr: u64 = allocator.allocateInternal(@sizeOf(s_child), @alignOf(s_child));
+            const ret: *s_child = @intToPtr(*s_child, s_ab_addr);
+            showCreate(s_child, ret);
+            return ret;
+        }
+        pub inline fn allocate(allocator: *Allocator, comptime s_child: type, count: u64) []s_child {
+            @setRuntimeSafety(false);
+            defer Graphics.showWithReference(allocator, @src());
+            const s_ab_addr: u64 = allocator.allocateInternal(@sizeOf(s_child) *% count, @alignOf(s_child));
+            const ret: []s_child = @intToPtr([*]s_child, s_ab_addr)[0..count];
+            showAllocate(s_child, ret, null);
+            return ret;
+        }
+        pub inline fn reallocate(allocator: *Allocator, comptime s_child: type, buf: []s_child, count: u64) []s_child {
+            @setRuntimeSafety(false);
+            defer Graphics.showWithReference(allocator, @src());
+            const s_ab_addr: u64 = allocator.reallocateInternal(@ptrToInt(buf.ptr), buf.len *% @sizeOf(s_child), count *% @sizeOf(s_child), @alignOf(s_child));
+            const ret: []s_child = @intToPtr([*]s_child, s_ab_addr)[0..count];
+            showReallocate(s_child, buf, ret, null);
+            return ret;
+        }
+        pub inline fn createAligned(allocator: *Allocator, comptime s_child: type, comptime s_alignment: u64) *align(s_alignment) s_child {
+            @setRuntimeSafety(false);
+            defer Graphics.showWithReference(allocator, @src());
+            const s_ab_addr: u64 = allocator.allocateInternal(@sizeOf(s_child), s_alignment);
+            const ret: *align(s_alignment) s_child = @intToPtr(*align(s_alignment) s_child, s_ab_addr);
+            showCreate(s_child, ret);
+            return ret;
+        }
+        pub inline fn allocateAligned(allocator: *Allocator, comptime s_child: type, count: u64, comptime s_alignment: u64) []align(s_alignment) s_child {
+            @setRuntimeSafety(false);
+            defer Graphics.showWithReference(allocator, @src());
+            const s_ab_addr: u64 = allocator.allocateInternal(@sizeOf(s_child) *% count, s_alignment);
+            const ret: []align(s_alignment) s_child = @intToPtr([*]align(s_alignment) s_child, s_ab_addr)[0..count];
+            showAllocate(s_child, ret, null);
+            return ret;
+        }
+        pub inline fn deallocate(allocator: *Allocator, comptime s_child: type, buf: []s_child) void {
+            allocator.deallocateInternal(@ptrToInt(buf.ptr), buf.len *% @sizeOf(s_child));
+        }
         pub inline fn save(allocator: *const Allocator) Save {
-            return .{ .ub_addr = allocator.unallocated_byte_address() };
+            return .{allocator.unallocated_byte_address()};
         }
         pub inline fn restore(allocator: *Allocator, state: Save) void {
             defer Graphics.showWithReference(allocator, @src());
-            allocator.ub_addr = state.ub_addr;
+            allocator.ub_addr = state[0];
         }
-        pub inline fn duplicateIrreversible(allocator: *Allocator, comptime T: type, value: T) Allocator.allocate_payload(*T) {
-            const ret: *T = try meta.wrap(allocator.createIrreversible(T));
-            ret.* = value;
-            return ret;
+        inline fn alignAbove(value: u64, alignment: u64) u64 {
+            const mask: u64 = alignment -% 1;
+            return (value +% mask) & ~mask;
         }
-        pub fn createIrreversible(allocator: *Allocator, comptime T: type) Allocator.allocate_payload(*T) {
-            defer Graphics.showWithReference(allocator, @src());
-            const s_aligned_bytes: u64 = @sizeOf(T);
-            const s_lb_addr: u64 = allocator.unallocated_byte_address();
-            const s_ab_addr: u64 = mach.alignA64(s_lb_addr, @alignOf(T));
+        inline fn copy(dest: u64, src: u64, len: u64) void {
+            mach.memcpy(@intToPtr([*]u8, dest), @intToPtr([*]const u8, src), len);
+        }
+        fn allocateInternal(
+            allocator: *Allocator,
+            s_aligned_bytes: u64,
+            s_alignment: u64,
+        ) u64 {
+            const s_ab_addr: u64 = alignAbove(allocator.unallocated_byte_address(), s_alignment);
             const s_up_addr: u64 = s_ab_addr +% s_aligned_bytes;
-            if (Allocator.allocator_spec.options.require_map and
-                s_up_addr > allocator.unmapped_byte_address())
-            {
-                try meta.wrap(allocator.mapBelow(s_up_addr));
+            if (Allocator.allocator_spec.options.require_map and s_up_addr > allocator.unmapped_byte_address()) {
+                allocator.mapBelow(s_up_addr);
             }
-            allocator.allocate(s_up_addr);
-            const ret: *T = @intToPtr(*T, s_ab_addr);
+            allocator.ub_addr = s_up_addr;
             if (Allocator.allocator_spec.options.count_allocations) {
                 allocator.metadata.count +%= 1;
             }
             if (Allocator.allocator_spec.options.count_useful_bytes) {
                 allocator.metadata.utility +%= s_aligned_bytes;
             }
-            showCreate(T, ret);
-            return ret;
+            return s_ab_addr;
         }
-        pub fn allocateIrreversible(allocator: *Allocator, comptime T: type, count: u64) Allocator.allocate_payload([]T) {
-            defer Graphics.showWithReference(allocator, @src());
-            const s_aligned_bytes: u64 = @sizeOf(T) *% count;
-            const s_lb_addr: u64 = allocator.unallocated_byte_address();
-            const s_ab_addr: u64 = mach.alignA64(s_lb_addr, @alignOf(T));
-            const s_up_addr: u64 = s_ab_addr +% s_aligned_bytes;
-            if (Allocator.allocator_spec.options.require_map and
-                s_up_addr > allocator.unmapped_byte_address())
-            {
-                try meta.wrap(allocator.mapBelow(s_up_addr));
-            }
-            allocator.allocate(s_up_addr);
-            const ret: []T = @intToPtr([*]T, s_ab_addr)[0..count];
-            if (Allocator.allocator_spec.options.count_useful_bytes) {
-                allocator.metadata.utility +%= s_aligned_bytes;
-            }
-            showAllocate(T, ret, null);
-            return ret;
-        }
-        pub fn allocateWithSentinelIrreversible(allocator: *Allocator, comptime T: type, count: u64, comptime sentinel: T) Allocator.allocate_payload([:sentinel]T) {
-            defer Graphics.showWithReference(allocator, @src());
-            const s_aligned_bytes: u64 = @sizeOf(T) *% (count +% 1);
-            const s_lb_addr: u64 = allocator.unallocated_byte_address();
-            const s_ab_addr: u64 = mach.alignA64(s_lb_addr, @alignOf(T));
-            const s_up_addr: u64 = s_ab_addr +% s_aligned_bytes;
-            if (Allocator.allocator_spec.options.require_map and
-                s_up_addr > allocator.unmapped_byte_address())
-            {
-                try meta.wrap(allocator.mapBelow(s_up_addr));
-            }
-            allocator.allocate(s_up_addr);
-            const ret: []T = @intToPtr([*]T, s_ab_addr)[0..count];
-            ret.ptr[count] = sentinel;
-            if (Allocator.allocator_spec.options.count_useful_bytes) {
-                allocator.metadata.utility +%= s_aligned_bytes;
-            }
-            showAllocate(T, ret, &sentinel);
-            return ret.ptr[0..count :sentinel];
-        }
-        pub fn reallocateIrreversible(allocator: *Allocator, comptime T: type, buf: []T, count: u64) Allocator.allocate_payload([]T) {
-            defer Graphics.showWithReference(allocator, @src());
-            const s_ab_addr: u64 = @ptrToInt(buf.ptr);
-            const s_aligned_bytes: u64 = @sizeOf(T) *% buf.len;
-            const t_aligned_bytes: u64 = @sizeOf(T) *% count;
+        fn reallocateInternal(
+            allocator: *Allocator,
+            s_ab_addr: u64,
+            s_aligned_bytes: u64,
+            t_aligned_bytes: u64,
+            align_of: u64,
+        ) u64 {
             const s_up_addr: u64 = s_ab_addr +% s_aligned_bytes;
             const t_up_addr: u64 = s_ab_addr +% t_aligned_bytes;
             if (allocator.unallocated_byte_address() == s_up_addr) {
-                if (Allocator.allocator_spec.options.require_map and
-                    t_up_addr > allocator.unmapped_byte_address())
-                {
-                    try meta.wrap(allocator.mapBelow(t_up_addr));
+                if (t_up_addr > allocator.unmapped_byte_address()) {
+                    allocator.mapBelow(t_up_addr);
                 }
-                allocator.allocate(t_up_addr);
-                Graphics.showWithReference(allocator, @src());
-                showReallocate(T, buf, buf.ptr[0..count], null);
-                return buf.ptr[0..count];
+                allocator.increment(t_up_addr);
+                return s_ab_addr;
             }
-            const ret: []T = allocator.allocateIrreversible(T, count);
-            mach.memcpy(@ptrCast([*]u8, ret.ptr), @ptrCast([*]const u8, buf.ptr), @sizeOf(T) *% buf.len);
+            const t_ab_addr: u64 = allocator.allocateInternal(t_aligned_bytes, align_of);
+            copy(t_ab_addr, s_ab_addr, s_aligned_bytes);
+            if (Allocator.allocator_spec.options.count_allocations) {
+                allocator.metadata.count +%= 1;
+            }
             if (Allocator.allocator_spec.options.count_useful_bytes) {
                 allocator.metadata.utility +%= t_aligned_bytes -% s_aligned_bytes;
             }
-            showReallocate(T, buf, ret, null);
+            return t_ab_addr;
+        }
+        fn deallocateInternal(
+            allocator: *Allocator,
+            s_aligned: u64,
+            s_aligned_bytes: u64,
+        ) void {
+            const s_next: u64 = s_aligned +% s_aligned_bytes;
+            if (allocator.next == s_next) {
+                allocator.next = s_next;
+            }
+            if (Allocator.allocator_spec.options.count_allocations) {
+                allocator.metadata.count -%= 1;
+            }
+            if (Allocator.allocator_spec.options.count_useful_bytes) {
+                allocator.metadata.count -%= s_aligned_bytes;
+            }
+        }
+        pub inline fn duplicate(allocator: *Allocator, comptime T: type, value: T) Allocator.allocate_payload(*T) {
+            const ret: *T = try meta.wrap(allocator.create(T));
+            ret.* = value;
             return ret;
         }
         inline fn showCreate(comptime child: type, ptr: *child) void {
@@ -1409,7 +1433,7 @@ fn GenericInterface(comptime Allocator: type) type {
         const Intermediate = GenericArenaAllocatorIntermediate(Allocator);
         const Implementation = GenericArenaAllocatorImplementation(Allocator);
         pub fn allocateStatic(allocator: *Allocator, comptime s_impl_type: type, o_amt: ?mem.Amount) Allocator.allocate_payload(s_impl_type) {
-            if (comptime @hasDecl(s_impl_type, "unit_alignment")) { // @1b1
+            if (@hasDecl(s_impl_type, "unit_alignment")) { // @1b1
                 if (Allocator.unit_alignment != s_impl_type.unit_alignment) {
                     @compileError("mismatched unit alignment");
                 }
@@ -1472,7 +1496,7 @@ fn GenericInterface(comptime Allocator: type) type {
             }
         }
         pub fn allocateMany(allocator: *Allocator, comptime s_impl_type: type, n_amt: mem.Amount) Allocator.allocate_payload(s_impl_type) {
-            if (comptime @hasDecl(s_impl_type, "unit_alignment")) { // @1b1
+            if (@hasDecl(s_impl_type, "unit_alignment")) { // @1b1
                 if (Allocator.unit_alignment != s_impl_type.unit_alignment) {
                     @compileError("mismatched unit alignment");
                 }
@@ -1533,7 +1557,7 @@ fn GenericInterface(comptime Allocator: type) type {
             }
         }
         pub fn allocateHolder(allocator: *Allocator, comptime s_impl_type: type) s_impl_type {
-            if (comptime @hasDecl(s_impl_type, "unit_alignment")) { // @1b1
+            if (@hasDecl(s_impl_type, "unit_alignment")) { // @1b1
                 if (Allocator.unit_alignment != s_impl_type.unit_alignment) {
                     @compileError("mismatched unit alignment");
                 }
@@ -1573,7 +1597,7 @@ fn GenericInterface(comptime Allocator: type) type {
             }
         }
         pub fn resizeManyAbove(allocator: *Allocator, comptime s_impl_type: type, s_impl_ptr: *s_impl_type, n_amt: mem.Amount) Allocator.allocate_void {
-            if (comptime @hasDecl(s_impl_type, "unit_alignment")) { // @1b1
+            if (@hasDecl(s_impl_type, "unit_alignment")) { // @1b1
                 if (Allocator.unit_alignment != s_impl_type.unit_alignment) {
                     @compileError("mismatched unit alignment");
                 }
@@ -1601,7 +1625,7 @@ fn GenericInterface(comptime Allocator: type) type {
             }
         }
         pub fn resizeManyBelow(allocator: *Allocator, comptime s_impl_type: type, s_impl_ptr: *s_impl_type, n_amt: mem.Amount) void {
-            if (comptime @hasDecl(s_impl_type, "unit_alignment")) { // @1b1
+            if (@hasDecl(s_impl_type, "unit_alignment")) { // @1b1
                 if (Allocator.unit_alignment != s_impl_type.unit_alignment) {
                     @compileError("mismatched unit alignment");
                 }
@@ -1632,7 +1656,7 @@ fn GenericInterface(comptime Allocator: type) type {
             if (!@hasDecl(s_impl_type, "defined_byte_count")) {
                 @compileError("cannot grow fixed-size memory: " ++ @typeName(s_impl_type));
             }
-            if (comptime @hasDecl(s_impl_type, "unit_alignment")) { // @1b1
+            if (@hasDecl(s_impl_type, "unit_alignment")) { // @1b1
                 if (Allocator.unit_alignment != s_impl_type.unit_alignment) {
                     @compileError("mismatched unit alignment");
                 }
@@ -1667,7 +1691,7 @@ fn GenericInterface(comptime Allocator: type) type {
             if (!@hasDecl(s_impl_type, "defined_byte_count")) {
                 @compileError("cannot shrink fixed-size memory: " ++ @typeName(s_impl_type));
             }
-            if (comptime @hasDecl(s_impl_type, "unit_alignment")) { // @1b1
+            if (@hasDecl(s_impl_type, "unit_alignment")) { // @1b1
                 if (Allocator.unit_alignment != s_impl_type.unit_alignment) {
                     @compileError("mismatched unit alignment");
                 }
@@ -1699,7 +1723,7 @@ fn GenericInterface(comptime Allocator: type) type {
             }
         }
         pub fn resizeHolderAbove(allocator: *Allocator, comptime s_impl_type: type, s_impl_ptr: *s_impl_type, n_amt: mem.Amount) Allocator.allocate_void {
-            if (comptime @hasDecl(s_impl_type, "unit_alignment")) { // @1b1
+            if (@hasDecl(s_impl_type, "unit_alignment")) { // @1b1
                 if (Allocator.unit_alignment != s_impl_type.unit_alignment) {
                     @compileError("mismatched unit alignment");
                 }
@@ -1719,7 +1743,7 @@ fn GenericInterface(comptime Allocator: type) type {
             }
         }
         pub fn resizeHolderIncrement(allocator: *Allocator, comptime s_impl_type: type, s_impl_ptr: *s_impl_type, x_amt: mem.Amount) Allocator.allocate_void {
-            if (comptime @hasDecl(s_impl_type, "unit_alignment")) { // @1b1
+            if (@hasDecl(s_impl_type, "unit_alignment")) { // @1b1
                 if (Allocator.unit_alignment != s_impl_type.unit_alignment) {
                     @compileError("mismatched unit alignment");
                 }
@@ -1743,7 +1767,7 @@ fn GenericInterface(comptime Allocator: type) type {
             }
         }
         pub fn moveStatic(allocator: *Allocator, comptime s_impl_type: type, s_impl_ptr: *s_impl_type) Allocator.allocate_void {
-            if (comptime @hasDecl(s_impl_type, "unit_alignment")) { // @1b1
+            if (@hasDecl(s_impl_type, "unit_alignment")) { // @1b1
                 if (Allocator.unit_alignment != s_impl_type.unit_alignment) {
                     @compileError("mismatched unit alignment");
                 }
@@ -1808,7 +1832,7 @@ fn GenericInterface(comptime Allocator: type) type {
             }
         }
         pub fn moveMany(allocator: *Allocator, comptime s_impl_type: type, s_impl_ptr: *s_impl_type) Allocator.allocate_void {
-            if (comptime @hasDecl(s_impl_type, "unit_alignment")) { // @1b1
+            if (@hasDecl(s_impl_type, "unit_alignment")) { // @1b1
                 if (Allocator.unit_alignment != s_impl_type.unit_alignment) {
                     @compileError("mismatched unit alignment");
                 }
@@ -1894,7 +1918,7 @@ fn GenericInterface(comptime Allocator: type) type {
             }
         }
         pub fn deallocateStatic(allocator: *Allocator, comptime s_impl_type: type, s_impl: s_impl_type, o_amt: ?mem.Amount) void {
-            if (comptime @hasDecl(s_impl_type, "unit_alignment")) { // @1b1
+            if (@hasDecl(s_impl_type, "unit_alignment")) { // @1b1
                 if (Allocator.unit_alignment != s_impl_type.unit_alignment) {
                     @compileError("mismatched unit alignment");
                 }
@@ -1918,7 +1942,7 @@ fn GenericInterface(comptime Allocator: type) type {
             }
         }
         pub fn deallocateMany(allocator: *Allocator, comptime s_impl_type: type, s_impl: s_impl_type) void {
-            if (comptime @hasDecl(s_impl_type, "unit_alignment")) { // @1b1
+            if (@hasDecl(s_impl_type, "unit_alignment")) { // @1b1
                 if (Allocator.unit_alignment != s_impl_type.unit_alignment) {
                     @compileError("mismatched unit alignment");
                 }
@@ -1938,7 +1962,7 @@ fn GenericInterface(comptime Allocator: type) type {
             }
         }
         pub fn deallocateHolder(allocator: *Allocator, comptime s_impl_type: type, s_impl: s_impl_type) void {
-            if (comptime @hasDecl(s_impl_type, "unit_alignment")) { // @1b1
+            if (@hasDecl(s_impl_type, "unit_alignment")) { // @1b1
                 if (Allocator.unit_alignment != s_impl_type.unit_alignment) {
                     @compileError("mismatched unit alignment");
                 }
@@ -1950,7 +1974,7 @@ fn GenericInterface(comptime Allocator: type) type {
             }
         }
         pub fn convertHolderMany(allocator: *Allocator, comptime s_impl_type: type, comptime t_impl_type: type, s_impl: s_impl_type) Allocator.allocate_payload(t_impl_type) {
-            if (comptime @hasDecl(s_impl_type, "unit_alignment")) { // @1b1
+            if (@hasDecl(s_impl_type, "unit_alignment")) { // @1b1
                 if (Allocator.unit_alignment != s_impl_type.unit_alignment) {
                     @compileError("mismatched unit alignment");
                 }
@@ -2053,7 +2077,7 @@ fn GenericInterface(comptime Allocator: type) type {
             }
         }
         pub fn convertManyMany(allocator: *Allocator, comptime s_impl_type: type, comptime t_impl_type: type, s_impl: s_impl_type) Allocator.allocate_payload(t_impl_type) {
-            if (comptime @hasDecl(s_impl_type, "unit_alignment")) { // @1b1
+            if (@hasDecl(s_impl_type, "unit_alignment")) { // @1b1
                 if (Allocator.unit_alignment != s_impl_type.unit_alignment) {
                     @compileError("mismatched unit alignment");
                 }
@@ -2173,7 +2197,7 @@ fn GenericInterface(comptime Allocator: type) type {
             }
         }
         pub fn convertStaticMany(allocator: *Allocator, comptime s_impl_type: type, comptime t_impl_type: type, s_impl: s_impl_type) Allocator.allocate_payload(t_impl_type) {
-            if (comptime @hasDecl(s_impl_type, "unit_alignment")) { // @1b1
+            if (@hasDecl(s_impl_type, "unit_alignment")) { // @1b1
                 if (Allocator.unit_alignment != s_impl_type.unit_alignment) {
                     @compileError("mismatched unit alignment");
                 }
@@ -2504,7 +2528,7 @@ fn GenericArenaAllocatorImplementation(comptime Allocator: type) type {
             if (Allocator.allocator_spec.options.count_useful_bytes) {
                 allocator.metadata.utility += s_aligned_bytes;
             }
-            allocator.allocate(s_up_addr);
+            allocator.increment(s_up_addr);
         }
         fn allocateStaticAnyAlignedUnaddressable(allocator: *Allocator, n_count: u64, s_aligned_bytes: u64, s_up_addr: u64) Allocator.allocate_void {
             defer Graphics.showWithReference(allocator, @src());
@@ -2517,7 +2541,7 @@ fn GenericArenaAllocatorImplementation(comptime Allocator: type) type {
             if (Allocator.allocator_spec.options.count_useful_bytes) {
                 allocator.metadata.utility += s_aligned_bytes;
             }
-            allocator.allocate(s_up_addr);
+            allocator.increment(s_up_addr);
             if (Allocator.allocator_spec.options.require_map) {
                 return allocator.mapBelow(s_up_addr);
             }
@@ -2533,7 +2557,7 @@ fn GenericArenaAllocatorImplementation(comptime Allocator: type) type {
             if (Allocator.allocator_spec.options.count_useful_bytes) {
                 allocator.metadata.utility += s_aligned_bytes;
             }
-            allocator.allocate(s_up_addr);
+            allocator.increment(s_up_addr);
         }
         fn allocateStaticUnitAlignedUnaddressable(allocator: *Allocator, n_count: u64, s_aligned_bytes: u64, s_up_addr: u64) Allocator.allocate_void {
             defer Graphics.showWithReference(allocator, @src());
@@ -2546,7 +2570,7 @@ fn GenericArenaAllocatorImplementation(comptime Allocator: type) type {
             if (Allocator.allocator_spec.options.count_useful_bytes) {
                 allocator.metadata.utility += s_aligned_bytes;
             }
-            allocator.allocate(s_up_addr);
+            allocator.increment(s_up_addr);
             if (Allocator.allocator_spec.options.require_map) {
                 return allocator.mapBelow(s_up_addr);
             }
@@ -2562,7 +2586,7 @@ fn GenericArenaAllocatorImplementation(comptime Allocator: type) type {
             if (Allocator.allocator_spec.options.count_useful_bytes) {
                 allocator.metadata.utility += s_aligned_bytes;
             }
-            allocator.allocate(s_up_addr);
+            allocator.increment(s_up_addr);
         }
         fn allocateManyAnyAlignedUnaddressable(allocator: *Allocator, s_aligned_bytes: u64, s_up_addr: u64) Allocator.allocate_void {
             defer Graphics.showWithReference(allocator, @src());
@@ -2575,7 +2599,7 @@ fn GenericArenaAllocatorImplementation(comptime Allocator: type) type {
             if (Allocator.allocator_spec.options.count_useful_bytes) {
                 allocator.metadata.utility += s_aligned_bytes;
             }
-            allocator.allocate(s_up_addr);
+            allocator.increment(s_up_addr);
             if (Allocator.allocator_spec.options.require_map) {
                 return allocator.mapBelow(s_up_addr);
             }
@@ -2591,7 +2615,7 @@ fn GenericArenaAllocatorImplementation(comptime Allocator: type) type {
             if (Allocator.allocator_spec.options.count_useful_bytes) {
                 allocator.metadata.utility += s_aligned_bytes;
             }
-            allocator.allocate(s_up_addr);
+            allocator.increment(s_up_addr);
         }
         fn allocateManyUnitAlignedUnaddressable(allocator: *Allocator, s_aligned_bytes: u64, s_up_addr: u64) Allocator.allocate_void {
             defer Graphics.showWithReference(allocator, @src());
@@ -2604,7 +2628,7 @@ fn GenericArenaAllocatorImplementation(comptime Allocator: type) type {
             if (Allocator.allocator_spec.options.count_useful_bytes) {
                 allocator.metadata.utility += s_aligned_bytes;
             }
-            allocator.allocate(s_up_addr);
+            allocator.increment(s_up_addr);
             if (Allocator.allocator_spec.options.require_map) {
                 return allocator.mapBelow(s_up_addr);
             }
@@ -2637,7 +2661,7 @@ fn GenericArenaAllocatorImplementation(comptime Allocator: type) type {
             if (Allocator.allocator_spec.options.count_useful_bytes) {
                 allocator.metadata.utility -= mach.sub64(s_up_addr, t_up_addr);
             }
-            allocator.deallocate(s_up_addr);
+            allocator.decrement(s_up_addr);
         }
         fn resizeManyBelowAnyAlignedEndInternal(allocator: *Allocator, s_up_addr: u64, t_up_addr: u64) void {
             defer Graphics.showWithReference(allocator, @src());
@@ -2656,7 +2680,7 @@ fn GenericArenaAllocatorImplementation(comptime Allocator: type) type {
             if (Allocator.allocator_spec.options.count_useful_bytes) {
                 allocator.metadata.utility -= mach.sub64(s_up_addr, t_up_addr);
             }
-            allocator.deallocate(s_up_addr);
+            allocator.decrement(s_up_addr);
         }
         fn resizeManyBelowUnitAlignedEndInternal(allocator: *Allocator, s_up_addr: u64, t_up_addr: u64) void {
             defer Graphics.showWithReference(allocator, @src());
@@ -2675,7 +2699,7 @@ fn GenericArenaAllocatorImplementation(comptime Allocator: type) type {
             if (Allocator.allocator_spec.options.count_useful_bytes) {
                 allocator.metadata.utility += mach.sub64(t_up_addr, s_up_addr);
             }
-            allocator.allocate(t_up_addr);
+            allocator.increment(t_up_addr);
         }
         fn resizeManyAboveAnyAlignedUnaddressable(allocator: *Allocator, s_up_addr: u64, t_up_addr: u64) Allocator.allocate_void {
             defer Graphics.showWithReference(allocator, @src());
@@ -2685,7 +2709,7 @@ fn GenericArenaAllocatorImplementation(comptime Allocator: type) type {
             if (Allocator.allocator_spec.options.count_useful_bytes) {
                 allocator.metadata.utility += mach.sub64(t_up_addr, s_up_addr);
             }
-            allocator.allocate(t_up_addr);
+            allocator.increment(t_up_addr);
             if (Allocator.allocator_spec.options.require_map) {
                 return allocator.mapBelow(t_up_addr);
             }
@@ -2698,7 +2722,7 @@ fn GenericArenaAllocatorImplementation(comptime Allocator: type) type {
             if (Allocator.allocator_spec.options.count_useful_bytes) {
                 allocator.metadata.utility += mach.sub64(t_up_addr, s_up_addr);
             }
-            allocator.allocate(t_up_addr);
+            allocator.increment(t_up_addr);
         }
         fn resizeManyAboveUnitAlignedUnaddressable(allocator: *Allocator, s_up_addr: u64, t_up_addr: u64) Allocator.allocate_void {
             defer Graphics.showWithReference(allocator, @src());
@@ -2708,7 +2732,7 @@ fn GenericArenaAllocatorImplementation(comptime Allocator: type) type {
             if (Allocator.allocator_spec.options.count_useful_bytes) {
                 allocator.metadata.utility += mach.sub64(t_up_addr, s_up_addr);
             }
-            allocator.allocate(t_up_addr);
+            allocator.increment(t_up_addr);
             if (Allocator.allocator_spec.options.require_map) {
                 return allocator.mapBelow(t_up_addr);
             }
@@ -2760,14 +2784,14 @@ fn GenericArenaAllocatorImplementation(comptime Allocator: type) type {
             if (Allocator.allocator_spec.options.count_branches) {
                 allocator.metadata.branches.move.static.any_aligned.addressable += 1;
             }
-            allocator.allocate(t_up_addr);
+            allocator.increment(t_up_addr);
         }
         fn moveStaticAnyAlignedUnaddressable(allocator: *Allocator, t_up_addr: u64) Allocator.allocate_void {
             defer Graphics.showWithReference(allocator, @src());
             if (Allocator.allocator_spec.options.count_branches) {
                 allocator.metadata.branches.move.static.any_aligned.unaddressable += 1;
             }
-            allocator.allocate(t_up_addr);
+            allocator.increment(t_up_addr);
             if (Allocator.allocator_spec.options.require_map) {
                 return allocator.mapBelow(t_up_addr);
             }
@@ -2777,14 +2801,14 @@ fn GenericArenaAllocatorImplementation(comptime Allocator: type) type {
             if (Allocator.allocator_spec.options.count_branches) {
                 allocator.metadata.branches.move.static.unit_aligned.addressable += 1;
             }
-            allocator.allocate(t_up_addr);
+            allocator.increment(t_up_addr);
         }
         fn moveStaticUnitAlignedUnaddressable(allocator: *Allocator, t_up_addr: u64) Allocator.allocate_void {
             defer Graphics.showWithReference(allocator, @src());
             if (Allocator.allocator_spec.options.count_branches) {
                 allocator.metadata.branches.move.static.unit_aligned.unaddressable += 1;
             }
-            allocator.allocate(t_up_addr);
+            allocator.increment(t_up_addr);
             if (Allocator.allocator_spec.options.require_map) {
                 return allocator.mapBelow(t_up_addr);
             }
@@ -2794,14 +2818,14 @@ fn GenericArenaAllocatorImplementation(comptime Allocator: type) type {
             if (Allocator.allocator_spec.options.count_branches) {
                 allocator.metadata.branches.move.many.any_aligned.addressable += 1;
             }
-            allocator.allocate(t_up_addr);
+            allocator.increment(t_up_addr);
         }
         fn moveManyAnyAlignedUnaddressable(allocator: *Allocator, t_up_addr: u64) Allocator.allocate_void {
             defer Graphics.showWithReference(allocator, @src());
             if (Allocator.allocator_spec.options.count_branches) {
                 allocator.metadata.branches.move.many.any_aligned.unaddressable += 1;
             }
-            allocator.allocate(t_up_addr);
+            allocator.increment(t_up_addr);
             if (Allocator.allocator_spec.options.require_map) {
                 return allocator.mapBelow(t_up_addr);
             }
@@ -2811,14 +2835,14 @@ fn GenericArenaAllocatorImplementation(comptime Allocator: type) type {
             if (Allocator.allocator_spec.options.count_branches) {
                 allocator.metadata.branches.move.many.unit_aligned.addressable += 1;
             }
-            allocator.allocate(t_up_addr);
+            allocator.increment(t_up_addr);
         }
         fn moveManyUnitAlignedUnaddressable(allocator: *Allocator, t_up_addr: u64) Allocator.allocate_void {
             defer Graphics.showWithReference(allocator, @src());
             if (Allocator.allocator_spec.options.count_branches) {
                 allocator.metadata.branches.move.many.unit_aligned.unaddressable += 1;
             }
-            allocator.allocate(t_up_addr);
+            allocator.increment(t_up_addr);
             if (Allocator.allocator_spec.options.require_map) {
                 return allocator.mapBelow(t_up_addr);
             }
@@ -2831,7 +2855,7 @@ fn GenericArenaAllocatorImplementation(comptime Allocator: type) type {
             if (Allocator.allocator_spec.options.count_useful_bytes) {
                 allocator.metadata.utility -= mach.sub64(s_up_addr - s_ab_addr, t_up_addr - t_ab_addr);
             }
-            allocator.allocate(t_up_addr);
+            allocator.increment(t_up_addr);
         }
         fn reallocateManyBelowAnyAlignedEndInternal(allocator: *Allocator, s_ab_addr: u64, s_up_addr: u64, t_ab_addr: u64, t_up_addr: u64) Allocator.allocate_void {
             defer Graphics.showWithReference(allocator, @src());
@@ -2841,7 +2865,7 @@ fn GenericArenaAllocatorImplementation(comptime Allocator: type) type {
             if (Allocator.allocator_spec.options.count_useful_bytes) {
                 allocator.metadata.utility -= mach.sub64(s_up_addr - s_ab_addr, t_up_addr - t_ab_addr);
             }
-            allocator.allocate(t_up_addr);
+            allocator.increment(t_up_addr);
         }
         fn reallocateManyBelowUnitAlignedEndBoundary(allocator: *Allocator, s_ab_addr: u64, s_up_addr: u64, t_ab_addr: u64, t_up_addr: u64) Allocator.allocate_void {
             defer Graphics.showWithReference(allocator, @src());
@@ -2851,7 +2875,7 @@ fn GenericArenaAllocatorImplementation(comptime Allocator: type) type {
             if (Allocator.allocator_spec.options.count_useful_bytes) {
                 allocator.metadata.utility -= mach.sub64(s_up_addr - s_ab_addr, t_up_addr - t_ab_addr);
             }
-            allocator.allocate(t_up_addr);
+            allocator.increment(t_up_addr);
         }
         fn reallocateManyBelowUnitAlignedEndInternal(allocator: *Allocator, s_ab_addr: u64, s_up_addr: u64, t_ab_addr: u64, t_up_addr: u64) Allocator.allocate_void {
             defer Graphics.showWithReference(allocator, @src());
@@ -2861,7 +2885,7 @@ fn GenericArenaAllocatorImplementation(comptime Allocator: type) type {
             if (Allocator.allocator_spec.options.count_useful_bytes) {
                 allocator.metadata.utility -= mach.sub64(s_up_addr - s_ab_addr, t_up_addr - t_ab_addr);
             }
-            allocator.allocate(t_up_addr);
+            allocator.increment(t_up_addr);
         }
         fn reallocateManyAboveAnyAlignedAddressable(allocator: *Allocator, s_ab_addr: u64, s_up_addr: u64, t_ab_addr: u64, t_up_addr: u64) Allocator.allocate_void {
             defer Graphics.showWithReference(allocator, @src());
@@ -2871,7 +2895,7 @@ fn GenericArenaAllocatorImplementation(comptime Allocator: type) type {
             if (Allocator.allocator_spec.options.count_useful_bytes) {
                 allocator.metadata.utility += mach.sub64(s_up_addr - s_ab_addr, t_up_addr - t_ab_addr);
             }
-            allocator.allocate(t_up_addr);
+            allocator.increment(t_up_addr);
         }
         fn reallocateManyAboveAnyAlignedUnaddressable(allocator: *Allocator, s_ab_addr: u64, s_up_addr: u64, t_ab_addr: u64, t_up_addr: u64) Allocator.allocate_void {
             defer Graphics.showWithReference(allocator, @src());
@@ -2881,7 +2905,7 @@ fn GenericArenaAllocatorImplementation(comptime Allocator: type) type {
             if (Allocator.allocator_spec.options.count_useful_bytes) {
                 allocator.metadata.utility += mach.sub64(s_up_addr - s_ab_addr, t_up_addr - t_ab_addr);
             }
-            allocator.allocate(t_up_addr);
+            allocator.increment(t_up_addr);
             if (Allocator.allocator_spec.options.require_map) {
                 return allocator.mapBelow(t_up_addr);
             }
@@ -2894,7 +2918,7 @@ fn GenericArenaAllocatorImplementation(comptime Allocator: type) type {
             if (Allocator.allocator_spec.options.count_useful_bytes) {
                 allocator.metadata.utility += mach.sub64(s_up_addr - s_ab_addr, t_up_addr - t_ab_addr);
             }
-            allocator.allocate(t_up_addr);
+            allocator.increment(t_up_addr);
         }
         fn reallocateManyAboveUnitAlignedUnaddressable(allocator: *Allocator, s_ab_addr: u64, s_up_addr: u64, t_ab_addr: u64, t_up_addr: u64) Allocator.allocate_void {
             defer Graphics.showWithReference(allocator, @src());
@@ -2904,7 +2928,7 @@ fn GenericArenaAllocatorImplementation(comptime Allocator: type) type {
             if (Allocator.allocator_spec.options.count_useful_bytes) {
                 allocator.metadata.utility += mach.sub64(s_up_addr - s_ab_addr, t_up_addr - t_ab_addr);
             }
-            allocator.allocate(t_up_addr);
+            allocator.increment(t_up_addr);
             if (Allocator.allocator_spec.options.require_map) {
                 return allocator.mapBelow(t_up_addr);
             }
@@ -2972,7 +2996,7 @@ fn GenericArenaAllocatorImplementation(comptime Allocator: type) type {
                 builtin.assertNotEqual(u64, allocator.metadata.holder, 0);
                 allocator.metadata.holder = 0;
             }
-            allocator.allocate(t_up_addr);
+            allocator.increment(t_up_addr);
         }
         fn convertHolderStaticAnyAlignedUnaddressable(allocator: *Allocator, t_aligned_bytes: u64, t_up_addr: u64) Allocator.allocate_void {
             defer Graphics.showWithReference(allocator, @src());
@@ -2989,7 +3013,7 @@ fn GenericArenaAllocatorImplementation(comptime Allocator: type) type {
                 builtin.assertNotEqual(u64, allocator.metadata.holder, 0);
                 allocator.metadata.holder = 0;
             }
-            allocator.allocate(t_up_addr);
+            allocator.increment(t_up_addr);
             if (Allocator.allocator_spec.options.require_map) {
                 return allocator.mapBelow(t_up_addr);
             }
@@ -3009,7 +3033,7 @@ fn GenericArenaAllocatorImplementation(comptime Allocator: type) type {
                 builtin.assertNotEqual(u64, allocator.metadata.holder, 0);
                 allocator.metadata.holder = 0;
             }
-            allocator.allocate(t_up_addr);
+            allocator.increment(t_up_addr);
         }
         fn convertHolderStaticUnitAlignedUnaddressable(allocator: *Allocator, t_aligned_bytes: u64, t_up_addr: u64) Allocator.allocate_void {
             defer Graphics.showWithReference(allocator, @src());
@@ -3026,7 +3050,7 @@ fn GenericArenaAllocatorImplementation(comptime Allocator: type) type {
                 builtin.assertNotEqual(u64, allocator.metadata.holder, 0);
                 allocator.metadata.holder = 0;
             }
-            allocator.allocate(t_up_addr);
+            allocator.increment(t_up_addr);
             if (Allocator.allocator_spec.options.require_map) {
                 return allocator.mapBelow(t_up_addr);
             }
@@ -3046,7 +3070,7 @@ fn GenericArenaAllocatorImplementation(comptime Allocator: type) type {
                 builtin.assertNotEqual(u64, allocator.metadata.holder, 0);
                 allocator.metadata.holder = 0;
             }
-            allocator.allocate(t_up_addr);
+            allocator.increment(t_up_addr);
         }
         fn convertHolderManyAnyAlignedUnaddressable(allocator: *Allocator, t_aligned_bytes: u64, t_up_addr: u64) Allocator.allocate_void {
             defer Graphics.showWithReference(allocator, @src());
@@ -3063,7 +3087,7 @@ fn GenericArenaAllocatorImplementation(comptime Allocator: type) type {
                 builtin.assertNotEqual(u64, allocator.metadata.holder, 0);
                 allocator.metadata.holder = 0;
             }
-            allocator.allocate(t_up_addr);
+            allocator.increment(t_up_addr);
             if (Allocator.allocator_spec.options.require_map) {
                 return allocator.mapBelow(t_up_addr);
             }
@@ -3083,7 +3107,7 @@ fn GenericArenaAllocatorImplementation(comptime Allocator: type) type {
                 builtin.assertNotEqual(u64, allocator.metadata.holder, 0);
                 allocator.metadata.holder = 0;
             }
-            allocator.allocate(t_up_addr);
+            allocator.increment(t_up_addr);
         }
         fn convertHolderManyUnitAlignedUnaddressable(allocator: *Allocator, t_aligned_bytes: u64, t_up_addr: u64) Allocator.allocate_void {
             defer Graphics.showWithReference(allocator, @src());
@@ -3100,7 +3124,7 @@ fn GenericArenaAllocatorImplementation(comptime Allocator: type) type {
                 builtin.assertNotEqual(u64, allocator.metadata.holder, 0);
                 allocator.metadata.holder = 0;
             }
-            allocator.allocate(t_up_addr);
+            allocator.increment(t_up_addr);
             if (Allocator.allocator_spec.options.require_map) {
                 return allocator.mapBelow(t_up_addr);
             }
@@ -3128,7 +3152,7 @@ fn GenericArenaAllocatorImplementation(comptime Allocator: type) type {
             if (Allocator.allocator_spec.options.count_useful_bytes) {
                 allocator.metadata.utility -= s_aligned_bytes;
             }
-            allocator.deallocate(s_lb_addr);
+            allocator.decrement(s_lb_addr);
         }
         fn deallocateStaticAnyAlignedEndInternal(allocator: *Allocator, n_count: u64, s_aligned_bytes: u64) void {
             defer Graphics.showWithReference(allocator, @src());
@@ -3154,7 +3178,7 @@ fn GenericArenaAllocatorImplementation(comptime Allocator: type) type {
             if (Allocator.allocator_spec.options.count_useful_bytes) {
                 allocator.metadata.utility -= s_aligned_bytes;
             }
-            allocator.deallocate(s_lb_addr);
+            allocator.decrement(s_lb_addr);
         }
         fn deallocateStaticUnitAlignedEndInternal(allocator: *Allocator, n_count: u64, s_aligned_bytes: u64) void {
             defer Graphics.showWithReference(allocator, @src());
@@ -3180,7 +3204,7 @@ fn GenericArenaAllocatorImplementation(comptime Allocator: type) type {
             if (Allocator.allocator_spec.options.count_useful_bytes) {
                 allocator.metadata.utility -= s_aligned_bytes;
             }
-            allocator.deallocate(s_lb_addr);
+            allocator.decrement(s_lb_addr);
         }
         fn deallocateManyAnyAlignedEndInternal(allocator: *Allocator, s_aligned_bytes: u64) void {
             defer Graphics.showWithReference(allocator, @src());
@@ -3206,7 +3230,7 @@ fn GenericArenaAllocatorImplementation(comptime Allocator: type) type {
             if (Allocator.allocator_spec.options.count_useful_bytes) {
                 allocator.metadata.utility -= s_aligned_bytes;
             }
-            allocator.deallocate(s_lb_addr);
+            allocator.decrement(s_lb_addr);
         }
         fn deallocateManyUnitAlignedEndInternal(allocator: *Allocator, s_aligned_bytes: u64) void {
             defer Graphics.showWithReference(allocator, @src());
