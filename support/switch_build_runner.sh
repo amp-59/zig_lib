@@ -84,13 +84,15 @@ fn ()
         fi;
         echo "builder = std => zl"
     else
-        echo $error "'$std_build_runner': no such file or directory"
+        echo $warn "'$std_build_runner': no such file or directory"
         if test -f "$std_build_runner_bkp"; then
             if ! mv -i "$std_build_runner_bkp" "$std_build_runner"; then
                 return 2;
             fi;
             echo "builder = null => std"
         fi;
+        cp "$zl_build_runner" "$std_build_runner";
+        echo "builder = null => zl"
     fi;
 }
 fn;
