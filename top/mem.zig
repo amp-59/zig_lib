@@ -1827,7 +1827,6 @@ pub const SimpleAllocator = struct {
 
     const Allocator = @This();
     pub const Save = struct { u64 };
-    const noexcept = .{ .errors = .{} };
 
     pub inline fn create(allocator: *Allocator, comptime T: type) *T {
         @setRuntimeSafety(false);
@@ -1876,17 +1875,24 @@ pub const SimpleAllocator = struct {
         allocator.next = allocator.start;
         allocator.finish = allocator.start;
     }
-    pub fn init(arena: mem.Arena) Allocator {
-        map(noexcept, arena.lb_addr, 4096);
+    pub fn init_arena(arena: mem.Arena) Allocator {
+        map(.{ .errors = .{} }, arena.lb_addr, 4096);
         return .{
             .start = arena.lb_addr,
             .next = arena.lb_addr,
             .finish = arena.lb_addr +% 4096,
         };
     }
-    inline fn alignAbove(value: u64, alignment: u64) u64 {
+    pub fn init_buffer(buf: anytype) Allocator {
+        return .{
+            .start = @ptrToInt(buf.ptr),
+            .next = @ptrToInt(buf.ptr),
+            .finish = @ptrToInt(buf.ptr + buf.len),
+        };
+    }
+    pub inline fn alignAbove(allocator: *Allocator, alignment: u64) u64 {
         const mask: u64 = alignment -% 1;
-        return (value +% mask) & ~mask;
+        return (allocator.next +% mask) & ~mask;
     }
     inline fn copy(dest: u64, src: u64, len: u64) void {
         mach.memcpy(@intToPtr([*]u8, dest), @intToPtr([*]const u8, src), len);
@@ -1896,11 +1902,11 @@ pub const SimpleAllocator = struct {
         size_of: u64,
         align_of: u64,
     ) u64 {
-        const aligned: u64 = alignAbove(allocator.next, align_of);
+        const aligned: u64 = mach.alignA64(allocator.next, align_of);
         const next: u64 = aligned +% size_of;
         if (next > allocator.finish) {
-            const finish: u64 = alignAbove(next, 4096);
-            map(noexcept, allocator.finish, finish -% allocator.finish);
+            const finish: u64 = mach.alignA64(next, 4096);
+            map(.{ .errors = .{} }, allocator.finish, finish -% allocator.finish);
             allocator.finish = finish;
         }
         allocator.next = next;
@@ -1917,8 +1923,8 @@ pub const SimpleAllocator = struct {
         const new_next: u64 = old_aligned +% new_size_of;
         if (allocator.next == old_next) {
             if (new_next > allocator.finish) {
-                const finish: u64 = alignAbove(new_next, 4096);
-                map(noexcept, allocator.finish, finish -% allocator.finish);
+                const finish: u64 = mach.alignA64(new_next, 4096);
+                map(.{ .errors = .{} }, allocator.finish, finish -% allocator.finish);
                 allocator.finish = finish;
             }
             allocator.next = new_next;
