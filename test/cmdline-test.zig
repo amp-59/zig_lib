@@ -1,5 +1,6 @@
 const zig_lib = @import("../zig_lib.zig");
 
+const mem = zig_lib.mem;
 const proc = zig_lib.proc;
 const spec = zig_lib.spec;
 const meta = zig_lib.meta;
@@ -19,15 +20,14 @@ const Builder = build.GenericBuilder(.{
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     var address_space: Builder.AddressSpace = .{};
     var thread_space: Builder.ThreadSpace = .{};
-    var allocator: Builder.Allocator = try meta.wrap(
-        Builder.Allocator.init(&address_space, Builder.max_thread_count),
-    );
-    defer allocator.deinit(&address_space, Builder.max_thread_count);
+    var allocator: Builder.Allocator = if (Builder.Allocator == mem.SimpleAllocator)
+        Builder.Allocator.init_arena(Builder.AddressSpace.arena(Builder.max_thread_count))
+    else
+        Builder.Allocator.init(&address_space, Builder.max_thread_count);
     if (args.len < 5) {
         return error.MissingEnvironmentPaths;
     }
     var builder: Builder = try meta.wrap(Builder.init(args, vars));
-
     const g0: *Builder.Group = try builder.addGroup(&allocator, "g0");
     const t0: *Builder.Target = try g0.addBuild(&allocator, .{
         .kind = .obj,
