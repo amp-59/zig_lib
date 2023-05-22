@@ -205,7 +205,7 @@ pub fn layeredShellSort(comptime T: type, comptime comparison: anytype, values: 
 pub fn radixSort(allocator: anytype, comptime T: type, values_0: []T) void {
     const save = allocator.save();
     defer allocator.restore(save);
-    var values_1: []T = allocator.allocateIrreversible(T, values_0.len);
+    var values_1: []T = allocator.allocate(T, values_0.len);
     var bit: T = 1;
     while (bit != 0) : (bit <<= 1) {
         var len_0: u64 = 0;
