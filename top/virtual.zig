@@ -671,6 +671,14 @@ fn RegularTypes(comptime AddressSpace: type) type {
             }
             break :blk void;
         };
+        pub const acquire_bool: type = blk: {
+            if (AddressSpace.addr_spec.options.require_map and
+                AddressSpace.addr_spec.errors.map.throw.len != 0)
+            {
+                break :blk sys.Error(AddressSpace.addr_spec.errors.map.throw)!bool;
+            }
+            break :blk bool;
+        };
         pub const release_void: type = blk: {
             if (AddressSpace.addr_spec.options.require_unmap and
                 AddressSpace.addr_spec.errors.unmap.throw.len != 0)
@@ -685,6 +693,14 @@ fn RegularTypes(comptime AddressSpace: type) type {
                 break :blk ResourceError!void;
             }
             break :blk void;
+        };
+        pub const release_bool: type = blk: {
+            if (AddressSpace.addr_spec.options.require_unmap and
+                AddressSpace.addr_spec.errors.unmap.throw.len != 0)
+            {
+                break :blk sys.Error(AddressSpace.addr_spec.errors.unmap.throw)!bool;
+            }
+            break :blk bool;
         };
         pub const map_void: type = blk: {
             if (AddressSpace.addr_spec.options.require_map and
