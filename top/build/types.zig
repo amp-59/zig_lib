@@ -5,7 +5,7 @@ const time = @import("../time.zig");
 const meta = @import("../meta.zig");
 const spec = @import("../spec.zig");
 const builtin = @import("../builtin.zig");
-const tasks = @import("./tasks3.zig");
+const tasks = @import("./tasks.zig");
 pub usingnamespace tasks;
 pub const OutputMode = enum {
     exe,
