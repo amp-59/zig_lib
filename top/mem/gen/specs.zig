@@ -15,15 +15,22 @@ const config = @import("./config.zig");
 pub usingnamespace proc.start;
 pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
 pub const runtime_assertions: bool = false;
-const Allocator = config.Allocator;
-const AddressSpace = Allocator.AddressSpace;
 const Array = mem.StaticString(1024 * 1024);
-const ImplementationDetails = Allocator.StructuredVector(types.Implementation);
 const validate_all_serial: bool = false;
 const write_separate_source_files: bool = false;
-const write_impl_spec: file.WriteSpec = .{ .child = types.Implementation, .errors = .{} };
-const write_ctn_spec: file.WriteSpec = .{ .child = types.Container, .errors = .{} };
-pub fn limits(
+const write_spec: file.WriteSpec = .{
+    .child = u8,
+    .errors = .{},
+};
+const write_impl_spec: file.WriteSpec = .{
+    .child = types.Implementation,
+    .errors = .{},
+};
+const write_ctn_spec: file.WriteSpec = .{
+    .child = types.Container,
+    .errors = .{},
+};
+fn limits(
     spec_sets: []const []const []const types.Specifier,
     tech_sets: []const []const []const types.Technique,
 ) types.Implementation.Indices {
@@ -169,12 +176,13 @@ fn populateDetails(
     return details;
 }
 fn BinaryFilter(comptime T: type) type {
-    return Allocator.allocate_payload(BinaryFilterPayload(T));
+    return config.Allocator.allocate_payload(BinaryFilterPayload(T));
 }
 fn BinaryFilterPayload(comptime T: type) type {
     return struct { []const T, []const T };
 }
-fn haveSpec(allocator: *Allocator, spec_set: []const []const types.Specifier, p_field: types.Specifier) BinaryFilter([]const types.Specifier) {
+fn haveSpec(allocator: *config.Allocator, spec_set: []const []const types.Specifier, p_field: types.Specifier) BinaryFilter([]const types.Specifier) {
+    @setRuntimeSafety(false);
     var t: [][]const types.Specifier = try meta.wrap(
         allocator.allocate([]const types.Specifier, spec_set.len),
     );
@@ -197,7 +205,8 @@ fn haveSpec(allocator: *Allocator, spec_set: []const []const types.Specifier, p_
     }
     return .{ f[0..f_len], t[0..t_len] };
 }
-fn haveTechA(allocator: *Allocator, tech_set: []const []const types.Technique, u_field: types.Technique) BinaryFilter([]const types.Technique) {
+fn haveTechA(allocator: *config.Allocator, tech_set: []const []const types.Technique, u_field: types.Technique) BinaryFilter([]const types.Technique) {
+    @setRuntimeSafety(false);
     var t: [][]const types.Technique = try meta.wrap(
         allocator.allocate([]const types.Technique, tech_set.len),
     );
@@ -222,7 +231,8 @@ fn haveTechA(allocator: *Allocator, tech_set: []const []const types.Technique, u
     }
     return .{ f[0..f_len], t[0..t_len] };
 }
-fn haveTechB(allocator: *Allocator, tech_set: []const []const types.Technique, u_tech: types.Techniques.Tag) BinaryFilter([]const types.Technique) {
+fn haveTechB(allocator: *config.Allocator, tech_set: []const []const types.Technique, u_tech: types.Techniques.Tag) BinaryFilter([]const types.Technique) {
+    @setRuntimeSafety(false);
     var t: [][]const types.Technique = try meta.wrap(
         allocator.allocate([]const types.Technique, tech_set.len),
     );
@@ -452,7 +462,7 @@ fn writeReturnImplementation(array: *Array, detail: types.Implementation, specs:
     array.writeMany(");\n");
 }
 fn writeDeductionTestBoolean(
-    allocator: *Allocator,
+    allocator: *config.Allocator,
     array: *Array,
     abstract_spec: types.AbstractSpecification,
     tech_set_top: []const []const types.Technique,
@@ -460,8 +470,9 @@ fn writeDeductionTestBoolean(
     tech_set: []const []const types.Technique,
     q_info: []const types.Technique,
     indices: *types.Implementation.Indices,
-) Allocator.allocate_void {
-    const save: Allocator.Save = allocator.save();
+) config.Allocator.allocate_void {
+    @setRuntimeSafety(false);
+    const save: config.Allocator.Save = allocator.save();
     defer allocator.restore(save);
     const filtered: BinaryFilterPayload([]const types.Technique) = try meta.wrap(
         haveTechA(allocator, tech_set, q_info[0]),
@@ -472,7 +483,7 @@ fn writeDeductionTestBoolean(
     if (filtered[1].len != 0) {
         if (filtered[1].len == 1) {
             writeReturnImplementation(array, types.Implementation.init(abstract_spec, p_info, filtered[1][0], indices.*), p_info);
-            indices.impl +%= 1;
+            indices.ptr +%= 1;
         } else {
             try meta.wrap(
                 writeImplementationDeduction(allocator, array, abstract_spec, tech_set_top, p_info, filtered[1], q_info[1..], indices),
@@ -485,7 +496,7 @@ fn writeDeductionTestBoolean(
         }
         if (filtered[0].len == 1) {
             writeReturnImplementation(array, types.Implementation.init(abstract_spec, p_info, filtered[0][0], indices.*), p_info);
-            indices.impl +%= 1;
+            indices.ptr +%= 1;
         } else {
             try meta.wrap(
                 writeImplementationDeduction(allocator, array, abstract_spec, tech_set_top, p_info, filtered[0], q_info[1..], indices),
@@ -497,7 +508,7 @@ fn writeDeductionTestBoolean(
     }
 }
 fn writeDeductionCompareEnumerationInternal(
-    allocator: *Allocator,
+    allocator: *config.Allocator,
     array: *Array,
     abstract_spec: types.AbstractSpecification,
     tech_set_top: []const []const types.Technique,
@@ -506,7 +517,8 @@ fn writeDeductionCompareEnumerationInternal(
     q_info: []const types.Technique,
     indices: *types.Implementation.Indices,
     tag_index: u64,
-) Allocator.allocate_void {
+) config.Allocator.allocate_void {
+    @setRuntimeSafety(false);
     if (q_info[0].mutually_exclusive.tech_tags.len == tag_index) return;
     const tech: types.Techniques.Tag = q_info[0].mutually_exclusive.tech_tags[tag_index];
     const tech_tag_name: []const u8 = @tagName(tech);
@@ -523,7 +535,7 @@ fn writeDeductionCompareEnumerationInternal(
     );
 }
 fn writeDeductionCompareEnumeration(
-    allocator: *Allocator,
+    allocator: *config.Allocator,
     array: *Array,
     abstract_spec: types.AbstractSpecification,
     tech_set_top: []const []const types.Technique,
@@ -531,7 +543,8 @@ fn writeDeductionCompareEnumeration(
     tech_set: []const []const types.Technique,
     q_info: []const types.Technique,
     indices: *types.Implementation.Indices,
-) Allocator.allocate_void {
+) config.Allocator.allocate_void {
+    @setRuntimeSafety(false);
     writeSwitchOpen(array, q_info[0].optTagName());
     try meta.wrap(
         writeDeductionCompareEnumerationInternal(allocator, array, abstract_spec, tech_set_top, p_info, tech_set, q_info, indices, 0),
@@ -539,7 +552,7 @@ fn writeDeductionCompareEnumeration(
     array.writeMany("}\n");
 }
 inline fn writeDeductionCompareOptionalEnumeration(
-    allocator: *Allocator,
+    allocator: *config.Allocator,
     array: *Array,
     abstract_spec: types.AbstractSpecification,
     tech_set_top: []const []const types.Technique,
@@ -547,7 +560,8 @@ inline fn writeDeductionCompareOptionalEnumeration(
     tech_set: []const []const types.Technique,
     q_info: []const types.Technique,
     indices: *types.Implementation.Indices,
-) Allocator.allocate_void {
+) config.Allocator.allocate_void {
+    @setRuntimeSafety(false);
     writeOptionalSwitchOpen(array, q_info[0].optTagName());
     try meta.wrap(
         writeDeductionCompareEnumerationInternal(allocator, array, abstract_spec, tech_set_top, p_info, tech_set, q_info, indices, 0),
@@ -555,7 +569,7 @@ inline fn writeDeductionCompareOptionalEnumeration(
     array.writeMany("}\n}\n");
 }
 fn writeImplementationDeduction(
-    allocator: *Allocator,
+    allocator: *config.Allocator,
     array: *Array,
     abstract_spec: types.AbstractSpecification,
     tech_set_top: []const []const types.Technique,
@@ -563,10 +577,11 @@ fn writeImplementationDeduction(
     tech_set: []const []const types.Technique,
     q_info: []const types.Technique,
     indices: *types.Implementation.Indices,
-) Allocator.allocate_void {
+) config.Allocator.allocate_void {
+    @setRuntimeSafety(false);
     if (q_info.len == 0 or tech_set.len == 1) {
         writeReturnImplementation(array, types.Implementation.init(abstract_spec, p_info, tech_set[0], indices.*), p_info);
-        indices.impl +%= 1;
+        indices.ptr +%= 1;
     } else switch (q_info[0].usage(tech_set_top)) {
         .test_boolean => {
             try meta.wrap(
@@ -587,7 +602,7 @@ fn writeImplementationDeduction(
     }
 }
 fn writeSpecificationDeductionInternal(
-    allocator: *Allocator,
+    allocator: *config.Allocator,
     array: *Array,
     abstract_spec: types.AbstractSpecification,
     p_info: []const types.Specifier,
@@ -595,7 +610,8 @@ fn writeSpecificationDeductionInternal(
     tech_set: []const []const types.Technique,
     q_info: []const types.Technique,
     indices: *types.Implementation.Indices,
-) Allocator.allocate_void {
+) config.Allocator.allocate_void {
+    @setRuntimeSafety(false);
     const filtered: BinaryFilterPayload([]const types.Specifier) = try meta.wrap(
         haveSpec(allocator, spec_set, p_info[0]),
     );
@@ -638,7 +654,7 @@ fn writeSpecificationDeductionInternal(
     }
 }
 fn writeSpecificationDeduction(
-    allocator: *Allocator,
+    allocator: *config.Allocator,
     array: *Array,
     abstract_spec: types.AbstractSpecification,
     p_info: []const types.Specifier,
@@ -646,7 +662,7 @@ fn writeSpecificationDeduction(
     tech_set: []const []const types.Technique,
     q_info: []const types.Technique,
     indices: *types.Implementation.Indices,
-) Allocator.allocate_void {
+) config.Allocator.allocate_void {
     array.writeMany("const Parameters");
     array.writeFormat(fmt.ud64(indices.params));
     array.writeMany("=struct{\n");
@@ -658,14 +674,14 @@ fn writeSpecificationDeduction(
     array.writeMany("}\n};\n");
 }
 fn writeSpecifications(
-    allocator: *Allocator,
+    allocator: *config.Allocator,
     array: *Array,
-) Allocator.allocate_void {
+) config.Allocator.allocate_void {
     var indices: types.Implementation.Indices = .{};
     for (types.Kind.list) |kind| {
         for (attr.abstract_specs, data.x_p_infos, data.spec_sets, data.tech_sets, data.x_q_infos) |abstract_spec, p_info, spec_set, tech_set, q_info| {
             if (abstract_spec.kind == kind) {
-                const save: Allocator.Save = allocator.save();
+                const save: config.Allocator.Save = allocator.save();
                 defer allocator.restore(save);
                 try meta.wrap(
                     writeSpecificationDeduction(allocator, array, abstract_spec, p_info, spec_set, tech_set, q_info, &indices),
@@ -728,16 +744,14 @@ fn nonEqualIndices(name: []const u8, any: anytype) void {
     builtin.debug.write(array.readAll());
 }
 fn validateAllSerial(
-    allocator: *Allocator,
+    allocator: *config.Allocator,
     x_p_infos: []const []const types.Specifier,
     x_q_infos: []const []const types.Technique,
     spec_sets: []const []const []const types.Specifier,
     tech_sets: []const []const []const types.Technique,
-    impl_details: ImplementationDetails,
+    impl_details: []const types.Implementation,
 ) !void {
-    if (!validate_all_serial) {
-        return;
-    }
+    @setRuntimeSafety(false);
     var f_x_p_infos: []const []const types.Specifier = attr.getParams(allocator);
     var f_x_q_infos: []const []const types.Technique = attr.getOptions(allocator);
     var f_impl_details: []const types.Implementation = attr.getImplDetails(allocator);
@@ -755,7 +769,7 @@ fn validateAllSerial(
             }
         }
     }
-    for (f_impl_details, impl_details.readAll(), 0..) |x, y, idx_0| {
+    for (f_impl_details, impl_details, 0..) |x, y, idx_0| {
         if (!builtin.testEqualMemory(@TypeOf(x), x, y)) {
             nonEqualIndices("details", .{idx_0});
         }
@@ -819,41 +833,39 @@ const data = blk: {
         .tech_sets = tech_sets,
     };
 };
-pub fn newNewTypeSpecs() !void {
-    var address_space: AddressSpace = .{};
-    var allocator: Allocator = try meta.wrap(Allocator.init(&address_space));
-    defer allocator.deinit(&address_space);
+pub fn main() !void {
+    @setRuntimeSafety(false);
     @setEvalBranchQuota(1500);
+    var address_space: config.AddressSpace = .{};
+    var allocator: config.Allocator = try meta.wrap(config.Allocator.init(&address_space));
+    defer allocator.deinit(&address_space);
     var array: Array = undefined;
     array.undefineAll();
     array.define(gen.readFile(spec.generic.noexcept, config.container_template_path, array.referAllUndefined()));
-    if (write_separate_source_files) {
-        gen.writeSourceFile(config.container_common_path, u8, array.readAll());
-        array.undefineAll();
-    }
     try meta.wrap(writeSpecifications(&allocator, &array));
-    var impl_details: ImplementationDetails = try meta.wrap(ImplementationDetails.init(&allocator, 0x400));
-    var spec_idx: u16 = 0;
+    var impl_details: []types.Implementation = allocator.allocate(types.Implementation, 0x400);
+    var params_idx: u16 = 0;
     var ctn_idx: u16 = 0;
-    var impl_idx: u16 = 0;
-    inline for (attr.ctn_groups) |abstract_specs| {
-        inline for (abstract_specs) |abstract_spec| {
-            for (data.spec_sets[spec_idx]) |specs| {
-                for (data.tech_sets[spec_idx]) |techs| {
-                    impl_details.writeOne(types.Implementation.init(abstract_spec, specs, techs, .{
-                        .params = spec_idx,
+    var ptr_idx: u16 = 0;
+    for (attr.ctn_groups) |abstract_specs| {
+        for (abstract_specs) |abstract_spec| {
+            for (data.spec_sets[params_idx]) |specs| {
+                for (data.tech_sets[params_idx]) |techs| {
+                    impl_details[ptr_idx] = types.Implementation.init(abstract_spec, specs, techs, .{
+                        .params = params_idx,
                         .ctn = ctn_idx,
-                        .impl = impl_idx,
-                    }));
-                    impl_idx +%= 1;
+                        .ptr = ptr_idx,
+                    });
+                    ptr_idx +%= 1;
                 }
                 ctn_idx +%= 1;
             }
-            spec_idx +%= 1;
+            params_idx +%= 1;
         }
     }
-    gen.truncateFile(write_impl_spec, config.impl_detail_path, impl_details.readAll());
+    gen.truncateFile(write_impl_spec, config.impl_detail_path, impl_details[0..ptr_idx]);
     gen.truncateFile(write_ctn_spec, config.ctn_detail_path, attr.ctn_details);
-    try validateAllSerial(&allocator, data.x_p_infos, data.x_q_infos, data.spec_sets, data.tech_sets, impl_details);
+    if (validate_all_serial) {
+        try validateAllSerial(&allocator, impl_details[0..ptr_idx]);
+    }
 }
-pub const main = newNewTypeSpecs;

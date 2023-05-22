@@ -280,7 +280,7 @@ pub const Container = packed struct {
 pub const Implementation = packed struct {
     params: u16,
     ctn: u16,
-    impl: u16,
+    ptr: u16,
     kind: Kind,
     layout: Layout,
     modes: Modes,
@@ -291,7 +291,7 @@ pub const Implementation = packed struct {
     pub const Indices = struct {
         params: u16 = 0,
         ctn: u16 = 0,
-        impl: u16 = 0,
+        ptr: u16 = 0,
     };
     pub fn init(
         abstract_spec: AbstractSpecification,
@@ -302,7 +302,7 @@ pub const Implementation = packed struct {
         return .{
             .params = indices.params,
             .ctn = indices.ctn,
-            .impl = indices.impl,
+            .ptr = indices.ptr,
             .kind = abstract_spec.kind,
             .layout = abstract_spec.layout,
             .modes = Modes.detail(abstract_spec.modes),
