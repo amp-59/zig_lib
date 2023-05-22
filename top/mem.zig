@@ -704,6 +704,90 @@ pub fn releaseElementary(comptime AddressSpace: type, address_space: *AddressSpa
         builtin.proc.exitFault(debug.about_rel_2_s, 2);
     }
 }
+pub fn testAcquire(comptime AddressSpace: type, address_space: *AddressSpace, index: AddressSpace.Index) AddressSpace.acquire_bool {
+    const spec: mem.RegularAddressSpaceSpec = AddressSpace.addr_spec;
+    const lb_addr: u64 = AddressSpace.low(index);
+    const up_addr: u64 = AddressSpace.high(index);
+    const logging: builtin.Logging.AcquireErrorFault = comptime spec.logging.acquire.override();
+    const ret: bool = acquireSet(AddressSpace, address_space, index);
+    if (ret) {
+        if (spec.options.require_map) {
+            try meta.wrap(acquireMap(AddressSpace, address_space));
+        }
+        if (logging.Acquire) {
+            debug.arenaAcquireNotice(index, lb_addr, up_addr, spec.label);
+        }
+    }
+    return ret;
+}
+pub fn testAcquireStatic(comptime AddressSpace: type, address_space: *AddressSpace, comptime index: AddressSpace.Index) AddressSpace.acquire_bool(index) {
+    const spec = AddressSpace.addr_spec;
+    const lb_addr: u64 = comptime AddressSpace.low(index);
+    const up_addr: u64 = comptime AddressSpace.high(index);
+    const logging: builtin.Logging.AcquireErrorFault = comptime spec.logging.acquire.override();
+    const ret: bool = acquireStaticSet(AddressSpace, address_space, index);
+    if (ret) {
+        if (logging.Acquire) {
+            debug.arenaAcquireNotice(index, lb_addr, up_addr, spec.label);
+        }
+    }
+    return ret;
+}
+pub fn testAcquireElementary(comptime AddressSpace: type, address_space: *AddressSpace) AddressSpace.acquire_bool {
+    const spec = AddressSpace.addr_spec;
+    const lb_addr: u64 = comptime address_space.low();
+    const up_addr: u64 = comptime address_space.high();
+    const logging: builtin.Logging.AcquireErrorFault = comptime spec.logging.acquire.override();
+    const ret: bool = acquireElementarySet(AddressSpace, address_space);
+    if (ret) {
+        if (logging.Acquire) {
+            debug.arenaAcquireNotice(null, lb_addr, up_addr, spec.label);
+        }
+    }
+    return ret;
+}
+pub fn testRelease(comptime AddressSpace: type, address_space: *AddressSpace, index: AddressSpace.Index) AddressSpace.release_bool {
+    const spec: mem.RegularAddressSpaceSpec = AddressSpace.addr_spec;
+    const lb_addr: u64 = AddressSpace.low(index);
+    const up_addr: u64 = AddressSpace.high(index);
+    const logging: builtin.Logging.ReleaseErrorFault = comptime spec.logging.release.override();
+    const ret: bool = releaseUnset(AddressSpace, address_space, index);
+    if (ret) {
+        if (logging.Release) {
+            debug.arenaReleaseNotice(index, lb_addr, up_addr, spec.label);
+        }
+        if (spec.options.require_unmap) {
+            try meta.wrap(releaseUnmap(AddressSpace, address_space));
+        }
+    }
+    return ret;
+}
+pub fn tryReleaseStatic(comptime AddressSpace: type, address_space: *AddressSpace, comptime index: AddressSpace.Index) AddressSpace.release_bool(index) {
+    const spec = AddressSpace.addr_spec;
+    const lb_addr: u64 = comptime AddressSpace.low(index);
+    const up_addr: u64 = comptime AddressSpace.high(index);
+    const logging: builtin.Logging.ReleaseErrorFault = comptime spec.logging.release.override();
+    const ret: bool = releaseStaticUnset(AddressSpace, address_space, index);
+    if (ret) {
+        if (logging.Release) {
+            debug.arenaReleaseNotice(index, lb_addr, up_addr, spec.label);
+        }
+    }
+    return ret;
+}
+pub fn testReleaseElementary(comptime AddressSpace: type, address_space: *AddressSpace) AddressSpace.release_bool {
+    const spec = AddressSpace.addr_spec;
+    const lb_addr: u64 = comptime address_space.low();
+    const up_addr: u64 = comptime address_space.high();
+    const ret: bool = releaseElementaryUnset(AddressSpace, address_space);
+    if (ret) {
+        if (spec.logging.release.Release) {
+            debug.arenaReleaseNotice(null, lb_addr, up_addr, spec.label);
+        }
+    }
+    return ret;
+}
+
 pub fn map(comptime spec: MapSpec, addr: u64, len: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
     const mmap_prot: Prot.Options = comptime spec.prot();
     const mmap_flags: Map.Options = comptime spec.flags();
