@@ -1,20 +1,20 @@
-const mem = @import("../mem.zig");
-const fmt = @import("../fmt.zig");
-const gen = @import("../gen.zig");
-const proc = @import("../proc.zig");
-const file = @import("../file.zig");
-const meta = @import("../meta.zig");
-const spec = @import("../spec.zig");
-const serial = @import("../serial.zig");
-const testing = @import("../testing.zig");
-const builtin = @import("../builtin.zig");
+const mem = @import("../../mem.zig");
+const fmt = @import("../../fmt.zig");
+const gen = @import("../../gen.zig");
+const proc = @import("../../proc.zig");
+const file = @import("../../file.zig");
+const meta = @import("../../meta.zig");
+const spec = @import("../../spec.zig");
+const serial = @import("../../serial.zig");
+const testing = @import("../../testing.zig");
+const builtin = @import("../../builtin.zig");
 const tok = @import("./tok.zig");
 const expr = @import("./expr.zig");
 const attr = @import("./attr.zig");
 const types = @import("./types.zig");
 const config = @import("./config.zig");
 const ctn_fn = @import("./ctn_fn.zig");
-const impl_fn = @import("./impl_fn.zig");
+const ptr_fn = @import("./ptr_fn.zig");
 pub usingnamespace proc.start;
 pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
 pub const runtime_assertions: bool = false;
@@ -391,7 +391,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ty
         },
         .overwriteManyAt => {
             var write_many: [4]expr.Expr = expr.fnCall3(
-                tok.write_many_impl_fn_name,
+                tok.write_many_ptr_fn_name,
                 expr.symbol(tok.child_type_name),
                 __at_call,
                 expr.symbol(tok.many_values_name),
@@ -430,7 +430,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ty
         => {
             var add_values_len_offset: [3]expr.Expr = expr.add(expr.symbol(tok.many_values_len), expr.symbol(tok.offset_name));
             var write_many: [4]expr.Expr = expr.fnCall3(
-                tok.write_many_impl_fn_name,
+                tok.write_many_ptr_fn_name,
                 expr.symbol(tok.child_type_name),
                 __defined_call,
                 expr.symbol(tok.many_values_name),
@@ -563,7 +563,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ty
                 return array.writeFormat(expr.join(&pointer_one_deref_assign_value));
             } else {
                 var write_one: [4]expr.Expr = expr.fnCall3(
-                    tok.write_one_impl_fn_name,
+                    tok.write_one_ptr_fn_name,
                     expr.symbol(tok.child_type_name),
                     expr.join(&undefined_byte_address),
                     expr.symbol(tok.value_name),
@@ -595,7 +595,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ty
                 return array.writeFormat(expr.join(&pointer_one_deref_assign_value));
             } else {
                 var write_count: [5]expr.Expr = expr.fnCall4(
-                    tok.write_count_impl_fn_name,
+                    tok.write_count_ptr_fn_name,
                     expr.symbol(tok.child_type_name),
                     expr.symbol(tok.count_name),
                     expr.join(&undefined_byte_address),
@@ -628,7 +628,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ty
                 return array.writeFormat(expr.join(&pointer_one_deref_assign_value));
             } else {
                 var write_many: [4]expr.Expr = expr.fnCall3(
-                    tok.write_many_impl_fn_name,
+                    tok.write_many_ptr_fn_name,
                     expr.symbol(tok.child_type_name),
                     expr.join(&undefined_byte_address),
                     expr.symbol(tok.many_values_name),
@@ -884,11 +884,11 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ty
         },
     }
 }
-fn makeImplFnMemberCall(allocator: *Allocator, ctn_detail: *const types.Container, impl_fn_info: impl_fn.Fn) [3]expr.Expr {
+fn makeImplFnMemberCall(allocator: *Allocator, ctn_detail: *const types.Container, ptr_fn_info: ptr_fn.Fn) [3]expr.Expr {
     // Using array_impl in expr.impl would be better.
     return expr.fieldAccess(
         expr.symbol(tok.array_name),
-        expr.impl(allocator, ctn_detail, impl_fn_info),
+        expr.impl(allocator, ctn_detail, ptr_fn_info),
     );
 }
 fn functionBodyUndefinedNotice(ctn_detail: *const types.Container, ctn_fn_info: ctn_fn.Fn) void {
@@ -923,7 +923,7 @@ fn writeFunctions(allocator: *Allocator, array: *Array, ctn_detail: *const types
 fn writeDeclarations(allocator: *Allocator, array: *Array, ctn_detail: *const types.Container) void {
     const save: Allocator.Save = allocator.save();
     defer allocator.restore(save);
-    const const_decl: *expr.ConstDecl = allocator.duplicateIrreversible(expr.ConstDecl, .{
+    const const_decl: *expr.ConstDecl = allocator.duplicate(expr.ConstDecl, .{
         .val_name = tok.array_type_name,
         .type_name = tok.type_type_name,
         .expr1 = expr.symbol(tok.call_this),
@@ -980,7 +980,7 @@ pub fn generateContainers() !void {
     var array: Array = Array.init(&allocator, 1024 * 4096);
     var fd: u64 = file.open(spec.generic.noexcept, config.ctn_detail_path);
     const st: file.Status = file.status(spec.generic.noexcept, fd);
-    const details: []types.Container = allocator.allocateIrreversible(
+    const details: []types.Container = allocator.allocate(
         types.Container,
         st.count(types.Container),
     );

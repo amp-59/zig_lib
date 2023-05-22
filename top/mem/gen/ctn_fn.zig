@@ -1,14 +1,13 @@
-const fmt = @import("../fmt.zig");
-const gen = @import("../gen.zig");
-const meta = @import("../meta.zig");
-const algo = @import("../algo.zig");
-const builtin = @import("../builtin.zig");
-const testing = @import("../testing.zig");
+const fmt = @import("../../fmt.zig");
+const gen = @import("../../gen.zig");
+const meta = @import("../../meta.zig");
+const algo = @import("../../algo.zig");
+const builtin = @import("../../builtin.zig");
+const testing = @import("../../testing.zig");
 const tok = @import("./tok.zig");
 const attr = @import("./attr.zig");
 const types = @import("./types.zig");
 const config = @import("./config.zig");
-
 pub const kind = @import("./zig-out/src/container_kinds.zig");
 
 pub const key = meta.tagList(Fn);

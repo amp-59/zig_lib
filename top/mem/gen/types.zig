@@ -1,7 +1,6 @@
-const top = @import("../../zig_lib.zig");
-const fmt = top.fmt;
-const meta = top.meta;
-const builtin = top.builtin;
+const fmt = @import("../../fmt.zig");
+const meta = @import("../../meta.zig");
+const builtin = @import("../../builtin.zig");
 
 const tok = @import("./tok.zig");
 

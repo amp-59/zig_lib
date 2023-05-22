@@ -1,9 +1,8 @@
-const gen = @import("./gen.zig");
-const mem = gen.mem;
-const proc = gen.proc;
-const file = gen.file;
-const spec = gen.spec;
-const builtin = gen.builtin;
+const mem = @import("../../mem.zig");
+const spec = @import("../../spec.zig");
+const file = @import("../../file.zig");
+const proc = @import("../../proc.zig");
+const builtin = @import("../../builtin.zig");
 const config = @import("./config.zig");
 pub usingnamespace proc.start;
 pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;

@@ -1,13 +1,13 @@
-const mem = @import("../mem.zig");
-const fmt = @import("../fmt.zig");
-const gen = @import("../gen.zig");
-const mach = @import("../mach.zig");
-const builtin = @import("../builtin.zig");
+const mem = @import("../../mem.zig");
+const fmt = @import("../../fmt.zig");
+const gen = @import("../../gen.zig");
+const mach = @import("../../mach.zig");
+const builtin = @import("../../builtin.zig");
 const tok = @import("./tok.zig");
 const attr = @import("./attr.zig");
 const types = @import("./types.zig");
 const ctn_fn = @import("./ctn_fn.zig");
-const impl_fn = @import("./impl_fn.zig");
+const ptr_fn = @import("./ptr_fn.zig");
 
 const ExprTag = enum(u8) {
     scrub,
@@ -247,8 +247,8 @@ const Init = struct {
         impl_name: [:0]const u8 = tok.impl_name,
         impl_type_name: [:0]const u8 = tok.impl_type_name,
         impl_const_param: [:0]const u8 = tok.impl_const_param,
-        fn determine(impl_fn_info: impl_fn.Fn) Tokens {
-            switch (impl_fn_info) {
+        fn determine(ptr_fn_info: ptr_fn.Fn) Tokens {
+            switch (ptr_fn_info) {
                 .allocate => {
                     return .{
                         .impl_name = tok.source_impl_name,
@@ -308,10 +308,10 @@ const Init = struct {
     pub fn call(exprs: []Expr) Expr {
         return packMore(.call, exprs);
     }
-    pub fn impl0(allocator: anytype, impl_fn_info: impl_fn.Fn, arg_list: *const gen.ArgList) Expr {
-        const exprs: []Expr = allocator.allocateIrreversible(Expr, arg_list.len +% 3);
+    pub fn impl0(allocator: anytype, ptr_fn_info: ptr_fn.Fn, arg_list: *const gen.ArgList) Expr {
+        const exprs: []Expr = allocator.allocate(Expr, arg_list.len +% 3);
         var idx: u64 = 0;
-        exprs[idx] = Init.symbol(impl_fn_info.fnName());
+        exprs[idx] = Init.symbol(ptr_fn_info.fnName());
         idx +%= 1;
         for (arg_list.readAll()) |arg| {
             exprs[idx] = Init.symbol(arg);
@@ -319,10 +319,10 @@ const Init = struct {
         }
         return packMore(.call, exprs[0..idx]);
     }
-    pub fn impl1(allocator: anytype, impl_fn_info: impl_fn.Fn, arg_list: *const gen.ArgList, tokens: Tokens) Expr {
-        const exprs: []Expr = allocator.allocateIrreversible(Expr, arg_list.len +% 3);
+    pub fn impl1(allocator: anytype, ptr_fn_info: ptr_fn.Fn, arg_list: *const gen.ArgList, tokens: Tokens) Expr {
+        const exprs: []Expr = allocator.allocate(Expr, arg_list.len +% 3);
         var idx: u64 = 0;
-        exprs[idx] = Init.symbol(impl_fn_info.fnName());
+        exprs[idx] = Init.symbol(ptr_fn_info.fnName());
         idx +%= 1;
         if (comptimeField(arg_list.*)) {
             exprs[idx] = Init.symbol(switch (arg_list.kind) {
@@ -340,16 +340,16 @@ const Init = struct {
         }
         return packMore(.call_member, exprs[0..idx]);
     }
-    pub fn impl(allocator: anytype, any_detail: anytype, impl_fn_info: impl_fn.Fn) Expr {
+    pub fn impl(allocator: anytype, any_detail: anytype, ptr_fn_info: ptr_fn.Fn) Expr {
         if (@TypeOf(any_detail.*) == types.Implementation) {
-            return impl0(allocator, impl_fn_info, &impl_fn_info.argList(any_detail, .Argument));
+            return impl0(allocator, ptr_fn_info, &ptr_fn_info.argList(any_detail, .Argument));
         } else {
-            return impl1(allocator, impl_fn_info, &impl_fn_info.argList(any_detail, .Argument), Tokens.determine(impl_fn_info));
+            return impl1(allocator, ptr_fn_info, &ptr_fn_info.argList(any_detail, .Argument), Tokens.determine(ptr_fn_info));
         }
     }
     pub fn intr(allocator: anytype, ctn_detail: *const types.Container, ctn_fn_info: ctn_fn.Fn) Expr {
         const arg_list: gen.ArgList = ctn_fn_info.argList(ctn_detail, .Argument);
-        const exprs: []Expr = allocator.allocateIrreversible(Expr, arg_list.len +% 1);
+        const exprs: []Expr = allocator.allocate(Expr, arg_list.len +% 1);
         var idx: u64 = 0;
         exprs[idx] = Init.symbol(ctn_fn_info.fnName());
         idx +%= 1;

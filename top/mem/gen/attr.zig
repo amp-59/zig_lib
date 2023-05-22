@@ -1,8 +1,8 @@
-const gen = @import("./gen.zig");
-const fmt = gen.fmt;
-const meta = gen.meta;
-const builtin = gen.builtin;
-const testing = gen.testing;
+const gen = @import("../../gen.zig");
+const fmt = @import("../../fmt.zig");
+const meta = @import("../../meta.zig");
+const builtin = @import("../../builtin.zig");
+const testing = @import("../../testing.zig");
 const tok = @import("./tok.zig");
 const types = @import("./types.zig");
 const config = @import("./config.zig");
@@ -495,7 +495,7 @@ pub const Fn = struct {
     pub fn writeKind(comptime Tag: type, array: anytype, comptime kind_tag: @Type(.EnumLiteral), set: anytype) void {
         array.writeMany("pub fn ");
         array.writeMany(@tagName(kind_tag));
-        array.writeMany("(tag:" ++ @typeName(Tag)["top.mem.".len..] ++ ")bool{\nswitch(tag){");
+        array.writeMany("(tag:" ++ @typeName(Tag)["top.mem.gen".len..] ++ ")bool{\nswitch(tag){");
         for (set.readAll()) |elem| {
             array.writeMany(".");
             array.writeMany(@tagName(elem));
@@ -582,7 +582,7 @@ pub const Fn = struct {
         pub inline fn writeKindSwitch(comptime Tag: type, array: anytype, comptime kind_tag: @Type(.EnumLiteral), set: []const Tag) void {
             array.writeMany("pub fn ");
             array.writeMany(@tagName(kind_tag));
-            array.writeMany("(tag:" ++ @typeName(Tag)["top.mem.".len..] ++ ")bool{\nswitch(tag){");
+            array.writeMany("(tag:" ++ @typeName(Tag)["top.mem.gen.".len..] ++ ")bool{\nswitch(tag){");
             for (set) |elem| {
                 array.writeMany(".");
                 array.writeMany(@tagName(elem));
@@ -593,7 +593,7 @@ pub const Fn = struct {
         pub fn writeKindBool(comptime Tag: type, array: anytype, fn_name: [:0]const u8, set: []const Tag) void {
             array.writeMany("pub fn ");
             array.writeMany(fn_name);
-            array.writeMany("(tag:" ++ @typeName(Tag)["top.mem.".len..] ++ ")bool{\ninline for (.{");
+            array.writeMany("(tag:" ++ @typeName(Tag)["top.mem.gen.".len..] ++ ")bool{\ninline for (.{");
             for (set) |elem| {
                 array.writeMany(".");
                 array.writeMany(@tagName(elem));

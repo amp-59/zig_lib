@@ -1,6 +1,6 @@
-const gen = @import("../gen.zig");
-const builtin = @import("../builtin.zig");
-const testing = @import("../testing.zig");
+const gen = @import("../../gen.zig");
+const builtin = @import("../../builtin.zig");
+const testing = @import("../../testing.zig");
 
 const tok = @import("./tok.zig");
 const attr = @import("./attr.zig");
@@ -37,8 +37,8 @@ pub const Fn = enum(u5) {
     move = 20,
     reallocate = 21,
     deallocate = 22,
-    pub inline fn fnName(impl_fn_info: Fn) [:0]const u8 {
-        return @tagName(impl_fn_info);
+    pub inline fn fnName(ptr_fn_info: Fn) [:0]const u8 {
+        return @tagName(ptr_fn_info);
     }
     pub fn hasCapability(fn_info: Fn, impl_variant: *const types.Implementation) bool {
         const is_always_aligned: bool =
@@ -81,13 +81,13 @@ pub const Fn = enum(u5) {
             },
         }
     }
-    pub fn argList(impl_fn_info: Fn, impl_variant: anytype, list_kind: gen.ListKind) gen.ArgList {
+    pub fn argList(ptr_fn_info: Fn, impl_variant: anytype, list_kind: gen.ListKind) gen.ArgList {
         const Variant = @TypeOf(impl_variant.*);
         var arg_list: gen.ArgList = .{
             .args = undefined,
             .len = 0,
             .kind = list_kind,
-            .ret = impl_fn_info.returnType(),
+            .ret = ptr_fn_info.returnType(),
         };
         const has_static_maximum_length: bool =
             impl_variant.kind == .automatic or
@@ -112,14 +112,14 @@ pub const Fn = enum(u5) {
         };
         const allocated_byte_address_symbol: [:0]const u8 = switch (list_kind) {
             .Parameter => blk: {
-                if (impl_fn_info == .allocate) {
+                if (ptr_fn_info == .allocate) {
                     break :blk tok.source_allocated_byte_address_param;
                 } else {
                     break :blk tok.target_allocated_byte_address_param;
                 }
             },
             .Argument => blk: {
-                if (impl_fn_info == .allocate) {
+                if (ptr_fn_info == .allocate) {
                     break :blk tok.source_allocated_byte_address_name;
                 } else {
                     break :blk tok.target_allocated_byte_address_name;
@@ -128,14 +128,14 @@ pub const Fn = enum(u5) {
         };
         const aligned_byte_address_symbol: [:0]const u8 = switch (list_kind) {
             .Parameter => blk: {
-                if (impl_fn_info == .allocate) {
+                if (ptr_fn_info == .allocate) {
                     break :blk tok.source_aligned_byte_address_param;
                 } else {
                     break :blk tok.target_aligned_byte_address_param;
                 }
             },
             .Argument => blk: {
-                if (impl_fn_info == .allocate) {
+                if (ptr_fn_info == .allocate) {
                     break :blk tok.source_aligned_byte_address_name;
                 } else {
                     break :blk tok.target_aligned_byte_address_name;
@@ -144,14 +144,14 @@ pub const Fn = enum(u5) {
         };
         const unallocated_byte_address_symbol: [:0]const u8 = switch (list_kind) {
             .Parameter => blk: {
-                if (impl_fn_info == .allocate) {
+                if (ptr_fn_info == .allocate) {
                     break :blk tok.source_unallocated_byte_address_param;
                 } else {
                     break :blk tok.target_unallocated_byte_address_param;
                 }
             },
             .Argument => blk: {
-                if (impl_fn_info == .allocate) {
+                if (ptr_fn_info == .allocate) {
                     break :blk tok.source_unallocated_byte_address_name;
                 } else {
                     break :blk tok.target_unallocated_byte_address_name;
@@ -160,14 +160,14 @@ pub const Fn = enum(u5) {
         };
         const single_approximation_counts_symbol: [:0]const u8 = switch (list_kind) {
             .Parameter => blk: {
-                if (impl_fn_info == .allocate) {
+                if (ptr_fn_info == .allocate) {
                     break :blk tok.source_single_approximation_counts_param;
                 } else {
                     break :blk tok.target_single_approximation_counts_param;
                 }
             },
             .Argument => blk: {
-                if (impl_fn_info == .allocate) {
+                if (ptr_fn_info == .allocate) {
                     break :blk tok.source_single_approximation_counts_name;
                 } else {
                     break :blk tok.target_single_approximation_counts_name;
@@ -176,21 +176,21 @@ pub const Fn = enum(u5) {
         };
         const double_approximation_counts_symbol: [:0]const u8 = switch (list_kind) {
             .Parameter => blk: {
-                if (impl_fn_info == .allocate) {
+                if (ptr_fn_info == .allocate) {
                     break :blk tok.source_double_approximation_counts_param;
                 } else {
                     break :blk tok.target_double_approximation_counts_param;
                 }
             },
             .Argument => blk: {
-                if (impl_fn_info == .allocate) {
+                if (ptr_fn_info == .allocate) {
                     break :blk tok.source_double_approximation_counts_name;
                 } else {
                     break :blk tok.target_double_approximation_counts_name;
                 }
             },
         };
-        switch (impl_fn_info) {
+        switch (ptr_fn_info) {
             .define, .undefine, .seek, .tell => {
                 arg_list.writeOne(impl_symbol);
                 arg_list.writeOne(offset_symbol);
@@ -257,7 +257,7 @@ pub const Fn = enum(u5) {
             },
             .allocate, .move, .reallocate => {
                 if (Variant == types.Implementation) {
-                    if (impl_fn_info != .allocate) {
+                    if (ptr_fn_info != .allocate) {
                         arg_list.writeOne(impl_symbol);
                     }
                     if (impl_variant.fields.allocated_byte_address) {
@@ -287,8 +287,8 @@ pub const Fn = enum(u5) {
         }
         return arg_list;
     }
-    pub fn returnType(impl_fn_info: Fn) [:0]const u8 {
-        switch (impl_fn_info) {
+    pub fn returnType(ptr_fn_info: Fn) [:0]const u8 {
+        switch (ptr_fn_info) {
             .allocated_byte_address,
             .aligned_byte_address,
             .unstreamed_byte_address,
@@ -322,10 +322,10 @@ pub const Fn = enum(u5) {
             },
         }
     }
-    pub fn writeSignature(impl_fn_info: *const Fn, array: anytype, impl_detail: *const types.Implementation) void {
-        const list: gen.ArgList = impl_fn_info.argList(impl_detail, .Parameter);
+    pub fn writeSignature(ptr_fn_info: *const Fn, array: anytype, impl_detail: *const types.Implementation) void {
+        const list: gen.ArgList = ptr_fn_info.argList(impl_detail, .Parameter);
         array.writeMany("pub inline fn ");
-        array.writeMany(impl_fn_info.fnName());
+        array.writeMany(ptr_fn_info.fnName());
         array.writeMany("(");
         const args: []const [:0]const u8 = list.readAll();
         for (args) |arg| {

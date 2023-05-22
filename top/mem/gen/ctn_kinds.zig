@@ -1,9 +1,9 @@
-const mem = @import("../mem.zig");
-const file = @import("../file.zig");
-const proc = @import("../proc.zig");
-const algo = @import("../algo.zig");
-const spec = @import("../spec.zig");
-const builtin = @import("../builtin.zig");
+const mem = @import("../../mem.zig");
+const file = @import("../../file.zig");
+const proc = @import("../../proc.zig");
+const algo = @import("../../algo.zig");
+const spec = @import("../../spec.zig");
+const builtin = @import("../../builtin.zig");
 const attr = @import("./attr.zig");
 const config = @import("./config.zig");
 const ctn_fn = @import("./ctn_fn.zig");
@@ -77,7 +77,6 @@ pub fn main() void {
     const offset_undefined: Pair = attr.Fn.static.subTag(ctn_fn.Fn, @"undefined"[1], .Offset);
     const offset_streamed: Pair = attr.Fn.static.subTag(ctn_fn.Fn, streamed[1], .Offset);
     const offset_unstreamed: Pair = attr.Fn.static.subTag(ctn_fn.Fn, unstreamed[1], .Offset);
-
     writeKind(ctn_fn.Fn, &array, .read, read[1]);
     writeKind(ctn_fn.Fn, &array, .refer, refer[1]);
     writeKind(ctn_fn.Fn, &array, .overwrite, overwrite[1]);

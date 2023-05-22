@@ -1,8 +1,8 @@
 //! Control various aspects of `memgen`
-const mem = @import("../mem.zig");
-const spec = @import("../spec.zig");
-const serial = @import("../serial.zig");
-const builtin = @import("../builtin.zig");
+const mem = @import("../../mem.zig");
+const spec = @import("../../spec.zig");
+const serial = @import("../../serial.zig");
+const builtin = @import("../../builtin.zig");
 
 pub const word_size_type: type = u64;
 
@@ -48,13 +48,13 @@ pub const debug_argument_substitution_match_fail: bool = false;
 /// Auxiliary products of memory implementation generator go here. These are
 /// generated source files (src) or serialised data (bin). They exist to speed
 /// subsequent steps and will be replaced whenever missing.
-pub const zig_out_dir: [:0]const u8 = builtin.buildRoot() ++ "/top/mem/zig-out";
+pub const zig_out_dir: [:0]const u8 = builtin.buildRoot() ++ "/top/mem/gen/zig-out";
 pub const zig_out_src_dir: [:0]const u8 = zig_out_dir ++ "/src";
 pub const zig_out_bin_dir: [:0]const u8 = zig_out_dir ++ "/bin";
 
 /// Currently all containers are written to this file. Later, each container
 /// will be given its own file.
-pub const container_dir_path: [:0]const u8 = primarySourceFile("container");
+pub const container_dir_path: [:0]const u8 = primarySourceFile("ctn");
 pub const container_file_path: [:0]const u8 = container_dir_path ++ ".zig";
 pub const container_common_path: [:0]const u8 = container_dir_path ++ "/common.zig";
 pub const automatic_container_path: [:0]const u8 = container_dir_path ++ "/automatic.zig";
@@ -64,7 +64,7 @@ pub const parametric_container_path: [:0]const u8 = container_dir_path ++ "/para
 
 /// Currently all references are written to this file. Later, each specification
 /// group will be given its own file.
-pub const reference_dir_path: [:0]const u8 = primarySourceFile("reference");
+pub const reference_dir_path: [:0]const u8 = primarySourceFile("ptr");
 pub const reference_file_path: [:0]const u8 = reference_dir_path ++ ".zig";
 pub const reference_common_path: [:0]const u8 = reference_dir_path ++ "/common.zig";
 pub const automatic_reference_path: [:0]const u8 = reference_dir_path ++ "/automatic.zig";
