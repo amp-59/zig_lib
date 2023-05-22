@@ -20,5 +20,5 @@ pub fn main() void {
     _ = zig_lib.testing.refAllDecls(@import("../top/render.zig"));
     _ = zig_lib.testing.refAllDecls(@import("../top/mem/allocator-template.zig"));
     _ = zig_lib.testing.refAllDecls(@import("../top/mem/reference-template.zig"));
-    _ = zig_lib.testing.refAllDecls(@import("../top/mem/type_specs-aux.zig"));
+    _ = zig_lib.testing.refAllDecls(@import("../top/mem/gen/specs.zig"));
 }
