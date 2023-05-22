@@ -10,11 +10,11 @@ pub const zig_out_bin_dir: [:0]const u8 = zig_out_dir ++ "/bin";
 pub const build_command_options_path: [:0]const u8 = auxiliaryDataFile("build_command_options");
 pub const format_command_options_path: [:0]const u8 = auxiliaryDataFile("format_command_options");
 
-pub const cmdline_path: [:0]const u8 = primarySourceFile("cmdline3.zig");
-pub const abstract_cmdline_path: [:0]const u8 = primarySourceFile("abstract_cmdline3.zig");
+pub const cmdline_path: [:0]const u8 = primarySourceFile("cmdline.zig");
+pub const abstract_cmdline_path: [:0]const u8 = primarySourceFile("abstract_cmdline.zig");
 pub const cmdline_template_path: [:0]const u8 = primarySourceFile("cmdline-template.zig");
 
-pub const tasks_path: [:0]const u8 = primarySourceFile("tasks3.zig");
+pub const tasks_path: [:0]const u8 = primarySourceFile("tasks.zig");
 pub const tasks_template_path: [:0]const u8 = primarySourceFile("tasks-template.zig");
 
 pub fn primarySourceFile(comptime name: [:0]const u8) [:0]const u8 {
