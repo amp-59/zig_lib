@@ -436,8 +436,8 @@ pub const FdSpec = struct {
         close_on_exec: bool = true,
     };
     const Visibility = enum { shared, shared_validate, private };
-    pub fn flags(comptime spec: FdSpec) mem.Fd {
-        var flags_bitfield: Fd = .{ .val = 0 };
+    pub fn flags(comptime spec: FdSpec) mem.Fd.Options {
+        var flags_bitfield: Fd.Options = .{ .val = 0 };
         if (spec.options.allow_sealing) {
             flags_bitfield.set(.allow_sealing);
         }
@@ -810,7 +810,7 @@ pub fn advise(comptime spec: AdviseSpec, addr: u64, len: u64) sys.ErrorUnion(spe
 }
 pub fn fd(comptime spec: FdSpec, name: [:0]const u8) sys.ErrorUnion(spec.errors, spec.return_type) {
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
-    const flags: mem.Fd = comptime spec.flags();
+    const flags: mem.Fd.Options = comptime spec.flags();
     const logging: builtin.Logging.AcquireError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.memfd_create, spec.errors, spec.return_type, .{ name_buf_addr, flags.val }))) |mem_fd| {
         if (logging.Acquire) {
