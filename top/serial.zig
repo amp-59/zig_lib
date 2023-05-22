@@ -118,7 +118,7 @@ fn readPointerMany(comptime pointer_info: builtin.Type.Pointer, addr: u64, offse
 fn writePointerOne(comptime pointer_info: builtin.Type.Pointer, allocator: anytype, addr: u64, any: anytype) @TypeOf(any) {
     @setRuntimeSafety(false);
     const ret: @TypeOf(any) = try meta.wrap(
-        allocator.createIrreversible(pointer_info.child),
+        allocator.create(pointer_info.child),
     );
     ret.* = try meta.wrap(
         write(allocator, addr, any.*),
@@ -129,18 +129,19 @@ fn writePointerSlice(comptime pointer_info: builtin.Type.Pointer, allocator: any
     @setRuntimeSafety(false);
     if (pointer_info.sentinel) |sentinel_ptr| {
         const sentinel: pointer_info.child = comptime mem.pointerOpaque(pointer_info.child, sentinel_ptr).*;
-        const ret: @TypeOf(any) = try meta.wrap(
-            allocator.allocateWithSentinelIrreversible(pointer_info.child, any.len, sentinel),
+        const ret: []pointer_info.child = try meta.wrap(
+            allocator.allocate(pointer_info.child, any.len +% 1),
         );
+        ret.ptr[ret.len] = sentinel;
         for (ret, 0..) |*ptr, i| {
             ptr.* = try meta.wrap(
                 write(allocator, addr, any[i]),
             );
         }
-        return toOffset(ret, addr);
+        return toOffset(ret, addr)[0.. :sentinel];
     } else {
-        const ret: @TypeOf(any) = try meta.wrap(
-            allocator.allocateIrreversible(pointer_info.child, any.len),
+        const ret: []pointer_info.child = try meta.wrap(
+            allocator.allocate(pointer_info.child, any.len),
         );
         for (ret, 0..) |*ptr, i| {
             ptr.* = try meta.wrap(
@@ -250,7 +251,7 @@ pub fn genericSerializeInternal(allocator: anytype, s_ab_addr: u64, any: anytype
     try meta.wrap(
         allocator.mapBelow(s_up_addr),
     );
-    allocator.allocate(s_up_addr);
+    allocator.increment(s_up_addr);
     var t_ab_addr: u64 = s_ab_addr;
     inline for (0..comptime meta.sliceLevel(S)) |lvl| {
         t_ab_addr = try meta.wrap(
@@ -365,7 +366,7 @@ pub fn serialRead(comptime serial_spec: SerialSpec, comptime S: type, allocator:
         file.status(stat_spec, fd),
     );
     const buf: []u8 = try meta.wrap(
-        allocator.allocateIrreversible(u8, st.size),
+        allocator.allocate(u8, st.size),
     );
     try meta.wrap(
         file.read(read_spec, fd, buf[0..st.size]),
