@@ -1517,3 +1517,359 @@ pub fn formatLength(cmd: *const tasks.FormatCommand, zig_exe: []const u8, root_p
     }
     return len +% root_path.formatLength();
 }
+pub fn tblgenWriteBuf(cmd: *const tasks.TblgenCommand, zig_exe: []const u8, root_path: types.Path, buf: [*]u8) u64 {
+    @setRuntimeSafety(safety);
+    mach.memcpy(buf, zig_exe.ptr, zig_exe.len);
+    var len: u64 = zig_exe.len;
+    buf[len] = 0;
+    len +%= 1;
+    mach.memcpy(buf + len, "fmt\x00", 4);
+    len +%= 4;
+    if (cmd.color) |color| {
+        @ptrCast(*[8]u8, buf + len).* = "--color\x00".*;
+        len +%= 8;
+        mach.memcpy(buf + len, @tagName(color).ptr, @tagName(color).len);
+        len +%= @tagName(color).len;
+        buf[len] = 0;
+        len +%= 1;
+    }
+    if (cmd.macros) |macros| {
+        len +%= formatMap(macros).formatWriteBuf(buf + len);
+    }
+    if (cmd.include) |include| {
+        for (include) |value| {
+            @ptrCast(*[3]u8, buf + len).* = "-I\x00".*;
+            len +%= 3;
+            mach.memcpy(buf + len, value.ptr, value.len);
+            len +%= value.len;
+            buf[len] = 0;
+            len +%= 1;
+        }
+    }
+    if (cmd.dependencies) |dependencies| {
+        for (dependencies) |value| {
+            @ptrCast(*[3]u8, buf + len).* = "-d\x00".*;
+            len +%= 3;
+            mach.memcpy(buf + len, value.ptr, value.len);
+            len +%= value.len;
+            buf[len] = 0;
+            len +%= 1;
+        }
+    }
+    if (cmd.print_records) {
+        @ptrCast(*[16]u8, buf + len).* = "--print-records\x00".*;
+        len +%= 16;
+    }
+    if (cmd.print_detailed_records) {
+        @ptrCast(*[25]u8, buf + len).* = "--print-detailed-records\x00".*;
+        len +%= 25;
+    }
+    if (cmd.null_backend) {
+        @ptrCast(*[15]u8, buf + len).* = "--null-backend\x00".*;
+        len +%= 15;
+    }
+    if (cmd.dump_json) {
+        @ptrCast(*[12]u8, buf + len).* = "--dump-json\x00".*;
+        len +%= 12;
+    }
+    if (cmd.gen_emitter) {
+        @ptrCast(*[14]u8, buf + len).* = "--gen-emitter\x00".*;
+        len +%= 14;
+    }
+    if (cmd.gen_register_info) {
+        @ptrCast(*[20]u8, buf + len).* = "--gen-register-info\x00".*;
+        len +%= 20;
+    }
+    if (cmd.gen_instr_info) {
+        @ptrCast(*[17]u8, buf + len).* = "--gen-instr-info\x00".*;
+        len +%= 17;
+    }
+    if (cmd.gen_instr_docs) {
+        @ptrCast(*[17]u8, buf + len).* = "--gen-instr-docs\x00".*;
+        len +%= 17;
+    }
+    if (cmd.gen_callingconv) {
+        @ptrCast(*[18]u8, buf + len).* = "--gen-callingconv\x00".*;
+        len +%= 18;
+    }
+    if (cmd.gen_asm_writer) {
+        @ptrCast(*[17]u8, buf + len).* = "--gen-asm-writer\x00".*;
+        len +%= 17;
+    }
+    if (cmd.gen_disassembler) {
+        @ptrCast(*[19]u8, buf + len).* = "--gen-disassembler\x00".*;
+        len +%= 19;
+    }
+    if (cmd.gen_pseudo_lowering) {
+        @ptrCast(*[22]u8, buf + len).* = "--gen-pseudo-lowering\x00".*;
+        len +%= 22;
+    }
+    if (cmd.gen_compress_inst_emitter) {
+        @ptrCast(*[28]u8, buf + len).* = "--gen-compress-inst-emitter\x00".*;
+        len +%= 28;
+    }
+    if (cmd.gen_asm_matcher) {
+        @ptrCast(*[18]u8, buf + len).* = "--gen-asm-matcher\x00".*;
+        len +%= 18;
+    }
+    if (cmd.gen_dag_isel) {
+        @ptrCast(*[15]u8, buf + len).* = "--gen-dag-isel\x00".*;
+        len +%= 15;
+    }
+    if (cmd.gen_dfa_packetizer) {
+        @ptrCast(*[21]u8, buf + len).* = "--gen-dfa-packetizer\x00".*;
+        len +%= 21;
+    }
+    if (cmd.gen_fast_isel) {
+        @ptrCast(*[16]u8, buf + len).* = "--gen-fast-isel\x00".*;
+        len +%= 16;
+    }
+    if (cmd.gen_subtarget) {
+        @ptrCast(*[16]u8, buf + len).* = "--gen-subtarget\x00".*;
+        len +%= 16;
+    }
+    if (cmd.gen_intrinsic_enums) {
+        @ptrCast(*[22]u8, buf + len).* = "--gen-intrinsic-enums\x00".*;
+        len +%= 22;
+    }
+    if (cmd.gen_intrinsic_impl) {
+        @ptrCast(*[21]u8, buf + len).* = "--gen-intrinsic-impl\x00".*;
+        len +%= 21;
+    }
+    if (cmd.print_enums) {
+        @ptrCast(*[14]u8, buf + len).* = "--print-enums\x00".*;
+        len +%= 14;
+    }
+    if (cmd.print_sets) {
+        @ptrCast(*[13]u8, buf + len).* = "--print-sets\x00".*;
+        len +%= 13;
+    }
+    if (cmd.gen_opt_parser_defs) {
+        @ptrCast(*[22]u8, buf + len).* = "--gen-opt-parser-defs\x00".*;
+        len +%= 22;
+    }
+    if (cmd.gen_opt_rst) {
+        @ptrCast(*[14]u8, buf + len).* = "--gen-opt-rst\x00".*;
+        len +%= 14;
+    }
+    if (cmd.gen_ctags) {
+        @ptrCast(*[12]u8, buf + len).* = "--gen-ctags\x00".*;
+        len +%= 12;
+    }
+    if (cmd.gen_attrs) {
+        @ptrCast(*[12]u8, buf + len).* = "--gen-attrs\x00".*;
+        len +%= 12;
+    }
+    if (cmd.gen_searchable_tables) {
+        @ptrCast(*[24]u8, buf + len).* = "--gen-searchable-tables\x00".*;
+        len +%= 24;
+    }
+    if (cmd.gen_global_isel) {
+        @ptrCast(*[18]u8, buf + len).* = "--gen-global-isel\x00".*;
+        len +%= 18;
+    }
+    if (cmd.gen_global_isel_combiner) {
+        @ptrCast(*[27]u8, buf + len).* = "--gen-global-isel-combiner\x00".*;
+        len +%= 27;
+    }
+    if (cmd.gen_x86_EVEX2VEX_tables) {
+        @ptrCast(*[26]u8, buf + len).* = "--gen-x86-EVEX2VEX-tables\x00".*;
+        len +%= 26;
+    }
+    if (cmd.gen_x86_fold_tables) {
+        @ptrCast(*[22]u8, buf + len).* = "--gen-x86-fold-tables\x00".*;
+        len +%= 22;
+    }
+    if (cmd.gen_x86_mnemonic_tables) {
+        @ptrCast(*[26]u8, buf + len).* = "--gen-x86-mnemonic-tables\x00".*;
+        len +%= 26;
+    }
+    if (cmd.gen_register_bank) {
+        @ptrCast(*[20]u8, buf + len).* = "--gen-register-bank\x00".*;
+        len +%= 20;
+    }
+    if (cmd.gen_exegesis) {
+        @ptrCast(*[15]u8, buf + len).* = "--gen-exegesis\x00".*;
+        len +%= 15;
+    }
+    if (cmd.gen_automata) {
+        @ptrCast(*[15]u8, buf + len).* = "--gen-automata\x00".*;
+        len +%= 15;
+    }
+    if (cmd.gen_directive_decl) {
+        @ptrCast(*[21]u8, buf + len).* = "--gen-directive-decl\x00".*;
+        len +%= 21;
+    }
+    if (cmd.gen_directive_impl) {
+        @ptrCast(*[21]u8, buf + len).* = "--gen-directive-impl\x00".*;
+        len +%= 21;
+    }
+    if (cmd.gen_dxil_operation) {
+        @ptrCast(*[21]u8, buf + len).* = "--gen-dxil-operation\x00".*;
+        len +%= 21;
+    }
+    if (cmd.gen_riscv_target_def) {
+        @ptrCast(*[23]u8, buf + len).* = "--gen-riscv-target_def\x00".*;
+        len +%= 23;
+    }
+    if (cmd.output) |output| {
+        @ptrCast(*[3]u8, buf + len).* = "-o\x00".*;
+        len +%= 3;
+        mach.memcpy(buf + len, output.ptr, output.len);
+        len +%= output.len;
+        buf[len] = 0;
+        len +%= 1;
+    }
+    len +%= root_path.tblgenWriteBuf(buf + len);
+    buf[len] = 0;
+    return len;
+}
+pub fn tblgenLength(cmd: *const tasks.TblgenCommand, zig_exe: []const u8, root_path: types.Path) u64 {
+    @setRuntimeSafety(safety);
+    var len: u64 = zig_exe.len +% 5;
+    if (cmd.color) |color| {
+        len +%= 8;
+        len +%= @tagName(color).len;
+        len +%= 1;
+    }
+    if (cmd.macros) |macros| {
+        len +%= formatMap(macros).formatLength();
+    }
+    if (cmd.include) |include| {
+        for (include) |value| {
+            len +%= 3;
+            len +%= value.len;
+            len +%= 1;
+        }
+    }
+    if (cmd.dependencies) |dependencies| {
+        for (dependencies) |value| {
+            len +%= 3;
+            len +%= value.len;
+            len +%= 1;
+        }
+    }
+    if (cmd.print_records) {
+        len +%= 16;
+    }
+    if (cmd.print_detailed_records) {
+        len +%= 25;
+    }
+    if (cmd.null_backend) {
+        len +%= 15;
+    }
+    if (cmd.dump_json) {
+        len +%= 12;
+    }
+    if (cmd.gen_emitter) {
+        len +%= 14;
+    }
+    if (cmd.gen_register_info) {
+        len +%= 20;
+    }
+    if (cmd.gen_instr_info) {
+        len +%= 17;
+    }
+    if (cmd.gen_instr_docs) {
+        len +%= 17;
+    }
+    if (cmd.gen_callingconv) {
+        len +%= 18;
+    }
+    if (cmd.gen_asm_writer) {
+        len +%= 17;
+    }
+    if (cmd.gen_disassembler) {
+        len +%= 19;
+    }
+    if (cmd.gen_pseudo_lowering) {
+        len +%= 22;
+    }
+    if (cmd.gen_compress_inst_emitter) {
+        len +%= 28;
+    }
+    if (cmd.gen_asm_matcher) {
+        len +%= 18;
+    }
+    if (cmd.gen_dag_isel) {
+        len +%= 15;
+    }
+    if (cmd.gen_dfa_packetizer) {
+        len +%= 21;
+    }
+    if (cmd.gen_fast_isel) {
+        len +%= 16;
+    }
+    if (cmd.gen_subtarget) {
+        len +%= 16;
+    }
+    if (cmd.gen_intrinsic_enums) {
+        len +%= 22;
+    }
+    if (cmd.gen_intrinsic_impl) {
+        len +%= 21;
+    }
+    if (cmd.print_enums) {
+        len +%= 14;
+    }
+    if (cmd.print_sets) {
+        len +%= 13;
+    }
+    if (cmd.gen_opt_parser_defs) {
+        len +%= 22;
+    }
+    if (cmd.gen_opt_rst) {
+        len +%= 14;
+    }
+    if (cmd.gen_ctags) {
+        len +%= 12;
+    }
+    if (cmd.gen_attrs) {
+        len +%= 12;
+    }
+    if (cmd.gen_searchable_tables) {
+        len +%= 24;
+    }
+    if (cmd.gen_global_isel) {
+        len +%= 18;
+    }
+    if (cmd.gen_global_isel_combiner) {
+        len +%= 27;
+    }
+    if (cmd.gen_x86_EVEX2VEX_tables) {
+        len +%= 26;
+    }
+    if (cmd.gen_x86_fold_tables) {
+        len +%= 22;
+    }
+    if (cmd.gen_x86_mnemonic_tables) {
+        len +%= 26;
+    }
+    if (cmd.gen_register_bank) {
+        len +%= 20;
+    }
+    if (cmd.gen_exegesis) {
+        len +%= 15;
+    }
+    if (cmd.gen_automata) {
+        len +%= 15;
+    }
+    if (cmd.gen_directive_decl) {
+        len +%= 21;
+    }
+    if (cmd.gen_directive_impl) {
+        len +%= 21;
+    }
+    if (cmd.gen_dxil_operation) {
+        len +%= 21;
+    }
+    if (cmd.gen_riscv_target_def) {
+        len +%= 23;
+    }
+    if (cmd.output) |output| {
+        len +%= 3;
+        len +%= output.len;
+        len +%= 1;
+    }
+    return len +% root_path.tblgenLength();
+}
