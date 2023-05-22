@@ -1870,13 +1870,13 @@ pub const SimpleAllocator = struct {
     pub inline fn discard(allocator: *Allocator) void {
         allocator.next = allocator.start;
     }
-    pub inline fn unmap(allocator: *Allocator) void {
-        sys.call(.munmap, .{}, void, .{ allocator.start, allocator.finish -% allocator.start });
+    pub fn unmap(allocator: *Allocator) void {
+        mem.unmap(.{ .errors = .{} }, allocator.start, allocator.finish - allocator.start);
         allocator.next = allocator.start;
         allocator.finish = allocator.start;
     }
     pub fn init_arena(arena: mem.Arena) Allocator {
-        map(.{ .errors = .{} }, arena.lb_addr, 4096);
+        mem.map(.{ .errors = .{} }, arena.lb_addr, 4096);
         return .{
             .start = arena.lb_addr,
             .next = arena.lb_addr,
