@@ -17,6 +17,8 @@ const config = @import("./config.zig");
 const ptr_fn = @import("./ptr_fn.zig");
 pub usingnamespace proc.start;
 pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
+pub const runtime_assertions: bool = false;
+pub const show_expressions: bool = false;
 const write_separate_source_files: bool = false;
 const Allocator = config.Allocator;
 const AddressSpace = Allocator.AddressSpace;
@@ -307,6 +309,8 @@ fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: 
         expr.dereference(expr.call(&pointer_opaque_call_sentinel));
     var pointer_one_call_undefined_deref_stx: [2]expr.Expr =
         expr.dereference(expr.call(&pointer_one_call_undefined));
+    array.writeMany("{\n");
+    defer array.writeMany("}\n");
     switch (ptr_fn_info) {
         .allocated_byte_address => {
             array.writeMany(tok.return_keyword);
@@ -822,18 +826,12 @@ fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: 
 }
 fn writeFunctions(allocator: *Allocator, array: *Array, impl_variant: *const types.Implementation) void {
     for (ptr_fn.key) |ptr_fn_info| {
-        if (ptr_fn_info == .deallocate) {
-            continue;
+        if (ptr_fn_info != .deallocate and ptr_fn_info.hasCapability(impl_variant)) {
+            var info: Info = .{ .start = array.len() };
+            ptr_fn_info.writeSignature(array, impl_variant);
+            writeFunctionBodyGeneric(allocator, array, impl_variant, ptr_fn_info, &info);
+            writeSimpleRedecl(array, &ptr_fn_info, &info);
         }
-        if (!ptr_fn_info.hasCapability(impl_variant)) {
-            continue;
-        }
-        var info: Info = .{ .start = array.len() };
-        ptr_fn_info.writeSignature(array, impl_variant);
-        array.writeMany("{\n");
-        writeFunctionBodyGeneric(allocator, array, impl_variant, ptr_fn_info, &info);
-        array.writeMany("}\n");
-        writeSimpleRedecl(array, &ptr_fn_info, &info);
     }
 }
 fn writeDeclarations(array: *Array, impl_variant: *const types.Implementation) void {
