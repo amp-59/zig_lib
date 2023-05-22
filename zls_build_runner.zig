@@ -7,6 +7,7 @@ const zig_lib = blk: {
         break :blk root.zig_lib;
     }
 };
+const mem = zig_lib.mem;
 const proc = zig_lib.proc;
 const meta = zig_lib.meta;
 const file = zig_lib.file;
@@ -136,10 +137,10 @@ fn writeModules(pkgs: []BuildConfig.Pkg, builder: *Builder) []BuildConfig.Pkg {
 }
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     var address_space: Builder.AddressSpace = .{};
-    var allocator: Builder.Allocator = try meta.wrap(
-        Builder.Allocator.init(&address_space, Builder.max_thread_count),
-    );
-    defer allocator.deinit(&address_space, Builder.max_thread_count);
+    var allocator: Builder.Allocator = if (Builder.Allocator == mem.SimpleAllocator)
+        Builder.Allocator.init_arena(Builder.AddressSpace.arena(Builder.max_thread_count))
+    else
+        Builder.Allocator.init(&address_space, Builder.max_thread_count);
     if (args.len < 5) {
         return error.MissingEnvironmentPaths;
     }
@@ -149,14 +150,14 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     );
     const pkgs_len: u64 = lengthModules(&builder);
     const pkgs: []BuildConfig.Pkg = try meta.wrap(
-        allocator.allocateIrreversible(BuildConfig.Pkg, pkgs_len),
+        allocator.allocate(BuildConfig.Pkg, pkgs_len),
     );
     const cfg: BuildConfig = .{
         .packages = writeModules(pkgs, &builder),
         .include_dirs = &.{},
     };
     const buf: []u8 = try meta.wrap(
-        allocator.allocateIrreversible(u8, lengthJSON(&cfg)),
+        allocator.allocate(u8, lengthJSON(&cfg)),
     );
     try file.write(.{}, 1, buf[0..writeJSON(&cfg, buf)]);
 }
