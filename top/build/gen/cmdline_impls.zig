@@ -808,6 +808,54 @@ fn writeFormatLength(array: *Array, arrays: *Arrays, indices: *Indices) void {
         array.writeMany("}\n");
     }
 }
+fn writeTblgenWrite(array: *Array, arrays: *Arrays, indices: *Indices) void {
+    if (!abstract) {
+        if (primitive) {
+            array.writeMany("pub fn tblgenWriteBuf(cmd:*const tasks.TblgenCommand,zig_exe:[]const u8,root_path:types.Path,buf:[*]u8)u64{\n");
+            array.writeMany(set_runtime_safety_s);
+            array.writeMany(zig_exe_s);
+            array.writeMany(
+                \\mach.memcpy(buf+len,"fmt\x00",4);
+                \\len+%=4;
+                \\
+            );
+        } else {
+            array.writeMany("pub fn tblgenWrite(cmd:*const tasks.TblgenCommand,zig_exe:[]const u8,root_path:types.Path,array:anytype)void{\n");
+            array.writeMany(set_runtime_safety_s);
+            array.writeMany(zig_exe_s);
+            array.writeMany("array.writeMany(\"fmt\\x00\");\n");
+        }
+    }
+    writeFunctionBody(array, attr.tblgen_command_options, .write, arrays, indices);
+    if (!abstract) {
+        if (primitive) {
+            array.writeMany(
+                \\len+%=root_path.tblgenWriteBuf(buf+len);
+                \\buf[len]=0;
+                \\return len;
+                \\
+            );
+        } else {
+            array.writeMany("array.writeTblgen(root_path);\n");
+        }
+        array.writeMany("}\n");
+    }
+}
+fn writeTblgenLength(array: *Array, arrays: *Arrays, indices: *Indices) void {
+    if (!abstract) {
+        array.writeMany("pub fn tblgenLength(cmd:*const tasks.TblgenCommand,zig_exe:[]const u8,root_path:types.Path)u64{");
+        array.writeMany(set_runtime_safety_s);
+        array.writeMany("var len:u64=zig_exe.len+%5;\n");
+    }
+    writeFunctionBody(array, attr.tblgen_command_options, .length, arrays, indices);
+    if (!abstract) {
+        array.writeMany(
+            \\return len+%root_path.tblgenLength();
+            \\
+        );
+        array.writeMany("}\n");
+    }
+}
 fn writeBuildCommandLine(array: *Array, arrays: *Arrays, indices: *Indices) void {
     writeBuildWrite(array, arrays, indices);
     writeBuildLength(array, arrays, indices);
@@ -819,6 +867,10 @@ fn writeFormatCommandLine(array: *Array, arrays: *Arrays, indices: *Indices) voi
 fn writeArchiveCommandLine(array: *Array, arrays: *Arrays, indices: *Indices) void {
     writeArchiveWrite(array, arrays, indices);
     writeArchiveLength(array, arrays, indices);
+}
+fn writeTblgenCommandLine(array: *Array, arrays: *Arrays, indices: *Indices) void {
+    writeTblgenWrite(array, arrays, indices);
+    writeTblgenLength(array, arrays, indices);
 }
 pub fn main() !void {
     var allocator: mem.SimpleAllocator = .{};
@@ -836,6 +888,7 @@ pub fn main() !void {
     writeBuildCommandLine(array, arrays, build_idc);
     writeArchiveCommandLine(array, arrays, build_idc);
     writeFormatCommandLine(array, arrays, format_idc);
+    writeTblgenCommandLine(array, arrays, build_idc);
     if (abstract) {
         gen.truncateFile(write_spec, config.abstract_cmdline_path, array.readAll());
     } else {
