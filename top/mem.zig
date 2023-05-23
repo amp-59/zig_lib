@@ -787,7 +787,6 @@ pub fn testReleaseElementary(comptime AddressSpace: type, address_space: *Addres
     }
     return ret;
 }
-
 pub fn map(comptime spec: MapSpec, addr: u64, len: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
     const mmap_prot: Prot.Options = comptime spec.prot();
     const mmap_flags: Map.Options = comptime spec.flags();
@@ -1389,7 +1388,6 @@ pub const AbstractSpec = union(enum) {
         });
     }
 };
-
 fn lhs(comptime T: type, comptime U: type, lu_values: []const T, ax_values: []const U) []const T {
     const lb_addr: u64 = @ptrToInt(lu_values.ptr);
     const ab_addr: u64 = @ptrToInt(ax_values.ptr);
@@ -1488,6 +1486,21 @@ pub fn indexOfFirstEqualMany(comptime T: type, sub_values: []const T, values: []
     }
     return null;
 }
+pub fn indexOfFirstEqualAny(comptime T: type, sub_values: []const T, values: []const T) ?u64 {
+    if (sub_values.len > values.len) {
+        return null;
+    }
+    var idx: u64 = 0;
+    while (idx != values.len) {
+        for (sub_values) |value| {
+            if (values[idx] == value) {
+                return idx;
+            }
+        }
+        idx +%= 1;
+    }
+    return null;
+}
 pub fn indexOfLastEqualMany(comptime T: type, sub_values: []const T, values: []const T) ?u64 {
     if (sub_values.len > values.len) {
         return null;
@@ -1498,6 +1511,21 @@ pub fn indexOfLastEqualMany(comptime T: type, sub_values: []const T, values: []c
         idx -%= 1;
         if (testEqualManyFront(T, sub_values, values[idx..])) {
             return idx;
+        }
+    }
+    return null;
+}
+pub fn indexOfLastEqualAny(comptime T: type, sub_values: []const T, values: []const T) ?u64 {
+    if (sub_values.len > values.len) {
+        return null;
+    }
+    var idx: u64 = values.len;
+    while (idx != 0) {
+        idx -%= 1;
+        for (sub_values) |value| {
+            if (values[idx] == value) {
+                return idx;
+            }
         }
     }
     return null;
@@ -1650,7 +1678,6 @@ pub fn readAfterLastEqualOneOrElseWithSentinel(
 ) [:sentinel]const T {
     return readAfterLastEqualOneWithSentinel(T, sentinel, value, values) orelse values;
 }
-
 pub fn readIntNative(comptime T: type, bytes: *const [@divExact(@typeInfo(T).Int.bits, 8)]u8) T {
     return @ptrCast(*align(1) const T, bytes).*;
 }
@@ -1763,14 +1790,12 @@ fn AsBytesReturnType(comptime P: type) type {
         },
     });
 }
-
 /// Given a pointer to a single item, returns a slice of the underlying bytes, preserving pointer attributes.
 pub fn asBytes(ptr: anytype) AsBytesReturnType(@TypeOf(ptr)) {
     const T = AsBytesReturnType(@TypeOf(ptr));
     return @ptrCast(T, @alignCast(@typeInfo(T).Pointer.alignment, ptr));
 }
 pub const toBytes = meta.toBytes;
-
 pub fn propagateSearch(comptime T: type, arg1: []const T, arg2: []const T, index: u64) ?u64 {
     const needle: []const u8 = if (arg1.len < arg2.len) arg1 else arg2;
     const haystack: []const u8 = if (arg1.len < arg2.len) arg2 else arg1;
@@ -1815,7 +1840,7 @@ pub fn orderedMatches(comptime T: type, arg1: []const T, arg2: []const T) u64 {
     while (l_idx +% mats < l_values.len) : (l_idx +%= 1) {
         var r_idx: u64 = 0;
         while (r_idx != r_values.len) : (r_idx +%= 1) {
-            mats +%= builtin.int(u64, l_values[l_idx +% mats] == r_values[r_idx]);
+            mats +%= @boolToInt(l_values[l_idx +% mats] == r_values[r_idx]);
         }
     }
     return mats;
@@ -1824,7 +1849,6 @@ pub const SimpleAllocator = struct {
     start: u64 = 0x40000000,
     next: u64 = 0x40000000,
     finish: u64 = 0x40000000,
-
     const Allocator = @This();
     pub const Save = struct { u64 };
     pub const min_align_of: u64 = if (@hasDecl(builtin.root, "min_align_of")) builtin.root.min_align_of else 8;
