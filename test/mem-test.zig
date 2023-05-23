@@ -208,6 +208,7 @@ fn testAutomaticImplementation() !void {
     }
 }
 fn testUtilityTestFunctions() !void {
+    const hello: [:0]const u8 = "Hello, world!";
     { // strings
         { // true
             try builtin.expect(mem.testEqualManyFront(u8, "1", "10"));
@@ -221,21 +222,26 @@ fn testUtilityTestFunctions() !void {
             try builtin.expect(!mem.testEqualManyFront(u8, "012", "10"));
             try builtin.expect(!mem.testEqualManyBack(u8, "124", "10"));
         }
+
         { // result
-            try builtin.expectEqual(u64, 5, mem.indexOfFirstEqualOne(u8, ',', "Hello, world!").?);
-            try builtin.expectEqual(u64, 0, mem.indexOfFirstEqualOne(u8, 'H', "Hello, world!").?);
-            try builtin.expectEqual(u64, 12, mem.indexOfFirstEqualOne(u8, '!', "Hello, world!").?);
-            try builtin.expectEqual(u64, 0, mem.indexOfFirstEqualMany(u8, "Hello", "Hello, world!").?);
-            try builtin.expectEqual(u64, 7, mem.indexOfFirstEqualMany(u8, "world", "Hello, world!").?);
-            try builtin.expectEqual(u64, 7, mem.indexOfLastEqualMany(u8, "world", "Hello, world!").?);
+            try builtin.expectEqual(u64, 5, mem.indexOfFirstEqualOne(u8, ',', hello).?);
+            try builtin.expectEqual(u64, 0, mem.indexOfFirstEqualOne(u8, 'H', hello).?);
+            try builtin.expectEqual(u64, 12, mem.indexOfFirstEqualOne(u8, '!', hello).?);
+            try builtin.expectEqual(u64, 0, mem.indexOfFirstEqualMany(u8, "Hello", hello).?);
+            try builtin.expectEqual(u64, 7, mem.indexOfFirstEqualMany(u8, "world", hello).?);
+            try builtin.expectEqual(u64, 7, mem.indexOfLastEqualMany(u8, "world", hello).?);
+            try builtin.expectEqual(u64, 5, mem.indexOfFirstEqualAny(u8, ", ", hello).?);
+            try builtin.expectEqual(u64, 6, mem.indexOfLastEqualAny(u8, ", ", hello).?);
+            try builtin.expectEqual(u64, 0, mem.indexOfFirstEqualAny(u8, "!H", hello).?);
+            try builtin.expectEqual(u64, 12, mem.indexOfLastEqualAny(u8, "!H", hello).?);
         }
         { // null
-            try builtin.expect(mem.indexOfFirstEqualOne(u8, 'f', "Hello, world!") == null);
-            try builtin.expect(mem.indexOfFirstEqualMany(u8, "foo", "Hello, world!") == null);
+            try builtin.expect(mem.indexOfFirstEqualOne(u8, 'f', hello) == null);
+            try builtin.expect(mem.indexOfFirstEqualMany(u8, "foo", hello) == null);
         }
         { // impossible (null)
-            try builtin.expect(mem.indexOfFirstEqualMany(u8, "Hello, world!", "foo") == null);
-            try builtin.expect(mem.indexOfFirstEqualMany(u8, "", "Hello, world!") == null);
+            try builtin.expect(mem.indexOfFirstEqualMany(u8, hello, "foo") == null);
+            try builtin.expect(mem.indexOfFirstEqualMany(u8, "", hello) == null);
         }
         {
             try testing.expectEqualMany(u8, ".field", mem.readBeforeFirstEqualMany(u8, " = ", ".field = value,").?);
