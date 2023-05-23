@@ -3,14 +3,11 @@ const sys = @import("./sys.zig");
 const meta = @import("./meta.zig");
 const mach = @import("./mach.zig");
 const builtin = @import("./builtin.zig");
-
 const word_bit_size: u8 = @bitSizeOf(u64);
-
 pub const ResourceError = error{ UnderSupply, OverSupply };
 pub const ResourceErrorPolicy = builtin.InternalError(ResourceError);
 pub const RegularAddressSpaceSpec = RegularMultiArena;
 pub const DiscreteAddressSpaceSpec = DiscreteMultiArena;
-
 // Maybe make generic on Endian.
 // Right now it is difficult to get Zig vectors to produce consistent results,
 // so this is not an option.
@@ -23,7 +20,6 @@ pub fn DiscreteBitSet(comptime elements: u16, comptime val_type: type, comptime 
     const data_type: type = meta.UniformData(bits);
     const data_info: builtin.Type = @typeInfo(data_type);
     const idx_info: builtin.Type = @typeInfo(idx_type);
-
     if (data_info == .Array and idx_info != .Enum) {
         return (extern struct {
             bits: data_type = [1]u64{0} ** data_info.Array.len,
@@ -52,7 +48,6 @@ pub fn DiscreteBitSet(comptime elements: u16, comptime val_type: type, comptime 
             pub const BitSet: type = @This();
             const Word: type = data_type;
             const Shift: type = builtin.ShiftAmount(Word);
-
             pub inline fn indexToShiftAmount(index: idx_type) Shift {
                 return @intCast(Shift, (data_info.Int.bits -% 1) -% index);
             }
@@ -341,7 +336,6 @@ pub fn intersection(comptime A: type, s_arena: Arena, t_arena: Arena) ?A {
         },
     };
 }
-
 pub const Arena = extern struct {
     lb_addr: u64,
     up_addr: u64,
@@ -353,7 +347,6 @@ pub const AddressSpaceLogging = packed struct {
     map: builtin.Logging.AcquireError = .{},
     unmap: builtin.Logging.ReleaseError = .{},
 };
-
 pub const AddressSpaceErrors = struct {
     acquire: ResourceErrorPolicy = .{ .throw = error.UnderSupply },
     release: ResourceErrorPolicy = .abort,
@@ -373,12 +366,9 @@ pub const DiscreteMultiArena = struct {
     subspace: ?[]const meta.Generic = null,
     val_type: type = bool,
     idx_type: type = u16,
-
     errors: AddressSpaceErrors = .{},
     logging: AddressSpaceLogging = .{},
-
     pub const MultiArena: type = @This();
-
     fn Directory(comptime multi_arena: MultiArena) type {
         return [multi_arena.list.len]struct {
             field_index: comptime_int,
@@ -504,17 +494,14 @@ pub const RegularMultiArena = struct {
     lb_offset: u64 = 0,
     /// The last arena ends at this offset below the end of the last division.
     up_offset: u64 = 0,
-
     divisions: u64 = 64,
     alignment: u64 = 4096,
     subspace: ?[]const meta.Generic = null,
     val_type: type = bool,
     idx_type: type = u16,
-
     errors: AddressSpaceErrors = .{},
     logging: AddressSpaceLogging = .{},
     options: ArenaOptions = .{},
-
     pub const MultiArena = @This();
     fn Index(comptime multi_arena: MultiArena) type {
         return multi_arena.idx_type;
@@ -554,7 +541,6 @@ pub const RegularMultiArena = struct {
     pub inline fn addressable_byte_count(comptime multi_arena: MultiArena) u64 {
         return mach.sub64(unaddressable_byte_address(multi_arena), addressable_byte_address(multi_arena));
     }
-
     fn referSubRegular(comptime multi_arena: MultiArena, comptime sub_arena: Arena) []const ArenaReference {
         var map_list: []const ArenaReference = meta.empty;
         var max_index: Index(multi_arena) = multi_arena.invert(sub_arena.up_addr);
@@ -878,7 +864,6 @@ pub fn GenericDiscreteAddressSpace(comptime spec: DiscreteAddressSpaceSpec) type
         pub const Index: type = spec.idx_type;
         pub const Value: type = spec.val_type;
         pub const addr_spec: DiscreteAddressSpaceSpec = spec;
-
         pub fn get(address_space: *DiscreteAddressSpace, comptime index: Index) bool {
             return address_space.impl.get(index);
         }
@@ -937,7 +922,6 @@ pub fn GenericDiscreteAddressSpace(comptime spec: DiscreteAddressSpaceSpec) type
 }
 pub const ElementaryAddressSpaceSpec = struct {
     label: ?[]const u8 = null,
-
     lb_addr: u64 = 0x40000000,
     up_addr: u64 = 0x800000000000,
     errors: AddressSpaceErrors,
@@ -1051,7 +1035,6 @@ const common = struct {
         );
     }
 };
-
 fn GenericAddressSpace(comptime AddressSpace: type) type {
     return struct {
         pub fn formatWrite(address_space: AddressSpace, array: anytype) void {

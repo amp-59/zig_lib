@@ -1,10 +1,8 @@
 const mem = @import("./mem.zig");
 const spec = @import("./spec.zig");
 const builtin = @import("./builtin.zig");
-
 pub const Index = u32;
 pub const Offset = u32;
-
 pub const Allocator = struct {
     const spec_errors: mem.AllocatorErrors = .{};
     const AddressSpace = builtin.AddressSpace();
@@ -37,23 +35,16 @@ pub const Allocator = struct {
         .errors = spec.allocator.errors.noexcept,
     });
 };
-
 pub const SourceArray = Allocator.Node.StructuredStreamViewWithSentinel(u8, 0);
-
 pub const ProtoTokenArray = Allocator.Node.StructuredHolder(Token.Info);
 pub const TokenArray = Allocator.Node.StructuredStreamView(Token.Info);
-
 pub const ProtoErrorArray = Allocator.Error.StructuredHolder(AstError);
 pub const ErrorArray = Allocator.Error.StructuredView(AstError);
-
 pub const ProtoNodeArray = Allocator.Node.StructuredHolder(AstNode);
 pub const NodeArray = Allocator.Node.StructuredView(AstNode);
-
 pub const ProtoExtraArray = Allocator.Extra.UnstructuredHolder(4, 4);
 pub const ExtraArray = Allocator.Extra.UnstructuredView(4, 4);
-
 pub const StateArray = Allocator.State.StructuredHolder(u32);
-
 pub const Token = struct {
     tag: Tag,
     loc: Loc,
