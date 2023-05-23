@@ -7,7 +7,7 @@ const builtin = gen.builtin;
 const tok = @import("./tok.zig");
 const expr = @import("./expr.zig");
 const types = @import("./types.zig");
-const impl_fn = @import("./impl_fn.zig");
+const ptr_fn = @import("./ptr_fn.zig");
 const alloc_fn = @import("./alloc_fn.zig");
 
 pub usingnamespace proc.start;
@@ -18,16 +18,16 @@ pub const show_expressions: bool = false;
 
 fn writeFunctionBody(allocator: *types.Allocator, array: *types.Array, impl_variant: *const types.Container, alloc_fn_info: alloc_fn.Fn) void {
     _ = allocator;
-    const impl_fn_info: impl_fn.Fn = blk: {
+    const ptr_fn_info: ptr_fn.Fn = blk: {
         if (alloc_fn_info == .allocate) {
-            break :blk impl_fn.Fn.allocate;
+            break :blk ptr_fn.Fn.allocate;
         }
         if (alloc_fn_info == .reallocate) {
-            break :blk impl_fn.Fn.reallocate;
+            break :blk ptr_fn.Fn.reallocate;
         }
-        break :blk impl_fn.Fn.resize;
+        break :blk ptr_fn.Fn.resize;
     };
-    const arg_list: gen.ArgList = impl_fn_info.argList(impl_variant, .Argument);
+    const arg_list: gen.ArgList = ptr_fn_info.argList(impl_variant, .Argument);
     var decl_list: gen.DeclList = undefined;
     decl_list.len = 0;
 
