@@ -43,6 +43,13 @@ pub const ArgInfo = struct {
         repeatable_tag,
     };
     pub const immediate: u8 = 255;
+    fn typeDescr(any: anytype) ProtoTypeDescr {
+        if (@TypeOf(any) == type) {
+            return ProtoTypeDescr.init(any);
+        } else {
+            return ProtoTypeDescr{ .type_name = any };
+        }
+    }
     fn optionalTypeDescr(any: anytype) ProtoTypeDescr {
         if (@TypeOf(any) == type) {
             return optional(&ProtoTypeDescr.init(any));
@@ -53,8 +60,8 @@ pub const ArgInfo = struct {
     pub fn string(comptime T: type) ArgInfo {
         return .{ .tag = .string, .type = ProtoTypeDescr.init(T) };
     }
-    pub fn tag(comptime T: type) ArgInfo {
-        return .{ .tag = .tag, .type = ProtoTypeDescr.init(T) };
+    pub fn tag(comptime any: anytype) ArgInfo {
+        return .{ .tag = .tag, .type = typeDescr(any) };
     }
     pub fn integer(comptime T: type) ArgInfo {
         return .{ .tag = .integer, .type = ProtoTypeDescr.init(T) };
