@@ -336,7 +336,97 @@ pub const ArchiveCommand = struct {
     /// Add auxiliary files to the current archive
     files: ?[]const types.Path = null,
 };
-pub const RanlibCommand = struct {
-    /// Use actual timestamps and uids/gids
-    real_ids: ?bool = null,
+pub const TableGenCommand = struct {
+    /// Use colors in output (default=autodetect)
+    color: ?enum(u2) {
+        on = 0,
+        off = 1,
+        auto = 2,
+    } = null,
+    /// Define macros available within the `@cImport` namespace
+    macros: ?[]const types.Macro = null,
+    /// Add directories to include search path
+    include: ?[]const [:0]const u8 = null,
+    /// Add file dependencies
+    dependencies: ?[]const []const u8 = null,
+    /// Print all records to stdout (default)
+    print_records: bool = false,
+    /// Print full details of all records to stdout
+    print_detailed_records: bool = false,
+    /// Do nothing after parsing (useful for timing)
+    null_backend: bool = false,
+    /// Dump all records as machine-readable JSON
+    dump_json: bool = false,
+    /// Generate machine code emitter
+    gen_emitter: bool = false,
+    /// Generate registers and register classes info
+    gen_register_info: bool = false,
+    /// Generate instruction descriptions
+    gen_instr_info: bool = false,
+    /// Generate instruction documentation
+    gen_instr_docs: bool = false,
+    /// Generate calling convention descriptions
+    gen_callingconv: bool = false,
+    /// Generate assembly writer
+    gen_asm_writer: bool = false,
+    /// Generate disassembler
+    gen_disassembler: bool = false,
+    /// Generate pseudo instruction lowering
+    gen_pseudo_lowering: bool = false,
+    /// Generate RISCV compressed instructions.
+    gen_compress_inst_emitter: bool = false,
+    /// Generate assembly instruction matcher
+    gen_asm_matcher: bool = false,
+    /// Generate a DAG instruction selector
+    gen_dag_isel: bool = false,
+    /// Generate DFA Packetizer for VLIW targets
+    gen_dfa_packetizer: bool = false,
+    /// Generate a "fast" instruction selector
+    gen_fast_isel: bool = false,
+    /// Generate subtarget enumerations
+    gen_subtarget: bool = false,
+    /// Generate intrinsic enums
+    gen_intrinsic_enums: bool = false,
+    /// Generate intrinsic information
+    gen_intrinsic_impl: bool = false,
+    /// Print enum values for a class
+    print_enums: bool = false,
+    /// Print expanded sets for testing DAG exprs
+    print_sets: bool = false,
+    /// Generate option definitions
+    gen_opt_parser_defs: bool = false,
+    /// Generate option RST
+    gen_opt_rst: bool = false,
+    /// Generate ctags-compatible index
+    gen_ctags: bool = false,
+    /// Generate attributes
+    gen_attrs: bool = false,
+    /// Generate generic binary-searchable table
+    gen_searchable_tables: bool = false,
+    /// Generate GlobalISel selector
+    gen_global_isel: bool = false,
+    /// Generate GlobalISel combiner
+    gen_global_isel_combiner: bool = false,
+    /// Generate X86 EVEX to VEX compress tables
+    gen_x86_EVEX2VEX_tables: bool = false,
+    /// Generate X86 fold tables
+    gen_x86_fold_tables: bool = false,
+    /// Generate X86 mnemonic tables
+    gen_x86_mnemonic_tables: bool = false,
+    /// Generate registers bank descriptions
+    gen_register_bank: bool = false,
+    /// Generate llvm-exegesis tables
+    gen_exegesis: bool = false,
+    /// Generate generic automata
+    gen_automata: bool = false,
+    /// Generate directive related declaration code (header file)
+    gen_directive_decl: bool = false,
+    /// Generate directive related implementation code
+    gen_directive_impl: bool = false,
+    /// Generate DXIL operation information
+    gen_dxil_operation: bool = false,
+    /// Generate the list of CPU for RISCV
+    gen_riscv_target_def: bool = false,
+    /// Output file
+    output: ?[]const u8 = null,
 };
