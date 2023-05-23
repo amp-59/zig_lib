@@ -1,5 +1,5 @@
 //! Example build program. Use `zig_lib/support/switch_build_runner.sh` to
-//! switch build runner.
+//! switch build runner or use `zig build --build-runner zig_lib/build_runner.zig`.
 
 // This has to be public so that the zl build runner can use the build import.
 // The standard does not require this, as it is implicitly available as
@@ -28,5 +28,5 @@ var build_cmd: build.BuildCommand = .{
 pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     const all: *Builder.Group = try builder.addGroup(allocator, "all");
 
-    _ = try all.addBuild(allocator, build_cmd, "main", "./src/main.zig");
+    _ = try all.addBuild(allocator, build_cmd, .{ .name = "main", .root = "./src/main.zig" });
 }
