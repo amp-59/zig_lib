@@ -766,7 +766,9 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
 }
 pub fn buildLength(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_path: types.Path) u64 {
     @setRuntimeSafety(false);
-    var len: u64 = zig_exe.len +% @tagName(cmd.kind).len +% 8;
+    var len: u64 = zig_exe.len +% 8;
+    len +%= @tagName(cmd.kind).len;
+    len +%= 1;
     if (cmd.emit_bin) |emit_bin| {
         switch (emit_bin) {
             .yes => |yes| {
@@ -1517,14 +1519,12 @@ pub fn formatLength(cmd: *const tasks.FormatCommand, zig_exe: []const u8, root_p
     }
     return len +% root_path.formatLength();
 }
-pub fn tblgenWriteBuf(cmd: *const tasks.TblgenCommand, zig_exe: []const u8, root_path: types.Path, buf: [*]u8) u64 {
+pub fn tblgenWriteBuf(cmd: *const tasks.TableGenCommand, tblgen_exe: []const u8, td_pathname: [:0]const u8, buf: [*]u8) u64 {
     @setRuntimeSafety(safety);
-    mach.memcpy(buf, zig_exe.ptr, zig_exe.len);
-    var len: u64 = zig_exe.len;
+    mach.memcpy(buf, tblgen_exe.ptr, tblgen_exe.len);
+    var len: u64 = tblgen_exe.len;
     buf[len] = 0;
     len +%= 1;
-    mach.memcpy(buf + len, "fmt\x00", 4);
-    len +%= 4;
     if (cmd.color) |color| {
         @ptrCast(*[8]u8, buf + len).* = "--color\x00".*;
         len +%= 8;
@@ -1538,8 +1538,8 @@ pub fn tblgenWriteBuf(cmd: *const tasks.TblgenCommand, zig_exe: []const u8, root
     }
     if (cmd.include) |include| {
         for (include) |value| {
-            @ptrCast(*[3]u8, buf + len).* = "-I\x00".*;
-            len +%= 3;
+            @ptrCast(*[2]u8, buf + len).* = "-I".*;
+            len +%= 2;
             mach.memcpy(buf + len, value.ptr, value.len);
             len +%= value.len;
             buf[len] = 0;
@@ -1720,13 +1720,14 @@ pub fn tblgenWriteBuf(cmd: *const tasks.TblgenCommand, zig_exe: []const u8, root
         buf[len] = 0;
         len +%= 1;
     }
-    len +%= root_path.tblgenWriteBuf(buf + len);
+    mach.memcpy(buf + len, td_pathname.ptr, td_pathname.len);
+    len +%= td_pathname.len;
     buf[len] = 0;
-    return len;
+    return len +% 1;
 }
-pub fn tblgenLength(cmd: *const tasks.TblgenCommand, zig_exe: []const u8, root_path: types.Path) u64 {
+pub fn tblgenLength(cmd: *const tasks.TableGenCommand, tblgen_exe: []const u8, td_pathname: [:0]const u8) u64 {
     @setRuntimeSafety(safety);
-    var len: u64 = zig_exe.len +% 5;
+    var len: u64 = tblgen_exe.len +% 1;
     if (cmd.color) |color| {
         len +%= 8;
         len +%= @tagName(color).len;
@@ -1737,7 +1738,7 @@ pub fn tblgenLength(cmd: *const tasks.TblgenCommand, zig_exe: []const u8, root_p
     }
     if (cmd.include) |include| {
         for (include) |value| {
-            len +%= 3;
+            len +%= 2;
             len +%= value.len;
             len +%= 1;
         }
@@ -1871,5 +1872,5 @@ pub fn tblgenLength(cmd: *const tasks.TblgenCommand, zig_exe: []const u8, root_p
         len +%= output.len;
         len +%= 1;
     }
-    return len +% root_path.tblgenLength();
+    return len +% td_pathname.len;
 }

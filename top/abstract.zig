@@ -4,13 +4,11 @@ const meta = @import("./meta.zig");
 const parse = @import("./parse.zig");
 const builtin = @import("./builtin.zig");
 const tokenizer = @import("./tokenizer.zig");
-
 const Token = zig.Token;
 const AllocatorN: type = zig.Allocator.Node;
 const AllocatorE: type = zig.Allocator.Error;
 const AllocatorX: type = zig.Allocator.Extra;
 const AllocatorS: type = zig.Allocator.State;
-
 pub const ProtoSyntaxTree = struct {
     source: zig.SourceArray,
     tokens: zig.TokenArray,
@@ -32,14 +30,12 @@ pub const ProtoSyntaxTree = struct {
         };
     }
 };
-
 pub const SyntaxTree = struct {
     source: zig.SourceArray,
     tokens: zig.TokenArray,
     nodes: zig.NodeArray,
     extras: zig.ExtraArray,
     errors: zig.ErrorArray,
-
     pub const Location = struct {
         line: usize,
         column: usize,
