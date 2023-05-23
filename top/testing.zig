@@ -1,7 +1,6 @@
 //! Before the value renderer can be used this import is a place for all
 //! miscellaneous testing functions which will not be used in the long term.
 //! Still more infrastructure is needed.
-
 const mem = @import("./mem.zig");
 const fmt = @import("./fmt.zig");
 const lit = @import("./lit.zig");
@@ -10,7 +9,6 @@ const meta = @import("./meta.zig");
 const spec = @import("./spec.zig");
 const algo = @import("./algo.zig");
 const builtin = @import("./builtin.zig");
-
 fn arrayOfCharsLength(s: []const u8) u64 {
     var len: u64 = 0;
     len += 2;
@@ -62,7 +60,6 @@ pub fn showSpecialCase(comptime T: type, arg1: []const T, arg2: []const T) void 
         builtin.debug.write("\n");
     }
 }
-
 // Q: Why not put this in builtin, according to specification?
 // A: Because without a low level value renderer it can only serve special
 // cases. fault-error-test requires the former two variants render the error
@@ -108,7 +105,6 @@ pub fn arbitraryFieldOrder(comptime T: type) void {
         }
     }
 }
-
 fn writeDepth(array: *mem.StaticString(1048576), depth: u64) void {
     var i: u64 = 0;
     while (i != depth) : (i += 1) {

@@ -8,9 +8,7 @@ const zig_lib = struct {
     const builtin = @import("./builtin.zig");
 };
 const spec = @This();
-
 pub usingnamespace sys;
-
 pub fn add(args1: anytype, args2: anytype) @TypeOf(args1) {
     var ret: @TypeOf(args1) = args1;
     inline for (@typeInfo(@TypeOf(args2)).Struct.fields) |field| {
@@ -97,7 +95,6 @@ pub const reinterpret = struct {
         return rs_1;
     }
 };
-
 pub const channel = struct {
     pub const errors = struct {
         pub const zen: zig_lib.file.ChannelSpec.Errors = .{

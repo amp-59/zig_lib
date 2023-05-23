@@ -152,7 +152,6 @@ pub const S = struct {
     pub const IRWXO: u16    = 0b0000000000000111;
 };
 // zig fmt: on
-
 pub const UTIME = struct {
     pub const NOW: usize = 0x3fffffff;
     pub const OMIT: usize = 0x3ffffffe;
@@ -1053,9 +1052,7 @@ pub const FUTEX = struct {
     pub const REQUEUE: usize = 0x3;
     pub const TRYLOCK_PI: usize = 0x8;
     pub const UNLOCK_PI: usize = 0x7;
-
     pub const WAITERS: usize = 0x80000000;
-
     pub const WAIT = struct {
         // pub const WAIT: usize = 0x0;
         pub const BITSET: usize = 0x9;
@@ -1307,7 +1304,6 @@ pub const ErrorCode = enum(i9) {
     // WOULDBLOCK = -11, // Resource temporarily unavailable
     // DEADLOCK = -35, // Resource deadlock avoided
     // NOTSUP = -95, // Operation not supported
-
     pub inline fn errorName(comptime error_code: ErrorCode) []const u8 {
         switch (error_code) {
             .NULL => return "NotAnError",
@@ -1822,7 +1818,6 @@ pub const Fn = enum(u9) {
     landlock_add_rule = 445,
     landlock_restrict_self = 446,
     memfd_secret = 447,
-
     fn args(comptime function: Fn) comptime_int {
         return switch (function) {
             .fork,
@@ -1831,7 +1826,6 @@ pub const Fn = enum(u9) {
             .geteuid,
             .getegid,
             => 0,
-
             .rmdir,
             .dup,
             .close,
@@ -1840,7 +1834,6 @@ pub const Fn = enum(u9) {
             .exit,
             .chdir,
             => 1,
-
             .memfd_create,
             .stat,
             .fstat,
@@ -1857,7 +1850,6 @@ pub const Fn = enum(u9) {
             .pipe2,
             .listen,
             => 2,
-
             .dup3,
             .read,
             .write,
@@ -1878,14 +1870,12 @@ pub const Fn = enum(u9) {
             .bind,
             .lseek,
             => 3,
-
             .newfstatat,
             .mknodat,
             .readlinkat,
             .openat,
             .rt_sigaction,
             => 4,
-
             .mremap,
             .statx,
             .wait4,
@@ -1894,7 +1884,6 @@ pub const Fn = enum(u9) {
             .execveat,
             .name_to_handle_at,
             => 5,
-
             .futex,
             .mmap,
             => 6,
@@ -2006,7 +1995,6 @@ pub const madvise_errors: []const ErrorCode = &[_]ErrorCode{
     .ACCES, .AGAIN, .BADF, .INVAL, .IO, .NOMEM, .PERM,
 };
 pub const mprotect_errors: []const ErrorCode = &[_]ErrorCode{ .ACCES, .INVAL, .NOMEM };
-
 pub const mkdir_noexcl_errors: []const ErrorCode = &[_]ErrorCode{
     .ACCES,       .BADF,  .DQUOT, .FAULT, .INVAL,  .LOOP, .MLINK,
     .NAMETOOLONG, .NOENT, .NOMEM, .NOSPC, .NOTDIR, .PERM, .ROFS,
@@ -2090,7 +2078,6 @@ pub const futex_errors = &.{
     .NOMEM, .NOSYS, .PERM,   .PERM,  .SRCH, .TIMEDOUT,
 };
 pub const no_errors: []const ErrorCode = &[_]ErrorCode{};
-
 //    Arch/ABI      arg1  arg2  arg3  arg4  arg5  arg6  arg7  Notes
 //    ──────────────────────────────────────────────────────────────
 //    alpha         a0    a1    a2    a3    a4    a5    -
@@ -2119,7 +2106,6 @@ pub const no_errors: []const ErrorCode = &[_]ErrorCode{};
 //    x86-64        rdi   rsi   rdx   r10   r8    r9    -     X
 //    x32           rdi   rsi   rdx   r10   r8    r9    -
 //    xtensa        a6    a3    a4    a5    a8    a9    -
-
 inline fn syscall0(comptime sys_fn_info: Fn, _: [0]usize) isize {
     return asm volatile ("syscall # " ++ @tagName(sys_fn_info)
         : [ret] "={rax}" (-> isize),

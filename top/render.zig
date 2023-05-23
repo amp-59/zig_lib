@@ -13,14 +13,11 @@ const lit = @import("./lit.zig");
 const meta = @import("./meta.zig");
 const builtin = @import("./builtin.zig");
 const abstract = @import("./abstract.zig");
-
 pub const RenderSpec = struct {
     radix: u16 = 10,
     radix_field_name_suffixes: ?[]const RadixFieldName = null,
-
     string_literal: ?bool = true,
     multi_line_string_literal: ?bool = false,
-
     omit_default_fields: bool = true,
     omit_container_decls: bool = true,
     omit_trailing_comma: ?bool = null,
@@ -29,15 +26,12 @@ pub const RenderSpec = struct {
     infer_type_names_recursively: bool = false,
     type_cast_generic: bool = true,
     fast_type_formatter: ?TypeDescrFormatSpec = null,
-
     inline_field_types: bool = true,
     enable_comptime_iterator: bool = false,
     address_view: bool = false,
-
     ignore_formatter_decls: bool = true,
     ignore_reinterpret_decls: bool = true,
     ignore_container_decls: bool = false,
-
     const RadixFieldName = struct {
         radix: u16 = 10,
         prefix: ?[]const u8 = null,
@@ -99,7 +93,6 @@ pub fn AnyFormat(comptime spec: RenderSpec, comptime Type: type) type {
         else => @compileError(@typeName(Type)),
     };
 }
-
 fn GenericRenderFormat(comptime Format: type) type {
     comptime {
         builtin.static.assertNotEqual(builtin.TypeId, @typeInfo(Format), .Pointer);
@@ -194,7 +187,6 @@ pub fn ArrayFormat(comptime spec: RenderSpec, comptime Array: type) type {
 pub const BoolFormat = struct {
     value: bool,
     const Format: type = @This();
-
     pub fn formatWrite(format: Format, array: anytype) void {
         if (format.value) {
             array.writeCount(4, "true".*);
@@ -211,7 +203,6 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
     const T = struct {
         const Format: type = @This();
         value: type,
-
         const omit_trailing_comma: bool = spec.omit_trailing_comma orelse false;
         const default_value_spec: RenderSpec = blk: {
             var tmp: RenderSpec = spec;
@@ -493,7 +484,6 @@ inline fn formatWriteOmitTrailingComma(array: anytype, comptime omit_trailing_co
 inline fn formatLengthOmitTrailingComma(comptime omit_trailing_comma: bool, fields_len: u64) u64 {
     return builtin.int2a(u64, !omit_trailing_comma, fields_len != 0);
 }
-
 pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
     if (!spec.ignore_formatter_decls) {
         if (@hasDecl(Struct, "formatWrite") and @hasDecl(Struct, "formatLength")) {
@@ -1416,7 +1406,6 @@ pub fn FormatFormat(comptime Struct: type) type {
 pub const TypeDescrFormatSpec = struct {
     options: Options = .{},
     tokens: Tokens = .{},
-
     const Options = struct {
         token: type = []const u8,
         depth: u64 = 0,

@@ -583,26 +583,32 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
     return struct {
         const Graphics = GenericArenaAllocatorGraphics(Allocator);
         pub const Save = struct { u64 };
-        pub inline fn create(allocator: *Allocator, comptime s_child: type) *s_child {
+        pub inline fn create(allocator: *Allocator, comptime s_child: type) Allocator.allocate_payload(*s_child) {
             @setRuntimeSafety(false);
             defer Graphics.showWithReference(allocator, @src());
-            const s_ab_addr: u64 = allocator.allocateInternal(@sizeOf(s_child), @alignOf(s_child));
+            const s_ab_addr: u64 = try meta.wrap(
+                allocator.allocateInternal(@sizeOf(s_child), @alignOf(s_child)),
+            );
             const ret: *s_child = @intToPtr(*s_child, s_ab_addr);
             showCreate(s_child, ret);
             return ret;
         }
-        pub inline fn allocate(allocator: *Allocator, comptime s_child: type, count: u64) []s_child {
+        pub inline fn allocate(allocator: *Allocator, comptime s_child: type, count: u64) Allocator.allocate_payload([]s_child) {
             @setRuntimeSafety(false);
             defer Graphics.showWithReference(allocator, @src());
-            const s_ab_addr: u64 = allocator.allocateInternal(@sizeOf(s_child) *% count, @alignOf(s_child));
+            const s_ab_addr: u64 = try meta.wrap(
+                allocator.allocateInternal(@sizeOf(s_child) *% count, @alignOf(s_child)),
+            );
             const ret: []s_child = @intToPtr([*]s_child, s_ab_addr)[0..count];
             showAllocate(s_child, ret, null);
             return ret;
         }
-        pub inline fn reallocate(allocator: *Allocator, comptime s_child: type, buf: []s_child, count: u64) []s_child {
+        pub inline fn reallocate(allocator: *Allocator, comptime s_child: type, buf: []s_child, count: u64) Allocator.allocate_payload([]s_child) {
             @setRuntimeSafety(false);
             defer Graphics.showWithReference(allocator, @src());
-            const s_ab_addr: u64 = allocator.reallocateInternal(@ptrToInt(buf.ptr), buf.len *% @sizeOf(s_child), count *% @sizeOf(s_child), @alignOf(s_child));
+            const s_ab_addr: u64 = try meta.wrap(
+                allocator.reallocateInternal(@ptrToInt(buf.ptr), buf.len *% @sizeOf(s_child), count *% @sizeOf(s_child), @alignOf(s_child)),
+            );
             const ret: []s_child = @intToPtr([*]s_child, s_ab_addr)[0..count];
             showReallocate(s_child, buf, ret, null);
             return ret;
@@ -644,11 +650,11 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
             allocator: *Allocator,
             s_aligned_bytes: u64,
             s_alignment: u64,
-        ) u64 {
+        ) Allocator.allocate_payload(u64) {
             const s_ab_addr: u64 = alignAbove(allocator.unallocated_byte_address(), s_alignment);
             const s_up_addr: u64 = s_ab_addr +% s_aligned_bytes;
             if (Allocator.allocator_spec.options.require_map and s_up_addr > allocator.unmapped_byte_address()) {
-                allocator.mapBelow(s_up_addr);
+                try meta.wrap(allocator.mapBelow(s_up_addr));
             }
             allocator.ub_addr = s_up_addr;
             if (Allocator.allocator_spec.options.count_allocations) {
@@ -665,17 +671,17 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
             s_aligned_bytes: u64,
             t_aligned_bytes: u64,
             align_of: u64,
-        ) u64 {
+        ) Allocator.allocate_payload(u64) {
             const s_up_addr: u64 = s_ab_addr +% s_aligned_bytes;
             const t_up_addr: u64 = s_ab_addr +% t_aligned_bytes;
             if (allocator.unallocated_byte_address() == s_up_addr) {
                 if (t_up_addr > allocator.unmapped_byte_address()) {
-                    allocator.mapBelow(t_up_addr);
+                    try meta.wrap(allocator.mapBelow(t_up_addr));
                 }
                 allocator.increment(t_up_addr);
                 return s_ab_addr;
             }
-            const t_ab_addr: u64 = allocator.allocateInternal(t_aligned_bytes, align_of);
+            const t_ab_addr: u64 = try meta.wrap(allocator.allocateInternal(t_aligned_bytes, align_of));
             copy(t_ab_addr, s_ab_addr, s_aligned_bytes);
             if (Allocator.allocator_spec.options.count_allocations) {
                 allocator.metadata.count +%= 1;
@@ -691,8 +697,8 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
             s_aligned_bytes: u64,
         ) void {
             const s_next: u64 = s_aligned +% s_aligned_bytes;
-            if (allocator.next == s_next) {
-                allocator.next = s_next;
+            if (allocator.unallocated_byte_address() == s_next) {
+                allocator.ub_addr = s_next;
             }
             if (Allocator.allocator_spec.options.count_allocations) {
                 allocator.metadata.count -%= 1;
@@ -4196,7 +4202,6 @@ const debug = opaque {
 fn GenericArenaAllocatorGraphics(comptime Allocator: type) type {
     return opaque {
         const is_silent: bool = meta.leastBitCast(Allocator.allocator_spec.logging) == 0;
-
         pub fn show(allocator: *Allocator, src: builtin.SourceLocation) void {
             if (is_silent) return;
             const src_fmt: fmt.SourceLocationFormat = fmt.sourceLocation(src, @returnAddress());
