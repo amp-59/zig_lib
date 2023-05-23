@@ -209,41 +209,6 @@ pub const fx = struct {
         return code[0 .. code.len - 1] ++ "m";
     }
 };
-pub const whitespace = [_]u8{ ' ', '\t', '\n', '\r', 0x0b, 0x0a };
-pub const ctrl = struct {
-    pub const start_of_heading: u8 = 0x1;
-    pub const start_of_text: u8 = 0x2;
-    pub const end_of_text: u8 = 0x03;
-    pub const end_of_transmission: u8 = 0x04;
-    pub const end_of_query: u8 = 0x05;
-    pub const acknowledge: u8 = 0x06;
-    pub const bell: u8 = 0x07;
-    pub const backspace: u8 = 0x8;
-    pub const horizontal_tab: u8 = 0x09;
-    pub const line_feed: u8 = 0x0a;
-    pub const vertical_tab: u8 = 0x0b;
-    pub const form_feed: u8 = 0x0c;
-    pub const carriage_return: u8 = 0x0d;
-    pub const shift_out: u8 = 0x0e;
-    pub const shift_in: u8 = 0x0f;
-    pub const data_link_escape: u8 = 0x10;
-    pub const device_ctrl_1: u8 = 0x11;
-    pub const device_ctrl_2: u8 = 0x12;
-    pub const device_ctrl_3: u8 = 0x13;
-    pub const device_ctrl_4: u8 = 0x14;
-    pub const negative_acknowledgement: u8 = 0x15;
-    pub const synchronize: u8 = 0x16;
-    pub const end_of_transmission_block: u8 = 0x17;
-    pub const cancel: u8 = 0x18;
-    pub const end_of_medium: u8 = 0x19;
-    pub const substitute: u8 = 0x1c;
-    pub const escape: u8 = 0x1b;
-    pub const file_separator: u8 = 0x1c;
-    pub const group_separator: u8 = 0x1d;
-    pub const record_separator: u8 = 0x1e;
-    pub const unit_separator: u8 = 0x1f;
-    pub const white_space: u8 = 0x20;
-};
 pub const position = struct {
     pub const ask: [4]u8 = .{ 0x1b, 0x5b, 0x36, 0x6e };
     pub const save: [3]u8 = .{ 0x1b, 0x5b, 0x73 };
