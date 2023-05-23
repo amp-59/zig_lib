@@ -1,6 +1,10 @@
 const types = @import("./types.zig");
 pub const build_command_options: []const types.OptionSpec = &.{
     .{
+        .name = "kind",
+        .arg_info = types.ArgInfo.tag("types.OutputMode"),
+    },
+    .{
         .name = "emit_bin",
         .string = "-femit-bin",
         .arg_info = types.ArgInfo.optional_formatter("types.Path"),
@@ -697,5 +701,235 @@ pub const format_command_options: []const types.OptionSpec = &.{
         .string = "--exclude",
         .arg_info = types.ArgInfo.optional_string([]const u8),
         .descr = &.{"Exclude file or directory from formatting"},
+    },
+};
+pub const tblgen_command_options: []const types.OptionSpec = &.{
+    .{
+        .name = "color",
+        .string = "--color",
+        .arg_info = types.ArgInfo.optional_tag(enum { on, off, auto }),
+        .descr = &.{"Use colors in output (default=autodetect)"},
+    },
+    .{
+        .name = "macros",
+        .arg_info = types.ArgInfo.optional_mapped("[]const types.Macro"),
+        .descr = &.{"Define macros available within the `@cImport` namespace"},
+    },
+    .{
+        .name = "include",
+        .string = "-I",
+        .arg_info = .{
+            .tag = .repeatable_string,
+            .type = types.ProtoTypeDescr{ .type_name = "?[]const [:0]const u8" },
+            .char = types.ArgInfo.immediate,
+        },
+        .descr = &.{"Add directories to include search path"},
+    },
+    .{
+        .name = "dependencies",
+        .string = "-d",
+        .arg_info = types.ArgInfo.repeatable_string([]const []const u8),
+        .descr = &.{"Add file dependencies"},
+    },
+    .{
+        .name = "print_records",
+        .string = "--print-records",
+        .descr = &.{"Print all records to stdout (default)"},
+    },
+    .{
+        .name = "print_detailed_records",
+        .string = "--print-detailed-records",
+        .descr = &.{"Print full details of all records to stdout"},
+    },
+    .{
+        .name = "null_backend",
+        .string = "--null-backend",
+        .descr = &.{"Do nothing after parsing (useful for timing)"},
+    },
+    .{
+        .name = "dump_json",
+        .string = "--dump-json",
+        .descr = &.{"Dump all records as machine-readable JSON"},
+    },
+    .{
+        .name = "gen_emitter",
+        .string = "--gen-emitter",
+        .descr = &.{"Generate machine code emitter"},
+    },
+    .{
+        .name = "gen_register_info",
+        .string = "--gen-register-info",
+        .descr = &.{"Generate registers and register classes info"},
+    },
+    .{
+        .name = "gen_instr_info",
+        .string = "--gen-instr-info",
+        .descr = &.{"Generate instruction descriptions"},
+    },
+    .{
+        .name = "gen_instr_docs",
+        .string = "--gen-instr-docs",
+        .descr = &.{"Generate instruction documentation"},
+    },
+    .{
+        .name = "gen_callingconv",
+        .string = "--gen-callingconv",
+        .descr = &.{"Generate calling convention descriptions"},
+    },
+    .{
+        .name = "gen_asm_writer",
+        .string = "--gen-asm-writer",
+        .descr = &.{"Generate assembly writer"},
+    },
+    .{
+        .name = "gen_disassembler",
+        .string = "--gen-disassembler",
+        .descr = &.{"Generate disassembler"},
+    },
+    .{
+        .name = "gen_pseudo_lowering",
+        .string = "--gen-pseudo-lowering",
+        .descr = &.{"Generate pseudo instruction lowering"},
+    },
+    .{
+        .name = "gen_compress_inst_emitter",
+        .string = "--gen-compress-inst-emitter",
+        .descr = &.{"Generate RISCV compressed instructions."},
+    },
+    .{
+        .name = "gen_asm_matcher",
+        .string = "--gen-asm-matcher",
+        .descr = &.{"Generate assembly instruction matcher"},
+    },
+    .{
+        .name = "gen_dag_isel",
+        .string = "--gen-dag-isel",
+        .descr = &.{"Generate a DAG instruction selector"},
+    },
+    .{
+        .name = "gen_dfa_packetizer",
+        .string = "--gen-dfa-packetizer",
+        .descr = &.{"Generate DFA Packetizer for VLIW targets"},
+    },
+    .{
+        .name = "gen_fast_isel",
+        .string = "--gen-fast-isel",
+        .descr = &.{"Generate a \"fast\" instruction selector"},
+    },
+    .{
+        .name = "gen_subtarget",
+        .string = "--gen-subtarget",
+        .descr = &.{"Generate subtarget enumerations"},
+    },
+    .{
+        .name = "gen_intrinsic_enums",
+        .string = "--gen-intrinsic-enums",
+        .descr = &.{"Generate intrinsic enums"},
+    },
+    .{
+        .name = "gen_intrinsic_impl",
+        .string = "--gen-intrinsic-impl",
+        .descr = &.{"Generate intrinsic information"},
+    },
+    .{
+        .name = "print_enums",
+        .string = "--print-enums",
+        .descr = &.{"Print enum values for a class"},
+    },
+    .{
+        .name = "print_sets",
+        .string = "--print-sets",
+        .descr = &.{"Print expanded sets for testing DAG exprs"},
+    },
+    .{
+        .name = "gen_opt_parser_defs",
+        .string = "--gen-opt-parser-defs",
+        .descr = &.{"Generate option definitions"},
+    },
+    .{
+        .name = "gen_opt_rst",
+        .string = "--gen-opt-rst",
+        .descr = &.{"Generate option RST"},
+    },
+    .{
+        .name = "gen_ctags",
+        .string = "--gen-ctags",
+        .descr = &.{"Generate ctags-compatible index"},
+    },
+    .{
+        .name = "gen_attrs",
+        .string = "--gen-attrs",
+        .descr = &.{"Generate attributes"},
+    },
+    .{
+        .name = "gen_searchable_tables",
+        .string = "--gen-searchable-tables",
+        .descr = &.{"Generate generic binary-searchable table"},
+    },
+    .{
+        .name = "gen_global_isel",
+        .string = "--gen-global-isel",
+        .descr = &.{"Generate GlobalISel selector"},
+    },
+    .{
+        .name = "gen_global_isel_combiner",
+        .string = "--gen-global-isel-combiner",
+        .descr = &.{"Generate GlobalISel combiner"},
+    },
+    .{
+        .name = "gen_x86_EVEX2VEX_tables",
+        .string = "--gen-x86-EVEX2VEX-tables",
+        .descr = &.{"Generate X86 EVEX to VEX compress tables"},
+    },
+    .{
+        .name = "gen_x86_fold_tables",
+        .string = "--gen-x86-fold-tables",
+        .descr = &.{"Generate X86 fold tables"},
+    },
+    .{
+        .name = "gen_x86_mnemonic_tables",
+        .string = "--gen-x86-mnemonic-tables",
+        .descr = &.{"Generate X86 mnemonic tables"},
+    },
+    .{
+        .name = "gen_register_bank",
+        .string = "--gen-register-bank",
+        .descr = &.{"Generate registers bank descriptions"},
+    },
+    .{
+        .name = "gen_exegesis",
+        .string = "--gen-exegesis",
+        .descr = &.{"Generate llvm-exegesis tables"},
+    },
+    .{
+        .name = "gen_automata",
+        .string = "--gen-automata",
+        .descr = &.{"Generate generic automata"},
+    },
+    .{
+        .name = "gen_directive_decl",
+        .string = "--gen-directive-decl",
+        .descr = &.{"Generate directive related declaration code (header file)"},
+    },
+    .{
+        .name = "gen_directive_impl",
+        .string = "--gen-directive-impl",
+        .descr = &.{"Generate directive related implementation code"},
+    },
+    .{
+        .name = "gen_dxil_operation",
+        .string = "--gen-dxil-operation",
+        .descr = &.{"Generate DXIL operation information"},
+    },
+    .{
+        .name = "gen_riscv_target_def",
+        .string = "--gen-riscv-target_def",
+        .descr = &.{"Generate the list of CPU for RISCV"},
+    },
+    .{
+        .name = "output",
+        .string = "-o",
+        .arg_info = types.ArgInfo.optional_string([]const u8),
+        .descr = &.{"Output file"},
     },
 };
