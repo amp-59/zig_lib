@@ -1002,13 +1002,16 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     }
                 }
             }
-            if (address_space.count() != 1) {
-                return true;
-            }
             if (max_thread_count == 0) {
                 return false;
             }
             if (thread_space.count() != 0) {
+                return true;
+            }
+            if (builder_spec.options.prefer_simple_allocator) {
+                return false;
+            }
+            if (address_space.count() != 1) {
                 return true;
             }
             return false;
