@@ -1969,3 +1969,101 @@ pub const SimpleAllocator = struct {
         }
     }
 };
+pub fn GenericSimpleArray(comptime T: type) type {
+    return struct {
+        values: []T,
+        values_len: u64,
+        const Array = @This();
+        pub fn appendOne(array: *Array, allocator: *SimpleAllocator, value: T) void {
+            if (array.values_len == array.values.len) {
+                array.values = allocator.reallocate(T, array.values, array.values_len *% 2);
+            }
+            array.values[array.values_len] = value;
+            array.values_len +%= 1;
+        }
+        pub fn appendSlice(array: *Array, allocator: *SimpleAllocator, values: []const T) void {
+            if (array.values_len +% values.len > array.values.len) {
+                array.values = allocator.reallocate(T, array.values, (array.values_len +% values.len) *% 2);
+            }
+            for (values) |value| {
+                array.values[array.values_len] = value;
+                array.values_len +%= 1;
+            }
+        }
+        pub fn readAll(array: *const Array) []const T {
+            return array.values[0..array.values_len];
+        }
+        pub fn referAll(array: *Array) []T {
+            return array.values[0..array.values_len];
+        }
+        pub fn popOne(array: *Array) T {
+            array.values_len -%= 1;
+            return array.values[array.values_len];
+        }
+        pub fn init(allocator: *SimpleAllocator, count: u64) Array {
+            return .{
+                .values = allocator.allocate(T, count),
+                .values_len = 0,
+            };
+        }
+        pub fn deinit(array: *Array, allocator: *SimpleAllocator) void {
+            allocator.deallocate(T, array.values);
+        }
+    };
+}
+pub fn GenericSimpleMap(comptime Key: type, comptime Value: type) type {
+    return struct {
+        pairs: []*Pair,
+        pairs_len: u64,
+        const Array = @This();
+        const Pair = struct {
+            key: Key,
+            val: Value,
+        };
+        pub fn put(array: *Array, allocator: *SimpleAllocator, key: Key, val: Value) void {
+            array.appendOne(allocator, .{ .key = key, .val = val });
+        }
+        pub fn get(array: *const Array, key: Key) ?Value {
+            for (array.pairs) |pair| {
+                if (builtin.testEqualMemory(Key, pair.key, key)) {
+                    return pair.val;
+                }
+            }
+            return null;
+        }
+        pub fn refer(array: *const Array, key: Key) ?*Value {
+            for (array.pairs) |pair| {
+                if (builtin.testEqualMemory(Key, pair.key, key)) {
+                    return &pair.val;
+                }
+            }
+            return null;
+        }
+        pub fn remove(array: *Array, key: Key) void {
+            const end: *Pair = array.pairs[array.pairs_len -% 1];
+            for (array.pairs) |*pair| {
+                if (builtin.testEqualMemory(Key, pair.*.key, key)) {
+                    pair.* = end;
+                    array.pairs_len -%= 1;
+                }
+            }
+        }
+        pub fn appendOne(array: *Array, allocator: *SimpleAllocator, pair: Pair) void {
+            if (array.pairs_len == array.pairs.len) {
+                array.pairs = allocator.reallocate(*Pair, array.pairs, array.pairs_len *% 2);
+            }
+            array.pairs[array.pairs_len] = allocator.create(Pair);
+            array.pairs[array.pairs_len].* = pair;
+            array.pairs_len +%= 1;
+        }
+        pub fn readAll(array: *const Array) []const *Pair {
+            return array.pairs[0..array.pairs_len];
+        }
+        pub fn init(allocator: *SimpleAllocator, count: u64) Array {
+            return .{
+                .pairs = allocator.allocate(*Pair, count),
+                .pairs_len = 0,
+            };
+        }
+    };
+}
