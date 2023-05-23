@@ -350,7 +350,7 @@ pub const CommandSpec = struct {
         return .{
             .errors = spec.errors.waitpid,
             .logging = spec.logging.waitpid,
-            .return_type = void,
+            .return_type = Return,
         };
     }
     fn exec(comptime spec: CommandSpec) file.ExecuteSpec {
@@ -530,8 +530,10 @@ pub fn command(comptime spec: CommandSpec, pathname: [:0]const u8, args: spec.ar
     if (pid == 0) {
         try meta.wrap(file.execPath(exec_spec, pathname, args, vars));
     }
-    const ret: Return = try meta.wrap(waitPid(wait_spec, .{ .pid = pid }));
-    return Status.exit(ret.status);
+    const ret: wait_spec.return_type = try meta.wrap(waitPid(wait_spec, .{ .pid = pid }));
+    if (wait_spec.return_type != void) {
+        return Status.exit(ret.status);
+    }
 }
 pub fn commandAt(comptime spec: CommandSpec, dir_fd: u64, name: [:0]const u8, args: spec.args_type, vars: spec.vars_type) sys.ErrorUnion(.{
     .throw = spec.errors.execve.throw ++ spec.errors.fork.throw ++ spec.errors.waitpid.throw,
@@ -643,7 +645,6 @@ pub fn futexRequeue(
         return futex_error;
     }
 }
-
 pub const start = opaque {
     pub export fn _start() callconv(.Naked) noreturn {
         static.stack_addr = asm volatile (
@@ -851,7 +852,6 @@ pub noinline fn callClone(
     const args_off: u64 = 16;
     @intToPtr(**const Fn, stack_addr +% call_off).* = &function;
     @intToPtr(*meta.Args(Fn), stack_addr +% args_off).* = args;
-
     if (@TypeOf(result_ptr) != void) {
         @intToPtr(*u64, stack_addr +% ret_off).* = @ptrToInt(result_ptr);
     }
@@ -1053,7 +1053,6 @@ const debug = opaque {
     const about_futex_wake_0_s: [:0]const u8 = builtin.fmt.about("futex-wake");
     const about_futex_wake_op_0_s: [:0]const u8 = builtin.fmt.about("futex-wake-op");
     const about_futex_1_s: [:0]const u8 = builtin.fmt.about("futex-error");
-
     fn exceptionFaultAtAddress(symbol: []const u8, fault_addr: u64) void {
         const fault_addr_s: []const u8 = builtin.fmt.ux64(fault_addr).readAll();
         var buf: [8192]u8 = undefined;
@@ -1130,7 +1129,6 @@ const debug = opaque {
         var buf: [32768]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_futex_1_s, addr_s, ", word=", word_s, ", max=", count_s, " (", error_s, ")\n" });
     }
-
     fn futexWakeOpAttempt(futex1: *Futex, futex2: *Futex, count1: u32, count2: u32, wake_op: FutexOp.WakeOp) void {
         _ = wake_op;
         const addr1_s: []const u8 = builtin.fmt.ux64(@ptrToInt(futex1)).readAll();

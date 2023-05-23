@@ -7,7 +7,6 @@ const mach = @import("./mach.zig");
 const spec = @import("./spec.zig");
 const builtin = @import("./builtin.zig");
 const testing = @import("./testing.zig");
-
 pub fn length(comptime T: type, any: anytype) u64 {
     const S = @TypeOf(any);
     if (T == S) {
@@ -279,7 +278,6 @@ pub const SerialSpec = struct {
     Allocator: type,
     errors: Errors = .{},
     logging: Logging = .{},
-
     pub const Logging = struct {
         create: builtin.Logging.AcquireError = .{},
         open: builtin.Logging.AcquireError = .{},

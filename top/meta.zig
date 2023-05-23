@@ -1,12 +1,10 @@
 const builtin = @import("./builtin.zig");
 const mach = @import("./mach.zig");
-
 pub const Empty = struct {};
 pub const empty = &.{};
 pub const default = .{};
 pub const Generic = struct { type: type, value: *const anyopaque };
 pub const SliceProperty = struct { comptime_int, type };
-
 pub const number_types: []const builtin.TypeId = integer_types ++ float_types;
 pub const integer_types: []const builtin.TypeId = &[_]builtin.TypeId{ .Int, .ComptimeInt };
 pub const float_types: []const builtin.TypeId = &[_]builtin.TypeId{ .Float, .ComptimeFloat };
@@ -16,7 +14,6 @@ pub const fn_types: []const builtin.TypeId = &[_]builtin.TypeId{.Fn};
 pub const data_types: []const builtin.TypeId = &[_]builtin.TypeId{ .Struct, .Union };
 pub const decl_types: []const builtin.TypeId = &[_]builtin.TypeId{ .Struct, .Union, .Enum };
 pub const container_types: []const builtin.TypeId = &[_]builtin.TypeId{ .Struct, .Enum, .Union, .Opaque };
-
 inline fn isTypeType(comptime T: type, comptime type_types: []const builtin.TypeId) bool {
     inline for (type_types) |type_type| {
         if (@typeInfo(T) == type_type) {
@@ -147,7 +144,6 @@ pub fn maybe(comptime cond: bool, comptime T: type) type {
         },
     }
 }
-
 /// Return a simple struct field
 pub fn structField(comptime T: type, comptime field_name: []const u8, comptime default_value_opt: ?T) builtin.Type.StructField {
     if (default_value_opt) |default_value| {
@@ -217,7 +213,6 @@ pub inline fn call(comptime function: anytype, arguments: anytype) @TypeOf(@call
         },
     }
 }
-
 /// Align `count` below to bitSizeOf smallest real word bit count
 pub fn alignBW(comptime count: comptime_int) u16 {
     switch (count) {
@@ -314,7 +309,6 @@ pub fn AlignSizeBW(comptime T: type) type { // Needs a better name
     int_type_info.bits = alignBW(int_type_info.bits);
     return @Type(.{ .Int = int_type_info });
 }
-
 /// Return the smallest integer type capable of storing `value`
 pub fn LeastBitSize(comptime value: anytype) type {
     const T: type = @TypeOf(value);
@@ -565,7 +559,6 @@ fn testEqualBytes(arg1: anytype, arg2: anytype) bool {
     }
     return true;
 }
-
 pub inline fn sliceToBytes(comptime E: type, values: []const E) []const u8 {
     return @ptrCast([*]const u8, values.ptr)[0 .. @sizeOf(E) * values.len];
 }
@@ -662,7 +655,6 @@ pub fn ManyToSlice(comptime T: type) type {
     type_info.Pointer.size = .Slice;
     return @Type(type_info);
 }
-
 /// A useful meta type for representing bit fields with uncertain values.
 /// Properly rendered by `fmt.any`. E must be an enumeration type.
 pub fn EnumBitField(comptime E: type) type {
@@ -1059,7 +1051,6 @@ pub inline fn analysisBegin(comptime name: []const u8) void {
 pub inline fn analysisEnd(comptime name: []const u8) void {
     asm volatile ("# LLVM-MCA-END " ++ name);
 }
-
 pub const Initializer = struct {
     dest_off: u64,
     src_addr: u64,
@@ -1089,7 +1080,6 @@ pub fn initialize(comptime T: type, inits: []const Initializer) T {
     }
     return ret;
 }
-
 pub fn UniformData(comptime bits: u16) type {
     const word_size: u16 = @bitSizeOf(usize);
     const real_bits: u16 = alignAW(bits);
