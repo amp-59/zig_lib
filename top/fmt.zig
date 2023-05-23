@@ -8,6 +8,7 @@ const spec = @import("./spec.zig");
 const builtin = @import("./builtin.zig");
 const _render = @import("./render.zig");
 pub const utf8 = @import("./fmt/utf8.zig");
+pub const ascii = @import("./fmt/ascii.zig");
 //pub const json = @import("./fmt/json.zig");
 pub usingnamespace _render;
 fn GenericFormat(comptime Format: type) type {
@@ -1171,7 +1172,7 @@ pub fn toCamelCase(noalias buf: []u8, name: []const u8) []u8 {
     }
     return buf[0..len];
 }
-pub fn toTitlecases(noalias buf: []u8, comptime names: []const []const u8) []u8 {
+pub fn toTitlecases(noalias buf: []u8, names: []const []const u8) []u8 {
     const rename: []u8 = toCamelCases(buf, names);
     if (rename[0] >= 'a') {
         rename[0] -%= ('a' -% 'A');
@@ -1195,9 +1196,10 @@ pub fn untitle(noalias buf: []u8, noalias name: []const u8) []u8 {
 /// .{ 0xff, 0xff, 0xff, 0xff } => "ffffffff";
 pub fn bytesToHex(dest: []u8, src: []const u8) []const u8 {
     var idx: u64 = 0;
-    while (idx < src.len) : (idx +%= 1) {
-        dest[idx * 2 +% 0] = builtin.fmt.toSymbol(u8, src[idx] / 16, 16);
-        dest[idx * 2 +% 1] = builtin.fmt.toSymbol(u8, src[idx] & 15, 16);
+    const max_idx: u64 = @min(dest.len / 2, src.len);
+    while (idx != max_idx) : (idx +%= 1) {
+        dest[idx *% 2 +% 0] = builtin.fmt.toSymbol(u8, src[idx] / 16, 16);
+        dest[idx *% 2 +% 1] = builtin.fmt.toSymbol(u8, src[idx] & 15, 16);
     }
     return dest[0 .. src.len *% 2];
 }
