@@ -7,7 +7,7 @@ const proc = top.proc;
 const builtin = top.builtin;
 const testing = top.testing;
 pub usingnamespace proc.start;
-pub const runtime_assertions: bool = test_size;
+pub const runtime_assertions: bool = true;
 const PrintArray = mem.StaticString(4096);
 const test_size: bool = false;
 fn testNonChildIntegers() !void {
@@ -161,6 +161,7 @@ fn testBinarySize() void {
 pub fn main() !void {
     try testBytesToHex();
     try testHexToBytes();
+    try @import("./fmt/utf8.zig").utf8TestMain();
     if (test_size) {
         try meta.wrap(testBinarySize());
     } else {
