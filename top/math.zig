@@ -16,16 +16,17 @@ pub fn Absolute(comptime T: type) type {
     } });
 }
 pub inline fn absoluteDiff(x: anytype, y: anytype) Absolute(@TypeOf(x + y)) {
-    return @max(x, y) - @min(x, y);
+    return @max(x, y) -% @min(x, y);
 }
 pub inline fn absoluteVal(i: anytype) Absolute(@TypeOf(i)) {
+    @setRuntimeSafety(false);
     const Int: type = @TypeOf(i);
     const Abs: type = Absolute(Int);
     if (Int == comptime_int and i < 0) {
         return -i;
     }
-    if (Int != Abs) {
-        if (i < 0) return @bitCast(Abs, -i);
+    if (Int != Abs and i < 0) {
+        return @bitCast(Abs, -i);
     }
     return @intCast(Abs, i);
 }
