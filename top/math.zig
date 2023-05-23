@@ -5,6 +5,17 @@ pub const Order = enum {
     eq,
     gt,
 };
+pub fn order(a: anytype, b: anytype) Order {
+    if (a == b) {
+        return .eq;
+    } else if (a < b) {
+        return .lt;
+    } else if (a > b) {
+        return .gt;
+    } else {
+        unreachable;
+    }
+}
 pub fn Absolute(comptime T: type) type {
     const bit_size_of: u16 = @bitSizeOf(T);
     if (bit_size_of == 0) {
