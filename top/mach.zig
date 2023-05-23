@@ -2,7 +2,6 @@
 //! and bit-shifts. For operator wrappers which unambiguously mimic Zig's
 //! default behaviour see builtin.zig.
 const lit = @import("./lit.zig");
-
 // For operations with no comptime operands and register-sized integers prefer
 // the following four functions. These reference the assembly directly below,
 // so no truncation is needed to circumvent Zig's requirements for shift_amt.
@@ -19,7 +18,6 @@ pub inline fn shrx64(value: u64, shift_amt: u64) u64 {
 pub inline fn shrx32(value: u32, shift_amt: u32) u32 {
     return shrx(u32, value, shift_amt);
 }
-
 // The following operations are distinct from similarly named in builtin by
 // truncating instead of casting. This matches the machine behaviour more
 // closely. There is no need to forward these to a generic function to ask meta
@@ -85,7 +83,6 @@ pub inline fn shr16TM(comptime T: type, value: u16, shift_amt: u16, comptime pop
 pub inline fn shr8TM(comptime T: type, value: u8, shift_amt: u8, comptime pop_count: comptime_int) T {
     return @intCast(T, value >> @intCast(u3, shift_amt)) & ((1 << pop_count) -% 1);
 }
-
 // Conditional moves--for integers prefer dedicated functions. Prevents lazy-
 // evaluating the conditional values by ordering their evaluation before the
 // function is called.
@@ -488,11 +485,9 @@ inline fn shrx(comptime T: type, value: T, shift_amt: T) T {
           [shift_amt] "r" (shift_amt),
     );
 }
-
 const is_small = @import("builtin").mode == .ReleaseSmall;
 const is_debug = @import("builtin").mode == .Debug;
 const is_test = @import("builtin").is_test;
-
 pub extern fn memset(dest: [*]u8, value: u8, count: usize) callconv(.C) void;
 comptime {
     asm (
@@ -532,7 +527,6 @@ comptime {
         \\  ret
     );
 }
-
 pub inline fn testEqualMany8(l_values: []const u8, r_values: []const u8) bool {
     return _0.asmTestEqualMany8(l_values.ptr, l_values.len, r_values.ptr, r_values.len);
 }

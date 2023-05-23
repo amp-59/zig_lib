@@ -7,6 +7,8 @@ const time = @import("./time.zig");
 const spec = @import("./spec.zig");
 const builtin = @import("./builtin.zig");
 const _render = @import("./render.zig");
+pub const utf8 = @import("./fmt/utf8.zig");
+//pub const json = @import("./fmt/json.zig");
 pub usingnamespace _render;
 fn GenericFormat(comptime Format: type) type {
     const T = struct {
@@ -382,7 +384,6 @@ pub fn ChangedIntFormat(comptime fmt_spec: ChangedIntFormatSpec) type {
         const DeltaIntFormat = PolynomialFormat(fmt_spec.del_fmt_spec);
         pub const max_len: u64 = @max(fmt_spec.dec_style.len, fmt_spec.inc_style.len) +%
             OldIntFormat.max_len +% 1 +% DeltaIntFormat.max_len +% 5 +% fmt_spec.no_style.len +% NewIntFormat.max_len;
-
         fn formatWriteDelta(format: Format, array: anytype) void {
             if (format.old_value == format.new_value) {
                 array.writeMany("(+0)");
@@ -834,7 +835,6 @@ pub fn ChangedRangeFormat(comptime fmt_spec: ChangedRangeFormatSpec) type {
         }
     });
 }
-
 pub const ListFormatSpec = struct {
     item: type,
     transform: ?meta.Generic = null,
@@ -845,7 +845,6 @@ pub const ListFormatSpec = struct {
 pub fn ListFormat(comptime fmt_spec: ListFormatSpec) type {
     return (struct {
         values: []const fmt_spec.item,
-
         const Format = @This();
         pub fn formatWrite(format: Format, array: anytype) void {
             if (fmt_spec.omit_trailing_separator) {
@@ -1074,7 +1073,9 @@ pub fn isValidId(values: []const u8) bool {
     }
     for (values, 0..) |c, i| {
         switch (c) {
-            '_', 'a'...'z', 'A'...'Z' => {},
+            '_', 'a'...'z', 'A'...'Z' => {
+                continue;
+            },
             '0'...'9' => if (i == 0) {
                 return false;
             },
@@ -1085,6 +1086,52 @@ pub fn isValidId(values: []const u8) bool {
     }
     return zig.Token.getKeyword(values) == null;
 }
+const EscapedStringFormatSpec = struct {
+    single_quote: []const u8 = "\'",
+    double_quote: []const u8 = "\\\"",
+};
+pub fn EscapedStringFormat(comptime fmt_spec: EscapedStringFormatSpec) type {
+    const T = struct {
+        value: []const u8,
+        const Format = @This();
+        pub fn formatWrite(format: Format, array: anytype) void {
+            for (format.value) |byte| {
+                switch (byte) {
+                    else => array.writeFormat(esc(byte)),
+                    '\n' => array.writeMany("\\n"),
+                    '\r' => array.writeMany("\\r"),
+                    '\t' => array.writeMany("\\t"),
+                    '\\' => array.writeMany("\\\\"),
+                    '"' => array.writeMany(fmt_spec.double_quote),
+                    '\'' => array.writeMany(fmt_spec.single_quote),
+                    ' ', '!', '#'...'&', '('...'[', ']'...'~' => {
+                        array.writeOne(byte);
+                    },
+                }
+            }
+        }
+        pub fn formatLength(format: Format) u64 {
+            var len: u64 = 0;
+            for (format.value) |byte| {
+                switch (byte) {
+                    else => len +%= esc(byte).formatLength(),
+                    '\n' => len +%= "\\n".len,
+                    '\r' => len +%= "\\r".len,
+                    '\t' => len +%= "\\t".len,
+                    '\\' => len +%= "\\\\".len,
+                    '"' => len +%= fmt_spec.double_quote.len,
+                    '\'' => len +%= fmt_spec.single_quote.len,
+                    ' ', '!', '#'...'&', '('...'[', ']'...'~' => {
+                        len +%= 1;
+                    },
+                }
+            }
+            return len;
+        }
+    };
+    return T;
+}
+
 pub fn toCamelCases(noalias buf: []u8, names: []const []const u8) []u8 {
     var len: u64 = 0;
     var state: bool = false;
@@ -1778,6 +1825,15 @@ pub inline fn ux8(value: u8) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
+pub inline fn esc(value: u8) PolynomialFormat(.{
+    .bits = 8,
+    .radix = 16,
+    .signedness = .unsigned,
+    .width = .min,
+    .prefix = "\\x",
+}) {
+    return .{ .value = value };
+}
 pub inline fn ux16(value: u16) PolynomialFormat(.{
     .bits = 16,
     .radix = 16,
@@ -2139,7 +2195,6 @@ pub const Type = struct {
     pub fn Ux(comptime Int: type) type {
         return @TypeOf(ux(@as(Int, undefined)));
     }
-
     pub const UDel = ChangedIntFormat(.{
         .old_fmt_spec = .{ .bits = 64, .signedness = .unsigned, .radix = 10, .width = .min },
         .new_fmt_spec = .{ .bits = 64, .signedness = .unsigned, .radix = 10, .width = .min },

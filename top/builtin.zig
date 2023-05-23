@@ -743,7 +743,6 @@ pub fn testEqual(comptime T: type, arg1: T, arg2: T) bool {
     }
     return false;
 }
-
 pub fn assert(b: bool) void {
     if (!b) {
         if (@inComptime()) {
@@ -1173,7 +1172,6 @@ const U64 = packed struct { h: u32, l: u32 };
 pub fn pack64(h: u32, l: u32) u64 {
     return @bitCast(u64, U64{ .h = h, .l = l });
 }
-
 pub const proc = struct {
     pub fn exitNotice(return_code: u8) noreturn {
         @setCold(true);
@@ -1767,7 +1765,6 @@ pub const debug = struct {
 };
 pub const parse = struct {
     pub const E = error{BadParse};
-
     pub fn ub(comptime T: type, str: []const u8) T {
         static.assert(@typeInfo(T).Int.signedness == .unsigned);
         const sig_fig_list: []const T = comptime sigFigList(T, 2);
@@ -2383,12 +2380,10 @@ pub const fmt = struct {
             },
             .Opaque => "opaque",
             .ErrorSet => "error",
-
             else => @compileError(@typeName(@Type(type_info))),
         };
     }
 };
-
 pub const Version = struct {
     major: u32,
     minor: u32,
@@ -2469,7 +2464,6 @@ pub const Version = struct {
         };
     }
 };
-
 pub const SourceLocation = Src();
 pub const Mode = @TypeOf(config.zig.mode);
 pub const Type = @TypeOf(@typeInfo(void));

@@ -4,7 +4,6 @@ const meta = @import("./meta.zig");
 const file = @import("./file.zig");
 const mach = @import("./mach.zig");
 const builtin = @import("./builtin.zig");
-
 pub const DirStreamSpec = struct {
     Allocator: type,
     errors: DirStreamErrors = .{},
@@ -42,7 +41,6 @@ pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
         });
         pub const Allocator = dir_spec.Allocator;
         pub const ListView = mem.GenericLinkedListView(.{ .child = Entry, .low_alignment = 8 });
-
         pub const Entry = opaque {
             pub fn possess(dirent: *const Entry, dir: *DirStream) void {
                 @intToPtr(*const Block, @ptrToInt(dirent) +% 0).* = dir.blk;

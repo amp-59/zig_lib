@@ -4,7 +4,6 @@ const fmt = @import("./fmt.zig");
 const lit = @import("./lit.zig");
 const meta = @import("./meta.zig");
 const builtin = @import("./builtin.zig");
-
 const DT = enum(u32) {
     NULL = NULL,
     NEEDED = NEEDED,
@@ -312,7 +311,6 @@ const PT = meta.EnumBitField(enum(u32) {
     GNU_STACK = GNU_STACK,
     LOPROC = LOPROC,
     HIPROC = HIPROC,
-
     pub const NULL = 0;
     pub const LOAD = 1;
     pub const DYNAMIC = 2;
@@ -544,7 +542,6 @@ pub fn SectionHeaderIterator(comptime Memory: type) type {
         index: usize = 0,
         const Iterator = @This();
         const shdr_size: u64 = @sizeOf(Elf64_Shdr);
-
         pub fn init(elf_header: Header, array: *Memory) Iterator {
             array.unstreamAll();
             array.stream(u8, .{ .bytes = elf_header.shoff });
@@ -592,7 +589,6 @@ pub const ELFDATANONE = 0;
 pub const ELFDATA2LSB = 1;
 pub const ELFDATA2MSB = 2;
 pub const ELFDATANUM = 3;
-
 pub const Elf32_Ehdr = extern struct {
     e_ident: [16]u8,
     e_type: ET,
@@ -1553,10 +1549,8 @@ pub const STV = enum(u2) {
 };
 const debug = opaque {
     const PrintArray = mem.StaticString(4096);
-
     const about_elf_1_s: []const u8 = "elf:           ";
     const about_elf_0_s: []const u8 = "elf-error:     offset=";
-
     fn badEndianError(hdr32: *Elf32_Ehdr) void {
         const offset: u64 = @ptrToInt(&hdr32.e_ident[EI.DATA]) - @ptrToInt(hdr32);
         var array: PrintArray = .{};
