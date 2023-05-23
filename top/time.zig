@@ -2,7 +2,6 @@ const sys = @import("./sys.zig");
 const mach = @import("./mach.zig");
 const meta = @import("./meta.zig");
 const builtin = @import("./builtin.zig");
-
 pub const TimeSpec = extern struct {
     sec: u64 = 0,
     nsec: u64 = 0,
@@ -24,19 +23,16 @@ pub const Weekday = enum(u8) {
     Friday = 5,
     Saturday = 6,
 };
-
 pub const MonotonicClock = enum { raw, coarse };
 pub const RealClock = enum { alarm, coarse };
 pub const BootClock = enum { alarm };
 pub const CPUClock = enum { thread, process };
-
 pub const days_in_month: [12]u8 = .{ 31, 30, 31, 30, 31, 31, 30, 31, 30, 31, 31, 29 };
 pub const days_per_year: u64 = 365;
 pub const days_per_4y: u64 = (days_per_year * 4) + 1;
 pub const days_per_400y: u64 = (days_per_year * 400) + 97;
 pub const days_per_100y: u64 = (days_per_year * 100) + 24;
 pub const leap_epoch: u64 = 946_684_800 + (86_400 * (31 + 29));
-
 pub const Kind = enum(u64) {
     realtime = CLOCK.REALTIME,
     monotonic = CLOCK.MONOTONIC,
@@ -68,10 +64,8 @@ pub const Month = enum {
 pub const ClockSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.clock_get_errors },
 };
-
 pub const ClockGetTime = *fn (Kind, *TimeSpec) u64;
 pub const GetTimeOfDay = *fn (*TimeVal, *TimeZone) u64;
-
 pub fn get(comptime spec: ClockSpec, kind: Kind) sys.ErrorUnion(spec.errors, TimeSpec) {
     var ts: TimeSpec = undefined;
     if (meta.wrap(sys.call(.clock_gettime, spec.errors, void, .{ @enumToInt(kind), @ptrToInt(&ts) }))) {

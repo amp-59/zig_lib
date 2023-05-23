@@ -1,7 +1,6 @@
 pub const zig = @import("builtin");
 pub const root = @import("root");
 pub const env = @import("env");
-
 pub const native_endian = zig.cpu.arch.endian();
 pub const is_little: bool = native_endian == .Little;
 pub const is_big: bool = native_endian == .Big;
@@ -12,7 +11,6 @@ pub const is_debug: bool = zig.mode == .Debug;
 pub const discard_errors: bool = define("discard_errors", bool, !(is_debug or is_safe));
 pub const runtime_assertions: bool = define("runtime_assertions", bool, is_debug or is_safe);
 pub const comptime_assertions: bool = define("comptime_assertions", bool, is_debug);
-
 /// The values define the default field values for all Logging sub-types used in
 /// generic specifications.
 pub const logging_default: Logging.Default = define(
@@ -43,10 +41,8 @@ pub const signal_handlers: SignalHandlers = define(
         .floating_point_error = is_debug,
     },
 );
-
 // These are defined by the library builder
 const root_src_file: [:0]const u8 = define("root_src_file", [:0]const u8, undefined);
-
 /// Return an absolute path to a project file.
 pub fn absolutePath(comptime relative: [:0]const u8) [:0]const u8 {
     return env.build_root ++ "/" ++ relative;
@@ -93,7 +89,6 @@ pub const message_suffix: [:0]const u8 = define("message_suffix", [:0]const u8, 
 pub const message_indent: u8 = define("message_indent", u8, 16);
 /// Sequence used to undo `message_style` if defined.
 pub const message_no_style: [:0]const u8 = "\x1b[0m";
-
 pub fn AddressSpace() type {
     if (!@hasDecl(root, "AddressSpace")) {
         @compileError(

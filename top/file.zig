@@ -91,7 +91,6 @@ pub const Events = packed struct(u16) {
     @"error": bool = false,
     hangup: bool = false,
     invalid: bool = false,
-
     other: u10 = 0,
 };
 pub const PollFd = struct {
@@ -147,7 +146,6 @@ pub const Term = opaque {
         const SPEC = sys.TC.V;
     });
 };
-
 pub const Socket = struct {
     pub const Options = meta.EnumBitField(enum(u64) {
         non_block = SOCK.NONBLOCK,
@@ -577,7 +575,6 @@ pub const MakePipeSpec = struct {
     return_type: type = void,
     logging: builtin.Logging.AcquireError = .{},
     const Specification = @This();
-
     pub const Options = packed struct(u3) {
         close_on_exec: bool = false,
         direct: bool = false,
@@ -1738,7 +1735,6 @@ pub fn poll(comptime poll_spec: PollSpec, fds: []PollFd, timeout: u32) sys.Error
 pub inline fn pollOne(comptime poll_spec: PollSpec, fd: *PollFd, timeout: u32) sys.ErrorUnion(poll_spec.errors, poll_spec.return_type) {
     return poll(poll_spec, @ptrCast([*]PollFd, fd)[0..1], timeout);
 }
-
 // TODO:
 //  bind
 //  connect
@@ -1748,7 +1744,6 @@ pub inline fn pollOne(comptime poll_spec: PollSpec, fd: *PollFd, timeout: u32) s
 //  sendto
 //  setsockopt
 //  writev
-
 // DONE:
 //  openat
 //  poll
@@ -1760,7 +1755,6 @@ pub inline fn pollOne(comptime poll_spec: PollSpec, fd: *PollFd, timeout: u32) s
 //  exit_group
 //  fstat
 //  getrandom
-
 pub fn pathIs(comptime stat_spec: StatusSpec, pathname: [:0]const u8, kind: Kind) sys.ErrorUnion(
     stat_spec.errors,
     stat_spec.return_type orelse bool,
@@ -2160,7 +2154,6 @@ const debug = opaque {
     inline fn pipeNotice(read_fd: u64, write_fd: u64) void {
         fdFdAboutNotice(read_fd, write_fd, about_pipe_0_s, "read_fd=", "write_fd=");
     }
-
     inline fn readNotice(fd: u64, max_len: u64, len: u64) void {
         fdMaxLenLenAboutNotice(fd, max_len, len, about_read_0_s);
     }
@@ -2416,7 +2409,7 @@ const debug = opaque {
         buf[len] = ' ';
         len +%= 1;
         if (filename.ptr == args[0]) {
-            mach.memcpy(buf[len..].ptr, "[0] ", 4);
+            @ptrCast(*[4]u8, buf[len..].ptr).* = "[0] ".*;
             len +%= 4;
             idx +%= 1;
         }
@@ -2439,11 +2432,11 @@ const debug = opaque {
         }
         if (argc != idx) {
             const del_s: []const u8 = builtin.fmt.ud64(argc -% idx).readAll();
-            mach.memcpy(buf[len..].ptr, " ... and ", 9);
+            @ptrCast(*[9]u8, buf[len..].ptr).* = " ... and ".*;
             len +%= 9;
             mach.memcpy(buf[len..].ptr, del_s.ptr, del_s.len);
             len +%= del_s.len;
-            mach.memcpy(buf[len..].ptr, " more args ... \n", 16);
+            @ptrCast(*[16]u8, buf[len..].ptr).* = " more args ... \n".*;
             len +%= 16;
         } else {
             buf[len] = '\n';
@@ -2465,18 +2458,18 @@ const debug = opaque {
         var len: u64 = 0;
         mach.memcpy(buf[len..].ptr, about_execve_1_s.ptr, about_execve_1_s.len);
         len +%= about_execve_1_s.len;
-        mach.memcpy(buf[len..].ptr, "(", 1);
+        buf[len] = '(';
         len +%= 1;
         mach.memcpy(buf[len..].ptr, error_name.ptr, error_name.len);
         len +%= error_name.len;
-        mach.memcpy(buf[len..].ptr, ")", 1);
-        len +%= 1;
+        @ptrCast(*[2]u8, buf[len..].ptr).* = ") ".*;
+        len +%= 2;
         mach.memcpy(buf[len..].ptr, filename.ptr, filename.len);
         len +%= filename.len;
         buf[len] = ' ';
         len +%= 1;
         if (filename.ptr == args[0]) {
-            mach.memcpy(buf[len..].ptr, "[0] ", 4);
+            @ptrCast(*[4]u8, buf[len..].ptr).* = "[0] ".*;
             len +%= 4;
             idx +%= 1;
         }
@@ -2499,12 +2492,11 @@ const debug = opaque {
         }
         if (argc != idx) {
             const del_s: []const u8 = builtin.fmt.ud64(argc -% idx).readAll();
-
-            mach.memcpy(buf[len..].ptr, " ... and ", 9);
+            @ptrCast(*[9]u8, buf[len..].ptr).* = " ... and ".*;
             len +%= 9;
             mach.memcpy(buf[len..].ptr, del_s.ptr, del_s.len);
             len +%= del_s.len;
-            mach.memcpy(buf[len..].ptr, " more args ... \n", 16);
+            @ptrCast(*[16]u8, buf[len..].ptr).* = " more args ... \n".*;
             len +%= 16;
         } else {
             buf[len] = '\n';
