@@ -105,6 +105,7 @@ pub fn writeJSON(cfg: *const BuildConfig, buf: []u8) u64 {
     return len;
 }
 fn lengthModules(builder: *Builder) u64 {
+    @setRuntimeSafety(false);
     var len: u64 = 0;
     for (builder.grps[0..builder.grps_len]) |group| {
         for (group.trgs[0..group.trgs_len]) |target| {
@@ -119,6 +120,7 @@ fn lengthModules(builder: *Builder) u64 {
     return len;
 }
 fn writeModules(pkgs: []BuildConfig.Pkg, builder: *Builder) []BuildConfig.Pkg {
+    @setRuntimeSafety(false);
     var len: u64 = 0;
     for (builder.grps[0..builder.grps_len]) |group| {
         for (group.trgs[0..group.trgs_len]) |target| {
@@ -136,6 +138,7 @@ fn writeModules(pkgs: []BuildConfig.Pkg, builder: *Builder) []BuildConfig.Pkg {
     return pkgs[0..len];
 }
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
+    @setRuntimeSafety(false);
     var address_space: Builder.AddressSpace = .{};
     var allocator: Builder.Allocator = if (Builder.Allocator == mem.SimpleAllocator)
         Builder.Allocator.init_arena(Builder.AddressSpace.arena(Builder.max_thread_count))
