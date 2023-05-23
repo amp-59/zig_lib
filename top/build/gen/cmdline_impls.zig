@@ -666,6 +666,18 @@ else
     \\array.writeOne(0);
     \\
     ;
+const tblgen_exe_s: [:0]const u8 = if (primitive)
+    \\mach.memcpy(buf,tblgen_exe.ptr,tblgen_exe.len);
+    \\var len:u64=tblgen_exe.len;
+    \\buf[len]=0;
+    \\len+%=1;
+    \\
+else
+    \\array.writeMany(tblgen_exe);
+    \\array.writeOne(0);
+    \\
+    ;
+
 fn writeBuildWrite(array: *Array, arrays: *Arrays, indices: *Indices) void {
     if (!abstract) {
         if (primitive) {
@@ -675,10 +687,6 @@ fn writeBuildWrite(array: *Array, arrays: *Arrays, indices: *Indices) void {
             array.writeMany(
                 \\mach.memcpy(buf+len,"build-",6);
                 \\len+%=6;
-                \\mach.memcpy(buf+len,@tagName(cmd.kind).ptr,@tagName(cmd.kind).len);
-                \\len+%=@tagName(cmd.kind).len;
-                \\buf[len]=0;
-                \\len+%=1;
                 \\
             );
         } else {
@@ -687,8 +695,6 @@ fn writeBuildWrite(array: *Array, arrays: *Arrays, indices: *Indices) void {
             array.writeMany(zig_exe_s);
             array.writeMany(
                 \\array.writeMany("build-");
-                \\array.writeMany(@tagName(cmd.kind));
-                \\array.writeOne(0);
                 \\
             );
         }
@@ -713,7 +719,7 @@ fn writeBuildLength(array: *Array, arrays: *Arrays, indices: *Indices) void {
         array.writeMany(
             \\pub fn buildLength(cmd:*const tasks.BuildCommand,zig_exe:[]const u8,root_path:types.Path)u64{
             \\@setRuntimeSafety(false);
-            \\var len:u64=zig_exe.len+%@tagName(cmd.kind).len+%8;
+            \\var len:u64=zig_exe.len+%8;
             \\
         );
     }
@@ -811,46 +817,42 @@ fn writeFormatLength(array: *Array, arrays: *Arrays, indices: *Indices) void {
 fn writeTblgenWrite(array: *Array, arrays: *Arrays, indices: *Indices) void {
     if (!abstract) {
         if (primitive) {
-            array.writeMany("pub fn tblgenWriteBuf(cmd:*const tasks.TblgenCommand,zig_exe:[]const u8,root_path:types.Path,buf:[*]u8)u64{\n");
+            array.writeMany("pub fn tblgenWriteBuf(cmd:*const tasks.TableGenCommand,tblgen_exe:[]const u8,td_pathname:[:0]const u8,buf:[*]u8)u64{\n");
             array.writeMany(set_runtime_safety_s);
-            array.writeMany(zig_exe_s);
-            array.writeMany(
-                \\mach.memcpy(buf+len,"fmt\x00",4);
-                \\len+%=4;
-                \\
-            );
+            array.writeMany(tblgen_exe_s);
         } else {
-            array.writeMany("pub fn tblgenWrite(cmd:*const tasks.TblgenCommand,zig_exe:[]const u8,root_path:types.Path,array:anytype)void{\n");
+            array.writeMany("pub fn tblgenWrite(cmd:*const tasks.TableGenCommand,tblgen_exe:[]const u8,td_pathname:[:0]const u8,array:anytype)void{\n");
             array.writeMany(set_runtime_safety_s);
-            array.writeMany(zig_exe_s);
-            array.writeMany("array.writeMany(\"fmt\\x00\");\n");
+            array.writeMany(tblgen_exe_s);
         }
     }
     writeFunctionBody(array, attr.tblgen_command_options, .write, arrays, indices);
     if (!abstract) {
         if (primitive) {
             array.writeMany(
-                \\len+%=root_path.tblgenWriteBuf(buf+len);
+                \\mach.memcpy(buf+len, td_pathname.ptr,td_pathname.len);
+                \\len+%=td_pathname.len;
                 \\buf[len]=0;
-                \\return len;
+                \\return len+%1;
                 \\
             );
         } else {
-            array.writeMany("array.writeTblgen(root_path);\n");
+            array.writeMany("array.writeMany(td_pathname);\n");
+            writeNull(array);
         }
         array.writeMany("}\n");
     }
 }
 fn writeTblgenLength(array: *Array, arrays: *Arrays, indices: *Indices) void {
     if (!abstract) {
-        array.writeMany("pub fn tblgenLength(cmd:*const tasks.TblgenCommand,zig_exe:[]const u8,root_path:types.Path)u64{");
+        array.writeMany("pub fn tblgenLength(cmd:*const tasks.TableGenCommand,tblgen_exe:[]const u8,td_pathname:[:0]const u8)u64{");
         array.writeMany(set_runtime_safety_s);
-        array.writeMany("var len:u64=zig_exe.len+%5;\n");
+        array.writeMany("var len:u64=tblgen_exe.len+%1;\n");
     }
     writeFunctionBody(array, attr.tblgen_command_options, .length, arrays, indices);
     if (!abstract) {
         array.writeMany(
-            \\return len+%root_path.tblgenLength();
+            \\return len+%td_pathname.len;
             \\
         );
         array.writeMany("}\n");
