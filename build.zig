@@ -1,7 +1,6 @@
 pub const srg = @import("./zig_lib.zig");
 const proc = srg.proc;
 const spec = srg.spec;
-const meta = srg.meta;
 const build = srg.build;
 const builtin = srg.builtin;
 pub const runtime_assertions: bool = false;
@@ -48,7 +47,9 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     const mg_aux: *Builder.Group =          try builder.addGroup(allocator, "_memgen");
     const buildgen: *Builder.Group =        try builder.addGroup(allocator, "buildgen");
     const bg_aux: *Builder.Group =          try builder.addGroup(allocator, "_buildgen");
+    const targetgen: *Builder.Group =       try builder.addGroup(allocator, "targetgen");
     // Tests
+    build_cmd.mode = .Debug;
     const serial_test: *Builder.Target =    try tests.addBuild(allocator, build_cmd,    .{ .name = "serial_test",   .root = "test/serial-test.zig" });
     const decl_test: *Builder.Target =      try tests.addBuild(allocator, build_cmd,    .{ .name = "decl_test",     .root = "test/decl-test.zig" });
     const builtin_test: *Builder.Target =   try tests.addBuild(allocator, build_cmd,    .{ .name = "builtin_test",  .root = "test/builtin-test.zig" });
@@ -80,15 +81,17 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     const readelf: *Builder.Target =        try eg.addBuild(allocator, build_cmd,       .{ .name = "readelf",   .root = "examples/readelf.zig" });
     const pathsplit: *Builder.Target =      try eg.addBuild(allocator, build_cmd,       .{ .name = "pathsplit", .root = "examples/pathsplit.zig" });
     const declprint: *Builder.Target =      try eg.addBuild(allocator, build_cmd,       .{ .name = "declprint", .root = "examples/declprint.zig" });
+    const user_project: *Builder.Target =   try eg.addBuild(allocator, build_cmd,       .{ .name = "user_project",
+                                                                                           .root = "examples/project_with_main/build.zig" });
     build_cmd.gc_sections = false;
     const junk_test: *Builder.Target =      try tests.addBuild(allocator, build_cmd,    .{ .name = "junk_test", .root = "test/junk-test.zig" });
     build_cmd.gc_sections = true;
     build_cmd.mode = .Debug;
     const crypto_test: *Builder.Target =    try tests.addBuild(allocator, build_cmd,    .{ .name = "crypto_test", .root = "test/crypto-test.zig" });
     build_cmd.strip = false;
-    const builder0_test: *Builder.Target =  try tests.addBuild(allocator, build_cmd,     .{ .name = "lib_test",      .root = "build_runner.zig" });
-    const builder1_test: *Builder.Target =  try tests.addBuild(allocator, build_cmd,     .{ .name = "zls_test",      .root = "zls_build_runner.zig" });
-    const builder2_test: *Builder.Target =  try tests.addBuild(allocator, build_cmd,     .{ .name = "cmdline_test",  .root = "test/cmdline-test.zig" });
+    const builder0_test: *Builder.Target =  try tests.addBuild(allocator, build_cmd,    .{ .name = "lib_test",      .root = "build_runner.zig" });
+    const builder1_test: *Builder.Target =  try tests.addBuild(allocator, build_cmd,    .{ .name = "zls_test",      .root = "zls_build_runner.zig" });
+    const builder2_test: *Builder.Target =  try tests.addBuild(allocator, build_cmd,    .{ .name = "cmdline_test",  .root = "test/cmdline-test.zig" });
     build_cmd.strip = true;
     build_cmd.mode = .ReleaseFast;
     const mem_test: *Builder.Target =       try tests.addBuild(allocator, build_cmd,    .{ .name = "mem_test",      .root = "test/mem-test.zig" });
@@ -112,6 +115,11 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
                                                                                            .root = "top/build/gen/cmdline_impls.zig" });
     const bg_tasks: *Builder.Target =   try buildgen.addFormat(allocator, format_cmd,   .{ .name = "bg_tasks",      .root = "top/build/tasks.zig" });
     const bg_cmdline: *Builder.Target = try buildgen.addFormat(allocator, format_cmd,   .{ .name = "bg_cmdline",    .root = "top/build/cmdline.zig" });
+    const tg_cpu_impl: *Builder.Target = try targetgen.addBuild(allocator, build_cmd,   .{ .name = "tg_feat_impls",
+                                                                                           .root = "top/target/gen/feat_impls.zig" });
+    tg_cpu_impl.task_cmd.build.compiler_rt = true;
+    tg_cpu_impl.task_cmd.build.mode = .ReleaseSmall;
+
     // Descriptions:
     builtin_test.descr =    "Test builtin functions";
     meta_test.descr =       "Test meta functions";
@@ -143,6 +151,7 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     display.descr =         "Shows using `ioctl` to get display resources (idkso)";
     mca.descr =             "Example program useful for extracting section from assembly for machine code analysis";
     treez.descr =           "Example program useful for listing the contents of directories in a tree-like format";
+    user_project.descr =    "Example project useful for simulating basic library usage";
     itos.descr =            "Example program useful for converting between a variety of integer formats and bases";
     catz.descr =            "Shows how to map and write a file to standard output";
     cleanup.descr =         "Shows more advanced operations on a mapped file";
@@ -170,16 +179,12 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     mg_ctn.dependOnRun(allocator,           mg_ctn_impls);
     bg_tasks.dependOnRun(allocator,         bg_tasks_impls);
     bg_cmdline.dependOnRun(allocator,       bg_cmdline_impls);
-    mv.task_data.build.mode = .Debug;
-    addEnvPathArgs(allocator, builder, builder0_test);
-    addEnvPathArgs(allocator, builder, builder1_test);
-    addEnvPathArgs(allocator, builder, builder2_test);
-    addEnvPathArgs(allocator, builder, serial_test);
+    mv.task_cmd.build.mode = .Debug;
     // zig fmt: on
-}
-fn addEnvPathArgs(allocator: *Builder.Allocator, builder: *Builder, target: *Builder.Target) void {
-    target.addRunArgument(allocator, builder.zig_exe);
-    target.addRunArgument(allocator, builder.build_root);
-    target.addRunArgument(allocator, builder.cache_root);
-    target.addRunArgument(allocator, builder.global_cache_root);
+    for ([_]*Builder.Target{ builder0_test, builder1_test, builder2_test, serial_test }) |target| {
+        target.addRunArgument(allocator, builder.zig_exe);
+        target.addRunArgument(allocator, builder.build_root);
+        target.addRunArgument(allocator, builder.cache_root);
+        target.addRunArgument(allocator, builder.global_cache_root);
+    }
 }
