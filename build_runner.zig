@@ -29,9 +29,6 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
         Builder.Allocator.init_arena(Builder.AddressSpace.arena(Builder.max_thread_count))
     else
         Builder.Allocator.init(&address_space, Builder.max_thread_count);
-    if (!address_space.set(Builder.max_thread_count)) {
-        return;
-    }
     if (args.len < 5) {
         return error.MissingEnvironmentPaths;
     }
