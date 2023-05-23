@@ -85,39 +85,39 @@ fn decode4(bytes: []const u8) !u32 {
     }
     return value;
 }
-pub fn encode(c: u32, out: []u8) !u8 {
-    const length: u8 = try codepointSequenceLength(c);
-    builtin.assert(out.len >= length);
-    switch (length) {
-        1 => out[0] = @intCast(u8, c),
+pub fn encode(value: u32, out: []u8) !u8 {
+    const ret: u8 = try codepointSequenceLength(value);
+    builtin.assertAboveOrEqual(u64, out.len, ret);
+    switch (ret) {
+        1 => out[0] = @intCast(u8, value),
         2 => {
-            out[0] = @intCast(u8, 0b11000000 | (c >> 6));
-            out[1] = @intCast(u8, 0b10000000 | (c & 0b111111));
+            out[0] = @intCast(u8, 0b11000000 | (value >> 6));
+            out[1] = @intCast(u8, 0b10000000 | (value & 0b111111));
         },
         3 => {
-            if (0xd800 <= c and c <= 0xdfff) {
+            if (0xd800 <= value and value <= 0xdfff) {
                 return error.Utf8CannotEncodeSurrogateHalf;
             }
-            out[0] = @intCast(u8, 0b11100000 | (c >> 12));
-            out[1] = @intCast(u8, 0b10000000 | ((c >> 6) & 0b111111));
-            out[2] = @intCast(u8, 0b10000000 | (c & 0b111111));
+            out[0] = @intCast(u8, 0b11100000 | (value >> 12));
+            out[1] = @intCast(u8, 0b10000000 | ((value >> 6) & 0b111111));
+            out[2] = @intCast(u8, 0b10000000 | (value & 0b111111));
         },
         4 => {
-            out[0] = @intCast(u8, 0b11110000 | (c >> 18));
-            out[1] = @intCast(u8, 0b10000000 | ((c >> 12) & 0b111111));
-            out[2] = @intCast(u8, 0b10000000 | ((c >> 6) & 0b111111));
-            out[3] = @intCast(u8, 0b10000000 | (c & 0b111111));
+            out[0] = @intCast(u8, 0b11110000 | (value >> 18));
+            out[1] = @intCast(u8, 0b10000000 | ((value >> 12) & 0b111111));
+            out[2] = @intCast(u8, 0b10000000 | ((value >> 6) & 0b111111));
+            out[3] = @intCast(u8, 0b10000000 | (value & 0b111111));
         },
         else => unreachable,
     }
-    return length;
+    return ret;
 }
 pub const noexcept = struct {
-    pub fn codepointSequenceLength(c: u32) u8 {
-        if (c < 0x80) return 1;
-        if (c < 0x800) return 2;
-        if (c < 0x10000) return 3;
-        if (c < 0x110000) return 4;
+    pub fn codepointSequenceLength(value: u32) u8 {
+        if (value < 0x80) return 1;
+        if (value < 0x800) return 2;
+        if (value < 0x10000) return 3;
+        if (value < 0x110000) return 4;
         unreachable;
     }
     fn byteSequenceLength(first_byte: u8) u8 {
@@ -178,27 +178,27 @@ pub const noexcept = struct {
         builtin.assertBelowOrEqual(u32, value, 0x10FFFF);
         return value;
     }
-    pub fn encode(c: u32, out: []u8) u8 {
-        const ret: u8 = noexcept.codepointSequenceLength(c);
-        builtin.assertAboveOrEqual(u64, out.len >= ret);
+    pub fn encode(value: u32, out: []u8) u8 {
+        const ret: u8 = noexcept.codepointSequenceLength(value);
+        builtin.assertAboveOrEqual(u64, out.len, ret);
         switch (ret) {
-            1 => out[0] = @intCast(u8, c),
+            1 => out[0] = @intCast(u8, value),
             2 => {
-                out[0] = @intCast(u8, 0b11000000 | (c >> 6));
-                out[1] = @intCast(u8, 0b10000000 | (c & 0b111111));
+                out[0] = @intCast(u8, 0b11000000 | (value >> 6));
+                out[1] = @intCast(u8, 0b10000000 | (value & 0b111111));
             },
             3 => {
-                builtin.assertBelow(u8, c, 0xd800);
-                builtin.assertAbove(u8, c, 0xdfff);
-                out[0] = @intCast(u8, 0b11100000 | (c >> 12));
-                out[1] = @intCast(u8, 0b10000000 | ((c >> 6) & 0b111111));
-                out[2] = @intCast(u8, 0b10000000 | (c & 0b111111));
+                builtin.assertBelow(u32, value, 0xd800);
+                builtin.assertAbove(u32, value, 0xdfff);
+                out[0] = @intCast(u8, 0b11100000 | (value >> 12));
+                out[1] = @intCast(u8, 0b10000000 | ((value >> 6) & 0b111111));
+                out[2] = @intCast(u8, 0b10000000 | (value & 0b111111));
             },
             4 => {
-                out[0] = @intCast(u8, 0b11110000 | (c >> 18));
-                out[1] = @intCast(u8, 0b10000000 | ((c >> 12) & 0b111111));
-                out[2] = @intCast(u8, 0b10000000 | ((c >> 6) & 0b111111));
-                out[3] = @intCast(u8, 0b10000000 | (c & 0b111111));
+                out[0] = @intCast(u8, 0b11110000 | (value >> 18));
+                out[1] = @intCast(u8, 0b10000000 | ((value >> 12) & 0b111111));
+                out[2] = @intCast(u8, 0b10000000 | ((value >> 6) & 0b111111));
+                out[3] = @intCast(u8, 0b10000000 | (value & 0b111111));
             },
             else => unreachable,
         }
@@ -226,8 +226,7 @@ pub const Iterator = struct {
         const idx: u64 = itr.idx;
         defer itr.idx = idx;
         var end: u64 = idx;
-        var num: u64 = 0;
-        while (num != amt) : (num +%= 1) {
+        for (0..amt) |_| {
             if (itr.readNextCodepoint()) |bytes| {
                 end += bytes.len;
             } else {
