@@ -188,9 +188,9 @@ pub const BuildCommand = struct {
     /// by the entry point or exported symbols
     gc_sections: ?bool = null,
     /// Override default stack size
-    stack: ?u64 = null,
+    stack: ?usize = null,
     /// Set base address for executable image
-    image_base: ?u64 = null,
+    image_base: ?usize = null,
     /// Define C macros available within the `@cImport` namespace
     macros: ?[]const types.Macro = null,
     /// Define modules available as dependencies for the current target
@@ -331,8 +331,6 @@ pub const ArchiveCommand = struct {
         s = 4,
         x = 5,
     },
-    /// Target archive
-    archive: ?types.Path = null,
     /// Add auxiliary files to the current archive
     files: ?[]const types.Path = null,
 };
@@ -346,7 +344,7 @@ pub const TableGenCommand = struct {
     /// Define macros available within the `@cImport` namespace
     macros: ?[]const types.Macro = null,
     /// Add directories to include search path
-    include: ?[]const [:0]const u8 = null,
+    include: ?[]const []const u8 = null,
     /// Add file dependencies
     dependencies: ?[]const []const u8 = null,
     /// Print all records to stdout (default)
@@ -429,4 +427,14 @@ pub const TableGenCommand = struct {
     gen_riscv_target_def: bool = false,
     /// Output file
     output: ?[]const u8 = null,
+};
+pub const HarecCommand = struct {
+    arch: ?[]const u8 = null,
+    /// Define identifiers
+    defs: ?[]const types.HMacro = null,
+    /// Output file
+    output: ?[]const u8 = null,
+    tags: ?[]const []const u8 = null,
+    typedefs: bool = false,
+    namespace: bool = false,
 };
