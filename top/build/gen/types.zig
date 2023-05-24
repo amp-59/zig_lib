@@ -3,6 +3,14 @@ pub const Variant = enum(u1) {
     length,
     write,
 };
+pub const Attributes = struct {
+    /// Name of task command data structure
+    type_name: []const u8,
+    /// Name of command line function
+    fn_name: []const u8,
+    /// Function call
+    params: []const ParamSpec,
+};
 pub const ProtoTypeDescr = fmt.GenericTypeDescrFormat(.{
     .options = .{
         .default_field_values = true,
@@ -17,9 +25,9 @@ pub const ProtoTypeDescr = fmt.GenericTypeDescrFormat(.{
         .indent = "",
     },
 });
-pub const ArgInfo = struct {
+pub const ParamInfo = struct {
     /// Describes how the argument should be written to the command line buffer
-    tag: Tag = .boolean,
+    tag: Tag = .boolean_field,
     /// Describes how the field type should be written to the command struct
     type: ProtoTypeDescr = ProtoTypeDescr.init(bool),
     /// Specifies whether option arguments are separated with '\x00' or '='
@@ -27,97 +35,72 @@ pub const ArgInfo = struct {
     /// If `immediate` (255) no separator is written
     char: ?u8 = null,
     const Tag = enum(u8) {
-        boolean = 0,
-        string,
-        tag,
-        integer,
-        formatter,
-        mapped,
-        optional_boolean,
-        optional_string,
-        optional_tag,
-        optional_integer,
-        optional_formatter,
-        optional_mapped,
-        repeatable_string,
-        repeatable_tag,
+        boolean_field = 0,
+        symbol_field,
+        string_field,
+        tag_field,
+        integer_field,
+        formatter_field,
+        mapped_field,
+        optional_boolean_field,
+        optional_string_field,
+        optional_tag_field,
+        optional_integer_field,
+        optional_formatter_field,
+        optional_mapped_field,
+        repeatable_string_field,
+        repeatable_tag_field,
+
+        string_param,
+        formatter_param,
+
+        integer_literal,
+        string_literal,
     };
     pub const immediate: u8 = 255;
-    fn typeDescr(any: anytype) ProtoTypeDescr {
-        if (@TypeOf(any) == type) {
-            return ProtoTypeDescr.init(any);
-        } else {
-            return ProtoTypeDescr{ .type_name = any };
+    pub fn isField(param_info: ParamInfo) bool {
+        switch (param_info.tag) {
+            .string_param, .formatter_param, .string_literal, .integer_literal => {
+                return false;
+            },
+            else => return true,
         }
     }
-    fn optionalTypeDescr(any: anytype) ProtoTypeDescr {
-        if (@TypeOf(any) == type) {
-            return optional(&ProtoTypeDescr.init(any));
-        } else {
-            return optional(&.{ .type_name = any });
+    pub fn isLiteral(param_info: ParamInfo) bool {
+        switch (param_info.tag) {
+            .string_literal, .integer_literal => {
+                return true;
+            },
+            else => return false,
         }
     }
-    pub fn string(comptime T: type) ArgInfo {
-        return .{ .tag = .string, .type = ProtoTypeDescr.init(T) };
-    }
-    pub fn tag(comptime any: anytype) ArgInfo {
-        return .{ .tag = .tag, .type = typeDescr(any) };
-    }
-    pub fn integer(comptime T: type) ArgInfo {
-        return .{ .tag = .integer, .type = ProtoTypeDescr.init(T) };
-    }
-    pub fn optional(@"type": *const ProtoTypeDescr) ProtoTypeDescr {
-        return .{ .type_refer = .{ .spec = "?", .type = @"type" } };
-    }
-    pub fn formatter(comptime type_name: [:0]const u8) ArgInfo {
-        return .{ .tag = .formatter, .type = .{ .type_name = type_name } };
-    }
-    pub fn mapped(comptime type_name: [:0]const u8) ArgInfo {
-        return .{ .tag = .mapped, .type = .{ .type_name = type_name } };
-    }
-    pub fn optional_boolean() ArgInfo {
-        return .{ .tag = .optional_boolean, .type = optionalTypeDescr(bool) };
-    }
-    pub fn optional_string(comptime any: anytype) ArgInfo {
-        return .{ .tag = .optional_string, .type = optionalTypeDescr(any) };
-    }
-    pub fn optional_tag(comptime any: anytype) ArgInfo {
-        return .{ .tag = .optional_tag, .type = optionalTypeDescr(any) };
-    }
-    pub fn optional_integer(comptime any: anytype) ArgInfo {
-        return .{ .tag = .optional_integer, .type = optionalTypeDescr(any) };
-    }
-    pub fn optional_formatter(comptime any: anytype) ArgInfo {
-        return .{ .tag = .optional_formatter, .type = optionalTypeDescr(any) };
-    }
-    pub fn optional_mapped(comptime any: anytype) ArgInfo {
-        return .{ .tag = .optional_mapped, .type = optionalTypeDescr(any) };
-    }
-    pub fn repeatable_string(comptime any: anytype) ArgInfo {
-        return .{ .tag = .repeatable_string, .type = optionalTypeDescr(any) };
-    }
-    pub fn repeatable_tag(comptime any: anytype) ArgInfo {
-        return .{ .tag = .repeatable_tag, .type = optionalTypeDescr(any) };
+    pub fn isFnParam(param_info: ParamInfo) bool {
+        switch (param_info.tag) {
+            .string_param, .formatter_param => {
+                return true;
+            },
+            else => return false,
+        }
     }
 };
-pub const OptionSpec = struct {
+pub const ParamSpec = struct {
     /// Command struct field name
-    name: []const u8,
+    name: []const u8 = &.{},
     /// Command line flag/switch
-    string: ?[]const u8 = null,
+    string: []const u8 = &.{},
     /// Simple argument type
-    arg_info: ArgInfo = .{},
+    info: ParamInfo = .{},
     /// For options with -f<name> and -fno-<name> variants
-    and_no: ?InverseOptionSpec = null,
+    and_no: ?InverseParamSpec = null,
     /// Maybe define default value of this field. Should be false or null, but
     /// allow the exception.
     default_value: ?[]const u8 = null,
     /// Description to be inserted above the field as documentation comment
     descr: ?[]const []const u8 = null,
 };
-pub const InverseOptionSpec = struct {
+pub const InverseParamSpec = struct {
     /// Command line flag/switch
-    string: ?[]const u8 = null,
+    string: []const u8 = &.{},
     /// Simple argument type
-    arg_info: ArgInfo = .{},
+    info: ParamInfo = .{},
 };
