@@ -998,46 +998,46 @@ pub fn shift(args: *[][*:0]u8, index: u64) void {
     }
     args.* = args.*[0 .. args.len - 1];
 }
+/// init: ArgsIterator{ .args = args }
 pub const ArgsIterator = struct {
     args: [][*:0]u8,
     args_idx: u64 = 1,
-    pub fn init(args: [][*:0]u8) ArgsIterator {
-        return .{ .args = args };
-    }
-    pub fn readOne(itr: *ArgsIterator) ?[:0]const u8 {
+    pub fn next(itr: *ArgsIterator) ?[:0]const u8 {
         if (itr.args_idx <= itr.args.len) {
             const arg: [*:0]const u8 = itr.args[itr.args_idx];
             itr.args_idx +%= 1;
             var arg_len: u64 = 0;
-            while (itr.args[itr.args_idx][arg_len] != 0) arg_len +%= 1;
+            while (itr.args[itr.args_idx][arg_len] != 0) {
+                arg_len +%= 1;
+            }
             return arg[0..arg_len :0];
         }
         return null;
     }
 };
-/// init: PathIterator{ .buf = environmentValue(vars, "PATH").? }
+/// init: PathIterator{ .paths = environmentValue(vars, "PATH").? }
 pub const PathIterator = struct {
-    buf: [:0]u8,
-    pos: u64 = 0,
+    paths: [:0]u8,
+    paths_idx: u64 = 0,
     pub fn next(itr: *PathIterator) ?[:0]u8 {
-        if (itr.pos == itr.buf.len) {
+        if (itr.paths_idx == itr.paths.len) {
             return null;
         }
-        const idx: u64 = itr.pos;
-        while (itr.pos != itr.buf.len) : (itr.pos +%= 1) {
-            if (itr.buf[itr.pos] == ':') {
-                itr.buf[itr.pos] = 0;
-                return itr.buf[idx..itr.pos :0];
+        const idx: u64 = itr.paths_idx;
+        while (itr.paths_idx != itr.paths.len) : (itr.paths_idx +%= 1) {
+            if (itr.paths[itr.paths_idx] == ':') {
+                itr.paths[itr.paths_idx] = 0;
+                return itr.paths[idx..itr.paths_idx :0];
             }
         } else {
-            return itr.buf[idx..itr.pos :0];
+            return itr.paths[idx..itr.paths_idx :0];
         }
     }
     pub fn done(itr: *PathIterator) void {
         var idx: u64 = 0;
-        while (idx != itr.pos) : (idx +%= 1) {
-            if (itr.buf[idx] == 0) {
-                itr.buf[idx] = ':';
+        while (idx != itr.paths_idx) : (idx +%= 1) {
+            if (itr.paths[idx] == 0) {
+                itr.paths[idx] = ':';
             }
         }
     }
