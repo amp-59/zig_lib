@@ -1,3 +1,4 @@
+const fmt = @import("../fmt.zig");
 const mach = @import("../mach.zig");
 const builtin = @import("../builtin.zig");
 const types = @import("./types.zig");
@@ -16,13 +17,14 @@ fn FormatMap(comptime T: type) type {
 fn formatMap(any: anytype) FormatMap(@TypeOf(any)) {
     return .{ .value = any };
 }
-pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_path: types.Path, buf: [*]u8) u64 {
+pub fn buildWriteBuf(cmd: *tasks.BuildCommand, zig_exe: []const u8, root_path: types.Path, buf: [*]u8) u64 {
     @setRuntimeSafety(safety);
-    mach.memcpy(buf, zig_exe.ptr, zig_exe.len);
-    var len: u64 = zig_exe.len;
+    var len: u64 = 0;
+    mach.memcpy(buf + len, zig_exe.ptr, zig_exe.len);
+    len +%= zig_exe.len;
     buf[len] = 0;
     len +%= 1;
-    mach.memcpy(buf + len, "build-", 6);
+    @ptrCast(*[6]u8, buf + len).* = "build-".*;
     len +%= 6;
     mach.memcpy(buf + len, @tagName(cmd.kind).ptr, @tagName(cmd.kind).len);
     len +%= @tagName(cmd.kind).len;
@@ -761,12 +763,14 @@ pub fn buildWriteBuf(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_p
         len +%= 22;
     }
     len +%= root_path.formatWriteBuf(buf + len);
-    buf[len] = 0;
     return len;
 }
-pub fn buildLength(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_path: types.Path) u64 {
-    @setRuntimeSafety(false);
-    var len: u64 = zig_exe.len +% 8;
+pub fn buildLength(cmd: *tasks.BuildCommand, zig_exe: []const u8, root_path: types.Path) u64 {
+    @setRuntimeSafety(safety);
+    var len: u64 = 0;
+    len +%= zig_exe.len;
+    len +%= 1;
+    len +%= 6;
     len +%= @tagName(cmd.kind).len;
     len +%= 1;
     if (cmd.emit_bin) |emit_bin| {
@@ -1309,15 +1313,85 @@ pub fn buildLength(cmd: *const tasks.BuildCommand, zig_exe: []const u8, root_pat
     if (cmd.debug_link_snapshot) {
         len +%= 22;
     }
-    return len +% root_path.formatLength();
+    len +%= root_path.formatLength();
+    return len;
 }
-pub fn archiveWriteBuf(cmd: *const tasks.ArchiveCommand, zig_exe: []const u8, buf: [*]u8) u64 {
+pub fn formatWriteBuf(cmd: *tasks.FormatCommand, zig_exe: []const u8, root_path: types.Path, buf: [*]u8) u64 {
     @setRuntimeSafety(safety);
-    mach.memcpy(buf, zig_exe.ptr, zig_exe.len);
-    var len: u64 = zig_exe.len;
+    var len: u64 = 0;
+    mach.memcpy(buf + len, zig_exe.ptr, zig_exe.len);
+    len +%= zig_exe.len;
     buf[len] = 0;
     len +%= 1;
-    mach.memcpy(buf + len, "ar\x00", 3);
+    @ptrCast(*[4]u8, buf + len).* = "fmt\x00".*;
+    len +%= 4;
+    if (cmd.color) |color| {
+        @ptrCast(*[8]u8, buf + len).* = "--color\x00".*;
+        len +%= 8;
+        mach.memcpy(buf + len, @tagName(color).ptr, @tagName(color).len);
+        len +%= @tagName(color).len;
+        buf[len] = 0;
+        len +%= 1;
+    }
+    if (cmd.stdin) {
+        @ptrCast(*[8]u8, buf + len).* = "--stdin\x00".*;
+        len +%= 8;
+    }
+    if (cmd.check) {
+        @ptrCast(*[8]u8, buf + len).* = "--check\x00".*;
+        len +%= 8;
+    }
+    if (cmd.ast_check) {
+        @ptrCast(*[12]u8, buf + len).* = "--ast-check\x00".*;
+        len +%= 12;
+    }
+    if (cmd.exclude) |exclude| {
+        @ptrCast(*[10]u8, buf + len).* = "--exclude\x00".*;
+        len +%= 10;
+        mach.memcpy(buf + len, exclude.ptr, exclude.len);
+        len +%= exclude.len;
+        buf[len] = 0;
+        len +%= 1;
+    }
+    len +%= root_path.formatWriteBuf(buf + len);
+    return len;
+}
+pub fn formatLength(cmd: *tasks.FormatCommand, zig_exe: []const u8, root_path: types.Path) u64 {
+    @setRuntimeSafety(safety);
+    var len: u64 = 0;
+    len +%= zig_exe.len;
+    len +%= 1;
+    len +%= 4;
+    if (cmd.color) |color| {
+        len +%= 8;
+        len +%= @tagName(color).len;
+        len +%= 1;
+    }
+    if (cmd.stdin) {
+        len +%= 8;
+    }
+    if (cmd.check) {
+        len +%= 8;
+    }
+    if (cmd.ast_check) {
+        len +%= 12;
+    }
+    if (cmd.exclude) |exclude| {
+        len +%= 10;
+        len +%= exclude.len;
+        len +%= 1;
+    }
+    len +%= root_path.formatLength();
+    return len;
+}
+pub fn archiveWriteBuf(cmd: *tasks.ArchiveCommand, zig_exe: []const u8, archive: types.Path, buf: [*]u8) u64 {
+    @setRuntimeSafety(safety);
+    var len: u64 = 0;
+    mach.memcpy(buf + len, zig_exe.ptr, zig_exe.len);
+    len +%= zig_exe.len;
+    buf[len] = 0;
+    len +%= 1;
+    @ptrCast(*[3]u8, buf + len).* = "ar\x00".*;
     len +%= 3;
     if (cmd.format) |format| {
         @ptrCast(*[9]u8, buf + len).* = "--format\x00".*;
@@ -1387,18 +1461,18 @@ pub fn archiveWriteBuf(cmd: *const tasks.ArchiveCommand, zig_exe: []const u8, bu
     len +%= @tagName(cmd.operation).len;
     buf[len] = 0;
     len +%= 1;
-    if (cmd.archive) |archive| {
-        len +%= archive.formatWriteBuf(buf + len);
-    }
+    len +%= archive.formatWriteBuf(buf + len);
     if (cmd.files) |files| {
         len +%= formatMap(files).formatWriteBuf(buf + len);
     }
-    buf[len] = 0;
     return len;
 }
-pub fn archiveLength(cmd: *const tasks.ArchiveCommand, zig_exe: []const u8) u64 {
+pub fn archiveLength(cmd: *tasks.ArchiveCommand, zig_exe: []const u8, archive: types.Path) u64 {
     @setRuntimeSafety(safety);
-    var len: u64 = zig_exe.len +% 4;
+    var len: u64 = 0;
+    len +%= zig_exe.len;
+    len +%= 1;
+    len +%= 3;
     if (cmd.format) |format| {
         len +%= 9;
         len +%= @tagName(format).len;
@@ -1447,84 +1521,15 @@ pub fn archiveLength(cmd: *const tasks.ArchiveCommand, zig_exe: []const u8) u64 
     }
     len +%= @tagName(cmd.operation).len;
     len +%= 1;
-    if (cmd.archive) |archive| {
-        len +%= archive.formatLength();
-    }
+    len +%= archive.formatLength();
     if (cmd.files) |files| {
         len +%= formatMap(files).formatLength();
     }
     return len;
 }
-pub fn formatWriteBuf(cmd: *const tasks.FormatCommand, zig_exe: []const u8, root_path: types.Path, buf: [*]u8) u64 {
+pub fn tblgenWriteBuf(cmd: *tasks.TableGenCommand, buf: [*]u8) u64 {
     @setRuntimeSafety(safety);
-    mach.memcpy(buf, zig_exe.ptr, zig_exe.len);
-    var len: u64 = zig_exe.len;
-    buf[len] = 0;
-    len +%= 1;
-    mach.memcpy(buf + len, "fmt\x00", 4);
-    len +%= 4;
-    if (cmd.color) |color| {
-        @ptrCast(*[8]u8, buf + len).* = "--color\x00".*;
-        len +%= 8;
-        mach.memcpy(buf + len, @tagName(color).ptr, @tagName(color).len);
-        len +%= @tagName(color).len;
-        buf[len] = 0;
-        len +%= 1;
-    }
-    if (cmd.stdin) {
-        @ptrCast(*[8]u8, buf + len).* = "--stdin\x00".*;
-        len +%= 8;
-    }
-    if (cmd.check) {
-        @ptrCast(*[8]u8, buf + len).* = "--check\x00".*;
-        len +%= 8;
-    }
-    if (cmd.ast_check) {
-        @ptrCast(*[12]u8, buf + len).* = "--ast-check\x00".*;
-        len +%= 12;
-    }
-    if (cmd.exclude) |exclude| {
-        @ptrCast(*[10]u8, buf + len).* = "--exclude\x00".*;
-        len +%= 10;
-        mach.memcpy(buf + len, exclude.ptr, exclude.len);
-        len +%= exclude.len;
-        buf[len] = 0;
-        len +%= 1;
-    }
-    len +%= root_path.formatWriteBuf(buf + len);
-    buf[len] = 0;
-    return len;
-}
-pub fn formatLength(cmd: *const tasks.FormatCommand, zig_exe: []const u8, root_path: types.Path) u64 {
-    @setRuntimeSafety(safety);
-    var len: u64 = zig_exe.len +% 5;
-    if (cmd.color) |color| {
-        len +%= 8;
-        len +%= @tagName(color).len;
-        len +%= 1;
-    }
-    if (cmd.stdin) {
-        len +%= 8;
-    }
-    if (cmd.check) {
-        len +%= 8;
-    }
-    if (cmd.ast_check) {
-        len +%= 12;
-    }
-    if (cmd.exclude) |exclude| {
-        len +%= 10;
-        len +%= exclude.len;
-        len +%= 1;
-    }
-    return len +% root_path.formatLength();
-}
-pub fn tblgenWriteBuf(cmd: *const tasks.TableGenCommand, tblgen_exe: []const u8, td_pathname: [:0]const u8, buf: [*]u8) u64 {
-    @setRuntimeSafety(safety);
-    mach.memcpy(buf, tblgen_exe.ptr, tblgen_exe.len);
-    var len: u64 = tblgen_exe.len;
-    buf[len] = 0;
-    len +%= 1;
+    var len: u64 = 0;
     if (cmd.color) |color| {
         @ptrCast(*[8]u8, buf + len).* = "--color\x00".*;
         len +%= 8;
@@ -1720,14 +1725,11 @@ pub fn tblgenWriteBuf(cmd: *const tasks.TableGenCommand, tblgen_exe: []const u8,
         buf[len] = 0;
         len +%= 1;
     }
-    mach.memcpy(buf + len, td_pathname.ptr, td_pathname.len);
-    len +%= td_pathname.len;
-    buf[len] = 0;
-    return len +% 1;
+    return len;
 }
-pub fn tblgenLength(cmd: *const tasks.TableGenCommand, tblgen_exe: []const u8, td_pathname: [:0]const u8) u64 {
+pub fn tblgenLength(cmd: *tasks.TableGenCommand) u64 {
     @setRuntimeSafety(safety);
-    var len: u64 = tblgen_exe.len +% 1;
+    var len: u64 = 0;
     if (cmd.color) |color| {
         len +%= 8;
         len +%= @tagName(color).len;
@@ -1872,5 +1874,84 @@ pub fn tblgenLength(cmd: *const tasks.TableGenCommand, tblgen_exe: []const u8, t
         len +%= output.len;
         len +%= 1;
     }
-    return len +% td_pathname.len;
+    return len;
+}
+pub fn harecWriteBuf(cmd: *tasks.HarecCommand, harec_exe: []const u8, buf: [*]u8) u64 {
+    @setRuntimeSafety(safety);
+    var len: u64 = 0;
+    mach.memcpy(buf + len, harec_exe.ptr, harec_exe.len);
+    len +%= harec_exe.len;
+    buf[len] = 0;
+    len +%= 1;
+    if (cmd.arch) |arch| {
+        @ptrCast(*[3]u8, buf + len).* = "-a\x00".*;
+        len +%= 3;
+        mach.memcpy(buf + len, arch.ptr, arch.len);
+        len +%= arch.len;
+        buf[len] = 0;
+        len +%= 1;
+    }
+    if (cmd.defs) |defs| {
+        len +%= formatMap(defs).formatWriteBuf(buf + len);
+    }
+    if (cmd.output) |output| {
+        @ptrCast(*[3]u8, buf + len).* = "-o\x00".*;
+        len +%= 3;
+        mach.memcpy(buf + len, output.ptr, output.len);
+        len +%= output.len;
+        buf[len] = 0;
+        len +%= 1;
+    }
+    if (cmd.tags) |tags| {
+        for (tags) |value| {
+            @ptrCast(*[2]u8, buf + len).* = "-T".*;
+            len +%= 2;
+            mach.memcpy(buf + len, value.ptr, value.len);
+            len +%= value.len;
+            buf[len] = 0;
+            len +%= 1;
+        }
+    }
+    if (cmd.typedefs) {
+        @ptrCast(*[3]u8, buf + len).* = "-t\x00".*;
+        len +%= 3;
+    }
+    if (cmd.namespace) {
+        @ptrCast(*[3]u8, buf + len).* = "-N\x00".*;
+        len +%= 3;
+    }
+    return len;
+}
+pub fn harecLength(cmd: *tasks.HarecCommand, harec_exe: []const u8) u64 {
+    @setRuntimeSafety(safety);
+    var len: u64 = 0;
+    len +%= harec_exe.len;
+    len +%= 1;
+    if (cmd.arch) |arch| {
+        len +%= 3;
+        len +%= arch.len;
+        len +%= 1;
+    }
+    if (cmd.defs) |defs| {
+        len +%= formatMap(defs).formatLength();
+    }
+    if (cmd.output) |output| {
+        len +%= 3;
+        len +%= output.len;
+        len +%= 1;
+    }
+    if (cmd.tags) |tags| {
+        for (tags) |value| {
+            len +%= 2;
+            len +%= value.len;
+            len +%= 1;
+        }
+    }
+    if (cmd.typedefs) {
+        len +%= 3;
+    }
+    if (cmd.namespace) {
+        len +%= 3;
+    }
+    return len;
 }
