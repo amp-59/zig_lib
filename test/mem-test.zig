@@ -3,6 +3,7 @@ const sys = top.sys;
 const fmt = top.fmt;
 const mem = top.mem;
 const proc = top.proc;
+const mach = top.mach;
 const meta = top.meta;
 const file = top.file;
 const spec = top.spec;
@@ -262,10 +263,21 @@ const AllocatorL = struct {}.GenericLinkedAllocator(.{
     .arena_index = 0,
 });
 fn testLallocator() !void {
-    var rng: file.DeviceRandomBytes(4096) = .{};
+    var rng: file.DeviceRandomBytes(65536) = .{};
     var address_space: AddressSpace = .{};
     var allocator: AllocatorL = try AllocatorL.init(&address_space);
     defer allocator.deinit(&address_space);
+
+    var count: u64 = rng.readOne(u16);
+    while (count != 1024) : (count = rng.readOne(u16)) {
+        const buf: []u8 = try allocator.allocate(u8, count);
+        AllocatorL.Graphics.graphPartitions(allocator);
+        mach.memset(buf.ptr, 0, buf.len);
+        allocator.consolidate();
+        allocator.deallocate(buf);
+    }
+    allocator.deallocateAll();
+
     var allocations: [16]?[]u8 = .{null} ** 16;
     for (&allocations, 0..) |*buf, idx| {
         buf.* = try allocator.allocate(u8, idx +% 1);
@@ -276,7 +288,7 @@ fn testLallocator() !void {
                 const sz: u16 = rng.readOne(u8);
                 switch (rng.readOne(enum { Deallocate, Reallocate })) {
                     .Deallocate => {
-                        allocator.free(allocation);
+                        allocator.deallocate(allocation);
                         buf.* = null;
                     },
                     .Reallocate => {
@@ -284,7 +296,7 @@ fn testLallocator() !void {
                             if (allocator.reallocate(u8, allocation, sz)) |ret| {
                                 buf.* = ret;
                             } else |_| {
-                                allocator.free(allocation);
+                                allocator.deallocate(allocation);
                                 buf.* = null;
                                 buf.* = try allocator.allocate(u8, rng.readOne(u8));
                             }
@@ -300,7 +312,7 @@ fn testLallocator() !void {
         allocator.consolidate();
     }
     AllocatorL.Graphics.graphPartitions(allocator);
-    allocator.freeAll();
+    allocator.deallocateAll();
 }
 fn testSimpleAllocator() void {
     var allocator: mem.SimpleAllocator = .{};
@@ -310,7 +322,7 @@ fn testSimpleAllocator() void {
 }
 pub fn main() !void {
     testSimpleAllocator();
-    // try meta.wrap(testLallocator());
+    //try meta.wrap(testLallocator());
     try meta.wrap(testMapGenericOverhead());
     try meta.wrap(testProtect());
     try meta.wrap(testLowSystemMemoryOperations());
