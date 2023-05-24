@@ -2601,7 +2601,7 @@ pub fn testLargeFlatStructureBuilder(args: anytype, vars: anytype, address_space
             defer allocator_a.restore(s);
             const len: u64 = builtin.debug.writeMulti(&buf, &.{ pathname, builtin.fmt.ud64(grp_idx).readAll(), "_", builtin.fmt.ud64(trg_idx).readAll() });
             buf[len] = 0;
-            try serial.serialWrite(.{ .Allocator = Allocator }, build.BuildCommand, &allocator_a, buf[0..len :0], trg.task_data.build.*);
+            try serial.serialWrite(.{ .Allocator = Allocator }, build.BuildCommand, &allocator_a, buf[0..len :0], trg.task_cmd.build.*);
         }
     }
     for (builder.grps[0..builder.grps_len], 0..) |grp, grp_idx| {
@@ -2612,7 +2612,7 @@ pub fn testLargeFlatStructureBuilder(args: anytype, vars: anytype, address_space
             const len: u64 = builtin.debug.writeMulti(&buf, &.{ pathname, builtin.fmt.ud64(grp_idx).readAll(), "_", builtin.fmt.ud64(trg_idx).readAll() });
             buf[len] = 0;
             const s_build_cmd: build.BuildCommand = try serial.serialRead(.{ .Allocator = Allocator }, build.BuildCommand, &allocator_a, buf[0..len :0]);
-            try builtin.expectEqualMemory(build.BuildCommand, s_build_cmd, trg.task_data.build.*);
+            try builtin.expectEqualMemory(build.BuildCommand, s_build_cmd, trg.task_cmd.build.*);
         }
     }
 }
