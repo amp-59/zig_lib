@@ -478,7 +478,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
                 return ret;
             }
-            pub fn describeTarget(group: *Group, target_name: []const u8, target_descr: []const u8) void {
+            pub fn describeTarget(group: *Group, target_name: []const u8, target_descr: [:0]const u8) void {
                 @setRuntimeSafety(false);
                 for (group.trgs[0..group.trgs_len]) |target| {
                     if (mach.testEqualMany8(target_name, target.name)) {
