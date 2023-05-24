@@ -62,3 +62,13 @@ pub fn main() !void {
     try testShl();
     try testShr();
 }
+fn testIsNan() !void {
+    try builtin.expect(math.isNan(math.nan(f16)));
+    try builtin.expect(math.isNan(math.nan(f32)));
+    try builtin.expect(math.isNan(math.nan(f64)));
+    try builtin.expect(math.isNan(math.nan(f128)));
+    try builtin.expect(!math.isNan(@as(f16, 1.0)));
+    try builtin.expect(!math.isNan(@as(f32, 1.0)));
+    try builtin.expect(!math.isNan(@as(f64, 1.0)));
+    try builtin.expect(!math.isNan(@as(f128, 1.0)));
+}
