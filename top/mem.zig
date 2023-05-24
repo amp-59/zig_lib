@@ -1682,16 +1682,16 @@ pub fn readAfterLastEqualOneOrElseWithSentinel(
 ) [:sentinel]const T {
     return readAfterLastEqualOneWithSentinel(T, sentinel, value, values) orelse values;
 }
-pub fn orderedMatches(comptime T: type, arg1: []const T, arg2: []const T) u64 {
-    const j: bool = arg1.len < arg2.len;
-    const l_values: []const T = if (j) arg1 else arg2;
-    const r_values: []const T = if (j) arg2 else arg1;
+pub fn orderedMatches(comptime T: type, l_values: []const T, r_values: []const T) u64 {
+    const j: bool = l_values.len < r_values.len;
+    const s_values: []const T = if (j) l_values else r_values;
+    const t_values: []const T = if (j) r_values else l_values;
     var l_idx: u64 = 0;
     var mats: u64 = 0;
-    while (l_idx +% mats < l_values.len) : (l_idx +%= 1) {
+    while (l_idx +% mats < s_values.len) : (l_idx +%= 1) {
         var r_idx: u64 = 0;
-        while (r_idx != r_values.len) : (r_idx +%= 1) {
-            mats +%= @boolToInt(l_values[l_idx +% mats] == r_values[r_idx]);
+        while (r_idx != t_values.len) : (r_idx +%= 1) {
+            mats +%= @boolToInt(s_values[l_idx +% mats] == t_values[r_idx]);
         }
     }
     return mats;
@@ -1996,6 +1996,54 @@ pub fn writeInt(comptime T: type, buffer: *[@divExact(@typeInfo(T).Int.bits, 8)]
         return writeIntForeign(T, buffer, value);
     }
 }
+pub fn writeIntSliceLittle(comptime T: type, dest: []u8, value: T) void {
+    builtin.assert(dest.len >= @divExact(@typeInfo(T).Int.bits, 8));
+    if (@typeInfo(T).Int.bits == 0) {
+        return @memset(dest, 0);
+    } else if (@typeInfo(T).Int.bits == 8) {
+        @memset(dest, 0);
+        dest[0] = @bitCast(u8, value);
+        return;
+    }
+    const Int = @Type(.{ .Int = .{
+        .signedness = .unsigned,
+        .bits = @bitSizeOf(T),
+    } });
+    var bits = @bitCast(Int, value);
+    for (dest) |*b| {
+        b.* = @truncate(u8, bits);
+        bits >>= 8;
+    }
+}
+pub fn writeIntSliceBig(comptime T: type, dest: []u8, value: T) void {
+    builtin.assert(dest.len >= @divExact(@typeInfo(T).Int.bits, 8));
+    if (@typeInfo(T).Int.bits == 0) {
+        return @memset(dest, 0);
+    } else if (@typeInfo(T).Int.bits == 8) {
+        @memset(dest, 0);
+        dest[dest.len - 1] = @bitCast(u8, value);
+        return;
+    }
+    const Int = @Type(.{ .Int = .{
+        .signedness = .unsigned,
+        .bits = @bitSizeOf(T),
+    } });
+    var bits: Int = @bitCast(Int, value);
+    var index: u64 = dest.len;
+    while (index != 0) {
+        index -= 1;
+        dest[index] = @truncate(u8, bits);
+        bits >>= 8;
+    }
+}
+pub const writeIntSliceNative = switch (builtin.config.native_endian) {
+    .Little => writeIntSliceLittle,
+    .Big => writeIntSliceBig,
+};
+pub const writeIntSliceForeign = switch (builtin.config.native_endian) {
+    .Little => writeIntSliceBig,
+    .Big => writeIntSliceLittle,
+};
 pub fn nativeTo(comptime T: type, x: T, desired_endianness: builtin.Endian) T {
     return switch (desired_endianness) {
         .Little => nativeToLittle(T, x),
@@ -2071,4 +2119,5 @@ pub fn asBytes(ptr: anytype) AsBytesReturnType(@TypeOf(ptr)) {
     const T = AsBytesReturnType(@TypeOf(ptr));
     return @ptrCast(T, @alignCast(@typeInfo(T).Pointer.alignment, ptr));
 }
+
 pub const toBytes = meta.toBytes;
