@@ -1024,7 +1024,7 @@ pub fn auxiliaryValue(auxv: *const anyopaque, comptime tag: AuxiliaryVectorEntry
     }
     return null;
 }
-pub fn environmentValue(vars: [][*:0]u8, key: [:0]const u8) ?[:0]const u8 {
+pub fn environmentValue(vars: [][*:0]u8, key: [:0]const u8) ?[:0]u8 {
     for (vars) |key_value| {
         const key_len: u64 = blk: {
             var idx: u64 = 0;
