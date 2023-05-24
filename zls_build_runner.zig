@@ -112,7 +112,7 @@ fn lengthModules(builder: *Builder) u64 {
             if (target.task != .build) {
                 continue;
             }
-            if (target.task_data.build.modules) |mods| {
+            if (target.task_cmd.build.modules) |mods| {
                 len +%= mods.len;
             }
         }
@@ -127,7 +127,7 @@ fn writeModules(pkgs: []BuildConfig.Pkg, builder: *Builder) []BuildConfig.Pkg {
             if (target.task != .build) {
                 continue;
             }
-            if (target.task_data.build.modules) |mods| {
+            if (target.task_cmd.build.modules) |mods| {
                 for (mods) |mod| {
                     pkgs[len] = .{ .name = mod.name, .path = mod.path };
                     len +%= 1;
