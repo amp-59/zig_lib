@@ -1015,6 +1015,33 @@ pub const ArgsIterator = struct {
         return null;
     }
 };
+/// init: PathIterator{ .buf = environmentValue(vars, "PATH").? }
+pub const PathIterator = struct {
+    buf: [:0]u8,
+    pos: u64 = 0,
+    pub fn next(itr: *PathIterator) ?[:0]u8 {
+        if (itr.pos == itr.buf.len) {
+            return null;
+        }
+        const idx: u64 = itr.pos;
+        while (itr.pos != itr.buf.len) : (itr.pos +%= 1) {
+            if (itr.buf[itr.pos] == ':') {
+                itr.buf[itr.pos] = 0;
+                return itr.buf[idx..itr.pos :0];
+            }
+        } else {
+            return itr.buf[idx..itr.pos :0];
+        }
+    }
+    pub fn done(itr: *PathIterator) void {
+        var idx: u64 = 0;
+        while (idx != itr.pos) : (idx +%= 1) {
+            if (itr.buf[idx] == 0) {
+                itr.buf[idx] = ':';
+            }
+        }
+    }
+};
 pub fn auxiliaryValue(auxv: *const anyopaque, comptime tag: AuxiliaryVectorEntry) ?u64 {
     var addr: u64 = @ptrToInt(auxv);
     while (@intToPtr(*u64, addr).* != 0) : (addr +%= 16) {
