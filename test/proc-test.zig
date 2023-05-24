@@ -11,18 +11,10 @@ const spec = top.spec;
 const build = top.build;
 const builtin = top.builtin;
 const testing = top.testing;
-
 pub usingnamespace proc.start;
-
 pub const runtime_assertions: bool = true;
-
 pub const logging_override: builtin.Logging.Override = spec.logging.override.verbose;
-
-const shdr_size: u64 = @sizeOf(exe.Elf64_Shdr);
-const phdr_size: u64 = @sizeOf(exe.Elf64_Phdr);
-
 const Array = mem.UnstructuredStreamView(8, 8, struct {}, .{});
-
 const Mapping = extern struct {
     lb_addr: u64,
     up_addr: u64,
@@ -86,29 +78,38 @@ fn testClone() !void {
     var stack_buf3: [4096]u8 align(4096) = undefined;
     var futex1: proc.Futex = .{ .word = 16 };
     var futex2: proc.Futex = .{ .word = 16 };
-
     try proc.callClone(.{ .return_type = void }, @ptrToInt(&stack_buf1), 4096, {}, testFutexWait, .{&futex1});
     try time.sleep(.{}, .{ .nsec = 0x10000 });
     try proc.callClone(.{ .return_type = void }, @ptrToInt(&stack_buf2), 4096, {}, testFutexWakeOp, .{ &futex1, &futex2 });
     try time.sleep(.{}, .{ .nsec = 0x20000 });
     try proc.callClone(.{ .return_type = void }, @ptrToInt(&stack_buf3), 4096, {}, testFutexWake, .{&futex2});
-
     try builtin.expectEqual(u32, 16, futex1.word);
     try builtin.expectEqual(u32, 32, futex2.word);
 }
-pub fn main(_: [][*:0]u8, _: [][*:0]u8, aux: *const anyopaque) !void {
+
+pub fn main(_: [][*:0]u8, vars: [][*:0]u8, aux: *const anyopaque) !void {
     try testClone();
     testCheckResourcesNoErrors();
-
+    var itr: proc.PathIterator = .{
+        .paths = proc.environmentValue(vars, "PATH").?,
+    };
+    const open_spec: file.OpenSpec = .{
+        .options = .{ .no_follow = false },
+    };
+    while (itr.next()) |path| {
+        const dir_fd: u64 = file.path(.{}, path) catch continue;
+        const fd: u64 = file.openAt(open_spec, dir_fd, "zig") catch continue;
+        const st: file.Status = try file.status(.{}, fd);
+        if (st.isExecutable(proc.getUserId(), proc.getGroupId())) {
+            break itr.done();
+        }
+    }
     const vdso_addr: u64 = proc.auxiliaryValue(aux, .vdso_addr).?;
     const clock_gettime: time.ClockGetTime = proc.getVSyscall(time.ClockGetTime, vdso_addr, "clock_gettime").?;
-
     var vts: time.TimeSpec = undefined;
     _ = clock_gettime(.realtime, &vts);
-
     const ts: time.TimeSpec = try time.get(.{}, .realtime);
     const ts_diff: time.TimeSpec = time.diff(ts, vts);
-
     try builtin.expectEqual(u64, ts_diff.sec, 0);
     try builtin.expectBelowOrEqual(u64, ts_diff.nsec, 1000);
 }
