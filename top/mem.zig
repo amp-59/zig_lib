@@ -1,6 +1,7 @@
 const sys = @import("./sys.zig");
 const meta = @import("./meta.zig");
 const mach = @import("./mach.zig");
+const math = @import("./math.zig");
 const proc = @import("./proc.zig");
 const builtin = @import("./builtin.zig");
 const _virtual = @import("./virtual.zig");
@@ -1682,6 +1683,17 @@ pub fn readAfterLastEqualOneOrElseWithSentinel(
 ) [:sentinel]const T {
     return readAfterLastEqualOneWithSentinel(T, sentinel, value, values) orelse values;
 }
+pub fn order(comptime T: type, l_values: []const T, r_values: []const T) math.Order {
+    const max_idx: u64 = @min(l_values.len, r_values.len);
+    var idx: u64 = 0;
+    while (idx != max_idx) : (idx += 1) {
+        const o: math.Order = math.order(l_values[idx], r_values[idx]);
+        if (o != .eq) {
+            return o;
+        }
+    }
+    return math.order(l_values.len, r_values.len);
+}
 pub fn orderedMatches(comptime T: type, l_values: []const T, r_values: []const T) u64 {
     const j: bool = l_values.len < r_values.len;
     const s_values: []const T = if (j) l_values else r_values;
@@ -1696,36 +1708,21 @@ pub fn orderedMatches(comptime T: type, l_values: []const T, r_values: []const T
     }
     return mats;
 }
-pub fn propagateSearch(comptime T: type, arg1: []const T, arg2: []const T, index: u64) ?u64 {
+pub fn indexOfNearestEqualMany(comptime T: type, arg1: []const T, arg2: []const T, index: u64) ?u64 {
     const needle: []const u8 = if (arg1.len < arg2.len) arg1 else arg2;
     const haystack: []const u8 = if (arg1.len < arg2.len) arg2 else arg1;
-    if (haystack.len > 127) {
-        var start: u64 = index;
-        while (start != haystack.len) : (start +%= 1) {
-            if (testEqualManyFront(u8, needle, haystack[start..])) {
-                return start;
+    var off: u64 = 0;
+    while (off != haystack.len) : (off +%= 1) {
+        const below_start: u64 = index -% off;
+        const above_start: u64 = index +% off;
+        if (below_start < haystack.len) {
+            if (testEqualManyFront(u8, needle, haystack[below_start..])) {
+                return below_start;
             }
         }
-        start = index -| 1;
-        while (start != 0) : (start -%= 1) {
-            if (testEqualManyFront(u8, needle, haystack[start..])) {
-                return start;
-            }
-        }
-    } else {
-        var spread: u64 = 0;
-        while (spread != haystack.len) : (spread +%= 1) {
-            const below_start: u64 = index -% spread;
-            const above_start: u64 = index +% spread;
-            if (below_start < haystack.len) {
-                if (testEqualManyFront(u8, needle, haystack[below_start..])) {
-                    return below_start;
-                }
-            }
-            if (above_start < haystack.len) {
-                if (testEqualManyFront(u8, needle, haystack[above_start..])) {
-                    return above_start;
-                }
+        if (above_start < haystack.len) {
+            if (testEqualManyFront(u8, needle, haystack[above_start..])) {
+                return above_start;
             }
         }
     }
@@ -1768,7 +1765,8 @@ pub const SimpleAllocator = struct {
         const ret_addr: u64 = allocator.reallocateInternal(@ptrToInt(buf.ptr), buf.len *% @sizeOf(T), count *% @sizeOf(T), align_of);
         return @intToPtr([*]align(align_of) T, ret_addr)[0..count];
     }
-    pub fn deallocate(allocator: *Allocator, comptime T: type, buf: []T) void {
+
+    pub inline fn deallocate(allocator: *Allocator, comptime T: type, buf: []T) void {
         allocator.deallocateInternal(@ptrToInt(buf.ptr), buf.len *% @sizeOf(T));
     }
     pub inline fn save(allocator: *const Allocator) Save {
@@ -2119,5 +2117,4 @@ pub fn asBytes(ptr: anytype) AsBytesReturnType(@TypeOf(ptr)) {
     const T = AsBytesReturnType(@TypeOf(ptr));
     return @ptrCast(T, @alignCast(@typeInfo(T).Pointer.alignment, ptr));
 }
-
 pub const toBytes = meta.toBytes;
