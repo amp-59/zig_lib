@@ -21,19 +21,19 @@ pub fn main(args_in: [][*:0]u8) !void {
         const fd: u64 = file.open(.{ .options = .{ .read = true, .write = true, .append = true, .no_follow = false } }, arg) catch {
             continue;
         };
+        const size: u64 = try file.seek(.{}, fd, 0, .end);
         defer file.close(.{ .errors = .{} }, fd);
-        const lb_addr: u64 = 0x40000000;
-        const up_addr: u64 = file.map(.{ .options = .{ .visibility = .shared } }, lb_addr, fd) catch {
-            continue;
-        };
-        const s_bytes: u64 = mach.alignA(up_addr - lb_addr, 4096);
-        defer mem.unmap(.{ .errors = .{} }, lb_addr, s_bytes);
+        const addr: u64 = 0x40000000;
+
+        const len: u64 = mach.alignA64(size, 4096);
+        try file.map(.{ .options = .{ .visibility = .shared } }, fd, addr, len);
+        defer mem.unmap(.{ .errors = .{} }, addr, len);
 
         const section_s: [:0]const u8 = "\t.section";
         const segment_s: [:0]const u8 = "LBB";
         const unnamed_s: [:0]const u8 = "L__unnamed";
 
-        const buf: []u8 = mem.pointerSlice(u8, lb_addr, file.status(.{ .errors = .{} }, fd).size);
+        const buf: []u8 = mem.pointerSlice(u8, addr, size);
         var idx: u64 = 0;
         while (idx != buf.len) : (idx +%= 1) {
             if (mem.testEqualMany(u8, segment_s, buf[idx .. idx + segment_s.len])) {
