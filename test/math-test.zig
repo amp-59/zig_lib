@@ -1,13 +1,10 @@
 const zig_lib = @import("../zig_lib.zig");
-
 const fmt = zig_lib.fmt;
 const proc = zig_lib.proc;
 const math = zig_lib.math;
 const builtin = zig_lib.builtin;
 const testing = zig_lib.testing;
-
 pub usingnamespace proc.start;
-
 fn testShl() !void {
     try builtin.expect(math.shl(u8, 0b11111111, @as(usize, 3)) == 0b11111000);
     try builtin.expect(math.shl(u8, 0b11111111, @as(usize, 8)) == 0);
