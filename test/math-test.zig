@@ -59,43 +59,43 @@ fn testRotl() !void {
     try builtin.expect(math.rotl(@Vector(1, u32), @Vector(1, u32){1 << 31}, @as(isize, -1))[0] == @as(u32, 1) << 30);
 }
 fn testIsNan() !void {
-    try builtin.expect(math.isNan(math.nan(f16)));
-    try builtin.expect(math.isNan(math.nan(f32)));
-    try builtin.expect(math.isNan(math.nan(f64)));
-    // try builtin.expect(math.isNan(math.nan(f128)));
-    try builtin.expect(!math.isNan(@as(f16, 1.0)));
-    try builtin.expect(!math.isNan(@as(f32, 1.0)));
-    try builtin.expect(!math.isNan(@as(f64, 1.0)));
-    // try builtin.expect(!math.isNan(@as(f128, 1.0)));
+    try builtin.expect(math.float.isNan(math.float.nan(f16)));
+    try builtin.expect(math.float.isNan(math.float.nan(f32)));
+    try builtin.expect(math.float.isNan(math.float.nan(f64)));
+    // try builtin.expect(math.float.isNan(math.nan(f128)));
+    try builtin.expect(!math.float.isNan(@as(f16, 1.0)));
+    try builtin.expect(!math.float.isNan(@as(f32, 1.0)));
+    try builtin.expect(!math.float.isNan(@as(f64, 1.0)));
+    // try builtin.expect(!math.float.isNan(@as(f128, 1.0)));
 }
 fn testIsInf() !void {
     inline for ([_]type{ f16, f32, f64 }) |T| {
         try builtin.expect(!math.isInf(@as(T, 0.0)));
         try builtin.expect(!math.isInf(@as(T, -0.0)));
-        try builtin.expect(math.isInf(math.inf(T)));
-        try builtin.expect(math.isInf(-math.inf(T)));
-        try builtin.expect(!math.isInf(math.nan(T)));
-        try builtin.expect(!math.isInf(-math.nan(T)));
+        try builtin.expect(math.isInf(math.float.inf(T)));
+        try builtin.expect(math.isInf(-math.float.inf(T)));
+        try builtin.expect(!math.isInf(math.float.nan(T)));
+        try builtin.expect(!math.isInf(-math.float.nan(T)));
     }
 }
 fn testIsPositiveInf() !void {
     inline for ([_]type{ f16, f32, f64 }) |T| {
         try builtin.expect(!math.isPositiveInf(@as(T, 0.0)));
         try builtin.expect(!math.isPositiveInf(@as(T, -0.0)));
-        try builtin.expect(math.isPositiveInf(math.inf(T)));
-        try builtin.expect(!math.isPositiveInf(-math.inf(T)));
-        try builtin.expect(!math.isInf(math.nan(T)));
-        try builtin.expect(!math.isInf(-math.nan(T)));
+        try builtin.expect(math.isPositiveInf(math.float.inf(T)));
+        try builtin.expect(!math.isPositiveInf(-math.float.inf(T)));
+        try builtin.expect(!math.isInf(math.float.nan(T)));
+        try builtin.expect(!math.isInf(-math.float.nan(T)));
     }
 }
 fn testIsNegativeInf() !void {
     inline for ([_]type{ f16, f32, f64 }) |T| {
         try builtin.expect(!math.isNegativeInf(@as(T, 0.0)));
         try builtin.expect(!math.isNegativeInf(@as(T, -0.0)));
-        try builtin.expect(!math.isNegativeInf(math.inf(T)));
-        try builtin.expect(math.isNegativeInf(-math.inf(T)));
-        try builtin.expect(!math.isInf(math.nan(T)));
-        try builtin.expect(!math.isInf(-math.nan(T)));
+        try builtin.expect(!math.isNegativeInf(math.float.inf(T)));
+        try builtin.expect(math.isNegativeInf(-math.float.inf(T)));
+        try builtin.expect(!math.isInf(math.float.nan(T)));
+        try builtin.expect(!math.isInf(-math.float.nan(T)));
     }
 }
 pub fn main() !void {
