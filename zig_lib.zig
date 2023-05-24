@@ -14,6 +14,7 @@ pub const file = @import("./top/file.zig");
 pub const algo = @import("./top/algo.zig");
 pub const time = @import("./top/time.zig");
 pub const spec = @import("./top/spec.zig");
+pub const parse = @import("./top/parse.zig");
 pub const build = @import("./top/build3.zig");
 pub const thread = @import("./top/thread.zig");
 pub const crypto = @import("./top/crypto.zig");
