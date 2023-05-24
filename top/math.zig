@@ -41,6 +41,39 @@ pub inline fn absoluteVal(i: anytype) Absolute(@TypeOf(i)) {
     }
     return @intCast(Abs, i);
 }
+/// Returns the sum of arg1 and b. Returns an error on overflow.
+pub fn mul(comptime T: type, arg1: T, arg2: T) (error{Overflow}!T) {
+    if (@inComptime()) {
+        return arg1 * arg2;
+    }
+    const res: struct { T, u1 } = @mulWithOverflow(arg1, arg2);
+    if (res[1] != 0) {
+        return error.Overflow;
+    }
+    return res[0];
+}
+/// Returns the sum of arg1 and b. Returns an error on overflow.
+pub fn add(comptime T: type, arg1: T, arg2: T) (error{Overflow}!T) {
+    if (@inComptime()) {
+        return arg1 + arg2;
+    }
+    const res: struct { T, u1 } = @addWithOverflow(arg1, arg2);
+    if (res[1] != 0) {
+        return error.Overflow;
+    }
+    return res[0];
+}
+/// Returns arg1 - b, or an error on overflow.
+pub fn sub(comptime T: type, arg1: T, arg2: T) (error{Overflow}!T) {
+    if (@inComptime()) {
+        return arg1 - arg2;
+    }
+    const res: struct { T, u1 } = @subWithOverflow(arg1, arg2);
+    if (res[1] != 0) {
+        return error.Overflow;
+    }
+    return res[0];
+}
 pub fn rotr(comptime T: type, value: T, rot_amt: anytype) T {
     const RotateAmount = @TypeOf(rot_amt);
     if (@typeInfo(T) == .Vector) {
@@ -151,4 +184,154 @@ pub fn shr(comptime T: type, a: T, shift_amt: anytype) T {
 }
 pub fn log2(comptime T: type, x: T) builtin.ShiftAmount(T) {
     return @intCast(builtin.ShiftAmount(T), @typeInfo(T).Int.bits - 1 - @clz(x));
+}
+
+// Floats:
+
+/// Creates a raw "1.0" mantissa for floating point type T. Used to dedupe f80 logic.
+fn mantissaOne(comptime T: type) comptime_int {
+    return if (@typeInfo(T).Float.bits == 80) 1 << floatFractionalBits(T) else 0;
+}
+
+/// Creates floating point type T from an unbiased exponent and raw mantissa.
+fn reconstructFloat(comptime T: type, comptime exponent: comptime_int, comptime mantissa: comptime_int) T {
+    const TBits = @Type(.{ .Int = .{ .signedness = .unsigned, .bits = @bitSizeOf(T) } });
+    const biased_exponent = @as(TBits, exponent + floatExponentMax(T));
+    return @bitCast(T, (biased_exponent << floatMantissaBits(T)) | @as(TBits, mantissa));
+}
+
+/// Returns the number of bits in the exponent of floating point type T.
+pub fn floatExponentBits(comptime T: type) comptime_int {
+    return switch (@typeInfo(T).Float.bits) {
+        16 => 5,
+        32 => 8,
+        64 => 11,
+        80 => 15,
+        128 => 15,
+        else => @compileError("unknown floating point type " ++ @typeName(T)),
+    };
+}
+
+/// Returns the number of bits in the mantissa of floating point type T.
+pub fn floatMantissaBits(comptime T: type) comptime_int {
+    return switch (@typeInfo(T).Float.bits) {
+        16 => 10,
+        32 => 23,
+        64 => 52,
+        80 => 64,
+        128 => 112,
+        else => @compileError("unknown floating point type " ++ @typeName(T)),
+    };
+}
+
+/// Returns the number of fractional bits in the mantissa of floating point type T.
+pub fn floatFractionalBits(comptime T: type) comptime_int {
+    // standard IEEE floats have an implicit 0.m or 1.m integer part
+    // f80 is special and has an explicitly stored bit in the MSB
+    // this function corresponds to `MANT_DIG - 1' from C
+    return switch (@typeInfo(T).Float.bits) {
+        16 => 10,
+        32 => 23,
+        64 => 52,
+        80 => 63,
+        128 => 112,
+        else => @compileError("unknown floating point type " ++ @typeName(T)),
+    };
+}
+
+/// Returns the minimum exponent that can represent
+/// a normalised value in floating point type T.
+pub fn floatExponentMin(comptime T: type) comptime_int {
+    return -floatExponentMax(T) + 1;
+}
+
+/// Returns the maximum exponent that can represent
+/// a normalised value in floating point type T.
+pub fn floatExponentMax(comptime T: type) comptime_int {
+    return (1 << (floatExponentBits(T) - 1)) - 1;
+}
+
+/// Returns the smallest subnormal number representable in floating point type T.
+pub fn floatTrueMin(comptime T: type) T {
+    return reconstructFloat(T, floatExponentMin(T) - 1, 1);
+}
+
+/// Returns the smallest normal number representable in floating point type T.
+pub fn floatMin(comptime T: type) T {
+    return reconstructFloat(T, floatExponentMin(T), mantissaOne(T));
+}
+
+/// Returns the largest normal number representable in floating point type T.
+pub fn floatMax(comptime T: type) T {
+    const all1s_mantissa = (1 << floatMantissaBits(T)) - 1;
+    return reconstructFloat(T, floatExponentMax(T), all1s_mantissa);
+}
+
+/// Returns the machine epsilon of floating point type T.
+pub fn floatEps(comptime T: type) T {
+    return reconstructFloat(T, -floatFractionalBits(T), mantissaOne(T));
+}
+
+/// Returns the value inf for floating point type T.
+pub fn inf(comptime T: type) T {
+    return reconstructFloat(T, floatExponentMax(T) + 1, mantissaOne(T));
+}
+
+pub const nan_u16 = @as(u16, 0x7C01);
+pub const nan_f16 = @bitCast(f16, nan_u16);
+
+pub const qnan_u16 = @as(u16, 0x7E00);
+pub const qnan_f16 = @bitCast(f16, qnan_u16);
+
+pub const nan_u32 = @as(u32, 0x7F800001);
+pub const nan_f32 = @bitCast(f32, nan_u32);
+
+pub const qnan_u32 = @as(u32, 0x7FC00000);
+pub const qnan_f32 = @bitCast(f32, qnan_u32);
+
+pub const nan_u64 = @as(u64, 0x7FF << 52) | 1;
+pub const nan_f64 = @bitCast(f64, nan_u64);
+
+pub const qnan_u64 = @as(u64, 0x7ff8000000000000);
+pub const qnan_f64 = @bitCast(f64, qnan_u64);
+
+pub const nan_u128 = @as(u128, 0x7fff0000000000000000000000000001);
+pub const nan_f128 = @bitCast(f128, nan_u128);
+
+pub const qnan_u128 = @as(u128, 0x7fff8000000000000000000000000000);
+pub const qnan_f128 = @bitCast(f128, qnan_u128);
+
+pub fn nan(comptime T: type) T {
+    switch (@typeInfo(T).Float.bits) {
+        16 => return nan_f16,
+        32 => return nan_f32,
+        64 => return nan_f64,
+        128 => return nan_f128,
+        else => @compileError("unreachable"),
+    }
+}
+pub fn snan(comptime T: type) T {
+    return nan(T);
+}
+/// Returns whether x is a nan.
+pub fn isNan(x: anytype) bool {
+    return x != x;
+}
+
+/// Returns whether x is a signalling nan.
+pub fn isSignalNan(x: anytype) bool {
+    // Note: A signalling nan is identical to a standard nan right now but may have a different bit
+    // representation in the future when required.
+    return isNan(x);
+}
+
+test "math.isNan" {
+    try expect(isNan(math.nan(f16)));
+    try expect(isNan(math.nan(f32)));
+    try expect(isNan(math.nan(f64)));
+    try expect(isNan(math.nan(f128)));
+    try expect(!isNan(@as(f16, 1.0)));
+    try expect(!isNan(@as(f32, 1.0)));
+    try expect(!isNan(@as(f64, 1.0)));
+    try expect(!isNan(@as(f128, 1.0)));
 }
