@@ -426,6 +426,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 ret.* = target;
                 const cmd: *types.BuildCommand = allocator.create(types.BuildCommand);
                 cmd.* = build_cmd;
+                ret.task_cmd = .{ .build = cmd };
                 ret.task = .build;
                 ret.hidden = group.hidden;
                 ret.name = ret.generateName(allocator);
@@ -448,7 +449,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 if (cmd.kind == .exe) {
                     ret.addRunCommand(allocator);
                 }
-                ret.task_cmd = .{ .build = cmd };
                 ret.assertExchange(.build, .no_task, .ready);
                 return ret;
             }
@@ -457,10 +457,10 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 ret.* = target;
                 const cmd: *types.FormatCommand = allocator.create(types.FormatCommand);
                 cmd.* = format_cmd;
+                ret.task_cmd = .{ .format = cmd };
                 ret.task = .format;
                 ret.hidden = group.hidden;
                 ret.name = ret.generateName(allocator);
-                ret.task_cmd = .{ .format = cmd };
                 ret.assertExchange(.format, .no_task, .ready);
                 return ret;
             }
@@ -470,17 +470,12 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 const cmd: *types.ArchiveCommand = allocator.create(types.ArchiveCommand);
                 cmd.* = archive_cmd;
                 ret.task = .archive;
+                ret.task_cmd = .{ .archive = cmd };
                 ret.hidden = group.hidden;
                 ret.name = ret.generateName(allocator);
                 for (deps) |dep| {
                     ret.dependOnObject(allocator, dep);
                 }
-                ret.task_cmd.archive.archive = .{
-                    .absolute = group.builder.build_root,
-                    .relative = archiveRelative(allocator, ret.name),
-                };
-                ret.task_cmd = .{ .archive = cmd };
-                ret.assertExchange(.archive, .no_task, .ready);
                 return ret;
             }
             pub fn describeTarget(group: *Group, target_name: []const u8, target_descr: []const u8) void {
@@ -730,19 +725,20 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             @setRuntimeSafety(false);
             const archive_cmd: *types.ArchiveCommand = target.task_cmd.archive;
             archive_cmd.files = target.paths[0..target.paths_len];
+            const archive_path: types.Path = target.createArchivePath(allocator, builder);
             const max_len: u64 = builder_spec.options.max_cmdline_len orelse
-                cmdline.archiveLength(archive_cmd, builder.zig_exe);
+                cmdline.archiveLength(archive_cmd, builder.zig_exe, archive_path);
             if (@hasDecl(cmdline, "archiveWrite")) {
                 const Args = Allocator.StructuredVectorLowAlignedWithSentinel(u8, 0, 8);
                 var array: Args = Args.init(allocator, max_len);
-                cmdline.archiveWrite(archive_cmd, builder.zig_exe, &array);
+                cmdline.archiveWrite(archive_cmd, builder.zig_exe, archive_path, &array);
                 if (builder_spec.options.max_cmdline_len == null) {
                     builtin.assertEqual(u64, max_len, array.len());
                 }
                 return array.referAllDefinedWithSentinel(0);
             } else {
                 const buf: []u8 = allocator.allocate(u8, max_len);
-                const len: u64 = cmdline.archiveWriteBuf(archive_cmd, builder.zig_exe, buf.ptr);
+                const len: u64 = cmdline.archiveWriteBuf(archive_cmd, builder.zig_exe, archive_path, buf.ptr);
                 if (builder_spec.options.max_cmdline_len == null) {
                     builtin.assertEqual(u64, max_len, len);
                 }
