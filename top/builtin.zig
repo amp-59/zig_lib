@@ -543,7 +543,7 @@ pub fn max(comptime T: type, arg1: T, arg2: T) T {
         }
     }
 }
-fn ptr(comptime T: type) *T {
+pub fn ptr(comptime T: type) *T {
     var ret: T = 0;
     return &ret;
 }
