@@ -1831,7 +1831,7 @@ pub inline fn esc(value: u8) PolynomialFormat(.{
     .bits = 8,
     .radix = 16,
     .signedness = .unsigned,
-    .width = .min,
+    .width = .max,
     .prefix = "\\x",
 }) {
     return .{ .value = value };
