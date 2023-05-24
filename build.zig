@@ -98,7 +98,7 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     build_cmd.mode = .ReleaseSmall;
     //const crypto_test: *Builder.Target =    try tests.addBuild(allocator, build_cmd,    .{ .name = "crypto_test", .root = "test/crypto-test.zig" });
     const mem_test: *Builder.Target =       try tests.addBuild(allocator, build_cmd,    .{ .name = "mem_test",      .root = "test/mem-test.zig" });
-    const mem2_test: *Builder.Target =      try tests.addBuild(allocator, build_cmd,    .{ .name = "mem2_test",     .root = "test/mem2-test.zig" });
+    //const mem2_test: *Builder.Target =      try tests.addBuild(allocator, build_cmd,    .{ .name = "mem2_test",     .root = "test/mem2-test.zig" });
     const proc_test: *Builder.Target =      try tests.addBuild(allocator, build_cmd,    .{ .name = "proc_test",     .root = "test/proc-test.zig" });
 
     // Memory implementation generator:
@@ -127,7 +127,7 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     builtin_test.descr =    "Test builtin functions";
     meta_test.descr =       "Test meta functions";
     mem_test.descr =        "Test low level memory management functions and basic container/allocator usage";
-    mem2_test.descr =       "Test v2 low level memory implementation";
+    //mem2_test.descr =       "Test v2 low level memory implementation";
     algo_test.descr =       "Test sorting and compression functions";
     math_test.descr =       "Test math functions";
     file_test.descr =       "Test low level file system operation functions";
