@@ -53,18 +53,14 @@ pub const ParamInfo = struct {
 
         string_param,
         formatter_param,
+        mapped_param,
 
         integer_literal,
         string_literal,
     };
     pub const immediate: u8 = 255;
     pub fn isField(param_info: ParamInfo) bool {
-        switch (param_info.tag) {
-            .string_param, .formatter_param, .string_literal, .integer_literal => {
-                return false;
-            },
-            else => return true,
-        }
+        return !param_info.isFnParam() and !param_info.isLiteral();
     }
     pub fn isLiteral(param_info: ParamInfo) bool {
         switch (param_info.tag) {
@@ -76,7 +72,7 @@ pub const ParamInfo = struct {
     }
     pub fn isFnParam(param_info: ParamInfo) bool {
         switch (param_info.tag) {
-            .string_param, .formatter_param => {
+            .string_param, .formatter_param, .mapped_param => {
                 return true;
             },
             else => return false,
@@ -96,7 +92,7 @@ pub const ParamSpec = struct {
     /// allow the exception.
     default_value: ?[]const u8 = null,
     /// Description to be inserted above the field as documentation comment
-    descr: ?[]const []const u8 = null,
+    descr: []const []const u8 = &.{},
 };
 pub const InverseParamSpec = struct {
     /// Command line flag/switch
