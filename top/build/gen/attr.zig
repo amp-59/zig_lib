@@ -1,10 +1,37 @@
 const types = @import("./types.zig");
 
-const string_type = types.ProtoTypeDescr.init([]const u8);
-const optional_string_type = types.ProtoTypeDescr.init(?[]const u8);
-const repeatable_string_type = types.ProtoTypeDescr.init(?[]const []const u8);
-const integer_type = types.ProtoTypeDescr.init(usize);
-const optional_integer_type = types.ProtoTypeDescr.init(?usize);
+const optional_path_type: types.ProtoTypeDescr = .{ .type_name = "?types.Path" };
+
+const string_type: types.ProtoTypeDescr = .{ .type_name = "[]const u8" };
+const optional_string_type: types.ProtoTypeDescr = .{ .type_name = "?[]const u8" };
+const repeatable_string_type: types.ProtoTypeDescr = .{ .type_name = "?[]const []const u8" };
+const integer_type: types.ProtoTypeDescr = .{ .type_name = "usize" };
+const optional_integer_type: types.ProtoTypeDescr = .{ .type_name = "?usize" };
+const auto_on_off_type: types.ProtoTypeDescr = .{ .type_name = "?enum { auto, off, on }" };
+
+const paths_type: types.ProtoTypeDescrMap = .{
+    .{ .type_name = "[]const types.Path" },
+    .{ .type_name = "types.Paths" },
+};
+const optional_macro_slice_type: types.ProtoTypeDescrMap = .{
+    .{ .type_name = "?[]const types.Macro" },
+    .{ .type_name = "types.Macros" },
+};
+const optional_module_slice_type: types.ProtoTypeDescrMap = .{
+    .{ .type_name = "?[]const types.Module" },
+    .{ .type_name = "types.Modules" },
+};
+const optional_dependencies_slice_type: types.ProtoTypeDescrMap = .{
+    .{ .type_name = "?[]const types.ModuleDependency" },
+    .{ .type_name = "types.ModuleDependencies" },
+};
+const hmacro_slice_type: types.ProtoTypeDescrMap = .{
+    .{ .type_name = "?[]const types.HMacro" },
+    .{ .type_name = "types.HMacros" },
+};
+const output_mode_type: types.ProtoTypeDescr = .{
+    .type_name = "types.OutputMode",
+};
 
 pub const zig_build_command_attributes: types.Attributes = .{
     .type_name = "BuildCommand",
@@ -12,145 +39,130 @@ pub const zig_build_command_attributes: types.Attributes = .{
     .params = &.{
         .{
             .name = "zig_exe",
-            .info = .{ .tag = .string_param, .type = string_type },
+            .tag = .string_param,
+            .type = &string_type,
         },
         .{
             .string = "build-",
-            .info = .{ .tag = .string_literal, .char = types.ParamInfo.immediate },
+            .tag = .string_literal,
+            .char = types.ParamSpec.immediate,
         },
         .{
             .name = "kind",
-            .info = .{
-                .tag = .tag_field,
-                .type = .{ .type_name = "types.OutputMode" },
-            },
+            .tag = .tag_field,
+            .type = &output_mode_type,
         },
         .{
             .name = "emit_bin",
             .string = "-femit-bin",
-            .info = .{
-                .tag = .optional_formatter_field,
-                .type = .{ .type_name = "?types.Path" },
-            },
+            .tag = .optional_formatter_field,
+            .type = &optional_path_type,
             .and_no = .{ .string = "-fno-emit-bin" },
             .descr = &.{"(default=yes) Output machine code"},
         },
         .{
             .name = "emit_asm",
             .string = "-femit-asm",
-            .info = .{
-                .tag = .optional_formatter_field,
-                .type = .{ .type_name = "?types.Path" },
-            },
+            .tag = .optional_formatter_field,
+            .type = &optional_path_type,
             .and_no = .{ .string = "-fno-emit-asm" },
             .descr = &.{"(default=no) Output assembly code (.s)"},
         },
         .{
             .name = "emit_llvm_ir",
             .string = "-femit-llvm-ir",
-            .info = .{
-                .tag = .optional_formatter_field,
-                .type = .{ .type_name = "?types.Path" },
-            },
+            .tag = .optional_formatter_field,
+            .type = &optional_path_type,
             .and_no = .{ .string = "-fno-emit-llvm-ir" },
             .descr = &.{"(default=no) Output optimized LLVM IR (.ll)"},
         },
         .{
             .name = "emit_llvm_bc",
             .string = "-femit-llvm-bc",
-            .info = .{
-                .tag = .optional_formatter_field,
-                .type = .{ .type_name = "?types.Path" },
-            },
+            .tag = .optional_formatter_field,
+            .type = &optional_path_type,
             .and_no = .{ .string = "-fno-emit-llvm-bc" },
             .descr = &.{"(default=no) Output optimized LLVM BC (.bc)"},
         },
         .{
             .name = "emit_h",
             .string = "-femit-h",
-            .info = .{
-                .tag = .optional_formatter_field,
-                .type = .{ .type_name = "?types.Path" },
-            },
+            .tag = .optional_formatter_field,
+            .type = &optional_path_type,
             .and_no = .{ .string = "-fno-emit-h" },
             .descr = &.{"(default=no) Output a C header file (.h)"},
         },
         .{
             .name = "emit_docs",
             .string = "-femit-docs",
-            .info = .{
-                .tag = .optional_formatter_field,
-                .type = .{ .type_name = "?types.Path" },
-            },
+            .tag = .optional_formatter_field,
+            .type = &optional_path_type,
             .and_no = .{ .string = "-fno-emit-docs" },
             .descr = &.{"(default=no) Output documentation (.html)"},
         },
         .{
             .name = "emit_analysis",
             .string = "-femit-analysis",
-            .info = .{
-                .tag = .optional_formatter_field,
-                .type = .{ .type_name = "?types.Path" },
-            },
+            .tag = .optional_formatter_field,
+            .type = &optional_path_type,
             .and_no = .{ .string = "-fno-emit-analysis" },
             .descr = &.{"(default=no) Output analysis (.json)"},
         },
         .{
             .name = "emit_implib",
             .string = "-femit-implib",
-            .info = .{
-                .tag = .optional_formatter_field,
-                .type = .{ .type_name = "?types.Path" },
-            },
+            .tag = .optional_formatter_field,
+            .type = &optional_path_type,
             .and_no = .{ .string = "-fno-emit-implib" },
             .descr = &.{"(default=yes) Output an import when building a Windows DLL (.lib)"},
         },
         .{
             .name = "cache_root",
             .string = "--cache-dir",
-            .info = .{ .tag = .optional_string_field, .type = optional_string_type },
+            .tag = .optional_string_field,
+            .type = &optional_string_type,
             .descr = &.{"Override the local cache directory"},
         },
         .{
             .name = "global_cache_root",
             .string = "--global-cache-dir",
-            .info = .{ .tag = .optional_string_field, .type = optional_string_type },
+            .tag = .optional_string_field,
+            .type = &optional_string_type,
             .descr = &.{"Override the global cache directory"},
         },
         .{
             .name = "zig_lib_root",
             .string = "--zig-lib-dir",
-            .info = .{ .tag = .optional_string_field, .type = optional_string_type },
+            .tag = .optional_string_field,
+            .type = &optional_string_type,
             .descr = &.{"Override Zig installation lib directory"},
         },
         .{
             .name = "listen",
             .string = "--listen",
-            .info = .{
-                .tag = .optional_tag_field,
-                .type = types.ProtoTypeDescr.init(?enum { none, @"-", ipv4 }),
-            },
+            .tag = .optional_tag_field,
+            .type = &types.ProtoTypeDescr.init(?enum { none, @"-", ipv4 }),
             .descr = &.{"[MISSING]"},
         },
         .{
             .name = "target",
             .string = "-target",
-            .info = .{ .tag = .optional_string_field, .type = optional_string_type },
+            .tag = .optional_string_field,
+            .type = &optional_string_type,
             .descr = &.{"<arch><sub>-<os>-<abi> see the targets command"},
         },
         .{
             .name = "cpu",
             .string = "-mcpu",
-            .info = .{ .tag = .optional_string_field, .type = optional_string_type },
+            .tag = .optional_string_field,
+            .type = &optional_string_type,
             .descr = &.{"Specify target CPU and feature set"},
         },
         .{
             .name = "code_model",
             .string = "-mcmodel",
-            .info = .{
-                .tag = .optional_tag_field,
-                .type = types.ProtoTypeDescr.init(?enum { default, tiny, small, kernel, medium, large }),
-            },
+            .tag = .optional_tag_field,
+            .type = &types.ProtoTypeDescr.init(?enum { default, tiny, small, kernel, medium, large }),
             .descr = &.{"Limit range of code and data virtual addresses"},
         },
         .{
@@ -168,29 +180,30 @@ pub const zig_build_command_attributes: types.Attributes = .{
         .{
             .name = "exec_model",
             .string = "-mexec-model",
-            .info = .{ .tag = .optional_string_field, .type = optional_string_type },
+            .tag = .optional_string_field,
+            .type = &optional_string_type,
             .descr = &.{"(WASI) Execution model"},
         },
         .{
             .name = "name",
             .string = "--name",
-            .info = .{ .tag = .optional_string_field, .type = optional_string_type },
+            .tag = .optional_string_field,
+            .type = &optional_string_type,
             .descr = &.{"Override root name"},
         },
         .{
             .name = "soname",
             .string = "-fsoname",
-            .info = .{ .tag = .string_field, .type = string_type },
+            .tag = .string_field,
+            .type = &string_type,
             .and_no = .{ .string = "-fno-soname" },
             .descr = &.{"Override the default SONAME value"},
         },
         .{
             .name = "mode",
             .string = "-O",
-            .info = .{
-                .tag = .optional_tag_field,
-                .type = .{ .type_name = "?@TypeOf(@import(\"builtin\").mode)" },
-            },
+            .tag = .optional_tag_field,
+            .type = &types.ProtoTypeDescr{ .type_name = "?@TypeOf(@import(\"builtin\").mode)" },
             .descr = &.{
                 "Choose what to optimize for:",
                 "Debug          Optimizations off, safety on",
@@ -202,13 +215,16 @@ pub const zig_build_command_attributes: types.Attributes = .{
         .{
             .name = "passes",
             .string = "-fopt-bisect-limit",
-            .info = .{ .tag = .optional_integer_field, .char = '=', .type = types.ProtoTypeDescr.init(?u64) },
+            .tag = .optional_integer_field,
+            .char = '=',
+            .type = &optional_integer_type,
             .descr = &.{"Only run [limit] first LLVM optimization passes"},
         },
         .{
             .name = "main_pkg_path",
             .string = "--main-pkg-path",
-            .info = .{ .tag = .optional_string_field, .type = optional_string_type },
+            .tag = .optional_string_field,
+            .type = &optional_string_type,
             .descr = &.{"Set the directory of the root package"},
         },
         .{
@@ -316,9 +332,9 @@ pub const zig_build_command_attributes: types.Attributes = .{
         .{
             .name = "format",
             .string = "-ofmt",
-            .info = .{ .tag = .optional_tag_field, .char = '=', .type = types.ProtoTypeDescr.init(
-                ?enum { elf, c, wasm, coff, macho, spirv, plan9, hex, raw },
-            ) },
+            .tag = .optional_tag_field,
+            .char = '=',
+            .type = &types.ProtoTypeDescr.init(?enum { elf, c, wasm, coff, macho, spirv, plan9, hex, raw }),
             .descr = &.{
                 "Override target object format:",
                 "elf                    Executable and Linking Format",
@@ -335,82 +351,85 @@ pub const zig_build_command_attributes: types.Attributes = .{
         .{
             .name = "dirafter",
             .string = "-idirafter",
-            .info = .{ .tag = .optional_string_field, .type = optional_string_type },
+            .tag = .optional_string_field,
+            .type = &optional_string_type,
             .descr = &.{"Add directory to AFTER include search path"},
         },
         .{
             .name = "system",
             .string = "-isystem",
-            .info = .{ .tag = .optional_string_field, .type = optional_string_type },
+            .tag = .optional_string_field,
+            .type = &optional_string_type,
             .descr = &.{"Add directory to SYSTEM include search path"},
         },
         .{
             .name = "libc",
             .string = "--libc",
-            .info = .{ .tag = .optional_string_field, .type = optional_string_type },
+            .tag = .optional_string_field,
+            .type = &optional_string_type,
             .descr = &.{"Provide a file which specifies libc paths"},
         },
         .{
             .name = "library",
             .string = "--library",
-            .info = .{ .tag = .optional_string_field, .type = optional_string_type },
+            .tag = .optional_string_field,
+            .type = &optional_string_type,
             .descr = &.{"Link against system library (only if actually used)"},
         },
         .{
             .name = "include",
             .string = "-I",
-            .info = .{
-                .tag = .repeatable_string_field,
-                .type = repeatable_string_type,
-            },
+            .tag = .repeatable_string_field,
+            .type = &repeatable_string_type,
             .descr = &.{"Add directories to include search path"},
         },
         .{
             .name = "needed_library",
             .string = "--needed-library",
-            .info = .{
-                .tag = .repeatable_string_field,
-                .type = repeatable_string_type,
-            },
+            .tag = .repeatable_string_field,
+            .type = &repeatable_string_type,
             .descr = &.{"Link against system library (even if unused)"},
         },
         .{
             .name = "library_directory",
             .string = "--library-directory",
-            .info = .{
-                .tag = .repeatable_string_field,
-                .type = repeatable_string_type,
-            },
+            .tag = .repeatable_string_field,
+            .type = &repeatable_string_type,
             .descr = &.{"Add a directory to the library search path"},
         },
         .{
             .name = "link_script",
             .string = "--script",
-            .info = .{ .tag = .optional_string_field, .type = optional_string_type },
+            .tag = .optional_string_field,
+            .type = &optional_string_type,
             .descr = &.{"Use a custom linker script"},
         },
         .{
             .name = "version_script",
             .string = "--version-script",
-            .info = .{ .tag = .optional_string_field, .type = optional_string_type },
+            .tag = .optional_string_field,
+            .type = &optional_string_type,
             .descr = &.{"Provide a version .map file"},
         },
         .{
             .name = "dynamic_linker",
             .string = "--dynamic-linker",
-            .info = .{ .tag = .optional_string_field, .type = optional_string_type },
+            .tag = .optional_string_field,
+            .type = &optional_string_type,
             .descr = &.{"Set the dynamic interpreter path"},
         },
         .{
             .name = "sysroot",
             .string = "--sysroot",
-            .info = .{ .tag = .optional_string_field, .type = optional_string_type },
+            .tag = .optional_string_field,
+            .type = &optional_string_type,
             .descr = &.{"Set the system root directory"},
         },
         .{
             .name = "entry",
             .string = "--entry",
-            .info = .{ .tag = .optional_string_field, .type = optional_string_type },
+            .tag = .optional_string_field,
+            .type = &optional_string_type,
             .descr = &.{"Set the entrypoint symbol name"},
         },
         .{
@@ -428,7 +447,8 @@ pub const zig_build_command_attributes: types.Attributes = .{
         .{
             .name = "rpath",
             .string = "-rpath",
-            .info = .{ .tag = .optional_string_field, .type = optional_string_type },
+            .tag = .optional_string_field,
+            .type = &optional_string_type,
             .descr = &.{"Add directory to the runtime library search path"},
         },
         .{
@@ -471,45 +491,39 @@ pub const zig_build_command_attributes: types.Attributes = .{
         .{
             .name = "stack",
             .string = "--stack",
-            .info = .{ .tag = .optional_integer_field, .type = optional_integer_type },
+            .tag = .optional_integer_field,
+            .type = &optional_integer_type,
             .descr = &.{"Override default stack size"},
         },
         .{
             .name = "image_base",
             .string = "--image-base",
-            .info = .{ .tag = .optional_integer_field, .type = optional_integer_type },
+            .tag = .optional_integer_field,
+            .type = &optional_integer_type,
             .descr = &.{"Set base address for executable image"},
         },
         .{
             .name = "macros",
-            .info = .{
-                .tag = .optional_mapped_field,
-                .type = .{ .type_name = "?[]const types.Macro" },
-            },
+            .tag = .optional_mapped_field,
+            .type = &optional_macro_slice_type,
             .descr = &.{"Define C macros available within the `@cImport` namespace"},
         },
         .{
             .name = "modules",
-            .info = .{
-                .tag = .optional_mapped_field,
-                .type = .{ .type_name = "?[]const types.Module" },
-            },
+            .tag = .optional_mapped_field,
+            .type = &optional_module_slice_type,
             .descr = &.{"Define modules available as dependencies for the current target"},
         },
         .{
             .name = "dependencies",
-            .info = .{
-                .tag = .optional_mapped_field,
-                .type = .{ .type_name = "?[]const types.ModuleDependency" },
-            },
+            .tag = .optional_mapped_field,
+            .type = &optional_dependencies_slice_type,
             .descr = &.{"Define module dependencies for the current target"},
         },
         .{
             .name = "cflags",
-            .info = .{
-                .tag = .optional_mapped_field,
-                .type = repeatable_string_type,
-            },
+            .tag = .optional_mapped_field,
+            .type = &types.ProtoTypeDescrMap{ repeatable_string_type, .{ .type_name = "types.CFlags" } },
             .descr = &.{"Set extra flags for the next position C source files"},
         },
         .{
@@ -540,10 +554,8 @@ pub const zig_build_command_attributes: types.Attributes = .{
         .{
             .name = "z",
             .string = "-z",
-            .info = .{
-                .tag = .repeatable_tag_field,
-                .type = types.ProtoTypeDescr.init(?[]const enum { nodelete, notext, defs, origin, nocopyreloc, now, lazy, relro, norelro }),
-            },
+            .tag = .repeatable_tag_field,
+            .type = &types.ProtoTypeDescr.init(?[]const enum { nodelete, notext, defs, origin, nocopyreloc, now, lazy, relro, norelro }),
             .descr = &.{
                 "Set linker extension flags:",
                 "nodelete                   Indicate that the object cannot be deleted from a process",
@@ -562,20 +574,16 @@ pub const zig_build_command_attributes: types.Attributes = .{
         },
         .{
             .name = "files",
-            .info = .{
-                .tag = .mapped_param,
-                .type = .{ .type_name = "[]const types.Path" },
-            },
+            .tag = .mapped_param,
+            .type = &paths_type,
             .descr = &.{"Add auxiliary files to the current target"},
         },
         // Other options
         .{
             .name = "color",
             .string = "--color",
-            .info = .{
-                .tag = .optional_tag_field,
-                .type = types.ProtoTypeDescr.init(?enum { on, off, auto }),
-            },
+            .tag = .optional_tag_field,
+            .type = &auto_on_off_type,
             .descr = &.{"Enable or disable colored error messages"},
         },
         .{
@@ -625,7 +633,8 @@ pub const zig_build_command_attributes: types.Attributes = .{
         },
         .{
             .name = "debug_log",
-            .info = .{ .tag = .optional_string_field, .type = optional_string_type },
+            .tag = .optional_string_field,
+            .type = &optional_string_type,
             .string = "--debug-log",
             .descr = &.{"Enable printing debug/info log messages for scope"},
         },
@@ -658,19 +667,18 @@ pub const zig_ar_command_attributes: types.Attributes = .{
     .params = &.{
         .{
             .name = "zig_exe",
-            .info = .{ .tag = .string_param, .type = string_type },
+            .tag = .string_param,
+            .type = &string_type,
         },
         .{
             .string = "ar",
-            .info = .{ .tag = .string_literal },
+            .tag = .string_literal,
         },
         .{
             .name = "format",
             .string = "--format",
-            .info = .{
-                .tag = .optional_tag_field,
-                .type = types.ProtoTypeDescr.init(?enum { default, gnu, darwin, bsd, bigarchive }),
-            },
+            .tag = .optional_tag_field,
+            .type = &types.ProtoTypeDescr.init(?enum { default, gnu, darwin, bsd, bigarchive }),
             .descr = &.{"Archive format to create"},
         },
         .{
@@ -681,10 +689,8 @@ pub const zig_ar_command_attributes: types.Attributes = .{
         .{
             .name = "output",
             .string = "--output",
-            .info = .{
-                .tag = .optional_string_field,
-                .type = optional_string_type,
-            },
+            .tag = .optional_string_field,
+            .type = &optional_string_type,
             .descr = &.{"Extraction target directory"},
         },
         .{
@@ -695,66 +701,67 @@ pub const zig_ar_command_attributes: types.Attributes = .{
         .{
             .name = "after",
             .string = "a",
-            .info = .{ .char = types.ParamInfo.immediate },
+            .char = types.ParamSpec.immediate,
             .descr = &.{"Put [files] after [relpos]"},
         },
         .{
             .name = "before",
             .string = "b",
-            .info = .{ .char = types.ParamInfo.immediate },
+            .char = types.ParamSpec.immediate,
             .descr = &.{"Put [files] before [relpos] (same as [i])"},
         },
         .{
             .name = "create",
             .string = "c",
-            .info = .{ .char = types.ParamInfo.immediate },
+            .char = types.ParamSpec.immediate,
             .descr = &.{"Do not warn if archive had to be created"},
         },
         .{
             .name = "zero_ids",
             .string = "D",
-            .info = .{ .char = types.ParamInfo.immediate },
+            .char = types.ParamSpec.immediate,
             .descr = &.{"Use zero for timestamps and uids/gids (default)"},
         },
         .{
             .name = "real_ids",
             .string = "U",
-            .info = .{ .char = types.ParamInfo.immediate },
+            .char = types.ParamSpec.immediate,
             .descr = &.{"Use actual timestamps and uids/gids"},
         },
         .{
             .name = "append",
             .string = "L",
-            .info = .{ .char = types.ParamInfo.immediate },
+            .char = types.ParamSpec.immediate,
             .descr = &.{"Add archive's contents"},
         },
         .{
             .name = "preserve_dates",
             .string = "o",
-            .info = .{ .char = types.ParamInfo.immediate },
+            .char = types.ParamSpec.immediate,
             .descr = &.{"Preserve original dates"},
         },
         .{
             .name = "index",
             .string = "s",
-            .info = .{ .char = types.ParamInfo.immediate },
+            .char = types.ParamSpec.immediate,
             .descr = &.{"Create an archive index (cf. ranlib)"},
         },
         .{
             .name = "no_symbol_table",
             .string = "S",
-            .info = .{ .char = types.ParamInfo.immediate },
+            .char = types.ParamSpec.immediate,
             .descr = &.{"do not build a symbol table"},
         },
         .{
             .name = "update",
             .string = "u",
-            .info = .{ .char = types.ParamInfo.immediate },
+            .char = types.ParamSpec.immediate,
             .descr = &.{"update only [files] newer than archive contents"},
         },
         .{
             .name = "operation",
-            .info = .{ .tag = .tag_field, .type = types.ProtoTypeDescr.init(enum { d, m, q, r, s, x }) },
+            .tag = .tag_field,
+            .type = &types.ProtoTypeDescr.init(enum { d, m, q, r, s, x }),
             .descr = &.{
                 "d  Delete [files] from the archive",
                 "m  Move [files] in the archive",
@@ -766,10 +773,8 @@ pub const zig_ar_command_attributes: types.Attributes = .{
         },
         .{
             .name = "files",
-            .info = .{
-                .tag = .mapped_param,
-                .type = .{ .type_name = "[]const types.Path" },
-            },
+            .tag = .mapped_param,
+            .type = &paths_type,
             .descr = &.{"Add auxiliary files to the current target"},
         },
     },
@@ -780,19 +785,18 @@ pub const zig_format_command_attributes: types.Attributes = .{
     .params = &.{
         .{
             .name = "zig_exe",
-            .info = .{ .tag = .string_param, .type = string_type },
+            .tag = .string_param,
+            .type = &string_type,
         },
         .{
             .string = "fmt",
-            .info = .{ .tag = .string_literal },
+            .tag = .string_literal,
         },
         .{
             .name = "color",
             .string = "--color",
-            .info = .{
-                .tag = .optional_tag_field,
-                .type = types.ProtoTypeDescr.init(?enum { auto, off, on }),
-            },
+            .tag = .optional_tag_field,
+            .type = &auto_on_off_type,
             .descr = &.{"Enable or disable colored error messages"},
         },
         .{
@@ -808,24 +812,19 @@ pub const zig_format_command_attributes: types.Attributes = .{
         .{
             .name = "ast_check",
             .string = "--ast-check",
-            .default_value = "true",
             .descr = &.{"Run zig ast-check on every file"},
         },
         .{
             .name = "exclude",
             .string = "--exclude",
-            .info = .{
-                .tag = .optional_string_field,
-                .type = optional_string_type,
-            },
+            .tag = .optional_string_field,
+            .type = &optional_string_type,
             .descr = &.{"Exclude file or directory from formatting"},
         },
         .{
             .name = "root_path",
-            .info = .{
-                .tag = .formatter_param,
-                .type = .{ .type_name = "types.Path" },
-            },
+            .tag = .formatter_param,
+            .type = &types.ProtoTypeDescr{ .type_name = "types.Path" },
         },
     },
 };
@@ -836,37 +835,29 @@ pub const llvm_tblgen_command_attributes: types.Attributes = .{
         .{
             .name = "color",
             .string = "--color",
-            .info = .{
-                .tag = .optional_tag_field,
-                .type = types.ProtoTypeDescr.init(?enum { on, off, auto }),
-            },
+            .tag = .optional_tag_field,
+            .type = &auto_on_off_type,
             .descr = &.{"Use colors in output (default=autodetect)"},
         },
         .{
             .name = "macros",
-            .info = .{
-                .tag = .optional_mapped_field,
-                .type = .{ .type_name = "?[]const types.Macro" },
-            },
-            .descr = &.{"Define macros available within the `@cImport` namespace"},
+            .tag = .optional_mapped_field,
+            .type = &optional_macro_slice_type,
+            .descr = &.{"Define macros"},
         },
         .{
             .name = "include",
             .string = "-I",
-            .info = .{
-                .tag = .repeatable_string_field,
-                .type = repeatable_string_type,
-                .char = types.ParamInfo.immediate,
-            },
+            .tag = .repeatable_string_field,
+            .type = &repeatable_string_type,
+            .char = types.ParamSpec.immediate,
             .descr = &.{"Add directories to include search path"},
         },
         .{
             .name = "dependencies",
             .string = "-d",
-            .info = .{
-                .tag = .repeatable_string_field,
-                .type = repeatable_string_type,
-            },
+            .tag = .repeatable_string_field,
+            .type = &repeatable_string_type,
             .descr = &.{"Add file dependencies"},
         },
         .{
@@ -1067,7 +1058,8 @@ pub const llvm_tblgen_command_attributes: types.Attributes = .{
         .{
             .name = "output",
             .string = "-o",
-            .info = .{ .tag = .optional_string_field, .type = optional_string_type },
+            .tag = .optional_string_field,
+            .type = &optional_string_type,
             .descr = &.{"Output file"},
         },
     },
@@ -1078,41 +1070,34 @@ pub const harec_attributes: types.Attributes = .{
     .params = &.{
         .{
             .name = "harec_exe",
-            .info = .{ .tag = .string_param, .type = string_type },
+            .tag = .string_param,
+            .type = &string_type,
         },
         .{
             .name = "arch",
             .string = "-a",
-            .info = .{
-                .tag = .optional_string_field,
-                .type = optional_string_type,
-            },
+            .tag = .optional_string_field,
+            .type = &optional_string_type,
         },
         .{
             .name = "defs",
-            .info = .{
-                .tag = .optional_mapped_field,
-                .type = .{ .type_name = "?[]const types.HMacro" },
-            },
+            .tag = .optional_mapped_field,
+            .type = &optional_macro_slice_type,
             .descr = &.{"Define identifiers"},
         },
         .{
             .name = "output",
             .string = "-o",
-            .info = .{
-                .tag = .optional_string_field,
-                .type = optional_string_type,
-            },
+            .tag = .optional_string_field,
+            .type = &optional_string_type,
             .descr = &.{"Output file"},
         },
         .{
             .name = "tags",
             .string = "-T",
-            .info = .{
-                .tag = .repeatable_string_field,
-                .type = repeatable_string_type,
-                .char = types.ParamInfo.immediate,
-            },
+            .tag = .repeatable_string_field,
+            .type = &repeatable_string_type,
+            .char = types.ParamSpec.immediate,
         },
         .{
             .name = "typedefs",
