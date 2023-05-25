@@ -9,7 +9,6 @@ const spec = @import("./spec.zig");
 const builtin = @import("./builtin.zig");
 const virtual = @import("./virtual.zig");
 const types = @import("./build/types.zig");
-const cmdline = @import("./build/cmdline.zig");
 pub usingnamespace types;
 pub const BuilderSpec = struct {
     options: Options = .{},
@@ -699,7 +698,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         }
         fn formatWrite(allocator: *Allocator, cmd: *types.FormatCommand, root_path: types.Path) [:0]u8 {
             @setRuntimeSafety(false);
-            const max_len: u64 = builder_spec.options.max_cmdline_len orelse cmdline.formatLength(zig_exe, root_path);
+            const max_len: u64 = builder_spec.options.max_cmdline_len orelse cmd.formatLength(zig_exe, root_path);
             const buf: []u8 = allocator.allocate(u8, max_len);
             const len: u64 = cmd.formatWriteBuf(zig_exe, root_path, buf.ptr);
             return buf[0..len :0];
