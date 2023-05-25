@@ -944,7 +944,7 @@ pub const BuildCommand = struct {
                 len +%= 1;
             }
         }
-        len +%= types.Paths.formatWriteBuf(.{ .value = files }, buf + len);
+        len +%= types.Files.formatWriteBuf(.{ .value = files }, buf + len);
         if (cmd.color) |color| {
             @ptrCast(*[8]u8, buf + len).* = "--color\x00".*;
             len +%= 8;
@@ -1509,7 +1509,7 @@ pub const BuildCommand = struct {
                 len +%= 1;
             }
         }
-        len +%= types.Paths.formatLength(.{ .value = files });
+        len +%= types.Files.formatLength(.{ .value = files });
         if (cmd.color) |color| {
             len +%= 8;
             len +%= @tagName(color).len;
@@ -1762,7 +1762,7 @@ pub const ArchiveCommand = struct {
         len +%= @tagName(cmd.operation).len;
         buf[len] = 0;
         len +%= 1;
-        len +%= types.Paths.formatWriteBuf(.{ .value = files }, buf + len);
+        len +%= types.Files.formatWriteBuf(.{ .value = files }, buf + len);
         return len;
     }
     pub fn formatLength(cmd: *ArchiveCommand, zig_exe: []const u8, files: []const types.Path) u64 {
@@ -1819,7 +1819,7 @@ pub const ArchiveCommand = struct {
         }
         len +%= @tagName(cmd.operation).len;
         len +%= 1;
-        len +%= types.Paths.formatLength(.{ .value = files });
+        len +%= types.Files.formatLength(.{ .value = files });
         return len;
     }
 };
