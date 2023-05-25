@@ -371,25 +371,25 @@ fn writeOptTagString(
 }
 fn writeFormatter(
     array: *Array,
-    opt_switch_string: ?[]const u8,
+    opt_switch_string: []const u8,
     arg_string: []const u8,
     variant: types.Variant,
     char: u8,
 ) void {
-    if (opt_switch_string) |switch_string| {
-        writeOptStringExtra(array, switch_string, variant, char);
+    if (opt_switch_string.len != 0) {
+        writeOptStringExtra(array, opt_switch_string, variant, char);
     }
     writeFormatterInternal(array, arg_string, variant);
 }
 fn writeOptionalFormatter(
     array: *Array,
-    opt_switch_string: ?[]const u8,
+    opt_switch_string: []const u8,
     arg_string: []const u8,
     variant: types.Variant,
     char: u8,
 ) void {
-    if (opt_switch_string) |switch_string| {
-        writeOptStringExtra(array, switch_string, variant, char);
+    if (opt_switch_string.len != 0) {
+        writeOptStringExtra(array, opt_switch_string, variant, char);
     }
     writeFormatterInternal(array, arg_string, variant);
 }
@@ -407,7 +407,11 @@ pub fn writeFunctionBody(array: *Array, options: []const types.ParamSpec, varian
             continue;
         }
         if (opt_spec.info.tag == .formatter_param) {
-            writeFormatter(array, null, opt_spec.name, variant, opt_spec.info.char orelse '\x00');
+            writeFormatter(array, &.{}, opt_spec.name, variant, opt_spec.info.char orelse '\x00');
+            continue;
+        }
+        if (opt_spec.info.tag == .mapped_param) {
+            writeMapped(array, &.{}, opt_spec.name, variant, opt_spec.info.char orelse '\x00');
             continue;
         }
         if (opt_spec.info.tag == .string_literal) {
