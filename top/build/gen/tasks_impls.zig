@@ -680,7 +680,6 @@ pub fn main() !void {
     var allocator: mem.SimpleAllocator = .{};
     defer allocator.unmap();
     const array: *Array = allocator.create(Array);
-    array.undefineAll();
     const fd: u64 = file.open(open_spec, config.tasks_template_path);
     array.define(file.read(read_spec, fd, array.referAllUndefined()));
     file.close(close_spec, fd);

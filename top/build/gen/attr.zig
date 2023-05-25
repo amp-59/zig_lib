@@ -11,7 +11,7 @@ const auto_on_off_type: types.ProtoTypeDescr = .{ .type_name = "?enum { auto, of
 
 const paths_type: types.ProtoTypeDescrMap = .{
     .{ .type_name = "[]const types.Path" },
-    .{ .type_name = "types.Paths" },
+    .{ .type_name = "types.Files" },
 };
 const optional_macro_slice_type: types.ProtoTypeDescrMap = .{
     .{ .type_name = "?[]const types.Macro" },
