@@ -233,8 +233,6 @@ pub const BuildCommand = struct {
         relro = 7,
         norelro = 8,
     } = null,
-    /// Add auxiliary files to the current target
-    files: ?[]const types.Path = null,
     /// Enable or disable colored error messages
     color: ?enum(u2) {
         on = 0,
@@ -331,8 +329,6 @@ pub const ArchiveCommand = struct {
         s = 4,
         x = 5,
     },
-    /// Add auxiliary files to the current archive
-    files: ?[]const types.Path = null,
 };
 pub const TableGenCommand = struct {
     /// Use colors in output (default=autodetect)
