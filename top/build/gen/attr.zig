@@ -563,8 +563,8 @@ pub const zig_build_command_attributes: types.Attributes = .{
         .{
             .name = "files",
             .info = .{
-                .tag = .optional_mapped_field,
-                .type = .{ .type_name = "?[]const types.Path" },
+                .tag = .mapped_param,
+                .type = .{ .type_name = "[]const types.Path" },
             },
             .descr = &.{"Add auxiliary files to the current target"},
         },
@@ -638,10 +638,6 @@ pub const zig_build_command_attributes: types.Attributes = .{
             .name = "debug_link_snapshot",
             .string = "--debug-link-snapshot",
             .descr = &.{"Enable dumping of the linker's state in JSON"},
-        },
-        .{
-            .name = "root_path",
-            .info = .{ .tag = .formatter_param, .type = .{ .type_name = "types.Path" } },
         },
     },
 };
@@ -769,19 +765,12 @@ pub const zig_ar_command_attributes: types.Attributes = .{
             },
         },
         .{
-            .name = "archive",
-            .info = .{
-                .tag = .formatter_param,
-                .type = .{ .type_name = "types.Path" },
-            },
-        },
-        .{
             .name = "files",
             .info = .{
-                .tag = .optional_mapped_field,
-                .type = .{ .type_name = "?[]const types.Path" },
+                .tag = .mapped_param,
+                .type = .{ .type_name = "[]const types.Path" },
             },
-            .descr = &.{"Add auxiliary files to the current archive"},
+            .descr = &.{"Add auxiliary files to the current target"},
         },
     },
 };
