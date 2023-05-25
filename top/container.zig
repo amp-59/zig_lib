@@ -123,7 +123,6 @@ pub const ReinterpretSpec = struct {
     };
 };
 pub const reinterpret = opaque {
-    const validate_format_length: bool = false;
     fn isEquivalent(comptime child: type, comptime write_spec: ReinterpretSpec, comptime dst_type: type, comptime src_type: type) bool {
         const dst_type_info: builtin.Type = @typeInfo(dst_type);
         const src_type_info: builtin.Type = @typeInfo(src_type);
@@ -761,9 +760,8 @@ pub const reinterpret = opaque {
     }
     pub fn lengthArgs(comptime child: type, comptime write_spec: ReinterpretSpec, args: anytype) u64 {
         var len: u64 = 0;
-        comptime var index: u64 = 0;
-        inline while (index != args.len) : (index += 1) {
-            len += lengthAny(child, write_spec, args[index]);
+        inline for (args) |arg| {
+            len += lengthAny(child, write_spec, arg);
         }
         return len;
     }

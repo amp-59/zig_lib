@@ -1243,7 +1243,7 @@ pub const proc = struct {
         }
         exitGroup(return_code);
     }
-    pub inline fn exit(rc: u8) noreturn {
+    pub fn exit(rc: u8) noreturn {
         asm volatile (
             \\syscall
             :
@@ -1252,7 +1252,7 @@ pub const proc = struct {
         );
         unreachable;
     }
-    pub inline fn exitGroup(rc: u8) noreturn {
+    pub fn exitGroup(rc: u8) noreturn {
         asm volatile (
             \\syscall
             :
