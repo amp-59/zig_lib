@@ -64,7 +64,7 @@ pub fn showSpecialCase(comptime T: type, arg1: []const T, arg2: []const T) void 
 // A: Because without a low level value renderer it can only serve special
 // cases. fault-error-test requires the former two variants render the error
 // value. That is not yet possible.
-pub fn expectEqualMany(comptime T: type, arg1: []const T, arg2: []const T) builtin.Error!void {
+pub fn expectEqualMany(comptime T: type, arg1: []const T, arg2: []const T) builtin.Unexpected!void {
     if (arg1.len != arg2.len) {
         if (T == u8) {
             showSpecialCase(T, arg1, arg2);
@@ -81,6 +81,16 @@ pub fn expectEqualMany(comptime T: type, arg1: []const T, arg2: []const T) built
         }
     }
 }
+pub fn expectEqualString(arg1: anytype, arg2: anytype) !void {
+    try expectEqualMany(u8, arg1, arg2);
+}
+pub fn expectError(arg1: anytype, arg2: anytype) !void {
+    if (arg1 != arg2) {
+        return error.UnexpectedValue;
+    }
+}
+pub const expect = builtin.expect;
+
 pub fn arbitraryFieldOrder(comptime T: type) void {
     const s = struct {
         fn ascName(comptime x: builtin.Type.StructField, comptime y: builtin.Type.StructField) bool {
