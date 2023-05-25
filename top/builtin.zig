@@ -8,6 +8,8 @@ pub const Error = error{
     MulCausedOverflow,
     LeftShiftCausedOverflow,
     ExactDivisionWithRemainder,
+};
+pub const Unexpected = error{
     UnexpectedValue,
     UnexpectedLength,
 };
@@ -928,7 +930,7 @@ pub fn assertEqualMemory(comptime T: type, arg1: T, arg2: T) void {
         },
     }
 }
-pub fn expectEqualMemory(comptime T: type, arg1: T, arg2: T) !void {
+pub fn expectEqualMemory(comptime T: type, arg1: T, arg2: T) Unexpected!void {
     switch (@typeInfo(T)) {
         else => @compileError(@typeName(T)),
         .Void => {},
@@ -983,37 +985,37 @@ pub fn expectEqualMemory(comptime T: type, arg1: T, arg2: T) !void {
         },
     }
 }
-pub fn expect(b: bool) Error!void {
+pub fn expect(b: bool) Unexpected!void {
     if (!b) {
         return error.UnexpectedValue;
     }
 }
-pub fn expectBelow(comptime T: type, arg1: T, arg2: T) Error!void {
+pub fn expectBelow(comptime T: type, arg1: T, arg2: T) Unexpected!void {
     if (arg1 >= arg2) {
         return debug.comparisonFailedError(T, " < ", arg1, arg2);
     }
 }
-pub fn expectBelowOrEqual(comptime T: type, arg1: T, arg2: T) Error!void {
+pub fn expectBelowOrEqual(comptime T: type, arg1: T, arg2: T) Unexpected!void {
     if (arg1 > arg2) {
         return debug.comparisonFailedError(T, " <= ", arg1, arg2);
     }
 }
-pub fn expectEqual(comptime T: type, arg1: T, arg2: T) Error!void {
+pub fn expectEqual(comptime T: type, arg1: T, arg2: T) Unexpected!void {
     if (!testEqual(T, arg1, arg2)) {
         return debug.comparisonFailedError(T, " == ", arg1, arg2);
     }
 }
-pub fn expectNotEqual(comptime T: type, arg1: T, arg2: T) Error!void {
+pub fn expectNotEqual(comptime T: type, arg1: T, arg2: T) Unexpected!void {
     if (testEqual(T, arg1, arg2)) {
         return debug.comparisonFailedError(T, " != ", arg1, arg2);
     }
 }
-pub fn expectAboveOrEqual(comptime T: type, arg1: T, arg2: T) Error!void {
+pub fn expectAboveOrEqual(comptime T: type, arg1: T, arg2: T) Unexpected!void {
     if (arg1 < arg2) {
         return debug.comparisonFailedError(T, " >= ", arg1, arg2);
     }
 }
-pub fn expectAbove(comptime T: type, arg1: T, arg2: T) Error!void {
+pub fn expectAbove(comptime T: type, arg1: T, arg2: T) Unexpected!void {
     if (arg1 <= arg2) {
         return debug.comparisonFailedError(T, " > ", arg1, arg2);
     }
@@ -1489,7 +1491,7 @@ pub const debug = struct {
         }
         proc.exit(2);
     }
-    fn comparisonFailedError(comptime T: type, symbol: []const u8, arg1: anytype, arg2: @TypeOf(arg1)) Error {
+    fn comparisonFailedError(comptime T: type, symbol: []const u8, arg1: anytype, arg2: @TypeOf(arg1)) Unexpected {
         @setCold(true);
         switch (@typeInfo(T)) {
             .Int => comparisonFailedErrorInt(T, symbol, arg1, arg2),
