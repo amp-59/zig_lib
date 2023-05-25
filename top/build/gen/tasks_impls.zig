@@ -42,12 +42,10 @@ fn writeType(array: *Array, opt_spec: types.ParamSpec) void {
 fn writeFields(array: *Array, opt_specs: []const types.ParamSpec) void {
     for (opt_specs) |opt_spec| {
         if (opt_spec.info.isField()) {
-            if (opt_spec.descr) |field_descr| {
-                for (field_descr) |line| {
-                    array.writeMany("/// ");
-                    array.writeMany(line);
-                    array.writeMany("\n");
-                }
+            for (opt_spec.descr) |line| {
+                array.writeMany("/// ");
+                array.writeMany(line);
+                array.writeMany("\n");
             }
             array.writeMany(opt_spec.name);
             array.writeMany(":");
