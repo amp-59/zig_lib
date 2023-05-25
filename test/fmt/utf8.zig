@@ -31,45 +31,59 @@ fn testUtf8EncodeError() !void {
 }
 fn _testUtf8EncodeError() !void {
     var array: [4]u8 = undefined;
-    try testErrorEncode(0xd800, array[0..], error.Utf8CannotEncodeSurrogateHalf);
-    try testErrorEncode(0xdfff, array[0..], error.Utf8CannotEncodeSurrogateHalf);
-    try testErrorEncode(0x110000, array[0..], error.CodepointTooLarge);
-    try testErrorEncode(0x1fffff, array[0..], error.CodepointTooLarge);
+    try testErrorEncode(0xd800, array[0..], error.InvalidInput);
+    try testErrorEncode(0xdfff, array[0..], error.InvalidInput);
+    try testErrorEncode(0x110000, array[0..], error.InvalidInput);
+    try testErrorEncode(0x1fffff, array[0..], error.InvalidInput);
 }
 fn testErrorEncode(codePoint: u21, array: []u8, expectedErr: anyerror) !void {
     try builtin.expect(expectedErr == fmt.utf8.encode(codePoint, array));
 }
 fn testUtf8IteratorOnAscii() !void {
-    try _testUtf8IteratorOnAscii();
-}
-fn _testUtf8IteratorOnAscii() !void {
-    var itr: fmt.utf8.Iterator = fmt.utf8.Iterator{ .bytes = "abc", .idx = 0 };
+    var itr: fmt.utf8.Iterator = fmt.utf8.Iterator{ .bytes = "abc", .bytes_idx = 0 };
     try testing.expectEqualMany(u8, "a", itr.readNextCodepoint().?);
     try testing.expectEqualMany(u8, "b", itr.readNextCodepoint().?);
     try testing.expectEqualMany(u8, "c", itr.readNextCodepoint().?);
     try builtin.expect(itr.readNextCodepoint() == null);
-    itr.idx = 0;
+    itr.bytes_idx = 0;
     try builtin.expect(itr.decodeNextCodepoint().? == 'a');
     try builtin.expect(itr.decodeNextCodepoint().? == 'b');
     try builtin.expect(itr.decodeNextCodepoint().? == 'c');
     try builtin.expect(itr.decodeNextCodepoint() == null);
-    itr = .{ .bytes = "äåéëþüúíóö", .idx = 0 };
+    itr = .{ .bytes = "äåéëþüúíóö", .bytes_idx = 0 };
     for ([_][]const u8{ "ä", "å", "é", "ë", "þ", "ü", "ú", "í", "ó", "ö" }) |s| {
         try testing.expectEqualMany(u8, s, itr.readNextCodepoint().?);
     } else {
         try builtin.expect(itr.decodeNextCodepoint() == null);
     }
-    itr = .{ .bytes = "こんにちは", .idx = 0 };
+    itr = .{ .bytes = "こんにちは", .bytes_idx = 0 };
     for ([_][]const u8{ "こ", "ん", "に", "ち", "は" }) |s| {
         try testing.expectEqualMany(u8, s, itr.readNextCodepoint().?);
     } else {
         try builtin.expect(itr.decodeNextCodepoint() == null);
     }
-    itr.idx = 0;
+    itr.bytes_idx = 0;
     try testing.expectEqualMany(u8, "こんに", itr.peekNextCodepoints(3));
+}
+fn testUtf8CountCodepoints() !void {
+    try builtin.expectEqual(usize, @as(usize, 10), try fmt.utf8.countCodepoints("abcdefghij"));
+    try builtin.expectEqual(usize, @as(usize, 10), try fmt.utf8.countCodepoints("äåéëþüúíóö"));
+    try builtin.expectEqual(usize, @as(usize, 5), try fmt.utf8.countCodepoints("こんにちは"));
+}
+fn testUtf8ValidCodepoint() !void {
+    try testing.expect(fmt.utf8.testValidCodepoint('e'));
+    try testing.expect(fmt.utf8.testValidCodepoint('ë'));
+    try testing.expect(fmt.utf8.testValidCodepoint('は'));
+    try testing.expect(fmt.utf8.testValidCodepoint(0xe000));
+    try testing.expect(fmt.utf8.testValidCodepoint(0x10ffff));
+    try testing.expect(!fmt.utf8.testValidCodepoint(0xd800));
+    try testing.expect(!fmt.utf8.testValidCodepoint(0xdfff));
+    try testing.expect(!fmt.utf8.testValidCodepoint(0x110000));
 }
 pub fn utf8TestMain() !void {
     try testUtf8Encode();
     try testUtf8EncodeError();
     try testUtf8IteratorOnAscii();
+    try testUtf8CountCodepoints();
+    try testUtf8ValidCodepoint();
 }

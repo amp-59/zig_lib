@@ -6,7 +6,7 @@ pub fn codepointSequenceLength(c: u32) !u8 {
     if (c < 0x800) return 2;
     if (c < 0x10000) return 3;
     if (c < 0x110000) return 4;
-    return error.CodepointTooLarge;
+    return error.InvalidInput;
 }
 fn byteSequenceLength(first_byte: u8) !u8 {
     switch (first_byte) {
@@ -14,7 +14,7 @@ fn byteSequenceLength(first_byte: u8) !u8 {
         0b1100_0000...0b1101_1111 => return 2,
         0b1110_0000...0b1110_1111 => return 3,
         0b1111_0000...0b1111_0111 => return 4,
-        else => return error.Utf8InvalidStartByte,
+        else => return error.InvalidEncoding,
     }
 }
 pub fn decode(bytes: []const u8) !u32 {
@@ -29,12 +29,12 @@ pub fn decode(bytes: []const u8) !u32 {
 fn decode2(bytes: []const u8) !u32 {
     var value: u32 = bytes[0] & 0b00011111;
     if (bytes[1] & 0b11000000 != 0b10000000) {
-        return error.Utf8ExpectedContinuation;
+        return error.InvalidEncoding;
     }
     value <<= 6;
     value |= bytes[1] & 0b00111111;
     if (value < 0x80) {
-        return error.Utf8OverlongEncoding;
+        return error.InvalidEncoding;
     }
     return value;
 }
@@ -43,18 +43,20 @@ fn decode3(bytes: []const u8) !u32 {
     builtin.assertEqual(u64, bytes[0] & 0b11110000, 0b11100000);
     var value: u32 = bytes[0] & 0b00001111;
     if (bytes[1] & 0b11000000 != 0b10000000) {
-        return error.Utf8ExpectedContinuation;
+        return error.InvalidEncoding;
     }
     value <<= 6;
     value |= bytes[1] & 0b00111111;
     if (bytes[2] & 0b11000000 != 0b10000000) {
-        return error.Utf8ExpectedContinuation;
+        return error.InvalidEncoding;
     }
     value <<= 6;
     value |= bytes[2] & 0b00111111;
-    if (value < 0x800) return error.Utf8OverlongEncoding;
+    if (value < 0x800) {
+        return error.InvalidEncoding;
+    }
     if (0xd800 <= value and value <= 0xdfff) {
-        return error.Utf8EncodesSurrogateHalf;
+        return error.InvalidEncoding;
     }
     return value;
 }
@@ -63,25 +65,22 @@ fn decode4(bytes: []const u8) !u32 {
     builtin.assertEqual(u64, bytes[0] & 0b11111000, 0b11110000);
     var value: u32 = bytes[0] & 0b00000111;
     if (bytes[1] & 0b11000000 != 0b10000000) {
-        return error.Utf8ExpectedContinuation;
+        return error.InvalidEncoding;
     }
     value <<= 6;
     value |= bytes[1] & 0b00111111;
     if (bytes[2] & 0b11000000 != 0b10000000) {
-        return error.Utf8ExpectedContinuation;
+        return error.InvalidEncoding;
     }
     value <<= 6;
     value |= bytes[2] & 0b00111111;
     if (bytes[3] & 0b11000000 != 0b10000000) {
-        return error.Utf8ExpectedContinuation;
+        return error.InvalidEncoding;
     }
     value <<= 6;
     value |= bytes[3] & 0b00111111;
-    if (value < 0x10000) {
-        return error.Utf8OverlongEncoding;
-    }
-    if (value > 0x10FFFF) {
-        return error.Utf8CodepointTooLarge;
+    if (value < 0x10000 or value > 0x10FFFF) {
+        return error.InvalidEncoding;
     }
     return value;
 }
@@ -96,7 +95,7 @@ pub fn encode(value: u32, out: []u8) !u8 {
         },
         3 => {
             if (0xd800 <= value and value <= 0xdfff) {
-                return error.Utf8CannotEncodeSurrogateHalf;
+                return error.InvalidInput;
             }
             out[0] = @intCast(u8, 0b11100000 | (value >> 12));
             out[1] = @intCast(u8, 0b10000000 | ((value >> 6) & 0b111111));
@@ -207,12 +206,12 @@ pub const noexcept = struct {
 };
 pub const Iterator = struct {
     bytes: []const u8,
-    idx: u64,
+    bytes_idx: u64 = 0,
     pub fn readNextCodepoint(itr: *Iterator) ?[]const u8 {
-        if (itr.idx < itr.bytes.len) {
-            const idx: u64 = itr.idx;
-            itr.idx +%= noexcept.byteSequenceLength(itr.bytes[idx]);
-            return itr.bytes[idx..itr.idx];
+        if (itr.bytes_idx < itr.bytes.len) {
+            const idx: u64 = itr.bytes_idx;
+            itr.bytes_idx +%= noexcept.byteSequenceLength(itr.bytes[idx]);
+            return itr.bytes[idx..itr.bytes_idx];
         }
         return null;
     }
@@ -223,8 +222,8 @@ pub const Iterator = struct {
         return null;
     }
     pub fn peekNextCodepoints(itr: *Iterator, amt: u64) []const u8 {
-        const idx: u64 = itr.idx;
-        defer itr.idx = idx;
+        const idx: u64 = itr.bytes_idx;
+        defer itr.bytes_idx = idx;
         var end: u64 = idx;
         for (0..amt) |_| {
             if (itr.readNextCodepoint()) |bytes| {
@@ -236,3 +235,36 @@ pub const Iterator = struct {
         return itr.bytes[idx..end];
     }
 };
+pub fn countCodepoints(bytes: []const u8) !usize {
+    var len: u64 = 0;
+    var itr: Iterator = .{ .bytes = bytes };
+    while (itr.readNextCodepoint() != null) {
+        len +%= 1;
+    }
+    return len;
+}
+pub fn testValidCodepoint(value: u32) bool {
+    switch (value) {
+        0xd800...0xdfff => { // Surrogates range
+            return false;
+        },
+        0x110000...0x1fffff => { // Above the maximum codepoint value
+            return false;
+        },
+        else => return true,
+    }
+}
+pub fn expectValidSlice(bytes: []const u8) !void {
+    var itr: Iterator = .{ .bytes = bytes };
+    while (itr.bytes_idx < itr.bytes.len) {
+        const idx: u64 = itr.bytes_idx;
+        itr.bytes_idx +%= try byteSequenceLength(itr.bytes[idx]);
+        const cp: u32 = try decode(itr.bytes[idx..itr.bytes_idx]);
+        if (!testValidCodepoint(cp)) {
+            return error.InvalidEncoding;
+        }
+    }
+}
+pub fn testValidSlice(bytes: []const u8) bool {
+    return expectValidSlice(bytes) != error.InvalidEncoding;
+}
