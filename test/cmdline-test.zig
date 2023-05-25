@@ -60,11 +60,11 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
         .z = &.{ .nodelete, .notext },
         .mode = .Debug,
         .strip = true,
-    }, .{ .name = "target", .root = @src().file, .descr = "Dummy target" });
+    }, "target", @src().file);
     const t1: *Builder.Target = try g0.addArchive(&allocator, .{
         .operation = .r,
         .create = true,
-    }, .{ .root = "zig-out/lib/archive.a", .name = "lib" }, &.{t0});
+    }, "lib0", &.{t0});
     Builder.debug.builderCommandNotice(&builder, true, true, true);
     t1.executeToplevel(&address_space, &thread_space, &allocator, &builder, .archive);
 }
