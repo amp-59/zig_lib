@@ -6,10 +6,6 @@ const testing = zig_lib.testing;
 const builtin = zig_lib.builtin;
 
 fn testUtf8Encode() !void {
-    comptime try _testUtf8Encode();
-    try _testUtf8Encode();
-}
-fn _testUtf8Encode() !void {
     var array: [4]u8 = undefined;
     try builtin.expect((try fmt.utf8.encode(try fmt.utf8.decode("€"), array[0..])) == 3);
     try builtin.expect(array[0] == 0b11100010);
@@ -27,9 +23,6 @@ fn _testUtf8Encode() !void {
     try builtin.expect(array[3] == 0b10001000);
 }
 fn testUtf8EncodeError() !void {
-    try _testUtf8EncodeError();
-}
-fn _testUtf8EncodeError() !void {
     var array: [4]u8 = undefined;
     try testErrorEncode(0xd800, array[0..], error.InvalidInput);
     try testErrorEncode(0xdfff, array[0..], error.InvalidInput);

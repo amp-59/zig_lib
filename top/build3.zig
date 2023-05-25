@@ -399,22 +399,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 target.args[target.args_len] = strdup(allocator, arg).ptr;
                 target.args_len +%= @boolToInt(arg.len != 0);
             }
-            fn generateName(target: *Target, allocator: *Allocator) [:0]const u8 {
-                @setRuntimeSafety(false);
-                if (target.name.len != 0) {
-                    return strdup(allocator, target.name);
-                }
-                const root: [:0]const u8 = target.paths[0].relative.?;
-                const buf: [*]u8 = allocator.allocate(u8, root.len +% 1).ptr;
-                mach.memcpy(buf, root.ptr, root.len);
-                buf[root.len] = 0;
-                var idx: u64 = 0;
-                while (idx != root.len) : (idx +%= 1) {
-                    buf[idx] -%= @boolToInt(buf[idx] == 0x2f);
-                }
-                target.hidden = true;
-                return buf[0..root.len :0];
-            }
         };
         pub const Group = struct {
             name: [:0]const u8,
@@ -459,6 +443,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 ret.assertExchange(.build, .no_task, .ready);
                 return ret;
             }
+            pub fn addBuildAnonymous(group: *Group, allocator: *Allocator, build_cmd: types.BuildCommand, root: [:0]const u8) !*Target {
+                return group.addBuild(allocator, build_cmd, makeTargetName(allocator, root), root);
+            }
             pub fn addFormat(group: *Group, allocator: *Allocator, format_cmd: types.FormatCommand, name: [:0]const u8, pathname: [:0]const u8) !*Target {
                 const ret: *Target = try group.addTarget(allocator);
                 const cmd: *types.FormatCommand = allocator.create(types.FormatCommand);
@@ -468,7 +455,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 ret.task = .format;
                 ret.task_cmd = .{ .format = cmd };
                 ret.hidden = group.hidden;
-                ret.name = ret.generateName(allocator);
+                ret.name = name;
                 ret.assertExchange(.format, .no_task, .ready);
                 return ret;
             }
@@ -1713,6 +1700,17 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             ptrs[len] = builtin.zero([*:0]u8);
             return ptrs[0..len];
+        }
+        fn makeTargetName(allocator: *Allocator, root: [:0]const u8) [:0]const u8 {
+            @setRuntimeSafety(false);
+            const buf: [*]u8 = allocator.allocate(u8, root.len +% 1).ptr;
+            mach.memcpy(buf, root.ptr, root.len);
+            buf[root.len] = 0;
+            var idx: u64 = 0;
+            while (idx != root.len) : (idx +%= 1) {
+                buf[idx] -%= @boolToInt(buf[idx] == 0x2f);
+            }
+            return buf[0..root.len :0];
         }
     };
     return Type;
