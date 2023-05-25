@@ -683,35 +683,25 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
             }
         };
-        fn buildWrite(target: *Target, allocator: *Allocator) [:0]u8 {
+        fn buildWrite(allocator: *Allocator, cmd: *types.BuildCommand, paths: []const types.Path) [:0]u8 {
             @setRuntimeSafety(false);
-            const build_cmd: *types.BuildCommand = target.task_cmd.build;
-            const max_len: u64 = builder_spec.options.max_cmdline_len orelse
-                cmdline.buildLength(build_cmd, zig_exe, target.paths[0..target.paths_len]);
+            const max_len: u64 = builder_spec.options.max_cmdline_len orelse cmd.formatLength(zig_exe, paths);
             const buf: []u8 = allocator.allocate(u8, max_len);
-            const len: u64 = cmdline.buildWriteBuf(build_cmd, zig_exe, target.paths[0..target.paths_len], buf.ptr);
+            const len: u64 = cmd.formatWriteBuf(zig_exe, paths, buf.ptr);
             return buf[0..len :0];
         }
-        fn archiveWrite(target: *Target, allocator: *Allocator) [:0]u8 {
+        fn archiveWrite(allocator: *Allocator, cmd: *types.ArchiveCommand, paths: []const types.Path) [:0]u8 {
             @setRuntimeSafety(false);
-            const archive_cmd: *types.ArchiveCommand = target.task_cmd.archive;
-            const max_len: u64 = builder_spec.options.max_cmdline_len orelse
-                cmdline.archiveLength(archive_cmd, zig_exe, target.paths[0..target.paths_len]);
+            const max_len: u64 = builder_spec.options.max_cmdline_len orelse cmd.formatLength(zig_exe, paths);
             const buf: []u8 = allocator.allocate(u8, max_len);
-            const len: u64 = cmdline.archiveWriteBuf(archive_cmd, zig_exe, target.paths[0..target.paths_len], buf.ptr);
-            if (builder_spec.options.max_cmdline_len == null) {
-                builtin.assertEqual(u64, max_len, len);
-            }
+            const len: u64 = cmd.formatWriteBuf(zig_exe, paths, buf.ptr);
             return buf[0..len :0];
         }
-        fn formatWrite(cmd: *types.FormatCommand, allocator: *Allocator, root_path: types.Path) [:0]u8 {
+        fn formatWrite(allocator: *Allocator, cmd: *types.FormatCommand, root_path: types.Path) [:0]u8 {
             @setRuntimeSafety(false);
-            const max_len: u64 = builder_spec.options.max_cmdline_len orelse cmdline.formatLength(cmd, zig_exe, root_path);
+            const max_len: u64 = builder_spec.options.max_cmdline_len orelse cmdline.formatLength(zig_exe, root_path);
             const buf: []u8 = allocator.allocate(u8, max_len);
-            const len: u64 = cmdline.formatWriteBuf(cmd, zig_exe, root_path, buf.ptr);
-            if (builder_spec.options.max_cmdline_len == null) {
-                builtin.assertEqual(u64, max_len, len);
-            }
+            const len: u64 = cmd.formatWriteBuf(zig_exe, root_path, buf.ptr);
             return buf[0..len :0];
         }
         fn executeCompilerCommand(builder: *Builder, allocator: *Allocator, target: *Target, _: u64, task: types.Task) sys.ErrorUnion(.{
@@ -726,9 +716,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             var old_size: u64 = undefined;
             var new_size: u64 = undefined;
             const args: [:0]u8 = try meta.wrap(switch (task) {
-                .format => formatWrite(target.task_cmd.format, allocator, target.paths[0]),
-                .archive => archiveWrite(target, allocator),
-                else => buildWrite(target, allocator),
+                .format => formatWrite(allocator, target.task_cmd.format, target.paths[0]),
+                .archive => archiveWrite(allocator, target.task_cmd.archive, target.paths[0..target.paths_len]),
+                else => buildWrite(allocator, target.task_cmd.build, target.paths[0..target.paths_len]),
             });
             if (task == .build) {
                 const out_path: [:0]const u8 = binaryRelative(
