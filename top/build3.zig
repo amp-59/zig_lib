@@ -154,6 +154,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         vars: [][*:0]u8,
         grps: []*Group = &.{},
         grps_len: u64 = 0,
+        trgs: []*Target = &.{},
+        trgs_len: u64 = 0,
         const Builder = @This();
         pub var zig_exe: [:0]const u8 = undefined;
         pub var build_root: [:0]const u8 = undefined;
@@ -229,11 +231,12 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     Builder.Allocator.init_arena(Builder.AddressSpace.arena(arena_index))
                 else
                     Builder.Allocator.init(address_space, arena_index);
-                if (if (task == .run) meta.wrap(
-                    executeRunCommand(builder, &allocator, target, depth),
-                ) catch false else meta.wrap(
-                    executeCompilerCommand(builder, &allocator, target, depth, task),
-                ) catch false) {
+                target.spawnAllDeps(address_space, thread_space, &allocator, builder, task, depth);
+                while (targetWait(target, task)) {
+                    try meta.wrap(time.sleep(sleep(), .{ .nsec = builder_spec.options.sleep_nanoseconds }));
+                }
+                if (target.task_lock.get(task) != .working) return;
+                if (executeCommandInternal(builder, &allocator, target, depth, task)) {
                     target.assertExchange(task, .working, .finished);
                 } else {
                     target.assertExchange(task, .working, .failed);
@@ -246,6 +249,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             fn executeCommand(
                 builder: *Builder,
+                address_space: *AddressSpace,
+                thread_space: *ThreadSpace,
                 allocator: *Allocator,
                 target: *Target,
                 task: types.Task,
@@ -256,11 +261,12 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 .abort = builder_spec.errors.clock.throw ++
                     builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
             }, void) {
-                if (if (task == .run) try meta.wrap(
-                    executeRunCommand(builder, allocator, target, depth),
-                ) else try meta.wrap(
-                    executeCompilerCommand(builder, allocator, target, depth, task),
-                )) {
+                target.spawnAllDeps(address_space, thread_space, allocator, builder, task, depth);
+                while (targetWait(target, task)) {
+                    try meta.wrap(time.sleep(sleep(), .{ .nsec = builder_spec.options.sleep_nanoseconds }));
+                }
+                if (target.task_lock.get(task) != .working) return;
+                if (executeCommandInternal(builder, allocator, target, depth, task)) {
                     target.assertExchange(task, .working, .finished);
                 } else {
                     target.assertExchange(task, .working, .failed);
