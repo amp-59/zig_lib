@@ -866,29 +866,59 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 builtin.proc.exitError(error.TargetDoesNotExist, 2);
             }
         }
-        fn targetWait(target: *Target, task: types.Task, arena_index: AddressSpace.Index) bool {
-            @setRuntimeSafety(safety);
+        fn depTest(target: *Target, task: types.Task, state: types.State) bool {
             for (target.deps[0..target.deps_len]) |*dep| {
-                if (dep.on_target == target and dep.on_task == task) {
+                const t_st: types.State = dep.on_target.task_lock.get(dep.on_task);
+                if (dep.on_target == target and
+                    dep.on_task == task)
+                {
                     continue;
                 }
-                if (dep.on_target.task_lock.get(dep.on_task) != dep.on_state) {
-                    if (dep.on_target.task_lock.get(dep.on_task) == .failed) {
-                        target.assertExchange(task, .waiting, .failed);
-                        if (max_thread_count != 0) {
-                            if (arena_index != max_thread_count) {
-                                builtin.proc.exitError(error.Dependencyfailed, 2);
-                            }
-                        }
-                        return false;
-                    } else {
-                        return true;
-                    }
+                if (t_st == state) {
+                    return true;
                 }
             }
-            target.assertExchange(task, .waiting, .ready);
             return false;
         }
+        fn depExchange(target: *Target, task: types.Task, from: types.State, to: types.State) void {
+            for (target.deps[0..target.deps_len]) |*dep| {
+                const t_st: types.State = dep.on_target.task_lock.get(dep.on_task);
+                _ = t_st;
+                if (dep.on_target == target and
+                    dep.on_task == task)
+                {
+                    continue;
+                }
+                _ = dep.on_target.exchange(dep.on_task, from, to);
+            }
+        }
+        // In order to leave all must be cancelled, failed, or finished
+        fn targetWait(target: *Target, task: types.Task) bool {
+            @setRuntimeSafety(safety);
+            const s_st: types.State = target.task_lock.get(task);
+            if (s_st == .blocking) {
+                if (depTest(target, task, .failed) or
+                    depTest(target, task, .cancelled))
+                {
+                    target.assertExchange(task, .blocking, .failed);
+                    return true;
+                }
+                if (depTest(target, task, .working) or
+                    depTest(target, task, .blocking))
+                {
+                    return true;
+                }
+                target.assertExchange(task, .blocking, .working);
+                return false;
+            }
+            if (s_st == .failed) {
+                depExchange(target, task, .ready, .cancelled);
+                depExchange(target, task, .blocking, .failed);
+                return depTest(target, task, .working);
+            }
+            return false;
+        }
+
         fn groupWait(group: *Group, maybe_task: ?types.Task) bool {
             @setRuntimeSafety(safety);
             for (group.trgs[0..group.trgs_len]) |target| {
@@ -924,10 +954,18 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             return false;
         }
-        fn status(rc: u8) bool {
-            return rc == builder_spec.options.compiler_cache_hit_status or
-                rc == builder_spec.options.compiler_expected_status or
-                rc == builder_spec.options.system_expected_status;
+        fn status(ret: []u8) bool {
+            if (builder_spec.options.enable_caching) {
+                if (ret[1] == builder_spec.options.compiler_error_status) {
+                    return false;
+                }
+                if (ret[1] == builder_spec.options.compiler_cache_hit_status or
+                    ret[1] == builder_spec.options.compiler_expected_status)
+                {
+                    return ret[0] == builder_spec.options.system_expected_status;
+                }
+            }
+            return ret[0] == builder_spec.options.system_expected_status;
         }
         fn openChild(in: file.Pipe, out: file.Pipe) sys.ErrorUnion(.{
             .throw = builder_spec.errors.close.throw ++ builder_spec.errors.dup3.throw,
