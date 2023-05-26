@@ -5,15 +5,18 @@ const time = @import("./time.zig");
 const meta = @import("./meta.zig");
 const mach = @import("./mach.zig");
 const proc = @import("./proc.zig");
-const spec = @import("./spec.zig");
 const builtin = @import("./builtin.zig");
 const virtual = @import("./virtual.zig");
 const types = @import("./build/types.zig");
 const safety: bool = false;
 pub usingnamespace types;
 pub const BuilderSpec = struct {
+    /// Builder options
     options: Options = .{},
+    /// Logging for system calls called by the builder.
     logging: Logging,
+    /// Errors for system calls called by builder. This excludes clone, which
+    /// must be implemented in assembly.
     errors: Errors,
     pub const Options = struct {
         /// The maximum number of threads in addition to main.
@@ -49,6 +52,9 @@ pub const BuilderSpec = struct {
         show_targets: bool = false,
         /// Enables logging for build job statistics.
         show_stats: bool = true,
+        /// Notices will represent the depth of a dependency relative to toplevel by
+        /// increasing indentation.
+        show_dependency_depth: bool = false,
         /// Enables detail for target dependecy listings.
         show_detailed_deps: bool = true,
         /// Use `SimpleAllocator` instead of configured generic allocator.
@@ -137,7 +143,6 @@ pub const BuilderSpec = struct {
         clock: sys.ErrorPolicy,
         unlink: sys.ErrorPolicy,
     };
-    usingnamespace Spec;
 };
 pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
     const Type = struct {
@@ -162,31 +167,31 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         const arena_up_addr: u64 = arena_lb_addr + (max_arena_count * arena_aligned_bytes);
         pub const AddressSpace = mem.GenericRegularAddressSpace(.{
             .label = "arena",
+            .errors = address_space_errors,
+            .logging = builtin.zero(mem.AddressSpaceLogging),
             .idx_type = u64,
             .divisions = max_arena_count,
             .lb_addr = arena_lb_addr,
             .up_addr = arena_up_addr,
-            .errors = spec.address_space.errors.noexcept,
-            .logging = spec.address_space.logging.silent,
             .options = address_space_options,
         });
         pub const ThreadSpace = mem.GenericRegularAddressSpace(.{
             .label = "stack",
+            .errors = address_space_errors,
+            .logging = builtin.zero(mem.AddressSpaceLogging),
             .idx_type = AddressSpace.Index,
             .divisions = max_thread_count,
             .lb_addr = stack_lb_addr,
             .up_addr = stack_up_addr,
-            .errors = spec.address_space.errors.noexcept,
-            .logging = spec.address_space.logging.silent,
             .options = thread_space_options,
         });
         pub const Allocator = if (builder_spec.options.prefer_simple_allocator)
             mem.SimpleAllocator
         else
             mem.GenericRtArenaAllocator(.{
+                .logging = builtin.zero(mem.AllocatorLogging),
+                .errors = allocator_errors,
                 .AddressSpace = AddressSpace,
-                .logging = spec.allocator.logging.silent,
-                .errors = spec.allocator.errors.noexcept,
                 .options = allocator_options,
             });
         pub const Target = struct {
@@ -267,7 +272,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         }
                     }
                     while (targetWait(target, task, arena_index)) {
-                        try meta.wrap(time.sleep(builder_spec.sleep(), .{ .nsec = builder_spec.options.sleep_nanoseconds }));
+                        try meta.wrap(time.sleep(sleep(), .{ .nsec = builder_spec.options.sleep_nanoseconds }));
                     }
                 }
                 if (target.exchange(task, .ready, .working)) {
@@ -290,7 +295,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 const task: types.Task = maybe_task orelse target.task;
                 try meta.wrap(target.acquireLock(address_space, thread_space, allocator, builder, task, max_thread_count, 0));
                 while (builderWait(address_space, thread_space, builder)) {
-                    try meta.wrap(time.sleep(builder_spec.sleep(), .{ .nsec = builder_spec.options.sleep_nanoseconds }));
+                    try meta.wrap(time.sleep(sleep(), .{ .nsec = builder_spec.options.sleep_nanoseconds }));
                 }
             }
             inline fn createBinaryPath(target: *Target, allocator: *Allocator) types.Path {
@@ -507,7 +512,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     try meta.wrap(target.acquireLock(address_space, thread_space, allocator, group.builder, task, max_thread_count, 1));
                 }
                 while (groupWait(group, maybe_task)) {
-                    try meta.wrap(time.sleep(builder_spec.sleep(), .{ .nsec = builder_spec.options.sleep_nanoseconds }));
+                    try meta.wrap(time.sleep(sleep(), .{ .nsec = builder_spec.options.sleep_nanoseconds }));
                 }
             }
         };
@@ -517,17 +522,17 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             var fd: file.PollFd = .{ .fd = out.read, .expect = .{ .input = true } };
             var ret: u8 = builder_spec.options.compiler_expected_status;
             while (try meta.wrap(
-                file.pollOne(builder_spec.poll(), &fd, builder_spec.options.timeout_milliseconds),
+                file.pollOne(poll(), &fd, builder_spec.options.timeout_milliseconds),
             )) : (fd.actual = .{}) {
                 try meta.wrap(
-                    file.readOne(builder_spec.read3(), out.read, hdr),
+                    file.readOne(read3(), out.read, hdr),
                 );
                 const msg: []u8 = allocator.allocate(u8, hdr.bytes_len);
                 mach.memset(msg.ptr, 0, msg.len);
                 var len: u64 = 0;
                 while (len != hdr.bytes_len) {
                     len +%= try meta.wrap(
-                        file.read(builder_spec.read2(), out.read, msg[len..hdr.bytes_len]),
+                        file.read(read2(), out.read, msg[len..hdr.bytes_len]),
                     );
                 }
                 if (hdr.tag == .emit_bin_path) break {
@@ -541,13 +546,13 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             allocator.restore(save);
             try meta.wrap(
-                proc.waitPid(builder_spec.waitpid(), .{ .pid = pid }),
+                proc.waitPid(waitpid(), .{ .pid = pid }),
             );
             working_time.* = time.diff(try meta.wrap(
-                time.get(builder_spec.clock(), .realtime),
+                time.get(clock(), .realtime),
             ), working_time.*);
             try meta.wrap(
-                file.close(builder_spec.close(), out.read),
+                file.close(close(), out.read),
             );
             return ret;
         }
@@ -557,34 +562,35 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             .abort = builder_spec.errors.clock.throw ++
                 builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
         }, u8) {
-            ts.* = try meta.wrap(time.get(builder_spec.clock(), .realtime));
-            const pid: u64 = try meta.wrap(proc.fork(builder_spec.fork()));
+            ts.* = try meta.wrap(time.get(clock(), .realtime));
+            const pid: u64 = try meta.wrap(proc.fork(fork()));
             if (pid == 0) try meta.wrap(
-                file.execPath(builder_spec.execve(), meta.manyToSlice(args[0]), args, builder.vars),
+                file.execPath(execve(), meta.manyToSlice(args[0]), args, builder.vars),
             );
             const ret: proc.Return = try meta.wrap(
-                proc.waitPid(builder_spec.waitpid2(), .{ .pid = pid }),
+                proc.waitPid(waitpid2(), .{ .pid = pid }),
             );
-            ts.* = time.diff(try meta.wrap(time.get(builder_spec.clock(), .realtime)), ts.*);
+            ts.* = time.diff(try meta.wrap(time.get(clock(), .realtime)), ts.*);
             return proc.Status.exit(ret.status);
         }
+        const ck = clock();
         inline fn compile(builder: *const Builder, args: [][*:0]u8, ts: *time.TimeSpec) sys.ErrorUnion(.{
             .throw = builder_spec.errors.clock.throw ++
                 builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
             .abort = builder_spec.errors.clock.throw ++
                 builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
         }, u8) {
-            ts.* = try meta.wrap(time.get(builder_spec.clock(), .realtime));
-            const pid: u64 = try meta.wrap(proc.fork(builder_spec.fork()));
+            ts.* = try meta.wrap(time.get(clock(), .realtime));
+            const pid: u64 = try meta.wrap(proc.fork(fork()));
             if (pid == 0) {
                 try meta.wrap(
-                    file.execPath(builder_spec.execve(), builder.zig_exe, args, builder.vars),
+                    file.execPath(execve(), builder.zig_exe, args, builder.vars),
                 );
             }
             const ret: proc.Return = try meta.wrap(
-                proc.waitPid(builder_spec.waitpid2(), .{ .pid = pid }),
+                proc.waitPid(waitpid2(), .{ .pid = pid }),
             );
-            ts.* = time.diff(try meta.wrap(time.get(builder_spec.clock(), .realtime)), ts.*);
+            ts.* = time.diff(try meta.wrap(time.get(clock(), .realtime)), ts.*);
             return proc.Status.exit(ret.status);
         }
         inline fn compileServer(builder: *const Builder, allocator: *Builder.Allocator, args: [][*:0]u8, ts: *time.TimeSpec) sys.ErrorUnion(.{
@@ -593,22 +599,22 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             .abort = builder_spec.errors.clock.throw ++
                 builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
         }, u8) {
-            const in: file.Pipe = try meta.wrap(file.makePipe(builder_spec.pipe()));
-            const out: file.Pipe = try meta.wrap(file.makePipe(builder_spec.pipe()));
-            ts.* = try meta.wrap(time.get(builder_spec.clock(), .realtime));
-            const pid: u64 = try meta.wrap(proc.fork(builder_spec.fork()));
+            const in: file.Pipe = try meta.wrap(file.makePipe(pipe()));
+            const out: file.Pipe = try meta.wrap(file.makePipe(pipe()));
+            ts.* = try meta.wrap(time.get(clock(), .realtime));
+            const pid: u64 = try meta.wrap(proc.fork(fork()));
             if (pid == 0) {
                 try meta.wrap(openChild(in, out));
                 try meta.wrap(
-                    file.execPath(builder_spec.execve(), zig_exe, args, builder.vars),
+                    file.execPath(execve(), zig_exe, args, builder.vars),
                 );
             }
             try meta.wrap(openParent(in, out));
             try meta.wrap(
-                file.write(builder_spec.write2(), in.write, &update_exit_message),
+                file.write(write2(), in.write, &update_exit_message),
             );
             try meta.wrap(
-                file.close(builder_spec.close(), in.write),
+                file.close(close(), in.write),
             );
             return try meta.wrap(
                 clientLoop(allocator, out, ts, pid),
@@ -706,7 +712,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             const len: u64 = cmd.formatWriteBuf(zig_exe, root_path, buf.ptr);
             return buf[0..len :0];
         }
-        fn executeCompilerCommand(builder: *Builder, allocator: *Allocator, target: *Target, _: u64, task: types.Task) sys.ErrorUnion(.{
+        fn executeCompilerCommand(builder: *Builder, allocator: *Allocator, target: *Target, depth: u64, task: types.Task) sys.ErrorUnion(.{
             .throw = builder_spec.errors.clock.throw ++
                 builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
             .abort = builder_spec.errors.clock.throw ++
@@ -723,10 +729,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 else => buildWrite(allocator, target.task_cmd.build, target.paths[0..target.paths_len]),
             });
             if (task == .build) {
-                const out_path: [:0]const u8 = binaryRelative(
-                    allocator,
-                    target.task_cmd.build,
-                );
+                const out_path: [:0]const u8 = binaryRelative(allocator, target.task_cmd.build);
                 const ptrs: [][*:0]u8 = try meta.wrap(
                     makeArgPtrs(allocator, args),
                 );
@@ -744,14 +747,14 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 );
             }
             if (task == .build or task == .archive) {
-                debug.buildNotice(target, working_time, old_size, new_size, rc);
+                debug.buildNotice(target, depth, working_time, old_size, new_size, rc);
             }
             if (task == .run or task == .format) {
-                debug.simpleTimedNotice(target, working_time, task, rc);
+                debug.simpleTimedNotice(target, depth, working_time, task, rc);
             }
             return status(rc);
         }
-        fn executeRunCommand(builder: *Builder, allocator: *Allocator, target: *Target, _: u64) sys.ErrorUnion(.{
+        fn executeRunCommand(builder: *Builder, allocator: *Allocator, target: *Target, depth: u64) sys.ErrorUnion(.{
             .throw = builder_spec.errors.clock.throw ++
                 builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
             .abort = builder_spec.errors.clock.throw ++
@@ -768,7 +771,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 builder.system(args, &working_time),
             );
             if (builder_spec.options.show_stats) {
-                debug.simpleTimedNotice(target, working_time, .run, rc);
+                debug.simpleTimedNotice(target, depth, working_time, .run, rc);
             }
             return status(rc);
         }
@@ -783,37 +786,37 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             build_root = meta.manyToSlice(args[2]);
             cache_root = meta.manyToSlice(args[3]);
             global_cache_root = meta.manyToSlice(args[4]);
-            const build_root_fd: u64 = try meta.wrap(file.path(builder_spec.path(), build_root));
+            const build_root_fd: u64 = try meta.wrap(file.path(path1(), build_root));
             if (!thread_space_options.require_map) {
-                mem.map(builder_spec.map(), stack_lb_addr, stack_up_addr -% stack_lb_addr);
+                mem.map(map(), stack_lb_addr, stack_up_addr -% stack_lb_addr);
             }
             try meta.wrap(
-                file.makeDirAt(builder_spec.mkdir(), build_root_fd, builder_spec.options.names.zig_out_dir, file.mode.directory),
+                file.makeDirAt(mkdir(), build_root_fd, builder_spec.options.names.zig_out_dir, file.mode.directory),
             );
             try meta.wrap(
-                file.makeDirAt(builder_spec.mkdir(), build_root_fd, builder_spec.options.names.zig_stat_dir, file.mode.directory),
+                file.makeDirAt(mkdir(), build_root_fd, builder_spec.options.names.zig_stat_dir, file.mode.directory),
             );
             try meta.wrap(
-                file.makeDirAt(builder_spec.mkdir(), build_root_fd, zig_out_exe_dir, file.mode.directory),
+                file.makeDirAt(mkdir(), build_root_fd, zig_out_exe_dir, file.mode.directory),
             );
             try meta.wrap(
-                file.makeDirAt(builder_spec.mkdir(), build_root_fd, zig_out_aux_dir, file.mode.directory),
+                file.makeDirAt(mkdir(), build_root_fd, zig_out_aux_dir, file.mode.directory),
             );
             try meta.wrap(
-                file.makeDirAt(builder_spec.mkdir(), build_root_fd, zig_out_lib_dir, file.mode.directory),
+                file.makeDirAt(mkdir(), build_root_fd, zig_out_lib_dir, file.mode.directory),
             );
             const cache_root_fd: u64 = try meta.wrap(
-                file.path(builder_spec.path(), cache_root),
+                file.path(path1(), cache_root),
             );
             const env_fd: u64 = try meta.wrap(
-                file.createAt(builder_spec.create(), cache_root_fd, env_basename, file.mode.regular),
+                file.createAt(create(), cache_root_fd, env_basename, file.mode.regular),
             );
             writeEnv(env_fd);
             try meta.wrap(
-                file.close(builder_spec.close(), env_fd),
+                file.close(close(), env_fd),
             );
             try meta.wrap(
-                file.close(builder_spec.close(), cache_root_fd),
+                file.close(close(), cache_root_fd),
             );
             return .{ .args = args, .args_len = args.len, .vars = vars, .dir_fd = build_root_fd };
         }
@@ -951,24 +954,24 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             .abort = builder_spec.errors.close.abort ++ builder_spec.errors.dup3.abort,
         }, void) {
             try meta.wrap(
-                file.close(builder_spec.close(), in.write),
+                file.close(close(), in.write),
             );
             try meta.wrap(
-                file.close(builder_spec.close(), out.read),
+                file.close(close(), out.read),
             );
             try meta.wrap(
-                file.duplicateTo(builder_spec.dup3(), in.read, 0),
+                file.duplicateTo(dup3(), in.read, 0),
             );
             try meta.wrap(
-                file.duplicateTo(builder_spec.dup3(), out.write, 1),
+                file.duplicateTo(dup3(), out.write, 1),
             );
         }
         fn openParent(in: file.Pipe, out: file.Pipe) sys.ErrorUnion(builder_spec.errors.close, void) {
             try meta.wrap(
-                file.close(builder_spec.close(), in.read),
+                file.close(close(), in.read),
             );
             try meta.wrap(
-                file.close(builder_spec.close(), out.write),
+                file.close(close(), out.write),
             );
         }
         // Should be in a `GenericBuildCommand` namespace
@@ -1038,6 +1041,21 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             .require_map = false,
             .require_unmap = false,
         };
+        const create_truncate_options: file.CreateSpec.Options = .{
+            .exclusive = false,
+            .truncate = true,
+        };
+        const create_append_options: file.CreateSpec.Options = .{
+            .exclusive = false,
+            .append = true,
+            .truncate = false,
+        };
+        const thread_map_options: mem.MapSpec.Options = .{
+            .grows_down = true,
+        };
+        const pipe_options: file.MakePipeSpec.Options = .{
+            .close_on_exec = false,
+        };
         const allocator_options: mem.ArenaAllocatorOptions = .{
             .count_branches = false,
             .count_allocations = false,
@@ -1047,6 +1065,17 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             .init_commit = arena_aligned_bytes,
             .require_map = !address_space_options.require_map,
             .require_unmap = !address_space_options.require_unmap,
+        };
+        pub const allocator_errors: mem.AllocatorErrors = .{
+            .map = .{},
+            .remap = .{},
+            .unmap = .{},
+        };
+        pub const address_space_errors: mem.AddressSpaceErrors = .{
+            .release = .ignore,
+            .acquire = .ignore,
+            .map = .{},
+            .unmap = .{},
         };
         const zig_out_exe_dir: [:0]const u8 = builder_spec.options.names.zig_out_dir ++ "/" ++ builder_spec.options.names.exe_out_dir;
         const zig_out_lib_dir: [:0]const u8 = builder_spec.options.names.zig_out_dir ++ "/" ++ builder_spec.options.names.lib_out_dir;
@@ -1134,7 +1163,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 ptr[len] = '\n';
                 builtin.debug.write(ptr[0 .. len +% 1]);
             }
-            fn buildNotice(target: *const Target, working_time: time.TimeSpec, old_size: u64, new_size: u64, rc: u8) void {
+            fn buildNotice(target: *const Target, depth: u64, working_time: time.TimeSpec, old_size: u64, new_size: u64, rc: u8) void {
                 @setRuntimeSafety(safety);
                 const diff_size: u64 = @max(new_size, old_size) -% @min(new_size, old_size);
                 const new_size_s: []const u8 = builtin.fmt.ud64(new_size).readAll();
@@ -1149,6 +1178,10 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     .obj => about.build_obj_s,
                     .lib => about.build_lib_s,
                 }.ptr, len);
+                if (builder_spec.options.show_dependency_depth) {
+                    mach.memset(buf[len..].ptr, ' ', depth *% 4);
+                    len +%= depth *% 4;
+                }
                 if (rc == builder_spec.options.compiler_cache_hit_status or working_time.nsec < 45000000 and
                     rc != builder_spec.options.compiler_error_status)
                 {
@@ -1210,7 +1243,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 @ptrCast(*[4]u8, buf[len..].ptr).* = about.reset_s.*;
                 builtin.debug.logAlways(buf[0 .. len +% about.reset_s.len]);
             }
-            fn simpleTimedNotice(target: *const Target, working_time: time.TimeSpec, task: types.Task, rc: u8) void {
+            fn simpleTimedNotice(target: *const Target, depth: u64, working_time: time.TimeSpec, task: types.Task, rc: u8) void {
                 @setRuntimeSafety(safety);
                 const about_s: [:0]const u8 = switch (task) {
                     .format => about.format_s,
@@ -1223,6 +1256,10 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 var buf: [32768]u8 = undefined;
                 mach.memcpy(&buf, about_s.ptr, about_s.len);
                 var len: u64 = about_s.len;
+                if (builder_spec.options.show_dependency_depth) {
+                    mach.memset(buf[len..].ptr, ' ', depth *% 4);
+                    len +%= depth *% 4;
+                }
                 mach.memcpy(buf[len..].ptr, target.name.ptr, target.name.len);
                 len +%= target.name.len;
                 @ptrCast(*[2]u8, buf[len..].ptr).* = about.next_s.*;
@@ -1599,9 +1636,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             mach.memcpy(buf[len..].ptr, name.ptr, name.len);
             len +%= name.len;
             buf[len] = 0;
-            const fd: u64 = try meta.wrap(file.createAt(builder_spec.create2(), builder.dir_fd, buf[0..len :0], file.mode.regular));
-            try meta.wrap(file.writeOne(builder_spec.write3(), fd, record));
-            try meta.wrap(file.close(builder_spec.close(), fd));
+            const fd: u64 = try meta.wrap(file.createAt(create2(), builder.dir_fd, buf[0..len :0], file.mode.regular));
+            try meta.wrap(file.writeOne(write3(), fd, record));
+            try meta.wrap(file.close(close(), fd));
         }
         fn writeEnv(env_fd: u64) void {
             var buf: [4096 *% 8]u8 = undefined;
@@ -1619,7 +1656,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             @ptrCast(*[3]u8, buf[len..].ptr).* = "\";\n".*;
             len +%= 3;
-            try meta.wrap(file.write(builder_spec.write(), env_fd, buf[0..len]));
+            try meta.wrap(file.write(write(), env_fd, buf[0..len]));
         }
         fn fastLineCol(buf: [*]const u8, buf_len: u64, s_line: u32, s_col: u32) void {
             var i_idx: u32 = 0;
@@ -1694,12 +1731,13 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             mach.memcpy(buf, root.ptr, root.len);
             buf[root.len] = 0;
             var idx: u64 = 0;
-            while (idx != root.len) : (idx +%= 1) {
+            while (idx != root.len and buf[idx] != 0x2e) : (idx +%= 1) {
                 buf[idx] -%= @boolToInt(buf[idx] == 0x2f);
             }
-            return buf[0..root.len :0];
+            return buf[0..idx :0];
         }
         pub fn check(allocator: *Allocator, builder: *Builder) void {
+            @setRuntimeSafety(safety);
             var trgs_len: u64 = 0;
             for (builder.grps[0..builder.grps_len]) |group| {
                 trgs_len +%= group.trgs_len;
@@ -1743,103 +1781,166 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             allocator.deallocate(*Target, trgs);
         }
+        fn clock() time.ClockSpec {
+            return .{ .errors = builder_spec.errors.clock };
+        }
+        fn sleep() time.SleepSpec {
+            return .{ .errors = builder_spec.errors.sleep };
+        }
+        fn path1() file.PathSpec {
+            return .{
+                .errors = builder_spec.errors.path,
+                .logging = builder_spec.logging.path,
+            };
+        }
+        fn mkdir() file.MakeDirSpec {
+            return .{
+                .errors = builder_spec.errors.mkdir,
+                .logging = builder_spec.logging.mkdir,
+            };
+        }
+        fn write() file.WriteSpec {
+            return .{
+                .errors = builder_spec.errors.write,
+                .logging = builder_spec.logging.write,
+            };
+        }
+        fn write2() file.WriteSpec {
+            return .{
+                .errors = builder_spec.errors.write,
+                .logging = builder_spec.logging.write,
+                .child = types.Message.ClientHeader,
+            };
+        }
+        fn write3() file.WriteSpec {
+            return .{
+                .errors = builder_spec.errors.write,
+                .logging = builder_spec.logging.write,
+                .child = types.Record,
+            };
+        }
+        fn read() file.ReadSpec {
+            return .{
+                .errors = builder_spec.errors.read,
+                .logging = builder_spec.logging.read,
+                .return_type = u64,
+            };
+        }
+        fn read2() file.ReadSpec {
+            return .{
+                .errors = builder_spec.errors.read,
+                .logging = builder_spec.logging.read,
+                .return_type = u64,
+            };
+        }
+        fn read3() file.ReadSpec {
+            return .{
+                .child = types.Message.ServerHeader,
+                .errors = builder_spec.errors.read,
+                .logging = builder_spec.logging.read,
+                .return_type = void,
+            };
+        }
+        fn close() file.CloseSpec {
+            return .{
+                .errors = builder_spec.errors.close,
+                .logging = builder_spec.logging.close,
+            };
+        }
+        fn unmap() mem.UnmapSpec {
+            return .{
+                .errors = builder_spec.errors.unmap,
+                .logging = builder_spec.logging.unmap,
+            };
+        }
+        fn stat() file.StatusSpec {
+            return .{
+                .errors = builder_spec.errors.stat,
+                .logging = builder_spec.logging.stat,
+            };
+        }
+        fn fork() proc.ForkSpec {
+            return .{
+                .errors = builder_spec.errors.fork,
+                .logging = builder_spec.logging.fork,
+            };
+        }
+        fn waitpid() proc.WaitSpec {
+            return .{
+                .errors = builder_spec.errors.waitpid,
+                .logging = builder_spec.logging.waitpid,
+                .return_type = void,
+            };
+        }
+        fn waitpid2() proc.WaitSpec {
+            return .{
+                .errors = builder_spec.errors.waitpid,
+                .logging = builder_spec.logging.waitpid,
+                .return_type = proc.Return,
+            };
+        }
+        fn mknod() file.MakeNodeSpec {
+            return .{
+                .errors = builder_spec.errors.mknod,
+                .logging = builder_spec.logging.mknod,
+            };
+        }
+        fn dup3() file.DuplicateSpec {
+            return .{
+                .errors = builder_spec.errors.dup3,
+                .logging = builder_spec.logging.dup3,
+                .return_type = void,
+            };
+        }
+        fn poll() file.PollSpec {
+            return .{
+                .errors = builder_spec.errors.poll,
+                .logging = builder_spec.logging.poll,
+                .return_type = bool,
+            };
+        }
+        fn pipe() file.MakePipeSpec {
+            return .{
+                .errors = builder_spec.errors.pipe,
+                .logging = builder_spec.logging.pipe,
+                .options = pipe_options,
+            };
+        }
+        fn map() mem.MapSpec {
+            return .{
+                .errors = builder_spec.errors.map,
+                .logging = builder_spec.logging.map,
+                .options = thread_map_options,
+            };
+        }
+        fn create() file.CreateSpec {
+            return .{
+                .errors = builder_spec.errors.create,
+                .logging = builder_spec.logging.create,
+                .options = create_truncate_options,
+            };
+        }
+        fn create2() file.CreateSpec {
+            return .{
+                .errors = builder_spec.errors.create,
+                .logging = builder_spec.logging.create,
+                .options = create_append_options,
+            };
+        }
+        fn unlink() file.UnlinkSpec {
+            return .{
+                .errors = builder_spec.errors.unlink,
+                .logging = builder_spec.logging.unlink,
+            };
+        }
+        fn execve() file.ExecuteSpec {
+            return .{
+                .errors = builder_spec.errors.execve,
+                .logging = builder_spec.logging.execve,
+                .args_type = [][*:0]u8,
+                .vars_type = [][*:0]u8,
+            };
+        }
     };
     return Type;
 }
-const Spec = struct {
-    const thread_map_options: mem.MapSpec.Options = .{
-        .grows_down = true,
-    };
-    const pipe_options: file.MakePipeSpec.Options = .{
-        .close_on_exec = false,
-    };
-    const create_truncate_options: file.CreateSpec.Options = .{
-        .exclusive = false,
-        .truncate = true,
-    };
-    const create_append_options: file.CreateSpec.Options = .{
-        .exclusive = false,
-        .append = true,
-        .truncate = false,
-    };
-    fn clock(comptime builder_spec: BuilderSpec) time.ClockSpec {
-        return .{ .errors = builder_spec.errors.clock };
-    }
-    fn sleep(comptime builder_spec: BuilderSpec) time.SleepSpec {
-        return .{ .errors = builder_spec.errors.sleep };
-    }
-    fn path(comptime builder_spec: BuilderSpec) file.PathSpec {
-        return .{ .errors = builder_spec.errors.path, .logging = builder_spec.logging.path };
-    }
-    fn mkdir(comptime builder_spec: BuilderSpec) file.MakeDirSpec {
-        return .{ .errors = builder_spec.errors.mkdir, .logging = builder_spec.logging.mkdir };
-    }
-    fn write(comptime builder_spec: BuilderSpec) file.WriteSpec {
-        return .{ .errors = builder_spec.errors.write, .logging = builder_spec.logging.write };
-    }
-    fn write2(comptime builder_spec: BuilderSpec) file.WriteSpec {
-        return .{ .errors = builder_spec.errors.write, .logging = builder_spec.logging.write, .child = types.Message.ClientHeader };
-    }
-    fn write3(comptime builder_spec: BuilderSpec) file.WriteSpec {
-        return .{ .errors = builder_spec.errors.write, .logging = builder_spec.logging.write, .child = types.Record };
-    }
-    fn read(comptime builder_spec: BuilderSpec) file.ReadSpec {
-        return .{ .errors = builder_spec.errors.read, .logging = builder_spec.logging.read, .return_type = u64 };
-    }
-    fn read2(comptime builder_spec: BuilderSpec) file.ReadSpec {
-        return .{ .errors = builder_spec.errors.read, .logging = builder_spec.logging.read, .return_type = u64 };
-    }
-    fn read3(comptime builder_spec: BuilderSpec) file.ReadSpec {
-        return .{ .child = types.Message.ServerHeader, .errors = builder_spec.errors.read, .logging = builder_spec.logging.read, .return_type = void };
-    }
-    fn close(comptime builder_spec: BuilderSpec) file.CloseSpec {
-        return .{ .errors = builder_spec.errors.close, .logging = builder_spec.logging.close };
-    }
-    fn unmap(comptime builder_spec: BuilderSpec) mem.UnmapSpec {
-        return .{ .errors = builder_spec.errors.unmap, .logging = builder_spec.logging.unmap };
-    }
-    fn stat(comptime builder_spec: BuilderSpec) file.StatusSpec {
-        return .{ .errors = builder_spec.errors.stat, .logging = builder_spec.logging.stat };
-    }
-    fn fork(comptime builder_spec: BuilderSpec) proc.ForkSpec {
-        return .{ .errors = builder_spec.errors.fork, .logging = builder_spec.logging.fork };
-    }
-    fn waitpid(comptime builder_spec: BuilderSpec) proc.WaitSpec {
-        return .{ .errors = builder_spec.errors.waitpid, .logging = builder_spec.logging.waitpid, .return_type = void };
-    }
-    fn waitpid2(comptime builder_spec: BuilderSpec) proc.WaitSpec {
-        return .{ .errors = builder_spec.errors.waitpid, .logging = builder_spec.logging.waitpid, .return_type = proc.Return };
-    }
-    fn mknod(comptime builder_spec: BuilderSpec) file.MakeNodeSpec {
-        return .{ .errors = builder_spec.errors.mknod, .logging = builder_spec.logging.mknod };
-    }
-    fn dup3(comptime builder_spec: BuilderSpec) file.DuplicateSpec {
-        return .{ .errors = builder_spec.errors.dup3, .logging = builder_spec.logging.dup3, .return_type = void };
-    }
-    fn poll(comptime builder_spec: BuilderSpec) file.PollSpec {
-        return .{ .errors = builder_spec.errors.poll, .logging = builder_spec.logging.poll, .return_type = bool };
-    }
-    fn pipe(comptime builder_spec: BuilderSpec) file.MakePipeSpec {
-        return .{ .errors = builder_spec.errors.pipe, .logging = builder_spec.logging.pipe, .options = pipe_options };
-    }
-    fn map(comptime builder_spec: BuilderSpec) mem.MapSpec {
-        return .{ .errors = builder_spec.errors.map, .logging = builder_spec.logging.map, .options = thread_map_options };
-    }
-    fn create(comptime builder_spec: BuilderSpec) file.CreateSpec {
-        return .{ .errors = builder_spec.errors.create, .logging = builder_spec.logging.create, .options = create_truncate_options };
-    }
-    fn create2(comptime builder_spec: BuilderSpec) file.CreateSpec {
-        return .{ .errors = builder_spec.errors.create, .logging = builder_spec.logging.create, .options = create_append_options };
-    }
-    fn unlink(comptime builder_spec: BuilderSpec) file.UnlinkSpec {
-        return .{ .errors = builder_spec.errors.unlink, .logging = builder_spec.logging.unlink };
-    }
-    fn execve(comptime builder_spec: BuilderSpec) file.ExecuteSpec {
-        return .{
-            .errors = builder_spec.errors.execve,
-            .logging = builder_spec.logging.execve,
-            .args_type = [][*:0]u8,
-            .vars_type = [][*:0]u8,
-        };
-    }
-};

@@ -42,6 +42,8 @@ pub const implement_count_as_one: bool = false;
 /// If enabled functions returning slices accept an additional parameter to
 /// define the length of the returned pointer.
 pub const user_defined_length: bool = true;
+/// Creates the final file system plan for each generation
+pub const write_separate_source_files: bool = false;
 
 pub const debug_argument_substitution_match_fail: bool = false;
 
