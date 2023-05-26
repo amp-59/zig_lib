@@ -194,6 +194,77 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 .AddressSpace = AddressSpace,
                 .options = allocator_options,
             });
+        // This namespace exists so that programs referencing builder types do
+        // not necessitate compiling `executeCommandThreaded`. These will only
+        // be compiled if their callers are compiled.
+        const impl = struct {
+            extern fn forwardToExecuteCloneThreaded(
+                builder: *Builder,
+                address_space: *AddressSpace,
+                thread_space: *ThreadSpace,
+                target: *Target,
+                task: types.Task,
+                arena_index: AddressSpace.Index,
+                depth: u64,
+                stack_address: u64,
+            ) void;
+            comptime {
+                asm (@embedFile("./build/forwardToExecuteCloneThreaded.s"));
+            }
+            export fn executeCommandThreaded(
+                builder: *Builder,
+                address_space: *AddressSpace,
+                thread_space: *ThreadSpace,
+                target: *Target,
+                task: types.Task,
+                arena_index: AddressSpace.Index,
+                depth: u64,
+            ) void {
+                if (max_thread_count == 0) {
+                    unreachable;
+                }
+                var allocator: Builder.Allocator = if (Builder.Allocator == mem.SimpleAllocator)
+                    Builder.Allocator.init_arena(Builder.AddressSpace.arena(arena_index))
+                else
+                    Builder.Allocator.init(address_space, arena_index);
+                if (if (task == .run) meta.wrap(
+                    executeRunCommand(builder, &allocator, target, depth),
+                ) catch false else meta.wrap(
+                    executeCompilerCommand(builder, &allocator, target, depth, task),
+                ) catch false) {
+                    target.assertExchange(task, .working, .finished);
+                } else {
+                    target.assertExchange(task, .working, .failed);
+                }
+                if (Builder.Allocator == mem.SimpleAllocator)
+                    allocator.unmap()
+                else
+                    allocator.deinit(address_space, arena_index);
+                mem.release(ThreadSpace, thread_space, arena_index);
+            }
+            fn executeCommand(
+                builder: *Builder,
+                allocator: *Allocator,
+                target: *Target,
+                task: types.Task,
+                depth: u64,
+            ) sys.ErrorUnion(.{
+                .throw = builder_spec.errors.clock.throw ++
+                    builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
+                .abort = builder_spec.errors.clock.throw ++
+                    builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
+            }, void) {
+                if (if (task == .run) try meta.wrap(
+                    executeRunCommand(builder, allocator, target, depth),
+                ) else try meta.wrap(
+                    executeCompilerCommand(builder, allocator, target, depth, task),
+                )) {
+                    target.assertExchange(task, .working, .finished);
+                } else {
+                    target.assertExchange(task, .working, .failed);
+                }
+            }
+        };
         pub const Target = struct {
             name: [:0]const u8,
             descr: [:0]const u8,
@@ -478,14 +549,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 ret.hidden = group.hidden;
                 return ret;
             }
-            pub fn describeTarget(group: *Group, target_name: []const u8, target_descr: [:0]const u8) void {
-                @setRuntimeSafety(safety);
-                for (group.trgs[0..group.trgs_len]) |target| {
-                    if (mach.testEqualMany8(target_name, target.name)) {
-                        target.descr = target_descr;
-                    }
-                }
-            }
             pub fn addTarget(group: *Group, allocator: *Allocator) !*Target {
                 @setRuntimeSafety(safety);
                 if (group.trgs_len == group.trgs.len) {
@@ -620,77 +683,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 clientLoop(allocator, out, ts, pid),
             );
         }
-        // This namespace exists so that programs referencing builder types do
-        // not necessitate compiling `executeCommandThreaded`. These will only
-        // be compiled if their callers are compiled.
-        const impl = struct {
-            extern fn forwardToExecuteCloneThreaded(
-                builder: *Builder,
-                address_space: *AddressSpace,
-                thread_space: *ThreadSpace,
-                target: *Target,
-                task: types.Task,
-                arena_index: AddressSpace.Index,
-                depth: u64,
-                stack_address: u64,
-            ) void;
-            comptime {
-                asm (@embedFile("./build/forwardToExecuteCloneThreaded.s"));
-            }
-            export fn executeCommandThreaded(
-                builder: *Builder,
-                address_space: *AddressSpace,
-                thread_space: *ThreadSpace,
-                target: *Target,
-                task: types.Task,
-                arena_index: AddressSpace.Index,
-                depth: u64,
-            ) void {
-                if (max_thread_count == 0) {
-                    unreachable;
-                }
-                var allocator: Builder.Allocator = if (Builder.Allocator == mem.SimpleAllocator)
-                    Builder.Allocator.init_arena(Builder.AddressSpace.arena(arena_index))
-                else
-                    Builder.Allocator.init(address_space, arena_index);
-                if (if (task == .run) meta.wrap(
-                    executeRunCommand(builder, &allocator, target, depth),
-                ) catch false else meta.wrap(
-                    executeCompilerCommand(builder, &allocator, target, depth, task),
-                ) catch false) {
-                    target.assertExchange(task, .working, .finished);
-                } else {
-                    target.assertExchange(task, .working, .failed);
-                }
-                if (Builder.Allocator == mem.SimpleAllocator)
-                    allocator.unmap()
-                else
-                    allocator.deinit(address_space, arena_index);
-                mem.release(ThreadSpace, thread_space, arena_index);
-            }
-            fn executeCommand(
-                builder: *Builder,
-                allocator: *Allocator,
-                target: *Target,
-                task: types.Task,
-                depth: u64,
-            ) sys.ErrorUnion(.{
-                .throw = builder_spec.errors.clock.throw ++
-                    builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
-                .abort = builder_spec.errors.clock.throw ++
-                    builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
-            }, void) {
-                if (if (task == .run) try meta.wrap(
-                    executeRunCommand(builder, allocator, target, depth),
-                ) else try meta.wrap(
-                    executeCompilerCommand(builder, allocator, target, depth, task),
-                )) {
-                    target.assertExchange(task, .working, .finished);
-                } else {
-                    target.assertExchange(task, .working, .failed);
-                }
-            }
-        };
         fn buildWrite(allocator: *Allocator, cmd: *types.BuildCommand, paths: []const types.Path) [:0]u8 {
             @setRuntimeSafety(safety);
             const max_len: u64 = builder_spec.options.max_cmdline_len orelse cmd.formatLength(zig_exe, paths);
@@ -888,6 +880,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
         }
         fn targetWait(target: *Target, task: types.Task, arena_index: AddressSpace.Index) bool {
+            @setRuntimeSafety(safety);
             for (target.deps[0..target.deps_len]) |*dep| {
                 if (dep.on_target == target and dep.on_task == task) {
                     continue;
