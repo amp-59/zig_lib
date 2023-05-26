@@ -313,7 +313,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     builder_spec.errors.fork.abort ++ builder_spec.errors.execve.abort ++ builder_spec.errors.waitpid.abort,
             }, void) {
                 if (max_thread_count == 0) {
-                    try meta.wrap(impl.executeCommand(builder, allocator, target, task, depth));
+                    try meta.wrap(impl.executeCommand(builder, address_space, thread_space, allocator, target, task, depth));
                 } else {
                     var arena_index: AddressSpace.Index = 0;
                     while (arena_index != max_thread_count) : (arena_index +%= 1) {
@@ -323,39 +323,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                             });
                         }
                     }
-                    try meta.wrap(impl.executeCommand(builder, allocator, target, task, depth));
-                }
-            }
-            fn acquireLock(
-                target: *Target,
-                address_space: *AddressSpace,
-                thread_space: *ThreadSpace,
-                allocator: *Allocator,
-                builder: *Builder,
-                task: types.Task,
-                arena_index: AddressSpace.Index,
-                depth: u64,
-            ) sys.ErrorUnion(.{
-                .throw = builder_spec.errors.clock.throw ++ builder_spec.errors.sleep.throw ++
-                    builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
-                .abort = builder_spec.errors.clock.abort ++ builder_spec.errors.sleep.abort ++
-                    builder_spec.errors.fork.abort ++ builder_spec.errors.execve.abort ++ builder_spec.errors.waitpid.abort,
-            }, void) {
-                @setRuntimeSafety(safety);
-                if (target.task_lock.get(task) == .waiting) {
-                    for (target.deps[0..target.deps_len]) |dep| {
-                        if (dep.task == task and
-                            dep.on_target != target or dep.on_task != task)
-                        {
-                            try meta.wrap(dep.on_target.acquireLock(address_space, thread_space, allocator, builder, dep.on_task, arena_index, depth +% 1));
-                        }
-                    }
-                    while (targetWait(target, task, arena_index)) {
-                        try meta.wrap(time.sleep(sleep(), .{ .nsec = builder_spec.options.sleep_nanoseconds }));
-                    }
-                }
-                if (target.exchange(task, .ready, .working)) {
-                    try meta.wrap(target.acquireThread(address_space, thread_space, allocator, builder, task, depth));
+                    try meta.wrap(impl.executeCommand(builder, address_space, thread_space, allocator, target, task, depth));
                 }
             }
             pub fn executeToplevel(
@@ -372,9 +340,28 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     builder_spec.errors.fork.abort ++ builder_spec.errors.execve.abort ++ builder_spec.errors.waitpid.abort,
             }, void) {
                 const task: types.Task = maybe_task orelse target.task;
-                try meta.wrap(target.acquireLock(address_space, thread_space, allocator, builder, task, max_thread_count, 0));
+                if (target.exchange(task, .ready, .blocking)) {
+                    try meta.wrap(target.acquireThread(address_space, thread_space, allocator, builder, task, 0));
+                }
                 while (builderWait(address_space, thread_space, builder)) {
                     try meta.wrap(time.sleep(sleep(), .{ .nsec = builder_spec.options.sleep_nanoseconds }));
+                }
+            }
+            fn spawnAllDeps(
+                target: *Target,
+                address_space: *AddressSpace,
+                thread_space: *ThreadSpace,
+                allocator: *Allocator,
+                builder: *Builder,
+                task: types.Task,
+                depth: u64,
+            ) void {
+                for (target.deps[0..target.deps_len]) |dep| {
+                    if (dep.on_target != target or dep.on_task != task) {
+                        if (dep.on_target.exchange(dep.on_task, .ready, .blocking)) {
+                            try meta.wrap(dep.on_target.acquireThread(address_space, thread_space, allocator, builder, dep.on_task, depth));
+                        }
+                    }
                 }
             }
             inline fn createBinaryPath(target: *Target, allocator: *Allocator) types.Path {
