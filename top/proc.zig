@@ -1093,9 +1093,15 @@ const debug = opaque {
     }
     fn waitNotice(id: WaitSpec.For, ret: Return) void {
         const pid_s: []const u8 = builtin.fmt.ud64(ret.pid).readAll();
-        const status_s: []const u8 = builtin.fmt.ud64(ret.status).readAll();
+        const if_signaled: bool = Status.ifSignaled(ret.status);
+        const if_stopped: bool = Status.ifStopped(ret.status);
+        const about_s: []const u8 =
+            if (if_signaled) ", sig=" else if (if_stopped) ", stop=" else ", exit=";
+        const code: u64 =
+            if (if_signaled) Status.stop(ret.status) else if (if_stopped) Status.stop(ret.status) else Status.exit(ret.status);
+        const code_s: []const u8 = builtin.fmt.ud64(code).readAll();
         var buf: [560]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_wait_0_s, @tagName(id), ", pid=", pid_s, ", status=", status_s, "\n" });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_wait_0_s, @tagName(id), ", pid=", pid_s, about_s, code_s, "\n" });
     }
     fn forkError(fork_error: anytype) void {
         var buf: [560]u8 = undefined;
