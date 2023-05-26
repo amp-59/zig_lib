@@ -16,8 +16,15 @@ const Radix = enum(u5) {
     dec = 10,
     hex = 16,
     char,
+    raw,
 };
-
+const RawSize = enum {
+    auto,
+    u8,
+    u16,
+    u32,
+    u64,
+};
 const single_switch: bool = false;
 
 fn noOption(opt_arg: []const u8) void {
@@ -32,6 +39,7 @@ fn noOption(opt_arg: []const u8) void {
 }
 const Options = struct {
     output: Radix = .hex,
+    raw_size: RawSize = .auto,
     pub const Map = proc.GenericOptions(Options);
     fn setOutputHex(options: *Options) void {
         options.output = .hex;
@@ -78,6 +86,11 @@ const opt_map: []const Options.Map = &if (single_switch) .{
     .{ .field_name = "output", .short = "-d", .long = "--dec", .assign = .{ .any = &(.dec) } },
     .{ .field_name = "output", .short = "-o", .long = "--oct", .assign = .{ .any = &(.oct) } },
     .{ .field_name = "output", .short = "-b", .long = "--bin", .assign = .{ .any = &(.bin) } },
+    .{ .field_name = "output", .long = "--raw", .assign = .{ .any = &(.raw) } },
+    .{ .field_name = "raw_size", .long = "u8", .assign = .{ .any = &(.u8) } },
+    .{ .field_name = "raw_size", .long = "u16", .assign = .{ .any = &(.u16) } },
+    .{ .field_name = "raw_size", .long = "u32", .assign = .{ .any = &(.u32) } },
+    .{ .field_name = "raw_size", .long = "u64", .assign = .{ .any = &(.u64) } },
 };
 fn loopInner(options: Options, arg: []const u8) !void {
     file.write(.{ .errors = .{} }, 1, switch (options.output) {
@@ -85,15 +98,34 @@ fn loopInner(options: Options, arg: []const u8) !void {
         .dec => builtin.fmt.ud64(try builtin.parse.any(u64, arg)).readAll(),
         .oct => builtin.fmt.uo64(try builtin.parse.any(u64, arg)).readAll(),
         .bin => builtin.fmt.ub64(try builtin.parse.any(u64, arg)).readAll(),
+        .raw => {
+            const val: u64 = try builtin.parse.any(u64, arg);
+
+            return file.write(.{ .errors = .{} }, 1, switch (options.raw_size) {
+                .auto => blk: {
+                    if (val <= ~@as(u8, 0)) {
+                        break :blk @ptrCast(*const [1]u8, &@intCast(u8, val));
+                    } else if (val <= ~@as(u16, 0)) {
+                        break :blk @ptrCast(*const [2]u8, &@intCast(u16, val));
+                    } else if (val <= ~@as(u32, 0)) {
+                        break :blk @ptrCast(*const [4]u8, &@intCast(u32, val));
+                    } else {
+                        break :blk @ptrCast(*const [8]u8, &val);
+                    }
+                },
+                .u8 => @ptrCast(*const [1]u8, &@intCast(u8, val)),
+                .u16 => @ptrCast(*const [2]u8, &@intCast(u16, val)),
+                .u32 => @ptrCast(*const [4]u8, &@intCast(u32, val)),
+                .u64 => @ptrCast(*const [8]u8, &val),
+            });
+        },
         .char => outputChar(),
     });
     file.write(.{ .errors = .{} }, 1, "\n");
 }
 pub fn main(args_in: [][*:0]u8) !void {
     var args: [][*:0]u8 = args_in;
-
     const options: Options = Options.Map.getOpts(&args, opt_map);
-
     var i: u64 = 1;
     while (i != args.len) {
         try loopInner(options, meta.manyToSlice(args[i]));
