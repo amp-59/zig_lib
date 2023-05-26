@@ -513,14 +513,14 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     ret.addRunCommand(allocator);
                 }
                 ret.hidden = group.hidden;
-                ret.assertExchange(.build, .no_task, .ready);
+                ret.assertExchange(.build, .null, .ready);
                 return ret;
             }
             pub fn addBuildAnonymous(group: *Group, allocator: *Allocator, build_cmd: types.BuildCommand, root: [:0]const u8) !*Target {
                 return group.addBuild(allocator, build_cmd, makeTargetName(allocator, root), root);
             }
             pub fn addFormat(group: *Group, allocator: *Allocator, format_cmd: types.FormatCommand, name: [:0]const u8, pathname: [:0]const u8) !*Target {
-                const ret: *Target = try group.addTarget(allocator);
+                const ret: *Target = try group.addTarget(allocator, name);
                 const cmd: *types.FormatCommand = allocator.create(types.FormatCommand);
                 cmd.* = format_cmd;
                 ret.name = name;
@@ -529,11 +529,11 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 ret.task_cmd = .{ .format = cmd };
                 ret.hidden = group.hidden;
                 ret.name = name;
-                ret.assertExchange(.format, .no_task, .ready);
+                ret.assertExchange(.format, .null, .ready);
                 return ret;
             }
             pub fn addArchive(group: *Group, allocator: *Allocator, archive_cmd: types.ArchiveCommand, name: [:0]const u8, deps: []const *Target) !*Target {
-                const ret: *Target = try group.addTarget(allocator);
+                const ret: *Target = try group.addTarget(allocator, name);
                 const cmd: *types.ArchiveCommand = allocator.create(types.ArchiveCommand);
                 cmd.* = archive_cmd;
                 ret.name = name;
@@ -544,7 +544,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 ret.hidden = group.hidden;
                 return ret;
             }
-            pub fn addTarget(group: *Group, allocator: *Allocator) !*Target {
+            pub fn addTarget(group: *Group, allocator: *Allocator, name: [:0]const u8) !*Target {
                 @setRuntimeSafety(safety);
                 if (group.trgs_len == group.trgs.len) {
                     group.trgs = allocator.reallocate(*Target, group.trgs, (group.trgs_len +% 1) *% 2);
@@ -555,6 +555,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 group.trgs_len +%= 1;
                 ret.deps = allocator.allocate(Target.Dependency, 4);
                 ret.paths = allocator.allocate(types.Path, 4);
+                ret.name = name;
                 return ret;
             }
             pub fn executeToplevel(
@@ -567,21 +568,34 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 @setRuntimeSafety(safety);
                 for (group.trgs[0..group.trgs_len]) |target| {
                     const task: types.Task = maybe_task orelse target.task;
-                    try meta.wrap(target.acquireLock(address_space, thread_space, allocator, group.builder, task, max_thread_count, 1));
+                    if (target.exchange(task, .ready, .blocking)) {
+                        try meta.wrap(target.acquireThread(address_space, thread_space, allocator, group.builder, task, 0));
+                    }
                 }
-                while (groupWait(group, maybe_task)) {
+                while (builderWait(address_space, thread_space, group.builder)) {
                     try meta.wrap(time.sleep(sleep(), .{ .nsec = builder_spec.options.sleep_nanoseconds }));
                 }
             }
         };
-        inline fn clientLoop(allocator: *Allocator, out: file.Pipe, working_time: *time.TimeSpec, pid: u64) u8 {
+        pub fn addTarget(builder: *Builder, allocator: *Allocator, name: [:0]const u8) !*Target {
+            @setRuntimeSafety(safety);
+            if (builder.trgs_len == builder.trgs.len) {
+                builder.trgs = allocator.reallocate(*Target, builder.trgs, (builder.trgs_len +% 1) *% 2);
+            }
+            const ret: *Target = allocator.create(Target);
+            mach.memset(@ptrCast([*]u8, ret), 0, @sizeOf(Target));
+            builder.trgs[builder.trgs_len] = ret;
+            builder.trgs_len +%= 1;
+            ret.deps = allocator.allocate(Target.Dependency, 4);
+            ret.paths = allocator.allocate(types.Path, 4);
+            ret.name = name;
+            return ret;
+        }
+        inline fn clientLoop(allocator: *Allocator, out: file.Pipe, working_time: *time.TimeSpec, ret: []u8, pid: u64) void {
             const hdr: *types.Message.ServerHeader = allocator.create(types.Message.ServerHeader);
             const save: Allocator.Save = allocator.save();
             var fd: file.PollFd = .{ .fd = out.read, .expect = .{ .input = true } };
-            var ret: u8 = builder_spec.options.compiler_expected_status;
-            while (try meta.wrap(
-                file.pollOne(poll(), &fd, builder_spec.options.timeout_milliseconds),
-            )) : (fd.actual = .{}) {
+            while (try meta.wrap(file.pollOne(poll(), &fd, builder_spec.options.timeout_milliseconds))) {
                 try meta.wrap(
                     file.readOne(read3(), out.read, hdr),
                 );
@@ -594,25 +608,22 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     );
                 }
                 if (hdr.tag == .emit_bin_path) break {
-                    ret = msg[0];
+                    ret[1] = msg[0];
                 };
                 if (hdr.tag == .error_bundle) break {
                     debug.writeErrors(allocator, types.Message.ErrorHeader.create(msg));
-                    ret = builder_spec.options.compiler_error_status;
+                    ret[1] = builder_spec.options.compiler_error_status;
                 };
+                fd.actual = .{};
                 allocator.restore(save);
             }
             allocator.restore(save);
-            try meta.wrap(
+            const rc: proc.Return = try meta.wrap(
                 proc.waitPid(waitpid(), .{ .pid = pid }),
             );
-            working_time.* = time.diff(try meta.wrap(
-                time.get(clock(), .realtime),
-            ), working_time.*);
-            try meta.wrap(
-                file.close(close(), out.read),
-            );
-            return ret;
+            ret[0] = proc.Status.exit(rc.status);
+            working_time.* = time.diff(try meta.wrap(time.get(clock(), .realtime)), working_time.*);
+            try meta.wrap(file.close(close(), out.read));
         }
         fn system(builder: *const Builder, args: [][*:0]u8, ts: *time.TimeSpec) sys.ErrorUnion(.{
             .throw = builder_spec.errors.clock.throw ++
@@ -626,37 +637,17 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 file.execPath(execve(), meta.manyToSlice(args[0]), args, builder.vars),
             );
             const ret: proc.Return = try meta.wrap(
-                proc.waitPid(waitpid2(), .{ .pid = pid }),
+                proc.waitPid(waitpid(), .{ .pid = pid }),
             );
             ts.* = time.diff(try meta.wrap(time.get(clock(), .realtime)), ts.*);
             return proc.Status.exit(ret.status);
         }
-        const ck = clock();
-        inline fn compile(builder: *const Builder, args: [][*:0]u8, ts: *time.TimeSpec) sys.ErrorUnion(.{
+        fn server(builder: *const Builder, allocator: *Builder.Allocator, args: [][*:0]u8, ts: *time.TimeSpec, ret: []u8) sys.ErrorUnion(.{
             .throw = builder_spec.errors.clock.throw ++
                 builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
             .abort = builder_spec.errors.clock.throw ++
                 builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
-        }, u8) {
-            ts.* = try meta.wrap(time.get(clock(), .realtime));
-            const pid: u64 = try meta.wrap(proc.fork(fork()));
-            if (pid == 0) {
-                try meta.wrap(
-                    file.execPath(execve(), builder.zig_exe, args, builder.vars),
-                );
-            }
-            const ret: proc.Return = try meta.wrap(
-                proc.waitPid(waitpid2(), .{ .pid = pid }),
-            );
-            ts.* = time.diff(try meta.wrap(time.get(clock(), .realtime)), ts.*);
-            return proc.Status.exit(ret.status);
-        }
-        inline fn compileServer(builder: *const Builder, allocator: *Builder.Allocator, args: [][*:0]u8, ts: *time.TimeSpec) sys.ErrorUnion(.{
-            .throw = builder_spec.errors.clock.throw ++
-                builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
-            .abort = builder_spec.errors.clock.throw ++
-                builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
-        }, u8) {
+        }, void) {
             const in: file.Pipe = try meta.wrap(file.makePipe(pipe()));
             const out: file.Pipe = try meta.wrap(file.makePipe(pipe()));
             ts.* = try meta.wrap(time.get(clock(), .realtime));
@@ -674,8 +665,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             try meta.wrap(
                 file.close(close(), in.write),
             );
-            return try meta.wrap(
-                clientLoop(allocator, out, ts, pid),
+            try meta.wrap(
+                clientLoop(allocator, out, ts, ret, pid),
             );
         }
         fn buildWrite(allocator: *Allocator, cmd: *types.BuildCommand, paths: []const types.Path) [:0]u8 {
@@ -699,68 +690,69 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             const len: u64 = cmd.formatWriteBuf(zig_exe, root_path, buf.ptr);
             return buf[0..len :0];
         }
-        fn executeCompilerCommand(builder: *Builder, allocator: *Allocator, target: *Target, depth: u64, task: types.Task) sys.ErrorUnion(.{
-            .throw = builder_spec.errors.clock.throw ++
-                builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
-            .abort = builder_spec.errors.clock.throw ++
-                builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
-        }, bool) {
-            @setRuntimeSafety(safety);
-            var working_time: time.TimeSpec = undefined;
-            var rc: u8 = undefined;
-            var old_size: u64 = undefined;
-            var new_size: u64 = undefined;
-            const args: [:0]u8 = try meta.wrap(switch (task) {
-                .format => formatWrite(allocator, target.task_cmd.format, target.paths[0]),
-                .archive => archiveWrite(allocator, target.task_cmd.archive, target.paths[0..target.paths_len]),
-                else => buildWrite(allocator, target.task_cmd.build, target.paths[0..target.paths_len]),
-            });
-            if (task == .build) {
-                const out_path: [:0]const u8 = binaryRelative(allocator, target.task_cmd.build);
-                const ptrs: [][*:0]u8 = try meta.wrap(
-                    makeArgPtrs(allocator, args),
-                );
-                old_size = builder.getFileSize(out_path);
-                rc = try meta.wrap(
-                    builder.compileServer(allocator, ptrs, &working_time),
-                );
-                new_size = builder.getFileSize(out_path);
-            } else {
-                const ptrs: [][*:0]u8 = try meta.wrap(
-                    makeArgPtrs(allocator, args),
-                );
-                rc = try meta.wrap(
-                    builder.system(ptrs, &working_time),
-                );
-            }
-            if (task == .build or task == .archive) {
-                debug.buildNotice(target, depth, working_time, old_size, new_size, rc);
-            }
-            if (task == .run or task == .format) {
-                debug.simpleTimedNotice(target, depth, working_time, task, rc);
-            }
-            return status(rc);
-        }
-        fn executeRunCommand(builder: *Builder, allocator: *Allocator, target: *Target, depth: u64) sys.ErrorUnion(.{
-            .throw = builder_spec.errors.clock.throw ++
-                builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
-            .abort = builder_spec.errors.clock.throw ++
-                builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
-        }, bool) {
+        fn runWrite(builder: *Builder, allocator: *Allocator, target: *Target) [][*:0]u8 {
             @setRuntimeSafety(safety);
             for (builder.args[builder.args_len..]) |run_arg| {
                 target.addRunArgument(allocator, meta.manyToSlice(run_arg));
             }
-            target.addRunArgument(allocator, null_arg);
-            const args: [][*:0]u8 = target.args[0..target.args_len];
-            var working_time: time.TimeSpec = undefined;
-            const rc: u8 = try meta.wrap(
-                builder.system(args, &working_time),
-            );
-            if (builder_spec.options.show_stats) {
-                debug.simpleTimedNotice(target, depth, working_time, .run, rc);
+            if (target.args_len == 0) {
+                target.addRunCommand(allocator);
             }
-            return status(rc);
+            return target.args[0..target.args_len];
+        }
+        fn executeCommandInternal(builder: *Builder, allocator: *Allocator, target: *Target, depth: u64, task: types.Task) sys.ErrorUnion(.{
+            .throw = builder_spec.errors.clock.throw ++
+                builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
+            .abort = builder_spec.errors.clock.throw ++
+                builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
+        }, bool) {
+            @setRuntimeSafety(safety);
+            var working_time: time.TimeSpec = undefined;
+            var ret: []u8 = allocator.allocate(u8, ret_len);
+            ret[0] = 0;
+            ret[1] = 0;
+            var old_size: u64 = 0;
+            var new_size: u64 = 0;
+            const args: [][*:0]u8 = try meta.wrap(switch (task) {
+                .format => makeArgPtrs(allocator, try meta.wrap(
+                    formatWrite(allocator, target.task_cmd.format, target.paths[0]),
+                )),
+                .archive => makeArgPtrs(allocator, try meta.wrap(
+                    archiveWrite(allocator, target.task_cmd.archive, target.paths[0..target.paths_len]),
+                )),
+                .build => makeArgPtrs(allocator, try meta.wrap(
+                    buildWrite(allocator, target.task_cmd.build, target.paths[0..target.paths_len]),
+                )),
+                else => runWrite(builder, allocator, target),
+            });
+            if (task == .build) {
+                const out_path: [:0]const u8 = binaryRelative(allocator, target.task_cmd.build);
+                old_size = builder.getFileSize(out_path);
+                if (builder_spec.options.enable_caching) {
+                    try meta.wrap(
+                        builder.server(allocator, args, &working_time, ret),
+                    );
+                } else {
+                    ret[0] = try meta.wrap(
+                        builder.system(args, &working_time),
+                    );
+                }
+                new_size = builder.getFileSize(out_path);
+            } else {
+                ret[0] = try meta.wrap(
+                    builder.system(args, &working_time),
+                );
+            }
+            switch (task) {
+                .format, .run => {
+                    debug.simpleTimedNotice(target, depth, working_time, task, ret);
+                },
+                .build, .archive => {
+                    debug.buildNotice(target, depth, working_time, old_size, new_size, ret);
+                },
+                else => unreachable,
+            }
+            return status(ret);
         }
         pub fn init(args: [][*:0]u8, vars: [][*:0]u8) sys.ErrorUnion(.{
             .throw = builder_spec.errors.mkdir.throw ++
