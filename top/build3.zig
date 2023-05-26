@@ -406,9 +406,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 const ret: bool = target.task_lock.atomicExchange(task, old_state, new_state);
                 if (builtin.logging_general.Success or builder_spec.options.show_targets) {
                     if (ret) {
-                        debug.exchangeNotice(target, task, old_state, new_state);
+                        debug.exchangeNotice(target, task, old_state, new_state, sourceLocation(@src()));
                     } else {
-                        debug.noExchangeNotice(target, debug.about.state_0_s, task, old_state, new_state);
+                        debug.noExchangeNotice(target, debug.about.state_0_s, task, old_state, new_state, sourceLocation(@src()));
                     }
                 }
                 return ret;
@@ -420,11 +420,11 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 const res: bool = target.task_lock.atomicExchange(task, old_state, new_state);
                 if (res) {
                     if (builtin.logging_general.Success or builder_spec.options.show_targets) {
-                        debug.exchangeNotice(target, task, old_state, new_state);
+                        debug.exchangeNotice(target, task, old_state, new_state, sourceLocation(@src()));
                     }
                 } else {
                     if (builtin.logging_general.Fault or builder_spec.options.show_targets) {
-                        debug.noExchangeNotice(target, debug.about.state_1_s, task, old_state, new_state);
+                        debug.noExchangeNotice(target, debug.about.state_1_s, task, old_state, new_state, sourceLocation(@src()));
                     }
                     builtin.proc.exitGroup(2);
                 }
@@ -442,7 +442,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 if (target.deps_len == target.deps.len) {
                     target.deps = allocator.reallocate(Dependency, target.deps, (target.deps_len +% 1) *% 2);
                 }
-                target.assertExchange(task, target.task_lock.get(task), .waiting);
                 target.deps[target.deps_len] = .{
                     .task = task,
                     .on_target = on_target,
