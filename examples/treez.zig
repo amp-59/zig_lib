@@ -332,7 +332,7 @@ pub fn main(args: [][*:0]u8) !void {
             var stack_buf: [16384]u8 align(16) = undefined;
             const stack_addr: u64 = @ptrToInt(&stack_buf);
             tid = proc.callClone(thread_spec, stack_addr, stack_buf.len, {}, printAlong, .{ &status, &allocator_1, &array });
-            @call(.auto, writeAndWalk, .{
+            @call(.always_inline, writeAndWalk, .{
                 &allocator_0, &allocator_1, &array, &alts_buf, &link_buf,
                 &status,      null,         arg,    0,
             }) catch if (count_errors) {
@@ -342,7 +342,7 @@ pub fn main(args: [][*:0]u8) !void {
             mem.monitor(u8, &status.flag);
             thread.unmap(.{ .errors = .{} }, 8);
         } else {
-            @call(.auto, writeAndWalk, .{
+            @call(.always_inline, writeAndWalk, .{
                 &allocator_0, &allocator_1, &array, &alts_buf, &link_buf,
                 &status,      null,         arg,    0,
             }) catch if (count_errors) {

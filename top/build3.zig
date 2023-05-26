@@ -9,6 +9,7 @@ const spec = @import("./spec.zig");
 const builtin = @import("./builtin.zig");
 const virtual = @import("./virtual.zig");
 const types = @import("./build/types.zig");
+const safety: bool = false;
 pub usingnamespace types;
 pub const BuilderSpec = struct {
     options: Options = .{},
@@ -256,7 +257,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 .abort = builder_spec.errors.clock.abort ++ builder_spec.errors.sleep.abort ++
                     builder_spec.errors.fork.abort ++ builder_spec.errors.execve.abort ++ builder_spec.errors.waitpid.abort,
             }, void) {
-                @setRuntimeSafety(false);
+                @setRuntimeSafety(safety);
                 if (target.task_lock.get(task) == .waiting) {
                     for (target.deps[0..target.deps_len]) |dep| {
                         if (dep.task == task and
@@ -327,8 +328,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 target.addPath(allocator, dependency.task_cmd.build.emit_bin.?.yes.?);
             }
             pub fn dependOnArchive(target: *Target, allocator: *Allocator, dependency: *Target) void {
-                target.dependOnBuild(allocator, dependency);
-                target.addPath(allocator, dependency.task_cmd.archive.archive.?);
+                target.addDependency(allocator, target.task, dependency, .archive, .finished);
+                target.addPath(allocator, dependency.paths[0]);
             }
             fn exchange(target: *Target, task: types.Task, old_state: types.State, new_state: types.State) bool {
                 const ret: bool = target.task_lock.atomicExchange(task, old_state, new_state);
@@ -358,7 +359,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
             }
             pub fn addPath(target: *Target, allocator: *Allocator, path: types.Path) void {
-                @setRuntimeSafety(false);
+                @setRuntimeSafety(safety);
                 if (target.paths_len == target.paths.len) {
                     target.paths = allocator.reallocate(types.Path, target.paths, (target.paths_len +% 1) *% 2);
                 }
@@ -366,7 +367,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 target.paths_len +%= 1;
             }
             fn addDependency(target: *Target, allocator: *Allocator, task: types.Task, on_target: *Target, on_task: types.Task, on_state: types.State) void {
-                @setRuntimeSafety(false);
+                @setRuntimeSafety(safety);
                 if (target.deps_len == target.deps.len) {
                     target.deps = allocator.reallocate(Dependency, target.deps, (target.deps_len +% 1) *% 2);
                 }
@@ -380,16 +381,18 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 target.deps_len +%= 1;
             }
             pub fn addRunCommand(target: *Target, allocator: *Allocator) void {
-                @setRuntimeSafety(false);
+                @setRuntimeSafety(safety);
                 if (target.exchange(.run, .no_task, .ready)) {
                     target.addDependency(allocator, .run, target, .build, .finished);
                 }
             }
             pub fn addRunArgument(target: *Target, allocator: *Allocator, arg: []const u8) void {
-                @setRuntimeSafety(false);
+                @setRuntimeSafety(safety);
                 if (target.args_len == 0) {
                     target.args = allocator.allocate([*:0]u8, 5);
-                    target.args[0] = allocator.allocate(u8, 4096)[0.. :0];
+                    const name: []u8 = allocator.allocate(u8, 4097);
+                    name[4096] = 0;
+                    target.args[0] = name[0..4096 :0];
                     builtin.assert(target.task_cmd.build.emit_bin.?.yes.?.formatWriteBuf(target.args[0]) != 0);
                     target.args_len = 1;
                 } else if (target.args_len == target.args.len) {
@@ -401,9 +404,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         };
         pub const Group = struct {
             name: [:0]const u8,
-            builder: *Builder,
             trgs: []*Target = &.{},
             trgs_len: u64 = 0,
+            builder: *Builder,
             hidden: bool = false,
             pub fn addBuild(group: *Group, allocator: *Allocator, build_cmd: types.BuildCommand, name: [:0]const u8, root: [:0]const u8) !*Target {
                 const ret: *Target = try group.addTarget(allocator);
@@ -471,7 +474,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 return ret;
             }
             pub fn describeTarget(group: *Group, target_name: []const u8, target_descr: [:0]const u8) void {
-                @setRuntimeSafety(false);
+                @setRuntimeSafety(safety);
                 for (group.trgs[0..group.trgs_len]) |target| {
                     if (mach.testEqualMany8(target_name, target.name)) {
                         target.descr = target_descr;
@@ -479,7 +482,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
             }
             pub fn addTarget(group: *Group, allocator: *Allocator) !*Target {
-                @setRuntimeSafety(false);
+                @setRuntimeSafety(safety);
                 if (group.trgs_len == group.trgs.len) {
                     group.trgs = allocator.reallocate(*Target, group.trgs, (group.trgs_len +% 1) *% 2);
                 }
@@ -498,7 +501,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 allocator: *Allocator,
                 maybe_task: ?types.Task,
             ) !void {
-                @setRuntimeSafety(false);
+                @setRuntimeSafety(safety);
                 for (group.trgs[0..group.trgs_len]) |target| {
                     const task: types.Task = maybe_task orelse target.task;
                     try meta.wrap(target.acquireLock(address_space, thread_space, allocator, group.builder, task, max_thread_count, 1));
@@ -683,21 +686,21 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
         };
         fn buildWrite(allocator: *Allocator, cmd: *types.BuildCommand, paths: []const types.Path) [:0]u8 {
-            @setRuntimeSafety(false);
+            @setRuntimeSafety(safety);
             const max_len: u64 = builder_spec.options.max_cmdline_len orelse cmd.formatLength(zig_exe, paths);
             const buf: []u8 = allocator.allocate(u8, max_len);
             const len: u64 = cmd.formatWriteBuf(zig_exe, paths, buf.ptr);
             return buf[0..len :0];
         }
         fn archiveWrite(allocator: *Allocator, cmd: *types.ArchiveCommand, paths: []const types.Path) [:0]u8 {
-            @setRuntimeSafety(false);
+            @setRuntimeSafety(safety);
             const max_len: u64 = builder_spec.options.max_cmdline_len orelse cmd.formatLength(zig_exe, paths);
             const buf: []u8 = allocator.allocate(u8, max_len);
             const len: u64 = cmd.formatWriteBuf(zig_exe, paths, buf.ptr);
             return buf[0..len :0];
         }
         fn formatWrite(allocator: *Allocator, cmd: *types.FormatCommand, root_path: types.Path) [:0]u8 {
-            @setRuntimeSafety(false);
+            @setRuntimeSafety(safety);
             const max_len: u64 = builder_spec.options.max_cmdline_len orelse cmd.formatLength(zig_exe, root_path);
             const buf: []u8 = allocator.allocate(u8, max_len);
             const len: u64 = cmd.formatWriteBuf(zig_exe, root_path, buf.ptr);
@@ -709,7 +712,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             .abort = builder_spec.errors.clock.throw ++
                 builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
         }, bool) {
-            @setRuntimeSafety(false);
+            @setRuntimeSafety(safety);
             var working_time: time.TimeSpec = undefined;
             var rc: u8 = undefined;
             var old_size: u64 = undefined;
@@ -754,7 +757,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             .abort = builder_spec.errors.clock.throw ++
                 builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
         }, bool) {
-            @setRuntimeSafety(false);
+            @setRuntimeSafety(safety);
             for (builder.args[builder.args_len..]) |run_arg| {
                 target.addRunArgument(allocator, meta.manyToSlice(run_arg));
             }
@@ -775,7 +778,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             .abort = builder_spec.errors.mkdir.abort ++
                 builder_spec.errors.path.abort ++ builder_spec.errors.close.abort ++ builder_spec.errors.create.abort,
         }, Builder) {
-            @setRuntimeSafety(false);
+            @setRuntimeSafety(safety);
             zig_exe = meta.manyToSlice(args[1]);
             build_root = meta.manyToSlice(args[2]);
             cache_root = meta.manyToSlice(args[3]);
@@ -812,15 +815,10 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             try meta.wrap(
                 file.close(builder_spec.close(), cache_root_fd),
             );
-            return .{
-                .args = args,
-                .args_len = args.len,
-                .vars = vars,
-                .dir_fd = build_root_fd,
-            };
+            return .{ .args = args, .args_len = args.len, .vars = vars, .dir_fd = build_root_fd };
         }
         pub fn addGroup(builder: *Builder, allocator: *Allocator, name: [:0]const u8) !*Group {
-            @setRuntimeSafety(false);
+            @setRuntimeSafety(safety);
             if (builder.grps.len == builder.grps_len) {
                 builder.grps = try meta.wrap(allocator.reallocate(*Group, builder.grps, (builder.grps_len +% 1) *% 2));
             }
@@ -842,7 +840,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             thread_space: *ThreadSpace,
             allocator: *Allocator,
         ) void {
-            @setRuntimeSafety(false);
+            @setRuntimeSafety(safety);
             var target_task: ?types.Task = null;
             var idx: u64 = 5;
             lo: while (idx < builder.args_len) : (idx +%= 1) {
@@ -909,7 +907,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             return false;
         }
         fn groupWait(group: *Group, maybe_task: ?types.Task) bool {
-            @setRuntimeSafety(false);
+            @setRuntimeSafety(safety);
             for (group.trgs[0..group.trgs_len]) |target| {
                 const task: types.Task = maybe_task orelse target.task;
                 if (target.task_lock.get(task) == .working) {
@@ -919,7 +917,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             return false;
         }
         fn builderWait(address_space: *Builder.AddressSpace, thread_space: *Builder.ThreadSpace, builder: *Builder) bool {
-            @setRuntimeSafety(false);
+            @setRuntimeSafety(safety);
             for (builder.grps[0..builder.grps_len]) |group| {
                 for (group.trgs[0..group.trgs_len]) |target| {
                     for (types.Task.list) |task| {
@@ -1083,7 +1081,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             };
             const fancy_hl_line: bool = false;
             fn exchangeNotice(target: *Target, task: types.Task, old_state: types.State, new_state: types.State) void {
-                @setRuntimeSafety(false);
+                @setRuntimeSafety(safety);
                 var buf: [32768]u8 = undefined;
                 var ptr: [*]u8 = &buf;
                 var len: u64 = 0;
@@ -1107,7 +1105,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 builtin.debug.write(buf[0 .. len +% 1]);
             }
             fn noExchangeNotice(target: *Target, about_s: [:0]const u8, task: types.Task, old_state: types.State, new_state: types.State) void {
-                @setRuntimeSafety(false);
+                @setRuntimeSafety(safety);
                 var buf: [32768]u8 = undefined;
                 var ptr: [*]u8 = &buf;
                 const actual: types.State = target.task_lock.get(task);
@@ -1137,7 +1135,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 builtin.debug.write(ptr[0 .. len +% 1]);
             }
             fn buildNotice(target: *const Target, working_time: time.TimeSpec, old_size: u64, new_size: u64, rc: u8) void {
-                @setRuntimeSafety(false);
+                @setRuntimeSafety(safety);
                 const diff_size: u64 = @max(new_size, old_size) -% @min(new_size, old_size);
                 const new_size_s: []const u8 = builtin.fmt.ud64(new_size).readAll();
                 const old_size_s: []const u8 = builtin.fmt.ud64(old_size).readAll();
@@ -1213,7 +1211,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 builtin.debug.logAlways(buf[0 .. len +% about.reset_s.len]);
             }
             fn simpleTimedNotice(target: *const Target, working_time: time.TimeSpec, task: types.Task, rc: u8) void {
-                @setRuntimeSafety(false);
+                @setRuntimeSafety(safety);
                 const about_s: [:0]const u8 = switch (task) {
                     .format => about.format_s,
                     .archive => about.ar_s,
@@ -1251,7 +1249,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 builtin.debug.logAlways(buf0[0..writeAndWalkInternal(&buf0, target.name.len, &buf1, 0, target)]);
             }
             fn writeAndWalkInternal(buf0: [*]u8, len0: u64, buf1: [*]u8, len1: u64, target: *Target, args: anytype) u64 {
-                @setRuntimeSafety(false);
+                @setRuntimeSafety(safety);
                 var deps_idx: u64 = 0;
                 var len: u64 = len0;
                 buf0[len] = '\n';
@@ -1312,7 +1310,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 return len;
             }
             pub fn builderCommandNotice(builder: *Builder, show_root: bool, show_descr: bool, show_deps: bool) void {
-                @setRuntimeSafety(false);
+                @setRuntimeSafety(safety);
                 var buf0: [1024 * 1024]u8 = undefined;
                 var buf1: [32768]u8 = undefined;
                 var len: u64 = 0;
@@ -1388,7 +1386,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 builtin.debug.write(buf0[0..len]);
             }
             inline fn writeAbout(buf: [*]u8, about_s: [:0]const u8) u64 {
-                @setRuntimeSafety(false);
+                @setRuntimeSafety(safety);
                 var len: u64 = 0;
                 if (about_s.ptr == about.error_s) {
                     @ptrCast(*@TypeOf(about.bold_s.*), buf + len).* = about.bold_s.*;
@@ -1405,7 +1403,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 return len +% about.bold_s.len;
             }
             fn writeTopSrcLoc(buf: [*]u8, extra: [*]u32, bytes: [*:0]u8, err_msg_idx: u32) u64 {
-                @setRuntimeSafety(false);
+                @setRuntimeSafety(safety);
                 const err: *types.ErrorMessage = @ptrCast(*types.ErrorMessage, extra + err_msg_idx);
                 const src: *types.SourceLocation = @ptrCast(*types.SourceLocation, extra + err.src_loc);
                 var len: u64 = about.bold_s.len;
@@ -1423,7 +1421,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 return len;
             }
             fn writeError(buf: [*]u8, extra: [*]u32, bytes: [*:0]u8, err_msg_idx: u32, about_s: [:0]const u8) u64 {
-                @setRuntimeSafety(false);
+                @setRuntimeSafety(safety);
                 const err: *types.ErrorMessage = @ptrCast(*types.ErrorMessage, extra + err_msg_idx);
                 const src: *types.SourceLocation = @ptrCast(*types.SourceLocation, extra + err.src_loc);
                 const notes: [*]u32 = extra + err_msg_idx + types.ErrorMessage.len;
@@ -1449,7 +1447,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 return len;
             }
             fn writeSourceLocation(buf: [*]u8, pathname: [:0]const u8, line: u64, column: u64) u64 {
-                @setRuntimeSafety(false);
+                @setRuntimeSafety(safety);
                 const line_s: []const u8 = builtin.fmt.ud64(line).readAll();
                 const column_s: []const u8 = builtin.fmt.ud64(column).readAll();
                 var len: u64 = 0;
@@ -1467,7 +1465,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 return len +% column_s.len;
             }
             fn writeTimes(buf: [*]u8, count: u64) u64 {
-                @setRuntimeSafety(false);
+                @setRuntimeSafety(safety);
                 const count_s: []const u8 = builtin.fmt.ud64(count).readAll();
                 @ptrCast(*[4]u8, buf - 1).* = about.faint_s.*;
                 var len: u64 = about.faint_s.len -% 1;
@@ -1481,7 +1479,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 return len +% 5;
             }
             fn writeCaret(buf: [*]u8, bytes: [*:0]u8, src: *types.SourceLocation) u64 {
-                @setRuntimeSafety(false);
+                @setRuntimeSafety(safety);
                 const line: [:0]u8 = meta.manyToSlice(bytes + src.src_line);
                 const before_caret: u64 = src.span_main -% src.span_start;
                 const indent: u64 = src.column -% before_caret;
@@ -1526,7 +1524,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 return len +% about.new_s.len;
             }
             fn writeMessage(buf: [*]u8, bytes: [*:0]u8, start: u64, indent: u64) u64 {
-                @setRuntimeSafety(false);
+                @setRuntimeSafety(safety);
                 var len: u64 = 0;
                 var next: u64 = start;
                 var idx: u64 = start;
@@ -1549,7 +1547,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 return len +% about.new_s.len;
             }
             fn writeTrace(buf: [*]u8, extra: [*]u32, bytes: [*:0]u8, start: u64, ref_len: u64) u64 {
-                @setRuntimeSafety(false);
+                @setRuntimeSafety(safety);
                 var ref_idx: u64 = start +% types.SourceLocation.len;
                 var idx: u64 = 0;
                 var len: u64 = 0;
@@ -1579,7 +1577,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 return len +% 5;
             }
             fn writeErrors(allocator: *Allocator, hdr: *types.Message.ErrorHeader) void {
-                @setRuntimeSafety(false);
+                @setRuntimeSafety(safety);
                 const extra: [*]u32 = hdr.extra();
                 const bytes: [*:0]u8 = hdr.bytes();
                 var buf: [*]u8 = allocator.allocate(u8, 1024 * 1024).ptr;
@@ -1646,13 +1644,13 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             builtin.debug.write(buf[j_idx..k_idx]);
         }
         fn strdup(allocator: *Allocator, values: []const u8) [:0]u8 {
-            @setRuntimeSafety(false);
+            @setRuntimeSafety(safety);
             var buf: [:0]u8 = @ptrCast([:0]u8, allocator.allocate(u8, values.len));
             mach.memcpy(buf.ptr, values.ptr, values.len);
             return buf;
         }
         fn strdup2(allocator: *Allocator, values: []const []const u8) [][:0]const u8 {
-            @setRuntimeSafety(false);
+            @setRuntimeSafety(safety);
             var buf: [][:0]u8 = @ptrCast([][:0]u8, allocator.allocate([:0]u8, values.len));
             var idx: u64 = 0;
             for (values) |value| {
@@ -1661,7 +1659,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
         }
         fn concatenate(allocator: *Allocator, values: []const []const u8) [:0]u8 {
-            @setRuntimeSafety(false);
+            @setRuntimeSafety(safety);
             var len: u64 = 0;
             for (values) |value| len +%= value.len;
             const buf: [:0]u8 = @ptrCast([:0]u8, allocator.allocate(u8, len));
@@ -1673,7 +1671,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             return buf;
         }
         fn makeArgPtrs(allocator: *Allocator, args: [:0]u8) [][*:0]u8 {
-            @setRuntimeSafety(false);
+            @setRuntimeSafety(safety);
             var count: u64 = 0;
             for (args) |value| count +%= @boolToInt(value == 0);
             const ptrs: [][*:0]u8 = allocator.allocate([*:0]u8, count +% 1);
@@ -1691,7 +1689,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             return ptrs[0..len];
         }
         fn makeTargetName(allocator: *Allocator, root: [:0]const u8) [:0]const u8 {
-            @setRuntimeSafety(false);
+            @setRuntimeSafety(safety);
             const buf: [*]u8 = allocator.allocate(u8, root.len +% 1).ptr;
             mach.memcpy(buf, root.ptr, root.len);
             buf[root.len] = 0;
@@ -1700,6 +1698,50 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 buf[idx] -%= @boolToInt(buf[idx] == 0x2f);
             }
             return buf[0..root.len :0];
+        }
+        pub fn check(allocator: *Allocator, builder: *Builder) void {
+            var trgs_len: u64 = 0;
+            for (builder.grps[0..builder.grps_len]) |group| {
+                trgs_len +%= group.trgs_len;
+            }
+            var trgs: []*Target = allocator.allocate(*Target, trgs_len);
+            var trgs_idx: u64 = 0;
+            for (builder.grps[0..builder.grps_len]) |grp| {
+                for (grp.trgs[0..grp.trgs_len]) |trg| {
+                    trgs[trgs_idx] = trg;
+                    trgs_idx +%= 1;
+                }
+            }
+            trgs_idx = 0;
+            for (builder.grps[0..builder.grps_len], 0..) |grp, grp_idx| {
+                while (trgs_idx != trgs.len) : (trgs_idx +%= 1) {
+                    if (mach.testEqualMany8(trgs[trgs_idx].name, grp.name)) {
+                        builtin.debug.write(builtin.fmt.ud64(grp_idx).readAll());
+                        builtin.debug.write(" and ");
+                        builtin.debug.write(builtin.fmt.ud64(trgs_idx).readAll());
+                        builtin.debug.write(":");
+                        builtin.debug.write(grp.name);
+                        builtin.debug.write("\n");
+                    }
+                }
+            }
+            var l_idx: usize = 0;
+            while (l_idx != trgs.len) : (l_idx +%= 1) {
+                var r_idx: usize = l_idx;
+                while (r_idx != trgs.len) : (r_idx +%= 1) {
+                    if (l_idx != r_idx) {
+                        if (mach.testEqualMany8(trgs[l_idx].name, trgs[r_idx].name)) {
+                            builtin.debug.write(builtin.fmt.ud64(l_idx).readAll());
+                            builtin.debug.write(" and ");
+                            builtin.debug.write(builtin.fmt.ud64(r_idx).readAll());
+                            builtin.debug.write(":");
+                            builtin.debug.write(trgs[l_idx].name);
+                            builtin.debug.write("\n");
+                        }
+                    }
+                }
+            }
+            allocator.deallocate(*Target, trgs);
         }
     };
     return Type;
