@@ -452,20 +452,21 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             pub fn addRunCommand(target: *Target, allocator: *Allocator) void {
                 @setRuntimeSafety(safety);
-                if (target.exchange(.run, .no_task, .ready)) {
+                target.args = allocator.allocate([*:0]u8, 16);
+                const name: []u8 = allocator.allocate(u8, 4097);
+                name[4096] = 0;
+                target.args[0] = name[0..4096 :0];
+                builtin.assert(target.task_cmd.build.emit_bin.?.yes.?.formatWriteBuf(target.args[0]) != 0);
+                target.args_len = 1;
+                if (target.exchange(.run, .null, .ready)) {
                     target.addDependency(allocator, .run, target, .build, .finished);
                 }
             }
             pub fn addRunArgument(target: *Target, allocator: *Allocator, arg: []const u8) void {
                 @setRuntimeSafety(safety);
                 if (target.args_len == 0) {
-                    target.args = allocator.allocate([*:0]u8, 5);
-                    const name: []u8 = allocator.allocate(u8, 4097);
-                    name[4096] = 0;
-                    target.args[0] = name[0..4096 :0];
-                    builtin.assert(target.task_cmd.build.emit_bin.?.yes.?.formatWriteBuf(target.args[0]) != 0);
-                    target.args_len = 1;
-                } else if (target.args_len == target.args.len) {
+                    target.addRunCommand(allocator);
+                } else if (target.args_len == target.args.len -% 1) {
                     target.args = allocator.reallocate([*:0]u8, target.args, (target.args_len +% 1) *% 2);
                 }
                 target.args[target.args_len] = strdup(allocator, arg).ptr;
@@ -479,7 +480,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             builder: *Builder,
             hidden: bool = false,
             pub fn addBuild(group: *Group, allocator: *Allocator, build_cmd: types.BuildCommand, name: [:0]const u8, root: [:0]const u8) !*Target {
-                const ret: *Target = try group.addTarget(allocator);
+                const ret: *Target = try group.addTarget(allocator, name);
                 const cmd: *types.BuildCommand = allocator.create(types.BuildCommand);
                 cmd.* = build_cmd;
                 ret.name = name;
