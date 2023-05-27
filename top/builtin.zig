@@ -21,7 +21,8 @@ pub fn InternalError(comptime E: type) type {
         /// Abort the program for any exception
         abort,
         ignore,
-        pub const Error = E;
+        /// Input Zig error type (unused)
+        Error: type,
     };
     return U;
 }
@@ -32,7 +33,8 @@ pub fn ExternalError(comptime E: type) type {
         throw: []const E = &.{},
         /// Abort the program if unwrapping yields any of these values
         abort: []const E = &.{},
-        pub const Enum = E;
+        /// Input error value type
+        Enum: type = E,
     };
     return T;
 }
