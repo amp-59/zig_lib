@@ -47,22 +47,23 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     const bg_aux: *Builder.Group =          try builder.addGroup(allocator, "_buildgen");
     const targetgen: *Builder.Group =       try builder.addGroup(allocator, "targetgen");
     // Tests
-    const serial_test: *Builder.Target =    try tests.addBuild(allocator, build_cmd,    "serial_test",    "test/serial-test.zig");
-    const decl_test: *Builder.Target =      try tests.addBuild(allocator, build_cmd,    "decl_test",      "test/decl-test.zig");
-    const builtin_test: *Builder.Target =   try tests.addBuild(allocator, build_cmd,    "builtin_test",   "test/builtin-test.zig");
-    const meta_test: *Builder.Target =      try tests.addBuild(allocator, build_cmd,    "meta_test",      "test/meta-test.zig");
-    const algo_test: *Builder.Target =      try tests.addBuild(allocator, build_cmd,    "algo_test",      "test/algo-test.zig");
-    const math_test: *Builder.Target =      try tests.addBuild(allocator, build_cmd,    "math_test",      "test/math-test.zig");
-    const file_test: *Builder.Target =      try tests.addBuild(allocator, build_cmd,    "file_test",      "test/file-test.zig");
-    const list_test: *Builder.Target =      try tests.addBuild(allocator, build_cmd,    "list_test",      "test/list-test.zig");
-    const fmt_test: *Builder.Target =       try tests.addBuild(allocator, build_cmd,    "fmt_test",       "test/fmt-test.zig");
-    const rng_test: *Builder.Target =       try tests.addBuild(allocator, build_cmd,    "rng_test",       "test/rng-test.zig");
-    const render_test: *Builder.Target =    try tests.addBuild(allocator, build_cmd,    "render_test",    "test/render-test.zig");
-    const thread_test: *Builder.Target =    try tests.addBuild(allocator, build_cmd,    "thread_test",    "test/thread-test.zig");
-    const virtual_test: *Builder.Target =   try tests.addBuild(allocator, build_cmd,    "virtual_test",   "test/virtual-test.zig");
-    const time_test: *Builder.Target =      try tests.addBuild(allocator, build_cmd,    "time_test",      "test/time-test.zig");
-    const size_test: *Builder.Target =      try tests.addBuild(allocator, build_cmd,    "size_test",      "test/size_per_config.zig");
-    const parse_test: *Builder.Target =     try wip.addBuild(allocator, build_cmd,      "parse_test",     "test/parse-test.zig");
+    const serial_test: *Builder.Target =    try tests.addBuild(allocator, build_cmd,    "serial_test",  "test/serial-test.zig");
+    const decl_test: *Builder.Target =      try tests.addBuild(allocator, build_cmd,    "decl_test",    "test/decl-test.zig");
+    const builtin_test: *Builder.Target =   try tests.addBuild(allocator, build_cmd,    "builtin_test", "test/builtin-test.zig");
+    const meta_test: *Builder.Target =      try tests.addBuild(allocator, build_cmd,    "meta_test",    "test/meta-test.zig");
+    const algo_test: *Builder.Target =      try tests.addBuild(allocator, build_cmd,    "algo_test",    "test/algo-test.zig");
+    const math_test: *Builder.Target =      try tests.addBuild(allocator, build_cmd,    "math_test",    "test/math-test.zig");
+    const file_test: *Builder.Target =      try tests.addBuild(allocator, build_cmd,    "file_test",    "test/file-test.zig");
+    const list_test: *Builder.Target =      try tests.addBuild(allocator, build_cmd,    "list_test",    "test/list-test.zig");
+    const fmt_test: *Builder.Target =       try tests.addBuild(allocator, build_cmd,    "fmt_test",     "test/fmt-test.zig");
+    const render_test: *Builder.Target =    try tests.addBuild(allocator, build_cmd,    "render_test",  "test/render-test.zig");
+    const thread_test: *Builder.Target =    try tests.addBuild(allocator, build_cmd,    "thread_test",  "test/thread-test.zig");
+    const virtual_test: *Builder.Target =   try tests.addBuild(allocator, build_cmd,    "virtual_test", "test/virtual-test.zig");
+    const time_test: *Builder.Target =      try tests.addBuild(allocator, build_cmd,    "time_test",    "test/time-test.zig");
+    const size_test: *Builder.Target =      try tests.addBuild(allocator, build_cmd,    "size_test",    "test/size_per_config.zig");
+    const rng_test: *Builder.Target =       try wip.addBuild(allocator, build_cmd,      "rng_test",     "test/rng-test.zig");
+    const parse_test: *Builder.Target =     try wip.addBuild(allocator, build_cmd,      "parse_test",   "test/parse-test.zig");
+    const crypto_test: *Builder.Target =    try wip.addBuild(allocator, build_cmd,      "crypto_test",  "test/crypto-test.zig");
     // Example programs
     const readdir: *Builder.Target =        try eg.addBuild(allocator, build_cmd,       "readdir",      "examples/dir_iterator.zig");
     const dynamic: *Builder.Target =        try eg.addBuild(allocator, build_cmd,       "dynamic",      "examples/dynamic_alloc.zig");
@@ -83,7 +84,6 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     const builder0_test: *Builder.Target =  try tests.addBuild(allocator, build_cmd,    "lib_test",     "build_runner.zig");
     const builder1_test: *Builder.Target =  try tests.addBuild(allocator, build_cmd,    "zls_test",     "zls_build_runner.zig");
     const builder2_test: *Builder.Target =  try tests.addBuild(allocator, build_cmd,    "cmdline_test", "test/cmdline-test.zig");
-    const crypto_test: *Builder.Target =    try wip.addBuild(allocator, build_cmd,      "crypto_test",  "test/crypto-test.zig");
     if (false) {
     for ([_]*Builder.Target{
         try tests.addBuildAnonymous(allocator, build_cmd,   "test/crypto/aead-test.zig"),
