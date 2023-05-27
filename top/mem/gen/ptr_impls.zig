@@ -19,7 +19,6 @@ pub usingnamespace proc.start;
 pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
 pub const runtime_assertions: bool = false;
 pub const show_expressions: bool = false;
-const write_separate_source_files: bool = false;
 const Allocator = config.Allocator;
 const AddressSpace = Allocator.AddressSpace;
 const Array = Allocator.StructuredVector(u8);
@@ -309,8 +308,8 @@ fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: 
         expr.dereference(expr.call(&pointer_opaque_call_sentinel));
     var pointer_one_call_undefined_deref_stx: [2]expr.Expr =
         expr.dereference(expr.call(&pointer_one_call_undefined));
-    array.writeMany("{\n");
-    defer array.writeMany("}\n");
+    array.writeMany(tok.open_brace_operator);
+    defer array.writeMany(tok.close_brace_operator);
     switch (ptr_fn_info) {
         .allocated_byte_address => {
             array.writeMany(tok.return_keyword);
@@ -961,7 +960,7 @@ pub fn generateReferences() !void {
                 writeTypeFunction(&allocator, &array, impl_detail);
             }
         }
-        if (write_separate_source_files) {
+        if (config.write_separate_source_files) {
             const pathname: [:0]const u8 = switch (kind) {
                 .automatic => config.automatic_container_path,
                 .static => config.static_container_path,
@@ -972,7 +971,7 @@ pub fn generateReferences() !void {
             array.undefineAll();
         }
     }
-    if (!write_separate_source_files) {
+    if (!config.write_separate_source_files) {
         gen.appendFile(spec.generic.noexcept, config.reference_file_path, array.readAll());
     }
 }

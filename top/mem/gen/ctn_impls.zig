@@ -24,7 +24,6 @@ const read_ctn_spec: file.ReadSpec = .{
     .errors = .{},
     .return_type = void,
 };
-const write_separate_source_files: bool = false;
 const Allocator = config.Allocator;
 const AddressSpace = config.AddressSpace;
 const Array = Allocator.StructuredVector(u8);
@@ -994,7 +993,7 @@ pub fn generateContainers() !void {
                 ctn_idx +%= 1;
             }
         }
-        if (write_separate_source_files) {
+        if (config.write_separate_source_files) {
             const pathname: [:0]const u8 = switch (kind) {
                 .automatic => config.automatic_container_path,
                 .static => config.static_container_path,
@@ -1005,7 +1004,7 @@ pub fn generateContainers() !void {
             array.undefineAll();
         }
     }
-    if (!write_separate_source_files) {
+    if (!config.write_separate_source_files) {
         gen.appendFile(spec.generic.noexcept, config.container_file_path, array.readAll());
     }
 }
