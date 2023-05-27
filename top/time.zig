@@ -62,6 +62,7 @@ pub const Month = enum {
     December,
 };
 pub const ClockSpec = struct {
+    return_type: type = TimeSpec,
     errors: sys.ErrorPolicy = .{ .throw = sys.clock_get_errors },
 };
 pub const ClockGetTime = *fn (Kind, *TimeSpec) u64;
