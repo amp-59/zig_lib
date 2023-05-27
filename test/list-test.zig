@@ -11,7 +11,6 @@ const builtin = top.builtin;
 pub usingnamespace proc.start;
 
 pub const AddressSpace = spec.address_space.exact_8;
-pub const logging_override: builtin.Logging.Override = spec.logging.override.verbose;
 pub const runtime_assertions: bool = true;
 
 const Random = file.DeviceRandomBytes(4096);
