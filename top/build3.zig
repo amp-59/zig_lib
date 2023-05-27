@@ -709,6 +709,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             .abort = builder_spec.errors.clock.throw ++
                 builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
         }, bool) {
+            _ = depth;
             @setRuntimeSafety(safety);
             var working_time: time.TimeSpec = undefined;
             var ret: []u8 = allocator.allocate(u8, ret_len);
@@ -728,32 +729,37 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 )),
                 else => runWrite(builder, allocator, target),
             });
-            if (task == .build) {
-                const out_path: [:0]const u8 = binaryRelative(allocator, target.task_cmd.build);
-                old_size = builder.getFileSize(out_path);
-                if (builder_spec.options.enable_caching) {
-                    try meta.wrap(
-                        builder.server(allocator, args, &working_time, ret),
-                    );
-                } else {
+            switch (task) {
+                .build => {
+                    const out_path: [:0]const u8 = binaryRelative(allocator, target.task_cmd.build);
+                    old_size = builder.getFileSize(out_path);
+                    if (builder_spec.options.enable_caching and task == .build) {
+                        try meta.wrap(
+                            builder.server(allocator, args, &working_time, ret),
+                        );
+                    } else {
+                        ret[0] = try meta.wrap(
+                            builder.system(args, &working_time),
+                        );
+                    }
+                    new_size = builder.getFileSize(out_path);
+                },
+                .archive => {
+                    const out_path: [:0]const u8 = archiveRelative(allocator, target.name);
+                    old_size = builder.getFileSize(out_path);
                     ret[0] = try meta.wrap(
                         builder.system(args, &working_time),
                     );
-                }
-                new_size = builder.getFileSize(out_path);
-            } else {
-                ret[0] = try meta.wrap(
-                    builder.system(args, &working_time),
-                );
+                    new_size = builder.getFileSize(out_path);
+                },
+                else => {
+                    ret[0] = try meta.wrap(
+                        builder.system(args, &working_time),
+                    );
+                },
             }
-            switch (task) {
-                .format, .run => {
-                    debug.simpleTimedNotice(target, depth, working_time, task, ret);
-                },
-                .build, .archive => {
-                    debug.buildNotice(target, depth, working_time, old_size, new_size, ret);
-                },
-                else => unreachable,
+            if (builder_spec.options.show_stats) {
+                debug.buildNotice(target, task, working_time, old_size, new_size, ret);
             }
             return status(ret);
         }
@@ -1185,7 +1191,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 buf[len] = '\n';
                 builtin.debug.write(buf[0 .. len +% 1]);
             }
-            fn buildNotice(target: *const Target, depth: u64, working_time: time.TimeSpec, old_size: u64, new_size: u64, ret: []u8) void {
+            fn buildNotice(target: *const Target, task: types.Task, working_time: time.TimeSpec, old_size: u64, new_size: u64, ret: []u8) void {
                 @setRuntimeSafety(safety);
                 const diff_size: u64 = @max(new_size, old_size) -% @min(new_size, old_size);
                 const new_size_s: []const u8 = builtin.fmt.ud64(new_size).readAll();
@@ -1194,16 +1200,19 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 const sec_s: []const u8 = builtin.fmt.ud64(working_time.sec).readAll();
                 const nsec_s: []const u8 = builtin.fmt.nsec(working_time.nsec).readAll();
                 var buf: [32768]u8 = undefined;
-                var len: u64 = about.build_exe_s.len;
-                mach.memcpy(&buf, switch (target.task_cmd.build.kind) {
-                    .exe => about.build_exe_s,
-                    .obj => about.build_obj_s,
-                    .lib => about.build_lib_s,
-                }.ptr, len);
-                if (builder_spec.options.show_dependency_depth) {
-                    mach.memset(buf[len..].ptr, ' ', depth *% 4);
-                    len +%= depth *% 4;
-                }
+                const about_s: []const u8 = switch (task) {
+                    .null, .any => unreachable,
+                    .archive => about.ar_s,
+                    .format => about.format_s,
+                    .run => about.run_s,
+                    .build => switch (target.task_cmd.build.kind) {
+                        .exe => about.build_exe_s,
+                        .obj => about.build_obj_s,
+                        .lib => about.build_lib_s,
+                    },
+                };
+                var len: u64 = about_s.len;
+                mach.memcpy(&buf, about_s.ptr, len);
                 mach.memcpy(buf[len..].ptr, target.name.ptr, target.name.len);
                 len +%= target.name.len;
                 @ptrCast(*[2]u8, buf[len..].ptr).* = about.next_s.*;
@@ -1213,7 +1222,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 len +%= @tagName(mode).len;
                 @ptrCast(*[7]u8, buf[len..].ptr).* = ", exit=".*;
                 len +%= 7;
-                if (builder_spec.options.enable_caching) {
+                if (builder_spec.options.enable_caching and task == .build) {
                     const res: UpdateAnswer = @intToEnum(UpdateAnswer, ret[1]);
                     const msg_s: []const u8 = @tagName(res);
                     buf[len] = '[';
@@ -1234,40 +1243,42 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
                 @ptrCast(*[2]u8, buf[len..].ptr).* = about.next_s.*;
                 len +%= 2;
-                if (old_size == 0) {
-                    @ptrCast(*[5]u8, buf[len..].ptr).* = about.gold_s.*;
-                    len +%= 5;
-                    mach.memcpy(buf[len..].ptr, new_size_s.ptr, new_size_s.len);
-                    len +%= new_size_s.len;
-                    buf[len] = '*';
-                    len +%= 1;
-                    @ptrCast(*[4]u8, buf[len..].ptr).* = about.reset_s.*;
-                    len +%= 4;
-                    @ptrCast(*[8]u8, buf[len..].ptr).* = about.bytes_s.*;
-                    len +%= 8;
-                } else if (new_size == old_size) {
-                    mach.memcpy(buf[len..].ptr, new_size_s.ptr, new_size_s.len);
-                    len +%= new_size_s.len;
-                    @ptrCast(*[8]u8, buf[len..].ptr).* = about.bytes_s.*;
-                    len +%= 8;
-                } else {
-                    mach.memcpy(buf[len..].ptr, old_size_s.ptr, old_size_s.len);
-                    len +%= old_size_s.len;
-                    buf[len] = '(';
-                    len +%= 1;
-                    const larger: bool = new_size > old_size;
-                    @ptrCast(*[8]u8, buf[len..].ptr).* = (if (larger) about.red_s ++ "+" else about.green_s ++ "-").*;
-                    len +%= 8;
-                    mach.memcpy(buf[len..].ptr, diff_size_s.ptr, diff_size_s.len);
-                    len +%= diff_size_s.len;
-                    @ptrCast(*[4]u8, buf[len..].ptr).* = about.reset_s.*;
-                    len +%= 4;
-                    @ptrCast(*[5]u8, buf[len..].ptr).* = ") => ".*;
-                    len +%= 5;
-                    mach.memcpy(buf[len..].ptr, new_size_s.ptr, new_size_s.len);
-                    len +%= new_size_s.len;
-                    @ptrCast(*[8]u8, buf[len..].ptr).* = about.bytes_s.*;
-                    len +%= 8;
+                if (task == .build or task == .archive) {
+                    if (old_size == 0) {
+                        @ptrCast(*[5]u8, buf[len..].ptr).* = about.gold_s.*;
+                        len +%= 5;
+                        mach.memcpy(buf[len..].ptr, new_size_s.ptr, new_size_s.len);
+                        len +%= new_size_s.len;
+                        buf[len] = '*';
+                        len +%= 1;
+                        @ptrCast(*[4]u8, buf[len..].ptr).* = about.reset_s.*;
+                        len +%= 4;
+                        @ptrCast(*[8]u8, buf[len..].ptr).* = about.bytes_s.*;
+                        len +%= 8;
+                    } else if (new_size == old_size) {
+                        mach.memcpy(buf[len..].ptr, new_size_s.ptr, new_size_s.len);
+                        len +%= new_size_s.len;
+                        @ptrCast(*[8]u8, buf[len..].ptr).* = about.bytes_s.*;
+                        len +%= 8;
+                    } else {
+                        mach.memcpy(buf[len..].ptr, old_size_s.ptr, old_size_s.len);
+                        len +%= old_size_s.len;
+                        buf[len] = '(';
+                        len +%= 1;
+                        const larger: bool = new_size > old_size;
+                        @ptrCast(*[8]u8, buf[len..].ptr).* = (if (larger) about.red_s ++ "+" else about.green_s ++ "-").*;
+                        len +%= 8;
+                        mach.memcpy(buf[len..].ptr, diff_size_s.ptr, diff_size_s.len);
+                        len +%= diff_size_s.len;
+                        @ptrCast(*[4]u8, buf[len..].ptr).* = about.reset_s.*;
+                        len +%= 4;
+                        @ptrCast(*[5]u8, buf[len..].ptr).* = ") => ".*;
+                        len +%= 5;
+                        mach.memcpy(buf[len..].ptr, new_size_s.ptr, new_size_s.len);
+                        len +%= new_size_s.len;
+                        @ptrCast(*[8]u8, buf[len..].ptr).* = about.bytes_s.*;
+                        len +%= 8;
+                    }
                 }
                 mach.memcpy(buf[len..].ptr, sec_s.ptr, sec_s.len);
                 len +%= sec_s.len;
@@ -1279,40 +1290,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 len +%= 2;
                 @ptrCast(*[4]u8, buf[len..].ptr).* = about.reset_s.*;
                 builtin.debug.write(buf[0 .. len +% about.reset_s.len]);
-            }
-            fn simpleTimedNotice(target: *const Target, depth: u64, working_time: time.TimeSpec, task: types.Task, ret: []u8) void {
-                @setRuntimeSafety(safety);
-                const about_s: [:0]const u8 = switch (task) {
-                    .format => about.format_s,
-                    .archive => about.ar_s,
-                    else => about.run_s,
-                };
-                const sec_s: []const u8 = builtin.fmt.ud64(working_time.sec).readAll();
-                const nsec_s: []const u8 = builtin.fmt.nsec(working_time.nsec).readAll();
-                var buf: [32768]u8 = undefined;
-                mach.memcpy(&buf, about_s.ptr, about_s.len);
-                var len: u64 = about_s.len;
-                if (builder_spec.options.show_dependency_depth) {
-                    mach.memset(buf[len..].ptr, ' ', depth *% 4);
-                    len +%= depth *% 4;
-                }
-                mach.memcpy(buf[len..].ptr, target.name.ptr, target.name.len);
-                len +%= target.name.len;
-                @ptrCast(*[5]u8, buf[len..].ptr).* = ", rc=".*;
-                len +%= 5;
-                const exit_s: []const u8 = builtin.fmt.ud64(ret[0]).readAll();
-                mach.memcpy(buf[len..].ptr, exit_s.ptr, exit_s.len);
-                len +%= exit_s.len;
-                @ptrCast(*[2]u8, buf[len..].ptr).* = about.next_s.*;
-                len +%= 2;
-                mach.memcpy(buf[len..].ptr, sec_s.ptr, sec_s.len);
-                len +%= sec_s.len;
-                buf[len] = '.';
-                len +%= 1;
-                mach.memcpy(buf[len..].ptr, nsec_s.ptr, nsec_s.len);
-                len +%= 3;
-                @ptrCast(*[2]u8, buf[len..].ptr).* = "s\n".*;
-                builtin.debug.write(buf[0 .. len +% 2]);
             }
             fn writeAndWalkInternal(buf0: [*]u8, len0: u64, buf1: [*]u8, len1: u64, target: *Target, args: anytype) u64 {
                 @setRuntimeSafety(safety);
