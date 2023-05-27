@@ -704,13 +704,12 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             return target.args[0..target.args_len];
         }
-        fn executeCommandInternal(builder: *Builder, allocator: *Allocator, target: *Target, depth: u64, task: types.Task) sys.ErrorUnion(.{
+        fn executeCommandInternal(builder: *Builder, allocator: *Allocator, target: *Target, _: u64, task: types.Task) sys.ErrorUnion(.{
             .throw = builder_spec.errors.clock.throw ++
                 builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
             .abort = builder_spec.errors.clock.throw ++
                 builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
         }, bool) {
-            _ = depth;
             @setRuntimeSafety(safety);
             var working_time: time.TimeSpec = undefined;
             var ret: []u8 = allocator.allocate(u8, ret_len);
