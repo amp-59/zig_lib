@@ -1217,11 +1217,15 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 len +%= target.name.len;
                 @ptrCast(*[2]u8, buf[len..].ptr).* = about.next_s.*;
                 len +%= 2;
-                const mode: builtin.Mode = target.task_cmd.build.mode orelse .Debug;
-                mach.memcpy(buf[len..].ptr, @tagName(mode).ptr, @tagName(mode).len);
-                len +%= @tagName(mode).len;
-                @ptrCast(*[7]u8, buf[len..].ptr).* = ", exit=".*;
-                len +%= 7;
+                if (task == .build) {
+                    const mode: builtin.Mode = target.task_cmd.build.mode orelse .Debug;
+                    mach.memcpy(buf[len..].ptr, @tagName(mode).ptr, @tagName(mode).len);
+                    len +%= @tagName(mode).len;
+                    @ptrCast(*[2]u8, buf[len..].ptr).* = about.next_s.*;
+                    len +%= 2;
+                }
+                @ptrCast(*[5]u8, buf[len..].ptr).* = "exit=".*;
+                len +%= 5;
                 if (builder_spec.options.enable_caching and task == .build) {
                     const res: UpdateAnswer = @intToEnum(UpdateAnswer, ret[1]);
                     const msg_s: []const u8 = @tagName(res);
