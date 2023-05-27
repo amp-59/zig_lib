@@ -25,18 +25,15 @@ pub const signal_handlers: builtin.SignalHandlers = .{
 };
 pub const runtime_assertions: bool = true;
 pub const comptime_assertions: bool = false;
-
 const test_real_examples: bool = true;
-
-const AddressSpace = Builder.AddressSpace;
-
 const Allocator = mem.GenericArenaAllocator(.{
-    .AddressSpace = AddressSpace,
+    .AddressSpace = spec.address_space.exact_8,
     .arena_index = 0,
     .logging = spec.allocator.logging.silent,
     .errors = spec.allocator.errors.noexcept,
-    .options = spec.allocator.options.small_composed,
+    .options = spec.allocator.options.small,
 });
+const AddressSpace = Allocator.AddressSpace;
 const spec_sets_a: []const mem_types.AbstractSpecification = attr.abstract_specs;
 const spec_sets_0: []const []const []const mem_types.Specifier = &.{ &.{ &.{ .{ .default = .{
     .tag = .child,
@@ -2494,8 +2491,8 @@ const Variety = struct {
     x: []const []const u8,
     y: [*:0]const u8,
 };
-pub fn testVarietyStructure(address_space: *AddressSpace) !void {
-    var allocator: Allocator = Allocator.init(address_space);
+pub fn testVarietyStructure(address_space: *Allocator.AddressSpace) !void {
+    var allocator: Allocator = try Allocator.init(address_space);
     defer allocator.deinit(address_space);
     const v: []const []const []const []const Variety = &.{&.{&.{&.{
         .{ .x = &.{ "one,", "two,", "three," }, .y = "one,two,three\n" },
@@ -2513,8 +2510,8 @@ const serial_spec: serial.SerialSpec = .{
     .logging = spec.serializer.logging.silent,
     .errors = spec.serializer.errors.noexcept,
 };
-pub fn testLargeStructure(address_space: *AddressSpace) !void {
-    var allocator: Allocator = Allocator.init(address_space);
+pub fn testLargeStructure(address_space: *Allocator.AddressSpace) !void {
+    var allocator: Allocator = try Allocator.init(address_space);
     defer allocator.deinit(address_space);
     try meta.wrap(serial.serialWrite(serial_spec, []const mem_types.AbstractSpecification, &allocator, builtin.absolutePath("zig-out/bin/variety_0"), spec_sets_a));
     const spec_sets_b: []const mem_types.AbstractSpecification =
@@ -2583,7 +2580,7 @@ pub fn testBuildProgram(allocator: *Builder.Allocator, builder: *Builder) !void 
     t.dependOnObject(allocator, t7);
 }
 pub fn testLargeFlatStructureBuilder(args: anytype, vars: anytype, address_space: *AddressSpace) !void {
-    var allocator_a: Allocator = Allocator.init(address_space);
+    var allocator_a: Allocator = try Allocator.init(address_space);
     var allocator_b: Builder.Allocator = if (Builder.Allocator == mem.SimpleAllocator)
         Builder.Allocator.init_arena(Builder.AddressSpace.arena(Builder.max_thread_count))
     else
@@ -2617,7 +2614,7 @@ pub fn testLargeFlatStructureBuilder(args: anytype, vars: anytype, address_space
     }
 }
 pub fn testLongComplexCase(address_space: *AddressSpace) !void {
-    var allocator: Allocator = Allocator.init(address_space);
+    var allocator: Allocator = try Allocator.init(address_space);
     defer allocator.deinit(address_space);
 
     try meta.wrap(serial.serialWrite(serial_spec, []const []const []const mem_types.Specifier, &allocator, builtin.absolutePath("zig-out/bin/spec"), spec_sets_0));
@@ -2664,12 +2661,12 @@ pub fn testWriteSerialFeatures(address_space: *AddressSpace) !void {
             },
         };
         {
-            var allocator: Allocator = Allocator.init(address_space);
+            var allocator: Allocator = try Allocator.init(address_space);
             defer allocator.deinit(address_space);
             try meta.wrap(serial.serialWrite(serial_spec, S, &allocator, "zig-out/bin/serial_feature_test", s));
         }
         {
-            var allocator: Allocator = Allocator.init(address_space);
+            var allocator: Allocator = try Allocator.init(address_space);
             defer allocator.deinit(address_space);
             const t: S = try meta.wrap(serial.serialRead(serial_spec, S, &allocator, "zig-out/bin/serial_feature_test"));
             try builtin.expectEqualMemory(S, s, t);
@@ -2682,7 +2679,7 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     if (test_real_examples) {
         try meta.wrap(testLongComplexCase(&address_space));
         try meta.wrap(testLargeStructure(&address_space));
-        try meta.wrap(testLargeFlatStructureBuilder(args, vars, &address_space));
         try meta.wrap(testVarietyStructure(&address_space));
+        try meta.wrap(testLargeFlatStructureBuilder(args, vars, &address_space));
     }
 }
