@@ -2524,8 +2524,8 @@ const debug = opaque {
         len +%= 1;
         mach.memset(buf[len..].ptr, ' ', 11);
         len +%= 11;
-        len +%= writeEvents(buf[len..], pollfd, "expect: ", 4);
-        len +%= writeEvents(buf[len..], pollfd, " actual: ", 6);
+        len +%= writeEvents(buf[len..], pollfd, "expect=", 4);
+        len +%= writeEvents(buf[len..], pollfd, " actual=", 6);
         buf[len] = '\n';
         len +%= 1;
         return len;
