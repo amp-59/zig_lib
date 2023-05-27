@@ -1438,7 +1438,7 @@ pub const ErrorCode = enum(i9) {
             .NOTRECOVERABLE => return "StateNotRecoverable",
             .RFKILL => return "OperationNotPossibleDueToRFKill",
             .HWPOISON => return "MemoryPageHasHardwareError",
-            .OPAQUE => return "OpaqueSystemError",
+            .OPAQUE => return "SystemError",
         }
     }
 };
@@ -1897,179 +1897,179 @@ pub const vFn = enum(u9) {
     gettimeofday,
     time,
 };
-pub const brk_errors: []const ErrorCode = &[_]ErrorCode{.NOMEM};
-pub const chdir_errors: []const ErrorCode = &[_]ErrorCode{
+pub const brk_errors = &[_]ErrorCode{.NOMEM};
+pub const chdir_errors = &[_]ErrorCode{
     .NAMETOOLONG, .LOOP, .ACCES, .IO, .BADF, .FAULT, .NOTDIR, .NOMEM, .NOENT,
 };
-pub const close_errors: []const ErrorCode = &[_]ErrorCode{
+pub const close_errors = &[_]ErrorCode{
     .INTR, .IO, .BADF, .NOSPC,
 };
-pub const clone_errors: []const ErrorCode = &[_]ErrorCode{
+pub const clone_errors = &[_]ErrorCode{
     .PERM, .AGAIN, .INVAL, .EXIST, .USERS, .OPNOTSUPP, .NOMEM, .RESTART,
     .BUSY, .NOSPC,
 };
-pub const clock_get_errors: []const ErrorCode = &[_]ErrorCode{
+pub const clock_get_errors = &[_]ErrorCode{
     .ACCES, .FAULT, .INVAL, .NODEV, .OPNOTSUPP, .PERM,
 };
-pub const execve_errors: []const ErrorCode = &[_]ErrorCode{
+pub const execve_errors = &[_]ErrorCode{
     .ACCES, .IO,     .LIBBAD, .NOTDIR,  .MFILE, .NOENT, .NAMETOOLONG, .TXTBSY,
     .ISDIR, .LOOP,   .NOMEM,  .@"2BIG", .NFILE, .PERM,  .FAULT,       .AGAIN,
     .INVAL, .NOEXEC,
 };
-pub const execveat_errors: []const ErrorCode = &[_]ErrorCode{
+pub const execveat_errors = &[_]ErrorCode{
     .ACCES, .IO,     .LIBBAD, .NOTDIR,  .MFILE, .NOENT, .NAMETOOLONG, .TXTBSY,
     .ISDIR, .LOOP,   .NOMEM,  .@"2BIG", .NFILE, .PERM,  .FAULT,       .AGAIN,
     .INVAL, .NOEXEC,
 };
-pub const fork_errors: []const ErrorCode = &[_]ErrorCode{
+pub const fork_errors = &[_]ErrorCode{
     .NOSYS, .AGAIN, .NOMEM, .RESTART,
 };
-pub const command_errors: []const ErrorCode = execve_errors ++ fork_errors ++ wait_errors;
-pub const getcwd_errors: []const ErrorCode = &[_]ErrorCode{
+pub const command_errors = execve_errors ++ fork_errors ++ wait_errors;
+pub const getcwd_errors = &[_]ErrorCode{
     .ACCES, .FAULT, .INVAL, .NAMETOOLONG, .NOENT, .NOMEM, .RANGE,
 };
-pub const getdents_errors: []const ErrorCode = &[_]ErrorCode{
+pub const getdents_errors = &[_]ErrorCode{
     .BADF, .FAULT, .INVAL, .NOENT, .NOTDIR,
 };
-pub const getrandom_errors: []const ErrorCode = &[_]ErrorCode{
+pub const getrandom_errors = &[_]ErrorCode{
     .AGAIN, .FAULT, .INTR, .INVAL, .NOSYS,
 };
-pub const dup_errors: []const ErrorCode = &[_]ErrorCode{
+pub const dup_errors = &[_]ErrorCode{
     .BADF, .BUSY, .INTR, .INVAL, .MFILE,
 };
-pub const pipe_errors: []const ErrorCode = &[_]ErrorCode{
+pub const pipe_errors = &[_]ErrorCode{
     .FAULT, .INVAL, .MFILE, .NFILE, .NOPKG,
 };
-pub const poll_errors: []const ErrorCode = &[_]ErrorCode{
+pub const poll_errors = &[_]ErrorCode{
     .FAULT, .INTR, .INVAL, .NOMEM,
 };
-pub const ioctl_errors: []const ErrorCode = &[_]ErrorCode{
+pub const ioctl_errors = &[_]ErrorCode{
     .NOTTY, .BADF, .FAULT, .INVAL,
 };
-pub const socket_errors: []const ErrorCode = &[_]ErrorCode{
+pub const socket_errors = &[_]ErrorCode{
     .ACCES, .AFNOSUPPORT, .INVAL, .MFILE,
     .NFILE, .NOBUFS,      .NOMEM, .PROTONOSUPPORT,
 };
-pub const bind_errors: []const ErrorCode = &.{
+pub const bind_errors = &[_]ErrorCode{
     .ACCES,        .ADDRINUSE, .BADF, .INVAL,       .NOTSOCK, .ACCES,
     .ADDRNOTAVAIL, .FAULT,     .LOOP, .NAMETOOLONG, .NOENT,   .NOMEM,
     .NOTDIR,       .ROFS,
 };
-pub const accept_errors: []const ErrorCode = &.{
+pub const accept_errors = &[_]ErrorCode{
     .AGAIN, .BADF,  .CONNABORTED, .FAULT, .INTR,    .INVAL,
     .MFILE, .NFILE, .NOBUFS,      .NOMEM, .NOTSOCK, .OPNOTSUPP,
     .PERM,  .PROTO,
 };
-pub const listen_errors: []const ErrorCode = &.{
+pub const listen_errors = &[_]ErrorCode{
     .INVAL, .ADDRINUSE, .BADF, .NOTSOCK, .OPNOTSUPP,
 };
-pub const connect_errors: []const ErrorCode = &.{
+pub const connect_errors = &[_]ErrorCode{
     .ACCES,    .PERM,    .ADDRINUSE,  .ADDRNOTAVAIL, .AFNOSUPPORT,
     .AGAIN,    .ALREADY, .BADF,       .CONNREFUSED,  .FAULT,
     .INTR,     .ISCONN,  .NETUNREACH, .NOTSOCK,      .PROTOTYPE,
     .TIMEDOUT,
 };
-pub const getsockname_errors: []const ErrorCode = &.{
+pub const getsockname_errors = &[_]ErrorCode{
     .BADF, .FAULT, .INVAL, .NOBUFS, .NOTSOCK,
 };
-pub const getpeername_errors: []const ErrorCode = &.{
+pub const getpeername_errors = &[_]ErrorCode{
     .BADF, .FAULT, .INVAL, .NOBUFS, .NOTCONN, .NOTSOCK,
 };
-pub const send_errors: []const ErrorCode = &.{
+pub const send_errors = &[_]ErrorCode{
     .ACCES,       .AGAIN,  .ALREADY, .BADF,    .CONNRESET,
     .DESTADDRREQ, .FAULT,  .INTR,    .INVAL,   .ISCONN,
     .MSGSIZE,     .NOBUFS, .NOMEM,   .NOTCONN, .NOTSOCK,
     .OPNOTSUPP,   .PIPE,
 };
-pub const recv_errors: []const ErrorCode = &.{
+pub const recv_errors = &[_]ErrorCode{
     .AGAIN, .BADF,    .CONNREFUSED, .FAULT, .INTR, .INVAL,
     .NOMEM, .NOTCONN, .NOTSOCK,
 };
-pub const sockopt_errors: []const ErrorCode = &.{
+pub const sockopt_errors = &[_]ErrorCode{
     .BADF, .FAULT, .INVAL, .NOPROTOOPT, .NOTSOCK,
 };
-pub const shutdown_errors: []const ErrorCode = &.{
+pub const shutdown_errors = &[_]ErrorCode{
     .BADF, .INVAL, .NOTCONN, .NOTSOCK,
 };
-pub const madvise_errors: []const ErrorCode = &[_]ErrorCode{
+pub const madvise_errors = &[_]ErrorCode{
     .ACCES, .AGAIN, .BADF, .INVAL, .IO, .NOMEM, .PERM,
 };
-pub const mprotect_errors: []const ErrorCode = &[_]ErrorCode{ .ACCES, .INVAL, .NOMEM };
-pub const mkdir_noexcl_errors: []const ErrorCode = &[_]ErrorCode{
+pub const mprotect_errors = &[_]ErrorCode{ .ACCES, .INVAL, .NOMEM };
+pub const mkdir_noexcl_errors = &[_]ErrorCode{
     .ACCES,       .BADF,  .DQUOT, .FAULT, .INVAL,  .LOOP, .MLINK,
     .NAMETOOLONG, .NOENT, .NOMEM, .NOSPC, .NOTDIR, .PERM, .ROFS,
 };
-pub const mkdir_errors: []const ErrorCode = &[_]ErrorCode{
+pub const mkdir_errors = &[_]ErrorCode{
     .ACCES,       .BADF,  .DQUOT, .EXIST, .FAULT,  .INVAL, .LOOP, .MLINK,
     .NAMETOOLONG, .NOENT, .NOMEM, .NOSPC, .NOTDIR, .PERM,  .ROFS,
 };
-pub const mmap_errors: []const ErrorCode = &[_]ErrorCode{
+pub const mmap_errors = &[_]ErrorCode{
     .ACCES, .AGAIN,  .BADF, .EXIST, .INVAL, .NFILE, .NODEV, .NOMEM, .OVERFLOW,
     .PERM,  .TXTBSY,
 };
-pub const memfd_create_errors: []const ErrorCode = &[_]ErrorCode{ .FAULT, .INVAL, .MFILE, .NOMEM };
-pub const seek_errors: []const ErrorCode = &[_]ErrorCode{ .BADF, .NXIO, .OVERFLOW, .SPIPE };
-pub const truncate_errors: []const ErrorCode = &[_]ErrorCode{
+pub const memfd_create_errors = &[_]ErrorCode{ .FAULT, .INVAL, .MFILE, .NOMEM };
+pub const seek_errors = &[_]ErrorCode{ .BADF, .NXIO, .OVERFLOW, .SPIPE };
+pub const truncate_errors = &[_]ErrorCode{
     .ACCES,  .FAULT, .FBIG, .INTR,   .IO,   .ISDIR, .LOOP, .NAMETOOLONG,
     .NOTDIR, .PERM,  .ROFS, .TXTBSY, .BADF, .INVAL,
 };
-pub const munmap_errors: []const ErrorCode = &[_]ErrorCode{.INVAL};
-pub const mknod_errors: []const ErrorCode = &[_]ErrorCode{
+pub const munmap_errors = &[_]ErrorCode{.INVAL};
+pub const mknod_errors = &[_]ErrorCode{
     .ACCES, .BADF,  .DQUOT, .EXIST,  .FAULT, .INVAL, .LOOP, .NAMETOOLONG,
     .NOENT, .NOMEM, .NOSPC, .NOTDIR, .PERM,  .ROFS,
 };
-pub const mremap_errors: []const ErrorCode = &[_]ErrorCode{
+pub const mremap_errors = &[_]ErrorCode{
     .AGAIN, .FAULT, .INVAL, .NOMEM,
 };
-pub const open_errors: []const ErrorCode = &[_]ErrorCode{
+pub const open_errors = &[_]ErrorCode{
     .ACCES, .FBIG,        .NOTDIR,   .EXIST,  .OPNOTSUPP, .MFILE, .NOSPC,
     .NOENT, .NAMETOOLONG, .OVERFLOW, .TXTBSY, .AGAIN,     .BADF,  .ISDIR,
     .LOOP,  .NODEV,       .DQUOT,    .NOMEM,  .ROFS,      .NFILE, .INTR,
     .PERM,  .FAULT,       .INVAL,    .NXIO,   .BUSY,
 };
-pub const open_by_handle_at_errors: []const ErrorCode = open_errors ++ &[_]ErrorCode{
+pub const open_by_handle_at_errors = open_errors ++ &[_]ErrorCode{
     .BADF, .FAULT, .INVAL, .LOOP, .PERM, .STALE,
 };
-pub const name_to_handle_at_errors: []const ErrorCode = open_errors ++ &[_]ErrorCode{
+pub const name_to_handle_at_errors = open_errors ++ &[_]ErrorCode{
     .OVERFLOW, .LOOP, .PERM, .BADF, .FAULT, .INVAL, .NOTDIR, .STALE,
 };
-pub const nanosleep_errors: []const ErrorCode = &[_]ErrorCode{
+pub const nanosleep_errors = &[_]ErrorCode{
     .INTR, .FAULT, .INVAL, .OPNOTSUPP,
 };
-pub const readlink_errors: []const ErrorCode = &[_]ErrorCode{
+pub const readlink_errors = &[_]ErrorCode{
     .ACCES,  .BADF, .FAULT, .INVAL, .IO, .LOOP, .NAMETOOLONG, .NOENT, .NOMEM,
     .NOTDIR,
 };
-pub const read_errors: []const ErrorCode = &[_]ErrorCode{
+pub const read_errors = &[_]ErrorCode{
     .AGAIN, .BADF, .FAULT, .INTR, .INVAL, .IO, .ISDIR,
 };
-pub const rmdir_errors: []const ErrorCode = &[_]ErrorCode{
+pub const rmdir_errors = &[_]ErrorCode{
     .ACCES,  .BUSY,     .FAULT, .INVAL, .LOOP, .NAMETOOLONG, .NOENT, .NOMEM,
     .NOTDIR, .NOTEMPTY, .PERM,  .ROFS,
 };
-pub const sigaction_errors: []const ErrorCode = &[_]ErrorCode{
+pub const sigaction_errors = &[_]ErrorCode{
     .FAULT, .INVAL,
 };
-pub const stat_errors: []const ErrorCode = &[_]ErrorCode{
+pub const stat_errors = &[_]ErrorCode{
     .ACCES,  .BADF,     .FAULT, .INVAL, .LOOP, .NAMETOOLONG, .NOENT, .NOMEM,
     .NOTDIR, .OVERFLOW,
 };
-pub const statx_errors: []const ErrorCode = &[_]ErrorCode{
+pub const statx_errors = &[_]ErrorCode{
     .ACCES,  .BADF,        .FAULT, .INVAL,
     .LOOP,   .NAMETOOLONG, .NOENT, .NOMEM,
     .NOTDIR,
 };
-pub const unlink_errors: []const ErrorCode = &[_]ErrorCode{
+pub const unlink_errors = &[_]ErrorCode{
     .ACCES,  .BUSY, .FAULT, .IO,   .ISDIR, .LOOP, .NAMETOOLONG, .NOENT, .NOMEM,
     .NOTDIR, .PERM, .ROFS,  .BADF, .INVAL,
 };
-pub const wait_errors: []const ErrorCode = &[_]ErrorCode{
+pub const wait_errors = &[_]ErrorCode{
     .SRCH, .INTR, .AGAIN, .INVAL, .CHILD,
 };
-pub const waitid_errors: []const ErrorCode = &[_]ErrorCode{
+pub const waitid_errors = &[_]ErrorCode{
     .AGAIN, .CHILD, .INTR, .INVAL, .SRCH,
 };
-pub const write_errors: []const ErrorCode = &[_]ErrorCode{
+pub const write_errors = &[_]ErrorCode{
     .AGAIN, .BADF, .DESTADDRREQ, .DQUOT, .FAULT, .FBIG, .INTR, .INVAL, .IO,
     .NOSPC, .PERM, .PIPE,
 };
@@ -2077,7 +2077,7 @@ pub const futex_errors = &.{
     .ACCES, .AGAIN, .DEADLK, .FAULT, .INTR, .INVAL,    .NFILE,
     .NOMEM, .NOSYS, .PERM,   .PERM,  .SRCH, .TIMEDOUT,
 };
-pub const no_errors: []const ErrorCode = &[_]ErrorCode{};
+pub const no_errors = &[_]ErrorCode{};
 //    Arch/ABI      arg1  arg2  arg3  arg4  arg5  arg6  arg7  Notes
 //    ──────────────────────────────────────────────────────────────
 //    alpha         a0    a1    a2    a3    a4    a5    -
