@@ -345,45 +345,27 @@ pub const Message = struct {
             test_metadata,
             test_results,
         };
-        pub const size: u64 = @sizeOf(ServerHeader);
     };
     pub const ErrorHeader = extern struct {
         extra_len: u32,
         bytes_len: u32,
-        pub const size: u64 = @sizeOf(ErrorHeader);
-        pub fn create(msg: []u8) *ErrorHeader {
-            @setRuntimeSafety(false);
-            return @ptrCast(*ErrorHeader, @alignCast(4, msg.ptr));
-        }
-        pub fn extra(hdr: *ErrorHeader) [*]u32 {
-            @setRuntimeSafety(false);
-            return @intToPtr([*]u32, @ptrToInt(hdr) +% size);
-        }
-        pub fn bytes(hdr: *ErrorHeader) [*:0]u8 {
-            @setRuntimeSafety(false);
-            return @intToPtr([*:0]u8, @ptrToInt(hdr) +% size +% (hdr.extra_len *% 4));
-        }
     };
 };
 pub const EmitBin = extern union {
     cache_hit: bool,
     status: u8,
-    pub fn create(msg: []u8) *EmitBin {
-        @setRuntimeSafety(false);
-        return @ptrCast(*EmitBin, msg.ptr);
-    }
 };
-pub const ErrorMessageList = struct {
+pub const ErrorMessageList = extern struct {
     len: u32,
     start: u32,
     compile_log_text: u32,
-    pub const Extra = struct {
+    pub const Extra = extern struct {
         data: *ErrorMessageList,
         end: u64,
     };
     pub const len: u64 = 3;
 };
-pub const SourceLocation = struct {
+pub const SourceLocation = extern struct {
     src_path: u32,
     line: u32,
     column: u32,
@@ -392,27 +374,27 @@ pub const SourceLocation = struct {
     span_end: u32,
     src_line: u32 = 0,
     ref_len: u32 = 0,
-    pub const Extra = struct {
+    pub const Extra = extern struct {
         data: *SourceLocation,
         end: u64,
     };
     pub const len: u64 = 8;
 };
-pub const ErrorMessage = struct {
+pub const ErrorMessage = extern struct {
     start: u32,
     count: u32 = 1,
     src_loc: u32 = 0,
     notes_len: u32 = 0,
-    pub const Extra = struct {
+    pub const Extra = extern struct {
         data: *ErrorMessage,
         end: u64,
     };
     pub const len: u64 = 4;
 };
-pub const ReferenceTrace = struct {
+pub const ReferenceTrace = extern struct {
     decl_name: u32,
     src_loc: u32,
-    pub const Extra = struct {
+    pub const Extra = extern struct {
         data: *ReferenceTrace,
         end: u64,
     };
