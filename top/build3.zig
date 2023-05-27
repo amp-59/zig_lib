@@ -25,7 +25,7 @@ pub const BuilderSpec = struct {
         /// Bytes allowed per thread stack (static maximum)
         stack_aligned_bytes: u64 = 8 * 1024 * 1024,
         /// max_thread_count=0 is single-threaded.
-        max_thread_count: u64 = 16,
+        max_thread_count: u64 = 2,
         /// Lowest allocated byte address for thread stacks. This field and the
         /// two previous fields derive the arena lowest allocated byte address,
         /// as this is the first unallocated byte address of the thread space.
@@ -490,6 +490,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     .absolute = build_root,
                     .relative = root,
                 });
+                ret.args_len = 0;
                 if (builder_spec.options.enable_caching) {
                     cmd.listen = .@"-";
                 }
@@ -542,6 +543,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 ret.task_cmd = .{ .archive = cmd };
                 for (deps) |dep| ret.dependOnObject(allocator, dep);
                 ret.hidden = group.hidden;
+                ret.assertExchange(.archive, .null, .ready);
                 return ret;
             }
             pub fn addTarget(group: *Group, allocator: *Allocator, name: [:0]const u8) !*Target {
@@ -592,26 +594,27 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             return ret;
         }
         inline fn clientLoop(allocator: *Allocator, out: file.Pipe, working_time: *time.TimeSpec, ret: []u8, pid: u64) void {
-            const hdr: *types.Message.ServerHeader = allocator.create(types.Message.ServerHeader);
+            @setRuntimeSafety(safety);
+            const header: *types.Message.ServerHeader = allocator.create(types.Message.ServerHeader);
             const save: Allocator.Save = allocator.save();
             var fd: file.PollFd = .{ .fd = out.read, .expect = .{ .input = true } };
             while (try meta.wrap(file.pollOne(poll(), &fd, builder_spec.options.timeout_milliseconds))) {
                 try meta.wrap(
-                    file.readOne(read3(), out.read, hdr),
+                    file.readOne(read3(), out.read, header),
                 );
-                const msg: []u8 = allocator.allocate(u8, hdr.bytes_len);
-                mach.memset(msg.ptr, 0, msg.len);
+                const msg: []align(4) u8 = allocator.allocateAligned(u8, header.bytes_len, 4);
+                mach.memset(msg.ptr, 0, header.bytes_len);
                 var len: u64 = 0;
-                while (len != hdr.bytes_len) {
+                while (len != header.bytes_len) {
                     len +%= try meta.wrap(
-                        file.read(read2(), out.read, msg[len..hdr.bytes_len]),
+                        file.read(read2(), out.read, msg[len..header.bytes_len]),
                     );
                 }
-                if (hdr.tag == .emit_bin_path) break {
+                if (header.tag == .emit_bin_path) break {
                     ret[1] = msg[0];
                 };
-                if (hdr.tag == .error_bundle) break {
-                    debug.writeErrors(allocator, types.Message.ErrorHeader.create(msg));
+                if (header.tag == .error_bundle) break {
+                    debug.writeErrors(allocator, .{ .msg = msg.ptr });
                     ret[1] = builder_spec.options.compiler_error_status;
                 };
                 fd.actual = .{};
@@ -1115,15 +1118,15 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 .note_s = "note",
                 .bytes_s = " bytes, ",
                 .gold_s = "\x1b[93m",
-                .green_s = "\x1b[92m",
-                .red_s = "\x1b[91m",
+                .green_s = "\x1b[92;1m",
+                .red_s = "\x1b[91;1m",
                 .new_s = "\x1b[0m\n",
                 .reset_s = "\x1b[0m",
-                .tilde_s = "\x1b[38;5;46m",
                 .bold_s = "\x1b[1m",
                 .faint_s = "\x1b[2m",
                 .grey_s = "\x1b[0;38;5;250;1m",
                 .trace_s = "\x1b[38;5;247m",
+                .hi_green_s = "\x1b[38;5;46m",
                 .hi_red_s = "\x1b[38;5;196m",
             };
             const fancy_hl_line: bool = false;
@@ -1168,7 +1171,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 @setRuntimeSafety(safety);
                 var buf: [32768]u8 = undefined;
                 var len: u64 = writeExchangeTask(&buf, target, about_s, task);
-                @ptrCast(*[5]u8, buf[len..].ptr).* = ", st=".*;
+                @ptrCast(*[5]u8, buf[len..].ptr).* = ", state=".*;
                 len +%= 5;
                 const actual: types.State = target.task_lock.get(target.task);
                 mach.memcpy(buf[len..].ptr, @tagName(actual).ptr, @tagName(actual).len);
@@ -1201,10 +1204,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     mach.memset(buf[len..].ptr, ' ', depth *% 4);
                     len +%= depth *% 4;
                 }
-                if (ret[1] == builder_spec.options.compiler_cache_hit_status) {
-                    mach.memcpy(buf[len..].ptr, about.trace_s.ptr, about.trace_s.len);
-                    len +%= about.trace_s.len;
-                }
                 mach.memcpy(buf[len..].ptr, target.name.ptr, target.name.len);
                 len +%= target.name.len;
                 @ptrCast(*[2]u8, buf[len..].ptr).* = about.next_s.*;
@@ -1212,18 +1211,27 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 const mode: builtin.Mode = target.task_cmd.build.mode orelse .Debug;
                 mach.memcpy(buf[len..].ptr, @tagName(mode).ptr, @tagName(mode).len);
                 len +%= @tagName(mode).len;
-                if (builder_spec.options.enable_caching) {
-                    @ptrCast(*[6]u8, buf[len..].ptr).* = ", msg=".*;
-                    len +%= 6;
-                    const msg_s: []const u8 = @tagName(@intToEnum(ServerResult, ret[1]));
-                    mach.memcpy(buf[len..].ptr, msg_s.ptr, msg_s.len);
-                    len +%= msg_s.len;
-                }
                 @ptrCast(*[7]u8, buf[len..].ptr).* = ", exit=".*;
                 len +%= 7;
-                const exit_s: []const u8 = builtin.fmt.ud64(ret[0]).readAll();
-                mach.memcpy(buf[len..].ptr, exit_s.ptr, exit_s.len);
-                len +%= exit_s.len;
+                if (builder_spec.options.enable_caching) {
+                    const res: UpdateAnswer = @intToEnum(UpdateAnswer, ret[1]);
+                    const msg_s: []const u8 = @tagName(res);
+                    buf[len] = '[';
+                    len +%= 1;
+                    mach.memcpy(buf[len..].ptr, msg_s.ptr, msg_s.len);
+                    len +%= msg_s.len;
+                    buf[len] = ',';
+                    len +%= 1;
+                    const exit_s: []const u8 = builtin.fmt.ud64(ret[0]).readAll();
+                    mach.memcpy(buf[len..].ptr, exit_s.ptr, exit_s.len);
+                    len +%= exit_s.len;
+                    buf[len] = ']';
+                    len +%= 1;
+                } else {
+                    const exit_s: []const u8 = builtin.fmt.ud64(ret[0]).readAll();
+                    mach.memcpy(buf[len..].ptr, exit_s.ptr, exit_s.len);
+                    len +%= exit_s.len;
+                }
                 @ptrCast(*[2]u8, buf[len..].ptr).* = about.next_s.*;
                 len +%= 2;
                 if (old_size == 0) {
@@ -1248,8 +1256,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     buf[len] = '(';
                     len +%= 1;
                     const larger: bool = new_size > old_size;
-                    @ptrCast(*[6]u8, buf[len..].ptr).* = (if (larger) about.red_s ++ "+" else about.green_s ++ "-").*;
-                    len +%= 6;
+                    @ptrCast(*[8]u8, buf[len..].ptr).* = (if (larger) about.red_s ++ "+" else about.green_s ++ "-").*;
+                    len +%= 8;
                     mach.memcpy(buf[len..].ptr, diff_size_s.ptr, diff_size_s.len);
                     len +%= diff_size_s.len;
                     @ptrCast(*[4]u8, buf[len..].ptr).* = about.reset_s.*;
@@ -1290,8 +1298,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
                 mach.memcpy(buf[len..].ptr, target.name.ptr, target.name.len);
                 len +%= target.name.len;
-                @ptrCast(*[7]u8, buf[len..].ptr).* = ", exit=".*;
-                len +%= 7;
+                @ptrCast(*[5]u8, buf[len..].ptr).* = ", rc=".*;
+                len +%= 5;
                 const exit_s: []const u8 = builtin.fmt.ud64(ret[0]).readAll();
                 mach.memcpy(buf[len..].ptr, exit_s.ptr, exit_s.len);
                 len +%= exit_s.len;
@@ -1462,7 +1470,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 @ptrCast(*@TypeOf(about.bold_s.*), buf + len).* = about.bold_s.*;
                 return len +% about.bold_s.len;
             }
-            fn writeTopSrcLoc(buf: [*]u8, extra: [*]u32, bytes: [*:0]u8, err_msg_idx: u32) u64 {
+            inline fn writeTopSrcLoc(buf: [*]u8, extra: [*]u32, bytes: [*:0]u8, err_msg_idx: u32) u64 {
                 @setRuntimeSafety(safety);
                 const err: *types.ErrorMessage = @ptrCast(*types.ErrorMessage, extra + err_msg_idx);
                 const src: *types.SourceLocation = @ptrCast(*types.SourceLocation, extra + err.src_loc);
@@ -1572,8 +1580,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
                 mach.memset(buf + len, ' ', indent);
                 len +%= indent;
-                @ptrCast(*@TypeOf(about.tilde_s.*), buf + len).* = about.tilde_s.*;
-                len +%= about.tilde_s.len;
+                @ptrCast(*@TypeOf(about.hi_green_s.*), buf + len).* = about.hi_green_s.*;
+                len +%= about.hi_green_s.len;
                 mach.memset(buf + len, '~', before_caret);
                 len +%= before_caret;
                 buf[len] = '^';
@@ -1636,17 +1644,16 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 @ptrCast(*[5]u8, buf + len).* = about.new_s.*;
                 return len +% 5;
             }
-            fn writeErrors(allocator: *Allocator, hdr: *types.Message.ErrorHeader) void {
+            fn writeErrors(allocator: *Allocator, ptrs: packed union { msg: [*]align(4) u8, idx: [*]u32, str: [*:0]u8 }) void {
                 @setRuntimeSafety(safety);
-                const extra: [*]u32 = hdr.extra();
-                const bytes: [*:0]u8 = hdr.bytes();
+                const extra: [*]u32 = ptrs.idx + 2;
+                const bytes: [*:0]u8 = ptrs.str + 8 + (ptrs.idx[0] *% 4);
                 var buf: [*]u8 = allocator.allocate(u8, 1024 * 1024).ptr;
-                const list: types.ErrorMessageList = @ptrCast(*types.ErrorMessageList, extra).*;
-                for ((extra + list.start)[0..list.len]) |err_msg_idx| {
+                for ((extra + extra[1])[0..extra[0]]) |err_msg_idx| {
                     var len: u64 = writeError(buf, extra, bytes, err_msg_idx, about.error_s);
                     builtin.debug.write(buf[0..len]);
                 }
-                builtin.debug.write(meta.manyToSlice(bytes + list.compile_log_text));
+                builtin.debug.write(meta.manyToSlice(bytes + extra[2]));
             }
         };
         fn writeRecord(builder: *Builder, name: [:0]const u8, record: types.Record) void {
@@ -1964,11 +1971,10 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 .vars_type = [][*:0]u8,
             };
         }
-        const ServerResult = enum(u8) {
-            no_cache_hit = builder_spec.options.compiler_expected_status,
-            cache_hit = builder_spec.options.compiler_cache_hit_status,
-            compile_error = builder_spec.options.compiler_error_status,
-            _,
+        const UpdateAnswer = enum(u8) {
+            updated = builder_spec.options.compiler_expected_status,
+            cached = builder_spec.options.compiler_cache_hit_status,
+            failed = builder_spec.options.compiler_error_status,
         };
         const SourceLocation = if (builder_spec.options.show_detailed_targets) builtin.SourceLocation else void;
         inline fn sourceLocation(comptime src: builtin.SourceLocation) SourceLocation {
