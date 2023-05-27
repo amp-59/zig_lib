@@ -1,9 +1,8 @@
-const zig_lib = @import("zig_lib");
+const zig_lib = @import("../zig_lib.zig");
 const mem = zig_lib.mem;
 const fmt = zig_lib.fmt;
 const proc = zig_lib.proc;
 const file = zig_lib.file;
-const spec = zig_lib.spec;
 const virtual = zig_lib.virtual;
 const testing = zig_lib.testing;
 

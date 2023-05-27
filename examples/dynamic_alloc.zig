@@ -1,4 +1,4 @@
-const zig_lib = @import("zig_lib");
+const zig_lib = @import("../zig_lib.zig");
 
 const mem = zig_lib.mem;
 const fmt = zig_lib.fmt;

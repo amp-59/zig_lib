@@ -1,4 +1,4 @@
-const srg = @import("zig_lib");
+const srg = @import("../zig_lib.zig");
 const mem = srg.mem;
 const sys = srg.sys;
 const fmt = srg.fmt;
@@ -307,9 +307,7 @@ fn processRequest(options: *const Options, allocator: *Allocator, name: [:0]cons
 }
 const Options = struct {
     output: ?[:0]const u8 = null,
-
     pub const Map = proc.GenericOptions(Options);
-
     const about_output_s: []const u8 = "write output to pathname";
 };
 const opt_map: []const Options.Map = &[_]Options.Map{
