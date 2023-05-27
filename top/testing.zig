@@ -9,29 +9,30 @@ const meta = @import("./meta.zig");
 const spec = @import("./spec.zig");
 const algo = @import("./algo.zig");
 const builtin = @import("./builtin.zig");
-fn arrayOfCharsLength(s: []const u8) u64 {
+pub fn arrayOfCharsLength(s: []const u8) u64 {
     var len: u64 = 0;
     len += 2;
-    for (s) |i| {
-        len += 3;
+    for (s, 0..) |c, i| {
+        const seq: []const u8 = lit.lit_hex_sequences[c];
+        len += 2 +% seq.len;
         if (i != s.len - 1) {
             len += 2;
         }
     }
     return len + 3;
 }
-fn arrayOfCharsWrite(buf: []u8, s: []const u8) u64 {
+pub fn arrayOfCharsWrite(buf: []u8, s: []const u8) u64 {
     var len: u64 = 0;
     for ("{ ", 0..) |c, i| buf[len + i] = c;
     len += 2;
     for (s, 0..) |c, i| {
-        if (c == 0) {
-            for ("0x0", 0..) |b, j| buf[len + j] = b;
-            len += 3;
-        } else {
-            for ([_]u8{ '\'', c, '\'' }, 0..) |b, j| buf[len + j] = b;
-            len += 3;
-        }
+        const seq: []const u8 = lit.lit_hex_sequences[c];
+        buf[len] = '\'';
+        len +%= 1;
+        for (seq, 0..) |b, j| buf[len + j] = b;
+        len +%= seq.len;
+        buf[len] = '\'';
+        len +%= 1;
         if (i != s.len - 1) {
             for (", ", 0..) |b, j| buf[len + j] = b;
             len += 2;
