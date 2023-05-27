@@ -548,17 +548,8 @@ pub fn max(comptime T: type, arg1: T, arg2: T) T {
     }
 }
 pub fn ptr(comptime T: type) *T {
-    var ret: T = 0;
+    var ret: T = zero(T);
     return &ret;
-}
-const type_id: *comptime_int = ptr(comptime_int);
-comptime {
-    type_id.* = 0;
-}
-pub inline fn typeId(comptime _: type) comptime_int {
-    const ret: comptime_int = type_id.*;
-    type_id.* +%= 1;
-    return ret;
 }
 pub fn diff(comptime T: type, arg1: T, arg2: T) T {
     return subWrap(T, max(T, arg1, arg2), min(T, arg1, arg2));
@@ -579,11 +570,11 @@ pub inline fn ptrCast(comptime T: type, any: anytype) T {
     }
 }
 pub inline fn zero(comptime T: type) T {
-    const data: [@sizeOf(T)]u8 align(@alignOf(T)) = .{@as(u8, 0)} ** @sizeOf(T);
+    const data: [@sizeOf(T)]u8 align(@max(1, @alignOf(T))) = .{@as(u8, 0)} ** @sizeOf(T);
     return @ptrCast(*const T, &data).*;
 }
 pub inline fn all(comptime T: type) T {
-    const data: [@sizeOf(T)]u8 align(@alignOf(T)) = .{~@as(u8, 0)} ** @sizeOf(T);
+    const data: [@sizeOf(T)]u8 align(@max(1, @alignOf(T))) = .{~@as(u8, 0)} ** @sizeOf(T);
     return @ptrCast(*const T, &data).*;
 }
 pub inline fn addr(any: anytype) usize {
