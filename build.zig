@@ -3,37 +3,34 @@ const proc = srg.proc;
 const spec = srg.spec;
 const build = srg.build;
 const builtin = srg.builtin;
-pub const runtime_assertions: bool = false;
+
 pub const Builder: type = build.GenericBuilder(spec.builder.default);
 pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
+
+pub const runtime_assertions: bool = false;
 pub const message_style: [:0]const u8 = "\x1b[2m";
+
+const all_deps: []const build.ModuleDependency = &.{
+    .{ .name = "env" }, .{ .name = "zig_lib" }, .{ .name = "@build" },
+};
+const all_mods: []const build.Module = &.{
+    .{ .name = "env", .path = "zig-cache/env.zig" },
+    .{ .name = "zig_lib", .path = "zig_lib.zig" },
+    .{ .name = "@build", .path = "./build.zig" },
+};
 var build_cmd: build.BuildCommand = .{
     .kind = .exe,
     .mode = .ReleaseSmall,
-    .dependencies = &.{
-        .{ .name = "zig_lib" },
-        .{ .name = "env" },
-        .{ .name = "@build" },
-    },
+    .dependencies = all_deps[0..1],
+    .modules = all_mods[0..1],
     .image_base = 0x10000,
     .strip = true,
-    .static = true,
     .compiler_rt = false,
     .reference_trace = true,
     .single_threaded = true,
     .function_sections = true,
     .gc_sections = true,
     .omit_frame_pointer = false,
-    .modules = &.{ .{
-        .name = "zig_lib",
-        .path = "zig_lib.zig",
-    }, .{
-        .name = "env",
-        .path = "zig-cache/env.zig",
-    }, .{
-        .name = "@build",
-        .path = "./build.zig",
-    } },
 };
 const format_cmd: build.FormatCommand = .{
     .ast_check = true,
@@ -69,7 +66,7 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     const readdir: *Builder.Target =        try eg.addBuild(allocator, build_cmd,       "readdir",    "examples/dir_iterator.zig");
     const dynamic: *Builder.Target =        try eg.addBuild(allocator, build_cmd,       "dynamic",    "examples/dynamic_alloc.zig");
     const custom: *Builder.Target =         try eg.addBuild(allocator, build_cmd,       "addrspace",  "examples/addrspace.zig");
-    const allocators: *Builder.Target =     try eg.addBuild(allocator, build_cmd,       "allocators", "examples/allocator.zig");
+    const allocators: *Builder.Target =     try eg.addBuild(allocator, build_cmd,       "allocators", "examples/allocators.zig");
     const display: *Builder.Target =        try eg.addBuild(allocator, build_cmd,       "display",    "examples/display.zig");
     const mca: *Builder.Target =            try eg.addBuild(allocator, build_cmd,       "mca",        "examples/mca.zig");
     const treez: *Builder.Target =          try eg.addBuild(allocator, build_cmd,       "treez",      "examples/treez.zig");
@@ -86,6 +83,23 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     const builder1_test: *Builder.Target =  try tests.addBuild(allocator, build_cmd,    "zls_test",       "zls_build_runner.zig");
     const builder2_test: *Builder.Target =  try tests.addBuild(allocator, build_cmd,    "cmdline_test",   "test/cmdline-test.zig");
     const crypto_test: *Builder.Target =    try tests.addBuild(allocator, build_cmd,    "crypto_test",  "test/crypto-test.zig");
+    if (false) {
+    for ([_]*Builder.Target{
+        try tests.addBuildAnonymous(allocator, build_cmd,   "test/crypto/aead-test.zig"),
+        try tests.addBuildAnonymous(allocator, build_cmd,   "test/crypto/core-test.zig"),
+        try tests.addBuildAnonymous(allocator, build_cmd,   "test/crypto/hash-test.zig"),
+        try tests.addBuildAnonymous(allocator, build_cmd,   "test/crypto/pcurve-test.zig"),
+        try tests.addBuildAnonymous(allocator, build_cmd,   "test/crypto/ecdsa-test.zig"),
+        try tests.addBuildAnonymous(allocator, build_cmd,   "test/crypto/auth-test.zig"),
+        try tests.addBuildAnonymous(allocator, build_cmd,   "test/crypto/utils-test.zig"),
+        try tests.addBuildAnonymous(allocator, build_cmd,   "test/crypto/kyber-test.zig"),
+        try tests.addBuildAnonymous(allocator, build_cmd,   "test/crypto/dh-test.zig"),
+        try tests.addBuildAnonymous(allocator, build_cmd,   "test/crypto/tls-test.zig"),
+    }) |target| {
+        crypto_test.dependOnRun(allocator, target);
+        target.task_cmd.build.mode = .ReleaseSmall;
+    }
+    }
     const mem_test: *Builder.Target =       try tests.addBuild(allocator, build_cmd,    "mem_test",       "test/mem-test.zig");
     const mem2_test: *Builder.Target =      try tests.addBuild(allocator, build_cmd,    "mem2_test",      "test/mem2-test.zig");
     const proc_test: *Builder.Target =      try tests.addBuild(allocator, build_cmd,    "proc_test",      "test/proc-test.zig");
@@ -101,14 +115,11 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     const mg_ptr: *Builder.Target =         try memgen.addFormat(allocator, format_cmd, "mg_ptr",  "top/mem/ptr.zig");
     // Builder implementation generator:
     build_cmd.mode = .ReleaseSmall;
-    const bg_tasks_impls: *Builder.Target =   try bg_aux.addBuild(allocator, build_cmd, "bg_tasks_impls",
-                                                                                        "top/build/gen/tasks_impls.zig");
-    const bg_cmdline_impls: *Builder.Target = try bg_aux.addBuild(allocator, build_cmd, "bg_cmdline_impls",
-                                                                                        "top/build/gen/cmdline_impls.zig");
-    const bg_tasks: *Builder.Target =   try buildgen.addFormat(allocator, format_cmd,   "bg_tasks",       "top/build/tasks.zig");
-    const bg_cmdline: *Builder.Target = try buildgen.addFormat(allocator, format_cmd,   "bg_cmdline",     "top/build/cmdline.zig");
-    const tg_cpu_impl: *Builder.Target = try targetgen.addBuild(allocator, build_cmd,   "tg_feat_impls",
-                                                                                        "top/target/gen/feat_impls.zig");
+    const bg_tasks_impls: *Builder.Target = try bg_aux.addBuild(allocator, build_cmd, "bg_tasks_impls",
+                                                                                      "top/build/gen/tasks_impls.zig");
+    const bg_tasks: *Builder.Target =   try buildgen.addFormat(allocator, format_cmd, "bg_tasks",       "top/build/tasks.zig");
+    const tg_cpu_impl: *Builder.Target = try targetgen.addBuild(allocator, build_cmd, "tg_feat_impls",
+                                                                                      "top/target/gen/feat_impls.zig");
     tg_cpu_impl.task_cmd.build.compiler_rt = true;
     tg_cpu_impl.task_cmd.build.mode = .ReleaseSmall;
     // Descriptions:
@@ -158,22 +169,19 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     mg_ctn_impls.descr =    "Generate container implementations";
     mg_ptr.descr =          "Reformat generated generic pointers into canonical form";
     mg_ctn.descr =          "Reformat generated generic containers into canonical form";
-    bg_tasks.descr =        "Generate builder command line data structures";
-    bg_cmdline.descr =      "Generate builder command line writer functions";
+    bg_tasks_impls.descr =  "Generate builder command line data structures";
     bg_tasks.descr =        "Reformat generated builder command line data structures into canonical form";
-    bg_cmdline.descr =      "Reformat generated builder command line writer functions into canonical form";
     // Dependencies:
     mg_specs.dependOnRun(allocator,         mg_touch);
+    mg_ctn_kinds.dependOnRun(allocator,     mg_touch);
     mg_ptr_impls.dependOnRun(allocator,     mg_specs);
     mg_ptr.dependOnRun(allocator,           mg_ptr_impls);
     mg_ctn_impls.dependOnRun(allocator,     mg_specs);
     mg_ctn_impls.dependOnRun(allocator,     mg_ctn_kinds);
     mg_ctn.dependOnRun(allocator,           mg_ctn_impls);
     bg_tasks.dependOnRun(allocator,         bg_tasks_impls);
-    bg_cmdline.dependOnRun(allocator,       bg_cmdline_impls);
     // Misc
     mv.task_cmd.build.mode = .Debug;
-    crypto_test.task_cmd.build.mode = .Debug;
     // zig fmt: on
     for ([_]*Builder.Target{ builder0_test, builder1_test, builder2_test, serial_test }) |target| {
         target.addRunArgument(allocator, Builder.zig_exe);
@@ -181,6 +189,8 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
         target.addRunArgument(allocator, Builder.cache_root);
         target.addRunArgument(allocator, Builder.global_cache_root);
         if (target != serial_test) {
+            target.task_cmd.build.dependencies = all_deps;
+            target.task_cmd.build.modules = all_mods;
             target.task_cmd.build.mode = .Debug;
             target.task_cmd.build.strip = false;
         }
