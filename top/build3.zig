@@ -25,7 +25,7 @@ pub const BuilderSpec = struct {
         /// Bytes allowed per thread stack (static maximum)
         stack_aligned_bytes: u64 = 8 * 1024 * 1024,
         /// max_thread_count=0 is single-threaded.
-        max_thread_count: u64 = 2,
+        max_thread_count: u64 = 16,
         /// Lowest allocated byte address for thread stacks. This field and the
         /// two previous fields derive the arena lowest allocated byte address,
         /// as this is the first unallocated byte address of the thread space.
@@ -54,9 +54,6 @@ pub const BuilderSpec = struct {
         show_detailed_targets: bool = false,
         /// Enables logging for build job statistics.
         show_stats: bool = true,
-        /// Notices will represent the depth of a dependency relative to toplevel by
-        /// increasing indentation.
-        show_dependency_depth: bool = false,
         /// Enables detail for target dependecy listings.
         show_detailed_deps: bool = true,
         /// Use `SimpleAllocator` instead of configured generic allocator.
@@ -235,11 +232,12 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 while (targetWait(target, task)) {
                     try meta.wrap(time.sleep(sleep(), .{ .nsec = builder_spec.options.sleep_nanoseconds }));
                 }
-                if (target.task_lock.get(task) != .working) return;
-                if (executeCommandInternal(builder, &allocator, target, depth, task)) {
-                    target.assertExchange(task, .working, .finished);
-                } else {
-                    target.assertExchange(task, .working, .failed);
+                if (target.task_lock.get(task) == .working) {
+                    if (executeCommandInternal(builder, &allocator, target, depth, task)) {
+                        target.assertExchange(task, .working, .finished);
+                    } else {
+                        target.assertExchange(task, .working, .failed);
+                    }
                 }
                 if (Builder.Allocator == mem.SimpleAllocator)
                     allocator.unmap()
@@ -265,11 +263,12 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 while (targetWait(target, task)) {
                     try meta.wrap(time.sleep(sleep(), .{ .nsec = builder_spec.options.sleep_nanoseconds }));
                 }
-                if (target.task_lock.get(task) != .working) return;
-                if (executeCommandInternal(builder, allocator, target, depth, task)) {
-                    target.assertExchange(task, .working, .finished);
-                } else {
-                    target.assertExchange(task, .working, .failed);
+                if (target.task_lock.get(task) == .working) {
+                    if (executeCommandInternal(builder, allocator, target, depth, task)) {
+                        target.assertExchange(task, .working, .finished);
+                    } else {
+                        target.assertExchange(task, .working, .failed);
+                    }
                 }
             }
         };
@@ -602,19 +601,21 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 try meta.wrap(
                     file.readOne(read3(), out.read, header),
                 );
-                const msg: []align(4) u8 = allocator.allocateAligned(u8, header.bytes_len, 4);
-                mach.memset(msg.ptr, 0, header.bytes_len);
+                const ptrs: MessagePtrs = .{
+                    .msg = allocator.allocateAligned(u8, header.bytes_len, 4).ptr,
+                };
+                mach.memset(ptrs.msg, 0, header.bytes_len);
                 var len: u64 = 0;
                 while (len != header.bytes_len) {
                     len +%= try meta.wrap(
-                        file.read(read2(), out.read, msg[len..header.bytes_len]),
+                        file.read(read2(), out.read, ptrs.msg[len..header.bytes_len]),
                     );
                 }
                 if (header.tag == .emit_bin_path) break {
-                    ret[1] = msg[0];
+                    ret[1] = ptrs.msg[0];
                 };
                 if (header.tag == .error_bundle) break {
-                    debug.writeErrors(allocator, .{ .msg = msg.ptr });
+                    debug.writeErrors(allocator, ptrs);
                     ret[1] = builder_spec.options.compiler_error_status;
                 };
                 fd.actual = .{};
@@ -877,13 +878,12 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         }
         fn depTest(target: *Target, task: types.Task, state: types.State) bool {
             for (target.deps[0..target.deps_len]) |*dep| {
-                const t_st: types.State = dep.on_target.task_lock.get(dep.on_task);
                 if (dep.on_target == target and
                     dep.on_task == task)
                 {
                     continue;
                 }
-                if (t_st == state) {
+                if (dep.on_target.task_lock.get(dep.on_task) == state) {
                     return true;
                 }
             }
@@ -891,14 +891,14 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         }
         fn depExchange(target: *Target, task: types.Task, from: types.State, to: types.State) void {
             for (target.deps[0..target.deps_len]) |*dep| {
-                const t_st: types.State = dep.on_target.task_lock.get(dep.on_task);
-                _ = t_st;
                 if (dep.on_target == target and
                     dep.on_task == task)
                 {
                     continue;
                 }
-                _ = dep.on_target.exchange(dep.on_task, from, to);
+                if (!dep.on_target.exchange(dep.on_task, from, to)) {
+                    return;
+                }
             }
         }
         // In order to leave all must be cancelled, failed, or finished
@@ -910,6 +910,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     depTest(target, task, .cancelled))
                 {
                     target.assertExchange(task, .blocking, .failed);
+                    depExchange(target, task, .ready, .cancelled);
+                    depExchange(target, task, .blocking, .failed);
                     return true;
                 }
                 if (depTest(target, task, .working) or
@@ -921,8 +923,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 return false;
             }
             if (s_st == .failed) {
-                depExchange(target, task, .ready, .cancelled);
-                depExchange(target, task, .blocking, .failed);
                 return depTest(target, task, .working);
             }
             return false;
@@ -940,6 +940,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         }
         fn builderWait(address_space: *Builder.AddressSpace, thread_space: *Builder.ThreadSpace, builder: *Builder) bool {
             @setRuntimeSafety(safety);
+            if (max_thread_count == 0) {
+                return false;
+            }
             for (builder.grps[0..builder.grps_len]) |group| {
                 for (group.trgs[0..group.trgs_len]) |target| {
                     for (types.Task.list) |task| {
@@ -948,9 +951,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         }
                     }
                 }
-            }
-            if (max_thread_count == 0) {
-                return false;
             }
             if (thread_space.count() != 0) {
                 return true;
@@ -1138,14 +1138,16 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             const fancy_hl_line: bool = false;
             fn writeFromTo(buf: [*]u8, old: types.State, new: types.State) u64 {
                 @setRuntimeSafety(safety);
-                @ptrCast(*[7]u8, buf).* = ", from=".*;
-                var len: u64 = 7;
+                @ptrCast(*[2]u8, buf).* = "={".*;
+                var len: u64 = 2;
                 mach.memcpy(buf + len, @tagName(old).ptr, @tagName(old).len);
                 len +%= @tagName(old).len;
-                @ptrCast(*[5]u8, buf + len).* = ", to=".*;
-                len +%= 5;
+                @ptrCast(*[2]u8, buf + len).* = "=>".*;
+                len +%= 2;
                 mach.memcpy(buf + len, @tagName(new).ptr, @tagName(new).len);
                 len +%= @tagName(new).len;
+                buf[len] = '}';
+                len +%= 1;
                 return len;
             }
             fn writeExchangeTask(buf: [*]u8, target: *Target, about_s: []const u8, task: types.Task) u64 {
@@ -1175,19 +1177,40 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             fn noExchangeNotice(target: *Target, about_s: [:0]const u8, task: types.Task, old: types.State, new: types.State, src: SourceLocation) void {
                 @setRuntimeSafety(safety);
+                const actual: types.State = target.task_lock.get(task);
                 var buf: [32768]u8 = undefined;
                 var len: u64 = writeExchangeTask(&buf, target, about_s, task);
-                @ptrCast(*[5]u8, buf[len..].ptr).* = ", state=".*;
-                len +%= 5;
-                const actual: types.State = target.task_lock.get(target.task);
+                buf[len] = '=';
+                len +%= 1;
                 mach.memcpy(buf[len..].ptr, @tagName(actual).ptr, @tagName(actual).len);
                 len +%= @tagName(actual).len;
-                len +%= writeFromTo(buf[len..].ptr, old, new);
+                const add: u64 = writeFromTo(buf[len..].ptr, old, new);
+                buf[len] = '!';
+                len +%= add;
                 if (builder_spec.options.show_detailed_targets) {
                     @ptrCast(*[2]u8, buf[len..].ptr).* = ", ".*;
                     len +%= 2;
                     len +%= writeSourceLocation(buf[len..].ptr, src.file, src.line, src.column);
                 }
+                buf[len] = '\n';
+                builtin.debug.write(buf[0 .. len +% 1]);
+            }
+            fn stateNotice(target: *Target, task: types.Task) void {
+                @setRuntimeSafety(safety);
+                const actual: types.State = target.task_lock.get(task);
+                var buf: [32768]u8 = undefined;
+                mach.memcpy(&buf, about.state_0_s.ptr, about.state_0_s.len);
+                var len: u64 = about.state_0_s.len;
+                mach.memcpy(buf[len..].ptr, target.name.ptr, target.name.len);
+                len +%= target.name.len;
+                buf[len] = '.';
+                len +%= 1;
+                mach.memcpy(buf[len..].ptr, @tagName(task).ptr, @tagName(task).len);
+                len +%= @tagName(task).len;
+                buf[len] = '=';
+                len +%= 1;
+                mach.memcpy(buf[len..].ptr, @tagName(actual).ptr, @tagName(actual).len);
+                len +%= @tagName(actual).len;
                 buf[len] = '\n';
                 builtin.debug.write(buf[0 .. len +% 1]);
             }
@@ -1511,7 +1534,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 buf[len] = ':';
                 len +%= 1;
                 mach.memcpy(buf + len, column_s.ptr, column_s.len);
-                return len +% column_s.len;
+                len +%= column_s.len;
+                @ptrCast(*[4]u8, buf + len).* = about.reset_s.*;
+                return len +% 4;
             }
             fn writeTimes(buf: [*]u8, count: u64) u64 {
                 @setRuntimeSafety(safety);
@@ -1625,7 +1650,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 @ptrCast(*[5]u8, buf + len).* = about.new_s.*;
                 return len +% 5;
             }
-            fn writeErrors(allocator: *Allocator, ptrs: packed union { msg: [*]align(4) u8, idx: [*]u32, str: [*:0]u8 }) void {
+            fn writeErrors(allocator: *Allocator, ptrs: MessagePtrs) void {
                 @setRuntimeSafety(safety);
                 const extra: [*]u32 = ptrs.idx + 2;
                 const bytes: [*:0]u8 = ptrs.str + 8 + (ptrs.idx[0] *% 4);
@@ -1952,6 +1977,11 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 .vars_type = [][*:0]u8,
             };
         }
+        const MessagePtrs = packed union {
+            msg: [*]align(4) u8,
+            idx: [*]u32,
+            str: [*:0]u8,
+        };
         const UpdateAnswer = enum(u8) {
             updated = builder_spec.options.compiler_expected_status,
             cached = builder_spec.options.compiler_cache_hit_status,
