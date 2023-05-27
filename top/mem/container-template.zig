@@ -1,7 +1,7 @@
 const meta = @import("../meta.zig");
 const mach = @import("../mach.zig");
 const builtin = @import("../builtin.zig");
-const reference = @import("./reference.zig");
+const reference = @import("./ptr.zig");
 // start-document container-template.zig
 pub const Amount = union(enum) { // bytes: u64, count: u64 };
     bytes: u64,
@@ -124,7 +124,6 @@ pub const ReinterpretSpec = struct {
     };
 };
 pub const reinterpret = opaque {
-    const validate_format_length: bool = false;
     fn isEquivalent(comptime child: type, comptime write_spec: ReinterpretSpec, comptime dst_type: type, comptime src_type: type) bool {
         const dst_type_info: builtin.Type = @typeInfo(dst_type);
         const src_type_info: builtin.Type = @typeInfo(src_type);
