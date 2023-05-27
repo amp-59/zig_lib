@@ -21,7 +21,7 @@ pub fn DiscreteBitSet(comptime elements: u16, comptime val_type: type, comptime 
     const data_info: builtin.Type = @typeInfo(data_type);
     const idx_info: builtin.Type = @typeInfo(idx_type);
     if (data_info == .Array and idx_info != .Enum) {
-        return (extern struct {
+        return extern struct {
             bits: data_type = [1]u64{0} ** data_info.Array.len,
             pub const BitSet: type = @This();
             const Word: type = data_info.Array.child;
@@ -41,9 +41,9 @@ pub fn DiscreteBitSet(comptime elements: u16, comptime val_type: type, comptime 
                 const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
                 bit_set.bits[index / word_bit_size] &= ~bit_mask;
             }
-        });
+        };
     } else if (data_info == .Int and idx_info != .Enum) {
-        return (extern struct {
+        return extern struct {
             bits: data_type = 0,
             pub const BitSet: type = @This();
             const Word: type = data_type;
@@ -63,7 +63,7 @@ pub fn DiscreteBitSet(comptime elements: u16, comptime val_type: type, comptime 
                 const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
                 bit_set.bits &= ~bit_mask;
             }
-        });
+        };
     } else if (data_info == .Array and idx_info == .Enum) {
         return (extern struct {
             bits: data_type = [1]u64{0} ** data_info.Array.len,
@@ -87,7 +87,7 @@ pub fn DiscreteBitSet(comptime elements: u16, comptime val_type: type, comptime 
             }
         });
     } else if (data_info == .Int and idx_info == .Enum) {
-        return (extern struct {
+        return extern struct {
             bits: data_type = 0,
             pub const BitSet: type = @This();
             const Word: type = data_type;
@@ -107,13 +107,13 @@ pub fn DiscreteBitSet(comptime elements: u16, comptime val_type: type, comptime 
                 const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
                 bit_set.bits &= ~bit_mask;
             }
-        });
+        };
     }
 }
 pub fn ThreadSafeSet(comptime elements: u16, comptime val_type: type, comptime idx_type: type) type {
     const idx_info: builtin.Type = @typeInfo(idx_type);
     if (val_type == bool and idx_info != .Enum) {
-        return (extern struct {
+        return extern struct {
             bytes: [elements]u8 = builtin.zero([elements]u8),
             pub const SafeSet: type = @This();
             inline fn refer(safe_set: *SafeSet, index: idx_type) *u8 {
@@ -134,9 +134,9 @@ pub fn ThreadSafeSet(comptime elements: u16, comptime val_type: type, comptime i
             pub inline fn atomicUnset(safe_set: *SafeSet, index: idx_type) bool {
                 return common.atomicByteExchange(&safe_set.bytes[index], 255, 0);
             }
-        });
+        };
     } else if (val_type == bool and idx_info == .Enum) {
-        return (extern struct {
+        return extern struct {
             bytes: [elements]u8 = builtin.zero([elements]u8),
             pub const SafeSet: type = @This();
             inline fn refer(safe_set: *SafeSet, index: idx_type) *u8 {
@@ -157,9 +157,9 @@ pub fn ThreadSafeSet(comptime elements: u16, comptime val_type: type, comptime i
             pub inline fn atomicUnset(safe_set: *SafeSet, index: idx_type) bool {
                 return common.atomicByteExchange(safe_set.refer(index), 255, 0);
             }
-        });
+        };
     } else if (val_type != bool and idx_info != .Enum) {
-        return (extern struct {
+        return extern struct {
             bytes: [elements]val_type = builtin.zero([elements]val_type),
             pub const SafeSet: type = @This();
             inline fn refer(safe_set: *SafeSet, index: idx_type) *val_type {
@@ -167,6 +167,9 @@ pub fn ThreadSafeSet(comptime elements: u16, comptime val_type: type, comptime i
             }
             pub fn get(safe_set: *SafeSet, index: idx_type) val_type {
                 return safe_set.refer(index).*;
+            }
+            pub fn set(safe_set: *SafeSet, index: idx_type, to: val_type) void {
+                safe_set.refer(index).* = to;
             }
             pub fn atomicExchange(safe_set: *SafeSet, index: idx_type, if_state: val_type, to_state: val_type) callconv(.C) bool {
                 return asm volatile (
@@ -181,9 +184,9 @@ pub fn ThreadSafeSet(comptime elements: u16, comptime val_type: type, comptime i
                     : "rax", "rdx", "memory"
                 );
             }
-        });
+        };
     } else if (val_type != bool and idx_info == .Enum) {
-        return (extern struct {
+        return extern struct {
             bytes: [elements]val_type = builtin.zero([elements]val_type),
             pub const SafeSet: type = @This();
             inline fn refer(safe_set: *SafeSet, index: idx_type) *val_type {
@@ -192,7 +195,10 @@ pub fn ThreadSafeSet(comptime elements: u16, comptime val_type: type, comptime i
             pub inline fn get(safe_set: *SafeSet, index: idx_type) val_type {
                 return safe_set.refer(index).*;
             }
-            pub fn transform(safe_set: *SafeSet, index: idx_type, if_state: val_type, to_state: val_type) bool {
+            pub inline fn set(safe_set: *SafeSet, index: idx_type, to: val_type) void {
+                safe_set.refer(index).* = to;
+            }
+            pub fn exchange(safe_set: *SafeSet, index: idx_type, if_state: val_type, to_state: val_type) bool {
                 const ret: bool = safe_set.get() == if_state;
                 if (ret) safe_set.refer(index).* = to_state;
                 return ret;
@@ -210,7 +216,7 @@ pub fn ThreadSafeSet(comptime elements: u16, comptime val_type: type, comptime i
                     : "rax", "rdx", "memory"
                 );
             }
-        });
+        };
     }
 }
 fn GenericMultiSet(
