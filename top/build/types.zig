@@ -22,25 +22,28 @@ pub const AuxOutputMode = enum {
     implib,
 };
 pub const Task = enum(u8) {
-    none = 0,
-    format = 1,
-    build = 2,
-    run = 3,
-    archive = 4,
+    null = 0,
+    any = 1,
+    format = 2,
+    build = 3,
+    run = 4,
+    archive = 5,
     pub const list: []const Task = meta.tagList(Task);
 };
 pub const State = enum(u8) {
-    /// The task does not exist for the target
-    no_task = 0,
-    /// The task was unable to complete due to an error
+    /// The task does not exist for the target.
+    null = 0,
+    /// The task was unable to complete due to an error.
     failed = 1,
-    /// The task is not yet ready to begin due to incomplete dependencies
-    waiting = 2,
-    /// The task is ready to begin
-    ready = 3,
-    /// The task is in progress
+    /// The task is ready to begin.
+    ready = 2,
+    /// The is waiting on dependencies.
+    blocking = 3,
+    /// The task is in progress.
     working = 4,
-    /// The task is complete
+    /// The task was stopped without error.
+    cancelled = 5,
+    /// The task is complete.
     finished = 255,
     pub const list: []const State = meta.tagList(State);
 };
