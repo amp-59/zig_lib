@@ -831,6 +831,7 @@ pub noinline fn callClone(
 ) sys.ErrorUnion(spec.errors, spec.return_type) {
     @setRuntimeSafety(false);
     const Fn: type = @TypeOf(function);
+    const Args: type = meta.Args(Fn);
     const cl_args: CloneArgs = spec.args(stack_addr, stack_len);
     const cl_args_addr: u64 = @ptrToInt(&cl_args);
     const cl_args_size: u64 = @sizeOf(CloneArgs);
@@ -838,7 +839,7 @@ pub noinline fn callClone(
     const call_off: u64 = 8;
     const args_off: u64 = 16;
     @intToPtr(**const Fn, stack_addr +% call_off).* = &function;
-    @intToPtr(*meta.Args(Fn), stack_addr +% args_off).* = args;
+    @intToPtr(*Args, stack_addr +% args_off).* = args;
     if (@TypeOf(result_ptr) != void) {
         @intToPtr(*u64, stack_addr +% ret_off).* = @ptrToInt(result_ptr);
     }
@@ -1029,6 +1030,7 @@ pub const PathIterator = struct {
                 itr.paths[idx] = ':';
             }
         }
+        itr.paths_idx = 0;
     }
 };
 pub fn auxiliaryValue(auxv: *const anyopaque, comptime tag: AuxiliaryVectorEntry) ?u64 {
