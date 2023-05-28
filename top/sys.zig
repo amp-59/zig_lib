@@ -986,7 +986,11 @@ pub const WAIT = struct {
     pub const NOTHREAD = 0x20000000;
     pub const ALL = 0x40000000;
 };
-pub const SHUT = struct {};
+pub const SHUT = struct {
+    pub const RD = 0;
+    pub const WR = 1;
+    pub const RDWR = 2;
+};
 pub const MOUNT_ATTR = struct {
     pub const RELATIME = 0x0;
     pub const RDONLY = 0x1;
