@@ -1013,8 +1013,10 @@ pub const PathIterator = struct {
         const idx: u64 = itr.paths_idx;
         while (itr.paths_idx != itr.paths.len) : (itr.paths_idx +%= 1) {
             if (itr.paths[itr.paths_idx] == ':') {
-                itr.paths[itr.paths_idx] = 0;
-                return itr.paths[idx..itr.paths_idx :0];
+                const end: u64 = itr.paths_idx;
+                itr.paths[end] = 0;
+                itr.paths_idx +%= 1;
+                return itr.paths[idx..end :0];
             }
         } else {
             return itr.paths[idx..itr.paths_idx :0];
