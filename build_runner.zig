@@ -22,6 +22,8 @@ const Builder = if (@hasDecl(root, "Builder"))
 else
     build.GenericBuilder(spec.builder.default);
 
+pub const is_debug: bool = false;
+
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     var address_space: Builder.AddressSpace = .{};
     var thread_space: Builder.ThreadSpace = .{};
