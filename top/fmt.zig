@@ -1111,6 +1111,45 @@ pub fn EscapedStringFormat(comptime fmt_spec: EscapedStringFormatSpec) type {
                 }
             }
         }
+        pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
+            var len: u64 = 0;
+            const DQ = [fmt_spec.double_quote.len]u8;
+            const SQ = [fmt_spec.single_quote.len]u8;
+            for (format.value) |byte| {
+                switch (byte) {
+                    else => len +%= esc(byte).formatWriteBuf(buf),
+                    '\n' => {
+                        @ptrCast(*[2]u8, buf + len).* = "\\n".*;
+                        len +%= 2;
+                    },
+                    '\r' => {
+                        @ptrCast(*[2]u8, buf + len).* = "\\r".*;
+                        len +%= 2;
+                    },
+                    '\t' => {
+                        @ptrCast(*[2]u8, buf + len).* = "\\t".*;
+                        len +%= 2;
+                    },
+                    '\\' => {
+                        @ptrCast(*[2]u8, buf + len).* = "\\\\".*;
+                        len +%= 2;
+                    },
+                    '"' => {
+                        @ptrCast(*DQ, buf + len).* = @ptrCast(*const DQ, fmt_spec.double_quote.ptr).*;
+                        len +%= fmt_spec.double_quote.len;
+                    },
+                    '\'' => {
+                        @ptrCast(*SQ, buf + len).* = @ptrCast(*const SQ, fmt_spec.single_quote.ptr).*;
+                        len +%= fmt_spec.single_quote.len;
+                    },
+                    ' ', '!', '#'...'&', '('...'[', ']'...'~' => {
+                        buf[len] = byte;
+                        len +%= 1;
+                    },
+                }
+            }
+            return len;
+        }
         pub fn formatLength(format: Format) u64 {
             var len: u64 = 0;
             for (format.value) |byte| {

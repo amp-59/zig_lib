@@ -253,7 +253,6 @@ fn testLallocator() !void {
     var address_space: AddressSpace = .{};
     var allocator: AllocatorL = try AllocatorL.init(&address_space);
     defer allocator.deinit(&address_space);
-
     var count: u64 = rng.readOne(u16);
     while (count != 1024) : (count = rng.readOne(u16)) {
         const buf: []u8 = try allocator.allocate(u8, count);
@@ -263,7 +262,6 @@ fn testLallocator() !void {
         allocator.deallocate(buf);
     }
     allocator.deallocateAll();
-
     var allocations: [16]?[]u8 = .{null} ** 16;
     for (&allocations, 0..) |*buf, idx| {
         buf.* = try allocator.allocate(u8, idx +% 1);
