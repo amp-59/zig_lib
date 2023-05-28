@@ -5,7 +5,7 @@ const build = srg.build;
 const builtin = srg.builtin;
 
 pub const Builder: type = build.GenericBuilder(spec.builder.default);
-pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
+//pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
 
 pub const runtime_assertions: bool = false;
 pub const message_style: [:0]const u8 = "\x1b[2m";
@@ -25,6 +25,7 @@ var build_cmd: build.BuildCommand = .{
     .modules = all_mods[0..1],
     .image_base = 0x10000,
     .strip = true,
+    .emit_analysis = .{ .yes = null },
     .compiler_rt = false,
     .reference_trace = true,
     .single_threaded = true,
@@ -38,6 +39,7 @@ const format_cmd: build.FormatCommand = .{
 pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     // zig fmt: off
     // Groups:
+
     const tests: *Builder.Group =           try builder.addGroup(allocator, "tests");
     const wip: *Builder.Group =             try builder.addGroup(allocator, "wip");
     const eg: *Builder.Group =              try builder.addGroup(allocator, "examples");
@@ -46,6 +48,11 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     const buildgen: *Builder.Group =        try builder.addGroup(allocator, "buildgen");
     const bg_aux: *Builder.Group =          try builder.addGroup(allocator, "_buildgen");
     const targetgen: *Builder.Group =       try builder.addGroup(allocator, "targetgen");
+
+
+    //_ = try bg_aux.addRun(allocator, "grep");
+
+
     // Tests
     const serial_test: *Builder.Target =    try tests.addBuild(allocator, build_cmd,    "serial_test",  "test/serial-test.zig");
     const decl_test: *Builder.Target =      try tests.addBuild(allocator, build_cmd,    "decl_test",    "test/decl-test.zig");
@@ -84,22 +91,20 @@ pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
     const builder0_test: *Builder.Target =  try tests.addBuild(allocator, build_cmd,    "lib_test",     "build_runner.zig");
     const builder1_test: *Builder.Target =  try tests.addBuild(allocator, build_cmd,    "zls_test",     "zls_build_runner.zig");
     const builder2_test: *Builder.Target =  try tests.addBuild(allocator, build_cmd,    "cmdline_test", "test/cmdline-test.zig");
-    if (false) {
     for ([_]*Builder.Target{
-        try tests.addBuildAnonymous(allocator, build_cmd,   "test/crypto/aead-test.zig"),
-        try tests.addBuildAnonymous(allocator, build_cmd,   "test/crypto/core-test.zig"),
-        try tests.addBuildAnonymous(allocator, build_cmd,   "test/crypto/hash-test.zig"),
-        try tests.addBuildAnonymous(allocator, build_cmd,   "test/crypto/pcurve-test.zig"),
-        try tests.addBuildAnonymous(allocator, build_cmd,   "test/crypto/ecdsa-test.zig"),
-        try tests.addBuildAnonymous(allocator, build_cmd,   "test/crypto/auth-test.zig"),
-        try tests.addBuildAnonymous(allocator, build_cmd,   "test/crypto/utils-test.zig"),
-        try tests.addBuildAnonymous(allocator, build_cmd,   "test/crypto/kyber-test.zig"),
-        try tests.addBuildAnonymous(allocator, build_cmd,   "test/crypto/dh-test.zig"),
-        try tests.addBuildAnonymous(allocator, build_cmd,   "test/crypto/tls-test.zig"),
+        try wip.addBuildAnonymous(allocator, build_cmd,   "test/crypto/aead-test.zig"),
+        try wip.addBuildAnonymous(allocator, build_cmd,   "test/crypto/core-test.zig"),
+        try wip.addBuildAnonymous(allocator, build_cmd,   "test/crypto/hash-test.zig"),
+        try wip.addBuildAnonymous(allocator, build_cmd,   "test/crypto/pcurve-test.zig"),
+        try wip.addBuildAnonymous(allocator, build_cmd,   "test/crypto/ecdsa-test.zig"),
+        try wip.addBuildAnonymous(allocator, build_cmd,   "test/crypto/auth-test.zig"),
+        try wip.addBuildAnonymous(allocator, build_cmd,   "test/crypto/utils-test.zig"),
+        try wip.addBuildAnonymous(allocator, build_cmd,   "test/crypto/kyber-test.zig"),
+        try wip.addBuildAnonymous(allocator, build_cmd,   "test/crypto/dh-test.zig"),
+        try wip.addBuildAnonymous(allocator, build_cmd,   "test/crypto/tls-test.zig"),
     }) |target| {
         crypto_test.dependOnRun(allocator, target);
         target.task_cmd.build.mode = .ReleaseSmall;
-    }
     }
     const mem_test: *Builder.Target =       try tests.addBuild(allocator, build_cmd,    "mem_test",       "test/mem-test.zig");
     const mem2_test: *Builder.Target =      try tests.addBuild(allocator, build_cmd,    "mem2_test",      "test/mem2-test.zig");
