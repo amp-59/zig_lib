@@ -124,7 +124,7 @@ pub const channel = struct {
 pub const builder = struct {
     pub const default: zig_lib.build.BuilderSpec = .{
         .errors = builder.errors.noexcept,
-        .logging = builder.logging.silent,
+        .logging = builder.logging.default,
     };
     pub const errors = struct {
         pub const noexcept: zig_lib.build.BuilderSpec.Errors = .{
@@ -175,6 +175,25 @@ pub const builder = struct {
         });
     };
     pub const logging = struct {
+        pub const default: zig_lib.build.BuilderSpec.Logging = .{
+            .write = .{},
+            .read = .{},
+            .mknod = .{},
+            .dup3 = .{},
+            .pipe = .{},
+            .fork = .{},
+            .execve = .{},
+            .waitpid = .{},
+            .path = .{},
+            .map = .{},
+            .stat = .{},
+            .unmap = .{},
+            .create = .{},
+            .mkdir = .{},
+            .poll = .{},
+            .close = .{},
+            .unlink = .{},
+        };
         pub const verbose: zig_lib.build.BuilderSpec.Logging = zig_lib.builtin.all(zig_lib.build.BuilderSpec.Logging);
         pub const silent: zig_lib.build.BuilderSpec.Logging = zig_lib.builtin.zero(zig_lib.build.BuilderSpec.Logging);
     };
