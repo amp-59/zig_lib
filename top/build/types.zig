@@ -30,23 +30,25 @@ pub const Task = enum(u8) {
     archive = 5,
     pub const list: []const Task = meta.tagList(Task);
 };
+// zig fmt: off
 pub const State = enum(u8) {
     /// The task does not exist for the target.
-    null = 0,
+    null =      0b000000,
     /// The task was unable to complete due to an error.
-    failed = 1,
+    failed =    0b000001,
     /// The task is ready to begin.
-    ready = 2,
+    ready =     0b000010,
     /// The is waiting on dependencies.
-    blocking = 3,
+    blocking =  0b000100,
     /// The task is in progress.
-    working = 4,
+    working =   0b001000,
     /// The task was stopped without error.
-    cancelled = 5,
+    cancelled = 0b010000,
     /// The task is complete.
-    finished = 255,
+    finished =  0b100000,
     pub const list: []const State = meta.tagList(State);
 };
+// zig fmt: on
 pub const Lock = mem.ThreadSafeSet(State.list.len, State, Task);
 pub const Path = struct {
     absolute: [:0]const u8,
