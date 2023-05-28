@@ -18,6 +18,7 @@ const builtin = zig_lib.builtin;
 const dependencies = @import("@dependencies");
 pub usingnamespace root;
 pub usingnamespace proc.start;
+pub const is_debug: bool = false;
 const Builder = if (@hasDecl(root, "Builder"))
     root.Builder
 else

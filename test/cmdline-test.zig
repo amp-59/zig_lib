@@ -64,6 +64,7 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
         .operation = .r,
         .create = true,
     }, "lib0", &.{t0});
+
     Builder.debug.builderCommandNotice(&builder, true, true, true);
     t1.executeToplevel(&address_space, &thread_space, &allocator, &builder, .archive);
 }
