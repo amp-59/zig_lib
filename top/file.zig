@@ -1136,13 +1136,10 @@ pub fn receiveFrom(comptime recv_spec: ReceiveFromSpec, fd: u64, buf: []u8, flag
     recv_spec.errors,
     recv_spec.return_type,
 ) {
-    _ = addrlen;
-    _ = addr;
-    _ = fd;
-    _ = flags;
-    _ = buf;
     const logging: builtin.Logging.AcquireError = comptime recv_spec.logging.override();
-    if (meta.wrap(sys.call(.recvfrom, recv_spec.errors, void, .{}))) {
+    if (meta.wrap(sys.call(.recvfrom, recv_spec.errors, void, .{
+        fd, @ptrToInt(buf.ptr), buf.len, flags, @ptrToInt(addr), @ptrToInt(addrlen),
+    }))) {
         //
     } else |recvfrom_error| {
         if (logging.Error) {
