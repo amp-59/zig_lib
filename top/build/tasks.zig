@@ -1,4 +1,5 @@
 const builtin = @import("../builtin.zig");
+const fmt = @import("../fmt.zig");
 const mach = @import("../mach.zig");
 const types = @import("./types.zig");
 const safety: bool = false;
@@ -262,6 +263,552 @@ pub const BuildCommand = struct {
     debug_compiler_errors: bool = false,
     /// Enable dumping of the linker's state in JSON
     debug_link_snapshot: bool = false,
+    pub fn formatWrite(cmd: *BuildCommand, zig_exe: []const u8, files: []const types.Path, array: anytype) void {
+        @setRuntimeSafety(safety);
+        array.writeMany(zig_exe);
+        array.writeOne(0);
+        array.writeMany("build-");
+        array.writeMany(@tagName(cmd.kind));
+        array.writeOne(0);
+        if (cmd.emit_bin) |emit_bin| {
+            switch (emit_bin) {
+                .yes => |yes| {
+                    if (yes) |arg| {
+                        array.writeMany("-femit-bin\x3d");
+                        array.writeFormat(arg);
+                    } else {
+                        array.writeMany("-femit-bin\x00");
+                    }
+                },
+                .no => {
+                    array.writeMany("-fno-emit-bin\x00");
+                },
+            }
+        }
+        if (cmd.emit_asm) |emit_asm| {
+            switch (emit_asm) {
+                .yes => |yes| {
+                    if (yes) |arg| {
+                        array.writeMany("-femit-asm\x3d");
+                        array.writeFormat(arg);
+                    } else {
+                        array.writeMany("-femit-asm\x00");
+                    }
+                },
+                .no => {
+                    array.writeMany("-fno-emit-asm\x00");
+                },
+            }
+        }
+        if (cmd.emit_llvm_ir) |emit_llvm_ir| {
+            switch (emit_llvm_ir) {
+                .yes => |yes| {
+                    if (yes) |arg| {
+                        array.writeMany("-femit-llvm-ir\x3d");
+                        array.writeFormat(arg);
+                    } else {
+                        array.writeMany("-femit-llvm-ir\x00");
+                    }
+                },
+                .no => {
+                    array.writeMany("-fno-emit-llvm-ir\x00");
+                },
+            }
+        }
+        if (cmd.emit_llvm_bc) |emit_llvm_bc| {
+            switch (emit_llvm_bc) {
+                .yes => |yes| {
+                    if (yes) |arg| {
+                        array.writeMany("-femit-llvm-bc\x3d");
+                        array.writeFormat(arg);
+                    } else {
+                        array.writeMany("-femit-llvm-bc\x00");
+                    }
+                },
+                .no => {
+                    array.writeMany("-fno-emit-llvm-bc\x00");
+                },
+            }
+        }
+        if (cmd.emit_h) |emit_h| {
+            switch (emit_h) {
+                .yes => |yes| {
+                    if (yes) |arg| {
+                        array.writeMany("-femit-h\x3d");
+                        array.writeFormat(arg);
+                    } else {
+                        array.writeMany("-femit-h\x00");
+                    }
+                },
+                .no => {
+                    array.writeMany("-fno-emit-h\x00");
+                },
+            }
+        }
+        if (cmd.emit_docs) |emit_docs| {
+            switch (emit_docs) {
+                .yes => |yes| {
+                    if (yes) |arg| {
+                        array.writeMany("-femit-docs\x3d");
+                        array.writeFormat(arg);
+                    } else {
+                        array.writeMany("-femit-docs\x00");
+                    }
+                },
+                .no => {
+                    array.writeMany("-fno-emit-docs\x00");
+                },
+            }
+        }
+        if (cmd.emit_analysis) |emit_analysis| {
+            switch (emit_analysis) {
+                .yes => |yes| {
+                    if (yes) |arg| {
+                        array.writeMany("-femit-analysis\x3d");
+                        array.writeFormat(arg);
+                    } else {
+                        array.writeMany("-femit-analysis\x00");
+                    }
+                },
+                .no => {
+                    array.writeMany("-fno-emit-analysis\x00");
+                },
+            }
+        }
+        if (cmd.emit_implib) |emit_implib| {
+            switch (emit_implib) {
+                .yes => |yes| {
+                    if (yes) |arg| {
+                        array.writeMany("-femit-implib\x3d");
+                        array.writeFormat(arg);
+                    } else {
+                        array.writeMany("-femit-implib\x00");
+                    }
+                },
+                .no => {
+                    array.writeMany("-fno-emit-implib\x00");
+                },
+            }
+        }
+        if (cmd.cache_root) |cache_root| {
+            array.writeMany("--cache-dir\x00");
+            array.writeMany(cache_root);
+            array.writeOne(0);
+        }
+        if (cmd.global_cache_root) |global_cache_root| {
+            array.writeMany("--global-cache-dir\x00");
+            array.writeMany(global_cache_root);
+            array.writeOne(0);
+        }
+        if (cmd.zig_lib_root) |zig_lib_root| {
+            array.writeMany("--zig-lib-dir\x00");
+            array.writeMany(zig_lib_root);
+            array.writeOne(0);
+        }
+        if (cmd.listen) |listen| {
+            array.writeMany("--listen\x00");
+            array.writeMany(@tagName(listen));
+            array.writeOne(0);
+        }
+        if (cmd.target) |target| {
+            array.writeMany("-target\x00");
+            array.writeMany(target);
+            array.writeOne(0);
+        }
+        if (cmd.cpu) |cpu| {
+            array.writeMany("-mcpu\x00");
+            array.writeMany(cpu);
+            array.writeOne(0);
+        }
+        if (cmd.code_model) |code_model| {
+            array.writeMany("-mcmodel\x00");
+            array.writeMany(@tagName(code_model));
+            array.writeOne(0);
+        }
+        if (cmd.red_zone) |red_zone| {
+            if (red_zone) {
+                array.writeMany("-mred-zone\x00");
+            } else {
+                array.writeMany("-mno-red-zone\x00");
+            }
+        }
+        if (cmd.omit_frame_pointer) |omit_frame_pointer| {
+            if (omit_frame_pointer) {
+                array.writeMany("-fomit-frame-pointer\x00");
+            } else {
+                array.writeMany("-fno-omit-frame-pointer\x00");
+            }
+        }
+        if (cmd.exec_model) |exec_model| {
+            array.writeMany("-mexec-model\x00");
+            array.writeMany(exec_model);
+            array.writeOne(0);
+        }
+        if (cmd.name) |name| {
+            array.writeMany("--name\x00");
+            array.writeMany(name);
+            array.writeOne(0);
+        }
+        if (cmd.soname) |soname| {
+            switch (soname) {
+                .yes => |arg| {
+                    array.writeMany("-fsoname\x00");
+                    array.writeMany(arg);
+                    array.writeOne(0);
+                },
+                .no => {
+                    array.writeMany("-fno-soname\x00");
+                },
+            }
+        }
+        if (cmd.mode) |mode| {
+            array.writeMany("-O\x00");
+            array.writeMany(@tagName(mode));
+            array.writeOne(0);
+        }
+        if (cmd.passes) |passes| {
+            array.writeMany("-fopt-bisect-limit\x3d");
+            array.writeFormat(fmt.ud64(passes));
+            array.writeOne(0);
+        }
+        if (cmd.main_pkg_path) |main_pkg_path| {
+            array.writeMany("--main-pkg-path\x00");
+            array.writeMany(main_pkg_path);
+            array.writeOne(0);
+        }
+        if (cmd.pic) |pic| {
+            if (pic) {
+                array.writeMany("-fPIC\x00");
+            } else {
+                array.writeMany("-fno-PIC\x00");
+            }
+        }
+        if (cmd.pie) |pie| {
+            if (pie) {
+                array.writeMany("-fPIE\x00");
+            } else {
+                array.writeMany("-fno-PIE\x00");
+            }
+        }
+        if (cmd.lto) |lto| {
+            if (lto) {
+                array.writeMany("-flto\x00");
+            } else {
+                array.writeMany("-fno-lto\x00");
+            }
+        }
+        if (cmd.stack_check) |stack_check| {
+            if (stack_check) {
+                array.writeMany("-fstack-check\x00");
+            } else {
+                array.writeMany("-fno-stack-check\x00");
+            }
+        }
+        if (cmd.stack_protector) |stack_protector| {
+            if (stack_protector) {
+                array.writeMany("-fstack-check\x00");
+            } else {
+                array.writeMany("-fno-stack-protector\x00");
+            }
+        }
+        if (cmd.sanitize_c) |sanitize_c| {
+            if (sanitize_c) {
+                array.writeMany("-fsanitize-c\x00");
+            } else {
+                array.writeMany("-fno-sanitize-c\x00");
+            }
+        }
+        if (cmd.valgrind) |valgrind| {
+            if (valgrind) {
+                array.writeMany("-fvalgrind\x00");
+            } else {
+                array.writeMany("-fno-valgrind\x00");
+            }
+        }
+        if (cmd.sanitize_thread) |sanitize_thread| {
+            if (sanitize_thread) {
+                array.writeMany("-fsanitize-thread\x00");
+            } else {
+                array.writeMany("-fno-sanitize-thread\x00");
+            }
+        }
+        if (cmd.unwind_tables) |unwind_tables| {
+            if (unwind_tables) {
+                array.writeMany("-funwind-tables\x00");
+            } else {
+                array.writeMany("-fno-unwind-tables\x00");
+            }
+        }
+        if (cmd.llvm) |llvm| {
+            if (llvm) {
+                array.writeMany("-fLLVM\x00");
+            } else {
+                array.writeMany("-fno-LLVM\x00");
+            }
+        }
+        if (cmd.clang) |clang| {
+            if (clang) {
+                array.writeMany("-fClang\x00");
+            } else {
+                array.writeMany("-fno-Clang\x00");
+            }
+        }
+        if (cmd.reference_trace) |reference_trace| {
+            if (reference_trace) {
+                array.writeMany("-freference-trace\x00");
+            } else {
+                array.writeMany("-fno-reference-trace\x00");
+            }
+        }
+        if (cmd.error_tracing) |error_tracing| {
+            if (error_tracing) {
+                array.writeMany("-ferror-tracing\x00");
+            } else {
+                array.writeMany("-fno-error-tracing\x00");
+            }
+        }
+        if (cmd.single_threaded) |single_threaded| {
+            if (single_threaded) {
+                array.writeMany("-fsingle-threaded\x00");
+            } else {
+                array.writeMany("-fno-single-threaded\x00");
+            }
+        }
+        if (cmd.function_sections) |function_sections| {
+            if (function_sections) {
+                array.writeMany("-ffunction-sections\x00");
+            } else {
+                array.writeMany("-fno-function-sections\x00");
+            }
+        }
+        if (cmd.strip) |strip| {
+            if (strip) {
+                array.writeMany("-fstrip\x00");
+            } else {
+                array.writeMany("-fno-strip\x00");
+            }
+        }
+        if (cmd.formatted_panics) |formatted_panics| {
+            if (formatted_panics) {
+                array.writeMany("-fformatted-panics\x00");
+            } else {
+                array.writeMany("-fno-formatted-panics\x00");
+            }
+        }
+        if (cmd.format) |format| {
+            array.writeMany("-ofmt\x3d");
+            array.writeMany(@tagName(format));
+            array.writeOne(0);
+        }
+        if (cmd.dirafter) |dirafter| {
+            array.writeMany("-idirafter\x00");
+            array.writeMany(dirafter);
+            array.writeOne(0);
+        }
+        if (cmd.system) |system| {
+            array.writeMany("-isystem\x00");
+            array.writeMany(system);
+            array.writeOne(0);
+        }
+        if (cmd.libc) |libc| {
+            array.writeMany("--libc\x00");
+            array.writeMany(libc);
+            array.writeOne(0);
+        }
+        if (cmd.library) |library| {
+            array.writeMany("--library\x00");
+            array.writeMany(library);
+            array.writeOne(0);
+        }
+        if (cmd.include) |include| {
+            for (include) |value| {
+                array.writeMany("-I\x00");
+                array.writeMany(value);
+                array.writeOne(0);
+            }
+        }
+        if (cmd.needed_library) |needed_library| {
+            for (needed_library) |value| {
+                array.writeMany("--needed-library\x00");
+                array.writeMany(value);
+                array.writeOne(0);
+            }
+        }
+        if (cmd.library_directory) |library_directory| {
+            for (library_directory) |value| {
+                array.writeMany("--library-directory\x00");
+                array.writeMany(value);
+                array.writeOne(0);
+            }
+        }
+        if (cmd.link_script) |link_script| {
+            array.writeMany("--script\x00");
+            array.writeMany(link_script);
+            array.writeOne(0);
+        }
+        if (cmd.version_script) |version_script| {
+            array.writeMany("--version-script\x00");
+            array.writeMany(version_script);
+            array.writeOne(0);
+        }
+        if (cmd.dynamic_linker) |dynamic_linker| {
+            array.writeMany("--dynamic-linker\x00");
+            array.writeMany(dynamic_linker);
+            array.writeOne(0);
+        }
+        if (cmd.sysroot) |sysroot| {
+            array.writeMany("--sysroot\x00");
+            array.writeMany(sysroot);
+            array.writeOne(0);
+        }
+        if (cmd.entry) |entry| {
+            array.writeMany("--entry\x00");
+            array.writeMany(entry);
+            array.writeOne(0);
+        }
+        if (cmd.lld) |lld| {
+            if (lld) {
+                array.writeMany("-fLLD\x00");
+            } else {
+                array.writeMany("-fno-LLD\x00");
+            }
+        }
+        if (cmd.compiler_rt) |compiler_rt| {
+            if (compiler_rt) {
+                array.writeMany("-fcompiler-rt\x00");
+            } else {
+                array.writeMany("-fno-compiler-rt\x00");
+            }
+        }
+        if (cmd.rpath) |rpath| {
+            array.writeMany("-rpath\x00");
+            array.writeMany(rpath);
+            array.writeOne(0);
+        }
+        if (cmd.each_lib_rpath) |each_lib_rpath| {
+            if (each_lib_rpath) {
+                array.writeMany("-feach-lib-rpath\x00");
+            } else {
+                array.writeMany("-fno-each-lib-rpath\x00");
+            }
+        }
+        if (cmd.allow_shlib_undefined) |allow_shlib_undefined| {
+            if (allow_shlib_undefined) {
+                array.writeMany("-fallow-shlib-undefined\x00");
+            } else {
+                array.writeMany("-fno-allow-shlib-undefined\x00");
+            }
+        }
+        if (cmd.build_id) |build_id| {
+            if (build_id) {
+                array.writeMany("-fbuild-id\x00");
+            } else {
+                array.writeMany("-fno-build-id\x00");
+            }
+        }
+        if (cmd.compress_debug_sections) |compress_debug_sections| {
+            if (compress_debug_sections) {
+                array.writeMany("--compress-debug-sections=zlib\x00");
+            } else {
+                array.writeMany("--compress-debug-sections=none\x00");
+            }
+        }
+        if (cmd.gc_sections) |gc_sections| {
+            if (gc_sections) {
+                array.writeMany("--gc-sections\x00");
+            } else {
+                array.writeMany("--no-gc-sections\x00");
+            }
+        }
+        if (cmd.stack) |stack| {
+            array.writeMany("--stack\x00");
+            array.writeFormat(fmt.ud64(stack));
+            array.writeOne(0);
+        }
+        if (cmd.image_base) |image_base| {
+            array.writeMany("--image-base\x00");
+            array.writeFormat(fmt.ud64(image_base));
+            array.writeOne(0);
+        }
+        if (cmd.macros) |macros| {
+            array.writeFormat(types.Macros{ .value = macros });
+        }
+        if (cmd.modules) |modules| {
+            array.writeFormat(types.Modules{ .value = modules });
+        }
+        if (cmd.dependencies) |dependencies| {
+            array.writeFormat(types.ModuleDependencies{ .value = dependencies });
+        }
+        if (cmd.cflags) |cflags| {
+            array.writeFormat(types.CFlags{ .value = cflags });
+        }
+        if (cmd.link_libc) {
+            array.writeMany("-lc\x00");
+        }
+        if (cmd.rdynamic) {
+            array.writeMany("-rdynamic\x00");
+        }
+        if (cmd.dynamic) {
+            array.writeMany("-dynamic\x00");
+        }
+        if (cmd.static) {
+            array.writeMany("-static\x00");
+        }
+        if (cmd.symbolic) {
+            array.writeMany("-Bsymbolic\x00");
+        }
+        if (cmd.z) |z| {
+            for (z) |value| {
+                array.writeMany("-z\x00");
+                array.writeMany(@tagName(value));
+                array.writeOne(0);
+            }
+        }
+        array.writeFormat(types.Files{ .value = files });
+        if (cmd.color) |color| {
+            array.writeMany("--color\x00");
+            array.writeMany(@tagName(color));
+            array.writeOne(0);
+        }
+        if (cmd.time_report) {
+            array.writeMany("-ftime-report\x00");
+        }
+        if (cmd.stack_report) {
+            array.writeMany("-fstack-report\x00");
+        }
+        if (cmd.verbose_link) {
+            array.writeMany("--verbose-link\x00");
+        }
+        if (cmd.verbose_cc) {
+            array.writeMany("--verbose-cc\x00");
+        }
+        if (cmd.verbose_air) {
+            array.writeMany("--verbose-air\x00");
+        }
+        if (cmd.verbose_mir) {
+            array.writeMany("--verbose-mir\x00");
+        }
+        if (cmd.verbose_llvm_ir) {
+            array.writeMany("--verbose-llvm-ir\x00");
+        }
+        if (cmd.verbose_cimport) {
+            array.writeMany("--verbose-cimport\x00");
+        }
+        if (cmd.verbose_llvm_cpu_features) {
+            array.writeMany("--verbose-llvm-cpu-features\x00");
+        }
+        if (cmd.debug_log) |debug_log| {
+            array.writeMany("--debug-log\x00");
+            array.writeMany(debug_log);
+            array.writeOne(0);
+        }
+        if (cmd.debug_compiler_errors) {
+            array.writeMany("--debug-compile-errors\x00");
+        }
+        if (cmd.debug_link_snapshot) {
+            array.writeMany("--debug-link-snapshot\x00");
+        }
+    }
     pub fn formatWriteBuf(cmd: *BuildCommand, zig_exe: []const u8, files: []const types.Path, buf: [*]u8) u64 {
         @setRuntimeSafety(safety);
         var len: u64 = 0;
@@ -1567,6 +2114,32 @@ pub const FormatCommand = struct {
     ast_check: bool = false,
     /// Exclude file or directory from formatting
     exclude: ?[]const u8 = null,
+    pub fn formatWrite(cmd: *FormatCommand, zig_exe: []const u8, root_path: types.Path, array: anytype) void {
+        @setRuntimeSafety(safety);
+        array.writeMany(zig_exe);
+        array.writeOne(0);
+        array.writeMany("fmt\x00");
+        if (cmd.color) |color| {
+            array.writeMany("--color\x00");
+            array.writeMany(@tagName(color));
+            array.writeOne(0);
+        }
+        if (cmd.stdin) {
+            array.writeMany("--stdin\x00");
+        }
+        if (cmd.check) {
+            array.writeMany("--check\x00");
+        }
+        if (cmd.ast_check) {
+            array.writeMany("--ast-check\x00");
+        }
+        if (cmd.exclude) |exclude| {
+            array.writeMany("--exclude\x00");
+            array.writeMany(exclude);
+            array.writeOne(0);
+        }
+        array.writeFormat(root_path);
+    }
     pub fn formatWriteBuf(cmd: *FormatCommand, zig_exe: []const u8, root_path: types.Path, buf: [*]u8) u64 {
         @setRuntimeSafety(safety);
         var len: u64 = 0;
@@ -1685,6 +2258,61 @@ pub const ArchiveCommand = struct {
         s = 4,
         x = 5,
     },
+    pub fn formatWrite(cmd: *ArchiveCommand, zig_exe: []const u8, files: []const types.Path, array: anytype) void {
+        @setRuntimeSafety(safety);
+        array.writeMany(zig_exe);
+        array.writeOne(0);
+        array.writeMany("ar\x00");
+        if (cmd.format) |format| {
+            array.writeMany("--format\x00");
+            array.writeMany(@tagName(format));
+            array.writeOne(0);
+        }
+        if (cmd.plugin) {
+            array.writeMany("--plugin\x00");
+        }
+        if (cmd.output) |output| {
+            array.writeMany("--output\x00");
+            array.writeMany(output);
+            array.writeOne(0);
+        }
+        if (cmd.thin) {
+            array.writeMany("--thin\x00");
+        }
+        if (cmd.after) {
+            array.writeMany("a");
+        }
+        if (cmd.before) {
+            array.writeMany("b");
+        }
+        if (cmd.create) {
+            array.writeMany("c");
+        }
+        if (cmd.zero_ids) {
+            array.writeMany("D");
+        }
+        if (cmd.real_ids) {
+            array.writeMany("U");
+        }
+        if (cmd.append) {
+            array.writeMany("L");
+        }
+        if (cmd.preserve_dates) {
+            array.writeMany("o");
+        }
+        if (cmd.index) {
+            array.writeMany("s");
+        }
+        if (cmd.no_symbol_table) {
+            array.writeMany("S");
+        }
+        if (cmd.update) {
+            array.writeMany("u");
+        }
+        array.writeMany(@tagName(cmd.operation));
+        array.writeOne(0);
+        array.writeFormat(types.Files{ .value = files });
+    }
     pub fn formatWriteBuf(cmd: *ArchiveCommand, zig_exe: []const u8, files: []const types.Path, buf: [*]u8) u64 {
         @setRuntimeSafety(safety);
         var len: u64 = 0;
@@ -1912,6 +2540,153 @@ pub const TableGenCommand = struct {
     gen_riscv_target_def: bool = false,
     /// Output file
     output: ?[]const u8 = null,
+    pub fn formatWrite(cmd: *TableGenCommand, array: anytype) void {
+        @setRuntimeSafety(safety);
+        if (cmd.color) |color| {
+            array.writeMany("--color\x00");
+            array.writeMany(@tagName(color));
+            array.writeOne(0);
+        }
+        if (cmd.macros) |macros| {
+            array.writeFormat(types.Macros{ .value = macros });
+        }
+        if (cmd.include) |include| {
+            for (include) |value| {
+                array.writeMany("-I");
+                array.writeMany(value);
+                array.writeOne(0);
+            }
+        }
+        if (cmd.dependencies) |dependencies| {
+            for (dependencies) |value| {
+                array.writeMany("-d\x00");
+                array.writeMany(value);
+                array.writeOne(0);
+            }
+        }
+        if (cmd.print_records) {
+            array.writeMany("--print-records\x00");
+        }
+        if (cmd.print_detailed_records) {
+            array.writeMany("--print-detailed-records\x00");
+        }
+        if (cmd.null_backend) {
+            array.writeMany("--null-backend\x00");
+        }
+        if (cmd.dump_json) {
+            array.writeMany("--dump-json\x00");
+        }
+        if (cmd.gen_emitter) {
+            array.writeMany("--gen-emitter\x00");
+        }
+        if (cmd.gen_register_info) {
+            array.writeMany("--gen-register-info\x00");
+        }
+        if (cmd.gen_instr_info) {
+            array.writeMany("--gen-instr-info\x00");
+        }
+        if (cmd.gen_instr_docs) {
+            array.writeMany("--gen-instr-docs\x00");
+        }
+        if (cmd.gen_callingconv) {
+            array.writeMany("--gen-callingconv\x00");
+        }
+        if (cmd.gen_asm_writer) {
+            array.writeMany("--gen-asm-writer\x00");
+        }
+        if (cmd.gen_disassembler) {
+            array.writeMany("--gen-disassembler\x00");
+        }
+        if (cmd.gen_pseudo_lowering) {
+            array.writeMany("--gen-pseudo-lowering\x00");
+        }
+        if (cmd.gen_compress_inst_emitter) {
+            array.writeMany("--gen-compress-inst-emitter\x00");
+        }
+        if (cmd.gen_asm_matcher) {
+            array.writeMany("--gen-asm-matcher\x00");
+        }
+        if (cmd.gen_dag_isel) {
+            array.writeMany("--gen-dag-isel\x00");
+        }
+        if (cmd.gen_dfa_packetizer) {
+            array.writeMany("--gen-dfa-packetizer\x00");
+        }
+        if (cmd.gen_fast_isel) {
+            array.writeMany("--gen-fast-isel\x00");
+        }
+        if (cmd.gen_subtarget) {
+            array.writeMany("--gen-subtarget\x00");
+        }
+        if (cmd.gen_intrinsic_enums) {
+            array.writeMany("--gen-intrinsic-enums\x00");
+        }
+        if (cmd.gen_intrinsic_impl) {
+            array.writeMany("--gen-intrinsic-impl\x00");
+        }
+        if (cmd.print_enums) {
+            array.writeMany("--print-enums\x00");
+        }
+        if (cmd.print_sets) {
+            array.writeMany("--print-sets\x00");
+        }
+        if (cmd.gen_opt_parser_defs) {
+            array.writeMany("--gen-opt-parser-defs\x00");
+        }
+        if (cmd.gen_opt_rst) {
+            array.writeMany("--gen-opt-rst\x00");
+        }
+        if (cmd.gen_ctags) {
+            array.writeMany("--gen-ctags\x00");
+        }
+        if (cmd.gen_attrs) {
+            array.writeMany("--gen-attrs\x00");
+        }
+        if (cmd.gen_searchable_tables) {
+            array.writeMany("--gen-searchable-tables\x00");
+        }
+        if (cmd.gen_global_isel) {
+            array.writeMany("--gen-global-isel\x00");
+        }
+        if (cmd.gen_global_isel_combiner) {
+            array.writeMany("--gen-global-isel-combiner\x00");
+        }
+        if (cmd.gen_x86_EVEX2VEX_tables) {
+            array.writeMany("--gen-x86-EVEX2VEX-tables\x00");
+        }
+        if (cmd.gen_x86_fold_tables) {
+            array.writeMany("--gen-x86-fold-tables\x00");
+        }
+        if (cmd.gen_x86_mnemonic_tables) {
+            array.writeMany("--gen-x86-mnemonic-tables\x00");
+        }
+        if (cmd.gen_register_bank) {
+            array.writeMany("--gen-register-bank\x00");
+        }
+        if (cmd.gen_exegesis) {
+            array.writeMany("--gen-exegesis\x00");
+        }
+        if (cmd.gen_automata) {
+            array.writeMany("--gen-automata\x00");
+        }
+        if (cmd.gen_directive_decl) {
+            array.writeMany("--gen-directive-decl\x00");
+        }
+        if (cmd.gen_directive_impl) {
+            array.writeMany("--gen-directive-impl\x00");
+        }
+        if (cmd.gen_dxil_operation) {
+            array.writeMany("--gen-dxil-operation\x00");
+        }
+        if (cmd.gen_riscv_target_def) {
+            array.writeMany("--gen-riscv-target_def\x00");
+        }
+        if (cmd.output) |output| {
+            array.writeMany("-o\x00");
+            array.writeMany(output);
+            array.writeOne(0);
+        }
+    }
     pub fn formatWriteBuf(cmd: *TableGenCommand, buf: [*]u8) u64 {
         @setRuntimeSafety(safety);
         var len: u64 = 0;
@@ -2271,6 +3046,37 @@ pub const HarecCommand = struct {
     tags: ?[]const []const u8 = null,
     typedefs: bool = false,
     namespace: bool = false,
+    pub fn formatWrite(cmd: *HarecCommand, harec_exe: []const u8, array: anytype) void {
+        @setRuntimeSafety(safety);
+        array.writeMany(harec_exe);
+        array.writeOne(0);
+        if (cmd.arch) |arch| {
+            array.writeMany("-a\x00");
+            array.writeMany(arch);
+            array.writeOne(0);
+        }
+        if (cmd.defs) |defs| {
+            array.writeFormat(types.Macros{ .value = defs });
+        }
+        if (cmd.output) |output| {
+            array.writeMany("-o\x00");
+            array.writeMany(output);
+            array.writeOne(0);
+        }
+        if (cmd.tags) |tags| {
+            for (tags) |value| {
+                array.writeMany("-T");
+                array.writeMany(value);
+                array.writeOne(0);
+            }
+        }
+        if (cmd.typedefs) {
+            array.writeMany("-t\x00");
+        }
+        if (cmd.namespace) {
+            array.writeMany("-N\x00");
+        }
+    }
     pub fn formatWriteBuf(cmd: *HarecCommand, harec_exe: []const u8, buf: [*]u8) u64 {
         @setRuntimeSafety(safety);
         var len: u64 = 0;
