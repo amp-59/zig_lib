@@ -347,40 +347,20 @@ pub const AdviseSpec = struct {
     pub fn describe(comptime spec: AdviseSpec) []const u8 {
         if (spec.options.usage) |usage| {
             switch (usage) {
-                .normal => {
-                    return "expect normal usage";
-                },
-                .random => {
-                    return "expect page references in random order";
-                },
-                .sequential => {
-                    return "expect page references in sequential order";
-                },
-                .immediate => {
-                    return "expect access in the near future";
-                },
-                .deferred => {
-                    return "do not expect access in the near future";
-                },
+                .normal => return "expect normal usage",
+                .random => return "expect page references in random order",
+                .sequential => return "expect page references in sequential order",
+                .immediate => return "expect access in the near future",
+                .deferred => return "do not expect access in the near future",
             }
         }
         if (spec.options.action) |action| {
             switch (action) {
-                .remove => {
-                    return "swap out backing store";
-                },
-                .free => {
-                    return "swap out pages as needed";
-                },
-                .pageout => {
-                    return "swap out pages now";
-                },
-                .reclaim => {
-                    return "reclaim pages";
-                },
-                .poison => {
-                    return "illegal access";
-                },
+                .remove => return "swap out backing store",
+                .free => return "swap out pages as needed",
+                .pageout => return "swap out pages now",
+                .reclaim => return "reclaim pages",
+                .poison => return "illegal access",
             }
         }
         if (spec.options.property) |property| {
@@ -399,26 +379,20 @@ pub const AdviseSpec = struct {
                         return "do not expect large contiguous mappings";
                     }
                 },
-                .dump => |dump| {
-                    if (dump) {
-                        return "include in core dump";
-                    } else {
-                        return "exclude from core dump";
-                    }
+                .dump => |dump| if (dump) {
+                    return "include in core dump";
+                } else {
+                    return "exclude from core dump";
                 },
-                .fork => |fork| {
-                    if (fork) {
-                        return "available to child processes";
-                    } else {
-                        return "unavailable to child processes";
-                    }
+                .fork => |fork| if (fork) {
+                    return "available to child processes";
+                } else {
+                    return "unavailable to child processes";
                 },
-                .wipe_on_fork => |wipe_on_fork| {
-                    if (wipe_on_fork) {
-                        return "wiping on fork";
-                    } else {
-                        return "keeping on fork";
-                    }
+                .wipe_on_fork => |wipe_on_fork| if (wipe_on_fork) {
+                    return "wiping on fork";
+                } else {
+                    return "keeping on fork";
                 },
             }
         }
