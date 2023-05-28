@@ -48,6 +48,15 @@ pub const Whence = enum(u64) {
     end = SEEK.END,
     const SEEK = sys.SEEK;
 };
+pub const Shutdown = enum(u64) {
+    /// Further receptions will be disallowed
+    read = SHUT.RD,
+    /// Further transmissions will be disallowed
+    write = SHUT.WR,
+    /// Further receptions and transmissions will be disallowed
+    read_write = SHUT.RDWR,
+    const SHUT = sys.SHUT;
+};
 pub const ReadWrite = meta.EnumBitField(enum(u64) {
     append = RWF.APPEND,
     high_priority = RWF.HIPRI,
