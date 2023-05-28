@@ -8,9 +8,6 @@ pub const ResourceError = error{ UnderSupply, OverSupply };
 pub const ResourceErrorPolicy = builtin.InternalError(ResourceError);
 pub const RegularAddressSpaceSpec = RegularMultiArena;
 pub const DiscreteAddressSpaceSpec = DiscreteMultiArena;
-// Maybe make generic on Endian.
-// Right now it is difficult to get Zig vectors to produce consistent results,
-// so this is not an option.
 pub fn DiscreteBitSet(comptime elements: u16, comptime val_type: type, comptime idx_type: type) type {
     const val_bit_size: u16 = @bitSizeOf(val_type);
     if (val_bit_size != 1) {
@@ -171,7 +168,7 @@ pub fn ThreadSafeSet(comptime elements: u16, comptime val_type: type, comptime i
             pub fn set(safe_set: *SafeSet, index: idx_type, to: val_type) void {
                 safe_set.refer(index).* = to;
             }
-            pub fn atomicExchange(safe_set: *SafeSet, index: idx_type, if_state: val_type, to_state: val_type) callconv(.C) bool {
+            pub fn atomicExchange(safe_set: *SafeSet, index: idx_type, if_state: val_type, to_state: val_type) bool {
                 return asm volatile (
                     \\mov           %[if_state],    %al
                     \\mov           %[to_state],    %dl
