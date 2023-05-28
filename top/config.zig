@@ -4,12 +4,18 @@ pub const env = @import("env");
 pub const native_endian = zig.cpu.arch.endian();
 pub const is_little: bool = native_endian == .Little;
 pub const is_big: bool = native_endian == .Big;
-pub const is_safe: bool = zig.mode == .ReleaseSafe;
-pub const is_small: bool = zig.mode == .ReleaseSmall;
-pub const is_fast: bool = zig.mode == .ReleaseFast;
-pub const is_debug: bool = zig.mode == .Debug;
+/// * Determines defaults for various allocator checks.
+pub const is_safe: bool = define("is_safe", bool, zig.mode == .ReleaseSafe);
+pub const is_small: bool = define("is_small", bool, zig.mode == .ReleaseSmall);
+pub const is_fast: bool = define("is_fast", bool, zig.mode == .ReleaseFast);
+/// * Determines whether `Acquire` and `Release` actions are logged by default.
+/// * Determine whether signals for floating point errors should be handled verbosely.
+pub const is_debug: bool = define("is_debug", bool, zig.mode == .Debug);
+/// * Determines whether calling `panicUnwrapError` is legal.
 pub const discard_errors: bool = define("discard_errors", bool, !(is_debug or is_safe));
+/// * Determines whether `assert*` functions will be called at runtime.
 pub const runtime_assertions: bool = define("runtime_assertions", bool, is_debug or is_safe);
+/// * Determines whether `static.assert*` functions will be called at comptime time.
 pub const comptime_assertions: bool = define("comptime_assertions", bool, is_debug);
 /// The values define the default field values for all Logging sub-types used in
 /// generic specifications.
