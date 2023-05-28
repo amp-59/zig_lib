@@ -1,6 +1,7 @@
 const fmt = @import("../../fmt.zig");
-pub const Variant = enum(u1) {
+pub const Variant = enum(u2) {
     length,
+    write_buf,
     write,
 };
 pub const Attributes = struct {
