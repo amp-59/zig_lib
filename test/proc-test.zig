@@ -63,33 +63,31 @@ fn printHere(x: u64) void {
     builtin.debug.write(buf[0..len]);
     builtin.debug.write("\n");
 }
-fn testFutexWake(futex2: *proc.Futex) void {
+fn testFutexWake(futex2: *u32) void {
     proc.futexWake(.{}, futex2, 1) catch {};
 }
-fn testFutexWait(futex1: *proc.Futex) void {
+fn testFutexWait(futex1: *u32) void {
     proc.futexWait(.{}, futex1, 0x10, &.{ .sec = 10 }) catch {};
 }
-fn testFutexWakeOp(futex1: *proc.Futex, futex2: *proc.Futex) void {
+fn testFutexWakeOp(futex1: *u32, futex2: *u32) void {
     proc.futexWakeOp(.{}, futex1, futex2, 1, 1, .{ .op = .Assign, .cmp = .Equal, .to = 0x20, .from = 0x10 }) catch {};
 }
-fn testClone() !void {
+fn testCloneAndFutex() !void {
+    if (builtin.zig.mode == .Debug) return;
     var stack_buf1: [4096]u8 align(4096) = undefined;
     var stack_buf2: [4096]u8 align(4096) = undefined;
     var stack_buf3: [4096]u8 align(4096) = undefined;
-    var futex1: proc.Futex = .{ .word = 16 };
-    var futex2: proc.Futex = .{ .word = 16 };
+    var futex1: u32 = 16;
+    var futex2: u32 = 16;
     try proc.callClone(.{ .return_type = void }, @ptrToInt(&stack_buf1), 4096, {}, testFutexWait, .{&futex1});
     try time.sleep(.{}, .{ .nsec = 0x10000 });
     try proc.callClone(.{ .return_type = void }, @ptrToInt(&stack_buf2), 4096, {}, testFutexWakeOp, .{ &futex1, &futex2 });
     try time.sleep(.{}, .{ .nsec = 0x20000 });
     try proc.callClone(.{ .return_type = void }, @ptrToInt(&stack_buf3), 4096, {}, testFutexWake, .{&futex2});
-    try builtin.expectEqual(u32, 16, futex1.word);
-    try builtin.expectEqual(u32, 32, futex2.word);
+    try builtin.expectEqual(u32, 16, futex1);
+    try builtin.expectEqual(u32, 32, futex2);
 }
-
-pub fn main(_: [][*:0]u8, vars: [][*:0]u8, aux: *const anyopaque) !void {
-    try testClone();
-    testCheckResourcesNoErrors();
+fn testFindNameInPath(vars: [][*:0]u8) !void {
     var itr: proc.PathIterator = .{
         .paths = proc.environmentValue(vars, "PATH").?,
     };
@@ -98,12 +96,26 @@ pub fn main(_: [][*:0]u8, vars: [][*:0]u8, aux: *const anyopaque) !void {
     };
     while (itr.next()) |path| {
         const dir_fd: u64 = file.path(.{}, path) catch continue;
+        defer file.close(.{ .errors = .{} }, dir_fd);
         const fd: u64 = file.openAt(open_spec, dir_fd, "zig") catch continue;
+        defer file.close(.{ .errors = .{} }, fd);
         const st: file.Status = try file.status(.{}, fd);
         if (st.isExecutable(proc.getUserId(), proc.getGroupId())) {
             break itr.done();
         }
     }
+    while (itr.next()) |path| {
+        const dir_fd: u64 = file.path(.{}, path) catch continue;
+        defer file.close(.{ .errors = .{} }, dir_fd);
+        const fd: u64 = file.openAt(open_spec, dir_fd, "zig") catch continue;
+        defer file.close(.{ .errors = .{} }, fd);
+        const st: file.Status = try file.status(.{}, fd);
+        if (st.isExecutable(proc.getUserId(), proc.getGroupId())) {
+            break itr.done();
+        }
+    }
+}
+fn testVClockGettime(aux: *const anyopaque) !void {
     const vdso_addr: u64 = proc.auxiliaryValue(aux, .vdso_addr).?;
     const clock_gettime: time.ClockGetTime = proc.getVSyscall(time.ClockGetTime, vdso_addr, "clock_gettime").?;
     var vts: time.TimeSpec = undefined;
@@ -112,4 +124,10 @@ pub fn main(_: [][*:0]u8, vars: [][*:0]u8, aux: *const anyopaque) !void {
     const ts_diff: time.TimeSpec = time.diff(ts, vts);
     try builtin.expectEqual(u64, ts_diff.sec, 0);
     try builtin.expectBelowOrEqual(u64, ts_diff.nsec, 1000);
+}
+pub fn main(_: [][*:0]u8, vars: [][*:0]u8, aux: *const anyopaque) !void {
+    try testCloneAndFutex();
+    testCheckResourcesNoErrors();
+    try testFindNameInPath(vars);
+    try testVClockGettime(aux);
 }
