@@ -79,7 +79,6 @@ fn writeFields(array: *Array, param_specs: []const types.ParamSpec) void {
     }
 }
 pub usingnamespace proc.start;
-const primitive: bool = true;
 const compile: bool = false;
 const prefer_ptrcast: bool = true;
 const combine_char: bool = true;
@@ -145,9 +144,10 @@ fn writeProngClose(array: *Array) void {
 }
 fn writeNull(array: *Array, variant: types.Variant) void {
     switch (variant) {
-        .write => if (primitive) {
+        .write_buf => {
             array.writeMany("buf[len]=0;\nlen+%=1;\n");
-        } else {
+        },
+        .write => {
             array.writeMany("array.writeOne(0);\n");
         },
         .length => array.writeMany("len+%=1;\n"),
@@ -155,11 +155,12 @@ fn writeNull(array: *Array, variant: types.Variant) void {
 }
 fn writeOne(array: *Array, one: u8, variant: types.Variant) void {
     switch (variant) {
-        .write => if (primitive) {
+        .write_buf => {
             array.writeMany("buf[len]=");
             array.writeFormat(fmt.ud8(one));
             array.writeMany(";\nlen+%=1;\n");
-        } else {
+        },
+        .write => {
             array.writeMany("array.writeOne(");
             array.writeFormat(fmt.ud8(one));
             array.writeMany(");\n");
@@ -169,13 +170,14 @@ fn writeOne(array: *Array, one: u8, variant: types.Variant) void {
 }
 fn writeIntegerString(array: *Array, arg_string: []const u8, variant: types.Variant) void {
     switch (variant) {
-        .write => if (primitive) {
+        .write_buf => {
             array.writeMany("const s:[]const u8=builtin.fmt.ud64(");
             array.writeMany(arg_string);
             array.writeMany(").readAll();\n");
             array.writeMany("mach.memcpy(buf+len,s.ptr,s.len);\n");
             array.writeMany("len=len+s.len;\n");
-        } else {
+        },
+        .write => {
             array.writeMany("array.writeFormat(fmt.ud64(");
             array.writeMany(arg_string);
             array.writeMany("));\n");
@@ -189,14 +191,15 @@ fn writeIntegerString(array: *Array, arg_string: []const u8, variant: types.Vari
 }
 fn writeKindString(array: *Array, arg_string: []const u8, variant: types.Variant) void {
     switch (variant) {
-        .write => if (primitive) {
+        .write_buf => {
             array.writeMany("mach.memcpy(buf+len,@tagName(cmd.");
             array.writeMany(arg_string);
             array.writeMany(").ptr,@tagName(cmd.");
             array.writeMany(arg_string);
             array.writeMany(").len);\n");
             writeKindString(array, arg_string, .length);
-        } else {
+        },
+        .write => {
             array.writeMany("array.writeMany(@tagName(cmd.");
             array.writeMany(arg_string);
             array.writeMany("));\n");
@@ -210,14 +213,15 @@ fn writeKindString(array: *Array, arg_string: []const u8, variant: types.Variant
 }
 fn writeTagString(array: *Array, arg_string: []const u8, variant: types.Variant) void {
     switch (variant) {
-        .write => if (primitive) {
+        .write_buf => {
             array.writeMany("mach.memcpy(buf+len,@tagName(");
             array.writeMany(arg_string);
             array.writeMany(").ptr,@tagName(");
             array.writeMany(arg_string);
             array.writeMany(").len);\n");
             writeTagString(array, arg_string, .length);
-        } else {
+        },
+        .write => {
             array.writeMany("array.writeMany(@tagName(");
             array.writeMany(arg_string);
             array.writeMany("));\n");
@@ -231,14 +235,15 @@ fn writeTagString(array: *Array, arg_string: []const u8, variant: types.Variant)
 }
 fn writeArgString(array: *Array, arg_string: []const u8, variant: types.Variant) void {
     switch (variant) {
-        .write => if (primitive) {
+        .write_buf => {
             array.writeMany("mach.memcpy(buf+len,");
             array.writeMany(arg_string);
             array.writeMany(".ptr,");
             array.writeMany(arg_string);
             array.writeMany(".len);\n");
             writeArgString(array, arg_string, .length);
-        } else {
+        },
+        .write => {
             array.writeMany("array.writeMany(");
             array.writeMany(arg_string);
             array.writeMany(");\n");
@@ -252,11 +257,12 @@ fn writeArgString(array: *Array, arg_string: []const u8, variant: types.Variant)
 }
 fn writeFormatterInternal(array: *Array, arg_string: []const u8, variant: types.Variant) void {
     switch (variant) {
-        .write => if (primitive) {
+        .write_buf => {
             array.writeMany("len+%=");
             array.writeMany(arg_string);
             array.writeMany(".formatWriteBuf(buf+len);\n");
-        } else {
+        },
+        .write => {
             array.writeMany("array.writeFormat(");
             array.writeMany(arg_string);
             array.writeMany(");\n");
@@ -280,16 +286,19 @@ fn writeMapped(
         writeOptStringExtra(array, opt_switch_string, variant, char);
     }
     switch (variant) {
-        .write => if (primitive) {
+        .write_buf => {
             array.writeMany("len+%=");
             array.writeFormat(to);
             array.writeMany(".formatWriteBuf(.{.value=");
             array.writeMany(arg_string);
             array.writeMany("}, buf+len);\n");
-        } else {
-            array.writeMany("array.writeFormat(formatMap(");
+        },
+        .write => {
+            array.writeMany("array.writeFormat(");
+            array.writeFormat(to);
+            array.writeMany("{.value=");
             array.writeMany(arg_string);
-            array.writeMany("));\n");
+            array.writeMany("});\n");
         },
         .length => {
             array.writeMany("len+%=");
@@ -303,17 +312,16 @@ fn writeMapped(
 fn writeCharacteristic(array: *Array, variant: types.Variant, char: u8) void {
     if (combine_char) return;
     switch (variant) {
+        .write_buf => {
+            array.writeMany("buf[len]=");
+            array.writeFormat(fmt.ud8(char));
+            array.writeMany(";\n");
+            writeCharacteristic(array, .length, char);
+        },
         .write => {
-            if (primitive) {
-                array.writeMany("buf[len]=");
-                array.writeFormat(fmt.ud8(char));
-                array.writeMany(";\n");
-                writeCharacteristic(array, .length, char);
-            } else {
-                array.writeMany("array.writeOne(");
-                array.writeFormat(fmt.ud8(char));
-                array.writeMany(");\n");
-            }
+            array.writeMany("array.writeOne(");
+            array.writeFormat(fmt.ud8(char));
+            array.writeMany(");\n");
         },
         .length => {
             array.writeMany("len+%=1;\n");
@@ -353,7 +361,7 @@ fn writeOptString(
     char: u8,
 ) void {
     switch (variant) {
-        .write => if (primitive) {
+        .write_buf => {
             if (prefer_ptrcast) {
                 array.writeMany("@ptrCast(");
                 array.writeMany("*[");
@@ -383,7 +391,8 @@ fn writeOptString(
                 array.writeMany(");\n");
             }
             writeOptString(array, opt_string, .length, char);
-        } else {
+        },
+        .write => {
             array.writeMany("array.writeMany(\"");
             array.writeMany(opt_string);
             if (combine_char and char != types.ParamSpec.immediate) {
@@ -461,7 +470,7 @@ fn writeOptionalFormatter(
 }
 pub fn writeFunctionBody(array: *Array, options: []const types.ParamSpec, variant: types.Variant) void {
     array.writeMany("@setRuntimeSafety(safety);\n");
-    if (primitive or variant == .length) {
+    if (variant != .write) {
         array.writeMany("var len:u64=0;\n");
     }
     for (options) |param_spec| {
@@ -606,7 +615,7 @@ pub fn writeFunctionBody(array: *Array, options: []const types.ParamSpec, varian
             unhandledCommandField(param_spec);
         }
     }
-    if (primitive or variant == .length) {
+    if (variant != .write) {
         array.writeMany("return len;\n");
     }
 }
@@ -631,13 +640,10 @@ fn writeFile(array: *Array, pathname: [:0]const u8) void {
 }
 fn writeFunctionSignatureFromAttributes(array: *Array, attributes: types.Attributes, variant: types.Variant) void {
     array.writeMany("pub fn ");
-    if (variant == .write) {
-        array.writeMany("formatWrite");
-        if (primitive) {
-            array.writeMany("Buf");
-        }
-    } else {
-        array.writeMany("formatLength");
+    switch (variant) {
+        .write => array.writeMany("formatWrite"),
+        .write_buf => array.writeMany("formatWriteBuf"),
+        .length => array.writeMany("formatLength"),
     }
     array.writeMany("(cmd:*");
     array.writeMany(attributes.type_name);
@@ -650,15 +656,11 @@ fn writeFunctionSignatureFromAttributes(array: *Array, attributes: types.Attribu
             array.writeMany(",");
         }
     }
-    if (variant == .write) {
-        if (primitive) {
-            array.writeMany("buf:[*]u8)u64");
-        } else {
-            array.writeMany("array:anytype)void");
-        }
-    } else {
-        array.undefine(1);
-        array.writeMany(")u64");
+    array.undefine(builtin.int(u1, variant == .length));
+    switch (variant) {
+        .write => array.writeMany("array:anytype)void"),
+        .write_buf => array.writeMany("buf:[*]u8)u64"),
+        .length => array.writeMany(")u64"),
     }
 }
 fn writeFunction(array: *Array, attributes: types.Attributes, variant: types.Variant) void {
@@ -673,6 +675,7 @@ fn writeTaskStructFromAttributes(array: *Array, attributes: types.Attributes) vo
     array.writeMany("=struct{\n");
     writeFields(array, attributes.params);
     writeFunction(array, attributes, .write);
+    writeFunction(array, attributes, .write_buf);
     writeFunction(array, attributes, .length);
     array.writeMany("};\n");
 }
