@@ -537,6 +537,9 @@ pub fn manyToSlice80(str: [*]u8) [:0]u8 {
     @setRuntimeSafety(false);
     return str[0.._3.strlen(str) :0];
 }
+pub fn assert(cond: bool, msg: []const u8) void {
+    _2.asmAssert(cond, msg.ptr, msg.len);
+}
 const _0 = struct {
     extern fn asmTestEqualMany8(arg1: [*]const u8, arg1_len: u64, arg2: [*]const u8, arg2_len: u64) callconv(.C) bool;
     comptime {
