@@ -75,7 +75,7 @@ pub const Device = extern struct {
     major: u32 = 0,
     minor: u8 = 0,
 };
-pub const Pipe = packed struct(u64) {
+pub const Pipe = packed struct {
     read: u32,
     write: u32,
 };
@@ -1120,13 +1120,10 @@ pub fn sendTo(comptime send_spec: SendToSpec, fd: u64, buf: []u8, flags: u32, ad
     send_spec.errors,
     send_spec.return_type,
 ) {
-    _ = addrlen;
-    _ = addr;
-    _ = fd;
-    _ = flags;
-    _ = buf;
     const logging: builtin.Logging.AcquireError = comptime send_spec.logging.override();
-    if (meta.wrap(sys.call(.sendto, send_spec.errors, void, .{}))) {
+    if (meta.wrap(sys.call(.sendto, send_spec.errors, void, .{
+        fd, @ptrToInt(buf.ptr), buf.len, flags, @ptrToInt(addr), @ptrToInt(addrlen),
+    }))) {
         //
     } else |sendto_error| {
         if (logging.Error) {
