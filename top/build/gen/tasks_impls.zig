@@ -40,13 +40,18 @@ fn writeType(array: *Array, param_spec: types.ParamSpec) void {
     if (param_spec.and_no) |no_param_spec| {
         const yes_bool: bool = param_spec.tag == .boolean_field;
         const no_bool: bool = no_param_spec.tag == .boolean_field;
+        const yes_type: ?types.ProtoTypeDescr = if (yes_bool) null else param_spec.parameter();
+        const no_type: ?types.ProtoTypeDescr = if (no_bool) null else no_param_spec.parameter();
         if (yes_bool != no_bool) {
             array.writeFormat(types.ProtoTypeDescr{ .type_refer = .{
                 .spec = "?",
-                .type = &.{ .type_decl = .{ .Composition = .{ .spec = "union(enum)", .fields = &.{
-                    .{ .name = "yes", .type = if (yes_bool) null else param_spec.parameter() },
-                    .{ .name = "no", .type = if (no_bool) null else no_param_spec.parameter() },
-                } } } },
+                .type = &.{ .type_decl = .{ .Composition = .{
+                    .spec = "union(enum)",
+                    .fields = &.{
+                        .{ .name = "yes", .type = yes_type },
+                        .{ .name = "no", .type = no_type },
+                    },
+                } } },
             } });
         } else {
             array.writeFormat(types.ProtoTypeDescr.init(?bool));
@@ -81,6 +86,7 @@ fn writeFields(array: *Array, param_specs: []const types.ParamSpec) void {
 pub usingnamespace proc.start;
 const compile: bool = false;
 const prefer_ptrcast: bool = true;
+const prefer_builtin: bool = false;
 const combine_char: bool = true;
 fn writeIf(array: *Array, value_name: []const u8) void {
     array.writeMany("if(");
@@ -142,6 +148,32 @@ fn writeSwitchClose(array: *Array) void {
 fn writeProngClose(array: *Array) void {
     array.writeMany("},\n");
 }
+fn writeFieldTagname(array: *Array, field_name: []const u8) void {
+    array.writeMany("@tagName(cmd.");
+    array.writeMany(field_name);
+    array.writeMany(")");
+}
+fn writeFieldTagnameLen(array: *Array, field_name: []const u8) void {
+    writeFieldTagname(array, field_name);
+    array.writeMany(".len");
+}
+fn writeFieldTagnamePtr(array: *Array, field_name: []const u8) void {
+    writeFieldTagname(array, field_name);
+    array.writeMany(".ptr");
+}
+fn writeOptFieldTagname(array: *Array, symbol_name: []const u8) void {
+    array.writeMany("@tagName(");
+    array.writeMany(symbol_name);
+    array.writeMany(")");
+}
+fn writeOptFieldTagnameLen(array: *Array, symbol_name: []const u8) void {
+    writeOptFieldTagname(array, symbol_name);
+    array.writeMany(".len");
+}
+fn writeOptFieldTagnamePtr(array: *Array, symbol_name: []const u8) void {
+    writeOptFieldTagname(array, symbol_name);
+    array.writeMany(".ptr");
+}
 fn writeNull(array: *Array, variant: types.Variant) void {
     switch (variant) {
         .write_buf => {
@@ -174,7 +206,11 @@ fn writeIntegerString(array: *Array, arg_string: []const u8, variant: types.Vari
             array.writeMany("const s:[]const u8=builtin.fmt.ud64(");
             array.writeMany(arg_string);
             array.writeMany(").readAll();\n");
-            array.writeMany("mach.memcpy(buf+len,s.ptr,s.len);\n");
+            if (prefer_builtin) {
+                array.writeMany("@memcpy((buf+len)[0..s.len],s);\n");
+            } else {
+                array.writeMany("mach.memcpy(buf+len,s.ptr,s.len);\n");
+            }
             array.writeMany("len=len+s.len;\n");
         },
         .write => {
@@ -189,14 +225,21 @@ fn writeIntegerString(array: *Array, arg_string: []const u8, variant: types.Vari
         },
     }
 }
+
 fn writeKindString(array: *Array, arg_string: []const u8, variant: types.Variant) void {
     switch (variant) {
         .write_buf => {
-            array.writeMany("mach.memcpy(buf+len,@tagName(cmd.");
-            array.writeMany(arg_string);
-            array.writeMany(").ptr,@tagName(cmd.");
-            array.writeMany(arg_string);
-            array.writeMany(").len);\n");
+            if (prefer_builtin) {
+                array.writeMany("@memcpy(buf+len,");
+                writeFieldTagname(array, arg_string);
+                array.writeMany(");\n");
+            } else {
+                array.writeMany("mach.memcpy(buf+len,");
+                writeFieldTagnamePtr(array, arg_string);
+                array.writeMany(",");
+                writeFieldTagnameLen(array, arg_string);
+                array.writeMany(");\n");
+            }
             writeKindString(array, arg_string, .length);
         },
         .write => {
@@ -205,21 +248,28 @@ fn writeKindString(array: *Array, arg_string: []const u8, variant: types.Variant
             array.writeMany("));\n");
         },
         .length => {
-            array.writeMany("len+%=@tagName(cmd.");
-            array.writeMany(arg_string);
-            array.writeMany(").len;\n");
+            array.writeMany("len+%=");
+            writeFieldTagnameLen(array, arg_string);
+            array.writeMany(";\n");
         },
     }
 }
 fn writeTagString(array: *Array, arg_string: []const u8, variant: types.Variant) void {
     switch (variant) {
         .write_buf => {
-            array.writeMany("mach.memcpy(buf+len,@tagName(");
-            array.writeMany(arg_string);
-            array.writeMany(").ptr,@tagName(");
-            array.writeMany(arg_string);
-            array.writeMany(").len);\n");
-            writeTagString(array, arg_string, .length);
+            if (prefer_builtin) {
+                array.writeMany("@memcpy(buf+len,");
+                writeOptFieldTagname(array, arg_string);
+                array.writeMany(");\n");
+                writeTagString(array, arg_string, .length);
+            } else {
+                array.writeMany("mach.memcpy(buf+len,@tagName(");
+                array.writeMany(arg_string);
+                array.writeMany(").ptr,@tagName(");
+                array.writeMany(arg_string);
+                array.writeMany(").len);\n");
+                writeTagString(array, arg_string, .length);
+            }
         },
         .write => {
             array.writeMany("array.writeMany(@tagName(");
@@ -236,11 +286,19 @@ fn writeTagString(array: *Array, arg_string: []const u8, variant: types.Variant)
 fn writeArgString(array: *Array, arg_string: []const u8, variant: types.Variant) void {
     switch (variant) {
         .write_buf => {
-            array.writeMany("mach.memcpy(buf+len,");
-            array.writeMany(arg_string);
-            array.writeMany(".ptr,");
-            array.writeMany(arg_string);
-            array.writeMany(".len);\n");
+            if (prefer_builtin) {
+                array.writeMany("@memcpy(buf[len..len+%");
+                array.writeMany(arg_string);
+                array.writeMany(".len],");
+                array.writeMany(arg_string);
+                array.writeMany(");\n");
+            } else {
+                array.writeMany("mach.memcpy(buf+len,");
+                array.writeMany(arg_string);
+                array.writeMany(".ptr,");
+                array.writeMany(arg_string);
+                array.writeMany(".len);\n");
+            }
             writeArgString(array, arg_string, .length);
         },
         .write => {
