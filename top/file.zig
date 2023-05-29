@@ -1221,17 +1221,12 @@ pub fn getpeername(comptime get_spec: GetPeerNameSpec, fd: u64, addr: *Socket.Ad
         return getpeername_error;
     }
 }
-pub fn getSocketOption(comptime get_spec: SocketOptionSpec, fd: u64, level: u64, optname: u64, optval: *u8, optlen: u64) sys.ErrorUnion(
+pub fn getSocketOption(comptime get_spec: SocketOptionSpec, fd: u64, level: u64, optname: u32, optval: *u8, optlen: *u32) sys.ErrorUnion(
     get_spec.errors,
     get_spec.return_type,
 ) {
-    _ = optlen;
-    _ = optval;
-    _ = optname;
-    _ = level;
-    _ = fd;
     const logging: builtin.Logging.AcquireError = comptime get_spec.logging.override();
-    if (meta.wrap(sys.call(.getsockopt, get_spec.errors, void, .{}))) {
+    if (meta.wrap(sys.call(.getsockopt, get_spec.errors, u64, .{ fd, level, optname, @ptrToInt(optval), @ptrToInt(optlen) }))) {
         //
     } else |getsockopt_error| {
         if (logging.Error) {
@@ -1240,17 +1235,12 @@ pub fn getSocketOption(comptime get_spec: SocketOptionSpec, fd: u64, level: u64,
         return getsockopt_error;
     }
 }
-pub fn setSocketOption(comptime set_spec: SocketOptionSpec, fd: u64, level: u64, optname: u64, optval: *u8, optlen: u64) sys.ErrorUnion(
+pub fn setSocketOption(comptime set_spec: SocketOptionSpec, fd: u64, level: u64, optname: u32, optval: *u8, optlen: u32) sys.ErrorUnion(
     set_spec.errors,
     set_spec.return_type,
 ) {
-    _ = optlen;
-    _ = optval;
-    _ = optname;
-    _ = level;
-    _ = fd;
     const logging: builtin.Logging.AcquireError = comptime set_spec.logging.override();
-    if (meta.wrap(sys.call(.setsockopt, set_spec.errors, void, .{}))) {
+    if (meta.wrap(sys.call(.setsockopt, set_spec.errors, u64, .{ fd, level, optname, @ptrToInt(optval), @ptrToInt(optlen) }))) {
         //
     } else |setsockopt_error| {
         if (logging.Error) {
@@ -1259,12 +1249,19 @@ pub fn setSocketOption(comptime set_spec: SocketOptionSpec, fd: u64, level: u64,
         return setsockopt_error;
     }
 }
-pub fn shutdown(comptime shutdown_spec: ShutdownSpec, fd: u64, how: u64) sys.ErrorUnion(
+pub fn shutdown(comptime shutdown_spec: ShutdownSpec, fd: u64, how: Shutdown) sys.ErrorUnion(
     shutdown_spec.errors,
     shutdown_spec.return_type,
 ) {
-    _ = how;
-    _ = fd;
+    const logging: builtin.Logging.AcquireError = comptime shutdown_spec.logging.override();
+    if (meta.wrap(sys.call(.shutdown, shutdown_spec.errors, u64, .{ fd, @enumToInt(how) }))) {
+        //
+    } else |shutdown_error| {
+        if (logging.Error) {
+            //
+        }
+        return shutdown_error;
+    }
 }
 fn pathnameLimit(pathname: []const u8) u64 {
     if (pathname.len == 0) {
