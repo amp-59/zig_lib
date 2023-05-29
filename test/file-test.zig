@@ -112,12 +112,12 @@ fn testFileOperationsRound1() !void {
 }
 pub fn testSocketOpenAndClose() !void {
     builtin.debug.write(@src().fn_name ++ ":\n");
-    const unix_tcp_fd: u64 = try file.socket(.{}, .unix, .tcp);
-    const unix_udp_fd: u64 = try file.socket(.{}, .unix, .udp);
-    const ipv6_udp_fd: u64 = try file.socket(.{}, .ipv6, .udp);
-    const ipv6_tcp_fd: u64 = try file.socket(.{}, .ipv6, .tcp);
-    const ipv4_udp_fd: u64 = try file.socket(.{}, .ipv4, .udp);
-    const ipv4_tcp_fd: u64 = try file.socket(.{}, .ipv4, .tcp);
+    const unix_tcp_fd: u64 = try file.socket(.{}, .unix, .tcp, .any);
+    const unix_udp_fd: u64 = try file.socket(.{}, .unix, .udp, .any);
+    const ipv6_udp_fd: u64 = try file.socket(.{}, .ipv6, .udp, .any);
+    const ipv6_tcp_fd: u64 = try file.socket(.{}, .ipv6, .tcp, .any);
+    const ipv4_udp_fd: u64 = try file.socket(.{}, .ipv4, .udp, .any);
+    const ipv4_tcp_fd: u64 = try file.socket(.{}, .ipv4, .tcp, .any);
     try file.close(.{}, ipv4_tcp_fd);
     try file.close(.{}, ipv4_udp_fd);
     try file.close(.{}, ipv6_tcp_fd);
@@ -125,7 +125,17 @@ pub fn testSocketOpenAndClose() !void {
     try file.close(.{}, unix_udp_fd);
     try file.close(.{}, unix_tcp_fd);
 }
-
+pub fn testClient(args: [][*:0]u8) !void {
+    const k: u16 = 55478;
+    var addrinfo: file.Socket.AddressIPv4 = .{ .port = @byteSwap(k), .addr = "\x00\x00\x00\x00".* };
+    var addrlen: u64 = 16;
+    const fd: u64 = try file.socket(.{ .options = .{ .non_block = false } }, .ipv4, .udp, .any);
+    try file.connect(.{}, fd, &.{ .ipv4 = addrinfo }, addrlen);
+    var buf: [500]u8 = undefined;
+    try file.write(.{}, fd, meta.manyToSlice(args[0]));
+    const len: u64 = try file.read(.{ .return_type = u64 }, fd, &buf);
+    builtin.debug.write(buf[0..len]);
+}
 pub fn testSocketFunctions() !void {
     const unix_tcp_fd: u64 = try file.socket(.{}, .unix, .tcp);
     var sockaddr: file.Socket.Address = .{
@@ -244,7 +254,7 @@ fn testPreClean() !void {
     file.removeDir(remove_dir_spec, "/run/user/1000/file_test/file_test") catch {};
     file.removeDir(remove_dir_spec, "/run/user/1000/file_test") catch {};
 }
-pub fn main() !void {
+pub fn main(args: [][*:0]u8) !void {
     // try meta.wrap(testSocketFunctions());
     try meta.wrap(testRecords());
     try meta.wrap(testPreClean());
@@ -256,4 +266,5 @@ pub fn main() !void {
     try meta.wrap(testPathOperations());
     try meta.wrap(testFileTests());
     try meta.wrap(testPoll());
+    try meta.wrap(testClient(args));
 }
