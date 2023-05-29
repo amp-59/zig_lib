@@ -136,17 +136,6 @@ pub fn testClient(args: [][*:0]u8) !void {
     const len: u64 = try file.read(.{ .return_type = u64 }, fd, &buf);
     builtin.debug.write(buf[0..len]);
 }
-pub fn testSocketFunctions() !void {
-    const unix_tcp_fd: u64 = try file.socket(.{}, .unix, .tcp);
-    var sockaddr: file.Socket.Address = .{
-        .family = sys.AF.UNIX,
-        .data = undefined,
-    };
-    // Get examples from man 2 bind
-    var addrlen: u32 = 4;
-    try file.listen(.{}, unix_tcp_fd, 1);
-    try file.bind(.{}, unix_tcp_fd, &sockaddr, &addrlen);
-}
 pub fn testFileTests() !void {
     builtin.debug.write(@src().fn_name ++ ":\n");
     try file.makeDir(make_dir_spec, "/run/user/1000/file_test", file.mode.directory);
@@ -255,7 +244,6 @@ fn testPreClean() !void {
     file.removeDir(remove_dir_spec, "/run/user/1000/file_test") catch {};
 }
 pub fn main(args: [][*:0]u8) !void {
-    // try meta.wrap(testSocketFunctions());
     try meta.wrap(testRecords());
     try meta.wrap(testPreClean());
     try meta.wrap(testFileOperationsRound1());
