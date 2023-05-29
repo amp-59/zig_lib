@@ -175,9 +175,9 @@ pub const Socket = struct {
         raw = SOCK.RAW,
         const SOCK = sys.SOCK;
     };
-    pub const Address = extern struct {
-        family: Domain,
-        data: [14]u8,
+    pub const Address = extern union {
+        ipv4: AddressIPv4,
+        ipv6: AddressIPv6,
     };
     pub const AddressIPv4 = extern struct {
         family: Domain = .ipv4,
@@ -1147,12 +1147,12 @@ pub fn accept(comptime accept_spec: AcceptSpec, fd: u64, addr: *Socket.Address, 
         return accept_error;
     }
 }
-pub fn connect(comptime conn_spec: ConnectSpec, fd: u64, addr: *Socket.Address, addrlen: *u64) sys.ErrorUnion(
+pub fn connect(comptime conn_spec: ConnectSpec, fd: u64, addr: *const Socket.Address, addrlen: u64) sys.ErrorUnion(
     conn_spec.errors,
     conn_spec.return_type,
 ) {
-    const logging: builtin.Logging.AcquireError = comptime conn_spec.logging.override();
-    if (meta.wrap(sys.call(.connect, conn_spec.errors, void, .{ fd, @ptrToInt(addr), @ptrToInt(addrlen) }))) {
+    const logging: builtin.Logging.AttemptSuccessError = comptime conn_spec.logging.override();
+    if (meta.wrap(sys.call(.connect, conn_spec.errors, void, .{ fd, @ptrToInt(addr), addrlen }))) {
         //
     } else |connect_error| {
         if (logging.Error) {
