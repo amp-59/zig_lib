@@ -1172,6 +1172,73 @@ pub const SOCK = struct {
 pub const INADDR = struct {
     pub const ANY = 0x0;
 };
+pub const IPPROTO = struct {
+    pub const IP = 0;
+    pub const ICMP = 1;
+    pub const IGMP = 2;
+    pub const IPIP = 4;
+    pub const TCP = 6;
+    pub const EGP = 8;
+    pub const PUP = 12;
+    pub const UDP = 17;
+    pub const IDP = 22;
+    pub const TP = 29;
+    pub const DCCP = 33;
+    pub const IPV6 = 41;
+    pub const RSVP = 46;
+    pub const GRE = 47;
+    pub const ESP = 50;
+    pub const AH = 51;
+    pub const MTP = 92;
+    pub const BEETPH = 94;
+    pub const ENCAP = 98;
+    pub const PIM = 103;
+    pub const COMP = 108;
+    pub const L2TP = 115;
+    pub const SCTP = 132;
+    pub const UDPLITE = 136;
+    pub const MPLS = 137;
+    pub const ETHERNET = 143;
+    pub const RAW = 255;
+    pub const MPTCP = 262;
+    pub const MAX = 263;
+    pub const HOPOPTS = 0;
+    pub const ROUTING = 43;
+    pub const FRAGMENT = 44;
+    pub const ICMPV6 = 58;
+    pub const NONE = 59;
+    pub const DSTOPTS = 60;
+    pub const MH = 135;
+};
+pub const IPPORT = struct {
+    pub const ECHO = 7;
+    pub const DISCARD = 9;
+    pub const SYSTAT = 11;
+    pub const DAYTIME = 13;
+    pub const NETSTAT = 15;
+    pub const FTP = 21;
+    pub const TELNET = 23;
+    pub const SMTP = 25;
+    pub const TIMESERVER = 37;
+    pub const NAMESERVER = 42;
+    pub const WHOIS = 43;
+    pub const MTP = 57;
+    pub const TFTP = 69;
+    pub const RJE = 77;
+    pub const FINGER = 79;
+    pub const TTYLINK = 87;
+    pub const SUPDUP = 95;
+    pub const EXECSERVER = 512;
+    pub const LOGINSERVER = 513;
+    pub const CMDSERVER = 514;
+    pub const EFSSERVER = 520;
+    pub const BIFFUDP = 512;
+    pub const WHOSERVER = 513;
+    pub const ROUTESERVER = 520;
+    pub const RESERVED = 1024;
+    pub const USERRESERVED = 5000;
+};
+
 pub const ErrorCode = enum(i9) {
     NULL = 0, // No error
     PERM = -1, // Operation not permitted
@@ -1874,6 +1941,7 @@ pub const Fn = enum(u9) {
             .poll,
             .bind,
             .lseek,
+            .connect,
             => 3,
             .newfstatat,
             .mknodat,
