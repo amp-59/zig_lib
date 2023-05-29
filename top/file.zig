@@ -675,6 +675,7 @@ pub const AcceptSpec = struct {
 };
 pub const ConnectSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.connect_errors },
+    return_type: type = void,
     logging: builtin.Logging.AttemptSuccessError = .{},
 };
 pub const GetSockNameSpec = struct {
@@ -1067,10 +1068,17 @@ pub fn openAt(comptime spec: OpenSpec, dir_fd: u64, name: [:0]const u8) sys.Erro
         return open_error;
     }
 }
-pub fn socket(comptime spec: SocketSpec, domain: Socket.Domain, connection: Socket.Connection) sys.ErrorUnion(spec.errors, spec.return_type) {
+pub fn socket(
+    comptime spec: SocketSpec,
+    domain: Socket.Domain,
+    connection: Socket.Connection,
+    protocol: Socket.Protocol,
+) sys.ErrorUnion(spec.errors, spec.return_type) {
     const flags: Socket.Options = comptime spec.flags();
     const logging: builtin.Logging.AcquireError = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.socket, spec.errors, spec.return_type, .{ @enumToInt(domain), flags.val | @enumToInt(connection), 0 }))) |fd| {
+    if (meta.wrap(sys.call(.socket, spec.errors, spec.return_type, .{
+        @enumToInt(domain), flags.val | @enumToInt(connection), @enumToInt(protocol),
+    }))) |fd| {
         if (logging.Acquire) {
             debug.socketNotice(fd, domain, connection);
         }
