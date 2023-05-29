@@ -162,7 +162,7 @@ pub const Socket = struct {
         const SOCK = sys.SOCK;
     });
     pub const Type = struct {};
-    pub const Domain = enum(u64) {
+    pub const Domain = enum(u16) {
         unix = AF.UNIX,
         ipv4 = AF.INET,
         ipv6 = AF.INET6,
@@ -176,21 +176,58 @@ pub const Socket = struct {
         const SOCK = sys.SOCK;
     };
     pub const Address = extern struct {
-        family: u16,
+        family: Domain,
         data: [14]u8,
     };
     pub const AddressIPv4 = extern struct {
-        family: u16,
+        family: Domain = .ipv4,
         port: u16,
-        addr: extern struct { addr: u32 },
-        @"0": [8]u8,
+        addr: [4]u8,
+        @"0": [8]u8 = undefined,
     };
     pub const AddressIPv6 = extern struct {
-        family: u16,
+        family: Domain = .ipv6,
         port: u16,
         flow_info: u32,
-        addr: extern struct { addr: [8]u16 },
+        addr: [8]u16,
         scope_id: u32,
+    };
+    pub const Protocol = enum(u64) {
+        any = 0,
+        icmp = 1,
+        igmp = 2,
+        ipip = 4,
+        tcp = 6,
+        egp = 8,
+        pup = 12,
+        udp = 17,
+        idp = 22,
+        tp = 29,
+        dccp = 33,
+        ipv6 = 41,
+        rsvp = 46,
+        gre = 47,
+        esp = 50,
+        ah = 51,
+        mtp = 92,
+        beetph = 94,
+        encap = 98,
+        pim = 103,
+        comp = 108,
+        l2tp = 115,
+        sctp = 132,
+        udplite = 136,
+        mpls = 137,
+        ethernet = 143,
+        raw = 255,
+        mptcp = 262,
+        max = 263,
+        routing = 43,
+        fragment = 44,
+        icmpv6 = 58,
+        none = 59,
+        dstopts = 60,
+        mh = 135,
     };
 };
 pub const Status = extern struct {
