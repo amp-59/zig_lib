@@ -45,17 +45,17 @@ pub fn Absolute(comptime T: type) type {
 pub inline fn absoluteDiff(x: anytype, y: anytype) Absolute(@TypeOf(x + y)) {
     return @max(x, y) -% @min(x, y);
 }
-pub inline fn absoluteVal(i: anytype) Absolute(@TypeOf(i)) {
+pub inline fn absoluteVal(value: anytype) Absolute(@TypeOf(value)) {
     @setRuntimeSafety(false);
-    const Int: type = @TypeOf(i);
+    const Int: type = @TypeOf(value);
     const Abs: type = Absolute(Int);
-    if (Int == comptime_int and i < 0) {
-        return -i;
+    if (Int == comptime_int and value < 0) {
+        return -value;
     }
-    if (Int != Abs and i < 0) {
-        return @bitCast(Abs, -i);
+    if (Int != Abs and value < 0) {
+        return @bitCast(Abs, -value);
     }
-    return @intCast(Abs, i);
+    return @intCast(Abs, value);
 }
 /// Returns the sum of arg1 and b. Returns an error on overflow.
 pub fn mul(comptime T: type, arg1: T, arg2: T) (error{Overflow}!T) {
