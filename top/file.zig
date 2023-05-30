@@ -175,25 +175,46 @@ pub const Socket = struct {
         raw = SOCK.RAW,
         const SOCK = sys.SOCK;
     };
+    pub const AddressFamily = enum(u16) {
+        ipv4 = AF.INET,
+        ipv6 = AF.INET6,
+        const AF = sys.AF;
+    };
     pub const Address = extern union {
         ipv4: AddressIPv4,
         ipv6: AddressIPv6,
     };
     pub const AddressIPv4 = extern struct {
-        family: Domain = .ipv4,
+        family: AddressFamily = .ipv4,
         port: u16,
         addr: [4]u8,
         @"0": [8]u8 = undefined,
+        pub const addrlen: u64 = @sizeOf(AddressIPv4);
+        pub fn create(port: u16, addr: [4]u8) Address {
+            return .{ .ipv4 = .{
+                .port = @byteSwap(port),
+                .addr = addr,
+            } };
+        }
     };
     pub const AddressIPv6 = extern struct {
-        family: Domain = .ipv6,
+        family: AddressFamily = .ipv6,
         port: u16,
         flow_info: u32,
         addr: [8]u16,
         scope_id: u32,
+        pub const addrlen: u64 = @sizeOf(AddressIPv6);
+        pub fn create(port: u16, flow_info: u32, addr: [8]u16, scope_id: u32) Address {
+            return .{ .ipv6 = .{
+                .port = @byteSwap(port),
+                .flow_info = flow_info,
+                .addr = addr,
+                .scope_id = scope_id,
+            } };
+        }
     };
     pub const Protocol = enum(u64) {
-        any = 0,
+        ip = 0,
         icmp = 1,
         igmp = 2,
         ipip = 4,
@@ -684,7 +705,8 @@ pub const GetSockNameSpec = struct {
 };
 pub const ReceiveFromSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.recv_errors },
-    logging: builtin.Logging.SuccessError,
+    return_type: type = u64,
+    logging: builtin.Logging.SuccessError = .{},
 };
 pub const GetPeerNameSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.getpeername_errors },
@@ -692,6 +714,7 @@ pub const GetPeerNameSpec = struct {
 };
 pub const SendToSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.send_errors },
+    return_type: type = u64,
     logging: builtin.Logging.SuccessError = .{},
 };
 pub const SocketOptionSpec = struct {
@@ -1068,12 +1091,10 @@ pub fn openAt(comptime spec: OpenSpec, dir_fd: u64, name: [:0]const u8) sys.Erro
         return open_error;
     }
 }
-pub fn socket(
-    comptime spec: SocketSpec,
-    domain: Socket.Domain,
-    connection: Socket.Connection,
-    protocol: Socket.Protocol,
-) sys.ErrorUnion(spec.errors, spec.return_type) {
+pub fn socket(comptime spec: SocketSpec, domain: Socket.Domain, connection: Socket.Connection, protocol: Socket.Protocol) sys.ErrorUnion(
+    spec.errors,
+    spec.return_type,
+) {
     const flags: Socket.Options = comptime spec.flags();
     const logging: builtin.Logging.AcquireError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.socket, spec.errors, spec.return_type, .{
@@ -1090,7 +1111,10 @@ pub fn socket(
         return socket_error;
     }
 }
-pub fn socketPair(comptime spec: SocketSpec, domain: Socket.Domain, connection: Socket.Connection, fds: *[2]u32) sys.ErrorUnion(spec.errors, spec.return_type) {
+pub fn socketPair(comptime spec: SocketSpec, domain: Socket.Domain, connection: Socket.Connection, fds: *[2]u32) sys.ErrorUnion(
+    spec.errors,
+    spec.return_type,
+) {
     const flags: Socket = comptime spec.flags();
     const logging: builtin.Logging.AcquireError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.socketpair, spec.errors, spec.return_type, .{
@@ -1120,9 +1144,9 @@ pub fn listen(comptime listen_spec: ListenSpec, sock_fd: u64, backlog: u64) sys.
         return listen_error;
     }
 }
-pub fn bind(comptime bind_spec: BindSpec, sock_fd: u64, addr: *Socket.Address, addrlen: *u32) sys.ErrorUnion(bind_spec.errors, void) {
+pub fn bind(comptime bind_spec: BindSpec, sock_fd: u64, addr: *Socket.Address, addrlen: u32) sys.ErrorUnion(bind_spec.errors, void) {
     const logging: builtin.Logging.AcquireError = comptime bind_spec.logging.override();
-    if (meta.wrap(sys.call(.bind, bind_spec.errors, void, .{ sock_fd, @ptrToInt(addr), @ptrToInt(addrlen) }))) {
+    if (meta.wrap(sys.call(.bind, bind_spec.errors, void, .{ sock_fd, @ptrToInt(addr), addrlen }))) {
         if (logging.Acquire) {
             //debug.bindNotice(sock_fd, addr, addrlen);
         }
@@ -1165,11 +1189,11 @@ pub fn sendTo(comptime send_spec: SendToSpec, fd: u64, buf: []u8, flags: u32, ad
     send_spec.errors,
     send_spec.return_type,
 ) {
-    const logging: builtin.Logging.AcquireError = comptime send_spec.logging.override();
-    if (meta.wrap(sys.call(.sendto, send_spec.errors, void, .{
-        fd, @ptrToInt(buf.ptr), buf.len, flags, @ptrToInt(addr), @ptrToInt(addrlen),
-    }))) {
-        //
+    const logging: builtin.Logging.SuccessError = comptime send_spec.logging.override();
+    if (meta.wrap(sys.call(.sendto, send_spec.errors, send_spec.return_type, .{
+        fd, @ptrToInt(buf.ptr), buf.len, flags, @ptrToInt(addr), addrlen,
+    }))) |ret| {
+        return ret;
     } else |sendto_error| {
         if (logging.Error) {
             //
@@ -1181,11 +1205,12 @@ pub fn receiveFrom(comptime recv_spec: ReceiveFromSpec, fd: u64, buf: []u8, flag
     recv_spec.errors,
     recv_spec.return_type,
 ) {
-    const logging: builtin.Logging.AcquireError = comptime recv_spec.logging.override();
-    if (meta.wrap(sys.call(.recvfrom, recv_spec.errors, void, .{
+    const logging: builtin.Logging.SuccessError = comptime recv_spec.logging.override();
+    if (meta.wrap(sys.call(.recvfrom, recv_spec.errors, recv_spec.return_type, .{
         fd, @ptrToInt(buf.ptr), buf.len, flags, @ptrToInt(addr), @ptrToInt(addrlen),
-    }))) {
+    }))) |ret| {
         //
+        return ret;
     } else |recvfrom_error| {
         if (logging.Error) {
             //
