@@ -15,6 +15,9 @@ const max_len: u64 = attr.format_command_options.len + attr.build_command_option
 const Array = mem.StaticString(64 * 1024 * 1024);
 const Arrays = mem.StaticArray([]const u8, max_len);
 const Indices = mem.StaticArray(u64, max_len);
+const prefer_ptrcast: bool = true;
+const prefer_builtin: bool = false;
+const combine_char: bool = true;
 const open_spec: file.OpenSpec = .{
     .errors = .{},
     .logging = .{},
@@ -83,11 +86,6 @@ fn writeFields(array: *Array, param_specs: []const types.ParamSpec) void {
         }
     }
 }
-pub usingnamespace proc.start;
-const compile: bool = false;
-const prefer_ptrcast: bool = true;
-const prefer_builtin: bool = false;
-const combine_char: bool = true;
 fn writeIf(array: *Array, value_name: []const u8) void {
     array.writeMany("if(");
     array.writeMany(value_name);
