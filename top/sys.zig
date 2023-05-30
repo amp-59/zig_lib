@@ -1959,6 +1959,8 @@ pub const Fn = enum(u9) {
             => 5,
             .futex,
             .mmap,
+            .recvfrom,
+            .sendto,
             => 6,
             else => @compileError(@tagName(function)),
         };
