@@ -576,7 +576,7 @@ pub fn acquire(comptime AddressSpace: type, address_space: *AddressSpace, index:
             try meta.wrap(acquireMap(AddressSpace, address_space));
         }
         if (logging.Acquire) {
-            debug.arenaAcquireNotice(index, lb_addr, up_addr, spec.label);
+            debug.aboutIndexLbAddrUpAddrLabelNotice(debug.about_acq_0_s, index, lb_addr, up_addr, spec.label);
         }
     } else if (spec.errors.acquire == .throw) {
         if (logging.Error) {
@@ -594,7 +594,7 @@ pub fn acquireStatic(comptime AddressSpace: type, address_space: *AddressSpace, 
     const logging: builtin.Logging.AcquireErrorFault = comptime spec.logging.acquire.override();
     if (acquireStaticSet(AddressSpace, address_space, index)) {
         if (logging.Acquire) {
-            debug.arenaAcquireNotice(index, lb_addr, up_addr, spec.label);
+            debug.aboutIndexLbAddrUpAddrLabelNotice(debug.about_acq_0_s, index, lb_addr, up_addr, spec.label);
         }
     } else if (spec.errors.acquire == .throw) {
         if (logging.Error) {
@@ -630,7 +630,7 @@ pub fn release(comptime AddressSpace: type, address_space: *AddressSpace, index:
     const logging: builtin.Logging.ReleaseErrorFault = comptime spec.logging.release.override();
     if (releaseUnset(AddressSpace, address_space, index)) {
         if (logging.Release) {
-            debug.arenaReleaseNotice(index, lb_addr, up_addr, spec.label);
+            debug.aboutIndexLbAddrUpAddrLabelNotice(debug.about_rel_0_s, index, lb_addr, up_addr, spec.label);
         }
         if (spec.options.require_unmap) {
             try meta.wrap(releaseUnmap(AddressSpace, address_space));
@@ -651,7 +651,7 @@ pub fn releaseStatic(comptime AddressSpace: type, address_space: *AddressSpace, 
     const logging: builtin.Logging.ReleaseErrorFault = comptime spec.logging.release.override();
     if (releaseStaticUnset(AddressSpace, address_space, index)) {
         if (logging.Release) {
-            debug.arenaReleaseNotice(index, lb_addr, up_addr, spec.label);
+            debug.aboutIndexLbAddrUpAddrLabelNotice(debug.about_rel_0_s, index, lb_addr, up_addr, spec.label);
         }
     } else if (spec.errors.release == .throw) {
         if (logging.Error) {
@@ -668,7 +668,7 @@ pub fn releaseElementary(comptime AddressSpace: type, address_space: *AddressSpa
     const up_addr: u64 = address_space.high();
     if (releaseElementaryUnset(AddressSpace, address_space)) {
         if (spec.logging.release.Release) {
-            debug.arenaReleaseNotice(null, lb_addr, up_addr, spec.label);
+            debug.aboutIndexLbAddrUpAddrLabelNotice(debug.about_rel_0_s, null, lb_addr, up_addr, spec.label);
         }
     } else if (spec.errors.release == .throw) {
         if (spec.logging.release.Error) {
@@ -690,7 +690,7 @@ pub fn testAcquire(comptime AddressSpace: type, address_space: *AddressSpace, in
             try meta.wrap(acquireMap(AddressSpace, address_space));
         }
         if (logging.Acquire) {
-            debug.arenaAcquireNotice(index, lb_addr, up_addr, spec.label);
+            debug.aboutIndexLbAddrUpAddrLabelNotice(debug.about_acq_0_s, index, lb_addr, up_addr, spec.label);
         }
     }
     return ret;
@@ -703,7 +703,7 @@ pub fn testAcquireStatic(comptime AddressSpace: type, address_space: *AddressSpa
     const ret: bool = acquireStaticSet(AddressSpace, address_space, index);
     if (ret) {
         if (logging.Acquire) {
-            debug.arenaAcquireNotice(index, lb_addr, up_addr, spec.label);
+            debug.aboutIndexLbAddrUpAddrLabelNotice(debug.about_acq_0_s, index, lb_addr, up_addr, spec.label);
         }
     }
     return ret;
@@ -716,7 +716,7 @@ pub fn testAcquireElementary(comptime AddressSpace: type, address_space: *Addres
     const ret: bool = acquireElementarySet(AddressSpace, address_space);
     if (ret) {
         if (logging.Acquire) {
-            debug.arenaAcquireNotice(null, lb_addr, up_addr, spec.label);
+            debug.aboutIndexLbAddrUpAddrLabelNotice(debug.about_acq_0_s, null, lb_addr, up_addr, spec.label);
         }
     }
     return ret;
@@ -956,22 +956,29 @@ pub const debug = opaque {
             " bytes\n",
         });
     }
-    fn indexLbAddrUpAddrLabelAboutNotice(index: anytype, lb_addr: u64, up_addr: u64, label: ?[]const u8, about_s: [:0]const u8) void {
+    fn aboutIndexLbAddrUpAddrLabelNotice(about_s: [:0]const u8, index: ?u64, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
         var buf: [4096]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
             about_s,    label orelse "arena",
-            "-",        builtin.fmt.ud64(index).readAll(),
+            "-",        builtin.fmt.ud64(index orelse 0).readAll(),
             ", ",       builtin.fmt.ux64(lb_addr).readAll(),
             "..",       builtin.fmt.ux64(up_addr).readAll(),
             ", ",       builtin.fmt.ud64(up_addr -% lb_addr).readAll(),
             " bytes\n",
         });
     }
-    inline fn arenaAcquireNotice(index: anytype, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
-        indexLbAddrUpAddrLabelAboutNotice(index, lb_addr, up_addr, label, about_acq_0_s);
-    }
-    inline fn arenaReleaseNotice(index: anytype, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
-        indexLbAddrUpAddrLabelAboutNotice(index, lb_addr, up_addr, label, about_rel_0_s);
+    fn aboutIndexLbAddrUpAddrLabelError(about_s: [:0]const u8, error_name: [:0]const u8, index: ?u64, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
+        @setCold(true);
+        var buf: [4096 + 512]u8 = undefined;
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
+            about_s,    label orelse "arena",
+            "-",        builtin.fmt.ud64(index orelse 0).readAll(),
+            ", ",       builtin.fmt.ux64(lb_addr).readAll(),
+            "..",       builtin.fmt.ux64(up_addr).readAll(),
+            ", ",       builtin.fmt.ud64(up_addr -% lb_addr).readAll(),
+            " bytes (", error_name,
+            ")\n",
+        });
     }
     fn memFdNotice(name: [:0]const u8, mem_fd: u64) void {
         var buf: [4096 + 32]u8 = undefined;
@@ -1038,32 +1045,6 @@ pub const debug = opaque {
             "..",        builtin.fmt.ux64(new_addr +% new_len).readAll(),
             notation_s,  builtin.fmt.ud64(abs_diff).readAll(),
             " bytes (",  @errorName(mremap_err),
-            ")\n",
-        });
-    }
-    fn arenaAcquireError(arena_error: anytype, index: ?u64, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
-        @setCold(true);
-        var buf: [4096 + 512]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
-            about_acq_1_s, label orelse "arena",
-            "-",           builtin.fmt.ud64(index orelse 0).readAll(),
-            ", ",          builtin.fmt.ux64(lb_addr).readAll(),
-            "..",          builtin.fmt.ux64(up_addr).readAll(),
-            ", ",          builtin.fmt.ud64(up_addr -% lb_addr).readAll(),
-            " bytes (",    @errorName(arena_error),
-            ")\n",
-        });
-    }
-    fn arenaReleaseError(arena_error: anytype, index: ?u64, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
-        @setCold(true);
-        var buf: [4096 + 512]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
-            about_rel_1_s, label orelse "arena",
-            "-",           builtin.fmt.ud64(index orelse 0).readAll(),
-            ", ",          builtin.fmt.ux64(lb_addr).readAll(),
-            "..",          builtin.fmt.ux64(up_addr).readAll(),
-            ", ",          builtin.fmt.ud64(up_addr -% lb_addr).readAll(),
-            " bytes (",    @errorName(arena_error),
             ")\n",
         });
     }
