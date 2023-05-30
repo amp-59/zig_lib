@@ -15,7 +15,7 @@ const testing = top.testing;
 pub usingnamespace proc.start;
 
 pub const runtime_assertions: bool = true;
-pub const logging_default: builtin.Logging.Default = spec.logging.default.verbose;
+//pub const logging_default: builtin.Logging.Default = spec.logging.default.verbo;
 
 const default_errors: bool = !@hasDecl(@import("root"), "errors");
 
@@ -112,12 +112,12 @@ fn testFileOperationsRound1() !void {
 }
 pub fn testSocketOpenAndClose() !void {
     builtin.debug.write(@src().fn_name ++ ":\n");
-    const unix_tcp_fd: u64 = try file.socket(.{}, .unix, .tcp, .any);
-    const unix_udp_fd: u64 = try file.socket(.{}, .unix, .udp, .any);
-    const ipv6_udp_fd: u64 = try file.socket(.{}, .ipv6, .udp, .any);
-    const ipv6_tcp_fd: u64 = try file.socket(.{}, .ipv6, .tcp, .any);
-    const ipv4_udp_fd: u64 = try file.socket(.{}, .ipv4, .udp, .any);
-    const ipv4_tcp_fd: u64 = try file.socket(.{}, .ipv4, .tcp, .any);
+    const unix_tcp_fd: u64 = try file.socket(.{}, .unix, .tcp, .ip);
+    const unix_udp_fd: u64 = try file.socket(.{}, .unix, .udp, .ip);
+    const ipv6_udp_fd: u64 = try file.socket(.{}, .ipv6, .udp, .ip);
+    const ipv6_tcp_fd: u64 = try file.socket(.{}, .ipv6, .tcp, .ip);
+    const ipv4_udp_fd: u64 = try file.socket(.{}, .ipv4, .udp, .ip);
+    const ipv4_tcp_fd: u64 = try file.socket(.{}, .ipv4, .tcp, .ip);
     try file.close(.{}, ipv4_tcp_fd);
     try file.close(.{}, ipv4_udp_fd);
     try file.close(.{}, ipv6_tcp_fd);
@@ -125,16 +125,63 @@ pub fn testSocketOpenAndClose() !void {
     try file.close(.{}, unix_udp_fd);
     try file.close(.{}, unix_tcp_fd);
 }
-pub fn testClient(args: [][*:0]u8) !void {
-    const k: u16 = 55478;
-    var addrinfo: file.Socket.AddressIPv4 = .{ .port = @byteSwap(k), .addr = "\x00\x00\x00\x00".* };
-    var addrlen: u64 = 16;
-    const fd: u64 = try file.socket(.{ .options = .{ .non_block = false } }, .ipv4, .udp, .any);
-    try file.connect(.{}, fd, &.{ .ipv4 = addrinfo }, addrlen);
+pub fn testClientIPv4(args: [][*:0]u8) !void {
+    var addrinfo: file.Socket.Address = file.Socket.AddressIPv4.create(55478, .{ 0, 0, 0, 0 });
+    const fd: u64 = try file.socket(.{ .options = .{ .non_block = false } }, .ipv4, .udp, .ip);
+    try file.connect(.{}, fd, &addrinfo, 16);
     var buf: [500]u8 = undefined;
     try file.write(.{}, fd, meta.manyToSlice(args[0]));
     const len: u64 = try file.read(.{ .return_type = u64 }, fd, &buf);
+    builtin.debug.write(comptime builtin.fmt.about("ipv4") ++ "server responds: ");
     builtin.debug.write(buf[0..len]);
+    builtin.debug.write("\n");
+}
+pub fn testServerIPv4() !void {
+    var addrinfo: file.Socket.Address = file.Socket.AddressIPv4.create(55478, .{ 0, 0, 0, 0 });
+    const fd: u64 = try file.socket(.{ .options = .{ .non_block = false } }, .ipv4, .udp, .udp);
+    try file.bind(.{}, fd, &addrinfo, 16);
+    var buf: [500]u8 = undefined;
+    var sender_addrinfo: file.Socket.Address = undefined;
+    var sender_addrlen: u32 = 16;
+    const len: u64 = try file.receiveFrom(.{}, fd, &buf, 0, &sender_addrinfo, &sender_addrlen);
+    try file.sendTo(.{ .return_type = void }, fd, buf[0..len], 0, &sender_addrinfo, sender_addrlen);
+}
+pub fn testClientIPv6(args: [][*:0]u8) !void {
+    var addrinfo: file.Socket.Address = file.Socket.AddressIPv6.create(55480, 0, .{ 0, 0, 0, 0, 0, 0, 0, 0 }, 0);
+    const fd: u64 = try file.socket(.{ .options = .{ .non_block = false } }, .ipv6, .udp, .ip);
+    try file.connect(.{}, fd, &addrinfo, 28);
+    var buf: [500]u8 = undefined;
+    try file.write(.{}, fd, meta.manyToSlice(args[0]));
+    const len: u64 = try file.read(.{ .return_type = u64 }, fd, &buf);
+    builtin.debug.write(comptime builtin.fmt.about("ipv6") ++ "server responds: ");
+    builtin.debug.write(buf[0..len]);
+    builtin.debug.write("\n");
+}
+pub fn testServerIPv6() !void {
+    var addrinfo: file.Socket.Address = file.Socket.AddressIPv6.create(55480, 0, .{ 0, 0, 0, 0, 0, 0, 0, 0 }, 0);
+    const fd: u64 = try file.socket(.{ .options = .{ .non_block = false } }, .ipv6, .udp, .udp);
+    try file.bind(.{}, fd, &addrinfo, 28);
+    var buf: [500]u8 = undefined;
+    var sender_addrinfo: file.Socket.Address = undefined;
+    var sender_addrlen: u32 = 28;
+    const len: u64 = try file.receiveFrom(.{}, fd, &buf, 0, &sender_addrinfo, &sender_addrlen);
+    try file.sendTo(.{ .return_type = void }, fd, buf[0..len], 0, &sender_addrinfo, sender_addrlen);
+}
+pub fn testClientAndServerIPv4(args: [][*:0]u8) !void {
+    if (try proc.fork(.{}) == 0) {
+        try testServerIPv4();
+        builtin.proc.exit(0);
+    }
+    try time.sleep(.{}, .{ .nsec = 50000 });
+    try testClientIPv4(args);
+}
+pub fn testClientAndServerIPv6(args: [][*:0]u8) !void {
+    if (try proc.fork(.{}) == 0) {
+        try testServerIPv6();
+        builtin.proc.exit(0);
+    }
+    try time.sleep(.{}, .{ .nsec = 50000 });
+    try testClientIPv6(args);
 }
 pub fn testFileTests() !void {
     builtin.debug.write(@src().fn_name ++ ":\n");
@@ -254,5 +301,6 @@ pub fn main(args: [][*:0]u8) !void {
     try meta.wrap(testPathOperations());
     try meta.wrap(testFileTests());
     try meta.wrap(testPoll());
-    try meta.wrap(testClient(args));
+    try meta.wrap(testClientAndServerIPv4(args));
+    try meta.wrap(testClientAndServerIPv6(args));
 }
