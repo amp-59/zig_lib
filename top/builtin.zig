@@ -1256,7 +1256,9 @@ pub const proc = struct {
     }
 };
 pub const debug = struct {
-    pub const itos = fmt.dec;
+    pub fn itos(comptime T: type, value: T) fmt.Generic(T).Array10 {
+        return fmt.Generic(T).dec(value);
+    }
     const size: usize = 4096;
     const about_exit_0_s: [:0]const u8 = fmt.about("exit");
     pub const about_fault_p0_s: [:0]const u8 = blk: {
@@ -1762,7 +1764,7 @@ pub const parse = struct {
     pub const E = error{BadParse};
     pub fn ub(comptime T: type, str: []const u8) T {
         static.assert(@typeInfo(T).Int.signedness == .unsigned);
-        const sig_fig_list: []const T = comptime sigFigList(T, 2);
+        const sig_fig_list: []const T = sigFigList(T, 2);
         var idx: u64 = 0;
         var value: T = 0;
         idx +%= @boolToInt(str[idx] == '0');
@@ -1774,7 +1776,7 @@ pub const parse = struct {
     }
     pub fn uo(comptime T: type, str: []const u8) T {
         static.assert(@typeInfo(T).Int.signedness == .unsigned);
-        const sig_fig_list: []const T = comptime sigFigList(T, 8);
+        const sig_fig_list: []const T = sigFigList(T, 8);
         var idx: u64 = 0;
         var value: T = 0;
         idx +%= @boolToInt(str[idx] == '0');
@@ -1786,7 +1788,7 @@ pub const parse = struct {
     }
     pub fn ud(comptime T: type, str: []const u8) T {
         static.assert(@typeInfo(T).Int.signedness == .unsigned);
-        const sig_fig_list: []const T = comptime sigFigList(T, 10);
+        const sig_fig_list: []const T = sigFigList(T, 10);
         var idx: u64 = 0;
         var value: T = 0;
         while (idx != str.len) : (idx +%= 1) {
@@ -1796,7 +1798,7 @@ pub const parse = struct {
     }
     pub fn ux(comptime T: type, str: []const u8) T {
         static.assert(@typeInfo(T).Int.signedness == .unsigned);
-        const sig_fig_list: []const T = comptime sigFigList(T, 16);
+        const sig_fig_list: []const T = sigFigList(T, 16);
         var idx: u64 = 0;
         var value: T = 0;
         idx +%= @boolToInt(str[idx] == '0');
@@ -1808,7 +1810,7 @@ pub const parse = struct {
     }
     pub fn ib(comptime T: type, str: []const u8) T {
         static.assert(@typeInfo(T).Int.signedness == .signed);
-        const sig_fig_list: []const T = comptime sigFigList(T, 2);
+        const sig_fig_list: []const T = sigFigList(T, 2);
         var idx: u64 = 0;
         var value: T = 0;
         idx +%= @boolToInt(str[idx] == '-');
@@ -1821,7 +1823,7 @@ pub const parse = struct {
     }
     pub fn io(comptime T: type, str: []const u8) T {
         static.assert(@typeInfo(T).Int.signedness == .signed);
-        const sig_fig_list: []const T = comptime sigFigList(T, 8);
+        const sig_fig_list: []const T = sigFigList(T, 8);
         var idx: u64 = 0;
         var value: T = 0;
         idx +%= @boolToInt(str[idx] == '-');
@@ -1834,7 +1836,7 @@ pub const parse = struct {
     }
     pub fn id(comptime T: type, str: []const u8) T {
         static.assert(@typeInfo(T).Int.signedness == .signed);
-        const sig_fig_list: []const T = comptime sigFigList(T, 10);
+        const sig_fig_list: []const T = sigFigList(T, 10);
         var idx: u64 = 0;
         var value: T = 0;
         idx +%= @boolToInt(str[idx] == '-');
@@ -1845,7 +1847,7 @@ pub const parse = struct {
     }
     pub fn ix(comptime T: type, str: []const u8) T {
         static.assert(@typeInfo(T).Int.signedness == .signed);
-        const sig_fig_list: []const T = comptime sigFigList(T, 16);
+        const sig_fig_list: []const T = sigFigList(T, 16);
         var idx: u64 = 0;
         var value: T = 0;
         idx +%= @boolToInt(str[idx] == '-');
@@ -1857,18 +1859,18 @@ pub const parse = struct {
         return if (str[0] == '-') -value else value;
     }
     pub fn fromSymbol(c: u8, comptime radix: u7) u8 {
-        if (radix > 10) {
+        if (radix <= 10) {
+            return c -% '0';
+        } else {
             switch (c) {
                 '0'...'9' => return c -% '0',
                 'a'...'z' => return c -% 'a' +% 0xa,
                 'A'...'Z' => return c -% 'A' +% 0xa,
-                else => return 0xff,
+                else => return radix +% 1,
             }
-        } else {
-            return c -% '0';
         }
     }
-    pub fn fromSymbolChecked(c: u8, comptime radix: u7) !u8 {
+    pub inline fn fromSymbolChecked(c: u8, comptime radix: u7) !u8 {
         const value: u8 = fromSymbol(c, radix);
         if (value >= radix) {
             return error.InvalidEncoding;
@@ -1886,29 +1888,20 @@ pub const parse = struct {
         }
         return add_result[0];
     }
-    fn sigFigList(comptime T: type, comptime radix: u16) []const T {
-        var value: T = 0;
-        var ret: []const T = &.{};
-        while (nextSigFig(T, value, radix)) |next| {
+    pub inline fn sigFigList(comptime T: type, comptime radix: u7) []const T {
+        comptime var value: T = 0;
+        comptime var ret: []const T = &.{};
+        inline while (comptime nextSigFig(T, value, radix)) |next| {
             ret = ret ++ [1]T{value};
             value = next;
         } else {
             ret = ret ++ [1]T{value};
         }
-        return ret;
+        comptime return ret;
     }
-    pub fn any(comptime T: type, any_str: anytype) !T {
-        const str: []const u8 = blk: {
-            if (@TypeOf(any_str) == [*:0]u8) {
-                var len: u64 = 0;
-                while (any_str[len] != 0) len +%= 1;
-                break :blk any_str[0..len :0];
-            } else {
-                break :blk any_str;
-            }
-        };
+    pub fn any(comptime T: type, str: []const u8) !T {
         const signed: bool = str[0] == '-';
-        if (signed and @typeInfo(T).Int.signedness == .unsigned) {
+        if (@typeInfo(T).Int.signedness == .unsigned and signed) {
             return E.BadParse;
         }
         var idx: u64 = int(u64, signed);
@@ -1918,66 +1911,18 @@ pub const parse = struct {
             return 0;
         }
         switch (str[idx]) {
-            'b' => {
-                return parseValidate(T, str[idx +% 1 ..], 2);
-            },
-            'o' => {
-                return parseValidate(T, str[idx +% 1 ..], 8);
-            },
-            'x' => {
-                return parseValidate(T, str[idx +% 1 ..], 16);
-            },
-            else => {
-                return parseValidate(T, str[idx..], 10);
-            },
+            'b' => return parseValidate(T, str[idx +% 1 ..], 2),
+            'o' => return parseValidate(T, str[idx +% 1 ..], 8),
+            'x' => return parseValidate(T, str[idx +% 1 ..], 16),
+            else => return parseValidate(T, str[idx..], 10),
         }
     }
-    fn parseValidate(comptime T: type, str: []const u8, comptime radix: u16) !T {
-        const sig_fig_list: []const T = comptime sigFigList(T, radix);
+    fn parseValidate(comptime T: type, str: []const u8, comptime radix: u7) !T {
+        const sig_fig_list: []const T = sigFigList(T, radix);
         var idx: u64 = 0;
         var value: T = 0;
-        switch (radix) {
-            2 => while (idx != str.len) : (idx +%= 1) {
-                switch (str[idx]) {
-                    '0'...'1' => {
-                        value +%= fromSymbol(str[idx], 2) *% (sig_fig_list[str.len -% idx -% 1] +% 1);
-                    },
-                    else => {
-                        return E.BadParse;
-                    },
-                }
-            },
-            8 => while (idx != str.len) : (idx += 1) {
-                switch (str[idx]) {
-                    '0'...'7' => {
-                        value +%= fromSymbol(str[idx], 8) *% (sig_fig_list[str.len -% idx -% 1] +% 1);
-                    },
-                    else => {
-                        return E.BadParse;
-                    },
-                }
-            },
-            10 => while (idx != str.len) : (idx += 1) {
-                switch (str[idx]) {
-                    '0'...'9' => {
-                        value +%= fromSymbol(str[idx], 10) *% (sig_fig_list[str.len -% idx -% 1] +% 1);
-                    },
-                    else => {
-                        return E.BadParse;
-                    },
-                }
-            },
-            16 => while (idx != str.len) : (idx += 1) {
-                switch (str[idx]) {
-                    '0'...'9', 'a'...'f' => {
-                        value +%= fromSymbol(str[idx], 16) *% (sig_fig_list[str.len -% idx -% 1] +% 1);
-                    },
-                    else => {
-                        return E.BadParse;
-                    },
-                }
-            },
-            else => unreachable,
+        while (idx != str.len) : (idx +%= 1) {
+            value +%= try fromSymbolChecked(str[idx], radix) *% (sig_fig_list[str.len -% idx -% 1] +% 1);
         }
         return value;
     }
@@ -2002,26 +1947,6 @@ pub const fmt = struct {
         }
         return lhs ++ " " ** (config.message_indent - len);
     }
-    fn StaticStringMemo(comptime max_len: u64) type {
-        const T = extern struct {
-            auto: [max_len]u8 align(8),
-            len: u64,
-            const Array = @This();
-            fn writeOneBackwards(array: *Array, v: u8) void {
-                @setRuntimeSafety(false);
-                array.len -%= 1;
-                array.auto[array.len] = v;
-            }
-            pub fn readAll(array: *const Array) []const u8 {
-                @setRuntimeSafety(false);
-                return array.auto[array.len..];
-            }
-        };
-        return T;
-    }
-    fn StaticString(comptime T: type, comptime radix: u16) type {
-        return StaticStringMemo(maxSigFig(T, radix) +% 1);
-    }
     pub fn ci(comptime value: comptime_int) []const u8 {
         if (value < 0) {
             const s: []const u8 = @typeName([-value]void);
@@ -2038,230 +1963,62 @@ pub const fmt = struct {
         const t_type_name: []const u8 = @typeName(T);
         return t_type_name[2 .. t_type_name.len -% (s_type_name.len +% 1)];
     }
-    pub fn int(value: anytype) StaticString(@TypeOf(value), 10) {
-        if (@sizeOf(@TypeOf(value)) == 0) {
-            return ci(value);
-        }
-        return dec(@TypeOf(value), value);
+
+    pub inline fn bin(comptime Int: type, value: Int) Generic(Int).Array2 {
+        return Generic(Int).bin(value);
     }
-    pub fn bin(comptime Int: type, value: Int) StaticString(Int, 2) {
-        const Array = StaticString(Int, 2);
-        const Abs = math.Absolute(Int);
-        var array: Array = undefined;
-        array.len = array.auto.len;
-        if (value == 0) {
-            while (array.len != 3) {
-                array.writeOneBackwards('0');
-            }
-            array.writeOneBackwards('b');
-            array.writeOneBackwards('0');
-            return array;
-        }
-        var abs_value: Abs = math.absoluteVal(value);
-        while (abs_value != 0) : (abs_value /= 2) {
-            array.writeOneBackwards(toSymbol(Abs, abs_value, 2));
-        }
-        while (array.len != 3) {
-            array.writeOneBackwards('0');
-        }
-        array.writeOneBackwards('b');
-        array.writeOneBackwards('0');
-        if (value < 0) {
-            array.writeOneBackwards('-');
-        }
-        return array;
+    pub inline fn oct(comptime Int: type, value: Int) Generic(Int).Array8 {
+        return Generic(Int).oct(value);
     }
-    pub fn oct(comptime Int: type, value: Int) StaticString(Int, 8) {
-        const Array = StaticString(Int, 8);
-        const Abs = math.Absolute(Int);
-        var array: Array = undefined;
-        array.len = array.auto.len;
-        if (value == 0) {
-            array.writeOneBackwards('0');
-            array.writeOneBackwards('o');
-            array.writeOneBackwards('0');
-            return array;
-        }
-        var abs_value: Abs = math.absoluteVal(value);
-        while (abs_value != 0) : (abs_value /= 8) {
-            array.writeOneBackwards(toSymbol(Abs, abs_value, 8));
-        }
-        array.writeOneBackwards('o');
-        array.writeOneBackwards('0');
-        if (value < 0) {
-            array.writeOneBackwards('-');
-        }
-        return array;
+    pub inline fn dec(comptime Int: type, value: Int) Generic(Int).Array10 {
+        return Generic(Int).dec(value);
     }
-    pub fn dec(comptime Int: type, value: Int) StaticString(Int, 10) {
-        const Array = StaticString(Int, 10);
-        const Abs = math.Absolute(Int);
-        var array: Array = undefined;
-        array.len = array.auto.len;
-        if (value == 0) {
-            array.writeOneBackwards('0');
-            return array;
-        }
-        var abs_value: Abs = math.absoluteVal(value);
-        while (abs_value != 0) : (abs_value /= 10) {
-            array.writeOneBackwards(toSymbol(Abs, abs_value, 10));
-        }
-        if (value < 0) {
-            array.writeOneBackwards('-');
-        }
-        return array;
+    pub inline fn hex(comptime Int: type, value: Int) Generic(Int).Array16 {
+        return Generic(Int).hex(value);
     }
-    pub fn hex(comptime Int: type, value: Int) StaticString(Int, 16) {
-        const Array = StaticString(Int, 16);
-        const Abs = math.Absolute(Int);
-        var array: Array = undefined;
-        array.len = array.auto.len;
-        if (value == 0) {
-            array.writeOneBackwards('0');
-            array.writeOneBackwards('x');
-            array.writeOneBackwards('0');
-            return array;
-        }
-        var abs_value: Abs = math.absoluteVal(value);
-        while (abs_value != 0) : (abs_value /= 16) {
-            array.writeOneBackwards(toSymbol(Abs, abs_value, 16));
-        }
-        array.writeOneBackwards('x');
-        array.writeOneBackwards('0');
-        if (value < 0) {
-            array.writeOneBackwards('-');
-        }
-        return array;
-    }
-    pub fn ub8(value: u8) StaticString(u8, 2) {
-        return bin(u8, value);
-    }
-    pub fn ub16(value: u16) StaticString(u16, 2) {
-        return bin(u16, value);
-    }
-    pub fn ub32(value: u32) StaticString(u32, 2) {
-        return bin(u32, value);
-    }
-    pub fn ub64(value: u64) StaticString(u64, 2) {
-        return bin(u64, value);
-    }
-    pub fn ubsize(value: usize) StaticString(usize, 2) {
-        return bin(usize, value);
-    }
-    pub fn uo8(value: u8) StaticString(u8, 8) {
-        return oct(u8, value);
-    }
-    pub fn uo16(value: u16) StaticString(u16, 8) {
-        return oct(u16, value);
-    }
-    pub fn uo32(value: u32) StaticString(u32, 8) {
-        return oct(u32, value);
-    }
-    pub fn uo64(value: u64) StaticString(u64, 8) {
-        return oct(u64, value);
-    }
-    pub fn uosize(value: usize) StaticString(usize, 8) {
-        return oct(usize, value);
-    }
-    pub fn ud8(value: u8) StaticString(u8, 10) {
-        return dec(u8, value);
-    }
-    pub fn ud16(value: u16) StaticString(u16, 10) {
-        return dec(u16, value);
-    }
-    pub fn ud32(value: u32) StaticString(u32, 10) {
-        return dec(u32, value);
-    }
-    pub fn ud64(value: u64) StaticString(u64, 10) {
-        return dec(u64, value);
-    }
-    pub fn udsize(value: usize) StaticString(usize, 10) {
-        return dec(usize, value);
-    }
-    pub fn ux8(value: u8) StaticString(u8, 16) {
-        return hex(u8, value);
-    }
-    pub fn ux16(value: u16) StaticString(u16, 16) {
-        return hex(u16, value);
-    }
-    pub fn ux32(value: u32) StaticString(u32, 16) {
-        return hex(u32, value);
-    }
-    pub fn ux64(value: u64) StaticString(u64, 16) {
-        return hex(u64, value);
-    }
-    pub fn uxsize(value: usize) StaticString(usize, 16) {
-        return hex(usize, value);
-    }
-    pub fn ib8(value: i8) StaticString(i8, 2) {
-        return bin(i8, value);
-    }
-    pub fn ib16(value: i16) StaticString(i16, 2) {
-        return bin(i16, value);
-    }
-    pub fn ib32(value: i32) StaticString(i32, 2) {
-        return bin(i32, value);
-    }
-    pub fn ib64(value: i64) StaticString(i64, 2) {
-        return bin(i64, value);
-    }
-    pub fn ibsize(value: isize) StaticString(isize, 2) {
-        return bin(isize, value);
-    }
-    pub fn io8(value: i8) StaticString(i8, 8) {
-        return oct(i8, value);
-    }
-    pub fn io16(value: i16) StaticString(i16, 8) {
-        return oct(i16, value);
-    }
-    pub fn io32(value: i32) StaticString(i32, 8) {
-        return oct(i32, value);
-    }
-    pub fn io64(value: i64) StaticString(i64, 8) {
-        return oct(i64, value);
-    }
-    pub fn iosize(value: isize) StaticString(isize, 8) {
-        return oct(isize, value);
-    }
-    pub fn id8(value: i8) StaticString(i8, 10) {
-        return dec(i8, value);
-    }
-    pub fn id16(value: i16) StaticString(i16, 10) {
-        return dec(i16, value);
-    }
-    pub fn id32(value: i32) StaticString(i32, 10) {
-        return dec(i32, value);
-    }
-    pub fn id64(value: i64) StaticString(i64, 10) {
-        return dec(i64, value);
-    }
-    pub fn idsize(value: isize) StaticString(isize, 10) {
-        return dec(isize, value);
-    }
-    pub fn ix8(value: i8) StaticString(i8, 16) {
-        return hex(i8, value);
-    }
-    pub fn ix16(value: i16) StaticString(i16, 16) {
-        return hex(i16, value);
-    }
-    pub fn ix32(value: i32) StaticString(i32, 16) {
-        return hex(i32, value);
-    }
-    pub fn ix64(value: i64) StaticString(i64, 16) {
-        return hex(i64, value);
-    }
-    pub fn ixsize(value: isize) StaticString(isize, 16) {
-        return hex(isize, value);
-    }
-    pub fn nsec(value: u64) StaticString(u64, 10) {
-        @setRuntimeSafety(false);
-        var ret: StaticString(u64, 10) = ud64(value);
-        while (ret.auto.len - ret.len < 9) {
-            ret.writeOneBackwards('0');
-        }
-        return ret;
-    }
-    fn maxSigFig(comptime T: type, radix: u16) u16 {
+    pub const ub8 = Generic(u8).bin;
+    pub const ub16 = Generic(u16).bin;
+    pub const ub32 = Generic(u32).bin;
+    pub const ub64 = Generic(u64).bin;
+    pub const ubsize = Generic(usize).bin;
+    pub const uo8 = Generic(u8).oct;
+    pub const uo16 = Generic(u16).oct;
+    pub const uo32 = Generic(u32).oct;
+    pub const uo64 = Generic(u64).oct;
+    pub const uosize = Generic(usize).oct;
+    pub const ud8 = Generic(u8).dec;
+    pub const ud16 = Generic(u16).dec;
+    pub const ud32 = Generic(u32).dec;
+    pub const ud64 = Generic(u64).dec;
+    pub const udsize = Generic(usize).dec;
+    pub const ux8 = Generic(u8).hex;
+    pub const ux16 = Generic(u16).hex;
+    pub const ux32 = Generic(u32).hex;
+    pub const ux64 = Generic(u64).hex;
+    pub const uxsize = Generic(usize).hex;
+    pub const ib8 = Generic(i8).bin;
+    pub const ib16 = Generic(i16).bin;
+    pub const ib32 = Generic(i32).bin;
+    pub const ib64 = Generic(i64).bin;
+    pub const ibsize = Generic(isize).bin;
+    pub const io8 = Generic(i8).oct;
+    pub const io16 = Generic(i16).oct;
+    pub const io32 = Generic(i32).oct;
+    pub const io64 = Generic(i64).oct;
+    pub const iosize = Generic(isize).oct;
+    pub const id8 = Generic(i8).dec;
+    pub const id16 = Generic(i16).dec;
+    pub const id32 = Generic(i32).dec;
+    pub const id64 = Generic(i64).dec;
+    pub const idsize = Generic(isize).dec;
+    pub const ix8 = Generic(i8).hex;
+    pub const ix16 = Generic(i16).hex;
+    pub const ix32 = Generic(i32).hex;
+    pub const ix64 = Generic(i64).hex;
+    pub const ixsize = Generic(isize).hex;
+    pub const nsec = Generic(u64).nsec;
+
+    fn maxSigFig(comptime T: type, comptime radix: u7) comptime_int {
         const U = @Type(.{ .Int = .{ .bits = @bitSizeOf(T), .signedness = .unsigned } });
         var value: U = 0;
         var len: u16 = 0;
@@ -2269,10 +2026,12 @@ pub const fmt = struct {
             len += 2;
         }
         value -%= 1;
-        while (value != 0) : (len += 1) value /= radix;
+        while (value != 0) : (value /= radix) {
+            len += 1;
+        }
         return len;
     }
-    pub fn length(comptime U: type, abs_value: U, radix: anytype) usize {
+    pub fn length(comptime U: type, abs_value: U, comptime radix: u7) usize {
         if (@bitSizeOf(U) == 1) {
             return 1;
         }
@@ -2283,19 +2042,159 @@ pub const fmt = struct {
         }
         return @max(1, count);
     }
-    pub fn toSymbol(comptime T: type, value: T, radix: u16) u8 {
+    pub fn toSymbol(comptime T: type, value: T, comptime radix: u7) u8 {
         @setRuntimeSafety(false);
         if (@bitSizeOf(T) < 8) {
             return toSymbol(u8, value, radix);
         }
         const result: u8 = @intCast(u8, @rem(value, radix));
-        const d: u8 = '9' -% 9;
-        const x: u8 = 'f' -% 15;
+        const dx = .{
+            .d = @as(u8, '9' -% 9),
+            .x = @as(u8, 'f' -% 15),
+        };
         if (radix > 10) {
-            return result +% if (result < 10) d else x;
+            return result +% if (result < 10) dx.d else dx.x;
         } else {
-            return result +% d;
+            return result +% dx.d;
         }
+    }
+    pub fn Generic(comptime Int: type) type {
+        const T = struct {
+            const Abs = math.Absolute(Int);
+            const len2 = maxSigFig(Int, 2) +% 1;
+            const len8 = maxSigFig(Int, 8) +% 1;
+            const len10 = maxSigFig(Int, 10) +% 1;
+            const len16 = maxSigFig(Int, 16) +% 1;
+            const Array2 = Array(len2);
+            const Array8 = Array(len8);
+            const Array10 = Array(len10);
+            const Array16 = Array(len16);
+            fn bin(value: Int) Array2 {
+                @setRuntimeSafety(false);
+                var ret: Array2 = undefined;
+                ret.len = ret.buf.len;
+                if (value == 0) {
+                    while (ret.len != 3) {
+                        ret.len -%= 1;
+                        ret.buf[ret.len] = '0';
+                    }
+                    ret.len -%= 2;
+                    @ptrCast(*[2]u8, &ret.buf[ret.len]).* = "0b".*;
+                    return ret;
+                }
+                var abs_value: Abs = if (Int != Abs and value < 0)
+                    @bitCast(Abs, -value)
+                else
+                    @intCast(Abs, value);
+                while (abs_value != 0) : (abs_value /= 2) {
+                    ret.len -%= 1;
+                    ret.buf[ret.len] = '0' +% @intCast(u8, @rem(abs_value, 2));
+                }
+                while (ret.len != 3) {
+                    ret.len -%= 1;
+                    ret.buf[ret.len] = '0';
+                }
+                ret.len -%= 2;
+                @ptrCast(*[2]u8, ret.buf[ret.len..].ptr).* = "0b".*;
+                if (value < 0) {
+                    ret.len -%= 1;
+                    ret.buf[ret.len] = '-';
+                }
+                return ret;
+            }
+            fn oct(value: Int) Array8 {
+                @setRuntimeSafety(false);
+                var ret: Array8 = undefined;
+                ret.len = ret.buf.len;
+                if (value == 0) {
+                    ret.len -%= 3;
+                    @ptrCast(*[3]u8, ret.buf[ret.len..].ptr).* = "0o0".*;
+                    return ret;
+                }
+                var abs_value: Abs = if (Int != Abs and value < 0)
+                    @bitCast(Abs, -value)
+                else
+                    @intCast(Abs, value);
+                while (abs_value != 0) : (abs_value /= 8) {
+                    ret.len -%= 1;
+                    ret.buf[ret.len] = '0' +% @intCast(u8, @rem(abs_value, 8));
+                }
+                ret.len -%= 2;
+                @ptrCast(*[2]u8, ret.buf[ret.len..].ptr).* = "0o".*;
+                if (value < 0) {
+                    ret.len -%= 1;
+                    ret.buf[ret.len] = '-';
+                }
+                return ret;
+            }
+            fn dec(value: Int) Array10 {
+                @setRuntimeSafety(false);
+                var ret: Array10 = undefined;
+                ret.len = ret.buf.len;
+                if (value == 0) {
+                    ret.len -%= 1;
+                    ret.buf[ret.len] = '0';
+                    return ret;
+                }
+                var abs_value: Abs = if (Int != Abs and value < 0)
+                    @bitCast(Abs, -value)
+                else
+                    @intCast(Abs, value);
+                while (abs_value != 0) : (abs_value /= 10) {
+                    ret.len -%= 1;
+                    ret.buf[ret.len] = '0' +% @intCast(u8, @rem(abs_value, 10));
+                }
+                if (value < 0) {
+                    ret.len -%= 1;
+                    ret.buf[ret.len] = '-';
+                }
+                return ret;
+            }
+            fn hex(value: Int) Array16 {
+                @setRuntimeSafety(false);
+                var ret: Array16 = undefined;
+                ret.len = ret.buf.len;
+                if (value == 0) {
+                    ret.len -%= 3;
+                    @ptrCast(*[3]u8, ret.buf[ret.len..].ptr).* = "0x0".*;
+                    return ret;
+                }
+                var abs_value: Abs = if (Int != Abs and value < 0)
+                    @bitCast(Abs, -value)
+                else
+                    @intCast(Abs, value);
+                while (abs_value != 0) : (abs_value /= 16) {
+                    ret.len -%= 1;
+                    ret.buf[ret.len] = toSymbol(Abs, abs_value, 16);
+                }
+                ret.len -%= 2;
+                @ptrCast(*[2]u8, ret.buf[ret.len..].ptr).* = "0x".*;
+                if (value < 0) {
+                    ret.len -%= 1;
+                    ret.buf[ret.len] = '-';
+                }
+                return ret;
+            }
+            fn nsec(value: Int) Array10 {
+                @setRuntimeSafety(false);
+                var ret: Array10 = @This().dec(value);
+                while (ret.buf.len -% ret.len < 9) {
+                    ret.len -%= 1;
+                    ret.buf[ret.len] = '0';
+                }
+                return ret;
+            }
+            fn Array(comptime len: comptime_int) type {
+                return struct {
+                    len: u64,
+                    buf: [len]u8,
+                    pub fn readAll(array: *const @This()) []const u8 {
+                        return array.buf[array.len..];
+                    }
+                };
+            }
+        };
+        return T;
     }
     pub fn typeTypeName(comptime id: TypeId) []const u8 {
         return switch (id) {
