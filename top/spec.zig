@@ -122,12 +122,12 @@ pub const channel = struct {
     };
 };
 pub const builder = struct {
-    pub const default: zig_lib.build.BuilderSpec = .{
+    pub const default = .{
         .errors = builder.errors.noexcept,
         .logging = builder.logging.default,
     };
     pub const errors = struct {
-        pub const noexcept: zig_lib.build.BuilderSpec.Errors = .{
+        pub const noexcept = .{
             .fork = .{},
             .write = .{},
             .read = .{},
@@ -148,7 +148,7 @@ pub const builder = struct {
             .stat = .{},
             .unlink = .{},
         };
-        pub const zen: zig_lib.build.BuilderSpec.Errors = .{
+        pub const zen = .{
             .write = .{ .abort = sys.write.errors.all },
             .read = .{ .abort = sys.read.errors.all },
             .mknod = .{ .throw = sys.mknod.errors.all },
@@ -169,13 +169,13 @@ pub const builder = struct {
             .close = .{ .abort = sys.close.errors.all },
             .unlink = .{ .abort = sys.unlink.errors.all },
         };
-        pub const critical: zig_lib.build.BuilderSpec.Errors = add(zen, .{
+        pub const critical = add(zen, .{
             .close = .{ .throw = sys.close.errors.all },
             .unmap = .{ .throw = sys.munmap.errors.all },
         });
     };
     pub const logging = struct {
-        pub const default: zig_lib.build.BuilderSpec.Logging = .{
+        pub const default = .{
             .write = .{},
             .read = .{},
             .mknod = .{},
