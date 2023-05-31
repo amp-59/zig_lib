@@ -501,7 +501,12 @@ pub const WriteSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.write_errors },
     logging: builtin.Logging.SuccessError = .{},
 };
-const SeekSpec = struct {
+pub const SyncSpec = struct {
+    errors: sys.ErrorPolicy = .{ .throw = sys.sync_errors },
+    return_type: type = u64,
+    logging: builtin.Logging.SuccessError = .{},
+};
+pub const SeekSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.seek_errors },
     return_type: type = u64,
     logging: builtin.Logging.SuccessError = .{},
@@ -918,8 +923,8 @@ pub const MapSpec = struct {
 };
 pub const CopySpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.copy_file_range_errors },
-    return_type: type = void,
-    logging: builtin.Logging.ReleaseError = .{},
+    return_type: type = u64,
+    logging: builtin.Logging.SuccessError = .{},
 };
 pub const CloseSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.close_errors },
@@ -1691,15 +1696,31 @@ pub fn copy(comptime copy_spec: CopySpec, src_fd: u64, src_offset: ?*u64, dest_f
     const logging: builtin.Logging.SuccessError = comptime copy_spec.logging.override();
     if (meta.wrap(sys.call(.mmap, copy_spec.errors, copy_spec.return_type, .{
         src_fd, @ptrToInt(src_offset), dest_fd, @ptrToInt(dest_offset), len, 0,
-    }))) {
-        if (logging.Acquire) {
-            mem.debug.copyNotice(src_fd, dest_fd, src_offset, dest_offset, len);
+    }))) |ret| {
+        if (logging.Success) {
+            debug.copyNotice(src_fd, src_offset, dest_fd, dest_offset, len);
         }
+        return ret;
     } else |copy_fie_range_error| {
         if (logging.Error) {
-            mem.debug.copyError(copy_fie_range_error, src_fd, dest_fd, src_offset, dest_offset, len);
+            debug.copyError(copy_fie_range_error, src_fd, src_offset, dest_fd, dest_offset, len);
         }
         return copy_fie_range_error;
+    }
+}
+pub fn sync(comptime sync_spec: SyncSpec, fd: u64) sys.ErrorUnion(sync_spec.errors, sync_spec.return_type) {
+    const logging: builtin.Logging.SuccessError = comptime sync_spec.logging.override();
+    const syscall: sys.Fn = if (sync_spec.options.flush_metadata) .sync else .fdatasync;
+    if (meta.wrap(sys.call(syscall, sync_spec.errors, sync_spec.return_type, .{fd}))) |ret| {
+        if (logging.Success) {
+            debug.syncNotice(fd);
+        }
+        return ret;
+    } else |sync_error| {
+        if (logging.Error) {
+            debug.syncError(sync_error, fd);
+        }
+        return sync_error;
     }
 }
 pub fn seek(comptime seek_spec: SeekSpec, fd: u64, offset: u64, whence: Whence) sys.ErrorUnion(
@@ -1719,20 +1740,6 @@ pub fn seek(comptime seek_spec: SeekSpec, fd: u64, offset: u64, whence: Whence) 
         return seek_error;
     }
 }
-pub fn pathTruncate(comptime spec: TruncateSpec, pathname: [:0]const u8, offset: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
-    const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.truncate, spec.errors, spec.return_type, .{ pathname, offset }))) |ret| {
-        if (logging.Success) {
-            debug.pathTruncateNotice(pathname, offset);
-        }
-        return ret;
-    } else |truncate_error| {
-        if (logging.Error) {
-            debug.pathTruncateError(truncate_error, pathname, offset);
-        }
-        return truncate_error;
-    }
-}
 pub fn truncate(comptime spec: TruncateSpec, fd: u64, offset: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
     const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.ftruncate, spec.errors, spec.return_type, .{ fd, offset }))) |ret| {
@@ -1743,6 +1750,20 @@ pub fn truncate(comptime spec: TruncateSpec, fd: u64, offset: u64) sys.ErrorUnio
     } else |truncate_error| {
         if (logging.Error) {
             debug.truncateError(truncate_error, fd, offset);
+        }
+        return truncate_error;
+    }
+}
+pub fn pathTruncate(comptime spec: TruncateSpec, pathname: [:0]const u8, offset: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
+    const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
+    if (meta.wrap(sys.call(.truncate, spec.errors, spec.return_type, .{ @ptrToInt(pathname.ptr), offset }))) |ret| {
+        if (logging.Success) {
+            debug.pathTruncateNotice(pathname, offset);
+        }
+        return ret;
+    } else |truncate_error| {
+        if (logging.Error) {
+            debug.pathTruncateError(truncate_error, pathname, offset);
         }
         return truncate_error;
     }
@@ -2203,6 +2224,13 @@ const debug = opaque {
         var buf: [32768]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, pathname, "\n" });
     }
+    fn copyNotice(src_fd: u64, src_offset: ?*u64, dest_fd: u64, dest_offset: ?*u64, len: u64) void {
+        _ = len;
+        _ = dest_offset;
+        _ = dest_fd;
+        _ = src_offset;
+        _ = src_fd;
+    }
     fn pathTruncateNotice(pathname: [:0]const u8, offset: u64) void {
         const offset_s: []const u8 = builtin.fmt.ud64(offset).readAll();
         var buf: [32768]u8 = undefined;
@@ -2262,6 +2290,14 @@ const debug = opaque {
     fn socketError(socket_error: anytype, dom: Socket.Domain, conn: Socket.Connection) void {
         var buf: [32768]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_socket_1_s, @tagName(dom), ", ", @tagName(conn), " (", @errorName(socket_error), ")\n" });
+    }
+    fn copyError(copy_fie_range_error: anytype, src_fd: u64, src_offset: ?*u64, dest_fd: u64, dest_offset: ?*u64, len: u64) void {
+        _ = @errorName(copy_fie_range_error);
+        _ = len;
+        _ = dest_offset;
+        _ = dest_fd;
+        _ = src_offset;
+        _ = src_fd;
     }
     fn pathTruncateError(truncate_error: anytype, pathname: [:0]const u8, offset: u64) void {
         const offset_s: []const u8 = builtin.fmt.ud64(offset).readAll();
