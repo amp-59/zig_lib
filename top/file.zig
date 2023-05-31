@@ -857,64 +857,6 @@ pub const ExecuteSpec = struct {
         comptime return flags_bitfield;
     }
 };
-pub fn execPath(comptime spec: ExecuteSpec, pathname: [:0]const u8, args: spec.args_type, vars: spec.vars_type) sys.ErrorUnion(spec.errors, spec.return_type) {
-    const filename_buf_addr: u64 = @ptrToInt(pathname.ptr);
-    const args_addr: u64 = @ptrToInt(args.ptr);
-    const vars_addr: u64 = @ptrToInt(vars.ptr);
-    const logging: builtin.Logging.AttemptError = comptime spec.logging.override();
-    if (logging.Attempt) {
-        debug.executeNotice(pathname, args);
-    }
-    if (meta.wrap(sys.call(.execve, spec.errors, spec.return_type, .{ filename_buf_addr, args_addr, vars_addr }))) {
-        builtin.proc.exitGroupFault("reached unreachable", 2);
-    } else |execve_error| {
-        if (logging.Error and logging.Attempt) {
-            debug.executeErrorBrief(execve_error, pathname);
-        } else if (logging.Error) {
-            debug.executeError(execve_error, pathname, args);
-        }
-        return execve_error;
-    }
-}
-pub fn exec(comptime spec: ExecuteSpec, fd: u64, args: spec.args_type, vars: spec.vars_type) sys.ErrorUnion(spec.errors, spec.return_type) {
-    const args_addr: u64 = @ptrToInt(args.ptr);
-    const vars_addr: u64 = @ptrToInt(vars.ptr);
-    const flags: At = comptime spec.flags();
-    const logging: builtin.Logging.AttemptError = comptime spec.logging.override();
-    if (logging.Attempt) {
-        debug.executeNotice(args[0], args);
-    }
-    if (meta.wrap(sys.call(.execveat, spec.errors, spec.return_type, .{ fd, @ptrToInt(""), args_addr, vars_addr, flags.val }))) {
-        builtin.proc.exitGroupFault("reached unreachable", 2);
-    } else |execve_error| {
-        if (logging.Error and logging.Attempt) {
-            debug.executeErrorBrief(execve_error, args[0]);
-        } else if (logging.Error) {
-            debug.executeError(execve_error, args[0], args);
-        }
-        return execve_error;
-    }
-}
-pub fn execAt(comptime spec: ExecuteSpec, dir_fd: u64, name: [:0]const u8, args: spec.args_type, vars: spec.vars_type) sys.ErrorUnion(spec.errors, spec.return_type) {
-    const name_buf_addr: u64 = @ptrToInt(name.ptr);
-    const args_addr: u64 = @ptrToInt(args.ptr);
-    const vars_addr: u64 = @ptrToInt(vars.ptr);
-    const flags: At = comptime spec.flags();
-    const logging: builtin.Logging.AttemptError = comptime spec.logging.override();
-    if (logging.Attempt) {
-        debug.executeNotice(name, args);
-    }
-    if (meta.wrap(sys.call(.execveat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, args_addr, vars_addr, flags.val }))) {
-        builtin.proc.exitGroupFault("reached unreachable", 2);
-    } else |execve_error| {
-        if (logging.Error and logging.Attempt) {
-            debug.executeErrorBrief(execve_error, name);
-        } else if (logging.Error) {
-            debug.executeError(execve_error, name, args);
-        }
-        return execve_error;
-    }
-}
 pub const GetWorkingDirectorySpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.readlink_errors },
     return_type: type = u64,
@@ -974,6 +916,11 @@ pub const MapSpec = struct {
         comptime return prot_bitfield;
     }
 };
+pub const CopySpec = struct {
+    errors: sys.ErrorPolicy = .{ .throw = sys.copy_file_range_errors },
+    return_type: type = void,
+    logging: builtin.Logging.ReleaseError = .{},
+};
 pub const CloseSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.close_errors },
     return_type: type = void,
@@ -1011,6 +958,64 @@ pub const DuplicateSpec = struct {
         return ret;
     }
 };
+pub fn execPath(comptime spec: ExecuteSpec, pathname: [:0]const u8, args: spec.args_type, vars: spec.vars_type) sys.ErrorUnion(spec.errors, spec.return_type) {
+    const filename_buf_addr: u64 = @ptrToInt(pathname.ptr);
+    const args_addr: u64 = @ptrToInt(args.ptr);
+    const vars_addr: u64 = @ptrToInt(vars.ptr);
+    const logging: builtin.Logging.AttemptError = comptime spec.logging.override();
+    if (logging.Attempt) {
+        debug.executeNotice(pathname, args);
+    }
+    if (meta.wrap(sys.call(.execve, spec.errors, spec.return_type, .{ filename_buf_addr, args_addr, vars_addr }))) {
+        builtin.proc.exitGroupFault("reached unreachable", 2);
+    } else |execve_error| {
+        if (logging.Error and logging.Attempt) {
+            debug.executeErrorBrief(execve_error, pathname);
+        } else if (logging.Error) {
+            debug.executeError(execve_error, pathname, args);
+        }
+        return execve_error;
+    }
+}
+pub fn exec(comptime spec: ExecuteSpec, fd: u64, args: spec.args_type, vars: spec.vars_type) sys.ErrorUnion(spec.errors, spec.return_type) {
+    const args_addr: u64 = @ptrToInt(args.ptr);
+    const vars_addr: u64 = @ptrToInt(vars.ptr);
+    const flags: At = comptime spec.flags();
+    const logging: builtin.Logging.AttemptError = comptime spec.logging.override();
+    if (logging.Attempt) {
+        debug.executeNotice(args[0], args);
+    }
+    if (meta.wrap(sys.call(.execveat, spec.errors, spec.return_type, .{ fd, @ptrToInt(""), args_addr, vars_addr, flags.val }))) {
+        builtin.proc.exitGroupFault("reached unreachable", 2);
+    } else |execve_error| {
+        if (logging.Error and logging.Attempt) {
+            debug.executeErrorBrief(execve_error, args[0]);
+        } else if (logging.Error) {
+            debug.executeError(execve_error, args[0], args);
+        }
+        return execve_error;
+    }
+}
+pub fn execAt(comptime spec: ExecuteSpec, dir_fd: u64, name: [:0]const u8, args: spec.args_type, vars: spec.vars_type) sys.ErrorUnion(spec.errors, spec.return_type) {
+    const name_buf_addr: u64 = @ptrToInt(name.ptr);
+    const args_addr: u64 = @ptrToInt(args.ptr);
+    const vars_addr: u64 = @ptrToInt(vars.ptr);
+    const flags: At = comptime spec.flags();
+    const logging: builtin.Logging.AttemptError = comptime spec.logging.override();
+    if (logging.Attempt) {
+        debug.executeNotice(name, args);
+    }
+    if (meta.wrap(sys.call(.execveat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, args_addr, vars_addr, flags.val }))) {
+        builtin.proc.exitGroupFault("reached unreachable", 2);
+    } else |execve_error| {
+        if (logging.Error and logging.Attempt) {
+            debug.executeErrorBrief(execve_error, name);
+        } else if (logging.Error) {
+            debug.executeError(execve_error, name, args);
+        }
+        return execve_error;
+    }
+}
 pub fn read(comptime spec: ReadSpec, fd: u64, read_buf: []spec.child) sys.ErrorUnion(spec.errors, spec.return_type) {
     const read_buf_addr: u64 = @ptrToInt(read_buf.ptr);
     const read_count_mul: u64 = @sizeOf(spec.child);
@@ -1679,7 +1684,20 @@ pub fn map(comptime map_spec: MapSpec, fd: u64, addr: u64, len: u64) sys.ErrorUn
         return map_error;
     }
 }
-pub fn seek(comptime seek_spec: SeekSpec, fd: u64, offset: u64, whence: Whence) sys.ErrorUnion(seek_spec.errors, seek_spec.return_type) {
+pub fn copy(comptime cpy_spec: CopySpec, src_fd: u64, src_offset: ?*u64, dest_fd: u64, dest_offset: ?*u64, len: u64) sys.ErrorUnion(
+    cpy_spec.errors,
+    cpy_spec.return_type,
+) {
+    _ = len;
+    _ = dest_offset;
+    _ = dest_fd;
+    _ = src_offset;
+    _ = src_fd;
+}
+pub fn seek(comptime seek_spec: SeekSpec, fd: u64, offset: u64, whence: Whence) sys.ErrorUnion(
+    seek_spec.errors,
+    seek_spec.return_type,
+) {
     const logging: builtin.Logging.SuccessError = comptime seek_spec.logging.override();
     if (meta.wrap(sys.call(.lseek, seek_spec.errors, seek_spec.return_type, .{ fd, offset, @enumToInt(whence) }))) |ret| {
         if (logging.Success) {
