@@ -632,7 +632,7 @@ fn futexRequeue(comptime futex_spec: FutexSpec, futex1: *u32, futex2: *u32, coun
         return futex_error;
     }
 }
-pub const start = opaque {
+pub const start = struct {
     pub export fn _start() callconv(.Naked) noreturn {
         static.stack_addr = asm volatile (
             \\xorq  %%rbp,  %%rbp
@@ -641,35 +641,20 @@ pub const start = opaque {
         @call(.never_inline, callMain, .{});
     }
     pub usingnamespace builtin.debug;
-    fn unexpectedReturnCodeValueError(rc: u64) void {
-        var buf: [512]u8 = undefined;
-        builtin.debug.logFaultAIO(&buf, &[_][]const u8{
-            "unexpected return value: ", builtin.fmt.ud64(rc).readAll(),
-            "\n",
-        });
-    }
 };
-pub const exception = opaque {
-    pub fn updateSignalHandler(signo: u32, handler_function: anytype) void {
-        var act = SignalAction{
-            .handler = @ptrToInt(&handler_function),
-            .flags = (SA.SIGINFO | SA.RESTART | SA.RESETHAND | SA.RESTORER),
-            .restorer = @ptrToInt(&exception.restoreRunTime),
-        };
-        setSignalAction(signo, &act, null);
-    }
+pub const exception = struct {
     fn updateExceptionHandlers(act: *const SignalAction) void {
-        if (builtin.signal_handlers.segmentation_fault) {
-            setSignalAction(SIG.SEGV, act, null);
-        }
-        if (builtin.signal_handlers.illegal_instruction) {
-            setSignalAction(SIG.ILL, act, null);
-        }
-        if (builtin.signal_handlers.bus_error) {
-            setSignalAction(SIG.BUS, act, null);
-        }
-        if (builtin.signal_handlers.floating_point_error) {
-            setSignalAction(SIG.FPE, act, null);
+        const sa_new_addr: u64 = @ptrToInt(act);
+        const sa_new_len: u64 = @sizeOf(@TypeOf(act.mask));
+        inline for ([_]struct { bool, u32 }{
+            .{ builtin.signal_handlers.segmentation_fault, SIG.SEGV },
+            .{ builtin.signal_handlers.illegal_instruction, SIG.ILL },
+            .{ builtin.signal_handlers.bus_error, SIG.BUS },
+            .{ builtin.signal_handlers.floating_point_error, SIG.FPE },
+        }) |pair| {
+            if (pair[0]) {
+                sys.call_noexcept(.rt_sigaction, void, .{ pair[1], sa_new_addr, 0, sa_new_len });
+            }
         }
     }
     pub fn enableExceptionHandlers() void {
@@ -691,7 +676,7 @@ pub const exception = opaque {
     fn setSignalAction(signo: u64, noalias new_action: *const SignalAction, noalias old_action: ?*SignalAction) void {
         const sa_new_addr: u64 = @ptrToInt(new_action);
         const sa_old_addr: u64 = if (old_action) |action| @ptrToInt(action) else 0;
-        sys.call(.rt_sigaction, .{}, void, .{ signo, sa_new_addr, sa_old_addr, @sizeOf(@TypeOf(new_action.mask)) });
+        sys.call_noexcept(.rt_sigaction, void, .{ signo, sa_new_addr, sa_old_addr, @sizeOf(@TypeOf(new_action.mask)) });
     }
     fn resetExceptionHandlers() void {
         var act = SignalAction{ .handler = sys.SIG.DFL, .flags = 0, .restorer = 0 };
