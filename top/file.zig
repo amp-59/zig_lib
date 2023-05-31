@@ -2172,10 +2172,10 @@ const debug = opaque {
         var buf: [32768]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, "fd=", fd_s, ", ", len_s, " bytes\n" });
     }
-    fn aboutFdMaxLenLenNotice(about_s: [:0]const u8, fd: u64, max_len: u64, len: u64) void {
+    fn aboutFdMaxLenLenNotice(about_s: [:0]const u8, fd: u64, max_len: u64, act_len: u64) void {
         const fd_s: []const u8 = builtin.fmt.ud64(fd).readAll();
         const max_len_s: []const u8 = builtin.fmt.ud64(max_len).readAll();
-        const len_s: []const u8 = builtin.fmt.ud64(len).readAll();
+        const len_s: []const u8 = builtin.fmt.ud64(act_len).readAll();
         var buf: [32768]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, "fd=", fd_s, ", ", len_s, "/", max_len_s, " bytes\n" });
     }
@@ -2223,14 +2223,16 @@ const debug = opaque {
         const fd1_s: []const u8 = builtin.fmt.ud64(fd1).readAll();
         const fd2_s: []const u8 = builtin.fmt.ud64(fd2).readAll();
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, about_fd1_s, fd1_s, " => ", about_fd2_s, fd2_s, "\n" });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, about_fd1_s, fd1_s, ", ", about_fd2_s, fd2_s, "\n" });
     }
     fn aboutDirFdNameModeDeviceNotice(about_s: [:0]const u8, dir_fd: u64, name: [:0]const u8, file_mode: Mode, dev: Device) void {
         const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
         const maj_s: []const u8 = builtin.fmt.ud64(dev.major).readAll();
         const min_s: []const u8 = builtin.fmt.ud64(dev.minor).readAll();
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, "dir_fd=", dir_fd_s, ", ", name, ", mode=", &describeMode(file_mode), ", dev=", maj_s, ":", min_s, "\n" });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
+            about_s, "dir_fd=", dir_fd_s, ", ", name, ", mode=", &describeMode(file_mode), ", dev=", maj_s, ":", min_s, "\n",
+        });
     }
     fn socketNotice(fd: u64, dom: Socket.Domain, conn: Socket.Connection) void {
         const fd_s: []const u8 = builtin.fmt.ud64(fd).readAll();
@@ -2241,12 +2243,23 @@ const debug = opaque {
         var buf: [32768]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, pathname, "\n" });
     }
-    fn copyNotice(src_fd: u64, src_offset: ?*u64, dest_fd: u64, dest_offset: ?*u64, len: u64) void {
-        _ = len;
-        _ = dest_offset;
-        _ = dest_fd;
-        _ = src_offset;
-        _ = src_fd;
+    fn copyNotice(src_fd: u64, src_offset: ?*u64, dest_fd: u64, dest_offset: ?*u64, max_len: u64, act_len: u64) void {
+        const src_fd_s: []const u8 = builtin.fmt.ud64(src_fd).readAll();
+        const dest_fd_s: []const u8 = builtin.fmt.ud64(dest_fd).readAll();
+        const max_len_s: []const u8 = builtin.fmt.ud64(max_len).readAll();
+        const len_s: []const u8 = builtin.fmt.ud64(act_len).readAll();
+        var buf: [32768]u8 = undefined;
+        var len: u64 = 0;
+        len +%= builtin.debug.writeMulti(&buf, &[_][]const u8{
+            about_copy_0_s, "src_fd=", src_fd_s, ", dest_fd=", dest_fd_s, ", ", len_s, "/", max_len_s, " bytes\n",
+        });
+        if (src_offset) |off| {
+            len +%= writeUpdateOffset(buf[len..].ptr, src_fd_s, off.*);
+        }
+        if (dest_offset) |off| {
+            len +%= writeUpdateOffset(buf[len..].ptr, dest_fd_s, off.*);
+        }
+        builtin.debug.write(buf[0..len]);
     }
     fn pathTruncateNotice(pathname: [:0]const u8, offset: u64) void {
         const offset_s: []const u8 = builtin.fmt.ud64(offset).readAll();
@@ -2302,19 +2315,26 @@ const debug = opaque {
         const fd1_s: []const u8 = builtin.fmt.ud64(fd1).readAll();
         const fd2_s: []const u8 = builtin.fmt.ud64(fd2).readAll();
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, about_fd1, fd1_s, " => ", about_fd2, fd2_s, " (", error_name, ")\n" });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, about_fd1, fd1_s, ", ", about_fd2, fd2_s, " (", error_name, ")\n" });
     }
     fn socketError(socket_error: anytype, dom: Socket.Domain, conn: Socket.Connection) void {
         var buf: [32768]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_socket_1_s, @tagName(dom), ", ", @tagName(conn), " (", @errorName(socket_error), ")\n" });
     }
-    fn copyError(copy_fie_range_error: anytype, src_fd: u64, src_offset: ?*u64, dest_fd: u64, dest_offset: ?*u64, len: u64) void {
-        _ = @errorName(copy_fie_range_error);
-        _ = len;
-        _ = dest_offset;
-        _ = dest_fd;
-        _ = src_offset;
-        _ = src_fd;
+    fn copyError(copy_file_range_error: anytype, src_fd: u64, src_offset: ?*u64, dest_fd: u64, dest_offset: ?*u64, max_len: u64) void {
+        const src_fd_s: []const u8 = builtin.fmt.ud64(src_fd).readAll();
+        const dest_fd_s: []const u8 = builtin.fmt.ud64(dest_fd).readAll();
+        const max_len_s: []const u8 = builtin.fmt.ud64(max_len).readAll();
+        var buf: [32768]u8 = undefined;
+        var len: u64 = 0;
+        len +%= builtin.debug.writeMulti(&buf, &[_][]const u8{ about_copy_0_s, "src_fd=", src_fd_s, ", dest_fd=", dest_fd_s, ", ", max_len_s, " bytes, (", @errorName(copy_file_range_error), ")\n" });
+        if (src_offset) |off| {
+            len +%= writeUpdateOffset(buf[len..].ptr, src_fd_s, off.*);
+        }
+        if (dest_offset) |off| {
+            len +%= writeUpdateOffset(buf[len..].ptr, dest_fd_s, off.*);
+        }
+        builtin.debug.write(buf[0..len]);
     }
     fn pathTruncateError(truncate_error: anytype, pathname: [:0]const u8, offset: u64) void {
         const offset_s: []const u8 = builtin.fmt.ud64(offset).readAll();
@@ -2331,15 +2351,18 @@ const debug = opaque {
         const fd_s: []const u8 = builtin.fmt.ud64(fd).readAll();
         const offset_s: []const u8 = builtin.fmt.ud64(offset).readAll();
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_truncate_0_s, "fd=", fd_s, " => ", @tagName(whence), ", offset=", offset_s, " (", @errorName(seek_error), ")\n" });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
+            about_truncate_0_s, "fd=", fd_s, ", whence=", @tagName(whence), ", offset=", offset_s, " (", @errorName(seek_error), ")\n",
+        });
     }
     fn listenError(listen_error: anytype, sock_fd: u64, backlog: u64) void {
         const sock_fd_s: []const u8 = builtin.fmt.ud64(sock_fd).readAll();
         const backlog_s: []const u8 = builtin.fmt.ud64(backlog).readAll();
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_listen_1_s, "sock_fd=", sock_fd_s, ", backlog=", backlog_s, " (", @errorName(listen_error), ")\n" });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
+            about_listen_1_s, "sock_fd=", sock_fd_s, ", backlog=", backlog_s, " (", @errorName(listen_error), ")\n",
+        });
     }
-
     fn pathMustNotBeFault(pathname: [:0]const u8, kind: Kind) void {
         var buf: [32768]u8 = undefined;
         builtin.debug.logAlwaysAIO(buf, &[_][]const u8{ about_file_2_s, "'", pathname, "'" ++ about_must_not_be_s, describeKind(kind), "\n" });
@@ -2516,30 +2539,44 @@ const debug = opaque {
         }
         builtin.debug.write(buf[0..len]);
     }
+    fn writeUpdateOffset(buf: [*]u8, fd_s: []const u8, off: u64) u64 {
+        @setRuntimeSafety(false);
+        var len: u64 = 0;
+        const off_s: []const u8 = builtin.fmt.ud64(off).readAll();
+        mach.memset(buf + len, ' ', 4 -% fd_s.len);
+        len +%= 4 -% fd_s.len;
+        mach.memcpy(buf + len, fd_s.ptr, fd_s.len);
+        len +%= fd_s.len;
+        buf[len] = ':';
+        len +%= 1;
+        mach.memset(buf + len, ' ', 11);
+        len +%= 11;
+        @ptrCast(*[7]u8, buf + len).* = "offset=".*;
+        len +%= 7;
+        mach.memcpy(buf + len, off_s.ptr, off_s.len);
+        len +%= off_s.len;
+        buf[len] = '\n';
+        len +%= 1;
+        return len;
+    }
     fn writePollFds(buf: []u8, pollfds: []PollFd) u64 {
         @setRuntimeSafety(false);
         var len: u64 = 0;
         for (pollfds) |*pollfd| {
-            len +%= writePollFd(buf[len..], pollfd);
+            const fd_s: []const u8 = builtin.fmt.ud64(pollfd.fd).readAll();
+            mach.memset(buf[len..].ptr, ' ', 4 -% fd_s.len);
+            len +%= 4 -% fd_s.len;
+            mach.memcpy(buf[len..].ptr, fd_s.ptr, fd_s.len);
+            len +%= fd_s.len;
+            buf[len] = ':';
+            len +%= 1;
+            mach.memset(buf[len..].ptr, ' ', 11);
+            len +%= 11;
+            len +%= writeEvents(buf[len..], pollfd, "expect=", 4);
+            len +%= writeEvents(buf[len..], pollfd, " actual=", 6);
+            buf[len] = '\n';
+            len +%= 1;
         }
-        return len;
-    }
-    fn writePollFd(buf: []u8, pollfd: *PollFd) u64 {
-        @setRuntimeSafety(false);
-        var len: u64 = 0;
-        const fd_s: []const u8 = builtin.fmt.ud64(pollfd.fd).readAll();
-        mach.memset(buf[len..].ptr, ' ', 4 -% fd_s.len);
-        len +%= 4 -% fd_s.len;
-        mach.memcpy(buf[len..].ptr, fd_s.ptr, fd_s.len);
-        len +%= fd_s.len;
-        buf[len] = ':';
-        len +%= 1;
-        mach.memset(buf[len..].ptr, ' ', 11);
-        len +%= 11;
-        len +%= writeEvents(buf[len..], pollfd, "expect=", 4);
-        len +%= writeEvents(buf[len..], pollfd, " actual=", 6);
-        buf[len] = '\n';
-        len +%= 1;
         return len;
     }
     fn writeEvents(buf: []u8, pollfd: *PollFd, about_s: [:0]const u8, off: u64) u64 {
