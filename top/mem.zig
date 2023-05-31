@@ -580,7 +580,7 @@ pub fn acquire(comptime AddressSpace: type, address_space: *AddressSpace, index:
         }
     } else if (spec.errors.acquire == .throw) {
         if (logging.Error) {
-            debug.arenaAcquireError(spec.errors.acquire.throw, index, lb_addr, up_addr, spec.label);
+            debug.aboutIndexLbAddrUpAddrLabelError(debug.about_acq_1_s, @errorName(spec.errors.acquire.throw), index, lb_addr, up_addr, spec.label);
         }
         return spec.errors.acquire.throw;
     } else if (spec.errors.acquire == .abort) {
@@ -598,7 +598,7 @@ pub fn acquireStatic(comptime AddressSpace: type, address_space: *AddressSpace, 
         }
     } else if (spec.errors.acquire == .throw) {
         if (logging.Error) {
-            debug.arenaAcquireError(spec.errors.acquire.throw, index, lb_addr, up_addr, spec.label);
+            debug.aboutIndexLbAddrUpAddrLabelError(debug.about_acq_1_s, @errorName(spec.errors.acquire.throw), index, lb_addr, up_addr, spec.label);
         }
         return spec.errors.acquire.throw;
     } else if (spec.errors.acquire == .abort) {
@@ -616,7 +616,7 @@ pub fn acquireElementary(comptime AddressSpace: type, address_space: *AddressSpa
         }
     } else if (spec.errors.acquire == .throw) {
         if (logging.Error) {
-            debug.arenaAcquireError(spec.errors.acquire.throw, null, lb_addr, up_addr, spec.label);
+            debug.aboutIndexLbAddrUpAddrLabelError(debug.about_acq_1_s, @errorName(spec.errors.acquire.throw), null, lb_addr, up_addr, spec.label);
         }
         return spec.errors.acquire.throw;
     } else if (spec.errors.acquire == .abort) {
@@ -637,7 +637,7 @@ pub fn release(comptime AddressSpace: type, address_space: *AddressSpace, index:
         }
     } else if (spec.errors.release == .throw) {
         if (logging.Error) {
-            debug.arenaReleaseError(spec.errors.throw, index, lb_addr, up_addr, spec.label);
+            debug.aboutIndexLbAddrUpAddrLabelError(debug.about_rel_1_s, @errorName(spec.errors.throw), index, lb_addr, up_addr, spec.label);
         }
         return spec.errors.release.throw;
     } else if (spec.errors.release == .abort) {
@@ -655,7 +655,7 @@ pub fn releaseStatic(comptime AddressSpace: type, address_space: *AddressSpace, 
         }
     } else if (spec.errors.release == .throw) {
         if (logging.Error) {
-            debug.arenaReleaseError(spec.errors.throw, index, lb_addr, up_addr, spec.label);
+            debug.aboutIndexLbAddrUpAddrLabelError(debug.about_rel_1_s, @errorName(spec.errors.throw), index, lb_addr, up_addr, spec.label);
         }
         return spec.errors.release.throw;
     } else if (spec.errors.release == .abort) {
@@ -672,7 +672,7 @@ pub fn releaseElementary(comptime AddressSpace: type, address_space: *AddressSpa
         }
     } else if (spec.errors.release == .throw) {
         if (spec.logging.release.Error) {
-            debug.arenaReleaseError(spec.errors.throw, null, lb_addr, up_addr, spec.label);
+            debug.aboutIndexLbAddrUpAddrLabelError(debug.about_rel_1_s, @errorName(spec.errors.throw), null, lb_addr, up_addr, spec.label);
         }
         return spec.errors.release.throw;
     } else if (spec.errors.release == .abort) {
@@ -1683,6 +1683,9 @@ pub fn indexOfNearestEqualMany(comptime T: type, arg1: []const T, arg2: []const 
     }
     return null;
 }
+pub inline fn zero(comptime T: type, ptr: *T) void {
+    mach.memset(@ptrCast([*]u8, ptr), 0, @sizeOf(T));
+}
 pub const SimpleAllocator = struct {
     start: u64 = 0x40000000,
     next: u64 = 0x40000000,
@@ -1720,7 +1723,6 @@ pub const SimpleAllocator = struct {
         const ret_addr: u64 = allocator.reallocateInternal(@ptrToInt(buf.ptr), buf.len *% @sizeOf(T), count *% @sizeOf(T), align_of);
         return @intToPtr([*]align(align_of) T, ret_addr)[0..count];
     }
-
     pub inline fn deallocate(allocator: *Allocator, comptime T: type, buf: []T) void {
         allocator.deallocateInternal(@ptrToInt(buf.ptr), buf.len *% @sizeOf(T));
     }
@@ -1732,6 +1734,9 @@ pub const SimpleAllocator = struct {
     }
     pub inline fn discard(allocator: *Allocator) void {
         allocator.next = allocator.start;
+    }
+    pub inline fn utility(allocator: *Allocator) u64 {
+        return allocator.next -% allocator.start;
     }
     pub fn unmap(allocator: *Allocator) void {
         mem.unmap(.{ .errors = .{} }, allocator.start, allocator.finish - allocator.start);
@@ -1760,6 +1765,9 @@ pub const SimpleAllocator = struct {
     inline fn copy(dest: u64, src: u64, len: u64) void {
         mach.memcpy(@intToPtr([*]u8, dest), @intToPtr([*]const u8, src), len);
     }
+    pub const allocateRaw = allocateInternal;
+    pub const reallocateRaw = reallocateInternal;
+    pub const deallocateRaw = deallocateInternal;
     fn allocateInternal(
         allocator: *Allocator,
         size_of: u64,
