@@ -1707,31 +1707,31 @@ pub fn copy(comptime copy_spec: CopySpec, src_fd: u64, src_offset: ?*u64, dest_f
     copy_spec.return_type,
 ) {
     const logging: builtin.Logging.SuccessError = comptime copy_spec.logging.override();
-    if (meta.wrap(sys.call(.mmap, copy_spec.errors, copy_spec.return_type, .{
+    if (meta.wrap(sys.call(.copy_file_range, copy_spec.errors, copy_spec.return_type, .{
         src_fd, @ptrToInt(src_offset), dest_fd, @ptrToInt(dest_offset), len, 0,
     }))) |ret| {
         if (logging.Success) {
-            debug.copyNotice(src_fd, src_offset, dest_fd, dest_offset, len);
+            debug.copyNotice(src_fd, src_offset, dest_fd, dest_offset, len, ret);
         }
         return ret;
-    } else |copy_fie_range_error| {
+    } else |copy_file_range_error| {
         if (logging.Error) {
-            debug.copyError(copy_fie_range_error, src_fd, src_offset, dest_fd, dest_offset, len);
+            debug.copyError(copy_file_range_error, src_fd, src_offset, dest_fd, dest_offset, len);
         }
-        return copy_fie_range_error;
+        return copy_file_range_error;
     }
 }
 pub fn sync(comptime sync_spec: SyncSpec, fd: u64) sys.ErrorUnion(sync_spec.errors, sync_spec.return_type) {
     const logging: builtin.Logging.SuccessError = comptime sync_spec.logging.override();
-    const syscall: sys.Fn = if (sync_spec.options.flush_metadata) .sync else .fdatasync;
+    const syscall: sys.Fn = if (sync_spec.options.flush_metadata) .fsync else .fdatasync;
     if (meta.wrap(sys.call(syscall, sync_spec.errors, sync_spec.return_type, .{fd}))) |ret| {
         if (logging.Success) {
-            debug.syncNotice(fd);
+            debug.aboutFdNotice(debug.about_sync_0_s, fd);
         }
         return ret;
     } else |sync_error| {
         if (logging.Error) {
-            debug.syncError(sync_error, fd);
+            debug.aboutFdError(debug.about_sync_1_s, @errorName(sync_error), fd);
         }
         return sync_error;
     }
@@ -2097,7 +2097,10 @@ const debug = opaque {
     const about_dup_1_s: [:0]const u8 = builtin.fmt.about("dup-error");
     const about_dup3_0_s: [:0]const u8 = builtin.fmt.about("dup3");
     const about_dup3_1_s: [:0]const u8 = builtin.fmt.about("dup3-error");
+    const about_copy_0_s: [:0]const u8 = builtin.fmt.about("copy");
+    const about_copy_1_s: [:0]const u8 = builtin.fmt.about("copy-error");
     const about_stat_0_s: [:0]const u8 = builtin.fmt.about("stat");
+    const about_stat_1_s: [:0]const u8 = builtin.fmt.about("stat-error");
     const about_open_0_s: [:0]const u8 = builtin.fmt.about("open");
     const about_open_1_s: [:0]const u8 = builtin.fmt.about("open-error");
     const about_file_0_s: [:0]const u8 = builtin.fmt.about("file");
@@ -2105,13 +2108,14 @@ const debug = opaque {
     const about_file_2_s: [:0]const u8 = builtin.fmt.about("file-fault");
     const about_read_0_s: [:0]const u8 = builtin.fmt.about("read");
     const about_read_1_s: [:0]const u8 = builtin.fmt.about("read-error");
-    const about_stat_1_s: [:0]const u8 = builtin.fmt.about("stat-error");
     const about_pipe_0_s: [:0]const u8 = builtin.fmt.about("pipe");
     const about_pipe_1_s: [:0]const u8 = builtin.fmt.about("pipe-error");
     const about_poll_0_s: [:0]const u8 = builtin.fmt.about("poll");
     const about_poll_1_s: [:0]const u8 = builtin.fmt.about("poll-error");
     const about_seek_0_s: [:0]const u8 = builtin.fmt.about("seek");
     const about_seek_1_s: [:0]const u8 = builtin.fmt.about("seek-error");
+    const about_sync_0_s: [:0]const u8 = builtin.fmt.about("sync");
+    const about_sync_1_s: [:0]const u8 = builtin.fmt.about("sync-error");
     const about_close_0_s: [:0]const u8 = builtin.fmt.about("close");
     const about_close_1_s: [:0]const u8 = builtin.fmt.about("close-error");
     const about_mkdir_0_s: [:0]const u8 = builtin.fmt.about("mkdir");
