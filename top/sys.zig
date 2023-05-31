@@ -1907,6 +1907,8 @@ pub const Fn = enum(u9) {
             .exit,
             .chdir,
             .syncfs,
+            .fsync,
+            .fdatasync,
             => 1,
             .memfd_create,
             .stat,
