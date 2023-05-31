@@ -511,9 +511,13 @@ pub const WriteSpec = struct {
     logging: builtin.Logging.SuccessError = .{},
 };
 pub const SyncSpec = struct {
+    options: Options = .{},
     errors: sys.ErrorPolicy = .{ .throw = sys.sync_errors },
     return_type: type = u64,
     logging: builtin.Logging.SuccessError = .{},
+    pub const Options = packed struct {
+        flush_metadata: bool = true,
+    };
 };
 pub const SeekSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.seek_errors },
@@ -1084,7 +1088,7 @@ pub fn open(comptime spec: OpenSpec, pathname: [:0]const u8) sys.ErrorUnion(spec
     const logging: builtin.Logging.AcquireError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.open, spec.errors, spec.return_type, .{ pathname_buf_addr, flags.val, 0 }))) |fd| {
         if (logging.Acquire) {
-            debug.aboutPathnameFdNotice(debug.about_create_0_s, pathname, fd);
+            debug.aboutPathnameFdNotice(debug.about_open_0_s, pathname, fd);
         }
         return fd;
     } else |open_error| {
