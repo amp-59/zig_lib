@@ -1897,6 +1897,7 @@ pub const Fn = enum(u9) {
             .getgid,
             .geteuid,
             .getegid,
+            .sync,
             => 0,
             .rmdir,
             .dup,
@@ -1905,6 +1906,7 @@ pub const Fn = enum(u9) {
             .unlink,
             .exit,
             .chdir,
+            .syncfs,
             => 1,
             .memfd_create,
             .stat,
@@ -1957,6 +1959,7 @@ pub const Fn = enum(u9) {
             .execveat,
             .name_to_handle_at,
             => 5,
+            .copy_file_range,
             .futex,
             .mmap,
             .recvfrom,
@@ -1976,6 +1979,12 @@ pub const brk_errors = &[_]ErrorCode{.NOMEM};
 pub const chdir_errors = &[_]ErrorCode{
     .NAMETOOLONG, .LOOP, .ACCES, .IO, .BADF, .FAULT, .NOTDIR, .NOMEM, .NOENT,
 };
+pub const copy_file_range_errors = &[_]ErrorCode{
+    .BADF,  .FBIG,      .INVAL,    .IO,   .ISDIR,  .NOMEM,
+    .NOSPC, .OPNOTSUPP, .OVERFLOW, .PERM, .TXTBSY, .XDEV,
+};
+pub const sync_errors = &[_]ErrorCode{ .BADF, .IO };
+pub const sync_file_range_errors = &[_]ErrorCode{};
 pub const close_errors = &[_]ErrorCode{
     .INTR, .IO, .BADF, .NOSPC,
 };
