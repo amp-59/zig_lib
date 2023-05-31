@@ -8,6 +8,44 @@ const _dir = @import("./dir.zig");
 const _chan = @import("./chan.zig");
 pub usingnamespace _dir;
 pub usingnamespace _chan;
+pub const mode = struct {
+    pub const regular: Mode = .{
+        .owner = .{ .read = true, .write = true, .execute = false },
+        .group = .{ .read = true, .write = false, .execute = false },
+        .other = .{ .read = false, .write = false, .execute = false },
+        .sticky = false,
+        .set_gid = false,
+        .set_uid = false,
+        .kind = .regular,
+    };
+    pub const executable: Mode = .{
+        .owner = .{ .read = true, .write = true, .execute = true },
+        .group = .{ .read = true, .write = false, .execute = true },
+        .other = .{ .read = false, .write = false, .execute = false },
+        .sticky = false,
+        .set_gid = false,
+        .set_uid = false,
+        .kind = .regular,
+    };
+    pub const named_pipe: Mode = .{
+        .owner = .{ .read = true, .write = true, .execute = false },
+        .group = .{ .read = true, .write = false, .execute = false },
+        .other = .{ .read = false, .write = false, .execute = false },
+        .sticky = false,
+        .set_gid = false,
+        .set_uid = false,
+        .kind = .named_pipe,
+    };
+    pub const directory: Mode = .{
+        .owner = .{ .read = true, .write = true, .execute = true },
+        .group = .{ .read = true, .write = true, .execute = true },
+        .other = .{ .read = false, .write = false, .execute = false },
+        .sticky = false,
+        .set_gid = false,
+        .set_uid = false,
+        .kind = .directory,
+    };
+};
 pub const Kind = enum(u4) {
     unknown = 0,
     regular = MODE.IFREGR,
@@ -42,7 +80,7 @@ pub const Open = struct {
         const OPEN = sys.O;
     });
 };
-pub const Whence = enum(u64) {
+pub const Whence = enum(u64) { // set, cur, end
     set = SEEK.SET,
     cur = SEEK.CUR,
     end = SEEK.END,
@@ -395,35 +433,6 @@ pub const TerminalAttributes = extern struct {
     pub fn character(termios: *const TerminalAttributes, tag: Term.Special.Tag) u8 {
         return termios.special[@enumToInt(tag)];
     }
-};
-pub const mode = struct {
-    pub const regular: Mode = .{
-        .owner = .{ .read = true, .write = true, .execute = false },
-        .group = .{ .read = true, .write = false, .execute = false },
-        .other = .{ .read = false, .write = false, .execute = false },
-        .sticky = false,
-        .set_gid = false,
-        .set_uid = false,
-        .kind = .regular,
-    };
-    pub const named_pipe: Mode = .{
-        .owner = .{ .read = true, .write = true, .execute = false },
-        .group = .{ .read = true, .write = false, .execute = false },
-        .other = .{ .read = false, .write = false, .execute = false },
-        .sticky = false,
-        .set_gid = false,
-        .set_uid = false,
-        .kind = .named_pipe,
-    };
-    pub const directory: Mode = .{
-        .owner = .{ .read = true, .write = true, .execute = true },
-        .group = .{ .read = true, .write = true, .execute = true },
-        .other = .{ .read = false, .write = false, .execute = false },
-        .sticky = false,
-        .set_gid = false,
-        .set_uid = false,
-        .kind = .directory,
-    };
 };
 pub const OpenSpec = struct {
     options: Options = .{},
