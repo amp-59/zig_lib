@@ -52,13 +52,13 @@ pub const State = enum(u8) {
 pub const Lock = mem.ThreadSafeSet(State.list.len, State, Task);
 pub const Path = struct {
     absolute: [:0]const u8,
-    relative: ?[:0]const u8 = null,
+    relative: [:0]const u8 = &.{},
     const Format = @This();
     pub fn formatWrite(format: Format, array: anytype) void {
         array.writeMany(format.absolute);
-        if (format.relative) |relative| {
+        if (format.relative.len != 0) {
             array.writeOne('/');
-            array.writeMany(relative);
+            array.writeMany(format.relative.len);
         }
         array.writeOne(0);
     }
@@ -66,20 +66,18 @@ pub const Path = struct {
         @setRuntimeSafety(false);
         var len: u64 = format.absolute.len;
         mach.memcpy(buf, format.absolute.ptr, format.absolute.len);
-        if (format.relative) |relative| {
+        if (format.relative.len != 0) {
             buf[len] = '/';
             len = len +% 1;
-            mach.memcpy(buf + len, relative.ptr, relative.len);
-            len = len +% relative.len;
+            mach.memcpy(buf + len, format.relative.ptr, format.relative.len);
+            len = len +% format.relative.len;
         }
         buf[len] = 0;
         return len +% 1;
     }
     pub fn formatLength(format: Format) u64 {
         var len: u64 = format.absolute.len;
-        if (format.relative) |relative| {
-            len +%= 1 +% relative.len;
-        }
+        len +%= 1 +% format.relative.len;
         return len +% 1;
     }
 };
