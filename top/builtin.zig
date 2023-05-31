@@ -86,10 +86,6 @@ pub inline fn createErrorPolicy(
     value.* = new;
     return value;
 }
-pub inline fn errorName(any_error: anytype) []const u8 {
-    const builtin = @errorName(any_error);
-    return builtin[0..@min(builtin.len, 512)];
-}
 pub fn BitCount(comptime T: type) type {
     if (@sizeOf(T) == 0) {
         return comptime_int;
@@ -1963,7 +1959,6 @@ pub const fmt = struct {
         const t_type_name: []const u8 = @typeName(T);
         return t_type_name[2 .. t_type_name.len -% (s_type_name.len +% 1)];
     }
-
     pub inline fn bin(comptime Int: type, value: Int) Generic(Int).Array2 {
         return Generic(Int).bin(value);
     }
@@ -2017,7 +2012,6 @@ pub const fmt = struct {
     pub const ix64 = Generic(i64).hex;
     pub const ixsize = Generic(isize).hex;
     pub const nsec = Generic(u64).nsec;
-
     fn maxSigFig(comptime T: type, comptime radix: u7) comptime_int {
         const U = @Type(.{ .Int = .{ .bits = @bitSizeOf(T), .signedness = .unsigned } });
         var value: U = 0;
@@ -2032,6 +2026,7 @@ pub const fmt = struct {
         return len;
     }
     pub fn length(comptime U: type, abs_value: U, comptime radix: u7) usize {
+        @setRuntimeSafety(false);
         if (@bitSizeOf(U) == 1) {
             return 1;
         }
