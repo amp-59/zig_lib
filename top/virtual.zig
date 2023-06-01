@@ -134,7 +134,7 @@ pub fn ThreadSafeSet(comptime elements: u16, comptime val_type: type, comptime i
             bytes: [elements]u8 = builtin.zero([elements]u8),
             pub const SafeSet: type = @This();
             pub fn get(safe_set: *SafeSet, index: idx_type) bool {
-                return safe_set.refer(index).* != 0;
+                return safe_set.bytes[@enumToInt(index)] != 0;
             }
             pub fn set(safe_set: *SafeSet, index: idx_type) void {
                 safe_set.bytes[@enumToInt(index)] = 255;
@@ -143,10 +143,10 @@ pub fn ThreadSafeSet(comptime elements: u16, comptime val_type: type, comptime i
                 safe_set.bytes[@enumToInt(index)] = 0;
             }
             pub inline fn atomicSet(safe_set: *SafeSet, index: idx_type) bool {
-                return common.atomicByteExchange(safe_set.refer(index), 0, 255);
+                return common.atomicByteExchange(safe_set.bytes[@enumToInt(index)], 0, 255);
             }
             pub inline fn atomicUnset(safe_set: *SafeSet, index: idx_type) bool {
-                return common.atomicByteExchange(safe_set.refer(index), 255, 0);
+                return common.atomicByteExchange(safe_set.bytes[@enumToInt(index)], 255, 0);
             }
         };
     } else if (val_type != bool and idx_info != .Enum) {
