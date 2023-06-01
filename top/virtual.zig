@@ -113,17 +113,14 @@ pub fn ThreadSafeSet(comptime elements: u16, comptime val_type: type, comptime i
         return extern struct {
             bytes: [elements]u8 = builtin.zero([elements]u8),
             pub const SafeSet: type = @This();
-            inline fn refer(safe_set: *SafeSet, index: idx_type) *u8 {
-                return &safe_set.bytes[index];
-            }
             pub fn get(safe_set: *SafeSet, index: idx_type) bool {
-                return safe_set.refer(index).* != 0;
+                return safe_set.bytes[index] != 0;
             }
             pub fn set(safe_set: *SafeSet, index: idx_type) void {
-                safe_set.refer(index).* = 255;
+                safe_set.bytes[index] = 255;
             }
             pub fn unset(safe_set: *SafeSet, index: idx_type) void {
-                safe_set.refer(index).* = 0;
+                safe_set.bytes[index] = 0;
             }
             pub inline fn atomicSet(safe_set: *SafeSet, index: idx_type) bool {
                 return common.atomicByteExchange(&safe_set.bytes[index], 0, 255);
@@ -136,17 +133,14 @@ pub fn ThreadSafeSet(comptime elements: u16, comptime val_type: type, comptime i
         return extern struct {
             bytes: [elements]u8 = builtin.zero([elements]u8),
             pub const SafeSet: type = @This();
-            inline fn refer(safe_set: *SafeSet, index: idx_type) *u8 {
-                return &safe_set.bytes[@enumToInt(index)];
-            }
             pub fn get(safe_set: *SafeSet, index: idx_type) bool {
                 return safe_set.refer(index).* != 0;
             }
             pub fn set(safe_set: *SafeSet, index: idx_type) void {
-                safe_set.refer(index).* = 255;
+                safe_set.bytes[@enumToInt(index)] = 255;
             }
             pub fn unset(safe_set: *SafeSet, index: idx_type) void {
-                safe_set.refer(index).* = 0;
+                safe_set.bytes[@enumToInt(index)] = 0;
             }
             pub inline fn atomicSet(safe_set: *SafeSet, index: idx_type) bool {
                 return common.atomicByteExchange(safe_set.refer(index), 0, 255);
@@ -159,14 +153,11 @@ pub fn ThreadSafeSet(comptime elements: u16, comptime val_type: type, comptime i
         return extern struct {
             bytes: [elements]val_type = builtin.zero([elements]val_type),
             pub const SafeSet: type = @This();
-            inline fn refer(safe_set: *SafeSet, index: idx_type) *val_type {
-                return &safe_set.bytes[index];
-            }
             pub fn get(safe_set: *SafeSet, index: idx_type) val_type {
-                return safe_set.refer(index).*;
+                return safe_set.bytes[index];
             }
             pub fn set(safe_set: *SafeSet, index: idx_type, to: val_type) void {
-                safe_set.refer(index).* = to;
+                safe_set.bytes[index] = to;
             }
             pub fn atomicExchange(safe_set: *SafeSet, index: idx_type, if_state: val_type, to_state: val_type) bool {
                 return asm volatile (
@@ -175,7 +166,7 @@ pub fn ThreadSafeSet(comptime elements: u16, comptime val_type: type, comptime i
                     \\lock cmpxchg  %dl,            %[ptr]
                     \\sete          %[ret]
                     : [ret] "=r" (-> bool),
-                    : [ptr] "p" (safe_set.refer(index)),
+                    : [ptr] "p" (&safe_set.bytes[index]),
                       [if_state] "r" (if_state),
                       [to_state] "r" (to_state),
                     : "rax", "rdx", "memory"
@@ -186,18 +177,15 @@ pub fn ThreadSafeSet(comptime elements: u16, comptime val_type: type, comptime i
         return extern struct {
             bytes: [elements]val_type = builtin.zero([elements]val_type),
             pub const SafeSet: type = @This();
-            inline fn refer(safe_set: *SafeSet, index: idx_type) *val_type {
-                return &safe_set.bytes[@enumToInt(index)];
-            }
-            pub inline fn get(safe_set: *SafeSet, index: idx_type) val_type {
-                return safe_set.refer(index).*;
+            pub inline fn get(safe_set: *const SafeSet, index: idx_type) val_type {
+                return safe_set.bytes[@enumToInt(index)];
             }
             pub inline fn set(safe_set: *SafeSet, index: idx_type, to: val_type) void {
-                safe_set.refer(index).* = to;
+                safe_set.bytes[@enumToInt(index)] = to;
             }
             pub fn exchange(safe_set: *SafeSet, index: idx_type, if_state: val_type, to_state: val_type) bool {
                 const ret: bool = safe_set.get() == if_state;
-                if (ret) safe_set.refer(index).* = to_state;
+                if (ret) safe_set.bytes[@enumToInt(index)] = to_state;
                 return ret;
             }
             pub fn atomicExchange(safe_set: *SafeSet, index: idx_type, if_state: val_type, to_state: val_type) callconv(.C) bool {
@@ -207,7 +195,7 @@ pub fn ThreadSafeSet(comptime elements: u16, comptime val_type: type, comptime i
                     \\lock cmpxchg  %dl,            %[ptr]
                     \\sete          %[ret]
                     : [ret] "=r" (-> bool),
-                    : [ptr] "p" (safe_set.refer(index)),
+                    : [ptr] "p" (&safe_set.bytes[@enumToInt(index)]),
                       [if_state] "r" (if_state),
                       [to_state] "r" (to_state),
                     : "rax", "rdx", "memory"
@@ -226,16 +214,16 @@ fn GenericMultiSet(
         pub const MultiSet: type = @This();
         inline fn arenaIndex(comptime index: spec.idx_type) spec.idx_type {
             if (@typeInfo(spec.idx_type) == .Enum) {
-                return @intToEnum(spec.idx_type, directory[@enumToInt(index)].arena_index);
+                comptime return @intToEnum(spec.idx_type, directory[@enumToInt(index)].arena_index);
             } else {
-                return directory[index].arena_index;
+                comptime return directory[index].arena_index;
             }
         }
         inline fn fieldIndex(comptime index: spec.idx_type) usize {
             if (@typeInfo(spec.idx_type) == .Enum) {
-                return directory[@enumToInt(index)].field_index;
+                comptime return directory[@enumToInt(index)].field_index;
             } else {
-                return directory[index].field_index;
+                comptime return directory[index].field_index;
             }
         }
         pub fn get(multi_set: *MultiSet, comptime index: spec.idx_type) spec.val_type {
