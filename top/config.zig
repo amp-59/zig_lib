@@ -44,7 +44,7 @@ pub const signal_handlers: SignalHandlers = define(
         .segmentation_fault = logging_general.Fault,
         .illegal_instruction = logging_general.Fault,
         .bus_error = logging_general.Fault,
-        .floating_point_error = is_debug,
+        .floating_point_error = logging_general.Fault,
     },
 );
 // These are defined by the library builder
