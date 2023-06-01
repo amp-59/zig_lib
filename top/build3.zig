@@ -103,6 +103,7 @@ pub const BuilderSpec = struct {
         } = .{},
     };
     pub const Logging = packed struct {
+        open: builtin.Logging.Field(file.OpenSpec) = .{},
         close: builtin.Logging.Field(file.CloseSpec) = .{},
         create: builtin.Logging.Field(file.CreateSpec) = .{},
         dup3: builtin.Logging.Field(file.DuplicateSpec) = .{},
@@ -122,6 +123,7 @@ pub const BuilderSpec = struct {
         unlink: builtin.Logging.Field(file.UnlinkSpec) = .{},
     };
     pub const Errors = struct {
+        open: sys.ErrorPolicy,
         close: sys.ErrorPolicy,
         create: sys.ErrorPolicy,
         dup3: sys.ErrorPolicy,
@@ -875,7 +877,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         continue :lo;
                     }
                     if (mach.testEqualMany8(command, "list")) {
-                        debug.builderCommandNotice(builder, true, true, true);
+                        debug.builderCommandNotice(builder);
                         continue :lo;
                     }
                 }
@@ -1369,14 +1371,14 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     mach.memcpy(buf0 + len, dep.on_target.name.ptr, dep.on_target.name.len);
                     len +%= dep.on_target.name.len;
                     if (builder_spec.options.show_detailed_deps) {
-                        var count: u64 = (args.name_max_width +% 4) -% (dep.on_target.name.len +% len1);
-                        if (dep.on_target.hidden and args.show_root) {
+                        var count: u64 = args.name_max_width -% (dep.on_target.name.len +% len1);
+                        if (dep.on_target.hidden) {
                             mach.memset(buf0 + len, ' ', count);
                             len +%= count;
                             mach.memcpy(buf0 + len, dep_root.ptr, dep_root.len);
                             len +%= dep_root.len;
                         }
-                        if (dep.on_target.hidden and args.show_descr) {
+                        if (dep.on_target.hidden) {
                             count = args.root_max_width -% dep_root.len;
                             mach.memset(buf0 + len, ' ', count);
                             len +%= count;
@@ -1408,7 +1410,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
                 return len;
             }
-            pub fn builderCommandNotice(builder: *Builder, show_root: bool, show_descr: bool, show_deps: bool) void {
+            pub fn builderCommandNotice(builder: *Builder) void {
                 @setRuntimeSafety(safety);
                 var data0: [32768]u8 = undefined;
                 var data1: [4096]u8 = undefined;
@@ -1422,16 +1424,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         continue;
                     }
                     for (group.trgs[0..group.trgs_len]) |target| {
-                        name_max_width = @max(
-                            name_max_width,
-                            dependencyMaxNameWidth(target, 2),
-                        );
-                        if (show_root) {
-                            root_max_width = @max(
-                                root_max_width,
-                                dependencyMaxRootWidth(target),
-                            );
-                        }
+                        name_max_width = @max(name_max_width, dependencyMaxNameWidth(target, 2));
+                        root_max_width = @max(root_max_width, dependencyMaxRootWidth(target));
                     }
                 }
                 name_max_width +%= 4;
@@ -1454,34 +1448,23 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         mach.memcpy(buf0 + len, target.name.ptr, target.name.len);
                         len +%= target.name.len;
                         var count: u64 = name_max_width -% target.name.len;
-                        if (show_root) {
-                            mach.memset(buf0 + len, ' ', count);
-                            len +%= count;
-                            mach.memcpy(buf0 + len, root.ptr, root.len);
-                            len +%= root.len;
-                        }
-                        if (show_descr) {
-                            count = root_max_width -% root.len;
-                            mach.memset(buf0 + len, ' ', count);
-                            len +%= count;
-                            mach.memcpy(buf0 + len, target.descr.ptr, target.descr.len);
-                            len +%= target.descr.len;
-                        }
-                        if (show_deps) {
-                            @ptrCast(*[4]u8, buf0 + len).* = about.faint_s.*;
-                            len +%= about.faint_s.len;
-                            len = writeAndWalkInternal(buf0, len, buf1, 4, target, &.{
-                                .show_descr = show_descr,
-                                .show_root = show_root,
-                                .name_max_width = name_max_width,
-                                .root_max_width = root_max_width,
-                            });
-                            @ptrCast(*[4]u8, buf0 + len).* = about.reset_s.*;
-                            len +%= about.reset_s.len;
-                        } else {
-                            buf0[len] = '\n';
-                            len +%= 1;
-                        }
+                        mach.memset(buf0 + len, ' ', count);
+                        len +%= count;
+                        mach.memcpy(buf0 + len, root.ptr, root.len);
+                        len +%= root.len;
+                        count = root_max_width -% root.len;
+                        mach.memset(buf0 + len, ' ', count);
+                        len +%= count;
+                        mach.memcpy(buf0 + len, target.descr.ptr, target.descr.len);
+                        len +%= target.descr.len;
+                        @ptrCast(*[4]u8, buf0 + len).* = about.faint_s.*;
+                        len +%= about.faint_s.len;
+                        len = writeAndWalkInternal(buf0, len, buf1, 4, target, &.{
+                            .name_max_width = name_max_width,
+                            .root_max_width = root_max_width,
+                        });
+                        @ptrCast(*[4]u8, buf0 + len).* = about.reset_s.*;
+                        len +%= about.reset_s.len;
                     }
                 }
                 builtin.debug.write(buf0[0..len]);
