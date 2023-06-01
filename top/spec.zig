@@ -143,6 +143,7 @@ pub const builder = struct {
             .sleep = .{},
             .create = .{},
             .mkdir = .{},
+            .open = .{},
             .close = .{},
             .poll = .{},
             .stat = .{},
@@ -166,6 +167,7 @@ pub const builder = struct {
             .create = .{ .throw = sys.open.errors.all },
             .mkdir = .{ .throw = sys.mkdir.errors.noexcl },
             .poll = .{ .throw = sys.poll.errors.all },
+            .open = .{ .throw = sys.open.errors.all },
             .close = .{ .abort = sys.close.errors.all },
             .unlink = .{ .abort = sys.unlink.errors.all },
         };
@@ -191,6 +193,7 @@ pub const builder = struct {
             .create = .{},
             .mkdir = .{},
             .poll = .{},
+            .open = .{},
             .close = .{},
             .unlink = .{},
         };
