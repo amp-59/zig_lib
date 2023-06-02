@@ -16,7 +16,7 @@ const Array = mem.StaticString(64 * 1024 * 1024);
 const Arrays = mem.StaticArray([]const u8, max_len);
 const Indices = mem.StaticArray(u64, max_len);
 const prefer_ptrcast: bool = true;
-const prefer_builtin: bool = false;
+const prefer_builtin_memcpy: bool = true;
 const combine_char: bool = true;
 const open_spec: file.OpenSpec = .{
     .errors = .{},
@@ -61,29 +61,6 @@ fn writeType(array: *Array, param_spec: types.ParamSpec) void {
         }
     } else {
         array.writeFormat(param_spec.parameter());
-    }
-}
-fn writeFields(array: *Array, param_specs: []const types.ParamSpec) void {
-    for (param_specs) |param_spec| {
-        if (param_spec.isField()) {
-            for (param_spec.descr) |line| {
-                array.writeMany("/// ");
-                array.writeMany(line);
-                array.writeMany("\n");
-            }
-            array.writeMany(param_spec.name);
-            array.writeMany(":");
-            writeType(array, param_spec);
-            if (param_spec.and_no == null and
-                param_spec.tag == .boolean_field)
-            {
-                array.writeMany("=false,\n");
-            } else if (param_spec.tag != .tag_field) {
-                array.writeMany("=null,\n");
-            } else {
-                array.writeMany(",\n");
-            }
-        }
     }
 }
 fn writeIf(array: *Array, value_name: []const u8) void {
@@ -204,8 +181,8 @@ fn writeIntegerString(array: *Array, arg_string: []const u8, variant: types.Vari
             array.writeMany("const s:[]const u8=builtin.fmt.ud64(");
             array.writeMany(arg_string);
             array.writeMany(").readAll();\n");
-            if (prefer_builtin) {
-                array.writeMany("@memcpy((buf+len)[0..s.len],s);\n");
+            if (prefer_builtin_memcpy) {
+                array.writeMany("@memcpy(buf+len,s);\n");
             } else {
                 array.writeMany("mach.memcpy(buf+len,s.ptr,s.len);\n");
             }
@@ -223,11 +200,10 @@ fn writeIntegerString(array: *Array, arg_string: []const u8, variant: types.Vari
         },
     }
 }
-
 fn writeKindString(array: *Array, arg_string: []const u8, variant: types.Variant) void {
     switch (variant) {
         .write_buf => {
-            if (prefer_builtin) {
+            if (prefer_builtin_memcpy) {
                 array.writeMany("@memcpy(buf+len,");
                 writeFieldTagname(array, arg_string);
                 array.writeMany(");\n");
@@ -255,7 +231,7 @@ fn writeKindString(array: *Array, arg_string: []const u8, variant: types.Variant
 fn writeTagString(array: *Array, arg_string: []const u8, variant: types.Variant) void {
     switch (variant) {
         .write_buf => {
-            if (prefer_builtin) {
+            if (prefer_builtin_memcpy) {
                 array.writeMany("@memcpy(buf+len,");
                 writeOptFieldTagname(array, arg_string);
                 array.writeMany(");\n");
@@ -284,10 +260,8 @@ fn writeTagString(array: *Array, arg_string: []const u8, variant: types.Variant)
 fn writeArgString(array: *Array, arg_string: []const u8, variant: types.Variant) void {
     switch (variant) {
         .write_buf => {
-            if (prefer_builtin) {
-                array.writeMany("@memcpy(buf[len..len+%");
-                array.writeMany(arg_string);
-                array.writeMany(".len],");
+            if (prefer_builtin_memcpy) {
+                array.writeMany("@memcpy(buf+len,");
                 array.writeMany(arg_string);
                 array.writeMany(");\n");
             } else {
@@ -418,7 +392,7 @@ fn writeOptString(
 ) void {
     switch (variant) {
         .write_buf => {
-            if (prefer_ptrcast) {
+            if (prefer_ptrcast and opt_string.len < 32) {
                 array.writeMany("@ptrCast(");
                 array.writeMany("*[");
                 if (combine_char and char != types.ParamSpec.immediate) {
@@ -433,18 +407,27 @@ fn writeOptString(
                 }
                 array.writeMany("\".*;\n");
             } else {
-                array.writeMany("mach.memcpy(buf+len,\"");
-                array.writeMany(opt_string);
-                if (combine_char and char != types.ParamSpec.immediate) {
-                    array.writeFormat(fmt.esc(char));
-                }
-                array.writeMany("\",");
-                if (combine_char and char != types.ParamSpec.immediate) {
-                    array.writeFormat(fmt.ud64(opt_string.len +% 1));
+                if (prefer_builtin_memcpy) {
+                    array.writeMany("@memcpy(buf+len,\"");
+                    array.writeMany(opt_string);
+                    if (combine_char and char != types.ParamSpec.immediate) {
+                        array.writeFormat(fmt.esc(char));
+                    }
+                    array.writeMany("\");\n");
                 } else {
-                    array.writeFormat(fmt.ud64(opt_string.len));
+                    array.writeMany("mach.memcpy(buf+len,\"");
+                    array.writeMany(opt_string);
+                    if (combine_char and char != types.ParamSpec.immediate) {
+                        array.writeFormat(fmt.esc(char));
+                    }
+                    array.writeMany("\",");
+                    if (combine_char and char != types.ParamSpec.immediate) {
+                        array.writeFormat(fmt.ud64(opt_string.len +% 1));
+                    } else {
+                        array.writeFormat(fmt.ud64(opt_string.len));
+                    }
+                    array.writeMany(");\n");
                 }
-                array.writeMany(");\n");
             }
             writeOptString(array, opt_string, .length, char);
         },
@@ -612,7 +595,9 @@ pub fn writeFunctionBody(array: *Array, options: []const types.ParamSpec, varian
             unhandledCommandFieldAndNo(param_spec, no_param_spec);
         } else {
             if (param_spec.tag == .boolean_field) {
-                writeIfField(array, if_boolean_field_value);
+                array.writeMany("if(cmd.");
+                array.writeMany(if_boolean_field_value);
+                array.writeMany("){\n");
                 writeOptStringExtra(array, param_spec.string, variant, param_spec.char orelse '\x00');
                 writeIfClose(array);
                 continue;
@@ -677,16 +662,12 @@ pub fn writeFunctionBody(array: *Array, options: []const types.ParamSpec, varian
 }
 fn unhandledCommandFieldAndNo(param_spec: types.ParamSpec, no_param_spec: types.InverseParamSpec) void {
     var buf: [4096]u8 = undefined;
-    var len: u64 = builtin.debug.writeMulti(&buf, &.{
-        param_spec.name, ": ", @tagName(param_spec.tag), "+", @tagName(no_param_spec.tag),
-    });
+    var len: u64 = builtin.debug.writeMulti(&buf, &.{ param_spec.name, ": ", @tagName(param_spec.tag), "+", @tagName(no_param_spec.tag) });
     builtin.proc.exitFault(buf[0..len], 2);
 }
 fn unhandledCommandField(param_spec: types.ParamSpec) void {
     var buf: [4096]u8 = undefined;
-    var len: u64 = builtin.debug.writeMulti(&buf, &.{
-        param_spec.name, ": ", @tagName(param_spec.tag), "\n",
-    });
+    var len: u64 = builtin.debug.writeMulti(&buf, &.{ param_spec.name, ": ", @tagName(param_spec.tag), "\n" });
     builtin.proc.exitFault(buf[0..len], 2);
 }
 fn writeFile(array: *Array, pathname: [:0]const u8) void {
@@ -719,6 +700,29 @@ fn writeFunctionSignatureFromAttributes(array: *Array, attributes: types.Attribu
         .length => array.writeMany(")u64"),
     }
 }
+fn writeFields(array: *Array, attributes: types.Attributes) void {
+    for (attributes.params) |param_spec| {
+        if (param_spec.isField()) {
+            for (param_spec.descr) |line| {
+                array.writeMany("/// ");
+                array.writeMany(line);
+                array.writeMany("\n");
+            }
+            array.writeMany(param_spec.name);
+            array.writeMany(":");
+            writeType(array, param_spec);
+            if (param_spec.and_no == null and
+                param_spec.tag == .boolean_field)
+            {
+                array.writeMany("=false,\n");
+            } else if (param_spec.tag != .tag_field) {
+                array.writeMany("=null,\n");
+            } else {
+                array.writeMany(",\n");
+            }
+        }
+    }
+}
 fn writeFunction(array: *Array, attributes: types.Attributes, variant: types.Variant) void {
     writeFunctionSignatureFromAttributes(array, attributes, variant);
     array.writeMany("{\n");
@@ -729,7 +733,7 @@ fn writeTaskStructFromAttributes(array: *Array, attributes: types.Attributes) vo
     array.writeMany("pub const ");
     array.writeMany(attributes.type_name);
     array.writeMany("=struct{\n");
-    writeFields(array, attributes.params);
+    writeFields(array, attributes);
     writeFunction(array, attributes, .write);
     writeFunction(array, attributes, .write_buf);
     writeFunction(array, attributes, .length);
