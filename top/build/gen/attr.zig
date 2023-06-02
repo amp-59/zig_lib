@@ -465,8 +465,10 @@ pub const zig_build_command_attributes: types.Attributes = .{
         },
         .{
             .name = "build_id",
-            .string = "-fbuild-id",
-            .and_no = .{ .string = "-fno-build-id" },
+            .string = "--build-id",
+            .tag = .optional_tag_field,
+            .char = '=',
+            .type = &types.ProtoTypeDescr.init(?enum(u8) { fast, uuid, sha1, md5, none, _ }),
             .descr = &.{"Help coordinate stripped binaries with debug symbols"},
         },
         .{
