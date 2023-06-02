@@ -13,6 +13,7 @@ const testing = top.testing;
 pub usingnamespace proc.start;
 
 pub const runtime_assertions: bool = true;
+pub const logging_default: builtin.Logging.Default = spec.logging.default.verbose;
 pub const AddressSpace = spec.address_space.regular_128;
 
 const move_spec = .{

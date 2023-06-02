@@ -183,7 +183,13 @@ pub const BuildCommand = struct {
     /// Allow undefined symbols in shared libraries
     allow_shlib_undefined: ?bool = null,
     /// Help coordinate stripped binaries with debug symbols
-    build_id: ?bool = null,
+    build_id: ?enum(u8) {
+        fast = 0,
+        uuid = 1,
+        sha1 = 2,
+        md5 = 3,
+        none = 4,
+    } = null,
     /// Debug section compression:
     /// none   No compression
     /// zlib   Compression with deflate/inflate
@@ -238,7 +244,11 @@ pub const BuildCommand = struct {
         norelro = 8,
     } = null,
     /// Enable or disable colored error messages
-    color: ?enum { auto, off, on } = null,
+    color: ?enum(u2) {
+        auto = 0,
+        off = 1,
+        on = 2,
+    } = null,
     /// Print timing diagnostics
     time_report: bool = false,
     /// Print stack size diagnostics
@@ -700,11 +710,9 @@ pub const BuildCommand = struct {
             }
         }
         if (cmd.build_id) |build_id| {
-            if (build_id) {
-                array.writeMany("-fbuild-id\x00");
-            } else {
-                array.writeMany("-fno-build-id\x00");
-            }
+            array.writeMany("--build-id\x3d");
+            array.writeMany(@tagName(build_id));
+            array.writeOne(0);
         }
         if (cmd.compress_debug_sections) |compress_debug_sections| {
             if (compress_debug_sections) {
@@ -812,13 +820,13 @@ pub const BuildCommand = struct {
     pub fn formatWriteBuf(cmd: *BuildCommand, zig_exe: []const u8, files: []const types.Path, buf: [*]u8) u64 {
         @setRuntimeSafety(safety);
         var len: u64 = 0;
-        mach.memcpy(buf + len, zig_exe.ptr, zig_exe.len);
+        @memcpy(buf + len, zig_exe);
         len +%= zig_exe.len;
         buf[len] = 0;
         len +%= 1;
         @ptrCast(*[6]u8, buf + len).* = "build-".*;
         len +%= 6;
-        mach.memcpy(buf + len, @tagName(cmd.kind).ptr, @tagName(cmd.kind).len);
+        @memcpy(buf + len, @tagName(cmd.kind));
         len +%= @tagName(cmd.kind).len;
         buf[len] = 0;
         len +%= 1;
@@ -969,7 +977,7 @@ pub const BuildCommand = struct {
         if (cmd.cache_root) |cache_root| {
             @ptrCast(*[12]u8, buf + len).* = "--cache-dir\x00".*;
             len +%= 12;
-            mach.memcpy(buf + len, cache_root.ptr, cache_root.len);
+            @memcpy(buf + len, cache_root);
             len +%= cache_root.len;
             buf[len] = 0;
             len +%= 1;
@@ -977,7 +985,7 @@ pub const BuildCommand = struct {
         if (cmd.global_cache_root) |global_cache_root| {
             @ptrCast(*[19]u8, buf + len).* = "--global-cache-dir\x00".*;
             len +%= 19;
-            mach.memcpy(buf + len, global_cache_root.ptr, global_cache_root.len);
+            @memcpy(buf + len, global_cache_root);
             len +%= global_cache_root.len;
             buf[len] = 0;
             len +%= 1;
@@ -985,7 +993,7 @@ pub const BuildCommand = struct {
         if (cmd.zig_lib_root) |zig_lib_root| {
             @ptrCast(*[14]u8, buf + len).* = "--zig-lib-dir\x00".*;
             len +%= 14;
-            mach.memcpy(buf + len, zig_lib_root.ptr, zig_lib_root.len);
+            @memcpy(buf + len, zig_lib_root);
             len +%= zig_lib_root.len;
             buf[len] = 0;
             len +%= 1;
@@ -993,7 +1001,7 @@ pub const BuildCommand = struct {
         if (cmd.listen) |listen| {
             @ptrCast(*[9]u8, buf + len).* = "--listen\x00".*;
             len +%= 9;
-            mach.memcpy(buf + len, @tagName(listen).ptr, @tagName(listen).len);
+            @memcpy(buf + len, @tagName(listen));
             len +%= @tagName(listen).len;
             buf[len] = 0;
             len +%= 1;
@@ -1001,7 +1009,7 @@ pub const BuildCommand = struct {
         if (cmd.target) |target| {
             @ptrCast(*[8]u8, buf + len).* = "-target\x00".*;
             len +%= 8;
-            mach.memcpy(buf + len, target.ptr, target.len);
+            @memcpy(buf + len, target);
             len +%= target.len;
             buf[len] = 0;
             len +%= 1;
@@ -1009,7 +1017,7 @@ pub const BuildCommand = struct {
         if (cmd.cpu) |cpu| {
             @ptrCast(*[6]u8, buf + len).* = "-mcpu\x00".*;
             len +%= 6;
-            mach.memcpy(buf + len, cpu.ptr, cpu.len);
+            @memcpy(buf + len, cpu);
             len +%= cpu.len;
             buf[len] = 0;
             len +%= 1;
@@ -1017,7 +1025,7 @@ pub const BuildCommand = struct {
         if (cmd.code_model) |code_model| {
             @ptrCast(*[9]u8, buf + len).* = "-mcmodel\x00".*;
             len +%= 9;
-            mach.memcpy(buf + len, @tagName(code_model).ptr, @tagName(code_model).len);
+            @memcpy(buf + len, @tagName(code_model));
             len +%= @tagName(code_model).len;
             buf[len] = 0;
             len +%= 1;
@@ -1043,7 +1051,7 @@ pub const BuildCommand = struct {
         if (cmd.exec_model) |exec_model| {
             @ptrCast(*[13]u8, buf + len).* = "-mexec-model\x00".*;
             len +%= 13;
-            mach.memcpy(buf + len, exec_model.ptr, exec_model.len);
+            @memcpy(buf + len, exec_model);
             len +%= exec_model.len;
             buf[len] = 0;
             len +%= 1;
@@ -1051,7 +1059,7 @@ pub const BuildCommand = struct {
         if (cmd.name) |name| {
             @ptrCast(*[7]u8, buf + len).* = "--name\x00".*;
             len +%= 7;
-            mach.memcpy(buf + len, name.ptr, name.len);
+            @memcpy(buf + len, name);
             len +%= name.len;
             buf[len] = 0;
             len +%= 1;
@@ -1061,7 +1069,7 @@ pub const BuildCommand = struct {
                 .yes => |arg| {
                     @ptrCast(*[9]u8, buf + len).* = "-fsoname\x00".*;
                     len +%= 9;
-                    mach.memcpy(buf + len, arg.ptr, arg.len);
+                    @memcpy(buf + len, arg);
                     len +%= arg.len;
                     buf[len] = 0;
                     len +%= 1;
@@ -1075,7 +1083,7 @@ pub const BuildCommand = struct {
         if (cmd.mode) |mode| {
             @ptrCast(*[3]u8, buf + len).* = "-O\x00".*;
             len +%= 3;
-            mach.memcpy(buf + len, @tagName(mode).ptr, @tagName(mode).len);
+            @memcpy(buf + len, @tagName(mode));
             len +%= @tagName(mode).len;
             buf[len] = 0;
             len +%= 1;
@@ -1084,7 +1092,7 @@ pub const BuildCommand = struct {
             @ptrCast(*[19]u8, buf + len).* = "-fopt-bisect-limit\x3d".*;
             len +%= 19;
             const s: []const u8 = builtin.fmt.ud64(passes).readAll();
-            mach.memcpy(buf + len, s.ptr, s.len);
+            @memcpy(buf + len, s);
             len = len + s.len;
             buf[len] = 0;
             len +%= 1;
@@ -1092,7 +1100,7 @@ pub const BuildCommand = struct {
         if (cmd.main_pkg_path) |main_pkg_path| {
             @ptrCast(*[16]u8, buf + len).* = "--main-pkg-path\x00".*;
             len +%= 16;
-            mach.memcpy(buf + len, main_pkg_path.ptr, main_pkg_path.len);
+            @memcpy(buf + len, main_pkg_path);
             len +%= main_pkg_path.len;
             buf[len] = 0;
             len +%= 1;
@@ -1253,7 +1261,7 @@ pub const BuildCommand = struct {
         if (cmd.format) |format| {
             @ptrCast(*[6]u8, buf + len).* = "-ofmt\x3d".*;
             len +%= 6;
-            mach.memcpy(buf + len, @tagName(format).ptr, @tagName(format).len);
+            @memcpy(buf + len, @tagName(format));
             len +%= @tagName(format).len;
             buf[len] = 0;
             len +%= 1;
@@ -1261,7 +1269,7 @@ pub const BuildCommand = struct {
         if (cmd.dirafter) |dirafter| {
             @ptrCast(*[11]u8, buf + len).* = "-idirafter\x00".*;
             len +%= 11;
-            mach.memcpy(buf + len, dirafter.ptr, dirafter.len);
+            @memcpy(buf + len, dirafter);
             len +%= dirafter.len;
             buf[len] = 0;
             len +%= 1;
@@ -1269,7 +1277,7 @@ pub const BuildCommand = struct {
         if (cmd.system) |system| {
             @ptrCast(*[9]u8, buf + len).* = "-isystem\x00".*;
             len +%= 9;
-            mach.memcpy(buf + len, system.ptr, system.len);
+            @memcpy(buf + len, system);
             len +%= system.len;
             buf[len] = 0;
             len +%= 1;
@@ -1277,7 +1285,7 @@ pub const BuildCommand = struct {
         if (cmd.libc) |libc| {
             @ptrCast(*[7]u8, buf + len).* = "--libc\x00".*;
             len +%= 7;
-            mach.memcpy(buf + len, libc.ptr, libc.len);
+            @memcpy(buf + len, libc);
             len +%= libc.len;
             buf[len] = 0;
             len +%= 1;
@@ -1285,7 +1293,7 @@ pub const BuildCommand = struct {
         if (cmd.library) |library| {
             @ptrCast(*[10]u8, buf + len).* = "--library\x00".*;
             len +%= 10;
-            mach.memcpy(buf + len, library.ptr, library.len);
+            @memcpy(buf + len, library);
             len +%= library.len;
             buf[len] = 0;
             len +%= 1;
@@ -1294,7 +1302,7 @@ pub const BuildCommand = struct {
             for (include) |value| {
                 @ptrCast(*[3]u8, buf + len).* = "-I\x00".*;
                 len +%= 3;
-                mach.memcpy(buf + len, value.ptr, value.len);
+                @memcpy(buf + len, value);
                 len +%= value.len;
                 buf[len] = 0;
                 len +%= 1;
@@ -1304,7 +1312,7 @@ pub const BuildCommand = struct {
             for (needed_library) |value| {
                 @ptrCast(*[17]u8, buf + len).* = "--needed-library\x00".*;
                 len +%= 17;
-                mach.memcpy(buf + len, value.ptr, value.len);
+                @memcpy(buf + len, value);
                 len +%= value.len;
                 buf[len] = 0;
                 len +%= 1;
@@ -1314,7 +1322,7 @@ pub const BuildCommand = struct {
             for (library_directory) |value| {
                 @ptrCast(*[20]u8, buf + len).* = "--library-directory\x00".*;
                 len +%= 20;
-                mach.memcpy(buf + len, value.ptr, value.len);
+                @memcpy(buf + len, value);
                 len +%= value.len;
                 buf[len] = 0;
                 len +%= 1;
@@ -1323,7 +1331,7 @@ pub const BuildCommand = struct {
         if (cmd.link_script) |link_script| {
             @ptrCast(*[9]u8, buf + len).* = "--script\x00".*;
             len +%= 9;
-            mach.memcpy(buf + len, link_script.ptr, link_script.len);
+            @memcpy(buf + len, link_script);
             len +%= link_script.len;
             buf[len] = 0;
             len +%= 1;
@@ -1331,7 +1339,7 @@ pub const BuildCommand = struct {
         if (cmd.version_script) |version_script| {
             @ptrCast(*[17]u8, buf + len).* = "--version-script\x00".*;
             len +%= 17;
-            mach.memcpy(buf + len, version_script.ptr, version_script.len);
+            @memcpy(buf + len, version_script);
             len +%= version_script.len;
             buf[len] = 0;
             len +%= 1;
@@ -1339,7 +1347,7 @@ pub const BuildCommand = struct {
         if (cmd.dynamic_linker) |dynamic_linker| {
             @ptrCast(*[17]u8, buf + len).* = "--dynamic-linker\x00".*;
             len +%= 17;
-            mach.memcpy(buf + len, dynamic_linker.ptr, dynamic_linker.len);
+            @memcpy(buf + len, dynamic_linker);
             len +%= dynamic_linker.len;
             buf[len] = 0;
             len +%= 1;
@@ -1347,7 +1355,7 @@ pub const BuildCommand = struct {
         if (cmd.sysroot) |sysroot| {
             @ptrCast(*[10]u8, buf + len).* = "--sysroot\x00".*;
             len +%= 10;
-            mach.memcpy(buf + len, sysroot.ptr, sysroot.len);
+            @memcpy(buf + len, sysroot);
             len +%= sysroot.len;
             buf[len] = 0;
             len +%= 1;
@@ -1355,7 +1363,7 @@ pub const BuildCommand = struct {
         if (cmd.entry) |entry| {
             @ptrCast(*[8]u8, buf + len).* = "--entry\x00".*;
             len +%= 8;
-            mach.memcpy(buf + len, entry.ptr, entry.len);
+            @memcpy(buf + len, entry);
             len +%= entry.len;
             buf[len] = 0;
             len +%= 1;
@@ -1381,7 +1389,7 @@ pub const BuildCommand = struct {
         if (cmd.rpath) |rpath| {
             @ptrCast(*[7]u8, buf + len).* = "-rpath\x00".*;
             len +%= 7;
-            mach.memcpy(buf + len, rpath.ptr, rpath.len);
+            @memcpy(buf + len, rpath);
             len +%= rpath.len;
             buf[len] = 0;
             len +%= 1;
@@ -1405,13 +1413,12 @@ pub const BuildCommand = struct {
             }
         }
         if (cmd.build_id) |build_id| {
-            if (build_id) {
-                @ptrCast(*[11]u8, buf + len).* = "-fbuild-id\x00".*;
-                len +%= 11;
-            } else {
-                @ptrCast(*[14]u8, buf + len).* = "-fno-build-id\x00".*;
-                len +%= 14;
-            }
+            @ptrCast(*[11]u8, buf + len).* = "--build-id\x3d".*;
+            len +%= 11;
+            @memcpy(buf + len, @tagName(build_id));
+            len +%= @tagName(build_id).len;
+            buf[len] = 0;
+            len +%= 1;
         }
         if (cmd.compress_debug_sections) |compress_debug_sections| {
             if (compress_debug_sections) {
@@ -1435,7 +1442,7 @@ pub const BuildCommand = struct {
             @ptrCast(*[8]u8, buf + len).* = "--stack\x00".*;
             len +%= 8;
             const s: []const u8 = builtin.fmt.ud64(stack).readAll();
-            mach.memcpy(buf + len, s.ptr, s.len);
+            @memcpy(buf + len, s);
             len = len + s.len;
             buf[len] = 0;
             len +%= 1;
@@ -1444,7 +1451,7 @@ pub const BuildCommand = struct {
             @ptrCast(*[13]u8, buf + len).* = "--image-base\x00".*;
             len +%= 13;
             const s: []const u8 = builtin.fmt.ud64(image_base).readAll();
-            mach.memcpy(buf + len, s.ptr, s.len);
+            @memcpy(buf + len, s);
             len = len + s.len;
             buf[len] = 0;
             len +%= 1;
@@ -1485,7 +1492,7 @@ pub const BuildCommand = struct {
             for (z) |value| {
                 @ptrCast(*[3]u8, buf + len).* = "-z\x00".*;
                 len +%= 3;
-                mach.memcpy(buf + len, @tagName(value).ptr, @tagName(value).len);
+                @memcpy(buf + len, @tagName(value));
                 len +%= @tagName(value).len;
                 buf[len] = 0;
                 len +%= 1;
@@ -1495,7 +1502,7 @@ pub const BuildCommand = struct {
         if (cmd.color) |color| {
             @ptrCast(*[8]u8, buf + len).* = "--color\x00".*;
             len +%= 8;
-            mach.memcpy(buf + len, @tagName(color).ptr, @tagName(color).len);
+            @memcpy(buf + len, @tagName(color));
             len +%= @tagName(color).len;
             buf[len] = 0;
             len +%= 1;
@@ -1539,7 +1546,7 @@ pub const BuildCommand = struct {
         if (cmd.debug_log) |debug_log| {
             @ptrCast(*[12]u8, buf + len).* = "--debug-log\x00".*;
             len +%= 12;
-            mach.memcpy(buf + len, debug_log.ptr, debug_log.len);
+            @memcpy(buf + len, debug_log);
             len +%= debug_log.len;
             buf[len] = 0;
             len +%= 1;
@@ -1992,11 +1999,9 @@ pub const BuildCommand = struct {
             }
         }
         if (cmd.build_id) |build_id| {
-            if (build_id) {
-                len +%= 11;
-            } else {
-                len +%= 14;
-            }
+            len +%= 11;
+            len +%= @tagName(build_id).len;
+            len +%= 1;
         }
         if (cmd.compress_debug_sections) |compress_debug_sections| {
             if (compress_debug_sections) {
@@ -2105,7 +2110,11 @@ pub const BuildCommand = struct {
 };
 pub const FormatCommand = struct {
     /// Enable or disable colored error messages
-    color: ?enum { auto, off, on } = null,
+    color: ?enum(u2) {
+        auto = 0,
+        off = 1,
+        on = 2,
+    } = null,
     /// Format code from stdin; output to stdout
     stdin: bool = false,
     /// List non-conforming files and exit with an error if the list is non-empty
@@ -2143,7 +2152,7 @@ pub const FormatCommand = struct {
     pub fn formatWriteBuf(cmd: *FormatCommand, zig_exe: []const u8, root_path: types.Path, buf: [*]u8) u64 {
         @setRuntimeSafety(safety);
         var len: u64 = 0;
-        mach.memcpy(buf + len, zig_exe.ptr, zig_exe.len);
+        @memcpy(buf + len, zig_exe);
         len +%= zig_exe.len;
         buf[len] = 0;
         len +%= 1;
@@ -2152,7 +2161,7 @@ pub const FormatCommand = struct {
         if (cmd.color) |color| {
             @ptrCast(*[8]u8, buf + len).* = "--color\x00".*;
             len +%= 8;
-            mach.memcpy(buf + len, @tagName(color).ptr, @tagName(color).len);
+            @memcpy(buf + len, @tagName(color));
             len +%= @tagName(color).len;
             buf[len] = 0;
             len +%= 1;
@@ -2172,7 +2181,7 @@ pub const FormatCommand = struct {
         if (cmd.exclude) |exclude| {
             @ptrCast(*[10]u8, buf + len).* = "--exclude\x00".*;
             len +%= 10;
-            mach.memcpy(buf + len, exclude.ptr, exclude.len);
+            @memcpy(buf + len, exclude);
             len +%= exclude.len;
             buf[len] = 0;
             len +%= 1;
@@ -2316,7 +2325,7 @@ pub const ArchiveCommand = struct {
     pub fn formatWriteBuf(cmd: *ArchiveCommand, zig_exe: []const u8, files: []const types.Path, buf: [*]u8) u64 {
         @setRuntimeSafety(safety);
         var len: u64 = 0;
-        mach.memcpy(buf + len, zig_exe.ptr, zig_exe.len);
+        @memcpy(buf + len, zig_exe);
         len +%= zig_exe.len;
         buf[len] = 0;
         len +%= 1;
@@ -2325,7 +2334,7 @@ pub const ArchiveCommand = struct {
         if (cmd.format) |format| {
             @ptrCast(*[9]u8, buf + len).* = "--format\x00".*;
             len +%= 9;
-            mach.memcpy(buf + len, @tagName(format).ptr, @tagName(format).len);
+            @memcpy(buf + len, @tagName(format));
             len +%= @tagName(format).len;
             buf[len] = 0;
             len +%= 1;
@@ -2337,7 +2346,7 @@ pub const ArchiveCommand = struct {
         if (cmd.output) |output| {
             @ptrCast(*[9]u8, buf + len).* = "--output\x00".*;
             len +%= 9;
-            mach.memcpy(buf + len, output.ptr, output.len);
+            @memcpy(buf + len, output);
             len +%= output.len;
             buf[len] = 0;
             len +%= 1;
@@ -2386,7 +2395,7 @@ pub const ArchiveCommand = struct {
             @ptrCast(*[1]u8, buf + len).* = "u".*;
             len +%= 1;
         }
-        mach.memcpy(buf + len, @tagName(cmd.operation).ptr, @tagName(cmd.operation).len);
+        @memcpy(buf + len, @tagName(cmd.operation));
         len +%= @tagName(cmd.operation).len;
         buf[len] = 0;
         len +%= 1;
@@ -2453,7 +2462,11 @@ pub const ArchiveCommand = struct {
 };
 pub const TableGenCommand = struct {
     /// Use colors in output (default=autodetect)
-    color: ?enum { auto, off, on } = null,
+    color: ?enum(u2) {
+        auto = 0,
+        off = 1,
+        on = 2,
+    } = null,
     /// Define macros
     macros: ?[]const types.Macro = null,
     /// Add directories to include search path
@@ -2693,7 +2706,7 @@ pub const TableGenCommand = struct {
         if (cmd.color) |color| {
             @ptrCast(*[8]u8, buf + len).* = "--color\x00".*;
             len +%= 8;
-            mach.memcpy(buf + len, @tagName(color).ptr, @tagName(color).len);
+            @memcpy(buf + len, @tagName(color));
             len +%= @tagName(color).len;
             buf[len] = 0;
             len +%= 1;
@@ -2705,7 +2718,7 @@ pub const TableGenCommand = struct {
             for (include) |value| {
                 @ptrCast(*[2]u8, buf + len).* = "-I".*;
                 len +%= 2;
-                mach.memcpy(buf + len, value.ptr, value.len);
+                @memcpy(buf + len, value);
                 len +%= value.len;
                 buf[len] = 0;
                 len +%= 1;
@@ -2715,7 +2728,7 @@ pub const TableGenCommand = struct {
             for (dependencies) |value| {
                 @ptrCast(*[3]u8, buf + len).* = "-d\x00".*;
                 len +%= 3;
-                mach.memcpy(buf + len, value.ptr, value.len);
+                @memcpy(buf + len, value);
                 len +%= value.len;
                 buf[len] = 0;
                 len +%= 1;
@@ -2880,7 +2893,7 @@ pub const TableGenCommand = struct {
         if (cmd.output) |output| {
             @ptrCast(*[3]u8, buf + len).* = "-o\x00".*;
             len +%= 3;
-            mach.memcpy(buf + len, output.ptr, output.len);
+            @memcpy(buf + len, output);
             len +%= output.len;
             buf[len] = 0;
             len +%= 1;
@@ -3080,14 +3093,14 @@ pub const HarecCommand = struct {
     pub fn formatWriteBuf(cmd: *HarecCommand, harec_exe: []const u8, buf: [*]u8) u64 {
         @setRuntimeSafety(safety);
         var len: u64 = 0;
-        mach.memcpy(buf + len, harec_exe.ptr, harec_exe.len);
+        @memcpy(buf + len, harec_exe);
         len +%= harec_exe.len;
         buf[len] = 0;
         len +%= 1;
         if (cmd.arch) |arch| {
             @ptrCast(*[3]u8, buf + len).* = "-a\x00".*;
             len +%= 3;
-            mach.memcpy(buf + len, arch.ptr, arch.len);
+            @memcpy(buf + len, arch);
             len +%= arch.len;
             buf[len] = 0;
             len +%= 1;
@@ -3098,7 +3111,7 @@ pub const HarecCommand = struct {
         if (cmd.output) |output| {
             @ptrCast(*[3]u8, buf + len).* = "-o\x00".*;
             len +%= 3;
-            mach.memcpy(buf + len, output.ptr, output.len);
+            @memcpy(buf + len, output);
             len +%= output.len;
             buf[len] = 0;
             len +%= 1;
@@ -3107,7 +3120,7 @@ pub const HarecCommand = struct {
             for (tags) |value| {
                 @ptrCast(*[2]u8, buf + len).* = "-T".*;
                 len +%= 2;
-                mach.memcpy(buf + len, value.ptr, value.len);
+                @memcpy(buf + len, value);
                 len +%= value.len;
                 buf[len] = 0;
                 len +%= 1;
