@@ -15,7 +15,7 @@ const testing = top.testing;
 pub usingnamespace proc.start;
 
 pub const runtime_assertions: bool = true;
-//pub const logging_default: builtin.Logging.Default = spec.logging.default.verbo;
+pub const logging_default: builtin.Logging.Default = spec.logging.default.verbose;
 
 const default_errors: bool = !@hasDecl(@import("root"), "errors");
 
@@ -28,9 +28,15 @@ const make_dir_spec: file.MakeDirSpec = .{
 const make_node_spec: file.MakeNodeSpec = .{
     .errors = .{ .throw = sys.mknod_errors },
 };
+const seek_spec: file.SeekSpec = .{
+    .errors = .{ .throw = sys.seek_errors },
+};
 const create_spec: file.CreateSpec = .{
-    .options = .{},
+    .options = .{ .read = true, .write = true, .append = false },
     .errors = .{ .throw = sys.open_errors },
+};
+const copy_spec: file.CopySpec = .{
+    .errors = .{ .throw = sys.copy_file_range_errors },
 };
 const open_spec: file.OpenSpec = .{
     .options = .{ .write = true, .append = true },
@@ -66,12 +72,8 @@ const make_path_spec: file.MakePathSpec = .{
     .errors = .{},
     .logging = .{},
 };
-const read_spec: file.ReadSpec = .{
-    .errors = .{},
-};
-const write_spec: file.WriteSpec = .{
-    .errors = .{},
-};
+const read_spec: file.ReadSpec = .{};
+const write_spec: file.WriteSpec = .{};
 const pipe_spec: file.MakePipeSpec = .{
     .options = .{ .close_on_exec = false },
 };
@@ -93,7 +95,7 @@ fn testRecords() !void {
     const fd: u64 = try file.open(.{}, proj_stats_root);
     var buf: [4096]u8 = undefined;
     for (rcd_buf[0..try file.read(.{ .child = build.Record }, fd, &rcd_buf)]) |rcd| {
-        builtin.debug.write(buf[0..builtin.debug.writeMulti(&buf, &.{ @tagName(rcd.detail.mode), "\n" })]);
+        builtin.debug.write(buf[0..mach.memcpyMulti(&buf, &.{ @tagName(rcd.detail.mode), "\n" })]);
     }
 }
 fn testStatusExtended() !void {
@@ -102,13 +104,34 @@ fn testStatusExtended() !void {
     var st: file.StatusExtended = try meta.wrap(file.statusExtended(nilx_spec, 0, "/home"));
     _ = st;
 }
+fn testCopyFileRange() !void {
+    builtin.debug.write(@src().fn_name ++ ":\n");
+    const src_fd: u64 = try meta.wrap(file.create(create_spec, "/run/user/1000/file_test1", file.mode.regular));
+    const dest_fd: u64 = try meta.wrap(file.create(create_spec, "/run/user/1000/file_test2", file.mode.regular));
+    var rng: file.DeviceRandomBytes(65536) = .{};
+    try meta.wrap(file.write(write_spec, src_fd, &rng.readCount(u8, 65536)));
+    builtin.assertEqual(u64, 0, try meta.wrap(file.seek(seek_spec, src_fd, 0, .set)));
+    var src_off: u64 = 4096;
+    var dest_off: u64 = 0;
+    _ = try meta.wrap(file.copy(copy_spec, src_fd, &src_off, dest_fd, &dest_off, 65536));
+    _ = try meta.wrap(file.sync(.{}, dest_fd));
+    try meta.wrap(file.close(close_spec, dest_fd));
+    try meta.wrap(file.close(close_spec, src_fd));
+    try meta.wrap(file.unlink(unlink_spec, "/run/user/1000/file_test1"));
+    try meta.wrap(file.unlink(unlink_spec, "/run/user/1000/file_test2"));
+}
 fn testFileOperationsRound1() !void {
     builtin.debug.write(@src().fn_name ++ ":\n");
+    var buf: [4096]u8 = undefined;
+    _ = try file.getCwd(.{}, &buf);
     try meta.wrap(file.makeDir(make_dir_spec, "/run/user/1000/file_test", file.mode.directory));
     try meta.wrap(file.removeDir(remove_dir_spec, "/run/user/1000/file_test"));
-    const fd: u64 = try meta.wrap(file.create(create_spec, "/run/user/1000/file_test", file.mode.regular));
-    try meta.wrap(file.close(close_spec, fd));
-    try meta.wrap(file.unlink(unlink_spec, "/run/user/1000/file_test"));
+    const src_fd: u64 = try meta.wrap(file.create(create_spec, "/run/user/1000/file_test1", file.mode.regular));
+    const dest_fd: u64 = try meta.wrap(file.create(create_spec, "/run/user/1000/file_test2", file.mode.regular));
+    try meta.wrap(file.close(close_spec, dest_fd));
+    try meta.wrap(file.close(close_spec, src_fd));
+    try meta.wrap(file.unlink(unlink_spec, "/run/user/1000/file_test1"));
+    try meta.wrap(file.unlink(unlink_spec, "/run/user/1000/file_test2"));
 }
 pub fn testSocketOpenAndClose() !void {
     builtin.debug.write(@src().fn_name ++ ":\n");
@@ -126,7 +149,8 @@ pub fn testSocketOpenAndClose() !void {
     try file.close(.{}, unix_tcp_fd);
 }
 pub fn testClientIPv4(args: [][*:0]u8) !void {
-    var addrinfo: file.Socket.Address = file.Socket.AddressIPv4.create(55478, .{ 0, 0, 0, 0 });
+    builtin.debug.write(@src().fn_name ++ ":\n");
+    var addrinfo: file.Socket.Address = file.Socket.AddressIPv4.create(55478, .{ 127, 0, 0, 1 });
     const fd: u64 = try file.socket(.{ .options = .{ .non_block = false } }, .ipv4, .udp, .ip);
     try file.connect(.{}, fd, &addrinfo, 16);
     var buf: [500]u8 = undefined;
@@ -137,7 +161,8 @@ pub fn testClientIPv4(args: [][*:0]u8) !void {
     builtin.debug.write("\n");
 }
 pub fn testServerIPv4() !void {
-    var addrinfo: file.Socket.Address = file.Socket.AddressIPv4.create(55478, .{ 0, 0, 0, 0 });
+    builtin.debug.write(@src().fn_name ++ ":\n");
+    var addrinfo: file.Socket.Address = file.Socket.AddressIPv4.create(55478, .{ 127, 0, 0, 1 });
     const fd: u64 = try file.socket(.{ .options = .{ .non_block = false } }, .ipv4, .udp, .udp);
     try file.bind(.{}, fd, &addrinfo, 16);
     var buf: [500]u8 = undefined;
@@ -147,6 +172,7 @@ pub fn testServerIPv4() !void {
     try file.sendTo(.{ .return_type = void }, fd, buf[0..len], 0, &sender_addrinfo, sender_addrlen);
 }
 pub fn testClientIPv6(args: [][*:0]u8) !void {
+    builtin.debug.write(@src().fn_name ++ ":\n");
     var addrinfo: file.Socket.Address = file.Socket.AddressIPv6.create(55480, 0, .{ 0, 0, 0, 0, 0, 0, 0, 0 }, 0);
     const fd: u64 = try file.socket(.{ .options = .{ .non_block = false } }, .ipv6, .udp, .ip);
     try file.connect(.{}, fd, &addrinfo, 28);
@@ -158,6 +184,7 @@ pub fn testClientIPv6(args: [][*:0]u8) !void {
     builtin.debug.write("\n");
 }
 pub fn testServerIPv6() !void {
+    builtin.debug.write(@src().fn_name ++ ":\n");
     var addrinfo: file.Socket.Address = file.Socket.AddressIPv6.create(55480, 0, .{ 0, 0, 0, 0, 0, 0, 0, 0 }, 0);
     const fd: u64 = try file.socket(.{ .options = .{ .non_block = false } }, .ipv6, .udp, .udp);
     try file.bind(.{}, fd, &addrinfo, 28);
@@ -168,6 +195,7 @@ pub fn testServerIPv6() !void {
     try file.sendTo(.{ .return_type = void }, fd, buf[0..len], 0, &sender_addrinfo, sender_addrlen);
 }
 pub fn testClientAndServerIPv4(args: [][*:0]u8) !void {
+    builtin.debug.write(@src().fn_name ++ ":\n");
     if (try proc.fork(.{}) == 0) {
         try testServerIPv4();
         builtin.proc.exit(0);
@@ -176,6 +204,7 @@ pub fn testClientAndServerIPv4(args: [][*:0]u8) !void {
     try testClientIPv4(args);
 }
 pub fn testClientAndServerIPv6(args: [][*:0]u8) !void {
+    builtin.debug.write(@src().fn_name ++ ":\n");
     if (try proc.fork(.{}) == 0) {
         try testServerIPv6();
         builtin.proc.exit(0);
@@ -229,7 +258,6 @@ fn testPathOperations() !void {
     try meta.wrap(testing.expectEqualMany(u8, "file", file.basename("file")));
     try meta.wrap(testing.expectEqualMany(u8, "/run/user/1000", file.dirname("/run/user/1000/file_test")));
     try meta.wrap(testing.expectEqualMany(u8, "////run/user/1000//", file.dirname("////run/user/1000///file_test///")));
-
     try file.makePath(make_path_spec, comptime builtin.buildRoot() ++ "/zig-out/bin/something/here", file.mode.directory);
     try file.removeDir(remove_dir_spec, comptime builtin.buildRoot() ++ "/zig-out/bin/something/here");
     try file.removeDir(remove_dir_spec, comptime builtin.buildRoot() ++ "/zig-out/bin/something");
@@ -271,7 +299,11 @@ fn testStandardChannel() !void {
         var o_array: mem.StaticString(4096) = undefined;
         o_array.undefineAll();
         i_array.define(try file.read(.{}, 0, i_array.referAllUndefined()));
-        o_array.writeAny(spec.reinterpret.fmt, .{ "msg: ", i_array.readAll(), ", len: ", fmt.ud64(i_array.len()), '\n' });
+        o_array.writeMany("msg: ");
+        o_array.writeMany(i_array.readAll());
+        o_array.writeMany(", len: ");
+        o_array.writeFormat(fmt.ud64(i_array.len()));
+        o_array.writeMany("\n");
         try file.write(.{}, chan.out.write, o_array.readAll());
         builtin.proc.exit(0);
     } else {
@@ -286,6 +318,8 @@ fn testStandardChannel() !void {
     }
 }
 fn testPreClean() !void {
+    file.unlink(unlink_spec, "/run/user/1000/file_test1") catch {};
+    file.unlink(unlink_spec, "/run/user/1000/file_test2") catch {};
     file.unlink(unlink_spec, "/run/user/1000/file_test/file_test/file_test") catch {};
     file.removeDir(remove_dir_spec, "/run/user/1000/file_test/file_test") catch {};
     file.removeDir(remove_dir_spec, "/run/user/1000/file_test") catch {};
@@ -303,4 +337,5 @@ pub fn main(args: [][*:0]u8) !void {
     try meta.wrap(testPoll());
     try meta.wrap(testClientAndServerIPv4(args));
     try meta.wrap(testClientAndServerIPv6(args));
+    try meta.wrap(testCopyFileRange());
 }

@@ -2596,7 +2596,7 @@ pub fn testLargeFlatStructureBuilder(args: anytype, vars: anytype, address_space
         for (grp.trgs[0..grp.trgs_len], 0..) |trg, trg_idx| {
             const s = allocator_a.save();
             defer allocator_a.restore(s);
-            const len: u64 = builtin.debug.writeMulti(&buf, &.{ pathname, builtin.fmt.ud64(grp_idx).readAll(), "_", builtin.fmt.ud64(trg_idx).readAll() });
+            const len: u64 = mach.memcpyMulti(&buf, &.{ pathname, builtin.fmt.ud64(grp_idx).readAll(), "_", builtin.fmt.ud64(trg_idx).readAll() });
             buf[len] = 0;
             try serial.serialWrite(.{ .Allocator = Allocator }, build.BuildCommand, &allocator_a, buf[0..len :0], trg.task_cmd.build.*);
         }
@@ -2606,7 +2606,7 @@ pub fn testLargeFlatStructureBuilder(args: anytype, vars: anytype, address_space
         for (grp.trgs[0..grp.trgs_len], 0..) |trg, trg_idx| {
             const s = allocator_a.save();
             defer allocator_a.restore(s);
-            const len: u64 = builtin.debug.writeMulti(&buf, &.{ pathname, builtin.fmt.ud64(grp_idx).readAll(), "_", builtin.fmt.ud64(trg_idx).readAll() });
+            const len: u64 = mach.memcpyMulti(&buf, &.{ pathname, builtin.fmt.ud64(grp_idx).readAll(), "_", builtin.fmt.ud64(trg_idx).readAll() });
             buf[len] = 0;
             const s_build_cmd: build.BuildCommand = try serial.serialRead(.{ .Allocator = Allocator }, build.BuildCommand, &allocator_a, buf[0..len :0]);
             try builtin.expectEqualMemory(build.BuildCommand, s_build_cmd, trg.task_cmd.build.*);
