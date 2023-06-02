@@ -1,14 +1,13 @@
 const types = @import("./types.zig");
-
-const optional_path_type: types.ProtoTypeDescr = .{ .type_name = "?types.Path" };
-
-const string_type: types.ProtoTypeDescr = .{ .type_name = "[]const u8" };
-const optional_string_type: types.ProtoTypeDescr = .{ .type_name = "?[]const u8" };
-const repeatable_string_type: types.ProtoTypeDescr = .{ .type_name = "?[]const []const u8" };
-const integer_type: types.ProtoTypeDescr = .{ .type_name = "usize" };
-const optional_integer_type: types.ProtoTypeDescr = .{ .type_name = "?usize" };
-const auto_on_off_type: types.ProtoTypeDescr = .{ .type_name = "?enum { auto, off, on }" };
-
+const string_type: types.ProtoTypeDescr = types.ProtoTypeDescr.init([]const u8);
+const optional_string_type: types.ProtoTypeDescr = types.ProtoTypeDescr.init(?[]const u8);
+const repeatable_string_type: types.ProtoTypeDescr = types.ProtoTypeDescr.init(?[]const []const u8);
+const integer_type: types.ProtoTypeDescr = types.ProtoTypeDescr.init(usize);
+const optional_integer_type: types.ProtoTypeDescr = types.ProtoTypeDescr.init(?usize);
+const auto_on_off_type: types.ProtoTypeDescr = types.ProtoTypeDescr.init(?enum { auto, off, on });
+const optional_path_type: types.ProtoTypeDescr = .{
+    .type_name = "?types.Path",
+};
 const paths_type: types.ProtoTypeDescrMap = .{
     .{ .type_name = "[]const types.Path" },
     .{ .type_name = "types.Files" },
@@ -32,7 +31,6 @@ const hmacro_slice_type: types.ProtoTypeDescrMap = .{
 const output_mode_type: types.ProtoTypeDescr = .{
     .type_name = "types.OutputMode",
 };
-
 pub const zig_build_command_attributes: types.Attributes = .{
     .type_name = "BuildCommand",
     .fn_name = "build",
