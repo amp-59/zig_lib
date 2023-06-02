@@ -62,8 +62,8 @@ pub fn zigErrorThrow(comptime Value: type, comptime values: []const Value, ret: 
 pub fn zigErrorAbort(comptime Value: type, comptime values: []const Value, ret: isize) void {
     inline for (values) |value| {
         if (ret == @enumToInt(value)) {
-            var buf: [4608]u8 = undefined;
-            debug.logAbort(&buf, value.errorName());
+            debug.exitError(value.errorName(), 2);
+            proc.exit(2);
         }
     }
 }
@@ -1297,23 +1297,23 @@ pub const debug = struct {
     }
     fn comparisonFailedString(comptime T: type, what: []const u8, symbol: []const u8, buf: []u8, arg1: T, arg2: T, help_read: bool) u64 {
         const notation: []const u8 = if (help_read) ", i.e. " else "\n";
-        var len: u64 = writeMulti(buf.ptr, &[_][]const u8{
+        var len: u64 = mach.memcpyMulti(buf.ptr, &[_][]const u8{
             what,     itos(T, arg1).readAll(),
             symbol,   itos(T, arg2).readAll(),
             notation,
         });
         if (help_read) {
             if (arg1 > arg2) {
-                len += writeMulti(buf[len..].ptr, &[_][]const u8{ itos(T, arg1 -% arg2).readAll(), symbol, "0\n" });
+                len += mach.memcpyMulti(buf[len..].ptr, &[_][]const u8{ itos(T, arg1 -% arg2).readAll(), symbol, "0\n" });
             } else {
-                len += writeMulti(buf[len..].ptr, &[_][]const u8{ "0", symbol, itos(T, arg2 -% arg1).readAll(), "\n" });
+                len += mach.memcpyMulti(buf[len..].ptr, &[_][]const u8{ "0", symbol, itos(T, arg2 -% arg1).readAll(), "\n" });
             }
         }
         return len;
     }
     fn intCastTruncatedBitsString(comptime T: type, comptime U: type, buf: []u8, arg1: U) u64 {
         const minimum: T = 0;
-        return writeMulti(buf.ptr, &[_][]const u8{
+        return mach.memcpyMulti(buf.ptr, &[_][]const u8{
             about_fault_p0_s,            "integer cast truncated bits: ",
             itos(U, arg1).readAll(),     " greater than " ++ @typeName(T) ++ " maximum (",
             itos(T, ~minimum).readAll(), ")\n",
@@ -1322,20 +1322,20 @@ pub const debug = struct {
     fn subCausedOverflowString(comptime T: type, what: []const u8, msg: []u8, arg1: T, arg2: T, help_read: bool) u64 {
         const endl: []const u8 = if (help_read) ", i.e. " else "\n";
         var len: u64 = 0;
-        len += writeMulti(msg.ptr, &[_][]const u8{
+        len += mach.memcpyMulti(msg.ptr, &[_][]const u8{
             what,                    " integer overflow: ",
             itos(T, arg1).readAll(), " - ",
             itos(T, arg2).readAll(), endl,
         });
         if (help_read) {
-            len += writeMulti(msg[len..].ptr, &[_][]const u8{ "0 - ", itos(T, arg2 -% arg1).readAll(), "\n" });
+            len += mach.memcpyMulti(msg[len..].ptr, &[_][]const u8{ "0 - ", itos(T, arg2 -% arg1).readAll(), "\n" });
         }
         return len;
     }
     fn addCausedOverflowString(comptime T: type, what: []const u8, msg: []u8, arg1: T, arg2: T, help_read: bool) u64 {
         const endl: []const u8 = if (help_read) ", i.e. " else "\n";
         var len: u64 = 0;
-        len += writeMulti(msg.ptr, &[_][]const u8{
+        len += mach.memcpyMulti(msg.ptr, &[_][]const u8{
             what,                    " integer overflow: ",
             itos(T, arg1).readAll(), " + ",
             itos(T, arg2).readAll(), endl,
@@ -1343,19 +1343,19 @@ pub const debug = struct {
         if (help_read) {
             const argl: T = ~@as(T, 0);
             const argr: T = (arg2 +% arg1) -% argl;
-            len += writeMulti(msg[len..].ptr, &[_][]const u8{ itos(T, argl).readAll(), " + ", itos(T, argr).readAll(), "\n" });
+            len += mach.memcpyMulti(msg[len..].ptr, &[_][]const u8{ itos(T, argl).readAll(), " + ", itos(T, argr).readAll(), "\n" });
         }
         return len;
     }
     fn mulCausedOverflowString(comptime T: type, what: []const u8, buf: []u8, arg1: T, arg2: T) u64 {
-        return writeMulti(buf.ptr, &[_][]const u8{
+        return mach.memcpyMulti(buf.ptr, &[_][]const u8{
             what,                    ": integer overflow: ",
             itos(T, arg1).readAll(), " * ",
             itos(T, arg2).readAll(), "\n",
         });
     }
     fn exactDivisionWithRemainderString(comptime T: type, what: []const u8, buf: []u8, arg1: T, arg2: T, result: T, remainder: T) u64 {
-        return writeMulti(buf.ptr, &[_][]const u8{
+        return mach.memcpyMulti(buf.ptr, &[_][]const u8{
             what,                         ": exact division had a remainder: ",
             itos(T, arg1).readAll(),      "/",
             itos(T, arg2).readAll(),      " == ",
@@ -1364,7 +1364,7 @@ pub const debug = struct {
         });
     }
     fn incorrectAlignmentString(comptime Pointer: type, what: []const u8, buf: []u8, address: usize, alignment: usize, remainder: u64) u64 {
-        return writeMulti(buf.ptr, &[_][]const u8{
+        return mach.memcpyMulti(buf.ptr, &[_][]const u8{
             what,                                      ": incorrect alignment: ",
             @typeName(Pointer),                        " align(",
             itos(u64, alignment).readAll(),            "): ",
@@ -1464,12 +1464,12 @@ pub const debug = struct {
     }
     inline fn comparisonFailedErrorSymbol(comptime T: type, symbol: []const u8, arg1: []const u8, arg2: []const u8) void {
         var buf: [size]u8 = undefined;
-        const len: u64 = writeMulti(&buf, &[_][]const u8{ typeError(T) ++ " failed test: ", arg1, symbol, arg2 });
+        const len: u64 = mach.memcpyMulti(&buf, &[_][]const u8{ typeError(T) ++ " failed test: ", arg1, symbol, arg2 });
         logError(buf[0..len]);
     }
     inline fn comparisonFailedFaultSymbol(comptime T: type, symbol: []const u8, arg1: []const u8, arg2: []const u8) void {
         var buf: [size]u8 = undefined;
-        const len: u64 = writeMulti(&buf, &[_][]const u8{ typeFault(T) ++ " failed assertion: ", arg1, symbol, arg2 });
+        const len: u64 = mach.memcpyMulti(&buf, &[_][]const u8{ typeFault(T) ++ " failed assertion: ", arg1, symbol, arg2 });
         logFault(buf[0..len]);
     }
     fn comparisonFailedFault(comptime T: type, symbol: []const u8, arg1: anytype, arg2: @TypeOf(arg1)) noreturn {
@@ -1530,12 +1530,6 @@ pub const debug = struct {
         );
         return if (rc < 0) ~@as(u64, 0) else @intCast(u64, rc);
     }
-    pub fn writeMulti(buf: [*]u8, ss: []const []const u8) u64 {
-        return mach.memcpyMulti(buf, ss);
-    }
-    pub inline fn logAlways(buf: []const u8) void {
-        write(buf);
-    }
     pub inline fn logSuccess(buf: []const u8) void {
         if (config.logging_general.Success) write(buf);
     }
@@ -1551,40 +1545,36 @@ pub const debug = struct {
     pub inline fn logFault(buf: []const u8) void {
         if (config.logging_general.Fault) write(buf);
     }
-    pub fn logAbort(buf: []u8, symbol: []const u8) noreturn {
-        @setRuntimeSafety(false);
-        var len: u64 = 0;
-        mach.memcpy(buf[len..].ptr, about_error_p0_s.ptr, about_error_p0_s.len);
-        len +%= about_error_p0_s.len;
-        len +%= name(buf[len..]);
-        len +%= writeMulti(buf[len..].ptr, &[_][]const u8{ " (", symbol, ")\n" });
-        logFault(buf[0..len]);
-        proc.exit(2);
-    }
     pub fn logAlwaysAIO(buf: []u8, slices: []const []const u8) void {
-        write(buf[0..writeMulti(buf.ptr, slices)]);
+        @setRuntimeSafety(false);
+        write(buf[0..mach.memcpyMulti(buf.ptr, slices)]);
     }
     pub fn logSuccessAIO(buf: []u8, slices: []const []const u8) void {
-        logSuccess(buf[0..writeMulti(buf.ptr, slices)]);
+        @setRuntimeSafety(false);
+        logSuccess(buf[0..mach.memcpyMulti(buf.ptr, slices)]);
     }
     pub fn logAcquireAIO(buf: []u8, slices: []const []const u8) void {
-        logAcquire(buf[0..writeMulti(buf.ptr, slices)]);
+        @setRuntimeSafety(false);
+        logAcquire(buf[0..mach.memcpyMulti(buf.ptr, slices)]);
     }
     pub fn logReleaseAIO(buf: []u8, slices: []const []const u8) void {
-        logRelease(buf[0..writeMulti(buf.ptr, slices)]);
+        @setRuntimeSafety(false);
+        logRelease(buf[0..mach.memcpyMulti(buf.ptr, slices)]);
     }
     pub fn logErrorAIO(buf: []u8, slices: []const []const u8) void {
-        logError(buf[0..writeMulti(buf.ptr, slices)]);
+        @setCold(true);
+        @setRuntimeSafety(false);
+        logError(buf[0..mach.memcpyMulti(buf.ptr, slices)]);
     }
     pub fn logFaultAIO(buf: []u8, slices: []const []const u8) void {
         @setCold(true);
         @setRuntimeSafety(false);
-        logFault(buf[0..writeMulti(buf.ptr, slices)]);
+        logFault(buf[0..mach.memcpyMulti(buf.ptr, slices)]);
     }
     pub noinline fn panic(msg: []const u8, _: @TypeOf(@errorReturnTrace()), _: ?usize) noreturn {
         @setCold(true);
-        logFault(msg);
-        proc.exit(2);
+        @setRuntimeSafety(false);
+        @call(.always_inline, proc.exitGroupFault, .{ msg, 2 });
     }
     pub noinline fn panicOutOfBounds(idx: u64, max_len: u64) noreturn {
         @setCold(true);
@@ -2182,7 +2172,7 @@ pub const fmt = struct {
             fn Array(comptime len: comptime_int) type {
                 return struct {
                     len: u64,
-                    buf: [len]u8,
+                    buf: [len]u8 align(8),
                     pub fn readAll(array: *const @This()) []const u8 {
                         return array.buf[array.len..];
                     }
