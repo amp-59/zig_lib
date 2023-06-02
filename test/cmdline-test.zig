@@ -31,7 +31,7 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     const t0: *Builder.Target = try g0.addBuild(&allocator, .{
         .kind = .obj,
         .allow_shlib_undefined = true,
-        .build_id = true,
+        .build_id = .sha1,
         .cflags = &.{ "-O3", "-Wno-parentheses", "-Wno-format-security" },
         .macros = &.{
             .{ .name = "true", .value = "false" },
