@@ -420,7 +420,7 @@ pub const CloneSpec = struct {
         }
         return clone_flags;
     }
-    pub inline fn args(comptime spec: CloneSpec, stack_addr: u64, comptime stack_len: u64) CloneArgs {
+    pub inline fn args(comptime spec: CloneSpec, stack_addr: u64, stack_len: u64) CloneArgs {
         return .{
             .flags = comptime spec.flags(),
             .stack_addr = stack_addr,
@@ -644,6 +644,7 @@ pub const start = struct {
 };
 pub const exception = struct {
     fn updateExceptionHandlers(act: *const SignalAction) void {
+        @setRuntimeSafety(false);
         const sa_new_addr: u64 = @ptrToInt(act);
         const sa_new_len: u64 = @sizeOf(@TypeOf(act.mask));
         inline for ([_]struct { bool, u32 }{
@@ -658,6 +659,7 @@ pub const exception = struct {
         }
     }
     pub fn enableExceptionHandlers() void {
+        @setRuntimeSafety(false);
         var act = SignalAction{
             .handler = @ptrToInt(&exceptionHandler),
             .flags = (SA.SIGINFO | SA.RESTART | SA.RESETHAND | SA.RESTORER),
@@ -678,20 +680,22 @@ pub const exception = struct {
         const sa_old_addr: u64 = if (old_action) |action| @ptrToInt(action) else 0;
         sys.call_noexcept(.rt_sigaction, void, .{ signo, sa_new_addr, sa_old_addr, @sizeOf(@TypeOf(new_action.mask)) });
     }
-    fn resetExceptionHandlers() void {
+    pub fn exceptionHandler(sig: sys.SignalCode, info: *const SignalInfo, _: ?*const anyopaque) noreturn {
+        @setRuntimeSafety(false);
         var act = SignalAction{ .handler = sys.SIG.DFL, .flags = 0, .restorer = 0 };
         updateExceptionHandlers(&act);
-    }
-    pub fn exceptionHandler(sig: sys.SignalCode, info: *const SignalInfo, _: ?*const anyopaque) noreturn {
-        resetExceptionHandlers();
         const symbol: [:0]const u8 = switch (sig) {
             .SEGV => "SIGSEGV",
             .ILL => "SIGILL",
             .BUS => "SIGBUS",
             .FPE => "SIGFPE",
         };
-        debug.exceptionFaultAtAddress(symbol, info.fields.fault.addr);
-        builtin.proc.exitGroup(2);
+        const fault_addr_s: []const u8 = builtin.fmt.ux64(info.fields.fault.addr).readAll();
+        var buf: [8192]u8 = undefined;
+        var pathname: [4096]u8 = undefined;
+        const link_s: []const u8 = pathname[0..builtin.debug.name(&pathname)];
+        const len: u64 = mach.memcpyMulti(&buf, &.{ builtin.debug.about_fault_p0_s, symbol, " at address ", fault_addr_s, ", ", link_s, "\n" });
+        @panic(buf[0..len]);
     }
     pub fn restoreRunTime() callconv(.Naked) void {
         switch (builtin.zig.zig_backend) {
@@ -806,10 +810,10 @@ noinline fn callErrorOrMediaReturnValueFunction(comptime Fn: type, result_addr: 
         @intToPtr(*meta.Args(Fn), args_addr).*,
     );
 }
-pub noinline fn callClone(
+pub fn callClone(
     comptime spec: CloneSpec,
     stack_addr: u64,
-    comptime stack_len: u64,
+    stack_len: u64,
     result_ptr: anytype,
     comptime function: anytype,
     args: anytype,
@@ -820,14 +824,14 @@ pub noinline fn callClone(
     const cl_args: CloneArgs = spec.args(stack_addr, stack_len);
     const cl_args_addr: u64 = @ptrToInt(&cl_args);
     const cl_args_size: u64 = @sizeOf(CloneArgs);
-    const ret_off: u64 = 0;
-    const call_off: u64 = 8;
-    const args_off: u64 = 16;
+    const ret_off: u64 = stack_len -% @sizeOf(u64);
+    const call_off: u64 = ret_off -% @sizeOf(u64);
+    const args_off: u64 = call_off -% @sizeOf(Args);
     @intToPtr(**const Fn, stack_addr +% call_off).* = &function;
-    @intToPtr(*Args, stack_addr +% args_off).* = args;
     if (@TypeOf(result_ptr) != void) {
         @intToPtr(*u64, stack_addr +% ret_off).* = @ptrToInt(result_ptr);
     }
+    @intToPtr(*Args, stack_addr +% args_off).* = args;
     const rc: i64 = asm volatile (
         \\syscall # clone3
         : [ret] "={rax}" (-> i64),
@@ -844,22 +848,22 @@ pub noinline fn callClone(
             :
             : "rbp", "rsp", "memory"
         );
-        const ret_addr: u64 = (tl_stack_addr +% ret_off) -% stack_len;
-        const call_addr: u64 = (tl_stack_addr +% call_off) -% stack_len;
-        const args_addr: u64 = (tl_stack_addr +% args_off) -% stack_len;
+        const tl_ret_addr: u64 = tl_stack_addr -% @sizeOf(u64);
+        const tl_call_addr: u64 = tl_ret_addr -% @sizeOf(u64);
+        const tl_args_addr: u64 = tl_call_addr -% @sizeOf(Args);
         if (@TypeOf(result_ptr) != void) {
             if (@sizeOf(@TypeOf(result_ptr.*)) <= @sizeOf(usize) or
                 @typeInfo(@TypeOf(result_ptr.*)) != .ErrorUnion)
             {
-                @intToPtr(**meta.Return(Fn), ret_addr).*.* =
-                    @call(.never_inline, @intToPtr(**Fn, call_addr).*, @intToPtr(*meta.Args(Fn), args_addr).*);
+                @intToPtr(**meta.Return(Fn), tl_ret_addr).*.* =
+                    @call(.never_inline, @intToPtr(**Fn, tl_call_addr).*, @intToPtr(*meta.Args(Fn), tl_args_addr).*);
             } else {
                 @call(.never_inline, callErrorOrMediaReturnValueFunction, .{
-                    @TypeOf(function), ret_addr, call_addr, args_addr,
+                    @TypeOf(function), tl_ret_addr, tl_call_addr, tl_args_addr,
                 });
             }
         } else {
-            @call(.never_inline, @intToPtr(**Fn, call_addr).*, @intToPtr(*meta.Args(Fn), args_addr).*);
+            @call(.never_inline, @intToPtr(**Fn, tl_call_addr).*, @intToPtr(*meta.Args(Fn), tl_args_addr).*);
         }
         asm volatile (
             \\movq  $60,    %%rax
@@ -1394,7 +1398,7 @@ pub fn GenericOptions(comptime Options: type) type {
                 var buf: [4224]u8 = undefined;
                 var len: u64 = 0;
                 const bad_opt: []const u8 = getBadOpt(arg);
-                len += builtin.debug.writeMulti(buf[len..].ptr, &[_][]const u8{ about_opt_1_s, "'", bad_opt, "'\n" });
+                len += mach.memcpyMulti(buf[len..].ptr, &[_][]const u8{ about_opt_1_s, "'", bad_opt, "'\n" });
                 for (all_options) |option| {
                     const min: u64 = len;
                     if (option.long) |long_switch| {
@@ -1403,7 +1407,7 @@ pub fn GenericOptions(comptime Options: type) type {
                             mach.memcpy(buf[len..].ptr, about_opt_0_s.ptr, about_opt_0_s.len);
                             len +%= about_opt_0_s.len;
                             if (option.short) |short_switch| {
-                                len +%= builtin.debug.writeMulti(buf[len..].ptr, &.{ "'", short_switch, "', '" });
+                                len +%= mach.memcpyMulti(buf[len..].ptr, &.{ "'", short_switch, "', '" });
                             }
                             mach.memcpy(buf[len..].ptr, long_switch.ptr, long_switch.len);
                             len +%= long_switch.len;
