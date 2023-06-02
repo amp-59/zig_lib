@@ -1,7 +1,7 @@
-const top = @import("../zig_lib.zig");
-const proc = top.proc;
-const builtin = top.builtin;
-const testing = top.testing;
+const zig_lib = @import("../zig_lib.zig");
+const proc = zig_lib.proc;
+const builtin = zig_lib.builtin;
+const testing = zig_lib.testing;
 
 pub usingnamespace proc.start;
 

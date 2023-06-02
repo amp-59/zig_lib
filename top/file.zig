@@ -2250,7 +2250,7 @@ const debug = opaque {
         const len_s: []const u8 = builtin.fmt.ud64(act_len).readAll();
         var buf: [32768]u8 = undefined;
         var len: u64 = 0;
-        len +%= builtin.debug.writeMulti(&buf, &[_][]const u8{
+        len +%= mach.memcpyMulti(&buf, &[_][]const u8{
             about_copy_0_s, "src_fd=", src_fd_s, ", dest_fd=", dest_fd_s, ", ", len_s, "/", max_len_s, " bytes\n",
         });
         if (src_offset) |off| {
@@ -2283,7 +2283,7 @@ const debug = opaque {
         const fds_len_s: []const u8 = builtin.fmt.ud64(pollfds.len).readAll();
         const timeout_s: []const u8 = builtin.fmt.ud64(timeout).readAll();
         var buf: [32768]u8 = undefined;
-        var len: u64 = builtin.debug.writeMulti(&buf, &[_][]const u8{ about_poll_0_s, "fds=", fds_len_s, ", timeout=", timeout_s, "ms\n" });
+        var len: u64 = mach.memcpyMulti(&buf, &[_][]const u8{ about_poll_0_s, "fds=", fds_len_s, ", timeout=", timeout_s, "ms\n" });
         len +%= writePollFds(buf[len..], pollfds);
         builtin.debug.write(buf[0..len]);
     }
@@ -2327,7 +2327,7 @@ const debug = opaque {
         const max_len_s: []const u8 = builtin.fmt.ud64(max_len).readAll();
         var buf: [32768]u8 = undefined;
         var len: u64 = 0;
-        len +%= builtin.debug.writeMulti(&buf, &[_][]const u8{ about_copy_0_s, "src_fd=", src_fd_s, ", dest_fd=", dest_fd_s, ", ", max_len_s, " bytes, (", @errorName(copy_file_range_error), ")\n" });
+        len +%= mach.memcpyMulti(&buf, &[_][]const u8{ about_copy_0_s, "src_fd=", src_fd_s, ", dest_fd=", dest_fd_s, ", ", max_len_s, " bytes, (", @errorName(copy_file_range_error), ")\n" });
         if (src_offset) |off| {
             len +%= writeUpdateOffset(buf[len..].ptr, src_fd_s, off.*);
         }
@@ -2444,8 +2444,6 @@ const debug = opaque {
         buf[len] = ' ';
         len +%= 1;
         if (filename.ptr == args[0]) {
-            @ptrCast(*[4]u8, buf[len..].ptr).* = "[0] ".*;
-            len +%= 4;
             idx +%= 1;
         }
         while (idx != argc) : (idx +%= 1) {
@@ -2465,7 +2463,7 @@ const debug = opaque {
             buf[len] = ' ';
             len +%= 1;
         }
-        if (argc != idx) {
+        if (idx != argc) {
             const del_s: []const u8 = builtin.fmt.ud64(argc -% idx).readAll();
             @ptrCast(*[9]u8, buf[len..].ptr).* = " ... and ".*;
             len +%= 9;

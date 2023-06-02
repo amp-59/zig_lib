@@ -566,13 +566,13 @@ pub const reinterpret = opaque {
         const help_read: bool = t_len > 99_999;
         const notation: []const u8 = if (help_read) ", i.e. " else "\n";
         var buf: [512]u8 = undefined;
-        var len: u64 = builtin.debug.writeMulti(&buf, &[_][]const u8{
+        var len: u64 = mach.memcpyMulti(&buf, &[_][]const u8{
             format_type_name, builtin.fmt.ud64(t_len).readAll(),
             operator_symbol,  builtin.fmt.ud64(s_len).readAll(),
             notation,
         });
         if (help_read) {
-            len += builtin.debug.writeMulti(buf[len..].ptr, &[_][]const u8{
+            len += mach.memcpyMulti(buf[len..].ptr, &[_][]const u8{
                 "0", operator_symbol, builtin.fmt.ud64(t_len -% s_len).readAll(), "\n",
             });
         }
