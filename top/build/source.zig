@@ -4,24 +4,24 @@ const proc = @import("../proc.zig");
 const spec = @import("../spec.zig");
 const builtin = @import("../builtin.zig");
 
-const build = @import("./../build2.zig");
+const build = @import("./../build4.zig");
 const types = @import("./types.zig");
 
-const Builder = build.GenericBuilder(.{
+const Node = build.GenericNode(.{
     .errors = spec.builder.errors.noexcept,
-    .logging = spec.builder.logging.silent,
+    .logging = builtin.zero(build.BuilderSpec.Logging),
 });
 export fn forwardToExecuteCloneThreadedDirty(
-    builder: *Builder,
-    address_space: *Builder.AddressSpace,
-    thread_space: *Builder.ThreadSpace,
-    target: *Builder.Target,
+    address_space: *Node.AddressSpace,
+    thread_space: *Node.ThreadSpace,
+    builder: *Node,
+    node: *Node,
     task: build.Task,
-    arena_index: Builder.AddressSpace.Index,
-    depth: u64,
-    stack_address: u64,
+    arena_index: Node.AddressSpace.Index,
+    stack_addr: u64,
+    stack_len: u64,
 ) void {
-    proc.callClone(.{ .errors = .{}, .return_type = void }, stack_address, Builder.stack_aligned_bytes, {}, Builder.impl.executeCommandThreaded, .{
-        builder, address_space, thread_space, target, task, arena_index, depth,
+    proc.callClone(.{ .errors = .{}, .return_type = void }, stack_addr, stack_len, {}, Node.impl.executeCommandThreaded, .{
+        address_space, thread_space, builder, node, task, arena_index,
     });
 }
