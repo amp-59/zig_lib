@@ -646,6 +646,9 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
         inline fn copy(dest: u64, src: u64, len: u64) void {
             mach.memcpy(@intToPtr([*]u8, dest), @intToPtr([*]const u8, src), len);
         }
+        pub const allocateRaw = allocateInternal;
+        pub const reallocateRaw = reallocateInternal;
+        pub const deallocateRaw = deallocateInternal;
         fn allocateInternal(
             allocator: *Allocator,
             s_aligned_bytes: u64,
@@ -727,7 +730,7 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
                 debug.showAllocateManyStructured(
                     child,
                     @ptrToInt(buf.ptr),
-                    @ptrToInt(buf.ptr) +% @sizeOf(child) *% (buf.len +% @boolToInt(sentinel != null)),
+                    @ptrToInt(buf.ptr) +% @sizeOf(child) *% (buf.len +% @as(u64, @boolToInt(sentinel != null))),
                     sentinel,
                     @src(),
                     @returnAddress(),
@@ -740,9 +743,9 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
                     child,
                     child,
                     @ptrToInt(s_buf.ptr),
-                    @ptrToInt(s_buf.ptr) +% @sizeOf(child) *% (s_buf.len +% @boolToInt(sentinel != null)),
+                    @ptrToInt(s_buf.ptr) +% @sizeOf(child) *% (s_buf.len +% @as(u64, @boolToInt(sentinel != null))),
                     @ptrToInt(t_buf.ptr),
-                    @ptrToInt(t_buf.ptr) +% @sizeOf(child) *% (t_buf.len +% @boolToInt(sentinel != null)),
+                    @ptrToInt(t_buf.ptr) +% @sizeOf(child) *% (t_buf.len +% @as(u64, @boolToInt(sentinel != null))),
                     sentinel,
                     sentinel,
                     @src(),
@@ -3681,7 +3684,7 @@ const debug = opaque {
         s_aligned_bytes: u64,
         comptime s_sentinel: ?*const s_child,
     ) void {
-        const s_count: u64 = (s_aligned_bytes -% @sizeOf(s_child) *% @boolToInt(s_sentinel != null)) / @sizeOf(s_child);
+        const s_count: u64 = (s_aligned_bytes -% @sizeOf(s_child) *% @as(u64, @boolToInt(s_sentinel != null))) / @sizeOf(s_child);
         writeManyArrayNotation(array, s_child, s_count, s_sentinel);
         array.writeMany(", ");
     }
@@ -3694,8 +3697,8 @@ const debug = opaque {
         comptime s_sentinel: ?*const s_child,
         comptime t_sentinel: ?*const t_child,
     ) void {
-        const s_count: u64 = (s_aligned_bytes -% @sizeOf(s_child) *% @boolToInt(s_sentinel != null)) / @sizeOf(s_child);
-        const t_count: u64 = (t_aligned_bytes -% @sizeOf(t_child) *% @boolToInt(t_sentinel != null)) / @sizeOf(t_child);
+        const s_count: u64 = (s_aligned_bytes -% @sizeOf(s_child) *% @as(u64, @boolToInt(s_sentinel != null))) / @sizeOf(s_child);
+        const t_count: u64 = (t_aligned_bytes -% @sizeOf(t_child) *% @as(u64, @boolToInt(t_sentinel != null))) / @sizeOf(t_child);
         if (s_child == t_child and s_sentinel == t_sentinel) {
             if (s_count != t_count) {
                 writeChangedManyArrayNotation(array, s_child, s_count, t_count, s_sentinel);
@@ -3717,7 +3720,7 @@ const debug = opaque {
         s_aligned_bytes: u64,
         comptime s_sentinel: ?*const s_child,
     ) void {
-        const s_count: u64 = (s_aligned_bytes -% @sizeOf(s_child) *% @boolToInt(s_sentinel != null)) / @sizeOf(s_child);
+        const s_count: u64 = (s_aligned_bytes -% @sizeOf(s_child) *% @as(u64, @boolToInt(s_sentinel != null))) / @sizeOf(s_child);
         writeHolderArrayNotation(array, s_child, s_count, s_sentinel);
         array.writeMany(", ");
     }
@@ -3730,8 +3733,8 @@ const debug = opaque {
         comptime s_sentinel: ?*const s_child,
         comptime t_sentinel: ?*const t_child,
     ) void {
-        const s_count: u64 = (s_aligned_bytes -% @sizeOf(s_child) *% @boolToInt(s_sentinel != null)) / @sizeOf(s_child);
-        const t_count: u64 = (t_aligned_bytes -% @sizeOf(t_child) *% @boolToInt(t_sentinel != null)) / @sizeOf(t_child);
+        const s_count: u64 = (s_aligned_bytes -% @sizeOf(s_child) *% @as(u64, @boolToInt(s_sentinel != null))) / @sizeOf(s_child);
+        const t_count: u64 = (t_aligned_bytes -% @sizeOf(t_child) *% @as(u64, @boolToInt(t_sentinel != null))) / @sizeOf(t_child);
         if (s_child == t_child and s_sentinel == t_sentinel) {
             if (s_count != t_count) {
                 writeChangedHolderArrayNotation(array, s_child, s_count, t_count, s_sentinel);
@@ -3954,7 +3957,7 @@ const debug = opaque {
         array.writeFormat(src_fmt);
         array.writeMany(about_allocated_s);
         writeAboutOneAllocation(&array, s_child, s_ab_addr, s_uw_addr, s_aligned_bytes);
-        builtin.debug.logAlways(array.readAll());
+        builtin.debug.write(array.readAll());
     }
     fn showAllocateManyStructured(
         comptime s_child: type,
@@ -3972,7 +3975,7 @@ const debug = opaque {
         array.writeFormat(src_fmt);
         array.writeMany(about_allocated_s);
         writeAboutManyAllocation(&array, s_child, s_ab_addr, s_uw_addr, s_aligned_bytes, s_sentinel);
-        builtin.debug.logAlways(array.readAll());
+        builtin.debug.write(array.readAll());
     }
     pub fn showAllocateHolderStructured(
         comptime s_child: type,
@@ -3990,7 +3993,7 @@ const debug = opaque {
         array.writeFormat(src_fmt);
         array.writeMany(about_allocated_s);
         writeAboutHolderAllocation(&array, s_child, s_ab_addr, s_ua_addr, s_aligned_bytes, s_sentinel);
-        builtin.debug.logAlways(array.readAll());
+        builtin.debug.write(array.readAll());
     }
     fn showReallocateManyStructured(
         comptime s_child: type,
@@ -4017,7 +4020,7 @@ const debug = opaque {
         writeAlignedBytesB(&array, s_aligned_bytes, t_aligned_bytes);
         writeManyArrayNotationB(&array, s_child, t_child, s_aligned_bytes, t_aligned_bytes, s_sentinel, t_sentinel);
         array.overwriteManyBack("\n\n");
-        builtin.debug.logAlways(array.readAll());
+        builtin.debug.write(array.readAll());
     }
     fn showReallocateHolderStructured(
         comptime s_child: type,
@@ -4044,7 +4047,7 @@ const debug = opaque {
         writeAlignedBytesB(&array, s_aligned_bytes, t_aligned_bytes);
         writeHolderArrayNotationB(&array, s_child, t_child, s_aligned_bytes, t_aligned_bytes, s_sentinel, t_sentinel);
         array.overwriteManyBack("\n\n");
-        builtin.debug.logAlways(array.readAll());
+        builtin.debug.write(array.readAll());
     }
     fn showDeallocateOneStructured(comptime s_child: type, s_ab_addr: u64, src: builtin.SourceLocation, ret_addr: u64) void {
         const src_fmt: fmt.SourceLocationFormat = fmt.sourceLocation(src, ret_addr);
@@ -4067,7 +4070,7 @@ const debug = opaque {
     ) void {
         const src_fmt: fmt.SourceLocationFormat = fmt.sourceLocation(src, ret_addr);
         const s_aligned_bytes: u64 = s_up_addr -% s_ab_addr;
-        const uw_offset: u64 = @sizeOf(s_child) *% @boolToInt(s_sentinel != null);
+        const uw_offset: u64 = @sizeOf(s_child) *% @as(u64, @boolToInt(s_sentinel != null));
         const s_uw_addr: u64 = s_up_addr -% uw_offset;
         var array: PrintArray = undefined;
         array.undefineAll();
@@ -4305,7 +4308,7 @@ fn GenericArenaAllocatorGraphics(comptime Allocator: type) type {
                 }
                 if (array.len() != src_fmt.formatLength()) {
                     array.writeOne('\n');
-                    builtin.debug.logAlways(array.readAll());
+                    builtin.debug.write(array.readAll());
                 }
             } else {
                 return show(allocator, src);
