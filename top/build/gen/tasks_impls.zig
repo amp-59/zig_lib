@@ -662,12 +662,12 @@ pub fn writeFunctionBody(array: *Array, options: []const types.ParamSpec, varian
 }
 fn unhandledCommandFieldAndNo(param_spec: types.ParamSpec, no_param_spec: types.InverseParamSpec) void {
     var buf: [4096]u8 = undefined;
-    var len: u64 = builtin.debug.writeMulti(&buf, &.{ param_spec.name, ": ", @tagName(param_spec.tag), "+", @tagName(no_param_spec.tag) });
+    var len: u64 = mach.memcpyMulti(&buf, &.{ param_spec.name, ": ", @tagName(param_spec.tag), "+", @tagName(no_param_spec.tag) });
     builtin.proc.exitFault(buf[0..len], 2);
 }
 fn unhandledCommandField(param_spec: types.ParamSpec) void {
     var buf: [4096]u8 = undefined;
-    var len: u64 = builtin.debug.writeMulti(&buf, &.{ param_spec.name, ": ", @tagName(param_spec.tag), "\n" });
+    var len: u64 = mach.memcpyMulti(&buf, &.{ param_spec.name, ": ", @tagName(param_spec.tag), "\n" });
     builtin.proc.exitFault(buf[0..len], 2);
 }
 fn writeFile(array: *Array, pathname: [:0]const u8) void {
