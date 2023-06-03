@@ -1,4 +1,5 @@
 const zig_lib = @import("../zig_lib.zig");
+const sys = zig_lib.sys;
 const mem = zig_lib.mem;
 const proc = zig_lib.proc;
 const spec = zig_lib.spec;
@@ -11,24 +12,22 @@ pub usingnamespace proc.start;
 pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
 pub const runtime_assertions: bool = true;
 
-const Builder = build.GenericBuilder(.{
-    .logging = spec.builder.logging.verbose,
-    .errors = spec.builder.errors.noexcept,
+const Node = build.GenericNode(.{
     .options = .{ .max_cmdline_len = null },
 });
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
-    var address_space: Builder.AddressSpace = .{};
-    var thread_space: Builder.ThreadSpace = .{};
-    var allocator: Builder.Allocator = if (Builder.Allocator == mem.SimpleAllocator)
-        Builder.Allocator.init_arena(Builder.AddressSpace.arena(Builder.max_thread_count))
+    var address_space: Node.AddressSpace = .{};
+    var thread_space: Node.ThreadSpace = .{};
+    var allocator: Node.Allocator = if (Node.Allocator == mem.SimpleAllocator)
+        Node.Allocator.init_arena(Node.AddressSpace.arena(Node.max_thread_count))
     else
-        Builder.Allocator.init(&address_space, Builder.max_thread_count);
+        Node.Allocator.init(&address_space, Node.max_thread_count);
     if (args.len < 5) {
         return error.MissingEnvironmentPaths;
     }
-    var builder: Builder = try meta.wrap(Builder.init(args, vars));
-    const g0: *Builder.Group = try builder.addGroup(&allocator, "g0");
-    const t0: *Builder.Target = try g0.addBuild(&allocator, .{
+    const toplevel: *Node = Node.addToplevel(&allocator, args, vars);
+    const g0: *Node = try toplevel.addGroup(&allocator, "g0");
+    const t0: *Node = try g0.addBuild(&allocator, .{
         .kind = .obj,
         .allow_shlib_undefined = true,
         .build_id = .sha1,
@@ -60,11 +59,11 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
         .mode = .Debug,
         .strip = true,
     }, "target", @src().file);
-    const t1: *Builder.Target = try g0.addArchive(&allocator, .{
+    const t1: *Node = try g0.addArchive(&allocator, .{
         .operation = .r,
         .create = true,
     }, "lib0", &.{t0});
 
-    Builder.debug.builderCommandNotice(&builder);
-    t1.executeToplevel(&address_space, &thread_space, &allocator, &builder, .archive);
+    Node.debug.toplevelCommandNotice(&allocator, toplevel);
+    try builtin.expect(Node.executeToplevel(&address_space, &thread_space, &allocator, toplevel, t1, .archive));
 }
