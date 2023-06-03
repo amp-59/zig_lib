@@ -1241,7 +1241,7 @@ pub fn receiveFrom(comptime recv_spec: ReceiveFromSpec, fd: u64, buf: []u8, flag
         return recvfrom_error;
     }
 }
-pub fn getsockname(comptime get_spec: GetSockNameSpec, fd: u64, addr: *Socket.Address, addrlen: *u32) sys.ErrorUnion(
+fn getSocketName(comptime get_spec: GetSockNameSpec, fd: u64, addr: *Socket.Address, addrlen: *u32) sys.ErrorUnion(
     get_spec.errors,
     get_spec.return_type,
 ) {
@@ -1255,7 +1255,7 @@ pub fn getsockname(comptime get_spec: GetSockNameSpec, fd: u64, addr: *Socket.Ad
         return getsockname_error;
     }
 }
-pub fn getpeername(comptime get_spec: GetPeerNameSpec, fd: u64, addr: *Socket.Address, addrlen: *u32) sys.ErrorUnion(
+fn getPeerName(comptime get_spec: GetPeerNameSpec, fd: u64, addr: *Socket.Address, addrlen: *u32) sys.ErrorUnion(
     get_spec.errors,
     get_spec.return_type,
 ) {
@@ -1269,7 +1269,7 @@ pub fn getpeername(comptime get_spec: GetPeerNameSpec, fd: u64, addr: *Socket.Ad
         return getpeername_error;
     }
 }
-pub fn getSocketOption(comptime get_spec: SocketOptionSpec, fd: u64, level: u64, optname: u32, optval: *u8, optlen: *u32) sys.ErrorUnion(
+fn getSocketOption(comptime get_spec: SocketOptionSpec, fd: u64, level: u64, optname: u32, optval: *u8, optlen: *u32) sys.ErrorUnion(
     get_spec.errors,
     get_spec.return_type,
 ) {
@@ -1283,7 +1283,7 @@ pub fn getSocketOption(comptime get_spec: SocketOptionSpec, fd: u64, level: u64,
         return getsockopt_error;
     }
 }
-pub fn setSocketOption(comptime set_spec: SocketOptionSpec, fd: u64, level: u64, optname: u32, optval: *u8, optlen: u32) sys.ErrorUnion(
+fn setSocketOption(comptime set_spec: SocketOptionSpec, fd: u64, level: u64, optname: u32, optval: *u8, optlen: u32) sys.ErrorUnion(
     set_spec.errors,
     set_spec.return_type,
 ) {
