@@ -1535,7 +1535,7 @@ pub fn getCwd(comptime spec: GetWorkingDirectorySpec, buf: []u8) sys.ErrorUnion(
         buf[len] = 0;
         const ret: [:0]const u8 = buf[0..len :0];
         if (logging.Success) {
-            debug.aboutPathname(debug.about_getcwd_0_s, ret);
+            debug.aboutPathnameNotice(debug.about_getcwd_0_s, ret);
         }
         return ret;
     } else |getcwd_error| {
@@ -1735,12 +1735,12 @@ pub fn link(comptime link_spec: LinkSpec, from_pathname: [:0]const u8, to_pathna
         @ptrToInt(from_pathname.ptr), @ptrToInt(to_pathname.ptr),
     }))) |ret| {
         if (logging.Success) {
-            //debug.aboutPathnamePathnameNotice();
+            debug.aboutPathnamePathnameNotice(debug.about_link_0_s, "from=", "to=", from_pathname, to_pathname);
         }
         return ret;
     } else |link_error| {
         if (logging.Error) {
-            //debug.aboutPathnamePathnameError();
+            debug.aboutPathnamePathnameError(debug.about_link_1_s, @errorName(link_error), "from=", "to=", from_pathname, to_pathname);
         }
         return link_error;
     }
@@ -2140,6 +2140,8 @@ const debug = opaque {
     const about_seek_1_s: [:0]const u8 = builtin.fmt.about("seek-error");
     const about_sync_0_s: [:0]const u8 = builtin.fmt.about("sync");
     const about_sync_1_s: [:0]const u8 = builtin.fmt.about("sync-error");
+    const about_link_0_s: [:0]const u8 = builtin.fmt.about("link");
+    const about_link_1_s: [:0]const u8 = builtin.fmt.about("link-error");
     const about_close_0_s: [:0]const u8 = builtin.fmt.about("close");
     const about_close_1_s: [:0]const u8 = builtin.fmt.about("close-error");
     const about_mkdir_0_s: [:0]const u8 = builtin.fmt.about("mkdir");
@@ -2263,9 +2265,9 @@ const debug = opaque {
         var buf: [32768]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_socket_0_s, "fd=", fd_s, ", ", @tagName(dom), ", ", @tagName(conn), "\n" });
     }
-    fn aboutPathname(about_s: [:0]const u8, pathname: [:0]const u8) void {
+    fn aboutPathnamePathnameNotice(about_s: [:0]const u8, about_pathname1: [:0]const u8, about_pathname2: [:0]const u8, pathname1: [:0]const u8, pathname2: [:0]const u8) void {
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, pathname, "\n" });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, about_pathname1, pathname1, ", ", about_pathname2, pathname2 });
     }
     fn copyNotice(src_fd: u64, src_offset: ?*u64, dest_fd: u64, dest_offset: ?*u64, max_len: u64, act_len: u64) void {
         const src_fd_s: []const u8 = builtin.fmt.ud64(src_fd).readAll();
@@ -2340,6 +2342,10 @@ const debug = opaque {
         const fd2_s: []const u8 = builtin.fmt.ud64(fd2).readAll();
         var buf: [32768]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, about_fd1, fd1_s, ", ", about_fd2, fd2_s, " (", error_name, ")\n" });
+    }
+    fn aboutPathnamePathnameError(about_s: [:0]const u8, error_name: [:0]const u8, about_pathname1: [:0]const u8, about_pathname2: [:0]const u8, pathname1: [:0]const u8, pathname2: [:0]const u8) void {
+        var buf: [32768]u8 = undefined;
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, about_pathname1, pathname1, ", ", about_pathname2, pathname2, "(", error_name, ")\n" });
     }
     fn socketError(socket_error: anytype, dom: Socket.Domain, conn: Socket.Connection) void {
         var buf: [32768]u8 = undefined;
