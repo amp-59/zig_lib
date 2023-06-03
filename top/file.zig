@@ -106,6 +106,7 @@ pub const ReadWrite = meta.EnumBitField(enum(u64) {
 pub const At = meta.EnumBitField(enum(u64) {
     empty_path = AT.EMPTY_PATH,
     no_follow = AT.SYMLINK.NOFOLLOW,
+    follow = AT.SYMLINK.FOLLOW,
     no_auto_mount = AT.NO_AUTOMOUNT,
     const AT = sys.AT;
 });
@@ -940,9 +941,24 @@ pub const CopySpec = struct {
     logging: builtin.Logging.SuccessError = .{},
 };
 pub const LinkSpec = struct {
+    options: Options = .{},
     errors: sys.ErrorPolicy = .{ .throw = sys.link_errors },
     return_type: type = void,
     logging: builtin.Logging.SuccessError = .{},
+    const Options = struct {
+        follow: bool = false,
+        empty_path: bool = false,
+    };
+    fn flags(comptime spec: LinkSpec) At {
+        var flags_bitfield: At = .{ .val = 0 };
+        if (spec.options.follow) {
+            flags_bitfield.set(.follow);
+        }
+        if (spec.options.empty_path) {
+            flags_bitfield.set(.empty_path);
+        }
+        comptime return flags_bitfield;
+    }
 };
 pub const CloseSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.close_errors },
@@ -981,15 +997,18 @@ pub const DuplicateSpec = struct {
         return ret;
     }
 };
-pub fn execPath(comptime spec: ExecuteSpec, pathname: [:0]const u8, args: spec.args_type, vars: spec.vars_type) sys.ErrorUnion(spec.errors, spec.return_type) {
+pub fn execPath(comptime exec_spec: ExecuteSpec, pathname: [:0]const u8, args: exec_spec.args_type, vars: exec_spec.vars_type) sys.ErrorUnion(
+    exec_spec.errors,
+    exec_spec.return_type,
+) {
     const filename_buf_addr: u64 = @ptrToInt(pathname.ptr);
     const args_addr: u64 = @ptrToInt(args.ptr);
     const vars_addr: u64 = @ptrToInt(vars.ptr);
-    const logging: builtin.Logging.AttemptError = comptime spec.logging.override();
+    const logging: builtin.Logging.AttemptError = comptime exec_spec.logging.override();
     if (logging.Attempt) {
         debug.executeNotice(pathname, args);
     }
-    if (meta.wrap(sys.call(.execve, spec.errors, spec.return_type, .{ filename_buf_addr, args_addr, vars_addr }))) {
+    if (meta.wrap(sys.call(.execve, exec_spec.errors, exec_spec.return_type, .{ filename_buf_addr, args_addr, vars_addr }))) {
         builtin.proc.exitGroupFault("reached unreachable", 2);
     } else |execve_error| {
         if (logging.Error and logging.Attempt) {
@@ -1000,15 +1019,18 @@ pub fn execPath(comptime spec: ExecuteSpec, pathname: [:0]const u8, args: spec.a
         return execve_error;
     }
 }
-pub fn exec(comptime spec: ExecuteSpec, fd: u64, args: spec.args_type, vars: spec.vars_type) sys.ErrorUnion(spec.errors, spec.return_type) {
+pub fn exec(comptime exec_spec: ExecuteSpec, fd: u64, args: exec_spec.args_type, vars: exec_spec.vars_type) sys.ErrorUnion(
+    exec_spec.errors,
+    exec_spec.return_type,
+) {
     const args_addr: u64 = @ptrToInt(args.ptr);
     const vars_addr: u64 = @ptrToInt(vars.ptr);
-    const flags: At = comptime spec.flags();
-    const logging: builtin.Logging.AttemptError = comptime spec.logging.override();
+    const flags: At = comptime exec_spec.flags();
+    const logging: builtin.Logging.AttemptError = comptime exec_spec.logging.override();
     if (logging.Attempt) {
         debug.executeNotice(args[0], args);
     }
-    if (meta.wrap(sys.call(.execveat, spec.errors, spec.return_type, .{ fd, @ptrToInt(""), args_addr, vars_addr, flags.val }))) {
+    if (meta.wrap(sys.call(.execveat, exec_spec.errors, exec_spec.return_type, .{ fd, @ptrToInt(""), args_addr, vars_addr, flags.val }))) {
         builtin.proc.exitGroupFault("reached unreachable", 2);
     } else |execve_error| {
         if (logging.Error and logging.Attempt) {
@@ -1019,16 +1041,19 @@ pub fn exec(comptime spec: ExecuteSpec, fd: u64, args: spec.args_type, vars: spe
         return execve_error;
     }
 }
-pub fn execAt(comptime spec: ExecuteSpec, dir_fd: u64, name: [:0]const u8, args: spec.args_type, vars: spec.vars_type) sys.ErrorUnion(spec.errors, spec.return_type) {
+pub fn execAt(comptime exec_spec: ExecuteSpec, dir_fd: u64, name: [:0]const u8, args: exec_spec.args_type, vars: exec_spec.vars_type) sys.ErrorUnion(
+    exec_spec.errors,
+    exec_spec.return_type,
+) {
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
     const args_addr: u64 = @ptrToInt(args.ptr);
     const vars_addr: u64 = @ptrToInt(vars.ptr);
-    const flags: At = comptime spec.flags();
-    const logging: builtin.Logging.AttemptError = comptime spec.logging.override();
+    const flags: At = comptime exec_spec.flags();
+    const logging: builtin.Logging.AttemptError = comptime exec_spec.logging.override();
     if (logging.Attempt) {
         debug.executeNotice(name, args);
     }
-    if (meta.wrap(sys.call(.execveat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, args_addr, vars_addr, flags.val }))) {
+    if (meta.wrap(sys.call(.execveat, exec_spec.errors, exec_spec.return_type, .{ dir_fd, name_buf_addr, args_addr, vars_addr, flags.val }))) {
         builtin.proc.exitGroupFault("reached unreachable", 2);
     } else |execve_error| {
         if (logging.Error and logging.Attempt) {
@@ -1743,21 +1768,62 @@ pub fn link(comptime link_spec: LinkSpec, from_pathname: [:0]const u8, to_pathna
         return link_error;
     }
 }
-pub fn linkAt(comptime link_spec: LinkSpec, pathname: [:0]const u8, dir_fd: u64, name: [:0]const u8) sys.ErrorUnion(
+pub fn linkAt(comptime link_spec: LinkSpec, src_dir_fd: u64, from_name: [:0]const u8, dest_dir_fd: u64, to_name: [:0]const u8) sys.ErrorUnion(
     link_spec.errors,
     link_spec.return_type,
 ) {
     const logging: builtin.Logging.SuccessError = link_spec.logging.override();
-    if (meta.wrap(sys.call(.linkat, link_spec.errors, link_spec.return_type, .{ @ptrToInt(pathname.ptr), dir_fd, @ptrToInt(name.ptr) }))) |ret| {
+    const flags: At = comptime link_spec.flags();
+    if (meta.wrap(sys.call(.linkat, link_spec.errors, link_spec.return_type, .{
+        src_dir_fd, @ptrToInt(from_name.ptr), dest_dir_fd, @ptrToInt(to_name.ptr), flags.val,
+    }))) |ret| {
         if (logging.Success) {
-            debug.aboutPathnameDirFdNameNotice(debug.about_link_0_s, " -> ", pathname, dir_fd, name);
+            debug.aboutDirFdNameDirFdNameNotice(debug.about_link_0_s, "src_dir_fd=", " -> ", "dest_dir_fd=", src_dir_fd, from_name, dest_dir_fd, to_name);
         }
         return ret;
     } else |linkat_error| {
         if (logging.Error) {
-            debug.aboutPathnameDirFdNameError(debug.about_link_1_s, @errorName(linkat_error), " -> ", pathname, dir_fd, name);
+            debug.aboutDirFdNameDirFdNameError(debug.about_link_1_s, @errorName(linkat_error), "src_dir_fd=", " -> ", "dest_dir_fd=", src_dir_fd, from_name, dest_dir_fd, to_name);
         }
         return linkat_error;
+    }
+}
+pub fn symbolicLink(comptime link_spec: LinkSpec, from_pathname: [:0]const u8, to_pathname: [:0]const u8) sys.ErrorUnion(
+    link_spec.errors,
+    link_spec.return_type,
+) {
+    const logging: builtin.Logging.SuccessError = link_spec.logging.override();
+    if (meta.wrap(sys.call(.symlink, link_spec.errors, link_spec.return_type, .{
+        @ptrToInt(from_pathname.ptr), @ptrToInt(to_pathname.ptr),
+    }))) |ret| {
+        if (logging.Success) {
+            debug.aboutPathnamePathnameNotice(debug.about_symlink_0_s, " -> ", from_pathname, to_pathname);
+        }
+        return ret;
+    } else |symlink_error| {
+        if (logging.Error) {
+            debug.aboutPathnamePathnameError(debug.about_symlink_1_s, @errorName(symlink_error), " -> ", from_pathname, to_pathname);
+        }
+        return symlink_error;
+    }
+}
+pub fn symbolicLinkAt(comptime link_spec: LinkSpec, pathname: [:0]const u8, dir_fd: u64, name: [:0]const u8) sys.ErrorUnion(
+    link_spec.errors,
+    link_spec.return_type,
+) {
+    const logging: builtin.Logging.SuccessError = link_spec.logging.override();
+    if (meta.wrap(sys.call(.symlinkat, link_spec.errors, link_spec.return_type, .{
+        @ptrToInt(pathname.ptr), dir_fd, @ptrToInt(name.ptr),
+    }))) |ret| {
+        if (logging.Success) {
+            debug.aboutPathnameDirFdNameNotice(debug.about_symlink_0_s, " -> ", pathname, dir_fd, name);
+        }
+        return ret;
+    } else |symlinkat_error| {
+        if (logging.Error) {
+            debug.aboutPathnameDirFdNameError(debug.about_symlink_1_s, @errorName(symlinkat_error), " -> ", pathname, dir_fd, name);
+        }
+        return symlinkat_error;
     }
 }
 pub fn sync(comptime sync_spec: SyncSpec, fd: u64) sys.ErrorUnion(sync_spec.errors, sync_spec.return_type) {
@@ -2277,6 +2343,14 @@ const debug = opaque {
             about_s, "dir_fd=", dir_fd_s, ", ", name, ", mode=", &describeMode(file_mode), ", dev=", maj_s, ":", min_s, "\n",
         });
     }
+    fn aboutDirFdNameDirFdNameNotice(about_s: [:0]const u8, about_dir_fd1_s: []const u8, relation_s: [:0]const u8, about_dir_fd2_s: []const u8, dir_fd1: u64, name1: [:0]const u8, dir_fd2: u64, name2: [:0]const u8) void {
+        const dir_fd1_s: []const u8 = if (dir_fd1 > 1024) "CWD" else builtin.fmt.ud64(dir_fd1).readAll();
+        const dir_fd2_s: []const u8 = if (dir_fd2 > 1024) "CWD" else builtin.fmt.ud64(dir_fd2).readAll();
+        var buf: [32768]u8 = undefined;
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
+            about_s, about_dir_fd1_s, dir_fd1_s, ", ", name1, relation_s, about_dir_fd2_s, dir_fd2_s, ", ", name2, "\n",
+        });
+    }
     fn socketNotice(fd: u64, dom: Socket.Domain, conn: Socket.Connection) void {
         const fd_s: []const u8 = builtin.fmt.ud64(fd).readAll();
         var buf: [32768]u8 = undefined;
@@ -2346,6 +2420,7 @@ const debug = opaque {
         var buf: [32768]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, "dir_fd=", dir_fd_s, ", ", name, " (", error_name, ")\n" });
     }
+
     fn aboutPathnameError(about_s: [:0]const u8, error_name: [:0]const u8, pathname: [:0]const u8) void {
         var buf: [32768]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, pathname, " (", error_name, ")\n" });
@@ -2369,6 +2444,14 @@ const debug = opaque {
         const dir_fd_s: []const u8 = builtin.fmt.ud64(dir_fd).readAll();
         var buf: [32768]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, pathname, about_relation_s, "dir_fd=", dir_fd_s, ", ", name, "(", error_name, ")\n" });
+    }
+    fn aboutDirFdNameDirFdNameError(about_s: [:0]const u8, error_name: [:0]const u8, about_dir_fd1_s: []const u8, relation_s: [:0]const u8, about_dir_fd2_s: []const u8, dir_fd1: u64, name1: [:0]const u8, dir_fd2: u64, name2: [:0]const u8) void {
+        const dir_fd1_s: []const u8 = if (dir_fd1 > 1024) "CWD" else builtin.fmt.ud64(dir_fd1).readAll();
+        const dir_fd2_s: []const u8 = if (dir_fd2 > 1024) "CWD" else builtin.fmt.ud64(dir_fd2).readAll();
+        var buf: [32768]u8 = undefined;
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
+            about_s, about_dir_fd1_s, dir_fd1_s, ", ", name1, relation_s, about_dir_fd2_s, dir_fd2_s, ", ", name2, "(", error_name, ")\n",
+        });
     }
     fn socketError(socket_error: anytype, dom: Socket.Domain, conn: Socket.Connection) void {
         var buf: [32768]u8 = undefined;
