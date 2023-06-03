@@ -9,7 +9,7 @@ pub const zig_lib = @import("zig_lib/zig_lib.zig");
 const spec = zig_lib.spec;
 const build = zig_lib.build;
 
-pub const Builder: type = build.GenericBuilder(spec.builder.default);
+pub const Node: type = build.GenericNode(.{});
 
 /// This is a template compile command to build the target.
 var build_cmd: build.BuildCommand = .{
@@ -25,8 +25,6 @@ var build_cmd: build.BuildCommand = .{
 // actually in build_runner.zig and might be useful for the name of one of the
 // target (as below), and `build` is the name of import containing build system
 // components.
-pub fn buildMain(allocator: *Builder.Allocator, builder: *Builder) !void {
-    const all: *Builder.Group = try builder.addGroup(allocator, "all");
-
-    _ = try all.addBuild(allocator, build_cmd, "main", "./src/main.zig");
+pub fn buildMain(allocator: *Node.Allocator, toplevel: *Node) !void {
+    toplevel.addBuild(allocator, build_cmd, "main", "./src/main.zig");
 }
