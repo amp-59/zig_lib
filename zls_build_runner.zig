@@ -8,6 +8,7 @@ const zig_lib = blk: {
     }
 };
 const mem = zig_lib.mem;
+const sys = zig_lib.sys;
 const proc = zig_lib.proc;
 const meta = zig_lib.meta;
 const file = zig_lib.file;
@@ -19,10 +20,10 @@ const dependencies = @import("@dependencies");
 pub usingnamespace root;
 pub usingnamespace proc.start;
 pub const is_debug: bool = false;
-const Builder = if (@hasDecl(root, "Builder"))
-    root.Builder
+const Node = if (@hasDecl(root, "Node"))
+    root.Node
 else
-    build.GenericBuilder(spec.builder.default);
+    build.GenericNode(.{});
 pub const BuildConfig = struct {
     packages: []Pkg,
     include_dirs: []const []const u8,
@@ -105,59 +106,63 @@ pub fn writeJSON(cfg: *const BuildConfig, buf: []u8) u64 {
     len +%= cpy(buf[len..], "}\n".*);
     return len;
 }
-fn lengthModules(builder: *Builder) u64 {
+fn lengthModules(node: *Node) u64 {
     @setRuntimeSafety(false);
     var len: u64 = 0;
-    for (builder.grps[0..builder.grps_len]) |group| {
-        for (group.trgs[0..group.trgs_len]) |target| {
-            if (target.task != .build) {
-                continue;
-            }
-            if (target.task_cmd.build.modules) |mods| {
+    for (node.nodes[0..node.nodes_len]) |sub_node| {
+        if (sub_node.kind == .group) {
+            len +%= lengthModules(node);
+        }
+        if (node.kind == .worker and node.task == .build) {
+            if (node.task_info.build.modules) |mods| {
                 len +%= mods.len;
             }
         }
     }
     return len;
 }
-fn writeModules(pkgs: []BuildConfig.Pkg, builder: *Builder) []BuildConfig.Pkg {
+fn writeModulesBuf(pkgs: [*]BuildConfig.Pkg, node: *Node) u64 {
     @setRuntimeSafety(false);
     var len: u64 = 0;
-    for (builder.grps[0..builder.grps_len]) |group| {
-        for (group.trgs[0..group.trgs_len]) |target| {
-            if (target.task != .build) {
-                continue;
-            }
-            if (target.task_cmd.build.modules) |mods| {
+    for (node.nodes[0..node.nodes_len]) |sub_node| {
+        if (sub_node.kind == .group) {
+            len +%= writeModulesBuf(pkgs, node);
+        }
+        if (node.kind == .worker and node.task == .build) {
+            if (node.task_info.build.modules) |mods| {
                 for (mods) |mod| {
-                    pkgs[len] = .{ .name = mod.name, .path = mod.path };
+                    pkgs[len] = .{
+                        .name = mod.name,
+                        .path = mod.path,
+                    };
                     len +%= 1;
                 }
             }
         }
     }
-    return pkgs[0..len];
+    return len;
 }
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     @setRuntimeSafety(false);
-    var address_space: Builder.AddressSpace = .{};
-    var allocator: Builder.Allocator = if (Builder.Allocator == mem.SimpleAllocator)
-        Builder.Allocator.init_arena(Builder.AddressSpace.arena(Builder.max_thread_count))
+    var address_space: Node.AddressSpace = .{};
+    var allocator: Node.Allocator = if (Node.Allocator == mem.SimpleAllocator)
+        Node.Allocator.init_arena(Node.AddressSpace.arena(Node.max_thread_count))
     else
-        Builder.Allocator.init(&address_space, Builder.max_thread_count);
+        Node.Allocator.init(&address_space, Node.max_thread_count);
     if (args.len < 5) {
         return error.MissingEnvironmentPaths;
     }
-    var builder: Builder = try meta.wrap(Builder.init(args, vars));
+    const toplevel: *Node = Node.addToplevel(&allocator, args, vars);
+    Node.phase = .decl;
     try meta.wrap(
-        root.buildMain(&allocator, &builder),
+        root.buildMain(&allocator, toplevel),
     );
-    const pkgs_len: u64 = lengthModules(&builder);
+    const pkgs_len: u64 = lengthModules(toplevel);
     const pkgs: []BuildConfig.Pkg = try meta.wrap(
         allocator.allocate(BuildConfig.Pkg, pkgs_len),
     );
     const cfg: BuildConfig = .{
-        .packages = writeModules(pkgs, &builder),
+        .packages = pkgs[0..writeModulesBuf(pkgs.ptr, toplevel)],
         .include_dirs = &.{},
     };
     const buf: []u8 = try meta.wrap(
