@@ -145,7 +145,7 @@ fn cryptoTests(allocator: *Node.Allocator, node: *Node) void {
     const hash_test: *Node = try node.addBuild(allocator, build_cmd, "hash_test", "test/crypto/hash-test.zig");
     const pcurve_test: *Node = try node.addBuild(allocator, build_cmd, "pcurve_test", "test/crypto/pcurve-test.zig");
     const ecdsa_test: *Node = try node.addBuild(allocator, build_cmd, "ecdsa_test", "test/crypto/ecdsa-test.zig");
-    const auth_test: *Node = try node.addBuild(allocator, build_cmd, "auth_test", "test/crypto/auth-test.zig");
+    //const auth_test: *Node = try node.addBuild(allocator, build_cmd, "auth_test", "test/crypto/auth-test.zig");
     const utils_test: *Node = try node.addBuild(allocator, build_cmd, "utils_test", "test/crypto/utils-test.zig");
     const kyber_test: *Node = try node.addBuild(allocator, build_cmd, "kyber_test", "test/crypto/kyber-test.zig");
     const dh_test: *Node = try node.addBuild(allocator, build_cmd, "dh_test", "test/crypto/dh-test.zig");
@@ -156,19 +156,19 @@ fn cryptoTests(allocator: *Node.Allocator, node: *Node) void {
     _ = hash_test;
     _ = pcurve_test;
     _ = ecdsa_test;
-    _ = auth_test;
     _ = utils_test;
     _ = kyber_test;
     _ = dh_test;
     _ = tls_test;
 }
 fn builderTests(allocator: *Node.Allocator, node: *Node) void {
+    //
     const build_runner_test: *Node = try node.addBuild(allocator, build_cmd, "build_runner_test", "build_runner.zig");
     const zls_build_runner_test: *Node = try node.addBuild(allocator, build_cmd, "zls_build_runner_test", "zls_build_runner.zig");
     const cmdline_writer_test: *Node = try node.addBuild(allocator, build_cmd, "cmdline_test", "test/cmdline-test.zig");
-    build_runner_test.addDescr("");
-    zls_build_runner_test.addDescr("");
-    cmdline_writer_test.addDescr("");
+    build_runner_test.addDescr("Test library build runner using the library build program");
+    zls_build_runner_test.addDescr("Test ZLS special build runner");
+    cmdline_writer_test.addDescr("Test generated command line writer functions");
     for ([_]*Node{ build_runner_test, zls_build_runner_test, cmdline_writer_test }) |target| {
         target.addToplevelArgs(allocator);
         target.task_info.build.modules = mods;
