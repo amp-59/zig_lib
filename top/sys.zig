@@ -1925,6 +1925,8 @@ pub const Fn = enum(u9) {
             .clone3,
             .pipe2,
             .listen,
+            .symlink,
+            .link,
             => 2,
             .dup3,
             .read,
@@ -1946,6 +1948,7 @@ pub const Fn = enum(u9) {
             .bind,
             .lseek,
             .connect,
+            .symlinkat,
             => 3,
             .newfstatat,
             .mknodat,
@@ -1960,6 +1963,7 @@ pub const Fn = enum(u9) {
             .clone,
             .execveat,
             .name_to_handle_at,
+            .linkat,
             => 5,
             .copy_file_range,
             .futex,
@@ -1984,6 +1988,11 @@ pub const chdir_errors = &[_]ErrorCode{
 pub const copy_file_range_errors = &[_]ErrorCode{
     .BADF,  .FBIG,      .INVAL,    .IO,   .ISDIR,  .NOMEM,
     .NOSPC, .OPNOTSUPP, .OVERFLOW, .PERM, .TXTBSY, .XDEV,
+};
+pub const link_errors = &[_]ErrorCode{
+    .ACCES, .BADF,  .DQUOT, .EXIST,  .FAULT, .IO,   .LOOP,  .NAMETOOLONG,
+    .NOENT, .NOMEM, .NOSPC, .NOTDIR, .PERM,  .ROFS, .MLINK, .XDEV,
+    .INVAL,
 };
 pub const sync_errors = &[_]ErrorCode{ .BADF, .IO };
 pub const sync_file_range_errors = &[_]ErrorCode{};
