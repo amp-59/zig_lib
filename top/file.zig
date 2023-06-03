@@ -939,6 +939,11 @@ pub const CopySpec = struct {
     return_type: type = u64,
     logging: builtin.Logging.SuccessError = .{},
 };
+pub const LinkSpec = struct {
+    errors: sys.ErrorPolicy = .{ .throw = sys.link_errors },
+    return_type: type = void,
+    logging: builtin.Logging.SuccessError = .{},
+};
 pub const CloseSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.close_errors },
     return_type: type = void,
@@ -1719,6 +1724,25 @@ pub fn copy(comptime copy_spec: CopySpec, src_fd: u64, src_offset: ?*u64, dest_f
             debug.copyError(copy_file_range_error, src_fd, src_offset, dest_fd, dest_offset, len);
         }
         return copy_file_range_error;
+    }
+}
+pub fn link(comptime link_spec: LinkSpec, from_pathname: [:0]const u8, to_pathname: [:0]const u8) sys.ErrorUnion(
+    link_spec.errors,
+    link_spec.return_type,
+) {
+    const logging: builtin.Logging.SuccessError = link_spec.logging.override();
+    if (meta.wrap(sys.call(.link, link_spec.errors, link_spec.return_type, .{
+        @ptrToInt(from_pathname.ptr), @ptrToInt(to_pathname.ptr),
+    }))) |ret| {
+        if (logging.Success) {
+            //debug.aboutPathnamePathnameNotice();
+        }
+        return ret;
+    } else |link_error| {
+        if (logging.Error) {
+            //debug.aboutPathnamePathnameError();
+        }
+        return link_error;
     }
 }
 pub fn sync(comptime sync_spec: SyncSpec, fd: u64) sys.ErrorUnion(sync_spec.errors, sync_spec.return_type) {
