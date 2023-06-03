@@ -2521,11 +2521,7 @@ pub fn testLargeStructure(address_space: *Allocator.AddressSpace) !void {
         try meta.wrap(serial.serialRead(serial_spec, []const mem_types.AbstractSpecification, &allocator, builtin.absolutePath("zig-out/bin/variety_0")));
     builtin.assertEqualMemory([]const mem_types.AbstractSpecification, spec_sets_b, spec_sets_c);
 }
-const builder_spec: build.BuilderSpec = .{
-    .errors = spec.builder.errors.noexcept,
-    .logging = spec.builder.logging.silent,
-};
-const Builder = build.GenericBuilder(builder_spec);
+const Builder = build.GenericNode(.{});
 
 var build_cmd: build.BuildCommand = .{
     .kind = .exe,
