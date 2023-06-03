@@ -7,24 +7,10 @@ const spec = @import("../spec.zig");
 const builtin = @import("../builtin.zig");
 const tasks = @import("./tasks.zig");
 pub usingnamespace tasks;
-pub const NodeKind = enum(u8) {
-    group,
-    worker,
-};
-pub const OutputMode = enum(u8) {
-    exe,
-    lib,
-    obj,
-};
-pub const AuxOutputMode = enum(u8) {
-    @"asm",
-    llvm_ir,
-    llvm_bc,
-    h,
-    docs,
-    analysis,
-    implib,
-};
+pub const Phase = enum(u2) { init, decl, exec };
+pub const NodeKind = enum(u1) { group, worker };
+pub const OutputMode = enum(u2) { exe, lib, obj };
+pub const AuxOutputMode = enum(u3) { @"asm", llvm_ir, llvm_bc, h, docs, analysis };
 pub const Task = enum(u8) {
     null = 0,
     any = 1,
