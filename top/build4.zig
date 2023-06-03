@@ -27,7 +27,7 @@ pub const BuilderSpec = struct {
         /// Bytes allowed per thread stack (static maximum)
         stack_aligned_bytes: u64 = 8 * 1024 * 1024,
         /// max_thread_count=0 is single-threaded.
-        max_thread_count: u64 = 2,
+        max_thread_count: u64 = 16,
         /// Lowest allocated byte address for thread stacks. This field and the
         /// two previous fields derive the arena lowest allocated byte address,
         /// as this is the first unallocated byte address of the thread space.
@@ -211,10 +211,9 @@ pub const BuilderSpec = struct {
         unlink: sys.ErrorPolicy = .{},
     };
 };
-
 pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
     const Type = struct {
-        names: [*][:0]const u8,
+        names: [*][]const u8,
         names_max_len: u64,
         names_len: u64,
         args: [*][*:0]u8,
@@ -298,22 +297,22 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         };
         pub fn addToplevel(allocator: *Allocator, args: [][*:0]u8, vars: [][*:0]u8) *Node {
             @setRuntimeSafety(safety);
-            var ret: *Node = allocator.create(Node);
             GlobalState.euid = sys.call_noexcept(.geteuid, u16, .{});
             GlobalState.egid = sys.call_noexcept(.getegid, u16, .{});
             GlobalState.args = args;
             GlobalState.vars = vars;
             GlobalState.phase = .decl;
+            var ret: *Node = allocator.create(Node);
             mem.zero(Node, ret);
+            ret.addPath(allocator).* = .{ .absolute = mach.manyToSlice80(GlobalState.args[2]) };
+            ret.addPath(allocator).* = .{ .absolute = mach.manyToSlice80(GlobalState.args[3]) };
+            ret.addName(allocator).* = builder_spec.options.names.toplevel_node;
+            ret.addFd(allocator, try meta.wrap(file.path(path1(), ret.paths[0].absolute)));
             ret.kind = .group;
             ret.task = .any;
             ret.args = Node.args.ptr;
             ret.args_max_len = Node.args.len;
             ret.args_len = Node.args.len;
-            ret.addName(allocator).* = builder_spec.options.names.toplevel_node;
-            ret.addPath(allocator).* = .{ .absolute = mach.manyToSlice80(GlobalState.args[2]) };
-            ret.addPath(allocator).* = .{ .absolute = mach.manyToSlice80(GlobalState.args[3]) };
-            ret.addFd(allocator, try meta.wrap(file.path(path1(), ret.paths[0].absolute)));
             if (!thread_space_options.require_map) {
                 mem.map(map(), stack_lb_addr, stack_up_addr -% stack_lb_addr);
             }
@@ -346,7 +345,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             node.paths_len +%= 1;
             return ret;
         }
-        fn addName(node: *Node, allocator: *Allocator) *[:0]const u8 {
+        fn addName(node: *Node, allocator: *Allocator) *[]const u8 {
             @setRuntimeSafety(safety);
             if (node.names_max_len == 0) {
                 node.names = @intToPtr([*][:0]const u8, allocator.allocateRaw(16 *% builder_spec.options.names_init_len, 8));
@@ -356,7 +355,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 node.names = @intToPtr([*][:0]const u8, allocator.reallocateRaw(@ptrToInt(node.names), 16 *% node.names_max_len, 16 *% names_max_len, 8));
                 node.names_max_len = names_max_len;
             }
-            const ret: *[:0]const u8 = &node.names[node.names_len];
+            const ret: *[]const u8 = &node.names[node.names_len];
             node.names_len +%= 1;
             return ret;
         }
@@ -432,7 +431,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             node.fds[node.fds_len] = fd;
             node.fds_len +%= 1;
         }
-        pub fn addDescr(node: *Node, descr: [:0]const u8) void {
+        pub fn addDescr(node: *Node, descr: []const u8) void {
             node.names[1] = descr;
             node.names_len +%= 1;
         }
@@ -872,7 +871,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     debug.exchangeNotice(node, task, old_state, new_state, arena_index);
                 }
             } else {
-                if (builder_spec.logging.state.Attempt) {
+                if (logging.Attempt) {
                     debug.noExchangeNotice(node, debug.about.state_0_s, task, old_state, new_state, arena_index);
                 }
             }
@@ -888,7 +887,9 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     debug.exchangeNotice(node, task, old_state, new_state, arena_index);
                 }
             } else {
-                debug.noExchangeNotice(node, debug.about.state_1_s, task, old_state, new_state, arena_index);
+                if (logging.Fault) {
+                    debug.noExchangeNotice(node, debug.about.state_1_s, task, old_state, new_state, arena_index);
+                }
                 builtin.proc.exitGroup(2);
             }
         }
@@ -975,6 +976,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             return false;
         }
         fn status(ret: []u8) bool {
+            @setRuntimeSafety(safety);
             if (builder_spec.options.enable_caching) {
                 if (ret[1] == builder_spec.options.compiler_error_status) {
                     return false;
@@ -1025,7 +1027,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 ),
             }
         }
-        fn archiveRelative(allocator: *Allocator, name: [:0]const u8) [:0]const u8 {
+        fn archiveRelative(allocator: *Allocator, name: []const u8) [:0]const u8 {
             return concatenate(
                 allocator,
                 &[_][]const u8{ zig_out_lib_dir ++ "/lib", name, builder_spec.options.extensions.ar },
@@ -1395,10 +1397,15 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             var buf: [4096 *% 8]u8 = undefined;
             var len: u64 = 0;
             for ([_][]const u8{
-                debug.about.zig_exe_s,    debug.about.build_root_s,
-                debug.about.cache_root_s, debug.about.global_cache_root_s,
+                debug.about.zig_exe_s,
+                debug.about.build_root_s,
+                debug.about.cache_root_s,
+                debug.about.global_cache_root_s,
             }, [_][]const u8{
-                mach.manyToSlice80(GlobalState.args[1]), build_root, cache_root, mach.manyToSlice80(GlobalState.args[4]),
+                mach.manyToSlice80(GlobalState.args[1]),
+                build_root,
+                cache_root,
+                mach.manyToSlice80(GlobalState.args[4]),
             }) |decl, value| {
                 mach.memcpy(buf[len..].ptr, decl.ptr, decl.len);
                 len +%= decl.len;
@@ -1962,7 +1969,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     mach.memcpy(buf0 + len, dep_node.names[0].ptr, dep_node.names[0].len);
                     len +%= dep_node.names[0].len;
                     if (dep_node.hidden and dep_node.paths_len != 0) {
-                        len +%= writeSubNode(buf0 + len, len1 +% 4, dep_node, name_width, root_width);
+                        len +%= writeSubNode(buf0 + len, len1 +% 2, dep_node, name_width, root_width);
                     }
                     len = writeAndWalkInternal(buf0, len, buf1, len1 +% 2, dep_node, name_width, root_width);
                 }
@@ -1990,28 +1997,45 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             pub fn toplevelCommandNoticeInternal(buf0: [*]u8, buf1: [*]u8, len1: u64, node: *const Node, name_width: u64, root_width: u64) u64 {
                 @setRuntimeSafety(safety);
                 var len: u64 = 0;
-                mach.memcpy(buf0 + len, node.names[0].ptr, node.names[0].len);
-                len +%= node.names[0].len;
                 if (node.paths_len != 0) {
                     len +%= writeSubNode(buf0 + len, len1, node, name_width, root_width);
                 }
-                @ptrCast(*[2]u8, buf1 + len1).* = "  ".*;
                 @ptrCast(*[4]u8, buf0 + len).* = about.faint_s.*;
                 len +%= about.faint_s.len;
                 len = writeAndWalkInternal(buf0, len, buf1, len1, node, name_width, root_width);
                 @ptrCast(*[4]u8, buf0 + len).* = about.reset_s.*;
                 len +%= about.reset_s.len;
-                for (node.nodes[0..node.nodes_len]) |sub_node| {
+                for (node.nodes[0..node.nodes_len], 0..) |sub_node, nodes_idx| {
                     if (sub_node == node) {
                         continue;
                     }
                     if (sub_node.hidden) {
                         continue;
                     }
+                    const is_last: bool = nodes_idx == node.nodes_len -% 1;
+                    const is_only: bool = sub_node.nodes_len == 0;
+                    if (len1 == 0) {
+                        @ptrCast(*[2]u8, buf1 + len1).* = "  ".*;
+                    } else {
+                        @ptrCast(*[2]u8, buf1 + len1).* = if (is_last) "  ".* else "| ".*;
+                    }
                     buf0[len] = '\n';
                     len +%= 1;
-                    mach.memcpy(buf0 + len, buf1, len1 +% 2);
-                    len +%= len1 +% 2;
+                    mach.memcpy(buf0 + len, buf1, len1);
+                    len +%= len1;
+                    if (len1 == 0) {
+                        @ptrCast(*[2]u8, buf0 + len).* = "  ".*;
+                    } else {
+                        @ptrCast(*[2]u8, buf0 + len).* = if (is_last) "`-".* else "|-".*;
+                    }
+                    len +%= 2;
+                    @ptrCast(*[2]u8, buf0 + len).* = if (is_only) "- ".* else "o ".*;
+                    len +%= 2;
+                    if (sub_node.hidden and sub_node.paths_len != 0) {
+                        len +%= writeSubNode(buf0 + len, len1 +% 4, sub_node, name_width, root_width);
+                    }
+                    mach.memcpy(buf0 + len, sub_node.names[0].ptr, sub_node.names[0].len);
+                    len +%= sub_node.names[0].len;
                     len +%= toplevelCommandNoticeInternal(buf0 + len, buf1, len1 +% 2, sub_node, name_width, root_width);
                 }
                 return len;
@@ -2033,11 +2057,15 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 name_width &= ~@as(u64, 3);
                 root_width &= ~@as(u64, 3);
                 const buf0: [*]u8 = @intToPtr([*]u8, allocator.allocateRaw(1024 *% 1024, 1));
+                var len0: u64 = toplevel.names[0].len;
                 const buf1: [*]u8 = @intToPtr([*]u8, allocator.allocateRaw(4096, 1));
-                var len: u64 = toplevelCommandNoticeInternal(buf0, buf1, 0, toplevel, name_width, root_width);
-                buf0[len] = '\n';
-                len +%= 1;
-                builtin.debug.write(buf0[0..len]);
+                mach.memset(buf0, '@', 1024 * 1024);
+                mach.memset(buf1, '@', 4096);
+                mach.memcpy(buf0, toplevel.names[0].ptr, toplevel.names[0].len);
+                len0 +%= toplevelCommandNoticeInternal(buf0 + len0, buf1, 0, toplevel, name_width, root_width);
+                buf0[len0] = '\n';
+                len0 +%= 1;
+                builtin.debug.write(buf0[0..len0]);
             }
         };
     };
