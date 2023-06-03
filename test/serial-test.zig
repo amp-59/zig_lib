@@ -2521,7 +2521,7 @@ pub fn testLargeStructure(address_space: *Allocator.AddressSpace) !void {
         try meta.wrap(serial.serialRead(serial_spec, []const mem_types.AbstractSpecification, &allocator, builtin.absolutePath("zig-out/bin/variety_0")));
     builtin.assertEqualMemory([]const mem_types.AbstractSpecification, spec_sets_b, spec_sets_c);
 }
-const Builder = build.GenericNode(.{});
+const Node = build.GenericNode(.{});
 
 var build_cmd: build.BuildCommand = .{
     .kind = .exe,
@@ -2551,62 +2551,43 @@ var build_cmd: build.BuildCommand = .{
         .path = "zig-cache/env.zig",
     } },
 };
-pub fn testBuildProgram(allocator: *Builder.Allocator, builder: *Builder) !void {
-    const g3 = try builder.addGroup(allocator, "g3");
-    build_cmd.kind = .obj;
-    const t2: *Builder.Target = try g3.addBuildAnonymous(allocator, build_cmd, "test/src/obj0.zig");
-    const t3: *Builder.Target = try g3.addBuildAnonymous(allocator, build_cmd, "test/src/obj1.zig");
-    const t4: *Builder.Target = try g3.addBuildAnonymous(allocator, build_cmd, "test/src/obj2.zig");
-    const t5: *Builder.Target = try g3.addBuildAnonymous(allocator, build_cmd, "test/src/obj3.zig");
-    const t6: *Builder.Target = try g3.addBuildAnonymous(allocator, build_cmd, "test/src/obj4.zig");
-    const t7: *Builder.Target = try g3.addBuildAnonymous(allocator, build_cmd, "test/src/obj5.zig");
-    const t1: *Builder.Target = try g3.addBuildAnonymous(allocator, build_cmd, "test/src/lib0.zig");
-    const t0: *Builder.Target = try g3.addBuildAnonymous(allocator, build_cmd, "test/src/lib1.zig");
-    build_cmd.kind = .exe;
-    const t: *Builder.Target = try g3.addBuild(allocator, build_cmd, "bin", "test/src/main.zig");
-    t1.dependOnObject(allocator, t2);
-    t1.dependOnObject(allocator, t3);
-    t1.dependOnObject(allocator, t4);
-    t0.dependOnObject(allocator, t1);
-    t0.dependOnObject(allocator, t2);
-    t0.dependOnObject(allocator, t3);
-    t.dependOnObject(allocator, t0);
-    t.dependOnObject(allocator, t5);
-    t.dependOnObject(allocator, t6);
-    t.dependOnObject(allocator, t7);
+pub fn testBuildProgram(allocator: *Node.Allocator, builder: *Node) !void {
+    _ = try builder.addBuild(allocator, build_cmd, "obj01234", "test/src/obj0.zig");
+    _ = try builder.addBuild(allocator, build_cmd, "obj12", "test/src/obj1.zig");
+    _ = try builder.addBuild(allocator, build_cmd, "obj234", "test/src/obj2.zig");
+    _ = try builder.addBuild(allocator, build_cmd, "obj3456", "test/src/obj3.zig");
+    _ = try builder.addBuild(allocator, build_cmd, "obj45678", "test/src/obj4.zig");
+    _ = try builder.addBuild(allocator, build_cmd, "obj5678910", "test/src/obj5.zig");
 }
 pub fn testLargeFlatStructureBuilder(args: anytype, vars: anytype, address_space: *AddressSpace) !void {
     var allocator_a: Allocator = try Allocator.init(address_space);
-    var allocator_b: Builder.Allocator = if (Builder.Allocator == mem.SimpleAllocator)
-        Builder.Allocator.init_arena(Builder.AddressSpace.arena(Builder.max_thread_count))
+    var allocator_b: Node.Allocator = if (Node.Allocator == mem.SimpleAllocator)
+        Node.Allocator.init_arena(Node.AddressSpace.arena(Node.max_thread_count))
     else
-        Builder.Allocator.init(address_space, Builder.max_thread_count);
-    defer if (Builder.Allocator != mem.SimpleAllocator) {
-        allocator_b.deinit(address_space, Builder.max_thread_count);
+        Node.Allocator.init(address_space, Node.max_thread_count);
+    defer if (Node.Allocator != mem.SimpleAllocator) {
+        allocator_b.deinit(address_space, Node.max_thread_count);
     };
-    var builder: Builder = try meta.wrap(Builder.init(args, vars));
-    try testBuildProgram(&allocator_b, &builder);
+    var builder: *Node = try meta.wrap(Node.addToplevel(&allocator_b, args, vars));
+    try testBuildProgram(&allocator_b, builder);
     var buf: [4096]u8 = undefined;
-    for (builder.grps[0..builder.grps_len], 0..) |grp, grp_idx| {
+
+    for (builder.nodes[0..builder.nodes_len], 0..) |node, node_idx| {
         const pathname: []const u8 = "zig-out/bin/groups";
-        for (grp.trgs[0..grp.trgs_len], 0..) |trg, trg_idx| {
-            const s = allocator_a.save();
-            defer allocator_a.restore(s);
-            const len: u64 = mach.memcpyMulti(&buf, &.{ pathname, builtin.fmt.ud64(grp_idx).readAll(), "_", builtin.fmt.ud64(trg_idx).readAll() });
-            buf[len] = 0;
-            try serial.serialWrite(.{ .Allocator = Allocator }, build.BuildCommand, &allocator_a, buf[0..len :0], trg.task_cmd.build.*);
-        }
+        const s = allocator_a.save();
+        defer allocator_a.restore(s);
+        const len: u64 = mach.memcpyMulti(&buf, &.{ pathname, builtin.fmt.ud64(node_idx).readAll(), "_", builtin.fmt.ud64(node_idx).readAll() });
+        buf[len] = 0;
+        try serial.serialWrite(.{ .Allocator = Allocator }, build.BuildCommand, &allocator_a, buf[0..len :0], node.task_info.build.*);
     }
-    for (builder.grps[0..builder.grps_len], 0..) |grp, grp_idx| {
+    for (builder.nodes[0..builder.nodes_len], 0..) |node, node_idx| {
         const pathname: []const u8 = "zig-out/bin/groups";
-        for (grp.trgs[0..grp.trgs_len], 0..) |trg, trg_idx| {
-            const s = allocator_a.save();
-            defer allocator_a.restore(s);
-            const len: u64 = mach.memcpyMulti(&buf, &.{ pathname, builtin.fmt.ud64(grp_idx).readAll(), "_", builtin.fmt.ud64(trg_idx).readAll() });
-            buf[len] = 0;
-            const s_build_cmd: build.BuildCommand = try serial.serialRead(.{ .Allocator = Allocator }, build.BuildCommand, &allocator_a, buf[0..len :0]);
-            try builtin.expectEqualMemory(build.BuildCommand, s_build_cmd, trg.task_cmd.build.*);
-        }
+        const s = allocator_a.save();
+        defer allocator_a.restore(s);
+        const len: u64 = mach.memcpyMulti(&buf, &.{ pathname, builtin.fmt.ud64(node_idx).readAll(), "_", builtin.fmt.ud64(node_idx).readAll() });
+        buf[len] = 0;
+        const s_build_cmd: build.BuildCommand = try serial.serialRead(.{ .Allocator = Allocator }, build.BuildCommand, &allocator_a, buf[0..len :0]);
+        try builtin.expectEqualMemory(build.BuildCommand, s_build_cmd, node.task_info.build.*);
     }
 }
 pub fn testLongComplexCase(address_space: *AddressSpace) !void {
