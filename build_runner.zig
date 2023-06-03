@@ -8,6 +8,7 @@ const srg = blk: {
     }
 };
 const mem = srg.mem;
+const sys = srg.sys;
 const proc = srg.proc;
 const meta = srg.meta;
 const spec = srg.spec;
@@ -17,28 +18,29 @@ const builtin = srg.builtin;
 pub usingnamespace root;
 pub usingnamespace proc.start;
 
-const Builder = if (@hasDecl(root, "Builder"))
-    root.Builder
+const Node = if (@hasDecl(root, "Node"))
+    root.Node
 else
-    build.GenericBuilder(spec.builder.default);
+    build.GenericNode(.{});
 
 pub const is_debug: bool = false;
 
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
-    var address_space: Builder.AddressSpace = .{};
-    var thread_space: Builder.ThreadSpace = .{};
-    var allocator: Builder.Allocator = if (Builder.Allocator == mem.SimpleAllocator)
-        Builder.Allocator.init_arena(Builder.AddressSpace.arena(Builder.max_thread_count))
+    var address_space: Node.AddressSpace = .{};
+    var thread_space: Node.ThreadSpace = .{};
+    var allocator: Node.Allocator = if (Node.Allocator == mem.SimpleAllocator)
+        Node.Allocator.init_arena(Node.AddressSpace.arena(Node.max_thread_count))
     else
-        Builder.Allocator.init(&address_space, Builder.max_thread_count);
+        Node.Allocator.init(&address_space, Node.max_thread_count);
     if (args.len < 5) {
         return error.MissingEnvironmentPaths;
     }
-    var builder: Builder = try meta.wrap(Builder.init(args, vars));
+    const toplevel: *Node = Node.addToplevel(&allocator, args, vars);
     try meta.wrap(
-        root.buildMain(&allocator, &builder),
+        root.buildMain(&allocator, toplevel),
     );
+    Node.phase = .exec;
     try meta.wrap(
-        builder.processCommands(&address_space, &thread_space, &allocator),
+        Node.processCommands(&address_space, &thread_space, &allocator, toplevel),
     );
 }
