@@ -299,6 +299,15 @@ fn testLink() !void {
     try file.unlink(unlink_spec, "/run/user/1000/file_test");
     try file.unlink(unlink_spec, "/run/user/1000/file_test_link");
 }
+fn testSymbolicLink() !void {
+    const fd: u64 = try file.create(create_spec, "/run/user/1000/file_test", file.mode.regular);
+    try file.close(close_spec, fd);
+    try file.symbolicLink(link_spec, "/run/user/1000/file_test", "/run/user/1000/file_test_link");
+    try file.unlink(unlink_spec, "/run/user/1000/file_test");
+    try file.unlink(unlink_spec, "/run/user/1000/file_test_link");
+}
+fn testLinkAt() void {}
+fn testSymbolicLinkAt() void {}
 fn testPreClean() !void {
     file.unlink(unlink_spec, "/run/user/1000/file_test1") catch {};
     file.unlink(unlink_spec, "/run/user/1000/file_test2") catch {};
@@ -322,4 +331,5 @@ pub fn main(args: [][*:0]u8) !void {
     try meta.wrap(testClientAndServerIPv6(args));
     try meta.wrap(testCopyFileRange());
     try meta.wrap(testLink());
+    try meta.wrap(testSymbolicLink());
 }
