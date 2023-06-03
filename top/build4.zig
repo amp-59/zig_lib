@@ -165,6 +165,8 @@ pub const BuilderSpec = struct {
         stat: builtin.Logging.SuccessError = .{},
         /// Report `poll` Success and Error.
         poll: builtin.Logging.AttemptSuccessError = .{},
+        /// Report `link` Success and Error.
+        link: builtin.Logging.SuccessError = .{},
         /// Report `unlink` Success and Error.
         unlink: builtin.Logging.SuccessError = .{},
     };
@@ -207,6 +209,8 @@ pub const BuilderSpec = struct {
         sleep: sys.ErrorPolicy = .{},
         /// Error values for `clock` system function.
         clock: sys.ErrorPolicy = .{},
+        /// Error values for `unlink` system function.
+        link: sys.ErrorPolicy = .{},
         /// Error values for `unlink` system function.
         unlink: sys.ErrorPolicy = .{},
     };
@@ -295,6 +299,20 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             format: *types.FormatCommand,
             archive: *types.ArchiveCommand,
         };
+        fn makeRootDirectory(build_root_fd: u64, name: [:0]const u8) void {
+            var st: file.Status = undefined;
+            var rc: u64 = sys.call_noexcept(.mkdirat, u64, .{ build_root_fd, @ptrToInt(name.ptr), @bitCast(u16, file.mode.directory) });
+            if (rc == 0) {
+                return;
+            }
+            rc = sys.call_noexcept(.newfstatat, u64, .{ build_root_fd, @ptrToInt(name.ptr), @ptrToInt(&st), 0 });
+            if (rc != 0) {
+                builtin.proc.exitFault(name, 2);
+            }
+            if (st.mode.kind != .directory) {
+                builtin.proc.exitFault(name, 2);
+            }
+        }
         pub fn addToplevel(allocator: *Allocator, args: [][*:0]u8, vars: [][*:0]u8) *Node {
             @setRuntimeSafety(safety);
             GlobalState.euid = sys.call_noexcept(.geteuid, u16, .{});
@@ -316,6 +334,10 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             if (!thread_space_options.require_map) {
                 mem.map(map(), stack_lb_addr, stack_up_addr -% stack_lb_addr);
             }
+            makeRootDirectory(ret.fds[0], builder_spec.options.names.zig_out_dir);
+            makeRootDirectory(ret.fds[0], zig_out_exe_dir);
+            makeRootDirectory(ret.fds[0], zig_out_lib_dir);
+            makeRootDirectory(ret.fds[0], zig_out_aux_dir);
             writeEnv(ret.paths[0].absolute, ret.paths[1].absolute);
             return ret;
         }
@@ -519,24 +541,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         }
         pub const impl = struct {
             fn install(src_pathname: [:0]const u8, dest_pathname: [:0]const u8) void {
-                var st: file.Status = undefined;
-                @setRuntimeSafety(safety);
-                if (sys.call_noexcept(.newfstatat, u64, .{
-                    0, @ptrToInt(src_pathname.ptr), @ptrToInt(&st), 0,
-                }) != 0) {
-                    return;
-                }
-                const from_fd: u64 = file.open(open(), src_pathname);
-                if (from_fd > 1024) {
-                    return;
-                }
-                defer file.close(close(), from_fd);
-                const to_fd: u64 = file.create(create(), dest_pathname, file.mode.executable);
-                if (to_fd > 1024) {
-                    return;
-                }
-                defer file.close(close(), to_fd);
-                builtin.assertEqual(u64, st.size, file.copy(.{ .errors = .{} }, from_fd, null, to_fd, null, st.size));
+                file.unlink(unlink(), dest_pathname);
+                file.link(link(), src_pathname, dest_pathname);
             }
             fn clientLoop(allocator: *Allocator, out: file.Pipe, ret: []u8, dest_pathname: [:0]const u8) void {
                 @setRuntimeSafety(safety);
@@ -1317,6 +1323,12 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 .errors = builder_spec.errors.create,
                 .logging = builder_spec.logging.create,
                 .options = create_append_options,
+            };
+        }
+        fn link() file.LinkSpec {
+            return .{
+                .errors = builder_spec.errors.link,
+                .logging = builder_spec.logging.link,
             };
         }
         fn unlink() file.UnlinkSpec {
