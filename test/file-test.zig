@@ -19,55 +19,30 @@ pub const logging_default: builtin.Logging.Default = spec.logging.default.verbos
 
 const default_errors: bool = !@hasDecl(@import("root"), "errors");
 
-const getcwd_spec: file.GetWorkingDirectorySpec = .{
-    .errors = .{ .throw = sys.getcwd_errors },
-};
-const make_dir_spec: file.MakeDirSpec = .{
-    .errors = .{ .throw = sys.mkdir_errors },
-};
-const make_node_spec: file.MakeNodeSpec = .{
-    .errors = .{ .throw = sys.mknod_errors },
-};
-const seek_spec: file.SeekSpec = .{
-    .errors = .{ .throw = sys.seek_errors },
-};
+const getcwd_spec: file.GetWorkingDirectorySpec = .{};
+const make_dir_spec: file.MakeDirSpec = .{};
+const make_node_spec: file.MakeNodeSpec = .{};
+const seek_spec: file.SeekSpec = .{};
 const create_spec: file.CreateSpec = .{
     .options = .{ .read = true, .write = true, .append = false },
-    .errors = .{ .throw = sys.open_errors },
 };
-const copy_spec: file.CopySpec = .{
-    .errors = .{ .throw = sys.copy_file_range_errors },
-};
+const link_spec: file.LinkSpec = .{};
+const copy_spec: file.CopySpec = .{};
 const open_spec: file.OpenSpec = .{
     .options = .{ .write = true, .append = true },
-    .errors = .{ .throw = sys.open_errors },
 };
 const open_dir_spec: file.OpenSpec = .{
     .options = .{ .read = true, .directory = true },
-    .errors = .{ .throw = sys.open_errors },
 };
-const remove_dir_spec: file.RemoveDirSpec = .{
-    .errors = .{ .throw = sys.rmdir_errors },
-};
-const unlink_spec: file.UnlinkSpec = .{
-    .errors = .{ .throw = sys.unlink_errors },
-};
-const close_spec: file.CloseSpec = .{
-    .errors = .{ .throw = sys.close_errors },
-};
-const stat_spec: file.StatusSpec = .{
-    .errors = .{ .throw = sys.stat_errors },
-};
+const remove_dir_spec: file.RemoveDirSpec = .{};
+const unlink_spec: file.UnlinkSpec = .{};
+const close_spec: file.CloseSpec = .{};
+const stat_spec: file.StatusSpec = .{};
 const statx_spec: file.StatusExtendedSpec = .{
-    .errors = .{ .throw = sys.stat_errors },
     .options = .{ .fields = .{} },
 };
-const ftruncate_spec: file.TruncateSpec = .{
-    .errors = .{ .throw = sys.truncate_errors },
-};
-const truncate_spec: file.TruncateSpec = .{
-    .errors = .{ .throw = sys.truncate_errors },
-};
+const ftruncate_spec: file.TruncateSpec = .{};
+const truncate_spec: file.TruncateSpec = .{};
 const make_path_spec: file.MakePathSpec = .{
     .errors = .{},
     .logging = .{},
@@ -317,6 +292,13 @@ fn testStandardChannel() !void {
         try file.write(.{}, 1, i_array.readAll());
     }
 }
+fn testLink() !void {
+    const fd: u64 = try file.create(create_spec, "/run/user/1000/file_test", file.mode.regular);
+    try file.close(close_spec, fd);
+    try file.link(link_spec, "/run/user/1000/file_test", "/run/user/1000/file_test_link");
+    try file.unlink(unlink_spec, "/run/user/1000/file_test");
+    try file.unlink(unlink_spec, "/run/user/1000/file_test_link");
+}
 fn testPreClean() !void {
     file.unlink(unlink_spec, "/run/user/1000/file_test1") catch {};
     file.unlink(unlink_spec, "/run/user/1000/file_test2") catch {};
@@ -324,6 +306,7 @@ fn testPreClean() !void {
     file.removeDir(remove_dir_spec, "/run/user/1000/file_test/file_test") catch {};
     file.removeDir(remove_dir_spec, "/run/user/1000/file_test") catch {};
 }
+
 pub fn main(args: [][*:0]u8) !void {
     try meta.wrap(testRecords());
     try meta.wrap(testPreClean());
@@ -338,4 +321,5 @@ pub fn main(args: [][*:0]u8) !void {
     try meta.wrap(testClientAndServerIPv4(args));
     try meta.wrap(testClientAndServerIPv6(args));
     try meta.wrap(testCopyFileRange());
+    try meta.wrap(testLink());
 }
