@@ -15,6 +15,75 @@ pub const runtime_assertions: bool = true;
 const Node = build.GenericNode(.{
     .options = .{ .max_cmdline_len = null },
 });
+
+fn testComplexStructureBuildMain(allocator: *Node.Allocator, builder: *Node) void {
+    const deps: []const build.ModuleDependency = &.{
+        .{ .name = "env" }, .{ .name = "zig_lib" }, .{ .name = "@build" },
+    };
+    const mods: []const build.Module = &.{
+        .{ .name = "env", .path = "zig-cache/env.zig" },
+        .{ .name = "zig_lib", .path = "zig_lib.zig" },
+        .{ .name = "@build", .path = "./build.zig" },
+    };
+    var build_cmd: build.BuildCommand = .{
+        .kind = .exe,
+        .mode = .ReleaseSmall,
+        .dependencies = deps[0..1],
+        .modules = mods[0..1],
+        .image_base = 0x10000,
+        .strip = true,
+        .compiler_rt = false,
+        .reference_trace = true,
+        .single_threaded = true,
+        .function_sections = true,
+        .gc_sections = true,
+        .omit_frame_pointer = false,
+    };
+    var archive_cmd = build.ArchiveCommand{
+        .operation = .r,
+        .create = true,
+    };
+    var format_cmd = build.FormatCommand{
+        .ast_check = true,
+    };
+    const objsa: *Node = try builder.addGroup(allocator, "objsA");
+    const objsb: *Node = try objsa.addGroup(allocator, "objsB");
+    const libs: *Node = try builder.addGroup(allocator, "libs");
+    const bin: *Node = try builder.addBuild(allocator, build_cmd, "bin", "examples/hello.zig");
+    build_cmd.kind = .obj;
+    const obj0: *Node = try builder.addBuild(allocator, build_cmd, "obj01234", "test/src/obj0.zig");
+    const obj1: *Node = try objsa.addBuild(allocator, build_cmd, "obj12", "test/src/obj1.zig");
+    const obj2: *Node = try objsa.addBuild(allocator, build_cmd, "obj234", "test/src/obj2.zig");
+    const obj3: *Node = try objsb.addBuild(allocator, build_cmd, "obj3456", "test/src/obj3.zig");
+    const obj4: *Node = try objsb.addBuild(allocator, build_cmd, "obj45678", "test/src/obj4.zig");
+    const obj5: *Node = try objsb.addBuild(allocator, build_cmd, "obj5678910", "test/src/obj5.zig");
+    build_cmd.kind = .lib;
+    const dylib: *Node = try libs.addBuild(allocator, build_cmd, "dylib0", "test/src/lib0.zig");
+    const lib: *Node = try builder.addArchive(allocator, archive_cmd, "lib1", &.{ obj2, obj3, obj4 });
+    const fmt: *Node = try builder.addFormat(allocator, format_cmd, "fmt0", "test/src");
+    for ([_]*Node{ obj0, obj1, obj2, obj3, obj4, obj5 }) |obj| {
+        obj.hidden = true;
+    }
+    libs.dependOn(allocator, dylib, null);
+    libs.dependOn(allocator, lib, null);
+    dylib.dependOnObject(allocator, obj1);
+    dylib.dependOnObject(allocator, obj2);
+    dylib.dependOnObject(allocator, obj3);
+    bin.dependOn(allocator, fmt, .format);
+    bin.dependOnObject(allocator, obj0);
+    bin.dependOnObject(allocator, obj5);
+    bin.dependOnObject(allocator, dylib);
+    obj0.addDescr("Zeroth object file");
+    obj1.addDescr("First object file");
+    obj2.addDescr("Second object file");
+    obj3.addDescr("Third object file");
+    obj4.addDescr("Fourth object file");
+    obj5.addDescr("Fifth object file");
+    lib.addDescr("Zeroth archive");
+    dylib.addDescr("Zeroth shared object file");
+    bin.addDescr("Binary executable");
+    fmt.addDescr("Reformat source directory into canonical form");
+}
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     var address_space: Node.AddressSpace = .{};
     var thread_space: Node.ThreadSpace = .{};
