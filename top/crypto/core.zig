@@ -15,11 +15,11 @@ pub fn GenericKeccakPState(comptime f: comptime_int, comptime capacity: comptime
         buf: [rate]u8 = undefined,
         st: [25]Word = [_]Word{0} ** 25,
         const KeccakP = @This();
-        pub const Word = @Type(.{ .Int = .{ .signedness = .unsigned, .bits = word_bit_size } });
-        pub const word_size: u16 = @sizeOf(Word);
-        pub const word_bit_size: u16 = f / 25;
-        pub const blk_len: u16 = f / 8;
-        pub const rate: usize = blk_len -% (capacity / 8);
+        pub const Word = @Type(.{ .Int = .{ .signedness = .unsigned, .bits = f / 25 } });
+        pub const word_size: comptime_int = @sizeOf(Word);
+        pub const word_count: comptime_int = 25;
+        pub const blk_len: comptime_int = f / 8;
+        pub const rate: comptime_int = blk_len -% (capacity / 8);
         pub const max_rounds: u8 = 12 +% 2 *% math.log2(u32, f / 25);
         const mask: u64 = ~@as(Word, 0);
         const rounds: [24]u64 = .{
@@ -43,8 +43,8 @@ pub fn GenericKeccakPState(comptime f: comptime_int, comptime capacity: comptime
         };
         pub fn init(bytes: [blk_len]u8) KeccakP {
             var ret: KeccakP = undefined;
-            for (&ret.st, 0..) |*r, i| {
-                r.* = mem.readIntLittle(Word, bytes[word_size *% i ..][0..word_size]);
+            for (&ret.st, 0..) |*word, idx| {
+                word.* = mem.readIntLittle(Word, bytes[word_size * idx ..][0..word_size]);
             }
             return ret;
         }
@@ -52,8 +52,8 @@ pub fn GenericKeccakPState(comptime f: comptime_int, comptime capacity: comptime
             return &keccak_p.st;
         }
         pub fn endianSwap(keccak_p: *KeccakP) void {
-            for (&keccak_p.st) |*w| {
-                w.* = mem.littleToNative(Word, w.*);
+            for (&keccak_p.st) |*word| {
+                word.* = mem.littleToNative(Word, word.*);
             }
         }
         pub fn setBytes(keccak_p: *KeccakP, bytes: []const u8) void {
@@ -62,52 +62,51 @@ pub fn GenericKeccakPState(comptime f: comptime_int, comptime capacity: comptime
                 keccak_p.st[off / word_size] = mem.readIntLittle(Word, bytes[off..][0..word_size]);
             }
             if (off < bytes.len) {
-                var padded: [word_size]u8 = .{0} ** word_size;
+                var padded: [word_size]u8 = [1]u8{0} ** word_size;
                 mach.memcpy(&padded, bytes[off..], bytes.len -% off);
                 keccak_p.st[off / word_size] = mem.readIntLittle(Word, padded[0..]);
             }
         }
         pub fn clear(keccak_p: *KeccakP, from: usize, to: usize) void {
-            @memset(keccak_p.st[from / word_size .. (to +% word_size -% 1) / word_size], 0);
+            mach.memset(@ptrCast([*]u8, &keccak_p.st) + from, 0, to -% from);
         }
         pub fn secureZero(keccak_p: *KeccakP) void {
-            @memset(@as([]volatile Word, &keccak_p.st), 0);
+            mach.memset(&keccak_p.st, 0, word_count *% word_size);
         }
         fn round(keccak_p: *KeccakP, rc: Word) void {
-            const st: [25]Word = &keccak_p.st;
-            var t: [5]Word = .{0} ** 5;
-            for (0..5) |i| {
-                for (0..5) |j| {
-                    t[i] ^= st[j *% 5 +% i];
+            const st: *[25]Word = &keccak_p.st;
+            var theta: [5]Word = .{0} ** 5;
+            for (0..5) |l_idx| {
+                for (0..5) |r_idx| {
+                    theta[l_idx] ^= st[r_idx * 5 +% l_idx];
                 }
             }
-            for (0..5) |i| {
-                for (0..5) |j| {
-                    st[j *% 5 +% i] ^= t[(i +% 4) % 5] ^ math.rotl(Word, t[(i +% 1) % 5], 1);
+            for (0..5) |l_idx| {
+                for (0..5) |r_idx| {
+                    st[r_idx * 5 +% l_idx] ^= theta[(l_idx +% 4) % 5] ^ math.rotl(Word, theta[(l_idx +% 1) % 5], 1);
                 }
             }
             var last: Word = st[1];
             var rotc: usize = 0;
-            for (0..24) |idx| {
-                const x: u8 = pi[idx];
+            for (0..24) |l_idx| {
+                const x: u8 = pi[l_idx];
                 const tmp: Word = st[x];
-                rotc = (rotc +% idx +% 1) % @bitSizeOf(Word);
+                rotc = (rotc +% l_idx +% 1) % @bitSizeOf(Word);
                 st[x] = math.rotl(Word, last, rotc);
                 last = tmp;
             }
             for (0..5) |l_idx| {
-                const s_idx: usize = l_idx *% 5;
                 for (0..5) |r_idx| {
-                    t[r_idx] = st[s_idx +% r_idx];
+                    theta[r_idx] = st[l_idx * 5 +% r_idx];
                 }
                 for (0..5) |r_idx| {
-                    st[s_idx +% r_idx] = t[r_idx] ^ (~t[(r_idx +% 1) % 5] & t[(r_idx +% 2) % 5]);
+                    st[l_idx * 5 +% r_idx] = theta[r_idx] ^ (~theta[(r_idx +% 1) % 5] & theta[(r_idx +% 2) % 5]);
                 }
             }
             st[0] ^= rc;
         }
         /// Apply a (possibly) reduced-round permutation to the state.
-        pub fn permuteR(keccak_p: *KeccakP, reduced_rounds: u8) void {
+        pub fn permuteR(keccak_p: *KeccakP, comptime reduced_rounds: u5) void {
             var idx: usize = max_rounds -% reduced_rounds;
             while (idx < max_rounds -% (rounds.len % 3)) : (idx +%= 3) {
                 keccak_p.round(rounds[idx]);
@@ -131,37 +130,37 @@ pub fn GenericKeccakPState(comptime f: comptime_int, comptime capacity: comptime
                 keccak_p.st[idx / word_size] ^= mem.readIntLittle(Word, bytes[idx..][0..word_size]);
             }
             if (idx < bytes.len) {
-                var padded: [word_size]u8 = .{0} ** word_size;
-                mach.memcpy(&padded, bytes.ptr, bytes.len);
+                var padded: [word_size]u8 = [1]u8{0} ** word_size;
+                mach.memcpy(&padded, bytes[idx..].ptr, bytes.len -% idx);
                 keccak_p.st[idx / word_size] ^= mem.readIntLittle(Word, padded[0..]);
             }
         }
-        pub fn extractBytes(keccak_p: *KeccakP, out: []u8) void {
+        pub fn extractBytes(keccak_p: *KeccakP, dest: []u8) void {
             var idx: usize = 0;
-            while (idx +% word_size <= out.len) : (idx +%= word_size) {
-                mem.writeIntLittle(Word, out[idx..][0..word_size], keccak_p.st[idx / word_size]);
+            while (idx +% word_size <= dest.len) : (idx +%= word_size) {
+                mem.writeIntLittle(Word, dest[idx..][0..word_size], keccak_p.st[idx / word_size]);
             }
-            if (idx < out.len) {
-                var padded: [word_size]u8 = .{0} ** word_size;
+            if (idx < dest.len) {
+                var padded: [word_size]u8 = [1]u8{0} ** word_size;
                 mem.writeIntLittle(Word, padded[0..], keccak_p.st[idx / word_size]);
-                mach.memcpy(out[idx..].ptr, &padded, out.len -% idx);
+                mach.memcpy(dest[idx..].ptr, &padded, dest.len -% idx);
             }
         }
         pub fn absorb(keccak_p: *KeccakP, src: []const u8) void {
             var bytes: []const u8 = src;
             if (keccak_p.offset > 0) {
-                const left: usize = @min(rate -% keccak_p.offset, bytes.len);
-                mach.memcpy(keccak_p.buf[keccak_p.offset..].ptr, bytes.ptr, left);
-                keccak_p.offset +%= left;
+                const off: usize = @min(rate -% keccak_p.offset, bytes.len);
+                mach.memcpy(keccak_p.buf[keccak_p.offset..].ptr, bytes.ptr, off);
+                keccak_p.offset +%= off;
                 if (keccak_p.offset == rate) {
                     keccak_p.offset = 0;
                     keccak_p.addBytes(keccak_p.buf[0..]);
                     keccak_p.permuteR(permute_rounds);
                 }
-                if (left == bytes.len) {
+                if (off == bytes.len) {
                     return;
                 }
-                bytes = bytes[left..];
+                bytes = bytes[off..];
             }
             while (bytes.len >= rate) {
                 keccak_p.addBytes(bytes[0..rate]);
@@ -182,10 +181,11 @@ pub fn GenericKeccakPState(comptime f: comptime_int, comptime capacity: comptime
             keccak_p.offset = 0;
         }
         /// Squeeze a slice of bytes from the sponge.
-        pub fn squeeze(keccak_p: *KeccakP, out: []u8) void {
+        pub fn squeeze(keccak_p: *KeccakP, dest: []u8) void {
             var idx: usize = 0;
-            while (idx < out.len) : (idx +%= rate) {
-                keccak_p.extractBytes(out[idx..][0..@min(rate, out.len -% idx)]);
+            while (idx < dest.len) : (idx +%= rate) {
+                const off: usize = @min(rate, dest.len -% idx);
+                keccak_p.extractBytes(dest[idx..][0..off]);
                 keccak_p.permuteR(permute_rounds);
             }
         }
@@ -223,8 +223,8 @@ pub const Block = struct {
     pub fn encrypt(block: Block, round_key: Block) Block {
         return Block{
             .repr = asm (
-                \\ vaesenc %[rk], %[in], %[out]
-                : [out] "=x" (-> BlockVec),
+                \\ vaesenc %[rk], %[in], %[dest]
+                : [dest] "=x" (-> BlockVec),
                 : [in] "x" (block.repr),
                   [rk] "x" (round_key.repr),
             ),
@@ -234,8 +234,8 @@ pub const Block = struct {
     pub fn encryptLast(block: Block, round_key: Block) Block {
         return Block{
             .repr = asm (
-                \\ vaesenclast %[rk], %[in], %[out]
-                : [out] "=x" (-> BlockVec),
+                \\ vaesenclast %[rk], %[in], %[dest]
+                : [dest] "=x" (-> BlockVec),
                 : [in] "x" (block.repr),
                   [rk] "x" (round_key.repr),
             ),
@@ -245,8 +245,8 @@ pub const Block = struct {
     pub fn decrypt(block: Block, inv_round_key: Block) Block {
         return Block{
             .repr = asm (
-                \\ vaesdec %[rk], %[in], %[out]
-                : [out] "=x" (-> BlockVec),
+                \\ vaesdec %[rk], %[in], %[dest]
+                : [dest] "=x" (-> BlockVec),
                 : [in] "x" (block.repr),
                   [rk] "x" (inv_round_key.repr),
             ),
@@ -256,8 +256,8 @@ pub const Block = struct {
     pub fn decryptLast(block: Block, inv_round_key: Block) Block {
         return Block{
             .repr = asm (
-                \\ vaesdeclast %[rk], %[in], %[out]
-                : [out] "=x" (-> BlockVec),
+                \\ vaesdeclast %[rk], %[in], %[dest]
+                : [dest] "=x" (-> BlockVec),
                 : [in] "x" (block.repr),
                   [rk] "x" (inv_round_key.repr),
             ),
@@ -290,51 +290,51 @@ pub const Block = struct {
         };
         pub fn encryptParallel(comptime count: usize, blocks: [count]Block, round_keys: [count]Block) [count]Block {
             var idx: usize = 0;
-            var out: [count]Block = undefined;
+            var dest: [count]Block = undefined;
             while (idx != count) : (idx +%= 1) {
-                out[idx] = blocks[idx].encrypt(round_keys[idx]);
+                dest[idx] = blocks[idx].encrypt(round_keys[idx]);
             }
-            return out;
+            return dest;
         }
         pub fn decryptParallel(comptime count: usize, blocks: [count]Block, round_keys: [count]Block) [count]Block {
             var idx: usize = 0;
-            var out: [count]Block = undefined;
+            var dest: [count]Block = undefined;
             while (idx != count) : (idx +%= 1) {
-                out[idx] = blocks[idx].decrypt(round_keys[idx]);
+                dest[idx] = blocks[idx].decrypt(round_keys[idx]);
             }
-            return out;
+            return dest;
         }
         pub fn encryptWide(comptime count: usize, blocks: [count]Block, round_key: Block) [count]Block {
             var idx: usize = 0;
-            var out: [count]Block = undefined;
+            var dest: [count]Block = undefined;
             while (idx != count) : (idx +%= 1) {
-                out[idx] = blocks[idx].encrypt(round_key);
+                dest[idx] = blocks[idx].encrypt(round_key);
             }
-            return out;
+            return dest;
         }
         pub fn decryptWide(comptime count: usize, blocks: [count]Block, round_key: Block) [count]Block {
             var idx: usize = 0;
-            var out: [count]Block = undefined;
+            var dest: [count]Block = undefined;
             while (idx != count) : (idx +%= 1) {
-                out[idx] = blocks[idx].decrypt(round_key);
+                dest[idx] = blocks[idx].decrypt(round_key);
             }
-            return out;
+            return dest;
         }
         pub fn encryptLastWide(comptime count: usize, blocks: [count]Block, round_key: Block) [count]Block {
             var idx: usize = 0;
-            var out: [count]Block = undefined;
+            var dest: [count]Block = undefined;
             while (idx != count) : (idx +%= 1) {
-                out[idx] = blocks[idx].encryptLast(round_key);
+                dest[idx] = blocks[idx].encryptLast(round_key);
             }
-            return out;
+            return dest;
         }
         pub fn decryptLastWide(comptime count: usize, blocks: [count]Block, round_key: Block) [count]Block {
             var idx: usize = 0;
-            var out: [count]Block = undefined;
+            var dest: [count]Block = undefined;
             while (idx != count) : (idx +%= 1) {
-                out[idx] = blocks[idx].decryptLast(round_key);
+                dest[idx] = blocks[idx].decryptLast(round_key);
             }
-            return out;
+            return dest;
         }
     };
 };
@@ -365,27 +365,25 @@ fn GenericKeySchedule(comptime Aes: type) type {
         }
         fn expand128(t1: *Block) KeySchedule {
             var round_keys: [11]Block = undefined;
-            const rcs: [10]u8 = .{ 1, 2, 4, 8, 16, 32, 64, 128, 27, 54 };
-            inline for (rcs, 0..) |rc, round| {
-                round_keys[round] = t1.*;
+            inline for (.{ 1, 2, 4, 8, 16, 32, 64, 128, 27, 54 }, 0..) |rc, idx| {
+                round_keys[idx] = t1.*;
                 t1.repr = drc(false, rc, t1.repr, t1.repr);
             }
-            round_keys[rcs.len] = t1.*;
+            round_keys[10] = t1.*;
             return .{ .round_keys = round_keys };
         }
         fn expand256(t1: *Block, t2: *Block) KeySchedule {
             var round_keys: [15]Block = undefined;
-            const rcs: [6]u8 = .{ 1, 2, 4, 8, 16, 32 };
             round_keys[0] = t1.*;
-            inline for (rcs, 0..) |rc, round| {
-                round_keys[round * 2 + 1] = t2.*;
+            inline for (.{ 1, 2, 4, 8, 16, 32 }, 0..) |rc, idx| {
+                round_keys[idx * 2 + 1] = t2.*;
                 t1.repr = drc(false, rc, t2.repr, t1.repr);
-                round_keys[round * 2 + 2] = t1.*;
+                round_keys[idx * 2 + 2] = t1.*;
                 t2.repr = drc(true, rc, t1.repr, t2.repr);
             }
-            round_keys[rcs.len * 2 + 1] = t2.*;
+            round_keys[13] = t2.*;
             t1.repr = drc(false, 64, t2.repr, t1.repr);
-            round_keys[rcs.len * 2 + 2] = t1.*;
+            round_keys[14] = t1.*;
             return .{ .round_keys = round_keys };
         }
         /// Invert the key schedule.
@@ -408,6 +406,7 @@ fn GenericKeySchedule(comptime Aes: type) type {
         }
     };
 }
+
 // The state is represented as 5 64-bit words.
 //
 // The NIST submission (v1.2) serializes these words as big-endian,
@@ -491,16 +490,16 @@ pub fn GenericAsconState(comptime endian: builtin.Endian) type {
             }
         }
         /// Extract the first bytes of the state.
-        pub fn extractBytes(state: *AsconState, out: []u8) void {
+        pub fn extractBytes(state: *AsconState, dest: []u8) void {
             @setRuntimeSafety(builtin.is_safe);
             var idx: usize = 0;
-            while (idx +% 8 <= out.len) : (idx +%= 8) {
-                mem.writeInt(u64, out[idx..][0..8], state.st[idx / 8], endian);
+            while (idx +% 8 <= dest.len) : (idx +%= 8) {
+                mem.writeInt(u64, dest[idx..][0..8], state.st[idx / 8], endian);
             }
-            if (idx < out.len) {
+            if (idx < dest.len) {
                 var padded: [8]u8 = .{0} ** 8;
                 mem.writeInt(u64, padded[0..], state.st[idx / 8], endian);
-                mach.memcpy(out[idx..].ptr, &padded, out.len -% idx);
+                mach.memcpy(dest[idx..].ptr, &padded, dest.len -% idx);
             }
         }
         /// Set the words storing the bytes of a given range to zero.
@@ -708,13 +707,13 @@ pub const Aes128 = struct {
     pub const key_bits: comptime_int = 128;
     pub const rounds: comptime_int = ((key_bits - 64) / 32 + 8);
     pub const block = Block;
-    /// Create a new context for encryption.
-    pub fn initEnc(key: [key_bits / 8]u8) GenericAesEncryptCtx(Aes128) {
-        return GenericAesEncryptCtx(Aes128).init(key);
+    const Aes128EncryptCtx = GenericAesEncryptCtx(Aes128);
+    const Aes128DecryptCtx = GenericAesDecryptCtx(Aes128);
+    pub fn initEnc(key: [key_bits / 8]u8) Aes128EncryptCtx {
+        return Aes128EncryptCtx.init(key);
     }
-    /// Create a new context for decryption.
-    pub fn initDec(key: [key_bits / 8]u8) GenericAesDecryptCtx(Aes128) {
-        return GenericAesDecryptCtx(Aes128).init(key);
+    pub fn initDec(key: [key_bits / 8]u8) Aes128DecryptCtx {
+        return Aes128DecryptCtx.init(key);
     }
 };
 /// AES-256 with the standard key schedule.
@@ -722,13 +721,13 @@ pub const Aes256 = struct {
     pub const key_bits: comptime_int = 256;
     pub const rounds: comptime_int = ((key_bits - 64) / 32 + 8);
     pub const block = Block;
-    /// Create a new context for encryption.
-    pub fn initEnc(key: [key_bits / 8]u8) GenericAesEncryptCtx(Aes256) {
-        return GenericAesEncryptCtx(Aes256).init(key);
+    const Aes256EncryptCtx = GenericAesEncryptCtx(Aes256);
+    const Aes256DecryptCtx = GenericAesDecryptCtx(Aes256);
+    pub fn initEnc(key: [key_bits / 8]u8) Aes256EncryptCtx {
+        return Aes256EncryptCtx.init(key);
     }
-    /// Create a new context for decryption.
-    pub fn initDec(key: [key_bits / 8]u8) GenericAesDecryptCtx(Aes256) {
-        return GenericAesDecryptCtx(Aes256).init(key);
+    pub fn initDec(key: [key_bits / 8]u8) Aes256DecryptCtx {
+        return Aes256DecryptCtx.init(key);
     }
 };
 pub fn ctr(comptime BlockCipher: anytype, block_cipher: BlockCipher, dest: []u8, src: []const u8, iv: [BlockCipher.blk_len]u8, endian: builtin.Endian) void {

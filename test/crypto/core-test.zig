@@ -113,14 +113,12 @@ fn testExpand256BitKey() !void {
         "54fb808b9c137949cab22ff547ba186c", "6c3d632985d1fbd9e3e36578701be0f3", "4a7459f9c8e8f9c256a156bc8d083799",
         "42107758e9ec98f066329ea193f8858b", "8ec6bff6829ca03b9e49af7edba96125", "603deb1015ca71be2b73aef0857d7781",
     };
-    const enc = crypto.core.Aes256.initEnc(key);
-    const dec = crypto.core.Aes256.initDec(key);
     var exp: [16]u8 = undefined;
-    for (enc.key_schedule.round_keys, 0..) |round_key, i| {
+    for (crypto.core.Aes256.initEnc(key).key_schedule.round_keys, 0..) |round_key, i| {
         _ = try meta.wrap(fmt.hexToBytes(&exp, exp_enc[i]));
         try testing.expectEqualMany(u8, &exp, &round_key.toBytes());
     }
-    for (dec.key_schedule.round_keys, 0..) |round_key, i| {
+    for (crypto.core.Aes256.initDec(key).key_schedule.round_keys, 0..) |round_key, i| {
         _ = try meta.wrap(fmt.hexToBytes(&exp, exp_dec[i]));
         try testing.expectEqualMany(u8, &exp, &round_key.toBytes());
     }
