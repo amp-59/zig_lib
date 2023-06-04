@@ -5,7 +5,7 @@ const build = srg.build;
 const builtin = srg.builtin;
 
 pub const Node = build.GenericNode(.{});
-pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
+pub const logging_override: builtin.Logging.Override = spec.logging.override.verbose;
 
 pub const runtime_assertions: bool = false;
 pub const message_style: [:0]const u8 = "\x1b[2m";
@@ -64,6 +64,7 @@ fn memgen(allocator: *Node.Allocator, node: *Node) void {
     mg_ctn_impls.addDescr("Generate container implementations");
     mg_ptr.addDescr("Reformat generated generic pointers into canonical form");
     mg_ctn.addDescr("Reformat generated generic containers into canonical form");
+    node.task = .format;
 }
 fn examples(allocator: *Node.Allocator, node: *Node) void {
     const readdir: *Node = try node.addBuild(allocator, build_cmd, "readdir", "examples/dir_iterator.zig");
@@ -184,6 +185,7 @@ fn buildgen(allocator: *Node.Allocator, node: *Node) void {
     bg_tasks.dependOn(allocator, bg_tasks_impls, .run);
     bg_tasks_impls.addDescr("Generate builder command line data structures");
     bg_tasks.addDescr("Reformat generated builder command line data structures into canonical form");
+    node.task = .format;
 }
 fn targetgen(allocator: *Node.Allocator, node: *Node) void {
     const tg_cpu_impl: *Node = try node.addBuild(allocator, build_cmd, "tg_feat_impls", "top/target/gen/feat_impls.zig");
