@@ -1,32 +1,14 @@
 const mode = @import("builtin").mode;
+const common = @import("../common.zig");
 pub const MontgomeryDomainFieldElement = [6]u64;
 pub const NonMontgomeryDomainFieldElement = [6]u64;
-const safety: bool = false;
-fn addcarryxU64(out1: *u64, out2: *u8, arg1: u8, arg2: u64, arg3: u64) void {
-    @setRuntimeSafety(safety);
-    const ov1 = @addWithOverflow(arg2, arg3);
-    const ov2 = @addWithOverflow(ov1[0], arg1);
-    out1.* = ov2[0];
-    out2.* = ov1[1] | ov2[1];
-}
-fn subborrowxU64(out1: *u64, out2: *u8, arg1: u8, arg2: u64, arg3: u64) void {
-    @setRuntimeSafety(safety);
-    const ov1 = @subWithOverflow(arg2, arg3);
-    const ov2 = @subWithOverflow(ov1[0], arg1);
-    out1.* = ov2[0];
-    out2.* = ov1[1] | ov2[1];
-}
-fn mulxU64(out1: *u64, out2: *u64, arg1: u64, arg2: u64) void {
-    @setRuntimeSafety(safety);
-    const x = @as(u128, arg1) * @as(u128, arg2);
-    out1.* = @truncate(u64, x);
-    out2.* = @truncate(u64, x >> 64);
-}
-fn cmovznzU64(out1: *u64, arg1: u8, arg2: u64, arg3: u64) void {
-    @setRuntimeSafety(safety);
-    const mask = 0 -% @as(u64, arg1);
-    out1.* = (mask & arg3) | ((~mask) & arg2);
-}
+
+const safety = common.arith.safety;
+const mulxU64 = common.arith.mulxU64;
+const addcarryxU64 = common.arith.addcarryxU64;
+const subborrowxU64 = common.arith.subborrowxU64;
+const cmovznzU64 = common.arith.cmovznzU64;
+
 pub fn mul(out1: *MontgomeryDomainFieldElement, arg1: MontgomeryDomainFieldElement, arg2: MontgomeryDomainFieldElement) void {
     @setRuntimeSafety(safety);
     const x1 = (arg1[1]);

@@ -2,13 +2,11 @@ const mode = @import("builtin").mode;
 const common = @import("../common.zig");
 pub const MontgomeryDomainFieldElement = [4]u64;
 pub const NonMontgomeryDomainFieldElement = [4]u64;
-
 const safety = common.arith.safety;
 const mulxU64 = common.arith.mulxU64;
 const addcarryxU64 = common.arith.addcarryxU64;
 const subborrowxU64 = common.arith.subborrowxU64;
 const cmovznzU64 = common.arith.cmovznzU64;
-
 pub fn mul(out1: *MontgomeryDomainFieldElement, arg1: MontgomeryDomainFieldElement, arg2: MontgomeryDomainFieldElement) void {
     @setRuntimeSafety(safety);
     const x1 = (arg1[1]);
