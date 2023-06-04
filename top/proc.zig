@@ -694,7 +694,7 @@ pub const exception = struct {
         var buf: [8192]u8 = undefined;
         var pathname: [4096]u8 = undefined;
         const link_s: []const u8 = pathname[0..builtin.debug.name(&pathname)];
-        const len: u64 = mach.memcpyMulti(&buf, &.{ builtin.debug.about_fault_p0_s, symbol, " at address ", fault_addr_s, ", ", link_s, "\n" });
+        const len: u64 = mach.memcpyMulti(&buf, &.{ symbol, " at address ", fault_addr_s, ", ", link_s });
         @panic(buf[0..len]);
     }
     pub fn restoreRunTime() callconv(.Naked) void {
