@@ -10,15 +10,6 @@ pub const Sha3_384 = GenericKeccak(1600, 384, 0x06, 24);
 pub const Sha3_512 = GenericKeccak(1600, 512, 0x06, 24);
 pub const Keccak256 = GenericKeccak(1600, 256, 0x01, 24);
 pub const Keccak512 = GenericKeccak(1600, 512, 0x01, 24);
-pub const Blake2s128 = GenericBlake2s(128);
-pub const Blake2s160 = GenericBlake2s(160);
-pub const Blake2s224 = GenericBlake2s(224);
-pub const Blake2s256 = GenericBlake2s(256);
-pub const Blake2b128 = GenericBlake2b(128);
-pub const Blake2b160 = GenericBlake2b(160);
-pub const Blake2b256 = GenericBlake2b(256);
-pub const Blake2b384 = GenericBlake2b(384);
-pub const Blake2b512 = GenericBlake2b(512);
 pub fn GenericKeccak(
     comptime number: comptime_int,
     comptime output_bits: comptime_int,
@@ -49,6 +40,39 @@ pub fn GenericKeccak(
         }
     };
 }
+pub const Sha256oSha256 = GenericComposition(Sha256, Sha256);
+pub const Sha384oSha384 = GenericComposition(Sha384, Sha384);
+pub const Sha512oSha512 = GenericComposition(Sha512, Sha512);
+pub fn GenericComposition(comptime H1: type, comptime H2: type) type {
+    return struct {
+        H1: H1,
+        H2: H2,
+        const Composition = @This();
+        pub const len: comptime_int = H1.len;
+        pub const blk_len: comptime_int = H1.blk_len;
+        pub fn init() Composition {
+            return .{ .H1 = H1.init(), .H2 = H2.init() };
+        }
+        pub fn hash(bytes: []const u8, dest: []u8) void {
+            var comp: Composition = Composition.init();
+            comp.update(bytes);
+            comp.final(dest);
+        }
+        pub fn update(comp: *Composition, bytes: []const u8) void {
+            comp.H2.update(bytes);
+        }
+        pub fn final(comp: *Composition, dest: []u8) void {
+            var H2_digest: [H2.len]u8 = undefined;
+            comp.H2.final(&H2_digest);
+            comp.H1.update(&H2_digest);
+            comp.H1.final(dest);
+        }
+    };
+}
+pub const Blake2s128 = GenericBlake2s(128);
+pub const Blake2s160 = GenericBlake2s(160);
+pub const Blake2s224 = GenericBlake2s(224);
+pub const Blake2s256 = GenericBlake2s(256);
 pub fn GenericBlake2s(comptime out_bits: usize) type {
     return struct {
         h: [8]u32,
@@ -154,6 +178,11 @@ pub fn GenericBlake2s(comptime out_bits: usize) type {
         }
     };
 }
+pub const Blake2b128 = GenericBlake2b(128);
+pub const Blake2b160 = GenericBlake2b(160);
+pub const Blake2b256 = GenericBlake2b(256);
+pub const Blake2b384 = GenericBlake2b(384);
+pub const Blake2b512 = GenericBlake2b(512);
 pub fn GenericBlake2b(comptime out_bits: usize) type {
     return struct {
         h: [8]u64,
