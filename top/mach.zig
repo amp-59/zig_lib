@@ -499,16 +499,15 @@ const is_test = @import("builtin").is_test;
 //    );
 //}
 pub const memcpy = if (is_fast) __0.memcpy1 else __0.memcpy;
-pub const memset = if (is_fast) __0.memset1 else __0.memset;
+pub extern fn memset(dest: [*]u8, value: u8, count: usize) void;
 const __0 = struct {
     inline fn memcpy1(noalias dest: [*]u8, noalias src: [*]const u8, len: u64) void {
         @memcpy(dest[0..len], src[0..len]);
     }
-    extern fn memcpy(noalias dest: [*]u8, noalias src: *const anyopaque, len: u64) void;
+    extern fn memcpy(noalias dest: [*]u8, noalias src: [*]const u8, len: u64) void;
     inline fn memset1(dest: [*]u8, value: u8, count: usize) void {
         @memset(dest[0..count], value);
     }
-    extern fn memset(dest: [*]u8, value: u8, count: usize) void;
 };
 comptime {
     asm (
