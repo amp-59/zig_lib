@@ -104,11 +104,10 @@ pub fn GenericKeccakPState(comptime f: comptime_int, comptime capacity: comptime
                     st[s_idx +% r_idx] = t[r_idx] ^ (~t[(r_idx +% 1) % 5] & t[(r_idx +% 2) % 5]);
                 }
             }
-            // iota
             st[0] ^= rc;
         }
         /// Apply a (possibly) reduced-round permutation to the state.
-        pub fn permuteR(keccak_p: *KeccakP, comptime reduced_rounds: u5) void {
+        pub fn permuteR(keccak_p: *KeccakP, reduced_rounds: u8) void {
             var idx: usize = max_rounds -% reduced_rounds;
             while (idx < max_rounds -% (rounds.len % 3)) : (idx +%= 3) {
                 keccak_p.round(rounds[idx]);
@@ -184,10 +183,9 @@ pub fn GenericKeccakPState(comptime f: comptime_int, comptime capacity: comptime
         }
         /// Squeeze a slice of bytes from the sponge.
         pub fn squeeze(keccak_p: *KeccakP, out: []u8) void {
-            var idx: usize = 0;
+            var idx: u64 = 0;
             while (idx < out.len) : (idx +%= rate) {
-                const left = @min(rate, out.len -% idx);
-                keccak_p.extractBytes(out[idx..][0..left]);
+                keccak_p.extractBytes(out[idx..][0..@min(rate, out.len -% idx)]);
                 keccak_p.permuteR(permute_rounds);
             }
         }
@@ -219,8 +217,7 @@ pub const Block = struct {
     }
     /// XOR the block with a byte sequence.
     pub fn xorBytes(block: Block, bytes: *const [16]u8) [16]u8 {
-        const x = block.repr ^ fromBytes(bytes).repr;
-        return mem.toBytes(x);
+        return mem.toBytes(block.repr ^ fromBytes(bytes).repr);
     }
     /// Encrypt a block with a round key.
     pub fn encrypt(block: Block, round_key: Block) Block {
@@ -343,9 +340,8 @@ pub const Block = struct {
 };
 fn GenericKeySchedule(comptime Aes: type) type {
     builtin.assert(Aes.rounds == 10 or Aes.rounds == 14);
-    const rounds = Aes.rounds;
     return struct {
-        round_keys: [rounds + 1]Block,
+        round_keys: [Aes.rounds + 1]Block,
         const KeySchedule = @This();
         fn drc(comptime second: bool, comptime rc: u8, t: BlockVec, tx: BlockVec) BlockVec {
             var s: BlockVec = undefined;
@@ -394,20 +390,20 @@ fn GenericKeySchedule(comptime Aes: type) type {
         }
         /// Invert the key schedule.
         pub fn invert(key_schedule: KeySchedule) KeySchedule {
-            const round_keys: *const [rounds +% 1]Block = &key_schedule.round_keys;
-            var inv_round_keys: [rounds +% 1]Block = undefined;
-            inv_round_keys[0] = round_keys[rounds];
+            const round_keys: *const [Aes.rounds +% 1]Block = &key_schedule.round_keys;
+            var inv_round_keys: [Aes.rounds +% 1]Block = undefined;
+            inv_round_keys[0] = round_keys[Aes.rounds];
             var idx: u64 = 1;
-            while (idx < rounds) : (idx +%= 1) {
+            while (idx < Aes.rounds) : (idx +%= 1) {
                 inv_round_keys[idx] = Block{
                     .repr = asm (
                         \\ vaesimc %[rk], %[inv_rk]
                         : [inv_rk] "=x" (-> BlockVec),
-                        : [rk] "x" (round_keys[rounds -% idx].repr),
+                        : [rk] "x" (round_keys[Aes.rounds -% idx].repr),
                     ),
                 };
             }
-            inv_round_keys[rounds] = round_keys[0];
+            inv_round_keys[Aes.rounds] = round_keys[0];
             return .{ .round_keys = inv_round_keys };
         }
     };
@@ -566,4 +562,206 @@ pub fn GenericAsconState(comptime endian: builtin.Endian) type {
             x[2] = ~x[2];
         }
     };
+}
+/// A context to perform encryption using the standard AES key schedule.
+pub fn GenericAesEncryptCtx(comptime Aes: type) type {
+    return struct {
+        key_schedule: KeySchedule,
+        const AesEncryptCtx = @This();
+        const AesDecryptCtx = GenericAesDecryptCtx(Aes);
+        const KeySchedule = GenericKeySchedule(Aes);
+        pub const blk_len: usize = block.blk_len;
+        pub const block = Aes.block;
+        /// Create a new encryption context with the given key.
+        pub fn init(key: [Aes.key_bits / 8]u8) AesEncryptCtx {
+            var t1: Block = Block.fromBytes(key[0..16]);
+            const key_schedule: KeySchedule = if (Aes.key_bits == 128) ks: {
+                break :ks KeySchedule.expand128(&t1);
+            } else ks: {
+                var t2: Block = Block.fromBytes(key[16..32]);
+                break :ks KeySchedule.expand256(&t1, &t2);
+            };
+            return .{ .key_schedule = key_schedule };
+        }
+        /// Encrypt a single block.
+        pub fn encrypt(ctx: AesEncryptCtx, dest: *[16]u8, src: *const [16]u8) void {
+            const round_keys: [Aes.rounds +% 1]Block = ctx.key_schedule.round_keys;
+            var t: Block = Block.fromBytes(src).xorBlocks(round_keys[0]);
+            var idx: u64 = 1;
+            while (idx != Aes.rounds) : (idx +%= 1) {
+                t = t.encrypt(round_keys[idx]);
+            }
+            t = t.encryptLast(round_keys[Aes.rounds]);
+            dest.* = t.toBytes();
+        }
+        /// Encrypt+XOR a single block.
+        pub fn xor(ctx: AesEncryptCtx, dest: *[16]u8, src: *const [16]u8, counter: [16]u8) void {
+            const round_keys: [Aes.rounds +% 1]Block = ctx.key_schedule.round_keys;
+            var t: Block = Block.fromBytes(&counter).xorBlocks(round_keys[0]);
+            var idx: u64 = 1;
+            while (idx != Aes.rounds) : (idx +%= 1) {
+                t = t.encrypt(round_keys[idx]);
+            }
+            t = t.encryptLast(round_keys[Aes.rounds]);
+            dest.* = t.xorBytes(src);
+        }
+        /// Encrypt multiple blocks, possibly leveraging parallelization.
+        pub fn encryptWide(ctx: AesEncryptCtx, comptime count: usize, dest: *[16 *% count]u8, src: *const [16 *% count]u8) void {
+            const round_keys: [Aes.rounds +% 1]Block = ctx.key_schedule.round_keys;
+            var ts: [count]Block = undefined;
+            var idx: u64 = 0;
+            while (idx != count) : (idx +%= 1) {
+                const off: u64 = 16 *% idx;
+                ts[idx] = Block.fromBytes(src[off .. off +% 16][0..16]).xorBlocks(round_keys[0]);
+            }
+            idx = 1;
+            while (idx < Aes.rounds) : (idx +%= 1) {
+                ts = Block.parallel.encryptWide(count, ts, round_keys[idx]);
+            }
+            ts = Block.parallel.encryptLastWide(count, ts, round_keys[idx]);
+            idx = 0;
+            while (idx != count) : (idx +%= 1) {
+                const off: u64 = 16 *% idx;
+                dest[off .. off +% 16].* = ts[idx].toBytes();
+            }
+        }
+        /// Encrypt+XOR multiple blocks, possibly leveraging parallelization.
+        pub fn xorWide(ctx: AesEncryptCtx, comptime count: usize, dest: *[16 *% count]u8, src: *const [16 *% count]u8, counters: [16 *% count]u8) void {
+            const round_keys: [Aes.rounds +% 1]Block = ctx.key_schedule.round_keys;
+            var ts: [count]Block = undefined;
+            var idx: u64 = 0;
+            while (idx != count) : (idx +%= 1) {
+                const off: u64 = idx *% 16;
+                ts[idx] = Block.fromBytes(counters[off .. off +% 16][0..16]).xorBlocks(round_keys[0]);
+            }
+            idx = 1;
+            while (idx != Aes.rounds) : (idx +%= 1) {
+                ts = Block.parallel.encryptWide(count, ts, round_keys[idx]);
+            }
+            ts = Block.parallel.encryptLastWide(count, ts, round_keys[idx]);
+            idx = 0;
+            while (idx != count) : (idx +%= 1) {
+                const off: u64 = 16 *% idx;
+                @ptrCast(*[16]u8, dest[off..]).* = ts[idx].xorBytes(@ptrCast(*const [16]u8, src[off..]));
+            }
+        }
+    };
+}
+/// A context to perform decryption using the standard AES key schedule.
+pub fn GenericAesDecryptCtx(comptime Aes: type) type {
+    builtin.assert(Aes.key_bits == 128 or Aes.key_bits == 256);
+    return struct {
+        key_schedule: KeySchedule,
+        const AesDecryptCtx = @This();
+        const AesEncryptCtx = GenericAesEncryptCtx(Aes);
+        const KeySchedule = GenericKeySchedule(Aes);
+        pub const blk_len: usize = block.blk_len;
+        pub const block = Aes.block;
+        /// Create a decryption context from an existing encryption context.
+        pub fn initFromEnc(ctx: AesEncryptCtx) AesDecryptCtx {
+            return .{ .key_schedule = ctx.key_schedule.invert() };
+        }
+        /// Create a new decryption context with the given key.
+        pub fn init(key: [Aes.key_bits / 8]u8) AesDecryptCtx {
+            return .{ .key_schedule = AesEncryptCtx.init(key).key_schedule.invert() };
+        }
+        /// Decrypt a single block.
+        pub fn decrypt(ctx: AesDecryptCtx, dest: *[16]u8, src: *const [16]u8) void {
+            const inv_round_keys: [Aes.rounds +% 1]Block = ctx.key_schedule.round_keys;
+            var t: Block = Block.fromBytes(src).xorBlocks(inv_round_keys[0]);
+            var idx: u64 = 1;
+            while (idx != Aes.rounds) : (idx +%= 1) {
+                t = t.decrypt(inv_round_keys[idx]);
+            }
+            t = t.decryptLast(inv_round_keys[Aes.rounds]);
+            dest.* = t.toBytes();
+        }
+        /// Decrypt multiple blocks, possibly leveraging parallelization.
+        pub fn decryptWide(ctx: AesDecryptCtx, comptime count: usize, dest: *[16 * count]u8, src: *const [16 * count]u8) void {
+            const inv_round_keys: [Aes.rounds +% 1]Block = ctx.key_schedule.round_keys;
+            var ts: [count]Block = undefined;
+            var idx: u64 = 0;
+            while (idx != count) : (idx +%= 1) {
+                const off: u64 = idx *% 16;
+                ts[idx] = Block.fromBytes(src[off .. off +% 16][0..16]).xorBlocks(inv_round_keys[0]);
+            }
+            idx = 1;
+            while (idx != Aes.rounds) : (idx +%= 1) {
+                ts = Block.parallel.decryptWide(count, ts, inv_round_keys[idx]);
+            }
+            ts = Block.parallel.decryptLastWide(count, ts, inv_round_keys[idx]);
+            idx = 0;
+            while (idx != count) : (idx +%= 1) {
+                const off: u64 = idx *% 16;
+                dest[off .. off +% 16].* = ts[idx].toBytes();
+            }
+        }
+    };
+}
+/// AES-128 with the standard key schedule.
+pub const Aes128 = struct {
+    pub const key_bits: comptime_int = 128;
+    pub const rounds: comptime_int = ((key_bits - 64) / 32 + 8);
+    pub const block = Block;
+    /// Create a new context for encryption.
+    pub fn initEnc(key: [key_bits / 8]u8) GenericAesEncryptCtx(Aes128) {
+        return GenericAesEncryptCtx(Aes128).init(key);
+    }
+    /// Create a new context for decryption.
+    pub fn initDec(key: [key_bits / 8]u8) GenericAesDecryptCtx(Aes128) {
+        return GenericAesDecryptCtx(Aes128).init(key);
+    }
+};
+/// AES-256 with the standard key schedule.
+pub const Aes256 = struct {
+    pub const key_bits: comptime_int = 256;
+    pub const rounds: comptime_int = ((key_bits - 64) / 32 + 8);
+    pub const block = Block;
+    /// Create a new context for encryption.
+    pub fn initEnc(key: [key_bits / 8]u8) GenericAesEncryptCtx(Aes256) {
+        return GenericAesEncryptCtx(Aes256).init(key);
+    }
+    /// Create a new context for decryption.
+    pub fn initDec(key: [key_bits / 8]u8) GenericAesDecryptCtx(Aes256) {
+        return GenericAesDecryptCtx(Aes256).init(key);
+    }
+};
+pub fn ctr(comptime BlockCipher: anytype, block_cipher: BlockCipher, dest: []u8, src: []const u8, iv: [BlockCipher.blk_len]u8, endian: builtin.Endian) void {
+    builtin.assert(dest.len >= src.len);
+    const wide_blk_len: u64 = BlockCipher.block.parallel.optimal_parallel_blocks *% 16;
+    var counter: [BlockCipher.blk_len]u8 = undefined;
+    var counter_int: u128 = mem.readInt(u128, &iv, endian);
+    var off: usize = 0;
+    if (src.len >= wide_blk_len) {
+        var counters: [wide_blk_len]u8 = undefined;
+        while (off <= src.len) : (off +%= wide_blk_len) {
+            var idx: usize = 0;
+            while (idx < BlockCipher.block.parallel.optimal_parallel_blocks) : (idx +%= 1) {
+                mach.memcpy(counters[idx *% 16 ..].ptr, &builtin.ended(u128, counter_int, endian), 16);
+                counter_int +%= 1;
+            }
+            block_cipher.xorWide(
+                BlockCipher.block.parallel.optimal_parallel_blocks,
+                dest[off..][0..wide_blk_len],
+                src[off..][0..wide_blk_len],
+                counters,
+            );
+        }
+    }
+    while (off +% BlockCipher.blk_len <= src.len) : (off +%= BlockCipher.blk_len) {
+        mem.writeInt(u128, &counter, counter_int, endian);
+        counter_int +%= 1;
+        block_cipher.xor(
+            dest[off..][0..BlockCipher.blk_len],
+            src[off..][0..BlockCipher.blk_len],
+            counter,
+        );
+    }
+    if (off < src.len) {
+        mem.writeInt(u128, &counter, counter_int, endian);
+        var pad: [BlockCipher.blk_len]u8 = .{0} ** BlockCipher.blk_len;
+        mach.memcpy(&pad, src[off..].ptr, src.len -% off);
+        block_cipher.xor(&pad, &pad, counter);
+        mach.memcpy(dest[off..].ptr, &pad, src.len -% off);
+    }
 }
