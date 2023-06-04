@@ -184,7 +184,7 @@ pub fn ThreadSafeSet(comptime elements: u16, comptime val_type: type, comptime i
                 safe_set.bytes[@enumToInt(index)] = to;
             }
             pub fn exchange(safe_set: *SafeSet, index: idx_type, if_state: val_type, to_state: val_type) bool {
-                const ret: bool = safe_set.get() == if_state;
+                const ret: bool = safe_set.get(index) == if_state;
                 if (ret) safe_set.bytes[@enumToInt(index)] = to_state;
                 return ret;
             }
