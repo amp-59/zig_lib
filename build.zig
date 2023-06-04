@@ -5,7 +5,7 @@ const build = srg.build;
 const builtin = srg.builtin;
 
 pub const Node = build.GenericNode(.{});
-pub const logging_override: builtin.Logging.Override = spec.logging.override.verbose;
+pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
 
 pub const runtime_assertions: bool = false;
 pub const message_style: [:0]const u8 = "\x1b[2m";
@@ -86,15 +86,16 @@ fn examples(allocator: *Node.Allocator, node: *Node) void {
     custom.addDescr("Shows a complex custom address space");
     allocators.addDescr("Shows how to use many allocators");
     display.addDescr("Shows using `ioctl` to get display resources (idkso)");
-    mca.addDescr("Example program useful for extracting section from assembly for machine code analysis"[0..60]);
-    treez.addDescr("Example program useful for listing the contents of directories in a tree-like format"[0..60]);
-    itos.addDescr("Example program useful for converting between a variety of integer formats and bases"[0..60]);
+    mca.addDescr("Example program useful for extracting section from assembly for machine code analysis");
+    treez.addDescr("Example program useful for listing the contents of directories in a tree-like format");
+    itos.addDescr("Example program useful for converting between a variety of integer formats and bases");
     catz.addDescr("Shows how to map and write a file to standard output");
     cleanup.addDescr("Shows more advanced operations on a mapped file");
     hello.addDescr("Shows various ways of printing 'Hello, world!'");
     readelf.addDescr("Example program (defunct) for parsing and displaying information about ELF binaries");
     declprint.addDescr("Useful for printing declarations");
     pathsplit.addDescr("Useful for splitting paths into dirnames and basename");
+    node.task = .build;
 }
 fn tests(allocator: *Node.Allocator, node: *Node) void {
     const serial_test: *Node = try node.addBuild(allocator, build_cmd, "serial_test", "test/serial-test.zig");
@@ -139,6 +140,7 @@ fn tests(allocator: *Node.Allocator, node: *Node) void {
     size_test.addDescr("Test sizes of various things");
     builderTests(allocator, try node.addGroup(allocator, "builder_tests"));
     cryptoTests(allocator, try node.addGroup(allocator, "crypto_tests"));
+    node.task = .build;
 }
 fn cryptoTests(allocator: *Node.Allocator, node: *Node) void {
     const aead_test: *Node = try node.addBuild(allocator, build_cmd, "aead_test", "test/crypto/aead-test.zig");

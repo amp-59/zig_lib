@@ -4,6 +4,7 @@ const fmt = @import("../../fmt.zig");
 const proc = @import("../../proc.zig");
 const file = @import("../../file.zig");
 const spec = @import("../../spec.zig");
+const mach = @import("../../mach.zig");
 const builtin = @import("../../builtin.zig");
 const attr = @import("./attr.zig");
 const types = @import("./types.zig");
