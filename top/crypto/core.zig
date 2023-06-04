@@ -14,7 +14,6 @@ pub fn GenericKeccakPState(comptime f: comptime_int, comptime capacity: comptime
         offset: usize = 0,
         buf: [rate]u8 = undefined,
         st: [25]Word = [_]Word{0} ** 25,
-
         const KeccakP = @This();
         pub const Word = @Type(.{ .Int = .{ .signedness = .unsigned, .bits = word_bit_size } });
         pub const word_size: u16 = @sizeOf(Word);
@@ -152,7 +151,7 @@ pub fn GenericKeccakPState(comptime f: comptime_int, comptime capacity: comptime
         pub fn absorb(keccak_p: *KeccakP, src: []const u8) void {
             var bytes: []const u8 = src;
             if (keccak_p.offset > 0) {
-                const left: u64 = @min(rate -% keccak_p.offset, bytes.len);
+                const left: usize = @min(rate -% keccak_p.offset, bytes.len);
                 mach.memcpy(keccak_p.buf[keccak_p.offset..].ptr, bytes.ptr, left);
                 keccak_p.offset +%= left;
                 if (keccak_p.offset == rate) {
@@ -195,3 +194,151 @@ pub fn GenericKeccakPState(comptime f: comptime_int, comptime capacity: comptime
     };
 }
 
+const BlockVec = @Vector(2, u64);
+/// A single AES block.
+pub const Block = struct {
+    /// Internal representation of a block.
+    repr: BlockVec,
+    const Pointer = @Type(.{ .Pointer = .{
+        .size = .One,
+        .is_const = true,
+        .is_volatile = false,
+        .is_allowzero = false,
+        .alignment = 1,
+        .address_space = .generic,
+        .child = BlockVec,
+        .sentinel = null,
+    } });
+    pub const blk_len: usize = @sizeOf(BlockVec);
+    /// Convert a byte sequence into an internal representation.
+    pub fn fromBytes(bytes: *const [16]u8) Block {
+        return Block{ .repr = @ptrCast(Pointer, bytes).* };
+    }
+    /// Convert the internal representation of a block into a byte sequence.
+    pub fn toBytes(block: Block) [16]u8 {
+        return mem.toBytes(block.repr);
+    }
+    /// XOR the block with a byte sequence.
+    pub fn xorBytes(block: Block, bytes: *const [16]u8) [16]u8 {
+        const x = block.repr ^ fromBytes(bytes).repr;
+        return mem.toBytes(x);
+    }
+    /// Encrypt a block with a round key.
+    pub fn encrypt(block: Block, round_key: Block) Block {
+        return Block{
+            .repr = asm (
+                \\ vaesenc %[rk], %[in], %[out]
+                : [out] "=x" (-> BlockVec),
+                : [in] "x" (block.repr),
+                  [rk] "x" (round_key.repr),
+            ),
+        };
+    }
+    /// Encrypt a block with the last round key.
+    pub fn encryptLast(block: Block, round_key: Block) Block {
+        return Block{
+            .repr = asm (
+                \\ vaesenclast %[rk], %[in], %[out]
+                : [out] "=x" (-> BlockVec),
+                : [in] "x" (block.repr),
+                  [rk] "x" (round_key.repr),
+            ),
+        };
+    }
+    /// Decrypt a block with a round key.
+    pub fn decrypt(block: Block, inv_round_key: Block) Block {
+        return Block{
+            .repr = asm (
+                \\ vaesdec %[rk], %[in], %[out]
+                : [out] "=x" (-> BlockVec),
+                : [in] "x" (block.repr),
+                  [rk] "x" (inv_round_key.repr),
+            ),
+        };
+    }
+    /// Decrypt a block with the last round key.
+    pub fn decryptLast(block: Block, inv_round_key: Block) Block {
+        return Block{
+            .repr = asm (
+                \\ vaesdeclast %[rk], %[in], %[out]
+                : [out] "=x" (-> BlockVec),
+                : [in] "x" (block.repr),
+                  [rk] "x" (inv_round_key.repr),
+            ),
+        };
+    }
+    // TODO: Remove usage of these functions, actually inline them.
+    pub inline fn xorBlocks(block1: Block, block2: Block) Block {
+        return Block{ .repr = block1.repr ^ block2.repr };
+    }
+    pub inline fn andBlocks(block1: Block, block2: Block) Block {
+        return Block{ .repr = block1.repr & block2.repr };
+    }
+    pub inline fn orBlocks(block1: Block, block2: Block) Block {
+        return Block{ .repr = block1.repr | block2.repr };
+    }
+    // XXX: Remember that almost all of these functions were `inline` in the
+    // standard.
+    /// Perform operations on multiple blocks in parallel.
+    pub const parallel = struct {
+        const cpu = @import("std").Target.x86.cpu;
+        /// The recommended number of AES encryption/decryption to perform in parallel for the chosen implementation.
+        pub const optimal_parallel_blocks = switch (builtin.config.zig.cpu.model) {
+            &cpu.westmere => 6,
+            &cpu.sandybridge, &cpu.ivybridge => 8,
+            &cpu.haswell, &cpu.broadwell => 7,
+            &cpu.cannonlake, &cpu.skylake, &cpu.skylake_avx512 => 4,
+            &cpu.icelake_client, &cpu.icelake_server, &cpu.tigerlake, &cpu.rocketlake, &cpu.alderlake => 6,
+            &cpu.znver1, &cpu.znver2, &cpu.znver3 => 8,
+            else => 8,
+        };
+        pub fn encryptParallel(comptime count: usize, blocks: [count]Block, round_keys: [count]Block) [count]Block {
+            var idx: usize = 0;
+            var out: [count]Block = undefined;
+            while (idx != count) : (idx +%= 1) {
+                out[idx] = blocks[idx].encrypt(round_keys[idx]);
+            }
+            return out;
+        }
+        pub fn decryptParallel(comptime count: usize, blocks: [count]Block, round_keys: [count]Block) [count]Block {
+            var idx: usize = 0;
+            var out: [count]Block = undefined;
+            while (idx != count) : (idx +%= 1) {
+                out[idx] = blocks[idx].decrypt(round_keys[idx]);
+            }
+            return out;
+        }
+        pub fn encryptWide(comptime count: usize, blocks: [count]Block, round_key: Block) [count]Block {
+            var idx: usize = 0;
+            var out: [count]Block = undefined;
+            while (idx != count) : (idx +%= 1) {
+                out[idx] = blocks[idx].encrypt(round_key);
+            }
+            return out;
+        }
+        pub fn decryptWide(comptime count: usize, blocks: [count]Block, round_key: Block) [count]Block {
+            var idx: usize = 0;
+            var out: [count]Block = undefined;
+            while (idx != count) : (idx +%= 1) {
+                out[idx] = blocks[idx].decrypt(round_key);
+            }
+            return out;
+        }
+        pub fn encryptLastWide(comptime count: usize, blocks: [count]Block, round_key: Block) [count]Block {
+            var idx: usize = 0;
+            var out: [count]Block = undefined;
+            while (idx != count) : (idx +%= 1) {
+                out[idx] = blocks[idx].encryptLast(round_key);
+            }
+            return out;
+        }
+        pub fn decryptLastWide(comptime count: usize, blocks: [count]Block, round_key: Block) [count]Block {
+            var idx: u64 = 0;
+            var out: [count]Block = undefined;
+            while (idx != count) : (idx +%= 1) {
+                out[idx] = blocks[idx].decryptLast(round_key);
+            }
+            return out;
+        }
+    };
+};
