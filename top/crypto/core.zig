@@ -2,7 +2,7 @@ const mem = @import("../mem.zig");
 const math = @import("../math.zig");
 const mach = @import("../mach.zig");
 const builtin = @import("../builtin.zig");
-
+const safety: bool = false;
 pub const KeccakPStateSpec = struct {
     f: comptime_int,
     capacity: comptime_int,
@@ -193,7 +193,6 @@ pub fn GenericKeccakPState(comptime f: comptime_int, comptime capacity: comptime
         }
     };
 }
-
 const BlockVec = @Vector(2, u64);
 /// A single AES block.
 pub const Block = struct {
@@ -410,6 +409,161 @@ fn GenericKeySchedule(comptime Aes: type) type {
             }
             inv_round_keys[rounds] = round_keys[0];
             return .{ .round_keys = inv_round_keys };
+        }
+    };
+}
+// The state is represented as 5 64-bit words.
+//
+// The NIST submission (v1.2) serializes these words as big-endian,
+// but software implementations are free to use native endianness.
+pub fn GenericAsconState(comptime endian: builtin.Endian) type {
+    return struct {
+        /// Number of bytes in the state.
+        st: [5]u64,
+        pub const blk_len: usize = 40;
+        const AsconState = @This();
+        /// Initialize the state from a slice of bytes.
+        pub fn init(initial_state: [blk_len]u8) AsconState {
+            var ret: AsconState = .{ .st = undefined };
+            mach.memcpy(ret.asBytes(), &initial_state, blk_len);
+            ret.endianSwap();
+            return ret;
+        }
+        /// Initialize the state from u64 words in native endianness.
+        pub fn initFromWords(initial_state: [5]u64) AsconState {
+            return .{ .st = initial_state };
+        }
+        /// Initialize the state for Ascon XOF
+        pub fn initXof() AsconState {
+            return .{ .st = .{
+                0xb57e273b814cd416, 0x2b51042562ae2420,
+                0x66a3a7768ddf2218, 0x5aad0a7a8153650c,
+                0x4f3e0e32539493b6,
+            } };
+        }
+        /// Initialize the state for Ascon XOFa
+        pub fn initXofA() AsconState {
+            return .{ .st = .{
+                0x44906568b77b9832, 0xcd8d6cae53455532,
+                0xf7b5212756422129, 0x246885e1de0d225b,
+                0xa8cb5ce33449973f,
+            } };
+        }
+        /// A representation of the state as bytes. The byte order is architecture-dependent.
+        pub fn asBytes(state: *AsconState) *[blk_len]u8 {
+            return mem.asBytes(&state.st);
+        }
+        /// Byte-swap the entire state if the architecture doesn't match the required endianness.
+        pub fn endianSwap(state: *AsconState) void {
+            for (&state.st) |*w| {
+                w.* = mem.toNative(u64, w.*, endian);
+            }
+        }
+        /// Set bytes starting at the beginning of the state.
+        pub fn setBytes(state: *AsconState, bytes: []const u8) void {
+            @setRuntimeSafety(builtin.is_safe);
+            var idx: usize = 0;
+            while (idx +% 8 <= bytes.len) : (idx +%= 8) {
+                state.st[idx / 8] = mem.readInt(u64, bytes[idx..][0..8], endian);
+            }
+            if (idx < bytes.len) {
+                var padded: [8]u8 = .{0} ** 8;
+                mach.memcpy(&padded, bytes[idx..].ptr, bytes.len -% idx);
+                state.st[idx / 8] = mem.readInt(u64, padded[0..], endian);
+            }
+        }
+        /// XOR a byte into the state at a given offset.
+        pub fn addByte(state: *AsconState, byte: u8, offset: usize) void {
+            @setRuntimeSafety(builtin.is_safe);
+            const shift_amt: u6 = switch (endian) {
+                .Big => (64 -% 8) -% (8 *% @truncate(u6, offset % 8)),
+                .Little => 8 *% @truncate(u6, offset % 8),
+            };
+            state.st[offset / 8] ^= @as(u64, byte) << shift_amt;
+        }
+        /// XOR bytes into the beginning of the state.
+        pub fn addBytes(state: *AsconState, bytes: []const u8) void {
+            @setRuntimeSafety(builtin.is_safe);
+            var idx: usize = 0;
+            while (idx +% 8 <= bytes.len) : (idx +%= 8) {
+                state.st[idx / 8] ^= mem.readInt(u64, bytes[idx..][0..8], endian);
+            }
+            if (idx < bytes.len) {
+                var padded: [8]u8 = .{0} ** 8;
+                mach.memcpy(&padded, bytes[idx..].ptr, bytes.len -% idx);
+                state.st[idx / 8] = mem.readInt(u64, padded[0..], endian);
+            }
+        }
+        /// Extract the first bytes of the state.
+        pub fn extractBytes(state: *AsconState, out: []u8) void {
+            @setRuntimeSafety(builtin.is_safe);
+            var idx: usize = 0;
+            while (idx +% 8 <= out.len) : (idx +%= 8) {
+                mem.writeInt(u64, out[idx..][0..8], state.st[idx / 8], endian);
+            }
+            if (idx < out.len) {
+                var padded: [8]u8 = .{0} ** 8;
+                mem.writeInt(u64, padded[0..], state.st[idx / 8], endian);
+                mach.memcpy(out[idx..].ptr, &padded, out.len -% idx);
+            }
+        }
+        /// Set the words storing the bytes of a given range to zero.
+        pub fn clear(state: *AsconState, from: usize, to: usize) void {
+            @memset(state.st[from / 8 .. (to +% 7) / 8], 0);
+        }
+        /// Clear the entire state, disabling compiler optimizations.
+        pub fn secureZero(state: *AsconState) void {
+            @memset(@as([]volatile u64, &state.st), 0);
+        }
+        /// Apply a reduced-round permutation to the state.
+        pub fn permuteR(state: *AsconState, comptime rounds: u4) void {
+            const rks: [12]u64 = .{ 0xf0, 0xe1, 0xd2, 0xc3, 0xb4, 0xa5, 0x96, 0x87, 0x78, 0x69, 0x5a, 0x4b };
+            for (rks[rks.len -% rounds ..]) |rk| {
+                state.round(rk);
+            }
+        }
+        /// Apply a full-round permutation to the state.
+        pub fn permute(state: *AsconState) void {
+            state.permuteR(12);
+        }
+        /// Apply a permutation to the state and prevent backtracking.
+        /// The rate is expressed in bytes and must be a multiple of the word size (8).
+        pub fn permuteRatchet(state: *AsconState, comptime rounds: u4, comptime rate: u6) void {
+            const capacity: usize = blk_len -% rate;
+            builtin.assert(capacity > 0 and capacity % 8 == 0); // capacity must be a multiple of 64 bits
+            var mask: [capacity / 8]u64 = undefined;
+            for (&mask, state.st[state.st.len -% mask.len ..]) |*m, x| m.* = x;
+            state.permuteR(rounds);
+            for (mask, state.st[state.st.len -% mask.len ..]) |m, *x| x.* ^= m;
+        }
+        // Core Ascon permutation.
+        fn round(state: *AsconState, rk: u64) void {
+            const x: *[5]u64 = &state.st;
+            x[2] ^= rk;
+            x[0] ^= x[4];
+            x[4] ^= x[3];
+            x[2] ^= x[1];
+            var t: [5]u64 = .{
+                x[0] ^ (~x[1] & x[2]),
+                x[1] ^ (~x[2] & x[3]),
+                x[2] ^ (~x[3] & x[4]),
+                x[3] ^ (~x[4] & x[0]),
+                x[4] ^ (~x[0] & x[1]),
+            };
+            t[1] ^= t[0];
+            t[3] ^= t[2];
+            t[0] ^= t[4];
+            x[2] = t[2] ^ math.rotr(u64, t[2], 6 -% 1);
+            x[3] = t[3] ^ math.rotr(u64, t[3], 17 -% 10);
+            x[4] = t[4] ^ math.rotr(u64, t[4], 41 -% 7);
+            x[0] = t[0] ^ math.rotr(u64, t[0], 28 -% 19);
+            x[1] = t[1] ^ math.rotr(u64, t[1], 61 -% 39);
+            x[2] = t[2] ^ math.rotr(u64, x[2], 1);
+            x[3] = t[3] ^ math.rotr(u64, x[3], 10);
+            x[4] = t[4] ^ math.rotr(u64, x[4], 7);
+            x[0] = t[0] ^ math.rotr(u64, x[0], 19);
+            x[1] = t[1] ^ math.rotr(u64, x[1], 39);
+            x[2] = ~x[2];
         }
     };
 }
