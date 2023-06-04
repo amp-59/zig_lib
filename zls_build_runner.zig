@@ -131,10 +131,7 @@ fn writeModulesBuf(pkgs: [*]BuildConfig.Pkg, node: *Node) u64 {
         if (node.kind == .worker and node.task == .build) {
             if (node.task_info.build.modules) |mods| {
                 for (mods) |mod| {
-                    pkgs[len] = .{
-                        .name = mod.name,
-                        .path = mod.path,
-                    };
+                    pkgs[len] = .{ .name = mod.name, .path = mod.path };
                     len +%= 1;
                 }
             }
@@ -153,7 +150,6 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
         return error.MissingEnvironmentPaths;
     }
     const toplevel: *Node = Node.addToplevel(&allocator, args, vars);
-    Node.phase = .decl;
     try meta.wrap(
         root.buildMain(&allocator, toplevel),
     );

@@ -68,7 +68,6 @@ fn testPoll() !void {
 
 const file_name: [:0]const u8 = "file_test";
 const test_dir: [:0]const u8 = @import("env").build_root ++ "/test/";
-
 const pathname1: [:0]const u8 = test_dir ++ file_name ++ "1";
 const pathname2: [:0]const u8 = test_dir ++ file_name ++ "2";
 const pathname_link1: [:0]const u8 = test_dir ++ file_name ++ "1";
@@ -346,7 +345,6 @@ fn testPreClean() !void {
     file.removeDir(remove_dir_spec, test_dir ++ "file_test/file_test") catch {};
     file.removeDir(remove_dir_spec, test_dir ++ "file_test") catch {};
 }
-
 pub fn main(args: [][*:0]u8) !void {
     try meta.wrap(testRecords());
     try meta.wrap(testPreClean());
