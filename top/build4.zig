@@ -52,6 +52,8 @@ pub const BuilderSpec = struct {
         timeout_milliseconds: u64 = 1000 * 60 * 60 * 24,
         /// Enables logging for build job statistics.
         show_stats: bool = true,
+        /// Show initial lock change of state.
+        show_initial_state: bool = false,
         /// Enables detail for node dependecy listings.
         show_detailed_deps: bool = false,
         /// Include arena/thread index in task summaries and change of state
@@ -123,9 +125,8 @@ pub const BuilderSpec = struct {
         /// Report exchanges on task lock state:
         ///     Attempt => When resulting in no change of state.
         ///     Success => When resulting in change of state.
-        ///     Acquire => When the change of state is null to ready.
         ///     Fault   => When the change of state results in any abort.
-        state: builtin.Logging.AttemptSuccessAcquireFault = .{},
+        state: builtin.Logging.AttemptSuccessFault = .{},
         /// Report completion of tasks with summary of results:
         ///     Attempt => When the task was unable to complete due to a dependency.
         ///     Success => When the task completes without any errors.
@@ -348,7 +349,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             ret.task = .any;
             ret.addName(allocator).* = duplicate(allocator, name);
             ret.hidden = name[0] == '_';
-            if (builder_spec.logging.state.Acquire) {
+            if (builder_spec.options.show_initial_state) {
+                ret.assertExchange(.any, .null, .ready, max_thread_count);
                 ret.assertExchange(.format, .null, .ready, max_thread_count);
                 ret.assertExchange(.build, .null, .ready, max_thread_count);
                 ret.assertExchange(.run, .null, .ready, max_thread_count);
@@ -478,7 +480,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             ret.task_info.format.* = format_cmd;
             ret.hidden = name[0] == '_';
             ret.hidden = toplevel.hidden;
-            if (state_logging.Acquire) {
+            if (builder_spec.options.show_initial_state) {
                 ret.assertExchange(.format, .null, .ready, max_thread_count);
             } else {
                 ret.task_lock = format_lock;
@@ -504,7 +506,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             }
             ret.hidden = name[0] == '_';
             ret.hidden = toplevel.hidden;
-            if (state_logging.Acquire) {
+            if (builder_spec.options.show_initial_state) {
                 ret.assertExchange(.archive, .null, .ready, max_thread_count);
             } else {
                 ret.task_lock = archive_lock;
@@ -535,7 +537,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             if (build_cmd.kind == .exe) {
                 ret.dependOnSelfExe(allocator);
             }
-            if (state_logging.Acquire) {
+            if (builder_spec.options.show_initial_state) {
                 ret.assertExchange(.build, .null, .ready, max_thread_count);
                 if (build_cmd.kind == .exe) {
                     ret.assertExchange(.run, .null, .ready, max_thread_count);
@@ -760,7 +762,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     if (sub_node == node and sub_node.task == task) {
                         continue;
                     }
-                    if (sub_node.exchange(sub_node.task, .ready, .blocking, max_thread_count)) {
+                    if (sub_node.exchange(task, .ready, .blocking, max_thread_count)) {
                         try meta.wrap(impl.tryAcquireThread(address_space, thread_space, allocator, toplevel, sub_node, task));
                     }
                 }
@@ -892,7 +894,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             }
             return node.task_lock.get(task) == .finished;
         }
-        const state_logging: builtin.Logging.AttemptSuccessAcquireFault = builder_spec.logging.state.override();
+        const state_logging: builtin.Logging.AttemptSuccessFault = builder_spec.logging.state.override();
         fn exchange(node: *Node, task: types.Task, old_state: types.State, new_state: types.State, arena_index: AddressSpace.Index) bool {
             const ret: bool = node.task_lock.atomicExchange(task, old_state, new_state);
             if (ret) {
@@ -1123,12 +1125,13 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             @setRuntimeSafety(safety);
             var task: ?types.Task = null;
             var arg_idx: u64 = 5;
-            while (arg_idx != GlobalState.args.len) : (arg_idx +%= 1) {
+            lo: while (arg_idx != GlobalState.args.len) : (arg_idx +%= 1) {
                 const name: [:0]const u8 = mach.manyToSlice80(GlobalState.args[arg_idx]);
                 var task_idx: u64 = 0;
                 while (task_idx != types.Task.list.len) : (task_idx +%= 1) {
                     if (mach.testEqualMany8(name, @tagName(types.Task.list[task_idx]))) {
                         task = types.Task.list[task_idx];
+                        continue :lo;
                     }
                 }
                 if (mach.testEqualMany8(builder_spec.options.names.toplevel_list_command, name)) {
@@ -1494,7 +1497,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             ptrs[len] = builtin.zero([*:0]u8);
             return ptrs[0..len];
         }
-        const omni_lock = .{ .bytes = .{ .null, .null, .ready, .ready, .ready, .ready, .null } };
+        const omni_lock = .{ .bytes = .{ .null, .ready, .ready, .ready, .ready, .ready, .null } };
         const obj_lock = .{ .bytes = .{ .null, .null, .null, .ready, .null, .null, .null } };
         const exe_lock = .{ .bytes = .{ .null, .null, .null, .ready, .ready, .null, .null } };
         const format_lock = .{ .bytes = .{ .null, .null, .ready, .null, .null, .null, .null } };
