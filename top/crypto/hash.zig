@@ -245,129 +245,7 @@ pub const Blake3 = struct {
             return if (next_chunk.len > 0) next_chunk else null;
         }
     };
-    const CompressVectorized = struct {
-        const Lane = @Vector(4, u32);
-        const Rows = [4]Lane;
-        fn g(even: bool, rows: *Rows, m: Lane) void {
-            rows[0] +%= rows[1] +% m;
-            rows[3] ^= rows[0];
-            rows[3] = math.rotr(Lane, rows[3], mach.cmov8(even, 8, 16));
-            rows[2] +%= rows[3];
-            rows[1] ^= rows[2];
-            rows[1] = math.rotr(Lane, rows[1], mach.cmov8(even, 7, 12));
-        }
-        fn diagonalize(rows: *Rows) void {
-            rows[0] = @shuffle(u32, rows[0], undefined, [_]i32{ 3, 0, 1, 2 });
-            rows[3] = @shuffle(u32, rows[3], undefined, [_]i32{ 2, 3, 0, 1 });
-            rows[2] = @shuffle(u32, rows[2], undefined, [_]i32{ 1, 2, 3, 0 });
-        }
-        fn undiagonalize(rows: *Rows) void {
-            rows[0] = @shuffle(u32, rows[0], undefined, [_]i32{ 1, 2, 3, 0 });
-            rows[3] = @shuffle(u32, rows[3], undefined, [_]i32{ 2, 3, 0, 1 });
-            rows[2] = @shuffle(u32, rows[2], undefined, [_]i32{ 3, 0, 1, 2 });
-        }
-        fn compress(
-            chaining_value: [8]u32,
-            block_words: [16]u32,
-            block_len: u32,
-            counter: u64,
-            flags: u8,
-        ) [16]u32 {
-            const md: Lane = .{ @truncate(u32, counter), @truncate(u32, counter >> 32), block_len, @as(u32, flags) };
-            var rows: Rows = .{ chaining_value[0..4].*, chaining_value[4..8].*, tab.init_vec.blake_3[0..4].*, md };
-            var m: Rows = .{ block_words[0..4].*, block_words[4..8].*, block_words[8..12].*, block_words[12..16].* };
-            var t0: @Vector(4, u32) = @shuffle(u32, m[0], m[1], [_]i32{ 0, 2, (-1 -% 0), (-1 -% 2) });
-            g(false, &rows, t0);
-            var t1: @Vector(4, u32) = @shuffle(u32, m[0], m[1], [_]i32{ 1, 3, (-1 -% 1), (-1 -% 3) });
-            g(true, &rows, t1);
-            diagonalize(&rows);
-            var t2: @Vector(4, u32) = @shuffle(u32, m[2], m[3], [_]i32{ 0, 2, (-1 -% 0), (-1 -% 2) });
-            t2 = @shuffle(u32, t2, undefined, [_]i32{ 3, 0, 1, 2 });
-            g(false, &rows, t2);
-            var t3: @Vector(4, u32) = @shuffle(u32, m[2], m[3], [_]i32{ 1, 3, (-1 -% 1), (-1 -% 3) });
-            t3 = @shuffle(u32, t3, undefined, [_]i32{ 3, 0, 1, 2 });
-            g(true, &rows, t3);
-            undiagonalize(&rows);
-            m = Rows{ t0, t1, t2, t3 };
-            var i: usize = 0;
-            while (i < 6) : (i +%= 1) {
-                t0 = @shuffle(u32, m[0], m[1], [_]i32{ 2, 1, (-1 -% 1), (-1 -% 3) });
-                t0 = @shuffle(u32, t0, undefined, [_]i32{ 1, 2, 3, 0 });
-                g(false, &rows, t0);
-                t1 = @shuffle(u32, m[2], m[3], [_]i32{ 2, 2, (-1 -% 3), (-1 -% 3) });
-                var tt: @Vector(4, u32) = @shuffle(u32, m[0], undefined, [_]i32{ 3, 3, 0, 0 });
-                t1 = @shuffle(u32, tt, t1, [_]i32{ 0, (-1 -% 1), 2, (-1 -% 3) });
-                g(true, &rows, t1);
-                diagonalize(&rows);
-                t2 = @shuffle(u32, m[3], m[1], [_]i32{ 0, 1, (-1 -% 0), (-1 -% 1) });
-                tt = @shuffle(u32, t2, m[2], [_]i32{ 0, 1, 2, (-1 -% 3) });
-                t2 = @shuffle(u32, tt, undefined, [_]i32{ 0, 2, 3, 1 });
-                g(false, &rows, t2);
-                t3 = @shuffle(u32, m[1], m[3], [_]i32{ 2, (-1 -% 2), 3, (-1 -% 3) });
-                tt = @shuffle(u32, m[2], t3, [_]i32{ 0, (-1 -% 0), 1, (-1 -% 1) });
-                t3 = @shuffle(u32, tt, undefined, [_]i32{ 2, 3, 1, 0 });
-                g(true, &rows, t3);
-                undiagonalize(&rows);
-                m = Rows{ t0, t1, t2, t3 };
-            }
-            rows[0] ^= rows[2];
-            rows[1] ^= rows[3];
-            rows[2] ^= @Vector(4, u32){ chaining_value[0], chaining_value[1], chaining_value[2], chaining_value[3] };
-            rows[3] ^= @Vector(4, u32){ chaining_value[4], chaining_value[5], chaining_value[6], chaining_value[7] };
-            return @bitCast([16]u32, rows);
-        }
-    };
-    const CompressGeneric = struct {
-        fn g(state: *[16]u32, comptime a: usize, comptime b: usize, comptime c: usize, comptime d: usize, mx: u32, my: u32) void {
-            state[a] +%= state[b] +% mx;
-            state[d] = math.rotr(u32, state[d] ^ state[a], 16);
-            state[c] +%= state[d];
-            state[b] = math.rotr(u32, state[b] ^ state[c], 12);
-            state[a] +%= state[b] +% my;
-            state[d] = math.rotr(u32, state[d] ^ state[a], 8);
-            state[c] +%= state[d];
-            state[b] = math.rotr(u32, state[b] ^ state[c], 7);
-        }
-        fn round(state: *[16]u32, msg: [16]u32, schedule: [16]u8) void {
-            // Mix the columns.
-            g(state, 0, 4, 8, 12, msg[schedule[0]], msg[schedule[1]]);
-            g(state, 1, 5, 9, 13, msg[schedule[2]], msg[schedule[3]]);
-            g(state, 2, 6, 10, 14, msg[schedule[4]], msg[schedule[5]]);
-            g(state, 3, 7, 11, 15, msg[schedule[6]], msg[schedule[7]]);
-            // Mix the diagonals.
-            g(state, 0, 5, 10, 15, msg[schedule[8]], msg[schedule[9]]);
-            g(state, 1, 6, 11, 12, msg[schedule[10]], msg[schedule[11]]);
-            g(state, 2, 7, 8, 13, msg[schedule[12]], msg[schedule[13]]);
-            g(state, 3, 4, 9, 14, msg[schedule[14]], msg[schedule[15]]);
-        }
 
-        fn compress(
-            chaining_value: [8]u32,
-            block_words: [16]u32,
-            block_len: u32,
-            counter: u64,
-            flags: u8,
-        ) [16]u32 {
-            var state: [16]u32 = .{
-                chaining_value[0],       chaining_value[1],
-                chaining_value[2],       chaining_value[3],
-                chaining_value[4],       chaining_value[5],
-                chaining_value[6],       chaining_value[7],
-                tab.init_vec.blake_3[0], tab.init_vec.blake_3[1],
-                tab.init_vec.blake_3[2], tab.init_vec.blake_3[3],
-                @truncate(u32, counter), @truncate(u32, counter >> 32),
-                block_len,               flags,
-            };
-            for (msg_schedule) |schedule| {
-                round(&state, block_words, schedule);
-            }
-            for (chaining_value, 0..) |_, i| {
-                state[i] ^= state[i +% 8];
-                state[i +% 8] ^= chaining_value[i];
-            }
-            return state;
-        }
-    };
     const chunk_len: comptime_int = 1024;
     const chunk_start: comptime_int = 1;
     const chunk_end: comptime_int = 2;
@@ -376,15 +254,6 @@ pub const Blake3 = struct {
     const keyed_hash: comptime_int = 16;
     const derive_key_context: comptime_int = 32;
     const derive_key_material: comptime_int = 64;
-    const msg_schedule: [7][16]u8 = .{
-        .{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 },
-        .{ 2, 6, 3, 10, 7, 0, 4, 13, 1, 11, 12, 5, 9, 14, 15, 8 },
-        .{ 3, 4, 10, 12, 13, 2, 7, 14, 6, 5, 9, 0, 11, 15, 8, 1 },
-        .{ 10, 7, 12, 9, 14, 3, 13, 15, 4, 0, 11, 2, 5, 8, 1, 6 },
-        .{ 12, 13, 9, 11, 15, 10, 14, 8, 7, 2, 5, 3, 0, 1, 6, 4 },
-        .{ 9, 14, 11, 5, 8, 12, 15, 1, 13, 3, 0, 10, 2, 6, 4, 7 },
-        .{ 11, 15, 5, 0, 1, 9, 8, 6, 14, 10, 2, 12, 3, 4, 7, 13 },
-    };
     const compress = if (builtin.config.zig.cpu.arch == .x86_64)
         CompressVectorized.compress
     else
@@ -595,5 +464,136 @@ pub const Blake3 = struct {
     fn write(blake_3: *Blake3, bytes: []const u8) usize {
         blake_3.update(bytes);
         return bytes.len;
+    }
+};
+pub const CompressVectorized = struct {
+    const Lane = @Vector(4, u32);
+    const Rows = [4]Lane;
+    fn g(even: bool, rows: *Rows, m: Lane) void {
+        rows[0] +%= rows[1] +% m;
+        rows[3] ^= rows[0];
+        rows[3] = math.rotr(Lane, rows[3], mach.cmov8(even, 8, 16));
+        rows[2] +%= rows[3];
+        rows[1] ^= rows[2];
+        rows[1] = math.rotr(Lane, rows[1], mach.cmov8(even, 7, 12));
+    }
+    fn diagonalize(rows: *Rows) void {
+        rows[0] = @shuffle(u32, rows[0], undefined, [_]i32{ 3, 0, 1, 2 });
+        rows[3] = @shuffle(u32, rows[3], undefined, [_]i32{ 2, 3, 0, 1 });
+        rows[2] = @shuffle(u32, rows[2], undefined, [_]i32{ 1, 2, 3, 0 });
+    }
+    fn undiagonalize(rows: *Rows) void {
+        rows[0] = @shuffle(u32, rows[0], undefined, [_]i32{ 1, 2, 3, 0 });
+        rows[3] = @shuffle(u32, rows[3], undefined, [_]i32{ 2, 3, 0, 1 });
+        rows[2] = @shuffle(u32, rows[2], undefined, [_]i32{ 3, 0, 1, 2 });
+    }
+    pub fn compress(
+        chaining_value: [8]u32,
+        block_words: [16]u32,
+        block_len: u32,
+        counter: u64,
+        flags: u8,
+    ) [16]u32 {
+        const md: Lane = .{ @truncate(u32, counter), @truncate(u32, counter >> 32), block_len, @as(u32, flags) };
+        var rows: Rows = .{ chaining_value[0..4].*, chaining_value[4..8].*, tab.init_vec.blake_3[0..4].*, md };
+        var m: Rows = .{ block_words[0..4].*, block_words[4..8].*, block_words[8..12].*, block_words[12..16].* };
+        var t0: @Vector(4, u32) = @shuffle(u32, m[0], m[1], [_]i32{ 0, 2, (-1 -% 0), (-1 -% 2) });
+        g(false, &rows, t0);
+        var t1: @Vector(4, u32) = @shuffle(u32, m[0], m[1], [_]i32{ 1, 3, (-1 -% 1), (-1 -% 3) });
+        g(true, &rows, t1);
+        diagonalize(&rows);
+        var t2: @Vector(4, u32) = @shuffle(u32, m[2], m[3], [_]i32{ 0, 2, (-1 -% 0), (-1 -% 2) });
+        t2 = @shuffle(u32, t2, undefined, [_]i32{ 3, 0, 1, 2 });
+        g(false, &rows, t2);
+        var t3: @Vector(4, u32) = @shuffle(u32, m[2], m[3], [_]i32{ 1, 3, (-1 -% 1), (-1 -% 3) });
+        t3 = @shuffle(u32, t3, undefined, [_]i32{ 3, 0, 1, 2 });
+        g(true, &rows, t3);
+        undiagonalize(&rows);
+        m = Rows{ t0, t1, t2, t3 };
+        var i: usize = 0;
+        while (i < 6) : (i +%= 1) {
+            t0 = @shuffle(u32, m[0], m[1], [_]i32{ 2, 1, (-1 -% 1), (-1 -% 3) });
+            t0 = @shuffle(u32, t0, undefined, [_]i32{ 1, 2, 3, 0 });
+            g(false, &rows, t0);
+            t1 = @shuffle(u32, m[2], m[3], [_]i32{ 2, 2, (-1 -% 3), (-1 -% 3) });
+            var tt: @Vector(4, u32) = @shuffle(u32, m[0], undefined, [_]i32{ 3, 3, 0, 0 });
+            t1 = @shuffle(u32, tt, t1, [_]i32{ 0, (-1 -% 1), 2, (-1 -% 3) });
+            g(true, &rows, t1);
+            diagonalize(&rows);
+            t2 = @shuffle(u32, m[3], m[1], [_]i32{ 0, 1, (-1 -% 0), (-1 -% 1) });
+            tt = @shuffle(u32, t2, m[2], [_]i32{ 0, 1, 2, (-1 -% 3) });
+            t2 = @shuffle(u32, tt, undefined, [_]i32{ 0, 2, 3, 1 });
+            g(false, &rows, t2);
+            t3 = @shuffle(u32, m[1], m[3], [_]i32{ 2, (-1 -% 2), 3, (-1 -% 3) });
+            tt = @shuffle(u32, m[2], t3, [_]i32{ 0, (-1 -% 0), 1, (-1 -% 1) });
+            t3 = @shuffle(u32, tt, undefined, [_]i32{ 2, 3, 1, 0 });
+            g(true, &rows, t3);
+            undiagonalize(&rows);
+            m = Rows{ t0, t1, t2, t3 };
+        }
+        rows[0] ^= rows[2];
+        rows[1] ^= rows[3];
+        rows[2] ^= @Vector(4, u32){ chaining_value[0], chaining_value[1], chaining_value[2], chaining_value[3] };
+        rows[3] ^= @Vector(4, u32){ chaining_value[4], chaining_value[5], chaining_value[6], chaining_value[7] };
+        return @bitCast([16]u32, rows);
+    }
+};
+pub const CompressGeneric = struct {
+    fn g(state: *[16]u32, comptime a: usize, comptime b: usize, comptime c: usize, comptime d: usize, mx: u32, my: u32) void {
+        state[a] +%= state[b] +% mx;
+        state[d] = math.rotr(u32, state[d] ^ state[a], 16);
+        state[c] +%= state[d];
+        state[b] = math.rotr(u32, state[b] ^ state[c], 12);
+        state[a] +%= state[b] +% my;
+        state[d] = math.rotr(u32, state[d] ^ state[a], 8);
+        state[c] +%= state[d];
+        state[b] = math.rotr(u32, state[b] ^ state[c], 7);
+    }
+    fn round(state: *[16]u32, msg: [16]u32, schedule: [16]u8) void {
+        // Mix the columns.
+        g(state, 0, 4, 8, 12, msg[schedule[0]], msg[schedule[1]]);
+        g(state, 1, 5, 9, 13, msg[schedule[2]], msg[schedule[3]]);
+        g(state, 2, 6, 10, 14, msg[schedule[4]], msg[schedule[5]]);
+        g(state, 3, 7, 11, 15, msg[schedule[6]], msg[schedule[7]]);
+        // Mix the diagonals.
+        g(state, 0, 5, 10, 15, msg[schedule[8]], msg[schedule[9]]);
+        g(state, 1, 6, 11, 12, msg[schedule[10]], msg[schedule[11]]);
+        g(state, 2, 7, 8, 13, msg[schedule[12]], msg[schedule[13]]);
+        g(state, 3, 4, 9, 14, msg[schedule[14]], msg[schedule[15]]);
+    }
+    pub fn compress(
+        chaining_value: [8]u32,
+        block_words: [16]u32,
+        block_len: u32,
+        counter: u64,
+        flags: u8,
+    ) [16]u32 {
+        var state: [16]u32 = .{
+            chaining_value[0],       chaining_value[1],
+            chaining_value[2],       chaining_value[3],
+            chaining_value[4],       chaining_value[5],
+            chaining_value[6],       chaining_value[7],
+            tab.init_vec.blake_3[0], tab.init_vec.blake_3[1],
+            tab.init_vec.blake_3[2], tab.init_vec.blake_3[3],
+            @truncate(u32, counter), @truncate(u32, counter >> 32),
+            block_len,               flags,
+        };
+        const msg_schedule: [7][16]u8 = .{
+            .{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 },
+            .{ 2, 6, 3, 10, 7, 0, 4, 13, 1, 11, 12, 5, 9, 14, 15, 8 },
+            .{ 3, 4, 10, 12, 13, 2, 7, 14, 6, 5, 9, 0, 11, 15, 8, 1 },
+            .{ 10, 7, 12, 9, 14, 3, 13, 15, 4, 0, 11, 2, 5, 8, 1, 6 },
+            .{ 12, 13, 9, 11, 15, 10, 14, 8, 7, 2, 5, 3, 0, 1, 6, 4 },
+            .{ 9, 14, 11, 5, 8, 12, 15, 1, 13, 3, 0, 10, 2, 6, 4, 7 },
+            .{ 11, 15, 5, 0, 1, 9, 8, 6, 14, 10, 2, 12, 3, 4, 7, 13 },
+        };
+        for (msg_schedule) |schedule| {
+            round(&state, block_words, schedule);
+        }
+        for (chaining_value, 0..) |_, i| {
+            state[i] ^= state[i +% 8];
+            state[i +% 8] ^= chaining_value[i];
+        }
+        return state;
     }
 };
