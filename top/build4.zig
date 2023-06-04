@@ -246,7 +246,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             pub var vars: [][*:0]u8 = undefined;
             pub var euid: u16 = undefined;
             pub var egid: u16 = undefined;
-            pub var phase: types.Phase = .init;
         };
         pub usingnamespace GlobalState;
         pub const max_thread_count: u64 = builder_spec.options.max_thread_count;
@@ -319,7 +318,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             GlobalState.egid = sys.call_noexcept(.getegid, u16, .{});
             GlobalState.args = args;
             GlobalState.vars = vars;
-            GlobalState.phase = .decl;
             var ret: *Node = allocator.create(Node);
             mem.zero(Node, ret);
             ret.addPath(allocator).* = .{ .absolute = mach.manyToSlice80(GlobalState.args[2]) };
@@ -350,7 +348,14 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             ret.task = .any;
             ret.addName(allocator).* = duplicate(allocator, name);
             ret.hidden = name[0] == '_';
-            ret.assertExchange(.any, .null, .ready, max_thread_count);
+            if (builder_spec.logging.state.Acquire) {
+                ret.assertExchange(.format, .null, .ready, max_thread_count);
+                ret.assertExchange(.build, .null, .ready, max_thread_count);
+                ret.assertExchange(.run, .null, .ready, max_thread_count);
+                ret.assertExchange(.archive, .null, .ready, max_thread_count);
+            } else {
+                ret.task_lock = omni_lock;
+            }
             return ret;
         }
         fn addPath(node: *Node, allocator: *Allocator) *types.Path {
@@ -473,7 +478,11 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             ret.task_info.format.* = format_cmd;
             ret.hidden = name[0] == '_';
             ret.hidden = toplevel.hidden;
-            ret.assertExchange(.format, .null, .ready, max_thread_count);
+            if (state_logging.Acquire) {
+                ret.assertExchange(.format, .null, .ready, max_thread_count);
+            } else {
+                ret.task_lock = format_lock;
+            }
             return ret;
         }
         /// Initialize a new `zig ar` command.
@@ -495,7 +504,11 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             }
             ret.hidden = name[0] == '_';
             ret.hidden = toplevel.hidden;
-            ret.assertExchange(.archive, .null, .ready, max_thread_count);
+            if (state_logging.Acquire) {
+                ret.assertExchange(.archive, .null, .ready, max_thread_count);
+            } else {
+                ret.task_lock = archive_lock;
+            }
             return ret;
         }
         pub fn addBuild(toplevel: *Node, allocator: *Allocator, build_cmd: types.BuildCommand, name: [:0]const u8, root: [:0]const u8) !*Node {
@@ -519,10 +532,20 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             ret.task_info.build.main_pkg_path = main_pkg_path;
             ret.task_info.build.listen = .@"-";
             ret.hidden = toplevel.hidden;
-            ret.assertExchange(.build, .null, .ready, max_thread_count);
             if (build_cmd.kind == .exe) {
                 ret.dependOnSelfExe(allocator);
-                ret.assertExchange(.run, .null, .ready, max_thread_count);
+            }
+            if (state_logging.Acquire) {
+                ret.assertExchange(.build, .null, .ready, max_thread_count);
+                if (build_cmd.kind == .exe) {
+                    ret.assertExchange(.run, .null, .ready, max_thread_count);
+                }
+            } else {
+                if (build_cmd.kind == .exe) {
+                    ret.task_lock = exe_lock;
+                } else {
+                    ret.task_lock = obj_lock;
+                }
             }
             return ret;
         }
@@ -738,7 +761,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                         continue;
                     }
                     if (sub_node.exchange(sub_node.task, .ready, .blocking, max_thread_count)) {
-                        try meta.wrap(impl.tryAcquireThread(address_space, thread_space, allocator, toplevel, sub_node, sub_node.task));
+                        try meta.wrap(impl.tryAcquireThread(address_space, thread_space, allocator, toplevel, sub_node, task));
                     }
                 }
                 for (node.deps[0..node.deps_len]) |dep| {
@@ -869,31 +892,30 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             }
             return node.task_lock.get(task) == .finished;
         }
+        const state_logging: builtin.Logging.AttemptSuccessAcquireFault = builder_spec.logging.state.override();
         fn exchange(node: *Node, task: types.Task, old_state: types.State, new_state: types.State, arena_index: AddressSpace.Index) bool {
-            const logging: builtin.Logging.AttemptSuccessAcquireFault = comptime builder_spec.logging.state.override();
             const ret: bool = node.task_lock.atomicExchange(task, old_state, new_state);
             if (ret) {
-                if (logging.Success or GlobalState.phase == .exec) {
+                if (state_logging.Success) {
                     debug.exchangeNotice(node, task, old_state, new_state, arena_index);
                 }
             } else {
-                if (logging.Attempt) {
+                if (state_logging.Attempt) {
                     debug.noExchangeNotice(node, debug.about.state_0_s, task, old_state, new_state, arena_index);
                 }
             }
             return ret;
         }
         fn assertExchange(node: *Node, task: types.Task, old_state: types.State, new_state: types.State, arena_index: AddressSpace.Index) void {
-            const logging: builtin.Logging.AttemptSuccessAcquireFault = comptime builder_spec.logging.state.override();
             if (old_state == new_state) {
                 return;
             }
             if (node.task_lock.atomicExchange(task, old_state, new_state)) {
-                if (logging.Success and GlobalState.phase == .exec) {
+                if (state_logging.Success) {
                     debug.exchangeNotice(node, task, old_state, new_state, arena_index);
                 }
             } else {
-                if (logging.Fault) {
+                if (state_logging.Fault) {
                     debug.noExchangeNotice(node, debug.about.state_1_s, task, old_state, new_state, arena_index);
                 }
                 builtin.proc.exitGroup(2);
@@ -913,7 +935,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 if (sub_node == node and sub_node.task == task) {
                     continue;
                 }
-                if (sub_node.task_lock.get(sub_node.task) == state) {
+                if (sub_node.task_lock.get(task) == state) {
                     return true;
                 }
             }
@@ -922,9 +944,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         fn exchangeDeps(node: *Node, task: types.Task, from: types.State, to: types.State, arena_index: AddressSpace.Index) void {
             @setRuntimeSafety(safety);
             for (node.deps[0..node.deps_len]) |*dep| {
-                if (dep.on_node == node and
-                    dep.on_task == task)
-                {
+                if (dep.on_node == node and dep.on_task == task) {
                     continue;
                 }
                 if (dep.on_node.task_lock.get(dep.on_task) != from) {
@@ -1474,6 +1494,11 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             ptrs[len] = builtin.zero([*:0]u8);
             return ptrs[0..len];
         }
+        const omni_lock = .{ .bytes = .{ .null, .null, .ready, .ready, .ready, .ready, .null } };
+        const obj_lock = .{ .bytes = .{ .null, .null, .null, .ready, .null, .null, .null } };
+        const exe_lock = .{ .bytes = .{ .null, .null, .null, .ready, .ready, .null, .null } };
+        const format_lock = .{ .bytes = .{ .null, .null, .ready, .null, .null, .null, .null } };
+        const archive_lock = .{ .bytes = .{ .null, .null, .null, .null, .null, .ready, .null } };
         pub const debug = struct {
             const about = .{
                 .ar_s = builtin.fmt.about("ar"),
