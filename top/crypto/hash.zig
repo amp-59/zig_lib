@@ -4,6 +4,15 @@ const mach = @import("../mach.zig");
 const builtin = @import("../builtin.zig");
 const tab = @import("./tab.zig");
 const core = @import("./core.zig");
+pub const Blake2s128 = GenericBlake2s(128);
+pub const Blake2s160 = GenericBlake2s(160);
+pub const Blake2s224 = GenericBlake2s(224);
+pub const Blake2s256 = GenericBlake2s(256);
+pub const Blake2b128 = GenericBlake2b(128);
+pub const Blake2b160 = GenericBlake2b(160);
+pub const Blake2b256 = GenericBlake2b(256);
+pub const Blake2b384 = GenericBlake2b(384);
+pub const Blake2b512 = GenericBlake2b(512);
 pub fn GenericBlake2s(comptime out_bits: usize) type {
     return struct {
         h: [8]u32,
