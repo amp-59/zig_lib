@@ -79,11 +79,11 @@ pub fn GenericBlake2s(comptime out_bits: usize) type {
             blake_2s.buf_len +%= @intCast(u8, rem.len);
         }
         pub fn final(blake_2s: *Blake2s, dest: []u8) void {
-            @memset(blake_2s.buf[blake_2s.buf_len..], 0);
+            mach.memset(blake_2s.buf[blake_2s.buf_len..].ptr, 0, blake_2s.buf.len -% blake_2s.buf_len);
             blake_2s.t +%= blake_2s.buf_len;
             blake_2s.round(blake_2s.buf[0..], true);
             for (&blake_2s.h) |*x| x.* = mem.nativeToLittle(u32, x.*);
-            mach.memcpy(dest.ptr, &blake_2s.h, 32);
+            mach.memcpy(dest.ptr, @ptrCast([*]u8, &blake_2s.h), 32);
         }
         fn round(blake_2s: *Blake2s, b: *const [64]u8, last: bool) void {
             var m: [16]u32 = undefined;
@@ -185,13 +185,13 @@ pub fn GenericBlake2b(comptime out_bits: usize) type {
             mach.memcpy(blake_2b.buf[blake_2b.buf_len..].ptr, rem.ptr, rem.len);
             blake_2b.buf_len +%= @intCast(u8, rem.len);
         }
-        pub fn final(d: *Blake2b, dest: []u8) void {
-            const buf: []u8 = d.buf[d.buf_len..];
+        pub fn final(blake_2b: *Blake2b, dest: []u8) void {
+            const buf: []u8 = blake_2b.buf[blake_2b.buf_len..];
             mach.memset(buf.ptr, 0, buf.len);
-            d.t +%= d.buf_len;
-            d.round(d.buf[0..], true);
-            for (&d.h) |*x| x.* = mem.nativeToLittle(u64, x.*);
-            mach.memcpy(dest.ptr, &d.h, 64);
+            blake_2b.t +%= blake_2b.buf_len;
+            blake_2b.round(blake_2b.buf[0..], true);
+            for (&blake_2b.h) |*x| x.* = mem.nativeToLittle(u64, x.*);
+            mach.memcpy(dest.ptr, @ptrCast([*]u8, &blake_2b.h), 64);
         }
         fn round(blake_2b: *Blake2b, b: *const [128]u8, last: bool) void {
             var m: [16]u64 = undefined;
@@ -604,5 +604,90 @@ pub const CompressGeneric = struct {
             state[i +% 8] ^= chaining_value[i];
         }
         return state;
+    }
+};
+const u32x4 = @Vector(4, u32);
+pub const Md5 = struct {
+    s: [4]u32 = tab.init_vec.md5,
+    buf: [64]u8 = undefined,
+    buf_len: u8 = 0,
+    total_len: u64 = 0,
+    pub const len: comptime_int = 16;
+    pub const blk_len: comptime_int = 64;
+    pub fn init() Md5 {
+        return .{};
+    }
+    pub fn hash(bytes: []const u8, dest: []u8) void {
+        var md5: Md5 = Md5.init();
+        md5.update(bytes);
+        md5.final(dest);
+    }
+    pub fn update(md5: *Md5, bytes: []const u8) void {
+        @setRuntimeSafety(builtin.is_safe);
+        var off: usize = 0;
+        if (md5.buf_len != 0 and md5.buf_len +% bytes.len >= 64) {
+            off +%= 64 -% md5.buf_len;
+            mach.memcpy(md5.buf[md5.buf_len..].ptr, bytes.ptr, off);
+            md5.round(&md5.buf);
+            md5.buf_len = 0;
+        }
+        while (off +% 64 <= bytes.len) : (off +%= 64) {
+            md5.round(bytes[off..][0..64]);
+        }
+        const rem: []const u8 = bytes[off..];
+        mach.memcpy(md5.buf[md5.buf_len..].ptr, rem.ptr, rem.len);
+        md5.buf_len +%= @intCast(u8, rem.len);
+        md5.total_len +%= bytes.len;
+    }
+    pub fn final(md5: *Md5, dest: []u8) void {
+        @setRuntimeSafety(builtin.is_safe);
+        mach.memset(md5.buf[md5.buf_len..].ptr, 0, md5.buf.len -% md5.buf_len);
+        md5.buf[md5.buf_len] = 0x80;
+        md5.buf_len +%= 1;
+        if (64 -% md5.buf_len < 8) {
+            md5.round(&md5.buf);
+            mach.memset(&md5.buf, 0, 64);
+        }
+        var idx: usize = 1;
+        var off: u64 = md5.total_len >> 5;
+        md5.buf[56] = @intCast(u8, md5.total_len & 0x1f) << 3;
+        while (idx < 8) : (idx +%= 1) {
+            md5.buf[56 +% idx] = @intCast(u8, off & 0xff);
+            off >>= 8;
+        }
+        md5.round(md5.buf[0..]);
+        for (md5.s, 0..) |s, j| {
+            mem.writeIntLittle(u32, dest[4 * j ..][0..4], s);
+        }
+    }
+    fn round(md5: *Md5, bytes: *const [64]u8) void {
+        @setRuntimeSafety(builtin.is_safe);
+        var s: [16]u32 = undefined;
+        var idx: usize = 0;
+        while (idx < 16) : (idx +%= 1) {
+            s[idx] = 0;
+            s[idx] |= @as(u32, bytes[idx * 4 +% 0]);
+            s[idx] |= @as(u32, bytes[idx * 4 +% 1]) << 8;
+            s[idx] |= @as(u32, bytes[idx * 4 +% 2]) << 16;
+            s[idx] |= @as(u32, bytes[idx * 4 +% 3]) << 24;
+        }
+        var v: [4]u32 = md5.s;
+        for (tab.rounds.md5_0) |r| {
+            v[r.a] = v[r.a] +% (v[r.d] ^ (v[r.b] & (v[r.c] ^ v[r.d]))) +% r.t +% s[r.k];
+            v[r.a] = v[r.b] +% math.rotl(u32, v[r.a], r.s);
+        }
+        for (tab.rounds.md5_1) |r| {
+            v[r.a] = v[r.a] +% (v[r.c] ^ (v[r.d] & (v[r.b] ^ v[r.c]))) +% r.t +% s[r.k];
+            v[r.a] = v[r.b] +% math.rotl(u32, v[r.a], r.s);
+        }
+        for (tab.rounds.md5_2) |r| {
+            v[r.a] = v[r.a] +% (v[r.b] ^ v[r.c] ^ v[r.d]) +% r.t +% s[r.k];
+            v[r.a] = v[r.b] +% math.rotl(u32, v[r.a], r.s);
+        }
+        for (tab.rounds.md5_3) |r| {
+            v[r.a] = v[r.a] +% (v[r.c] ^ (v[r.b] | ~v[r.d])) +% r.t +% s[r.k];
+            v[r.a] = v[r.b] +% math.rotl(u32, v[r.a], r.s);
+        }
+        md5.s +%= @as(u32x4, v);
     }
 };
