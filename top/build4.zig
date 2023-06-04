@@ -1141,7 +1141,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     return if (!result) builtin.proc.exitError(error.UnfinishedRequest, 2);
                 }
             } else {
-                builtin.proc.exitError(error.TargetDoesNotExist, 2);
+                builtin.proc.exitError(error.nodeDoesNotExist, 2);
             }
         }
         const zig_out_exe_dir: [:0]const u8 = builder_spec.options.names.zig_out_dir ++ "/" ++ builder_spec.options.names.exe_out_dir;
@@ -1560,22 +1560,22 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 len +%= 1;
                 return len;
             }
-            fn writeExchangeTask(buf: [*]u8, target: *const Node, about_s: []const u8, task: types.Task) u64 {
+            fn writeExchangeTask(buf: [*]u8, node: *const Node, about_s: []const u8, task: types.Task) u64 {
                 @setRuntimeSafety(safety);
                 mach.memcpy(buf, about_s.ptr, about_s.len);
                 var len: u64 = about_s.len;
-                mach.memcpy(buf + len, target.names[0].ptr, target.names[0].len);
-                len +%= target.names[0].len;
+                mach.memcpy(buf + len, node.names[0].ptr, node.names[0].len);
+                len +%= node.names[0].len;
                 buf[len] = '.';
                 len +%= 1;
                 mach.memcpy(buf + len, @tagName(task).ptr, @tagName(task).len);
                 len +%= @tagName(task).len;
                 return len;
             }
-            fn exchangeNotice(target: *const Node, task: types.Task, old: types.State, new: types.State, arena_index: AddressSpace.Index) void {
+            fn exchangeNotice(node: *const Node, task: types.Task, old: types.State, new: types.State, arena_index: AddressSpace.Index) void {
                 @setRuntimeSafety(safety);
                 var buf: [32768]u8 = undefined;
-                var len: u64 = writeExchangeTask(&buf, target, about.state_0_s, task);
+                var len: u64 = writeExchangeTask(&buf, node, about.state_0_s, task);
                 len +%= writeFromTo(buf[len..].ptr, old, new);
                 if (builder_spec.options.show_arena_index and
                     arena_index != max_thread_count)
@@ -1585,11 +1585,11 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 buf[len] = '\n';
                 builtin.debug.write(buf[0 .. len +% 1]);
             }
-            fn noExchangeNotice(target: *const Node, about_s: [:0]const u8, task: types.Task, old: types.State, new: types.State, arena_index: AddressSpace.Index) void {
+            fn noExchangeNotice(node: *const Node, about_s: [:0]const u8, task: types.Task, old: types.State, new: types.State, arena_index: AddressSpace.Index) void {
                 @setRuntimeSafety(safety);
-                const actual: types.State = target.task_lock.get(task);
+                const actual: types.State = node.task_lock.get(task);
                 var buf: [32768]u8 = undefined;
-                var len: u64 = writeExchangeTask(&buf, target, about_s, task);
+                var len: u64 = writeExchangeTask(&buf, node, about_s, task);
                 buf[len] = '=';
                 len +%= 1;
                 mach.memcpy(buf[len..].ptr, @tagName(actual).ptr, @tagName(actual).len);
@@ -1612,14 +1612,14 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 buf[2 +% idx_s.len] = ']';
                 return 3 +% idx_s.len;
             }
-            fn stateNotice(target: *const Node, task: types.Task) void {
+            fn stateNotice(node: *const Node, task: types.Task) void {
                 @setRuntimeSafety(safety);
-                const actual: types.State = target.task_lock.get(task);
+                const actual: types.State = node.task_lock.get(task);
                 var buf: [32768]u8 = undefined;
                 mach.memcpy(&buf, about.state_0_s.ptr, about.state_0_s.len);
                 var len: u64 = about.state_0_s.len;
-                mach.memcpy(buf[len..].ptr, target.name.ptr, target.name.len);
-                len +%= target.name.len;
+                mach.memcpy(buf[len..].ptr, node.name.ptr, node.name.len);
+                len +%= node.name.len;
                 buf[len] = '.';
                 len +%= 1;
                 mach.memcpy(buf[len..].ptr, @tagName(task).ptr, @tagName(task).len);
@@ -1631,7 +1631,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 buf[len] = '\n';
                 builtin.debug.write(buf[0 .. len +% 1]);
             }
-            fn buildNotice(target: *const Node, task: types.Task, arena_index: AddressSpace.Index, ts: time.TimeSpec, old_size: u64, new_size: u64, ret: []u8) void {
+            fn buildNotice(node: *const Node, task: types.Task, arena_index: AddressSpace.Index, ts: time.TimeSpec, old_size: u64, new_size: u64, ret: []u8) void {
                 @setRuntimeSafety(safety);
                 const diff_size: u64 = @max(new_size, old_size) -% @min(new_size, old_size);
                 const new_size_s: []const u8 = builtin.fmt.ud64(new_size).readAll();
@@ -1645,7 +1645,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     .archive => about.ar_s,
                     .format => about.format_s,
                     .run => about.run_s,
-                    .build => switch (target.task_info.build.kind) {
+                    .build => switch (node.task_info.build.kind) {
                         .exe => about.build_exe_s,
                         .obj => about.build_obj_s,
                         .lib => about.build_lib_s,
@@ -1653,14 +1653,21 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 };
                 var len: u64 = about_s.len;
                 mach.memcpy(&buf, about_s.ptr, len);
-                mach.memcpy(buf[len..].ptr, target.names[0].ptr, target.names[0].len);
-                len +%= target.names[0].len;
+                mach.memcpy(buf[len..].ptr, node.names[0].ptr, node.names[0].len);
+                len +%= node.names[0].len;
                 @ptrCast(*[2]u8, buf[len..].ptr).* = about.next_s.*;
                 len +%= 2;
                 if (task == .build) {
-                    const mode: builtin.Mode = target.task_info.build.mode orelse .Debug;
+                    const mode: builtin.Mode = node.task_info.build.mode orelse .Debug;
+                    const stripped: bool = node.task_info.build.strip orelse (mode == .ReleaseSmall);
                     mach.memcpy(buf[len..].ptr, @tagName(mode).ptr, @tagName(mode).len);
                     len +%= @tagName(mode).len;
+                    @ptrCast(*[2]u8, buf[len..].ptr).* = about.next_s.*;
+                    len +%= 2;
+                    @ptrCast(*[2]u8, buf[len..].ptr).* = "un".*;
+                    if (!stripped) len +%= 2;
+                    @ptrCast(*[8]u8, buf[len..].ptr).* = "stripped".*;
+                    len +%= 8;
                     @ptrCast(*[2]u8, buf[len..].ptr).* = about.next_s.*;
                     len +%= 2;
                 }
