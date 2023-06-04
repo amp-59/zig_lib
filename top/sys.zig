@@ -1238,8 +1238,7 @@ pub const IPPORT = struct {
     pub const RESERVED = 1024;
     pub const USERRESERVED = 5000;
 };
-
-pub const ErrorCode = enum(i9) {
+pub const ErrorCode = enum(isize) {
     NULL = 0, // No error
     PERM = -1, // Operation not permitted
     NOENT = -2, // No such file or directory
