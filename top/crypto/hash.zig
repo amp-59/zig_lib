@@ -4,6 +4,12 @@ const mach = @import("../mach.zig");
 const builtin = @import("../builtin.zig");
 const tab = @import("./tab.zig");
 const core = @import("./core.zig");
+pub const Sha3_224 = GenericKeccak(1600, 224, 0x06, 24);
+pub const Sha3_256 = GenericKeccak(1600, 256, 0x06, 24);
+pub const Sha3_384 = GenericKeccak(1600, 384, 0x06, 24);
+pub const Sha3_512 = GenericKeccak(1600, 512, 0x06, 24);
+pub const Keccak256 = GenericKeccak(1600, 256, 0x01, 24);
+pub const Keccak512 = GenericKeccak(1600, 512, 0x01, 24);
 pub const Blake2s128 = GenericBlake2s(128);
 pub const Blake2s160 = GenericBlake2s(160);
 pub const Blake2s224 = GenericBlake2s(224);
@@ -13,6 +19,36 @@ pub const Blake2b160 = GenericBlake2b(160);
 pub const Blake2b256 = GenericBlake2b(256);
 pub const Blake2b384 = GenericBlake2b(384);
 pub const Blake2b512 = GenericBlake2b(512);
+pub fn GenericKeccak(
+    comptime number: comptime_int,
+    comptime output_bits: comptime_int,
+    comptime delim: u8,
+    comptime rounds: comptime_int,
+) type {
+    return struct {
+        st: State = .{},
+        const Keccak = @This();
+        const State = core.GenericKeccakPState(number, output_bits * 2, delim, rounds);
+        pub const len: comptime_int = output_bits / 8;
+        pub const blk_len: comptime_int = State.rate;
+        pub fn hash(bytes: []const u8, dest: []u8) void {
+            var st: Keccak = .{};
+            st.update(bytes);
+            st.final(dest);
+        }
+        pub fn update(keccak: *Keccak, bytes: []const u8) void {
+            keccak.st.absorb(bytes);
+        }
+        pub fn final(keccak: *Keccak, dest: []u8) void {
+            keccak.st.pad();
+            keccak.st.squeeze(dest[0..]);
+        }
+        fn write(keccak: *Keccak, bytes: []const u8) usize {
+            keccak.update(bytes);
+            return bytes.len;
+        }
+    };
+}
 pub fn GenericBlake2s(comptime out_bits: usize) type {
     return struct {
         h: [8]u32,
@@ -32,7 +68,6 @@ pub fn GenericBlake2s(comptime out_bits: usize) type {
         pub fn init(options: Options) Blake2s {
             var ret: Blake2s = undefined;
             ret.h = tab.init_vec.blake_2s;
-            // default parameters
             ret.h[0] ^= 0x01010000 ^
                 @truncate(u32, options.key.len << 8) ^
                 @intCast(u32, options.expected_out_bits >> 3);
@@ -60,7 +95,6 @@ pub fn GenericBlake2s(comptime out_bits: usize) type {
         }
         pub fn update(blake_2s: *Blake2s, bytes: []const u8) void {
             var off: usize = 0;
-            // Partial buffer exists from previous update. Copy into buffer then hash.
             if (blake_2s.buf_len != 0 and blake_2s.buf_len +% bytes.len > 64) {
                 off +%= 64 -% blake_2s.buf_len;
                 mach.memcpy(blake_2s.buf[blake_2s.buf_len..].ptr, bytes.ptr, off);
@@ -68,12 +102,10 @@ pub fn GenericBlake2s(comptime out_bits: usize) type {
                 blake_2s.round(blake_2s.buf[0..], false);
                 blake_2s.buf_len = 0;
             }
-            // Full middle blocks.
             while (off +% 64 < bytes.len) : (off +%= 64) {
                 blake_2s.t +%= 64;
                 blake_2s.round(bytes[off..][0..64], false);
             }
-            // Copy any remainder for next pass.
             const rem: []const u8 = bytes[off..];
             mach.memcpy(blake_2s.buf[blake_2s.buf_len..].ptr, rem.ptr, rem.len);
             blake_2s.buf_len +%= @intCast(u8, rem.len);
@@ -137,7 +169,7 @@ pub fn GenericBlake2b(comptime out_bits: usize) type {
         };
         pub const len: comptime_int = out_bits / 8;
         pub const blk_len: comptime_int = 128;
-        pub const key_len: comptime_int = 32; // recommended key length
+        pub const key_len: comptime_int = 32;
         pub fn init(options: Options) Blake2b {
             builtin.assert(8 <= out_bits and out_bits <= 512);
             var ret: Blake2b = undefined;
@@ -167,7 +199,6 @@ pub fn GenericBlake2b(comptime out_bits: usize) type {
         }
         pub fn update(blake_2b: *Blake2b, bytes: []const u8) void {
             var off: usize = 0;
-            // Partial buffer exists from previous update. Copy into buffer then hash.
             if (blake_2b.buf_len != 0 and blake_2b.buf_len +% bytes.len > 128) {
                 off +%= 128 -% blake_2b.buf_len;
                 mach.memcpy(blake_2b.buf[blake_2b.buf_len..].ptr, bytes.ptr, off);
@@ -175,12 +206,10 @@ pub fn GenericBlake2b(comptime out_bits: usize) type {
                 blake_2b.round(blake_2b.buf[0..], false);
                 blake_2b.buf_len = 0;
             }
-            // Full middle blocks.
             while (off +% 128 < bytes.len) : (off +%= 128) {
                 blake_2b.t +%= 128;
                 blake_2b.round(bytes[off..][0..128], false);
             }
-            // Copy any remainder for next pass.
             const rem: []const u8 = bytes[off..];
             mach.memcpy(blake_2b.buf[blake_2b.buf_len..].ptr, rem.ptr, rem.len);
             blake_2b.buf_len +%= @intCast(u8, rem.len);
@@ -226,12 +255,11 @@ pub fn GenericBlake2b(comptime out_bits: usize) type {
         }
     };
 }
-/// An incremental hasher that can accept any number of writes.
 pub const Blake3 = struct {
     chunk_state: ChunkState,
     key: [8]u32,
-    cv_stack: [54][8]u32 = undefined, // Space for 54 subtree chaining values:
-    cv_stack_len: u8 = 0, // 2^54 * buf_len: u64 = 2^64
+    cv_stack: [54][8]u32 = undefined,
+    cv_stack_len: u8 = 0,
     flags: u8,
     pub const Options = struct {
         key: ?[len]u8 = null,
@@ -314,11 +342,7 @@ pub const Blake3 = struct {
         blocks_compressed: u8 = 0,
         flags: u8,
         fn init(key: [8]u32, chunk_counter: u64, flags: u8) ChunkState {
-            return ChunkState{
-                .chaining_value = key,
-                .chunk_counter = chunk_counter,
-                .flags = flags,
-            };
+            return ChunkState{ .chaining_value = key, .chunk_counter = chunk_counter, .flags = flags };
         }
         fn len(st: *const ChunkState) usize {
             return blk_len * @as(usize, st.blocks_compressed) +% @as(usize, st.block_len);
@@ -559,12 +583,10 @@ pub const CompressGeneric = struct {
         state[b] = math.rotr(u32, state[b] ^ state[c], 7);
     }
     fn round(state: *[16]u32, msg: [16]u32, schedule: [16]u8) void {
-        // Mix the columns.
         g(state, 0, 4, 8, 12, msg[schedule[0]], msg[schedule[1]]);
         g(state, 1, 5, 9, 13, msg[schedule[2]], msg[schedule[3]]);
         g(state, 2, 6, 10, 14, msg[schedule[4]], msg[schedule[5]]);
         g(state, 3, 7, 11, 15, msg[schedule[6]], msg[schedule[7]]);
-        // Mix the diagonals.
         g(state, 0, 5, 10, 15, msg[schedule[8]], msg[schedule[9]]);
         g(state, 1, 6, 11, 12, msg[schedule[10]], msg[schedule[11]]);
         g(state, 2, 7, 8, 13, msg[schedule[12]], msg[schedule[13]]);
@@ -607,6 +629,7 @@ pub const CompressGeneric = struct {
     }
 };
 const u32x4 = @Vector(4, u32);
+const u64x8 = @Vector(8, u64);
 pub const Md5 = struct {
     s: [4]u32 = tab.init_vec.md5,
     buf: [64]u8 = undefined,
