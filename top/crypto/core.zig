@@ -342,3 +342,74 @@ pub const Block = struct {
         }
     };
 };
+fn GenericKeySchedule(comptime Aes: type) type {
+    builtin.assert(Aes.rounds == 10 or Aes.rounds == 14);
+    const rounds = Aes.rounds;
+    return struct {
+        round_keys: [rounds + 1]Block,
+        const KeySchedule = @This();
+        fn drc(comptime second: bool, comptime rc: u8, t: BlockVec, tx: BlockVec) BlockVec {
+            var s: BlockVec = undefined;
+            var ts: BlockVec = undefined;
+            return asm (
+                \\ vaeskeygenassist %[rc], %[t], %[s]
+                \\ vpslldq $4, %[tx], %[ts]
+                \\ vpxor   %[ts], %[tx], %[r]
+                \\ vpslldq $8, %[r], %[ts]
+                \\ vpxor   %[ts], %[r], %[r]
+                \\ vpshufd %[mask], %[s], %[ts]
+                \\ vpxor   %[ts], %[r], %[r]
+                : [r] "=&x" (-> BlockVec),
+                  [s] "=&x" (s),
+                  [ts] "=&x" (ts),
+                : [rc] "n" (rc),
+                  [t] "x" (t),
+                  [tx] "x" (tx),
+                  [mask] "n" (@as(u8, if (second) 0xaa else 0xff)),
+            );
+        }
+        fn expand128(t1: *Block) KeySchedule {
+            var round_keys: [11]Block = undefined;
+            const rcs: [10]u8 = .{ 1, 2, 4, 8, 16, 32, 64, 128, 27, 54 };
+            inline for (rcs, 0..) |rc, round| {
+                round_keys[round] = t1.*;
+                t1.repr = drc(false, rc, t1.repr, t1.repr);
+            }
+            round_keys[rcs.len] = t1.*;
+            return .{ .round_keys = round_keys };
+        }
+        fn expand256(t1: *Block, t2: *Block) KeySchedule {
+            var round_keys: [15]Block = undefined;
+            const rcs: [6]u8 = .{ 1, 2, 4, 8, 16, 32 };
+            round_keys[0] = t1.*;
+            inline for (rcs, 0..) |rc, round| {
+                round_keys[round * 2 + 1] = t2.*;
+                t1.repr = drc(false, rc, t2.repr, t1.repr);
+                round_keys[round * 2 + 2] = t1.*;
+                t2.repr = drc(true, rc, t1.repr, t2.repr);
+            }
+            round_keys[rcs.len * 2 + 1] = t2.*;
+            t1.repr = drc(false, 64, t2.repr, t1.repr);
+            round_keys[rcs.len * 2 + 2] = t1.*;
+            return .{ .round_keys = round_keys };
+        }
+        /// Invert the key schedule.
+        pub fn invert(key_schedule: KeySchedule) KeySchedule {
+            const round_keys: *const [rounds +% 1]Block = &key_schedule.round_keys;
+            var inv_round_keys: [rounds +% 1]Block = undefined;
+            inv_round_keys[0] = round_keys[rounds];
+            var idx: u64 = 1;
+            while (idx < rounds) : (idx +%= 1) {
+                inv_round_keys[idx] = Block{
+                    .repr = asm (
+                        \\ vaesimc %[rk], %[inv_rk]
+                        : [inv_rk] "=x" (-> BlockVec),
+                        : [rk] "x" (round_keys[rounds -% idx].repr),
+                    ),
+                };
+            }
+            inv_round_keys[rounds] = round_keys[0];
+            return .{ .round_keys = inv_round_keys };
+        }
+    };
+}
