@@ -143,26 +143,34 @@ fn tests(allocator: *Node.Allocator, node: *Node) void {
     node.task = .build;
 }
 fn cryptoTests(allocator: *Node.Allocator, node: *Node) void {
-    const aead_test: *Node = try node.addBuild(allocator, build_cmd, "aead_test", "test/crypto/aead-test.zig");
+    const mode_save: ?builtin.Mode = build_cmd.mode;
+    const strip_save: ?bool = build_cmd.strip;
+    build_cmd.mode = .Debug;
+    build_cmd.strip = true;
+    defer {
+        build_cmd.mode = mode_save;
+        build_cmd.strip = strip_save;
+    }
     const core_test: *Node = try node.addBuild(allocator, build_cmd, "core_test", "test/crypto/core-test.zig");
-    const hash_test: *Node = try node.addBuild(allocator, build_cmd, "hash_test", "test/crypto/hash-test.zig");
-    const pcurve_test: *Node = try node.addBuild(allocator, build_cmd, "pcurve_test", "test/crypto/pcurve-test.zig");
-    const ecdsa_test: *Node = try node.addBuild(allocator, build_cmd, "ecdsa_test", "test/crypto/ecdsa-test.zig");
-    //const auth_test: *Node = try node.addBuild(allocator, build_cmd, "auth_test", "test/crypto/auth-test.zig");
     const utils_test: *Node = try node.addBuild(allocator, build_cmd, "utils_test", "test/crypto/utils-test.zig");
+    const hash_test: *Node = try node.addBuild(allocator, build_cmd, "hash_test", "test/crypto/hash-test.zig");
+    const pcurves_test: *Node = try node.addBuild(allocator, build_cmd, "pcurves_test", "test/crypto/pcurves-test.zig");
+    const auth_test: *Node = try node.addBuild(allocator, build_cmd, "auth_test", "test/crypto/auth-test.zig");
+    const aead_test: *Node = try node.addBuild(allocator, build_cmd, "aead_test", "test/crypto/aead-test.zig");
+    const ecdsa_test: *Node = try node.addBuild(allocator, build_cmd, "ecdsa_test", "test/crypto/ecdsa-test.zig");
     const kyber_test: *Node = try node.addBuild(allocator, build_cmd, "kyber_test", "test/crypto/kyber-test.zig");
     const dh_test: *Node = try node.addBuild(allocator, build_cmd, "dh_test", "test/crypto/dh-test.zig");
     const tls_test: *Node = try node.addBuild(allocator, build_cmd, "tls_test", "test/crypto/tls-test.zig");
-
-    _ = aead_test;
-    _ = core_test;
-    _ = hash_test;
-    _ = pcurve_test;
-    _ = ecdsa_test;
-    _ = utils_test;
-    _ = kyber_test;
-    _ = dh_test;
-    _ = tls_test;
+    core_test.addDescr("Test core crypto functions and types");
+    utils_test.addDescr("Test crypto utility functions");
+    hash_test.addDescr("Test hashing functions");
+    pcurves_test.addDescr("Test point curve operations");
+    auth_test.addDescr("Test authentication");
+    aead_test.addDescr("Test authenticated encryption functions and types");
+    dh_test.addDescr("Test for many 25519-related functions");
+    kyber_test.addDescr("Test for post-quantum 'Kyber' key exchange functions and types");
+    ecdsa_test.addDescr("Test ECDSA");
+    tls_test.addDescr("Test TLS");
 }
 fn builderTests(allocator: *Node.Allocator, node: *Node) void {
     //
