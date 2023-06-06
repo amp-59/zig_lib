@@ -54,7 +54,7 @@ pub const PolynomialFormatSpec = struct {
     prefix: ?*const [2]u8 = null,
     separator: ?Separator = null,
 };
-pub fn PolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
+pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
     const T = struct {
         value: Int,
         const Format: type = @This();
@@ -164,7 +164,7 @@ pub fn PolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
     };
     return T;
 }
-pub fn uo(value: anytype) PolynomialFormat(.{
+pub fn uo(value: anytype) GenericPolynomialFormat(.{
     .bits = blk: {
         const T: type = @TypeOf(value);
         if (T == comptime_int) {
@@ -184,13 +184,13 @@ pub const SourceLocationFormat = struct {
     value: builtin.SourceLocation,
     return_address: u32,
     const Format: type = @This();
-    const LineColFormat = PolynomialFormat(.{
+    const LineColFormat = GenericPolynomialFormat(.{
         .bits = 32,
         .signedness = .unsigned,
         .radix = 10,
         .width = .min,
     });
-    const AddrFormat = PolynomialFormat(.{
+    const AddrFormat = GenericPolynomialFormat(.{
         .bits = 32,
         .signedness = .unsigned,
         .radix = 16,
@@ -283,13 +283,13 @@ pub const Bytes = struct {
         remainder: mem.Bytes,
     };
     const Unit = mem.Bytes.Unit;
-    const MajorIntFormat = PolynomialFormat(.{
+    const MajorIntFormat = GenericPolynomialFormat(.{
         .bits = 16,
         .signedness = .unsigned,
         .radix = 10,
         .width = .min,
     });
-    const MinorIntFormat = PolynomialFormat(.{
+    const MinorIntFormat = GenericPolynomialFormat(.{
         .bits = 16,
         .signedness = .unsigned,
         .radix = 10,
@@ -380,9 +380,9 @@ pub fn ChangedIntFormat(comptime fmt_spec: ChangedIntFormatSpec) type {
         const Format: type = @This();
         const Old: type = @Type(.{ .Int = .{ .bits = fmt_spec.old_fmt_spec.bits, .signedness = fmt_spec.old_fmt_spec.signedness } });
         const New: type = @Type(.{ .Int = .{ .bits = fmt_spec.new_fmt_spec.bits, .signedness = fmt_spec.new_fmt_spec.signedness } });
-        const OldIntFormat = PolynomialFormat(fmt_spec.old_fmt_spec);
-        const NewIntFormat = PolynomialFormat(fmt_spec.new_fmt_spec);
-        const DeltaIntFormat = PolynomialFormat(fmt_spec.del_fmt_spec);
+        const OldIntFormat = GenericPolynomialFormat(fmt_spec.old_fmt_spec);
+        const NewIntFormat = GenericPolynomialFormat(fmt_spec.new_fmt_spec);
+        const DeltaIntFormat = GenericPolynomialFormat(fmt_spec.del_fmt_spec);
         pub const max_len: u64 = @max(fmt_spec.dec_style.len, fmt_spec.inc_style.len) +%
             OldIntFormat.max_len +% 1 +% DeltaIntFormat.max_len +% 5 +% fmt_spec.no_style.len +% NewIntFormat.max_len;
         fn formatWriteDelta(format: Format, array: anytype) void {
@@ -592,7 +592,7 @@ pub fn RangeFormat(comptime fmt_spec: PolynomialFormatSpec) type {
         upper: SubFormat.Int,
         const Format: type = @This();
         pub const spec: PolynomialFormatSpec = fmt_spec;
-        pub const SubFormat = PolynomialFormat(blk: {
+        pub const SubFormat = GenericPolynomialFormat(blk: {
             var tmp: PolynomialFormatSpec = fmt_spec;
             tmp.prefix = null;
             break :blk tmp;
@@ -702,14 +702,14 @@ pub const ChangedRangeFormatSpec = struct {
 };
 pub fn ChangedRangeFormat(comptime fmt_spec: ChangedRangeFormatSpec) type {
     return (struct {
-        old_lower: OldPolynomialFormat.Int,
-        old_upper: OldPolynomialFormat.Int,
-        new_lower: NewPolynomialFormat.Int,
-        new_upper: NewPolynomialFormat.Int,
+        old_lower: OldGenericPolynomialFormat.Int,
+        old_upper: OldGenericPolynomialFormat.Int,
+        new_lower: NewGenericPolynomialFormat.Int,
+        new_upper: NewGenericPolynomialFormat.Int,
         const Format: type = @This();
-        const OldPolynomialFormat = PolynomialFormat(fmt_spec.old_fmt_spec);
-        const NewPolynomialFormat = PolynomialFormat(fmt_spec.new_fmt_spec);
-        const DelPolynomialFormat = PolynomialFormat(fmt_spec.del_fmt_spec);
+        const OldGenericPolynomialFormat = GenericPolynomialFormat(fmt_spec.old_fmt_spec);
+        const NewGenericPolynomialFormat = GenericPolynomialFormat(fmt_spec.new_fmt_spec);
+        const DelGenericPolynomialFormat = GenericPolynomialFormat(fmt_spec.del_fmt_spec);
         const LowerChangedIntFormat = ChangedIntFormat(.{
             .old_fmt_spec = fmt_spec.old_fmt_spec,
             .new_fmt_spec = fmt_spec.new_fmt_spec,
@@ -727,14 +727,14 @@ pub fn ChangedRangeFormat(comptime fmt_spec: ChangedRangeFormatSpec) type {
             .arrow_style = fmt_spec.arrow_style,
         });
         pub fn formatWrite(format: Format, array: anytype) void {
-            const old_lower_fmt: OldPolynomialFormat = OldPolynomialFormat{ .value = format.old_lower };
-            const old_upper_fmt: OldPolynomialFormat = OldPolynomialFormat{ .value = format.old_upper };
-            const old_lower_s: OldPolynomialFormat.StaticString = old_lower_fmt.formatConvert();
-            const old_upper_s: OldPolynomialFormat.StaticString = old_upper_fmt.formatConvert();
-            const new_lower_fmt: NewPolynomialFormat = NewPolynomialFormat{ .value = format.new_lower };
-            const new_upper_fmt: NewPolynomialFormat = NewPolynomialFormat{ .value = format.new_upper };
-            const new_lower_s: NewPolynomialFormat.StaticString = new_lower_fmt.formatConvert();
-            const new_upper_s: NewPolynomialFormat.StaticString = new_upper_fmt.formatConvert();
+            const old_lower_fmt: OldGenericPolynomialFormat = OldGenericPolynomialFormat{ .value = format.old_lower };
+            const old_upper_fmt: OldGenericPolynomialFormat = OldGenericPolynomialFormat{ .value = format.old_upper };
+            const old_lower_s: OldGenericPolynomialFormat.StaticString = old_lower_fmt.formatConvert();
+            const old_upper_s: OldGenericPolynomialFormat.StaticString = old_upper_fmt.formatConvert();
+            const new_lower_fmt: NewGenericPolynomialFormat = NewGenericPolynomialFormat{ .value = format.new_lower };
+            const new_upper_fmt: NewGenericPolynomialFormat = NewGenericPolynomialFormat{ .value = format.new_upper };
+            const new_lower_s: NewGenericPolynomialFormat.StaticString = new_lower_fmt.formatConvert();
+            const new_upper_s: NewGenericPolynomialFormat.StaticString = new_upper_fmt.formatConvert();
             const lower_del_fmt: LowerChangedIntFormat = .{ .old_value = format.old_lower, .new_value = format.new_lower };
             const upper_del_fmt: UpperChangedIntFormat = .{ .old_value = format.old_upper, .new_value = format.new_upper };
             var i: u64 = 0;
@@ -778,14 +778,14 @@ pub fn ChangedRangeFormat(comptime fmt_spec: ChangedRangeFormatSpec) type {
             array.writeOne('}');
         }
         pub fn formatLength(format: Format) u64 {
-            const old_lower_fmt: OldPolynomialFormat = OldPolynomialFormat{ .value = format.old_lower };
-            const old_upper_fmt: OldPolynomialFormat = OldPolynomialFormat{ .value = format.old_upper };
-            const old_lower_s: OldPolynomialFormat.StaticString = old_lower_fmt.formatConvert();
-            const old_upper_s: OldPolynomialFormat.StaticString = old_upper_fmt.formatConvert();
-            const new_lower_fmt: NewPolynomialFormat = NewPolynomialFormat{ .value = format.new_lower };
-            const new_upper_fmt: NewPolynomialFormat = NewPolynomialFormat{ .value = format.new_upper };
-            const new_lower_s: NewPolynomialFormat.StaticString = new_lower_fmt.formatConvert();
-            const new_upper_s: NewPolynomialFormat.StaticString = new_upper_fmt.formatConvert();
+            const old_lower_fmt: OldGenericPolynomialFormat = OldGenericPolynomialFormat{ .value = format.old_lower };
+            const old_upper_fmt: OldGenericPolynomialFormat = OldGenericPolynomialFormat{ .value = format.old_upper };
+            const old_lower_s: OldGenericPolynomialFormat.StaticString = old_lower_fmt.formatConvert();
+            const old_upper_s: OldGenericPolynomialFormat.StaticString = old_upper_fmt.formatConvert();
+            const new_lower_fmt: NewGenericPolynomialFormat = NewGenericPolynomialFormat{ .value = format.new_lower };
+            const new_upper_fmt: NewGenericPolynomialFormat = NewGenericPolynomialFormat{ .value = format.new_upper };
+            const new_lower_s: NewGenericPolynomialFormat.StaticString = new_lower_fmt.formatConvert();
+            const new_upper_s: NewGenericPolynomialFormat.StaticString = new_upper_fmt.formatConvert();
             var len: u64 = 0;
             const lower_del_fmt: LowerChangedIntFormat = .{ .old_value = format.old_lower, .new_value = format.new_lower };
             const upper_del_fmt: UpperChangedIntFormat = .{ .old_value = format.old_upper, .new_value = format.new_upper };
@@ -822,10 +822,10 @@ pub fn ChangedRangeFormat(comptime fmt_spec: ChangedRangeFormatSpec) type {
             return len;
         }
         pub fn init(
-            old_lower: OldPolynomialFormat.Int,
-            old_upper: OldPolynomialFormat.Int,
-            new_lower: NewPolynomialFormat.Int,
-            new_upper: NewPolynomialFormat.Int,
+            old_lower: OldGenericPolynomialFormat.Int,
+            old_upper: OldGenericPolynomialFormat.Int,
+            new_lower: NewGenericPolynomialFormat.Int,
+            new_upper: NewGenericPolynomialFormat.Int,
         ) Format {
             return .{
                 .old_lower = old_lower,
@@ -1171,7 +1171,107 @@ pub fn EscapedStringFormat(comptime fmt_spec: EscapedStringFormatSpec) type {
     };
     return T;
 }
-
+pub fn GenericLEB128Format(comptime Int: type) type {
+    const bit_size_of: comptime_int = @bitSizeOf(Int);
+    return struct {
+        value: Int,
+        const Format = @This();
+        pub fn formatWrite(format: Format, array: anytype) void {
+            if (@typeInfo(Int).Int.signedness == .signed) {
+                const Abs = @Type(.{ .Int = .{
+                    .signedness = .unsigned,
+                    .bits = bit_size_of,
+                } });
+                var value: Int = format.value;
+                while (true) {
+                    value >>= 6;
+                    if (value == -1 or value == 0) {
+                        array.writeOne(@truncate(u8, @bitCast(Abs, value)) & 0x7f);
+                        break;
+                    } else {
+                        value >>= 1;
+                        array.writeOne(@truncate(u8, @bitCast(Abs, value)) | 0x80);
+                    }
+                }
+            } else {
+                var value: Int = format.value;
+                while (true) {
+                    value >>= 7;
+                    if (value == 0) {
+                        array.writeOne(@truncate(u8, value & 0x7f));
+                        break;
+                    } else {
+                        array.writeOne(@truncate(u8, value & 0x7f) | 0x80);
+                    }
+                }
+            }
+        }
+        pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
+            var len: u64 = 0;
+            if (@typeInfo(Int).Int.signedness == .signed) {
+                const Abs = @Type(.{ .Int = .{
+                    .signedness = .unsigned,
+                    .bits = bit_size_of,
+                } });
+                var value: Int = format.value;
+                while (true) {
+                    value >>= 6;
+                    if (value == -1 or value == 0) {
+                        buf[len] = @truncate(u8, @bitCast(Abs, value)) & 0x7f;
+                        len +%= 1;
+                        break;
+                    } else {
+                        value >>= 1;
+                        buf[len] = @truncate(u8, @bitCast(Abs, value)) | 0x80;
+                        len +%= 1;
+                    }
+                }
+            } else {
+                var value: Int = format.value;
+                while (true) {
+                    value >>= 7;
+                    if (value == 0) {
+                        buf[len] = @truncate(u8, value & 0x7f);
+                        len +%= 1;
+                        break;
+                    } else {
+                        buf[len] = @truncate(u8, value & 0x7f) | 0x80;
+                        len +%= 1;
+                    }
+                }
+            }
+            return len;
+        }
+        pub fn formatLength(format: Format) u64 {
+            var len: u64 = 0;
+            if (@typeInfo(Int).Int.signedness == .signed) {
+                var value: Int = format.value;
+                while (true) {
+                    value >>= 6;
+                    if (value == -1 or value == 0) {
+                        len +%= 1;
+                        break;
+                    } else {
+                        value >>= 1;
+                        len +%= 1;
+                    }
+                }
+            } else {
+                var value: Int = format.value;
+                while (true) {
+                    value >>= 7;
+                    if (value == 0) {
+                        len +%= 1;
+                        break;
+                    } else {
+                        len +%= 1;
+                    }
+                }
+            }
+            return len;
+        }
+    };
+}
 pub fn toCamelCases(noalias buf: []u8, names: []const []const u8) []u8 {
     var len: u64 = 0;
     var state: bool = false;
@@ -1382,7 +1482,7 @@ pub fn requireComptime(comptime T: type) bool {
         },
     }
 }
-pub inline fn ud(value: anytype) PolynomialFormat(.{
+pub inline fn ud(value: anytype) GenericPolynomialFormat(.{
     .bits = blk: {
         const T: type = @TypeOf(value);
         if (T == comptime_int) {
@@ -1398,7 +1498,7 @@ pub inline fn ud(value: anytype) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn udh(value: anytype) PolynomialFormat(.{
+pub inline fn udh(value: anytype) GenericPolynomialFormat(.{
     .bits = blk: {
         const T: type = @TypeOf(value);
         if (T == comptime_int) {
@@ -1415,7 +1515,7 @@ pub inline fn udh(value: anytype) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn ub(value: anytype) PolynomialFormat(.{
+pub inline fn ub(value: anytype) GenericPolynomialFormat(.{
     .bits = blk: {
         const T: type = @TypeOf(value);
         if (T == comptime_int) {
@@ -1432,7 +1532,7 @@ pub inline fn ub(value: anytype) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn ux(value: anytype) PolynomialFormat(.{
+pub inline fn ux(value: anytype) GenericPolynomialFormat(.{
     .bits = blk: {
         const T: type = @TypeOf(value);
         if (T == comptime_int) {
@@ -1449,7 +1549,7 @@ pub inline fn ux(value: anytype) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn id(value: anytype) PolynomialFormat(.{
+pub inline fn id(value: anytype) GenericPolynomialFormat(.{
     .bits = blk: {
         const T: type = @TypeOf(value);
         if (T == comptime_int) {
@@ -1465,7 +1565,7 @@ pub inline fn id(value: anytype) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn idh(value: anytype) PolynomialFormat(.{
+pub inline fn idh(value: anytype) GenericPolynomialFormat(.{
     .bits = blk: {
         const T: type = @TypeOf(value);
         if (T == comptime_int) {
@@ -1482,7 +1582,7 @@ pub inline fn idh(value: anytype) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn ib(value: anytype) PolynomialFormat(.{
+pub inline fn ib(value: anytype) GenericPolynomialFormat(.{
     .bits = blk: {
         const T: type = @TypeOf(value);
         if (T == comptime_int) {
@@ -1499,7 +1599,7 @@ pub inline fn ib(value: anytype) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn ix(value: anytype) PolynomialFormat(.{
+pub inline fn ix(value: anytype) GenericPolynomialFormat(.{
     .bits = blk: {
         const T: type = @TypeOf(value);
         if (T == comptime_int) {
@@ -1516,7 +1616,7 @@ pub inline fn ix(value: anytype) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn ib8(value: i8) PolynomialFormat(.{
+pub inline fn ib8(value: i8) GenericPolynomialFormat(.{
     .bits = 8,
     .radix = 2,
     .signedness = .signed,
@@ -1525,7 +1625,7 @@ pub inline fn ib8(value: i8) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn ib16(value: i16) PolynomialFormat(.{
+pub inline fn ib16(value: i16) GenericPolynomialFormat(.{
     .bits = 16,
     .radix = 2,
     .signedness = .signed,
@@ -1534,7 +1634,7 @@ pub inline fn ib16(value: i16) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn ib32(value: i32) PolynomialFormat(.{
+pub inline fn ib32(value: i32) GenericPolynomialFormat(.{
     .bits = 32,
     .radix = 2,
     .signedness = .signed,
@@ -1543,7 +1643,7 @@ pub inline fn ib32(value: i32) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn ib64(value: i64) PolynomialFormat(.{
+pub inline fn ib64(value: i64) GenericPolynomialFormat(.{
     .bits = 64,
     .radix = 2,
     .signedness = .signed,
@@ -1552,7 +1652,7 @@ pub inline fn ib64(value: i64) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn ib128(value: i128) PolynomialFormat(.{
+pub inline fn ib128(value: i128) GenericPolynomialFormat(.{
     .bits = 128,
     .radix = 2,
     .signedness = .signed,
@@ -1561,7 +1661,7 @@ pub inline fn ib128(value: i128) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn io8(value: i8) PolynomialFormat(.{
+pub inline fn io8(value: i8) GenericPolynomialFormat(.{
     .bits = 8,
     .radix = 8,
     .signedness = .signed,
@@ -1570,7 +1670,7 @@ pub inline fn io8(value: i8) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn io16(value: i16) PolynomialFormat(.{
+pub inline fn io16(value: i16) GenericPolynomialFormat(.{
     .bits = 16,
     .radix = 8,
     .signedness = .signed,
@@ -1579,7 +1679,7 @@ pub inline fn io16(value: i16) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn io32(value: i32) PolynomialFormat(.{
+pub inline fn io32(value: i32) GenericPolynomialFormat(.{
     .bits = 32,
     .radix = 8,
     .signedness = .signed,
@@ -1588,7 +1688,7 @@ pub inline fn io32(value: i32) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn io64(value: i64) PolynomialFormat(.{
+pub inline fn io64(value: i64) GenericPolynomialFormat(.{
     .bits = 64,
     .radix = 8,
     .signedness = .signed,
@@ -1597,7 +1697,7 @@ pub inline fn io64(value: i64) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn io128(value: i128) PolynomialFormat(.{
+pub inline fn io128(value: i128) GenericPolynomialFormat(.{
     .bits = 128,
     .radix = 8,
     .signedness = .signed,
@@ -1606,7 +1706,7 @@ pub inline fn io128(value: i128) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn id8(value: i8) PolynomialFormat(.{
+pub inline fn id8(value: i8) GenericPolynomialFormat(.{
     .bits = 8,
     .radix = 10,
     .signedness = .signed,
@@ -1614,7 +1714,7 @@ pub inline fn id8(value: i8) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn id16(value: i16) PolynomialFormat(.{
+pub inline fn id16(value: i16) GenericPolynomialFormat(.{
     .bits = 16,
     .radix = 10,
     .signedness = .signed,
@@ -1622,7 +1722,7 @@ pub inline fn id16(value: i16) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn id32(value: i32) PolynomialFormat(.{
+pub inline fn id32(value: i32) GenericPolynomialFormat(.{
     .bits = 32,
     .radix = 10,
     .signedness = .signed,
@@ -1630,7 +1730,7 @@ pub inline fn id32(value: i32) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn id64(value: i64) PolynomialFormat(.{
+pub inline fn id64(value: i64) GenericPolynomialFormat(.{
     .bits = 64,
     .radix = 10,
     .signedness = .signed,
@@ -1638,7 +1738,7 @@ pub inline fn id64(value: i64) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn id128(value: i128) PolynomialFormat(.{
+pub inline fn id128(value: i128) GenericPolynomialFormat(.{
     .bits = 128,
     .radix = 10,
     .signedness = .signed,
@@ -1646,7 +1746,7 @@ pub inline fn id128(value: i128) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn ix8(value: i8) PolynomialFormat(.{
+pub inline fn ix8(value: i8) GenericPolynomialFormat(.{
     .bits = 8,
     .radix = 16,
     .signedness = .signed,
@@ -1655,7 +1755,7 @@ pub inline fn ix8(value: i8) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn ix16(value: i16) PolynomialFormat(.{
+pub inline fn ix16(value: i16) GenericPolynomialFormat(.{
     .bits = 16,
     .radix = 16,
     .signedness = .signed,
@@ -1664,7 +1764,7 @@ pub inline fn ix16(value: i16) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn ix32(value: i32) PolynomialFormat(.{
+pub inline fn ix32(value: i32) GenericPolynomialFormat(.{
     .bits = 32,
     .radix = 16,
     .signedness = .signed,
@@ -1673,7 +1773,7 @@ pub inline fn ix32(value: i32) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn ix64(value: i64) PolynomialFormat(.{
+pub inline fn ix64(value: i64) GenericPolynomialFormat(.{
     .bits = 64,
     .radix = 16,
     .signedness = .signed,
@@ -1682,7 +1782,7 @@ pub inline fn ix64(value: i64) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn ix128(value: i128) PolynomialFormat(.{
+pub inline fn ix128(value: i128) GenericPolynomialFormat(.{
     .bits = 128,
     .radix = 16,
     .signedness = .signed,
@@ -1691,7 +1791,7 @@ pub inline fn ix128(value: i128) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn iz8(value: i8) PolynomialFormat(.{
+pub inline fn iz8(value: i8) GenericPolynomialFormat(.{
     .bits = 8,
     .radix = 36,
     .signedness = .signed,
@@ -1700,7 +1800,7 @@ pub inline fn iz8(value: i8) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn iz16(value: i16) PolynomialFormat(.{
+pub inline fn iz16(value: i16) GenericPolynomialFormat(.{
     .bits = 16,
     .radix = 36,
     .signedness = .signed,
@@ -1709,7 +1809,7 @@ pub inline fn iz16(value: i16) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn iz32(value: i32) PolynomialFormat(.{
+pub inline fn iz32(value: i32) GenericPolynomialFormat(.{
     .bits = 32,
     .radix = 36,
     .signedness = .signed,
@@ -1718,7 +1818,7 @@ pub inline fn iz32(value: i32) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn iz64(value: i64) PolynomialFormat(.{
+pub inline fn iz64(value: i64) GenericPolynomialFormat(.{
     .bits = 64,
     .radix = 36,
     .signedness = .signed,
@@ -1727,7 +1827,7 @@ pub inline fn iz64(value: i64) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn iz128(value: i128) PolynomialFormat(.{
+pub inline fn iz128(value: i128) GenericPolynomialFormat(.{
     .bits = 128,
     .radix = 36,
     .signedness = .signed,
@@ -1736,7 +1836,7 @@ pub inline fn iz128(value: i128) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn ub8(value: u8) PolynomialFormat(.{
+pub inline fn ub8(value: u8) GenericPolynomialFormat(.{
     .bits = 8,
     .radix = 2,
     .signedness = .unsigned,
@@ -1745,7 +1845,7 @@ pub inline fn ub8(value: u8) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn ub16(value: u16) PolynomialFormat(.{
+pub inline fn ub16(value: u16) GenericPolynomialFormat(.{
     .bits = 16,
     .radix = 2,
     .signedness = .unsigned,
@@ -1754,7 +1854,7 @@ pub inline fn ub16(value: u16) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn ub32(value: u32) PolynomialFormat(.{
+pub inline fn ub32(value: u32) GenericPolynomialFormat(.{
     .bits = 32,
     .radix = 2,
     .signedness = .unsigned,
@@ -1763,7 +1863,7 @@ pub inline fn ub32(value: u32) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn ub64(value: u64) PolynomialFormat(.{
+pub inline fn ub64(value: u64) GenericPolynomialFormat(.{
     .bits = 64,
     .radix = 2,
     .signedness = .unsigned,
@@ -1772,7 +1872,7 @@ pub inline fn ub64(value: u64) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn uo8(value: u8) PolynomialFormat(.{
+pub inline fn uo8(value: u8) GenericPolynomialFormat(.{
     .bits = 8,
     .radix = 8,
     .signedness = .unsigned,
@@ -1781,7 +1881,7 @@ pub inline fn uo8(value: u8) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn uo16(value: u16) PolynomialFormat(.{
+pub inline fn uo16(value: u16) GenericPolynomialFormat(.{
     .bits = 16,
     .radix = 8,
     .signedness = .unsigned,
@@ -1790,7 +1890,7 @@ pub inline fn uo16(value: u16) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn uo32(value: u32) PolynomialFormat(.{
+pub inline fn uo32(value: u32) GenericPolynomialFormat(.{
     .bits = 32,
     .radix = 8,
     .signedness = .unsigned,
@@ -1799,7 +1899,7 @@ pub inline fn uo32(value: u32) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn uo64(value: u64) PolynomialFormat(.{
+pub inline fn uo64(value: u64) GenericPolynomialFormat(.{
     .bits = 64,
     .radix = 8,
     .signedness = .unsigned,
@@ -1808,7 +1908,7 @@ pub inline fn uo64(value: u64) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn uo128(value: u128) PolynomialFormat(.{
+pub inline fn uo128(value: u128) GenericPolynomialFormat(.{
     .bits = 128,
     .radix = 8,
     .signedness = .unsigned,
@@ -1817,7 +1917,7 @@ pub inline fn uo128(value: u128) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn ud8(value: u8) PolynomialFormat(.{
+pub inline fn ud8(value: u8) GenericPolynomialFormat(.{
     .bits = 8,
     .radix = 10,
     .signedness = .unsigned,
@@ -1825,7 +1925,7 @@ pub inline fn ud8(value: u8) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn ud16(value: u16) PolynomialFormat(.{
+pub inline fn ud16(value: u16) GenericPolynomialFormat(.{
     .bits = 16,
     .radix = 10,
     .signedness = .unsigned,
@@ -1833,7 +1933,7 @@ pub inline fn ud16(value: u16) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn ud32(value: u32) PolynomialFormat(.{
+pub inline fn ud32(value: u32) GenericPolynomialFormat(.{
     .bits = 32,
     .radix = 10,
     .signedness = .unsigned,
@@ -1841,7 +1941,7 @@ pub inline fn ud32(value: u32) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn ud64(value: u64) PolynomialFormat(.{
+pub inline fn ud64(value: u64) GenericPolynomialFormat(.{
     .bits = 64,
     .radix = 10,
     .signedness = .unsigned,
@@ -1849,7 +1949,7 @@ pub inline fn ud64(value: u64) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn ud128(value: u128) PolynomialFormat(.{
+pub inline fn ud128(value: u128) GenericPolynomialFormat(.{
     .bits = 128,
     .radix = 10,
     .signedness = .unsigned,
@@ -1857,7 +1957,7 @@ pub inline fn ud128(value: u128) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn ux8(value: u8) PolynomialFormat(.{
+pub inline fn ux8(value: u8) GenericPolynomialFormat(.{
     .bits = 8,
     .radix = 16,
     .signedness = .unsigned,
@@ -1866,7 +1966,7 @@ pub inline fn ux8(value: u8) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn esc(value: u8) PolynomialFormat(.{
+pub inline fn esc(value: u8) GenericPolynomialFormat(.{
     .bits = 8,
     .radix = 16,
     .signedness = .unsigned,
@@ -1875,7 +1975,7 @@ pub inline fn esc(value: u8) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn ux16(value: u16) PolynomialFormat(.{
+pub inline fn ux16(value: u16) GenericPolynomialFormat(.{
     .bits = 16,
     .radix = 16,
     .signedness = .unsigned,
@@ -1884,7 +1984,7 @@ pub inline fn ux16(value: u16) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn ux32(value: u32) PolynomialFormat(.{
+pub inline fn ux32(value: u32) GenericPolynomialFormat(.{
     .bits = 32,
     .radix = 16,
     .signedness = .unsigned,
@@ -1893,7 +1993,7 @@ pub inline fn ux32(value: u32) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn ux64(value: u64) PolynomialFormat(.{
+pub inline fn ux64(value: u64) GenericPolynomialFormat(.{
     .bits = 64,
     .radix = 16,
     .signedness = .unsigned,
@@ -1902,7 +2002,7 @@ pub inline fn ux64(value: u64) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn ux128(value: u128) PolynomialFormat(.{
+pub inline fn ux128(value: u128) GenericPolynomialFormat(.{
     .bits = 128,
     .radix = 16,
     .signedness = .unsigned,
@@ -1911,7 +2011,7 @@ pub inline fn ux128(value: u128) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn uz8(value: u8) PolynomialFormat(.{
+pub inline fn uz8(value: u8) GenericPolynomialFormat(.{
     .bits = 8,
     .radix = 36,
     .signedness = .unsigned,
@@ -1920,7 +2020,7 @@ pub inline fn uz8(value: u8) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn uz16(value: u16) PolynomialFormat(.{
+pub inline fn uz16(value: u16) GenericPolynomialFormat(.{
     .bits = 16,
     .radix = 36,
     .signedness = .unsigned,
@@ -1929,7 +2029,7 @@ pub inline fn uz16(value: u16) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn uz32(value: u32) PolynomialFormat(.{
+pub inline fn uz32(value: u32) GenericPolynomialFormat(.{
     .bits = 32,
     .radix = 36,
     .signedness = .unsigned,
@@ -1938,7 +2038,7 @@ pub inline fn uz32(value: u32) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn uz64(value: u64) PolynomialFormat(.{
+pub inline fn uz64(value: u64) GenericPolynomialFormat(.{
     .bits = 64,
     .radix = 36,
     .signedness = .unsigned,
@@ -1947,7 +2047,7 @@ pub inline fn uz64(value: u64) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn uz128(value: u128) PolynomialFormat(.{
+pub inline fn uz128(value: u128) GenericPolynomialFormat(.{
     .bits = 128,
     .radix = 36,
     .signedness = .unsigned,
@@ -1956,7 +2056,7 @@ pub inline fn uz128(value: u128) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub fn ubsize(value: usize) PolynomialFormat(.{
+pub fn ubsize(value: usize) GenericPolynomialFormat(.{
     .bits = @bitSizeOf(usize),
     .radix = 2,
     .signedness = .unsigned,
@@ -1965,7 +2065,7 @@ pub fn ubsize(value: usize) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub fn uosize(value: usize) PolynomialFormat(.{
+pub fn uosize(value: usize) GenericPolynomialFormat(.{
     .bits = @bitSizeOf(usize),
     .radix = 8,
     .signedness = .unsigned,
@@ -1974,7 +2074,7 @@ pub fn uosize(value: usize) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub fn udsize(value: usize) PolynomialFormat(.{
+pub fn udsize(value: usize) GenericPolynomialFormat(.{
     .bits = @bitSizeOf(usize),
     .radix = 10,
     .signedness = .unsigned,
@@ -1982,7 +2082,7 @@ pub fn udsize(value: usize) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub fn uxsize(value: usize) PolynomialFormat(.{
+pub fn uxsize(value: usize) GenericPolynomialFormat(.{
     .bits = @bitSizeOf(usize),
     .radix = 16,
     .signedness = .unsigned,
@@ -1991,7 +2091,7 @@ pub fn uxsize(value: usize) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub fn ibsize(value: isize) PolynomialFormat(.{
+pub fn ibsize(value: isize) GenericPolynomialFormat(.{
     .bits = @bitSizeOf(isize),
     .radix = 2,
     .signedness = .signed,
@@ -2000,7 +2100,7 @@ pub fn ibsize(value: isize) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub fn iosize(value: isize) PolynomialFormat(.{
+pub fn iosize(value: isize) GenericPolynomialFormat(.{
     .bits = @bitSizeOf(isize),
     .radix = 8,
     .signedness = .signed,
@@ -2008,7 +2108,7 @@ pub fn iosize(value: isize) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub fn idsize(value: isize) PolynomialFormat(.{
+pub fn idsize(value: isize) GenericPolynomialFormat(.{
     .bits = @bitSizeOf(isize),
     .radix = 10,
     .signedness = .signed,
@@ -2016,7 +2116,7 @@ pub fn idsize(value: isize) PolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub fn ixsize(value: isize) PolynomialFormat(.{
+pub fn ixsize(value: isize) GenericPolynomialFormat(.{
     .bits = @bitSizeOf(isize),
     .radix = 16,
     .signedness = .signed,
@@ -2030,7 +2130,7 @@ pub fn bytes(count: usize) Bytes {
 pub fn sourceLocation(value: builtin.SourceLocation, ret_addr: ?u64) SourceLocationFormat {
     return SourceLocationFormat.init(value, ret_addr);
 }
-pub fn yr(year: u64) PolynomialFormat(.{
+pub fn yr(year: u64) GenericPolynomialFormat(.{
     .bits = 64,
     .signedness = .unsigned,
     .radix = 10,
@@ -2039,7 +2139,7 @@ pub fn yr(year: u64) PolynomialFormat(.{
 }) {
     return .{ .value = year };
 }
-pub fn mon(month: u8) PolynomialFormat(.{
+pub fn mon(month: u8) GenericPolynomialFormat(.{
     .bits = 8,
     .signedness = .unsigned,
     .radix = 10,
@@ -2048,7 +2148,7 @@ pub fn mon(month: u8) PolynomialFormat(.{
 }) {
     return .{ .value = month };
 }
-pub fn mday(month_day: u8) PolynomialFormat(.{
+pub fn mday(month_day: u8) GenericPolynomialFormat(.{
     .bits = 8,
     .signedness = .unsigned,
     .radix = 10,
@@ -2057,7 +2157,7 @@ pub fn mday(month_day: u8) PolynomialFormat(.{
 }) {
     return .{ .value = month_day };
 }
-pub fn yday(year_day: u8) PolynomialFormat(.{
+pub fn yday(year_day: u8) GenericPolynomialFormat(.{
     .bits = 8,
     .signedness = .unsigned,
     .radix = 10,
@@ -2066,7 +2166,7 @@ pub fn yday(year_day: u8) PolynomialFormat(.{
 }) {
     return .{ .value = year_day };
 }
-pub fn hr(hour: u8) PolynomialFormat(.{
+pub fn hr(hour: u8) GenericPolynomialFormat(.{
     .bits = 8,
     .signedness = .unsigned,
     .radix = 10,
@@ -2075,7 +2175,7 @@ pub fn hr(hour: u8) PolynomialFormat(.{
 }) {
     return .{ .value = hour };
 }
-pub fn min(minute: u8) PolynomialFormat(.{
+pub fn min(minute: u8) GenericPolynomialFormat(.{
     .bits = 8,
     .signedness = .unsigned,
     .radix = 10,
@@ -2084,7 +2184,7 @@ pub fn min(minute: u8) PolynomialFormat(.{
 }) {
     return .{ .value = minute };
 }
-pub fn sec(second: u8) PolynomialFormat(.{
+pub fn sec(second: u8) GenericPolynomialFormat(.{
     .bits = 8,
     .signedness = .unsigned,
     .radix = 10,
@@ -2101,7 +2201,7 @@ pub fn dt(value: time.DateTime) DateTimeFormat(time.DateTime) {
 pub fn pdt(value: time.PackedDateTime) DateTimeFormat(time.PackedDateTime) {
     return .{ .value = value };
 }
-pub fn nsec(value: u64) PolynomialFormat(.{
+pub fn nsec(value: u64) GenericPolynomialFormat(.{
     .bits = 64,
     .signedness = .unsigned,
     .radix = 10,
