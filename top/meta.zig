@@ -239,22 +239,29 @@ pub fn alignAW(comptime count: comptime_int) u16 {
         else => return 512,
     }
 }
-const Extrema = struct { min: comptime_int, max: comptime_int };
+pub const Extrema = struct { min: comptime_int, max: comptime_int };
 /// Find the maximum and minimum arithmetical values for an integer type.
-pub fn extrema(comptime I: type) Extrema {
-    const U = @Type(.{ .Int = .{
-        .signedness = .unsigned,
-        .bits = @bitSizeOf(I),
-    } });
-    const umax: U = ~@as(U, 0);
-    if (@typeInfo(I).Int.signedness == .unsigned) {
-        return .{ .min = 0, .max = umax };
-    } else {
-        const imax: U = umax >> 1;
-        return .{
-            .min = @bitCast(I, ~imax),
-            .max = @bitCast(I, imax),
-        };
+pub fn extrema(comptime Int: type) Extrema {
+    switch (Int) {
+        u0, i0 => return .{ .min = 0, .max = 0 },
+        u1 => return .{ .min = 0, .max = 1 },
+        i1 => return .{ .min = -1, .max = 0 },
+        else => {
+            const U = @Type(.{ .Int = .{
+                .signedness = .unsigned,
+                .bits = @bitSizeOf(Int),
+            } });
+            const umax: U = ~@as(U, 0);
+            if (@typeInfo(Int).Int.signedness == .unsigned) {
+                return .{ .min = 0, .max = umax };
+            } else {
+                const imax: U = umax >> 1;
+                return .{
+                    .min = @bitCast(Int, ~imax),
+                    .max = @bitCast(Int, imax),
+                };
+            }
+        },
     }
 }
 /// Return the smallest real bitSizeOf the integer type required to store the
@@ -292,12 +299,10 @@ pub fn alignCX(comptime value: comptime_int) u16 { // Needs a better name
     }
 }
 pub inline fn alignSizeBW(comptime T: type) u16 { // Needs a better name
-    const bits: u16 = @bitSizeOf(T);
-    return alignBW(bits);
+    return alignBW(@bitSizeOf(T));
 }
 pub inline fn alignSizeAW(comptime T: type) u16 { // Needs a better name
-    const bits: u16 = @bitSizeOf(T);
-    return alignAW(bits);
+    return alignAW(@bitSizeOf(T));
 }
 pub fn AlignSizeAW(comptime T: type) type { // Needs a better name
     var int_type_info: builtin.Type.Int = @typeInfo(T).Int;
