@@ -4,6 +4,7 @@ const mem = top.mem;
 const meta = top.meta;
 const file = top.file;
 const proc = top.proc;
+const parse = top.parse;
 const builtin = top.builtin;
 const testing = top.testing;
 pub usingnamespace proc.start;
@@ -72,8 +73,8 @@ fn testBytesFormat() !void {
     }
 }
 fn testEquivalentIntToStringFormat() !void {
-    const ubin = fmt.PolynomialFormat(.{ .bits = 1, .radix = 2, .signedness = .unsigned, .width = .max, .prefix = "0b" });
-    const sbin = fmt.PolynomialFormat(.{ .bits = 1, .radix = 2, .signedness = .signed, .width = .max, .prefix = "0b" });
+    const ubin = fmt.GenericPolynomialFormat(.{ .bits = 1, .radix = 2, .signedness = .unsigned, .width = .max, .prefix = "0b" });
+    const sbin = fmt.GenericPolynomialFormat(.{ .bits = 1, .radix = 2, .signedness = .signed, .width = .max, .prefix = "0b" });
     var uint: u64 = 0;
     const seed: u64 = @ptrToInt(&uint);
     uint = seed;
@@ -132,6 +133,62 @@ fn testEquivalentIntToStringFormat() !void {
         try testing.expectEqualMany(u8, builtin.fmt.ix8(sint_8).readAll(), fmt.ix8(sint_8).formatConvert().readAll());
     }
 }
+fn testEquivalentLEBFormatAndParse() !void {
+    const U8 = fmt.GenericLEB128Format(u8);
+    const U16 = fmt.GenericLEB128Format(u16);
+    const U32 = fmt.GenericLEB128Format(u32);
+    const U64 = fmt.GenericLEB128Format(u64);
+    const I8 = fmt.GenericLEB128Format(i8);
+    const I16 = fmt.GenericLEB128Format(i16);
+    const I32 = fmt.GenericLEB128Format(i32);
+    const I64 = fmt.GenericLEB128Format(i64);
+    var array: mem.StaticString(4096) = undefined;
+    var uint: u64 = 0;
+    const seed: u64 = @ptrToInt(&uint);
+    uint = seed;
+    try testing.expectEqualMany(u8, builtin.fmt.ub64(uint).readAll(), fmt.ub64(uint).formatConvert().readAll());
+    while (uint < seed +% 0x1000) : (uint +%= 1) {
+        const uint_32: u32 = @truncate(u32, uint);
+        const uint_16: u16 = @truncate(u16, uint);
+        const uint_8: u8 = @truncate(u8, uint);
+        const sint_64: i64 = @bitReverse(@bitCast(i64, uint));
+        const sint_32: i32 = @truncate(i32, sint_64);
+        const sint_16: i16 = @truncate(i16, sint_64);
+        const sint_8: i8 = @truncate(i8, sint_64);
+        const uint_64_fmt: U64 = .{ .value = uint };
+        const uint_32_fmt: U32 = .{ .value = uint_32 };
+        const uint_16_fmt: U16 = .{ .value = uint_16 };
+        const uint_8_fmt: U8 = .{ .value = uint_8 };
+        const sint_64_fmt: I64 = .{ .value = sint_64 };
+        const sint_32_fmt: I32 = .{ .value = sint_32 };
+        const sint_16_fmt: I16 = .{ .value = sint_16 };
+        const sint_8_fmt: I8 = .{ .value = sint_8 };
+        array.undefineAll();
+        uint_64_fmt.formatWrite(&array);
+        try builtin.expectEqual(u64, uint, try parse.readLEB128(u64, array.readAll()));
+        array.undefineAll();
+        uint_32_fmt.formatWrite(&array);
+        try builtin.expectEqual(u32, uint_32, try parse.readLEB128(u32, array.readAll()));
+        array.undefineAll();
+        uint_16_fmt.formatWrite(&array);
+        try builtin.expectEqual(u16, uint_16, try parse.readLEB128(u16, array.readAll()));
+        array.undefineAll();
+        uint_8_fmt.formatWrite(&array);
+        try builtin.expectEqual(u8, uint_8, try parse.readLEB128(u8, array.readAll()));
+        array.undefineAll();
+        sint_64_fmt.formatWrite(&array);
+        try builtin.expectEqual(i64, sint_64, try parse.readLEB128(i64, array.readAll()));
+        array.undefineAll();
+        sint_32_fmt.formatWrite(&array);
+        try builtin.expectEqual(i32, sint_32, try parse.readLEB128(i32, array.readAll()));
+        array.undefineAll();
+        sint_16_fmt.formatWrite(&array);
+        try builtin.expectEqual(i16, sint_16, try parse.readLEB128(i16, array.readAll()));
+        array.undefineAll();
+        sint_8_fmt.formatWrite(&array);
+        try builtin.expectEqual(i8, sint_8, try parse.readLEB128(i8, array.readAll()));
+    }
+}
 
 pub const render_radix: u16 = 16;
 
@@ -181,6 +238,7 @@ pub fn main() !void {
         try meta.wrap(testBinarySize());
     } else {
         try meta.wrap(testEquivalentIntToStringFormat());
+        try meta.wrap(testEquivalentLEBFormatAndParse());
         try meta.wrap(testBytesFormat());
         try meta.wrap(testNonChildIntegers());
     }
