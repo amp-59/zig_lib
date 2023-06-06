@@ -133,7 +133,46 @@ fn testEquivalentIntToStringFormat() !void {
         try testing.expectEqualMany(u8, builtin.fmt.ix8(sint_8).readAll(), fmt.ix8(sint_8).formatConvert().readAll());
     }
 }
+fn testWriteLEB128UnsignedFixed() !void {
+    {
+        var buf: [4]u8 = undefined;
+        fmt.writeUnsignedFixed(4, &buf, 0);
+        try testing.expect((try testReadLEB128(u64, &buf)) == 0);
+    }
+    {
+        var buf: [4]u8 = undefined;
+        fmt.writeUnsignedFixed(4, &buf, 1);
+        try testing.expect((try testReadLEB128(u64, &buf)) == 1);
+    }
+    {
+        var buf: [4]u8 = undefined;
+        fmt.writeUnsignedFixed(4, &buf, 1000);
+        try testing.expect((try testReadLEB128(u64, &buf)) == 1000);
+    }
+    {
+        var buf: [4]u8 = undefined;
+        fmt.writeUnsignedFixed(4, &buf, 10000000);
+        try testing.expect((try testReadLEB128(u64, &buf)) == 10000000);
+    }
+}
+fn testReadLEB128Stream(comptime T: type, encoded: []const u8) !T {
+    var reader = mem.view(encoded);
+    return try parse.readLEB128(T, reader.readAll());
+}
+fn testReadLEB128(comptime T: type, encoded: []const u8) !T {
+    var reader = mem.view(encoded);
+    const v1 = try parse.readLEB128(T, reader.readAll());
+    return v1;
+}
+fn testReadLEB128Seq(comptime T: type, comptime N: usize, encoded: []const u8) !void {
+    var reader = mem.view(encoded);
+    var i: usize = 0;
+    while (i < N) : (i += 1) {
+        _ = try parse.readLEB128(T, reader.readAll());
+    }
+}
 fn testEquivalentLEBFormatAndParse() !void {
+    const test_stream: bool = false;
     const U8 = fmt.GenericLEB128Format(u8);
     const U16 = fmt.GenericLEB128Format(u16);
     const U32 = fmt.GenericLEB128Format(u32);
@@ -188,6 +227,79 @@ fn testEquivalentLEBFormatAndParse() !void {
         sint_8_fmt.formatWrite(&array);
         try builtin.expectEqual(i8, sint_8, try parse.readLEB128(i8, array.readAll()));
     }
+    if (test_stream) {
+        try testing.expectError(error.EndOfStream, testReadLEB128Stream(i64, "\x80"));
+    }
+    try testing.expectError(error.Overflow, testReadLEB128(i8, "\x80\x80\x40"));
+    try testing.expectError(error.Overflow, testReadLEB128(i16, "\x80\x80\x80\x40"));
+    try testing.expectError(error.Overflow, testReadLEB128(i32, "\x80\x80\x80\x80\x40"));
+    try testing.expectError(error.Overflow, testReadLEB128(i64, "\x80\x80\x80\x80\x80\x80\x80\x80\x80\x40"));
+    try testing.expectError(error.Overflow, testReadLEB128(i8, "\xff\x7e"));
+    try testing.expectError(error.Overflow, testReadLEB128(i32, "\x80\x80\x80\x80\x08"));
+    try testing.expectError(error.Overflow, testReadLEB128(i64, "\x80\x80\x80\x80\x80\x80\x80\x80\x80\x01"));
+
+    try testing.expect((try testReadLEB128(i64, "\x00")) == 0);
+    try testing.expect((try testReadLEB128(i64, "\x01")) == 1);
+    try testing.expect((try testReadLEB128(i64, "\x3f")) == 63);
+    try testing.expect((try testReadLEB128(i64, "\x40")) == -64);
+    try testing.expect((try testReadLEB128(i64, "\x41")) == -63);
+    try testing.expect((try testReadLEB128(i64, "\x7f")) == -1);
+    try testing.expect((try testReadLEB128(i64, "\x80\x01")) == 128);
+    try testing.expect((try testReadLEB128(i64, "\x81\x01")) == 129);
+    try testing.expect((try testReadLEB128(i64, "\xff\x7e")) == -129);
+    try testing.expect((try testReadLEB128(i64, "\x80\x7f")) == -128);
+    try testing.expect((try testReadLEB128(i64, "\x81\x7f")) == -127);
+    try testing.expect((try testReadLEB128(i64, "\xc0\x00")) == 64);
+    try testing.expect((try testReadLEB128(i64, "\xc7\x9f\x7f")) == -12345);
+    try testing.expect((try testReadLEB128(i8, "\xff\x7f")) == -1);
+    try testing.expect((try testReadLEB128(i16, "\xff\xff\x7f")) == -1);
+    try testing.expect((try testReadLEB128(i32, "\xff\xff\xff\xff\x7f")) == -1);
+    try testing.expect((try testReadLEB128(i32, "\x80\x80\x80\x80\x78")) == -0x80000000);
+    try testing.expect((try testReadLEB128(i64, "\x80\x80\x80\x80\x80\x80\x80\x80\x80\x7f")) == @bitCast(i64, @intCast(u64, 0x8000000000000000)));
+    try testing.expect((try testReadLEB128(i64, "\x80\x80\x80\x80\x80\x80\x80\x80\x40")) == -0x4000000000000000);
+    try testing.expect((try testReadLEB128(i64, "\x80\x80\x80\x80\x80\x80\x80\x80\x80\x7f")) == -0x8000000000000000);
+
+    try testing.expect((try testReadLEB128(i64, "\x80\x00")) == 0);
+    try testing.expect((try testReadLEB128(i64, "\x80\x80\x00")) == 0);
+    try testing.expect((try testReadLEB128(i64, "\xff\x00")) == 0x7f);
+    try testing.expect((try testReadLEB128(i64, "\xff\x80\x00")) == 0x7f);
+    try testing.expect((try testReadLEB128(i64, "\x80\x81\x00")) == 0x80);
+    try testing.expect((try testReadLEB128(i64, "\x80\x81\x80\x00")) == 0x80);
+
+    try testReadLEB128Seq(i64, 4, "\x81\x01\x3f\x80\x7f\x80\x80\x80\x00");
+    if (test_stream) {
+        try testing.expectError(error.EndOfStream, testReadLEB128Stream(u64, "\x80"));
+    }
+    try testing.expectError(error.Overflow, testReadLEB128(u8, "\x80\x02"));
+    try testing.expectError(error.Overflow, testReadLEB128(u8, "\x80\x80\x40"));
+    try testing.expectError(error.Overflow, testReadLEB128(u16, "\x80\x80\x84"));
+    try testing.expectError(error.Overflow, testReadLEB128(u16, "\x80\x80\x80\x40"));
+    try testing.expectError(error.Overflow, testReadLEB128(u32, "\x80\x80\x80\x80\x90"));
+    try testing.expectError(error.Overflow, testReadLEB128(u32, "\x80\x80\x80\x80\x40"));
+    try testing.expectError(error.Overflow, testReadLEB128(u64, "\x80\x80\x80\x80\x80\x80\x80\x80\x80\x40"));
+
+    try testing.expect((try testReadLEB128(u64, "\x00")) == 0);
+    try testing.expect((try testReadLEB128(u64, "\x01")) == 1);
+    try testing.expect((try testReadLEB128(u64, "\x3f")) == 63);
+    try testing.expect((try testReadLEB128(u64, "\x40")) == 64);
+    try testing.expect((try testReadLEB128(u64, "\x7f")) == 0x7f);
+    try testing.expect((try testReadLEB128(u64, "\x80\x01")) == 0x80);
+    try testing.expect((try testReadLEB128(u64, "\x81\x01")) == 0x81);
+    try testing.expect((try testReadLEB128(u64, "\x90\x01")) == 0x90);
+    try testing.expect((try testReadLEB128(u64, "\xff\x01")) == 0xff);
+    try testing.expect((try testReadLEB128(u64, "\x80\x02")) == 0x100);
+    try testing.expect((try testReadLEB128(u64, "\x81\x02")) == 0x101);
+    try testing.expect((try testReadLEB128(u64, "\x80\xc1\x80\x80\x10")) == 4294975616);
+    try testing.expect((try testReadLEB128(u64, "\x80\x80\x80\x80\x80\x80\x80\x80\x80\x01")) == 0x8000000000000000);
+
+    try testing.expect((try testReadLEB128(u64, "\x80\x00")) == 0);
+    try testing.expect((try testReadLEB128(u64, "\x80\x80\x00")) == 0);
+    try testing.expect((try testReadLEB128(u64, "\xff\x00")) == 0x7f);
+    try testing.expect((try testReadLEB128(u64, "\xff\x80\x00")) == 0x7f);
+    try testing.expect((try testReadLEB128(u64, "\x80\x81\x00")) == 0x80);
+    try testing.expect((try testReadLEB128(u64, "\x80\x81\x80\x00")) == 0x80);
+
+    try testReadLEB128Seq(u64, 4, "\x81\x01\x3f\x80\x7f\x80\x80\x80\x00");
 }
 
 pub const render_radix: u16 = 16;
