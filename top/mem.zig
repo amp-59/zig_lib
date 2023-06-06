@@ -1053,8 +1053,15 @@ pub const debug = opaque {
         builtin.debug.logErrorAIO(&buf, &[_][]const u8{ about_memfd_1_s, pathname, " (", @errorName(memfd_error), ")\n" });
     }
 };
-pub fn view(comptime s: [:0]const u8) mem.StructuredAutomaticView(u8, &@as(u8, 0), s.len, null, .{}) {
+pub fn literalView(comptime s: [:0]const u8) mem.StructuredAutomaticView(u8, &@as(u8, 0), s.len, null, .{}) {
     return .{ .impl = .{ .auto = @ptrCast(*const [s.len:0]u8, s.ptr).* } };
+}
+pub fn view(s: []const u8) mem.StructuredStreamView(u8, null, 1, struct {}, .{}) {
+    return .{ .impl = .{
+        .lb_word = @ptrToInt(s.ptr),
+        .up_word = @ptrToInt(s.ptr + s.len),
+        .ss_word = @ptrToInt(s.ptr),
+    } };
 }
 pub fn StaticStream(comptime child: type, comptime count: u64) type {
     return mem.StructuredAutomaticStreamVector(child, null, count, @alignOf(child), .{});
