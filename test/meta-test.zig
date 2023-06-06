@@ -16,6 +16,8 @@ pub const logging_default: builtin.Logging.Default = .{
 pub const runtime_assertions: bool = true;
 
 fn basicTests() !void {
+    try builtin.expectEqual(i1, -1, meta.extrema(i1).min);
+    try builtin.expectEqual(u1, 1, meta.extrema(u1).max);
     try builtin.expect(8 == meta.alignAW(7));
     try builtin.expect(16 == meta.alignAW(9));
     try builtin.expect(32 == meta.alignAW(25));
@@ -63,7 +65,6 @@ fn bitCastTests() !void {
     try builtin.expect(u9 == @TypeOf(meta.leastBitCast(s)));
     try builtin.expect(u16 == @TypeOf(meta.leastRealBitCast(s)));
 }
-
 fn memoryTests() !void {
     {
         const Element = u3;
