@@ -2068,7 +2068,7 @@ pub const fmt = struct {
                     return ret;
                 }
                 var abs_value: Abs = if (Int != Abs and value < 0)
-                    @bitCast(Abs, -value)
+                    @intCast(Abs, -value)
                 else
                     @intCast(Abs, value);
                 while (abs_value != 0) : (abs_value /= 2) {
@@ -2097,7 +2097,7 @@ pub const fmt = struct {
                     return ret;
                 }
                 var abs_value: Abs = if (Int != Abs and value < 0)
-                    @bitCast(Abs, -value)
+                    @intCast(Abs, -value)
                 else
                     @intCast(Abs, value);
                 while (abs_value != 0) : (abs_value /= 8) {
@@ -2122,7 +2122,7 @@ pub const fmt = struct {
                     return ret;
                 }
                 var abs_value: Abs = if (Int != Abs and value < 0)
-                    @bitCast(Abs, -value)
+                    @intCast(Abs, -value)
                 else
                     @intCast(Abs, value);
                 while (abs_value != 0) : (abs_value /= 10) {
