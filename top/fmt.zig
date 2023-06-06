@@ -373,7 +373,7 @@ pub const ChangedIntFormatSpec = struct {
     no_style: []const u8 = lit.fx.none,
     arrow_style: []const u8 = " => ",
 };
-pub fn ChangedIntFormat(comptime fmt_spec: ChangedIntFormatSpec) type {
+pub fn GenericChangedIntFormat(comptime fmt_spec: ChangedIntFormatSpec) type {
     return (struct {
         old_value: Old,
         new_value: New,
@@ -491,7 +491,7 @@ pub const ChangedBytesFormatSpec = struct {
     inc_style: []const u8 = lit.fx.color.fg.green ++ "+",
     no_style: []const u8 = lit.fx.none,
 };
-pub fn ChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type {
+pub fn GenericChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type {
     return (struct {
         old_value: u64,
         new_value: u64,
@@ -586,7 +586,7 @@ pub fn ChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type {
         }
     });
 }
-pub fn RangeFormat(comptime fmt_spec: PolynomialFormatSpec) type {
+pub fn GenericRangeFormat(comptime fmt_spec: PolynomialFormatSpec) type {
     return (struct {
         lower: SubFormat.Int,
         upper: SubFormat.Int,
@@ -640,15 +640,15 @@ pub fn RangeFormat(comptime fmt_spec: PolynomialFormatSpec) type {
         pub usingnamespace GenericFormat(Format);
     });
 }
-pub const AddressRangeFormat = RangeFormat(.{
+pub const AddressRangeFormat = GenericRangeFormat(.{
     .bits = 64,
     .signedness = .unsigned,
     .radix = 16,
     .width = .min,
 });
-pub fn ArenaRangeFormat(comptime arena_index: comptime_int) type {
+pub fn GenericArenaRangeFormat(comptime arena_index: comptime_int) type {
     const arena: mem.Arena = mem.Arena{ .index = arena_index };
-    return RangeFormat(.{
+    return GenericRangeFormat(.{
         .bits = 64,
         .signedness = .unsigned,
         .radix = 16,
@@ -659,7 +659,7 @@ pub fn ArenaRangeFormat(comptime arena_index: comptime_int) type {
         },
     });
 }
-pub const ChangedAddressRangeFormat = ChangedRangeFormat(.{
+pub const ChangedAddressRangeFormat = GenericChangedRangeFormat(.{
     .new_fmt_spec = AddressRangeFormat.spec,
     .old_fmt_spec = AddressRangeFormat.spec,
     .del_fmt_spec = .{
@@ -669,7 +669,7 @@ pub const ChangedAddressRangeFormat = ChangedRangeFormat(.{
         .width = .min,
     },
 });
-pub fn ChangedArenaRangeFormat(comptime arena_index: comptime_int) type {
+pub fn GenericChangedArenaRangeFormat(comptime arena_index: comptime_int) type {
     const arena: mem.Arena = mem.Arena{ .index = arena_index };
     const int_fmt_spec: PolynomialFormatSpec = .{
         .bits = 64,
@@ -678,7 +678,7 @@ pub fn ChangedArenaRangeFormat(comptime arena_index: comptime_int) type {
         .width = .max,
         .range = .{ .min = arena.begin(), .max = arena.end() },
     };
-    return ChangedRangeFormat(.{
+    return GenericChangedRangeFormat(.{
         .new_fmt_spec = int_fmt_spec,
         .old_fmt_spec = int_fmt_spec,
         .del_fmt_spec = .{
@@ -700,7 +700,7 @@ pub const ChangedRangeFormatSpec = struct {
     upper_dec_style: []const u8 = lit.fx.color.fg.red ++ lit.fx.style.bold ++ "-",
     arrow_style: []const u8 = " => ",
 };
-pub fn ChangedRangeFormat(comptime fmt_spec: ChangedRangeFormatSpec) type {
+pub fn GenericChangedRangeFormat(comptime fmt_spec: ChangedRangeFormatSpec) type {
     return (struct {
         old_lower: OldGenericPolynomialFormat.Int,
         old_upper: OldGenericPolynomialFormat.Int,
@@ -710,7 +710,7 @@ pub fn ChangedRangeFormat(comptime fmt_spec: ChangedRangeFormatSpec) type {
         const OldGenericPolynomialFormat = GenericPolynomialFormat(fmt_spec.old_fmt_spec);
         const NewGenericPolynomialFormat = GenericPolynomialFormat(fmt_spec.new_fmt_spec);
         const DelGenericPolynomialFormat = GenericPolynomialFormat(fmt_spec.del_fmt_spec);
-        const LowerChangedIntFormat = ChangedIntFormat(.{
+        const LowerChangedIntFormat = GenericChangedIntFormat(.{
             .old_fmt_spec = fmt_spec.old_fmt_spec,
             .new_fmt_spec = fmt_spec.new_fmt_spec,
             .del_fmt_spec = fmt_spec.del_fmt_spec,
@@ -718,7 +718,7 @@ pub fn ChangedRangeFormat(comptime fmt_spec: ChangedRangeFormatSpec) type {
             .inc_style = fmt_spec.lower_inc_style,
             .arrow_style = fmt_spec.arrow_style,
         });
-        const UpperChangedIntFormat = ChangedIntFormat(.{
+        const UpperChangedIntFormat = GenericChangedIntFormat(.{
             .old_fmt_spec = fmt_spec.old_fmt_spec,
             .new_fmt_spec = fmt_spec.new_fmt_spec,
             .del_fmt_spec = fmt_spec.del_fmt_spec,
@@ -843,7 +843,7 @@ pub const ListFormatSpec = struct {
     omit_trailing_separator: bool = true,
     reinterpret: mem.ReinterpretSpec = spec.reinterpret.fmt,
 };
-pub fn ListFormat(comptime fmt_spec: ListFormatSpec) type {
+pub fn GenericListFormat(comptime fmt_spec: ListFormatSpec) type {
     return (struct {
         values: []const fmt_spec.item,
         const Format = @This();
@@ -912,10 +912,10 @@ pub fn ListFormat(comptime fmt_spec: ListFormatSpec) type {
         }
     });
 }
-pub fn list(values: []const []const u8) ListFormat(.{ .item = []const u8 }) {
+pub fn list(values: []const []const u8) GenericListFormat(.{ .item = []const u8 }) {
     return .{ .values = values };
 }
-pub fn DateTimeFormat(comptime DateTime: type) type {
+pub fn GenericDateTimeFormat(comptime DateTime: type) type {
     return (struct {
         value: DateTime,
         const Format: type = @This();
@@ -1091,7 +1091,7 @@ const EscapedStringFormatSpec = struct {
     single_quote: []const u8 = "\'",
     double_quote: []const u8 = "\\\"",
 };
-pub fn EscapedStringFormat(comptime fmt_spec: EscapedStringFormatSpec) type {
+pub fn GenericEscapedStringFormat(comptime fmt_spec: EscapedStringFormatSpec) type {
     const T = struct {
         value: []const u8,
         const Format = @This();
@@ -1183,25 +1183,29 @@ pub fn GenericLEB128Format(comptime Int: type) type {
                     .bits = bit_size_of,
                 } });
                 var value: Int = format.value;
+
                 while (true) {
+                    const uvalue: Abs = @bitCast(Abs, value);
+                    const byte: u8 = @truncate(u8, uvalue);
                     value >>= 6;
                     if (value == -1 or value == 0) {
-                        array.writeOne(@truncate(u8, @bitCast(Abs, value)) & 0x7f);
+                        array.writeOne(byte & 0x7f);
                         break;
                     } else {
                         value >>= 1;
-                        array.writeOne(@truncate(u8, @bitCast(Abs, value)) | 0x80);
+                        array.writeOne(byte | 0x80);
                     }
                 }
             } else {
                 var value: Int = format.value;
                 while (true) {
+                    const byte: u8 = @truncate(u8, value & 0x7f);
                     value >>= 7;
                     if (value == 0) {
-                        array.writeOne(@truncate(u8, value & 0x7f));
+                        array.writeOne(byte);
                         break;
                     } else {
-                        array.writeOne(@truncate(u8, value & 0x7f) | 0x80);
+                        array.writeOne(byte | 0x80);
                     }
                 }
             }
@@ -1215,27 +1219,30 @@ pub fn GenericLEB128Format(comptime Int: type) type {
                 } });
                 var value: Int = format.value;
                 while (true) {
+                    const uvalue: Abs = @bitCast(Abs, value);
+                    const byte: u8 = @truncate(u8, uvalue);
                     value >>= 6;
                     if (value == -1 or value == 0) {
-                        buf[len] = @truncate(u8, @bitCast(Abs, value)) & 0x7f;
+                        buf[len] = byte & 0x7f;
                         len +%= 1;
                         break;
                     } else {
                         value >>= 1;
-                        buf[len] = @truncate(u8, @bitCast(Abs, value)) | 0x80;
+                        buf[len] = byte | 0x80;
                         len +%= 1;
                     }
                 }
             } else {
                 var value: Int = format.value;
                 while (true) {
+                    const byte: u8 = @truncate(u8, value & 0x7f);
                     value >>= 7;
                     if (value == 0) {
-                        buf[len] = @truncate(u8, value & 0x7f);
+                        buf[len] = byte;
                         len +%= 1;
                         break;
                     } else {
-                        buf[len] = @truncate(u8, value & 0x7f) | 0x80;
+                        buf[len] = byte | 0x80;
                         len +%= 1;
                     }
                 }
@@ -1271,6 +1278,21 @@ pub fn GenericLEB128Format(comptime Int: type) type {
             return len;
         }
     };
+}
+pub fn writeUnsignedFixedLEB128(comptime width: usize, ptr: *[width]u8, int: @Type(.{ .Int = .{
+    .signedness = .unsigned,
+    .bits = width *% 7,
+} })) void {
+    const T = @TypeOf(int);
+    const U = if (@typeInfo(T).Int.bits < 8) u8 else T;
+    var value = @intCast(U, int);
+    var idx: usize = 0;
+    while (idx != width -% 1) : (idx +%= 1) {
+        const byte: u8 = @truncate(u8, value) | 0x80;
+        value >>= 7;
+        ptr[idx] = byte;
+    }
+    ptr[idx] = @truncate(u8, value);
 }
 pub fn toCamelCases(noalias buf: []u8, names: []const []const u8) []u8 {
     var len: u64 = 0;
@@ -2194,11 +2216,11 @@ pub fn sec(second: u8) GenericPolynomialFormat(.{
     return .{ .value = second };
 }
 /// Constructs DateTime formatter
-pub fn dt(value: time.DateTime) DateTimeFormat(time.DateTime) {
+pub fn dt(value: time.DateTime) GenericDateTimeFormat(time.DateTime) {
     return .{ .value = value };
 }
 /// Constructs packed DateTime formatter
-pub fn pdt(value: time.PackedDateTime) DateTimeFormat(time.PackedDateTime) {
+pub fn pdt(value: time.PackedDateTime) GenericDateTimeFormat(time.PackedDateTime) {
     return .{ .value = value };
 }
 pub fn nsec(value: u64) GenericPolynomialFormat(.{
@@ -2232,28 +2254,28 @@ fn uniformChangedIntFormatSpec(comptime bits: u16, comptime signedness: builtin.
 pub fn ubd(old: anytype, new: anytype) blk: {
     const T: type = if (@TypeOf(old) == comptime_int) u128 else @TypeOf(old);
     const U: type = if (@TypeOf(new) == comptime_int) u128 else @TypeOf(new);
-    break :blk ChangedIntFormat(uniformChangedIntFormatSpec(@max(@bitSizeOf(T), @bitSizeOf(U)), .unsigned, 2));
+    break :blk GenericChangedIntFormat(uniformChangedIntFormatSpec(@max(@bitSizeOf(T), @bitSizeOf(U)), .unsigned, 2));
 } {
     return .{ .old_value = old, .new_value = new };
 }
 pub fn uod(old: anytype, new: anytype) blk: {
     const T: type = if (@TypeOf(old) == comptime_int) u128 else @TypeOf(old);
     const U: type = if (@TypeOf(new) == comptime_int) u128 else @TypeOf(new);
-    break :blk ChangedIntFormat(uniformChangedIntFormatSpec(@max(@bitSizeOf(T), @bitSizeOf(U)), .unsigned, 8));
+    break :blk GenericChangedIntFormat(uniformChangedIntFormatSpec(@max(@bitSizeOf(T), @bitSizeOf(U)), .unsigned, 8));
 } {
     return .{ .old_value = old, .new_value = new };
 }
 pub fn udd(old: anytype, new: anytype) blk: {
     const T: type = if (@TypeOf(old) == comptime_int) u128 else @TypeOf(old);
     const U: type = if (@TypeOf(new) == comptime_int) u128 else @TypeOf(new);
-    break :blk ChangedIntFormat(uniformChangedIntFormatSpec(@max(@bitSizeOf(T), @bitSizeOf(U)), .unsigned, 10));
+    break :blk GenericChangedIntFormat(uniformChangedIntFormatSpec(@max(@bitSizeOf(T), @bitSizeOf(U)), .unsigned, 10));
 } {
     return .{ .old_value = old, .new_value = new };
 }
 pub fn uxd(old: anytype, new: anytype) blk: {
     const T: type = if (@TypeOf(old) == comptime_int) u128 else @TypeOf(old);
     const U: type = if (@TypeOf(new) == comptime_int) u128 else @TypeOf(new);
-    break :blk ChangedIntFormat(uniformChangedIntFormatSpec(@max(@bitSizeOf(T), @bitSizeOf(U)), .unsigned, 16));
+    break :blk GenericChangedIntFormat(uniformChangedIntFormatSpec(@max(@bitSizeOf(T), @bitSizeOf(U)), .unsigned, 16));
 } {
     return .{ .old_value = old, .new_value = new };
 }
@@ -2336,10 +2358,10 @@ pub const Type = struct {
     pub fn Ux(comptime Int: type) type {
         return @TypeOf(ux(@as(Int, undefined)));
     }
-    pub const UDel = ChangedIntFormat(.{
+    pub const UDel = GenericChangedIntFormat(.{
         .old_fmt_spec = .{ .bits = 64, .signedness = .unsigned, .radix = 10, .width = .min },
         .new_fmt_spec = .{ .bits = 64, .signedness = .unsigned, .radix = 10, .width = .min },
         .del_fmt_spec = .{ .bits = 64, .signedness = .unsigned, .radix = 10, .width = .min },
     });
-    pub const BytesDel = ChangedBytesFormat(.{});
+    pub const BytesDel = GenericChangedBytesFormat(.{});
 };
