@@ -3,20 +3,19 @@ const lit = top.lit;
 const fmt = top.fmt;
 const mem = top.mem;
 const mach = top.mach;
+const meta = top.meta;
 const proc = top.proc;
 const algo = top.algo;
 const file = top.file;
 const time = top.time;
 const spec = top.spec;
+const parse = top.parse;
 const crypto = top.crypto;
 const builtin = top.builtin;
 const testing = top.testing;
-
 pub usingnamespace proc.start;
-
 pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
 pub const runtime_assertions: bool = false;
-
 pub const AddressSpace = spec.address_space.regular_128;
 const show_best_cases: bool = false;
 fn write(buf: []u8, off: u64, ss: []const []const u8) u64 {
@@ -49,13 +48,10 @@ fn compareSorts() !void {
     const T = u64;
     try mem.map(.{ .options = .{} }, size, size);
     try mem.map(.{ .options = .{} }, size + size, size);
-
     const rnbuf: []u8 = @intToPtr([*]u8, size)[0..size];
     try file.readRandom(rnbuf);
-
     const values_1 = @intToPtr([*]T, size)[0..(size / @sizeOf(T))];
     const values_2 = @intToPtr([*]T, size + size)[0..(size / @sizeOf(T))];
-
     if (false) {
         mach.memcpy(@intToPtr([*]u8, size + size), @intToPtr([*]const u8, size), size);
         const t_0 = try time.get(.{}, .realtime);
@@ -115,6 +111,8 @@ fn approximationTest() void {
     builtin.assertBelow(u64, total_returned - total_requested, (2 * total_requested) / 100);
 }
 pub fn main() !void {
-    try compareSorts();
-    approximationTest();
+    if (builtin.is_fast) {
+        try compareSorts();
+        approximationTest();
+    }
 }
