@@ -1147,37 +1147,37 @@ pub const Node4 = opaque {
     pub const size: u64 = 8;
     pub const kind_mask: u64 = 0b11111111_11111111_000000000000000000000000000000000000000000000000;
     pub const link_mask: u64 = 0b00000000_00000000_111111111111111111111111111111111111111111111111;
-    fn refer(node_addr: u64) *u64 {
+    pub fn refer(node_addr: u64) *u64 {
         return @intToPtr(*u64, node_addr);
     }
-    fn write(node_addr: u64, word: u64) void {
+    pub fn write(node_addr: u64, word: u64) void {
         @intToPtr(*u64, node_addr).* = word;
     }
-    fn toggle(node_addr: u64) void {
+    pub fn toggle(node_addr: u64) void {
         @intToPtr(*u64, node_addr).* ^= Node4.H;
     }
-    fn clear(node_addr: u64) void {
+    pub fn clear(node_addr: u64) void {
         @intToPtr(*u64, node_addr).* = 0;
     }
-    fn kind(node_addr: u64) u64 {
+    pub fn kind(node_addr: u64) u64 {
         return @intToPtr(*u64, node_addr).* & Node4.kind_mask;
     }
-    fn link(node_addr: u64) u64 {
+    pub fn link(node_addr: u64) u64 {
         return @intToPtr(*u64, node_addr).* & Node4.link_mask;
     }
-    fn read(node_addr: u64) u64 {
+    pub fn read(node_addr: u64) u64 {
         return refer(node_addr).*;
     }
-    fn move(s_node_addr: u64, t_node_addr: u64) void {
+    pub fn move(s_node_addr: u64, t_node_addr: u64) void {
         refer(s_node_addr).* = read(t_node_addr);
         clear(t_node_addr);
     }
-    fn create(t_s_node_addr: u64, t_u_node_addr: u64, t_f_node_addr: u64) void {
+    pub fn create(t_s_node_addr: u64, t_u_node_addr: u64, t_f_node_addr: u64) void {
         Node4.write(t_s_node_addr, Node4.H | t_u_node_addr);
         Node4.write(t_f_node_addr, Node4.F | t_u_node_addr);
         Node4.write(t_u_node_addr, Node4.U | t_s_node_addr);
     }
-    fn allocate(t_next_addr: u64, s_next_next_addr: u64, s_next_addr: u64, r_node_addr: u64) void {
+    pub fn allocate(t_next_addr: u64, s_next_next_addr: u64, s_next_addr: u64, r_node_addr: u64) void {
         Node4.write(t_next_addr, Node4.F | s_next_next_addr);
         if (s_next_addr == r_node_addr) {
             Node4.write(s_next_addr, Node4.A | t_next_addr);
@@ -1186,7 +1186,7 @@ pub const Node4 = opaque {
             Node4.write(r_node_addr, Node4.A | t_next_addr);
         }
     }
-    fn reallocate(l_node_addr: u64, t_node_addr: u64, t_next_addr: u64, r_next_addr: u64) void {
+    pub fn reallocate(l_node_addr: u64, t_node_addr: u64, t_next_addr: u64, r_next_addr: u64) void {
         if (l_node_addr == t_node_addr) {
             Node4.write(l_node_addr, Node4.A | t_next_addr);
         } else {
@@ -1195,6 +1195,7 @@ pub const Node4 = opaque {
         }
         Node4.write(t_next_addr, Node4.F | r_next_addr);
     }
+
     fn appendFlush(r_end: u64, t_end: u64) u64 {
         const l_u_node_addr: u64 = r_end -% Node4.size;
         const t_u_node_addr: u64 = t_end -% Node4.size;
