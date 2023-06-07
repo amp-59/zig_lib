@@ -27,8 +27,8 @@ fn testTimingSafeEqlVectors() !void {
     try builtin.expect(crypto.utils.timingSafeEql(@Vector(100, u8), v1, v3));
 }
 fn testTimingSafeCompare() !void {
-    var a = [_]u8{10} ** 32;
-    var b = [_]u8{10} ** 32;
+    var a: [32]u8 = .{10} ** 32;
+    var b: [32]u8 = .{10} ** 32;
     try builtin.expectEqual(math.Order, crypto.utils.timingSafeCompare(u8, &a, &b, .Big), .eq);
     try builtin.expectEqual(math.Order, crypto.utils.timingSafeCompare(u8, &a, &b, .Little), .eq);
     a[31] = 1;
@@ -39,11 +39,10 @@ fn testTimingSafeCompare() !void {
     try builtin.expectEqual(math.Order, crypto.utils.timingSafeCompare(u8, &a, &b, .Little), .lt);
 }
 fn testTimingSafeAddSub() !void {
-    const len = 32;
-    var a: [len]u8 = undefined;
-    var b: [len]u8 = undefined;
-    var c: [len]u8 = undefined;
-    const zero: [len]u8 = .{0} ** len;
+    var a: [32]u8 = undefined;
+    var b: [32]u8 = undefined;
+    var c: [32]u8 = undefined;
+    const zero: [32]u8 = .{0} ** 32;
     var iterations: usize = 100;
     while (iterations != 0) : (iterations -%= 1) {
         crypto.random.bytes(&a);

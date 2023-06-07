@@ -4,6 +4,7 @@ const sys = top.sys;
 const fmt = top.fmt;
 const exe = top.exe;
 const proc = top.proc;
+const mach = top.mach;
 const time = top.time;
 const meta = top.meta;
 const file = top.file;
@@ -14,6 +15,14 @@ const testing = top.testing;
 pub usingnamespace proc.start;
 pub const runtime_assertions: bool = true;
 pub const logging_override: builtin.Logging.Override = spec.logging.override.verbose;
+
+pub const signal_handlers: builtin.SignalHandlers = .{
+    .segmentation_fault = true,
+    .bus_error = true,
+    .illegal_instruction = true,
+    .floating_point_error = true,
+};
+
 const Array = mem.UnstructuredStreamView(8, 8, struct {}, .{});
 const Mapping = extern struct {
     lb_addr: u64,
@@ -72,18 +81,17 @@ fn testFutexWait(futex1: *u32) void {
 fn testFutexWakeOp(futex1: *u32, futex2: *u32) void {
     proc.futexWakeOp(.{}, futex1, futex2, 1, 1, .{ .op = .Assign, .cmp = .Equal, .to = 0x20, .from = 0x10 }) catch {};
 }
+
 fn testCloneAndFutex() !void {
     if (builtin.zig.mode == .Debug) return;
-    var stack_buf1: [4096]u8 align(4096) = undefined;
-    var stack_buf2: [4096]u8 align(4096) = undefined;
-    var stack_buf3: [4096]u8 align(4096) = undefined;
+    var allocator: mem.SimpleAllocator = .{};
     var futex1: u32 = 16;
     var futex2: u32 = 16;
-    try proc.callClone(.{ .return_type = void }, @ptrToInt(&stack_buf1), 4096, {}, testFutexWait, .{&futex1});
+    try proc.callClone(.{ .return_type = void }, allocator.allocateRaw(4096, 16), 4096, {}, testFutexWait, .{&futex1});
     try time.sleep(.{}, .{ .nsec = 0x10000 });
-    try proc.callClone(.{ .return_type = void }, @ptrToInt(&stack_buf2), 4096, {}, testFutexWakeOp, .{ &futex1, &futex2 });
+    try proc.callClone(.{ .return_type = void }, allocator.allocateRaw(4096, 16), 4096, {}, testFutexWakeOp, .{ &futex1, &futex2 });
     try time.sleep(.{}, .{ .nsec = 0x20000 });
-    try proc.callClone(.{ .return_type = void }, @ptrToInt(&stack_buf3), 4096, {}, testFutexWake, .{&futex2});
+    try proc.callClone(.{ .return_type = void }, allocator.allocateRaw(4096, 16), 4096, {}, testFutexWake, .{&futex2});
     try builtin.expectEqual(u32, 16, futex1);
     try builtin.expectEqual(u32, 32, futex2);
 }
@@ -125,6 +133,7 @@ fn testVClockGettime(aux: *const anyopaque) !void {
     try builtin.expectEqual(u64, ts_diff.sec, 0);
     try builtin.expectBelowOrEqual(u64, ts_diff.nsec, 1000);
 }
+
 pub fn main(_: [][*:0]u8, vars: [][*:0]u8, aux: *const anyopaque) !void {
     try testCloneAndFutex();
     testCheckResourcesNoErrors();
