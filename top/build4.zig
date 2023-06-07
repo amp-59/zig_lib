@@ -494,11 +494,9 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             ret.task = .build;
             ret.task_info = .{ .build = allocator.create(types.BuildCommand) };
             ret.addName(allocator).* = duplicate(allocator, name);
-            const mode: builtin.Mode = build_cmd.mode orelse .Debug;
-            const stripped: bool = build_cmd.strip orelse (mode == .ReleaseSmall);
             ret.addPath(allocator).* = .{
                 .absolute = main_pkg_path,
-                .relative = binaryRelative(allocator, name, build_cmd.kind, mode, stripped),
+                .relative = binaryRelative(allocator, name, build_cmd.kind),
             };
             ret.addPath(allocator).* = .{
                 .absolute = main_pkg_path,
@@ -524,6 +522,9 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 }
             }
             return ret;
+        }
+        pub fn addBuildAnon(toplevel: *Node, allocator: *Allocator, build_cmd: types.BuildCommand, root: [:0]const u8) !*Node {
+            return toplevel.addBuild(allocator, build_cmd, makeCommandName(allocator, root), root);
         }
         pub fn dependOn(node: *Node, allocator: *Allocator, on_node: *Node, on_task: ?types.Task) void {
             node.addDep(allocator).* = .{ .task = node.task, .on_node = on_node, .on_task = on_task orelse on_node.task, .on_state = .finished };
@@ -680,7 +681,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     else => runWrite(allocator, node, GlobalState.args[toplevel.args_len..toplevel.args_max_len]),
                 });
                 switch (task) {
-                    .build => {
+                    .build, .archive => {
                         const out_path: [:0]const u8 = node.paths[0].relative;
                         old_size = sys.call_noexcept(.newfstatat, u64, .{
                             toplevel.fds[0], @ptrToInt(out_path.ptr), @ptrToInt(&st), 0,
@@ -700,23 +701,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                         });
                         new_size = if (new_size == 0) st.size else 0;
                     },
-                    .archive => {
-                        const out_path: [:0]const u8 = archiveRelative(allocator, node.names[0]);
-                        old_size = sys.call_noexcept(.newfstatat, u64, .{
-                            toplevel.fds[0], @ptrToInt(out_path.ptr), @ptrToInt(&st), 0,
-                        });
-                        old_size = if (old_size == 0) st.size else 0;
-                        ret[0] = try meta.wrap(
-                            impl.system(args, &ts),
-                        );
-                        new_size = sys.call_noexcept(.newfstatat, u64, .{
-                            toplevel.fds[0], @ptrToInt(out_path.ptr), @ptrToInt(&st), 0,
-                        });
-                        new_size = if (new_size == 0) st.size else 0;
-                    },
-                    else => {
-                        ret[0] = try meta.wrap(impl.system(args, &ts));
-                    },
+                    else => ret[0] = try meta.wrap(impl.system(args, &ts)),
                 }
                 if (builder_spec.options.show_stats) {
                     debug.buildNotice(node, task, arena_index, ts, old_size, new_size, &ret);
@@ -1016,23 +1001,16 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 file.close(close(), out.write),
             );
         }
-        fn binaryRelative(
-            allocator: *Allocator,
-            name: [:0]const u8,
-            kind: types.OutputMode,
-            mode: builtin.Mode,
-            stripped: bool,
-        ) [:0]const u8 {
-            _ = stripped;
+        fn binaryRelative(allocator: *Allocator, name: [:0]const u8, kind: types.OutputMode) [:0]const u8 {
             switch (kind) {
-                .exe => return concatenate(allocator, &[_][]const u8{ zig_out_exe_dir ++ "/", name, "_", @tagName(mode) }),
+                .exe => return concatenate(allocator, &[_][]const u8{ zig_out_exe_dir ++ "/", name }),
                 .lib => return concatenate(
                     allocator,
-                    &[_][]const u8{ zig_out_exe_dir ++ "/", name, "_", @tagName(mode), builder_spec.options.extensions.lib },
+                    &[_][]const u8{ zig_out_exe_dir ++ "/", name, builder_spec.options.extensions.lib },
                 ),
                 .obj => return concatenate(
                     allocator,
-                    &[_][]const u8{ zig_out_exe_dir ++ "/", name, "_", @tagName(mode), builder_spec.options.extensions.obj },
+                    &[_][]const u8{ zig_out_exe_dir ++ "/", name, builder_spec.options.extensions.obj },
                 ),
             }
         }
@@ -1477,6 +1455,18 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             }
             ptrs[len] = builtin.zero([*:0]u8);
             return ptrs[0..len];
+        }
+        fn makeCommandName(allocator: *Allocator, root: [:0]const u8) [:0]const u8 {
+            @setRuntimeSafety(builder_spec.options.safety);
+            const buf: [*]u8 = allocator.allocate(u8, root.len +% 1).ptr;
+            mach.memcpy(buf, root.ptr, root.len);
+            buf[root.len] = 0;
+            var idx: u64 = 0;
+            while (idx != root.len and buf[idx] != 0x2e) : (idx +%= 1) {
+                buf[idx] -%= @boolToInt(buf[idx] == 0x2f);
+            }
+            buf[idx] = 0;
+            return buf[0..idx :0];
         }
         const omni_lock = .{ .bytes = .{ .null, .ready, .ready, .ready, .ready, .ready, .null } };
         const obj_lock = .{ .bytes = .{ .null, .null, .null, .ready, .null, .null, .null } };
