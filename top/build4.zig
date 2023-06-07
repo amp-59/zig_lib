@@ -533,6 +533,10 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             node.addPath(allocator).* = on_node.paths[0];
             node.addDep(allocator).* = .{ .task = node.task, .on_node = on_node, .on_task = .build, .on_state = .finished };
         }
+        pub fn dependOnArchive(node: *Node, allocator: *Allocator, on_node: *Node) void {
+            node.addPath(allocator).* = on_node.paths[0];
+            node.addDep(allocator).* = .{ .task = node.task, .on_node = on_node, .on_task = .archive, .on_state = .finished };
+        }
         fn dependOnSelfExe(node: *Node, allocator: *Allocator) void {
             node.addArg(allocator).* = concatenate(allocator, &.{
                 node.paths[0].absolute, "/", node.paths[0].relative,
