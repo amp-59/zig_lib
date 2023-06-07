@@ -562,11 +562,15 @@ pub const StatusSpec = struct {
     const Specification = @This();
     const Options = struct {
         no_follow: bool = false,
+        empty_path: bool = true,
     };
     fn flags(comptime stat_spec: Specification) At {
         var flags_bitfield: At = .{ .val = 0 };
         if (stat_spec.options.no_follow) {
             flags_bitfield.set(.no_follow);
+        }
+        if (stat_spec.options.empty_path) {
+            flags_bitfield.set(.empty_path);
         }
         comptime return flags_bitfield;
     }
@@ -1409,7 +1413,7 @@ fn makePathInternal(comptime spec: MakePathSpec, pathname: [:0]u8, comptime file
     .throw = spec.errors.mkdir.throw ++ spec.errors.stat.throw,
     .abort = spec.errors.mkdir.abort ++ spec.errors.stat.abort,
 }, void) {
-    const stat_spec: StatusSpec = spec.stat();
+    const stat_spec: StatusSpec = comptime spec.stat();
     const make_dir_spec: MakeDirSpec = spec.mkdir();
     const st: Status = pathStatus(stat_spec, pathname) catch |err| blk: {
         if (err == error.NoSuchFileOrDirectory) {

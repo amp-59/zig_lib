@@ -973,7 +973,7 @@ pub fn shift(args: *[][*:0]u8, index: u64) void {
             this = next;
         }
     }
-    args.* = args.*[0 .. args.len - 1];
+    args.* = args.*[0 .. args.len -% 1];
 }
 /// init: ArgsIterator{ .args = args }
 pub const ArgsIterator = struct {
