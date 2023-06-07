@@ -420,16 +420,6 @@ pub const CloneSpec = struct {
         }
         return clone_flags;
     }
-    pub inline fn args(comptime spec: CloneSpec, stack_addr: u64, stack_len: u64) CloneArgs {
-        return .{
-            .flags = comptime spec.flags(),
-            .stack_addr = stack_addr,
-            .stack_len = stack_len,
-            .child_tid_addr = mach.add64(stack_addr, 0x1000 - 0x10),
-            .parent_tid_addr = mach.add64(stack_addr, 0x1000 - 0x20),
-            .tls_addr = mach.add64(stack_addr, 0x1000 - 0x30),
-        };
-    }
 };
 pub const Status = struct {
     pub inline fn exit(status: u32) u8 {
@@ -810,18 +800,18 @@ noinline fn callErrorOrMediaReturnValueFunction(comptime Fn: type, result_addr: 
         @intToPtr(*meta.Args(Fn), args_addr).*,
     );
 }
-pub fn callClone(
-    comptime spec: CloneSpec,
-    stack_addr: u64,
-    stack_len: u64,
-    result_ptr: anytype,
-    comptime function: anytype,
-    args: anytype,
-) sys.ErrorUnion(spec.errors, spec.return_type) {
+pub fn callClone(comptime spec: CloneSpec, stack_addr: u64, stack_len: u64, result_ptr: anytype, comptime function: anytype, args: meta.Args(@TypeOf(function))) sys.ErrorUnion(spec.errors, spec.return_type) {
     @setRuntimeSafety(false);
     const Fn: type = @TypeOf(function);
-    const Args: type = meta.Args(Fn);
-    const cl_args: CloneArgs = spec.args(stack_addr, stack_len);
+    const Args: type = meta.Args(@TypeOf(function));
+    const cl_args: CloneArgs = .{
+        .flags = comptime spec.flags(),
+        .stack_addr = stack_addr,
+        .stack_len = stack_len,
+        .child_tid_addr = stack_addr,
+        .parent_tid_addr = stack_addr +% 0x10,
+        .tls_addr = stack_addr +% 0x20,
+    };
     const cl_args_addr: u64 = @ptrToInt(&cl_args);
     const cl_args_size: u64 = @sizeOf(CloneArgs);
     const ret_off: u64 = stack_len -% @sizeOf(u64);
@@ -832,6 +822,7 @@ pub fn callClone(
         @intToPtr(*u64, stack_addr +% ret_off).* = @ptrToInt(result_ptr);
     }
     @intToPtr(*Args, stack_addr +% args_off).* = args;
+
     const rc: i64 = asm volatile (
         \\syscall # clone3
         : [ret] "={rax}" (-> i64),
@@ -1097,7 +1088,7 @@ const debug = opaque {
         const value_s: []const u8 = builtin.fmt.ud64(value).readAll();
         const sec_s: []const u8 = builtin.fmt.ud64(timeout.sec).readAll();
         const nsec_s: []const u8 = builtin.fmt.ud64(timeout.nsec).readAll();
-        var buf: [32768]u8 = undefined;
+        var buf: [3072]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_futex_wait_0_s, addr_s, ", word=", word_s, ", val=", value_s, ", sec=", sec_s, ", nsec=", nsec_s, "\n" });
     }
     fn futexWaitNotice(futex: *u32, value: u32, timeout: *const time.TimeSpec) void {
@@ -1106,7 +1097,7 @@ const debug = opaque {
         const value_s: []const u8 = builtin.fmt.ud64(value).readAll();
         const sec_s: []const u8 = builtin.fmt.ud64(timeout.sec).readAll();
         const nsec_s: []const u8 = builtin.fmt.ud64(timeout.nsec).readAll();
-        var buf: [32768]u8 = undefined;
+        var buf: [3072]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_futex_wait_0_s, addr_s, ", word=", word_s, ", val=", value_s, ", sec=", sec_s, ", nsec=", nsec_s, "\n" });
     }
     fn futexWaitError(futex_error: anytype, futex: *u32, value: u32, timeout: *const time.TimeSpec) void {
@@ -1116,14 +1107,14 @@ const debug = opaque {
         const sec_s: []const u8 = builtin.fmt.ud64(timeout.sec).readAll();
         const nsec_s: []const u8 = builtin.fmt.ud64(timeout.nsec).readAll();
         const error_s: []const u8 = @errorName(futex_error);
-        var buf: [32768]u8 = undefined;
+        var buf: [3072]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_futex_1_s, addr_s, ", word=", word_s, ", val=", value_s, ", sec=", sec_s, ", nsec=", nsec_s, " (", error_s, ")\n" });
     }
     fn futexWakeAttempt(futex: *u32, count: u64) void {
         const addr_s: []const u8 = builtin.fmt.ux64(@ptrToInt(futex)).readAll();
         const word_s: []const u8 = builtin.fmt.ud64(futex.*).readAll();
         const count_s: []const u8 = builtin.fmt.ud64(count).readAll();
-        var buf: [32768]u8 = undefined;
+        var buf: [3072]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_futex_wake_0_s, addr_s, ", word=", word_s, ", max=", count_s, "\n" });
     }
     fn futexWakeNotice(futex: *u32, count: u64, ret: u64) void {
@@ -1131,7 +1122,7 @@ const debug = opaque {
         const word_s: []const u8 = builtin.fmt.ud64(futex.*).readAll();
         const count_s: []const u8 = builtin.fmt.ud64(count).readAll();
         const ret_s: []const u8 = builtin.fmt.ud64(ret).readAll();
-        var buf: [32768]u8 = undefined;
+        var buf: [3072]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_futex_wake_0_s, addr_s, ", word=", word_s, ", max=", count_s, ", res=", ret_s, "\n" });
     }
     fn futexWakeError(futex_error: anytype, futex: *u32, count: u64) void {
@@ -1139,7 +1130,7 @@ const debug = opaque {
         const word_s: []const u8 = builtin.fmt.ud64(futex.*).readAll();
         const count_s: []const u8 = builtin.fmt.ud64(count).readAll();
         const error_s: []const u8 = @errorName(futex_error);
-        var buf: [32768]u8 = undefined;
+        var buf: [3072]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_futex_1_s, addr_s, ", word=", word_s, ", max=", count_s, " (", error_s, ")\n" });
     }
     fn futexWakeOpAttempt(futex1: *u32, futex2: *u32, count1: u32, count2: u32, wake_op: FutexOp.WakeOp) void {
@@ -1150,7 +1141,7 @@ const debug = opaque {
         const word2_s: []const u8 = builtin.fmt.ud64(futex2.*).readAll();
         const count1_s: []const u8 = builtin.fmt.ud64(count1).readAll();
         const count2_s: []const u8 = builtin.fmt.ud64(count2).readAll();
-        var buf: [32768]u8 = undefined;
+        var buf: [3072]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
             about_futex_wake_0_s, "futex1=@",
             addr1_s,              ", word1=",
@@ -1170,7 +1161,7 @@ const debug = opaque {
         const count1_s: []const u8 = builtin.fmt.ud64(count1).readAll();
         const count2_s: []const u8 = builtin.fmt.ud64(count2).readAll();
         const ret_s: []const u8 = builtin.fmt.ud64(ret).readAll();
-        var buf: [32768]u8 = undefined;
+        var buf: [3072]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
             about_futex_wake_0_s, "futex1=@",
             addr1_s,              ", word1=",
@@ -1191,7 +1182,7 @@ const debug = opaque {
         const count1_s: []const u8 = builtin.fmt.ud64(count1).readAll();
         const count2_s: []const u8 = builtin.fmt.ud64(count2).readAll();
         const error_s: []const u8 = @errorName(futex_error);
-        var buf: [32768]u8 = undefined;
+        var buf: [3072]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
             about_futex_wake_0_s, "futex1=@",
             addr1_s,              ", word1=",
