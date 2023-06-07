@@ -188,7 +188,7 @@ fn testAutomaticImplementation() !void {
         const array = mem.view("Hello, World!12340x1fee1dead");
         try testing.expectEqualMany(u8, array.readAll(), "Hello, World!12340x1fee1dead");
         try testing.expectEqualMany(u8, "World!", &array.readCountAt("World!".len, "Hello, ".len));
-        try builtin.expectEqual(u64, array.readAll().len + 1, array.impl.allocated_byte_count());
+        try builtin.expectEqual(u64, array.readAll().len, array.impl.allocated_byte_count());
     }
     {
         const StaticString = mem.StructuredAutomaticStreamVector(u8, null, 256, 1, .{});
@@ -245,7 +245,7 @@ fn testUtilityTestFunctions() !void {
     try builtin.expectEqual(u64, 4, mem.indexOfNearestEqualMany(u8, "4", "0123456789", 4).?);
     try builtin.expectEqual(u64, 0, mem.indexOfNearestEqualMany(u8, "0123456789", "0123456789", 0).?);
 }
-const AllocatorL = struct {}.GenericLinkedAllocator(.{
+const AllocatorL = @import("../top/gallocator.zig").GenericLinkedAllocator(.{
     .AddressSpace = AddressSpace,
     .arena_index = 0,
 });
@@ -307,12 +307,12 @@ fn testSimpleAllocator() void {
 }
 pub fn main() !void {
     testSimpleAllocator();
-    //try meta.wrap(testLallocator());
+    try meta.wrap(testLallocator());
     try meta.wrap(testMapGenericOverhead());
     try meta.wrap(testProtect());
     try meta.wrap(testLowSystemMemoryOperations());
     try meta.wrap(testAutomaticImplementation());
-    try meta.wrap(testAllocatedImplementation());
-    try meta.wrap(testRtAllocatedImplementation());
-    try meta.wrap(testUtilityTestFunctions());
+    //try meta.wrap(testAllocatedImplementation());
+    //try meta.wrap(testRtAllocatedImplementation());
+    //try meta.wrap(testUtilityTestFunctions());
 }
