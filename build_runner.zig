@@ -18,10 +18,7 @@ const builtin = srg.builtin;
 pub usingnamespace root;
 pub usingnamespace proc.start;
 
-const Node = if (@hasDecl(root, "Node"))
-    root.Node
-else
-    build.GenericNode(.{});
+const Node = if (@hasDecl(root, "Node")) root.Node else build.GenericNode(.{});
 
 pub const is_debug: bool = false;
 
