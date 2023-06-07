@@ -202,6 +202,13 @@ pub fn log2(comptime T: type, x: T) builtin.ShiftAmount(T) {
     return @intCast(builtin.ShiftAmount(T), @typeInfo(T).Int.bits - 1 - @clz(x));
 }
 pub const float = struct {
+    pub fn Mantissa(comptime T: type) type {
+        return switch (T) {
+            f16, f32, f64 => u64,
+            f128 => u128,
+            else => unreachable,
+        };
+    }
     /// Creates a raw "1.0" mantissa for floating point type T. Used to dedupe f80 logic.
     fn mantissaOne(comptime T: type) comptime_int {
         return if (@typeInfo(T).Float.bits == 80) 1 << fractionalBits(T) else 0;
@@ -247,11 +254,14 @@ pub const float = struct {
             else => return undefined,
         }
     }
-    pub fn exponentMin(comptime T: type) comptime_int {
-        return -exponentMax(T) + 1;
+    pub inline fn exponentMin(comptime T: type) comptime_int {
+        comptime return -exponentMax(T) + 1;
     }
-    pub fn exponentMax(comptime T: type) comptime_int {
-        return (1 << (exponentBits(T) - 1)) - 1;
+    pub inline fn exponentInf(comptime T: type) comptime_int {
+        comptime return (1 << exponentBits(T)) - 1;
+    }
+    pub inline fn exponentMax(comptime T: type) comptime_int {
+        comptime return (1 << (exponentBits(T) - 1)) - 1;
     }
     pub inline fn trueMin(comptime T: type) T {
         comptime return reconstructFloat(T, exponentMin(T) - 1, 1);
