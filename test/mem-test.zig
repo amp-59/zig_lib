@@ -245,11 +245,12 @@ fn testUtilityTestFunctions() !void {
     try builtin.expectEqual(u64, 4, mem.indexOfNearestEqualMany(u8, "4", "0123456789", 4).?);
     try builtin.expectEqual(u64, 0, mem.indexOfNearestEqualMany(u8, "0123456789", "0123456789", 0).?);
 }
-const AllocatorL = @import("../top/gallocator.zig").GenericLinkedAllocator(.{
-    .AddressSpace = AddressSpace,
-    .arena_index = 0,
-});
+
 fn testLallocator() !void {
+    const AllocatorL = struct {}.GenericLinkedAllocator(.{
+        .AddressSpace = AddressSpace,
+        .arena_index = 0,
+    });
     var rng: file.DeviceRandomBytes(65536) = .{};
     var address_space: AddressSpace = .{};
     var allocator: AllocatorL = try AllocatorL.init(&address_space);
@@ -307,12 +308,12 @@ fn testSimpleAllocator() void {
 }
 pub fn main() !void {
     testSimpleAllocator();
-    try meta.wrap(testLallocator());
+    //try meta.wrap(testLallocator());
     try meta.wrap(testMapGenericOverhead());
     try meta.wrap(testProtect());
     try meta.wrap(testLowSystemMemoryOperations());
     try meta.wrap(testAutomaticImplementation());
-    //try meta.wrap(testAllocatedImplementation());
-    //try meta.wrap(testRtAllocatedImplementation());
-    //try meta.wrap(testUtilityTestFunctions());
+    try meta.wrap(testAllocatedImplementation());
+    try meta.wrap(testRtAllocatedImplementation());
+    try meta.wrap(testUtilityTestFunctions());
 }
