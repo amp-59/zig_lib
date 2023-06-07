@@ -19,7 +19,7 @@ pub fn GenericKeccak(
     return struct {
         st: State = .{},
         const Keccak = @This();
-        const State = core.GenericKeccakPState(number, output_bits * 2, delim, rounds);
+        const State = core.GenericKeccakPState(number, output_bits *% 2, delim, rounds);
         pub const len: comptime_int = output_bits / 8;
         pub const blk_len: comptime_int = State.rate;
         pub fn hash(bytes: []const u8, dest: []u8) void {
@@ -40,9 +40,6 @@ pub fn GenericKeccak(
         }
     };
 }
-pub const Sha256oSha256 = GenericComposition(Sha256, Sha256);
-pub const Sha384oSha384 = GenericComposition(Sha384, Sha384);
-pub const Sha512oSha512 = GenericComposition(Sha512, Sha512);
 pub fn GenericComposition(comptime H1: type, comptime H2: type) type {
     return struct {
         H1: H1,
