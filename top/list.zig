@@ -761,7 +761,7 @@ pub fn GenericLinkedListView(comptime list_spec: ListViewSpec) type {
             const unit_size: u64 = @sizeOf(child);
             const low_alignment: u64 = @alignOf(child);
             const link_after: bool = link_alignment < low_alignment;
-            const max_offset: u64 = @max(Link.offset.end, Data.offset.end);
+            const max_offset: u64 = @max(Link.end, Data.end);
             pub const alignment: u64 = @max(link_alignment, low_alignment);
             pub const size: u64 = mach.alignA64(max_offset, if (link_after)
                 link_alignment
