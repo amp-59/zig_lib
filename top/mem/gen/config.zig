@@ -74,6 +74,8 @@ pub const static_reference_path: [:0]const u8 = reference_dir_path ++ "/static.z
 pub const dynamic_reference_path: [:0]const u8 = reference_dir_path ++ "/dynamic.zig";
 pub const parametric_reference_path: [:0]const u8 = reference_dir_path ++ "/parametric.zig";
 
+pub const allocator_file_path: [:0]const u8 = primarySourceFile("allocator.zig");
+
 /// Contains the hand-written part of the container end-product.
 pub const container_template_path: [:0]const u8 = primarySourceFile("container-template.zig");
 /// Contains the hand-written part of the reference end-product.
