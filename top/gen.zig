@@ -1,6 +1,7 @@
 const mem = @import("./mem.zig");
 const file = @import("./file.zig");
 const spec = @import("./spec.zig");
+const builtin = @import("./builtin.zig");
 pub const ListKind = enum {
     Parameter,
     Argument,
