@@ -57,18 +57,23 @@ fn memgen(allocator: *Node.Allocator, node: *Node) void {
     mg_ctn_kinds.addDescr("Generate function kind switch functions for container functions");
     mg_ptr_impls.addDescr("Generate reference implementations");
     mg_ctn_impls.addDescr("Generate container implementations");
+    mg_alloc_impls.addDescr("Generate allocator implementations");
     mg_ptr.addDescr("Reformat generated generic pointers into canonical form");
     mg_ctn.addDescr("Reformat generated generic containers into canonical form");
     mg_alloc.addDescr("Reformat generated generic allocators into canonical form");
 
     mg_specs.dependOn(allocator, mg_touch, .run);
-    mg_ctn_kinds.dependOn(allocator, mg_specs, .run);
+    mg_alloc_impls.dependOn(allocator, mg_specs, .run);
+    mg_ctn_kinds.dependOn(allocator, mg_touch, .run);
+    mg_ptr_impls.dependOn(allocator, mg_specs, .run);
+    mg_ctn_impls.dependOn(allocator, mg_specs, .run);
+    mg_alloc_impls.dependOn(allocator, mg_ctn_kinds, .run);
     mg_ptr_impls.dependOn(allocator, mg_ctn_kinds, .run);
-    mg_ptr.dependOn(allocator, mg_ptr_impls, .run);
     mg_ctn_impls.dependOn(allocator, mg_ctn_kinds, .run);
-    mg_ctn.dependOn(allocator, mg_ctn_impls, .run);
-    mg_alloc.dependOn(allocator, mg_ctn_kinds, .run);
     mg_alloc.dependOn(allocator, mg_alloc_impls, .run);
+    mg_ptr.dependOn(allocator, mg_ptr_impls, .run);
+    mg_ctn.dependOn(allocator, mg_ctn_impls, .run);
+
     node.task = .format;
 }
 fn examples(allocator: *Node.Allocator, node: *Node) void {

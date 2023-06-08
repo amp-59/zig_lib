@@ -1103,8 +1103,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 if (processCommandsInternal(address_space, thread_space, allocator, node, node, task, arg_idx)) |result| {
                     return if (!result) builtin.proc.exitError(error.UnfinishedRequest, 2);
                 }
-            } else {
-                builtin.proc.exitError(error.nodeDoesNotExist, 2);
+                builtin.proc.exitErrorFault(error.NotACommand, name, 2);
             }
         }
         const zig_out_exe_dir: [:0]const u8 = builder_spec.options.names.zig_out_dir ++ "/" ++ builder_spec.options.names.exe_out_dir;
