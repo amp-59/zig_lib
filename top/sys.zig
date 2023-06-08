@@ -2101,6 +2101,7 @@ pub const mmap_errors = &[_]ErrorCode{
     .ACCES, .AGAIN,  .BADF, .EXIST, .INVAL, .NFILE, .NODEV, .NOMEM, .OVERFLOW,
     .PERM,  .TXTBSY,
 };
+pub const msync_errors = &[_]ErrorCode{ .BUSY, .INVAL, .NOMEM };
 pub const memfd_create_errors = &[_]ErrorCode{ .FAULT, .INVAL, .MFILE, .NOMEM };
 pub const seek_errors = &[_]ErrorCode{ .BADF, .NXIO, .OVERFLOW, .SPIPE };
 pub const truncate_errors = &[_]ErrorCode{
