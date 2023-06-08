@@ -461,6 +461,58 @@ fn writeReturnImplementation(array: *Array, detail: types.Implementation, specs:
     writeInitExpr(array, specs);
     array.writeMany(");\n");
 }
+fn writeSpecificationDeductionInternal(
+    allocator: *config.Allocator,
+    array: *Array,
+    abstract_spec: types.AbstractSpecification,
+    p_info: []const types.Specifier,
+    spec_set: []const []const types.Specifier,
+    tech_set: []const []const types.Technique,
+    q_info: []const types.Technique,
+    indices: *types.Implementation.Indices,
+) config.Allocator.allocate_void {
+    @setRuntimeSafety(false);
+    const filtered: BinaryFilterPayload([]const types.Specifier) = try meta.wrap(
+        haveSpec(allocator, spec_set, p_info[0]),
+    );
+    if (filtered[1].len != 0) {
+        writeDeclExpr(array, p_info[0]);
+        if (filtered[1].len == 1) {
+            try meta.wrap(
+                writeImplementationDeduction(allocator, array, abstract_spec, tech_set, filtered[1][0], tech_set, q_info, indices),
+            );
+            indices.ctn +%= 1;
+        } else {
+            try meta.wrap(
+                writeSpecificationDeductionInternal(allocator, array, abstract_spec, p_info[1..], filtered[1], tech_set, q_info, indices),
+            );
+        }
+    }
+    if (filtered[0].len != 0) {
+        if (filtered[1].len != 0 and
+            p_info[0] == .decl_optional_variant or
+            p_info[0] == .optional_variant)
+        {
+            array.writeMany("}else{\n");
+        }
+        if (filtered[0].len == 1) {
+            try meta.wrap(
+                writeImplementationDeduction(allocator, array, abstract_spec, tech_set, filtered[0][0], tech_set, q_info, indices),
+            );
+            indices.ctn +%= 1;
+        } else {
+            try meta.wrap(
+                writeSpecificationDeductionInternal(allocator, array, abstract_spec, p_info[1..], filtered[0], tech_set, q_info, indices),
+            );
+        }
+    }
+    if (filtered[1].len != 0 and
+        p_info[0] == .decl_optional_variant or
+        p_info[0] == .optional_variant)
+    {
+        array.writeMany("}\n");
+    }
+}
 fn writeDeductionTestBoolean(
     allocator: *config.Allocator,
     array: *Array,
@@ -601,58 +653,7 @@ fn writeImplementationDeduction(
         else => return,
     }
 }
-fn writeSpecificationDeductionInternal(
-    allocator: *config.Allocator,
-    array: *Array,
-    abstract_spec: types.AbstractSpecification,
-    p_info: []const types.Specifier,
-    spec_set: []const []const types.Specifier,
-    tech_set: []const []const types.Technique,
-    q_info: []const types.Technique,
-    indices: *types.Implementation.Indices,
-) config.Allocator.allocate_void {
-    @setRuntimeSafety(false);
-    const filtered: BinaryFilterPayload([]const types.Specifier) = try meta.wrap(
-        haveSpec(allocator, spec_set, p_info[0]),
-    );
-    if (filtered[1].len != 0) {
-        writeDeclExpr(array, p_info[0]);
-        if (filtered[1].len == 1) {
-            try meta.wrap(
-                writeImplementationDeduction(allocator, array, abstract_spec, tech_set, filtered[1][0], tech_set, q_info, indices),
-            );
-            indices.ctn +%= 1;
-        } else {
-            try meta.wrap(
-                writeSpecificationDeductionInternal(allocator, array, abstract_spec, p_info[1..], filtered[1], tech_set, q_info, indices),
-            );
-        }
-    }
-    if (filtered[0].len != 0) {
-        if (filtered[1].len != 0 and
-            p_info[0] == .decl_optional_variant or
-            p_info[0] == .optional_variant)
-        {
-            array.writeMany("}else{\n");
-        }
-        if (filtered[0].len == 1) {
-            try meta.wrap(
-                writeImplementationDeduction(allocator, array, abstract_spec, tech_set, filtered[0][0], tech_set, q_info, indices),
-            );
-            indices.ctn +%= 1;
-        } else {
-            try meta.wrap(
-                writeSpecificationDeductionInternal(allocator, array, abstract_spec, p_info[1..], filtered[0], tech_set, q_info, indices),
-            );
-        }
-    }
-    if (filtered[1].len != 0 and
-        p_info[0] == .decl_optional_variant or
-        p_info[0] == .optional_variant)
-    {
-        array.writeMany("}\n");
-    }
-}
+
 fn writeSpecificationDeduction(
     allocator: *config.Allocator,
     array: *Array,
@@ -810,6 +811,7 @@ fn validateAllSerial(
     }
 }
 const data = blk: {
+    @setEvalBranchQuota(1500);
     var x_p_infos: []const []const types.Specifier = &.{};
     var x_q_infos: []const []const types.Technique = &.{};
     var spec_sets: []const []const []const types.Specifier = &.{};
