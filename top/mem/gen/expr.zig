@@ -326,7 +326,7 @@ const Init = struct {
         idx +%= 1;
         if (comptimeField(arg_list.*)) {
             exprs[idx] = Init.symbol(switch (arg_list.kind) {
-                .Parameter => tokens.impl_const_param,
+                else => tokens.impl_const_param,
                 .Argument => tokens.impl_name,
             });
             idx +%= 1;
@@ -341,13 +341,13 @@ const Init = struct {
         return packMore(.call_member, exprs[0..idx]);
     }
     pub fn impl(allocator: anytype, any_detail: anytype, ptr_fn_info: ptr_fn.Fn) Expr {
-        if (@TypeOf(any_detail.*) == types.Implementation) {
+        if (@TypeOf(any_detail) == types.Implementation) {
             return impl0(allocator, ptr_fn_info, &ptr_fn_info.argList(any_detail, .Argument));
         } else {
-            return impl1(allocator, ptr_fn_info, &ptr_fn_info.argList(any_detail, .Argument), Tokens.determine(ptr_fn_info));
+            return impl1(allocator, ptr_fn_info, &ptr_fn_info.argList(any_detail.impl(), .Argument), Tokens.determine(ptr_fn_info));
         }
     }
-    pub fn intr(allocator: anytype, ctn_detail: *const types.Container, ctn_fn_info: ctn_fn.Fn) Expr {
+    pub fn intr(allocator: anytype, ctn_detail: types.Container, ctn_fn_info: ctn_fn.Fn) Expr {
         const arg_list: gen.ArgList = ctn_fn_info.argList(ctn_detail, .Argument);
         const exprs: []Expr = allocator.allocate(Expr, arg_list.len +% 1);
         var idx: u64 = 0;
@@ -363,7 +363,7 @@ const Init = struct {
 pub usingnamespace Init;
 pub fn comptimeField(arg_list: gen.ArgList) bool {
     switch (arg_list.kind) {
-        .Parameter => {
+        else => {
             if (arg_list.ret.ptr == tok.impl_type_name.ptr) {
                 return false;
             }
