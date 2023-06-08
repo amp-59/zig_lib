@@ -1,3 +1,4 @@
+const sys = @import("../sys.zig");
 const math = @import("../math.zig");
 const builtin = @import("../builtin.zig");
 const random = @import("./random.zig");
@@ -132,4 +133,13 @@ pub fn secureZero(comptime T: type, _: []T) void {
     } else {
         @compileError("mach.memset(@ptrCast([*]u8, buf.ptr), 0, " ++ builtin.fmt.cx(@sizeOf(T)) ++ " *% buf.len);");
     }
+}
+pub fn bytes(buf: []u8) void {
+    sys.call(.getrandom, .{ .throw = sys.getrandom_errors }, void, .{
+        @ptrToInt(buf.ptr),
+        buf.len,
+        sys.GRND.RANDOM,
+    }) catch |getrandom_error| {
+        builtin.proc.exitError(getrandom_error, 2);
+    };
 }
