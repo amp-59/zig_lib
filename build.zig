@@ -59,8 +59,6 @@ fn memgen(allocator: *Node.Allocator, node: *Node) void {
     mg_ctn_impls.dependOn(allocator, mg_specs, .run);
     mg_ctn_impls.dependOn(allocator, mg_ctn_kinds, .run);
     mg_ctn.dependOn(allocator, mg_ctn_impls, .run);
-    mg_alloc_impls.dependOn(allocator, mg_ptr_impls, .run);
-    mg_alloc_impls.dependOn(allocator, mg_ctn_impls, .run);
     mg_alloc.dependOn(allocator, mg_alloc_impls, .run);
     mg_touch.addDescr("Create placeholder files");
     mg_specs.addDescr("Generate specification types for containers and pointers");
