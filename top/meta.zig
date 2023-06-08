@@ -723,20 +723,19 @@ pub fn GenericStructOfBool(comptime Struct: type) type {
     return struct {
         pub const tag_type: type = @typeInfo(Struct).Struct.backing_integer.?;
         pub const Tag = blk: {
-            var fields: []const builtin.Type.EnumField = &.{};
-            var value: u64 = 1;
-            inline for (@typeInfo(Struct).Struct.fields) |field| {
-                fields = fields ++ [1]builtin.Type.EnumField{.{
+            const struct_info: builtin.Type.Struct = @typeInfo(Struct).Struct;
+            var enum_fields: []const builtin.Type.EnumField = &.{};
+            inline for (struct_info.fields) |field| {
+                enum_fields = enum_fields ++ [1]builtin.Type.EnumField{.{
                     .name = field.name,
-                    .value = value,
+                    .value = 1 << @bitOffsetOf(Struct, field.name),
                 }};
-                value <<= 1;
             }
             break :blk @Type(.{ .Enum = .{
-                .fields = fields,
-                .tag_type = tag_type,
+                .tag_type = struct_info.backing_integer.?,
                 .decls = &.{},
-                .is_exhaustive = true,
+                .fields = enum_fields,
+                .is_exhaustive = false,
             } });
         };
         pub fn detail(tags: []const Tag) Struct {
@@ -753,6 +752,9 @@ pub fn GenericStructOfBool(comptime Struct: type) type {
                 ret +%= @boolToInt(@field(bit_field, field.name));
             }
             return ret;
+        }
+        pub fn has(bit_field: Struct, tag: Tag) bool {
+            return @bitCast(tag_type, bit_field) & @enumToInt(tag) != 0;
         }
     };
 }
