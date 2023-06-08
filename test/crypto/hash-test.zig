@@ -932,11 +932,15 @@ pub fn hashTestMain() !void {
     try testSha3512AlignedFinal();
     try testKeccak256Single(&allocator);
     try testKeccak512Single(&allocator);
-    try testSHAKE128Single(&allocator);
-    try testSHAKE128Multisqueeze(&allocator);
-    try testSHAKE128MultisqueezeWithMultipleBlocks();
-    try testSHAKE256Single(&allocator);
-    try testTurboSHAKE128(&allocator);
+    if (@hasDecl(crypto.hash, "Shake128")) {
+        try testSHAKE128Single(&allocator);
+        try testSHAKE128Multisqueeze(&allocator);
+        try testSHAKE128MultisqueezeWithMultipleBlocks();
+    }
+    if (@hasDecl(crypto.hash, "Shake256")) {
+        try testSHAKE256Single(&allocator);
+        try testTurboSHAKE128(&allocator);
+    }
     try testSHA3WithStreaming(&allocator);
     try testSha384Single(&allocator);
     try testSha384Streaming(&allocator);
@@ -964,10 +968,14 @@ pub fn hashTestMain() !void {
     try testSha1Single(&allocator);
     try testSha1Streaming(&allocator);
     try testSha1AlignedFinal();
-    try testSha224Single(&allocator);
-    try testSha224Streaming(&allocator);
-    try testSha256Single(&allocator);
-    try testSha256Streaming(&allocator);
-    try testSha256AlignedFinal();
+    if (@hasDecl(crypto.hash, "Sha224")) {
+        try testSha224Single(&allocator);
+        try testSha224Streaming(&allocator);
+    }
+    if (@hasDecl(crypto.hash, "Sha256")) {
+        try testSha256Single(&allocator);
+        try testSha256Streaming(&allocator);
+        try testSha256AlignedFinal();
+    }
 }
 pub const main = hashTestMain;
