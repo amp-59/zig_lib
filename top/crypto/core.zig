@@ -741,7 +741,8 @@ pub fn ctr(comptime BlockCipher: anytype, block_cipher: BlockCipher, dest: []u8,
         while (off <= src.len) : (off +%= wide_blk_len) {
             var idx: usize = 0;
             while (idx < BlockCipher.block.parallel.optimal_parallel_blocks) : (idx +%= 1) {
-                mach.memcpy(counters[idx *% 16 ..].ptr, &builtin.ended(u128, counter_int, endian), 16);
+                @ptrCast(*[16]u8, counters[idx *% 16 ..].ptr).* =
+                    @ptrCast(*const [16]u8, &builtin.ended(u128, counter_int, endian)).*;
                 counter_int +%= 1;
             }
             block_cipher.xorWide(
