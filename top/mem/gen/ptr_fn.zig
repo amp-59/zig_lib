@@ -77,7 +77,7 @@ pub const Fn = enum(u5) {
             },
         }
     }
-    pub fn argList(ptr_fn_info: Fn, impl_variant: anytype, list_kind: gen.ListKind) gen.ArgList {
+    pub fn argList(ptr_fn_info: Fn, impl_variant: types.Implementation, list_kind: gen.ListKind) gen.ArgList {
         const Variant = @TypeOf(impl_variant);
         var arg_list: gen.ArgList = .{
             .args = undefined,
