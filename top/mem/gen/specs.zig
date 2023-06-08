@@ -12,6 +12,7 @@ const tok = @import("./tok.zig");
 const attr = @import("./attr.zig");
 const types = @import("./types.zig");
 const config = @import("./config.zig");
+const ctn_fn = @import("./ctn_fn.zig");
 pub usingnamespace proc.start;
 pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
 pub const runtime_assertions: bool = false;
@@ -674,10 +675,7 @@ fn writeSpecificationDeduction(
     );
     array.writeMany("}\n};\n");
 }
-fn writeSpecifications(
-    allocator: *config.Allocator,
-    array: *Array,
-) config.Allocator.allocate_void {
+fn writeSpecifications(allocator: *config.Allocator, array: *Array) config.Allocator.allocate_void {
     var indices: types.Implementation.Indices = .{};
     for (types.Kind.list) |kind| {
         for (attr.abstract_specs, data.x_p_infos, data.spec_sets, data.tech_sets, data.x_q_infos) |abstract_spec, p_info, spec_set, tech_set, q_info| {
@@ -715,6 +713,83 @@ fn writeSpecifications(
         }
     }
     gen.truncateFile(spec.generic.noexcept, config.reference_file_path, array.readAll());
+}
+fn writeContainerKinds(array: *Array) void {
+    array.undefineAll();
+    array.writeMany("const ctn_fn = @import(\"../../ctn_fn.zig\");\n");
+    const writeKind = attr.Fn.static.writeKindSwitch;
+    const Pair = attr.Fn.static.Pair(ctn_fn.Fn);
+    const read: Pair = attr.Fn.static.prefixSubTagNew(ctn_fn.Fn, .read);
+    const refer: Pair = attr.Fn.static.prefixSubTag(ctn_fn.Fn, read[0], .refer);
+    const read_all: Pair = attr.Fn.static.subTag(ctn_fn.Fn, read[1], .All);
+    const write: Pair = attr.Fn.static.prefixSubTag(ctn_fn.Fn, refer[0], .write);
+    const append: Pair = attr.Fn.static.prefixSubTag(ctn_fn.Fn, write[0], .append);
+    const overwrite: Pair = attr.Fn.static.prefixSubTag(ctn_fn.Fn, append[0], .overwrite);
+    const helper: Pair = attr.Fn.static.prefixSubTag(ctn_fn.Fn, overwrite[0], .__);
+    const define: Pair = attr.Fn.static.prefixSubTag(ctn_fn.Fn, helper[0], .define);
+    const undefine: Pair = attr.Fn.static.prefixSubTag(ctn_fn.Fn, define[0], .undefine);
+    const stream: Pair = attr.Fn.static.prefixSubTag(ctn_fn.Fn, undefine[0], .stream);
+    const unstream: Pair = attr.Fn.static.prefixSubTag(ctn_fn.Fn, stream[0], .unstream);
+    const one: Pair = attr.Fn.static.subTagNew(ctn_fn.Fn, .One);
+    const read_one: Pair = attr.Fn.static.prefixSubTag(ctn_fn.Fn, one[1], .read);
+    const refer_one: Pair = attr.Fn.static.prefixSubTag(ctn_fn.Fn, read_one[0], .refer);
+    const count: Pair = attr.Fn.static.subTag(ctn_fn.Fn, one[0], .Count);
+    const read_count: Pair = attr.Fn.static.prefixSubTag(ctn_fn.Fn, count[1], .read);
+    const refer_count: Pair = attr.Fn.static.prefixSubTag(ctn_fn.Fn, read_count[0], .refer);
+    const many: Pair = attr.Fn.static.subTag(ctn_fn.Fn, count[0], .Many);
+    const read_many: Pair = attr.Fn.static.prefixSubTag(ctn_fn.Fn, many[1], .read);
+    const refer_many: Pair = attr.Fn.static.prefixSubTag(ctn_fn.Fn, read_many[0], .refer);
+    const format: Pair = attr.Fn.static.suffixSubTag(ctn_fn.Fn, write[1], .Format);
+    const args: Pair = attr.Fn.static.suffixSubTag(ctn_fn.Fn, format[0], .Args);
+    const fields: Pair = attr.Fn.static.suffixSubTag(ctn_fn.Fn, args[0], .Fields);
+    const any: Pair = attr.Fn.static.suffixSubTag(ctn_fn.Fn, fields[0], .Any);
+    const sentinel: Pair = attr.Fn.static.subTag(ctn_fn.Fn, many[1] ++ count[1], .WithSentinel);
+    const at: Pair = attr.Fn.static.suffixSubTag(ctn_fn.Fn, read[1] ++ refer[1] ++ overwrite[1], .At);
+    const all_defined: Pair = attr.Fn.static.suffixSubTag(ctn_fn.Fn, at[0], .AllDefined);
+    const all_undefined: Pair = attr.Fn.static.suffixSubTag(ctn_fn.Fn, all_defined[0], .AllUndefined);
+    const defined: Pair = attr.Fn.static.suffixSubTag(ctn_fn.Fn, all_undefined[0], .Defined);
+    const @"undefined": Pair = attr.Fn.static.suffixSubTag(ctn_fn.Fn, defined[0], .Undefined);
+    const streamed: Pair = attr.Fn.static.suffixSubTag(ctn_fn.Fn, @"undefined"[0], .Streamed);
+    const unstreamed: Pair = attr.Fn.static.suffixSubTag(ctn_fn.Fn, streamed[0], .Unstreamed);
+    const offset_defined: Pair = attr.Fn.static.subTag(ctn_fn.Fn, defined[1], .Offset);
+    const offset_undefined: Pair = attr.Fn.static.subTag(ctn_fn.Fn, @"undefined"[1], .Offset);
+    const offset_streamed: Pair = attr.Fn.static.subTag(ctn_fn.Fn, streamed[1], .Offset);
+    const offset_unstreamed: Pair = attr.Fn.static.subTag(ctn_fn.Fn, unstreamed[1], .Offset);
+    writeKind(ctn_fn.Fn, array, .read, read[1]);
+    writeKind(ctn_fn.Fn, array, .refer, refer[1]);
+    writeKind(ctn_fn.Fn, array, .overwrite, overwrite[1]);
+    writeKind(ctn_fn.Fn, array, .write, write[1]);
+    writeKind(ctn_fn.Fn, array, .append, append[1]);
+    writeKind(ctn_fn.Fn, array, .helper, helper[1]);
+    writeKind(ctn_fn.Fn, array, .define, define[1]);
+    writeKind(ctn_fn.Fn, array, .undefine, undefine[1]);
+    writeKind(ctn_fn.Fn, array, .stream, stream[1]);
+    writeKind(ctn_fn.Fn, array, .unstream, unstream[1]);
+    writeKind(ctn_fn.Fn, array, .readAll, read_all[1]);
+    writeKind(ctn_fn.Fn, array, .one, one[1]);
+    writeKind(ctn_fn.Fn, array, .readOne, read_one[1]);
+    writeKind(ctn_fn.Fn, array, .referOne, refer_one[1]);
+    writeKind(ctn_fn.Fn, array, .count, count[1]);
+    writeKind(ctn_fn.Fn, array, .readCount, read_count[1]);
+    writeKind(ctn_fn.Fn, array, .referCount, refer_count[1]);
+    writeKind(ctn_fn.Fn, array, .many, many[1]);
+    writeKind(ctn_fn.Fn, array, .readMany, read_many[1]);
+    writeKind(ctn_fn.Fn, array, .referMany, refer_many[1]);
+    writeKind(ctn_fn.Fn, array, .format, format[1]);
+    writeKind(ctn_fn.Fn, array, .args, args[1]);
+    writeKind(ctn_fn.Fn, array, .fields, fields[1]);
+    writeKind(ctn_fn.Fn, array, .any, any[1]);
+    writeKind(ctn_fn.Fn, array, .sentinel, sentinel[1]);
+    writeKind(ctn_fn.Fn, array, .at, at[1]);
+    writeKind(ctn_fn.Fn, array, .defined, defined[1]);
+    writeKind(ctn_fn.Fn, array, .@"@\"undefined\"", @"undefined"[1]);
+    writeKind(ctn_fn.Fn, array, .streamed, streamed[1]);
+    writeKind(ctn_fn.Fn, array, .unstreamed, unstreamed[1]);
+    writeKind(ctn_fn.Fn, array, .relative_forward, @"undefined"[1] ++ unstreamed[1]);
+    writeKind(ctn_fn.Fn, array, .relative_reverse, defined[1] ++ streamed[1]);
+    writeKind(ctn_fn.Fn, array, .offset, offset_defined[1] ++ offset_undefined[1] ++ offset_streamed[1] ++ offset_unstreamed[1]);
+    writeKind(ctn_fn.Fn, array, .special, helper[0]);
+    gen.truncateFile(write_spec, config.container_kinds_path, array.readAll());
 }
 fn nonEqualIndices(name: []const u8, any: anytype) void {
     var array: mem.StaticString(4096) = undefined;
@@ -870,4 +945,5 @@ pub fn main() !void {
     if (validate_all_serial) {
         try validateAllSerial(&allocator, impl_details[0..ptr_idx]);
     }
+    writeContainerKinds(&array);
 }

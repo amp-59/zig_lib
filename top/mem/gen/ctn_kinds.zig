@@ -1,118 +1,686 @@
-const mem = @import("../../mem.zig");
-const file = @import("../../file.zig");
-const proc = @import("../../proc.zig");
-const algo = @import("../../algo.zig");
-const spec = @import("../../spec.zig");
-const builtin = @import("../../builtin.zig");
-const attr = @import("./attr.zig");
-const config = @import("./config.zig");
-const ctn_fn = @import("./ctn_fn.zig");
-
-pub usingnamespace proc.start;
-pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
-
-const Allocator = mem.GenericArenaAllocator(.{
-    .arena_index = 0,
-    .errors = spec.allocator.errors.noexcept,
-    .logging = spec.allocator.logging.silent,
-    .options = spec.allocator.options.small,
-    .AddressSpace = AddressSpace,
-});
-const AddressSpace = mem.GenericElementaryAddressSpace(.{
-    .logging = spec.address_space.logging.silent,
-    .errors = spec.address_space.errors.noexcept,
-    .options = .{},
-});
-const Array = mem.StaticString(1024 * 1024);
-fn concat(comptime Tags: type, allocator: *Allocator, sets: []const Tags) Tags {
-    var len: u64 = 0;
-    for (sets) |tags| {
-        len +%= tags.len();
+const ctn_fn = @import("../../ctn_fn.zig");
+pub fn read(tag: ctn_fn.Fn) bool {
+    switch (tag) {
+        .readAll,
+        .readAllWithSentinel,
+        .readOneAt,
+        .readCountAt,
+        .readManyAt,
+        .readCountWithSentinelAt,
+        .readManyWithSentinelAt,
+        .readOneDefined,
+        .readCountDefined,
+        .readManyDefined,
+        .readCountWithSentinelDefined,
+        .readManyWithSentinelDefined,
+        .readOneOffsetDefined,
+        .readCountOffsetDefined,
+        .readManyOffsetDefined,
+        .readCountWithSentinelOffsetDefined,
+        .readManyWithSentinelOffsetDefined,
+        .readOneStreamed,
+        .readCountStreamed,
+        .readManyStreamed,
+        .readCountWithSentinelStreamed,
+        .readManyWithSentinelStreamed,
+        .readOneOffsetStreamed,
+        .readCountOffsetStreamed,
+        .readManyOffsetStreamed,
+        .readCountWithSentinelOffsetStreamed,
+        .readManyWithSentinelOffsetStreamed,
+        .readOneUnstreamed,
+        .readCountUnstreamed,
+        .readManyUnstreamed,
+        .readCountWithSentinelUnstreamed,
+        .readManyWithSentinelUnstreamed,
+        .readOneOffsetUnstreamed,
+        .readCountOffsetUnstreamed,
+        .readManyOffsetUnstreamed,
+        .readCountWithSentinelOffsetUnstreamed,
+        .readManyWithSentinelOffsetUnstreamed,
+        => return true,
+        else => return false,
     }
-    var ret: Tags = Tags.init(allocator, len);
-    for (sets) |tags| {
-        ret.writeMany(tags.readAll());
-    }
-    return ret;
 }
-pub fn main() void {
-    var array: Array = undefined;
-    array.undefineAll();
-    array.writeMany("const ctn_fn = @import(\"../../ctn_fn.zig\");\n");
-    const writeKind = attr.Fn.static.writeKindSwitch;
-    const Pair = attr.Fn.static.Pair(ctn_fn.Fn);
-    const read: Pair = attr.Fn.static.prefixSubTagNew(ctn_fn.Fn, .read);
-    const refer: Pair = attr.Fn.static.prefixSubTag(ctn_fn.Fn, read[0], .refer);
-    const read_all: Pair = attr.Fn.static.subTag(ctn_fn.Fn, read[1], .All);
-    const write: Pair = attr.Fn.static.prefixSubTag(ctn_fn.Fn, refer[0], .write);
-    const append: Pair = attr.Fn.static.prefixSubTag(ctn_fn.Fn, write[0], .append);
-    const overwrite: Pair = attr.Fn.static.prefixSubTag(ctn_fn.Fn, append[0], .overwrite);
-    const helper: Pair = attr.Fn.static.prefixSubTag(ctn_fn.Fn, overwrite[0], .__);
-    const define: Pair = attr.Fn.static.prefixSubTag(ctn_fn.Fn, helper[0], .define);
-    const undefine: Pair = attr.Fn.static.prefixSubTag(ctn_fn.Fn, define[0], .undefine);
-    const stream: Pair = attr.Fn.static.prefixSubTag(ctn_fn.Fn, undefine[0], .stream);
-    const unstream: Pair = attr.Fn.static.prefixSubTag(ctn_fn.Fn, stream[0], .unstream);
-    const one: Pair = attr.Fn.static.subTagNew(ctn_fn.Fn, .One);
-    const read_one: Pair = attr.Fn.static.prefixSubTag(ctn_fn.Fn, one[1], .read);
-    const refer_one: Pair = attr.Fn.static.prefixSubTag(ctn_fn.Fn, read_one[0], .refer);
-    const count: Pair = attr.Fn.static.subTag(ctn_fn.Fn, one[0], .Count);
-    const read_count: Pair = attr.Fn.static.prefixSubTag(ctn_fn.Fn, count[1], .read);
-    const refer_count: Pair = attr.Fn.static.prefixSubTag(ctn_fn.Fn, read_count[0], .refer);
-    const many: Pair = attr.Fn.static.subTag(ctn_fn.Fn, count[0], .Many);
-    const read_many: Pair = attr.Fn.static.prefixSubTag(ctn_fn.Fn, many[1], .read);
-    const refer_many: Pair = attr.Fn.static.prefixSubTag(ctn_fn.Fn, read_many[0], .refer);
-    const format: Pair = attr.Fn.static.suffixSubTag(ctn_fn.Fn, write[1], .Format);
-    const args: Pair = attr.Fn.static.suffixSubTag(ctn_fn.Fn, format[0], .Args);
-    const fields: Pair = attr.Fn.static.suffixSubTag(ctn_fn.Fn, args[0], .Fields);
-    const any: Pair = attr.Fn.static.suffixSubTag(ctn_fn.Fn, fields[0], .Any);
-    const sentinel: Pair = attr.Fn.static.subTag(ctn_fn.Fn, many[1] ++ count[1], .WithSentinel);
-    const at: Pair = attr.Fn.static.suffixSubTag(ctn_fn.Fn, read[1] ++ refer[1] ++ overwrite[1], .At);
-    const all_defined: Pair = attr.Fn.static.suffixSubTag(ctn_fn.Fn, at[0], .AllDefined);
-    const all_undefined: Pair = attr.Fn.static.suffixSubTag(ctn_fn.Fn, all_defined[0], .AllUndefined);
-    const defined: Pair = attr.Fn.static.suffixSubTag(ctn_fn.Fn, all_undefined[0], .Defined);
-    const @"undefined": Pair = attr.Fn.static.suffixSubTag(ctn_fn.Fn, defined[0], .Undefined);
-    const streamed: Pair = attr.Fn.static.suffixSubTag(ctn_fn.Fn, @"undefined"[0], .Streamed);
-    const unstreamed: Pair = attr.Fn.static.suffixSubTag(ctn_fn.Fn, streamed[0], .Unstreamed);
-    const offset_defined: Pair = attr.Fn.static.subTag(ctn_fn.Fn, defined[1], .Offset);
-    const offset_undefined: Pair = attr.Fn.static.subTag(ctn_fn.Fn, @"undefined"[1], .Offset);
-    const offset_streamed: Pair = attr.Fn.static.subTag(ctn_fn.Fn, streamed[1], .Offset);
-    const offset_unstreamed: Pair = attr.Fn.static.subTag(ctn_fn.Fn, unstreamed[1], .Offset);
-    writeKind(ctn_fn.Fn, &array, .read, read[1]);
-    writeKind(ctn_fn.Fn, &array, .refer, refer[1]);
-    writeKind(ctn_fn.Fn, &array, .overwrite, overwrite[1]);
-    writeKind(ctn_fn.Fn, &array, .write, write[1]);
-    writeKind(ctn_fn.Fn, &array, .append, append[1]);
-    writeKind(ctn_fn.Fn, &array, .helper, helper[1]);
-    writeKind(ctn_fn.Fn, &array, .define, define[1]);
-    writeKind(ctn_fn.Fn, &array, .undefine, undefine[1]);
-    writeKind(ctn_fn.Fn, &array, .stream, stream[1]);
-    writeKind(ctn_fn.Fn, &array, .unstream, unstream[1]);
-    writeKind(ctn_fn.Fn, &array, .readAll, read_all[1]);
-    writeKind(ctn_fn.Fn, &array, .one, one[1]);
-    writeKind(ctn_fn.Fn, &array, .readOne, read_one[1]);
-    writeKind(ctn_fn.Fn, &array, .referOne, refer_one[1]);
-    writeKind(ctn_fn.Fn, &array, .count, count[1]);
-    writeKind(ctn_fn.Fn, &array, .readCount, read_count[1]);
-    writeKind(ctn_fn.Fn, &array, .referCount, refer_count[1]);
-    writeKind(ctn_fn.Fn, &array, .many, many[1]);
-    writeKind(ctn_fn.Fn, &array, .readMany, read_many[1]);
-    writeKind(ctn_fn.Fn, &array, .referMany, refer_many[1]);
-    writeKind(ctn_fn.Fn, &array, .format, format[1]);
-    writeKind(ctn_fn.Fn, &array, .args, args[1]);
-    writeKind(ctn_fn.Fn, &array, .fields, fields[1]);
-    writeKind(ctn_fn.Fn, &array, .any, any[1]);
-    writeKind(ctn_fn.Fn, &array, .sentinel, sentinel[1]);
-    writeKind(ctn_fn.Fn, &array, .at, at[1]);
-    writeKind(ctn_fn.Fn, &array, .defined, defined[1]);
-    writeKind(ctn_fn.Fn, &array, .@"@\"undefined\"", @"undefined"[1]);
-    writeKind(ctn_fn.Fn, &array, .streamed, streamed[1]);
-    writeKind(ctn_fn.Fn, &array, .unstreamed, unstreamed[1]);
-    writeKind(ctn_fn.Fn, &array, .relative_forward, @"undefined"[1] ++ unstreamed[1]);
-    writeKind(ctn_fn.Fn, &array, .relative_reverse, defined[1] ++ streamed[1]);
-    writeKind(ctn_fn.Fn, &array, .offset, offset_defined[1] ++ offset_undefined[1] ++ offset_streamed[1] ++ offset_unstreamed[1]);
-    writeKind(ctn_fn.Fn, &array, .special, helper[0]);
-
-    const fd: u64 = file.create(spec.create.truncate_noexcept, config.container_kinds_path, file.mode.regular);
-    file.write(spec.generic.noexcept, fd, array.readAll());
-    file.close(spec.generic.noexcept, fd);
+pub fn refer(tag: ctn_fn.Fn) bool {
+    switch (tag) {
+        .referOneAt,
+        .referCountAt,
+        .referManyAt,
+        .referCountWithSentinelAt,
+        .referManyWithSentinelAt,
+        .referOneDefined,
+        .referCountDefined,
+        .referManyDefined,
+        .referCountWithSentinelDefined,
+        .referManyWithSentinelDefined,
+        .referOneOffsetDefined,
+        .referCountOffsetDefined,
+        .referManyOffsetDefined,
+        .referCountWithSentinelOffsetDefined,
+        .referManyWithSentinelOffsetDefined,
+        .referOneUndefined,
+        .referCountUndefined,
+        .referManyUndefined,
+        .referOneOffsetUndefined,
+        .referCountOffsetUndefined,
+        .referManyOffsetUndefined,
+        .referOneStreamed,
+        .referManyStreamed,
+        .referCountWithSentinelStreamed,
+        .referManyWithSentinelStreamed,
+        .referOneOffsetStreamed,
+        .referManyOffsetStreamed,
+        .referCountWithSentinelOffsetStreamed,
+        .referManyWithSentinelOffsetStreamed,
+        .referManyUnstreamed,
+        .referManyWithSentinelUnstreamed,
+        .referManyOffsetUnstreamed,
+        .referManyWithSentinelOffsetUnstreamed,
+        => return true,
+        else => return false,
+    }
+}
+pub fn overwrite(tag: ctn_fn.Fn) bool {
+    switch (tag) {
+        .overwriteOneAt,
+        .overwriteCountAt,
+        .overwriteManyAt,
+        .overwriteOneDefined,
+        .overwriteCountDefined,
+        .overwriteManyDefined,
+        .overwriteOneOffsetDefined,
+        .overwriteCountOffsetDefined,
+        .overwriteManyOffsetDefined,
+        => return true,
+        else => return false,
+    }
+}
+pub fn write(tag: ctn_fn.Fn) bool {
+    switch (tag) {
+        .writeAny,
+        .writeOne,
+        .writeCount,
+        .writeMany,
+        .writeFormat,
+        .writeFields,
+        .writeArgs,
+        => return true,
+        else => return false,
+    }
+}
+pub fn append(tag: ctn_fn.Fn) bool {
+    switch (tag) {
+        .appendFields,
+        .appendAny,
+        .appendArgs,
+        .appendFormat,
+        .appendOne,
+        .appendCount,
+        .appendMany,
+        => return true,
+        else => return false,
+    }
+}
+pub fn helper(tag: ctn_fn.Fn) bool {
+    switch (tag) {
+        .__undefined,
+        .__defined,
+        .__unstreamed,
+        .__streamed,
+        .__avail,
+        .__len,
+        .__at,
+        => return true,
+        else => return false,
+    }
+}
+pub fn define(tag: ctn_fn.Fn) bool {
+    switch (tag) {
+        .defineAll,
+        .define,
+        => return true,
+        else => return false,
+    }
+}
+pub fn undefine(tag: ctn_fn.Fn) bool {
+    switch (tag) {
+        .undefineAll,
+        .undefine,
+        => return true,
+        else => return false,
+    }
+}
+pub fn stream(tag: ctn_fn.Fn) bool {
+    switch (tag) {
+        .streamAll,
+        .stream,
+        => return true,
+        else => return false,
+    }
+}
+pub fn unstream(tag: ctn_fn.Fn) bool {
+    switch (tag) {
+        .unstreamAll,
+        .unstream,
+        => return true,
+        else => return false,
+    }
+}
+pub fn readAll(tag: ctn_fn.Fn) bool {
+    switch (tag) {
+        .readAll,
+        .readAllWithSentinel,
+        => return true,
+        else => return false,
+    }
+}
+pub fn one(tag: ctn_fn.Fn) bool {
+    switch (tag) {
+        .readOneAt,
+        .readOneDefined,
+        .readOneOffsetDefined,
+        .readOneStreamed,
+        .readOneOffsetStreamed,
+        .readOneUnstreamed,
+        .readOneOffsetUnstreamed,
+        .referOneAt,
+        .referOneDefined,
+        .referOneOffsetDefined,
+        .referOneUndefined,
+        .referOneOffsetUndefined,
+        .referOneStreamed,
+        .referOneOffsetStreamed,
+        .overwriteOneAt,
+        .overwriteOneDefined,
+        .overwriteOneOffsetDefined,
+        .writeOne,
+        .appendOne,
+        => return true,
+        else => return false,
+    }
+}
+pub fn readOne(tag: ctn_fn.Fn) bool {
+    switch (tag) {
+        .readOneAt,
+        .readOneDefined,
+        .readOneOffsetDefined,
+        .readOneStreamed,
+        .readOneOffsetStreamed,
+        .readOneUnstreamed,
+        .readOneOffsetUnstreamed,
+        => return true,
+        else => return false,
+    }
+}
+pub fn referOne(tag: ctn_fn.Fn) bool {
+    switch (tag) {
+        .referOneAt,
+        .referOneDefined,
+        .referOneOffsetDefined,
+        .referOneUndefined,
+        .referOneOffsetUndefined,
+        .referOneStreamed,
+        .referOneOffsetStreamed,
+        => return true,
+        else => return false,
+    }
+}
+pub fn count(tag: ctn_fn.Fn) bool {
+    switch (tag) {
+        .readCountAt,
+        .readCountWithSentinelAt,
+        .readCountDefined,
+        .readCountWithSentinelDefined,
+        .readCountOffsetDefined,
+        .readCountWithSentinelOffsetDefined,
+        .readCountStreamed,
+        .readCountWithSentinelStreamed,
+        .readCountOffsetStreamed,
+        .readCountWithSentinelOffsetStreamed,
+        .readCountUnstreamed,
+        .readCountWithSentinelUnstreamed,
+        .readCountOffsetUnstreamed,
+        .readCountWithSentinelOffsetUnstreamed,
+        .referCountAt,
+        .referCountWithSentinelAt,
+        .referCountDefined,
+        .referCountWithSentinelDefined,
+        .referCountOffsetDefined,
+        .referCountWithSentinelOffsetDefined,
+        .referCountUndefined,
+        .referCountOffsetUndefined,
+        .referCountWithSentinelStreamed,
+        .referCountWithSentinelOffsetStreamed,
+        .overwriteCountAt,
+        .overwriteCountDefined,
+        .overwriteCountOffsetDefined,
+        .writeCount,
+        .appendCount,
+        => return true,
+        else => return false,
+    }
+}
+pub fn readCount(tag: ctn_fn.Fn) bool {
+    switch (tag) {
+        .readCountAt,
+        .readCountWithSentinelAt,
+        .readCountDefined,
+        .readCountWithSentinelDefined,
+        .readCountOffsetDefined,
+        .readCountWithSentinelOffsetDefined,
+        .readCountStreamed,
+        .readCountWithSentinelStreamed,
+        .readCountOffsetStreamed,
+        .readCountWithSentinelOffsetStreamed,
+        .readCountUnstreamed,
+        .readCountWithSentinelUnstreamed,
+        .readCountOffsetUnstreamed,
+        .readCountWithSentinelOffsetUnstreamed,
+        => return true,
+        else => return false,
+    }
+}
+pub fn referCount(tag: ctn_fn.Fn) bool {
+    switch (tag) {
+        .referCountAt,
+        .referCountWithSentinelAt,
+        .referCountDefined,
+        .referCountWithSentinelDefined,
+        .referCountOffsetDefined,
+        .referCountWithSentinelOffsetDefined,
+        .referCountUndefined,
+        .referCountOffsetUndefined,
+        .referCountWithSentinelStreamed,
+        .referCountWithSentinelOffsetStreamed,
+        => return true,
+        else => return false,
+    }
+}
+pub fn many(tag: ctn_fn.Fn) bool {
+    switch (tag) {
+        .readManyAt,
+        .readManyWithSentinelAt,
+        .readManyDefined,
+        .readManyWithSentinelDefined,
+        .readManyOffsetDefined,
+        .readManyWithSentinelOffsetDefined,
+        .readManyStreamed,
+        .readManyWithSentinelStreamed,
+        .readManyOffsetStreamed,
+        .readManyWithSentinelOffsetStreamed,
+        .readManyUnstreamed,
+        .readManyWithSentinelUnstreamed,
+        .readManyOffsetUnstreamed,
+        .readManyWithSentinelOffsetUnstreamed,
+        .referManyAt,
+        .referManyWithSentinelAt,
+        .referManyDefined,
+        .referManyWithSentinelDefined,
+        .referManyOffsetDefined,
+        .referManyWithSentinelOffsetDefined,
+        .referManyUndefined,
+        .referManyOffsetUndefined,
+        .referManyStreamed,
+        .referManyWithSentinelStreamed,
+        .referManyOffsetStreamed,
+        .referManyWithSentinelOffsetStreamed,
+        .referManyUnstreamed,
+        .referManyWithSentinelUnstreamed,
+        .referManyOffsetUnstreamed,
+        .referManyWithSentinelOffsetUnstreamed,
+        .overwriteManyAt,
+        .overwriteManyDefined,
+        .overwriteManyOffsetDefined,
+        .writeMany,
+        .appendMany,
+        => return true,
+        else => return false,
+    }
+}
+pub fn readMany(tag: ctn_fn.Fn) bool {
+    switch (tag) {
+        .readManyAt,
+        .readManyWithSentinelAt,
+        .readManyDefined,
+        .readManyWithSentinelDefined,
+        .readManyOffsetDefined,
+        .readManyWithSentinelOffsetDefined,
+        .readManyStreamed,
+        .readManyWithSentinelStreamed,
+        .readManyOffsetStreamed,
+        .readManyWithSentinelOffsetStreamed,
+        .readManyUnstreamed,
+        .readManyWithSentinelUnstreamed,
+        .readManyOffsetUnstreamed,
+        .readManyWithSentinelOffsetUnstreamed,
+        => return true,
+        else => return false,
+    }
+}
+pub fn referMany(tag: ctn_fn.Fn) bool {
+    switch (tag) {
+        .referManyAt,
+        .referManyWithSentinelAt,
+        .referManyDefined,
+        .referManyWithSentinelDefined,
+        .referManyOffsetDefined,
+        .referManyWithSentinelOffsetDefined,
+        .referManyUndefined,
+        .referManyOffsetUndefined,
+        .referManyStreamed,
+        .referManyWithSentinelStreamed,
+        .referManyOffsetStreamed,
+        .referManyWithSentinelOffsetStreamed,
+        .referManyUnstreamed,
+        .referManyWithSentinelUnstreamed,
+        .referManyOffsetUnstreamed,
+        .referManyWithSentinelOffsetUnstreamed,
+        => return true,
+        else => return false,
+    }
+}
+pub fn format(tag: ctn_fn.Fn) bool {
+    switch (tag) {
+        .writeFormat => return true,
+        else => return false,
+    }
+}
+pub fn args(tag: ctn_fn.Fn) bool {
+    switch (tag) {
+        .writeArgs => return true,
+        else => return false,
+    }
+}
+pub fn fields(tag: ctn_fn.Fn) bool {
+    switch (tag) {
+        .writeFields => return true,
+        else => return false,
+    }
+}
+pub fn any(tag: ctn_fn.Fn) bool {
+    switch (tag) {
+        .writeAny => return true,
+        else => return false,
+    }
+}
+pub fn sentinel(tag: ctn_fn.Fn) bool {
+    switch (tag) {
+        .readManyWithSentinelAt,
+        .readManyWithSentinelDefined,
+        .readManyWithSentinelOffsetDefined,
+        .readManyWithSentinelStreamed,
+        .readManyWithSentinelOffsetStreamed,
+        .readManyWithSentinelUnstreamed,
+        .readManyWithSentinelOffsetUnstreamed,
+        .referManyWithSentinelAt,
+        .referManyWithSentinelDefined,
+        .referManyWithSentinelOffsetDefined,
+        .referManyWithSentinelStreamed,
+        .referManyWithSentinelOffsetStreamed,
+        .referManyWithSentinelUnstreamed,
+        .referManyWithSentinelOffsetUnstreamed,
+        .readCountWithSentinelAt,
+        .readCountWithSentinelDefined,
+        .readCountWithSentinelOffsetDefined,
+        .readCountWithSentinelStreamed,
+        .readCountWithSentinelOffsetStreamed,
+        .readCountWithSentinelUnstreamed,
+        .readCountWithSentinelOffsetUnstreamed,
+        .referCountWithSentinelAt,
+        .referCountWithSentinelDefined,
+        .referCountWithSentinelOffsetDefined,
+        .referCountWithSentinelStreamed,
+        .referCountWithSentinelOffsetStreamed,
+        => return true,
+        else => return false,
+    }
+}
+pub fn at(tag: ctn_fn.Fn) bool {
+    switch (tag) {
+        .readOneAt,
+        .readCountAt,
+        .readManyAt,
+        .readCountWithSentinelAt,
+        .readManyWithSentinelAt,
+        .referOneAt,
+        .referCountAt,
+        .referManyAt,
+        .referCountWithSentinelAt,
+        .referManyWithSentinelAt,
+        .overwriteOneAt,
+        .overwriteCountAt,
+        .overwriteManyAt,
+        => return true,
+        else => return false,
+    }
+}
+pub fn defined(tag: ctn_fn.Fn) bool {
+    switch (tag) {
+        .readOneDefined,
+        .readCountDefined,
+        .readManyDefined,
+        .readCountWithSentinelDefined,
+        .readManyWithSentinelDefined,
+        .readOneOffsetDefined,
+        .readCountOffsetDefined,
+        .readManyOffsetDefined,
+        .readCountWithSentinelOffsetDefined,
+        .readManyWithSentinelOffsetDefined,
+        .referOneDefined,
+        .referCountDefined,
+        .referManyDefined,
+        .referCountWithSentinelDefined,
+        .referManyWithSentinelDefined,
+        .referOneOffsetDefined,
+        .referCountOffsetDefined,
+        .referManyOffsetDefined,
+        .referCountWithSentinelOffsetDefined,
+        .referManyWithSentinelOffsetDefined,
+        .overwriteOneDefined,
+        .overwriteCountDefined,
+        .overwriteManyDefined,
+        .overwriteOneOffsetDefined,
+        .overwriteCountOffsetDefined,
+        .overwriteManyOffsetDefined,
+        => return true,
+        else => return false,
+    }
+}
+pub fn @"undefined"(tag: ctn_fn.Fn) bool {
+    switch (tag) {
+        .referOneUndefined,
+        .referCountUndefined,
+        .referManyUndefined,
+        .referOneOffsetUndefined,
+        .referCountOffsetUndefined,
+        .referManyOffsetUndefined,
+        => return true,
+        else => return false,
+    }
+}
+pub fn streamed(tag: ctn_fn.Fn) bool {
+    switch (tag) {
+        .readOneStreamed,
+        .readCountStreamed,
+        .readManyStreamed,
+        .readCountWithSentinelStreamed,
+        .readManyWithSentinelStreamed,
+        .readOneOffsetStreamed,
+        .readCountOffsetStreamed,
+        .readManyOffsetStreamed,
+        .readCountWithSentinelOffsetStreamed,
+        .readManyWithSentinelOffsetStreamed,
+        .referOneStreamed,
+        .referManyStreamed,
+        .referCountWithSentinelStreamed,
+        .referManyWithSentinelStreamed,
+        .referOneOffsetStreamed,
+        .referManyOffsetStreamed,
+        .referCountWithSentinelOffsetStreamed,
+        .referManyWithSentinelOffsetStreamed,
+        => return true,
+        else => return false,
+    }
+}
+pub fn unstreamed(tag: ctn_fn.Fn) bool {
+    switch (tag) {
+        .readOneUnstreamed,
+        .readCountUnstreamed,
+        .readManyUnstreamed,
+        .readCountWithSentinelUnstreamed,
+        .readManyWithSentinelUnstreamed,
+        .readOneOffsetUnstreamed,
+        .readCountOffsetUnstreamed,
+        .readManyOffsetUnstreamed,
+        .readCountWithSentinelOffsetUnstreamed,
+        .readManyWithSentinelOffsetUnstreamed,
+        .referManyUnstreamed,
+        .referManyWithSentinelUnstreamed,
+        .referManyOffsetUnstreamed,
+        .referManyWithSentinelOffsetUnstreamed,
+        => return true,
+        else => return false,
+    }
+}
+pub fn relative_forward(tag: ctn_fn.Fn) bool {
+    switch (tag) {
+        .referOneUndefined,
+        .referCountUndefined,
+        .referManyUndefined,
+        .referOneOffsetUndefined,
+        .referCountOffsetUndefined,
+        .referManyOffsetUndefined,
+        .readOneUnstreamed,
+        .readCountUnstreamed,
+        .readManyUnstreamed,
+        .readCountWithSentinelUnstreamed,
+        .readManyWithSentinelUnstreamed,
+        .readOneOffsetUnstreamed,
+        .readCountOffsetUnstreamed,
+        .readManyOffsetUnstreamed,
+        .readCountWithSentinelOffsetUnstreamed,
+        .readManyWithSentinelOffsetUnstreamed,
+        .referManyUnstreamed,
+        .referManyWithSentinelUnstreamed,
+        .referManyOffsetUnstreamed,
+        .referManyWithSentinelOffsetUnstreamed,
+        => return true,
+        else => return false,
+    }
+}
+pub fn relative_reverse(tag: ctn_fn.Fn) bool {
+    switch (tag) {
+        .readOneDefined,
+        .readCountDefined,
+        .readManyDefined,
+        .readCountWithSentinelDefined,
+        .readManyWithSentinelDefined,
+        .readOneOffsetDefined,
+        .readCountOffsetDefined,
+        .readManyOffsetDefined,
+        .readCountWithSentinelOffsetDefined,
+        .readManyWithSentinelOffsetDefined,
+        .referOneDefined,
+        .referCountDefined,
+        .referManyDefined,
+        .referCountWithSentinelDefined,
+        .referManyWithSentinelDefined,
+        .referOneOffsetDefined,
+        .referCountOffsetDefined,
+        .referManyOffsetDefined,
+        .referCountWithSentinelOffsetDefined,
+        .referManyWithSentinelOffsetDefined,
+        .overwriteOneDefined,
+        .overwriteCountDefined,
+        .overwriteManyDefined,
+        .overwriteOneOffsetDefined,
+        .overwriteCountOffsetDefined,
+        .overwriteManyOffsetDefined,
+        .readOneStreamed,
+        .readCountStreamed,
+        .readManyStreamed,
+        .readCountWithSentinelStreamed,
+        .readManyWithSentinelStreamed,
+        .readOneOffsetStreamed,
+        .readCountOffsetStreamed,
+        .readManyOffsetStreamed,
+        .readCountWithSentinelOffsetStreamed,
+        .readManyWithSentinelOffsetStreamed,
+        .referOneStreamed,
+        .referManyStreamed,
+        .referCountWithSentinelStreamed,
+        .referManyWithSentinelStreamed,
+        .referOneOffsetStreamed,
+        .referManyOffsetStreamed,
+        .referCountWithSentinelOffsetStreamed,
+        .referManyWithSentinelOffsetStreamed,
+        => return true,
+        else => return false,
+    }
+}
+pub fn offset(tag: ctn_fn.Fn) bool {
+    switch (tag) {
+        .readOneOffsetDefined,
+        .readCountOffsetDefined,
+        .readManyOffsetDefined,
+        .readCountWithSentinelOffsetDefined,
+        .readManyWithSentinelOffsetDefined,
+        .referOneOffsetDefined,
+        .referCountOffsetDefined,
+        .referManyOffsetDefined,
+        .referCountWithSentinelOffsetDefined,
+        .referManyWithSentinelOffsetDefined,
+        .overwriteOneOffsetDefined,
+        .overwriteCountOffsetDefined,
+        .overwriteManyOffsetDefined,
+        .referOneOffsetUndefined,
+        .referCountOffsetUndefined,
+        .referManyOffsetUndefined,
+        .readOneOffsetStreamed,
+        .readCountOffsetStreamed,
+        .readManyOffsetStreamed,
+        .readCountWithSentinelOffsetStreamed,
+        .readManyWithSentinelOffsetStreamed,
+        .referOneOffsetStreamed,
+        .referManyOffsetStreamed,
+        .referCountWithSentinelOffsetStreamed,
+        .referManyWithSentinelOffsetStreamed,
+        .readOneOffsetUnstreamed,
+        .readCountOffsetUnstreamed,
+        .readManyOffsetUnstreamed,
+        .readCountWithSentinelOffsetUnstreamed,
+        .readManyWithSentinelOffsetUnstreamed,
+        .referManyOffsetUnstreamed,
+        .referManyWithSentinelOffsetUnstreamed,
+        => return true,
+        else => return false,
+    }
+}
+pub fn special(tag: ctn_fn.Fn) bool {
+    switch (tag) {
+        .defineAll,
+        .undefineAll,
+        .streamAll,
+        .unstreamAll,
+        .len,
+        .index,
+        .avail,
+        .ahead,
+        .define,
+        .undefine,
+        .stream,
+        .unstream,
+        .init,
+        .grow,
+        .increment,
+        .shrink,
+        .decrement,
+        .static,
+        .dynamic,
+        .holder,
+        .deinit,
+        => return true,
+        else => return false,
+    }
 }

@@ -83,7 +83,7 @@ pub const reference_template_path: [:0]const u8 = primarySourceFile("reference-t
 /// Contains the hand-written part of the allocator end-product.
 pub const allocator_template_path: [:0]const u8 = primarySourceFile("allocator-template.zig");
 
-pub const container_kinds_path: [:0]const u8 = auxiliarySourceFile("container_kinds.zig");
+pub const container_kinds_path: [:0]const u8 = secondarySourceFile("ctn_kinds.zig");
 pub const reference_kinds_path: [:0]const u8 = auxiliarySourceFile("reference_kinds.zig");
 pub const allocator_kinds_path: [:0]const u8 = auxiliarySourceFile("allocator_kinds.zig");
 pub const spec_sets_path: [:0]const u8 = auxiliaryDataFile("spec_sets");
@@ -96,6 +96,9 @@ pub const ctn_detail_path: [:0]const u8 = auxiliaryDataFile("ctn_detail");
 
 pub fn primarySourceFile(comptime name: [:0]const u8) [:0]const u8 {
     return if (name[0] != '/') builtin.buildRoot() ++ "/top/mem/" ++ name else name;
+}
+pub fn secondarySourceFile(comptime name: [:0]const u8) [:0]const u8 {
+    return if (name[0] != '/') builtin.buildRoot() ++ "/top/mem/gen/" ++ name else name;
 }
 pub fn auxiliarySourceFile(comptime name: [:0]const u8) [:0]const u8 {
     return if (name[0] != '/') zig_out_src_dir ++ "/" ++ name else name;
