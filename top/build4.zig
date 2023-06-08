@@ -1615,7 +1615,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 const nsec_s: []const u8 = builtin.fmt.nsec(ts.nsec).readAll();
                 var buf: [32768]u8 = undefined;
                 const about_s: []const u8 = switch (task) {
-                    .null, .any => unreachable,
+                    else => unreachable,
                     .archive => about.ar_s,
                     .format => about.format_s,
                     .run => about.run_s,
