@@ -1,18 +1,18 @@
 const builtin = @import("../../../builtin.zig");
 const errors = @import("../../errors.zig");
-const random = @import("../../random.zig");
+const utils = @import("../../utils.zig");
 const common = @import("../common.zig");
 const Field = common.Field;
 /// Number of bytes required to encode a scalar.
-pub const encoded_length: comptime_int = 48;
+pub const encoded_len: comptime_int = 48;
 /// A compressed scalar, in canonical form.
-pub const CompressedScalar = [encoded_length]u8;
+pub const CompressedScalar = [encoded_len]u8;
 const Fe = Field(.{
-    .fiat = @import("p384_scalar_64.zig"),
+    .fiat = @import("./p384_scalar_64.zig"),
     .field_order = 39402006196394479212279040100143613805079739270465446667946905279627659399113263569398956308152294913554433653942643,
     .field_bits = 384,
     .saturated_bits = 384,
-    .encoded_length = encoded_length,
+    .encoded_len = encoded_len,
 });
 /// The scalar field order.
 pub const field_order = Fe.field_order;
@@ -120,7 +120,7 @@ pub const Scalar = struct {
     pub fn randomBelow() Scalar {
         var s: [64]u8 = undefined;
         while (true) {
-            random.bytes(&s);
+            utils.bytes(&s);
             const n = Scalar.fromBytes64(s, .Little);
             if (!n.isZero()) {
                 return n;
@@ -140,13 +140,13 @@ const ScalarDouble = struct {
         }
         var t = ScalarDouble{ .x1 = undefined, .x2 = Fe.zero };
         {
-            var b = [_]u8{0} ** encoded_length;
+            var b = [_]u8{0} ** encoded_len;
             const len = @min(s.len, 32);
             b[0..len].* = s[0..len].*;
             t.x1 = Fe.fromBytes(b, .Little) catch null_field;
         }
         if (s_.len >= 32) {
-            var b = [_]u8{0} ** encoded_length;
+            var b = [_]u8{0} ** encoded_len;
             const len = @min(s.len - 32, 32);
             b[0..len].* = s[32..][0..len].*;
             t.x2 = Fe.fromBytes(b, .Little) catch null_field;

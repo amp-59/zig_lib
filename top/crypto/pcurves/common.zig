@@ -8,7 +8,7 @@ pub const FieldParams = struct {
     field_order: comptime_int,
     field_bits: comptime_int,
     saturated_bits: comptime_int,
-    encoded_length: comptime_int,
+    encoded_len: comptime_int,
 };
 /// A field element, internally stored in Montgomery domain.
 pub fn Field(comptime params: FieldParams) type {
@@ -22,7 +22,7 @@ pub fn Field(comptime params: FieldParams) type {
         /// Number of bits that can be saturated without overflowing.
         pub const saturated_bits = params.saturated_bits;
         /// Number of bytes required to encode an element.
-        pub const encoded_length = params.encoded_length;
+        pub const encoded_len = params.encoded_len;
         /// Zero.
         pub const zero: Fe = Fe{ .limbs = builtin.zero(params.fiat.MontgomeryDomainFieldElement) };
         /// One.
@@ -32,11 +32,11 @@ pub fn Field(comptime params: FieldParams) type {
             break :one fe;
         };
         /// Reject non-canonical encodings of an element.
-        pub fn rejectNonCanonical(s_: [encoded_length]u8, endian: builtin.Endian) errors.NonCanonicalError!void {
+        pub fn rejectNonCanonical(s_: [encoded_len]u8, endian: builtin.Endian) errors.NonCanonicalError!void {
             var s = if (endian == .Little) s_ else orderSwap(s_);
             const field_order_s = comptime fos: {
-                var fos: [encoded_length]u8 = undefined;
-                mem.writeIntLittle(@Type(.{ .Int = .{ .signedness = .unsigned, .bits = encoded_length * 8 } }), &fos, field_order);
+                var fos: [encoded_len]u8 = undefined;
+                mem.writeIntLittle(@Type(.{ .Int = .{ .signedness = .unsigned, .bits = encoded_len * 8 } }), &fos, field_order);
                 break :fos fos;
             };
             if (utils.timingSafeCompare(u8, &s, &field_order_s, .Little) != .lt) {
@@ -44,13 +44,13 @@ pub fn Field(comptime params: FieldParams) type {
             }
         }
         /// Swap the endianness of an encoded element.
-        pub fn orderSwap(s: [encoded_length]u8) [encoded_length]u8 {
+        pub fn orderSwap(s: [encoded_len]u8) [encoded_len]u8 {
             var t = s;
             for (s, 0..) |x, i| t[t.len - 1 - i] = x;
             return t;
         }
         /// Unpack a field element.
-        pub fn fromBytes(s_: [encoded_length]u8, endian: builtin.Endian) errors.NonCanonicalError!Fe {
+        pub fn fromBytes(s_: [encoded_len]u8, endian: builtin.Endian) errors.NonCanonicalError!Fe {
             var s = if (endian == .Little) s_ else orderSwap(s_);
             try rejectNonCanonical(s, .Little);
             var limbs_z: params.fiat.NonMontgomeryDomainFieldElement = undefined;
@@ -60,10 +60,10 @@ pub fn Field(comptime params: FieldParams) type {
             return Fe{ .limbs = limbs };
         }
         /// Pack a field element.
-        pub fn toBytes(fe: Fe, endian: builtin.Endian) [encoded_length]u8 {
+        pub fn toBytes(fe: Fe, endian: builtin.Endian) [encoded_len]u8 {
             var limbs_z: params.fiat.NonMontgomeryDomainFieldElement = undefined;
             params.fiat.fromMontgomery(&limbs_z, fe.limbs);
-            var s: [encoded_length]u8 = undefined;
+            var s: [encoded_len]u8 = undefined;
             params.fiat.toBytes(&s, limbs_z);
             return if (endian == .Little) s else orderSwap(s);
         }
@@ -71,7 +71,7 @@ pub fn Field(comptime params: FieldParams) type {
         pub const IntRepr = @Type(.{ .Int = .{ .signedness = .unsigned, .bits = params.field_bits } });
         /// Create a field element from an integer.
         pub fn fromInt(comptime x: IntRepr) errors.NonCanonicalError!Fe {
-            var s: [encoded_length]u8 = undefined;
+            var s: [encoded_len]u8 = undefined;
             mem.writeIntLittle(IntRepr, &s, x);
             return fromBytes(s, .Little);
         }

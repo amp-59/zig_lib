@@ -18,7 +18,7 @@ pub const Secp256k1 = struct {
         .field_order = 115792089237316195423570985008687907853269984665640564039457584007908834671663,
         .field_bits = 256,
         .saturated_bits = 256,
-        .encoded_length = 32,
+        .encoded_len = 32,
     });
     /// The secp256k1 base point.
     pub const base_point = Secp256k1{

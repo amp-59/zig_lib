@@ -1,16 +1,16 @@
 const builtin = @import("../../../builtin.zig");
 const errors = @import("../../errors.zig");
-const random = @import("../../random.zig");
+const utils = @import("../../utils.zig");
 const common = @import("../common.zig");
 const Field = common.Field;
-pub const encoded_length: comptime_int = 32;
-pub const CompressedScalar = [encoded_length]u8;
+pub const encoded_len: comptime_int = 32;
+pub const CompressedScalar = [encoded_len]u8;
 const Fe = Field(.{
     .fiat = @import("secp256k1_scalar_64.zig"),
     .field_order = 115792089237316195423570985008687907852837564279074904382605163141518161494337,
     .field_bits = 256,
     .saturated_bits = 256,
-    .encoded_length = encoded_length,
+    .encoded_len = encoded_len,
 });
 /// The scalar field order.
 pub const field_order = Fe.field_order;
@@ -127,7 +127,7 @@ pub const Scalar = struct {
     pub fn randomBelow() Scalar {
         var s: [48]u8 = undefined;
         while (true) {
-            random.bytes(&s);
+            utils.bytes(&s);
             const n = Scalar.fromBytes48(s, .Little);
             if (!n.isZero()) {
                 return n;
@@ -148,19 +148,19 @@ const ScalarDouble = struct {
         }
         var t = ScalarDouble{ .x1 = undefined, .x2 = Fe.zero, .x3 = Fe.zero };
         {
-            var b = [_]u8{0} ** encoded_length;
+            var b = [_]u8{0} ** encoded_len;
             const len = @min(s.len, 24);
             b[0..len].* = s[0..len].*;
             t.x1 = Fe.fromBytes(b, .Little) catch null_field;
         }
         if (s_.len >= 24) {
-            var b = [_]u8{0} ** encoded_length;
+            var b = [_]u8{0} ** encoded_len;
             const len = @min(s.len - 24, 24);
             b[0..len].* = s[24..][0..len].*;
             t.x2 = Fe.fromBytes(b, .Little) catch null_field;
         }
         if (s_.len >= 48) {
-            var b = [_]u8{0} ** encoded_length;
+            var b = [_]u8{0} ** encoded_len;
             const len = s.len - 48;
             b[0..len].* = s[48..][0..len].*;
             t.x3 = Fe.fromBytes(b, .Little) catch null_field;

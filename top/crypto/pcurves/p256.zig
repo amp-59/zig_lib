@@ -16,7 +16,7 @@ pub const P256 = struct {
         .field_order = 115792089210356248762697446949407573530086143415290314195533631308867097853951,
         .field_bits = 256,
         .saturated_bits = 256,
-        .encoded_length = 32,
+        .encoded_len = 32,
     });
     /// A point in affine coordinates.
     pub const AffineCoordinates = struct {
