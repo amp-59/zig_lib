@@ -13,6 +13,15 @@ const Allocator1 = zig_lib.mem.GenericArenaAllocator(.{
     .AddressSpace = zig_lib.spec.address_space.exact_8,
 });
 const Builder = zig_lib.build.GenericNode(.{});
+const List = zig_lib.mem.GenericLinkedList(.{
+    .child = u8,
+    .low_alignment = 1,
+    .Allocator = Allocator0,
+});
+const ListView = zig_lib.mem.GenericLinkedListView(.{
+    .child = u8,
+    .low_alignment = 1,
+});
 const render = struct {
     pub const UnionFormat = zig_lib.fmt.UnionFormat(.{}, union { one: u64, two: struct { u32, u32 } });
     pub const StructForm = zig_lib.fmt.UnionFormat(.{}, struct { one: u64, two: *u64, three: []u8 });
@@ -20,6 +29,8 @@ const render = struct {
 };
 pub fn main() void {
     _ = zig_lib.testing.refAllDecls(zig_lib);
+    _ = zig_lib.testing.refAllDecls(List);
+    _ = zig_lib.testing.refAllDecls(ListView);
     _ = zig_lib.testing.refAllDecls(render.UnionFormat);
     _ = zig_lib.testing.refAllDecls(render.StructForm);
     _ = zig_lib.testing.refAllDecls(render.EnumFormat);
