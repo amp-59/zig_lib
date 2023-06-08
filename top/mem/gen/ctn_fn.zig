@@ -9,15 +9,7 @@ const attr = @import("./attr.zig");
 const types = @import("./types.zig");
 const config = @import("./config.zig");
 pub const kind = @import("./zig-out/src/container_kinds.zig");
-
-pub const key = meta.tagList(Fn);
-pub fn get(comptime tag: Fn) *const Fn {
-    comptime {
-        for (key) |val| {
-            if (val == tag) return &val;
-        }
-    }
-}
+pub const list = meta.tagList(Fn);
 
 pub const Fn = enum(u8) {
     __undefined,
@@ -144,7 +136,7 @@ pub const Fn = enum(u8) {
     pub fn fnName(ctn_fn_info: Fn) [:0]const u8 {
         return @tagName(ctn_fn_info);
     }
-    pub fn hasCapability(ctn_fn_info: Fn, ctn_detail: *const types.Container) bool {
+    pub fn hasCapability(ctn_fn_info: Fn, ctn_detail: types.Container) bool {
         if (kind.stream(ctn_fn_info) or
             kind.unstream(ctn_fn_info) or
             kind.streamed(ctn_fn_info) or
@@ -184,7 +176,7 @@ pub const Fn = enum(u8) {
         }
         return true;
     }
-    pub fn argList(ctn_fn_info: Fn, ctn_detail: *const types.Container, list_kind: gen.ListKind) gen.ArgList {
+    pub fn argList(ctn_fn_info: Fn, ctn_detail: types.Container, list_kind: gen.ListKind) gen.ArgList {
         var arg_list: gen.ArgList = .{
             .args = undefined,
             .len = 0,
@@ -192,78 +184,78 @@ pub const Fn = enum(u8) {
             .ret = ctn_fn_info.returnType(),
         };
         const arg_list_ptr_symbol: [:0]const u8 = switch (list_kind) {
-            .Parameter => tok.array_ptr_param,
+            else => tok.array_ptr_param,
             .Argument => tok.array_name,
         };
         const arg_list_const_ptr_symbol: [:0]const u8 = switch (list_kind) {
-            .Parameter => tok.array_const_ptr_param,
+            else => tok.array_const_ptr_param,
             .Argument => tok.array_name,
         };
         const allocator_ptr_symbol: [:0]const u8 = switch (list_kind) {
-            .Parameter => tok.allocator_ptr_param,
+            else => tok.allocator_ptr_param,
             .Argument => tok.allocator_name,
         };
         const allocator_const_ptr_symbol: [:0]const u8 = switch (list_kind) {
-            .Parameter => tok.allocator_const_ptr_param,
+            else => tok.allocator_const_ptr_param,
             .Argument => tok.allocator_name,
         };
         const child_type_symbol: [:0]const u8 = switch (list_kind) {
-            .Parameter => tok.child_param,
+            else => tok.child_param,
             .Argument => tok.child_type_name,
         };
         const sentinel_symbol: [:0]const u8 = switch (list_kind) {
-            .Parameter => tok.s_sentinel_param,
+            else => tok.s_sentinel_param,
             .Argument => tok.sentinel_name,
         };
         const value_symbol: [:0]const u8 = switch (list_kind) {
-            .Parameter => tok.value_param,
+            else => tok.value_param,
             .Argument => tok.value_name,
         };
         const count_values_symbol: [:0]const u8 = switch (list_kind) {
-            .Parameter => tok.count_values_param,
+            else => tok.count_values_param,
             .Argument => tok.count_values_name,
         };
         const count_symbol: [:0]const u8 = switch (list_kind) {
-            .Parameter => tok.count_param,
+            else => tok.count_param,
             .Argument => tok.count_name,
         };
         const static_count_symbol: [:0]const u8 = switch (list_kind) {
-            .Parameter => tok.static_count_param,
+            else => tok.static_count_param,
             .Argument => tok.count_name,
         };
         const many_values_symbol: [:0]const u8 = switch (list_kind) {
-            .Parameter => tok.many_values_param,
+            else => tok.many_values_param,
             .Argument => tok.many_values_name,
         };
         const format_symbol: [:0]const u8 = switch (list_kind) {
-            .Parameter => tok.format_param,
+            else => tok.format_param,
             .Argument => tok.format_name,
         };
         const reinterpret_spec_symbol: [:0]const u8 = switch (list_kind) {
-            .Parameter => tok.reinterpret_spec_param,
+            else => tok.reinterpret_spec_param,
             .Argument => tok.reinterpret_spec_name,
         };
         const args_symbol: [:0]const u8 = switch (list_kind) {
-            .Parameter => tok.args_param,
+            else => tok.args_param,
             .Argument => tok.args_name,
         };
         const any_symbol: [:0]const u8 = switch (list_kind) {
-            .Parameter => tok.any_param,
+            else => tok.any_param,
             .Argument => tok.any_name,
         };
         const fields_symbol: [:0]const u8 = switch (list_kind) {
-            .Parameter => tok.fields_param,
+            else => tok.fields_param,
             .Argument => tok.fields_name,
         };
         const amount_symbol: [:0]const u8 = blk: {
             if (ctn_detail.layout == .unstructured) {
                 break :blk switch (list_kind) {
-                    .Parameter => tok.amount_param,
+                    else => tok.amount_param,
                     .Argument => tok.amount_name,
                 };
             } else {
                 break :blk switch (list_kind) {
-                    .Parameter => tok.count_param,
+                    else => tok.count_param,
                     .Argument => tok.count_name,
                 };
             }
@@ -271,12 +263,12 @@ pub const Fn = enum(u8) {
         const offset_symbol: [:0]const u8 = blk: {
             if (ctn_detail.layout == .unstructured) {
                 break :blk switch (list_kind) {
-                    .Parameter => tok.offset_amount_param,
+                    else => tok.offset_amount_param,
                     .Argument => tok.offset_name,
                 };
             } else {
                 break :blk switch (list_kind) {
-                    .Parameter => tok.offset_word_param,
+                    else => tok.offset_word_param,
                     .Argument => tok.offset_name,
                 };
             }
@@ -1017,8 +1009,8 @@ pub const Fn = enum(u8) {
             },
         }
     }
-    pub fn writeSignature(ctn_fn_info: Fn, array: anytype, ctn_detail: *const types.Container) void {
-        const list: gen.ArgList = ctn_fn_info.argList(ctn_detail, .Parameter);
+    pub fn writeSignature(ctn_fn_info: Fn, array: anytype, ctn_detail: types.Container) void {
+        const arg_list: gen.ArgList = ctn_fn_info.argList(ctn_detail, .Parameter);
         if (kind.helper(ctn_fn_info)) {
             array.writeMany("fn ");
         } else {
@@ -1026,7 +1018,7 @@ pub const Fn = enum(u8) {
         }
         array.writeMany(ctn_fn_info.fnName());
         array.writeMany("(");
-        const args: []const [:0]const u8 = list.readAll();
+        const args: []const [:0]const u8 = arg_list.readAll();
         for (args) |arg| {
             array.writeMany(arg);
             array.writeMany(",");
@@ -1035,7 +1027,7 @@ pub const Fn = enum(u8) {
             array.undefine(1);
         }
         array.writeMany(")");
-        array.writeMany(list.ret);
+        array.writeMany(arg_list.ret);
     }
 };
 pub const utility = struct {
@@ -1105,7 +1097,7 @@ pub const utility = struct {
         }
     };
     pub fn showPseudoSorted() void {
-        var unsorted: [key.len]Fn = key;
+        var unsorted: [list.len]Fn = list;
         algo.shellSort(Fn, Sort.comparison, Sort.transform, &unsorted);
         builtin.debug.write("pub const Fn = enum(" ++ @typeName(@typeInfo(Fn).Enum.tag_type.?) ++ ") {\n");
         for (unsorted) |sorted| {
