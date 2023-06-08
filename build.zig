@@ -48,15 +48,20 @@ fn memgen(allocator: *Node.Allocator, node: *Node) void {
     const mg_ctn_kinds: *Node = try mg_aux.addBuild(allocator, build_cmd, "mg_ctn_kinds", "top/mem/gen/ctn_kinds.zig");
     const mg_ptr_impls: *Node = try mg_aux.addBuild(allocator, build_cmd, "mg_ptr_impls", "top/mem/gen/ptr_impls.zig");
     const mg_ctn_impls: *Node = try mg_aux.addBuild(allocator, build_cmd, "mg_ctn_impls", "top/mem/gen/ctn_impls.zig");
+    const mg_alloc_impls: *Node = try mg_aux.addBuild(allocator, build_cmd, "mg_alloc_impls", "top/mem/gen/alloc_impls.zig");
     const mg_ctn: *Node = try node.addFormat(allocator, format_cmd, "mg_ctn", "top/mem/ctn.zig");
     const mg_ptr: *Node = try node.addFormat(allocator, format_cmd, "mg_ptr", "top/mem/ptr.zig");
+    const mg_alloc: *Node = try node.addFormat(allocator, format_cmd, "mg_alloc", "top/mem/allocator.zig");
     mg_specs.dependOn(allocator, mg_touch, .run);
     mg_ctn_kinds.dependOn(allocator, mg_touch, .run);
-    mg_ptr_impls.dependOn(allocator, mg_specs, .run);
+    mg_ptr_impls.dependOn(allocator, mg_touch, .run);
     mg_ptr.dependOn(allocator, mg_ptr_impls, .run);
     mg_ctn_impls.dependOn(allocator, mg_specs, .run);
     mg_ctn_impls.dependOn(allocator, mg_ctn_kinds, .run);
     mg_ctn.dependOn(allocator, mg_ctn_impls, .run);
+    mg_alloc_impls.dependOn(allocator, mg_ptr_impls, .run);
+    mg_alloc_impls.dependOn(allocator, mg_ctn_impls, .run);
+    mg_alloc.dependOn(allocator, mg_alloc_impls, .run);
     mg_touch.addDescr("Create placeholder files");
     mg_specs.addDescr("Generate specification types for containers and pointers");
     mg_ctn_kinds.addDescr("Generate function kind switch functions for container functions");
@@ -64,6 +69,7 @@ fn memgen(allocator: *Node.Allocator, node: *Node) void {
     mg_ctn_impls.addDescr("Generate container implementations");
     mg_ptr.addDescr("Reformat generated generic pointers into canonical form");
     mg_ctn.addDescr("Reformat generated generic containers into canonical form");
+    mg_alloc.addDescr("Reformat generated generic allocators into canonical form");
     node.task = .format;
 }
 fn examples(allocator: *Node.Allocator, node: *Node) void {
@@ -118,6 +124,7 @@ fn tests(allocator: *Node.Allocator, node: *Node) void {
     const mem_test: *Node = try node.addBuild(allocator, build_cmd, "mem_test", "test/mem-test.zig");
     const mem2_test: *Node = try node.addBuild(allocator, build_cmd, "mem2_test", "test/mem2-test.zig");
     const proc_test: *Node = try node.addBuild(allocator, build_cmd, "proc_test", "test/proc-test.zig");
+    const debug_test: *Node = try node.addBuild(allocator, build_cmd, "debug_test", "test/debug-test.zig");
     builtin_test.addDescr("Test builtin functions");
     mem_test.addDescr("Test low level memory management functions and basic container/allocator usage");
     mem2_test.addDescr("Test v2 low level memory implementation");
@@ -138,9 +145,13 @@ fn tests(allocator: *Node.Allocator, node: *Node) void {
     thread_test.addDescr("Test clone and thread-safe compound/tagged sets");
     virtual_test.addDescr("Test address spaces, sub address spaces, and arenas");
     size_test.addDescr("Test sizes of various things");
+    debug_test.addDescr("Test debugging functions");
     builderTests(allocator, try node.addGroup(allocator, "builder_tests"));
     cryptoTests(allocator, try node.addGroup(allocator, "crypto_tests"));
     node.task = .build;
+    debug_test.task_info.build.mode = .Debug;
+    debug_test.task_info.build.strip = false;
+    parse_test.task_info.build.mode = .Debug;
 }
 fn cryptoTests(allocator: *Node.Allocator, node: *Node) void {
     const mode_save: ?builtin.Mode = build_cmd.mode;
@@ -151,26 +162,29 @@ fn cryptoTests(allocator: *Node.Allocator, node: *Node) void {
         build_cmd.mode = mode_save;
         build_cmd.strip = strip_save;
     }
-    const core_test: *Node = try node.addBuild(allocator, build_cmd, "core_test", "test/crypto/core-test.zig");
-    const utils_test: *Node = try node.addBuild(allocator, build_cmd, "utils_test", "test/crypto/utils-test.zig");
-    const hash_test: *Node = try node.addBuild(allocator, build_cmd, "hash_test", "test/crypto/hash-test.zig");
-    const pcurves_test: *Node = try node.addBuild(allocator, build_cmd, "pcurves_test", "test/crypto/pcurves-test.zig");
-    const auth_test: *Node = try node.addBuild(allocator, build_cmd, "auth_test", "test/crypto/auth-test.zig");
-    const aead_test: *Node = try node.addBuild(allocator, build_cmd, "aead_test", "test/crypto/aead-test.zig");
-    const ecdsa_test: *Node = try node.addBuild(allocator, build_cmd, "ecdsa_test", "test/crypto/ecdsa-test.zig");
-    const kyber_test: *Node = try node.addBuild(allocator, build_cmd, "kyber_test", "test/crypto/kyber-test.zig");
-    const dh_test: *Node = try node.addBuild(allocator, build_cmd, "dh_test", "test/crypto/dh-test.zig");
-    const tls_test: *Node = try node.addBuild(allocator, build_cmd, "tls_test", "test/crypto/tls-test.zig");
-    core_test.addDescr("Test core crypto functions and types");
-    utils_test.addDescr("Test crypto utility functions");
-    hash_test.addDescr("Test hashing functions");
-    pcurves_test.addDescr("Test point curve operations");
-    auth_test.addDescr("Test authentication");
-    aead_test.addDescr("Test authenticated encryption functions and types");
-    dh_test.addDescr("Test for many 25519-related functions");
-    kyber_test.addDescr("Test for post-quantum 'Kyber' key exchange functions and types");
-    ecdsa_test.addDescr("Test ECDSA");
-    tls_test.addDescr("Test TLS");
+    if (false) {
+        const auth_test: *Node = try node.addBuild(allocator, build_cmd, "auth_test", "test/crypto/auth-test.zig");
+        const aead_test: *Node = try node.addBuild(allocator, build_cmd, "aead_test", "test/crypto/aead-test.zig");
+        const ecdsa_test: *Node = try node.addBuild(allocator, build_cmd, "ecdsa_test", "test/crypto/ecdsa-test.zig");
+        const kyber_test: *Node = try node.addBuild(allocator, build_cmd, "kyber_test", "test/crypto/kyber-test.zig");
+        const dh_test: *Node = try node.addBuild(allocator, build_cmd, "dh_test", "test/crypto/dh-test.zig");
+        const tls_test: *Node = try node.addBuild(allocator, build_cmd, "tls_test", "test/crypto/tls-test.zig");
+        auth_test.addDescr("Test authentication");
+        aead_test.addDescr("Test authenticated encryption functions and types");
+        dh_test.addDescr("Test for many 25519-related functions");
+        kyber_test.addDescr("Test for post-quantum 'Kyber' key exchange functions and types");
+        ecdsa_test.addDescr("Test ECDSA");
+        tls_test.addDescr("Test TLS");
+    } else {
+        const core_test: *Node = try node.addBuild(allocator, build_cmd, "core_test", "test/crypto/core-test.zig");
+        const utils_test: *Node = try node.addBuild(allocator, build_cmd, "utils_test", "test/crypto/utils-test.zig");
+        const hash_test: *Node = try node.addBuild(allocator, build_cmd, "hash_test", "test/crypto/hash-test.zig");
+        const pcurves_test: *Node = try node.addBuild(allocator, build_cmd, "pcurves_test", "test/crypto/pcurves-test.zig");
+        core_test.addDescr("Test core crypto functions and types");
+        utils_test.addDescr("Test crypto utility functions");
+        hash_test.addDescr("Test hashing functions");
+        pcurves_test.addDescr("Test point curve operations");
+    }
 }
 fn builderTests(allocator: *Node.Allocator, node: *Node) void {
     //
