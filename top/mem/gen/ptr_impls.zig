@@ -24,6 +24,19 @@ const AddressSpace = Allocator.AddressSpace;
 const Array = Allocator.StructuredVector(u8);
 const Details = Allocator.StructuredVector(types.Implementation);
 const read_impl_spec: file.ReadSpec = .{ .child = types.Implementation, .errors = .{}, .return_type = void };
+
+const FnArgLists = struct {
+    keys: []Key,
+    keys_len: u64 = 0,
+    const Key = struct {
+        ptr_fn.Fn,
+        u64,
+    };
+    const Value = struct {
+        ptr_fn.Fn,
+        []gen.ArgList,
+    };
+};
 const Info = struct {
     start: u64,
     alias: ?ptr_fn.Fn = null,
@@ -31,7 +44,75 @@ const Info = struct {
         info.alias = ptr_fn_info;
     }
 };
-fn resizeInitializer(allocator: *Allocator, impl_variant: *const types.Implementation) *[3]expr.Expr {
+fn deduceUniqueInterfaceStructs(allocator: *Allocator, array: *Array, impl_details: []types.Implementation) struct {
+    []const FnArgLists.Value,
+    []const FnArgLists,
+} {
+    var key_len: u64 = 0;
+    for (ptr_fn.list) |ptr_fn_info| {
+        if (!ptr_fn_info.interface()) {
+            continue;
+        }
+        key_len +%= 1;
+    }
+    const arg_list_vals: []FnArgLists.Value = allocator.allocate(FnArgLists.Value, key_len);
+    const arg_list_maps: []FnArgLists = allocator.allocate(FnArgLists, impl_details.len);
+    for (arg_list_maps) |*arg_list_map| {
+        arg_list_map.keys = allocator.allocate(FnArgLists.Key, key_len);
+        arg_list_map.keys_len = 0;
+    }
+    var key_idx: u64 = 0;
+    for (ptr_fn.list) |ptr_fn_info| {
+        if (!ptr_fn_info.interface()) {
+            continue;
+        }
+        const arg_lists: []gen.ArgList = allocator.allocate(gen.ArgList, impl_details.len);
+        var arg_lists_len: u64 = 0;
+        lo: for (impl_details, 0..) |impl_detail, impl_detail_idx| {
+            if (!ptr_fn_info.hasCapability(impl_detail)) {
+                continue :lo;
+            }
+            const arg_list_map: *FnArgLists = &arg_list_maps[impl_detail_idx];
+            const arg_list: gen.ArgList = ptr_fn_info.argList(impl_detail, .Parameter);
+            if (arg_list.len == 0) {
+                continue :lo;
+            }
+            uniq: for (arg_lists[0..arg_lists_len], 0..) |unique_arg_list, unique_arg_list_idx| {
+                if (unique_arg_list.len != arg_list.len) {
+                    continue :uniq;
+                }
+                for (unique_arg_list.readAll(), arg_list.readAll()) |u, v| {
+                    if (u.ptr != v.ptr) {
+                        continue :uniq;
+                    }
+                }
+                arg_list_map.keys[arg_list_map.keys_len] = .{
+                    ptr_fn_info,
+                    unique_arg_list_idx,
+                };
+                arg_list_map.keys_len +%= 1;
+                continue :lo;
+            }
+            arg_list_map.keys[arg_list_map.keys_len] = .{ ptr_fn_info, arg_lists_len };
+            arg_list_map.keys_len +%= 1;
+
+            arg_lists[arg_lists_len] = arg_list;
+            arg_lists_len +%= 1;
+        }
+        arg_list_vals[key_idx] = .{
+            ptr_fn_info,
+            arg_lists[0..arg_lists_len],
+        };
+        key_idx +%= 1;
+    }
+    for (arg_list_vals) |kv| {
+        for (kv[1], 0..) |arg_list, arg_list_idx| {
+            writeInterfaceStruct(array, kv[0], arg_list_idx, arg_list);
+        }
+    }
+    return .{ arg_list_vals, arg_list_maps };
+}
+fn resizeInitializer(allocator: *Allocator, impl_variant: types.Implementation) *[3]expr.Expr {
     var buf: []expr.Expr = allocator.allocate(expr.Expr, 8);
     var len: u64 = 0;
     const andn_undefined_65535: *[3]expr.Expr = allocator.duplicate([3]expr.Expr, expr.andn(
@@ -47,7 +128,7 @@ fn resizeInitializer(allocator: *Allocator, impl_variant: *const types.Implement
     {
         const or_target_single: *[3]expr.Expr = allocator.duplicate([3]expr.Expr, expr.@"or"(
             expr.call(andn_allocated_65535),
-            expr.symbol(tok.target_single_approximation_counts_name),
+            expr.symbol(tok.interface_target_single_approximation_counts_name),
         ));
         const init_lb_word: *[4]expr.Expr = allocator.duplicate([4]expr.Expr, expr.initialize(
             tok.allocated_byte_address_word_field_name,
@@ -61,11 +142,11 @@ fn resizeInitializer(allocator: *Allocator, impl_variant: *const types.Implement
     {
         const or_target_single: *[3]expr.Expr = allocator.duplicate([3]expr.Expr, expr.@"or"(
             expr.call(andn_allocated_65535),
-            expr.symbol(tok.target_single_approximation_counts_name),
+            expr.symbol(tok.interface_target_single_approximation_counts_name),
         ));
         const or_target_double: *[3]expr.Expr = allocator.duplicate([3]expr.Expr, expr.@"or"(
             expr.call(andn_undefined_65535),
-            expr.symbol(tok.target_double_approximation_counts_name),
+            expr.symbol(tok.interface_target_double_approximation_counts_name),
         ));
         const init_lb_word: *[4]expr.Expr = allocator.duplicate([4]expr.Expr, expr.initialize(
             tok.allocated_byte_address_word_field_name,
@@ -83,43 +164,43 @@ fn resizeInitializer(allocator: *Allocator, impl_variant: *const types.Implement
     if (impl_variant.fields.unallocated_byte_address) {
         const init_up_word: *[4]expr.Expr = allocator.duplicate([4]expr.Expr, expr.initialize(
             tok.unallocated_byte_address_word_field_name,
-            expr.symbol(tok.target_unallocated_byte_address_name),
+            expr.symbol(tok.interface_target_unallocated_byte_address_name),
         ));
         buf[len] = expr.join(init_up_word);
         len +%= 1;
     }
     return allocator.duplicate([3]expr.Expr, expr.initializer(expr.list(buf[0..len])));
 }
-fn constructInitializer(allocator: *Allocator, impl_variant: *const types.Implementation, ptr_fn_info: ptr_fn.Fn) *[3]expr.Expr {
+fn constructInitializer(allocator: *Allocator, impl_variant: types.Implementation, ptr_fn_info: ptr_fn.Fn) *[3]expr.Expr {
     const source_aligned_byte_address_name: [:0]const u8 = blk: {
         if (ptr_fn_info == .allocate) {
-            break :blk tok.source_aligned_byte_address_name;
+            break :blk tok.interface_source_aligned_byte_address_name;
         }
-        break :blk tok.target_aligned_byte_address_name;
+        break :blk tok.interface_target_aligned_byte_address_name;
     };
     const source_allocated_byte_address_name: [:0]const u8 = blk: {
         if (ptr_fn_info == .allocate) {
-            break :blk tok.source_allocated_byte_address_name;
+            break :blk tok.interface_source_allocated_byte_address_name;
         }
-        break :blk tok.target_allocated_byte_address_name;
+        break :blk tok.interface_target_allocated_byte_address_name;
     };
     const source_single_approximation_counts_name: [:0]const u8 = blk: {
         if (ptr_fn_info == .allocate) {
-            break :blk tok.source_single_approximation_counts_name;
+            break :blk tok.interface_source_single_approximation_counts_name;
         }
-        break :blk tok.target_single_approximation_counts_name;
+        break :blk tok.interface_target_single_approximation_counts_name;
     };
     const source_double_approximation_counts_name: [:0]const u8 = blk: {
         if (ptr_fn_info == .allocate) {
-            break :blk tok.source_double_approximation_counts_name;
+            break :blk tok.interface_source_double_approximation_counts_name;
         }
-        break :blk tok.target_double_approximation_counts_name;
+        break :blk tok.interface_target_double_approximation_counts_name;
     };
     const source_unallocated_byte_address_name: [:0]const u8 = blk: {
         if (ptr_fn_info == .allocate) {
-            break :blk tok.source_unallocated_byte_address_name;
+            break :blk tok.interface_source_unallocated_byte_address_name;
         }
-        break :blk tok.target_unallocated_byte_address_name;
+        break :blk tok.interface_target_unallocated_byte_address_name;
     };
     const sub_or_ab_lb_ab: *[4]expr.Expr = allocator.duplicate([4]expr.Expr, expr.subOr(
         expr.symbol(source_aligned_byte_address_name),
@@ -265,7 +346,13 @@ fn constructInitializer(allocator: *Allocator, impl_variant: *const types.Implem
     }
     return allocator.duplicate([3]expr.Expr, expr.initializer(expr.list(buf[0..len])));
 }
-fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: *const types.Implementation, ptr_fn_info: ptr_fn.Fn, info: *Info) void {
+fn writeFunctionBodyGeneric(
+    allocator: *Allocator,
+    array: *Array,
+    impl_variant: types.Implementation,
+    ptr_fn_info: ptr_fn.Fn,
+    info: *Info,
+) void {
     const allocated_byte_address_call: expr.Expr = expr.impl(allocator, impl_variant, .allocated_byte_address);
     const aligned_byte_address_call: expr.Expr = expr.impl(allocator, impl_variant, .aligned_byte_address);
     const unstreamed_byte_address_call: expr.Expr = expr.impl(allocator, impl_variant, .unstreamed_byte_address);
@@ -452,7 +539,10 @@ fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: 
                 array.writeFormat(expr.call(&add_allocated_count));
                 return array.writeMany(tok.end_expr);
             }
-            array.writeMany(tok.slave_specifier_call_unmapped_byte_address);
+            if (impl_variant.kind == .parametric) {
+                array.writeMany(tok.slave_specifier_call_unmapped_byte_address);
+                return array.writeMany(tok.end_expr);
+            }
             return array.writeMany(tok.end_expr);
         },
         .unwritable_byte_address => {
@@ -823,17 +913,54 @@ fn writeFunctionBodyGeneric(allocator: *Allocator, array: *Array, impl_variant: 
         .deallocate => return,
     }
 }
-fn writeFunctions(allocator: *Allocator, array: *Array, impl_variant: *const types.Implementation) void {
-    for (ptr_fn.key) |ptr_fn_info| {
+fn writeSignature(
+    array: *Array,
+    impl_variant: types.Implementation,
+    ptr_fn_info: ptr_fn.Fn,
+    arg_lists: []const FnArgLists.Value,
+    key: FnArgLists,
+) void {
+    for (key.keys[0..key.keys_len]) |ki_pair| {
+        if (ki_pair[0] == ptr_fn_info) {
+            for (arg_lists[0..key.keys_len]) |kv_pair| {
+                if (kv_pair[0] == ptr_fn_info) {
+                    const arg_list_idx: u64 = ki_pair[1];
+                    const arg_list: gen.ArgList = kv_pair[1][arg_list_idx];
+                    array.writeMany("pub inline fn ");
+                    array.writeMany(ptr_fn_info.fnName());
+                    array.writeMany("(");
+                    switch (ptr_fn_info) {
+                        .allocate => {
+                            array.writeMany("s:");
+                        },
+                        .move, .resize, .reallocate => {
+                            array.writeMany(arg_list.args[0]);
+                            array.writeMany(",t:");
+                        },
+                        else => unreachable,
+                    }
+                    array.writeMany(@tagName(ptr_fn_info));
+                    array.writeFormat(fmt.ud64(arg_list_idx));
+                    array.writeMany(")");
+                    array.writeMany(arg_list.ret);
+                    return;
+                }
+            }
+        }
+    }
+    ptr_fn_info.writeSignature(array, impl_variant);
+}
+fn writeFunctions(allocator: *Allocator, array: *Array, impl_variant: types.Implementation, arg_lists: []const FnArgLists.Value, key: FnArgLists) void {
+    for (ptr_fn.list) |ptr_fn_info| {
         if (ptr_fn_info != .deallocate and ptr_fn_info.hasCapability(impl_variant)) {
             var info: Info = .{ .start = array.len() };
-            ptr_fn_info.writeSignature(array, impl_variant);
+            writeSignature(array, impl_variant, ptr_fn_info, arg_lists, key);
             writeFunctionBodyGeneric(allocator, array, impl_variant, ptr_fn_info, &info);
             writeSimpleRedecl(array, &ptr_fn_info, &info);
         }
     }
 }
-fn writeDeclarations(array: *Array, impl_variant: *const types.Implementation) void {
+fn writeDeclarations(array: *Array, impl_variant: types.Implementation) void {
     const no_type_expr: expr.Expr = expr.scrub(1);
     var const_decl: [7]expr.Expr = expr.constDecl(
         expr.symbol(tok.impl_type_name),
@@ -882,7 +1009,7 @@ fn writeSimpleRedecl(array: *Array, ptr_fn_info: *const ptr_fn.Fn, info: *Info) 
         info.alias = null;
     }
 }
-inline fn writeComptimeField(array: *Array, impl_variant: *const types.Implementation, ptr_fn_info: ptr_fn.Fn) void {
+inline fn writeComptimeField(array: *Array, impl_variant: types.Implementation, ptr_fn_info: ptr_fn.Fn) void {
     const args_list: gen.ArgList = ptr_fn_info.argList(impl_variant, .Parameter);
     if (expr.comptimeField(args_list)) {
         array.writeMany(tok.comptime_keyword);
@@ -896,7 +1023,7 @@ inline fn writeComptimeField(array: *Array, impl_variant: *const types.Implement
         array.writeMany(tok.end_elem);
     }
 }
-inline fn writeFields(array: *Array, impl_variant: *const types.Implementation) void {
+inline fn writeFields(array: *Array, impl_variant: types.Implementation) void {
     writeComptimeField(array, impl_variant, ptr_fn.Fn.allocated_byte_address);
     writeComptimeField(array, impl_variant, ptr_fn.Fn.aligned_byte_address);
     writeComptimeField(array, impl_variant, ptr_fn.Fn.unallocated_byte_address);
@@ -929,23 +1056,37 @@ inline fn writeFields(array: *Array, impl_variant: *const types.Implementation) 
     writeComptimeField(array, impl_variant, ptr_fn.Fn.writable_byte_count);
     writeComptimeField(array, impl_variant, ptr_fn.Fn.aligned_byte_count);
 }
-inline fn writeTypeFunction(allocator: *Allocator, array: *Array, impl_variant: *const types.Implementation) void {
+inline fn writeTypeFunction(allocator: *Allocator, array: *Array, impl_variant: types.Implementation, arg_lists: []const FnArgLists.Value, key: FnArgLists) void {
     array.writeMany("pub fn ");
-    array.writeFormat(impl_variant.*);
+    array.writeFormat(impl_variant);
     array.writeMany("(" ++ tok.comptime_keyword ++ tok.impl_spec_name ++ tok.colon_operator ++ tok.generic_spec_type_name);
     fmt.ud64(impl_variant.ctn).formatWrite(array);
     array.writeMany(")type{\nreturn(struct{\n");
     writeFields(array, impl_variant);
     writeDeclarations(array, impl_variant);
-    writeFunctions(allocator, array, impl_variant);
+    writeFunctions(allocator, array, impl_variant, arg_lists, key);
     array.writeMany("});\n}\n");
 }
-pub fn generateReferences() !void {
+fn writeInterfaceStruct(array: *Array, ptr_fn_info: ptr_fn.Fn, idx: u64, arg_list: gen.ArgList) void {
+    array.writeMany("const ");
+    array.writeMany(@tagName(ptr_fn_info));
+    array.writeFormat(fmt.ud64(idx));
+    array.writeMany("=struct{");
+    for (arg_list.readAll()) |arg| {
+        if (arg.ptr != tok.impl_const_param.ptr and
+            arg.ptr != tok.impl_param.ptr)
+        {
+            array.writeMany(arg);
+            array.writeMany(",");
+        }
+    }
+    array.writeMany("};\n");
+}
+pub fn main() !void {
     var address_space: AddressSpace = .{};
     var allocator: Allocator = Allocator.init(&address_space);
     defer allocator.deinit(&address_space);
     var array: Array = Array.init(&allocator, 1024 * 4096);
-    array.undefineAll();
     var fd: u64 = file.open(spec.generic.noexcept, config.impl_detail_path);
     const st: file.Status = file.status(spec.generic.noexcept, fd);
     const details: []types.Implementation = allocator.allocate(
@@ -954,10 +1095,14 @@ pub fn generateReferences() !void {
     );
     file.read(read_impl_spec, fd, details);
     file.close(spec.generic.noexcept, fd);
+    const arg_lists: struct {
+        []const FnArgLists.Value,
+        []const FnArgLists,
+    } = deduceUniqueInterfaceStructs(&allocator, &array, details);
     for (types.Kind.list) |kind| {
-        for (details) |*impl_detail| {
+        for (details, 0..) |impl_detail, impl_detail_idx| {
             if (impl_detail.kind == kind) {
-                writeTypeFunction(&allocator, &array, impl_detail);
+                writeTypeFunction(&allocator, &array, impl_detail, arg_lists[0], arg_lists[1][impl_detail_idx]);
             }
         }
         if (config.write_separate_source_files) {
@@ -975,4 +1120,3 @@ pub fn generateReferences() !void {
         gen.appendFile(spec.generic.noexcept, config.reference_file_path, array.readAll());
     }
 }
-pub const main = generateReferences;
