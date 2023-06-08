@@ -2219,10 +2219,10 @@ pub const SyntaxTree = struct {
             pub fn lastToken(cf: ContainerField) zig.Index {
                 return cf.comptime_token orelse cf.ast.main_token;
             }
-            pub fn convertToNonTupleLike(cf: *ContainerField, nodes: zig.NodeArray.Slice) void {
+            pub fn convertToNonTupleLike(cf: *ContainerField, nodes: []const zig.AstNode) void {
                 if (!cf.ast.tuple_like) return;
                 if (cf.ast.type_expr == 0) return;
-                if (nodes.items(.tag)[cf.ast.type_expr] != .identifier) return;
+                if (nodes[cf.ast.type_expr].tag != .identifier) return;
                 const ident = nodes.items(.main_token)[cf.ast.type_expr];
                 cf.ast.tuple_like = false;
                 cf.ast.main_token = ident;
