@@ -199,14 +199,19 @@ pub const Container = packed struct {
     layout: Layout,
     modes: Modes,
     const Format = @This();
-    pub fn init(
-        abstract_spec: AbstractSpecification,
-    ) Container {
+    pub fn init(abstract_spec: AbstractSpecification) Container {
         return .{
             .kind = abstract_spec.kind,
             .layout = abstract_spec.layout,
             .modes = Modes.detail(abstract_spec.modes),
         };
+    }
+    pub fn impl(ctn: Container) Implementation {
+        var ret: Implementation = undefined;
+        ret.kind = ctn.kind;
+        ret.layout = ctn.layout;
+        ret.modes = ctn.modes;
+        return ret;
     }
     pub fn formatWrite(format: Format, array: anytype) void {
         switch (format.kind) {
