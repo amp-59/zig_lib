@@ -1,9 +1,6 @@
-const mem = @import("../mem.zig");
-const meta = @import("../meta.zig");
-const builtin = @import("../builtin.zig");
-
-const gen = @import("./gen.zig");
-
+const mem = @import("../../mem.zig");
+const meta = @import("../../meta.zig");
+const builtin = @import("../../builtin.zig");
 const types = @import("./types.zig");
 
 pub const key = blk: {
@@ -13,7 +10,6 @@ pub const key = blk: {
     }
     break :blk res;
 };
-// zig fmt: on
 pub fn get(comptime tag: Fn) *const Fn {
     comptime {
         for (key) |val| {
@@ -30,7 +26,6 @@ pub const Fn = enum(u16) {
     resizeBelow,
     resizeIncrement,
     resizeDecrement,
-
     pub fn hasCapability(alloc_fn_info: Fn, impl_variant: *const types.Implementation) bool {
         switch (alloc_fn_info) {
             .allocate, .deallocate => {
