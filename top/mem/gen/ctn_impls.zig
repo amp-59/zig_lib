@@ -27,7 +27,7 @@ const read_ctn_spec: file.ReadSpec = .{
 const Allocator = config.Allocator;
 const AddressSpace = config.AddressSpace;
 const Array = Allocator.StructuredVector(u8);
-fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const types.Container, ctn_fn_info: ctn_fn.Fn) void {
+fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: types.Container, ctn_fn_info: ctn_fn.Fn) void {
     if (expr.Expr.debug.show_expressions) {
         expr.Expr.debug.showFunction(ctn_fn_info);
     }
@@ -883,14 +883,14 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: *const ty
         },
     }
 }
-fn makeImplFnMemberCall(allocator: *Allocator, ctn_detail: *const types.Container, ptr_fn_info: ptr_fn.Fn) [3]expr.Expr {
+fn makeImplFnMemberCall(allocator: *Allocator, ctn_detail: types.Container, ptr_fn_info: ptr_fn.Fn) [3]expr.Expr {
     // Using array_impl in expr.impl would be better.
     return expr.fieldAccess(
         expr.symbol(tok.array_name),
         expr.impl(allocator, ctn_detail, ptr_fn_info),
     );
 }
-fn functionBodyUndefinedNotice(ctn_detail: *const types.Container, ctn_fn_info: ctn_fn.Fn) void {
+fn functionBodyUndefinedNotice(ctn_detail: types.Container, ctn_fn_info: ctn_fn.Fn) void {
     var array: mem.StaticString(4096) = undefined;
     array.undefineAll();
     array.writeMany("function body undefined: ");
@@ -900,8 +900,8 @@ fn functionBodyUndefinedNotice(ctn_detail: *const types.Container, ctn_fn_info: 
     array.writeOne('\n');
     builtin.debug.write(array.readAll());
 }
-fn writeFunctions(allocator: *Allocator, array: *Array, ctn_detail: *const types.Container) void {
-    for (ctn_fn.key) |ctn_fn_info| {
+fn writeFunctions(allocator: *Allocator, array: *Array, ctn_detail: types.Container) void {
+    for (ctn_fn.list) |ctn_fn_info| {
         if (!ctn_fn_info.hasCapability(ctn_detail)) {
             continue;
         }
@@ -919,7 +919,7 @@ fn writeFunctions(allocator: *Allocator, array: *Array, ctn_detail: *const types
         }
     }
 }
-fn writeDeclarations(allocator: *Allocator, array: *Array, ctn_detail: *const types.Container) void {
+fn writeDeclarations(allocator: *Allocator, array: *Array, ctn_detail: types.Container) void {
     const save: Allocator.Save = allocator.save();
     defer allocator.restore(save);
     const const_decl: *expr.ConstDecl = allocator.duplicate(expr.ConstDecl, .{
@@ -960,7 +960,7 @@ fn writeDeclarations(allocator: *Allocator, array: *Array, ctn_detail: *const ty
     };
     array.writeFormat(const_decl.*);
 }
-fn writeTypeFunction(allocator: *Allocator, array: *Array, ctn_detail: *const types.Container, ctn_idx: u64) void {
+fn writeTypeFunction(allocator: *Allocator, array: *Array, ctn_detail: types.Container, ctn_idx: u64) void {
     array.writeMany("pub fn ");
     ctn_detail.formatWrite(array);
     array.writeMany("(comptime " ++ tok.ctn_spec_name ++ ": Parameters");
@@ -987,7 +987,7 @@ pub fn generateContainers() !void {
     file.close(spec.generic.noexcept, fd);
     var ctn_idx: u64 = 0;
     for (types.Kind.list) |kind| {
-        for (details) |*ctn_detail| {
+        for (details) |ctn_detail| {
             if (ctn_detail.kind == kind) {
                 writeTypeFunction(&allocator, &array, ctn_detail, ctn_idx);
                 ctn_idx +%= 1;
