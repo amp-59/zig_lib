@@ -43,37 +43,30 @@ pub fn buildMain(allocator: *Node.Allocator, toplevel: *Node) !void {
 }
 fn memgen(allocator: *Node.Allocator, node: *Node) void {
     const mg_aux: *Node = try node.addGroup(allocator, "_memgen");
-    const mg_touch: *Node = try mg_aux.addBuild(allocator, build_cmd, "mg_touch", "top/mem/gen/touch.zig");
     const mg_specs: *Node = try mg_aux.addBuild(allocator, build_cmd, "mg_specs", "top/mem/gen/specs.zig");
-    const mg_ctn_kinds: *Node = try mg_aux.addBuild(allocator, build_cmd, "mg_ctn_kinds", "top/mem/gen/ctn_kinds.zig");
     const mg_ptr_impls: *Node = try mg_aux.addBuild(allocator, build_cmd, "mg_ptr_impls", "top/mem/gen/ptr_impls.zig");
     const mg_ctn_impls: *Node = try mg_aux.addBuild(allocator, build_cmd, "mg_ctn_impls", "top/mem/gen/ctn_impls.zig");
     const mg_alloc_impls: *Node = try mg_aux.addBuild(allocator, build_cmd, "mg_alloc_impls", "top/mem/gen/alloc_impls.zig");
+    const mg_ctn_kinds: *Node = try node.addFormat(allocator, format_cmd, "mg_ctn_kinds", "top/mem/gen/ctn_kinds.zig");
     const mg_ctn: *Node = try node.addFormat(allocator, format_cmd, "mg_ctn", "top/mem/ctn.zig");
     const mg_ptr: *Node = try node.addFormat(allocator, format_cmd, "mg_ptr", "top/mem/ptr.zig");
     const mg_alloc: *Node = try node.addFormat(allocator, format_cmd, "mg_alloc", "top/mem/allocator.zig");
-    mg_touch.addDescr("Create placeholder files");
     mg_specs.addDescr("Generate specification types for containers and pointers");
-    mg_ctn_kinds.addDescr("Generate function kind switch functions for container functions");
     mg_ptr_impls.addDescr("Generate reference implementations");
     mg_ctn_impls.addDescr("Generate container implementations");
     mg_alloc_impls.addDescr("Generate allocator implementations");
+    mg_ctn_kinds.addDescr("Reformat generated container function kind switch functions into canonical form");
     mg_ptr.addDescr("Reformat generated generic pointers into canonical form");
     mg_ctn.addDescr("Reformat generated generic containers into canonical form");
     mg_alloc.addDescr("Reformat generated generic allocators into canonical form");
-
-    mg_specs.dependOn(allocator, mg_touch, .run);
     mg_alloc_impls.dependOn(allocator, mg_specs, .run);
-    mg_ctn_kinds.dependOn(allocator, mg_touch, .run);
     mg_ptr_impls.dependOn(allocator, mg_specs, .run);
     mg_ctn_impls.dependOn(allocator, mg_specs, .run);
-    mg_alloc_impls.dependOn(allocator, mg_ctn_kinds, .run);
-    mg_ptr_impls.dependOn(allocator, mg_ctn_kinds, .run);
-    mg_ctn_impls.dependOn(allocator, mg_ctn_kinds, .run);
     mg_alloc.dependOn(allocator, mg_alloc_impls, .run);
     mg_ptr.dependOn(allocator, mg_ptr_impls, .run);
     mg_ctn.dependOn(allocator, mg_ctn_impls, .run);
-
+    mg_ctn_kinds.dependOn(allocator, mg_specs, .run);
+    mg_specs.task_info.build.mode = .Debug;
     node.task = .format;
 }
 fn examples(allocator: *Node.Allocator, node: *Node) void {
