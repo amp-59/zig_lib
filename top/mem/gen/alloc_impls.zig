@@ -17,7 +17,7 @@ const ptr_fn = @import("./ptr_fn.zig");
 const alloc_fn = @import("./alloc_fn.zig");
 pub usingnamespace proc.start;
 
-pub const logging_override: builtin.Logging.Override = spec.logging.override.verbose;
+pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
 pub const runtime_assertions: bool = false;
 pub const show_expressions: bool = false;
 

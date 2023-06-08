@@ -52,14 +52,6 @@ fn memgen(allocator: *Node.Allocator, node: *Node) void {
     const mg_ctn: *Node = try node.addFormat(allocator, format_cmd, "mg_ctn", "top/mem/ctn.zig");
     const mg_ptr: *Node = try node.addFormat(allocator, format_cmd, "mg_ptr", "top/mem/ptr.zig");
     const mg_alloc: *Node = try node.addFormat(allocator, format_cmd, "mg_alloc", "top/mem/allocator.zig");
-    mg_specs.dependOn(allocator, mg_touch, .run);
-    mg_ctn_kinds.dependOn(allocator, mg_touch, .run);
-    mg_ptr_impls.dependOn(allocator, mg_touch, .run);
-    mg_ptr.dependOn(allocator, mg_ptr_impls, .run);
-    mg_ctn_impls.dependOn(allocator, mg_specs, .run);
-    mg_ctn_impls.dependOn(allocator, mg_ctn_kinds, .run);
-    mg_ctn.dependOn(allocator, mg_ctn_impls, .run);
-    mg_alloc.dependOn(allocator, mg_alloc_impls, .run);
     mg_touch.addDescr("Create placeholder files");
     mg_specs.addDescr("Generate specification types for containers and pointers");
     mg_ctn_kinds.addDescr("Generate function kind switch functions for container functions");
@@ -68,6 +60,15 @@ fn memgen(allocator: *Node.Allocator, node: *Node) void {
     mg_ptr.addDescr("Reformat generated generic pointers into canonical form");
     mg_ctn.addDescr("Reformat generated generic containers into canonical form");
     mg_alloc.addDescr("Reformat generated generic allocators into canonical form");
+
+    mg_specs.dependOn(allocator, mg_touch, .run);
+    mg_ctn_kinds.dependOn(allocator, mg_specs, .run);
+    mg_ptr_impls.dependOn(allocator, mg_ctn_kinds, .run);
+    mg_ptr.dependOn(allocator, mg_ptr_impls, .run);
+    mg_ctn_impls.dependOn(allocator, mg_ctn_kinds, .run);
+    mg_ctn.dependOn(allocator, mg_ctn_impls, .run);
+    mg_alloc.dependOn(allocator, mg_ctn_kinds, .run);
+    mg_alloc.dependOn(allocator, mg_alloc_impls, .run);
     node.task = .format;
 }
 fn examples(allocator: *Node.Allocator, node: *Node) void {
@@ -169,8 +170,8 @@ fn cryptoTests(allocator: *Node.Allocator, node: *Node) void {
         const tls_test: *Node = try node.addBuild(allocator, build_cmd, "tls_test", "test/crypto/tls-test.zig");
         auth_test.addDescr("Test authentication");
         aead_test.addDescr("Test authenticated encryption functions and types");
-        dh_test.addDescr("Test for many 25519-related functions");
-        kyber_test.addDescr("Test for post-quantum 'Kyber' key exchange functions and types");
+        dh_test.addDescr("Test many 25519-related functions");
+        kyber_test.addDescr("Test post-quantum 'Kyber' key exchange functions and types");
         ecdsa_test.addDescr("Test ECDSA");
         tls_test.addDescr("Test TLS");
     } else {
