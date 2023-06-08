@@ -330,10 +330,9 @@ pub fn uniqueSet(comptime T: type, set: []const T) void {
         }
     }
 }
-const black_list: []const []const u8 = &.{
-    "panicUnwrapError",
-};
-pub fn refAllDecls(comptime T: type) void {
+const black_list: []const []const u8 = &.{ "panicUnwrapError", "FnArg" };
+
+pub fn refAllDeclsInternal(comptime T: type, comptime types: []const type) void {
     @setEvalBranchQuota(~@as(u32, 0));
     comptime {
         if (@typeInfo(T) == .Struct or
@@ -341,7 +340,7 @@ pub fn refAllDecls(comptime T: type) void {
             @typeInfo(T) == .Enum or
             @typeInfo(T) == .Opaque)
         {
-            lo: inline for (meta.resolve(@typeInfo(T)).decls) |decl| {
+            lo: for (meta.resolve(@typeInfo(T)).decls) |decl| {
                 for (black_list) |name| {
                     if (builtin.testEqualMemory([]const u8, decl.name, name)) {
                         continue :lo;
@@ -349,7 +348,36 @@ pub fn refAllDecls(comptime T: type) void {
                 }
                 if (@hasDecl(T, decl.name)) {
                     if (@TypeOf(@field(T, decl.name)) == type) {
-                        refAllDecls(@field(T, decl.name));
+                        for (types) |U| {
+                            if (@field(T, decl.name) == U) {
+                                continue :lo;
+                            }
+                        }
+                        refAllDeclsInternal(@field(T, decl.name), types ++ [1]type{@field(T, decl.name)});
+                    }
+                }
+            }
+        }
+    }
+}
+pub fn refAllDecls(comptime T: type) void {
+    @setEvalBranchQuota(~@as(u32, 0));
+    comptime {
+        var types: []const type = &.{};
+        if (@typeInfo(T) == .Struct or
+            @typeInfo(T) == .Union or
+            @typeInfo(T) == .Enum or
+            @typeInfo(T) == .Opaque)
+        {
+            lo: for (meta.resolve(@typeInfo(T)).decls) |decl| {
+                for (black_list) |name| {
+                    if (builtin.testEqualMemory([]const u8, decl.name, name)) {
+                        continue :lo;
+                    }
+                }
+                if (@hasDecl(T, decl.name)) {
+                    if (@TypeOf(@field(T, decl.name)) == type) {
+                        refAllDeclsInternal(@field(T, decl.name), types ++ [1]type{@field(T, decl.name)});
                     }
                 }
             }
