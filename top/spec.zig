@@ -127,7 +127,7 @@ pub const builder = struct {
         .logging = builder.logging.default,
     };
     pub const errors = struct {
-        pub const noexcept = .{
+        pub const noexcept: zig_lib.build.BuilderSpec.Errors = .{
             .fork = .{},
             .write = .{},
             .read = .{},
@@ -149,7 +149,7 @@ pub const builder = struct {
             .stat = .{},
             .unlink = .{},
         };
-        pub const zen = .{
+        pub const zen: zig_lib.build.BuilderSpec.Errors = .{
             .write = .{ .abort = sys.write.errors.all },
             .read = .{ .abort = sys.read.errors.all },
             .mknod = .{ .throw = sys.mknod.errors.all },
@@ -171,7 +171,7 @@ pub const builder = struct {
             .close = .{ .abort = sys.close.errors.all },
             .unlink = .{ .abort = sys.unlink.errors.all },
         };
-        pub const critical = add(zen, .{
+        pub const critical: zig_lib.build.BuilderSpec.Errors = add(zen, .{
             .close = .{ .throw = sys.close.errors.all },
             .unmap = .{ .throw = sys.munmap.errors.all },
         });
@@ -477,12 +477,12 @@ pub const serializer = struct {
             .write = .{},
         };
         pub const critical: zig_lib.serial.SerialSpec.Errors = .{
-            .create = sys.open.errors.all,
-            .open = sys.open.errors.all,
-            .close = sys.close.errors.all,
-            .stat = sys.stat.errors.all,
-            .read = sys.read.errors.all,
-            .write = sys.write.errors.all,
+            .create = .{ .throw = sys.open.errors.all },
+            .open = .{ .throw = sys.open.errors.all },
+            .close = .{ .throw = sys.close.errors.all },
+            .stat = .{ .throw = sys.stat.errors.all },
+            .read = .{ .throw = sys.read.errors.all },
+            .write = .{ .throw = sys.write.errors.all },
         };
     };
     pub const logging = struct {
