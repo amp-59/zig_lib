@@ -642,7 +642,7 @@ fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
         pub fn formatWriteEnumField(format: Format, array: anytype) void {
             const enum_info: builtin.Type = @typeInfo(fields[0].type);
             const w: enum_info.Enum.tag_type = @field(format.value, fields[1].name);
-            array.writeMany("bit_field(" ++ comptime typeName(enum_info.Enum.tag_type, spec) ++ "){ ");
+            array.writeMany("bit_field(" ++ @typeName(enum_info.Enum.tag_type) ++ "){ ");
             var x: enum_info.Enum.tag_type = w;
             comptime var i: u64 = enum_info.Enum.fields.len;
             inline while (i != 0) {
@@ -681,23 +681,30 @@ fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
         pub fn formatLengthEnumField(format: Format) u64 {
             const enum_info: builtin.Type = @typeInfo(fields[0].type);
             const w: enum_info.Enum.tag_type = @field(format.value, fields[1].name);
-            var len: u64 = 10 + typeName(enum_info.Enum.tag_type, spec).len + 3;
+            var len: u64 = 10 + @typeName(enum_info.Enum.tag_type).len + 3;
             var x: enum_info.Enum.tag_type = w;
             comptime var i: u64 = enum_info.Enum.fields.len;
             inline while (i != 0) {
                 i -= 1;
                 const field: builtin.Type.EnumField = enum_info.Enum.fields[i];
-                const field_name_format: fmt.IdentifierFormat = .{ .value = field.name };
                 if (field.value != 0 or w == 0) {
                     const y: enum_info.Enum.tag_type = @field(format.value, fields[1].name) & field.value;
                     if (y == field.value) {
-                        len +%= 1 + field_name_format.formatLength() + 3;
+                        len +%= 1;
+                        const tag_name_format: fmt.IdentifierFormat = .{ .value = field.name };
+                        len +%= tag_name_format.formatLength() +% 3;
                         x &= ~y;
                     }
                 }
             }
+            if (x != 0) {
+                const int_format: IntFormat(spec, enum_info.Enum.tag_type) = .{ .value = x };
+                len +%= int_format.formatLength() +% 2;
+            }
             if (x != w) {
-                len -= 1;
+                if (x == 0) {
+                    len -%= 1;
+                }
             }
             return len;
         }
