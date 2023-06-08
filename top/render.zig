@@ -92,7 +92,7 @@ pub fn AnyFormat(comptime spec: RenderSpec, comptime Type: type) type {
         else => @compileError(@typeName(Type)),
     };
 }
-fn GenericRenderFormat(comptime Format: type) type {
+pub fn GenericRenderFormat(comptime Format: type) type {
     comptime {
         builtin.static.assertNotEqual(builtin.TypeId, @typeInfo(Format), .Pointer);
     }
@@ -106,7 +106,7 @@ fn GenericRenderFormat(comptime Format: type) type {
     };
     return T;
 }
-fn GenericFormat(comptime spec: RenderSpec) type {
+pub fn GenericFormat(comptime spec: RenderSpec) type {
     const T = struct {
         value: meta.Generic,
         const Format = @This();
@@ -585,7 +585,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
     };
     return T;
 }
-fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
+pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
     if (!spec.ignore_formatter_decls) {
         if (@hasDecl(Union, "formatWrite") and @hasDecl(Union, "formatLength")) {
             return FormatFormat(Union);
@@ -811,7 +811,7 @@ fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
     };
     return T;
 }
-fn EnumFormat(comptime Enum: type) type {
+pub fn EnumFormat(comptime Enum: type) type {
     const T = struct {
         value: Enum,
         const Format: type = @This();
@@ -855,7 +855,7 @@ pub const ComptimeIntFormat = struct {
     }
     pub usingnamespace GenericRenderFormat(Format);
 };
-fn IntFormat(comptime spec: RenderSpec, comptime Int: type) type {
+pub fn IntFormat(comptime spec: RenderSpec, comptime Int: type) type {
     return struct {
         value: Int,
         const Format: type = @This();
@@ -942,7 +942,7 @@ const AddressFormat = struct {
         return len;
     }
 };
-fn PointerOneFormat(comptime spec: RenderSpec, comptime Pointer: type) type {
+pub fn PointerOneFormat(comptime spec: RenderSpec, comptime Pointer: type) type {
     return struct {
         value: Pointer,
         const Format: type = @This();
@@ -1195,7 +1195,7 @@ pub fn PointerManyFormat(comptime spec: RenderSpec, comptime Pointer: type) type
         pub usingnamespace GenericRenderFormat(Format);
     };
 }
-fn OptionalFormat(comptime spec: RenderSpec, comptime Optional: type) type {
+pub fn OptionalFormat(comptime spec: RenderSpec, comptime Optional: type) type {
     return struct {
         value: Optional,
         const Format: type = @This();
@@ -1281,7 +1281,7 @@ pub const NoReturnFormat = struct {
     }
     pub usingnamespace GenericRenderFormat(Format);
 };
-fn VectorFormat(comptime spec: RenderSpec, comptime Vector: type) type {
+pub fn VectorFormat(comptime spec: RenderSpec, comptime Vector: type) type {
     return struct {
         value: Vector,
         const Format: type = @This();
@@ -1319,7 +1319,7 @@ fn VectorFormat(comptime spec: RenderSpec, comptime Vector: type) type {
         pub usingnamespace GenericRenderFormat(Format);
     };
 }
-fn ErrorUnionFormat(comptime spec: RenderSpec, comptime ErrorUnion: type) type {
+pub fn ErrorUnionFormat(comptime spec: RenderSpec, comptime ErrorUnion: type) type {
     return struct {
         value: ErrorUnion,
         const Format: type = @This();
@@ -1348,7 +1348,7 @@ fn ErrorUnionFormat(comptime spec: RenderSpec, comptime ErrorUnion: type) type {
         pub usingnamespace GenericRenderFormat(Format);
     };
 }
-fn ErrorSetFormat(comptime ErrorSet: type) type {
+pub fn ErrorSetFormat(comptime ErrorSet: type) type {
     return struct {
         value: ErrorSet,
         const Format: type = @This();
