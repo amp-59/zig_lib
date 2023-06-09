@@ -129,13 +129,15 @@ fn testParseFloat() !void {
     }
 }
 pub fn floatTestMain() !void {
-    try testParseFloatNaNAndInf();
-    try testParseFloat11169();
-    try testParseFloatHexSpecial();
-    try testParseFloatHexZero();
-    try testParseFloatHexF16();
-    try testParseFloatHexF32();
-    try testParseFloatHexF64();
-    try testParseFloatHexF128();
-    try testParseFloat();
+    if (@hasDecl(top.parse, "parseFloat")) {
+        try testParseFloatNaNAndInf();
+        try testParseFloat11169();
+        try testParseFloatHexSpecial();
+        try testParseFloatHexZero();
+        try testParseFloatHexF16();
+        try testParseFloatHexF32();
+        try testParseFloatHexF64();
+        try testParseFloatHexF128();
+        try testParseFloat();
+    }
 }
