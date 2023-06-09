@@ -942,11 +942,15 @@ pub fn hashTestMain() !void {
         try testTurboSHAKE128(&allocator);
     }
     try testSHA3WithStreaming(&allocator);
-    try testSha384Single(&allocator);
-    try testSha384Streaming(&allocator);
-    try testSha512Single(&allocator);
-    try testSha512Streaming(&allocator);
-    try testSha512AlignedFinal();
+    if (@hasDecl(crypto.hash, "Sha384")) {
+        try testSha384Single(&allocator);
+        try testSha384Streaming(&allocator);
+    }
+    if (@hasDecl(crypto.hash, "Sha512")) {
+        try testSha512Single(&allocator);
+        try testSha512Streaming(&allocator);
+        try testSha512AlignedFinal();
+    }
     try testMd5Single(&allocator);
     try testMd5AlignedFinal();
     try testMd5Streaming(&allocator);
@@ -965,9 +969,11 @@ pub fn hashTestMain() !void {
     try testBlake2b512Streaming(&allocator);
     try testBlake2b512Keyed(&allocator);
     try testBLAKE3ReferenceTestCases();
-    try testSha1Single(&allocator);
-    try testSha1Streaming(&allocator);
-    try testSha1AlignedFinal();
+    if (@hasDecl(crypto.hash, "Sha1")) {
+        try testSha1Single(&allocator);
+        try testSha1Streaming(&allocator);
+        try testSha1AlignedFinal();
+    }
     if (@hasDecl(crypto.hash, "Sha224")) {
         try testSha224Single(&allocator);
         try testSha224Streaming(&allocator);
