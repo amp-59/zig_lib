@@ -1011,7 +1011,7 @@ pub fn PointerOneFormat(comptime spec: RenderSpec, comptime Pointer: type) type 
     };
 }
 pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) type {
-    return struct {
+    const T = struct {
         value: Pointer,
         const Format: type = @This();
         const ChildFormat: type = AnyFormat(spec, child);
@@ -1020,18 +1020,31 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
         const omit_trailing_comma: bool = spec.omit_trailing_comma orelse true;
         const type_name: []const u8 = typeName(Pointer, spec);
         pub fn formatLengthAny(format: anytype) u64 {
-            var len: u64 = @boolToInt(spec.infer_type_names) + type_name.len + 2;
-            if (comptime spec.enable_comptime_iterator and fmt.requireComptime(child)) {
-                inline for (format.value) |value| {
-                    len +%= AnyFormat(spec, child).formatLength(.{ .value = value }) + 2;
+            var len: u64 = 0;
+            if (format.value.len == 0) {
+                if (spec.infer_type_names) {
+                    len +%= 1;
                 }
+                len +%= type_name.len +% 2;
             } else {
-                for (format.value) |value| {
-                    len +%= AnyFormat(spec, child).formatLength(.{ .value = value }) + 2;
+                if (spec.infer_type_names) {
+                    len +%= 1;
                 }
-            }
-            if (!omit_trailing_comma and format.value.len != 0) {
-                len +%= 1;
+                len +%= type_name.len +% 2;
+                if (comptime spec.enable_comptime_iterator and fmt.requireComptime(child)) {
+                    inline for (format.value) |element| {
+                        const sub_format: ChildFormat = .{ .value = element };
+                        len +%= sub_format.formatLength() +% 2;
+                    }
+                } else {
+                    for (format.value) |element| {
+                        const sub_format: ChildFormat = .{ .value = element };
+                        len +%= sub_format.formatLength() +% 2;
+                    }
+                }
+                if (!omit_trailing_comma) {
+                    len +%= 1;
+                }
             }
             return len;
         }
@@ -1137,35 +1150,33 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
             return formatWriteAny(format, array);
         }
         pub fn formatLength(format: anytype) u64 {
-            var len: u64 = 0;
             if (spec.address_view) {
-                len +%= AddressFormat.formatLength(.{ .value = @ptrToInt(format.value.ptr) });
+                return AddressFormat.formatLength(.{ .value = @ptrToInt(format.value.ptr) });
             }
             if (child == u8) {
                 if (spec.multi_line_string_literal) |render_string_literal| {
                     if (render_string_literal) {
                         if (isMultiLine(format.value)) {
-                            len +%= formatLengthMultiLineStringLiteral(format);
+                            return formatLengthMultiLineStringLiteral(format);
                         } else {
-                            len +%= formatLengthStringLiteral(format);
+                            return formatLengthStringLiteral(format);
                         }
                     }
                 }
                 if (spec.string_literal) |render_string_literal| {
                     if (render_string_literal) {
-                        len +%= formatLengthStringLiteral(format);
+                        return formatLengthStringLiteral(format);
                     }
                 }
-            } else {
-                len +%= formatLengthAny(format);
             }
-            return len;
+            return formatLengthAny(format);
         }
         pub usingnamespace GenericRenderFormat(Format);
     };
+    return T;
 }
 pub fn PointerManyFormat(comptime spec: RenderSpec, comptime Pointer: type) type {
-    return struct {
+    const T = struct {
         value: Pointer,
         const Format: type = @This();
         const ChildFormat: type = AnyFormat(spec, child);
@@ -1194,9 +1205,10 @@ pub fn PointerManyFormat(comptime spec: RenderSpec, comptime Pointer: type) type
         }
         pub usingnamespace GenericRenderFormat(Format);
     };
+    return T;
 }
 pub fn OptionalFormat(comptime spec: RenderSpec, comptime Optional: type) type {
-    return struct {
+    const T = struct {
         value: Optional,
         const Format: type = @This();
         const ChildFormat: type = AnyFormat(spec, child);
@@ -1238,6 +1250,7 @@ pub fn OptionalFormat(comptime spec: RenderSpec, comptime Optional: type) type {
         }
         pub usingnamespace GenericRenderFormat(Format);
     };
+    return T;
 }
 pub const NullFormat = struct {
     comptime value: @TypeOf(null) = null,
