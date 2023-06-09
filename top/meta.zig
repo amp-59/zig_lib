@@ -392,6 +392,9 @@ pub inline fn bitCast(comptime T: type, any: anytype) T {
         if (s_type_info == .Int) {
             return @intToEnum(T, any);
         }
+        if (s_type_info == .Bool) {
+            return @intToEnum(T, @boolToInt(any));
+        }
     }
     if (s_type_info == .Enum) {
         if (t_type_info == .Struct) {
