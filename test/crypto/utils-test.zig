@@ -9,8 +9,8 @@ pub const runtime_assertions: bool = true;
 fn testTimingSafeEql() !void {
     var a: [100]u8 = undefined;
     var b: [100]u8 = undefined;
-    crypto.random.bytes(a[0..]);
-    crypto.random.bytes(b[0..]);
+    crypto.utils.bytes(a[0..]);
+    crypto.utils.bytes(b[0..]);
     try builtin.expect(!crypto.utils.timingSafeEql([100]u8, a, b));
     a = b;
     try builtin.expect(crypto.utils.timingSafeEql([100]u8, a, b));
@@ -18,8 +18,8 @@ fn testTimingSafeEql() !void {
 fn testTimingSafeEqlVectors() !void {
     var a: [100]u8 = undefined;
     var b: [100]u8 = undefined;
-    crypto.random.bytes(a[0..]);
-    crypto.random.bytes(b[0..]);
+    crypto.utils.bytes(a[0..]);
+    crypto.utils.bytes(b[0..]);
     const v1: @Vector(100, u8) = a;
     const v2: @Vector(100, u8) = b;
     try builtin.expect(!crypto.utils.timingSafeEql(@Vector(100, u8), v1, v2));
@@ -45,8 +45,8 @@ fn testTimingSafeAddSub() !void {
     const zero: [32]u8 = .{0} ** 32;
     var iterations: usize = 100;
     while (iterations != 0) : (iterations -%= 1) {
-        crypto.random.bytes(&a);
-        crypto.random.bytes(&b);
+        crypto.utils.bytes(&a);
+        crypto.utils.bytes(&b);
         const endian = if (iterations % 2 == 0) builtin.Endian.Big else builtin.Endian.Little;
         _ = crypto.utils.timingSafeSub(u8, &a, &b, &c, endian);
         _ = crypto.utils.timingSafeAdd(u8, &c, &b, &c, endian);
