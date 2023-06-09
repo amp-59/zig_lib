@@ -311,7 +311,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 builtin.proc.exitFault(name, 2);
             }
         }
-        pub fn addToplevel(allocator: *Allocator, args: [][*:0]u8, vars: [][*:0]u8) *Node {
+        pub fn init(allocator: *Allocator, args: [][*:0]u8, vars: [][*:0]u8) *Node {
             @setRuntimeSafety(builder_spec.options.safety);
             if (!thread_space_options.require_map) {
                 mem.map(map(), stack_lb_addr, stack_aligned_bytes * max_thread_count);
@@ -410,7 +410,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 node.addArg(allocator).* = duplicate(allocator, arg);
             }
         }
-
         pub fn addToplevelArgs(node: *Node, allocator: *Allocator) void {
             for ([_][*:0]u8{
                 GlobalState.args[1], GlobalState.args[2],
