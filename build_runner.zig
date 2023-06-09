@@ -32,7 +32,7 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     if (args.len < 5) {
         return error.MissingEnvironmentPaths;
     }
-    const toplevel: *Node = Node.addToplevel(&allocator, args, vars);
+    const toplevel: *Node = Node.init(&allocator, args, vars);
     try meta.wrap(
         root.buildMain(&allocator, toplevel),
     );
