@@ -297,6 +297,6 @@ pub fn main() void {
     }
     array.writeMany("}");
     if (!config.write_separate_source_files) {
-        gen.appendFile(spec.generic.noexcept, config.allocator_file_path, array.readAll());
+        gen.truncateFile(spec.generic.noexcept, config.allocator_file_path, array.readAll());
     }
 }
