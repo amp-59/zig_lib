@@ -8,7 +8,7 @@ const tok = @import("./tok.zig");
 const attr = @import("./attr.zig");
 const types = @import("./types.zig");
 const config = @import("./config.zig");
-pub const kind = @import("./zig-out/src/container_kinds.zig");
+pub const kind = @import("./ctn_kinds.zig");
 pub const list = meta.tagList(Fn);
 
 pub const Fn = enum(u8) {
