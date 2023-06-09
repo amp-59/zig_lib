@@ -137,22 +137,22 @@ fn testWriteLEB128UnsignedFixed() !void {
     {
         var buf: [4]u8 = undefined;
         fmt.writeUnsignedFixed(4, &buf, 0);
-        try testing.expect((try testReadLEB128(u64, &buf)) == 0);
+        try testing.expect((try testReadLEB128(u64, &buf)[0]) == 0);
     }
     {
         var buf: [4]u8 = undefined;
         fmt.writeUnsignedFixed(4, &buf, 1);
-        try testing.expect((try testReadLEB128(u64, &buf)) == 1);
+        try testing.expect((try testReadLEB128(u64, &buf)[0]) == 1);
     }
     {
         var buf: [4]u8 = undefined;
         fmt.writeUnsignedFixed(4, &buf, 1000);
-        try testing.expect((try testReadLEB128(u64, &buf)) == 1000);
+        try testing.expect((try testReadLEB128(u64, &buf)[0]) == 1000);
     }
     {
         var buf: [4]u8 = undefined;
         fmt.writeUnsignedFixed(4, &buf, 10000000);
-        try testing.expect((try testReadLEB128(u64, &buf)) == 10000000);
+        try testing.expect((try testReadLEB128(u64, &buf)[0]) == 10000000);
     }
 }
 fn testReadLEB128Stream(comptime T: type, encoded: []const u8) !T {
@@ -162,7 +162,7 @@ fn testReadLEB128Stream(comptime T: type, encoded: []const u8) !T {
 fn testReadLEB128(comptime T: type, encoded: []const u8) !T {
     var reader = mem.view(encoded);
     const v1 = try parse.readLEB128(T, reader.readAll());
-    return v1;
+    return v1[0];
 }
 fn testReadLEB128Seq(comptime T: type, comptime N: usize, encoded: []const u8) !void {
     var reader = mem.view(encoded);
@@ -204,28 +204,28 @@ fn testEquivalentLEBFormatAndParse() !void {
         const sint_8_fmt: I8 = .{ .value = sint_8 };
         array.undefineAll();
         uint_64_fmt.formatWrite(&array);
-        try builtin.expectEqual(u64, uint, try parse.readLEB128(u64, array.readAll()));
+        try builtin.expectEqual(u64, uint, (try parse.readLEB128(u64, array.readAll()))[0]);
         array.undefineAll();
         uint_32_fmt.formatWrite(&array);
-        try builtin.expectEqual(u32, uint_32, try parse.readLEB128(u32, array.readAll()));
+        try builtin.expectEqual(u32, uint_32, (try parse.readLEB128(u32, array.readAll()))[0]);
         array.undefineAll();
         uint_16_fmt.formatWrite(&array);
-        try builtin.expectEqual(u16, uint_16, try parse.readLEB128(u16, array.readAll()));
+        try builtin.expectEqual(u16, uint_16, (try parse.readLEB128(u16, array.readAll()))[0]);
         array.undefineAll();
         uint_8_fmt.formatWrite(&array);
-        try builtin.expectEqual(u8, uint_8, try parse.readLEB128(u8, array.readAll()));
+        try builtin.expectEqual(u8, uint_8, (try parse.readLEB128(u8, array.readAll()))[0]);
         array.undefineAll();
         sint_64_fmt.formatWrite(&array);
-        try builtin.expectEqual(i64, sint_64, try parse.readLEB128(i64, array.readAll()));
+        try builtin.expectEqual(i64, sint_64, (try parse.readLEB128(i64, array.readAll()))[0]);
         array.undefineAll();
         sint_32_fmt.formatWrite(&array);
-        try builtin.expectEqual(i32, sint_32, try parse.readLEB128(i32, array.readAll()));
+        try builtin.expectEqual(i32, sint_32, (try parse.readLEB128(i32, array.readAll()))[0]);
         array.undefineAll();
         sint_16_fmt.formatWrite(&array);
-        try builtin.expectEqual(i16, sint_16, try parse.readLEB128(i16, array.readAll()));
+        try builtin.expectEqual(i16, sint_16, (try parse.readLEB128(i16, array.readAll()))[0]);
         array.undefineAll();
         sint_8_fmt.formatWrite(&array);
-        try builtin.expectEqual(i8, sint_8, try parse.readLEB128(i8, array.readAll()));
+        try builtin.expectEqual(i8, sint_8, (try parse.readLEB128(i8, array.readAll()))[0]);
     }
     if (test_stream) {
         try testing.expectError(error.EndOfStream, testReadLEB128Stream(i64, "\x80"));
