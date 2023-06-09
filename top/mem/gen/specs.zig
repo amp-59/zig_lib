@@ -716,7 +716,7 @@ fn writeSpecifications(allocator: *config.Allocator, array: *Array) config.Alloc
 }
 fn writeContainerKinds(array: *Array) void {
     array.undefineAll();
-    array.writeMany("const ctn_fn = @import(\"../../ctn_fn.zig\");\n");
+    array.writeMany("const ctn_fn = @import(\"./ctn_fn.zig\");\n");
     const writeKind = attr.Fn.static.writeKindSwitch;
     const Pair = attr.Fn.static.Pair(ctn_fn.Fn);
     const read: Pair = attr.Fn.static.prefixSubTagNew(ctn_fn.Fn, .read);
@@ -789,7 +789,7 @@ fn writeContainerKinds(array: *Array) void {
     writeKind(ctn_fn.Fn, array, .relative_reverse, defined[1] ++ streamed[1]);
     writeKind(ctn_fn.Fn, array, .offset, offset_defined[1] ++ offset_undefined[1] ++ offset_streamed[1] ++ offset_unstreamed[1]);
     writeKind(ctn_fn.Fn, array, .special, helper[0]);
-    gen.truncateFile(write_spec, config.container_kinds_path, array.readAll());
+    gen.truncateFile(spec.generic.noexcept, config.container_kinds_path, array.readAll());
 }
 fn nonEqualIndices(name: []const u8, any: anytype) void {
     var array: mem.StaticString(4096) = undefined;
@@ -918,6 +918,11 @@ pub fn main() !void {
     defer allocator.deinit(&address_space);
     var array: Array = undefined;
     array.undefineAll();
+    file.makeDir(spec.generic.noexcept, config.zig_out_dir, file.mode.directory);
+    file.makeDir(spec.generic.noexcept, config.zig_out_src_dir, file.mode.directory);
+    file.makeDir(spec.generic.noexcept, config.container_dir_path, file.mode.directory);
+    file.makeDir(spec.generic.noexcept, config.reference_dir_path, file.mode.directory);
+    file.makeDir(spec.generic.noexcept, config.container_kinds_path, file.mode.regular);
     array.define(gen.readFile(spec.generic.noexcept, config.container_template_path, array.referAllUndefined()));
     try meta.wrap(writeSpecifications(&allocator, &array));
     var impl_details: []types.Implementation = allocator.allocate(types.Implementation, 0x400);

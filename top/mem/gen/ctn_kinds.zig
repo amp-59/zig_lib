@@ -1,4 +1,4 @@
-const ctn_fn = @import("../../ctn_fn.zig");
+const ctn_fn = @import("./ctn_fn.zig");
 pub fn read(tag: ctn_fn.Fn) bool {
     switch (tag) {
         .readAll,
