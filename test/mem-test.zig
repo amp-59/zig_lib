@@ -244,6 +244,8 @@ fn testUtilityTestFunctions() !void {
     try builtin.expectEqual(u64, 8, mem.indexOfNearestEqualMany(u8, "8", "0123456789", 8).?);
     try builtin.expectEqual(u64, 4, mem.indexOfNearestEqualMany(u8, "4", "0123456789", 4).?);
     try builtin.expectEqual(u64, 0, mem.indexOfNearestEqualMany(u8, "0123456789", "0123456789", 0).?);
+
+    try builtin.expectEqual(u64, @bitCast(u64, [8]u8{ 0, 0, 0, 0, 0, 5, 5, 5 }), mem.readIntVar(u64, &[3]u8{ 5, 5, 5 }, 3));
 }
 
 fn testLallocator() !void {
