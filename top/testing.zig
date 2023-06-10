@@ -8,6 +8,7 @@ const file = @import("./file.zig");
 const meta = @import("./meta.zig");
 const spec = @import("./spec.zig");
 const algo = @import("./algo.zig");
+const dwarf = @import("./dwarf.zig");
 const builtin = @import("./builtin.zig");
 pub fn arrayOfCharsLength(s: []const u8) u64 {
     var len: u64 = 0;
@@ -383,4 +384,17 @@ pub fn refAllDecls(comptime T: type) void {
             }
         }
     }
+}
+pub fn printFunctions() !void {
+    const fd: u64 = try file.open(.{ .options = .{ .no_follow = false } }, "/proc/self/exe");
+    const st: file.Status = try file.status(.{ .options = .{ .no_follow = false } }, fd);
+    var allocator: mem.SimpleAllocator = .{};
+    const buf: []u8 = allocator.allocateAligned(u8, st.size, 4096);
+    try file.read(.{ .return_type = void }, fd, buf);
+    var di: dwarf.DwarfInfo = dwarf.DwarfInfo.init(@ptrToInt(buf.ptr));
+    try di.scanAllFunctions(&allocator);
+    for (di.funcs[0..di.funcs_len]) |func| {
+        printN(4096, .{ fmt.any(func), '\n' });
+    }
+    allocator.unmap();
 }
