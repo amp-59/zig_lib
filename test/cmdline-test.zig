@@ -94,7 +94,7 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     if (args.len < 5) {
         return error.MissingEnvironmentPaths;
     }
-    const toplevel: *Node = Node.addToplevel(&allocator, args, vars);
+    const toplevel: *Node = Node.init(&allocator, args, vars);
     const g0: *Node = try toplevel.addGroup(&allocator, "g0");
     const t0: *Node = try g0.addBuild(&allocator, .{
         .kind = .obj,

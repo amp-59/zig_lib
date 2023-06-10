@@ -2568,7 +2568,7 @@ pub fn testLargeFlatStructureBuilder(args: anytype, vars: anytype, address_space
     defer if (Node.Allocator != mem.SimpleAllocator) {
         allocator_b.deinit(address_space, Node.max_thread_count);
     };
-    var builder: *Node = try meta.wrap(Node.addToplevel(&allocator_b, args, vars));
+    var builder: *Node = try meta.wrap(Node.init(&allocator_b, args, vars));
     try testBuildProgram(&allocator_b, builder);
     var buf: [4096]u8 = undefined;
 
