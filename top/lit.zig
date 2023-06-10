@@ -56,7 +56,7 @@ pub const ud8 = [256][:0]const u8{
     "240", "241", "242", "243", "244", "245", "246", "247", "248", "249",
     "250", "251", "252", "253", "254", "255",
 };
-pub const esc_hex_sequences = [256][:0]const u8{
+const ehxs = [256][:0]const u8{
     "\\x00", "\\x01", "\\x02", "\\x03", "\\x04", "\\x05", "\\x06", "\\x07", "\\x08",
     "\\x09", "\\x0a", "\\x0b", "\\x0c", "\\x0d", "\\x0e", "\\x0f", "\\x10", "\\x11",
     "\\x12", "\\x13", "\\x14", "\\x15", "\\x16", "\\x17", "\\x18", "\\x19", "\\x1a",
@@ -87,7 +87,7 @@ pub const esc_hex_sequences = [256][:0]const u8{
     "\\xf3", "\\xf4", "\\xf5", "\\xf6", "\\xf7", "\\xf8", "\\xf9", "\\xfa", "\\xfb",
     "\\xfc", "\\xfd", "\\xfe", "\\xff",
 };
-pub const lit_hex_sequences: [256][:0]const u8 = .{
+pub const lhxs: [256][:0]const u8 = .{
     "\\x00", "\\x01", "\\x02", "\\x03", "\\x04", "\\x05", "\\x06", "\\x07", "\\x08",
     "\\x09", "\\x0a", "\\x0b", "\\x0c", "\\x0d", "\\x0e", "\\x0f", "\\x10", "\\x11",
     "\\x12", "\\x13", "\\x14", "\\x15", "\\x16", "\\x17", "\\x18", "\\x19", "\\x1a",
@@ -118,6 +118,8 @@ pub const lit_hex_sequences: [256][:0]const u8 = .{
     "\\xf3", "\\xf4", "\\xf5", "\\xf6", "\\xf7", "\\xf8", "\\xf9", "\\xfa", "\\xfb",
     "\\xfc", "\\xfd", "\\xfe", "\\xff",
 };
+pub const esc_hex_sequences = ehxs;
+pub const lit_hex_sequences = lhxs;
 pub const Range = extern struct {
     lower: u8,
     upper: u8,
