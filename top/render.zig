@@ -856,7 +856,7 @@ pub const ComptimeIntFormat = struct {
     pub usingnamespace GenericRenderFormat(Format);
 };
 pub fn IntFormat(comptime spec: RenderSpec, comptime Int: type) type {
-    return struct {
+    const T = struct {
         value: Int,
         const Format: type = @This();
         const Abs: type = @Type(.{ .Int = .{ .bits = type_info.Int.bits, .signedness = .unsigned } });
@@ -923,6 +923,7 @@ pub fn IntFormat(comptime spec: RenderSpec, comptime Int: type) type {
         }
         pub usingnamespace GenericRenderFormat(Format);
     };
+    return T;
 }
 const AddressFormat = struct {
     value: usize,
@@ -943,7 +944,7 @@ const AddressFormat = struct {
     }
 };
 pub fn PointerOneFormat(comptime spec: RenderSpec, comptime Pointer: type) type {
-    return struct {
+    const T = struct {
         value: Pointer,
         const Format: type = @This();
         const SubFormat = meta.Return(fmt.ux64);
@@ -1009,6 +1010,7 @@ pub fn PointerOneFormat(comptime spec: RenderSpec, comptime Pointer: type) type 
         }
         pub usingnamespace GenericRenderFormat(Format);
     };
+    return T;
 }
 pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) type {
     const T = struct {
@@ -1295,7 +1297,7 @@ pub const NoReturnFormat = struct {
     pub usingnamespace GenericRenderFormat(Format);
 };
 pub fn VectorFormat(comptime spec: RenderSpec, comptime Vector: type) type {
-    return struct {
+    const T = struct {
         value: Vector,
         const Format: type = @This();
         const ChildFormat: type = AnyFormat(spec, child);
@@ -1331,9 +1333,10 @@ pub fn VectorFormat(comptime spec: RenderSpec, comptime Vector: type) type {
         }
         pub usingnamespace GenericRenderFormat(Format);
     };
+    return T;
 }
 pub fn ErrorUnionFormat(comptime spec: RenderSpec, comptime ErrorUnion: type) type {
-    return struct {
+    const T = struct {
         value: ErrorUnion,
         const Format: type = @This();
         const type_info: builtin.Type = @typeInfo(ErrorUnion);
@@ -1360,9 +1363,10 @@ pub fn ErrorUnionFormat(comptime spec: RenderSpec, comptime ErrorUnion: type) ty
         }
         pub usingnamespace GenericRenderFormat(Format);
     };
+    return T;
 }
 pub fn ErrorSetFormat(comptime ErrorSet: type) type {
-    return struct {
+    const T = struct {
         value: ErrorSet,
         const Format: type = @This();
         pub fn formatWrite(format: Format, array: anytype) void {
@@ -1374,9 +1378,10 @@ pub fn ErrorSetFormat(comptime ErrorSet: type) type {
         }
         pub usingnamespace GenericRenderFormat(Format);
     };
+    return T;
 }
 pub fn ContainerFormat(comptime spec: RenderSpec, comptime Struct: type) type {
-    return struct {
+    const T = struct {
         value: Struct,
         const Format = @This();
         const values_spec: RenderSpec = blk: {
@@ -1409,9 +1414,10 @@ pub fn ContainerFormat(comptime spec: RenderSpec, comptime Struct: type) type {
             return len;
         }
     };
+    return T;
 }
 pub fn FormatFormat(comptime Struct: type) type {
-    return struct {
+    const T = struct {
         value: Struct,
         const Format = @This();
         pub inline fn formatWrite(format: Format, array: anytype) void {
@@ -1421,6 +1427,7 @@ pub fn FormatFormat(comptime Struct: type) type {
             return format.value.formatLength();
         }
     };
+    return T;
 }
 pub const TypeDescrFormatSpec = struct {
     options: Options = .{},
