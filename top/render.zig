@@ -31,11 +31,9 @@ pub const RenderSpec = struct {
     ignore_formatter_decls: bool = true,
     ignore_reinterpret_decls: bool = true,
     ignore_container_decls: bool = false,
-    const RadixFieldName = struct {
-        radix: u16 = 10,
-        prefix: ?[]const u8 = null,
-        suffix: ?[]const u8 = null,
-    };
+    attempt_render_pointer_many: bool = true,
+    pointer_many_len_field_name_suffix: []const u8 = "_len",
+    pointer_many_max_len_field_name_suffix: []const u8 = "max_len",
     const default: RenderSpec = .{};
 };
 pub inline fn any(value: anytype) AnyFormat(RenderSpec.default, @TypeOf(value)) {
@@ -497,6 +495,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
     const T = struct {
         value: Struct,
         const Format: type = @This();
+        const undef: Struct = @as(Struct, undefined);
         const type_name: []const u8 = typeName(Struct, spec);
         const fields: []const builtin.Type.StructField = @typeInfo(Struct).Struct.fields;
         const omit_trailing_comma: bool = spec.omit_trailing_comma orelse false;
@@ -532,6 +531,18 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
             array.writeCount(3, " = ".*);
             writeFormat(array, field_format);
             array.writeCount(2, ", ".*);
+        }
+        fn deduceFieldPrimitiveArraySize(comptime field_name: []const u8, comptime field_type: type) bool {
+            const field_type_info: builtin.Type = @typeInfo(field_type);
+            if (field_type_info == .Pointer and field_type_info.Pointer.Size == .Many) {
+                const len_field_name: []const u8 = field_name ++ "_len";
+                if (@hasField(Struct, len_field_name) and
+                    @TypeOf(@field(undef, len_field_name)))
+                {
+                    comptime return true;
+                }
+            }
+            comptime return false;
         }
         pub fn formatWrite(format: anytype, array: anytype) void {
             if (fields.len == 0) {

@@ -1,4 +1,5 @@
 const mach = @import("./mach.zig");
+const meta = @import("./meta.zig");
 const builtin = @import("./builtin.zig");
 pub const nan_u16: u16 = @as(u16, 0x7C01);
 pub const nan_f16: f16 = @bitCast(f16, nan_u16);
