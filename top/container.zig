@@ -122,7 +122,9 @@ pub const ReinterpretSpec = struct {
         type_name: bool = false,
     };
 };
-pub const reinterpret = opaque {
+
+pub const reinterpret = @"1";
+const @"1" = opaque {
     fn isEquivalent(comptime child: type, comptime write_spec: ReinterpretSpec, comptime dst_type: type, comptime src_type: type) bool {
         const dst_type_info: builtin.Type = @typeInfo(dst_type);
         const src_type_info: builtin.Type = @typeInfo(src_type);
@@ -564,7 +566,7 @@ pub const reinterpret = opaque {
     fn formatLengthFault(format_type_name: []const u8, operator_symbol: []const u8, s_len: u64, t_len: u64) noreturn {
         const help_read: bool = t_len > 99_999;
         const notation: []const u8 = if (help_read) ", i.e. " else "\n";
-        var buf: [512]u8 = undefined;
+        var buf: [32768]u8 = undefined;
         var len: u64 = mach.memcpyMulti(&buf, &[_][]const u8{
             format_type_name, builtin.fmt.ud64(t_len).readAll(),
             operator_symbol,  builtin.fmt.ud64(s_len).readAll(),
