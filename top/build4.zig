@@ -63,6 +63,9 @@ pub const BuilderSpec = struct {
         prefer_simple_allocator: bool = true,
         /// Determines whether to use the Zig compiler server
         enable_caching: bool = true,
+        /// Executables with debug information include DWARF parser and
+        /// stack trace writers.
+        enable_stack_traces: bool = false,
         /// Initial size of all nodes' `paths` buffer
         paths_init_len: u64 = 2,
         /// Initial size of worker nodes' `deps` buffer
@@ -2086,8 +2089,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 const buf0: [*]u8 = @intToPtr([*]u8, allocator.allocateRaw(1024 *% 1024, 1));
                 var len0: u64 = toplevel.names[0].len;
                 const buf1: [*]u8 = @intToPtr([*]u8, allocator.allocateRaw(4096, 1));
-                mach.memset(buf0, '@', 1024 * 1024);
-                mach.memset(buf1, '@', 4096);
                 mach.memcpy(buf0, toplevel.names[0].ptr, toplevel.names[0].len);
                 len0 +%= toplevelCommandNoticeInternal(buf0 + len0, buf1, 0, toplevel, name_width, root_width);
                 buf0[len0] = '\n';

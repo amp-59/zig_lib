@@ -1922,6 +1922,12 @@ pub fn GenericSimpleMap(comptime Key: type, comptime Value: type) type {
     };
 }
 // Begin standard library ghetto:
+pub fn readIntVar(comptime T: type, buf: []const u8, len: u64) T {
+    @setRuntimeSafety(builtin.is_safe);
+    var ret: [@sizeOf(T)]u8 = undefined;
+    for (ret[@sizeOf(T) -% len ..], 0..) |*byte, idx| byte.* = buf[idx];
+    return @bitCast(T, ret);
+}
 pub fn readIntNative(comptime T: type, bytes: *const [@divExact(@typeInfo(T).Int.bits, 8)]u8) T {
     return @ptrCast(*align(1) const T, bytes).*;
 }
