@@ -393,11 +393,13 @@ pub fn printFunctions() !void {
     const buf: []u8 = allocator.allocateAligned(u8, st.size, 4096);
     try file.read(.{ .return_type = void }, fd, buf);
     var di: dwarf.DwarfInfo = dwarf.DwarfInfo.init(@ptrToInt(buf.ptr));
-    try di.scanAllFunctions(&allocator);
-    for (di.funcs[0..di.funcs_len]) |func| {
-        printN(4096, .{ fmt.any(func), '\n' });
+    defer {
+        for (di.funcs[0..di.funcs_len]) |func| {
+            printN(4096, .{ fmt.any(func), '\n' });
+        }
+        allocator.unmap();
     }
-    allocator.unmap();
+    try di.scanAllFunctions(&allocator);
 }
 pub fn printCompileUnits() !void {
     const fd: u64 = try file.open(.{ .options = .{ .no_follow = false } }, "/proc/self/exe");
@@ -406,22 +408,24 @@ pub fn printCompileUnits() !void {
     const buf: []u8 = allocator.allocateAligned(u8, st.size, 4096);
     try file.read(.{ .return_type = void }, fd, buf);
     var di: dwarf.DwarfInfo = dwarf.DwarfInfo.init(@ptrToInt(buf.ptr));
-    try di.scanAllFunctions(&allocator);
-    for (di.compile_units[0..di.compile_units_len]) |compile_unit| {
-        printN(4096, .{ fmt.any(compile_unit), '\n' });
+    defer {
+        for (di.units[0..di.units_len]) |unit| {
+            printN(4096, .{ fmt.any(unit), '\n' });
+        }
+        allocator.unmap();
     }
-    allocator.unmap();
+    try di.scanAllCompileUnits(&allocator);
 }
-pub fn printResources() void {
+pub fn printResources() !void {
     var buf: [4096]u8 = undefined;
-    const dir_fd: u64 = file.open(.{ .errors = .{}, .options = .{ .directory = true } }, "/proc/self/fd");
-    var len: u64 = file.getDirectoryEntries(.{ .errors = .{} }, dir_fd, &buf);
+    const dir_fd: u64 = file.open(.{ .options = .{ .directory = true } }, "/proc/self/fd");
+    var len: u64 = try file.getDirectoryEntries(.{ .errors = .{} }, dir_fd, &buf);
     var off: u64 = 0;
     while (off != len) {
         const ent: file.DirectoryEntry = builtin.ptrCast(*const file.DirectoryEntry, buf[off..]).*;
         const name: [:0]const u8 = meta.manyToSlice(builtin.ptrCast([*:0]u8, &ent.array));
         if (ent.kind == sys.S.IFLNKR) {
-            const pathname: [:0]const u8 = file.readLinkAt(.{ .errors = .{} }, dir_fd, name, buf[len..]);
+            const pathname: [:0]const u8 = try file.readLinkAt(.{}, dir_fd, name, buf[len..]);
             builtin.debug.write(name);
             builtin.debug.write(" -> ");
             builtin.debug.write(pathname);
@@ -430,8 +434,10 @@ pub fn printResources() void {
         off +%= ent.reclen;
     }
     file.close(.{ .errors = .{} }, dir_fd);
-    const maps_fd: u64 = file.open(.{ .errors = .{} }, "/proc/self/maps");
-    len = file.read(.{ .errors = .{} }, maps_fd, &buf);
+    const maps_fd: u64 = try file.open(.{}, "/proc/self/maps");
+    len = try file.read(.{}, maps_fd, &buf);
     builtin.debug.write(buf[0..len]);
-    file.close(.{ .errors = .{} }, maps_fd);
+    file.close(.{}, maps_fd);
+    const status_fd: u64 = try file.open(.{}, "/proc/self/status");
+    _ = try file.send(.{}, 1, status_fd, null, ~@as(u64, 0));
 }
