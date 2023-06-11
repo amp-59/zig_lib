@@ -66,18 +66,6 @@ pub const BuilderSpec = struct {
         /// Executables with debug information include DWARF parser and
         /// stack trace writers.
         enable_stack_traces: bool = false,
-        /// Initial size of all nodes' `paths` buffer
-        paths_init_len: u64 = 2,
-        /// Initial size of worker nodes' `deps` buffer
-        deps_init_len: u64 = 1,
-        /// Initial size of toplevel and group nodes' `nodes` buffers
-        nodes_init_len: u64 = 1,
-        /// Initial size of group nodes `args` buffer
-        args_init_len: u64 = 4,
-        /// Initial size of toplevel nodes `fds` buffer
-        fds_init_len: u64 = 1,
-        /// Initial size of all nodes `names` buffer
-        names_init_len: u64 = 2,
         /// Enable runtime safety
         safety: bool = false,
         names: struct {
@@ -101,7 +89,6 @@ pub const BuilderSpec = struct {
             /// Basename of auxiliary output directory relative to output directory.
             aux_out_dir: [:0]const u8 = "aux",
         } = .{},
-        /// Configuration for output pathnames
         extensions: struct {
             /// Extension for Zig source files
             zig: [:0]const u8 = ".zig",
@@ -123,6 +110,20 @@ pub const BuilderSpec = struct {
             analysis: [:0]const u8 = ".json",
             /// Extension for documentation files
             docs: [:0]const u8 = ".html",
+        } = .{},
+        init_len: struct {
+            /// Initial size of all nodes' `paths` buffer
+            paths: u64 = 2,
+            /// Initial size of worker nodes' `deps` buffer
+            deps: u64 = 1,
+            /// Initial size of toplevel and group nodes' `nodes` buffers
+            nodes: u64 = 1,
+            /// Initial size of group nodes `args` buffer
+            args: u64 = 4,
+            /// Initial size of toplevel nodes `fds` buffer
+            fds: u64 = 1,
+            /// Initial size of all nodes `names` buffer
+            names: u64 = 2,
         } = .{},
     };
     pub const Logging = packed struct {
