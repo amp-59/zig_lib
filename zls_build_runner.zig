@@ -7,6 +7,7 @@ const zig_lib = blk: {
         break :blk root.zig_lib;
     }
 };
+
 const mem = zig_lib.mem;
 const sys = zig_lib.sys;
 const proc = zig_lib.proc;
@@ -16,6 +17,7 @@ const mach = zig_lib.mach;
 const spec = zig_lib.spec;
 const build = zig_lib.build;
 const builtin = zig_lib.builtin;
+const testing = zig_lib.testing;
 const dependencies = @import("@dependencies");
 pub usingnamespace root;
 pub usingnamespace proc.start;
@@ -36,7 +38,7 @@ inline fn cpy(buf: []u8, any: anytype) u64 {
     @ptrCast(*@TypeOf(any), buf.ptr).* = any;
     return any.len;
 }
-pub fn lengthJSON(cfg: *const BuildConfig) u64 {
+fn lengthJSON(cfg: *const BuildConfig) u64 {
     @setRuntimeSafety(false);
     var len: u64 = 34;
     if (cfg.packages.len == 0) {
@@ -62,7 +64,7 @@ pub fn lengthJSON(cfg: *const BuildConfig) u64 {
     }
     return len;
 }
-pub fn writeJSON(cfg: *const BuildConfig, buf: []u8) u64 {
+fn writeJSON(cfg: *const BuildConfig, buf: []u8) u64 {
     @setRuntimeSafety(false);
     var len: u64 = 0;
     len +%= cpy(buf[len..], "{ \"packages\": ".*);
@@ -140,7 +142,6 @@ fn writeModulesBuf(pkgs: [*]BuildConfig.Pkg, node: *Node) u64 {
     return len;
 }
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
-    @setRuntimeSafety(false);
     var address_space: Node.AddressSpace = .{};
     var allocator: Node.Allocator = if (Node.Allocator == mem.SimpleAllocator)
         Node.Allocator.init_arena(Node.AddressSpace.arena(Node.max_thread_count))
@@ -149,7 +150,7 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     if (args.len < 5) {
         return error.MissingEnvironmentPaths;
     }
-    const toplevel: *Node = Node.addToplevel(&allocator, args, vars);
+    const toplevel: *Node = Node.init(&allocator, args, vars);
     try meta.wrap(
         root.buildMain(&allocator, toplevel),
     );
