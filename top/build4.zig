@@ -365,43 +365,49 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         }
         fn addPath(node: *Node, allocator: *Allocator) *types.Path {
             @setRuntimeSafety(builder_spec.options.safety);
+            const size_of: comptime_int = @sizeOf(types.Path);
             const addr_buf: *u64 = @ptrCast(*u64, &node.paths);
-            const ret: *types.Path = @intToPtr(*types.Path, allocator.addGeneric(@sizeOf(types.Path), builder_spec.options.init_len.paths, addr_buf, &node.paths_max_len, node.paths_len));
+            const ret: *types.Path = @intToPtr(*types.Path, allocator.addGeneric(size_of, builder_spec.options.init_len.paths, addr_buf, &node.paths_max_len, node.paths_len));
             node.paths_len +%= 1;
             return ret;
         }
         fn addName(node: *Node, allocator: *Allocator) *[]const u8 {
             @setRuntimeSafety(builder_spec.options.safety);
+            const size_of: comptime_int = @sizeOf([]const u8);
             const addr_buf: *u64 = @ptrCast(*u64, &node.names);
-            const ret: *[]const u8 = @intToPtr(*[]const u8, allocator.addGeneric(@sizeOf([]const u8), builder_spec.options.init_len.names, addr_buf, &node.names_max_len, node.names_len));
+            const ret: *[]const u8 = @intToPtr(*[]const u8, allocator.addGeneric(size_of, builder_spec.options.init_len.names, addr_buf, &node.names_max_len, node.names_len));
             node.names_len +%= 1;
             return ret;
         }
         fn addNode(node: *Node, allocator: *Allocator) **Node {
             @setRuntimeSafety(builder_spec.options.safety);
+            const size_of: comptime_int = @sizeOf(*Node);
             const addr_buf: *u64 = @ptrCast(*u64, &node.nodes);
-            const ret: **Node = @intToPtr(**Node, allocator.addGeneric(@sizeOf(*Node), builder_spec.options.init_len.nodes, addr_buf, &node.nodes_max_len, node.nodes_len));
+            const ret: **Node = @intToPtr(**Node, allocator.addGeneric(size_of, builder_spec.options.init_len.nodes, addr_buf, &node.nodes_max_len, node.nodes_len));
             node.nodes_len +%= 1;
             return ret;
         }
         fn addDep(node: *Node, allocator: *Allocator) *Dependency {
             @setRuntimeSafety(builder_spec.options.safety);
+            const size_of: comptime_int = @sizeOf(Dependency);
             const addr_buf: *u64 = @ptrCast(*u64, &node.deps);
-            const ret: *Dependency = @intToPtr(*Dependency, allocator.addGeneric(@sizeOf(Dependency), builder_spec.options.init_len.deps, addr_buf, &node.deps_max_len, node.deps_len));
+            const ret: *Dependency = @intToPtr(*Dependency, allocator.addGeneric(size_of, builder_spec.options.init_len.deps, addr_buf, &node.deps_max_len, node.deps_len));
             node.deps_len +%= 1;
             return ret;
         }
         fn addArg(node: *Node, allocator: *Allocator) *[*:0]u8 {
             @setRuntimeSafety(builder_spec.options.safety);
+            const size_of: comptime_int = @sizeOf([*:0]u8);
             const addr_buf: *u64 = @ptrCast(*u64, &node.args);
-            const ret: *[*:0]u8 = @intToPtr(*[*:0]u8, allocator.addGeneric(@sizeOf([*:0]u8), builder_spec.options.init_len.args, addr_buf, &node.args_max_len, node.args_len));
+            const ret: *[*:0]u8 = @intToPtr(*[*:0]u8, allocator.addGeneric(size_of, builder_spec.options.init_len.args, addr_buf, &node.args_max_len, node.args_len));
             node.args_len +%= 1;
             return ret;
         }
         fn addFd(node: *Node, allocator: *Allocator, fd: u64) void {
             @setRuntimeSafety(builder_spec.options.safety);
+            const size_of: comptime_int = @sizeOf(u32);
             const addr_buf: *u64 = @ptrCast(*u64, &node.fds);
-            const ret: *u32 = @intToPtr(*u32, allocator.addGeneric(@sizeOf(u32), builder_spec.options.init_len.fds, addr_buf, &node.fds_max_len, node.fds_len));
+            const ret: *u32 = @intToPtr(*u32, allocator.addGeneric(size_of, builder_spec.options.init_len.fds, addr_buf, &node.fds_max_len, node.fds_len));
             node.fds_len +%= 1;
             ret.* = @intCast(u32, fd);
         }
@@ -1447,7 +1453,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     pos = idx +% 1;
                 }
             }
-            ptrs[len] = builtin.zero([*:0]u8);
+            ptrs[len] = comptime builtin.zero([*:0]u8);
             return ptrs[0..len];
         }
         fn makeCommandName(allocator: *Allocator, root: [:0]const u8) [:0]const u8 {
