@@ -3,6 +3,7 @@
 //! Still more infrastructure is needed.
 const mem = @import("./mem.zig");
 const fmt = @import("./fmt.zig");
+const sys = @import("./sys.zig");
 const lit = @import("./lit.zig");
 const file = @import("./file.zig");
 const meta = @import("./meta.zig");
@@ -397,4 +398,40 @@ pub fn printFunctions() !void {
         printN(4096, .{ fmt.any(func), '\n' });
     }
     allocator.unmap();
+}
+pub fn printCompileUnits() !void {
+    const fd: u64 = try file.open(.{ .options = .{ .no_follow = false } }, "/proc/self/exe");
+    const st: file.Status = try file.status(.{ .options = .{ .no_follow = false } }, fd);
+    var allocator: mem.SimpleAllocator = .{};
+    const buf: []u8 = allocator.allocateAligned(u8, st.size, 4096);
+    try file.read(.{ .return_type = void }, fd, buf);
+    var di: dwarf.DwarfInfo = dwarf.DwarfInfo.init(@ptrToInt(buf.ptr));
+    try di.scanAllFunctions(&allocator);
+    for (di.compile_units[0..di.compile_units_len]) |compile_unit| {
+        printN(4096, .{ fmt.any(compile_unit), '\n' });
+    }
+    allocator.unmap();
+}
+pub fn printResources() void {
+    var buf: [4096]u8 = undefined;
+    const dir_fd: u64 = file.open(.{ .errors = .{}, .options = .{ .directory = true } }, "/proc/self/fd");
+    var len: u64 = file.getDirectoryEntries(.{ .errors = .{} }, dir_fd, &buf);
+    var off: u64 = 0;
+    while (off != len) {
+        const ent: file.DirectoryEntry = builtin.ptrCast(*const file.DirectoryEntry, buf[off..]).*;
+        const name: [:0]const u8 = meta.manyToSlice(builtin.ptrCast([*:0]u8, &ent.array));
+        if (ent.kind == sys.S.IFLNKR) {
+            const pathname: [:0]const u8 = file.readLinkAt(.{ .errors = .{} }, dir_fd, name, buf[len..]);
+            builtin.debug.write(name);
+            builtin.debug.write(" -> ");
+            builtin.debug.write(pathname);
+            builtin.debug.write("\n");
+        }
+        off +%= ent.reclen;
+    }
+    file.close(.{ .errors = .{} }, dir_fd);
+    const maps_fd: u64 = file.open(.{ .errors = .{} }, "/proc/self/maps");
+    len = file.read(.{ .errors = .{} }, maps_fd, &buf);
+    builtin.debug.write(buf[0..len]);
+    file.close(.{ .errors = .{} }, maps_fd);
 }
