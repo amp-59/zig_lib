@@ -1769,8 +1769,16 @@ pub const SimpleAllocator = struct {
         const mask: u64 = alignment -% 1;
         return (allocator.next +% mask) & ~mask;
     }
-    inline fn copy(dest: u64, src: u64, len: u64) void {
-        mach.memcpy(@intToPtr([*]u8, dest), @intToPtr([*]const u8, src), len);
+    pub fn addGeneric(allocator: *Allocator, size: u64, init_len: u64, ptr: *u64, max_len: *u64, len: u64) u64 {
+        const new_max_len: u64 = len +% 2;
+        if (max_len.* == 0) {
+            ptr.* = allocateInternal(allocator, size *% init_len, 8);
+            max_len.* = init_len;
+        } else if (len == max_len.*) {
+            ptr.* = reallocateInternal(allocator, ptr.*, size *% max_len.*, size *% new_max_len, 8);
+            max_len.* = new_max_len;
+        }
+        return ptr.* +% (size *% len);
     }
     pub const allocateRaw = allocateInternal;
     pub const reallocateRaw = reallocateInternal;
@@ -1809,7 +1817,7 @@ pub const SimpleAllocator = struct {
             return old_aligned;
         }
         const new_aligned: u64 = allocator.allocateInternal(new_size_of, align_of);
-        copy(new_aligned, old_aligned, old_size_of);
+        mach.rngcpy(new_aligned, old_aligned, old_size_of);
         return new_aligned;
     }
     fn deallocateInternal(
