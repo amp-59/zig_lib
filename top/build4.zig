@@ -238,7 +238,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         deps: [*]Dependency,
         deps_max_len: u64,
         deps_len: u64,
-        fds: [*]u64,
+        fds: [*]u32,
         fds_max_len: u64,
         fds_len: u64,
         kind: types.NodeKind,
@@ -363,47 +363,47 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             }
             return ret;
         }
-        fn addGeneric(allocator: *Allocator, size: u64, init_len: u64, ptr: *u64, max_len: *u64, len: u64) u64 {
-            @setRuntimeSafety(builder_spec.options.safety);
-            const new_max_len: u64 = (len +% 1) *% 2;
-            if (max_len.* == 0) {
-                ptr.* = allocator.allocateRaw(size *% init_len, 8);
-                max_len.* = init_len;
-            } else if (len == max_len.*) {
-                ptr.* = allocator.reallocateRaw(ptr.*, size *% max_len.*, size *% new_max_len, 8);
-                max_len.* = new_max_len;
-            }
-            return ptr.* +% (size *% len);
-        }
         fn addPath(node: *Node, allocator: *Allocator) *types.Path {
             @setRuntimeSafety(builder_spec.options.safety);
-            const ret: *types.Path = @intToPtr(*types.Path, addGeneric(allocator, @sizeOf(types.Path), builder_spec.options.paths_init_len, @ptrCast(*u64, &node.paths), &node.paths_max_len, node.paths_len));
+            const addr_buf: *u64 = @ptrCast(*u64, &node.paths);
+            const ret: *types.Path = @intToPtr(*types.Path, allocator.addGeneric(@sizeOf(types.Path), builder_spec.options.init_len.paths, addr_buf, &node.paths_max_len, node.paths_len));
             node.paths_len +%= 1;
             return ret;
         }
         fn addName(node: *Node, allocator: *Allocator) *[]const u8 {
             @setRuntimeSafety(builder_spec.options.safety);
-            const ret: *[]const u8 = @intToPtr(*[]const u8, addGeneric(allocator, @sizeOf([]const u8), builder_spec.options.names_init_len, @ptrCast(*u64, &node.names), &node.names_max_len, node.names_len));
+            const addr_buf: *u64 = @ptrCast(*u64, &node.names);
+            const ret: *[]const u8 = @intToPtr(*[]const u8, allocator.addGeneric(@sizeOf([]const u8), builder_spec.options.init_len.names, addr_buf, &node.names_max_len, node.names_len));
             node.names_len +%= 1;
             return ret;
         }
         fn addNode(node: *Node, allocator: *Allocator) **Node {
             @setRuntimeSafety(builder_spec.options.safety);
-            const ret: **Node = @intToPtr(**Node, addGeneric(allocator, @sizeOf(*Node), builder_spec.options.nodes_init_len, @ptrCast(*u64, &node.nodes), &node.nodes_max_len, node.nodes_len));
+            const addr_buf: *u64 = @ptrCast(*u64, &node.nodes);
+            const ret: **Node = @intToPtr(**Node, allocator.addGeneric(@sizeOf(*Node), builder_spec.options.init_len.nodes, addr_buf, &node.nodes_max_len, node.nodes_len));
             node.nodes_len +%= 1;
             return ret;
         }
         fn addDep(node: *Node, allocator: *Allocator) *Dependency {
             @setRuntimeSafety(builder_spec.options.safety);
-            const ret: *Dependency = @intToPtr(*Dependency, addGeneric(allocator, @sizeOf(Dependency), builder_spec.options.deps_init_len, @ptrCast(*u64, &node.deps), &node.deps_max_len, node.deps_len));
+            const addr_buf: *u64 = @ptrCast(*u64, &node.deps);
+            const ret: *Dependency = @intToPtr(*Dependency, allocator.addGeneric(@sizeOf(Dependency), builder_spec.options.init_len.deps, addr_buf, &node.deps_max_len, node.deps_len));
             node.deps_len +%= 1;
             return ret;
         }
         fn addArg(node: *Node, allocator: *Allocator) *[*:0]u8 {
             @setRuntimeSafety(builder_spec.options.safety);
-            const ret: *[*:0]u8 = @intToPtr(*[*:0]u8, addGeneric(allocator, @sizeOf([*:0]u8), builder_spec.options.args_init_len, @ptrCast(*u64, &node.args), &node.args_max_len, node.args_len));
+            const addr_buf: *u64 = @ptrCast(*u64, &node.args);
+            const ret: *[*:0]u8 = @intToPtr(*[*:0]u8, allocator.addGeneric(@sizeOf([*:0]u8), builder_spec.options.init_len.args, addr_buf, &node.args_max_len, node.args_len));
             node.args_len +%= 1;
             return ret;
+        }
+        fn addFd(node: *Node, allocator: *Allocator, fd: u64) void {
+            @setRuntimeSafety(builder_spec.options.safety);
+            const addr_buf: *u64 = @ptrCast(*u64, &node.fds);
+            const ret: *u32 = @intToPtr(*u32, allocator.addGeneric(@sizeOf(u32), builder_spec.options.init_len.fds, addr_buf, &node.fds_max_len, node.fds_len));
+            node.fds_len +%= 1;
+            ret.* = @intCast(u32, fd);
         }
         pub fn addRunArg(node: *Node, allocator: *Allocator, arg: []const u8) void {
             if (@ptrToInt(arg.ptr) <= arena_up_addr and
@@ -422,19 +422,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 node.addArg(allocator).* = arg;
             }
         }
-        fn addFd(node: *Node, allocator: *Allocator, fd: u64) void {
-            @setRuntimeSafety(builder_spec.options.safety);
-            if (node.fds_max_len == 0) {
-                node.fds = @intToPtr([*]u64, allocator.allocateRaw(16 *% builder_spec.options.fds_init_len, 8));
-                node.fds_max_len = builder_spec.options.fds_init_len;
-            } else if (node.fds_len == node.fds_max_len) {
-                const fds_max_len: u64 = (node.fds_len +% 1) *% 2;
-                node.fds = @intToPtr([*]u64, allocator.reallocateRaw(@ptrToInt(node.fds), node.fds_max_len *% 8, fds_max_len *% 8, 8));
-                node.fds_max_len = fds_max_len;
-            }
-            node.fds[node.fds_len] = fd;
-            node.fds_len +%= 1;
-        }
+
         pub fn addDescr(node: *Node, descr: []const u8) void {
             node.names[1] = descr;
             node.names_len +%= 1;
