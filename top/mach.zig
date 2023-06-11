@@ -489,15 +489,14 @@ const is_small = @import("builtin").mode == .ReleaseSmall;
 const is_fast = @import("builtin").mode == .ReleaseFast;
 const is_debug = @import("builtin").mode == .Debug;
 const is_test = @import("builtin").is_test;
-
-//pub fn memcpy(noalias dest: [*]u8, noalias src: [*]const u8, len: u64) void {
-//    asm volatile ("rep movsb"
-//        :
-//        : [_] "{rdi}" (dest),
-//          [_] "{rsi}" (src),
-//          [_] "{rcx}" (len),
-//    );
-//}
+pub fn rngcpy(to: usize, from: usize, len: usize) void {
+    asm volatile ("rep movsb"
+        :
+        : [_] "{rdi}" (to),
+          [_] "{rsi}" (from),
+          [_] "{rcx}" (len),
+    );
+}
 pub const memcpy = if (is_fast) __0.memcpy1 else __0.memcpy;
 pub extern fn memset(dest: [*]u8, value: u8, count: usize) void;
 const __0 = struct {

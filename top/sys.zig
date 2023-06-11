@@ -1988,6 +1988,10 @@ pub const copy_file_range_errors = &[_]ErrorCode{
     .BADF,  .FBIG,      .INVAL,    .IO,   .ISDIR,  .NOMEM,
     .NOSPC, .OPNOTSUPP, .OVERFLOW, .PERM, .TXTBSY, .XDEV,
 };
+pub const sendfile_errors = &[_]ErrorCode{
+    .AGAIN, .FAULT,    .INVAL, .IO,
+    .NOMEM, .OVERFLOW, .SPIPE,
+};
 pub const link_errors = &[_]ErrorCode{
     .ACCES, .BADF,  .DQUOT, .EXIST,  .FAULT, .IO,   .LOOP,  .NAMETOOLONG,
     .NOENT, .NOMEM, .NOSPC, .NOTDIR, .PERM,  .ROFS, .MLINK, .XDEV,
