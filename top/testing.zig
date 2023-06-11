@@ -412,6 +412,9 @@ pub fn printCompileUnits() !void {
         for (di.units[0..di.units_len]) |unit| {
             printN(4096, .{ fmt.any(unit), '\n' });
         }
+        for (di.funcs[0..di.funcs_len]) |func| {
+            printN(4096, .{ fmt.any(func), '\n' });
+        }
         allocator.unmap();
     }
     try di.scanAllCompileUnits(&allocator);
