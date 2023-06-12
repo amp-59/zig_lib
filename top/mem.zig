@@ -1791,7 +1791,8 @@ pub const SimpleAllocator = struct {
         const aligned: u64 = mach.alignA64(allocator.next, align_of);
         const next: u64 = aligned +% size_of;
         if (next > allocator.finish) {
-            const finish: u64 = mach.alignA64(next, 4096);
+            const len: u64 = allocator.finish -% allocator.start;
+            const finish: u64 = mach.alignA64(next, @max(4096, len));
             map(.{ .errors = .{} }, allocator.finish, finish -% allocator.finish);
             allocator.finish = finish;
         }
@@ -1809,7 +1810,8 @@ pub const SimpleAllocator = struct {
         const new_next: u64 = old_aligned +% new_size_of;
         if (allocator.next == old_next) {
             if (new_next > allocator.finish) {
-                const finish: u64 = mach.alignA64(new_next, 4096);
+                const len: u64 = allocator.finish -% allocator.start;
+                const finish: u64 = mach.alignA64(new_next, @max(4096, len));
                 map(.{ .errors = .{} }, allocator.finish, finish -% allocator.finish);
                 allocator.finish = finish;
             }
