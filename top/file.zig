@@ -1747,7 +1747,7 @@ pub fn send(comptime send_spec: SendSpec, dest_fd: u64, src_fd: u64, offset: ?*u
 ) {
     const logging: builtin.Logging.SuccessError = comptime send_spec.logging.override();
     if (meta.wrap(sys.call(.sendfile, send_spec.errors, send_spec.return_type, .{
-        src_fd, @ptrToInt(offset), dest_fd, @ptrToInt(offset), count,
+        dest_fd, src_fd, @ptrToInt(offset), count,
     }))) |ret| {
         if (logging.Success) {
             debug.sendNotice(dest_fd, src_fd, offset, count, ret);
@@ -2232,6 +2232,8 @@ const debug = opaque {
     const about_dup3_1_s: [:0]const u8 = builtin.fmt.about("dup3-error");
     const about_copy_0_s: [:0]const u8 = builtin.fmt.about("copy");
     const about_copy_1_s: [:0]const u8 = builtin.fmt.about("copy-error");
+    const about_send_0_s: [:0]const u8 = builtin.fmt.about("send");
+    const about_send_1_s: [:0]const u8 = builtin.fmt.about("send-error");
     const about_stat_0_s: [:0]const u8 = builtin.fmt.about("stat");
     const about_stat_1_s: [:0]const u8 = builtin.fmt.about("stat-error");
     const about_open_0_s: [:0]const u8 = builtin.fmt.about("open");
@@ -2393,18 +2395,33 @@ const debug = opaque {
         var buf: [32768]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, pathname, relation_s, "dir_fd=", dir_fd_s, ", ", name, "\n" });
     }
-    fn copyNotice(src_fd: u64, src_offset: ?*u64, dest_fd: u64, dest_offset: ?*u64, max_len: u64, act_len: u64) void {
+    fn sendNotice(dest_fd: u64, src_fd: u64, offset: ?*u64, max_count: u64, sent_count: u64) void {
         const src_fd_s: []const u8 = builtin.fmt.ud64(src_fd).readAll();
         const dest_fd_s: []const u8 = builtin.fmt.ud64(dest_fd).readAll();
-        const max_len_s: []const u8 = builtin.fmt.ud64(max_len).readAll();
-        const len_s: []const u8 = builtin.fmt.ud64(act_len).readAll();
+        const max_count_s: []const u8 = builtin.fmt.ud64(max_count).readAll();
+        const sent_count_s: []const u8 = builtin.fmt.ud64(sent_count).readAll();
         var buf: [32768]u8 = undefined;
         var len: u64 = 0;
-        len +%= mach.memcpyMulti(&buf, &[_][]const u8{
-            about_copy_0_s, "src_fd=", src_fd_s, ", dest_fd=", dest_fd_s, ", ", len_s, "/", max_len_s, " bytes\n",
-        });
-        if (src_offset) |off| len +%= writeUpdateOffset(buf[len..].ptr, src_fd_s, off.*);
-        if (dest_offset) |off| len +%= writeUpdateOffset(buf[len..].ptr, dest_fd_s, off.*);
+        len +%= mach.memcpyMulti(&buf, &[_][]const u8{ about_send_0_s, "dest_fd=", dest_fd_s, ", srct_fd=", src_fd_s, ", ", sent_count_s, "/", max_count_s, " bytes\n" });
+        if (offset) |off| {
+            len +%= writeUpdateOffset(buf[len..].ptr, dest_fd_s, off.*);
+        }
+        builtin.debug.write(buf[0..len]);
+    }
+    fn copyNotice(dest_fd: u64, dest_offset: ?*u64, src_fd: u64, src_offset: ?*u64, max_count: u64, copied_count: u64) void {
+        const src_fd_s: []const u8 = builtin.fmt.ud64(src_fd).readAll();
+        const dest_fd_s: []const u8 = builtin.fmt.ud64(dest_fd).readAll();
+        const max_count_s: []const u8 = builtin.fmt.ud64(max_count).readAll();
+        const copied_count_s: []const u8 = builtin.fmt.ud64(copied_count).readAll();
+        var buf: [32768]u8 = undefined;
+        var len: u64 = 0;
+        len +%= mach.memcpyMulti(&buf, &[_][]const u8{ about_copy_0_s, "dest_fd=", dest_fd_s, ", src_fd=", src_fd_s, ", ", copied_count_s, "/", max_count_s, " bytes\n" });
+        if (src_offset) |off| {
+            len +%= writeUpdateOffset(buf[len..].ptr, src_fd_s, off.*);
+        }
+        if (dest_offset) |off| {
+            len +%= writeUpdateOffset(buf[len..].ptr, dest_fd_s, off.*);
+        }
         builtin.debug.write(buf[0..len]);
     }
     fn pathTruncateNotice(pathname: [:0]const u8, offset: u64) void {
@@ -2485,10 +2502,22 @@ const debug = opaque {
         var buf: [32768]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_socket_1_s, @tagName(dom), ", ", @tagName(conn), " (", @errorName(socket_error), ")\n" });
     }
-    fn copyError(copy_file_range_error: anytype, src_fd: u64, src_offset: ?*u64, dest_fd: u64, dest_offset: ?*u64, max_len: u64) void {
+    fn sendError(sendfile_error: anytype, dest_fd: u64, src_fd: u64, offset: ?*u64, max_count: u64) void {
         const src_fd_s: []const u8 = builtin.fmt.ud64(src_fd).readAll();
         const dest_fd_s: []const u8 = builtin.fmt.ud64(dest_fd).readAll();
-        const max_len_s: []const u8 = builtin.fmt.ud64(max_len).readAll();
+        const max_len_s: []const u8 = builtin.fmt.ud64(max_count).readAll();
+        var buf: [32768]u8 = undefined;
+        var len: u64 = 0;
+        len +%= mach.memcpyMulti(&buf, &[_][]const u8{ about_send_0_s, "dest_fd=", dest_fd_s, ", src_fd=", src_fd_s, ", ", max_len_s, " bytes, (", @errorName(sendfile_error), ")\n" });
+        if (offset) |off| {
+            len +%= writeUpdateOffset(buf[len..].ptr, src_fd_s, off.*);
+        }
+        builtin.debug.write(buf[0..len]);
+    }
+    fn copyError(copy_file_range_error: anytype, dest_fd: u64, dest_offset: ?*u64, src_fd: u64, src_offset: ?*u64, max_count: u64) void {
+        const src_fd_s: []const u8 = builtin.fmt.ud64(src_fd).readAll();
+        const dest_fd_s: []const u8 = builtin.fmt.ud64(dest_fd).readAll();
+        const max_len_s: []const u8 = builtin.fmt.ud64(max_count).readAll();
         var buf: [32768]u8 = undefined;
         var len: u64 = 0;
         len +%= mach.memcpyMulti(&buf, &[_][]const u8{ about_copy_0_s, "src_fd=", src_fd_s, ", dest_fd=", dest_fd_s, ", ", max_len_s, " bytes, (", @errorName(copy_file_range_error), ")\n" });
