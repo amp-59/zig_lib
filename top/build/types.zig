@@ -39,47 +39,32 @@ pub const State = enum(u8) {
 };
 // zig fmt: on
 pub const Lock = mem.ThreadSafeSet(State.list.len, State, Task);
-pub const NewPath = union(enum) {
-    pathname: []const u8,
+pub const NewPath = union {
     names: [][]const u8,
     const Format = @This();
     pub fn formatWrite(format: Format, array: anytype) void {
-        switch (format) {
-            .pathname => |pathname| {
-                array.writeMany(pathname);
-            },
-            .names => |names| {
-                if (names.len != 0) {
-                    array.writeMany(names[0]);
-                    for (format.names[1..]) |name| {
-                        array.writeOne('/');
-                        array.writeMany(name);
-                    }
-                }
-            },
+        @setRuntimeSafety(false);
+        if (format.names.len != 0) {
+            array.writeMany(format.names[0]);
+            for (format.names[1..]) |name| {
+                array.writeOne('/');
+                array.writeMany(name);
+            }
         }
         array.writeOne(0);
     }
     pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
         @setRuntimeSafety(false);
         var len: u64 = 0;
-        switch (format) {
-            .pathname => |pathname| {
-                mach.memcpy(buf, pathname.ptr, pathname.len);
-                len +%= pathname.len;
-            },
-            .names => |names| {
-                if (names.len != 0) {
-                    mach.memcpy(buf + len, names[0].ptr, names[0].len);
-                    len +%= names[0].len;
-                    for (names[1..]) |name| {
-                        buf[len] = '/';
-                        len +%= 1;
-                        mach.memcpy(buf + len, name.ptr, name.len);
-                        len +%= name.len;
-                    }
-                }
-            },
+        if (format.names.len != 0) {
+            mach.memcpy(buf + len, format.names[0].ptr, format.names[0].len);
+            len +%= format.names[0].len;
+            for (format.names[1..]) |name| {
+                buf[len] = '/';
+                len +%= 1;
+                mach.memcpy(buf + len, name.ptr, name.len);
+                len +%= name.len;
+            }
         }
         buf[len] = 0;
         len +%= 1;
@@ -88,18 +73,11 @@ pub const NewPath = union(enum) {
     pub fn formatLength(format: Format) u64 {
         @setRuntimeSafety(false);
         var len: u64 = 0;
-        switch (format) {
-            .pathname => |pathname| {
-                len +%= pathname.len;
-            },
-            .names => |names| {
-                if (names.len != 0) {
-                    len +%= names[0].len;
-                    for (names[1..]) |name| {
-                        len +%= 1 +% name.len;
-                    }
-                }
-            },
+        if (format.names.len != 0) {
+            len +%= format.names[0].len;
+            for (format.names[1..]) |name| {
+                len +%= 1 +% name.len;
+            }
         }
         return len +% 1;
     }
