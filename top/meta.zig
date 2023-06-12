@@ -463,10 +463,21 @@ pub inline fn arrayPointerToSlice(any: anytype) ArrayPointerToSlice(@TypeOf(any)
 pub inline fn sliceToArrayPointer(comptime any: anytype) SliceToArrayPointer(@TypeOf(any), any.len) {
     return @ptrCast(SliceToArrayPointer(@TypeOf(any), any.len), any.ptr);
 }
+/// Extracts types like:
+/// Int                 => Int,
+/// Enum(Int)           => Int,
+/// Struct(Int)         => Int,
+/// Union(Enum(Int))    => Int,
+/// Optional(Any)       => Any,
+/// Array(Any)          => Any,
+/// Pointer(Any)        => Any,
 pub fn Child(comptime T: type) type {
     switch (@typeInfo(T)) {
         else => |type_info| {
             debug.unexpectedTypeTypesError(T, type_info, .{ .Optional, .Array, .Pointer, .Enum, .Int, .Struct, .Union });
+        },
+        .Array, .Pointer => {
+            return Element(T);
         },
         .Int => {
             return T;
@@ -490,24 +501,6 @@ pub fn Child(comptime T: type) type {
         },
         .Optional => |optional_info| {
             return optional_info.child;
-        },
-        .Array => |array_info| {
-            return array_info.child;
-        },
-        .Pointer => |pointer_info| {
-            if (pointer_info.size == .Slice or
-                pointer_info.size == .Many)
-            {
-                return pointer_info.child;
-            }
-            switch (@typeInfo(pointer_info.child)) {
-                .Array => |array_info| {
-                    return array_info.child;
-                },
-                else => {
-                    return pointer_info.child;
-                },
-            }
         },
     }
 }
