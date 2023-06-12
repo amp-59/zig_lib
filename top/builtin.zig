@@ -567,7 +567,7 @@ pub inline fn ptrCast(comptime T: type, any: anytype) T {
 }
 pub inline fn zero(comptime T: type) T {
     const data: [@sizeOf(T)]u8 align(@max(1, @alignOf(T))) = .{@as(u8, 0)} ** @sizeOf(T);
-    return @ptrCast(*const T, &data).*;
+    comptime return @ptrCast(*const T, &data).*;
 }
 pub inline fn all(comptime T: type) T {
     const data: [@sizeOf(T)]u8 align(@max(1, @alignOf(T))) = .{~@as(u8, 0)} ** @sizeOf(T);
@@ -1603,10 +1603,10 @@ pub const debug = struct {
         const ret_addr: u64 = @returnAddress();
         var buf: [1024]u8 = undefined;
         logFaultAIO(&buf, &[_][]const u8{
-            debug.about_error_p0_s,       "sentinel mismatch: expected ",
-            fmt.int(expected).readAll(),  ", found ",
-            fmt.int(actual).readAll(),    " @ ",
-            fmt.ux64(ret_addr).readAll(), "\n",
+            debug.about_error_p0_s,         "sentinel mismatch: expected ",
+            fmt.udsize(expected).readAll(), ", found ",
+            fmt.udsize(actual).readAll(),   " @ ",
+            fmt.ux64(ret_addr).readAll(),   "\n",
         });
         proc.exit(2);
     }
@@ -2046,10 +2046,10 @@ pub const fmt = struct {
     pub fn Generic(comptime Int: type) type {
         const T = struct {
             const Abs = math.Absolute(Int);
-            const len2 = maxSigFig(Int, 2) +% 1;
-            const len8 = maxSigFig(Int, 8) +% 1;
-            const len10 = maxSigFig(Int, 10) +% 1;
-            const len16 = maxSigFig(Int, 16) +% 1;
+            const len2: comptime_int = maxSigFig(Int, 2) +% 1;
+            const len8: comptime_int = maxSigFig(Int, 8) +% 1;
+            const len10: comptime_int = maxSigFig(Int, 10) +% 1;
+            const len16: comptime_int = maxSigFig(Int, 16) +% 1;
             const Array2 = Array(len2);
             const Array8 = Array(len8);
             const Array10 = Array(len10);
