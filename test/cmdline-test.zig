@@ -96,17 +96,17 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     }
     const names: *[3][]const u8 = allocator.create([3][]const u8);
     names.* = [_][]const u8{ "one", "two", "three" };
-    const buf: []u8 = allocator.allocate(u8, 256);
-
-    {
-        const len: u64 = build.NewPath.formatWriteBuf(.{ .names = names }, buf.ptr);
+    if (true) {
+        const Array = mem.StaticArray(u8, 4096);
+        const array: *Array = allocator.create(Array);
+        array.writeFormat(build.NewPath{ .names = names });
+        try testing.expectEqualString("one/two/three\x00", array.readAll());
+    }
+    if (true) {
+        const buf: []u8 = allocator.allocate(u8, 256);
+        var len: u64 = build.NewPath.formatWriteBuf(.{ .names = names }, buf.ptr);
         try testing.expectEqualString("one/two/three\x00", buf[0..len]);
     }
-    {
-        const len: u64 = build.NewPath.formatWriteBuf(.{ .pathname = "one/two/three" }, buf.ptr);
-        try testing.expectEqualString("one/two/three\x00", buf[0..len]);
-    }
-
     const toplevel: *Node = Node.init(&allocator, args, vars);
     const g0: *Node = try toplevel.addGroup(&allocator, "g0");
     const t0: *Node = try g0.addBuild(&allocator, .{
