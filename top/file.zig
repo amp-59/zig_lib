@@ -944,6 +944,11 @@ pub const CopySpec = struct {
     return_type: type = u64,
     logging: builtin.Logging.SuccessError = .{},
 };
+pub const SendSpec = struct {
+    errors: sys.ErrorPolicy = .{ .throw = sys.sendfile_errors },
+    return_type: type = u64,
+    logging: builtin.Logging.SuccessError = .{},
+};
 pub const LinkSpec = struct {
     options: Options = .{},
     errors: sys.ErrorPolicy = .{ .throw = sys.link_errors },
@@ -1736,21 +1741,40 @@ pub fn map(comptime map_spec: MapSpec, fd: u64, addr: u64, len: u64) sys.ErrorUn
         return map_error;
     }
 }
-pub fn copy(comptime copy_spec: CopySpec, src_fd: u64, src_offset: ?*u64, dest_fd: u64, dest_offset: ?*u64, len: u64) sys.ErrorUnion(
+pub fn send(comptime send_spec: SendSpec, dest_fd: u64, src_fd: u64, offset: ?*u64, count: u64) sys.ErrorUnion(
+    send_spec.errors,
+    send_spec.return_type,
+) {
+    const logging: builtin.Logging.SuccessError = comptime send_spec.logging.override();
+    if (meta.wrap(sys.call(.sendfile, send_spec.errors, send_spec.return_type, .{
+        src_fd, @ptrToInt(offset), dest_fd, @ptrToInt(offset), count,
+    }))) |ret| {
+        if (logging.Success) {
+            debug.sendNotice(dest_fd, src_fd, offset, count, ret);
+        }
+        return ret;
+    } else |sendfile_error| {
+        if (logging.Error) {
+            debug.sendError(sendfile_error, dest_fd, src_fd, offset, count);
+        }
+        return sendfile_error;
+    }
+}
+pub fn copy(comptime copy_spec: CopySpec, dest_fd: u64, dest_offset: ?*u64, src_fd: u64, src_offset: ?*u64, count: u64) sys.ErrorUnion(
     copy_spec.errors,
     copy_spec.return_type,
 ) {
     const logging: builtin.Logging.SuccessError = comptime copy_spec.logging.override();
     if (meta.wrap(sys.call(.copy_file_range, copy_spec.errors, copy_spec.return_type, .{
-        src_fd, @ptrToInt(src_offset), dest_fd, @ptrToInt(dest_offset), len, 0,
+        src_fd, @ptrToInt(src_offset), dest_fd, @ptrToInt(dest_offset), count, 0,
     }))) |ret| {
         if (logging.Success) {
-            debug.copyNotice(src_fd, src_offset, dest_fd, dest_offset, len, ret);
+            debug.copyNotice(src_fd, src_offset, dest_fd, dest_offset, count, ret);
         }
         return ret;
     } else |copy_file_range_error| {
         if (logging.Error) {
-            debug.copyError(copy_file_range_error, src_fd, src_offset, dest_fd, dest_offset, len);
+            debug.copyError(copy_file_range_error, src_fd, src_offset, dest_fd, dest_offset, count);
         }
         return copy_file_range_error;
     }
@@ -1759,7 +1783,7 @@ pub fn link(comptime link_spec: LinkSpec, from_pathname: [:0]const u8, to_pathna
     link_spec.errors,
     link_spec.return_type,
 ) {
-    const logging: builtin.Logging.SuccessError = link_spec.logging.override();
+    const logging: builtin.Logging.SuccessError = comptime link_spec.logging.override();
     if (meta.wrap(sys.call(.link, link_spec.errors, link_spec.return_type, .{ @ptrToInt(from_pathname.ptr), @ptrToInt(to_pathname.ptr) }))) |ret| {
         if (logging.Success) {
             debug.aboutPathnamePathnameNotice(debug.about_link_0_s, " -> ", from_pathname, to_pathname);
@@ -1776,7 +1800,7 @@ pub fn linkAt(comptime link_spec: LinkSpec, src_dir_fd: u64, from_name: [:0]cons
     link_spec.errors,
     link_spec.return_type,
 ) {
-    const logging: builtin.Logging.SuccessError = link_spec.logging.override();
+    const logging: builtin.Logging.SuccessError = comptime link_spec.logging.override();
     const flags: At = comptime link_spec.flags();
     if (meta.wrap(sys.call(.linkat, link_spec.errors, link_spec.return_type, .{
         src_dir_fd, @ptrToInt(from_name.ptr), dest_dir_fd, @ptrToInt(to_name.ptr), flags.val,
@@ -1796,7 +1820,7 @@ pub fn symbolicLink(comptime link_spec: LinkSpec, from_pathname: [:0]const u8, t
     link_spec.errors,
     link_spec.return_type,
 ) {
-    const logging: builtin.Logging.SuccessError = link_spec.logging.override();
+    const logging: builtin.Logging.SuccessError = comptime link_spec.logging.override();
     if (meta.wrap(sys.call(.symlink, link_spec.errors, link_spec.return_type, .{
         @ptrToInt(from_pathname.ptr), @ptrToInt(to_pathname.ptr),
     }))) |ret| {
@@ -1815,7 +1839,7 @@ pub fn symbolicLinkAt(comptime link_spec: LinkSpec, pathname: [:0]const u8, dir_
     link_spec.errors,
     link_spec.return_type,
 ) {
-    const logging: builtin.Logging.SuccessError = link_spec.logging.override();
+    const logging: builtin.Logging.SuccessError = comptime link_spec.logging.override();
     if (meta.wrap(sys.call(.symlinkat, link_spec.errors, link_spec.return_type, .{
         @ptrToInt(pathname.ptr), dir_fd, @ptrToInt(name.ptr),
     }))) |ret| {
