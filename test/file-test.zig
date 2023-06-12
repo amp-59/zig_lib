@@ -30,6 +30,7 @@ const path_spec: file.PathSpec = .{};
 const file_path_spec: file.PathSpec = .{ .options = .{ .directory = false } };
 const link_spec: file.LinkSpec = .{};
 const copy_spec: file.CopySpec = .{};
+const send_spec: file.SendSpec = .{};
 const open_spec: file.OpenSpec = .{
     .options = .{ .write = true, .append = true },
 };
@@ -98,7 +99,8 @@ fn testCopyFileRange() !void {
     builtin.assertEqual(u64, 0, try meta.wrap(file.seek(seek_spec, src_fd, 0, .set)));
     var src_off: u64 = 4096;
     var dest_off: u64 = 0;
-    _ = try meta.wrap(file.copy(copy_spec, src_fd, &src_off, dest_fd, &dest_off, 65536));
+    _ = try meta.wrap(file.copy(copy_spec, dest_fd, &dest_off, src_fd, &src_off, 65536));
+    _ = try meta.wrap(file.send(send_spec, dest_fd, src_fd, null, 65536));
     _ = try meta.wrap(file.sync(.{}, dest_fd));
     try meta.wrap(file.close(close_spec, dest_fd));
     try meta.wrap(file.close(close_spec, src_fd));
