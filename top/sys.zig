@@ -1954,6 +1954,7 @@ pub const Fn = enum(u9) {
             .readlinkat,
             .openat,
             .rt_sigaction,
+            .sendfile,
             => 4,
             .mremap,
             .statx,
