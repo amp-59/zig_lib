@@ -567,24 +567,24 @@ pub const RegularMultiArena = struct {
         }
     }
     pub fn count(comptime multi_arena: MultiArena) Index(multi_arena) {
-        return multi_arena.divisions;
+        comptime return multi_arena.divisions;
     }
     pub fn capacityAll(comptime multi_arena: MultiArena) u64 {
-        return mach.alignA64(multi_arena.up_addr - multi_arena.lb_addr, multi_arena.alignment);
+        comptime return mach.alignA64(multi_arena.up_addr - multi_arena.lb_addr, multi_arena.alignment);
     }
     pub fn capacityEach(comptime multi_arena: MultiArena) u64 {
-        return @divExact(capacityAll(multi_arena), multi_arena.divisions);
+        comptime return @divExact(capacityAll(multi_arena), multi_arena.divisions);
     }
     pub fn invert(comptime multi_arena: MultiArena, addr: u64) Index(multi_arena) {
         return @intCast(Index(multi_arena), (addr - multi_arena.lb_addr) / capacityEach(multi_arena));
     }
     pub fn low(comptime multi_arena: MultiArena, index: Index(multi_arena)) u64 {
-        const offset: u64 = capacityEach(multi_arena) * index;
-        return @max(multi_arena.lb_addr + multi_arena.lb_offset, multi_arena.lb_addr + offset);
+        const offset: u64 = index *% comptime capacityEach(multi_arena);
+        return @max(multi_arena.lb_addr +% multi_arena.lb_offset, multi_arena.lb_addr +% offset);
     }
     pub fn high(comptime multi_arena: MultiArena, index: Index(multi_arena)) u64 {
-        const offset: u64 = capacityEach(multi_arena) * (index + 1);
-        return @min(multi_arena.up_addr - multi_arena.up_offset, multi_arena.lb_addr + offset);
+        const offset: u64 = (index +% 1) *% comptime capacityEach(multi_arena);
+        return @min(multi_arena.up_addr -% multi_arena.up_offset, multi_arena.lb_addr +% offset);
     }
     pub fn instantiate(comptime multi_arena: MultiArena) type {
         return GenericRegularAddressSpace(multi_arena);
