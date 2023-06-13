@@ -1371,6 +1371,15 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         fn clone() proc.CloneSpec {
             return .{ .errors = .{}, .return_type = void };
         }
+        /// File system path to core source file for stack tracer.
+        fn tracer_root() [:0]const u8 {
+            comptime {
+                if (builder_spec.options.names.tracer_root) |ret| {
+                    return ret;
+                }
+                libraryRoot() ++ "/top/debug.zig";
+            }
+        }
         const MessagePtrs = packed union {
             msg: [*]align(4) u8,
             idx: [*]u32,
@@ -1432,10 +1441,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             var buf: [4096 *% 8]u8 = undefined;
             var len: u64 = 0;
             for ([_][]const u8{
-                debug.about.zig_exe_s,
-                debug.about.build_root_s,
-                debug.about.cache_root_s,
-                debug.about.global_cache_root_s,
+                debug.about.zig_exe_s,    debug.about.build_root_s,
+                debug.about.cache_root_s, debug.about.global_cache_root_s,
             }, [_][]const u8{
                 mach.manyToSlice80(GlobalState.args[1]),
                 build_root,
@@ -1514,7 +1521,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         const exe_lock = .{ .bytes = .{ .null, .null, .null, .ready, .ready, .null, .null } };
         const format_lock = .{ .bytes = .{ .null, .null, .ready, .null, .null, .null, .null } };
         const archive_lock = .{ .bytes = .{ .null, .null, .null, .null, .null, .ready, .null } };
-        pub const debug = struct {
+        const debug = struct {
             const about = .{
                 .ar_s = builtin.fmt.about("ar"),
                 .run_s = builtin.fmt.about("run"),
@@ -2034,14 +2041,14 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     len +%= 2;
                     mach.memcpy(buf0 + len, dep_node.names[0].ptr, dep_node.names[0].len);
                     len +%= dep_node.names[0].len;
-                    if (dep_node.hidden and dep_node.paths_len != 0) {
+                    if (dep_node.options.hide and dep_node.paths_len != 0) {
                         len +%= writeSubNode(buf0 + len, len1 +% 2, dep_node, name_width, root_width);
                     }
                     len = writeAndWalkInternal(buf0, len, buf1, len1 +% 2, dep_node, name_width, root_width);
                 }
                 return len;
             }
-            pub fn writeSubNode(buf0: [*]u8, len1: u64, sub_node: *const Node, name_width: u64, root_width: u64) u64 {
+            fn writeSubNode(buf0: [*]u8, len1: u64, sub_node: *const Node, name_width: u64, root_width: u64) u64 {
                 var len: u64 = 0;
                 var count: u64 = name_width -% (sub_node.names[0].len +% len1);
                 const input: [:0]const u8 = sub_node.paths[@boolToInt(sub_node.task == .build)].relative;
@@ -2060,7 +2067,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 }
                 return len;
             }
-            pub fn toplevelCommandNoticeInternal(buf0: [*]u8, buf1: [*]u8, len1: u64, node: *const Node, name_width: u64, root_width: u64) u64 {
+            fn toplevelCommandNoticeInternal(buf0: [*]u8, buf1: [*]u8, len1: u64, node: *const Node, name_width: u64, root_width: u64) u64 {
                 @setRuntimeSafety(builder_spec.options.safety);
                 var len: u64 = 0;
                 if (node.paths_len != 0) {
@@ -2075,7 +2082,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     if (sub_node == node) {
                         continue;
                     }
-                    if (sub_node.hidden) {
+                    if (sub_node.options.hide) {
                         continue;
                     }
                     const is_last: bool = nodes_idx == node.nodes_len -% 1;
@@ -2097,7 +2104,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     len +%= 2;
                     @ptrCast(*[2]u8, buf0 + len).* = if (is_only) "- ".* else "o ".*;
                     len +%= 2;
-                    if (sub_node.hidden and sub_node.paths_len != 0) {
+                    if (sub_node.options.hide and sub_node.paths_len != 0) {
                         len +%= writeSubNode(buf0 + len, len1 +% 4, sub_node, name_width, root_width);
                     }
                     mach.memcpy(buf0 + len, sub_node.names[0].ptr, sub_node.names[0].len);
@@ -2106,14 +2113,14 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 }
                 return len;
             }
-            pub fn toplevelCommandNotice(allocator: *Allocator, toplevel: *const Node) void {
+            fn toplevelCommandNotice(allocator: *Allocator, toplevel: *const Node) void {
                 @setRuntimeSafety(builder_spec.options.safety);
                 const save: u64 = allocator.next;
                 defer allocator.next = save;
                 var name_width: u64 = 0;
                 var root_width: u64 = 0;
                 for (toplevel.nodes[0..toplevel.nodes_len]) |node| {
-                    if (!node.hidden) {
+                    if (!node.options.hide) {
                         name_width = @max(name_width, dependencyMaxNameWidth(node, 2));
                         root_width = @max(root_width, dependencyMaxRootWidth(node));
                     }
@@ -2150,3 +2157,22 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
     };
     return Type;
 }
+pub usingnamespace struct {
+    pub const root: [:0]const u8 = libraryRoot();
+};
+fn libraryRoot() [:0]const u8 {
+    comptime {
+        const build4: [:0]const u8 = @src().file;
+        var idx: u64 = build4.len -% 1;
+        while (build4[idx] != '/') {
+            idx -%= 1;
+        }
+        idx -%= 1;
+        while (build4[idx] != '/') {
+            idx -%= 1;
+        }
+        return build4[0..idx] ++ [0:0]u8{};
+    }
+}
+// TODO:
+// * Every (primary) task with pre and post functions.
