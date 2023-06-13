@@ -255,13 +255,18 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         task: types.Task,
         task_lock: types.Lock,
         task_info: TaskInfo,
-        hidden: bool,
+        options: struct {
+            hide: bool = false,
+            no_pre: bool = false,
+            no_post: bool = false,
+        },
         const Node = @This();
         const GlobalState = struct {
             pub var args: [][*:0]u8 = undefined;
             pub var vars: [][*:0]u8 = undefined;
             pub var euid: u16 = undefined;
             pub var egid: u16 = undefined;
+            pub var tracer: ?*Node = null;
         };
         pub usingnamespace GlobalState;
         pub const max_thread_count: u64 = builder_spec.options.max_thread_count;
