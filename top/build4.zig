@@ -225,7 +225,7 @@ pub const BuilderSpec = struct {
         sleep: sys.ErrorPolicy = .{},
         /// Error values for `clock` system function.
         clock: sys.ErrorPolicy = .{},
-        /// Error values for `unlink` system function.
+        /// Error values for `link` system function.
         link: sys.ErrorPolicy = .{},
         /// Error values for `unlink` system function.
         unlink: sys.ErrorPolicy = .{},
