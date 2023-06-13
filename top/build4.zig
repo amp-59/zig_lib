@@ -443,7 +443,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 node.addArg(allocator).* = arg;
             }
         }
-
         pub fn addDescr(node: *Node, descr: []const u8) void {
             node.names[1] = descr;
             node.names_len +%= 1;
@@ -517,9 +516,15 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             ret.task_info.build.* = build_cmd;
             ret.task_info.build.main_pkg_path = main_pkg_path;
             ret.task_info.build.listen = .@"-";
-            ret.hidden = toplevel.hidden;
             if (build_cmd.kind == .exe) {
                 ret.dependOnSelfExe(allocator);
+                if (build_cmd.mode) |mode| {
+                    if (mode == .Debug) {
+                        if (GlobalState.tracer) |g| {
+                            ret.dependOnObject(allocator, g);
+                        }
+                    }
+                }
             }
             if (builder_spec.options.show_initial_state) {
                 ret.assertExchange(.build, .null, .ready, max_thread_count);
@@ -552,9 +557,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             node.addDep(allocator).* = .{ .task = node.task, .on_node = on_node, .on_task = .archive, .on_state = .finished };
         }
         fn dependOnSelfExe(node: *Node, allocator: *Allocator) void {
-            node.addArg(allocator).* = concatenate(allocator, &.{
-                node.paths[0].absolute, "/", node.paths[0].relative,
-            });
+            node.addArg(allocator).* = concatenate(allocator, &.{ node.paths[0].absolute, "/", node.paths[0].relative });
             node.addDep(allocator).* = .{ .task = .run, .on_node = node, .on_task = .build, .on_state = .finished };
         }
         pub const impl = struct {
@@ -1092,6 +1095,27 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 }
             }
             return null;
+        }
+        fn updateCommand(node: *Node, allocator: *Allocator) void {
+            _ = allocator;
+            node.options.no_post = true;
+            if (node.task == .build and node.kind != .group) {
+                if (node.task_info.build.mode) |mode| {
+                    if (mode == .Debug) {}
+                }
+            }
+        }
+        fn updateCommands(allocator: *Allocator, node: *Node) void {
+            if (node.options.no_post) {
+                return;
+            }
+            updateCommand(node, allocator);
+            for (node.nodes[0..node.nodes_len]) |sub| {
+                updateCommands(allocator, sub);
+            }
+            for (node.deps[0..node.deps_len]) |dep| {
+                updateCommands(allocator, dep.on_node);
+            }
         }
         pub fn processCommands(
             address_space: *AddressSpace,
