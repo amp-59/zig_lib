@@ -366,7 +366,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             ret.kind = .group;
             ret.task = .any;
             ret.addName(allocator).* = duplicate(allocator, name);
-            ret.hidden = name[0] == '_';
+            ret.options.hide = name[0] == '_';
             if (builder_spec.options.show_initial_state) {
                 ret.assertExchange(.any, .null, .ready, max_thread_count);
                 ret.assertExchange(.format, .null, .ready, max_thread_count);
@@ -462,13 +462,13 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 .relative = duplicate(allocator, pathname),
             };
             ret.task_info.format.* = format_cmd;
-            ret.hidden = name[0] == '_';
-            ret.hidden = toplevel.hidden;
             if (builder_spec.options.show_initial_state) {
                 ret.assertExchange(.format, .null, .ready, max_thread_count);
             } else {
                 ret.task_lock = format_lock;
             }
+            ret.options.hide = toplevel.options.hide or
+                name[0] == builder_spec.options.hide_prefix;
             return ret;
         }
         /// Initialize a new `zig ar` command.
@@ -488,13 +488,13 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             for (deps) |dep| {
                 ret.dependOnObject(allocator, dep);
             }
-            ret.hidden = name[0] == '_';
-            ret.hidden = toplevel.hidden;
             if (builder_spec.options.show_initial_state) {
                 ret.assertExchange(.archive, .null, .ready, max_thread_count);
             } else {
                 ret.task_lock = archive_lock;
             }
+            ret.options.hide = toplevel.options.hide or
+                name[0] == builder_spec.options.hide_prefix;
             return ret;
         }
         pub fn addBuild(toplevel: *Node, allocator: *Allocator, build_cmd: types.BuildCommand, name: [:0]const u8, root: [:0]const u8) !*Node {
@@ -533,6 +533,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     ret.task_lock = obj_lock;
                 }
             }
+            ret.options.hide = toplevel.options.hide or
+                name[0] == builder_spec.options.hide_prefix;
             return ret;
         }
         pub fn addBuildAnon(toplevel: *Node, allocator: *Allocator, build_cmd: types.BuildCommand, root: [:0]const u8) !*Node {
