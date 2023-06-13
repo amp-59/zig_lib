@@ -64,10 +64,18 @@ pub const BuilderSpec = struct {
         /// Determines whether to use the Zig compiler server
         enable_caching: bool = true,
         /// Executables with debug information include DWARF parser and
-        /// stack trace writers.
+        /// stack trace writers. TODO
         enable_stack_traces: bool = false,
         /// Enable runtime safety
         safety: bool = false,
+        /// Nodes with this name prefix are hidden in pre.
+        hide_prefix: u8 = '_',
+        /// Disable all features related to hiding TODO
+        never_hide: bool = false,
+        /// Disable all features related to default initialisation of nodes TODO
+        never_pre: bool = false,
+        /// Disable all features related to automatic updating of nodes TODO
+        never_post: bool = false,
         names: struct {
             /// Name of the toplevel 'builder' node.
             toplevel_node: [:0]const u8 = "toplevel",
@@ -88,6 +96,8 @@ pub const BuilderSpec = struct {
             lib_out_dir: [:0]const u8 = "lib",
             /// Basename of auxiliary output directory relative to output directory.
             aux_out_dir: [:0]const u8 = "aux",
+            /// Optional pathname to root source used to compile tracer object.
+            tracer_root: ?[:0]const u8 = null,
         } = .{},
         extensions: struct {
             /// Extension for Zig source files
