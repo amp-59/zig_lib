@@ -566,7 +566,7 @@ pub const RegularMultiArena = struct {
             @compileError("invalid sub address space spec");
         }
     }
-    pub fn count(comptime multi_arena: MultiArena) Index(multi_arena) {
+    pub inline fn count(comptime multi_arena: MultiArena) Index(multi_arena) {
         comptime return multi_arena.divisions;
     }
     pub fn capacityAll(comptime multi_arena: MultiArena) u64 {
@@ -1135,7 +1135,7 @@ pub fn generic(comptime any: anytype) meta.Generic {
         DiscreteMultiArena
     else
         RegularMultiArena;
-    return .{ .type = T, .value = &@as(T, any) };
+    return meta.genericCast(T, any);
 }
 pub fn genericSlice(comptime any: anytype) []const meta.Generic {
     return meta.genericSlice(generic, any);
@@ -1143,10 +1143,10 @@ pub fn genericSlice(comptime any: anytype) []const meta.Generic {
 fn GenericSubSpace(comptime ss: []const meta.Generic, comptime any: anytype) type {
     switch (@typeInfo(@TypeOf(any))) {
         .Int, .ComptimeInt => {
-            return meta.typeCast(ss[any]).instantiate();
+            return ss[any].cast().instantiate();
         },
         else => for (ss) |s| {
-            if (meta.typeCast(s).label) |label| {
+            if (s.cast().label) |label| {
                 if (label.len != any.len) {
                     continue;
                 }
