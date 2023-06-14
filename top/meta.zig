@@ -3,7 +3,6 @@ const mach = @import("./mach.zig");
 pub const Empty = struct {};
 pub const empty = &.{};
 pub const default = .{};
-pub const Generic = struct { type: type, value: *const anyopaque };
 pub const SliceProperty = struct { comptime_int, type };
 pub const number_types: []const builtin.TypeId = integer_types ++ float_types;
 pub const integer_types: []const builtin.TypeId = &[_]builtin.TypeId{ .Int, .ComptimeInt };
@@ -14,6 +13,13 @@ pub const fn_types: []const builtin.TypeId = &[_]builtin.TypeId{.Fn};
 pub const data_types: []const builtin.TypeId = &[_]builtin.TypeId{ .Struct, .Union };
 pub const decl_types: []const builtin.TypeId = &[_]builtin.TypeId{ .Struct, .Union, .Enum };
 pub const container_types: []const builtin.TypeId = &[_]builtin.TypeId{ .Struct, .Enum, .Union, .Opaque };
+pub const Generic = struct {
+    type: type,
+    value: *const anyopaque,
+    pub fn cast(comptime any: Generic) any.type {
+        return @ptrCast(*const any.type, @alignCast(@max(1, @alignOf(any.type)), any.value)).*;
+    }
+};
 inline fn isTypeType(comptime T: type, comptime type_types: []const builtin.TypeId) bool {
     inline for (type_types) |type_type| {
         if (@typeInfo(T) == type_type) {
@@ -1100,14 +1106,11 @@ pub fn uniformData(any: anytype) UniformData(@bitSizeOf(@TypeOf(any))) {
     const U: type = UniformData(@bitSizeOf(T));
     return @ptrCast(*const U, &any).*;
 }
-pub fn typeCast(comptime generic: Generic) generic.type {
-    return @ptrCast(*const generic.type, @alignCast(@max(1, @alignOf(generic.type)), generic.value)).*;
-}
-pub fn anyTypeCast(comptime value: anytype) Generic {
-    return .{ .type = @TypeOf(value), .value = &value };
-}
 pub fn genericCast(comptime T: type, comptime value: T) Generic {
     return .{ .type = T, .value = &value };
+}
+pub fn generic(comptime value: anytype) Generic {
+    return genericCast(@TypeOf(value), value);
 }
 pub fn genericSlice(comptime transform: anytype, comptime values: anytype) []const Generic {
     var ret: []const Generic = empty;
