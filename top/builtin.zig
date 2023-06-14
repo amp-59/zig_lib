@@ -1635,11 +1635,27 @@ pub const debug = struct {
         });
         proc.exit(2);
     }
-    pub noinline fn panicUnwrapError(_: @TypeOf(@errorReturnTrace()), err: anyerror) noreturn {
+    pub noinline fn panicUnwrapError(_: StackTrace, err: anyerror) noreturn {
         if (config.discard_errors) {
             proc.exitError(err, 2);
         }
         @compileError("error is discarded");
+    }
+    fn checkNonScalarSentinel(expected: anytype, actual: @TypeOf(expected)) void {
+        if (!testEqual(@TypeOf(expected), expected, actual)) {
+            panicSentinelMismatch(expected, actual);
+        }
+    }
+    inline fn addErrRetTraceAddr(st: *StackTrace, ret_addr: usize) void {
+        if (st.addrs_len < st.addrs.len) {
+            st.addrs[st.addrs_len] = ret_addr;
+        }
+        st.addrs_len +%= 1;
+    }
+    noinline fn returnError(st: *StackTrace) void {
+        @setCold(true);
+        @setRuntimeSafety(false);
+        addErrRetTraceAddr(st, @returnAddress());
     }
     const static = struct {
         fn subCausedOverflow(comptime T: type, comptime arg1: T, comptime arg2: T) noreturn {
@@ -2349,6 +2365,7 @@ pub const Type = @TypeOf(@typeInfo(void));
 pub const TypeId = @typeInfo(Type).Union.tag_type.?;
 pub const Endian = @TypeOf(config.zig.cpu.arch.endian());
 pub const Signedness = @TypeOf(@as(Type.Int, undefined).signedness);
+pub const StackTrace = @typeInfo(@typeInfo(@TypeOf(@errorReturnTrace())).Optional.child).Pointer.child;
 pub const CallingConvention = @TypeOf(@typeInfo(fn () noreturn).Fn.calling_convention);
 fn Src() type {
     return @TypeOf(@src());
