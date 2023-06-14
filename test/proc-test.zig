@@ -42,30 +42,6 @@ const Mapping = extern struct {
     inode: u64,
     pathname: []const u8,
 };
-fn testCheckResourcesNoErrors() void {
-    var buf: [4096]u8 = undefined;
-    const dir_fd: u64 = file.open(.{ .errors = .{}, .options = .{ .directory = true } }, "/proc/self/fd");
-    var len: u64 = file.getDirectoryEntries(.{ .errors = .{} }, dir_fd, &buf);
-    var off: u64 = 0;
-    while (off != len) {
-        const ent: file.DirectoryEntry = builtin.ptrCast(*const file.DirectoryEntry, buf[off..]).*;
-        const name: [:0]const u8 = meta.manyToSlice(builtin.ptrCast([*:0]u8, &ent.array));
-        if (ent.kind == sys.S.IFLNKR) {
-            const pathname: [:0]const u8 = file.readLinkAt(.{ .errors = .{} }, dir_fd, name, buf[len..]);
-            builtin.debug.write(name);
-            builtin.debug.write(" -> ");
-            builtin.debug.write(pathname);
-            builtin.debug.write("\n");
-        }
-        off +%= ent.reclen;
-    }
-    file.close(.{ .errors = .{} }, dir_fd);
-    const maps_fd: u64 = file.open(.{ .errors = .{} }, "/proc/self/maps");
-    len = file.read(.{ .errors = .{} }, maps_fd, &buf);
-    builtin.debug.write(buf[0..len]);
-    file.close(.{ .errors = .{} }, maps_fd);
-}
-
 fn printHere(x: u64) void {
     var buf: [512]u8 = undefined;
     var len: u64 = fmt.ux64(x).formatWriteBuf(&buf);
@@ -81,7 +57,6 @@ fn testFutexWait(futex1: *u32) void {
 fn testFutexWakeOp(futex1: *u32, futex2: *u32) void {
     proc.futexWakeOp(.{}, futex1, futex2, 1, 1, .{ .op = .Assign, .cmp = .Equal, .to = 0x20, .from = 0x10 }) catch {};
 }
-
 fn testCloneAndFutex() !void {
     if (builtin.zig.mode == .Debug) return;
     var allocator: mem.SimpleAllocator = .{};
@@ -136,7 +111,6 @@ fn testVClockGettime(aux: *const anyopaque) !void {
 
 pub fn main(_: [][*:0]u8, vars: [][*:0]u8, aux: *const anyopaque) !void {
     try testCloneAndFutex();
-    testCheckResourcesNoErrors();
     try testFindNameInPath(vars);
     try testVClockGettime(aux);
 }
