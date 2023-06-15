@@ -11,8 +11,9 @@ pub fn map(comptime spec: MapSpec, arena_index: u8) sys.ErrorUnion(spec.errors, 
     const st_addr: u64 = up_addr - s_bytes;
     const mmap_prot: mem.Prot = spec.prot();
     const mmap_flags: mem.Map = spec.flags();
+    const logging: builtin.Logging.AcquireErrorFault = comptime spec.logging.override();
     if (meta.wrap(sys.call(.mmap, spec.errors, void, .{ st_addr, s_bytes, mmap_prot.val, mmap_flags.val, ~@as(u64, 0), 0 }))) {
-        if (spec.logging.override().Acquire) {
+        if (logging.Acquire) {
             mem.debug.mapNotice(st_addr, s_bytes);
         }
     } else |map_error| {
@@ -27,12 +28,13 @@ pub fn unmap(comptime spec: mem.UnmapSpec, arena_index: u8) sys.ErrorUnion(spec.
     const up_addr = AddressSpace.high(arena_index);
     const st_addr = mach.alignA64(up_addr - 8192, 4096);
     const len: u64 = up_addr - st_addr;
+    const logging: builtin.Logging.ReleaseError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.munmap, spec.errors, spec.return_type, .{ st_addr, up_addr - st_addr }))) {
-        if (spec.logging.override().Release) {
+        if (logging.Release) {
             mem.debug.unmapNotice(st_addr, len);
         }
     } else |unmap_error| {
-        if (spec.logging.override().Error) {
+        if (logging.Error) {
             mem.debug.unmapError(unmap_error, st_addr, len);
         }
         return unmap_error;
