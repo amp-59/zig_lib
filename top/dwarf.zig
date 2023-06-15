@@ -12,78 +12,207 @@ const testing = @import("./testing.zig");
 const DebugSpec = struct {
     logging: Logging = .{},
     const Logging = struct {
-        summary: bool = true,
-        abbrev_entry: bool = true,
+        summary: bool = false,
+        abbrev_entry: bool = false,
         info_entry: bool = false,
     };
 };
 // TODO Relocate to namespace `config`.
 const debug_spec: DebugSpec = .{};
+const WordSize = enum(u8) { dword = 4, qword = 8 };
 
-const WordSize = enum(u1) { dword, qword };
-
-const Range = struct {
-    start: u64,
-    end: u64,
+const Range = extern struct {
+    start: u64 = 0,
+    end: u64 = 0,
 };
 pub const Func = struct {
-    range: ?Range,
+    range: Range,
     name: ?[]const u8,
 };
-const Unit = struct {
+const Unit = extern struct {
+    off: u64,
+    len: u64,
     version: u16,
     word_size: WordSize,
-    range: ?Range = null,
-    abbrev_tab: *AbbrevTable,
-    abbrev_tab_len: u64,
-    info_entry: *InfoEntry,
-    info_entry_len: u64,
+    addr_size: u8,
+    range: Range,
     str_offsets_base: usize = 0,
     addr_base: usize = 0,
     rnglists_base: usize = 0,
     loclists_base: usize = 0,
+    abbrev_tab: *AbbrevTable,
+    info_entry: *InfoEntry,
+    fn init(allocator: *mem.SimpleAllocator, dwarf_info: *DwarfInfo, bytes: [*]u8, unit_off: u64) !*Unit {
+        const buf: [*]u8 = bytes + unit_off;
+        const ret: *Unit = dwarf_info.addUnit(allocator);
+        ret.off = unit_off;
+        ret.word_size = @intToEnum(WordSize, @as(u8, 4) << @boolToInt(@ptrCast(*align(1) u32, buf).* == ~@as(u32, 0)));
+        switch (ret.word_size) {
+            .qword => ret.len = @ptrCast(*align(1) u64, buf + 4).*,
+            .dword => ret.len = @ptrCast(*align(1) u32, buf).*,
+        }
+        if (ret.word_size == .dword and
+            ret.len >= ~@as(u32, 0))
+        {
+            builtin.proc.exitError(error.InvalidretLength, 2);
+        }
+        var pos: u64 = switch (ret.word_size) {
+            .qword => 12,
+            .dword => 4,
+        };
+        ret.version = @ptrCast(*align(1) u16, buf + pos).*;
+        if (ret.version < 2 or
+            ret.version > 5)
+        {
+            builtin.proc.exitError(error.InvalidDWARFVersion, 2);
+        }
+        ret.abbrev_tab = allocator.create(AbbrevTable);
+        pos +%= 2;
+        if (ret.version >= 5) {
+            if (@intToEnum(UT, buf[pos]) != .compile) {
+                builtin.proc.exitError(error.InvalidEncoding, 2);
+            }
+            pos +%= 1;
+            ret.addr_size = buf[pos];
+            pos +%= 1;
+            switch (ret.word_size) {
+                .qword => ret.abbrev_tab.off = @ptrCast(*align(1) u64, buf + pos).*,
+                .dword => ret.abbrev_tab.off = @ptrCast(*align(1) u32, buf + pos).*,
+            }
+            pos +%= @enumToInt(ret.word_size);
+        } else {
+            switch (ret.word_size) {
+                .qword => ret.abbrev_tab.off = @ptrCast(*align(1) u64, buf + pos).*,
+                .dword => ret.abbrev_tab.off = @ptrCast(*align(1) u32, buf + pos).*,
+            }
+            pos +%= @enumToInt(ret.word_size);
+            ret.addr_size = buf[pos];
+            pos +%= 1;
+        }
+        ret.info_entry = allocator.create(InfoEntry);
+        ret.info_entry.off = unit_off +% pos;
+        return ret;
+    }
 };
 const AbbrevTable = struct {
-    abbrev_tab_off: usize,
-    ents: [*]AbbrevEntry = undefined,
-    ents_max_len: u64 = 0,
-    ents_len: u64 = 0,
-    fn addEntry(table: *AbbrevTable, allocator: *mem.SimpleAllocator) *AbbrevEntry {
+    off: usize,
+    len: usize,
+    ents: [*]AbbrevTable.Entry,
+    ents_max_len: u64,
+    ents_len: u64,
+    const Entry = struct {
+        head: extern struct {
+            code: u64,
+            tag: Tag,
+            children: Children,
+        },
+        kvs: [*]KeyVal,
+        kvs_max_len: u64,
+        kvs_len: u64,
+        const KeyVal = struct {
+            attr: Attr,
+            form: Form,
+            payload: i64 = 0,
+        };
+        fn addKeyVal(entry: *Entry, allocator: *mem.SimpleAllocator) *KeyVal {
+            @setRuntimeSafety(false);
+            const size_of: comptime_int = @sizeOf(KeyVal);
+            const addr_buf: *u64 = @ptrCast(*u64, &entry.kvs);
+            const ret: *KeyVal = @intToPtr(
+                *KeyVal,
+                allocator.addGeneric(size_of, 1, addr_buf, &entry.kvs_max_len, entry.kvs_len),
+            );
+            entry.kvs_len +%= 1;
+            return ret;
+        }
+    };
+    fn addEntry(table: *AbbrevTable, allocator: *mem.SimpleAllocator) *AbbrevTable.Entry {
         @setRuntimeSafety(false);
-        const size_of: comptime_int = @sizeOf(AbbrevEntry);
+        const size_of: comptime_int = @sizeOf(AbbrevTable.Entry);
         const addr_buf: *u64 = @ptrCast(*u64, &table.ents);
-        const ret: *AbbrevEntry = @intToPtr(
-            *AbbrevEntry,
+        const ret: *AbbrevTable.Entry = @intToPtr(
+            *AbbrevTable.Entry,
             allocator.addGeneric(size_of, 1, addr_buf, &table.ents_max_len, table.ents_len),
         );
         table.ents_len +%= 1;
         return ret;
     }
 };
-const AbbrevEntry = struct {
-    code: u64,
-    tag: Tag,
-    children: Children,
-    kvs: [*]KeyVal = undefined,
-    kvs_max_len: u64 = 0,
-    kvs_len: u64 = 0,
+const InfoEntry = extern struct {
+    head: extern struct {
+        tag: Tag,
+        children: Children,
+    },
+    off: usize,
+    len: usize,
+    kvs: [*]KeyVal,
+    kvs_max_len: usize = 0,
+    kvs_len: usize = 0,
     const KeyVal = struct {
-        attr: Attr,
-        form: Form,
-        payload: i64 = undefined,
+        key: Attr,
+        val: FormValue,
     };
-    fn addKeyVal(entry: *AbbrevEntry, allocator: *mem.SimpleAllocator) *KeyVal {
+    fn addKeyVal(info_entry: *InfoEntry, allocator: *mem.SimpleAllocator) *KeyVal {
         @setRuntimeSafety(false);
         const size_of: comptime_int = @sizeOf(KeyVal);
-        const addr_buf: *u64 = @ptrCast(*u64, &entry.kvs);
+        const addr_buf: *u64 = @ptrCast(*u64, &info_entry.kvs);
         const ret: *KeyVal = @intToPtr(
             *KeyVal,
-            allocator.addGeneric(size_of, 1, addr_buf, &entry.kvs_max_len, entry.kvs_len),
+            allocator.addGeneric(size_of, 1, addr_buf, &info_entry.kvs_max_len, info_entry.kvs_len),
         );
-        entry.kvs_len +%= 1;
+        info_entry.kvs_len +%= 1;
         return ret;
     }
+    pub fn getAttr(info_entry: *const InfoEntry, key: Attr) ?*const FormValue {
+        for (info_entry.kvs[0..info_entry.kvs_len]) |*kv| {
+            if (kv.key == key) return &kv.val;
+        }
+        return null;
+    }
+    fn address(info_entry: *const InfoEntry, dwarf_info: *DwarfInfo, attr_id: Attr, unit: Unit) ?u64 {
+        if (info_entry.getAttr(attr_id)) |form_val| {
+            switch (form_val.*) {
+                FormValue.Address => |value| {
+                    return value;
+                },
+                FormValue.AddrOffset => |index| {
+                    return dwarf_info.readDebugAddr(unit.addr_base, index);
+                },
+                else => builtin.proc.exitError(error.InvalidEncoding, 2),
+            }
+        }
+        return null;
+    }
+    fn sectionOffset(info_entry: *const InfoEntry, attr_id: Attr) ?u64 {
+        if (info_entry.getAttr(attr_id)) |form_val| {
+            return form_val.getUInt(u64);
+        }
+        return null;
+    }
+    fn unsignedLe(info_entry: *const InfoEntry, attr_id: Attr) ?u64 {
+        if (info_entry.getAttr(attr_id)) |form_val| {
+            switch (form_val.*) {
+                FormValue.Const => |value| {
+                    return value.asUnsignedLe();
+                },
+                else => builtin.proc.exitError(error.InvalidEncoding, 2),
+            }
+        }
+        return null;
+    }
+    fn reference(info_entry: *const InfoEntry, attr_id: Attr) ?u64 {
+        if (info_entry.getAttr(attr_id)) |form_val| {
+            switch (form_val.*) {
+                FormValue.Ref => |value| {
+                    return value;
+                },
+                else => builtin.proc.exitError(error.InvalidEncoding, 2),
+            }
+        }
+        return null;
+    }
 };
+
 const FormValue = union(enum) {
     Address: u64,
     AddrOffset: usize,
@@ -101,18 +230,18 @@ const FormValue = union(enum) {
     LocListOffset: u64,
     RangeListOffset: u64,
     data16: [16]u8,
-    fn getString(val: FormValue, dwarf: DwarfInfo) ![]const u8 {
+    pub fn getString(val: FormValue, dwarf_info: DwarfInfo) ![]const u8 {
         switch (val) {
             .String => |s| return s,
-            .StrPtr => |off| return dwarf.getString(off),
-            .LineStrPtr => |off| return dwarf.getLineString(off),
+            .StrPtr => |off| return dwarf_info.getString(off),
+            .LineStrPtr => |off| return dwarf_info.getLineString(off),
             else => builtin.proc.exitError(error.InvalidEncoding, 2),
         }
     }
-    fn getUInt(val: FormValue, comptime U: type) !U {
+    fn getUInt(val: FormValue, comptime U: type) U {
         switch (val) {
             .Const => {
-                return @intCast(U, try val.Const.asUnsignedLe());
+                return @intCast(U, val.Const.asUnsignedLe());
             },
             .SecOffset => |sec_offset| {
                 return @intCast(U, sec_offset);
@@ -130,71 +259,17 @@ const FormValue = union(enum) {
 const Constant = struct {
     payload: u64,
     signed: bool,
-    fn asUnsignedLe(val: Constant) !u64 {
+    fn asUnsignedLe(val: Constant) u64 {
         if (val.signed) {
             builtin.proc.exitError(error.InvalidEncoding, 2);
         }
         return val.payload;
     }
-    fn asSignedLe(val: Constant) !i64 {
+    fn asSignedLe(val: Constant) i64 {
         if (val.signed) {
             return @bitCast(i64, val.payload);
         }
         builtin.proc.exitError(error.InvalidEncoding, 2);
-    }
-};
-const InfoEntry = struct {
-    tag: Tag,
-    children: Children,
-    kvs: [*]KeyVal = undefined,
-    kvs_max_len: u64 = 0,
-    kvs_len: u64 = 0,
-    const KeyVal = struct {
-        key: Attr,
-        val: FormValue,
-    };
-    fn addKeyVal(info_entry: *InfoEntry, allocator: *mem.SimpleAllocator) *KeyVal {
-        @setRuntimeSafety(false);
-        const size_of: comptime_int = @sizeOf(KeyVal);
-        const addr_buf: *u64 = @ptrCast(*u64, &info_entry.kvs);
-        const ret: *KeyVal = @intToPtr(
-            *KeyVal,
-            allocator.addGeneric(size_of, 1, addr_buf, &info_entry.kvs_max_len, info_entry.kvs_len),
-        );
-        info_entry.kvs_len +%= 1;
-        return ret;
-    }
-    fn getAttr(info_entry: *const InfoEntry, key: Attr) ?*const FormValue {
-        for (info_entry.kvs[0..info_entry.kvs_len]) |*kv| {
-            if (kv.key == key) return &kv.val;
-        }
-        return null;
-    }
-    fn getAttrAddr(info_entry: *const InfoEntry, dwarf: *DwarfInfo, attr_id: Attr, unit: Unit) !u64 {
-        const form_value = info_entry.getAttr(attr_id) orelse return error.MissingDebugInfo;
-        return switch (form_value.*) {
-            FormValue.Address => |value| value,
-            FormValue.AddrOffset => |index| try dwarf.readDebugAddr(unit.addr_base, index),
-            else => error.InvalidDebugInfo,
-        };
-    }
-    fn getAttrSecOffset(info_entry: *const InfoEntry, attr_id: Attr) !u64 {
-        const form_value = info_entry.getAttr(attr_id) orelse return error.MissingDebugInfo;
-        return form_value.getUInt(u64);
-    }
-    fn getAttrUnsignedLe(info_entry: *const InfoEntry, attr_id: Attr) !u64 {
-        const form_value = info_entry.getAttr(attr_id) orelse return error.MissingDebugInfo;
-        return switch (form_value.*) {
-            FormValue.Const => |value| value.asUnsignedLe(),
-            else => error.InvalidDebugInfo,
-        };
-    }
-    fn getAttrRef(info_entry: *const InfoEntry, attr_id: Attr) !u64 {
-        const form_value = info_entry.getAttr(attr_id) orelse return error.MissingDebugInfo;
-        return switch (form_value.*) {
-            FormValue.Ref => |value| value,
-            else => error.InvalidDebugInfo,
-        };
     }
 };
 pub const DwarfInfo = extern struct {
@@ -231,7 +306,6 @@ pub const DwarfInfo = extern struct {
     funcs: [*]Func,
     funcs_max_len: u64,
     funcs_len: u64,
-
     const names: [12][]const u8 = .{
         ".debug_info",
         ".debug_abbrev",
@@ -272,165 +346,89 @@ pub const DwarfInfo = extern struct {
         }
         return @bitCast(DwarfInfo, ret);
     }
-    fn addAbbrevTable(dwarf: *DwarfInfo, allocator: *mem.SimpleAllocator) *AbbrevTable {
+    fn addAbbrevTable(dwarf_info: *DwarfInfo, allocator: *mem.SimpleAllocator) *AbbrevTable {
         @setRuntimeSafety(false);
-        const addr_buf: *u64 = @ptrCast(*u64, &dwarf.abbrev_tabs);
-        const ret: *AbbrevTable = @intToPtr(*AbbrevTable, allocator.addGeneric(@sizeOf(AbbrevTable), 1, addr_buf, &dwarf.abbrev_tabs_max_len, dwarf.abbrev_tabs_len));
-        dwarf.abbrev_tabs_len +%= 1;
+        const addr_buf: *u64 = @ptrCast(*u64, &dwarf_info.abbrev_tabs);
+        const ret: *AbbrevTable = @intToPtr(*AbbrevTable, allocator.addGeneric(@sizeOf(AbbrevTable), 1, addr_buf, &dwarf_info.abbrev_tabs_max_len, dwarf_info.abbrev_tabs_len));
+        dwarf_info.abbrev_tabs_len +%= 1;
         return ret;
     }
-    fn addUnit(dwarf: *DwarfInfo, allocator: *mem.SimpleAllocator) *Unit {
+    fn addUnit(dwarf_info: *DwarfInfo, allocator: *mem.SimpleAllocator) *Unit {
         @setRuntimeSafety(false);
-        const addr_buf: *u64 = @ptrCast(*u64, &dwarf.units);
-        const ret: *Unit = @intToPtr(*Unit, allocator.addGeneric(@sizeOf(Unit), 1, addr_buf, &dwarf.units_max_len, dwarf.units_len));
-        dwarf.units_len +%= 1;
+        const addr_buf: *u64 = @ptrCast(*u64, &dwarf_info.units);
+        const ret: *Unit = @intToPtr(*Unit, allocator.addGeneric(@sizeOf(Unit), 1, addr_buf, &dwarf_info.units_max_len, dwarf_info.units_len));
+        dwarf_info.units_len +%= 1;
         return ret;
     }
-    fn addFunc(dwarf: *DwarfInfo, allocator: *mem.SimpleAllocator) *Func {
+    fn addFunc(dwarf_info: *DwarfInfo, allocator: *mem.SimpleAllocator) *Func {
         @setRuntimeSafety(false);
-        const addr_buf: *u64 = @ptrCast(*u64, &dwarf.funcs);
-        const ret: *Func = @intToPtr(*Func, allocator.addGeneric(@sizeOf(Func), 1, addr_buf, &dwarf.funcs_max_len, dwarf.funcs_len));
-        dwarf.funcs_len +%= 1;
+        const addr_buf: *u64 = @ptrCast(*u64, &dwarf_info.funcs);
+        const ret: *Func = @intToPtr(*Func, allocator.addGeneric(@sizeOf(Func), 1, addr_buf, &dwarf_info.funcs_max_len, dwarf_info.funcs_len));
+        dwarf_info.funcs_len +%= 1;
         return ret;
     }
-    fn scanAllCompileUnitsInternal(dwarf: *DwarfInfo, allocator: *mem.SimpleAllocator, unit_off: u64) !u64 {
-        const buf: [*]u8 = dwarf.info + unit_off;
-        var unit_len: u64 = @ptrCast(*align(1) u32, buf).*;
-        const word_size: WordSize = @intToEnum(WordSize, @boolToInt(unit_len == 0xffffffff));
-        var pos: u64 = 0;
-        pos +%= 4;
-        if (word_size == .qword) {
-            unit_len = @ptrCast(*align(1) u64, buf + pos).*;
-            pos +%= 8;
-        }
-        if (unit_len == 0) {
-            return pos;
-        }
-        if (word_size == .dword and unit_len >= 0xffffffff0) {
-            builtin.proc.exitError(error.InvalidEncoding, 2);
-        }
-        const next_off: u64 = pos +% unit_len;
-        const version: u16 = @ptrCast(*align(1) u16, buf + pos).*;
-        pos +%= 2;
-        if (version < 2 or
-            version > 5)
-        {
-            builtin.proc.exitError(error.InvalidEncoding, 2);
-        }
-        var addr_size: u8 = undefined;
-        var abbrev_tab_off: u64 = undefined;
-        if (version >= 5) {
-            if (@intToEnum(UT, buf[pos]) != .compile) {
-                builtin.proc.exitError(error.InvalidEncoding, 2);
-            }
-            pos +%= 1;
-            addr_size = buf[pos];
-            pos +%= 1;
-            switch (word_size) {
-                .qword => {
-                    abbrev_tab_off = @ptrCast(*align(1) u64, buf + pos).*;
-                    pos +%= 8;
-                },
-                .dword => {
-                    abbrev_tab_off = @ptrCast(*align(1) u32, buf + pos).*;
-                    pos +%= 4;
-                },
-            }
-        } else {
-            switch (word_size) {
-                .qword => {
-                    abbrev_tab_off = @ptrCast(*align(1) u64, buf + pos).*;
-                    pos +%= 8;
-                },
-                .dword => {
-                    abbrev_tab_off = @ptrCast(*align(1) u32, buf + pos).*;
-                    pos +%= 4;
-                },
-            }
-            addr_size = buf[pos];
-            pos +%= 1;
-        }
-        if (addr_size != @sizeOf(usize)) {
-            builtin.proc.exitError(error.InvalidEncoding, 2);
-        }
+    fn populateUnit(allocator: *mem.SimpleAllocator, dwarf_info: *DwarfInfo, unit: *Unit) !void {
+        try parseAbbrevTable(allocator, dwarf_info, unit.abbrev_tab);
+        try parseInfoEntry(allocator, dwarf_info, unit.word_size, unit.abbrev_tab, unit.info_entry);
         if (debug_spec.logging.summary) {
-            debug.unitAbstractNotice(version, unit_len, word_size, addr_size);
+            debug.unitAbstractNotice(unit);
         }
-        const unit: *Unit = try dwarf.createUnit(allocator, word_size, version, abbrev_tab_off, unit_off +% pos);
-        pos +%= unit.info_entry_len;
-        const info_entry: *InfoEntry = allocator.create(InfoEntry);
-        while (pos < next_off) {
-            const info_entry_off: u64 = unit_off +% pos;
-            const info_entry_len: u64 = try parseInfoEntry(allocator, dwarf, word_size, unit.abbrev_tab, info_entry_off, info_entry);
-            pos +%= info_entry_len;
-            switch (info_entry.tag) {
-                else => {},
-                .subprogram,
-                .inlined_subroutine,
-                .subroutine,
-                .entry_point,
-                => dwarf.addFunc(allocator).* = .{
-                    .name = try parseFuncName(allocator, dwarf, unit, info_entry, unit_off, next_off),
-                    .range = try parseRange(dwarf, unit, info_entry),
-                },
-            }
+        if (unit.info_entry.getAttr(.str_offsets_base)) |fv| {
+            unit.str_offsets_base = fv.getUInt(usize);
         }
-        return next_off;
+        if (unit.info_entry.getAttr(.addr_base)) |fv| {
+            unit.addr_base = fv.getUInt(usize);
+        }
+        if (unit.info_entry.getAttr(.rnglists_base)) |fv| {
+            unit.rnglists_base = fv.getUInt(usize);
+        }
+        if (unit.info_entry.getAttr(.loclists_base)) |fv| {
+            unit.loclists_base = fv.getUInt(usize);
+        }
     }
-    pub fn scanAllCompileUnits(dwarf: *DwarfInfo, allocator: *mem.SimpleAllocator) !void {
+    pub fn scanAllCompileUnits(dwarf_info: *DwarfInfo, allocator: *mem.SimpleAllocator) void {
         var unit_off: u64 = 0;
-        while (unit_off < dwarf.info_len) {
-            unit_off += try dwarf.scanAllCompileUnitsInternal(allocator, unit_off);
+        while (unit_off < dwarf_info.info_len) {
+            const unit: *Unit = try Unit.init(allocator, dwarf_info, dwarf_info.info, unit_off);
+            try populateUnit(allocator, dwarf_info, unit);
+            const next_off: u64 = switch (unit.word_size) {
+                .qword => 12 +% unit.len,
+                .dword => 4 +% unit.len,
+            };
+            const info_entry: *InfoEntry = allocator.create(InfoEntry);
+            info_entry.* = comptime builtin.zero(InfoEntry);
+            var pos: u64 = unit.info_entry.off +% unit.info_entry.len;
+            while (pos < next_off) {
+                info_entry.off = unit_off +% pos;
+                try parseInfoEntry(allocator, dwarf_info, unit.word_size, unit.abbrev_tab, info_entry);
+                pos +%= info_entry.len;
+                if (info_entry.head.tag == .subprogram or
+                    info_entry.head.tag == .inlined_subroutine or
+                    info_entry.head.tag == .subroutine or
+                    info_entry.head.tag == .entry_point)
+                {
+                    dwarf_info.addFunc(allocator).* = .{
+                        .name = parseFuncName(allocator, dwarf_info, unit, info_entry, unit_off, next_off),
+                        .range = parseRange(dwarf_info, unit, info_entry),
+                    };
+                }
+            }
+            unit_off +%= next_off;
         }
-    }
-    fn createUnit(
-        dwarf: *DwarfInfo,
-        allocator: *mem.SimpleAllocator,
-        word_size: WordSize,
-        version: u16,
-        abbrev_tab_off: u64,
-        info_entry_off: u64,
-    ) !*Unit {
-        const ret: *Unit = dwarf.addUnit(allocator);
-        const abbrev_tab: *AbbrevTable = dwarf.addAbbrevTable(allocator);
-        const abbrev_tab_len: u64 = try parseAbbrevTable(allocator, dwarf, abbrev_tab_off, abbrev_tab);
-        const info_entry: *InfoEntry = allocator.create(InfoEntry);
-        const info_entry_len: u64 = try parseInfoEntry(allocator, dwarf, word_size, abbrev_tab, info_entry_off, info_entry);
-        ret.* = .{
-            .version = version,
-            .word_size = word_size,
-            .info_entry = info_entry,
-            .info_entry_len = info_entry_len,
-            .abbrev_tab = abbrev_tab,
-            .abbrev_tab_len = abbrev_tab_len,
-        };
-        if (ret.info_entry.getAttr(.str_offsets_base)) |fv| {
-            ret.str_offsets_base = try fv.getUInt(usize);
-        }
-        if (ret.info_entry.getAttr(.addr_base)) |fv| {
-            ret.addr_base = try fv.getUInt(usize);
-        }
-        if (ret.info_entry.getAttr(.rnglists_base)) |fv| {
-            ret.rnglists_base = try fv.getUInt(usize);
-        }
-        if (ret.info_entry.getAttr(.loclists_base)) |fv| {
-            ret.loclists_base = try fv.getUInt(usize);
-        }
-        return ret;
     }
     fn parseFuncName(
         allocator: *mem.SimpleAllocator,
-        dwarf: *DwarfInfo,
+        dwarf_info: *DwarfInfo,
         unit: *const Unit,
         info_entry: *InfoEntry,
         unit_off: u64,
         next_off: u64,
-    ) !?[]const u8 {
+    ) ?[]const u8 {
         var depth: i32 = 3;
         var cur_info_entry: InfoEntry = info_entry.*;
         while (depth > 0) : (depth -%= 1) {
             if (cur_info_entry.getAttr(.name)) |form_val| {
-                return try getAttrString(dwarf, unit, form_val, dwarf.str[0..dwarf.str_len]);
+                return getAttrString(dwarf_info, unit, form_val, dwarf_info.str[0..dwarf_info.str_len]);
             }
             if (cur_info_entry.getAttr(.abstract_origin)) |form_val| {
                 if (form_val.* != .Ref) {
@@ -440,7 +438,8 @@ pub const DwarfInfo = extern struct {
                 if (ref_off > next_off) {
                     builtin.proc.exitError(error.InvalidEncoding, 2);
                 }
-                _ = try parseInfoEntry(allocator, dwarf, unit.word_size, unit.abbrev_tab, unit_off +% ref_off, &cur_info_entry);
+                cur_info_entry.off = unit_off +% ref_off;
+                try parseInfoEntry(allocator, dwarf_info, unit.word_size, unit.abbrev_tab, &cur_info_entry);
                 continue;
             }
             if (cur_info_entry.getAttr(.specification)) |form_val| {
@@ -451,17 +450,18 @@ pub const DwarfInfo = extern struct {
                 if (ref_off > next_off) {
                     builtin.proc.exitError(error.InvalidEncoding, 2);
                 }
-                _ = try parseInfoEntry(allocator, dwarf, unit.word_size, unit.abbrev_tab, unit_off +% ref_off, &cur_info_entry);
+                cur_info_entry.off = unit_off +% ref_off;
+                try parseInfoEntry(allocator, dwarf_info, unit.word_size, unit.abbrev_tab, &cur_info_entry);
                 continue;
             }
         }
         return null;
     }
-    fn parseRange(dwarf: *DwarfInfo, unit: *const Unit, info_entry: *InfoEntry) !?Range {
+    fn parseRange(dwarf_info: *DwarfInfo, unit: *const Unit, info_entry: *InfoEntry) Range {
         if (info_entry.getAttr(.low_pc)) |low_form_val| {
             const low_pc: u64 = switch (low_form_val.*) {
                 .Address => |addr| addr,
-                .AddrOffset => |off| try dwarf.readDebugAddr(unit.addr_base, off),
+                .AddrOffset => |off| dwarf_info.readDebugAddr(unit.addr_base, off),
                 else => builtin.proc.exitError(error.InvalidEncoding, 2),
             };
             if (info_entry.getAttr(.high_pc)) |high_form_val| {
@@ -472,50 +472,47 @@ pub const DwarfInfo = extern struct {
                     },
                     .Const => |val| return .{
                         .start = low_pc,
-                        .end = low_pc + try val.asUnsignedLe(),
+                        .end = low_pc + val.asUnsignedLe(),
                     },
                     else => builtin.proc.exitError(error.InvalidEncoding, 2),
                 }
             }
         }
-        return null;
+        return .{};
     }
     fn parseAbbrevTable(
         allocator: *mem.SimpleAllocator,
-        dwarf: *DwarfInfo,
-        abbrev_tab_off: u64,
+        dwarf_info: *DwarfInfo,
         abbrev_tab: *AbbrevTable,
-    ) !u64 {
-        const abbrev_bytes: []const u8 = dwarf.abbrev[abbrev_tab_off..dwarf.abbrev_len];
-        var pos: u64 = 0;
-        abbrev_tab.* = .{ .abbrev_tab_off = abbrev_tab_off };
+    ) !void {
+        const abbrev_bytes: []const u8 = dwarf_info.abbrev[abbrev_tab.off..dwarf_info.abbrev_len];
         while (true) {
-            const code = parse.noexcept.readLEB128(u64, abbrev_bytes[pos..]);
-            pos +%= code[1];
+            const code = parse.noexcept.readLEB128(u64, abbrev_bytes[abbrev_tab.len..]);
+            abbrev_tab.len +%= code[1];
             if (code[0] == 0) {
                 break;
             }
-            const tag = parse.noexcept.readLEB128(Tag, abbrev_bytes[pos..]);
-            pos +%= tag[1];
-            const ent: *AbbrevEntry = abbrev_tab.addEntry(allocator);
-            ent.* = .{
-                .code = code[0],
+            const tag = parse.noexcept.readLEB128(Tag, abbrev_bytes[abbrev_tab.len..]);
+            abbrev_tab.len +%= tag[1];
+            const ent: *AbbrevTable.Entry = abbrev_tab.addEntry(allocator);
+            ent.head = .{
                 .tag = tag[0],
-                .children = @intToEnum(Children, abbrev_bytes[pos]),
+                .children = @intToEnum(Children, abbrev_bytes[abbrev_tab.len]),
+                .code = code[0],
             };
-            pos +%= 1;
+            abbrev_tab.len +%= 1;
             while (true) {
-                const attr = parse.noexcept.readLEB128(Attr, abbrev_bytes[pos..]);
-                pos +%= attr[1];
-                const form = parse.noexcept.readLEB128(Form, abbrev_bytes[pos..]);
-                pos +%= form[1];
+                const attr = parse.noexcept.readLEB128(Attr, abbrev_bytes[abbrev_tab.len..]);
+                abbrev_tab.len +%= attr[1];
+                const form = parse.noexcept.readLEB128(Form, abbrev_bytes[abbrev_tab.len..]);
+                abbrev_tab.len +%= form[1];
                 if (attr[0] == .null and form[0] == .null) {
                     break;
                 }
-                const kv: *AbbrevEntry.KeyVal = ent.addKeyVal(allocator);
+                const kv: *AbbrevTable.Entry.KeyVal = ent.addKeyVal(allocator);
                 if (form[0] == .implicit_const) {
-                    const payload = parse.noexcept.readLEB128(i64, abbrev_bytes[pos..]);
-                    pos +%= payload[1];
+                    const payload = parse.noexcept.readLEB128(i64, abbrev_bytes[abbrev_tab.len..]);
+                    abbrev_tab.len +%= payload[1];
                     kv.* = .{ .attr = attr[0], .form = form[0], .payload = payload[0] };
                 } else {
                     kv.* = .{ .attr = attr[0], .form = form[0] };
@@ -525,38 +522,36 @@ pub const DwarfInfo = extern struct {
         if (debug_spec.logging.abbrev_entry) {
             debug.abbrevTableNotice(abbrev_tab);
         }
-        return pos;
     }
     fn parseInfoEntry(
         allocator: *mem.SimpleAllocator,
-        dwarf: *DwarfInfo,
+        dwarf_info: *DwarfInfo,
         word_size: WordSize,
         abbrev_tab: *const AbbrevTable,
-        info_entry_off: u64,
         info_entry: *InfoEntry,
-    ) !u64 {
-        const info_entry_bytes: []u8 = dwarf.info[info_entry_off..dwarf.info_len];
+    ) !void {
+        const info_entry_bytes: []u8 = dwarf_info.info[info_entry.off..dwarf_info.info_len];
         const code = parse.noexcept.readLEB128(u64, info_entry_bytes);
-        var pos: u64 = code[1];
+        info_entry.len = code[1];
+        info_entry.kvs_len = 0;
         if (code[0] == 0) {
-            return pos;
+            return;
         }
-        const ent: AbbrevEntry = for (abbrev_tab.ents[0..abbrev_tab.ents_len]) |ent| {
-            if (ent.code == code[0]) {
-                break ent;
+        const entry: AbbrevTable.Entry = for (abbrev_tab.ents[0..abbrev_tab.ents_len]) |entry| {
+            if (entry.head.code == code[0]) {
+                break entry;
             }
         } else {
-            testing.printN(32, .{code});
-            builtin.proc.exitError(error.InvalidEncoding, 2);
+            builtin.proc.exitErrorFault(error.InvalidEncoding, builtin.fmt.ux64(code[0]).readAll(), 2);
         };
-        info_entry.* = .{
-            .tag = ent.tag,
-            .children = ent.children,
+        info_entry.head = .{
+            .tag = entry.head.tag,
+            .children = entry.head.children,
         };
-        for (ent.kvs[0..ent.kvs_len], 0..) |kv, kv_idx| {
-            const res = try parseFormValue(allocator, word_size, info_entry_bytes[pos..], kv.form);
+        for (entry.kvs[0..entry.kvs_len], 0..) |kv, kv_idx| {
+            const res = try parseFormValue(allocator, word_size, info_entry_bytes[info_entry.len..], kv.form);
             info_entry.addKeyVal(allocator).* = .{ .key = kv.attr, .val = res[0] };
-            pos +%= res[1];
+            info_entry.len +%= res[1];
             if (kv.form == .implicit_const) {
                 info_entry.kvs[kv_idx].val.Const.payload = @bitCast(u64, kv.payload);
             }
@@ -564,52 +559,61 @@ pub const DwarfInfo = extern struct {
         if (debug_spec.logging.info_entry) {
             try debug.debugInfoEntryNotice(info_entry);
         }
-        return pos;
     }
-    fn getLineString(dwarf: DwarfInfo, offset: u64) ![]const u8 {
-        return getStringGeneric(dwarf.line_str[0..dwarf.line_str_len], offset);
+    fn getLineString(dwarf_info: DwarfInfo, offset: u64) [:0]const u8 {
+        return getStringGeneric(dwarf_info.line_str[0..dwarf_info.line_str_len], offset);
     }
-    fn getString(dwarf: DwarfInfo, offset: u64) ![]const u8 {
-        return getStringGeneric(dwarf.str[0..dwarf.str_len], offset);
+    fn getString(dwarf_info: DwarfInfo, offset: u64) [:0]const u8 {
+        return getStringGeneric(dwarf_info.str[0..dwarf_info.str_len], offset);
     }
-    fn readDebugAddr(dwarf: DwarfInfo, addr_base: u64, index: u64) !u64 {
-        if (dwarf.addr_len == 0) {
+    pub fn getSymbolName(dwarf_info: *DwarfInfo, instr_addr: u64) ?[]const u8 {
+        for (dwarf_info.funcs[0..dwarf_info.funcs_len]) |*func| {
+            if (instr_addr >= func.range.start and
+                instr_addr < func.range.end)
+            {
+                return func.name;
+            }
+        }
+        return null;
+    }
+    fn readDebugAddr(dwarf_info: DwarfInfo, addr_base: u64, index: u64) u64 {
+        if (dwarf_info.addr_len == 0) {
             builtin.proc.exitError(error.InvalidEncoding, 2);
         }
         if (addr_base < 8) {
             builtin.proc.exitError(error.InvalidEncoding, 2);
         }
-        const ver: u16 = @ptrCast(*align(1) u16, dwarf.addr + addr_base - 4).*;
+        const ver: u16 = @ptrCast(*align(1) u16, dwarf_info.addr + addr_base - 4).*;
         if (ver != 5) {
             builtin.proc.exitError(error.InvalidEncoding, 2);
         }
-        const addr_size: u8 = dwarf.addr[addr_base -% 2];
-        const seg_size: u8 = dwarf.addr[addr_base -% 1];
+        const addr_size: u8 = dwarf_info.addr[addr_base -% 2];
+        const seg_size: u8 = dwarf_info.addr[addr_base -% 1];
         const off: u64 = @intCast(usize, addr_base +% (addr_size +% seg_size) *% index);
-        if (off +% addr_size > dwarf.addr_len) {
+        if (off +% addr_size > dwarf_info.addr_len) {
             builtin.proc.exitError(error.InvalidEncoding, 2);
         }
         switch (addr_size) {
-            1 => return dwarf.addr[off],
-            2 => return @ptrCast(*align(1) u16, dwarf.addr + off).*,
-            4 => return @ptrCast(*align(1) u32, dwarf.addr + off).*,
-            8 => return @ptrCast(*align(1) u64, dwarf.addr + off).*,
+            1 => return dwarf_info.addr[off],
+            2 => return @ptrCast(*align(1) u16, dwarf_info.addr + off).*,
+            4 => return @ptrCast(*align(1) u32, dwarf_info.addr + off).*,
+            8 => return @ptrCast(*align(1) u64, dwarf_info.addr + off).*,
             else => builtin.proc.exitError(error.InvalidEncoding, 2),
         }
     }
-    pub fn getAttrString(dwarf: *DwarfInfo, unit: *const Unit, form_val: *const FormValue, opt_str: ?[]const u8) ![]const u8 {
+    pub fn getAttrString(dwarf_info: *DwarfInfo, unit: *const Unit, form_val: *const FormValue, opt_str: ?[]const u8) []const u8 {
         switch (form_val.*) {
             .String => |value| {
                 return value;
             },
             .StrPtr => |offset| {
-                return dwarf.getString(offset);
+                return dwarf_info.getString(offset);
             },
             .StrOffset => |index| {
-                if (dwarf.str_offsets_len == 0) {
+                if (dwarf_info.str_offsets_len == 0) {
                     builtin.proc.exitError(error.InvalidEncoding, 2);
                 }
-                const str_offsets: []u8 = dwarf.str_offsets[0..dwarf.str_offsets_len];
+                const str_offsets: []u8 = dwarf_info.str_offsets[0..dwarf_info.str_offsets_len];
                 if (unit.str_offsets_base == 0) {
                     builtin.proc.exitError(error.InvalidEncoding, 2);
                 }
@@ -618,36 +622,32 @@ pub const DwarfInfo = extern struct {
                     if (off +% 8 > str_offsets.len) {
                         builtin.proc.exitError(error.InvalidEncoding, 2);
                     }
-                    return getStringGeneric(opt_str, @ptrCast(*align(1) u64, dwarf.str_offsets + off).*);
+                    return getStringGeneric(opt_str, @ptrCast(*align(1) u64, dwarf_info.str_offsets + off).*);
                 } else {
                     const off: usize = unit.str_offsets_base + (4 *% index);
                     if (off +% 4 > str_offsets.len) {
                         builtin.proc.exitError(error.InvalidEncoding, 2);
                     }
-                    return getStringGeneric(opt_str, @ptrCast(*align(1) u32, dwarf.str_offsets + off).*);
+                    return getStringGeneric(opt_str, @ptrCast(*align(1) u32, dwarf_info.str_offsets + off).*);
                 }
             },
             .LineStrPtr => |offset| {
-                return dwarf.getLineString(offset);
+                return dwarf_info.getLineString(offset);
             },
             else => builtin.proc.exitError(error.InvalidEncoding, 2),
         }
     }
-    pub fn findCompileUnit(dwarf: *DwarfInfo, target_address: u64) !*const Unit {
-        for (dwarf.units[0..dwarf.units_len]) |*unit| {
-            if (unit.range) |range| {
-                if (target_address >= range.start and
-                    target_address < range.end)
-                {
-                    return unit;
-                }
+    pub fn findCompileUnit(dwarf_info: *DwarfInfo, target_address: u64) ?*const Unit {
+        for (dwarf_info.units[0..dwarf_info.units_len]) |*unit| {
+            if (target_address >= unit.range.start and
+                target_address < unit.range.end)
+            {
+                return unit;
             }
             const gev5: bool = unit.version >= 5;
-            const ranges_len: u64 = mach.cmov64(gev5, dwarf.rnglists_len, dwarf.ranges_len);
-            const ranges: [*]u8 = mach.cmovx(gev5, dwarf.rnglists, dwarf.ranges);
-
+            const ranges_len: u64 = mach.cmov64(gev5, dwarf_info.rnglists_len, dwarf_info.ranges_len);
+            const ranges: [*]u8 = mach.cmovx(gev5, dwarf_info.rnglists, dwarf_info.ranges);
             const ranges_val = unit.info_entry.getAttr(.ranges) orelse continue;
-
             const ranges_offset = switch (ranges_val.*) {
                 .SecOffset => |off| off,
                 .RangeListOffset => |idx| off: {
@@ -665,18 +665,10 @@ pub const DwarfInfo = extern struct {
                         break :off @ptrCast(*align(1) u32, ranges + off).*;
                     }
                 },
-                else => return error.InvalidEncoding,
+                else => builtin.proc.exitError(error.InvalidEncoding, 2),
             };
-
-            // All the addresses in the list are relative to the value
-            // specified by DW_AT.low_pc or to some other value encoded
-            // in the list itself.
-            // If no starting value is specified use zero.
-            var base_address = unit.info_entry.getAttrAddr(dwarf, .low_pc, unit.*) catch |err| switch (err) {
-                error.MissingDebugInfo => @as(u64, 0), // TODO https://github.com/ziglang/zig/issues/11135
-                else => return err,
-            };
-            const buf: [*]u8 = dwarf.ranges;
+            var base_address: usize = unit.info_entry.address(dwarf_info, .low_pc, unit.*) orelse 0;
+            const buf: [*]u8 = dwarf_info.ranges;
             var pos: u64 = ranges_offset;
             if (unit.version < 5) {
                 while (true) {
@@ -703,39 +695,35 @@ pub const DwarfInfo = extern struct {
                     switch (kind) {
                         RLE.end_of_list => break,
                         RLE.base_addressx => {
-                            const idx = parse.noexcept.readLEB128(usize, buf[pos..dwarf.ranges_len]);
+                            const idx = parse.noexcept.readLEB128(usize, buf[pos..dwarf_info.ranges_len]);
                             pos +%= idx[1];
-                            base_address = try dwarf.readDebugAddr(unit.addr_base, idx[0]);
+                            base_address = dwarf_info.readDebugAddr(unit.addr_base, idx[0]);
                         },
                         RLE.startx_endx => {
-                            const start_idx = parse.noexcept.readLEB128(usize, buf[pos..dwarf.ranges_len]);
+                            const start_idx = parse.noexcept.readLEB128(usize, buf[pos..dwarf_info.ranges_len]);
                             pos +%= start_idx[1];
-                            const start_addr: usize = try dwarf.readDebugAddr(unit.addr_base, start_idx[0]);
-
-                            const end_idx = parse.noexcept.readLEB128(usize, buf[pos..dwarf.ranges_len]);
+                            const start_addr: usize = dwarf_info.readDebugAddr(unit.addr_base, start_idx[0]);
+                            const end_idx = parse.noexcept.readLEB128(usize, buf[pos..dwarf_info.ranges_len]);
                             pos +%= end_idx[1];
-                            const end_addr: usize = try dwarf.readDebugAddr(unit.addr_base, end_idx[0]);
-
+                            const end_addr: usize = dwarf_info.readDebugAddr(unit.addr_base, end_idx[0]);
                             if (target_address >= start_addr and target_address < end_addr) {
                                 return unit;
                             }
                         },
                         RLE.startx_length => {
-                            const start_index = parse.noexcept.readLEB128(usize, buf[pos..dwarf.ranges_len]);
-                            const start_addr = try dwarf.readDebugAddr(unit.addr_base, start_index[0]);
-                            const len = parse.noexcept.readLEB128(usize, buf[pos..dwarf.ranges_len]);
+                            const start_index = parse.noexcept.readLEB128(usize, buf[pos..dwarf_info.ranges_len]);
+                            const start_addr: usize = dwarf_info.readDebugAddr(unit.addr_base, start_index[0]);
+                            const len = parse.noexcept.readLEB128(usize, buf[pos..dwarf_info.ranges_len]);
                             const end_addr: u64 = start_addr + len[0];
-
                             if (target_address >= start_addr and target_address < end_addr) {
                                 return unit;
                             }
                         },
                         RLE.offset_pair => {
-                            const start_addr = parse.noexcept.readLEB128(usize, buf[pos..dwarf.ranges_len]);
+                            const start_addr = parse.noexcept.readLEB128(usize, buf[pos..dwarf_info.ranges_len]);
                             pos +%= start_addr[1];
-                            const end_addr = parse.noexcept.readLEB128(usize, buf[pos..dwarf.ranges_len]);
+                            const end_addr = parse.noexcept.readLEB128(usize, buf[pos..dwarf_info.ranges_len]);
                             pos +%= end_addr[1];
-                            // This is the only kind that uses the base address
                             if (target_address >= base_address + start_addr[0] and
                                 target_address < base_address + end_addr[0])
                             {
@@ -758,7 +746,7 @@ pub const DwarfInfo = extern struct {
                         RLE.start_length => {
                             const start_addr = @ptrCast(*align(1) usize, buf + pos).*;
                             pos +%= @sizeOf(usize);
-                            const len = parse.noexcept.readLEB128(usize, buf[pos..dwarf.ranges_len]);
+                            const len = parse.noexcept.readLEB128(usize, buf[pos..dwarf_info.ranges_len]);
                             const end_addr = start_addr + len[0];
                             if (target_address >= start_addr and target_address < end_addr) {
                                 return unit;
@@ -768,10 +756,198 @@ pub const DwarfInfo = extern struct {
                 }
             }
         }
-        return error.MissingDebugInfo;
+        return null;
+    }
+    pub fn getLineNumberInfo(
+        dwarf_info: *DwarfInfo,
+        allocator: *mem.SimpleAllocator,
+        compile_unit: *const Unit,
+        instr_addr: u64,
+    ) ?debug.LineInfo {
+        @setRuntimeSafety(false);
+        const unit_cwd: []const u8 = blk: {
+            const form_val: *const FormValue = compile_unit.info_entry.getAttr(.comp_dir) orelse {
+                builtin.proc.exitError(error.InvalidEncoding, 2);
+            };
+            break :blk getAttrString(dwarf_info, compile_unit, form_val, dwarf_info.line_str[0..dwarf_info.line_str_len]);
+        };
+        const line_off: u64 = compile_unit.info_entry.sectionOffset(.stmt_list) orelse {
+            builtin.proc.exitError(error.InvalidEncoding, 2);
+        };
+        const unit: *Unit = try Unit.init(allocator, dwarf_info, dwarf_info.line, line_off);
+        const next_unit_off = line_off +% switch (unit.word_size) {
+            .qword => unit.len +% 12,
+            .dword => unit.len +% 8,
+        };
+        const buf: [*]u8 = dwarf_info.line + line_off;
+        const bytes: []const u8 = buf[0..dwarf_info.line_len];
+        var pos: u64 = unit.info_entry.off;
+        const next_off: u64 = (pos +% unit.abbrev_tab.off) -% 1;
+        const min_instr_len: u8 = dwarf_info.line[pos -% 1];
+        if (min_instr_len == 0) {
+            builtin.proc.exitError(error.InvalidEncoding, 2);
+        }
+        if (unit.version >= 4) {
+            pos +%= 1;
+        }
+        const is_stmt: bool = buf[pos] != 0;
+        pos +%= 1;
+        const line_base: i8 = @bitCast(i8, buf[pos]);
+        pos +%= 1;
+        const line_range: u8 = buf[pos];
+        pos +%= 1;
+        const opcode_base: u8 = buf[pos];
+        pos +%= 1;
+        if (line_range == 0) {
+            builtin.proc.exitError(error.InvalidEncoding, 2);
+        }
+        var opcode_lens: []u8 = allocator.allocate(u8, opcode_base -% 1);
+        var idx: usize = 0;
+        while (idx < opcode_base -% 1) : (idx +%= 1) {
+            opcode_lens[idx] = buf[pos];
+            pos +%= 1;
+        }
+        var dirs: FileEntry.Array = FileEntry.Array.init(allocator, 2);
+        dirs.appendOne(allocator, .{ .name = unit_cwd });
+        while (true) {
+            const dir: [:0]const u8 = mach.manyToSlice80(buf + pos);
+            pos +%= dir.len +% 1;
+            if (dir.len == 0) {
+                break;
+            }
+            dirs.appendOne(allocator, .{ .name = dir });
+        }
+        var files: FileEntry.Array = FileEntry.Array.init(allocator, 1);
+        while (true) {
+            const name: [:0]const u8 = mach.manyToSlice80(buf + pos);
+            pos +%= name.len +% 1;
+            if (name.len == 0) {
+                break;
+            }
+            const dir_idx = parse.noexcept.readLEB128(u32, bytes[pos..]);
+            pos +%= dir_idx[1];
+            const mtime = parse.noexcept.readLEB128(u64, bytes[pos..]);
+            pos +%= mtime[1];
+            const size = parse.noexcept.readLEB128(u64, bytes[pos..]);
+            pos +%= size[1];
+            files.appendOne(allocator, .{ .name = name, .dir_idx = dir_idx[0], .mtime = mtime[0], .size = size[0] });
+        }
+        var prog: LineNumberProgram = LineNumberProgram.init(is_stmt, instr_addr);
+        pos = next_off;
+        while (pos < next_unit_off) {
+            const opcode: u8 = buf[pos];
+            pos +%= 1;
+            if (opcode == @enumToInt(LNS.extended_op)) {
+                const op_size = parse.noexcept.readLEB128(u64, bytes[pos..]);
+                pos +%= op_size[1];
+                if (op_size[0] < 1) {
+                    builtin.proc.exitError(error.InvalidEncoding, 2);
+                }
+                var sub_op: u8 = buf[pos];
+                pos +%= 1;
+                switch (@intToEnum(LNE, sub_op)) {
+                    LNE.end_sequence => {
+                        prog.end_sequence = true;
+                        if (prog.checkLineMatch(allocator, &dirs, &files)) |info| {
+                            return info;
+                        }
+                        prog.reset();
+                    },
+                    LNE.set_address => {
+                        const addr = @ptrCast(*align(1) usize, buf + pos).*;
+                        pos +%= 8;
+                        prog.address = addr;
+                    },
+                    LNE.define_file => {
+                        const name: [:0]const u8 = mach.manyToSlice80(buf + pos);
+                        pos +%= name.len +% 1;
+                        if (name.len == 0) {
+                            break;
+                        }
+                        const dir_idx = parse.noexcept.readLEB128(u32, bytes[pos..]);
+                        pos +%= dir_idx[1];
+                        const mtime = parse.noexcept.readLEB128(u64, bytes[pos..]);
+                        pos +%= mtime[1];
+                        const size = parse.noexcept.readLEB128(u64, bytes[pos..]);
+                        pos +%= size[1];
+                        files.appendOne(allocator, .{ .dir_idx = dir_idx[0], .name = name, .mtime = mtime[0], .size = size[0] });
+                    },
+                    else => {
+                        const fwd_amt: isize = @bitCast(isize, op_size[0] - 1);
+                        if (fwd_amt < 0) {
+                            pos -%= @intCast(usize, -fwd_amt);
+                        } else {
+                            pos +%= @intCast(usize, fwd_amt);
+                        }
+                    },
+                }
+            } else if (opcode >= opcode_base) {
+                // special opcodes
+                const adjusted_opcode: u8 = opcode -% opcode_base;
+                const inc_addr: u8 = min_instr_len *% (adjusted_opcode / line_range);
+                const inc_line: i32 = @as(i32, line_base) +% @as(i32, adjusted_opcode % line_range);
+                prog.line +%= inc_line;
+                prog.address +%= inc_addr;
+                if (prog.checkLineMatch(allocator, &dirs, &files)) |info| {
+                    return info;
+                }
+                prog.basic_block = false;
+            } else {
+                switch (@intToEnum(LNS, opcode)) {
+                    LNS.copy => {
+                        if (prog.checkLineMatch(allocator, &dirs, &files)) |info| {
+                            return info;
+                        }
+                        prog.basic_block = false;
+                    },
+                    LNS.advance_pc => {
+                        const arg = parse.noexcept.readLEB128(usize, bytes[pos..]);
+                        pos +%= arg[1];
+                        prog.address +%= arg[0] *% min_instr_len;
+                    },
+                    LNS.advance_line => {
+                        const arg = parse.noexcept.readLEB128(i64, bytes[pos..]);
+                        pos +%= arg[1];
+                        prog.line +%= arg[0];
+                    },
+                    LNS.set_file => {
+                        const arg = parse.noexcept.readLEB128(usize, bytes[pos..]);
+                        pos +%= arg[1];
+                        prog.file = arg[0];
+                    },
+                    LNS.set_column => {
+                        const arg = parse.noexcept.readLEB128(u64, bytes[pos..]);
+                        pos +%= arg[1];
+                        prog.column = arg[0];
+                    },
+                    LNS.negate_stmt => {
+                        prog.is_stmt = !prog.is_stmt;
+                    },
+                    LNS.set_basic_block => {
+                        prog.basic_block = true;
+                    },
+                    LNS.const_add_pc => {
+                        const inc_addr: u8 = min_instr_len *% ((255 -% opcode_base) / line_range);
+                        prog.address +%= inc_addr;
+                    },
+                    LNS.fixed_advance_pc => {
+                        const arg: u16 = @ptrCast(*align(1) u16, buf + pos).*;
+                        pos +%= 2;
+                        prog.address +%= arg;
+                    },
+                    else => {
+                        if (opcode -% 1 >= opcode_lens.len) {
+                            builtin.proc.exitError(error.InvalidEncoding, 2);
+                        }
+                        pos +%= opcode_lens[opcode - 1];
+                    },
+                }
+            }
+        }
+        return null;
     }
 };
-fn getStringGeneric(opt_str: ?[]const u8, offset: u64) ![:0]const u8 {
+fn getStringGeneric(opt_str: ?[]const u8, offset: u64) [:0]const u8 {
     const str = opt_str orelse {
         builtin.proc.exitError(error.InvalidEncoding, 2);
     };
@@ -892,6 +1068,116 @@ fn parseFormValue(allocator: *mem.SimpleAllocator, size: WordSize, bytes: []u8, 
         },
     }
 }
+const FileEntry = struct {
+    dir_idx: u32 = 0,
+    name: []const u8,
+    mtime: u64 = 0,
+    size: u64 = 0,
+    md5: [16]u8 = [1]u8{0} ** 16,
+    const Array = mem.GenericSimpleArray(FileEntry);
+    fn pathname(entry: *const FileEntry, allocator: *mem.SimpleAllocator, dirs: *const FileEntry.Array) [:0]const u8 {
+        const dirname: []const u8 = dirs.values[entry.dir_idx].name;
+        const ret: []u8 = allocator.allocate(u8, dirname.len +% entry.name.len +% 2);
+        var len: u64 = 0;
+        mach.memcpy(ret.ptr, dirname.ptr, dirname.len);
+        len +%= dirname.len;
+        ret[len] = '/';
+        len +%= 1;
+        mach.memcpy(ret.ptr + len, entry.name.ptr, entry.name.len);
+        len +%= entry.name.len;
+        ret[len] = 0;
+        return ret[0..len :0];
+    }
+};
+const LineNumberProgram = struct {
+    address: u64,
+    file: usize,
+    line: i64,
+    column: u64,
+    is_stmt: bool,
+    basic_block: bool,
+    end_sequence: bool,
+    default_is_stmt: bool,
+    target_address: u64,
+    prev_valid: bool = false,
+    prev_address: u64 = 0,
+    prev_file: usize = undefined,
+    prev_line: i64 = undefined,
+    prev_column: u64 = undefined,
+    prev_is_stmt: bool = undefined,
+    prev_basic_block: bool = undefined,
+    prev_end_sequence: bool = undefined,
+
+    fn reset(lnp: *LineNumberProgram) void {
+        lnp.address = 0;
+        lnp.file = 1;
+        lnp.line = 1;
+        lnp.column = 0;
+        lnp.is_stmt = lnp.default_is_stmt;
+        lnp.basic_block = false;
+        lnp.end_sequence = false;
+        lnp.prev_valid = false;
+        lnp.prev_address = 0;
+        lnp.prev_file = undefined;
+        lnp.prev_line = undefined;
+        lnp.prev_column = undefined;
+        lnp.prev_is_stmt = undefined;
+        lnp.prev_basic_block = undefined;
+        lnp.prev_end_sequence = undefined;
+    }
+    fn init(is_stmt: bool, target_address: u64) LineNumberProgram {
+        return .{
+            .address = 0,
+            .file = 1,
+            .line = 1,
+            .column = 0,
+            .is_stmt = is_stmt,
+            .basic_block = false,
+            .end_sequence = false,
+            .default_is_stmt = is_stmt,
+            .target_address = target_address,
+            .prev_valid = false,
+            .prev_address = 0,
+        };
+    }
+    fn checkLineMatch(
+        prog: *LineNumberProgram,
+        allocator: *mem.SimpleAllocator,
+        dirs: *FileEntry.Array,
+        files: *FileEntry.Array,
+    ) ?debug.LineInfo {
+        if (prog.prev_valid and
+            prog.target_address >= prog.prev_address and
+            prog.target_address < prog.address)
+        {
+            if (prog.prev_file == 0) {
+                builtin.proc.exitError(error.InvalidEncoding, 2);
+            }
+            const idx: u64 = prog.prev_file -% 1;
+            if (idx >= files.values_len) {
+                builtin.proc.exitError(error.InvalidEncoding, 2);
+            }
+            const entry: FileEntry = files.values[idx];
+            if (entry.dir_idx >= dirs.values_len) {
+                builtin.proc.exitError(error.InvalidEncoding, 2);
+            }
+            return .{
+                .line = @intCast(u64, prog.line),
+                .column = prog.prev_column,
+                .file = entry.pathname(allocator, dirs),
+            };
+        }
+        prog.prev_valid = true;
+        prog.prev_address = prog.address;
+        prog.prev_file = prog.file;
+        prog.prev_line = prog.line;
+        prog.prev_column = prog.column;
+        prog.prev_is_stmt = prog.is_stmt;
+        prog.prev_basic_block = prog.basic_block;
+        prog.prev_end_sequence = prog.end_sequence;
+        return null;
+    }
+};
 pub const Tag = enum(u64) {
     padding = 0x00,
     array_type = 0x01,
@@ -942,7 +1228,7 @@ pub const Tag = enum(u64) {
     variant_part = 0x33,
     variable = 0x34,
     volatile_type = 0x35,
-    // DWARF 3
+    // dwarf_info 3
     dwarf_procedure = 0x36,
     restrict_type = 0x37,
     interface_type = 0x38,
@@ -953,11 +1239,11 @@ pub const Tag = enum(u64) {
     imported_unit = 0x3d,
     condition = 0x3f,
     shared_type = 0x40,
-    // DWARF 4
+    // dwarf_info 4
     type_unit = 0x41,
     rvalue_reference_type = 0x42,
     template_alias = 0x43,
-    // DWARF 5
+    // dwarf_info 5
     coarray_type = 0x44,
     generic_subrange = 0x45,
     dynamic_type = 0x46,
@@ -1052,7 +1338,7 @@ pub const Attr = enum(u64) {
     variable_parameter = 0x4b,
     virtuality = 0x4c,
     vtable_elem_location = 0x4d,
-    // DWARF 3 values.
+    // dwarf_info 3 values.
     allocated = 0x4e,
     associated = 0x4f,
     data_location = 0x50,
@@ -1080,14 +1366,14 @@ pub const Attr = enum(u64) {
     elemental = 0x66,
     pure = 0x67,
     recursive = 0x68,
-    // DWARF 4.
+    // dwarf_info 4.
     signature = 0x69,
     main_subprogram = 0x6a,
     data_bit_offset = 0x6b,
     const_expr = 0x6c,
     enum_class = 0x6d,
     linkage_name = 0x6e,
-    // DWARF 5
+    // dwarf_info 5
     string_length_bit_size = 0x6f,
     string_length_byte_size = 0x70,
     rank = 0x71,
@@ -1285,7 +1571,7 @@ const CFA = enum(u8) {
     def_cfa = 0x0c,
     def_cfa_register = 0x0d,
     def_cfa_offset = 0x0e,
-    // DWARF 3.
+    // dwarf_info 3.
     def_cfa_expression = 0x0f,
     expression = 0x10,
     offset_extended_sf = 0x11,
@@ -1370,12 +1656,11 @@ const CC = enum(u8) {
     GNU_renesas_sh = 0x40,
     GNU_borland_fastcall_i386 = 0x41,
 };
-
 const debug = struct {
     const LineInfo = struct {
         line: u64,
         column: u64,
-        file: []const u8,
+        file: [:0]const u8,
     };
     const about_dwarf: [:0]const u8 = builtin.fmt.about("dwarf");
     const about_abbrev_tab: [:0]const u8 = builtin.fmt.about("abbrev");
@@ -1384,6 +1669,7 @@ const debug = struct {
     const about_dwarf_version: [:0]const u8 = builtin.fmt.about("dwarf-version");
     const about_dwarf_addrsize: [:0]const u8 = builtin.fmt.about("dwarf-addrsize");
     fn printIntAt(src: builtin.SourceLocation, msg: []const u8, int: u64) void {
+        @setRuntimeSafety(false);
         var buf: [512]u8 = undefined;
         var len: u64 = 0;
         mach.memcpy(&buf, src.fn_name.ptr, src.fn_name.len);
@@ -1399,11 +1685,12 @@ const debug = struct {
         len +%= 1;
         builtin.debug.write(buf[0..len]);
     }
-    fn unitAbstractNotice(ver: u16, unit_len: u64, word_size: WordSize, addr_size: u8) void {
-        const ver_s: []const u8 = builtin.fmt.ud64(ver).readAll();
-        const unit_len_s: []const u8 = builtin.fmt.ud64(unit_len).readAll();
-        const word_size_s: []const u8 = @tagName(word_size);
-        const addr_size_s: []const u8 = builtin.fmt.ud64(addr_size).readAll();
+    fn unitAbstractNotice(unit: *Unit) void {
+        @setRuntimeSafety(false);
+        const ver_s: []const u8 = builtin.fmt.ud64(unit.version).readAll();
+        const unit_len_s: []const u8 = builtin.fmt.ud64(unit.len).readAll();
+        const word_size_s: []const u8 = @tagName(unit.word_size);
+        const addr_size_s: []const u8 = builtin.fmt.ud64(unit.addr_size).readAll();
         var buf: [512]u8 = undefined;
         var len: u64 = 0;
         mach.memcpy(&buf, about_dwarf.ptr, about_dwarf.len);
@@ -1432,8 +1719,8 @@ const debug = struct {
         var buf: [512]u8 = undefined;
         builtin.debug.write(about_abbrev_tab ++ "\n");
         for (abbrev_tab.ents[0..abbrev_tab.ents_len]) |*ent| {
-            const tag_id_s: []const u8 = @tagName(ent.tag);
-            const code_s: []const u8 = builtin.fmt.ud64(ent.code).readAll();
+            const tag_id_s: []const u8 = @tagName(ent.head.tag);
+            const code_s: []const u8 = builtin.fmt.ud64(ent.head.code).readAll();
             builtin.debug.logAlwaysAIO(&buf, &.{ about_abbrev_code, code_s, ", ", tag_id_s, "\n" });
             for (ent.kvs[0..ent.kvs_len], 0..) |*kv, kv_idx| {
                 var len: u64 = 0;
@@ -1470,7 +1757,7 @@ const debug = struct {
     fn debugInfoEntryNotice(info_entry: *InfoEntry) !void {
         @setRuntimeSafety(false);
         var buf: [512]u8 = undefined;
-        const tag_id_s: []const u8 = @tagName(info_entry.tag);
+        const tag_id_s: []const u8 = @tagName(info_entry.head.tag);
         builtin.debug.logAlwaysAIO(&buf, &.{ about_debug_entry, tag_id_s, "\n" });
         for (info_entry.kvs[0..info_entry.kvs_len], 0..) |*kv, kv_idx| {
             var len: u64 = 0;
@@ -1507,12 +1794,12 @@ const debug = struct {
                 },
                 .Const => |val| {
                     if (val.signed) {
-                        const signed: i64 = val.asSignedLe() catch continue;
+                        const signed: i64 = val.asSignedLe();
                         const signed_s: []const u8 = builtin.fmt.id64(signed).readAll();
                         mach.memcpy(buf[len..].ptr, signed_s.ptr, signed_s.len);
                         len +%= signed_s.len;
                     } else {
-                        const unsigned: u64 = val.asUnsignedLe() catch continue;
+                        const unsigned: u64 = val.asUnsignedLe();
                         const unsigned_s: []const u8 = builtin.fmt.ud64(unsigned).readAll();
                         mach.memcpy(buf[len..].ptr, unsigned_s.ptr, unsigned_s.len);
                         len +%= unsigned_s.len;
@@ -1561,28 +1848,3 @@ const debug = struct {
         }
     }
 };
-pub fn self(allocator: *mem.SimpleAllocator) DwarfInfo {
-    var st: file.Status = undefined;
-    const fd: u64 = sys.call_noexcept(.open, u64, .{ @ptrToInt("/proc/self/exe"), sys.O.RDONLY, 0 });
-    mach.assert(fd < 1024, "could not open executable");
-    var rc: u64 = sys.call_noexcept(.fstat, u64, .{ fd, @ptrToInt(&st) });
-    mach.assert(rc == 0, "could not stat executable");
-    const buf: []u8 = allocator.allocateAligned(u8, st.size, 4096);
-    rc = sys.call_noexcept(.read, u64, .{ fd, @ptrToInt(buf.ptr), buf.len });
-    mach.assert(rc == buf.len, "could not read executable");
-    return DwarfInfo.init(@ptrToInt(buf.ptr));
-}
-pub export fn printCompileUnits() void {
-    var allocator: mem.SimpleAllocator = .{};
-    var dwarf: DwarfInfo = self(&allocator);
-    dwarf.scanAllCompileUnits(&allocator) catch {
-        return; // could not parse DWARF
-    };
-    for (dwarf.funcs[0..dwarf.funcs_len]) |func| {
-        if (func.name) |fn_name| {
-            builtin.debug.write(fn_name);
-            builtin.debug.write("\n");
-        }
-    }
-    allocator.unmap();
-}
