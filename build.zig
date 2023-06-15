@@ -4,9 +4,10 @@ const spec = srg.spec;
 const build = srg.build;
 const builtin = srg.builtin;
 
-pub const Node = build.GenericNode(.{});
+pub const Node = build.GenericNode(.{
+    .options = .{ .safety = false },
+});
 pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
-
 pub const runtime_assertions: bool = false;
 pub const message_style: [:0]const u8 = "\x1b[2m";
 
@@ -70,6 +71,8 @@ fn memgen(allocator: *Node.Allocator, node: *Node) void {
     node.task = .format;
 }
 fn examples(allocator: *Node.Allocator, node: *Node) void {
+    build_cmd.kind = .exe;
+    build_cmd.strip = true;
     const readdir: *Node = try node.addBuild(allocator, build_cmd, "readdir", "examples/dir_iterator.zig");
     const dynamic: *Node = try node.addBuild(allocator, build_cmd, "dynamic", "examples/dynamic_alloc.zig");
     const custom: *Node = try node.addBuild(allocator, build_cmd, "addrspace", "examples/addrspace.zig");
@@ -121,7 +124,11 @@ fn tests(allocator: *Node.Allocator, node: *Node) void {
     const mem_test: *Node = try node.addBuild(allocator, build_cmd, "mem_test", "test/mem-test.zig");
     const mem2_test: *Node = try node.addBuild(allocator, build_cmd, "mem2_test", "test/mem2-test.zig");
     const proc_test: *Node = try node.addBuild(allocator, build_cmd, "proc_test", "test/proc-test.zig");
+    build_cmd.mode = .Debug;
     const debug_test: *Node = try node.addBuild(allocator, build_cmd, "debug_test", "test/debug-test.zig");
+    const build_runner_test: *Node = try node.addBuild(allocator, build_cmd, "build_runner_test", "build_runner.zig");
+    const zls_build_runner_test: *Node = try node.addBuild(allocator, build_cmd, "zls_build_runner_test", "zls_build_runner.zig");
+    const cmdline_writer_test: *Node = try node.addBuild(allocator, build_cmd, "cmdline_test", "test/cmdline-test.zig");
     builtin_test.addDescr("Test builtin functions");
     mem_test.addDescr("Test low level memory management functions and basic container/allocator usage");
     mem2_test.addDescr("Test v2 low level memory implementation");
@@ -143,9 +150,23 @@ fn tests(allocator: *Node.Allocator, node: *Node) void {
     virtual_test.addDescr("Test address spaces, sub address spaces, and arenas");
     size_test.addDescr("Test sizes of various things");
     debug_test.addDescr("Test debugging functions");
-    builderTests(allocator, try node.addGroup(allocator, "builder_tests"));
     cryptoTests(allocator, try node.addGroup(allocator, "crypto_tests"));
+    build_runner_test.addDescr("Test library build runner using the library build program");
+    zls_build_runner_test.addDescr("Test ZLS special build runner");
+    cmdline_writer_test.addDescr("Test generated command line writer functions");
+    for ([_]*Node{
+        build_runner_test,
+        zls_build_runner_test,
+        cmdline_writer_test,
+    }) |target| {
+        target.addToplevelArgs(allocator);
+        target.task_info.build.modules = mods;
+        target.task_info.build.dependencies = deps;
+        target.task_info.build.mode = .Debug;
+        target.task_info.build.strip = false;
+    }
     node.task = .build;
+    build_cmd.kind = .obj;
     debug_test.task_info.build.mode = .Debug;
     debug_test.task_info.build.strip = false;
     parse_test.task_info.build.mode = .Debug;
@@ -181,22 +202,6 @@ fn cryptoTests(allocator: *Node.Allocator, node: *Node) void {
         utils_test.addDescr("Test crypto utility functions");
         hash_test.addDescr("Test hashing functions");
         pcurves_test.addDescr("Test point curve operations");
-    }
-}
-fn builderTests(allocator: *Node.Allocator, node: *Node) void {
-    //
-    const build_runner_test: *Node = try node.addBuild(allocator, build_cmd, "build_runner_test", "build_runner.zig");
-    const zls_build_runner_test: *Node = try node.addBuild(allocator, build_cmd, "zls_build_runner_test", "zls_build_runner.zig");
-    const cmdline_writer_test: *Node = try node.addBuild(allocator, build_cmd, "cmdline_test", "test/cmdline-test.zig");
-    build_runner_test.addDescr("Test library build runner using the library build program");
-    zls_build_runner_test.addDescr("Test ZLS special build runner");
-    cmdline_writer_test.addDescr("Test generated command line writer functions");
-    for ([_]*Node{ build_runner_test, zls_build_runner_test, cmdline_writer_test }) |target| {
-        target.addToplevelArgs(allocator);
-        target.task_info.build.modules = mods;
-        target.task_info.build.dependencies = deps;
-        target.task_info.build.mode = .Debug;
-        target.task_info.build.strip = false;
     }
 }
 fn buildgen(allocator: *Node.Allocator, node: *Node) void {
