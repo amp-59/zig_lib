@@ -9,7 +9,6 @@ const file = @import("./file.zig");
 const meta = @import("./meta.zig");
 const spec = @import("./spec.zig");
 const algo = @import("./algo.zig");
-const debug = @import("./debug.zig");
 const builtin = @import("./builtin.zig");
 pub fn arrayOfCharsLength(s: []const u8) u64 {
     var len: u64 = 0;
