@@ -16,7 +16,7 @@ const mem_types = @import("../top/mem/gen/types.zig");
 
 pub usingnamespace proc.start;
 
-pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
+pub const logging_override: builtin.Logging.Override = spec.logging.override.verbose;
 pub const signal_handlers: builtin.SignalHandlers = .{
     .segmentation_fault = true,
     .bus_error = true,
@@ -2611,7 +2611,6 @@ pub fn testLongComplexCase(address_space: *AddressSpace) !void {
 }
 pub fn testWriteSerialFeatures(address_space: *AddressSpace) !void {
     const test_optionals_and_slices: bool = true;
-
     if (test_optionals_and_slices) {
         const S = struct {
             string: []const u8,

@@ -145,7 +145,5 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
         .operation = .r,
         .create = true,
     }, "lib0", &.{t0});
-
-    Node.debug.toplevelCommandNotice(&allocator, toplevel);
     try builtin.expect(Node.executeToplevel(&address_space, &thread_space, &allocator, toplevel, t1, .archive));
 }

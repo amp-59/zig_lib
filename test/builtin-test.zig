@@ -236,7 +236,7 @@ fn testRuntimeAssertionsCompile() !void {
     builtin.assertAbove(T, arg1, arg2);
     builtin.assert(b);
 }
-fn testStaticAssertionsCompile() !void {
+pub fn testStaticAssertionsCompile() !void {
     const T: type = u64;
     comptime {
         var static_arg1: T = 0;
