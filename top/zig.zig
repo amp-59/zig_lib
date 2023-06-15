@@ -61,7 +61,11 @@ pub const Token = struct {
             key: []const u8,
             value: Tag,
         };
-        pub const pairs: [49]Pair = .{
+
+        pub fn has(str: []const u8) bool {
+            return get(str) != null;
+        }
+        const tab = .{ .pairs = [_]Pair{
             .{ .key = "fn", .value = .keyword_fn },
             .{ .key = "if", .value = .keyword_if },
             .{ .key = "or", .value = .keyword_or },
@@ -111,26 +115,19 @@ pub const Token = struct {
             .{ .key = "threadlocal", .value = .keyword_threadlocal },
             .{ .key = "unreachable", .value = .keyword_unreachable },
             .{ .key = "usingnamespace", .value = .keyword_usingnamespace },
-        };
-        pub fn has(str: []const u8) bool {
-            return get(str) != null;
-        }
+        } };
         pub fn get(str: []const u8) ?Tag {
-            const min_len: usize = pairs[0].key.len;
-            const max_len: usize = pairs[pairs.len - 1].key.len;
+            const min_len: usize = 2;
+            const max_len: usize = 14;
             if (str.len < min_len or str.len > max_len) {
                 return null;
             }
-            var i: usize = 0;
-            while (true) {
-                if (mem.testEqualMany(u8, pairs[i].key, str)) {
-                    return pairs[i].value;
-                }
-                i += 1;
-                if (i >= pairs.len) {
-                    return null;
+            for (tab.pairs) |pair| {
+                if (mem.testEqualMany(u8, pair.key, str)) {
+                    return pair.value;
                 }
             }
+            return null;
         }
     };
     pub fn getKeyword(bytes: []const u8) ?Tag {
