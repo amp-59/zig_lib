@@ -1412,6 +1412,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             updated = builder_spec.options.compiler_expected_status,
             cached = builder_spec.options.compiler_cache_hit_status,
             failed = builder_spec.options.compiler_error_status,
+            other,
         };
         // any:     paths[0], build root directory
         // build:   paths[1], root/core source file pathname
@@ -2071,6 +2072,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 return len;
             }
             fn writeSubNode(buf0: [*]u8, len1: u64, sub_node: *const Node, name_width: u64, root_width: u64) u64 {
+                @setRuntimeSafety(builder_spec.options.safety);
                 var len: u64 = 0;
                 var count: u64 = name_width -% (sub_node.names[0].len +% len1);
                 const input: [:0]const u8 = sub_node.paths[@boolToInt(sub_node.task == .build)].relative;
