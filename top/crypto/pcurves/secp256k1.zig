@@ -152,7 +152,7 @@ pub const Secp256k1 = struct {
     /// Return a random point.
     pub fn random() Secp256k1 {
         const n = scalar.randomX(.Little);
-        return base_point.mul(n, .Little) catch builtin.zero(Secp256k1);
+        return base_point.mul(n, .Little) catch undefined;
     }
     /// Flip the sign of the X coordinate.
     pub fn neg(p: Secp256k1) Secp256k1 {

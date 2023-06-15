@@ -127,7 +127,7 @@ pub const P384 = struct {
     /// Return a random point.
     pub fn random() P384 {
         const n = scalar.randomX(.Little);
-        return base_point.mul(n, .Little) catch builtin.zero(P384);
+        return base_point.mul(n, .Little) catch undefined;
     }
     /// Flip the sign of the X coordinate.
     pub fn neg(p: P384) P384 {
