@@ -60,7 +60,6 @@ pub const StackIterator = struct {
         return new_instr_addr;
     }
 };
-
 const about = .{
     .next_s = ", ",
     .bytes_s = " bytes, ",
@@ -141,7 +140,11 @@ fn self(allocator: *mem.SimpleAllocator) dwarf.DwarfInfo {
 }
 pub export fn printStackTrace(ret_addr: u64) void {
     var itr: StackIterator = StackIterator.init(if (ret_addr == 0) @returnAddress() else ret_addr, null);
-    var allocator: mem.SimpleAllocator = .{};
+    var allocator: mem.SimpleAllocator = .{
+        .start = 0x600000000000,
+        .next = 0x600000000000,
+        .finish = 0x600000000000,
+    };
     defer allocator.unmap();
     var dwarf_info: dwarf.DwarfInfo = self(&allocator);
     dwarf_info.scanAllCompileUnits(&allocator);
