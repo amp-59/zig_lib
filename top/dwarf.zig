@@ -691,13 +691,13 @@ pub const DwarfInfo = extern struct {
                     const kind: RLE = @intToEnum(RLE, buf[pos]);
                     pos +%= 1;
                     switch (kind) {
-                        RLE.end_of_list => break,
-                        RLE.base_addressx => {
+                        .end_of_list => break,
+                        .base_addressx => {
                             const idx = parse.noexcept.readLEB128(usize, buf[pos..dwarf_info.ranges_len]);
                             pos +%= idx[1];
                             base_address = dwarf_info.readDebugAddr(unit.addr_base, idx[0]);
                         },
-                        RLE.startx_endx => {
+                        .startx_endx => {
                             const start_idx = parse.noexcept.readLEB128(usize, buf[pos..dwarf_info.ranges_len]);
                             pos +%= start_idx[1];
                             const start_addr: usize = dwarf_info.readDebugAddr(unit.addr_base, start_idx[0]);
@@ -708,7 +708,7 @@ pub const DwarfInfo = extern struct {
                                 return unit;
                             }
                         },
-                        RLE.startx_length => {
+                        .startx_length => {
                             const start_index = parse.noexcept.readLEB128(usize, buf[pos..dwarf_info.ranges_len]);
                             const start_addr: usize = dwarf_info.readDebugAddr(unit.addr_base, start_index[0]);
                             const len = parse.noexcept.readLEB128(usize, buf[pos..dwarf_info.ranges_len]);
@@ -717,7 +717,7 @@ pub const DwarfInfo = extern struct {
                                 return unit;
                             }
                         },
-                        RLE.offset_pair => {
+                        .offset_pair => {
                             const start_addr = parse.noexcept.readLEB128(usize, buf[pos..dwarf_info.ranges_len]);
                             pos +%= start_addr[1];
                             const end_addr = parse.noexcept.readLEB128(usize, buf[pos..dwarf_info.ranges_len]);
@@ -728,11 +728,11 @@ pub const DwarfInfo = extern struct {
                                 return unit;
                             }
                         },
-                        RLE.base_address => {
+                        .base_address => {
                             base_address = @ptrCast(*align(1) usize, buf + pos).*;
                             pos +%= @sizeOf(usize);
                         },
-                        RLE.start_end => {
+                        .start_end => {
                             const start_addr = @ptrCast(*align(1) usize, buf + pos).*;
                             pos +%= @sizeOf(usize);
                             const end_addr = @ptrCast(*align(1) usize, buf + pos).*;
@@ -741,7 +741,7 @@ pub const DwarfInfo = extern struct {
                                 return unit;
                             }
                         },
-                        RLE.start_length => {
+                        .start_length => {
                             const start_addr = @ptrCast(*align(1) usize, buf + pos).*;
                             pos +%= @sizeOf(usize);
                             const len = parse.noexcept.readLEB128(usize, buf[pos..dwarf_info.ranges_len]);
@@ -1227,7 +1227,6 @@ pub const Tag = enum(u64) {
     variant_part = 0x33,
     variable = 0x34,
     volatile_type = 0x35,
-    // dwarf_info 3
     dwarf_procedure = 0x36,
     restrict_type = 0x37,
     interface_type = 0x38,
@@ -1238,11 +1237,9 @@ pub const Tag = enum(u64) {
     imported_unit = 0x3d,
     condition = 0x3f,
     shared_type = 0x40,
-    // dwarf_info 4
     type_unit = 0x41,
     rvalue_reference_type = 0x42,
     template_alias = 0x43,
-    // dwarf_info 5
     coarray_type = 0x44,
     generic_subrange = 0x45,
     dynamic_type = 0x46,
@@ -1337,7 +1334,6 @@ pub const Attr = enum(u64) {
     variable_parameter = 0x4b,
     virtuality = 0x4c,
     vtable_elem_location = 0x4d,
-    // DWARF 3 values.
     allocated = 0x4e,
     associated = 0x4f,
     data_location = 0x50,
@@ -1365,14 +1361,12 @@ pub const Attr = enum(u64) {
     elemental = 0x66,
     pure = 0x67,
     recursive = 0x68,
-    // DWARF 4.
     signature = 0x69,
     main_subprogram = 0x6a,
     data_bit_offset = 0x6b,
     const_expr = 0x6c,
     enum_class = 0x6d,
     linkage_name = 0x6e,
-    // DWARF 5
     string_length_bit_size = 0x6f,
     string_length_byte_size = 0x70,
     rank = 0x71,
@@ -1402,9 +1396,8 @@ pub const Attr = enum(u64) {
     deleted = 0x8a,
     defaulted = 0x8b,
     loclists_base = 0x8c,
-    lo_user = 0x2000, // Implementation-defined range start.
-    hi_user = 0x3fff, // Implementation-defined range end.
-    // GNU extensions.
+    lo_user = 0x2000,
+    hi_user = 0x3fff,
     sf_names = 0x2101,
     src_info = 0x2102,
     mac_info = 0x2103,
@@ -1465,9 +1458,9 @@ pub const Attr = enum(u64) {
     // HP extensions.
     const HP = enum(u64) {
         HP_block_index = 0x2000,
-        HP_unmodifiable = 0x2001, // Same as AT.MIPS_fde.
-        HP_prologue = 0x2005, // Same as AT.MIPS_loop_unroll.
-        HP_epilogue = 0x2008, // Same as AT.MIPS_stride.
+        HP_unmodifiable = 0x2001,
+        HP_prologue = 0x2005,
+        HP_epilogue = 0x2008,
         HP_actuals_stmt_list = 0x2010,
         HP_proc_per_section = 0x2011,
         HP_raw_data_ptr = 0x2012,
@@ -1479,7 +1472,7 @@ pub const Attr = enum(u64) {
         HP_cold_region_high_pc = 0x2018,
         HP_all_variables_modifiable = 0x2019,
         HP_linkage_name = 0x201a,
-        HP_prof_flags = 0x201b, // In comp unit of procs_info for -g.
+        HP_prof_flags = 0x201b,
         HP_unit_name = 0x201f,
         HP_unit_size = 0x2020,
         HP_widened_byte_size = 0x2021,
@@ -1570,7 +1563,6 @@ const CFA = enum(u8) {
     def_cfa = 0x0c,
     def_cfa_register = 0x0d,
     def_cfa_offset = 0x0e,
-    // dwarf_info 3.
     def_cfa_expression = 0x0f,
     expression = 0x10,
     offset_extended_sf = 0x11,
@@ -1581,9 +1573,7 @@ const CFA = enum(u8) {
     val_expression = 0x16,
     lo_user = 0x1c,
     hi_user = 0x3f,
-    // SGI/MIPS specific.
     MIPS_advance_loc8 = 0x1d,
-    // GNU extensions.
     GNU_window_save = 0x2d,
     GNU_args_size = 0x2e,
     GNU_negative_offset_extended = 0x2f,
