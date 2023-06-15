@@ -671,14 +671,14 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             }
             fn buildWrite(allocator: *Allocator, cmd: *types.BuildCommand, obj_paths: []const types.Path) [:0]u8 {
                 @setRuntimeSafety(builder_spec.options.safety);
-                const max_len: u64 = builder_spec.options.max_cmdline_len orelse cmd.formatLength(mach.manyToSlice80(GlobalState.args[1]), paths);
+                const max_len: u64 = builder_spec.options.max_cmdline_len orelse cmd.formatLength(mach.manyToSlice80(GlobalState.args[1]), obj_paths);
                 const buf: [*]u8 = @intToPtr([*]u8, allocator.allocateRaw(max_len, 1));
                 const len: u64 = cmd.formatWriteBuf(mach.manyToSlice80(GlobalState.args[1]), obj_paths, buf);
                 return buf[0..len :0];
             }
             fn archiveWrite(allocator: *Allocator, cmd: *types.ArchiveCommand, obj_paths: []const types.Path) [:0]u8 {
                 @setRuntimeSafety(builder_spec.options.safety);
-                const max_len: u64 = builder_spec.options.max_cmdline_len orelse cmd.formatLength(mach.manyToSlice80(GlobalState.args[1]), paths);
+                const max_len: u64 = builder_spec.options.max_cmdline_len orelse cmd.formatLength(mach.manyToSlice80(GlobalState.args[1]), obj_paths);
                 const buf: [*]u8 = @intToPtr([*]u8, allocator.allocateRaw(max_len, 1));
                 const len: u64 = cmd.formatWriteBuf(mach.manyToSlice80(GlobalState.args[1]), obj_paths, buf);
                 return buf[0..len :0];
