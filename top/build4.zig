@@ -101,26 +101,6 @@ pub const BuilderSpec = struct {
             /// Optional pathname to root source used to compile tracer object.
             tracer_root: ?[:0]const u8 = null,
         } = .{},
-        tokens: struct {
-            const links_to_bs: [:0]const u8 = " --> ";
-            const links_to_ws: [:0]const u8 = " ⟶  ";
-            const file_arrow_bs: [:0]const u8 = "|-> ";
-            const file_arrow_ws: [:0]const u8 = "├── ";
-            const last_file_arrow_bs: [:0]const u8 = "`-> ";
-            const last_file_arrow_ws: [:0]const u8 = "└── ";
-            const link_arrow_bs: [:0]const u8 = file_arrow_bs;
-            const link_arrow_ws: [:0]const u8 = file_arrow_ws;
-            const last_link_arrow_bs: [:0]const u8 = last_file_arrow_bs;
-            const last_link_arrow_ws: [:0]const u8 = last_file_arrow_ws;
-            const dir_arrow_bs: [:0]const u8 = "|---+ ";
-            const dir_arrow_ws: [:0]const u8 = "├───┬ ";
-            const last_dir_arrow_bs: [:0]const u8 = "`---+ ";
-            const last_dir_arrow_ws: [:0]const u8 = "└───┬ ";
-            const empty_dir_arrow_bs: [:0]const u8 = "|-- ";
-            const empty_dir_arrow_ws: [:0]const u8 = "├── ";
-            const last_empty_dir_arrow_bs: [:0]const u8 = "`-- ";
-            const last_empty_dir_arrow_ws: [:0]const u8 = "└── ";
-        } = .{},
         special: struct {
             /// Defines compile commands for stack tracer object
             tracer: ?types.BuildCommand = .{ .kind = .obj, .mode = .ReleaseFast, .strip = true },
@@ -2022,7 +2002,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 @setRuntimeSafety(builder_spec.options.safety);
                 const extra: [*]u32 = ptrs.idx + 2;
                 const bytes: [*:0]u8 = ptrs.str + 8 + (ptrs.idx[0] *% 4);
-                var buf: [*]u8 = allocator.allocate(u8, 1024 * 1024).ptr;
+                var buf: [*]u8 = allocator.allocate(u8, 1024 *% 1024).ptr;
                 for ((extra + extra[1])[0..extra[0]]) |err_msg_idx| {
                     var len: u64 = writeError(buf, extra, bytes, err_msg_idx, .@"error");
                     builtin.debug.write(buf[0..len]);
@@ -2066,6 +2046,9 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 while (deps_idx != node.deps_len) : (deps_idx +%= 1) {
                     const dep_node: *Node = node.deps[deps_idx].on_node;
                     if (dep_node == node) {
+                        continue;
+                    }
+                    if (dep_node.options.special) {
                         continue;
                     }
                     const is_last: bool = deps_idx == node.deps_len -% 1;
@@ -2121,6 +2104,9 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 len +%= about.reset_s.len;
                 for (node.nodes[0..node.nodes_len], 0..) |sub_node, nodes_idx| {
                     if (sub_node == node) {
+                        continue;
+                    }
+                    if (sub_node.options.special) {
                         continue;
                     }
                     if (sub_node.options.hide) {
