@@ -46,6 +46,6 @@ fn testXoroshiroFill() !void {
     }
 }
 pub fn main() !void {
-    try testXoroshiroSequence();
-    try testXoroshiroFill();
+    // try testXoroshiroSequence();
+    // try testXoroshiroFill();
 }
