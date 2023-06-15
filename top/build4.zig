@@ -36,9 +36,9 @@ pub const BuilderSpec = struct {
         system_expected_status: u8 = 0,
         /// A compile job ended normally.
         compiler_expected_status: u8 = 0,
-        /// A compile job ended in a cache hit
+        /// A compile job ended in a cache hit.
         compiler_cache_hit_status: u8 = 1,
-        /// A compile job ended in an error
+        /// A compile job ended in an error.
         compiler_error_status: u8 = 2,
         /// Assert no command line exceeds this length in bytes, making
         /// buildLength/formatLength unnecessary.
@@ -61,20 +61,20 @@ pub const BuilderSpec = struct {
         /// Use `SimpleAllocator` instead of configured generic allocator.
         /// This will slightly speed compilation.
         prefer_simple_allocator: bool = true,
-        /// Determines whether to use the Zig compiler server
+        /// Determines whether to use the Zig compiler server.
         enable_caching: bool = true,
         /// Executables with debug information include DWARF parser and
         /// stack trace writers. TODO
         enable_stack_traces: bool = false,
-        /// Enable runtime safety
+        /// Enable runtime safety.
         safety: bool = false,
         /// Nodes with this name prefix are hidden in pre.
         hide_prefix: u8 = '_',
-        /// Disable all features related to hiding TODO
+        /// Disable all features related to hiding. TODO
         never_hide: bool = false,
-        /// Disable all features related to default initialisation of nodes TODO
+        /// Disable all features related to default initialisation of nodes. TODO
         never_pre: bool = false,
-        /// Disable all features related to automatic updating of nodes TODO
+        /// Disable all features related to automatic updating of nodes. TODO
         never_post: bool = false,
         names: struct {
             /// Name of the toplevel 'builder' node.
@@ -99,40 +99,60 @@ pub const BuilderSpec = struct {
             /// Optional pathname to root source used to compile tracer object.
             tracer_root: ?[:0]const u8 = null,
         } = .{},
+        tokens: struct {
+            const links_to_bs: [:0]const u8 = " --> ";
+            const links_to_ws: [:0]const u8 = " ⟶  ";
+            const file_arrow_bs: [:0]const u8 = "|-> ";
+            const file_arrow_ws: [:0]const u8 = "├── ";
+            const last_file_arrow_bs: [:0]const u8 = "`-> ";
+            const last_file_arrow_ws: [:0]const u8 = "└── ";
+            const link_arrow_bs: [:0]const u8 = file_arrow_bs;
+            const link_arrow_ws: [:0]const u8 = file_arrow_ws;
+            const last_link_arrow_bs: [:0]const u8 = last_file_arrow_bs;
+            const last_link_arrow_ws: [:0]const u8 = last_file_arrow_ws;
+            const dir_arrow_bs: [:0]const u8 = "|---+ ";
+            const dir_arrow_ws: [:0]const u8 = "├───┬ ";
+            const last_dir_arrow_bs: [:0]const u8 = "`---+ ";
+            const last_dir_arrow_ws: [:0]const u8 = "└───┬ ";
+            const empty_dir_arrow_bs: [:0]const u8 = "|-- ";
+            const empty_dir_arrow_ws: [:0]const u8 = "├── ";
+            const last_empty_dir_arrow_bs: [:0]const u8 = "`-- ";
+            const last_empty_dir_arrow_ws: [:0]const u8 = "└── ";
+        } = .{},
         extensions: struct {
-            /// Extension for Zig source files
+            /// Extension for Zig source files.
             zig: [:0]const u8 = ".zig",
-            /// Extension for C header source files
+            /// Extension for C header source files.
             h: [:0]const u8 = ".h",
-            /// Extension for shared object files
+            /// Extension for shared object files.
             lib: [:0]const u8 = ".so",
-            /// Extension for archives
+            /// Extension for archives.
             ar: [:0]const u8 = ".a",
-            /// Extension for object files
+            /// Extension for object files.
             obj: [:0]const u8 = ".o",
-            /// Extension for assembly source files
+            /// Extension for assembly source files.
             @"asm": [:0]const u8 = ".s",
-            /// Extension for LLVM bitcode files
+            /// Extension for LLVM bitcode files.
             llvm_bc: [:0]const u8 = ".bc",
-            /// Extension for LLVM intermediate representation files
+            /// Extension for LLVM intermediate representation files.
             llvm_ir: [:0]const u8 = ".ll",
-            /// Extension for JSON files
+            /// Extension for JSON files.
             analysis: [:0]const u8 = ".json",
-            /// Extension for documentation files
+            /// Extension for documentation files.
             docs: [:0]const u8 = ".html",
         } = .{},
         init_len: struct {
-            /// Initial size of all nodes' `paths` buffer
+            /// Initial size of all nodes' `paths` buffer.
             paths: u64 = 2,
-            /// Initial size of worker nodes' `deps` buffer
+            /// Initial size of worker nodes' `deps` buffer.
             deps: u64 = 1,
-            /// Initial size of toplevel and group nodes' `nodes` buffers
+            /// Initial size of toplevel and group nodes' `nodes` buffers.
             nodes: u64 = 1,
-            /// Initial size of group nodes `args` buffer
+            /// Initial size of group nodes `args` buffer.
             args: u64 = 4,
-            /// Initial size of toplevel nodes `fds` buffer
+            /// Initial size of toplevel nodes `fds` buffer.
             fds: u64 = 1,
-            /// Initial size of all nodes `names` buffer
+            /// Initial size of all nodes `names` buffer.
             names: u64 = 2,
         } = .{},
     };
@@ -509,7 +529,9 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 .absolute = main_pkg_path,
                 .relative = binaryRelative(allocator, name, build_cmd.kind),
             };
-            ret.addPath(allocator).* = .{
+            ret.addPath(allocator).* = if (root[0] == '/') .{
+                .absolute = duplicate(allocator, root),
+            } else .{
                 .absolute = main_pkg_path,
                 .relative = duplicate(allocator, root),
             };
@@ -1372,12 +1394,12 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             return .{ .errors = .{}, .return_type = void };
         }
         /// File system path to core source file for stack tracer.
-        fn tracer_root() [:0]const u8 {
+        pub fn tracer_root() [:0]const u8 {
             comptime {
                 if (builder_spec.options.names.tracer_root) |ret| {
                     return ret;
                 }
-                libraryRoot() ++ "/top/debug.zig";
+                return libraryRoot() ++ "/top/tracer.zig";
             }
         }
         const MessagePtrs = packed union {
@@ -2096,11 +2118,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     len +%= 1;
                     mach.memcpy(buf0 + len, buf1, len1);
                     len +%= len1;
-                    if (len1 == 0) {
-                        @ptrCast(*[2]u8, buf0 + len).* = "  ".*;
-                    } else {
-                        @ptrCast(*[2]u8, buf0 + len).* = if (is_last) "`-".* else "|-".*;
-                    }
+                    @ptrCast(*[2]u8, buf0 + len).* = if (len1 == 0) "  ".* else if (is_last) "`-".* else "|-".*;
                     len +%= 2;
                     @ptrCast(*[2]u8, buf0 + len).* = if (is_only) "- ".* else "o ".*;
                     len +%= 2;
@@ -2170,6 +2188,7 @@ fn libraryRoot() [:0]const u8 {
         idx -%= 1;
         while (build4[idx] != '/') {
             idx -%= 1;
+            if (idx == 0) break;
         }
         return build4[0..idx] ++ [0:0]u8{};
     }
