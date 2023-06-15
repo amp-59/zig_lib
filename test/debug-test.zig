@@ -1,29 +1,42 @@
 const top = @import("../zig_lib.zig");
-const mem = top.mem;
-const sys = top.sys;
-const fmt = top.fmt;
-const exe = top.exe;
 const proc = top.proc;
-const mach = top.mach;
 const time = top.time;
-const meta = top.meta;
 const file = top.file;
 const spec = top.spec;
-const debug = top.debug;
 const build = top.build;
 const builtin = top.builtin;
-const testing = top.testing;
 
 pub usingnamespace proc.start;
+
 pub const logging_override: builtin.Logging.Override = spec.logging.override.verbose;
-
-extern fn printCompileUnits() void;
-
+fn nested0(z: u64) !void {
+    var x: u64 = 0;
+    const y: u64 = z + @ptrToInt(&x);
+    return nested5(y);
+}
+fn nested5(z: u64) !void {
+    var x: u64 = 0;
+    const y: u64 = z +% @ptrToInt(&x);
+    return nested6(y);
+}
+fn nested6(z: u64) !void {
+    var x: u64 = 0;
+    const y: u64 = z + @ptrToInt(&x);
+    if (y != 0) {
+        nestedOOB(y);
+        //nestedNOMEM(y);
+    }
+}
+fn nestedOOB(x: u64) void {
+    var buf: [512]u8 = undefined;
+    buf[x] = 252;
+}
+fn nestedNOMEM(x: u64) void {
+    var y: u64 = 0;
+    y *= x;
+    var buf: [512]u8 = undefined;
+    buf[0..y][x] = 25;
+}
 pub fn main() !void {
-    printCompileUnits();
-    var allocator: mem.SimpleAllocator = .{};
-    var dwarf: debug.DwarfInfo = debug.self(&allocator);
-    try dwarf.scanAllCompileUnits(&allocator);
-    const unit = try dwarf.findCompileUnit(@returnAddress());
-    _ = unit;
+    try nested0(8);
 }
