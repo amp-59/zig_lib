@@ -1161,7 +1161,7 @@ const LineNumberProgram = struct {
                 builtin.proc.exitError(error.InvalidEncoding, 2);
             }
             return .{
-                .line = @intCast(u64, prog.line),
+                .line = if (prog.prev_line == 0) @intCast(u64, prog.line) else @intCast(u64, prog.prev_line),
                 .column = prog.prev_column,
                 .file = entry.pathname(allocator, dirs),
             };
