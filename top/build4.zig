@@ -6,6 +6,7 @@ const time = @import("./time.zig");
 const meta = @import("./meta.zig");
 const mach = @import("./mach.zig");
 const proc = @import("./proc.zig");
+const tracer = @import("./tracer.zig");
 const builtin = @import("./builtin.zig");
 const testing = @import("./testing.zig");
 const virtual = @import("./virtual.zig");
@@ -788,6 +789,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 stack_len: u64,
             ) void;
             comptime {
+                if (builder_spec.options.safety)
+                    _ = tracer.printStackTrace;
                 asm (@embedFile("./build/forwardToExecuteCloneThreaded4.s"));
             }
             pub export fn executeCommandThreaded(
@@ -1717,7 +1720,12 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 len +%= 5;
                 const exit_s: []const u8 = builtin.fmt.ud64(ret[0]).readAll();
                 if (builder_spec.options.enable_caching and task == .build) {
-                    const res: UpdateAnswer = @intToEnum(UpdateAnswer, ret[1]);
+                    const res: UpdateAnswer = switch (ret[1]) {
+                        builder_spec.options.compiler_cache_hit_status => .cached,
+                        builder_spec.options.compiler_error_status => .failed,
+                        builder_spec.options.compiler_expected_status => .updated,
+                        else => .other,
+                    };
                     const style_s: [:0]const u8 = switch (res) {
                         .failed => about.red_s,
                         else => about.bold_s,
