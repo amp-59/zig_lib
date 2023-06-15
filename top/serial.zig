@@ -20,18 +20,22 @@ pub fn length(comptime T: type, any: anytype) u64 {
 }
 fn toOffset(ptr: anytype, addr: u64) @TypeOf(ptr) {
     @setRuntimeSafety(false);
-    switch (@typeInfo(@TypeOf(ptr)).Pointer.size) {
-        .Slice => return @ptrCast(@TypeOf(ptr), @intToPtr(@TypeOf(ptr.ptr), @ptrToInt(ptr.ptr) -% addr)[0..ptr.len]),
+    const Pointer = @TypeOf(ptr);
+    const type_info: builtin.Type = @typeInfo(Pointer);
+    switch (type_info.Pointer.size) {
+        .Slice => return (ptr.ptr - (addr / @sizeOf(type_info.Pointer.child)))[0..ptr.len],
         .Many => return @intToPtr(@TypeOf(ptr), @ptrToInt(ptr) -% addr),
         else => return @intToPtr(@TypeOf(ptr), @ptrToInt(ptr) -% addr),
     }
 }
 fn toAddress(ptr: anytype, addr: u64) @TypeOf(ptr) {
     @setRuntimeSafety(false);
-    switch (@typeInfo(@TypeOf(ptr)).Pointer.size) {
-        .Slice => return @ptrCast(@TypeOf(ptr), @intToPtr(@TypeOf(ptr.ptr), @ptrToInt(ptr.ptr) +% addr)[0..ptr.len]),
-        .Many => return @intToPtr(@TypeOf(ptr), @ptrToInt(ptr) +% addr),
-        else => return @intToPtr(@TypeOf(ptr), @ptrToInt(ptr) +% addr),
+    const Pointer = @TypeOf(ptr);
+    const type_info: builtin.Type = @typeInfo(Pointer);
+    switch (type_info.Pointer.size) {
+        .Slice => return (ptr.ptr + (addr / @sizeOf(type_info.Pointer.child)))[0..ptr.len],
+        .Many => return @intToPtr(Pointer, @ptrToInt(ptr) +% addr),
+        else => return @intToPtr(Pointer, @ptrToInt(ptr) +% addr),
     }
 }
 fn readStruct(comptime struct_info: builtin.Type.Struct, addr: u64, offset: u64, any: anytype) u64 {
