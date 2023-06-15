@@ -1153,7 +1153,7 @@ fn GenericSubSpace(comptime ss: []const meta.Generic, comptime any: anytype) typ
                 for (label, 0..) |c, i| {
                     if (c != any[i]) continue;
                 }
-                return meta.typeCast(s).instantiate();
+                return s.cast().instantiate();
             }
         },
     }
@@ -1165,10 +1165,10 @@ fn defaultValue(comptime multi_arena: anytype) multi_arena.Implementation() {
     {
         for (blk: {
             if (subspace.type == RegularMultiArena) {
-                break :blk multi_arena.referSubRegular(meta.typeCast(subspace).super());
+                break :blk multi_arena.referSubRegular(subspace.cast().super());
             }
             if (subspace.type == DiscreteMultiArena) {
-                break :blk multi_arena.referSubDiscrete(meta.typeCast(subspace).list);
+                break :blk multi_arena.referSubDiscrete(subspace.cast().list);
             }
         }) |ref| {
             tmp.set(ref.index);
