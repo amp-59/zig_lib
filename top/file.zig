@@ -1567,7 +1567,7 @@ pub fn getCwd(comptime spec: GetWorkingDirectorySpec, buf: []u8) sys.ErrorUnion(
     const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.getcwd, spec.errors, spec.return_type, .{ buf_addr, buf.len }))) |len| {
         buf[len] = 0;
-        const ret: [:0]const u8 = buf[0..len :0];
+        const ret: [:0]const u8 = buf[0 .. len -% 1 :0];
         if (logging.Success) {
             debug.aboutPathnameNotice(debug.about_getcwd_0_s, ret);
         }
