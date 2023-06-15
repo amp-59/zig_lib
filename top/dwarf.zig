@@ -212,7 +212,6 @@ const InfoEntry = extern struct {
         return null;
     }
 };
-
 const FormValue = union(enum) {
     Address: u64,
     AddrOffset: usize,
@@ -373,17 +372,17 @@ pub const DwarfInfo = extern struct {
         if (debug_spec.logging.summary) {
             debug.unitAbstractNotice(unit);
         }
-        if (unit.info_entry.getAttr(.str_offsets_base)) |fv| {
-            unit.str_offsets_base = fv.getUInt(usize);
+        if (unit.info_entry.getAttr(.str_offsets_base)) |form_val| {
+            unit.str_offsets_base = form_val.getUInt(usize);
         }
-        if (unit.info_entry.getAttr(.addr_base)) |fv| {
-            unit.addr_base = fv.getUInt(usize);
+        if (unit.info_entry.getAttr(.addr_base)) |form_val| {
+            unit.addr_base = form_val.getUInt(usize);
         }
-        if (unit.info_entry.getAttr(.rnglists_base)) |fv| {
-            unit.rnglists_base = fv.getUInt(usize);
+        if (unit.info_entry.getAttr(.rnglists_base)) |form_val| {
+            unit.rnglists_base = form_val.getUInt(usize);
         }
-        if (unit.info_entry.getAttr(.loclists_base)) |fv| {
-            unit.loclists_base = fv.getUInt(usize);
+        if (unit.info_entry.getAttr(.loclists_base)) |form_val| {
+            unit.loclists_base = form_val.getUInt(usize);
         }
     }
     pub fn scanAllCompileUnits(dwarf_info: *DwarfInfo, allocator: *mem.SimpleAllocator) void {
@@ -679,7 +678,6 @@ pub const DwarfInfo = extern struct {
                     if (begin_addr == 0 and end_addr == 0) {
                         break;
                     }
-                    // This entry selects a new value for the base address
                     if (begin_addr == ~@as(usize, 0)) {
                         base_address = end_addr;
                         continue;
@@ -882,7 +880,6 @@ pub const DwarfInfo = extern struct {
                     },
                 }
             } else if (opcode >= opcode_base) {
-                // special opcodes
                 const adjusted_opcode: u8 = opcode -% opcode_base;
                 const inc_addr: u8 = min_instr_len *% (adjusted_opcode / line_range);
                 const inc_line: i32 = @as(i32, line_base) +% @as(i32, adjusted_opcode % line_range);
@@ -948,7 +945,7 @@ pub const DwarfInfo = extern struct {
     }
 };
 fn getStringGeneric(opt_str: ?[]const u8, offset: u64) [:0]const u8 {
-    const str = opt_str orelse {
+    const str: []const u8 = opt_str orelse {
         builtin.proc.exitError(error.InvalidEncoding, 2);
     };
     if (offset > str.len) {
@@ -1089,6 +1086,8 @@ const FileEntry = struct {
         return ret[0..len :0];
     }
 };
+// Credit stays with the standard library for this thing.
+// Hard to say whether it is required.
 const LineNumberProgram = struct {
     address: u64,
     file: usize,
@@ -1338,7 +1337,7 @@ pub const Attr = enum(u64) {
     variable_parameter = 0x4b,
     virtuality = 0x4c,
     vtable_elem_location = 0x4d,
-    // dwarf_info 3 values.
+    // DWARF 3 values.
     allocated = 0x4e,
     associated = 0x4f,
     data_location = 0x50,
@@ -1366,14 +1365,14 @@ pub const Attr = enum(u64) {
     elemental = 0x66,
     pure = 0x67,
     recursive = 0x68,
-    // dwarf_info 4.
+    // DWARF 4.
     signature = 0x69,
     main_subprogram = 0x6a,
     data_bit_offset = 0x6b,
     const_expr = 0x6c,
     enum_class = 0x6d,
     linkage_name = 0x6e,
-    // dwarf_info 5
+    // DWARF 5
     string_length_bit_size = 0x6f,
     string_length_byte_size = 0x70,
     rank = 0x71,
