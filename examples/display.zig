@@ -38,7 +38,7 @@ pub fn main() !void {
     array.undefineAll();
     var fd = try file.open(.{ .options = .{ .write = true } }, "/dev/dri/card0");
     defer file.close(.{ .errors = .{} }, fd);
-    var res = builtin.zero(ModeRes);
+    var res = comptime builtin.zero(ModeRes);
     const ioc: Ioc = .{
         .read = true,
         .write = true,
