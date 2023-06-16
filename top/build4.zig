@@ -327,75 +327,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             format: *types.FormatCommand,
             archive: *types.ArchiveCommand,
         };
-        fn makeRootDirectory(build_root_fd: u64, name: [:0]const u8) void {
-            var st: file.Status = undefined;
-            var rc: u64 = sys.call_noexcept(.mkdirat, u64, .{ build_root_fd, @ptrToInt(name.ptr), @bitCast(u16, file.mode.directory) });
-            if (rc == 0) {
-                return;
-            }
-            rc = sys.call_noexcept(.newfstatat, u64, .{ build_root_fd, @ptrToInt(name.ptr), @ptrToInt(&st), 0 });
-            if (rc != 0) {
-                builtin.proc.exitFault(name, 2);
-            }
-            if (st.mode.kind != .directory) {
-                builtin.proc.exitFault(name, 2);
-            }
-        }
-        pub fn initSpecialNodes(allocator: *Allocator, toplevel: *Node) void {
-            if (builder_spec.options.special.tracer) |build_cmd| {
-                const special: *Node = try toplevel.addBuild(allocator, build_cmd, "tracer", paths.tracer_root);
-                special.options.special = true;
-                GlobalState.tracer = special;
-            }
-        }
-        pub fn init(allocator: *Allocator, args: [][*:0]u8, vars: [][*:0]u8) *Node {
-            @setRuntimeSafety(builder_spec.options.safety);
-            if (!thread_space_options.require_map) {
-                mem.map(map(), stack_lb_addr, stack_aligned_bytes * max_thread_count);
-            }
-            GlobalState.euid = sys.call_noexcept(.geteuid, u16, .{});
-            GlobalState.egid = sys.call_noexcept(.getegid, u16, .{});
-            GlobalState.args = args;
-            GlobalState.vars = vars;
-            var ret: *Node = allocator.create(Node);
-            mem.zero(Node, ret);
-            ret.addPath(allocator).* = .{ .absolute = mach.manyToSlice80(GlobalState.args[2]) };
-            ret.addPath(allocator).* = .{ .absolute = mach.manyToSlice80(GlobalState.args[3]) };
-            ret.addName(allocator).* = builder_spec.options.names.toplevel_node;
-            ret.addFd(allocator, try meta.wrap(file.path(path1(), ret.paths[0].absolute)));
-            ret.kind = .group;
-            ret.task = .any;
-            ret.args = Node.args.ptr;
-            ret.args_max_len = Node.args.len;
-            ret.args_len = Node.args.len;
-            makeRootDirectory(ret.fds[0], builder_spec.options.names.zig_out_dir);
-            makeRootDirectory(ret.fds[0], paths.zig_out_exe_dir);
-            makeRootDirectory(ret.fds[0], paths.zig_out_lib_dir);
-            makeRootDirectory(ret.fds[0], paths.zig_out_aux_dir);
-            makeRootDirectory(ret.fds[0], builder_spec.options.names.zig_stat_dir);
-            writeEnv(ret.paths[0].absolute, ret.paths[1].absolute);
-            return ret;
-        }
-        pub fn addGroup(toplevel: *Node, allocator: *Allocator, name: [:0]const u8) !*Node {
-            @setRuntimeSafety(builder_spec.options.safety);
-            const ret: *Node = allocator.create(Node);
-            toplevel.addNode(allocator).* = ret;
-            ret.paths = toplevel.paths;
-            ret.kind = .group;
-            ret.task = .any;
-            ret.addName(allocator).* = duplicate(allocator, name);
-            ret.options.hidden = name[0] == '_';
-            if (builder_spec.options.show_initial_state) {
-                ret.assertExchange(.any, .null, .ready, max_thread_count);
-                ret.assertExchange(.format, .null, .ready, max_thread_count);
-                ret.assertExchange(.build, .null, .ready, max_thread_count);
-                ret.assertExchange(.run, .null, .ready, max_thread_count);
-                ret.assertExchange(.archive, .null, .ready, max_thread_count);
-            } else {
-                ret.task_lock = omni_lock;
-            }
-            return ret;
-        }
         fn addPath(node: *Node, allocator: *Allocator) *types.Path {
             @setRuntimeSafety(builder_spec.options.safety);
             const size_of: comptime_int = @sizeOf(types.Path);
@@ -466,6 +397,86 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         pub fn addDescr(node: *Node, descr: []const u8) void {
             node.names[1] = descr;
             node.names_len +%= 1;
+        }
+        fn makeRootDirectory(build_root_fd: u64, name: [:0]const u8) void {
+            var st: file.Status = undefined;
+            var rc: u64 = sys.call_noexcept(.mkdirat, u64, .{ build_root_fd, @ptrToInt(name.ptr), @bitCast(u16, file.mode.directory) });
+            if (rc == 0) {
+                return;
+            }
+            rc = sys.call_noexcept(.newfstatat, u64, .{ build_root_fd, @ptrToInt(name.ptr), @ptrToInt(&st), 0 });
+            if (rc != 0) {
+                builtin.proc.exitFault(name, 2);
+            }
+            if (st.mode.kind != .directory) {
+                builtin.proc.exitFault(name, 2);
+            }
+        }
+        const maybe_hide: bool =
+            builder_spec.options.hide_based_on_name_prefix != null or
+            builder_spec.options.hide_based_on_group;
+        fn maybeHide(toplevel: *Node, node: *Node) void {
+            if (builder_spec.options.hide_based_on_name_prefix) |prefix| {
+                node.options.hidden = prefix == node.names[0][0];
+            }
+            if (builder_spec.options.hide_based_on_group) {
+                node.options.hidden = toplevel.options.hidden;
+            }
+        }
+        pub fn initSpecialNodes(allocator: *Allocator, toplevel: *Node) void {
+            if (builder_spec.options.special.tracer) |build_cmd| {
+                const special: *Node = try toplevel.addBuild(allocator, build_cmd, "tracer", paths.tracer_root);
+                special.options.special = true;
+                GlobalState.tracer = special;
+            }
+        }
+        pub fn init(allocator: *Allocator, args: [][*:0]u8, vars: [][*:0]u8) *Node {
+            @setRuntimeSafety(builder_spec.options.safety);
+            if (!thread_space_options.require_map) {
+                mem.map(map(), stack_lb_addr, stack_aligned_bytes * max_thread_count);
+            }
+            GlobalState.euid = sys.call_noexcept(.geteuid, u16, .{});
+            GlobalState.egid = sys.call_noexcept(.getegid, u16, .{});
+            GlobalState.args = args;
+            GlobalState.vars = vars;
+            var ret: *Node = allocator.create(Node);
+            mem.zero(Node, ret);
+            ret.addPath(allocator).* = .{ .absolute = mach.manyToSlice80(GlobalState.args[2]) };
+            ret.addPath(allocator).* = .{ .absolute = mach.manyToSlice80(GlobalState.args[3]) };
+            ret.addName(allocator).* = builder_spec.options.names.toplevel_node;
+            ret.addFd(allocator, try meta.wrap(file.path(path1(), ret.paths[0].absolute)));
+            ret.kind = .group;
+            ret.task = .any;
+            ret.args = Node.args.ptr;
+            ret.args_max_len = Node.args.len;
+            ret.args_len = Node.args.len;
+            makeRootDirectory(ret.fds[0], builder_spec.options.names.zig_out_dir);
+            makeRootDirectory(ret.fds[0], paths.zig_out_exe_dir);
+            makeRootDirectory(ret.fds[0], paths.zig_out_lib_dir);
+            makeRootDirectory(ret.fds[0], paths.zig_out_aux_dir);
+            makeRootDirectory(ret.fds[0], builder_spec.options.names.zig_stat_dir);
+            writeEnv(ret.paths[0].absolute, ret.paths[1].absolute);
+            return ret;
+        }
+        pub fn addGroup(toplevel: *Node, allocator: *Allocator, name: [:0]const u8) !*Node {
+            @setRuntimeSafety(builder_spec.options.safety);
+            const ret: *Node = allocator.create(Node);
+            toplevel.addNode(allocator).* = ret;
+            ret.paths = toplevel.paths;
+            ret.kind = .group;
+            ret.task = .any;
+            ret.addName(allocator).* = duplicate(allocator, name);
+            ret.options.hidden = name[0] == '_';
+            if (builder_spec.options.show_initial_state) {
+                ret.assertExchange(.any, .null, .ready, max_thread_count);
+                ret.assertExchange(.format, .null, .ready, max_thread_count);
+                ret.assertExchange(.build, .null, .ready, max_thread_count);
+                ret.assertExchange(.run, .null, .ready, max_thread_count);
+                ret.assertExchange(.archive, .null, .ready, max_thread_count);
+            } else {
+                ret.task_lock = omni_lock;
+            }
+            return ret;
         }
         /// Initialize a new `zig fmt` command.
         pub fn addFormat(toplevel: *Node, allocator: *Allocator, format_cmd: types.FormatCommand, name: [:0]const u8, pathname: [:0]const u8) !*Node {
