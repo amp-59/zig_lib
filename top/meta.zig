@@ -1234,6 +1234,58 @@ pub fn genericSlice(comptime transform: anytype, comptime values: anytype) []con
     }
     return ret;
 }
+pub fn refAllDeclsInternal(comptime T: type, comptime types: []const type, comptime black_list: ?[]const []const u8) void {
+    @setEvalBranchQuota(~@as(u32, 0));
+    comptime {
+        if (@typeInfo(T) == .Struct or
+            @typeInfo(T) == .Union or
+            @typeInfo(T) == .Enum or
+            @typeInfo(T) == .Opaque)
+        {
+            lo: for (resolve(@typeInfo(T)).decls) |decl| {
+                for (black_list) |name| {
+                    if (builtin.testEqualMemory([]const u8, decl.name, name)) {
+                        continue :lo;
+                    }
+                }
+                if (@hasDecl(T, decl.name)) {
+                    if (@TypeOf(@field(T, decl.name)) == type) {
+                        for (types) |U| {
+                            if (@field(T, decl.name) == U) {
+                                continue :lo;
+                            }
+                        }
+                        refAllDeclsInternal(@field(T, decl.name), types ++ [1]type{@field(T, decl.name)});
+                    }
+                }
+            }
+        }
+    }
+}
+pub fn refAllDecls(comptime T: type, comptime black_list: ?[]const []const u8) void {
+    @setEvalBranchQuota(~@as(u32, 0));
+    comptime {
+        var types: []const type = &.{};
+        if (@typeInfo(T) == .Struct or
+            @typeInfo(T) == .Union or
+            @typeInfo(T) == .Enum or
+            @typeInfo(T) == .Opaque)
+        {
+            lo: for (resolve(@typeInfo(T)).decls) |decl| {
+                for (black_list) |name| {
+                    if (builtin.testEqualMemory([]const u8, decl.name, name)) {
+                        continue :lo;
+                    }
+                }
+                if (@hasDecl(T, decl.name)) {
+                    if (@TypeOf(@field(T, decl.name)) == type) {
+                        refAllDeclsInternal(@field(T, decl.name), types ++ [1]type{@field(T, decl.name)});
+                    }
+                }
+            }
+        }
+    }
+}
 const debug = opaque {
     fn typeTypeName(comptime any: builtin.TypeId) []const u8 {
         switch (any) {
