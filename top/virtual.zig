@@ -123,10 +123,10 @@ pub fn ThreadSafeSet(comptime elements: u16, comptime val_type: type, comptime i
                 safe_set.bytes[index] = 0;
             }
             pub inline fn atomicSet(safe_set: *SafeSet, index: idx_type) bool {
-                return common.atomicByteExchange(&safe_set.bytes[index], 0, 255);
+                return @cmpxchgStrong(u8, &safe_set.bytes[index], 0, 255, .Monotonic, .Monotonic) == null;
             }
             pub inline fn atomicUnset(safe_set: *SafeSet, index: idx_type) bool {
-                return common.atomicByteExchange(&safe_set.bytes[index], 255, 0);
+                return @cmpxchgStrong(u8, &safe_set.bytes[index], 255, 0, .Monotonic, .Monotonic) == null;
             }
         };
     } else if (val_type == bool and idx_info == .Enum) {
@@ -143,10 +143,10 @@ pub fn ThreadSafeSet(comptime elements: u16, comptime val_type: type, comptime i
                 safe_set.bytes[@enumToInt(index)] = 0;
             }
             pub inline fn atomicSet(safe_set: *SafeSet, index: idx_type) bool {
-                return common.atomicByteExchange(safe_set.bytes[@enumToInt(index)], 0, 255);
+                return @cmpxchgStrong(val_type, &safe_set.bytes[index], 0, 255, .Monotonic, .Monotonic) == null;
             }
             pub inline fn atomicUnset(safe_set: *SafeSet, index: idx_type) bool {
-                return common.atomicByteExchange(safe_set.bytes[@enumToInt(index)], 255, 0);
+                return @cmpxchgStrong(val_type, &safe_set.bytes[index], 255, 0, .Monotonic, .Monotonic) == null;
             }
         };
     } else if (val_type != bool and idx_info != .Enum) {
@@ -160,17 +160,7 @@ pub fn ThreadSafeSet(comptime elements: u16, comptime val_type: type, comptime i
                 safe_set.bytes[index] = to;
             }
             pub fn atomicExchange(safe_set: *SafeSet, index: idx_type, if_state: val_type, to_state: val_type) bool {
-                return asm volatile (
-                    \\mov           %[if_state],    %al
-                    \\mov           %[to_state],    %dl
-                    \\lock cmpxchg  %dl,            %[ptr]
-                    \\sete          %[ret]
-                    : [ret] "=r" (-> bool),
-                    : [ptr] "p" (&safe_set.bytes[index]),
-                      [if_state] "r" (if_state),
-                      [to_state] "r" (to_state),
-                    : "rax", "rdx", "memory"
-                );
+                return @cmpxchgStrong(val_type, &safe_set.bytes[index], if_state, to_state, .Monotonic, .Monotonic) == null;
             }
         };
     } else if (val_type != bool and idx_info == .Enum) {
@@ -189,17 +179,7 @@ pub fn ThreadSafeSet(comptime elements: u16, comptime val_type: type, comptime i
                 return ret;
             }
             pub fn atomicExchange(safe_set: *SafeSet, index: idx_type, if_state: val_type, to_state: val_type) callconv(.C) bool {
-                return asm volatile (
-                    \\mov           %[if_state],    %al
-                    \\mov           %[to_state],    %dl
-                    \\lock cmpxchg  %dl,            %[ptr]
-                    \\sete          %[ret]
-                    : [ret] "=r" (-> bool),
-                    : [ptr] "p" (&safe_set.bytes[@enumToInt(index)]),
-                      [if_state] "r" (if_state),
-                      [to_state] "r" (to_state),
-                    : "rax", "rdx", "memory"
-                );
+                return @cmpxchgStrong(val_type, &safe_set.bytes[@enumToInt(index)], if_state, to_state, .Monotonic, .Monotonic) == null;
             }
         };
     }
@@ -945,10 +925,10 @@ pub fn GenericElementaryAddressSpace(comptime spec: ElementaryAddressSpaceSpec) 
             return !ret;
         }
         pub fn atomicSet(address_space: *ElementaryAddressSpace) bool {
-            return common.atomicByteExchange(&address_space.impl, 0, 255);
+            return @cmpxchgStrong(u8, &address_space.impl, 0, 255, .Monotonic, .Monotonic);
         }
         pub fn atomicUnset(address_space: *ElementaryAddressSpace) bool {
-            return common.atomicByteExchange(&address_space.impl, 255, 0);
+            return @cmpxchgStrong(u8, &address_space.impl, 255, 0, .Monotonic, .Monotonic);
         }
         fn low() u64 {
             return spec.lb_addr;
@@ -972,60 +952,6 @@ pub fn GenericElementaryAddressSpace(comptime spec: ElementaryAddressSpaceSpec) 
     };
     return T;
 }
-const common = struct {
-    fn atomicByteExchange(byte_ptr: *u8, if_state: u8, to_state: u8) bool {
-        return asm volatile (
-            \\mov           %[if_state],    %al
-            \\mov           %[to_state],    %dl
-            \\lock cmpxchg  %dl,            %[ptr]
-            \\sete          %[ret]
-            : [ret] "=r" (-> bool),
-            : [ptr] "p" (byte_ptr),
-              [if_state] "r" (if_state),
-              [to_state] "r" (to_state),
-            : "rax", "rdx", "memory"
-        );
-    }
-    fn atomicWordExchange(word_ptr: *u16, if_state: u16, to_state: u16) bool {
-        return asm volatile (
-            \\mov           %[if_state],    %ax
-            \\mov           %[to_state],    %dx
-            \\lock cmpxchg  %dx,            %[ptr]
-            \\sete          %[ret]
-            : [ret] "=r" (-> bool),
-            : [ptr] "p" (word_ptr),
-              [if_state] "r" (if_state),
-              [to_state] "r" (to_state),
-            : "rax", "rdx", "memory"
-        );
-    }
-    fn atomicDwordExchange(dword_ptr: *u32, if_state: u32, to_state: u32) bool {
-        return asm volatile (
-            \\mov           %[if_state],    %eax
-            \\mov           %[to_state],    %edx
-            \\lock cmpxchg  %edx,           %[ptr]
-            \\sete          %[ret]
-            : [ret] "=r" (-> bool),
-            : [ptr] "p" (dword_ptr),
-              [if_state] "r" (if_state),
-              [to_state] "r" (to_state),
-            : "rax", "rdx", "memory"
-        );
-    }
-    fn atomicQwordExchange(qword_ptr: *u64, if_state: u64, to_state: u64) bool {
-        return asm volatile (
-            \\mov           %[if_state],    %rax
-            \\mov           %[to_state],    %rdx
-            \\lock cmpxchg  %rdx,           %[ptr]
-            \\sete          %[ret]
-            : [ret] "=r" (-> bool),
-            : [ptr] "p" (qword_ptr),
-              [if_state] "r" (if_state),
-              [to_state] "r" (to_state),
-            : "rax", "rdx", "memory"
-        );
-    }
-};
 fn GenericAddressSpace(comptime AddressSpace: type) type {
     return struct {
         pub fn formatWrite(address_space: AddressSpace, array: anytype) void {
