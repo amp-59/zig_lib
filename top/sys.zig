@@ -1579,7 +1579,7 @@ pub const SignalCode = enum(u32) {
     }
 };
 pub const SignalPolicy = builtin.ExternalError(SignalCode);
-pub const Fn = enum(u9) {
+pub const Fn = enum(usize) {
     read = 0,
     write = 1,
     open = 2,

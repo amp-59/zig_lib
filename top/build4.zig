@@ -60,9 +60,6 @@ pub const BuilderSpec = struct {
         /// Include arena/thread index in task summaries and change of state
         /// notices.
         show_arena_index: bool = true,
-        /// Use `SimpleAllocator` instead of configured generic allocator.
-        /// This will slightly speed compilation.
-        prefer_simple_allocator: bool = true,
         /// Determines whether to use the Zig compiler server.
         enable_caching: bool = true,
         /// Executables with debug information include DWARF parser and
