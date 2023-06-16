@@ -7,7 +7,7 @@ const spec = @import("../spec.zig");
 const builtin = @import("../builtin.zig");
 const tasks = @import("./tasks.zig");
 pub usingnamespace tasks;
-pub const NodeKind = enum(u1) { group, worker };
+pub const NodeKind = enum(u8) { group, worker };
 pub const OutputMode = enum(u2) { exe, lib, obj };
 pub const AuxOutputMode = enum(u3) { @"asm", llvm_ir, llvm_bc, h, docs, analysis };
 pub const Task = enum(u8) {
@@ -39,80 +39,7 @@ pub const State = enum(u8) {
 };
 // zig fmt: on
 pub const Lock = mem.ThreadSafeSet(State.list.len, State, Task);
-pub const NewPath = union {
-    names: [][]const u8,
-    const Format = @This();
-    pub fn formatWrite(format: Format, array: anytype) void {
-        @setRuntimeSafety(false);
-        if (format.names.len != 0) {
-            array.writeMany(format.names[0]);
-            for (format.names[1..]) |name| {
-                array.writeOne('/');
-                array.writeMany(name);
-            }
-        }
-        array.writeOne(0);
-    }
-    pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
-        @setRuntimeSafety(false);
-        var len: u64 = 0;
-        if (format.names.len != 0) {
-            mach.memcpy(buf + len, format.names[0].ptr, format.names[0].len);
-            len +%= format.names[0].len;
-            for (format.names[1..]) |name| {
-                buf[len] = '/';
-                len +%= 1;
-                mach.memcpy(buf + len, name.ptr, name.len);
-                len +%= name.len;
-            }
-        }
-        buf[len] = 0;
-        len +%= 1;
-        return len;
-    }
-    pub fn formatLength(format: Format) u64 {
-        @setRuntimeSafety(false);
-        var len: u64 = 0;
-        if (format.names.len != 0) {
-            len +%= format.names[0].len;
-            for (format.names[1..]) |name| {
-                len +%= 1 +% name.len;
-            }
-        }
-        return len +% 1;
-    }
-};
-pub const Path = struct {
-    absolute: [:0]const u8,
-    relative: [:0]const u8 = &.{},
-    const Format = @This();
-    pub fn formatWrite(format: Format, array: anytype) void {
-        array.writeMany(format.absolute);
-        if (format.relative.len != 0) {
-            array.writeOne('/');
-            array.writeMany(format.relative.len);
-        }
-        array.writeOne(0);
-    }
-    pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
-        @setRuntimeSafety(false);
-        var len: u64 = format.absolute.len;
-        mach.memcpy(buf, format.absolute.ptr, format.absolute.len);
-        if (format.relative.len != 0) {
-            buf[len] = '/';
-            len = len +% 1;
-            mach.memcpy(buf + len, format.relative.ptr, format.relative.len);
-            len = len +% format.relative.len;
-        }
-        buf[len] = 0;
-        return len +% 1;
-    }
-    pub fn formatLength(format: Format) u64 {
-        var len: u64 = format.absolute.len;
-        len +%= 1 +% format.relative.len;
-        return len +% 1;
-    }
-};
+
 pub const Module = struct {
     name: []const u8,
     path: []const u8,
@@ -302,6 +229,68 @@ pub const CFlags = struct {
         return len;
     }
 };
+pub const Path = struct {
+    names: [*][:0]const u8,
+    names_max_len: u64 = 0,
+    names_len: u64 = 0,
+    const Format = @This();
+    pub fn formatWrite(format: Format, array: anytype) void {
+        @setRuntimeSafety(false);
+        if (format.names.len != 0) {
+            array.writeMany(format.names[0]);
+            for (format.names[1..]) |name| {
+                array.writeOne('/');
+                array.writeMany(name);
+            }
+        }
+        array.writeOne(0);
+    }
+    pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
+        @setRuntimeSafety(false);
+        var len: u64 = 0;
+        if (format.names_len != 0) {
+            mach.memcpy(buf + len, format.names[0].ptr, format.names[0].len);
+            len +%= format.names[0].len;
+            for (format.names[1..format.names_len]) |name| {
+                buf[len] = '/';
+                len +%= 1;
+                mach.memcpy(buf + len, name.ptr, name.len);
+                len +%= name.len;
+            }
+        }
+        buf[len] = 0;
+        len +%= 1;
+        return len;
+    }
+    pub fn formatLength(format: Format) u64 {
+        @setRuntimeSafety(false);
+        var len: u64 = 0;
+        if (format.names_len != 0) {
+            len +%= format.names[0].len;
+            for (format.names[1..format.names_len]) |name| {
+                len +%= 1 +% name.len;
+            }
+        }
+        return len +% 1;
+    }
+    pub fn relative(path: *Path) [:0]const u8 {
+        return path.names[path.names_len -% 1];
+    }
+    pub fn concatenate(path: Path, allocator: anytype) [:0]u8 {
+        @setRuntimeSafety(false);
+        const buf: [*]u8 = @intToPtr([*]u8, allocator.allocateRaw(path.formatLength(), 1));
+        const len: u64 = path.formatWriteBuf(buf);
+        return buf[0 .. len -% 1 :0];
+    }
+    pub fn addName(path: *Path, allocator: anytype) *[:0]const u8 {
+        @setRuntimeSafety(false);
+        const size_of: comptime_int = @sizeOf([:0]const u8);
+        const addr_buf: *u64 = @ptrCast(*u64, &path.names);
+        const ret: *[:0]const u8 = @intToPtr(*[:0]const u8, allocator.addGeneric(size_of, 2, addr_buf, &path.names_max_len, path.names_len));
+        path.names_len +%= 1;
+        return ret;
+    }
+};
 pub const Files = struct {
     value: []const Path,
     const Format = @This();
@@ -452,5 +441,36 @@ pub const Record = packed struct {
             .size = @intCast(u32, size),
             .detail = .{ .mode = mode, .strip = strip },
         };
+    }
+};
+pub const OldPath = struct {
+    absolute: [:0]const u8,
+    relative: [:0]const u8 = &.{},
+    const Format = @This();
+    pub fn formatWrite(format: Format, array: anytype) void {
+        array.writeMany(format.absolute);
+        if (format.relative.len != 0) {
+            array.writeOne('/');
+            array.writeMany(format.relative.len);
+        }
+        array.writeOne(0);
+    }
+    pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
+        @setRuntimeSafety(false);
+        var len: u64 = format.absolute.len;
+        mach.memcpy(buf, format.absolute.ptr, format.absolute.len);
+        if (format.relative.len != 0) {
+            buf[len] = '/';
+            len = len +% 1;
+            mach.memcpy(buf + len, format.relative.ptr, format.relative.len);
+            len = len +% format.relative.len;
+        }
+        buf[len] = 0;
+        return len +% 1;
+    }
+    pub fn formatLength(format: Format) u64 {
+        var len: u64 = format.absolute.len;
+        len +%= 1 +% format.relative.len;
+        return len +% 1;
     }
 };
