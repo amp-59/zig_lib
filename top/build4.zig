@@ -262,7 +262,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         task_lock: types.Lock,
         task_info: TaskInfo,
         options: packed struct {
-            hide: bool = false,
+            hidden: bool = false,
             special: bool = false,
             no_pre: bool = false,
             no_post: bool = false,
@@ -380,7 +380,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             ret.kind = .group;
             ret.task = .any;
             ret.addName(allocator).* = duplicate(allocator, name);
-            ret.options.hide = name[0] == '_';
+            ret.options.hidden = name[0] == '_';
             if (builder_spec.options.show_initial_state) {
                 ret.assertExchange(.any, .null, .ready, max_thread_count);
                 ret.assertExchange(.format, .null, .ready, max_thread_count);
@@ -482,7 +482,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             } else {
                 ret.task_lock = format_lock;
             }
-            ret.options.hide = toplevel.options.hide or
+            ret.options.hidden = toplevel.options.hidden or
                 name[0] == builder_spec.options.hide_prefix;
             return ret;
         }
@@ -508,7 +508,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             } else {
                 ret.task_lock = archive_lock;
             }
-            ret.options.hide = toplevel.options.hide or
+            ret.options.hidden = toplevel.options.hidden or
                 name[0] == builder_spec.options.hide_prefix;
             return ret;
         }
@@ -556,7 +556,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     ret.task_lock = obj_lock;
                 }
             }
-            ret.options.hide = toplevel.options.hide or
+            ret.options.hidden = toplevel.options.hidden or
                 name[0] == builder_spec.options.hide_prefix;
             return ret;
         }
@@ -1546,7 +1546,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 .build_lib_s = builtin.fmt.about("build-lib"),
                 .state_0_s = builtin.fmt.about("state"),
                 .state_1_s = builtin.fmt.about("state-fault"),
-                .next_s = ", ",
                 .bytes_s = " bytes, ",
                 .green_s = "\x1b[92;1m",
                 .red_s = "\x1b[91;1m",
@@ -1689,20 +1688,20 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 mach.memcpy(&buf, about_s.ptr, len);
                 mach.memcpy(buf[len..].ptr, node.names[0].ptr, node.names[0].len);
                 len +%= node.names[0].len;
-                @ptrCast(*[2]u8, buf[len..].ptr).* = about.next_s.*;
+                @ptrCast(*[2]u8, buf[len..].ptr).* = ", ".*;
                 len +%= 2;
                 if (task == .build) {
                     const mode: builtin.Mode = node.task_info.build.mode orelse .Debug;
                     const stripped: bool = node.task_info.build.strip orelse (mode == .ReleaseSmall);
                     mach.memcpy(buf[len..].ptr, @tagName(mode).ptr, @tagName(mode).len);
                     len +%= @tagName(mode).len;
-                    @ptrCast(*[2]u8, buf[len..].ptr).* = about.next_s.*;
+                    @ptrCast(*[2]u8, buf[len..].ptr).* = ", ".*;
                     len +%= 2;
                     @ptrCast(*[2]u8, buf[len..].ptr).* = "un".*;
                     if (!stripped) len +%= 2;
                     @ptrCast(*[8]u8, buf[len..].ptr).* = "stripped".*;
                     len +%= 8;
-                    @ptrCast(*[2]u8, buf[len..].ptr).* = about.next_s.*;
+                    @ptrCast(*[2]u8, buf[len..].ptr).* = ", ".*;
                     len +%= 2;
                 }
                 @ptrCast(*[5]u8, buf[len..].ptr).* = "exit=".*;
@@ -1746,7 +1745,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     @ptrCast(*[4]u8, buf[len..].ptr).* = about.reset_s.*;
                     len +%= 4;
                 }
-                @ptrCast(*[2]u8, buf[len..].ptr).* = about.next_s.*;
+                @ptrCast(*[2]u8, buf[len..].ptr).* = ", ".*;
                 len +%= 2;
                 if (task == .build or task == .archive) {
                     if (old_size == 0) {
@@ -2064,7 +2063,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     len +%= 2;
                     mach.memcpy(buf0 + len, dep_node.names[0].ptr, dep_node.names[0].len);
                     len +%= dep_node.names[0].len;
-                    if (dep_node.options.hide and dep_node.paths_len != 0) {
+                    if (dep_node.options.hidden and dep_node.paths_len != 0) {
                         len +%= writeSubNode(buf0 + len, len1 +% 2, dep_node, name_width, root_width);
                     }
                     len = writeAndWalkInternal(buf0, len, buf1, len1 +% 2, dep_node, name_width, root_width);
@@ -2109,7 +2108,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     if (sub_node.options.special) {
                         continue;
                     }
-                    if (sub_node.options.hide) {
+                    if (sub_node.options.hidden) {
                         continue;
                     }
                     const is_last: bool = nodes_idx == node.nodes_len -% 1;
@@ -2127,7 +2126,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     len +%= 2;
                     @ptrCast(*[2]u8, buf0 + len).* = if (is_only) "- ".* else "o ".*;
                     len +%= 2;
-                    if (sub_node.options.hide and sub_node.paths_len != 0) {
+                    if (sub_node.options.hidden and sub_node.paths_len != 0) {
                         len +%= writeSubNode(buf0 + len, len1 +% 4, sub_node, name_width, root_width);
                     }
                     mach.memcpy(buf0 + len, sub_node.names[0].ptr, sub_node.names[0].len);
@@ -2143,7 +2142,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 var name_width: u64 = 0;
                 var root_width: u64 = 0;
                 for (toplevel.nodes[0..toplevel.nodes_len]) |node| {
-                    if (!node.options.hide) {
+                    if (!node.options.hidden) {
                         name_width = @max(name_width, dependencyMaxNameWidth(node, 2));
                         root_width = @max(root_width, dependencyMaxRootWidth(node));
                     }
