@@ -74,7 +74,7 @@ const pathname2: [:0]const u8 = test_dir ++ file_name ++ "2";
 const pathname_link1: [:0]const u8 = test_dir ++ file_name ++ "1";
 const pathname_link2: [:0]const u8 = test_dir ++ file_name ++ "2";
 
-fn testRecords() !void {
+pub fn testRecords() !void {
     const build_root: []const u8 = comptime builtin.buildRoot();
     const proj_stats_root: [:0]const u8 = comptime build_root ++ "/zig-stat/file_test";
     var rcd_buf: [4096]build.Record = undefined;
@@ -84,13 +84,13 @@ fn testRecords() !void {
         builtin.debug.write(buf[0..mach.memcpyMulti(&buf, &.{ @tagName(rcd.detail.mode), "\n" })]);
     }
 }
-fn testStatusExtended() !void {
+pub fn testStatusExtended() !void {
     const Fields = @TypeOf(statx_spec.options.fields);
     const nilx_spec: file.StatusExtendedSpec = comptime spec.add(statx_spec, .{ .options = .{ .fields = builtin.zero(Fields) } });
     var st: file.StatusExtended = try meta.wrap(file.statusExtended(nilx_spec, 0, "/home"));
     _ = st;
 }
-fn testCopyFileRange() !void {
+pub fn testCopyFileRange() !void {
     builtin.debug.write(@src().fn_name ++ ":\n");
     const src_fd: u64 = try meta.wrap(file.create(create_spec, pathname1, file.mode.regular));
     const dest_fd: u64 = try meta.wrap(file.create(create_spec, pathname2, file.mode.regular));
@@ -107,7 +107,7 @@ fn testCopyFileRange() !void {
     try meta.wrap(file.unlink(unlink_spec, test_dir ++ "file_test1"));
     try meta.wrap(file.unlink(unlink_spec, test_dir ++ "file_test2"));
 }
-fn testFileOperationsRound1() !void {
+pub fn testFileOperationsRound1() !void {
     builtin.debug.write(@src().fn_name ++ ":\n");
     var buf: [4096]u8 = undefined;
     _ = try file.getCwd(.{}, &buf);
