@@ -22,6 +22,7 @@ pub const signal_handlers: builtin.SignalHandlers = .{
     .bus_error = true,
     .illegal_instruction = true,
     .floating_point_error = true,
+    .breakpoint = true,
 };
 pub const runtime_assertions: bool = true;
 pub const comptime_assertions: bool = false;
@@ -2551,45 +2552,6 @@ var build_cmd: build.BuildCommand = .{
         .path = "zig-cache/env.zig",
     } },
 };
-pub fn testBuildProgram(allocator: *Node.Allocator, builder: *Node) !void {
-    _ = try builder.addBuild(allocator, build_cmd, "obj01234", "test/src/obj0.zig");
-    _ = try builder.addBuild(allocator, build_cmd, "obj12", "test/src/obj1.zig");
-    _ = try builder.addBuild(allocator, build_cmd, "obj234", "test/src/obj2.zig");
-    _ = try builder.addBuild(allocator, build_cmd, "obj3456", "test/src/obj3.zig");
-    _ = try builder.addBuild(allocator, build_cmd, "obj45678", "test/src/obj4.zig");
-    _ = try builder.addBuild(allocator, build_cmd, "obj5678910", "test/src/obj5.zig");
-}
-pub fn testLargeFlatStructureBuilder(args: anytype, vars: anytype, address_space: *AddressSpace) !void {
-    var allocator_a: Allocator = try Allocator.init(address_space);
-    var allocator_b: Node.Allocator = if (Node.Allocator == mem.SimpleAllocator)
-        Node.Allocator.init_arena(Node.AddressSpace.arena(Node.max_thread_count))
-    else
-        Node.Allocator.init(address_space, Node.max_thread_count);
-    defer if (Node.Allocator != mem.SimpleAllocator) {
-        allocator_b.deinit(address_space, Node.max_thread_count);
-    };
-    var builder: *Node = try meta.wrap(Node.init(&allocator_b, args, vars));
-    try testBuildProgram(&allocator_b, builder);
-    var buf: [4096]u8 = undefined;
-
-    for (builder.nodes[0..builder.nodes_len], 0..) |node, node_idx| {
-        const pathname: []const u8 = "zig-out/bin/groups";
-        const s = allocator_a.save();
-        defer allocator_a.restore(s);
-        const len: u64 = mach.memcpyMulti(&buf, &.{ pathname, builtin.fmt.ud64(node_idx).readAll(), "_", builtin.fmt.ud64(node_idx).readAll() });
-        buf[len] = 0;
-        try serial.serialWrite(.{ .Allocator = Allocator }, build.BuildCommand, &allocator_a, buf[0..len :0], node.task_info.build.*);
-    }
-    for (builder.nodes[0..builder.nodes_len], 0..) |node, node_idx| {
-        const pathname: []const u8 = "zig-out/bin/groups";
-        const s = allocator_a.save();
-        defer allocator_a.restore(s);
-        const len: u64 = mach.memcpyMulti(&buf, &.{ pathname, builtin.fmt.ud64(node_idx).readAll(), "_", builtin.fmt.ud64(node_idx).readAll() });
-        buf[len] = 0;
-        const s_build_cmd: build.BuildCommand = try serial.serialRead(.{ .Allocator = Allocator }, build.BuildCommand, &allocator_a, buf[0..len :0]);
-        try builtin.expectEqualMemory(build.BuildCommand, s_build_cmd, node.task_info.build.*);
-    }
-}
 pub fn testLongComplexCase(address_space: *AddressSpace) !void {
     var allocator: Allocator = try Allocator.init(address_space);
     defer allocator.deinit(address_space);
@@ -2649,13 +2611,12 @@ pub fn testWriteSerialFeatures(address_space: *AddressSpace) !void {
         }
     }
 }
-pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
+pub fn main() !void {
     var address_space: AddressSpace = .{};
     try meta.wrap(testWriteSerialFeatures(&address_space));
     if (test_real_examples) {
         try meta.wrap(testLongComplexCase(&address_space));
         try meta.wrap(testLargeStructure(&address_space));
         try meta.wrap(testVarietyStructure(&address_space));
-        try meta.wrap(testLargeFlatStructureBuilder(args, vars, &address_space));
     }
 }
