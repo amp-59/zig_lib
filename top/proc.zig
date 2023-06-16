@@ -1127,14 +1127,18 @@ pub fn environmentValue(vars: [][*:0]u8, key: [:0]const u8) ?[:0]u8 {
     return null;
 }
 const debug = opaque {
+    const about_sig_0_s: [:0]const u8 = builtin.fmt.about("sig");
+    const about_sig_1_s: [:0]const u8 = builtin.fmt.about("sig-error");
     const about_fork_0_s: [:0]const u8 = builtin.fmt.about("fork");
     const about_fork_1_s: [:0]const u8 = builtin.fmt.about("fork-error");
     const about_wait_0_s: [:0]const u8 = builtin.fmt.about("wait");
     const about_wait_1_s: [:0]const u8 = builtin.fmt.about("wait-error");
+
     const about_futex_wait_0_s: [:0]const u8 = builtin.fmt.about("futex-wait");
     const about_futex_wake_0_s: [:0]const u8 = builtin.fmt.about("futex-wake");
     const about_futex_wake_op_0_s: [:0]const u8 = builtin.fmt.about("futex-wake-op");
     const about_futex_1_s: [:0]const u8 = builtin.fmt.about("futex-error");
+
     fn exceptionFaultAtAddress(symbol: []const u8, fault_addr: u64) void {
         const fault_addr_s: []const u8 = builtin.fmt.ux64(fault_addr).readAll();
         var buf: [8192]u8 = undefined;
@@ -1150,33 +1154,20 @@ const debug = opaque {
         const pid_s: []const u8 = builtin.fmt.ud64(ret.pid).readAll();
         const if_signaled: bool = Status.ifSignaled(ret.status);
         const if_stopped: bool = Status.ifStopped(ret.status);
-        const about_s: []const u8 =
-            if (if_signaled) ", sig=" else if (if_stopped) ", stop=" else ", exit=";
-        const code: u64 =
-            if (if_signaled) Status.stop(ret.status) else if (if_stopped) Status.stop(ret.status) else Status.exit(ret.status);
+        const about_s: []const u8 = if (if_signaled) ", sig=" else if (if_stopped) ", stop=" else ", exit=";
+        const code: u64 = if (if_signaled) Status.stop(ret.status) else if (if_stopped) Status.stop(ret.status) else Status.exit(ret.status);
         const code_s: []const u8 = builtin.fmt.ud64(code).readAll();
         var buf: [560]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_wait_0_s, @tagName(id), ", pid=", pid_s, about_s, code_s, "\n" });
     }
     fn signalActionNotice(signo: sys.SignalCode, handler: Handler) void {
-        _ = handler;
+        const handler_raw: usize = @bitCast(usize, handler);
+        const handler_addr_s: []const u8 = builtin.fmt.ux64(handler_raw).readAll();
+        const handler_set_s: []const u8 = if (handler_raw == 1) "ignore" else "default";
+        const handler_s: []const u8 = if (handler_raw > 1) handler_addr_s else handler_set_s;
         var buf: [560]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_wait_0_s, @tagName(signo), "\n" });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_sig_1_s, "SIG", @tagName(signo), " -> ", handler_s, "\n" });
     }
-    fn forkError(fork_error: anytype) void {
-        var buf: [560]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_fork_1_s, " (", @errorName(fork_error), ")\n" });
-    }
-    fn waitError(wait_error: anytype) void { // TODO: Report more information, such as pid, idtype, conditions
-        var buf: [560]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_wait_1_s, " (", @errorName(wait_error), ")\n" });
-    }
-    fn signalActionError(rt_sigaction_error: anytype, signo: sys.SignalCode, handler: Handler) void {
-        _ = handler;
-        var buf: [560]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_wait_0_s, @tagName(signo), " (", @errorName(rt_sigaction_error), ")\n" });
-    }
-
     fn futexWaitAttempt(futex: *u32, value: u32, timeout: *const time.TimeSpec) void {
         const addr_s: []const u8 = builtin.fmt.ux64(@ptrToInt(futex)).readAll();
         const word_s: []const u8 = builtin.fmt.ud64(futex.*).readAll();
@@ -1195,16 +1186,6 @@ const debug = opaque {
         var buf: [3072]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_futex_wait_0_s, addr_s, ", word=", word_s, ", val=", value_s, ", sec=", sec_s, ", nsec=", nsec_s, "\n" });
     }
-    fn futexWaitError(futex_error: anytype, futex: *u32, value: u32, timeout: *const time.TimeSpec) void {
-        const addr_s: []const u8 = builtin.fmt.ux64(@ptrToInt(futex)).readAll();
-        const word_s: []const u8 = builtin.fmt.ud64(futex.*).readAll();
-        const value_s: []const u8 = builtin.fmt.ud64(value).readAll();
-        const sec_s: []const u8 = builtin.fmt.ud64(timeout.sec).readAll();
-        const nsec_s: []const u8 = builtin.fmt.ud64(timeout.nsec).readAll();
-        const error_s: []const u8 = @errorName(futex_error);
-        var buf: [3072]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_futex_1_s, addr_s, ", word=", word_s, ", val=", value_s, ", sec=", sec_s, ", nsec=", nsec_s, " (", error_s, ")\n" });
-    }
     fn futexWakeAttempt(futex: *u32, count: u64) void {
         const addr_s: []const u8 = builtin.fmt.ux64(@ptrToInt(futex)).readAll();
         const word_s: []const u8 = builtin.fmt.ud64(futex.*).readAll();
@@ -1219,14 +1200,6 @@ const debug = opaque {
         const ret_s: []const u8 = builtin.fmt.ud64(ret).readAll();
         var buf: [3072]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_futex_wake_0_s, addr_s, ", word=", word_s, ", max=", count_s, ", res=", ret_s, "\n" });
-    }
-    fn futexWakeError(futex_error: anytype, futex: *u32, count: u64) void {
-        const addr_s: []const u8 = builtin.fmt.ux64(@ptrToInt(futex)).readAll();
-        const word_s: []const u8 = builtin.fmt.ud64(futex.*).readAll();
-        const count_s: []const u8 = builtin.fmt.ud64(count).readAll();
-        const error_s: []const u8 = @errorName(futex_error);
-        var buf: [3072]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_futex_1_s, addr_s, ", word=", word_s, ", max=", count_s, " (", error_s, ")\n" });
     }
     fn futexWakeOpAttempt(futex1: *u32, futex2: *u32, count1: u32, count2: u32, wake_op: FutexOp.WakeOp) void {
         _ = wake_op;
@@ -1267,6 +1240,40 @@ const debug = opaque {
             count2_s,             ", res=",
             ret_s,                "\n",
         });
+    }
+    fn forkError(fork_error: anytype) void {
+        var buf: [560]u8 = undefined;
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_fork_1_s, " (", @errorName(fork_error), ")\n" });
+    }
+    fn waitError(wait_error: anytype) void {
+        var buf: [560]u8 = undefined;
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_wait_1_s, " (", @errorName(wait_error), ")\n" });
+    }
+    fn signalActionError(rt_sigaction_error: anytype, signo: sys.SignalCode, handler: Handler) void {
+        const handler_raw: usize = @bitCast(usize, handler);
+        const handler_addr_s: []const u8 = builtin.fmt.ux64(handler_raw).readAll();
+        const handler_set_s: []const u8 = if (handler_raw == 1) "ignore" else "default";
+        const handler_s: []const u8 = if (handler_raw > 1) handler_addr_s else handler_set_s;
+        var buf: [560]u8 = undefined;
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_sig_1_s, "SIG", @tagName(signo), " -> ", handler_s, " (", @errorName(rt_sigaction_error), ")\n" });
+    }
+    fn futexWaitError(futex_error: anytype, futex: *u32, value: u32, timeout: *const time.TimeSpec) void {
+        const addr_s: []const u8 = builtin.fmt.ux64(@ptrToInt(futex)).readAll();
+        const word_s: []const u8 = builtin.fmt.ud64(futex.*).readAll();
+        const value_s: []const u8 = builtin.fmt.ud64(value).readAll();
+        const sec_s: []const u8 = builtin.fmt.ud64(timeout.sec).readAll();
+        const nsec_s: []const u8 = builtin.fmt.ud64(timeout.nsec).readAll();
+        const error_s: []const u8 = @errorName(futex_error);
+        var buf: [3072]u8 = undefined;
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_futex_1_s, addr_s, ", word=", word_s, ", val=", value_s, ", sec=", sec_s, ", nsec=", nsec_s, " (", error_s, ")\n" });
+    }
+    fn futexWakeError(futex_error: anytype, futex: *u32, count: u64) void {
+        const addr_s: []const u8 = builtin.fmt.ux64(@ptrToInt(futex)).readAll();
+        const word_s: []const u8 = builtin.fmt.ud64(futex.*).readAll();
+        const count_s: []const u8 = builtin.fmt.ud64(count).readAll();
+        const error_s: []const u8 = @errorName(futex_error);
+        var buf: [3072]u8 = undefined;
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_futex_1_s, addr_s, ", word=", word_s, ", max=", count_s, " (", error_s, ")\n" });
     }
     fn futexWakeOpError(futex_error: anytype, futex1: *u32, futex2: *u32, count1: u32, count2: u32, wake_op: FutexOp.WakeOp) void {
         _ = wake_op;
