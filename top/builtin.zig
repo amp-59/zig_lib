@@ -1560,7 +1560,9 @@ pub const debug = struct {
     pub noinline fn panic(msg: []const u8, _: @TypeOf(@errorReturnTrace()), ret_addr: ?usize) noreturn {
         @setCold(true);
         @setRuntimeSafety(false);
-        if (!config.zig.strip_debug_info and config.is_debug) {
+        if (config.tracing_override orelse
+            config.tracing_default)
+        {
             printStackTrace(ret_addr orelse @returnAddress());
         }
         @call(.always_inline, proc.exitGroupFault, .{ msg, 2 });
@@ -1596,68 +1598,56 @@ pub const debug = struct {
             mach.memcpy(buf[len..].ptr, max_len_s.ptr, max_len_s.len);
             len +%= max_len_s.len;
         }
-        if (config.is_debug and !config.zig.strip_debug_info) {
-            printStackTrace(ret_addr);
-        } else {
-            const ret_addr_s: []const u8 = fmt.ux64(ret_addr).readAll();
-            mach.memcpy(buf[len..].ptr, ret_addr_s.ptr, ret_addr_s.len);
-            len +%= ret_addr_s.len;
-        }
-        proc.exitErrorFault(error.PanicOutOfBounds, buf[0..len], 2);
+        panic(buf[0..len], null, ret_addr);
     }
     pub noinline fn panicSentinelMismatch(expected: anytype, actual: @TypeOf(expected)) noreturn {
         @setCold(true);
         @setRuntimeSafety(false);
+        const ret_addr: usize = @returnAddress();
         var buf: [1024]u8 = undefined;
         const expected_s: []const u8 = fmt.udsize(expected).readAll();
         const actual_s: []const u8 = fmt.udsize(actual).readAll();
-        logFaultAIO(&buf, &[_][]const u8{
-            debug.about_error_p0_s, "sentinel mismatch: expected ",
+        const len: u64 = mach.memcpyMulti(&buf, &[_][]const u8{
+            debug.about_fault_p0_s, "sentinel mismatch: expected ",
             expected_s,             ", found ",
             actual_s,               "\n",
         });
-        if (!config.zig.strip_debug_info and config.is_debug) {
-            printStackTrace(@returnAddress());
-        }
-        proc.exitError(error.SentinelMismatch, 2);
+        panic(buf[0..len], null, ret_addr);
     }
     pub noinline fn panicStartGreaterThanEnd(lower: usize, upper: usize) noreturn {
         @setCold(true);
         @setRuntimeSafety(false);
+        const ret_addr: usize = @returnAddress();
         var buf: [1024]u8 = undefined;
         const lower_s: []const u8 = fmt.ud64(lower).readAll();
         const upper_s: []const u8 = fmt.ud64(upper).readAll();
-        logFaultAIO(&buf, &[_][]const u8{
-            debug.about_error_p0_s, "start index ",
+        const len: u64 = mach.memcpyMulti(&buf, &[_][]const u8{
+            debug.about_fault_p0_s, "start index ",
             lower_s,                " is larger than end index ",
             upper_s,                "\n",
         });
-        if (!config.zig.strip_debug_info and config.is_debug) {
-            printStackTrace(@returnAddress());
-        }
-        proc.exitError(error.StartGreaterThanEnd, 2);
+        panic(buf[0..len], null, ret_addr);
     }
     pub noinline fn panicInactiveUnionField(active: anytype, wanted: @TypeOf(active)) noreturn {
         @setCold(true);
+        @setRuntimeSafety(false);
+        const ret_addr: usize = @returnAddress();
         var buf: [1024]u8 = undefined;
-        logFaultAIO(&buf, &[_][]const u8{
-            debug.about_error_p0_s, "access of union field '",
+        const len: u64 = mach.memcpyMulti(&buf, &[_][]const u8{
+            debug.about_fault_p0_s, "access of union field '",
             @tagName(wanted),       "' while field '",
             @tagName(active),       "' is active\n",
         });
-        if (!config.zig.strip_debug_info and config.is_debug) {
-            printStackTrace(@returnAddress());
-        }
-        proc.exitError(error.InactiveUnionField, 2);
+        panic(buf[0..len], null, ret_addr);
     }
-    pub noinline fn panicUnwrapError(_: StackTrace, err: anyerror) noreturn {
+    pub noinline fn panicUnwrapError(st: StackTrace, err: anyerror) noreturn {
         if (!config.discard_errors) {
             @compileError("error is discarded");
         }
-        if (!config.zig.strip_debug_info and config.is_debug) {
-            printStackTrace(@returnAddress());
-        }
-        proc.exitError(err, 2);
+        const ret_addr: usize = @returnAddress();
+        var buf: [1024]u8 = undefined;
+        const len: u64 = mach.memcpyMulti(&buf, &[_][]const u8{ debug.about_fault_p0_s, "error is discarded: ", @errorName(err), "\n" });
+        panic(buf[0..len], st, ret_addr);
     }
     fn checkNonScalarSentinel(expected: anytype, actual: @TypeOf(expected)) void {
         if (!testEqual(@TypeOf(expected), expected, actual)) {
