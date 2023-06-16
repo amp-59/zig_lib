@@ -539,33 +539,63 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 .relative = duplicate(allocator, root),
             };
             ret.task_info.build.* = build_cmd;
-            ret.task_info.build.main_pkg_path = main_pkg_path;
-            ret.task_info.build.listen = .@"-";
-            if (build_cmd.kind == .exe) {
-                ret.dependOnSelfExe(allocator);
-                if (build_cmd.mode) |mode| {
-                    if (mode == .Debug) {
-                        if (GlobalState.tracer) |g| {
-                            ret.dependOnObject(allocator, g);
-                        }
-                    }
-                }
+            if (!builder_spec.options.never_pre) {
+                processBefore(allocator, toplevel, ret);
             }
-            if (builder_spec.options.show_initial_state) {
-                ret.assertExchange(.build, .null, .ready, max_thread_count);
-                if (build_cmd.kind == .exe) {
-                    ret.assertExchange(.run, .null, .ready, max_thread_count);
-                }
-            } else {
-                if (build_cmd.kind == .exe) {
-                    ret.task_lock = exe_lock;
-                } else {
-                    ret.task_lock = obj_lock;
-                }
-            }
-            ret.options.hidden = toplevel.options.hidden or
-                name[0] == builder_spec.options.hide_prefix;
             return ret;
+        }
+        fn processBefore(allocator: *Allocator, toplevel: *Node, node: *Node) void {
+            @setRuntimeSafety(false);
+            if (maybe_hide) {
+                maybeHide(toplevel, node);
+            }
+            switch (node.kind) {
+                .worker => {
+                    switch (node.task) {
+                        else => {},
+                        .build => {
+                            const build_cmd: *types.BuildCommand = node.task_info.build;
+                            if (builder_spec.options.enable_caching) {
+                                node.task_info.build.listen = .@"-";
+                            }
+                            if (builder_spec.options.set_main_pkg_path_to_build_root) {
+                                build_cmd.main_pkg_path = toplevel.paths[0].absolute;
+                            }
+                            const mode: builtin.Mode = build_cmd.mode orelse .Debug;
+                            switch (build_cmd.kind) {
+                                .exe => {
+                                    if (builder_spec.options.add_run_to_executables) {
+                                        node.task_lock = exe_lock;
+                                        node.dependOnSelfExe(allocator);
+                                    } else {
+                                        node.task_lock = obj_lock;
+                                    }
+                                    if (builder_spec.options.add_stack_tracer_to_debug) {
+                                        if (!(build_cmd.strip orelse (mode == .ReleaseSmall))) {
+                                            if (GlobalState.tracer) |g| {
+                                                node.dependOnObject(allocator, g);
+                                            }
+                                        }
+                                    }
+                                },
+                                .lib => {
+                                    node.task_lock = obj_lock;
+                                },
+                                .obj => {
+                                    node.task_lock = obj_lock;
+                                },
+                            }
+                        },
+                        .run => {
+                            node.task_lock = run_lock;
+                        },
+                        .archive => {
+                            node.task_lock = archive_lock;
+                        },
+                    }
+                },
+                .group => {},
+            }
         }
         pub fn addBuildAnon(toplevel: *Node, allocator: *Allocator, build_cmd: types.BuildCommand, root: [:0]const u8) !*Node {
             return toplevel.addBuild(allocator, build_cmd, makeCommandName(allocator, root), root);
@@ -614,8 +644,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                         install(mach.manyToSlice80(ptrs.str + 1), dest_pathname);
                     };
                     if (header.tag == .error_bundle) break {
-                        debug.writeErrors(allocator, ptrs);
                         ret[1] = builder_spec.options.compiler_error_status;
+                        debug.writeErrors(allocator, ptrs);
                     };
                     fd.actual = .{};
                     allocator.restore(save);
