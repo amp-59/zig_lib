@@ -695,71 +695,108 @@ pub const BitFieldPair = struct {
     }
 };
 pub fn ToBitFieldPairs(comptime T: type) []const BitFieldPair {
-    const decls: []const builtin.Type.Declaration = @typeInfo(T).Struct.decls;
-    var pairs: [decls.len]BitFieldPair = undefined;
-    var len: u64 = 0;
-    lo: for (decls, 0..) |l_decl, l_decl_idx| {
-        const l_value: usize = switch (@typeInfo(@TypeOf(@field(T, l_decl.name)))) {
-            .Int, .ComptimeInt => @field(T, l_decl.name),
-            else => continue,
-        };
-        if (@popCount(l_value) == 0) {
-            continue :lo;
-        }
-        if (@popCount(l_value) > 1) {
-            continue :lo;
-        }
-        for (decls, 0..) |r_decl, r_decl_idx| {
-            if (l_decl_idx != r_decl_idx) {
-                if (l_value & @field(T, r_decl.name) != 0) {
-                    continue :lo;
-                }
-            }
-        }
-        pairs[l_decl_idx] = .{ .name = l_decl.name, .value = l_value };
-        len +%= 1;
-    }
-    return pairs[0..len];
-}
-pub fn ToBitFieldPairsStrict(comptime T: type) []const BitFieldPair {
-    const decls: []const builtin.Type.Declaration = @typeInfo(T).Struct.decls;
-    var pairs: [decls.len]BitFieldPair = undefined;
-    var len: u64 = 0;
-    var have_zero: bool = false;
-    for (decls, 0..) |l_decl, l_decl_idx| {
-        const l_field = @field(T, l_decl.name);
-        const l_value: usize = switch (@typeInfo(@TypeOf(l_field))) {
-            .Int, .ComptimeInt => l_field,
-            else => continue,
-        };
-        if (@popCount(l_value) == 0 and have_zero) {
-            @compileError("no value: " ++ l_decl.name);
-        } else {
-            have_zero = true;
-            pairs[l_decl_idx] = .{ .name = l_decl.name, .value = l_value };
-            len +%= 1;
-            continue;
-        }
-        if (@popCount(l_value) > 1) {
-            @compileError("oversized: " ++ l_decl.name);
-        }
-        for (decls, 0..) |r_decl, r_decl_idx| {
-            const r_field = @field(T, r_decl.name);
-            const r_value: usize = switch (@typeInfo(@TypeOf(r_field))) {
-                .Int, .ComptimeInt => r_field,
+    comptime {
+        const decls: []const builtin.Type.Declaration = @typeInfo(T).Struct.decls;
+        var pairs: [decls.len]BitFieldPair = undefined;
+        var len: u64 = 0;
+        var have_zero: bool = false;
+        lo: for (decls, 0..) |l_decl, l_decl_idx| {
+            const l_field = @field(T, l_decl.name);
+            const l_value: usize = switch (@typeInfo(@TypeOf(l_field))) {
+                .Int, .ComptimeInt => l_field,
                 else => continue,
             };
-            _ = r_value;
-            if (l_decl_idx != r_decl_idx) {
-                if (l_value & @field(T, r_decl.name) != 0) {
-                    @compileError("overlap: " ++ l_decl.name ++ " & " ++ r_decl.name);
+            if (@popCount(l_value) == 0) {
+                if (have_zero) {
+                    continue;
+                } else {
+                    have_zero = true;
+                    pairs[l_decl_idx] = .{ .name = l_decl.name, .value = l_value };
+                    len +%= 1;
+                    continue;
                 }
             }
+            if (@popCount(l_value) > 1) {
+                continue :lo;
+            }
+            for (decls, 0..) |r_decl, r_decl_idx| {
+                const r_field = @field(T, r_decl.name);
+                const r_value: usize = switch (@typeInfo(@TypeOf(r_field))) {
+                    .Int, .ComptimeInt => r_field,
+                    else => continue,
+                };
+                if (l_decl_idx != r_decl_idx) {
+                    if (l_value & r_value != 0) {
+                        continue :lo;
+                    }
+                }
+            }
+            pairs[l_decl_idx] = .{ .name = l_decl.name, .value = l_value };
+            len +%= 1;
         }
-        pairs[l_decl_idx] = .{ .name = l_decl.name, .value = l_value };
-        len +%= 1;
+        var l_idx: u64 = 1;
+        while (l_idx != len) : (l_idx +%= 1) {
+            const x: BitFieldPair = pairs[l_idx];
+            var r_idx: u64 = l_idx -% 1;
+            while (r_idx < len and pairs[r_idx].value > x.value) : (r_idx -%= 1) {
+                pairs[r_idx +% 1] = pairs[r_idx];
+            }
+            pairs[r_idx +% 1] = x;
+        }
+        return pairs[0..len];
     }
-    return pairs[0..len];
+}
+pub fn ToBitFieldPairsStrict(comptime T: type) []const BitFieldPair {
+    comptime {
+        const decls: []const builtin.Type.Declaration = @typeInfo(T).Struct.decls;
+        var pairs: [decls.len]BitFieldPair = undefined;
+        var len: u64 = 0;
+        var have_zero: bool = false;
+        for (decls, 0..) |l_decl, l_decl_idx| {
+            const l_field = @field(T, l_decl.name);
+            const l_value: usize = switch (@typeInfo(@TypeOf(l_field))) {
+                .Int, .ComptimeInt => l_field,
+                else => continue,
+            };
+            if (@popCount(l_value) == 0) {
+                if (have_zero) {
+                    @compileError(l_decl.name ++ "has no value and zero is bound");
+                } else {
+                    have_zero = true;
+                    pairs[l_decl_idx] = .{ .name = l_decl.name, .value = l_value };
+                    len +%= 1;
+                    continue;
+                }
+            }
+            if (@popCount(l_value) > 1) {
+                @compileError("oversized: " ++ l_decl.name);
+            }
+            for (decls, 0..) |r_decl, r_decl_idx| {
+                const r_field = @field(T, r_decl.name);
+                const r_value: usize = switch (@typeInfo(@TypeOf(r_field))) {
+                    .Int, .ComptimeInt => r_field,
+                    else => continue,
+                };
+                if (l_decl_idx != r_decl_idx) {
+                    if (l_value & r_value != 0 or l_value == r_value) {
+                        @compileError("overlap: " ++ l_decl.name ++ " & " ++ r_decl.name);
+                    }
+                }
+            }
+            pairs[l_decl_idx] = .{ .name = l_decl.name, .value = l_value };
+            len +%= 1;
+        }
+        var l_idx: u64 = 1;
+        while (l_idx != len) : (l_idx +%= 1) {
+            const x: BitFieldPair = pairs[l_idx];
+            var r_idx: u64 = l_idx -% 1;
+            while (r_idx < len and pairs[r_idx].value > x.value) : (r_idx -%= 1) {
+                pairs[r_idx +% 1] = pairs[r_idx];
+            }
+            pairs[r_idx +% 1] = x;
+        }
+        return pairs[0..len];
+    }
 }
 pub fn tagList(comptime E: type) []const E {
     const enum_info: builtin.Type.Enum = @typeInfo(E).Enum;
@@ -1383,3 +1420,7 @@ const static = opaque {
         return true;
     }
 };
+pub const Bits64 = packed struct(u64) { bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false };
+pub const Bits32 = packed struct(u32) { bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false };
+pub const Bits16 = packed struct(u16) { bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false };
+pub const Bits8 = packed struct(u8) { bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false };
