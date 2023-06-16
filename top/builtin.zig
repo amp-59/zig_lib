@@ -838,7 +838,7 @@ pub fn testEqualMemory(comptime T: type, arg1: T, arg2: T) bool {
                 .Many => {
                     const len1: usize = indexOfSentinel(arg1);
                     const len2: usize = indexOfSentinel(arg2);
-                    if (len1 == len2) {
+                    if (len1 != len2) {
                         return false;
                     }
                     for (arg1[0..len1], arg2[0..len2]) |value1, value2| {
