@@ -743,7 +743,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     else => ret[0] = try meta.wrap(impl.system(args, &ts)),
                 }
                 if (builder_spec.options.show_stats) {
-                    debug.buildNotice(node, task, arena_index, ts, old_size, new_size, &ret);
+                    debug.taskNotice(node, task, arena_index, ts, old_size, new_size, &ret);
                 }
                 return status(&ret);
             }
@@ -1664,7 +1664,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 buf[len] = '\n';
                 builtin.debug.write(buf[0 .. len +% 1]);
             }
-            fn buildNotice(node: *const Node, task: types.Task, arena_index: AddressSpace.Index, ts: time.TimeSpec, old_size: u64, new_size: u64, ret: []u8) void {
+            fn taskNotice(node: *const Node, task: types.Task, arena_index: AddressSpace.Index, ts: time.TimeSpec, old_size: u64, new_size: u64, ret: []u8) void {
                 @setRuntimeSafety(builder_spec.options.safety);
                 const diff_size: u64 = @max(new_size, old_size) -% @min(new_size, old_size);
                 const new_size_s: []const u8 = builtin.fmt.ud64(new_size).readAll();
