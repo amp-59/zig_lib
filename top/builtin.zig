@@ -1018,7 +1018,7 @@ pub inline fn intCast(comptime T: type, value: anytype) T {
         return value;
     }
     if (config.runtime_assertions and value > ~@as(T, 0)) {
-        debug.intCastTruncatedBitsFault(T, U, value);
+        debug.intCastTruncatedBitsFault(T, U, value, @returnAddress());
     }
     return @truncate(T, value);
 }
@@ -1194,14 +1194,14 @@ pub const proc = struct {
     pub fn exitFault(message: []const u8, return_code: u8) noreturn {
         @setCold(true);
         if (config.logging_general.Fault) {
-            debug.exitFaultRc(message, return_code);
+            debug.exitFault(message, return_code);
         }
         exit(return_code);
     }
     pub fn exitGroupFault(message: []const u8, return_code: u8) noreturn {
         @setCold(true);
         if (config.logging_general.Fault) {
-            debug.exitFaultRc(message, return_code);
+            debug.exitFault(message, return_code);
         }
         exitGroup(return_code);
     }
@@ -1212,7 +1212,7 @@ pub const proc = struct {
         {
             debug.exitErrorFaultRc(@errorName(exit_error), message, return_code);
         } else if (config.logging_general.Fault) {
-            debug.exitFaultRc(message, return_code);
+            debug.exitFault(message, return_code);
         } else if (config.logging_general.Error) {
             debug.exitErrorRc(@errorName(exit_error), return_code);
         }
@@ -1225,7 +1225,7 @@ pub const proc = struct {
         {
             debug.exitErrorFault(@errorName(exit_error), message, return_code);
         } else if (config.logging_general.Fault) {
-            debug.exitFaultRc(message, return_code);
+            debug.exitFault(message, return_code);
         } else if (config.logging_general.Error) {
             debug.exitErrorRc(@errorName(exit_error), return_code);
         }
@@ -1287,13 +1287,9 @@ pub const debug = struct {
         var buf: [4096]u8 = undefined;
         logAlwaysAIO(&buf, &.{ about_error_p0_s, "(", error_name, "), rc=", fmt.ud8(rc).readAll(), "\n" });
     }
-    fn exitFaultRc(message: []const u8, rc: u8) void {
-        var buf: [4096]u8 = undefined;
-        logAlwaysAIO(&buf, &.{ about_fault_p0_s, message, ", rc=", fmt.ud8(rc).readAll(), "\n" });
-    }
     fn exitErrorFaultRc(error_name: []const u8, message: []const u8, rc: u8) void {
         exitError(error_name);
-        exitFaultRc(message, rc);
+        exitFault(message, rc);
     }
     fn exitError(error_name: []const u8) void {
         var buf: [4096]u8 = undefined;
@@ -1301,11 +1297,11 @@ pub const debug = struct {
     }
     fn exitFault(message: []const u8, rc: u8) void {
         var buf: [4096]u8 = undefined;
-        logAlwaysAIO(&buf, &.{ about_fault_p0_s, message, ", rc=", fmt.ud8(rc).readAll(), "\n" });
+        logAlwaysAIO(&buf, &.{ message, ", rc=", fmt.ud8(rc).readAll(), "\n" });
     }
     fn exitErrorFault(error_name: []const u8, message: []const u8) void {
-        var buf: [4096]u8 = undefined;
-        logAlwaysAIO(&buf, &.{ about_error_p0_s, message, " (", error_name, ")\n" });
+        exitError(error_name);
+        exitFault(message);
     }
     fn comparisonFailedString(comptime T: type, what: []const u8, symbol: []const u8, buf: []u8, arg1: T, arg2: T, help_read: bool) u64 {
         const notation: []const u8 = if (help_read) ", i.e. " else "\n";
@@ -1385,12 +1381,11 @@ pub const debug = struct {
             itos(u64, remainder).readAll(),            "\n",
         });
     }
-    fn intCastTruncatedBitsFault(comptime T: type, comptime U: type, arg: U) noreturn {
+    fn intCastTruncatedBitsFault(comptime T: type, comptime U: type, arg: U, ret_addr: usize) noreturn {
         @setCold(true);
         var buf: [size]u8 = undefined;
         const len: u64 = debug.intCastTruncatedBitsString(T, U, &buf, arg);
-        logFault(buf[0..len]);
-        proc.exit(2);
+        panic(buf[0..len], null, ret_addr);
     }
     fn subCausedOverflowError(comptime T: type, arg1: T, arg2: T) Error {
         @setCold(true);
@@ -1399,12 +1394,11 @@ pub const debug = struct {
         logError(buf[0..len]);
         return error.SubCausedOverflow;
     }
-    fn subCausedOverflowFault(comptime T: type, arg1: T, arg2: T) noreturn {
+    fn subCausedOverflowFault(comptime T: type, arg1: T, arg2: T, ret_addr: usize) noreturn {
         @setCold(true);
         var buf: [size]u8 = undefined;
         const len: u64 = debug.subCausedOverflowString(T, typeFault(T), &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
-        logFault(buf[0..len]);
-        proc.exit(2);
+        panic(buf[0..len], null, ret_addr);
     }
     fn addCausedOverflowError(comptime T: type, arg1: T, arg2: T) Error {
         @setCold(true);
@@ -1413,12 +1407,11 @@ pub const debug = struct {
         logError(buf[0..len]);
         return error.AddCausedOverflow;
     }
-    fn addCausedOverflowFault(comptime T: type, arg1: T, arg2: T) noreturn {
+    fn addCausedOverflowFault(comptime T: type, arg1: T, arg2: T, ret_addr: usize) noreturn {
         @setCold(true);
         var buf: [size]u8 = undefined;
         const len: u64 = debug.addCausedOverflowString(T, typeFault(T), &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
-        logFault(buf[0..len]);
-        proc.exit(2);
+        panic(buf[0..len], null, ret_addr);
     }
     fn mulCausedOverflowError(comptime T: type, arg1: T, arg2: T) Error {
         @setCold(true);
@@ -1427,12 +1420,11 @@ pub const debug = struct {
         logError(buf[0..len]);
         return error.MulCausedOverflow;
     }
-    fn mulCausedOverflowFault(comptime T: type, arg1: T, arg2: T) noreturn {
+    fn mulCausedOverflowFault(comptime T: type, arg1: T, arg2: T, ret_addr: usize) noreturn {
         @setCold(true);
         var buf: [size]u8 = undefined;
         const len: u64 = mulCausedOverflowString(T, typeFault(T), &buf, arg1, arg2);
-        logFault(buf[0..len]);
-        proc.exit(2);
+        panic(buf[0..len], null, ret_addr);
     }
     fn exactDivisionWithRemainderError(comptime T: type, arg1: T, arg2: T, result: T, remainder: T) Error {
         @setCold(true);
@@ -1441,12 +1433,11 @@ pub const debug = struct {
         logError(buf[0..len]);
         return error.DivisionWithRemainder;
     }
-    fn exactDivisionWithRemainderFault(comptime T: type, arg1: T, arg2: T, result: T, remainder: T) noreturn {
+    fn exactDivisionWithRemainderFault(comptime T: type, arg1: T, arg2: T, result: T, remainder: T, ret_addr: usize) noreturn {
         @setCold(true);
         var buf: [size]u8 = undefined;
         const len: u64 = exactDivisionWithRemainderString(T, typeFault(T), &buf, arg1, arg2, result, remainder);
-        logFault(buf[0..len]);
-        proc.exit(2);
+        panic(buf[0..len], null, ret_addr);
     }
     fn incorrectAlignmentError(comptime T: type, address: usize, alignment: usize) Error {
         @setCold(true);
@@ -1456,52 +1447,35 @@ pub const debug = struct {
         logError(buf[0..len]);
         return error.IncorrectAlignment;
     }
-    fn incorrectAlignmentFault(comptime T: type, address: usize, alignment: usize) noreturn {
+    fn incorrectAlignmentFault(comptime T: type, buf: *[size]u8, address: usize, alignment: usize, ret_addr: usize) noreturn {
         @setCold(true);
         const remainder: usize = address & (@typeInfo(T).Pointer.alignment -% 1);
-        var buf: [size]u8 = undefined;
         const len: u64 = incorrectAlignmentString(T, typeFault(T), &buf, address, alignment, remainder);
-        logFault(buf[0..len]);
-        proc.exit(2);
+        panic(buf[0..len], null, ret_addr);
     }
-    inline fn comparisonFailedErrorInt(comptime T: type, symbol: []const u8, arg1: T, arg2: T) void {
-        var buf: [size]u8 = undefined;
-        var len: u64 = comparisonFailedString(T, typeError(T) ++ " failed test: ", symbol, &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
-        logError(buf[0..len]);
-    }
-    inline fn comparisonFailedFaultInt(comptime T: type, symbol: []const u8, arg1: T, arg2: T) void {
-        var buf: [size]u8 = undefined;
-        var len: u64 = comparisonFailedString(T, typeFault(T) ++ " failed assertion: ", symbol, &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
-        logFault(buf[0..len]);
-    }
-    inline fn comparisonFailedErrorSymbol(comptime T: type, symbol: []const u8, arg1: []const u8, arg2: []const u8) void {
-        var buf: [size]u8 = undefined;
-        const len: u64 = mach.memcpyMulti(&buf, &[_][]const u8{ typeError(T) ++ " failed test: ", arg1, symbol, arg2 });
-        logError(buf[0..len]);
-    }
-    inline fn comparisonFailedFaultSymbol(comptime T: type, symbol: []const u8, arg1: []const u8, arg2: []const u8) void {
-        var buf: [size]u8 = undefined;
-        const len: u64 = mach.memcpyMulti(&buf, &[_][]const u8{ typeFault(T) ++ " failed assertion: ", arg1, symbol, arg2 });
-        logFault(buf[0..len]);
-    }
-    fn comparisonFailedFault(comptime T: type, symbol: []const u8, arg1: anytype, arg2: @TypeOf(arg1)) noreturn {
+    fn comparisonFailedFault(comptime T: type, symbol: []const u8, arg1: anytype, arg2: @TypeOf(arg1), ret_addr: usize) noreturn {
         @setCold(true);
-        switch (@typeInfo(T)) {
-            .Int => comparisonFailedFaultInt(T, symbol, arg1, arg2),
-            .Enum => comparisonFailedFaultSymbol(T, symbol, @tagName(arg1), @tagName(arg2)),
-            .Type => comparisonFailedFaultSymbol(T, symbol, @typeName(arg1), @typeName(arg2)),
-            else => logFault(about_fault_p0_s ++ "assertion failed\n"),
-        }
-        proc.exit(2);
+        const about_fault_s: []const u8 = typeFault(T) ++ " failed assertion: ";
+        var buf: [size]u8 = undefined;
+        const len: u64 = switch (@typeInfo(T)) {
+            .Int => comparisonFailedString(T, about_fault_s, symbol, &buf, arg1, arg2, @min(arg1, arg2) > 10_000),
+            .Enum => mach.memcpyMulti(&buf, &[_][]const u8{ about_fault_s, @tagName(arg1), symbol, @tagName(arg2) }),
+            .Type => mach.memcpyMulti(&buf, &[_][]const u8{ about_fault_s, @typeName(arg1), symbol, @typeName(arg2) }),
+            else => mach.memcpyMulti(&buf, &[_][]const u8{ about_fault_s, "unexpected value\n" }),
+        };
+        panic(buf[0..len], null, ret_addr);
     }
     fn comparisonFailedError(comptime T: type, symbol: []const u8, arg1: anytype, arg2: @TypeOf(arg1)) Unexpected {
         @setCold(true);
-        switch (@typeInfo(T)) {
-            .Int => comparisonFailedErrorInt(T, symbol, arg1, arg2),
-            .Enum => comparisonFailedErrorSymbol(T, symbol, @tagName(arg1), @tagName(arg2)),
-            .Type => comparisonFailedErrorSymbol(T, symbol, @typeName(arg1), @typeName(arg2)),
-            else => logError(about_error_p0_s ++ "unexpected value\n"),
-        }
+        const about_error_s: []const u8 = typeError(T) ++ " failed test: ";
+        var buf: [size]u8 = undefined;
+        const len: u64 = switch (@typeInfo(T)) {
+            .Int => comparisonFailedString(T, about_error_s, symbol, &buf, arg1, arg2, @min(arg1, arg2) > 10_000),
+            .Enum => mach.memcpyMulti(&buf, &[_][]const u8{ about_error_s, @tagName(arg1), symbol, @tagName(arg2) }),
+            .Type => mach.memcpyMulti(&buf, &[_][]const u8{ about_error_s, @typeName(arg1), symbol, @typeName(arg2) }),
+            else => mach.memcpyMulti(&buf, &[_][]const u8{ about_error_s, "unexpected value\n" }),
+        };
+        logError(buf[0..len]);
         return error.UnexpectedValue;
     }
     pub fn write(buf: []const u8) void {
