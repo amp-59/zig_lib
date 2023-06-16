@@ -1,4 +1,5 @@
 const top = @import("../zig_lib.zig");
+const sys = top.sys;
 const builtin = top.builtin;
 const meta = top.meta;
 const proc = top.proc;
@@ -95,7 +96,15 @@ fn memoryTests() !void {
         builtin.assertEqual(anyerror, error.UnexpectedValue, err);
     };
 }
+fn testToBitFieldPairs() !void {
+    const sa_pairs = comptime meta.sliceToArrayPointer(meta.ToBitFieldPairs(sys.CLONE));
+    for (sa_pairs) |pair| {
+        top.testing.print(.{ pair.name, ": ", top.fmt.render(.{ .infer_type_names = true }, @bitCast(meta.Bits64, pair.value)), '\n' });
+    }
+}
+
 pub fn main(_: anytype, _: [][*:0]u8) !void {
+    try testToBitFieldPairs();
     try basicTests();
     try bitCastTests();
     try alignTests();

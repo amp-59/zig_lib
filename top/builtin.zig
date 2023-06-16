@@ -841,6 +841,9 @@ pub fn testEqualMemory(comptime T: type, arg1: T, arg2: T) bool {
                     if (len1 != len2) {
                         return false;
                     }
+                    if (arg1 == arg2) {
+                        return true;
+                    }
                     for (arg1[0..len1], arg2[0..len2]) |value1, value2| {
                         if (!testEqualMemory(pointer_info.child, value1, value2)) {
                             return false;
@@ -851,6 +854,9 @@ pub fn testEqualMemory(comptime T: type, arg1: T, arg2: T) bool {
                 .Slice => {
                     if (arg1.len != arg2.len) {
                         return false;
+                    }
+                    if (arg1.ptr == arg2.ptr) {
+                        return true;
                     }
                     for (arg1, arg2) |value1, value2| {
                         if (!testEqualMemory(pointer_info.child, value1, value2)) {
@@ -903,14 +909,18 @@ pub fn assertEqualMemory(comptime T: type, arg1: T, arg2: T) void {
                     const len1: usize = indexOfSentinel(arg1);
                     const len2: usize = indexOfSentinel(arg2);
                     assertEqual(usize, len1, len2);
-                    for (arg1[0..len1], arg2[0..len2]) |value1, value2| {
-                        assertEqualMemory(pointer_info.child, value1, value2);
+                    if (arg1 != arg2) {
+                        for (arg1[0..len1], arg2[0..len2]) |value1, value2| {
+                            assertEqualMemory(pointer_info.child, value1, value2);
+                        }
                     }
                 },
                 .Slice => {
                     assertEqual(usize, arg1.len, arg2.len);
-                    for (arg1, arg2) |value1, value2| {
-                        assertEqualMemory(pointer_info.child, value1, value2);
+                    if (arg1.ptr != arg2.ptr) {
+                        for (arg1, arg2) |value1, value2| {
+                            assertEqualMemory(pointer_info.child, value1, value2);
+                        }
                     }
                 },
                 else => assertEqualMemory(pointer_info.child, arg1.*, arg2.*),
@@ -958,17 +968,23 @@ pub fn expectEqualMemory(comptime T: type, arg1: T, arg2: T) Unexpected!void {
                     const len1: usize = indexOfSentinel(arg1);
                     const len2: usize = indexOfSentinel(arg2);
                     try expectEqual(usize, len1, len2);
-                    for (arg1[0..len1], arg2[0..len2]) |value1, value2| {
-                        try expectEqualMemory(pointer_info.child, value1, value2);
+                    if (arg1 != arg2) {
+                        for (arg1[0..len1], arg2[0..len2]) |value1, value2| {
+                            try expectEqualMemory(pointer_info.child, value1, value2);
+                        }
                     }
                 },
                 .Slice => {
                     try expectEqual(usize, arg1.len, arg2.len);
-                    for (arg1, arg2) |value1, value2| {
-                        try expectEqualMemory(pointer_info.child, value1, value2);
+                    if (arg1.ptr != arg2.ptr) {
+                        for (arg1, arg2) |value1, value2| {
+                            try expectEqualMemory(pointer_info.child, value1, value2);
+                        }
                     }
                 },
-                else => try expectEqualMemory(pointer_info.child, arg1.*, arg2.*),
+                else => if (arg1 != arg2) {
+                    try expectEqualMemory(pointer_info.child, arg1.*, arg2.*);
+                },
             }
         },
     }
@@ -2383,10 +2399,14 @@ fn Overflow(comptime T: type) type {
     return S;
 }
 fn indexOfSentinel(any: anytype) usize {
+    const T = @TypeOf(any);
+    const type_info: Type = @typeInfo(T);
+    if (type_info.Pointer.sentinel == null) {
+        @compileError(@typeName(T));
+    }
+    const sentinel: type_info.Pointer.child =
+        @ptrCast(*const type_info.Pointer.child, type_info.Pointer.sentinel.?).*;
     var idx: usize = 0;
-    while (any[idx] != @ptrCast(
-        *const @typeInfo(@TypeOf(any)).Pointer.child,
-        @typeInfo(@TypeOf(any)).Pointer.sentinel.?,
-    ).*) idx +%= 1;
+    while (any[idx] != sentinel) idx +%= 1;
     return idx;
 }
