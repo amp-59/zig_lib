@@ -62,8 +62,7 @@ pub fn zigErrorThrow(comptime Value: type, comptime values: []const Value, ret: 
 pub fn zigErrorAbort(comptime Value: type, comptime values: []const Value, ret: isize) void {
     inline for (values) |value| {
         if (ret == @enumToInt(value)) {
-            debug.exitErrorRc(value.errorName(), 2);
-            proc.exit(2);
+            debug.panic(debug.about_fault_p0_s ++ value.errorName(), null, @returnAddress());
         }
     }
 }
@@ -189,7 +188,7 @@ inline fn normalAddReturn(comptime T: type, arg1: T, arg2: T) T {
         if (@inComptime()) {
             debug.static.addCausedOverflow(T, arg1, arg2);
         } else {
-            debug.addCausedOverflowFault(T, arg1, arg2);
+            debug.addCausedOverflowFault(T, arg1, arg2, @returnAddress());
         }
     }
     return result[0];
@@ -203,7 +202,7 @@ inline fn normalSubReturn(comptime T: type, arg1: T, arg2: T) T {
         if (@inComptime()) {
             debug.static.subCausedOverflow(T, arg1, arg2);
         } else {
-            debug.subCausedOverflowFault(T, arg1, arg2);
+            debug.subCausedOverflowFault(T, arg1, arg2, @returnAddress());
         }
     }
     return result[0];
@@ -217,7 +216,7 @@ inline fn normalMulReturn(comptime T: type, arg1: T, arg2: T) T {
         if (@inComptime()) {
             debug.static.mulCausedOverflow(T, arg1, arg2);
         } else {
-            debug.mulCausedOverflowFault(T, arg1, arg2);
+            debug.mulCausedOverflowFault(T, arg1, arg2, @returnAddress());
         }
     }
     return result[0];
@@ -232,7 +231,7 @@ inline fn exactDivisionReturn(comptime T: type, arg1: T, arg2: T) T {
         if (@inComptime()) {
             debug.static.exactDivisionWithRemainder(T, arg1, arg2, result, remainder);
         } else {
-            debug.exactDivisionWithRemainderFault(T, arg1, arg2, result, remainder);
+            debug.exactDivisionWithRemainderFault(T, arg1, arg2, result, remainder, @returnAddress());
         }
     }
     return result;
@@ -748,7 +747,7 @@ pub fn assertBelow(comptime T: type, arg1: T, arg2: T) void {
         if (@inComptime()) {
             debug.static.comparisonFailedFault(T, " < ", arg1, arg2);
         } else {
-            debug.comparisonFailedFault(T, " < ", arg1, arg2);
+            debug.comparisonFailedFault(T, " < ", arg1, arg2, @returnAddress());
         }
     }
 }
@@ -757,7 +756,7 @@ pub fn assertBelowOrEqual(comptime T: type, arg1: T, arg2: T) void {
         if (@inComptime()) {
             debug.static.comparisonFailedFault(T, " <= ", arg1, arg2);
         } else {
-            debug.comparisonFailedFault(T, " <= ", arg1, arg2);
+            debug.comparisonFailedFault(T, " <= ", arg1, arg2, @returnAddress());
         }
     }
 }
@@ -766,7 +765,7 @@ pub fn assertEqual(comptime T: type, arg1: T, arg2: T) void {
         if (@inComptime()) {
             debug.static.comparisonFailedFault(T, " == ", arg1, arg2);
         } else {
-            debug.comparisonFailedFault(T, " == ", arg1, arg2);
+            debug.comparisonFailedFault(T, " == ", arg1, arg2, @returnAddress());
         }
     }
 }
@@ -775,7 +774,7 @@ pub fn assertNotEqual(comptime T: type, arg1: T, arg2: T) void {
         if (@inComptime()) {
             debug.static.comparisonFailedFault(T, " != ", arg1, arg2);
         } else {
-            debug.comparisonFailedFault(T, " != ", arg1, arg2);
+            debug.comparisonFailedFault(T, " != ", arg1, arg2, @returnAddress());
         }
     }
 }
@@ -784,7 +783,7 @@ pub fn assertAboveOrEqual(comptime T: type, arg1: T, arg2: T) void {
         if (@inComptime()) {
             debug.static.comparisonFailedFault(T, " >= ", arg1, arg2);
         } else {
-            debug.comparisonFailedFault(T, " >= ", arg1, arg2);
+            debug.comparisonFailedFault(T, " >= ", arg1, arg2, @returnAddress());
         }
     }
 }
@@ -793,7 +792,7 @@ pub fn assertAbove(comptime T: type, arg1: T, arg2: T) void {
         if (@inComptime()) {
             debug.comparisonFailedFault(T, " > ", arg1, arg2);
         } else {
-            debug.comparisonFailedFault(T, " > ", arg1, arg2);
+            debug.comparisonFailedFault(T, " > ", arg1, arg2, @returnAddress());
         }
     }
 }
