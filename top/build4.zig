@@ -492,13 +492,9 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 .relative = duplicate(allocator, pathname),
             };
             ret.task_info.format.* = format_cmd;
-            if (builder_spec.options.show_initial_state) {
-                ret.assertExchange(.format, .null, .ready, max_thread_count);
-            } else {
-                ret.task_lock = format_lock;
+            if (!builder_spec.options.never_pre) {
+                processBefore(allocator, toplevel, ret);
             }
-            ret.options.hidden = toplevel.options.hidden or
-                name[0] == builder_spec.options.hide_prefix;
             return ret;
         }
         /// Initialize a new `zig ar` command.
@@ -518,13 +514,9 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             for (deps) |dep| {
                 ret.dependOnObject(allocator, dep);
             }
-            if (builder_spec.options.show_initial_state) {
-                ret.assertExchange(.archive, .null, .ready, max_thread_count);
-            } else {
-                ret.task_lock = archive_lock;
+            if (!builder_spec.options.never_pre) {
+                processBefore(allocator, toplevel, ret);
             }
-            ret.options.hidden = toplevel.options.hidden or
-                name[0] == builder_spec.options.hide_prefix;
             return ret;
         }
         pub fn addBuild(toplevel: *Node, allocator: *Allocator, build_cmd: types.BuildCommand, name: [:0]const u8, root: [:0]const u8) !*Node {
