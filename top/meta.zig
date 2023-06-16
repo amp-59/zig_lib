@@ -1243,9 +1243,11 @@ pub fn refAllDeclsInternal(comptime T: type, comptime types: []const type, compt
             @typeInfo(T) == .Opaque)
         {
             lo: for (resolve(@typeInfo(T)).decls) |decl| {
-                for (black_list) |name| {
-                    if (builtin.testEqualMemory([]const u8, decl.name, name)) {
-                        continue :lo;
+                if (black_list) |names| {
+                    for (names) |name| {
+                        if (builtin.testEqualMemory([]const u8, decl.name, name)) {
+                            continue :lo;
+                        }
                     }
                 }
                 if (@hasDecl(T, decl.name)) {
@@ -1255,7 +1257,7 @@ pub fn refAllDeclsInternal(comptime T: type, comptime types: []const type, compt
                                 continue :lo;
                             }
                         }
-                        refAllDeclsInternal(@field(T, decl.name), types ++ [1]type{@field(T, decl.name)});
+                        refAllDeclsInternal(@field(T, decl.name), types ++ [1]type{@field(T, decl.name)}, black_list);
                     }
                 }
             }
@@ -1272,14 +1274,16 @@ pub fn refAllDecls(comptime T: type, comptime black_list: ?[]const []const u8) v
             @typeInfo(T) == .Opaque)
         {
             lo: for (resolve(@typeInfo(T)).decls) |decl| {
-                for (black_list) |name| {
-                    if (builtin.testEqualMemory([]const u8, decl.name, name)) {
-                        continue :lo;
+                if (black_list) |names| {
+                    for (names) |name| {
+                        if (builtin.testEqualMemory([]const u8, decl.name, name)) {
+                            continue :lo;
+                        }
                     }
                 }
                 if (@hasDecl(T, decl.name)) {
                     if (@TypeOf(@field(T, decl.name)) == type) {
-                        refAllDeclsInternal(@field(T, decl.name), types ++ [1]type{@field(T, decl.name)});
+                        refAllDeclsInternal(@field(T, decl.name), types ++ [1]type{@field(T, decl.name)}, black_list);
                     }
                 }
             }
@@ -1315,7 +1319,7 @@ const debug = opaque {
             .EnumLiteral => return "(enum literal)",
         }
     }
-    fn genericTypeList(comptime kind: builtin.TypeKind, any: anytype) []const u8 {
+    fn genericTypeList(comptime kind: builtin.Type, any: anytype) []const u8 {
         var buf: []const u8 = empty;
         var last: u64 = 0;
         var i: u64 = 0;
