@@ -68,13 +68,20 @@ pub const BuilderSpec = struct {
         /// Enable runtime safety.
         safety: bool = false,
         /// Nodes with this name prefix are hidden in pre.
-        hide_prefix: u8 = '_',
-        /// Disable all features related to hiding. TODO
-        never_hide: bool = false,
+        hide_based_on_name_prefix: ?u8 = '_',
+        /// Nodes with hidden parent/group nodes are also hidden
+        hide_based_on_group: bool = true,
         /// Disable all features related to default initialisation of nodes. TODO
         never_pre: bool = false,
         /// Disable all features related to automatic updating of nodes. TODO
         never_post: bool = false,
+        /// Add run task for all executable build outputs
+        add_run_to_executables: bool = true,
+        /// Enable stack traces in runtime errors for executables where mode is
+        /// Debug with debugging symbols included
+        add_stack_tracer_to_debug: bool = true,
+        /// Pass --main-pkg-path=<build_root> for all build command.
+        set_main_pkg_path_to_build_root: bool = true,
         names: struct {
             /// Name of the toplevel 'builder' node.
             toplevel_node: [:0]const u8 = "toplevel",
