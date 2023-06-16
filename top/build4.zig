@@ -479,7 +479,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             return ret;
         }
         /// Initialize a new `zig fmt` command.
-        pub fn addFormat(toplevel: *Node, allocator: *Allocator, format_cmd: types.FormatCommand, name: [:0]const u8, pathname: [:0]const u8) !*Node {
+        pub fn addFormat(toplevel: *Node, allocator: *Allocator, format_cmd: types.FormatCommand, name: []const u8, pathname: []const u8) !*Node {
             @setRuntimeSafety(builder_spec.options.safety);
             const ret: *Node = allocator.create(Node);
             toplevel.addNode(allocator).* = ret;
@@ -498,7 +498,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             return ret;
         }
         /// Initialize a new `zig ar` command.
-        pub fn addArchive(toplevel: *Node, allocator: *Allocator, archive_cmd: types.ArchiveCommand, name: [:0]const u8, deps: []const *Node) !*Node {
+        pub fn addArchive(toplevel: *Node, allocator: *Allocator, archive_cmd: types.ArchiveCommand, name: []const u8, deps: []*Node) !*Node {
             @setRuntimeSafety(builder_spec.options.safety);
             const ret: *Node = allocator.create(Node);
             toplevel.addNode(allocator).* = ret;
@@ -519,7 +519,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             }
             return ret;
         }
-        pub fn addBuild(toplevel: *Node, allocator: *Allocator, build_cmd: types.BuildCommand, name: [:0]const u8, root: [:0]const u8) !*Node {
+        pub fn addBuild(toplevel: *Node, allocator: *Allocator, build_cmd: types.BuildCommand, name: []const u8, root: []const u8) !*Node {
             @setRuntimeSafety(builder_spec.options.safety);
             const main_pkg_path: [:0]const u8 = toplevel.paths[0].absolute;
             const ret: *Node = allocator.create(Node);
@@ -1070,7 +1070,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 file.close(close(), out.write),
             );
         }
-        fn binaryRelative(allocator: *Allocator, name: [:0]const u8, kind: types.OutputMode) [:0]const u8 {
+        fn binaryRelative(allocator: *Allocator, name: []const u8, kind: types.OutputMode) [:0]const u8 {
             switch (kind) {
                 .exe => return concatenate(allocator, &[_][]const u8{ paths.zig_out_exe_dir ++ "/", name }),
                 .lib => return concatenate(
@@ -1674,7 +1674,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 buf[2 +% idx_s.len] = ']';
                 return 3 +% idx_s.len;
             }
-            fn stateNotice(node: *const Node, task: types.Task) void {
+            fn stateNotice(node: *Node, task: types.Task) void {
                 @setRuntimeSafety(builder_spec.options.safety);
                 const actual: types.State = node.task_lock.get(task);
                 var buf: [32768]u8 = undefined;
@@ -1693,7 +1693,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 buf[len] = '\n';
                 builtin.debug.write(buf[0 .. len +% 1]);
             }
-            fn taskNotice(node: *const Node, task: types.Task, arena_index: AddressSpace.Index, ts: time.TimeSpec, old_size: u64, new_size: u64, ret: []u8) void {
+            fn taskNotice(node: *Node, task: types.Task, arena_index: AddressSpace.Index, ts: time.TimeSpec, old_size: u64, new_size: u64, ret: []u8) void {
                 @setRuntimeSafety(builder_spec.options.safety);
                 const diff_size: u64 = @max(new_size, old_size) -% @min(new_size, old_size);
                 const new_size_s: []const u8 = builtin.fmt.ud64(new_size).readAll();
