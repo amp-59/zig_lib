@@ -851,10 +851,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                         node.assertExchange(task, .working, .failed, arena_index);
                     }
                 }
-                if (Node.Allocator == mem.SimpleAllocator)
-                    allocator.unmap()
-                else
-                    allocator.deinit(address_space, arena_index);
+                allocator.unmap();
                 mem.release(ThreadSpace, thread_space, arena_index);
             }
             fn executeCommandSynchronised(
@@ -926,7 +923,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             if (node.exchange(task, .ready, .blocking, max_thread_count)) {
                 try meta.wrap(impl.tryAcquireThread(address_space, thread_space, allocator, toplevel, node, task));
             }
-            while (toplevelWait(address_space, thread_space)) {
+            while (toplevelWait(thread_space)) {
                 try meta.wrap(time.sleep(sleep(), .{ .nsec = builder_spec.options.sleep_nanoseconds }));
             }
             return node.task_lock.get(task) == .finished;
@@ -1024,18 +1021,12 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             }
             return false;
         }
-        fn toplevelWait(address_space: *AddressSpace, thread_space: *ThreadSpace) bool {
+        fn toplevelWait(thread_space: *ThreadSpace) bool {
             @setRuntimeSafety(builder_spec.options.safety);
             if (max_thread_count == 0) {
                 return false;
             }
             if (thread_space.count() != 0) {
-                return true;
-            }
-            if (builder_spec.options.prefer_simple_allocator) {
-                return false;
-            }
-            if (address_space.count() != 1) {
                 return true;
             }
             return false;
@@ -1207,7 +1198,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             .zig_out_aux_dir = builder_spec.options.names.zig_out_dir ++ "/" ++ builder_spec.options.names.aux_out_dir,
             .tracer_root = builder_spec.options.names.tracer_root orelse build.root ++ "/top/tracer.zig",
         };
-        const env_basename: [:0]const u8 = builder_spec.options.names.env ++ builder_spec.options.extensions.zig;
         const update_exit_message: [2]types.Message.ClientHeader = .{
             .{ .tag = .update, .bytes_len = 0 },
             .{ .tag = .exit, .bytes_len = 0 },
@@ -1488,7 +1478,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 file.path(path1(), cache_root),
             );
             const env_fd: u64 = try meta.wrap(
-                file.createAt(create(), cache_root_fd, env_basename, file.mode.regular),
+                file.createAt(create(), cache_root_fd, builder_spec.options.names.env ++
+                    builder_spec.options.extensions.zig, file.mode.regular),
             );
             var buf: [4096 *% 8]u8 = undefined;
             var len: u64 = 0;
@@ -1571,6 +1562,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         const omni_lock = .{ .bytes = .{ .null, .ready, .ready, .ready, .ready, .ready, .null } };
         const obj_lock = .{ .bytes = .{ .null, .null, .null, .ready, .null, .null, .null } };
         const exe_lock = .{ .bytes = .{ .null, .null, .null, .ready, .ready, .null, .null } };
+        const run_lock = .{ .bytes = .{ .null, .null, .null, .null, .ready, .null, .null } };
         const format_lock = .{ .bytes = .{ .null, .null, .ready, .null, .null, .null, .null } };
         const archive_lock = .{ .bytes = .{ .null, .null, .null, .null, .null, .ready, .null } };
         const debug = struct {
