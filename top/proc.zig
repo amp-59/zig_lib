@@ -6,12 +6,25 @@ const time = @import("./time.zig");
 const file = @import("./file.zig");
 const mach = @import("./mach.zig");
 const builtin = @import("./builtin.zig");
+
 pub const SignalAction = extern struct {
     handler: u64,
     flags: u64,
     restorer: u64,
     mask: [2]u32 = .{0} ** 2,
+    const Options = meta.EnumBitField(enum(usize) {
+        no_child_stop = SA.NOCLDSTOP,
+        no_child_wait = SA.NOCLDWAIT,
+        no_defer = SA.NODEFER,
+        on_stack = SA.ONSTACK,
+        restart = SA.RESTART,
+        restorer = SA.RESTORER,
+        siginfo = SA.SIGINFO,
+        unsupported = SA.UNSUPPORTED,
+        const SA = sys.SA;
+    });
 };
+
 pub const SignalInfo = extern struct {
     signo: u32,
     errno: u32,
@@ -76,47 +89,6 @@ pub const SignalInfo = extern struct {
         arch: u32,
     };
 };
-pub const FutexOp = enum(u64) {
-    wait = 0,
-    wake = 1,
-    requeue = 3,
-    cmp_requeue = 4,
-    wake_op = 5,
-    wait_bitset = 9,
-    wake_bitset = 10,
-    wait_requeue_pi = 11,
-    cmp_requeue_pi = 12,
-    lock_pi2 = 13,
-    pub const Options = packed struct(u2) {
-        private: bool = false,
-        clock_realtime: bool = false,
-    };
-    pub const WakeOp = packed struct(u32) {
-        from: u12,
-        to: u12,
-        cmp: enum(u4) {
-            Equal = 0,
-            NotEqual = 1,
-            Below = 2,
-            BelowOrEqual = 3,
-            Above = 4,
-            AboveOrEqual = 5,
-        },
-        shl: bool = false,
-        op: enum(u3) {
-            Assign = 0,
-            Add = 1,
-            Or = 2,
-            AndN = 3,
-            Xor = 4,
-        },
-    };
-};
-pub const FutexSpec = struct {
-    errors: sys.ErrorPolicy = .{ .throw = sys.futex_errors },
-    return_type: type = void,
-    logging: builtin.Logging.AttemptSuccessAcquireReleaseError = .{},
-};
 pub const AuxiliaryVectorEntry = enum(u64) {
     null = 0,
     exec_fd = AT.EXECFD,
@@ -153,34 +125,36 @@ pub const AuxiliaryVectorEntry = enum(u64) {
     l3_cache_geometry = AT.L3_CACHEGEOMETRY,
     const AT = sys.AT;
 };
-pub const Clone = meta.EnumBitField(enum(u64) {
-    new_time = CLONE.NEWTIME,
-    pid_fd = CLONE.PIDFD,
-    thread = CLONE.THREAD,
-    set_thread_local_storage = CLONE.SETTLS,
-    set_parent_thread_id = CLONE.PARENT_SETTID,
-    set_child_thread_id = CLONE.CHILD_SETTID,
-    clear_child_thread_id = CLONE.CHILD_CLEARTID,
-    traced = CLONE.PTRACE,
-    untraced = CLONE.UNTRACED,
-    signal_handlers = CLONE.SIGHAND,
-    clear_signal_handlers = CLONE.CLEAR_SIGHAND,
-    new_namespace = CLONE.NEWNS,
-    new_ipc = CLONE.NEWIPC,
-    new_uts = CLONE.NEWUTS,
-    new_user = CLONE.NEWUSER,
-    new_net = CLONE.NEWNET,
-    new_pid = CLONE.NEWPID,
-    sysvsem = CLONE.SYSVSEM,
-    detached = CLONE.DETACHED,
-    vfork = CLONE.VFORK,
-    files = CLONE.FILES,
-    vm = CLONE.VM,
-    fs = CLONE.FS,
-    io = CLONE.IO,
-    new_cgroup = CLONE.NEWCGROUP,
-    const CLONE = sys.CLONE;
-});
+pub const Clone = struct {
+    const Options = meta.EnumBitField(enum(u64) {
+        new_time = CLONE.NEWTIME,
+        pid_fd = CLONE.PIDFD,
+        thread = CLONE.THREAD,
+        set_thread_local_storage = CLONE.SETTLS,
+        set_parent_thread_id = CLONE.PARENT_SETTID,
+        set_child_thread_id = CLONE.CHILD_SETTID,
+        clear_child_thread_id = CLONE.CHILD_CLEARTID,
+        traced = CLONE.PTRACE,
+        untraced = CLONE.UNTRACED,
+        signal_handlers = CLONE.SIGHAND,
+        clear_signal_handlers = CLONE.CLEAR_SIGHAND,
+        new_namespace = CLONE.NEWNS,
+        new_ipc = CLONE.NEWIPC,
+        new_uts = CLONE.NEWUTS,
+        new_user = CLONE.NEWUSER,
+        new_net = CLONE.NEWNET,
+        new_pid = CLONE.NEWPID,
+        sysvsem = CLONE.SYSVSEM,
+        detached = CLONE.DETACHED,
+        vfork = CLONE.VFORK,
+        files = CLONE.FILES,
+        vm = CLONE.VM,
+        fs = CLONE.FS,
+        io = CLONE.IO,
+        new_cgroup = CLONE.NEWCGROUP,
+        const CLONE = sys.CLONE;
+    });
+};
 pub const IdType = enum(u64) {
     pid = ID.PID,
     all = ID.ALL,
@@ -188,29 +162,33 @@ pub const IdType = enum(u64) {
     file = ID.PIDFD,
     const ID = sys.ID;
 };
-pub const WaitId = meta.EnumBitField(enum(u64) {
-    exited = WAIT.EXITED,
-    stopped = WAIT.STOPPED,
-    continued = WAIT.CONTINUED,
-    no_wait = WAIT.NOWAIT,
-    clone = WAIT.CLONE,
-    no_thread = WAIT.NOTHREAD,
-    all = WAIT.ALL,
-    const WAIT = sys.WAIT;
-});
-pub const Wait = meta.EnumBitField(enum(u64) {
-    exited = WAIT.NOHANG,
-    continued = WAIT.CONTINUED,
-    untraced = WAIT.UNTRACED,
-    const WAIT = sys.WAIT;
-});
+pub const WaitId = struct {
+    const Options = meta.EnumBitField(enum(u64) {
+        exited = WAIT.EXITED,
+        stopped = WAIT.STOPPED,
+        continued = WAIT.CONTINUED,
+        no_wait = WAIT.NOWAIT,
+        clone = WAIT.CLONE,
+        no_thread = WAIT.NOTHREAD,
+        all = WAIT.ALL,
+        const WAIT = sys.WAIT;
+    });
+};
+pub const Wait = struct {
+    const Options = meta.EnumBitField(enum(u64) {
+        exited = WAIT.NOHANG,
+        continued = WAIT.CONTINUED,
+        untraced = WAIT.UNTRACED,
+        const WAIT = sys.WAIT;
+    });
+};
 pub const Return = struct {
     pid: u32,
     status: u32,
 };
 pub const CloneArgs = extern struct {
     /// Flags bit mask
-    flags: Clone,
+    flags: Clone.Options,
     /// Where to store PID file descriptor (int *)
     pidfd_addr: u64 = 0,
     /// Where to store child TID in child's memory (pid_t *)
@@ -232,6 +210,42 @@ pub const CloneArgs = extern struct {
     set_tid_len: u64 = 0,
     /// File descriptor for target cgroup
     cgroup: u64 = 0,
+};
+pub const FutexOp = enum(u64) {
+    wait = 0,
+    wake = 1,
+    requeue = 3,
+    cmp_requeue = 4,
+    wake_op = 5,
+    wait_bitset = 9,
+    wake_bitset = 10,
+    wait_requeue_pi = 11,
+    cmp_requeue_pi = 12,
+    lock_pi2 = 13,
+    pub const Options = packed struct(u2) {
+        private: bool = false,
+        clock_realtime: bool = false,
+    };
+    pub const WakeOp = packed struct(u32) {
+        from: u12,
+        to: u12,
+        cmp: enum(u4) {
+            Equal = 0,
+            NotEqual = 1,
+            Below = 2,
+            BelowOrEqual = 3,
+            Above = 4,
+            AboveOrEqual = 5,
+        },
+        shl: bool = false,
+        op: enum(u3) {
+            Assign = 0,
+            Add = 1,
+            Or = 2,
+            AndN = 3,
+            Xor = 4,
+        },
+    };
 };
 pub const WaitSpec = struct {
     options: Options = .{},
@@ -386,8 +400,8 @@ pub const CloneSpec = struct {
     };
     const Specification = @This();
     const CLONE = sys.CLONE;
-    pub inline fn flags(comptime spec: CloneSpec) Clone {
-        var clone_flags: Clone = .{ .val = 0 };
+    pub inline fn flags(comptime spec: CloneSpec) Clone.Options {
+        var clone_flags: Clone.Options = .{ .val = 0 };
         if (spec.options.address_space) {
             clone_flags.set(.vm);
         }
@@ -420,6 +434,11 @@ pub const CloneSpec = struct {
         }
         return clone_flags;
     }
+};
+pub const FutexSpec = struct {
+    errors: sys.ErrorPolicy = .{ .throw = sys.futex_errors },
+    return_type: type = void,
+    logging: builtin.Logging.AttemptSuccessAcquireReleaseError = .{},
 };
 pub const Status = struct {
     pub inline fn exit(status: u32) u8 {
@@ -478,12 +497,12 @@ pub fn waitPid(comptime spec: WaitSpec, id: WaitSpec.For) sys.ErrorUnion(spec.er
         return wait_error;
     }
 }
-pub fn waitId(comptime spec: WaitIdSpec, id: u64, sig_info: *SignalInfo) sys.ErrorUnion(spec.errors, spec.return_type) {
+pub fn waitId(comptime spec: WaitIdSpec, id: u64, siginfo: *SignalInfo) sys.ErrorUnion(spec.errors, spec.return_type) {
     const id_type: u64 = @enumToInt(spec.id_type);
-    const sig_info_buf_addr: u64 = @ptrToInt(sig_info);
+    const siginfo_buf_addr: u64 = @ptrToInt(siginfo);
     const flags: WaitId = comptime spec.flags();
     const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.waitid, spec.errors, spec.return_type, .{ id_type, id, sig_info_buf_addr, flags.val, 0 }))) |pid| {
+    if (meta.wrap(sys.call(.waitid, spec.errors, spec.return_type, .{ id_type, id, siginfo_buf_addr, flags.val, 0 }))) |pid| {
         return pid;
     } else |wait_error| {
         if (logging.Error) {
@@ -632,11 +651,82 @@ pub const start = struct {
     }
     pub usingnamespace builtin.debug;
 };
+const SignalActionSpec = struct {
+    errors: sys.ErrorPolicy = .{ .throw = sys.sigaction_errors },
+    return_type: type = void,
+    logging: builtin.Logging.SuccessError = .{},
+    options: Options = .{},
+    const Options = packed struct {
+        no_child_stop: bool = false,
+        no_child_wait: bool = false,
+        no_defer: bool = false,
+        on_stack: bool = false,
+        restart: bool = true,
+        restorer: bool = false,
+        siginfo: bool = true,
+        unsupported: bool = false,
+    };
+    fn flags(comptime spec: SignalActionSpec) SignalAction.Options {
+        var flags_bitfield: SignalAction.Options = .{ .val = 0 };
+        if (spec.options.no_child_stop) {
+            flags_bitfield.set(.no_child_stop);
+        }
+        if (spec.options.no_child_wait) {
+            flags_bitfield.set(.no_child_wait);
+        }
+        if (spec.options.no_defer) {
+            flags_bitfield.set(.no_defer);
+        }
+        if (spec.options.on_stack) {
+            flags_bitfield.set(.on_stack);
+        }
+        if (spec.options.restart) {
+            flags_bitfield.set(.restart);
+        }
+        if (spec.options.restorer) {
+            flags_bitfield.set(.restorer);
+        }
+        if (spec.options.siginfo) {
+            flags_bitfield.set(.siginfo);
+        }
+        if (spec.options.unsupported) {
+            flags_bitfield.set(.unsupported);
+        }
+        return flags_bitfield;
+    }
+};
+const Handler = extern union {
+    set: enum(usize) {
+        ignore = 1,
+        default = 0,
+    },
+    handler: *const fn (sys.SignalCode) void,
+    action: *const fn (sys.SignalCode, *const SignalInfo, ?*const anyopaque) void,
+};
+pub fn updateSignalAction(comptime sigaction_spec: SignalActionSpec, signo: sys.SignalCode, to: Handler) sys.ErrorUnion(
+    sigaction_spec.errors,
+    sigaction_spec.return_type,
+) {
+    const logging: builtin.Logging.SuccessError = comptime sigaction_spec.logging.override();
+    const flags: SignalAction.Options = comptime sigaction_spec.flags();
+    const action: SignalAction = .{ .handler = @enumToInt(to.set), .flags = flags.val, .restorer = 0 };
+    if (meta.wrap(sys.call(.rt_sigaction, sigaction_spec.errors, sigaction_spec.return_type, .{
+        @enumToInt(signo), @ptrToInt(&action), 0, 64,
+    }))) {
+        if (logging.Success) {
+            debug.signalActionNotice(signo, to);
+        }
+    } else |rt_sigaction_error| {
+        if (logging.Error) {
+            debug.signalActionError(rt_sigaction_error, signo, to);
+        }
+        return rt_sigaction_error;
+    }
+}
 pub const exception = struct {
     fn updateExceptionHandlers(act: *const SignalAction) void {
         @setRuntimeSafety(false);
         const sa_new_addr: u64 = @ptrToInt(act);
-        const sa_new_len: u64 = @sizeOf(@TypeOf(act.mask));
         inline for ([_]struct { bool, u32 }{
             .{ builtin.signal_handlers.segmentation_fault, SIG.SEGV },
             .{ builtin.signal_handlers.illegal_instruction, SIG.ILL },
@@ -644,13 +734,13 @@ pub const exception = struct {
             .{ builtin.signal_handlers.floating_point_error, SIG.FPE },
         }) |pair| {
             if (pair[0]) {
-                sys.call_noexcept(.rt_sigaction, void, .{ pair[1], sa_new_addr, 0, sa_new_len });
+                sys.call_noexcept(.rt_sigaction, void, .{ pair[1], sa_new_addr, 0, 64 });
             }
         }
     }
     pub fn enableExceptionHandlers() void {
         @setRuntimeSafety(false);
-        var act = SignalAction{
+        var act: SignalAction = .{
             .handler = @ptrToInt(&exceptionHandler),
             .flags = (SA.SIGINFO | SA.RESTART | SA.RESETHAND | SA.RESTORER),
             .restorer = @ptrToInt(&restoreRunTime),
@@ -672,19 +762,13 @@ pub const exception = struct {
     }
     pub fn exceptionHandler(sig: sys.SignalCode, info: *const SignalInfo, _: ?*const anyopaque) noreturn {
         @setRuntimeSafety(false);
-        var act = SignalAction{ .handler = sys.SIG.DFL, .flags = 0, .restorer = 0 };
+        var act: SignalAction = .{ .handler = 0, .flags = 0, .restorer = 0 };
         updateExceptionHandlers(&act);
-        const symbol: [:0]const u8 = switch (sig) {
-            .SEGV => "SIGSEGV",
-            .ILL => "SIGILL",
-            .BUS => "SIGBUS",
-            .FPE => "SIGFPE",
-        };
         const fault_addr_s: []const u8 = builtin.fmt.ux64(info.fields.fault.addr).readAll();
         var buf: [8192]u8 = undefined;
         var pathname: [4096]u8 = undefined;
         const link_s: []const u8 = pathname[0..builtin.debug.name(&pathname)];
-        const len: u64 = mach.memcpyMulti(&buf, &.{ symbol, " at address ", fault_addr_s, ", ", link_s });
+        const len: u64 = mach.memcpyMulti(&buf, &.{ "SIG", @tagName(sig), " at address ", fault_addr_s, ", ", link_s });
         @panic(buf[0..len]);
     }
     pub fn restoreRunTime() callconv(.Naked) void {
@@ -761,7 +845,7 @@ pub noinline fn callMain() noreturn {
             break :blk_0 .{ args[0..args_len], vars[0..vars_len], auxv };
         }
     };
-    if (@bitCast(u4, builtin.signal_handlers) != 0) {
+    if (@bitCast(u5, builtin.signal_handlers) != 0) {
         exception.enableExceptionHandlers();
     }
     if (main_return_type == void) {
@@ -1074,6 +1158,11 @@ const debug = opaque {
         var buf: [560]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_wait_0_s, @tagName(id), ", pid=", pid_s, about_s, code_s, "\n" });
     }
+    fn signalActionNotice(signo: sys.SignalCode, handler: Handler) void {
+        _ = handler;
+        var buf: [560]u8 = undefined;
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_wait_0_s, @tagName(signo), "\n" });
+    }
     fn forkError(fork_error: anytype) void {
         var buf: [560]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_fork_1_s, " (", @errorName(fork_error), ")\n" });
@@ -1082,6 +1171,12 @@ const debug = opaque {
         var buf: [560]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_wait_1_s, " (", @errorName(wait_error), ")\n" });
     }
+    fn signalActionError(rt_sigaction_error: anytype, signo: sys.SignalCode, handler: Handler) void {
+        _ = handler;
+        var buf: [560]u8 = undefined;
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_wait_0_s, @tagName(signo), " (", @errorName(rt_sigaction_error), ")\n" });
+    }
+
     fn futexWaitAttempt(futex: *u32, value: u32, timeout: *const time.TimeSpec) void {
         const addr_s: []const u8 = builtin.fmt.ux64(@ptrToInt(futex)).readAll();
         const word_s: []const u8 = builtin.fmt.ud64(futex.*).readAll();
