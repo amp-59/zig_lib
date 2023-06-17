@@ -58,13 +58,10 @@ pub const BuilderSpec = struct {
         /// Include arena/thread index in task summaries and change of state
         /// notices.
         show_arena_index: bool = true,
-        /// Determines whether to use the Zig compiler server.
-        enable_caching: bool = true,
-        /// Executables with debug information include DWARF parser and
-        /// stack trace writers. TODO
-        enable_stack_traces: bool = false,
         /// Enable runtime safety.
         enable_safety: bool = false,
+        /// Require build runner compile DWARF parser and stack trace writers.
+        enable_builder_stack_traces: bool = false,
         /// Nodes with this name prefix are hidden in pre.
         hide_based_on_name_prefix: ?u8 = '_',
         /// Nodes with hidden parent/group nodes are also hidden
@@ -79,7 +76,7 @@ pub const BuilderSpec = struct {
         add_run_to_executables: bool = true,
         /// Enable stack traces in runtime errors for executables where mode is
         /// Debug with debugging symbols included
-        add_stack_tracer_to_debug: bool = true,
+        add_debug_stack_traces: bool = true,
         /// Pass --main-pkg-path=<build_root> for all build command.
         set_main_pkg_path_to_build_root: bool = true,
         names: struct {
@@ -265,8 +262,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         options: packed struct {
             is_hidden: bool = false,
             is_special: bool = false,
-            no_pre: bool = false,
-            no_post: bool = false,
+            have_init: bool = false,
+            have_update: bool = false,
         },
         const Node = @This();
         const GlobalState = struct {
