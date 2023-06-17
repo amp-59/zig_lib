@@ -514,65 +514,74 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             const root_path: *types.Path = ret.addPath(allocator);
             binary_path.addName(allocator).* = main_pkg_path;
             binary_path.addName(allocator).* = binaryRelative(allocator, ret.name, build_cmd.kind);
-            root_path.addName(allocator).* = main_pkg_path;
+            if (root[0] != '/') {
+                root_path.addName(allocator).* = main_pkg_path;
+            }
             root_path.addName(allocator).* = duplicate(allocator, root);
             ret.task_info.build.* = build_cmd;
-            if (!builder_spec.options.never_pre) {
-                processBefore(allocator, toplevel, ret);
-            }
+            initializeCommand(allocator, toplevel, ret);
             return ret;
         }
-        fn processBefore(allocator: *Allocator, toplevel: *Node, node: *Node) void {
-            @setRuntimeSafety(false);
+        fn initializeCommand(allocator: *Allocator, toplevel: *Node, node: *Node) void {
+            @setRuntimeSafety(builder_spec.options.enable_safety);
+            node.options.have_init = true;
             if (maybe_hide) {
                 maybeHide(toplevel, node);
             }
-            switch (node.kind) {
-                .worker => {
-                    switch (node.task) {
-                        else => {},
-                        .build => {
-                            const build_cmd: *types.BuildCommand = node.task_info.build;
-                            if (builder_spec.options.enable_caching) {
-                                node.task_info.build.listen = .@"-";
-                            }
-                            if (builder_spec.options.set_main_pkg_path_to_build_root) {
-                                build_cmd.main_pkg_path = toplevel.paths[0].names[0];
-                            }
-                            const mode: builtin.Mode = build_cmd.mode orelse .Debug;
-                            switch (build_cmd.kind) {
-                                .exe => {
-                                    if (builder_spec.options.add_run_to_executables) {
-                                        node.task_lock = exe_lock;
-                                        node.dependOnSelfExe(allocator);
-                                    } else {
-                                        node.task_lock = obj_lock;
-                                    }
-                                    if (builder_spec.options.add_stack_tracer_to_debug) {
-                                        if (!(build_cmd.strip orelse (mode == .ReleaseSmall))) {
-                                            if (GlobalState.tracer) |g| {
-                                                node.dependOnObject(allocator, g);
-                                            }
-                                        }
-                                    }
-                                },
-                                .lib => {
-                                    node.task_lock = obj_lock;
-                                },
-                                .obj => {
-                                    node.task_lock = obj_lock;
-                                },
-                            }
-                        },
-                        .run => {
-                            node.task_lock = run_lock;
-                        },
-                        .archive => {
-                            node.task_lock = archive_lock;
-                        },
+            if (node.kind == .worker) {
+                if (node.task == .build) {
+                    node.task_info.build.listen = .@"-";
+                    if (builder_spec.options.set_main_pkg_path_to_build_root) {
+                        node.task_info.build.main_pkg_path = toplevel.paths[0].names[0];
                     }
-                },
-                .group => {},
+                    node.task_lock = obj_lock;
+                    if (node.task_info.build.kind == .exe and
+                        builder_spec.options.add_run_to_executables)
+                    {
+                        node.task_lock = exe_lock;
+                        node.dependOnSelfExe(allocator);
+                    }
+                }
+                if (node.task == .run) {
+                    node.task_lock = run_lock;
+                }
+                if (node.task == .archive) {
+                    node.task_lock = archive_lock;
+                }
+            }
+            if (node.kind == .group) {
+                node.task_lock = omni_lock;
+            }
+        }
+        fn updateCommand(allocator: *Allocator, _: *Node, node: *Node) void {
+            @setRuntimeSafety(builder_spec.options.enable_safety);
+            node.options.have_update = true;
+            if (node.kind == .worker and
+                node.task == .build and
+                node.task_info.build.kind == .exe)
+            {
+                const build_cmd: *types.BuildCommand = node.task_info.build;
+                const mode: builtin.Mode = build_cmd.mode orelse .Debug;
+                const strip: bool = build_cmd.strip orelse (mode != .ReleaseSmall);
+                if (builder_spec.options.add_debug_stack_traces) {
+                    if (!strip) {
+                        if (GlobalState.tracer) |g| {
+                            node.dependOnObject(allocator, g);
+                        }
+                    }
+                }
+            }
+        }
+        pub fn updateCommands(allocator: *Allocator, toplevel: *Node, node: *Node) void {
+            if (node.options.have_update) {
+                return;
+            }
+            updateCommand(allocator, toplevel, node);
+            for (node.nodes[0..node.nodes_len]) |sub| {
+                updateCommands(allocator, toplevel, sub);
+            }
+            for (node.deps[0..node.deps_len]) |dep| {
+                updateCommands(allocator, toplevel, dep.on_node);
             }
         }
         pub fn addBuildAnon(toplevel: *Node, allocator: *Allocator, build_cmd: types.BuildCommand, root: [:0]const u8) !*Node {
@@ -739,7 +748,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                             toplevel.fds[0], @ptrToInt(out_path.ptr), @ptrToInt(&st), 0,
                         });
                         old_size = if (old_size == 0) st.size else 0;
-                        if (builder_spec.options.enable_caching and task == .build) {
+                        if (task == .build) {
                             try meta.wrap(
                                 impl.server(allocator, args, &ts, &ret, out_path),
                             );
@@ -1009,15 +1018,13 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         }
         fn status(ret: []u8) bool {
             @setRuntimeSafety(builder_spec.options.enable_safety);
-            if (builder_spec.options.enable_caching) {
-                if (ret[1] == builder_spec.options.compiler_error_status) {
-                    return false;
-                }
-                if (ret[1] == builder_spec.options.compiler_cache_hit_status or
-                    ret[1] == builder_spec.options.compiler_expected_status)
-                {
-                    return ret[0] == builder_spec.options.system_expected_status;
-                }
+            if (ret[1] == builder_spec.options.compiler_error_status) {
+                return false;
+            }
+            if (ret[1] == builder_spec.options.compiler_cache_hit_status or
+                ret[1] == builder_spec.options.compiler_expected_status)
+            {
+                return ret[0] == builder_spec.options.system_expected_status;
             }
             return ret[0] == builder_spec.options.system_expected_status;
         }
@@ -1712,7 +1719,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 @ptrCast(*[5]u8, buf[len..].ptr).* = "exit=".*;
                 len +%= 5;
                 const exit_s: []const u8 = builtin.fmt.ud64(ret[0]).readAll();
-                if (builder_spec.options.enable_caching and task == .build) {
+                if (task == .build) {
                     const res: UpdateAnswer = switch (ret[1]) {
                         builder_spec.options.compiler_cache_hit_status => .cached,
                         builder_spec.options.compiler_error_status => .failed,
