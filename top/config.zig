@@ -17,13 +17,14 @@ pub const discard_errors: bool = define("discard_errors", bool, !(is_debug or is
 pub const runtime_assertions: bool = define("runtime_assertions", bool, is_debug or is_safe);
 /// * Determines whether `static.assert*` functions will be called at comptime time.
 pub const comptime_assertions: bool = define("comptime_assertions", bool, is_debug);
-/// The values define the default field values for all Logging sub-types used in
-/// generic specifications.
+/// These values define all default field values for all logging sub-types.
 pub const logging_default: Logging.Default = define(
     "logging_default",
     Logging.Default,
     .{ .Attempt = false, .Success = false, .Acquire = is_debug, .Release = is_debug, .Error = true, .Fault = true },
 );
+/// These values (optionally) define all override field values for all logging
+/// sub-types and all default field values for the general logging type.
 pub const logging_override: Logging.Override = define(
     "logging_override",
     Logging.Override,
@@ -37,6 +38,9 @@ pub const logging_general: Logging.Default = .{
     .Error = logging_override.Error orelse logging_default.Error,
     .Fault = logging_override.Fault orelse logging_default.Fault,
 };
+pub const tracing_default: bool = define("tracing_default", bool, zig.mode == .Debug and !zig.strip_debug_info);
+pub const tracing_override: ?bool = define("tracing_override", ?bool, null);
+
 pub const signal_handlers: SignalHandlers = define(
     "signal_handlers",
     SignalHandlers,
@@ -45,6 +49,7 @@ pub const signal_handlers: SignalHandlers = define(
         .illegal_instruction = logging_general.Fault,
         .bus_error = logging_general.Fault,
         .floating_point_error = logging_general.Fault,
+        .breakpoint = logging_default.Fault,
     },
 );
 // These are defined by the library builder
@@ -110,6 +115,7 @@ pub const SignalHandlers = packed struct {
     illegal_instruction: bool,
     bus_error: bool,
     floating_point_error: bool,
+    breakpoint: bool,
 };
 pub const Logging = packed struct {
     pub const Default = packed struct {
