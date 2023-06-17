@@ -54,7 +54,7 @@ const Unit = extern struct {
         if (ret.word_size == .dword and
             ret.len >= ~@as(u32, 0))
         {
-            builtin.proc.exitError(error.InvalidretLength, 2);
+            builtin.proc.exitError(error.InvalidUnitLength, 2);
         }
         var pos: u64 = switch (ret.word_size) {
             .qword => 12,
@@ -123,6 +123,7 @@ const AbbrevTable = struct {
                 allocator.addGeneric(size_of, 1, addr_buf, &entry.kvs_max_len, entry.kvs_len),
             );
             entry.kvs_len +%= 1;
+            mem.zero(KeyVal, ret);
             return ret;
         }
     };
@@ -135,6 +136,7 @@ const AbbrevTable = struct {
             allocator.addGeneric(size_of, 1, addr_buf, &table.ents_max_len, table.ents_len),
         );
         table.ents_len +%= 1;
+        mem.zero(AbbrevTable.Entry, ret);
         return ret;
     }
 };
@@ -163,14 +165,16 @@ const InfoEntry = extern struct {
         info_entry.kvs_len +%= 1;
         return ret;
     }
-    pub fn getAttr(info_entry: *const InfoEntry, key: Attr) ?*const FormValue {
+    pub fn get(info_entry: *const InfoEntry, key: Attr) ?*const FormValue {
         for (info_entry.kvs[0..info_entry.kvs_len]) |*kv| {
-            if (kv.key == key) return &kv.val;
+            if (kv.key == key) {
+                return &kv.val;
+            }
         }
         return null;
     }
-    fn address(info_entry: *const InfoEntry, dwarf_info: *DwarfInfo, attr_id: Attr, unit: Unit) ?u64 {
-        if (info_entry.getAttr(attr_id)) |form_val| {
+    fn address(info_entry: *const InfoEntry, dwarf_info: *DwarfInfo, attr_id: Attr, unit: *Unit) ?u64 {
+        if (info_entry.get(attr_id)) |form_val| {
             switch (form_val.*) {
                 FormValue.Address => |value| {
                     return value;
@@ -183,31 +187,9 @@ const InfoEntry = extern struct {
         }
         return null;
     }
-    fn sectionOffset(info_entry: *const InfoEntry, attr_id: Attr) ?u64 {
-        if (info_entry.getAttr(attr_id)) |form_val| {
+    fn offset(info_entry: *const InfoEntry, attr_id: Attr) ?u64 {
+        if (info_entry.get(attr_id)) |form_val| {
             return form_val.getUInt(u64);
-        }
-        return null;
-    }
-    fn unsignedLe(info_entry: *const InfoEntry, attr_id: Attr) ?u64 {
-        if (info_entry.getAttr(attr_id)) |form_val| {
-            switch (form_val.*) {
-                FormValue.Const => |value| {
-                    return value.asUnsignedLe();
-                },
-                else => builtin.proc.exitError(error.InvalidEncoding, 2),
-            }
-        }
-        return null;
-    }
-    fn reference(info_entry: *const InfoEntry, attr_id: Attr) ?u64 {
-        if (info_entry.getAttr(attr_id)) |form_val| {
-            switch (form_val.*) {
-                FormValue.Ref => |value| {
-                    return value;
-                },
-                else => builtin.proc.exitError(error.InvalidEncoding, 2),
-            }
         }
         return null;
     }
@@ -229,7 +211,7 @@ const FormValue = union(enum) {
     LocListOffset: u64,
     RangeListOffset: u64,
     data16: [16]u8,
-    pub fn getString(val: FormValue, dwarf_info: DwarfInfo) ![]const u8 {
+    pub fn getString(val: FormValue, dwarf_info: DwarfInfo) []const u8 {
         switch (val) {
             .String => |s| return s,
             .StrPtr => |off| return dwarf_info.getString(off),
@@ -350,6 +332,7 @@ pub const DwarfInfo = extern struct {
         const addr_buf: *u64 = @ptrCast(*u64, &dwarf_info.abbrev_tabs);
         const ret: *AbbrevTable = @intToPtr(*AbbrevTable, allocator.addGeneric(@sizeOf(AbbrevTable), 1, addr_buf, &dwarf_info.abbrev_tabs_max_len, dwarf_info.abbrev_tabs_len));
         dwarf_info.abbrev_tabs_len +%= 1;
+        mem.zero(AbbrevTable, ret);
         return ret;
     }
     fn addUnit(dwarf_info: *DwarfInfo, allocator: *mem.SimpleAllocator) *Unit {
@@ -357,6 +340,7 @@ pub const DwarfInfo = extern struct {
         const addr_buf: *u64 = @ptrCast(*u64, &dwarf_info.units);
         const ret: *Unit = @intToPtr(*Unit, allocator.addGeneric(@sizeOf(Unit), 1, addr_buf, &dwarf_info.units_max_len, dwarf_info.units_len));
         dwarf_info.units_len +%= 1;
+        mem.zero(Unit, ret);
         return ret;
     }
     fn addFunc(dwarf_info: *DwarfInfo, allocator: *mem.SimpleAllocator) *Func {
@@ -364,6 +348,7 @@ pub const DwarfInfo = extern struct {
         const addr_buf: *u64 = @ptrCast(*u64, &dwarf_info.funcs);
         const ret: *Func = @intToPtr(*Func, allocator.addGeneric(@sizeOf(Func), 1, addr_buf, &dwarf_info.funcs_max_len, dwarf_info.funcs_len));
         dwarf_info.funcs_len +%= 1;
+        mem.zero(Func, ret);
         return ret;
     }
     fn populateUnit(allocator: *mem.SimpleAllocator, dwarf_info: *DwarfInfo, unit: *Unit) !void {
@@ -372,16 +357,16 @@ pub const DwarfInfo = extern struct {
         if (debug_spec.logging.summary) {
             debug.unitAbstractNotice(unit);
         }
-        if (unit.info_entry.getAttr(.str_offsets_base)) |form_val| {
+        if (unit.info_entry.get(.str_offsets_base)) |form_val| {
             unit.str_offsets_base = form_val.getUInt(usize);
         }
-        if (unit.info_entry.getAttr(.addr_base)) |form_val| {
+        if (unit.info_entry.get(.addr_base)) |form_val| {
             unit.addr_base = form_val.getUInt(usize);
         }
-        if (unit.info_entry.getAttr(.rnglists_base)) |form_val| {
+        if (unit.info_entry.get(.rnglists_base)) |form_val| {
             unit.rnglists_base = form_val.getUInt(usize);
         }
-        if (unit.info_entry.getAttr(.loclists_base)) |form_val| {
+        if (unit.info_entry.get(.loclists_base)) |form_val| {
             unit.loclists_base = form_val.getUInt(usize);
         }
     }
@@ -426,10 +411,10 @@ pub const DwarfInfo = extern struct {
         var depth: i32 = 3;
         var cur_info_entry: InfoEntry = info_entry.*;
         while (depth > 0) : (depth -%= 1) {
-            if (cur_info_entry.getAttr(.name)) |form_val| {
+            if (cur_info_entry.get(.name)) |form_val| {
                 return getAttrString(dwarf_info, unit, form_val, dwarf_info.str[0..dwarf_info.str_len]);
             }
-            if (cur_info_entry.getAttr(.abstract_origin)) |form_val| {
+            if (cur_info_entry.get(.abstract_origin)) |form_val| {
                 if (form_val.* != .Ref) {
                     builtin.proc.exitError(error.InvalidEncoding, 2);
                 }
@@ -441,7 +426,7 @@ pub const DwarfInfo = extern struct {
                 try parseInfoEntry(allocator, dwarf_info, unit.word_size, unit.abbrev_tab, &cur_info_entry);
                 continue;
             }
-            if (cur_info_entry.getAttr(.specification)) |form_val| {
+            if (cur_info_entry.get(.specification)) |form_val| {
                 if (form_val.* != .Ref) {
                     builtin.proc.exitError(error.InvalidEncoding, 2);
                 }
@@ -457,13 +442,13 @@ pub const DwarfInfo = extern struct {
         return null;
     }
     fn parseRange(dwarf_info: *DwarfInfo, unit: *const Unit, info_entry: *InfoEntry) Range {
-        if (info_entry.getAttr(.low_pc)) |low_form_val| {
+        if (info_entry.get(.low_pc)) |low_form_val| {
             const low_pc: u64 = switch (low_form_val.*) {
                 .Address => |addr| addr,
                 .AddrOffset => |off| dwarf_info.readDebugAddr(unit.addr_base, off),
                 else => builtin.proc.exitError(error.InvalidEncoding, 2),
             };
-            if (info_entry.getAttr(.high_pc)) |high_form_val| {
+            if (info_entry.get(.high_pc)) |high_form_val| {
                 switch (high_form_val.*) {
                     .Address => |addr| return .{
                         .start = low_pc,
@@ -617,13 +602,13 @@ pub const DwarfInfo = extern struct {
                     builtin.proc.exitError(error.InvalidEncoding, 2);
                 }
                 if (unit.word_size == .qword) {
-                    const off: usize = unit.str_offsets_base + (8 *% index);
+                    const off: usize = unit.str_offsets_base +% (8 *% index);
                     if (off +% 8 > str_offsets.len) {
                         builtin.proc.exitError(error.InvalidEncoding, 2);
                     }
                     return getStringGeneric(opt_str, @ptrCast(*align(1) u64, dwarf_info.str_offsets + off).*);
                 } else {
-                    const off: usize = unit.str_offsets_base + (4 *% index);
+                    const off: usize = unit.str_offsets_base +% (4 *% index);
                     if (off +% 4 > str_offsets.len) {
                         builtin.proc.exitError(error.InvalidEncoding, 2);
                     }
@@ -646,7 +631,9 @@ pub const DwarfInfo = extern struct {
             const gev5: bool = unit.version >= 5;
             const ranges_len: u64 = mach.cmov64(gev5, dwarf_info.rnglists_len, dwarf_info.ranges_len);
             const ranges: [*]u8 = mach.cmovx(gev5, dwarf_info.rnglists, dwarf_info.ranges);
-            const ranges_val = unit.info_entry.getAttr(.ranges) orelse continue;
+            const ranges_val = unit.info_entry.get(.ranges) orelse {
+                continue;
+            };
             const ranges_offset = switch (ranges_val.*) {
                 .SecOffset => |off| off,
                 .RangeListOffset => |idx| off: {
@@ -666,7 +653,7 @@ pub const DwarfInfo = extern struct {
                 },
                 else => builtin.proc.exitError(error.InvalidEncoding, 2),
             };
-            var base_address: usize = unit.info_entry.address(dwarf_info, .low_pc, unit.*) orelse 0;
+            var base_address: usize = unit.info_entry.address(dwarf_info, .low_pc, unit) orelse 0;
             const buf: [*]u8 = dwarf_info.ranges;
             var pos: u64 = ranges_offset;
             if (unit.version < 5) {
@@ -759,33 +746,33 @@ pub const DwarfInfo = extern struct {
     pub fn getLineNumberInfo(
         dwarf_info: *DwarfInfo,
         allocator: *mem.SimpleAllocator,
-        compile_unit: *const Unit,
+        unit: *const Unit,
         instr_addr: u64,
     ) ?debug.LineInfo {
         @setRuntimeSafety(false);
         const unit_cwd: []const u8 = blk: {
-            const form_val: *const FormValue = compile_unit.info_entry.getAttr(.comp_dir) orelse {
+            const form_val: *const FormValue = unit.info_entry.get(.comp_dir) orelse {
                 builtin.proc.exitError(error.InvalidEncoding, 2);
             };
-            break :blk getAttrString(dwarf_info, compile_unit, form_val, dwarf_info.line_str[0..dwarf_info.line_str_len]);
+            break :blk getAttrString(dwarf_info, unit, form_val, dwarf_info.line_str[0..dwarf_info.line_str_len]);
         };
-        const line_off: u64 = compile_unit.info_entry.sectionOffset(.stmt_list) orelse {
+        const line_off: u64 = unit.info_entry.offset(.stmt_list) orelse {
             builtin.proc.exitError(error.InvalidEncoding, 2);
         };
-        const unit: *Unit = try Unit.init(allocator, dwarf_info, dwarf_info.line, line_off);
-        const next_unit_off = line_off +% switch (unit.word_size) {
-            .qword => unit.len +% 12,
-            .dword => unit.len +% 8,
+        const line_unit: *Unit = try Unit.init(allocator, dwarf_info, dwarf_info.line, line_off);
+        const next_unit_off = line_off +% switch (line_unit.word_size) {
+            .qword => line_unit.len +% 12,
+            .dword => line_unit.len +% 8,
         };
-        const buf: [*]u8 = dwarf_info.line + line_off;
+        const buf: [*]u8 = dwarf_info.line;
         const bytes: []const u8 = buf[0..dwarf_info.line_len];
-        var pos: u64 = unit.info_entry.off;
-        const next_off: u64 = (pos +% unit.abbrev_tab.off) -% 1;
+        var pos: u64 = line_unit.info_entry.off;
+        const next_off: u64 = (pos +% line_unit.abbrev_tab.off) -% 1;
         const min_instr_len: u8 = dwarf_info.line[pos -% 1];
         if (min_instr_len == 0) {
             builtin.proc.exitError(error.InvalidEncoding, 2);
         }
-        if (unit.version >= 4) {
+        if (line_unit.version >= 4) {
             pos +%= 1;
         }
         const is_stmt: bool = buf[pos] != 0;
@@ -796,9 +783,6 @@ pub const DwarfInfo = extern struct {
         pos +%= 1;
         const opcode_base: u8 = buf[pos];
         pos +%= 1;
-        if (line_range == 0) {
-            builtin.proc.exitError(error.InvalidEncoding, 2);
-        }
         var opcode_lens: []u8 = allocator.allocate(u8, opcode_base -% 1);
         var idx: usize = 0;
         while (idx < opcode_base -% 1) : (idx +%= 1) {
@@ -806,6 +790,9 @@ pub const DwarfInfo = extern struct {
             pos +%= 1;
         }
         var dirs: FileEntry.Array = FileEntry.Array.init(allocator, 2);
+        if (line_range == 0) {
+            builtin.proc.exitError(error.InvalidEncoding, 2);
+        }
         dirs.appendOne(allocator, .{ .name = unit_cwd });
         while (true) {
             const dir: [:0]const u8 = mach.manyToSlice80(buf + pos);
@@ -871,7 +858,7 @@ pub const DwarfInfo = extern struct {
                         files.appendOne(allocator, .{ .dir_idx = dir_idx[0], .name = name, .mtime = mtime[0], .size = size[0] });
                     },
                     else => {
-                        const fwd_amt: isize = @bitCast(isize, op_size[0] - 1);
+                        const fwd_amt: isize = @bitCast(isize, op_size[0] -% 1);
                         if (fwd_amt < 0) {
                             pos -%= @intCast(usize, -fwd_amt);
                         } else {
@@ -936,7 +923,7 @@ pub const DwarfInfo = extern struct {
                         if (opcode -% 1 >= opcode_lens.len) {
                             builtin.proc.exitError(error.InvalidEncoding, 2);
                         }
-                        pos +%= opcode_lens[opcode - 1];
+                        pos +%= opcode_lens[opcode -% 1];
                     },
                 }
             }
@@ -1161,7 +1148,10 @@ const LineNumberProgram = struct {
                 builtin.proc.exitError(error.InvalidEncoding, 2);
             }
             return .{
-                .line = if (prog.prev_line == 0) @intCast(u64, prog.line) else @intCast(u64, prog.prev_line),
+                .line = if (prog.prev_line == 0)
+                    @intCast(u64, prog.line)
+                else
+                    @intCast(u64, prog.prev_line),
                 .column = prog.prev_column,
                 .file = entry.pathname(allocator, dirs),
             };
