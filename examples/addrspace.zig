@@ -37,6 +37,10 @@ pub fn main() void {
     const SubSpace0 = SuperSpace.SubSpace("discrete-1x10B+1x3B");
     const SubSpace1 = SuperSpace.SubSpace("regular-5x1B");
 
+    testing.refAllDecls(SuperSpace);
+    testing.refAllDecls(SubSpace0);
+    testing.refAllDecls(SubSpace1);
+
     var super_space: SuperSpace = .{};
     var sub_space_0: SubSpace0 = .{};
     var sub_space_1: SubSpace1 = .{};
