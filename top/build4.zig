@@ -259,7 +259,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         task: types.Task,
         task_lock: types.Lock,
         task_info: TaskInfo,
-        options: packed struct {
+        options: struct {
             is_hidden: bool = false,
             is_special: bool = false,
             have_init: bool = false,
@@ -433,8 +433,10 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             GlobalState.vars = vars;
             var ret: *Node = allocator.create(Node);
             mem.zero(Node, ret);
-            ret.addPath(allocator).addName(allocator).* = mach.manyToSlice80(GlobalState.args[2]);
-            ret.addPath(allocator).addName(allocator).* = mach.manyToSlice80(GlobalState.args[3]);
+            ret.addPath(allocator).addName(allocator).* =
+                mach.manyToSlice80(GlobalState.args[2]);
+            ret.addPath(allocator).addName(allocator).* =
+                mach.manyToSlice80(GlobalState.args[3]);
             ret.name = duplicate(allocator, builder_spec.options.names.toplevel_node);
             ret.addFd(allocator, try meta.wrap(file.path(path1(), ret.paths[0].names[0])));
             ret.kind = .group;
@@ -465,7 +467,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         /// Initialize a new `zig fmt` command.
         pub fn addFormat(toplevel: *Node, allocator: *Allocator, format_cmd: types.FormatCommand, name: []const u8, pathname: []const u8) !*Node {
             @setRuntimeSafety(builder_spec.options.enable_safety);
-            const main_pkg_path: [:0]const u8 = toplevel.paths[0].names[0];
             const ret: *Node = allocator.create(Node);
             toplevel.addNode(allocator).* = ret;
             ret.kind = .worker;
@@ -474,9 +475,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             ret.name = duplicate(allocator, name);
             const target_path: *types.Path = ret.addPath(allocator);
             if (pathname[0] != '/') {
-                target_path.addName(allocator).* = main_pkg_path;
+                target_path.addName(allocator).* = toplevel.paths[0].names[0];
             }
-            target_path.addName(allocator).* = main_pkg_path;
             target_path.addName(allocator).* = duplicate(allocator, pathname);
             ret.task_info.format.* = format_cmd;
             initializeCommand(allocator, toplevel, ret);
@@ -493,7 +493,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             ret.name = duplicate(allocator, name);
             const archive_path: *types.Path = ret.addPath(allocator);
             archive_path.addName(allocator).* = toplevel.paths[0].names[0];
-            archive_path.addName(allocator).* = archiveRelative(allocator, name);
+            archive_path.addName(allocator).* = archiveRelative(allocator, ret.name);
             ret.task_info.archive.* = archive_cmd;
             for (deps) |dep| {
                 ret.dependOnObject(allocator, dep);
@@ -1069,13 +1069,13 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 ),
             }
         }
-        fn archiveRelative(allocator: *Allocator, name: []const u8) [:0]const u8 {
+        fn archiveRelative(allocator: *Allocator, name: [:0]u8) [:0]const u8 {
             return concatenate(
                 allocator,
                 &[_][]const u8{ paths.zig_out_lib_dir ++ "/lib", name, builder_spec.options.extensions.ar },
             );
         }
-        fn auxiliaryRelative(allocator: *Allocator, name: [:0]const u8, kind: types.AuxOutputMode) [:0]u8 {
+        fn auxiliaryRelative(allocator: *Allocator, name: [:0]u8, kind: types.AuxOutputMode) [:0]u8 {
             switch (kind) {
                 .@"asm" => return concatenate(
                     allocator,
@@ -2019,8 +2019,21 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             }
             fn dependencyMaxRootWidth(node: *const Node) u64 {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
-                var len: u64 = if (builder_spec.options.hide_special and
-                    node.options.is_special) 0 else node.paths[@boolToInt(node.task == .build)].relative().len +% 1;
+                var len: u64 = blk: {
+                    if (builder_spec.options.hide_special and
+                        node.options.is_special)
+                    {
+                        break :blk 0;
+                    }
+                    const path_idx: u64 = @boolToInt(node.task == .build);
+                    if (node.paths_len <= path_idx) {
+                        break :blk 0;
+                    }
+                    if (node.paths[path_idx].names_len < 2) {
+                        break :blk 0;
+                    }
+                    break :blk node.paths[path_idx].names[1].len +% 1;
+                };
                 for (node.nodes[0..node.nodes_len]) |sub_node| {
                     if (sub_node != node) {
                         len = @max(len, dependencyMaxRootWidth(sub_node));
