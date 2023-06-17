@@ -283,7 +283,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         const stack_up_addr: u64 = stack_lb_addr + (max_thread_count * stack_aligned_bytes);
         const arena_lb_addr: u64 = stack_up_addr;
         const arena_up_addr: u64 = arena_lb_addr + (max_arena_count * arena_aligned_bytes);
-        const ret_len: u64 = if (builder_spec.options.enable_caching) 2 else 1;
+        const ret_len: u64 = 2;
         pub const AddressSpace = mem.GenericRegularAddressSpace(.{
             .label = "arena",
             .errors = address_space_errors,
@@ -401,9 +401,11 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         fn maybeHide(toplevel: *Node, node: *Node) void {
             if (builder_spec.options.hide_based_on_name_prefix) |prefix| {
                 node.options.is_hidden = prefix == node.name[0];
+                return;
             }
             if (builder_spec.options.hide_based_on_group) {
                 node.options.is_hidden = toplevel.options.is_hidden;
+                return;
             }
         }
         pub fn initSpecialNodes(allocator: *Allocator, toplevel: *Node) void {
@@ -419,6 +421,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         pub fn globalCacheRoot(toplevel: *Node) [:0]const u8 {
             return toplevel.paths[1].names[0];
         }
+        /// Initialize a toplevel node.
         pub fn init(allocator: *Allocator, args: [][*:0]u8, vars: [][*:0]u8) *Node {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             if (!thread_space_options.require_map) {
@@ -447,6 +450,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             writeEnv(ret.cacheRoot(), ret.globalCacheRoot());
             return ret;
         }
+        /// Initialize a new group command
         pub fn addGroup(toplevel: *Node, allocator: *Allocator, name: []const u8) !*Node {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             const ret: *Node = allocator.create(Node);
@@ -455,21 +459,13 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             ret.kind = .group;
             ret.task = .any;
             ret.name = duplicate(allocator, name);
-            ret.options.is_hidden = name[0] == '_';
-            if (builder_spec.options.show_initial_state) {
-                ret.assertExchange(.any, .null, .ready, max_thread_count);
-                ret.assertExchange(.format, .null, .ready, max_thread_count);
-                ret.assertExchange(.build, .null, .ready, max_thread_count);
-                ret.assertExchange(.run, .null, .ready, max_thread_count);
-                ret.assertExchange(.archive, .null, .ready, max_thread_count);
-            } else {
-                ret.task_lock = omni_lock;
-            }
+            initializeCommand(allocator, toplevel, ret);
             return ret;
         }
         /// Initialize a new `zig fmt` command.
         pub fn addFormat(toplevel: *Node, allocator: *Allocator, format_cmd: types.FormatCommand, name: []const u8, pathname: []const u8) !*Node {
             @setRuntimeSafety(builder_spec.options.enable_safety);
+            const main_pkg_path: [:0]const u8 = toplevel.paths[0].names[0];
             const ret: *Node = allocator.create(Node);
             toplevel.addNode(allocator).* = ret;
             ret.kind = .worker;
@@ -477,12 +473,13 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             ret.task_info = .{ .format = allocator.create(types.FormatCommand) };
             ret.name = duplicate(allocator, name);
             const target_path: *types.Path = ret.addPath(allocator);
-            target_path.addName(allocator).* = toplevel.paths[0].names[0];
+            if (pathname[0] != '/') {
+                target_path.addName(allocator).* = main_pkg_path;
+            }
+            target_path.addName(allocator).* = main_pkg_path;
             target_path.addName(allocator).* = duplicate(allocator, pathname);
             ret.task_info.format.* = format_cmd;
-            if (!builder_spec.options.never_pre) {
-                processBefore(allocator, toplevel, ret);
-            }
+            initializeCommand(allocator, toplevel, ret);
             return ret;
         }
         /// Initialize a new `zig ar` command.
@@ -501,9 +498,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             for (deps) |dep| {
                 ret.dependOnObject(allocator, dep);
             }
-            if (!builder_spec.options.never_pre) {
-                processBefore(allocator, toplevel, ret);
-            }
+            initializeCommand(allocator, toplevel, ret);
             return ret;
         }
         pub fn addBuild(toplevel: *Node, allocator: *Allocator, build_cmd: types.BuildCommand, name: []const u8, root: []const u8) !*Node {
