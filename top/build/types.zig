@@ -27,7 +27,7 @@ pub const State = enum(u8) {
     failed =    0b000001,
     /// The task is ready to begin.
     ready =     0b000010,
-    /// The is waiting on dependencies.
+    /// The task is waiting on dependencies.
     blocking =  0b000100,
     /// The task is in progress.
     working =   0b001000,
