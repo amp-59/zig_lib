@@ -806,8 +806,11 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 stack_len: u64,
             ) void;
             comptime {
-                if (builder_spec.options.enable_safety)
+                if (builtin.tracing_override orelse
+                    builtin.tracing_default)
+                {
                     _ = tracer.printStackTrace;
+                }
                 asm (@embedFile("./build/forwardToExecuteCloneThreaded4.s"));
             }
             pub export fn executeCommandThreaded(
@@ -1126,27 +1129,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 }
             }
             return null;
-        }
-        fn updateCommand(node: *Node, allocator: *Allocator) void {
-            _ = allocator;
-            node.options.no_post = true;
-            if (node.task == .build and node.kind != .group) {
-                if (node.task_info.build.mode) |mode| {
-                    if (mode == .Debug) {}
-                }
-            }
-        }
-        fn updateCommands(allocator: *Allocator, node: *Node) void {
-            if (node.options.no_post) {
-                return;
-            }
-            updateCommand(node, allocator);
-            for (node.nodes[0..node.nodes_len]) |sub| {
-                updateCommands(allocator, sub);
-            }
-            for (node.deps[0..node.deps_len]) |dep| {
-                updateCommands(allocator, dep.on_node);
-            }
         }
         pub fn processCommands(
             address_space: *AddressSpace,
