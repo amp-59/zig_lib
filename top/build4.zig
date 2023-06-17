@@ -53,8 +53,6 @@ pub const BuilderSpec = struct {
         timeout_milliseconds: u64 = 1000 * 60 * 60 * 24,
         /// Enables logging for build job statistics.
         show_stats: bool = true,
-        /// Show initial lock change of state.
-        show_initial_state: bool = false,
         /// Enables detail for node dependecy listings.
         show_detailed_deps: bool = false,
         /// Include arena/thread index in task summaries and change of state
