@@ -1,4 +1,4 @@
-const builtin = @import("../builtin.zig");
+const ud64 = @import("../builtin.zig").fmt.ud64;
 const fmt = @import("../fmt.zig");
 const mach = @import("../mach.zig");
 const types = @import("./types.zig");
@@ -72,6 +72,8 @@ pub const BuildCommand = struct {
     } = null,
     /// Enable the "red-zone"
     red_zone: ?bool = null,
+    /// Enable implicit builtin knowledge of functions
+    builtin: ?bool = null,
     /// Omit the stack frame pointer
     omit_frame_pointer: ?bool = null,
     /// (WASI) Execution model
@@ -440,6 +442,13 @@ pub const BuildCommand = struct {
                 array.writeMany("-mred-zone\x00");
             } else {
                 array.writeMany("-mno-red-zone\x00");
+            }
+        }
+        if (cmd.builtin) |builtin| {
+            if (builtin) {
+                array.writeMany("-fbuiltin\x00");
+            } else {
+                array.writeMany("-fno-builtin\x00");
             }
         }
         if (cmd.omit_frame_pointer) |omit_frame_pointer| {
@@ -1039,6 +1048,15 @@ pub const BuildCommand = struct {
                 len +%= 14;
             }
         }
+        if (cmd.builtin) |builtin| {
+            if (builtin) {
+                @ptrCast(*[10]u8, buf + len).* = "-fbuiltin\x00".*;
+                len +%= 10;
+            } else {
+                @ptrCast(*[13]u8, buf + len).* = "-fno-builtin\x00".*;
+                len +%= 13;
+            }
+        }
         if (cmd.omit_frame_pointer) |omit_frame_pointer| {
             if (omit_frame_pointer) {
                 @ptrCast(*[21]u8, buf + len).* = "-fomit-frame-pointer\x00".*;
@@ -1091,7 +1109,7 @@ pub const BuildCommand = struct {
         if (cmd.passes) |passes| {
             @ptrCast(*[19]u8, buf + len).* = "-fopt-bisect-limit\x3d".*;
             len +%= 19;
-            const s: []const u8 = builtin.fmt.ud64(passes).readAll();
+            const s: []const u8 = ud64(passes).readAll();
             @memcpy(buf + len, s);
             len = len + s.len;
             buf[len] = 0;
@@ -1441,7 +1459,7 @@ pub const BuildCommand = struct {
         if (cmd.stack) |stack| {
             @ptrCast(*[8]u8, buf + len).* = "--stack\x00".*;
             len +%= 8;
-            const s: []const u8 = builtin.fmt.ud64(stack).readAll();
+            const s: []const u8 = ud64(stack).readAll();
             @memcpy(buf + len, s);
             len = len + s.len;
             buf[len] = 0;
@@ -1450,7 +1468,7 @@ pub const BuildCommand = struct {
         if (cmd.image_base) |image_base| {
             @ptrCast(*[13]u8, buf + len).* = "--image-base\x00".*;
             len +%= 13;
-            const s: []const u8 = builtin.fmt.ud64(image_base).readAll();
+            const s: []const u8 = ud64(image_base).readAll();
             @memcpy(buf + len, s);
             len = len + s.len;
             buf[len] = 0;
@@ -1731,6 +1749,13 @@ pub const BuildCommand = struct {
                 len +%= 14;
             }
         }
+        if (cmd.builtin) |builtin| {
+            if (builtin) {
+                len +%= 10;
+            } else {
+                len +%= 13;
+            }
+        }
         if (cmd.omit_frame_pointer) |omit_frame_pointer| {
             if (omit_frame_pointer) {
                 len +%= 21;
@@ -1767,7 +1792,7 @@ pub const BuildCommand = struct {
         }
         if (cmd.passes) |passes| {
             len +%= 19;
-            len +%= builtin.fmt.ud64(passes).readAll().len;
+            len +%= ud64(passes).readAll().len;
             len +%= 1;
         }
         if (cmd.main_pkg_path) |main_pkg_path| {
@@ -2019,12 +2044,12 @@ pub const BuildCommand = struct {
         }
         if (cmd.stack) |stack| {
             len +%= 8;
-            len +%= builtin.fmt.ud64(stack).readAll().len;
+            len +%= ud64(stack).readAll().len;
             len +%= 1;
         }
         if (cmd.image_base) |image_base| {
             len +%= 13;
-            len +%= builtin.fmt.ud64(image_base).readAll().len;
+            len +%= ud64(image_base).readAll().len;
             len +%= 1;
         }
         if (cmd.macros) |macros| {

@@ -1138,12 +1138,10 @@ const debug = opaque {
     const about_fork_1_s: [:0]const u8 = builtin.fmt.about("fork-error");
     const about_wait_0_s: [:0]const u8 = builtin.fmt.about("wait");
     const about_wait_1_s: [:0]const u8 = builtin.fmt.about("wait-error");
-
     const about_futex_wait_0_s: [:0]const u8 = builtin.fmt.about("futex-wait");
     const about_futex_wake_0_s: [:0]const u8 = builtin.fmt.about("futex-wake");
     const about_futex_wake_op_0_s: [:0]const u8 = builtin.fmt.about("futex-wake-op");
     const about_futex_1_s: [:0]const u8 = builtin.fmt.about("futex-error");
-
     fn exceptionFaultAtAddress(symbol: []const u8, fault_addr: u64) void {
         const fault_addr_s: []const u8 = builtin.fmt.ux64(fault_addr).readAll();
         var buf: [8192]u8 = undefined;

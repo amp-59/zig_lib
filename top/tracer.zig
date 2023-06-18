@@ -169,10 +169,10 @@ pub export fn printStackTrace(ret_addr: u64) void {
             mach.memcpy(buf[len..].ptr, fn_name.ptr, fn_name.len);
             len +%= fn_name.len;
         }
-        if (unit.info_entry.getAttr(.name)) |form_val| {
+        if (unit.info_entry.get(.name)) |form_val| {
             @ptrCast(*[2]u8, buf[len..].ptr).* = " (".*;
             len +%= 2;
-            const unit_name: []const u8 = try form_val.getString(dwarf_info);
+            const unit_name: []const u8 = form_val.getString(dwarf_info);
             mach.memcpy(buf[len..].ptr, unit_name.ptr, unit_name.len);
             len +%= unit_name.len;
             @ptrCast(*[2]u8, buf[len..].ptr).* = ")\n".*;
