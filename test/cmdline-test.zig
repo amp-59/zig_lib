@@ -16,12 +16,12 @@ pub const runtime_assertions: bool = true;
 const Node = build.GenericNode(.{
     .options = .{ .max_cmdline_len = null },
 });
-fn testComplexStructureBuildMain(allocator: *Node.Allocator, builder: *Node) void {
+pub fn testComplexStructureBuildMain(allocator: *Node.Allocator, builder: *Node) void {
     const deps: []const build.ModuleDependency = &.{
-        .{ .name = "env" }, .{ .name = "zig_lib" }, .{ .name = "@build" },
+        .{ .name = "context" }, .{ .name = "zig_lib" }, .{ .name = "@build" },
     };
     const mods: []const build.Module = &.{
-        .{ .name = "env", .path = "zig-cache/env.zig" },
+        .{ .name = "context", .path = "zig-cache/context.zig" },
         .{ .name = "zig_lib", .path = "zig_lib.zig" },
         .{ .name = "@build", .path = "./build.zig" },
     };
@@ -93,19 +93,6 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
         Node.Allocator.init(&address_space, Node.max_thread_count);
     if (args.len < 5) {
         return error.MissingEnvironmentPaths;
-    }
-    const names: *[3][]const u8 = allocator.create([3][]const u8);
-    names.* = [_][]const u8{ "one", "two", "three" };
-    if (true) {
-        const Array = mem.StaticArray(u8, 4096);
-        const array: *Array = allocator.create(Array);
-        array.writeFormat(build.NewPath{ .names = names });
-        try testing.expectEqualString("one/two/three\x00", array.readAll());
-    }
-    if (true) {
-        const buf: []u8 = allocator.allocate(u8, 256);
-        var len: u64 = build.NewPath.formatWriteBuf(.{ .names = names }, buf.ptr);
-        try testing.expectEqualString("one/two/three\x00", buf[0..len]);
     }
     const toplevel: *Node = Node.init(&allocator, args, vars);
     const g0: *Node = try toplevel.addGroup(&allocator, "g0");

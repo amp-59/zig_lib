@@ -18,7 +18,7 @@ pub const logging_override: builtin.Logging.Override = spec.logging.override.sil
 pub const runtime_assertions: bool = false;
 pub const AddressSpace = spec.address_space.regular_128;
 const show_best_cases: bool = false;
-fn write(buf: []u8, off: u64, ss: []const []const u8) u64 {
+pub fn write(buf: []u8, off: u64, ss: []const []const u8) u64 {
     var len: u64 = 0;
     for (ss) |s| {
         for (s, 0..) |c, i| buf[off +% len +% i] = c;
@@ -26,16 +26,16 @@ fn write(buf: []u8, off: u64, ss: []const []const u8) u64 {
     }
     return len;
 }
-fn print(buf: []u8, off: u64, ss: []const []const u8) void {
+pub fn print(buf: []u8, off: u64, ss: []const []const u8) void {
     file.write(.{ .errors = .{} }, 1, buf[0 .. off + write(buf, off, ss)]);
 }
-const Allocator = mem.GenericArenaAllocator(.{
+pub const Allocator = mem.GenericArenaAllocator(.{
     .AddressSpace = spec.address_space.regular_128,
     .arena_index = 1,
     .logging = spec.allocator.logging.silent,
     .errors = spec.allocator.errors.noexcept,
 });
-const S = struct {
+pub const S = struct {
     fn asc(x: anytype, y: anytype) bool {
         return x > y;
     }
@@ -43,7 +43,7 @@ const S = struct {
         return x < y;
     }
 };
-fn compareSorts() !void {
+pub fn compareSorts() !void {
     const size = 0x400000;
     const T = u64;
     try mem.map(.{ .options = .{} }, size, size);
@@ -82,7 +82,7 @@ fn compareSorts() !void {
         testing.printN(4096, .{ "radix: [", fmt.ud64(values_1.len), "]" ++ @typeName(T), "\t = ", fmt.any(time.diff(t_1, t_0)), '\n' });
     }
 }
-fn approximationTest() void {
+pub fn approximationTest() void {
     var buf: [4096]u8 = undefined;
     var len: u64 = 0;
     var n_aligned_bytes: u32 = 1;
