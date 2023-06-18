@@ -68,7 +68,7 @@ fn testPoll() !void {
 }
 
 const file_name: [:0]const u8 = "file_test";
-const test_dir: [:0]const u8 = @import("env").build_root ++ "/test/";
+const test_dir: [:0]const u8 = @import("context").build_root ++ "/test/";
 const pathname1: [:0]const u8 = test_dir ++ file_name ++ "1";
 const pathname2: [:0]const u8 = test_dir ++ file_name ++ "2";
 const pathname_link1: [:0]const u8 = test_dir ++ file_name ++ "1";
