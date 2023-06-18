@@ -21,6 +21,7 @@ pub const signal_handlers: builtin.SignalHandlers = .{
     .bus_error = true,
     .illegal_instruction = true,
     .floating_point_error = true,
+    .breakpoint = true,
 };
 
 const Array = mem.UnstructuredStreamView(8, 8, struct {}, .{});
@@ -109,7 +110,16 @@ fn testVClockGettime(aux: *const anyopaque) !void {
     try builtin.expectBelowOrEqual(u64, ts_diff.nsec, 1000);
 }
 
+fn handlerFn(_: sys.SignalCode) void {}
+fn handlerSigInfoFn(_: sys.SignalCode, _: *const proc.SignalInfo, _: ?*const anyopaque) void {}
+fn testUpdateSignalAction() !void {
+    try proc.updateSignalAction(.{}, .SEGV, .{ .set = .ignore });
+    try proc.updateSignalAction(.{}, .SEGV, .{ .set = .default });
+    try proc.updateSignalAction(.{}, .SEGV, .{ .handler = &handlerFn });
+    try proc.updateSignalAction(.{}, .SEGV, .{ .action = &handlerSigInfoFn });
+}
 pub fn main(_: [][*:0]u8, vars: [][*:0]u8, aux: *const anyopaque) !void {
+    try testUpdateSignalAction();
     try testCloneAndFutex();
     try testFindNameInPath(vars);
     try testVClockGettime(aux);
