@@ -1018,7 +1018,7 @@ pub fn execPath(comptime exec_spec: ExecuteSpec, pathname: [:0]const u8, args: e
         debug.executeNotice(pathname, args);
     }
     if (meta.wrap(sys.call(.execve, exec_spec.errors, exec_spec.return_type, .{ filename_buf_addr, args_addr, vars_addr }))) {
-        builtin.proc.exitGroupFault("reached unreachable", 2);
+        @panic("reached unreachable");
     } else |execve_error| {
         if (logging.Error and logging.Attempt) {
             debug.executeErrorBrief(execve_error, pathname);
@@ -1040,7 +1040,7 @@ pub fn exec(comptime exec_spec: ExecuteSpec, fd: u64, args: exec_spec.args_type,
         debug.executeNotice(args[0], args);
     }
     if (meta.wrap(sys.call(.execveat, exec_spec.errors, exec_spec.return_type, .{ fd, @ptrToInt(""), args_addr, vars_addr, flags.val }))) {
-        builtin.proc.exitGroupFault("reached unreachable", 2);
+        @panic("reached unreachable");
     } else |execve_error| {
         if (logging.Error and logging.Attempt) {
             debug.executeErrorBrief(execve_error, args[0]);
@@ -1063,7 +1063,7 @@ pub fn execAt(comptime exec_spec: ExecuteSpec, dir_fd: u64, name: [:0]const u8, 
         debug.executeNotice(name, args);
     }
     if (meta.wrap(sys.call(.execveat, exec_spec.errors, exec_spec.return_type, .{ dir_fd, name_buf_addr, args_addr, vars_addr, flags.val }))) {
-        builtin.proc.exitGroupFault("reached unreachable", 2);
+        @panic("reached unreachable");
     } else |execve_error| {
         if (logging.Error and logging.Attempt) {
             debug.executeErrorBrief(execve_error, name);
@@ -1446,7 +1446,6 @@ pub fn makePath(comptime spec: MakePathSpec, pathname: []const u8, comptime file
     return makePathInternal(spec, name, file_mode);
 }
 pub fn create(comptime spec: CreateSpec, pathname: [:0]const u8, comptime file_mode: Mode) sys.ErrorUnion(spec.errors, spec.return_type) {
-    builtin.static.assertEqual(Kind, .regular, file_mode.kind);
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
     const flags: Open.Options = comptime spec.flags();
     const logging: builtin.Logging.AcquireError = comptime spec.logging.override();
@@ -1970,14 +1969,6 @@ pub fn makePipe(comptime pipe2_spec: MakePipeSpec) sys.ErrorUnion(pipe2_spec.err
     }
     return pipefd;
 }
-inline fn expected(fds: []PollFd) bool {
-    for (fds) |pollfd| {
-        if (@bitCast(u16, pollfd.expect) != @bitCast(u16, pollfd.actual)) {
-            return false;
-        }
-    }
-    return true;
-}
 pub fn poll(comptime poll_spec: PollSpec, fds: []PollFd, timeout: u32) sys.ErrorUnion(poll_spec.errors, poll_spec.return_type) {
     const fds_addr: u64 = @ptrToInt(fds.ptr);
     const logging: builtin.Logging.AttemptSuccessError = comptime poll_spec.logging.override();
@@ -1989,7 +1980,14 @@ pub fn poll(comptime poll_spec: PollSpec, fds: []PollFd, timeout: u32) sys.Error
             debug.pollNotice(fds, timeout);
         }
         if (poll_spec.return_type == bool) {
-            return expected(fds);
+            for (fds) |pollfd| {
+                if (@bitCast(u16, pollfd.expect) !=
+                    @bitCast(u16, pollfd.actual))
+                {
+                    return false;
+                }
+            }
+            return true;
         }
     } else |poll_error| {
         return poll_error;
@@ -2465,7 +2463,6 @@ const debug = opaque {
         var buf: [32768]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, "dir_fd=", dir_fd_s, ", ", name, " (", error_name, ")\n" });
     }
-
     fn aboutPathnameError(about_s: [:0]const u8, error_name: [:0]const u8, pathname: [:0]const u8) void {
         var buf: [32768]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, pathname, " (", error_name, ")\n" });
@@ -2695,8 +2692,6 @@ const debug = opaque {
         buf[len] = ' ';
         len +%= 1;
         if (filename.ptr == args[0]) {
-            @ptrCast(*[4]u8, buf[len..].ptr).* = "[0] ".*;
-            len +%= 4;
             idx +%= 1;
         }
         while (idx != argc) : (idx +%= 1) {
@@ -2791,3 +2786,4 @@ const debug = opaque {
         return len;
     }
 };
+// * Add `executeNoticeBrief`
