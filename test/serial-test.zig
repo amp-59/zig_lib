@@ -2530,7 +2530,7 @@ var build_cmd: build.BuildCommand = .{
     .dependencies = &.{
         .{ .name = "zig_lib" },
         .{ .name = "@build" },
-        .{ .name = "env" },
+        .{ .name = "context" },
     },
     .image_base = 0x10000,
     .strip = true,
@@ -2548,8 +2548,8 @@ var build_cmd: build.BuildCommand = .{
         .name = "@build",
         .path = "build.zig",
     }, .{
-        .name = "env",
-        .path = "zig-cache/env.zig",
+        .name = "context",
+        .path = "zig-cache/context.zig",
     } },
 };
 pub fn testLongComplexCase(address_space: *AddressSpace) !void {
