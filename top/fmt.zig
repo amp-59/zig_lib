@@ -977,6 +977,19 @@ pub fn GenericDateTimeFormat(comptime DateTime: type) type {
 pub const IdentifierFormat = struct {
     value: []const u8,
     const Format: type = @This();
+    pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
+        var len: u64 = 0;
+        if (isValidId(format.value)) {
+            @memcpy(buf, format.value);
+            len +%= format.value.len;
+        } else {
+            @ptrCast(*[2]u8, buf + len).* = "@\"".*;
+            @memcpy(buf, format.value);
+            len +%= format.value.len;
+            buf[len] = '"';
+        }
+        return len;
+    }
     pub fn formatWrite(format: Format, array: anytype) void {
         if (isValidId(format.value)) {
             array.writeMany(format.value);
