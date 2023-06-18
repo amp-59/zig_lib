@@ -107,81 +107,109 @@ pub fn DiscreteBitSet(comptime elements: u16, comptime val_type: type, comptime 
         };
     }
 }
+fn ThreadSafeSetBoolInt(comptime elements: u16, comptime idx_type: type) type {
+    return extern struct {
+        bytes: [elements]u8 align(4) = builtin.zero([elements]u8),
+        pub const SafeSet: type = @This();
+        const mutexes: comptime_int = @divExact(@sizeOf(@This()), 4);
+        pub fn get(safe_set: *SafeSet, index: idx_type) bool {
+            return safe_set.bytes[index] != 0;
+        }
+        pub fn set(safe_set: *SafeSet, index: idx_type) void {
+            safe_set.bytes[index] = 255;
+        }
+        pub fn unset(safe_set: *SafeSet, index: idx_type) void {
+            safe_set.bytes[index] = 0;
+        }
+        pub inline fn atomicSet(safe_set: *SafeSet, index: idx_type) bool {
+            return @cmpxchgStrong(u8, &safe_set.bytes[index], 0, 255, .Monotonic, .Monotonic) == null;
+        }
+        pub inline fn atomicUnset(safe_set: *SafeSet, index: idx_type) bool {
+            return @cmpxchgStrong(u8, &safe_set.bytes[index], 255, 0, .Monotonic, .Monotonic) == null;
+        }
+        pub fn mutex(safe_set: *SafeSet, index: idx_type) *u32 {
+            return @intToPtr(*u32, mach.alignB64(@ptrToInt(&safe_set.bytes[index]), 4));
+        }
+    };
+}
+fn ThreadSafeSetBoolEnum(comptime elements: u16, comptime idx_type: type) type {
+    return extern struct {
+        bytes: [elements]u8 align(4) = builtin.zero([elements]u8),
+        pub const SafeSet: type = @This();
+        const mutexes: comptime_int = @divExact(@sizeOf(@This()), 4);
+        pub fn get(safe_set: *SafeSet, index: idx_type) bool {
+            return safe_set.bytes[@enumToInt(index)] != 0;
+        }
+        pub fn set(safe_set: *SafeSet, index: idx_type) void {
+            safe_set.bytes[@enumToInt(index)] = 255;
+        }
+        pub fn unset(safe_set: *SafeSet, index: idx_type) void {
+            safe_set.bytes[@enumToInt(index)] = 0;
+        }
+        pub fn atomicSet(safe_set: *SafeSet, index: idx_type) bool {
+            return @cmpxchgStrong(u8, &safe_set.bytes[index], 0, 255, .Monotonic, .Monotonic) == null;
+        }
+        pub fn atomicUnset(safe_set: *SafeSet, index: idx_type) bool {
+            return @cmpxchgStrong(u8, &safe_set.bytes[index], 255, 0, .Monotonic, .Monotonic) == null;
+        }
+        pub fn mutex(safe_set: *SafeSet, index: idx_type) *u32 {
+            return @intToPtr(*u32, mach.alignB64(@ptrToInt(&safe_set.bytes[@enumToInt(index)]), 4));
+        }
+    };
+}
+fn ThreadSafeSetEnumInt(comptime elements: u16, comptime val_type: type, comptime idx_type: type) type {
+    return extern struct {
+        bytes: [elements]val_type align(4) = builtin.zero([elements]val_type),
+        pub const SafeSet: type = @This();
+        const mutexes: comptime_int = @divExact(@sizeOf(@This()), 4);
+        pub fn get(safe_set: *SafeSet, index: idx_type) val_type {
+            return safe_set.bytes[index];
+        }
+        pub fn set(safe_set: *SafeSet, index: idx_type, to: val_type) void {
+            safe_set.bytes[index] = to;
+        }
+        pub fn atomicExchange(safe_set: *SafeSet, index: idx_type, if_state: val_type, to_state: val_type) bool {
+            return @cmpxchgStrong(val_type, &safe_set.bytes[index], if_state, to_state, .Monotonic, .Monotonic) == null;
+        }
+        pub fn mutex(safe_set: *SafeSet, index: idx_type) *u32 {
+            return @intToPtr(*u32, mach.alignB64(@ptrToInt(&safe_set.bytes[index]), 4));
+        }
+    };
+}
+fn ThreadSafeSetEnumEnum(comptime elements: u16, comptime val_type: type, comptime idx_type: type) type {
+    return extern struct {
+        bytes: [elements]val_type align(4) = builtin.zero([elements]val_type),
+        pub const SafeSet: type = @This();
+        const mutexes: comptime_int = @divExact(@sizeOf(@This()), 4);
+        pub fn get(safe_set: *SafeSet, index: idx_type) val_type {
+            return safe_set.bytes[@enumToInt(index)];
+        }
+        pub fn set(safe_set: *SafeSet, index: idx_type, to: val_type) void {
+            safe_set.bytes[@enumToInt(index)] = to;
+        }
+        pub fn exchange(safe_set: *SafeSet, index: idx_type, if_state: val_type, to_state: val_type) bool {
+            const ret: bool = safe_set.get(index) == if_state;
+            if (ret) safe_set.bytes[@enumToInt(index)] = to_state;
+            return ret;
+        }
+        pub fn atomicExchange(safe_set: *SafeSet, index: idx_type, if_state: val_type, to_state: val_type) callconv(.C) bool {
+            return @cmpxchgStrong(val_type, &safe_set.bytes[@enumToInt(index)], if_state, to_state, .Monotonic, .Monotonic) == null;
+        }
+        pub fn mutex(safe_set: *SafeSet, index: idx_type) *u32 {
+            return @intToPtr(*u32, mach.alignB64(@ptrToInt(&safe_set.bytes[@enumToInt(index)]), 4));
+        }
+    };
+}
 pub fn ThreadSafeSet(comptime elements: u16, comptime val_type: type, comptime idx_type: type) type {
     const idx_info: builtin.Type = @typeInfo(idx_type);
     if (val_type == bool and idx_info != .Enum) {
-        return extern struct {
-            bytes: [elements]u8 = builtin.zero([elements]u8),
-            pub const SafeSet: type = @This();
-            pub fn get(safe_set: *SafeSet, index: idx_type) bool {
-                return safe_set.bytes[index] != 0;
-            }
-            pub fn set(safe_set: *SafeSet, index: idx_type) void {
-                safe_set.bytes[index] = 255;
-            }
-            pub fn unset(safe_set: *SafeSet, index: idx_type) void {
-                safe_set.bytes[index] = 0;
-            }
-            pub inline fn atomicSet(safe_set: *SafeSet, index: idx_type) bool {
-                return @cmpxchgStrong(u8, &safe_set.bytes[index], 0, 255, .Monotonic, .Monotonic) == null;
-            }
-            pub inline fn atomicUnset(safe_set: *SafeSet, index: idx_type) bool {
-                return @cmpxchgStrong(u8, &safe_set.bytes[index], 255, 0, .Monotonic, .Monotonic) == null;
-            }
-        };
+        return ThreadSafeSetBoolInt(elements, idx_type);
     } else if (val_type == bool and idx_info == .Enum) {
-        return extern struct {
-            bytes: [elements]u8 = builtin.zero([elements]u8),
-            pub const SafeSet: type = @This();
-            pub fn get(safe_set: *SafeSet, index: idx_type) bool {
-                return safe_set.bytes[@enumToInt(index)] != 0;
-            }
-            pub fn set(safe_set: *SafeSet, index: idx_type) void {
-                safe_set.bytes[@enumToInt(index)] = 255;
-            }
-            pub fn unset(safe_set: *SafeSet, index: idx_type) void {
-                safe_set.bytes[@enumToInt(index)] = 0;
-            }
-            pub inline fn atomicSet(safe_set: *SafeSet, index: idx_type) bool {
-                return @cmpxchgStrong(val_type, &safe_set.bytes[index], 0, 255, .Monotonic, .Monotonic) == null;
-            }
-            pub inline fn atomicUnset(safe_set: *SafeSet, index: idx_type) bool {
-                return @cmpxchgStrong(val_type, &safe_set.bytes[index], 255, 0, .Monotonic, .Monotonic) == null;
-            }
-        };
+        return ThreadSafeSetBoolEnum(elements, idx_type);
     } else if (val_type != bool and idx_info != .Enum) {
-        return extern struct {
-            bytes: [elements]val_type = builtin.zero([elements]val_type),
-            pub const SafeSet: type = @This();
-            pub fn get(safe_set: *SafeSet, index: idx_type) val_type {
-                return safe_set.bytes[index];
-            }
-            pub fn set(safe_set: *SafeSet, index: idx_type, to: val_type) void {
-                safe_set.bytes[index] = to;
-            }
-            pub fn atomicExchange(safe_set: *SafeSet, index: idx_type, if_state: val_type, to_state: val_type) bool {
-                return @cmpxchgStrong(val_type, &safe_set.bytes[index], if_state, to_state, .Monotonic, .Monotonic) == null;
-            }
-        };
+        return ThreadSafeSetEnumInt(elements, val_type, idx_type);
     } else if (val_type != bool and idx_info == .Enum) {
-        return extern struct {
-            bytes: [elements]val_type = builtin.zero([elements]val_type),
-            pub const SafeSet: type = @This();
-            pub inline fn get(safe_set: *const SafeSet, index: idx_type) val_type {
-                return safe_set.bytes[@enumToInt(index)];
-            }
-            pub inline fn set(safe_set: *SafeSet, index: idx_type, to: val_type) void {
-                safe_set.bytes[@enumToInt(index)] = to;
-            }
-            pub fn exchange(safe_set: *SafeSet, index: idx_type, if_state: val_type, to_state: val_type) bool {
-                const ret: bool = safe_set.get(index) == if_state;
-                if (ret) safe_set.bytes[@enumToInt(index)] = to_state;
-                return ret;
-            }
-            pub fn atomicExchange(safe_set: *SafeSet, index: idx_type, if_state: val_type, to_state: val_type) callconv(.C) bool {
-                return @cmpxchgStrong(val_type, &safe_set.bytes[@enumToInt(index)], if_state, to_state, .Monotonic, .Monotonic) == null;
-            }
-        };
+        return ThreadSafeSetEnumEnum(elements, val_type, idx_type);
     }
 }
 fn GenericMultiSet(
