@@ -18,6 +18,7 @@ pub const SignalAction = extern struct {
         no_defer = SA.NODEFER,
         on_stack = SA.ONSTACK,
         restart = SA.RESTART,
+        reset = SA.RESETHAND,
         restorer = SA.RESTORER,
         siginfo = SA.SIGINFO,
         unsupported = SA.UNSUPPORTED,
@@ -662,6 +663,7 @@ const SignalActionSpec = struct {
         no_defer: bool = false,
         on_stack: bool = false,
         restart: bool = true,
+        reset: bool = true,
         restorer: bool = false,
         siginfo: bool = true,
         unsupported: bool = false,
@@ -682,6 +684,9 @@ const SignalActionSpec = struct {
         }
         if (spec.options.restart) {
             flags_bitfield.set(.restart);
+        }
+        if (spec.options.reset) {
+            flags_bitfield.set(.reset);
         }
         if (spec.options.restorer) {
             flags_bitfield.set(.restorer);
@@ -711,7 +716,7 @@ pub fn updateSignalAction(comptime sigaction_spec: SignalActionSpec, signo: sys.
     const flags: SignalAction.Options = comptime sigaction_spec.flags();
     const action: SignalAction = .{ .handler = @enumToInt(to.set), .flags = flags.val, .restorer = 0 };
     if (meta.wrap(sys.call(.rt_sigaction, sigaction_spec.errors, sigaction_spec.return_type, .{
-        @enumToInt(signo), @ptrToInt(&action), 0, 64,
+        @enumToInt(signo), @ptrToInt(&action), 0, @sizeOf(@TypeOf(action.mask)),
     }))) {
         if (logging.Success) {
             debug.signalActionNotice(signo, to);
@@ -734,7 +739,7 @@ pub const exception = struct {
             .{ builtin.signal_handlers.floating_point_error, SIG.FPE },
         }) |pair| {
             if (pair[0]) {
-                sys.call_noexcept(.rt_sigaction, void, .{ pair[1], sa_new_addr, 0, 64 });
+                sys.call_noexcept(.rt_sigaction, void, .{ pair[1], sa_new_addr, 0, @sizeOf(@TypeOf(act.mask)) });
             }
         }
     }
@@ -1166,7 +1171,7 @@ const debug = opaque {
         const handler_set_s: []const u8 = if (handler_raw == 1) "ignore" else "default";
         const handler_s: []const u8 = if (handler_raw > 1) handler_addr_s else handler_set_s;
         var buf: [560]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_sig_1_s, "SIG", @tagName(signo), " -> ", handler_s, "\n" });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_sig_0_s, "SIG", @tagName(signo), " -> ", handler_s, "\n" });
     }
     fn futexWaitAttempt(futex: *u32, value: u32, timeout: *const time.TimeSpec) void {
         const addr_s: []const u8 = builtin.fmt.ux64(@ptrToInt(futex)).readAll();
