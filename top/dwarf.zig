@@ -19,8 +19,11 @@ const DebugSpec = struct {
 };
 // TODO Relocate to namespace `config`.
 const debug_spec: DebugSpec = .{};
-const WordSize = enum(u8) { dword = 4, qword = 8 };
 
+const WordSize = enum(u8) {
+    dword = 4,
+    qword = 8,
+};
 const Range = extern struct {
     start: u64 = 0,
     end: u64 = 0,
@@ -353,7 +356,7 @@ pub const DwarfInfo = extern struct {
     }
     fn populateUnit(allocator: *mem.SimpleAllocator, dwarf_info: *DwarfInfo, unit: *Unit) !void {
         try parseAbbrevTable(allocator, dwarf_info, unit.abbrev_tab);
-        try parseInfoEntry(allocator, dwarf_info, unit.word_size, unit.abbrev_tab, unit.info_entry);
+        try parseInfoEntry(allocator, dwarf_info, unit, unit.info_entry);
         if (debug_spec.logging.summary) {
             debug.unitAbstractNotice(unit);
         }
@@ -379,12 +382,11 @@ pub const DwarfInfo = extern struct {
                 .qword => 12 +% unit.len,
                 .dword => 4 +% unit.len,
             };
-            const info_entry: *InfoEntry = allocator.create(InfoEntry);
-            info_entry.* = comptime builtin.zero(InfoEntry);
+            var info_entry: InfoEntry = comptime builtin.zero(InfoEntry);
             var pos: u64 = unit.info_entry.off +% unit.info_entry.len;
             while (pos < next_off) {
                 info_entry.off = unit_off +% pos;
-                try parseInfoEntry(allocator, dwarf_info, unit.word_size, unit.abbrev_tab, info_entry);
+                try parseInfoEntry(allocator, dwarf_info, unit, &info_entry);
                 pos +%= info_entry.len;
                 if (info_entry.head.tag == .subprogram or
                     info_entry.head.tag == .inlined_subroutine or
@@ -392,8 +394,8 @@ pub const DwarfInfo = extern struct {
                     info_entry.head.tag == .entry_point)
                 {
                     dwarf_info.addFunc(allocator).* = .{
-                        .name = parseFuncName(allocator, dwarf_info, unit, info_entry, unit_off, next_off),
-                        .range = parseRange(dwarf_info, unit, info_entry),
+                        .name = parseFuncName(allocator, dwarf_info, unit, &info_entry, unit_off, next_off),
+                        .range = parseRange(dwarf_info, unit, &info_entry),
                     };
                 }
             }
@@ -403,7 +405,7 @@ pub const DwarfInfo = extern struct {
     fn parseFuncName(
         allocator: *mem.SimpleAllocator,
         dwarf_info: *DwarfInfo,
-        unit: *const Unit,
+        unit: *Unit,
         info_entry: *InfoEntry,
         unit_off: u64,
         next_off: u64,
@@ -423,7 +425,7 @@ pub const DwarfInfo = extern struct {
                     builtin.proc.exitError(error.InvalidEncoding, 2);
                 }
                 cur_info_entry.off = unit_off +% ref_off;
-                try parseInfoEntry(allocator, dwarf_info, unit.word_size, unit.abbrev_tab, &cur_info_entry);
+                try parseInfoEntry(allocator, dwarf_info, unit, &cur_info_entry);
                 continue;
             }
             if (cur_info_entry.get(.specification)) |form_val| {
@@ -435,7 +437,7 @@ pub const DwarfInfo = extern struct {
                     builtin.proc.exitError(error.InvalidEncoding, 2);
                 }
                 cur_info_entry.off = unit_off +% ref_off;
-                try parseInfoEntry(allocator, dwarf_info, unit.word_size, unit.abbrev_tab, &cur_info_entry);
+                try parseInfoEntry(allocator, dwarf_info, unit, &cur_info_entry);
                 continue;
             }
         }
@@ -510,8 +512,7 @@ pub const DwarfInfo = extern struct {
     fn parseInfoEntry(
         allocator: *mem.SimpleAllocator,
         dwarf_info: *DwarfInfo,
-        word_size: WordSize,
-        abbrev_tab: *const AbbrevTable,
+        unit: *Unit,
         info_entry: *InfoEntry,
     ) !void {
         const info_entry_bytes: []u8 = dwarf_info.info[info_entry.off..dwarf_info.info_len];
@@ -521,7 +522,7 @@ pub const DwarfInfo = extern struct {
         if (code[0] == 0) {
             return;
         }
-        const entry: AbbrevTable.Entry = for (abbrev_tab.ents[0..abbrev_tab.ents_len]) |entry| {
+        const entry: AbbrevTable.Entry = for (unit.abbrev_tab.ents[0..unit.abbrev_tab.ents_len]) |entry| {
             if (entry.head.code == code[0]) {
                 break entry;
             }
@@ -533,7 +534,7 @@ pub const DwarfInfo = extern struct {
             .children = entry.head.children,
         };
         for (entry.kvs[0..entry.kvs_len], 0..) |kv, kv_idx| {
-            const res = try parseFormValue(allocator, word_size, info_entry_bytes[info_entry.len..], kv.form);
+            const res = try parseFormValue(allocator, unit, info_entry_bytes[info_entry.len..], kv.form);
             info_entry.addKeyVal(allocator).* = .{ .key = kv.attr, .val = res[0] };
             info_entry.len +%= res[1];
             if (kv.form == .implicit_const) {
@@ -943,7 +944,7 @@ fn getStringGeneric(opt_str: ?[]const u8, offset: u64) [:0]const u8 {
     };
     return str[offset .. offset +% last :0];
 }
-fn parseFormValue(allocator: *mem.SimpleAllocator, size: WordSize, bytes: []u8, form: Form) !struct { FormValue, u64 } {
+fn parseFormValue(allocator: *mem.SimpleAllocator, unit: *Unit, bytes: []u8, form: Form) !struct { FormValue, u64 } {
     switch (form) {
         .addr => return .{ .{ .Address = @ptrCast(*align(1) usize, bytes).* }, @sizeOf(u64) },
         .block2 => {
@@ -980,11 +981,11 @@ fn parseFormValue(allocator: *mem.SimpleAllocator, size: WordSize, bytes: []u8, 
             const res = parse.noexcept.readLEB128(i64, bytes);
             return .{ .{ .Const = .{ .signed = true, .payload = @bitCast(u64, res[0]) } }, res[1] };
         },
-        .strp => switch (size) {
+        .strp => switch (unit.word_size) {
             .dword => return .{ .{ .StrPtr = @ptrCast(*align(1) u32, bytes).* }, @sizeOf(u32) },
             .qword => return .{ .{ .StrPtr = @ptrCast(*align(1) u64, bytes).* }, @sizeOf(u64) },
         },
-        .ref_addr => switch (size) {
+        .ref_addr => switch (unit.word_size) {
             .dword => return .{ .{ .RefAddr = @ptrCast(*align(1) u32, bytes).* }, @sizeOf(u32) },
             .qword => return .{ .{ .RefAddr = @ptrCast(*align(1) u64, bytes).* }, @sizeOf(u64) },
         },
@@ -998,10 +999,10 @@ fn parseFormValue(allocator: *mem.SimpleAllocator, size: WordSize, bytes: []u8, 
         },
         .indirect => {
             const child = parse.noexcept.readLEB128(Form, bytes);
-            const res = try parseFormValue(allocator, size, bytes[child[1]..], child[0]);
+            const res = try parseFormValue(allocator, unit, bytes[child[1]..], child[0]);
             return .{ res[0], child[1] +% res[1] };
         },
-        .sec_offset => switch (size) {
+        .sec_offset => switch (unit.word_size) {
             .dword => return .{ .{ .SecOffset = @ptrCast(*align(1) u32, bytes).* }, @sizeOf(u32) },
             .qword => return .{ .{ .SecOffset = @ptrCast(*align(1) u64, bytes).* }, @sizeOf(u64) },
         },
@@ -1025,7 +1026,7 @@ fn parseFormValue(allocator: *mem.SimpleAllocator, size: WordSize, bytes: []u8, 
             mach.memcpy(&data, bytes.ptr, 16);
             return .{ .{ .data16 = data }, 16 };
         },
-        .line_strp => switch (size) {
+        .line_strp => switch (unit.word_size) {
             .dword => return .{ .{ .LineStrPtr = @ptrCast(*align(1) u32, bytes).* }, @sizeOf(u32) },
             .qword => return .{ .{ .LineStrPtr = @ptrCast(*align(1) u64, bytes).* }, @sizeOf(u64) },
         },
