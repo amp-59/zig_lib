@@ -191,7 +191,7 @@ const List = opaque {
     // This method is about 25% faster than testing if starts with ".\0"
     // and "..\0", and cmoving the relevant index. I suppose this
     // respects endian, but have never tested it.
-    fn classifyNameExperimental(addrs: *[3]u64, s_lb_addr: u64) void {
+    fn classifyName(addrs: *[3]u64, s_lb_addr: u64) void {
         const w0: u16 = @intToPtr(*const u16, s_lb_addr +% 18).*;
         const w1: u16 = @intToPtr(*const u16, s_lb_addr +% 20).*;
         const j0: u8 = @boolToInt(w0 == if (builtin.is_little) 11780 else 1070);
@@ -213,13 +213,15 @@ const List = opaque {
     fn rectifyEntryOrder(s_lb_addr: u64) void {
         var addrs: [3]u64 = .{0} ** 3;
         var t_lb_addr: u64 = s_lb_addr;
-        classifyNameExperimental(&addrs, t_lb_addr);
+        classifyName(&addrs, t_lb_addr);
         t_lb_addr = nextAddress(t_lb_addr);
-        classifyNameExperimental(&addrs, t_lb_addr);
+        classifyName(&addrs, t_lb_addr);
         while (addrs[1] *% addrs[2] == 0) : (t_lb_addr = nextAddress(t_lb_addr)) {
-            classifyNameExperimental(&addrs, t_lb_addr);
+            classifyName(&addrs, t_lb_addr);
         }
-        if (!(builtin.int2a(bool, addrs[1] == s_lb_addr, addrs[2] == s_lb_addr +% 24))) {
+        if (addrs[1] != s_lb_addr or
+            addrs[2] != s_lb_addr +% 24)
+        {
             shiftBothBlocks(s_lb_addr, addrs[1], addrs[2]);
         }
     }
@@ -237,7 +239,7 @@ const List = opaque {
         Node.Link.mutate(t_node_addr, s_node_addr, 0);
         mangle(t_node_addr);
         var count: u64 = 1;
-        while (i_node_addr < s_up_addr) : (count += 1) {
+        while (i_node_addr < s_up_addr) : (count +%= 1) {
             Node.Link.mutate(s_node_addr, p_node_addr, i_node_addr);
             Node.Link.mutate(i_node_addr, s_node_addr, t_node_addr);
             Node.Link.mutate(t_node_addr, i_node_addr, 0);
