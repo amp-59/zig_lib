@@ -1456,14 +1456,90 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 },
             }
         }
-        fn writeEnv(build_root: [:0]const u8, cache_root: [:0]const u8) void {
+        fn writeContextLists(fd: u64, node: *Node) void {
+            @setRuntimeSafety(false);
+            const build_cmd: *types.BuildCommand = node.task_info.build;
+            var buf: [32768]u8 = undefined;
+            var len: u64 = 0;
+            @ptrCast(*[46]u8, buf[len..].ptr).* = "pub usingnamespace @import(\"../context.zig\");\n".*;
+            len +%= 46;
+            @ptrCast(*[34]u8, buf[len..].ptr).* = "pub const dependencies = struct {\n".*;
+            len +%= 34;
+            if (build_cmd.dependencies) |dependencies| {
+                for (dependencies) |dependency| {
+                    @ptrCast(*[16]u8, buf[len..].ptr).* = "    pub const @\"".*;
+                    len +%= 16;
+                    @memcpy(buf[len..].ptr, dependency.name);
+                    len +%= dependency.name.len;
+                    @ptrCast(*[19]u8, buf[len..].ptr).* = "\": ?[:0]const u8 = ".*;
+                    len +%= 19;
+                    if (dependency.import) |import| {
+                        buf[len] = '"';
+                        len +%= 1;
+                        @memcpy(buf[len..].ptr, import);
+                        len +%= import.len;
+                        @ptrCast(*[3]u8, buf[len..].ptr).* = "\";\n".*;
+                        len +%= 3;
+                    } else {
+                        @ptrCast(*[6]u8, buf[len..].ptr).* = "null;\n".*;
+                        len +%= 6;
+                    }
+                }
+            }
+            @ptrCast(*[32]u8, buf[len..].ptr).* = "};\npub const modules = struct {\n".*;
+            len +%= 32;
+            if (build_cmd.modules) |modules| {
+                for (modules) |module| {
+                    @ptrCast(*[16]u8, buf[len..].ptr).* = "    pub const @\"".*;
+                    len +%= 16;
+                    mach.memcpy(buf[len..].ptr, module.name.ptr, module.name.len);
+                    len +%= module.name.len;
+                    @ptrCast(*[18]u8, buf[len..].ptr).* = "\": [:0]const u8 = ".*;
+                    len +%= 18;
+                    buf[len] = '"';
+                    len +%= 1;
+                    @memcpy(buf[len..].ptr, module.path);
+                    len +%= module.path.len;
+                    @ptrCast(*[3]u8, buf[len..].ptr).* = "\";\n".*;
+                    len +%= 3;
+                }
+            }
+            @ptrCast(*[38]u8, buf[len..].ptr).* = "};\npub const compile_units = struct {\n".*;
+            len +%= 38;
+            for (node.deps[0..node.deps_len]) |dep| {
+                if (dep.on_node == node) {
+                    continue;
+                }
+                if (dep.on_task == .build) {
+                    @ptrCast(*[16]u8, buf[len..].ptr).* = "    pub const @\"".*;
+                    len +%= 16;
+                    @memcpy(buf[len..].ptr, dep.on_node.name);
+                    len +%= dep.on_node.name.len;
+                    @ptrCast(*[18]u8, buf[len..].ptr).* = "\": [:0]const u8 = ".*;
+                    len +%= 18;
+                    buf[len] = '"';
+                    len +%= 1;
+                    len +%= dep.on_node.paths[0].formatWriteBuf(buf[len..].ptr);
+                    @ptrCast(*[3]u8, buf[len..].ptr).* = "\";\n".*;
+                    len +%= 3;
+                }
+            }
+            @ptrCast(*[3]u8, buf[len..].ptr).* = "};\n".*;
+            len +%= 3;
+            file.write(write(), fd, buf[0..len]);
+        }
+        fn writeContext(build_root: [:0]const u8, cache_root: [:0]const u8) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             const cache_root_fd: u64 = try meta.wrap(
                 file.path(path1(), cache_root),
             );
-            const env_fd: u64 = try meta.wrap(
-                file.createAt(create(), cache_root_fd, builder_spec.options.names.env ++
+            const context_fd: u64 = try meta.wrap(
+                file.createAt(create(), cache_root_fd, builder_spec.options.names.context ++
                     builder_spec.options.extensions.zig, file.mode.regular),
+            );
+            makeRootDirectory(cache_root_fd, builder_spec.options.names.context);
+            GlobalState.context_dir_fd = try meta.wrap(
+                file.pathAt(path1(), cache_root_fd, builder_spec.options.names.context),
             );
             var buf: [4096 *% 8]u8 = undefined;
             var len: u64 = 0;
@@ -1484,13 +1560,13 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             @ptrCast(*[3]u8, buf[len..].ptr).* = "\";\n".*;
             len +%= 3;
             try meta.wrap(
-                file.write(write(), env_fd, buf[0..len]),
+                file.write(write(), context_fd, buf[0..len]),
             );
             try meta.wrap(
                 file.close(close(), cache_root_fd),
             );
             try meta.wrap(
-                file.close(close(), env_fd),
+                file.close(close(), context_fd),
             );
         }
         pub fn duplicate(allocator: *Allocator, values: []const u8) [:0]u8 {
@@ -1631,7 +1707,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 buf[len] = '\n';
                 builtin.debug.write(buf[0 .. len +% 1]);
             }
-            fn noExchangeNotice(node: *const Node, about_s: [:0]const u8, task: types.Task, old: types.State, new: types.State, arena_index: AddressSpace.Index) void {
+            fn noExchangeNotice(node: *Node, about_s: [:0]const u8, task: types.Task, old: types.State, new: types.State, arena_index: AddressSpace.Index) void {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
                 const actual: types.State = node.task_lock.get(task);
                 var buf: [32768]u8 = undefined;
