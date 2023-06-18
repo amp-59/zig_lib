@@ -8,7 +8,7 @@ const builtin = top.builtin;
 
 pub usingnamespace proc.start;
 
-pub const logging_override: builtin.Logging.Override = spec.logging.override.verbose;
+pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
 fn nested0(z: u64) !void {
     var x: u64 = 0;
     const y: u64 = z + @ptrToInt(&x);
@@ -28,8 +28,8 @@ fn nested6(z: u64) !void {
     }
 }
 fn nestedOOB(x: u64) void {
-    var buf: [512]u8 = undefined;
-    buf[x] = 252;
+    _ = x;
+    otherMain();
 }
 fn nestedNOMEM(x: u64) void {
     var y: u64 = 0;
@@ -37,6 +37,14 @@ fn nestedNOMEM(x: u64) void {
     var buf: [512]u8 = undefined;
     buf[0..y][x] = 25;
 }
+
+extern fn otherMain() void;
+
 pub fn main() !void {
-    try nested0(8);
+    var b: bool = true;
+    if (b) {
+        try nested0(8);
+    } else {
+        otherMain();
+    }
 }

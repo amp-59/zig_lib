@@ -8,7 +8,7 @@ pub usingnamespace proc.start;
 pub const runtime_assertions: bool = true;
 pub const comptime_assertions: bool = true;
 
-fn comptimeIntToStringNoob(comptime value: comptime_int) []const u8 {
+pub fn comptimeIntToStringNoob(comptime value: comptime_int) []const u8 {
     var s: []const u8 = "";
     var y = if (value < 0) -value else value;
     while (y != 0) : (y /= 10) {
@@ -16,7 +16,7 @@ fn comptimeIntToStringNoob(comptime value: comptime_int) []const u8 {
     }
     return if (value < 0) "-" ++ s else s;
 }
-fn comptimeIntToStringPro(comptime value: comptime_int) []const u8 {
+pub fn comptimeIntToStringPro(comptime value: comptime_int) []const u8 {
     if (value < 0) {
         const s: []const u8 = @typeName([-value]void);
         return "-" ++ s[1 .. s.len - 5];
@@ -25,7 +25,7 @@ fn comptimeIntToStringPro(comptime value: comptime_int) []const u8 {
         return s[1 .. s.len - 5];
     }
 }
-fn testComptimeIntToString() void {
+pub fn testComptimeIntToString() void {
     @setEvalBranchQuota(0x10000);
     inline for (0x0..0x10000) |index| {
         _ = comptime comptimeIntToStringPro(index);
