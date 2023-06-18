@@ -64,31 +64,31 @@ pub fn AnyFormat(comptime spec: RenderSpec, comptime Type: type) type {
     if (Type == meta.Generic) {
         return GenericFormat(spec);
     }
-    return switch (@typeInfo(Type)) {
-        .Array => ArrayFormat(spec, Type),
-        .Bool => BoolFormat,
-        .Type => TypeFormat(spec),
-        .Struct => StructFormat(spec, Type),
-        .Union => UnionFormat(spec, Type),
-        .Enum => EnumFormat(Type),
-        .EnumLiteral => EnumLiteralFormat(spec, Type),
-        .ComptimeInt => ComptimeIntFormat,
-        .Int => IntFormat(spec, Type),
+    switch (@typeInfo(Type)) {
+        .Array => return ArrayFormat(spec, Type),
+        .Bool => return BoolFormat,
+        .Type => return TypeFormat(spec),
+        .Struct => return StructFormat(spec, Type),
+        .Union => return UnionFormat(spec, Type),
+        .Enum => return EnumFormat(Type),
+        .EnumLiteral => return EnumLiteralFormat(spec, Type),
+        .ComptimeInt => return ComptimeIntFormat,
+        .Int => return IntFormat(spec, Type),
         .Pointer => |pointer_info| switch (pointer_info.size) {
-            .One => PointerOneFormat(spec, Type),
-            .Many => PointerManyFormat(spec, Type),
-            .Slice => PointerSliceFormat(spec, Type),
+            .One => return PointerOneFormat(spec, Type),
+            .Many => return PointerManyFormat(spec, Type),
+            .Slice => return PointerSliceFormat(spec, Type),
             else => @compileError(@typeName(Type)),
         },
         .Optional => OptionalFormat(spec, Type),
-        .Null => NullFormat,
-        .Void => VoidFormat,
-        .NoReturn => NoReturnFormat,
-        .Vector => VectorFormat(spec, Type),
-        .ErrorUnion => ErrorUnionFormat(spec, Type),
-        .ErrorSet => ErrorSetFormat(Type),
+        .Null => return NullFormat,
+        .Void => return VoidFormat,
+        .NoReturn => return NoReturnFormat,
+        .Vector => return VectorFormat(spec, Type),
+        .ErrorUnion => return ErrorUnionFormat(spec, Type),
+        .ErrorSet => return ErrorSetFormat(Type),
         else => @compileError(@typeName(Type)),
-    };
+    }
 }
 pub fn GenericRenderFormat(comptime Format: type) type {
     comptime {
@@ -1106,7 +1106,7 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
         pub fn formatWriteStringLiteral(format: anytype, array: anytype) void {
             array.writeOne('"');
             for (format.value) |c| {
-                array.writeMany(lit.lit_hex_sequences[c]);
+                array.writeFormat(fmt.esc(c));
             }
             array.writeOne('"');
         }
