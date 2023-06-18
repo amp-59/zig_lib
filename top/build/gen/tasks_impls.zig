@@ -179,7 +179,7 @@ fn writeOne(array: *Array, one: u8, variant: types.Variant) void {
 fn writeIntegerString(array: *Array, arg_string: []const u8, variant: types.Variant) void {
     switch (variant) {
         .write_buf => {
-            array.writeMany("const s:[]const u8=builtin.fmt.ud64(");
+            array.writeMany("const s:[]const u8=ud64(");
             array.writeMany(arg_string);
             array.writeMany(").readAll();\n");
             if (prefer_builtin_memcpy) {
@@ -195,7 +195,7 @@ fn writeIntegerString(array: *Array, arg_string: []const u8, variant: types.Vari
             array.writeMany("));\n");
         },
         .length => {
-            array.writeMany("len+%=builtin.fmt.ud64(");
+            array.writeMany("len+%=ud64(");
             array.writeMany(arg_string);
             array.writeMany(").readAll().len;\n");
         },

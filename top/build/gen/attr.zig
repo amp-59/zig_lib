@@ -170,6 +170,12 @@ pub const zig_build_command_attributes: types.Attributes = .{
             .descr = &.{"Enable the \"red-zone\""},
         },
         .{
+            .name = "builtin",
+            .string = "-fbuiltin",
+            .and_no = .{ .string = "-fno-builtin" },
+            .descr = &.{"Enable implicit builtin knowledge of functions"},
+        },
+        .{
             .name = "omit_frame_pointer",
             .string = "-fomit-frame-pointer",
             .and_no = .{ .string = "-fno-omit-frame-pointer" },
