@@ -642,16 +642,19 @@ fn futexRequeue(comptime futex_spec: FutexSpec, futex1: *u32, futex2: *u32, coun
         return futex_error;
     }
 }
-pub const start = struct {
-    pub export fn _start() callconv(.Naked) noreturn {
-        static.stack_addr = asm volatile (
-            \\xorq  %%rbp,  %%rbp
-            : [argc] "={rsp}" (-> u64),
-        );
-        @call(.never_inline, callMain, .{});
+pub const start = if (builtin.zig.output_mode == .Exe)
+    struct {
+        pub export fn _start() callconv(.Naked) noreturn {
+            static.stack_addr = asm volatile (
+                \\xorq  %%rbp,  %%rbp
+                : [argc] "={rsp}" (-> u64),
+            );
+            @call(.never_inline, callMain, .{});
+        }
+        pub usingnamespace builtin.debug;
     }
-    pub usingnamespace builtin.debug;
-};
+else
+    builtin.debug;
 const SignalActionSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.sigaction_errors },
     return_type: type = void,
@@ -773,7 +776,7 @@ pub const exception = struct {
         var buf: [8192]u8 = undefined;
         var pathname: [4096]u8 = undefined;
         const link_s: []const u8 = pathname[0..builtin.debug.name(&pathname)];
-        const len: u64 = mach.memcpyMulti(&buf, &.{ "SIG", @tagName(sig), " at address ", fault_addr_s, ", ", link_s });
+        const len: u64 = mach.memcpyMulti(&buf, &.{ builtin.debug.about_fault_p0_s, "SIG", @tagName(sig), " at address ", fault_addr_s, ", ", link_s });
         @panic(buf[0..len]);
     }
     pub fn restoreRunTime() callconv(.Naked) void {
