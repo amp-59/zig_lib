@@ -86,7 +86,7 @@ pub const BuilderSpec = struct {
             toplevel_list_command: [:0]const u8 = "list",
             /// Module containing full paths of zig_exe, build_root, cache_root, and
             /// global_cache_root. May be useful for metaprogramming.
-            env: [:0]const u8 = "env",
+            context: [:0]const u8 = "context",
             /// Basename of output directory relative to build root.
             zig_out_dir: [:0]const u8 = "zig-out",
             /// Basename of cache directory relative to build root.
@@ -104,7 +104,7 @@ pub const BuilderSpec = struct {
         } = .{},
         special: struct {
             /// Defines compile commands for stack tracer object
-            tracer: ?types.BuildCommand = .{ .kind = .obj, .mode = .ReleaseFast, .strip = true },
+            stack_tracer: ?types.BuildCommand = .{ .kind = .obj, .mode = .ReleaseSmall, .strip = true },
         } = .{},
         extensions: struct {
             /// Extension for Zig source files.
@@ -272,6 +272,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             pub var euid: u16 = undefined;
             pub var egid: u16 = undefined;
             pub var tracer: ?*Node = null;
+            pub var build_root_fd: u64 = undefined;
+            pub var context_dir_fd: u64 = undefined;
         };
         pub usingnamespace GlobalState;
         pub const specification: BuilderSpec = builder_spec;
@@ -344,6 +346,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             const addr_buf: *u64 = @ptrCast(*u64, &node.deps);
             const ret: *Dependency = @intToPtr(*Dependency, allocator.addGeneric(size_of, builder_spec.options.init_len.deps, addr_buf, &node.deps_max_len, node.deps_len));
             node.deps_len +%= 1;
+            mem.zero(Dependency, ret);
             return ret;
         }
         fn addArg(node: *Node, allocator: *Allocator) *[*:0]u8 {
@@ -409,7 +412,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             }
         }
         pub fn initSpecialNodes(allocator: *Allocator, toplevel: *Node) void {
-            if (builder_spec.options.special.tracer) |build_cmd| {
+            if (builder_spec.options.special.stack_tracer) |build_cmd| {
                 const special: *Node = try toplevel.addBuild(allocator, build_cmd, "tracer", paths.tracer_root);
                 special.options.is_special = true;
                 GlobalState.tracer = special;
@@ -432,11 +435,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             GlobalState.args = args;
             GlobalState.vars = vars;
             var ret: *Node = allocator.create(Node);
-            mem.zero(Node, ret);
-            ret.addPath(allocator).addName(allocator).* =
-                mach.manyToSlice80(GlobalState.args[2]);
-            ret.addPath(allocator).addName(allocator).* =
-                mach.manyToSlice80(GlobalState.args[3]);
+            ret.addPath(allocator).addName(allocator).* = mach.manyToSlice80(GlobalState.args[2]);
+            ret.addPath(allocator).addName(allocator).* = mach.manyToSlice80(GlobalState.args[3]);
             ret.name = duplicate(allocator, builder_spec.options.names.toplevel_node);
             ret.addFd(allocator, try meta.wrap(file.path(path1(), ret.paths[0].names[0])));
             ret.kind = .group;
@@ -444,14 +444,20 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             ret.args = Node.args.ptr;
             ret.args_max_len = Node.args.len;
             ret.args_len = Node.args.len;
-            makeRootDirectory(ret.fds[0], builder_spec.options.names.zig_out_dir);
-            makeRootDirectory(ret.fds[0], paths.zig_out_exe_dir);
-            makeRootDirectory(ret.fds[0], paths.zig_out_lib_dir);
-            makeRootDirectory(ret.fds[0], paths.zig_out_aux_dir);
-            makeRootDirectory(ret.fds[0], builder_spec.options.names.zig_stat_dir);
-            writeEnv(ret.cacheRoot(), ret.globalCacheRoot());
+            for ([5][:0]const u8{
+                builder_spec.options.names.zig_out_dir,
+                paths.zig_out_exe_dir,
+                paths.zig_out_lib_dir,
+                paths.zig_out_aux_dir,
+                builder_spec.options.names.zig_stat_dir,
+            }) |name| {
+                makeRootDirectory(ret.fds[0], name);
+            }
+            ret.task_lock = omni_lock;
+            writeContext(ret.cacheRoot(), ret.globalCacheRoot());
             return ret;
         }
+
         /// Initialize a new group command
         pub fn addGroup(toplevel: *Node, allocator: *Allocator, name: []const u8) !*Node {
             @setRuntimeSafety(builder_spec.options.enable_safety);
@@ -461,7 +467,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             ret.kind = .group;
             ret.task = .any;
             ret.name = duplicate(allocator, name);
-            initializeCommand(allocator, toplevel, ret);
+            ret.options.is_hidden = name[0] == '_';
+            ret.task_lock = omni_lock;
             return ret;
         }
         /// Initialize a new `zig fmt` command.
@@ -542,6 +549,9 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                         node.dependOnSelfExe(allocator);
                     }
                 }
+                if (node.task == .format) {
+                    node.task_lock = format_lock;
+                }
                 if (node.task == .run) {
                     node.task_lock = run_lock;
                 }
@@ -553,20 +563,29 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 node.task_lock = omni_lock;
             }
         }
+        fn haveSpecialDep(node: *Node) bool {
+            for (node.deps[0..node.nodes_len]) |dep| {
+                if (dep.options.is_special) {
+                    return true;
+                }
+            }
+            return false;
+        }
         fn updateCommand(allocator: *Allocator, _: *Node, node: *Node) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             node.options.have_update = true;
             if (node.kind == .worker and
-                node.task == .build and
-                node.task_info.build.kind == .exe)
+                node.task == .build)
             {
-                const build_cmd: *types.BuildCommand = node.task_info.build;
-                const mode: builtin.Mode = build_cmd.mode orelse .Debug;
-                const strip: bool = build_cmd.strip orelse (mode != .ReleaseSmall);
-                if (builder_spec.options.add_debug_stack_traces) {
-                    if (!strip) {
-                        if (GlobalState.tracer) |g| {
-                            node.dependOnObject(allocator, g);
+                if (node.task_info.build.kind == .exe) {
+                    const build_cmd: *types.BuildCommand = node.task_info.build;
+                    const mode: builtin.Mode = build_cmd.mode orelse .Debug;
+                    const strip: bool = build_cmd.strip orelse (mode != .ReleaseSmall);
+                    if (builder_spec.options.add_debug_stack_traces) {
+                        if (!strip) {
+                            if (GlobalState.tracer) |g| {
+                                node.dependOnObject(allocator, g);
+                            }
                         }
                     }
                 }
@@ -598,7 +617,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             node.addPath(allocator).* = on_node.paths[0];
             node.addDep(allocator).* = .{ .task = node.task, .on_node = on_node, .on_task = .archive, .on_state = .finished };
         }
-        inline fn dependOnSelfExe(node: *Node, allocator: *Allocator) void {
+        fn dependOnSelfExe(node: *Node, allocator: *Allocator) void {
             node.addArg(allocator).* = node.paths[0].concatenate(allocator);
             node.addDep(allocator).* = .{ .task = .run, .on_node = node, .on_task = .build, .on_state = .finished };
         }
