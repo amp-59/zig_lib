@@ -2485,6 +2485,150 @@ pub const ArchiveCommand = struct {
         return len;
     }
 };
+pub const ObjcopyCommand = struct {
+    output_target: ?[]const u8 = null,
+    only_section: ?[]const u8 = null,
+    pad_to: ?usize = null,
+    strip_debug: bool = false,
+    strip_all: bool = false,
+    debug_only: bool = false,
+    add_gnu_debuglink: ?[]const u8 = null,
+    extract_to: ?[]const u8 = null,
+    pub fn formatWrite(cmd: *ObjcopyCommand, array: anytype) void {
+        @setRuntimeSafety(safety);
+        if (cmd.output_target) |output_target| {
+            array.writeMany("--output-target\x00");
+            array.writeMany(output_target);
+            array.writeOne(0);
+        }
+        if (cmd.only_section) |only_section| {
+            array.writeMany("--only-section\x00");
+            array.writeMany(only_section);
+            array.writeOne(0);
+        }
+        if (cmd.pad_to) |pad_to| {
+            array.writeMany("--pad-to\x00");
+            array.writeFormat(fmt.ud64(pad_to));
+            array.writeOne(0);
+        }
+        if (cmd.strip_debug) {
+            array.writeMany("--strip-debug\x00");
+        }
+        if (cmd.strip_all) {
+            array.writeMany("--strip-all\x00");
+        }
+        if (cmd.debug_only) {
+            array.writeMany("--only-keep-debug\x00");
+        }
+        if (cmd.add_gnu_debuglink) |add_gnu_debuglink| {
+            array.writeMany("--add-gnu-debuglink\x00");
+            array.writeMany(add_gnu_debuglink);
+            array.writeOne(0);
+        }
+        if (cmd.extract_to) |extract_to| {
+            array.writeMany("--extract-to\x00");
+            array.writeMany(extract_to);
+            array.writeOne(0);
+        }
+    }
+    pub fn formatWriteBuf(cmd: *ObjcopyCommand, buf: [*]u8) u64 {
+        @setRuntimeSafety(safety);
+        var len: u64 = 0;
+        if (cmd.output_target) |output_target| {
+            @ptrCast(*[16]u8, buf + len).* = "--output-target\x00".*;
+            len +%= 16;
+            @memcpy(buf + len, output_target);
+            len +%= output_target.len;
+            buf[len] = 0;
+            len +%= 1;
+        }
+        if (cmd.only_section) |only_section| {
+            @ptrCast(*[15]u8, buf + len).* = "--only-section\x00".*;
+            len +%= 15;
+            @memcpy(buf + len, only_section);
+            len +%= only_section.len;
+            buf[len] = 0;
+            len +%= 1;
+        }
+        if (cmd.pad_to) |pad_to| {
+            @ptrCast(*[9]u8, buf + len).* = "--pad-to\x00".*;
+            len +%= 9;
+            const s: []const u8 = ud64(pad_to).readAll();
+            @memcpy(buf + len, s);
+            len = len + s.len;
+            buf[len] = 0;
+            len +%= 1;
+        }
+        if (cmd.strip_debug) {
+            @ptrCast(*[14]u8, buf + len).* = "--strip-debug\x00".*;
+            len +%= 14;
+        }
+        if (cmd.strip_all) {
+            @ptrCast(*[12]u8, buf + len).* = "--strip-all\x00".*;
+            len +%= 12;
+        }
+        if (cmd.debug_only) {
+            @ptrCast(*[18]u8, buf + len).* = "--only-keep-debug\x00".*;
+            len +%= 18;
+        }
+        if (cmd.add_gnu_debuglink) |add_gnu_debuglink| {
+            @ptrCast(*[20]u8, buf + len).* = "--add-gnu-debuglink\x00".*;
+            len +%= 20;
+            @memcpy(buf + len, add_gnu_debuglink);
+            len +%= add_gnu_debuglink.len;
+            buf[len] = 0;
+            len +%= 1;
+        }
+        if (cmd.extract_to) |extract_to| {
+            @ptrCast(*[13]u8, buf + len).* = "--extract-to\x00".*;
+            len +%= 13;
+            @memcpy(buf + len, extract_to);
+            len +%= extract_to.len;
+            buf[len] = 0;
+            len +%= 1;
+        }
+        return len;
+    }
+    pub fn formatLength(cmd: *ObjcopyCommand) u64 {
+        @setRuntimeSafety(safety);
+        var len: u64 = 0;
+        if (cmd.output_target) |output_target| {
+            len +%= 16;
+            len +%= output_target.len;
+            len +%= 1;
+        }
+        if (cmd.only_section) |only_section| {
+            len +%= 15;
+            len +%= only_section.len;
+            len +%= 1;
+        }
+        if (cmd.pad_to) |pad_to| {
+            len +%= 9;
+            len +%= ud64(pad_to).readAll().len;
+            len +%= 1;
+        }
+        if (cmd.strip_debug) {
+            len +%= 14;
+        }
+        if (cmd.strip_all) {
+            len +%= 12;
+        }
+        if (cmd.debug_only) {
+            len +%= 18;
+        }
+        if (cmd.add_gnu_debuglink) |add_gnu_debuglink| {
+            len +%= 20;
+            len +%= add_gnu_debuglink.len;
+            len +%= 1;
+        }
+        if (cmd.extract_to) |extract_to| {
+            len +%= 13;
+            len +%= extract_to.len;
+            len +%= 1;
+        }
+        return len;
+    }
+};
 pub const TableGenCommand = struct {
     /// Use colors in output (default=autodetect)
     color: ?enum(u2) {
