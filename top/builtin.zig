@@ -1956,13 +1956,16 @@ pub const parse = struct {
     }
 };
 pub const fmt = struct {
-    pub const About = blk: {
+    const about_blank_s = blk: {
+        const indent = (" " ** config.message_indent);
         if (config.message_style) |style| {
-            break :blk *const [config.message_indent +% style.len +% config.message_no_style.len:0]u8;
+            break :blk style ++ indent ++ config.message_no_style;
         }
-        break :blk *const [config.message_indent:0]u8;
+        break :blk indent;
     };
-    pub fn about(comptime s: [:0]const u8) About {
+    const AboutSrc = @TypeOf(about_blank_s);
+    const AboutDest = @TypeOf(@constCast(about_blank_s));
+    pub fn about(comptime s: [:0]const u8) AboutSrc {
         var lhs: [:0]const u8 = s;
         lhs = config.message_prefix ++ lhs;
         lhs = lhs ++ config.message_suffix;
