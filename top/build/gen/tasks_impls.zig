@@ -533,6 +533,9 @@ pub fn writeFunctionBody(array: *Array, options: []const types.ParamSpec, varian
             writeOptStringExtra(array, param_spec.string, variant, param_spec.char orelse '\x00');
             continue;
         }
+        if (param_spec.name.len == 0) {
+            continue;
+        }
         if (param_spec.and_no) |no_param_spec| {
             if (param_spec.tag == .boolean_field and no_param_spec.tag == .boolean_field) {
                 writeIfOptionalField(array, if_optional_field_value, if_optional_field_capture);
@@ -703,6 +706,9 @@ fn writeFunctionSignatureFromAttributes(array: *Array, attributes: types.Attribu
 }
 fn writeFields(array: *Array, attributes: types.Attributes) void {
     for (attributes.params) |param_spec| {
+        if (param_spec.name.len == 0) {
+            continue;
+        }
         if (param_spec.isField()) {
             for (param_spec.descr) |line| {
                 array.writeMany("/// ");
@@ -751,6 +757,7 @@ pub fn main() !void {
         attr.zig_build_command_attributes,
         attr.zig_format_command_attributes,
         attr.zig_ar_command_attributes,
+        attr.zig_objcopy_command_attributes,
         attr.llvm_tblgen_command_attributes,
         attr.harec_attributes,
     }) |attributes| {

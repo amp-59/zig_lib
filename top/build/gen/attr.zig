@@ -834,6 +834,55 @@ pub const zig_format_command_attributes: types.Attributes = .{
         },
     },
 };
+
+pub const zig_objcopy_command_attributes: types.Attributes = .{
+    .type_name = "ObjcopyCommand",
+    .fn_name = "objcopy",
+    .params = &.{
+        .{
+            .name = "output_target",
+            .tag = .optional_string_field,
+            .string = "--output-target",
+            .type = &optional_string_type,
+        },
+        .{
+            .name = "only_section",
+            .tag = .optional_string_field,
+            .string = "--only-section",
+            .type = &optional_string_type,
+        },
+        .{
+            .name = "pad_to",
+            .string = "--pad-to",
+            .tag = .optional_integer_field,
+            .type = &optional_integer_type,
+        },
+        .{
+            .name = "strip_debug",
+            .string = "--strip-debug",
+        },
+        .{
+            .name = "strip_all",
+            .string = "--strip-all",
+        },
+        .{
+            .name = "debug_only",
+            .string = "--only-keep-debug",
+        },
+        .{
+            .name = "add_gnu_debuglink",
+            .tag = .optional_string_field,
+            .string = "--add-gnu-debuglink",
+            .type = &optional_string_type,
+        },
+        .{
+            .name = "extract_to",
+            .tag = .optional_string_field,
+            .string = "--extract-to",
+            .type = &optional_string_type,
+        },
+    },
+};
 pub const llvm_tblgen_command_attributes: types.Attributes = .{
     .type_name = "TableGenCommand",
     .fn_name = "tblgen",
