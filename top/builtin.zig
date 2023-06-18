@@ -1273,7 +1273,7 @@ pub const debug = struct {
     const size: usize = 4096;
     const about_exit_0_s: [:0]const u8 = fmt.about("exit");
     pub extern fn printStackTrace(ret_addr: u64) void;
-    pub const about_fault_p0_s: [:0]const u8 = blk: {
+    pub const about_fault_p0_s = blk: {
         var lhs: [:0]const u8 = "fault";
         lhs = config.message_prefix ++ lhs;
         lhs = lhs ++ config.message_suffix;
@@ -1281,7 +1281,7 @@ pub const debug = struct {
         lhs = "\x1b[1m" ++ lhs ++ config.message_no_style;
         break :blk lhs ++ " " ** (config.message_indent - len);
     };
-    const about_error_p0_s: [:0]const u8 = blk: {
+    const about_error_p0_s = blk: {
         var lhs: [:0]const u8 = "error";
         lhs = config.message_prefix ++ lhs;
         lhs = lhs ++ config.message_suffix;
@@ -1592,6 +1592,8 @@ pub const debug = struct {
         var buf: [1024]u8 = undefined;
         var len: u64 = 0;
         const idx_s: []const u8 = fmt.ud64(idx).readAll();
+        @ptrCast(*[debug.about_fault_p0_s.len]u8, &buf).* = debug.about_fault_p0_s.*;
+        len +%= debug.about_fault_p0_s.len;
         if (max_len == 0) {
             @ptrCast(*[10]u8, buf[len..].ptr).* = "indexing (".*;
             len +%= 10;
@@ -1656,7 +1658,7 @@ pub const debug = struct {
         });
         panic(buf[0..len], null, ret_addr);
     }
-    pub noinline fn panicUnwrapError(st: StackTrace, err: anyerror) noreturn {
+    pub noinline fn panicUnwrapError(st: ?*StackTrace, err: anyerror) noreturn {
         if (!config.discard_errors) {
             @compileError("error is discarded");
         }
