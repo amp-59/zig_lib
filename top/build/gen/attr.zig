@@ -828,9 +828,10 @@ pub const zig_format_command_attributes: types.Attributes = .{
             .descr = &.{"Exclude file or directory from formatting"},
         },
         .{
-            .name = "root_path",
+            .name = "pathname",
             .tag = .formatter_param,
             .type = &types.ProtoTypeDescr{ .type_name = "types.Path" },
+            .descr = &.{"File system target for formatting operation. May be a file or a directory."},
         },
     },
 };
@@ -839,6 +840,15 @@ pub const zig_objcopy_command_attributes: types.Attributes = .{
     .type_name = "ObjcopyCommand",
     .fn_name = "objcopy",
     .params = &.{
+        .{
+            .name = "zig_exe",
+            .tag = .string_param,
+            .type = &string_type,
+        },
+        .{
+            .string = "objcopy",
+            .tag = .string_literal,
+        },
         .{
             .name = "output_target",
             .tag = .optional_string_field,
@@ -880,6 +890,12 @@ pub const zig_objcopy_command_attributes: types.Attributes = .{
             .tag = .optional_string_field,
             .string = "--extract-to",
             .type = &optional_string_type,
+        },
+        .{
+            .name = "file",
+            .tag = .formatter_param,
+            .type = &types.ProtoTypeDescr{ .type_name = "types.Path" },
+            .descr = &.{"Target binary"},
         },
     },
 };
