@@ -25,6 +25,7 @@ pub const signal_handlers: builtin.SignalHandlers = .{
     .breakpoint = true,
 };
 pub const runtime_assertions: bool = true;
+pub const tracing_override: bool = false;
 pub const comptime_assertions: bool = false;
 const test_real_examples: bool = true;
 const Allocator = mem.GenericArenaAllocator(.{
