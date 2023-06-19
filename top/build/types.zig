@@ -17,6 +17,7 @@ pub const Task = enum(u8) {
     build = 3,
     run = 4,
     archive = 5,
+    objcopy = 6,
     pub const list: []const Task = meta.tagList(Task);
 };
 // zig fmt: off
