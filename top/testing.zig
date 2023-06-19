@@ -117,6 +117,28 @@ pub fn arbitraryFieldOrder(comptime T: type) void {
         }
     }
 }
+pub fn arbitraryDeclOrder(comptime T: type) void {
+    @setEvalBranchQuota(~@as(u32, 0));
+    const s = struct {
+        fn ascName(comptime x: builtin.Type.Declaration, comptime y: builtin.Type.Declaration) bool {
+            const min = @min(x.name.len, y.name.len);
+            for (x.name[0..min], y.name[0..min]) |xx, yy| {
+                if (xx > yy) return true;
+                if (yy > xx) return false;
+            }
+            return false;
+        }
+    };
+    const decls: []const builtin.Type.Declaration = @typeInfo(T).Struct.decls;
+    comptime var values: [decls.len]builtin.Type.Declaration =
+        @ptrCast(*const [decls.len]builtin.Type.Declaration, decls.ptr).*;
+    algo.shellSort(builtin.Type.Declaration, s.ascName, builtin.identity, &values);
+    inline for (values, 0..) |field, index| {
+        if (!mem.testEqualMany(u8, field.name, decls[index].name)) {
+            @compileError("bad name: expected " ++ field.name ++ ", found " ++ decls[index].name);
+        }
+    }
+}
 fn writeDepth(array: *mem.StaticString(1048576), depth: u64) void {
     var i: u64 = 0;
     while (i != depth) : (i += 1) {
