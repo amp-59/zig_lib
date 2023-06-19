@@ -2148,7 +2148,7 @@ pub const FormatCommand = struct {
     ast_check: bool = false,
     /// Exclude file or directory from formatting
     exclude: ?[]const u8 = null,
-    pub fn formatWrite(cmd: *FormatCommand, zig_exe: []const u8, root_path: types.Path, array: anytype) void {
+    pub fn formatWrite(cmd: *FormatCommand, zig_exe: []const u8, pathname: types.Path, array: anytype) void {
         @setRuntimeSafety(safety);
         array.writeMany(zig_exe);
         array.writeOne(0);
@@ -2172,9 +2172,9 @@ pub const FormatCommand = struct {
             array.writeMany(exclude);
             array.writeOne(0);
         }
-        array.writeFormat(root_path);
+        array.writeFormat(pathname);
     }
-    pub fn formatWriteBuf(cmd: *FormatCommand, zig_exe: []const u8, root_path: types.Path, buf: [*]u8) u64 {
+    pub fn formatWriteBuf(cmd: *FormatCommand, zig_exe: []const u8, pathname: types.Path, buf: [*]u8) u64 {
         @setRuntimeSafety(safety);
         var len: u64 = 0;
         @memcpy(buf + len, zig_exe);
@@ -2211,10 +2211,10 @@ pub const FormatCommand = struct {
             buf[len] = 0;
             len +%= 1;
         }
-        len +%= root_path.formatWriteBuf(buf + len);
+        len +%= pathname.formatWriteBuf(buf + len);
         return len;
     }
-    pub fn formatLength(cmd: *FormatCommand, zig_exe: []const u8, root_path: types.Path) u64 {
+    pub fn formatLength(cmd: *FormatCommand, zig_exe: []const u8, pathname: types.Path) u64 {
         @setRuntimeSafety(safety);
         var len: u64 = 0;
         len +%= zig_exe.len;
@@ -2239,7 +2239,7 @@ pub const FormatCommand = struct {
             len +%= exclude.len;
             len +%= 1;
         }
-        len +%= root_path.formatLength();
+        len +%= pathname.formatLength();
         return len;
     }
 };
@@ -2494,8 +2494,11 @@ pub const ObjcopyCommand = struct {
     debug_only: bool = false,
     add_gnu_debuglink: ?[]const u8 = null,
     extract_to: ?[]const u8 = null,
-    pub fn formatWrite(cmd: *ObjcopyCommand, array: anytype) void {
+    pub fn formatWrite(cmd: *ObjcopyCommand, zig_exe: []const u8, file: types.Path, array: anytype) void {
         @setRuntimeSafety(safety);
+        array.writeMany(zig_exe);
+        array.writeOne(0);
+        array.writeMany("objcopy\x00");
         if (cmd.output_target) |output_target| {
             array.writeMany("--output-target\x00");
             array.writeMany(output_target);
@@ -2530,10 +2533,17 @@ pub const ObjcopyCommand = struct {
             array.writeMany(extract_to);
             array.writeOne(0);
         }
+        array.writeFormat(file);
     }
-    pub fn formatWriteBuf(cmd: *ObjcopyCommand, buf: [*]u8) u64 {
+    pub fn formatWriteBuf(cmd: *ObjcopyCommand, zig_exe: []const u8, file: types.Path, buf: [*]u8) u64 {
         @setRuntimeSafety(safety);
         var len: u64 = 0;
+        @memcpy(buf + len, zig_exe);
+        len +%= zig_exe.len;
+        buf[len] = 0;
+        len +%= 1;
+        @ptrCast(*[8]u8, buf + len).* = "objcopy\x00".*;
+        len +%= 8;
         if (cmd.output_target) |output_target| {
             @ptrCast(*[16]u8, buf + len).* = "--output-target\x00".*;
             len +%= 16;
@@ -2587,11 +2597,15 @@ pub const ObjcopyCommand = struct {
             buf[len] = 0;
             len +%= 1;
         }
+        len +%= file.formatWriteBuf(buf + len);
         return len;
     }
-    pub fn formatLength(cmd: *ObjcopyCommand) u64 {
+    pub fn formatLength(cmd: *ObjcopyCommand, zig_exe: []const u8, file: types.Path) u64 {
         @setRuntimeSafety(safety);
         var len: u64 = 0;
+        len +%= zig_exe.len;
+        len +%= 1;
+        len +%= 8;
         if (cmd.output_target) |output_target| {
             len +%= 16;
             len +%= output_target.len;
@@ -2626,6 +2640,7 @@ pub const ObjcopyCommand = struct {
             len +%= extract_to.len;
             len +%= 1;
         }
+        len +%= file.formatLength();
         return len;
     }
 };
