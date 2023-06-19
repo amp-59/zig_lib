@@ -34,9 +34,8 @@ pub const RenderSpec = struct {
     attempt_render_pointer_many: bool = true,
     pointer_many_len_field_name_suffix: []const u8 = "_len",
     pointer_many_max_len_field_name_suffix: []const u8 = "max_len",
-    const default: RenderSpec = .{};
 };
-pub inline fn any(value: anytype) AnyFormat(RenderSpec.default, @TypeOf(value)) {
+pub inline fn any(value: anytype) AnyFormat(.{}, @TypeOf(value)) {
     return .{ .value = value };
 }
 pub inline fn render(comptime spec: RenderSpec, value: anytype) AnyFormat(spec, @TypeOf(value)) {

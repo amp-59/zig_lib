@@ -544,6 +544,12 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             initializeCommand(allocator, toplevel, ret);
             return ret;
         }
+        pub fn addObjcopy(object: *Node, allocator: *Allocator, objcopy_cmd: ObjcopyCommand, name: []const u8) void {
+            _ = name;
+            _ = objcopy_cmd;
+            _ = allocator;
+            _ = object;
+        }
         fn initializeCommand(allocator: *Allocator, toplevel: *Node, node: *Node) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             node.options.have_init = true;
