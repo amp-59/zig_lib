@@ -25,7 +25,6 @@ pub const SignalAction = extern struct {
         const SA = sys.SA;
     });
 };
-
 pub const SignalInfo = extern struct {
     signo: u32,
     errno: u32,
@@ -768,16 +767,27 @@ pub const exception = struct {
         const sa_old_addr: u64 = if (old_action) |action| @ptrToInt(action) else 0;
         sys.call_noexcept(.rt_sigaction, void, .{ signo, sa_new_addr, sa_old_addr, @sizeOf(@TypeOf(new_action.mask)) });
     }
-    pub fn exceptionHandler(sig: sys.SignalCode, info: *const SignalInfo, _: ?*const anyopaque) noreturn {
+    pub fn exceptionHandler(sig: sys.SignalCode, info: *const SignalInfo, ctx: ?*const anyopaque) noreturn {
         @setRuntimeSafety(false);
         var act: SignalAction = .{ .handler = 0, .flags = 0, .restorer = 0 };
         updateExceptionHandlers(&act);
         const fault_addr_s: []const u8 = builtin.fmt.ux64(info.fields.fault.addr).readAll();
         var buf: [8192]u8 = undefined;
-        var pathname: [4096]u8 = undefined;
-        const link_s: []const u8 = pathname[0..builtin.debug.name(&pathname)];
-        const len: u64 = mach.memcpyMulti(&buf, &.{ builtin.debug.about_fault_p0_s, "SIG", @tagName(sig), " at address ", fault_addr_s, ", ", link_s });
-        @panic(buf[0..len]);
+        var len: u64 = 0;
+        mach.memcpy(&buf, builtin.debug.about_fault_p0_s.ptr, builtin.debug.about_fault_p0_s.len);
+        len +%= builtin.debug.about_fault_p0_s.len;
+        @ptrCast(*[3]u8, buf[len..].ptr).* = "SIG".*;
+        len +%= 3;
+        mach.memcpy(buf[len..].ptr, @tagName(sig).ptr, @tagName(sig).len);
+        len +%= @tagName(sig).len;
+        @ptrCast(*[12]u8, buf[len..].ptr).* = " at address ".*;
+        len +%= 12;
+        mach.memcpy(buf[len..].ptr, fault_addr_s.ptr, fault_addr_s.len);
+        len +%= fault_addr_s.len;
+        @ptrCast(*[2]u8, buf[len..].ptr).* = ", ".*;
+        len +%= 2;
+        len +%= builtin.debug.name(buf[len..]);
+        builtin.debug.panicExtra(buf[0..len], ctx.?);
     }
     pub fn restoreRunTime() callconv(.Naked) void {
         switch (builtin.zig.zig_backend) {
