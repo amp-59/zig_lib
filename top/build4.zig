@@ -113,7 +113,7 @@ pub const BuilderSpec = struct {
         } = .{},
         special: struct {
             /// Defines compile commands for stack tracer object
-            trace: ?types.BuildCommand = .{ .kind = .obj, .mode = .ReleaseSmall, .strip = true },
+            trace: ?types.tasks.BuildCommand = .{ .kind = .obj, .mode = .ReleaseSmall, .strip = true },
         } = .{},
         extensions: struct {
             /// Extension for Zig source files.
@@ -284,11 +284,14 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             pub var build_root_fd: u64 = undefined;
             pub var context_dir_fd: u64 = undefined;
         };
-        pub usingnamespace GlobalState;
         pub const specification: BuilderSpec = builder_spec;
         pub const max_thread_count: u64 = builder_spec.options.max_thread_count;
-        const max_arena_count: u64 = if (max_thread_count == 0) 4 else max_thread_count + 1;
         pub const stack_aligned_bytes: u64 = builder_spec.options.stack_aligned_bytes;
+        const BuildCommand = meta.maybe(builder_spec.options.commands.build, types.tasks.BuildCommand);
+        const FormatCommand = meta.maybe(builder_spec.options.commands.build, types.tasks.FormatCommand);
+        const ArchiveCommand = meta.maybe(builder_spec.options.commands.build, types.tasks.ArchiveCommand);
+        const ObjcopyCommand = meta.maybe(builder_spec.options.commands.build, types.tasks.ObjcopyCommand);
+        const max_arena_count: u64 = if (max_thread_count == 0) 4 else max_thread_count + 1;
         const arena_aligned_bytes: u64 = builder_spec.options.arena_aligned_bytes;
         const stack_lb_addr: u64 = builder_spec.options.stack_lb_addr;
         const stack_up_addr: u64 = stack_lb_addr + (max_thread_count * stack_aligned_bytes);
@@ -328,10 +331,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             on_task: types.Task,
             on_state: types.State,
         };
-        const BuildCommand = meta.maybe(builder_spec.options.commands.build, types.BuildCommand);
-        const FormatCommand = meta.maybe(builder_spec.options.commands.build, types.FormatCommand);
-        const ArchiveCommand = meta.maybe(builder_spec.options.commands.build, types.ArchiveCommand);
-        const ObjcopyCommand = meta.maybe(builder_spec.options.commands.build, types.ObjcopyCommand);
         pub const TaskInfo = packed union {
             build: *BuildCommand,
             format: *FormatCommand,
@@ -456,9 +455,9 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             ret.addFd(allocator, try meta.wrap(file.path(path1(), ret.paths[0].names[0])));
             ret.kind = .group;
             ret.task = .any;
-            ret.args = Node.args.ptr;
-            ret.args_max_len = Node.args.len;
-            ret.args_len = Node.args.len;
+            ret.args = GlobalState.args.ptr;
+            ret.args_max_len = GlobalState.args.len;
+            ret.args_len = GlobalState.args.len;
             for ([5][:0]const u8{
                 builder_spec.options.names.zig_out_dir,
                 paths.zig_out_exe_dir,
