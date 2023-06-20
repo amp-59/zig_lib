@@ -1,7 +1,33 @@
-//! Miscellaneous low level functions: Primarily related to packing, bit-masks
-//! and bit-shifts. For operator wrappers which unambiguously mimic Zig's
-//! default behaviour see builtin.zig.
 const lit = @import("./lit.zig");
+pub const RegisterState = extern struct {
+    r8: usize,
+    r9: usize,
+    r10: usize,
+    r11: usize,
+    r12: usize,
+    r13: usize,
+    r14: usize,
+    r15: usize,
+    rdi: usize,
+    rsi: usize,
+    rbp: usize,
+    rbx: usize,
+    rdx: usize,
+    rax: usize,
+    rcx: usize,
+    rsp: usize,
+    rip: usize,
+    eflags: usize,
+    cs: u16,
+    gs: u16,
+    fs: u16,
+    pad0: u16 = undefined,
+    err: usize,
+    trapno: usize,
+    oldmask: usize,
+    cr2: usize,
+    pub const offset = 36;
+};
 // For operations with no comptime operands and register-sized integers prefer
 // the following four functions. These reference the assembly directly below,
 // so no truncation is needed to circumvent Zig's requirements for shift_amt.
