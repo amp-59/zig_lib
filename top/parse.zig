@@ -1,7 +1,7 @@
 const meta = @import("./meta.zig");
-const builtin = @import("./builtin.zig");
+const _float = @import("./parse/float.zig");
 
-pub usingnamespace @import("./parse/float.zig");
+pub usingnamespace _float;
 
 pub fn readLEB128(comptime T: type, bytes: []const u8) !extern struct { T, u8 } {
     const Int = meta.Child(T);
