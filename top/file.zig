@@ -1113,7 +1113,7 @@ pub fn write(comptime spec: WriteSpec, fd: u64, write_buf: []const spec.child) s
     }
 }
 pub inline fn writeOne(comptime spec: WriteSpec, fd: u64, write_val: spec.child) sys.ErrorUnion(spec.errors, spec.return_type) {
-    return write(spec, fd, @ptrCast([*]const spec.child, &write_val), 1);
+    return write(spec, fd, @ptrCast([*]const spec.child, &write_val)[0..1]);
 }
 pub fn writeExtra(comptime write_spec: WriteExtraSpec, write_buf: []const write_spec.child) sys.ErrorUnion(
     write_spec.errors,
@@ -1745,13 +1745,15 @@ pub fn send(comptime send_spec: SendSpec, dest_fd: u64, src_fd: u64, offset: ?*u
     send_spec.return_type,
 ) {
     const logging: builtin.Logging.SuccessError = comptime send_spec.logging.override();
-    if (meta.wrap(sys.call(.sendfile, send_spec.errors, send_spec.return_type, .{
+    if (meta.wrap(sys.call(.sendfile, send_spec.errors, u64, .{
         dest_fd, src_fd, @ptrToInt(offset), count,
     }))) |ret| {
         if (logging.Success) {
             debug.sendNotice(dest_fd, src_fd, offset, count, ret);
         }
-        return ret;
+        if (send_spec.return_type == u64) {
+            return ret;
+        }
     } else |sendfile_error| {
         if (logging.Error) {
             debug.sendError(sendfile_error, dest_fd, src_fd, offset, count);
@@ -1923,6 +1925,7 @@ const IOControlSpec = struct {
     const TC = sys.TC;
     const TIOC = sys.TIOC;
 };
+
 pub fn duplicate(comptime dup_spec: DuplicateSpec, old_fd: u64) sys.ErrorUnion(dup_spec.errors, dup_spec.return_type) {
     const logging: builtin.Logging.SuccessError = comptime dup_spec.logging.override();
     if (meta.wrap(sys.call(.dup, dup_spec.errors, dup_spec.return_type, .{old_fd}))) |new_fd| {
