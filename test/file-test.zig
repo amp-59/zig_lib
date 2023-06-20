@@ -79,9 +79,10 @@ pub fn testRecords() !void {
     const proj_stats_root: [:0]const u8 = comptime build_root ++ "/zig-stat/file_test";
     var rcd_buf: [4096]build.Record = undefined;
     const fd: u64 = try file.open(.{}, proj_stats_root);
-    var buf: [4096]u8 = undefined;
     for (rcd_buf[0..try file.read(.{ .child = build.Record }, fd, &rcd_buf)]) |rcd| {
-        builtin.debug.write(buf[0..mach.memcpyMulti(&buf, &.{ @tagName(rcd.detail.mode), "\n" })]);
+        if (rcd.detail.key.mode) {
+            testing.printN(4096, .{ fmt.any(rcd), '\n' });
+        }
     }
 }
 pub fn testStatusExtended() !void {
