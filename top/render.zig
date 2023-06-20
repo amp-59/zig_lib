@@ -79,7 +79,7 @@ pub fn AnyFormat(comptime spec: RenderSpec, comptime Type: type) type {
             .Slice => return PointerSliceFormat(spec, Type),
             else => @compileError(@typeName(Type)),
         },
-        .Optional => OptionalFormat(spec, Type),
+        .Optional => return OptionalFormat(spec, Type),
         .Null => return NullFormat,
         .Void => return VoidFormat,
         .NoReturn => return NoReturnFormat,
