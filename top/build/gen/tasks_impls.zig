@@ -14,6 +14,7 @@ pub const runtime_assertions: bool = false;
 pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
 const max_len: u64 = attr.format_command_options.len + attr.build_command_options.len;
 const Array = mem.StaticString(64 * 1024 * 1024);
+const Array2 = mem.StaticString(64 * 1024);
 const Arrays = mem.StaticArray([]const u8, max_len);
 const Indices = mem.StaticArray(u64, max_len);
 const prefer_ptrcast: bool = true;
@@ -40,28 +41,61 @@ const close_spec: file.CloseSpec = .{
     .errors = .{},
     .logging = .{},
 };
-fn writeType(array: *Array, param_spec: types.ParamSpec) void {
+fn writeType(fields_array: *Array, types_array: *Array2, param_spec: types.ParamSpec) void {
     if (param_spec.and_no) |no_param_spec| {
         const yes_bool: bool = param_spec.tag == .boolean_field;
         const no_bool: bool = no_param_spec.tag == .boolean_field;
         const yes_type: ?types.ProtoTypeDescr = if (yes_bool) null else param_spec.parameter();
         const no_type: ?types.ProtoTypeDescr = if (no_bool) null else no_param_spec.parameter();
         if (yes_bool != no_bool) {
-            array.writeFormat(types.ProtoTypeDescr{ .type_refer = .{
-                .spec = "?",
-                .type = &.{ .type_decl = .{ .Composition = .{
-                    .spec = "union(enum)",
-                    .fields = &.{
-                        .{ .name = "yes", .type = yes_type },
-                        .{ .name = "no", .type = no_type },
-                    },
-                } } },
-            } });
+            if (config.declare_task_field_types) {
+                fields_array.writeMany("?");
+                fields_array.writeMany(param_spec.name);
+                fields_array.writeMany("_type");
+                types_array.writeMany("pub const ");
+                types_array.writeMany(param_spec.name);
+                types_array.writeMany("_type=");
+                types_array.writeFormat(types.ProtoTypeDescr{
+                    .type_decl = .{ .Composition = .{
+                        .spec = "union(enum)",
+                        .fields = &.{
+                            .{ .name = "yes", .type = yes_type },
+                            .{ .name = "no", .type = no_type },
+                        },
+                    } },
+                });
+                types_array.writeMany(";\n");
+            } else {
+                fields_array.writeFormat(types.ProtoTypeDescr{ .type_refer = .{
+                    .spec = "?",
+                    .type = &.{ .type_decl = .{ .Composition = .{
+                        .spec = "union(enum)",
+                        .fields = &.{
+                            .{ .name = "yes", .type = yes_type },
+                            .{ .name = "no", .type = no_type },
+                        },
+                    } } },
+                } });
+            }
         } else {
-            array.writeFormat(types.ProtoTypeDescr.init(?bool));
+            fields_array.writeFormat(types.ProtoTypeDescr.init(?bool));
         }
     } else {
-        array.writeFormat(param_spec.parameter());
+        const need_decl: bool =
+            param_spec.tag == .optional_tag_field or
+            param_spec.tag == .repeatable_tag_field;
+        if (config.declare_task_field_types and need_decl) {
+            fields_array.writeMany("?");
+            fields_array.writeMany(param_spec.name);
+            fields_array.writeMany("_type");
+            types_array.writeMany("pub const ");
+            types_array.writeMany(param_spec.name);
+            types_array.writeMany("_type=");
+            types_array.writeFormat(param_spec.parameter());
+            types_array.writeMany(";\n");
+        } else {
+            fields_array.writeFormat(param_spec.parameter());
+        }
     }
 }
 fn writeIf(array: *Array, value_name: []const u8) void {
@@ -704,7 +738,10 @@ fn writeFunctionSignatureFromAttributes(array: *Array, attributes: types.Attribu
         .length => array.writeMany(")u64"),
     }
 }
-fn writeFields(array: *Array, attributes: types.Attributes) void {
+fn writeFields(allocator: *mem.SimpleAllocator, array: *Array, attributes: types.Attributes) void {
+    var types_array: *Array2 = allocator.create(Array2);
+    const save: u64 = allocator.next;
+    defer allocator.next = save;
     for (attributes.params) |param_spec| {
         if (param_spec.name.len == 0) {
             continue;
@@ -717,7 +754,7 @@ fn writeFields(array: *Array, attributes: types.Attributes) void {
             }
             array.writeMany(param_spec.name);
             array.writeMany(":");
-            writeType(array, param_spec);
+            writeType(array, types_array, param_spec);
             if (param_spec.and_no == null and
                 param_spec.tag == .boolean_field)
             {
@@ -729,6 +766,7 @@ fn writeFields(array: *Array, attributes: types.Attributes) void {
             }
         }
     }
+    array.writeMany(types_array.readAll());
 }
 fn writeFunction(array: *Array, attributes: types.Attributes, variant: types.Variant) void {
     writeFunctionSignatureFromAttributes(array, attributes, variant);
@@ -736,11 +774,11 @@ fn writeFunction(array: *Array, attributes: types.Attributes, variant: types.Var
     writeFunctionBody(array, attributes.params, variant);
     array.writeMany("}\n");
 }
-fn writeTaskStructFromAttributes(array: *Array, attributes: types.Attributes) void {
+fn writeTaskStructFromAttributes(allocator: *mem.SimpleAllocator, array: *Array, attributes: types.Attributes) void {
     array.writeMany("pub const ");
     array.writeMany(attributes.type_name);
     array.writeMany("=struct{\n");
-    writeFields(array, attributes);
+    writeFields(allocator, array, attributes);
     writeFunction(array, attributes, .write);
     writeFunction(array, attributes, .write_buf);
     writeFunction(array, attributes, .length);
@@ -761,7 +799,7 @@ pub fn main() !void {
         attr.llvm_tblgen_command_attributes,
         attr.harec_attributes,
     }) |attributes| {
-        writeTaskStructFromAttributes(array, attributes);
+        writeTaskStructFromAttributes(&allocator, array, attributes);
     }
     gen.truncateFile(write_spec, config.tasks_path, array.readAll());
     array.undefineAll();
