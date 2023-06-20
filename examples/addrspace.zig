@@ -2,6 +2,7 @@ const zig_lib = @import("../zig_lib.zig");
 const mem = zig_lib.mem;
 const fmt = zig_lib.fmt;
 const proc = zig_lib.proc;
+const meta = zig_lib.meta;
 const file = zig_lib.file;
 const virtual = zig_lib.virtual;
 const testing = zig_lib.testing;
@@ -37,9 +38,9 @@ pub fn main() void {
     const SubSpace0 = SuperSpace.SubSpace("discrete-1x10B+1x3B");
     const SubSpace1 = SuperSpace.SubSpace("regular-5x1B");
 
-    testing.refAllDecls(SuperSpace);
-    testing.refAllDecls(SubSpace0);
-    testing.refAllDecls(SubSpace1);
+    meta.refAllDecls(SuperSpace, null);
+    meta.refAllDecls(SubSpace0, null);
+    meta.refAllDecls(SubSpace1, null);
 
     var super_space: SuperSpace = .{};
     var sub_space_0: SubSpace0 = .{};
