@@ -1272,7 +1272,7 @@ pub const debug = struct {
     }
     const size: usize = 4096;
     const about_exit_0_s: [:0]const u8 = fmt.about("exit");
-    pub extern fn printStackTrace(ret_addr: u64) void;
+    pub extern fn printStackTrace(u64, u64) void;
     pub const about_fault_p0_s = blk: {
         var lhs: [:0]const u8 = "fault";
         lhs = config.message_prefix ++ lhs;
@@ -1579,7 +1579,18 @@ pub const debug = struct {
         if (config.tracing_override orelse
             config.tracing_default)
         {
-            printStackTrace(ret_addr orelse @returnAddress());
+            printStackTrace(ret_addr.?, 0);
+        }
+        @call(.always_inline, proc.exitGroupFault, .{ msg, 2 });
+    }
+    pub noinline fn panicExtra(msg: []const u8, ctx_ptr: *const anyopaque) noreturn {
+        @setCold(true);
+        @setRuntimeSafety(false);
+        const st: mach.RegisterState = @intToPtr(*mach.RegisterState, @ptrToInt(ctx_ptr) +% 40).*;
+        if (config.tracing_override orelse
+            config.tracing_default)
+        {
+            printStackTrace(st.rip, st.rbp);
         }
         @call(.always_inline, proc.exitGroupFault, .{ msg, 2 });
     }
