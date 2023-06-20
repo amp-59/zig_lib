@@ -5,8 +5,8 @@ const time = @import("../time.zig");
 const meta = @import("../meta.zig");
 const spec = @import("../spec.zig");
 const builtin = @import("../builtin.zig");
-const tasks = @import("./tasks.zig");
-pub usingnamespace tasks;
+pub const tasks = @import("./tasks.zig");
+pub const hist_tasks = @import("./hist_tasks.zig");
 pub const NodeKind = enum(u8) { group, worker };
 pub const OutputMode = enum(u2) { exe, lib, obj };
 pub const AuxOutputMode = enum(u3) { @"asm", llvm_ir, llvm_bc, h, docs, analysis };
@@ -291,6 +291,9 @@ pub const Path = struct {
         path.names_len +%= 1;
         return ret;
     }
+    pub fn temporary(names: []const [:0]const u8) Path {
+        return .{ .names = @constCast(names.ptr), .names_len = names.len };
+    }
 };
 pub const Files = struct {
     value: []const Path,
@@ -428,19 +431,12 @@ pub const Record = packed struct {
     /// Output size in bytes, max 4GiB
     size: u32,
     /// Extra
-    detail: packed struct {
-        /// Whether the output was stripped
-        strip: bool,
-        /// The optimisation/safety mode for the output
-        mode: builtin.Mode,
-    },
-    pub fn init(ts: time.TimeSpec, size: u64, build_cmd: anytype) Record {
-        const mode = build_cmd.mode orelse .Debug;
-        const strip = build_cmd.strip orelse (mode == .ReleaseSmall);
+    detail: hist_tasks.BuildCommand,
+    pub fn init(ts: time.TimeSpec, size: u64, build_cmd: *tasks.BuildCommand) Record {
         return .{
             .durat = @intCast(u32, (ts.sec * 1_000) +% (ts.nsec / 1_000_000)),
             .size = @intCast(u32, size),
-            .detail = .{ .mode = mode, .strip = strip },
+            .detail = hist_tasks.BuildCommand.convert(build_cmd),
         };
     }
 };
