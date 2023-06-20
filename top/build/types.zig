@@ -2,12 +2,13 @@ const mem = @import("../mem.zig");
 const fmt = @import("../fmt.zig");
 const mach = @import("../mach.zig");
 const time = @import("../time.zig");
+const file = @import("../file.zig");
 const meta = @import("../meta.zig");
 const spec = @import("../spec.zig");
 const builtin = @import("../builtin.zig");
 pub const tasks = @import("./tasks.zig");
 pub const hist_tasks = @import("./hist_tasks.zig");
-pub const NodeKind = enum(u8) { group, worker };
+pub const Node = enum(u8) { group, worker };
 pub const OutputMode = enum(u2) { exe, lib, obj };
 pub const AuxOutputMode = enum(u3) { @"asm", llvm_ir, llvm_bc, h, docs, analysis };
 pub const Task = enum(u8) {
@@ -425,6 +426,14 @@ pub const ReferenceTrace = extern struct {
     };
     pub const len: u64 = 2;
 };
+pub const JobInfo = struct {
+    ts: time.TimeSpec,
+    st: file.Status,
+    ret: struct {
+        sys: u8,
+        srv: u8,
+    },
+};
 pub const Record = packed struct {
     /// Build duration in milliseconds, max 50 days
     durat: u32,
@@ -432,10 +441,10 @@ pub const Record = packed struct {
     size: u32,
     /// Extra
     detail: hist_tasks.BuildCommand,
-    pub fn init(ts: time.TimeSpec, size: u64, build_cmd: *tasks.BuildCommand) Record {
+    pub fn init(job: *JobInfo, build_cmd: *tasks.BuildCommand) Record {
         return .{
-            .durat = @intCast(u32, (ts.sec * 1_000) +% (ts.nsec / 1_000_000)),
-            .size = @intCast(u32, size),
+            .durat = @intCast(u32, (job.ts.sec * 1_000) +% (job.ts.nsec / 1_000_000)),
+            .size = @intCast(u32, job.st.size),
             .detail = hist_tasks.BuildCommand.convert(build_cmd),
         };
     }

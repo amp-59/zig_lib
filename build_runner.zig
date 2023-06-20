@@ -19,7 +19,6 @@ const builtin = srg.builtin;
 pub usingnamespace root;
 pub usingnamespace proc.start;
 const Node = builtin.define("Node", type, build.GenericNode(.{}));
-
 pub const logging_default: builtin.Logging.Default = .{
     .Attempt = false,
     .Success = false,
@@ -28,8 +27,14 @@ pub const logging_default: builtin.Logging.Default = .{
     .Error = false,
     .Fault = false,
 };
-pub const tracing_default: bool = Node.specification.options.enable_safety;
-
+pub const tracing_override: bool = false;
+pub const signal_handlers = .{
+    .illegal_instruction = false,
+    .bus_error = false,
+    .floating_point_error = false,
+    .breakpoint = false,
+    .segmentation_fault = false,
+};
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     var address_space: Node.AddressSpace = .{};
     var thread_space: Node.ThreadSpace = .{};
@@ -40,11 +45,9 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     const toplevel: *Node = Node.init(&allocator, args, vars);
     Node.initSpecialNodes(&allocator, toplevel);
     try meta.wrap(
-        @This().buildMain(&allocator, toplevel),
+        root.buildMain(&allocator, toplevel),
     );
-    for (toplevel.nodes[0..toplevel.nodes_len]) |node| {
-        Node.updateCommands(&allocator, toplevel, node);
-    }
+    Node.updateCommands(&allocator, toplevel, toplevel);
     try meta.wrap(
         Node.processCommands(&address_space, &thread_space, &allocator, toplevel),
     );
