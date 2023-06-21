@@ -1,2 +1,2 @@
-const types = @import("./types.zig");
+const tasks = @import("./tasks.zig");
 const safety: bool = false;
