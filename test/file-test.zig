@@ -81,7 +81,7 @@ pub fn testRecords() !void {
     const fd: u64 = try file.open(.{}, proj_stats_root);
     for (rcd_buf[0..try file.read(.{ .child = build.Record }, fd, &rcd_buf)]) |rcd| {
         if (rcd.detail.key.mode) {
-            testing.printN(4096, .{ fmt.any(rcd), '\n' });
+            // testing.printN(4096, .{ fmt.any(rcd), '\n' });
         }
     }
 }
@@ -347,6 +347,12 @@ fn testPreClean() !void {
     file.unlink(unlink_spec, test_dir ++ "file_test/file_test/file_test") catch {};
     file.removeDir(remove_dir_spec, test_dir ++ "file_test/file_test") catch {};
     file.removeDir(remove_dir_spec, test_dir ++ "file_test") catch {};
+}
+fn testNewFlagPackedStruct() void {
+    const fd: u64 = sys.call_noexcept(.open, u64, .{
+        test_dir ++ "file_test1", file.OpenOptions{ .create = true, .exclusive = false }, file.mode.regular,
+    });
+    sys.call_noexcept(.close, void, .{fd});
 }
 pub fn main(args: [][*:0]u8) !void {
     try meta.wrap(testRecords());
