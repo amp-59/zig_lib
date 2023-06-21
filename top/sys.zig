@@ -2341,7 +2341,30 @@ pub fn ErrorUnion(comptime error_policy: ErrorPolicy, comptime return_type: type
 pub fn Error(comptime errors: []const ErrorCode) type {
     return builtin.ZigError(ErrorCode, errors);
 }
-
+const syscalls = .{
+    syscall0, syscall1,
+    syscall2, syscall3,
+    syscall4, syscall5,
+    syscall6,
+};
+pub fn call(comptime tag: Fn, comptime errors: ErrorPolicy, comptime return_type: type, args: [tag.args()]usize) ErrorUnion(errors, return_type) {
+    const ret: isize = (comptime syscalls[tag.args()])(tag, args);
+    if (return_type == noreturn) {
+        unreachable;
+    }
+    if (errors.throw.len != 0) {
+        try builtin.zigErrorThrow(ErrorCode, errors.throw, ret);
+    }
+    if (errors.abort.len != 0) {
+        builtin.zigErrorAbort(ErrorCode, errors.abort, ret);
+    }
+    if (@sizeOf(return_type) == @sizeOf(usize)) {
+        return @bitCast(return_type, ret);
+    }
+    if (return_type != void) {
+        return @intCast(return_type, ret);
+    }
+}
 inline fn cast(args: anytype) [args.len]usize {
     switch (args.len) {
         0 => return .{},
@@ -2380,30 +2403,6 @@ inline fn cast(args: anytype) [args.len]usize {
             meta.bitCast(usize, args[5]),
         },
         else => unreachable,
-    }
-}
-const syscalls = .{
-    syscall0, syscall1,
-    syscall2, syscall3,
-    syscall4, syscall5,
-    syscall6,
-};
-pub fn call(comptime tag: Fn, comptime errors: ErrorPolicy, comptime return_type: type, args: [tag.args()]usize) ErrorUnion(errors, return_type) {
-    const ret: isize = (comptime syscalls[tag.args()])(tag, args);
-    if (return_type == noreturn) {
-        unreachable;
-    }
-    if (errors.throw.len != 0) {
-        try builtin.zigErrorThrow(ErrorCode, errors.throw, ret);
-    }
-    if (errors.abort.len != 0) {
-        builtin.zigErrorAbort(ErrorCode, errors.abort, ret);
-    }
-    if (@sizeOf(return_type) == @sizeOf(usize)) {
-        return @bitCast(return_type, ret);
-    }
-    if (return_type != void) {
-        return @intCast(return_type, ret);
     }
 }
 pub fn call_noexcept(comptime tag: Fn, comptime return_type: type, args: anytype) return_type {

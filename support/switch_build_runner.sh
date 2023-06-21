@@ -13,7 +13,6 @@ readonly std_build_runner="$zig_install_lib_dir/build_runner.zig";
 readonly zl_build_runner="$(realpath "$support_dir/../build_runner.zig")";
 readonly zl_zig_build="$(realpath "$support_dir/../build.zig")";
 readonly std_build_runner_bkp="$std_build_runner.bkp";
-
 fn () 
 {
     if test -L "$std_build_runner"; then
