@@ -8,7 +8,6 @@ const mach = @import("../../mach.zig");
 const builtin = @import("../../builtin.zig");
 const tasks = @import("../tasks.zig");
 const attr = @import("./attr.zig");
-const types = @import("./types.zig");
 const config = @import("./config.zig");
 pub usingnamespace proc.start;
 pub const runtime_assertions: bool = false;
@@ -64,6 +63,12 @@ pub const InlineTypeDescr = fmt.GenericTypeDescrFormat(.{
         .indent = "",
     },
 });
+
+fn writeOptionalFieldChildType(array: *Array, field_name: []const u8) void {
+    array.writeMany("@typeInfo(@TypeOf(@field(undef, \"");
+    array.writeMany(field_name);
+    array.writeMany("\"))).Optional.child");
+}
 fn writeField(comptime field_type: type, field_name: []const u8, key_array: *Array, val_array: *Array, conv_array: *Array) void {
     const type_info: builtin.Type = @typeInfo(field_type);
     if (type_info == .Optional) {
@@ -76,7 +81,11 @@ fn writeField(comptime field_type: type, field_name: []const u8, key_array: *Arr
             key_array.writeMany(":bool=false,\n");
             val_array.writeMany(field_name);
             val_array.writeMany(":");
-            val_array.writeFormat(InlineTypeDescr.init(child_type));
+            if (child_type_info == .Bool) {
+                val_array.writeMany("bool");
+            } else {
+                writeOptionalFieldChildType(val_array, field_name);
+            }
             val_array.writeMany("=undefined,\n");
             conv_array.writeMany("ret.key.");
             conv_array.writeMany(field_name);
@@ -97,13 +106,17 @@ fn writeDecl(decl_name: []const u8, key_array: *Array, val_array: *Array, conv_a
     key_array.writeMany("=packed struct{\n");
     key_array.writeMany("key:Key,\n");
     key_array.writeMany("val:Val,\n");
+    key_array.writeMany("const undef:tasks.");
+    key_array.writeMany(decl_name);
+    key_array.writeMany(" = undefined;");
     key_array.writeMany("const Key=packed struct{\n");
     val_array.writeMany("const Val=packed struct{\n");
-    conv_array.writeMany("pub fn convert(cmd:types.");
+    conv_array.writeMany("pub fn convert(cmd:tasks.");
     conv_array.writeMany(decl_name);
     conv_array.writeMany(")");
     conv_array.writeMany(decl_name);
     conv_array.writeMany("{\n");
+    conv_array.writeMany("@setRuntimeSafety(false);\n");
     conv_array.writeMany("var ret:");
     conv_array.writeMany(decl_name);
     conv_array.writeMany("=undefined;\n");
@@ -115,6 +128,7 @@ fn writeClose(array: *Array, key_array: *Array, val_array: *Array, conv_array: *
         array.writeMany(val_array.readAll());
         array.writeMany("};\n");
         array.writeMany(conv_array.readAll());
+        array.writeMany("return ret;\n");
         array.writeMany("}\n};\n");
     }
     key_array.undefineAll();
