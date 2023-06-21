@@ -721,12 +721,10 @@ pub fn EnumBitField(comptime E: type) type {
 pub const BitFieldPair = struct {
     name: []const u8,
     value: usize,
-    pub fn asc(arg1: BitFieldPair, arg2: BitFieldPair) bool {
-        return arg1.value > arg2.value;
-    }
-    pub fn desc(arg1: BitFieldPair, arg2: BitFieldPair) bool {
-        return arg1.value < arg2.value;
-    }
+};
+pub const BitFieldSet = struct {
+    tag: enum { E, F },
+    pairs: []const BitFieldPair,
 };
 pub fn ToBitFieldPairs(comptime T: type) []const BitFieldPair {
     comptime {
@@ -780,36 +778,88 @@ pub fn ToBitFieldPairs(comptime T: type) []const BitFieldPair {
         return pairs[0..len];
     }
 }
-const BitFieldSet = struct {
-    tag: enum { E, F },
-    pairs: []const BitFieldPair,
-};
-pub fn ToBitFieldPairsStrict(comptime T: type) []const BitFieldSet {
-    const decls: []const builtin.Type.Declaration = @typeInfo(T).Struct.decls;
+
+fn sortDecls(comptime Container: type) []const builtin.Type.Declaration {
+    const type_info: builtin.Type = @typeInfo(Container);
+    const decls: []const builtin.Type.Declaration = resolve(type_info).decls;
+    var sorted: [decls.len]builtin.Type.Declaration = sliceToArrayPointer(decls).*;
+    var l_idx: usize = 1;
+    while (l_idx < sorted.len) : (l_idx +%= 1) {
+        var r_idx: usize = l_idx -% 1;
+        const x: builtin.Type.Declaration = sorted[l_idx];
+        const x_val = if (x.is_pub) @field(Container, x.name) else 0;
+        while (r_idx < sorted.len) : (r_idx -%= 1) {
+            const y: builtin.Type.Declaration = sorted[r_idx];
+            const y_val = if (y.is_pub) @field(Container, y.name) else 0;
+            if (y_val <= x_val) {
+                break;
+            }
+            sorted[r_idx +% 1] = y;
+        }
+        sorted[r_idx +% 1] = x;
+    }
+    return &sorted;
+}
+fn sortSets(sets: []const BitFieldSet) []const BitFieldSet {
+    var sorted: [sets.len]BitFieldSet = sliceToArrayPointer(sets).*;
+    var l_idx: comptime_int = 1;
+    while (l_idx < sets.len) : (l_idx +%= 1) {
+        const set: BitFieldSet = sorted[l_idx];
+        var r_idx: u64 = l_idx -% 1;
+        while (r_idx < sets.len and
+            sorted[r_idx].pairs[0].value > set.pairs[0].value) : (r_idx -%= 1)
+        {
+            sorted[r_idx +% 1] = sorted[r_idx];
+        }
+        sorted[r_idx +% 1] = set;
+    }
+    return &sorted;
+}
+fn sortPairs(pairs: []const BitFieldPair) []const BitFieldPair {
+    var sorted: [pairs.len]BitFieldPair = sliceToArrayPointer(pairs).*;
+    var l_idx: usize = 1;
+    while (l_idx < pairs.len) : (l_idx +%= 1) {
+        const x: BitFieldPair = sorted[l_idx];
+        var r_idx: usize = l_idx -% 1;
+        while (r_idx < pairs.len and
+            sorted[r_idx].value > x.value) : (r_idx -%= 1)
+        {
+            sorted[r_idx +% 1] = sorted[r_idx];
+        }
+        sorted[r_idx +% 1] = x;
+    }
+    return &sorted;
+}
+pub fn containerDeclsToBitFieldSets(comptime Container: type) []const BitFieldSet {
+    @setEvalBranchQuota(~@as(u32, 0));
+    const decls: []const builtin.Type.Declaration = sortDecls(Container);
     var done: [decls.len]bool = .{false} ** decls.len;
     var c_sets: []const BitFieldSet = &.{};
     var c_set: []const BitFieldPair = &.{};
     var x_pairs: []const BitFieldPair = &.{};
-    var c_sets_len: usize = 0;
-    var c_set_len: usize = 0;
-    var x_len: usize = 0;
+    var c_val: usize = 0;
     var l_decl_idx: usize = 0;
     lo: while (l_decl_idx != decls.len) : (l_decl_idx +%= 1) {
         const l_decl: builtin.Type.Declaration = decls[l_decl_idx];
         if (done[l_decl_idx]) {
             continue;
         }
-        const l_field = @field(T, l_decl.name);
+        if (!l_decl.is_pub) {
+            continue :lo;
+        }
+        const l_field = @field(Container, l_decl.name);
         if (@TypeOf(l_field) == type) {
             continue;
         }
-        const l_value: usize = l_field;
-        if (l_value == 0) {
+        const l_val: usize = l_field;
+        if (c_val == 0) {
+            c_val = l_val;
+        }
+        if (l_val == 0) {
             x_pairs = x_pairs ++ [1]BitFieldPair{
-                .{ .name = l_decl.name, .value = l_value },
+                .{ .name = l_decl.name, .value = l_val },
             };
             done[l_decl_idx] = true;
-            x_len +%= 1;
             continue :lo;
         }
         var r_decl_idx: usize = 0;
@@ -818,107 +868,70 @@ pub fn ToBitFieldPairsStrict(comptime T: type) []const BitFieldSet {
                 continue;
             }
             const r_decl: builtin.Type.Declaration = decls[r_decl_idx];
-            const r_field = @field(T, r_decl.name);
+            if (!r_decl.is_pub) {
+                continue;
+            }
+            const r_field = @field(Container, r_decl.name);
             if (@TypeOf(r_field) == type) {
                 continue;
             }
-            const r_value: usize = r_field;
+            const r_val: usize = r_field;
             if (l_decl_idx != r_decl_idx) {
-                if (l_value & r_value != 0 or l_value == r_value) {
-                    if (x_len != 0) {
-                        var x_sorted = sliceToArrayPointer(x_pairs).*;
-                        var l_idx: usize = 1;
-                        while (l_idx < x_len) : (l_idx +%= 1) {
-                            const x: BitFieldPair = x_sorted[l_idx];
-                            var r_idx: usize = l_idx -% 1;
-                            while (r_idx < x_len and
-                                x_sorted[r_idx].value > x.value) : (r_idx -%= 1)
-                            {
-                                x_sorted[r_idx +% 1] = x_sorted[r_idx];
-                            }
-                            x_sorted[r_idx +% 1] = x;
-                        }
+                if (c_val & r_val != 0 or c_val == r_val) {
+                    if (x_pairs.len != 0) {
                         c_sets = c_sets ++ [1]BitFieldSet{
-                            .{ .tag = .F, .pairs = &x_sorted },
+                            .{ .tag = .F, .pairs = sortPairs(x_pairs) },
                         };
-                        c_sets_len +%= 1;
                         x_pairs = &.{};
-                        x_len = 0;
                     }
-                    if (c_set_len == 0) {
+                    if (!done[l_decl_idx]) {
+                        if (c_set.len == 0) {
+                            c_set = c_set ++ [1]BitFieldPair{
+                                .{ .name = l_decl.name, .value = l_val },
+                            };
+                            done[l_decl_idx] = true;
+                        }
+                    }
+                    if (!done[r_decl_idx]) {
                         c_set = c_set ++ [1]BitFieldPair{
-                            .{ .name = l_decl.name, .value = l_value },
+                            .{ .name = r_decl.name, .value = r_val },
                         };
-                        done[l_decl_idx] = true;
-                        c_set_len +%= 1;
+                        c_val |= r_val;
+                        done[r_decl_idx] = true;
+                        r_decl_idx = 0;
                     }
-                    c_set = c_set ++ [1]BitFieldPair{
-                        .{ .name = r_decl.name, .value = r_value },
-                    };
-                    done[r_decl_idx] = true;
-                    c_set_len +%= 1;
                 }
             }
         }
-        if (c_set_len != 0) {
-            var c_sorted = sliceToArrayPointer(c_set).*;
-            var l_idx: usize = 1;
-            while (l_idx < c_set_len) : (l_idx +%= 1) {
-                const c: BitFieldPair = c_sorted[l_idx];
-                var r_idx: usize = l_idx -% 1;
-                while (r_idx < c_set_len and
-                    c_sorted[r_idx].value > c.value) : (r_idx -%= 1)
-                {
-                    c_sorted[r_idx +% 1] = c_sorted[r_idx];
-                }
-                c_sorted[r_idx +% 1] = c;
-            }
+        if (c_set.len != 0) {
             c_sets = c_sets ++ [1]BitFieldSet{
-                .{ .tag = .E, .pairs = &c_sorted },
+                .{ .tag = .E, .pairs = sortPairs(c_set) },
             };
-            c_set_len +%= 1;
             c_set = &.{};
-            c_set_len = 0;
         }
-        x_pairs = x_pairs ++ [1]BitFieldPair{
-            .{ .name = l_decl.name, .value = l_value },
-        };
-        done[l_decl_idx] = true;
-        x_len +%= 1;
+        if (!done[l_decl_idx]) {
+            x_pairs = x_pairs ++ [1]BitFieldPair{
+                .{ .name = l_decl.name, .value = l_val },
+            };
+            done[l_decl_idx] = true;
+        }
     }
-    if (x_len != 0) {
-        var x_sorted = sliceToArrayPointer(x_pairs).*;
-        var l_idx: usize = 1;
-        while (l_idx < x_len) : (l_idx +%= 1) {
-            const x: BitFieldPair = x_sorted[l_idx];
-            var r_idx: usize = l_idx -% 1;
-            while (r_idx < x_len and
-                x_sorted[r_idx].value > x.value) : (r_idx -%= 1)
-            {
-                x_sorted[r_idx +% 1] = x_sorted[r_idx];
-            }
-            x_sorted[r_idx +% 1] = x;
-        }
+    if (x_pairs.len != 0) {
         c_sets = c_sets ++ [1]BitFieldSet{
-            .{ .tag = .F, .pairs = &x_sorted },
+            .{ .tag = .F, .pairs = sortPairs(x_pairs) },
         };
-        c_sets_len +%= 1;
         x_pairs = &.{};
-        x_len = 0;
     }
-    var ret_sorted = sliceToArrayPointer(c_sets).*;
-    var l_idx: comptime_int = 1;
-    while (l_idx < c_sets_len) : (l_idx +%= 1) {
-        const c: BitFieldSet = ret_sorted[l_idx];
-        var r_idx: u64 = l_idx -% 1;
-        while (r_idx < c_sets_len and
-            ret_sorted[r_idx].pairs[0].value > c.pairs[0].value) : (r_idx -%= 1)
-        {
-            ret_sorted[r_idx +% 1] = ret_sorted[r_idx];
-        }
-        ret_sorted[r_idx +% 1] = c;
+    if (c_sets.len == 2 and
+        c_sets[0].tag == .E and
+        c_sets[1].tag == .F and c_sets[1].pairs.len == 1)
+    {
+        return &[1]BitFieldSet{.{
+            .tag = .E,
+            .pairs = c_sets[0].pairs ++ [1]BitFieldPair{c_sets[1].pairs[0]},
+        }};
     }
-    return &ret_sorted;
+    return sortSets(c_sets);
 }
 pub fn tagList(comptime E: type) []const E {
     const enum_info: builtin.Type.Enum = @typeInfo(E).Enum;
