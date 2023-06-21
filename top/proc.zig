@@ -8,9 +8,9 @@ const mach = @import("./mach.zig");
 const builtin = @import("./builtin.zig");
 
 pub const SignalAction = extern struct {
-    handler: u64,
-    flags: u64,
-    restorer: u64,
+    handler: Handler,
+    flags: Options,
+    restorer: *const fn () callconv(.Naked) void,
     mask: [2]u32 = .{0} ** 2,
     const Options = meta.EnumBitField(enum(usize) {
         no_child_stop = SA.NOCLDSTOP,
@@ -24,6 +24,11 @@ pub const SignalAction = extern struct {
         unsupported = SA.UNSUPPORTED,
         const SA = sys.SA;
     });
+    const Handler = extern union {
+        set: enum(usize) { ignore = 1, default = 0 },
+        handler: *const fn (sys.SignalCode) void,
+        action: *const fn (sys.SignalCode, *const SignalInfo, ?*const anyopaque) void,
+    };
 };
 pub const SignalInfo = extern struct {
     signo: u32,
@@ -654,6 +659,7 @@ pub const start = if (builtin.zig.output_mode == .Exe)
     }
 else
     builtin.debug;
+
 const SignalActionSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.sigaction_errors },
     return_type: type = void,
@@ -702,32 +708,98 @@ const SignalActionSpec = struct {
         return flags_bitfield;
     }
 };
-const Handler = extern union {
-    set: enum(usize) {
-        ignore = 1,
-        default = 0,
-    },
-    handler: *const fn (sys.SignalCode) void,
-    action: *const fn (sys.SignalCode, *const SignalInfo, ?*const anyopaque) void,
+const SignalStack = extern struct {
+    addr: u64,
+    flags: Options,
+    size: u64,
+    const Options = meta.EnumBitField(enum(usize) {
+        on_stack = SS.ONSTACK,
+        diable = SS.DISABLE,
+        auto_disarm = SS.AUTODISARM,
+        const SS = sys.SS;
+    });
 };
-pub fn updateSignalAction(comptime sigaction_spec: SignalActionSpec, signo: sys.SignalCode, to: Handler) sys.ErrorUnion(
-    sigaction_spec.errors,
-    sigaction_spec.return_type,
-) {
+const SignalStackSpec = struct {
+    errors: sys.ErrorPolicy = .{ .throw = sys.sigaction_errors },
+    return_type: type = void,
+    logging: builtin.Logging.SuccessError = .{},
+    fn flags(comptime spec: SignalActionSpec) SignalAction.Options {
+        var flags_bitfield: SignalAction.Options = .{ .val = 0 };
+        if (spec.options.no_child_stop) {
+            flags_bitfield.set(.no_child_stop);
+        }
+        if (spec.options.no_child_wait) {
+            flags_bitfield.set(.no_child_wait);
+        }
+        if (spec.options.no_defer) {
+            flags_bitfield.set(.no_defer);
+        }
+        if (spec.options.on_stack) {
+            flags_bitfield.set(.on_stack);
+        }
+        if (spec.options.restart) {
+            flags_bitfield.set(.restart);
+        }
+        if (spec.options.reset) {
+            flags_bitfield.set(.reset);
+        }
+        if (spec.options.restorer) {
+            flags_bitfield.set(.restorer);
+        }
+        if (spec.options.siginfo) {
+            flags_bitfield.set(.siginfo);
+        }
+        if (spec.options.unsupported) {
+            flags_bitfield.set(.unsupported);
+        }
+        return flags_bitfield;
+    }
+};
+pub fn updateSignalAction(
+    comptime sigaction_spec: SignalActionSpec,
+    signo: sys.SignalCode,
+    new_action: SignalAction,
+    old_action: ?*SignalAction,
+) sys.ErrorUnion(sigaction_spec.errors, sigaction_spec.return_type) {
+    @setRuntimeSafety(false);
     const logging: builtin.Logging.SuccessError = comptime sigaction_spec.logging.override();
-    const flags: SignalAction.Options = comptime sigaction_spec.flags();
-    const action: SignalAction = .{ .handler = @enumToInt(to.set), .flags = flags.val, .restorer = 0 };
+    const new_action_buf_addr: u64 = @ptrToInt(&new_action);
+    const old_action_buf_addr: u64 = @ptrToInt(old_action.?);
     if (meta.wrap(sys.call(.rt_sigaction, sigaction_spec.errors, sigaction_spec.return_type, .{
-        @enumToInt(signo), @ptrToInt(&action), 0, @sizeOf(@TypeOf(action.mask)),
+        @enumToInt(signo), new_action_buf_addr, old_action_buf_addr, 8,
     }))) {
         if (logging.Success) {
-            debug.signalActionNotice(signo, to);
+            debug.signalActionNotice(signo, new_action.handler);
         }
     } else |rt_sigaction_error| {
         if (logging.Error) {
-            debug.signalActionError(rt_sigaction_error, signo, to);
+            debug.signalActionError(rt_sigaction_error, signo, new_action.handler);
         }
         return rt_sigaction_error;
+    }
+}
+pub fn updateSignalStack(
+    comptime sigaltstack_spec: SignalStackSpec,
+    new_stack: SignalStack,
+    old_stack: ?*SignalStack,
+) sys.ErrorUnion(
+    sigaltstack_spec.errors,
+    sigaltstack_spec.return_type,
+) {
+    const logging: builtin.Logging.SuccessError = comptime sigaltstack_spec.logging.override();
+    const new_stack_buf_addr: u64 = @ptrToInt(&new_stack);
+    const old_stack_buf_addr: u64 = @ptrToInt(old_stack.?);
+    if (meta.wrap(sys.call(.rt_sigstack, sigaltstack_spec.errors, sigaltstack_spec.return_type, .{
+        new_stack_buf_addr, old_stack_buf_addr, 8,
+    }))) {
+        if (logging.Success) {
+            debug.signalstackNotice(new_stack, old_stack);
+        }
+    } else |rt_sigstack_error| {
+        if (logging.Error) {
+            debug.signalstackError(rt_sigstack_error, new_stack, old_stack);
+        }
+        return rt_sigstack_error;
     }
 }
 pub const exception = struct {
@@ -748,9 +820,9 @@ pub const exception = struct {
     pub fn enableExceptionHandlers() void {
         @setRuntimeSafety(false);
         var act: SignalAction = .{
-            .handler = @ptrToInt(&exceptionHandler),
-            .flags = (SA.SIGINFO | SA.RESTART | SA.RESETHAND | SA.RESTORER),
-            .restorer = @ptrToInt(&restoreRunTime),
+            .handler = .{ .action = exceptionHandler },
+            .flags = .{ .val = SA.SIGINFO | SA.RESTART | SA.RESETHAND | SA.RESTORER },
+            .restorer = restoreRunTime,
         };
         updateExceptionHandlers(&act);
     }
@@ -769,7 +841,7 @@ pub const exception = struct {
     }
     pub fn exceptionHandler(sig: sys.SignalCode, info: *const SignalInfo, ctx: ?*const anyopaque) noreturn {
         @setRuntimeSafety(false);
-        var act: SignalAction = .{ .handler = 0, .flags = 0, .restorer = 0 };
+        var act: SignalAction = undefined;
         updateExceptionHandlers(&act);
         const fault_addr_s: []const u8 = builtin.fmt.ux64(info.fields.fault.addr).readAll();
         var buf: [8192]u8 = undefined;
@@ -1176,7 +1248,7 @@ const debug = opaque {
         var buf: [560]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_wait_0_s, @tagName(id), ", pid=", pid_s, about_s, code_s, "\n" });
     }
-    fn signalActionNotice(signo: sys.SignalCode, handler: Handler) void {
+    fn signalActionNotice(signo: sys.SignalCode, handler: SignalAction.Handler) void {
         const handler_raw: usize = @bitCast(usize, handler);
         const handler_addr_s: []const u8 = builtin.fmt.ux64(handler_raw).readAll();
         const handler_set_s: []const u8 = if (handler_raw == 1) "ignore" else "default";
@@ -1265,7 +1337,7 @@ const debug = opaque {
         var buf: [560]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_wait_1_s, " (", @errorName(wait_error), ")\n" });
     }
-    fn signalActionError(rt_sigaction_error: anytype, signo: sys.SignalCode, handler: Handler) void {
+    fn signalActionError(rt_sigaction_error: anytype, signo: sys.SignalCode, handler: SignalAction.Handler) void {
         const handler_raw: usize = @bitCast(usize, handler);
         const handler_addr_s: []const u8 = builtin.fmt.ux64(handler_raw).readAll();
         const handler_set_s: []const u8 = if (handler_raw == 1) "ignore" else "default";
