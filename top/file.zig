@@ -75,7 +75,7 @@ pub const Open = struct {
         write_only = OPEN.WRONLY,
         read_write = OPEN.RDWR,
         exclusive = OPEN.EXCL,
-        file_sync = OPEN.SYNC,
+        //file_sync = OPEN.SYNC,
         data_sync = OPEN.DSYNC,
         const OPEN = sys.O;
     });
@@ -441,63 +441,32 @@ pub const OpenSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.open_errors },
     logging: builtin.Logging.AcquireError = .{},
     const Specification = @This();
-    pub const Options = struct {
-        read: bool = true,
-        write: bool = false,
-        append: bool = false,
-        truncate: bool = false,
-        directory: bool = false,
-        temporary: bool = false,
-        no_atime: bool = false,
+    pub const Options = packed struct(usize) {
+        write_only: bool = false,
+        read_write: bool = false,
+        zb2: u4 = 0,
+        create: bool = false,
+        exclusive: bool = false,
         no_ctty: bool = true,
-        no_follow: bool = true,
-        no_block: bool = false,
-        no_cache: bool = false,
+        truncate: bool = false,
+        append: bool = false,
+        non_block: bool = false,
+        e12: enum(u9) {
+            dsync = 4096,
+            sync = 1052672,
+        },
+        @"async": bool = false,
+        no_cache: bool = true,
+        zb15: u1 = 0,
+        directory: bool = false,
+        no_follow: bool = false,
+        no_atime: bool = false,
         close_on_exec: bool = true,
+        zb20: u1 = 0,
+        path: bool = false,
+        temporary_file: bool = false,
+        zb24: u41 = 0,
     };
-    pub fn flags(comptime open_spec: Specification) Open.Options {
-        var flags_bitfield: Open.Options = .{ .val = 0 };
-        if (open_spec.options.no_cache) {
-            flags_bitfield.set(.no_cache);
-        }
-        if (open_spec.options.no_atime) {
-            flags_bitfield.set(.no_atime);
-        }
-        if (open_spec.options.no_follow) {
-            flags_bitfield.set(.no_follow);
-        }
-        if (open_spec.options.no_block) {
-            flags_bitfield.set(.no_block);
-        }
-        if (open_spec.options.no_ctty) {
-            flags_bitfield.set(.no_ctty);
-        }
-        if (open_spec.options.close_on_exec) {
-            flags_bitfield.set(.close_on_exec);
-        }
-        if (open_spec.options.temporary) {
-            flags_bitfield.set(.temporary);
-        }
-        if (open_spec.options.directory) {
-            flags_bitfield.set(.directory);
-        }
-        if (open_spec.options.read and
-            open_spec.options.write)
-        {
-            flags_bitfield.set(.read_write);
-        } else if (open_spec.options.read) {
-            flags_bitfield.set(.read_only);
-        } else {
-            flags_bitfield.set(.write_only);
-        }
-        if (open_spec.options.append) {
-            flags_bitfield.set(.append);
-        }
-        if (open_spec.options.truncate) {
-            flags_bitfield.set(.truncate);
-        }
-        comptime return flags_bitfield;
-    }
 };
 pub const ReadSpec = struct {
     child: type = u8,
