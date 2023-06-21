@@ -1,5 +1,6 @@
 //! Linux x86_64
 const builtin = @import("./builtin.zig");
+const meta = @import("./meta.zig");
 pub const MAP = struct {
     pub const FILE = 0x0;
     pub const SHARED = 0x1;
@@ -76,7 +77,7 @@ pub const O = struct {
     pub const RDWR = 0x2;
     pub const CREAT = 0x40;
     pub const EXCL = 0x80;
-    pub const ACCMODE = 0x3;
+    //pub const ACCMODE = 0x3;
     pub const NOCTTY = 0x100;
     pub const TRUNC = 0x200;
     pub const APPEND = 0x400;
@@ -2340,6 +2341,47 @@ pub fn ErrorUnion(comptime error_policy: ErrorPolicy, comptime return_type: type
 pub fn Error(comptime errors: []const ErrorCode) type {
     return builtin.ZigError(ErrorCode, errors);
 }
+
+inline fn cast(args: anytype) [args.len]usize {
+    switch (args.len) {
+        0 => return .{},
+        1 => return .{
+            meta.bitCast(usize, args[0]),
+        },
+        2 => return .{
+            meta.bitCast(usize, args[0]),
+            meta.bitCast(usize, args[1]),
+        },
+        3 => return .{
+            meta.bitCast(usize, args[0]),
+            meta.bitCast(usize, args[1]),
+            meta.bitCast(usize, args[2]),
+        },
+        4 => return .{
+            meta.bitCast(usize, args[0]),
+            meta.bitCast(usize, args[1]),
+            meta.bitCast(usize, args[2]),
+            meta.bitCast(usize, args[3]),
+        },
+        5 => return .{
+            meta.bitCast(usize, args[0]),
+            meta.bitCast(usize, args[1]),
+            meta.bitCast(usize, args[2]),
+            meta.bitCast(usize, args[3]),
+            meta.bitCast(usize, args[4]),
+            meta.bitCast(usize, args[5]),
+        },
+        6 => return .{
+            meta.bitCast(usize, args[0]),
+            meta.bitCast(usize, args[1]),
+            meta.bitCast(usize, args[2]),
+            meta.bitCast(usize, args[3]),
+            meta.bitCast(usize, args[4]),
+            meta.bitCast(usize, args[5]),
+        },
+        else => unreachable,
+    }
+}
 const syscalls = .{
     syscall0, syscall1,
     syscall2, syscall3,
@@ -2364,8 +2406,8 @@ pub fn call(comptime tag: Fn, comptime errors: ErrorPolicy, comptime return_type
         return @intCast(return_type, ret);
     }
 }
-pub fn call_noexcept(comptime tag: Fn, comptime return_type: type, args: [tag.args()]usize) return_type {
-    const ret: isize = (comptime syscalls[tag.args()])(tag, args);
+pub fn call_noexcept(comptime tag: Fn, comptime return_type: type, args: anytype) return_type {
+    const ret: isize = (comptime syscalls[tag.args()])(tag, cast(args));
     if (return_type == noreturn) {
         unreachable;
     }
