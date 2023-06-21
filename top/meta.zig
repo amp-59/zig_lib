@@ -391,22 +391,57 @@ pub fn LeastRealBitSize(comptime value: anytype) type {
 /// This is for miscellaneous special cases that normally Zig refuses to cast.
 /// The user of this function gets what they ask for.
 pub inline fn bitCast(comptime T: type, any: anytype) T {
+    @setRuntimeSafety(false);
     const S: type = @TypeOf(any);
     const s_type_info: builtin.Type = @typeInfo(S);
     const t_type_info: builtin.Type = @typeInfo(T);
-    if (t_type_info == .Enum) {
-        if (s_type_info == .Int) {
-            return @intToEnum(T, any);
-        }
-        if (s_type_info == .Bool) {
-            return @intToEnum(T, @boolToInt(any));
-        }
-    }
-    if (s_type_info == .Enum) {
-        if (t_type_info == .Struct) {
-            const i: t_type_info.Struct.backing_integer.? = @enumToInt(any);
-            return @bitCast(T, i);
-        }
+    switch (s_type_info) {
+        .Int => {
+            switch (t_type_info) {
+                .Int => {
+                    return @intCast(T, any);
+                },
+                .Enum => {
+                    return @intToEnum(T, any);
+                },
+                else => {},
+            }
+        },
+        .Bool => {
+            switch (t_type_info) {
+                .Enum => {
+                    return @intToEnum(T, @boolToInt(any));
+                },
+            }
+        },
+        .ComptimeInt => {
+            return @as(T, any);
+        },
+        .Pointer => {
+            switch (t_type_info) {
+                .Int => {
+                    return @intCast(T, @ptrToInt(any));
+                },
+                else => {},
+            }
+        },
+        .Enum => {
+            switch (t_type_info) {
+                .Struct => {
+                    return @bitCast(T, @enumToInt(any));
+                },
+                else => {},
+            }
+        },
+        .Struct => {
+            switch (t_type_info) {
+                .Int => {
+                    return @intCast(T, @bitCast(s_type_info.Struct.backing_integer.?, any));
+                },
+                else => {},
+            }
+        },
+        else => {},
     }
     @compileError("uncased combination of types: '" ++ @typeName(S) ++ "' and '" ++ @typeName(T) ++ "'");
 }
