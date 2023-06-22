@@ -24,7 +24,7 @@ const make_dir_spec: file.MakeDirSpec = .{};
 const make_node_spec: file.MakeNodeSpec = .{};
 const seek_spec: file.SeekSpec = .{};
 const create_spec: file.CreateSpec = .{
-    .options = .{ .read = true, .write = true, .append = false },
+    .options = .{ .write = true, .append = false },
 };
 const path_spec: file.PathSpec = .{};
 const file_path_spec: file.PathSpec = .{ .options = .{ .directory = false } };
@@ -35,7 +35,7 @@ const open_spec: file.OpenSpec = .{
     .options = .{ .write = true, .append = true },
 };
 const open_dir_spec: file.OpenSpec = .{
-    .options = .{ .read = true, .directory = true },
+    .options = .{ .directory = true },
 };
 const remove_dir_spec: file.RemoveDirSpec = .{};
 const unlink_spec: file.UnlinkSpec = .{};
@@ -74,17 +74,6 @@ const pathname2: [:0]const u8 = test_dir ++ file_name ++ "2";
 const pathname_link1: [:0]const u8 = test_dir ++ file_name ++ "1";
 const pathname_link2: [:0]const u8 = test_dir ++ file_name ++ "2";
 
-pub fn testRecords() !void {
-    const build_root: []const u8 = comptime builtin.buildRoot();
-    const proj_stats_root: [:0]const u8 = comptime build_root ++ "/zig-stat/file_test";
-    var rcd_buf: [4096]build.Record = undefined;
-    const fd: u64 = try file.open(.{}, proj_stats_root);
-    for (rcd_buf[0..try file.read(.{ .child = build.Record }, fd, &rcd_buf)]) |rcd| {
-        if (rcd.detail.key.mode) {
-            // testing.printN(4096, .{ fmt.any(rcd), '\n' });
-        }
-    }
-}
 pub fn testStatusExtended() !void {
     const Fields = @TypeOf(statx_spec.options.fields);
     const nilx_spec: file.StatusExtendedSpec = comptime spec.add(statx_spec, .{ .options = .{ .fields = builtin.zero(Fields) } });
@@ -348,14 +337,25 @@ fn testPreClean() !void {
     file.removeDir(remove_dir_spec, test_dir ++ "file_test/file_test") catch {};
     file.removeDir(remove_dir_spec, test_dir ++ "file_test") catch {};
 }
-fn testNewFlagPackedStruct() void {
-    const fd: u64 = sys.call_noexcept(.open, u64, .{
-        test_dir ++ "file_test1", file.OpenOptions{ .create = true, .exclusive = false }, file.mode.regular,
+fn testBasicDirectoryIterator() !void {
+    const AddressSpace = spec.address_space.exact_8;
+    const Allocator = mem.GenericArenaAllocator(.{
+        .AddressSpace = AddressSpace,
+        .arena_index = 0,
     });
-    sys.call_noexcept(.close, void, .{fd});
+    const DirStream = file.GenericDirStream(.{
+        .Allocator = Allocator,
+    });
+    var address_space: AddressSpace = .{};
+    var allocator: Allocator = try Allocator.init(&address_space);
+    var dir: DirStream = try DirStream.initAt(&allocator, null, ".");
+    var list: DirStream.ListView = dir.list();
+    while (list.next()) |next| : (list = next) {
+        _ = list.this();
+    }
 }
 pub fn main(args: [][*:0]u8) !void {
-    try meta.wrap(testRecords());
+    try meta.wrap(testBasicDirectoryIterator());
     try meta.wrap(testPreClean());
     try meta.wrap(testFileOperationsRound1());
     try meta.wrap(testFileOperationsRound2());
@@ -372,4 +372,5 @@ pub fn main(args: [][*:0]u8) !void {
     try meta.wrap(testLinkAt());
     try meta.wrap(testSymbolicLink());
     try meta.wrap(testSymbolicLinkAt());
+    file.debug.sampleAllReports();
 }
