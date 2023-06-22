@@ -11,7 +11,6 @@ const testing = zig_lib.testing;
 pub usingnamespace proc.start;
 
 pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
-pub const runtime_assertions: bool = true;
 
 const Node = build.GenericNode(.{
     .options = .{ .max_cmdline_len = null },
@@ -85,18 +84,7 @@ pub fn testComplexStructureBuildMain(allocator: *Node.Allocator, builder: *Node)
     fmt.addDescr("Reformat source directory into canonical form");
 }
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
-    var address_space: Node.AddressSpace = .{};
-    var thread_space: Node.ThreadSpace = .{};
-    var allocator: Node.Allocator = if (Node.Allocator == mem.SimpleAllocator)
-        Node.Allocator.init_arena(Node.AddressSpace.arena(Node.max_thread_count))
-    else
-        Node.Allocator.init(&address_space, Node.max_thread_count);
-    if (args.len < 5) {
-        return error.MissingEnvironmentPaths;
-    }
-    const toplevel: *Node = Node.init(&allocator, args, vars);
-    const g0: *Node = try toplevel.addGroup(&allocator, "g0");
-    const t0: *Node = try g0.addBuild(&allocator, .{
+    const build_cmd = .{
         .kind = .obj,
         .allow_shlib_undefined = true,
         .build_id = .sha1,
@@ -127,7 +115,16 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
         .z = &.{ .nodelete, .notext },
         .mode = .Debug,
         .strip = true,
-    }, "target", @src().file);
+    };
+    var address_space: Node.AddressSpace = .{};
+    var thread_space: Node.ThreadSpace = .{};
+    var allocator: Node.Allocator = Node.Allocator.init_arena(Node.AddressSpace.arena(Node.max_thread_count));
+    if (args.len < 5) {
+        return error.MissingEnvironmentPaths;
+    }
+    const toplevel: *Node = Node.init(&allocator, args, vars);
+    const g0: *Node = try toplevel.addGroup(&allocator, "g0");
+    const t0: *Node = try g0.addBuild(&allocator, build_cmd, "target", @src().file);
     const t1: *Node = try g0.addArchive(&allocator, .{
         .operation = .r,
         .create = true,
