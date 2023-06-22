@@ -4,6 +4,7 @@ pub const sys = @import("./top/sys.zig");
 pub const lit = @import("./top/lit.zig");
 pub const mem = @import("./top/mem.zig");
 pub const exe = @import("./top/exe.zig");
+pub const gen = @import("./top/gen.zig");
 pub const rng = @import("./top/rng.zig");
 pub const fmt = @import("./top/fmt.zig");
 pub const proc = @import("./top/proc.zig");
