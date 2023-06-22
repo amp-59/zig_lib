@@ -9,10 +9,10 @@ pub const zig_lib = @import("zig_lib/zig_lib.zig");
 const spec = zig_lib.spec;
 const build = zig_lib.build;
 
-pub const Node: type = build.GenericNode(.{});
+pub const BuildNode: type = build.GenericNode(.{});
 
 /// This is a template compile command to build the target.
-var build_cmd: build.BuildCommand = .{
+var build_cmd: build.tasks.BuildCommand = .{
     .kind = .exe,
     .modules = &.{.{
         .name = "zig_lib",
@@ -25,7 +25,7 @@ var build_cmd: build.BuildCommand = .{
 // actually in build_runner.zig and might be useful for the name of one of the
 // target (as below), and `build` is the name of import containing build system
 // components.
-pub fn buildMain(allocator: *Node.Allocator, toplevel: *Node) !void {
-    const main: *Node = try toplevel.addBuild(allocator, build_cmd, "main", "./src/main.zig");
-    main.addDescr("Main project binary");
+pub fn buildMain(allocator: *BuildNode.Allocator, toplevel: *BuildNode) !void {
+    const main: *BuildNode = try toplevel.addBuild(allocator, build_cmd, "main", "./src/main.zig");
+    main.descr = "Main project binary";
 }
