@@ -1484,13 +1484,13 @@ pub const debug = struct {
     }
     fn comparisonFailedError(comptime T: type, symbol: []const u8, arg1: anytype, arg2: @TypeOf(arg1)) Unexpected {
         @setCold(true);
-        const about_error_s: []const u8 = typeError(T) ++ " failed test: ";
+        const about_s: []const u8 = typeError(T) ++ " failed test: ";
         var buf: [size]u8 = undefined;
         const len: u64 = switch (@typeInfo(T)) {
-            .Int => comparisonFailedString(T, about_error_s, symbol, &buf, arg1, arg2, @min(arg1, arg2) > 10_000),
-            .Enum => mach.memcpyMulti(&buf, &[_][]const u8{ about_error_s, @tagName(arg1), symbol, @tagName(arg2) }),
-            .Type => mach.memcpyMulti(&buf, &[_][]const u8{ about_error_s, @typeName(arg1), symbol, @typeName(arg2) }),
-            else => mach.memcpyMulti(&buf, &[_][]const u8{ about_error_s, "unexpected value\n" }),
+            .Int => comparisonFailedString(T, about_s, symbol, &buf, arg1, arg2, @min(arg1, arg2) > 10_000),
+            .Enum => mach.memcpyMulti(&buf, &[_][]const u8{ about_s, @tagName(arg1), symbol, @tagName(arg2) }),
+            .Type => mach.memcpyMulti(&buf, &[_][]const u8{ about_s, @typeName(arg1), symbol, @typeName(arg2) }),
+            else => mach.memcpyMulti(&buf, &[_][]const u8{ about_s, "unexpected value\n" }),
         };
         logError(buf[0..len]);
         return error.UnexpectedValue;
@@ -1762,9 +1762,8 @@ pub const debug = struct {
                 @compileError(buf[0..len]);
             }
         }
-        fn comparisonFailed(
+        inline fn comparisonFailed(
             comptime T: type,
-            comptime how: []const u8,
             comptime symbol: []const u8,
             comptime arg1: T,
             comptime arg2: T,
@@ -1773,11 +1772,9 @@ pub const debug = struct {
                 var buf: [size]u8 = undefined;
                 var len: u64 = 0;
                 for ([_][]const u8{
-                    typeFault(T) ++ how,
-                    itos(T, arg1).readAll(),
-                    symbol,
-                    itos(T, arg2).readAll(),
-                    if (@min(arg1, arg2) > 10_000) ", i.e. " else "\n",
+                    @typeName(T),            " ",
+                    itos(T, arg1).readAll(), symbol,
+                    itos(T, arg2).readAll(), if (@min(arg1, arg2) > 10_000) ", i.e. " else "\n",
                 }) |s| {
                     for (s, 0..) |c, idx| buf[len +% idx] = c;
                     len +%= s.len;
