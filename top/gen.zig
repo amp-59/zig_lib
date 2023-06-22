@@ -56,9 +56,10 @@ pub fn readFile(comptime read_spec: file.ReadSpec, pathname: [:0]const u8, buf: 
     defer file.close(spec.generic.noexcept, fd);
     return file.read(read_spec, fd, buf);
 }
-pub fn containerDeclsToBitField(comptime Container: type, type_name: []const u8) void {
-    const ShiftAmount = builtin.ShiftAmount(usize);
-    const bit_field_sets: []const meta.BitFieldSet = comptime meta.containerDeclsToBitFieldSets(Container);
+pub fn containerDeclsToBitField(comptime Container: type, comptime backing_integer: type, type_name: []const u8) void {
+    const ShiftAmount = builtin.ShiftAmount(backing_integer);
+    const bit_field_sets: []const meta.BitFieldSet = comptime meta.containerDeclsToBitFieldSets(Container, backing_integer);
+    const size_name: []const u8 = @typeName(backing_integer);
     var array: mem.StaticString(4096) = undefined;
     array.undefineAll();
     var bits: u16 = 0;
@@ -66,14 +67,14 @@ pub fn containerDeclsToBitField(comptime Container: type, type_name: []const u8)
     var enum_count: u16 = 0;
     array.writeMany("const ");
     array.writeMany(type_name);
-    array.writeMany("=packed struct(usize){\n");
+    array.writeMany("=packed struct(" ++ size_name ++ "){\n");
     for (bit_field_sets) |set| {
         if (set.tag == .E) {
-            var value: usize = 0;
+            var value: backing_integer = 0;
             for (set.pairs) |pair| {
                 value |= pair.value;
             }
-            const bit_size_of_enum: u16 = @bitSizeOf(usize) -% (@clz(value) +% @ctz(value));
+            const bit_size_of_enum: u16 = @bitSizeOf(backing_integer) -% (@clz(value) +% @ctz(value));
             const shift_amt: ShiftAmount = meta.bitCast(ShiftAmount, bits);
             array.writeOne('e');
             array.writeFormat(fmt.ud16(enum_count));
@@ -92,7 +93,7 @@ pub fn containerDeclsToBitField(comptime Container: type, type_name: []const u8)
         } else {
             for (set.pairs) |pair| {
                 if (pair.value != 0) {
-                    diff = ((@bitSizeOf(usize) -% @clz(pair.value)) -% 1) -% bits;
+                    diff = ((@bitSizeOf(backing_integer) -% @clz(pair.value)) -% 1) -% bits;
                     if (diff >= 1) {
                         array.writeMany("zb");
                         array.writeFormat(fmt.ud16(bits));
@@ -107,7 +108,7 @@ pub fn containerDeclsToBitField(comptime Container: type, type_name: []const u8)
             }
         }
     }
-    diff = @bitSizeOf(usize) -% bits;
+    diff = @bitSizeOf(backing_integer) -% bits;
     if (diff >= 1) {
         array.writeMany("zb");
         array.writeFormat(fmt.ud16(bits));
@@ -115,12 +116,12 @@ pub fn containerDeclsToBitField(comptime Container: type, type_name: []const u8)
         array.writeFormat(fmt.ud16(diff));
         array.writeMany("=0,\n");
     }
-    array.writeMany("fn assert(flags:@This(),val:usize)void{\nbuiltin.assert(@bitCast(usize,flags)==val);\n}\n");
+    array.writeMany("fn assert(flags:@This(),val:" ++ size_name ++ ")void{\nbuiltin.assertEqual(" ++ size_name ++ ", @bitCast(" ++ size_name ++ ",flags)==val);\n}\n");
     array.writeMany("comptime{\n");
     enum_count = 0;
     for (bit_field_sets) |set| {
         if (set.tag == .E) {
-            var value: usize = 0;
+            var value: backing_integer = 0;
             for (set.pairs) |pair| {
                 value |= pair.value;
             }

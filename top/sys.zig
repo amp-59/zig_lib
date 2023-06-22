@@ -6,11 +6,11 @@ pub const MAP = struct {
     pub const SHARED = 0x1;
     pub const PRIVATE = 0x2;
     pub const SHARED_VALIDATE = 0x3;
-    pub const TYPE = 0xf;
+    const TYPE = 0xf;
     pub const FIXED = 0x10;
     pub const ANONYMOUS = 0x20;
-    pub const HUGE_SHIFT = 0x1a;
-    pub const HUGE_MASK = 0x3f;
+    const HUGE_SHIFT = 0x1a;
+    const HUGE_MASK = 0x3f;
     pub const @"32BIT" = 0x40;
     pub const GROWSDOWN = 0x100;
     pub const DENYWRITE = 0x800;
@@ -82,7 +82,7 @@ pub const O = struct {
     pub const TRUNC = 0x200;
     pub const APPEND = 0x400;
     pub const NONBLOCK = 0x800;
-    pub const SYNC = 0x101000;
+    //pub const SYNC = 0x101000;
     pub const ASYNC = 0x2000;
     pub const DIRECTORY = 0x10000;
     pub const NOFOLLOW = 0x20000;
@@ -116,41 +116,36 @@ pub const POSIX = struct {
         pub const NOREUSE = 0x5;
     };
 };
-// zig fmt: off
 pub const S = struct {
-    pub const IFMT = 0b1111000000000000;
-    pub const IFLNK = 0b1010000000000000;
-    pub const IFREG = 0b1000000000000000;
     pub const IFSOCK = 0b1100000000000000;
+    pub const IFREG = 0b1000000000000000;
+    pub const IFLNK = 0b1010000000000000;
     pub const IFDIR = 0b0100000000000000;
     pub const IFBLK = 0b0110000000000000;
     pub const IFCHR = 0b0010000000000000;
     pub const IFIFO = 0b0001000000000000;
-    pub const IFLNKR = 0b0000000000001010;
-    pub const IFREGR = 0b0000000000001000;
-    pub const IFSOCKR = 0b0000000000001100;
-    pub const IFDIRR = 0b0000000000000100;
-    pub const IFBLKR = 0b0000000000000110;
-    pub const IFCHRR = 0b0000000000000010;
-    pub const IFIFOR = 0b0000000000000001;
+
     pub const ISUID = 0b0000100000000000;
     pub const ISGID = 0b0000010000000000;
     pub const ISVTX = 0b0000001000000000;
-    pub const IREAD = 0b0000000100000000;
-    pub const IWRITE = 0b0000000010000000;
-    pub const IEXEC = 0b0000000001000000;
     pub const IRUSR = 0b0000000100000000;
     pub const IWUSR = 0b0000000010000000;
     pub const IXUSR = 0b0000000001000000;
-    pub const IRWXU = 0b0000000111000000;
     pub const IRGRP = 0b0000000000100000;
     pub const IWGRP = 0b0000000000010000;
     pub const IXGRP = 0b0000000000001000;
-    pub const IRWXG = 0b0000000000111000;
     pub const IROTH = 0b0000000000000100;
     pub const IWOTH = 0b0000000000000010;
     pub const IXOTH = 0b0000000000000001;
-    pub const IRWXO = 0b0000000000000111;
+    pub const R = struct {
+        pub const IFLNK = 0b0000000000001010;
+        pub const IFREG = 0b0000000000001000;
+        pub const IFSOCK = 0b0000000000001100;
+        pub const IFDIR = 0b0000000000000100;
+        pub const IFBLK = 0b0000000000000110;
+        pub const IFCHR = 0b0000000000000010;
+        pub const IFIFO = 0b0000000000000001;
+    };
 };
 // zig fmt: on
 pub const UTIME = struct {
@@ -1940,15 +1935,18 @@ pub const Fn = enum(usize) {
     landlock_add_rule = 445,
     landlock_restrict_self = 446,
     memfd_secret = 447,
+    fn Args(comptime function: Fn) type {
+        return [args(function)]usize;
+    }
     fn args(comptime function: Fn) comptime_int {
-        return switch (function) {
+        switch (function) {
             .fork,
             .getuid,
             .getgid,
             .geteuid,
             .getegid,
             .sync,
-            => 0,
+            => return 0,
             .rmdir,
             .dup,
             .close,
@@ -1959,7 +1957,7 @@ pub const Fn = enum(usize) {
             .syncfs,
             .fsync,
             .fdatasync,
-            => 1,
+            => return 1,
             .memfd_create,
             .stat,
             .fstat,
@@ -1977,7 +1975,7 @@ pub const Fn = enum(usize) {
             .listen,
             .symlink,
             .link,
-            => 2,
+            => return 2,
             .dup3,
             .read,
             .write,
@@ -1999,14 +1997,15 @@ pub const Fn = enum(usize) {
             .lseek,
             .connect,
             .symlinkat,
-            => 3,
+            .sigaltstack,
+            => return 3,
             .newfstatat,
             .mknodat,
             .readlinkat,
             .openat,
             .rt_sigaction,
             .sendfile,
-            => 4,
+            => return 4,
             .mremap,
             .statx,
             .wait4,
@@ -2015,15 +2014,15 @@ pub const Fn = enum(usize) {
             .execveat,
             .name_to_handle_at,
             .linkat,
-            => 5,
+            => return 5,
             .copy_file_range,
             .futex,
             .mmap,
             .recvfrom,
             .sendto,
-            => 6,
+            => return 6,
             else => @compileError(@tagName(function)),
-        };
+        }
     }
 };
 pub const vFn = enum(u9) {
@@ -2341,30 +2340,6 @@ pub fn ErrorUnion(comptime error_policy: ErrorPolicy, comptime return_type: type
 pub fn Error(comptime errors: []const ErrorCode) type {
     return builtin.ZigError(ErrorCode, errors);
 }
-const syscalls = .{
-    syscall0, syscall1,
-    syscall2, syscall3,
-    syscall4, syscall5,
-    syscall6,
-};
-pub fn call(comptime tag: Fn, comptime errors: ErrorPolicy, comptime return_type: type, args: [tag.args()]usize) ErrorUnion(errors, return_type) {
-    const ret: isize = (comptime syscalls[tag.args()])(tag, args);
-    if (return_type == noreturn) {
-        unreachable;
-    }
-    if (errors.throw.len != 0) {
-        try builtin.zigErrorThrow(ErrorCode, errors.throw, ret);
-    }
-    if (errors.abort.len != 0) {
-        builtin.zigErrorAbort(ErrorCode, errors.abort, ret);
-    }
-    if (@sizeOf(return_type) == @sizeOf(usize)) {
-        return @bitCast(return_type, ret);
-    }
-    if (return_type != void) {
-        return @intCast(return_type, ret);
-    }
-}
 inline fn cast(args: anytype) [args.len]usize {
     switch (args.len) {
         0 => return .{},
@@ -2403,6 +2378,34 @@ inline fn cast(args: anytype) [args.len]usize {
             meta.bitCast(usize, args[5]),
         },
         else => unreachable,
+    }
+}
+const syscalls = .{
+    syscall0, syscall1,
+    syscall2, syscall3,
+    syscall4, syscall5,
+    syscall6,
+};
+pub fn call(comptime tag: Fn, comptime errors: ErrorPolicy, comptime return_type: type, args: Fn.Args(tag)) ErrorUnion(errors, return_type) {
+    const Args = Fn.Args(tag);
+    const ret: isize = if (@TypeOf(args) != Args)
+        (comptime syscalls[tag.args()])(tag, args)
+    else
+        (comptime syscalls[tag.args()])(tag, args);
+    if (return_type == noreturn) {
+        unreachable;
+    }
+    if (errors.throw.len != 0) {
+        try builtin.zigErrorThrow(ErrorCode, errors.throw, ret);
+    }
+    if (errors.abort.len != 0) {
+        builtin.zigErrorAbort(ErrorCode, errors.abort, ret);
+    }
+    if (@sizeOf(return_type) == @sizeOf(usize)) {
+        return @bitCast(return_type, ret);
+    }
+    if (return_type != void) {
+        return @intCast(return_type, ret);
     }
 }
 pub fn call_noexcept(comptime tag: Fn, comptime return_type: type, args: anytype) return_type {
