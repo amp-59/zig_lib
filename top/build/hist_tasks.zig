@@ -152,7 +152,7 @@ pub const FormatCommand = packed struct {
     const Val = packed struct {
         color: @typeInfo(@TypeOf(@field(undef, "color"))).Optional.child = undefined,
     };
-    pub fn convert(cmd: tasks.FormatCommand) FormatCommand {
+    pub fn convert(cmd: *tasks.FormatCommand) FormatCommand {
         @setRuntimeSafety(false);
         var ret: FormatCommand = undefined;
         ret.key.color = cmd.color != null;
@@ -170,7 +170,7 @@ pub const ArchiveCommand = packed struct {
     const Val = packed struct {
         format: @typeInfo(@TypeOf(@field(undef, "format"))).Optional.child = undefined,
     };
-    pub fn convert(cmd: tasks.ArchiveCommand) ArchiveCommand {
+    pub fn convert(cmd: *tasks.ArchiveCommand) ArchiveCommand {
         @setRuntimeSafety(false);
         var ret: ArchiveCommand = undefined;
         ret.key.format = cmd.format != null;
@@ -188,7 +188,7 @@ pub const TableGenCommand = packed struct {
     const Val = packed struct {
         color: @typeInfo(@TypeOf(@field(undef, "color"))).Optional.child = undefined,
     };
-    pub fn convert(cmd: tasks.TableGenCommand) TableGenCommand {
+    pub fn convert(cmd: *tasks.TableGenCommand) TableGenCommand {
         @setRuntimeSafety(false);
         var ret: TableGenCommand = undefined;
         ret.key.color = cmd.color != null;
