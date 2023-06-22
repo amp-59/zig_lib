@@ -782,15 +782,23 @@ pub fn ToBitFieldPairs(comptime T: type) []const BitFieldPair {
 fn sortDecls(comptime Container: type) []const builtin.Type.Declaration {
     const type_info: builtin.Type = @typeInfo(Container);
     const decls: []const builtin.Type.Declaration = resolve(type_info).decls;
+    var ret: []const builtin.Type.Declaration = &.{};
     var sorted: [decls.len]builtin.Type.Declaration = sliceToArrayPointer(decls).*;
     var l_idx: usize = 1;
     while (l_idx < sorted.len) : (l_idx +%= 1) {
         var r_idx: usize = l_idx -% 1;
         const x: builtin.Type.Declaration = sorted[l_idx];
-        const x_val = if (x.is_pub) @field(Container, x.name) else 0;
+        const x_val = if (x.is_pub and
+            @TypeOf(@field(Container, x.name)) != type) @field(Container, x.name) else 0;
         while (r_idx < sorted.len) : (r_idx -%= 1) {
             const y: builtin.Type.Declaration = sorted[r_idx];
-            const y_val = if (y.is_pub) @field(Container, y.name) else 0;
+            if (!y.is_pub) {
+                break;
+            }
+            const y_val = @field(Container, y.name);
+            if (@TypeOf(y_val) == type) {
+                break;
+            }
             if (y_val <= x_val) {
                 break;
             }
@@ -798,7 +806,17 @@ fn sortDecls(comptime Container: type) []const builtin.Type.Declaration {
         }
         sorted[r_idx +% 1] = x;
     }
-    return &sorted;
+    for (sorted) |decl| {
+        if (!decl.is_pub) {
+            continue;
+        }
+        const decl_val = @field(Container, decl.name);
+        if (@TypeOf(decl_val) == type) {
+            continue;
+        }
+        ret = ret ++ [1]builtin.Type.Declaration{decl};
+    }
+    return ret;
 }
 fn sortSets(sets: []const BitFieldSet) []const BitFieldSet {
     var sorted: [sets.len]BitFieldSet = sliceToArrayPointer(sets).*;
