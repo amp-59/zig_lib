@@ -1,8 +1,9 @@
-const types = @import("./types.zig");
+const tasks = @import("./tasks.zig");
 const safety: bool = false;
 pub const BuildCommand = packed struct {
     key: Key,
     val: Val,
+    const undef: tasks.BuildCommand = undefined;
     const Key = packed struct {
         listen: bool = false,
         code_model: bool = false,
@@ -38,28 +39,12 @@ pub const BuildCommand = packed struct {
         color: bool = false,
     };
     const Val = packed struct {
-        listen: enum(u2) {
-            none = 0,
-            @"-" = 1,
-            ipv4 = 2,
-        } = undefined,
-        code_model: enum(u3) {
-            default = 0,
-            tiny = 1,
-            small = 2,
-            kernel = 3,
-            medium = 4,
-            large = 5,
-        } = undefined,
+        listen: @typeInfo(@TypeOf(@field(undef, "listen"))).Optional.child = undefined,
+        code_model: @typeInfo(@TypeOf(@field(undef, "code_model"))).Optional.child = undefined,
         red_zone: bool = undefined,
         builtin: bool = undefined,
         omit_frame_pointer: bool = undefined,
-        mode: enum(u2) {
-            Debug = 0,
-            ReleaseSafe = 1,
-            ReleaseFast = 2,
-            ReleaseSmall = 3,
-        } = undefined,
+        mode: @typeInfo(@TypeOf(@field(undef, "mode"))).Optional.child = undefined,
         pic: bool = undefined,
         pie: bool = undefined,
         lto: bool = undefined,
@@ -77,37 +62,18 @@ pub const BuildCommand = packed struct {
         function_sections: bool = undefined,
         strip: bool = undefined,
         formatted_panics: bool = undefined,
-        format: enum(u4) {
-            elf = 0,
-            c = 1,
-            wasm = 2,
-            coff = 3,
-            macho = 4,
-            spirv = 5,
-            plan9 = 6,
-            hex = 7,
-            raw = 8,
-        } = undefined,
+        format: @typeInfo(@TypeOf(@field(undef, "format"))).Optional.child = undefined,
         lld: bool = undefined,
         compiler_rt: bool = undefined,
         each_lib_rpath: bool = undefined,
         allow_shlib_undefined: bool = undefined,
-        build_id: enum(u8) {
-            fast = 0,
-            uuid = 1,
-            sha1 = 2,
-            md5 = 3,
-            none = 4,
-        } = undefined,
+        build_id: @typeInfo(@TypeOf(@field(undef, "build_id"))).Optional.child = undefined,
         compress_debug_sections: bool = undefined,
         gc_sections: bool = undefined,
-        color: enum(u2) {
-            auto = 0,
-            off = 1,
-            on = 2,
-        } = undefined,
+        color: @typeInfo(@TypeOf(@field(undef, "color"))).Optional.child = undefined,
     };
-    pub fn convert(cmd: types.BuildCommand) BuildCommand {
+    pub fn convert(cmd: *tasks.BuildCommand) BuildCommand {
+        @setRuntimeSafety(false);
         var ret: BuildCommand = undefined;
         ret.key.listen = cmd.listen != null;
         ret.val.listen = cmd.listen.?;
@@ -173,64 +139,60 @@ pub const BuildCommand = packed struct {
         ret.val.gc_sections = cmd.gc_sections.?;
         ret.key.color = cmd.color != null;
         ret.val.color = cmd.color.?;
+        return ret;
     }
 };
 pub const FormatCommand = packed struct {
     key: Key,
     val: Val,
+    const undef: tasks.FormatCommand = undefined;
     const Key = packed struct {
         color: bool = false,
     };
     const Val = packed struct {
-        color: enum(u2) {
-            auto = 0,
-            off = 1,
-            on = 2,
-        } = undefined,
+        color: @typeInfo(@TypeOf(@field(undef, "color"))).Optional.child = undefined,
     };
-    pub fn convert(cmd: types.FormatCommand) FormatCommand {
+    pub fn convert(cmd: tasks.FormatCommand) FormatCommand {
+        @setRuntimeSafety(false);
         var ret: FormatCommand = undefined;
         ret.key.color = cmd.color != null;
         ret.val.color = cmd.color.?;
+        return ret;
     }
 };
 pub const ArchiveCommand = packed struct {
     key: Key,
     val: Val,
+    const undef: tasks.ArchiveCommand = undefined;
     const Key = packed struct {
         format: bool = false,
     };
     const Val = packed struct {
-        format: enum(u3) {
-            default = 0,
-            gnu = 1,
-            darwin = 2,
-            bsd = 3,
-            bigarchive = 4,
-        } = undefined,
+        format: @typeInfo(@TypeOf(@field(undef, "format"))).Optional.child = undefined,
     };
-    pub fn convert(cmd: types.ArchiveCommand) ArchiveCommand {
+    pub fn convert(cmd: tasks.ArchiveCommand) ArchiveCommand {
+        @setRuntimeSafety(false);
         var ret: ArchiveCommand = undefined;
         ret.key.format = cmd.format != null;
         ret.val.format = cmd.format.?;
+        return ret;
     }
 };
 pub const TableGenCommand = packed struct {
     key: Key,
     val: Val,
+    const undef: tasks.TableGenCommand = undefined;
     const Key = packed struct {
         color: bool = false,
     };
     const Val = packed struct {
-        color: enum(u2) {
-            auto = 0,
-            off = 1,
-            on = 2,
-        } = undefined,
+        color: @typeInfo(@TypeOf(@field(undef, "color"))).Optional.child = undefined,
     };
-    pub fn convert(cmd: types.TableGenCommand) TableGenCommand {
+    pub fn convert(cmd: tasks.TableGenCommand) TableGenCommand {
+        @setRuntimeSafety(false);
         var ret: TableGenCommand = undefined;
         ret.key.color = cmd.color != null;
         ret.val.color = cmd.color.?;
+        return ret;
     }
 };

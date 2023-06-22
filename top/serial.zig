@@ -321,7 +321,6 @@ pub const SerialSpec = struct {
         return .{
             .logging = serial_spec.logging.open,
             .errors = serial_spec.errors.open,
-            .options = .{ .read = true },
         };
     }
 };
