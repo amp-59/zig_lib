@@ -14,7 +14,7 @@ pub fn main(args_in: [][*:0]u8) !void {
     const addr: u64 = 0x40000000;
     for (args_in[1..]) |arg_in| {
         const arg: [:0]const u8 = meta.manyToSlice(arg_in);
-        const fd: u64 = file.open(.{ .options = .{ .read = true, .no_follow = false } }, arg) catch {
+        const fd: u64 = file.open(.{ .options = .{ .no_follow = false } }, arg) catch {
             continue;
         };
         defer file.close(.{ .errors = .{} }, fd);

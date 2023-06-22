@@ -32,11 +32,10 @@ const Ioc = packed struct(u32) {
     write: bool,
     read: bool,
 };
-
 pub fn main() !void {
     var array: mem.StaticString(4096) = undefined;
     array.undefineAll();
-    var fd = try file.open(.{ .options = .{ .write = true } }, "/dev/dri/card0");
+    var fd = try file.open(.{ .options = .{ .read_write = true } }, "/dev/dri/card0");
     defer file.close(.{ .errors = .{} }, fd);
     var res = comptime builtin.zero(ModeRes);
     const ioc: Ioc = .{

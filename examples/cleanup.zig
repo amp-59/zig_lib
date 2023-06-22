@@ -18,7 +18,7 @@ pub fn main(args_in: [][*:0]u8) !void {
     }
     for (args_in[1..]) |arg_in| {
         const arg: [:0]const u8 = meta.manyToSlice(arg_in);
-        const fd: u64 = file.open(.{ .options = .{ .read = true, .write = true, .append = true, .no_follow = false } }, arg) catch {
+        const fd: u64 = file.open(.{ .options = .{ .read_write = true, .append = true, .no_follow = false } }, arg) catch {
             continue;
         };
         const size: u64 = try file.seek(.{}, fd, 0, .end);
