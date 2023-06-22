@@ -24,7 +24,7 @@ const make_dir_spec: file.MakeDirSpec = .{};
 const make_node_spec: file.MakeNodeSpec = .{};
 const seek_spec: file.SeekSpec = .{};
 const create_spec: file.CreateSpec = .{
-    .options = .{ .write = true, .append = false },
+    .options = .{ .read = true, .write = true, .append = false },
 };
 const path_spec: file.PathSpec = .{};
 const file_path_spec: file.PathSpec = .{ .options = .{ .directory = false } };
@@ -32,7 +32,7 @@ const link_spec: file.LinkSpec = .{};
 const copy_spec: file.CopySpec = .{};
 const send_spec: file.SendSpec = .{};
 const open_spec: file.OpenSpec = .{
-    .options = .{ .write = true, .append = true },
+    .options = .{ .read_write = true, .append = true },
 };
 const open_dir_spec: file.OpenSpec = .{
     .options = .{ .directory = true },
@@ -354,6 +354,10 @@ fn testBasicDirectoryIterator() !void {
         _ = list.this();
     }
 }
+fn testSampleReports() void {
+    builtin.debug.write(@src().fn_name ++ ":\n");
+    file.debug.sampleAllReports();
+}
 pub fn main(args: [][*:0]u8) !void {
     try meta.wrap(testBasicDirectoryIterator());
     try meta.wrap(testPreClean());
@@ -372,5 +376,5 @@ pub fn main(args: [][*:0]u8) !void {
     try meta.wrap(testLinkAt());
     try meta.wrap(testSymbolicLink());
     try meta.wrap(testSymbolicLinkAt());
-    file.debug.sampleAllReports();
+    try meta.wrap(testSampleReports());
 }
