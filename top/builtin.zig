@@ -1271,7 +1271,8 @@ pub const debug = struct {
         return fmt.Generic(T).dec(value);
     }
     const size: usize = 4096;
-    const about_exit_0_s: [:0]const u8 = fmt.about("exit");
+    pub const about_error_s = "\x1b[91;1merror\x1b[0m=";
+    pub const about_exit_0_s: [:0]const u8 = fmt.about("exit");
     pub extern fn printStackTrace(u64, u64) void;
     pub const about_fault_p0_s = blk: {
         var lhs: [:0]const u8 = "fault";
@@ -1301,7 +1302,7 @@ pub const debug = struct {
     }
     fn exitErrorRc(error_name: []const u8, rc: u8) void {
         var buf: [4096]u8 = undefined;
-        logAlwaysAIO(&buf, &.{ about_error_p0_s, "(", error_name, "), rc=", fmt.ud8(rc).readAll(), "\n" });
+        logAlwaysAIO(&buf, &.{ about_error_p0_s, error_name, ", rc=", fmt.ud8(rc).readAll(), "\n" });
     }
     fn exitErrorFaultRc(error_name: []const u8, message: []const u8, rc: u8) void {
         exitError(error_name);
@@ -1309,7 +1310,7 @@ pub const debug = struct {
     }
     fn exitError(error_name: []const u8) void {
         var buf: [4096]u8 = undefined;
-        logAlwaysAIO(&buf, &.{ about_error_p0_s, "(", error_name, ")\n" });
+        logAlwaysAIO(&buf, &.{ about_error_p0_s, error_name, "\n" });
     }
     fn exitFault(message: []const u8, rc: u8) void {
         var buf: [4096]u8 = undefined;
