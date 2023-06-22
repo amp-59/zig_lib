@@ -17,11 +17,11 @@ pub const runtime_assertions: bool = true;
 pub const logging_override: builtin.Logging.Override = spec.logging.override.verbose;
 
 pub const signal_handlers: builtin.SignalHandlers = .{
-    .segmentation_fault = true,
-    .bus_error = true,
-    .illegal_instruction = true,
-    .floating_point_error = true,
-    .breakpoint = true,
+    .SegmentationFault = true,
+    .BusError = true,
+    .IllegalInstruction = true,
+    .FloatingPointError = true,
+    .Trap = true,
 };
 
 const Array = mem.UnstructuredStreamView(8, 8, struct {}, .{});
@@ -111,16 +111,26 @@ fn testVClockGettime(aux: *const anyopaque) !void {
 }
 
 fn handlerFn(_: sys.SignalCode) void {}
-fn handlerSigInfoFn(_: sys.SignalCode, _: *const proc.SignalInfo, _: ?*const anyopaque) void {}
-fn testUpdateSignalAction() !void {
-    try proc.updateSignalAction(.{}, .SEGV, .{ .set = .ignore });
-    try proc.updateSignalAction(.{}, .SEGV, .{ .set = .default });
-    try proc.updateSignalAction(.{}, .SEGV, .{ .handler = &handlerFn });
-    try proc.updateSignalAction(.{}, .SEGV, .{ .action = &handlerSigInfoFn });
+fn handlerSigInfoFn(_: sys.SignalCode, _: *const proc.SignalInfo, _: ?*const anyopaque) void {
+    builtin.proc.exit(0);
 }
-pub fn main(_: [][*:0]u8, vars: [][*:0]u8, aux: *const anyopaque) !void {
-    try testUpdateSignalAction();
+fn testUpdateSignalAction() !void {
+    var buf: [4096]u8 = undefined;
+    recursion(&buf);
+}
+fn fault() void {
+    var addr: u64 = 0x4000000;
+    @intToPtr(*u8, addr).* = '0';
+}
+fn recursion(buf: *[4096]u8) void {
+    var next: [4096]u8 = undefined;
+    @memcpy(&next, buf);
+    recursion(&next);
+}
+pub fn main(_: anytype, vars: anytype, aux: anytype) !void {
     try testCloneAndFutex();
+    proc.debug.sampleAllReports();
     try testFindNameInPath(vars);
     try testVClockGettime(aux);
+    try testUpdateSignalAction();
 }
