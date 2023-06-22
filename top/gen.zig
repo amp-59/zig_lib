@@ -58,7 +58,8 @@ pub fn readFile(comptime read_spec: file.ReadSpec, pathname: [:0]const u8, buf: 
 }
 pub fn containerDeclsToBitField(comptime Container: type, comptime backing_integer: type, type_name: []const u8) void {
     const ShiftAmount = builtin.ShiftAmount(backing_integer);
-    const bit_field_sets: []const meta.BitFieldSet = comptime meta.containerDeclsToBitFieldSets(Container, backing_integer);
+    const bit_field_sets: []const meta.GenericBitFieldSet(backing_integer) =
+        comptime meta.containerDeclsToBitFieldSets(Container, backing_integer);
     const size_name: []const u8 = @typeName(backing_integer);
     var array: mem.StaticString(4096) = undefined;
     array.undefineAll();
