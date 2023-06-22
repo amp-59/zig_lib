@@ -1,11 +1,11 @@
 const top = @import("../zig_lib.zig");
+const gen = top.gen;
 const sys = top.sys;
 const builtin = top.builtin;
 const meta = top.meta;
 const proc = top.proc;
-
+const testing = top.testing;
 pub usingnamespace proc.start;
-
 pub const logging_default: builtin.Logging.Default = .{
     .Attempt = true,
     .Success = true,
@@ -15,7 +15,6 @@ pub const logging_default: builtin.Logging.Default = .{
     .Fault = true,
 };
 pub const runtime_assertions: bool = true;
-
 fn basicTests() !void {
     try builtin.expectEqual(i1, -1, meta.extrema(i1).min);
     try builtin.expectEqual(u1, 1, meta.extrema(u1).max);
@@ -96,15 +95,7 @@ fn memoryTests() !void {
         builtin.assertEqual(anyerror, error.UnexpectedValue, err);
     };
 }
-fn testToBitFieldPairs() !void {
-    const sa_pairs = comptime meta.sliceToArrayPointer(meta.ToBitFieldPairs(sys.CLONE));
-    for (sa_pairs) |pair| {
-        top.testing.print(.{ pair.name, ": ", top.fmt.render(.{ .infer_type_names = true }, @bitCast(meta.Bits64, pair.value)), '\n' });
-    }
-}
-
 pub fn main(_: anytype, _: [][*:0]u8) !void {
-    try testToBitFieldPairs();
     try basicTests();
     try bitCastTests();
     try alignTests();
