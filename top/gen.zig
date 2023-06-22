@@ -61,7 +61,7 @@ pub fn containerDeclsToBitField(comptime Container: type, comptime backing_integ
     const bit_field_sets: []const meta.GenericBitFieldSet(backing_integer) =
         comptime meta.containerDeclsToBitFieldSets(Container, backing_integer);
     const size_name: []const u8 = @typeName(backing_integer);
-    var array: mem.StaticString(4096) = undefined;
+    var array: mem.StaticString(1024 *% 1024) = undefined;
     array.undefineAll();
     var bits: u16 = 0;
     var diff: u16 = 0;
