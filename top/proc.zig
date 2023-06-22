@@ -712,16 +712,16 @@ const SignalActionSpec = struct {
         return flags_bitfield;
     }
 };
-const SignalStack = extern struct {
+pub const SignalStack = extern struct {
     addr: u64,
     flags: Options,
-    size: u64,
-    const Options = meta.EnumBitField(enum(usize) {
-        on_stack = SS.ONSTACK,
-        diable = SS.DISABLE,
-        auto_disarm = SS.AUTODISARM,
-        const SS = sys.SS;
-    });
+    len: u64,
+    const Options = packed struct(u32) {
+        on_stack: bool = false,
+        disable: bool = false,
+        zb2: u29 = 0,
+        auto_disarm: bool = false,
+    };
 };
 const SignalStackSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.sigaction_errors },
