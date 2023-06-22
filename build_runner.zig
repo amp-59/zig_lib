@@ -29,11 +29,11 @@ pub const logging_default: builtin.Logging.Default = .{
 };
 pub const tracing_override: bool = false;
 pub const signal_handlers = .{
-    .illegal_instruction = false,
-    .bus_error = false,
-    .floating_point_error = false,
-    .breakpoint = false,
-    .segmentation_fault = false,
+    .IllegalInstruction = false,
+    .BusError = false,
+    .FloatingPointError = false,
+    .Trap = false,
+    .SegmentationFault = false,
 };
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     var address_space: Node.AddressSpace = .{};

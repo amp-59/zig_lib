@@ -18,11 +18,11 @@ pub usingnamespace proc.start;
 
 pub const logging_override: builtin.Logging.Override = spec.logging.override.verbose;
 pub const signal_handlers: builtin.SignalHandlers = .{
-    .segmentation_fault = true,
-    .bus_error = true,
-    .illegal_instruction = true,
-    .floating_point_error = true,
-    .breakpoint = true,
+    .SegmentationFault = true,
+    .BusError = true,
+    .IllegalInstruction = true,
+    .FloatingPointError = true,
+    .Trap = true,
 };
 pub const runtime_assertions: bool = true;
 pub const tracing_override: bool = false;

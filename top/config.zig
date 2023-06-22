@@ -45,11 +45,11 @@ pub const signal_handlers: SignalHandlers = define(
     "signal_handlers",
     SignalHandlers,
     .{
-        .segmentation_fault = logging_general.Fault,
-        .illegal_instruction = logging_general.Fault,
-        .bus_error = logging_general.Fault,
-        .floating_point_error = logging_general.Fault,
-        .breakpoint = logging_default.Fault,
+        .SegmentationFault = logging_general.Fault,
+        .IllegalInstruction = logging_general.Fault,
+        .BusError = logging_general.Fault,
+        .FloatingPointError = logging_general.Fault,
+        .Trap = logging_default.Fault,
     },
 );
 // These are defined by the library builder
@@ -111,11 +111,11 @@ pub fn AddressSpace() type {
     return root.AddressSpace;
 }
 pub const SignalHandlers = packed struct {
-    segmentation_fault: bool,
-    illegal_instruction: bool,
-    bus_error: bool,
-    floating_point_error: bool,
-    breakpoint: bool,
+    SegmentationFault: bool,
+    IllegalInstruction: bool,
+    BusError: bool,
+    FloatingPointError: bool,
+    Trap: bool,
 };
 pub const Logging = packed struct {
     pub const Default = packed struct {
