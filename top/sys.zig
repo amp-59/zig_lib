@@ -77,12 +77,10 @@ pub const O = struct {
     pub const RDWR = 0x2;
     pub const CREAT = 0x40;
     pub const EXCL = 0x80;
-    //pub const ACCMODE = 0x3;
     pub const NOCTTY = 0x100;
     pub const TRUNC = 0x200;
     pub const APPEND = 0x400;
     pub const NONBLOCK = 0x800;
-    //pub const SYNC = 0x101000;
     pub const ASYNC = 0x2000;
     pub const DIRECTORY = 0x10000;
     pub const NOFOLLOW = 0x20000;
@@ -723,15 +721,13 @@ pub const CLD = struct {
     pub const EXITED = 0x1;
 };
 pub const AT = struct {
-    pub const EACCESS = 0x200;
-    pub const SYMLINK = struct {
-        pub const FOLLOW = 0x400;
-        pub const NOFOLLOW = 0x100;
-    };
-    pub const NO_AUTOMOUNT = 0x800;
-    pub const FDCWD = 0xffffffffffffff9c;
+    pub const SYMLINK_NOFOLLOW = 0x100;
     pub const REMOVEDIR = 0x200;
+    pub const SYMLINK_FOLLOW = 0x400;
+    pub const NO_AUTOMOUNT = 0x800;
     pub const EMPTY_PATH = 0x1000;
+};
+pub const AUX = struct {
     pub const EXECFD = 0x2;
     pub const PHDR = 0x3;
     pub const PHENT = 0x4;
@@ -2386,12 +2382,8 @@ const syscalls = .{
     syscall4, syscall5,
     syscall6,
 };
-pub fn call(comptime tag: Fn, comptime errors: ErrorPolicy, comptime return_type: type, args: Fn.Args(tag)) ErrorUnion(errors, return_type) {
-    const Args = Fn.Args(tag);
-    const ret: isize = if (@TypeOf(args) != Args)
-        (comptime syscalls[tag.args()])(tag, args)
-    else
-        (comptime syscalls[tag.args()])(tag, args);
+pub inline fn call(comptime tag: Fn, comptime errors: ErrorPolicy, comptime return_type: type, args: Fn.Args(tag)) ErrorUnion(errors, return_type) {
+    const ret: isize = (comptime syscalls[tag.args()])(tag, args);
     if (return_type == noreturn) {
         unreachable;
     }
@@ -2408,8 +2400,8 @@ pub fn call(comptime tag: Fn, comptime errors: ErrorPolicy, comptime return_type
         return @intCast(return_type, ret);
     }
 }
-pub fn call_noexcept(comptime tag: Fn, comptime return_type: type, args: anytype) return_type {
-    const ret: isize = (comptime syscalls[tag.args()])(tag, cast(args));
+pub inline fn call_noexcept(comptime tag: Fn, comptime return_type: type, args: Fn.Args(tag)) return_type {
+    const ret: isize = (comptime syscalls[tag.args()])(tag, args);
     if (return_type == noreturn) {
         unreachable;
     }
