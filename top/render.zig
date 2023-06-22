@@ -14,7 +14,7 @@ const meta = @import("./meta.zig");
 const builtin = @import("./builtin.zig");
 const abstract = @import("./abstract.zig");
 pub const RenderSpec = struct {
-    radix: comptime_int = 10,
+    radix: u7 = 10,
     string_literal: ?bool = true,
     multi_line_string_literal: ?bool = false,
     omit_default_fields: bool = true,
@@ -126,7 +126,7 @@ pub fn ArrayFormat(comptime spec: RenderSpec, comptime Array: type) type {
         const array_info: builtin.Type = @typeInfo(Array);
         const child: type = array_info.Array.child;
         const type_name: []const u8 = typeName(Array, spec);
-        const max_len: u64 = (type_name.len + 2) + array_info.Array.len * (ChildFormat.max_len + 2);
+        const max_len: u64 = (type_name.len +% 2) +% array_info.Array.len *% (ChildFormat.max_len +% 2);
         const omit_trailing_comma: bool = spec.omit_trailing_comma orelse true;
         const child_spec: RenderSpec = blk: {
             var tmp: RenderSpec = spec;
@@ -161,14 +161,14 @@ pub fn ArrayFormat(comptime spec: RenderSpec, comptime Array: type) type {
             }
         }
         pub fn formatLength(format: anytype) u64 {
-            var len: u64 = type_name.len + 2;
+            var len: u64 = type_name.len +% 2;
             if (comptime spec.enable_comptime_iterator and fmt.requireComptime(child)) {
                 inline for (format.value) |value| {
-                    len +%= ChildFormat.formatLength(.{ .value = value }) + 2;
+                    len +%= ChildFormat.formatLength(.{ .value = value }) +% 2;
                 }
             } else {
                 for (format.value) |value| {
-                    len +%= ChildFormat.formatLength(.{ .value = value }) + 2;
+                    len +%= ChildFormat.formatLength(.{ .value = value }) +% 2;
                 }
             }
             if (!omit_trailing_comma and format.value.len != 0) {
@@ -190,7 +190,7 @@ pub const BoolFormat = struct {
             array.writeCount(5, "false".*);
         }
     }
-    pub fn formatLength(format: Format) u64 {
+    pub inline fn formatLength(format: Format) u64 {
         return if (format.value) 4 else 5;
     }
     pub usingnamespace GenericRenderFormat(Format);
@@ -304,7 +304,7 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                             formatWriteOmitTrailingComma(
                                 array,
                                 omit_trailing_comma,
-                                struct_info.fields.len + struct_info.decls.len,
+                                struct_info.fields.len +% struct_info.decls.len,
                             );
                         } else {
                             formatWriteOmitTrailingComma(array, omit_trailing_comma, struct_info.fields.len);
@@ -326,7 +326,7 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                             formatWriteOmitTrailingComma(
                                 array,
                                 omit_trailing_comma,
-                                union_info.fields.len + union_info.decls.len,
+                                union_info.fields.len +% union_info.decls.len,
                             );
                         } else {
                             formatWriteOmitTrailingComma(array, omit_trailing_comma, union_info.fields.len);
@@ -348,7 +348,7 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                             formatWriteOmitTrailingComma(
                                 array,
                                 omit_trailing_comma,
-                                enum_info.fields.len + enum_info.decls.len,
+                                enum_info.fields.len +% enum_info.decls.len,
                             );
                         } else {
                             formatWriteOmitTrailingComma(array, omit_trailing_comma, enum_info.fields.len);
@@ -366,17 +366,16 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
             switch (type_info) {
                 .Struct => |struct_info| {
                     if (struct_info.fields.len == 0 and struct_info.decls.len == 0) {
-                        len +%= comptime builtin.fmt.typeDeclSpecifier(type_info).len + 3;
+                        len +%= comptime builtin.fmt.typeDeclSpecifier(type_info).len +% 3;
                     } else {
-                        len +%= comptime builtin.fmt.typeDeclSpecifier(type_info).len + 3;
+                        len +%= comptime builtin.fmt.typeDeclSpecifier(type_info).len +% 3;
                         inline for (struct_info.fields) |field| {
                             const field_name_format: fmt.IdentifierFormat = .{ .value = field.name };
                             if (spec.inline_field_types) {
                                 const type_format: TypeFormat(field_type_spec) = .{ .value = field.type };
-                                len +%= field_name_format.formatLength() + 2;
-                                len +%= type_format.formatLength();
+                                len +%= field_name_format.formatLength() +% 2 +% type_format.formatLength();
                             } else {
-                                len +%= field_name_format.formatLength() + 2 + typeName(field.type, field_type_spec).len;
+                                len +%= field_name_format.formatLength() +% 2 +% typeName(field.type, field_type_spec).len;
                             }
                             if (meta.defaultValue(field)) |default_value| {
                                 const field_format: AnyFormat(default_value_spec, field.type) = .{ .value = default_value };
@@ -391,7 +390,7 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                             }
                             len +%= formatLengthOmitTrailingComma(
                                 omit_trailing_comma,
-                                struct_info.fields.len + struct_info.decls.len,
+                                struct_info.fields.len +% struct_info.decls.len,
                             );
                         } else {
                             len +%= formatLengthOmitTrailingComma(omit_trailing_comma, struct_info.fields.len);
@@ -401,20 +400,20 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                 },
                 .Union => |union_info| {
                     if (union_info.fields.len == 0 and union_info.decls.len == 0) {
-                        len +%= comptime builtin.fmt.typeDeclSpecifier(type_info).len + 3;
+                        len +%= comptime builtin.fmt.typeDeclSpecifier(type_info).len +% 3;
                     } else {
-                        len +%= comptime builtin.fmt.typeDeclSpecifier(type_info).len + 3;
+                        len +%= comptime builtin.fmt.typeDeclSpecifier(type_info).len +% 3;
                         inline for (union_info.fields) |field| {
                             const field_name_format: fmt.IdentifierFormat = .{ .value = field.name };
                             if (field.type == void) {
-                                len +%= field_name_format.formatLength() + 2;
+                                len +%= field_name_format.formatLength() +% 2;
                             } else {
                                 if (spec.inline_field_types) {
-                                    len +%= field_name_format.formatLength() + 2;
+                                    len +%= field_name_format.formatLength() +% 2;
                                     const type_format: TypeFormat(field_type_spec) = .{ .value = field.type };
                                     len +%= type_format.formatLength();
                                 } else {
-                                    len +%= field_name_format.formatLength() + 2 + typeName(field.type, field_type_spec).len;
+                                    len +%= field_name_format.formatLength() +% 2 +% typeName(field.type, field_type_spec).len;
                                 }
                                 len +%= 2;
                             }
@@ -425,7 +424,7 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                             }
                             len +%= formatLengthOmitTrailingComma(
                                 omit_trailing_comma,
-                                union_info.fields.len + union_info.decls.len,
+                                union_info.fields.len +% union_info.decls.len,
                             );
                         } else {
                             len +%= formatLengthOmitTrailingComma(omit_trailing_comma, union_info.fields.len);
@@ -435,12 +434,12 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                 },
                 .Enum => |enum_info| {
                     if (enum_info.fields.len == 0 and enum_info.decls.len == 0) {
-                        len +%= comptime builtin.fmt.typeDeclSpecifier(type_info).len + 3;
+                        len +%= comptime builtin.fmt.typeDeclSpecifier(type_info).len +% 3;
                     } else {
-                        len +%= comptime builtin.fmt.typeDeclSpecifier(type_info).len + 3;
+                        len +%= comptime builtin.fmt.typeDeclSpecifier(type_info).len +% 3;
                         inline for (enum_info.fields) |field| {
                             const field_name_format: fmt.IdentifierFormat = .{ .value = field.name };
-                            len +%= field_name_format.formatLength() + 2;
+                            len +%= field_name_format.formatLength() +% 2;
                         }
                         if (!spec.omit_container_decls) {
                             inline for (enum_info.decls) |decl| {
@@ -448,7 +447,7 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                             }
                             len +%= formatLengthOmitTrailingComma(
                                 omit_trailing_comma,
-                                enum_info.fields.len + enum_info.decls.len,
+                                enum_info.fields.len +% enum_info.decls.len,
                             );
                         } else {
                             len +%= formatLengthOmitTrailingComma(omit_trailing_comma, enum_info.fields.len);
@@ -500,14 +499,14 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
         const omit_trailing_comma: bool = spec.omit_trailing_comma orelse false;
         const max_len: u64 = blk: {
             var len: u64 = 0;
-            len +%= type_name.len + 2;
+            len +%= type_name.len +% 2;
             if (fields.len == 0) {
                 len +%= 1;
             } else {
                 inline for (fields) |field| {
                     const field_name_format: fmt.IdentifierFormat = .{ .value = field.name };
                     const field_spec: RenderSpec = if (meta.DistalChild(field.type)) field_spec_if_type else field_spec_if_not_type;
-                    len +%= 1 + field_name_format.formatLength() + 3;
+                    len +%= 1 +% field_name_format.formatLength() +% 3;
                     len +%= AnyFormat(field.type, field_spec).max_len;
                     len +%= 2;
                 }
@@ -569,7 +568,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
         }
         pub fn formatLength(format: anytype) u64 {
             var len: u64 = 0;
-            len +%= type_name.len + 2;
+            len +%= type_name.len +% 2;
             var fields_len: usize = 0;
             inline for (fields) |field| {
                 const field_name_format: fmt.IdentifierFormat = .{ .value = field.name };
@@ -579,12 +578,12 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                 if (spec.omit_default_fields and field.default_value != null) {
                     if (!builtin.testEqual(field.type, field_value, mem.pointerOpaque(field.type, field.default_value.?).*)) {
                         const field_format: FieldFormat = .{ .value = field_value };
-                        len +%= 1 + field_name_format.formatLength() + 3 + field_format.formatLength() + 2;
+                        len +%= 1 +% field_name_format.formatLength() +% 3 +% field_format.formatLength() +% 2;
                         fields_len +%= 1;
                     }
                 } else {
                     const field_format: FieldFormat = .{ .value = field_value };
-                    len +%= 1 + field_name_format.formatLength() + 3 + field_format.formatLength() + 2;
+                    len +%= 1 +% field_name_format.formatLength() +% 3 +% field_format.formatLength() +% 2;
                     fields_len +%= 1;
                 }
             }
@@ -624,7 +623,7 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
                     const field_name_format: fmt.IdentifierFormat = .{ .value = field.name };
                     len +%= field_name_format.formatLength();
                 }
-                len +%= fields.len * 3;
+                len +%= fields.len *% 3;
                 // The length of 'bit_field('
                 len +%= 10;
                 // The length of the integer tag_type name
@@ -635,18 +634,18 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
                 len +%= 1;
                 // The number of fields - 1, for each potential '|' between
                 // tag names.
-                len +%= fields.len - 1;
+                len +%= fields.len -% 1;
                 // The maximum length of the potential remainder value + 4; the
                 // remainder is separated by "~|", to show the bits of the value
                 // which did not match, and has spaces on each side.
-                len +%= 2 + 1 + IntFormat(enum_info.Enum.tag_type).max_len + 1;
+                len +%= 2 +% 1 +% IntFormat(enum_info.Enum.tag_type).max_len +% 1;
                 break :blk len;
             } else {
                 var max_field_len: u64 = 0;
                 inline for (fields) |field| {
                     max_field_len = @max(max_field_len, AnyFormat(spec, field.type).max_len);
                 }
-                break :blk (type_name.len + 2) + 1 + meta.maxDeclLength(Union) + 3 + max_field_len + 2;
+                break :blk (type_name.len +% 2) +% 1 +% meta.maxDeclLength(Union) +% 3 +% max_field_len +% 2;
             }
         };
         pub fn formatWriteEnumField(format: Format, array: anytype) void {
@@ -691,7 +690,7 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
         pub fn formatLengthEnumField(format: Format) u64 {
             const enum_info: builtin.Type = @typeInfo(fields[0].type);
             const w: enum_info.Enum.tag_type = @field(format.value, fields[1].name);
-            var len: u64 = 10 + @typeName(enum_info.Enum.tag_type).len + 3;
+            var len: u64 = 10 +% @typeName(enum_info.Enum.tag_type).len +% 3;
             var x: enum_info.Enum.tag_type = w;
             comptime var i: u64 = enum_info.Enum.fields.len;
             inline while (i != 0) {
@@ -825,7 +824,7 @@ pub fn EnumFormat(comptime Enum: type) type {
     const T = struct {
         value: Enum,
         const Format: type = @This();
-        const max_len: u64 = 1 + meta.maxDeclLength(Enum);
+        const max_len: u64 = 1 +% meta.maxDeclLength(Enum);
         pub fn formatWrite(format: Format, array: anytype) void {
             const tag_name_format: fmt.IdentifierFormat = .{ .value = @tagName(format.value) };
             array.writeOne('.');
@@ -833,7 +832,7 @@ pub fn EnumFormat(comptime Enum: type) type {
         }
         pub fn formatLength(format: Format) u64 {
             const tag_name_format: fmt.IdentifierFormat = .{ .value = @tagName(format.value) };
-            return 1 + tag_name_format.formatLength();
+            return 1 +% tag_name_format.formatLength();
         }
         pub usingnamespace GenericRenderFormat(Format);
     };
@@ -850,7 +849,7 @@ pub const EnumLiteralFormat = struct {
     }
     pub fn formatLength(comptime format: Format) u64 {
         const tag_name_format: fmt.IdentifierFormat = .{ .value = @tagName(format.value) };
-        return 1 + tag_name_format.formatLength();
+        return 1 +% tag_name_format.formatLength();
     }
     pub usingnamespace GenericRenderFormat(Format);
 };
@@ -885,16 +884,6 @@ pub fn IntFormat(comptime spec: RenderSpec, comptime Int: type) type {
             }
             break :blk len;
         };
-        inline fn absolute(format: Format) Abs {
-            if (format.value < 0) {
-                return 1 +% ~@bitCast(Abs, format.value);
-            } else {
-                return @bitCast(Abs, format.value);
-            }
-        }
-        inline fn digits(format: Format) u64 {
-            return builtin.fmt.length(Abs, format.absolute(), radix);
-        }
         pub fn formatWrite(format: Format, array: anytype) void {
             const start: u64 = @ptrToInt(array.referOneUndefined());
             var next: u64 = start;
@@ -907,13 +896,17 @@ pub fn IntFormat(comptime spec: RenderSpec, comptime Int: type) type {
                     @ptrCast(*const [prefix.len]u8, prefix.ptr).*;
                 next +%= prefix.len;
             }
-            var value: Abs = format.absolute();
+            const absolute: Abs = if (format.value < 0)
+                1 +% ~@bitCast(Abs, format.value)
+            else
+                @bitCast(Abs, format.value);
+            var value: Abs = absolute;
             if (radix > max_abs_value) {
                 @intToPtr(*u8, next).* = @as(u8, '0') +
                     @boolToInt(format.value != 0);
                 next += 1;
             } else {
-                const count: u64 = format.digits();
+                const count: u64 = builtin.fmt.length(Abs, absolute, radix);
                 next += count;
                 var len: u64 = 0;
                 while (len != count) : (value /= radix) {
@@ -922,14 +915,18 @@ pub fn IntFormat(comptime spec: RenderSpec, comptime Int: type) type {
                         builtin.fmt.toSymbol(Abs, value, radix);
                 }
             }
-            array.define(next - start);
+            array.define(next -% start);
         }
         pub fn formatLength(format: Format) u64 {
             var len: u64 = prefix.len;
             if (format.value < 0) {
                 len +%= 1;
             }
-            return len +% format.digits();
+            const absolute: Abs = if (format.value < 0)
+                1 +% ~@bitCast(Abs, format.value)
+            else
+                @bitCast(Abs, format.value);
+            return len +% builtin.fmt.length(Abs, absolute, radix);
         }
         pub usingnamespace GenericRenderFormat(Format);
     };
@@ -959,13 +956,13 @@ pub fn PointerOneFormat(comptime spec: RenderSpec, comptime Pointer: type) type 
         const Format: type = @This();
         const SubFormat = meta.Return(fmt.ux64);
         const child: type = @typeInfo(Pointer).Pointer.child;
-        const max_len: u64 = (4 + typeName(Pointer, spec).len + 3) + AnyFormat(spec, child).max_len + 1;
+        const max_len: u64 = (4 +% typeName(Pointer, spec).len +% 3) +% AnyFormat(spec, child).max_len +% 1;
         pub fn formatWrite(format: anytype, array: anytype) void {
             const address: usize = @ptrToInt(format.value);
             const type_name: []const u8 = comptime typeName(Pointer, spec);
             if (child == anyopaque) {
                 const sub_format: SubFormat = .{ .value = address };
-                array.writeCount(12 + type_name.len, ("@intToPtr(" ++ type_name ++ ", ").*);
+                array.writeCount(12 +% type_name.len, ("@intToPtr(" ++ type_name ++ ", ").*);
                 writeFormat(array, sub_format);
                 array.writeOne(')');
             } else {
@@ -978,7 +975,7 @@ pub fn PointerOneFormat(comptime spec: RenderSpec, comptime Pointer: type) type 
                 } else {
                     const sub_format: AnyFormat(spec, child) = .{ .value = format.value.* };
                     if (!spec.infer_type_names) {
-                        array.writeCount(6 + type_name.len, ("@as(" ++ type_name ++ ", ").*);
+                        array.writeCount(6 +% type_name.len, ("@as(" ++ type_name ++ ", ").*);
                     }
                     array.writeOne('&');
                     writeFormat(array, sub_format);
@@ -994,7 +991,7 @@ pub fn PointerOneFormat(comptime spec: RenderSpec, comptime Pointer: type) type 
             const type_name: []const u8 = comptime typeName(Pointer, spec);
             if (child == anyopaque) {
                 const sub_format: SubFormat = .{ .value = address };
-                len +%= 12 + type_name.len;
+                len +%= 12 +% type_name.len;
                 len +%= sub_format.formatLength();
                 len +%= 1;
             } else {
@@ -1007,7 +1004,7 @@ pub fn PointerOneFormat(comptime spec: RenderSpec, comptime Pointer: type) type 
                 } else {
                     const sub_format: AnyFormat(spec, child) = .{ .value = format.value.* };
                     if (!spec.infer_type_names) {
-                        len +%= 6 + type_name.len;
+                        len +%= 6 +% type_name.len;
                     }
                     len +%= 1;
                     len +%= sub_format.formatLength();
@@ -1207,7 +1204,7 @@ pub fn PointerManyFormat(comptime spec: RenderSpec, comptime Pointer: type) type
         }
         pub fn formatLength(format: Format) u64 {
             if (type_info.Pointer.sentinel == null) {
-                return type_name.len + 7;
+                return type_name.len +% 7;
             } else {
                 const Slice: type = meta.ManyToSlice(Pointer);
                 const slice_fmt_type: type = PointerSliceFormat(spec, Slice);
@@ -1226,7 +1223,7 @@ pub fn OptionalFormat(comptime spec: RenderSpec, comptime Optional: type) type {
         const ChildFormat: type = AnyFormat(spec, child);
         const child: type = @typeInfo(Optional).Optional.child;
         const type_name: []const u8 = typeName(Optional);
-        const max_len: u64 = (4 + type_name.len + 2) + @max(1 + ChildFormat.max_len, 5);
+        const max_len: u64 = (4 +% type_name.len +% 2) +% @max(1 +% ChildFormat.max_len, 5);
         const render_readable: bool = true;
         pub fn formatWrite(format: anytype, array: anytype) void {
             if (!render_readable) {
@@ -1247,7 +1244,7 @@ pub fn OptionalFormat(comptime spec: RenderSpec, comptime Optional: type) type {
         pub fn formatLength(format: anytype) u64 {
             var len: u64 = 0;
             if (!render_readable) {
-                len +%= 4 + type_name.len + 2;
+                len +%= 4 +% type_name.len +% 2;
             }
             if (format.value) |optional| {
                 const sub_format: ChildFormat = .{ .value = optional };
@@ -1314,8 +1311,8 @@ pub fn VectorFormat(comptime spec: RenderSpec, comptime Vector: type) type {
         const vector_info: builtin.Type = @typeInfo(Vector);
         const child: type = vector_info.Vector.child;
         const type_name: []const u8 = typeName(Vector);
-        const max_len: u64 = (type_name.len + 2) +
-            vector_info.Vector.len * (ChildFormat.max_len + 2);
+        const max_len: u64 = (type_name.len +% 2) +
+            vector_info.Vector.len *% (ChildFormat.max_len +% 2);
         pub fn formatWrite(format: Format, array: anytype) void {
             if (vector_info.Vector.len == 0) {
                 array.writeMany(type_name);
@@ -1333,11 +1330,11 @@ pub fn VectorFormat(comptime spec: RenderSpec, comptime Vector: type) type {
             }
         }
         pub fn formatLength(format: Format) u64 {
-            var len: u64 = type_name.len + 2;
+            var len: u64 = type_name.len +% 2;
             comptime var i: u64 = 0;
             inline while (i != vector_info.Vector.len) : (i += 1) {
                 const element_format: ChildFormat = .{ .value = format.value[i] };
-                len +%= element_format.formatLength() + 2;
+                len +%= element_format.formatLength() +% 2;
             }
             return len;
         }
@@ -1384,7 +1381,7 @@ pub fn ErrorSetFormat(comptime ErrorSet: type) type {
             array.writeMany(@errorName(format.value));
         }
         pub fn formatLength(format: Format) u64 {
-            return 6 + @errorName(format.value).len;
+            return 6 +% @errorName(format.value).len;
         }
         pub usingnamespace GenericRenderFormat(Format);
     };
