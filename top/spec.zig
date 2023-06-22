@@ -587,7 +587,7 @@ const sys = struct {
         };
         pub const truncate_noexcept: zig_lib.file.CreateSpec = .{
             .errors = .{},
-            .options = .{ .exclusive = false },
+            .options = .{ .truncate = true, .write = true, .exclusive = false },
         };
     };
     pub const open = struct {
@@ -597,7 +597,7 @@ const sys = struct {
         };
         pub const append_noexcept: zig_lib.file.OpenSpec = .{
             .errors = .{},
-            .options = .{ .write_only = true, .append = true },
+            .options = .{ .read_write = true, .append = true },
         };
         pub const errors = struct {
             pub const all: []const zig_lib.sys.ErrorCode = &.{
