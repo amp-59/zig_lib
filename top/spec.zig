@@ -593,11 +593,11 @@ const sys = struct {
     pub const open = struct {
         pub const append_zen: zig_lib.file.OpenSpec = .{
             .errors = .{ .throw = sys.open.errors.all },
-            .options = .{ .write = true, .append = true },
+            .options = .{ .write_only = true, .append = true },
         };
         pub const append_noexcept: zig_lib.file.OpenSpec = .{
             .errors = .{},
-            .options = .{ .write = true, .append = true },
+            .options = .{ .write_only = true, .append = true },
         };
         pub const errors = struct {
             pub const all: []const zig_lib.sys.ErrorCode = &.{
