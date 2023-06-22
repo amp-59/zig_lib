@@ -15,6 +15,7 @@ pub usingnamespace _reference;
 pub usingnamespace _container;
 pub usingnamespace _allocator;
 pub usingnamespace _list;
+
 pub const Map = struct {
     pub const Options = meta.EnumBitField(enum(u64) {
         anonymous = MAP.ANONYMOUS,
@@ -99,15 +100,47 @@ pub const Fd = struct {
         const MFD = sys.MFD;
     });
 };
+const _Map = struct {
+    const Protection = packed struct(usize) {
+        read: bool = true,
+        write: bool = true,
+        exec: bool = false,
+        zb3: u21 = 0,
+        grows_down: bool = false,
+        grows_up: bool = false,
+        zb26: u38 = 0,
+    };
+    const Flags = packed struct(usize) {
+        visibility: enum(u2) { shared = 1, private = 2, shared_validate = 3 } = .private,
+        zb2: u2 = 0,
+        fixed: bool = false,
+        anonymous: bool = true,
+        zb6: u2 = 0,
+        grows_down: bool = false,
+        zb9: u2 = 0,
+        deny_write: bool = false,
+        executable: bool = false,
+        locked: bool = false,
+        no_reserve: bool = false,
+        populate: bool = false,
+        non_block: bool = false,
+        stack: bool = false,
+        hugetlb: bool = false,
+        sync: bool = false,
+        fixed_noreplace: bool = true,
+        zb21: u43 = 0,
+    };
+};
 pub const MapSpec = struct {
     options: Options = .{},
     errors: sys.ErrorPolicy = .{ .throw = sys.mmap_errors },
     return_type: type = void,
     logging: builtin.Logging.AcquireError = .{},
     const Specification = @This();
+
     pub const Options = struct {
         anonymous: bool = true,
-        visibility: Visibility = .private,
+        visibility: _Map.Visibility = .private,
         read: bool = true,
         write: bool = true,
         exec: bool = false,
@@ -115,7 +148,6 @@ pub const MapSpec = struct {
         grows_down: bool = false,
         sync: bool = false,
     };
-    const Visibility = enum { shared, shared_validate, private };
     pub fn flags(comptime spec: Specification) Map.Options {
         var flags_bitfield: Map.Options = .{ .val = 0 };
         flags_bitfield.set(.fixed_no_replace);
