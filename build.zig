@@ -5,10 +5,12 @@ const build = srg.build;
 const builtin = srg.builtin;
 
 pub const Node = build.GenericNode(.{
-    .options = .{ .enable_safety = false },
+    .options = build.BuilderSpec.Options{
+        .enable_safety = false,
+        .write_build_task_record = true,
+    },
 });
 pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
-
 pub const message_style: [:0]const u8 = "\x1b[2m";
 const deps: []const build.ModuleDependency = &.{
     .{ .name = "context" },
@@ -23,7 +25,7 @@ const mods: []const build.Module = &.{
 const macros: []const build.Macro = &.{
     .{ .name = "zig_lib" },
 };
-var build_cmd: build.BuildCommand = build.BuildCommand{
+var build_cmd: build.tasks.BuildCommand = .{
     .kind = .exe,
     .mode = .ReleaseSmall,
     .dependencies = deps[0..1],
@@ -40,7 +42,7 @@ var build_cmd: build.BuildCommand = build.BuildCommand{
     .gc_sections = true,
     .omit_frame_pointer = false,
 };
-const format_cmd: build.FormatCommand = .{
+const format_cmd: build.tasks.FormatCommand = .{
     .ast_check = true,
 };
 
@@ -75,8 +77,8 @@ fn memgen(allocator: *Node.Allocator, node: *Node) void {
     mg_ptr.dependOn(allocator, mg_ptr_impls, .run);
     mg_ctn.dependOn(allocator, mg_ctn_impls, .run);
     mg_ctn_kinds.dependOn(allocator, mg_specs, .run);
-    mg_specs.task_info.build.mode = .Debug;
-    node.task = .format;
+    mg_specs.task.info.build.mode = .Debug;
+    node.task.tag = .format;
 }
 fn examples(allocator: *Node.Allocator, node: *Node) void {
     build_cmd.kind = .exe;
@@ -110,7 +112,7 @@ fn examples(allocator: *Node.Allocator, node: *Node) void {
     readelf.descr = "Example program (defunct) for parsing and displaying information about ELF binaries";
     declprint.descr = "Useful for printing declarations";
     pathsplit.descr = "Useful for splitting paths into dirnames and basename";
-    node.task = .build;
+    node.task.tag = .build;
 }
 fn tests(allocator: *Node.Allocator, node: *Node) void {
     build_cmd.mode = .Debug;
@@ -118,6 +120,7 @@ fn tests(allocator: *Node.Allocator, node: *Node) void {
     const decl_test: *Node = try node.addBuild(allocator, build_cmd, "decl_test", "test/decl-test.zig");
     const builtin_test: *Node = try node.addBuild(allocator, build_cmd, "builtin_test", "test/builtin-test.zig");
     const meta_test: *Node = try node.addBuild(allocator, build_cmd, "meta_test", "test/meta-test.zig");
+    const gen_test: *Node = try node.addBuild(allocator, build_cmd, "gen_test", "test/gen-test.zig");
     const algo_test: *Node = try node.addBuild(allocator, build_cmd, "algo_test", "test/algo-test.zig");
     const math_test: *Node = try node.addBuild(allocator, build_cmd, "math_test", "test/math-test.zig");
     const file_test: *Node = try node.addBuild(allocator, build_cmd, "file_test", "test/file-test.zig");
@@ -142,6 +145,7 @@ fn tests(allocator: *Node.Allocator, node: *Node) void {
     builtin_test.descr = "Test builtin functions";
     mem_test.descr = "Test low level memory management functions and basic container/allocator usage";
     mem2_test.descr = "Test v2 low level memory implementation";
+    gen_test.descr = "Test generic code generation functions";
     meta_test.descr = "Test meta functions";
     algo_test.descr = "Test sorting and compression functions";
     math_test.descr = "Test math functions";
@@ -171,22 +175,23 @@ fn tests(allocator: *Node.Allocator, node: *Node) void {
         serial_test,
     }) |target| {
         target.addToplevelArgs(allocator);
-        target.task_info.build.modules = mods;
-        target.task_info.build.dependencies = deps;
-        target.task_info.build.mode = .Debug;
-        target.task_info.build.strip = false;
+        target.task.info.build.modules = mods;
+        target.task.info.build.dependencies = deps;
+        target.task.info.build.mode = .Debug;
+        target.task.info.build.strip = false;
         target.options.have_update = true;
     }
-    node.task = .build;
+    node.task.tag = .build;
     build_cmd.kind = .obj;
     const debug2_test: *Node = try node.addBuild(allocator, build_cmd, "debug2_test", "test/debug2-test.zig");
-    debug2_test.task_info.build.gc_sections = false;
+    proc_test.task.info.build.strip = false;
+    debug2_test.task.info.build.gc_sections = false;
     debug_test.dependOnObject(allocator, debug2_test);
-    debug2_test.task_info.build.mode = .Debug;
-    debug2_test.task_info.build.strip = false;
-    debug_test.task_info.build.mode = .Debug;
-    debug_test.task_info.build.strip = false;
-    parse_test.task_info.build.mode = .Debug;
+    debug2_test.task.info.build.mode = .Debug;
+    debug2_test.task.info.build.strip = false;
+    debug_test.task.info.build.mode = .Debug;
+    debug_test.task.info.build.strip = false;
+    parse_test.task.info.build.mode = .Debug;
 }
 fn cryptoTests(allocator: *Node.Allocator, node: *Node) void {
     const mode_save: ?builtin.Mode = build_cmd.mode;
@@ -202,14 +207,14 @@ fn cryptoTests(allocator: *Node.Allocator, node: *Node) void {
         const aead_test: *Node = try node.addBuild(allocator, build_cmd, "aead_test", "test/crypto/aead-test.zig");
         const ecdsa_test: *Node = try node.addBuild(allocator, build_cmd, "ecdsa_test", "test/crypto/ecdsa-test.zig");
         const kyber_test: *Node = try node.addBuild(allocator, build_cmd, "kyber_test", "test/crypto/kyber-test.zig");
-        const dh_test: *Node = try node.addBuild(allocator, build_cmd, "dh_test", "test/crypto/dh-test.zig");
         const tls_test: *Node = try node.addBuild(allocator, build_cmd, "tls_test", "test/crypto/tls-test.zig");
+        const dh_test: *Node = try node.addBuild(allocator, build_cmd, "dh_test", "test/crypto/dh-test.zig");
+        dh_test.descr = "Test many 25519-related functions";
+        tls_test.descr = "Test TLS";
         auth_test.descr = "Test authentication";
         aead_test.descr = "Test authenticated encryption functions and types";
-        dh_test.descr = "Test many 25519-related functions";
         kyber_test.descr = "Test post-quantum 'Kyber' key exchange functions and types";
         ecdsa_test.descr = "Test ECDSA";
-        tls_test.descr = "Test TLS";
     } else {
         const core_test: *Node = try node.addBuild(allocator, build_cmd, "core_test", "test/crypto/core-test.zig");
         const utils_test: *Node = try node.addBuild(allocator, build_cmd, "utils_test", "test/crypto/utils-test.zig");
@@ -224,11 +229,17 @@ fn cryptoTests(allocator: *Node.Allocator, node: *Node) void {
 fn buildgen(allocator: *Node.Allocator, node: *Node) void {
     const bg_aux: *Node = try node.addGroup(allocator, "_buildgen");
     const bg_tasks_impls: *Node = try bg_aux.addBuild(allocator, build_cmd, "bg_tasks_impls", "top/build/gen/tasks_impls.zig");
+    const bg_hist_tasks_impls: *Node = try bg_aux.addBuild(allocator, build_cmd, "bg_hist_tasks_impls", "top/build/gen/hist_tasks_impls.zig");
     const bg_tasks: *Node = try node.addFormat(allocator, format_cmd, "bg_tasks", "top/build/tasks.zig");
+    const bg_hist_tasks: *Node = try node.addFormat(allocator, format_cmd, "bg_hist_tasks", "top/build/hist_tasks.zig");
     bg_tasks.dependOn(allocator, bg_tasks_impls, .run);
+    bg_hist_tasks_impls.dependOn(allocator, bg_tasks, .format);
+    bg_hist_tasks.dependOn(allocator, bg_hist_tasks_impls, .run);
     bg_tasks_impls.descr = "Generate builder command line data structures";
+    bg_hist_tasks_impls.descr = "Generate packed summary types for builder history";
     bg_tasks.descr = "Reformat generated builder command line data structures into canonical form";
-    node.task = .format;
+    bg_hist_tasks.descr = "Reformat generated history task data structures into canonical form";
+    node.task.tag = .format;
 }
 fn targetgen(allocator: *Node.Allocator, node: *Node) void {
     const tg_cpu_impl: *Node = try node.addBuild(allocator, build_cmd, "tg_feat_impls", "top/target/gen/feat_impls.zig");
