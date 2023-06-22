@@ -48,13 +48,13 @@ pub const mode = struct {
 };
 pub const Kind = enum(u4) {
     unknown = 0,
-    regular = MODE.IFREGR,
-    directory = MODE.IFDIRR,
-    character_special = MODE.IFCHRR,
-    block_special = MODE.IFBLKR,
-    named_pipe = MODE.IFIFOR,
-    socket = MODE.IFSOCKR,
-    symbolic_link = MODE.IFLNKR,
+    regular = MODE.R.IFREG,
+    directory = MODE.R.IFDIR,
+    character_special = MODE.R.IFCHR,
+    block_special = MODE.R.IFBLK,
+    named_pipe = MODE.R.IFIFO,
+    socket = MODE.R.IFSOCK,
+    symbolic_link = MODE.R.IFLNK,
     const MODE = sys.S;
 };
 pub const Open = struct {
@@ -441,6 +441,7 @@ pub const OpenSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.open_errors },
     logging: builtin.Logging.AcquireError = .{},
     const Specification = @This();
+
     pub const Options = packed struct(usize) {
         write_only: bool = false,
         read_write: bool = false,
@@ -451,10 +452,7 @@ pub const OpenSpec = struct {
         truncate: bool = false,
         append: bool = false,
         non_block: bool = false,
-        e12: enum(u9) {
-            dsync = 4096,
-            sync = 1052672,
-        },
+        dsync: bool = false,
         @"async": bool = false,
         no_cache: bool = true,
         zb15: u1 = 0,
@@ -464,8 +462,30 @@ pub const OpenSpec = struct {
         close_on_exec: bool = true,
         zb20: u1 = 0,
         path: bool = false,
-        temporary_file: bool = false,
-        zb24: u41 = 0,
+        temporary: bool = false,
+        zb23: u41 = 0,
+        fn assert(flags: @This(), val: usize) void {
+            builtin.assert(@bitCast(usize, flags) == val);
+        }
+        comptime {
+            @This().assert(.{ .write_only = true }, 0x1);
+            @This().assert(.{ .read_write = true }, 0x2);
+            @This().assert(.{ .create = true }, 0x40);
+            @This().assert(.{ .exclusive = true }, 0x80);
+            @This().assert(.{ .no_ctty = true }, 0x100);
+            @This().assert(.{ .truncate = true }, 0x200);
+            @This().assert(.{ .append = true }, 0x400);
+            @This().assert(.{ .non_block = true }, 0x800);
+            @This().assert(.{ .dsync = true }, 0x1000);
+            @This().assert(.{ .@"async" = true }, 0x2000);
+            @This().assert(.{ .no_cache = true }, 0x4000);
+            @This().assert(.{ .directory = true }, 0x10000);
+            @This().assert(.{ .no_follow = true }, 0x20000);
+            @This().assert(.{ .no_atime = true }, 0x40000);
+            @This().assert(.{ .close_on_exec = true }, 0x80000);
+            @This().assert(.{ .path = true }, 0x200000);
+            @This().assert(.{ .temporary = true }, 0x400000);
+        }
     };
 };
 pub const ReadSpec = struct {
@@ -1092,9 +1112,9 @@ pub fn writeExtra(comptime write_spec: WriteExtraSpec, write_buf: []const write_
 }
 pub fn open(comptime spec: OpenSpec, pathname: [:0]const u8) sys.ErrorUnion(spec.errors, spec.return_type) {
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
-    const flags: Open.Options = comptime spec.flags();
+    const flags: usize = @bitCast(usize, spec.options);
     const logging: builtin.Logging.AcquireError = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.open, spec.errors, spec.return_type, .{ pathname_buf_addr, flags.val, 0 }))) |fd| {
+    if (meta.wrap(sys.call(.open, spec.errors, spec.return_type, .{ pathname_buf_addr, flags, 0 }))) |fd| {
         if (logging.Acquire) {
             debug.aboutPathnameFdNotice(debug.about_open_0_s, pathname, fd);
         }
