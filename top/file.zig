@@ -573,49 +573,6 @@ pub const StatusExtendedSpec = struct {
         }
         comptime return flags_bitfield;
     }
-    pub fn fields(comptime statx_spec: Specification) StatusExtended.Fields {
-        var fields_bitfield: StatusExtended.Fields = .{ .val = 0 };
-        if (statx_spec.options.fields.type) {
-            fields_bitfield.set(.type);
-        }
-        if (statx_spec.options.fields.mode) {
-            fields_bitfield.set(.mode);
-        }
-        if (statx_spec.options.fields.nlink) {
-            fields_bitfield.set(.nlink);
-        }
-        if (statx_spec.options.fields.uid) {
-            fields_bitfield.set(.uid);
-        }
-        if (statx_spec.options.fields.gid) {
-            fields_bitfield.set(.gid);
-        }
-        if (statx_spec.options.fields.atime) {
-            fields_bitfield.set(.atime);
-        }
-        if (statx_spec.options.fields.mtime) {
-            fields_bitfield.set(.mtime);
-        }
-        if (statx_spec.options.fields.ctime) {
-            fields_bitfield.set(.ctime);
-        }
-        if (statx_spec.options.fields.btime) {
-            fields_bitfield.set(.btime);
-        }
-        if (statx_spec.options.fields.ino) {
-            fields_bitfield.set(.ino);
-        }
-        if (statx_spec.options.fields.size) {
-            fields_bitfield.set(.size);
-        }
-        if (statx_spec.options.fields.blocks) {
-            fields_bitfield.set(.blocks);
-        }
-        if (statx_spec.options.fields.mnt_id) {
-            fields_bitfield.set(.mnt_id);
-        }
-        comptime return fields_bitfield;
-    }
 };
 pub const MakePipeSpec = struct {
     options: Options = .{},
@@ -1044,7 +1001,7 @@ pub fn read(comptime spec: ReadSpec, fd: u64, read_buf: []spec.child) sys.ErrorU
         }
     } else |read_error| {
         if (logging.Error) {
-            debug.aboutFdError(debug.about_read_1_s, @errorName(read_error), fd);
+            debug.aboutFdError(debug.about_read_0_s, @errorName(read_error), fd);
         }
         return read_error;
     }
@@ -1065,7 +1022,7 @@ pub fn write(comptime spec: WriteSpec, fd: u64, write_buf: []const spec.child) s
         }
     } else |write_error| {
         if (logging.Error) {
-            debug.aboutFdError(debug.about_write_1_s, @errorName(write_error), fd);
+            debug.aboutFdError(debug.about_write_0_s, @errorName(write_error), fd);
         }
         return write_error;
     }
@@ -1090,23 +1047,23 @@ pub fn open(comptime spec: OpenSpec, pathname: [:0]const u8) sys.ErrorUnion(spec
         return fd;
     } else |open_error| {
         if (logging.Error) {
-            debug.aboutPathnameError(debug.about_open_1_s, @errorName(open_error), pathname);
+            debug.aboutPathnameError(debug.about_open_0_s, @errorName(open_error), pathname);
         }
         return open_error;
     }
 }
 pub fn openAt(comptime spec: OpenSpec, dir_fd: u64, name: [:0]const u8) sys.ErrorUnion(spec.errors, spec.return_type) {
     const name_buf_addr: u64 = @ptrToInt(name.ptr);
-    const flags: Open.Options = comptime spec.flags();
+    const flags: usize = @bitCast(usize, spec.options);
     const logging: builtin.Logging.AcquireError = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.openat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, flags.val, 0 }))) |fd| {
+    if (meta.wrap(sys.call(.openat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, flags, 0 }))) |fd| {
         if (logging.Acquire) {
             debug.aboutDirFdNameFdNotice(debug.about_open_0_s, dir_fd, name, fd);
         }
         return fd;
     } else |open_error| {
         if (logging.Error) {
-            debug.aboutDirFdNameError(debug.about_open_1_s, @errorName(open_error), dir_fd, name);
+            debug.aboutDirFdNameError(debug.about_open_0_s, @errorName(open_error), dir_fd, name);
         }
         return open_error;
     }
@@ -1346,7 +1303,7 @@ pub fn path(comptime spec: PathSpec, pathname: [:0]const u8) sys.ErrorUnion(spec
         return fd;
     } else |open_error| {
         if (logging.Error) {
-            debug.aboutPathnameError(debug.about_open_1_s, @errorName(open_error), pathname);
+            debug.aboutPathnameError(debug.about_open_0_s, @errorName(open_error), pathname);
         }
         return open_error;
     }
@@ -1414,7 +1371,7 @@ pub fn create(comptime spec: CreateSpec, pathname: [:0]const u8, comptime file_m
         return fd;
     } else |open_error| {
         if (logging.Error) {
-            debug.aboutPathnameError(debug.about_create_1_s, @errorName(open_error), pathname);
+            debug.aboutPathnameError(debug.about_create_0_s, @errorName(open_error), pathname);
         }
         return open_error;
     }
@@ -1430,7 +1387,7 @@ pub fn createAt(comptime spec: CreateSpec, dir_fd: u64, name: [:0]const u8, comp
         return fd;
     } else |open_error| {
         if (logging.Error) {
-            debug.aboutDirFdNameError(debug.about_create_1_s, @errorName(open_error), dir_fd, name);
+            debug.aboutDirFdNameError(debug.about_create_0_s, @errorName(open_error), dir_fd, name);
         }
         return open_error;
     }
@@ -1443,7 +1400,7 @@ pub fn close(comptime spec: CloseSpec, fd: u64) sys.ErrorUnion(spec.errors, spec
         }
     } else |close_error| {
         if (logging.Error) {
-            debug.aboutFdError(debug.about_close_1_s, @errorName(close_error), fd);
+            debug.aboutFdError(debug.about_close_0_s, @errorName(close_error), fd);
         }
         return close_error;
     }
@@ -1457,7 +1414,7 @@ pub fn makeDir(comptime spec: MakeDirSpec, pathname: [:0]const u8, comptime file
         }
     } else |mkdir_error| {
         if (logging.Error) {
-            debug.aboutPathnameError(debug.about_mkdir_1_s, @errorName(mkdir_error), pathname);
+            debug.aboutPathnameError(debug.about_mkdir_0_s, @errorName(mkdir_error), pathname);
         }
         return mkdir_error;
     }
@@ -1471,7 +1428,7 @@ pub fn makeDirAt(comptime spec: MakeDirSpec, dir_fd: u64, name: [:0]const u8, co
         }
     } else |mkdir_error| {
         if (logging.Error) {
-            debug.aboutDirFdNameError(debug.about_mkdir_1_s, @errorName(mkdir_error), dir_fd, name);
+            debug.aboutDirFdNameError(debug.about_mkdir_0_s, @errorName(mkdir_error), dir_fd, name);
         }
         return mkdir_error;
     }
@@ -1486,7 +1443,7 @@ pub fn getDirectoryEntries(comptime getdents_spec: GetDirectoryEntriesSpec, dir_
         return ret;
     } else |getdents_error| {
         if (logging.Error) {
-            debug.aboutFdError(debug.about_getdents_1_s, @errorName(getdents_error), dir_fd);
+            debug.aboutFdError(debug.about_getdents_0_s, @errorName(getdents_error), dir_fd);
         }
         return getdents_error;
     }
@@ -1500,7 +1457,7 @@ pub fn makeNode(comptime spec: MakeNodeSpec, pathname: [:0]const u8, comptime fi
         }
     } else |mknod_error| {
         if (logging.Error) {
-            debug.aboutPathnameError(debug.about_mknod_1_s, @errorName(mknod_error), pathname);
+            debug.aboutPathnameError(debug.about_mknod_0_s, @errorName(mknod_error), pathname);
         }
         return mknod_error;
     }
@@ -1514,7 +1471,7 @@ pub fn makeNodeAt(comptime spec: MakeNodeSpec, dir_fd: u64, name: [:0]const u8, 
         }
     } else |mknod_error| {
         if (logging.Error) {
-            debug.aboutDirFdNameError(debug.about_mknod_1_s, @errorName(mknod_error), dir_fd, name);
+            debug.aboutDirFdNameError(debug.about_mknod_0_s, @errorName(mknod_error), dir_fd, name);
         }
         return mknod_error;
     }
@@ -1531,7 +1488,7 @@ pub fn getCwd(comptime spec: GetWorkingDirectorySpec, buf: []u8) sys.ErrorUnion(
         return ret;
     } else |getcwd_error| {
         if (logging.Error) {
-            debug.aboutError(debug.about_getcwd_1_s, @errorName(getcwd_error));
+            debug.aboutError(debug.about_getcwd_0_s, @errorName(getcwd_error));
         }
         return getcwd_error;
     }
@@ -1544,7 +1501,7 @@ pub fn readLink(comptime spec: ReadLinkSpec, pathname: [:0]const u8, buf: []u8) 
         return buf[0..len :0];
     } else |readlink_error| {
         if (logging.Error) {
-            debug.aboutPathnameError(debug.about_readlink_1_s, @errorName(readlink_error), pathname);
+            debug.aboutPathnameError(debug.about_readlink_0_s, @errorName(readlink_error), pathname);
         }
         return readlink_error;
     }
@@ -1558,7 +1515,7 @@ pub fn readLinkAt(comptime spec: ReadLinkSpec, dir_fd: u64, name: [:0]const u8, 
         return buf[0..len :0];
     } else |readlink_error| {
         if (logging.Error) {
-            debug.aboutDirFdNameError(debug.about_readlink_1_s, @errorName(readlink_error), dir_fd, name);
+            debug.aboutDirFdNameError(debug.about_readlink_0_s, @errorName(readlink_error), dir_fd, name);
         }
         return readlink_error;
     }
@@ -1572,7 +1529,7 @@ pub fn unlink(comptime spec: UnlinkSpec, pathname: [:0]const u8) sys.ErrorUnion(
         }
     } else |unlink_error| {
         if (logging.Error) {
-            debug.aboutPathnameError(debug.about_unlink_1_s, @errorName(unlink_error), pathname);
+            debug.aboutPathnameError(debug.about_unlink_0_s, @errorName(unlink_error), pathname);
         }
         return unlink_error;
     }
@@ -1586,7 +1543,7 @@ pub fn unlinkAt(comptime spec: UnlinkSpec, dir_fd: u64, name: [:0]const u8) sys.
         }
     } else |unlinkat_error| {
         if (logging.Error) {
-            debug.aboutDirFdNameError(debug.about_unlink_1_s, @errorName(unlinkat_error), dir_fd, name);
+            debug.aboutDirFdNameError(debug.about_unlink_0_s, @errorName(unlinkat_error), dir_fd, name);
         }
         return unlinkat_error;
     }
@@ -1600,7 +1557,7 @@ pub fn removeDir(comptime spec: RemoveDirSpec, pathname: [:0]const u8) sys.Error
         }
     } else |rmdir_error| {
         if (logging.Error) {
-            debug.aboutPathnameError(debug.about_rmdir_1_s, @errorName(rmdir_error), pathname);
+            debug.aboutPathnameError(debug.about_rmdir_0_s, @errorName(rmdir_error), pathname);
         }
         return rmdir_error;
     }
@@ -1616,7 +1573,7 @@ pub fn pathStatus(comptime spec: StatusSpec, pathname: [:0]const u8) sys.ErrorUn
         }
     } else |stat_error| {
         if (logging.Error) {
-            debug.aboutPathnameError(debug.about_stat_1_s, @errorName(stat_error), pathname);
+            debug.aboutPathnameError(debug.about_stat_0_s, @errorName(stat_error), pathname);
         }
         return stat_error;
     }
@@ -1632,7 +1589,7 @@ pub fn status(comptime spec: StatusSpec, fd: u64) sys.ErrorUnion(spec.errors, St
         }
     } else |stat_error| {
         if (logging.Error) {
-            debug.aboutFdError(debug.about_stat_1_s, @errorName(stat_error), fd);
+            debug.aboutFdError(debug.about_stat_0_s, @errorName(stat_error), fd);
         }
         return stat_error;
     }
@@ -1650,7 +1607,7 @@ pub fn statusAt(comptime spec: StatusSpec, dir_fd: u64, name: [:0]const u8) sys.
         }
     } else |stat_error| {
         if (logging.Error) {
-            debug.aboutDirFdNameError(debug.about_stat_1_s, @errorName(stat_error), dir_fd, name);
+            debug.aboutDirFdNameError(debug.about_stat_0_s, @errorName(stat_error), dir_fd, name);
         }
         return stat_error;
     }
@@ -1661,15 +1618,15 @@ pub fn statusExtended(comptime spec: StatusExtendedSpec, fd: u64, pathname: [:0]
     const pathname_buf_addr: u64 = @ptrToInt(pathname.ptr);
     const st_buf_addr: u64 = @ptrToInt(&st);
     const flags: At = comptime spec.flags();
-    const mask: StatusExtended.Fields = comptime spec.fields();
+    const mask: usize = @bitCast(usize, spec.options.fields);
     const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.statx, spec.errors, void, .{ fd, pathname_buf_addr, flags.val, mask.val, st_buf_addr }))) {
+    if (meta.wrap(sys.call(.statx, spec.errors, void, .{ fd, pathname_buf_addr, flags.val, mask, st_buf_addr }))) {
         if (logging.Success) {
             debug.aboutDirFdNameModeNotice(debug.about_stat_0_s, fd, pathname, st.mode);
         }
     } else |stat_error| {
         if (logging.Error) {
-            debug.aboutFdError(debug.about_stat_1_s, @errorName(stat_error), fd);
+            debug.aboutFdError(debug.about_stat_0_s, @errorName(stat_error), fd);
         }
         return stat_error;
     }
@@ -1750,7 +1707,7 @@ pub fn link(comptime link_spec: LinkSpec, from_pathname: [:0]const u8, to_pathna
         return ret;
     } else |link_error| {
         if (logging.Error) {
-            debug.aboutPathnamePathnameError(debug.about_link_1_s, @errorName(link_error), " -> ", from_pathname, to_pathname);
+            debug.aboutPathnamePathnameError(debug.about_link_0_s, @errorName(link_error), " -> ", from_pathname, to_pathname);
         }
         return link_error;
     }
@@ -1770,7 +1727,7 @@ pub fn linkAt(comptime link_spec: LinkSpec, src_dir_fd: u64, from_name: [:0]cons
         return ret;
     } else |linkat_error| {
         if (logging.Error) {
-            debug.aboutDirFdNameDirFdNameError(debug.about_link_1_s, @errorName(linkat_error), "src_dir_fd=", " -> ", "dest_dir_fd=", src_dir_fd, from_name, dest_dir_fd, to_name);
+            debug.aboutDirFdNameDirFdNameError(debug.about_link_0_s, @errorName(linkat_error), "src_dir_fd=", " -> ", "dest_dir_fd=", src_dir_fd, from_name, dest_dir_fd, to_name);
         }
         return linkat_error;
     }
@@ -1789,7 +1746,7 @@ pub fn symbolicLink(comptime link_spec: LinkSpec, from_pathname: [:0]const u8, t
         return ret;
     } else |symlink_error| {
         if (logging.Error) {
-            debug.aboutPathnamePathnameError(debug.about_symlink_1_s, @errorName(symlink_error), " -> ", from_pathname, to_pathname);
+            debug.aboutPathnamePathnameError(debug.about_symlink_0_s, @errorName(symlink_error), " -> ", from_pathname, to_pathname);
         }
         return symlink_error;
     }
@@ -1808,7 +1765,7 @@ pub fn symbolicLinkAt(comptime link_spec: LinkSpec, pathname: [:0]const u8, dir_
         return ret;
     } else |symlinkat_error| {
         if (logging.Error) {
-            debug.aboutPathnameDirFdNameError(debug.about_symlink_1_s, @errorName(symlinkat_error), " -> ", pathname, dir_fd, name);
+            debug.aboutPathnameDirFdNameError(debug.about_symlink_0_s, @errorName(symlinkat_error), " -> ", pathname, dir_fd, name);
         }
         return symlinkat_error;
     }
@@ -1823,7 +1780,7 @@ pub fn sync(comptime sync_spec: SyncSpec, fd: u64) sys.ErrorUnion(sync_spec.erro
         return ret;
     } else |sync_error| {
         if (logging.Error) {
-            debug.aboutFdError(debug.about_sync_1_s, @errorName(sync_error), fd);
+            debug.aboutFdError(debug.about_sync_0_s, @errorName(sync_error), fd);
         }
         return sync_error;
     }
@@ -1895,7 +1852,7 @@ pub fn duplicate(comptime dup_spec: DuplicateSpec, old_fd: u64) sys.ErrorUnion(d
         }
     } else |dup_error| {
         if (logging.Error) {
-            debug.aboutFdError(debug.about_dup_1_s, @errorName(dup_error), old_fd);
+            debug.aboutFdError(debug.about_dup_0_s, @errorName(dup_error), old_fd);
         }
         return dup_error;
     }
@@ -1909,7 +1866,7 @@ pub fn duplicateTo(comptime dup3_spec: DuplicateSpec, old_fd: u64, new_fd: u64) 
         }
     } else |dup3_error| {
         if (logging.Error) {
-            debug.aboutFdFdError(debug.about_dup_1_s, @errorName(dup3_error), "old_fd=", "new_fd=", old_fd, new_fd);
+            debug.aboutFdFdError(debug.about_dup_0_s, @errorName(dup3_error), "old_fd=", "new_fd=", old_fd, new_fd);
         }
         return dup3_error;
     }
@@ -1925,7 +1882,7 @@ pub fn makePipe(comptime pipe2_spec: MakePipeSpec) sys.ErrorUnion(pipe2_spec.err
         }
     } else |pipe2_error| {
         if (logging.Error) {
-            debug.aboutError(debug.about_pipe_1_s, @errorName(pipe2_error));
+            debug.aboutError(debug.about_pipe_0_s, @errorName(pipe2_error));
         }
     }
     return pipefd;
@@ -2184,65 +2141,36 @@ pub fn DeviceRandomBytes(comptime bytes: u64) type {
         }
     };
 }
-const debug = opaque {
+pub const debug = opaque {
     const about_dup_0_s: [:0]const u8 = builtin.fmt.about("dup");
-    const about_dup_1_s: [:0]const u8 = builtin.fmt.about("dup-error");
     const about_dup3_0_s: [:0]const u8 = builtin.fmt.about("dup3");
-    const about_dup3_1_s: [:0]const u8 = builtin.fmt.about("dup3-error");
     const about_copy_0_s: [:0]const u8 = builtin.fmt.about("copy");
-    const about_copy_1_s: [:0]const u8 = builtin.fmt.about("copy-error");
     const about_send_0_s: [:0]const u8 = builtin.fmt.about("send");
-    const about_send_1_s: [:0]const u8 = builtin.fmt.about("send-error");
     const about_stat_0_s: [:0]const u8 = builtin.fmt.about("stat");
-    const about_stat_1_s: [:0]const u8 = builtin.fmt.about("stat-error");
     const about_open_0_s: [:0]const u8 = builtin.fmt.about("open");
-    const about_open_1_s: [:0]const u8 = builtin.fmt.about("open-error");
     const about_file_0_s: [:0]const u8 = builtin.fmt.about("file");
-    const about_file_1_s: [:0]const u8 = builtin.fmt.about("file-error");
     const about_file_2_s: [:0]const u8 = builtin.fmt.about("file-fault");
     const about_read_0_s: [:0]const u8 = builtin.fmt.about("read");
-    const about_read_1_s: [:0]const u8 = builtin.fmt.about("read-error");
     const about_pipe_0_s: [:0]const u8 = builtin.fmt.about("pipe");
-    const about_pipe_1_s: [:0]const u8 = builtin.fmt.about("pipe-error");
     const about_poll_0_s: [:0]const u8 = builtin.fmt.about("poll");
-    const about_poll_1_s: [:0]const u8 = builtin.fmt.about("poll-error");
     const about_seek_0_s: [:0]const u8 = builtin.fmt.about("seek");
-    const about_seek_1_s: [:0]const u8 = builtin.fmt.about("seek-error");
     const about_sync_0_s: [:0]const u8 = builtin.fmt.about("sync");
-    const about_sync_1_s: [:0]const u8 = builtin.fmt.about("sync-error");
     const about_link_0_s: [:0]const u8 = builtin.fmt.about("link");
-    const about_link_1_s: [:0]const u8 = builtin.fmt.about("link-error");
     const about_close_0_s: [:0]const u8 = builtin.fmt.about("close");
-    const about_close_1_s: [:0]const u8 = builtin.fmt.about("close-error");
     const about_mkdir_0_s: [:0]const u8 = builtin.fmt.about("mkdir");
-    const about_mkdir_1_s: [:0]const u8 = builtin.fmt.about("mkdir-error");
     const about_mknod_0_s: [:0]const u8 = builtin.fmt.about("mknod");
-    const about_mknod_1_s: [:0]const u8 = builtin.fmt.about("mknod-error");
     const about_rmdir_0_s: [:0]const u8 = builtin.fmt.about("rmdir");
-    const about_rmdir_1_s: [:0]const u8 = builtin.fmt.about("rmdir-error");
     const about_write_0_s: [:0]const u8 = builtin.fmt.about("write");
-    const about_write_1_s: [:0]const u8 = builtin.fmt.about("write-error");
     const about_socket_0_s: [:0]const u8 = builtin.fmt.about("socket");
-    const about_socket_1_s: [:0]const u8 = builtin.fmt.about("socket-error");
     const about_listen_0_s: [:0]const u8 = builtin.fmt.about("listen");
-    const about_listen_1_s: [:0]const u8 = builtin.fmt.about("listen-error");
     const about_create_0_s: [:0]const u8 = builtin.fmt.about("create");
-    const about_create_1_s: [:0]const u8 = builtin.fmt.about("create-error");
     const about_execve_0_s: [:0]const u8 = builtin.fmt.about("execve");
-    const about_execve_1_s: [:0]const u8 = builtin.fmt.about("execve-error");
     const about_getcwd_0_s: [:0]const u8 = builtin.fmt.about("getcwd");
-    const about_getcwd_1_s: [:0]const u8 = builtin.fmt.about("getcwd-error");
     const about_unlink_0_s: [:0]const u8 = builtin.fmt.about("unlink");
-    const about_unlink_1_s: [:0]const u8 = builtin.fmt.about("unlink-error");
     const about_symlink_0_s: [:0]const u8 = builtin.fmt.about("symlink");
-    const about_symlink_1_s: [:0]const u8 = builtin.fmt.about("symlink-error");
     const about_getdents_0_s: [:0]const u8 = builtin.fmt.about("getdents");
-    const about_getdents_1_s: [:0]const u8 = builtin.fmt.about("getdents-error");
     const about_unlinkat_0_s: [:0]const u8 = builtin.fmt.about("unlink");
-    const about_unlinkat_1_s: [:0]const u8 = builtin.fmt.about("unlink-error");
-    const about_readlink_1_s: [:0]const u8 = builtin.fmt.about("readlink-error");
     const about_truncate_0_s: [:0]const u8 = builtin.fmt.about("truncate");
-    const about_truncate_1_s: [:0]const u8 = builtin.fmt.about("truncate-error");
     const about_must_not_be_s: [:0]const u8 = " must not be ";
     const about_must_be_s: [:0]const u8 = " must be ";
     const about_is_s: [:0]const u8 = "; is ";
@@ -2363,7 +2291,7 @@ const debug = opaque {
         var len: u64 = 0;
         len +%= mach.memcpyMulti(&buf, &[_][]const u8{ about_send_0_s, "dest_fd=", dest_fd_s, ", srct_fd=", src_fd_s, ", ", sent_count_s, "/", max_count_s, " bytes\n" });
         if (offset) |off| {
-            len +%= writeUpdateOffset(buf[len..].ptr, dest_fd_s, off.*);
+            len +%= writeUpdateOffset(4, buf[len..].ptr, dest_fd_s, off.*);
         }
         builtin.debug.write(buf[0..len]);
     }
@@ -2376,10 +2304,10 @@ const debug = opaque {
         var len: u64 = 0;
         len +%= mach.memcpyMulti(&buf, &[_][]const u8{ about_copy_0_s, "dest_fd=", dest_fd_s, ", src_fd=", src_fd_s, ", ", copied_count_s, "/", max_count_s, " bytes\n" });
         if (src_offset) |off| {
-            len +%= writeUpdateOffset(buf[len..].ptr, src_fd_s, off.*);
+            len +%= writeUpdateOffset(4, buf[len..].ptr, src_fd_s, off.*);
         }
         if (dest_offset) |off| {
-            len +%= writeUpdateOffset(buf[len..].ptr, dest_fd_s, off.*);
+            len +%= writeUpdateOffset(4, buf[len..].ptr, dest_fd_s, off.*);
         }
         builtin.debug.write(buf[0..len]);
     }
@@ -2417,48 +2345,46 @@ const debug = opaque {
     }
     fn aboutError(about_s: [:0]const u8, error_name: [:0]const u8) void {
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, "(", error_name, ")\n" });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, builtin.debug.about_error_s, error_name, "\n" });
     }
     fn aboutDirFdNameError(about_s: [:0]const u8, error_name: [:0]const u8, dir_fd: u64, name: [:0]const u8) void {
         const dir_fd_s: []const u8 = if (dir_fd > 1024) "CWD" else builtin.fmt.ud64(dir_fd).readAll();
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, "dir_fd=", dir_fd_s, ", ", name, " (", error_name, ")\n" });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, builtin.debug.about_error_s, error_name, ", dir_fd=", dir_fd_s, ", ", name, "\n" });
     }
     fn aboutPathnameError(about_s: [:0]const u8, error_name: [:0]const u8, pathname: [:0]const u8) void {
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, pathname, " (", error_name, ")\n" });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, builtin.debug.about_error_s, error_name, ", ", pathname, "\n" });
     }
     fn aboutFdError(about_s: [:0]const u8, error_name: [:0]const u8, fd: u64) void {
         const fd_s: []const u8 = builtin.fmt.ud64(fd).readAll();
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, "fd=", fd_s, " (", error_name, ")\n" });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, builtin.debug.about_error_s, error_name, ", fd=", fd_s, "\n" });
     }
     fn aboutFdFdError(about_s: [:0]const u8, error_name: [:0]const u8, about_fd1: [:0]const u8, about_fd2: [:0]const u8, fd1: u64, fd2: u64) void {
         const fd1_s: []const u8 = builtin.fmt.ud64(fd1).readAll();
         const fd2_s: []const u8 = builtin.fmt.ud64(fd2).readAll();
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, about_fd1, fd1_s, ", ", about_fd2, fd2_s, " (", error_name, ")\n" });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, builtin.debug.about_error_s, error_name, ", ", about_fd1, fd1_s, ", ", about_fd2, fd2_s, "\n" });
     }
     fn aboutPathnamePathnameError(about_s: [:0]const u8, error_name: [:0]const u8, relation_s: [:0]const u8, pathname1: [:0]const u8, pathname2: [:0]const u8) void {
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, pathname1, relation_s, pathname2, " (", error_name, ")\n" });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, builtin.debug.about_error_s, error_name, ", ", pathname1, relation_s, pathname2, "\n" });
     }
     fn aboutPathnameDirFdNameError(about_s: [:0]const u8, error_name: [:0]const u8, about_relation_s: [:0]const u8, pathname: [:0]const u8, dir_fd: u64, name: [:0]const u8) void {
         const dir_fd_s: []const u8 = builtin.fmt.ud64(dir_fd).readAll();
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, pathname, about_relation_s, "dir_fd=", dir_fd_s, ", ", name, "(", error_name, ")\n" });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, builtin.debug.about_error_s, error_name, ", ", pathname, about_relation_s, "dir_fd=", dir_fd_s, ", ", name, "\n" });
     }
     fn aboutDirFdNameDirFdNameError(about_s: [:0]const u8, error_name: [:0]const u8, about_dir_fd1_s: []const u8, relation_s: [:0]const u8, about_dir_fd2_s: []const u8, dir_fd1: u64, name1: [:0]const u8, dir_fd2: u64, name2: [:0]const u8) void {
         const dir_fd1_s: []const u8 = if (dir_fd1 > 1024) "CWD" else builtin.fmt.ud64(dir_fd1).readAll();
         const dir_fd2_s: []const u8 = if (dir_fd2 > 1024) "CWD" else builtin.fmt.ud64(dir_fd2).readAll();
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
-            about_s, about_dir_fd1_s, dir_fd1_s, ", ", name1, relation_s, about_dir_fd2_s, dir_fd2_s, ", ", name2, "(", error_name, ")\n",
-        });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, builtin.debug.about_error_s, error_name, ", ", about_dir_fd1_s, dir_fd1_s, ", ", name1, relation_s, about_dir_fd2_s, dir_fd2_s, ", ", name2, "\n" });
     }
     fn socketError(socket_error: anytype, dom: Socket.Domain, conn: Socket.Connection) void {
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_socket_1_s, @tagName(dom), ", ", @tagName(conn), " (", @errorName(socket_error), ")\n" });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_socket_0_s, builtin.debug.about_error_s, @errorName(socket_error), ", ", @tagName(dom), ", ", @tagName(conn), "\n" });
     }
     fn sendError(sendfile_error: anytype, dest_fd: u64, src_fd: u64, offset: ?*u64, max_count: u64) void {
         const src_fd_s: []const u8 = builtin.fmt.ud64(src_fd).readAll();
@@ -2466,9 +2392,9 @@ const debug = opaque {
         const max_len_s: []const u8 = builtin.fmt.ud64(max_count).readAll();
         var buf: [32768]u8 = undefined;
         var len: u64 = 0;
-        len +%= mach.memcpyMulti(&buf, &[_][]const u8{ about_send_0_s, "dest_fd=", dest_fd_s, ", src_fd=", src_fd_s, ", ", max_len_s, " bytes, (", @errorName(sendfile_error), ")\n" });
+        len +%= mach.memcpyMulti(&buf, &[_][]const u8{ about_send_0_s, builtin.debug.about_error_s, @errorName(sendfile_error), ", dest_fd=", dest_fd_s, ", src_fd=", src_fd_s, ", ", max_len_s, " bytes\n" });
         if (offset) |off| {
-            len +%= writeUpdateOffset(buf[len..].ptr, src_fd_s, off.*);
+            len +%= writeUpdateOffset(4, buf[len..].ptr, src_fd_s, off.*);
         }
         builtin.debug.write(buf[0..len]);
     }
@@ -2478,41 +2404,37 @@ const debug = opaque {
         const max_len_s: []const u8 = builtin.fmt.ud64(max_count).readAll();
         var buf: [32768]u8 = undefined;
         var len: u64 = 0;
-        len +%= mach.memcpyMulti(&buf, &[_][]const u8{ about_copy_0_s, "src_fd=", src_fd_s, ", dest_fd=", dest_fd_s, ", ", max_len_s, " bytes, (", @errorName(copy_file_range_error), ")\n" });
+        len +%= mach.memcpyMulti(&buf, &[_][]const u8{ about_copy_0_s, builtin.debug.about_error_s, @errorName(copy_file_range_error), ", src_fd=", src_fd_s, ", dest_fd=", dest_fd_s, ", ", max_len_s, " bytes\n" });
         if (src_offset) |off| {
-            len +%= writeUpdateOffset(buf[len..].ptr, src_fd_s, off.*);
+            len +%= writeUpdateOffset(4, buf[len..].ptr, src_fd_s, off.*);
         }
         if (dest_offset) |off| {
-            len +%= writeUpdateOffset(buf[len..].ptr, dest_fd_s, off.*);
+            len +%= writeUpdateOffset(4, buf[len..].ptr, dest_fd_s, off.*);
         }
         builtin.debug.write(buf[0..len]);
     }
     fn pathTruncateError(truncate_error: anytype, pathname: [:0]const u8, offset: u64) void {
         const offset_s: []const u8 = builtin.fmt.ud64(offset).readAll();
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_truncate_1_s, pathname, ", offset=", offset_s, " (", @errorName(truncate_error), ")\n" });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_truncate_0_s, builtin.debug.about_error_s, @errorName(truncate_error), ", ", pathname, ", offset=", offset_s, "\n" });
     }
     fn truncateError(truncate_error: anytype, fd: u64, offset: u64) void {
         const fd_s: []const u8 = builtin.fmt.ud64(fd).readAll();
         const offset_s: []const u8 = builtin.fmt.ud64(offset).readAll();
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_truncate_1_s, "fd=", fd_s, ", offset=", offset_s, " (", @errorName(truncate_error), ")\n" });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_truncate_0_s, builtin.debug.about_error_s, @errorName(truncate_error), ", fd=", fd_s, ", offset=", offset_s, "\n" });
     }
     fn seekError(seek_error: anytype, fd: u64, offset: u64, whence: Whence) void {
         const fd_s: []const u8 = builtin.fmt.ud64(fd).readAll();
         const offset_s: []const u8 = builtin.fmt.ud64(offset).readAll();
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
-            about_truncate_0_s, "fd=", fd_s, ", whence=", @tagName(whence), ", offset=", offset_s, " (", @errorName(seek_error), ")\n",
-        });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_truncate_0_s, builtin.debug.about_error_s, @errorName(seek_error), ", fd=", fd_s, ", whence=", @tagName(whence), ", offset=", offset_s, "\n" });
     }
     fn listenError(listen_error: anytype, sock_fd: u64, backlog: u64) void {
         const sock_fd_s: []const u8 = builtin.fmt.ud64(sock_fd).readAll();
         const backlog_s: []const u8 = builtin.fmt.ud64(backlog).readAll();
         var buf: [32768]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
-            about_listen_1_s, "sock_fd=", sock_fd_s, ", backlog=", backlog_s, " (", @errorName(listen_error), ")\n",
-        });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_listen_0_s, builtin.debug.about_error_s, @errorName(listen_error), ", sock_fd=", sock_fd_s, ", backlog=", backlog_s, "\n" });
     }
     fn pathMustNotBeFault(pathname: [:0]const u8, kind: Kind) void {
         var buf: [32768]u8 = undefined;
@@ -2630,7 +2552,7 @@ const debug = opaque {
     }
     pub fn executeErrorBrief(exec_error: anytype, filename: [:0]const u8) void {
         var buf: [4096 +% 128]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_execve_1_s, "(", @errorName(exec_error), ") ", filename });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_execve_0_s, builtin.debug.about_error_s, @errorName(exec_error), ", ", filename, "\n" });
     }
     pub fn executeError(exec_error: anytype, filename: [:0]const u8, args: []const [*:0]const u8) void {
         @setRuntimeSafety(false);
@@ -2640,8 +2562,8 @@ const debug = opaque {
         var buf: [max_len]u8 = undefined;
         var idx: u64 = 0;
         var len: u64 = 0;
-        mach.memcpy(buf[len..].ptr, about_execve_1_s.ptr, about_execve_1_s.len);
-        len +%= about_execve_1_s.len;
+        mach.memcpy(buf[len..].ptr, about_execve_0_s.ptr, about_execve_0_s.len);
+        len +%= about_execve_0_s.len;
         buf[len] = '(';
         len +%= 1;
         mach.memcpy(buf[len..].ptr, error_name.ptr, error_name.len);
@@ -2652,7 +2574,7 @@ const debug = opaque {
         len +%= filename.len;
         buf[len] = ' ';
         len +%= 1;
-        if (filename.ptr == args[0]) {
+        if (args.len != 0 and filename.ptr == args[0]) {
             idx +%= 1;
         }
         while (idx != argc) : (idx +%= 1) {
@@ -2686,18 +2608,19 @@ const debug = opaque {
         }
         builtin.debug.write(buf[0..len]);
     }
-    fn writeUpdateOffset(buf: [*]u8, fd_s: []const u8, off: u64) u64 {
+    fn writeUpdateOffset(indent: u64, buf: [*]u8, fd_s: []const u8, off: u64) u64 {
         @setRuntimeSafety(false);
+        const spaces: u64 = (builtin.fmt.about_blank_s.len -% indent) -% 1;
         var len: u64 = 0;
         const off_s: []const u8 = builtin.fmt.ud64(off).readAll();
-        mach.memset(buf + len, ' ', 4 -% fd_s.len);
-        len +%= 4 -% fd_s.len;
+        mach.memset(buf + len, ' ', indent -% fd_s.len);
+        len +%= indent -% fd_s.len;
         mach.memcpy(buf + len, fd_s.ptr, fd_s.len);
         len +%= fd_s.len;
         buf[len] = ':';
         len +%= 1;
-        mach.memset(buf + len, ' ', 11);
-        len +%= 11;
+        mach.memset(buf + len, ' ', spaces);
+        len +%= spaces;
         @ptrCast(*[7]u8, buf + len).* = "offset=".*;
         len +%= 7;
         mach.memcpy(buf + len, off_s.ptr, off_s.len);
@@ -2745,6 +2668,36 @@ const debug = opaque {
             }
         }
         return len;
+    }
+    pub fn sampleAllReports() void {
+        const about_s: [:0]const u8 = comptime builtin.fmt.about("about");
+        const error_name: [:0]const u8 = "ErrorName";
+        const pathname1: [:0]const u8 = "/file/test/path/name1";
+        const pathname2: [:0]const u8 = "/file/test/path/name2";
+        const fd1: u64 = 3;
+        const fd2: u64 = 4;
+        const dir_fd1: u64 = 5;
+        const dir_fd2: u64 = 6;
+        var offset: u64 = 4096;
+        const name1: [:0]const u8 = "file1";
+        const name2: [:0]const u8 = "file2";
+
+        aboutError(about_s, error_name);
+        aboutDirFdNameError(about_s, error_name, dir_fd1, name1);
+        aboutPathnameError(about_s, error_name, pathname1);
+        aboutFdError(about_s, error_name, fd1);
+        aboutFdFdError(about_s, error_name, "fd1=", "fd2=", fd1, fd2);
+        aboutPathnamePathnameError(about_s, error_name, "->", pathname1, pathname2);
+        aboutPathnameDirFdNameError(about_s, error_name, "->", pathname1, dir_fd2, name1);
+        aboutDirFdNameDirFdNameError(about_s, error_name, "=>", "=?", "->", dir_fd1, name1, dir_fd2, name2);
+        socketError(error.SocketError, .ipv4, .tcp);
+        sendError(error.SendError, fd1, fd2, &offset, 256);
+        copyError(error.CopyError, fd1, &offset, fd2, &offset, 512);
+        pathTruncateError(error.TruncateError, pathname1, 256);
+        truncateError(error.TruncateError, fd1, offset);
+        seekError(error.SeekError, fd1, offset, .set);
+        listenError(error.SeekError, fd1, 100);
+        executeError(error.ExecError, name1, &.{});
     }
 };
 // * Add `executeNoticeBrief`
