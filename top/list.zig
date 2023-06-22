@@ -145,11 +145,11 @@ pub fn GenericLinkedList(comptime list_spec: ListSpec) type {
                 const t_prev_blk: Block = Node.Link.prev(links.major, links.minor);
                 return mach.cmovxZ(t_prev_blk.aligned_byte_address() > 0x10000, t_prev_blk);
             }
-            pub fn nextPair(links: Links) ?Links {
+            pub fn nextPair(links: *const Links) ?Links {
                 const t_next_blk: Block = Node.Link.next(links.major, links.minor);
                 return mach.cmovxZ(t_next_blk.aligned_byte_address() > 0x10000, Links{ .major = links.minor, .minor = t_next_blk });
             }
-            pub fn prevPair(links: Links) ?Links {
+            pub fn prevPair(links: *const Links) ?Links {
                 const t_prev_blk: Block = Node.Link.prev(links.major, links.minor);
                 return mach.cmovxZ(t_prev_blk.aligned_byte_address() > 0x10000, Links{ .major = t_prev_blk, .minor = links.major });
             }
@@ -784,21 +784,19 @@ pub fn GenericLinkedListView(comptime list_spec: ListViewSpec) type {
                 const t_prev_addr: u64 = Node.Link.prev(links.major, links.minor);
                 return mach.cmovxZ(t_prev_addr > 0x10000, t_prev_addr);
             }
-            fn nextPair(links: *Links) bool {
+            fn nextPair(links: *const Links) ?Links {
                 const t_next_addr: u64 = Node.Link.next(links.major, links.minor);
-                const ret: bool = t_next_addr != 0;
-                if (ret) {
-                    links.* = Links{ .major = links.minor, .minor = t_next_addr };
+                if (t_next_addr != 0) {
+                    return Links{ .major = links.minor, .minor = t_next_addr };
                 }
-                return ret;
+                return null;
             }
-            fn prevPair(links: *Links) bool {
+            fn prevPair(links: *const Links) ?Links {
                 const t_prev_addr: u64 = Node.Link.prev(links.major, links.minor);
-                const ret: bool = t_prev_addr != 0;
-                if (ret) {
-                    links.* = Links{ .major = t_prev_addr, .minor = links.major };
+                if (t_prev_addr != 0) {
+                    return Links{ .major = t_prev_addr, .minor = links.major };
                 }
-                return ret;
+                return null;
             }
             fn toList(links: *Links) List {
                 const index = links.countToHead();
@@ -808,7 +806,7 @@ pub fn GenericLinkedListView(comptime list_spec: ListViewSpec) type {
                     .count = index +% links.countToTail(),
                 };
             }
-            fn countToHead(links: Links) u64 {
+            fn countToHead(links: *const Links) u64 {
                 var temp: Links = links;
                 var i: u64 = 0;
                 while (temp.prevPair()) |prev_pair| {
@@ -817,7 +815,7 @@ pub fn GenericLinkedListView(comptime list_spec: ListViewSpec) type {
                 }
                 return i;
             }
-            fn countToTail(links: Links) u64 {
+            fn countToTail(links: *const Links) u64 {
                 var temp: Links = links;
                 var i: u64 = 0;
                 while (temp.nextPair()) |next_pair| {
@@ -837,13 +835,13 @@ pub fn GenericLinkedListView(comptime list_spec: ListViewSpec) type {
             }
             return list.this();
         }
-        pub fn next(list: List) ?List {
+        pub fn next(list: *const List) ?List {
             if (list.links.nextPair()) |links| {
                 return List{ .links = links, .count = list.count, .index = list.index +% 1, .save = list.save };
             }
             return null;
         }
-        pub fn prev(list: List) ?List {
+        pub fn prev(list: *const List) ?List {
             if (list.links.prevPair()) |links| {
                 return List{ .links = links, .count = list.count, .index = list.index -% 1, .save = list.save };
             }
@@ -886,10 +884,18 @@ pub fn GenericLinkedListView(comptime list_spec: ListViewSpec) type {
             var pair: Links = list.links;
             var new_index: u64 = list.index;
             while (new_index < index) : (new_index +%= 1) {
-                if (!pair.nextPair()) break;
-            } else //
+                if (pair.nextPair()) |links| {
+                    pair = links;
+                } else {
+                    break;
+                }
+            }
             while (new_index > index) : (new_index -%= 1) {
-                if (!pair.prevPair()) break;
+                if (pair.prevPair()) |links| {
+                    pair = links;
+                } else {
+                    break;
+                }
             }
             const ret: bool = new_index == index;
             if (ret) {
