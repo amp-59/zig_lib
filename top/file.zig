@@ -105,8 +105,8 @@ pub const ReadWrite = meta.EnumBitField(enum(u64) {
 });
 pub const At = meta.EnumBitField(enum(u64) {
     empty_path = AT.EMPTY_PATH,
-    no_follow = AT.SYMLINK.NOFOLLOW,
-    follow = AT.SYMLINK.FOLLOW,
+    no_follow = AT.SYMLINK_NOFOLLOW,
+    follow = AT.SYMLINK_FOLLOW,
     no_auto_mount = AT.NO_AUTOMOUNT,
     const AT = sys.AT;
 });
@@ -361,32 +361,39 @@ pub const StatusExtended = extern struct {
     dev_minor: u32,
     mnt_id: u64,
     @"1": [104]u8,
-    pub const Attributes = meta.EnumBitField(enum(u64) {
-        compressed = STATX.ATTR.COMPRESSED,
-        immutable = STATX.ATTR.IMMUTABLE,
-        append = STATX.ATTR.APPEND,
-        nodump = STATX.ATTR.NODUMP,
-        encrypted = STATX.ATTR.ENCRYPTED,
-        verity = STATX.ATTR.VERITY,
-        dax = STATX.ATTR.DAX,
-        const STATX = sys.STATX;
-    });
-    pub const Fields = meta.EnumBitField(enum(u64) {
-        type = STATX.TYPE,
-        mode = STATX.MODE,
-        nlink = STATX.NLINK,
-        uid = STATX.UID,
-        gid = STATX.GID,
-        atime = STATX.ATIME,
-        mtime = STATX.MTIME,
-        ctime = STATX.CTIME,
-        btime = STATX.BTIME,
-        ino = STATX.INO,
-        size = STATX.SIZE,
-        blocks = STATX.BLOCKS,
-        mnt_id = STATX.MNT_ID,
-        const STATX = sys.STATX;
-    });
+
+    pub const Fields = packed struct(usize) {
+        type: bool = true,
+        mode: bool = true,
+        nlink: bool = true,
+        uid: bool = true,
+        gid: bool = true,
+        atime: bool = true,
+        mtime: bool = true,
+        ctime: bool = true,
+        ino: bool = true,
+        size: bool = true,
+        blocks: bool = true,
+        btime: bool = false,
+        mnt_id: bool = false,
+        zb13: u51 = 0,
+    };
+    const Attributes = packed struct(usize) {
+        zb0: u2 = 0,
+        compressed: bool = false,
+        zb3: u1 = 0,
+        immutable: bool = false,
+        append: bool = false,
+        nodump: bool = false,
+        zb7: u4 = 0,
+        encrypted: bool = false,
+        automount: bool = false,
+        mount_root: bool = false,
+        zb14: u6 = 0,
+        verity: bool = false,
+        dax: bool = false,
+        zb22: u42 = 0,
+    };
     pub fn isExecutable(st: Status, user_id: u16, group_id: u16) bool {
         if (user_id == st.uid) {
             return st.mode.owner.execute;
