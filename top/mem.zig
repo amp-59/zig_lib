@@ -22,7 +22,6 @@ pub const Map = struct {
         shared = MAP.SHARED,
         private = MAP.PRIVATE,
         shared_validate = MAP.SHARED_VALIDATE,
-        type = MAP.TYPE,
         fixed = MAP.FIXED,
         fixed_no_replace = MAP.FIXED_NOREPLACE,
         grows_down = MAP.GROWSDOWN,
@@ -34,8 +33,6 @@ pub const Map = struct {
         non_block = MAP.NONBLOCK,
         stack = MAP.STACK,
         huge_tlb = MAP.HUGETLB,
-        huge_shift = MAP.HUGE_SHIFT,
-        huge_mask = MAP.HUGE_MASK,
         sync = MAP.SYNC,
         const MAP = sys.MAP;
     });
@@ -802,7 +799,7 @@ pub fn move(comptime spec: MoveSpec, old_addr: u64, old_len: u64, new_addr: u64)
     const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.mremap, spec.errors, spec.return_type, .{ old_addr, old_len, old_len, mremap_flags.val, new_addr }))) {
         if (logging.Success) {
-            debug.remapNotice(old_addr, old_len, new_addr, null);
+            debug.aboutRemapNotice(debug.about_remap_0_s, old_addr, old_len, new_addr, null);
         }
     } else |mremap_error| {
         if (logging.Error) {
@@ -815,7 +812,7 @@ pub fn resize(comptime spec: RemapSpec, old_addr: u64, old_len: u64, new_len: u6
     const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.mremap, spec.errors, spec.return_type, .{ old_addr, old_len, new_len, 0, 0 }))) {
         if (logging.Success) {
-            debug.remapNotice(old_addr, old_len, null, new_len);
+            debug.aboutRemapNotice(debug.about_resize_0_s, old_addr, old_len, null, new_len);
         }
     } else |mremap_error| {
         if (logging.Error) {
@@ -940,19 +937,18 @@ pub const debug = opaque {
             "\n",
         });
     }
-    pub fn remapNotice(old_addr: u64, old_len: u64, maybe_new_addr: ?u64, maybe_new_len: ?u64) void {
+    pub fn aboutRemapNotice(about_s: [:0]const u8, old_addr: u64, old_len: u64, maybe_new_addr: ?u64, maybe_new_len: ?u64) void {
         const new_addr: u64 = maybe_new_addr orelse old_addr;
         const new_len: u64 = maybe_new_len orelse old_len;
         const abs_diff: u64 = builtin.max(u64, new_len, old_len) -% builtin.min(u64, new_len, old_len);
         const notation_s: []const u8 = mach.cmovx(new_len < old_len, ", -", ", +");
-        const operation_s: []const u8 = mach.cmovx(new_addr != old_addr, about_remap_0_s, about_resize_0_s);
         var buf: [4096 +% 512]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
-            operation_s, builtin.fmt.ux64(old_addr).readAll(),
-            "..",        builtin.fmt.ux64(old_addr +% old_len).readAll(),
-            " -> ",      builtin.fmt.ux64(new_addr).readAll(),
-            "..",        builtin.fmt.ux64(new_addr +% new_len).readAll(),
-            notation_s,  builtin.fmt.ud64(abs_diff).readAll(),
+            about_s,    builtin.fmt.ux64(old_addr).readAll(),
+            "..",       builtin.fmt.ux64(old_addr +% old_len).readAll(),
+            " -> ",     builtin.fmt.ux64(new_addr).readAll(),
+            "..",       builtin.fmt.ux64(new_addr +% new_len).readAll(),
+            notation_s, builtin.fmt.ud64(abs_diff).readAll(),
             " bytes\n",
         });
     }
