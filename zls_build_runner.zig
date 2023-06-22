@@ -112,11 +112,11 @@ fn lengthModules(node: *Node) u64 {
     @setRuntimeSafety(false);
     var len: u64 = 0;
     for (node.nodes[0..node.nodes_len]) |sub_node| {
-        if (sub_node.kind == .group) {
+        if (sub_node.tag == .group) {
             len +%= lengthModules(node);
         }
-        if (node.kind == .worker and node.task == .build) {
-            if (node.task_info.build.modules) |mods| {
+        if (node.tag == .worker and node.task.tag == .build) {
+            if (node.task.info.build.modules) |mods| {
                 len +%= mods.len;
             }
         }
@@ -127,11 +127,11 @@ fn writeModulesBuf(pkgs: [*]BuildConfig.Pkg, node: *Node) u64 {
     @setRuntimeSafety(false);
     var len: u64 = 0;
     for (node.nodes[0..node.nodes_len]) |sub_node| {
-        if (sub_node.kind == .group) {
+        if (sub_node.tag == .group) {
             len +%= writeModulesBuf(pkgs, node);
         }
-        if (node.kind == .worker and node.task == .build) {
-            if (node.task_info.build.modules) |mods| {
+        if (node.tag == .worker and node.task.tag == .build) {
+            if (node.task.info.build.modules) |mods| {
                 for (mods) |mod| {
                     pkgs[len] = .{ .name = mod.name, .path = mod.path };
                     len +%= 1;
@@ -141,6 +141,7 @@ fn writeModulesBuf(pkgs: [*]BuildConfig.Pkg, node: *Node) u64 {
     }
     return len;
 }
+pub const tracing_override: bool = false;
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     var address_space: Node.AddressSpace = .{};
     var allocator: Node.Allocator = if (Node.Allocator == mem.SimpleAllocator)
