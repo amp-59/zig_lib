@@ -745,7 +745,7 @@ pub fn assert(b: bool) void {
 pub fn assertBelow(comptime T: type, arg1: T, arg2: T) void {
     if (config.runtime_assertions and arg1 >= arg2) {
         if (@inComptime()) {
-            debug.static.comparisonFailedFault(T, " < ", arg1, arg2);
+            debug.static.comparisonFailed(T, " < ", arg1, arg2);
         } else {
             debug.comparisonFailedFault(T, " < ", arg1, arg2, @returnAddress());
         }
@@ -754,7 +754,7 @@ pub fn assertBelow(comptime T: type, arg1: T, arg2: T) void {
 pub fn assertBelowOrEqual(comptime T: type, arg1: T, arg2: T) void {
     if (config.runtime_assertions and arg1 > arg2) {
         if (@inComptime()) {
-            debug.static.comparisonFailedFault(T, " <= ", arg1, arg2);
+            debug.static.comparisonFailed(T, " <= ", arg1, arg2);
         } else {
             debug.comparisonFailedFault(T, " <= ", arg1, arg2, @returnAddress());
         }
@@ -763,7 +763,7 @@ pub fn assertBelowOrEqual(comptime T: type, arg1: T, arg2: T) void {
 pub fn assertEqual(comptime T: type, arg1: T, arg2: T) void {
     if (config.runtime_assertions and !testEqual(T, arg1, arg2)) {
         if (@inComptime()) {
-            debug.static.comparisonFailedFault(T, " == ", arg1, arg2);
+            debug.static.comparisonFailed(T, " == ", arg1, arg2);
         } else {
             debug.comparisonFailedFault(T, " == ", arg1, arg2, @returnAddress());
         }
@@ -772,7 +772,7 @@ pub fn assertEqual(comptime T: type, arg1: T, arg2: T) void {
 pub fn assertNotEqual(comptime T: type, arg1: T, arg2: T) void {
     if (config.runtime_assertions and testEqual(T, arg1, arg2)) {
         if (@inComptime()) {
-            debug.static.comparisonFailedFault(T, " != ", arg1, arg2);
+            debug.static.comparisonFailed(T, " != ", arg1, arg2);
         } else {
             debug.comparisonFailedFault(T, " != ", arg1, arg2, @returnAddress());
         }
@@ -781,7 +781,7 @@ pub fn assertNotEqual(comptime T: type, arg1: T, arg2: T) void {
 pub fn assertAboveOrEqual(comptime T: type, arg1: T, arg2: T) void {
     if (config.runtime_assertions and arg1 < arg2) {
         if (@inComptime()) {
-            debug.static.comparisonFailedFault(T, " >= ", arg1, arg2);
+            debug.static.comparisonFailed(T, " >= ", arg1, arg2);
         } else {
             debug.comparisonFailedFault(T, " >= ", arg1, arg2, @returnAddress());
         }
