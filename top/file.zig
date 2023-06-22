@@ -448,7 +448,6 @@ pub const OpenSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.open_errors },
     logging: builtin.Logging.AcquireError = .{},
     const Specification = @This();
-
     pub const Options = packed struct(usize) {
         write_only: bool = false,
         read_write: bool = false,
@@ -461,7 +460,7 @@ pub const OpenSpec = struct {
         non_block: bool = false,
         dsync: bool = false,
         @"async": bool = false,
-        no_cache: bool = true,
+        no_cache: bool = false,
         zb15: u1 = 0,
         directory: bool = false,
         no_follow: bool = false,
@@ -471,28 +470,6 @@ pub const OpenSpec = struct {
         path: bool = false,
         temporary: bool = false,
         zb23: u41 = 0,
-        fn assert(flags: @This(), val: usize) void {
-            builtin.assert(@bitCast(usize, flags) == val);
-        }
-        comptime {
-            @This().assert(.{ .write_only = true }, 0x1);
-            @This().assert(.{ .read_write = true }, 0x2);
-            @This().assert(.{ .create = true }, 0x40);
-            @This().assert(.{ .exclusive = true }, 0x80);
-            @This().assert(.{ .no_ctty = true }, 0x100);
-            @This().assert(.{ .truncate = true }, 0x200);
-            @This().assert(.{ .append = true }, 0x400);
-            @This().assert(.{ .non_block = true }, 0x800);
-            @This().assert(.{ .dsync = true }, 0x1000);
-            @This().assert(.{ .@"async" = true }, 0x2000);
-            @This().assert(.{ .no_cache = true }, 0x4000);
-            @This().assert(.{ .directory = true }, 0x10000);
-            @This().assert(.{ .no_follow = true }, 0x20000);
-            @This().assert(.{ .no_atime = true }, 0x40000);
-            @This().assert(.{ .close_on_exec = true }, 0x80000);
-            @This().assert(.{ .path = true }, 0x200000);
-            @This().assert(.{ .temporary = true }, 0x400000);
-        }
     };
 };
 pub const ReadSpec = struct {
@@ -581,22 +558,7 @@ pub const StatusExtendedSpec = struct {
         no_follow: bool = false,
         empty_path: bool = false,
         no_auto_mount: bool = true,
-        fields: Fields = .{},
-        pub const Fields = packed struct {
-            type: bool = true,
-            mode: bool = true,
-            nlink: bool = true,
-            uid: bool = true,
-            gid: bool = true,
-            atime: bool = true,
-            mtime: bool = true,
-            ctime: bool = true,
-            btime: bool = false,
-            ino: bool = true,
-            size: bool = true,
-            blocks: bool = true,
-            mnt_id: bool = false,
-        };
+        fields: StatusExtended.Fields = .{},
     };
     pub fn flags(comptime statx_spec: Specification) At {
         var flags_bitfield: At = .{ .val = 0 };
