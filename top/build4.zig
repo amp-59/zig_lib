@@ -2112,49 +2112,50 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 }
                 builtin.debug.write(mach.manyToSlice80(bytes + extra[2]));
             }
-            fn dependencyMaxNameWidth(node: *const Node, width: u64) u64 {
+            fn lengthAndWalkInternal(len1: u64, node: *const Node, name_width: *u64, root_width: *u64) void {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
-                var len: u64 = if (builder_spec.options.hide_special and node.options.is_special) 0 else node.name.len +% 1;
-                for (node.nodes[0..node.nodes_len]) |sub_node| {
-                    if (sub_node != node) {
-                        len = @max(len, width +% dependencyMaxNameWidth(sub_node, width +% 2));
-                    }
-                }
-                for (node.deps[0..node.deps_len]) |dep| {
-                    if (dep.on_node != node) {
-                        len = @max(len, width +% dependencyMaxNameWidth(dep.on_node, width +% 2));
-                    }
-                }
-                return len;
-            }
-            fn dependencyMaxRootWidth(node: *const Node) u64 {
-                @setRuntimeSafety(builder_spec.options.enable_safety);
-                var len: u64 = blk: {
-                    if (builder_spec.options.hide_special and
-                        node.options.is_special)
+                var deps_idx: u64 = 0;
+                while (deps_idx != node.deps_len) : (deps_idx +%= 1) {
+                    const dep_node: *Node = node.deps[deps_idx].on_node;
+                    if (dep_node == node or
+                        builder_spec.options.hide_special and dep_node.options.is_special)
                     {
-                        break :blk 0;
+                        continue;
                     }
-                    const path_idx: u64 = @boolToInt(node.task.tag == .build);
-                    if (node.paths_len <= path_idx) {
-                        break :blk 0;
+                    if (dep_node.paths_len != 0) {
+                        lengthSubNode(len1 +% 2, dep_node, name_width, root_width);
                     }
-                    if (node.paths[path_idx].names_len < 2) {
-                        break :blk 0;
+                    lengthAndWalkInternal(len1 +% 2, dep_node, name_width, root_width);
+                }
+            }
+            fn lengthSubNode(len1: u64, sub_node: *const Node, name_width: *u64, root_width: *u64) void {
+                @setRuntimeSafety(builder_spec.options.enable_safety);
+                name_width.* = @max(name_width.*, sub_node.name.len +% len1);
+                const input: [:0]const u8 = sub_node.paths[@boolToInt(sub_node.task.tag == .build)].names[1];
+                if (input.len != 0) {
+                    if (sub_node.descr.len != 0) {
+                        root_width.* = @max(root_width.*, input.len);
                     }
-                    break :blk node.paths[path_idx].names[1].len +% 1;
-                };
+                }
+            }
+            fn lengthToplevelCommandNoticeInternal(len1: u64, node: *const Node, name_width: *u64, root_width: *u64) void {
+                @setRuntimeSafety(builder_spec.options.enable_safety);
+                if (node.paths_len != 0) {
+                    lengthSubNode(len1, node, name_width, root_width);
+                }
+                lengthAndWalkInternal(len1, node, name_width, root_width);
                 for (node.nodes[0..node.nodes_len]) |sub_node| {
-                    if (sub_node != node) {
-                        len = @max(len, dependencyMaxRootWidth(sub_node));
+                    if (sub_node == node or
+                        sub_node.options.is_hidden or
+                        builder_spec.options.hide_special and sub_node.options.is_special)
+                    {
+                        continue;
                     }
-                }
-                for (node.deps[0..node.deps_len]) |dep| {
-                    if (dep.on_node != node) {
-                        len = @max(len, dependencyMaxRootWidth(dep.on_node));
+                    if (sub_node.options.is_hidden and sub_node.paths_len != 0) {
+                        lengthSubNode(len1 +% 4, sub_node, name_width, root_width);
                     }
+                    lengthToplevelCommandNoticeInternal(len1 +% 2, sub_node, name_width, root_width);
                 }
-                return len;
             }
             fn writeAndWalkInternal(buf0: [*]u8, len0: u64, buf1: [*]u8, len1: u64, node: *const Node, name_width: u64, root_width: u64) u64 {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
@@ -2265,20 +2266,15 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 defer allocator.next = save;
                 var name_width: u64 = 0;
                 var root_width: u64 = 0;
-                for (toplevel.nodes[0..toplevel.nodes_len]) |node| {
-                    if (!node.options.is_hidden) {
-                        name_width = @max(name_width, dependencyMaxNameWidth(node, 2));
-                        root_width = @max(root_width, dependencyMaxRootWidth(node));
-                    }
-                }
-                name_width +%= 4;
-                root_width +%= 4;
-                name_width &= ~@as(u64, 3);
-                root_width &= ~@as(u64, 3);
                 const buf0: [*]u8 = @intToPtr([*]u8, allocator.allocateRaw(1024 *% 1024, 1));
                 var len0: u64 = toplevel.name.len;
                 const buf1: [*]u8 = @intToPtr([*]u8, allocator.allocateRaw(4096, 1));
                 mach.memcpy(buf0, toplevel.name.ptr, toplevel.name.len);
+                lengthToplevelCommandNoticeInternal(0, toplevel, &name_width, &root_width);
+                name_width +%= 4;
+                name_width &= ~@as(u64, 3);
+                root_width +%= 4;
+                root_width &= ~@as(u64, 3);
                 len0 +%= toplevelCommandNoticeInternal(buf0 + len0, buf1, 0, toplevel, name_width, root_width);
                 buf0[len0] = '\n';
                 len0 +%= 1;
