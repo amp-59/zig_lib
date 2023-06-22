@@ -848,14 +848,14 @@ fn sortPairs(pairs: []const BitFieldPair) []const BitFieldPair {
     }
     return &sorted;
 }
-pub fn containerDeclsToBitFieldSets(comptime Container: type) []const BitFieldSet {
+pub fn containerDeclsToBitFieldSets(comptime Container: type, comptime backing_integer: type) []const BitFieldSet {
     @setEvalBranchQuota(~@as(u32, 0));
     const decls: []const builtin.Type.Declaration = sortDecls(Container);
     var done: [decls.len]bool = .{false} ** decls.len;
     var c_sets: []const BitFieldSet = &.{};
     var c_set: []const BitFieldPair = &.{};
     var x_pairs: []const BitFieldPair = &.{};
-    var c_val: usize = 0;
+    var c_val: backing_integer = 0;
     var l_decl_idx: usize = 0;
     lo: while (l_decl_idx != decls.len) : (l_decl_idx +%= 1) {
         const l_decl: builtin.Type.Declaration = decls[l_decl_idx];
@@ -869,7 +869,7 @@ pub fn containerDeclsToBitFieldSets(comptime Container: type) []const BitFieldSe
         if (@TypeOf(l_field) == type) {
             continue;
         }
-        const l_val: usize = l_field;
+        const l_val: backing_integer = l_field;
         if (c_val == 0) {
             c_val = l_val;
         }
@@ -893,7 +893,7 @@ pub fn containerDeclsToBitFieldSets(comptime Container: type) []const BitFieldSe
             if (@TypeOf(r_field) == type) {
                 continue;
             }
-            const r_val: usize = r_field;
+            const r_val: backing_integer = r_field;
             if (l_decl_idx != r_decl_idx) {
                 if (c_val & r_val != 0 or c_val == r_val) {
                     if (x_pairs.len != 0) {
