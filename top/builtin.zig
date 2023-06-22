@@ -1965,7 +1965,7 @@ pub const parse = struct {
     }
 };
 pub const fmt = struct {
-    const about_blank_s = blk: {
+    pub const about_blank_s = blk: {
         const indent = (" " ** config.message_indent);
         if (config.message_style) |style| {
             break :blk style ++ indent ++ config.message_no_style;
@@ -2057,8 +2057,9 @@ pub const fmt = struct {
     pub const ixsize = Generic(isize).hex;
     pub const nsec = Generic(u64).nsec;
     fn maxSigFig(comptime T: type, comptime radix: u7) comptime_int {
+        @setRuntimeSafety(false);
         const U = @Type(.{ .Int = .{ .bits = @bitSizeOf(T), .signedness = .unsigned } });
-        var value: U = 0;
+        var value: if (@bitSizeOf(U) < 8) u8 else U = 0;
         var len: u16 = 0;
         if (radix != 10) {
             len += 2;
@@ -2069,12 +2070,16 @@ pub const fmt = struct {
         }
         return len;
     }
-    pub fn length(comptime U: type, abs_value: U, comptime radix: u7) usize {
+    pub fn length(
+        comptime U: type,
+        abs_value: if (@bitSizeOf(U) < 8) u8 else U,
+        comptime radix: u7,
+    ) usize {
         @setRuntimeSafety(false);
         if (@bitSizeOf(U) == 1) {
             return 1;
         }
-        var value: U = abs_value;
+        var value: @TypeOf(abs_value) = abs_value;
         var count: u64 = 0;
         while (value != 0) : (value /= radix) {
             count +%= 1;
