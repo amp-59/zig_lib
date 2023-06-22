@@ -111,7 +111,7 @@ const _Map = struct {
         zb26: u38 = 0,
     };
     const Flags = packed struct(usize) {
-        visibility: enum(u2) { shared = 1, private = 2, shared_validate = 3 } = .private,
+        visibility: Visibility = .private,
         zb2: u2 = 0,
         fixed: bool = false,
         anonymous: bool = true,
@@ -130,6 +130,7 @@ const _Map = struct {
         fixed_noreplace: bool = true,
         zb21: u43 = 0,
     };
+    const Visibility = enum(u2) { shared = 1, private = 2, shared_validate = 3 };
 };
 pub const MapSpec = struct {
     options: Options = .{},
