@@ -95,7 +95,6 @@ fn examples(allocator: *Node.Allocator, node: *Node) void {
     const catz: *Node = try node.addBuild(allocator, build_cmd, "catz", "examples/catz.zig");
     const cleanup: *Node = try node.addBuild(allocator, build_cmd, "cleanup", "examples/cleanup.zig");
     const hello: *Node = try node.addBuild(allocator, build_cmd, "hello", "examples/hello.zig");
-    const readelf: *Node = try node.addBuild(allocator, build_cmd, "readelf", "examples/readelf.zig");
     const pathsplit: *Node = try node.addBuild(allocator, build_cmd, "pathsplit", "examples/pathsplit.zig");
     const declprint: *Node = try node.addBuild(allocator, build_cmd, "declprint", "examples/declprint.zig");
     readdir.descr = "Shows how to iterate directory entries";
@@ -109,7 +108,6 @@ fn examples(allocator: *Node.Allocator, node: *Node) void {
     catz.descr = "Shows how to map and write a file to standard output";
     cleanup.descr = "Shows more advanced operations on a mapped file";
     hello.descr = "Shows various ways of printing 'Hello, world!'";
-    readelf.descr = "Example program (defunct) for parsing and displaying information about ELF binaries";
     declprint.descr = "Useful for printing declarations";
     pathsplit.descr = "Useful for splitting paths into dirnames and basename";
     node.task.tag = .build;
