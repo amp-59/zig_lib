@@ -12,7 +12,7 @@ pub const FieldParams = struct {
 };
 /// A field element, internally stored in Montgomery domain.
 pub fn Field(comptime params: FieldParams) type {
-    return extern struct {
+    const Fe = extern struct {
         const Fe = @This();
         limbs: params.fiat.MontgomeryDomainFieldElement,
         /// Field size.
@@ -32,7 +32,7 @@ pub fn Field(comptime params: FieldParams) type {
             break :one fe;
         };
         /// Reject non-canonical encodings of an element.
-        pub fn rejectNonCanonical(s_: [encoded_len]u8, endian: builtin.Endian) errors.NonCanonicalError!void {
+        pub fn rejectNonCanonical(s_: [encoded_len]u8, endian: builtin.Endian) !void {
             var s = if (endian == .Little) s_ else orderSwap(s_);
             const field_order_s = comptime fos: {
                 var fos: [encoded_len]u8 = undefined;
@@ -50,7 +50,7 @@ pub fn Field(comptime params: FieldParams) type {
             return t;
         }
         /// Unpack a field element.
-        pub fn fromBytes(s_: [encoded_len]u8, endian: builtin.Endian) errors.NonCanonicalError!Fe {
+        pub fn fromBytes(s_: [encoded_len]u8, endian: builtin.Endian) !Fe {
             var s = if (endian == .Little) s_ else orderSwap(s_);
             try rejectNonCanonical(s, .Little);
             var limbs_z: params.fiat.NonMontgomeryDomainFieldElement = undefined;
@@ -70,7 +70,7 @@ pub fn Field(comptime params: FieldParams) type {
         /// Element as an integer.
         pub const IntRepr = @Type(.{ .Int = .{ .signedness = .unsigned, .bits = params.field_bits } });
         /// Create a field element from an integer.
-        pub fn fromInt(comptime x: IntRepr) errors.NonCanonicalError!Fe {
+        pub fn fromInt(comptime x: IntRepr) !Fe {
             var s: [encoded_len]u8 = undefined;
             mem.writeIntLittle(IntRepr, &s, x);
             return fromBytes(s, .Little);
@@ -126,14 +126,13 @@ pub fn Field(comptime params: FieldParams) type {
         /// Square a field element.
         pub fn sq(a: Fe) Fe {
             var fe: Fe = undefined;
-            params.fiat.square(&fe.limbs, a.limbs);
+            params.fiat.mul(&fe.limbs, a.limbs, a.limbs);
             return fe;
         }
         /// Square a field element n times.
-        fn sqn(a: Fe, comptime n: comptime_int) Fe {
-            var i: usize = 0;
+        fn sqn(a: Fe, n: usize) Fe {
             var fe = a;
-            while (i < n) : (i += 1) {
+            for (0..n) |_| {
                 fe = fe.sq();
             }
             return fe;
@@ -267,7 +266,7 @@ pub fn Field(comptime params: FieldParams) type {
             }
         }
         /// Compute the square root of `x2`, returning `error.NotSquare` if `x2` was not a square.
-        pub fn sqrt(x2: Fe) errors.NotSquareError!Fe {
+        pub fn sqrt(x2: Fe) !Fe {
             const x = x2.uncheckedSqrt();
             if (x.sq().equivalent(x2)) {
                 return x;
@@ -275,26 +274,27 @@ pub fn Field(comptime params: FieldParams) type {
             return error.NotSquare;
         }
     };
+    return Fe;
 }
 pub const arith = struct {
     pub const safety: bool = false;
-    pub fn addcarryxU64(out1: *u64, out2: *u8, arg1: u8, arg2: u64, arg3: u64) void {
+    pub export fn addcarryxU64(out1: *u64, out2: *u8, arg1: u8, arg2: u64, arg3: u64) void {
         @setRuntimeSafety(safety);
-        const ov1 = @addWithOverflow(arg2, arg3);
-        const ov2 = @addWithOverflow(ov1[0], arg1);
+        const ov1: struct { u64, u1 } = @addWithOverflow(arg2, arg3);
+        const ov2: struct { u64, u1 } = @addWithOverflow(ov1[0], arg1);
         out1.* = ov2[0];
         out2.* = ov1[1] | ov2[1];
     }
-    pub fn subborrowxU64(out1: *u64, out2: *u8, arg1: u8, arg2: u64, arg3: u64) void {
+    pub export fn subborrowxU64(out1: *u64, out2: *u8, arg1: u8, arg2: u64, arg3: u64) void {
         @setRuntimeSafety(safety);
-        const ov1 = @subWithOverflow(arg2, arg3);
-        const ov2 = @subWithOverflow(ov1[0], arg1);
+        const ov1: struct { u64, u1 } = @subWithOverflow(arg2, arg3);
+        const ov2: struct { u64, u1 } = @subWithOverflow(ov1[0], arg1);
         out1.* = ov2[0];
         out2.* = ov1[1] | ov2[1];
     }
     pub fn mulxU64(out1: *u64, out2: *u64, arg1: u64, arg2: u64) void {
         @setRuntimeSafety(safety);
-        const x = @as(u128, arg1) * @as(u128, arg2);
+        const x: u128 = @as(u128, arg1) *% @as(u128, arg2);
         out1.* = @truncate(u64, x);
         out2.* = @truncate(u64, x >> 64);
     }
