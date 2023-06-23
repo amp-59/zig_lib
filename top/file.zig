@@ -46,6 +46,12 @@ pub const mode = struct {
         .kind = .directory,
     };
 };
+pub const Access = packed struct(usize) {
+    exec: bool = false,
+    write: bool = false,
+    read: bool = false,
+    zb3: u61 = 0,
+};
 pub const Kind = enum(u4) {
     unknown = 0,
     regular = MODE.R.IFREG,
@@ -346,7 +352,7 @@ pub const StatusExtended = extern struct {
     uid: u32,
     gid: u32,
     mode: Mode,
-    @"0": u16,
+    zb240: u16,
     ino: u64,
     size: u64,
     blocks: u64,
@@ -360,8 +366,7 @@ pub const StatusExtended = extern struct {
     dev_major: u32,
     dev_minor: u32,
     mnt_id: u64,
-    @"1": [104]u8,
-
+    zb1216: [13]u64,
     pub const Fields = packed struct(usize) {
         type: bool = true,
         mode: bool = true,
@@ -494,9 +499,19 @@ pub const SyncSpec = struct {
     };
 };
 pub const AccessSpec = struct {
+    options: Options = .{},
     errors: sys.ErrorPolicy = .{ .throw = sys.access_errors },
     return_type: type = u64,
     logging: builtin.Logging.SuccessError = .{},
+    const Options = packed struct(usize) {
+        zb0: u8 = 0,
+        symlink_no_follow: bool = false,
+        access: bool = false,
+        symlink_follow: bool = false,
+        no_automount: bool = false,
+        empty_path: bool = false,
+        zb13: u51 = 0,
+    };
 };
 pub const SeekSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.seek_errors },
@@ -1939,6 +1954,22 @@ pub inline fn pollOne(comptime poll_spec: PollSpec, fd: *PollFd, timeout: u32) s
 //  exit_group
 //  fstat
 //  getrandom
+pub fn accessAt(comptime access_spec: AccessSpec, dir_fd: u64, name: [:0]const u8, ok: Access) sys.ErrorUnion(access_spec.errors, void) {
+    if (meta.wrap(sys.call(.faccessat2, access_spec.errors, void, .{
+        dir_fd, @ptrToInt(name.ptr), @bitCast(usize, ok), @bitCast(usize, access_spec.options),
+    }))) |ret| {
+        return ret;
+    } else |access_error| {
+        return access_error;
+    }
+}
+pub fn access(comptime access_spec: AccessSpec, pathname: [:0]const u8, ok: Access) sys.ErrorUnion(access_spec.errors, void) {
+    if (meta.wrap(sys.call(.access, access_spec.errors, void, .{ @ptrToInt(pathname.ptr), @bitCast(usize, ok) }))) |ret| {
+        return ret;
+    } else |access_error| {
+        return access_error;
+    }
+}
 pub fn pathIs(comptime stat_spec: StatusSpec, pathname: [:0]const u8, kind: Kind) sys.ErrorUnion(
     stat_spec.errors,
     stat_spec.return_type orelse bool,
