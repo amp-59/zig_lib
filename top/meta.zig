@@ -729,36 +729,36 @@ pub fn GenericBitFieldSet(comptime backing_integer: type) type {
             value: backing_integer,
         };
 
-fn sortSets(sets: []const BitFieldSet) []const BitFieldSet {
-    var sorted: [sets.len]BitFieldSet = sliceToArrayPointer(sets).*;
-    var l_idx: comptime_int = 1;
-    while (l_idx < sets.len) : (l_idx +%= 1) {
-        const set: BitFieldSet = sorted[l_idx];
-        var r_idx: u64 = l_idx -% 1;
-        while (r_idx < sets.len and
-            sorted[r_idx].pairs[0].value > set.pairs[0].value) : (r_idx -%= 1)
-        {
-            sorted[r_idx +% 1] = sorted[r_idx];
+        fn sortSets(sets: []const BitFieldSet) []const BitFieldSet {
+            var sorted: [sets.len]BitFieldSet = sliceToArrayPointer(sets).*;
+            var l_idx: comptime_int = 1;
+            while (l_idx < sets.len) : (l_idx +%= 1) {
+                const set: BitFieldSet = sorted[l_idx];
+                var r_idx: u64 = l_idx -% 1;
+                while (r_idx < sets.len and
+                    sorted[r_idx].pairs[0].value > set.pairs[0].value) : (r_idx -%= 1)
+                {
+                    sorted[r_idx +% 1] = sorted[r_idx];
+                }
+                sorted[r_idx +% 1] = set;
+            }
+            return &sorted;
         }
-        sorted[r_idx +% 1] = set;
-    }
-    return &sorted;
-}
-fn sortPairs(pairs: []const BitFieldPair) []const BitFieldPair {
-    var sorted: [pairs.len]BitFieldPair = sliceToArrayPointer(pairs).*;
-    var l_idx: usize = 1;
-    while (l_idx < pairs.len) : (l_idx +%= 1) {
-        const x: BitFieldPair = sorted[l_idx];
-        var r_idx: usize = l_idx -% 1;
-        while (r_idx < pairs.len and
-            sorted[r_idx].value > x.value) : (r_idx -%= 1)
-        {
-            sorted[r_idx +% 1] = sorted[r_idx];
+        fn sortPairs(pairs: []const BitFieldPair) []const BitFieldPair {
+            var sorted: [pairs.len]BitFieldPair = sliceToArrayPointer(pairs).*;
+            var l_idx: usize = 1;
+            while (l_idx < pairs.len) : (l_idx +%= 1) {
+                const x: BitFieldPair = sorted[l_idx];
+                var r_idx: usize = l_idx -% 1;
+                while (r_idx < pairs.len and
+                    sorted[r_idx].value > x.value) : (r_idx -%= 1)
+                {
+                    sorted[r_idx +% 1] = sorted[r_idx];
+                }
+                sorted[r_idx +% 1] = x;
+            }
+            return &sorted;
         }
-        sorted[r_idx +% 1] = x;
-    }
-    return &sorted;
-}
     };
 }
 fn sortDecls(comptime Container: type) []const builtin.Type.Declaration {
