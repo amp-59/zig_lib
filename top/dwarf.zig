@@ -511,6 +511,41 @@ const Unit = extern struct {
     loclists_base: usize = 0,
     abbrev_tab: *AbbrevTable,
     info_entry: *InfoEntry,
+    // line_cv: ?LineCv = null,
+    dirs: [*]FileEntry,
+    dirs_len: u64 = 0,
+    files: [*]FileEntry,
+    files_len: u64 = 0,
+    const LineCv = struct {
+        is_stmt: bool,
+        line_base: usize,
+        next_unit_off: usize,
+        next_off: usize,
+    };
+    fn addDir(unit: *Unit, allocator: *mem.SimpleAllocator) *FileEntry {
+        @setRuntimeSafety(false);
+        const size_of: comptime_int = @sizeOf(FileEntry);
+        const addr_buf: *u64 = @ptrCast(*u64, &unit.dirs);
+        const ret: *FileEntry = @intToPtr(
+            *FileEntry,
+            allocator.addGeneric(size_of, 1, addr_buf, &unit.dirs_max_len, unit.dirs_len),
+        );
+        unit.dirs_len +%= 1;
+        mem.zero(FileEntry, ret);
+        return ret;
+    }
+    fn addFile(unit: *Unit, allocator: *mem.SimpleAllocator) *FileEntry {
+        @setRuntimeSafety(false);
+        const size_of: comptime_int = @sizeOf(FileEntry);
+        const addr_buf: *u64 = @ptrCast(*u64, &unit.files);
+        const ret: *FileEntry = @intToPtr(
+            *FileEntry,
+            allocator.addGeneric(size_of, 1, addr_buf, &unit.files_max_len, unit.files_len),
+        );
+        unit.files_len +%= 1;
+        mem.zero(FileEntry, ret);
+        return ret;
+    }
     fn init(allocator: *mem.SimpleAllocator, dwarf_info: *DwarfInfo, bytes: [*]u8, unit_off: u64) !*Unit {
         const buf: [*]u8 = bytes + unit_off;
         const ret: *Unit = dwarf_info.addUnit(allocator);
@@ -1256,10 +1291,10 @@ pub const DwarfInfo = extern struct {
             opcode_lens[idx] = buf[pos];
             pos +%= 1;
         }
-        var dirs: FileEntry.Array = FileEntry.Array.init(allocator, 2);
         if (line_range == 0) {
             builtin.proc.exitError(error.InvalidEncoding, 2);
         }
+        var dirs: FileEntry.Array = FileEntry.Array.init(allocator, 1);
         dirs.appendOne(allocator, .{ .name = unit_cwd });
         while (true) {
             const dir: [:0]const u8 = mach.manyToSlice80(buf + pos);
@@ -1525,6 +1560,8 @@ const FileEntry = struct {
     mtime: u64 = 0,
     size: u64 = 0,
     md5: [16]u8 = [1]u8{0} ** 16,
+    buf: [*]u8 = undefined,
+    buf_len: u64 = 0,
     const Array = mem.GenericSimpleArray(FileEntry);
     fn pathname(entry: *const FileEntry, allocator: *mem.SimpleAllocator, dirs: *const FileEntry.Array) [:0]const u8 {
         const dirname: []const u8 = dirs.values[entry.dir_idx].name;
