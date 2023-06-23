@@ -633,8 +633,7 @@ fn testEqualPointer(comptime T: type, comptime pointer_info: Type.Pointer, arg1:
 }
 fn testIdenticalStruct(comptime T: type, comptime struct_info: Type.Struct, arg1: T, arg2: T) bool {
     if (struct_info.layout == .Packed) {
-        return @bitCast(struct_info.backing_integer.?, arg1) ==
-            @bitCast(struct_info.backing_integer.?, arg2);
+        return @bitCast(struct_info.backing_integer.?, arg1) == @bitCast(struct_info.backing_integer.?, arg2);
     }
     return testEqualStruct(T, struct_info, arg1, arg2);
 }
@@ -1476,8 +1475,8 @@ pub const debug = struct {
         var buf: [size]u8 = undefined;
         const len: u64 = switch (@typeInfo(T)) {
             .Int => comparisonFailedString(T, about_fault_s, symbol, &buf, arg1, arg2, @min(arg1, arg2) > 10_000),
-            .Enum => mach.memcpyMulti(&buf, &[_][]const u8{ about_fault_s, @tagName(arg1), symbol, @tagName(arg2) }),
-            .Type => mach.memcpyMulti(&buf, &[_][]const u8{ about_fault_s, @typeName(arg1), symbol, @typeName(arg2) }),
+            .Enum => mach.memcpyMulti(&buf, &[_][]const u8{ about_fault_s, @tagName(arg1), symbol, @tagName(arg2), "\n" }),
+            .Type => mach.memcpyMulti(&buf, &[_][]const u8{ about_fault_s, @typeName(arg1), symbol, @typeName(arg2), "\n" }),
             else => mach.memcpyMulti(&buf, &[_][]const u8{ about_fault_s, "unexpected value\n" }),
         };
         panic(buf[0..len], null, ret_addr);
@@ -1488,8 +1487,8 @@ pub const debug = struct {
         var buf: [size]u8 = undefined;
         const len: u64 = switch (@typeInfo(T)) {
             .Int => comparisonFailedString(T, about_s, symbol, &buf, arg1, arg2, @min(arg1, arg2) > 10_000),
-            .Enum => mach.memcpyMulti(&buf, &[_][]const u8{ about_s, @tagName(arg1), symbol, @tagName(arg2) }),
-            .Type => mach.memcpyMulti(&buf, &[_][]const u8{ about_s, @typeName(arg1), symbol, @typeName(arg2) }),
+            .Enum => mach.memcpyMulti(&buf, &[_][]const u8{ about_s, @tagName(arg1), symbol, @tagName(arg2), "\n" }),
+            .Type => mach.memcpyMulti(&buf, &[_][]const u8{ about_s, @typeName(arg1), symbol, @typeName(arg2), "\n" }),
             else => mach.memcpyMulti(&buf, &[_][]const u8{ about_s, "unexpected value\n" }),
         };
         logError(buf[0..len]);
