@@ -150,10 +150,6 @@ pub const UTIME = struct {
     pub const NOW = 0x3fffffff;
     pub const OMIT = 0x3ffffffe;
 };
-pub const R_OK = 0x4;
-pub const W_OK = 0x2;
-pub const X_OK = 0x1;
-pub const F_OK = 0x0;
 pub const SEEK = struct {
     pub const END = 0x2;
     pub const HOLE = 0x4;
@@ -1999,6 +1995,7 @@ pub const Fn = enum(usize) {
             .openat,
             .rt_sigaction,
             .sendfile,
+            .faccessat2,
             => return 4,
             .mremap,
             .statx,
@@ -2008,6 +2005,7 @@ pub const Fn = enum(usize) {
             .execveat,
             .name_to_handle_at,
             .linkat,
+            .perf_event_open,
             => return 5,
             .copy_file_range,
             .futex,
@@ -2026,6 +2024,11 @@ pub const vFn = enum(u9) {
     time,
 };
 pub const brk_errors = &[_]ErrorCode{.NOMEM};
+pub const access_errors = &[_]ErrorCode{
+    .ACCES,       .BADF,  .FAULT, .INVAL,  .IO,   .LOOP,
+    .NAMETOOLONG, .NOENT, .NOMEM, .NOTDIR, .PERM, .ROFS,
+    .TXTBSY,
+};
 pub const chdir_errors = &[_]ErrorCode{
     .NAMETOOLONG, .LOOP, .ACCES, .IO, .BADF, .FAULT, .NOTDIR, .NOMEM, .NOENT,
 };
@@ -2063,6 +2066,10 @@ pub const execveat_errors = &[_]ErrorCode{
     .ACCES, .IO,     .LIBBAD, .NOTDIR,  .MFILE, .NOENT, .NAMETOOLONG, .TXTBSY,
     .ISDIR, .LOOP,   .NOMEM,  .@"2BIG", .NFILE, .PERM,  .FAULT,       .AGAIN,
     .INVAL, .NOEXEC,
+};
+pub const perf_event_open_errors = &[_]ErrorCode{
+    .@"2BIG", .ACCES, .BADF,  .BUSY,      .FAULT,    .INTR, .INVAL, .MFILE, .NODEV,
+    .NOENT,   .NOSPC, .NOSYS, .OPNOTSUPP, .OVERFLOW, .PERM, .SRCH,
 };
 pub const fork_errors = &[_]ErrorCode{
     .NOSYS, .AGAIN, .NOMEM, .RESTART,
