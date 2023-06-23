@@ -8,8 +8,16 @@ const builtin = top.builtin;
 
 pub usingnamespace proc.start;
 
-pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
-
+pub const logging_override: builtin.Logging.Override = spec.logging.override.verbose;
+pub const runtime_assertions: bool = false;
+pub const signal_handlers: builtin.SignalHandlers = .{
+    .SegmentationFault = true,
+    .BusError = true,
+    .IllegalInstruction = true,
+    .FloatingPointError = true,
+    .Trap = true,
+};
+pub const discard_errors = true;
 extern fn otherMain(x: u64) void;
 
 fn nested0(z: u64) !void {

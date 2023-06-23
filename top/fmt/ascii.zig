@@ -55,10 +55,12 @@ pub fn isControl(c: u8) bool {
     return c <= control_code.unit_separator or c == control_code.delete;
 }
 pub fn isDigit(c: u8) bool {
-    return switch (c) {
-        '0'...'9' => true,
-        else => false,
-    };
+    switch (c) {
+        '0'...'9' => {
+            return true;
+        },
+        else => return false,
+    }
 }
 pub fn isLower(c: u8) bool {
     return switch (c) {
@@ -86,16 +88,20 @@ pub const whitespace: [6]u8 = .{
     control_code.form_feed,
 };
 pub fn isUpper(c: u8) bool {
-    return switch (c) {
-        'A'...'Z' => true,
-        else => false,
-    };
+    switch (c) {
+        'A'...'Z' => {
+            return true;
+        },
+        else => return false,
+    }
 }
 pub fn isHex(c: u8) bool {
-    return switch (c) {
-        '0'...'9', 'A'...'F', 'a'...'f' => true,
-        else => false,
-    };
+    switch (c) {
+        '0'...'9', 'A'...'F', 'a'...'f' => {
+            return true;
+        },
+        else => return false,
+    }
 }
 pub fn isASCII(c: u8) bool {
     return c < 128;
