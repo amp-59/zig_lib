@@ -21,6 +21,7 @@ pub const RenderSpec = struct {
     omit_container_decls: bool = true,
     omit_trailing_comma: ?bool = null,
     omit_type_names: bool = false,
+    enum_to_int: bool = false,
     infer_type_names: bool = false,
     infer_type_names_recursively: bool = false,
     type_cast_generic: bool = true,
@@ -69,7 +70,7 @@ pub fn AnyFormat(comptime spec: RenderSpec, comptime Type: type) type {
         .Type => return TypeFormat(spec),
         .Struct => return StructFormat(spec, Type),
         .Union => return UnionFormat(spec, Type),
-        .Enum => return EnumFormat(Type),
+        .Enum => return EnumFormat(spec, Type),
         .EnumLiteral => return EnumLiteralFormat(spec, Type),
         .ComptimeInt => return ComptimeIntFormat,
         .Int => return IntFormat(spec, Type),
@@ -121,7 +122,7 @@ pub fn GenericFormat(comptime spec: RenderSpec) type {
 pub fn ArrayFormat(comptime spec: RenderSpec, comptime Array: type) type {
     const T = struct {
         value: Array,
-        const Format: type = @This();
+        const Format = @This();
         const ChildFormat: type = AnyFormat(child_spec, child);
         const array_info: builtin.Type = @typeInfo(Array);
         const child: type = array_info.Array.child;
@@ -182,7 +183,7 @@ pub fn ArrayFormat(comptime spec: RenderSpec, comptime Array: type) type {
 }
 pub const BoolFormat = struct {
     value: bool,
-    const Format: type = @This();
+    const Format = @This();
     pub fn formatWrite(format: Format, array: anytype) void {
         if (format.value) {
             array.writeCount(4, "true".*);
@@ -197,7 +198,7 @@ pub const BoolFormat = struct {
 };
 pub fn TypeFormat(comptime spec: RenderSpec) type {
     const T = struct {
-        const Format: type = @This();
+        const Format = @This();
         value: type,
         const omit_trailing_comma: bool = spec.omit_trailing_comma orelse false;
         const default_value_spec: RenderSpec = blk: {
@@ -492,7 +493,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
     }
     const T = struct {
         value: Struct,
-        const Format: type = @This();
+        const Format = @This();
         const undef: Struct = @as(Struct, undefined);
         const type_name: []const u8 = typeName(Struct, spec);
         const fields: []const builtin.Type.StructField = @typeInfo(Struct).Struct.fields;
@@ -602,7 +603,7 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
     }
     const T = struct {
         value: Union,
-        const Format: type = @This();
+        const Format = @This();
         const fields: []const builtin.Type.UnionField = @typeInfo(Union).Union.fields;
         const type_name: []const u8 = typeName(Union, spec);
         // This is the actual tag type
@@ -820,17 +821,24 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
     };
     return T;
 }
-pub fn EnumFormat(comptime Enum: type) type {
+pub fn EnumFormat(comptime spec: RenderSpec, comptime Enum: type) type {
     const T = struct {
         value: Enum,
-        const Format: type = @This();
+        const Format = @This();
+        const type_info: builtin.Type = @typeInfo(Enum);
         const max_len: u64 = 1 +% meta.maxDeclLength(Enum);
         pub fn formatWrite(format: Format, array: anytype) void {
+            if (spec.enum_to_int) {
+                return IntFormat(spec, type_info.Enum.tag_type).formatWrite(.{ .value = @enumToInt(format.value) }, array);
+            }
             const tag_name_format: fmt.IdentifierFormat = .{ .value = @tagName(format.value) };
             array.writeOne('.');
             writeFormat(array, tag_name_format);
         }
         pub fn formatLength(format: Format) u64 {
+            if (spec.enum_to_int) {
+                return IntFormat(spec, type_info.Enum.tag_type).formatLength(.{ .value = @enumToInt(format.value) });
+            }
             const tag_name_format: fmt.IdentifierFormat = .{ .value = @tagName(format.value) };
             return 1 +% tag_name_format.formatLength();
         }
@@ -840,7 +848,7 @@ pub fn EnumFormat(comptime Enum: type) type {
 }
 pub const EnumLiteralFormat = struct {
     value: @Type(.EnumLiteral),
-    const Format: type = @This();
+    const Format = @This();
     const max_len: u64 = undefined;
     pub fn formatWrite(comptime format: Format, array: anytype) void {
         const tag_name_format: fmt.IdentifierFormat = .{ .value = @tagName(format.value) };
@@ -855,7 +863,7 @@ pub const EnumLiteralFormat = struct {
 };
 pub const ComptimeIntFormat = struct {
     value: comptime_int,
-    const Format: type = @This();
+    const Format = @This();
     pub fn formatWrite(comptime format: Format, array: anytype) void {
         array.writeMany(builtin.fmt.ci(format.value));
     }
@@ -867,7 +875,7 @@ pub const ComptimeIntFormat = struct {
 pub fn IntFormat(comptime spec: RenderSpec, comptime Int: type) type {
     const T = struct {
         value: Int,
-        const Format: type = @This();
+        const Format = @This();
         const Abs: type = @Type(.{ .Int = .{ .bits = type_info.Int.bits, .signedness = .unsigned } });
         const type_info: builtin.Type = @typeInfo(Int);
         const max_abs_value: Abs = ~@as(Abs, 0);
@@ -953,7 +961,7 @@ const AddressFormat = struct {
 pub fn PointerOneFormat(comptime spec: RenderSpec, comptime Pointer: type) type {
     const T = struct {
         value: Pointer,
-        const Format: type = @This();
+        const Format = @This();
         const SubFormat = meta.Return(fmt.ux64);
         const child: type = @typeInfo(Pointer).Pointer.child;
         const max_len: u64 = (4 +% typeName(Pointer, spec).len +% 3) +% AnyFormat(spec, child).max_len +% 1;
@@ -1022,7 +1030,7 @@ pub fn PointerOneFormat(comptime spec: RenderSpec, comptime Pointer: type) type 
 pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) type {
     const T = struct {
         value: Pointer,
-        const Format: type = @This();
+        const Format = @This();
         const ChildFormat: type = AnyFormat(spec, child);
         const child: type = @typeInfo(Pointer).Pointer.child;
         const max_len: u64 = 65536;
@@ -1187,7 +1195,7 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
 pub fn PointerManyFormat(comptime spec: RenderSpec, comptime Pointer: type) type {
     const T = struct {
         value: Pointer,
-        const Format: type = @This();
+        const Format = @This();
         const ChildFormat: type = AnyFormat(spec, child);
         const type_info: builtin.Type = @typeInfo(Pointer);
         const type_name: []const u8 = typeName(Pointer, spec);
@@ -1219,7 +1227,7 @@ pub fn PointerManyFormat(comptime spec: RenderSpec, comptime Pointer: type) type
 pub fn OptionalFormat(comptime spec: RenderSpec, comptime Optional: type) type {
     const T = struct {
         value: Optional,
-        const Format: type = @This();
+        const Format = @This();
         const ChildFormat: type = AnyFormat(spec, child);
         const child: type = @typeInfo(Optional).Optional.child;
         const type_name: []const u8 = typeName(Optional);
@@ -1265,7 +1273,7 @@ pub const NullFormat = struct {
     comptime value: @TypeOf(null) = null,
     comptime formatWrite: fn (anytype) void = formatWrite,
     comptime formatLength: fn () u64 = formatLength,
-    const Format: type = @This();
+    const Format = @This();
     const max_len: u64 = 4;
     pub fn formatWrite(array: anytype) void {
         array.writeMany("null");
@@ -1279,7 +1287,7 @@ pub const VoidFormat = struct {
     comptime value: void = {},
     comptime formatWrite: fn (anytype) void = formatWrite,
     comptime formatLength: fn () u64 = formatLength,
-    const Format: type = @This();
+    const Format = @This();
     const max_len: u64 = 2;
     pub fn formatWrite(array: anytype) void {
         array.writeCount(2, "{}".*);
@@ -1293,7 +1301,7 @@ pub const NoReturnFormat = struct {
     comptime value: void = {},
     comptime formatWrite: fn (anytype) void = formatWrite,
     comptime formatLength: fn () u64 = formatLength,
-    const Format: type = @This();
+    const Format = @This();
     const max_len: u64 = 8;
     pub fn formatWrite(array: anytype) void {
         array.writeCount(2, "noreturn".*);
@@ -1306,7 +1314,7 @@ pub const NoReturnFormat = struct {
 pub fn VectorFormat(comptime spec: RenderSpec, comptime Vector: type) type {
     const T = struct {
         value: Vector,
-        const Format: type = @This();
+        const Format = @This();
         const ChildFormat: type = AnyFormat(spec, child);
         const vector_info: builtin.Type = @typeInfo(Vector);
         const child: type = vector_info.Vector.child;
@@ -1345,7 +1353,7 @@ pub fn VectorFormat(comptime spec: RenderSpec, comptime Vector: type) type {
 pub fn ErrorUnionFormat(comptime spec: RenderSpec, comptime ErrorUnion: type) type {
     const T = struct {
         value: ErrorUnion,
-        const Format: type = @This();
+        const Format = @This();
         const type_info: builtin.Type = @typeInfo(ErrorUnion);
         const PayloadFormat: type = AnyFormat(spec, type_info.ErrorUnion.payload);
         pub fn formatWrite(format: Format, array: anytype) void {
@@ -1375,7 +1383,7 @@ pub fn ErrorUnionFormat(comptime spec: RenderSpec, comptime ErrorUnion: type) ty
 pub fn ErrorSetFormat(comptime ErrorSet: type) type {
     const T = struct {
         value: ErrorSet,
-        const Format: type = @This();
+        const Format = @This();
         pub fn formatWrite(format: Format, array: anytype) void {
             array.writeMany("error.");
             array.writeMany(@errorName(format.value));
