@@ -493,6 +493,11 @@ pub const SyncSpec = struct {
         flush_metadata: bool = true,
     };
 };
+pub const AccessSpec = struct {
+    errors: sys.ErrorPolicy = .{ .throw = sys.access_errors },
+    return_type: type = u64,
+    logging: builtin.Logging.SuccessError = .{},
+};
 pub const SeekSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.seek_errors },
     return_type: type = u64,
@@ -2073,8 +2078,6 @@ pub fn assertNot(comptime stat_spec: StatusSpec, fd: u64, kind: Kind) sys.ErrorU
         return mach.cmovV(return_type == Status, st);
     }
 }
-// Soon.
-fn ioctl(comptime _: IOControlSpec, _: u64) TerminalAttributes {}
 fn getTerminalAttributes() void {}
 fn setTerminalAttributes() void {}
 pub fn readRandom(buf: []u8) !void {
