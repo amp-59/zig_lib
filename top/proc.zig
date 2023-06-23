@@ -260,7 +260,6 @@ pub const WaitSpec = struct {
     options: Options = .{},
     errors: sys.ErrorPolicy = .{ .throw = sys.wait_errors },
     logging: builtin.Logging.SuccessError = .{},
-    return_type: type = u64,
     const Specification = @This();
     const Options = struct {
         exited: bool = false,
@@ -487,7 +486,7 @@ pub fn getGroupId() u16 {
 pub fn getEffectiveGroupId() u16 {
     return @truncate(u16, sys.call(.getegid, .{}, u64, .{}));
 }
-pub fn waitPid(comptime spec: WaitSpec, id: WaitSpec.For) sys.ErrorUnion(spec.errors, spec.return_type) {
+pub fn waitPid(comptime spec: WaitSpec, id: WaitSpec.For) sys.ErrorUnion(spec.errors, Return) {
     const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
     var ret: Return = undefined;
     const status_addr: u64 = @ptrToInt(&ret.status);
@@ -496,9 +495,7 @@ pub fn waitPid(comptime spec: WaitSpec, id: WaitSpec.For) sys.ErrorUnion(spec.er
         if (logging.Success) {
             debug.waitNotice(id, ret);
         }
-        if (spec.return_type == Return) {
-            return ret;
-        }
+        return ret;
     } else |wait_error| {
         if (logging.Error) {
             debug.waitError(wait_error);
