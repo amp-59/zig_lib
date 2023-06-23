@@ -8,7 +8,7 @@ pub fn codepointSequenceLength(c: u32) !u8 {
     if (c < 0x110000) return 4;
     return error.InvalidInput;
 }
-fn byteSequenceLength(first_byte: u8) !u8 {
+pub fn byteSequenceLength(first_byte: u8) !u8 {
     switch (first_byte) {
         0b0000_0000...0b0111_1111 => return 1,
         0b1100_0000...0b1101_1111 => return 2,
@@ -26,7 +26,7 @@ pub fn decode(bytes: []const u8) !u32 {
         else => unreachable,
     }
 }
-fn decode2(bytes: []const u8) !u32 {
+pub fn decode2(bytes: []const u8) !u32 {
     var value: u32 = bytes[0] & 0b00011111;
     if (bytes[1] & 0b11000000 != 0b10000000) {
         return error.InvalidEncoding;
@@ -38,9 +38,9 @@ fn decode2(bytes: []const u8) !u32 {
     }
     return value;
 }
-fn decode3(bytes: []const u8) !u32 {
-    builtin.assertEqual(u64, bytes.len, 3);
-    builtin.assertEqual(u64, bytes[0] & 0b11110000, 0b11100000);
+pub fn decode3(bytes: []const u8) !u32 {
+    //builtin.assertEqual(u64, bytes.len, 3);
+    //builtin.assertEqual(u64, bytes[0] & 0b11110000, 0b11100000);
     var value: u32 = bytes[0] & 0b00001111;
     if (bytes[1] & 0b11000000 != 0b10000000) {
         return error.InvalidEncoding;
@@ -60,9 +60,9 @@ fn decode3(bytes: []const u8) !u32 {
     }
     return value;
 }
-fn decode4(bytes: []const u8) !u32 {
-    builtin.assertEqual(u64, bytes.len, 4);
-    builtin.assertEqual(u64, bytes[0] & 0b11111000, 0b11110000);
+pub fn decode4(bytes: []const u8) !u32 {
+    //builtin.assertEqual(u64, bytes.len, 4);
+    //builtin.assertEqual(u64, bytes[0] & 0b11111000, 0b11110000);
     var value: u32 = bytes[0] & 0b00000111;
     if (bytes[1] & 0b11000000 != 0b10000000) {
         return error.InvalidEncoding;
