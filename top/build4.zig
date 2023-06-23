@@ -749,6 +749,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             fn runWrite(allocator: *Allocator, node: *Node, args: [][*:0]u8) [][*:0]u8 {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
                 for (args) |run_arg| node.addArg(allocator).* = run_arg;
+                node.addArg(allocator).* = comptime builtin.zero([*:0]u8);
+                node.args_len -%= 1;
                 return node.args[0..node.args_len];
             }
             inline fn taskArgs(allocator: *Allocator, toplevel: *const Node, node: *Node, task: types.Task) [][*:0]u8 {
@@ -1332,7 +1334,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             return .{
                 .errors = builder_spec.errors.waitpid,
                 .logging = builder_spec.logging.waitpid,
-                .return_type = proc.Return,
             };
         }
         fn mknod() file.MakeNodeSpec {
