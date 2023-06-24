@@ -15,37 +15,16 @@ const perf = @import("../top/perf.zig");
 
 pub usingnamespace proc.start;
 pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
-
+const event_spec: perf.PerfEventSpec = .{ .errors = .{} };
+const read_spec: file.ReadSpec = .{ .errors = .{}, .return_type = void, .child = u64 };
+const wait_spec: proc.WaitSpec = .{ .errors = .{} };
+const close_spec: file.CloseSpec = .{ .errors = .{} };
+const fork_spec: proc.ForkSpec = .{ .errors = .{} };
+const path_spec: file.PathSpec = .{ .errors = .{} };
 const Array = mem.StaticString(1024 *% 1024);
 
-const hw_counters = [_]perf.Measurement{
-    .{ .name = about.perf ++ "cycles", .config = .{ .hardware = .cpu_cycles } },
-    .{ .name = about.perf ++ "instructions", .config = .{ .hardware = .instructions } },
-    .{ .name = about.perf ++ "cache-references", .config = .{ .hardware = .cache_references } },
-    .{ .name = about.perf ++ "cache-misses", .config = .{ .hardware = .cache_misses } },
-    .{ .name = about.perf ++ "branches", .config = .{ .hardware = .branch_instructions } },
-    //.{ .name = about.perf ++ "branch-misses", .config = .{ .hardware = .branch_misses } },
-};
-const sw_counters = [_]perf.Measurement{
-    .{ .name = about.perf ++ "cpu-clock", .config = .{ .software = .cpu_clock } },
-    .{ .name = about.perf ++ "task-clock", .config = .{ .software = .task_clock } },
-    .{ .name = about.perf ++ "page-faults", .config = .{ .software = .page_faults } },
-};
-const about = .{
-    .perf = builtin.fmt.about("perf"),
-    .bytes_s = " bytes, ",
-    .green_s = "\x1b[92;1m",
-    .red_s = "\x1b[91;1m",
-    .new_s = "\x1b[0m\n",
-    .reset_s = "\x1b[0m",
-    .gold_s = "\x1b[93m",
-    .bold_s = "\x1b[1m",
-    .faint_s = "\x1b[2m",
-    .grey_s = "\x1b[0;38;5;250;1m",
-    .trace_s = "\x1b[38;5;247m",
-    .hi_green_s = "\x1b[38;5;46m",
-    .hi_red_s = "\x1b[38;5;196m",
-};
+const about = builtin.fmt.about("perf");
+
 fn printUnit(array: *Array, x: f64, unit: enum { count, nanoseconds, bytes }) !void {
     const int = @intFromFloat(u64, @round(x));
     switch (unit) {
@@ -61,22 +40,40 @@ const event_flags: perf.Event.Flags = .{
     .inherit = true,
     .enable_on_exec = true,
 };
+const hw_counters: []const perf.Measurement = &.{
+    .{ .name = about ++ "cycles\t\t\t", .config = .{ .hardware = .cpu_cycles } },
+    .{ .name = about ++ "instructions\t\t", .config = .{ .hardware = .instructions } },
+    .{ .name = about ++ "cache-references\t", .config = .{ .hardware = .cache_references } },
+    .{ .name = about ++ "cache-misses\t\t", .config = .{ .hardware = .cache_misses } },
+    .{ .name = about ++ "branches\t\t", .config = .{ .hardware = .branch_instructions } },
+    .{ .name = about ++ "branch-misses\t\t", .config = .{ .hardware = .branch_misses } },
+};
+const sw_counters: []const perf.Measurement = &.{
+    .{ .name = about ++ "cpu-clock\t\t", .config = .{ .software = .cpu_clock } },
+    .{ .name = about ++ "task-clock\t\t", .config = .{ .software = .task_clock } },
+    .{ .name = about ++ "page-faults\t\t", .config = .{ .software = .page_faults } },
+};
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     if (args.len <= 1) {
         return error.MissingArguments;
     }
-    var hw_fds: [hw_counters.len]u64 = .{0} ** hw_counters.len;
-    hw_fds[0] <<= 32;
-    hw_fds[0] -%= 1;
-    var sw_fds: [sw_counters.len]u64 = .{0} ** sw_counters.len;
-    sw_fds[0] <<= 32;
-    sw_fds[0] -%= 1;
+    var hw_fds: [hw_counters.len]u64 = undefined;
+    hw_fds[0] = ~@as(u32, 0);
+    var sw_fds: [sw_counters.len]u64 = undefined;
+    sw_fds[0] = ~@as(u32, 0);
     var result: u64 = 0;
-    for (hw_counters, 0..) |counter, idx| {
-        hw_fds[idx] = try perf.eventOpen(.{}, &.{ .type = .hardware, .config = counter.config, .flags = event_flags }, .self, .any, hw_fds[0], .{ .fd_close_on_exec = true });
+    var event: perf.Event = .{ .flags = event_flags };
+    var idx: u64 = 0;
+    event.type = .hardware;
+    while (idx != hw_counters.len) : (idx +%= 1) {
+        event.config = hw_counters[idx].config;
+        hw_fds[idx] = perf.eventOpen(event_spec, &event, .self, .any, hw_fds[0], .{ .fd_close_on_exec = true });
     }
-    for (sw_counters, 0..) |counter, idx| {
-        sw_fds[idx] = try perf.eventOpen(.{}, &.{ .type = .software, .config = counter.config, .flags = event_flags }, .self, .any, hw_fds[0], .{ .fd_close_on_exec = true });
+    event.type = .software;
+    idx = 0;
+    while (idx != sw_counters.len) : (idx +%= 1) {
+        event.config = sw_counters[idx].config;
+        sw_fds[idx] = perf.eventOpen(event_spec, &event, .self, .any, hw_fds[0], .{ .fd_close_on_exec = true });
     }
     const leader_fd: u64 = hw_fds[0];
     var itr: proc.PathIterator = .{
@@ -84,46 +81,41 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     };
     const name: [:0]const u8 = meta.manyToSlice(args[1]);
     const dir_fd: u64 = while (itr.next()) |dirname| {
-        const dir_fd: u64 = try file.path(.{}, dirname);
+        const dir_fd: u64 = file.path(path_spec, dirname);
         if (file.accessAt(.{}, dir_fd, name, .{ .exec = true })) {
             itr.done();
             break dir_fd;
         } else |err| {
             if (err == error.NoSuchFileOrDirectory or
                 err == error.Access)
-                try file.close(.{}, dir_fd);
+                file.close(close_spec, dir_fd);
         }
     } else {
         return error.NoExecutableInPath;
     };
     try perf.eventControl(.{}, leader_fd, .reset, true);
-    const pid: u64 = try proc.fork(.{});
+    const pid: u64 = proc.fork(fork_spec);
     if (pid == 0) {
-        return file.execAt(.{ .logging = .{ .Attempt = true } }, dir_fd, name, args[1..], vars);
+        return file.execAt(.{}, dir_fd, name, args[1..], vars);
     }
-    const ret: proc.Return = try proc.waitPid(.{}, .{ .pid = pid });
+    const ret: proc.Return = proc.waitPid(wait_spec, .{ .pid = pid });
+    _ = ret;
     try perf.eventControl(.{}, leader_fd, .disable, true);
-    var array: Array = .{};
+    var array: Array = undefined;
     array.undefineAll();
-    if (ret.status == 0) {
-        for (hw_counters, 0..) |counter, idx| {
-            try file.readOne(.{ .return_type = void, .child = u64 }, hw_fds[idx], &result);
-            array.writeMany(counter.name);
-            array.writeOne('\t');
-            array.writeFormat(fmt.udh(result));
-            array.writeOne('\n');
-        }
-        for (sw_counters, 0..) |counter, idx| {
-            try file.readOne(.{ .return_type = void, .child = u64 }, sw_fds[idx], &result);
-            array.writeMany(counter.name);
-            array.writeOne('\t');
-            array.writeFormat(fmt.udh(result));
-            array.writeOne('\n');
-        }
-        builtin.debug.write(array.readAll());
+    idx = 0;
+    while (idx != hw_counters.len) : (idx +%= 1) {
+        file.readOne(read_spec, hw_fds[idx], &result);
+        array.writeAny(spec.reinterpret.fmt, .{ hw_counters[idx].name, fmt.udh(result), '\n' });
     }
+    idx = 0;
+    while (idx != sw_counters.len) : (idx +%= 1) {
+        file.readOne(read_spec, sw_fds[idx], &result);
+        array.writeAny(spec.reinterpret.fmt, .{ sw_counters[idx].name, fmt.udh(result), '\n' });
+    }
+    builtin.debug.write(array.readAll());
     for (hw_fds ++ sw_fds) |fd| {
-        try file.close(.{}, fd);
+        file.close(close_spec, fd);
     }
-    try file.close(.{}, dir_fd);
+    file.close(close_spec, dir_fd);
 }
