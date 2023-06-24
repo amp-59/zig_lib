@@ -59,6 +59,6 @@ pub fn main() !void {
     data1[0] = 'a';
     builtin.debug.write(data2);
     builtin.debug.write("\n");
-    builtin.debug.write(builtin.fmt.ux64(@ptrToInt(data2.ptr)).readAll());
+    builtin.debug.write(builtin.fmt.ux64(@intFromPtr(data2.ptr)).readAll());
     builtin.debug.write("\n");
 }

@@ -829,7 +829,7 @@ pub fn EnumFormat(comptime spec: RenderSpec, comptime Enum: type) type {
         const max_len: u64 = 1 +% meta.maxDeclLength(Enum);
         pub fn formatWrite(format: Format, array: anytype) void {
             if (spec.enum_to_int) {
-                return IntFormat(spec, type_info.Enum.tag_type).formatWrite(.{ .value = @enumToInt(format.value) }, array);
+                return IntFormat(spec, type_info.Enum.tag_type).formatWrite(.{ .value = @intFromEnum(format.value) }, array);
             }
             const tag_name_format: fmt.IdentifierFormat = .{ .value = @tagName(format.value) };
             array.writeOne('.');
@@ -837,7 +837,7 @@ pub fn EnumFormat(comptime spec: RenderSpec, comptime Enum: type) type {
         }
         pub fn formatLength(format: Format) u64 {
             if (spec.enum_to_int) {
-                return IntFormat(spec, type_info.Enum.tag_type).formatLength(.{ .value = @enumToInt(format.value) });
+                return IntFormat(spec, type_info.Enum.tag_type).formatLength(.{ .value = @intFromEnum(format.value) });
             }
             const tag_name_format: fmt.IdentifierFormat = .{ .value = @tagName(format.value) };
             return 1 +% tag_name_format.formatLength();
@@ -893,14 +893,14 @@ pub fn IntFormat(comptime spec: RenderSpec, comptime Int: type) type {
             break :blk len;
         };
         pub fn formatWrite(format: Format, array: anytype) void {
-            const start: u64 = @ptrToInt(array.referOneUndefined());
+            const start: u64 = @intFromPtr(array.referOneUndefined());
             var next: u64 = start;
             if (Abs != Int) {
-                @intToPtr(*u8, next).* = '-';
+                @ptrFromInt(*u8, next).* = '-';
             }
-            next += @boolToInt(format.value < 0);
+            next += @intFromBool(format.value < 0);
             if (radix != 10) {
-                @intToPtr(*[prefix.len]u8, next).* =
+                @ptrFromInt(*[prefix.len]u8, next).* =
                     @ptrCast(*const [prefix.len]u8, prefix.ptr).*;
                 next +%= prefix.len;
             }
@@ -910,8 +910,8 @@ pub fn IntFormat(comptime spec: RenderSpec, comptime Int: type) type {
                 @bitCast(Abs, format.value);
             var value: Abs = absolute;
             if (radix > max_abs_value) {
-                @intToPtr(*u8, next).* = @as(u8, '0') +
-                    @boolToInt(format.value != 0);
+                @ptrFromInt(*u8, next).* = @as(u8, '0') +
+                    @intFromBool(format.value != 0);
                 next += 1;
             } else {
                 const count: u64 = builtin.fmt.length(Abs, absolute, radix);
@@ -919,7 +919,7 @@ pub fn IntFormat(comptime spec: RenderSpec, comptime Int: type) type {
                 var len: u64 = 0;
                 while (len != count) : (value /= radix) {
                     len +%= 1;
-                    @intToPtr(*u8, next -% len).* =
+                    @ptrFromInt(*u8, next -% len).* =
                         builtin.fmt.toSymbol(Abs, value, radix);
                 }
             }
@@ -966,11 +966,11 @@ pub fn PointerOneFormat(comptime spec: RenderSpec, comptime Pointer: type) type 
         const child: type = @typeInfo(Pointer).Pointer.child;
         const max_len: u64 = (4 +% typeName(Pointer, spec).len +% 3) +% AnyFormat(spec, child).max_len +% 1;
         pub fn formatWrite(format: anytype, array: anytype) void {
-            const address: usize = @ptrToInt(format.value);
+            const address: usize = @intFromPtr(format.value);
             const type_name: []const u8 = comptime typeName(Pointer, spec);
             if (child == anyopaque) {
                 const sub_format: SubFormat = .{ .value = address };
-                array.writeCount(12 +% type_name.len, ("@intToPtr(" ++ type_name ++ ", ").*);
+                array.writeCount(12 +% type_name.len, ("@intFromPtr(" ++ type_name ++ ", ").*);
                 writeFormat(array, sub_format);
                 array.writeOne(')');
             } else {
@@ -995,7 +995,7 @@ pub fn PointerOneFormat(comptime spec: RenderSpec, comptime Pointer: type) type 
         }
         pub fn formatLength(format: Format) u64 {
             var len: u64 = 0;
-            const address: usize = @ptrToInt(format.value);
+            const address: usize = @intFromPtr(format.value);
             const type_name: []const u8 = comptime typeName(Pointer, spec);
             if (child == anyopaque) {
                 const sub_format: SubFormat = .{ .value = address };
@@ -1145,7 +1145,7 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
         }
         pub fn formatWrite(format: anytype, array: anytype) void {
             if (spec.address_view) {
-                const addr_view_format: AddressFormat = .{ .value = @ptrToInt(format.value.ptr) };
+                const addr_view_format: AddressFormat = .{ .value = @intFromPtr(format.value.ptr) };
                 writeFormat(array, addr_view_format);
             }
             if (child == u8) {
@@ -1168,7 +1168,7 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
         }
         pub fn formatLength(format: anytype) u64 {
             if (spec.address_view) {
-                return AddressFormat.formatLength(.{ .value = @ptrToInt(format.value.ptr) });
+                return AddressFormat.formatLength(.{ .value = @intFromPtr(format.value.ptr) });
             }
             if (child == u8) {
                 if (spec.multi_line_string_literal) |render_string_literal| {
