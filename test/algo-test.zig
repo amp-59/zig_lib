@@ -48,26 +48,26 @@ pub fn compareSorts() !void {
     const T = u64;
     try mem.map(.{ .options = .{} }, size, size);
     try mem.map(.{ .options = .{} }, size + size, size);
-    const rnbuf: []u8 = @intToPtr([*]u8, size)[0..size];
+    const rnbuf: []u8 = @ptrFromInt([*]u8, size)[0..size];
     try file.readRandom(rnbuf);
-    const values_1 = @intToPtr([*]T, size)[0..(size / @sizeOf(T))];
-    const values_2 = @intToPtr([*]T, size + size)[0..(size / @sizeOf(T))];
+    const values_1 = @ptrFromInt([*]T, size)[0..(size / @sizeOf(T))];
+    const values_2 = @ptrFromInt([*]T, size + size)[0..(size / @sizeOf(T))];
     if (false) {
-        mach.memcpy(@intToPtr([*]u8, size + size), @intToPtr([*]const u8, size), size);
+        mach.memcpy(@ptrFromInt([*]u8, size + size), @ptrFromInt([*]const u8, size), size);
         const t_0 = try time.get(.{}, .realtime);
         algo.insertionSort(T, S.asc, builtin.identity, values_2[0 .. values_2.len / 0x10]);
         const t_1 = try time.get(.{}, .realtime);
         testing.printN(4096, .{ "insert: [", fmt.ud64(values_2.len), "]" ++ @typeName(T), "\t = ", fmt.any(time.diff(t_1, t_0)), '\n' });
     }
     {
-        mach.memcpy(@intToPtr([*]u8, size + size), @intToPtr([*]const u8, size), size);
+        mach.memcpy(@ptrFromInt([*]u8, size + size), @ptrFromInt([*]const u8, size), size);
         const t_0 = try time.get(.{}, .realtime);
         algo.shellSort(T, S.asc, builtin.identity, values_2);
         const t_1 = try time.get(.{}, .realtime);
         testing.printN(4096, .{ "shell: [", fmt.ud64(values_2.len), "]" ++ @typeName(T), "\t = ", fmt.any(time.diff(t_1, t_0)), '\n' });
     }
     {
-        mach.memcpy(@intToPtr([*]u8, size + size), @intToPtr([*]const u8, size), size);
+        mach.memcpy(@ptrFromInt([*]u8, size + size), @ptrFromInt([*]const u8, size), size);
         const t_0 = try time.get(.{}, .realtime);
         algo.layeredShellSort(T, S.asc, values_2);
         const t_1 = try time.get(.{}, .realtime);

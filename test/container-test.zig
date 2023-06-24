@@ -12,20 +12,20 @@ const Allocator = mem.GenericArenaAllocator(.{
 });
 pub usingnamespace proc.start;
 pub const AddressSpace = spec.address_space.regular_128;
-fn testAutomaticAppend(comptime reinterpret_spec: mem.ReinterpretSpec, comptime dst_type: type, expected: []const dst_type, any: anytype) void {
+pub fn testAutomaticAppend(comptime reinterpret_spec: mem.ReinterpretSpec, comptime dst_type: type, expected: []const dst_type, any: anytype) void {
     const Array = mem.StaticArray(dst_type, 4096);
     var array: Array = .{};
     array.writeAny(reinterpret_spec, any);
     try testing.expectEqualMany(dst_type, array.readAll(), expected);
 }
-fn testDynamicAppend(comptime reinterpret_spec: mem.ReinterpretSpec, allocator: *Allocator, comptime dst_type: type, expected: []const dst_type, any: anytype) !void {
+pub fn testDynamicAppend(comptime reinterpret_spec: mem.ReinterpretSpec, allocator: *Allocator, comptime dst_type: type, expected: []const dst_type, any: anytype) !void {
     const Array = Allocator.StructuredVector(dst_type);
     var array: Array = try Array.init(allocator);
     defer array.deinit(allocator);
     try array.appendAny(reinterpret_spec, any);
     try testing.expectEqualMany(dst_type, array.readAll(), expected);
 }
-fn unfairAndUnreasonableTestCases() !void {
+pub fn unfairAndUnreasonableTestCases() !void {
     var address_space: AddressSpace = .{};
     var allocator: Allocator = try Allocator.init(&address_space);
     {

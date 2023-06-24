@@ -45,7 +45,6 @@ var build_cmd: build.tasks.BuildCommand = .{
 const format_cmd: build.tasks.FormatCommand = .{
     .ast_check = true,
 };
-
 pub fn buildMain(allocator: *Node.Allocator, toplevel: *Node) !void {
     tests(allocator, try toplevel.addGroup(allocator, "tests"));
     examples(allocator, try toplevel.addGroup(allocator, "examples"));

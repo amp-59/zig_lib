@@ -212,8 +212,8 @@ pub fn radixSort(allocator: anytype, comptime T: type, values_0: []T) void {
         for (values_0) |value_0| {
             const j: bool = value_0 & bit == bit;
             const t: *T = if (j) &values_1[len_1] else &values_0[len_0];
-            len_0 +%= ~@boolToInt(j);
-            len_1 +%= @boolToInt(j);
+            len_0 +%= ~@intFromBool(j);
+            len_1 +%= @intFromBool(j);
             t.* = value_0;
         }
         for (values_1[0..len_1]) |value_1| {

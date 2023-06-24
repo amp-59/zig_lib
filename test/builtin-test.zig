@@ -42,19 +42,19 @@ pub fn testIntToString() !void {
     try testing.expectEqualMany(u8, builtin.fmt.ux64(uint).readAll(), "0xdeadbeef");
     const bs: [2]bool = .{ true, false };
     for (bs) |b_0| {
-        builtin.assertEqual(u64, @boolToInt(b_0), builtin.int(u64, b_0));
+        builtin.assertEqual(u64, @intFromBool(b_0), builtin.int(u64, b_0));
         for (bs) |b_1| {
-            builtin.assertEqual(u64, @boolToInt(b_0 or b_1), builtin.int2v(u64, b_0, b_1));
-            builtin.assertEqual(u64, @boolToInt(b_0 and b_1), builtin.int2a(u64, b_0, b_1));
+            builtin.assertEqual(u64, @intFromBool(b_0 or b_1), builtin.int2v(u64, b_0, b_1));
+            builtin.assertEqual(u64, @intFromBool(b_0 and b_1), builtin.int2a(u64, b_0, b_1));
             for (bs) |b_2| {
-                builtin.assertEqual(u64, @boolToInt(b_0 or b_1 or b_2), builtin.int3v(u64, b_0, b_1, b_2));
-                builtin.assertEqual(u64, @boolToInt(b_0 and b_1 and b_2), builtin.int3a(u64, b_0, b_1, b_2));
+                builtin.assertEqual(u64, @intFromBool(b_0 or b_1 or b_2), builtin.int3v(u64, b_0, b_1, b_2));
+                builtin.assertEqual(u64, @intFromBool(b_0 and b_1 and b_2), builtin.int3a(u64, b_0, b_1, b_2));
             }
         }
     }
     try testing.expectEqualMany(u8, builtin.fmt.ub8(0).readAll(), "0b00000000");
     try testing.expectEqualMany(u8, builtin.fmt.ub8(1).readAll(), "0b00000001");
-    const start = @ptrToInt(&arg1);
+    const start = @intFromPtr(&arg1);
     var inc: u64 = 1;
     uint = start;
     while (uint - start < 0x100000) : ({
