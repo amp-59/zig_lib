@@ -49,7 +49,7 @@ const Data = union(enum) {
     fn fd(data: Data) u64 {
         return switch (data) {
             .filesystem => |fs| fs.fd.?,
-            .stdio => |stdio| @enumToInt(stdio),
+            .stdio => |stdio| @intFromEnum(stdio),
         };
     }
     fn open(data: *Data, comptime open_spec: file.OpenSpec) !void {

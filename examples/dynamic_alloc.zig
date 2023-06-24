@@ -27,7 +27,7 @@ pub fn main() !void {
 
     array.appendAny(spec.reinterpret.fmt, &allocator, .{
         "example ",
-        fmt.ud64(@ptrToInt(&allocator)),
+        fmt.ud64(@intFromPtr(&allocator)),
         " using dynamic memory\n",
     });
 

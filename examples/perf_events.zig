@@ -47,7 +47,7 @@ const about = .{
     .hi_red_s = "\x1b[38;5;196m",
 };
 fn printUnit(array: *Array, x: f64, unit: enum { count, nanoseconds, bytes }) !void {
-    const int = @floatToInt(u64, @round(x));
+    const int = @intFromFloat(u64, @round(x));
     switch (unit) {
         .count => array.writeFormat(fmt.udh(int)),
         .nanoseconds => array.writeFormat(fmt.nsec(int)),

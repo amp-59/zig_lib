@@ -330,7 +330,7 @@ pub fn main(args: [][*:0]u8) !void {
         if (print_in_second_thread) {
             var tid: u64 = undefined;
             var stack_buf: [16384]u8 align(16) = undefined;
-            const stack_addr: u64 = @ptrToInt(&stack_buf);
+            const stack_addr: u64 = @intFromPtr(&stack_buf);
             tid = proc.callClone(thread_spec, stack_addr, stack_buf.len, {}, printAlong, .{ &status, &allocator_1, &array });
             @call(.always_inline, writeAndWalk, .{
                 &allocator_0, &allocator_1, &array, &alts_buf, &link_buf,

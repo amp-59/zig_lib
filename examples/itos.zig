@@ -112,7 +112,7 @@ fn loopInner(options: Options, arg: []const u8) !void {
         .u64 => @ptrCast(*const [8]u8, &val),
         .char => outputChar(),
     });
-    if (@enumToInt(options.output) < 18) {
+    if (@intFromEnum(options.output) < 18) {
         file.write(.{ .errors = .{} }, 1, "\n");
     }
 }
