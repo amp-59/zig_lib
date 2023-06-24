@@ -1,130 +1,112 @@
 const mem = @import("./mem.zig");
 const spec = @import("./spec.zig");
+const mach = @import("./mach.zig");
+const utf8 = @import("./fmt/utf8.zig");
+const ascii = @import("./fmt/ascii.zig");
 const builtin = @import("./builtin.zig");
-pub const Index = u32;
-pub const Offset = u32;
-pub const Allocator = struct {
-    const spec_errors: mem.AllocatorErrors = .{};
-    const AddressSpace = builtin.AddressSpace();
-    pub const Node = mem.GenericArenaAllocator(.{
-        .AddressSpace = AddressSpace,
-        .arena_index = 0,
-        .options = spec.allocator.options.small,
-        .logging = spec.allocator.logging.silent,
-        .errors = spec.allocator.errors.noexcept,
-    });
-    pub const Error = mem.GenericArenaAllocator(.{
-        .AddressSpace = AddressSpace,
-        .arena_index = 1,
-        .options = spec.allocator.options.small,
-        .logging = spec.allocator.logging.silent,
-        .errors = spec.allocator.errors.noexcept,
-    });
-    pub const Extra = mem.GenericArenaAllocator(.{
-        .AddressSpace = AddressSpace,
-        .arena_index = 2,
-        .options = spec.allocator.options.small,
-        .logging = spec.allocator.logging.silent,
-        .errors = spec.allocator.errors.noexcept,
-    });
-    pub const State = mem.GenericArenaAllocator(.{
-        .AddressSpace = AddressSpace,
-        .arena_index = 3,
-        .options = spec.allocator.options.small,
-        .logging = spec.allocator.logging.silent,
-        .errors = spec.allocator.errors.noexcept,
-    });
+
+const style = struct {
+    const red: [:0]const u8 = "\x1b[38;2;233;86;120m";
+    const redwine: [:0]const u8 = "\x1b[38;2;209;109;158m";
+    const orange: [:0]const u8 = "\x1b[38;2;233;127;73m";
+    const yellow: [:0]const u8 = "\x1b[38;2;240;198;116m";
+    const light_green: [:0]const u8 = "\x1b[38;2;51;229;96m";
+    const green: [:0]const u8 = "\x1b[38;2;175;215;0m";
+    const dark_green: [:0]const u8 = "\x1b[38;2;152;190;101m";
+    const white: [:0]const u8 = "\x1b[38;2;255;255;255;1m";
+    const cyan: [:0]const u8 = "\x1b[38;2;54;208;224m";
+    const blue: [:0]const u8 = "\x1b[38;2;97;175;239m";
+    const violet: [:0]const u8 = "\x1b[38;2;178;148;187m";
+    const magenta: [:0]const u8 = "\x1b[38;2;198;120;221m";
+    const teal: [:0]const u8 = "\x1b[38;2;26;188;156m";
+    const grey: [:0]const u8 = "\x1b[38;2;146;131;116m";
+    const brown: [:0]const u8 = "\x1b[38;2;199;134;101m";
+    const black: [:0]const u8 = "\x1b[38;2;0;0;0m";
+    const light_blue: [:0]const u8 = "\x1b[38;2;97;168;255m";
+    const light_purple: [:0]const u8 = "\x1b[38;2;193;173;247m";
+    const bracket: [:0]const u8 = "\x1b[38;2;128;160;194m";
+    const cursor_bg: [:0]const u8 = "\x1b[38;2;79;91;102m";
+    const offwhite0: [:0]const u8 = "\x1b[38;2;207;207;194m";
+    const offwhite1: [:0]const u8 = "\x1b[38;2;221;218;214m";
+    const numeric: [:0]const u8 = "\x1b[38;2;255;115;115m";
+    const data_type: [:0]const u8 = "\x1b[38;2;255;255;255m";
+    const attribute: [:0]const u8 = "\x1b[38;2;41;128;185m";
 };
-pub const SourceArray = Allocator.Node.StructuredStreamViewWithSentinel(u8, 0);
-pub const ProtoTokenArray = Allocator.Node.StructuredHolder(Token.Info);
-pub const TokenArray = Allocator.Node.StructuredStreamView(Token.Info);
-pub const ProtoErrorArray = Allocator.Error.StructuredHolder(AstError);
-pub const ErrorArray = Allocator.Error.StructuredView(AstError);
-pub const ProtoNodeArray = Allocator.Node.StructuredHolder(AstNode);
-pub const NodeArray = Allocator.Node.StructuredView(AstNode);
-pub const ProtoExtraArray = Allocator.Extra.UnstructuredHolder(4, 4);
-pub const ExtraArray = Allocator.Extra.UnstructuredView(4, 4);
-pub const StateArray = Allocator.State.StructuredHolder(u32);
 pub const Token = struct {
     tag: Tag,
     loc: Loc,
-    pub const Info = struct {
-        tag: Token.Tag,
-        start: Index,
-    };
     pub const Loc = struct {
         start: usize,
-        end: usize,
+        finish: usize,
     };
     pub const Keywords = struct {
         const Pair = struct {
             key: []const u8,
             value: Tag,
         };
-
         pub fn has(str: []const u8) bool {
             return get(str) != null;
         }
-        const tab = .{ .pairs = [_]Pair{
-            .{ .key = "fn", .value = .keyword_fn },
-            .{ .key = "if", .value = .keyword_if },
-            .{ .key = "or", .value = .keyword_or },
-            .{ .key = "and", .value = .keyword_and },
-            .{ .key = "asm", .value = .keyword_asm },
-            .{ .key = "for", .value = .keyword_for },
-            .{ .key = "pub", .value = .keyword_pub },
-            .{ .key = "try", .value = .keyword_try },
-            .{ .key = "var", .value = .keyword_var },
-            .{ .key = "else", .value = .keyword_else },
-            .{ .key = "enum", .value = .keyword_enum },
-            .{ .key = "test", .value = .keyword_test },
-            .{ .key = "align", .value = .keyword_align },
-            .{ .key = "async", .value = .keyword_async },
-            .{ .key = "await", .value = .keyword_await },
-            .{ .key = "break", .value = .keyword_break },
-            .{ .key = "catch", .value = .keyword_catch },
-            .{ .key = "const", .value = .keyword_const },
-            .{ .key = "defer", .value = .keyword_defer },
-            .{ .key = "error", .value = .keyword_error },
-            .{ .key = "union", .value = .keyword_union },
-            .{ .key = "while", .value = .keyword_while },
-            .{ .key = "export", .value = .keyword_export },
-            .{ .key = "extern", .value = .keyword_extern },
-            .{ .key = "inline", .value = .keyword_inline },
-            .{ .key = "opaque", .value = .keyword_opaque },
-            .{ .key = "orelse", .value = .keyword_orelse },
-            .{ .key = "packed", .value = .keyword_packed },
-            .{ .key = "resume", .value = .keyword_resume },
-            .{ .key = "return", .value = .keyword_return },
-            .{ .key = "struct", .value = .keyword_struct },
-            .{ .key = "switch", .value = .keyword_switch },
-            .{ .key = "anytype", .value = .keyword_anytype },
-            .{ .key = "noalias", .value = .keyword_noalias },
-            .{ .key = "suspend", .value = .keyword_suspend },
-            .{ .key = "anyframe", .value = .keyword_anyframe },
-            .{ .key = "callconv", .value = .keyword_callconv },
-            .{ .key = "comptime", .value = .keyword_comptime },
-            .{ .key = "continue", .value = .keyword_continue },
-            .{ .key = "errdefer", .value = .keyword_errdefer },
-            .{ .key = "noinline", .value = .keyword_noinline },
-            .{ .key = "volatile", .value = .keyword_volatile },
-            .{ .key = "addrspace", .value = .keyword_addrspace },
-            .{ .key = "allowzero", .value = .keyword_allowzero },
-            .{ .key = "nosuspend", .value = .keyword_nosuspend },
-            .{ .key = "linksection", .value = .keyword_linksection },
-            .{ .key = "threadlocal", .value = .keyword_threadlocal },
-            .{ .key = "unreachable", .value = .keyword_unreachable },
-            .{ .key = "usingnamespace", .value = .keyword_usingnamespace },
-        } };
+        const tab = [_]struct { []const u8, Tag }{
+            .{ "or", .keyword_or },
+            .{ "fn", .keyword_fn },
+            .{ "if", .keyword_if },
+            .{ "for", .keyword_for },
+            .{ "and", .keyword_and },
+            .{ "asm", .keyword_asm },
+            .{ "var", .keyword_var },
+            .{ "pub", .keyword_pub },
+            .{ "try", .keyword_try },
+            .{ "test", .keyword_test },
+            .{ "union", .keyword_union },
+            .{ "while", .keyword_while },
+            .{ "else", .keyword_else },
+            .{ "enum", .keyword_enum },
+            .{ "error", .keyword_error },
+            .{ "align", .keyword_align },
+            .{ "async", .keyword_async },
+            .{ "await", .keyword_await },
+            .{ "break", .keyword_break },
+            .{ "catch", .keyword_catch },
+            .{ "const", .keyword_const },
+            .{ "defer", .keyword_defer },
+            .{ "struct", .keyword_struct },
+            .{ "opaque", .keyword_opaque },
+            .{ "orelse", .keyword_orelse },
+            .{ "packed", .keyword_packed },
+            .{ "resume", .keyword_resume },
+            .{ "return", .keyword_return },
+            .{ "export", .keyword_export },
+            .{ "extern", .keyword_extern },
+            .{ "inline", .keyword_inline },
+            .{ "switch", .keyword_switch },
+            .{ "anytype", .keyword_anytype },
+            .{ "suspend", .keyword_suspend },
+            .{ "noalias", .keyword_noalias },
+            .{ "volatile", .keyword_volatile },
+            .{ "errdefer", .keyword_errdefer },
+            .{ "comptime", .keyword_comptime },
+            .{ "callconv", .keyword_callconv },
+            .{ "continue", .keyword_continue },
+            .{ "noinline", .keyword_noinline },
+            .{ "anyframe", .keyword_anyframe },
+            .{ "addrspace", .keyword_addrspace },
+            .{ "allowzero", .keyword_allowzero },
+            .{ "nosuspend", .keyword_nosuspend },
+            .{ "linksection", .keyword_linksection },
+            .{ "threadlocal", .keyword_threadlocal },
+            .{ "unreachable", .keyword_unreachable },
+            .{ "usingnamespace", .keyword_usingnamespace },
+        };
         pub fn get(str: []const u8) ?Tag {
-            const min_len: usize = 2;
-            const max_len: usize = 14;
+            const min_len: comptime_int = 2;
+            const max_len: comptime_int = 14;
             if (str.len < min_len or str.len > max_len) {
                 return null;
             }
-            for (tab.pairs) |pair| {
-                if (mem.testEqualMany(u8, pair.key, str)) {
-                    return pair.value;
+            for (tab) |pair| {
+                if (mach.testEqualMany8(pair[0], str)) {
+                    return pair[1];
                 }
             }
             return null;
@@ -262,13 +244,14 @@ pub const Token = struct {
                 .identifier,
                 .string_literal,
                 .multiline_string_literal_line,
-                .char_literal,
                 .eof,
                 .builtin,
-                .number_literal,
                 .doc_comment,
                 .container_doc_comment,
+                .char_literal,
+                .number_literal,
                 => null,
+
                 .invalid_periodasterisks => ".**",
                 .bang => "!",
                 .pipe => "|",
@@ -383,6 +366,96 @@ pub const Token = struct {
                 .keyword_while => "while",
             };
         }
+        const Mapping = struct {
+            tags: []const Tag,
+            style: ?[]const u8,
+        };
+        const mappings: []const Mapping = &.{
+            .{ .style = null, .tags = &[_]Tag{
+                .invalid,      .identifier,
+                .char_literal, .container_doc_comment,
+                .doc_comment,  .invalid_periodasterisks,
+                .period,       .comma,
+                .colon,        .semicolon,
+                .ellipsis2,    .ellipsis3,
+                .eof,
+            } },
+            .{ .style = style.light_green, .tags = &[_]Tag{
+                .string_literal, .multiline_string_literal_line,
+            } },
+            .{ .style = style.bracket, .tags = &[_]Tag{
+                .l_brace,   .r_brace,
+                .l_bracket, .r_bracket,
+                .l_paren,   .r_paren,
+            } },
+            .{ .style = style.magenta, .tags = &[_]Tag{
+                .arrow,               .bang,               .pipe,                   .pipe_pipe,
+                .pipe_equal,          .equal,              .equal_equal,            .bang_equal,
+                .percent,             .percent_equal,      .period_asterisk,        .caret,
+                .caret_equal,         .plus,               .plus_plus,              .plus_equal,
+                .plus_percent,        .plus_percent_equal, .plus_pipe,              .plus_pipe_equal,
+                .minus,               .minus_equal,        .minus_percent,          .minus_percent_equal,
+                .minus_pipe,          .minus_pipe_equal,   .asterisk,               .asterisk_equal,
+                .asterisk_asterisk,   .asterisk_percent,   .asterisk_percent_equal, .asterisk_pipe,
+                .asterisk_pipe_equal, .slash,              .slash_equal,            .ampersand,
+                .ampersand_equal,     .question_mark,      .tilde,
+            } ++ &[_]Tag{
+                .angle_bracket_left,                          .equal_angle_bracket_right,
+                .angle_bracket_left_equal,                    .angle_bracket_angle_bracket_left,
+                .angle_bracket_angle_bracket_left_equal,      .angle_bracket_angle_bracket_left_pipe,
+                .angle_bracket_angle_bracket_left_pipe_equal, .angle_bracket_right,
+                .angle_bracket_right_equal,                   .angle_bracket_angle_bracket_right,
+                .angle_bracket_angle_bracket_right_equal,
+            } },
+            .{ .style = style.cyan, .tags = &[_]Tag{
+                .keyword_defer,     .keyword_async,
+                .keyword_await,     .keyword_export,
+                .keyword_extern,    .keyword_resume,
+                .keyword_suspend,   .keyword_errdefer,
+                .keyword_nosuspend, .keyword_unreachable,
+            } },
+            .{ .style = style.red, .tags = &[_]Tag{
+                .builtin, .keyword_align,
+            } },
+            .{ .style = style.light_purple, .tags = &[_]Tag{
+                .keyword_asm,      .keyword_catch,
+                .keyword_inline,   .keyword_noalias,
+                .keyword_noinline, .keyword_callconv,
+            } },
+            .{ .style = style.redwine, .tags = &.{
+                .keyword_enum,   .keyword_packed,
+                .keyword_opaque, .keyword_struct,
+            } },
+            .{ .style = style.white, .tags = &.{
+                .keyword_fn,             .keyword_if,
+                .keyword_or,             .keyword_for,
+                .keyword_and,            .keyword_pub,
+                .keyword_try,            .keyword_else,
+                .keyword_test,           .keyword_error,
+                .keyword_while,          .keyword_union,
+                .keyword_switch,         .keyword_orelse,
+                .keyword_anytype,        .keyword_anyframe,
+                .keyword_volatile,       .keyword_allowzero,
+                .keyword_addrspace,      .keyword_linksection,
+                .keyword_usingnamespace,
+            } },
+            .{ .style = style.yellow, .tags = &.{
+                .keyword_var,         .keyword_break,
+                .keyword_const,       .keyword_return,
+                .keyword_comptime,    .keyword_continue,
+                .keyword_threadlocal,
+            } },
+        };
+        pub fn highlight(s_tag: Tag) ?[]const u8 {
+            for (mappings) |mapping| {
+                for (mapping.tags) |t_tag| {
+                    if (s_tag == t_tag) {
+                        return mapping.style;
+                    }
+                }
+            }
+            return null;
+        }
         pub fn symbol(tag: Tag) []const u8 {
             return tag.lexeme() orelse switch (tag) {
                 .invalid => "invalid bytes",
@@ -398,647 +471,927 @@ pub const Token = struct {
         }
     };
 };
-pub const AstError = struct {
-    tag: Tag,
-    is_note: bool = false,
-    /// True if `token` points to the token before the token causing an issue.
-    token_is_prev: bool = false,
-    token: u32,
-    extra: union {
-        none: void,
-        expected_tag: Token.Tag,
-    } = .{ .none = {} },
-    pub const Tag = enum {
-        asterisk_after_ptr_deref,
-        chained_comparison_operators,
-        decl_between_fields,
-        expected_block,
-        expected_block_or_assignment,
-        expected_block_or_expr,
-        expected_block_or_field,
-        expected_container_members,
-        expected_expr,
-        expected_expr_or_assignment,
-        expected_fn,
-        expected_inlinable,
-        expected_labelable,
-        expected_param_list,
-        expected_prefix_expr,
-        expected_primary_type_expr,
-        expected_pub_item,
-        expected_return_type,
-        expected_semi_or_else,
-        expected_semi_or_lbrace,
-        expected_statement,
-        expected_suffix_op,
-        expected_type_expr,
-        expected_var_decl,
-        expected_var_decl_or_fn,
-        expected_loop_payload,
-        expected_container,
-        extern_fn_body,
-        extra_addrspace_qualifier,
-        extra_align_qualifier,
-        extra_allowzero_qualifier,
-        extra_const_qualifier,
-        extra_volatile_qualifier,
-        ptr_mod_on_array_child_type,
-        invalid_bit_range,
-        same_line_doc_comment,
-        unattached_doc_comment,
-        test_doc_comment,
-        comptime_doc_comment,
-        varargs_nonfinal,
-        expected_continue_expr,
-        expected_semi_after_decl,
-        expected_semi_after_stmt,
-        expected_comma_after_field,
-        expected_comma_after_arg,
-        expected_comma_after_param,
-        expected_comma_after_initializer,
-        expected_comma_after_switch_prong,
-        expected_initializer,
-        mismatched_binary_op_whitespace,
-        invalid_ampersand_ampersand,
-        c_style_container,
-        expected_var_const,
-        wrong_equal_var_decl,
-        zig_style_container,
-        previous_field,
-        next_field,
-        /// `expected_tag` is populated.
-        expected_token,
-    };
-};
-pub const AstNode = struct {
-    tag: Tag,
-    main_token: u32,
-    data: Data,
-    comptime {
-        // Goal is to keep this under one byte for efficiency.
-        builtin.static.assert(@sizeOf(Tag) == 1);
-    }
-    pub const SmallSpan = union(enum) {
-        zero_or_one: u32,
-        multi: SubRange,
-    };
-    /// Note: The FooComma/FooSemicolon variants exist to ease the implementation of
-    /// SyntaxTree.lastToken()
-    pub const Tag = enum {
-        /// sub_list[lhs...rhs]
-        root,
-        /// `usingnamespace lhs;`. rhs unused. main_token is `usingnamespace`.
-        @"usingnamespace",
-        /// lhs is test name token (must be string literal or identifier), if any.
-        /// rhs is the body node.
-        test_decl,
-        /// lhs is the index into extra_data.
-        /// rhs is the initialization expression, if any.
-        /// main_token is `var` or `const`.
-        global_var_decl,
-        /// `var a: x align(y) = rhs`
-        /// lhs is the index into extra_data.
-        /// main_token is `var` or `const`.
-        local_var_decl,
-        /// `var a: lhs = rhs`. lhs and rhs may be unused.
-        /// Can be local or global.
-        /// main_token is `var` or `const`.
-        simple_var_decl,
-        /// `var a align(lhs) = rhs`. lhs and rhs may be unused.
-        /// Can be local or global.
-        /// main_token is `var` or `const`.
-        aligned_var_decl,
-        /// lhs is the identifier token payload if any,
-        /// rhs is the deferred expression.
-        @"errdefer",
-        /// lhs is unused.
-        /// rhs is the deferred expression.
-        @"defer",
-        /// lhs catch rhs
-        /// lhs catch |err| rhs
-        /// main_token is the `catch` keyword.
-        /// payload is determined by looking at the next token after the `catch` keyword.
-        @"catch",
-        /// `lhs.a`. main_token is the dot. rhs is the identifier token index.
-        field_access,
-        /// `lhs.?`. main_token is the dot. rhs is the `?` token index.
-        unwrap_optional,
-        /// `lhs == rhs`. main_token is op.
-        equal_equal,
-        /// `lhs != rhs`. main_token is op.
-        bang_equal,
-        /// `lhs < rhs`. main_token is op.
-        less_than,
-        /// `lhs > rhs`. main_token is op.
-        greater_than,
-        /// `lhs <= rhs`. main_token is op.
-        less_or_equal,
-        /// `lhs >= rhs`. main_token is op.
-        greater_or_equal,
-        /// `lhs *= rhs`. main_token is op.
-        assign_mul,
-        /// `lhs /= rhs`. main_token is op.
-        assign_div,
-        /// `lhs *= rhs`. main_token is op.
-        assign_mod,
-        /// `lhs += rhs`. main_token is op.
-        assign_add,
-        /// `lhs -= rhs`. main_token is op.
-        assign_sub,
-        /// `lhs <<= rhs`. main_token is op.
-        assign_shl,
-        /// `lhs <<|= rhs`. main_token is op.
-        assign_shl_sat,
-        /// `lhs >>= rhs`. main_token is op.
-        assign_shr,
-        /// `lhs &= rhs`. main_token is op.
-        assign_bit_and,
-        /// `lhs ^= rhs`. main_token is op.
-        assign_bit_xor,
-        /// `lhs |= rhs`. main_token is op.
-        assign_bit_or,
-        /// `lhs *%= rhs`. main_token is op.
-        assign_mul_wrap,
-        /// `lhs +%= rhs`. main_token is op.
-        assign_add_wrap,
-        /// `lhs -%= rhs`. main_token is op.
-        assign_sub_wrap,
-        /// `lhs *|= rhs`. main_token is op.
-        assign_mul_sat,
-        /// `lhs +|= rhs`. main_token is op.
-        assign_add_sat,
-        /// `lhs -|= rhs`. main_token is op.
-        assign_sub_sat,
-        /// `lhs = rhs`. main_token is op.
-        assign,
-        /// `lhs || rhs`. main_token is the `||`.
-        merge_error_sets,
-        /// `lhs * rhs`. main_token is the `*`.
-        mul,
-        /// `lhs / rhs`. main_token is the `/`.
-        div,
-        /// `lhs % rhs`. main_token is the `%`.
-        mod,
-        /// `lhs ** rhs`. main_token is the `**`.
-        array_mult,
-        /// `lhs *% rhs`. main_token is the `*%`.
-        mul_wrap,
-        /// `lhs *| rhs`. main_token is the `*|`.
-        mul_sat,
-        /// `lhs + rhs`. main_token is the `+`.
-        add,
-        /// `lhs - rhs`. main_token is the `-`.
-        sub,
-        /// `lhs ++ rhs`. main_token is the `++`.
-        array_cat,
-        /// `lhs +% rhs`. main_token is the `+%`.
-        add_wrap,
-        /// `lhs -% rhs`. main_token is the `-%`.
-        sub_wrap,
-        /// `lhs +| rhs`. main_token is the `+|`.
-        add_sat,
-        /// `lhs -| rhs`. main_token is the `-|`.
-        sub_sat,
-        /// `lhs << rhs`. main_token is the `<<`.
-        shl,
-        /// `lhs <<| rhs`. main_token is the `<<|`.
-        shl_sat,
-        /// `lhs >> rhs`. main_token is the `>>`.
-        shr,
-        /// `lhs & rhs`. main_token is the `&`.
-        bit_and,
-        /// `lhs ^ rhs`. main_token is the `^`.
-        bit_xor,
-        /// `lhs | rhs`. main_token is the `|`.
-        bit_or,
-        /// `lhs orelse rhs`. main_token is the `orelse`.
-        @"orelse",
-        /// `lhs and rhs`. main_token is the `and`.
-        bool_and,
-        /// `lhs or rhs`. main_token is the `or`.
-        bool_or,
-        /// `op lhs`. rhs unused. main_token is op.
-        bool_not,
-        /// `op lhs`. rhs unused. main_token is op.
-        negation,
-        /// `op lhs`. rhs unused. main_token is op.
-        bit_not,
-        /// `op lhs`. rhs unused. main_token is op.
-        negation_wrap,
-        /// `op lhs`. rhs unused. main_token is op.
-        address_of,
-        /// `op lhs`. rhs unused. main_token is op.
-        @"try",
-        /// `op lhs`. rhs unused. main_token is op.
-        @"await",
-        /// `?lhs`. rhs unused. main_token is the `?`.
-        optional_type,
-        /// `[lhs]rhs`.
-        array_type,
-        /// `[lhs:a]b`. `ArrayTypeSentinel[rhs]`.
-        array_type_sentinel,
-        /// `[*]align(lhs) rhs`. lhs can be omitted.
-        /// `*align(lhs) rhs`. lhs can be omitted.
-        /// `[]rhs`.
-        /// main_token is the asterisk if a pointer or the lbracket if a slice
-        /// main_token might be a ** token, which is shared with a parent/child
-        /// pointer type and may require special handling.
-        ptr_type_aligned,
-        /// `[*:lhs]rhs`. lhs can be omitted.
-        /// `*rhs`.
-        /// `[:lhs]rhs`.
-        /// main_token is the asterisk if a pointer or the lbracket if a slice
-        /// main_token might be a ** token, which is shared with a parent/child
-        /// pointer type and may require special handling.
-        ptr_type_sentinel,
-        /// lhs is index into ptr_type. rhs is the element type expression.
-        /// main_token is the asterisk if a pointer or the lbracket if a slice
-        /// main_token might be a ** token, which is shared with a parent/child
-        /// pointer type and may require special handling.
-        ptr_type,
-        /// lhs is index into ptr_type_bit_range. rhs is the element type expression.
-        /// main_token is the asterisk if a pointer or the lbracket if a slice
-        /// main_token might be a ** token, which is shared with a parent/child
-        /// pointer type and may require special handling.
-        ptr_type_bit_range,
-        /// `lhs[rhs..]`
-        /// main_token is the lbracket.
-        slice_open,
-        /// `lhs[b..c]`. rhs is index into Slice
-        /// main_token is the lbracket.
-        slice,
-        /// `lhs[b..c :d]`. rhs is index into SliceSentinel
-        /// main_token is the lbracket.
-        slice_sentinel,
-        /// `lhs.*`. rhs is unused.
-        deref,
-        /// `lhs[rhs]`.
-        array_access,
-        /// `lhs{rhs}`. rhs can be omitted.
-        array_init_one,
-        /// `lhs{rhs,}`. rhs can *not* be omitted
-        array_init_one_comma,
-        /// `.{lhs, rhs}`. lhs and rhs can be omitted.
-        array_init_dot_two,
-        /// Same as `array_init_dot_two` except there is known to be a trailing comma
-        /// before the final rbrace.
-        array_init_dot_two_comma,
-        /// `.{a, b}`. `sub_list[lhs..rhs]`.
-        array_init_dot,
-        /// Same as `array_init_dot` except there is known to be a trailing comma
-        /// before the final rbrace.
-        array_init_dot_comma,
-        /// `lhs{a, b}`. `sub_range_list[rhs]`. lhs can be omitted which means `.{a, b}`.
-        array_init,
-        /// Same as `array_init` except there is known to be a trailing comma
-        /// before the final rbrace.
-        array_init_comma,
-        /// `lhs{.a = rhs}`. rhs can be omitted making it empty.
-        /// main_token is the lbrace.
-        struct_init_one,
-        /// `lhs{.a = rhs,}`. rhs can *not* be omitted.
-        /// main_token is the lbrace.
-        struct_init_one_comma,
-        /// `.{.a = lhs, .b = rhs}`. lhs and rhs can be omitted.
-        /// main_token is the lbrace.
-        /// No trailing comma before the rbrace.
-        struct_init_dot_two,
-        /// Same as `struct_init_dot_two` except there is known to be a trailing comma
-        /// before the final rbrace.
-        struct_init_dot_two_comma,
-        /// `.{.a = b, .c = d}`. `sub_list[lhs..rhs]`.
-        /// main_token is the lbrace.
-        struct_init_dot,
-        /// Same as `struct_init_dot` except there is known to be a trailing comma
-        /// before the final rbrace.
-        struct_init_dot_comma,
-        /// `lhs{.a = b, .c = d}`. `sub_range_list[rhs]`.
-        /// lhs can be omitted which means `.{.a = b, .c = d}`.
-        /// main_token is the lbrace.
-        struct_init,
-        /// Same as `struct_init` except there is known to be a trailing comma
-        /// before the final rbrace.
-        struct_init_comma,
-        /// `lhs(rhs)`. rhs can be omitted.
-        /// main_token is the lparen.
-        call_one,
-        /// `lhs(rhs,)`. rhs can be omitted.
-        /// main_token is the lparen.
-        call_one_comma,
-        /// `async lhs(rhs)`. rhs can be omitted.
-        async_call_one,
-        /// `async lhs(rhs,)`.
-        async_call_one_comma,
-        /// `lhs(a, b, c)`. `SubRange[rhs]`.
-        /// main_token is the `(`.
-        call,
-        /// `lhs(a, b, c,)`. `SubRange[rhs]`.
-        /// main_token is the `(`.
-        call_comma,
-        /// `async lhs(a, b, c)`. `SubRange[rhs]`.
-        /// main_token is the `(`.
-        async_call,
-        /// `async lhs(a, b, c,)`. `SubRange[rhs]`.
-        /// main_token is the `(`.
-        async_call_comma,
-        /// `switch(lhs) {}`. `SubRange[rhs]`.
-        @"switch",
-        /// Same as switch except there is known to be a trailing comma
-        /// before the final rbrace
-        switch_comma,
-        /// `lhs => rhs`. If lhs is omitted it means `else`.
-        /// main_token is the `=>`
-        switch_case_one,
-        /// Same ast `switch_case_one` but the case is inline
-        switch_case_inline_one,
-        /// `a, b, c => rhs`. `SubRange[lhs]`.
-        /// main_token is the `=>`
-        switch_case,
-        /// Same ast `switch_case` but the case is inline
-        switch_case_inline,
-        /// `lhs...rhs`.
-        switch_range,
-        /// `while (lhs) rhs`.
-        /// `while (lhs) |x| rhs`.
-        while_simple,
-        /// `while (lhs) : (a) b`. `WhileCont[rhs]`.
-        /// `while (lhs) : (a) b`. `WhileCont[rhs]`.
-        while_cont,
-        /// `while (lhs) : (a) b else c`. `While[rhs]`.
-        /// `while (lhs) |x| : (a) b else c`. `While[rhs]`.
-        /// `while (lhs) |x| : (a) b else |y| c`. `While[rhs]`.
-        @"while",
-        /// `for (lhs) rhs`.
-        for_simple,
-        /// `for (lhs) a else b`. `if_list[rhs]`.
-        @"for",
-        /// `if (lhs) rhs`.
-        /// `if (lhs) |a| rhs`.
-        if_simple,
-        /// `if (lhs) a else b`. `If[rhs]`.
-        /// `if (lhs) |x| a else b`. `If[rhs]`.
-        /// `if (lhs) |x| a else |y| b`. `If[rhs]`.
-        @"if",
-        /// `suspend lhs`. lhs can be omitted. rhs is unused.
-        @"suspend",
-        /// `resume lhs`. rhs is unused.
-        @"resume",
-        /// `continue`. lhs is token index of label if any. rhs is unused.
-        @"continue",
-        /// `break :lhs rhs`
-        /// both lhs and rhs may be omitted.
-        @"break",
-        /// `return lhs`. lhs can be omitted. rhs is unused.
-        @"return",
-        /// `fn(a: lhs) rhs`. lhs can be omitted.
-        /// anytype and ... parameters are omitted from the AST tree.
-        /// main_token is the `fn` keyword.
-        /// extern function declarations use this tag.
-        fn_proto_simple,
-        /// `fn(a: b, c: d) rhs`. `sub_range_list[lhs]`.
-        /// anytype and ... parameters are omitted from the AST tree.
-        /// main_token is the `fn` keyword.
-        /// extern function declarations use this tag.
-        fn_proto_multi,
-        /// `fn(a: b) rhs addrspace(e) linksection(f) callconv(g)`. `FnProtoOne[lhs]`.
-        /// zero or one parameters.
-        /// anytype and ... parameters are omitted from the AST tree.
-        /// main_token is the `fn` keyword.
-        /// extern function declarations use this tag.
-        fn_proto_one,
-        /// `fn(a: b, c: d) rhs addrspace(e) linksection(f) callconv(g)`. `FnProto[lhs]`.
-        /// anytype and ... parameters are omitted from the AST tree.
-        /// main_token is the `fn` keyword.
-        /// extern function declarations use this tag.
-        fn_proto,
-        /// lhs is the fn_proto.
-        /// rhs is the function body block.
-        /// Note that extern function declarations use the fn_proto tags rather
-        /// than this one.
-        fn_decl,
-        /// `anyframe->rhs`. main_token is `anyframe`. `lhs` is arrow token index.
-        anyframe_type,
-        /// Both lhs and rhs unused.
-        anyframe_literal,
-        /// Both lhs and rhs unused.
-        char_literal,
-        /// Both lhs and rhs unused.
-        number_literal,
-        /// Both lhs and rhs unused.
-        unreachable_literal,
-        /// Both lhs and rhs unused.
-        /// Most identifiers will not have explicit AST nodes, however for expressions
-        /// which could be one of many different kinds of AST nodes, there will be an
-        /// identifier AST node for it.
+pub const Tokenizer = struct {
+    buf: [:0]const u8,
+    buf_pos: usize,
+    pending_invalid_token: ?Token,
+    const State = enum {
+        start,
         identifier,
-        /// lhs is the dot token index, rhs unused, main_token is the identifier.
-        enum_literal,
-        /// main_token is the string literal token
-        /// Both lhs and rhs unused.
+        builtin,
         string_literal,
-        /// main_token is the first token index (redundant with lhs)
-        /// lhs is the first token index; rhs is the last token index.
-        /// Could be a series of multiline_string_literal_line tokens, or a single
-        /// string_literal token.
-        multiline_string_literal,
-        /// `(lhs)`. main_token is the `(`; rhs is the token index of the `)`.
-        grouped_expression,
-        /// `@a(lhs, rhs)`. lhs and rhs may be omitted.
-        /// main_token is the builtin token.
-        builtin_call_two,
-        /// Same as builtin_call_two but there is known to be a trailing comma before the rparen.
-        builtin_call_two_comma,
-        /// `@a(b, c)`. `sub_list[lhs..rhs]`.
-        /// main_token is the builtin token.
-        builtin_call,
-        /// Same as builtin_call but there is known to be a trailing comma before the rparen.
-        builtin_call_comma,
-        /// `error{a, b}`.
-        /// rhs is the rbrace, lhs is unused.
-        error_set_decl,
-        /// `struct {}`, `union {}`, `opaque {}`, `enum {}`. `extra_data[lhs..rhs]`.
-        /// main_token is `struct`, `union`, `opaque`, `enum` keyword.
-        container_decl,
-        /// Same as container_decl but there is known to be a trailing comma
-        /// or semicolon before the rbrace.
-        container_decl_trailing,
-        /// `struct {lhs, rhs}`, `union {lhs, rhs}`, `opaque {lhs, rhs}`, `enum {lhs, rhs}`.
-        /// lhs or rhs can be omitted.
-        /// main_token is `struct`, `union`, `opaque`, `enum` keyword.
-        container_decl_two,
-        /// Same as container_decl_two except there is known to be a trailing comma
-        /// or semicolon before the rbrace.
-        container_decl_two_trailing,
-        /// `struct(lhs)` / `union(lhs)` / `enum(lhs)`. `SubRange[rhs]`.
-        container_decl_arg,
-        /// Same as container_decl_arg but there is known to be a trailing
-        /// comma or semicolon before the rbrace.
-        container_decl_arg_trailing,
-        /// `union(enum) {}`. `sub_list[lhs..rhs]`.
-        /// Note that tagged unions with explicitly provided enums are represented
-        /// by `container_decl_arg`.
-        tagged_union,
-        /// Same as tagged_union but there is known to be a trailing comma
-        /// or semicolon before the rbrace.
-        tagged_union_trailing,
-        /// `union(enum) {lhs, rhs}`. lhs or rhs may be omitted.
-        /// Note that tagged unions with explicitly provided enums are represented
-        /// by `container_decl_arg`.
-        tagged_union_two,
-        /// Same as tagged_union_two but there is known to be a trailing comma
-        /// or semicolon before the rbrace.
-        tagged_union_two_trailing,
-        /// `union(enum(lhs)) {}`. `SubRange[rhs]`.
-        tagged_union_enum_tag,
-        /// Same as tagged_union_enum_tag but there is known to be a trailing comma
-        /// or semicolon before the rbrace.
-        tagged_union_enum_tag_trailing,
-        /// `a: lhs = rhs,`. lhs and rhs can be omitted.
-        /// main_token is the field name identifier.
-        /// lastToken() does not include the possible trailing comma.
-        container_field_init,
-        /// `a: lhs align(rhs),`. rhs can be omitted.
-        /// main_token is the field name identifier.
-        /// lastToken() does not include the possible trailing comma.
-        container_field_align,
-        /// `a: lhs align(c) = d,`. `container_field_list[rhs]`.
-        /// main_token is the field name identifier.
-        /// lastToken() does not include the possible trailing comma.
-        container_field,
-        /// `comptime lhs`. rhs unused.
-        @"comptime",
-        /// `nosuspend lhs`. rhs unused.
-        @"nosuspend",
-        /// `{lhs rhs}`. rhs or lhs can be omitted.
-        /// main_token points at the lbrace.
-        block_two,
-        /// Same as block_two but there is known to be a semicolon before the rbrace.
-        block_two_semicolon,
-        /// `{}`. `sub_list[lhs..rhs]`.
-        /// main_token points at the lbrace.
-        block,
-        /// Same as block but there is known to be a semicolon before the rbrace.
-        block_semicolon,
-        /// `asm(lhs)`. rhs is the token index of the rparen.
-        asm_simple,
-        /// `asm(lhs, a)`. `Asm[rhs]`.
-        @"asm",
-        /// `[a] "b" (c)`. lhs is 0, rhs is token index of the rparen.
-        /// `[a] "b" (-> lhs)`. rhs is token index of the rparen.
-        /// main_token is `a`.
-        asm_output,
-        /// `[a] "b" (lhs)`. rhs is token index of the rparen.
-        /// main_token is `a`.
-        asm_input,
-        /// `error.a`. lhs is token index of `.`. rhs is token index of `a`.
-        error_value,
-        /// `lhs!rhs`. main_token is the `!`.
-        error_union,
-        pub fn isContainerField(tag: Tag) bool {
-            return switch (tag) {
-                .container_field_init,
-                .container_field_align,
-                .container_field,
-                => true,
-                else => false,
-            };
+        string_literal_backslash,
+        multiline_string_literal_line,
+        char_literal,
+        char_literal_backslash,
+        char_literal_hex_escape,
+        char_literal_unicode_escape_saw_u,
+        char_literal_unicode_escape,
+        char_literal_unicode_invalid,
+        char_literal_unicode,
+        char_literal_end,
+        backslash,
+        equal,
+        bang,
+        pipe,
+        minus,
+        minus_percent,
+        minus_pipe,
+        asterisk,
+        asterisk_percent,
+        asterisk_pipe,
+        slash,
+        line_comment_start,
+        line_comment,
+        doc_comment_start,
+        doc_comment,
+        int,
+        int_exponent,
+        int_period,
+        float,
+        float_exponent,
+        ampersand,
+        caret,
+        percent,
+        plus,
+        plus_percent,
+        plus_pipe,
+        angle_bracket_left,
+        angle_bracket_angle_bracket_left,
+        angle_bracket_angle_bracket_left_pipe,
+        angle_bracket_right,
+        angle_bracket_angle_bracket_right,
+        period,
+        period_2,
+        period_asterisk,
+        saw_at_sign,
+    };
+    /// This is a workaround to the fact that the tokenizer can queue up
+    /// 'pending_invalid_token's when parsing literals, which means that we need
+    /// to scan from the start of the current line to find a matching tag -% just
+    /// in case it was an invalid character generated during literal
+    /// tokenization. Ideally this processing of this would be pushed to the AST
+    /// parser or another later stage, both to give more useful error messages
+    /// with that extra context and in order to be able to remove this
+    /// workaround.
+    pub fn findTagAtCurrentIndex(tokenizer: *Tokenizer, tag: Token.Tag) Token {
+        if (tag == .invalid) {
+            const target_index = tokenizer.buf_pos;
+            var starting_index = target_index;
+            while (starting_index > 0) {
+                if (tokenizer.buf[starting_index] == '\n') {
+                    break;
+                }
+                starting_index -%= 1;
+            }
+            tokenizer.buf_pos = starting_index;
+            while (tokenizer.buf_pos <= target_index or tokenizer.pending_invalid_token != null) {
+                const result = tokenizer.next();
+                if (result.loc.start == target_index and result.tag == tag) {
+                    return result;
+                }
+            }
+            unreachable;
+        } else {
+            return tokenizer.next();
         }
-    };
-    pub const Data = struct {
-        lhs: Index,
-        rhs: Index,
-    };
-    pub const LocalVarDecl = struct {
-        type_node: Index,
-        align_node: Index,
-    };
-    pub const ArrayTypeSentinel = struct {
-        elem_type: Index,
-        sentinel: Index,
-    };
-    pub const PtrType = struct {
-        sentinel: Index,
-        align_node: Index,
-        addrspace_node: Index,
-    };
-    pub const PtrTypeBitRange = struct {
-        sentinel: Index,
-        align_node: Index,
-        addrspace_node: Index,
-        bit_range_start: Index,
-        bit_range_end: Index,
-    };
-    pub const SubRange = struct {
-        /// Index into sub_list.
-        start: Index,
-        /// Index into sub_list.
-        end: Index,
-    };
-    pub const If = struct {
-        then_expr: Index,
-        else_expr: Index,
-    };
-    pub const ContainerField = struct {
-        value_expr: Index,
-        align_expr: Index,
-    };
-    pub const GlobalVarDecl = struct {
-        /// Populated if there is an explicit type ascription.
-        type_node: Index,
-        /// Populated if align(A) is present.
-        align_node: Index,
-        /// Populated if addrspace(A) is present.
-        addrspace_node: Index,
-        /// Populated if linksection(A) is present.
-        section_node: Index,
-    };
-    pub const Slice = struct {
-        start: Index,
-        end: Index,
-    };
-    pub const SliceSentinel = struct {
-        start: Index,
-        /// May be 0 if the slice is "open"
-        end: Index,
-        sentinel: Index,
-    };
-    pub const While = struct {
-        cont_expr: Index,
-        then_expr: Index,
-        else_expr: Index,
-    };
-    pub const WhileCont = struct {
-        cont_expr: Index,
-        then_expr: Index,
-    };
-    pub const FnProtoOne = struct {
-        /// Populated if there is exactly 1 parameter. Otherwise there are 0 parameters.
-        param: Index,
-        /// Populated if align(A) is present.
-        align_expr: Index,
-        /// Populated if addrspace(A) is present.
-        addrspace_expr: Index,
-        /// Populated if linksection(A) is present.
-        section_expr: Index,
-        /// Populated if callconv(A) is present.
-        callconv_expr: Index,
-    };
-    pub const FnProto = struct {
-        params_start: Index,
-        params_end: Index,
-        /// Populated if align(A) is present.
-        align_expr: Index,
-        /// Populated if addrspace(A) is present.
-        addrspace_expr: Index,
-        /// Populated if linksection(A) is present.
-        section_expr: Index,
-        /// Populated if callconv(A) is present.
-        callconv_expr: Index,
-    };
-    pub const Asm = struct {
-        items_start: Index,
-        items_end: Index,
-        /// Needed to make lastToken() work.
-        rparen: u32,
-    };
+    }
+    pub fn next(tokenizer: *Tokenizer) Token {
+        @setRuntimeSafety(false);
+        if (tokenizer.pending_invalid_token) |token| {
+            tokenizer.pending_invalid_token = null;
+            return token;
+        }
+        var state: State = .start;
+        var result = Token{
+            .tag = .eof,
+            .loc = .{
+                .start = tokenizer.buf_pos,
+                .finish = undefined,
+            },
+        };
+        var seen_escape_digits: usize = undefined;
+        var remaining_code_units: usize = undefined;
+        while (true) : (tokenizer.buf_pos +%= 1) {
+            const c = tokenizer.buf[tokenizer.buf_pos];
+            switch (state) {
+                .start => switch (c) {
+                    0 => {
+                        if (tokenizer.buf_pos != tokenizer.buf.len) {
+                            result.tag = .invalid;
+                            result.loc.start = tokenizer.buf_pos;
+                            tokenizer.buf_pos +%= 1;
+                            result.loc.finish = tokenizer.buf_pos;
+                            return result;
+                        }
+                        break;
+                    },
+                    ' ', '\n', '\t', '\r' => {
+                        result.loc.start = tokenizer.buf_pos +% 1;
+                    },
+                    '"' => {
+                        state = .string_literal;
+                        result.tag = .string_literal;
+                    },
+                    '\'' => {
+                        state = .char_literal;
+                    },
+                    'a'...'z', 'A'...'Z', '_' => {
+                        state = .identifier;
+                        result.tag = .identifier;
+                    },
+                    '@' => {
+                        state = .saw_at_sign;
+                    },
+                    '=' => {
+                        state = .equal;
+                    },
+                    '!' => {
+                        state = .bang;
+                    },
+                    '|' => {
+                        state = .pipe;
+                    },
+                    '(' => {
+                        result.tag = .l_paren;
+                        tokenizer.buf_pos +%= 1;
+                        break;
+                    },
+                    ')' => {
+                        result.tag = .r_paren;
+                        tokenizer.buf_pos +%= 1;
+                        break;
+                    },
+                    '[' => {
+                        result.tag = .l_bracket;
+                        tokenizer.buf_pos +%= 1;
+                        break;
+                    },
+                    ']' => {
+                        result.tag = .r_bracket;
+                        tokenizer.buf_pos +%= 1;
+                        break;
+                    },
+                    ';' => {
+                        result.tag = .semicolon;
+                        tokenizer.buf_pos +%= 1;
+                        break;
+                    },
+                    ',' => {
+                        result.tag = .comma;
+                        tokenizer.buf_pos +%= 1;
+                        break;
+                    },
+                    '?' => {
+                        result.tag = .question_mark;
+                        tokenizer.buf_pos +%= 1;
+                        break;
+                    },
+                    ':' => {
+                        result.tag = .colon;
+                        tokenizer.buf_pos +%= 1;
+                        break;
+                    },
+                    '%' => {
+                        state = .percent;
+                    },
+                    '*' => {
+                        state = .asterisk;
+                    },
+                    '+' => {
+                        state = .plus;
+                    },
+                    '<' => {
+                        state = .angle_bracket_left;
+                    },
+                    '>' => {
+                        state = .angle_bracket_right;
+                    },
+                    '^' => {
+                        state = .caret;
+                    },
+                    '\\' => {
+                        state = .backslash;
+                        result.tag = .multiline_string_literal_line;
+                    },
+                    '{' => {
+                        result.tag = .l_brace;
+                        tokenizer.buf_pos +%= 1;
+                        break;
+                    },
+                    '}' => {
+                        result.tag = .r_brace;
+                        tokenizer.buf_pos +%= 1;
+                        break;
+                    },
+                    '~' => {
+                        result.tag = .tilde;
+                        tokenizer.buf_pos +%= 1;
+                        break;
+                    },
+                    '.' => {
+                        state = .period;
+                    },
+                    '-' => {
+                        state = .minus;
+                    },
+                    '/' => {
+                        state = .slash;
+                    },
+                    '&' => {
+                        state = .ampersand;
+                    },
+                    '0'...'9' => {
+                        state = .int;
+                        result.tag = .number_literal;
+                    },
+                    else => {
+                        result.tag = .invalid;
+                        result.loc.finish = tokenizer.buf_pos;
+                        tokenizer.buf_pos +%= 1;
+                        return result;
+                    },
+                },
+                .saw_at_sign => switch (c) {
+                    '"' => {
+                        result.tag = .identifier;
+                        state = .string_literal;
+                    },
+                    'a'...'z', 'A'...'Z', '_' => {
+                        state = .builtin;
+                        result.tag = .builtin;
+                    },
+                    else => {
+                        result.tag = .invalid;
+                        break;
+                    },
+                },
+                .ampersand => switch (c) {
+                    '=' => {
+                        result.tag = .ampersand_equal;
+                        tokenizer.buf_pos +%= 1;
+                        break;
+                    },
+                    else => {
+                        result.tag = .ampersand;
+                        break;
+                    },
+                },
+                .asterisk => switch (c) {
+                    '=' => {
+                        result.tag = .asterisk_equal;
+                        tokenizer.buf_pos +%= 1;
+                        break;
+                    },
+                    '*' => {
+                        result.tag = .asterisk_asterisk;
+                        tokenizer.buf_pos +%= 1;
+                        break;
+                    },
+                    '%' => {
+                        state = .asterisk_percent;
+                    },
+                    '|' => {
+                        state = .asterisk_pipe;
+                    },
+                    else => {
+                        result.tag = .asterisk;
+                        break;
+                    },
+                },
+                .asterisk_percent => switch (c) {
+                    '=' => {
+                        result.tag = .asterisk_percent_equal;
+                        tokenizer.buf_pos +%= 1;
+                        break;
+                    },
+                    else => {
+                        result.tag = .asterisk_percent;
+                        break;
+                    },
+                },
+                .asterisk_pipe => switch (c) {
+                    '=' => {
+                        result.tag = .asterisk_pipe_equal;
+                        tokenizer.buf_pos +%= 1;
+                        break;
+                    },
+                    else => {
+                        result.tag = .asterisk_pipe;
+                        break;
+                    },
+                },
+                .percent => switch (c) {
+                    '=' => {
+                        result.tag = .percent_equal;
+                        tokenizer.buf_pos +%= 1;
+                        break;
+                    },
+                    else => {
+                        result.tag = .percent;
+                        break;
+                    },
+                },
+                .plus => switch (c) {
+                    '=' => {
+                        result.tag = .plus_equal;
+                        tokenizer.buf_pos +%= 1;
+                        break;
+                    },
+                    '+' => {
+                        result.tag = .plus_plus;
+                        tokenizer.buf_pos +%= 1;
+                        break;
+                    },
+                    '%' => {
+                        state = .plus_percent;
+                    },
+                    '|' => {
+                        state = .plus_pipe;
+                    },
+                    else => {
+                        result.tag = .plus;
+                        break;
+                    },
+                },
+                .plus_percent => switch (c) {
+                    '=' => {
+                        result.tag = .plus_percent_equal;
+                        tokenizer.buf_pos +%= 1;
+                        break;
+                    },
+                    else => {
+                        result.tag = .plus_percent;
+                        break;
+                    },
+                },
+                .plus_pipe => switch (c) {
+                    '=' => {
+                        result.tag = .plus_pipe_equal;
+                        tokenizer.buf_pos +%= 1;
+                        break;
+                    },
+                    else => {
+                        result.tag = .plus_pipe;
+                        break;
+                    },
+                },
+                .caret => switch (c) {
+                    '=' => {
+                        result.tag = .caret_equal;
+                        tokenizer.buf_pos +%= 1;
+                        break;
+                    },
+                    else => {
+                        result.tag = .caret;
+                        break;
+                    },
+                },
+                .identifier => switch (c) {
+                    'a'...'z', 'A'...'Z', '_', '0'...'9' => {},
+                    else => {
+                        if (Token.getKeyword(tokenizer.buf[result.loc.start..tokenizer.buf_pos])) |tag| {
+                            result.tag = tag;
+                        }
+                        break;
+                    },
+                },
+                .builtin => switch (c) {
+                    'a'...'z', 'A'...'Z', '_', '0'...'9' => {},
+                    else => break,
+                },
+                .backslash => switch (c) {
+                    '\\' => {
+                        state = .multiline_string_literal_line;
+                    },
+                    else => {
+                        result.tag = .invalid;
+                        break;
+                    },
+                },
+                .string_literal => switch (c) {
+                    '\\' => {
+                        state = .string_literal_backslash;
+                    },
+                    '"' => {
+                        tokenizer.buf_pos +%= 1;
+                        break;
+                    },
+                    0 => {
+                        if (tokenizer.buf_pos == tokenizer.buf.len) {
+                            result.tag = .invalid;
+                            break;
+                        } else {
+                            tokenizer.checkLiteralCharacter();
+                        }
+                    },
+                    '\n' => {
+                        result.tag = .invalid;
+                        break;
+                    },
+                    else => tokenizer.checkLiteralCharacter(),
+                },
+                .string_literal_backslash => switch (c) {
+                    0, '\n' => {
+                        result.tag = .invalid;
+                        break;
+                    },
+                    else => {
+                        state = .string_literal;
+                    },
+                },
+                .char_literal => switch (c) {
+                    0 => {
+                        result.tag = .invalid;
+                        break;
+                    },
+                    '\\' => {
+                        state = .char_literal_backslash;
+                    },
+                    '\'', 0x80...0xbf, 0xf8...0xff => {
+                        result.tag = .invalid;
+                        break;
+                    },
+                    0xc0...0xdf => { // 110xxxxx
+                        remaining_code_units = 1;
+                        state = .char_literal_unicode;
+                    },
+                    0xe0...0xef => { // 1110xxxx
+                        remaining_code_units = 2;
+                        state = .char_literal_unicode;
+                    },
+                    0xf0...0xf7 => { // 11110xxx
+                        remaining_code_units = 3;
+                        state = .char_literal_unicode;
+                    },
+                    '\n' => {
+                        result.tag = .invalid;
+                        break;
+                    },
+                    else => {
+                        state = .char_literal_end;
+                    },
+                },
+                .char_literal_backslash => switch (c) {
+                    0, '\n' => {
+                        result.tag = .invalid;
+                        break;
+                    },
+                    'x' => {
+                        state = .char_literal_hex_escape;
+                        seen_escape_digits = 0;
+                    },
+                    'u' => {
+                        state = .char_literal_unicode_escape_saw_u;
+                    },
+                    else => {
+                        state = .char_literal_end;
+                    },
+                },
+                .char_literal_hex_escape => switch (c) {
+                    '0'...'9', 'a'...'f', 'A'...'F' => {
+                        seen_escape_digits +%= 1;
+                        if (seen_escape_digits == 2) {
+                            state = .char_literal_end;
+                        }
+                    },
+                    else => {
+                        result.tag = .invalid;
+                        break;
+                    },
+                },
+                .char_literal_unicode_escape_saw_u => switch (c) {
+                    0 => {
+                        result.tag = .invalid;
+                        break;
+                    },
+                    '{' => {
+                        state = .char_literal_unicode_escape;
+                    },
+                    else => {
+                        result.tag = .invalid;
+                        state = .char_literal_unicode_invalid;
+                    },
+                },
+                .char_literal_unicode_escape => switch (c) {
+                    0 => {
+                        result.tag = .invalid;
+                        break;
+                    },
+                    '0'...'9', 'a'...'f', 'A'...'F' => {},
+                    '}' => {
+                        state = .char_literal_end; // too many/few digits handled later
+                    },
+                    else => {
+                        result.tag = .invalid;
+                        state = .char_literal_unicode_invalid;
+                    },
+                },
+                .char_literal_unicode_invalid => switch (c) {
+                    // Keep consuming characters until an obvious stopping point.
+                    // This consolidates e.g. `u{0ab1Q}` into a single invalid token
+                    // instead of creating the tokens `u{0ab1`, `Q`, `}`
+                    '0'...'9', 'a'...'z', 'A'...'Z', '}' => {},
+                    else => break,
+                },
+                .char_literal_end => switch (c) {
+                    '\'' => {
+                        result.tag = .char_literal;
+                        tokenizer.buf_pos +%= 1;
+                        break;
+                    },
+                    else => {
+                        result.tag = .invalid;
+                        break;
+                    },
+                },
+                .char_literal_unicode => switch (c) {
+                    0x80...0xbf => {
+                        remaining_code_units -%= 1;
+                        if (remaining_code_units == 0) {
+                            state = .char_literal_end;
+                        }
+                    },
+                    else => {
+                        result.tag = .invalid;
+                        break;
+                    },
+                },
+                .multiline_string_literal_line => switch (c) {
+                    0 => break,
+                    '\n' => {
+                        tokenizer.buf_pos +%= 1;
+                        break;
+                    },
+                    '\t' => {},
+                    else => tokenizer.checkLiteralCharacter(),
+                },
+                .bang => switch (c) {
+                    '=' => {
+                        result.tag = .bang_equal;
+                        tokenizer.buf_pos +%= 1;
+                        break;
+                    },
+                    else => {
+                        result.tag = .bang;
+                        break;
+                    },
+                },
+                .pipe => switch (c) {
+                    '=' => {
+                        result.tag = .pipe_equal;
+                        tokenizer.buf_pos +%= 1;
+                        break;
+                    },
+                    '|' => {
+                        result.tag = .pipe_pipe;
+                        tokenizer.buf_pos +%= 1;
+                        break;
+                    },
+                    else => {
+                        result.tag = .pipe;
+                        break;
+                    },
+                },
+                .equal => switch (c) {
+                    '=' => {
+                        result.tag = .equal_equal;
+                        tokenizer.buf_pos +%= 1;
+                        break;
+                    },
+                    '>' => {
+                        result.tag = .equal_angle_bracket_right;
+                        tokenizer.buf_pos +%= 1;
+                        break;
+                    },
+                    else => {
+                        result.tag = .equal;
+                        break;
+                    },
+                },
+                .minus => switch (c) {
+                    '>' => {
+                        result.tag = .arrow;
+                        tokenizer.buf_pos +%= 1;
+                        break;
+                    },
+                    '=' => {
+                        result.tag = .minus_equal;
+                        tokenizer.buf_pos +%= 1;
+                        break;
+                    },
+                    '%' => {
+                        state = .minus_percent;
+                    },
+                    '|' => {
+                        state = .minus_pipe;
+                    },
+                    else => {
+                        result.tag = .minus;
+                        break;
+                    },
+                },
+                .minus_percent => switch (c) {
+                    '=' => {
+                        result.tag = .minus_percent_equal;
+                        tokenizer.buf_pos +%= 1;
+                        break;
+                    },
+                    else => {
+                        result.tag = .minus_percent;
+                        break;
+                    },
+                },
+                .minus_pipe => switch (c) {
+                    '=' => {
+                        result.tag = .minus_pipe_equal;
+                        tokenizer.buf_pos +%= 1;
+                        break;
+                    },
+                    else => {
+                        result.tag = .minus_pipe;
+                        break;
+                    },
+                },
+                .angle_bracket_left => switch (c) {
+                    '<' => {
+                        state = .angle_bracket_angle_bracket_left;
+                    },
+                    '=' => {
+                        result.tag = .angle_bracket_left_equal;
+                        tokenizer.buf_pos +%= 1;
+                        break;
+                    },
+                    else => {
+                        result.tag = .angle_bracket_left;
+                        break;
+                    },
+                },
+                .angle_bracket_angle_bracket_left => switch (c) {
+                    '=' => {
+                        result.tag = .angle_bracket_angle_bracket_left_equal;
+                        tokenizer.buf_pos +%= 1;
+                        break;
+                    },
+                    '|' => {
+                        state = .angle_bracket_angle_bracket_left_pipe;
+                    },
+                    else => {
+                        result.tag = .angle_bracket_angle_bracket_left;
+                        break;
+                    },
+                },
+                .angle_bracket_angle_bracket_left_pipe => switch (c) {
+                    '=' => {
+                        result.tag = .angle_bracket_angle_bracket_left_pipe_equal;
+                        tokenizer.buf_pos +%= 1;
+                        break;
+                    },
+                    else => {
+                        result.tag = .angle_bracket_angle_bracket_left_pipe;
+                        break;
+                    },
+                },
+                .angle_bracket_right => switch (c) {
+                    '>' => {
+                        state = .angle_bracket_angle_bracket_right;
+                    },
+                    '=' => {
+                        result.tag = .angle_bracket_right_equal;
+                        tokenizer.buf_pos +%= 1;
+                        break;
+                    },
+                    else => {
+                        result.tag = .angle_bracket_right;
+                        break;
+                    },
+                },
+                .angle_bracket_angle_bracket_right => switch (c) {
+                    '=' => {
+                        result.tag = .angle_bracket_angle_bracket_right_equal;
+                        tokenizer.buf_pos +%= 1;
+                        break;
+                    },
+                    else => {
+                        result.tag = .angle_bracket_angle_bracket_right;
+                        break;
+                    },
+                },
+                .period => switch (c) {
+                    '.' => {
+                        state = .period_2;
+                    },
+                    '*' => {
+                        state = .period_asterisk;
+                    },
+                    else => {
+                        result.tag = .period;
+                        break;
+                    },
+                },
+                .period_2 => switch (c) {
+                    '.' => {
+                        result.tag = .ellipsis3;
+                        tokenizer.buf_pos +%= 1;
+                        break;
+                    },
+                    else => {
+                        result.tag = .ellipsis2;
+                        break;
+                    },
+                },
+                .period_asterisk => switch (c) {
+                    '*' => {
+                        result.tag = .invalid_periodasterisks;
+                        break;
+                    },
+                    else => {
+                        result.tag = .period_asterisk;
+                        break;
+                    },
+                },
+                .slash => switch (c) {
+                    '/' => {
+                        state = .line_comment_start;
+                    },
+                    '=' => {
+                        result.tag = .slash_equal;
+                        tokenizer.buf_pos +%= 1;
+                        break;
+                    },
+                    else => {
+                        result.tag = .slash;
+                        break;
+                    },
+                },
+                .line_comment_start => switch (c) {
+                    0 => {
+                        if (tokenizer.buf_pos != tokenizer.buf.len) {
+                            result.tag = .invalid;
+                            tokenizer.buf_pos +%= 1;
+                        }
+                        break;
+                    },
+                    '/' => {
+                        state = .doc_comment_start;
+                    },
+                    '!' => {
+                        result.tag = .container_doc_comment;
+                        state = .doc_comment;
+                    },
+                    '\n' => {
+                        state = .start;
+                        result.loc.start = tokenizer.buf_pos +% 1;
+                    },
+                    '\t' => state = .line_comment,
+                    else => {
+                        state = .line_comment;
+                        tokenizer.checkLiteralCharacter();
+                    },
+                },
+                .doc_comment_start => switch (c) {
+                    '/' => {
+                        state = .line_comment;
+                    },
+                    0, '\n' => {
+                        result.tag = .doc_comment;
+                        break;
+                    },
+                    '\t' => {
+                        state = .doc_comment;
+                        result.tag = .doc_comment;
+                    },
+                    else => {
+                        state = .doc_comment;
+                        result.tag = .doc_comment;
+                        tokenizer.checkLiteralCharacter();
+                    },
+                },
+                .line_comment => switch (c) {
+                    0 => {
+                        if (tokenizer.buf_pos != tokenizer.buf.len) {
+                            result.tag = .invalid;
+                            tokenizer.buf_pos +%= 1;
+                        }
+                        break;
+                    },
+                    '\n' => {
+                        state = .start;
+                        result.loc.start = tokenizer.buf_pos +% 1;
+                    },
+                    '\t' => {},
+                    else => tokenizer.checkLiteralCharacter(),
+                },
+                .doc_comment => switch (c) {
+                    0, '\n' => break,
+                    '\t' => {},
+                    else => tokenizer.checkLiteralCharacter(),
+                },
+                .int => switch (c) {
+                    '.' => state = .int_period,
+                    '_', 'a'...'d', 'f'...'o', 'q'...'z', 'A'...'D', 'F'...'O', 'Q'...'Z', '0'...'9' => {},
+                    'e', 'E', 'p', 'P' => state = .int_exponent,
+                    else => break,
+                },
+                .int_exponent => switch (c) {
+                    '-', '+' => {
+                        state = .float;
+                    },
+                    else => {
+                        tokenizer.buf_pos -%= 1;
+                        state = .int;
+                    },
+                },
+                .int_period => switch (c) {
+                    '_', 'a'...'d', 'f'...'o', 'q'...'z', 'A'...'D', 'F'...'O', 'Q'...'Z', '0'...'9' => {
+                        state = .float;
+                    },
+                    'e', 'E', 'p', 'P' => state = .float_exponent,
+                    else => {
+                        tokenizer.buf_pos -%= 1;
+                        break;
+                    },
+                },
+                .float => switch (c) {
+                    '_', 'a'...'d', 'f'...'o', 'q'...'z', 'A'...'D', 'F'...'O', 'Q'...'Z', '0'...'9' => {},
+                    'e', 'E', 'p', 'P' => state = .float_exponent,
+                    else => break,
+                },
+                .float_exponent => switch (c) {
+                    '-', '+' => state = .float,
+                    else => {
+                        tokenizer.buf_pos -%= 1;
+                        state = .float;
+                    },
+                },
+            }
+        }
+        if (result.tag == .eof) {
+            if (tokenizer.pending_invalid_token) |token| {
+                tokenizer.pending_invalid_token = null;
+                return token;
+            }
+            result.loc.start = tokenizer.buf_pos;
+        }
+        result.loc.finish = tokenizer.buf_pos;
+        return result;
+    }
+    fn checkLiteralCharacter(tokenizer: *Tokenizer) void {
+        if (tokenizer.pending_invalid_token != null) return;
+        const invalid_length = tokenizer.getInvalidCharacterLength();
+        if (invalid_length == 0) return;
+        tokenizer.pending_invalid_token = .{
+            .tag = .invalid,
+            .loc = .{
+                .start = tokenizer.buf_pos,
+                .finish = tokenizer.buf_pos +% invalid_length,
+            },
+        };
+    }
+    fn getInvalidCharacterLength(tokenizer: *Tokenizer) u8 {
+        const c0 = tokenizer.buf[tokenizer.buf_pos];
+        if (ascii.isASCII(c0)) {
+            if (c0 == '\r') {
+                if (tokenizer.buf_pos +% 1 < tokenizer.buf.len and
+                    tokenizer.buf[tokenizer.buf_pos +% 1] == '\n')
+                {
+                    return 0;
+                } else {
+                    return 1;
+                }
+            } else if (ascii.isControl(c0)) {
+                return 1;
+            }
+            return 0;
+        } else {
+            const length = utf8.byteSequenceLength(c0) catch return 1;
+            if (tokenizer.buf_pos +% length > tokenizer.buf.len) {
+                return @intCast(u3, tokenizer.buf.len -% tokenizer.buf_pos);
+            }
+            const bytes = tokenizer.buf[tokenizer.buf_pos .. tokenizer.buf_pos +% length];
+            switch (length) {
+                2 => {
+                    const value = utf8.decode2(bytes) catch return length;
+                    if (value == 0x85) {
+                        return length;
+                    }
+                },
+                3 => {
+                    const value = utf8.decode3(bytes) catch return length;
+                    if (value == 0x2028) {
+                        return length;
+                    }
+                    if (value == 0x2029) {
+                        return length;
+                    }
+                },
+                4 => {
+                    _ = utf8.decode4(bytes) catch return length;
+                },
+                else => unreachable,
+            }
+            tokenizer.buf_pos +%= length -% 1;
+            return 0;
+        }
+    }
 };
