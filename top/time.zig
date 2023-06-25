@@ -92,7 +92,7 @@ pub const ClockGetTime = *fn (Kind, *TimeSpec) u64;
 pub const GetTimeOfDay = *fn (*TimeVal, *TimeZone) u64;
 pub fn get(comptime spec: ClockSpec, kind: Kind) sys.ErrorUnion(spec.errors, TimeSpec) {
     var ts: TimeSpec = undefined;
-    if (meta.wrap(sys.call(.clock_gettime, spec.errors, void, .{ @enumToInt(kind), @ptrToInt(&ts) }))) {
+    if (meta.wrap(sys.call(.clock_gettime, spec.errors, void, .{ @intFromEnum(kind), @intFromPtr(&ts) }))) {
         return ts;
     } else |clock_error| {
         return clock_error;
@@ -103,7 +103,7 @@ pub const SleepSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.nanosleep_errors },
 };
 pub fn sleep(comptime spec: SleepSpec, ts: TimeSpec) sys.ErrorUnion(spec.errors, void) {
-    meta.wrap(sys.call(.nanosleep, spec.errors, spec.return_type, .{ @ptrToInt(&ts), 0 })) catch |nanosleep_error| {
+    meta.wrap(sys.call(.nanosleep, spec.errors, spec.return_type, .{ @intFromPtr(&ts), 0 })) catch |nanosleep_error| {
         return nanosleep_error;
     };
 }

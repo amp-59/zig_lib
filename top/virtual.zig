@@ -90,7 +90,7 @@ pub fn DiscreteBitSet(comptime elements: u16, comptime val_type: type, comptime 
             const Word: type = data_type;
             const Shift: type = builtin.ShiftAmount(Word);
             pub inline fn indexToShiftAmount(index: idx_type) Shift {
-                return @intCast(Shift, (data_info.Int.bits -% 1) -% @enumToInt(index));
+                return @intCast(Shift, (data_info.Int.bits -% 1) -% @intFromEnum(index));
             }
             pub fn get(bit_set: *BitSet, index: idx_type) val_type {
                 const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
@@ -128,7 +128,7 @@ fn ThreadSafeSetBoolInt(comptime elements: u16, comptime idx_type: type) type {
             return @cmpxchgStrong(u8, &safe_set.bytes[index], 255, 0, .Monotonic, .Monotonic) == null;
         }
         pub fn mutex(safe_set: *SafeSet, index: idx_type) *u32 {
-            return @intToPtr(*u32, mach.alignB64(@ptrToInt(&safe_set.bytes[index]), 4));
+            return @ptrFromInt(*u32, mach.alignB64(@intFromPtr(&safe_set.bytes[index]), 4));
         }
     };
 }
@@ -138,13 +138,13 @@ fn ThreadSafeSetBoolEnum(comptime elements: u16, comptime idx_type: type) type {
         pub const SafeSet: type = @This();
         const mutexes: comptime_int = @divExact(@sizeOf(@This()), 4);
         pub fn get(safe_set: *SafeSet, index: idx_type) bool {
-            return safe_set.bytes[@enumToInt(index)] != 0;
+            return safe_set.bytes[@intFromEnum(index)] != 0;
         }
         pub fn set(safe_set: *SafeSet, index: idx_type) void {
-            safe_set.bytes[@enumToInt(index)] = 255;
+            safe_set.bytes[@intFromEnum(index)] = 255;
         }
         pub fn unset(safe_set: *SafeSet, index: idx_type) void {
-            safe_set.bytes[@enumToInt(index)] = 0;
+            safe_set.bytes[@intFromEnum(index)] = 0;
         }
         pub fn atomicSet(safe_set: *SafeSet, index: idx_type) bool {
             return @cmpxchgStrong(u8, &safe_set.bytes[index], 0, 255, .Monotonic, .Monotonic) == null;
@@ -153,7 +153,7 @@ fn ThreadSafeSetBoolEnum(comptime elements: u16, comptime idx_type: type) type {
             return @cmpxchgStrong(u8, &safe_set.bytes[index], 255, 0, .Monotonic, .Monotonic) == null;
         }
         pub fn mutex(safe_set: *SafeSet, index: idx_type) *u32 {
-            return @intToPtr(*u32, mach.alignB64(@ptrToInt(&safe_set.bytes[@enumToInt(index)]), 4));
+            return @ptrFromInt(*u32, mach.alignB64(@intFromPtr(&safe_set.bytes[@intFromEnum(index)]), 4));
         }
     };
 }
@@ -172,7 +172,7 @@ fn ThreadSafeSetEnumInt(comptime elements: u16, comptime val_type: type, comptim
             return @cmpxchgStrong(val_type, &safe_set.bytes[index], if_state, to_state, .Monotonic, .Monotonic) == null;
         }
         pub fn mutex(safe_set: *SafeSet, index: idx_type) *u32 {
-            return @intToPtr(*u32, mach.alignB64(@ptrToInt(&safe_set.bytes[index]), 4));
+            return @ptrFromInt(*u32, mach.alignB64(@intFromPtr(&safe_set.bytes[index]), 4));
         }
     };
 }
@@ -182,21 +182,21 @@ fn ThreadSafeSetEnumEnum(comptime elements: u16, comptime val_type: type, compti
         pub const SafeSet: type = @This();
         const mutexes: comptime_int = @divExact(@sizeOf(@This()), 4);
         pub fn get(safe_set: *SafeSet, index: idx_type) val_type {
-            return safe_set.bytes[@enumToInt(index)];
+            return safe_set.bytes[@intFromEnum(index)];
         }
         pub fn set(safe_set: *SafeSet, index: idx_type, to: val_type) void {
-            safe_set.bytes[@enumToInt(index)] = to;
+            safe_set.bytes[@intFromEnum(index)] = to;
         }
         pub fn exchange(safe_set: *SafeSet, index: idx_type, if_state: val_type, to_state: val_type) bool {
             const ret: bool = safe_set.get(index) == if_state;
-            if (ret) safe_set.bytes[@enumToInt(index)] = to_state;
+            if (ret) safe_set.bytes[@intFromEnum(index)] = to_state;
             return ret;
         }
         pub fn atomicExchange(safe_set: *SafeSet, index: idx_type, if_state: val_type, to_state: val_type) callconv(.C) bool {
-            return @cmpxchgStrong(val_type, &safe_set.bytes[@enumToInt(index)], if_state, to_state, .Monotonic, .Monotonic) == null;
+            return @cmpxchgStrong(val_type, &safe_set.bytes[@intFromEnum(index)], if_state, to_state, .Monotonic, .Monotonic) == null;
         }
         pub fn mutex(safe_set: *SafeSet, index: idx_type) *u32 {
-            return @intToPtr(*u32, mach.alignB64(@ptrToInt(&safe_set.bytes[@enumToInt(index)]), 4));
+            return @ptrFromInt(*u32, mach.alignB64(@intFromPtr(&safe_set.bytes[@intFromEnum(index)]), 4));
         }
     };
 }
@@ -222,14 +222,14 @@ fn GenericMultiSet(
         pub const MultiSet: type = @This();
         inline fn arenaIndex(comptime index: spec.idx_type) spec.idx_type {
             if (@typeInfo(spec.idx_type) == .Enum) {
-                comptime return @intToEnum(spec.idx_type, directory[@enumToInt(index)].arena_index);
+                comptime return @enumFromInt(spec.idx_type, directory[@intFromEnum(index)].arena_index);
             } else {
                 comptime return directory[index].arena_index;
             }
         }
         inline fn fieldIndex(comptime index: spec.idx_type) usize {
             if (@typeInfo(spec.idx_type) == .Enum) {
-                comptime return directory[@enumToInt(index)].field_index;
+                comptime return directory[@intFromEnum(index)].field_index;
             } else {
                 comptime return directory[index].field_index;
             }
@@ -281,8 +281,8 @@ pub const Bounds = extern struct {
 };
 pub fn bounds(any: anytype) Bounds {
     return .{
-        .lb_addr = @ptrToInt(any.ptr),
-        .up_addr = @ptrToInt(any.ptr) + any.len,
+        .lb_addr = @intFromPtr(any.ptr),
+        .up_addr = @intFromPtr(any.ptr) + any.len,
     };
 }
 pub fn intersection2(comptime A: type, s_arena: A, t_arena: A) ?Intersection(A) {
@@ -510,13 +510,13 @@ pub const RegularMultiArena = struct {
             @bitSizeOf(multi_arena.val_type) == 8)
         {
             return ThreadSafeSet(
-                multi_arena.divisions + @boolToInt(multi_arena.options.require_map),
+                multi_arena.divisions + @intFromBool(multi_arena.options.require_map),
                 multi_arena.val_type,
                 multi_arena.idx_type,
             );
         } else {
             return DiscreteBitSet(
-                multi_arena.divisions + @boolToInt(multi_arena.options.require_map),
+                multi_arena.divisions + @intFromBool(multi_arena.options.require_map),
                 multi_arena.val_type,
                 multi_arena.idx_type,
             );
