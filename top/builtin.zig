@@ -1,7 +1,104 @@
-pub const mach = @import("./mach.zig");
-pub const math = @import("./math.zig");
-pub const config = @import("./config.zig");
-pub usingnamespace config;
+const builtin = @import("builtin");
+const mach = @import("./mach.zig");
+const meta = @import("./meta.zig");
+const math = @import("./math.zig");
+pub const env = @import("context");
+pub const root = @import("root");
+pub const tab = @import("./tab.zig");
+pub usingnamespace builtin;
+pub const native_endian = builtin.cpu.arch.endian();
+/// * Determines defaults for various allocator checks.
+pub const is_safe: bool = define("is_safe", bool, builtin.mode == .ReleaseSafe);
+pub const is_small: bool = define("is_small", bool, builtin.mode == .ReleaseSmall);
+pub const is_fast: bool = define("is_fast", bool, builtin.mode == .ReleaseFast);
+/// * Determines whether `Acquire` and `Release` actions are logged by default.
+/// * Determine whether signals for floating point errors should be handled verbosely.
+pub const is_debug: bool = define("is_debug", bool, builtin.mode == .Debug);
+/// * Determines whether calling `panicUnwrapError` is legal.
+pub const discard_errors: bool = define("discard_errors", bool, !(is_debug or is_safe));
+/// * Determines whether `assert*` functions will be called at runtime.
+pub const runtime_assertions: bool = define("runtime_assertions", bool, is_debug or is_safe);
+/// * Determines whether `static.assert*` functions will be called at comptime time.
+pub const comptime_assertions: bool = define("comptime_assertions", bool, is_debug);
+
+/// These values define all default field values for all logging sub-types.
+pub const logging_default: Logging.Default = define(
+    "logging_default",
+    Logging.Default,
+    .{
+        // Never report attempted actions
+        .Attempt = false,
+        // Never report successful actions
+        .Success = false,
+        // Report actions where a resource is acquired when build mode is debug
+        .Acquire = is_debug,
+        // Report actions where a resource is released when build mode is debug
+        .Release = is_debug,
+        // Always report errors
+        .Error = true,
+        // Always report faults
+        .Fault = true,
+    },
+);
+/// These values (optionally) define all override field values for all logging
+/// sub-types and all default field values for the general logging type.
+pub const logging_override: Logging.Override = define(
+    "logging_override",
+    Logging.Override,
+    .{
+        .Attempt = null,
+        .Success = null,
+        .Acquire = null,
+        .Release = null,
+        .Error = null,
+        .Fault = null,
+    },
+);
+pub const logging_general: Logging.Default = .{
+    .Attempt = logging_override.Attempt orelse logging_default.Attempt,
+    .Success = logging_override.Success orelse logging_default.Success,
+    .Acquire = logging_override.Acquire orelse logging_default.Acquire,
+    .Release = logging_override.Release orelse logging_default.Release,
+    .Error = logging_override.Error orelse logging_default.Error,
+    .Fault = logging_override.Fault orelse logging_default.Fault,
+};
+/// The primary reason that these constants exist is to distinguish between
+/// reports from the build runner and reports from a run command.
+///
+/// The length of this string does not count to the length of the column.
+/// Defining this string inserts `\x1b[0m` after the subject name.
+pub const message_style: ?[:0]const u8 = define("message_style", ?[:0]const u8, null);
+/// This text to the left of every subject name, to the right of the style.
+pub const message_prefix: [:0]const u8 = define("message_prefix", [:0]const u8, "");
+/// This text to the right of every string.
+pub const message_suffix: [:0]const u8 = define("message_suffix", [:0]const u8, ":");
+/// The total length of the subject column, to the left of the information column.
+pub const message_indent: u8 = define("message_indent", u8, 16);
+/// Sequence used to undo `message_style` if defined.
+pub const message_no_style: [:0]const u8 = "\x1b[0m";
+/// All enabled in build mode `Debug`.
+pub const signal_handlers: SignalHandlers = define(
+    "signal_handlers",
+    SignalHandlers,
+    .{
+        .SegmentationFault = logging_general.Fault,
+        .IllegalInstruction = logging_general.Fault,
+        .BusError = logging_general.Fault,
+        .FloatingPointError = logging_general.Fault,
+        .Trap = logging_default.Fault,
+    },
+);
+/// Enabled if `SegmentationFault` enabled. This is because the alternate stack
+/// is only likely to be useful in the event of stack overflow, which is only
+/// reported by SIGSEGV.
+pub const signal_stack: ?SignalAlternateStack = define(
+    "signal_stack",
+    ?SignalAlternateStack,
+    if (signal_handlers.SegmentationFault) .{} else null,
+);
+pub const traces: Traces = define("traces", Traces, .{});
+pub const tracing_default: bool = define("tracing_default", bool, builtin.mode == .Debug and !builtin.strip_debug_info);
+pub const tracing_override: ?bool = define("tracing_override", ?bool, null);
 pub const Error = error{
     SubCausedOverflow,
     AddCausedOverflow,
