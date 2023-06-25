@@ -1,4 +1,3 @@
-const lit = @import("./lit.zig");
 const sys = @import("./sys.zig");
 const meta = @import("./meta.zig");
 const mach = @import("./mach.zig");
