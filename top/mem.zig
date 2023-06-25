@@ -15,7 +15,6 @@ pub usingnamespace _reference;
 pub usingnamespace _container;
 pub usingnamespace _allocator;
 pub usingnamespace _list;
-
 pub const Map = struct {
     pub const Options = meta.EnumBitField(enum(u64) {
         anonymous = MAP.ANONYMOUS,
@@ -1978,16 +1977,16 @@ pub fn readIntNative(comptime T: type, bytes: *const [@divExact(@typeInfo(T).Int
 pub fn readIntForeign(comptime T: type, bytes: *const [@divExact(@typeInfo(T).Int.bits, 8)]u8) T {
     return @byteSwap(readIntNative(T, bytes));
 }
-pub const readIntLittle = switch (builtin.config.native_endian) {
+pub const readIntLittle = switch (builtin.native_endian) {
     .Little => readIntNative,
     .Big => readIntForeign,
 };
-pub const readIntBig = switch (builtin.config.native_endian) {
+pub const readIntBig = switch (builtin.native_endian) {
     .Little => readIntForeign,
     .Big => readIntNative,
 };
 pub fn readInt(comptime T: type, bytes: *const [@divExact(@typeInfo(T).Int.bits, 8)]u8, endian: builtin.Endian) T {
-    if (endian == builtin.config.native_endian) {
+    if (endian == builtin.native_endian) {
         return readIntNative(T, bytes);
     } else {
         return readIntForeign(T, bytes);
@@ -1999,16 +1998,16 @@ pub fn writeIntNative(comptime T: type, buf: *[(@typeInfo(T).Int.bits + 7) / 8]u
 pub fn writeIntForeign(comptime T: type, buf: *[@divExact(@typeInfo(T).Int.bits, 8)]u8, value: T) void {
     writeIntNative(T, buf, @byteSwap(value));
 }
-pub const writeIntBig = switch (builtin.config.native_endian) {
+pub const writeIntBig = switch (builtin.native_endian) {
     .Little => writeIntForeign,
     .Big => writeIntNative,
 };
-pub const writeIntLittle = switch (builtin.config.native_endian) {
+pub const writeIntLittle = switch (builtin.native_endian) {
     .Little => writeIntNative,
     .Big => writeIntForeign,
 };
 pub fn writeInt(comptime T: type, buffer: *[@divExact(@typeInfo(T).Int.bits, 8)]u8, value: T, endian: builtin.Endian) void {
-    if (endian == builtin.config.native_endian) {
+    if (endian == builtin.native_endian) {
         return writeIntNative(T, buffer, value);
     } else {
         return writeIntForeign(T, buffer, value);
@@ -2054,11 +2053,11 @@ pub fn writeIntSliceBig(comptime T: type, dest: []u8, value: T) void {
         bits >>= 8;
     }
 }
-pub const writeIntSliceNative = switch (builtin.config.native_endian) {
+pub const writeIntSliceNative = switch (builtin.native_endian) {
     .Little => writeIntSliceLittle,
     .Big => writeIntSliceBig,
 };
-pub const writeIntSliceForeign = switch (builtin.config.native_endian) {
+pub const writeIntSliceForeign = switch (builtin.native_endian) {
     .Little => writeIntSliceBig,
     .Big => writeIntSliceLittle,
 };
@@ -2069,13 +2068,13 @@ pub fn nativeTo(comptime T: type, x: T, desired_endianness: builtin.Endian) T {
     };
 }
 pub fn littleToNative(comptime T: type, x: T) T {
-    return switch (builtin.config.native_endian) {
+    return switch (builtin.native_endian) {
         .Little => x,
         .Big => @byteSwap(x),
     };
 }
 pub fn bigToNative(comptime T: type, x: T) T {
-    return switch (builtin.config.native_endian) {
+    return switch (builtin.native_endian) {
         .Little => @byteSwap(x),
         .Big => x,
     };
@@ -2087,13 +2086,13 @@ pub fn toNative(comptime T: type, x: T, endianness_of_x: builtin.Endian) T {
     };
 }
 pub fn nativeToLittle(comptime T: type, x: T) T {
-    return switch (builtin.config.native_endian) {
+    return switch (builtin.native_endian) {
         .Little => x,
         .Big => @byteSwap(x),
     };
 }
 pub fn nativeToBig(comptime T: type, x: T) T {
-    return switch (builtin.config.native_endian) {
+    return switch (builtin.native_endian) {
         .Little => @byteSwap(x),
         .Big => x,
     };
@@ -2106,11 +2105,11 @@ pub fn readIntSliceNative(comptime T: type, bytes: []const u8) T {
 pub fn readIntSliceForeign(comptime T: type, bytes: []const u8) T {
     return @byteSwap(readIntSliceNative(T, bytes));
 }
-pub const readIntSliceLittle = switch (builtin.config.native_endian) {
+pub const readIntSliceLittle = switch (builtin.native_endian) {
     .Little => readIntSliceNative,
     .Big => readIntSliceForeign,
 };
-pub const readIntSliceBig = switch (builtin.config.native_endian) {
+pub const readIntSliceBig = switch (builtin.native_endian) {
     .Little => readIntSliceForeign,
     .Big => readIntSliceNative,
 };
