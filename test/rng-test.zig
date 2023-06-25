@@ -10,7 +10,7 @@ fn testXoroshiroSequence() !void {
     var r: rng.Xoroshiro128 = rng.Xoroshiro128.init(0);
     r.s[0] = 0xaeecf86f7878dd75;
     r.s[1] = 0x01cd153642e72622;
-    const seq1 = [_]u64{
+    const seq1: [6]u64 = .{
         0xb0ba0da5bb600397, 0x18a08afde614dccc,
         0xa2635b956a31b929, 0xabe633c971efa045,
         0x9ac19f9706ca3cac, 0xf62b426578c1e3fb,
@@ -19,7 +19,7 @@ fn testXoroshiroSequence() !void {
         try builtin.expect(s == r.next());
     }
     r.jump();
-    const seq2: [6]u64 = [_]u64{
+    const seq2: [6]u64 = .{
         0x95344a13556d3e22, 0xb4fb32dafa4d00df,
         0xb2011d9ccdcfe2dd, 0x05679a9b2119b908,
         0xa860a1da7c9cd8a0, 0x658a96efe3f86550,
@@ -32,7 +32,7 @@ fn testXoroshiroFill() !void {
     var r: rng.Xoroshiro128 = rng.Xoroshiro128.init(0);
     r.s[0] = 0xaeecf86f7878dd75;
     r.s[1] = 0x01cd153642e72622;
-    const seq: [6]u64 = [_]u64{
+    const seq: [6]u64 = .{
         0xb0ba0da5bb600397, 0x18a08afde614dccc,
         0xa2635b956a31b929, 0xabe633c971efa045,
         0x9ac19f9706ca3cac, 0xf62b426578c1e3fb,
@@ -46,6 +46,6 @@ fn testXoroshiroFill() !void {
     }
 }
 pub fn main() !void {
-    // try testXoroshiroSequence();
-    // try testXoroshiroFill();
+    try testXoroshiroSequence();
+    try testXoroshiroFill();
 }
