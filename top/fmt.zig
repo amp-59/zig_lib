@@ -247,7 +247,7 @@ pub const SourceLocationFormat = struct {
         while (idx != format.value.fn_name.len) : (idx +%= 1) {
             if (format.value.fn_name[idx] == '.') start = idx;
         }
-        return format.value.fn_name[start +% @boolToInt(start != 0) .. :0];
+        return format.value.fn_name[start +% @intFromBool(start != 0) .. :0];
     }
     pub fn formatLength(format: SourceLocationFormat) u64 {
         const fn_name: []const u8 = format.functionName();

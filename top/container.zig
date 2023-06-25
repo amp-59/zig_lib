@@ -259,14 +259,14 @@ const @"1" = opaque {
             if (dst_type_info == .Int and
                 src_type_info == .Float)
             {
-                return memory.writeOne(@floatToInt(dst_type, any));
+                return memory.writeOne(@intFromFloat(dst_type, any));
             }
         }
         if (comptime write_spec.integral.int) {
             if (dst_type_info == .Float and
                 src_type_info == .Int)
             {
-                return memory.writeOne(@intToFloat(dst_type, any));
+                return memory.writeOne(@floatFromInt(dst_type, any));
             }
         }
         if (comptime dst_type == src_type or
@@ -404,14 +404,14 @@ const @"1" = opaque {
             if (dst_type_info == .Int and
                 src_type_info == .Float)
             {
-                return memory.writeOne(child, @floatToInt(dst_type, any));
+                return memory.writeOne(child, @intFromFloat(dst_type, any));
             }
         }
         if (comptime write_spec.integral.int) {
             if (dst_type_info == .Float and
                 src_type_info == .Int)
             {
-                return memory.writeOne(child, @intToFloat(dst_type, any));
+                return memory.writeOne(child, @floatFromInt(dst_type, any));
             }
         }
         if (comptime dst_type == src_type or

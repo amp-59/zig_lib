@@ -8,7 +8,7 @@ const builtin = top.builtin;
 
 pub usingnamespace proc.start;
 
-pub const logging_override: builtin.Logging.Override = spec.logging.override.verbose;
+//pub const logging_override: builtin.Logging.Override = spec.logging.override.verbose;
 pub const runtime_assertions: bool = false;
 pub const signal_handlers: builtin.SignalHandlers = .{
     .SegmentationFault = true,
@@ -22,7 +22,7 @@ extern fn otherMain(x: u64) void;
 
 fn nested0(z: u64) !void {
     var x: u64 = 0;
-    const y: u64 = z + @ptrToInt(&x);
+    const y: u64 = z + @intFromPtr(&x);
     return otherMain(y);
 }
 pub fn main() !void {

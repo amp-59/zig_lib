@@ -12,24 +12,24 @@ comptime {
 pub const logging_override: builtin.Logging.Override = spec.logging.override.verbose;
 fn nested0(z: u64) !void {
     var x: u64 = 0;
-    const y: u64 = z + @ptrToInt(&x);
+    const y: u64 = z + @intFromPtr(&x);
     return nested5(y);
 }
 fn nested5(z: u64) !void {
     var x: u64 = 0;
-    const y: u64 = z +% @ptrToInt(&x);
+    const y: u64 = z +% @intFromPtr(&x);
     return nested6(y);
 }
 fn nested6(z: u64) !void {
     var x: u64 = 0;
-    const y: u64 = z + @ptrToInt(&x);
+    const y: u64 = z + @intFromPtr(&x);
     if (y != 0) {
         nestedOOB(y);
     }
 }
 fn nestedOOB(x: u64) void {
     var buf: [512]u8 = undefined;
-    buf[x] = 252;
+    @ptrCast(*align(1) u16, &buf[x]).* = 252;
 }
 fn nestedNOMEM(x: u64) void {
     var y: u64 = 0;

@@ -684,7 +684,7 @@ pub fn GenericLinkedListView(comptime list_spec: ListViewSpec) type {
                     return builtin.intToPtr(*child, s_node_addr +% Node.Data.begin);
                 }
                 fn node(data: *child) u64 {
-                    return @ptrToInt(data) -% mach.cmov64z(!Node.link_after, link_size);
+                    return @intFromPtr(data) -% mach.cmov64z(!Node.link_after, link_size);
                 }
             };
             pub const Link = opaque {
@@ -1154,22 +1154,22 @@ pub const Node4 = opaque {
     pub const kind_mask: u64 = 0b11111111_11111111_000000000000000000000000000000000000000000000000;
     pub const link_mask: u64 = 0b00000000_00000000_111111111111111111111111111111111111111111111111;
     pub fn refer(node_addr: u64) *u64 {
-        return @intToPtr(*u64, node_addr);
+        return @ptrFromInt(*u64, node_addr);
     }
     pub fn write(node_addr: u64, word: u64) void {
-        @intToPtr(*u64, node_addr).* = word;
+        @ptrFromInt(*u64, node_addr).* = word;
     }
     pub fn toggle(node_addr: u64) void {
-        @intToPtr(*u64, node_addr).* ^= Node4.H;
+        @ptrFromInt(*u64, node_addr).* ^= Node4.H;
     }
     pub fn clear(node_addr: u64) void {
-        @intToPtr(*u64, node_addr).* = 0;
+        @ptrFromInt(*u64, node_addr).* = 0;
     }
     pub fn kind(node_addr: u64) u64 {
-        return @intToPtr(*u64, node_addr).* & Node4.kind_mask;
+        return @ptrFromInt(*u64, node_addr).* & Node4.kind_mask;
     }
     pub fn link(node_addr: u64) u64 {
-        return @intToPtr(*u64, node_addr).* & Node4.link_mask;
+        return @ptrFromInt(*u64, node_addr).* & Node4.link_mask;
     }
     pub fn read(node_addr: u64) u64 {
         return refer(node_addr).*;

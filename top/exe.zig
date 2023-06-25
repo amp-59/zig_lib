@@ -495,8 +495,8 @@ pub const Header = struct {
             else => return error.InvalidElfClass,
         };
         const machine = if (need_bswap) blk: {
-            const value = @enumToInt(hdr32.e_machine);
-            break :blk @intToEnum(EM, @byteSwap(value));
+            const value = @intFromEnum(hdr32.e_machine);
+            break :blk @enumFromInt(EM, @byteSwap(value));
         } else hdr32.e_machine;
         return @as(Header, .{
             .endian = endian,
@@ -1552,7 +1552,7 @@ const debug = opaque {
     const about_elf_1_s: []const u8 = "elf:           ";
     const about_elf_0_s: []const u8 = "elf-error:     offset=";
     fn badEndianError(hdr32: *Elf32_Ehdr) void {
-        const offset: u64 = @ptrToInt(&hdr32.e_ident[EI.DATA]) - @ptrToInt(hdr32);
+        const offset: u64 = @intFromPtr(&hdr32.e_ident[EI.DATA]) - @intFromPtr(hdr32);
         var array: PrintArray = .{};
         array.writeMany(about_elf_1_s);
         array.writeFormat(fmt.ux64(offset));
@@ -1561,7 +1561,7 @@ const debug = opaque {
         array.writeMany("\n");
     }
     fn badVersionError(hdr32: *Elf32_Ehdr) void {
-        const offset: u64 = @ptrToInt(&hdr32.e_ident[EI.VERSION]) - @ptrToInt(hdr32);
+        const offset: u64 = @intFromPtr(&hdr32.e_ident[EI.VERSION]) - @intFromPtr(hdr32);
         var array: PrintArray = .{};
         array.writeMany(about_elf_1_s);
         array.writeFormat(fmt.ux64(offset));
