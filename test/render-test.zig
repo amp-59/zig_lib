@@ -85,30 +85,30 @@ const MinimalRenderArray = struct {
         array.finish += count;
     }
     pub fn referOneUndefined(array: MinimalRenderArray) *u8 {
-        return @intToPtr(*u8, array.finish);
+        return @ptrFromInt(*u8, array.finish);
     }
     pub fn writeCount(array: *MinimalRenderArray, comptime count: usize, values: [count]u8) void {
         for (values, 0..) |value, index| {
-            @intToPtr(*u8, array.finish + index).* = value;
+            @ptrFromInt(*u8, array.finish + index).* = value;
         }
         array.finish += count;
     }
     pub fn writeMany(array: *MinimalRenderArray, values: []const u8) void {
         for (values, 0..) |value, index| {
-            @intToPtr(*u8, array.finish + index).* = value;
+            @ptrFromInt(*u8, array.finish + index).* = value;
         }
         array.finish += values.len;
     }
     pub fn writeOne(array: *MinimalRenderArray, value: u8) void {
-        @intToPtr(*u8, array.finish).* = value;
+        @ptrFromInt(*u8, array.finish).* = value;
         array.finish += 1;
     }
     pub fn overwriteCountBack(array: MinimalRenderArray, comptime count: usize, values: [count]u8) void {
         const next: u64 = array.finish - count;
-        for (values, 0..) |value, index| @intToPtr(*u8, next + index).* = value;
+        for (values, 0..) |value, index| @ptrFromInt(*u8, next + index).* = value;
     }
     pub fn readAll(array: MinimalRenderArray) []const u8 {
-        return @intToPtr([*]const u8, array.start)[0..array.len()];
+        return @ptrFromInt([*]const u8, array.start)[0..array.len()];
     }
     pub fn undefineAll(array: *MinimalRenderArray) void {
         array.finish = array.start;
@@ -118,8 +118,8 @@ const MinimalRenderArray = struct {
     }
     fn init(any: anytype) MinimalRenderArray {
         return .{
-            .start = @ptrToInt(any),
-            .finish = @ptrToInt(any),
+            .start = @intFromPtr(any),
+            .finish = @intFromPtr(any),
         };
     }
 };
@@ -159,14 +159,14 @@ fn testSpecificCases() !void {
         } else if (use_dyn) {
             break :blk DynamicArray{
                 .impl = DynamicArray.Implementation.construct(.{
-                    .lb_addr = @ptrToInt(&dst),
-                    .up_addr = @ptrToInt(&dst) + dst.len,
+                    .lb_addr = @intFromPtr(&dst),
+                    .up_addr = @intFromPtr(&dst) + dst.len,
                 }),
             };
         } else {
             break :blk StaticArray{
                 .impl = StaticArray.Implementation.construct(.{
-                    .lb_addr = @ptrToInt(&dst),
+                    .lb_addr = @intFromPtr(&dst),
                 }),
             };
         }

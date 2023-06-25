@@ -76,7 +76,7 @@ fn testEquivalentIntToStringFormat() !void {
     const ubin = fmt.GenericPolynomialFormat(.{ .bits = 1, .radix = 2, .signedness = .unsigned, .width = .max, .prefix = "0b" });
     const sbin = fmt.GenericPolynomialFormat(.{ .bits = 1, .radix = 2, .signedness = .signed, .width = .max, .prefix = "0b" });
     var uint: u64 = 0;
-    const seed: u64 = @ptrToInt(&uint);
+    const seed: u64 = @intFromPtr(&uint);
     uint = seed;
     try testing.expectEqualMany(u8, "0b0", (sbin{ .value = 0 }).formatConvert().readAll());
     try testing.expectEqualMany(u8, "-0b1", (sbin{ .value = -1 }).formatConvert().readAll());
@@ -183,7 +183,7 @@ fn testEquivalentLEBFormatAndParse() !void {
     const I64 = fmt.GenericLEB128Format(i64);
     var array: mem.StaticString(4096) = undefined;
     var uint: u64 = 0;
-    const seed: u64 = @ptrToInt(&uint);
+    const seed: u64 = @intFromPtr(&uint);
     uint = seed;
     try testing.expectEqualMany(u8, builtin.fmt.ub64(uint).readAll(), fmt.ub64(uint).formatConvert().readAll());
     while (uint < seed +% 0x1000) : (uint +%= 1) {
@@ -338,7 +338,7 @@ fn testHexToBytes() !void {
 }
 fn testBinarySize() void {
     var array: PrintArray = .{};
-    array.writeFormat(fmt.ux64(@ptrToInt(&array)));
+    array.writeFormat(fmt.ux64(@intFromPtr(&array)));
     builtin.debug.write(array.readAll());
 }
 pub fn main() !void {
