@@ -487,7 +487,7 @@ pub const Bytes = struct {
         }
     };
     pub fn bytes(amt: Bytes) u64 {
-        return amt.count * @enumToInt(amt.unit);
+        return amt.count * @intFromEnum(amt.unit);
     }
 };
 pub noinline fn monitor(comptime T: type, ptr: *T) void {
@@ -896,7 +896,7 @@ pub fn advise(comptime spec: AdviseSpec, addr: u64, len: u64) sys.ErrorUnion(spe
     }
 }
 pub fn fd(comptime spec: FdSpec, name: [:0]const u8) sys.ErrorUnion(spec.errors, spec.return_type) {
-    const name_buf_addr: u64 = @ptrToInt(name.ptr);
+    const name_buf_addr: u64 = @intFromPtr(name.ptr);
     const flags: mem.Fd.Options = comptime spec.flags();
     const logging: builtin.Logging.AcquireError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.memfd_create, spec.errors, spec.return_type, .{ name_buf_addr, flags.val }))) |mem_fd| {
@@ -1087,9 +1087,9 @@ pub fn literalView(comptime s: [:0]const u8) mem.StructuredAutomaticView(u8, &@a
 }
 pub fn view(s: []const u8) mem.StructuredStreamView(u8, null, 1, struct {}, .{}) {
     return .{ .impl = .{
-        .lb_word = @ptrToInt(s.ptr),
-        .up_word = @ptrToInt(s.ptr + s.len),
-        .ss_word = @ptrToInt(s.ptr),
+        .lb_word = @intFromPtr(s.ptr),
+        .up_word = @intFromPtr(s.ptr + s.len),
+        .ss_word = @intFromPtr(s.ptr),
     } };
 }
 pub fn StaticStream(comptime child: type, comptime count: u64) type {
@@ -1381,25 +1381,25 @@ pub const AbstractSpec = union(enum) {
     }
 };
 fn lhs(comptime T: type, comptime U: type, lu_values: []const T, ax_values: []const U) []const T {
-    const lb_addr: u64 = @ptrToInt(lu_values.ptr);
-    const ab_addr: u64 = @ptrToInt(ax_values.ptr);
+    const lb_addr: u64 = @intFromPtr(lu_values.ptr);
+    const ab_addr: u64 = @intFromPtr(ax_values.ptr);
     const lhs_len: u64 = @divExact(ab_addr -% lb_addr, @sizeOf(T));
     return lu_values[0..lhs_len];
 }
 fn rhs(comptime T: type, comptime U: type, lu_values: []const T, ax_values: []const U) []const T {
-    const up_addr: u64 = mach.mulAdd64(@ptrToInt(lu_values.ptr), @sizeOf(T), lu_values.len);
-    const xb_addr: u64 = mach.mulAdd64(@ptrToInt(ax_values.ptr), @sizeOf(U), ax_values.len);
+    const up_addr: u64 = mach.mulAdd64(@intFromPtr(lu_values.ptr), @sizeOf(T), lu_values.len);
+    const xb_addr: u64 = mach.mulAdd64(@intFromPtr(ax_values.ptr), @sizeOf(U), ax_values.len);
     const rhs_len: u64 = @divExact(up_addr -% xb_addr, @sizeOf(T));
     return lu_values[0..rhs_len];
 }
 fn mid(comptime T: type, comptime U: type, values: []const T) []const U {
-    const lb_addr: u64 = @ptrToInt(values.ptr);
+    const lb_addr: u64 = @intFromPtr(values.ptr);
     const up_addr: u64 = mach.mulAdd64(lb_addr, @sizeOf(T), values.len);
     const ab_addr: u64 = mach.alignA64(lb_addr, @alignOf(U));
     const xb_addr: u64 = mach.alignB64(up_addr, @alignOf(U));
     const aligned_bytes: u64 = mach.sub64(xb_addr, ab_addr);
     const mid_len: u64 = mach.div64(aligned_bytes, @sizeOf(U));
-    return @intToPtr([*]const U, ab_addr)[0..mid_len];
+    return @ptrFromInt([*]const U, ab_addr)[0..mid_len];
 }
 // These should be in builtin.zig, but cannot adhere to the test-error-fault
 // standard yet--that is, their assert* and expect* counterparts cannot be added
@@ -1694,7 +1694,7 @@ pub fn orderedMatches(comptime T: type, l_values: []const T, r_values: []const T
     while (l_idx +% mats < s_values.len) : (l_idx +%= 1) {
         var r_idx: u64 = 0;
         while (r_idx != t_values.len) : (r_idx +%= 1) {
-            mats +%= @boolToInt(s_values[l_idx +% mats] == t_values[r_idx]);
+            mats +%= @intFromBool(s_values[l_idx +% mats] == t_values[r_idx]);
         }
     }
     return mats;
@@ -1732,35 +1732,38 @@ pub const SimpleAllocator = struct {
     pub inline fn create(allocator: *Allocator, comptime T: type) *T {
         @setRuntimeSafety(false);
         const ret_addr: u64 = allocator.allocateInternal(@sizeOf(T), @max(min_align_of, @alignOf(T)));
-        return @intToPtr(*T, ret_addr);
+        return @ptrFromInt(*T, ret_addr);
     }
     pub inline fn allocate(allocator: *Allocator, comptime T: type, count: u64) []T {
         @setRuntimeSafety(false);
         const ret_addr: u64 = allocator.allocateInternal(@sizeOf(T) *% count, @max(min_align_of, @alignOf(T)));
-        return @intToPtr([*]T, ret_addr)[0..count];
+        return @ptrFromInt([*]T, ret_addr)[0..count];
     }
     pub inline fn reallocate(allocator: *Allocator, comptime T: type, buf: []T, count: u64) []T {
         @setRuntimeSafety(false);
-        const ret_addr: u64 = allocator.reallocateInternal(@ptrToInt(buf.ptr), buf.len *% @sizeOf(T), count *% @sizeOf(T), @max(min_align_of, @alignOf(T)));
-        return @intToPtr([*]T, ret_addr)[0..count];
+        const ret_addr: u64 = allocator.reallocateInternal(@intFromPtr(buf.ptr), buf.len *% @sizeOf(T), count *% @sizeOf(T), @max(min_align_of, @alignOf(T)));
+        return @ptrFromInt([*]T, ret_addr)[0..count];
     }
     pub inline fn createAligned(allocator: *Allocator, comptime T: type, comptime align_of: u64) *align(align_of) T {
         @setRuntimeSafety(false);
         const ret_addr: u64 = allocator.allocateInternal(@sizeOf(T), align_of);
-        return @intToPtr(*align(align_of) T, ret_addr);
+        return @ptrFromInt(*align(align_of) T, ret_addr);
     }
     pub inline fn allocateAligned(allocator: *Allocator, comptime T: type, count: u64, comptime align_of: u64) []align(align_of) T {
         @setRuntimeSafety(false);
         const ret_addr: u64 = allocator.allocateInternal(@sizeOf(T) *% count, align_of);
-        return @intToPtr([*]align(align_of) T, ret_addr)[0..count];
+        return @ptrFromInt([*]align(align_of) T, ret_addr)[0..count];
     }
     pub inline fn reallocateAligned(allocator: *Allocator, comptime T: type, buf: []T, count: u64, comptime align_of: u64) []align(align_of) T {
         @setRuntimeSafety(false);
-        const ret_addr: u64 = allocator.reallocateInternal(@ptrToInt(buf.ptr), buf.len *% @sizeOf(T), count *% @sizeOf(T), align_of);
-        return @intToPtr([*]align(align_of) T, ret_addr)[0..count];
+        const ret_addr: u64 = allocator.reallocateInternal(@intFromPtr(buf.ptr), buf.len *% @sizeOf(T), count *% @sizeOf(T), align_of);
+        return @ptrFromInt([*]align(align_of) T, ret_addr)[0..count];
+    }
+    pub inline fn destroy(allocator: *Allocator, comptime T: type, ptr: *T) void {
+        allocator.deallocateInternal(@intFromPtr(ptr), @sizeOf(T));
     }
     pub inline fn deallocate(allocator: *Allocator, comptime T: type, buf: []T) void {
-        allocator.deallocateInternal(@ptrToInt(buf.ptr), buf.len *% @sizeOf(T));
+        allocator.deallocateInternal(@intFromPtr(buf.ptr), buf.len *% @sizeOf(T));
     }
     pub inline fn save(allocator: *const Allocator) Save {
         return .{allocator.next};
@@ -1789,9 +1792,9 @@ pub const SimpleAllocator = struct {
     }
     pub fn init_buffer(buf: anytype) Allocator {
         return .{
-            .start = @ptrToInt(buf.ptr),
-            .next = @ptrToInt(buf.ptr),
-            .finish = @ptrToInt(buf.ptr + buf.len),
+            .start = @intFromPtr(buf.ptr),
+            .next = @intFromPtr(buf.ptr),
+            .finish = @intFromPtr(buf.ptr + buf.len),
         };
     }
     pub inline fn alignAbove(allocator: *Allocator, alignment: u64) u64 {

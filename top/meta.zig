@@ -402,7 +402,7 @@ pub inline fn bitCast(comptime T: type, any: anytype) T {
                     return @intCast(T, any);
                 },
                 .Enum => {
-                    return @intToEnum(T, any);
+                    return @enumFromInt(T, any);
                 },
                 else => {},
             }
@@ -410,7 +410,7 @@ pub inline fn bitCast(comptime T: type, any: anytype) T {
         .Bool => {
             switch (t_type_info) {
                 .Enum => {
-                    return @intToEnum(T, @boolToInt(any));
+                    return @enumFromInt(T, @intFromBool(any));
                 },
             }
         },
@@ -420,7 +420,7 @@ pub inline fn bitCast(comptime T: type, any: anytype) T {
         .Pointer => {
             switch (t_type_info) {
                 .Int => {
-                    return @intCast(T, @ptrToInt(any));
+                    return @intCast(T, @intFromPtr(any));
                 },
                 else => {},
             }
@@ -428,7 +428,7 @@ pub inline fn bitCast(comptime T: type, any: anytype) T {
         .Enum => {
             switch (t_type_info) {
                 .Struct => {
-                    return @bitCast(T, @enumToInt(any));
+                    return @bitCast(T, @intFromEnum(any));
                 },
                 else => {},
             }
@@ -671,7 +671,7 @@ pub fn manyToSlice(any: anytype) ManyToSlice(@TypeOf(any)) {
     const len: u64 = switch (@typeInfo(type_info.Pointer.child)) {
         .Pointer => blk: {
             var len: u64 = 0;
-            while (@ptrToInt(any[len]) != 0) {
+            while (@intFromPtr(any[len]) != 0) {
                 len += 1;
             }
             break :blk len;
@@ -708,13 +708,13 @@ pub fn EnumBitField(comptime E: type) type {
         pub const Tag = E;
         pub const Int = @typeInfo(Tag).Enum.tag_type;
         pub inline fn check(bit_field: *const BitField, tag: Tag) bool {
-            return bit_field.val & @enumToInt(tag) == @enumToInt(tag);
+            return bit_field.val & @intFromEnum(tag) == @intFromEnum(tag);
         }
         pub inline fn set(bit_field: *BitField, tag: Tag) void {
-            bit_field.val |= @enumToInt(tag);
+            bit_field.val |= @intFromEnum(tag);
         }
         pub inline fn unset(bit_field: *BitField, tag: Tag) void {
-            bit_field.val &= ~@enumToInt(tag);
+            bit_field.val &= ~@intFromEnum(tag);
         }
     });
 }
@@ -910,7 +910,7 @@ pub fn tagList(comptime E: type) []const E {
     const enum_info: builtin.Type.Enum = @typeInfo(E).Enum;
     var ret: [enum_info.fields.len]E = undefined;
     for (enum_info.fields, 0..) |field, index| {
-        ret[index] = @intToEnum(E, field.value);
+        ret[index] = @enumFromInt(E, field.value);
     }
     return &ret;
 }
@@ -966,7 +966,7 @@ pub fn GenericStructOfBool(comptime Struct: type) type {
         pub fn detail(tags: []const Tag) Struct {
             var int: tag_type = 0;
             for (tags) |tag| {
-                int |= @enumToInt(tag);
+                int |= @intFromEnum(tag);
             }
             return @bitCast(Struct, int);
         }
@@ -974,12 +974,12 @@ pub fn GenericStructOfBool(comptime Struct: type) type {
         pub fn countTrue(bit_field: Struct) u64 {
             var ret: u64 = 0;
             inline for (@typeInfo(Struct).Struct.fields) |field| {
-                ret +%= @boolToInt(@field(bit_field, field.name));
+                ret +%= @intFromBool(@field(bit_field, field.name));
             }
             return ret;
         }
         pub fn has(bit_field: Struct, tag: Tag) bool {
-            return @bitCast(tag_type, bit_field) & @enumToInt(tag) != 0;
+            return @bitCast(tag_type, bit_field) & @intFromEnum(tag) != 0;
         }
     };
 }
@@ -1295,7 +1295,7 @@ pub inline fn initializers(comptime T: type, comptime any: anytype) [@typeInfo(@
         const field_type: type = Field(T, field.name);
         inits[idx] = .{
             .dest_off = @offsetOf(T, field.name),
-            .src_addr = @ptrToInt(&@as(field_type, @field(any, field.name))),
+            .src_addr = @intFromPtr(&@as(field_type, @field(any, field.name))),
             .src_len = @sizeOf(field_type),
         };
     }
@@ -1305,8 +1305,8 @@ pub fn initialize(comptime T: type, inits: []const Initializer) T {
     var ret: T = undefined;
     for (inits) |init| {
         mach.memcpy(
-            @intToPtr([*]u8, @ptrToInt(&ret) +% init.dest_off),
-            @intToPtr([*]const u8, init.src_addr),
+            @ptrFromInt([*]u8, @intFromPtr(&ret) +% init.dest_off),
+            @ptrFromInt([*]const u8, init.src_addr),
             init.src_len,
         );
     }
@@ -1320,7 +1320,7 @@ pub fn UniformData(comptime bits: u16) type {
             return @Type(.{ .Int = .{ .bits = real_bits, .signedness = .unsigned } });
         },
         else => {
-            return [(bits / word_size) + @boolToInt(@rem(bits, word_size) != 0)]usize;
+            return [(bits / word_size) + @intFromBool(@rem(bits, word_size) != 0)]usize;
         },
     }
 }

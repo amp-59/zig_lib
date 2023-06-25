@@ -138,7 +138,7 @@ pub const More = packed struct {
         return @ptrCast(*const Less, detail);
     }
     pub fn kind(detail: *const More) attr.Kinds.Tag {
-        return @intToEnum(attr.Kinds.Tag, @bitCast(@typeInfo(attr.Kinds).Struct.backing_integer.?, detail.kinds));
+        return @enumFromInt(attr.Kinds.Tag, @bitCast(@typeInfo(attr.Kinds).Struct.backing_integer.?, detail.kinds));
     }
 };
 
