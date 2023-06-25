@@ -126,7 +126,7 @@ fn testQuickThread() !void {
         }
     };
     var stack_buf: [16384]u8 = undefined;
-    var stack_addr: u64 = @ptrToInt(&stack_buf);
+    var stack_addr: u64 = @intFromPtr(&stack_buf);
     if (thread_space.atomicExchange(0, .idle, .working)) {
         try proc.callClone(.{ .return_type = void }, stack_addr, stack_buf.len, &stack_addr, S.getIt, .{ &thread_space, 0, stack_addr });
     }

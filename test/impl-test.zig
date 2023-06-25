@@ -313,8 +313,8 @@ const RWDValues = extern struct {
     }
     fn assertEqualMemory(s_values: Values, t_values: Values) void {
         const capacity: u64 = @min(s_values.offsets.capacity, t_values.offsets.capacity);
-        const s_memory: []u8 = @intToPtr([*]u8, s_values.addresses.start)[0..capacity];
-        const t_memory: []u8 = @intToPtr([*]u8, t_values.addresses.start)[0..capacity];
+        const s_memory: []u8 = @ptrFromInt([*]u8, s_values.addresses.start)[0..capacity];
+        const t_memory: []u8 = @ptrFromInt([*]u8, t_values.addresses.start)[0..capacity];
         var byte_offset: u64 = 0;
         while (byte_offset != capacity) : (byte_offset += 1) {
             if (s_memory[byte_offset] != t_memory[byte_offset]) {
@@ -410,8 +410,8 @@ const RWPPDValues = extern struct {
         const min_length: u64 = @min(s_values.offsets.length, t_values.offsets.length);
         const max_length: u64 = @min(s_values.offsets.length, t_values.offsets.length);
         builtin.assertEqual(u64, min_length, max_length);
-        const s_memory: []u8 = @intToPtr([*]u8, s_values.addresses.start)[0..max_length];
-        const t_memory: []u8 = @intToPtr([*]u8, t_values.addresses.start)[0..max_length];
+        const s_memory: []u8 = @ptrFromInt([*]u8, s_values.addresses.start)[0..max_length];
+        const t_memory: []u8 = @ptrFromInt([*]u8, t_values.addresses.start)[0..max_length];
         var byte_offset: u64 = 0;
         while (byte_offset != max_length) : (byte_offset += 1) {
             builtin.assertEqual(u8, s_memory[byte_offset], t_memory[byte_offset]);
@@ -484,8 +484,8 @@ pub const RWPPXValues = extern struct {
     const Offsets = RWPPOffsets;
     fn assertEqualMemory(s_values: Values, t_values: Values) void {
         builtin.assertEqual(u64, s_values.capacity, t_values.capacity);
-        const s_memory: []u8 = @intToPtr([*]u8, s_values.start)[0..s_values.capacity];
-        const t_memory: []u8 = @intToPtr([*]u8, t_values.start)[0..t_values.capacity];
+        const s_memory: []u8 = @ptrFromInt([*]u8, s_values.start)[0..s_values.capacity];
+        const t_memory: []u8 = @ptrFromInt([*]u8, t_values.start)[0..t_values.capacity];
         for (s_memory, 0..) |value, index| {
             builtin.assertEqual(u8, value, t_memory[index]);
         }

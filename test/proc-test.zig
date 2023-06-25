@@ -120,7 +120,7 @@ fn testUpdateSignalAction() !void {
 }
 fn fault() void {
     var addr: u64 = 0x4000000;
-    @intToPtr(*u8, addr).* = '0';
+    @ptrFromInt(*u8, addr).* = '0';
 }
 fn recursion(buf: *[4096]u8) void {
     var next: [4096]u8 = undefined;
