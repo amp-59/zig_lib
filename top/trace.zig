@@ -88,76 +88,67 @@ pub const StackIterator = struct {
         if (frame_addr == 0) {
             return null;
         }
-        const new_frame_addr: u64 = @intToPtr(*const usize, frame_addr).* +% frame_addr_bias;
+        const new_frame_addr: u64 = @ptrFromInt(*usize, frame_addr).* +% frame_addr_bias;
         if (new_frame_addr < itr.frame_addr) {
             return null;
         }
-        const new_instr_addr: u64 = @intToPtr(*const usize, frame_addr +% instr_addr_off).*;
+        const new_instr_addr: u64 = @ptrFromInt(*usize, frame_addr +% instr_addr_off).*;
         itr.frame_addr = new_frame_addr;
         return new_instr_addr;
     }
 };
-const about = .{
-    .next_s = ", ",
-    .bytes_s = " bytes, ",
-    .green_s = "\x1b[92;1m",
-    .red_s = "\x1b[91;1m",
-    .new_s = "\x1b[0m\n",
-    .reset_s = "\x1b[0m",
-    .gold_s = "\x1b[93m",
-    .bold_s = "\x1b[1m",
-    .faint_s = "\x1b[2m",
-    .grey_s = "\x1b[0;38;5;250;1m",
-    .trace_s = "\x1b[38;5;247m",
-    .hi_green_s = "\x1b[38;5;46m",
-    .hi_red_s = "\x1b[38;5;196m",
-};
-fn writeSourceLocation(buf: [*]u8, pathname: [:0]const u8, line: u64, column: u64) u64 {
-    const line_s: []const u8 = builtin.fmt.ud64(line).readAll();
-    const column_s: []const u8 = builtin.fmt.ud64(column).readAll();
-    var len: u64 = 0;
-    @ptrCast(*@TypeOf(about.bold_s.*), buf + len).* = about.bold_s.*;
-    len +%= about.bold_s.len;
-    if (true) {
-        var cwd_buf: [4096]u8 = undefined;
-        const cwd: [:0]const u8 = file.getCwd(.{ .errors = .{} }, &cwd_buf);
-        if (mach.testEqualMany8(cwd, pathname[0..cwd.len])) {
-            const pos: u64 = cwd.len +% 1;
-            mach.memcpy(buf + len, pathname[pos..].ptr, pathname[pos..].len);
-            len +%= pathname[pos..].len;
-        } else {
-            mach.memcpy(buf + len, pathname.ptr, pathname.len);
-            len +%= pathname.len;
-        }
-    } else {
-        mach.memcpy(buf + len, pathname.ptr, pathname.len);
-        len +%= pathname.len;
+fn writeEndOfMessage(buf: [*]u8) u64 {
+    @ptrCast(*[4]u8, buf).* = "\x1b[0m".*;
+    if ((buf - 1)[0] != '\n') {
+        buf[4] = '\n';
+        return 5;
     }
-    buf[len] = ':';
-    len +%= 1;
-    mach.memcpy(buf + len, line_s.ptr, line_s.len);
-    len +%= line_s.len;
-    buf[len] = ':';
-    len +%= 1;
-    mach.memcpy(buf + len, column_s.ptr, column_s.len);
-    len +%= column_s.len;
-    @ptrCast(*[4]u8, buf + len).* = about.reset_s.*;
-    return len +% 4;
+    return 4;
 }
-fn readLineBytes(buf: []u8, line: u64) []const u8 {
-    var lns: u64 = 0;
-    var pos: u64 = 0;
-    var idx: u64 = 0;
-    while (idx != buf.len) : (idx +%= 1) {
-        if (buf[idx] == '\n') {
-            lns +%= 1;
-            if (lns == line) {
-                break;
-            }
-            pos = idx +% 1;
-        }
+fn writeLastLine(buf: [*]u8, blank_lines: u8) u64 {
+    var len: u64 = 0;
+    if (builtin.traces.sidebar) {
+        len +%= writeSideBar(8, buf, .none);
     }
-    return buf[pos..idx];
+    mach.memset(buf + len, '\n', blank_lines);
+    return len + blank_lines;
+}
+fn writeSideBar(width: u64, buf: [*]u8, number: Number) u64 {
+    var tmp: [8]u8 = undefined;
+    var len: u64 = 0;
+    var pos: u64 = 0;
+    switch (number) {
+        .none => {
+            @ptrCast(*[2]u8, &tmp).* = ": ".*;
+            pos +%= 2;
+        },
+        .pc_addr => |pc_addr| if (builtin.traces.pc_addr) {
+            if (builtin.traces.tokens.pc_addr) |style| {
+                mach.memcpy(buf, style.ptr, style.len);
+                len +%= style.len;
+            }
+            pos +%= fmt.ux64(pc_addr).formatWriteBuf(&tmp);
+        },
+        .line_no => |line_no| if (builtin.traces.line_no) {
+            if (builtin.traces.tokens.line_no) |style| {
+                mach.memcpy(buf, style.ptr, style.len);
+                len +%= style.len;
+            }
+            pos +%= fmt.ud64(line_no).formatWriteBuf(&tmp);
+        },
+    }
+    const spaces: u64 = (width -% 1) -| pos;
+    mach.memset(buf + len, ' ', spaces);
+    len +%= spaces;
+    mach.memcpy(buf + len, &tmp, pos);
+    len +%= pos;
+    @ptrCast(*[4]u8, buf + len).* = "\x1b[0m".*;
+    len +%= 4;
+    if (builtin.traces.tokens.sidebar) |sidebar| {
+        @memcpy(buf + len, sidebar);
+        len +%= sidebar.len;
+    }
+    return len;
 }
 fn fastAllocFile(allocator: *mem.SimpleAllocator, pathname: [:0]const u8) []u8 {
     var st: file.Status = undefined;
