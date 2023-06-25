@@ -344,7 +344,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             const size_of: comptime_int = @sizeOf(types.Path);
             const addr_buf: *u64 = @ptrCast(*u64, &node.paths);
-            const ret: *types.Path = @intToPtr(*types.Path, allocator.addGeneric(size_of, builder_spec.options.init_len.paths, addr_buf, &node.paths_max_len, node.paths_len));
+            const ret: *types.Path = @ptrFromInt(*types.Path, allocator.addGeneric(size_of, builder_spec.options.init_len.paths, addr_buf, &node.paths_max_len, node.paths_len));
             node.paths_len +%= 1;
             return ret;
         }
@@ -352,7 +352,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             const size_of: comptime_int = @sizeOf(*Node);
             const addr_buf: *u64 = @ptrCast(*u64, &node.nodes);
-            const ret: **Node = @intToPtr(**Node, allocator.addGeneric(size_of, builder_spec.options.init_len.nodes, addr_buf, &node.nodes_max_len, node.nodes_len));
+            const ret: **Node = @ptrFromInt(**Node, allocator.addGeneric(size_of, builder_spec.options.init_len.nodes, addr_buf, &node.nodes_max_len, node.nodes_len));
             node.nodes_len +%= 1;
             return ret;
         }
@@ -360,7 +360,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             const size_of: comptime_int = @sizeOf(Dependency);
             const addr_buf: *u64 = @ptrCast(*u64, &node.deps);
-            const ret: *Dependency = @intToPtr(*Dependency, allocator.addGeneric(size_of, builder_spec.options.init_len.deps, addr_buf, &node.deps_max_len, node.deps_len));
+            const ret: *Dependency = @ptrFromInt(*Dependency, allocator.addGeneric(size_of, builder_spec.options.init_len.deps, addr_buf, &node.deps_max_len, node.deps_len));
             node.deps_len +%= 1;
             mem.zero(Dependency, ret);
             return ret;
@@ -369,7 +369,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             const size_of: comptime_int = @sizeOf([*:0]u8);
             const addr_buf: *u64 = @ptrCast(*u64, &node.args);
-            const ret: *[*:0]u8 = @intToPtr(*[*:0]u8, allocator.addGeneric(size_of, builder_spec.options.init_len.args, addr_buf, &node.args_max_len, node.args_len));
+            const ret: *[*:0]u8 = @ptrFromInt(*[*:0]u8, allocator.addGeneric(size_of, builder_spec.options.init_len.args, addr_buf, &node.args_max_len, node.args_len));
             node.args_len +%= 1;
             return ret;
         }
@@ -377,14 +377,14 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             const size_of: comptime_int = @sizeOf(u32);
             const addr_buf: *u64 = @ptrCast(*u64, &node.fds);
-            const ret: *u32 = @intToPtr(*u32, allocator.addGeneric(size_of, builder_spec.options.init_len.fds, addr_buf, &node.fds_max_len, node.fds_len));
+            const ret: *u32 = @ptrFromInt(*u32, allocator.addGeneric(size_of, builder_spec.options.init_len.fds, addr_buf, &node.fds_max_len, node.fds_len));
             node.fds_len +%= 1;
             ret.* = @intCast(u32, fd);
         }
         pub fn addRunArg(node: *Node, allocator: *Allocator, arg: []const u8) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
-            if (@ptrToInt(arg.ptr) <= arena_up_addr and
-                @ptrToInt(arg.ptr) >= arena_lb_addr)
+            if (@intFromPtr(arg.ptr) <= arena_up_addr and
+                @intFromPtr(arg.ptr) >= arena_lb_addr)
             {
                 node.addArg(allocator).* = @ptrCast([*:0]u8, @constCast(arg.ptr));
             } else {
@@ -402,11 +402,11 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         }
         fn makeRootDirectory(root_fd: u64, name: [:0]const u8) void {
             var st: file.Status = undefined;
-            var rc: u64 = sys.call_noexcept(.mkdirat, u64, .{ root_fd, @ptrToInt(name.ptr), @bitCast(u16, file.mode.directory) });
+            var rc: u64 = sys.call_noexcept(.mkdirat, u64, .{ root_fd, @intFromPtr(name.ptr), @bitCast(u16, file.mode.directory) });
             if (rc == 0) {
                 return;
             }
-            rc = sys.call_noexcept(.newfstatat, u64, .{ root_fd, @ptrToInt(name.ptr), @ptrToInt(&st), 0 });
+            rc = sys.call_noexcept(.newfstatat, u64, .{ root_fd, @intFromPtr(name.ptr), @intFromPtr(&st), 0 });
             if (rc != 0) {
                 builtin.proc.exitFault(name, 2);
             }
@@ -721,28 +721,28 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             fn buildWrite(allocator: *Allocator, cmd: *BuildCommand, obj_paths: []const types.Path) [:0]u8 {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
                 const max_len: u64 = builder_spec.options.max_cmdline_len orelse cmd.formatLength(mach.manyToSlice80(GlobalState.args[1]), obj_paths);
-                const buf: [*]u8 = @intToPtr([*]u8, allocator.allocateRaw(max_len, 1));
+                const buf: [*]u8 = @ptrFromInt([*]u8, allocator.allocateRaw(max_len, 1));
                 const len: u64 = cmd.formatWriteBuf(mach.manyToSlice80(GlobalState.args[1]), obj_paths, buf);
                 return buf[0..len :0];
             }
             fn objcopyWrite(allocator: *Allocator, cmd: *ObjcopyCommand, obj_path: types.Path) [:0]u8 {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
                 const max_len: u64 = builder_spec.options.max_cmdline_len orelse cmd.formatLength(mach.manyToSlice80(GlobalState.args[1]), obj_path);
-                const buf: [*]u8 = @intToPtr([*]u8, allocator.allocateRaw(max_len, 1));
+                const buf: [*]u8 = @ptrFromInt([*]u8, allocator.allocateRaw(max_len, 1));
                 const len: u64 = cmd.formatWriteBuf(mach.manyToSlice80(GlobalState.args[1]), obj_path, buf);
                 return buf[0..len :0];
             }
             fn archiveWrite(allocator: *Allocator, cmd: *ArchiveCommand, obj_paths: []const types.Path) [:0]u8 {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
                 const max_len: u64 = builder_spec.options.max_cmdline_len orelse cmd.formatLength(mach.manyToSlice80(GlobalState.args[1]), obj_paths);
-                const buf: [*]u8 = @intToPtr([*]u8, allocator.allocateRaw(max_len, 1));
+                const buf: [*]u8 = @ptrFromInt([*]u8, allocator.allocateRaw(max_len, 1));
                 const len: u64 = cmd.formatWriteBuf(mach.manyToSlice80(GlobalState.args[1]), obj_paths, buf);
                 return buf[0..len :0];
             }
             fn formatWrite(allocator: *Allocator, cmd: *FormatCommand, root_path: types.Path) [:0]u8 {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
                 const max_len: u64 = builder_spec.options.max_cmdline_len orelse cmd.formatLength(mach.manyToSlice80(GlobalState.args[1]), root_path);
-                const buf: [*]u8 = @intToPtr([*]u8, allocator.allocateRaw(max_len, 1));
+                const buf: [*]u8 = @ptrFromInt([*]u8, allocator.allocateRaw(max_len, 1));
                 const len: u64 = cmd.formatWriteBuf(mach.manyToSlice80(GlobalState.args[1]), root_path, buf);
                 return buf[0..len :0];
             }
@@ -785,7 +785,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     .build, .archive => {
                         const name: [:0]const u8 = node.paths[0].names[1];
                         if (0 == sys.call_noexcept(.newfstatat, u64, .{
-                            GlobalState.build_root_fd, @ptrToInt(name.ptr), @ptrToInt(&job.st), 0,
+                            GlobalState.build_root_fd, @intFromPtr(name.ptr), @intFromPtr(&job.st), 0,
                         })) {
                             old_size = job.st.size;
                         }
@@ -795,7 +795,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                             try meta.wrap(impl.system(args, job));
                         }
                         if (0 == sys.call_noexcept(.newfstatat, u64, .{
-                            GlobalState.build_root_fd, @ptrToInt(name.ptr), @ptrToInt(&job.st), 0,
+                            GlobalState.build_root_fd, @intFromPtr(name.ptr), @intFromPtr(&job.st), 0,
                         })) {
                             new_size = job.st.size;
                         }
@@ -1587,7 +1587,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         }
         pub fn duplicate(allocator: *Allocator, values: []const u8) [:0]u8 {
             @setRuntimeSafety(builder_spec.options.enable_safety);
-            const buf: [*]u8 = @intToPtr([*]u8, allocator.allocateRaw(values.len +% 1, 1));
+            const buf: [*]u8 = @ptrFromInt([*]u8, allocator.allocateRaw(values.len +% 1, 1));
             mach.memcpy(buf, values.ptr, values.len);
             buf[values.len] = 0;
             return buf[0..values.len :0];
@@ -1596,7 +1596,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             var len: u64 = 0;
             for (values) |value| len +%= value.len;
-            const buf: [*]u8 = @intToPtr([*]u8, allocator.allocateRaw(len +% 1, 1));
+            const buf: [*]u8 = @ptrFromInt([*]u8, allocator.allocateRaw(len +% 1, 1));
             var idx: u64 = 0;
             for (values) |value| {
                 mach.memcpy(buf + idx, value.ptr, value.len);
@@ -1608,8 +1608,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         fn makeArgPtrs(allocator: *Allocator, args: [:0]u8) [][*:0]u8 {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             var count: u64 = 0;
-            for (args) |value| count +%= @boolToInt(value == 0);
-            const ptrs: [*][*:0]u8 = @intToPtr([*][*:0]u8, allocator.allocateRaw(8 *% (count +% 1), 1));
+            for (args) |value| count +%= @intFromBool(value == 0);
+            const ptrs: [*][*:0]u8 = @ptrFromInt([*][*:0]u8, allocator.allocateRaw(8 *% (count +% 1), 1));
             var len: u64 = 0;
             var idx: u64 = 0;
             var pos: u64 = 0;
@@ -1630,7 +1630,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             buf[root.len] = 0;
             var idx: u64 = 0;
             while (idx != root.len and buf[idx] != 0x2e) : (idx +%= 1) {
-                buf[idx] -%= @boolToInt(buf[idx] == 0x2f);
+                buf[idx] -%= @intFromBool(buf[idx] == 0x2f);
             }
             buf[idx] = 0;
             return buf[0..idx :0];
@@ -2132,7 +2132,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             fn lengthSubNode(len1: u64, sub_node: *const Node, name_width: *u64, root_width: *u64) void {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
                 name_width.* = @max(name_width.*, sub_node.name.len +% len1);
-                const input: [:0]const u8 = sub_node.paths[@boolToInt(sub_node.task.tag == .build)].names[1];
+                const input: [:0]const u8 = sub_node.paths[@intFromBool(sub_node.task.tag == .build)].names[1];
                 if (input.len != 0) {
                     if (sub_node.descr.len != 0) {
                         root_width.* = @max(root_width.*, input.len);
@@ -2198,7 +2198,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
                 var len: u64 = 0;
                 var count: u64 = name_width -% (sub_node.name.len +% len1);
-                const input: [:0]const u8 = sub_node.paths[@boolToInt(sub_node.task.tag == .build)].names[1];
+                const input: [:0]const u8 = sub_node.paths[@intFromBool(sub_node.task.tag == .build)].names[1];
                 if (input.len != 0) {
                     mach.memset(buf0 + len, ' ', count);
                     len +%= count;
@@ -2267,9 +2267,9 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 defer allocator.next = save;
                 var name_width: u64 = 0;
                 var root_width: u64 = 0;
-                const buf0: [*]u8 = @intToPtr([*]u8, allocator.allocateRaw(1024 *% 1024, 1));
+                const buf0: [*]u8 = @ptrFromInt([*]u8, allocator.allocateRaw(1024 *% 1024, 1));
                 var len0: u64 = toplevel.name.len;
-                const buf1: [*]u8 = @intToPtr([*]u8, allocator.allocateRaw(4096, 1));
+                const buf1: [*]u8 = @ptrFromInt([*]u8, allocator.allocateRaw(4096, 1));
                 mach.memcpy(buf0, toplevel.name.ptr, toplevel.name.len);
                 lengthToplevelCommandNoticeInternal(0, toplevel, &name_width, &root_width);
                 name_width +%= 4;
