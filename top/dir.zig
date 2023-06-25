@@ -194,8 +194,8 @@ const List = opaque {
     fn classifyName(addrs: *[3]u64, s_lb_addr: u64) void {
         const w0: u16 = @ptrFromInt(*const u16, s_lb_addr +% 18).*;
         const w1: u16 = @ptrFromInt(*const u16, s_lb_addr +% 20).*;
-        const j0: u8 = @intFromBool(w0 == if (builtin.is_little) 11780 else 1070);
-        const j1: u8 = j0 << @intFromBool(w1 == if (builtin.is_little) 46 else 11776);
+        const j0: u8 = @intFromBool(w0 == if (builtin.native_endian == .Little) 11780 else 1070);
+        const j1: u8 = j0 << @intFromBool(w1 == if (builtin.native_endian == .Little) 46 else 11776);
         const j2: u8 = j1 & (@as(u8, 1) << @intFromBool(w1 != 0));
         addrs[j2] = s_lb_addr;
     }
