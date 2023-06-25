@@ -489,7 +489,7 @@ pub fn getEffectiveGroupId() u16 {
 pub fn waitPid(comptime spec: WaitSpec, id: WaitSpec.For) sys.ErrorUnion(spec.errors, Return) {
     const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
     var ret: Return = undefined;
-    const status_addr: u64 = @ptrToInt(&ret.status);
+    const status_addr: u64 = @intFromPtr(&ret.status);
     if (meta.wrap(sys.call(.wait4, spec.errors, u32, .{ WaitSpec.pid(id), status_addr, 0, 0, 0 }))) |pid| {
         ret.pid = pid;
         if (logging.Success) {
@@ -504,8 +504,8 @@ pub fn waitPid(comptime spec: WaitSpec, id: WaitSpec.For) sys.ErrorUnion(spec.er
     }
 }
 pub fn waitId(comptime spec: WaitIdSpec, id: u64, siginfo: *SignalInfo) sys.ErrorUnion(spec.errors, spec.return_type) {
-    const id_type: u64 = @enumToInt(spec.id_type);
-    const siginfo_buf_addr: u64 = @ptrToInt(siginfo);
+    const id_type: u64 = @intFromEnum(spec.id_type);
+    const siginfo_buf_addr: u64 = @intFromPtr(siginfo);
     const flags: WaitId = comptime spec.flags();
     const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.waitid, spec.errors, spec.return_type, .{ id_type, id, siginfo_buf_addr, flags.val, 0 }))) |pid| {
@@ -570,7 +570,7 @@ pub fn futexWait(comptime futex_spec: FutexSpec, futex: *u32, value: u32, timeou
     if (logging.Attempt) {
         debug.futexWaitAttempt(futex, value, timeout);
     }
-    if (meta.wrap(sys.call(.futex, futex_spec.errors, futex_spec.return_type, .{ @ptrToInt(futex), 0, value, @ptrToInt(timeout), 0, 0 }))) |ret| {
+    if (meta.wrap(sys.call(.futex, futex_spec.errors, futex_spec.return_type, .{ @intFromPtr(futex), 0, value, @intFromPtr(timeout), 0, 0 }))) |ret| {
         if (logging.Acquire) {
             debug.futexWaitNotice(futex, value, timeout);
         }
@@ -590,7 +590,7 @@ pub fn futexWake(comptime futex_spec: FutexSpec, futex: *u32, count: u32) sys.Er
     if (logging.Attempt) {
         debug.futexWakeAttempt(futex, count);
     }
-    if (meta.wrap(sys.call(.futex, futex_spec.errors, u32, .{ @ptrToInt(futex), 1, count, 0, 0, 0 }))) |ret| {
+    if (meta.wrap(sys.call(.futex, futex_spec.errors, u32, .{ @intFromPtr(futex), 1, count, 0, 0, 0 }))) |ret| {
         if (logging.Release) {
             debug.futexWakeNotice(futex, count, ret);
         }
@@ -613,7 +613,7 @@ pub fn futexWakeOp(comptime futex_spec: FutexSpec, futex1: *u32, futex2: *u32, c
         debug.futexWakeOpAttempt(futex1, futex2, count1, count2, wake_op);
     }
     if (meta.wrap(sys.call(.futex, futex_spec.errors, u32, .{
-        @ptrToInt(futex1), 5, count1, count2, @ptrToInt(futex2), @bitCast(u32, wake_op),
+        @intFromPtr(futex1), 5, count1, count2, @intFromPtr(futex2), @bitCast(u32, wake_op),
     }))) |ret| {
         if (logging.Acquire) {
             debug.futexWakeOpNotice(futex1, futex2, count1, count2, wake_op, ret);
@@ -635,7 +635,7 @@ fn futexRequeue(comptime futex_spec: FutexSpec, futex1: *u32, futex2: *u32, coun
         //
     }
     if (meta.wrap(sys.call(.futex, futex_spec.errors, futex_spec.return_type, .{
-        @ptrToInt(futex1), 3 +% @boolToInt(from != 0), count1, count2, @ptrToInt(futex2), from.?,
+        @intFromPtr(futex1), 3 +% @intFromBool(from != 0), count1, count2, @intFromPtr(futex2), from.?,
     }))) {
         if (logging.Acquire) {
             //
@@ -647,7 +647,7 @@ fn futexRequeue(comptime futex_spec: FutexSpec, futex1: *u32, futex2: *u32, coun
         return futex_error;
     }
 }
-pub const start = if (builtin.zig.output_mode == .Exe)
+pub const start = if (builtin.output_mode == .Exe)
     struct {
         pub export fn _start() callconv(.Naked) noreturn {
             static.stack_addr = asm volatile (
@@ -764,10 +764,10 @@ pub fn updateSignalAction(
 ) sys.ErrorUnion(sigaction_spec.errors, sigaction_spec.return_type) {
     @setRuntimeSafety(false);
     const logging: builtin.Logging.SuccessError = comptime sigaction_spec.logging.override();
-    const new_action_buf_addr: u64 = @ptrToInt(&new_action);
-    const old_action_buf_addr: u64 = @ptrToInt(old_action.?);
+    const new_action_buf_addr: u64 = @intFromPtr(&new_action);
+    const old_action_buf_addr: u64 = @intFromPtr(old_action.?);
     if (meta.wrap(sys.call(.rt_sigaction, sigaction_spec.errors, sigaction_spec.return_type, .{
-        @enumToInt(signo), new_action_buf_addr, old_action_buf_addr, 8,
+        @intFromEnum(signo), new_action_buf_addr, old_action_buf_addr, 8,
     }))) {
         if (logging.Success) {
             debug.signalActionNotice(signo, new_action.handler);
@@ -788,8 +788,8 @@ pub fn updateSignalStack(
     sigaltstack_spec.return_type,
 ) {
     const logging: builtin.Logging.SuccessError = comptime sigaltstack_spec.logging.override();
-    const new_stack_buf_addr: u64 = @ptrToInt(&new_stack);
-    const old_stack_buf_addr: u64 = if (old_stack) |old| @ptrToInt(old) else 0;
+    const new_stack_buf_addr: u64 = @intFromPtr(&new_stack);
+    const old_stack_buf_addr: u64 = if (old_stack) |old| @intFromPtr(old) else 0;
     if (meta.wrap(sys.call(.sigaltstack, sigaltstack_spec.errors, sigaltstack_spec.return_type, .{
         new_stack_buf_addr, old_stack_buf_addr, 8,
     }))) {
@@ -810,7 +810,7 @@ const static = opaque {
 pub noinline fn callMain() noreturn {
     @setRuntimeSafety(false);
     @setAlignStack(16);
-    if (builtin.zig.output_mode != .Exe) {
+    if (builtin.output_mode != .Exe) {
         unreachable;
     }
     const Main: type = @TypeOf(builtin.root.main);
@@ -823,38 +823,38 @@ pub noinline fn callMain() noreturn {
             break :blk_0 .{};
         }
         if (main_type_info.Fn.params.len == 1) {
-            const args_len: u64 = @intToPtr(*u64, static.stack_addr).*;
+            const args_len: u64 = @ptrFromInt(*u64, static.stack_addr).*;
             const args_addr: u64 = static.stack_addr +% 8;
-            const args: [*][*:0]u8 = @intToPtr([*][*:0]u8, args_addr);
+            const args: [*][*:0]u8 = @ptrFromInt([*][*:0]u8, args_addr);
             break :blk_0 .{args[0..args_len]};
         }
         if (main_type_info.Fn.params.len == 2) {
-            const args_len: u64 = @intToPtr(*u64, static.stack_addr).*;
+            const args_len: u64 = @ptrFromInt(*u64, static.stack_addr).*;
             const args_addr: u64 = static.stack_addr +% 8;
             const vars_addr: u64 = static.stack_addr +% 16 +% (args_len * 8);
-            const args: [*][*:0]u8 = @intToPtr([*][*:0]u8, args_addr);
-            const vars: [*][*:0]u8 = @intToPtr([*][*:0]u8, vars_addr);
+            const args: [*][*:0]u8 = @ptrFromInt([*][*:0]u8, args_addr);
+            const vars: [*][*:0]u8 = @ptrFromInt([*][*:0]u8, vars_addr);
             const vars_len: u64 = blk_1: {
                 var len: u64 = 0;
-                while (@ptrToInt(vars[len]) != 0) len += 1;
+                while (@intFromPtr(vars[len]) != 0) len += 1;
                 break :blk_1 len;
             };
             break :blk_0 .{ args[0..args_len], vars[0..vars_len] };
         }
         if (main_type_info.Fn.params.len == 3) {
             const auxv_type: type = main_type_info.Fn.params[2].type orelse *const anyopaque;
-            const args_len: u64 = @intToPtr(*u64, static.stack_addr).*;
+            const args_len: u64 = @ptrFromInt(*u64, static.stack_addr).*;
             const args_addr: u64 = static.stack_addr +% 8;
             const vars_addr: u64 = args_addr +% 8 +% (args_len * 8);
-            const args: [*][*:0]u8 = @intToPtr([*][*:0]u8, args_addr);
-            const vars: [*][*:0]u8 = @intToPtr([*][*:0]u8, vars_addr);
+            const args: [*][*:0]u8 = @ptrFromInt([*][*:0]u8, args_addr);
+            const vars: [*][*:0]u8 = @ptrFromInt([*][*:0]u8, vars_addr);
             const vars_len: u64 = blk_1: {
                 var len: u64 = 0;
-                while (@ptrToInt(vars[len]) != 0) len += 1;
+                while (@intFromPtr(vars[len]) != 0) len += 1;
                 break :blk_1 len;
             };
             const auxv_addr: u64 = vars_addr +% 8 +% (vars_len * 8);
-            const auxv: auxv_type = @intToPtr(auxv_type, auxv_addr);
+            const auxv: auxv_type = @ptrFromInt(auxv_type, auxv_addr);
             break :blk_0 .{ args[0..args_len], vars[0..vars_len], auxv };
         }
     };
@@ -874,7 +874,7 @@ pub noinline fn callMain() noreturn {
         if (@call(.auto, main, params)) {
             builtin.proc.exitNotice(0);
         } else |err| {
-            builtin.proc.exitError(err, @intCast(u8, @errorToInt(err)));
+            builtin.proc.exitError(err, @intCast(u8, @intFromError(err)));
         }
     }
     if (main_return_type_info == .ErrorUnion and
@@ -883,7 +883,7 @@ pub noinline fn callMain() noreturn {
         if (@call(.auto, builtin.root.main, params)) |rc| {
             builtin.proc.exitNotice(rc);
         } else |err| {
-            builtin.proc.exitError(err, @intCast(u8, @errorToInt(err)));
+            builtin.proc.exitError(err, @intCast(u8, @intFromError(err)));
         }
     }
     builtin.static.assert(main_return_type_info != .ErrorSet);
@@ -891,10 +891,10 @@ pub noinline fn callMain() noreturn {
 // If the return value is greater than word size or is a zig error union, this
 // internal call can never be inlined.
 noinline fn callErrorOrMediaReturnValueFunction(comptime Fn: type, result_addr: u64, call_addr: u64, args_addr: u64) void {
-    @intToPtr(**meta.Return(Fn), result_addr).*.* = @call(
+    @ptrFromInt(**meta.Return(Fn), result_addr).*.* = @call(
         .never_inline,
-        @intToPtr(**Fn, call_addr).*,
-        @intToPtr(*meta.Args(Fn), args_addr).*,
+        @ptrFromInt(**Fn, call_addr).*,
+        @ptrFromInt(*meta.Args(Fn), args_addr).*,
     );
 }
 pub fn callClone(comptime spec: CloneSpec, stack_addr: u64, stack_len: u64, result_ptr: anytype, comptime function: anytype, args: meta.Args(@TypeOf(function))) sys.ErrorUnion(spec.errors, spec.return_type) {
@@ -909,16 +909,16 @@ pub fn callClone(comptime spec: CloneSpec, stack_addr: u64, stack_len: u64, resu
         .parent_tid_addr = stack_addr +% 0x10,
         .tls_addr = stack_addr +% 0x20,
     };
-    const cl_args_addr: u64 = @ptrToInt(&cl_args);
+    const cl_args_addr: u64 = @intFromPtr(&cl_args);
     const cl_args_size: u64 = @sizeOf(CloneArgs);
     const ret_off: u64 = stack_len -% @sizeOf(u64);
     const call_off: u64 = ret_off -% @sizeOf(u64);
     const args_off: u64 = call_off -% @sizeOf(Args);
-    @intToPtr(**const Fn, stack_addr +% call_off).* = &function;
+    @ptrFromInt(**const Fn, stack_addr +% call_off).* = &function;
     if (@TypeOf(result_ptr) != void) {
-        @intToPtr(*u64, stack_addr +% ret_off).* = @ptrToInt(result_ptr);
+        @ptrFromInt(*u64, stack_addr +% ret_off).* = @intFromPtr(result_ptr);
     }
-    @intToPtr(*Args, stack_addr +% args_off).* = args;
+    @ptrFromInt(*Args, stack_addr +% args_off).* = args;
 
     const rc: i64 = asm volatile (
         \\syscall # clone3
@@ -943,15 +943,15 @@ pub fn callClone(comptime spec: CloneSpec, stack_addr: u64, stack_len: u64, resu
             if (@sizeOf(@TypeOf(result_ptr.*)) <= @sizeOf(usize) or
                 @typeInfo(@TypeOf(result_ptr.*)) != .ErrorUnion)
             {
-                @intToPtr(**meta.Return(Fn), tl_ret_addr).*.* =
-                    @call(.never_inline, @intToPtr(**Fn, tl_call_addr).*, @intToPtr(*meta.Args(Fn), tl_args_addr).*);
+                @ptrFromInt(**meta.Return(Fn), tl_ret_addr).*.* =
+                    @call(.never_inline, @ptrFromInt(**Fn, tl_call_addr).*, @ptrFromInt(*meta.Args(Fn), tl_args_addr).*);
             } else {
                 @call(.never_inline, callErrorOrMediaReturnValueFunction, .{
                     @TypeOf(function), tl_ret_addr, tl_call_addr, tl_args_addr,
                 });
             }
         } else {
-            @call(.never_inline, @intToPtr(**Fn, tl_call_addr).*, @intToPtr(*meta.Args(Fn), tl_args_addr).*);
+            @call(.never_inline, @ptrFromInt(**Fn, tl_call_addr).*, @ptrFromInt(*meta.Args(Fn), tl_args_addr).*);
         }
         asm volatile (
             \\movq  $60,    %%rax
@@ -977,20 +977,20 @@ pub fn callClone(comptime spec: CloneSpec, stack_addr: u64, stack_len: u64, resu
 pub fn getVSyscall(comptime Fn: type, vdso_addr: u64, symbol: [:0]const u8) ?Fn {
     if (programOffset(vdso_addr)) |offset| {
         if (sectionAddress(vdso_addr, symbol)) |addr| {
-            return @intToPtr(Fn, addr +% offset);
+            return @ptrFromInt(Fn, addr +% offset);
         }
     }
     return null;
 }
 pub fn programOffset(ehdr_addr: u64) ?u64 {
-    const ehdr: *exe.Elf64_Ehdr = @intToPtr(*exe.Elf64_Ehdr, ehdr_addr);
+    const ehdr: *exe.Elf64_Ehdr = @ptrFromInt(*exe.Elf64_Ehdr, ehdr_addr);
     var addr: u64 = ehdr_addr +% ehdr.e_phoff;
     var idx: u64 = 0;
     while (idx != ehdr.e_phnum) : ({
         idx +%= 1;
         addr +%= @sizeOf(exe.Elf64_Phdr);
     }) {
-        const phdr: *exe.Elf64_Phdr = @intToPtr(*exe.Elf64_Phdr, addr);
+        const phdr: *exe.Elf64_Phdr = @ptrFromInt(*exe.Elf64_Phdr, addr);
         if (phdr.p_flags.check(.X)) {
             return phdr.p_offset -% phdr.p_paddr;
         }
@@ -998,7 +998,7 @@ pub fn programOffset(ehdr_addr: u64) ?u64 {
     return null;
 }
 pub fn sectionAddress(ehdr_addr: u64, symbol: [:0]const u8) ?u64 {
-    const ehdr: *exe.Elf64_Ehdr = @intToPtr(*exe.Elf64_Ehdr, ehdr_addr);
+    const ehdr: *exe.Elf64_Ehdr = @ptrFromInt(*exe.Elf64_Ehdr, ehdr_addr);
     var symtab_addr: u64 = 0;
     var strtab_addr: u64 = 0;
     var symtab_ents: u64 = 0;
@@ -1009,12 +1009,12 @@ pub fn sectionAddress(ehdr_addr: u64, symbol: [:0]const u8) ?u64 {
         idx +%= 1;
         addr = addr +% @sizeOf(exe.Elf64_Shdr);
     }) {
-        const shdr: *exe.Elf64_Shdr = @intToPtr(*exe.Elf64_Shdr, addr);
+        const shdr: *exe.Elf64_Shdr = @ptrFromInt(*exe.Elf64_Shdr, addr);
         if (shdr.sh_type == .DYNSYM) {
             dynsym_size = shdr.sh_size;
         }
         if (shdr.sh_type == .DYNAMIC) {
-            const dyn: [*]exe.Elf64_Dyn = @intToPtr([*]exe.Elf64_Dyn, ehdr_addr +% shdr.sh_offset);
+            const dyn: [*]exe.Elf64_Dyn = @ptrFromInt([*]exe.Elf64_Dyn, ehdr_addr +% shdr.sh_offset);
             var dyn_idx: u64 = 0;
             while (true) : (dyn_idx +%= 1) {
                 if (dyn[dyn_idx].d_tag == .SYMTAB) {
@@ -1032,8 +1032,8 @@ pub fn sectionAddress(ehdr_addr: u64, symbol: [:0]const u8) ?u64 {
                     symtab_ents != 0 and
                     strtab_addr != 0)
                 {
-                    const strtab: [*:0]u8 = @intToPtr([*:0]u8, strtab_addr);
-                    const symtab: [*]exe.Elf64_Sym = @intToPtr([*]exe.Elf64_Sym, symtab_addr);
+                    const strtab: [*:0]u8 = @ptrFromInt([*:0]u8, strtab_addr);
+                    const symtab: [*]exe.Elf64_Sym = @ptrFromInt([*]exe.Elf64_Sym, symtab_addr);
                     var st_idx: u64 = 1;
                     lo: while (st_idx *% symtab_ents != dynsym_size) : (st_idx +%= 1) {
                         for (symbol, strtab + symtab[st_idx].st_name) |x, y| {
@@ -1111,10 +1111,10 @@ pub const PathIterator = struct {
     }
 };
 pub fn auxiliaryValue(auxv: *const anyopaque, comptime tag: AuxiliaryVectorEntry) ?u64 {
-    var addr: u64 = @ptrToInt(auxv);
-    while (@intToPtr(*u64, addr).* != 0) : (addr +%= 16) {
-        if (@enumToInt(tag) == @intToPtr(*u64, addr).*) {
-            return @intToPtr(*u64, addr +% 8).*;
+    var addr: u64 = @intFromPtr(auxv);
+    while (@ptrFromInt(*u64, addr).* != 0) : (addr +%= 16) {
+        if (@intFromEnum(tag) == @ptrFromInt(*u64, addr).*) {
+            return @ptrFromInt(*u64, addr +% 8).*;
         }
     }
     return null;
@@ -1140,7 +1140,7 @@ pub fn environmentValue(vars: [][*:0]u8, key: [:0]const u8) ?[:0]u8 {
     return null;
 }
 pub fn restoreRunTime() callconv(.Naked) void {
-    switch (builtin.zig.zig_backend) {
+    switch (builtin.zig_backend) {
         .stage2_c => return asm volatile (
             \\ movl %[number], %%eax
             \\ syscall # rt_sigreturn
@@ -1211,7 +1211,7 @@ pub const debug = opaque {
         }
     }
     fn futexWaitAttempt(futex: *u32, value: u32, timeout: *const time.TimeSpec) void {
-        const addr_s: []const u8 = builtin.fmt.ux64(@ptrToInt(futex)).readAll();
+        const addr_s: []const u8 = builtin.fmt.ux64(@intFromPtr(futex)).readAll();
         const word_s: []const u8 = builtin.fmt.ud64(futex.*).readAll();
         const value_s: []const u8 = builtin.fmt.ud64(value).readAll();
         const sec_s: []const u8 = builtin.fmt.ud64(timeout.sec).readAll();
@@ -1220,7 +1220,7 @@ pub const debug = opaque {
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_futex_wait_0_s, addr_s, ", word=", word_s, ", val=", value_s, ", sec=", sec_s, ", nsec=", nsec_s, "\n" });
     }
     fn futexWaitNotice(futex: *u32, value: u32, timeout: *const time.TimeSpec) void {
-        const addr_s: []const u8 = builtin.fmt.ux64(@ptrToInt(futex)).readAll();
+        const addr_s: []const u8 = builtin.fmt.ux64(@intFromPtr(futex)).readAll();
         const word_s: []const u8 = builtin.fmt.ud64(futex.*).readAll();
         const value_s: []const u8 = builtin.fmt.ud64(value).readAll();
         const sec_s: []const u8 = builtin.fmt.ud64(timeout.sec).readAll();
@@ -1229,14 +1229,14 @@ pub const debug = opaque {
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_futex_wait_0_s, addr_s, ", word=", word_s, ", val=", value_s, ", sec=", sec_s, ", nsec=", nsec_s, "\n" });
     }
     fn futexWakeAttempt(futex: *u32, count: u64) void {
-        const addr_s: []const u8 = builtin.fmt.ux64(@ptrToInt(futex)).readAll();
+        const addr_s: []const u8 = builtin.fmt.ux64(@intFromPtr(futex)).readAll();
         const word_s: []const u8 = builtin.fmt.ud64(futex.*).readAll();
         const count_s: []const u8 = builtin.fmt.ud64(count).readAll();
         var buf: [3072]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_futex_wake_0_s, addr_s, ", word=", word_s, ", max=", count_s, "\n" });
     }
     fn futexWakeNotice(futex: *u32, count: u64, ret: u64) void {
-        const addr_s: []const u8 = builtin.fmt.ux64(@ptrToInt(futex)).readAll();
+        const addr_s: []const u8 = builtin.fmt.ux64(@intFromPtr(futex)).readAll();
         const word_s: []const u8 = builtin.fmt.ud64(futex.*).readAll();
         const count_s: []const u8 = builtin.fmt.ud64(count).readAll();
         const ret_s: []const u8 = builtin.fmt.ud64(ret).readAll();
@@ -1245,9 +1245,9 @@ pub const debug = opaque {
     }
     fn futexWakeOpAttempt(futex1: *u32, futex2: *u32, count1: u32, count2: u32, wake_op: FutexOp.WakeOp) void {
         _ = wake_op;
-        const addr1_s: []const u8 = builtin.fmt.ux64(@ptrToInt(futex1)).readAll();
+        const addr1_s: []const u8 = builtin.fmt.ux64(@intFromPtr(futex1)).readAll();
         const word1_s: []const u8 = builtin.fmt.ud64(futex1.*).readAll();
-        const addr2_s: []const u8 = builtin.fmt.ux64(@ptrToInt(futex2)).readAll();
+        const addr2_s: []const u8 = builtin.fmt.ux64(@intFromPtr(futex2)).readAll();
         const word2_s: []const u8 = builtin.fmt.ud64(futex2.*).readAll();
         const count1_s: []const u8 = builtin.fmt.ud64(count1).readAll();
         const count2_s: []const u8 = builtin.fmt.ud64(count2).readAll();
@@ -1261,9 +1261,9 @@ pub const debug = opaque {
     }
     fn futexWakeOpNotice(futex1: *u32, futex2: *u32, count1: u32, count2: u32, wake_op: FutexOp.WakeOp, ret: u64) void {
         _ = wake_op;
-        const addr1_s: []const u8 = builtin.fmt.ux64(@ptrToInt(futex1)).readAll();
+        const addr1_s: []const u8 = builtin.fmt.ux64(@intFromPtr(futex1)).readAll();
         const word1_s: []const u8 = builtin.fmt.ud64(futex1.*).readAll();
-        const addr2_s: []const u8 = builtin.fmt.ux64(@ptrToInt(futex2)).readAll();
+        const addr2_s: []const u8 = builtin.fmt.ux64(@intFromPtr(futex2)).readAll();
         const word2_s: []const u8 = builtin.fmt.ud64(futex2.*).readAll();
         const count1_s: []const u8 = builtin.fmt.ud64(count1).readAll();
         const count2_s: []const u8 = builtin.fmt.ud64(count2).readAll();
@@ -1299,7 +1299,7 @@ pub const debug = opaque {
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_sig_0_s, builtin.debug.about_error_s, @errorName(sigaltstack_error), new_st_start_s, "..", new_st_finish_s, "\n" });
     }
     fn futexWaitError(futex_error: anytype, futex: *u32, value: u32, timeout: *const time.TimeSpec) void {
-        const addr_s: []const u8 = builtin.fmt.ux64(@ptrToInt(futex)).readAll();
+        const addr_s: []const u8 = builtin.fmt.ux64(@intFromPtr(futex)).readAll();
         const word_s: []const u8 = builtin.fmt.ud64(futex.*).readAll();
         const value_s: []const u8 = builtin.fmt.ud64(value).readAll();
         const sec_s: []const u8 = builtin.fmt.ud64(timeout.sec).readAll();
@@ -1314,7 +1314,7 @@ pub const debug = opaque {
         });
     }
     fn futexWakeError(futex_error: anytype, futex: *u32, count: u64) void {
-        const addr_s: []const u8 = builtin.fmt.ux64(@ptrToInt(futex)).readAll();
+        const addr_s: []const u8 = builtin.fmt.ux64(@intFromPtr(futex)).readAll();
         const word_s: []const u8 = builtin.fmt.ud64(futex.*).readAll();
         const count_s: []const u8 = builtin.fmt.ud64(count).readAll();
         const error_s: []const u8 = @errorName(futex_error);
@@ -1327,9 +1327,9 @@ pub const debug = opaque {
     }
     fn futexWakeOpError(futex_error: anytype, futex1: *u32, futex2: *u32, count1: u32, count2: u32, wake_op: FutexOp.WakeOp) void {
         _ = wake_op;
-        const addr1_s: []const u8 = builtin.fmt.ux64(@ptrToInt(futex1)).readAll();
+        const addr1_s: []const u8 = builtin.fmt.ux64(@intFromPtr(futex1)).readAll();
         const word1_s: []const u8 = builtin.fmt.ud64(futex1.*).readAll();
-        const addr2_s: []const u8 = builtin.fmt.ux64(@ptrToInt(futex2)).readAll();
+        const addr2_s: []const u8 = builtin.fmt.ux64(@intFromPtr(futex2)).readAll();
         const word2_s: []const u8 = builtin.fmt.ud64(futex2.*).readAll();
         const count1_s: []const u8 = builtin.fmt.ud64(count1).readAll();
         const count2_s: []const u8 = builtin.fmt.ud64(count2).readAll();
@@ -1343,7 +1343,7 @@ pub const debug = opaque {
     }
     fn updateExceptionHandlers(act: *const SignalAction) void {
         @setRuntimeSafety(false);
-        const sa_new_addr: u64 = @ptrToInt(act);
+        const sa_new_addr: u64 = @intFromPtr(act);
         inline for ([_]struct { bool, u32 }{
             .{ builtin.signal_handlers.SegmentationFault, SIG.SEGV },
             .{ builtin.signal_handlers.IllegalInstruction, SIG.ILL },
@@ -1357,15 +1357,23 @@ pub const debug = opaque {
     }
     pub fn enableExceptionHandlers() void {
         @setRuntimeSafety(false);
-        //const e_st_len: u64 = 16 *% 1024 *% 1024;
-        //const e_st_addr: u64 = 0x4000000 -% e_st_len;
-        //mem.map(.{ .errors = .{} }, e_st_addr, e_st_len);
-        //updateSignalStack(.{ .errors = .{} }, .{ .addr = e_st_addr, .len = e_st_len, .flags = .{} }, null);
-        updateExceptionHandlers(&.{ .flags = .{ .on_stack = true }, .handler = .{ .action = exceptionHandler }, .restorer = restoreRunTime });
+        if (builtin.signal_stack) |stack| {
+            sys.call_noexcept(.mmap, void, .{
+                stack.addr, stack.len, 0x1 | 0x2, 0x20 | 0x02 | 0x100000, ~@as(u64, 0), 0,
+            });
+            sys.call_noexcept(.sigaltstack, void, .{
+                @intFromPtr(&.{ .addr = stack.addr, .len = stack.len }), 0, 0,
+            });
+        }
+        updateExceptionHandlers(&.{
+            .flags = .{ .on_stack = builtin.signal_stack != null },
+            .handler = .{ .action = exceptionHandler },
+            .restorer = restoreRunTime,
+        });
     }
     fn setSignalAction(signo: u64, noalias new_action: *const SignalAction, noalias old_action: ?*SignalAction) void {
-        const sa_new_addr: u64 = @ptrToInt(new_action);
-        const sa_old_addr: u64 = if (old_action) |action| @ptrToInt(action) else 0;
+        const sa_new_addr: u64 = @intFromPtr(new_action);
+        const sa_old_addr: u64 = if (old_action) |action| @intFromPtr(action) else 0;
         sys.call_noexcept(.rt_sigaction, void, .{ signo, sa_new_addr, sa_old_addr, @sizeOf(@TypeOf(new_action.mask)) });
     }
     pub fn exceptionHandler(sig: sys.SignalCode, info: *const SignalInfo, ctx: ?*const anyopaque) noreturn {
@@ -1653,7 +1661,7 @@ pub fn GenericOptions(comptime Options: type) type {
                         if (l_idx +% mats >= bad_opt.len) {
                             break :lo;
                         }
-                        mats +%= @boolToInt(bad_opt[l_idx +% mats] == long_switch[r_idx]);
+                        mats +%= @intFromBool(bad_opt[l_idx +% mats] == long_switch[r_idx]);
                     }
                 }
                 return mats;
