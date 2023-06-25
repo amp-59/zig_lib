@@ -176,10 +176,12 @@ fn writeSourceLine(buf: [*]u8, fbuf: []u8, loc: *LineLocation, itr: *builtin.zig
         const finish: u64 = loc.finish;
         while (itr.buf_pos <= finish) {
             loc.finish = tok.loc.finish;
-            for (syntax.tags) |tag| {
-                if (tok.tag == tag) {
-                    mach.memcpy(buf + len, syntax.style.ptr, syntax.style.len);
-                    len +%= syntax.style.len;
+            for (syntax) |pair| {
+                for (pair.tags) |tag| {
+                    if (tok.tag == tag) {
+                        mach.memcpy(buf + len, pair.style.ptr, pair.style.len);
+                        len +%= pair.style.len;
+                    }
                 }
             }
             mach.memcpy(buf + len, loc.ptr(fbuf), loc.len());
