@@ -96,7 +96,7 @@ pub const signal_stack: ?SignalAlternateStack = define(
     ?SignalAlternateStack,
     if (signal_handlers.SegmentationFault) .{} else null,
 );
-pub const traces: Traces = define("traces", Traces, .{});
+pub const traces: Traces = define("traces", Traces, my_traces);
 pub const tracing_default: bool = define("tracing_default", bool, builtin.mode == .Debug and !builtin.strip_debug_info);
 pub const tracing_override: ?bool = define("tracing_override", ?bool, null);
 pub const Error = error{
@@ -814,18 +814,14 @@ pub fn testEqual(comptime T: type, arg1: T, arg2: T) bool {
         .Opaque,
         .AnyFrame,
         .EnumLiteral,
-        => {
-            return arg1 == arg2;
-        },
+        => return arg1 == arg2,
         .Fn,
         .NoReturn,
         .ErrorUnion,
         .Frame,
         .Vector,
         .Undefined,
-        => {
-            return false;
-        },
+        => return false,
     }
     return false;
 }
@@ -895,9 +891,7 @@ pub fn assertAbove(comptime T: type, arg1: T, arg2: T) void {
 pub fn testEqualMemory(comptime T: type, arg1: T, arg2: T) bool {
     switch (@typeInfo(T)) {
         else => @compileError(@typeName(T)),
-        .Int, .Enum, .Bool, .Void => {
-            return arg1 == arg2;
-        },
+        .Int, .Enum, .Bool, .Void => return arg1 == arg2,
         .Struct => |struct_info| {
             inline for (struct_info.fields) |field| {
                 if (!testEqualMemory(field.type, @field(arg1, field.name), @field(arg2, field.name))) {
@@ -969,9 +963,7 @@ pub fn testEqualMemory(comptime T: type, arg1: T, arg2: T) bool {
 pub fn assertEqualMemory(comptime T: type, arg1: T, arg2: T) void {
     switch (@typeInfo(T)) {
         else => @compileError(@typeName(T)),
-        .Int, .Enum => {
-            assertEqual(T, arg1, arg2);
-        },
+        .Int, .Enum => assertEqual(T, arg1, arg2),
         .Struct => |struct_info| {
             inline for (struct_info.fields) |field| {
                 assertEqualMemory(field.type, @field(arg1, field.name), @field(arg2, field.name));
@@ -1028,9 +1020,7 @@ pub fn expectEqualMemory(comptime T: type, arg1: T, arg2: T) Unexpected!void {
     switch (@typeInfo(T)) {
         else => @compileError(@typeName(T)),
         .Void => {},
-        .Int, .Enum, .Bool => {
-            try expectEqual(T, arg1, arg2);
-        },
+        .Int, .Enum, .Bool => try expectEqual(T, arg1, arg2),
         .Struct => |struct_info| {
             inline for (struct_info.fields) |field| {
                 try expectEqualMemory(field.type, @field(arg1, field.name), @field(arg2, field.name));
@@ -2383,12 +2373,8 @@ pub const fmt = struct {
                             return "packed struct";
                         }
                     },
-                    .Extern => {
-                        return "extern struct";
-                    },
-                    .Auto => {
-                        return "struct";
-                    },
+                    .Extern => return "extern struct",
+                    .Auto => return "struct",
                 }
             },
             .Union => |union_info| {
@@ -2400,9 +2386,7 @@ pub const fmt = struct {
                             return "packed union";
                         }
                     },
-                    .Extern => {
-                        return "extern union";
-                    },
+                    .Extern => return "extern union",
                     .Auto => {
                         if (union_info.tag_type != null) {
                             return "union(enum)";
@@ -3250,14 +3234,1353 @@ pub const Version = struct {
         };
     }
 };
-pub const SourceLocation = Src();
-pub const Mode = @TypeOf(config.zig.mode);
-pub const Type = @TypeOf(@typeInfo(void));
-pub const TypeId = @typeInfo(Type).Union.tag_type.?;
-pub const Endian = @TypeOf(config.zig.cpu.arch.endian());
-pub const Signedness = @TypeOf(@as(Type.Int, undefined).signedness);
-pub const StackTrace = @typeInfo(@typeInfo(@TypeOf(@errorReturnTrace())).Optional.child).Pointer.child;
-pub const CallingConvention = @TypeOf(@typeInfo(fn () noreturn).Fn.calling_convention);
+pub const lit = struct {
+    // If the programmer can remember to use these, the LHS name may be more helpful
+    // to the reader than the RHS expression.
+    pub const max_val_u8: u8 = 0xff;
+    pub const max_val_u16: u16 = 0xffff;
+    pub const max_val_u32: u32 = 0xffffffff;
+    pub const max_val_u64: u64 = 0xffffffffffffffff;
+    pub const max_bit_u8: u8 = 0x80;
+    pub const max_bit_u16: u16 = 0x8000;
+    pub const max_bit_u32: u32 = 0x80000000;
+    pub const max_bit_u64: u64 = 0x8000000000000000;
+    pub const max_val_i8: i8 = 0x7f;
+    pub const max_val_i16: i16 = 0x7fff;
+    pub const max_val_i32: i32 = 0x7fffffff;
+    pub const max_val_i64: i64 = 0x7fffffffffffffff;
+    pub const max_bit_i8: i8 = 0x40;
+    pub const max_bit_i16: i16 = 0x4000;
+    pub const max_bit_i32: i32 = 0x40000000;
+    pub const max_bit_i64: i64 = 0x4000000000000000;
+    // So that basic formatters do not need to compute a safe buffer length.
+    pub const u8d_max_len: u64 = 3;
+    pub const u8x_max_len: u64 = 5;
+    pub const u64d_max_len: u64 = 19;
+    pub const u64x_max_len: u64 = 18;
+    pub const i8d_max_len: u64 = 4;
+    pub const i8x_max_len: u64 = 6;
+    pub const i64d_max_len: u64 = 20;
+    pub const i64x_max_len: u64 = 19;
+    pub const Range = extern struct {
+        lower: u8,
+        upper: u8,
+    };
+    pub const character_ranges = struct {
+        pub const print: Range = .{ .lower = 0x20, .upper = 0x7e };
+        pub const lower: Range = .{ .lower = 0x61, .upper = 0x7a };
+        pub const upper: Range = .{ .lower = 0x41, .upper = 0x5a };
+        pub const digit: Range = .{ .lower = 0x30, .upper = 0x39 };
+    };
+    pub const character_classes = struct {
+        pub const alpha: [2]Range = .{ character_ranges.upper, character_ranges.lower };
+        pub const alnum: [3]Range = .{ character_ranges.upper, character_ranges.lower, character_ranges.digit };
+        pub const punct: [4]Range = .{
+            .{ .lower = 33, .upper = 47 },
+            .{ .lower = 58, .upper = 64 },
+            .{ .lower = 91, .upper = 96 },
+            .{ .lower = 123, .upper = 126 },
+        };
+        pub const print: [7]Range = alnum ++ punct;
+    };
+    pub const fx = struct {
+        pub const none: [:0]const u8 = "\x1b\x5b\x30\x6d";
+        pub const color = struct {
+            pub const fg = struct {
+                pub const black: [:0]const u8 = "\x1b\x5b\x33\x30\x6d";
+                pub const red: [:0]const u8 = "\x1b\x5b\x33\x31\x6d";
+                pub const green: [:0]const u8 = "\x1b\x5b\x33\x32\x6d";
+                pub const yellow: [:0]const u8 = "\x1b\x5b\x33\x33\x6d";
+                pub const blue: [:0]const u8 = "\x1b\x5b\x33\x34\x6d";
+                pub const magenta: [:0]const u8 = "\x1b\x5b\x33\x35\x6d";
+                pub const cyan: [:0]const u8 = "\x1b\x5b\x33\x36\x6d";
+                pub const white: [:0]const u8 = "\x1b\x5b\x33\x37\x6d";
+                pub const hi_red: [:0]const u8 = "\x1b\x5b\x39\x31\x6d";
+                pub const hi_green: [:0]const u8 = "\x1b\x5b\x39\x32\x6d";
+                pub const hi_yellow: [:0]const u8 = "\x1b\x5b\x39\x33\x6d";
+                pub const hi_blue: [:0]const u8 = "\x1b\x5b\x39\x34\x6d";
+                pub const hi_magenta: [:0]const u8 = "\x1b\x5b\x39\x35\x6d";
+                pub const hi_cyan: [:0]const u8 = "\x1b\x5b\x39\x36\x6d";
+                pub const max_red: [:0]const u8 = "\x1b\x5b\x33\x38\x3b\x35\x3b\x31\x39\x36\x6d";
+                pub const max_blue: [:0]const u8 = "\x1b\x5b\x33\x38\x3b\x35\x3b\x32\x37\x6d";
+                pub const dark_green: [:0]const u8 = "\x1b\x5b\x33\x38\x3b\x35\x3b\x32\x32\x6d";
+                pub const max_green_alt: [:0]const u8 = "\x1b\x5b\x33\x38\x3b\x35\x3b\x37\x36\x6d";
+                pub const orange: [:0]const u8 = "\x1b\x5b\x33\x38\x3b\x35\x3b\x32\x30\x32\x6d";
+                pub const purple: [:0]const u8 = "\x1b\x5b\x33\x38\x3b\x35\x3b\x39\x39\x6d";
+                pub const aqua: [:0]const u8 = "\x1b\x5b\x33\x38\x3b\x35\x3b\x31\x35\x33\x6d";
+                pub const max_white: [:0]const u8 = "\x1b\x5b\x33\x38\x3b\x35\x3b\x32\x33\x31\x6d";
+                pub const red24: [:0]const u8 = "\x1b[38;2;233;86;120m";
+                pub const redwine: [:0]const u8 = "\x1b[38;2;209;109;158m";
+                pub const orange24: [:0]const u8 = "\x1b[38;2;233;127;73m";
+                pub const yellow24: [:0]const u8 = "\x1b[38;2;240;198;116m";
+                pub const light_green: [:0]const u8 = "\x1b[38;2;51;229;96m";
+                pub const green24: [:0]const u8 = "\x1b[38;2;175;215;0m";
+                pub const dark_green24: [:0]const u8 = "\x1b[38;2;152;190;101m";
+                pub const white24: [:0]const u8 = "\x1b[38;2;255;255;255;1m";
+                pub const cyan24: [:0]const u8 = "\x1b[38;2;54;208;224m";
+                pub const blue24: [:0]const u8 = "\x1b[38;2;97;175;239m";
+                pub const violet: [:0]const u8 = "\x1b[38;2;178;148;187m";
+                pub const magenta24: [:0]const u8 = "\x1b[38;2;198;120;221m";
+                pub const teal: [:0]const u8 = "\x1b[38;2;26;188;156m";
+                pub const grey: [:0]const u8 = "\x1b[38;2;146;131;116m";
+                pub const brown: [:0]const u8 = "\x1b[38;2;199;134;101m";
+                pub const light_blue: [:0]const u8 = "\x1b[38;2;97;168;255m";
+                pub const light_purple: [:0]const u8 = "\x1b[38;2;193;173;247m";
+                pub const bracket: [:0]const u8 = "\x1b[38;2;128;160;194m";
+                pub const cursor_bg: [:0]const u8 = "\x1b[38;2;79;91;102m";
+                pub const offwhite0: [:0]const u8 = "\x1b[38;2;207;207;194m";
+                pub const offwhite1: [:0]const u8 = "\x1b[38;2;221;218;214m";
+                pub const numeric: [:0]const u8 = "\x1b[38;2;255;115;115m";
+                pub const data_type: [:0]const u8 = "\x1b[38;2;255;255;255m";
+                pub const attribute: [:0]const u8 = "\x1b[38;2;41;128;185m";
+                pub fn shade(comptime index: u8) [:0]const u8 {
+                    return mcode(.{ 38, 5, 255 - @min(23, index) });
+                }
+            };
+            pub const bg = struct {
+                pub const black: [:0]const u8 = "\x1b\x5b\x34\x30\x6d";
+                pub const red: [:0]const u8 = "\x1b\x5b\x34\x31\x6d";
+                pub const green: [:0]const u8 = "\x1b\x5b\x34\x32\x6d";
+                pub const yellow: [:0]const u8 = "\x1b\x5b\x34\x33\x6d";
+                pub const blue: [:0]const u8 = "\x1b\x5b\x34\x34\x6d";
+                pub const magenta: [:0]const u8 = "\x1b\x5b\x34\x35\x6d";
+                pub const cyan: [:0]const u8 = "\x1b\x5b\x34\x36\x6d";
+                pub const white: [:0]const u8 = "\x1b\x5b\x34\x37\x6d";
+                pub const hi_red: [:0]const u8 = "\x1b\x5b\x31\x30\x31\x6d";
+                pub const hi_green: [:0]const u8 = "\x1b\x5b\x31\x30\x32\x6d";
+                pub const hi_yellow: [:0]const u8 = "\x1b\x5b\x31\x30\x33\x6d";
+                pub const hi_blue: [:0]const u8 = "\x1b\x5b\x31\x30\x34\x6d";
+                pub const hi_magenta: [:0]const u8 = "\x1b\x5b\x31\x30\x35\x6d";
+                pub const hi_cyan: [:0]const u8 = "\x1b\x5b\x31\x30\x36\x6d";
+                pub const hi_white: [:0]const u8 = "\x1b\x5b\x31\x30\x37\x6d";
+            };
+        };
+        pub const style = struct {
+            pub const bold: [:0]const u8 = "\x1b\x5b\x31\x6d";
+            pub const faint: [:0]const u8 = "\x1b\x5b\x32\x6d";
+            pub const italic: [:0]const u8 = "\x1b\x5b\x33\x6d";
+            pub const underline: [:0]const u8 = "\x1b\x5b\x34\x6d";
+            pub const inverted: [:0]const u8 = "\x1b\x5b\x37\x6d";
+            pub const invisible: [:0]const u8 = "\x1b\x5b\x38\x6d";
+            pub const strikeout: [:0]const u8 = "\x1b\x5b\x39\x6d";
+        };
+        fn mcode(comptime args: anytype) [:0]const u8 {
+            comptime var code: [:0]const u8 = "\x1b[";
+            inline for (args) |arg| {
+                code = code ++ tab.ud8[arg] ++ ";";
+            }
+            return code[0 .. code.len - 1] ++ "m";
+        }
+    };
+    pub const position = struct {
+        pub const ask: [4]u8 = .{ 0x1b, 0x5b, 0x36, 0x6e };
+        pub const save: [3]u8 = .{ 0x1b, 0x5b, 0x73 };
+        pub const restore: [3]u8 = .{ 0x1b, 0x5b, 0x75 };
+        pub const up: [3]u8 = .{ 0x1b, 0x5b, 0x41 };
+        pub const down: [3]u8 = .{ 0x1b, 0x5b, 0x42 };
+        pub const right: [3]u8 = .{ 0x1b, 0x5b, 0x43 };
+        pub const left: [3]u8 = .{ 0x1b, 0x5b, 0x44 };
+    };
+    pub const kill = struct {
+        pub const screen_bare: [3]u8 = .{ 0x1b, 0x5b, 0x4a };
+        pub const screen_down: [4]u8 = .{ 0x1b, 0x5b, 0x30, 0x4a };
+        pub const screen_up: [4]u8 = .{ 0x1b, 0x5b, 0x31, 0x4a };
+        pub const screen: [4]u8 = .{ 0x1b, 0x5b, 0x32, 0x4a };
+        pub const line_bare: [3]u8 = .{ 0x1b, 0x5b, 0x4b };
+        pub const line_right: [4]u8 = .{ 0x1b, 0x5b, 0x30, 0x4b };
+        pub const line_left: [4]u8 = .{ 0x1b, 0x5b, 0x31, 0x4b };
+        pub const line: [4]u8 = .{ 0x1b, 0x5b, 0x32, 0x4b };
+        pub const back: [1]u8 = .{0x8};
+    };
+    const key = struct {
+        pub const home: [3]u8 = .{ 0x1b, 0x5b, 0x48 };
+        pub const end: [3]u8 = .{ 0x1b, 0x5b, 0x46 };
+        pub const insert: [4]u8 = .{ 0x1b, 0x5b, 0x32, 0x7e };
+        pub const delete: [4]u8 = .{ 0x1b, 0x5b, 0x33, 0x7e };
+        pub const page_up: [4]u8 = .{ 0x1b, 0x5b, 0x35, 0x7e };
+        pub const page_down: [4]u8 = .{ 0x1b, 0x5b, 0x36, 0x7e };
+        pub const f1: [3]u8 = .{ 0x1b, 0x4f, 0x50 };
+        pub const f2: [3]u8 = .{ 0x1b, 0x4f, 0x51 };
+        pub const f3: [3]u8 = .{ 0x1b, 0x4f, 0x52 };
+        pub const f4: [3]u8 = .{ 0x1b, 0x4f, 0x53 };
+        pub const f5: [5]u8 = .{ 0x1b, 0x5b, 0x31, 0x35, 0x7e };
+        pub const f6: [5]u8 = .{ 0x1b, 0x5b, 0x31, 0x37, 0x7e };
+        pub const f7: [5]u8 = .{ 0x1b, 0x5b, 0x31, 0x38, 0x7e };
+        pub const f8: [5]u8 = .{ 0x1b, 0x5b, 0x31, 0x39, 0x7e };
+        pub const f9: [5]u8 = .{ 0x1b, 0x5b, 0x32, 0x30, 0x7e };
+        pub const f10: [5]u8 = .{ 0x1b, 0x5b, 0x32, 0x31, 0x7e };
+        pub const f11: [5]u8 = .{ 0x1b, 0x5b, 0x32, 0x33, 0x7e };
+        pub const f12: [5]u8 = .{ 0x1b, 0x5b, 0x32, 0x34, 0x7e };
+    };
+};
+pub const zig = struct {
+    const keywords: [49]struct { []const u8, Token.Tag } = .{
+        .{ "or", .keyword_or },
+        .{ "fn", .keyword_fn },
+        .{ "if", .keyword_if },
+        .{ "for", .keyword_for },
+        .{ "and", .keyword_and },
+        .{ "asm", .keyword_asm },
+        .{ "var", .keyword_var },
+        .{ "pub", .keyword_pub },
+        .{ "try", .keyword_try },
+        .{ "test", .keyword_test },
+        .{ "union", .keyword_union },
+        .{ "while", .keyword_while },
+        .{ "else", .keyword_else },
+        .{ "enum", .keyword_enum },
+        .{ "error", .keyword_error },
+        .{ "align", .keyword_align },
+        .{ "async", .keyword_async },
+        .{ "await", .keyword_await },
+        .{ "break", .keyword_break },
+        .{ "catch", .keyword_catch },
+        .{ "const", .keyword_const },
+        .{ "defer", .keyword_defer },
+        .{ "struct", .keyword_struct },
+        .{ "opaque", .keyword_opaque },
+        .{ "orelse", .keyword_orelse },
+        .{ "packed", .keyword_packed },
+        .{ "resume", .keyword_resume },
+        .{ "return", .keyword_return },
+        .{ "export", .keyword_export },
+        .{ "extern", .keyword_extern },
+        .{ "inline", .keyword_inline },
+        .{ "switch", .keyword_switch },
+        .{ "anytype", .keyword_anytype },
+        .{ "suspend", .keyword_suspend },
+        .{ "noalias", .keyword_noalias },
+        .{ "volatile", .keyword_volatile },
+        .{ "errdefer", .keyword_errdefer },
+        .{ "comptime", .keyword_comptime },
+        .{ "callconv", .keyword_callconv },
+        .{ "continue", .keyword_continue },
+        .{ "noinline", .keyword_noinline },
+        .{ "anyframe", .keyword_anyframe },
+        .{ "addrspace", .keyword_addrspace },
+        .{ "allowzero", .keyword_allowzero },
+        .{ "nosuspend", .keyword_nosuspend },
+        .{ "linksection", .keyword_linksection },
+        .{ "threadlocal", .keyword_threadlocal },
+        .{ "unreachable", .keyword_unreachable },
+        .{ "usingnamespace", .keyword_usingnamespace },
+    };
+    pub const Token = struct {
+        tag: Tag,
+        loc: Loc,
+        pub const Loc = struct {
+            start: usize = 0,
+            finish: usize = 0,
+        };
+        pub const Tag = enum {
+            invalid,
+            invalid_periodasterisks,
+            identifier,
+            string_literal,
+            multiline_string_literal_line,
+            char_literal,
+            eof,
+            builtin,
+            bang,
+            pipe,
+            pipe_pipe,
+            pipe_equal,
+            equal,
+            equal_equal,
+            equal_angle_bracket_right,
+            bang_equal,
+            l_paren,
+            r_paren,
+            semicolon,
+            percent,
+            percent_equal,
+            l_brace,
+            r_brace,
+            l_bracket,
+            r_bracket,
+            period,
+            period_asterisk,
+            ellipsis2,
+            ellipsis3,
+            caret,
+            caret_equal,
+            plus,
+            plus_plus,
+            plus_equal,
+            plus_percent,
+            plus_percent_equal,
+            plus_pipe,
+            plus_pipe_equal,
+            minus,
+            minus_equal,
+            minus_percent,
+            minus_percent_equal,
+            minus_pipe,
+            minus_pipe_equal,
+            asterisk,
+            asterisk_equal,
+            asterisk_asterisk,
+            asterisk_percent,
+            asterisk_percent_equal,
+            asterisk_pipe,
+            asterisk_pipe_equal,
+            arrow,
+            colon,
+            slash,
+            slash_equal,
+            comma,
+            ampersand,
+            ampersand_equal,
+            question_mark,
+            angle_bracket_left,
+            angle_bracket_left_equal,
+            angle_bracket_angle_bracket_left,
+            angle_bracket_angle_bracket_left_equal,
+            angle_bracket_angle_bracket_left_pipe,
+            angle_bracket_angle_bracket_left_pipe_equal,
+            angle_bracket_right,
+            angle_bracket_right_equal,
+            angle_bracket_angle_bracket_right,
+            angle_bracket_angle_bracket_right_equal,
+            tilde,
+            number_literal,
+            doc_comment,
+            container_doc_comment,
+            keyword_addrspace,
+            keyword_align,
+            keyword_allowzero,
+            keyword_and,
+            keyword_anyframe,
+            keyword_anytype,
+            keyword_asm,
+            keyword_async,
+            keyword_await,
+            keyword_break,
+            keyword_callconv,
+            keyword_catch,
+            keyword_comptime,
+            keyword_const,
+            keyword_continue,
+            keyword_defer,
+            keyword_else,
+            keyword_enum,
+            keyword_errdefer,
+            keyword_error,
+            keyword_export,
+            keyword_extern,
+            keyword_fn,
+            keyword_for,
+            keyword_if,
+            keyword_inline,
+            keyword_noalias,
+            keyword_noinline,
+            keyword_nosuspend,
+            keyword_opaque,
+            keyword_or,
+            keyword_orelse,
+            keyword_packed,
+            keyword_pub,
+            keyword_resume,
+            keyword_return,
+            keyword_linksection,
+            keyword_struct,
+            keyword_suspend,
+            keyword_switch,
+            keyword_test,
+            keyword_threadlocal,
+            keyword_try,
+            keyword_union,
+            keyword_unreachable,
+            keyword_usingnamespace,
+            keyword_var,
+            keyword_volatile,
+            keyword_while,
+            pub const list: []const Tag = meta.tagList(zig.Token.Tag);
+        };
+    };
+    pub const TokenIterator = struct {
+        buf: [:0]const u8,
+        buf_pos: usize,
+        inval: ?Token,
+        const State = enum {
+            start,
+            identifier,
+            builtin,
+            string_literal,
+            string_literal_backslash,
+            multiline_string_literal_line,
+            char_literal,
+            char_literal_backslash,
+            char_literal_hex_escape,
+            char_literal_unicode_escape_saw_u,
+            char_literal_unicode_escape,
+            char_literal_unicode_invalid,
+            char_literal_unicode,
+            char_literal_end,
+            backslash,
+            equal,
+            bang,
+            pipe,
+            minus,
+            minus_percent,
+            minus_pipe,
+            asterisk,
+            asterisk_percent,
+            asterisk_pipe,
+            slash,
+            line_comment_start,
+            line_comment,
+            doc_comment_start,
+            doc_comment,
+            int,
+            int_exponent,
+            int_period,
+            float,
+            float_exponent,
+            ampersand,
+            caret,
+            percent,
+            plus,
+            plus_percent,
+            plus_pipe,
+            angle_bracket_left,
+            angle_bracket_angle_bracket_left,
+            angle_bracket_angle_bracket_left_pipe,
+            angle_bracket_right,
+            angle_bracket_angle_bracket_right,
+            period,
+            period_2,
+            period_asterisk,
+            saw_at_sign,
+        };
+        pub fn next(itr: *TokenIterator) Token {
+            @setRuntimeSafety(false);
+            if (itr.inval) |token| {
+                itr.inval = null;
+                return token;
+            }
+            var state: State = .start;
+            var ret = Token{
+                .tag = .eof,
+                .loc = .{ .start = itr.buf_pos },
+            };
+            var esc_no: usize = undefined;
+            var rem_cp: usize = undefined;
+            while (true) : (itr.buf_pos +%= 1) {
+                const c: u8 = itr.buf[itr.buf_pos];
+                switch (state) {
+                    .start => switch (c) {
+                        0 => {
+                            if (itr.buf_pos != itr.buf.len) {
+                                ret.tag = .invalid;
+                                ret.loc.start = itr.buf_pos;
+                                itr.buf_pos +%= 1;
+                                ret.loc.finish = itr.buf_pos;
+                                return ret;
+                            }
+                            break;
+                        },
+                        ' ', '\n', '\t', '\r' => ret.loc.start = itr.buf_pos +% 1,
+                        '"' => {
+                            state = .string_literal;
+                            ret.tag = .string_literal;
+                        },
+                        '\'' => state = .char_literal,
+                        'a'...'z', 'A'...'Z', '_' => {
+                            state = .identifier;
+                            ret.tag = .identifier;
+                        },
+                        '@' => state = .saw_at_sign,
+                        '=' => state = .equal,
+                        '!' => state = .bang,
+                        '|' => state = .pipe,
+                        '(' => {
+                            ret.tag = .l_paren;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        ')' => {
+                            ret.tag = .r_paren;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        '[' => {
+                            ret.tag = .l_bracket;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        ']' => {
+                            ret.tag = .r_bracket;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        ';' => {
+                            ret.tag = .semicolon;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        ',' => {
+                            ret.tag = .comma;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        '?' => {
+                            ret.tag = .question_mark;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        ':' => {
+                            ret.tag = .colon;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        '%' => state = .percent,
+                        '*' => state = .asterisk,
+                        '+' => state = .plus,
+                        '<' => state = .angle_bracket_left,
+                        '>' => state = .angle_bracket_right,
+                        '^' => state = .caret,
+                        '\\' => {
+                            state = .backslash;
+                            ret.tag = .multiline_string_literal_line;
+                        },
+                        '{' => {
+                            ret.tag = .l_brace;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        '}' => {
+                            ret.tag = .r_brace;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        '~' => {
+                            ret.tag = .tilde;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        '.' => state = .period,
+                        '-' => state = .minus,
+                        '/' => state = .slash,
+                        '&' => state = .ampersand,
+                        '0'...'9' => {
+                            state = .int;
+                            ret.tag = .number_literal;
+                        },
+                        else => {
+                            ret.tag = .invalid;
+                            ret.loc.finish = itr.buf_pos;
+                            itr.buf_pos +%= 1;
+                            return ret;
+                        },
+                    },
+                    .saw_at_sign => switch (c) {
+                        '"' => {
+                            ret.tag = .identifier;
+                            state = .string_literal;
+                        },
+                        'a'...'z', 'A'...'Z', '_' => {
+                            state = .builtin;
+                            ret.tag = .builtin;
+                        },
+                        else => {
+                            ret.tag = .invalid;
+                            break;
+                        },
+                    },
+                    .ampersand => switch (c) {
+                        '=' => {
+                            ret.tag = .ampersand_equal;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        else => {
+                            ret.tag = .ampersand;
+                            break;
+                        },
+                    },
+                    .asterisk => switch (c) {
+                        '=' => {
+                            ret.tag = .asterisk_equal;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        '*' => {
+                            ret.tag = .asterisk_asterisk;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        '%' => state = .asterisk_percent,
+                        '|' => state = .asterisk_pipe,
+                        else => {
+                            ret.tag = .asterisk;
+                            break;
+                        },
+                    },
+                    .asterisk_percent => switch (c) {
+                        '=' => {
+                            ret.tag = .asterisk_percent_equal;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        else => {
+                            ret.tag = .asterisk_percent;
+                            break;
+                        },
+                    },
+                    .asterisk_pipe => switch (c) {
+                        '=' => {
+                            ret.tag = .asterisk_pipe_equal;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        else => {
+                            ret.tag = .asterisk_pipe;
+                            break;
+                        },
+                    },
+                    .percent => switch (c) {
+                        '=' => {
+                            ret.tag = .percent_equal;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        else => {
+                            ret.tag = .percent;
+                            break;
+                        },
+                    },
+                    .plus => switch (c) {
+                        '=' => {
+                            ret.tag = .plus_equal;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        '+' => {
+                            ret.tag = .plus_plus;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        '%' => state = .plus_percent,
+                        '|' => state = .plus_pipe,
+                        else => {
+                            ret.tag = .plus;
+                            break;
+                        },
+                    },
+                    .plus_percent => switch (c) {
+                        '=' => {
+                            ret.tag = .plus_percent_equal;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        else => {
+                            ret.tag = .plus_percent;
+                            break;
+                        },
+                    },
+                    .plus_pipe => switch (c) {
+                        '=' => {
+                            ret.tag = .plus_pipe_equal;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        else => {
+                            ret.tag = .plus_pipe;
+                            break;
+                        },
+                    },
+                    .caret => switch (c) {
+                        '=' => {
+                            ret.tag = .caret_equal;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        else => {
+                            ret.tag = .caret;
+                            break;
+                        },
+                    },
+                    .identifier => switch (c) {
+                        'a'...'z', 'A'...'Z', '_', '0'...'9' => {},
+                        else => {
+                            if (keyword(itr.buf[ret.loc.start..itr.buf_pos])) |tag| {
+                                ret.tag = tag;
+                            }
+                            break;
+                        },
+                    },
+                    .builtin => switch (c) {
+                        'a'...'z', 'A'...'Z', '_', '0'...'9' => {},
+                        else => break,
+                    },
+                    .backslash => switch (c) {
+                        '\\' => state = .multiline_string_literal_line,
+                        else => {
+                            ret.tag = .invalid;
+                            break;
+                        },
+                    },
+                    .string_literal => switch (c) {
+                        '\\' => state = .string_literal_backslash,
+                        '"' => {
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        0 => {
+                            if (itr.buf_pos == itr.buf.len) {
+                                ret.tag = .invalid;
+                                break;
+                            } else {
+                                itr.checkLiteralCharacter();
+                            }
+                        },
+                        '\n' => {
+                            ret.tag = .invalid;
+                            break;
+                        },
+                        else => itr.checkLiteralCharacter(),
+                    },
+                    .string_literal_backslash => switch (c) {
+                        0, '\n' => {
+                            ret.tag = .invalid;
+                            break;
+                        },
+                        else => state = .string_literal,
+                    },
+                    .char_literal => switch (c) {
+                        0 => {
+                            ret.tag = .invalid;
+                            break;
+                        },
+                        '\\' => state = .char_literal_backslash,
+                        '\'', 0x80...0xbf, 0xf8...0xff => {
+                            ret.tag = .invalid;
+                            break;
+                        },
+                        0xc0...0xdf => {
+                            rem_cp = 1;
+                            state = .char_literal_unicode;
+                        },
+                        0xe0...0xef => {
+                            rem_cp = 2;
+                            state = .char_literal_unicode;
+                        },
+                        0xf0...0xf7 => {
+                            rem_cp = 3;
+                            state = .char_literal_unicode;
+                        },
+                        '\n' => {
+                            ret.tag = .invalid;
+                            break;
+                        },
+                        else => state = .char_literal_end,
+                    },
+                    .char_literal_backslash => switch (c) {
+                        0, '\n' => {
+                            ret.tag = .invalid;
+                            break;
+                        },
+                        'x' => {
+                            state = .char_literal_hex_escape;
+                            esc_no = 0;
+                        },
+                        'u' => state = .char_literal_unicode_escape_saw_u,
+                        else => state = .char_literal_end,
+                    },
+                    .char_literal_hex_escape => switch (c) {
+                        '0'...'9', 'a'...'f', 'A'...'F' => {
+                            esc_no +%= 1;
+                            if (esc_no == 2) {
+                                state = .char_literal_end;
+                            }
+                        },
+                        else => {
+                            ret.tag = .invalid;
+                            break;
+                        },
+                    },
+                    .char_literal_unicode_escape_saw_u => switch (c) {
+                        0 => {
+                            ret.tag = .invalid;
+                            break;
+                        },
+                        '{' => state = .char_literal_unicode_escape,
+                        else => {
+                            ret.tag = .invalid;
+                            state = .char_literal_unicode_invalid;
+                        },
+                    },
+                    .char_literal_unicode_escape => switch (c) {
+                        0 => {
+                            ret.tag = .invalid;
+                            break;
+                        },
+                        '0'...'9', 'a'...'f', 'A'...'F' => {},
+                        '}' => state = .char_literal_end,
+                        else => {
+                            ret.tag = .invalid;
+                            state = .char_literal_unicode_invalid;
+                        },
+                    },
+                    .char_literal_unicode_invalid => switch (c) {
+                        '0'...'9', 'a'...'z', 'A'...'Z', '}' => {},
+                        else => break,
+                    },
+                    .char_literal_end => switch (c) {
+                        '\'' => {
+                            ret.tag = .char_literal;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        else => {
+                            ret.tag = .invalid;
+                            break;
+                        },
+                    },
+                    .char_literal_unicode => switch (c) {
+                        0x80...0xbf => {
+                            rem_cp -%= 1;
+                            if (rem_cp == 0) {
+                                state = .char_literal_end;
+                            }
+                        },
+                        else => {
+                            ret.tag = .invalid;
+                            break;
+                        },
+                    },
+                    .multiline_string_literal_line => switch (c) {
+                        0 => break,
+                        '\n' => {
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        '\t' => {},
+                        else => itr.checkLiteralCharacter(),
+                    },
+                    .bang => switch (c) {
+                        '=' => {
+                            ret.tag = .bang_equal;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        else => {
+                            ret.tag = .bang;
+                            break;
+                        },
+                    },
+                    .pipe => switch (c) {
+                        '=' => {
+                            ret.tag = .pipe_equal;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        '|' => {
+                            ret.tag = .pipe_pipe;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        else => {
+                            ret.tag = .pipe;
+                            break;
+                        },
+                    },
+                    .equal => switch (c) {
+                        '=' => {
+                            ret.tag = .equal_equal;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        '>' => {
+                            ret.tag = .equal_angle_bracket_right;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        else => {
+                            ret.tag = .equal;
+                            break;
+                        },
+                    },
+                    .minus => switch (c) {
+                        '>' => {
+                            ret.tag = .arrow;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        '=' => {
+                            ret.tag = .minus_equal;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        '%' => state = .minus_percent,
+                        '|' => state = .minus_pipe,
+                        else => {
+                            ret.tag = .minus;
+                            break;
+                        },
+                    },
+                    .minus_percent => switch (c) {
+                        '=' => {
+                            ret.tag = .minus_percent_equal;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        else => {
+                            ret.tag = .minus_percent;
+                            break;
+                        },
+                    },
+                    .minus_pipe => switch (c) {
+                        '=' => {
+                            ret.tag = .minus_pipe_equal;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        else => {
+                            ret.tag = .minus_pipe;
+                            break;
+                        },
+                    },
+                    .angle_bracket_left => switch (c) {
+                        '<' => state = .angle_bracket_angle_bracket_left,
+                        '=' => {
+                            ret.tag = .angle_bracket_left_equal;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        else => {
+                            ret.tag = .angle_bracket_left;
+                            break;
+                        },
+                    },
+                    .angle_bracket_angle_bracket_left => switch (c) {
+                        '=' => {
+                            ret.tag = .angle_bracket_angle_bracket_left_equal;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        '|' => state = .angle_bracket_angle_bracket_left_pipe,
+                        else => {
+                            ret.tag = .angle_bracket_angle_bracket_left;
+                            break;
+                        },
+                    },
+                    .angle_bracket_angle_bracket_left_pipe => switch (c) {
+                        '=' => {
+                            ret.tag = .angle_bracket_angle_bracket_left_pipe_equal;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        else => {
+                            ret.tag = .angle_bracket_angle_bracket_left_pipe;
+                            break;
+                        },
+                    },
+                    .angle_bracket_right => switch (c) {
+                        '>' => state = .angle_bracket_angle_bracket_right,
+                        '=' => {
+                            ret.tag = .angle_bracket_right_equal;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        else => {
+                            ret.tag = .angle_bracket_right;
+                            break;
+                        },
+                    },
+                    .angle_bracket_angle_bracket_right => switch (c) {
+                        '=' => {
+                            ret.tag = .angle_bracket_angle_bracket_right_equal;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        else => {
+                            ret.tag = .angle_bracket_angle_bracket_right;
+                            break;
+                        },
+                    },
+                    .period => switch (c) {
+                        '.' => state = .period_2,
+                        '*' => state = .period_asterisk,
+                        else => {
+                            ret.tag = .period;
+                            break;
+                        },
+                    },
+                    .period_2 => switch (c) {
+                        '.' => {
+                            ret.tag = .ellipsis3;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        else => {
+                            ret.tag = .ellipsis2;
+                            break;
+                        },
+                    },
+                    .period_asterisk => switch (c) {
+                        '*' => {
+                            ret.tag = .invalid_periodasterisks;
+                            break;
+                        },
+                        else => {
+                            ret.tag = .period_asterisk;
+                            break;
+                        },
+                    },
+                    .slash => switch (c) {
+                        '/' => state = .line_comment_start,
+                        '=' => {
+                            ret.tag = .slash_equal;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        else => {
+                            ret.tag = .slash;
+                            break;
+                        },
+                    },
+                    .line_comment_start => switch (c) {
+                        0 => {
+                            if (itr.buf_pos != itr.buf.len) {
+                                ret.tag = .invalid;
+                                itr.buf_pos +%= 1;
+                            }
+                            break;
+                        },
+                        '/' => state = .doc_comment_start,
+                        '!' => {
+                            ret.tag = .container_doc_comment;
+                            state = .doc_comment;
+                        },
+                        '\n' => {
+                            state = .start;
+                            ret.loc.start = itr.buf_pos +% 1;
+                        },
+                        '\t' => state = .line_comment,
+                        else => {
+                            state = .line_comment;
+                            itr.checkLiteralCharacter();
+                        },
+                    },
+                    .doc_comment_start => switch (c) {
+                        '/' => state = .line_comment,
+                        0, '\n' => {
+                            ret.tag = .doc_comment;
+                            break;
+                        },
+                        '\t' => {
+                            state = .doc_comment;
+                            ret.tag = .doc_comment;
+                        },
+                        else => {
+                            state = .doc_comment;
+                            ret.tag = .doc_comment;
+                            itr.checkLiteralCharacter();
+                        },
+                    },
+                    .line_comment => switch (c) {
+                        0 => {
+                            if (itr.buf_pos != itr.buf.len) {
+                                ret.tag = .invalid;
+                                itr.buf_pos +%= 1;
+                            }
+                            break;
+                        },
+                        '\n' => {
+                            state = .start;
+                            ret.loc.start = itr.buf_pos +% 1;
+                        },
+                        '\t' => {},
+                        else => itr.checkLiteralCharacter(),
+                    },
+                    .doc_comment => switch (c) {
+                        0, '\n' => break,
+                        '\t' => {},
+                        else => itr.checkLiteralCharacter(),
+                    },
+                    .int => switch (c) {
+                        '.' => state = .int_period,
+                        '_', 'a'...'d', 'f'...'o', 'q'...'z', 'A'...'D', 'F'...'O', 'Q'...'Z', '0'...'9' => {},
+                        'e', 'E', 'p', 'P' => state = .int_exponent,
+                        else => break,
+                    },
+                    .int_exponent => switch (c) {
+                        '-', '+' => state = .float,
+                        else => {
+                            itr.buf_pos -%= 1;
+                            state = .int;
+                        },
+                    },
+                    .int_period => switch (c) {
+                        '_', 'a'...'d', 'f'...'o', 'q'...'z', 'A'...'D', 'F'...'O', 'Q'...'Z', '0'...'9' => state = .float,
+                        'e', 'E', 'p', 'P' => state = .float_exponent,
+                        else => {
+                            itr.buf_pos -%= 1;
+                            break;
+                        },
+                    },
+                    .float => switch (c) {
+                        '_', 'a'...'d', 'f'...'o', 'q'...'z', 'A'...'D', 'F'...'O', 'Q'...'Z', '0'...'9' => {},
+                        'e', 'E', 'p', 'P' => state = .float_exponent,
+                        else => break,
+                    },
+                    .float_exponent => switch (c) {
+                        '-', '+' => state = .float,
+                        else => {
+                            itr.buf_pos -%= 1;
+                            state = .float;
+                        },
+                    },
+                }
+            }
+            if (ret.tag == .eof) {
+                if (itr.inval) |token| {
+                    itr.inval = null;
+                    return token;
+                }
+                ret.loc.start = itr.buf_pos;
+            }
+            ret.loc.finish = itr.buf_pos;
+            return ret;
+        }
+        fn checkLiteralCharacter(itr: *TokenIterator) void {
+            if (itr.inval != null) {
+                return;
+            }
+            const inval_len: u64 = itr.getInvalidCharacterLength();
+            if (inval_len == 0) {
+                return;
+            }
+            itr.inval = .{
+                .tag = .invalid,
+                .loc = .{
+                    .start = itr.buf_pos,
+                    .finish = itr.buf_pos +% inval_len,
+                },
+            };
+        }
+        fn getInvalidCharacterLength(itr: *TokenIterator) u8 {
+            const byte: u8 = itr.buf[itr.buf_pos];
+            if (byte < 0x80) {
+                // Removed carriage return tolerance.
+                return @intFromBool(byte <= 0x1F) | @intFromBool(byte == 0x7F);
+            } else {
+                const len: u8 = switch (byte) {
+                    0b0000_0000...0b0111_1111 => 1,
+                    0b1100_0000...0b1101_1111 => 2,
+                    0b1110_0000...0b1110_1111 => 3,
+                    0b1111_0000...0b1111_0111 => 4,
+                    else => return 1,
+                };
+                if (itr.buf_pos +% len > itr.buf.len) {
+                    return @intCast(u8, itr.buf.len -% itr.buf_pos);
+                }
+                const bytes: []const u8 = itr.buf[itr.buf_pos .. itr.buf_pos +% len];
+                if (len == 2) {
+                    var value: u32 = bytes[0] & 0b00011111;
+                    if (bytes[1] & 0b11000000 != 0b10000000) {
+                        return len;
+                    }
+                    value <<= 6;
+                    value |= bytes[1] & 0b00111111;
+                    if (value < 0x80 or value == 0x85) {
+                        return len;
+                    }
+                } else //
+                if (len == 3) {
+                    var value: u32 = bytes[0] & 0b00001111;
+                    if (bytes[1] & 0b11000000 != 0b10000000) {
+                        return len;
+                    }
+                    value <<= 6;
+                    value |= bytes[1] & 0b00111111;
+                    if (bytes[2] & 0b11000000 != 0b10000000) {
+                        return len;
+                    }
+                    value <<= 6;
+                    value |= bytes[2] & 0b00111111;
+                    if (value < 0x800) {
+                        return len;
+                    }
+                    if (0xd800 <= value and value <= 0xdfff) {
+                        return len;
+                    }
+                    if (value == 0x2028 or value == 0x2029) {
+                        return len;
+                    }
+                } else //
+                if (len == 4) {
+                    var value: u32 = bytes[0] & 0b00000111;
+                    if (bytes[1] & 0b11000000 != 0b10000000) {
+                        return len;
+                    }
+                    value <<= 6;
+                    value |= bytes[1] & 0b00111111;
+                    if (bytes[2] & 0b11000000 != 0b10000000) {
+                        return len;
+                    }
+                    value <<= 6;
+                    value |= bytes[2] & 0b00111111;
+                    if (bytes[3] & 0b11000000 != 0b10000000) {
+                        return len;
+                    }
+                    value <<= 6;
+                    value |= bytes[3] & 0b00111111;
+                    if (value < 0x10000 or value > 0x10FFFF) {
+                        return len;
+                    }
+                }
+                itr.buf_pos +%= len -% 1;
+            }
+            return 0;
+        }
+    };
+    pub fn lexeme(tag: Token.Tag) ?[]const u8 {
+        switch (tag) {
+            .invalid_periodasterisks => return ".**",
+            .bang => return "!",
+            .pipe => return "|",
+            .pipe_pipe => return "||",
+            .pipe_equal => return "|=",
+            .equal => return "=",
+            .equal_equal => return "==",
+            .equal_angle_bracket_right => return "=>",
+            .bang_equal => return "!=",
+            .l_paren => return "(",
+            .r_paren => return ")",
+            .semicolon => return ";",
+            .percent => return "%",
+            .percent_equal => return "%=",
+            .l_brace => return "{",
+            .r_brace => return "}",
+            .l_bracket => return "[",
+            .r_bracket => return "]",
+            .period => return ".",
+            .period_asterisk => return ".*",
+            .ellipsis2 => return "..",
+            .ellipsis3 => return "...",
+            .caret => return "^",
+            .caret_equal => return "^=",
+            .plus => return "+",
+            .plus_plus => return "++",
+            .plus_equal => return "+=",
+            .plus_percent => return "+%",
+            .plus_percent_equal => return "+%=",
+            .plus_pipe => return "+|",
+            .plus_pipe_equal => return "+|=",
+            .minus => return "-",
+            .minus_equal => return "-=",
+            .minus_percent => return "-%",
+            .minus_percent_equal => return "-%=",
+            .minus_pipe => return "-|",
+            .minus_pipe_equal => return "-|=",
+            .asterisk => return "*",
+            .asterisk_equal => return "*=",
+            .asterisk_asterisk => return "**",
+            .asterisk_percent => return "*%",
+            .asterisk_percent_equal => return "*%=",
+            .asterisk_pipe => return "*|",
+            .asterisk_pipe_equal => return "*|=",
+            .arrow => return "->",
+            .colon => return ":",
+            .slash => return "/",
+            .slash_equal => return "/=",
+            .comma => return ",",
+            .ampersand => return "&",
+            .ampersand_equal => return "&=",
+            .question_mark => return "?",
+            .angle_bracket_left => return "<",
+            .angle_bracket_left_equal => return "<=",
+            .angle_bracket_angle_bracket_left => return "<<",
+            .angle_bracket_angle_bracket_left_equal => return "<<=",
+            .angle_bracket_angle_bracket_left_pipe => return "<<|",
+            .angle_bracket_angle_bracket_left_pipe_equal => return "<<|=",
+            .angle_bracket_right => return ">",
+            .angle_bracket_right_equal => return ">=",
+            .angle_bracket_angle_bracket_right => return ">>",
+            .angle_bracket_angle_bracket_right_equal => return ">>=",
+            .tilde => return "~",
+            .keyword_addrspace => return "addrspace",
+            .keyword_align => return "align",
+            .keyword_allowzero => return "allowzero",
+            .keyword_and => return "and",
+            .keyword_anyframe => return "anyframe",
+            .keyword_anytype => return "anytype",
+            .keyword_asm => return "asm",
+            .keyword_async => return "async",
+            .keyword_await => return "await",
+            .keyword_break => return "break",
+            .keyword_callconv => return "callconv",
+            .keyword_catch => return "catch",
+            .keyword_comptime => return "comptime",
+            .keyword_const => return "const",
+            .keyword_continue => return "continue",
+            .keyword_defer => return "defer",
+            .keyword_else => return "else",
+            .keyword_enum => return "enum",
+            .keyword_errdefer => return "errdefer",
+            .keyword_error => return "error",
+            .keyword_export => return "export",
+            .keyword_extern => return "extern",
+            .keyword_fn => return "fn",
+            .keyword_for => return "for",
+            .keyword_if => return "if",
+            .keyword_inline => return "inline",
+            .keyword_noalias => return "noalias",
+            .keyword_noinline => return "noinline",
+            .keyword_nosuspend => return "nosuspend",
+            .keyword_opaque => return "opaque",
+            .keyword_or => return "or",
+            .keyword_orelse => return "orelse",
+            .keyword_packed => return "packed",
+            .keyword_pub => return "pub",
+            .keyword_resume => return "resume",
+            .keyword_return => return "return",
+            .keyword_linksection => return "linksection",
+            .keyword_struct => return "struct",
+            .keyword_suspend => return "suspend",
+            .keyword_switch => return "switch",
+            .keyword_test => return "test",
+            .keyword_threadlocal => return "threadlocal",
+            .keyword_try => return "try",
+            .keyword_union => return "union",
+            .keyword_unreachable => return "unreachable",
+            .keyword_usingnamespace => return "usingnamespace",
+            .keyword_var => return "var",
+            .keyword_volatile => return "volatile",
+            .keyword_while => return "while",
+            else => return null,
+        }
+    }
+    pub fn symbol(tag: Token.Tag) []const u8 {
+        switch (tag) {
+            .invalid => return "invalid bytes",
+            .identifier => return "an identifier",
+            .string_literal, .multiline_string_literal_line => return "a string literal",
+            .char_literal => return "a character literal",
+            .eof => return "EOF",
+            .builtin => return "a builtin function",
+            .number_literal => return "a number literal",
+            .doc_comment, .container_doc_comment => return "a document comment",
+            else => return tag.lexeme(),
+        }
+    }
+    pub fn keyword(str: []const u8) ?Token.Tag {
+        const min_len: comptime_int = 2;
+        const max_len: comptime_int = 14;
+        if (str.len < min_len or str.len > max_len) {
+            return null;
+        }
+        for (zig.keywords) |pair| {
+            if (mach.testEqualMany8(pair[0], str)) {
+                return pair[1];
+            }
+        }
+        return null;
+    }
+};
 fn Src() type {
     return @TypeOf(@src());
 }
@@ -3265,6 +4588,14 @@ fn Overflow(comptime T: type) type {
     const S = struct { T, u1 };
     return S;
 }
+pub const SourceLocation = Src();
+pub const Mode = @TypeOf(builtin.mode);
+pub const Type = @TypeOf(@typeInfo(void));
+pub const TypeId = @typeInfo(Type).Union.tag_type.?;
+pub const Endian = @TypeOf(builtin.cpu.arch.endian());
+pub const Signedness = @TypeOf(@as(Type.Int, undefined).signedness);
+pub const StackTrace = @typeInfo(@typeInfo(@TypeOf(@errorReturnTrace())).Optional.child).Pointer.child;
+pub const CallingConvention = @TypeOf(@typeInfo(fn () noreturn).Fn.calling_convention);
 fn indexOfSentinel(any: anytype) usize {
     const T = @TypeOf(any);
     const type_info: Type = @typeInfo(T);
@@ -3277,3 +4608,113 @@ fn indexOfSentinel(any: anytype) usize {
     while (any[idx] != sentinel) idx +%= 1;
     return idx;
 }
+pub const my_traces: Traces = .{
+    .relative_path = true,
+    .context_lines = null,
+    .blank_lines = 1,
+    .line_no = true,
+    .pc_addr = true,
+    .sidebar = true,
+    .caret = false,
+    .tokens = .{
+        .line_no = "\x1b[2m",
+        .pc_addr = "\x1b[38;5;247m",
+        .sidebar = "│",
+        .caret = "\x1b[48;5;196;1m^\x1b[0m",
+        .syntax = &.{
+            .{ .style = "", .tags = &.{
+                .invalid,      .identifier,
+                .char_literal, .container_doc_comment,
+                .doc_comment,  .invalid_periodasterisks,
+                .period,       .comma,
+                .colon,        .semicolon,
+                .ellipsis2,    .ellipsis3,
+                .eof,
+            } },
+            .{ .style = lit.fx.color.fg.light_green, .tags = &.{
+                .string_literal, .multiline_string_literal_line,
+            } },
+            .{ .style = lit.fx.color.fg.bracket, .tags = &.{
+                .l_brace,   .r_brace,
+                .l_bracket, .r_bracket,
+                .l_paren,   .r_paren,
+            } },
+            .{ .style = lit.fx.color.fg.magenta24, .tags = &.{
+                .arrow,                  .bang,
+                .pipe,                   .pipe_pipe,
+                .pipe_equal,             .equal,
+                .equal_equal,            .bang_equal,
+                .percent,                .percent_equal,
+                .period_asterisk,        .caret,
+                .caret_equal,            .plus,
+                .plus_plus,              .plus_equal,
+                .plus_percent,           .plus_percent_equal,
+                .plus_pipe,              .plus_pipe_equal,
+                .minus,                  .minus_equal,
+                .minus_percent,          .minus_percent_equal,
+                .minus_pipe,             .minus_pipe_equal,
+                .asterisk,               .asterisk_equal,
+                .asterisk_asterisk,      .asterisk_percent,
+                .asterisk_percent_equal, .asterisk_pipe,
+                .asterisk_pipe_equal,    .slash,
+                .slash_equal,            .ampersand,
+                .ampersand_equal,        .question_mark,
+                .tilde,
+            } },
+            .{ .style = lit.fx.color.fg.magenta24, .tags = &.{
+                .angle_bracket_left,
+                .equal_angle_bracket_right,
+                .angle_bracket_left_equal,
+                .angle_bracket_angle_bracket_left,
+                .angle_bracket_angle_bracket_left_equal,
+                .angle_bracket_angle_bracket_left_pipe,
+                .angle_bracket_angle_bracket_left_pipe_equal,
+                .angle_bracket_right,
+                .angle_bracket_right_equal,
+                .angle_bracket_angle_bracket_right,
+                .angle_bracket_angle_bracket_right_equal,
+            } },
+            .{ .style = lit.fx.color.fg.cyan24, .tags = &.{
+                .keyword_defer,     .keyword_async,
+                .keyword_await,     .keyword_export,
+                .keyword_extern,    .keyword_resume,
+                .keyword_suspend,   .keyword_errdefer,
+                .keyword_nosuspend, .keyword_unreachable,
+            } },
+            .{ .style = lit.fx.color.fg.red24, .tags = &.{
+                .builtin, .keyword_align,
+            } },
+            .{ .style = lit.fx.color.fg.orange24, .tags = &.{
+                .number_literal,
+            } },
+            .{ .style = lit.fx.color.fg.light_purple, .tags = &.{
+                .keyword_asm,      .keyword_catch,
+                .keyword_inline,   .keyword_noalias,
+                .keyword_noinline, .keyword_callconv,
+            } },
+            .{ .style = lit.fx.color.fg.redwine, .tags = &.{
+                .keyword_enum,   .keyword_packed,
+                .keyword_opaque, .keyword_struct,
+            } },
+            .{ .style = lit.fx.color.fg.white24, .tags = &.{
+                .keyword_fn,             .keyword_if,
+                .keyword_or,             .keyword_for,
+                .keyword_and,            .keyword_pub,
+                .keyword_try,            .keyword_else,
+                .keyword_test,           .keyword_error,
+                .keyword_while,          .keyword_union,
+                .keyword_switch,         .keyword_orelse,
+                .keyword_anytype,        .keyword_anyframe,
+                .keyword_volatile,       .keyword_allowzero,
+                .keyword_addrspace,      .keyword_linksection,
+                .keyword_usingnamespace,
+            } },
+            .{ .style = lit.fx.color.fg.yellow24, .tags = &.{
+                .keyword_var,         .keyword_break,
+                .keyword_const,       .keyword_return,
+                .keyword_comptime,    .keyword_continue,
+                .keyword_threadlocal,
+            } },
+        },
+    },
+};
