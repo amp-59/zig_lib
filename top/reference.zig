@@ -2,15 +2,15 @@ const mach = @import("./mach.zig");
 const algo = @import("./algo.zig");
 const builtin = @import("./builtin.zig");
 fn automatic_storage_address(impl: anytype) u64 {
-    return @ptrToInt(impl) + @offsetOf(@TypeOf(impl.*), "auto");
+    return @intFromPtr(impl) + @offsetOf(@TypeOf(impl.*), "auto");
 }
 pub fn pointerOne(comptime child: type, s_lb_addr: u64) *child {
     @setRuntimeSafety(false);
-    return @intToPtr(*child, s_lb_addr);
+    return @ptrFromInt(*child, s_lb_addr);
 }
 pub fn pointerMany(comptime child: type, s_lb_addr: u64) [*]child {
     @setRuntimeSafety(false);
-    return @intToPtr([*]child, s_lb_addr);
+    return @ptrFromInt([*]child, s_lb_addr);
 }
 pub fn pointerManyWithSentinel(
     comptime child: type,
@@ -18,11 +18,11 @@ pub fn pointerManyWithSentinel(
     comptime sentinel: child,
 ) [*:sentinel]child {
     @setRuntimeSafety(false);
-    return @intToPtr([*:sentinel]child, addr);
+    return @ptrFromInt([*:sentinel]child, addr);
 }
 pub fn pointerSlice(comptime child: type, addr: u64, count: u64) []child {
     @setRuntimeSafety(false);
-    return @intToPtr([*]child, addr)[0..count];
+    return @ptrFromInt([*]child, addr)[0..count];
 }
 pub fn pointerSliceWithSentinel(
     comptime child: type,
@@ -31,7 +31,7 @@ pub fn pointerSliceWithSentinel(
     comptime sentinel: child,
 ) [:sentinel]child {
     @setRuntimeSafety(false);
-    return @intToPtr([*]child, addr)[0..count :sentinel];
+    return @ptrFromInt([*]child, addr)[0..count :sentinel];
 }
 pub fn pointerCount(
     comptime child: type,
@@ -39,7 +39,7 @@ pub fn pointerCount(
     comptime count: u64,
 ) *[count]child {
     @setRuntimeSafety(false);
-    return @intToPtr(*[count]child, addr);
+    return @ptrFromInt(*[count]child, addr);
 }
 pub fn pointerCountWithSentinel(
     comptime child: type,
@@ -48,7 +48,7 @@ pub fn pointerCountWithSentinel(
     comptime sentinel: child,
 ) *[count:sentinel]child {
     @setRuntimeSafety(false);
-    return @intToPtr(*[count:sentinel]child, addr);
+    return @ptrFromInt(*[count:sentinel]child, addr);
 }
 pub fn pointerOpaque(comptime child: type, any: *const anyopaque) *const child {
     @setRuntimeSafety(false);
@@ -60,7 +60,7 @@ pub fn pointerOneAligned(
     comptime alignment: u64,
 ) *align(alignment) child {
     @setRuntimeSafety(false);
-    return @intToPtr(*align(alignment) child, addr);
+    return @ptrFromInt(*align(alignment) child, addr);
 }
 pub fn pointerManyAligned(
     comptime child: type,
@@ -68,7 +68,7 @@ pub fn pointerManyAligned(
     comptime alignment: u64,
 ) [*]align(alignment) child {
     @setRuntimeSafety(false);
-    return @intToPtr([*]align(alignment) child, addr);
+    return @ptrFromInt([*]align(alignment) child, addr);
 }
 pub fn pointerManyWithSentinelAligned(
     comptime child: type,
@@ -77,7 +77,7 @@ pub fn pointerManyWithSentinelAligned(
     comptime alignment: u64,
 ) [*:sentinel]align(alignment) child {
     @setRuntimeSafety(false);
-    return @intToPtr([*:sentinel]align(alignment) child, addr);
+    return @ptrFromInt([*:sentinel]align(alignment) child, addr);
 }
 pub fn pointerSliceAligned(
     comptime child: type,
@@ -86,7 +86,7 @@ pub fn pointerSliceAligned(
     comptime alignment: u64,
 ) []align(alignment) child {
     @setRuntimeSafety(false);
-    return @intToPtr([*]align(alignment) child, addr)[0..count];
+    return @ptrFromInt([*]align(alignment) child, addr)[0..count];
 }
 pub fn pointerSliceWithSentinelAligned(
     comptime child: type,
@@ -96,7 +96,7 @@ pub fn pointerSliceWithSentinelAligned(
     comptime alignment: u64,
 ) [:sentinel]align(alignment) child {
     @setRuntimeSafety(false);
-    return @intToPtr([*]align(alignment) child, addr)[0..count :sentinel];
+    return @ptrFromInt([*]align(alignment) child, addr)[0..count :sentinel];
 }
 pub fn pointerCountAligned(
     comptime child: type,
@@ -105,7 +105,7 @@ pub fn pointerCountAligned(
     comptime alignment: u64,
 ) *align(alignment) [count]child {
     @setRuntimeSafety(false);
-    return @intToPtr(*align(alignment) [count]child, addr);
+    return @ptrFromInt(*align(alignment) [count]child, addr);
 }
 pub fn pointerCountWithSentinelAligned(
     comptime child: type,
@@ -115,7 +115,7 @@ pub fn pointerCountWithSentinelAligned(
     comptime alignment: u64,
 ) *align(alignment) [count:sentinel]child {
     @setRuntimeSafety(false);
-    return @intToPtr(*align(alignment) [count:sentinel]child, addr);
+    return @ptrFromInt(*align(alignment) [count:sentinel]child, addr);
 }
 pub fn pointerOpaqueAligned(
     comptime child: type,
@@ -133,7 +133,7 @@ pub fn copy(dst: u64, src: u64, bytes: u64, comptime high_alignment: u64) void {
     var index: u64 = 0;
     @setRuntimeSafety(false);
     while (index != bytes / high_alignment) : (index +%= 1) {
-        @intToPtr([*]unit_type, dst)[index] = @intToPtr([*]const unit_type, src)[index];
+        @ptrFromInt([*]unit_type, dst)[index] = @ptrFromInt([*]const unit_type, src)[index];
     }
 }
 pub const Specification0 = struct {
