@@ -149,7 +149,7 @@ pub fn ZigError(comptime Value: type, comptime return_codes: []const Value) type
 pub fn zigErrorThrow(comptime Value: type, comptime values: []const Value, ret: isize) ZigError(Value, values)!void {
     const E = ZigError(Value, values);
     inline for (values) |value| {
-        if (ret == @enumToInt(value)) {
+        if (ret == @intFromEnum(value)) {
             return @field(E, value.errorName());
         }
     }
@@ -158,7 +158,7 @@ pub fn zigErrorThrow(comptime Value: type, comptime values: []const Value, ret: 
 /// program on success.
 pub fn zigErrorAbort(comptime Value: type, comptime values: []const Value, ret: isize) void {
     inline for (values) |value| {
-        if (ret == @enumToInt(value)) {
+        if (ret == @intFromEnum(value)) {
             debug.panic(debug.about_fault_p0_s ++ value.errorName(), null, @returnAddress());
         }
     }
@@ -228,10 +228,10 @@ pub fn rem(comptime T: type, numerator: anytype, denominator: anytype) T {
     return intCast(T, @rem(numerator, denominator));
 }
 pub fn int(comptime T: type, value: bool) T {
-    return @boolToInt(value);
+    return @intFromBool(value);
 }
 pub fn int2a(comptime T: type, value1: bool, value2: bool) T {
-    const ret: u1 = @boolToInt(value1) & @boolToInt(value2);
+    const ret: u1 = @intFromBool(value1) & @intFromBool(value2);
     if (T == bool) {
         return @bitCast(bool, ret);
     } else {
@@ -239,7 +239,7 @@ pub fn int2a(comptime T: type, value1: bool, value2: bool) T {
     }
 }
 pub fn int2v(comptime T: type, value1: bool, value2: bool) T {
-    const ret: u1 = @boolToInt(value1) | @boolToInt(value2);
+    const ret: u1 = @intFromBool(value1) | @intFromBool(value2);
     if (T == bool) {
         return @bitCast(bool, ret);
     } else {
@@ -247,7 +247,7 @@ pub fn int2v(comptime T: type, value1: bool, value2: bool) T {
     }
 }
 pub fn int3a(comptime T: type, value1: bool, value2: bool, value3: bool) T {
-    const ret: u1 = @boolToInt(value1) & @boolToInt(value2) & @boolToInt(value3);
+    const ret: u1 = @intFromBool(value1) & @intFromBool(value2) & @intFromBool(value3);
     if (T == bool) {
         return @bitCast(bool, ret);
     } else {
@@ -255,7 +255,7 @@ pub fn int3a(comptime T: type, value1: bool, value2: bool, value3: bool) T {
     }
 }
 pub fn int3v(comptime T: type, value1: bool, value2: bool, value3: bool) T {
-    const ret: u1 = @boolToInt(value1) | @boolToInt(value2) | @boolToInt(value3);
+    const ret: u1 = @intFromBool(value1) | @intFromBool(value2) | @intFromBool(value3);
     if (T == bool) {
         return @bitCast(bool, ret);
     } else {
@@ -263,7 +263,7 @@ pub fn int3v(comptime T: type, value1: bool, value2: bool, value3: bool) T {
     }
 }
 pub fn ended(comptime T: type, value: T, endian: Endian) T {
-    if (endian == config.native_endian) {
+    if (endian == native_endian) {
         return value;
     } else {
         return @byteSwap(value);
@@ -281,7 +281,7 @@ inline fn normalAddAssign(comptime T: type, arg1: *T, arg2: T) void {
 }
 inline fn normalAddReturn(comptime T: type, arg1: T, arg2: T) T {
     const result: Overflow(T) = overflowingAddReturn(T, arg1, arg2);
-    if (config.runtime_assertions and result[1] != 0) {
+    if (runtime_assertions and result[1] != 0) {
         if (@inComptime()) {
             debug.static.addCausedOverflow(T, arg1, arg2);
         } else {
@@ -295,7 +295,7 @@ inline fn normalSubAssign(comptime T: type, arg1: *T, arg2: T) void {
 }
 inline fn normalSubReturn(comptime T: type, arg1: T, arg2: T) T {
     const result: Overflow(T) = overflowingSubReturn(T, arg1, arg2);
-    if (config.runtime_assertions and result[1] != 0) {
+    if (runtime_assertions and result[1] != 0) {
         if (@inComptime()) {
             debug.static.subCausedOverflow(T, arg1, arg2);
         } else {
@@ -309,7 +309,7 @@ inline fn normalMulAssign(comptime T: type, arg1: *T, arg2: T) void {
 }
 inline fn normalMulReturn(comptime T: type, arg1: T, arg2: T) T {
     const result: Overflow(T) = overflowingMulReturn(T, arg1, arg2);
-    if (config.runtime_assertions and result[1] != 0) {
+    if (runtime_assertions and result[1] != 0) {
         if (@inComptime()) {
             debug.static.mulCausedOverflow(T, arg1, arg2);
         } else {
@@ -324,7 +324,7 @@ inline fn exactDivisionAssign(comptime T: type, arg1: *T, arg2: T) void {
 inline fn exactDivisionReturn(comptime T: type, arg1: T, arg2: T) T {
     const result: T = arg1 / arg2;
     const remainder: T = normalSubReturn(T, arg1, (result * arg2));
-    if (config.runtime_assertions and remainder != 0) {
+    if (runtime_assertions and remainder != 0) {
         if (@inComptime()) {
             debug.static.exactDivisionWithRemainder(T, arg1, arg2, result, remainder);
         } else {
@@ -671,9 +671,9 @@ pub inline fn all(comptime T: type) T {
 }
 pub inline fn addr(any: anytype) usize {
     if (@typeInfo(@TypeOf(any)).Pointer.size == .Slice) {
-        return @ptrToInt(any.ptr);
+        return @intFromPtr(any.ptr);
     } else {
-        return @ptrToInt(any);
+        return @intFromPtr(any);
     }
 }
 pub fn anyOpaque(comptime value: anytype) *const anyopaque {
@@ -755,11 +755,11 @@ fn testIdenticalUnion(comptime T: type, comptime union_info: Type.Union, arg1: T
 }
 fn testEqualUnion(comptime T: type, comptime union_info: Type.Union, arg1: T, arg2: T) bool {
     if (union_info.tag_type) |tag_type| {
-        if (@enumToInt(arg1) != @enumToInt(arg2)) {
+        if (@intFromEnum(arg1) != @intFromEnum(arg2)) {
             return false;
         }
         inline for (union_info.fields) |field| {
-            if (@enumToInt(arg1) == @enumToInt(@field(tag_type, field.name))) {
+            if (@intFromEnum(arg1) == @intFromEnum(@field(tag_type, field.name))) {
                 if (!testEqual(
                     field.type,
                     @field(arg1, field.name),
@@ -839,7 +839,7 @@ pub fn assert(b: bool) void {
     }
 }
 pub fn assertBelow(comptime T: type, arg1: T, arg2: T) void {
-    if (config.runtime_assertions and arg1 >= arg2) {
+    if (runtime_assertions and arg1 >= arg2) {
         if (@inComptime()) {
             debug.static.comparisonFailed(T, " < ", arg1, arg2);
         } else {
@@ -848,7 +848,7 @@ pub fn assertBelow(comptime T: type, arg1: T, arg2: T) void {
     }
 }
 pub fn assertBelowOrEqual(comptime T: type, arg1: T, arg2: T) void {
-    if (config.runtime_assertions and arg1 > arg2) {
+    if (runtime_assertions and arg1 > arg2) {
         if (@inComptime()) {
             debug.static.comparisonFailed(T, " <= ", arg1, arg2);
         } else {
@@ -857,7 +857,7 @@ pub fn assertBelowOrEqual(comptime T: type, arg1: T, arg2: T) void {
     }
 }
 pub fn assertEqual(comptime T: type, arg1: T, arg2: T) void {
-    if (config.runtime_assertions and !testEqual(T, arg1, arg2)) {
+    if (runtime_assertions and !testEqual(T, arg1, arg2)) {
         if (@inComptime()) {
             debug.static.comparisonFailed(T, " == ", arg1, arg2);
         } else {
@@ -866,7 +866,7 @@ pub fn assertEqual(comptime T: type, arg1: T, arg2: T) void {
     }
 }
 pub fn assertNotEqual(comptime T: type, arg1: T, arg2: T) void {
-    if (config.runtime_assertions and testEqual(T, arg1, arg2)) {
+    if (runtime_assertions and testEqual(T, arg1, arg2)) {
         if (@inComptime()) {
             debug.static.comparisonFailed(T, " != ", arg1, arg2);
         } else {
@@ -875,7 +875,7 @@ pub fn assertNotEqual(comptime T: type, arg1: T, arg2: T) void {
     }
 }
 pub fn assertAboveOrEqual(comptime T: type, arg1: T, arg2: T) void {
-    if (config.runtime_assertions and arg1 < arg2) {
+    if (runtime_assertions and arg1 < arg2) {
         if (@inComptime()) {
             debug.static.comparisonFailed(T, " >= ", arg1, arg2);
         } else {
@@ -884,7 +884,7 @@ pub fn assertAboveOrEqual(comptime T: type, arg1: T, arg2: T) void {
     }
 }
 pub fn assertAbove(comptime T: type, arg1: T, arg2: T) void {
-    if (config.runtime_assertions and arg1 <= arg2) {
+    if (runtime_assertions and arg1 <= arg2) {
         if (@inComptime()) {
             debug.comparisonFailedFault(T, " > ", arg1, arg2);
         } else {
@@ -1121,7 +1121,7 @@ pub fn expectAbove(comptime T: type, arg1: T, arg2: T) Unexpected!void {
     }
 }
 pub fn intToPtr(comptime P: type, address: u64) P {
-    return @intToPtr(P, address);
+    return @ptrFromInt(P, address);
 }
 pub inline fn intCast(comptime T: type, value: anytype) T {
     @setRuntimeSafety(false);
@@ -1129,7 +1129,7 @@ pub inline fn intCast(comptime T: type, value: anytype) T {
     if (@bitSizeOf(T) > @bitSizeOf(U)) {
         return value;
     }
-    if (config.runtime_assertions and value > ~@as(T, 0)) {
+    if (runtime_assertions and value > ~@as(T, 0)) {
         debug.intCastTruncatedBitsFault(T, U, value, @returnAddress());
     }
     return @truncate(T, value);
@@ -1147,42 +1147,42 @@ pub const static = struct {
     }
     fn normalAddAssign(comptime T: type, comptime arg1: *T, comptime arg2: T) void {
         const result: Overflow(T) = overflowingAddReturn(T, arg1.*, arg2);
-        if (config.comptime_assertions and result[1] != 0) {
+        if (comptime_assertions and result[1] != 0) {
             debug.static.addCausedOverflow(T, arg1.*, arg2);
         }
         arg1.* = result[0];
     }
     fn normalAddReturn(comptime T: type, comptime arg1: T, comptime arg2: T) T {
         const result: Overflow(T) = overflowingAddReturn(T, arg1, arg2);
-        if (config.comptime_assertions and result[1] != 0) {
+        if (comptime_assertions and result[1] != 0) {
             debug.static.addCausedOverflow(T, arg1, arg2);
         }
         return result[0];
     }
     fn normalSubAssign(comptime T: type, comptime arg1: *T, comptime arg2: T) void {
         const result: Overflow(T) = overflowingSubReturn(T, arg1.*, arg2);
-        if (config.comptime_assertions and arg1.* < arg2) {
+        if (comptime_assertions and arg1.* < arg2) {
             debug.static.subCausedOverflow(T, arg1.*, arg2);
         }
         arg1.* = result[0];
     }
     fn normalSubReturn(comptime T: type, comptime arg1: T, comptime arg2: T) T {
         const result: Overflow(T) = overflowingSubReturn(T, arg1, arg2);
-        if (config.comptime_assertions and result[1] != 0) {
+        if (comptime_assertions and result[1] != 0) {
             debug.static.subCausedOverflow(T, arg1, arg2);
         }
         return result[0];
     }
     fn normalMulAssign(comptime T: type, comptime arg1: *T, comptime arg2: T) void {
         const result: Overflow(T) = overflowingMulReturn(T, arg1.*, arg2);
-        if (config.comptime_assertions and result[1] != 0) {
+        if (comptime_assertions and result[1] != 0) {
             debug.static.mulCausedOverflow(T, arg1.*, arg2);
         }
         arg1.* = result[0];
     }
     fn normalMulReturn(comptime T: type, comptime arg1: T, comptime arg2: T) T {
         const result: Overflow(T) = overflowingMulReturn(T, arg1, arg2);
-        if (config.comptime_assertions and result[1] != 0) {
+        if (comptime_assertions and result[1] != 0) {
             debug.static.mulCausedOverflow(T, arg1, arg2);
         }
         return result[0];
@@ -1190,7 +1190,7 @@ pub const static = struct {
     fn exactDivisionAssign(comptime T: type, comptime arg1: *T, comptime arg2: T) void {
         const result: T = arg1.* / arg2;
         const remainder: T = static.normalSubReturn(T, arg1.*, (result * arg2));
-        if (config.comptime_assertions and remainder != 0) {
+        if (comptime_assertions and remainder != 0) {
             debug.static.exactDivisionWithRemainder(T, arg1.*, arg2, result, remainder);
         }
         arg1.* = result;
@@ -1198,7 +1198,7 @@ pub const static = struct {
     fn exactDivisionReturn(comptime T: type, comptime arg1: T, comptime arg2: T) T {
         const result: T = arg1 / arg2;
         const remainder: T = static.normalSubReturn(T, arg1, (result * arg2));
-        if (config.comptime_assertions and remainder != 0) {
+        if (comptime_assertions and remainder != 0) {
             debug.static.exactDivisionWithRemainder(T, arg1, arg2, result, remainder);
         }
         return result;
@@ -1228,32 +1228,32 @@ pub const static = struct {
         static.exactDivisionAssign(T, arg1, arg2);
     }
     pub fn assertBelow(comptime T: type, comptime arg1: T, comptime arg2: T) void {
-        if (config.comptime_assertions and arg1 >= arg2) {
+        if (comptime_assertions and arg1 >= arg2) {
             debug.static.comparisonFailed(T, " < ", arg1, arg2);
         }
     }
     pub fn assertBelowOrEqual(comptime T: type, comptime arg1: T, comptime arg2: T) void {
-        if (config.comptime_assertions and arg1 > arg2) {
+        if (comptime_assertions and arg1 > arg2) {
             debug.static.comparisonFailed(T, " <= ", arg1, arg2);
         }
     }
     pub fn assertEqual(comptime T: type, comptime arg1: T, comptime arg2: T) void {
-        if (config.comptime_assertions and arg1 != arg2) {
+        if (comptime_assertions and arg1 != arg2) {
             debug.static.comparisonFailed(T, " == ", arg1, arg2);
         }
     }
     pub fn assertNotEqual(comptime T: type, comptime arg1: T, comptime arg2: T) void {
-        if (config.comptime_assertions and arg1 == arg2) {
+        if (comptime_assertions and arg1 == arg2) {
             debug.static.comparisonFailed(T, " != ", arg1, arg2);
         }
     }
     pub fn assertAboveOrEqual(comptime T: type, comptime arg1: T, comptime arg2: T) void {
-        if (config.comptime_assertions and arg1 < arg2) {
+        if (comptime_assertions and arg1 < arg2) {
             debug.static.comparisonFailed(T, " >= ", arg1, arg2);
         }
     }
     pub fn assertAbove(comptime T: type, comptime arg1: T, comptime arg2: T) void {
-        if (config.comptime_assertions and arg1 <= arg2) {
+        if (comptime_assertions and arg1 <= arg2) {
             debug.static.comparisonFailed(T, " > ", arg1, arg2);
         }
     }
@@ -1277,68 +1277,68 @@ pub fn pack64(h: u32, l: u32) u64 {
 pub const proc = struct {
     pub fn exitNotice(return_code: u8) noreturn {
         @setCold(true);
-        if (config.logging_general.Success) {
+        if (logging_general.Success) {
             debug.exitRc(return_code);
         }
         exit(return_code);
     }
     pub fn exitGroupNotice(return_code: u8) noreturn {
         @setCold(true);
-        if (config.logging_general.Success) {
+        if (logging_general.Success) {
             debug.exitNotice(return_code);
         }
         exitGroup(return_code);
     }
     pub fn exitError(exit_error: anytype, return_code: u8) noreturn {
         @setCold(true);
-        if (config.logging_general.Fault) {
+        if (logging_general.Fault) {
             debug.exitErrorRc(@errorName(exit_error), return_code);
         }
         exit(return_code);
     }
     pub fn exitGroupError(exit_error: anytype, return_code: u8) noreturn {
         @setCold(true);
-        if (config.logging_general.Fault) {
+        if (logging_general.Fault) {
             debug.exitErrorRc(@errorName(exit_error), return_code);
         }
         exitGroup(return_code);
     }
     pub fn exitFault(message: []const u8, return_code: u8) noreturn {
         @setCold(true);
-        if (config.logging_general.Fault) {
+        if (logging_general.Fault) {
             debug.exitFault(message, return_code);
         }
         exit(return_code);
     }
     pub fn exitGroupFault(message: []const u8, return_code: u8) noreturn {
         @setCold(true);
-        if (config.logging_general.Fault) {
+        if (logging_general.Fault) {
             debug.exitFault(message, return_code);
         }
         exitGroup(return_code);
     }
     pub fn exitErrorFault(exit_error: anytype, message: []const u8, return_code: u8) noreturn {
         @setCold(true);
-        if (config.logging_general.Fault and
-            config.logging_general.Error)
+        if (logging_general.Fault and
+            logging_general.Error)
         {
             debug.exitErrorFaultRc(@errorName(exit_error), message, return_code);
-        } else if (config.logging_general.Fault) {
+        } else if (logging_general.Fault) {
             debug.exitFault(message, return_code);
-        } else if (config.logging_general.Error) {
+        } else if (logging_general.Error) {
             debug.exitErrorRc(@errorName(exit_error), return_code);
         }
         exitGroup(return_code);
     }
     pub fn exitGroupErrorFault(exit_error: anytype, message: []const u8, return_code: u8) noreturn {
         @setCold(true);
-        if (config.logging_general.Fault and
-            config.logging_general.Error)
+        if (logging_general.Fault and
+            logging_general.Error)
         {
             debug.exitErrorFault(@errorName(exit_error), message, return_code);
-        } else if (config.logging_general.Fault) {
+        } else if (logging_general.Fault) {
             debug.exitFault(message, return_code);
-        } else if (config.logging_general.Error) {
+        } else if (logging_general.Error) {
             debug.exitErrorRc(@errorName(exit_error), return_code);
         }
         exitGroup(return_code);
@@ -1372,19 +1372,19 @@ pub const debug = struct {
     pub extern fn printStackTrace(u64, u64) void;
     pub const about_fault_p0_s = blk: {
         var lhs: [:0]const u8 = "fault";
-        lhs = config.message_prefix ++ lhs;
-        lhs = lhs ++ config.message_suffix;
+        lhs = message_prefix ++ lhs;
+        lhs = lhs ++ message_suffix;
         const len: u64 = lhs.len;
-        lhs = "\x1b[1m" ++ lhs ++ config.message_no_style;
-        break :blk lhs ++ " " ** (config.message_indent - len);
+        lhs = "\x1b[1m" ++ lhs ++ message_no_style;
+        break :blk lhs ++ " " ** (message_indent - len);
     };
     const about_error_p0_s = blk: {
         var lhs: [:0]const u8 = "error";
-        lhs = config.message_prefix ++ lhs;
-        lhs = lhs ++ config.message_suffix;
+        lhs = message_prefix ++ lhs;
+        lhs = lhs ++ message_suffix;
         const len: u64 = lhs.len;
-        lhs = "\x1b[1m" ++ lhs ++ config.message_no_style;
-        break :blk lhs ++ " " ** (config.message_indent - len);
+        lhs = "\x1b[1m" ++ lhs ++ message_no_style;
+        break :blk lhs ++ " " ** (message_indent - len);
     };
     pub inline fn typeFault(comptime T: type) []const u8 {
         return about_fault_p0_s ++ @typeName(T);
@@ -1630,19 +1630,19 @@ pub const debug = struct {
         return if (rc < 0) ~@as(u64, 0) else @intCast(u64, rc);
     }
     pub inline fn logSuccess(buf: []const u8) void {
-        if (config.logging_general.Success) write(buf);
+        if (logging_general.Success) write(buf);
     }
     pub inline fn logAcquire(buf: []const u8) void {
-        if (config.logging_general.Acquire) write(buf);
+        if (logging_general.Acquire) write(buf);
     }
     pub inline fn logRelease(buf: []const u8) void {
-        if (config.logging_general.Release) write(buf);
+        if (logging_general.Release) write(buf);
     }
     pub inline fn logError(buf: []const u8) void {
-        if (config.logging_general.Error) write(buf);
+        if (logging_general.Error) write(buf);
     }
     pub inline fn logFault(buf: []const u8) void {
-        if (config.logging_general.Fault) write(buf);
+        if (logging_general.Fault) write(buf);
     }
     pub fn logAlwaysAIO(buf: []u8, slices: []const []const u8) void {
         @setRuntimeSafety(false);
@@ -1673,8 +1673,8 @@ pub const debug = struct {
     pub noinline fn panic(msg: []const u8, _: @TypeOf(@errorReturnTrace()), ret_addr: ?usize) noreturn {
         @setCold(true);
         @setRuntimeSafety(false);
-        if (config.tracing_override orelse
-            config.tracing_default)
+        if (tracing_override orelse
+            tracing_default)
         {
             printStackTrace(ret_addr.?, 0);
         }
@@ -1683,9 +1683,9 @@ pub const debug = struct {
     pub noinline fn panicExtra(msg: []const u8, ctx_ptr: *const anyopaque) noreturn {
         @setCold(true);
         @setRuntimeSafety(false);
-        const st: mach.RegisterState = @intToPtr(*mach.RegisterState, @ptrToInt(ctx_ptr) +% 40).*;
-        if (config.tracing_override orelse
-            config.tracing_default)
+        const st: mach.RegisterState = @ptrFromInt(*mach.RegisterState, @intFromPtr(ctx_ptr) +% 40).*;
+        if (tracing_override orelse
+            tracing_default)
         {
             printStackTrace(st.rip, st.rbp);
         }
@@ -1767,7 +1767,7 @@ pub const debug = struct {
         panic(buf[0..len], null, ret_addr);
     }
     pub noinline fn panicUnwrapError(st: ?*StackTrace, err: anyerror) noreturn {
-        if (!config.discard_errors) {
+        if (!discard_errors) {
             @compileError("error is discarded");
         }
         const ret_addr: usize = @returnAddress();
@@ -1900,8 +1900,8 @@ pub const parse = struct {
         const sig_fig_list: []const T = sigFigList(T, 2);
         var idx: u64 = 0;
         var value: T = 0;
-        idx +%= @boolToInt(str[idx] == '0');
-        idx +%= @boolToInt(str[idx] == 'b');
+        idx +%= @intFromBool(str[idx] == '0');
+        idx +%= @intFromBool(str[idx] == 'b');
         while (idx != str.len) : (idx +%= 1) {
             value +%= fromSymbol(str[idx], 2) *% (sig_fig_list[str.len -% idx -% 1] +% 1);
         }
@@ -1912,8 +1912,8 @@ pub const parse = struct {
         const sig_fig_list: []const T = sigFigList(T, 8);
         var idx: u64 = 0;
         var value: T = 0;
-        idx +%= @boolToInt(str[idx] == '0');
-        idx +%= @boolToInt(str[idx] == 'o');
+        idx +%= @intFromBool(str[idx] == '0');
+        idx +%= @intFromBool(str[idx] == 'o');
         while (idx != str.len) : (idx +%= 1) {
             value +%= fromSymbol(str[idx], 8) * (sig_fig_list[str.len -% idx -% 1] +% 1);
         }
@@ -1934,8 +1934,8 @@ pub const parse = struct {
         const sig_fig_list: []const T = sigFigList(T, 16);
         var idx: u64 = 0;
         var value: T = 0;
-        idx +%= @boolToInt(str[idx] == '0');
-        idx +%= @boolToInt(str[idx] == 'x');
+        idx +%= @intFromBool(str[idx] == '0');
+        idx +%= @intFromBool(str[idx] == 'x');
         while (idx != str.len) : (idx +%= 1) {
             value +%= fromSymbol(str[idx], 16) * (sig_fig_list[str.len -% idx -% 1] +% 1);
         }
@@ -1946,9 +1946,9 @@ pub const parse = struct {
         const sig_fig_list: []const T = sigFigList(T, 2);
         var idx: u64 = 0;
         var value: T = 0;
-        idx +%= @boolToInt(str[idx] == '-');
-        idx +%= @boolToInt(str[idx] == '0');
-        idx +%= @boolToInt(str[idx] == 'b');
+        idx +%= @intFromBool(str[idx] == '-');
+        idx +%= @intFromBool(str[idx] == '0');
+        idx +%= @intFromBool(str[idx] == 'b');
         while (idx != str.len) : (idx +%= 1) {
             value +%= @intCast(i8, fromSymbol(str[idx], 2)) * (sig_fig_list[str.len -% idx -% 1] +% 1);
         }
@@ -1959,9 +1959,9 @@ pub const parse = struct {
         const sig_fig_list: []const T = sigFigList(T, 8);
         var idx: u64 = 0;
         var value: T = 0;
-        idx +%= @boolToInt(str[idx] == '-');
-        idx +%= @boolToInt(str[idx] == '0');
-        idx +%= @boolToInt(str[idx] == 'o');
+        idx +%= @intFromBool(str[idx] == '-');
+        idx +%= @intFromBool(str[idx] == '0');
+        idx +%= @intFromBool(str[idx] == 'o');
         while (idx != str.len) : (idx +%= 1) {
             value +%= @intCast(i8, fromSymbol(str[idx], 8)) * (sig_fig_list[str.len -% idx -% 1] +% 1);
         }
@@ -1972,7 +1972,7 @@ pub const parse = struct {
         const sig_fig_list: []const T = sigFigList(T, 10);
         var idx: u64 = 0;
         var value: T = 0;
-        idx +%= @boolToInt(str[idx] == '-');
+        idx +%= @intFromBool(str[idx] == '-');
         while (idx != str.len) : (idx +%= 1) {
             value +%= @intCast(i8, fromSymbol(str[idx], 10)) * (sig_fig_list[str.len -% idx -% 1] +% 1);
         }
@@ -1983,9 +1983,9 @@ pub const parse = struct {
         const sig_fig_list: []const T = sigFigList(T, 16);
         var idx: u64 = 0;
         var value: T = 0;
-        idx +%= @boolToInt(str[idx] == '-');
-        idx +%= @boolToInt(str[idx] == '0');
-        idx +%= @boolToInt(str[idx] == 'x');
+        idx +%= @intFromBool(str[idx] == '-');
+        idx +%= @intFromBool(str[idx] == '0');
+        idx +%= @intFromBool(str[idx] == 'x');
         while (idx != str.len) : (idx +%= 1) {
             value +%= @intCast(i8, fromSymbol(str[idx], 16)) * (sig_fig_list[str.len -% idx -% 1] +% 1);
         }
@@ -2062,9 +2062,9 @@ pub const parse = struct {
 };
 pub const fmt = struct {
     pub const about_blank_s = blk: {
-        const indent = (" " ** config.message_indent);
-        if (config.message_style) |style| {
-            break :blk style ++ indent ++ config.message_no_style;
+        const indent = (" " ** message_indent);
+        if (message_style) |style| {
+            break :blk style ++ indent ++ message_no_style;
         }
         break :blk indent;
     };
@@ -2072,16 +2072,16 @@ pub const fmt = struct {
     const AboutDest = @TypeOf(@constCast(about_blank_s));
     pub fn about(comptime s: [:0]const u8) AboutSrc {
         var lhs: [:0]const u8 = s;
-        lhs = config.message_prefix ++ lhs;
-        lhs = lhs ++ config.message_suffix;
+        lhs = message_prefix ++ lhs;
+        lhs = lhs ++ message_suffix;
         const len: u64 = lhs.len;
-        if (config.message_style) |style| {
-            lhs = style ++ lhs ++ config.message_no_style;
+        if (message_style) |style| {
+            lhs = style ++ lhs ++ message_no_style;
         }
-        if (len >= config.message_indent) {
+        if (len >= message_indent) {
             @compileError(s ++ " is too long");
         }
-        return lhs ++ " " ** (config.message_indent - len);
+        return lhs ++ " " ** (message_indent - len);
     }
     pub fn ci(comptime value: comptime_int) []const u8 {
         if (value < 0) {
@@ -2418,6 +2418,758 @@ pub const fmt = struct {
         };
     }
 };
+// These are defined by the library builder
+const root_src_file: [:0]const u8 = define("root_src_file", [:0]const u8, undefined);
+/// Return an absolute path to a project file.
+pub fn absolutePath(comptime relative: [:0]const u8) [:0]const u8 {
+    return env.build_root ++ "/" ++ relative;
+}
+/// Returns an absolute path to the compiler used to compile this program.
+pub fn zigExe() [:0]const u8 {
+    if (env.zig_exe[0] != '/') {
+        @compileError("'" ++ env.zig_exe ++ "' must be an absolute path");
+    }
+    return env.zig_exe;
+}
+/// Returns an absolute path to the project root directory.
+pub fn buildRoot() [:0]const u8 {
+    if (env.build_root[0] != '/') {
+        @compileError("'" ++ env.build_root ++ "' must be an absolute path");
+    }
+    return env.build_root;
+}
+/// Returns an absolute path to the project cache directory.
+pub fn cacheDir() [:0]const u8 {
+    if (env.cache_dir[0] != '/') {
+        @compileError("'" ++ env.cache_dir ++ "' must be an absolute path");
+    }
+    return env.cache_root;
+}
+/// Returns an absolute path to the user (global) cache directory.
+pub fn globalCacheDir() [:0]const u8 {
+    if (env.global_cache_root[0] != '/') {
+        @compileError("'" ++ env.global_cache_root ++ "' must be an absolute path");
+    }
+    return env.global_cache_root;
+}
+pub fn AddressSpace() type {
+    if (!@hasDecl(root, "AddressSpace")) {
+        @compileError(
+            "toplevel address space required:\n" ++
+                "declare 'pub const AddressSpace = <zig_lib>.spec.address_space.regular_128;' in program root\n" ++
+                "address spaces are required by high level features with managed memory",
+        );
+    }
+    return root.AddressSpace;
+}
+pub const SignalHandlers = packed struct {
+    /// Report receipt of signal 11 SIGSEGV.
+    SegmentationFault: bool,
+    /// Report receipt of signal 4 SIGILL.
+    IllegalInstruction: bool,
+    /// Report receipt of signal 7 SIGBUS.
+    BusError: bool,
+    /// Report receipt of signal 8 SIGFPE.
+    FloatingPointError: bool,
+    /// Report receipt of signal 5 SIGTRAP.
+    Trap: bool,
+};
+pub const SignalAlternateStack = struct {
+    /// Address of lowest mapped byte of alternate stack.
+    addr: u64 = 0x3f000000,
+    /// Initial mapping length of alternate stack.
+    len: u64 = 0x1000000,
+};
+pub const Traces = struct {
+    /// Display file pathnames relative to the current working directory.
+    relative_path: bool = true,
+    /// Show this many lines of source code context.
+    context_lines: ?u8 = null,
+    /// Allow this many blank lines between source code contexts.
+    blank_lines: ?u8 = null,
+    /// Show the source line number on source lines.
+    line_no: bool = false,
+    /// Show the program counter on the caret line.
+    pc_addr: bool = false,
+    /// Control sidebar inclusion and appearance.
+    sidebar: bool = false,
+    /// Write extra line to indicate column.
+    caret: bool = true,
+    /// Write extra line to indicate column.
+    tokens: Tokens = .{},
+    pub const Tokens = struct {
+        /// Apply this style to the line number text.
+        line_no: ?[]const u8 = null,
+        /// Apply this style to the program counter address text.
+        pc_addr: ?[]const u8 = null,
+        /// Separate context information from sidebar with this text.
+        sidebar: ?[]const u8 = null,
+        /// Indicate column number with this text.
+        caret: ?[]const u8 = lit.fx.color.fg.light_green ++ "^" ++ lit.fx.none,
+        /// Apply `style` for every Zig token tag in `tags`.
+        syntax: ?[]const Mapping = null,
+        const Mapping = struct {
+            style: []const u8 = "",
+            tags: []const zig.Token.Tag = zig.Token.Tag.list,
+        };
+    };
+};
+pub const Logging = packed struct {
+    pub const Default = packed struct {
+        /// Report attempted actions
+        Attempt: bool,
+        /// Report major successful actions
+        Success: bool,
+        /// Report actions which acquire a finite resource
+        Acquire: bool,
+        /// Report actions which release a finite resource
+        Release: bool,
+        /// Report actions which throw an error
+        Error: bool,
+        /// Report actions which terminate the program
+        Fault: bool,
+    };
+    pub const Override = struct {
+        /// Report attempted actions
+        Attempt: ?bool,
+        /// Report major successful actions
+        Success: ?bool,
+        /// Report actions which acquire a finite resource
+        Acquire: ?bool,
+        /// Report actions which release a finite resource
+        Release: ?bool,
+        /// Report actions which throw an error
+        Error: ?bool,
+        /// Report actions which terminate the program
+        Fault: ?bool,
+    };
+    pub const AttemptError = packed struct(u2) {
+        Attempt: bool = logging_default.Attempt,
+        Error: bool = logging_default.Error,
+        pub fn override(comptime logging: AttemptError) AttemptError {
+            comptime return .{
+                .Attempt = logging_override.Attempt orelse logging.Attempt,
+                .Error = logging_override.Error orelse logging.Error,
+            };
+        }
+    };
+    pub const SuccessError = packed struct(u2) {
+        Success: bool = logging_default.Success,
+        Error: bool = logging_default.Error,
+        pub fn override(comptime logging: SuccessError) SuccessError {
+            comptime return .{
+                .Success = logging_override.Success orelse logging.Success,
+                .Error = logging_override.Error orelse logging.Error,
+            };
+        }
+    };
+    pub const AttemptSuccessError = packed struct(u3) {
+        Attempt: bool = logging_default.Attempt,
+        Success: bool = logging_default.Success,
+        Error: bool = logging_default.Error,
+        pub fn override(comptime logging: AttemptSuccessError) AttemptSuccessError {
+            comptime return .{
+                .Attempt = logging_override.Attempt orelse logging.Attempt,
+                .Success = logging_override.Success orelse logging.Success,
+                .Error = logging_override.Error orelse logging.Error,
+            };
+        }
+    };
+    pub const AcquireError = packed struct(u2) {
+        Acquire: bool = logging_default.Acquire,
+        Error: bool = logging_default.Error,
+        pub fn override(comptime logging: AcquireError) AcquireError {
+            comptime return .{
+                .Acquire = logging_override.Acquire orelse logging.Acquire,
+                .Error = logging_override.Error orelse logging.Error,
+            };
+        }
+    };
+    pub const AttemptAcquireError = packed struct(u3) {
+        Attempt: bool = logging_default.Attempt,
+        Acquire: bool = logging_default.Acquire,
+        Error: bool = logging_default.Error,
+        pub fn override(comptime logging: AttemptAcquireError) AttemptAcquireError {
+            comptime return .{
+                .Attempt = logging_override.Attempt orelse logging.Attempt,
+                .Acquire = logging_override.Acquire orelse logging.Acquire,
+                .Error = logging_override.Error orelse logging.Error,
+            };
+        }
+    };
+    pub const SuccessAcquireError = packed struct(u3) {
+        Success: bool = logging_default.Success,
+        Acquire: bool = logging_default.Acquire,
+        Error: bool = logging_default.Error,
+        pub fn override(comptime logging: SuccessAcquireError) SuccessAcquireError {
+            comptime return .{
+                .Success = logging_override.Success orelse logging.Success,
+                .Acquire = logging_override.Acquire orelse logging.Acquire,
+                .Error = logging_override.Error orelse logging.Error,
+            };
+        }
+    };
+    pub const AttemptSuccessAcquireError = packed struct(u4) {
+        Attempt: bool = logging_default.Attempt,
+        Success: bool = logging_default.Success,
+        Acquire: bool = logging_default.Acquire,
+        Error: bool = logging_default.Error,
+        pub fn override(comptime logging: AttemptSuccessAcquireError) AttemptSuccessAcquireError {
+            comptime return .{
+                .Attempt = logging_override.Attempt orelse logging.Attempt,
+                .Success = logging_override.Success orelse logging.Success,
+                .Acquire = logging_override.Acquire orelse logging.Acquire,
+                .Error = logging_override.Error orelse logging.Error,
+            };
+        }
+    };
+    pub const ReleaseError = packed struct(u2) {
+        Release: bool = logging_default.Release,
+        Error: bool = logging_default.Error,
+        pub fn override(comptime logging: ReleaseError) ReleaseError {
+            comptime return .{
+                .Release = logging_override.Release orelse logging.Release,
+                .Error = logging_override.Error orelse logging.Error,
+            };
+        }
+    };
+    pub const AttemptReleaseError = packed struct(u3) {
+        Attempt: bool = logging_default.Attempt,
+        Release: bool = logging_default.Release,
+        Error: bool = logging_default.Error,
+        pub fn override(comptime logging: AttemptReleaseError) AttemptReleaseError {
+            comptime return .{
+                .Attempt = logging_override.Attempt orelse logging.Attempt,
+                .Release = logging_override.Release orelse logging.Release,
+                .Error = logging_override.Error orelse logging.Error,
+            };
+        }
+    };
+    pub const SuccessReleaseError = packed struct(u3) {
+        Success: bool = logging_default.Success,
+        Release: bool = logging_default.Release,
+        Error: bool = logging_default.Error,
+        pub fn override(comptime logging: SuccessReleaseError) SuccessReleaseError {
+            comptime return .{
+                .Success = logging_override.Success orelse logging.Success,
+                .Release = logging_override.Release orelse logging.Release,
+                .Error = logging_override.Error orelse logging.Error,
+            };
+        }
+    };
+    pub const AttemptSuccessReleaseError = packed struct(u4) {
+        Attempt: bool = logging_default.Attempt,
+        Success: bool = logging_default.Success,
+        Release: bool = logging_default.Release,
+        Error: bool = logging_default.Error,
+        pub fn override(comptime logging: AttemptSuccessReleaseError) AttemptSuccessReleaseError {
+            comptime return .{
+                .Attempt = logging_override.Attempt orelse logging.Attempt,
+                .Success = logging_override.Success orelse logging.Success,
+                .Release = logging_override.Release orelse logging.Release,
+                .Error = logging_override.Error orelse logging.Error,
+            };
+        }
+    };
+    pub const AcquireReleaseError = packed struct(u3) {
+        Acquire: bool = logging_default.Acquire,
+        Release: bool = logging_default.Release,
+        Error: bool = logging_default.Error,
+        pub fn override(comptime logging: AcquireReleaseError) AcquireReleaseError {
+            comptime return .{
+                .Acquire = logging_override.Acquire orelse logging.Acquire,
+                .Release = logging_override.Release orelse logging.Release,
+                .Error = logging_override.Error orelse logging.Error,
+            };
+        }
+    };
+    pub const AttemptAcquireReleaseError = packed struct(u4) {
+        Attempt: bool = logging_default.Attempt,
+        Acquire: bool = logging_default.Acquire,
+        Release: bool = logging_default.Release,
+        Error: bool = logging_default.Error,
+        pub fn override(comptime logging: AttemptAcquireReleaseError) AttemptAcquireReleaseError {
+            comptime return .{
+                .Attempt = logging_override.Attempt orelse logging.Attempt,
+                .Acquire = logging_override.Acquire orelse logging.Acquire,
+                .Release = logging_override.Release orelse logging.Release,
+                .Error = logging_override.Error orelse logging.Error,
+            };
+        }
+    };
+    pub const SuccessAcquireReleaseError = packed struct(u4) {
+        Success: bool = logging_default.Success,
+        Acquire: bool = logging_default.Acquire,
+        Release: bool = logging_default.Release,
+        Error: bool = logging_default.Error,
+        pub fn override(comptime logging: SuccessAcquireReleaseError) SuccessAcquireReleaseError {
+            comptime return .{
+                .Success = logging_override.Success orelse logging.Success,
+                .Acquire = logging_override.Acquire orelse logging.Acquire,
+                .Release = logging_override.Release orelse logging.Release,
+                .Error = logging_override.Error orelse logging.Error,
+            };
+        }
+    };
+    pub const AttemptSuccessAcquireReleaseError = packed struct(u5) {
+        Attempt: bool = logging_default.Attempt,
+        Success: bool = logging_default.Success,
+        Acquire: bool = logging_default.Acquire,
+        Release: bool = logging_default.Release,
+        Error: bool = logging_default.Error,
+        pub fn override(comptime logging: AttemptSuccessAcquireReleaseError) AttemptSuccessAcquireReleaseError {
+            comptime return .{
+                .Attempt = logging_override.Attempt orelse logging.Attempt,
+                .Success = logging_override.Success orelse logging.Success,
+                .Acquire = logging_override.Acquire orelse logging.Acquire,
+                .Release = logging_override.Release orelse logging.Release,
+                .Error = logging_override.Error orelse logging.Error,
+            };
+        }
+    };
+    pub const AttemptFault = packed struct(u2) {
+        Attempt: bool = logging_default.Attempt,
+        Fault: bool = logging_default.Fault,
+        pub fn override(comptime logging: AttemptFault) AttemptFault {
+            comptime return .{
+                .Attempt = logging_override.Attempt orelse logging.Attempt,
+                .Fault = logging_override.Fault orelse logging.Fault,
+            };
+        }
+    };
+    pub const SuccessFault = packed struct(u2) {
+        Success: bool = logging_default.Success,
+        Fault: bool = logging_default.Fault,
+        pub fn override(comptime logging: SuccessFault) SuccessFault {
+            comptime return .{
+                .Success = logging_override.Success orelse logging.Success,
+                .Fault = logging_override.Fault orelse logging.Fault,
+            };
+        }
+    };
+    pub const AttemptSuccessFault = packed struct(u3) {
+        Attempt: bool = logging_default.Attempt,
+        Success: bool = logging_default.Success,
+        Fault: bool = logging_default.Fault,
+        pub fn override(comptime logging: AttemptSuccessFault) AttemptSuccessFault {
+            comptime return .{
+                .Attempt = logging_override.Attempt orelse logging.Attempt,
+                .Success = logging_override.Success orelse logging.Success,
+                .Fault = logging_override.Fault orelse logging.Fault,
+            };
+        }
+    };
+    pub const AcquireFault = packed struct(u2) {
+        Acquire: bool = logging_default.Acquire,
+        Fault: bool = logging_default.Fault,
+        pub fn override(comptime logging: AcquireFault) AcquireFault {
+            comptime return .{
+                .Acquire = logging_override.Acquire orelse logging.Acquire,
+                .Fault = logging_override.Fault orelse logging.Fault,
+            };
+        }
+    };
+    pub const AttemptAcquireFault = packed struct(u3) {
+        Attempt: bool = logging_default.Attempt,
+        Acquire: bool = logging_default.Acquire,
+        Fault: bool = logging_default.Fault,
+        pub fn override(comptime logging: AttemptAcquireFault) AttemptAcquireFault {
+            comptime return .{
+                .Attempt = logging_override.Attempt orelse logging.Attempt,
+                .Acquire = logging_override.Acquire orelse logging.Acquire,
+                .Fault = logging_override.Fault orelse logging.Fault,
+            };
+        }
+    };
+    pub const SuccessAcquireFault = packed struct(u3) {
+        Success: bool = logging_default.Success,
+        Acquire: bool = logging_default.Acquire,
+        Fault: bool = logging_default.Fault,
+        pub fn override(comptime logging: SuccessAcquireFault) SuccessAcquireFault {
+            comptime return .{
+                .Success = logging_override.Success orelse logging.Success,
+                .Acquire = logging_override.Acquire orelse logging.Acquire,
+                .Fault = logging_override.Fault orelse logging.Fault,
+            };
+        }
+    };
+    pub const AttemptSuccessAcquireFault = packed struct(u4) {
+        Attempt: bool = logging_default.Attempt,
+        Success: bool = logging_default.Success,
+        Acquire: bool = logging_default.Acquire,
+        Fault: bool = logging_default.Fault,
+        pub fn override(comptime logging: AttemptSuccessAcquireFault) AttemptSuccessAcquireFault {
+            comptime return .{
+                .Attempt = logging_override.Attempt orelse logging.Attempt,
+                .Success = logging_override.Success orelse logging.Success,
+                .Acquire = logging_override.Acquire orelse logging.Acquire,
+                .Fault = logging_override.Fault orelse logging.Fault,
+            };
+        }
+    };
+    pub const ReleaseFault = packed struct(u2) {
+        Release: bool = logging_default.Release,
+        Fault: bool = logging_default.Fault,
+        pub fn override(comptime logging: ReleaseFault) ReleaseFault {
+            comptime return .{
+                .Release = logging_override.Release orelse logging.Release,
+                .Fault = logging_override.Fault orelse logging.Fault,
+            };
+        }
+    };
+    pub const AttemptReleaseFault = packed struct(u3) {
+        Attempt: bool = logging_default.Attempt,
+        Release: bool = logging_default.Release,
+        Fault: bool = logging_default.Fault,
+        pub fn override(comptime logging: AttemptReleaseFault) AttemptReleaseFault {
+            comptime return .{
+                .Attempt = logging_override.Attempt orelse logging.Attempt,
+                .Release = logging_override.Release orelse logging.Release,
+                .Fault = logging_override.Fault orelse logging.Fault,
+            };
+        }
+    };
+    pub const SuccessReleaseFault = packed struct(u3) {
+        Success: bool = logging_default.Success,
+        Release: bool = logging_default.Release,
+        Fault: bool = logging_default.Fault,
+        pub fn override(comptime logging: SuccessReleaseFault) SuccessReleaseFault {
+            comptime return .{
+                .Success = logging_override.Success orelse logging.Success,
+                .Release = logging_override.Release orelse logging.Release,
+                .Fault = logging_override.Fault orelse logging.Fault,
+            };
+        }
+    };
+    pub const AttemptSuccessReleaseFault = packed struct(u4) {
+        Attempt: bool = logging_default.Attempt,
+        Success: bool = logging_default.Success,
+        Release: bool = logging_default.Release,
+        Fault: bool = logging_default.Fault,
+        pub fn override(comptime logging: AttemptSuccessReleaseFault) AttemptSuccessReleaseFault {
+            comptime return .{
+                .Attempt = logging_override.Attempt orelse logging.Attempt,
+                .Success = logging_override.Success orelse logging.Success,
+                .Release = logging_override.Release orelse logging.Release,
+                .Fault = logging_override.Fault orelse logging.Fault,
+            };
+        }
+    };
+    pub const AcquireReleaseFault = packed struct(u3) {
+        Acquire: bool = logging_default.Acquire,
+        Release: bool = logging_default.Release,
+        Fault: bool = logging_default.Fault,
+        pub fn override(comptime logging: AcquireReleaseFault) AcquireReleaseFault {
+            comptime return .{
+                .Acquire = logging_override.Acquire orelse logging.Acquire,
+                .Release = logging_override.Release orelse logging.Release,
+                .Fault = logging_override.Fault orelse logging.Fault,
+            };
+        }
+    };
+    pub const AttemptAcquireReleaseFault = packed struct(u4) {
+        Attempt: bool = logging_default.Attempt,
+        Acquire: bool = logging_default.Acquire,
+        Release: bool = logging_default.Release,
+        Fault: bool = logging_default.Fault,
+        pub fn override(comptime logging: AttemptAcquireReleaseFault) AttemptAcquireReleaseFault {
+            comptime return .{
+                .Attempt = logging_override.Attempt orelse logging.Attempt,
+                .Acquire = logging_override.Acquire orelse logging.Acquire,
+                .Release = logging_override.Release orelse logging.Release,
+                .Fault = logging_override.Fault orelse logging.Fault,
+            };
+        }
+    };
+    pub const SuccessAcquireReleaseFault = packed struct(u4) {
+        Success: bool = logging_default.Success,
+        Acquire: bool = logging_default.Acquire,
+        Release: bool = logging_default.Release,
+        Fault: bool = logging_default.Fault,
+        pub fn override(comptime logging: SuccessAcquireReleaseFault) SuccessAcquireReleaseFault {
+            comptime return .{
+                .Success = logging_override.Success orelse logging.Success,
+                .Acquire = logging_override.Acquire orelse logging.Acquire,
+                .Release = logging_override.Release orelse logging.Release,
+                .Fault = logging_override.Fault orelse logging.Fault,
+            };
+        }
+    };
+    pub const AttemptSuccessAcquireReleaseFault = packed struct(u5) {
+        Attempt: bool = logging_default.Attempt,
+        Success: bool = logging_default.Success,
+        Acquire: bool = logging_default.Acquire,
+        Release: bool = logging_default.Release,
+        Fault: bool = logging_default.Fault,
+        pub fn override(comptime logging: AttemptSuccessAcquireReleaseFault) AttemptSuccessAcquireReleaseFault {
+            comptime return .{
+                .Attempt = logging_override.Attempt orelse logging.Attempt,
+                .Success = logging_override.Success orelse logging.Success,
+                .Acquire = logging_override.Acquire orelse logging.Acquire,
+                .Release = logging_override.Release orelse logging.Release,
+                .Fault = logging_override.Fault orelse logging.Fault,
+            };
+        }
+    };
+    pub const ErrorFault = packed struct(u2) {
+        Error: bool = logging_default.Error,
+        Fault: bool = logging_default.Fault,
+        pub fn override(comptime logging: ErrorFault) ErrorFault {
+            comptime return .{
+                .Error = logging_override.Error orelse logging.Error,
+                .Fault = logging_override.Fault orelse logging.Fault,
+            };
+        }
+    };
+    pub const AttemptErrorFault = packed struct(u3) {
+        Attempt: bool = logging_default.Attempt,
+        Error: bool = logging_default.Error,
+        Fault: bool = logging_default.Fault,
+        pub fn override(comptime logging: AttemptErrorFault) AttemptErrorFault {
+            comptime return .{
+                .Attempt = logging_override.Attempt orelse logging.Attempt,
+                .Error = logging_override.Error orelse logging.Error,
+                .Fault = logging_override.Fault orelse logging.Fault,
+            };
+        }
+    };
+    pub const SuccessErrorFault = packed struct(u3) {
+        Success: bool = logging_default.Success,
+        Error: bool = logging_default.Error,
+        Fault: bool = logging_default.Fault,
+        pub fn override(comptime logging: SuccessErrorFault) SuccessErrorFault {
+            comptime return .{
+                .Success = logging_override.Success orelse logging.Success,
+                .Error = logging_override.Error orelse logging.Error,
+                .Fault = logging_override.Fault orelse logging.Fault,
+            };
+        }
+    };
+    pub const AttemptSuccessErrorFault = packed struct(u4) {
+        Attempt: bool = logging_default.Attempt,
+        Success: bool = logging_default.Success,
+        Error: bool = logging_default.Error,
+        Fault: bool = logging_default.Fault,
+        pub fn override(comptime logging: AttemptSuccessErrorFault) AttemptSuccessErrorFault {
+            comptime return .{
+                .Attempt = logging_override.Attempt orelse logging.Attempt,
+                .Success = logging_override.Success orelse logging.Success,
+                .Error = logging_override.Error orelse logging.Error,
+                .Fault = logging_override.Fault orelse logging.Fault,
+            };
+        }
+    };
+    pub const AcquireErrorFault = packed struct(u3) {
+        Acquire: bool = logging_default.Acquire,
+        Error: bool = logging_default.Error,
+        Fault: bool = logging_default.Fault,
+        pub fn override(comptime logging: AcquireErrorFault) AcquireErrorFault {
+            comptime return .{
+                .Acquire = logging_override.Acquire orelse logging.Acquire,
+                .Error = logging_override.Error orelse logging.Error,
+                .Fault = logging_override.Fault orelse logging.Fault,
+            };
+        }
+    };
+    pub const AttemptAcquireErrorFault = packed struct(u4) {
+        Attempt: bool = logging_default.Attempt,
+        Acquire: bool = logging_default.Acquire,
+        Error: bool = logging_default.Error,
+        Fault: bool = logging_default.Fault,
+        pub fn override(comptime logging: AttemptAcquireErrorFault) AttemptAcquireErrorFault {
+            comptime return .{
+                .Attempt = logging_override.Attempt orelse logging.Attempt,
+                .Acquire = logging_override.Acquire orelse logging.Acquire,
+                .Error = logging_override.Error orelse logging.Error,
+                .Fault = logging_override.Fault orelse logging.Fault,
+            };
+        }
+    };
+    pub const SuccessAcquireErrorFault = packed struct(u4) {
+        Success: bool = logging_default.Success,
+        Acquire: bool = logging_default.Acquire,
+        Error: bool = logging_default.Error,
+        Fault: bool = logging_default.Fault,
+        pub fn override(comptime logging: SuccessAcquireErrorFault) SuccessAcquireErrorFault {
+            comptime return .{
+                .Success = logging_override.Success orelse logging.Success,
+                .Acquire = logging_override.Acquire orelse logging.Acquire,
+                .Error = logging_override.Error orelse logging.Error,
+                .Fault = logging_override.Fault orelse logging.Fault,
+            };
+        }
+    };
+    pub const AttemptSuccessAcquireErrorFault = packed struct(u5) {
+        Attempt: bool = logging_default.Attempt,
+        Success: bool = logging_default.Success,
+        Acquire: bool = logging_default.Acquire,
+        Error: bool = logging_default.Error,
+        Fault: bool = logging_default.Fault,
+        pub fn override(comptime logging: AttemptSuccessAcquireErrorFault) AttemptSuccessAcquireErrorFault {
+            comptime return .{
+                .Attempt = logging_override.Attempt orelse logging.Attempt,
+                .Success = logging_override.Success orelse logging.Success,
+                .Acquire = logging_override.Acquire orelse logging.Acquire,
+                .Error = logging_override.Error orelse logging.Error,
+                .Fault = logging_override.Fault orelse logging.Fault,
+            };
+        }
+    };
+    pub const ReleaseErrorFault = packed struct(u3) {
+        Release: bool = logging_default.Release,
+        Error: bool = logging_default.Error,
+        Fault: bool = logging_default.Fault,
+        pub fn override(comptime logging: ReleaseErrorFault) ReleaseErrorFault {
+            comptime return .{
+                .Release = logging_override.Release orelse logging.Release,
+                .Error = logging_override.Error orelse logging.Error,
+                .Fault = logging_override.Fault orelse logging.Fault,
+            };
+        }
+    };
+    pub const AttemptReleaseErrorFault = packed struct(u4) {
+        Attempt: bool = logging_default.Attempt,
+        Release: bool = logging_default.Release,
+        Error: bool = logging_default.Error,
+        Fault: bool = logging_default.Fault,
+        pub fn override(comptime logging: AttemptReleaseErrorFault) AttemptReleaseErrorFault {
+            comptime return .{
+                .Attempt = logging_override.Attempt orelse logging.Attempt,
+                .Release = logging_override.Release orelse logging.Release,
+                .Error = logging_override.Error orelse logging.Error,
+                .Fault = logging_override.Fault orelse logging.Fault,
+            };
+        }
+    };
+    pub const SuccessReleaseErrorFault = packed struct(u4) {
+        Success: bool = logging_default.Success,
+        Release: bool = logging_default.Release,
+        Error: bool = logging_default.Error,
+        Fault: bool = logging_default.Fault,
+        pub fn override(comptime logging: SuccessReleaseErrorFault) SuccessReleaseErrorFault {
+            comptime return .{
+                .Success = logging_override.Success orelse logging.Success,
+                .Release = logging_override.Release orelse logging.Release,
+                .Error = logging_override.Error orelse logging.Error,
+                .Fault = logging_override.Fault orelse logging.Fault,
+            };
+        }
+    };
+    pub const AttemptSuccessReleaseErrorFault = packed struct(u5) {
+        Attempt: bool = logging_default.Attempt,
+        Success: bool = logging_default.Success,
+        Release: bool = logging_default.Release,
+        Error: bool = logging_default.Error,
+        Fault: bool = logging_default.Fault,
+        pub fn override(comptime logging: AttemptSuccessReleaseErrorFault) AttemptSuccessReleaseErrorFault {
+            comptime return .{
+                .Attempt = logging_override.Attempt orelse logging.Attempt,
+                .Success = logging_override.Success orelse logging.Success,
+                .Release = logging_override.Release orelse logging.Release,
+                .Error = logging_override.Error orelse logging.Error,
+                .Fault = logging_override.Fault orelse logging.Fault,
+            };
+        }
+    };
+    pub const AcquireReleaseErrorFault = packed struct(u4) {
+        Acquire: bool = logging_default.Acquire,
+        Release: bool = logging_default.Release,
+        Error: bool = logging_default.Error,
+        Fault: bool = logging_default.Fault,
+        pub fn override(comptime logging: AcquireReleaseErrorFault) AcquireReleaseErrorFault {
+            comptime return .{
+                .Acquire = logging_override.Acquire orelse logging.Acquire,
+                .Release = logging_override.Release orelse logging.Release,
+                .Error = logging_override.Error orelse logging.Error,
+                .Fault = logging_override.Fault orelse logging.Fault,
+            };
+        }
+    };
+    pub const AttemptAcquireReleaseErrorFault = packed struct(u5) {
+        Attempt: bool = logging_default.Attempt,
+        Acquire: bool = logging_default.Acquire,
+        Release: bool = logging_default.Release,
+        Error: bool = logging_default.Error,
+        Fault: bool = logging_default.Fault,
+        pub fn override(comptime logging: AttemptAcquireReleaseErrorFault) AttemptAcquireReleaseErrorFault {
+            comptime return .{
+                .Attempt = logging_override.Attempt orelse logging.Attempt,
+                .Acquire = logging_override.Acquire orelse logging.Acquire,
+                .Release = logging_override.Release orelse logging.Release,
+                .Error = logging_override.Error orelse logging.Error,
+                .Fault = logging_override.Fault orelse logging.Fault,
+            };
+        }
+    };
+    pub fn Field(comptime Spec: type) type {
+        return @TypeOf(@field(@as(Spec, undefined), "logging"));
+    }
+};
+pub fn loggingTypes() []const type {
+    var ret: []const type = &.{};
+    var bits: u6 = 0;
+    while (true) : (bits +%= 1) {
+        var fields: @TypeOf(@typeInfo(Logging.Default).Struct.fields) = &.{};
+        const logging: Logging.Default = @bitCast(Logging.Default, bits);
+        inline for (@typeInfo(Logging.Default).Struct.fields) |field| {
+            if (@field(logging, field.name)) {
+                fields = fields ++ .{field};
+            }
+        }
+        if (@popCount(bits) <= 1) {
+            continue;
+        }
+        if (!logging.Error and !logging.Fault) {
+            continue;
+        }
+        ret = ret ++ .{@Type(.{ .Struct = .{
+            .layout = .Packed,
+            .fields = fields,
+            .decls = &.{},
+            .is_tuple = false,
+        } })};
+        if (logging.Acquire and logging.Release and
+            logging.Attempt and logging.Error and logging.Fault)
+        {
+            break;
+        }
+    }
+    return ret;
+}
+pub fn define(
+    comptime symbol: []const u8,
+    comptime T: type,
+    comptime default: anytype,
+) T {
+    if (@hasDecl(root, symbol)) {
+        return @field(root, symbol);
+    }
+    if (@typeInfo(@TypeOf(default)) != .Fn) {
+        return default;
+    }
+    if (@TypeOf(default) != T) {
+        return @call(.auto, default, .{});
+    }
+}
+pub fn defineExtra(
+    comptime symbol: []const u8,
+    comptime T: type,
+    comptime default: anytype,
+    comptime args: anytype,
+) T {
+    if (@hasDecl(root, symbol)) {
+        return @field(root, symbol);
+    } else if (@hasDecl(@cImport({}), symbol)) {
+        const command = @field(@cImport({}), symbol);
+        if (T == bool) {
+            return @bitCast(T, @as(u1, command));
+        }
+        return command;
+    } else if (@typeInfo(@TypeOf(default)) == .Fn) {
+        return @call(.auto, default, args);
+    }
+    return default;
+}
 pub const Version = struct {
     major: u32,
     minor: u32,
