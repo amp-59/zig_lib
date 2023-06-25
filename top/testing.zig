@@ -1,6 +1,7 @@
 //! Before the value renderer can be used this import is a place for all
 //! miscellaneous testing functions which will not be used in the long term.
 //! Still more infrastructure is needed.
+const tab = @import("./tab.zig");
 const mem = @import("./mem.zig");
 const fmt = @import("./fmt.zig");
 const sys = @import("./sys.zig");
@@ -14,7 +15,7 @@ pub fn arrayOfCharsLength(s: []const u8) u64 {
     var len: u64 = 0;
     len += 2;
     for (s, 0..) |c, i| {
-        const seq: []const u8 = lit.lit_hex_sequences[c];
+        const seq: []const u8 = tab.lit_hex_sequences[c];
         len += 2 +% seq.len;
         if (i != s.len - 1) {
             len += 2;
@@ -27,7 +28,7 @@ pub fn arrayOfCharsWrite(buf: []u8, s: []const u8) u64 {
     for ("{ ", 0..) |c, i| buf[len + i] = c;
     len += 2;
     for (s, 0..) |c, i| {
-        const seq: []const u8 = lit.lit_hex_sequences[c];
+        const seq: []const u8 = tab.lit_hex_sequences[c];
         buf[len] = '\'';
         len +%= 1;
         for (seq, 0..) |b, j| buf[len + j] = b;
