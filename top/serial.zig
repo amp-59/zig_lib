@@ -24,8 +24,8 @@ fn toOffset(ptr: anytype, addr: u64) @TypeOf(ptr) {
     const type_info: builtin.Type = @typeInfo(Pointer);
     switch (type_info.Pointer.size) {
         .Slice => return (ptr.ptr - (addr / @sizeOf(type_info.Pointer.child)))[0..ptr.len],
-        .Many => return @intToPtr(@TypeOf(ptr), @ptrToInt(ptr) -% addr),
-        else => return @intToPtr(@TypeOf(ptr), @ptrToInt(ptr) -% addr),
+        .Many => return @ptrFromInt(@TypeOf(ptr), @intFromPtr(ptr) -% addr),
+        else => return @ptrFromInt(@TypeOf(ptr), @intFromPtr(ptr) -% addr),
     }
 }
 fn toAddress(ptr: anytype, addr: u64) @TypeOf(ptr) {
@@ -34,8 +34,8 @@ fn toAddress(ptr: anytype, addr: u64) @TypeOf(ptr) {
     const type_info: builtin.Type = @typeInfo(Pointer);
     switch (type_info.Pointer.size) {
         .Slice => return (ptr.ptr + (addr / @sizeOf(type_info.Pointer.child)))[0..ptr.len],
-        .Many => return @intToPtr(Pointer, @ptrToInt(ptr) +% addr),
-        else => return @intToPtr(Pointer, @ptrToInt(ptr) +% addr),
+        .Many => return @ptrFromInt(Pointer, @intFromPtr(ptr) +% addr),
+        else => return @ptrFromInt(Pointer, @intFromPtr(ptr) +% addr),
     }
 }
 fn readStruct(comptime struct_info: builtin.Type.Struct, addr: u64, offset: u64, any: anytype) u64 {
@@ -97,7 +97,7 @@ fn readPointerSlice(comptime pointer_info: builtin.Type.Pointer, addr: u64, offs
     const next: @TypeOf(any.*) = toAddress(any.*, addr);
     var len: u64 = offset;
     len = mach.sub64(mach.alignA64(addr +% len, @alignOf(pointer_info.child)), addr);
-    len +%= @sizeOf(pointer_info.child) *% (next.len +% @boolToInt(pointer_info.sentinel != null));
+    len +%= @sizeOf(pointer_info.child) *% (next.len +% @intFromBool(pointer_info.sentinel != null));
     for (next) |*value| {
         len = read(addr, len, value);
     }

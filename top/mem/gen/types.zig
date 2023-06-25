@@ -170,25 +170,25 @@ pub fn specifierTags(variants: []const Specifier) Specifiers {
     for (variants) |variant| {
         switch (variant) {
             .derived => {
-                int |= @enumToInt(variant.derived.tag);
+                int |= @intFromEnum(variant.derived.tag);
             },
             .stripped => {
-                int |= @enumToInt(variant.stripped.tag);
+                int |= @intFromEnum(variant.stripped.tag);
             },
             .default => {
-                int |= @enumToInt(variant.default.tag);
+                int |= @intFromEnum(variant.default.tag);
             },
             .optional_derived => {
-                int |= @enumToInt(variant.optional_derived.tag);
+                int |= @intFromEnum(variant.optional_derived.tag);
             },
             .optional_variant => {
-                int |= @enumToInt(variant.optional_variant.tag);
+                int |= @intFromEnum(variant.optional_variant.tag);
             },
             .decl_optional_derived => {
-                int |= @enumToInt(variant.decl_optional_derived.decl_tag);
+                int |= @intFromEnum(variant.decl_optional_derived.decl_tag);
             },
             .decl_optional_variant => {
-                int |= @enumToInt(variant.decl_optional_variant.decl_tag);
+                int |= @intFromEnum(variant.decl_optional_variant.decl_tag);
             },
         }
     }
@@ -546,9 +546,9 @@ pub fn techniqueTags(options: []const Technique) Techniques {
     var int: Techniques.tag_type = 0;
     for (options) |option| {
         if (option == .standalone) {
-            int |= @enumToInt(option.standalone);
+            int |= @intFromEnum(option.standalone);
         } else {
-            int |= @enumToInt(option.mutually_exclusive.tech_tag.?);
+            int |= @intFromEnum(option.mutually_exclusive.tech_tag.?);
         }
     }
     return @bitCast(Techniques, int);
@@ -586,7 +586,7 @@ pub const Option = struct {
             }
         }
         inline for (option.info.field_field_names) |field_name| {
-            ret +%= @boolToInt(@field(techs, field_name));
+            ret +%= @intFromBool(@field(techs, field_name));
         }
         return ret;
     }
