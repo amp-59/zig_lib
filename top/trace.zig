@@ -1,5 +1,7 @@
 const mem = @import("./mem.zig");
 const sys = @import("./sys.zig");
+const fmt = @import("./fmt.zig");
+const zig = @import("./zig.zig");
 const mach = @import("./mach.zig");
 const file = @import("./file.zig");
 const dwarf = @import("./dwarf.zig");
@@ -12,6 +14,41 @@ pub const logging_override: builtin.Logging.Override = builtin.Logging.Override{
     .Fault = false,
     .Success = false,
     .Release = false,
+};
+const tab = .{
+    .self_link_s = "/proc/self/exe",
+    .open_error_s = "could not open executable",
+    .stat_error_s = "could not stat executable",
+    .read_error_s = "could not read executable",
+};
+const Number = union(enum) {
+    pc_addr: u64,
+    line_no: u64,
+    none,
+};
+const LineLocation = struct {
+    start: u64 = 0,
+    finish: u64 = 0,
+    line: u64 = 0,
+    fn len(loc: LineLocation) u64 {
+        return loc.finish -% loc.start;
+    }
+    fn ptr(loc: LineLocation, buf: []u8) [*]u8 {
+        return buf[loc.start..].ptr;
+    }
+    fn init(buf: []u8, line: u64) LineLocation {
+        var ret: LineLocation = .{};
+        while (ret.finish != buf.len) : (ret.finish +%= 1) {
+            if (buf[ret.finish] == '\n') {
+                ret.line +%= 1;
+                if (ret.line == line) {
+                    return ret;
+                }
+                ret.start = ret.finish +% 1;
+            }
+        }
+        unreachable;
+    }
 };
 pub const StackIterator = struct {
     first_addr: ?u64,
