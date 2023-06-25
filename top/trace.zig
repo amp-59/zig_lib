@@ -150,38 +150,60 @@ fn writeSideBar(width: u64, buf: [*]u8, number: Number) u64 {
     }
     return len;
 }
-fn fastAllocFile(allocator: *mem.SimpleAllocator, pathname: [:0]const u8) []u8 {
-    var st: file.Status = undefined;
-    const fd: u64 = sys.call_noexcept(.open, u64, .{ @ptrToInt(pathname.ptr), sys.O.RDONLY, 0 });
-    mach.assert(fd < 1024, "could not open executable");
-    var rc: u64 = sys.call_noexcept(.fstat, u64, .{ fd, @ptrToInt(&st) });
-    mach.assert(rc == 0, "could not stat executable");
-    const buf: []u8 = allocator.allocateAligned(u8, st.size, 8);
-    rc = sys.call_noexcept(.read, u64, .{ fd, @ptrToInt(buf.ptr), st.size });
-    mach.assert(rc == st.size, "could not read executable");
-    sys.call_noexcept(.close, void, .{fd});
-    return buf;
+fn writeCaret(buf: [*]u8, addr: u64, column: u64) u64 {
+    var len: u64 = 0;
+    if (builtin.traces.sidebar) {
+        len +%= writeSideBar(8, buf, .{ .pc_addr = addr });
+    }
+    mach.memset(buf + len, ' ', column -| 1);
+    len +%= column -| 1;
+    if (builtin.traces.tokens.caret) |token| {
+        @memcpy(buf + len, token);
+        len +%= token.len;
+    }
+    buf[len] = '\n';
+    return len +% 1;
 }
-fn self(allocator: *mem.SimpleAllocator) dwarf.DwarfInfo {
-    const buf: []u8 = fastAllocFile(allocator, "/proc/self/exe");
-    var ret: dwarf.DwarfInfo = dwarf.DwarfInfo.init(@ptrToInt(buf.ptr));
-    ret.scanAllCompileUnits(allocator);
-    return ret;
+fn writeSourceLine(buf: [*]u8, fbuf: []u8, loc: *LineLocation, itr: *builtin.zig.TokenIterator, tok: *builtin.zig.Token) u64 {
+    var len: u64 = 0;
+    if (builtin.traces.sidebar) {
+        len +%= writeSideBar(8, buf, .{ .line_no = loc.line });
+    }
+    if (builtin.traces.tokens.syntax) |syntax| {
+        while (itr.buf_pos < loc.start) {
+            tok.* = itr.next();
+        }
+        const finish: u64 = loc.finish;
+        while (itr.buf_pos <= finish) {
+            loc.finish = tok.loc.finish;
+            for (syntax.tags) |tag| {
+                if (tok.tag == tag) {
+                    mach.memcpy(buf + len, syntax.style.ptr, syntax.style.len);
+                    len +%= syntax.style.len;
+                }
+            }
+            mach.memcpy(buf + len, loc.ptr(fbuf), loc.len());
+            len +%= loc.len();
+            loc.start = loc.finish;
+            tok.* = itr.next();
+            @ptrCast(*[4]u8, buf + len).* = "\x1b[0m".*;
+            len +%= 4;
+        }
+    } else {
+        mach.memcpy(buf + len, loc.ptr(fbuf), loc.len());
+        len +%= loc.len();
+    }
+    if (buf[len -% 1] != '\n') {
+        buf[len] = '\n';
+        len +%= 1;
+    }
+    return len;
 }
-fn writeSourceCodeAtAddress(allocator: *mem.SimpleAllocator, dwarf_info: *dwarf.DwarfInfo, buf: [*]u8, addr: u64) u64 {
-    const instr_addr_s: []const u8 = builtin.fmt.ux64(addr).readAll();
-    const unit = dwarf_info.findCompileUnit(addr) orelse {
-        return 0;
-    };
-    const line_info = dwarf_info.getLineNumberInfo(allocator, unit, addr) orelse {
-        return 0;
-    };
-    const fbuf: []u8 = fastAllocFile(allocator, line_info.file);
-    var len = writeSourceLocation(buf, line_info.file, line_info.line, line_info.column);
+fn writeExtendedSourceLocation(dwarf_info: *dwarf.DwarfInfo, buf: [*]u8, addr: u64, unit: *const dwarf.Unit, src: dwarf.SourceLocation) u64 {
+    var len: u64 = src.formatWriteBuf(buf);
     @ptrCast(*[2]u8, buf + len).* = ": ".*;
     len +%= 2;
-    mach.memcpy(buf + len, instr_addr_s.ptr, instr_addr_s.len);
-    len +%= instr_addr_s.len;
+    len +%= fmt.ux64(addr).formatWriteBuf(buf + len);
     if (dwarf_info.getSymbolName(addr)) |fn_name| {
         @ptrCast(*[4]u8, buf + len).* = " in ".*;
         len +%= 4;
@@ -191,57 +213,95 @@ fn writeSourceCodeAtAddress(allocator: *mem.SimpleAllocator, dwarf_info: *dwarf.
     if (unit.info_entry.get(.name)) |form_val| {
         @ptrCast(*[2]u8, buf + len).* = " (".*;
         len +%= 2;
-        const unit_name: []const u8 = form_val.getString(dwarf_info);
-        mach.memcpy(buf + len, unit_name.ptr, unit_name.len);
-        len +%= unit_name.len;
+        const name: []const u8 = form_val.getString(dwarf_info);
+        mach.memcpy(buf + len, name.ptr, name.len);
+        len +%= name.len;
         @ptrCast(*[2]u8, buf + len).* = ")\n".*;
         len +%= 2;
-    }
-    const bytes: []const u8 = readLineBytes(fbuf, line_info.line);
-    if (false) {
-        const b_bytes: []const u8 = readLineBytes(fbuf, line_info.line -% 1);
-        const a_bytes: []const u8 = readLineBytes(fbuf, line_info.line +% 1);
-        mach.memcpy(buf + len, b_bytes.ptr, b_bytes.len);
-        len +%= b_bytes.len;
-        buf[len] = '\n';
-        len +%= 1;
-        const before_caret: u64 = line_info.column -% 1;
-        mach.memcpy(buf + len, bytes.ptr, before_caret);
-        len +%= before_caret;
-        @ptrCast(*[4]u8, buf + len).* = "\x1b[7m".*;
-        len +%= 4;
-        buf[len] = bytes[before_caret];
-        len +%= 1;
-        @ptrCast(*[4]u8, buf + len).* = "\x1b[0m".*;
-        len +%= 4;
-        mach.memcpy(buf + len, bytes.ptr + line_info.column, bytes.len -% line_info.column);
-        len +%= bytes.len -% line_info.column;
-        buf[len] = '\n';
-        len +%= 1;
-        mach.memcpy(buf + len, a_bytes.ptr, a_bytes.len);
-        len +%= a_bytes.len;
     } else {
-        mach.memcpy(buf + len, bytes.ptr, bytes.len);
-        len +%= bytes.len;
         buf[len] = '\n';
         len +%= 1;
-        mach.memset(buf + len, ' ', line_info.column -| 1);
-        len +%= line_info.column;
-        @ptrCast(*@TypeOf(about.hi_green_s.*), buf + len).* = about.hi_green_s.*;
-        len +%= about.hi_green_s.len;
-        buf[len] = '^';
-        len +%= 1;
     }
-    @ptrCast(*[5]u8, buf + len).* = about.new_s.*;
-    return len +% 5;
+    return len;
+}
+fn writeSourceContext(allocator: *mem.SimpleAllocator, buf: [*]u8, addr: u64, src: dwarf.SourceLocation) u64 {
+    const fbuf: [:0]u8 = fastAllocFile(allocator, src.file);
+    var len: u64 = 0;
+    var itr: builtin.zig.TokenIterator = .{ .buf = fbuf, .buf_pos = 0, .inval = null };
+    var tok: builtin.zig.Token = .{ .tag = .eof, .loc = .{ .start = 0, .finish = 0 } };
+    if (builtin.traces.context_lines) |no| {
+        const min: u64 = src.line -| no;
+        const max: u64 = src.line +% no +% 1;
+        var line: u64 = min;
+        while (line != max) : (line +%= 1) {
+            var loc: LineLocation = LineLocation.init(fbuf, line);
+            len +%= writeSourceLine(buf + len, fbuf, &loc, &itr, &tok);
+            if (line == src.line) {
+                if (builtin.traces.caret) {
+                    len +%= writeCaret(buf + len, addr, src.column);
+                }
+            }
+        }
+    } else {
+        var loc: LineLocation = LineLocation.init(fbuf, src.line);
+        len +%= writeSourceLine(buf + len, fbuf, &loc, &itr, &tok);
+        if (builtin.traces.caret) {
+            len +%= writeCaret(buf + len, addr, src.column);
+        }
+    }
+    return len;
+}
+fn writeSourceCodeAtAddress(allocator: *mem.SimpleAllocator, dwarf_info: *dwarf.DwarfInfo, buf: [*]u8, pos: u64, addr: u64) ?dwarf.DwarfInfo.AddressInfo {
+    for (dwarf_info.addr_info[0..dwarf_info.addr_info_len]) |*addr_info| {
+        if (addr_info.addr == addr) {
+            addr_info.count +%= 1;
+        }
+    } else {
+        if (dwarf_info.findCompileUnit(addr)) |unit| {
+            if (dwarf_info.getSourceLocation(allocator, unit, addr)) |src| {
+                var len: u64 = pos;
+                len +%= writeExtendedSourceLocation(dwarf_info, buf + len, addr, unit, src);
+                len +%= writeSourceContext(allocator, buf + len, addr, src);
+                if (builtin.traces.blank_lines) |blank_lines| {
+                    len +%= writeLastLine(buf + len, blank_lines);
+                }
+                return .{
+                    .addr = addr,
+                    .start = pos,
+                    .finish = pos +% len +% writeEndOfMessage(buf + len),
+                };
+            }
+        }
+    }
+    return null;
+}
+fn fastAllocFile(allocator: *mem.SimpleAllocator, pathname: [:0]const u8) [:0]u8 {
+    var st: file.Status = undefined;
+    const fd: u64 = sys.call_noexcept(.open, u64, .{ @intFromPtr(pathname.ptr), sys.O.RDONLY, 0 });
+    mach.assert(
+        fd < 1024,
+        tab.open_error_s,
+    );
+    var rc: u64 = sys.call_noexcept(.fstat, u64, .{ fd, @intFromPtr(&st) });
+    mach.assert(
+        rc == 0,
+        tab.stat_error_s,
+    );
+    const buf: []u8 = allocator.allocateAligned(u8, st.size +% 1, 8);
+    rc = sys.call_noexcept(.read, u64, .{ fd, @intFromPtr(buf.ptr), st.size });
+    buf[st.size] = 0;
+    mach.assert(
+        rc == st.size,
+        tab.read_error_s,
+    );
+    sys.call_noexcept(.close, void, .{fd});
+    return buf[0..st.size :0];
 }
 pub export fn printStackTrace(first_addr: usize, frame_addr: usize) void {
-    var allocator: mem.SimpleAllocator = .{
-        .start = 0x600000000000,
-        .next = 0x600000000000,
-        .finish = 0x600000000000,
-    };
-    var dwarf_info: dwarf.DwarfInfo = self(&allocator);
+    var allocator: mem.SimpleAllocator = .{ .start = 0x600000000000, .next = 0x600000000000, .finish = 0x600000000000 };
+    const exe_buf: []u8 = fastAllocFile(&allocator, tab.self_link_s);
+    var dwarf_info: dwarf.DwarfInfo = dwarf.DwarfInfo.init(@intFromPtr(exe_buf.ptr));
+    dwarf_info.scanAllCompileUnits(&allocator);
     var buf: []u8 = allocator.allocate(u8, 1024 *% 4096);
     var len: u64 = 0;
     var itr: StackIterator = if (frame_addr != 0) .{
@@ -252,11 +312,19 @@ pub export fn printStackTrace(first_addr: usize, frame_addr: usize) void {
         .frame_addr = @frameAddress(),
     };
     if (frame_addr != 0) {
-        len +%= writeSourceCodeAtAddress(&allocator, &dwarf_info, buf.ptr, first_addr);
+        if (writeSourceCodeAtAddress(&allocator, &dwarf_info, buf.ptr, len, first_addr)) |addr_info| {
+            len = addr_info.finish;
+            dwarf_info.addAddressInfo(&allocator).* = addr_info;
+        }
     }
     while (itr.next()) |addr| {
-        len +%= writeSourceCodeAtAddress(&allocator, &dwarf_info, buf[len..].ptr, addr);
+        if (writeSourceCodeAtAddress(&allocator, &dwarf_info, buf[len..].ptr, len, addr)) |addr_info| {
+            len = addr_info.finish;
+            dwarf_info.addAddressInfo(&allocator).* = addr_info;
+        }
     }
-    builtin.debug.write(buf[0..len]);
+    for (dwarf_info.addr_info[0..dwarf_info.addr_info_len]) |addr_info| {
+        builtin.debug.write(buf[addr_info.start..addr_info.finish]);
+    }
     allocator.unmap();
 }
