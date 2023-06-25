@@ -280,7 +280,7 @@ pub const Path = struct {
     }
     pub fn concatenate(path: Path, allocator: anytype) [:0]u8 {
         @setRuntimeSafety(false);
-        const buf: [*]u8 = @intToPtr([*]u8, allocator.allocateRaw(path.formatLength(), 1));
+        const buf: [*]u8 = @ptrFromInt([*]u8, allocator.allocateRaw(path.formatLength(), 1));
         const len: u64 = path.formatWriteBuf(buf);
         return buf[0 .. len -% 1 :0];
     }
@@ -288,7 +288,7 @@ pub const Path = struct {
         @setRuntimeSafety(false);
         const size_of: comptime_int = @sizeOf([:0]const u8);
         const addr_buf: *u64 = @ptrCast(*u64, &path.names);
-        const ret: *[:0]const u8 = @intToPtr(*[:0]const u8, allocator.addGeneric(size_of, 2, addr_buf, &path.names_max_len, path.names_len));
+        const ret: *[:0]const u8 = @ptrFromInt(*[:0]const u8, allocator.addGeneric(size_of, 2, addr_buf, &path.names_max_len, path.names_len));
         path.names_len +%= 1;
         return ret;
     }
