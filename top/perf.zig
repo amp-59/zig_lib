@@ -11,7 +11,7 @@ pub const CPU = enum(u64) {
     self = 0,
     _,
     pub fn no(val: u32) CPU {
-        return @intToEnum(CPU, val);
+        return @enumFromInt(CPU, val);
     }
 };
 pub const Process = enum(usize) {
@@ -19,16 +19,16 @@ pub const Process = enum(usize) {
     self = 0,
     _,
     pub fn id(val: u32) Process {
-        return @intToEnum(Process, val);
+        return @enumFromInt(Process, val);
     }
 };
 pub const Event = extern struct {
     /// Major type: hardware/software/tracepoint/etc.
-    type: Type,
+    type: Type = undefined,
     /// Size of the attr structure, for fwd/bwd compat.
     size: u32 = @sizeOf(Event),
     /// Type specific configuration information.
-    config: Config,
+    config: Config = undefined,
     sample_period_or_freq: u64 = 0,
     sample_type: u64 = 0,
     read_format: Format = .{},
@@ -334,7 +334,7 @@ pub const PerfEventSpec = struct {
 };
 pub fn eventOpen(comptime perf_spec: PerfEventSpec, event: *const Event, pid: Process, cpu: CPU, fd: u64, flags: Flags) sys.ErrorUnion(perf_spec.errors, u64) {
     if (meta.wrap(sys.call(.perf_event_open, perf_spec.errors, u64, .{
-        @ptrToInt(event), @enumToInt(pid), @enumToInt(cpu), fd, @bitCast(u8, flags),
+        @intFromPtr(event), @intFromEnum(pid), @intFromEnum(cpu), fd, @bitCast(u8, flags),
     }))) |ret| {
         return ret;
     } else |perf_event_open_error| {
@@ -347,7 +347,7 @@ pub const PerfEventControlSpec = struct {
 };
 pub fn eventControl(comptime perf_spec: PerfEventControlSpec, fd: u64, ctl: Event.IOC, apply_group: bool) sys.ErrorUnion(perf_spec.errors, void) {
     if (meta.wrap(sys.call(.ioctl, perf_spec.errors, void, .{
-        fd, @enumToInt(ctl), @boolToInt(apply_group),
+        fd, @intFromEnum(ctl), @intFromBool(apply_group),
     }))) |ret| {
         return ret;
     } else |ioctl_error| {
