@@ -2472,7 +2472,7 @@ pub const Trace = struct {
     options: Options = .{},
     const builder_will_add: bool = builtin.mode == .Debug and !builtin.strip_debug_info;
     pub const Options = struct {
-        /// Unwind this many frame. max_depth = 0 is unlimited.
+        /// Unwind this many frames. max_depth = 0 is unlimited.
         max_depth: u8 = 0,
         /// Write this many lines of source code context.
         context_lines_count: u8 = 0,
