@@ -2465,37 +2465,53 @@ pub const SignalAlternateStack = struct {
     /// Initial mapping length of alternate stack.
     len: u64 = 0x1000000,
 };
-pub const Traces = struct {
-    /// Display file pathnames relative to the current working directory.
-    relative_path: bool = true,
-    /// Show this many lines of source code context.
-    context_lines: ?u8 = null,
-    /// Allow this many blank lines between source code contexts.
-    blank_lines: ?u8 = null,
-    /// Show the source line number on source lines.
-    line_no: bool = false,
-    /// Show the program counter on the caret line.
-    pc_addr: bool = false,
-    /// Control sidebar inclusion and appearance.
-    sidebar: bool = false,
-    /// Write extra line to indicate column.
-    caret: bool = true,
-    /// Write extra line to indicate column.
-    tokens: Tokens = .{},
-    pub const Tokens = struct {
-        /// Apply this style to the line number text.
-        line_no: ?[]const u8 = null,
-        /// Apply this style to the program counter address text.
-        pc_addr: ?[]const u8 = null,
-        /// Separate context information from sidebar with this text.
-        sidebar: ?[]const u8 = null,
-        /// Indicate column number with this text.
-        caret: ?[]const u8 = lit.fx.color.fg.light_green ++ "^" ++ lit.fx.none,
-        /// Apply `style` for every Zig token tag in `tags`.
-        syntax: ?[]const Mapping = null,
-        const Mapping = struct {
-            style: []const u8 = "",
-            tags: []const zig.Token.Tag = zig.Token.Tag.list,
+pub const Trace = struct {
+    Error: bool = builder_will_add,
+    Fault: bool = builder_will_add,
+    Signal: bool = builder_will_add,
+    options: Options = .{},
+    const builder_will_add: bool = builtin.mode == .Debug and !builtin.strip_debug_info;
+    pub const Options = struct {
+        /// Unwind this many frame. max_depth = 0 is unlimited.
+        max_depth: u8 = 0,
+        /// Write this many lines of source code context.
+        context_lines_count: u8 = 0,
+        /// Allow this many blank lines between source code contexts.
+        break_lines_count: u8 = 0,
+        /// Show the source line number on source lines.
+        show_line_no: bool = false,
+        /// Show the program counter on the caret line.
+        show_pc_addr: bool = false,
+        /// Control sidebar inclusion and appearance.
+        write_sidebar: bool = false,
+        /// Write extra line to indicate column.
+        write_caret: bool = true,
+        /// Define composition of stack trace text.
+        tokens: Tokens = .{},
+        /// Whether to display file pathnames relative to the current working
+        /// directory.
+        relative_path: bool = true,
+        /// Determines whether `printStackTrace` will be compiled with this
+        /// compile unit.
+        pub const Tokens = struct {
+            /// Apply this style to the line number text.
+            line_no: ?[]const u8 = null,
+            /// Apply this style to the program counter address text.
+            pc_addr: ?[]const u8 = null,
+            /// Separate context information from sidebar with this text.
+            sidebar: []const u8 = "|",
+            /// Substitute absent `line_no` or `pc_addr` address with this text.
+            sidebar_fill: []const u8 = "  ",
+            /// Indicate column number with this text.
+            caret: []const u8 = tab.fx.color.fg.light_green ++ "^" ++ tab.fx.none,
+            /// Fill text between `sidebar` and `caret` with this character.
+            caret_fill: []const u8 = " ",
+            /// Apply `style` for every Zig token tag in `tags`.
+            syntax: ?[]const Mapping = null,
+            pub const Mapping = struct {
+                style: []const u8 = "",
+                tags: []const zig.Token.Tag = zig.Token.Tag.list,
+            };
         };
     };
 };
@@ -3121,11 +3137,7 @@ pub fn loggingTypes() []const type {
     }
     return ret;
 }
-pub fn define(
-    comptime symbol: []const u8,
-    comptime T: type,
-    comptime default: anytype,
-) T {
+pub fn define(comptime symbol: []const u8, comptime T: type, comptime default: T) T {
     if (@hasDecl(root, symbol)) {
         return @field(root, symbol);
     }
@@ -3135,25 +3147,6 @@ pub fn define(
     if (@TypeOf(default) != T) {
         return @call(.auto, default, .{});
     }
-}
-pub fn defineExtra(
-    comptime symbol: []const u8,
-    comptime T: type,
-    comptime default: anytype,
-    comptime args: anytype,
-) T {
-    if (@hasDecl(root, symbol)) {
-        return @field(root, symbol);
-    } else if (@hasDecl(@cImport({}), symbol)) {
-        const command = @field(@cImport({}), symbol);
-        if (T == bool) {
-            return @bitCast(T, @as(u1, command));
-        }
-        return command;
-    } else if (@typeInfo(@TypeOf(default)) == .Fn) {
-        return @call(.auto, default, args);
-    }
-    return default;
 }
 pub const Version = struct {
     major: u32,
@@ -3234,185 +3227,6 @@ pub const Version = struct {
             .patch = @intCast(u32, patch_val),
         };
     }
-};
-pub const lit = struct {
-    // If the programmer can remember to use these, the LHS name may be more helpful
-    // to the reader than the RHS expression.
-    pub const max_val_u8: u8 = 0xff;
-    pub const max_val_u16: u16 = 0xffff;
-    pub const max_val_u32: u32 = 0xffffffff;
-    pub const max_val_u64: u64 = 0xffffffffffffffff;
-    pub const max_bit_u8: u8 = 0x80;
-    pub const max_bit_u16: u16 = 0x8000;
-    pub const max_bit_u32: u32 = 0x80000000;
-    pub const max_bit_u64: u64 = 0x8000000000000000;
-    pub const max_val_i8: i8 = 0x7f;
-    pub const max_val_i16: i16 = 0x7fff;
-    pub const max_val_i32: i32 = 0x7fffffff;
-    pub const max_val_i64: i64 = 0x7fffffffffffffff;
-    pub const max_bit_i8: i8 = 0x40;
-    pub const max_bit_i16: i16 = 0x4000;
-    pub const max_bit_i32: i32 = 0x40000000;
-    pub const max_bit_i64: i64 = 0x4000000000000000;
-    // So that basic formatters do not need to compute a safe buffer length.
-    pub const u8d_max_len: u64 = 3;
-    pub const u8x_max_len: u64 = 5;
-    pub const u64d_max_len: u64 = 19;
-    pub const u64x_max_len: u64 = 18;
-    pub const i8d_max_len: u64 = 4;
-    pub const i8x_max_len: u64 = 6;
-    pub const i64d_max_len: u64 = 20;
-    pub const i64x_max_len: u64 = 19;
-    pub const Range = extern struct {
-        lower: u8,
-        upper: u8,
-    };
-    pub const character_ranges = struct {
-        pub const print: Range = .{ .lower = 0x20, .upper = 0x7e };
-        pub const lower: Range = .{ .lower = 0x61, .upper = 0x7a };
-        pub const upper: Range = .{ .lower = 0x41, .upper = 0x5a };
-        pub const digit: Range = .{ .lower = 0x30, .upper = 0x39 };
-    };
-    pub const character_classes = struct {
-        pub const alpha: [2]Range = .{ character_ranges.upper, character_ranges.lower };
-        pub const alnum: [3]Range = .{ character_ranges.upper, character_ranges.lower, character_ranges.digit };
-        pub const punct: [4]Range = .{
-            .{ .lower = 33, .upper = 47 },
-            .{ .lower = 58, .upper = 64 },
-            .{ .lower = 91, .upper = 96 },
-            .{ .lower = 123, .upper = 126 },
-        };
-        pub const print: [7]Range = alnum ++ punct;
-    };
-    pub const fx = struct {
-        pub const none: [:0]const u8 = "\x1b\x5b\x30\x6d";
-        pub const color = struct {
-            pub const fg = struct {
-                pub const black: [:0]const u8 = "\x1b\x5b\x33\x30\x6d";
-                pub const red: [:0]const u8 = "\x1b\x5b\x33\x31\x6d";
-                pub const green: [:0]const u8 = "\x1b\x5b\x33\x32\x6d";
-                pub const yellow: [:0]const u8 = "\x1b\x5b\x33\x33\x6d";
-                pub const blue: [:0]const u8 = "\x1b\x5b\x33\x34\x6d";
-                pub const magenta: [:0]const u8 = "\x1b\x5b\x33\x35\x6d";
-                pub const cyan: [:0]const u8 = "\x1b\x5b\x33\x36\x6d";
-                pub const white: [:0]const u8 = "\x1b\x5b\x33\x37\x6d";
-                pub const hi_red: [:0]const u8 = "\x1b\x5b\x39\x31\x6d";
-                pub const hi_green: [:0]const u8 = "\x1b\x5b\x39\x32\x6d";
-                pub const hi_yellow: [:0]const u8 = "\x1b\x5b\x39\x33\x6d";
-                pub const hi_blue: [:0]const u8 = "\x1b\x5b\x39\x34\x6d";
-                pub const hi_magenta: [:0]const u8 = "\x1b\x5b\x39\x35\x6d";
-                pub const hi_cyan: [:0]const u8 = "\x1b\x5b\x39\x36\x6d";
-                pub const max_red: [:0]const u8 = "\x1b\x5b\x33\x38\x3b\x35\x3b\x31\x39\x36\x6d";
-                pub const max_blue: [:0]const u8 = "\x1b\x5b\x33\x38\x3b\x35\x3b\x32\x37\x6d";
-                pub const dark_green: [:0]const u8 = "\x1b\x5b\x33\x38\x3b\x35\x3b\x32\x32\x6d";
-                pub const max_green_alt: [:0]const u8 = "\x1b\x5b\x33\x38\x3b\x35\x3b\x37\x36\x6d";
-                pub const orange: [:0]const u8 = "\x1b\x5b\x33\x38\x3b\x35\x3b\x32\x30\x32\x6d";
-                pub const purple: [:0]const u8 = "\x1b\x5b\x33\x38\x3b\x35\x3b\x39\x39\x6d";
-                pub const aqua: [:0]const u8 = "\x1b\x5b\x33\x38\x3b\x35\x3b\x31\x35\x33\x6d";
-                pub const max_white: [:0]const u8 = "\x1b\x5b\x33\x38\x3b\x35\x3b\x32\x33\x31\x6d";
-                pub const red24: [:0]const u8 = "\x1b[38;2;233;86;120m";
-                pub const redwine: [:0]const u8 = "\x1b[38;2;209;109;158m";
-                pub const orange24: [:0]const u8 = "\x1b[38;2;233;127;73m";
-                pub const yellow24: [:0]const u8 = "\x1b[38;2;240;198;116m";
-                pub const light_green: [:0]const u8 = "\x1b[38;2;51;229;96m";
-                pub const green24: [:0]const u8 = "\x1b[38;2;175;215;0m";
-                pub const dark_green24: [:0]const u8 = "\x1b[38;2;152;190;101m";
-                pub const white24: [:0]const u8 = "\x1b[38;2;255;255;255;1m";
-                pub const cyan24: [:0]const u8 = "\x1b[38;2;54;208;224m";
-                pub const blue24: [:0]const u8 = "\x1b[38;2;97;175;239m";
-                pub const violet: [:0]const u8 = "\x1b[38;2;178;148;187m";
-                pub const magenta24: [:0]const u8 = "\x1b[38;2;198;120;221m";
-                pub const teal: [:0]const u8 = "\x1b[38;2;26;188;156m";
-                pub const grey: [:0]const u8 = "\x1b[38;2;146;131;116m";
-                pub const brown: [:0]const u8 = "\x1b[38;2;199;134;101m";
-                pub const light_blue: [:0]const u8 = "\x1b[38;2;97;168;255m";
-                pub const light_purple: [:0]const u8 = "\x1b[38;2;193;173;247m";
-                pub const bracket: [:0]const u8 = "\x1b[38;2;128;160;194m";
-                pub const cursor_bg: [:0]const u8 = "\x1b[38;2;79;91;102m";
-                pub const offwhite0: [:0]const u8 = "\x1b[38;2;207;207;194m";
-                pub const offwhite1: [:0]const u8 = "\x1b[38;2;221;218;214m";
-                pub const numeric: [:0]const u8 = "\x1b[38;2;255;115;115m";
-                pub const data_type: [:0]const u8 = "\x1b[38;2;255;255;255m";
-                pub const attribute: [:0]const u8 = "\x1b[38;2;41;128;185m";
-                pub fn shade(comptime index: u8) [:0]const u8 {
-                    return mcode(.{ 38, 5, 255 - @min(23, index) });
-                }
-            };
-            pub const bg = struct {
-                pub const black: [:0]const u8 = "\x1b\x5b\x34\x30\x6d";
-                pub const red: [:0]const u8 = "\x1b\x5b\x34\x31\x6d";
-                pub const green: [:0]const u8 = "\x1b\x5b\x34\x32\x6d";
-                pub const yellow: [:0]const u8 = "\x1b\x5b\x34\x33\x6d";
-                pub const blue: [:0]const u8 = "\x1b\x5b\x34\x34\x6d";
-                pub const magenta: [:0]const u8 = "\x1b\x5b\x34\x35\x6d";
-                pub const cyan: [:0]const u8 = "\x1b\x5b\x34\x36\x6d";
-                pub const white: [:0]const u8 = "\x1b\x5b\x34\x37\x6d";
-                pub const hi_red: [:0]const u8 = "\x1b\x5b\x31\x30\x31\x6d";
-                pub const hi_green: [:0]const u8 = "\x1b\x5b\x31\x30\x32\x6d";
-                pub const hi_yellow: [:0]const u8 = "\x1b\x5b\x31\x30\x33\x6d";
-                pub const hi_blue: [:0]const u8 = "\x1b\x5b\x31\x30\x34\x6d";
-                pub const hi_magenta: [:0]const u8 = "\x1b\x5b\x31\x30\x35\x6d";
-                pub const hi_cyan: [:0]const u8 = "\x1b\x5b\x31\x30\x36\x6d";
-                pub const hi_white: [:0]const u8 = "\x1b\x5b\x31\x30\x37\x6d";
-            };
-        };
-        pub const style = struct {
-            pub const bold: [:0]const u8 = "\x1b\x5b\x31\x6d";
-            pub const faint: [:0]const u8 = "\x1b\x5b\x32\x6d";
-            pub const italic: [:0]const u8 = "\x1b\x5b\x33\x6d";
-            pub const underline: [:0]const u8 = "\x1b\x5b\x34\x6d";
-            pub const inverted: [:0]const u8 = "\x1b\x5b\x37\x6d";
-            pub const invisible: [:0]const u8 = "\x1b\x5b\x38\x6d";
-            pub const strikeout: [:0]const u8 = "\x1b\x5b\x39\x6d";
-        };
-        fn mcode(comptime args: anytype) [:0]const u8 {
-            comptime var code: [:0]const u8 = "\x1b[";
-            inline for (args) |arg| {
-                code = code ++ tab.ud8[arg] ++ ";";
-            }
-            return code[0 .. code.len - 1] ++ "m";
-        }
-    };
-    pub const position = struct {
-        pub const ask: [4]u8 = .{ 0x1b, 0x5b, 0x36, 0x6e };
-        pub const save: [3]u8 = .{ 0x1b, 0x5b, 0x73 };
-        pub const restore: [3]u8 = .{ 0x1b, 0x5b, 0x75 };
-        pub const up: [3]u8 = .{ 0x1b, 0x5b, 0x41 };
-        pub const down: [3]u8 = .{ 0x1b, 0x5b, 0x42 };
-        pub const right: [3]u8 = .{ 0x1b, 0x5b, 0x43 };
-        pub const left: [3]u8 = .{ 0x1b, 0x5b, 0x44 };
-    };
-    pub const kill = struct {
-        pub const screen_bare: [3]u8 = .{ 0x1b, 0x5b, 0x4a };
-        pub const screen_down: [4]u8 = .{ 0x1b, 0x5b, 0x30, 0x4a };
-        pub const screen_up: [4]u8 = .{ 0x1b, 0x5b, 0x31, 0x4a };
-        pub const screen: [4]u8 = .{ 0x1b, 0x5b, 0x32, 0x4a };
-        pub const line_bare: [3]u8 = .{ 0x1b, 0x5b, 0x4b };
-        pub const line_right: [4]u8 = .{ 0x1b, 0x5b, 0x30, 0x4b };
-        pub const line_left: [4]u8 = .{ 0x1b, 0x5b, 0x31, 0x4b };
-        pub const line: [4]u8 = .{ 0x1b, 0x5b, 0x32, 0x4b };
-        pub const back: [1]u8 = .{0x8};
-    };
-    const key = struct {
-        pub const home: [3]u8 = .{ 0x1b, 0x5b, 0x48 };
-        pub const end: [3]u8 = .{ 0x1b, 0x5b, 0x46 };
-        pub const insert: [4]u8 = .{ 0x1b, 0x5b, 0x32, 0x7e };
-        pub const delete: [4]u8 = .{ 0x1b, 0x5b, 0x33, 0x7e };
-        pub const page_up: [4]u8 = .{ 0x1b, 0x5b, 0x35, 0x7e };
-        pub const page_down: [4]u8 = .{ 0x1b, 0x5b, 0x36, 0x7e };
-        pub const f1: [3]u8 = .{ 0x1b, 0x4f, 0x50 };
-        pub const f2: [3]u8 = .{ 0x1b, 0x4f, 0x51 };
-        pub const f3: [3]u8 = .{ 0x1b, 0x4f, 0x52 };
-        pub const f4: [3]u8 = .{ 0x1b, 0x4f, 0x53 };
-        pub const f5: [5]u8 = .{ 0x1b, 0x5b, 0x31, 0x35, 0x7e };
-        pub const f6: [5]u8 = .{ 0x1b, 0x5b, 0x31, 0x37, 0x7e };
-        pub const f7: [5]u8 = .{ 0x1b, 0x5b, 0x31, 0x38, 0x7e };
-        pub const f8: [5]u8 = .{ 0x1b, 0x5b, 0x31, 0x39, 0x7e };
-        pub const f9: [5]u8 = .{ 0x1b, 0x5b, 0x32, 0x30, 0x7e };
-        pub const f10: [5]u8 = .{ 0x1b, 0x5b, 0x32, 0x31, 0x7e };
-        pub const f11: [5]u8 = .{ 0x1b, 0x5b, 0x32, 0x33, 0x7e };
-        pub const f12: [5]u8 = .{ 0x1b, 0x5b, 0x32, 0x34, 0x7e };
-    };
 };
 pub const zig = struct {
     const keywords: [49]struct { []const u8, Token.Tag } = .{
@@ -4583,7 +4397,8 @@ pub const zig = struct {
     }
 };
 fn Src() type {
-    return @TypeOf(@src());
+    const S = @TypeOf(@src());
+    return S;
 }
 fn Overflow(comptime T: type) type {
     const S = struct { T, u1 };
