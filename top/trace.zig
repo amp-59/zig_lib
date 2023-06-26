@@ -85,11 +85,11 @@ const ctn = struct {
             }
         }
     }
-    fn writeLastLine(traces: *const builtin.Traces, array: *Array, break_lines_count: u8) void {
+    fn writeLastLine(trace: *const builtin.Trace, array: *Array, break_lines_count: u8) void {
         var idx: u64 = 0;
         while (idx != break_lines_count) : (idx +%= 1) {
-            if (traces.options.write_sidebar) {
-                ctn.writeSideBar(traces, 8, array, .none);
+            if (trace.options.write_sidebar) {
+                ctn.writeSideBar(trace, 8, array, .none);
             }
             array.writeOne('\n');
         }
@@ -98,48 +98,55 @@ const ctn = struct {
         }
         array.writeMany("\x1b[0m");
     }
-    fn writeSideBar(traces: *const builtin.Traces, width: u64, array: *Array, number: Number) void {
+    fn writeSideBar(trace: *const builtin.Trace, width: u64, array: *Array, number: Number) void {
         var tmp: [8]u8 = undefined;
         var pos: u64 = 0;
+        const sidebar_fill: []const u8 = trace.options.tokens.sidebar_fill;
+        const fill_len: u64 = @min(8, sidebar_fill.len);
         switch (number) {
             .none => {
-                @ptrCast(*[2]u8, &tmp).* = ": ".*;
-                pos +%= 2;
+                mach.memcpy(&tmp, sidebar_fill.ptr, fill_len);
+                pos = sidebar_fill.len;
             },
-            .pc_addr => |pc_addr| if (traces.options.show_pc_addr) {
-                if (traces.options.tokens.pc_addr) |style| {
+            .pc_addr => |pc_addr| if (trace.options.show_pc_addr) {
+                if (trace.options.tokens.pc_addr) |style| {
                     array.writeMany(style);
                 }
                 pos +%= fmt.ux64(pc_addr).formatWriteBuf(&tmp);
             } else {
-                @ptrCast(*[2]u8, &tmp).* = ": ".*;
-                pos +%= 2;
+                mach.memcpy(&tmp, sidebar_fill.ptr, fill_len);
+                pos = sidebar_fill.len;
             },
-            .line_no => |line_no| if (traces.options.show_line_no) {
-                if (traces.options.tokens.line_no) |style| {
+            .line_no => |line_no| if (trace.options.show_line_no) {
+                if (trace.options.tokens.line_no) |style| {
                     array.writeMany(style);
                 }
                 pos +%= fmt.ud64(line_no).formatWriteBuf(&tmp);
+            } else {
+                mach.memcpy(&tmp, sidebar_fill.ptr, fill_len);
+                pos = sidebar_fill.len;
             },
         }
         const spaces: u64 = (width -% 1) -| pos;
         for (0..spaces) |_| array.writeOne(' ');
         array.writeMany(tmp[0..pos]);
         array.writeMany("\x1b[0m");
-        array.writeMany(traces.options.tokens.sidebar);
+        array.writeMany(trace.options.tokens.sidebar);
     }
     fn writeSourceLine(
-        traces: *const builtin.Traces,
+        trace: *const builtin.Trace,
         array: *Array,
         fbuf: []u8,
         loc: *dwarf.LineLocation,
         itr: *builtin.zig.TokenIterator,
         tok: *builtin.zig.Token,
     ) void {
-        if (traces.options.write_sidebar) {
-            ctn.writeSideBar(traces, 8, array, .{ .line_no = loc.line });
+        if (trace.options.write_sidebar and
+            trace.options.show_line_no or trace.options.show_pc_addr)
+        {
+            ctn.writeSideBar(trace, 8, array, .{ .line_no = loc.line });
         }
-        if (traces.options.tokens.syntax) |syntax| {
+        if (trace.options.tokens.syntax) |syntax| {
             while (itr.buf_pos < loc.start) {
                 tok.* = itr.next();
             }
@@ -181,27 +188,29 @@ const ctn = struct {
             array.writeOne('\n');
         }
     }
-    fn writeSourceContext(traces: *const builtin.Traces, allocator: *mem.SimpleAllocator, array: *Array, addr: u64, src: dwarf.SourceLocation) void {
+    fn writeSourceContext(trace: *const builtin.Trace, allocator: *mem.SimpleAllocator, array: *Array, addr: u64, src: dwarf.SourceLocation) void {
         const save: u64 = allocator.next;
         defer allocator.next = save;
         const fbuf: [:0]u8 = fastAllocFile(allocator, src.file);
         var itr: builtin.zig.TokenIterator = .{ .buf = fbuf, .buf_pos = 0, .inval = null };
         var tok: builtin.zig.Token = .{ .tag = .eof, .loc = .{ .start = 0, .finish = 0 } };
-        const min: u64 = src.line -| traces.options.context_lines_count;
-        const max: u64 = src.line +% traces.options.context_lines_count +% 1;
+        const min: u64 = src.line -| trace.options.context_lines_count;
+        const max: u64 = src.line +% trace.options.context_lines_count +% 1;
 
         var line: u64 = min;
         while (line != max) : (line +%= 1) {
             var loc: dwarf.LineLocation = .{};
             if (loc.update(fbuf, line)) {
-                ctn.writeSourceLine(traces, array, fbuf, &loc, &itr, &tok);
-                if (line == src.line and traces.options.write_caret) {
-                    const caret_fill: []const u8 = traces.options.tokens.caret_fill;
-                    if (traces.options.write_sidebar) {
-                        ctn.writeSideBar(traces, 8, array, .{ .pc_addr = addr });
+                ctn.writeSourceLine(trace, array, fbuf, &loc, &itr, &tok);
+                if (line == src.line and trace.options.write_caret) {
+                    const caret_fill: []const u8 = trace.options.tokens.caret_fill;
+                    if (trace.options.write_sidebar and
+                        trace.options.show_line_no or trace.options.show_pc_addr)
+                    {
+                        ctn.writeSideBar(trace, 8, array, .{ .pc_addr = addr });
                     }
                     const fill_len: u64 = src.column -| 1;
-                    if (traces.options.tokens.caret.len == 1) {
+                    if (trace.options.tokens.caret.len == 1) {
                         for (0..fill_len) |_|
                             array.writeOne(caret_fill[0]);
                     } else {
@@ -209,7 +218,7 @@ const ctn = struct {
                             array.writeMany(caret_fill);
                         }
                     }
-                    array.writeMany(traces.options.tokens.caret);
+                    array.writeMany(trace.options.tokens.caret);
                     if (array.readOneBack() != '\n') {
                         array.writeOne('\n');
                     }
@@ -218,7 +227,7 @@ const ctn = struct {
         }
     }
     fn writeSourceCodeAtAddress(
-        traces: *const builtin.Traces,
+        trace: *const builtin.Trace,
         allocator: *mem.SimpleAllocator,
         dwarf_info: *dwarf.DwarfInfo,
         array: *Array,
@@ -233,8 +242,8 @@ const ctn = struct {
                 if (dwarf_info.getSourceLocation(allocator, unit, addr)) |src| {
                     const start: u64 = array.len();
                     ctn.writeExtendedSourceLocation(dwarf_info, array, addr, unit, src);
-                    ctn.writeSourceContext(traces, allocator, array, addr, src);
-                    ctn.writeLastLine(traces, array, traces.options.break_lines_count);
+                    ctn.writeSourceContext(trace, allocator, array, addr, src);
+                    ctn.writeLastLine(trace, array, trace.options.break_lines_count);
                     return .{
                         .addr = addr,
                         .start = start,
@@ -246,12 +255,12 @@ const ctn = struct {
         return null;
     }
 };
-fn writeLastLine(traces: *const builtin.Traces, buf: [*]u8, break_lines_count: u8) u64 {
+fn writeLastLine(trace: *const builtin.Trace, buf: [*]u8, break_lines_count: u8) u64 {
     var len: u64 = 0;
     var idx: u64 = 0;
     while (idx != break_lines_count) : (idx +%= 1) {
-        if (traces.options.write_sidebar) {
-            len +%= writeSideBar(traces, 8, buf + len, .none);
+        if (trace.options.write_sidebar) {
+            len +%= writeSideBar(trace, 8, buf + len, .none);
         }
         buf[len] = '\n';
         len +%= 1;
@@ -263,30 +272,44 @@ fn writeLastLine(traces: *const builtin.Traces, buf: [*]u8, break_lines_count: u
     }
     return len +% 4;
 }
-fn writeSideBar(traces: *const builtin.Traces, width: u64, buf: [*]u8, number: Number) u64 {
-    const sidebar: []const u8 = traces.options.tokens.sidebar;
+fn writeSideBar(trace: *const builtin.Trace, width: u64, buf: [*]u8, number: Number) u64 {
+    const sidebar: []const u8 = trace.options.tokens.sidebar;
     const sidebar_char: bool = sidebar.len == 1;
     var tmp: [8]u8 = undefined;
     var len: u64 = 0;
+    if (!trace.options.show_line_no and
+        !trace.options.show_pc_addr)
+    {
+        return len;
+    }
     var pos: u64 = 0;
+    const fill: []const u8 = trace.options.tokens.sidebar_fill;
+    const fill_len: u64 = @min(width, fill.len);
     switch (number) {
         .none => {
-            @ptrCast(*[2]u8, &tmp).* = ": ".*;
-            pos +%= 2;
+            mach.memcpy(&tmp, fill.ptr, fill_len);
+            pos = fill_len;
         },
-        .pc_addr => |pc_addr| if (traces.options.show_pc_addr) {
-            if (traces.options.tokens.pc_addr) |style| {
+        .pc_addr => |pc_addr| if (trace.options.show_pc_addr) {
+            if (trace.options.tokens.pc_addr) |style| {
                 mach.memcpy(buf, style.ptr, style.len);
                 len +%= style.len;
             }
+
             pos +%= fmt.ux64(pc_addr).formatWriteBuf(&tmp);
+        } else {
+            mach.memcpy(&tmp, fill.ptr, fill_len);
+            pos = fill_len;
         },
-        .line_no => |line_no| if (traces.options.show_line_no) {
-            if (traces.options.tokens.line_no) |style| {
+        .line_no => |line_no| if (trace.options.show_line_no) {
+            if (trace.options.tokens.line_no) |style| {
                 mach.memcpy(buf, style.ptr, style.len);
                 len +%= style.len;
             }
             pos +%= fmt.ud64(line_no).formatWriteBuf(&tmp);
+        } else {
+            mach.memcpy(&tmp, fill.ptr, fill_len);
+            pos = fill_len;
         },
     }
     const spaces: u64 = (width -% 1) -| pos;
@@ -305,30 +328,32 @@ fn writeSideBar(traces: *const builtin.Traces, width: u64, buf: [*]u8, number: N
     }
     return len;
 }
-fn writeCaret(traces: *const builtin.Traces, buf: [*]u8, addr: u64, column: u64) u64 {
-    const caret: []const u8 = traces.options.tokens.caret;
-    const caret_fill: []const u8 = traces.options.tokens.caret_fill;
-    const caret_fill_char: bool = caret.len == 1;
+fn writeFiller(buf: [*]u8, filler: []const u8, fill_len: u64) u64 {
+    if (filler.len == 1) {
+        mach.memset(buf, filler[0], fill_len);
+        return fill_len;
+    } else {
+        var len: u64 = 0;
+        for (0..fill_len) |_| {
+            @memcpy(buf + len, filler);
+            len +%= filler.len;
+        }
+        return len;
+    }
+}
+fn writeCaret(trace: *const builtin.Trace, buf: [*]u8, addr: u64, column: u64) u64 {
+    const caret: []const u8 = trace.options.tokens.caret;
     var len: u64 = 0;
-    if (traces.options.write_sidebar) {
-        len +%= writeSideBar(traces, 8, buf, if (traces.options.show_pc_addr) .{ .pc_addr = addr } else .none);
+    if (trace.options.write_sidebar) {
+        len +%= writeSideBar(trace, 8, buf, .{ .pc_addr = addr });
     }
     const fill_len: u64 = column -| 1;
-    if (caret_fill_char) {
-        mach.memset(buf + len, caret_fill[0], fill_len);
-        len +%= fill_len;
-    } else {
-        for (0..fill_len) |_| {
-            @memcpy(buf + len, caret_fill);
-            len +%= caret_fill.len;
-        }
-    }
+    len +%= writeFiller(buf + len, trace.options.tokens.caret_fill, fill_len);
     @memcpy(buf + len, caret);
     len +%= caret.len;
     buf[len] = '\n';
     return len +% 1;
 }
-
 fn highlight(buf: [*]u8, tok: *builtin.zig.Token, syntax: anytype) u64 {
     for (syntax) |pair| {
         for (pair.tags) |tag| {
@@ -341,7 +366,7 @@ fn highlight(buf: [*]u8, tok: *builtin.zig.Token, syntax: anytype) u64 {
     return 0;
 }
 fn writeSourceLine(
-    traces: *const builtin.Traces,
+    trace: *const builtin.Trace,
     buf: [*]u8,
     fbuf: []u8,
     loc: *const dwarf.LineLocation,
@@ -350,10 +375,10 @@ fn writeSourceLine(
 ) u64 {
     var loc_itr: dwarf.LineLocation = loc.*;
     var len: u64 = 0;
-    if (traces.options.write_sidebar) {
-        len +%= writeSideBar(traces, 8, buf, .{ .line_no = loc_itr.line });
+    if (trace.options.write_sidebar) {
+        len +%= writeSideBar(trace, 8, buf, .{ .line_no = loc_itr.line });
     }
-    if (traces.options.tokens.syntax) |syntax| {
+    if (trace.options.tokens.syntax) |syntax| {
         while (itr.buf_pos < loc_itr.start) {
             tok.* = itr.next();
         }
@@ -403,9 +428,9 @@ fn writeExtendedSourceLocation(dwarf_info: *dwarf.DwarfInfo, buf: [*]u8, addr: u
     }
     return len;
 }
-fn writeSourceContext(traces: *const builtin.Traces, allocator: *mem.SimpleAllocator, buf: [*]u8, addr: u64, src: dwarf.SourceLocation) u64 {
-    const min: u64 = src.line -| traces.options.context_lines_count;
-    const max: u64 = src.line +% traces.options.context_lines_count +% 1;
+fn writeSourceContext(trace: *const builtin.Trace, allocator: *mem.SimpleAllocator, buf: [*]u8, addr: u64, src: dwarf.SourceLocation) u64 {
+    const min: u64 = src.line -| trace.options.context_lines_count;
+    const max: u64 = src.line +% trace.options.context_lines_count +% 1;
     var line: u64 = min;
     const save: u64 = allocator.next;
     defer allocator.next = save;
@@ -416,16 +441,16 @@ fn writeSourceContext(traces: *const builtin.Traces, allocator: *mem.SimpleAlloc
     while (line != max) : (line +%= 1) {
         var loc: dwarf.LineLocation = .{};
         if (loc.update(fbuf, line)) {
-            len +%= writeSourceLine(traces, buf + len, fbuf, &loc, &itr, &tok);
-            if (line == src.line and traces.options.write_caret) {
-                len +%= writeCaret(traces, buf + len, addr, src.column);
+            len +%= writeSourceLine(trace, buf + len, fbuf, &loc, &itr, &tok);
+            if (line == src.line and trace.options.write_caret) {
+                len +%= writeCaret(trace, buf + len, addr, src.column);
             }
         }
     }
     return len;
 }
 fn writeSourceCodeAtAddress(
-    traces: *const builtin.Traces,
+    trace: *const builtin.Trace,
     allocator: *mem.SimpleAllocator,
     dwarf_info: *dwarf.DwarfInfo,
     buf: [*]u8,
@@ -441,8 +466,8 @@ fn writeSourceCodeAtAddress(
             if (dwarf_info.getSourceLocation(allocator, unit, addr)) |src| {
                 var len: u64 = pos;
                 len +%= writeExtendedSourceLocation(dwarf_info, buf + len, addr, unit, src);
-                len +%= writeSourceContext(traces, allocator, buf + len, addr, src);
-                len +%= writeLastLine(traces, buf + len, traces.options.break_lines_count);
+                len +%= writeSourceContext(trace, allocator, buf + len, addr, src);
+                len +%= writeLastLine(trace, buf + len, trace.options.break_lines_count);
                 return .{
                     .addr = addr,
                     .start = pos,
@@ -475,7 +500,7 @@ fn fastAllocFile(allocator: *mem.SimpleAllocator, pathname: [:0]const u8) [:0]u8
     sys.call_noexcept(.close, void, .{fd});
     return buf[0..st.size :0];
 }
-pub export fn printStackTrace(traces: *const builtin.Traces, first_addr: usize, frame_addr: usize) void {
+pub export fn printStackTrace(trace: *const builtin.Trace, first_addr: usize, frame_addr: usize) void {
     const Level = struct {
         var start: u64 = 0x600000000000;
     };
@@ -494,20 +519,20 @@ pub export fn printStackTrace(traces: *const builtin.Traces, first_addr: usize, 
         .frame_addr = @frameAddress(),
     };
     if (frame_addr != 0) {
-        if (writeSourceCodeAtAddress(traces, &allocator, &dwarf_info, buf.ptr, len, first_addr)) |addr_info| {
+        if (writeSourceCodeAtAddress(trace, &allocator, &dwarf_info, buf.ptr, len, first_addr)) |addr_info| {
             len = addr_info.finish;
             dwarf_info.addAddressInfo(&allocator).* = addr_info;
         }
     }
     while (itr.next()) |addr| {
-        if (writeSourceCodeAtAddress(traces, &allocator, &dwarf_info, buf[len..].ptr, len, addr)) |addr_info| {
+        if (writeSourceCodeAtAddress(trace, &allocator, &dwarf_info, buf[len..].ptr, len, addr)) |addr_info| {
             len = addr_info.finish;
             dwarf_info.addAddressInfo(&allocator).* = addr_info;
         }
     }
     for (dwarf_info.addr_info[0..dwarf_info.addr_info_len], 1..) |addr_info, idx| {
         builtin.debug.write(addr_info.message(buf.ptr));
-        if (idx == traces.options.max_depth) {
+        if (idx == trace.options.max_depth) {
             break;
         }
     }

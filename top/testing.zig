@@ -5,7 +5,6 @@ const tab = @import("./tab.zig");
 const mem = @import("./mem.zig");
 const fmt = @import("./fmt.zig");
 const sys = @import("./sys.zig");
-const lit = @import("./lit.zig");
 const file = @import("./file.zig");
 const meta = @import("./meta.zig");
 const spec = @import("./spec.zig");
