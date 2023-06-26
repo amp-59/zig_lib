@@ -1,4 +1,3 @@
-const lit = @import("./lit.zig");
 pub const RegisterState = extern struct {
     r8: usize,
     r9: usize,

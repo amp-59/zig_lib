@@ -32,9 +32,8 @@ pub const SourceLocation = struct {
     column: u64,
     const Format = @This();
     pub fn formatWrite(format: Format, array: anytype) void {
-        var cwd_buf: [4096]u8 = undefined;
         array.writeMany("\x1b[1m");
-        const cwd: [:0]const u8 = file.getCwd(.{ .errors = .{} }, &cwd_buf);
+        const cwd: [:0]const u8 = file.getCwd(.{ .errors = .{} }, array.referAllUndefined());
         if (mach.testEqualMany8(cwd, format.file[0..cwd.len])) {
             array.writeMany(format.file[cwd.len +% 1 ..]);
         } else {
@@ -49,12 +48,11 @@ pub const SourceLocation = struct {
     pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
         mach.memcpy(buf, "\x1b[1m", 4);
         var len: u64 = 4;
-        var cwd_buf: [4096]u8 = undefined;
-        const cwd: [:0]const u8 = file.getCwd(.{ .errors = .{} }, &cwd_buf);
-        if (mach.testEqualMany8(cwd, format.file[0..cwd.len])) {
-            const pos: u64 = cwd.len +% 1;
-            mach.memcpy(buf + len, format.file[pos..].ptr, format.file[pos..].len);
-            len +%= format.file[pos..].len;
+        const cwd_len: u64 = sys.call_noexcept(.getcwd, u64, .{ @intFromPtr(buf + len), 4096 }) -% 1;
+        if (mach.testEqualMany8(buf[len .. len +% cwd_len], format.file[0..cwd_len])) {
+            const path: []const u8 = format.file[cwd_len +% 1 ..];
+            mach.memcpy(buf + len, path.ptr, path.len);
+            len +%= path.len;
         } else {
             mach.memcpy(buf + len, format.file.ptr, format.file.len);
             len +%= format.file.len;
@@ -67,6 +65,32 @@ pub const SourceLocation = struct {
         len +%= fmt.ud64(format.column).formatWriteBuf(buf + len);
         @ptrCast(*[4]u8, buf + len).* = "\x1b[0m".*;
         return len +% 4;
+    }
+};
+pub const LineLocation = struct {
+    start: u64 = 0,
+    finish: u64 = 0,
+    line: u64 = 0,
+    pub fn len(loc: LineLocation) u64 {
+        return loc.finish -% loc.start;
+    }
+    pub fn ptr(loc: LineLocation, buf: []u8) [*]u8 {
+        return buf[loc.start..].ptr;
+    }
+    pub fn slice(loc: LineLocation, buf: []u8) []const u8 {
+        return buf[loc.start..loc.finish];
+    }
+    pub fn update(loc: *LineLocation, buf: []u8, line: u64) bool {
+        while (loc.finish != buf.len) : (loc.finish +%= 1) {
+            if (buf[loc.finish] == '\n') {
+                loc.line +%= 1;
+                if (loc.line == line) {
+                    return true;
+                }
+                loc.start = loc.finish +% 1;
+            }
+        }
+        return false;
     }
 };
 const Func = struct {
