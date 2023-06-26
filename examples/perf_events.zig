@@ -33,19 +33,12 @@ fn printUnit(array: *Array, x: f64, unit: enum { count, nanoseconds, bytes }) !v
         .bytes => array.writeFormat(fmt.bytes(int)),
     }
 }
-const event_flags: perf.Event.Flags = .{
-    .disabled = true,
-    .exclude_kernel = true,
-    .exclude_hv = true,
-    .inherit = true,
-    .enable_on_exec = true,
-};
 const hw_counters: []const perf.Measurement = &.{
     .{ .name = about ++ "cycles\t\t\t", .config = .{ .hardware = .cpu_cycles } },
     .{ .name = about ++ "instructions\t\t", .config = .{ .hardware = .instructions } },
     .{ .name = about ++ "cache-references\t", .config = .{ .hardware = .cache_references } },
     .{ .name = about ++ "cache-misses\t\t", .config = .{ .hardware = .cache_misses } },
-    .{ .name = about ++ "branches\t\t", .config = .{ .hardware = .branch_instructions } },
+    // .{ .name = about ++ "branches\t\t", .config = .{ .hardware = .branch_instructions } },
     .{ .name = about ++ "branch-misses\t\t", .config = .{ .hardware = .branch_misses } },
 };
 const sw_counters: []const perf.Measurement = &.{
@@ -54,6 +47,13 @@ const sw_counters: []const perf.Measurement = &.{
     .{ .name = about ++ "page-faults\t\t", .config = .{ .software = .page_faults } },
 };
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
+    const event_flags: perf.Event.Flags = .{
+        .disabled = true,
+        .exclude_kernel = true,
+        .exclude_hv = true,
+        .inherit = true,
+        .enable_on_exec = true,
+    };
     if (args.len <= 1) {
         return error.MissingArguments;
     }

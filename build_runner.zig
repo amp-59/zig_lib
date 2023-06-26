@@ -38,7 +38,7 @@ pub const signal_handlers = .{
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     var address_space: Node.AddressSpace = .{};
     var thread_space: Node.ThreadSpace = .{};
-    var allocator: Node.Allocator = Node.Allocator.init_arena(Node.AddressSpace.arena(Node.max_thread_count));
+    var allocator: build.Allocator = build.Allocator.init_arena(Node.AddressSpace.arena(Node.max_thread_count));
     if (args.len < 5) {
         return error.MissingEnvironmentPaths;
     }

@@ -143,11 +143,7 @@ fn writeModulesBuf(pkgs: [*]BuildConfig.Pkg, node: *Node) u64 {
 }
 pub const tracing_override: bool = false;
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
-    var address_space: Node.AddressSpace = .{};
-    var allocator: Node.Allocator = if (Node.Allocator == mem.SimpleAllocator)
-        Node.Allocator.init_arena(Node.AddressSpace.arena(Node.max_thread_count))
-    else
-        Node.Allocator.init(&address_space, Node.max_thread_count);
+    var allocator: build.Allocator = build.Allocator.init_arena(Node.AddressSpace.arena(Node.max_thread_count));
     if (args.len < 5) {
         return error.MissingEnvironmentPaths;
     }
