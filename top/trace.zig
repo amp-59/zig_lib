@@ -27,29 +27,6 @@ const Number = union(enum) {
     line_no: u64,
     none,
 };
-const LineLocation = struct {
-    start: u64 = 0,
-    finish: u64 = 0,
-    line: u64 = 0,
-    fn len(loc: LineLocation) u64 {
-        return loc.finish -% loc.start;
-    }
-    fn ptr(loc: LineLocation, buf: []u8) [*]u8 {
-        return buf[loc.start..].ptr;
-    }
-    fn update(loc: *LineLocation, buf: []u8, line: u64) bool {
-        while (loc.finish != buf.len) : (loc.finish +%= 1) {
-            if (buf[loc.finish] == '\n') {
-                loc.line +%= 1;
-                if (loc.line == line) {
-                    return true;
-                }
-                loc.start = loc.finish +% 1;
-            }
-        }
-        return false;
-    }
-};
 pub const StackIterator = struct {
     first_addr: ?u64,
     frame_addr: u64,
@@ -99,6 +76,15 @@ pub const StackIterator = struct {
 };
 const ctn = struct {
     const Array = mem.StaticString(4096 *% 1024);
+    fn highlight(array: *Array, tok: *builtin.zig.Token, syntax: anytype) void {
+        for (syntax) |pair| {
+            for (pair.tags) |tag| {
+                if (tok.tag == tag) {
+                    return array.writeMany(pair.style);
+                }
+            }
+        }
+    }
     fn writeLastLine(traces: *const builtin.Traces, array: *Array, break_lines_count: u8) void {
         var idx: u64 = 0;
         while (idx != break_lines_count) : (idx +%= 1) {
@@ -146,7 +132,7 @@ const ctn = struct {
         traces: *const builtin.Traces,
         array: *Array,
         fbuf: []u8,
-        loc: *LineLocation,
+        loc: *dwarf.LineLocation,
         itr: *builtin.zig.TokenIterator,
         tok: *builtin.zig.Token,
     ) void {
@@ -203,9 +189,10 @@ const ctn = struct {
         var tok: builtin.zig.Token = .{ .tag = .eof, .loc = .{ .start = 0, .finish = 0 } };
         const min: u64 = src.line -| traces.options.context_lines_count;
         const max: u64 = src.line +% traces.options.context_lines_count +% 1;
+
         var line: u64 = min;
         while (line != max) : (line +%= 1) {
-            var loc: LineLocation = .{};
+            var loc: dwarf.LineLocation = .{};
             if (loc.update(fbuf, line)) {
                 ctn.writeSourceLine(traces, array, fbuf, &loc, &itr, &tok);
                 if (line == src.line and traces.options.write_caret) {
@@ -341,15 +328,27 @@ fn writeCaret(traces: *const builtin.Traces, buf: [*]u8, addr: u64, column: u64)
     buf[len] = '\n';
     return len +% 1;
 }
+
+fn highlight(buf: [*]u8, tok: *builtin.zig.Token, syntax: anytype) u64 {
+    for (syntax) |pair| {
+        for (pair.tags) |tag| {
+            if (tok.tag == tag) {
+                mach.memcpy(buf, pair.style.ptr, pair.style.len);
+                return pair.style.len;
+            }
+        }
+    }
+    return 0;
+}
 fn writeSourceLine(
     traces: *const builtin.Traces,
     buf: [*]u8,
     fbuf: []u8,
-    loc: *const LineLocation,
+    loc: *const dwarf.LineLocation,
     itr: *builtin.zig.TokenIterator,
     tok: *builtin.zig.Token,
 ) u64 {
-    var loc_itr: LineLocation = loc.*;
+    var loc_itr: dwarf.LineLocation = loc.*;
     var len: u64 = 0;
     if (traces.options.write_sidebar) {
         len +%= writeSideBar(traces, 8, buf, .{ .line_no = loc_itr.line });
@@ -361,15 +360,7 @@ fn writeSourceLine(
         const finish: u64 = loc_itr.finish;
         while (itr.buf_pos <= finish) {
             loc_itr.finish = tok.loc.finish;
-            for (syntax) |pair| {
-                for (pair.tags) |tag| {
-                    if (tok.tag == tag) {
-                        mach.memcpy(buf + len, pair.style.ptr, pair.style.len);
-                        len +%= pair.style.len;
-                        break;
-                    }
-                }
-            }
+            len +%= highlight(buf + len, tok, syntax);
             mach.memcpy(buf + len, loc_itr.ptr(fbuf), loc_itr.len());
             len +%= loc_itr.len();
             loc_itr.start = loc_itr.finish;
@@ -413,17 +404,17 @@ fn writeExtendedSourceLocation(dwarf_info: *dwarf.DwarfInfo, buf: [*]u8, addr: u
     return len;
 }
 fn writeSourceContext(traces: *const builtin.Traces, allocator: *mem.SimpleAllocator, buf: [*]u8, addr: u64, src: dwarf.SourceLocation) u64 {
-    const save: u64 = allocator.next;
-    defer allocator.next = save;
-    const fbuf: [:0]u8 = fastAllocFile(allocator, src.file);
-    var len: u64 = 0;
-    var itr: builtin.zig.TokenIterator = .{ .buf = fbuf, .buf_pos = 0, .inval = null };
-    var tok: builtin.zig.Token = .{ .tag = .eof, .loc = .{ .start = 0, .finish = 0 } };
     const min: u64 = src.line -| traces.options.context_lines_count;
     const max: u64 = src.line +% traces.options.context_lines_count +% 1;
     var line: u64 = min;
+    const save: u64 = allocator.next;
+    defer allocator.next = save;
+    const fbuf: [:0]u8 = fastAllocFile(allocator, src.file);
+    var itr: builtin.zig.TokenIterator = .{ .buf = fbuf, .buf_pos = 0, .inval = null };
+    var tok: builtin.zig.Token = .{ .tag = .eof, .loc = .{ .start = 0, .finish = 0 } };
+    var len: u64 = 0;
     while (line != max) : (line +%= 1) {
-        var loc: LineLocation = .{};
+        var loc: dwarf.LineLocation = .{};
         if (loc.update(fbuf, line)) {
             len +%= writeSourceLine(traces, buf + len, fbuf, &loc, &itr, &tok);
             if (line == src.line and traces.options.write_caret) {
@@ -515,7 +506,7 @@ pub export fn printStackTrace(traces: *const builtin.Traces, first_addr: usize, 
         }
     }
     for (dwarf_info.addr_info[0..dwarf_info.addr_info_len], 1..) |addr_info, idx| {
-        builtin.debug.write(buf[addr_info.start..addr_info.finish]);
+        builtin.debug.write(addr_info.message(buf.ptr));
         if (idx == traces.options.max_depth) {
             break;
         }
