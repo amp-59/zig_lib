@@ -97,14 +97,6 @@ pub const StackIterator = struct {
         return new_instr_addr;
     }
 };
-fn writeEndOfMessage(buf: [*]u8) u64 {
-    @ptrCast(*[4]u8, buf).* = "\x1b[0m".*;
-    if ((buf - 1)[0] != '\n') {
-        buf[4] = '\n';
-        return 5;
-    }
-    return 4;
-}
 fn writeLastLine(traces: *const builtin.Traces, buf: [*]u8, break_lines_count: u8) u64 {
     var len: u64 = 0;
     var idx: u64 = 0;
@@ -115,7 +107,12 @@ fn writeLastLine(traces: *const builtin.Traces, buf: [*]u8, break_lines_count: u
         buf[len] = '\n';
         len +%= 1;
     }
-    return len;
+    @ptrCast(*[4]u8, buf + len).* = "\x1b[0m".*;
+    if (buf[len -% 1] != '\n') {
+        buf[len +% 4] = '\n';
+        return len +% 5;
+    }
+    return len +% 4;
 }
 fn writeSideBar(traces: *const builtin.Traces, width: u64, buf: [*]u8, number: Number) u64 {
     const sidebar: []const u8 = traces.options.tokens.sidebar;
@@ -296,7 +293,7 @@ fn writeSourceCodeAtAddress(
                 return .{
                     .addr = addr,
                     .start = pos,
-                    .finish = pos +% len +% writeEndOfMessage(buf + len),
+                    .finish = pos +% len,
                 };
             }
         }
