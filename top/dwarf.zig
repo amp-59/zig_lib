@@ -31,20 +31,30 @@ pub const SourceLocation = struct {
     line: u64,
     column: u64,
     const Format = @This();
+    pub fn formatWrite(format: Format, array: anytype) void {
+        var cwd_buf: [4096]u8 = undefined;
+        array.writeMany("\x1b[1m");
+        const cwd: [:0]const u8 = file.getCwd(.{ .errors = .{} }, &cwd_buf);
+        if (mach.testEqualMany8(cwd, format.file[0..cwd.len])) {
+            array.writeMany(format.file[cwd.len +% 1 ..]);
+        } else {
+            array.writeMany(format.file);
+        }
+        array.writeOne(':');
+        array.writeFormat(fmt.ud64(format.line));
+        array.writeOne(':');
+        array.writeFormat(fmt.ud64(format.column));
+        array.writeMany("\x1b[0m");
+    }
     pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
         mach.memcpy(buf, "\x1b[1m", 4);
         var len: u64 = 4;
-        if (builtin.traces.options.relative_path) {
-            var cwd_buf: [4096]u8 = undefined;
-            const cwd: [:0]const u8 = file.getCwd(.{ .errors = .{} }, &cwd_buf);
-            if (mach.testEqualMany8(cwd, format.file[0..cwd.len])) {
-                const pos: u64 = cwd.len +% 1;
-                mach.memcpy(buf + len, format.file[pos..].ptr, format.file[pos..].len);
-                len +%= format.file[pos..].len;
-            } else {
-                mach.memcpy(buf + len, format.file.ptr, format.file.len);
-                len +%= format.file.len;
-            }
+        var cwd_buf: [4096]u8 = undefined;
+        const cwd: [:0]const u8 = file.getCwd(.{ .errors = .{} }, &cwd_buf);
+        if (mach.testEqualMany8(cwd, format.file[0..cwd.len])) {
+            const pos: u64 = cwd.len +% 1;
+            mach.memcpy(buf + len, format.file[pos..].ptr, format.file[pos..].len);
+            len +%= format.file[pos..].len;
         } else {
             mach.memcpy(buf + len, format.file.ptr, format.file.len);
             len +%= format.file.len;
@@ -703,6 +713,7 @@ pub const Die = extern struct {
         return ret;
     }
     pub fn get(info_entry: *const Die, key: Attr) ?*const FormValue {
+        @setRuntimeSafety(false);
         for (info_entry.kvs[0..info_entry.kvs_len]) |*kv| {
             if (kv.key == key) {
                 return &kv.val;
@@ -711,6 +722,7 @@ pub const Die = extern struct {
         return null;
     }
     fn address(info_entry: *const Die, dwarf_info: *DwarfInfo, attr_id: Attr, unit: *Unit) ?u64 {
+        @setRuntimeSafety(false);
         if (info_entry.get(attr_id)) |form_val| {
             switch (form_val.*) {
                 FormValue.Address => |value| {
@@ -815,29 +827,34 @@ pub const DwarfInfo = extern struct {
     names_len: u64,
     frame: [*]u8,
     frame_len: u64,
+    /// All `AbbrevTable`s listed by this DwarfInfo.
     abbrev_tabs: [*]AbbrevTable,
     abbrev_tabs_max_len: u64,
     abbrev_tabs_len: u64,
+    /// All compile `Unit`s listed by this DwarfInfo.
     units: [*]Unit,
     units_max_len: u64,
     units_len: u64,
+    /// All functions encountered while scanning for `Unit`s.
     funcs: [*]Func,
     funcs_max_len: u64,
     funcs_len: u64,
-
+    /// All addresses requested from this `DwarfInfo`.
     addr_info: [*]AddressInfo,
     addr_info_max_len: u64,
     addr_info_len: u64,
-
     pub const AddressInfo = struct {
-        /// Lookup address
+        /// Lookup address.
         addr: u64 = 0,
-        /// Number of times requested
+        /// Number of requests for this address.
         count: u32 = 0,
-        /// Offset of message in output buffer
+        /// Offset of message in output buffer.
         start: u64 = 0,
-        /// End of message in output buffer
+        /// End of message in output buffer.
         finish: u64 = 0,
+        pub fn message(addr_info: *const AddressInfo, buf: [*]u8) []const u8 {
+            return buf[addr_info.start..addr_info.finish];
+        }
     };
     const names: [12][]const u8 = .{
         ".debug_info",
