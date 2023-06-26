@@ -7,12 +7,11 @@
 //!     - `infer_type_names_recursively`
 //!     - `omit_type_names`
 //! * Implement `address_view` or something similar, correctly.
+const tab = @import("./tab.zig");
 const fmt = @import("./fmt.zig");
 const mem = @import("./mem.zig");
-const lit = @import("./lit.zig");
 const meta = @import("./meta.zig");
 const builtin = @import("./builtin.zig");
-const abstract = @import("./abstract.zig");
 pub const RenderSpec = struct {
     radix: u7 = 10,
     string_literal: ?bool = true,
@@ -141,7 +140,7 @@ pub fn ArrayFormat(comptime spec: RenderSpec, comptime Array: type) type {
             } else {
                 array.writeMany(type_name);
                 array.writeCount(2, "{ ".*);
-                if (comptime spec.enable_comptime_iterator and fmt.requireComptime(child)) {
+                if (spec.enable_comptime_iterator and comptime fmt.requireComptime(child)) {
                     inline for (format.value) |element| {
                         const sub_format: ChildFormat = .{ .value = element };
                         writeFormat(array, sub_format);
@@ -163,7 +162,7 @@ pub fn ArrayFormat(comptime spec: RenderSpec, comptime Array: type) type {
         }
         pub fn formatLength(format: anytype) u64 {
             var len: u64 = type_name.len +% 2;
-            if (comptime spec.enable_comptime_iterator and fmt.requireComptime(child)) {
+            if (spec.enable_comptime_iterator and comptime fmt.requireComptime(child)) {
                 inline for (format.value) |value| {
                     len +%= ChildFormat.formatLength(.{ .value = value }) +% 2;
                 }
@@ -881,7 +880,7 @@ pub fn IntFormat(comptime spec: RenderSpec, comptime Int: type) type {
         const max_abs_value: Abs = ~@as(Abs, 0);
         const radix: Abs = @min(max_abs_value, spec.radix);
         const max_digits_count: u16 = builtin.fmt.length(Abs, max_abs_value, radix);
-        const prefix: []const u8 = lit.int_prefixes[radix];
+        const prefix: []const u8 = tab.int_prefixes[radix];
         const max_len: u64 = blk: {
             var len: u64 = max_digits_count;
             if (radix != 10) {
@@ -1048,7 +1047,7 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
                     len +%= 1;
                 }
                 len +%= type_name.len +% 2;
-                if (comptime spec.enable_comptime_iterator and fmt.requireComptime(child)) {
+                if (spec.enable_comptime_iterator and comptime fmt.requireComptime(child)) {
                     inline for (format.value) |element| {
                         const sub_format: ChildFormat = .{ .value = element };
                         len +%= sub_format.formatLength() +% 2;
@@ -1078,7 +1077,7 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
                 }
                 array.writeMany(type_name);
                 array.writeCount(2, "{ ".*);
-                if (comptime spec.enable_comptime_iterator and fmt.requireComptime(child)) {
+                if (spec.enable_comptime_iterator and comptime fmt.requireComptime(child)) {
                     inline for (format.value) |element| {
                         const sub_format: ChildFormat = .{ .value = element };
                         writeFormat(array, sub_format);
@@ -1102,7 +1101,7 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
             var len: u64 = 0;
             len +%= 1;
             for (format.value) |c| {
-                len +%= lit.lit_hex_sequences[c].len;
+                len +%= fmt.esc(c).formatLength();
             }
             len +%= 1;
             return len;
