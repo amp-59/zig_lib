@@ -1,26 +1,44 @@
 const builtin = @import("builtin");
+const tab = @import("./tab.zig");
 const mach = @import("./mach.zig");
 const meta = @import("./meta.zig");
 const math = @import("./math.zig");
 pub const env = @import("context");
 pub const root = @import("root");
-pub const tab = @import("./tab.zig");
 pub usingnamespace builtin;
 pub const native_endian = builtin.cpu.arch.endian();
+
 /// * Determines defaults for various allocator checks.
 pub const is_safe: bool = define("is_safe", bool, builtin.mode == .ReleaseSafe);
 pub const is_small: bool = define("is_small", bool, builtin.mode == .ReleaseSmall);
 pub const is_fast: bool = define("is_fast", bool, builtin.mode == .ReleaseFast);
 /// * Determines whether `Acquire` and `Release` actions are logged by default.
-/// * Determine whether signals for floating point errors should be handled verbosely.
+/// * Determine whether signals for floating point errors should be handled
+///   verbosely.
 pub const is_debug: bool = define("is_debug", bool, builtin.mode == .Debug);
-/// * Determines whether calling `panicUnwrapError` is legal.
+
+/// Determines whether calling `panicUnwrapError` is legal.
 pub const discard_errors: bool = define("discard_errors", bool, !(is_debug or is_safe));
-/// * Determines whether `assert*` functions will be called at runtime.
+/// Determines whether `assert*` functions will be called at runtime.
 pub const runtime_assertions: bool = define("runtime_assertions", bool, is_debug or is_safe);
-/// * Determines whether `static.assert*` functions will be called at comptime time.
+/// Determines whether `static.assert*` functions will be called at comptime
+/// time.
 pub const comptime_assertions: bool = define("comptime_assertions", bool, is_debug);
 
+/// The primary reason that these constants exist is to distinguish between
+/// reports from the build runner and reports from a run command.
+///
+/// The length of this string does not count to the length of the column.
+/// Defining this string inserts `\x1b[0m` after the subject name.
+pub const message_style: ?[:0]const u8 = define("message_style", ?[:0]const u8, null);
+/// This text to the left of every subject name, to the right of the style.
+pub const message_prefix: [:0]const u8 = define("message_prefix", [:0]const u8, "");
+/// This text to the right of every string.
+pub const message_suffix: [:0]const u8 = define("message_suffix", [:0]const u8, ":");
+/// The total length of the subject column, to the left of the information column.
+pub const message_indent: u8 = define("message_indent", u8, 16);
+/// Sequence used to undo `message_style` if defined.
+pub const message_no_style: [:0]const u8 = "\x1b[0m";
 /// These values define all default field values for all logging sub-types.
 pub const logging_default: Logging.Default = define(
     "logging_default",
@@ -62,20 +80,6 @@ pub const logging_general: Logging.Default = .{
     .Error = logging_override.Error orelse logging_default.Error,
     .Fault = logging_override.Fault orelse logging_default.Fault,
 };
-/// The primary reason that these constants exist is to distinguish between
-/// reports from the build runner and reports from a run command.
-///
-/// The length of this string does not count to the length of the column.
-/// Defining this string inserts `\x1b[0m` after the subject name.
-pub const message_style: ?[:0]const u8 = define("message_style", ?[:0]const u8, null);
-/// This text to the left of every subject name, to the right of the style.
-pub const message_prefix: [:0]const u8 = define("message_prefix", [:0]const u8, "");
-/// This text to the right of every string.
-pub const message_suffix: [:0]const u8 = define("message_suffix", [:0]const u8, ":");
-/// The total length of the subject column, to the left of the information column.
-pub const message_indent: u8 = define("message_indent", u8, 16);
-/// Sequence used to undo `message_style` if defined.
-pub const message_no_style: [:0]const u8 = "\x1b[0m";
 /// All enabled in build mode `Debug`.
 pub const signal_handlers: SignalHandlers = define(
     "signal_handlers",
@@ -96,9 +100,7 @@ pub const signal_stack: ?SignalAlternateStack = define(
     ?SignalAlternateStack,
     if (signal_handlers.SegmentationFault) .{} else null,
 );
-pub const traces: Traces = define("traces", Traces, my_traces);
-pub const tracing_default: bool = define("tracing_default", bool, builtin.mode == .Debug and !builtin.strip_debug_info);
-pub const tracing_override: ?bool = define("tracing_override", ?bool, null);
+pub const trace: Trace = define("trace", Trace, .{});
 pub const Error = error{
     SubCausedOverflow,
     AddCausedOverflow,
