@@ -1361,7 +1361,7 @@ pub const debug = struct {
     const size: usize = 4096;
     pub const about_error_s = "\x1b[91;1merror\x1b[0m=";
     pub const about_exit_0_s: [:0]const u8 = fmt.about("exit");
-    pub extern fn printStackTrace(u64, u64) void;
+    pub extern fn printStackTrace(*const Trace, u64, u64) void;
     pub const about_fault_p0_s = blk: {
         var lhs: [:0]const u8 = "fault";
         lhs = message_prefix ++ lhs;
@@ -1665,10 +1665,8 @@ pub const debug = struct {
     pub noinline fn panic(msg: []const u8, _: @TypeOf(@errorReturnTrace()), ret_addr: ?usize) noreturn {
         @setCold(true);
         @setRuntimeSafety(false);
-        if (tracing_override orelse
-            tracing_default)
-        {
-            printStackTrace(ret_addr.?, 0);
+        if (trace.Fault) {
+            printStackTrace(&trace, ret_addr.?, 0);
         }
         @call(.always_inline, proc.exitGroupFault, .{ msg, 2 });
     }
@@ -1676,10 +1674,8 @@ pub const debug = struct {
         @setCold(true);
         @setRuntimeSafety(false);
         const st: mach.RegisterState = @ptrFromInt(*mach.RegisterState, @intFromPtr(ctx_ptr) +% 40).*;
-        if (tracing_override orelse
-            tracing_default)
-        {
-            printStackTrace(st.rip, st.rbp);
+        if (trace.Signal) {
+            printStackTrace(&trace, st.rip, st.rbp);
         }
         @call(.always_inline, proc.exitGroupFault, .{ msg, 2 });
     }
@@ -2014,6 +2010,9 @@ pub const parse = struct {
         return add_result[0];
     }
     pub inline fn sigFigList(comptime T: type, comptime radix: u7) []const T {
+        if (comptime tab.sigFigList(T, radix)) |list| {
+            return list;
+        }
         comptime var value: T = 0;
         comptime var ret: []const T = &.{};
         inline while (comptime nextSigFig(T, value, radix)) |next| {
