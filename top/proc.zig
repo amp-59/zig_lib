@@ -1,5 +1,4 @@
 const sys = @import("./sys.zig");
-const lit = @import("./lit.zig");
 const exe = @import("./exe.zig");
 const meta = @import("./meta.zig");
 const time = @import("./time.zig");
@@ -649,7 +648,10 @@ fn futexRequeue(comptime futex_spec: FutexSpec, futex1: *u32, futex2: *u32, coun
 }
 pub const start = if (builtin.output_mode == .Exe)
     struct {
-        pub export fn _start() callconv(.Naked) noreturn {
+        comptime {
+            @export(_start, .{ .name = "_start" });
+        }
+        pub fn _start() callconv(.Naked) noreturn {
             static.stack_addr = asm volatile (
                 \\xorq  %%rbp,  %%rbp
                 : [argc] "={rsp}" (-> u64),

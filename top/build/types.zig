@@ -8,6 +8,7 @@ const spec = @import("../spec.zig");
 const builtin = @import("../builtin.zig");
 pub const tasks = @import("./tasks.zig");
 pub const hist_tasks = @import("./hist_tasks.zig");
+pub const Allocator = mem.SimpleAllocator;
 pub const Node = enum(u8) { group, worker };
 pub const OutputMode = enum(u2) { exe, lib, obj };
 pub const AuxOutputMode = enum(u3) { @"asm", llvm_ir, llvm_bc, h, docs, analysis };

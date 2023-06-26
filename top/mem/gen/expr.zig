@@ -32,19 +32,19 @@ pub const Expr = struct {
         return expr.data1;
     }
     pub fn args(expr: Expr) []Expr {
-        return expr.more()[1 + @as(u8, @boolToInt(expr.tag() == .call_member)) ..];
+        return expr.more()[1 + @as(u8, @intFromBool(expr.tag() == .call_member)) ..];
     }
     fn symbol(expr: Expr) [:0]const u8 {
-        return @intToPtr([*]const u8, expr.data1)[0 .. expr.data2 & mask :0];
+        return @ptrFromInt([*]const u8, expr.data1)[0 .. expr.data2 & mask :0];
     }
     fn more(expr: Expr) []Expr {
-        return @intToPtr([*]Expr, expr.data1)[0 .. expr.data2 & mask];
+        return @ptrFromInt([*]Expr, expr.data1)[0 .. expr.data2 & mask];
     }
     pub fn @"type"(expr: Expr) *const types.TypeDescr {
-        return @intToPtr(*const types.TypeDescr, expr.data1);
+        return @ptrFromInt(*const types.TypeDescr, expr.data1);
     }
     pub fn tag(expr: Expr) ExprTag {
-        return @intToEnum(ExprTag, expr.data2 >> 56);
+        return @enumFromInt(ExprTag, expr.data2 >> 56);
     }
     fn formatLengthCallMember(format: Expr) u64 {
         const fn_args: []const Expr = format.more()[1..];
@@ -274,29 +274,29 @@ const Init = struct {
     };
     fn packMore(tag: ExprTag, exprs: []Expr) Expr {
         return .{
-            .data1 = @ptrToInt(exprs.ptr),
-            .data2 = mach.shlOr64(@enumToInt(tag), 56, exprs.len),
+            .data1 = @intFromPtr(exprs.ptr),
+            .data2 = mach.shlOr64(@intFromEnum(tag), 56, exprs.len),
         };
     }
     pub fn constant(value: u64) Expr {
         return .{
             .data1 = value,
-            .data2 = mach.shl64(@enumToInt(ExprTag.constant), 56),
+            .data2 = mach.shl64(@intFromEnum(ExprTag.constant), 56),
         };
     }
     pub fn symbol(token: [:0]const u8) Expr {
         return .{
-            .data1 = @ptrToInt(token.ptr),
-            .data2 = mach.shlOr64(@enumToInt(ExprTag.symbol), 56, token.len),
+            .data1 = @intFromPtr(token.ptr),
+            .data2 = mach.shlOr64(@intFromEnum(ExprTag.symbol), 56, token.len),
         };
     }
     pub fn scrub(count: u64) Expr {
-        return .{ .data1 = count, .data2 = mach.shl64(@enumToInt(ExprTag.scrub), 56) };
+        return .{ .data1 = count, .data2 = mach.shl64(@intFromEnum(ExprTag.scrub), 56) };
     }
     pub fn @"type"(type_descr: *const gen.TypeDescrFormat) Expr {
         return .{
-            .data1 = @ptrToInt(type_descr),
-            .data2 = mach.shl64(@enumToInt(ExprTag.type), 56),
+            .data1 = @intFromPtr(type_descr),
+            .data2 = mach.shl64(@intFromEnum(ExprTag.type), 56),
         };
     }
     pub fn join(exprs: []Expr) Expr {
