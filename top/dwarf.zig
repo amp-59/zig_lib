@@ -34,7 +34,7 @@ pub const SourceLocation = struct {
     pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
         mach.memcpy(buf, "\x1b[1m", 4);
         var len: u64 = 4;
-        if (builtin.traces.relative_path) {
+        if (builtin.traces.options.relative_path) {
             var cwd_buf: [4096]u8 = undefined;
             const cwd: [:0]const u8 = file.getCwd(.{ .errors = .{} }, &cwd_buf);
             if (mach.testEqualMany8(cwd, format.file[0..cwd.len])) {
@@ -832,7 +832,7 @@ pub const DwarfInfo = extern struct {
     pub const AddressInfo = struct {
         /// Lookup address
         addr: u64 = 0,
-        /// Number of time requested
+        /// Number of times requested
         count: u32 = 0,
         /// Offset of message in output buffer
         start: u64 = 0,
