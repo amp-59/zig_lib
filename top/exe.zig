@@ -1,7 +1,6 @@
 const mem = @import("./mem.zig");
 const sys = @import("./sys.zig");
 const fmt = @import("./fmt.zig");
-const lit = @import("./lit.zig");
 const meta = @import("./meta.zig");
 const builtin = @import("./builtin.zig");
 const DT = enum(u32) {

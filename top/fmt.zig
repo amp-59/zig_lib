@@ -1,5 +1,4 @@
-const lit = @import("./lit.zig");
-const zig = @import("./zig.zig");
+const tab = @import("./tab.zig");
 const mem = @import("./mem.zig");
 const meta = @import("./meta.zig");
 const mach = @import("./mach.zig");
@@ -9,7 +8,6 @@ const builtin = @import("./builtin.zig");
 const _render = @import("./render.zig");
 pub const utf8 = @import("./fmt/utf8.zig");
 pub const ascii = @import("./fmt/ascii.zig");
-//pub const json = @import("./fmt/json.zig");
 pub usingnamespace _render;
 fn GenericFormat(comptime Format: type) type {
     const T = struct {
@@ -229,17 +227,17 @@ pub const SourceLocationFormat = struct {
         const line_fmt: LineColFormat = .{ .value = format.value.line };
         const column_fmt: LineColFormat = .{ .value = format.value.column };
         const ret_addr_fmt: AddrFormat = .{ .value = format.return_address };
-        array.writeMany(lit.fx.style.bold);
+        array.writeMany(tab.fx.style.bold);
         array.writeMany(file_name);
         array.writeOne(':');
         array.writeFormat(line_fmt);
         array.writeOne(':');
         array.writeFormat(column_fmt);
-        array.writeMany(": " ++ lit.fx.none ++ lit.fx.style.faint);
+        array.writeMany(": " ++ tab.fx.none ++ tab.fx.style.faint);
         array.writeFormat(ret_addr_fmt);
         array.writeMany(" in ");
         array.writeMany(fn_name);
-        array.writeMany(lit.fx.none ++ "\n");
+        array.writeMany(tab.fx.none ++ "\n");
     }
     fn functionName(format: SourceLocationFormat) []const u8 {
         var start: u64 = 0;
@@ -256,18 +254,18 @@ pub const SourceLocationFormat = struct {
         const column_fmt: LineColFormat = .{ .value = format.value.column };
         const ret_addr_fmt: AddrFormat = .{ .value = format.return_address };
         var len: u64 = 0;
-        len +%= lit.fx.style.bold.len;
+        len +%= tab.fx.style.bold.len;
         len +%= file_name.len;
         len +%= 1;
         len +%= line_fmt.formatLength();
         len +%= 1;
         len +%= column_fmt.formatLength();
         len +%= 2;
-        len +%= lit.fx.none.len +% lit.fx.style.faint.len;
+        len +%= tab.fx.none.len +% tab.fx.style.faint.len;
         len +%= ret_addr_fmt.formatLength();
         len +%= 4;
         len +%= fn_name.len;
-        len +%= lit.fx.none.len;
+        len +%= tab.fx.none.len;
         len +%= 1;
         return len;
     }
@@ -368,9 +366,9 @@ pub const ChangedIntFormatSpec = struct {
     old_fmt_spec: PolynomialFormatSpec,
     new_fmt_spec: PolynomialFormatSpec,
     del_fmt_spec: PolynomialFormatSpec,
-    dec_style: []const u8 = lit.fx.color.fg.red ++ "-",
-    inc_style: []const u8 = lit.fx.color.fg.green ++ "+",
-    no_style: []const u8 = lit.fx.none,
+    dec_style: []const u8 = tab.fx.color.fg.red ++ "-",
+    inc_style: []const u8 = tab.fx.color.fg.green ++ "+",
+    no_style: []const u8 = tab.fx.none,
     arrow_style: []const u8 = " => ",
 };
 pub fn GenericChangedIntFormat(comptime fmt_spec: ChangedIntFormatSpec) type {
@@ -487,9 +485,9 @@ pub fn GenericChangedIntFormat(comptime fmt_spec: ChangedIntFormatSpec) type {
     });
 }
 pub const ChangedBytesFormatSpec = struct {
-    dec_style: []const u8 = lit.fx.color.fg.red ++ "-",
-    inc_style: []const u8 = lit.fx.color.fg.green ++ "+",
-    no_style: []const u8 = lit.fx.none,
+    dec_style: []const u8 = tab.fx.color.fg.red ++ "-",
+    inc_style: []const u8 = tab.fx.color.fg.green ++ "+",
+    no_style: []const u8 = tab.fx.none,
 };
 pub fn GenericChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type {
     return (struct {
@@ -694,10 +692,10 @@ pub const ChangedRangeFormatSpec = struct {
     old_fmt_spec: PolynomialFormatSpec,
     new_fmt_spec: PolynomialFormatSpec,
     del_fmt_spec: PolynomialFormatSpec,
-    lower_inc_style: []const u8 = lit.fx.color.fg.green ++ lit.fx.style.bold ++ "+",
-    lower_dec_style: []const u8 = lit.fx.color.fg.red ++ lit.fx.style.bold ++ "-",
-    upper_inc_style: []const u8 = lit.fx.color.fg.green ++ lit.fx.style.bold ++ "+",
-    upper_dec_style: []const u8 = lit.fx.color.fg.red ++ lit.fx.style.bold ++ "-",
+    lower_inc_style: []const u8 = tab.fx.color.fg.green ++ tab.fx.style.bold ++ "+",
+    lower_dec_style: []const u8 = tab.fx.color.fg.red ++ tab.fx.style.bold ++ "-",
+    upper_inc_style: []const u8 = tab.fx.color.fg.green ++ tab.fx.style.bold ++ "+",
+    upper_dec_style: []const u8 = tab.fx.color.fg.red ++ tab.fx.style.bold ++ "-",
     arrow_style: []const u8 = " => ",
 };
 pub fn GenericChangedRangeFormat(comptime fmt_spec: ChangedRangeFormatSpec) type {
@@ -1098,7 +1096,7 @@ pub fn isValidId(values: []const u8) bool {
             },
         }
     }
-    return zig.Token.getKeyword(values) == null;
+    return builtin.zig.keyword(values) == null;
 }
 const EscapedStringFormatSpec = struct {
     single_quote: []const u8 = "\'",
