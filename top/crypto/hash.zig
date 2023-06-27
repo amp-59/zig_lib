@@ -10,6 +10,7 @@ pub const Sha3_384 = GenericKeccak(1600, 384, 0x06, 24);
 pub const Sha3_512 = GenericKeccak(1600, 512, 0x06, 24);
 pub const Keccak256 = GenericKeccak(1600, 256, 0x01, 24);
 pub const Keccak512 = GenericKeccak(1600, 512, 0x01, 24);
+const safety: bool = false;
 pub fn GenericKeccak(
     comptime number: comptime_int,
     comptime output_bits: comptime_int,
@@ -141,32 +142,34 @@ pub fn GenericBlake2s(comptime out_bits: usize) type {
         fn round(blake_2s: *Blake2s, b: *const [64]u8, last: bool) void {
             var m: [16]u32 = undefined;
             var v: [16]u32 = undefined;
-            for (&m, 0..) |*r, i| {
-                r.* = mem.readIntLittle(u32, b[4 * i ..][0..4]);
+            var idx: usize = 0;
+            while (idx != 16) : (idx +%= 1) {
+                m[idx] = mem.readIntLittle(u32, b[4 *% idx ..][0..4]);
             }
-            var k: usize = 0;
-            while (k < 8) : (k +%= 1) {
-                v[k] = blake_2s.h[k];
-                v[k +% 8] = tab.init_vec.blake_2s[k];
+            idx = 0;
+            while (idx != 8) : (idx +%= 1) {
+                v[idx] = blake_2s.h[idx];
+                v[idx +% 8] = tab.init_vec.blake_2s[idx];
             }
             v[12] ^= @truncate(u32, blake_2s.t);
             v[13] ^= @intCast(u32, blake_2s.t >> 32);
             if (last) v[14] = ~v[14];
-            var j: usize = 0;
-            while (j < 10) : (j +%= 1) {
-                for (tab.rounds.blake_2s) |r| {
-                    v[r.a] = v[r.a] +% v[r.b] +% m[tab.sigma.blake_2s[j][r.x]];
-                    v[r.d] = math.rotr(u32, v[r.d] ^ v[r.a], @as(usize, 16));
-                    v[r.c] = v[r.c] +% v[r.d];
-                    v[r.b] = math.rotr(u32, v[r.b] ^ v[r.c], @as(usize, 12));
-                    v[r.a] = v[r.a] +% v[r.b] +% m[tab.sigma.blake_2s[j][r.y]];
-                    v[r.d] = math.rotr(u32, v[r.d] ^ v[r.a], @as(usize, 8));
-                    v[r.c] = v[r.c] +% v[r.d];
-                    v[r.b] = math.rotr(u32, v[r.b] ^ v[r.c], @as(usize, 7));
+            idx = 0;
+            while (idx != 10) : (idx +%= 1) {
+                for (tab.rounds.blake_2s) |rc| {
+                    v[rc.a] = v[rc.a] +% v[rc.b] +% m[tab.sigma.blake_2s[idx][rc.x]];
+                    v[rc.d] = math.rotr(u32, v[rc.d] ^ v[rc.a], @as(usize, 16));
+                    v[rc.c] = v[rc.c] +% v[rc.d];
+                    v[rc.b] = math.rotr(u32, v[rc.b] ^ v[rc.c], @as(usize, 12));
+                    v[rc.a] = v[rc.a] +% v[rc.b] +% m[tab.sigma.blake_2s[idx][rc.y]];
+                    v[rc.d] = math.rotr(u32, v[rc.d] ^ v[rc.a], @as(usize, 8));
+                    v[rc.c] = v[rc.c] +% v[rc.d];
+                    v[rc.b] = math.rotr(u32, v[rc.b] ^ v[rc.c], @as(usize, 7));
                 }
             }
-            for (&blake_2s.h, 0..) |*r, i| {
-                r.* ^= v[i] ^ v[i +% 8];
+            idx = 0;
+            while (idx != blake_2s.h.len) : (idx +%= 1) {
+                blake_2s.h[idx] ^= v[idx] ^ v[idx +% 8];
             }
         }
         fn write(blake_2s: *Blake2s, bytes: []const u8) usize {
@@ -252,7 +255,7 @@ pub fn GenericBlake2b(comptime out_bits: usize) type {
             var m: [16]u64 = undefined;
             var v: [16]u64 = undefined;
             for (&m, 0..) |*r, i| {
-                r.* = mem.readIntLittle(u64, b[8 * i ..][0..8]);
+                r.* = mem.readIntLittle(u64, b[8 *% i ..][0..8]);
             }
             var k: usize = 0;
             while (k < 8) : (k +%= 1) {
@@ -317,17 +320,17 @@ pub const Blake3 = struct {
     const keyed_hash: comptime_int = 16;
     const derive_key_context: comptime_int = 32;
     const derive_key_material: comptime_int = 64;
-    const compress = if (builtin.config.zig.cpu.arch == .x86_64)
+    const compress = if (builtin.cpu.arch == .x86_64)
         CompressVectorized.compress
     else
         CompressGeneric.compress;
     fn first8Words(words: [16]u32) [8]u32 {
         return @ptrCast(*const [8]u32, &words).*;
     }
-    fn wordsFromLittleEndianBytes(comptime count: usize, bytes: [count * 4]u8) [count]u32 {
+    fn wordsFromLittleEndianBytes(comptime count: usize, bytes: [count *% 4]u8) [count]u32 {
         var words: [count]u32 = undefined;
         for (&words, 0..) |*word, i| {
-            word.* = mem.readIntSliceLittle(u32, bytes[4 * i ..]);
+            word.* = mem.readIntSliceLittle(u32, bytes[4 *% i ..]);
         }
         return words;
     }
@@ -371,7 +374,7 @@ pub const Blake3 = struct {
             return ChunkState{ .chaining_value = key, .chunk_counter = chunk_counter, .flags = flags };
         }
         fn len(st: *const ChunkState) usize {
-            return blk_len * @as(usize, st.blocks_compressed) +% @as(usize, st.block_len);
+            return blk_len *% @as(usize, st.blocks_compressed) +% @as(usize, st.block_len);
         }
         fn fillBlockBuf(st: *ChunkState, input: []const u8) []const u8 {
             const want: u64 = blk_len -% st.block_len;
@@ -672,7 +675,7 @@ pub const Md5 = struct {
         md5.final(dest);
     }
     pub fn update(md5: *Md5, bytes: []const u8) void {
-        @setRuntimeSafety(builtin.is_safe);
+        @setRuntimeSafety(safety);
         var off: usize = 0;
         if (md5.buf_len != 0 and md5.buf_len +% bytes.len >= 64) {
             off +%= 64 -% md5.buf_len;
@@ -689,7 +692,7 @@ pub const Md5 = struct {
         md5.total_len +%= bytes.len;
     }
     pub fn final(md5: *Md5, dest: []u8) void {
-        @setRuntimeSafety(builtin.is_safe);
+        @setRuntimeSafety(safety);
         mach.memset(md5.buf[md5.buf_len..].ptr, 0, md5.buf.len -% md5.buf_len);
         md5.buf[md5.buf_len] = 0x80;
         md5.buf_len +%= 1;
@@ -706,19 +709,19 @@ pub const Md5 = struct {
         }
         md5.round(md5.buf[0..]);
         for (md5.s, 0..) |s, j| {
-            mem.writeIntLittle(u32, dest[4 * j ..][0..4], s);
+            mem.writeIntLittle(u32, dest[4 *% j ..][0..4], s);
         }
     }
     fn round(md5: *Md5, bytes: *const [64]u8) void {
-        @setRuntimeSafety(builtin.is_safe);
+        @setRuntimeSafety(safety);
         var s: [16]u32 = undefined;
         var idx: usize = 0;
         while (idx < 16) : (idx +%= 1) {
             s[idx] = 0;
-            s[idx] |= @as(u32, bytes[idx * 4 +% 0]);
-            s[idx] |= @as(u32, bytes[idx * 4 +% 1]) << 8;
-            s[idx] |= @as(u32, bytes[idx * 4 +% 2]) << 16;
-            s[idx] |= @as(u32, bytes[idx * 4 +% 3]) << 24;
+            s[idx] |= @as(u32, bytes[idx *% 4 +% 0]);
+            s[idx] |= @as(u32, bytes[idx *% 4 +% 1]) << 8;
+            s[idx] |= @as(u32, bytes[idx *% 4 +% 2]) << 16;
+            s[idx] |= @as(u32, bytes[idx *% 4 +% 3]) << 24;
         }
         var v: [4]u32 = md5.s;
         for (tab.rounds.md5_0) |r| {
