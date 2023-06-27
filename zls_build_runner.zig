@@ -111,7 +111,7 @@ fn writeJSON(cfg: *const BuildConfig, buf: []u8) u64 {
 fn lengthModules(node: *Node) u64 {
     @setRuntimeSafety(false);
     var len: u64 = 0;
-    for (node.nodes[0..node.nodes_len]) |sub_node| {
+    for (node.impl.nodes[0..node.impl.nodes_len]) |sub_node| {
         if (sub_node.tag == .group) {
             len +%= lengthModules(node);
         }
@@ -126,7 +126,7 @@ fn lengthModules(node: *Node) u64 {
 fn writeModulesBuf(pkgs: [*]BuildConfig.Pkg, node: *Node) u64 {
     @setRuntimeSafety(false);
     var len: u64 = 0;
-    for (node.nodes[0..node.nodes_len]) |sub_node| {
+    for (node.impl.nodes[0..node.impl.nodes_len]) |sub_node| {
         if (sub_node.tag == .group) {
             len +%= writeModulesBuf(pkgs, node);
         }
