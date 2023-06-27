@@ -25,14 +25,6 @@ const Array = mem.StaticString(1024 *% 1024);
 
 const about = builtin.fmt.about("perf");
 
-fn printUnit(array: *Array, x: f64, unit: enum { count, nanoseconds, bytes }) !void {
-    const int = @intFromFloat(u64, @round(x));
-    switch (unit) {
-        .count => array.writeFormat(fmt.udh(int)),
-        .nanoseconds => array.writeFormat(fmt.nsec(int)),
-        .bytes => array.writeFormat(fmt.bytes(int)),
-    }
-}
 const hw_counters: []const perf.Measurement = &.{
     .{ .name = about ++ "cycles\t\t\t", .config = .{ .hardware = .cpu_cycles } },
     .{ .name = about ++ "instructions\t\t", .config = .{ .hardware = .instructions } },
