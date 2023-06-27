@@ -3,7 +3,6 @@ const tab = @import("./tab.zig");
 const mach = @import("./mach.zig");
 const meta = @import("./meta.zig");
 const math = @import("./math.zig");
-pub const env = @import("context");
 pub const root = @import("root");
 pub usingnamespace builtin;
 pub const native_endian = builtin.cpu.arch.endian();
@@ -16,6 +15,8 @@ pub const is_fast: bool = define("is_fast", bool, builtin.mode == .ReleaseFast);
 /// * Determine whether signals for floating point errors should be handled
 ///   verbosely.
 pub const is_debug: bool = define("is_debug", bool, builtin.mode == .Debug);
+
+pub const have_stack_traces: bool = if (@hasDecl(root, "have_stack_traces")) root.have_stack_traces else false;
 
 /// Determines whether calling `panicUnwrapError` is legal.
 pub const discard_errors: bool = define("discard_errors", bool, !(is_debug or is_safe));
