@@ -86,9 +86,9 @@ const ctn = struct {
             }
         }
     }
-    fn writeLastLine(trace: *const builtin.Trace, array: *Array, width: u64, break_lines_count: u8) void {
+    fn writeLastLine(trace: *const builtin.Trace, array: *Array, width: u64, break_line_count: u8) void {
         var idx: u64 = 0;
-        while (idx != break_lines_count) : (idx +%= 1) {
+        while (idx != break_line_count) : (idx +%= 1) {
             if (trace.options.write_sidebar) {
                 ctn.writeSideBar(trace, width, array, .none);
             }
@@ -195,8 +195,8 @@ const ctn = struct {
         const fbuf: [:0]u8 = fastAllocFile(allocator, src.file);
         var itr: builtin.zig.TokenIterator = .{ .buf = fbuf, .buf_pos = 0, .inval = null };
         var tok: builtin.zig.Token = .{ .tag = .eof, .loc = .{ .start = 0, .finish = 0 } };
-        const min: u64 = src.line -| trace.options.context_lines_count;
-        const max: u64 = src.line +% trace.options.context_lines_count +% 1;
+        const min: u64 = src.line -| trace.options.context_line_count;
+        const max: u64 = src.line +% trace.options.context_line_count +% 1;
         var line: u64 = min;
         while (line != max) : (line +%= 1) {
             var loc: dwarf.LineLocation = .{};
@@ -243,7 +243,7 @@ const ctn = struct {
                     const start: u64 = array.len();
                     ctn.writeExtendedSourceLocation(dwarf_info, array, addr, unit, src);
                     ctn.writeSourceContext(trace, allocator, array, addr, src);
-                    ctn.writeLastLine(trace, array, trace.options.break_lines_count);
+                    ctn.writeLastLine(trace, array, trace.options.break_line_count);
                     return .{
                         .addr = addr,
                         .start = start,
@@ -255,10 +255,10 @@ const ctn = struct {
         return null;
     }
 };
-fn writeLastLine(trace: *const builtin.Trace, buf: [*]u8, width: u64, break_lines_count: u8) u64 {
+fn writeLastLine(trace: *const builtin.Trace, buf: [*]u8, width: u64, break_line_count: u8) u64 {
     var len: u64 = 0;
     var idx: u64 = 0;
-    while (idx != break_lines_count) : (idx +%= 1) {
+    while (idx != break_line_count) : (idx +%= 1) {
         if (trace.options.write_sidebar) {
             len +%= writeSideBar(trace, width, buf + len, .none);
         }
@@ -430,8 +430,8 @@ fn writeExtendedSourceLocation(dwarf_info: *dwarf.DwarfInfo, buf: [*]u8, addr: u
     return len;
 }
 fn writeSourceContext(trace: *const builtin.Trace, allocator: *mem.SimpleAllocator, buf: [*]u8, width: u64, addr: u64, src: dwarf.SourceLocation) u64 {
-    const min: u64 = src.line -| trace.options.context_lines_count;
-    const max: u64 = src.line +% trace.options.context_lines_count +% 1;
+    const min: u64 = src.line -| trace.options.context_line_count;
+    const max: u64 = src.line +% trace.options.context_line_count +% 1;
     var line: u64 = min;
     const save: u64 = allocator.next;
     defer allocator.next = save;
@@ -472,7 +472,7 @@ fn writeSourceCodeAtAddress(
                 var len: u64 = pos;
                 len +%= writeExtendedSourceLocation(dwarf_info, buf + len, addr, unit, src);
                 len +%= writeSourceContext(trace, allocator, buf + len, width, addr, src);
-                len +%= writeLastLine(trace, buf + len, width, trace.options.break_lines_count);
+                len +%= writeLastLine(trace, buf + len, width, trace.options.break_line_count);
                 return .{ .addr = addr, .start = pos, .finish = pos +% len, .depth = depth };
             }
         }
