@@ -4531,6 +4531,14 @@ fn indexOfSentinel(any: anytype) usize {
     while (any[idx] != sentinel) idx +%= 1;
     return idx;
 }
+const special = struct {
+    /// Namespace containing definition of `printStackTrace`.
+    const trace = @import("./trace.zig");
+
+    /// Used by panic functions if executable is static linked with special
+    /// module object `trace.o`.
+    extern fn printStackTrace(*const Trace, u64, u64) void;
+};
 pub const my_trace: Trace = .{
     .Error = !builtin.strip_debug_info,
     .Fault = !builtin.strip_debug_info,
@@ -4541,108 +4549,52 @@ pub const my_trace: Trace = .{
         .show_pc_addr = false,
         .write_sidebar = true,
         .write_caret = true,
-        .break_lines_count = 1,
-        .context_lines_count = 1,
+        .break_line_count = 1,
+        .context_line_count = 1,
         .tokens = .{
             .line_no = "\x1b[2m",
             .pc_addr = "\x1b[38;5;247m",
             .sidebar = "|",
-            .caret = "\x1b[48;5;196;1m^\x1b[0m",
             .sidebar_fill = ": ",
             .syntax = &.{
-                .{ .style = "", .tags = &.{
-                    .invalid,      .identifier,
-                    .char_literal, .container_doc_comment,
-                    .doc_comment,  .invalid_periodasterisks,
-                    .period,       .comma,
-                    .colon,        .semicolon,
-                    .ellipsis2,    .ellipsis3,
-                    .eof,
-                } },
-                .{ .style = tab.fx.color.fg.light_green, .tags = &.{
-                    .string_literal, .multiline_string_literal_line,
-                } },
-                .{ .style = tab.fx.color.fg.bracket, .tags = &.{
-                    .l_brace,   .r_brace,
-                    .l_bracket, .r_bracket,
-                    .l_paren,   .r_paren,
-                } },
-                .{ .style = tab.fx.color.fg.magenta24, .tags = &.{
-                    .arrow,                  .bang,
-                    .pipe,                   .pipe_pipe,
-                    .pipe_equal,             .equal,
-                    .equal_equal,            .bang_equal,
-                    .percent,                .percent_equal,
-                    .period_asterisk,        .caret,
-                    .caret_equal,            .plus,
-                    .plus_plus,              .plus_equal,
-                    .plus_percent,           .plus_percent_equal,
-                    .plus_pipe,              .plus_pipe_equal,
-                    .minus,                  .minus_equal,
-                    .minus_percent,          .minus_percent_equal,
-                    .minus_pipe,             .minus_pipe_equal,
-                    .asterisk,               .asterisk_equal,
-                    .asterisk_asterisk,      .asterisk_percent,
-                    .asterisk_percent_equal, .asterisk_pipe,
-                    .asterisk_pipe_equal,    .slash,
-                    .slash_equal,            .ampersand,
-                    .ampersand_equal,        .question_mark,
-                    .tilde,
-                } },
-                .{ .style = tab.fx.color.fg.magenta24, .tags = &.{
-                    .angle_bracket_left,
-                    .equal_angle_bracket_right,
-                    .angle_bracket_left_equal,
-                    .angle_bracket_angle_bracket_left,
-                    .angle_bracket_angle_bracket_left_equal,
-                    .angle_bracket_angle_bracket_left_pipe,
-                    .angle_bracket_angle_bracket_left_pipe_equal,
-                    .angle_bracket_right,
-                    .angle_bracket_right_equal,
-                    .angle_bracket_angle_bracket_right,
-                    .angle_bracket_angle_bracket_right_equal,
-                } },
-                .{ .style = tab.fx.color.fg.cyan24, .tags = &.{
-                    .keyword_defer,     .keyword_async,
-                    .keyword_await,     .keyword_export,
-                    .keyword_extern,    .keyword_resume,
-                    .keyword_suspend,   .keyword_errdefer,
-                    .keyword_nosuspend, .keyword_unreachable,
-                } },
-                .{ .style = tab.fx.color.fg.red24, .tags = &.{
-                    .builtin, .keyword_align,
-                } },
-                .{ .style = tab.fx.color.fg.orange24, .tags = &.{
-                    .number_literal,
-                } },
-                .{ .style = tab.fx.color.fg.light_purple, .tags = &.{
-                    .keyword_asm,      .keyword_catch,
-                    .keyword_inline,   .keyword_noalias,
-                    .keyword_noinline, .keyword_callconv,
-                } },
-                .{ .style = tab.fx.color.fg.redwine, .tags = &.{
-                    .keyword_enum,   .keyword_packed,
-                    .keyword_opaque, .keyword_struct,
-                } },
-                .{ .style = tab.fx.color.fg.white24, .tags = &.{
-                    .keyword_fn,             .keyword_if,
-                    .keyword_or,             .keyword_for,
-                    .keyword_and,            .keyword_pub,
-                    .keyword_try,            .keyword_else,
-                    .keyword_test,           .keyword_error,
-                    .keyword_while,          .keyword_union,
-                    .keyword_switch,         .keyword_orelse,
-                    .keyword_anytype,        .keyword_anyframe,
-                    .keyword_volatile,       .keyword_allowzero,
-                    .keyword_addrspace,      .keyword_linksection,
-                    .keyword_usingnamespace,
-                } },
-                .{ .style = tab.fx.color.fg.yellow24, .tags = &.{
-                    .keyword_var,         .keyword_break,
-                    .keyword_const,       .keyword_return,
-                    .keyword_comptime,    .keyword_continue,
-                    .keyword_threadlocal,
-                } },
+                .{ .style = "", .tags = zig.Token.Tag.other },
+                .{ .style = tab.fx.color.fg.orange24, .tags = &.{.number_literal} },
+                .{
+                    .style = tab.fx.color.fg.light_green,
+                    .tags = zig.Token.Tag.strings,
+                },
+                .{
+                    .style = tab.fx.color.fg.bracket,
+                    .tags = zig.Token.Tag.bracket,
+                },
+                .{
+                    .style = tab.fx.color.fg.magenta24,
+                    .tags = zig.Token.Tag.operator,
+                },
+                .{
+                    .style = tab.fx.color.fg.red24,
+                    .tags = zig.Token.Tag.builtin_fn,
+                },
+                .{
+                    .style = tab.fx.color.fg.cyan24,
+                    .tags = zig.Token.Tag.macro_keyword,
+                },
+                .{
+                    .style = tab.fx.color.fg.light_purple,
+                    .tags = zig.Token.Tag.call_keyword,
+                },
+                .{
+                    .style = tab.fx.color.fg.redwine,
+                    .tags = zig.Token.Tag.container_keyword,
+                },
+                .{
+                    .style = tab.fx.color.fg.white24,
+                    .tags = zig.Token.Tag.cond_keyword,
+                },
+                .{
+                    .style = tab.fx.color.fg.yellow24,
+                    .tags = zig.Token.Tag.goto_keyword ++ zig.Token.Tag.value_keyword,
+                },
             },
         },
     },
