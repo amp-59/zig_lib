@@ -23,7 +23,6 @@ pub const signal_handlers: builtin.SignalHandlers = .{
     .FloatingPointError = true,
     .Trap = true,
 };
-
 const Array = mem.UnstructuredStreamView(8, 8, struct {}, .{});
 const Mapping = extern struct {
     lb_addr: u64,
@@ -59,7 +58,7 @@ fn testFutexWakeOp(futex1: *u32, futex2: *u32) void {
     proc.futexWakeOp(.{}, futex1, futex2, 1, 1, .{ .op = .Assign, .cmp = .Equal, .to = 0x20, .from = 0x10 }) catch {};
 }
 fn testCloneAndFutex() !void {
-    if (builtin.zig.mode == .Debug) return;
+    if (builtin.mode == .Debug) return;
     var allocator: mem.SimpleAllocator = .{};
     var futex1: u32 = 16;
     var futex2: u32 = 16;
