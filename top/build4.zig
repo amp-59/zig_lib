@@ -71,6 +71,9 @@ pub const BuilderSpec = struct {
         enable_safety: bool = false,
         /// Require build runner compile DWARF parser and stack trace writers.
         enable_history: bool = true,
+        /// Enable advanced builder features, such as project-wide comptime
+        /// constants and caching special modules.
+        enable_build_configuration: bool = true,
         /// Nodes with this name prefix are hidden in pre.
         hide_based_on_name_prefix: ?u8 = '_',
         /// Nodes with hidden parent/group nodes are also hidden
@@ -88,8 +91,6 @@ pub const BuilderSpec = struct {
         add_debug_stack_traces: bool = true,
         /// Pass --main-pkg-path=<build_root> for all compile commands.
         main_pkg_path_to_build_root: bool = true,
-        /// Write context module file
-        write_extended_context: bool = true,
         /// Record build command data in a condensed format.
         write_build_task_record: bool = false,
         names: struct {
