@@ -68,7 +68,7 @@ fn testPoll() !void {
 }
 
 const file_name: [:0]const u8 = "file_test";
-const test_dir: [:0]const u8 = @import("context").build_root ++ "/test/";
+const test_dir: [:0]const u8 = @import("root").build_root ++ "/test/";
 const pathname1: [:0]const u8 = test_dir ++ file_name ++ "1";
 const pathname2: [:0]const u8 = test_dir ++ file_name ++ "2";
 const pathname_link1: [:0]const u8 = test_dir ++ file_name ++ "1";
@@ -235,9 +235,9 @@ fn testPathOperations() !void {
     try meta.wrap(testing.expectEqualMany(u8, "file", file.basename("file")));
     try meta.wrap(testing.expectEqualMany(u8, "/run/user/1000", file.dirname("/run/user/1000/file_test")));
     try meta.wrap(testing.expectEqualMany(u8, "////run/user/1000//", file.dirname("////run/user/1000///file_test///")));
-    try file.makePath(make_path_spec, comptime builtin.buildRoot() ++ "/zig-out/bin/something/here", file.mode.directory);
-    try file.removeDir(remove_dir_spec, comptime builtin.buildRoot() ++ "/zig-out/bin/something/here");
-    try file.removeDir(remove_dir_spec, comptime builtin.buildRoot() ++ "/zig-out/bin/something");
+    try file.makePath(make_path_spec, @import("root").build_root ++ "/zig-out/bin/something/here", file.mode.directory);
+    try file.removeDir(remove_dir_spec, @import("root").build_root ++ "/zig-out/bin/something/here");
+    try file.removeDir(remove_dir_spec, @import("root").build_root ++ "/zig-out/bin/something");
 }
 fn testPackedModeStruct() !void {
     const mode: file.Mode = .{
