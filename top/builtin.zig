@@ -2454,9 +2454,9 @@ pub const Trace = struct {
         /// Unwind this many frames. max_depth = 0 is unlimited.
         max_depth: u8 = 0,
         /// Write this many lines of source code context.
-        context_lines_count: u8 = 0,
+        context_line_count: u8 = 0,
         /// Allow this many blank lines between source code contexts.
-        break_lines_count: u8 = 0,
+        break_line_count: u8 = 0,
         /// Show the source line number on source lines.
         show_line_no: bool = false,
         /// Show the program counter on the caret line.
@@ -2511,17 +2511,17 @@ pub const Logging = packed struct {
     };
     pub const Override = struct {
         /// Report attempted actions
-        Attempt: ?bool,
+        Attempt: ?bool = null,
         /// Report major successful actions
-        Success: ?bool,
+        Success: ?bool = null,
         /// Report actions which acquire a finite resource
-        Acquire: ?bool,
+        Acquire: ?bool = null,
         /// Report actions which release a finite resource
-        Release: ?bool,
+        Release: ?bool = null,
         /// Report actions which throw an error
-        Error: ?bool,
+        Error: ?bool = null,
         /// Report actions which terminate the program
-        Fault: ?bool,
+        Fault: ?bool = null,
     };
     pub const AttemptError = packed struct(u2) {
         Attempt: bool = logging_default.Attempt,
