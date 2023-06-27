@@ -969,7 +969,7 @@ pub fn PointerOneFormat(comptime spec: RenderSpec, comptime Pointer: type) type 
             const type_name: []const u8 = comptime typeName(Pointer, spec);
             if (child == anyopaque) {
                 const sub_format: SubFormat = .{ .value = address };
-                array.writeCount(12 +% type_name.len, ("@intFromPtr(" ++ type_name ++ ", ").*);
+                array.writeCount(14 +% type_name.len, ("@intFromPtr(" ++ type_name ++ ", ").*);
                 writeFormat(array, sub_format);
                 array.writeOne(')');
             } else {
