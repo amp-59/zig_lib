@@ -279,7 +279,7 @@ pub const Block = struct {
     pub const parallel = struct {
         const cpu = @import("std").Target.x86.cpu;
         /// The recommended number of AES encryption/decryption to perform in parallel for the chosen implementation.
-        pub const optimal_parallel_blocks = switch (builtin.config.zig.cpu.model) {
+        pub const optimal_parallel_blocks = switch (builtin.cpu.model) {
             &cpu.westmere => 6,
             &cpu.sandybridge, &cpu.ivybridge => 8,
             &cpu.haswell, &cpu.broadwell => 7,
