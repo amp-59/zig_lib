@@ -43,6 +43,83 @@ pub const State = enum(u8) {
 // zig fmt: on
 pub const Lock = mem.ThreadSafeSet(State.list.len, State, Task);
 
+pub const Config = struct {
+    name: []const u8,
+    value: Value,
+    const Value = union(enum) {
+        Int: usize,
+        Bool: bool,
+        String: []const u8,
+    };
+    pub fn formatWriteBuf(cfg: Config, buf: [*]u8) u64 {
+        @setRuntimeSafety(false);
+        var len: u64 = 0;
+        @ptrCast(*[12]u8, buf).* = "pub const @\"".*;
+        len +%= 12;
+        @memcpy(buf + len, cfg.name);
+        len +%= cfg.name.len;
+        @ptrCast(*[4]u8, buf + len).* = "\" = ".*;
+        len +%= 4;
+        switch (cfg.value) {
+            .Int => |value| {
+                const int_s: []const u8 = builtin.fmt.ud64(value).readAll();
+                @memcpy(buf + len, int_s);
+                len +%= int_s.len;
+            },
+            .Bool => |value| {
+                @memcpy(buf + len, if (value) "true" else "false");
+                len +%= if (value) 4 else 5;
+            },
+            .String => |value| {
+                buf[len] = '"';
+                len +%= 1;
+                @memcpy(buf + len, value);
+                len +%= value.len;
+                buf[len] = '"';
+                len +%= 1;
+            },
+        }
+        @ptrCast(*[2]u8, buf + len).* = ";\n".*;
+        return len +% 2;
+    }
+    pub fn formatWrite(cfg: Config, array: anytype) void {
+        array.writeMany("pub const @\"");
+        array.writeMany(cfg.name);
+        array.writeMany("\" = ");
+        switch (cfg.value) {
+            .Int => |value| {
+                const int_s: []const u8 = builtin.fmt.ud64(value).readAll();
+                array.writeMany(int_s);
+            },
+            .Bool => |value| {
+                array.writeMany(if (value) "true" else "false");
+            },
+            .String => |value| {
+                array.writeOne('"');
+                array.writeMany(value);
+                array.writeOne('"');
+            },
+        }
+        array.writeMany(";\n");
+    }
+    pub fn formatLength(cfg: Config) u64 {
+        var len: u64 = 12 +% cfg.name.len +% 4;
+        switch (cfg.value) {
+            .Int => |value| {
+                len +%= builtin.fmt.ud64(value).readAll().len;
+            },
+            .Bool => |value| {
+                len +%= if (value) 4 else 5;
+            },
+            .String => |value| {
+                len +%= 1;
+                len +%= value.len;
+                len +%= 1;
+            },
+        }
+        return len +% 2;
+    }
+};
 pub const Module = struct {
     name: []const u8,
     path: []const u8,
