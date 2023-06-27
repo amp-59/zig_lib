@@ -2458,9 +2458,9 @@ pub const Trace = struct {
         /// Allow this many blank lines between source code contexts.
         break_line_count: u8 = 0,
         /// Show the source line number on source lines.
-        show_line_no: bool = false,
+        show_line_no: bool = true,
         /// Show the program counter on the caret line.
-        show_pc_addr: bool = true,
+        show_pc_addr: bool = false,
         /// Control sidebar inclusion and appearance.
         write_sidebar: bool = true,
         /// Write extra line to indicate column.
@@ -2480,7 +2480,7 @@ pub const Trace = struct {
             /// Separate context information from sidebar with this text.
             sidebar: []const u8 = "|",
             /// Substitute absent `line_no` or `pc_addr` address with this text.
-            sidebar_fill: []const u8 = ": ",
+            sidebar_fill: []const u8 = " ",
             /// Indicate column number with this text.
             caret: []const u8 = tab.fx.color.fg.light_green ++ "^" ++ tab.fx.none,
             /// Fill text between `sidebar` and `caret` with this character.
