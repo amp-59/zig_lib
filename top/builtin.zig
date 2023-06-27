@@ -3390,6 +3390,134 @@ pub const zig = struct {
             keyword_volatile,
             keyword_while,
             pub const list: []const Tag = meta.tagList(zig.Token.Tag);
+            pub const strings: []const zig.Token.Tag = &.{
+                .string_literal,
+                .multiline_string_literal_line,
+            };
+            pub const bracket: []const zig.Token.Tag = &.{
+                .l_brace,
+                .r_brace,
+                .l_bracket,
+                .r_bracket,
+                .l_paren,
+                .r_paren,
+            };
+            pub const operator: []const zig.Token.Tag = &.{
+                .arrow,                  .bang,
+                .pipe,                   .pipe_pipe,
+                .pipe_equal,             .equal,
+                .equal_equal,            .bang_equal,
+                .percent,                .percent_equal,
+                .period_asterisk,        .caret,
+                .caret_equal,            .plus,
+                .plus_plus,              .plus_equal,
+                .plus_percent,           .plus_percent_equal,
+                .plus_pipe,              .plus_pipe_equal,
+                .minus,                  .minus_equal,
+                .minus_percent,          .minus_percent_equal,
+                .minus_pipe,             .minus_pipe_equal,
+                .asterisk,               .asterisk_equal,
+                .asterisk_asterisk,      .asterisk_percent,
+                .asterisk_percent_equal, .asterisk_pipe,
+                .asterisk_pipe_equal,    .slash,
+                .slash_equal,            .ampersand,
+                .ampersand_equal,        .question_mark,
+                .tilde,                  .angle_bracket_left,
+                .equal_angle_bracket_right, //
+                .angle_bracket_left_equal,
+                .angle_bracket_angle_bracket_left,
+                .angle_bracket_angle_bracket_left_equal,
+                .angle_bracket_angle_bracket_left_pipe,
+                .angle_bracket_angle_bracket_left_pipe_equal,
+                .angle_bracket_right,
+                .angle_bracket_right_equal,
+                .angle_bracket_angle_bracket_right,
+                .angle_bracket_angle_bracket_right_equal,
+            };
+            pub const builtin_fn: []const zig.Token.Tag = &.{
+                .builtin,
+                .keyword_align,
+                .keyword_addrspace,
+                .keyword_linksection,
+                .keyword_callconv,
+            };
+            pub const unwrap_keyword: []const zig.Token.Tag = &.{
+                .keyword_try,
+                .keyword_catch,
+            };
+            pub const macro_keyword: []const zig.Token.Tag = &.{
+                .keyword_defer,
+                .keyword_async,
+                .keyword_await,
+                .keyword_export,
+                .keyword_extern,
+                .keyword_resume,
+                .keyword_suspend,
+                .keyword_errdefer,
+                .keyword_nosuspend,
+                .keyword_unreachable,
+            };
+            pub const container_keyword: []const zig.Token.Tag = &.{
+                .keyword_enum,
+                .keyword_packed,
+                .keyword_opaque,
+                .keyword_struct,
+                .keyword_union,
+                .keyword_error,
+            };
+            pub const qual_keyword: []const zig.Token.Tag = &.{
+                .keyword_volatile,
+                .keyword_allowzero,
+            };
+            pub const call_keyword: []const zig.Token.Tag = &.{
+                .keyword_asm,
+                .keyword_inline,
+                .keyword_noalias,
+                .keyword_noinline,
+            };
+            pub const cond_keyword: []const zig.Token.Tag = &.{
+                .keyword_fn,
+                .keyword_if,
+                .keyword_or,
+                .keyword_for,
+                .keyword_and,
+                .keyword_try,
+                .keyword_else,
+                .keyword_test,
+                .keyword_while,
+                .keyword_switch,
+                .keyword_orelse,
+                .keyword_anytype,
+                .keyword_anyframe,
+            };
+            pub const goto_keyword: []const zig.Token.Tag = &.{
+                .keyword_break,
+                .keyword_return,
+                .keyword_continue,
+            };
+            pub const value_keyword: []const zig.Token.Tag = &.{
+                .keyword_pub,
+                .keyword_var,
+                .keyword_const,
+                .keyword_comptime,
+                .keyword_threadlocal,
+                .keyword_usingnamespace,
+            };
+            pub const other: []const zig.Token.Tag = &.{
+                .invalid,
+                .identifier,
+                .char_literal,
+                .container_doc_comment,
+                .doc_comment,
+                .invalid_periodasterisks,
+                .period,
+                .comma,
+                .colon,
+                .semicolon,
+                .ellipsis2,
+                .ellipsis3,
+                .eof,
+            };
         };
     };
     pub const TokenIterator = struct {
