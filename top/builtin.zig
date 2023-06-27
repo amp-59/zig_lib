@@ -1360,9 +1360,15 @@ pub const debug = struct {
         return fmt.Generic(T).dec(value);
     }
     const size: usize = 4096;
+    pub const printStackTrace = blk: {
+        if (have_stack_traces) {
+            break :blk special.printStackTrace;
+        } else {
+            break :blk special.trace.printStackTrace;
+        }
+    };
     pub const about_error_s = "\x1b[91;1merror\x1b[0m=";
     pub const about_exit_0_s: [:0]const u8 = fmt.about("exit");
-    pub extern fn printStackTrace(*const Trace, u64, u64) void;
     pub const about_fault_p0_s = blk: {
         var lhs: [:0]const u8 = "fault";
         lhs = message_prefix ++ lhs;
@@ -2408,35 +2414,7 @@ pub const fmt = struct {
 const root_src_file: [:0]const u8 = define("root_src_file", [:0]const u8, undefined);
 /// Return an absolute path to a project file.
 pub fn absolutePath(comptime relative: [:0]const u8) [:0]const u8 {
-    return env.build_root ++ "/" ++ relative;
-}
-/// Returns an absolute path to the compiler used to compile this program.
-pub fn zigExe() [:0]const u8 {
-    if (env.zig_exe[0] != '/') {
-        @compileError("'" ++ env.zig_exe ++ "' must be an absolute path");
-    }
-    return env.zig_exe;
-}
-/// Returns an absolute path to the project root directory.
-pub fn buildRoot() [:0]const u8 {
-    if (env.build_root[0] != '/') {
-        @compileError("'" ++ env.build_root ++ "' must be an absolute path");
-    }
-    return env.build_root;
-}
-/// Returns an absolute path to the project cache directory.
-pub fn cacheDir() [:0]const u8 {
-    if (env.cache_dir[0] != '/') {
-        @compileError("'" ++ env.cache_dir ++ "' must be an absolute path");
-    }
-    return env.cache_root;
-}
-/// Returns an absolute path to the user (global) cache directory.
-pub fn globalCacheDir() [:0]const u8 {
-    if (env.global_cache_root[0] != '/') {
-        @compileError("'" ++ env.global_cache_root ++ "' must be an absolute path");
-    }
-    return env.global_cache_root;
+    return root.build_root ++ "/" ++ relative;
 }
 pub fn AddressSpace() type {
     if (!@hasDecl(root, "AddressSpace")) {
