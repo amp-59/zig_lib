@@ -12,10 +12,9 @@ pub usingnamespace proc.start;
 
 pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
 
-const Node = build.GenericNode(.{
-    .options = .{ .max_cmdline_len = null },
-});
-pub fn testComplexStructureBuildMain(allocator: *Node.Allocator, builder: *Node) void {
+const Node = build.GenericNode(.{ .options = .{ .max_cmdline_len = null } });
+
+pub fn testComplexStructureBuildMain(allocator: *build.Allocator, builder: *Node) void {
     const deps: []const build.ModuleDependency = &.{
         .{ .name = "context" }, .{ .name = "zig_lib" }, .{ .name = "@build" },
     };
@@ -24,6 +23,7 @@ pub fn testComplexStructureBuildMain(allocator: *Node.Allocator, builder: *Node)
         .{ .name = "zig_lib", .path = "zig_lib.zig" },
         .{ .name = "@build", .path = "./build.zig" },
     };
+
     var build_cmd: build.BuildCommand = .{
         .kind = .exe,
         .mode = .ReleaseSmall,
@@ -83,7 +83,18 @@ pub fn testComplexStructureBuildMain(allocator: *Node.Allocator, builder: *Node)
     bin.addDescr("Binary executable");
     fmt.addDescr("Reformat source directory into canonical form");
 }
-pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
+
+fn testConfigValues() void {
+    const colour = build.Config{ .name = "color", .value = .{ .Bool = true } };
+    const size = build.Config{ .name = "size", .value = .{ .Int = 128 } };
+    const name = build.Config{ .name = "name", .value = .{ .String = "zero" } };
+    var array: mem.StaticString(4096) = .{};
+    array.impl.ub_word +%= colour.formatWriteBuf(array.referAllUndefined().ptr);
+    array.impl.ub_word +%= size.formatWriteBuf(array.referAllUndefined().ptr);
+    array.impl.ub_word +%= name.formatWriteBuf(array.referAllUndefined().ptr);
+    builtin.debug.write(array.readAll());
+}
+fn testManyCompileOptionsWithArguments(args: anytype, vars: anytype) !void {
     const build_cmd = .{
         .kind = .obj,
         .allow_shlib_undefined = true,
@@ -118,7 +129,7 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     };
     var address_space: Node.AddressSpace = .{};
     var thread_space: Node.ThreadSpace = .{};
-    var allocator: Node.Allocator = Node.Allocator.init_arena(Node.AddressSpace.arena(Node.max_thread_count));
+    var allocator: build.Allocator = build.Allocator.init_arena(Node.AddressSpace.arena(Node.max_thread_count));
     if (args.len < 5) {
         return error.MissingEnvironmentPaths;
     }
@@ -130,4 +141,8 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
         .create = true,
     }, "lib0", &.{t0});
     try builtin.expect(Node.executeToplevel(&address_space, &thread_space, &allocator, toplevel, t1, .archive));
+}
+pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
+    try testManyCompileOptionsWithArguments(args, vars);
+    testConfigValues();
 }
