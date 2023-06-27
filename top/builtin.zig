@@ -1681,9 +1681,12 @@ pub const debug = struct {
     pub noinline fn panicExtra(msg: []const u8, ctx_ptr: *const anyopaque) noreturn {
         @setCold(true);
         @setRuntimeSafety(false);
-        const st: mach.RegisterState = @ptrFromInt(*mach.RegisterState, @intFromPtr(ctx_ptr) +% 40).*;
+        const regs: mach.RegisterState = @ptrFromInt(
+            *mach.RegisterState,
+            @intFromPtr(ctx_ptr) +% mach.RegisterState.offset,
+        ).*;
         if (want_stack_traces and trace.Signal) {
-            printStackTrace(&trace, st.rip, st.rbp);
+            printStackTrace(&trace, regs.rip, regs.rbp);
         }
         @call(.always_inline, proc.exitGroupFault, .{ msg, 2 });
     }

@@ -1,4 +1,5 @@
 pub const RegisterState = extern struct {
+    pub const offset: comptime_int = 40;
     r8: usize,
     r9: usize,
     r10: usize,
@@ -25,7 +26,6 @@ pub const RegisterState = extern struct {
     trapno: usize,
     oldmask: usize,
     cr2: usize,
-    pub const offset = 36;
 };
 // For operations with no comptime operands and register-sized integers prefer
 // the following four functions. These reference the assembly directly below,
