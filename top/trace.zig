@@ -457,13 +457,11 @@ fn writeSourceCodeAtAddress(
     buf: [*]u8,
     pos: u64,
     width: u64,
-    depth: u64,
     addr: u64,
 ) ?dwarf.DwarfInfo.AddressInfo {
     for (dwarf_info.addr_info[0..dwarf_info.addr_info_len]) |*addr_info| {
         if (addr_info.addr == addr) {
             addr_info.count +%= 1;
-            addr_info.depth = depth;
             break;
         }
     } else {
@@ -473,7 +471,7 @@ fn writeSourceCodeAtAddress(
                 len +%= writeExtendedSourceLocation(dwarf_info, buf + len, addr, unit, src);
                 len +%= writeSourceContext(trace, allocator, buf + len, width, addr, src);
                 len +%= writeLastLine(trace, buf + len, width, trace.options.break_line_count);
-                return .{ .addr = addr, .start = pos, .finish = pos +% len, .depth = depth };
+                return .{ .addr = addr, .start = pos, .finish = pos +% len };
             }
         }
     }
@@ -553,18 +551,17 @@ pub export fn printStackTrace(trace: *const builtin.Trace, first_addr: usize, fr
         .frame_addr = @frameAddress(),
     };
     const width: u64 = if (trace.options.write_sidebar) maximumSideBarWidth(itr) else 0;
-    var depth: u64 = 0;
+
     if (frame_addr != 0) {
-        if (writeSourceCodeAtAddress(trace, &allocator, &dwarf_info, buf.ptr, len, width, depth, first_addr)) |addr_info| {
+        if (writeSourceCodeAtAddress(trace, &allocator, &dwarf_info, buf.ptr, len, width, first_addr)) |addr_info| {
             len = addr_info.finish;
             dwarf_info.addAddressInfo(&allocator).* = addr_info;
         }
     }
     while (itr.next()) |addr| {
-        if (writeSourceCodeAtAddress(trace, &allocator, &dwarf_info, buf[len..].ptr, len, width, depth, addr)) |addr_info| {
+        if (writeSourceCodeAtAddress(trace, &allocator, &dwarf_info, buf[len..].ptr, len, width, addr)) |addr_info| {
             len = addr_info.finish;
             dwarf_info.addAddressInfo(&allocator).* = addr_info;
-            depth +%= 1;
         }
     }
     for (dwarf_info.addr_info[0..dwarf_info.addr_info_len], 1..) |*addr_info, idx| {
