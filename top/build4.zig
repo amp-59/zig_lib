@@ -101,13 +101,15 @@ pub const BuilderSpec = struct {
             /// Module containing full paths of zig_exe, build_root,
             /// cache_root, and global_cache_root. May be useful for
             /// metaprogramming.
-            context: [:0]const u8 = "context",
+            config: [:0]const u8 = "config",
             /// Basename of output directory relative to build root.
             zig_out_dir: [:0]const u8 = "zig-out",
             /// Basename of cache directory relative to build root.
             zig_cache_dir: [:0]const u8 = "zig-cache",
             /// Basename of statistics directory relative to build root.
             zig_stat_dir: [:0]const u8 = "zig-stat",
+            /// Basename of configuration directory relative to build root.
+            zig_build_dir: [:0]const u8 = "zig-build",
             /// Basename of executables output directory relative to output
             /// directory.
             exe_out_dir: [:0]const u8 = "bin",
@@ -121,8 +123,10 @@ pub const BuilderSpec = struct {
             tracer_root: ?[:0]const u8 = null,
         } = .{},
         special: struct {
+            /// Defines formatter type used to pass configuration values to program.
+            Config: type = types.Config,
             /// Defines compile commands for stack tracer object
-            trace: ?types.tasks.BuildCommand = .{ .kind = .obj, .mode = .ReleaseSmall, .code_model = .kernel, .strip = true },
+            trace: ?types.tasks.BuildCommand = .{ .kind = .obj, .mode = .ReleaseSmall, .strip = true },
         } = .{},
         extensions: struct {
             /// Extension for Zig source files.
@@ -157,6 +161,8 @@ pub const BuilderSpec = struct {
             args: u64 = 4,
             /// Initial size of toplevel nodes `fds` buffer.
             fds: u64 = 1,
+            /// Initial size of configuration value `cfgs` buffer.
+            cfgs: u64 = 1,
         } = .{},
     };
     pub const Logging = packed struct {
@@ -273,6 +279,9 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         deps_max_len: u64,
         deps_len: u64,
         task: Task,
+        cfgs: [*]Config,
+        cfgs_max_len: u64,
+        cfgs_len: u64,
         options: struct {
             is_hidden: bool = false,
             is_special: bool = false,
