@@ -42,7 +42,7 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     if (args.len < 5) {
         return error.MissingEnvironmentPaths;
     }
-    const toplevel: *Node = Node.init(&allocator, args, vars);
+    const toplevel: *Node = try meta.wrap(Node.init(&allocator, args, vars));
     Node.initSpecialNodes(&allocator, toplevel);
     try meta.wrap(
         root.buildMain(&allocator, toplevel),
