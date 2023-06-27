@@ -16,7 +16,8 @@ pub const is_fast: bool = define("is_fast", bool, builtin.mode == .ReleaseFast);
 ///   verbosely.
 pub const is_debug: bool = define("is_debug", bool, builtin.mode == .Debug);
 
-pub const have_stack_traces: bool = if (@hasDecl(root, "have_stack_traces")) root.have_stack_traces else false;
+pub const have_stack_traces: bool = define("have_stack_traces", bool, false);
+pub const want_stack_traces: bool = define("want_stack_traces", bool, builtin.mode == .Debug and !builtin.strip_debug_info);
 
 /// Determines whether calling `panicUnwrapError` is legal.
 pub const discard_errors: bool = define("discard_errors", bool, !(is_debug or is_safe));
@@ -1672,7 +1673,7 @@ pub const debug = struct {
     pub noinline fn panic(msg: []const u8, _: @TypeOf(@errorReturnTrace()), ret_addr: ?usize) noreturn {
         @setCold(true);
         @setRuntimeSafety(false);
-        if (trace.Fault) {
+        if (want_stack_traces and trace.Fault) {
             printStackTrace(&trace, ret_addr.?, 0);
         }
         @call(.always_inline, proc.exitGroupFault, .{ msg, 2 });
@@ -1681,7 +1682,7 @@ pub const debug = struct {
         @setCold(true);
         @setRuntimeSafety(false);
         const st: mach.RegisterState = @ptrFromInt(*mach.RegisterState, @intFromPtr(ctx_ptr) +% 40).*;
-        if (trace.Signal) {
+        if (want_stack_traces and trace.Signal) {
             printStackTrace(&trace, st.rip, st.rbp);
         }
         @call(.always_inline, proc.exitGroupFault, .{ msg, 2 });
@@ -2445,11 +2446,10 @@ pub const SignalAlternateStack = struct {
     len: u64 = 0x1000000,
 };
 pub const Trace = struct {
-    Error: bool = builder_will_add,
-    Fault: bool = builder_will_add,
-    Signal: bool = builder_will_add,
+    Error: bool = true,
+    Fault: bool = true,
+    Signal: bool = true,
     options: Options = .{},
-    const builder_will_add: bool = builtin.mode == .Debug and !builtin.strip_debug_info;
     pub const Options = struct {
         /// Unwind this many frames. max_depth = 0 is unlimited.
         max_depth: u8 = 0,
@@ -2460,9 +2460,9 @@ pub const Trace = struct {
         /// Show the source line number on source lines.
         show_line_no: bool = false,
         /// Show the program counter on the caret line.
-        show_pc_addr: bool = false,
+        show_pc_addr: bool = true,
         /// Control sidebar inclusion and appearance.
-        write_sidebar: bool = false,
+        write_sidebar: bool = true,
         /// Write extra line to indicate column.
         write_caret: bool = true,
         /// Define composition of stack trace text.
@@ -2480,7 +2480,7 @@ pub const Trace = struct {
             /// Separate context information from sidebar with this text.
             sidebar: []const u8 = "|",
             /// Substitute absent `line_no` or `pc_addr` address with this text.
-            sidebar_fill: []const u8 = "  ",
+            sidebar_fill: []const u8 = ": ",
             /// Indicate column number with this text.
             caret: []const u8 = tab.fx.color.fg.light_green ++ "^" ++ tab.fx.none,
             /// Fill text between `sidebar` and `caret` with this character.

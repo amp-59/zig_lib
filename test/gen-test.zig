@@ -3,7 +3,6 @@ const sys = zig_lib.sys;
 const gen = zig_lib.gen;
 
 const perf = @import("../top/perf.zig");
-const perfS = @import("../top/perf_scratch.zig");
 
 pub const Access = enum(u32) {
     pub const file = 0x0;
