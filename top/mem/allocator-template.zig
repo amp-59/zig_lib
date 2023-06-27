@@ -1100,7 +1100,7 @@ const debug = opaque {
         s_aligned_bytes: u64,
         comptime s_sentinel: ?*const s_child,
     ) void {
-        const s_count: u64 = (s_aligned_bytes -% @sizeOf(s_child) *% @boolToInt(s_sentinel != null)) / @sizeOf(s_child);
+        const s_count: u64 = (s_aligned_bytes -% @sizeOf(s_child) *% @intFromBool(s_sentinel != null)) / @sizeOf(s_child);
         writeManyArrayNotation(array, s_child, s_count, s_sentinel);
         array.writeMany(", ");
     }
@@ -1113,8 +1113,8 @@ const debug = opaque {
         comptime s_sentinel: ?*const s_child,
         comptime t_sentinel: ?*const t_child,
     ) void {
-        const s_count: u64 = (s_aligned_bytes -% @sizeOf(s_child) *% @boolToInt(s_sentinel != null)) / @sizeOf(s_child);
-        const t_count: u64 = (t_aligned_bytes -% @sizeOf(t_child) *% @boolToInt(t_sentinel != null)) / @sizeOf(t_child);
+        const s_count: u64 = (s_aligned_bytes -% @sizeOf(s_child) *% @intFromBool(s_sentinel != null)) / @sizeOf(s_child);
+        const t_count: u64 = (t_aligned_bytes -% @sizeOf(t_child) *% @intFromBool(t_sentinel != null)) / @sizeOf(t_child);
         if (s_child == t_child and s_sentinel == t_sentinel) {
             if (s_count != t_count) {
                 writeChangedManyArrayNotation(array, s_child, s_count, t_count, s_sentinel);
@@ -1136,7 +1136,7 @@ const debug = opaque {
         s_aligned_bytes: u64,
         comptime s_sentinel: ?*const s_child,
     ) void {
-        const s_count: u64 = (s_aligned_bytes -% @sizeOf(s_child) *% @boolToInt(s_sentinel != null)) / @sizeOf(s_child);
+        const s_count: u64 = (s_aligned_bytes -% @sizeOf(s_child) *% @intFromBool(s_sentinel != null)) / @sizeOf(s_child);
         writeHolderArrayNotation(array, s_child, s_count, s_sentinel);
         array.writeMany(", ");
     }
@@ -1149,8 +1149,8 @@ const debug = opaque {
         comptime s_sentinel: ?*const s_child,
         comptime t_sentinel: ?*const t_child,
     ) void {
-        const s_count: u64 = (s_aligned_bytes -% @sizeOf(s_child) *% @boolToInt(s_sentinel != null)) / @sizeOf(s_child);
-        const t_count: u64 = (t_aligned_bytes -% @sizeOf(t_child) *% @boolToInt(t_sentinel != null)) / @sizeOf(t_child);
+        const s_count: u64 = (s_aligned_bytes -% @sizeOf(s_child) *% @intFromBool(s_sentinel != null)) / @sizeOf(s_child);
+        const t_count: u64 = (t_aligned_bytes -% @sizeOf(t_child) *% @intFromBool(t_sentinel != null)) / @sizeOf(t_child);
         if (s_child == t_child and s_sentinel == t_sentinel) {
             if (s_count != t_count) {
                 writeChangedHolderArrayNotation(array, s_child, s_count, t_count, s_sentinel);
@@ -1486,7 +1486,7 @@ const debug = opaque {
     ) void {
         const src_fmt: fmt.SourceLocationFormat = fmt.sourceLocation(src, ret_addr);
         const s_aligned_bytes: u64 = s_up_addr -% s_ab_addr;
-        const uw_offset: u64 = @sizeOf(s_child) *% @boolToInt(s_sentinel != null);
+        const uw_offset: u64 = @sizeOf(s_child) *% @intFromBool(s_sentinel != null);
         const s_uw_addr: u64 = s_up_addr -% uw_offset;
         var array: PrintArray = undefined;
         array.undefineAll();
@@ -1673,7 +1673,7 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
         pub fn create(allocator: *Allocator, comptime T: type) Allocator.allocate_payload(*T) {
             defer Graphics.showWithReference(allocator, @src());
             const s_ab_addr: u64 = createRaw(@sizeOf(T), @alignOf(T));
-            const ret: *T = @intToPtr(*T, s_ab_addr);
+            const ret: *T = @ptrFromInt(*T, s_ab_addr);
             showCreate(T, ret);
             return ret;
         }
@@ -1689,7 +1689,7 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
                 try meta.wrap(allocator.mapBelow(s_up_addr));
             }
             allocator.allocate(s_up_addr);
-            const ret: []T = @intToPtr([*]T, s_ab_addr)[0..count];
+            const ret: []T = @ptrFromInt([*]T, s_ab_addr)[0..count];
             if (Allocator.allocator_spec.options.count_useful_bytes) {
                 allocator.metadata.utility +%= s_aligned_bytes;
             }
@@ -1708,7 +1708,7 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
                 try meta.wrap(allocator.mapBelow(s_up_addr));
             }
             allocator.allocate(s_up_addr);
-            const ret: []T = @intToPtr([*]T, s_ab_addr)[0..count];
+            const ret: []T = @ptrFromInt([*]T, s_ab_addr)[0..count];
             ret.ptr[count] = sentinel;
             if (Allocator.allocator_spec.options.count_useful_bytes) {
                 allocator.metadata.utility +%= s_aligned_bytes;
@@ -1719,7 +1719,7 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
 
         pub fn reallocate(allocator: *Allocator, comptime T: type, buf: []T, count: u64) Allocator.allocate_payload([]T) {
             defer Graphics.showWithReference(allocator, @src());
-            const s_ab_addr: u64 = @ptrToInt(buf.ptr);
+            const s_ab_addr: u64 = @intFromPtr(buf.ptr);
             const s_aligned_bytes: u64 = @sizeOf(T) *% buf.len;
             const t_aligned_bytes: u64 = @sizeOf(T) *% count;
             const s_up_addr: u64 = s_ab_addr +% s_aligned_bytes;
@@ -1747,7 +1747,7 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
             if (Allocator.allocator_spec.logging.allocate) {
                 debug.showAllocateOneStructured(
                     child,
-                    @ptrToInt(ptr),
+                    @intFromPtr(ptr),
                     @src(),
                     @returnAddress(),
                 );
@@ -1757,8 +1757,8 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
             if (Allocator.allocator_spec.logging.allocate) {
                 debug.showAllocateManyStructured(
                     child,
-                    @ptrToInt(buf.ptr),
-                    @ptrToInt(buf.ptr) +% @sizeOf(child) *% (buf.len +% @boolToInt(sentinel != null)),
+                    @intFromPtr(buf.ptr),
+                    @intFromPtr(buf.ptr) +% @sizeOf(child) *% (buf.len +% @intFromBool(sentinel != null)),
                     sentinel,
                     @src(),
                     @returnAddress(),
@@ -1770,10 +1770,10 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
                 debug.showReallocateManyStructured(
                     child,
                     child,
-                    @ptrToInt(s_buf.ptr),
-                    @ptrToInt(s_buf.ptr) +% @sizeOf(child) *% (s_buf.len +% @boolToInt(sentinel != null)),
-                    @ptrToInt(t_buf.ptr),
-                    @ptrToInt(t_buf.ptr) +% @sizeOf(child) *% (t_buf.len +% @boolToInt(sentinel != null)),
+                    @intFromPtr(s_buf.ptr),
+                    @intFromPtr(s_buf.ptr) +% @sizeOf(child) *% (s_buf.len +% @intFromBool(sentinel != null)),
+                    @intFromPtr(t_buf.ptr),
+                    @intFromPtr(t_buf.ptr) +% @sizeOf(child) *% (t_buf.len +% @intFromBool(sentinel != null)),
                     sentinel,
                     sentinel,
                     @src(),
