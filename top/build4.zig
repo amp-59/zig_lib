@@ -296,7 +296,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             pub var egid: u16 = undefined;
             pub var trace: ?*Node = null;
             pub var build_root_fd: u64 = undefined;
-            pub var context_dir_fd: u64 = undefined;
+            pub var config_root_fd: u64 = undefined;
         };
         const Task = extern struct {
             tag: types.Task,
@@ -318,6 +318,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             builder_spec.options.commands.build,
             types.tasks.BuildCommand,
         );
+        pub const Config = builder_spec.options.special.Config;
         const FormatCommand = meta.maybe(
             builder_spec.options.commands.build,
             types.tasks.FormatCommand,
@@ -406,13 +407,13 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             node.args_len +%= 1;
             return ret;
         }
-        fn addFd(node: *Node, allocator: *mem.SimpleAllocator, fd: u64) void {
+        pub fn addConfig(node: *Node, allocator: *mem.SimpleAllocator, config: Config) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
-            const size_of: comptime_int = @sizeOf(u32);
-            const addr_buf: *u64 = @ptrCast(*u64, &node.fds);
-            const ret: *u32 = @ptrFromInt(*u32, allocator.addGeneric(size_of, init_len.fds, addr_buf, &node.fds_max_len, node.fds_len));
-            node.fds_len +%= 1;
-            ret.* = @intCast(u32, fd);
+            const size_of: comptime_int = @sizeOf(Config);
+            const addr_buf: *u64 = @ptrCast(*u64, &node.cfgs);
+            const ret: *Config = @ptrFromInt(*Config, allocator.addGeneric(size_of, init_len.cfgs, addr_buf, &node.cfgs_max_len, node.cfgs_len));
+            node.cfgs_len +%= 1;
+            ret.* = config;
         }
         pub fn addRunArg(node: *Node, allocator: *mem.SimpleAllocator, arg: []const u8) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
