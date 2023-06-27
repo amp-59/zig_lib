@@ -93,6 +93,8 @@ pub const BuilderSpec = struct {
         main_pkg_path_to_build_root: bool = true,
         /// Record build command data in a condensed format.
         write_build_task_record: bool = false,
+        /// Include build task record serialised in build configuration.
+        write_hist_serial: bool = false,
         names: struct {
             /// Name of the toplevel 'builder' node.
             toplevel_node: [:0]const u8 = "toplevel",
@@ -1517,6 +1519,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             }
         }
         fn writeContextLists(allocator: *mem.SimpleAllocator, node: *Node) void {
+            var hist: types.hist_tasks.BuildCommand = types.hist_tasks.BuildCommand.convert(node.task.info.build);
+
             @setRuntimeSafety(false);
             const build_cmd: *BuildCommand = node.task.info.build;
             var buf: [32768]u8 = undefined;
@@ -1599,6 +1603,21 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             len +%= 3;
             for (node.impl.cfgs[0..node.impl.cfgs_len]) |cfg| {
                 len +%= cfg.formatWriteBuf(buf[len..].ptr);
+            }
+            if (builder_spec.options.write_hist_serial) {
+                const bytes = @ptrCast(*[@sizeOf(types.hist_tasks.BuildCommand)]u8, &hist);
+                @ptrCast(*[31]u8, buf[len..].ptr).* = "pub const serial:[]const u8=&.{".*;
+                len +%= 31;
+                for (bytes) |byte| {
+                    const byte_s: []const u8 = builtin.fmt.ud64(byte).readAll();
+                    @memcpy(buf[len..].ptr, byte_s);
+                    len +%= byte_s.len;
+                    buf[len] = ',';
+                    len +%= 1;
+                }
+                len -%= 1;
+                @ptrCast(*[3]u8, buf[len..].ptr).* = "};\n".*;
+                len +%= 3;
             }
             const name: [:0]const u8 = concatenate(
                 allocator,
@@ -2376,5 +2395,3 @@ fn libraryRoot() [:0]const u8 {
         return build4[0..idx] ++ [0:0]u8{};
     }
 }
-// TODO:
-// * Every (primary) task with pre and post functions.
