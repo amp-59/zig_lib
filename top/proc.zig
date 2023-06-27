@@ -713,10 +713,10 @@ const SignalActionSpec = struct {
 };
 pub const SignalStack = extern struct {
     addr: u64,
-    flags: Options,
+    flags: Options = .{},
     len: u64,
     const Options = packed struct(u32) {
-        on_stack: bool = false,
+        on_stack: bool = true,
         disable: bool = false,
         zb2: u29 = 0,
         auto_disarm: bool = false,
@@ -1364,7 +1364,7 @@ pub const debug = opaque {
                 stack.addr, stack.len, 0x1 | 0x2, 0x20 | 0x02 | 0x100000, ~@as(u64, 0), 0,
             });
             sys.call_noexcept(.sigaltstack, void, .{
-                @intFromPtr(&.{ .addr = stack.addr, .len = stack.len }), 0, 0,
+                @intFromPtr(&SignalStack{ .addr = stack.addr, .len = stack.len }), 0, 0,
             });
         }
         updateExceptionHandlers(&.{
