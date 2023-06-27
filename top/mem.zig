@@ -1776,13 +1776,21 @@ pub const SimpleAllocator = struct {
     pub inline fn utility(allocator: *Allocator) u64 {
         return allocator.next -% allocator.start;
     }
+    const map_spec = .{
+        .errors = .{},
+        .logging = .{ .Acquire = false },
+    };
+    const unmap_spec = .{
+        .errors = .{},
+        .logging = .{ .Release = false },
+    };
     pub fn unmap(allocator: *Allocator) void {
-        mem.unmap(.{ .errors = .{} }, allocator.start, allocator.finish - allocator.start);
+        mem.unmap(unmap_spec, allocator.start, allocator.finish - allocator.start);
         allocator.next = allocator.start;
         allocator.finish = allocator.start;
     }
     pub fn init_arena(arena: mem.Arena) Allocator {
-        mem.map(.{ .errors = .{} }, arena.lb_addr, 4096);
+        mem.map(map_spec, arena.lb_addr, 4096);
         return .{
             .start = arena.lb_addr,
             .next = arena.lb_addr,
@@ -1824,7 +1832,7 @@ pub const SimpleAllocator = struct {
         if (next > allocator.finish) {
             const len: u64 = allocator.finish -% allocator.start;
             const finish: u64 = mach.alignA64(next, @max(4096, len));
-            map(.{ .errors = .{} }, allocator.finish, finish -% allocator.finish);
+            map(map_spec, allocator.finish, finish -% allocator.finish);
             allocator.finish = finish;
         }
         allocator.next = next;
@@ -1843,7 +1851,7 @@ pub const SimpleAllocator = struct {
             if (new_next > allocator.finish) {
                 const len: u64 = allocator.finish -% allocator.start;
                 const finish: u64 = mach.alignA64(new_next, @max(4096, len));
-                map(.{ .errors = .{} }, allocator.finish, finish -% allocator.finish);
+                map(map_spec, allocator.finish, finish -% allocator.finish);
                 allocator.finish = finish;
             }
             allocator.next = new_next;
