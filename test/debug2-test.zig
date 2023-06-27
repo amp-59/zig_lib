@@ -6,10 +6,12 @@ const spec = top.spec;
 const build = top.build;
 const builtin = top.builtin;
 pub usingnamespace proc.start;
-comptime {
-    _ = top.mach;
-}
-pub const logging_override: builtin.Logging.Override = spec.logging.override.verbose;
+
+const root = @import("./debug-test.zig");
+
+pub const trace: builtin.Trace = root.trace;
+pub const have_stack_traces: bool = true;
+
 fn nested0(z: u64) !void {
     var x: u64 = 0;
     const y: u64 = z + @intFromPtr(&x);
