@@ -100,6 +100,8 @@ pub const BuilderSpec = struct {
             toplevel_node: [:0]const u8 = "toplevel",
             /// Name of the special command used to list available commands.
             toplevel_list_command: [:0]const u8 = "list",
+            /// Name of the special command used to disable multi-threading.
+            single_threaded_command: [:0]const u8 = "--single-threaded",
             /// Module containing full paths of zig_exe, build_root,
             /// cache_root, and global_cache_root. May be useful for
             /// metaprogramming.
@@ -291,6 +293,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             is_special: bool = false,
             have_init: bool = false,
             have_update: bool = false,
+            have_threads: bool = false,
         },
         const Node = @This();
         const GlobalState = struct {
@@ -510,6 +513,9 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 builder_spec.options.names.zig_stat_dir,
             }) |name| {
                 makeRootDirectory(GlobalState.build_root_fd, name);
+            }
+            if (max_thread_count != 0) {
+                ret.options.have_threads = true;
             }
             ret.task.tag = .any;
             ret.task.lock = omni_lock;
@@ -963,9 +969,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 .abort = builder_spec.errors.clock.abort ++
                     builder_spec.errors.fork.abort ++ builder_spec.errors.execve.abort ++ builder_spec.errors.waitpid.abort,
             }, void) {
-                if (max_thread_count == 0) {
-                    try meta.wrap(impl.executeCommandSynchronised(address_space, thread_space, allocator, toplevel, node, task));
-                } else {
+                if (max_thread_count != 0 and toplevel.options.have_threads) {
                     var arena_index: AddressSpace.Index = 0;
                     while (arena_index != max_thread_count) : (arena_index +%= 1) {
                         if (mem.testAcquire(ThreadSpace, thread_space, arena_index)) {
@@ -973,8 +977,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                             return forwardToExecuteCloneThreaded(address_space, thread_space, toplevel, node, task, arena_index, stack_addr, stack_aligned_bytes);
                         }
                     }
-                    try meta.wrap(impl.executeCommandSynchronised(address_space, thread_space, allocator, toplevel, node, task));
                 }
+                try meta.wrap(impl.executeCommandSynchronised(address_space, thread_space, allocator, toplevel, node, task));
             }
         };
         pub fn executeToplevel(
@@ -1218,6 +1222,10 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                         task = types.Task.list[task_idx];
                         continue :lo;
                     }
+                }
+                if (mach.testEqualMany8(builder_spec.options.names.single_threaded_command, name)) {
+                    node.options.have_threads = false;
+                    continue :lo;
                 }
                 if (mach.testEqualMany8(builder_spec.options.names.toplevel_list_command, name)) {
                     return debug.toplevelCommandNotice(allocator, node);
