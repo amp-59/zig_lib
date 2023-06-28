@@ -743,3 +743,115 @@ pub const Md5 = struct {
         md5.s +%= @as(u32x4, v);
     }
 };
+pub const Sha2Params64 = struct {
+    init_vec: [8]u64,
+    digest_bits: usize,
+};
+pub const Sha2Params32 = struct {
+    init_vec: [8]u32,
+    digest_bits: usize,
+};
+pub const Sha512 = GenericSha2x64(.{ .init_vec = tab.init_vec.sha512, .digest_bits = 512 });
+fn GenericSha2x64(comptime params: Sha2Params64) type {
+    return struct {
+        s: [8]u64,
+        buf: [128]u8 = undefined,
+        buf_len: u8 = 0,
+        total_len: u128 = 0,
+        const Sha2x64 = @This();
+        pub const len: comptime_int = params.digest_bits / 8;
+        pub const blk_len: comptime_int = 128;
+        pub fn init() Sha2x64 {
+            return Sha2x64{ .s = params.init_vec };
+        }
+        pub fn hash(bytes: []const u8, dest: []u8) void {
+            var sha: Sha2x64 = Sha2x64.init();
+            sha.update(bytes);
+            sha.final(dest);
+        }
+        pub fn update(sha: *Sha2x64, bytes: []const u8) void {
+            var off: usize = 0;
+            if (sha.buf_len != 0 and sha.buf_len +% bytes.len >= 128) {
+                off +%= 128 -% sha.buf_len;
+                mach.memcpy(sha.buf[sha.buf_len..].ptr, bytes.ptr, off);
+                sha.round(&sha.buf);
+                sha.buf_len = 0;
+            }
+            while (off +% 128 <= bytes.len) : (off +%= 128) {
+                sha.round(bytes[off..][0..128]);
+            }
+            const rem: []const u8 = bytes[off..];
+            mach.memcpy(sha.buf[sha.buf_len..].ptr, rem.ptr, rem.len);
+            sha.buf_len +%= @intCast(u8, bytes[off..].len);
+            sha.total_len +%= bytes.len;
+        }
+        pub fn peek(sha: Sha2x64) [len]u8 {
+            var copy: Sha2x64 = sha;
+            return copy.finalResult();
+        }
+        pub fn final(sha: *Sha2x64, dest: []u8) void {
+            @memset(sha.buf[sha.buf_len..], 0);
+            sha.buf[sha.buf_len] = 0x80;
+            sha.buf_len +%= 1;
+            if (128 -% sha.buf_len < 16) {
+                sha.round(sha.buf[0..]);
+                @memset(sha.buf[0..], 0);
+            }
+            var i: u64 = 1;
+            var off: u128 = sha.total_len >> 5;
+            sha.buf[127] = @intCast(u8, sha.total_len & 0x1f) << 3;
+            while (i < 16) : (i +%= 1) {
+                sha.buf[127 -% i] = @intCast(u8, off & 0xff);
+                off >>= 8;
+            }
+            sha.round(sha.buf[0..]);
+            const rr = sha.s[0 .. params.digest_bits / 64];
+            for (rr, 0..) |s, j| {
+                mem.writeIntBig(u64, dest[8 *% j ..][0..8], s);
+            }
+        }
+        pub fn finalResult(sha: *Sha2x64) [len]u8 {
+            var result: [len]u8 = undefined;
+            sha.final(&result);
+            return result;
+        }
+        fn round(sha: *Sha2x64, b: *const [128]u8) void {
+            var s: [80]u64 = undefined;
+            var idx: usize = 0;
+            while (idx < 16) : (idx +%= 1) {
+                s[idx] = 0;
+                s[idx] |= @as(u64, b[idx *% 8 +% 0]) << 56;
+                s[idx] |= @as(u64, b[idx *% 8 +% 1]) << 48;
+                s[idx] |= @as(u64, b[idx *% 8 +% 2]) << 40;
+                s[idx] |= @as(u64, b[idx *% 8 +% 3]) << 32;
+                s[idx] |= @as(u64, b[idx *% 8 +% 4]) << 24;
+                s[idx] |= @as(u64, b[idx *% 8 +% 5]) << 16;
+                s[idx] |= @as(u64, b[idx *% 8 +% 6]) << 8;
+                s[idx] |= @as(u64, b[idx *% 8 +% 7]) << 0;
+            }
+            while (idx < 80) : (idx +%= 1) {
+                s[idx] = s[idx -% 16] +% s[idx -% 7] +%
+                    (math.rotr(u64, s[idx -% 15], @as(u64, 1)) ^
+                    math.rotr(u64, s[idx -% 15], @as(u64, 8)) ^ (s[idx -% 15] >> 7)) +%
+                    (math.rotr(u64, s[idx -% 2], @as(u64, 19)) ^
+                    math.rotr(u64, s[idx -% 2], @as(u64, 61)) ^ (s[idx -% 2] >> 6));
+            }
+            var v: [8]u64 = .{
+                sha.s[0], sha.s[1], sha.s[2], sha.s[3],
+                sha.s[4], sha.s[5], sha.s[6], sha.s[7],
+            };
+            for (tab.rounds.sha2x64_0) |r| {
+                v[r.h] = v[r.h] +% (math.rotr(u64, v[r.e], @as(u64, 14)) ^
+                    math.rotr(u64, v[r.e], @as(u64, 18)) ^
+                    math.rotr(u64, v[r.e], @as(u64, 41))) +%
+                    (v[r.g] ^ (v[r.e] & (v[r.f] ^ v[r.g]))) +% r.k +% s[r.i];
+                v[r.d] = v[r.d] +% v[r.h];
+                v[r.h] = v[r.h] +% (math.rotr(u64, v[r.a], @as(u64, 28)) ^
+                    math.rotr(u64, v[r.a], @as(u64, 34)) ^
+                    math.rotr(u64, v[r.a], @as(u64, 39))) +%
+                    ((v[r.a] & (v[r.b] | v[r.c])) | (v[r.b] & v[r.c]));
+            }
+            sha.s +%= @as(u64x8, v);
+        }
+    };
+}
