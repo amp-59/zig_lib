@@ -9,7 +9,6 @@ const testing = zig_lib.testing;
 pub usingnamespace proc.start;
 pub const runtime_assertions: bool = true;
 const htest = @import("./hash-test.zig").htest;
-
 fn testEd25519KeyPairCreation() !void {
     var seed: [32]u8 = undefined;
     _ = try fmt.hexToBytes(seed[0..], "8052030376d47112be7f73ed7a019293dd12ad910b654455798b4667d73de166");
@@ -67,6 +66,24 @@ fn testEd25519BatchVerification() !void {
         try builtin.expect(error.SignatureVerificationFailed == crypto.dh.Ed25519.verifyBatch(signature_batch.len, signature_batch));
     }
 }
+fn testEd25519SignaturesWithStreaming() !void {
+    const key_pair: crypto.dh.Ed25519.KeyPair = try crypto.dh.Ed25519.KeyPair.create(null);
+    var signer: crypto.dh.Ed25519.Signer = try key_pair.signer(null);
+    signer.update("mes");
+    signer.update("sage");
+    const sig: crypto.dh.Ed25519.Signature = signer.finalize();
+    try sig.verify("message", key_pair.public_key);
+    var verifier: crypto.dh.Ed25519.Verifier = try sig.verifier(key_pair.public_key);
+    verifier.update("mess");
+    verifier.update("age");
+    try verifier.verify();
+}
+fn testEd25519KeyPairFromSecretKey() !void {
+    const key_pair1: crypto.dh.Ed25519.KeyPair = try crypto.dh.Ed25519.KeyPair.create(null);
+    const key_pair2: crypto.dh.Ed25519.KeyPair = try crypto.dh.Ed25519.KeyPair.fromSecretKey(key_pair1.secret_key);
+    try testing.expectEqualMany(u8, &key_pair1.secret_key.toBytes(), &key_pair2.secret_key.toBytes());
+    try testing.expectEqualMany(u8, &key_pair1.public_key.toBytes(), &key_pair2.public_key.toBytes());
+}
 pub fn dhTestMain() !void {
     var allocator: mem.SimpleAllocator = .{};
     defer allocator.unmap();
@@ -74,5 +91,7 @@ pub fn dhTestMain() !void {
     try testEd25519KeyPairCreation();
     try testEd25519Signature();
     try testEd25519BatchVerification();
+    try testEd25519SignaturesWithStreaming();
+    try testEd25519KeyPairFromSecretKey();
 }
 pub const main = dhTestMain;
