@@ -510,6 +510,39 @@ fn testX25519Rfc77481000000Iterations() !void {
     }
     try builtin.expectEqual([32]u8, k, expected_output);
 }
+fn testRistretto255() !void {
+    var buf: [256]u8 = undefined;
+    try testing.expectEqualMany(
+        u8,
+        fmt.bytesToHex(&buf, &crypto.dh.Ristretto255.base_point.toBytes()),
+        "e2f2ae0a6abc4e71a884a961c500515f58e30b6aa582dd8db6a65945e08d2d76",
+    );
+    var r: [crypto.dh.Ristretto255.encoded_len]u8 = undefined;
+    _ = try fmt.hexToBytes(r[0..], "6a493210f7499cd17fecb510ae0cea23a110e8d5b901f8acadd3095c73a3b919");
+    var q: crypto.dh.Ristretto255 = try crypto.dh.Ristretto255.fromBytes(r);
+    q = q.dbl().add(crypto.dh.Ristretto255.base_point);
+    try testing.expectEqualMany(
+        u8,
+        fmt.bytesToHex(&buf, &q.toBytes()),
+        "e882b131016b52c1d3337080187cf768423efccbb517bb495ab812c4160ff44e",
+    );
+    const s: [32]u8 = [_]u8{15} ++ [_]u8{0} ** 31;
+    const w: crypto.dh.Ristretto255 = try crypto.dh.Ristretto255.base_point.mul(s);
+    try testing.expectEqualMany(
+        u8,
+        fmt.bytesToHex(&buf, &w.toBytes()),
+        "e0c418f7c8d9c4cdd7395b93ea124f3ad99021bb681dfc3302a9d99a2e53e64e",
+    );
+    try builtin.expect(crypto.dh.Ristretto255.base_point.dbl().dbl().dbl().dbl()
+        .equivalent(w.add(crypto.dh.Ristretto255.base_point)));
+    const h: [64]u8 = [_]u8{69} ** 32 ++ [_]u8{42} ** 32;
+    const ph: crypto.dh.Ristretto255 = crypto.dh.Ristretto255.fromUniform(h);
+    try testing.expectEqualMany(
+        u8,
+        fmt.bytesToHex(&buf, &ph.toBytes()),
+        "dcca54e037a4311efbeef413acd21d35276518970b7a61dc88f8587b493d5e19",
+    );
+}
 pub fn dhTestMain() !void {
     var allocator: mem.SimpleAllocator = .{};
     defer allocator.unmap();
@@ -545,5 +578,7 @@ pub fn dhTestMain() !void {
     try testX25519Rfc7748OneIteration();
     try testX5519Rfc77481000Iterations();
     try testX25519Rfc77481000000Iterations();
+    // Ristretto255
+    try testRistretto255();
 }
 pub const main = dhTestMain;
