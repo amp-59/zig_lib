@@ -133,7 +133,6 @@ fn tests(allocator: *build.Allocator, node: *Node) void {
     const virtual_test: *Node = try node.addBuild(allocator, build_cmd, "virtual_test", "test/virtual-test.zig");
     const time_test: *Node = try node.addBuild(allocator, build_cmd, "time_test", "test/time-test.zig");
     const size_test: *Node = try node.addBuild(allocator, build_cmd, "size_test", "test/size_per_config.zig");
-    const rng_test: *Node = try node.addBuild(allocator, build_cmd, "rng_test", "test/rng-test.zig");
     const parse_test: *Node = try node.addBuild(allocator, build_cmd, "parse_test", "test/parse-test.zig");
     const crypto_test: *Node = try node.addBuild(allocator, build_cmd, "crypto_test", "test/crypto-test.zig");
     const zig_test: *Node = try node.addBuild(allocator, build_cmd, "zig_test", "test/zig-test.zig");
@@ -157,7 +156,6 @@ fn tests(allocator: *build.Allocator, node: *Node) void {
     math_test.descr = "Test math functions";
     file_test.descr = "Test low level file system operation functions";
     list_test.descr = "Test library generic linked list";
-    rng_test.descr = "Test random number generation functions";
     crypto_test.descr = "Test crypto related functions";
     fmt_test.descr = "Test user formatting functions";
     parse_test.descr = "Test generic parsing function";
@@ -205,12 +203,14 @@ fn cryptoTests(allocator: *build.Allocator, node: *Node) void {
         const tls_test: *Node = try node.addBuild(allocator, build_cmd, "tls_test", "test/crypto/tls-test.zig");
         const dh_test: *Node = try node.addBuild(allocator, build_cmd, "dh_test", "test/crypto/dh-test.zig");
         const aead_test: *Node = try node.addBuild(allocator, build_cmd, "aead_test", "test/crypto/aead-test.zig");
+        const rng_test: *Node = try node.addBuild(allocator, build_cmd, "rng_test", "test/rng-test.zig");
         auth_test.descr = "Test authentication";
         kyber_test.descr = "Test post-quantum 'Kyber' key exchange functions and types";
-        tls_test.descr = "Test TLS";
-        aead_test.descr = "Test authenticated encryption functions and types";
         ecdsa_test.descr = "Test ECDSA";
+        tls_test.descr = "Test TLS";
         dh_test.descr = "Test many 25519-related functions";
+        aead_test.descr = "Test authenticated encryption functions and types";
+        rng_test.descr = "Test random number generation functions";
     } else {
         const core_test: *Node = try node.addBuild(allocator, build_cmd, "core_test", "test/crypto/core-test.zig");
         const utils_test: *Node = try node.addBuild(allocator, build_cmd, "utils_test", "test/crypto/utils-test.zig");
@@ -222,7 +222,7 @@ fn cryptoTests(allocator: *build.Allocator, node: *Node) void {
         pcurves_test.descr = "Test point curve operations";
     }
 }
-pub fn addTracer(node: *Node) void {
+fn addTracer(node: *Node) void {
     node.task.info.build.mode = .Debug;
     node.task.info.build.strip = false;
 }
