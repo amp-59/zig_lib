@@ -1,8 +1,9 @@
 const builtin = @import("../../builtin.zig");
 const errors = @import("../errors.zig");
+const tab = @import("./tab.zig");
 const common = @import("./common.zig");
 /// Group operations over P384.
-pub const P384 = struct {
+pub const P384 = extern struct {
     x: Fe,
     y: Fe,
     z: Fe = Fe.one,
@@ -58,8 +59,8 @@ pub const P384 = struct {
         const y = p.y;
         const x3AxB = x.sq().mul(x).sub(x).sub(x).sub(x).add(B);
         const yy = y.sq();
-        const on_curve = @boolToInt(x3AxB.equivalent(yy));
-        const is_identity = @boolToInt(x.equivalent(AffineCoordinates.identity_element.x)) & @boolToInt(y.equivalent(AffineCoordinates.identity_element.y));
+        const on_curve = @intFromBool(x3AxB.equivalent(yy));
+        const is_identity = @intFromBool(x.equivalent(AffineCoordinates.identity_element.x)) & @intFromBool(y.equivalent(AffineCoordinates.identity_element.y));
         if ((on_curve | is_identity) == 0) {
             return error.InvalidEncoding;
         }
@@ -78,7 +79,7 @@ pub const P384 = struct {
         const x3AxB = x.sq().mul(x).sub(x).sub(x).sub(x).add(B);
         var y = try x3AxB.sqrt();
         const yn = y.neg();
-        y.cMov(yn, @boolToInt(is_odd) ^ @boolToInt(y.isOdd()));
+        y.cMov(yn, @intFromBool(is_odd) ^ @intFromBool(y.isOdd()));
         return y;
     }
     /// Deserialize a SEC1-encoded point.
@@ -135,7 +136,7 @@ pub const P384 = struct {
     }
     /// Double a P384 point.
     // Algorithm 6 from https://eprint.iacr.org/2015/1060.pdf
-    pub fn dbl(p: P384) P384 {
+    pub export fn dbl(p: P384) P384 {
         var t0 = p.x.sq();
         var t1 = p.y.sq();
         var t2 = p.z.sq();
@@ -219,7 +220,7 @@ pub const P384 = struct {
             .y = Y3,
             .z = Z3,
         };
-        ret.cMov(p, @boolToInt(q.x.isZero()));
+        ret.cMov(p, @intFromBool(q.x.isZero()));
         return ret;
     }
     /// Add P384 points.
@@ -289,7 +290,7 @@ pub const P384 = struct {
             .x = p.x.mul(zinv),
             .y = p.y.mul(zinv),
         };
-        ret.cMov(AffineCoordinates.identity_element, @boolToInt(p.x.isZero()));
+        ret.cMov(AffineCoordinates.identity_element, @intFromBool(p.x.isZero()));
         return ret;
     }
     /// Return true if both coordinate sets represent the same point.
@@ -307,8 +308,7 @@ pub const P384 = struct {
     }
     fn pcSelect(comptime n: usize, pc: *const [n]P384, b: u8) P384 {
         var t = P384.identity_element;
-        comptime var i: u8 = 1;
-        inline while (i < pc.len) : (i += 1) {
+        for (1..n) |i| {
             t.cMov(pc[i], @truncate(u1, (@as(usize, b ^ i) -% 1) >> 8));
         }
         return t;
@@ -378,16 +378,12 @@ pub const P384 = struct {
         }
         return pc;
     }
-    const base_pointPc = pc: {
-        @setEvalBranchQuota(50000);
-        break :pc precompute(P384.base_point, 15);
-    };
     /// Multiply an elliptic curve point by a scalar.
     /// Return error.IdentityElement if the result is the identity element.
     pub fn mul(p: P384, s_: [48]u8, endian: builtin.Endian) errors.IdentityElementError!P384 {
         const s = if (endian == .Little) s_ else Fe.orderSwap(s_);
         if (p.is_base) {
-            return pcMul16(&base_pointPc, s, false);
+            return pcMul16(&tab.base_point_pc_p384, s, false);
         }
         try p.rejectIdentity();
         const pc = precompute(p, 15);
@@ -398,7 +394,7 @@ pub const P384 = struct {
     pub fn mulPublic(p: P384, s_: [48]u8, endian: builtin.Endian) errors.IdentityElementError!P384 {
         const s = if (endian == .Little) s_ else Fe.orderSwap(s_);
         if (p.is_base) {
-            return pcMul16(&base_pointPc, s, true);
+            return pcMul16(&tab.base_point_pc_p384, s, true);
         }
         try p.rejectIdentity();
         const pc = precompute(p, 8);
@@ -411,13 +407,13 @@ pub const P384 = struct {
         const s2 = if (endian == .Little) s2_ else Fe.orderSwap(s2_);
         try p1.rejectIdentity();
         var pc1_array: [9]P384 = undefined;
-        const pc1 = if (p1.is_base) base_pointPc[0..9] else pc: {
+        const pc1 = if (p1.is_base) tab.base_point_pc_p384[0..9] else pc: {
             pc1_array = precompute(p1, 8);
             break :pc &pc1_array;
         };
         try p2.rejectIdentity();
         var pc2_array: [9]P384 = undefined;
-        const pc2 = if (p2.is_base) base_pointPc[0..9] else pc: {
+        const pc2 = if (p2.is_base) tab.base_point_pc_p384[0..9] else pc: {
             pc2_array = precompute(p2, 8);
             break :pc &pc2_array;
         };
