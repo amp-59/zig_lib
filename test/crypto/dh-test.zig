@@ -6,9 +6,10 @@ const proc = zig_lib.proc;
 const crypto = zig_lib.crypto;
 const builtin = zig_lib.builtin;
 const testing = zig_lib.testing;
+const tab = @import("./tab.zig");
+const htest = @import("./hash-test.zig").htest;
 pub usingnamespace proc.start;
 pub const runtime_assertions: bool = true;
-const htest = @import("./hash-test.zig").htest;
 fn testEd25519KeyPairCreation() !void {
     var seed: [32]u8 = undefined;
     _ = try fmt.hexToBytes(seed[0..], "8052030376d47112be7f73ed7a019293dd12ad910b654455798b4667d73de166");
@@ -84,6 +85,38 @@ fn testEd25519KeyPairFromSecretKey() !void {
     try testing.expectEqualMany(u8, &key_pair1.secret_key.toBytes(), &key_pair2.secret_key.toBytes());
     try testing.expectEqualMany(u8, &key_pair1.public_key.toBytes(), &key_pair2.public_key.toBytes());
 }
+fn testEd25519WithBlindKeys() !void {
+    const kp = try crypto.dh.Ed25519.KeyPair.create(null);
+    var blind: [32]u8 = undefined;
+    crypto.utils.bytes(&blind);
+    const blind_kp: crypto.dh.Ed25519.key_blinding.BlindKeyPair =
+        try crypto.dh.Ed25519.key_blinding.BlindKeyPair.init(kp, blind, "ctx");
+    const msg = "test";
+    const sig = try blind_kp.sign(msg, null);
+    try sig.verify(msg, blind_kp.blind_public_key.key);
+    const pk = try blind_kp.blind_public_key.unblind(blind, "ctx");
+    try testing.expectEqualMany(u8, &pk.toBytes(), &kp.public_key.toBytes());
+}
+fn testEd25519TestVectors() !void {
+    for (tab.entries) |entry| {
+        var msg: [32]u8 = undefined;
+        _ = try fmt.hexToBytes(&msg, entry.msg);
+        var public_key_bytes: [32]u8 = undefined;
+        _ = try fmt.hexToBytes(&public_key_bytes, entry.key);
+        const public_key = crypto.dh.Ed25519.PublicKey.fromBytes(public_key_bytes) catch |err| {
+            try builtin.expectEqual(anyerror, entry.expected.?, err);
+            continue;
+        };
+        var sig_bytes: [64]u8 = undefined;
+        _ = try fmt.hexToBytes(&sig_bytes, entry.sig);
+        const sig = crypto.dh.Ed25519.Signature.fromBytes(sig_bytes);
+        if (entry.expected) |error_type| {
+            try builtin.expect(error_type == sig.verify(&msg, public_key));
+        } else {
+            try sig.verify(&msg, public_key);
+        }
+    }
+}
 pub fn dhTestMain() !void {
     var allocator: mem.SimpleAllocator = .{};
     defer allocator.unmap();
@@ -93,5 +126,7 @@ pub fn dhTestMain() !void {
     try testEd25519BatchVerification();
     try testEd25519SignaturesWithStreaming();
     try testEd25519KeyPairFromSecretKey();
+    try testEd25519WithBlindKeys();
+    try testEd25519TestVectors();
 }
 pub const main = dhTestMain;
