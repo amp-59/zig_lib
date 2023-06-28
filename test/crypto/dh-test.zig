@@ -230,6 +230,29 @@ fn testEdwards25519PackingUnpacking() !void {
         try builtin.expect(error.WeakPublicKey == small_p.mul(s));
     }
 }
+const field_order_s = s: {
+    var s: [32]u8 = undefined;
+    mem.writeIntLittle(u256, &s, crypto.scalar.field_order);
+    break :s s;
+};
+fn testScalar25519() !void {
+    const bytes: [32]u8 = .{ 1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 255 };
+    var x: crypto.scalar.Scalar = crypto.scalar.Scalar.fromBytes(bytes);
+    var y: crypto.scalar.CompressedScalar = x.toBytes();
+    try crypto.scalar.rejectNonCanonical(y);
+    var buf: [128]u8 = undefined;
+    try testing.expectEqualMany(
+        u8,
+        fmt.bytesToHex(&buf, &y),
+        "1e979b917937f3de71d18077f961f6ceff01030405060708010203040506070f",
+    );
+    const reduced: crypto.scalar.CompressedScalar = crypto.scalar.reduce(field_order_s);
+    try testing.expectEqualMany(
+        u8,
+        fmt.bytesToHex(&buf, &reduced),
+        "0000000000000000000000000000000000000000000000000000000000000000",
+    );
+}
 pub fn dhTestMain() !void {
     var allocator: mem.SimpleAllocator = .{};
     defer allocator.unmap();
@@ -248,5 +271,7 @@ pub fn dhTestMain() !void {
     try testEdwards25519HashToCurveOperation(&allocator);
     try testEdwards25519ImplicitReductionOfInvalidScalars(&allocator);
     try testEdwards25519PackingUnpacking();
+    // Curve25519
+    try testScalar25519();
 }
 pub const main = dhTestMain;
