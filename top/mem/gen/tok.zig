@@ -496,7 +496,7 @@ fn callOffsetOf(comptime type_name: [:0]const u8, comptime field_name: [:0]const
     return "@offsetOf(" ++ type_name ++ ",\"" ++ field_name ++ "\")";
 }
 fn callPtrToInt(comptime symbol_ptr: [:0]const u8) [:0]const u8 {
-    return "@ptrToInt(" ++ symbol_ptr ++ ")";
+    return "@intFromPtr(" ++ symbol_ptr ++ ")";
 }
 fn callSizeOf(comptime type_name: [:0]const u8) [:0]const u8 {
     return "@sizeOf(" ++ type_name ++ ")";

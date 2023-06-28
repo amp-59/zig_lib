@@ -15,12 +15,12 @@ pub const abstract_cmdline_path: [:0]const u8 = primarySourceFile("abstract_cmdl
 pub const cmdline_template_path: [:0]const u8 = primarySourceFile("cmdline-template.zig");
 
 pub const tasks_path: [:0]const u8 = primarySourceFile("tasks.zig");
-pub const tasks_template_path: [:0]const u8 = builtin.buildRoot() ++ "/top/build/gen/tasks-template.zig";
+pub const tasks_template_path: [:0]const u8 = builtin.root.build_root ++ "/top/build/gen/tasks-template.zig";
 pub const hist_tasks_path: [:0]const u8 = primarySourceFile("hist_tasks.zig");
-pub const hist_tasks_template_path: [:0]const u8 = builtin.buildRoot() ++ "/top/build/gen/hist_tasks-template.zig";
+pub const hist_tasks_template_path: [:0]const u8 = builtin.root.build_root ++ "/top/build/gen/hist_tasks-template.zig";
 
 pub fn primarySourceFile(comptime name: [:0]const u8) [:0]const u8 {
-    return if (name[0] != '/') builtin.buildRoot() ++ "/top/build/" ++ name else name;
+    return if (name[0] != '/') builtin.root.build_root ++ "/top/build/" ++ name else name;
 }
 pub fn auxiliarySourceFile(comptime name: [:0]const u8) [:0]const u8 {
     return if (name[0] != '/') zig_out_src_dir ++ "/" ++ name else name;

@@ -50,7 +50,7 @@ pub const debug_argument_substitution_match_fail: bool = false;
 /// Auxiliary products of memory implementation generator go here. These are
 /// generated source files (src) or serialised data (bin). They exist to speed
 /// subsequent steps and will be replaced whenever missing.
-pub const zig_out_dir: [:0]const u8 = builtin.buildRoot() ++ "/top/mem/gen/zig-out";
+pub const zig_out_dir: [:0]const u8 = builtin.root.build_root ++ "/top/mem/gen/zig-out";
 pub const zig_out_src_dir: [:0]const u8 = zig_out_dir ++ "/src";
 pub const zig_out_bin_dir: [:0]const u8 = zig_out_dir ++ "/bin";
 
@@ -95,10 +95,10 @@ pub const impl_detail_path: [:0]const u8 = auxiliaryDataFile("impl_detail");
 pub const ctn_detail_path: [:0]const u8 = auxiliaryDataFile("ctn_detail");
 
 pub fn primarySourceFile(comptime name: [:0]const u8) [:0]const u8 {
-    return if (name[0] != '/') builtin.buildRoot() ++ "/top/mem/" ++ name else name;
+    return if (name[0] != '/') builtin.root.build_root ++ "/top/mem/" ++ name else name;
 }
 pub fn secondarySourceFile(comptime name: [:0]const u8) [:0]const u8 {
-    return if (name[0] != '/') builtin.buildRoot() ++ "/top/mem/gen/" ++ name else name;
+    return if (name[0] != '/') builtin.root.build_root ++ "/top/mem/gen/" ++ name else name;
 }
 pub fn auxiliarySourceFile(comptime name: [:0]const u8) [:0]const u8 {
     return if (name[0] != '/') zig_out_src_dir ++ "/" ++ name else name;
