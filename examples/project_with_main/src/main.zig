@@ -24,7 +24,6 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
         builtin.debug.write("\n");
     }
     idx = 0;
-
     array.writeMany("vars:\n");
     while (idx != vars.len) : (idx +%= 1) {
         // This specification configures `writeAny` to dereference pointers with
@@ -33,4 +32,5 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
         array.writeAny(srg.spec.reinterpret.ptr, .{ vars[idx], '\n' });
     }
     builtin.debug.write(array.readAll());
+    array.undefineAll();
 }

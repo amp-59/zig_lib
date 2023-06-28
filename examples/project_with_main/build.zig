@@ -25,7 +25,7 @@ var build_cmd: build.tasks.BuildCommand = .{
 // actually in build_runner.zig and might be useful for the name of one of the
 // target (as below), and `build` is the name of import containing build system
 // components.
-pub fn buildMain(allocator: *BuildNode.Allocator, toplevel: *BuildNode) !void {
+pub fn buildMain(allocator: *build.Allocator, toplevel: *BuildNode) !void {
     const main: *BuildNode = try toplevel.addBuild(allocator, build_cmd, "main", "./src/main.zig");
     main.descr = "Main project binary";
 }
