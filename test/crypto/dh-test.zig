@@ -236,7 +236,12 @@ const field_order_s = s: {
     break :s s;
 };
 fn testScalar25519() !void {
-    const bytes: [32]u8 = .{ 1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 255 };
+    const bytes: [32]u8 = .{
+        1, 2, 3, 4, 5, 6, 7, 8,
+        1, 2, 3, 4, 5, 6, 7, 8,
+        1, 2, 3, 4, 5, 6, 7, 8,
+        1, 2, 3, 4, 5, 6, 7, 255,
+    };
     var x: crypto.scalar.Scalar = crypto.scalar.Scalar.fromBytes(bytes);
     var y: crypto.scalar.CompressedScalar = x.toBytes();
     try crypto.scalar.rejectNonCanonical(y);
@@ -252,6 +257,128 @@ fn testScalar25519() !void {
         fmt.bytesToHex(&buf, &reduced),
         "0000000000000000000000000000000000000000000000000000000000000000",
     );
+}
+fn testMulAddOverflowCheck() !void {
+    const a: [32]u8 = [_]u8{0xff} ** 32;
+    const b: [32]u8 = [_]u8{0xff} ** 32;
+    const c: [32]u8 = [_]u8{0xff} ** 32;
+    const x: crypto.scalar.CompressedScalar = crypto.scalar.mulAdd(a, b, c);
+    var buf: [128]u8 = undefined;
+    try testing.expectEqualMany(
+        u8,
+        fmt.bytesToHex(&buf, &x),
+        "d14df91389432c25ad60ff9791b9fd1d67bef517d273ecce3d9a307c1b419903",
+    );
+}
+fn testScalarFieldInversion() !void {
+    const bytes: [32]u8 = .{
+        1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8,
+        1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8,
+    };
+    const x: crypto.scalar.Scalar = crypto.scalar.Scalar.fromBytes(bytes);
+    const inv: crypto.scalar.Scalar = x.invert();
+    const recovered_x: crypto.scalar.Scalar = inv.invert();
+    try testing.expectEqualMany(u8, &bytes, &recovered_x.toBytes());
+}
+fn testRandomScalar() !void {
+    const s1: crypto.scalar.CompressedScalar = crypto.scalar.randomX();
+    const s2: crypto.scalar.CompressedScalar = crypto.scalar.randomX();
+    try builtin.expect(!mem.testEqualMany(u8, &s1, &s2));
+}
+fn test64BitReduction() !void {
+    const bytes: [64]u8 = field_order_s ++ [1]u8{0} ** 32;
+    const x: crypto.scalar.Scalar = crypto.scalar.Scalar.fromBytes64(bytes);
+    try builtin.expect(x.isZero());
+}
+fn testNonCanonicalScalar25519() !void {
+    try builtin.expect(error.NonCanonical == crypto.scalar.rejectNonCanonical(.{
+        0xed, 0xd3, 0xf5, 0x5c, 0x1a, 0x63, 0x12, 0x58,
+        0xd6, 0x9c, 0xf7, 0xa2, 0xde, 0xf9, 0xde, 0x14,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10,
+    }));
+}
+
+fn testCurve25519() !void {
+    var s: [32]u8 = .{
+        1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8,
+        1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8,
+    };
+    const p: crypto.dh.Curve25519 = try crypto.dh.Curve25519.base_point.clampedMul(s);
+    try p.rejectIdentity();
+    var buf: [128]u8 = undefined;
+    try testing.expectEqualMany(
+        u8,
+        fmt.bytesToHex(&buf, &p.toBytes()),
+        "e6f2a4d1c28ee5c7ad0329268255a468ad407d2672824c0c0eb30ea6ef450145",
+    );
+    const q: crypto.dh.Curve25519 = try p.clampedMul(s);
+    try testing.expectEqualMany(
+        u8,
+        fmt.bytesToHex(&buf, &q.toBytes()),
+        "3614e119ffe55ec55b87d6b19971a9f4cbc78efe80bec55b96392babcc712537",
+    );
+    try crypto.dh.Curve25519.rejectNonCanonical(s);
+    s[31] |= 0x80;
+    try builtin.expect(error.NonCanonical == crypto.dh.Curve25519.rejectNonCanonical(s));
+}
+fn testCurve25519SmallOrderCheck() !void {
+    var s: [32]u8 = [_]u8{1} ++ [_]u8{0} ** 31;
+    const small_order_ss: [7][32]u8 = .{
+        .{
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        },
+        .{
+            0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        },
+        .{
+            0xe0, 0xeb, 0x7a, 0x7c, 0x3b, 0x41, 0xb8, 0xae,
+            0x16, 0x56, 0xe3, 0xfa, 0xf1, 0x9f, 0xc4, 0x6a,
+            0xda, 0x09, 0x8d, 0xeb, 0x9c, 0x32, 0xb1, 0xfd,
+            0x86, 0x62, 0x05, 0x16, 0x5f, 0x49, 0xb8, 0x00,
+        },
+        .{
+            0x5f, 0x9c, 0x95, 0xbc, 0xa3, 0x50, 0x8c, 0x24,
+            0xb1, 0xd0, 0xb1, 0x55, 0x9c, 0x83, 0xef, 0x5b,
+            0x04, 0x44, 0x5c, 0xc4, 0x58, 0x1c, 0x8e, 0x86,
+            0xd8, 0x22, 0x4e, 0xdd, 0xd0, 0x9f, 0x11, 0x57,
+        },
+        .{
+            0xec, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f,
+        },
+        .{
+            0xed, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f,
+        },
+        .{
+            0xee, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f,
+        },
+    };
+    for (small_order_ss) |small_order_s| {
+        try builtin.expect(error.WeakPublicKey == crypto.dh.Curve25519.fromBytes(small_order_s).clearCofactor());
+        try builtin.expect(error.WeakPublicKey == crypto.dh.Curve25519.fromBytes(small_order_s).mul(s));
+        var extra: [32]u8 = small_order_s;
+        extra[31] ^= 0x80;
+        try builtin.expect(error.WeakPublicKey == crypto.dh.Curve25519.fromBytes(extra).mul(s));
+        var valid: [32]u8 = small_order_s;
+        valid[31] = 0x40;
+        s[0] = 0;
+        try builtin.expect(error.IdentityElement == crypto.dh.Curve25519.fromBytes(valid).mul(s));
+    }
 }
 pub fn dhTestMain() !void {
     var allocator: mem.SimpleAllocator = .{};
@@ -271,7 +398,15 @@ pub fn dhTestMain() !void {
     try testEdwards25519HashToCurveOperation(&allocator);
     try testEdwards25519ImplicitReductionOfInvalidScalars(&allocator);
     try testEdwards25519PackingUnpacking();
-    // Curve25519
+    // Scalar
     try testScalar25519();
+    try testMulAddOverflowCheck();
+    try testScalarFieldInversion();
+    try testRandomScalar();
+    try test64BitReduction();
+    try testNonCanonicalScalar25519();
+    // Curve25519
+    try testCurve25519();
+    try testCurve25519SmallOrderCheck();
 }
 pub const main = dhTestMain;
