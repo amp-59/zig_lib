@@ -5,6 +5,8 @@ const mach = @import("./mach.zig");
 const meta = @import("./meta.zig");
 const spec = @import("./spec.zig");
 const builtin = @import("./builtin.zig");
+
+pub const TypeDescr = fmt.GenericTypeDescrFormat(.{});
 pub const ListKind = enum {
     Parameter,
     Argument,
@@ -151,5 +153,54 @@ pub fn containerDeclsToBitField(comptime Container: type, comptime backing_integ
     }
     array.writeMany("}\n");
     array.writeMany("};\n");
+    file.write(.{ .errors = .{} }, 1, array.readAll());
+}
+pub fn allLoggingTypes() !void {
+    @setEvalBranchQuota(~@as(u32, 0));
+    var array: mem.StaticString(1024 *% 1024) = undefined;
+    array.undefineAll();
+    inline for (builtin.loggingTypes()) |T| {
+        var type_name: []const u8 = &.{};
+        inline for (@typeInfo(T).Struct.fields) |field| {
+            type_name = type_name ++ field.name;
+        }
+        const type_descr: TypeDescr = comptime TypeDescr.init(T);
+        array.writeMany("pub const ");
+        array.writeMany(type_name);
+        array.writeMany(" = ");
+        array.writeMany(type_descr.type_decl.Composition.spec);
+        array.writeMany(" {\n");
+        for (type_descr.type_decl.Composition.fields) |f| {
+            array.writeMany("    ");
+            array.writeMany(f.name);
+            array.writeMany(": ");
+            if (f.type) |f_type_descr| {
+                array.writeMany(f_type_descr.type_name);
+            }
+            array.writeMany(" = ");
+            array.writeMany("logging_default.");
+            array.writeMany(f.name);
+            array.writeMany(",\n");
+        }
+        array.writeMany("    pub fn override(comptime logging: ");
+        array.writeMany(type_name);
+        array.writeMany(") ");
+        array.writeMany(type_name);
+        array.writeMany(" {\n");
+        array.writeMany("        return .{\n");
+        for (type_descr.type_decl.Composition.fields) |f| {
+            array.writeMany("            .");
+            array.writeMany(f.name);
+            array.writeMany(" = ");
+            array.writeMany("logging_override.");
+            array.writeMany(f.name);
+            array.writeMany(" orelse logging.");
+            array.writeMany(f.name);
+            array.writeMany(",\n");
+        }
+        array.writeMany("        };\n");
+        array.writeMany("    }\n");
+        array.writeMany("};\n");
+    }
     file.write(.{ .errors = .{} }, 1, array.readAll());
 }
