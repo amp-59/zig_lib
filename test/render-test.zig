@@ -33,7 +33,6 @@ const use_min: bool = false;
 const use_dyn: bool = false;
 const cmp_test: bool = false;
 const huge_test: bool = false;
-const render_logging_types: bool = false;
 const use_std: bool = !builtin.is_debug and false;
 const std = @import("std");
 const err: std.fs.File = std.io.getStdErr();
@@ -234,66 +233,7 @@ pub fn testHugeCase() !void {
     builtin.debug.write("\n");
     unlimited_array.undefineAll();
 }
-fn concatFieldNames(comptime T: type) []const u8 {
-    comptime var ret: []const u8 = &.{};
-    comptime {
-        inline for (@typeInfo(T).Struct.fields) |field| {
-            ret = ret ++ field.name;
-        }
-    }
-    return ret;
-}
-fn testRenderLoggingTypes() !void {
-    @setEvalBranchQuota(~@as(u32, 0));
-    var array: PrintArray = undefined;
-    array.undefineAll();
-    const Td = render.GenericTypeDescrFormat(.{});
-    inline for (builtin.loggingTypes()) |T| {
-        const type_name: []const u8 = concatFieldNames(T);
-        const td: Td = comptime Td.init(T);
-        array.writeMany("pub const ");
-        array.writeMany(type_name);
-        array.writeMany(" = ");
-        array.writeMany(td.type_decl.Composition.spec);
-        array.writeMany(" {\n");
-        for (td.type_decl.Composition.fields) |f| {
-            array.writeMany("    ");
-            array.writeMany(f.name);
-            array.writeMany(": ");
-            if (f.type) |type_descr| {
-                array.writeMany(type_descr.type_name);
-            }
-            array.writeMany(" = ");
-            array.writeMany("logging_default.");
-            array.writeMany(f.name);
-            array.writeMany(",\n");
-        }
-        array.writeMany("    pub fn override(comptime logging: ");
-        array.writeMany(type_name);
-        array.writeMany(") ");
-        array.writeMany(type_name);
-        array.writeMany(" {\n");
-        array.writeMany("        return .{\n");
-        for (td.type_decl.Composition.fields) |f| {
-            array.writeMany("            .");
-            array.writeMany(f.name);
-            array.writeMany(" = ");
-            array.writeMany("logging_override.");
-            array.writeMany(f.name);
-            array.writeMany(" orelse logging.");
-            array.writeMany(f.name);
-            array.writeMany(",\n");
-        }
-        array.writeMany("        };\n");
-        array.writeMany("    }\n");
-        array.writeMany("};\n");
-    }
-    builtin.debug.write(array.readAll());
-}
 pub fn main() !void {
-    if (render_logging_types) {
-        return testRenderLoggingTypes();
-    }
     if (huge_test) {
         return meta.wrap(testHugeCase());
     }
