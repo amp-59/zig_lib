@@ -166,7 +166,7 @@ pub fn uo(value: anytype) GenericPolynomialFormat(.{
     .bits = blk: {
         const T: type = @TypeOf(value);
         if (T == comptime_int) {
-            builtin.static.assert(value > 0);
+            builtin.assert(value > 0);
             break :blk meta.alignCX(value);
         } else {
             break :blk meta.alignSizeAW(T);
@@ -1049,8 +1049,6 @@ fn typeNameDemangle(comptime type_name: []const u8, comptime decl_name: []const 
     index -%= decl_name.len;
     return ret[0..index] ++ type_name[serial..];
 }
-/// This function attempts to shorten type names, to improve readability, and
-/// makes no attempt to accomodate for extreme names, such as enabled by @"".
 pub fn typeName(comptime T: type) []const u8 {
     const type_info: builtin.Type = @typeInfo(T);
     const type_name: [:0]const u8 = @typeName(T);
@@ -1519,7 +1517,7 @@ pub inline fn ud(value: anytype) GenericPolynomialFormat(.{
     .bits = blk: {
         const T: type = @TypeOf(value);
         if (T == comptime_int) {
-            builtin.static.assertAboveOrEqual(comptime_int, value, 0);
+            builtin.assertAboveOrEqual(comptime_int, value, 0);
             break :blk meta.alignCX(value);
         } else {
             break :blk meta.alignSizeAW(T);
@@ -1535,7 +1533,7 @@ pub inline fn udh(value: anytype) GenericPolynomialFormat(.{
     .bits = blk: {
         const T: type = @TypeOf(value);
         if (T == comptime_int) {
-            builtin.static.assertAboveOrEqual(comptime_int, value, 0);
+            builtin.assertAboveOrEqual(comptime_int, value, 0);
             break :blk meta.alignCX(value);
         } else {
             break :blk meta.alignSizeAW(T);
@@ -1552,7 +1550,7 @@ pub inline fn ub(value: anytype) GenericPolynomialFormat(.{
     .bits = blk: {
         const T: type = @TypeOf(value);
         if (T == comptime_int) {
-            builtin.static.assertAboveOrEqual(comptime_int, value, 0);
+            builtin.assertAboveOrEqual(comptime_int, value, 0);
             break :blk meta.alignCX(value);
         } else {
             break :blk meta.alignSizeAW(T);
@@ -1569,7 +1567,7 @@ pub inline fn ux(value: anytype) GenericPolynomialFormat(.{
     .bits = blk: {
         const T: type = @TypeOf(value);
         if (T == comptime_int) {
-            builtin.static.assertAboveOrEqual(comptime_int, value, 0);
+            builtin.assertAboveOrEqual(comptime_int, value, 0);
             break :blk meta.alignCX(value);
         } else {
             break :blk meta.alignSizeAW(T);
@@ -1586,7 +1584,7 @@ pub inline fn id(value: anytype) GenericPolynomialFormat(.{
     .bits = blk: {
         const T: type = @TypeOf(value);
         if (T == comptime_int) {
-            builtin.static.assertAboveOrEqual(comptime_int, value, 0);
+            builtin.assertAboveOrEqual(comptime_int, value, 0);
             break :blk meta.alignCX(value);
         } else {
             break :blk meta.alignSizeAW(T);
@@ -1602,7 +1600,7 @@ pub inline fn idh(value: anytype) GenericPolynomialFormat(.{
     .bits = blk: {
         const T: type = @TypeOf(value);
         if (T == comptime_int) {
-            builtin.static.assertAboveOrEqual(comptime_int, value, 0);
+            builtin.assertAboveOrEqual(comptime_int, value, 0);
             break :blk meta.alignCX(value);
         } else {
             break :blk meta.alignSizeAW(T);
@@ -1619,7 +1617,7 @@ pub inline fn ib(value: anytype) GenericPolynomialFormat(.{
     .bits = blk: {
         const T: type = @TypeOf(value);
         if (T == comptime_int) {
-            builtin.static.assertAboveOrEqual(comptime_int, value, 0);
+            builtin.assertAboveOrEqual(comptime_int, value, 0);
             break :blk meta.alignCX(value);
         } else {
             break :blk meta.alignSizeAW(T);
@@ -1636,7 +1634,7 @@ pub inline fn ix(value: anytype) GenericPolynomialFormat(.{
     .bits = blk: {
         const T: type = @TypeOf(value);
         if (T == comptime_int) {
-            builtin.static.assertAboveOrEqual(comptime_int, value, 0);
+            builtin.assertAboveOrEqual(comptime_int, value, 0);
             break :blk meta.alignCX(value);
         } else {
             break :blk meta.alignSizeAW(T);
