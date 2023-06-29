@@ -1858,7 +1858,7 @@ pub const SimpleAllocator = struct {
             return old_aligned;
         }
         const new_aligned: u64 = allocator.allocateInternal(new_size_of, align_of);
-        mach.rngcpy(new_aligned, old_aligned, old_size_of);
+        mach.addrcpy(new_aligned, old_aligned, old_size_of);
         return new_aligned;
     }
     fn deallocateInternal(
@@ -1877,14 +1877,16 @@ pub fn GenericSimpleArray(comptime T: type) type {
         values: []T,
         values_len: u64,
         const Array = @This();
-        pub fn appendOne(array: *Array, allocator: *SimpleAllocator, value: T) void {
+        const Allocator = builtin.define("Allocator", type, mem.SimpleAllocator);
+
+        pub fn appendOne(array: *Array, allocator: *Allocator, value: T) void {
             if (array.values_len == array.values.len) {
                 array.values = allocator.reallocate(T, array.values, array.values_len *% 2);
             }
             array.values[array.values_len] = value;
             array.values_len +%= 1;
         }
-        pub fn appendSlice(array: *Array, allocator: *SimpleAllocator, values: []const T) void {
+        pub fn appendSlice(array: *Array, allocator: *Allocator, values: []const T) void {
             if (array.values_len +% values.len > array.values.len) {
                 array.values = allocator.reallocate(T, array.values, (array.values_len +% values.len) *% 2);
             }
@@ -1903,13 +1905,13 @@ pub fn GenericSimpleArray(comptime T: type) type {
             array.values_len -%= 1;
             return array.values[array.values_len];
         }
-        pub fn init(allocator: *SimpleAllocator, count: u64) Array {
+        pub fn init(allocator: *Allocator, count: u64) Array {
             return .{
                 .values = allocator.allocate(T, count),
                 .values_len = 0,
             };
         }
-        pub fn deinit(array: *Array, allocator: *SimpleAllocator) void {
+        pub fn deinit(array: *Array, allocator: *Allocator) void {
             allocator.deallocate(T, array.values);
         }
     };
@@ -1919,11 +1921,12 @@ pub fn GenericSimpleMap(comptime Key: type, comptime Value: type) type {
         pairs: []*Pair,
         pairs_len: u64,
         const Array = @This();
+        const Allocator = builtin.define("Allocator", type, mem.SimpleAllocator);
         const Pair = struct {
             key: Key,
             val: Value,
         };
-        pub fn put(array: *Array, allocator: *SimpleAllocator, key: Key, val: Value) void {
+        pub fn put(array: *Array, allocator: *Allocator, key: Key, val: Value) void {
             array.appendOne(allocator, .{ .key = key, .val = val });
         }
         pub fn get(array: *const Array, key: Key) ?Value {
@@ -1951,7 +1954,7 @@ pub fn GenericSimpleMap(comptime Key: type, comptime Value: type) type {
                 }
             }
         }
-        pub fn appendOne(array: *Array, allocator: *SimpleAllocator, pair: Pair) void {
+        pub fn appendOne(array: *Array, allocator: *Allocator, pair: Pair) void {
             if (array.pairs_len == array.pairs.len) {
                 array.pairs = allocator.reallocate(*Pair, array.pairs, array.pairs_len *% 2);
             }
@@ -1962,7 +1965,7 @@ pub fn GenericSimpleMap(comptime Key: type, comptime Value: type) type {
         pub fn readAll(array: *const Array) []const *Pair {
             return array.pairs[0..array.pairs_len];
         }
-        pub fn init(allocator: *SimpleAllocator, count: u64) Array {
+        pub fn init(allocator: *Allocator, count: u64) Array {
             return .{
                 .pairs = allocator.allocate(*Pair, count),
                 .pairs_len = 0,
