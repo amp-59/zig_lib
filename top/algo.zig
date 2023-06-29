@@ -63,11 +63,27 @@ fn reverseApproximateAbove(n_bytes_clz: u8, l_bytes_cls: u8) u64 {
 fn reverseApproximateBelow(m_bytes_clz: u8, o_bytes_cls: u8) u64 {
     return mach.shrx64(~builtin.shr(u64, builtin.tab.max_bit_u64, o_bytes_cls -% 1), m_bytes_clz) +% 1;
 }
+// The compiler will optimise various success depending on the word size. Doing
+// manual shifts with u8 is much better, whereas bit-casting from a struct with
+// u16 is much better.
+pub fn pack16(h: u16, l: u8) u16 {
+    return h << 8 | l;
+}
+// Defined here to prevent stage2 segmentation fault
+const U32 = packed struct { h: u16, l: u16 };
+pub fn pack32(h: u16, l: u16) u32 {
+    return @bitCast(u32, U32{ .h = h, .l = l });
+}
+// Defined here to prevent stage2 segmentation fault
+const U64 = packed struct { h: u32, l: u32 };
+pub fn pack64(h: u32, l: u32) u64 {
+    return @bitCast(u64, U64{ .h = h, .l = l });
+}
 // The following functions require 32 bits total.
 fn packDouble(l_bytes_clz: u8, l_bytes_cls: u8, m_bytes_clz: u8, m_bytes_cls: u8) u32 {
-    const s_lb_counts: u16 = builtin.pack16(l_bytes_clz, l_bytes_cls);
-    const s_ub_counts: u16 = builtin.pack16(m_bytes_clz, m_bytes_cls -% 1);
-    return builtin.pack32(s_lb_counts, s_ub_counts);
+    const s_lb_counts: u16 = pack16(l_bytes_clz, l_bytes_cls);
+    const s_ub_counts: u16 = pack16(m_bytes_clz, m_bytes_cls -% 1);
+    return pack32(s_lb_counts, s_ub_counts);
 }
 fn unpackDouble(l_bytes_clz: u8, l_bytes_ctz: u64, m_bytes_clz: u8, o_bytes_ctz: u64) u64 {
     const o_bytes: u64 = mach.shrx64(l_bytes_ctz, l_bytes_clz);
@@ -77,7 +93,7 @@ fn unpackDouble(l_bytes_clz: u8, l_bytes_ctz: u64, m_bytes_clz: u8, o_bytes_ctz:
 pub fn partialPackSingleApprox(n_bytes: u64) u16 {
     const n_bytes_clz: u8 = builtin.lzcnt(u64, n_bytes);
     const l_bytes_cls: u8 = builtin.lzcnt(u64, ~mach.shlx64(n_bytes, n_bytes_clz));
-    const s_lb_counts: u16 = builtin.pack16(n_bytes_clz, l_bytes_cls);
+    const s_lb_counts: u16 = pack16(n_bytes_clz, l_bytes_cls);
     return s_lb_counts;
 }
 pub fn partialUnpackSingleApprox(s_lb_counts: u16) u64 {
@@ -90,7 +106,7 @@ pub fn partialPackDoubleApprox(n_bytes: u64, o_bytes: u64) u16 {
     const m_bytes: u64 = mach.sub64(o_bytes, n_bytes);
     const m_bytes_clz: u8 = builtin.lzcnt(u64, m_bytes);
     const m_bytes_cls: u8 = builtin.lzcnt(u64, ~mach.shlx64(m_bytes, m_bytes_clz));
-    const s_ub_counts: u16 = builtin.pack16(m_bytes_clz, m_bytes_cls -% 1);
+    const s_ub_counts: u16 = pack16(m_bytes_clz, m_bytes_cls -% 1);
     return s_ub_counts;
 }
 pub fn partialUnpackDoubleApprox(o_bytes: u64, s_ub_counts: u16) u64 {
