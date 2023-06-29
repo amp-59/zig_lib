@@ -242,22 +242,22 @@ pub fn testStaticAssertionsCompile() !void {
         var static_arg1: T = 0;
         var static_arg2: T = 2;
         var static_b: bool = true;
-        static_arg1 = builtin.static.add(T, static_arg1, static_arg2);
-        builtin.static.addEqu(T, &static_arg1, static_arg2);
-        static_arg1 = builtin.static.sub(T, static_arg1, static_arg2);
-        builtin.static.subEqu(T, &static_arg1, static_arg2);
-        static_arg1 = builtin.static.mul(T, static_arg1, static_arg2);
-        builtin.static.mulEqu(T, &static_arg1, static_arg2);
-        static_arg1 = builtin.static.divExact(T, static_arg1, static_arg2);
-        builtin.static.divEquExact(T, &static_arg1, static_arg2);
-        builtin.static.assertBelow(T, static_arg1, static_arg2);
-        builtin.static.assertBelowOrEqual(T, static_arg1, static_arg2);
+        static_arg1 = builtin.add(T, static_arg1, static_arg2);
+        builtin.addEqu(T, &static_arg1, static_arg2);
+        static_arg1 = builtin.sub(T, static_arg1, static_arg2);
+        builtin.subEqu(T, &static_arg1, static_arg2);
+        static_arg1 = builtin.mul(T, static_arg1, static_arg2);
+        builtin.mulEqu(T, &static_arg1, static_arg2);
+        static_arg1 = builtin.divExact(T, static_arg1, static_arg2);
+        builtin.divEquExact(T, &static_arg1, static_arg2);
+        builtin.assertBelow(T, static_arg1, static_arg2);
+        builtin.assertBelowOrEqual(T, static_arg1, static_arg2);
         static_arg1 = static_arg2;
-        builtin.static.assertEqual(T, static_arg1, static_arg2);
-        builtin.static.addEqu(u64, &static_arg1, 1);
-        builtin.static.assertAboveOrEqual(T, static_arg1, static_arg2);
-        builtin.static.assertAbove(T, static_arg1, static_arg2);
-        builtin.static.assert(static_b);
+        builtin.assertEqual(T, static_arg1, static_arg2);
+        builtin.addEqu(u64, &static_arg1, 1);
+        builtin.assertAboveOrEqual(T, static_arg1, static_arg2);
+        builtin.assertAbove(T, static_arg1, static_arg2);
+        builtin.assert(static_b);
     }
 }
 fn testMinMax() !void {
