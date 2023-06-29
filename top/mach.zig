@@ -522,13 +522,14 @@ pub fn rngcpy(to: usize, from: usize, len: usize) void {
           [_] "{rcx}" (len),
     );
 }
-pub const memcpy = if (is_fast) __0.memcpy1 else __0.memcpy;
 pub extern fn memset(dest: [*]u8, value: u8, count: usize) void;
+pub extern fn memcpy(noalias dest: [*]u8, noalias src: [*]const u8, len: u64) void;
+pub const addrcpy = @ptrCast(*const fn (dest: usize, src: usize, len: usize) void, &memcpy);
+
 const __0 = struct {
     inline fn memcpy1(noalias dest: [*]u8, noalias src: [*]const u8, len: u64) void {
         @memcpy(dest[0..len], src[0..len]);
     }
-    extern fn memcpy(noalias dest: [*]u8, noalias src: [*]const u8, len: u64) void;
     inline fn memset1(dest: [*]u8, value: u8, count: usize) void {
         @memset(dest[0..count], value);
     }
@@ -566,7 +567,16 @@ pub inline fn testEqualMany8(l_values: []const u8, r_values: []const u8) bool {
     return _0.asmTestEqualMany8(l_values.ptr, l_values.len, r_values.ptr, r_values.len);
 }
 pub inline fn memcpyMulti(noalias dest: [*]u8, src: []const []const u8) u64 {
-    return _1.asmMemcpyMulti(dest, src.ptr, src.len);
+    if (@inComptime()) {
+        var len: u64 = 0;
+        for (src) |bytes| {
+            @memcpy(dest + len, bytes);
+            len +%= bytes.len;
+        }
+        return len;
+    } else {
+        return _1.asmMemcpyMulti(dest, src.ptr, src.len);
+    }
 }
 pub fn manyToSlice80(str: [*]u8) [:0]u8 {
     @setRuntimeSafety(false);
