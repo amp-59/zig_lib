@@ -54,23 +54,32 @@ pub const Config = struct {
     pub fn formatWriteBuf(cfg: Config, buf: [*]u8) u64 {
         @setRuntimeSafety(false);
         var len: u64 = 0;
-        @ptrCast(*[12]u8, buf).* = "pub const @\"".*;
-        len +%= 12;
+        @ptrCast(*[10]u8, buf).* = "pub const ".*;
+        len +%= 10;
         @memcpy(buf + len, cfg.name);
         len +%= cfg.name.len;
-        @ptrCast(*[4]u8, buf + len).* = "\" = ".*;
-        len +%= 4;
         switch (cfg.value) {
             .Int => |value| {
+                @ptrCast(*[17]u8, buf + len).* = ": comptime_int = ".*;
+                len +%= 17;
                 const int_s: []const u8 = builtin.fmt.ud64(value).readAll();
                 @memcpy(buf + len, int_s);
                 len +%= int_s.len;
             },
             .Bool => |value| {
+                @ptrCast(*[9]u8, buf + len).* = ": bool = ".*;
+                len +%= 9;
                 @memcpy(buf + len, if (value) "true" else "false");
                 len +%= if (value) 4 else 5;
             },
             .String => |value| {
+                const len_s: []const u8 = builtin.fmt.ud64(value.len).readAll();
+                @ptrCast(*[3]u8, buf + len).* = ": [".*;
+                len +%= 3;
+                @memcpy(buf + len, len_s);
+                len +%= len_s.len;
+                @ptrCast(*[12]u8, buf + len).* = "]const u8 = ".*;
+                len +%= 12;
                 buf[len] = '"';
                 len +%= 1;
                 @memcpy(buf + len, value);
