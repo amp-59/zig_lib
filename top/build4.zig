@@ -428,19 +428,30 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         }
         fn addArg(node: *Node, allocator: *mem.SimpleAllocator) *[*:0]u8 {
             @setRuntimeSafety(builder_spec.options.enable_safety);
+            if (builder_spec.options.enable_usage_validation) {}
             const size_of: comptime_int = @sizeOf([*:0]u8);
             const addr_buf: *u64 = @ptrCast(*u64, &node.impl.args);
             const ret: *[*:0]u8 = @ptrFromInt(*[*:0]u8, allocator.addGeneric(size_of, init_len.args, addr_buf, &node.impl.args_max_len, node.impl.args_len));
             node.impl.args_len +%= 1;
             return ret;
         }
+        /// Add constant declaration to build configuration.
+        /// `node` must be `build-exe` worker.
         pub fn addConfig(node: *Node, allocator: *mem.SimpleAllocator, config: Config) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
+            if (builder_spec.options.enable_usage_validation) {}
             const size_of: comptime_int = @sizeOf(Config);
             const addr_buf: *u64 = @ptrCast(*u64, &node.impl.cfgs);
-            const ret: *Config = @ptrFromInt(*Config, allocator.addGeneric(size_of, init_len.cfgs, addr_buf, &node.impl.cfgs_max_len, node.impl.cfgs_len));
+            @ptrFromInt(*Config, allocator.addGeneric(size_of, init_len.cfgs, addr_buf, &node.impl.cfgs_max_len, node.impl.cfgs_len)).* = config;
             node.impl.cfgs_len +%= 1;
-            ret.* = config;
+        }
+        pub fn addModule(node: *Node, allocator: *mem.SimpleAllocator, module: types.Module) void {
+            @setRuntimeSafety(builder_spec.options.enable_safety);
+            if (builder_spec.options.enable_usage_validation) {}
+            const size_of: comptime_int = @sizeOf(types.Module);
+            const addr_buf: *u64 = @ptrCast(*u64, &node.impl.cfgs);
+            @ptrFromInt(*types.Module, allocator.addGeneric(size_of, init_len.cfgs, addr_buf, &node.impl.cfgs_max_len, node.impl.cfgs_len)).* = module;
+            node.impl.cfgs_len +%= 1;
         }
         pub fn addRunArg(node: *Node, allocator: *mem.SimpleAllocator, arg: []const u8) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
@@ -480,18 +491,19 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             builder_spec.options.hide_based_on_group;
         fn maybeHide(toplevel: *Node, node: *Node) void {
             if (builder_spec.options.hide_based_on_name_prefix) |prefix| {
-                node.options.is_hidden = prefix == node.name[0];
+                node.flags.is_hidden = prefix == node.name[0];
                 return;
             }
             if (builder_spec.options.hide_based_on_group) {
-                node.options.is_hidden = toplevel.options.is_hidden;
+                node.flags.is_hidden = toplevel.options.is_hidden;
                 return;
             }
         }
         pub fn initSpecialNodes(allocator: *mem.SimpleAllocator, toplevel: *Node) void {
             if (builder_spec.options.special.trace) |build_cmd| {
-                const special: *Node = try toplevel.addBuild(allocator, build_cmd, "trace", "top/trace.zig");
-                special.options.is_special = true;
+                const special: *Node = try toplevel.addBuild(allocator, build_cmd, "trace", paths.trace_root);
+                special.flags.is_special = true;
+                special.flags.build.configure_root = false;
                 GlobalState.trace = special;
             }
         }
@@ -513,16 +525,17 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             GlobalState.egid = sys.call_noexcept(.getegid, u16, .{});
             GlobalState.args = args;
             GlobalState.vars = vars;
-            var ret: *Node = allocator.create(Node);
-            ret.addPath(allocator).addName(allocator).* = mach.manyToSlice80(GlobalState.args[2]);
-            ret.addPath(allocator).addName(allocator).* = mach.manyToSlice80(GlobalState.args[3]);
-            ret.name = duplicate(allocator, builder_spec.options.names.toplevel_node);
-            ret.tag = .group;
-            ret.impl.args = GlobalState.args.ptr;
-            ret.impl.args_max_len = GlobalState.args.len;
-            ret.impl.args_len = GlobalState.args.len;
+            var node: *Node = allocator.create(Node);
+            node.flags = .{};
+            node.addPath(allocator).addName(allocator).* = mach.manyToSlice80(GlobalState.args[2]);
+            node.addPath(allocator).addName(allocator).* = mach.manyToSlice80(GlobalState.args[3]);
+            node.name = duplicate(allocator, builder_spec.options.names.toplevel_node);
+            node.tag = .group;
+            node.impl.args = GlobalState.args.ptr;
+            node.impl.args_max_len = GlobalState.args.len;
+            node.impl.args_len = GlobalState.args.len;
             GlobalState.build_root_fd = try meta.wrap(
-                file.path(path1(), ret.impl.paths[0].names[0]),
+                file.path(path1(), node.impl.paths[0].names[0]),
             );
             for ([6][:0]const u8{
                 builder_spec.options.names.zig_out_dir,
@@ -534,31 +547,30 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             }) |name| {
                 makeRootDirectory(GlobalState.build_root_fd, name);
             }
-            if (max_thread_count != 0) {
-                ret.options.have_threads = true;
-            }
-            ret.task.tag = .any;
-            ret.task.lock = omni_lock;
-            writeBuildContext(ret.cacheRoot(), ret.globalCacheRoot());
-            return ret;
+            node.task.tag = .any;
+            node.task.lock = omni_lock;
+            writeBuildContext(node.cacheRoot(), node.globalCacheRoot());
+            return node;
         }
         /// Initialize a new group command
         pub fn addGroup(toplevel: *Node, allocator: *mem.SimpleAllocator, name: []const u8) !*Node {
             @setRuntimeSafety(builder_spec.options.enable_safety);
-            const ret: *Node = allocator.create(Node);
-            toplevel.addNode(allocator).* = ret;
-            ret.impl.paths = toplevel.impl.paths;
-            ret.tag = .group;
-            ret.name = duplicate(allocator, name);
-            ret.options.is_hidden = name[0] == '_';
-            ret.task.tag = .any;
-            ret.task.lock = omni_lock;
-            return ret;
+            const node: *Node = allocator.create(Node);
+            node.flags = .{};
+            toplevel.addNode(allocator).* = node;
+            node.impl.paths = toplevel.impl.paths;
+            node.tag = .group;
+            node.name = duplicate(allocator, name);
+            node.flags.is_hidden = name[0] == '_';
+            node.task.tag = .any;
+            node.task.lock = omni_lock;
+            return node;
         }
         /// Initialize a new `zig fmt` command.
         pub fn addFormat(toplevel: *Node, allocator: *mem.SimpleAllocator, format_cmd: FormatCommand, name: []const u8, pathname: []const u8) !*Node {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             const node: *Node = allocator.create(Node);
+            node.flags = .{};
             toplevel.addNode(allocator).* = node;
             node.tag = .worker;
             node.task.tag = .format;
@@ -577,6 +589,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         pub fn addArchive(toplevel: *Node, allocator: *mem.SimpleAllocator, archive_cmd: ArchiveCommand, name: []const u8, deps: []const *Node) !*Node {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             const node: *Node = allocator.create(Node);
+            node.flags = .{};
             toplevel.addNode(allocator).* = node;
             node.tag = .worker;
             node.task.tag = .archive;
@@ -596,6 +609,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             const main_pkg_path: [:0]const u8 = toplevel.impl.paths[0].names[0];
             const node: *Node = allocator.create(Node);
+            node.flags = .{};
             toplevel.addNode(allocator).* = node;
             node.tag = .worker;
             node.task.tag = .build;
@@ -616,6 +630,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         pub fn addObjcopy(toplevel: *Node, allocator: *mem.SimpleAllocator, objcopy_cmd: ObjcopyCommand, name: []const u8, holder: *Node) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             const node: *Node = allocator.create(Node);
+            node.flags = .{};
             toplevel.addNode(allocator).* = node;
             node.tag = .worker;
             node.task.tag = .build;
@@ -628,7 +643,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         }
         fn initializeCommand(allocator: *mem.SimpleAllocator, toplevel: *Node, node: *Node) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
-            node.options.have_init = true;
+            node.flags.do_init = false;
             if (maybe_hide) {
                 maybeHide(toplevel, node);
             }
@@ -670,27 +685,34 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         }
         fn updateCommand(allocator: *mem.SimpleAllocator, _: *Node, node: *Node) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
-            node.options.have_update = true;
-            if (node.tag == .worker and
-                node.task.tag == .build)
-            {
-                const build_cmd: *BuildCommand = node.task.info.build;
-                const mode: builtin.Mode = build_cmd.mode orelse .Debug;
-                const strip: bool = build_cmd.strip orelse (mode != .ReleaseSmall);
-                if (builder_spec.options.add_debug_stack_traces) {
-                    if (!strip) {
-                        if (node.task.info.build.kind == .exe) {
-                            node.addConfig(allocator, .{ .name = "have_stack_traces", .value = .{ .Bool = true } });
-                            if (GlobalState.trace) |g| {
-                                node.dependOnObject(allocator, g);
-                            }
-                        }
+            node.flags.do_update = false;
+            if (node.tag == .worker) {
+                if (node.task.tag == .build) {
+                    if (defaultAddStackTracesCriteria(node.task.info.build) or
+                        node.flags.build.add_stack_traces)
+                    {
+                        node.addConfig(allocator, .{
+                            .name = "have_stack_traces",
+                            .value = .{ .Bool = true },
+                        });
+                        node.dependOnObject(allocator, GlobalState.trace);
                     }
                 }
             }
         }
+        fn defaultAddStackTracesCriteria(build_cmd: *BuildCommand) bool {
+            if (builder_spec.options.add_debug_stack_traces) {
+                if (build_cmd.kind == .exe) {
+                    if (build_cmd.strip) |strip| {
+                        return !strip;
+                    }
+                    return (build_cmd.mode orelse .Debug) != .ReleaseSmall;
+                }
+            }
+            return false;
+        }
         pub fn updateCommands(allocator: *mem.SimpleAllocator, toplevel: *Node, node: *Node) void {
-            if (node.options.have_update) {
+            if (!node.flags.do_update) {
                 return;
             }
             updateCommand(allocator, toplevel, node);
@@ -851,8 +873,11 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 const job: *types.JobInfo = allocator.create(types.JobInfo);
                 var old_size: u64 = 0;
                 var new_size: u64 = 0;
-                if (builder_spec.options.enable_build_configuration and task == .build) {
-                    writeContextLists(allocator, node);
+                if (builder_spec.options.enable_build_configuration and
+                    task == .build and
+                    node.flags.build.configure_root)
+                {
+                    writeConfigRoot(allocator, node);
                 }
                 const args: [][*:0]u8 = taskArgs(allocator, toplevel, node, task);
                 switch (task) {
@@ -956,12 +981,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 toplevel: *const Node,
                 node: *Node,
                 task: types.Task,
-            ) sys.ErrorUnion(.{
-                .throw = builder_spec.errors.clock.throw ++
-                    builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
-                .abort = builder_spec.errors.clock.abort ++
-                    builder_spec.errors.fork.abort ++ builder_spec.errors.execve.abort ++ builder_spec.errors.waitpid.abort,
-            }, void) {
+            ) void {
                 const save: u64 = allocator.next;
                 defer allocator.next = save;
                 impl.spawnDeps(address_space, thread_space, allocator, toplevel, node, task);
@@ -983,13 +1003,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 toplevel: *const Node,
                 node: *Node,
                 task: types.Task,
-            ) sys.ErrorUnion(.{
-                .throw = builder_spec.errors.clock.throw ++
-                    builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
-                .abort = builder_spec.errors.clock.abort ++
-                    builder_spec.errors.fork.abort ++ builder_spec.errors.execve.abort ++ builder_spec.errors.waitpid.abort,
-            }, void) {
-                if (max_thread_count != 0 and toplevel.options.have_threads) {
+            ) void {
+                if (!(max_thread_count == 0 or toplevel.flags.group.is_single_threaded)) {
                     var arena_index: AddressSpace.Index = 0;
                     while (arena_index != max_thread_count) : (arena_index +%= 1) {
                         if (mem.testAcquire(ThreadSpace, thread_space, arena_index)) {
@@ -1008,12 +1023,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             toplevel: *const Node,
             node: *Node,
             maybe_task: ?types.Task,
-        ) sys.ErrorUnion(.{
-            .throw = builder_spec.errors.clock.throw ++ builder_spec.errors.sleep.throw ++
-                builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
-            .abort = builder_spec.errors.clock.abort ++ builder_spec.errors.sleep.abort ++
-                builder_spec.errors.fork.abort ++ builder_spec.errors.execve.abort ++ builder_spec.errors.waitpid.abort,
-        }, bool) {
+        ) bool {
             const task: types.Task = maybe_task orelse node.task.tag;
             if (node.exchange(task, .ready, .blocking, max_thread_count)) {
                 try meta.wrap(impl.tryAcquireThread(address_space, thread_space, allocator, toplevel, node, task));
@@ -1050,6 +1060,11 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     debug.noExchangeNotice(node, debug.about.state_1_s, task, old_state, new_state, arena_index);
                 }
                 builtin.proc.exitGroup(2);
+            }
+        }
+        fn assertNode(node: *Node, chk: bool, msg: [:0]const u8) void {
+            if (!chk) {
+                debug.incorrectNodeUsageError(node, msg);
             }
         }
         fn testDeps(node: *const Node, task: types.Task, state: types.State) bool {
@@ -1138,16 +1153,13 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             }
             return job.ret.sys == builder_spec.options.system_expected_status;
         }
-        fn openChild(in: file.Pipe, out: file.Pipe) sys.ErrorUnion(.{
-            .throw = builder_spec.errors.close.throw ++ builder_spec.errors.dup3.throw,
-            .abort = builder_spec.errors.close.abort ++ builder_spec.errors.dup3.abort,
-        }, void) {
+        fn openChild(in: file.Pipe, out: file.Pipe) void {
             try meta.wrap(file.close(close(), in.write));
             try meta.wrap(file.close(close(), out.read));
             try meta.wrap(file.duplicateTo(dup3(), in.read, 0));
             try meta.wrap(file.duplicateTo(dup3(), out.write, 1));
         }
-        fn openParent(in: file.Pipe, out: file.Pipe) sys.ErrorUnion(builder_spec.errors.close, void) {
+        fn openParent(in: file.Pipe, out: file.Pipe) void {
             try meta.wrap(file.close(close(), in.read));
             try meta.wrap(file.close(close(), out.write));
         }
@@ -1244,7 +1256,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     }
                 }
                 if (mach.testEqualMany8(builder_spec.options.names.single_threaded_command, name)) {
-                    node.options.have_threads = false;
+                    node.flags.group.is_single_threaded = true;
                     continue :lo;
                 }
                 if (mach.testEqualMany8(builder_spec.options.names.toplevel_list_command, name)) {
@@ -1260,7 +1272,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             .zig_out_exe_dir = builder_spec.options.names.zig_out_dir ++ "/" ++ builder_spec.options.names.exe_out_dir,
             .zig_out_lib_dir = builder_spec.options.names.zig_out_dir ++ "/" ++ builder_spec.options.names.lib_out_dir,
             .zig_out_aux_dir = builder_spec.options.names.zig_out_dir ++ "/" ++ builder_spec.options.names.aux_out_dir,
-            .tracer_root = builder_spec.options.names.tracer_root orelse build.root ++ "/top/trace.zig",
+            .trace_root = builder_spec.options.names.trace_root orelse libraryRoot() ++ "/top/trace.zig",
         };
         const update_exit_message: [2]types.Message.ClientHeader = .{
             .{ .tag = .update, .bytes_len = 0 },
@@ -1546,9 +1558,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 },
             }
         }
-        fn writeContextLists(allocator: *mem.SimpleAllocator, node: *Node) void {
-            var hist: types.hist_tasks.BuildCommand = types.hist_tasks.BuildCommand.convert(node.task.info.build);
-
+        fn writeConfigRoot(allocator: *mem.SimpleAllocator, node: *Node) void {
             @setRuntimeSafety(false);
             const build_cmd: *BuildCommand = node.task.info.build;
             var buf: [32768]u8 = undefined;
@@ -1633,6 +1643,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 len +%= cfg.formatWriteBuf(buf[len..].ptr);
             }
             if (builder_spec.options.write_hist_serial) {
+                var hist: types.hist_tasks.BuildCommand = types.hist_tasks.BuildCommand.convert(node.task.info.build);
                 const bytes = @ptrCast(*[@sizeOf(types.hist_tasks.BuildCommand)]u8, &hist);
                 @ptrCast(*[31]u8, buf[len..].ptr).* = "pub const serial:[]const u8=&.{".*;
                 len +%= 31;
@@ -1686,9 +1697,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             try meta.wrap(
                 file.write(write(), context_fd, buf[0..len]),
             );
-            //try meta.wrap(
-            //    file.close(close(), cache_root_fd),
-            //);
             try meta.wrap(
                 file.close(close(), context_fd),
             );
@@ -1862,6 +1870,17 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 buf[len] = '\n';
                 builtin.debug.write(buf[0 .. len +% 1]);
             }
+            inline fn incorrectNodeUsageError(node: *Node, msg: [:0]const u8) void {
+                @setRuntimeSafety(builder_spec.options.enable_safety);
+                var buf: [32768]u8 = undefined;
+                var len: u64 = 0;
+                @ptrCast(*[24]u8, &buf).* = builtin.debug.about_error_p0_s.*;
+                len +%= 24;
+                @memcpy(buf[len..].ptr, node.name);
+                len +%= node.name.len;
+                @memcpy(buf[len..].ptr, msg);
+                len +%= msg.len;
+            }
             fn writeArenaIndex(buf: [*]u8, arena_index: AddressSpace.Index) u64 {
                 const idx_s: []const u8 = builtin.fmt.ud64(arena_index).readAll();
                 @ptrCast(*[2]u8, buf).* = " [".*;
@@ -1938,7 +1957,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     if (res == .failed) {
                         style_s = about.red_s;
                     }
-                    if (node.options.is_special) {
+                    if (node.flags.is_special) {
                         if (res != .cached) {
                             style_s = about.special_s;
                         } else {
@@ -2240,7 +2259,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 while (deps_idx != node.impl.deps_len) : (deps_idx +%= 1) {
                     const dep_node: *Node = node.impl.deps[deps_idx].on_node;
                     if (dep_node == node or
-                        builder_spec.options.hide_special and dep_node.options.is_special)
+                        builder_spec.options.hide_special and dep_node.flags.is_special)
                     {
                         continue;
                     }
@@ -2268,12 +2287,12 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 lengthAndWalkInternal(len1, node, name_width, root_width);
                 for (node.impl.nodes[0..node.impl.nodes_len]) |sub_node| {
                     if (sub_node == node or
-                        sub_node.options.is_hidden or
-                        builder_spec.options.hide_special and sub_node.options.is_special)
+                        sub_node.flags.is_hidden or
+                        builder_spec.options.hide_special and sub_node.flags.is_special)
                     {
                         continue;
                     }
-                    if (sub_node.options.is_hidden and sub_node.impl.paths_len != 0) {
+                    if (sub_node.flags.is_hidden and sub_node.impl.paths_len != 0) {
                         lengthSubNode(len1 +% 4, sub_node, name_width, root_width);
                     }
                     lengthToplevelCommandNoticeInternal(len1 +% 2, sub_node, name_width, root_width);
@@ -2287,7 +2306,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 while (deps_idx != node.impl.deps_len) : (deps_idx +%= 1) {
                     const dep_node: *Node = node.impl.deps[deps_idx].on_node;
                     if (dep_node == node or
-                        builder_spec.options.hide_special and dep_node.options.is_special)
+                        builder_spec.options.hide_special and dep_node.flags.is_special)
                     {
                         continue;
                     }
@@ -2305,7 +2324,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     len +%= 2;
                     mach.memcpy(buf0 + len, dep_node.name.ptr, dep_node.name.len);
                     len +%= dep_node.name.len;
-                    if (dep_node.options.is_hidden and dep_node.impl.paths_len != 0) {
+                    if (dep_node.flags.is_hidden and dep_node.impl.paths_len != 0) {
                         len +%= writeSubNode(buf0 + len, len1 +% 2, dep_node, name_width, root_width);
                     }
                     len = writeAndWalkInternal(buf0, len, buf1, len1 +% 2, dep_node, name_width, root_width);
@@ -2348,8 +2367,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 @ptrCast(*[4]u8, buf0 + len).* = about.reset_s.*;
                 len +%= about.reset_s.len;
                 for (node.impl.nodes[0..node.impl.nodes_len], 0..) |sub_node, nodes_idx| {
-                    if (sub_node == node or sub_node.options.is_hidden or
-                        builder_spec.options.hide_special and sub_node.options.is_special)
+                    if (sub_node == node or sub_node.flags.is_hidden or
+                        builder_spec.options.hide_special and sub_node.flags.is_special)
                     {
                         continue;
                     }
@@ -2369,7 +2388,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     len +%= 2;
                     @ptrCast(*[2]u8, buf0 + len).* = if (is_only) "- ".* else "o ".*;
                     len +%= 2;
-                    if (sub_node.options.is_hidden and sub_node.impl.paths_len != 0) {
+                    if (sub_node.flags.is_hidden and sub_node.impl.paths_len != 0) {
                         len +%= writeSubNode(buf0 + len, len1 +% 4, sub_node, name_width, root_width);
                     }
                     mach.memcpy(buf0 + len, sub_node.name.ptr, sub_node.name.len);
