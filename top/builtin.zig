@@ -1198,117 +1198,47 @@ pub const static = struct {
         }
         return result;
     }
-    pub fn add(comptime T: type, comptime arg1: T, comptime arg2: T) T {
-        return static.normalAddReturn(T, arg1, arg2);
-    }
-    pub fn addEqu(comptime T: type, arg1: *T, comptime arg2: T) void {
-        static.normalAddAssign(T, arg1, arg2);
-    }
-    pub fn sub(comptime T: type, comptime arg1: T, comptime arg2: T) T {
-        return static.normalSubReturn(T, arg1, arg2);
-    }
-    pub fn subEqu(comptime T: type, arg1: *T, comptime arg2: T) void {
-        static.normalSubAssign(T, arg1, arg2);
-    }
-    pub fn mul(comptime T: type, comptime arg1: T, comptime arg2: T) T {
-        return static.normalMulReturn(T, arg1, arg2);
-    }
-    pub fn mulEqu(comptime T: type, arg1: *T, comptime arg2: T) void {
-        static.normalMulAssign(T, arg1, arg2);
-    }
-    pub fn divExact(comptime T: type, comptime arg1: T, comptime arg2: T) T {
-        return static.exactDivisionReturn(T, arg1, arg2);
-    }
-    pub fn divEquExact(comptime T: type, arg1: *T, comptime arg2: T) void {
-        static.exactDivisionAssign(T, arg1, arg2);
-    }
-    pub fn assertBelow(comptime T: type, comptime arg1: T, comptime arg2: T) void {
-        if (comptime_assertions and arg1 >= arg2) {
-            debug.static.comparisonFailed(T, " < ", arg1, arg2);
-        }
-    }
-    pub fn assertBelowOrEqual(comptime T: type, comptime arg1: T, comptime arg2: T) void {
-        if (comptime_assertions and arg1 > arg2) {
-            debug.static.comparisonFailed(T, " <= ", arg1, arg2);
-        }
-    }
-    pub fn assertEqual(comptime T: type, comptime arg1: T, comptime arg2: T) void {
-        if (comptime_assertions and arg1 != arg2) {
-            debug.static.comparisonFailed(T, " == ", arg1, arg2);
-        }
-    }
-    pub fn assertNotEqual(comptime T: type, comptime arg1: T, comptime arg2: T) void {
-        if (comptime_assertions and arg1 == arg2) {
-            debug.static.comparisonFailed(T, " != ", arg1, arg2);
-        }
-    }
-    pub fn assertAboveOrEqual(comptime T: type, comptime arg1: T, comptime arg2: T) void {
-        if (comptime_assertions and arg1 < arg2) {
-            debug.static.comparisonFailed(T, " >= ", arg1, arg2);
-        }
-    }
-    pub fn assertAbove(comptime T: type, comptime arg1: T, comptime arg2: T) void {
-        if (comptime_assertions and arg1 <= arg2) {
-            debug.static.comparisonFailed(T, " > ", arg1, arg2);
-        }
-    }
 };
-// These look stupid but the compiler will optimise various methods with
-// different success for different word size. Doing manual shifts with u8 is
-// much better, whereas bit-casting from a struct with u16 is much better.
-pub fn pack16(h: u16, l: u8) u16 {
-    return h << 8 | l;
-}
-// Defined here to prevent stage2 segmentation fault
-const U32 = packed struct { h: u16, l: u16 };
-pub fn pack32(h: u16, l: u16) u32 {
-    return @bitCast(u32, U32{ .h = h, .l = l });
-}
-// Defined here to prevent stage2 segmentation fault
-const U64 = packed struct { h: u32, l: u32 };
-pub fn pack64(h: u32, l: u32) u64 {
-    return @bitCast(u64, U64{ .h = h, .l = l });
-}
 pub const proc = struct {
     pub fn exitNotice(return_code: u8) noreturn {
         @setCold(true);
         if (logging_general.Success) {
-            debug.exitRc(return_code);
+            debug.exitRcNotice(return_code);
         }
         exit(return_code);
     }
     pub fn exitGroupNotice(return_code: u8) noreturn {
         @setCold(true);
         if (logging_general.Success) {
-            debug.exitNotice(return_code);
+            debug.exitRcNotice(return_code);
         }
         exitGroup(return_code);
     }
     pub fn exitError(exit_error: anytype, return_code: u8) noreturn {
         @setCold(true);
         if (logging_general.Fault) {
-            debug.exitErrorRc(@errorName(exit_error), return_code);
+            debug.errorRcNotice(@errorName(exit_error), return_code);
         }
         exit(return_code);
     }
     pub fn exitGroupError(exit_error: anytype, return_code: u8) noreturn {
         @setCold(true);
         if (logging_general.Fault) {
-            debug.exitErrorRc(@errorName(exit_error), return_code);
+            debug.errorRcNotice(@errorName(exit_error), return_code);
         }
         exitGroup(return_code);
     }
     pub fn exitFault(message: []const u8, return_code: u8) noreturn {
         @setCold(true);
         if (logging_general.Fault) {
-            debug.exitFault(message, return_code);
+            debug.faultRcNotice(message, return_code);
         }
         exit(return_code);
     }
     pub fn exitGroupFault(message: []const u8, return_code: u8) noreturn {
         @setCold(true);
         if (logging_general.Fault) {
-            debug.exitFault(message, return_code);
+            debug.faultRcNotice(message, return_code);
         }
         exitGroup(return_code);
     }
@@ -1317,11 +1247,11 @@ pub const proc = struct {
         if (logging_general.Fault and
             logging_general.Error)
         {
-            debug.exitErrorFaultRc(@errorName(exit_error), message, return_code);
+            debug.errorFaultRcNotice(@errorName(exit_error), message, return_code);
         } else if (logging_general.Fault) {
-            debug.exitFault(message, return_code);
+            debug.faultRcNotice(message, return_code);
         } else if (logging_general.Error) {
-            debug.exitErrorRc(@errorName(exit_error), return_code);
+            debug.errorRcNotice(@errorName(exit_error), return_code);
         }
         exitGroup(return_code);
     }
