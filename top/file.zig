@@ -2391,6 +2391,8 @@ pub const debug = opaque {
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, builtin.debug.about_error_s, error_name, ", ", pathname, "\n" });
     }
     fn aboutFdError(about_s: [:0]const u8, error_name: [:0]const u8, fd: u64) void {
+        @setCold(true);
+        @setRuntimeSafety(false);
         const fd_s: []const u8 = builtin.fmt.ud64(fd).readAll();
         var buf: [32768]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, builtin.debug.about_error_s, error_name, ", fd=", fd_s, "\n" });

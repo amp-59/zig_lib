@@ -12,21 +12,11 @@ pub const trace: builtin.Trace = .{
     .Signal = false,
     .options = .{},
 };
-const deps: []const build.ModuleDependency = &.{
-    .{ .name = "zig_lib" },
-    .{ .name = "@build" },
-};
-const mods: []const build.Module = &.{
-    .{ .name = "zig_lib", .path = "zig_lib.zig" },
-    .{ .name = "@build", .path = "./build.zig" },
-};
 var build_cmd: build.tasks.BuildCommand = .{
     .kind = .exe,
     .mode = .ReleaseSmall,
-    .dependencies = deps[0..1],
     .stack_check = false,
     .stack_protector = false,
-    .modules = mods[0..1],
     .image_base = 0x10000,
     .strip = true,
     .compiler_rt = false,
@@ -116,11 +106,14 @@ fn examples(allocator: *build.Allocator, node: *Node) void {
 }
 fn tests(allocator: *build.Allocator, node: *Node) void {
     const debug_exe = spec.add(build_cmd, .{ .mode = .Debug, .strip = false });
-    const debug_obj = spec.add(debug_exe, .{ .kind = .obj });
-    const builder_exe = spec.add(debug_exe, .{ .modules = mods, .dependencies = deps });
-
+    const debug_obj = spec.add(debug_exe, .{ .kind = .obj, .gc_sections = false });
+    const builder_exe = spec.add(debug_exe, .{
+        .modules = &.{.{ .name = "@build", .path = "./build.zig" }},
+        .dependencies = &.{.{ .name = "@build" }},
+    });
     const decl_test: *Node = try node.addBuild(allocator, build_cmd, "decl_test", "test/decl-test.zig");
     const builtin_test: *Node = try node.addBuild(allocator, build_cmd, "builtin_test", "test/builtin-test.zig");
+    addTracer(builtin_test);
     const meta_test: *Node = try node.addBuild(allocator, build_cmd, "meta_test", "test/meta-test.zig");
     const gen_test: *Node = try node.addBuild(allocator, build_cmd, "gen_test", "test/gen-test.zig");
     const algo_test: *Node = try node.addBuild(allocator, build_cmd, "algo_test", "test/algo-test.zig");
@@ -174,18 +167,17 @@ fn tests(allocator: *build.Allocator, node: *Node) void {
     cmdline_writer_test.descr = "Test generated command line writer functions";
 
     cryptoTests(allocator, try node.addGroup(allocator, "crypto_tests"));
-
-    for ([_]*Node{ build_runner_test, zls_build_runner_test, cmdline_writer_test, serial_test }) |target| {
+    for ([_]*Node{
+        build_runner_test,
+        zls_build_runner_test,
+        cmdline_writer_test,
+        serial_test,
+    }) |target| {
         target.addToplevelArgs(allocator);
-        target.options.have_update = true;
     }
     node.task.tag = .build;
-    debug2_test.task.info.build.kind = .obj;
-    proc_test.task.info.build.strip = false;
-    debug2_test.task.info.build.gc_sections = false;
+    debug2_test.flags.do_update = true;
     debug_test.dependOnObject(allocator, debug2_test);
-
-    parse_test.task.info.build.mode = .Debug;
 }
 fn cryptoTests(allocator: *build.Allocator, node: *Node) void {
     const mode_save: ?builtin.Mode = build_cmd.mode;
