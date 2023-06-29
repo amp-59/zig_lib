@@ -67,6 +67,8 @@ pub const BuilderSpec = struct {
         /// Include arena/thread index in task summaries and change of state
         /// notices.
         show_arena_index: bool = true,
+        /// Enable assertions to ensure correct usage.
+        enable_usage_validation: bool = false,
         /// Enable runtime safety.
         enable_safety: bool = false,
         /// Require build runner compile DWARF parser and stack trace writers.
@@ -124,7 +126,7 @@ pub const BuilderSpec = struct {
             /// directory.
             aux_out_dir: [:0]const u8 = "aux",
             /// Optional pathname to root source used to compile tracer object.
-            tracer_root: ?[:0]const u8 = null,
+            trace_root: ?[:0]const u8 = null,
         } = .{},
         special: struct {
             /// Defines formatter type used to pass configuration values to program.
