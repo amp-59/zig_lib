@@ -1378,7 +1378,7 @@ pub const debug = struct {
         lhs = "\x1b[1m" ++ lhs ++ message_no_style;
         break :blk lhs ++ " " ** (message_indent - len);
     };
-    const about_error_p0_s = blk: {
+    pub const about_error_p0_s = blk: {
         var lhs: [:0]const u8 = "error";
         lhs = message_prefix ++ lhs;
         lhs = lhs ++ message_suffix;
@@ -3159,28 +3159,28 @@ pub const Version = struct {
         return .eq;
     }
     pub fn parseVersion(text: []const u8) !Version {
-        var i: usize = 0;
-        var j: usize = 0;
-        while (i < text.len) : (i += 1) {
-            switch (text[i]) {
-                '.' => if (j == 2) break else {
-                    j += 1;
+        var idx: usize = 0;
+        var pos: usize = 0;
+        while (idx < text.len) : (idx +%= 1) {
+            switch (text[idx]) {
+                '.' => if (pos == 2) break else {
+                    pos +%= 1;
                 },
                 '0'...'9' => {},
                 else => break,
             }
         }
-        const digits: []const u8 = text[0..i];
-        if (i == 0) return error.InvalidVersion;
-        i = 0;
+        const digits: []const u8 = text[0..idx];
+        if (idx == 0) return error.InvalidVersion;
+        idx = 0;
         const major: usize = blk: {
-            while (i < digits.len and digits[i] != '.') i += 1;
-            break :blk i;
+            while (idx < digits.len and digits[idx] != '.') idx +%= 1;
+            break :blk idx;
         };
-        i += 1;
+        idx +%= 1;
         const minor: usize = blk: {
-            while (i < digits.len and digits[i] != '.') i += 1;
-            break :blk i;
+            while (idx < digits.len and digits[idx] != '.') idx +%= 1;
+            break :blk idx;
         };
         const patch: u64 = digits.len;
         const major_digits: []const u8 = digits[0..major];
@@ -3857,14 +3857,14 @@ pub const zig = struct {
                                 ret.tag = .invalid;
                                 break;
                             } else {
-                                itr.checkLiteralCharacter();
+                                itr.checkChar();
                             }
                         },
                         '\n' => {
                             ret.tag = .invalid;
                             break;
                         },
-                        else => itr.checkLiteralCharacter(),
+                        else => itr.checkChar(),
                     },
                     .string_literal_backslash => switch (c) {
                         0, '\n' => {
@@ -3982,7 +3982,7 @@ pub const zig = struct {
                             break;
                         },
                         '\t' => {},
-                        else => itr.checkLiteralCharacter(),
+                        else => itr.checkChar(),
                     },
                     .bang => switch (c) {
                         '=' => {
@@ -4186,7 +4186,7 @@ pub const zig = struct {
                         '\t' => state = .line_comment,
                         else => {
                             state = .line_comment;
-                            itr.checkLiteralCharacter();
+                            itr.checkChar();
                         },
                     },
                     .doc_comment_start => switch (c) {
@@ -4202,7 +4202,7 @@ pub const zig = struct {
                         else => {
                             state = .doc_comment;
                             ret.tag = .doc_comment;
-                            itr.checkLiteralCharacter();
+                            itr.checkChar();
                         },
                     },
                     .line_comment => switch (c) {
@@ -4218,12 +4218,12 @@ pub const zig = struct {
                             ret.loc.start = itr.buf_pos +% 1;
                         },
                         '\t' => {},
-                        else => itr.checkLiteralCharacter(),
+                        else => itr.checkChar(),
                     },
                     .doc_comment => switch (c) {
                         0, '\n' => break,
                         '\t' => {},
-                        else => itr.checkLiteralCharacter(),
+                        else => itr.checkChar(),
                     },
                     .int => switch (c) {
                         '.' => state = .int_period,
@@ -4270,11 +4270,11 @@ pub const zig = struct {
             ret.loc.finish = itr.buf_pos;
             return ret;
         }
-        fn checkLiteralCharacter(itr: *TokenIterator) void {
+        fn checkChar(itr: *TokenIterator) void {
             if (itr.inval != null) {
                 return;
             }
-            const inval_len: u64 = itr.getInvalidCharacterLength();
+            const inval_len: u64 = itr.invalLen();
             if (inval_len == 0) {
                 return;
             }
@@ -4286,7 +4286,7 @@ pub const zig = struct {
                 },
             };
         }
-        fn getInvalidCharacterLength(itr: *TokenIterator) u8 {
+        fn invalLen(itr: *TokenIterator) u8 {
             const byte: u8 = itr.buf[itr.buf_pos];
             if (byte < 0x80) {
                 // Removed carriage return tolerance.
@@ -4362,6 +4362,7 @@ pub const zig = struct {
             return 0;
         }
     };
+
     pub fn lexeme(tag: Token.Tag) ?[]const u8 {
         switch (tag) {
             .invalid_periodasterisks => return ".**",
