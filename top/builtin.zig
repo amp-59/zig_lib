@@ -887,7 +887,7 @@ pub fn assertAboveOrEqual(comptime T: type, arg1: T, arg2: T) void {
 pub fn assertAbove(comptime T: type, arg1: T, arg2: T) void {
     if (runtime_assertions and arg1 <= arg2) {
         if (@inComptime()) {
-            debug.comparisonFailedFault(T, " > ", arg1, arg2);
+            debug.static.comparisonFailed(T, " > ", arg1, arg2);
         } else {
             debug.comparisonFailedFault(T, " > ", arg1, arg2, @returnAddress());
         }
@@ -1132,7 +1132,7 @@ pub inline fn intCast(comptime T: type, value: anytype) T {
 pub const static = struct {
     pub fn assert(comptime b: bool) void {
         if (!b) {
-            @compileError("assertion failed");
+            @compileError(debug.about_assertion_1_s);
         }
     }
     pub fn expect(b: bool) !void {
