@@ -2,6 +2,7 @@ const sys = @import("./sys.zig");
 const mem = @import("./mem.zig");
 const fmt = @import("./fmt.zig");
 const mach = @import("./mach.zig");
+const list = @import("./list.zig");
 const meta = @import("./meta.zig");
 const algo = @import("./algo.zig");
 const builtin = @import("./builtin.zig");
@@ -526,7 +527,7 @@ pub fn GenericArenaAllocator(comptime spec: ArenaAllocatorSpec) type {
         pub usingnamespace GenericInterface(Allocator);
         const Graphics = GenericArenaAllocatorGraphics(Allocator);
         comptime {
-            builtin.static.assertEqual(u64, 1, unit_alignment);
+            builtin.assertEqual(u64, 1, unit_alignment);
         }
     });
 }
@@ -575,7 +576,7 @@ pub fn GenericRtArenaAllocator(comptime spec: RtArenaAllocatorSpec) type {
         pub usingnamespace GenericInterface(Allocator);
         const Graphics = GenericArenaAllocatorGraphics(Allocator);
         comptime {
-            builtin.static.assertEqual(u64, 1, unit_alignment);
+            builtin.assertEqual(u64, 1, unit_alignment);
         }
     });
 }
