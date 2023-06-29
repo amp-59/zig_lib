@@ -109,6 +109,7 @@ pub const Error = error{
     MulCausedOverflow,
     LeftShiftCausedOverflow,
     ExactDivisionWithRemainder,
+    IncorrectAlignment,
 };
 pub const Unexpected = error{
     UnexpectedValue,

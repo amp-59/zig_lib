@@ -272,19 +272,11 @@ fn testMinMax() !void {
     try builtin.expect(builtin.testEqual(S, s, builtin.min(S, t, s)));
     try builtin.expect(builtin.testEqual(S, t, builtin.max(S, t, s)));
 }
-fn showVariousErrorMessages() !void {
-    builtin.expectEqual(u64, 0, 1) catch {};
-    builtin.expectAbove(u64, 0, 1) catch {};
-    builtin.expectNotEqual(u64, 1, 1) catch {};
-    builtin.expectBelow(u64, 1, 0) catch {};
-    builtin.expectAboveOrEqual(u64, 0, 1) catch {};
-    builtin.expectBelowOrEqual(u64, 1, 0) catch {};
-}
 pub fn main() !void {
     try testIntToString();
     try testVersionParser();
     try testRuntimeAssertionsCompile();
     try testStaticAssertionsCompile();
     try testMinMax();
-    try showVariousErrorMessages();
+    builtin.debug.sampleAllReports();
 }
