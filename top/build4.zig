@@ -290,12 +290,30 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             cfgs_max_len: u64,
             cfgs_len: u64,
         },
-        options: packed struct {
+        flags: packed struct {
+            /// Whether the node will be shown by list commands.
             is_hidden: bool = false,
             is_special: bool = false,
-            have_init: bool = false,
-            have_update: bool = false,
-            have_threads: bool = false,
+            /// Whether a node will be processed before being returned to `buildMain`.
+            do_init: bool = !builder_spec.options.never_initialize,
+            /// Whether a node will be processed after returning from `buildMain`.
+            do_update: bool = !builder_spec.options.never_update,
+            /// Flags relevant to group nodes.
+            group: Group = .{},
+            /// Flags relevant to build-* worker nodes.
+            build: Build = .{},
+            const Group = packed struct {
+                /// Whether independent nodes will be processed in parallel.
+                is_single_threaded: bool = false,
+            };
+            const Build = packed struct {
+                /// Builder will create a configuration root. Enables usage of
+                /// configuration constants.
+                configure_root: bool = true,
+                /// Builder will add unconditionally add `trace` object to
+                /// compile command.
+                add_stack_traces: bool = false,
+            };
         },
         const Node = @This();
         const GlobalState = struct {
@@ -303,7 +321,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             pub var vars: [][*:0]u8 = undefined;
             pub var euid: u16 = undefined;
             pub var egid: u16 = undefined;
-            pub var trace: ?*Node = null;
+            pub var trace: *Node = undefined;
             pub var build_root_fd: u64 = undefined;
             pub var config_root_fd: u64 = undefined;
         };
