@@ -6,12 +6,7 @@ const builtin = srg.builtin;
 
 pub const Node = build.GenericNode(.{});
 pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
-pub const trace: builtin.Trace = .{
-    .Error = false,
-    .Fault = false,
-    .Signal = false,
-    .options = .{},
-};
+
 var build_cmd: build.tasks.BuildCommand = .{
     .kind = .exe,
     .mode = .ReleaseSmall,
@@ -135,6 +130,7 @@ fn tests(allocator: *build.Allocator, node: *Node) void {
     const debug_test: *Node = try node.addBuild(allocator, debug_exe, "debug_test", "test/debug-test.zig");
     const debug2_test: *Node = try node.addBuild(allocator, debug_obj, "debug2_test", "test/debug2-test.zig");
 
+    const build_stress_test: *Node = try node.addBuild(allocator, builder_exe, "build_stress_test", "test/build-test.zig");
     const build_runner_test: *Node = try node.addBuild(allocator, builder_exe, "build_runner_test", "build_runner.zig");
     const zls_build_runner_test: *Node = try node.addBuild(allocator, builder_exe, "zls_build_runner_test", "zls_build_runner.zig");
     const cmdline_writer_test: *Node = try node.addBuild(allocator, builder_exe, "cmdline_test", "test/cmdline-test.zig");
@@ -165,6 +161,10 @@ fn tests(allocator: *build.Allocator, node: *Node) void {
     build_runner_test.descr = "Test library build runner using the library build program";
     zls_build_runner_test.descr = "Test ZLS special build runner";
     cmdline_writer_test.descr = "Test generated command line writer functions";
+    build_stress_test.descr = "Try to produce builder errors";
+
+    algo_test.task.info.build.emit_asm = .{ .yes = null };
+    algo_test.task.info.build.mode = .ReleaseFast;
 
     cryptoTests(allocator, try node.addGroup(allocator, "crypto_tests"));
     for ([_]*Node{
@@ -172,6 +172,7 @@ fn tests(allocator: *build.Allocator, node: *Node) void {
         zls_build_runner_test,
         cmdline_writer_test,
         serial_test,
+        build_stress_test,
     }) |target| {
         target.addToplevelArgs(allocator);
     }
