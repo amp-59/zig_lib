@@ -801,6 +801,6 @@ pub fn main() !void {
     }) |attributes| {
         writeTaskStructFromAttributes(&allocator, array, attributes);
     }
-    gen.truncateFile(write_spec, config.tasks_path, array.readAll());
+    try gen.truncateFile(.{ .return_type = void }, config.tasks_path, array.readAll());
     array.undefineAll();
 }

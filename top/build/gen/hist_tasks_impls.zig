@@ -155,5 +155,5 @@ pub fn main() !void {
             writeClose(array, key_array, val_array, conv_array);
         }
     }
-    gen.appendFile(write_spec, config.hist_tasks_path, array.readAll());
+    try gen.appendFile(.{ .return_type = void }, config.hist_tasks_path, array.readAll());
 }
