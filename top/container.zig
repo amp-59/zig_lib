@@ -358,7 +358,7 @@ const @"1" = opaque {
                 }(src_type, any).readAll());
             }
         }
-        builtin.static.assert(src_type == dst_type);
+        builtin.assert(src_type == dst_type);
     }
     pub fn writeAnyUnstructured(comptime child: type, comptime write_spec: ReinterpretSpec, memory: anytype, any: anytype) void {
         const dst_type: type = child;
@@ -503,7 +503,7 @@ const @"1" = opaque {
                 }(src_type, any).readAll());
             }
         }
-        builtin.static.assert(src_type == dst_type);
+        builtin.assert(src_type == dst_type);
     }
     pub inline fn writeArgsStructured(comptime child: type, comptime write_spec: ReinterpretSpec, memory: anytype, args: anytype) void {
         inline for (args) |arg| {
@@ -539,7 +539,7 @@ const @"1" = opaque {
             @compileError("formatter type '" ++ @typeName(Format) ++ "' requires declaration 'formatWrite'");
         }
         if (builtin.runtime_assertions) {
-            const what: []const u8 = builtin.debug.typeFault(Format) ++ ".length(), ";
+            const what: []const u8 = @typeName(Format) ++ ".length(), ";
             if (builtin.is_fast or builtin.is_small) {
                 const s_len: u64 = format.formatLength();
                 const len_0: u64 = memory.impl.undefined_byte_address();
@@ -733,7 +733,7 @@ const @"1" = opaque {
                 }(src_type, any).readAll().len;
             }
         }
-        builtin.static.assert(src_type == dst_type);
+        builtin.assert(src_type == dst_type);
     }
     pub fn lengthFormat(comptime child: type, format: anytype) u64 {
         const Format: type = @TypeOf(format);

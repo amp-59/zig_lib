@@ -711,6 +711,17 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
                 allocator.metadata.count -%= s_aligned_bytes;
             }
         }
+        pub fn addGeneric(allocator: *Allocator, size: u64, init_len: u64, ptr: *u64, max_len: *u64, len: u64) u64 {
+            const new_max_len: u64 = len +% 2;
+            if (max_len.* == 0) {
+                ptr.* = allocateInternal(allocator, size *% init_len, 8);
+                max_len.* = init_len;
+            } else if (len == max_len.*) {
+                ptr.* = reallocateInternal(allocator, ptr.*, size *% max_len.*, size *% new_max_len, 8);
+                max_len.* = new_max_len;
+            }
+            return ptr.* +% (size *% len);
+        }
         pub inline fn duplicate(allocator: *Allocator, comptime T: type, value: T) Allocator.allocate_payload(*T) {
             const ret: *T = try meta.wrap(allocator.create(T));
             ret.* = value;
