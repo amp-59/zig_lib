@@ -3,6 +3,7 @@ const mem = srg.mem;
 const gen = srg.gen;
 const sys = srg.sys;
 const proc = srg.proc;
+const file = srg.file;
 const meta = srg.meta;
 const build = srg.build;
 const builtin = srg.builtin;
@@ -59,8 +60,9 @@ const text =
 ;
 fn buildMain(allocator: *build.Allocator, toplevel: *Node) !void {
     @setEvalBranchQuota(~@as(u32, 0));
+    try file.makePath(.{}, "test/stress", file.mode.directory);
     const node: *Node = try toplevel.addBuild(allocator, .{ .kind = .exe }, "top", "test/stress/top.zig");
-    try gen.truncateFile(.{}, "test/stress/top.zig", text ++
+    try gen.truncateFile(.{ .return_type = void }, "test/stress/top.zig", text ++
         \\pub fn main() void {}
     );
     inline for (0..10) |x| {
@@ -69,19 +71,19 @@ fn buildMain(allocator: *build.Allocator, toplevel: *Node) !void {
         const x_node: *Node = try toplevel.addBuild(allocator, .{ .kind = .obj }, x_s, x_root);
         x_node.flags.is_hidden = true;
         node.dependOnObject(allocator, x_node);
-        try gen.truncateFile(.{}, x_root, text ++ "export fn func_" ++ x_s ++ "() void {}");
+        try gen.truncateFile(.{ .return_type = void }, x_root, text ++ "export fn func_" ++ x_s ++ "() void {}");
         inline for (0..10) |y| {
             const y_s = x_s ++ comptime builtin.fmt.cx(y);
             const y_root = "test/stress/f_" ++ y_s ++ ".zig";
             const y_node: *Node = try toplevel.addBuild(allocator, .{ .kind = .obj }, y_s, y_root);
-            try gen.truncateFile(.{}, y_root, text ++ "export fn func_" ++ y_s ++ "() void {}");
+            try gen.truncateFile(.{ .return_type = void }, y_root, text ++ "export fn func_" ++ y_s ++ "() void {}");
             y_node.flags.is_hidden = true;
             x_node.dependOn(allocator, y_node, .build);
             inline for (0..10) |z| {
                 const z_s = y_s ++ comptime builtin.fmt.cx(z);
                 const z_root = "test/stress/f_" ++ z_s ++ ".zig";
                 const z_node: *Node = try toplevel.addBuild(allocator, .{ .kind = .obj }, z_s, z_root);
-                try gen.truncateFile(.{}, z_root, text ++ "export fn func_" ++ z_s ++ "() void {}");
+                try gen.truncateFile(.{ .return_type = void }, z_root, text ++ "export fn func_" ++ z_s ++ "() void {}");
                 z_node.flags.is_hidden = true;
                 y_node.dependOn(allocator, z_node, .build);
             }
