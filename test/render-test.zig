@@ -1,7 +1,6 @@
 const top = @import("../zig_lib.zig");
 const mem = top.mem;
 const fmt = top.fmt;
-const lit = top.lit;
 const proc = top.proc;
 const meta = top.meta;
 const file = top.file;
