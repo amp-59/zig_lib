@@ -181,7 +181,7 @@ pub fn asc(x: anytype, y: anytype) bool {
 pub fn desc(x: anytype, y: anytype) bool {
     return x < y;
 }
-/// insert: [524288]u64	 = top.time.TimeSpec{ .sec = 27, .nsec = 365636807, }
+/// insert: [524288]u64 = top.time.TimeSpec{ .sec = 27, .nsec = 365636807, }
 pub fn insertionSort(comptime T: type, comptime comparison: anytype, comptime transform: anytype, values: []T) void {
     var i: u64 = 1;
     while (i != values.len) : (i +%= 1) {
@@ -193,7 +193,7 @@ pub fn insertionSort(comptime T: type, comptime comparison: anytype, comptime tr
         values[j +% 1] = x;
     }
 }
-/// shell: [524288]u64	 = top.time.TimeSpec{ .nsec = 568540594, }
+/// shell: [524288]u64 = top.time.TimeSpec{ .nsec = 568540594, }
 pub fn shellSort(comptime T: type, comptime comparison: anytype, comptime transform: anytype, values: []T) void {
     var gap: u64 = values.len / 2;
     while (gap != 0) : (gap /= 2) {
@@ -209,14 +209,14 @@ pub fn shellSort(comptime T: type, comptime comparison: anytype, comptime transf
         }
     }
 }
-/// lshell: [524288]u64	 = top.time.TimeSpec{ .nsec = 253526823, }
+/// lshell: [524288]u64 = top.time.TimeSpec{ .nsec = 253526823, }
 pub fn layeredShellSort(comptime T: type, comptime comparison: anytype, values: []T) void {
     if (isSorted(T, comparison, values)) return;
     shellSort(T, comparison, approx, values);
     shellSort(T, comparison, approxDouble, values);
     shellSort(T, comparison, builtin.identity, values);
 }
-/// radix: [524288]u64	 = top.time.TimeSpec{ .nsec = 86801419, }
+/// radix: [524288]u64 = top.time.TimeSpec{ .nsec = 86801419, }
 pub fn radixSort(allocator: anytype, comptime T: type, values_0: []T) void {
     const save = allocator.save();
     defer allocator.restore(save);
