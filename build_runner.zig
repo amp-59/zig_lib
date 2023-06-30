@@ -19,6 +19,7 @@ const builtin = srg.builtin;
 pub usingnamespace root;
 pub usingnamespace proc.start;
 const Node = builtin.define("Node", type, build.GenericNode(.{}));
+
 pub const logging_default: builtin.Logging.Default = .{
     .Attempt = false,
     .Success = false,
@@ -27,13 +28,18 @@ pub const logging_default: builtin.Logging.Default = .{
     .Error = false,
     .Fault = false,
 };
-pub const tracing_override: bool = false;
 pub const signal_handlers = .{
     .IllegalInstruction = false,
     .BusError = false,
     .FloatingPointError = false,
     .Trap = false,
     .SegmentationFault = false,
+};
+pub const trace: builtin.Trace = .{
+    .Error = false,
+    .Fault = false,
+    .Signal = false,
+    .options = .{},
 };
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     var address_space: Node.AddressSpace = .{};
