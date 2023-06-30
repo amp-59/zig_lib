@@ -90,8 +90,8 @@ pub const TruncateSpec = struct {
     }
     pub const noexcept: TruncateSpec = .{
         .errors = .{
-            .open = .{},
-            .read = .{},
+            .create = .{},
+            .write = .{},
             .close = .{},
         },
     };
@@ -136,7 +136,7 @@ pub const AppendSpec = struct {
     pub const noexcept: AppendSpec = .{
         .errors = .{
             .open = .{},
-            .read = .{},
+            .write = .{},
             .close = .{},
         },
     };

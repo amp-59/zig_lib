@@ -1,6 +1,6 @@
 const top = @import("../zig_lib.zig");
-const lit = top.lit;
 const fmt = top.fmt;
+const tab = top.tab;
 const mem = top.mem;
 const mach = top.mach;
 const meta = top.meta;
@@ -88,7 +88,7 @@ pub fn approximationTest() void {
     var n_aligned_bytes: u32 = 1;
     var total_requested: u64 = 0;
     var total_returned: u64 = 0;
-    while (n_aligned_bytes < lit.max_bit_u16) : (n_aligned_bytes +%= 1) {
+    while (n_aligned_bytes < tab.max_bit_u16) : (n_aligned_bytes +%= 1) {
         const s_lb_counts: u16 = algo.partialPackSingleApprox(n_aligned_bytes);
         const o_aligned_bytes: u64 = algo.partialUnpackSingleApprox(s_lb_counts);
         const s_ub_counts: u16 = algo.partialPackDoubleApprox(n_aligned_bytes, o_aligned_bytes);
