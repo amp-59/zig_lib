@@ -765,8 +765,60 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
                 );
             }
         }
+        inline fn showDeallocate(comptime child: type, buf: []child, comptime sentinel: ?*const child) void {
+            if (Allocator.allocator_spec.logging.allocate) {
+                debug.showDeallocateManyStructured(
+                    child,
+                    @intFromPtr(buf.ptr),
+                    @intFromPtr(buf.ptr) +% @sizeOf(child) *% (buf.len +% @as(u64, @intFromBool(sentinel != null))),
+                    sentinel,
+                    @src(),
+                    @returnAddress(),
+                );
+            }
+        }
     };
 }
+const Journal = struct {
+    lists: struct {
+        mem.GenericLinkedList(.{ .child = Allocation, .Allocator = JournalAllocator, .low_alignment = 8 }),
+        mem.GenericLinkedList(.{ .child = Deallocation, .Allocator = JournalAllocator, .low_alignment = 8 }),
+    },
+    const JournalAllocator = struct {};
+    pub const Allocation = struct {
+        pc_addr: usize,
+        lb_addr: usize,
+        ab_addr: usize,
+        up_addr: usize,
+        alignment: usize,
+    };
+    pub const Deallocation = struct {
+        pc_addr: usize,
+        ab_addr: usize,
+        up_addr: usize,
+    };
+    pub fn allocate(journal: *Journal, allocator: *mem.SimpleAllocator, pc_addr: usize, lb_addr: usize, ab_addr: u64, up_addr: u64, alignment: usize) void {
+        return journal.lists[0].append(allocator, .{
+            .pc_addr = pc_addr,
+            .lb_addr = lb_addr,
+            .ab_addr = ab_addr,
+            .up_addr = up_addr,
+            .alignment = alignment,
+        });
+    }
+    pub fn deallocate(journal: *Journal, allocator: *mem.SimpleAllocator, pc_addr: usize, ab_addr: u64, up_addr: u64) void {
+        var idx: u64 = 0;
+        while (journal.lists[0].at(idx)) |*allocation| : (idx +%= 1) {
+            if (allocation.ab_addr == ab_addr) {
+                return journal.lists[1].append(allocator, .{
+                    .pc_addr = pc_addr,
+                    .ab_addr = ab_addr,
+                    .up_addr = up_addr,
+                });
+            }
+        }
+    }
+};
 const Branches = struct {
     allocate: extern struct {
         static: extern struct {
@@ -2381,7 +2433,7 @@ fn GenericArenaAllocatorIntermediate(comptime Allocator: type) type {
             } else if (Allocator.allocate_void != void) {
                 return error.CannotAllocateMemory;
             } else if (Allocator.allocator_spec.options.require_resize) {
-                @breakpoint();
+                @trap();
             }
         }
         fn resizeManyAboveAnyAligned(allocator: *Allocator, s_up_addr: u64, t_up_addr: u64) Allocator.allocate_void {
@@ -2394,7 +2446,7 @@ fn GenericArenaAllocatorIntermediate(comptime Allocator: type) type {
             } else if (Allocator.allocate_void != void) {
                 return error.CannotAllocateMemory;
             } else if (Allocator.allocator_spec.options.require_resize) {
-                @breakpoint();
+                @trap();
             }
         }
         fn resizeManyBelowUnitAligned(allocator: *Allocator, s_up_addr: u64, t_up_addr: u64) void {
@@ -2517,7 +2569,7 @@ fn GenericArenaAllocatorIntermediate(comptime Allocator: type) type {
             } else if (Allocator.allocate_void != void) {
                 return error.OpaqueSystemError;
             } else if (Allocator.allocator_spec.options.require_resize) {
-                @breakpoint();
+                @trap();
             }
         }
         fn convertAnyManyAnyAligned(allocator: *Allocator, s_up_addr: u64, t_up_addr: u64) Allocator.allocate_void {
@@ -2530,7 +2582,7 @@ fn GenericArenaAllocatorIntermediate(comptime Allocator: type) type {
             } else if (Allocator.allocate_void != void) {
                 return error.OpaqueSystemError;
             } else if (Allocator.allocator_spec.options.require_resize) {
-                @breakpoint();
+                @trap();
             }
         }
     };
