@@ -888,7 +888,7 @@ pub noinline fn callMain() noreturn {
             builtin.proc.exitError(err, @intCast(u8, @intFromError(err)));
         }
     }
-    builtin.static.assert(main_return_type_info != .ErrorSet);
+    builtin.assert(main_return_type_info != .ErrorSet);
 }
 // If the return value is greater than word size or is a zig error union, this
 // internal call can never be inlined.
@@ -1435,8 +1435,8 @@ pub fn GenericOptions(comptime Options: type) type {
         clobber: bool = true,
         const Option = @This();
         comptime {
-            builtin.static.assert(@hasDecl(Options, "Map"));
-            builtin.static.assert(Options.Map == @This());
+            builtin.assert(@hasDecl(Options, "Map"));
+            builtin.assert(Options.Map == @This());
         }
         fn tagCast(comptime child: type, comptime any: *const anyopaque) @Type(.EnumLiteral) {
             return @ptrCast(*const @Type(.EnumLiteral), @alignCast(@alignOf(child), any)).*;

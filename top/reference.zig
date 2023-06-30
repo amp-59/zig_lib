@@ -208,7 +208,7 @@ pub const Specification0 = struct {
                 @compileError("no specification matching mode '" ++ @tagName(invalid) ++ "'");
             },
         }
-        builtin.static.assert(@typeInfo(@TypeOf(techs)) == .Struct);
+        builtin.assert(@typeInfo(@TypeOf(techs)) == .Struct);
         return null;
     }
     pub const implementations = .{
@@ -1086,7 +1086,7 @@ pub const Specification1 = struct {
                 @compileError("no specification matching mode '" ++ @tagName(invalid) ++ "'");
             },
         }
-        builtin.static.assert(@typeInfo(@TypeOf(techs)) == .Struct);
+        builtin.assert(@typeInfo(@TypeOf(techs)) == .Struct);
         return null;
     }
     pub const implementations = .{
@@ -2012,7 +2012,7 @@ pub const Specification2 = struct {
                 @compileError("no specification matching mode '" ++ @tagName(invalid) ++ "'");
             },
         }
-        builtin.static.assert(@typeInfo(@TypeOf(techs)) == .Struct);
+        builtin.assert(@typeInfo(@TypeOf(techs)) == .Struct);
         return null;
     }
     pub const implementations = .{
@@ -2694,7 +2694,7 @@ pub const Specification3 = struct {
                 @compileError("no specification matching mode '" ++ @tagName(invalid) ++ "'");
             },
         }
-        builtin.static.assert(@typeInfo(@TypeOf(techs)) == .Struct);
+        builtin.assert(@typeInfo(@TypeOf(techs)) == .Struct);
         return null;
     }
     pub const implementations = .{
@@ -3412,7 +3412,7 @@ pub const Specification4 = struct {
                 @compileError("no specification matching mode '" ++ @tagName(invalid) ++ "'");
             },
         }
-        builtin.static.assert(@typeInfo(@TypeOf(techs)) == .Struct);
+        builtin.assert(@typeInfo(@TypeOf(techs)) == .Struct);
         return null;
     }
     pub const implementations = .{
@@ -4080,7 +4080,7 @@ pub const Specification5 = struct {
                 @compileError("no specification matching mode '" ++ @tagName(invalid) ++ "'");
             },
         }
-        builtin.static.assert(@typeInfo(@TypeOf(techs)) == .Struct);
+        builtin.assert(@typeInfo(@TypeOf(techs)) == .Struct);
         return null;
     }
     pub const implementations = .{
@@ -4760,7 +4760,7 @@ pub const Specification6 = struct {
                 @compileError("no specification matching mode '" ++ @tagName(invalid) ++ "'");
             },
         }
-        builtin.static.assert(@typeInfo(@TypeOf(techs)) == .Struct);
+        builtin.assert(@typeInfo(@TypeOf(techs)) == .Struct);
         return null;
     }
     pub const implementations = .{
@@ -5760,7 +5760,7 @@ pub const Specification7 = struct {
                 @compileError("no specification matching mode '" ++ @tagName(invalid) ++ "'");
             },
         }
-        builtin.static.assert(@typeInfo(@TypeOf(techs)) == .Struct);
+        builtin.assert(@typeInfo(@TypeOf(techs)) == .Struct);
         return null;
     }
     pub const implementations = .{
@@ -6784,7 +6784,7 @@ pub const Specification8 = struct {
                 @compileError("no specification matching mode '" ++ @tagName(invalid) ++ "'");
             },
         }
-        builtin.static.assert(@typeInfo(@TypeOf(techs)) == .Struct);
+        builtin.assert(@typeInfo(@TypeOf(techs)) == .Struct);
         return null;
     }
     pub const implementations = .{
@@ -7785,7 +7785,7 @@ pub const Specification9 = struct {
                 @compileError("no specification matching mode '" ++ @tagName(invalid) ++ "'");
             },
         }
-        builtin.static.assert(@typeInfo(@TypeOf(techs)) == .Struct);
+        builtin.assert(@typeInfo(@TypeOf(techs)) == .Struct);
         return null;
     }
     pub const implementations = .{
@@ -8808,7 +8808,7 @@ pub const Specification10 = struct {
                 @compileError("no specification matching mode '" ++ @tagName(invalid) ++ "'");
             },
         }
-        builtin.static.assert(@typeInfo(@TypeOf(techs)) == .Struct);
+        builtin.assert(@typeInfo(@TypeOf(techs)) == .Struct);
         return null;
     }
     pub const implementations = .{
@@ -9796,7 +9796,7 @@ pub const Specification11 = struct {
                 @compileError("no specification matching mode '" ++ @tagName(invalid) ++ "'");
             },
         }
-        builtin.static.assert(@typeInfo(@TypeOf(techs)) == .Struct);
+        builtin.assert(@typeInfo(@TypeOf(techs)) == .Struct);
         return null;
     }
     pub const implementations = .{
@@ -10754,7 +10754,7 @@ pub const Specification12 = struct {
                 @compileError("no specification matching mode '" ++ @tagName(invalid) ++ "'");
             },
         }
-        builtin.static.assert(@typeInfo(@TypeOf(techs)) == .Struct);
+        builtin.assert(@typeInfo(@TypeOf(techs)) == .Struct);
         return null;
     }
     pub const implementations = .{
@@ -11111,7 +11111,7 @@ pub const Specification13 = struct {
                 @compileError("no specification matching mode '" ++ @tagName(invalid) ++ "'");
             },
         }
-        builtin.static.assert(@typeInfo(@TypeOf(techs)) == .Struct);
+        builtin.assert(@typeInfo(@TypeOf(techs)) == .Struct);
         return null;
     }
     pub const implementations = .{
@@ -11487,7 +11487,7 @@ pub const Specification14 = struct {
                 @compileError("no specification matching mode '" ++ @tagName(invalid) ++ "'");
             },
         }
-        builtin.static.assert(@typeInfo(@TypeOf(techs)) == .Struct);
+        builtin.assert(@typeInfo(@TypeOf(techs)) == .Struct);
         return null;
     }
     pub const implementations = .{

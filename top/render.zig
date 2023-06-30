@@ -91,7 +91,7 @@ pub fn AnyFormat(comptime spec: RenderSpec, comptime Type: type) type {
 }
 pub fn GenericRenderFormat(comptime Format: type) type {
     comptime {
-        builtin.static.assertNotEqual(builtin.TypeId, @typeInfo(Format), .Pointer);
+        builtin.assertNotEqual(builtin.TypeId, @typeInfo(Format), .Pointer);
     }
     const T = struct {
         fn checkLen(len: u64) u64 {
@@ -1661,7 +1661,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
             type_descr: *const TypeDescrFormat,
             comptime cast_spec: TypeDescrFormatSpec,
         ) GenericTypeDescrFormat(cast_spec) {
-            builtin.static.assert(
+            builtin.assert(
                 cast_spec.options.default_field_values ==
                     spec.options.default_field_values,
             );

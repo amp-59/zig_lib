@@ -71,11 +71,11 @@ pub const MapSpec = struct {
             flags_bitfield.set(.stack);
         }
         if (spec.options.populate) {
-            builtin.static.assert(spec.options.visibility == .private);
+            builtin.assert(spec.options.visibility == .private);
             flags_bitfield.set(.populate);
         }
         if (spec.options.sync) {
-            builtin.static.assert(spec.options.visibility == .shared_validate);
+            builtin.assert(spec.options.visibility == .shared_validate);
             flags_bitfield.set(.sync);
         }
         return flags_bitfield;
