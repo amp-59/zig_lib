@@ -244,7 +244,7 @@ fn writeFieldDeductionInternal(
 
 const ArgListMap = struct { types.Implementation, gen.ArgList };
 
-pub fn main() void {
+pub fn main() !void {
     var address_space: AddressSpace = .{};
     var allocator: Allocator = Allocator.init(&address_space);
     defer allocator.deinit(&address_space);
@@ -297,6 +297,6 @@ pub fn main() void {
     }
     array.writeMany("}");
     if (!config.write_separate_source_files) {
-        gen.truncateFile(spec.generic.noexcept, config.allocator_file_path, array.readAll());
+        try gen.truncateFile(.{ .return_type = void }, config.allocator_file_path, array.readAll());
     }
 }

@@ -1112,11 +1112,11 @@ pub fn main() !void {
                 .dynamic => config.dynamic_container_path,
                 .parametric => config.parametric_container_path,
             };
-            gen.appendFile(spec.generic.noexcept, pathname, array.readAll());
+            try gen.appendFile(.{ .return_type = void }, pathname, array.readAll());
             array.undefineAll();
         }
     }
     if (!config.write_separate_source_files) {
-        gen.appendFile(spec.generic.noexcept, config.reference_file_path, array.readAll());
+        try gen.appendFile(.{ .return_type = void }, config.reference_file_path, array.readAll());
     }
 }

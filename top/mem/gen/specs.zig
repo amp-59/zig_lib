@@ -19,15 +19,20 @@ pub const runtime_assertions: bool = false;
 const Array = mem.StaticString(1024 * 1024);
 const validate_all_serial: bool = false;
 const write_separate_source_files: bool = false;
+const truncate_spec: gen.TruncateSpec = .{
+    .return_type = void,
+};
 const write_spec: file.WriteSpec = .{
     .child = u8,
     .errors = .{},
 };
-const write_impl_spec: file.WriteSpec = .{
+const write_impl_spec: gen.TruncateSpec = .{
+    .return_type = void,
     .child = types.Implementation,
     .errors = .{},
 };
-const write_ctn_spec: file.WriteSpec = .{
+const write_ctn_spec: gen.TruncateSpec = .{
+    .return_type = void,
     .child = types.Container,
     .errors = .{},
 };
@@ -675,7 +680,7 @@ fn writeSpecificationDeduction(
     );
     array.writeMany("}\n};\n");
 }
-fn writeSpecifications(allocator: *config.Allocator, array: *Array) config.Allocator.allocate_void {
+fn writeSpecifications(allocator: *config.Allocator, array: *Array) !void {
     var indices: types.Implementation.Indices = .{};
     for (types.Kind.list) |kind| {
         for (attr.abstract_specs, data.x_p_infos, data.spec_sets, data.tech_sets, data.x_q_infos) |abstract_spec, p_info, spec_set, tech_set, q_info| {
@@ -695,12 +700,12 @@ fn writeSpecifications(allocator: *config.Allocator, array: *Array) config.Alloc
                 .dynamic => config.dynamic_container_path,
                 .parametric => config.parametric_container_path,
             };
-            gen.truncateFile(spec.generic.noexcept, pathname, array.readAll());
+            gen.truncateFile(truncate_spec, pathname, array.readAll());
             array.undefineAll();
         }
     }
     if (!write_separate_source_files) {
-        gen.truncateFile(spec.generic.noexcept, config.container_file_path, array.readAll());
+        try gen.truncateFile(truncate_spec, config.container_file_path, array.readAll());
     }
     array.undefineAll();
     const fd: u64 = file.open(spec.generic.noexcept, config.reference_template_path);
@@ -712,9 +717,9 @@ fn writeSpecifications(allocator: *config.Allocator, array: *Array) config.Alloc
             spec_idx +%= 1;
         }
     }
-    gen.truncateFile(spec.generic.noexcept, config.reference_file_path, array.readAll());
+    try gen.truncateFile(truncate_spec, config.reference_file_path, array.readAll());
 }
-fn writeContainerKinds(array: *Array) void {
+fn writeContainerKinds(array: *Array) !void {
     array.undefineAll();
     array.writeMany("const ctn_fn = @import(\"./ctn_fn.zig\");\n");
     const writeKind = attr.Fn.static.writeKindSwitch;
@@ -789,7 +794,7 @@ fn writeContainerKinds(array: *Array) void {
     writeKind(ctn_fn.Fn, array, .relative_reverse, defined[1] ++ streamed[1]);
     writeKind(ctn_fn.Fn, array, .offset, offset_defined[1] ++ offset_undefined[1] ++ offset_streamed[1] ++ offset_unstreamed[1]);
     writeKind(ctn_fn.Fn, array, .special, helper[0]);
-    gen.truncateFile(spec.generic.noexcept, config.container_kinds_path, array.readAll());
+    try gen.truncateFile(truncate_spec, config.container_kinds_path, array.readAll());
 }
 fn nonEqualIndices(name: []const u8, any: anytype) void {
     var array: mem.StaticString(4096) = undefined;
@@ -923,7 +928,7 @@ pub fn main() !void {
     file.makeDir(spec.generic.noexcept, config.container_dir_path, file.mode.directory);
     file.makeDir(spec.generic.noexcept, config.reference_dir_path, file.mode.directory);
     file.makeDir(spec.generic.noexcept, config.container_kinds_path, file.mode.regular);
-    array.define(gen.readFile(spec.generic.noexcept, config.container_template_path, array.referAllUndefined()));
+    array.define(gen.readFile(gen.ReadSpec.noexcept, config.container_template_path, array.referAllUndefined()));
     try meta.wrap(writeSpecifications(&allocator, &array));
     var impl_details: []types.Implementation = allocator.allocate(types.Implementation, 0x400);
     var params_idx: u16 = 0;
@@ -945,10 +950,10 @@ pub fn main() !void {
             params_idx +%= 1;
         }
     }
-    gen.truncateFile(write_impl_spec, config.impl_detail_path, impl_details[0..ptr_idx]);
-    gen.truncateFile(write_ctn_spec, config.ctn_detail_path, attr.ctn_details);
+    try gen.truncateFile(write_impl_spec, config.impl_detail_path, impl_details[0..ptr_idx]);
+    try gen.truncateFile(write_ctn_spec, config.ctn_detail_path, attr.ctn_details);
     if (validate_all_serial) {
         try validateAllSerial(&allocator, impl_details[0..ptr_idx]);
     }
-    writeContainerKinds(&array);
+    try writeContainerKinds(&array);
 }
