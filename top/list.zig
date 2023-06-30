@@ -11,7 +11,7 @@ pub const ListSpec = struct {
     Allocator: type,
 };
 pub fn GenericLinkedList(comptime list_spec: ListSpec) type {
-    return (struct {
+    const T = struct {
         links: Links,
         count: u64,
         index: u64,
@@ -656,7 +656,8 @@ pub fn GenericLinkedList(comptime list_spec: ListSpec) type {
                 builtin.debug.write(array.readAll(allocator));
             }
         };
-    });
+    };
+    return T;
 }
 pub const ListViewSpec = struct {
     child: type,

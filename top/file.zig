@@ -850,11 +850,11 @@ pub const MapSpec = struct {
             .shared_validate => flags_bitfield.set(.shared_validate),
         }
         if (map_spec.options.populate) {
-            builtin.static.assert(map_spec.options.visibility == .private);
+            builtin.assert(map_spec.options.visibility == .private);
             flags_bitfield.set(.populate);
         }
         if (map_spec.options.sync) {
-            builtin.static.assert(map_spec.options.visibility == .shared_validate);
+            builtin.assert(map_spec.options.visibility == .shared_validate);
             flags_bitfield.set(.sync);
         }
         flags_bitfield.set(.fixed);

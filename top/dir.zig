@@ -151,7 +151,7 @@ pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
         }
         comptime {
             if (dir_spec.options.make_list) {
-                builtin.static.assert(dir_spec.options.init_read_all);
+                builtin.assert(dir_spec.options.init_read_all);
             }
         }
     });

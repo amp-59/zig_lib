@@ -374,7 +374,7 @@ pub const DiscreteMultiArena = struct {
         };
     }
     pub fn Implementation(comptime multi_arena: MultiArena) type {
-        builtin.static.assertNotEqual(u64, multi_arena.list.len, 0);
+        builtin.assertNotEqual(u64, multi_arena.list.len, 0);
         var directory: Directory(multi_arena) = undefined;
         var fields: []const builtin.Type.StructField = meta.empty;
         var thread_safe_state: bool = multi_arena.list[0].options.thread_safe;

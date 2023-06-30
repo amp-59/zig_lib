@@ -7,6 +7,7 @@ const file = @import("./file.zig");
 const parse = @import("./parse.zig");
 const builtin = @import("./builtin.zig");
 const testing = @import("./testing.zig");
+const Allocator = builtin.define("Allocator", type, mem.SimpleAllocator);
 // TODO Relocate to namespace `config`.
 const DebugSpec = struct {
     logging: Logging = .{},
@@ -589,7 +590,7 @@ pub const Unit = extern struct {
         next_unit_off: usize,
         next_off: usize,
     };
-    fn addDir(unit: *Unit, allocator: *mem.SimpleAllocator) *FileEntry {
+    fn addDir(unit: *Unit, allocator: *Allocator) *FileEntry {
         @setRuntimeSafety(false);
         const size_of: comptime_int = @sizeOf(FileEntry);
         const addr_buf: *u64 = @ptrCast(*u64, &unit.dirs);
@@ -601,7 +602,7 @@ pub const Unit = extern struct {
         mem.zero(FileEntry, ret);
         return ret;
     }
-    fn addFile(unit: *Unit, allocator: *mem.SimpleAllocator) *FileEntry {
+    fn addFile(unit: *Unit, allocator: *Allocator) *FileEntry {
         @setRuntimeSafety(false);
         const size_of: comptime_int = @sizeOf(FileEntry);
         const addr_buf: *u64 = @ptrCast(*u64, &unit.files);
@@ -613,7 +614,7 @@ pub const Unit = extern struct {
         mem.zero(FileEntry, ret);
         return ret;
     }
-    fn init(allocator: *mem.SimpleAllocator, dwarf_info: *DwarfInfo, bytes: [*]u8, unit_off: u64) !*Unit {
+    fn init(allocator: *Allocator, dwarf_info: *DwarfInfo, bytes: [*]u8, unit_off: u64) !*Unit {
         const buf: [*]u8 = bytes + unit_off;
         const ret: *Unit = dwarf_info.addUnit(allocator);
         ret.off = unit_off;
@@ -685,7 +686,7 @@ const AbbrevTable = struct {
             form: Form,
             payload: i64 = 0,
         };
-        fn addKeyVal(entry: *Entry, allocator: *mem.SimpleAllocator) *KeyVal {
+        fn addKeyVal(entry: *Entry, allocator: *Allocator) *KeyVal {
             @setRuntimeSafety(false);
             const size_of: comptime_int = @sizeOf(KeyVal);
             const addr_buf: *u64 = @ptrCast(*u64, &entry.kvs);
@@ -698,7 +699,7 @@ const AbbrevTable = struct {
             return ret;
         }
     };
-    fn addEntry(table: *AbbrevTable, allocator: *mem.SimpleAllocator) *AbbrevTable.Entry {
+    fn addEntry(table: *AbbrevTable, allocator: *Allocator) *AbbrevTable.Entry {
         @setRuntimeSafety(false);
         const size_of: comptime_int = @sizeOf(AbbrevTable.Entry);
         const addr_buf: *u64 = @ptrCast(*u64, &table.ents);
@@ -725,7 +726,7 @@ pub const Die = extern struct {
         key: Attr,
         val: FormValue,
     };
-    fn addKeyVal(info_entry: *Die, allocator: *mem.SimpleAllocator) *KeyVal {
+    fn addKeyVal(info_entry: *Die, allocator: *Allocator) *KeyVal {
         @setRuntimeSafety(false);
         const size_of: comptime_int = @sizeOf(KeyVal);
         const addr_buf: *u64 = @ptrCast(*u64, &info_entry.kvs);
@@ -920,7 +921,7 @@ pub const DwarfInfo = extern struct {
         }
         return @bitCast(DwarfInfo, ret);
     }
-    fn addAbbrevTable(dwarf_info: *DwarfInfo, allocator: *mem.SimpleAllocator) *AbbrevTable {
+    fn addAbbrevTable(dwarf_info: *DwarfInfo, allocator: *Allocator) *AbbrevTable {
         @setRuntimeSafety(false);
         const addr_buf: *u64 = @ptrCast(*u64, &dwarf_info.abbrev_tabs);
         const ret: *AbbrevTable = @ptrFromInt(*AbbrevTable, allocator.addGeneric(@sizeOf(AbbrevTable), 1, addr_buf, &dwarf_info.abbrev_tabs_max_len, dwarf_info.abbrev_tabs_len));
@@ -928,7 +929,7 @@ pub const DwarfInfo = extern struct {
         mem.zero(AbbrevTable, ret);
         return ret;
     }
-    fn addUnit(dwarf_info: *DwarfInfo, allocator: *mem.SimpleAllocator) *Unit {
+    fn addUnit(dwarf_info: *DwarfInfo, allocator: *Allocator) *Unit {
         @setRuntimeSafety(false);
         const addr_buf: *u64 = @ptrCast(*u64, &dwarf_info.units);
         const ret: *Unit = @ptrFromInt(*Unit, allocator.addGeneric(@sizeOf(Unit), 1, addr_buf, &dwarf_info.units_max_len, dwarf_info.units_len));
@@ -936,7 +937,7 @@ pub const DwarfInfo = extern struct {
         mem.zero(Unit, ret);
         return ret;
     }
-    fn addFunc(dwarf_info: *DwarfInfo, allocator: *mem.SimpleAllocator) *Func {
+    fn addFunc(dwarf_info: *DwarfInfo, allocator: *Allocator) *Func {
         @setRuntimeSafety(false);
         const addr_buf: *u64 = @ptrCast(*u64, &dwarf_info.funcs);
         const ret: *Func = @ptrFromInt(*Func, allocator.addGeneric(@sizeOf(Func), 1, addr_buf, &dwarf_info.funcs_max_len, dwarf_info.funcs_len));
@@ -944,7 +945,7 @@ pub const DwarfInfo = extern struct {
         mem.zero(Func, ret);
         return ret;
     }
-    pub fn addAddressInfo(dwarf_info: *DwarfInfo, allocator: *mem.SimpleAllocator) *AddressInfo {
+    pub fn addAddressInfo(dwarf_info: *DwarfInfo, allocator: *Allocator) *AddressInfo {
         @setRuntimeSafety(false);
         const addr_buf: *u64 = @ptrCast(*u64, &dwarf_info.addr_info);
         const ret: *AddressInfo = @ptrFromInt(*AddressInfo, allocator.addGeneric(@sizeOf(AddressInfo), 1, addr_buf, &dwarf_info.addr_info_max_len, dwarf_info.addr_info_len));
@@ -952,7 +953,7 @@ pub const DwarfInfo = extern struct {
         mem.zero(AddressInfo, ret);
         return ret;
     }
-    fn populateUnit(allocator: *mem.SimpleAllocator, dwarf_info: *DwarfInfo, unit: *Unit) !void {
+    fn populateUnit(allocator: *Allocator, dwarf_info: *DwarfInfo, unit: *Unit) !void {
         try parseAbbrevTable(allocator, dwarf_info, unit.abbrev_tab);
         try parseDie(allocator, dwarf_info, unit, unit.info_entry);
         if (debug_spec.logging.summary) {
@@ -971,7 +972,7 @@ pub const DwarfInfo = extern struct {
             unit.loclists_base = form_val.getUInt(usize);
         }
     }
-    pub fn scanAllCompileUnits(dwarf_info: *DwarfInfo, allocator: *mem.SimpleAllocator) void {
+    pub fn scanAllCompileUnits(dwarf_info: *DwarfInfo, allocator: *Allocator) void {
         var unit_off: u64 = 0;
         while (unit_off < dwarf_info.info_len) {
             const unit: *Unit = try Unit.init(allocator, dwarf_info, dwarf_info.info, unit_off);
@@ -1001,7 +1002,7 @@ pub const DwarfInfo = extern struct {
         }
     }
     fn parseFuncName(
-        allocator: *mem.SimpleAllocator,
+        allocator: *Allocator,
         dwarf_info: *DwarfInfo,
         unit: *Unit,
         info_entry: *Die,
@@ -1065,7 +1066,7 @@ pub const DwarfInfo = extern struct {
         return .{};
     }
     fn parseAbbrevTable(
-        allocator: *mem.SimpleAllocator,
+        allocator: *Allocator,
         dwarf_info: *DwarfInfo,
         abbrev_tab: *AbbrevTable,
     ) !void {
@@ -1108,7 +1109,7 @@ pub const DwarfInfo = extern struct {
         }
     }
     fn parseDie(
-        allocator: *mem.SimpleAllocator,
+        allocator: *Allocator,
         dwarf_info: *DwarfInfo,
         unit: *Unit,
         info_entry: *Die,
@@ -1344,7 +1345,7 @@ pub const DwarfInfo = extern struct {
     }
     pub fn getSourceLocation(
         dwarf_info: *DwarfInfo,
-        allocator: *mem.SimpleAllocator,
+        allocator: *Allocator,
         unit: *const Unit,
         instr_addr: u64,
     ) ?SourceLocation {
@@ -1542,7 +1543,7 @@ fn getStringGeneric(opt_str: ?[]const u8, offset: u64) [:0]const u8 {
     };
     return str[offset .. offset +% last :0];
 }
-fn parseFormValue(allocator: *mem.SimpleAllocator, unit: *Unit, bytes: []u8, form: Form) !struct { FormValue, u64 } {
+fn parseFormValue(allocator: *Allocator, unit: *Unit, bytes: []u8, form: Form) !struct { FormValue, u64 } {
     switch (form) {
         .addr => return .{ .{ .Address = @ptrCast(*align(1) usize, bytes).* }, @sizeOf(u64) },
         .block2 => {
@@ -1660,7 +1661,7 @@ const FileEntry = struct {
     buf: [*]u8 = undefined,
     buf_len: u64 = 0,
     const Array = mem.GenericSimpleArray(FileEntry);
-    fn pathname(entry: *const FileEntry, allocator: *mem.SimpleAllocator, dirs: *const FileEntry.Array) [:0]const u8 {
+    fn pathname(entry: *const FileEntry, allocator: *Allocator, dirs: *const FileEntry.Array) [:0]const u8 {
         const dirname: []const u8 = dirs.values[entry.dir_idx].name;
         const ret: []u8 = allocator.allocate(u8, dirname.len +% entry.name.len +% 2);
         var len: u64 = 0;
@@ -1728,7 +1729,7 @@ const LineNumberProgram = struct {
     }
     fn checkLineMatch(
         prog: *LineNumberProgram,
-        allocator: *mem.SimpleAllocator,
+        allocator: *Allocator,
         dirs: *FileEntry.Array,
         files: *FileEntry.Array,
     ) ?SourceLocation {
