@@ -519,7 +519,7 @@ pub fn GenericArenaAllocator(comptime spec: ArenaAllocatorSpec) type {
         const Branches = struct {};
         const Graphics = GenericArenaAllocatorGraphics(Allocator);
         comptime {
-            builtin.static.assertEqual(u64, 1, unit_alignment);
+            builtin.assertEqual(u64, 1, unit_alignment);
         }
     });
 }
@@ -573,7 +573,7 @@ pub fn GenericRtArenaAllocator(comptime spec: RtArenaAllocatorSpec) type {
         const Branches = struct {};
         const Graphics = GenericArenaAllocatorGraphics(Allocator);
         comptime {
-            builtin.static.assertEqual(u64, 1, unit_alignment);
+            builtin.assertEqual(u64, 1, unit_alignment);
         }
     });
 }

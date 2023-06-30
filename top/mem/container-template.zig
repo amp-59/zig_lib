@@ -357,7 +357,7 @@ pub const reinterpret = opaque {
                 }(src_type, any).readAll());
             }
         }
-        builtin.static.assert(src_type == dst_type);
+        builtin.assert(src_type == dst_type);
     }
     pub fn writeAnyUnstructured(comptime child: type, comptime write_spec: ReinterpretSpec, memory: anytype, any: anytype) void {
         const dst_type: type = child;
@@ -502,7 +502,7 @@ pub const reinterpret = opaque {
                 }(src_type, any).readAll());
             }
         }
-        builtin.static.assert(src_type == dst_type);
+        builtin.assert(src_type == dst_type);
     }
     pub inline fn writeArgsStructured(comptime child: type, comptime write_spec: ReinterpretSpec, memory: anytype, args: anytype) void {
         inline for (args) |arg| {
@@ -732,7 +732,7 @@ pub const reinterpret = opaque {
                 }(src_type, any).readAll().len;
             }
         }
-        builtin.static.assert(src_type == dst_type);
+        builtin.assert(src_type == dst_type);
     }
     pub fn lengthFormat(comptime child: type, format: anytype) u64 {
         const Format: type = @TypeOf(format);

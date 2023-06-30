@@ -697,6 +697,10 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                         });
                         node.dependOnObject(allocator, GlobalState.trace);
                     }
+                    const root_basename: [:0]const u8 = node.impl.paths[1].relative();
+                    if (root_basename[root_basename.len -% 1] == 'c') {
+                        node.flags.build.configure_root = false;
+                    }
                 }
             }
         }

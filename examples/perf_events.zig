@@ -15,6 +15,7 @@ const perf = @import("../top/perf.zig");
 
 pub usingnamespace proc.start;
 pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
+
 const event_spec: perf.PerfEventSpec = .{ .errors = .{} };
 const read_spec: file.ReadSpec = .{ .errors = .{}, .return_type = void, .child = u64 };
 const wait_spec: proc.WaitSpec = .{ .errors = .{} };
