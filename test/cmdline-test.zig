@@ -12,7 +12,10 @@ pub usingnamespace proc.start;
 
 pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
 
-const Node = build.GenericNode(.{ .options = .{ .max_cmdline_len = null } });
+const Node = build.GenericNode(.{ .options = .{
+    .commands = .{ .archive = true },
+    .max_cmdline_len = null,
+} });
 
 pub fn testComplexStructureBuildMain(allocator: *build.Allocator, builder: *Node) void {
     const deps: []const build.ModuleDependency = &.{
