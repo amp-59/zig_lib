@@ -37,7 +37,7 @@ pub const BuilderSpec = struct {
         /// Bytes allowed per thread stack (static maximum)
         stack_aligned_bytes: u64 = 8 * 1024 * 1024,
         /// max_thread_count=0 is single-threaded.
-        max_thread_count: u64 = 16,
+        max_thread_count: u64 = 8,
         /// Lowest allocated byte address for thread stacks. This field and the
         /// two previous fields derive the arena lowest allocated byte address,
         /// as this is the first unallocated byte address of the thread space.
@@ -569,6 +569,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         /// Initialize a new `zig fmt` command.
         pub fn addFormat(toplevel: *Node, allocator: *mem.SimpleAllocator, format_cmd: FormatCommand, name: []const u8, pathname: []const u8) !*Node {
             @setRuntimeSafety(builder_spec.options.enable_safety);
+            if (!builder_spec.options.commands.format)
+                @compileError("format task disabled");
             const node: *Node = allocator.create(Node);
             node.flags = .{};
             toplevel.addNode(allocator).* = node;
@@ -587,6 +589,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         }
         /// Initialize a new `zig ar` command.
         pub fn addArchive(toplevel: *Node, allocator: *mem.SimpleAllocator, archive_cmd: ArchiveCommand, name: []const u8, deps: []const *Node) !*Node {
+            if (!builder_spec.options.commands.archive)
+                @compileError("archive task disabled");
             @setRuntimeSafety(builder_spec.options.enable_safety);
             const node: *Node = allocator.create(Node);
             node.flags = .{};
@@ -607,6 +611,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         }
         pub fn addBuild(toplevel: *Node, allocator: *mem.SimpleAllocator, build_cmd: BuildCommand, name: []const u8, root: []const u8) !*Node {
             @setRuntimeSafety(builder_spec.options.enable_safety);
+            if (!builder_spec.options.commands.build)
+                @compileError("build task disabled");
             const main_pkg_path: [:0]const u8 = toplevel.impl.paths[0].names[0];
             const node: *Node = allocator.create(Node);
             node.flags = .{};
@@ -629,6 +635,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         }
         pub fn addObjcopy(toplevel: *Node, allocator: *mem.SimpleAllocator, objcopy_cmd: ObjcopyCommand, name: []const u8, holder: *Node) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
+            if (!builder_spec.options.commands.build)
+                @compileError("objcopy task disabled");
             const node: *Node = allocator.create(Node);
             node.flags = .{};
             toplevel.addNode(allocator).* = node;
@@ -2442,6 +2450,9 @@ fn libraryRoot() [:0]const u8 {
         while (build4[idx] != '/') {
             idx -%= 1;
             if (idx == 0) break;
+        }
+        if (idx == 0) {
+            return ".";
         }
         return build4[0..idx] ++ [0:0]u8{};
     }
