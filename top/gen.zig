@@ -1,3 +1,4 @@
+const sys = @import("./sys.zig");
 const mem = @import("./mem.zig");
 const fmt = @import("./fmt.zig");
 const file = @import("./file.zig");
@@ -43,20 +44,178 @@ pub const DeclList = struct {
         return false;
     }
 };
-pub fn truncateFile(comptime write_spec: file.WriteSpec, pathname: [:0]const u8, buf: []const write_spec.child) void {
-    const fd: u64 = file.create(spec.create.truncate_noexcept, pathname, file.mode.regular);
-    defer file.close(spec.generic.noexcept, fd);
-    file.write(write_spec, fd, buf);
+pub const TruncateSpec = struct {
+    child: type = u8,
+    return_type: type = u64,
+    errors: Errors = .{},
+    logging: Logging = .{},
+    const Errors = struct {
+        create: sys.ErrorPolicy = .{ .throw = sys.open_errors },
+        write: sys.ErrorPolicy = .{ .throw = sys.write_errors },
+        close: sys.ErrorPolicy = .{ .throw = sys.close_errors },
+    };
+    const Logging = struct {
+        create: builtin.Logging.AcquireError = .{},
+        write: builtin.Logging.SuccessError = .{},
+        close: builtin.Logging.ReleaseError = .{},
+    };
+    fn errors(comptime truncate_spec: TruncateSpec) sys.ErrorPolicy {
+        return .{
+            .throw = truncate_spec.errors.open.throw ++ truncate_spec.errors.read.throw ++
+                truncate_spec.errors.close.throw,
+            .abort = truncate_spec.errors.open.abort ++ truncate_spec.errors.read.abort ++
+                truncate_spec.errors.close.abort,
+        };
+    }
+    fn create(comptime truncate_spec: TruncateSpec) file.CreateSpec {
+        return .{
+            .logging = truncate_spec.logging.create,
+            .errors = truncate_spec.errors.create,
+            .options = .{ .truncate = true, .write = true, .exclusive = false },
+        };
+    }
+    fn write(comptime truncate_spec: TruncateSpec) file.WriteSpec {
+        return .{
+            .child = truncate_spec.child,
+            .return_type = truncate_spec.return_type,
+            .logging = truncate_spec.logging.write,
+            .errors = truncate_spec.errors.write,
+        };
+    }
+    fn close(comptime truncate_spec: TruncateSpec) file.CloseSpec {
+        return .{
+            .logging = truncate_spec.logging.close,
+            .errors = truncate_spec.errors.close,
+        };
+    }
+    pub const noexcept: TruncateSpec = .{
+        .errors = .{
+            .open = .{},
+            .read = .{},
+            .close = .{},
+        },
+    };
+};
+pub const AppendSpec = struct {
+    child: type = u8,
+    return_type: type = u64,
+    errors: Errors = .{},
+    logging: Logging = .{},
+
+    const Errors = struct {
+        open: sys.ErrorPolicy = .{ .throw = sys.open_errors },
+        write: sys.ErrorPolicy = .{ .throw = sys.write_errors },
+        close: sys.ErrorPolicy = .{ .throw = sys.close_errors },
+    };
+    const Logging = struct {
+        open: builtin.Logging.AcquireError = .{},
+        write: builtin.Logging.SuccessError = .{},
+        close: builtin.Logging.ReleaseError = .{},
+    };
+    fn open(comptime append_spec: AppendSpec) file.OpenSpec {
+        return .{
+            .logging = append_spec.logging.open,
+            .errors = append_spec.errors.open,
+            .options = .{ .append = true, .write_only = true },
+        };
+    }
+    fn write(comptime append_spec: AppendSpec) file.WriteSpec {
+        return .{
+            .child = append_spec.child,
+            .return_type = append_spec.return_type,
+            .logging = append_spec.logging.write,
+            .errors = append_spec.errors.write,
+        };
+    }
+    fn close(comptime append_spec: AppendSpec) file.CloseSpec {
+        return .{
+            .logging = append_spec.logging.close,
+            .errors = append_spec.errors.close,
+        };
+    }
+    pub const noexcept: AppendSpec = .{
+        .errors = .{
+            .open = .{},
+            .read = .{},
+            .close = .{},
+        },
+    };
+};
+pub const ReadSpec = struct {
+    child: type = u8,
+    return_type: type = u64,
+    errors: Errors = .{},
+    logging: Logging = .{},
+    const Errors = struct {
+        open: sys.ErrorPolicy = .{ .throw = sys.open_errors },
+        read: sys.ErrorPolicy = .{ .throw = sys.read_errors },
+        close: sys.ErrorPolicy = .{ .throw = sys.close_errors },
+    };
+    const Logging = struct {
+        open: builtin.Logging.AcquireError = .{},
+        read: builtin.Logging.SuccessError = .{},
+        close: builtin.Logging.ReleaseError = .{},
+    };
+    fn open(comptime read_spec: ReadSpec) file.OpenSpec {
+        return .{
+            .logging = read_spec.logging.open,
+            .errors = read_spec.errors.open,
+        };
+    }
+    fn read(comptime read_spec: ReadSpec) file.ReadSpec {
+        return .{
+            .child = read_spec.child,
+            .return_type = read_spec.return_type,
+            .logging = read_spec.logging.read,
+            .errors = read_spec.errors.read,
+        };
+    }
+    fn close(comptime read_spec: ReadSpec) file.CloseSpec {
+        return .{
+            .logging = read_spec.logging.close,
+            .errors = read_spec.errors.close,
+        };
+    }
+    pub const noexcept: ReadSpec = .{
+        .errors = .{
+            .open = .{},
+            .read = .{},
+            .close = .{},
+        },
+    };
+};
+pub fn truncateFile(comptime truncate_spec: TruncateSpec, pathname: [:0]const u8, buf: []const truncate_spec.child) sys.ErrorUnion(.{
+    .throw = truncate_spec.errors.create.throw ++ truncate_spec.errors.write.throw ++
+        truncate_spec.errors.close.throw,
+    .abort = truncate_spec.errors.create.abort ++ truncate_spec.errors.write.abort ++
+        truncate_spec.errors.close.abort,
+}, truncate_spec.return_type) {
+    const fd: u64 = try meta.wrap(file.create(truncate_spec.create(), pathname, file.mode.regular));
+    const ret: truncate_spec.return_type = try meta.wrap(file.write(truncate_spec.write(), fd, buf));
+    try meta.wrap(file.close(truncate_spec.close(), fd));
+    return ret;
 }
-pub fn appendFile(comptime write_spec: file.WriteSpec, pathname: [:0]const u8, buf: []const write_spec.child) void {
-    const fd: u64 = file.open(spec.open.append_noexcept, pathname);
-    defer file.close(spec.generic.noexcept, fd);
-    file.write(write_spec, fd, buf);
+pub fn appendFile(comptime append_spec: AppendSpec, pathname: [:0]const u8, buf: []const append_spec.child) sys.ErrorUnion(.{
+    .throw = append_spec.errors.open.throw ++ append_spec.errors.write.throw ++
+        append_spec.errors.close.throw,
+    .abort = append_spec.errors.open.abort ++ append_spec.errors.write.abort ++
+        append_spec.errors.close.abort,
+}, void) {
+    const fd: u64 = try meta.wrap(file.open(append_spec.open(), pathname));
+    const ret: append_spec.return_type = try meta.wrap(file.write(append_spec.write(), fd, buf));
+    try meta.wrap(file.close(append_spec.close(), fd));
+    return ret;
 }
-pub fn readFile(comptime read_spec: file.ReadSpec, pathname: [:0]const u8, buf: []read_spec.child) u64 {
-    const fd: u64 = file.open(spec.open.append_noexcept, pathname);
-    defer file.close(spec.generic.noexcept, fd);
-    return file.read(read_spec, fd, buf);
+pub fn readFile(comptime read_spec: ReadSpec, pathname: [:0]const u8, buf: []read_spec.child) sys.ErrorUnion(.{
+    .throw = read_spec.errors.open.throw ++ read_spec.errors.read.throw ++
+        read_spec.errors.close.throw,
+    .abort = read_spec.errors.open.abort ++ read_spec.errors.read.abort ++
+        read_spec.errors.close.abort,
+}, read_spec.return_type) {
+    const fd: u64 = try meta.wrap(file.open(read_spec.open(), pathname));
+    const ret: read_spec.return_type = try meta.wrap(file.read(read_spec.read(), fd, buf));
+    try meta.wrap(file.close(read_spec.close(), fd));
+    return ret;
 }
 pub fn containerDeclsToBitField(comptime Container: type, comptime backing_integer: type, type_name: []const u8) void {
     const ShiftAmount = builtin.ShiftAmount(backing_integer);
