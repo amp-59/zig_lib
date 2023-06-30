@@ -1317,85 +1317,86 @@ pub const debug = struct {
         lhs = "\x1b[1m" ++ lhs ++ message_no_style;
         break :blk lhs ++ " " ** (message_indent - len);
     };
-    pub inline fn typeFault(comptime T: type) []const u8 {
-        return about_fault_p0_s ++ @typeName(T);
-    }
-    pub inline fn typeError(comptime T: type) []const u8 {
-        return about_error_p0_s ++ @typeName(T);
-    }
-    fn exitRc(rc: u8) void {
+    const about_test_1_s = "test failed";
+    const about_assertion_1_s = "assertion failed";
+    fn exitRcNotice(rc: u8) void {
         var buf: [4096]u8 = undefined;
         logAlwaysAIO(&buf, &.{ about_exit_0_s, "rc=", fmt.ud8(rc).readAll(), "\n" });
     }
-    fn exitErrorRc(error_name: []const u8, rc: u8) void {
+    fn errorRcNotice(error_name: []const u8, rc: u8) void {
         var buf: [4096]u8 = undefined;
         logAlwaysAIO(&buf, &.{ about_error_p0_s, error_name, ", rc=", fmt.ud8(rc).readAll(), "\n" });
     }
-    fn exitErrorFaultRc(error_name: []const u8, message: []const u8, rc: u8) void {
-        exitError(error_name);
-        exitFault(message, rc);
+    fn errorFaultRcNotice(error_name: []const u8, message: []const u8, rc: u8) void {
+        errorNotice(error_name);
+        faultRcNotice(message, rc);
     }
-    fn exitError(error_name: []const u8) void {
+    fn errorNotice(error_name: []const u8) void {
         var buf: [4096]u8 = undefined;
         logAlwaysAIO(&buf, &.{ about_error_p0_s, error_name, "\n" });
     }
-    fn exitFault(message: []const u8, rc: u8) void {
+    fn faultNotice(message: []const u8) void {
         var buf: [4096]u8 = undefined;
-        logAlwaysAIO(&buf, &.{ message, ", rc=", fmt.ud8(rc).readAll(), "\n" });
+        logAlwaysAIO(&buf, &.{ about_fault_p0_s, message, "\n" });
     }
-    fn exitErrorFault(error_name: []const u8, message: []const u8) void {
-        exitError(error_name);
-        exitFault(message);
+    fn faultRcNotice(message: []const u8, rc: u8) void {
+        var buf: [4096]u8 = undefined;
+        logAlwaysAIO(&buf, &.{ about_fault_p0_s, message, ", rc=", fmt.ud8(rc).readAll(), "\n" });
     }
-    fn comparisonFailedString(comptime T: type, what: []const u8, symbol: []const u8, buf: []u8, arg1: T, arg2: T, help_read: bool) u64 {
-        const notation: []const u8 = if (help_read) ", i.e. " else "\n";
-        var len: u64 = mach.memcpyMulti(buf.ptr, &[_][]const u8{
-            what,     itos(T, arg1).readAll(),
-            symbol,   itos(T, arg2).readAll(),
-            notation,
+    fn errorFaultNotice(error_name: []const u8, message: []const u8) void {
+        errorNotice(error_name);
+        faultNotice(message);
+    }
+    fn comparisonFailedString(comptime T: type, what: []const u8, symbol: []const u8, buf: [*]u8, arg1: T, arg2: T, help_read: bool) u64 {
+        var len: u64 = mach.memcpyMulti(buf, &[_][]const u8{
+            what,   itos(T, arg1).readAll(),
+            symbol, itos(T, arg2).readAll(),
         });
         if (help_read) {
+            @memcpy(buf + len, ", i.e. ");
+            len +%= 7;
             if (arg1 > arg2) {
-                len += mach.memcpyMulti(buf[len..].ptr, &[_][]const u8{ itos(T, arg1 -% arg2).readAll(), symbol, "0\n" });
+                len += mach.memcpyMulti(buf + len, &[_][]const u8{ itos(T, arg1 -% arg2).readAll(), symbol, "0" });
             } else {
-                len += mach.memcpyMulti(buf[len..].ptr, &[_][]const u8{ "0", symbol, itos(T, arg2 -% arg1).readAll(), "\n" });
+                len += mach.memcpyMulti(buf + len, &[_][]const u8{ "0", symbol, itos(T, arg2 -% arg1).readAll() });
             }
         }
         return len;
     }
-    fn intCastTruncatedBitsString(comptime T: type, comptime U: type, buf: []u8, arg1: U) u64 {
-        const minimum: T = 0;
-        return mach.memcpyMulti(buf.ptr, &[_][]const u8{
-            about_fault_p0_s,            "integer cast truncated bits: ",
-            itos(U, arg1).readAll(),     " greater than " ++ @typeName(T) ++ " maximum (",
-            itos(T, ~minimum).readAll(), ")\n",
+    fn intCastTruncatedBitsString(comptime T: type, comptime U: type, buf: [*]u8, arg1: U) u64 {
+        return mach.memcpyMulti(buf, &[_][]const u8{
+            "integer cast truncated bits: ",                  itos(U, arg1).readAll(),
+            " greater than " ++ @typeName(T) ++ " maximum (", itos(T, ~@as(T, 0)).readAll(),
+            ")",
         });
     }
-    fn subCausedOverflowString(comptime T: type, what: []const u8, msg: []u8, arg1: T, arg2: T, help_read: bool) u64 {
-        const endl: []const u8 = if (help_read) ", i.e. " else "\n";
+    fn subCausedOverflowString(comptime T: type, what: []const u8, buf: [*]u8, arg1: T, arg2: T, help_read: bool) u64 {
         var len: u64 = 0;
-        len += mach.memcpyMulti(msg.ptr, &[_][]const u8{
+        len += mach.memcpyMulti(buf, &[_][]const u8{
             what,                    " integer overflow: ",
             itos(T, arg1).readAll(), " - ",
-            itos(T, arg2).readAll(), endl,
+            itos(T, arg2).readAll(),
         });
         if (help_read) {
-            len += mach.memcpyMulti(msg[len..].ptr, &[_][]const u8{ "0 - ", itos(T, arg2 -% arg1).readAll(), "\n" });
+            @memcpy(buf + len, ", i.e. ");
+            len +%= 7;
+            len += mach.memcpyMulti(buf + len, &[_][]const u8{ "0 - ", itos(T, arg2 -% arg1).readAll() });
         }
         return len;
     }
-    fn addCausedOverflowString(comptime T: type, what: []const u8, msg: []u8, arg1: T, arg2: T, help_read: bool) u64 {
-        const endl: []const u8 = if (help_read) ", i.e. " else "\n";
+    fn addCausedOverflowString(comptime T: type, what: []const u8, buf: [*]u8, arg1: T, arg2: T, help_read: bool) u64 {
         var len: u64 = 0;
-        len += mach.memcpyMulti(msg.ptr, &[_][]const u8{
+        len += mach.memcpyMulti(buf, &[_][]const u8{
             what,                    " integer overflow: ",
             itos(T, arg1).readAll(), " + ",
-            itos(T, arg2).readAll(), endl,
+            itos(T, arg2).readAll(),
         });
         if (help_read) {
+            @memcpy(buf + len, ", i.e. ");
+            len +%= 7;
             const argl: T = ~@as(T, 0);
             const argr: T = (arg2 +% arg1) -% argl;
-            len += mach.memcpyMulti(msg[len..].ptr, &[_][]const u8{ itos(T, argl).readAll(), " + ", itos(T, argr).readAll(), "\n" });
+            len += mach.memcpyMulti(buf + len, &[_][]const u8{ itos(T, argl).readAll(), " + ", itos(T, argr).readAll() });
         }
         return len;
     }
@@ -1403,7 +1404,7 @@ pub const debug = struct {
         return mach.memcpyMulti(buf.ptr, &[_][]const u8{
             what,                    ": integer overflow: ",
             itos(T, arg1).readAll(), " * ",
-            itos(T, arg2).readAll(), "\n",
+            itos(T, arg2).readAll(),
         });
     }
     fn exactDivisionWithRemainderString(comptime T: type, what: []const u8, buf: []u8, arg1: T, arg2: T, result: T, remainder: T) u64 {
@@ -1412,7 +1413,7 @@ pub const debug = struct {
             itos(T, arg1).readAll(),      "/",
             itos(T, arg2).readAll(),      " == ",
             itos(T, result).readAll(),    "r",
-            itos(T, remainder).readAll(), "\n",
+            itos(T, remainder).readAll(),
         });
     }
     fn incorrectAlignmentString(comptime Pointer: type, what: []const u8, buf: []u8, address: usize, alignment: usize, remainder: u64) u64 {
@@ -1422,7 +1423,7 @@ pub const debug = struct {
             itos(u64, alignment).readAll(),            "): ",
             itos(u64, address).readAll(),              " == ",
             itos(u64, address -% remainder).readAll(), "+",
-            itos(u64, remainder).readAll(),            "\n",
+            itos(u64, remainder).readAll(),
         });
     }
     fn intCastTruncatedBitsFault(comptime T: type, comptime U: type, arg: U, ret_addr: usize) noreturn {
@@ -1434,104 +1435,131 @@ pub const debug = struct {
     fn subCausedOverflowError(comptime T: type, arg1: T, arg2: T) Error {
         @setCold(true);
         var buf: [size]u8 = undefined;
-        const len: u64 = debug.subCausedOverflowString(T, &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
-        logError(buf[0..len]);
+        const len: u64 = debug.subCausedOverflowString(T, @typeName(T), &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
+        alarm(buf[0..len], @errorReturnTrace(), @returnAddress());
         return error.SubCausedOverflow;
     }
     fn subCausedOverflowFault(comptime T: type, arg1: T, arg2: T, ret_addr: usize) noreturn {
         @setCold(true);
         var buf: [size]u8 = undefined;
-        const len: u64 = debug.subCausedOverflowString(T, typeFault(T), &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
+        const len: u64 = debug.subCausedOverflowString(T, @typeName(T), &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
         panic(buf[0..len], null, ret_addr);
     }
     fn addCausedOverflowError(comptime T: type, arg1: T, arg2: T) Error {
         @setCold(true);
         var buf: [size]u8 = undefined;
-        const len: u64 = debug.addCausedOverflowString(T, typeError(T), &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
-        logError(buf[0..len]);
+        const len: u64 = debug.addCausedOverflowString(T, @typeName(T), &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
+        alarm(buf[0..len], @errorReturnTrace(), @returnAddress());
         return error.AddCausedOverflow;
     }
     fn addCausedOverflowFault(comptime T: type, arg1: T, arg2: T, ret_addr: usize) noreturn {
         @setCold(true);
         var buf: [size]u8 = undefined;
-        const len: u64 = debug.addCausedOverflowString(T, typeFault(T), &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
+        const len: u64 = debug.addCausedOverflowString(T, @typeName(T), &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
         panic(buf[0..len], null, ret_addr);
     }
     fn mulCausedOverflowError(comptime T: type, arg1: T, arg2: T) Error {
         @setCold(true);
         var buf: [size]u8 = undefined;
-        const len: u64 = mulCausedOverflowString(T, typeError(T), &buf, arg1, arg2);
-        logError(buf[0..len]);
+        const len: u64 = mulCausedOverflowString(T, @typeName(T), &buf, arg1, arg2);
+        alarm(buf[0..len], @errorReturnTrace(), @returnAddress());
         return error.MulCausedOverflow;
     }
     fn mulCausedOverflowFault(comptime T: type, arg1: T, arg2: T, ret_addr: usize) noreturn {
         @setCold(true);
         var buf: [size]u8 = undefined;
-        const len: u64 = mulCausedOverflowString(T, typeFault(T), &buf, arg1, arg2);
+        const len: u64 = mulCausedOverflowString(T, @typeName(T), &buf, arg1, arg2);
         panic(buf[0..len], null, ret_addr);
     }
     fn exactDivisionWithRemainderError(comptime T: type, arg1: T, arg2: T, result: T, remainder: T) Error {
         @setCold(true);
         var buf: [size]u8 = undefined;
-        const len: u64 = exactDivisionWithRemainderString(T, typeError(T), &buf, arg1, arg2, result, remainder);
-        logError(buf[0..len]);
-        return error.DivisionWithRemainder;
+        const len: u64 = exactDivisionWithRemainderString(T, @typeName(T), &buf, arg1, arg2, result, remainder);
+        alarm(buf[0..len], @errorReturnTrace(), @returnAddress());
+        return error.ExactDivisionWithRemainder;
     }
     fn exactDivisionWithRemainderFault(comptime T: type, arg1: T, arg2: T, result: T, remainder: T, ret_addr: usize) noreturn {
         @setCold(true);
         var buf: [size]u8 = undefined;
-        const len: u64 = exactDivisionWithRemainderString(T, typeFault(T), &buf, arg1, arg2, result, remainder);
+        const len: u64 = exactDivisionWithRemainderString(T, @typeName(T), &buf, arg1, arg2, result, remainder);
         panic(buf[0..len], null, ret_addr);
     }
     fn incorrectAlignmentError(comptime T: type, address: usize, alignment: usize) Error {
         @setCold(true);
         const remainder: usize = address & (@typeInfo(T).Pointer.alignment -% 1);
         var buf: [size]u8 = undefined;
-        const len: u64 = incorrectAlignmentString(T, typeError(T), &buf, address, alignment, remainder);
-        logError(buf[0..len]);
+        const len: u64 = incorrectAlignmentString(T, @typeName(T), &buf, address, alignment, remainder);
+        alarm(buf[0..len], @errorReturnTrace(), @returnAddress());
         return error.IncorrectAlignment;
     }
     fn incorrectAlignmentFault(comptime T: type, buf: *[size]u8, address: usize, alignment: usize, ret_addr: usize) noreturn {
         @setCold(true);
         const remainder: usize = address & (@typeInfo(T).Pointer.alignment -% 1);
-        const len: u64 = incorrectAlignmentString(T, typeFault(T), &buf, address, alignment, remainder);
+        const len: u64 = incorrectAlignmentString(T, @typeName(T), &buf, address, alignment, remainder);
         panic(buf[0..len], null, ret_addr);
     }
     fn comparisonFailedFault(comptime T: type, symbol: []const u8, arg1: anytype, arg2: @TypeOf(arg1), ret_addr: usize) noreturn {
         @setCold(true);
-        const about_fault_s: []const u8 = typeFault(T) ++ " failed assertion: ";
+        const about_fault_s: []const u8 = @typeName(T) ++ " failed assertion: ";
         var buf: [size]u8 = undefined;
         const len: u64 = switch (@typeInfo(T)) {
             .Int => comparisonFailedString(T, about_fault_s, symbol, &buf, arg1, arg2, @min(arg1, arg2) > 10_000),
-            .Enum => mach.memcpyMulti(&buf, &[_][]const u8{ about_fault_s, @tagName(arg1), symbol, @tagName(arg2), "\n" }),
-            .Type => mach.memcpyMulti(&buf, &[_][]const u8{ about_fault_s, @typeName(arg1), symbol, @typeName(arg2), "\n" }),
-            else => mach.memcpyMulti(&buf, &[_][]const u8{ about_fault_s, "unexpected value\n" }),
+            .Enum => mach.memcpyMulti(&buf, &[_][]const u8{ about_fault_s, @tagName(arg1), symbol, @tagName(arg2) }),
+            .Type => mach.memcpyMulti(&buf, &[_][]const u8{ about_fault_s, @typeName(arg1), symbol, @typeName(arg2) }),
+            else => mach.memcpyMulti(&buf, &[_][]const u8{ about_fault_s, "unexpected value" }),
         };
         panic(buf[0..len], null, ret_addr);
     }
     fn comparisonFailedError(comptime T: type, symbol: []const u8, arg1: anytype, arg2: @TypeOf(arg1)) Unexpected {
         @setCold(true);
-        const about_s: []const u8 = typeError(T) ++ " failed test: ";
+        const about_s: []const u8 = @typeName(T) ++ " failed test: ";
         var buf: [size]u8 = undefined;
         const len: u64 = switch (@typeInfo(T)) {
             .Int => comparisonFailedString(T, about_s, symbol, &buf, arg1, arg2, @min(arg1, arg2) > 10_000),
-            .Enum => mach.memcpyMulti(&buf, &[_][]const u8{ about_s, @tagName(arg1), symbol, @tagName(arg2), "\n" }),
-            .Type => mach.memcpyMulti(&buf, &[_][]const u8{ about_s, @typeName(arg1), symbol, @typeName(arg2), "\n" }),
-            else => mach.memcpyMulti(&buf, &[_][]const u8{ about_s, "unexpected value\n" }),
+            .Enum => mach.memcpyMulti(&buf, &[_][]const u8{ about_s, @tagName(arg1), symbol, @tagName(arg2) }),
+            .Type => mach.memcpyMulti(&buf, &[_][]const u8{ about_s, @typeName(arg1), symbol, @typeName(arg2) }),
+            else => mach.memcpyMulti(&buf, &[_][]const u8{ about_s, "unexpected value" }),
         };
-        logError(buf[0..len]);
+        alarm(buf[0..len], @errorReturnTrace(), @returnAddress());
         return error.UnexpectedValue;
     }
+    pub fn sampleAllReports() void {
+        const T = u64;
+        comptime var arg1: T = 2048;
+        comptime var arg2: T = 4098;
+        comptime var result: T = 2;
+        const remainder: T = 2;
+        expectEqual(T, arg1, arg2) catch {};
+        expectNotEqual(T, arg1, arg2) catch {};
+        expectAbove(T, arg1, arg2) catch {};
+        expectBelow(T, arg1, arg2) catch {};
+        expectAboveOrEqual(T, arg1, arg2) catch {};
+        expectBelowOrEqual(T, arg1, arg2) catch {};
+        subCausedOverflowError(T, arg1, arg2) catch {};
+        addCausedOverflowError(T, arg1, arg2) catch {};
+        mulCausedOverflowError(T, arg1, arg2) catch {};
+        exactDivisionWithRemainderError(T, arg1, arg2, result, remainder) catch {};
+        incorrectAlignmentError(*T, arg2, remainder) catch {};
+        subCausedOverflowError(T, ~arg1, ~arg2) catch {};
+        addCausedOverflowError(T, ~arg1, ~arg2) catch {};
+        mulCausedOverflowError(T, ~arg1, ~arg2) catch {};
+        exactDivisionWithRemainderError(T, ~arg1, ~arg2, result, remainder) catch {};
+        incorrectAlignmentError(*T, ~arg2, remainder) catch {};
+    }
     pub fn write(buf: []const u8) void {
-        asm volatile (
-            \\syscall # write
-            :
-            : [_] "{rax}" (1), // linux sys_write
-              [_] "{rdi}" (2), // stderr
-              [_] "{rsi}" (buf.ptr),
-              [_] "{rdx}" (buf.len),
-            : "rcx", "r11", "memory", "rax"
-        );
+        if (@inComptime()) {
+            @compileLog(buf);
+        } else {
+            asm volatile (
+                \\syscall # write
+                :
+                : [_] "{rax}" (1), // linux sys_write
+                  [_] "{rdi}" (2), // stderr
+                  [_] "{rsi}" (buf.ptr),
+                  [_] "{rdx}" (buf.len),
+                : "rcx", "r11", "memory", "rax"
+            );
+        }
     }
     pub fn read(comptime n: u64) struct { buf: [n]u8, len: u64 } {
         var buf: [n]u8 = undefined;
@@ -1600,6 +1628,14 @@ pub const debug = struct {
         @setCold(true);
         @setRuntimeSafety(false);
         logFault(buf[0..mach.memcpyMulti(buf.ptr, slices)]);
+    }
+    pub noinline fn alarm(msg: []const u8, _: @TypeOf(@errorReturnTrace()), ret_addr: usize) void {
+        @setCold(true);
+        @setRuntimeSafety(false);
+        if (want_stack_traces and trace.Error) {
+            printStackTrace(&trace, ret_addr, 0);
+        }
+        @call(.always_inline, errorNotice, .{msg});
     }
     pub noinline fn panic(msg: []const u8, _: @TypeOf(@errorReturnTrace()), ret_addr: ?usize) noreturn {
         @setCold(true);
@@ -1798,7 +1834,7 @@ pub const debug = struct {
                 var buf: [size]u8 = undefined;
                 var len: u64 = 0;
                 for ([_][]const u8{
-                    @typeName(T),            " ",
+                    @typeName(T),            " assertion failed ",
                     itos(T, arg1).readAll(), symbol,
                     itos(T, arg2).readAll(), if (@min(arg1, arg2) > 10_000) ", i.e. " else "\n",
                 }) |s| {
@@ -2380,7 +2416,7 @@ pub const SignalAlternateStack = struct {
     len: u64 = 0x1000000,
 };
 pub const Trace = struct {
-    Error: bool = true,
+    Error: bool = false,
     Fault: bool = true,
     Signal: bool = true,
     options: Options = .{},
@@ -3069,24 +3105,44 @@ pub const Version = struct {
         min: Version,
         max: Version,
         pub fn includesVersion(range: Range, version: Version) bool {
-            if (range.min.order(version) == .gt) return false;
-            if (range.max.order(version) == .lt) return false;
+            if (range.min.order(version) == .gt) {
+                return false;
+            }
+            if (range.max.order(version) == .lt) {
+                return false;
+            }
             return true;
         }
         pub fn isAtLeast(range: Range, version: Version) ?bool {
-            if (range.min.order(version) != .lt) return true;
-            if (range.max.order(version) == .lt) return false;
+            if (range.min.order(version) != .lt) {
+                return true;
+            }
+            if (range.max.order(version) == .lt) {
+                return false;
+            }
             return null;
         }
     };
     const Order = enum { lt, gt, eq };
     pub fn order(lhs: Version, rhs: Version) Order {
-        if (lhs.major < rhs.major) return .lt;
-        if (lhs.major > rhs.major) return .gt;
-        if (lhs.minor < rhs.minor) return .lt;
-        if (lhs.minor > rhs.minor) return .gt;
-        if (lhs.patch < rhs.patch) return .lt;
-        if (lhs.patch > rhs.patch) return .gt;
+        if (lhs.major < rhs.major) {
+            return .lt;
+        }
+        if (lhs.major > rhs.major) {
+            return .gt;
+        }
+        if (lhs.minor < rhs.minor) {
+            return .lt;
+        }
+        if (lhs.minor > rhs.minor) {
+            return .gt;
+        }
+        if (lhs.patch < rhs.patch) {
+            return .lt;
+        }
+        if (lhs.patch > rhs.patch) {
+            return .gt;
+        }
         return .eq;
     }
     pub fn parseVersion(text: []const u8) !Version {
@@ -4158,7 +4214,15 @@ pub const zig = struct {
                     },
                     .int => switch (c) {
                         '.' => state = .int_period,
-                        '_', 'a'...'d', 'f'...'o', 'q'...'z', 'A'...'D', 'F'...'O', 'Q'...'Z', '0'...'9' => {},
+                        '_',
+                        'a'...'d',
+                        'f'...'o',
+                        'q'...'z',
+                        'A'...'D',
+                        'F'...'O',
+                        'Q'...'Z',
+                        '0'...'9',
+                        => {},
                         'e', 'E', 'p', 'P' => state = .int_exponent,
                         else => break,
                     },
@@ -4170,7 +4234,15 @@ pub const zig = struct {
                         },
                     },
                     .int_period => switch (c) {
-                        '_', 'a'...'d', 'f'...'o', 'q'...'z', 'A'...'D', 'F'...'O', 'Q'...'Z', '0'...'9' => state = .float,
+                        '_',
+                        'a'...'d',
+                        'f'...'o',
+                        'q'...'z',
+                        'A'...'D',
+                        'F'...'O',
+                        'Q'...'Z',
+                        '0'...'9',
+                        => state = .float,
                         'e', 'E', 'p', 'P' => state = .float_exponent,
                         else => {
                             itr.buf_pos -%= 1;
@@ -4178,7 +4250,15 @@ pub const zig = struct {
                         },
                     },
                     .float => switch (c) {
-                        '_', 'a'...'d', 'f'...'o', 'q'...'z', 'A'...'D', 'F'...'O', 'Q'...'Z', '0'...'9' => {},
+                        '_',
+                        'a'...'d',
+                        'f'...'o',
+                        'q'...'z',
+                        'A'...'D',
+                        'F'...'O',
+                        'Q'...'Z',
+                        '0'...'9',
+                        => {},
                         'e', 'E', 'p', 'P' => state = .float_exponent,
                         else => break,
                     },
@@ -4494,42 +4574,15 @@ pub const my_trace: Trace = .{
             .syntax = &.{
                 .{ .style = "", .tags = zig.Token.Tag.other },
                 .{ .style = tab.fx.color.fg.orange24, .tags = &.{.number_literal} },
-                .{
-                    .style = tab.fx.color.fg.light_green,
-                    .tags = zig.Token.Tag.strings,
-                },
-                .{
-                    .style = tab.fx.color.fg.bracket,
-                    .tags = zig.Token.Tag.bracket,
-                },
-                .{
-                    .style = tab.fx.color.fg.magenta24,
-                    .tags = zig.Token.Tag.operator,
-                },
-                .{
-                    .style = tab.fx.color.fg.red24,
-                    .tags = zig.Token.Tag.builtin_fn,
-                },
-                .{
-                    .style = tab.fx.color.fg.cyan24,
-                    .tags = zig.Token.Tag.macro_keyword,
-                },
-                .{
-                    .style = tab.fx.color.fg.light_purple,
-                    .tags = zig.Token.Tag.call_keyword,
-                },
-                .{
-                    .style = tab.fx.color.fg.redwine,
-                    .tags = zig.Token.Tag.container_keyword,
-                },
-                .{
-                    .style = tab.fx.color.fg.white24,
-                    .tags = zig.Token.Tag.cond_keyword,
-                },
-                .{
-                    .style = tab.fx.color.fg.yellow24,
-                    .tags = zig.Token.Tag.goto_keyword ++ zig.Token.Tag.value_keyword,
-                },
+                .{ .style = tab.fx.color.fg.light_green, .tags = zig.Token.Tag.strings },
+                .{ .style = tab.fx.color.fg.bracket, .tags = zig.Token.Tag.bracket },
+                .{ .style = tab.fx.color.fg.magenta24, .tags = zig.Token.Tag.operator },
+                .{ .style = tab.fx.color.fg.red24, .tags = zig.Token.Tag.builtin_fn },
+                .{ .style = tab.fx.color.fg.cyan24, .tags = zig.Token.Tag.macro_keyword },
+                .{ .style = tab.fx.color.fg.light_purple, .tags = zig.Token.Tag.call_keyword },
+                .{ .style = tab.fx.color.fg.redwine, .tags = zig.Token.Tag.container_keyword },
+                .{ .style = tab.fx.color.fg.white24, .tags = zig.Token.Tag.cond_keyword },
+                .{ .style = tab.fx.color.fg.yellow24, .tags = zig.Token.Tag.goto_keyword ++ zig.Token.Tag.value_keyword },
             },
         },
     },
