@@ -1,4 +1,5 @@
 pub const builtin = @import("./top/builtin.zig");
+pub const tab = @import("./top/tab.zig");
 pub const sys = @import("./top/sys.zig");
 pub const mem = @import("./top/mem.zig");
 pub const exe = @import("./top/exe.zig");
