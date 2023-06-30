@@ -54,7 +54,7 @@ const render = struct {
     pub const EnumFormat = zig_lib.fmt.UnionFormat(.{}, enum { one, two, three });
 };
 pub fn main() void {
-    _ = zig_lib.meta.refAllDecls(zig_lib, &.{"FnArg"});
+    _ = zig_lib.meta.refAllDecls(zig_lib, &.{ "FnArg", "tls" });
     _ = zig_lib.meta.refAllDecls(@"test", &.{"FnArg"});
     _ = zig_lib.meta.refAllDecls(List, null);
     _ = zig_lib.meta.refAllDecls(ListView, null);
