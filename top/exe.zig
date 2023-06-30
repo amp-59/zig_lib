@@ -893,12 +893,12 @@ pub const Elf_MIPS_ABIFlags_v0 = extern struct {
     flags2: u32,
 };
 comptime {
-    builtin.static.assert(@sizeOf(Elf32_Ehdr) == 52);
-    builtin.static.assert(@sizeOf(Elf64_Ehdr) == 64);
-    builtin.static.assert(@sizeOf(Elf32_Phdr) == 32);
-    builtin.static.assert(@sizeOf(Elf64_Phdr) == 56);
-    builtin.static.assert(@sizeOf(Elf32_Shdr) == 40);
-    builtin.static.assert(@sizeOf(Elf64_Shdr) == 64);
+    builtin.assert(@sizeOf(Elf32_Ehdr) == 52);
+    builtin.assert(@sizeOf(Elf64_Ehdr) == 64);
+    builtin.assert(@sizeOf(Elf32_Phdr) == 32);
+    builtin.assert(@sizeOf(Elf64_Phdr) == 56);
+    builtin.assert(@sizeOf(Elf32_Shdr) == 40);
+    builtin.assert(@sizeOf(Elf64_Shdr) == 64);
 }
 pub const Auxv = switch (@sizeOf(usize)) {
     4 => Elf32_auxv_t,
