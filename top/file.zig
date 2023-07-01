@@ -1339,7 +1339,7 @@ pub fn pathAt(comptime spec: PathSpec, dir_fd: u64, name: [:0]const u8) sys.Erro
         return fd;
     } else |open_error| {
         if (logging.Error) {
-            debug.openAtError(open_error, dir_fd, name);
+            debug.aboutDirFdNameError(debug.about_open_0_s, @errorName(open_error), dir_fd, name);
         }
         return open_error;
     }
