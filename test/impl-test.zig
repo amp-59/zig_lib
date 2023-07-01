@@ -1,7 +1,7 @@
 const top = @import("../zig_lib.zig");
 const mem = top.mem;
 const fmt = top.fmt;
-const lit = top.lit;
+const tab = top.tab;
 const sys = top.sys;
 const proc = top.proc;
 const meta = top.meta;
@@ -95,15 +95,15 @@ fn announceAnalysis(comptime impl_type: type) void {
     if (@hasDecl(impl_type, "child")) {
         const low_alignment: u64 = comptime if (@hasDecl(impl_type, "unit_alignment")) impl_type.unit_alignment else impl_type.low_alignment;
         const layout_align_s: []const u8 = comptime ": " ++ @typeName(impl_type.child) ++ " align(" ++ builtin.fmt.ci(low_alignment) ++ ")";
-        array.writeMany(lit.fx.color.fg.hi_blue ++ lit.fx.style.bold);
+        array.writeMany(tab.fx.color.fg.hi_blue ++ tab.fx.style.bold);
         array.writeMany(comptime fmt.typeName(impl_type));
-        array.writeMany(layout_align_s ++ lit.fx.none ++ "\n");
+        array.writeMany(layout_align_s ++ tab.fx.none ++ "\n");
     } else {
         const low_alignment: u64 = comptime if (@hasDecl(impl_type, "unit_alignment")) impl_type.unit_alignment else impl_type.low_alignment;
-        const aligns_s: []const u8 = comptime ": align(" ++ lit.ud8[low_alignment] ++ ") align(" ++ builtin.fmt.ci(low_alignment) ++ ")";
-        array.writeMany(lit.fx.color.fg.hi_blue ++ lit.fx.style.bold);
+        const aligns_s: []const u8 = comptime ": align(" ++ tab.ud8[low_alignment] ++ ") align(" ++ builtin.fmt.ci(low_alignment) ++ ")";
+        array.writeMany(tab.fx.color.fg.hi_blue ++ tab.fx.style.bold);
         array.writeMany(comptime fmt.typeName(impl_type));
-        array.writeMany(aligns_s ++ lit.fx.none ++ "\n");
+        array.writeMany(aligns_s ++ tab.fx.none ++ "\n");
     }
     builtin.debug.write(array.readAll());
 }
