@@ -9,17 +9,10 @@ const parse = @import("./parse.zig");
 const builtin = @import("./builtin.zig");
 const testing = @import("./testing.zig");
 const Allocator = builtin.define("Allocator", type, mem.SimpleAllocator);
-// TODO Relocate to namespace `config`.
-const DebugSpec = struct {
-    logging: Logging = .{},
-    const Logging = struct {
-        summary: bool = false,
-        abbrev_entry: bool = false,
-        info_entry: bool = false,
-    };
-};
-// TODO Relocate to namespace `config`.
-const debug_spec: DebugSpec = .{};
+
+const dwarf_summary: bool = false;
+const dwarf_abbrev_entry: bool = false;
+const dwarf_info_entry: bool = false;
 const WordSize = enum(u8) {
     dword = 4,
     qword = 8,
@@ -70,10 +63,10 @@ pub const SourceLocation = struct {
     }
 };
 pub const LineLocation = struct {
-    start: u64 = 0,
-    finish: u64 = 0,
-    line: u64 = 0,
-    pub fn len(loc: LineLocation) u64 {
+    start: usize = 0,
+    finish: usize = 0,
+    line: usize = 0,
+    pub fn len(loc: LineLocation) usize {
         return loc.finish -% loc.start;
     }
     pub fn ptr(loc: LineLocation, buf: []u8) [*]u8 {
@@ -83,6 +76,9 @@ pub const LineLocation = struct {
         return buf[loc.start..loc.finish];
     }
     pub fn update(loc: *LineLocation, buf: []u8, line: u64) bool {
+        if (loc.line == line) {
+            return true;
+        }
         while (loc.finish != buf.len) : (loc.finish +%= 1) {
             if (buf[loc.finish] == '\n') {
                 loc.line +%= 1;
@@ -952,7 +948,7 @@ pub const DwarfInfo = extern struct {
     fn populateUnit(allocator: *Allocator, dwarf_info: *DwarfInfo, unit: *Unit) !void {
         try parseAbbrevTable(allocator, dwarf_info, unit.abbrev_tab);
         try parseDie(allocator, dwarf_info, unit, unit.info_entry);
-        if (debug_spec.logging.summary) {
+        if (dwarf_summary) {
             debug.unitAbstractNotice(unit);
         }
         if (unit.info_entry.get(.str_offsets_base)) |form_val| {
@@ -1100,7 +1096,7 @@ pub const DwarfInfo = extern struct {
                 }
             }
         }
-        if (debug_spec.logging.abbrev_entry) {
+        if (dwarf_abbrev_entry) {
             debug.abbrevTableNotice(abbrev_tab);
         }
     }
@@ -1136,7 +1132,7 @@ pub const DwarfInfo = extern struct {
                 info_entry.kvs[kv_idx].val.Const.payload = @bitCast(u64, kv.payload);
             }
         }
-        if (debug_spec.logging.info_entry) {
+        if (dwarf_info_entry) {
             try debug.debugDieNotice(info_entry);
         }
     }
@@ -1915,41 +1911,6 @@ const debug = struct {
                         mach.memcpy(buf[len..].ptr, unsigned_s.ptr, unsigned_s.len);
                         len +%= unsigned_s.len;
                     }
-                },
-                .ExprLoc => |exprloc| {
-                    _ = exprloc;
-                },
-                .Flag => |flag| {
-                    _ = flag;
-                },
-                .SecOffset => |sec_offset| {
-                    const sec_offset_s: []const u8 = builtin.fmt.ud64(sec_offset).readAll();
-                    _ = sec_offset_s;
-                },
-                .Ref => |ref| {
-                    _ = ref;
-                },
-                .RefAddr => |ref_addr| {
-                    const addr_s: []const u8 = builtin.fmt.ux64(ref_addr).readAll();
-                    _ = addr_s;
-                },
-                .String => |str| {
-                    _ = str;
-                },
-                .StrPtr => |strp| {
-                    _ = strp;
-                },
-                .StrOffset => |strx| {
-                    _ = strx;
-                },
-                .LineStrPtr => |line_strp| {
-                    _ = line_strp;
-                },
-                .LocListOffset => |loclistx| {
-                    _ = loclistx;
-                },
-                .RangeListOffset => |rnglistx| {
-                    _ = rnglistx;
                 },
                 else => {},
             }
