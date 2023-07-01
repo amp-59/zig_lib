@@ -3,6 +3,7 @@ const mem = @import("./mem.zig");
 const exe = @import("./exe.zig");
 const fmt = @import("./fmt.zig");
 const mach = @import("./mach.zig");
+const spec = @import("./spec.zig");
 const file = @import("./file.zig");
 const parse = @import("./parse.zig");
 const builtin = @import("./builtin.zig");
@@ -577,19 +578,14 @@ pub const Unit = extern struct {
     addr_base: usize = 0,
     rnglists_base: usize = 0,
     loclists_base: usize = 0,
-    abbrev_tab: *AbbrevTable,
-    info_entry: *Die,
-    // line_cv: ?LineCv = null,
-    dirs: [*]FileEntry,
+    abbrev_tab: *AbbrevTable = undefined,
+    info_entry: *Die = undefined,
+    dirs: [*]FileEntry = undefined,
+    dirs_max_len: u64 = 0,
     dirs_len: u64 = 0,
-    files: [*]FileEntry,
+    files: [*]FileEntry = undefined,
+    files_max_len: u64 = 0,
     files_len: u64 = 0,
-    const LineCv = struct {
-        is_stmt: bool,
-        line_base: usize,
-        next_unit_off: usize,
-        next_off: usize,
-    };
     fn addDir(unit: *Unit, allocator: *Allocator) *FileEntry {
         @setRuntimeSafety(false);
         const size_of: comptime_int = @sizeOf(FileEntry);
@@ -1221,7 +1217,7 @@ pub const DwarfInfo = extern struct {
             else => builtin.proc.exitError(error.InvalidEncoding, 2),
         }
     }
-    pub fn findCompileUnit(dwarf_info: *DwarfInfo, target_address: u64) ?*const Unit {
+    pub fn findCompileUnit(dwarf_info: *DwarfInfo, target_address: u64) ?*Unit {
         for (dwarf_info.units[0..dwarf_info.units_len]) |*unit| {
             if (target_address >= unit.range.start and
                 target_address < unit.range.end)
@@ -1346,7 +1342,7 @@ pub const DwarfInfo = extern struct {
     pub fn getSourceLocation(
         dwarf_info: *DwarfInfo,
         allocator: *Allocator,
-        unit: *const Unit,
+        unit: *Unit,
         instr_addr: u64,
     ) ?SourceLocation {
         @setRuntimeSafety(false);
@@ -1360,6 +1356,10 @@ pub const DwarfInfo = extern struct {
             builtin.proc.exitError(error.InvalidEncoding, 2);
         };
         const line_unit: *Unit = try Unit.init(allocator, dwarf_info, dwarf_info.line, line_off);
+        const obv_files_len: u64 = unit.files_len;
+        defer {
+            if (obv_files_len != 0) unit.files_len = obv_files_len;
+        }
         const next_unit_off = line_off +% switch (line_unit.word_size) {
             .qword => line_unit.len +% 12,
             .dword => line_unit.len +% 8,
@@ -1392,30 +1392,32 @@ pub const DwarfInfo = extern struct {
         if (line_range == 0) {
             builtin.proc.exitError(error.InvalidEncoding, 2);
         }
-        var dirs: FileEntry.Array = FileEntry.Array.init(allocator, 1);
-        dirs.appendOne(allocator, .{ .name = unit_cwd });
-        while (true) {
-            const dir: [:0]const u8 = mach.manyToSlice80(buf + pos);
-            pos +%= dir.len +% 1;
-            if (dir.len == 0) {
-                break;
+        if (unit.files_len == 0) {
+            unit.addDir(allocator).* = .{ .name = unit_cwd };
+            while (true) {
+                const dir: [:0]const u8 = mach.manyToSlice80(buf + pos);
+                pos +%= dir.len +% 1;
+                if (dir.len == 0) {
+                    break;
+                }
+                unit.addDir(allocator).* = .{ .name = dir };
             }
-            dirs.appendOne(allocator, .{ .name = dir });
         }
-        var files: FileEntry.Array = FileEntry.Array.init(allocator, 1);
-        while (true) {
-            const name: [:0]const u8 = mach.manyToSlice80(buf + pos);
-            pos +%= name.len +% 1;
-            if (name.len == 0) {
-                break;
+        if (unit.files_len == 0) {
+            while (true) {
+                const name: [:0]const u8 = mach.manyToSlice80(buf + pos);
+                pos +%= name.len +% 1;
+                if (name.len == 0) {
+                    break;
+                }
+                const dir_idx = parse.noexcept.readLEB128(u32, bytes[pos..]);
+                pos +%= dir_idx[1];
+                const mtime = parse.noexcept.readLEB128(u64, bytes[pos..]);
+                pos +%= mtime[1];
+                const size = parse.noexcept.readLEB128(u64, bytes[pos..]);
+                pos +%= size[1];
+                unit.addFile(allocator).* = .{ .name = name, .dir_idx = dir_idx[0], .mtime = mtime[0], .size = size[0] };
             }
-            const dir_idx = parse.noexcept.readLEB128(u32, bytes[pos..]);
-            pos +%= dir_idx[1];
-            const mtime = parse.noexcept.readLEB128(u64, bytes[pos..]);
-            pos +%= mtime[1];
-            const size = parse.noexcept.readLEB128(u64, bytes[pos..]);
-            pos +%= size[1];
-            files.appendOne(allocator, .{ .name = name, .dir_idx = dir_idx[0], .mtime = mtime[0], .size = size[0] });
         }
         var prog: LineNumberProgram = LineNumberProgram.init(is_stmt, instr_addr);
         pos = next_off;
@@ -1433,7 +1435,7 @@ pub const DwarfInfo = extern struct {
                 switch (@enumFromInt(LNE, sub_op)) {
                     LNE.end_sequence => {
                         prog.end_sequence = true;
-                        if (prog.checkLineMatch(allocator, &dirs, &files)) |info| {
+                        if (prog.checkLineMatch(allocator, unit)) |info| {
                             return info;
                         }
                         prog.reset();
@@ -1455,7 +1457,7 @@ pub const DwarfInfo = extern struct {
                         pos +%= mtime[1];
                         const size = parse.noexcept.readLEB128(u64, bytes[pos..]);
                         pos +%= size[1];
-                        files.appendOne(allocator, .{ .dir_idx = dir_idx[0], .name = name, .mtime = mtime[0], .size = size[0] });
+                        unit.addFile(allocator).* = .{ .dir_idx = dir_idx[0], .name = name, .mtime = mtime[0], .size = size[0] };
                     },
                     else => {
                         const fwd_amt: isize = @bitCast(isize, op_size[0] -% 1);
@@ -1472,14 +1474,14 @@ pub const DwarfInfo = extern struct {
                 const inc_line: i32 = @as(i32, line_base) +% @as(i32, adjusted_opcode % line_range);
                 prog.line +%= inc_line;
                 prog.address +%= inc_addr;
-                if (prog.checkLineMatch(allocator, &dirs, &files)) |info| {
+                if (prog.checkLineMatch(allocator, unit)) |info| {
                     return info;
                 }
                 prog.basic_block = false;
             } else {
                 switch (@enumFromInt(LNS, opcode)) {
                     LNS.copy => {
-                        if (prog.checkLineMatch(allocator, &dirs, &files)) |info| {
+                        if (prog.checkLineMatch(allocator, unit)) |info| {
                             return info;
                         }
                         prog.basic_block = false;
@@ -1660,9 +1662,8 @@ const FileEntry = struct {
     md5: [16]u8 = [1]u8{0} ** 16,
     buf: [*]u8 = undefined,
     buf_len: u64 = 0,
-    const Array = mem.GenericSimpleArray(FileEntry);
-    fn pathname(entry: *const FileEntry, allocator: *Allocator, dirs: *const FileEntry.Array) [:0]const u8 {
-        const dirname: []const u8 = dirs.values[entry.dir_idx].name;
+    fn pathname(entry: *const FileEntry, allocator: *Allocator, dirs: [*]FileEntry) [:0]const u8 {
+        const dirname: []const u8 = dirs[entry.dir_idx].name;
         const ret: []u8 = allocator.allocate(u8, dirname.len +% entry.name.len +% 2);
         var len: u64 = 0;
         mach.memcpy(ret.ptr, dirname.ptr, dirname.len);
@@ -1730,8 +1731,7 @@ const LineNumberProgram = struct {
     fn checkLineMatch(
         prog: *LineNumberProgram,
         allocator: *Allocator,
-        dirs: *FileEntry.Array,
-        files: *FileEntry.Array,
+        unit: *const Unit,
     ) ?SourceLocation {
         if (prog.prev_valid and
             prog.target_address >= prog.prev_address and
@@ -1741,11 +1741,11 @@ const LineNumberProgram = struct {
                 builtin.proc.exitError(error.InvalidEncoding, 2);
             }
             const idx: u64 = prog.prev_file -% 1;
-            if (idx >= files.values_len) {
+            if (idx >= unit.files_len) {
                 builtin.proc.exitError(error.InvalidEncoding, 2);
             }
-            const entry: FileEntry = files.values[idx];
-            if (entry.dir_idx >= dirs.values_len) {
+            const entry: FileEntry = unit.files[idx];
+            if (entry.dir_idx >= unit.dirs_len) {
                 builtin.proc.exitError(error.InvalidEncoding, 2);
             }
             return .{
@@ -1754,7 +1754,7 @@ const LineNumberProgram = struct {
                 else
                     @intCast(u64, prog.prev_line),
                 .column = prog.prev_column,
-                .file = entry.pathname(allocator, dirs),
+                .file = entry.pathname(allocator, unit.dirs),
             };
         }
         prog.prev_valid = true;
