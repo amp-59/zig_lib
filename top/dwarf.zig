@@ -574,18 +574,18 @@ pub const Unit = extern struct {
     word_size: WordSize,
     addr_size: u8,
     range: Range,
-    str_offsets_base: usize = 0,
-    addr_base: usize = 0,
-    rnglists_base: usize = 0,
-    loclists_base: usize = 0,
-    abbrev_tab: *AbbrevTable = undefined,
-    info_entry: *Die = undefined,
-    dirs: [*]FileEntry = undefined,
-    dirs_max_len: u64 = 0,
-    dirs_len: u64 = 0,
-    files: [*]FileEntry = undefined,
-    files_max_len: u64 = 0,
-    files_len: u64 = 0,
+    str_offsets_base: usize,
+    addr_base: usize,
+    rnglists_base: usize,
+    loclists_base: usize,
+    abbrev_tab: *AbbrevTable,
+    info_entry: *Die,
+    dirs: [*]FileEntry,
+    dirs_max_len: u64,
+    dirs_len: u64,
+    files: [*]FileEntry,
+    files_max_len: u64,
+    files_len: u64,
     fn addDir(unit: *Unit, allocator: *Allocator) *FileEntry {
         @setRuntimeSafety(false);
         const size_of: comptime_int = @sizeOf(FileEntry);
@@ -610,7 +610,7 @@ pub const Unit = extern struct {
         mem.zero(FileEntry, ret);
         return ret;
     }
-    fn init(allocator: *Allocator, dwarf_info: *DwarfInfo, bytes: [*]u8, unit_off: u64) !*Unit {
+    fn init(allocator: *Allocator, dwarf_info: *DwarfInfo, bytes: [*]u8, unit_off: u64) *Unit {
         const buf: [*]u8 = bytes + unit_off;
         const ret: *Unit = dwarf_info.addUnit(allocator);
         ret.off = unit_off;
@@ -971,7 +971,7 @@ pub const DwarfInfo = extern struct {
     pub fn scanAllCompileUnits(dwarf_info: *DwarfInfo, allocator: *Allocator) void {
         var unit_off: u64 = 0;
         while (unit_off < dwarf_info.info_len) {
-            const unit: *Unit = try Unit.init(allocator, dwarf_info, dwarf_info.info, unit_off);
+            const unit: *Unit = Unit.init(allocator, dwarf_info, dwarf_info.info, unit_off);
             try populateUnit(allocator, dwarf_info, unit);
             const next_off: u64 = switch (unit.word_size) {
                 .qword => 12 +% unit.len,
@@ -1129,7 +1129,7 @@ pub const DwarfInfo = extern struct {
             .children = entry.head.children,
         };
         for (entry.kvs[0..entry.kvs_len], 0..) |kv, kv_idx| {
-            const res = try parseFormValue(allocator, unit, info_entry_bytes[info_entry.len..], kv.form);
+            const res = parseFormValue(allocator, unit, info_entry_bytes[info_entry.len..], kv.form);
             info_entry.addKeyVal(allocator).* = .{ .key = kv.attr, .val = res[0] };
             info_entry.len +%= res[1];
             if (kv.form == .implicit_const) {
@@ -1139,6 +1139,28 @@ pub const DwarfInfo = extern struct {
         if (debug_spec.logging.info_entry) {
             try debug.debugDieNotice(info_entry);
         }
+    }
+    fn parseFileEntry(bytes: []u8) ?struct { FileEntry, u64 } {
+        var pos: u64 = 0;
+        const name: [:0]const u8 = mach.manyToSlice80(bytes.ptr);
+        if (name.len == 0) {
+            return null;
+        }
+        pos +%= name.len +% 1;
+        const dir_idx = parse.noexcept.readLEB128(u32, bytes[pos..]);
+        pos +%= dir_idx[1];
+        const mtime = parse.noexcept.readLEB128(u64, bytes[pos..]);
+        pos +%= mtime[1];
+        const size = parse.noexcept.readLEB128(u64, bytes[pos..]);
+        pos +%= size[1];
+        return .{ .{ .name = name, .dir_idx = dir_idx[0], .mtime = mtime[0], .size = size[0] }, pos };
+    }
+    fn parseDirectoryEntry(bytes: []u8) ?struct { FileEntry, u64 } {
+        const dir: [:0]const u8 = mach.manyToSlice80(bytes.ptr);
+        if (dir.len == 0) {
+            return null;
+        }
+        return .{ .{ .name = dir }, dir.len +% 1 };
     }
     fn getLineString(dwarf_info: DwarfInfo, offset: u64) [:0]const u8 {
         return getStringGeneric(dwarf_info.line_str[0..dwarf_info.line_str_len], offset);
@@ -1355,7 +1377,7 @@ pub const DwarfInfo = extern struct {
         const line_off: u64 = unit.info_entry.offset(.stmt_list) orelse {
             builtin.proc.exitError(error.InvalidEncoding, 2);
         };
-        const line_unit: *Unit = try Unit.init(allocator, dwarf_info, dwarf_info.line, line_off);
+        const line_unit: *Unit = Unit.init(allocator, dwarf_info, dwarf_info.line, line_off);
         const obv_files_len: u64 = unit.files_len;
         defer {
             if (obv_files_len != 0) unit.files_len = obv_files_len;
@@ -1365,7 +1387,7 @@ pub const DwarfInfo = extern struct {
             .dword => line_unit.len +% 8,
         };
         const buf: [*]u8 = dwarf_info.line;
-        const bytes: []const u8 = buf[0..dwarf_info.line_len];
+        const bytes: []u8 = buf[0..dwarf_info.line_len];
         var pos: u64 = line_unit.info_entry.off;
         const next_off: u64 = (pos +% line_unit.abbrev_tab.off) -% 1;
         const min_instr_len: u8 = dwarf_info.line[pos -% 1];
@@ -1394,31 +1416,19 @@ pub const DwarfInfo = extern struct {
         }
         if (unit.files_len == 0) {
             unit.addDir(allocator).* = .{ .name = unit_cwd };
-            while (true) {
-                const dir: [:0]const u8 = mach.manyToSlice80(buf + pos);
-                pos +%= dir.len +% 1;
-                if (dir.len == 0) {
-                    break;
-                }
-                unit.addDir(allocator).* = .{ .name = dir };
+            while (parseDirectoryEntry(bytes[pos..])) |dent| {
+                unit.addDir(allocator).* = dent[0];
+                pos +%= dent[1];
             }
         }
+        pos +%= 1;
         if (unit.files_len == 0) {
-            while (true) {
-                const name: [:0]const u8 = mach.manyToSlice80(buf + pos);
-                pos +%= name.len +% 1;
-                if (name.len == 0) {
-                    break;
-                }
-                const dir_idx = parse.noexcept.readLEB128(u32, bytes[pos..]);
-                pos +%= dir_idx[1];
-                const mtime = parse.noexcept.readLEB128(u64, bytes[pos..]);
-                pos +%= mtime[1];
-                const size = parse.noexcept.readLEB128(u64, bytes[pos..]);
-                pos +%= size[1];
-                unit.addFile(allocator).* = .{ .name = name, .dir_idx = dir_idx[0], .mtime = mtime[0], .size = size[0] };
+            while (parseFileEntry(bytes[pos..])) |fent| {
+                unit.addFile(allocator).* = fent[0];
+                pos +%= fent[1];
             }
         }
+        pos +%= 1;
         var prog: LineNumberProgram = LineNumberProgram.init(is_stmt, instr_addr);
         pos = next_off;
         while (pos < next_unit_off) {
@@ -1446,18 +1456,10 @@ pub const DwarfInfo = extern struct {
                         prog.address = addr;
                     },
                     LNE.define_file => {
-                        const name: [:0]const u8 = mach.manyToSlice80(buf + pos);
-                        pos +%= name.len +% 1;
-                        if (name.len == 0) {
-                            break;
+                        if (parseFileEntry(bytes[pos..])) |fent| {
+                            unit.addFile(allocator).* = fent[0];
+                            pos +%= fent[1];
                         }
-                        const dir_idx = parse.noexcept.readLEB128(u32, bytes[pos..]);
-                        pos +%= dir_idx[1];
-                        const mtime = parse.noexcept.readLEB128(u64, bytes[pos..]);
-                        pos +%= mtime[1];
-                        const size = parse.noexcept.readLEB128(u64, bytes[pos..]);
-                        pos +%= size[1];
-                        unit.addFile(allocator).* = .{ .dir_idx = dir_idx[0], .name = name, .mtime = mtime[0], .size = size[0] };
                     },
                     else => {
                         const fwd_amt: isize = @bitCast(isize, op_size[0] -% 1);
@@ -1545,7 +1547,7 @@ fn getStringGeneric(opt_str: ?[]const u8, offset: u64) [:0]const u8 {
     };
     return str[offset .. offset +% last :0];
 }
-fn parseFormValue(allocator: *Allocator, unit: *Unit, bytes: []u8, form: Form) !struct { FormValue, u64 } {
+fn parseFormValue(allocator: *Allocator, unit: *Unit, bytes: []u8, form: Form) struct { FormValue, u64 } {
     switch (form) {
         .addr => return .{ .{ .Address = @ptrCast(*align(1) usize, bytes).* }, @sizeOf(u64) },
         .block2 => {
@@ -1600,7 +1602,7 @@ fn parseFormValue(allocator: *Allocator, unit: *Unit, bytes: []u8, form: Form) !
         },
         .indirect => {
             const child = parse.noexcept.readLEB128(Form, bytes);
-            const res = try parseFormValue(allocator, unit, bytes[child[1]..], child[0]);
+            const res = parseFormValue(allocator, unit, bytes[child[1]..], child[0]);
             return .{ res[0], child[1] +% res[1] };
         },
         .sec_offset => switch (unit.word_size) {
@@ -1660,6 +1662,7 @@ const FileEntry = struct {
     mtime: u64 = 0,
     size: u64 = 0,
     md5: [16]u8 = [1]u8{0} ** 16,
+
     buf: [*]u8 = undefined,
     buf_len: u64 = 0,
     fn pathname(entry: *const FileEntry, allocator: *Allocator, dirs: [*]FileEntry) [:0]const u8 {
@@ -1754,6 +1757,7 @@ const LineNumberProgram = struct {
                 else
                     @intCast(u64, prog.prev_line),
                 .column = prog.prev_column,
+
                 .file = entry.pathname(allocator, unit.dirs),
             };
         }
