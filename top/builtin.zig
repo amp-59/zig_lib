@@ -1641,7 +1641,7 @@ pub const debug = struct {
         @setCold(true);
         @setRuntimeSafety(false);
         if (want_stack_traces and trace.Fault) {
-            printStackTrace(&trace, ret_addr.?, 0);
+            printStackTrace(&trace, ret_addr orelse @returnAddress(), 0);
         }
         @call(.always_inline, proc.exitGroupFault, .{ msg, 2 });
     }
