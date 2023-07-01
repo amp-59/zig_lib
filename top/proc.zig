@@ -1165,13 +1165,6 @@ pub const debug = opaque {
     const about_futex_wait_0_s: [:0]const u8 = builtin.fmt.about("futex-wait");
     const about_futex_wake_0_s: [:0]const u8 = builtin.fmt.about("futex-wake");
     const about_futex_wake_op_0_s: [:0]const u8 = builtin.fmt.about("futex-wake-op");
-    fn exceptionFaultAtAddress(symbol: []const u8, fault_addr: u64) void {
-        const fault_addr_s: []const u8 = builtin.fmt.ux64(fault_addr).readAll();
-        var buf: [8192]u8 = undefined;
-        var pathname: [4096]u8 = undefined;
-        const link_s: []const u8 = pathname[0..builtin.debug.name(&pathname)];
-        builtin.debug.logFaultAIO(&buf, &[_][]const u8{ builtin.debug.about_fault_p0_s, symbol, " at address ", fault_addr_s, ", ", link_s, "\n" });
-    }
     fn forkNotice(pid: u64) void {
         var buf: [560]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_fork_0_s, "pid=", builtin.fmt.ud64(pid).readAll(), "\n" });
@@ -1385,8 +1378,6 @@ pub const debug = opaque {
         const fault_addr_s: []const u8 = builtin.fmt.ux64(info.fields.fault.addr).readAll();
         var buf: [8192]u8 = undefined;
         var len: u64 = 0;
-        mach.memcpy(&buf, builtin.debug.about_fault_p0_s.ptr, builtin.debug.about_fault_p0_s.len);
-        len +%= builtin.debug.about_fault_p0_s.len;
         @ptrCast(*[3]u8, buf[len..].ptr).* = "SIG".*;
         len +%= 3;
         mach.memcpy(buf[len..].ptr, @tagName(sig).ptr, @tagName(sig).len);
