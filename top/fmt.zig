@@ -63,7 +63,7 @@ pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
         const min_digits_count: u16 = builtin.fmt.length(Abs, min_abs_value, fmt_spec.radix);
         const max_digits_count: u16 = builtin.fmt.length(Abs, max_abs_value, fmt_spec.radix);
         pub const spec: PolynomialFormatSpec = fmt_spec;
-        pub const Array = mem.StaticString(max_len);
+        pub const StaticString = mem.StaticString(max_len);
         const max_len: u64 = blk: {
             var len: u64 = 0;
             if (fmt_spec.radix > max_abs_value) {
@@ -102,6 +102,12 @@ pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
             } else {
                 return digits_len;
             }
+        }
+        pub fn formatConvert(format: Format) StaticString {
+            var array: StaticString = undefined;
+            array.undefineAll();
+            array.writeFormat(format);
+            return array;
         }
         pub fn formatWrite(format: Format, array: anytype) void {
             array.define(@call(.always_inline, formatWriteBuf, .{
