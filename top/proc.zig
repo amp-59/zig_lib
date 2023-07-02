@@ -1272,44 +1272,6 @@ pub const debug = opaque {
             count2_s,             ", res=",   ret_s,    "\n",
         });
     }
-    fn futexWakeOpNoticeExample(futex1: *u32, futex2: *u32, count1: u32, count2: u32, wake_op: FutexOp.WakeOp, mb_ret: ?u64) void {
-        _ = wake_op;
-        var fmt_ux64: fmt.Type.Ux64 = .{ .value = @intFromPtr(futex1) };
-        var fmt_ud64: fmt.Type.Ud64 = .{ .value = futex1.* };
-        var buf: [3072]u8 = undefined;
-        @ptrCast(*[16]u8, &buf).* = about_futex_wake_0_s.*;
-        var len: u64 = 16;
-        @ptrCast(*[8]u8, buf[len..].ptr).* = "futex1=@".*;
-        len +%= 8;
-        len +%= fmt_ux64.formatWriteBuf(buf[len..].ptr);
-        @ptrCast(*[8]u8, buf[len..].ptr).* = ", word1=".*;
-        len +%= 8;
-        len +%= fmt_ud64.formatWriteBuf(buf[len..].ptr);
-        @ptrCast(*[7]u8, buf[len..].ptr).* = ", max1=".*;
-        len +%= 7;
-        fmt_ud64.value = count1;
-        len +%= fmt_ud64.formatWriteBuf(buf[len..].ptr);
-        @ptrCast(*[10]u8, buf[len..].ptr).* = ", futex2=@".*;
-        len +%= 10;
-        fmt_ux64.value = @intFromPtr(futex2);
-        len +%= fmt_ux64.formatWriteBuf(buf[len..].ptr);
-        @ptrCast(*[8]u8, buf[len..].ptr).* = ", word2=".*;
-        len +%= 8;
-        fmt_ud64.value = futex2.*;
-        len +%= fmt_ud64.formatWriteBuf(buf[len..].ptr);
-        @ptrCast(*[7]u8, buf[len..].ptr).* = ", max2=".*;
-        len +%= 7;
-        fmt_ud64.value = count2;
-        len +%= fmt_ud64.formatWriteBuf(buf[len..].ptr);
-        @ptrCast(*[6]u8, buf[len..].ptr).* = ", res=".*;
-        len +%= 6;
-        if (mb_ret) |ret| {
-            fmt_ud64.value = ret;
-            len +%= fmt_ud64.formatWriteBuf(buf[len..].ptr);
-        }
-        buf[len] = '\n';
-        builtin.debug.write(buf[0 .. len +% 1]);
-    }
     fn forkError(fork_error: anytype) void {
         var buf: [560]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_fork_0_s, builtin.debug.about_error_s, @errorName(fork_error), "\n" });
@@ -1380,10 +1342,10 @@ pub const debug = opaque {
         @setRuntimeSafety(false);
         const sa_new_addr: u64 = @intFromPtr(act);
         inline for ([_]struct { bool, u32 }{
-            .{ builtin.signal_handlers.SegmentationFault, SIG.SEGV },
-            .{ builtin.signal_handlers.IllegalInstruction, SIG.ILL },
-            .{ builtin.signal_handlers.BusError, SIG.BUS },
-            .{ builtin.signal_handlers.FloatingPointError, SIG.FPE },
+            .{ builtin.signal_handlers.SegmentationFault, sys.SIG.SEGV },
+            .{ builtin.signal_handlers.IllegalInstruction, sys.SIG.ILL },
+            .{ builtin.signal_handlers.BusError, sys.SIG.BUS },
+            .{ builtin.signal_handlers.FloatingPointError, sys.SIG.FPE },
         }) |pair| {
             if (pair[0]) {
                 sys.call_noexcept(.rt_sigaction, void, .{ pair[1], sa_new_addr, 0, @sizeOf(@TypeOf(act.mask)) });
@@ -1430,10 +1392,6 @@ pub const debug = opaque {
         len +%= builtin.debug.name(buf[len..]);
         builtin.debug.panicExtra(buf[0..len], ctx.?);
     }
-
-    const SA = sys.SA;
-    const SIG = sys.SIG;
-
     pub fn sampleAllReports() void {
         var futex0: u32 = 0xf0;
         var futex1: u32 = 0xf1;
@@ -1447,6 +1405,44 @@ pub const debug = opaque {
         futexWaitError(error.FutexError, &futex0, 25, &timeout);
         futexWakeError(error.FutexError, &futex0, 1);
         futexWakeOpError(error.FutexError, &futex0, &futex1, 1, 0, .{ .from = 10, .to = 20, .cmp = .Equal, .op = .Add });
+    }
+    fn futexWakeOpNoticeExample(futex1: *u32, futex2: *u32, count1: u32, count2: u32, wake_op: FutexOp.WakeOp, mb_ret: ?u64) void {
+        _ = wake_op;
+        var fmt_ux64: fmt.Type.Ux64 = .{ .value = @intFromPtr(futex1) };
+        var fmt_ud64: fmt.Type.Ud64 = .{ .value = futex1.* };
+        var buf: [3072]u8 = undefined;
+        @ptrCast(*[16]u8, &buf).* = about_futex_wake_0_s.*;
+        var len: u64 = 16;
+        @ptrCast(*[8]u8, buf[len..].ptr).* = "futex1=@".*;
+        len +%= 8;
+        len +%= fmt_ux64.formatWriteBuf(buf[len..].ptr);
+        @ptrCast(*[8]u8, buf[len..].ptr).* = ", word1=".*;
+        len +%= 8;
+        len +%= fmt_ud64.formatWriteBuf(buf[len..].ptr);
+        @ptrCast(*[7]u8, buf[len..].ptr).* = ", max1=".*;
+        len +%= 7;
+        fmt_ud64.value = count1;
+        len +%= fmt_ud64.formatWriteBuf(buf[len..].ptr);
+        @ptrCast(*[10]u8, buf[len..].ptr).* = ", futex2=@".*;
+        len +%= 10;
+        fmt_ux64.value = @intFromPtr(futex2);
+        len +%= fmt_ux64.formatWriteBuf(buf[len..].ptr);
+        @ptrCast(*[8]u8, buf[len..].ptr).* = ", word2=".*;
+        len +%= 8;
+        fmt_ud64.value = futex2.*;
+        len +%= fmt_ud64.formatWriteBuf(buf[len..].ptr);
+        @ptrCast(*[7]u8, buf[len..].ptr).* = ", max2=".*;
+        len +%= 7;
+        fmt_ud64.value = count2;
+        len +%= fmt_ud64.formatWriteBuf(buf[len..].ptr);
+        @ptrCast(*[6]u8, buf[len..].ptr).* = ", res=".*;
+        len +%= 6;
+        if (mb_ret) |ret| {
+            fmt_ud64.value = ret;
+            len +%= fmt_ud64.formatWriteBuf(buf[len..].ptr);
+        }
+        buf[len] = '\n';
+        builtin.debug.write(buf[0 .. len +% 1]);
     }
 };
 pub fn GenericOptions(comptime Options: type) type {
