@@ -7,6 +7,7 @@ pub const ResourceError = error{ UnderSupply, OverSupply };
 pub const ResourceErrorPolicy = builtin.InternalError(ResourceError);
 pub const RegularAddressSpaceSpec = RegularMultiArena;
 pub const DiscreteAddressSpaceSpec = DiscreteMultiArena;
+
 pub fn DiscreteBitSet(comptime elements: u16, comptime val_type: type, comptime idx_type: type) type {
     const val_bit_size: u16 = @bitSizeOf(val_type);
     if (val_bit_size != 1) {
@@ -121,10 +122,10 @@ fn ThreadSafeSetBoolInt(comptime elements: u16, comptime idx_type: type) type {
             safe_set.bytes[index] = 0;
         }
         pub inline fn atomicSet(safe_set: *SafeSet, index: idx_type) bool {
-            return @cmpxchgStrong(u8, &safe_set.bytes[index], 0, 255, .Monotonic, .Monotonic) == null;
+            return @cmpxchgStrong(u8, &safe_set.bytes[index], 0, 255, .SeqCst, .SeqCst) == null;
         }
         pub inline fn atomicUnset(safe_set: *SafeSet, index: idx_type) bool {
-            return @cmpxchgStrong(u8, &safe_set.bytes[index], 255, 0, .Monotonic, .Monotonic) == null;
+            return @cmpxchgStrong(u8, &safe_set.bytes[index], 255, 0, .SeqCst, .SeqCst) == null;
         }
         pub fn mutex(safe_set: *SafeSet, index: idx_type) *u32 {
             return @ptrFromInt(*u32, mach.alignB64(@intFromPtr(&safe_set.bytes[index]), 4));
@@ -146,10 +147,10 @@ fn ThreadSafeSetBoolEnum(comptime elements: u16, comptime idx_type: type) type {
             safe_set.bytes[@intFromEnum(index)] = 0;
         }
         pub fn atomicSet(safe_set: *SafeSet, index: idx_type) bool {
-            return @cmpxchgStrong(u8, &safe_set.bytes[index], 0, 255, .Monotonic, .Monotonic) == null;
+            return @cmpxchgStrong(u8, &safe_set.bytes[index], 0, 255, .SeqCst, .SeqCst) == null;
         }
         pub fn atomicUnset(safe_set: *SafeSet, index: idx_type) bool {
-            return @cmpxchgStrong(u8, &safe_set.bytes[index], 255, 0, .Monotonic, .Monotonic) == null;
+            return @cmpxchgStrong(u8, &safe_set.bytes[index], 255, 0, .SeqCst, .SeqCst) == null;
         }
         pub fn mutex(safe_set: *SafeSet, index: idx_type) *u32 {
             return @ptrFromInt(*u32, mach.alignB64(@intFromPtr(&safe_set.bytes[@intFromEnum(index)]), 4));
@@ -168,7 +169,7 @@ fn ThreadSafeSetEnumInt(comptime elements: u16, comptime val_type: type, comptim
             safe_set.bytes[index] = to;
         }
         pub fn atomicExchange(safe_set: *SafeSet, index: idx_type, if_state: val_type, to_state: val_type) bool {
-            return @cmpxchgStrong(val_type, &safe_set.bytes[index], if_state, to_state, .Monotonic, .Monotonic) == null;
+            return @cmpxchgStrong(val_type, &safe_set.bytes[index], if_state, to_state, .SeqCst, .SeqCst) == null;
         }
         pub fn mutex(safe_set: *SafeSet, index: idx_type) *u32 {
             return @ptrFromInt(*u32, mach.alignB64(@intFromPtr(&safe_set.bytes[index]), 4));
@@ -192,7 +193,7 @@ fn ThreadSafeSetEnumEnum(comptime elements: u16, comptime val_type: type, compti
             return ret;
         }
         pub fn atomicExchange(safe_set: *SafeSet, index: idx_type, if_state: val_type, to_state: val_type) callconv(.C) bool {
-            return @cmpxchgStrong(val_type, &safe_set.bytes[@intFromEnum(index)], if_state, to_state, .Monotonic, .Monotonic) == null;
+            return @cmpxchgStrong(val_type, &safe_set.bytes[@intFromEnum(index)], if_state, to_state, .SeqCst, .SeqCst) == null;
         }
         pub fn mutex(safe_set: *SafeSet, index: idx_type) *u32 {
             return @ptrFromInt(*u32, mach.alignB64(@intFromPtr(&safe_set.bytes[@intFromEnum(index)]), 4));
@@ -216,7 +217,7 @@ fn GenericMultiSet(
     comptime directory: anytype,
     comptime Fields: type,
 ) type {
-    return (extern struct {
+    const T = extern struct {
         fields: Fields = .{},
         pub const MultiSet: type = @This();
         inline fn arenaIndex(comptime index: spec.idx_type) spec.idx_type {
@@ -264,7 +265,8 @@ fn GenericMultiSet(
         ) bool {
             return multi_set.fields[fieldIndex(index)].atomicExchange(arenaIndex(index), if_state, to_state);
         }
-    });
+    };
+    return T;
 }
 pub const ArenaOptions = extern struct {
     thread_safe: bool = false,
@@ -281,7 +283,7 @@ pub const Bounds = extern struct {
 pub fn bounds(any: anytype) Bounds {
     return .{
         .lb_addr = @intFromPtr(any.ptr),
-        .up_addr = @intFromPtr(any.ptr) + any.len,
+        .up_addr = @intFromPtr(any.ptr) +% any.len,
     };
 }
 pub fn intersection2(comptime A: type, s_arena: A, t_arena: A) ?Intersection(A) {
@@ -409,7 +411,7 @@ pub const DiscreteMultiArena = struct {
     fn referSubRegular(comptime multi_arena: MultiArena, comptime sub_arena: Arena) []const ArenaReference {
         var map_list: []const ArenaReference = meta.empty;
         var s_index: multi_arena.idx_type = 0;
-        while (s_index <= multi_arena.list.len) : (s_index += 1) {
+        while (s_index <= multi_arena.list.len) : (s_index +%= 1) {
             const super_arena: Arena = multi_arena.list[s_index];
             if (super_arena.lb_addr > sub_arena.up_addr) {
                 break;
@@ -426,9 +428,9 @@ pub const DiscreteMultiArena = struct {
     fn referSubDiscrete(comptime multi_arena: MultiArena, comptime sub_list: []const Arena) []const ArenaReference {
         var map_list: []const ArenaReference = meta.empty;
         var t_index: multi_arena.idx_type = 0;
-        while (t_index != sub_list.len) : (t_index += 1) {
+        while (t_index != sub_list.len) : (t_index +%= 1) {
             var s_index: multi_arena.idx_type = 0;
-            while (s_index != multi_arena.list.len) : (s_index += 1) {
+            while (s_index != multi_arena.list.len) : (s_index +%= 1) {
                 const s_arena: Arena = multi_arena.list[s_index];
                 const t_arena: Arena = sub_list[t_index];
                 if (s_arena.intersection(t_arena) != null) {
@@ -449,7 +451,7 @@ pub const DiscreteMultiArena = struct {
     }
     pub fn invert(comptime multi_arena: MultiArena, addr: u64) multi_arena.idx_type {
         var index: multi_arena.idx_type = 0;
-        while (index != multi_arena.list.len) : (index += 1) {
+        while (index != multi_arena.list.len) : (index +%= 1) {
             if (addr >= multi_arena.list[index].lb_addr and
                 addr < multi_arena.list[index].up_addr)
             {
@@ -509,13 +511,13 @@ pub const RegularMultiArena = struct {
             @bitSizeOf(multi_arena.val_type) == 8)
         {
             return ThreadSafeSet(
-                multi_arena.divisions + @intFromBool(multi_arena.options.require_map),
+                multi_arena.divisions +% @intFromBool(multi_arena.options.require_map),
                 multi_arena.val_type,
                 multi_arena.idx_type,
             );
         } else {
             return DiscreteBitSet(
-                multi_arena.divisions + @intFromBool(multi_arena.options.require_map),
+                multi_arena.divisions +% @intFromBool(multi_arena.options.require_map),
                 multi_arena.val_type,
                 multi_arena.idx_type,
             );
@@ -544,7 +546,7 @@ pub const RegularMultiArena = struct {
         var max_index: Index(multi_arena) = multi_arena.invert(sub_arena.up_addr);
         var min_index: Index(multi_arena) = multi_arena.invert(sub_arena.lb_addr);
         var s_index: Index(multi_arena) = min_index;
-        while (s_index <= max_index) : (s_index += 1) {
+        while (s_index <= max_index) : (s_index +%= 1) {
             map_list = meta.concat(ArenaReference, map_list, .{
                 .index = s_index,
                 .options = multi_arena.options,
@@ -561,7 +563,7 @@ pub const RegularMultiArena = struct {
         var max_index: Index(multi_arena) = multi_arena.invert(sub_list[sub_list.len -% 1].up_addr);
         var min_index: Index(multi_arena) = multi_arena.invert(sub_list[0].lb_addr);
         var s_index: Index(multi_arena) = min_index;
-        while (s_index <= max_index) : (s_index += 1) {
+        while (s_index <= max_index) : (s_index +%= 1) {
             map_list = meta.concat(ArenaReference, map_list, .{
                 .index = s_index,
                 .options = multi_arena.options,
@@ -577,13 +579,13 @@ pub const RegularMultiArena = struct {
         comptime return multi_arena.divisions;
     }
     pub fn capacityAll(comptime multi_arena: MultiArena) u64 {
-        comptime return mach.alignA64(multi_arena.up_addr - multi_arena.lb_addr, multi_arena.alignment);
+        comptime return mach.alignA64(multi_arena.up_addr -% multi_arena.lb_addr, multi_arena.alignment);
     }
     pub fn capacityEach(comptime multi_arena: MultiArena) u64 {
         comptime return @divExact(capacityAll(multi_arena), multi_arena.divisions);
     }
     pub fn invert(comptime multi_arena: MultiArena, addr: u64) Index(multi_arena) {
-        return @intCast(Index(multi_arena), (addr - multi_arena.lb_addr) / capacityEach(multi_arena));
+        return @intCast(Index(multi_arena), (addr -% multi_arena.lb_addr) / capacityEach(multi_arena));
     }
     pub fn low(comptime multi_arena: MultiArena, index: Index(multi_arena)) u64 {
         const offset: u64 = index *% comptime capacityEach(multi_arena);
@@ -952,10 +954,10 @@ pub fn GenericElementaryAddressSpace(comptime spec: ElementaryAddressSpaceSpec) 
             return !ret;
         }
         pub fn atomicSet(address_space: *ElementaryAddressSpace) bool {
-            return @cmpxchgStrong(u8, &address_space.impl, 0, 255, .Monotonic, .Monotonic);
+            return @cmpxchgStrong(u8, &address_space.impl, 0, 255, .SeqCst, .SeqCst);
         }
         pub fn atomicUnset(address_space: *ElementaryAddressSpace) bool {
-            return @cmpxchgStrong(u8, &address_space.impl, 255, 0, .Monotonic, .Monotonic);
+            return @cmpxchgStrong(u8, &address_space.impl, 255, 0, .SeqCst, .SeqCst);
         }
         fn low() u64 {
             return spec.lb_addr;
@@ -1007,7 +1009,7 @@ fn GenericAddressSpace(comptime AddressSpace: type) type {
             fn formatWriteRegular(address_space: AddressSpace, array: anytype) void {
                 var arena_index: AddressSpace.Index = 0;
                 array.writeMany(about_set_0_s);
-                while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index += 1) {
+                while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index +%= 1) {
                     if (!address_space.impl.get(arena_index)) {
                         array.writeMany(builtin.fmt.dec(AddressSpace.Index, arena_index).readAll());
                         array.writeCount(2, ", ".*);
@@ -1015,7 +1017,7 @@ fn GenericAddressSpace(comptime AddressSpace: type) type {
                 }
                 arena_index = 0;
                 array.writeMany(about_set_1_s);
-                while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index += 1) {
+                while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index +%= 1) {
                     if (address_space.impl.get(arena_index)) {
                         array.writeMany(builtin.fmt.dec(AddressSpace.Index, arena_index).readAll());
                         array.writeCount(2, ", ".*);
@@ -1025,19 +1027,19 @@ fn GenericAddressSpace(comptime AddressSpace: type) type {
             fn formatLengthRegular(address_space: AddressSpace) u64 {
                 var len: u64 = 0;
                 var arena_index: AddressSpace.Index = 0;
-                len += about_set_0_s.len;
-                while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index += 1) {
+                len +%= about_set_0_s.len;
+                while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index +%= 1) {
                     if (!address_space.impl.get(arena_index)) {
-                        len += builtin.fmt.length(AddressSpace.Index, arena_index, 10);
-                        len += 2;
+                        len +%= builtin.fmt.length(AddressSpace.Index, arena_index, 10);
+                        len +%= 2;
                     }
                 }
                 arena_index = 0;
-                len += about_set_1_s.len;
-                while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index += 1) {
+                len +%= about_set_1_s.len;
+                while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index +%= 1) {
                     if (address_space.impl.get(arena_index)) {
-                        len += builtin.fmt.length(AddressSpace.Index, arena_index, 10);
-                        len += 2;
+                        len +%= builtin.fmt.length(AddressSpace.Index, arena_index, 10);
+                        len +%= 2;
                     }
                 }
                 return len;
@@ -1045,7 +1047,7 @@ fn GenericAddressSpace(comptime AddressSpace: type) type {
             fn formatWriteDiscrete(address_space: AddressSpace, array: anytype) void {
                 comptime var arena_index: AddressSpace.Index = 0;
                 array.writeMany(about_set_0_s);
-                inline while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index += 1) {
+                inline while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index +%= 1) {
                     if (!address_space.impl.get(arena_index)) {
                         array.writeMany(builtin.fmt.dec(AddressSpace.Index, arena_index).readAll());
                         array.writeCount(2, ", ".*);
@@ -1053,7 +1055,7 @@ fn GenericAddressSpace(comptime AddressSpace: type) type {
                 }
                 arena_index = 0;
                 array.writeMany(about_set_1_s);
-                inline while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index += 1) {
+                inline while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index +%= 1) {
                     if (address_space.impl.get(arena_index)) {
                         array.writeMany(builtin.fmt.dec(AddressSpace.Index, arena_index).readAll());
                         array.writeCount(2, ", ".*);
@@ -1063,19 +1065,19 @@ fn GenericAddressSpace(comptime AddressSpace: type) type {
             fn formatLengthDiscrete(address_space: AddressSpace) u64 {
                 var len: u64 = 0;
                 comptime var arena_index: AddressSpace.Index = 0;
-                len += about_set_0_s.len;
-                inline while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index += 1) {
+                len +%= about_set_0_s.len;
+                inline while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index +%= 1) {
                     if (address_space.impl.get(AddressSpace.Index, arena_index)) {
-                        len += builtin.fmt.length(AddressSpace.Index, arena_index, 10);
-                        len += 2;
+                        len +%= builtin.fmt.length(AddressSpace.Index, arena_index, 10);
+                        len +%= 2;
                     }
                 }
                 arena_index = 0;
-                len += about_set_1_s.len;
-                inline while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index += 1) {
+                len +%= about_set_1_s.len;
+                inline while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index +%= 1) {
                     if (!address_space.impl.get(AddressSpace.Index, arena_index)) {
-                        len += builtin.fmt.length(AddressSpace.Index, arena_index, 10);
-                        len += 2;
+                        len +%= builtin.fmt.length(AddressSpace.Index, arena_index, 10);
+                        len +%= 2;
                     }
                 }
                 return len;
