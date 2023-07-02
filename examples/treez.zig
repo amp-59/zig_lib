@@ -11,6 +11,13 @@ const thread = srg.thread;
 const builtin = srg.builtin;
 pub usingnamespace proc.start;
 pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
+pub const signal_handlers = .{
+    .SegmentationFault = false,
+    .IllegalInstruction = false,
+    .BusError = false,
+    .Trap = false,
+    .FloatingPointError = false,
+};
 pub const AddressSpace = mem.GenericRegularAddressSpace(.{
     .lb_addr = 0,
     .lb_offset = 0x40000000,
