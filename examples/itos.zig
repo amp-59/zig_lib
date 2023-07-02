@@ -7,9 +7,10 @@ const meta = srg.meta;
 const file = srg.file;
 const spec = srg.spec;
 const builtin = srg.builtin;
-
 pub usingnamespace proc.start;
-
+pub const logging_override: builtin.Logging.Override = .{
+    .Error = true,
+};
 const Output = enum(u8) {
     bin = 2,
     oct = 8,
@@ -22,18 +23,6 @@ const Output = enum(u8) {
     u32 = 21,
     u64 = 22,
 };
-const single_switch: bool = false;
-
-fn noOption(opt_arg: []const u8) void {
-    var print_array: mem.StaticString(4096) = undefined;
-    print_array.undefineAll();
-    print_array.writeAny(spec.reinterpret.ptr, [3][]const u8{
-        "unrecognised output mode: '",
-        opt_arg,
-        "'\n-o, --output=     x,d,o,b\n",
-    });
-    builtin.proc.exitFault(print_array.readAll());
-}
 const Options = struct {
     output: Output = .hex,
     pub const Map = proc.GenericOptions(Options);
@@ -49,44 +38,21 @@ const Options = struct {
     fn setOutputBin(options: *Options) void {
         options.output = .bin;
     }
-    fn setOutput(options: *Options, opt_arg: [:0]const u8) void {
-        if (mem.testEqualMany(u8, "hex", opt_arg) or
-            mem.testEqualMany(u8, "x", opt_arg))
-        {
-            options.output = .hex;
-        } else if (mem.testEqualMany(u8, "bin", opt_arg) or
-            mem.testEqualMany(u8, "b", opt_arg))
-        {
-            options.output = .bin;
-        } else if (mem.testEqualMany(u8, "dec", opt_arg) or
-            mem.testEqualMany(u8, "d", opt_arg))
-        {
-            options.output = .dec;
-        } else if (mem.testEqualMany(u8, "oct", opt_arg) or
-            mem.testEqualMany(u8, "o", opt_arg))
-        {
-            options.output = .oct;
-        } else {
-            noOption(opt_arg);
-        }
-    }
 };
 fn outputChar() []const u8 {
-    return "";
+    return "'char' output not yet implemented";
 }
-const opt_map: []const Options.Map = &if (single_switch) .{
-    .{ .field_name = "output", .short = "-o", .long = "--output", .assign = .{ .action = Options.setOutput } },
-} else .{
-    .{ .field_name = "output", .short = "-c", .long = "--char", .assign = .{ .any = &(.char) } },
-    .{ .field_name = "output", .short = "-x", .long = "--hex", .assign = .{ .any = &(.hex) } },
-    .{ .field_name = "output", .short = "-d", .long = "--dec", .assign = .{ .any = &(.dec) } },
-    .{ .field_name = "output", .short = "-o", .long = "--oct", .assign = .{ .any = &(.oct) } },
-    .{ .field_name = "output", .short = "-b", .long = "--bin", .assign = .{ .any = &(.bin) } },
-    .{ .field_name = "output", .long = "--auto", .assign = .{ .any = &(.auto) } },
-    .{ .field_name = "output", .long = "u8", .assign = .{ .any = &(.u8) } },
-    .{ .field_name = "output", .long = "u16", .assign = .{ .any = &(.u16) } },
-    .{ .field_name = "output", .long = "u32", .assign = .{ .any = &(.u32) } },
-    .{ .field_name = "output", .long = "u64", .assign = .{ .any = &(.u64) } },
+const opt_map: []const Options.Map = &.{
+    .{ .field_name = "output", .short = "-c", .long = "--char", .assign = .{ .any = &(.char) }, .descr = "Not yet implemented" },
+    .{ .field_name = "output", .short = "-x", .long = "--hex", .assign = .{ .any = &(.hex) }, .descr = "Output as hexadecimal" },
+    .{ .field_name = "output", .short = "-d", .long = "--dec", .assign = .{ .any = &(.dec) }, .descr = "Output as decimal" },
+    .{ .field_name = "output", .short = "-o", .long = "--oct", .assign = .{ .any = &(.oct) }, .descr = "Output as octal" },
+    .{ .field_name = "output", .short = "-b", .long = "--bin", .assign = .{ .any = &(.bin) }, .descr = "Output as binary" },
+    .{ .field_name = "output", .long = "auto", .assign = .{ .any = &(.auto) }, .descr = "Smallest width for value" },
+    .{ .field_name = "output", .long = "u8", .assign = .{ .any = &(.u8) }, .descr = "Output raw 8 bit integer" },
+    .{ .field_name = "output", .long = "u16", .assign = .{ .any = &(.u16) }, .descr = "Output raw 16 bit integer" },
+    .{ .field_name = "output", .long = "u32", .assign = .{ .any = &(.u32) }, .descr = "Output raw 32 bit integer" },
+    .{ .field_name = "output", .long = "u64", .assign = .{ .any = &(.u64) }, .descr = "Output raw 64 bit integer" },
 };
 fn loopInner(options: Options, arg: []const u8) !void {
     const val: u64 = try builtin.parse.any(u64, arg);

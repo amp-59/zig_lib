@@ -9,7 +9,6 @@ const parse = @import("./parse.zig");
 const builtin = @import("./builtin.zig");
 const testing = @import("./testing.zig");
 const Allocator = builtin.define("Allocator", type, mem.SimpleAllocator);
-
 const dwarf_summary: bool = false;
 const dwarf_abbrev_entry: bool = false;
 const dwarf_info_entry: bool = false;
@@ -1658,7 +1657,6 @@ const FileEntry = struct {
     mtime: u64 = 0,
     size: u64 = 0,
     md5: [16]u8 = [1]u8{0} ** 16,
-
     buf: [*]u8 = undefined,
     buf_len: u64 = 0,
     fn pathname(entry: *const FileEntry, allocator: *Allocator, dirs: [*]FileEntry) [:0]const u8 {
@@ -1753,7 +1751,6 @@ const LineNumberProgram = struct {
                 else
                     @intCast(u64, prog.prev_line),
                 .column = prog.prev_column,
-
                 .file = entry.pathname(allocator, unit.dirs),
             };
         }
