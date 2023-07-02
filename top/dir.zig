@@ -43,20 +43,20 @@ pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
         pub const ListView = mem.GenericLinkedListView(.{ .child = Entry, .low_alignment = 8 });
         pub const Entry = opaque {
             pub fn possess(dirent: *const Entry, dir: *DirStream) void {
-                @ptrFromInt(*const Block, @intFromPtr(dirent) +% 0).* = dir.blk;
+                @as(*const Block, @ptrFromInt(@intFromPtr(dirent) +% 0)).* = dir.blk;
                 file.close(dir_close_spec, dir.fd);
             }
             pub fn entries(dirent: *const Entry) Block {
-                return @ptrFromInt(*const Block, @intFromPtr(dirent)).*;
+                return @as(*const Block, @ptrFromInt(@intFromPtr(dirent))).*;
             }
             pub fn len(dirent: *const Entry) u16 {
-                return @ptrFromInt(*const u16, @intFromPtr(dirent) +% 8).*;
+                return @as(*const u16, @ptrFromInt(@intFromPtr(dirent) +% 8)).*;
             }
             pub fn kind(dirent: *const Entry) file.Kind {
-                return @ptrFromInt(*const file.Kind, @intFromPtr(dirent) +% 10).*;
+                return @as(*const file.Kind, @ptrFromInt(@intFromPtr(dirent) +% 10)).*;
             }
             pub fn name(dirent: *const Entry) [:0]const u8 {
-                return @ptrFromInt([*:0]u8, @intFromPtr(dirent) +% 11)[0..dirent.len() :0];
+                return @as([*:0]u8, @ptrFromInt(@intFromPtr(dirent) +% 11))[0..dirent.len() :0];
             }
         };
         fn links(blk: Block) ListView.Links {
@@ -79,7 +79,7 @@ pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
             return .{ .links = links(dir.blk), .count = dir.count, .index = 0 };
         }
         fn clear(s_lb_addr: u64, s_bytes: u64) void {
-            mach.memset(@ptrFromInt([*]u8, s_lb_addr), 0, s_bytes);
+            mach.memset(@as([*]u8, @ptrFromInt(s_lb_addr)), 0, s_bytes);
         }
         fn getDirectoryEntries(dir: *const DirStream) sys.ErrorUnion(spec.errors.getdents, u64) {
             return sys.call(.getdents64, spec.errors.getdents, u64, .{
@@ -165,24 +165,24 @@ const List = opaque {
     // nodes of our mangled list must be known--otherwise we would have
     // to store more metadata in the DirStream object.
     fn shiftBothBlocks(s_lb_addr: u64, major_src_addr: u64, minor_src_addr: u64) void {
-        const major_save: [24]u8 = @ptrFromInt(*const [24]u8, major_src_addr).*;
+        const major_save: [24]u8 = @as(*const [24]u8, @ptrFromInt(major_src_addr)).*;
         const major_dst_addr: u64 = s_lb_addr;
-        const minor_save: [24]u8 = @ptrFromInt(*const [24]u8, minor_src_addr).*;
+        const minor_save: [24]u8 = @as(*const [24]u8, @ptrFromInt(minor_src_addr)).*;
         const minor_dst_addr: u64 = s_lb_addr +% 24;
         const upper_src_addr: u64 = @max(major_src_addr, minor_src_addr);
         const lower_src_addr: u64 = @min(major_src_addr, minor_src_addr);
         var t_lb_addr: u64 = upper_src_addr;
         while (t_lb_addr != lower_src_addr +% 24) {
             t_lb_addr -= 8;
-            @ptrFromInt(*u64, t_lb_addr +% 24).* = @ptrFromInt(*u64, t_lb_addr).*;
+            @as(*u64, @ptrFromInt(t_lb_addr +% 24)).* = @as(*u64, @ptrFromInt(t_lb_addr)).*;
         }
         t_lb_addr = lower_src_addr;
         while (t_lb_addr != major_dst_addr) {
             t_lb_addr -= 8;
-            @ptrFromInt(*u64, t_lb_addr +% 48).* = @ptrFromInt(*u64, t_lb_addr).*;
+            @as(*u64, @ptrFromInt(t_lb_addr +% 48)).* = @as(*u64, @ptrFromInt(t_lb_addr)).*;
         }
-        @ptrFromInt(*[24]u8, major_dst_addr).* = major_save;
-        @ptrFromInt(*[24]u8, minor_dst_addr).* = minor_save;
+        @as(*[24]u8, @ptrFromInt(major_dst_addr)).* = major_save;
+        @as(*[24]u8, @ptrFromInt(minor_dst_addr)).* = minor_save;
     }
     // 11780 = [2]u8{ 4, 46 }, i.e. "d."
     // 46    = [2]u8{ 46, 0 }, i.e. ".\x00"
@@ -192,23 +192,23 @@ const List = opaque {
     // and "..\0", and cmoving the relevant index. I suppose this
     // respects endian, but have never tested it.
     fn classifyName(addrs: *[3]u64, s_lb_addr: u64) void {
-        const w0: u16 = @ptrFromInt(*const u16, s_lb_addr +% 18).*;
-        const w1: u16 = @ptrFromInt(*const u16, s_lb_addr +% 20).*;
+        const w0: u16 = @as(*const u16, @ptrFromInt(s_lb_addr +% 18)).*;
+        const w1: u16 = @as(*const u16, @ptrFromInt(s_lb_addr +% 20)).*;
         const j0: u8 = @intFromBool(w0 == if (builtin.native_endian == .Little) 11780 else 1070);
         const j1: u8 = j0 << @intFromBool(w1 == if (builtin.native_endian == .Little) 46 else 11776);
         const j2: u8 = j1 & (@as(u8, 1) << @intFromBool(w1 != 0));
         addrs[j2] = s_lb_addr;
     }
     fn mangle(s_lb_addr: u64) void {
-        const len: u16 = @ptrFromInt(*u16, s_lb_addr +% 16).*;
+        const len: u16 = @as(*u16, @ptrFromInt(s_lb_addr +% 16)).*;
         const a_0: u64 = (s_lb_addr +% len) -% 8;
-        const a_1: u16 = 64 -% @clz(@ptrFromInt(*const u64, a_0).*);
+        const a_1: u16 = 64 -% @clz(@as(*const u64, @ptrFromInt(a_0)).*);
         const a_2: u16 = (len +% (1 +% (a_1 / 8))) -% (name_offset +% 8);
-        const a_3: *u8 = @ptrFromInt(*u8, s_lb_addr +% name_offset +% (a_2 -% 1));
+        const a_3: *u8 = @as(*u8, @ptrFromInt(s_lb_addr +% name_offset +% (a_2 -% 1)));
         const name_len: u16 = a_2 -% @intFromBool(a_3.* == 0);
-        @ptrFromInt(*u8, s_lb_addr +% name_offset +% name_len).* = 0;
-        @ptrFromInt(*u16, s_lb_addr +% reclen_offset).* = name_len;
-        @ptrFromInt(*u64, s_lb_addr +% offset_offset).* = 0;
+        @as(*u8, @ptrFromInt(s_lb_addr +% name_offset +% name_len)).* = 0;
+        @as(*u16, @ptrFromInt(s_lb_addr +% reclen_offset)).* = name_len;
+        @as(*u64, @ptrFromInt(s_lb_addr +% offset_offset)).* = 0;
     }
     fn rectifyEntryOrder(s_lb_addr: u64) void {
         var addrs: [3]u64 = .{0} ** 3;
@@ -251,6 +251,6 @@ const List = opaque {
         return count;
     }
     pub fn nextAddress(s_lb_addr: u64) u64 {
-        return s_lb_addr +% @ptrFromInt(*u16, s_lb_addr +% reclen_offset).*;
+        return s_lb_addr +% @as(*u16, @ptrFromInt(s_lb_addr +% reclen_offset)).*;
     }
 };

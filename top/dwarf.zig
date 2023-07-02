@@ -57,7 +57,7 @@ pub const SourceLocation = struct {
         buf[len] = ':';
         len +%= 1;
         len +%= fmt.ud64(format.column).formatWriteBuf(buf + len);
-        @ptrCast(*[4]u8, buf + len).* = "\x1b[0m".*;
+        @as(*[4]u8, @ptrCast(buf + len)).* = "\x1b[0m".*;
         return len +% 4;
     }
 };
@@ -584,10 +584,10 @@ pub const Unit = extern struct {
     fn addDir(unit: *Unit, allocator: *Allocator) *FileEntry {
         @setRuntimeSafety(false);
         const size_of: comptime_int = @sizeOf(FileEntry);
-        const addr_buf: *u64 = @ptrCast(*u64, &unit.dirs);
-        const ret: *FileEntry = @ptrFromInt(
+        const addr_buf: *u64 = @as(*u64, @ptrCast(&unit.dirs));
+        const ret: *FileEntry = @as(
             *FileEntry,
-            allocator.addGeneric(size_of, 1, addr_buf, &unit.dirs_max_len, unit.dirs_len),
+            @ptrFromInt(allocator.addGeneric(size_of, 1, addr_buf, &unit.dirs_max_len, unit.dirs_len)),
         );
         unit.dirs_len +%= 1;
         mem.zero(FileEntry, ret);
@@ -596,10 +596,10 @@ pub const Unit = extern struct {
     fn addFile(unit: *Unit, allocator: *Allocator) *FileEntry {
         @setRuntimeSafety(false);
         const size_of: comptime_int = @sizeOf(FileEntry);
-        const addr_buf: *u64 = @ptrCast(*u64, &unit.files);
-        const ret: *FileEntry = @ptrFromInt(
+        const addr_buf: *u64 = @as(*u64, @ptrCast(&unit.files));
+        const ret: *FileEntry = @as(
             *FileEntry,
-            allocator.addGeneric(size_of, 1, addr_buf, &unit.files_max_len, unit.files_len),
+            @ptrFromInt(allocator.addGeneric(size_of, 1, addr_buf, &unit.files_max_len, unit.files_len)),
         );
         unit.files_len +%= 1;
         mem.zero(FileEntry, ret);
@@ -609,10 +609,10 @@ pub const Unit = extern struct {
         const buf: [*]u8 = bytes + unit_off;
         const ret: *Unit = dwarf_info.addUnit(allocator);
         ret.off = unit_off;
-        ret.word_size = @enumFromInt(WordSize, @as(u8, 4) << @intFromBool(@ptrCast(*align(1) u32, buf).* == ~@as(u32, 0)));
+        ret.word_size = @as(WordSize, @enumFromInt(@as(u8, 4) << @intFromBool(@as(*align(1) u32, @ptrCast(buf)).* == ~@as(u32, 0))));
         switch (ret.word_size) {
-            .qword => ret.len = @ptrCast(*align(1) u64, buf + 4).*,
-            .dword => ret.len = @ptrCast(*align(1) u32, buf).*,
+            .qword => ret.len = @as(*align(1) u64, @ptrCast(buf + 4)).*,
+            .dword => ret.len = @as(*align(1) u32, @ptrCast(buf)).*,
         }
         if (ret.word_size == .dword and
             ret.len >= ~@as(u32, 0))
@@ -623,7 +623,7 @@ pub const Unit = extern struct {
             .qword => 12,
             .dword => 4,
         };
-        ret.version = @ptrCast(*align(1) u16, buf + pos).*;
+        ret.version = @as(*align(1) u16, @ptrCast(buf + pos)).*;
         if (ret.version < 2 or
             ret.version > 5)
         {
@@ -632,21 +632,21 @@ pub const Unit = extern struct {
         ret.abbrev_tab = allocator.create(AbbrevTable);
         pos +%= 2;
         if (ret.version >= 5) {
-            if (@enumFromInt(UT, buf[pos]) != .compile) {
+            if (@as(UT, @enumFromInt(buf[pos])) != .compile) {
                 builtin.proc.exitError(error.InvalidEncoding, 2);
             }
             pos +%= 1;
             ret.addr_size = buf[pos];
             pos +%= 1;
             switch (ret.word_size) {
-                .qword => ret.abbrev_tab.off = @ptrCast(*align(1) u64, buf + pos).*,
-                .dword => ret.abbrev_tab.off = @ptrCast(*align(1) u32, buf + pos).*,
+                .qword => ret.abbrev_tab.off = @as(*align(1) u64, @ptrCast(buf + pos)).*,
+                .dword => ret.abbrev_tab.off = @as(*align(1) u32, @ptrCast(buf + pos)).*,
             }
             pos +%= @intFromEnum(ret.word_size);
         } else {
             switch (ret.word_size) {
-                .qword => ret.abbrev_tab.off = @ptrCast(*align(1) u64, buf + pos).*,
-                .dword => ret.abbrev_tab.off = @ptrCast(*align(1) u32, buf + pos).*,
+                .qword => ret.abbrev_tab.off = @as(*align(1) u64, @ptrCast(buf + pos)).*,
+                .dword => ret.abbrev_tab.off = @as(*align(1) u32, @ptrCast(buf + pos)).*,
             }
             pos +%= @intFromEnum(ret.word_size);
             ret.addr_size = buf[pos];
@@ -680,10 +680,10 @@ const AbbrevTable = struct {
         fn addKeyVal(entry: *Entry, allocator: *Allocator) *KeyVal {
             @setRuntimeSafety(false);
             const size_of: comptime_int = @sizeOf(KeyVal);
-            const addr_buf: *u64 = @ptrCast(*u64, &entry.kvs);
-            const ret: *KeyVal = @ptrFromInt(
+            const addr_buf: *u64 = @as(*u64, @ptrCast(&entry.kvs));
+            const ret: *KeyVal = @as(
                 *KeyVal,
-                allocator.addGeneric(size_of, 1, addr_buf, &entry.kvs_max_len, entry.kvs_len),
+                @ptrFromInt(allocator.addGeneric(size_of, 1, addr_buf, &entry.kvs_max_len, entry.kvs_len)),
             );
             entry.kvs_len +%= 1;
             mem.zero(KeyVal, ret);
@@ -693,10 +693,10 @@ const AbbrevTable = struct {
     fn addEntry(table: *AbbrevTable, allocator: *Allocator) *AbbrevTable.Entry {
         @setRuntimeSafety(false);
         const size_of: comptime_int = @sizeOf(AbbrevTable.Entry);
-        const addr_buf: *u64 = @ptrCast(*u64, &table.ents);
-        const ret: *AbbrevTable.Entry = @ptrFromInt(
+        const addr_buf: *u64 = @as(*u64, @ptrCast(&table.ents));
+        const ret: *AbbrevTable.Entry = @as(
             *AbbrevTable.Entry,
-            allocator.addGeneric(size_of, 1, addr_buf, &table.ents_max_len, table.ents_len),
+            @ptrFromInt(allocator.addGeneric(size_of, 1, addr_buf, &table.ents_max_len, table.ents_len)),
         );
         table.ents_len +%= 1;
         mem.zero(AbbrevTable.Entry, ret);
@@ -720,10 +720,10 @@ pub const Die = extern struct {
     fn addKeyVal(info_entry: *Die, allocator: *Allocator) *KeyVal {
         @setRuntimeSafety(false);
         const size_of: comptime_int = @sizeOf(KeyVal);
-        const addr_buf: *u64 = @ptrCast(*u64, &info_entry.kvs);
-        const ret: *KeyVal = @ptrFromInt(
+        const addr_buf: *u64 = @as(*u64, @ptrCast(&info_entry.kvs));
+        const ret: *KeyVal = @as(
             *KeyVal,
-            allocator.addGeneric(size_of, 1, addr_buf, &info_entry.kvs_max_len, info_entry.kvs_len),
+            @ptrFromInt(allocator.addGeneric(size_of, 1, addr_buf, &info_entry.kvs_max_len, info_entry.kvs_len)),
         );
         info_entry.kvs_len +%= 1;
         return ret;
@@ -787,10 +787,10 @@ pub const FormValue = union(enum) {
     fn getUInt(val: FormValue, comptime U: type) U {
         switch (val) {
             .Const => {
-                return @intCast(U, val.Const.asUnsignedLe());
+                return @as(U, @intCast(val.Const.asUnsignedLe()));
             },
             .SecOffset => |sec_offset| {
-                return @intCast(U, sec_offset);
+                return @as(U, @intCast(sec_offset));
             },
             else => builtin.proc.exitError(error.InvalidEncoding, 2),
         }
@@ -813,7 +813,7 @@ const Constant = struct {
     }
     fn asSignedLe(val: Constant) i64 {
         if (val.signed) {
-            return @bitCast(i64, val.payload);
+            return @as(i64, @bitCast(val.payload));
         }
         builtin.proc.exitError(error.InvalidEncoding, 2);
     }
@@ -888,17 +888,17 @@ pub const DwarfInfo = extern struct {
     };
     pub fn init(ehdr_addr: u64) DwarfInfo {
         @setRuntimeSafety(false);
-        const ehdr: *exe.Elf64_Ehdr = @ptrFromInt(*exe.Elf64_Ehdr, ehdr_addr);
+        const ehdr: *exe.Elf64_Ehdr = @as(*exe.Elf64_Ehdr, @ptrFromInt(ehdr_addr));
         const qwords: comptime_int = @divExact(@sizeOf(DwarfInfo), 8);
         var ret: [qwords]u64 = [_]u64{0} ** qwords;
-        var shdr: *exe.Elf64_Shdr = @ptrFromInt(*exe.Elf64_Shdr, ehdr_addr +% ehdr.e_shoff +% ehdr.e_shstrndx *% ehdr.e_shentsize);
+        var shdr: *exe.Elf64_Shdr = @as(*exe.Elf64_Shdr, @ptrFromInt(ehdr_addr +% ehdr.e_shoff +% ehdr.e_shstrndx *% ehdr.e_shentsize));
         var strtab_addr: u64 = ehdr_addr +% shdr.sh_offset;
         var addr: u64 = ehdr_addr +% ehdr.e_shoff;
         var shdr_idx: u64 = 0;
         while (shdr_idx != ehdr.e_shnum) : (shdr_idx +%= 1) {
-            shdr = @ptrFromInt(*exe.Elf64_Shdr, addr);
+            shdr = @as(*exe.Elf64_Shdr, @ptrFromInt(addr));
             for (DwarfInfo.names, 0..) |field_name, field_idx| {
-                const str: [*:0]u8 = @ptrFromInt([*:0]u8, strtab_addr +% shdr.sh_name);
+                const str: [*:0]u8 = @as([*:0]u8, @ptrFromInt(strtab_addr +% shdr.sh_name));
                 var idx: u64 = 0;
                 while (str[idx] != 0) : (idx +%= 1) {
                     if (field_name[idx] != str[idx]) break;
@@ -910,36 +910,36 @@ pub const DwarfInfo = extern struct {
             }
             addr +%= ehdr.e_shentsize;
         }
-        return @bitCast(DwarfInfo, ret);
+        return @as(DwarfInfo, @bitCast(ret));
     }
     fn addAbbrevTable(dwarf_info: *DwarfInfo, allocator: *Allocator) *AbbrevTable {
         @setRuntimeSafety(false);
-        const addr_buf: *u64 = @ptrCast(*u64, &dwarf_info.abbrev_tabs);
-        const ret: *AbbrevTable = @ptrFromInt(*AbbrevTable, allocator.addGeneric(@sizeOf(AbbrevTable), 1, addr_buf, &dwarf_info.abbrev_tabs_max_len, dwarf_info.abbrev_tabs_len));
+        const addr_buf: *u64 = @as(*u64, @ptrCast(&dwarf_info.abbrev_tabs));
+        const ret: *AbbrevTable = @as(*AbbrevTable, @ptrFromInt(allocator.addGeneric(@sizeOf(AbbrevTable), 1, addr_buf, &dwarf_info.abbrev_tabs_max_len, dwarf_info.abbrev_tabs_len)));
         dwarf_info.abbrev_tabs_len +%= 1;
         mem.zero(AbbrevTable, ret);
         return ret;
     }
     fn addUnit(dwarf_info: *DwarfInfo, allocator: *Allocator) *Unit {
         @setRuntimeSafety(false);
-        const addr_buf: *u64 = @ptrCast(*u64, &dwarf_info.units);
-        const ret: *Unit = @ptrFromInt(*Unit, allocator.addGeneric(@sizeOf(Unit), 1, addr_buf, &dwarf_info.units_max_len, dwarf_info.units_len));
+        const addr_buf: *u64 = @as(*u64, @ptrCast(&dwarf_info.units));
+        const ret: *Unit = @as(*Unit, @ptrFromInt(allocator.addGeneric(@sizeOf(Unit), 1, addr_buf, &dwarf_info.units_max_len, dwarf_info.units_len)));
         dwarf_info.units_len +%= 1;
         mem.zero(Unit, ret);
         return ret;
     }
     fn addFunc(dwarf_info: *DwarfInfo, allocator: *Allocator) *Func {
         @setRuntimeSafety(false);
-        const addr_buf: *u64 = @ptrCast(*u64, &dwarf_info.funcs);
-        const ret: *Func = @ptrFromInt(*Func, allocator.addGeneric(@sizeOf(Func), 1, addr_buf, &dwarf_info.funcs_max_len, dwarf_info.funcs_len));
+        const addr_buf: *u64 = @as(*u64, @ptrCast(&dwarf_info.funcs));
+        const ret: *Func = @as(*Func, @ptrFromInt(allocator.addGeneric(@sizeOf(Func), 1, addr_buf, &dwarf_info.funcs_max_len, dwarf_info.funcs_len)));
         dwarf_info.funcs_len +%= 1;
         mem.zero(Func, ret);
         return ret;
     }
     pub fn addAddressInfo(dwarf_info: *DwarfInfo, allocator: *Allocator) *AddressInfo {
         @setRuntimeSafety(false);
-        const addr_buf: *u64 = @ptrCast(*u64, &dwarf_info.addr_info);
-        const ret: *AddressInfo = @ptrFromInt(*AddressInfo, allocator.addGeneric(@sizeOf(AddressInfo), 1, addr_buf, &dwarf_info.addr_info_max_len, dwarf_info.addr_info_len));
+        const addr_buf: *u64 = @as(*u64, @ptrCast(&dwarf_info.addr_info));
+        const ret: *AddressInfo = @as(*AddressInfo, @ptrFromInt(allocator.addGeneric(@sizeOf(AddressInfo), 1, addr_buf, &dwarf_info.addr_info_max_len, dwarf_info.addr_info_len)));
         dwarf_info.addr_info_len +%= 1;
         mem.zero(AddressInfo, ret);
         return ret;
@@ -1073,7 +1073,7 @@ pub const DwarfInfo = extern struct {
             const ent: *AbbrevTable.Entry = abbrev_tab.addEntry(allocator);
             ent.head = .{
                 .tag = tag[0],
-                .children = @enumFromInt(Children, abbrev_bytes[abbrev_tab.len]),
+                .children = @as(Children, @enumFromInt(abbrev_bytes[abbrev_tab.len])),
                 .code = code[0],
             };
             abbrev_tab.len +%= 1;
@@ -1128,7 +1128,7 @@ pub const DwarfInfo = extern struct {
             info_entry.addKeyVal(allocator).* = .{ .key = kv.attr, .val = res[0] };
             info_entry.len +%= res[1];
             if (kv.form == .implicit_const) {
-                info_entry.kvs[kv_idx].val.Const.payload = @bitCast(u64, kv.payload);
+                info_entry.kvs[kv_idx].val.Const.payload = @as(u64, @bitCast(kv.payload));
             }
         }
         if (dwarf_info_entry) {
@@ -1180,21 +1180,21 @@ pub const DwarfInfo = extern struct {
         if (addr_base < 8) {
             builtin.proc.exitError(error.InvalidEncoding, 2);
         }
-        const ver: u16 = @ptrCast(*align(1) u16, dwarf_info.addr + addr_base - 4).*;
+        const ver: u16 = @as(*align(1) u16, @ptrCast(dwarf_info.addr + addr_base - 4)).*;
         if (ver != 5) {
             builtin.proc.exitError(error.InvalidEncoding, 2);
         }
         const addr_size: u8 = dwarf_info.addr[addr_base -% 2];
         const seg_size: u8 = dwarf_info.addr[addr_base -% 1];
-        const off: u64 = @intCast(usize, addr_base +% (addr_size +% seg_size) *% index);
+        const off: u64 = @as(usize, @intCast(addr_base +% (addr_size +% seg_size) *% index));
         if (off +% addr_size > dwarf_info.addr_len) {
             builtin.proc.exitError(error.InvalidEncoding, 2);
         }
         switch (addr_size) {
             1 => return dwarf_info.addr[off],
-            2 => return @ptrCast(*align(1) u16, dwarf_info.addr + off).*,
-            4 => return @ptrCast(*align(1) u32, dwarf_info.addr + off).*,
-            8 => return @ptrCast(*align(1) u64, dwarf_info.addr + off).*,
+            2 => return @as(*align(1) u16, @ptrCast(dwarf_info.addr + off)).*,
+            4 => return @as(*align(1) u32, @ptrCast(dwarf_info.addr + off)).*,
+            8 => return @as(*align(1) u64, @ptrCast(dwarf_info.addr + off)).*,
             else => builtin.proc.exitError(error.InvalidEncoding, 2),
         }
     }
@@ -1219,13 +1219,13 @@ pub const DwarfInfo = extern struct {
                     if (off +% 8 > str_offsets.len) {
                         builtin.proc.exitError(error.InvalidEncoding, 2);
                     }
-                    return getStringGeneric(opt_str, @ptrCast(*align(1) u64, dwarf_info.str_offsets + off).*);
+                    return getStringGeneric(opt_str, @as(*align(1) u64, @ptrCast(dwarf_info.str_offsets + off)).*);
                 } else {
                     const off: usize = unit.str_offsets_base +% (4 *% index);
                     if (off +% 4 > str_offsets.len) {
                         builtin.proc.exitError(error.InvalidEncoding, 2);
                     }
-                    return getStringGeneric(opt_str, @ptrCast(*align(1) u32, dwarf_info.str_offsets + off).*);
+                    return getStringGeneric(opt_str, @as(*align(1) u32, @ptrCast(dwarf_info.str_offsets + off)).*);
                 }
             },
             .LineStrPtr => |offset| {
@@ -1255,13 +1255,13 @@ pub const DwarfInfo = extern struct {
                         if (off +% 8 > ranges_len) {
                             builtin.proc.exitError(error.InvalidEncoding, 2);
                         }
-                        break :off @ptrCast(*align(1) u64, ranges + off).*;
+                        break :off @as(*align(1) u64, @ptrCast(ranges + off)).*;
                     } else {
                         const off: usize = unit.rnglists_base + (4 *% idx);
                         if (off +% 4 > ranges_len) {
                             builtin.proc.exitError(error.InvalidEncoding, 2);
                         }
-                        break :off @ptrCast(*align(1) u32, ranges + off).*;
+                        break :off @as(*align(1) u32, @ptrCast(ranges + off)).*;
                     }
                 },
                 else => builtin.proc.exitError(error.InvalidEncoding, 2),
@@ -1271,9 +1271,9 @@ pub const DwarfInfo = extern struct {
             var pos: u64 = ranges_offset;
             if (unit.version < 5) {
                 while (true) {
-                    const begin_addr: u64 = @ptrCast(*align(1) usize, buf + pos).*;
+                    const begin_addr: u64 = @as(*align(1) usize, @ptrCast(buf + pos)).*;
                     pos +%= @sizeOf(usize);
-                    const end_addr: u64 = @ptrCast(*align(1) usize, buf + pos).*;
+                    const end_addr: u64 = @as(*align(1) usize, @ptrCast(buf + pos)).*;
                     pos +%= @sizeOf(usize);
                     if (begin_addr == 0 and end_addr == 0) {
                         break;
@@ -1288,7 +1288,7 @@ pub const DwarfInfo = extern struct {
                 }
             } else {
                 while (true) {
-                    const kind: RLE = @enumFromInt(RLE, buf[pos]);
+                    const kind: RLE = @as(RLE, @enumFromInt(buf[pos]));
                     pos +%= 1;
                     switch (kind) {
                         .end_of_list => break,
@@ -1329,20 +1329,20 @@ pub const DwarfInfo = extern struct {
                             }
                         },
                         .base_address => {
-                            base_address = @ptrCast(*align(1) usize, buf + pos).*;
+                            base_address = @as(*align(1) usize, @ptrCast(buf + pos)).*;
                             pos +%= @sizeOf(usize);
                         },
                         .start_end => {
-                            const start_addr = @ptrCast(*align(1) usize, buf + pos).*;
+                            const start_addr = @as(*align(1) usize, @ptrCast(buf + pos)).*;
                             pos +%= @sizeOf(usize);
-                            const end_addr = @ptrCast(*align(1) usize, buf + pos).*;
+                            const end_addr = @as(*align(1) usize, @ptrCast(buf + pos)).*;
                             pos +%= @sizeOf(usize);
                             if (target_address >= start_addr and target_address < end_addr) {
                                 return unit;
                             }
                         },
                         .start_length => {
-                            const start_addr = @ptrCast(*align(1) usize, buf + pos).*;
+                            const start_addr = @as(*align(1) usize, @ptrCast(buf + pos)).*;
                             pos +%= @sizeOf(usize);
                             const len = parse.noexcept.readLEB128(usize, buf[pos..dwarf_info.ranges_len]);
                             const end_addr = start_addr + len[0];
@@ -1394,7 +1394,7 @@ pub const DwarfInfo = extern struct {
         }
         const is_stmt: bool = buf[pos] != 0;
         pos +%= 1;
-        const line_base: i8 = @bitCast(i8, buf[pos]);
+        const line_base: i8 = @as(i8, @bitCast(buf[pos]));
         pos +%= 1;
         const line_range: u8 = buf[pos];
         pos +%= 1;
@@ -1437,7 +1437,7 @@ pub const DwarfInfo = extern struct {
                 }
                 var sub_op: u8 = buf[pos];
                 pos +%= 1;
-                switch (@enumFromInt(LNE, sub_op)) {
+                switch (@as(LNE, @enumFromInt(sub_op))) {
                     LNE.end_sequence => {
                         prog.end_sequence = true;
                         if (prog.checkLineMatch(allocator, unit)) |info| {
@@ -1446,7 +1446,7 @@ pub const DwarfInfo = extern struct {
                         prog.reset();
                     },
                     LNE.set_address => {
-                        const addr = @ptrCast(*align(1) usize, buf + pos).*;
+                        const addr = @as(*align(1) usize, @ptrCast(buf + pos)).*;
                         pos +%= 8;
                         prog.address = addr;
                     },
@@ -1457,11 +1457,11 @@ pub const DwarfInfo = extern struct {
                         }
                     },
                     else => {
-                        const fwd_amt: isize = @bitCast(isize, op_size[0] -% 1);
+                        const fwd_amt: isize = @as(isize, @bitCast(op_size[0] -% 1));
                         if (fwd_amt < 0) {
-                            pos -%= @intCast(usize, -fwd_amt);
+                            pos -%= @as(usize, @intCast(-fwd_amt));
                         } else {
-                            pos +%= @intCast(usize, fwd_amt);
+                            pos +%= @as(usize, @intCast(fwd_amt));
                         }
                     },
                 }
@@ -1476,7 +1476,7 @@ pub const DwarfInfo = extern struct {
                 }
                 prog.basic_block = false;
             } else {
-                switch (@enumFromInt(LNS, opcode)) {
+                switch (@as(LNS, @enumFromInt(opcode))) {
                     LNS.copy => {
                         if (prog.checkLineMatch(allocator, unit)) |info| {
                             return info;
@@ -1514,7 +1514,7 @@ pub const DwarfInfo = extern struct {
                         prog.address +%= inc_addr;
                     },
                     LNS.fixed_advance_pc => {
-                        const arg: u16 = @ptrCast(*align(1) u16, buf + pos).*;
+                        const arg: u16 = @as(*align(1) u16, @ptrCast(buf + pos)).*;
                         pos +%= 2;
                         prog.address +%= arg;
                     },
@@ -1544,18 +1544,18 @@ fn getStringGeneric(opt_str: ?[]const u8, offset: u64) [:0]const u8 {
 }
 fn parseFormValue(allocator: *Allocator, unit: *Unit, bytes: []u8, form: Form) struct { FormValue, u64 } {
     switch (form) {
-        .addr => return .{ .{ .Address = @ptrCast(*align(1) usize, bytes).* }, @sizeOf(u64) },
+        .addr => return .{ .{ .Address = @as(*align(1) usize, @ptrCast(bytes)).* }, @sizeOf(u64) },
         .block2 => {
-            const blk_len: u16 = @ptrCast(*align(1) u16, bytes).*;
+            const blk_len: u16 = @as(*align(1) u16, @ptrCast(bytes)).*;
             return .{ FormValue{ .Block = bytes[2 .. 2 +% blk_len] }, 2 +% blk_len };
         },
         .block4 => {
-            const blk_len: u32 = @ptrCast(*align(1) u32, bytes).*;
+            const blk_len: u32 = @as(*align(1) u32, @ptrCast(bytes)).*;
             return .{ FormValue{ .Block = bytes[4 .. 4 +% blk_len] }, 4 +% blk_len };
         },
-        .data2 => return .{ .{ .Const = .{ .signed = false, .payload = @ptrCast(*align(1) u16, bytes).* } }, 2 },
-        .data4 => return .{ .{ .Const = .{ .signed = false, .payload = @ptrCast(*align(1) u32, bytes).* } }, 4 },
-        .data8 => return .{ .{ .Const = .{ .signed = false, .payload = @ptrCast(*align(1) u64, bytes).* } }, 8 },
+        .data2 => return .{ .{ .Const = .{ .signed = false, .payload = @as(*align(1) u16, @ptrCast(bytes)).* } }, 2 },
+        .data4 => return .{ .{ .Const = .{ .signed = false, .payload = @as(*align(1) u32, @ptrCast(bytes)).* } }, 4 },
+        .data8 => return .{ .{ .Const = .{ .signed = false, .payload = @as(*align(1) u64, @ptrCast(bytes)).* } }, 8 },
         .string => {
             const str: [:0]u8 = mach.manyToSlice80(bytes.ptr);
             return .{ .{ .String = str }, str.len };
@@ -1566,10 +1566,10 @@ fn parseFormValue(allocator: *Allocator, unit: *Unit, bytes: []u8, form: Form) s
             return .{ FormValue{ .Block = bytes[len[0] .. len[0] +% blk_len] }, len[0] +% blk_len };
         },
         .block1 => {
-            const blk_len: u8 = @ptrCast(*align(1) u8, bytes).*;
+            const blk_len: u8 = @as(*align(1) u8, @ptrCast(bytes)).*;
             return .{ FormValue{ .Block = bytes[1 .. 1 +% blk_len] }, 1 +% blk_len };
         },
-        .data1 => return .{ .{ .Const = .{ .signed = false, .payload = @ptrCast(*align(1) u8, bytes).* } }, 1 },
+        .data1 => return .{ .{ .Const = .{ .signed = false, .payload = @as(*align(1) u8, @ptrCast(bytes)).* } }, 1 },
         .flag => return .{ .{ .Flag = bytes[0] != 0 }, 1 },
         .udata => {
             const res = parse.noexcept.readLEB128(u64, bytes);
@@ -1577,20 +1577,20 @@ fn parseFormValue(allocator: *Allocator, unit: *Unit, bytes: []u8, form: Form) s
         },
         .sdata => {
             const res = parse.noexcept.readLEB128(i64, bytes);
-            return .{ .{ .Const = .{ .signed = true, .payload = @bitCast(u64, res[0]) } }, res[1] };
+            return .{ .{ .Const = .{ .signed = true, .payload = @as(u64, @bitCast(res[0])) } }, res[1] };
         },
         .strp => switch (unit.word_size) {
-            .dword => return .{ .{ .StrPtr = @ptrCast(*align(1) u32, bytes).* }, @sizeOf(u32) },
-            .qword => return .{ .{ .StrPtr = @ptrCast(*align(1) u64, bytes).* }, @sizeOf(u64) },
+            .dword => return .{ .{ .StrPtr = @as(*align(1) u32, @ptrCast(bytes)).* }, @sizeOf(u32) },
+            .qword => return .{ .{ .StrPtr = @as(*align(1) u64, @ptrCast(bytes)).* }, @sizeOf(u64) },
         },
         .ref_addr => switch (unit.word_size) {
-            .dword => return .{ .{ .RefAddr = @ptrCast(*align(1) u32, bytes).* }, @sizeOf(u32) },
-            .qword => return .{ .{ .RefAddr = @ptrCast(*align(1) u64, bytes).* }, @sizeOf(u64) },
+            .dword => return .{ .{ .RefAddr = @as(*align(1) u32, @ptrCast(bytes)).* }, @sizeOf(u32) },
+            .qword => return .{ .{ .RefAddr = @as(*align(1) u64, @ptrCast(bytes)).* }, @sizeOf(u64) },
         },
-        .ref1 => return .{ .{ .Ref = @ptrCast(*align(1) u8, bytes).* }, 1 },
-        .ref2 => return .{ .{ .Ref = @ptrCast(*align(1) u16, bytes).* }, 2 },
-        .ref4 => return .{ .{ .Ref = @ptrCast(*align(1) u32, bytes).* }, 4 },
-        .ref8 => return .{ .{ .Ref = @ptrCast(*align(1) u64, bytes).* }, 8 },
+        .ref1 => return .{ .{ .Ref = @as(*align(1) u8, @ptrCast(bytes)).* }, 1 },
+        .ref2 => return .{ .{ .Ref = @as(*align(1) u16, @ptrCast(bytes)).* }, 2 },
+        .ref4 => return .{ .{ .Ref = @as(*align(1) u32, @ptrCast(bytes)).* }, 4 },
+        .ref8 => return .{ .{ .Ref = @as(*align(1) u64, @ptrCast(bytes)).* }, 8 },
         .ref_udata => {
             const res = parse.noexcept.readLEB128(u64, bytes);
             return .{ .{ .Ref = res[0] }, res[1] };
@@ -1601,8 +1601,8 @@ fn parseFormValue(allocator: *Allocator, unit: *Unit, bytes: []u8, form: Form) s
             return .{ res[0], child[1] +% res[1] };
         },
         .sec_offset => switch (unit.word_size) {
-            .dword => return .{ .{ .SecOffset = @ptrCast(*align(1) u32, bytes).* }, @sizeOf(u32) },
-            .qword => return .{ .{ .SecOffset = @ptrCast(*align(1) u64, bytes).* }, @sizeOf(u64) },
+            .dword => return .{ .{ .SecOffset = @as(*align(1) u32, @ptrCast(bytes)).* }, @sizeOf(u32) },
+            .qword => return .{ .{ .SecOffset = @as(*align(1) u64, @ptrCast(bytes)).* }, @sizeOf(u64) },
         },
         .exprloc => {
             const loc = parse.noexcept.readLEB128(usize, bytes);
@@ -1625,10 +1625,10 @@ fn parseFormValue(allocator: *Allocator, unit: *Unit, bytes: []u8, form: Form) s
             return .{ .{ .data16 = data }, 16 };
         },
         .line_strp => switch (unit.word_size) {
-            .dword => return .{ .{ .LineStrPtr = @ptrCast(*align(1) u32, bytes).* }, @sizeOf(u32) },
-            .qword => return .{ .{ .LineStrPtr = @ptrCast(*align(1) u64, bytes).* }, @sizeOf(u64) },
+            .dword => return .{ .{ .LineStrPtr = @as(*align(1) u32, @ptrCast(bytes)).* }, @sizeOf(u32) },
+            .qword => return .{ .{ .LineStrPtr = @as(*align(1) u64, @ptrCast(bytes)).* }, @sizeOf(u64) },
         },
-        .ref_sig8 => return .{ .{ .RefAddr = @ptrCast(*align(1) u64, bytes).* }, @sizeOf(u64) },
+        .ref_sig8 => return .{ .{ .RefAddr = @as(*align(1) u64, @ptrCast(bytes)).* }, @sizeOf(u64) },
         .implicit_const => return .{ .{ .Const = .{ .signed = true, .payload = undefined } }, 0 },
         .loclistx => {
             const off = parse.noexcept.readLEB128(u64, bytes);
@@ -1638,14 +1638,14 @@ fn parseFormValue(allocator: *Allocator, unit: *Unit, bytes: []u8, form: Form) s
             const off = parse.noexcept.readLEB128(u64, bytes);
             return .{ .{ .RangeListOffset = off[0] }, off[1] };
         },
-        .strx1 => return .{ .{ .StrOffset = @ptrCast(*align(1) u8, bytes).* }, 1 },
-        .strx2 => return .{ .{ .StrOffset = @ptrCast(*align(1) u16, bytes).* }, 2 },
-        .strx3 => return .{ .{ .StrOffset = @ptrCast(*align(1) u24, bytes).* }, 3 },
-        .strx4 => return .{ .{ .StrOffset = @ptrCast(*align(1) u32, bytes).* }, 4 },
-        .addrx1 => return .{ .{ .AddrOffset = @ptrCast(*align(1) u8, bytes).* }, 1 },
-        .addrx2 => return .{ .{ .AddrOffset = @ptrCast(*align(1) u16, bytes).* }, 2 },
-        .addrx3 => return .{ .{ .AddrOffset = @ptrCast(*align(1) u32, bytes).* }, 3 },
-        .addrx4 => return .{ .{ .AddrOffset = @ptrCast(*align(1) u64, bytes).* }, 4 },
+        .strx1 => return .{ .{ .StrOffset = @as(*align(1) u8, @ptrCast(bytes)).* }, 1 },
+        .strx2 => return .{ .{ .StrOffset = @as(*align(1) u16, @ptrCast(bytes)).* }, 2 },
+        .strx3 => return .{ .{ .StrOffset = @as(*align(1) u24, @ptrCast(bytes)).* }, 3 },
+        .strx4 => return .{ .{ .StrOffset = @as(*align(1) u32, @ptrCast(bytes)).* }, 4 },
+        .addrx1 => return .{ .{ .AddrOffset = @as(*align(1) u8, @ptrCast(bytes)).* }, 1 },
+        .addrx2 => return .{ .{ .AddrOffset = @as(*align(1) u16, @ptrCast(bytes)).* }, 2 },
+        .addrx3 => return .{ .{ .AddrOffset = @as(*align(1) u32, @ptrCast(bytes)).* }, 3 },
+        .addrx4 => return .{ .{ .AddrOffset = @as(*align(1) u64, @ptrCast(bytes)).* }, 4 },
         else => {
             builtin.proc.exitErrorFault(error.UnhandledFormValueType, @tagName(form), 2);
         },
@@ -1747,9 +1747,9 @@ const LineNumberProgram = struct {
             }
             return .{
                 .line = if (prog.prev_line == 0)
-                    @intCast(u64, prog.line)
+                    @as(u64, @intCast(prog.line))
                 else
-                    @intCast(u64, prog.prev_line),
+                    @as(u64, @intCast(prog.prev_line)),
                 .column = prog.prev_column,
                 .file = entry.pathname(allocator, unit.dirs),
             };
@@ -1778,7 +1778,7 @@ const debug = struct {
         var len: u64 = 0;
         mach.memcpy(&buf, src.fn_name.ptr, src.fn_name.len);
         len +%= src.fn_name.len;
-        @ptrCast(*[2]u8, buf[len..].ptr).* = ": ".*;
+        @as(*[2]u8, @ptrCast(buf[len..].ptr)).* = ": ".*;
         len +%= 2;
         mach.memcpy(buf[len..].ptr, msg.ptr, msg.len);
         len +%= msg.len;
@@ -1799,19 +1799,19 @@ const debug = struct {
         var len: u64 = 0;
         mach.memcpy(&buf, about_dwarf.ptr, about_dwarf.len);
         len +%= about_dwarf.len;
-        @ptrCast(*[4]u8, buf[len..].ptr).* = "ver=".*;
+        @as(*[4]u8, @ptrCast(buf[len..].ptr)).* = "ver=".*;
         len +%= 4;
         mach.memcpy(buf[len..].ptr, ver_s.ptr, ver_s.len);
         len +%= ver_s.len;
-        @ptrCast(*[11]u8, buf[len..].ptr).* = ", unit_len=".*;
+        @as(*[11]u8, @ptrCast(buf[len..].ptr)).* = ", unit_len=".*;
         len +%= 11;
         mach.memcpy(buf[len..].ptr, unit_len_s.ptr, unit_len_s.len);
         len +%= unit_len_s.len;
-        @ptrCast(*[12]u8, buf[len..].ptr).* = ", word_size=".*;
+        @as(*[12]u8, @ptrCast(buf[len..].ptr)).* = ", word_size=".*;
         len +%= 12;
         mach.memcpy(buf[len..].ptr, word_size_s.ptr, word_size_s.len);
         len +%= word_size_s.len;
-        @ptrCast(*[12]u8, buf[len..].ptr).* = ", addr_size=".*;
+        @as(*[12]u8, @ptrCast(buf[len..].ptr)).* = ", addr_size=".*;
         len +%= 12;
         mach.memcpy(buf[len..].ptr, addr_size_s.ptr, addr_size_s.len);
         len +%= addr_size_s.len;
@@ -1840,13 +1840,13 @@ const debug = struct {
                 const attr_s: []const u8 = @tagName(kv.attr);
                 mach.memcpy(buf[len..].ptr, attr_s.ptr, attr_s.len);
                 len +%= attr_s.len;
-                @ptrCast(*[2]u8, buf[len..].ptr).* = ": ".*;
+                @as(*[2]u8, @ptrCast(buf[len..].ptr)).* = ": ".*;
                 len +%= 2;
                 const form_s: []const u8 = @tagName(kv.form);
                 mach.memcpy(buf[len..].ptr, form_s.ptr, form_s.len);
                 len +%= form_s.len;
                 if (kv.payload != 0) {
-                    @ptrCast(*[3]u8, buf[len..].ptr).* = " = ".*;
+                    @as(*[3]u8, @ptrCast(buf[len..].ptr)).* = " = ".*;
                     len +%= 3;
                     const payload_s: []const u8 = builtin.fmt.id64(kv.payload).readAll();
                     mach.memcpy(buf[len..].ptr, payload_s.ptr, payload_s.len);
@@ -1877,12 +1877,12 @@ const debug = struct {
             const attr_id_s: []const u8 = @tagName(kv.key);
             mach.memcpy(buf[len..].ptr, attr_id_s.ptr, attr_id_s.len);
             len +%= attr_id_s.len;
-            @ptrCast(*[2]u8, buf[len..].ptr).* = ": ".*;
+            @as(*[2]u8, @ptrCast(buf[len..].ptr)).* = ": ".*;
             len +%= 2;
             const attr_type_s: []const u8 = @tagName(kv.val);
             mach.memcpy(buf[len..].ptr, attr_type_s.ptr, attr_type_s.len);
             len +%= attr_type_s.len;
-            @ptrCast(*[3]u8, buf[len..].ptr).* = " = ".*;
+            @as(*[3]u8, @ptrCast(buf[len..].ptr)).* = " = ".*;
             len +%= 3;
             switch (kv.val) {
                 .Address => |addr| {

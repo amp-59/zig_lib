@@ -83,9 +83,9 @@ pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
         };
         inline fn absolute(format: Format) Abs {
             if (format.value < 0) {
-                return 1 +% ~@bitCast(Abs, format.value);
+                return 1 +% ~@as(Abs, @bitCast(format.value));
             } else {
-                return @bitCast(Abs, format.value);
+                return @as(Abs, @bitCast(format.value));
             }
         }
         inline fn digits(format: Format) u64 {
@@ -112,7 +112,7 @@ pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
         pub fn formatWrite(format: Format, array: anytype) void {
             array.define(@call(.always_inline, formatWriteBuf, .{
                 format,
-                @ptrCast([*]u8, array.referOneUndefined()),
+                @as([*]u8, @ptrCast(array.referOneUndefined())),
             }));
         }
         pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
@@ -208,7 +208,7 @@ pub const SourceLocationFormat = struct {
         const column_fmt: LineColFormat = .{ .value = format.value.column };
         const ret_addr_fmt: AddrFormat = .{ .value = format.return_address };
         var len: u64 = 4;
-        @ptrCast(*[4]u8, buf).* = "\x1b[1m".*;
+        @as(*[4]u8, @ptrCast(buf)).* = "\x1b[1m".*;
         mach.memcpy(buf + len, file_name.ptr, file_name.len);
         len +%= len;
         buf[len] = ':';
@@ -217,14 +217,14 @@ pub const SourceLocationFormat = struct {
         buf[len] = ':';
         len +%= 1;
         len +%= column_fmt.formatWriteBuf(buf + len);
-        @ptrCast(*[7]u8, buf + len).* = ":\x1b[0;2m".*;
+        @as(*[7]u8, @ptrCast(buf + len)).* = ":\x1b[0;2m".*;
         len +%= 7;
         len +%= ret_addr_fmt.formatWriteBuf(buf + len);
-        @ptrCast(*[4]u8, buf + len).* = " in ".*;
+        @as(*[4]u8, @ptrCast(buf + len)).* = " in ".*;
         len +%= 4;
         mach.memcpy(buf + len, fn_name.ptr, fn_name.len);
         len +%= fn_name.len;
-        @ptrCast(*[5]u8, buf + len).* = "\x1b[0m\n".*;
+        @as(*[5]u8, @ptrCast(buf + len)).* = "\x1b[0m\n".*;
         return len +% 4;
     }
     pub fn formatWrite(format: Format, array: anytype) void {
@@ -276,7 +276,7 @@ pub const SourceLocationFormat = struct {
         return len;
     }
     pub fn init(value: builtin.SourceLocation, ret_addr: ?u64) SourceLocationFormat {
-        return .{ .value = value, .return_address = @intCast(u32, ret_addr orelse @returnAddress()) };
+        return .{ .value = value, .return_address = @as(u32, @intCast(ret_addr orelse @returnAddress())) };
     }
 };
 pub const Bytes = struct {
@@ -308,10 +308,10 @@ pub const Bytes = struct {
         .unit = .B,
     };
     fn formatRemainder(format: Format) MinorIntFormat {
-        return .{ .value = @intCast(u10, (format.value.remainder.count * 1000) / 1024) };
+        return .{ .value = @as(u10, @intCast((format.value.remainder.count * 1000) / 1024)) };
     }
     fn formatInteger(format: Format) MajorIntFormat {
-        return .{ .value = @intCast(u10, format.value.integer.count) };
+        return .{ .value = @as(u10, @intCast(format.value.integer.count)) };
     }
     pub fn formatWrite(format: Format, array: anytype) void {
         if (format.value.remainder.count != 0) {
@@ -411,7 +411,7 @@ pub fn GenericChangedIntFormat(comptime fmt_spec: ChangedIntFormatSpec) type {
         fn formatWriteDeltaBuf(format: Format, buf: [*]u8) u64 {
             var len: u64 = 0;
             if (format.old_value == format.new_value) {
-                @ptrCast(*[4]u8, buf).* = "(+0)".*;
+                @as(*[4]u8, @ptrCast(buf)).* = "(+0)".*;
                 len +%= 4;
             } else if (format.new_value > format.old_value) {
                 const del_fmt: DeltaIntFormat = .{ .value = format.new_value -% format.old_value };
@@ -553,7 +553,7 @@ pub fn GenericChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type
                     buf[len] = ')';
                     len +%= 1;
                 }
-                @ptrCast(*[4]u8, buf + len).* = " => ".*;
+                @as(*[4]u8, @ptrCast(buf + len)).* = " => ".*;
                 len +%= 4;
                 len +%= new_fmt.formatWriteBuf(buf + len);
             }
@@ -987,7 +987,7 @@ pub const IdentifierFormat = struct {
             @memcpy(buf, format.value);
             len +%= format.value.len;
         } else {
-            @ptrCast(*[2]u8, buf + len).* = "@\"".*;
+            @as(*[2]u8, @ptrCast(buf + len)).* = "@\"".*;
             @memcpy(buf, format.value);
             len +%= format.value.len;
             buf[len] = '"';
@@ -1134,27 +1134,27 @@ pub fn GenericEscapedStringFormat(comptime fmt_spec: EscapedStringFormatSpec) ty
                 switch (byte) {
                     else => len +%= esc(byte).formatWriteBuf(buf),
                     '\n' => {
-                        @ptrCast(*[2]u8, buf + len).* = "\\n".*;
+                        @as(*[2]u8, @ptrCast(buf + len)).* = "\\n".*;
                         len +%= 2;
                     },
                     '\r' => {
-                        @ptrCast(*[2]u8, buf + len).* = "\\r".*;
+                        @as(*[2]u8, @ptrCast(buf + len)).* = "\\r".*;
                         len +%= 2;
                     },
                     '\t' => {
-                        @ptrCast(*[2]u8, buf + len).* = "\\t".*;
+                        @as(*[2]u8, @ptrCast(buf + len)).* = "\\t".*;
                         len +%= 2;
                     },
                     '\\' => {
-                        @ptrCast(*[2]u8, buf + len).* = "\\\\".*;
+                        @as(*[2]u8, @ptrCast(buf + len)).* = "\\\\".*;
                         len +%= 2;
                     },
                     '"' => {
-                        @ptrCast(*DQ, buf + len).* = @ptrCast(*const DQ, fmt_spec.double_quote.ptr).*;
+                        @as(*DQ, @ptrCast(buf + len)).* = @as(*const DQ, @ptrCast(fmt_spec.double_quote.ptr)).*;
                         len +%= fmt_spec.double_quote.len;
                     },
                     '\'' => {
-                        @ptrCast(*SQ, buf + len).* = @ptrCast(*const SQ, fmt_spec.single_quote.ptr).*;
+                        @as(*SQ, @ptrCast(buf + len)).* = @as(*const SQ, @ptrCast(fmt_spec.single_quote.ptr)).*;
                         len +%= fmt_spec.single_quote.len;
                     },
                     ' ', '!', '#'...'&', '('...'[', ']'...'~' => {
@@ -1200,8 +1200,8 @@ pub fn GenericLEB128Format(comptime Int: type) type {
                 var value: Int = format.value;
 
                 while (true) {
-                    const uvalue: Abs = @bitCast(Abs, value);
-                    const byte: u8 = @truncate(u8, uvalue);
+                    const uvalue: Abs = @as(Abs, @bitCast(value));
+                    const byte: u8 = @as(u8, @truncate(uvalue));
                     value >>= 6;
                     if (value == -1 or value == 0) {
                         array.writeOne(byte & 0x7f);
@@ -1214,7 +1214,7 @@ pub fn GenericLEB128Format(comptime Int: type) type {
             } else {
                 var value: Int = format.value;
                 while (true) {
-                    const byte: u8 = @truncate(u8, value & 0x7f);
+                    const byte: u8 = @as(u8, @truncate(value & 0x7f));
                     value >>= 7;
                     if (value == 0) {
                         array.writeOne(byte);
@@ -1234,8 +1234,8 @@ pub fn GenericLEB128Format(comptime Int: type) type {
                 } });
                 var value: Int = format.value;
                 while (true) {
-                    const uvalue: Abs = @bitCast(Abs, value);
-                    const byte: u8 = @truncate(u8, uvalue);
+                    const uvalue: Abs = @as(Abs, @bitCast(value));
+                    const byte: u8 = @as(u8, @truncate(uvalue));
                     value >>= 6;
                     if (value == -1 or value == 0) {
                         buf[len] = byte & 0x7f;
@@ -1250,7 +1250,7 @@ pub fn GenericLEB128Format(comptime Int: type) type {
             } else {
                 var value: Int = format.value;
                 while (true) {
-                    const byte: u8 = @truncate(u8, value & 0x7f);
+                    const byte: u8 = @as(u8, @truncate(value & 0x7f));
                     value >>= 7;
                     if (value == 0) {
                         buf[len] = byte;
@@ -1300,14 +1300,14 @@ pub fn writeUnsignedFixedLEB128(comptime width: usize, ptr: *[width]u8, int: @Ty
 } })) void {
     const T = @TypeOf(int);
     const U = if (@typeInfo(T).Int.bits < 8) u8 else T;
-    var value = @intCast(U, int);
+    var value = @as(U, @intCast(int));
     var idx: usize = 0;
     while (idx != width -% 1) : (idx +%= 1) {
-        const byte: u8 = @truncate(u8, value) | 0x80;
+        const byte: u8 = @as(u8, @truncate(value)) | 0x80;
         value >>= 7;
         ptr[idx] = byte;
     }
-    ptr[idx] = @truncate(u8, value);
+    ptr[idx] = @as(u8, @truncate(value));
 }
 pub fn toCamelCases(noalias buf: []u8, names: []const []const u8) []u8 {
     var len: u64 = 0;

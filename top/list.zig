@@ -128,7 +128,7 @@ pub fn GenericLinkedList(comptime list_spec: ListSpec) type {
             major: Block,
             minor: Block,
             pub fn set(major: anytype, minor: anytype) Links {
-                return .{ .major = @bitCast(Block, major), .minor = @bitCast(Block, minor) };
+                return .{ .major = @as(Block, @bitCast(major)), .minor = @as(Block, @bitCast(minor)) };
             }
             pub fn basicInit(s: anytype, t: anytype) Links {
                 const s_node_blk: Block = if (@TypeOf(s) == Block) s else .{ .lb_word = s };
@@ -1155,22 +1155,22 @@ pub const Node4 = opaque {
     pub const kind_mask: u64 = 0b11111111_11111111_000000000000000000000000000000000000000000000000;
     pub const link_mask: u64 = 0b00000000_00000000_111111111111111111111111111111111111111111111111;
     pub fn refer(node_addr: u64) *u64 {
-        return @ptrFromInt(*u64, node_addr);
+        return @as(*u64, @ptrFromInt(node_addr));
     }
     pub fn write(node_addr: u64, word: u64) void {
-        @ptrFromInt(*u64, node_addr).* = word;
+        @as(*u64, @ptrFromInt(node_addr)).* = word;
     }
     pub fn toggle(node_addr: u64) void {
-        @ptrFromInt(*u64, node_addr).* ^= Node4.H;
+        @as(*u64, @ptrFromInt(node_addr)).* ^= Node4.H;
     }
     pub fn clear(node_addr: u64) void {
-        @ptrFromInt(*u64, node_addr).* = 0;
+        @as(*u64, @ptrFromInt(node_addr)).* = 0;
     }
     pub fn kind(node_addr: u64) u64 {
-        return @ptrFromInt(*u64, node_addr).* & Node4.kind_mask;
+        return @as(*u64, @ptrFromInt(node_addr)).* & Node4.kind_mask;
     }
     pub fn link(node_addr: u64) u64 {
-        return @ptrFromInt(*u64, node_addr).* & Node4.link_mask;
+        return @as(*u64, @ptrFromInt(node_addr)).* & Node4.link_mask;
     }
     pub fn read(node_addr: u64) u64 {
         return refer(node_addr).*;

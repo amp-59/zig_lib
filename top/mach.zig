@@ -49,64 +49,64 @@ pub inline fn shrx32(value: u32, shift_amt: u32) u32 {
 // what the shift_amt types are; we know them already and want to save the
 // compiler the extra work.
 pub inline fn shl64(value: u64, shift_amt: u64) u64 {
-    return value << @truncate(u6, shift_amt);
+    return value << @as(u6, @truncate(shift_amt));
 }
 pub inline fn shl32(value: u32, shift_amt: u32) u32 {
-    return value << @truncate(u5, shift_amt);
+    return value << @as(u5, @truncate(shift_amt));
 }
 pub inline fn shl16(value: u16, shift_amt: u16) u16 {
-    return value << @truncate(u4, shift_amt);
+    return value << @as(u4, @truncate(shift_amt));
 }
 pub inline fn shl8(value: u8, shift_amt: u8) u8 {
-    return value << @truncate(u3, shift_amt);
+    return value << @as(u3, @truncate(shift_amt));
 }
 pub inline fn shr64(value: u64, shift_amt: u64) u64 {
-    return value >> @truncate(u6, shift_amt);
+    return value >> @as(u6, @truncate(shift_amt));
 }
 pub inline fn shr32(value: u32, shift_amt: u32) u32 {
-    return value >> @truncate(u5, shift_amt);
+    return value >> @as(u5, @truncate(shift_amt));
 }
 pub inline fn shr16(value: u16, shift_amt: u16) u16 {
-    return value >> @truncate(u4, shift_amt);
+    return value >> @as(u4, @truncate(shift_amt));
 }
 pub inline fn shr8(value: u8, shift_amt: u8) u8 {
-    return value >> @truncate(u3, shift_amt);
+    return value >> @as(u3, @truncate(shift_amt));
 }
 pub inline fn shl64T(comptime T: type, value: u64, shift_amt: u64) T {
-    return @intCast(T, value << @truncate(u6, shift_amt));
+    return @as(T, @intCast(value << @as(u6, @truncate(shift_amt))));
 }
 pub inline fn shl32T(comptime T: type, value: u32, shift_amt: u32) T {
-    return @intCast(T, value << @truncate(u5, shift_amt));
+    return @as(T, @intCast(value << @as(u5, @truncate(shift_amt))));
 }
 pub inline fn shl16T(comptime T: type, value: u16, shift_amt: u16) T {
-    return @intCast(T, value << @truncate(u4, shift_amt));
+    return @as(T, @intCast(value << @as(u4, @truncate(shift_amt))));
 }
 pub inline fn shl8T(comptime T: type, value: u8, shift_amt: u8) T {
-    return @intCast(T, value << @truncate(u3, shift_amt));
+    return @as(T, @intCast(value << @as(u3, @truncate(shift_amt))));
 }
 pub inline fn shr64T(comptime T: type, value: u64, shift_amt: u64) T {
-    return @intCast(T, value >> @truncate(u6, shift_amt));
+    return @as(T, @intCast(value >> @as(u6, @truncate(shift_amt))));
 }
 pub inline fn shr32T(comptime T: type, value: u32, shift_amt: u16) T {
-    return @intCast(T, value >> @truncate(u5, shift_amt));
+    return @as(T, @intCast(value >> @as(u5, @truncate(shift_amt))));
 }
 pub inline fn shr16T(comptime T: type, value: u16, shift_amt: u16) T {
-    return @intCast(T, value >> @truncate(u4, shift_amt));
+    return @as(T, @intCast(value >> @as(u4, @truncate(shift_amt))));
 }
 pub inline fn shr8T(comptime T: type, value: u8, shift_amt: u8) T {
-    return @intCast(T, value >> @truncate(u3, shift_amt));
+    return @as(T, @intCast(value >> @as(u3, @truncate(shift_amt))));
 }
 pub inline fn shr64TM(comptime T: type, value: u64, shift_amt: u64, comptime pop_count: comptime_int) T {
-    return @intCast(T, value >> @intCast(u6, shift_amt)) & ((1 << pop_count) -% 1);
+    return @as(T, @intCast(value >> @as(u6, @intCast(shift_amt)))) & ((1 << pop_count) -% 1);
 }
 pub inline fn shr32TM(comptime T: type, value: u32, shift_amt: u32, comptime pop_count: comptime_int) T {
-    return @intCast(T, value >> @intCast(u5, shift_amt)) & ((1 << pop_count) -% 1);
+    return @as(T, @intCast(value >> @as(u5, @intCast(shift_amt)))) & ((1 << pop_count) -% 1);
 }
 pub inline fn shr16TM(comptime T: type, value: u16, shift_amt: u16, comptime pop_count: comptime_int) T {
-    return @intCast(T, value >> @intCast(u4, shift_amt)) & ((1 << pop_count) -% 1);
+    return @as(T, @intCast(value >> @as(u4, @intCast(shift_amt)))) & ((1 << pop_count) -% 1);
 }
 pub inline fn shr8TM(comptime T: type, value: u8, shift_amt: u8, comptime pop_count: comptime_int) T {
-    return @intCast(T, value >> @intCast(u3, shift_amt)) & ((1 << pop_count) -% 1);
+    return @as(T, @intCast(value >> @as(u3, @intCast(shift_amt)))) & ((1 << pop_count) -% 1);
 }
 // Conditional moves--for integers prefer dedicated functions. Prevents lazy-
 // evaluating the conditional values by ordering their evaluation before the
@@ -423,35 +423,35 @@ pub inline fn alignB64(value: u64, alignment: u64) u64 {
 }
 pub fn halfMask64(pop_count: u8) u64 {
     const iunit: i64 = -1;
-    const popcnt_shl: u6 = @truncate(u6, pop_count);
+    const popcnt_shl: u6 = @as(u6, @truncate(pop_count));
     const int_max_mask: u64 = ~@as(u64, 0);
-    const int_sub_mask: u64 = @bitCast(u64, ~(iunit << popcnt_shl));
+    const int_sub_mask: u64 = @as(u64, @bitCast(~(iunit << popcnt_shl)));
     return cmov64(pop_count == 64, int_max_mask, int_sub_mask);
 }
 pub fn bitMask64(pop_count: u8, shift_amt: u8) u64 {
     const iunit: i64 = -1;
-    const popcnt_shl: u6 = @truncate(u6, pop_count);
-    const tzcnt_shl: u6 = @truncate(u6, shift_amt);
+    const popcnt_shl: u6 = @as(u6, @truncate(pop_count));
+    const tzcnt_shl: u6 = @as(u6, @truncate(shift_amt));
     const int_max_mask: u64 = ~@as(u64, 0);
-    const int_sub_mask: u64 = @bitCast(u64, ~(iunit << popcnt_shl) << tzcnt_shl);
+    const int_sub_mask: u64 = @as(u64, @bitCast(~(iunit << popcnt_shl) << tzcnt_shl));
     return cmov64(pop_count == 64, int_max_mask, int_sub_mask);
 }
 pub fn bitMask64NonZero(pop_count: u8, shift_amt: u8) u64 {
     const iunit: i64 = @as(i64, -1 << 1);
-    const popcnt_shl: u6 = @truncate(u6, pop_count - 1);
-    const tzcnt_shl: u6 = @truncate(u6, shift_amt);
-    return @bitCast(u64, ~(iunit << popcnt_shl) << tzcnt_shl);
+    const popcnt_shl: u6 = @as(u6, @truncate(pop_count - 1));
+    const tzcnt_shl: u6 = @as(u6, @truncate(shift_amt));
+    return @as(u64, @bitCast(~(iunit << popcnt_shl) << tzcnt_shl));
 }
 pub fn halfMask64NonMax(pop_count: u8) u64 {
     const iunit: i64 = -1;
-    const popcnt_shl: u6 = @truncate(u6, pop_count);
-    return @bitCast(u64, ~(iunit << popcnt_shl));
+    const popcnt_shl: u6 = @as(u6, @truncate(pop_count));
+    return @as(u64, @bitCast(~(iunit << popcnt_shl)));
 }
 pub fn bitMask64NonMax(pop_count: u8, shift_amt: u8) u64 {
     const iunit: i64 = @as(i64, -1);
-    const popcnt_shl: u6 = @truncate(u6, pop_count);
-    const tzcnt_shl: u6 = @truncate(u6, shift_amt);
-    return @bitCast(u64, ~(iunit << popcnt_shl) << tzcnt_shl);
+    const popcnt_shl: u6 = @as(u6, @truncate(pop_count));
+    const tzcnt_shl: u6 = @as(u6, @truncate(shift_amt));
+    return @as(u64, @bitCast(~(iunit << popcnt_shl) << tzcnt_shl));
 }
 pub inline fn shiftRightTruncate(
     comptime T: type,
@@ -459,7 +459,7 @@ pub inline fn shiftRightTruncate(
     value: T,
     comptime shift_amt: comptime_int,
 ) U {
-    return @truncate(U, value >> shift_amt);
+    return @as(U, @truncate(value >> shift_amt));
 }
 pub inline fn shiftRightMaskTruncate(
     comptime T: type,
@@ -468,19 +468,19 @@ pub inline fn shiftRightMaskTruncate(
     comptime shift_amt: comptime_int,
     comptime pop_count: comptime_int,
 ) U {
-    return @truncate(U, value >> shift_amt) & ((@as(U, 1) << pop_count) -% 1);
+    return @as(U, @truncate(value >> shift_amt)) & ((@as(U, 1) << pop_count) -% 1);
 }
 pub inline fn mask32(value: u64) u32 {
-    return @truncate(u32, value);
+    return @as(u32, @truncate(value));
 }
 pub inline fn mask16(value: u64) u16 {
-    return @truncate(u16, value);
+    return @as(u16, @truncate(value));
 }
 pub inline fn mask8L(value: u64) u8 {
-    return @truncate(u8, value);
+    return @as(u8, @truncate(value));
 }
 pub inline fn mask8H(value: u64) u8 {
-    return @truncate(u8, value >> 8);
+    return @as(u8, @truncate(value >> 8));
 }
 inline fn shlx(comptime T: type, value: T, shift_amt: T) T {
     if (@inComptime()) {
@@ -524,7 +524,7 @@ pub fn rngcpy(to: usize, from: usize, len: usize) void {
 }
 pub extern fn memset(dest: [*]u8, value: u8, count: usize) void;
 pub extern fn memcpy(noalias dest: [*]u8, noalias src: [*]const u8, len: u64) void;
-pub const addrcpy = @ptrCast(*const fn (dest: usize, src: usize, len: usize) void, &memcpy);
+pub const addrcpy = @as(*const fn (dest: usize, src: usize, len: usize) void, @ptrCast(&memcpy));
 
 const __0 = struct {
     inline fn memcpy1(noalias dest: [*]u8, noalias src: [*]const u8, len: u64) void {
