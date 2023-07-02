@@ -6,7 +6,7 @@ const types = @import("./types.zig");
 pub const key = blk: {
     var res: [@typeInfo(Fn).Enum.fields.len]Fn = undefined;
     for (@typeInfo(Fn).Enum.fields, 0..) |field, index| {
-        res[index] = @enumFromInt(Fn, field.value);
+        res[index] = @as(Fn, @enumFromInt(field.value));
     }
     break :blk res;
 };

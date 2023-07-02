@@ -55,7 +55,7 @@ pub const ctn_details: []const types.Container = blk: {
             res = res ++ .{ctn_detail};
         }
     }
-    break :blk @ptrCast([]const types.Container, res);
+    break :blk @as([]const types.Container, @ptrCast(res));
 };
 pub const ctn_groups: []const []const types.AbstractSpecification = blk: {
     @setEvalBranchQuota(4000);
@@ -63,7 +63,7 @@ pub const ctn_groups: []const []const types.AbstractSpecification = blk: {
     var len: u64 = 0;
     var idx: u64 = 0;
     var taken: [abstract_specs.len]bool = [1]bool{false} ** abstract_specs.len;
-    for (@ptrCast([]const meta.Child(types.Container), ctn_details)) |ctn_detail| {
+    for (@as([]const meta.Child(types.Container), @ptrCast(ctn_details))) |ctn_detail| {
         for (abstract_specs, 0..) |abstract_spec, spec_index| {
             if (taken[spec_index]) {
                 continue;

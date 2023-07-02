@@ -35,16 +35,16 @@ pub const Expr = struct {
         return expr.more()[1 + @as(u8, @intFromBool(expr.tag() == .call_member)) ..];
     }
     fn symbol(expr: Expr) [:0]const u8 {
-        return @ptrFromInt([*]const u8, expr.data1)[0 .. expr.data2 & mask :0];
+        return @as([*]const u8, @ptrFromInt(expr.data1))[0 .. expr.data2 & mask :0];
     }
     fn more(expr: Expr) []Expr {
-        return @ptrFromInt([*]Expr, expr.data1)[0 .. expr.data2 & mask];
+        return @as([*]Expr, @ptrFromInt(expr.data1))[0 .. expr.data2 & mask];
     }
     pub fn @"type"(expr: Expr) *const types.TypeDescr {
-        return @ptrFromInt(*const types.TypeDescr, expr.data1);
+        return @as(*const types.TypeDescr, @ptrFromInt(expr.data1));
     }
     pub fn tag(expr: Expr) ExprTag {
-        return @enumFromInt(ExprTag, expr.data2 >> 56);
+        return @as(ExprTag, @enumFromInt(expr.data2 >> 56));
     }
     fn formatLengthCallMember(format: Expr) u64 {
         const fn_args: []const Expr = format.more()[1..];

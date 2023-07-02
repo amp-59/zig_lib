@@ -192,7 +192,7 @@ pub fn specifierTags(variants: []const Specifier) Specifiers {
             },
         }
     }
-    return @bitCast(Specifiers, int);
+    return @as(Specifiers, @bitCast(int));
 }
 pub const Container = packed struct {
     kind: Kind,
@@ -551,7 +551,7 @@ pub fn techniqueTags(options: []const Technique) Techniques {
             int |= @intFromEnum(option.mutually_exclusive.tech_tag.?);
         }
     }
-    return @bitCast(Techniques, int);
+    return @as(Techniques, @bitCast(int));
 }
 pub const Option = struct {
     kind: Option.Kind,

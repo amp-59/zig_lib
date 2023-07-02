@@ -91,10 +91,10 @@ pub const ParamSpec = struct {
         }
     }
     pub fn parameter(param_spec: @This()) ProtoTypeDescr {
-        return @ptrCast(*const ProtoTypeDescr, param_spec.type).*;
+        return @as(*const ProtoTypeDescr, @ptrCast(param_spec.type)).*;
     }
     pub fn formatter(param_spec: @This()) ProtoTypeDescr {
-        return @ptrCast(*const ProtoTypeDescrMap, param_spec.type)[1];
+        return @as(*const ProtoTypeDescrMap, @ptrCast(param_spec.type))[1];
     }
 };
 pub const InverseParamSpec = struct {
@@ -109,9 +109,9 @@ pub const InverseParamSpec = struct {
     /// If `immediate` (255) no separator is written
     char: ?u8 = null,
     pub fn parameter(param_spec: @This()) ProtoTypeDescr {
-        return @ptrCast(*const ProtoTypeDescr, param_spec.type).*;
+        return @as(*const ProtoTypeDescr, @ptrCast(param_spec.type)).*;
     }
     pub fn formatter(param_spec: @This()) ProtoTypeDescr {
-        return @ptrCast(*const [2]ProtoTypeDescrMap, param_spec.type)[1];
+        return @as(*const [2]ProtoTypeDescrMap, @ptrCast(param_spec.type))[1];
     }
 };
