@@ -1,4 +1,5 @@
 const sys = @import("./sys.zig");
+const fmt = @import("./fmt.zig");
 const exe = @import("./exe.zig");
 const meta = @import("./meta.zig");
 const time = @import("./time.zig");
@@ -1256,13 +1257,13 @@ pub const debug = opaque {
     }
     fn futexWakeOpNotice(futex1: *u32, futex2: *u32, count1: u32, count2: u32, wake_op: FutexOp.WakeOp, ret: u64) void {
         _ = wake_op;
-        const addr1_s: []const u8 = builtin.fmt.ux64(@intFromPtr(futex1)).readAll();
-        const word1_s: []const u8 = builtin.fmt.ud64(futex1.*).readAll();
-        const addr2_s: []const u8 = builtin.fmt.ux64(@intFromPtr(futex2)).readAll();
-        const word2_s: []const u8 = builtin.fmt.ud64(futex2.*).readAll();
-        const count1_s: []const u8 = builtin.fmt.ud64(count1).readAll();
-        const count2_s: []const u8 = builtin.fmt.ud64(count2).readAll();
-        const ret_s: []const u8 = builtin.fmt.ud64(ret).readAll();
+        const addr1_s: fmt.Type.Ux64 = .{ .value = @intFromPtr(futex1) };
+        const word1_s: fmt.Type.Ud64 = .{ .value = futex1.* };
+        const addr2_s: fmt.Type.Ux64 = .{ .value = @intFromPtr(futex2) };
+        const word2_s: fmt.Type.Ud64 = .{ .value = futex2.* };
+        const count1_s: fmt.Type.Ud64 = .{ .value = count1 };
+        const count2_s: fmt.Type.Ud64 = .{ .value = count2 };
+        const ret_s: fmt.Type.Ud64 = .{ .value = ret };
         var buf: [3072]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
             about_futex_wake_0_s, "futex1=@", addr1_s,  ", word1=",
@@ -1270,6 +1271,44 @@ pub const debug = opaque {
             addr2_s,              ", word2=", word2_s,  ", max2=",
             count2_s,             ", res=",   ret_s,    "\n",
         });
+    }
+    fn futexWakeOpNoticeExample(futex1: *u32, futex2: *u32, count1: u32, count2: u32, wake_op: FutexOp.WakeOp, mb_ret: ?u64) void {
+        _ = wake_op;
+        var fmt_ux64: fmt.Type.Ux64 = .{ .value = @intFromPtr(futex1) };
+        var fmt_ud64: fmt.Type.Ud64 = .{ .value = futex1.* };
+        var buf: [3072]u8 = undefined;
+        @ptrCast(*[16]u8, &buf).* = about_futex_wake_0_s.*;
+        var len: u64 = 16;
+        @ptrCast(*[8]u8, buf[len..].ptr).* = "futex1=@".*;
+        len +%= 8;
+        len +%= fmt_ux64.formatWriteBuf(buf[len..].ptr);
+        @ptrCast(*[8]u8, buf[len..].ptr).* = ", word1=".*;
+        len +%= 8;
+        len +%= fmt_ud64.formatWriteBuf(buf[len..].ptr);
+        @ptrCast(*[7]u8, buf[len..].ptr).* = ", max1=".*;
+        len +%= 7;
+        fmt_ud64.value = count1;
+        len +%= fmt_ud64.formatWriteBuf(buf[len..].ptr);
+        @ptrCast(*[10]u8, buf[len..].ptr).* = ", futex2=@".*;
+        len +%= 10;
+        fmt_ux64.value = @intFromPtr(futex2);
+        len +%= fmt_ux64.formatWriteBuf(buf[len..].ptr);
+        @ptrCast(*[8]u8, buf[len..].ptr).* = ", word2=".*;
+        len +%= 8;
+        fmt_ud64.value = futex2.*;
+        len +%= fmt_ud64.formatWriteBuf(buf[len..].ptr);
+        @ptrCast(*[7]u8, buf[len..].ptr).* = ", max2=".*;
+        len +%= 7;
+        fmt_ud64.value = count2;
+        len +%= fmt_ud64.formatWriteBuf(buf[len..].ptr);
+        @ptrCast(*[6]u8, buf[len..].ptr).* = ", res=".*;
+        len +%= 6;
+        if (mb_ret) |ret| {
+            fmt_ud64.value = ret;
+            len +%= fmt_ud64.formatWriteBuf(buf[len..].ptr);
+        }
+        buf[len] = '\n';
+        builtin.debug.write(buf[0 .. len +% 1]);
     }
     fn forkError(fork_error: anytype) void {
         var buf: [560]u8 = undefined;
@@ -1330,6 +1369,7 @@ pub const debug = opaque {
         const count2_s: []const u8 = builtin.fmt.ud64(count2).readAll();
         const error_s: []const u8 = @errorName(futex_error);
         var buf: [3072]u8 = undefined;
+
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
             about_futex_wake_0_s, builtin.debug.about_error_s, error_s,  ", futex1=@", addr1_s, ", word1=",
             word1_s,              ", max1=",                   count1_s, ", futex2=@", addr2_s, ", word2=",
@@ -1377,9 +1417,8 @@ pub const debug = opaque {
         updateExceptionHandlers(&act);
         const fault_addr_s: []const u8 = builtin.fmt.ux64(info.fields.fault.addr).readAll();
         var buf: [8192]u8 = undefined;
-        var len: u64 = 0;
-        @ptrCast(*[3]u8, buf[len..].ptr).* = "SIG".*;
-        len +%= 3;
+        @ptrCast(*[3]u8, &buf).* = "SIG".*;
+        var len: u64 = 3;
         mach.memcpy(buf[len..].ptr, @tagName(sig).ptr, @tagName(sig).len);
         len +%= @tagName(sig).len;
         @ptrCast(*[12]u8, buf[len..].ptr).* = " at address ".*;
