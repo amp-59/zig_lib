@@ -63,19 +63,19 @@ fn loopInner(options: Options, arg: []const u8) !void {
         .bin => builtin.fmt.ub64(val).readAll(),
         .auto => blk: {
             if (val <= ~@as(u8, 0)) {
-                break :blk @ptrCast(*const [1]u8, &@intCast(u8, val));
+                break :blk @as(*const [1]u8, @ptrCast(&@as(u8, @intCast(val))));
             } else if (val <= ~@as(u16, 0)) {
-                break :blk @ptrCast(*const [2]u8, &@intCast(u16, val));
+                break :blk @as(*const [2]u8, @ptrCast(&@as(u16, @intCast(val))));
             } else if (val <= ~@as(u32, 0)) {
-                break :blk @ptrCast(*const [4]u8, &@intCast(u32, val));
+                break :blk @as(*const [4]u8, @ptrCast(&@as(u32, @intCast(val))));
             } else {
-                break :blk @ptrCast(*const [8]u8, &val);
+                break :blk @as(*const [8]u8, @ptrCast(&val));
             }
         },
-        .u8 => @ptrCast(*const [1]u8, &@intCast(u8, val)),
-        .u16 => @ptrCast(*const [2]u8, &@intCast(u16, val)),
-        .u32 => @ptrCast(*const [4]u8, &@intCast(u32, val)),
-        .u64 => @ptrCast(*const [8]u8, &val),
+        .u8 => @as(*const [1]u8, @ptrCast(&@as(u8, @intCast(val)))),
+        .u16 => @as(*const [2]u8, @ptrCast(&@as(u16, @intCast(val)))),
+        .u32 => @as(*const [4]u8, @ptrCast(&@as(u32, @intCast(val)))),
+        .u64 => @as(*const [8]u8, @ptrCast(&val)),
         .char => outputChar(),
     });
     if (@intFromEnum(options.output) < 18) {

@@ -9,9 +9,7 @@ const builtin = zig_lib.builtin;
 pub usingnamespace proc.start;
 
 pub const AddressSpace = spec.address_space.exact_8;
-
 pub const runtime_assertions: bool = false;
-
 pub const logging_override = .{
     .Attempt = false,
     .Success = false,

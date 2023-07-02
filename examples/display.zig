@@ -47,7 +47,7 @@ pub fn main() !void {
     };
     try sys.call(.ioctl, .{ .throw = sys.ioctl_errors }, void, .{
         fd,
-        @bitCast(u32, ioc),
+        @as(u32, @bitCast(ioc)),
         @intFromPtr(&res),
     });
     array.writeFormat(fmt.any(res));
