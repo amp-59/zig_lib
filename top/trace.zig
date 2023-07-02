@@ -72,11 +72,11 @@ pub const StackIterator = struct {
         if (frame_addr == 0) {
             return null;
         }
-        const new_frame_addr: u64 = @ptrFromInt(*usize, frame_addr).* +% frame_addr_bias;
+        const new_frame_addr: u64 = @as(*usize, @ptrFromInt(frame_addr)).* +% frame_addr_bias;
         if (new_frame_addr < itr.frame_addr) {
             return null;
         }
-        const new_instr_addr: u64 = @ptrFromInt(*usize, frame_addr +% instr_addr_off).*;
+        const new_instr_addr: u64 = @as(*usize, @ptrFromInt(frame_addr +% instr_addr_off)).*;
         itr.frame_addr = new_frame_addr;
         return new_instr_addr;
     }
@@ -91,7 +91,7 @@ fn writeLastLine(trace: *const builtin.Trace, buf: [*]u8, width: u64, break_line
         buf[len] = '\n';
         len +%= 1;
     }
-    @ptrCast(*[4]u8, buf + len).* = "\x1b[0m".*;
+    @as(*[4]u8, @ptrCast(buf + len)).* = "\x1b[0m".*;
     if (buf[len -% 1] != '\n') {
         buf[len +% 4] = '\n';
         return len +% 5;
@@ -142,7 +142,7 @@ fn writeSideBar(trace: *const builtin.Trace, width: u64, buf: [*]u8, number: Num
     len +%= spaces;
     mach.memcpy(buf + len, &tmp, pos);
     len +%= pos;
-    @ptrCast(*[4]u8, buf + len).* = "\x1b[0m".*;
+    @as(*[4]u8, @ptrCast(buf + len)).* = "\x1b[0m".*;
     len +%= 4;
     if (sidebar_char) {
         buf[len] = sidebar[0];
@@ -216,7 +216,7 @@ fn writeSourceLine(
             len +%= loc_itr.len();
             loc_itr.start = loc_itr.finish;
             tok.* = itr.next();
-            @ptrCast(*[4]u8, buf + len).* = "\x1b[0m".*;
+            @as(*[4]u8, @ptrCast(buf + len)).* = "\x1b[0m".*;
             len +%= 4;
         }
     } else {
@@ -237,22 +237,22 @@ fn writeExtendedSourceLocation(
     src: dwarf.SourceLocation,
 ) u64 {
     var len: u64 = src.formatWriteBuf(buf);
-    @ptrCast(*[2]u8, buf + len).* = ": ".*;
+    @as(*[2]u8, @ptrCast(buf + len)).* = ": ".*;
     len +%= 2;
     len +%= fmt.ux64(addr).formatWriteBuf(buf + len);
     if (dwarf_info.getSymbolName(addr)) |fn_name| {
-        @ptrCast(*[4]u8, buf + len).* = " in ".*;
+        @as(*[4]u8, @ptrCast(buf + len)).* = " in ".*;
         len +%= 4;
         @memcpy(buf + len, fn_name);
         len +%= fn_name.len;
     }
     if (unit.info_entry.get(.name)) |form_val| {
-        @ptrCast(*[2]u8, buf + len).* = " (".*;
+        @as(*[2]u8, @ptrCast(buf + len)).* = " (".*;
         len +%= 2;
         const name: []const u8 = form_val.getString(dwarf_info);
         @memcpy(buf + len, name);
         len +%= name.len;
-        @ptrCast(*[2]u8, buf + len).* = ")\n".*;
+        @as(*[2]u8, @ptrCast(buf + len)).* = ")\n".*;
         len +%= 2;
     } else {
         buf[len] = '\n';
@@ -324,14 +324,14 @@ fn printMessage(buf: [*]u8, addr_info: *dwarf.DwarfInfo.AddressInfo) void {
         while (msg[idx] != '\n') idx +%= 1;
         @memcpy(tmp[len..].ptr, msg[0..idx]);
         len +%= idx;
-        @ptrCast(*[2]u8, tmp[len..].ptr).* = " (".*;
+        @as(*[2]u8, @ptrCast(tmp[len..].ptr)).* = " (".*;
         len +%= 2;
         if (addr_info.count > 16) {
-            @ptrCast(*[4]u8, tmp[len..].ptr).* = "\x1b[1m".*;
+            @as(*[4]u8, @ptrCast(tmp[len..].ptr)).* = "\x1b[1m".*;
             len +%= 4;
         }
         len +%= fmt.ud64(addr_info.count).formatWriteBuf(tmp[len..].ptr);
-        @ptrCast(*[12]u8, tmp[len..].ptr).* = "\x1b[0m times) ".*;
+        @as(*[12]u8, @ptrCast(tmp[len..].ptr)).* = "\x1b[0m times) ".*;
         len +%= 12;
         @memcpy(tmp[len..].ptr, msg[idx..]);
         len +%= msg[idx..].len;

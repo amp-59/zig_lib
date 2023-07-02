@@ -108,7 +108,7 @@ pub fn arbitraryFieldOrder(comptime T: type) void {
     };
     const fields: []const builtin.Type.StructField = @typeInfo(T).Struct.fields;
     var values: [fields.len]builtin.Type.StructField =
-        @ptrCast(*const [fields.len]builtin.Type.StructField, fields.ptr).*;
+        @as(*const [fields.len]builtin.Type.StructField, @ptrCast(fields.ptr)).*;
     algo.shellSort(builtin.Type.StructField, s.ascName, builtin.identity, &values);
     algo.shellSort(builtin.Type.StructField, s.ascSize, builtin.identity, &values);
     for (values, 0..) |field, index| {
@@ -131,7 +131,7 @@ pub fn arbitraryDeclOrder(comptime T: type) void {
     };
     const decls: []const builtin.Type.Declaration = @typeInfo(T).Struct.decls;
     comptime var values: [decls.len]builtin.Type.Declaration =
-        @ptrCast(*const [decls.len]builtin.Type.Declaration, decls.ptr).*;
+        @as(*const [decls.len]builtin.Type.Declaration, @ptrCast(decls.ptr)).*;
     algo.shellSort(builtin.Type.Declaration, s.ascName, builtin.identity, &values);
     inline for (values, 0..) |field, index| {
         if (!mem.testEqualMany(u8, field.name, decls[index].name)) {

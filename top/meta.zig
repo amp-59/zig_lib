@@ -17,7 +17,7 @@ pub const Generic = struct {
     type: type,
     value: *const anyopaque,
     pub fn cast(comptime any: Generic) any.type {
-        return @ptrCast(*const any.type, @alignCast(@max(1, @alignOf(any.type)), any.value)).*;
+        return @as(*align(@max(@alignOf(any.type), 1)) const any.type, @ptrCast(@alignCast(any.value))).*;
     }
 };
 inline fn isTypeType(comptime T: type, comptime type_types: []const builtin.TypeId) bool {
@@ -120,12 +120,6 @@ pub fn parcel(comptime T: type, arg: T) []const T {
 pub fn concat(comptime T: type, comptime arg1: []const T, comptime arg2: T) []const T {
     return arg1 ++ comptime parcel(T, arg2);
 }
-pub fn concatEqu(comptime T: type, arg1: *[]const T, arg2: T) void {
-    arg1.* = concat(T, arg1.*, arg2);
-}
-pub fn concatEquPtr(comptime T: type, arg1: *[]const T, arg2: anytype) void {
-    arg1.* = concat(T, arg1.*, @ptrCast(*const T, @alignCast(@alignOf(T), arg2)).*);
-}
 /// A wrapped value can be unwrapped using `try`
 pub inline fn wrap(any: anytype) blk: {
     const T: type = @TypeOf(any);
@@ -158,7 +152,7 @@ pub fn structField(comptime T: type, comptime field_name: []const u8, comptime d
             .type = T,
             .default_value = blk: {
                 if (@TypeOf(default_value) == ?*const anyopaque) {
-                    break :blk @ptrCast(*const anyopaque, &default_value);
+                    break :blk @as(*const anyopaque, @ptrCast(&default_value));
                 } else {
                     break :blk &default_value;
                 }
@@ -189,7 +183,8 @@ pub fn tupleInfo(comptime fields: []const builtin.Type.StructField) builtin.Type
 }
 pub fn defaultValue(comptime struct_field: builtin.Type.StructField) ?struct_field.type {
     if (struct_field.default_value) |default_value_ptr| {
-        return @ptrCast(*const struct_field.type, @alignCast(@max(1, @alignOf(struct_field.type)), default_value_ptr)).*;
+        const ret: *align(@max(1, @alignOf(struct_field.type))) const struct_field.type = @ptrCast(@alignCast(default_value_ptr));
+        return ret.*;
     }
     return null;
 }
@@ -263,8 +258,8 @@ pub fn extrema(comptime Int: type) Extrema {
             } else {
                 const imax: U = umax >> 1;
                 return .{
-                    .min = @bitCast(Int, ~imax),
-                    .max = @bitCast(Int, imax),
+                    .min = @as(Int, @bitCast(~imax)),
+                    .max = @as(Int, @bitCast(imax)),
                 };
             }
         },
@@ -329,7 +324,7 @@ pub fn LeastBitSize(comptime value: anytype) type {
     if (@sizeOf(T) == 0) {
         if (value < 0) {
             var U: type = i1;
-            while (value < @truncate(U, value)) {
+            while (value < @as(U, @truncate(value))) {
                 U = @Type(.{ .Int = .{
                     .bits = @bitSizeOf(U) + 1,
                     .signedness = .signed,
@@ -338,7 +333,7 @@ pub fn LeastBitSize(comptime value: anytype) type {
             return U;
         } else {
             var U: type = u1;
-            while (value > @truncate(U, value)) {
+            while (value > @as(U, @truncate(value))) {
                 U = @Type(.{ .Int = .{
                     .bits = @bitSizeOf(U) + 1,
                     .signedness = .unsigned,
@@ -363,7 +358,7 @@ pub fn LeastRealBitSize(comptime value: anytype) type {
     if (@sizeOf(T) == 0) {
         if (value < 0) {
             var U: type = i8;
-            while (value < @truncate(U, value)) {
+            while (value < @as(U, @truncate(value))) {
                 U = @Type(.{ .Int = .{
                     .bits = @bitSizeOf(U) << 1,
                     .signedness = .signed,
@@ -372,7 +367,7 @@ pub fn LeastRealBitSize(comptime value: anytype) type {
             return U;
         } else {
             var U: type = u8;
-            while (value > @truncate(U, value)) {
+            while (value > @as(U, @truncate(value))) {
                 U = @Type(.{ .Int = .{
                     .bits = @bitSizeOf(U) << 1,
                     .signedness = .unsigned,
@@ -399,10 +394,10 @@ pub inline fn bitCast(comptime T: type, any: anytype) T {
         .Int => {
             switch (t_type_info) {
                 .Int => {
-                    return @intCast(T, any);
+                    return @as(T, @intCast(any));
                 },
                 .Enum => {
-                    return @enumFromInt(T, any);
+                    return @as(T, @enumFromInt(any));
                 },
                 else => {},
             }
@@ -410,7 +405,7 @@ pub inline fn bitCast(comptime T: type, any: anytype) T {
         .Bool => {
             switch (t_type_info) {
                 .Enum => {
-                    return @enumFromInt(T, @intFromBool(any));
+                    return @as(T, @enumFromInt(@intFromBool(any)));
                 },
             }
         },
@@ -420,7 +415,7 @@ pub inline fn bitCast(comptime T: type, any: anytype) T {
         .Pointer => {
             switch (t_type_info) {
                 .Int => {
-                    return @intCast(T, @intFromPtr(any));
+                    return @as(T, @intCast(@intFromPtr(any)));
                 },
                 else => {},
             }
@@ -428,7 +423,7 @@ pub inline fn bitCast(comptime T: type, any: anytype) T {
         .Enum => {
             switch (t_type_info) {
                 .Struct => {
-                    return @bitCast(T, @intFromEnum(any));
+                    return @as(T, @bitCast(@intFromEnum(any)));
                 },
                 else => {},
             }
@@ -436,7 +431,7 @@ pub inline fn bitCast(comptime T: type, any: anytype) T {
         .Struct => {
             switch (t_type_info) {
                 .Int => {
-                    return @intCast(T, @bitCast(s_type_info.Struct.backing_integer.?, any));
+                    return @as(T, @intCast(@as(s_type_info.Struct.backing_integer.?, @bitCast(any))));
                 },
                 else => {},
             }
@@ -454,7 +449,7 @@ pub inline fn leastBitCast(any: anytype) @Type(.{ .Int = .{
         .bits = @bitSizeOf(T),
         .signedness = .unsigned,
     } });
-    return @bitCast(U, any);
+    return @as(U, @bitCast(any));
 }
 pub inline fn leastRealBitCast(any: anytype) @Type(.{ .Int = .{
     .bits = alignAW(@bitSizeOf(@TypeOf(any))),
@@ -502,7 +497,7 @@ pub inline fn arrayPointerToSlice(any: anytype) ArrayPointerToSlice(@TypeOf(any)
     return @as(ArrayPointerToSlice(@TypeOf(any)), any);
 }
 pub inline fn sliceToArrayPointer(comptime any: anytype) SliceToArrayPointer(@TypeOf(any), any.len) {
-    return @ptrCast(SliceToArrayPointer(@TypeOf(any), any.len), any.ptr);
+    return @as(SliceToArrayPointer(@TypeOf(any), any.len), @ptrCast(any.ptr));
 }
 /// Extracts types like:
 /// Int                 => Int,
@@ -575,13 +570,14 @@ pub fn sentinel(comptime T: type) ?Element(T) {
         },
         .Array => |array_info| {
             if (array_info.sentinel) |sentinel_ptr| {
-                return @ptrCast(*const array_info.child, @alignCast(@alignOf(array_info.child), sentinel_ptr)).*;
+                const ret: *align(@alignOf(array_info.child)) const array_info.child = @ptrCast(@alignCast(sentinel_ptr));
+                return ret.*;
             }
         },
         .Pointer => |pointer_info| {
             if (pointer_info.sentinel) |sentinel_ptr| {
-                const ret: pointer_info.child = @ptrCast(*const pointer_info.child, @alignCast(@alignOf(pointer_info.child), sentinel_ptr)).*;
-                return ret;
+                const ret: *align(@alignOf(pointer_info.child)) const pointer_info.child = @ptrCast(@alignCast(sentinel_ptr));
+                return ret.*;
             }
         },
     }
@@ -602,16 +598,18 @@ fn testEqualBytes(arg1: anytype, arg2: anytype) bool {
     return true;
 }
 pub inline fn sliceToBytes(comptime E: type, values: []const E) []const u8 {
-    return @ptrCast([*]const u8, values.ptr)[0 .. @sizeOf(E) * values.len];
+    return @as([*]const u8, @ptrCast(values.ptr))[0 .. @sizeOf(E) * values.len];
 }
 pub inline fn bytesToSlice(comptime E: type, bytes: []const u8) []const E {
-    return @ptrCast([*]const E, @alignCast(@alignOf(E), bytes.ptr))[0..@divExact(bytes.len, @sizeOf(E))];
+    const ptr: [*]const E = @ptrCast(bytes.ptr);
+    return ptr[0..@divExact(bytes.len, @sizeOf(E))];
 }
 pub inline fn toBytes(any: anytype) [@sizeOf(@TypeOf(any))]u8 {
-    return @ptrCast(*const [@sizeOf(@TypeOf(any))]u8, &any).*;
+    return @as(*const [@sizeOf(@TypeOf(any))]u8, @ptrCast(&any)).*;
 }
 pub fn bytesTo(comptime E: type, comptime bytes: []const u8) E {
-    return @ptrCast(*const E, @alignCast(@alignOf(E), bytes.ptr)).*;
+    const ret: *const E = @ptrCast(bytes.ptr);
+    return ret.*;
 }
 /// Returns the degree of optional
 pub fn optionalLevel(comptime T: type) comptime_int {
@@ -910,7 +908,7 @@ pub fn tagList(comptime E: type) []const E {
     const enum_info: builtin.Type.Enum = @typeInfo(E).Enum;
     var ret: [enum_info.fields.len]E = undefined;
     for (enum_info.fields, 0..) |field, index| {
-        ret[index] = @enumFromInt(E, field.value);
+        ret[index] = @as(E, @enumFromInt(field.value));
     }
     return &ret;
 }
@@ -968,7 +966,7 @@ pub fn GenericStructOfBool(comptime Struct: type) type {
             for (tags) |tag| {
                 int |= @intFromEnum(tag);
             }
-            return @bitCast(Struct, int);
+            return @as(Struct, @bitCast(int));
         }
         pub const tag_list: []const Tag = tagList(Tag);
         pub fn countTrue(bit_field: Struct) u64 {
@@ -979,7 +977,7 @@ pub fn GenericStructOfBool(comptime Struct: type) type {
             return ret;
         }
         pub fn has(bit_field: Struct, tag: Tag) bool {
-            return @bitCast(tag_type, bit_field) & @intFromEnum(tag) != 0;
+            return @as(tag_type, @bitCast(bit_field)) & @intFromEnum(tag) != 0;
         }
     };
 }
@@ -1305,8 +1303,8 @@ pub fn initialize(comptime T: type, inits: []const Initializer) T {
     var ret: T = undefined;
     for (inits) |init| {
         mach.memcpy(
-            @ptrFromInt([*]u8, @intFromPtr(&ret) +% init.dest_off),
-            @ptrFromInt([*]const u8, init.src_addr),
+            @as([*]u8, @ptrFromInt(@intFromPtr(&ret) +% init.dest_off)),
+            @as([*]const u8, @ptrFromInt(init.src_addr)),
             init.src_len,
         );
     }
@@ -1327,7 +1325,7 @@ pub fn UniformData(comptime bits: u16) type {
 pub fn uniformData(any: anytype) UniformData(@bitSizeOf(@TypeOf(any))) {
     const T: type = @TypeOf(any);
     const U: type = UniformData(@bitSizeOf(T));
-    return @ptrCast(*const U, &any).*;
+    return @as(*const U, @ptrCast(&any)).*;
 }
 pub fn genericCast(comptime T: type, comptime value: T) Generic {
     return .{ .type = T, .value = &value };

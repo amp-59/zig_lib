@@ -895,21 +895,21 @@ pub fn IntFormat(comptime spec: RenderSpec, comptime Int: type) type {
             const start: u64 = @intFromPtr(array.referOneUndefined());
             var next: u64 = start;
             if (Abs != Int) {
-                @ptrFromInt(*u8, next).* = '-';
+                @as(*u8, @ptrFromInt(next)).* = '-';
             }
             next += @intFromBool(format.value < 0);
             if (radix != 10) {
-                @ptrFromInt(*[prefix.len]u8, next).* =
-                    @ptrCast(*const [prefix.len]u8, prefix.ptr).*;
+                @as(*[prefix.len]u8, @ptrFromInt(next)).* =
+                    @as(*const [prefix.len]u8, @ptrCast(prefix.ptr)).*;
                 next +%= prefix.len;
             }
             const absolute: Abs = if (format.value < 0)
-                1 +% ~@bitCast(Abs, format.value)
+                1 +% ~@as(Abs, @bitCast(format.value))
             else
-                @bitCast(Abs, format.value);
+                @as(Abs, @bitCast(format.value));
             var value: Abs = absolute;
             if (radix > max_abs_value) {
-                @ptrFromInt(*u8, next).* = @as(u8, '0') +
+                @as(*u8, @ptrFromInt(next)).* = @as(u8, '0') +
                     @intFromBool(format.value != 0);
                 next += 1;
             } else {
@@ -918,7 +918,7 @@ pub fn IntFormat(comptime spec: RenderSpec, comptime Int: type) type {
                 var len: u64 = 0;
                 while (len != count) : (value /= radix) {
                     len +%= 1;
-                    @ptrFromInt(*u8, next -% len).* =
+                    @as(*u8, @ptrFromInt(next -% len)).* =
                         builtin.fmt.toSymbol(Abs, value, radix);
                 }
             }
@@ -930,9 +930,9 @@ pub fn IntFormat(comptime spec: RenderSpec, comptime Int: type) type {
                 len +%= 1;
             }
             const absolute: Abs = if (format.value < 0)
-                1 +% ~@bitCast(Abs, format.value)
+                1 +% ~@as(Abs, @bitCast(format.value))
             else
-                @bitCast(Abs, format.value);
+                @as(Abs, @bitCast(format.value));
             return len +% builtin.fmt.length(Abs, absolute, radix);
         }
         pub usingnamespace GenericRenderFormat(Format);
@@ -1665,7 +1665,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                 cast_spec.options.default_field_values ==
                     spec.options.default_field_values,
             );
-            return @ptrCast(*const GenericTypeDescrFormat(cast_spec), type_descr).*;
+            return @as(*const GenericTypeDescrFormat(cast_spec), @ptrCast(type_descr)).*;
         }
         fn defaultFieldValue(
             comptime field_type: type,

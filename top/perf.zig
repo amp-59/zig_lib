@@ -11,7 +11,7 @@ pub const CPU = enum(u64) {
     self = 0,
     _,
     pub fn no(val: u32) CPU {
-        return @enumFromInt(CPU, val);
+        return @as(CPU, @enumFromInt(val));
     }
 };
 pub const Process = enum(usize) {
@@ -19,7 +19,7 @@ pub const Process = enum(usize) {
     self = 0,
     _,
     pub fn id(val: u32) Process {
-        return @enumFromInt(Process, val);
+        return @as(Process, @enumFromInt(val));
     }
 };
 pub const Event = extern struct {
@@ -334,7 +334,7 @@ pub const PerfEventSpec = struct {
 };
 pub fn eventOpen(comptime perf_spec: PerfEventSpec, event: *const Event, pid: Process, cpu: CPU, fd: u64, flags: Flags) sys.ErrorUnion(perf_spec.errors, u64) {
     if (meta.wrap(sys.call(.perf_event_open, perf_spec.errors, u64, .{
-        @intFromPtr(event), @intFromEnum(pid), @intFromEnum(cpu), fd, @bitCast(u8, flags),
+        @intFromPtr(event), @intFromEnum(pid), @intFromEnum(cpu), fd, @as(u8, @bitCast(flags)),
     }))) |ret| {
         return ret;
     } else |perf_event_open_error| {

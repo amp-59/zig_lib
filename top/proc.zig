@@ -276,10 +276,10 @@ pub const WaitSpec = struct {
         const val: isize = switch (id) {
             .ppid => 0,
             .any => -1,
-            .pid => |val| @intCast(isize, val),
-            .pgid => |val| @intCast(isize, val),
+            .pid => |val| @as(isize, @intCast(val)),
+            .pgid => |val| @as(isize, @intCast(val)),
         };
-        return @bitCast(usize, val);
+        return @as(usize, @bitCast(val));
     }
     fn flags(comptime spec: WaitSpec) Wait {
         var ret: Wait = .{ .val = 0 };
@@ -475,16 +475,16 @@ pub const Status = struct {
     }
 };
 pub fn getUserId() u16 {
-    return @truncate(u16, sys.call(.getuid, .{}, u64, .{}));
+    return @as(u16, @truncate(sys.call(.getuid, .{}, u64, .{})));
 }
 pub fn getEffectiveUserId() u16 {
-    return @truncate(u16, sys.call(.geteuid, .{}, u64, .{}));
+    return @as(u16, @truncate(sys.call(.geteuid, .{}, u64, .{})));
 }
 pub fn getGroupId() u16 {
-    return @truncate(u16, sys.call(.getgid, .{}, u64, .{}));
+    return @as(u16, @truncate(sys.call(.getgid, .{}, u64, .{})));
 }
 pub fn getEffectiveGroupId() u16 {
-    return @truncate(u16, sys.call(.getegid, .{}, u64, .{}));
+    return @as(u16, @truncate(sys.call(.getegid, .{}, u64, .{})));
 }
 pub fn waitPid(comptime spec: WaitSpec, id: WaitSpec.For) sys.ErrorUnion(spec.errors, Return) {
     const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
@@ -613,7 +613,7 @@ pub fn futexWakeOp(comptime futex_spec: FutexSpec, futex1: *u32, futex2: *u32, c
         debug.futexWakeOpAttempt(futex1, futex2, count1, count2, wake_op);
     }
     if (meta.wrap(sys.call(.futex, futex_spec.errors, u32, .{
-        @intFromPtr(futex1), 5, count1, count2, @intFromPtr(futex2), @bitCast(u32, wake_op),
+        @intFromPtr(futex1), 5, count1, count2, @intFromPtr(futex2), @as(u32, @bitCast(wake_op)),
     }))) |ret| {
         if (logging.Acquire) {
             debug.futexWakeOpNotice(futex1, futex2, count1, count2, wake_op, ret);
@@ -826,17 +826,17 @@ pub noinline fn callMain() noreturn {
             break :blk_0 .{};
         }
         if (main_type_info.Fn.params.len == 1) {
-            const args_len: u64 = @ptrFromInt(*u64, static.stack_addr).*;
+            const args_len: u64 = @as(*u64, @ptrFromInt(static.stack_addr)).*;
             const args_addr: u64 = static.stack_addr +% 8;
-            const args: [*][*:0]u8 = @ptrFromInt([*][*:0]u8, args_addr);
+            const args: [*][*:0]u8 = @as([*][*:0]u8, @ptrFromInt(args_addr));
             break :blk_0 .{args[0..args_len]};
         }
         if (main_type_info.Fn.params.len == 2) {
-            const args_len: u64 = @ptrFromInt(*u64, static.stack_addr).*;
+            const args_len: u64 = @as(*u64, @ptrFromInt(static.stack_addr)).*;
             const args_addr: u64 = static.stack_addr +% 8;
             const vars_addr: u64 = static.stack_addr +% 16 +% (args_len * 8);
-            const args: [*][*:0]u8 = @ptrFromInt([*][*:0]u8, args_addr);
-            const vars: [*][*:0]u8 = @ptrFromInt([*][*:0]u8, vars_addr);
+            const args: [*][*:0]u8 = @as([*][*:0]u8, @ptrFromInt(args_addr));
+            const vars: [*][*:0]u8 = @as([*][*:0]u8, @ptrFromInt(vars_addr));
             const vars_len: u64 = blk_1: {
                 var len: u64 = 0;
                 while (@intFromPtr(vars[len]) != 0) len += 1;
@@ -846,22 +846,22 @@ pub noinline fn callMain() noreturn {
         }
         if (main_type_info.Fn.params.len == 3) {
             const auxv_type: type = main_type_info.Fn.params[2].type orelse *const anyopaque;
-            const args_len: u64 = @ptrFromInt(*u64, static.stack_addr).*;
+            const args_len: u64 = @as(*u64, @ptrFromInt(static.stack_addr)).*;
             const args_addr: u64 = static.stack_addr +% 8;
             const vars_addr: u64 = args_addr +% 8 +% (args_len * 8);
-            const args: [*][*:0]u8 = @ptrFromInt([*][*:0]u8, args_addr);
-            const vars: [*][*:0]u8 = @ptrFromInt([*][*:0]u8, vars_addr);
+            const args: [*][*:0]u8 = @as([*][*:0]u8, @ptrFromInt(args_addr));
+            const vars: [*][*:0]u8 = @as([*][*:0]u8, @ptrFromInt(vars_addr));
             const vars_len: u64 = blk_1: {
                 var len: u64 = 0;
                 while (@intFromPtr(vars[len]) != 0) len += 1;
                 break :blk_1 len;
             };
             const auxv_addr: u64 = vars_addr +% 8 +% (vars_len * 8);
-            const auxv: auxv_type = @ptrFromInt(auxv_type, auxv_addr);
+            const auxv: auxv_type = @as(auxv_type, @ptrFromInt(auxv_addr));
             break :blk_0 .{ args[0..args_len], vars[0..vars_len], auxv };
         }
     };
-    if (@bitCast(u5, builtin.signal_handlers) != 0) {
+    if (@as(u5, @bitCast(builtin.signal_handlers)) != 0) {
         debug.enableExceptionHandlers();
     }
     if (main_return_type == void) {
@@ -877,7 +877,7 @@ pub noinline fn callMain() noreturn {
         if (@call(.auto, main, params)) {
             builtin.proc.exitNotice(0);
         } else |err| {
-            builtin.proc.exitError(err, @intCast(u8, @intFromError(err)));
+            builtin.proc.exitError(err, @as(u8, @intCast(@intFromError(err))));
         }
     }
     if (main_return_type_info == .ErrorUnion and
@@ -886,7 +886,7 @@ pub noinline fn callMain() noreturn {
         if (@call(.auto, builtin.root.main, params)) |rc| {
             builtin.proc.exitNotice(rc);
         } else |err| {
-            builtin.proc.exitError(err, @intCast(u8, @intFromError(err)));
+            builtin.proc.exitError(err, @as(u8, @intCast(@intFromError(err))));
         }
     }
     builtin.assert(main_return_type_info != .ErrorSet);
@@ -894,10 +894,10 @@ pub noinline fn callMain() noreturn {
 // If the return value is greater than word size or is a zig error union, this
 // internal call can never be inlined.
 noinline fn callErrorOrMediaReturnValueFunction(comptime Fn: type, result_addr: u64, call_addr: u64, args_addr: u64) void {
-    @ptrFromInt(**meta.Return(Fn), result_addr).*.* = @call(
+    @as(**meta.Return(Fn), @ptrFromInt(result_addr)).*.* = @call(
         .never_inline,
-        @ptrFromInt(**Fn, call_addr).*,
-        @ptrFromInt(*meta.Args(Fn), args_addr).*,
+        @as(**Fn, @ptrFromInt(call_addr)).*,
+        @as(*meta.Args(Fn), @ptrFromInt(args_addr)).*,
     );
 }
 pub fn callClone(comptime spec: CloneSpec, stack_addr: u64, stack_len: u64, result_ptr: anytype, comptime function: anytype, args: meta.Args(@TypeOf(function))) sys.ErrorUnion(spec.errors, spec.return_type) {
@@ -917,11 +917,11 @@ pub fn callClone(comptime spec: CloneSpec, stack_addr: u64, stack_len: u64, resu
     const ret_off: u64 = stack_len -% @sizeOf(u64);
     const call_off: u64 = ret_off -% @sizeOf(u64);
     const args_off: u64 = call_off -% @sizeOf(Args);
-    @ptrFromInt(**const Fn, stack_addr +% call_off).* = &function;
+    @as(**const Fn, @ptrFromInt(stack_addr +% call_off)).* = &function;
     if (@TypeOf(result_ptr) != void) {
-        @ptrFromInt(*u64, stack_addr +% ret_off).* = @intFromPtr(result_ptr);
+        @as(*u64, @ptrFromInt(stack_addr +% ret_off)).* = @intFromPtr(result_ptr);
     }
-    @ptrFromInt(*Args, stack_addr +% args_off).* = args;
+    @as(*Args, @ptrFromInt(stack_addr +% args_off)).* = args;
 
     const rc: i64 = asm volatile (
         \\syscall # clone3
@@ -946,15 +946,15 @@ pub fn callClone(comptime spec: CloneSpec, stack_addr: u64, stack_len: u64, resu
             if (@sizeOf(@TypeOf(result_ptr.*)) <= @sizeOf(usize) or
                 @typeInfo(@TypeOf(result_ptr.*)) != .ErrorUnion)
             {
-                @ptrFromInt(**meta.Return(Fn), tl_ret_addr).*.* =
-                    @call(.never_inline, @ptrFromInt(**Fn, tl_call_addr).*, @ptrFromInt(*meta.Args(Fn), tl_args_addr).*);
+                @as(**meta.Return(Fn), @ptrFromInt(tl_ret_addr)).*.* =
+                    @call(.never_inline, @as(**Fn, @ptrFromInt(tl_call_addr)).*, @as(*meta.Args(Fn), @ptrFromInt(tl_args_addr)).*);
             } else {
                 @call(.never_inline, callErrorOrMediaReturnValueFunction, .{
                     @TypeOf(function), tl_ret_addr, tl_call_addr, tl_args_addr,
                 });
             }
         } else {
-            @call(.never_inline, @ptrFromInt(**Fn, tl_call_addr).*, @ptrFromInt(*meta.Args(Fn), tl_args_addr).*);
+            @call(.never_inline, @as(**Fn, @ptrFromInt(tl_call_addr)).*, @as(*meta.Args(Fn), @ptrFromInt(tl_args_addr)).*);
         }
         asm volatile (
             \\movq  $60,    %%rax
@@ -973,27 +973,27 @@ pub fn callClone(comptime spec: CloneSpec, stack_addr: u64, stack_len: u64, resu
         return;
     }
     if (spec.return_type != noreturn) {
-        return @intCast(spec.return_type, rc);
+        return @as(spec.return_type, @intCast(rc));
     }
     unreachable;
 }
 pub fn getVSyscall(comptime Fn: type, vdso_addr: u64, symbol: [:0]const u8) ?Fn {
     if (programOffset(vdso_addr)) |offset| {
         if (sectionAddress(vdso_addr, symbol)) |addr| {
-            return @ptrFromInt(Fn, addr +% offset);
+            return @as(Fn, @ptrFromInt(addr +% offset));
         }
     }
     return null;
 }
 pub fn programOffset(ehdr_addr: u64) ?u64 {
-    const ehdr: *exe.Elf64_Ehdr = @ptrFromInt(*exe.Elf64_Ehdr, ehdr_addr);
+    const ehdr: *exe.Elf64_Ehdr = @as(*exe.Elf64_Ehdr, @ptrFromInt(ehdr_addr));
     var addr: u64 = ehdr_addr +% ehdr.e_phoff;
     var idx: u64 = 0;
     while (idx != ehdr.e_phnum) : ({
         idx +%= 1;
         addr +%= @sizeOf(exe.Elf64_Phdr);
     }) {
-        const phdr: *exe.Elf64_Phdr = @ptrFromInt(*exe.Elf64_Phdr, addr);
+        const phdr: *exe.Elf64_Phdr = @as(*exe.Elf64_Phdr, @ptrFromInt(addr));
         if (phdr.p_flags.check(.X)) {
             return phdr.p_offset -% phdr.p_paddr;
         }
@@ -1001,7 +1001,7 @@ pub fn programOffset(ehdr_addr: u64) ?u64 {
     return null;
 }
 pub fn sectionAddress(ehdr_addr: u64, symbol: [:0]const u8) ?u64 {
-    const ehdr: *exe.Elf64_Ehdr = @ptrFromInt(*exe.Elf64_Ehdr, ehdr_addr);
+    const ehdr: *exe.Elf64_Ehdr = @as(*exe.Elf64_Ehdr, @ptrFromInt(ehdr_addr));
     var symtab_addr: u64 = 0;
     var strtab_addr: u64 = 0;
     var symtab_ents: u64 = 0;
@@ -1012,12 +1012,12 @@ pub fn sectionAddress(ehdr_addr: u64, symbol: [:0]const u8) ?u64 {
         idx +%= 1;
         addr = addr +% @sizeOf(exe.Elf64_Shdr);
     }) {
-        const shdr: *exe.Elf64_Shdr = @ptrFromInt(*exe.Elf64_Shdr, addr);
+        const shdr: *exe.Elf64_Shdr = @as(*exe.Elf64_Shdr, @ptrFromInt(addr));
         if (shdr.sh_type == .DYNSYM) {
             dynsym_size = shdr.sh_size;
         }
         if (shdr.sh_type == .DYNAMIC) {
-            const dyn: [*]exe.Elf64_Dyn = @ptrFromInt([*]exe.Elf64_Dyn, ehdr_addr +% shdr.sh_offset);
+            const dyn: [*]exe.Elf64_Dyn = @as([*]exe.Elf64_Dyn, @ptrFromInt(ehdr_addr +% shdr.sh_offset));
             var dyn_idx: u64 = 0;
             while (true) : (dyn_idx +%= 1) {
                 if (dyn[dyn_idx].d_tag == .SYMTAB) {
@@ -1035,8 +1035,8 @@ pub fn sectionAddress(ehdr_addr: u64, symbol: [:0]const u8) ?u64 {
                     symtab_ents != 0 and
                     strtab_addr != 0)
                 {
-                    const strtab: [*:0]u8 = @ptrFromInt([*:0]u8, strtab_addr);
-                    const symtab: [*]exe.Elf64_Sym = @ptrFromInt([*]exe.Elf64_Sym, symtab_addr);
+                    const strtab: [*:0]u8 = @as([*:0]u8, @ptrFromInt(strtab_addr));
+                    const symtab: [*]exe.Elf64_Sym = @as([*]exe.Elf64_Sym, @ptrFromInt(symtab_addr));
                     var st_idx: u64 = 1;
                     lo: while (st_idx *% symtab_ents != dynsym_size) : (st_idx +%= 1) {
                         for (symbol, strtab + symtab[st_idx].st_name) |x, y| {
@@ -1115,9 +1115,9 @@ pub const PathIterator = struct {
 };
 pub fn auxiliaryValue(auxv: *const anyopaque, comptime tag: AuxiliaryVectorEntry) ?u64 {
     var addr: u64 = @intFromPtr(auxv);
-    while (@ptrFromInt(*u64, addr).* != 0) : (addr +%= 16) {
-        if (@intFromEnum(tag) == @ptrFromInt(*u64, addr).*) {
-            return @ptrFromInt(*u64, addr +% 8).*;
+    while (@as(*u64, @ptrFromInt(addr)).* != 0) : (addr +%= 16) {
+        if (@intFromEnum(tag) == @as(*u64, @ptrFromInt(addr)).*) {
+            return @as(*u64, @ptrFromInt(addr +% 8)).*;
         }
     }
     return null;
@@ -1181,7 +1181,7 @@ pub const debug = opaque {
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_wait_0_s, @tagName(id), ", pid=", pid_s, about_s, code_s, "\n" });
     }
     fn signalActionNotice(signo: sys.SignalCode, handler: SignalAction.Handler) void {
-        const handler_raw: usize = @bitCast(usize, handler);
+        const handler_raw: usize = @as(usize, @bitCast(handler));
         const handler_addr_s: []const u8 = builtin.fmt.ux64(handler_raw).readAll();
         const handler_set_s: []const u8 = if (handler_raw == 1) "ignore" else "default";
         const handler_s: []const u8 = if (handler_raw > 1) handler_addr_s else handler_set_s;
@@ -1281,7 +1281,7 @@ pub const debug = opaque {
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_wait_0_s, builtin.debug.about_error_s, @errorName(wait_error), "\n" });
     }
     fn signalActionError(rt_sigaction_error: anytype, signo: sys.SignalCode, handler: SignalAction.Handler) void {
-        const handler_raw: usize = @bitCast(usize, handler);
+        const handler_raw: usize = @as(usize, @bitCast(handler));
         const handler_addr_s: []const u8 = builtin.fmt.ux64(handler_raw).readAll();
         const handler_set_s: []const u8 = if (handler_raw == 1) "ignore" else "default";
         const handler_s: []const u8 = if (handler_raw > 1) handler_addr_s else handler_set_s;
@@ -1379,15 +1379,15 @@ pub const debug = opaque {
         updateExceptionHandlers(&act);
         const fault_addr_s: []const u8 = builtin.fmt.ux64(info.fields.fault.addr).readAll();
         var buf: [8192]u8 = undefined;
-        @ptrCast(*[3]u8, &buf).* = "SIG".*;
+        @as(*[3]u8, @ptrCast(&buf)).* = "SIG".*;
         var len: u64 = 3;
         mach.memcpy(buf[len..].ptr, @tagName(sig).ptr, @tagName(sig).len);
         len +%= @tagName(sig).len;
-        @ptrCast(*[12]u8, buf[len..].ptr).* = " at address ".*;
+        @as(*[12]u8, @ptrCast(buf[len..].ptr)).* = " at address ".*;
         len +%= 12;
         mach.memcpy(buf[len..].ptr, fault_addr_s.ptr, fault_addr_s.len);
         len +%= fault_addr_s.len;
-        @ptrCast(*[2]u8, buf[len..].ptr).* = ", ".*;
+        @as(*[2]u8, @ptrCast(buf[len..].ptr)).* = ", ".*;
         len +%= 2;
         len +%= builtin.debug.name(buf[len..]);
         builtin.debug.panicExtra(buf[0..len], ctx.?);
@@ -1411,31 +1411,31 @@ pub const debug = opaque {
         var fmt_ux64: fmt.Type.Ux64 = .{ .value = @intFromPtr(futex1) };
         var fmt_ud64: fmt.Type.Ud64 = .{ .value = futex1.* };
         var buf: [3072]u8 = undefined;
-        @ptrCast(*[16]u8, &buf).* = about_futex_wake_0_s.*;
+        @as(*[16]u8, @ptrCast(&buf)).* = about_futex_wake_0_s.*;
         var len: u64 = 16;
-        @ptrCast(*[8]u8, buf[len..].ptr).* = "futex1=@".*;
+        @as(*[8]u8, @ptrCast(buf[len..].ptr)).* = "futex1=@".*;
         len +%= 8;
         len +%= fmt_ux64.formatWriteBuf(buf[len..].ptr);
-        @ptrCast(*[8]u8, buf[len..].ptr).* = ", word1=".*;
+        @as(*[8]u8, @ptrCast(buf[len..].ptr)).* = ", word1=".*;
         len +%= 8;
         len +%= fmt_ud64.formatWriteBuf(buf[len..].ptr);
-        @ptrCast(*[7]u8, buf[len..].ptr).* = ", max1=".*;
+        @as(*[7]u8, @ptrCast(buf[len..].ptr)).* = ", max1=".*;
         len +%= 7;
         fmt_ud64.value = count1;
         len +%= fmt_ud64.formatWriteBuf(buf[len..].ptr);
-        @ptrCast(*[10]u8, buf[len..].ptr).* = ", futex2=@".*;
+        @as(*[10]u8, @ptrCast(buf[len..].ptr)).* = ", futex2=@".*;
         len +%= 10;
         fmt_ux64.value = @intFromPtr(futex2);
         len +%= fmt_ux64.formatWriteBuf(buf[len..].ptr);
-        @ptrCast(*[8]u8, buf[len..].ptr).* = ", word2=".*;
+        @as(*[8]u8, @ptrCast(buf[len..].ptr)).* = ", word2=".*;
         len +%= 8;
         fmt_ud64.value = futex2.*;
         len +%= fmt_ud64.formatWriteBuf(buf[len..].ptr);
-        @ptrCast(*[7]u8, buf[len..].ptr).* = ", max2=".*;
+        @as(*[7]u8, @ptrCast(buf[len..].ptr)).* = ", max2=".*;
         len +%= 7;
         fmt_ud64.value = count2;
         len +%= fmt_ud64.formatWriteBuf(buf[len..].ptr);
-        @ptrCast(*[6]u8, buf[len..].ptr).* = ", res=".*;
+        @as(*[6]u8, @ptrCast(buf[len..].ptr)).* = ", res=".*;
         len +%= 6;
         if (mb_ret) |ret| {
             fmt_ud64.value = ret;
@@ -1465,10 +1465,10 @@ pub fn GenericOptions(comptime Options: type) type {
             builtin.assert(Options.Map == @This());
         }
         fn tagCast(comptime child: type, comptime any: *const anyopaque) @Type(.EnumLiteral) {
-            return @ptrCast(*const @Type(.EnumLiteral), @alignCast(@alignOf(child), any)).*;
+            return @as(*align(@alignOf(child)) const @Type(.EnumLiteral), @ptrCast(any)).*;
         }
         fn anyCast(comptime child: type, comptime any: *const anyopaque) child {
-            return @ptrCast(*const child, @alignCast(@alignOf(child), any)).*;
+            return @as(*const child, @ptrCast(any)).*;
         }
         fn setAny(comptime child: type, comptime any: *const anyopaque) child {
             return switch (@typeInfo(child)) {
@@ -1648,7 +1648,7 @@ pub fn GenericOptions(comptime Options: type) type {
                 len +%= 1;
                 @memcpy(buf[len..].ptr, bad_opt);
                 len +%= bad_opt.len;
-                @ptrCast(*[2]u8, buf[len..].ptr).* = "'\n".*;
+                @as(*[2]u8, @ptrCast(buf[len..].ptr)).* = "'\n".*;
                 len +%= 2;
                 for (all_options) |option| {
                     const min: u64 = len;
@@ -1662,7 +1662,7 @@ pub fn GenericOptions(comptime Options: type) type {
                                 len +%= 1;
                                 @memcpy(buf[len..].ptr, short_switch);
                                 len +%= short_switch.len;
-                                @ptrCast(*[3]u8, buf[len..].ptr).* = "', ".*;
+                                @as(*[3]u8, @ptrCast(buf[len..].ptr)).* = "', ".*;
                                 len +%= 3;
                             }
                             buf[len] = '\'';

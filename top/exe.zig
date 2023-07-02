@@ -495,7 +495,7 @@ pub const Header = struct {
         };
         const machine = if (need_bswap) blk: {
             const value = @intFromEnum(hdr32.e_machine);
-            break :blk @enumFromInt(EM, @byteSwap(value));
+            break :blk @as(EM, @enumFromInt(@byteSwap(value)));
         } else hdr32.e_machine;
         return @as(Header, .{
             .endian = endian,
@@ -703,20 +703,20 @@ pub const Elf32_Rel = extern struct {
     r_offset: u32,
     r_info: u32,
     pub inline fn r_sym(self: @This()) u24 {
-        return @truncate(u24, self.r_info >> 8);
+        return @as(u24, @truncate(self.r_info >> 8));
     }
     pub inline fn r_type(self: @This()) u8 {
-        return @truncate(u8, self.r_info & 0xff);
+        return @as(u8, @truncate(self.r_info & 0xff));
     }
 };
 pub const Elf64_Rel = extern struct {
     r_offset: u64,
     r_info: u64,
     pub inline fn r_sym(self: @This()) u32 {
-        return @truncate(u32, self.r_info >> 32);
+        return @as(u32, @truncate(self.r_info >> 32));
     }
     pub inline fn r_type(self: @This()) u32 {
-        return @truncate(u32, self.r_info & 0xffffffff);
+        return @as(u32, @truncate(self.r_info & 0xffffffff));
     }
 };
 pub const Elf32_Rela = extern struct {
@@ -724,10 +724,10 @@ pub const Elf32_Rela = extern struct {
     r_info: u32,
     r_addend: i32,
     pub inline fn r_sym(self: @This()) u24 {
-        return @truncate(u24, self.r_info >> 8);
+        return @as(u24, @truncate(self.r_info >> 8));
     }
     pub inline fn r_type(self: @This()) u8 {
-        return @truncate(u8, self.r_info & 0xff);
+        return @as(u8, @truncate(self.r_info & 0xff));
     }
 };
 pub const Elf64_Rela = extern struct {
@@ -735,10 +735,10 @@ pub const Elf64_Rela = extern struct {
     r_info: u64,
     r_addend: i64,
     pub inline fn r_sym(self: @This()) u32 {
-        return @truncate(u32, self.r_info >> 32);
+        return @as(u32, @truncate(self.r_info >> 32));
     }
     pub inline fn r_type(self: @This()) u32 {
-        return @truncate(u32, self.r_info & 0xffffffff);
+        return @as(u32, @truncate(self.r_info & 0xffffffff));
     }
 };
 pub const Elf32_Dyn = extern struct {

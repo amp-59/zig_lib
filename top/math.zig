@@ -2,21 +2,21 @@ const mach = @import("./mach.zig");
 const meta = @import("./meta.zig");
 const builtin = @import("./builtin.zig");
 pub const nan_u16: u16 = @as(u16, 0x7C01);
-pub const nan_f16: f16 = @bitCast(f16, nan_u16);
+pub const nan_f16: f16 = @as(f16, @bitCast(nan_u16));
 pub const qnan_u16: u16 = @as(u16, 0x7E00);
-pub const qnan_f16: f16 = @bitCast(f16, qnan_u16);
+pub const qnan_f16: f16 = @as(f16, @bitCast(qnan_u16));
 pub const nan_u32: u32 = @as(u32, 0x7F800001);
-pub const nan_f32: f32 = @bitCast(f32, nan_u32);
+pub const nan_f32: f32 = @as(f32, @bitCast(nan_u32));
 pub const qnan_u32: u32 = @as(u32, 0x7FC00000);
-pub const qnan_f32: f32 = @bitCast(f32, qnan_u32);
+pub const qnan_f32: f32 = @as(f32, @bitCast(qnan_u32));
 pub const nan_u64: u64 = @as(u64, 0x7FF << 52) | 1;
-pub const nan_f64: f64 = @bitCast(f64, nan_u64);
+pub const nan_f64: f64 = @as(f64, @bitCast(nan_u64));
 pub const qnan_u64: u64 = @as(u64, 0x7ff8000000000000);
-pub const qnan_f64: f64 = @bitCast(f64, qnan_u64);
+pub const qnan_f64: f64 = @as(f64, @bitCast(qnan_u64));
 pub const nan_u128: u128 = @as(u128, 0x7fff0000000000000000000000000001);
-pub const nan_f128: f128 = @bitCast(f128, nan_u128);
+pub const nan_f128: f128 = @as(f128, @bitCast(nan_u128));
 pub const qnan_u128: u128 = @as(u128, 0x7fff8000000000000000000000000000);
-pub const qnan_f128: f128 = @bitCast(f128, qnan_u128);
+pub const qnan_f128: f128 = @as(f128, @bitCast(qnan_u128));
 pub const Order = enum {
     lt,
     eq,
@@ -54,9 +54,9 @@ pub inline fn absoluteVal(value: anytype) Absolute(@TypeOf(value)) {
         return -value;
     }
     if (Int != Abs and value < 0) {
-        return @bitCast(Abs, -value);
+        return @as(Abs, @bitCast(-value));
     }
-    return @intCast(Abs, value);
+    return @as(Abs, @intCast(value));
 }
 /// Returns the sum of arg1 and b. Returns an error on overflow.
 pub fn mul(comptime T: type, arg1: T, arg2: T) (error{Overflow}!T) {
@@ -100,7 +100,7 @@ pub fn rotr(comptime T: type, value: T, rot_amt: anytype) T {
             return 0;
         }
         builtin.assert(@typeInfo(C).Int.signedness != .signed);
-        const shift_amt = @intCast(builtin.ShiftAmount(C), @mod(rot_amt, @typeInfo(C).Int.bits));
+        const shift_amt = @as(builtin.ShiftAmount(C), @intCast(@mod(rot_amt, @typeInfo(C).Int.bits)));
         return (value >> @splat(len, shift_amt)) | (value << @splat(len, 1 +% ~shift_amt));
     } else {
         builtin.assert(@typeInfo(T).Int.signedness != .signed);
@@ -110,7 +110,7 @@ pub fn rotr(comptime T: type, value: T, rot_amt: anytype) T {
             return 0;
         }
         if (@popCount(bit_size_of) == 1) {
-            const shift_amt: ShiftAmount = @intCast(ShiftAmount, @mod(rot_amt, bit_size_of));
+            const shift_amt: ShiftAmount = @as(ShiftAmount, @intCast(@mod(rot_amt, bit_size_of)));
             return value >> shift_amt | value << (1 +% ~shift_amt);
         } else {
             const shift_amt: RotateAmount = @mod(rot_amt, bit_size_of);
@@ -127,7 +127,7 @@ pub fn rotl(comptime T: type, value: T, rot_amt: anytype) T {
             return 0;
         }
         builtin.assert(@typeInfo(C).Int.signedness != .signed);
-        const shift_amt = @intCast(builtin.ShiftAmount(C), @mod(rot_amt, @typeInfo(C).Int.bits));
+        const shift_amt = @as(builtin.ShiftAmount(C), @intCast(@mod(rot_amt, @typeInfo(C).Int.bits)));
         return (value << @splat(len, shift_amt)) | (value >> @splat(len, 1 +% ~shift_amt));
     } else {
         builtin.assert(@typeInfo(T).Int.signedness != .signed);
@@ -137,7 +137,7 @@ pub fn rotl(comptime T: type, value: T, rot_amt: anytype) T {
             return 0;
         }
         if (@popCount(bit_size_of) == 1) {
-            const shift_amt: ShiftAmount = @intCast(ShiftAmount, @mod(rot_amt, bit_size_of));
+            const shift_amt: ShiftAmount = @as(ShiftAmount, @intCast(@mod(rot_amt, bit_size_of)));
             return value << shift_amt | value >> 1 +% ~shift_amt;
         } else {
             const shift_amt: RotateAmount = @mod(rot_amt, bit_size_of);
@@ -155,12 +155,12 @@ pub fn shl(comptime T: type, value: T, shift_amt: anytype) T {
             if (abs_shift_amt >= @typeInfo(C).Int.bits) {
                 return @splat(len, @as(C, 0));
             }
-            break :blk @splat(len, @intCast(builtin.ShiftAmount(C), abs_shift_amt));
+            break :blk @splat(len, @as(builtin.ShiftAmount(C), @intCast(abs_shift_amt)));
         } else {
             if (abs_shift_amt >= @typeInfo(T).Int.bits) {
                 return 0;
             }
-            break :blk @intCast(builtin.ShiftAmount(T), abs_shift_amt);
+            break :blk @as(builtin.ShiftAmount(T), @intCast(abs_shift_amt));
         }
     };
     if (ShiftAmount == comptime_int or
@@ -182,12 +182,12 @@ pub fn shr(comptime T: type, a: T, shift_amt: anytype) T {
             if (abs_shift_amt >= @typeInfo(C).Int.bits) {
                 return @splat(len, @as(C, 0));
             }
-            break :blk @splat(len, @intCast(builtin.ShiftAmount(C), abs_shift_amt));
+            break :blk @splat(len, @as(builtin.ShiftAmount(C), @intCast(abs_shift_amt)));
         } else {
             if (abs_shift_amt >= @typeInfo(T).Int.bits) {
                 return 0;
             }
-            break :blk @intCast(builtin.ShiftAmount(T), abs_shift_amt);
+            break :blk @as(builtin.ShiftAmount(T), @intCast(abs_shift_amt));
         }
     };
     if (ShiftAmount == comptime_int or
@@ -200,7 +200,7 @@ pub fn shr(comptime T: type, a: T, shift_amt: anytype) T {
     return a >> casted_shift_amt;
 }
 pub fn log2(comptime T: type, x: T) builtin.ShiftAmount(T) {
-    return @intCast(builtin.ShiftAmount(T), @typeInfo(T).Int.bits - 1 - @clz(x));
+    return @as(builtin.ShiftAmount(T), @intCast(@typeInfo(T).Int.bits - 1 - @clz(x)));
 }
 pub const float = struct {
     pub fn Mantissa(comptime T: type) type {
@@ -220,7 +220,7 @@ pub const float = struct {
             .signedness = .unsigned,
             .bits = @bitSizeOf(T),
         } });
-        return @bitCast(T, (@as(TBits, exponent + exponentMax(T)) << mantissaBits(T)) | @as(TBits, mantissa));
+        return @as(T, @bitCast((@as(TBits, exponent + exponentMax(T)) << mantissaBits(T)) | @as(TBits, mantissa)));
     }
     /// Returns the number of bits in the exponent of floating point type T.
     pub fn exponentBits(comptime T: type) comptime_int {
@@ -304,7 +304,7 @@ pub const float = struct {
             .bits = @typeInfo(T).Float.bits,
         } });
         const remove_sign = ~@as(TBits, 0) >> 1;
-        return @bitCast(TBits, x) & remove_sign == @bitCast(TBits, inf(T));
+        return @as(TBits, @bitCast(x)) & remove_sign == @as(TBits, @bitCast(inf(T)));
     }
     pub inline fn isPositiveInf(x: anytype) bool {
         return x == inf(@TypeOf(x));

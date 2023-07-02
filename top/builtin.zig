@@ -227,7 +227,7 @@ pub fn popcnt(comptime T: type, value: T) BitCount(T) {
     return @popCount(value);
 }
 pub fn mod(comptime T: type, numerator: anytype, denominator: anytype) T {
-    return intCast(T, @mod(numerator, denominator));
+    return intCast(@mod(numerator, denominator));
 }
 pub fn rem(comptime T: type, numerator: anytype, denominator: anytype) T {
     return intCast(T, @rem(numerator, denominator));
@@ -238,7 +238,7 @@ pub fn int(comptime T: type, value: bool) T {
 pub fn int2a(comptime T: type, value1: bool, value2: bool) T {
     const ret: u1 = @intFromBool(value1) & @intFromBool(value2);
     if (T == bool) {
-        return @bitCast(bool, ret);
+        return @bitCast(ret);
     } else {
         return intCast(T, ret);
     }
@@ -246,7 +246,7 @@ pub fn int2a(comptime T: type, value1: bool, value2: bool) T {
 pub fn int2v(comptime T: type, value1: bool, value2: bool) T {
     const ret: u1 = @intFromBool(value1) | @intFromBool(value2);
     if (T == bool) {
-        return @bitCast(bool, ret);
+        return @bitCast(ret);
     } else {
         return intCast(T, ret);
     }
@@ -254,7 +254,7 @@ pub fn int2v(comptime T: type, value1: bool, value2: bool) T {
 pub fn int3a(comptime T: type, value1: bool, value2: bool, value3: bool) T {
     const ret: u1 = @intFromBool(value1) & @intFromBool(value2) & @intFromBool(value3);
     if (T == bool) {
-        return @bitCast(bool, ret);
+        return @as(bool, @bitCast(ret));
     } else {
         return intCast(T, ret);
     }
@@ -262,7 +262,7 @@ pub fn int3a(comptime T: type, value1: bool, value2: bool, value3: bool) T {
 pub fn int3v(comptime T: type, value1: bool, value2: bool, value3: bool) T {
     const ret: u1 = @intFromBool(value1) | @intFromBool(value2) | @intFromBool(value3);
     if (T == bool) {
-        return @bitCast(bool, ret);
+        return @as(bool, @bitCast(ret));
     } else {
         return intCast(T, ret);
     }
@@ -618,8 +618,8 @@ pub fn min(comptime T: type, arg1: T, arg2: T) T {
         return @min(arg1, arg2);
     } else {
         const U: type = @Type(.{ .Int = .{ .bits = @bitSizeOf(T), .signedness = .unsigned } });
-        if (@ptrCast(*const U, &arg1).* <
-            @ptrCast(*const U, &arg2).*)
+        if (@as(*const U, @ptrCast(&arg1)).* <
+            @as(*const U, @ptrCast(&arg2)).*)
         {
             return arg1;
         } else {
@@ -635,8 +635,8 @@ pub fn max(comptime T: type, arg1: T, arg2: T) T {
         return @max(arg1, arg2);
     } else {
         const U: type = @Type(.{ .Int = .{ .bits = @bitSizeOf(T), .signedness = .unsigned } });
-        if (@ptrCast(*const U, &arg1).* >
-            @ptrCast(*const U, &arg2).*)
+        if (@as(*const U, @ptrCast(&arg1)).* >
+            @as(*const U, @ptrCast(&arg2)).*)
         {
             return arg1;
         } else {
@@ -661,18 +661,18 @@ pub fn isComptime() bool {
 pub inline fn ptrCast(comptime T: type, any: anytype) T {
     @setRuntimeSafety(false);
     if (@typeInfo(@TypeOf(any)).Pointer.size == .Slice) {
-        return @ptrCast(T, @alignCast(@typeInfo(T).Pointer.alignment, @constCast(any.ptr)));
+        return @as(T, @ptrCast(@constCast(any.ptr)));
     } else {
-        return @ptrCast(T, @alignCast(@typeInfo(T).Pointer.alignment, @constCast(any)));
+        return @as(T, @ptrCast(@constCast(any)));
     }
 }
 pub inline fn zero(comptime T: type) T {
     const data: [@sizeOf(T)]u8 align(@max(1, @alignOf(T))) = .{@as(u8, 0)} ** @sizeOf(T);
-    comptime return @ptrCast(*const T, &data).*;
+    comptime return @as(*const T, @ptrCast(&data)).*;
 }
 pub inline fn all(comptime T: type) T {
     const data: [@sizeOf(T)]u8 align(@max(1, @alignOf(T))) = .{~@as(u8, 0)} ** @sizeOf(T);
-    return @ptrCast(*const T, &data).*;
+    return @as(*const T, @ptrCast(&data)).*;
 }
 pub inline fn addr(any: anytype) usize {
     if (@typeInfo(@TypeOf(any)).Pointer.size == .Slice) {
@@ -693,7 +693,7 @@ pub inline fn equ(comptime T: type, dst: *T, src: T) void {
     dst.* = src;
 }
 pub inline fn arrcpy(buf: [*]u8, comptime any: anytype) u64 {
-    @ptrCast(*@TypeOf(any), buf).* = any;
+    @as(*@TypeOf(any), @ptrCast(buf)).* = any;
     return any.len;
 }
 pub inline fn memcpy(buf: [*]u8, slice: []const u8) void {
@@ -735,7 +735,7 @@ fn testEqualPointer(comptime T: type, comptime pointer_info: Type.Pointer, arg1:
 }
 fn testIdenticalStruct(comptime T: type, comptime struct_info: Type.Struct, arg1: T, arg2: T) bool {
     if (struct_info.layout == .Packed) {
-        return @bitCast(struct_info.backing_integer.?, arg1) == @bitCast(struct_info.backing_integer.?, arg2);
+        return @as(struct_info.backing_integer.?, @bitCast(arg1)) == @as(struct_info.backing_integer.?, @bitCast(arg2));
     }
     return testEqualStruct(T, struct_info, arg1, arg2);
 }
@@ -754,8 +754,8 @@ fn testEqualStruct(comptime T: type, comptime struct_info: Type.Struct, arg1: T,
 fn testIdenticalUnion(comptime T: type, comptime union_info: Type.Union, arg1: T, arg2: T) bool {
     return testEqual(union_info.tag_type.?, arg1, arg2) and
         mach.testEqualMany8(
-        @ptrCast(*const [@sizeOf(T)]u8, &arg1),
-        @ptrCast(*const [@sizeOf(T)]u8, &arg2),
+        @as(*const [@sizeOf(T)]u8, @ptrCast(&arg1)),
+        @as(*const [@sizeOf(T)]u8, @ptrCast(&arg2)),
     );
 }
 fn testEqualUnion(comptime T: type, comptime union_info: Type.Union, arg1: T, arg2: T) bool {
@@ -1116,7 +1116,7 @@ pub fn expectAbove(comptime T: type, arg1: T, arg2: T) Unexpected!void {
     }
 }
 pub fn intToPtr(comptime P: type, address: u64) P {
-    return @ptrFromInt(P, address);
+    return @as(P, @ptrFromInt(address));
 }
 pub inline fn intCast(comptime T: type, value: anytype) T {
     @setRuntimeSafety(false);
@@ -1127,7 +1127,7 @@ pub inline fn intCast(comptime T: type, value: anytype) T {
     if (runtime_assertions and value > ~@as(T, 0)) {
         debug.intCastTruncatedBitsFault(T, U, value, @returnAddress());
     }
-    return @truncate(T, value);
+    return @as(T, @truncate(value));
 }
 pub const static = struct {
     pub fn assert(comptime b: bool) void {
@@ -1586,7 +1586,7 @@ pub const debug = struct {
               [_] "{rdx}" (buf.len), // message buf len
             : "rcx", "r11", "memory"
         );
-        return if (rc < 0) ~@as(u64, 0) else @intCast(u64, rc);
+        return if (rc < 0) ~@as(u64, 0) else @as(u64, @intCast(rc));
     }
     pub inline fn logSuccess(buf: []const u8) void {
         if (logging_general.Success) write(buf);
@@ -1648,9 +1648,9 @@ pub const debug = struct {
     pub noinline fn panicExtra(msg: []const u8, ctx_ptr: *const anyopaque) noreturn {
         @setCold(true);
         @setRuntimeSafety(false);
-        const regs: mach.RegisterState = @ptrFromInt(
+        const regs: mach.RegisterState = @as(
             *mach.RegisterState,
-            @intFromPtr(ctx_ptr) +% mach.RegisterState.offset,
+            @ptrFromInt(@intFromPtr(ctx_ptr) +% mach.RegisterState.offset),
         ).*;
         if (want_stack_traces and trace.Signal) {
             printStackTrace(&trace, regs.rip, regs.rbp);
@@ -1666,26 +1666,26 @@ pub const debug = struct {
         var buf: [1024]u8 = undefined;
         var len: u64 = 0;
         const idx_s: []const u8 = fmt.ud64(idx).readAll();
-        @ptrCast(*[debug.about_fault_p0_s.len]u8, &buf).* = debug.about_fault_p0_s.*;
+        @as(*[debug.about_fault_p0_s.len]u8, @ptrCast(&buf)).* = debug.about_fault_p0_s.*;
         len +%= debug.about_fault_p0_s.len;
         if (max_len == 0) {
-            @ptrCast(*[10]u8, buf[len..].ptr).* = "indexing (".*;
+            @as(*[10]u8, @ptrCast(buf[len..].ptr)).* = "indexing (".*;
             len +%= 10;
             mach.memcpy(buf[len..].ptr, idx_s.ptr, idx_s.len);
             len +%= idx_s.len;
         } else {
-            @ptrCast(*[6]u8, buf[len..].ptr).* = "index ".*;
+            @as(*[6]u8, @ptrCast(buf[len..].ptr)).* = "index ".*;
             len +%= 6;
             mach.memcpy(buf[len..].ptr, idx_s.ptr, idx_s.len);
             len +%= idx_s.len;
         }
         mach.memcpy(buf[len..].ptr, idx_s.ptr, idx_s.len);
         if (max_len == 0) {
-            @ptrCast(*[18]u8, buf[len..].ptr).* = ") into empty array".*;
+            @as(*[18]u8, @ptrCast(buf[len..].ptr)).* = ") into empty array".*;
             len +%= 18;
         } else {
             const max_len_s: []const u8 = fmt.ud64(max_len -% 1).readAll();
-            @ptrCast(*[15]u8, buf[len..].ptr).* = " above maximum ".*;
+            @as(*[15]u8, @ptrCast(buf[len..].ptr)).* = " above maximum ".*;
             len +%= 15;
             mach.memcpy(buf[len..].ptr, max_len_s.ptr, max_len_s.len);
             len +%= max_len_s.len;
@@ -1916,7 +1916,7 @@ pub const parse = struct {
         idx +%= @intFromBool(str[idx] == '0');
         idx +%= @intFromBool(str[idx] == 'b');
         while (idx != str.len) : (idx +%= 1) {
-            value +%= @intCast(i8, fromSymbol(str[idx], 2)) * (sig_fig_list[str.len -% idx -% 1] +% 1);
+            value +%= @as(i8, @intCast(fromSymbol(str[idx], 2))) * (sig_fig_list[str.len -% idx -% 1] +% 1);
         }
         return if (str[0] == '-') -value else value;
     }
@@ -1929,7 +1929,7 @@ pub const parse = struct {
         idx +%= @intFromBool(str[idx] == '0');
         idx +%= @intFromBool(str[idx] == 'o');
         while (idx != str.len) : (idx +%= 1) {
-            value +%= @intCast(i8, fromSymbol(str[idx], 8)) * (sig_fig_list[str.len -% idx -% 1] +% 1);
+            value +%= @as(i8, @intCast(fromSymbol(str[idx], 8))) * (sig_fig_list[str.len -% idx -% 1] +% 1);
         }
         return if (str[0] == '-') -value else value;
     }
@@ -1940,7 +1940,7 @@ pub const parse = struct {
         var value: T = 0;
         idx +%= @intFromBool(str[idx] == '-');
         while (idx != str.len) : (idx +%= 1) {
-            value +%= @intCast(i8, fromSymbol(str[idx], 10)) * (sig_fig_list[str.len -% idx -% 1] +% 1);
+            value +%= @as(i8, @intCast(fromSymbol(str[idx], 10))) * (sig_fig_list[str.len -% idx -% 1] +% 1);
         }
         return if (str[0] == '-') -value else value;
     }
@@ -1953,7 +1953,7 @@ pub const parse = struct {
         idx +%= @intFromBool(str[idx] == '0');
         idx +%= @intFromBool(str[idx] == 'x');
         while (idx != str.len) : (idx +%= 1) {
-            value +%= @intCast(i8, fromSymbol(str[idx], 16)) * (sig_fig_list[str.len -% idx -% 1] +% 1);
+            value +%= @as(i8, @intCast(fromSymbol(str[idx], 16))) * (sig_fig_list[str.len -% idx -% 1] +% 1);
         }
         return if (str[0] == '-') -value else value;
     }
@@ -2156,7 +2156,7 @@ pub const fmt = struct {
         if (@bitSizeOf(T) < 8) {
             return toSymbol(u8, value, radix);
         }
-        const result: u8 = @intCast(u8, @rem(value, radix));
+        const result: u8 = @as(u8, @intCast(@rem(value, radix)));
         const dx = .{
             .d = @as(u8, '9' -% 9),
             .x = @as(u8, 'f' -% 15),
@@ -2188,23 +2188,23 @@ pub const fmt = struct {
                         ret.buf[ret.len] = '0';
                     }
                     ret.len -%= 2;
-                    @ptrCast(*[2]u8, &ret.buf[ret.len]).* = "0b".*;
+                    @as(*[2]u8, @ptrCast(&ret.buf[ret.len])).* = "0b".*;
                     return ret;
                 }
                 var abs_value: Abs = if (Int != Abs and value < 0)
-                    @intCast(Abs, -value)
+                    @as(Abs, @intCast(-value))
                 else
-                    @intCast(Abs, value);
+                    @as(Abs, @intCast(value));
                 while (abs_value != 0) : (abs_value /= 2) {
                     ret.len -%= 1;
-                    ret.buf[ret.len] = '0' +% @intCast(u8, @rem(abs_value, 2));
+                    ret.buf[ret.len] = '0' +% @as(u8, @intCast(@rem(abs_value, 2)));
                 }
                 while (ret.len != 3) {
                     ret.len -%= 1;
                     ret.buf[ret.len] = '0';
                 }
                 ret.len -%= 2;
-                @ptrCast(*[2]u8, ret.buf[ret.len..].ptr).* = "0b".*;
+                @as(*[2]u8, @ptrCast(ret.buf[ret.len..].ptr)).* = "0b".*;
                 if (value < 0) {
                     ret.len -%= 1;
                     ret.buf[ret.len] = '-';
@@ -2217,19 +2217,19 @@ pub const fmt = struct {
                 ret.len = ret.buf.len;
                 if (value == 0) {
                     ret.len -%= 3;
-                    @ptrCast(*[3]u8, ret.buf[ret.len..].ptr).* = "0o0".*;
+                    @as(*[3]u8, @ptrCast(ret.buf[ret.len..].ptr)).* = "0o0".*;
                     return ret;
                 }
                 var abs_value: Abs = if (Int != Abs and value < 0)
-                    @intCast(Abs, -value)
+                    @as(Abs, @intCast(-value))
                 else
-                    @intCast(Abs, value);
+                    @as(Abs, @intCast(value));
                 while (abs_value != 0) : (abs_value /= 8) {
                     ret.len -%= 1;
-                    ret.buf[ret.len] = '0' +% @intCast(u8, @rem(abs_value, 8));
+                    ret.buf[ret.len] = '0' +% @as(u8, @intCast(@rem(abs_value, 8)));
                 }
                 ret.len -%= 2;
-                @ptrCast(*[2]u8, ret.buf[ret.len..].ptr).* = "0o".*;
+                @as(*[2]u8, @ptrCast(ret.buf[ret.len..].ptr)).* = "0o".*;
                 if (value < 0) {
                     ret.len -%= 1;
                     ret.buf[ret.len] = '-';
@@ -2246,12 +2246,12 @@ pub const fmt = struct {
                     return ret;
                 }
                 var abs_value: Abs = if (Int != Abs and value < 0)
-                    @intCast(Abs, -value)
+                    @as(Abs, @intCast(-value))
                 else
-                    @intCast(Abs, value);
+                    @as(Abs, @intCast(value));
                 while (abs_value != 0) : (abs_value /= 10) {
                     ret.len -%= 1;
-                    ret.buf[ret.len] = '0' +% @intCast(u8, @rem(abs_value, 10));
+                    ret.buf[ret.len] = '0' +% @as(u8, @intCast(@rem(abs_value, 10)));
                 }
                 if (value < 0) {
                     ret.len -%= 1;
@@ -2265,19 +2265,19 @@ pub const fmt = struct {
                 ret.len = ret.buf.len;
                 if (value == 0) {
                     ret.len -%= 3;
-                    @ptrCast(*[3]u8, ret.buf[ret.len..].ptr).* = "0x0".*;
+                    @as(*[3]u8, @ptrCast(ret.buf[ret.len..].ptr)).* = "0x0".*;
                     return ret;
                 }
                 var abs_value: Abs = if (Int != Abs and value < 0)
-                    @bitCast(Abs, -value)
+                    @as(Abs, @bitCast(-value))
                 else
-                    @intCast(Abs, value);
+                    @as(Abs, @intCast(value));
                 while (abs_value != 0) : (abs_value /= 16) {
                     ret.len -%= 1;
                     ret.buf[ret.len] = toSymbol(Abs, abs_value, 16);
                 }
                 ret.len -%= 2;
-                @ptrCast(*[2]u8, ret.buf[ret.len..].ptr).* = "0x".*;
+                @as(*[2]u8, @ptrCast(ret.buf[ret.len..].ptr)).* = "0x".*;
                 if (value < 0) {
                     ret.len -%= 1;
                     ret.buf[ret.len] = '-';
@@ -3060,7 +3060,7 @@ pub fn loggingTypes() []const type {
     var bits: u6 = 0;
     while (true) : (bits +%= 1) {
         var fields: @TypeOf(@typeInfo(Logging.Default).Struct.fields) = &.{};
-        const logging: Logging.Default = @bitCast(Logging.Default, bits);
+        const logging: Logging.Default = @as(Logging.Default, @bitCast(bits));
         inline for (@typeInfo(Logging.Default).Struct.fields) |field| {
             if (@field(logging, field.name)) {
                 fields = fields ++ .{field};
@@ -3191,9 +3191,9 @@ pub const Version = struct {
             return error.InvalidVersion;
         }
         return Version{
-            .major = @intCast(u32, major_val),
-            .minor = @intCast(u32, minor_val),
-            .patch = @intCast(u32, patch_val),
+            .major = @as(u32, @intCast(major_val)),
+            .minor = @as(u32, @intCast(minor_val)),
+            .patch = @as(u32, @intCast(patch_val)),
         };
     }
 };
@@ -4311,7 +4311,7 @@ pub const zig = struct {
                     else => return 1,
                 };
                 if (itr.buf_pos +% len > itr.buf.len) {
-                    return @intCast(u8, itr.buf.len -% itr.buf_pos);
+                    return @as(u8, @intCast(itr.buf.len -% itr.buf_pos));
                 }
                 const bytes: []const u8 = itr.buf[itr.buf_pos .. itr.buf_pos +% len];
                 if (len == 2) {
@@ -4541,7 +4541,7 @@ fn indexOfSentinel(any: anytype) usize {
         @compileError(@typeName(T));
     }
     const sentinel: type_info.Pointer.child =
-        @ptrCast(*const type_info.Pointer.child, type_info.Pointer.sentinel.?).*;
+        @as(*const type_info.Pointer.child, @ptrCast(type_info.Pointer.sentinel.?)).*;
     var idx: usize = 0;
     while (any[idx] != sentinel) idx +%= 1;
     return idx;

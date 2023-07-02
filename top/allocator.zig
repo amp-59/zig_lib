@@ -590,7 +590,7 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
             const s_ab_addr: u64 = try meta.wrap(
                 allocator.allocateInternal(@sizeOf(s_child), @alignOf(s_child)),
             );
-            const ret: *s_child = @ptrFromInt(*s_child, s_ab_addr);
+            const ret: *s_child = @ptrFromInt(s_ab_addr);
             showCreate(s_child, ret);
             return ret;
         }
@@ -600,7 +600,8 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
             const s_ab_addr: u64 = try meta.wrap(
                 allocator.allocateInternal(@sizeOf(s_child) *% count, @alignOf(s_child)),
             );
-            const ret: []s_child = @ptrFromInt([*]s_child, s_ab_addr)[0..count];
+            const ptr: [*]s_child = @ptrFromInt(s_ab_addr);
+            const ret: []s_child = ptr[0..count];
             showAllocate(s_child, ret, null);
             return ret;
         }
@@ -610,7 +611,8 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
             const s_ab_addr: u64 = try meta.wrap(
                 allocator.reallocateInternal(@intFromPtr(buf.ptr), buf.len *% @sizeOf(s_child), count *% @sizeOf(s_child), @alignOf(s_child)),
             );
-            const ret: []s_child = @ptrFromInt([*]s_child, s_ab_addr)[0..count];
+            const ptr: [*]s_child = @ptrFromInt(s_ab_addr);
+            const ret: []s_child = ptr[0..count];
             showReallocate(s_child, buf, ret, null);
             return ret;
         }
@@ -618,15 +620,16 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
             @setRuntimeSafety(false);
             defer Graphics.showWithReference(allocator, @src());
             const s_ab_addr: u64 = allocator.allocateInternal(@sizeOf(s_child), s_alignment);
-            const ret: *align(s_alignment) s_child = @ptrFromInt(*align(s_alignment) s_child, s_ab_addr);
-            showCreate(s_child, ret);
-            return ret;
+            const ptr: *align(s_alignment) s_child = @ptrFromInt(s_ab_addr);
+            showCreate(s_child, ptr);
+            return ptr;
         }
         pub inline fn allocateAligned(allocator: *Allocator, comptime s_child: type, count: u64, comptime s_alignment: u64) []align(s_alignment) s_child {
             @setRuntimeSafety(false);
             defer Graphics.showWithReference(allocator, @src());
             const s_ab_addr: u64 = allocator.allocateInternal(@sizeOf(s_child) *% count, s_alignment);
-            const ret: []align(s_alignment) s_child = @ptrFromInt([*]align(s_alignment) s_child, s_ab_addr)[0..count];
+            const ptr: [*]align(s_alignment) s_child = @ptrFromInt(s_ab_addr);
+            const ret: []align(s_alignment) s_child = ptr[0..count];
             showAllocate(s_child, ret, null);
             return ret;
         }
@@ -645,7 +648,7 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
             return (value +% mask) & ~mask;
         }
         inline fn copy(dest: u64, src: u64, len: u64) void {
-            mach.memcpy(@ptrFromInt([*]u8, dest), @ptrFromInt([*]const u8, src), len);
+            mach.memcpy(@as([*]u8, @ptrFromInt(dest)), @as([*]const u8, @ptrFromInt(src)), len);
         }
         pub const allocateRaw = allocateInternal;
         pub const reallocateRaw = reallocateInternal;
@@ -1010,9 +1013,9 @@ const Branches = struct {
     } = .{},
     fn sumBranches(branches: Branches, comptime field_name: []const u8) u64 {
         var sum: u64 = 0;
-        for (@bitCast(
+        for (@as(
             [@divExact(@sizeOf(@TypeOf(@field(branches, field_name))), 8)]u64,
-            @field(branches, field_name),
+            @bitCast(@field(branches, field_name)),
         )) |count| sum +%= count;
         return sum;
     }

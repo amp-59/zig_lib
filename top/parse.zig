@@ -23,7 +23,7 @@ pub fn readLEB128(comptime T: type, bytes: []const u8) !extern struct { T, u8 } 
             }
             value |= ov[0];
             if (byte & 0x80 == 0) {
-                return .{ if (T == Int) value else @enumFromInt(T, value), idx };
+                return .{ if (T == Int) value else @as(T, @enumFromInt(value)), idx };
             }
         }
         return error.Overflow;
@@ -36,21 +36,21 @@ pub fn readLEB128(comptime T: type, bytes: []const u8) !extern struct { T, u8 } 
         var value: Abs = 0;
         while (idx != max_idx) {
             const byte: u8 = bytes[idx];
-            const ored: i8 = @bitCast(i8, byte | 0x80);
+            const ored: i8 = @as(i8, @bitCast(byte | 0x80));
             const shift_amt: Shift = idx *% 7;
             idx +%= 1;
             const ov: struct { Abs, u1 } = @shlWithOverflow(@as(Abs, byte & 0x7f), shift_amt);
             if (ov[1] != 0) {
                 if (byte & 0x80 != 0 or
-                    @bitCast(Int, ov[0]) >= 0 or
-                    ored >> @intCast(u3, bit_size_of -% @as(u16, shift_amt)) != -1)
+                    @as(Int, @bitCast(ov[0])) >= 0 or
+                    ored >> @as(u3, @intCast(bit_size_of -% @as(u16, shift_amt))) != -1)
                 {
                     return error.Overflow;
                 }
             } else {
                 if (byte & 0x80 == 0 and
-                    @bitCast(Int, ov[0]) < 0 and
-                    ored >> @intCast(u3, bit_size_of -% @as(u16, shift_amt)) != -1)
+                    @as(Int, @bitCast(ov[0])) < 0 and
+                    ored >> @as(u3, @intCast(bit_size_of -% @as(u16, shift_amt))) != -1)
                 {
                     return error.Overflow;
                 }
@@ -58,9 +58,9 @@ pub fn readLEB128(comptime T: type, bytes: []const u8) !extern struct { T, u8 } 
             value |= ov[0];
             if (byte & 0x80 == 0) {
                 if (byte & 0x40 != 0 and idx != max_idx) {
-                    value |= @bitCast(Abs, @as(Int, -1)) << (shift_amt +% 7);
+                    value |= @as(Abs, @bitCast(@as(Int, -1))) << (shift_amt +% 7);
                 }
-                return .{ if (T == Int) @bitCast(Int, value) else @enumFromInt(T, @bitCast(Int, value)), idx };
+                return .{ if (T == Int) @as(Int, @bitCast(value)) else @as(T, @enumFromInt(@as(Int, @bitCast(value)))), idx };
             }
         }
         return error.Overflow;
@@ -84,7 +84,7 @@ pub const noexcept = struct {
                 idx +%= 1;
                 value |= ov[0];
                 if (byte & 0x80 == 0) {
-                    return .{ if (T == Int) value else @enumFromInt(T, value), idx };
+                    return .{ if (T == Int) value else @as(T, @enumFromInt(value)), idx };
                 }
             }
             unreachable;
@@ -103,9 +103,9 @@ pub const noexcept = struct {
                 value |= ov[0];
                 if (byte & 0x80 == 0) {
                     if (byte & 0x40 != 0 and idx != max_idx) {
-                        value |= @bitCast(Abs, @as(Int, -1)) << (shift_amt +% 7);
+                        value |= @as(Abs, @bitCast(@as(Int, -1))) << (shift_amt +% 7);
                     }
-                    return .{ if (T == Int) @bitCast(Int, value) else @enumFromInt(T, @bitCast(Int, value)), idx };
+                    return .{ if (T == Int) @as(Int, @bitCast(value)) else @as(T, @enumFromInt(@as(Int, @bitCast(value)))), idx };
                 }
             }
             unreachable;

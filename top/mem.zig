@@ -1061,7 +1061,7 @@ pub const debug = opaque {
     }
 };
 pub fn literalView(comptime s: [:0]const u8) mem.StructuredAutomaticView(u8, &@as(u8, 0), s.len, null, .{}) {
-    return .{ .impl = .{ .auto = @ptrCast(*const [s.len:0]u8, s.ptr).* } };
+    return .{ .impl = .{ .auto = @as(*const [s.len:0]u8, @ptrCast(s.ptr)).* } };
 }
 pub fn view(s: []const u8) mem.StructuredStreamView(u8, null, 1, struct {}, .{}) {
     return .{ .impl = .{
@@ -1377,7 +1377,7 @@ fn mid(comptime T: type, comptime U: type, values: []const T) []const U {
     const xb_addr: u64 = mach.alignB64(up_addr, @alignOf(U));
     const aligned_bytes: u64 = mach.sub64(xb_addr, ab_addr);
     const mid_len: u64 = mach.div64(aligned_bytes, @sizeOf(U));
-    return @ptrFromInt([*]const U, ab_addr)[0..mid_len];
+    return @as([*]const U, @ptrFromInt(ab_addr))[0..mid_len];
 }
 // These should be in builtin.zig, but cannot adhere to the test-error-fault
 // standard yet--that is, their assert* and expect* counterparts cannot be added
@@ -1698,7 +1698,7 @@ pub fn indexOfNearestEqualMany(comptime T: type, arg1: []const T, arg2: []const 
     return null;
 }
 pub inline fn zero(comptime T: type, ptr: *T) void {
-    mach.memset(@ptrCast([*]u8, ptr), 0, @sizeOf(T));
+    mach.memset(@as([*]u8, @ptrCast(ptr)), 0, @sizeOf(T));
 }
 pub const SimpleAllocator = struct {
     start: u64 = 0x40000000,
@@ -1710,32 +1710,32 @@ pub const SimpleAllocator = struct {
     pub inline fn create(allocator: *Allocator, comptime T: type) *T {
         @setRuntimeSafety(false);
         const ret_addr: u64 = allocator.allocateInternal(@sizeOf(T), @max(min_align_of, @alignOf(T)));
-        return @ptrFromInt(*T, ret_addr);
+        return @as(*T, @ptrFromInt(ret_addr));
     }
     pub inline fn allocate(allocator: *Allocator, comptime T: type, count: u64) []T {
         @setRuntimeSafety(false);
         const ret_addr: u64 = allocator.allocateInternal(@sizeOf(T) *% count, @max(min_align_of, @alignOf(T)));
-        return @ptrFromInt([*]T, ret_addr)[0..count];
+        return @as([*]T, @ptrFromInt(ret_addr))[0..count];
     }
     pub inline fn reallocate(allocator: *Allocator, comptime T: type, buf: []T, count: u64) []T {
         @setRuntimeSafety(false);
         const ret_addr: u64 = allocator.reallocateInternal(@intFromPtr(buf.ptr), buf.len *% @sizeOf(T), count *% @sizeOf(T), @max(min_align_of, @alignOf(T)));
-        return @ptrFromInt([*]T, ret_addr)[0..count];
+        return @as([*]T, @ptrFromInt(ret_addr))[0..count];
     }
     pub inline fn createAligned(allocator: *Allocator, comptime T: type, comptime align_of: u64) *align(align_of) T {
         @setRuntimeSafety(false);
         const ret_addr: u64 = allocator.allocateInternal(@sizeOf(T), align_of);
-        return @ptrFromInt(*align(align_of) T, ret_addr);
+        return @as(*align(align_of) T, @ptrFromInt(ret_addr));
     }
     pub inline fn allocateAligned(allocator: *Allocator, comptime T: type, count: u64, comptime align_of: u64) []align(align_of) T {
         @setRuntimeSafety(false);
         const ret_addr: u64 = allocator.allocateInternal(@sizeOf(T) *% count, align_of);
-        return @ptrFromInt([*]align(align_of) T, ret_addr)[0..count];
+        return @as([*]align(align_of) T, @ptrFromInt(ret_addr))[0..count];
     }
     pub inline fn reallocateAligned(allocator: *Allocator, comptime T: type, buf: []T, count: u64, comptime align_of: u64) []align(align_of) T {
         @setRuntimeSafety(false);
         const ret_addr: u64 = allocator.reallocateInternal(@intFromPtr(buf.ptr), buf.len *% @sizeOf(T), count *% @sizeOf(T), align_of);
-        return @ptrFromInt([*]align(align_of) T, ret_addr)[0..count];
+        return @as([*]align(align_of) T, @ptrFromInt(ret_addr))[0..count];
     }
     pub inline fn destroy(allocator: *Allocator, comptime T: type, ptr: *T) void {
         allocator.deallocateInternal(@intFromPtr(ptr), @sizeOf(T));
@@ -1959,10 +1959,10 @@ pub fn readIntVar(comptime T: type, buf: []const u8, len: u64) T {
     for (ret[@sizeOf(T) -% len ..], 0..) |*byte, idx| {
         byte.* = buf[idx];
     }
-    return @bitCast(T, ret);
+    return @as(T, @bitCast(ret));
 }
 pub fn readIntNative(comptime T: type, bytes: *const [@divExact(@typeInfo(T).Int.bits, 8)]u8) T {
-    return @ptrCast(*align(1) const T, bytes).*;
+    return @as(*align(1) const T, @ptrCast(bytes)).*;
 }
 pub fn readIntForeign(comptime T: type, bytes: *const [@divExact(@typeInfo(T).Int.bits, 8)]u8) T {
     return @byteSwap(readIntNative(T, bytes));
@@ -1983,7 +1983,7 @@ pub fn readInt(comptime T: type, bytes: *const [@divExact(@typeInfo(T).Int.bits,
     }
 }
 pub fn writeIntNative(comptime T: type, buf: *[(@typeInfo(T).Int.bits + 7) / 8]u8, value: T) void {
-    @ptrCast(*align(1) T, buf).* = value;
+    @as(*align(1) T, @ptrCast(buf)).* = value;
 }
 pub fn writeIntForeign(comptime T: type, buf: *[@divExact(@typeInfo(T).Int.bits, 8)]u8, value: T) void {
     writeIntNative(T, buf, @byteSwap(value));
@@ -2009,16 +2009,16 @@ pub fn writeIntSliceLittle(comptime T: type, dest: []u8, value: T) void {
         return @memset(dest, 0);
     } else if (@typeInfo(T).Int.bits == 8) {
         @memset(dest, 0);
-        dest[0] = @bitCast(u8, value);
+        dest[0] = @as(u8, @bitCast(value));
         return;
     }
     const Int = @Type(.{ .Int = .{
         .signedness = .unsigned,
         .bits = @bitSizeOf(T),
     } });
-    var bits = @bitCast(Int, value);
+    var bits = @as(Int, @bitCast(value));
     for (dest) |*b| {
-        b.* = @truncate(u8, bits);
+        b.* = @as(u8, @truncate(bits));
         bits >>= 8;
     }
 }
@@ -2028,18 +2028,18 @@ pub fn writeIntSliceBig(comptime T: type, dest: []u8, value: T) void {
         return @memset(dest, 0);
     } else if (@typeInfo(T).Int.bits == 8) {
         @memset(dest, 0);
-        dest[dest.len - 1] = @bitCast(u8, value);
+        dest[dest.len - 1] = @as(u8, @bitCast(value));
         return;
     }
     const Int = @Type(.{ .Int = .{
         .signedness = .unsigned,
         .bits = @bitSizeOf(T),
     } });
-    var bits: Int = @bitCast(Int, value);
+    var bits: Int = @as(Int, @bitCast(value));
     var index: u64 = dest.len;
     while (index != 0) {
         index -= 1;
-        dest[index] = @truncate(u8, bits);
+        dest[index] = @as(u8, @truncate(bits));
         bits >>= 8;
     }
 }
@@ -2124,6 +2124,7 @@ fn AsBytesReturnType(comptime P: type) type {
 /// Given a pointer to a single item, returns a slice of the underlying bytes, preserving pointer attributes.
 pub fn asBytes(ptr: anytype) AsBytesReturnType(@TypeOf(ptr)) {
     const T = AsBytesReturnType(@TypeOf(ptr));
-    return @ptrCast(T, @alignCast(@typeInfo(T).Pointer.alignment, ptr));
+    const ret: *align(@typeInfo(T).Pointer.alignment) const T = @ptrCast(ptr);
+    return ret.*;
 }
 pub const toBytes = meta.toBytes;

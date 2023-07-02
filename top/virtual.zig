@@ -24,7 +24,7 @@ pub fn DiscreteBitSet(comptime elements: u16, comptime val_type: type, comptime 
             const Word: type = data_info.Array.child;
             const Shift: type = builtin.ShiftAmount(Word);
             pub fn indexToShiftAmount(index: idx_type) Shift {
-                return @intCast(Shift, (word_bit_size -% 1) -% @rem(index, word_bit_size));
+                return @as(Shift, @intCast((word_bit_size -% 1) -% @rem(index, word_bit_size)));
             }
             pub fn get(bit_set: *BitSet, index: idx_type) val_type {
                 const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
@@ -46,7 +46,7 @@ pub fn DiscreteBitSet(comptime elements: u16, comptime val_type: type, comptime 
             const Word: type = data_type;
             const Shift: type = builtin.ShiftAmount(Word);
             pub inline fn indexToShiftAmount(index: idx_type) Shift {
-                return @intCast(Shift, (data_info.Int.bits -% 1) -% index);
+                return @as(Shift, @intCast((data_info.Int.bits -% 1) -% index));
             }
             pub fn get(bit_set: *BitSet, index: idx_type) val_type {
                 const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
@@ -68,7 +68,7 @@ pub fn DiscreteBitSet(comptime elements: u16, comptime val_type: type, comptime 
             const Word: type = data_info.Array.child;
             const Shift: type = builtin.ShiftAmount(Word);
             pub inline fn indexToShiftAmount(index: idx_type) Shift {
-                return @intCast(Shift, (word_bit_size -% 1) -% @rem(index, word_bit_size));
+                return @as(Shift, @intCast((word_bit_size -% 1) -% @rem(index, word_bit_size)));
             }
             pub fn get(bit_set: *BitSet, index: idx_type) val_type {
                 const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
@@ -90,7 +90,7 @@ pub fn DiscreteBitSet(comptime elements: u16, comptime val_type: type, comptime 
             const Word: type = data_type;
             const Shift: type = builtin.ShiftAmount(Word);
             pub inline fn indexToShiftAmount(index: idx_type) Shift {
-                return @intCast(Shift, (data_info.Int.bits -% 1) -% @intFromEnum(index));
+                return @as(Shift, @intCast((data_info.Int.bits -% 1) -% @intFromEnum(index)));
             }
             pub fn get(bit_set: *BitSet, index: idx_type) val_type {
                 const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
@@ -128,7 +128,7 @@ fn ThreadSafeSetBoolInt(comptime elements: u16, comptime idx_type: type) type {
             return @cmpxchgStrong(u8, &safe_set.bytes[index], 255, 0, .SeqCst, .SeqCst) == null;
         }
         pub fn mutex(safe_set: *SafeSet, index: idx_type) *u32 {
-            return @ptrFromInt(*u32, mach.alignB64(@intFromPtr(&safe_set.bytes[index]), 4));
+            return @as(*u32, @ptrFromInt(mach.alignB64(@intFromPtr(&safe_set.bytes[index]), 4)));
         }
     };
 }
@@ -153,7 +153,7 @@ fn ThreadSafeSetBoolEnum(comptime elements: u16, comptime idx_type: type) type {
             return @cmpxchgStrong(u8, &safe_set.bytes[index], 255, 0, .SeqCst, .SeqCst) == null;
         }
         pub fn mutex(safe_set: *SafeSet, index: idx_type) *u32 {
-            return @ptrFromInt(*u32, mach.alignB64(@intFromPtr(&safe_set.bytes[@intFromEnum(index)]), 4));
+            return @as(*u32, @ptrFromInt(mach.alignB64(@intFromPtr(&safe_set.bytes[@intFromEnum(index)]), 4)));
         }
     };
 }
@@ -172,7 +172,7 @@ fn ThreadSafeSetEnumInt(comptime elements: u16, comptime val_type: type, comptim
             return @cmpxchgStrong(val_type, &safe_set.bytes[index], if_state, to_state, .SeqCst, .SeqCst) == null;
         }
         pub fn mutex(safe_set: *SafeSet, index: idx_type) *u32 {
-            return @ptrFromInt(*u32, mach.alignB64(@intFromPtr(&safe_set.bytes[index]), 4));
+            return @as(*u32, @ptrFromInt(mach.alignB64(@intFromPtr(&safe_set.bytes[index]), 4)));
         }
     };
 }
@@ -196,7 +196,7 @@ fn ThreadSafeSetEnumEnum(comptime elements: u16, comptime val_type: type, compti
             return @cmpxchgStrong(val_type, &safe_set.bytes[@intFromEnum(index)], if_state, to_state, .SeqCst, .SeqCst) == null;
         }
         pub fn mutex(safe_set: *SafeSet, index: idx_type) *u32 {
-            return @ptrFromInt(*u32, mach.alignB64(@intFromPtr(&safe_set.bytes[@intFromEnum(index)]), 4));
+            return @as(*u32, @ptrFromInt(mach.alignB64(@intFromPtr(&safe_set.bytes[@intFromEnum(index)]), 4)));
         }
     };
 }
@@ -222,7 +222,7 @@ fn GenericMultiSet(
         pub const MultiSet: type = @This();
         inline fn arenaIndex(comptime index: spec.idx_type) spec.idx_type {
             if (@typeInfo(spec.idx_type) == .Enum) {
-                comptime return @enumFromInt(spec.idx_type, directory[@intFromEnum(index)].arena_index);
+                comptime return @as(spec.idx_type, @enumFromInt(directory[@intFromEnum(index)].arena_index));
             } else {
                 comptime return directory[index].arena_index;
             }
@@ -585,7 +585,7 @@ pub const RegularMultiArena = struct {
         comptime return @divExact(capacityAll(multi_arena), multi_arena.divisions);
     }
     pub fn invert(comptime multi_arena: MultiArena, addr: u64) Index(multi_arena) {
-        return @intCast(Index(multi_arena), (addr -% multi_arena.lb_addr) / capacityEach(multi_arena));
+        return @as(Index(multi_arena), @intCast((addr -% multi_arena.lb_addr) / capacityEach(multi_arena)));
     }
     pub fn low(comptime multi_arena: MultiArena, index: Index(multi_arena)) u64 {
         const offset: u64 = index *% comptime capacityEach(multi_arena);
@@ -998,7 +998,7 @@ fn GenericAddressSpace(comptime AddressSpace: type) type {
             }
         }
         pub fn invert(addr: u64) AddressSpace.Index {
-            return @intCast(AddressSpace.Index, AddressSpace.addr_spec.invert(addr));
+            return @as(AddressSpace.Index, @intCast(AddressSpace.addr_spec.invert(addr)));
         }
         pub fn SubSpace(comptime label_or_index: anytype) type {
             return GenericSubSpace(AddressSpace.addr_spec.subspace.?, label_or_index);

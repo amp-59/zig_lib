@@ -72,12 +72,12 @@ pub fn pack16(h: u16, l: u8) u16 {
 // Defined here to prevent stage2 segmentation fault
 const U32 = packed struct { h: u16, l: u16 };
 pub fn pack32(h: u16, l: u16) u32 {
-    return @bitCast(u32, U32{ .h = h, .l = l });
+    return @as(u32, @bitCast(U32{ .h = h, .l = l }));
 }
 // Defined here to prevent stage2 segmentation fault
 const U64 = packed struct { h: u32, l: u32 };
 pub fn pack64(h: u32, l: u32) u64 {
-    return @bitCast(u64, U64{ .h = h, .l = l });
+    return @as(u64, @bitCast(U64{ .h = h, .l = l }));
 }
 // The following functions require 32 bits total.
 fn packDouble(l_bytes_clz: u8, l_bytes_cls: u8, m_bytes_clz: u8, m_bytes_cls: u8) u32 {

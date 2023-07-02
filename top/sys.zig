@@ -2399,10 +2399,10 @@ pub inline fn call(comptime tag: Fn, comptime errors: ErrorPolicy, comptime retu
         builtin.zigErrorAbort(ErrorCode, errors.abort, ret);
     }
     if (@sizeOf(return_type) == @sizeOf(usize)) {
-        return @bitCast(return_type, ret);
+        return @as(return_type, @bitCast(ret));
     }
     if (return_type != void) {
-        return @intCast(return_type, ret);
+        return @as(return_type, @intCast(ret));
     }
 }
 pub inline fn call_noexcept(comptime tag: Fn, comptime return_type: type, args: Fn.Args(tag)) return_type {
@@ -2411,9 +2411,9 @@ pub inline fn call_noexcept(comptime tag: Fn, comptime return_type: type, args: 
         unreachable;
     }
     if (@sizeOf(return_type) == @sizeOf(usize)) {
-        return @bitCast(return_type, ret);
+        return @as(return_type, @bitCast(ret));
     }
     if (return_type != void) {
-        return @intCast(return_type, ret);
+        return @as(return_type, @intCast(ret));
     }
 }
