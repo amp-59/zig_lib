@@ -1636,38 +1636,55 @@ pub fn GenericOptions(comptime Options: type) type {
                 builtin.debug.write(buf);
             }
             fn optionError(all_options: []const Options.Map, arg: [:0]const u8) void {
+                @setRuntimeSafety(false);
                 var buf: [4224]u8 = undefined;
                 var len: u64 = 0;
                 const bad_opt: []const u8 = getBadOpt(arg);
-                len += mach.memcpyMulti(buf[len..].ptr, &[_][]const u8{ about_opt_0_s, builtin.debug.about_error_s, "'", bad_opt, "'\n" });
+                @memcpy(buf[len..].ptr, about_opt_0_s);
+                len +%= about_opt_0_s.len;
+                @memcpy(buf[len..].ptr, builtin.debug.about_error_s);
+                len +%= builtin.debug.about_error_s.len;
+                buf[len] = '\'';
+                len +%= 1;
+                @memcpy(buf[len..].ptr, bad_opt);
+                len +%= bad_opt.len;
+                @ptrCast(*[2]u8, buf[len..].ptr).* = "'\n".*;
+                len +%= 2;
                 for (all_options) |option| {
                     const min: u64 = len;
                     if (option.long) |long_switch| {
                         const mats: u64 = matchLongSwitch(bad_opt, long_switch);
                         if (builtin.diff(u64, mats, long_switch.len) < 3) {
-                            mach.memcpy(buf[len..].ptr, about_opt_0_s.ptr, about_opt_0_s.len);
+                            @memcpy(buf[len..].ptr, about_opt_0_s);
                             len +%= about_opt_0_s.len;
                             if (option.short) |short_switch| {
-                                len +%= mach.memcpyMulti(buf[len..].ptr, &.{ "'", short_switch, "', '" });
+                                buf[len] = '\'';
+                                len +%= 1;
+                                @memcpy(buf[len..].ptr, short_switch);
+                                len +%= short_switch.len;
+                                @ptrCast(*[3]u8, buf[len..].ptr).* = "', ".*;
+                                len +%= 3;
                             }
-                            mach.memcpy(buf[len..].ptr, long_switch.ptr, long_switch.len);
+                            buf[len] = '\'';
+                            len +%= 1;
+                            @memcpy(buf[len..].ptr, long_switch);
                             len +%= long_switch.len;
+                            buf[len] = '\'';
+                            len +%= 1;
                         }
                     }
                     if (min != len) {
-                        buf[len] = '\'';
-                        len +%= 1;
                         if (option.descr) |descr| {
                             buf[len] = '\t';
                             len +%= 1;
-                            mach.memcpy(buf[len..].ptr, descr.ptr, descr.len);
+                            @memcpy(buf[len..].ptr, descr);
                             len +%= descr.len;
                         }
                         buf[len] = '\n';
                         len +%= 1;
                     }
                 }
-                mach.memcpy(buf[len..].ptr, about_stop_s.ptr, about_stop_s.len);
+                @memcpy(buf[len..].ptr, about_stop_s);
                 len +%= about_stop_s.len;
                 builtin.debug.write(buf[0..len]);
             }
