@@ -164,7 +164,7 @@ pub fn zigErrorThrow(comptime Value: type, comptime values: []const Value, ret: 
 pub fn zigErrorAbort(comptime Value: type, comptime values: []const Value, ret: isize) void {
     inline for (values) |value| {
         if (ret == @intFromEnum(value)) {
-            debug.panic(debug.about_fault_p0_s ++ value.errorName(), null, @returnAddress());
+            debug.panic(value.errorName(), null, @returnAddress());
         }
     }
 }
@@ -1548,7 +1548,7 @@ pub const debug = struct {
     }
     pub fn write(buf: []const u8) void {
         if (@inComptime()) {
-            @compileLog(buf);
+            return @compileLog(buf);
         } else {
             asm volatile (
                 \\syscall # write
@@ -1580,7 +1580,7 @@ pub const debug = struct {
         const rc: i64 = asm volatile (
             \\syscall
             : [_] "={rax}" (-> isize),
-            : [_] "{rax}" (89), // linux readlink
+            : [_] "{rax}" (89), // linux sys_readlink
               [_] "{rdi}" ("/proc/self/exe"), // symlink to executable
               [_] "{rsi}" (buf.ptr), // message buf ptr
               [_] "{rdx}" (buf.len), // message buf len
