@@ -18,24 +18,24 @@ const Node = build.GenericNode(.{
 pub const logging_override: builtin.Logging.Override = spec.logging.override.verbose;
 
 pub const logging_default: builtin.Logging.Default = .{
-    .Attempt = false,
-    .Success = false,
-    .Acquire = false,
-    .Release = false,
-    .Error = false,
-    .Fault = false,
+    .Attempt = true,
+    .Success = true,
+    .Acquire = true,
+    .Release = true,
+    .Error = true,
+    .Fault = true,
 };
 pub const signal_handlers = .{
-    .IllegalInstruction = false,
-    .BusError = false,
-    .FloatingPointError = false,
-    .Trap = false,
-    .SegmentationFault = false,
+    .IllegalInstruction = true,
+    .BusError = true,
+    .FloatingPointError = true,
+    .Trap = true,
+    .SegmentationFault = true,
 };
 pub const trace: builtin.Trace = .{
-    .Error = false,
-    .Fault = false,
-    .Signal = false,
+    .Error = true,
+    .Fault = true,
+    .Signal = true,
     .options = .{},
 };
 pub const discard_errors = true;
@@ -46,7 +46,8 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     if (args.len < 5) {
         return error.MissingEnvironmentPaths;
     }
-    const toplevel: *Node = try meta.wrap(Node.init(&allocator, args, vars));
+    Node.initState(args, vars);
+    const toplevel: *Node = try meta.wrap(Node.init(&allocator));
     Node.initSpecialNodes(&allocator, toplevel);
     try meta.wrap(
         buildMain(&allocator, toplevel),
@@ -80,22 +81,31 @@ fn buildMain(allocator: *build.Allocator, toplevel: *Node) !void {
         const x_node: *Node = try toplevel.addBuild(allocator, .{ .kind = .obj }, x_s, "test/stress/" ++ x_root);
         x_node.flags.is_hidden = true;
         node.dependOnObject(allocator, x_node);
-
         try gen.truncateFileAt(.{ .return_type = void }, stress_dir_fd, x_root, text ++ "export fn func_" ++ x_s ++ "() void {}");
         inline for (0..10) |y| {
             const y_s = x_s ++ comptime builtin.fmt.cx(y);
             const y_root = "f_" ++ y_s ++ ".zig";
+            const y_root_c = "f_" ++ y_s ++ ".c";
             const y_node: *Node = try toplevel.addBuild(allocator, .{ .kind = .obj }, y_s, "test/stress/" ++ y_root);
+            const y_node_c: *Node = try toplevel.addBuild(allocator, .{ .kind = .obj }, y_s ++ "_c", "test/stress/" ++ y_root_c);
             try gen.truncateFileAt(.{ .return_type = void }, stress_dir_fd, y_root, text ++ "export fn func_" ++ y_s ++ "() void {}");
+            try gen.truncateFileAt(.{ .return_type = void }, stress_dir_fd, y_root_c, "void c_func_" ++ y_s ++ "() {}");
             y_node.flags.is_hidden = true;
-            x_node.dependOn(allocator, y_node, .build);
+            y_node_c.flags.is_hidden = true;
+            x_node.dependOnObject(allocator, y_node);
+            x_node.dependOnObject(allocator, y_node_c);
             inline for (0..10) |z| {
                 const z_s = y_s ++ comptime builtin.fmt.cx(z);
                 const z_root = "f_" ++ z_s ++ ".zig";
+                const z_root_c = "f_" ++ z_s ++ ".c";
                 const z_node: *Node = try toplevel.addBuild(allocator, .{ .kind = .obj }, z_s, "test/stress/" ++ z_root);
+                const z_node_c: *Node = try toplevel.addBuild(allocator, .{ .kind = .obj }, z_s ++ "_c", "test/stress/" ++ z_root_c);
                 try gen.truncateFileAt(.{ .return_type = void }, stress_dir_fd, z_root, text ++ "export fn func_" ++ z_s ++ "() void {}");
+                try gen.truncateFileAt(.{ .return_type = void }, stress_dir_fd, z_root_c, "void c_func_" ++ z_s ++ "() {}");
                 z_node.flags.is_hidden = true;
-                y_node.dependOn(allocator, z_node, .build);
+                z_node_c.flags.is_hidden = true;
+                y_node.dependOnObject(allocator, z_node);
+                y_node.dependOnObject(allocator, z_node_c);
             }
         }
     }
