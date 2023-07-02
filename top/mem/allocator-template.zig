@@ -582,9 +582,9 @@ pub fn GenericRtArenaAllocator(comptime spec: RtArenaAllocatorSpec) type {
 const Branches = struct {
     fn sumBranches(branches: Branches, comptime field_name: []const u8) u64 {
         var sum: u64 = 0;
-        for (@bitCast(
+        for (@as(
             [@divExact(@sizeOf(@TypeOf(@field(branches, field_name))), 8)]u64,
-            @field(branches, field_name),
+            @bitCast(@field(branches, field_name)),
         )) |count| sum +%= count;
         return sum;
     }
@@ -1673,7 +1673,7 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
         pub fn create(allocator: *Allocator, comptime T: type) Allocator.allocate_payload(*T) {
             defer Graphics.showWithReference(allocator, @src());
             const s_ab_addr: u64 = createRaw(@sizeOf(T), @alignOf(T));
-            const ret: *T = @ptrFromInt(*T, s_ab_addr);
+            const ret: *T = @as(*T, @ptrFromInt(s_ab_addr));
             showCreate(T, ret);
             return ret;
         }
@@ -1689,7 +1689,7 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
                 try meta.wrap(allocator.mapBelow(s_up_addr));
             }
             allocator.allocate(s_up_addr);
-            const ret: []T = @ptrFromInt([*]T, s_ab_addr)[0..count];
+            const ret: []T = @as([*]T, @ptrFromInt(s_ab_addr))[0..count];
             if (Allocator.allocator_spec.options.count_useful_bytes) {
                 allocator.metadata.utility +%= s_aligned_bytes;
             }
@@ -1708,7 +1708,7 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
                 try meta.wrap(allocator.mapBelow(s_up_addr));
             }
             allocator.allocate(s_up_addr);
-            const ret: []T = @ptrFromInt([*]T, s_ab_addr)[0..count];
+            const ret: []T = @as([*]T, @ptrFromInt(s_ab_addr))[0..count];
             ret.ptr[count] = sentinel;
             if (Allocator.allocator_spec.options.count_useful_bytes) {
                 allocator.metadata.utility +%= s_aligned_bytes;
@@ -1736,7 +1736,7 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
                 return buf.ptr[0..count];
             }
             const ret: []T = allocator.allocate(T, count);
-            mach.memcpy(@ptrCast([*]u8, ret.ptr), @ptrCast([*]const u8, buf.ptr), @sizeOf(T) *% buf.len);
+            mach.memcpy(@as([*]u8, @ptrCast(ret.ptr)), @as([*]const u8, @ptrCast(buf.ptr)), @sizeOf(T) *% buf.len);
             if (Allocator.allocator_spec.options.count_useful_bytes) {
                 allocator.metadata.utility +%= t_aligned_bytes -% s_aligned_bytes;
             }
