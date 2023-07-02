@@ -1,11 +1,11 @@
-pub const Tokenizer = struct {
+pub const TokenIterator = struct {
     buffer: [:0]const u8,
     index: usize,
     pending_invalid_token: ?zig.Token,
     pub fn init(allocator: *zig.Allocator.Node, source: [:0]const u8) !zig.TokenArray {
         var tokens: zig.ProtoTokenArray = zig.ProtoTokenArray.init(allocator);
         const src_start: usize = if (mem.testEqualManyFront(u8, "\xEF\xBB\xBF", source)) 3 else 0;
-        var tokenizer: Tokenizer = .{
+        var tokenizer: TokenIterator = .{
             .buffer = source,
             .index = src_start,
             .pending_invalid_token = null,
@@ -14,7 +14,7 @@ pub const Tokenizer = struct {
             const token = tokenizer.next();
             try tokens.appendOne(allocator, .{
                 .tag = token.tag,
-                .start = @intCast(u32, token.loc.start),
+                .start = @as(u32, @intCast(token.loc.start)),
             });
             if (token.tag == .eof) break;
         }
@@ -71,7 +71,7 @@ pub const Tokenizer = struct {
         period_asterisk,
         saw_at_sign,
     };
-    pub fn next(self: *Tokenizer) zig.Token {
+    pub fn next(self: *TokenIterator) zig.Token {
         if (self.pending_invalid_token) |token| {
             self.pending_invalid_token = null;
             return token;
@@ -843,7 +843,7 @@ pub const Tokenizer = struct {
         result.loc.end = self.index;
         return result;
     }
-    fn checkLiteralCharacter(self: *Tokenizer) void {
+    fn checkLiteralCharacter(self: *TokenIterator) void {
         if (self.pending_invalid_token != null) return;
         const invalid_length = self.getInvalidCharacterLength();
         if (invalid_length == 0) return;
@@ -855,7 +855,7 @@ pub const Tokenizer = struct {
             },
         };
     }
-    fn getInvalidCharacterLength(self: *Tokenizer) u3 {
+    fn getInvalidCharacterLength(self: *TokenIterator) u3 {
         const c0 = self.buffer[self.index];
         if (fmt.ascii.isASCII(c0)) {
             if (fmt.ascii.isControl(c0)) {
@@ -869,7 +869,7 @@ pub const Tokenizer = struct {
             // check utf8-encoded character.
             const length = fmt.utf8.byteSequenceLength(c0) catch return 1;
             if (self.index + length > self.buffer.len) {
-                return @intCast(u3, self.buffer.len - self.index);
+                return @as(u3, @intCast(self.buffer.len - self.index));
             }
             const bytes = self.buffer[self.index .. self.index + length];
             switch (length) {
@@ -922,18 +922,18 @@ pub const Members = struct {
 fn listToSpan(ast: *abstract.ProtoSyntaxTree, allocator_x: *AllocatorX, list: []const zig.Index) !zig.AstNode.SubRange {
     try ast.extras.appendMany(zig.Index, allocator_x, list);
     return zig.AstNode.SubRange{
-        .start = @intCast(zig.Index, ast.extras.len(zig.Index, allocator_x.*) - list.len),
-        .end = @intCast(zig.Index, ast.extras.len(zig.Index, allocator_x.*)),
+        .start = @as(zig.Index, @intCast(ast.extras.len(zig.Index, allocator_x.*) - list.len)),
+        .end = @as(zig.Index, @intCast(ast.extras.len(zig.Index, allocator_x.*))),
     };
 }
 fn addNode(ast: *abstract.ProtoSyntaxTree, allocator_n: *AllocatorN, elem: zig.AstNode) Error!zig.Index {
-    const result = @intCast(zig.Index, ast.nodes.len(allocator_n.*));
+    const result = @as(zig.Index, @intCast(ast.nodes.len(allocator_n.*)));
     try ast.nodes.appendOne(allocator_n, elem);
     return result;
 }
 fn setNode(ast: *abstract.ProtoSyntaxTree, allocator_n: *AllocatorN, i: usize, elem: zig.AstNode) zig.Index {
     ast.nodes.overwriteOneAt(allocator_n.*, i, elem);
-    return @intCast(zig.Index, i);
+    return @as(zig.Index, @intCast(i));
 }
 fn reserveNode(ast: *abstract.ProtoSyntaxTree, allocator_n: *AllocatorN, tag: zig.AstNode.Tag) Error!usize {
     try ast.nodes.increment(allocator_n, 1);
@@ -950,7 +950,7 @@ fn unreserveNode(ast: *abstract.ProtoSyntaxTree, allocator_n: *AllocatorN, node_
     }
 }
 fn addExtra(ast: *abstract.ProtoSyntaxTree, allocator_x: *AllocatorX, extra: anytype) Error!zig.Index {
-    const result: zig.Index = @intCast(zig.Index, ast.extras.len(zig.Index, allocator_x.*));
+    const result: zig.Index = @as(zig.Index, @intCast(ast.extras.len(zig.Index, allocator_x.*)));
     try ast.extras.appendOne(@TypeOf(extra), allocator_x, extra);
     return result;
 }
@@ -2243,7 +2243,7 @@ fn parseExprPrecedence(
     var banned_prec: i8 = -1;
     while (true) {
         const tok_tag = readTagAhead(ast);
-        const info = operTable[@intCast(usize, @enumToInt(tok_tag))];
+        const info = operTable[@as(usize, @intCast(@intFromEnum(tok_tag)))];
         if (info.prec < min_prec) {
             break;
         }
@@ -2598,7 +2598,7 @@ fn parsePrimaryExpr(
             ast.tokens.stream(1);
             return addNode(ast, allocator.n, .{
                 .tag = .@"break",
-                .main_token = @intCast(zig.Index, tokenIndex(ast) - 1),
+                .main_token = @as(zig.Index, @intCast(tokenIndex(ast) - 1)),
                 .data = .{ .lhs = try parseBreakLabel(ast, allocator.e), .rhs = try parseExpr(ast, allocator, array_s) },
             });
         },
@@ -4301,7 +4301,7 @@ fn tokensOnSameLine(ast: *abstract.ProtoSyntaxTree, token1: zig.Index, token2: z
     return mem.indexOfFirstEqualOne(u8, '\n', ast.source.readAll()[start_1..start_2]) == null;
 }
 fn tokenIndex(ast: *abstract.ProtoSyntaxTree) zig.Index {
-    return @intCast(zig.Index, ast.tokens.index());
+    return @as(zig.Index, @intCast(ast.tokens.index()));
 }
 fn readTagAhead(ast: *abstract.ProtoSyntaxTree) zig.Token.Tag {
     return ast.tokens.readOneAhead().tag;
@@ -4341,7 +4341,7 @@ fn expectSemicolon(ast: *abstract.ProtoSyntaxTree, allocator_e: *AllocatorE, err
 fn nextToken(ast: *abstract.ProtoSyntaxTree) zig.Index {
     const result = tokenIndex(ast);
     ast.tokens.stream(1);
-    return @intCast(zig.Index, result);
+    return @as(zig.Index, @intCast(result));
 }
 pub fn directEnumArrayDefault(
     comptime E: type,
@@ -4354,7 +4354,7 @@ pub fn directEnumArrayDefault(
     var result: [len]Data = if (default) |d| [_]Data{d} ** len else undefined;
     inline for (@typeInfo(@TypeOf(init_values)).Struct.fields) |f| {
         const enum_value = @field(E, f.name);
-        const index = @intCast(usize, @enumToInt(enum_value));
+        const index = @as(usize, @intCast(@intFromEnum(enum_value)));
         result[index] = @field(init_values, f.name);
     }
     return result;
@@ -4366,7 +4366,7 @@ pub fn EnumFieldStruct(comptime E: type, comptime Data: type, comptime field_def
         fields = fields ++ &[_]StructField{.{
             .name = field.name,
             .type = Data,
-            .default_value = if (field_default) |d| @ptrCast(?*const anyopaque, &d) else null,
+            .default_value = if (field_default) |d| @as(?*const anyopaque, @ptrCast(&d)) else null,
             .is_comptime = false,
             .alignment = if (@sizeOf(Data) > 0) @alignOf(Data) else 0,
         }};

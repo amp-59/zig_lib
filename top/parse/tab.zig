@@ -138,8 +138,8 @@ pub const U128 = extern struct {
     pub fn mul(a: u64, b: u64) U128 {
         const x = @as(u128, a) * b;
         return .{
-            .hi = @truncate(u64, x >> 64),
-            .lo = @truncate(u64, x),
+            .hi = @as(u64, @truncate(x >> 64)),
+            .lo = @as(u64, @truncate(x)),
         };
     }
 };

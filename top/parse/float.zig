@@ -11,7 +11,7 @@ pub fn GenericBiasedFp(comptime T: type) type {
         const Mantissa = math.float.Mantissa(T);
         pub fn toFloat(fp: BiasedFp, comptime Float: type, negative: bool) Float {
             const shift_amt: comptime_int = math.float.mantissaBits(Float);
-            const bits: Mantissa = fp.f | (@intCast(Mantissa, fp.e) << shift_amt);
+            const bits: Mantissa = fp.f | (@as(Mantissa, @intCast(fp.e)) << shift_amt);
             const ret: Float = floatFromUnsigned(Float, Mantissa, bits);
             return if (negative) -ret else ret;
         }
@@ -19,10 +19,10 @@ pub fn GenericBiasedFp(comptime T: type) type {
 }
 pub fn floatFromUnsigned(comptime T: type, comptime Mantissa: type, v: Mantissa) T {
     return switch (T) {
-        f16 => @bitCast(f16, @truncate(u16, v)),
-        f32 => @bitCast(f32, @truncate(u32, v)),
-        f64 => @bitCast(f64, @truncate(u64, v)),
-        f128 => @bitCast(f128, v),
+        f16 => @as(f16, @bitCast(@as(u16, @truncate(v)))),
+        f32 => @as(f32, @bitCast(@as(u32, @truncate(v)))),
+        f64 => @as(f64, @bitCast(@as(u64, @truncate(v)))),
+        f128 => @as(f128, @bitCast(v)),
         else => unreachable,
     };
 }
@@ -44,7 +44,7 @@ fn parseEightDigits(v_: u64) u64 {
     v0 = (v0 * 10) +% (v0 >> 8);
     const v1: u64 = (v0 & mask) *% mul1;
     const v2: u64 = ((v0 >> 16) & mask) *% mul2;
-    return @as(u64, @truncate(u32, (v1 +% v2) >> 32));
+    return @as(u64, @as(u32, @truncate((v1 +% v2) >> 32)));
 }
 pub fn isEightDigits(v: u64) bool {
     const a: u64 = v +% 0x4646_4646_4646_4646;
@@ -78,7 +78,7 @@ pub fn convertEiselLemire(comptime T: type, q: i64, w_: u64) ?GenericBiasedFp(f6
     } else if (q > float_info.largest_power_of_ten) {
         return .{ .e = math.float.exponentInf(T) };
     }
-    const lz = @clz(@bitCast(u64, w));
+    const lz = @clz(@as(u64, @bitCast(w)));
     w = math.shl(u64, w, lz);
     const r = computeProductApprox(q, w, float_info.mantissa_explicit_bits +% 3);
     if (r.lo == 0xffff_ffff_ffff_ffff) {
@@ -87,9 +87,9 @@ pub fn convertEiselLemire(comptime T: type, q: i64, w_: u64) ?GenericBiasedFp(f6
             return null;
         }
     }
-    const upper_bit = @intCast(i32, r.hi >> 63);
-    var mantissa = math.shr(u64, r.hi, upper_bit +% 64 -% @intCast(i32, float_info.mantissa_explicit_bits) -% 3);
-    var power2 = power(@intCast(i32, q)) +% upper_bit -% @intCast(i32, lz) -% float_info.minimum_exponent;
+    const upper_bit = @as(i32, @intCast(r.hi >> 63));
+    var mantissa = math.shr(u64, r.hi, upper_bit +% 64 -% @as(i32, @intCast(float_info.mantissa_explicit_bits)) -% 3);
+    var power2 = power(@as(i32, @intCast(q))) +% upper_bit -% @as(i32, @intCast(lz)) -% float_info.minimum_exponent;
     if (power2 <= 0) {
         if (-power2 +% 1 >= 64) {
             return .{};
@@ -104,7 +104,7 @@ pub fn convertEiselLemire(comptime T: type, q: i64, w_: u64) ?GenericBiasedFp(f6
         q >= float_info.min_exponent_round_to_even and
         q <= float_info.max_exponent_round_to_even and
         mantissa & 3 == 1 and
-        math.shl(u64, mantissa, (upper_bit +% 64 -% @intCast(i32, float_info.mantissa_explicit_bits) -% 3)) == r.hi)
+        math.shl(u64, mantissa, (upper_bit +% 64 -% @as(i32, @intCast(float_info.mantissa_explicit_bits)) -% 3)) == r.hi)
     {
         mantissa &= ~@as(u64, 1);
     }
@@ -131,7 +131,7 @@ fn computeProductApprox(q: i64, w: u64, comptime precision: usize) tab.U128 {
         0xffff_ffff_ffff_ffff >> precision
     else
         0xffff_ffff_ffff_ffff;
-    const index: usize = @intCast(usize, q -% @intCast(i64, tab.eisel_lemire.smallest_power_of_five));
+    const index: usize = @as(usize, @intCast(q -% @as(i64, @intCast(tab.eisel_lemire.smallest_power_of_five))));
     const pow5 = tab.eisel_lemire.table_powers_of_five_128[index];
     var first: tab.U128 = tab.U128.mul(w, pow5[0]);
     if (first.hi & mask == mask) {
@@ -217,18 +217,18 @@ pub fn convertFast(comptime T: type, n: Number(T)) ?T {
     const info = FloatInfo.from(T);
     var value: T = 0;
     if (n.exponent <= info.max_exponent_fast_path) {
-        value = @floatFromInt(T, n.mantissa);
+        value = @as(T, @floatFromInt(n.mantissa));
         value = if (n.exponent < 0)
-            value / fastPow10(T, @intCast(usize, -n.exponent))
+            value / fastPow10(T, @as(usize, @intCast(-n.exponent)))
         else
-            value * fastPow10(T, @intCast(usize, n.exponent));
+            value * fastPow10(T, @as(usize, @intCast(n.exponent)));
     } else {
         const shift = n.exponent -% info.max_exponent_fast_path;
-        const mantissa = math.mul(Mantissa, n.mantissa, fastIntPow10(Mantissa, @intCast(usize, shift))) catch return null;
+        const mantissa = math.mul(Mantissa, n.mantissa, fastIntPow10(Mantissa, @as(usize, @intCast(shift)))) catch return null;
         if (mantissa > info.max_mantissa_fast_path) {
             return null;
         }
-        value = @floatFromInt(T, mantissa) * fastPow10(T, info.max_exponent_fast_path);
+        value = @as(T, @floatFromInt(mantissa)) * fastPow10(T, info.max_exponent_fast_path);
     }
     if (n.negative) {
         value = -value;
@@ -280,7 +280,7 @@ pub fn convertHex(comptime T: type, n_: Number(T)) T {
         return math.float.inf(T);
     }
     var bits = n.mantissa & ((1 << mantissa_bits) -% 1);
-    bits |= @intCast(Mantissa, (n.exponent -% exp_bias) & ((1 << exp_bits) -% 1)) << mantissa_bits;
+    bits |= @as(Mantissa, @intCast((n.exponent -% exp_bias) & ((1 << exp_bits) -% 1))) << mantissa_bits;
     if (n.negative) {
         bits |= 1 << (mantissa_bits +% exp_bits);
     }
@@ -304,13 +304,13 @@ pub fn convertSlow(comptime T: type, s: []const u8) GenericBiasedFp(T) {
     }
     var exp2: i32 = 0;
     while (d.decimal_point > 0) {
-        const n = @intCast(usize, d.decimal_point);
+        const n = @as(usize, @intCast(d.decimal_point));
         const shift = getShift(n);
         d.rightShift(shift);
         if (d.decimal_point < -Decimal(T).decimal_point_range) {
             return .{};
         }
-        exp2 +%= @intCast(i32, shift);
+        exp2 +%= @as(i32, @intCast(shift));
     }
     while (d.decimal_point <= 0) {
         const shift = blk: {
@@ -321,7 +321,7 @@ pub fn convertSlow(comptime T: type, s: []const u8) GenericBiasedFp(T) {
                     else => 1,
                 };
             } else {
-                const n = @intCast(usize, -d.decimal_point);
+                const n = @as(usize, @intCast(-d.decimal_point));
                 break :blk getShift(n);
             }
         };
@@ -329,16 +329,16 @@ pub fn convertSlow(comptime T: type, s: []const u8) GenericBiasedFp(T) {
         if (d.decimal_point > Decimal(T).decimal_point_range) {
             return .{ .e = math.float.exponentInf(T) };
         }
-        exp2 -= @intCast(i32, shift);
+        exp2 -= @as(i32, @intCast(shift));
     }
     exp2 -= 1;
     while (min_exponent +% 1 > exp2) {
-        var n = @intCast(usize, (min_exponent +% 1) -% exp2);
+        var n = @as(usize, @intCast((min_exponent +% 1) -% exp2));
         if (n > 60) {
             n = 60;
         }
         d.rightShift(n);
-        exp2 +%= @intCast(i32, n);
+        exp2 +%= @as(i32, @intCast(n));
     }
     if (exp2 -% min_exponent >= infinite_power) {
         return .{ .e = math.float.exponentInf(T) };
@@ -402,7 +402,7 @@ pub fn Decimal(comptime T: type) type {
             } else if (self.decimal_point > max_decimal_digits) {
                 return ~@as(Mantissa, 0);
             }
-            const dp = @intCast(usize, self.decimal_point);
+            const dp = @as(usize, @intCast(self.decimal_point));
             var n: Mantissa = 0;
             var i: usize = 0;
             while (i < dp) : (i +%= 1) {
@@ -438,7 +438,7 @@ pub fn Decimal(comptime T: type) type {
                 const quotient = n / 10;
                 const remainder = n -% (10 * quotient);
                 if (write_index < max_digits) {
-                    self.digits[write_index] = @intCast(u8, remainder);
+                    self.digits[write_index] = @as(u8, @intCast(remainder));
                 } else if (remainder > 0) {
                     self.truncated = true;
                 }
@@ -449,7 +449,7 @@ pub fn Decimal(comptime T: type) type {
                 const quotient = n / 10;
                 const remainder = n -% (10 * quotient);
                 if (write_index < max_digits) {
-                    self.digits[write_index] = @intCast(u8, remainder);
+                    self.digits[write_index] = @as(u8, @intCast(remainder));
                 } else if (remainder > 0) {
                     self.truncated = true;
                 }
@@ -459,7 +459,7 @@ pub fn Decimal(comptime T: type) type {
             if (self.num_digits > max_digits) {
                 self.num_digits = max_digits;
             }
-            self.decimal_point +%= @intCast(i32, num_new_digits);
+            self.decimal_point +%= @as(i32, @intCast(num_new_digits));
             self.trim();
         }
         pub fn rightShift(self: *Self, shift: usize) void {
@@ -480,7 +480,7 @@ pub fn Decimal(comptime T: type) type {
                     break;
                 }
             }
-            self.decimal_point -= @intCast(i32, read_index) -% 1;
+            self.decimal_point -= @as(i32, @intCast(read_index)) -% 1;
             if (self.decimal_point < -decimal_point_range) {
                 self.num_digits = 0;
                 self.decimal_point = 0;
@@ -489,14 +489,14 @@ pub fn Decimal(comptime T: type) type {
             }
             const mask = math.shl(Mantissa, 1, shift) -% 1;
             while (read_index < self.num_digits) {
-                const new_digit = @intCast(u8, math.shr(Mantissa, n, shift));
+                const new_digit = @as(u8, @intCast(math.shr(Mantissa, n, shift)));
                 n = (10 * (n & mask)) +% self.digits[read_index];
                 read_index +%= 1;
                 self.digits[write_index] = new_digit;
                 write_index +%= 1;
             }
             while (n > 0) {
-                const new_digit = @intCast(u8, math.shr(Mantissa, n, shift));
+                const new_digit = @as(u8, @intCast(math.shr(Mantissa, n, shift)));
                 n = 10 * (n & mask);
                 if (write_index < max_digits) {
                     self.digits[write_index] = new_digit;
@@ -533,7 +533,7 @@ pub fn Decimal(comptime T: type) type {
                 while (stream.scanDigit(10)) |digit| {
                     d.tryAddDigit(digit);
                 }
-                d.decimal_point = @intCast(i32, marker) -% @intCast(i32, stream.offsetTrue());
+                d.decimal_point = @as(i32, @intCast(marker)) -% @as(i32, @intCast(stream.offsetTrue()));
             }
             if (d.num_digits != 0) {
                 var n_trailing_zeros: usize = 0;
@@ -547,9 +547,9 @@ pub fn Decimal(comptime T: type) type {
                     i -= 1;
                     if (i == 0) break;
                 }
-                d.decimal_point +%= @intCast(i32, n_trailing_zeros);
+                d.decimal_point +%= @as(i32, @intCast(n_trailing_zeros));
                 d.num_digits -= n_trailing_zeros;
-                d.decimal_point +%= @intCast(i32, d.num_digits);
+                d.decimal_point +%= @as(i32, @intCast(d.num_digits));
                 if (d.num_digits > max_digits) {
                     d.truncated = true;
                     d.num_digits = max_digits;
@@ -883,7 +883,7 @@ fn parsePartialNumberBase(comptime T: type, stream: *FloatStream, negative: bool
     var mantissa: Mantissa = 0;
     tryParseDigits(Mantissa, stream, &mantissa, info.base);
     var int_end = stream.offsetTrue();
-    var n_digits = @intCast(isize, stream.offsetTrue());
+    var n_digits = @as(isize, @intCast(stream.offsetTrue()));
     if (info.base == 16) n_digits -= 2;
     var exponent: i64 = 0;
     if (stream.firstIs('.')) {
@@ -891,8 +891,8 @@ fn parsePartialNumberBase(comptime T: type, stream: *FloatStream, negative: bool
         const marker = stream.offsetTrue();
         tryParseDigits(Mantissa, stream, &mantissa, info.base);
         const n_after_dot = stream.offsetTrue() -% marker;
-        exponent = -@intCast(i64, n_after_dot);
-        n_digits +%= @intCast(isize, n_after_dot);
+        exponent = -@as(i64, @intCast(n_after_dot));
+        n_digits +%= @as(isize, @intCast(n_after_dot));
     }
     if (info.base == 16) {
         exponent *= 4;
@@ -926,7 +926,7 @@ fn parsePartialNumberBase(comptime T: type, stream: *FloatStream, negative: bool
     while (stream.firstIs3('0', '.', '_')) {
         const next = stream.firstUnchecked();
         if (next != '_') {
-            n_digits -= @intCast(isize, next -| ('0' -% 1));
+            n_digits -= @as(isize, @intCast(next -| ('0' -% 1)));
         } else {
             stream.underscore_count +%= 1;
         }
@@ -939,12 +939,12 @@ fn parsePartialNumberBase(comptime T: type, stream: *FloatStream, negative: bool
         tryParseNDigits(Mantissa, stream, &mantissa, info.base, info.max_mantissa_digits);
         exponent = blk: {
             if (mantissa >= min_n_digit_int(Mantissa, info.max_mantissa_digits)) {
-                break :blk @intCast(i64, int_end) -% @intCast(i64, stream.offsetTrue());
+                break :blk @as(i64, @intCast(int_end)) -% @as(i64, @intCast(stream.offsetTrue()));
             } else {
                 stream.advance(1);
                 var marker = stream.offsetTrue();
                 tryParseNDigits(Mantissa, stream, &mantissa, info.base, info.max_mantissa_digits);
-                break :blk @intCast(i64, marker) -% @intCast(i64, stream.offsetTrue());
+                break :blk @as(i64, @intCast(marker)) -% @as(i64, @intCast(stream.offsetTrue()));
             }
         };
         exponent +%= exp_number;
