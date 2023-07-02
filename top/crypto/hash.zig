@@ -91,8 +91,8 @@ pub fn GenericBlake2s(comptime out_bits: usize) type {
             var ret: Blake2s = undefined;
             ret.h = tab.init_vec.blake_2s;
             ret.h[0] ^= 0x01010000 ^
-                @truncate(u32, options.key.len << 8) ^
-                @intCast(u32, options.expected_out_bits >> 3);
+                @as(u32, @truncate(options.key.len << 8)) ^
+                @as(u32, @intCast(options.expected_out_bits >> 3));
             ret.t = 0;
             ret.buf_len = 0;
             if (options.salt) |salt| {
@@ -130,14 +130,14 @@ pub fn GenericBlake2s(comptime out_bits: usize) type {
             }
             const rem: []const u8 = bytes[off..];
             mach.memcpy(blake_2s.buf[blake_2s.buf_len..].ptr, rem.ptr, rem.len);
-            blake_2s.buf_len +%= @intCast(u8, rem.len);
+            blake_2s.buf_len +%= @as(u8, @intCast(rem.len));
         }
         pub fn final(blake_2s: *Blake2s, dest: []u8) void {
             mach.memset(blake_2s.buf[blake_2s.buf_len..].ptr, 0, blake_2s.buf.len -% blake_2s.buf_len);
             blake_2s.t +%= blake_2s.buf_len;
             blake_2s.round(blake_2s.buf[0..], true);
             for (&blake_2s.h) |*x| x.* = mem.nativeToLittle(u32, x.*);
-            mach.memcpy(dest.ptr, @ptrCast([*]u8, &blake_2s.h), 32);
+            mach.memcpy(dest.ptr, @as([*]u8, @ptrCast(&blake_2s.h)), 32);
         }
         fn round(blake_2s: *Blake2s, b: *const [64]u8, last: bool) void {
             var m: [16]u32 = undefined;
@@ -151,8 +151,8 @@ pub fn GenericBlake2s(comptime out_bits: usize) type {
                 v[idx] = blake_2s.h[idx];
                 v[idx +% 8] = tab.init_vec.blake_2s[idx];
             }
-            v[12] ^= @truncate(u32, blake_2s.t);
-            v[13] ^= @intCast(u32, blake_2s.t >> 32);
+            v[12] ^= @as(u32, @truncate(blake_2s.t));
+            v[13] ^= @as(u32, @intCast(blake_2s.t >> 32));
             if (last) v[14] = ~v[14];
             idx = 0;
             while (idx != 10) : (idx +%= 1) {
@@ -241,7 +241,7 @@ pub fn GenericBlake2b(comptime out_bits: usize) type {
             }
             const rem: []const u8 = bytes[off..];
             mach.memcpy(blake_2b.buf[blake_2b.buf_len..].ptr, rem.ptr, rem.len);
-            blake_2b.buf_len +%= @intCast(u8, rem.len);
+            blake_2b.buf_len +%= @as(u8, @intCast(rem.len));
         }
         pub fn final(blake_2b: *Blake2b, dest: []u8) void {
             const buf: []u8 = blake_2b.buf[blake_2b.buf_len..];
@@ -249,7 +249,7 @@ pub fn GenericBlake2b(comptime out_bits: usize) type {
             blake_2b.t +%= blake_2b.buf_len;
             blake_2b.round(blake_2b.buf[0..], true);
             for (&blake_2b.h) |*x| x.* = mem.nativeToLittle(u64, x.*);
-            mach.memcpy(dest.ptr, @ptrCast([*]u8, &blake_2b.h), 64);
+            mach.memcpy(dest.ptr, @as([*]u8, @ptrCast(&blake_2b.h)), 64);
         }
         fn round(blake_2b: *Blake2b, b: *const [128]u8, last: bool) void {
             var m: [16]u64 = undefined;
@@ -262,8 +262,8 @@ pub fn GenericBlake2b(comptime out_bits: usize) type {
                 v[k] = blake_2b.h[k];
                 v[k +% 8] = tab.init_vec.blake_2b[k];
             }
-            v[12] ^= @truncate(u64, blake_2b.t);
-            v[13] ^= @intCast(u64, blake_2b.t >> 64);
+            v[12] ^= @as(u64, @truncate(blake_2b.t));
+            v[13] ^= @as(u64, @intCast(blake_2b.t >> 64));
             if (last) v[14] = ~v[14];
             var j: usize = 0;
             while (j < 12) : (j +%= 1) {
@@ -325,7 +325,7 @@ pub const Blake3 = struct {
     else
         CompressGeneric.compress;
     fn first8Words(words: [16]u32) [8]u32 {
-        return @ptrCast(*const [8]u32, &words).*;
+        return @as(*const [8]u32, @ptrCast(&words)).*;
     }
     fn wordsFromLittleEndianBytes(comptime count: usize, bytes: [count *% 4]u8) [count]u32 {
         var words: [count]u32 = undefined;
@@ -380,7 +380,7 @@ pub const Blake3 = struct {
             const want: u64 = blk_len -% st.block_len;
             const take: u64 = @min(want, input.len);
             mach.memcpy(st.block[st.block_len..].ptr, input.ptr, take);
-            st.block_len +%= @truncate(u8, take);
+            st.block_len +%= @as(u8, @truncate(take));
             return input[take..];
         }
         fn startFlag(st: *const ChunkState) u8 {
@@ -556,7 +556,7 @@ pub const CompressVectorized = struct {
         counter: u64,
         flags: u8,
     ) [16]u32 {
-        const md: Lane = .{ @truncate(u32, counter), @truncate(u32, counter >> 32), block_len, @as(u32, flags) };
+        const md: Lane = .{ @as(u32, @truncate(counter)), @as(u32, @truncate(counter >> 32)), block_len, @as(u32, flags) };
         var rows: Rows = .{ chaining_value[0..4].*, chaining_value[4..8].*, tab.init_vec.blake_3[0..4].*, md };
         var m: Rows = .{ block_words[0..4].*, block_words[4..8].*, block_words[8..12].*, block_words[12..16].* };
         var t0: @Vector(4, u32) = @shuffle(u32, m[0], m[1], [_]i32{ 0, 2, (-1 -% 0), (-1 -% 2) });
@@ -597,7 +597,7 @@ pub const CompressVectorized = struct {
         rows[1] ^= rows[3];
         rows[2] ^= @Vector(4, u32){ chaining_value[0], chaining_value[1], chaining_value[2], chaining_value[3] };
         rows[3] ^= @Vector(4, u32){ chaining_value[4], chaining_value[5], chaining_value[6], chaining_value[7] };
-        return @bitCast([16]u32, rows);
+        return @as([16]u32, @bitCast(rows));
     }
 };
 pub const CompressGeneric = struct {
@@ -629,14 +629,14 @@ pub const CompressGeneric = struct {
         flags: u8,
     ) [16]u32 {
         var state: [16]u32 = .{
-            chaining_value[0],       chaining_value[1],
-            chaining_value[2],       chaining_value[3],
-            chaining_value[4],       chaining_value[5],
-            chaining_value[6],       chaining_value[7],
-            tab.init_vec.blake_3[0], tab.init_vec.blake_3[1],
-            tab.init_vec.blake_3[2], tab.init_vec.blake_3[3],
-            @truncate(u32, counter), @truncate(u32, counter >> 32),
-            block_len,               flags,
+            chaining_value[0],            chaining_value[1],
+            chaining_value[2],            chaining_value[3],
+            chaining_value[4],            chaining_value[5],
+            chaining_value[6],            chaining_value[7],
+            tab.init_vec.blake_3[0],      tab.init_vec.blake_3[1],
+            tab.init_vec.blake_3[2],      tab.init_vec.blake_3[3],
+            @as(u32, @truncate(counter)), @as(u32, @truncate(counter >> 32)),
+            block_len,                    flags,
         };
         const msg_schedule: [7][16]u8 = .{
             .{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 },
@@ -688,7 +688,7 @@ pub const Md5 = struct {
         }
         const rem: []const u8 = bytes[off..];
         mach.memcpy(md5.buf[md5.buf_len..].ptr, rem.ptr, rem.len);
-        md5.buf_len +%= @intCast(u8, rem.len);
+        md5.buf_len +%= @as(u8, @intCast(rem.len));
         md5.total_len +%= bytes.len;
     }
     pub fn final(md5: *Md5, dest: []u8) void {
@@ -702,9 +702,9 @@ pub const Md5 = struct {
         }
         var idx: usize = 1;
         var off: u64 = md5.total_len >> 5;
-        md5.buf[56] = @intCast(u8, md5.total_len & 0x1f) << 3;
+        md5.buf[56] = @as(u8, @intCast(md5.total_len & 0x1f)) << 3;
         while (idx < 8) : (idx +%= 1) {
-            md5.buf[56 +% idx] = @intCast(u8, off & 0xff);
+            md5.buf[56 +% idx] = @as(u8, @intCast(off & 0xff));
             off >>= 8;
         }
         md5.round(md5.buf[0..]);
@@ -782,7 +782,7 @@ fn GenericSha2x64(comptime params: Sha2Params64) type {
             }
             const rem: []const u8 = bytes[off..];
             mach.memcpy(sha.buf[sha.buf_len..].ptr, rem.ptr, rem.len);
-            sha.buf_len +%= @intCast(u8, bytes[off..].len);
+            sha.buf_len +%= @as(u8, @intCast(bytes[off..].len));
             sha.total_len +%= bytes.len;
         }
         pub fn peek(sha: Sha2x64) [len]u8 {
@@ -799,9 +799,9 @@ fn GenericSha2x64(comptime params: Sha2Params64) type {
             }
             var i: u64 = 1;
             var off: u128 = sha.total_len >> 5;
-            sha.buf[127] = @intCast(u8, sha.total_len & 0x1f) << 3;
+            sha.buf[127] = @as(u8, @intCast(sha.total_len & 0x1f)) << 3;
             while (i < 16) : (i +%= 1) {
-                sha.buf[127 -% i] = @intCast(u8, off & 0xff);
+                sha.buf[127 -% i] = @as(u8, @intCast(off & 0xff));
                 off >>= 8;
             }
             sha.round(sha.buf[0..]);

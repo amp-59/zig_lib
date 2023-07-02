@@ -93,7 +93,7 @@ pub fn Field(comptime params: FieldParams) type {
         /// Return true if the element is odd.
         pub fn isOdd(fe: Fe) bool {
             const s = fe.toBytes(.Little);
-            return @truncate(u1, s[0]) != 0;
+            return @as(u1, @truncate(s[0])) != 0;
         }
         /// Conditonally replace a field element with `a` if `c` is positive.
         pub fn cMov(fe: *Fe, a: Fe, c: u1) void {
@@ -143,7 +143,7 @@ pub fn Field(comptime params: FieldParams) type {
             var x: T = n;
             var t = a;
             while (true) {
-                if (@truncate(u1, x) != 0) fe = fe.mul(t);
+                if (@as(u1, @truncate(x)) != 0) fe = fe.mul(t);
                 x >>= 1;
                 if (x == 0) break;
                 t = t.sq();
@@ -191,7 +191,7 @@ pub fn Field(comptime params: FieldParams) type {
             }
             var v_opp: Limbs = undefined;
             params.fiat.opp(&v_opp, v);
-            params.fiat.selectznz(&v, @truncate(u1, f[f.len - 1] >> (@bitSizeOf(Word) - 1)), v, v_opp);
+            params.fiat.selectznz(&v, @as(u1, @truncate(f[f.len - 1] >> (@bitSizeOf(Word) - 1))), v, v_opp);
             const precomp = blk: {
                 var precomp: Limbs = undefined;
                 params.fiat.divstepPrecomp(&precomp);
@@ -295,8 +295,8 @@ pub const arith = struct {
     pub fn mulxU64(out1: *u64, out2: *u64, arg1: u64, arg2: u64) void {
         @setRuntimeSafety(safety);
         const x: u128 = @as(u128, arg1) *% @as(u128, arg2);
-        out1.* = @truncate(u64, x);
-        out2.* = @truncate(u64, x >> 64);
+        out1.* = @as(u64, @truncate(x));
+        out2.* = @as(u64, @truncate(x >> 64));
     }
     pub fn cmovznzU64(out1: *u64, arg1: u8, arg2: u64, arg3: u64) void {
         @setRuntimeSafety(safety);
