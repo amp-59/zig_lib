@@ -31,7 +31,7 @@ fn nested6(z: u64) !void {
 }
 fn nestedOOB(x: u64) void {
     var buf: [512]u8 = undefined;
-    @ptrCast(*align(1) u16, &buf[x]).* = 252;
+    @as(*align(1) u16, @ptrCast(&buf[x])).* = 252;
 }
 fn nestedNOMEM(x: u64) void {
     var y: u64 = 0;

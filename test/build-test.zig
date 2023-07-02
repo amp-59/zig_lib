@@ -14,9 +14,7 @@ pub usingnamespace proc.start;
 const Node = build.GenericNode(.{
     .options = .{ .max_thread_count = 8 },
 });
-
 pub const logging_override: builtin.Logging.Override = spec.logging.override.verbose;
-
 pub const logging_default: builtin.Logging.Default = .{
     .Attempt = true,
     .Success = true,

@@ -255,7 +255,7 @@ fn testPackedModeStruct() !void {
     fd = try file.open(open_spec, "./0123456789");
     const st: file.Status = try file.status(stat_spec, fd);
     try file.unlink(unlink_spec, "./0123456789");
-    try builtin.expectEqual(u16, int, @bitCast(u16, st.mode));
+    try builtin.expectEqual(u16, int, @as(u16, @bitCast(st.mode)));
 }
 fn testStandardChannel() !void {
     const Channel = file.GenericChannel(.{

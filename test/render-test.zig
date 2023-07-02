@@ -83,30 +83,30 @@ const MinimalRenderArray = struct {
         array.finish += count;
     }
     pub fn referOneUndefined(array: MinimalRenderArray) *u8 {
-        return @ptrFromInt(*u8, array.finish);
+        return @as(*u8, @ptrFromInt(array.finish));
     }
     pub fn writeCount(array: *MinimalRenderArray, comptime count: usize, values: [count]u8) void {
         for (values, 0..) |value, index| {
-            @ptrFromInt(*u8, array.finish + index).* = value;
+            @as(*u8, @ptrFromInt(array.finish + index)).* = value;
         }
         array.finish += count;
     }
     pub fn writeMany(array: *MinimalRenderArray, values: []const u8) void {
         for (values, 0..) |value, index| {
-            @ptrFromInt(*u8, array.finish + index).* = value;
+            @as(*u8, @ptrFromInt(array.finish + index)).* = value;
         }
         array.finish += values.len;
     }
     pub fn writeOne(array: *MinimalRenderArray, value: u8) void {
-        @ptrFromInt(*u8, array.finish).* = value;
+        @as(*u8, @ptrFromInt(array.finish)).* = value;
         array.finish += 1;
     }
     pub fn overwriteCountBack(array: MinimalRenderArray, comptime count: usize, values: [count]u8) void {
         const next: u64 = array.finish - count;
-        for (values, 0..) |value, index| @ptrFromInt(*u8, next + index).* = value;
+        for (values, 0..) |value, index| @as(*u8, @ptrFromInt(next + index)).* = value;
     }
     pub fn readAll(array: MinimalRenderArray) []const u8 {
-        return @ptrFromInt([*]const u8, array.start)[0..array.len()];
+        return @as([*]const u8, @ptrFromInt(array.start))[0..array.len()];
     }
     pub fn undefineAll(array: *MinimalRenderArray) void {
         array.finish = array.start;

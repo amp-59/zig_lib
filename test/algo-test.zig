@@ -48,26 +48,26 @@ pub fn compareSorts() !void {
     const T = u64;
     try mem.map(.{ .options = .{} }, size, size);
     try mem.map(.{ .options = .{} }, size + size, size);
-    const rnbuf: []u8 = @ptrFromInt([*]u8, size)[0..size];
+    const rnbuf: []u8 = @as([*]u8, @ptrFromInt(size))[0..size];
     try file.readRandom(rnbuf);
-    const values_1 = @ptrFromInt([*]T, size)[0..(size / @sizeOf(T))];
-    const values_2 = @ptrFromInt([*]T, size + size)[0..(size / @sizeOf(T))];
+    const values_1 = @as([*]T, @ptrFromInt(size))[0..(size / @sizeOf(T))];
+    const values_2 = @as([*]T, @ptrFromInt(size + size))[0..(size / @sizeOf(T))];
     if (false) {
-        mach.memcpy(@ptrFromInt([*]u8, size + size), @ptrFromInt([*]const u8, size), size);
+        mach.memcpy(@as([*]u8, @ptrFromInt(size + size)), @as([*]const u8, @ptrFromInt(size)), size);
         const t_0 = try time.get(.{}, .realtime);
         algo.insertionSort(T, S.asc, builtin.identity, values_2[0 .. values_2.len / 0x10]);
         const t_1 = try time.get(.{}, .realtime);
         testing.printN(4096, .{ "insert: [", fmt.ud64(values_2.len), "]" ++ @typeName(T), "\t = ", fmt.any(time.diff(t_1, t_0)), '\n' });
     }
     {
-        mach.memcpy(@ptrFromInt([*]u8, size + size), @ptrFromInt([*]const u8, size), size);
+        mach.memcpy(@as([*]u8, @ptrFromInt(size + size)), @as([*]const u8, @ptrFromInt(size)), size);
         const t_0 = try time.get(.{}, .realtime);
         algo.shellSort(T, S.asc, builtin.identity, values_2);
         const t_1 = try time.get(.{}, .realtime);
         testing.printN(4096, .{ "shell: [", fmt.ud64(values_2.len), "]" ++ @typeName(T), "\t = ", fmt.any(time.diff(t_1, t_0)), '\n' });
     }
     {
-        mach.memcpy(@ptrFromInt([*]u8, size + size), @ptrFromInt([*]const u8, size), size);
+        mach.memcpy(@as([*]u8, @ptrFromInt(size + size)), @as([*]const u8, @ptrFromInt(size)), size);
         const t_0 = try time.get(.{}, .realtime);
         algo.layeredShellSort(T, S.asc, values_2);
         const t_1 = try time.get(.{}, .realtime);
@@ -97,8 +97,8 @@ pub fn approximationTest() void {
         total_returned +%= s_aligned_bytes;
         if (n_aligned_bytes -% s_aligned_bytes == 0 and show_best_cases) {
             const ss: []const []const u8 = &[_][]const u8{
-                builtin.fmt.ud32(@intCast(u32, s_aligned_bytes)).readAll(), " ",
-                builtin.fmt.ub32(@intCast(u32, s_aligned_bytes)).readAll(), "\n",
+                builtin.fmt.ud32(@as(u32, @intCast(s_aligned_bytes))).readAll(), " ",
+                builtin.fmt.ub32(@as(u32, @intCast(s_aligned_bytes))).readAll(), "\n",
             };
             if (len +% 128 > buf.len) {
                 print(&buf, len, ss);

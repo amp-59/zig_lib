@@ -49,7 +49,7 @@ pub fn unfairAndUnreasonableTestCases() !void {
         var v_3 = S.get(3);
         var v_4 = S.get(4);
         var src_0: [5:null]?[:S.sentinel]S = .{ &v_0, &v_1, &v_2, &v_3, &v_4 };
-        var src_1 = @ptrCast([*:null]?[:S.sentinel]S, &src_0);
+        var src_1 = @as([*:null]?[:S.sentinel]S, @ptrCast(&src_0));
         const reinterpret_spec: mem.ReinterpretSpec = .{ .reference = .{ .coerce = .{}, .dereference = &.{} } };
         try testAutomaticAppend(reinterpret_spec, dst_type, src_1, .{ &v_0, &v_1, &v_2, &v_3, &v_4 });
         try testDynamicAppend(reinterpret_spec, allocator, dst_type, src_1);
@@ -84,7 +84,7 @@ pub fn unfairAndUnreasonableTestCases() !void {
     }
     {
         const dst_type: type = []const []align(8) const u8;
-        const src_0: []align(8) const u8 = @alignCast(8, "hello_world");
+        const src_0: []align(8) const u8 = @alignCast("hello_world");
         const src_2: []const []align(8) const u8 = &.{src_0};
         const src_4: []const []const []align(8) const u8 = &.{src_2};
         const src_6: []const []const []const []align(8) const u8 = &.{src_4};
@@ -108,7 +108,7 @@ pub fn unfairAndUnreasonableTestCases() !void {
         const dst_type: type = []u8;
         const src_type: type = [*:0]u8;
         var p0 = "hello_world".*;
-        var p1 = @ptrCast(src_type, &p0);
+        var p1 = @as(src_type, @ptrCast(&p0));
         const reinterpret_spec: mem.ReinterpretSpec = .{ .reference = .{ .coerce = .{} } };
         try testAutomaticAppend(reinterpret_spec, dst_type, p1);
         try testDynamicAppend(reinterpret_spec, allocator, dst_type, p1);

@@ -84,13 +84,13 @@ fn testEquivalentIntToStringFormat() !void {
     try testing.expectEqualMany(u8, "0b1", (ubin{ .value = 1 }).formatConvert().readAll());
     try testing.expectEqualMany(u8, builtin.fmt.ub64(uint).readAll(), fmt.ub64(uint).formatConvert().readAll());
     while (uint < seed +% 0x1000) : (uint +%= 1) {
-        const uint_32: u32 = @truncate(u32, uint);
-        const uint_16: u16 = @truncate(u16, uint);
-        const uint_8: u8 = @truncate(u8, uint);
-        const sint_64: i64 = @bitReverse(@bitCast(i64, uint));
-        const sint_32: i32 = @bitReverse(@bitCast(i32, @truncate(u32, uint)));
-        const sint_16: i16 = @bitReverse(@bitCast(i16, @truncate(u16, uint)));
-        const sint_8: i8 = @bitReverse(@bitCast(i8, @truncate(u8, uint)));
+        const uint_32: u32 = @as(u32, @truncate(uint));
+        const uint_16: u16 = @as(u16, @truncate(uint));
+        const uint_8: u8 = @as(u8, @truncate(uint));
+        const sint_64: i64 = @bitReverse(@as(i64, @bitCast(uint)));
+        const sint_32: i32 = @bitReverse(@as(i32, @bitCast(@as(u32, @truncate(uint)))));
+        const sint_16: i16 = @bitReverse(@as(i16, @bitCast(@as(u16, @truncate(uint)))));
+        const sint_8: i8 = @bitReverse(@as(i8, @bitCast(@as(u8, @truncate(uint)))));
 
         try testing.expectEqualMany(u8, builtin.fmt.ub64(uint).readAll(), fmt.ub64(uint).formatConvert().readAll());
         try testing.expectEqualMany(u8, builtin.fmt.ub32(uint_32).readAll(), fmt.ub32(uint_32).formatConvert().readAll());
@@ -187,13 +187,13 @@ fn testEquivalentLEBFormatAndParse() !void {
     uint = seed;
     try testing.expectEqualMany(u8, builtin.fmt.ub64(uint).readAll(), fmt.ub64(uint).formatConvert().readAll());
     while (uint < seed +% 0x1000) : (uint +%= 1) {
-        const uint_32: u32 = @truncate(u32, uint);
-        const uint_16: u16 = @truncate(u16, uint);
-        const uint_8: u8 = @truncate(u8, uint);
-        const sint_64: i64 = @bitReverse(@bitCast(i64, uint));
-        const sint_32: i32 = @truncate(i32, sint_64);
-        const sint_16: i16 = @truncate(i16, sint_64);
-        const sint_8: i8 = @truncate(i8, sint_64);
+        const uint_32: u32 = @as(u32, @truncate(uint));
+        const uint_16: u16 = @as(u16, @truncate(uint));
+        const uint_8: u8 = @as(u8, @truncate(uint));
+        const sint_64: i64 = @bitReverse(@as(i64, @bitCast(uint)));
+        const sint_32: i32 = @as(i32, @truncate(sint_64));
+        const sint_16: i16 = @as(i16, @truncate(sint_64));
+        const sint_8: i8 = @as(i8, @truncate(sint_64));
         const uint_64_fmt: U64 = .{ .value = uint };
         const uint_32_fmt: U32 = .{ .value = uint_32 };
         const uint_16_fmt: U16 = .{ .value = uint_16 };
@@ -255,7 +255,7 @@ fn testEquivalentLEBFormatAndParse() !void {
     try testing.expect((try testReadLEB128(i16, "\xff\xff\x7f")) == -1);
     try testing.expect((try testReadLEB128(i32, "\xff\xff\xff\xff\x7f")) == -1);
     try testing.expect((try testReadLEB128(i32, "\x80\x80\x80\x80\x78")) == -0x80000000);
-    try testing.expect((try testReadLEB128(i64, "\x80\x80\x80\x80\x80\x80\x80\x80\x80\x7f")) == @bitCast(i64, @intCast(u64, 0x8000000000000000)));
+    try testing.expect((try testReadLEB128(i64, "\x80\x80\x80\x80\x80\x80\x80\x80\x80\x7f")) == @as(i64, @bitCast(@as(u64, @intCast(0x8000000000000000)))));
     try testing.expect((try testReadLEB128(i64, "\x80\x80\x80\x80\x80\x80\x80\x80\x40")) == -0x4000000000000000);
     try testing.expect((try testReadLEB128(i64, "\x80\x80\x80\x80\x80\x80\x80\x80\x80\x7f")) == -0x8000000000000000);
 

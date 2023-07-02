@@ -136,7 +136,8 @@ fn testManyCompileOptionsWithArguments(args: anytype, vars: anytype) !void {
     if (args.len < 5) {
         return error.MissingEnvironmentPaths;
     }
-    const toplevel: *Node = Node.init(&allocator, args, vars);
+    Node.initState(args, vars);
+    const toplevel: *Node = Node.init(&allocator);
     const g0: *Node = try toplevel.addGroup(&allocator, "g0");
     const t0: *Node = try g0.addBuild(&allocator, build_cmd, "target", @src().file);
     const t1: *Node = try g0.addArchive(&allocator, .{
