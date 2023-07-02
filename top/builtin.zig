@@ -2037,8 +2037,8 @@ pub const fmt = struct {
         }
         break :blk indent;
     };
-    const AboutSrc = @TypeOf(about_blank_s);
-    const AboutDest = @TypeOf(@constCast(about_blank_s));
+    pub const AboutSrc = @TypeOf(about_blank_s);
+    pub const AboutDest = @TypeOf(@constCast(about_blank_s));
     pub fn about(comptime s: [:0]const u8) AboutSrc {
         var lhs: [:0]const u8 = s;
         lhs = message_prefix ++ lhs;
