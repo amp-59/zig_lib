@@ -54,31 +54,31 @@ pub const Config = struct {
     pub fn formatWriteBuf(cfg: Config, buf: [*]u8) u64 {
         @setRuntimeSafety(false);
         var len: u64 = 0;
-        @ptrCast(*[10]u8, buf).* = "pub const ".*;
+        @as(*[10]u8, @ptrCast(buf)).* = "pub const ".*;
         len +%= 10;
         @memcpy(buf + len, cfg.name);
         len +%= cfg.name.len;
         switch (cfg.value) {
             .Int => |value| {
-                @ptrCast(*[17]u8, buf + len).* = ": comptime_int = ".*;
+                @as(*[17]u8, @ptrCast(buf + len)).* = ": comptime_int = ".*;
                 len +%= 17;
                 const int_s: []const u8 = builtin.fmt.ud64(value).readAll();
                 @memcpy(buf + len, int_s);
                 len +%= int_s.len;
             },
             .Bool => |value| {
-                @ptrCast(*[9]u8, buf + len).* = ": bool = ".*;
+                @as(*[9]u8, @ptrCast(buf + len)).* = ": bool = ".*;
                 len +%= 9;
                 @memcpy(buf + len, if (value) "true" else "false");
                 len +%= if (value) 4 else 5;
             },
             .String => |value| {
                 const len_s: []const u8 = builtin.fmt.ud64(value.len).readAll();
-                @ptrCast(*[3]u8, buf + len).* = ": [".*;
+                @as(*[3]u8, @ptrCast(buf + len)).* = ": [".*;
                 len +%= 3;
                 @memcpy(buf + len, len_s);
                 len +%= len_s.len;
-                @ptrCast(*[12]u8, buf + len).* = "]const u8 = ".*;
+                @as(*[12]u8, @ptrCast(buf + len)).* = "]const u8 = ".*;
                 len +%= 12;
                 buf[len] = '"';
                 len +%= 1;
@@ -88,7 +88,7 @@ pub const Config = struct {
                 len +%= 1;
             },
         }
-        @ptrCast(*[2]u8, buf + len).* = ";\n".*;
+        @as(*[2]u8, @ptrCast(buf + len)).* = ";\n".*;
         return len +% 2;
     }
     pub fn formatWrite(cfg: Config, array: anytype) void {
@@ -261,7 +261,7 @@ pub const Macro = struct {
     }
     pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
         @setRuntimeSafety(false);
-        @ptrCast(*[2]u8, buf).* = "-D".*;
+        @as(*[2]u8, @ptrCast(buf)).* = "-D".*;
         mach.memcpy(buf + 2, format.name.ptr, format.name.len);
         var len: u64 = 2 +% format.name.len;
         if (format.value) |value| {
@@ -367,15 +367,15 @@ pub const Path = struct {
     }
     pub fn concatenate(path: Path, allocator: anytype) [:0]u8 {
         @setRuntimeSafety(false);
-        const buf: [*]u8 = @ptrFromInt([*]u8, allocator.allocateRaw(path.formatLength(), 1));
+        const buf: [*]u8 = @as([*]u8, @ptrFromInt(allocator.allocateRaw(path.formatLength(), 1)));
         const len: u64 = path.formatWriteBuf(buf);
         return buf[0 .. len -% 1 :0];
     }
     pub fn addName(path: *Path, allocator: anytype) *[:0]const u8 {
         @setRuntimeSafety(false);
         const size_of: comptime_int = @sizeOf([:0]const u8);
-        const addr_buf: *u64 = @ptrCast(*u64, &path.names);
-        const ret: *[:0]const u8 = @ptrFromInt(*[:0]const u8, allocator.addGeneric(size_of, 2, addr_buf, &path.names_max_len, path.names_len));
+        const addr_buf: *u64 = @as(*u64, @ptrCast(&path.names));
+        const ret: *[:0]const u8 = @as(*[:0]const u8, @ptrFromInt(allocator.addGeneric(size_of, 2, addr_buf, &path.names_max_len, path.names_len)));
         path.names_len +%= 1;
         return ret;
     }
@@ -530,8 +530,8 @@ pub const Record = packed struct {
     detail: hist_tasks.BuildCommand,
     pub fn init(job: *JobInfo, build_cmd: *tasks.BuildCommand) Record {
         return .{
-            .durat = @intCast(u32, (job.ts.sec * 1_000) +% (job.ts.nsec / 1_000_000)),
-            .size = @intCast(u32, job.st.size),
+            .durat = @as(u32, @intCast((job.ts.sec * 1_000) +% (job.ts.nsec / 1_000_000))),
+            .size = @as(u32, @intCast(job.st.size)),
             .detail = hist_tasks.BuildCommand.convert(build_cmd),
         };
     }

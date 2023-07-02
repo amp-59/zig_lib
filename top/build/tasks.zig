@@ -833,7 +833,7 @@ pub const BuildCommand = struct {
         len +%= zig_exe.len;
         buf[len] = 0;
         len +%= 1;
-        @ptrCast(*[6]u8, buf + len).* = "build-".*;
+        @as(*[6]u8, @ptrCast(buf + len)).* = "build-".*;
         len +%= 6;
         @memcpy(buf + len, @tagName(cmd.kind));
         len +%= @tagName(cmd.kind).len;
@@ -843,16 +843,16 @@ pub const BuildCommand = struct {
             switch (emit_bin) {
                 .yes => |yes| {
                     if (yes) |arg| {
-                        @ptrCast(*[11]u8, buf + len).* = "-femit-bin\x3d".*;
+                        @as(*[11]u8, @ptrCast(buf + len)).* = "-femit-bin\x3d".*;
                         len +%= 11;
                         len +%= arg.formatWriteBuf(buf + len);
                     } else {
-                        @ptrCast(*[11]u8, buf + len).* = "-femit-bin\x00".*;
+                        @as(*[11]u8, @ptrCast(buf + len)).* = "-femit-bin\x00".*;
                         len +%= 11;
                     }
                 },
                 .no => {
-                    @ptrCast(*[14]u8, buf + len).* = "-fno-emit-bin\x00".*;
+                    @as(*[14]u8, @ptrCast(buf + len)).* = "-fno-emit-bin\x00".*;
                     len +%= 14;
                 },
             }
@@ -861,16 +861,16 @@ pub const BuildCommand = struct {
             switch (emit_asm) {
                 .yes => |yes| {
                     if (yes) |arg| {
-                        @ptrCast(*[11]u8, buf + len).* = "-femit-asm\x3d".*;
+                        @as(*[11]u8, @ptrCast(buf + len)).* = "-femit-asm\x3d".*;
                         len +%= 11;
                         len +%= arg.formatWriteBuf(buf + len);
                     } else {
-                        @ptrCast(*[11]u8, buf + len).* = "-femit-asm\x00".*;
+                        @as(*[11]u8, @ptrCast(buf + len)).* = "-femit-asm\x00".*;
                         len +%= 11;
                     }
                 },
                 .no => {
-                    @ptrCast(*[14]u8, buf + len).* = "-fno-emit-asm\x00".*;
+                    @as(*[14]u8, @ptrCast(buf + len)).* = "-fno-emit-asm\x00".*;
                     len +%= 14;
                 },
             }
@@ -879,16 +879,16 @@ pub const BuildCommand = struct {
             switch (emit_llvm_ir) {
                 .yes => |yes| {
                     if (yes) |arg| {
-                        @ptrCast(*[15]u8, buf + len).* = "-femit-llvm-ir\x3d".*;
+                        @as(*[15]u8, @ptrCast(buf + len)).* = "-femit-llvm-ir\x3d".*;
                         len +%= 15;
                         len +%= arg.formatWriteBuf(buf + len);
                     } else {
-                        @ptrCast(*[15]u8, buf + len).* = "-femit-llvm-ir\x00".*;
+                        @as(*[15]u8, @ptrCast(buf + len)).* = "-femit-llvm-ir\x00".*;
                         len +%= 15;
                     }
                 },
                 .no => {
-                    @ptrCast(*[18]u8, buf + len).* = "-fno-emit-llvm-ir\x00".*;
+                    @as(*[18]u8, @ptrCast(buf + len)).* = "-fno-emit-llvm-ir\x00".*;
                     len +%= 18;
                 },
             }
@@ -897,16 +897,16 @@ pub const BuildCommand = struct {
             switch (emit_llvm_bc) {
                 .yes => |yes| {
                     if (yes) |arg| {
-                        @ptrCast(*[15]u8, buf + len).* = "-femit-llvm-bc\x3d".*;
+                        @as(*[15]u8, @ptrCast(buf + len)).* = "-femit-llvm-bc\x3d".*;
                         len +%= 15;
                         len +%= arg.formatWriteBuf(buf + len);
                     } else {
-                        @ptrCast(*[15]u8, buf + len).* = "-femit-llvm-bc\x00".*;
+                        @as(*[15]u8, @ptrCast(buf + len)).* = "-femit-llvm-bc\x00".*;
                         len +%= 15;
                     }
                 },
                 .no => {
-                    @ptrCast(*[18]u8, buf + len).* = "-fno-emit-llvm-bc\x00".*;
+                    @as(*[18]u8, @ptrCast(buf + len)).* = "-fno-emit-llvm-bc\x00".*;
                     len +%= 18;
                 },
             }
@@ -915,16 +915,16 @@ pub const BuildCommand = struct {
             switch (emit_h) {
                 .yes => |yes| {
                     if (yes) |arg| {
-                        @ptrCast(*[9]u8, buf + len).* = "-femit-h\x3d".*;
+                        @as(*[9]u8, @ptrCast(buf + len)).* = "-femit-h\x3d".*;
                         len +%= 9;
                         len +%= arg.formatWriteBuf(buf + len);
                     } else {
-                        @ptrCast(*[9]u8, buf + len).* = "-femit-h\x00".*;
+                        @as(*[9]u8, @ptrCast(buf + len)).* = "-femit-h\x00".*;
                         len +%= 9;
                     }
                 },
                 .no => {
-                    @ptrCast(*[12]u8, buf + len).* = "-fno-emit-h\x00".*;
+                    @as(*[12]u8, @ptrCast(buf + len)).* = "-fno-emit-h\x00".*;
                     len +%= 12;
                 },
             }
@@ -933,16 +933,16 @@ pub const BuildCommand = struct {
             switch (emit_docs) {
                 .yes => |yes| {
                     if (yes) |arg| {
-                        @ptrCast(*[12]u8, buf + len).* = "-femit-docs\x3d".*;
+                        @as(*[12]u8, @ptrCast(buf + len)).* = "-femit-docs\x3d".*;
                         len +%= 12;
                         len +%= arg.formatWriteBuf(buf + len);
                     } else {
-                        @ptrCast(*[12]u8, buf + len).* = "-femit-docs\x00".*;
+                        @as(*[12]u8, @ptrCast(buf + len)).* = "-femit-docs\x00".*;
                         len +%= 12;
                     }
                 },
                 .no => {
-                    @ptrCast(*[15]u8, buf + len).* = "-fno-emit-docs\x00".*;
+                    @as(*[15]u8, @ptrCast(buf + len)).* = "-fno-emit-docs\x00".*;
                     len +%= 15;
                 },
             }
@@ -951,16 +951,16 @@ pub const BuildCommand = struct {
             switch (emit_analysis) {
                 .yes => |yes| {
                     if (yes) |arg| {
-                        @ptrCast(*[16]u8, buf + len).* = "-femit-analysis\x3d".*;
+                        @as(*[16]u8, @ptrCast(buf + len)).* = "-femit-analysis\x3d".*;
                         len +%= 16;
                         len +%= arg.formatWriteBuf(buf + len);
                     } else {
-                        @ptrCast(*[16]u8, buf + len).* = "-femit-analysis\x00".*;
+                        @as(*[16]u8, @ptrCast(buf + len)).* = "-femit-analysis\x00".*;
                         len +%= 16;
                     }
                 },
                 .no => {
-                    @ptrCast(*[19]u8, buf + len).* = "-fno-emit-analysis\x00".*;
+                    @as(*[19]u8, @ptrCast(buf + len)).* = "-fno-emit-analysis\x00".*;
                     len +%= 19;
                 },
             }
@@ -969,22 +969,22 @@ pub const BuildCommand = struct {
             switch (emit_implib) {
                 .yes => |yes| {
                     if (yes) |arg| {
-                        @ptrCast(*[14]u8, buf + len).* = "-femit-implib\x3d".*;
+                        @as(*[14]u8, @ptrCast(buf + len)).* = "-femit-implib\x3d".*;
                         len +%= 14;
                         len +%= arg.formatWriteBuf(buf + len);
                     } else {
-                        @ptrCast(*[14]u8, buf + len).* = "-femit-implib\x00".*;
+                        @as(*[14]u8, @ptrCast(buf + len)).* = "-femit-implib\x00".*;
                         len +%= 14;
                     }
                 },
                 .no => {
-                    @ptrCast(*[17]u8, buf + len).* = "-fno-emit-implib\x00".*;
+                    @as(*[17]u8, @ptrCast(buf + len)).* = "-fno-emit-implib\x00".*;
                     len +%= 17;
                 },
             }
         }
         if (cmd.cache_root) |cache_root| {
-            @ptrCast(*[12]u8, buf + len).* = "--cache-dir\x00".*;
+            @as(*[12]u8, @ptrCast(buf + len)).* = "--cache-dir\x00".*;
             len +%= 12;
             @memcpy(buf + len, cache_root);
             len +%= cache_root.len;
@@ -992,7 +992,7 @@ pub const BuildCommand = struct {
             len +%= 1;
         }
         if (cmd.global_cache_root) |global_cache_root| {
-            @ptrCast(*[19]u8, buf + len).* = "--global-cache-dir\x00".*;
+            @as(*[19]u8, @ptrCast(buf + len)).* = "--global-cache-dir\x00".*;
             len +%= 19;
             @memcpy(buf + len, global_cache_root);
             len +%= global_cache_root.len;
@@ -1000,7 +1000,7 @@ pub const BuildCommand = struct {
             len +%= 1;
         }
         if (cmd.zig_lib_root) |zig_lib_root| {
-            @ptrCast(*[14]u8, buf + len).* = "--zig-lib-dir\x00".*;
+            @as(*[14]u8, @ptrCast(buf + len)).* = "--zig-lib-dir\x00".*;
             len +%= 14;
             @memcpy(buf + len, zig_lib_root);
             len +%= zig_lib_root.len;
@@ -1008,7 +1008,7 @@ pub const BuildCommand = struct {
             len +%= 1;
         }
         if (cmd.listen) |listen| {
-            @ptrCast(*[9]u8, buf + len).* = "--listen\x00".*;
+            @as(*[9]u8, @ptrCast(buf + len)).* = "--listen\x00".*;
             len +%= 9;
             @memcpy(buf + len, @tagName(listen));
             len +%= @tagName(listen).len;
@@ -1016,7 +1016,7 @@ pub const BuildCommand = struct {
             len +%= 1;
         }
         if (cmd.target) |target| {
-            @ptrCast(*[8]u8, buf + len).* = "-target\x00".*;
+            @as(*[8]u8, @ptrCast(buf + len)).* = "-target\x00".*;
             len +%= 8;
             @memcpy(buf + len, target);
             len +%= target.len;
@@ -1024,7 +1024,7 @@ pub const BuildCommand = struct {
             len +%= 1;
         }
         if (cmd.cpu) |cpu| {
-            @ptrCast(*[6]u8, buf + len).* = "-mcpu\x00".*;
+            @as(*[6]u8, @ptrCast(buf + len)).* = "-mcpu\x00".*;
             len +%= 6;
             @memcpy(buf + len, cpu);
             len +%= cpu.len;
@@ -1032,7 +1032,7 @@ pub const BuildCommand = struct {
             len +%= 1;
         }
         if (cmd.code_model) |code_model| {
-            @ptrCast(*[9]u8, buf + len).* = "-mcmodel\x00".*;
+            @as(*[9]u8, @ptrCast(buf + len)).* = "-mcmodel\x00".*;
             len +%= 9;
             @memcpy(buf + len, @tagName(code_model));
             len +%= @tagName(code_model).len;
@@ -1041,33 +1041,33 @@ pub const BuildCommand = struct {
         }
         if (cmd.red_zone) |red_zone| {
             if (red_zone) {
-                @ptrCast(*[11]u8, buf + len).* = "-mred-zone\x00".*;
+                @as(*[11]u8, @ptrCast(buf + len)).* = "-mred-zone\x00".*;
                 len +%= 11;
             } else {
-                @ptrCast(*[14]u8, buf + len).* = "-mno-red-zone\x00".*;
+                @as(*[14]u8, @ptrCast(buf + len)).* = "-mno-red-zone\x00".*;
                 len +%= 14;
             }
         }
         if (cmd.builtin) |builtin| {
             if (builtin) {
-                @ptrCast(*[10]u8, buf + len).* = "-fbuiltin\x00".*;
+                @as(*[10]u8, @ptrCast(buf + len)).* = "-fbuiltin\x00".*;
                 len +%= 10;
             } else {
-                @ptrCast(*[13]u8, buf + len).* = "-fno-builtin\x00".*;
+                @as(*[13]u8, @ptrCast(buf + len)).* = "-fno-builtin\x00".*;
                 len +%= 13;
             }
         }
         if (cmd.omit_frame_pointer) |omit_frame_pointer| {
             if (omit_frame_pointer) {
-                @ptrCast(*[21]u8, buf + len).* = "-fomit-frame-pointer\x00".*;
+                @as(*[21]u8, @ptrCast(buf + len)).* = "-fomit-frame-pointer\x00".*;
                 len +%= 21;
             } else {
-                @ptrCast(*[24]u8, buf + len).* = "-fno-omit-frame-pointer\x00".*;
+                @as(*[24]u8, @ptrCast(buf + len)).* = "-fno-omit-frame-pointer\x00".*;
                 len +%= 24;
             }
         }
         if (cmd.exec_model) |exec_model| {
-            @ptrCast(*[13]u8, buf + len).* = "-mexec-model\x00".*;
+            @as(*[13]u8, @ptrCast(buf + len)).* = "-mexec-model\x00".*;
             len +%= 13;
             @memcpy(buf + len, exec_model);
             len +%= exec_model.len;
@@ -1075,7 +1075,7 @@ pub const BuildCommand = struct {
             len +%= 1;
         }
         if (cmd.name) |name| {
-            @ptrCast(*[7]u8, buf + len).* = "--name\x00".*;
+            @as(*[7]u8, @ptrCast(buf + len)).* = "--name\x00".*;
             len +%= 7;
             @memcpy(buf + len, name);
             len +%= name.len;
@@ -1085,7 +1085,7 @@ pub const BuildCommand = struct {
         if (cmd.soname) |soname| {
             switch (soname) {
                 .yes => |arg| {
-                    @ptrCast(*[9]u8, buf + len).* = "-fsoname\x00".*;
+                    @as(*[9]u8, @ptrCast(buf + len)).* = "-fsoname\x00".*;
                     len +%= 9;
                     @memcpy(buf + len, arg);
                     len +%= arg.len;
@@ -1093,13 +1093,13 @@ pub const BuildCommand = struct {
                     len +%= 1;
                 },
                 .no => {
-                    @ptrCast(*[12]u8, buf + len).* = "-fno-soname\x00".*;
+                    @as(*[12]u8, @ptrCast(buf + len)).* = "-fno-soname\x00".*;
                     len +%= 12;
                 },
             }
         }
         if (cmd.mode) |mode| {
-            @ptrCast(*[3]u8, buf + len).* = "-O\x00".*;
+            @as(*[3]u8, @ptrCast(buf + len)).* = "-O\x00".*;
             len +%= 3;
             @memcpy(buf + len, @tagName(mode));
             len +%= @tagName(mode).len;
@@ -1107,7 +1107,7 @@ pub const BuildCommand = struct {
             len +%= 1;
         }
         if (cmd.passes) |passes| {
-            @ptrCast(*[19]u8, buf + len).* = "-fopt-bisect-limit\x3d".*;
+            @as(*[19]u8, @ptrCast(buf + len)).* = "-fopt-bisect-limit\x3d".*;
             len +%= 19;
             const s: []const u8 = ud64(passes).readAll();
             @memcpy(buf + len, s);
@@ -1116,7 +1116,7 @@ pub const BuildCommand = struct {
             len +%= 1;
         }
         if (cmd.main_pkg_path) |main_pkg_path| {
-            @ptrCast(*[16]u8, buf + len).* = "--main-pkg-path\x00".*;
+            @as(*[16]u8, @ptrCast(buf + len)).* = "--main-pkg-path\x00".*;
             len +%= 16;
             @memcpy(buf + len, main_pkg_path);
             len +%= main_pkg_path.len;
@@ -1125,159 +1125,159 @@ pub const BuildCommand = struct {
         }
         if (cmd.pic) |pic| {
             if (pic) {
-                @ptrCast(*[6]u8, buf + len).* = "-fPIC\x00".*;
+                @as(*[6]u8, @ptrCast(buf + len)).* = "-fPIC\x00".*;
                 len +%= 6;
             } else {
-                @ptrCast(*[9]u8, buf + len).* = "-fno-PIC\x00".*;
+                @as(*[9]u8, @ptrCast(buf + len)).* = "-fno-PIC\x00".*;
                 len +%= 9;
             }
         }
         if (cmd.pie) |pie| {
             if (pie) {
-                @ptrCast(*[6]u8, buf + len).* = "-fPIE\x00".*;
+                @as(*[6]u8, @ptrCast(buf + len)).* = "-fPIE\x00".*;
                 len +%= 6;
             } else {
-                @ptrCast(*[9]u8, buf + len).* = "-fno-PIE\x00".*;
+                @as(*[9]u8, @ptrCast(buf + len)).* = "-fno-PIE\x00".*;
                 len +%= 9;
             }
         }
         if (cmd.lto) |lto| {
             if (lto) {
-                @ptrCast(*[6]u8, buf + len).* = "-flto\x00".*;
+                @as(*[6]u8, @ptrCast(buf + len)).* = "-flto\x00".*;
                 len +%= 6;
             } else {
-                @ptrCast(*[9]u8, buf + len).* = "-fno-lto\x00".*;
+                @as(*[9]u8, @ptrCast(buf + len)).* = "-fno-lto\x00".*;
                 len +%= 9;
             }
         }
         if (cmd.stack_check) |stack_check| {
             if (stack_check) {
-                @ptrCast(*[14]u8, buf + len).* = "-fstack-check\x00".*;
+                @as(*[14]u8, @ptrCast(buf + len)).* = "-fstack-check\x00".*;
                 len +%= 14;
             } else {
-                @ptrCast(*[17]u8, buf + len).* = "-fno-stack-check\x00".*;
+                @as(*[17]u8, @ptrCast(buf + len)).* = "-fno-stack-check\x00".*;
                 len +%= 17;
             }
         }
         if (cmd.stack_protector) |stack_protector| {
             if (stack_protector) {
-                @ptrCast(*[14]u8, buf + len).* = "-fstack-check\x00".*;
+                @as(*[14]u8, @ptrCast(buf + len)).* = "-fstack-check\x00".*;
                 len +%= 14;
             } else {
-                @ptrCast(*[21]u8, buf + len).* = "-fno-stack-protector\x00".*;
+                @as(*[21]u8, @ptrCast(buf + len)).* = "-fno-stack-protector\x00".*;
                 len +%= 21;
             }
         }
         if (cmd.sanitize_c) |sanitize_c| {
             if (sanitize_c) {
-                @ptrCast(*[13]u8, buf + len).* = "-fsanitize-c\x00".*;
+                @as(*[13]u8, @ptrCast(buf + len)).* = "-fsanitize-c\x00".*;
                 len +%= 13;
             } else {
-                @ptrCast(*[16]u8, buf + len).* = "-fno-sanitize-c\x00".*;
+                @as(*[16]u8, @ptrCast(buf + len)).* = "-fno-sanitize-c\x00".*;
                 len +%= 16;
             }
         }
         if (cmd.valgrind) |valgrind| {
             if (valgrind) {
-                @ptrCast(*[11]u8, buf + len).* = "-fvalgrind\x00".*;
+                @as(*[11]u8, @ptrCast(buf + len)).* = "-fvalgrind\x00".*;
                 len +%= 11;
             } else {
-                @ptrCast(*[14]u8, buf + len).* = "-fno-valgrind\x00".*;
+                @as(*[14]u8, @ptrCast(buf + len)).* = "-fno-valgrind\x00".*;
                 len +%= 14;
             }
         }
         if (cmd.sanitize_thread) |sanitize_thread| {
             if (sanitize_thread) {
-                @ptrCast(*[18]u8, buf + len).* = "-fsanitize-thread\x00".*;
+                @as(*[18]u8, @ptrCast(buf + len)).* = "-fsanitize-thread\x00".*;
                 len +%= 18;
             } else {
-                @ptrCast(*[21]u8, buf + len).* = "-fno-sanitize-thread\x00".*;
+                @as(*[21]u8, @ptrCast(buf + len)).* = "-fno-sanitize-thread\x00".*;
                 len +%= 21;
             }
         }
         if (cmd.unwind_tables) |unwind_tables| {
             if (unwind_tables) {
-                @ptrCast(*[16]u8, buf + len).* = "-funwind-tables\x00".*;
+                @as(*[16]u8, @ptrCast(buf + len)).* = "-funwind-tables\x00".*;
                 len +%= 16;
             } else {
-                @ptrCast(*[19]u8, buf + len).* = "-fno-unwind-tables\x00".*;
+                @as(*[19]u8, @ptrCast(buf + len)).* = "-fno-unwind-tables\x00".*;
                 len +%= 19;
             }
         }
         if (cmd.llvm) |llvm| {
             if (llvm) {
-                @ptrCast(*[7]u8, buf + len).* = "-fLLVM\x00".*;
+                @as(*[7]u8, @ptrCast(buf + len)).* = "-fLLVM\x00".*;
                 len +%= 7;
             } else {
-                @ptrCast(*[10]u8, buf + len).* = "-fno-LLVM\x00".*;
+                @as(*[10]u8, @ptrCast(buf + len)).* = "-fno-LLVM\x00".*;
                 len +%= 10;
             }
         }
         if (cmd.clang) |clang| {
             if (clang) {
-                @ptrCast(*[8]u8, buf + len).* = "-fClang\x00".*;
+                @as(*[8]u8, @ptrCast(buf + len)).* = "-fClang\x00".*;
                 len +%= 8;
             } else {
-                @ptrCast(*[11]u8, buf + len).* = "-fno-Clang\x00".*;
+                @as(*[11]u8, @ptrCast(buf + len)).* = "-fno-Clang\x00".*;
                 len +%= 11;
             }
         }
         if (cmd.reference_trace) |reference_trace| {
             if (reference_trace) {
-                @ptrCast(*[18]u8, buf + len).* = "-freference-trace\x00".*;
+                @as(*[18]u8, @ptrCast(buf + len)).* = "-freference-trace\x00".*;
                 len +%= 18;
             } else {
-                @ptrCast(*[21]u8, buf + len).* = "-fno-reference-trace\x00".*;
+                @as(*[21]u8, @ptrCast(buf + len)).* = "-fno-reference-trace\x00".*;
                 len +%= 21;
             }
         }
         if (cmd.error_tracing) |error_tracing| {
             if (error_tracing) {
-                @ptrCast(*[16]u8, buf + len).* = "-ferror-tracing\x00".*;
+                @as(*[16]u8, @ptrCast(buf + len)).* = "-ferror-tracing\x00".*;
                 len +%= 16;
             } else {
-                @ptrCast(*[19]u8, buf + len).* = "-fno-error-tracing\x00".*;
+                @as(*[19]u8, @ptrCast(buf + len)).* = "-fno-error-tracing\x00".*;
                 len +%= 19;
             }
         }
         if (cmd.single_threaded) |single_threaded| {
             if (single_threaded) {
-                @ptrCast(*[18]u8, buf + len).* = "-fsingle-threaded\x00".*;
+                @as(*[18]u8, @ptrCast(buf + len)).* = "-fsingle-threaded\x00".*;
                 len +%= 18;
             } else {
-                @ptrCast(*[21]u8, buf + len).* = "-fno-single-threaded\x00".*;
+                @as(*[21]u8, @ptrCast(buf + len)).* = "-fno-single-threaded\x00".*;
                 len +%= 21;
             }
         }
         if (cmd.function_sections) |function_sections| {
             if (function_sections) {
-                @ptrCast(*[20]u8, buf + len).* = "-ffunction-sections\x00".*;
+                @as(*[20]u8, @ptrCast(buf + len)).* = "-ffunction-sections\x00".*;
                 len +%= 20;
             } else {
-                @ptrCast(*[23]u8, buf + len).* = "-fno-function-sections\x00".*;
+                @as(*[23]u8, @ptrCast(buf + len)).* = "-fno-function-sections\x00".*;
                 len +%= 23;
             }
         }
         if (cmd.strip) |strip| {
             if (strip) {
-                @ptrCast(*[8]u8, buf + len).* = "-fstrip\x00".*;
+                @as(*[8]u8, @ptrCast(buf + len)).* = "-fstrip\x00".*;
                 len +%= 8;
             } else {
-                @ptrCast(*[11]u8, buf + len).* = "-fno-strip\x00".*;
+                @as(*[11]u8, @ptrCast(buf + len)).* = "-fno-strip\x00".*;
                 len +%= 11;
             }
         }
         if (cmd.formatted_panics) |formatted_panics| {
             if (formatted_panics) {
-                @ptrCast(*[19]u8, buf + len).* = "-fformatted-panics\x00".*;
+                @as(*[19]u8, @ptrCast(buf + len)).* = "-fformatted-panics\x00".*;
                 len +%= 19;
             } else {
-                @ptrCast(*[22]u8, buf + len).* = "-fno-formatted-panics\x00".*;
+                @as(*[22]u8, @ptrCast(buf + len)).* = "-fno-formatted-panics\x00".*;
                 len +%= 22;
             }
         }
         if (cmd.format) |format| {
-            @ptrCast(*[6]u8, buf + len).* = "-ofmt\x3d".*;
+            @as(*[6]u8, @ptrCast(buf + len)).* = "-ofmt\x3d".*;
             len +%= 6;
             @memcpy(buf + len, @tagName(format));
             len +%= @tagName(format).len;
@@ -1285,7 +1285,7 @@ pub const BuildCommand = struct {
             len +%= 1;
         }
         if (cmd.dirafter) |dirafter| {
-            @ptrCast(*[11]u8, buf + len).* = "-idirafter\x00".*;
+            @as(*[11]u8, @ptrCast(buf + len)).* = "-idirafter\x00".*;
             len +%= 11;
             @memcpy(buf + len, dirafter);
             len +%= dirafter.len;
@@ -1293,7 +1293,7 @@ pub const BuildCommand = struct {
             len +%= 1;
         }
         if (cmd.system) |system| {
-            @ptrCast(*[9]u8, buf + len).* = "-isystem\x00".*;
+            @as(*[9]u8, @ptrCast(buf + len)).* = "-isystem\x00".*;
             len +%= 9;
             @memcpy(buf + len, system);
             len +%= system.len;
@@ -1301,7 +1301,7 @@ pub const BuildCommand = struct {
             len +%= 1;
         }
         if (cmd.libc) |libc| {
-            @ptrCast(*[7]u8, buf + len).* = "--libc\x00".*;
+            @as(*[7]u8, @ptrCast(buf + len)).* = "--libc\x00".*;
             len +%= 7;
             @memcpy(buf + len, libc);
             len +%= libc.len;
@@ -1309,7 +1309,7 @@ pub const BuildCommand = struct {
             len +%= 1;
         }
         if (cmd.library) |library| {
-            @ptrCast(*[10]u8, buf + len).* = "--library\x00".*;
+            @as(*[10]u8, @ptrCast(buf + len)).* = "--library\x00".*;
             len +%= 10;
             @memcpy(buf + len, library);
             len +%= library.len;
@@ -1318,7 +1318,7 @@ pub const BuildCommand = struct {
         }
         if (cmd.include) |include| {
             for (include) |value| {
-                @ptrCast(*[3]u8, buf + len).* = "-I\x00".*;
+                @as(*[3]u8, @ptrCast(buf + len)).* = "-I\x00".*;
                 len +%= 3;
                 @memcpy(buf + len, value);
                 len +%= value.len;
@@ -1328,7 +1328,7 @@ pub const BuildCommand = struct {
         }
         if (cmd.needed_library) |needed_library| {
             for (needed_library) |value| {
-                @ptrCast(*[17]u8, buf + len).* = "--needed-library\x00".*;
+                @as(*[17]u8, @ptrCast(buf + len)).* = "--needed-library\x00".*;
                 len +%= 17;
                 @memcpy(buf + len, value);
                 len +%= value.len;
@@ -1338,7 +1338,7 @@ pub const BuildCommand = struct {
         }
         if (cmd.library_directory) |library_directory| {
             for (library_directory) |value| {
-                @ptrCast(*[20]u8, buf + len).* = "--library-directory\x00".*;
+                @as(*[20]u8, @ptrCast(buf + len)).* = "--library-directory\x00".*;
                 len +%= 20;
                 @memcpy(buf + len, value);
                 len +%= value.len;
@@ -1347,7 +1347,7 @@ pub const BuildCommand = struct {
             }
         }
         if (cmd.link_script) |link_script| {
-            @ptrCast(*[9]u8, buf + len).* = "--script\x00".*;
+            @as(*[9]u8, @ptrCast(buf + len)).* = "--script\x00".*;
             len +%= 9;
             @memcpy(buf + len, link_script);
             len +%= link_script.len;
@@ -1355,7 +1355,7 @@ pub const BuildCommand = struct {
             len +%= 1;
         }
         if (cmd.version_script) |version_script| {
-            @ptrCast(*[17]u8, buf + len).* = "--version-script\x00".*;
+            @as(*[17]u8, @ptrCast(buf + len)).* = "--version-script\x00".*;
             len +%= 17;
             @memcpy(buf + len, version_script);
             len +%= version_script.len;
@@ -1363,7 +1363,7 @@ pub const BuildCommand = struct {
             len +%= 1;
         }
         if (cmd.dynamic_linker) |dynamic_linker| {
-            @ptrCast(*[17]u8, buf + len).* = "--dynamic-linker\x00".*;
+            @as(*[17]u8, @ptrCast(buf + len)).* = "--dynamic-linker\x00".*;
             len +%= 17;
             @memcpy(buf + len, dynamic_linker);
             len +%= dynamic_linker.len;
@@ -1371,7 +1371,7 @@ pub const BuildCommand = struct {
             len +%= 1;
         }
         if (cmd.sysroot) |sysroot| {
-            @ptrCast(*[10]u8, buf + len).* = "--sysroot\x00".*;
+            @as(*[10]u8, @ptrCast(buf + len)).* = "--sysroot\x00".*;
             len +%= 10;
             @memcpy(buf + len, sysroot);
             len +%= sysroot.len;
@@ -1379,7 +1379,7 @@ pub const BuildCommand = struct {
             len +%= 1;
         }
         if (cmd.entry) |entry| {
-            @ptrCast(*[8]u8, buf + len).* = "--entry\x00".*;
+            @as(*[8]u8, @ptrCast(buf + len)).* = "--entry\x00".*;
             len +%= 8;
             @memcpy(buf + len, entry);
             len +%= entry.len;
@@ -1388,24 +1388,24 @@ pub const BuildCommand = struct {
         }
         if (cmd.lld) |lld| {
             if (lld) {
-                @ptrCast(*[6]u8, buf + len).* = "-fLLD\x00".*;
+                @as(*[6]u8, @ptrCast(buf + len)).* = "-fLLD\x00".*;
                 len +%= 6;
             } else {
-                @ptrCast(*[9]u8, buf + len).* = "-fno-LLD\x00".*;
+                @as(*[9]u8, @ptrCast(buf + len)).* = "-fno-LLD\x00".*;
                 len +%= 9;
             }
         }
         if (cmd.compiler_rt) |compiler_rt| {
             if (compiler_rt) {
-                @ptrCast(*[14]u8, buf + len).* = "-fcompiler-rt\x00".*;
+                @as(*[14]u8, @ptrCast(buf + len)).* = "-fcompiler-rt\x00".*;
                 len +%= 14;
             } else {
-                @ptrCast(*[17]u8, buf + len).* = "-fno-compiler-rt\x00".*;
+                @as(*[17]u8, @ptrCast(buf + len)).* = "-fno-compiler-rt\x00".*;
                 len +%= 17;
             }
         }
         if (cmd.rpath) |rpath| {
-            @ptrCast(*[7]u8, buf + len).* = "-rpath\x00".*;
+            @as(*[7]u8, @ptrCast(buf + len)).* = "-rpath\x00".*;
             len +%= 7;
             @memcpy(buf + len, rpath);
             len +%= rpath.len;
@@ -1414,24 +1414,24 @@ pub const BuildCommand = struct {
         }
         if (cmd.each_lib_rpath) |each_lib_rpath| {
             if (each_lib_rpath) {
-                @ptrCast(*[17]u8, buf + len).* = "-feach-lib-rpath\x00".*;
+                @as(*[17]u8, @ptrCast(buf + len)).* = "-feach-lib-rpath\x00".*;
                 len +%= 17;
             } else {
-                @ptrCast(*[20]u8, buf + len).* = "-fno-each-lib-rpath\x00".*;
+                @as(*[20]u8, @ptrCast(buf + len)).* = "-fno-each-lib-rpath\x00".*;
                 len +%= 20;
             }
         }
         if (cmd.allow_shlib_undefined) |allow_shlib_undefined| {
             if (allow_shlib_undefined) {
-                @ptrCast(*[24]u8, buf + len).* = "-fallow-shlib-undefined\x00".*;
+                @as(*[24]u8, @ptrCast(buf + len)).* = "-fallow-shlib-undefined\x00".*;
                 len +%= 24;
             } else {
-                @ptrCast(*[27]u8, buf + len).* = "-fno-allow-shlib-undefined\x00".*;
+                @as(*[27]u8, @ptrCast(buf + len)).* = "-fno-allow-shlib-undefined\x00".*;
                 len +%= 27;
             }
         }
         if (cmd.build_id) |build_id| {
-            @ptrCast(*[11]u8, buf + len).* = "--build-id\x3d".*;
+            @as(*[11]u8, @ptrCast(buf + len)).* = "--build-id\x3d".*;
             len +%= 11;
             @memcpy(buf + len, @tagName(build_id));
             len +%= @tagName(build_id).len;
@@ -1440,24 +1440,24 @@ pub const BuildCommand = struct {
         }
         if (cmd.compress_debug_sections) |compress_debug_sections| {
             if (compress_debug_sections) {
-                @ptrCast(*[31]u8, buf + len).* = "--compress-debug-sections=zlib\x00".*;
+                @as(*[31]u8, @ptrCast(buf + len)).* = "--compress-debug-sections=zlib\x00".*;
                 len +%= 31;
             } else {
-                @ptrCast(*[31]u8, buf + len).* = "--compress-debug-sections=none\x00".*;
+                @as(*[31]u8, @ptrCast(buf + len)).* = "--compress-debug-sections=none\x00".*;
                 len +%= 31;
             }
         }
         if (cmd.gc_sections) |gc_sections| {
             if (gc_sections) {
-                @ptrCast(*[14]u8, buf + len).* = "--gc-sections\x00".*;
+                @as(*[14]u8, @ptrCast(buf + len)).* = "--gc-sections\x00".*;
                 len +%= 14;
             } else {
-                @ptrCast(*[17]u8, buf + len).* = "--no-gc-sections\x00".*;
+                @as(*[17]u8, @ptrCast(buf + len)).* = "--no-gc-sections\x00".*;
                 len +%= 17;
             }
         }
         if (cmd.stack) |stack| {
-            @ptrCast(*[8]u8, buf + len).* = "--stack\x00".*;
+            @as(*[8]u8, @ptrCast(buf + len)).* = "--stack\x00".*;
             len +%= 8;
             const s: []const u8 = ud64(stack).readAll();
             @memcpy(buf + len, s);
@@ -1466,7 +1466,7 @@ pub const BuildCommand = struct {
             len +%= 1;
         }
         if (cmd.image_base) |image_base| {
-            @ptrCast(*[13]u8, buf + len).* = "--image-base\x00".*;
+            @as(*[13]u8, @ptrCast(buf + len)).* = "--image-base\x00".*;
             len +%= 13;
             const s: []const u8 = ud64(image_base).readAll();
             @memcpy(buf + len, s);
@@ -1487,28 +1487,28 @@ pub const BuildCommand = struct {
             len +%= types.CFlags.formatWriteBuf(.{ .value = cflags }, buf + len);
         }
         if (cmd.link_libc) {
-            @ptrCast(*[4]u8, buf + len).* = "-lc\x00".*;
+            @as(*[4]u8, @ptrCast(buf + len)).* = "-lc\x00".*;
             len +%= 4;
         }
         if (cmd.rdynamic) {
-            @ptrCast(*[10]u8, buf + len).* = "-rdynamic\x00".*;
+            @as(*[10]u8, @ptrCast(buf + len)).* = "-rdynamic\x00".*;
             len +%= 10;
         }
         if (cmd.dynamic) {
-            @ptrCast(*[9]u8, buf + len).* = "-dynamic\x00".*;
+            @as(*[9]u8, @ptrCast(buf + len)).* = "-dynamic\x00".*;
             len +%= 9;
         }
         if (cmd.static) {
-            @ptrCast(*[8]u8, buf + len).* = "-static\x00".*;
+            @as(*[8]u8, @ptrCast(buf + len)).* = "-static\x00".*;
             len +%= 8;
         }
         if (cmd.symbolic) {
-            @ptrCast(*[11]u8, buf + len).* = "-Bsymbolic\x00".*;
+            @as(*[11]u8, @ptrCast(buf + len)).* = "-Bsymbolic\x00".*;
             len +%= 11;
         }
         if (cmd.z) |z| {
             for (z) |value| {
-                @ptrCast(*[3]u8, buf + len).* = "-z\x00".*;
+                @as(*[3]u8, @ptrCast(buf + len)).* = "-z\x00".*;
                 len +%= 3;
                 @memcpy(buf + len, @tagName(value));
                 len +%= @tagName(value).len;
@@ -1518,7 +1518,7 @@ pub const BuildCommand = struct {
         }
         len +%= types.Files.formatWriteBuf(.{ .value = files }, buf + len);
         if (cmd.color) |color| {
-            @ptrCast(*[8]u8, buf + len).* = "--color\x00".*;
+            @as(*[8]u8, @ptrCast(buf + len)).* = "--color\x00".*;
             len +%= 8;
             @memcpy(buf + len, @tagName(color));
             len +%= @tagName(color).len;
@@ -1526,43 +1526,43 @@ pub const BuildCommand = struct {
             len +%= 1;
         }
         if (cmd.time_report) {
-            @ptrCast(*[14]u8, buf + len).* = "-ftime-report\x00".*;
+            @as(*[14]u8, @ptrCast(buf + len)).* = "-ftime-report\x00".*;
             len +%= 14;
         }
         if (cmd.stack_report) {
-            @ptrCast(*[15]u8, buf + len).* = "-fstack-report\x00".*;
+            @as(*[15]u8, @ptrCast(buf + len)).* = "-fstack-report\x00".*;
             len +%= 15;
         }
         if (cmd.verbose_link) {
-            @ptrCast(*[15]u8, buf + len).* = "--verbose-link\x00".*;
+            @as(*[15]u8, @ptrCast(buf + len)).* = "--verbose-link\x00".*;
             len +%= 15;
         }
         if (cmd.verbose_cc) {
-            @ptrCast(*[13]u8, buf + len).* = "--verbose-cc\x00".*;
+            @as(*[13]u8, @ptrCast(buf + len)).* = "--verbose-cc\x00".*;
             len +%= 13;
         }
         if (cmd.verbose_air) {
-            @ptrCast(*[14]u8, buf + len).* = "--verbose-air\x00".*;
+            @as(*[14]u8, @ptrCast(buf + len)).* = "--verbose-air\x00".*;
             len +%= 14;
         }
         if (cmd.verbose_mir) {
-            @ptrCast(*[14]u8, buf + len).* = "--verbose-mir\x00".*;
+            @as(*[14]u8, @ptrCast(buf + len)).* = "--verbose-mir\x00".*;
             len +%= 14;
         }
         if (cmd.verbose_llvm_ir) {
-            @ptrCast(*[18]u8, buf + len).* = "--verbose-llvm-ir\x00".*;
+            @as(*[18]u8, @ptrCast(buf + len)).* = "--verbose-llvm-ir\x00".*;
             len +%= 18;
         }
         if (cmd.verbose_cimport) {
-            @ptrCast(*[18]u8, buf + len).* = "--verbose-cimport\x00".*;
+            @as(*[18]u8, @ptrCast(buf + len)).* = "--verbose-cimport\x00".*;
             len +%= 18;
         }
         if (cmd.verbose_llvm_cpu_features) {
-            @ptrCast(*[28]u8, buf + len).* = "--verbose-llvm-cpu-features\x00".*;
+            @as(*[28]u8, @ptrCast(buf + len)).* = "--verbose-llvm-cpu-features\x00".*;
             len +%= 28;
         }
         if (cmd.debug_log) |debug_log| {
-            @ptrCast(*[12]u8, buf + len).* = "--debug-log\x00".*;
+            @as(*[12]u8, @ptrCast(buf + len)).* = "--debug-log\x00".*;
             len +%= 12;
             @memcpy(buf + len, debug_log);
             len +%= debug_log.len;
@@ -1570,11 +1570,11 @@ pub const BuildCommand = struct {
             len +%= 1;
         }
         if (cmd.debug_compiler_errors) {
-            @ptrCast(*[23]u8, buf + len).* = "--debug-compile-errors\x00".*;
+            @as(*[23]u8, @ptrCast(buf + len)).* = "--debug-compile-errors\x00".*;
             len +%= 23;
         }
         if (cmd.debug_link_snapshot) {
-            @ptrCast(*[22]u8, buf + len).* = "--debug-link-snapshot\x00".*;
+            @as(*[22]u8, @ptrCast(buf + len)).* = "--debug-link-snapshot\x00".*;
             len +%= 22;
         }
         return len;
@@ -2181,10 +2181,10 @@ pub const FormatCommand = struct {
         len +%= zig_exe.len;
         buf[len] = 0;
         len +%= 1;
-        @ptrCast(*[4]u8, buf + len).* = "fmt\x00".*;
+        @as(*[4]u8, @ptrCast(buf + len)).* = "fmt\x00".*;
         len +%= 4;
         if (cmd.color) |color| {
-            @ptrCast(*[8]u8, buf + len).* = "--color\x00".*;
+            @as(*[8]u8, @ptrCast(buf + len)).* = "--color\x00".*;
             len +%= 8;
             @memcpy(buf + len, @tagName(color));
             len +%= @tagName(color).len;
@@ -2192,19 +2192,19 @@ pub const FormatCommand = struct {
             len +%= 1;
         }
         if (cmd.stdin) {
-            @ptrCast(*[8]u8, buf + len).* = "--stdin\x00".*;
+            @as(*[8]u8, @ptrCast(buf + len)).* = "--stdin\x00".*;
             len +%= 8;
         }
         if (cmd.check) {
-            @ptrCast(*[8]u8, buf + len).* = "--check\x00".*;
+            @as(*[8]u8, @ptrCast(buf + len)).* = "--check\x00".*;
             len +%= 8;
         }
         if (cmd.ast_check) {
-            @ptrCast(*[12]u8, buf + len).* = "--ast-check\x00".*;
+            @as(*[12]u8, @ptrCast(buf + len)).* = "--ast-check\x00".*;
             len +%= 12;
         }
         if (cmd.exclude) |exclude| {
-            @ptrCast(*[10]u8, buf + len).* = "--exclude\x00".*;
+            @as(*[10]u8, @ptrCast(buf + len)).* = "--exclude\x00".*;
             len +%= 10;
             @memcpy(buf + len, exclude);
             len +%= exclude.len;
@@ -2354,10 +2354,10 @@ pub const ArchiveCommand = struct {
         len +%= zig_exe.len;
         buf[len] = 0;
         len +%= 1;
-        @ptrCast(*[3]u8, buf + len).* = "ar\x00".*;
+        @as(*[3]u8, @ptrCast(buf + len)).* = "ar\x00".*;
         len +%= 3;
         if (cmd.format) |format| {
-            @ptrCast(*[9]u8, buf + len).* = "--format\x00".*;
+            @as(*[9]u8, @ptrCast(buf + len)).* = "--format\x00".*;
             len +%= 9;
             @memcpy(buf + len, @tagName(format));
             len +%= @tagName(format).len;
@@ -2365,11 +2365,11 @@ pub const ArchiveCommand = struct {
             len +%= 1;
         }
         if (cmd.plugin) {
-            @ptrCast(*[9]u8, buf + len).* = "--plugin\x00".*;
+            @as(*[9]u8, @ptrCast(buf + len)).* = "--plugin\x00".*;
             len +%= 9;
         }
         if (cmd.output) |output| {
-            @ptrCast(*[9]u8, buf + len).* = "--output\x00".*;
+            @as(*[9]u8, @ptrCast(buf + len)).* = "--output\x00".*;
             len +%= 9;
             @memcpy(buf + len, output);
             len +%= output.len;
@@ -2377,47 +2377,47 @@ pub const ArchiveCommand = struct {
             len +%= 1;
         }
         if (cmd.thin) {
-            @ptrCast(*[7]u8, buf + len).* = "--thin\x00".*;
+            @as(*[7]u8, @ptrCast(buf + len)).* = "--thin\x00".*;
             len +%= 7;
         }
         if (cmd.after) {
-            @ptrCast(*[1]u8, buf + len).* = "a".*;
+            @as(*[1]u8, @ptrCast(buf + len)).* = "a".*;
             len +%= 1;
         }
         if (cmd.before) {
-            @ptrCast(*[1]u8, buf + len).* = "b".*;
+            @as(*[1]u8, @ptrCast(buf + len)).* = "b".*;
             len +%= 1;
         }
         if (cmd.create) {
-            @ptrCast(*[1]u8, buf + len).* = "c".*;
+            @as(*[1]u8, @ptrCast(buf + len)).* = "c".*;
             len +%= 1;
         }
         if (cmd.zero_ids) {
-            @ptrCast(*[1]u8, buf + len).* = "D".*;
+            @as(*[1]u8, @ptrCast(buf + len)).* = "D".*;
             len +%= 1;
         }
         if (cmd.real_ids) {
-            @ptrCast(*[1]u8, buf + len).* = "U".*;
+            @as(*[1]u8, @ptrCast(buf + len)).* = "U".*;
             len +%= 1;
         }
         if (cmd.append) {
-            @ptrCast(*[1]u8, buf + len).* = "L".*;
+            @as(*[1]u8, @ptrCast(buf + len)).* = "L".*;
             len +%= 1;
         }
         if (cmd.preserve_dates) {
-            @ptrCast(*[1]u8, buf + len).* = "o".*;
+            @as(*[1]u8, @ptrCast(buf + len)).* = "o".*;
             len +%= 1;
         }
         if (cmd.index) {
-            @ptrCast(*[1]u8, buf + len).* = "s".*;
+            @as(*[1]u8, @ptrCast(buf + len)).* = "s".*;
             len +%= 1;
         }
         if (cmd.no_symbol_table) {
-            @ptrCast(*[1]u8, buf + len).* = "S".*;
+            @as(*[1]u8, @ptrCast(buf + len)).* = "S".*;
             len +%= 1;
         }
         if (cmd.update) {
-            @ptrCast(*[1]u8, buf + len).* = "u".*;
+            @as(*[1]u8, @ptrCast(buf + len)).* = "u".*;
             len +%= 1;
         }
         @memcpy(buf + len, @tagName(cmd.operation));
@@ -2542,10 +2542,10 @@ pub const ObjcopyCommand = struct {
         len +%= zig_exe.len;
         buf[len] = 0;
         len +%= 1;
-        @ptrCast(*[8]u8, buf + len).* = "objcopy\x00".*;
+        @as(*[8]u8, @ptrCast(buf + len)).* = "objcopy\x00".*;
         len +%= 8;
         if (cmd.output_target) |output_target| {
-            @ptrCast(*[16]u8, buf + len).* = "--output-target\x00".*;
+            @as(*[16]u8, @ptrCast(buf + len)).* = "--output-target\x00".*;
             len +%= 16;
             @memcpy(buf + len, output_target);
             len +%= output_target.len;
@@ -2553,7 +2553,7 @@ pub const ObjcopyCommand = struct {
             len +%= 1;
         }
         if (cmd.only_section) |only_section| {
-            @ptrCast(*[15]u8, buf + len).* = "--only-section\x00".*;
+            @as(*[15]u8, @ptrCast(buf + len)).* = "--only-section\x00".*;
             len +%= 15;
             @memcpy(buf + len, only_section);
             len +%= only_section.len;
@@ -2561,7 +2561,7 @@ pub const ObjcopyCommand = struct {
             len +%= 1;
         }
         if (cmd.pad_to) |pad_to| {
-            @ptrCast(*[9]u8, buf + len).* = "--pad-to\x00".*;
+            @as(*[9]u8, @ptrCast(buf + len)).* = "--pad-to\x00".*;
             len +%= 9;
             const s: []const u8 = ud64(pad_to).readAll();
             @memcpy(buf + len, s);
@@ -2570,19 +2570,19 @@ pub const ObjcopyCommand = struct {
             len +%= 1;
         }
         if (cmd.strip_debug) {
-            @ptrCast(*[14]u8, buf + len).* = "--strip-debug\x00".*;
+            @as(*[14]u8, @ptrCast(buf + len)).* = "--strip-debug\x00".*;
             len +%= 14;
         }
         if (cmd.strip_all) {
-            @ptrCast(*[12]u8, buf + len).* = "--strip-all\x00".*;
+            @as(*[12]u8, @ptrCast(buf + len)).* = "--strip-all\x00".*;
             len +%= 12;
         }
         if (cmd.debug_only) {
-            @ptrCast(*[18]u8, buf + len).* = "--only-keep-debug\x00".*;
+            @as(*[18]u8, @ptrCast(buf + len)).* = "--only-keep-debug\x00".*;
             len +%= 18;
         }
         if (cmd.add_gnu_debuglink) |add_gnu_debuglink| {
-            @ptrCast(*[20]u8, buf + len).* = "--add-gnu-debuglink\x00".*;
+            @as(*[20]u8, @ptrCast(buf + len)).* = "--add-gnu-debuglink\x00".*;
             len +%= 20;
             @memcpy(buf + len, add_gnu_debuglink);
             len +%= add_gnu_debuglink.len;
@@ -2590,7 +2590,7 @@ pub const ObjcopyCommand = struct {
             len +%= 1;
         }
         if (cmd.extract_to) |extract_to| {
-            @ptrCast(*[13]u8, buf + len).* = "--extract-to\x00".*;
+            @as(*[13]u8, @ptrCast(buf + len)).* = "--extract-to\x00".*;
             len +%= 13;
             @memcpy(buf + len, extract_to);
             len +%= extract_to.len;
@@ -2888,7 +2888,7 @@ pub const TableGenCommand = struct {
         @setRuntimeSafety(safety);
         var len: u64 = 0;
         if (cmd.color) |color| {
-            @ptrCast(*[8]u8, buf + len).* = "--color\x00".*;
+            @as(*[8]u8, @ptrCast(buf + len)).* = "--color\x00".*;
             len +%= 8;
             @memcpy(buf + len, @tagName(color));
             len +%= @tagName(color).len;
@@ -2900,7 +2900,7 @@ pub const TableGenCommand = struct {
         }
         if (cmd.include) |include| {
             for (include) |value| {
-                @ptrCast(*[2]u8, buf + len).* = "-I".*;
+                @as(*[2]u8, @ptrCast(buf + len)).* = "-I".*;
                 len +%= 2;
                 @memcpy(buf + len, value);
                 len +%= value.len;
@@ -2910,7 +2910,7 @@ pub const TableGenCommand = struct {
         }
         if (cmd.dependencies) |dependencies| {
             for (dependencies) |value| {
-                @ptrCast(*[3]u8, buf + len).* = "-d\x00".*;
+                @as(*[3]u8, @ptrCast(buf + len)).* = "-d\x00".*;
                 len +%= 3;
                 @memcpy(buf + len, value);
                 len +%= value.len;
@@ -2919,163 +2919,163 @@ pub const TableGenCommand = struct {
             }
         }
         if (cmd.print_records) {
-            @ptrCast(*[16]u8, buf + len).* = "--print-records\x00".*;
+            @as(*[16]u8, @ptrCast(buf + len)).* = "--print-records\x00".*;
             len +%= 16;
         }
         if (cmd.print_detailed_records) {
-            @ptrCast(*[25]u8, buf + len).* = "--print-detailed-records\x00".*;
+            @as(*[25]u8, @ptrCast(buf + len)).* = "--print-detailed-records\x00".*;
             len +%= 25;
         }
         if (cmd.null_backend) {
-            @ptrCast(*[15]u8, buf + len).* = "--null-backend\x00".*;
+            @as(*[15]u8, @ptrCast(buf + len)).* = "--null-backend\x00".*;
             len +%= 15;
         }
         if (cmd.dump_json) {
-            @ptrCast(*[12]u8, buf + len).* = "--dump-json\x00".*;
+            @as(*[12]u8, @ptrCast(buf + len)).* = "--dump-json\x00".*;
             len +%= 12;
         }
         if (cmd.gen_emitter) {
-            @ptrCast(*[14]u8, buf + len).* = "--gen-emitter\x00".*;
+            @as(*[14]u8, @ptrCast(buf + len)).* = "--gen-emitter\x00".*;
             len +%= 14;
         }
         if (cmd.gen_register_info) {
-            @ptrCast(*[20]u8, buf + len).* = "--gen-register-info\x00".*;
+            @as(*[20]u8, @ptrCast(buf + len)).* = "--gen-register-info\x00".*;
             len +%= 20;
         }
         if (cmd.gen_instr_info) {
-            @ptrCast(*[17]u8, buf + len).* = "--gen-instr-info\x00".*;
+            @as(*[17]u8, @ptrCast(buf + len)).* = "--gen-instr-info\x00".*;
             len +%= 17;
         }
         if (cmd.gen_instr_docs) {
-            @ptrCast(*[17]u8, buf + len).* = "--gen-instr-docs\x00".*;
+            @as(*[17]u8, @ptrCast(buf + len)).* = "--gen-instr-docs\x00".*;
             len +%= 17;
         }
         if (cmd.gen_callingconv) {
-            @ptrCast(*[18]u8, buf + len).* = "--gen-callingconv\x00".*;
+            @as(*[18]u8, @ptrCast(buf + len)).* = "--gen-callingconv\x00".*;
             len +%= 18;
         }
         if (cmd.gen_asm_writer) {
-            @ptrCast(*[17]u8, buf + len).* = "--gen-asm-writer\x00".*;
+            @as(*[17]u8, @ptrCast(buf + len)).* = "--gen-asm-writer\x00".*;
             len +%= 17;
         }
         if (cmd.gen_disassembler) {
-            @ptrCast(*[19]u8, buf + len).* = "--gen-disassembler\x00".*;
+            @as(*[19]u8, @ptrCast(buf + len)).* = "--gen-disassembler\x00".*;
             len +%= 19;
         }
         if (cmd.gen_pseudo_lowering) {
-            @ptrCast(*[22]u8, buf + len).* = "--gen-pseudo-lowering\x00".*;
+            @as(*[22]u8, @ptrCast(buf + len)).* = "--gen-pseudo-lowering\x00".*;
             len +%= 22;
         }
         if (cmd.gen_compress_inst_emitter) {
-            @ptrCast(*[28]u8, buf + len).* = "--gen-compress-inst-emitter\x00".*;
+            @as(*[28]u8, @ptrCast(buf + len)).* = "--gen-compress-inst-emitter\x00".*;
             len +%= 28;
         }
         if (cmd.gen_asm_matcher) {
-            @ptrCast(*[18]u8, buf + len).* = "--gen-asm-matcher\x00".*;
+            @as(*[18]u8, @ptrCast(buf + len)).* = "--gen-asm-matcher\x00".*;
             len +%= 18;
         }
         if (cmd.gen_dag_isel) {
-            @ptrCast(*[15]u8, buf + len).* = "--gen-dag-isel\x00".*;
+            @as(*[15]u8, @ptrCast(buf + len)).* = "--gen-dag-isel\x00".*;
             len +%= 15;
         }
         if (cmd.gen_dfa_packetizer) {
-            @ptrCast(*[21]u8, buf + len).* = "--gen-dfa-packetizer\x00".*;
+            @as(*[21]u8, @ptrCast(buf + len)).* = "--gen-dfa-packetizer\x00".*;
             len +%= 21;
         }
         if (cmd.gen_fast_isel) {
-            @ptrCast(*[16]u8, buf + len).* = "--gen-fast-isel\x00".*;
+            @as(*[16]u8, @ptrCast(buf + len)).* = "--gen-fast-isel\x00".*;
             len +%= 16;
         }
         if (cmd.gen_subtarget) {
-            @ptrCast(*[16]u8, buf + len).* = "--gen-subtarget\x00".*;
+            @as(*[16]u8, @ptrCast(buf + len)).* = "--gen-subtarget\x00".*;
             len +%= 16;
         }
         if (cmd.gen_intrinsic_enums) {
-            @ptrCast(*[22]u8, buf + len).* = "--gen-intrinsic-enums\x00".*;
+            @as(*[22]u8, @ptrCast(buf + len)).* = "--gen-intrinsic-enums\x00".*;
             len +%= 22;
         }
         if (cmd.gen_intrinsic_impl) {
-            @ptrCast(*[21]u8, buf + len).* = "--gen-intrinsic-impl\x00".*;
+            @as(*[21]u8, @ptrCast(buf + len)).* = "--gen-intrinsic-impl\x00".*;
             len +%= 21;
         }
         if (cmd.print_enums) {
-            @ptrCast(*[14]u8, buf + len).* = "--print-enums\x00".*;
+            @as(*[14]u8, @ptrCast(buf + len)).* = "--print-enums\x00".*;
             len +%= 14;
         }
         if (cmd.print_sets) {
-            @ptrCast(*[13]u8, buf + len).* = "--print-sets\x00".*;
+            @as(*[13]u8, @ptrCast(buf + len)).* = "--print-sets\x00".*;
             len +%= 13;
         }
         if (cmd.gen_opt_parser_defs) {
-            @ptrCast(*[22]u8, buf + len).* = "--gen-opt-parser-defs\x00".*;
+            @as(*[22]u8, @ptrCast(buf + len)).* = "--gen-opt-parser-defs\x00".*;
             len +%= 22;
         }
         if (cmd.gen_opt_rst) {
-            @ptrCast(*[14]u8, buf + len).* = "--gen-opt-rst\x00".*;
+            @as(*[14]u8, @ptrCast(buf + len)).* = "--gen-opt-rst\x00".*;
             len +%= 14;
         }
         if (cmd.gen_ctags) {
-            @ptrCast(*[12]u8, buf + len).* = "--gen-ctags\x00".*;
+            @as(*[12]u8, @ptrCast(buf + len)).* = "--gen-ctags\x00".*;
             len +%= 12;
         }
         if (cmd.gen_attrs) {
-            @ptrCast(*[12]u8, buf + len).* = "--gen-attrs\x00".*;
+            @as(*[12]u8, @ptrCast(buf + len)).* = "--gen-attrs\x00".*;
             len +%= 12;
         }
         if (cmd.gen_searchable_tables) {
-            @ptrCast(*[24]u8, buf + len).* = "--gen-searchable-tables\x00".*;
+            @as(*[24]u8, @ptrCast(buf + len)).* = "--gen-searchable-tables\x00".*;
             len +%= 24;
         }
         if (cmd.gen_global_isel) {
-            @ptrCast(*[18]u8, buf + len).* = "--gen-global-isel\x00".*;
+            @as(*[18]u8, @ptrCast(buf + len)).* = "--gen-global-isel\x00".*;
             len +%= 18;
         }
         if (cmd.gen_global_isel_combiner) {
-            @ptrCast(*[27]u8, buf + len).* = "--gen-global-isel-combiner\x00".*;
+            @as(*[27]u8, @ptrCast(buf + len)).* = "--gen-global-isel-combiner\x00".*;
             len +%= 27;
         }
         if (cmd.gen_x86_EVEX2VEX_tables) {
-            @ptrCast(*[26]u8, buf + len).* = "--gen-x86-EVEX2VEX-tables\x00".*;
+            @as(*[26]u8, @ptrCast(buf + len)).* = "--gen-x86-EVEX2VEX-tables\x00".*;
             len +%= 26;
         }
         if (cmd.gen_x86_fold_tables) {
-            @ptrCast(*[22]u8, buf + len).* = "--gen-x86-fold-tables\x00".*;
+            @as(*[22]u8, @ptrCast(buf + len)).* = "--gen-x86-fold-tables\x00".*;
             len +%= 22;
         }
         if (cmd.gen_x86_mnemonic_tables) {
-            @ptrCast(*[26]u8, buf + len).* = "--gen-x86-mnemonic-tables\x00".*;
+            @as(*[26]u8, @ptrCast(buf + len)).* = "--gen-x86-mnemonic-tables\x00".*;
             len +%= 26;
         }
         if (cmd.gen_register_bank) {
-            @ptrCast(*[20]u8, buf + len).* = "--gen-register-bank\x00".*;
+            @as(*[20]u8, @ptrCast(buf + len)).* = "--gen-register-bank\x00".*;
             len +%= 20;
         }
         if (cmd.gen_exegesis) {
-            @ptrCast(*[15]u8, buf + len).* = "--gen-exegesis\x00".*;
+            @as(*[15]u8, @ptrCast(buf + len)).* = "--gen-exegesis\x00".*;
             len +%= 15;
         }
         if (cmd.gen_automata) {
-            @ptrCast(*[15]u8, buf + len).* = "--gen-automata\x00".*;
+            @as(*[15]u8, @ptrCast(buf + len)).* = "--gen-automata\x00".*;
             len +%= 15;
         }
         if (cmd.gen_directive_decl) {
-            @ptrCast(*[21]u8, buf + len).* = "--gen-directive-decl\x00".*;
+            @as(*[21]u8, @ptrCast(buf + len)).* = "--gen-directive-decl\x00".*;
             len +%= 21;
         }
         if (cmd.gen_directive_impl) {
-            @ptrCast(*[21]u8, buf + len).* = "--gen-directive-impl\x00".*;
+            @as(*[21]u8, @ptrCast(buf + len)).* = "--gen-directive-impl\x00".*;
             len +%= 21;
         }
         if (cmd.gen_dxil_operation) {
-            @ptrCast(*[21]u8, buf + len).* = "--gen-dxil-operation\x00".*;
+            @as(*[21]u8, @ptrCast(buf + len)).* = "--gen-dxil-operation\x00".*;
             len +%= 21;
         }
         if (cmd.gen_riscv_target_def) {
-            @ptrCast(*[23]u8, buf + len).* = "--gen-riscv-target_def\x00".*;
+            @as(*[23]u8, @ptrCast(buf + len)).* = "--gen-riscv-target_def\x00".*;
             len +%= 23;
         }
         if (cmd.output) |output| {
-            @ptrCast(*[3]u8, buf + len).* = "-o\x00".*;
+            @as(*[3]u8, @ptrCast(buf + len)).* = "-o\x00".*;
             len +%= 3;
             @memcpy(buf + len, output);
             len +%= output.len;
@@ -3282,7 +3282,7 @@ pub const HarecCommand = struct {
         buf[len] = 0;
         len +%= 1;
         if (cmd.arch) |arch| {
-            @ptrCast(*[3]u8, buf + len).* = "-a\x00".*;
+            @as(*[3]u8, @ptrCast(buf + len)).* = "-a\x00".*;
             len +%= 3;
             @memcpy(buf + len, arch);
             len +%= arch.len;
@@ -3293,7 +3293,7 @@ pub const HarecCommand = struct {
             len +%= types.Macros.formatWriteBuf(.{ .value = defs }, buf + len);
         }
         if (cmd.output) |output| {
-            @ptrCast(*[3]u8, buf + len).* = "-o\x00".*;
+            @as(*[3]u8, @ptrCast(buf + len)).* = "-o\x00".*;
             len +%= 3;
             @memcpy(buf + len, output);
             len +%= output.len;
@@ -3302,7 +3302,7 @@ pub const HarecCommand = struct {
         }
         if (cmd.tags) |tags| {
             for (tags) |value| {
-                @ptrCast(*[2]u8, buf + len).* = "-T".*;
+                @as(*[2]u8, @ptrCast(buf + len)).* = "-T".*;
                 len +%= 2;
                 @memcpy(buf + len, value);
                 len +%= value.len;
@@ -3311,11 +3311,11 @@ pub const HarecCommand = struct {
             }
         }
         if (cmd.typedefs) {
-            @ptrCast(*[3]u8, buf + len).* = "-t\x00".*;
+            @as(*[3]u8, @ptrCast(buf + len)).* = "-t\x00".*;
             len +%= 3;
         }
         if (cmd.namespace) {
-            @ptrCast(*[3]u8, buf + len).* = "-N\x00".*;
+            @as(*[3]u8, @ptrCast(buf + len)).* = "-N\x00".*;
             len +%= 3;
         }
         return len;
