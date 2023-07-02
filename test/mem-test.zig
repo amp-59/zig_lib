@@ -318,4 +318,5 @@ pub fn main() !void {
     try meta.wrap(testAllocatedImplementation());
     try meta.wrap(testRtAllocatedImplementation());
     try meta.wrap(testUtilityTestFunctions());
+    mem.debug.sampleAllReports();
 }
