@@ -515,16 +515,19 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             return toplevel.impl.paths[1].names[0];
         }
-        /// Initialize a toplevel node.
-        pub fn init(allocator: *mem.SimpleAllocator, args: [][*:0]u8, vars: [][*:0]u8) *Node {
-            @setRuntimeSafety(builder_spec.options.enable_safety);
-            if (!thread_space_options.require_map) {
-                mem.map(map(), stack_lb_addr, stack_aligned_bytes * max_thread_count);
-            }
+        pub fn initState(args: [][*:0]u8, vars: [][*:0]u8) void {
             GlobalState.euid = sys.call_noexcept(.geteuid, u16, .{});
             GlobalState.egid = sys.call_noexcept(.getegid, u16, .{});
             GlobalState.args = args;
             GlobalState.vars = vars;
+            GlobalState.build_root_fd = try meta.wrap(file.path(path1(), mach.manyToSlice80(args[2])));
+        }
+        /// Initialize a toplevel node.
+        pub fn init(allocator: *mem.SimpleAllocator) *Node {
+            @setRuntimeSafety(builder_spec.options.enable_safety);
+            if (!thread_space_options.require_map) {
+                mem.map(map(), stack_lb_addr, stack_aligned_bytes * max_thread_count);
+            }
             var node: *Node = allocator.create(Node);
             node.flags = .{};
             node.addPath(allocator).addName(allocator).* = mach.manyToSlice80(GlobalState.args[2]);
@@ -534,9 +537,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             node.impl.args = GlobalState.args.ptr;
             node.impl.args_max_len = GlobalState.args.len;
             node.impl.args_len = GlobalState.args.len;
-            GlobalState.build_root_fd = try meta.wrap(
-                file.path(path1(), node.impl.paths[0].names[0]),
-            );
             for ([6][:0]const u8{
                 builder_spec.options.names.zig_out_dir,
                 paths.zig_out_exe_dir,
