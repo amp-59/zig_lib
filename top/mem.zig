@@ -925,81 +925,62 @@ pub const debug = opaque {
     const about_advice_0_s: builtin.fmt.AboutSrc = builtin.fmt.about("advice");
     const about_protect_0_s: builtin.fmt.AboutSrc = builtin.fmt.about("protect");
     pub fn mapNotice(addr: u64, len: u64) void {
+        const start_s: []const u8 = builtin.fmt.ux64(addr).readAll();
+        const finish_s: []const u8 = builtin.fmt.ux64(addr +% len).readAll();
+        const len_s: []const u8 = builtin.fmt.ud64(len).readAll();
         var buf: [4096]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
-            about_map_0_s, builtin.fmt.ux64(addr).readAll(),
-            "..",          builtin.fmt.ux64(addr +% len).readAll(),
-            ", ",          builtin.fmt.ud64(len).readAll(),
-            " bytes\n",
-        });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_map_0_s, start_s, "..", finish_s, ", ", len_s, " bytes\n" });
     }
     pub fn unmapNotice(addr: u64, len: u64) void {
+        const start_s: []const u8 = builtin.fmt.ux64(addr).readAll();
+        const finish_s: []const u8 = builtin.fmt.ux64(addr +% len).readAll();
+        const len_s: []const u8 = builtin.fmt.ud64(len).readAll();
         var buf: [4096]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
-            about_unmap_0_s, builtin.fmt.ux64(addr).readAll(),
-            "..",            builtin.fmt.ux64(addr +% len).readAll(),
-            ", ",            builtin.fmt.ud64(len).readAll(),
-            " bytes\n",
-        });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_unmap_0_s, start_s, "..", finish_s, ", ", len_s, " bytes\n" });
     }
     fn protectNotice(addr: u64, len: u64, description_s: []const u8) void {
+        const start_s: []const u8 = builtin.fmt.ux64(addr).readAll();
+        const finish_s: []const u8 = builtin.fmt.ux64(addr +% len).readAll();
+        const len_s: []const u8 = builtin.fmt.ud64(len).readAll();
         var buf: [4096]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
-            about_protect_0_s, builtin.fmt.ux64(addr).readAll(),
-            "..",              builtin.fmt.ux64(addr +% len).readAll(),
-            ", ",              builtin.fmt.ud64(len).readAll(),
-            " bytes, ",        description_s,
-            "\n",
-        });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_protect_0_s, start_s, "..", finish_s, ", ", len_s, " bytes, ", description_s, "\n" });
     }
     fn adviseNotice(addr: u64, len: u64, description_s: []const u8) void {
+        const start_s: []const u8 = builtin.fmt.ux64(addr).readAll();
+        const finish_s: []const u8 = builtin.fmt.ux64(addr +% len).readAll();
+        const len_s: []const u8 = builtin.fmt.ud64(len).readAll();
         var buf: [4096]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
-            about_advice_0_s, builtin.fmt.ux64(addr).readAll(),
-            "..",             builtin.fmt.ux64(addr +% len).readAll(),
-            ", ",             builtin.fmt.ud64(len).readAll(),
-            " bytes, ",       description_s,
-            "\n",
-        });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_advice_0_s, start_s, "..", finish_s, ", ", len_s, " bytes, ", description_s, "\n" });
     }
     pub fn aboutRemapNotice(about_s: builtin.fmt.AboutSrc, old_addr: u64, old_len: u64, maybe_new_addr: ?u64, maybe_new_len: ?u64) void {
         const new_addr: u64 = maybe_new_addr orelse old_addr;
         const new_len: u64 = maybe_new_len orelse old_len;
         const abs_diff: u64 = builtin.max(u64, new_len, old_len) -% builtin.min(u64, new_len, old_len);
         const notation_s: []const u8 = mach.cmovx(new_len < old_len, ", -", ", +");
+        const old_start_s: []const u8 = builtin.fmt.ux64(old_addr).readAll();
+        const old_finish_s: []const u8 = builtin.fmt.ux64(old_addr +% old_len).readAll();
+        const new_start_s: []const u8 = builtin.fmt.ux64(new_addr).readAll();
+        const new_finish_s: []const u8 = builtin.fmt.ux64(new_addr +% new_len).readAll();
+        const diff_s: []const u8 = builtin.fmt.ud64(abs_diff).readAll();
         var buf: [4096 +% 512]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
-            about_s,    builtin.fmt.ux64(old_addr).readAll(),
-            "..",       builtin.fmt.ux64(old_addr +% old_len).readAll(),
-            " -> ",     builtin.fmt.ux64(new_addr).readAll(),
-            "..",       builtin.fmt.ux64(new_addr +% new_len).readAll(),
-            notation_s, builtin.fmt.ud64(abs_diff).readAll(),
-            " bytes\n",
-        });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, old_start_s, "..", old_finish_s, " -> ", new_start_s, "..", new_finish_s, notation_s, diff_s, " bytes\n" });
     }
     fn aboutIndexLbAddrUpAddrLabelNotice(about_s: builtin.fmt.AboutSrc, index: ?u64, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
+        const index_s: []const u8 = builtin.fmt.ud64(index orelse 0).readAll();
+        const start_s: []const u8 = builtin.fmt.ux64(lb_addr).readAll();
+        const finish_s: []const u8 = builtin.fmt.ux64(up_addr).readAll();
+        const len_s: []const u8 = builtin.fmt.ud64(up_addr -% lb_addr).readAll();
         var buf: [4096]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
-            about_s,    label orelse "arena",
-            "-",        builtin.fmt.ud64(index orelse 0).readAll(),
-            ", ",       builtin.fmt.ux64(lb_addr).readAll(),
-            "..",       builtin.fmt.ux64(up_addr).readAll(),
-            ", ",       builtin.fmt.ud64(up_addr -% lb_addr).readAll(),
-            " bytes\n",
-        });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, label orelse "arena", "-", index_s, ", ", start_s, "..", finish_s, ", ", len_s, " bytes\n" });
     }
     fn aboutIndexLbAddrUpAddrLabelError(about_s: builtin.fmt.AboutSrc, error_name: [:0]const u8, index: ?u64, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
         @setCold(true);
+        const index_s: []const u8 = builtin.fmt.ud64(index orelse 0).readAll();
+        const start_s: []const u8 = builtin.fmt.ux64(lb_addr).readAll();
+        const finish_s: []const u8 = builtin.fmt.ux64(up_addr).readAll();
+        const len_s: []const u8 = builtin.fmt.ud64(up_addr -% lb_addr).readAll();
         var buf: [4096 + 512]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
-            about_s,                                        builtin.debug.about_error_s,
-            label orelse "arena",                           "-",
-            builtin.fmt.ud64(index orelse 0).readAll(),     ", ",
-            builtin.fmt.ux64(lb_addr).readAll(),            "..",
-            builtin.fmt.ux64(up_addr).readAll(),            ", ",
-            builtin.fmt.ud64(up_addr -% lb_addr).readAll(), " bytes (",
-            error_name,                                     ")\n",
-        });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_s, builtin.debug.about_error_s, error_name, ", ", label orelse "arena", "-", index_s, ", ", start_s, "..", finish_s, ", ", len_s, " bytes\n" });
     }
     fn memFdNotice(name: [:0]const u8, mem_fd: u64) void {
         var buf: [4096 + 32]u8 = undefined;
@@ -1007,49 +988,35 @@ pub const debug = opaque {
     }
     pub fn mapError(map_error: anytype, addr: u64, len: u64) void {
         @setCold(true);
+        const start_s: []const u8 = builtin.fmt.ux64(addr).readAll();
+        const finish_s: []const u8 = builtin.fmt.ux64(addr +% len).readAll();
+        const len_s: []const u8 = builtin.fmt.ud64(len).readAll();
         var buf: [4096 +% 512]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
-            about_map_0_s,                           builtin.debug.about_error_s,
-            builtin.fmt.ux64(addr).readAll(),        "..",
-            builtin.fmt.ux64(addr +% len).readAll(), ", ",
-            builtin.fmt.ud64(len).readAll(),         " bytes (",
-            @errorName(map_error),                   ")\n",
-        });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_map_0_s, builtin.debug.about_error_s, @errorName(map_error), ", ", start_s, "..", finish_s, ", ", len_s, " bytes\n" });
     }
     pub fn unmapError(unmap_error: anytype, addr: u64, len: u64) void {
         @setCold(true);
+        const start_s: []const u8 = builtin.fmt.ux64(addr).readAll();
+        const finish_s: []const u8 = builtin.fmt.ux64(addr +% len).readAll();
+        const len_s: []const u8 = builtin.fmt.ud64(len).readAll();
         var buf: [4096 +% 512]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
-            about_unmap_0_s,                         builtin.debug.about_error_s,
-            builtin.fmt.ux64(addr).readAll(),        "..",
-            builtin.fmt.ux64(addr +% len).readAll(), ", ",
-            builtin.fmt.ud64(len).readAll(),         " bytes (",
-            @errorName(unmap_error),                 ")\n",
-        });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_unmap_0_s, builtin.debug.about_error_s, @errorName(unmap_error), ", ", start_s, "..", finish_s, ", ", len_s, " bytes\n" });
     }
     fn protectError(protect_error: anytype, addr: u64, len: u64, description_s: []const u8) void {
         @setCold(true);
+        const start_s: []const u8 = builtin.fmt.ux64(addr).readAll();
+        const finish_s: []const u8 = builtin.fmt.ux64(addr +% len).readAll();
+        const len_s: []const u8 = builtin.fmt.ud64(len).readAll();
         var buf: [4096]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
-            about_protect_0_s,                       builtin.debug.about_error_s,
-            builtin.fmt.ux64(addr).readAll(),        "..",
-            builtin.fmt.ux64(addr +% len).readAll(), ", ",
-            builtin.fmt.ud64(len).readAll(),         " bytes, ",
-            description_s,                           ", (",
-            @errorName(protect_error),               ")\n",
-        });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_protect_0_s, builtin.debug.about_error_s, @errorName(protect_error), ", ", start_s, "..", finish_s, ", ", len_s, " bytes, ", description_s, "\n" });
     }
     fn adviseError(advise_error: anytype, addr: u64, len: u64, description_s: []const u8) void {
         @setCold(true);
+        const start_s: []const u8 = builtin.fmt.ux64(addr).readAll();
+        const finish_s: []const u8 = builtin.fmt.ux64(addr +% len).readAll();
+        const len_s: []const u8 = builtin.fmt.ud64(len).readAll();
         var buf: [4096]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
-            about_advice_0_s,                        builtin.debug.about_error_s,
-            builtin.fmt.ux64(addr).readAll(),        "..",
-            builtin.fmt.ux64(addr +% len).readAll(), ", ",
-            builtin.fmt.ud64(len).readAll(),         " bytes, ",
-            description_s,                           ", (",
-            @errorName(advise_error),                ")\n",
-        });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_advice_0_s, builtin.debug.about_error_s, @errorName(advise_error), ", ", start_s, "..", finish_s, ", ", len_s, " bytes, ", description_s, "\n" });
     }
     fn remapError(mremap_err: anytype, old_addr: u64, old_len: u64, maybe_new_addr: ?u64, maybe_new_len: ?u64) void {
         @setCold(true);
@@ -1058,20 +1025,17 @@ pub const debug = opaque {
         const abs_diff: u64 = builtin.max(u64, new_len, old_len) -% builtin.min(u64, new_len, old_len);
         const notation_s: []const u8 = mach.cmovx(new_len < old_len, ", -", ", +");
         const operation_s: []const u8 = mach.cmovx(new_addr != old_addr, about_remap_0_s, about_resize_0_s);
+        const old_start_s: []const u8 = builtin.fmt.ux64(old_addr).readAll();
+        const old_finish_s: []const u8 = builtin.fmt.ux64(old_addr +% old_len).readAll();
+        const new_start_s: []const u8 = builtin.fmt.ux64(new_addr).readAll();
+        const new_finish_s: []const u8 = builtin.fmt.ux64(new_addr +% new_len).readAll();
+        const diff_s: []const u8 = builtin.fmt.ud64(abs_diff).readAll();
         var buf: [4096 +% 512]u8 = undefined;
-        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
-            operation_s,                                     builtin.debug.about_error_s,
-            builtin.fmt.ux64(old_addr).readAll(),            "..",
-            builtin.fmt.ux64(old_addr +% old_len).readAll(), " -> ",
-            builtin.fmt.ux64(new_addr).readAll(),            "..",
-            builtin.fmt.ux64(new_addr +% new_len).readAll(), notation_s,
-            builtin.fmt.ud64(abs_diff).readAll(),            " bytes (",
-            @errorName(mremap_err),                          ")\n",
-        });
+        builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ operation_s, builtin.debug.about_error_s, @errorName(mremap_err), ", ", old_start_s, "..", old_finish_s, " -> ", new_start_s, "..", new_finish_s, notation_s, diff_s, " bytes\n" });
     }
     fn memFdError(memfd_error: anytype, pathname: [:0]const u8) void {
         var buf: [16 + 4096 + 512]u8 = undefined;
-        builtin.debug.logErrorAIO(&buf, &[_][]const u8{ about_memfd_0_s, pathname, " (", @errorName(memfd_error), ")\n" });
+        builtin.debug.logErrorAIO(&buf, &[_][]const u8{ about_memfd_0_s, builtin.debug.about_error_s, @errorName(memfd_error), ", ", pathname, "\n" });
     }
     pub fn sampleAllReports() void {
         const about_s: builtin.fmt.AboutSrc = comptime builtin.fmt.about("about");
