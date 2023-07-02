@@ -108,7 +108,6 @@ fn testVClockGettime(aux: *const anyopaque) !void {
     try builtin.expectEqual(u64, ts_diff.sec, 0);
     try builtin.expectBelowOrEqual(u64, ts_diff.nsec, 1000);
 }
-
 fn handlerFn(_: sys.SignalCode) void {}
 fn handlerSigInfoFn(_: sys.SignalCode, _: *const proc.SignalInfo, _: ?*const anyopaque) void {
     builtin.proc.exit(0);

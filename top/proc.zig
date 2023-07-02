@@ -1160,12 +1160,12 @@ pub fn restoreRunTime() callconv(.Naked) void {
     }
 }
 pub const debug = opaque {
-    const about_sig_0_s: [:0]const u8 = builtin.fmt.about("sig");
-    const about_fork_0_s: [:0]const u8 = builtin.fmt.about("fork");
-    const about_wait_0_s: [:0]const u8 = builtin.fmt.about("wait");
-    const about_futex_wait_0_s: [:0]const u8 = builtin.fmt.about("futex-wait");
-    const about_futex_wake_0_s: [:0]const u8 = builtin.fmt.about("futex-wake");
-    const about_futex_wake_op_0_s: [:0]const u8 = builtin.fmt.about("futex-wake-op");
+    const about_sig_0_s: builtin.fmt.AboutSrc = builtin.fmt.about("sig");
+    const about_fork_0_s: builtin.fmt.AboutSrc = builtin.fmt.about("fork");
+    const about_wait_0_s: builtin.fmt.AboutSrc = builtin.fmt.about("wait");
+    const about_futex_wait_0_s: builtin.fmt.AboutSrc = builtin.fmt.about("futex-wait");
+    const about_futex_wake_0_s: builtin.fmt.AboutSrc = builtin.fmt.about("futex-wake");
+    const about_futex_wake_op_0_s: builtin.fmt.AboutSrc = builtin.fmt.about("futex-wake-op");
     fn forkNotice(pid: u64) void {
         var buf: [560]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{ about_fork_0_s, "pid=", builtin.fmt.ud64(pid).readAll(), "\n" });
@@ -1628,9 +1628,9 @@ pub fn GenericOptions(comptime Options: type) type {
             return options;
         }
         const debug = struct {
-            const about_opt_0_s: []const u8 = builtin.fmt.about("opt");
-            const about_opt_1_s: []const u8 = builtin.fmt.about("opt-error");
-            const about_stop_s: []const u8 = "\nstop parsing options with '--'\n";
+            const about_opt_0_s: builtin.fmt.AboutSrc = builtin.fmt.about("opt");
+            const about_opt_1_s: builtin.fmt.AboutSrc = builtin.fmt.about("opt-error");
+            const about_stop_s: *const [32]u8 = "\nstop parsing options with '--'\n";
             fn optionNotice(comptime all_options: []const Options.Map) void {
                 const buf: []const u8 = comptime Options.Map.helpMessage(all_options);
                 builtin.debug.write(buf);
