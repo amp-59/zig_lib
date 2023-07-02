@@ -2718,7 +2718,23 @@ pub const debug = opaque {
         var offset: u64 = 4096;
         const name1: [:0]const u8 = "file1";
         const name2: [:0]const u8 = "file2";
-
+        aboutFdNotice(about_s, fd1);
+        aboutFdModeNotice(about_s, fd1, mode.regular);
+        aboutFdLenNotice(about_s, fd1, 4096);
+        aboutFdMaxLenLenNotice(about_s, fd1, 8192, 4096);
+        aboutPathnameNotice(about_s, pathname1);
+        aboutPathnameModeNotice(about_s, pathname1, mode.regular);
+        aboutPathnameFdNotice(about_s, pathname1, fd1);
+        aboutPathnameFdModeNotice(about_s, pathname1, fd1, mode.regular);
+        aboutPathnameModeDeviceNotice(about_s, pathname1, mode.regular, .{ .major = 255, .minor = 1 });
+        aboutDirFdNameModeNotice(about_s, fd1, name1, mode.regular);
+        aboutDirFdNameFdNotice(about_s, dir_fd1, name1, fd1);
+        aboutDirFdNameNotice(about_s, dir_fd1, name1);
+        aboutFdFdNotice(about_s, "fd1=", "fd2=", fd1, fd2);
+        aboutDirFdNameModeDeviceNotice(about_s, fd1, name1, mode.regular, .{ .major = 255, .minor = 1 });
+        aboutDirFdNameDirFdNameNotice(about_s, "=>", ", ", "->", fd1, name1, dir_fd1, name2);
+        aboutPathnamePathnameNotice(about_s, "->", pathname1, pathname2);
+        aboutPathnameDirFdNameNotice(about_s, "->", pathname1, dir_fd1, name1);
         aboutError(about_s, error_name);
         aboutDirFdNameError(about_s, error_name, dir_fd1, name1);
         aboutPathnameError(about_s, error_name, pathname1);
