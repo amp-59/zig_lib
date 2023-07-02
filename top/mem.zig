@@ -1959,7 +1959,7 @@ pub fn readIntVar(comptime T: type, buf: []const u8, len: u64) T {
     for (ret[@sizeOf(T) -% len ..], 0..) |*byte, idx| {
         byte.* = buf[idx];
     }
-    return @as(T, @bitCast(ret));
+    return @bitCast(ret);
 }
 pub fn readIntNative(comptime T: type, bytes: *const [@divExact(@typeInfo(T).Int.bits, 8)]u8) T {
     return @as(*align(1) const T, @ptrCast(bytes)).*;
@@ -2121,10 +2121,7 @@ fn AsBytesReturnType(comptime P: type) type {
         },
     });
 }
-/// Given a pointer to a single item, returns a slice of the underlying bytes, preserving pointer attributes.
 pub fn asBytes(ptr: anytype) AsBytesReturnType(@TypeOf(ptr)) {
-    const T = AsBytesReturnType(@TypeOf(ptr));
-    const ret: *align(@typeInfo(T).Pointer.alignment) const T = @ptrCast(ptr);
-    return ret.*;
+    return @ptrCast(@alignCast(ptr));
 }
 pub const toBytes = meta.toBytes;
