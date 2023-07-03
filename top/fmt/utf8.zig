@@ -88,24 +88,24 @@ pub fn encode(value: u32, out: []u8) !u8 {
     const ret: u8 = try codepointSequenceLength(value);
     builtin.assertAboveOrEqual(u64, out.len, ret);
     switch (ret) {
-        1 => out[0] = @intCast(u8, value),
+        1 => out[0] = @as(u8, @intCast(value)),
         2 => {
-            out[0] = @intCast(u8, 0b11000000 | (value >> 6));
-            out[1] = @intCast(u8, 0b10000000 | (value & 0b111111));
+            out[0] = @as(u8, @intCast(0b11000000 | (value >> 6)));
+            out[1] = @as(u8, @intCast(0b10000000 | (value & 0b111111)));
         },
         3 => {
             if (0xd800 <= value and value <= 0xdfff) {
                 return error.InvalidInput;
             }
-            out[0] = @intCast(u8, 0b11100000 | (value >> 12));
-            out[1] = @intCast(u8, 0b10000000 | ((value >> 6) & 0b111111));
-            out[2] = @intCast(u8, 0b10000000 | (value & 0b111111));
+            out[0] = @as(u8, @intCast(0b11100000 | (value >> 12)));
+            out[1] = @as(u8, @intCast(0b10000000 | ((value >> 6) & 0b111111)));
+            out[2] = @as(u8, @intCast(0b10000000 | (value & 0b111111)));
         },
         4 => {
-            out[0] = @intCast(u8, 0b11110000 | (value >> 18));
-            out[1] = @intCast(u8, 0b10000000 | ((value >> 12) & 0b111111));
-            out[2] = @intCast(u8, 0b10000000 | ((value >> 6) & 0b111111));
-            out[3] = @intCast(u8, 0b10000000 | (value & 0b111111));
+            out[0] = @as(u8, @intCast(0b11110000 | (value >> 18)));
+            out[1] = @as(u8, @intCast(0b10000000 | ((value >> 12) & 0b111111)));
+            out[2] = @as(u8, @intCast(0b10000000 | ((value >> 6) & 0b111111)));
+            out[3] = @as(u8, @intCast(0b10000000 | (value & 0b111111)));
         },
         else => unreachable,
     }
@@ -181,23 +181,23 @@ pub const noexcept = struct {
         const ret: u8 = noexcept.codepointSequenceLength(value);
         builtin.assertAboveOrEqual(u64, out.len, ret);
         switch (ret) {
-            1 => out[0] = @intCast(u8, value),
+            1 => out[0] = @as(u8, @intCast(value)),
             2 => {
-                out[0] = @intCast(u8, 0b11000000 | (value >> 6));
-                out[1] = @intCast(u8, 0b10000000 | (value & 0b111111));
+                out[0] = @as(u8, @intCast(0b11000000 | (value >> 6)));
+                out[1] = @as(u8, @intCast(0b10000000 | (value & 0b111111)));
             },
             3 => {
                 builtin.assertBelow(u32, value, 0xd800);
                 builtin.assertAbove(u32, value, 0xdfff);
-                out[0] = @intCast(u8, 0b11100000 | (value >> 12));
-                out[1] = @intCast(u8, 0b10000000 | ((value >> 6) & 0b111111));
-                out[2] = @intCast(u8, 0b10000000 | (value & 0b111111));
+                out[0] = @as(u8, @intCast(0b11100000 | (value >> 12)));
+                out[1] = @as(u8, @intCast(0b10000000 | ((value >> 6) & 0b111111)));
+                out[2] = @as(u8, @intCast(0b10000000 | (value & 0b111111)));
             },
             4 => {
-                out[0] = @intCast(u8, 0b11110000 | (value >> 18));
-                out[1] = @intCast(u8, 0b10000000 | ((value >> 12) & 0b111111));
-                out[2] = @intCast(u8, 0b10000000 | ((value >> 6) & 0b111111));
-                out[3] = @intCast(u8, 0b10000000 | (value & 0b111111));
+                out[0] = @as(u8, @intCast(0b11110000 | (value >> 18)));
+                out[1] = @as(u8, @intCast(0b10000000 | ((value >> 12) & 0b111111)));
+                out[2] = @as(u8, @intCast(0b10000000 | ((value >> 6) & 0b111111)));
+                out[3] = @as(u8, @intCast(0b10000000 | (value & 0b111111)));
             },
             else => unreachable,
         }

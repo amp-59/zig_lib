@@ -37,7 +37,7 @@ pub const Curve25519 = struct {
         var swap: u8 = 0;
         var pos: usize = bits -% 1;
         while (true) : (pos -%= 1) {
-            const bit: u8 = (s[pos >> 3] >> @truncate(u3, pos)) & 1;
+            const bit: u8 = (s[pos >> 3] >> @as(u3, @truncate(pos))) & 1;
             swap ^= bit;
             Fe.cSwap2(&x2, &x3, &z2, &z3, swap);
             swap = bit;
@@ -515,8 +515,8 @@ pub const Edwards25519 = struct {
         const reduced: scalar.CompressedScalar = if ((s[s.len -% 1] & 0x80) == 0) s else scalar.reduce(s);
         var e: [2 *% 32]i8 = undefined;
         for (reduced, 0..) |x, i| {
-            e[i *% 2 +% 0] = @as(i8, @truncate(u4, x));
-            e[i *% 2 +% 1] = @as(i8, @truncate(u4, x >> 4));
+            e[i *% 2 +% 0] = @as(i8, @as(u4, @truncate(x)));
+            e[i *% 2 +% 1] = @as(i8, @as(u4, @truncate(x >> 4)));
         }
         // Now, e[0..63] is between 0 and 15, e[63] is between 0 and 7
         var carry: i8 = 0;
@@ -542,9 +542,9 @@ pub const Edwards25519 = struct {
         while (true) : (pos -%= 1) {
             const slot: i8 = e[pos];
             if (slot > 0) {
-                q = q.add(pc[@intCast(usize, slot)]);
+                q = q.add(pc[@as(usize, @intCast(slot))]);
             } else if (slot < 0) {
-                q = q.sub(pc[@intCast(usize, -slot)]);
+                q = q.sub(pc[@as(usize, @intCast(-slot))]);
             }
             if (pos == 0) break;
             q = q.dbl().dbl().dbl().dbl();
@@ -557,7 +557,7 @@ pub const Edwards25519 = struct {
         var q: Edwards25519 = Edwards25519.identity_element;
         var pos: usize = 252;
         while (true) : (pos -%= 4) {
-            const slot: u4 = @truncate(u4, (s[pos >> 3] >> @truncate(u3, pos)));
+            const slot: u4 = @as(u4, @truncate((s[pos >> 3] >> @as(u3, @truncate(pos)))));
             if (vartime) {
                 if (slot != 0) {
                     q = q.add(pc[slot]);
@@ -619,15 +619,15 @@ pub const Edwards25519 = struct {
         while (true) : (pos -%= 1) {
             const slot1: i8 = e1[pos];
             if (slot1 > 0) {
-                q = q.add(pc1[@intCast(usize, slot1)]);
+                q = q.add(pc1[@as(usize, @intCast(slot1))]);
             } else if (slot1 < 0) {
-                q = q.sub(pc1[@intCast(usize, -slot1)]);
+                q = q.sub(pc1[@as(usize, @intCast(-slot1))]);
             }
             const slot2: i8 = e2[pos];
             if (slot2 > 0) {
-                q = q.add(pc2[@intCast(usize, slot2)]);
+                q = q.add(pc2[@as(usize, @intCast(slot2))]);
             } else if (slot2 < 0) {
-                q = q.sub(pc2[@intCast(usize, -slot2)]);
+                q = q.sub(pc2[@as(usize, @intCast(-slot2))]);
             }
             if (pos == 0) break;
             q = q.dbl().dbl().dbl().dbl();
@@ -657,9 +657,9 @@ pub const Edwards25519 = struct {
             for (es, 0..) |e, i| {
                 const slot: i8 = e[pos];
                 if (slot > 0) {
-                    q = q.add(pcs[i][@intCast(usize, slot)]);
+                    q = q.add(pcs[i][@as(usize, @intCast(slot))]);
                 } else if (slot < 0) {
-                    q = q.sub(pcs[i][@intCast(usize, -slot)]);
+                    q = q.sub(pcs[i][@as(usize, @intCast(-slot))]);
                 }
             }
             if (pos == 0) break;
@@ -737,7 +737,7 @@ pub const Edwards25519 = struct {
         }
         const empty_block: [hash.Sha512.blk_len]u8 = [1]u8{0} ** hash.Sha512.blk_len;
         var t: [3]u8 = .{ 0, n *% h_l, 0 };
-        var xctx_len_u8: [1]u8 = .{@intCast(u8, xctx.len)};
+        var xctx_len_u8: [1]u8 = .{@as(u8, @intCast(xctx.len))};
         var st: hash.Sha512 = hash.Sha512.init();
         st.update(empty_block[0..]);
         st.update(s);
@@ -963,11 +963,11 @@ pub const Fe = struct {
     fn _carry128(r: *[5]u128) Fe {
         var rs: [5]u64 = undefined;
         inline for (0..4) |i| {
-            rs[i] = @truncate(u64, r[i]) & MASK51;
-            r[i +% 1] +%= @intCast(u64, r[i] >> 51);
+            rs[i] = @as(u64, @truncate(r[i])) & MASK51;
+            r[i +% 1] +%= @as(u64, @intCast(r[i] >> 51));
         }
-        rs[4] = @truncate(u64, r[4]) & MASK51;
-        var carry: u64 = @intCast(u64, r[4] >> 51);
+        rs[4] = @as(u64, @truncate(r[4])) & MASK51;
+        var carry: u64 = @as(u64, @intCast(r[4] >> 51));
         rs[0] +%= 19 *% carry;
         carry = rs[0] >> 51;
         rs[0] &= MASK51;
@@ -983,8 +983,8 @@ pub const Fe = struct {
         var a19: [5]u128 = undefined;
         var r: [5]u128 = undefined;
         for (0..5) |i| {
-            ax[i] = @intCast(u128, a.limbs[i]);
-            bx[i] = @intCast(u128, b.limbs[i]);
+            ax[i] = @as(u128, @intCast(a.limbs[i]));
+            bx[i] = @as(u128, @intCast(b.limbs[i]));
         }
         for (1..5) |i| {
             a19[i] = 19 *% ax[i];
@@ -1005,7 +1005,7 @@ pub const Fe = struct {
         var ax: [5]u128 = undefined;
         var r: [5]u128 = undefined;
         inline for (0..5) |i| {
-            ax[i] = @intCast(u128, a.limbs[i]);
+            ax[i] = @as(u128, @intCast(a.limbs[i]));
         }
         const a0_2: u128 = 2 *% ax[0];
         const a1_2: u128 = 2 *% ax[1];
@@ -1033,14 +1033,14 @@ pub const Fe = struct {
         return _sq(a, true);
     }
     pub fn mul32(a: Fe, comptime n: u32) Fe {
-        const sn: u128 = @intCast(u128, n);
+        const sn: u128 = @as(u128, @intCast(n));
         var fe: Fe = undefined;
         var x: u128 = 0;
         inline for (0..5) |idx| {
             x = a.limbs[idx] *% sn +% (x >> 51);
-            fe.limbs[idx] = @truncate(u64, x) & MASK51;
+            fe.limbs[idx] = @as(u64, @truncate(x)) & MASK51;
         }
-        fe.limbs[0] +%= @intCast(u64, x >> 51) *% 19;
+        fe.limbs[0] +%= @as(u64, @intCast(x >> 51)) *% 19;
         return fe;
     }
     fn sqn(a: Fe, n: usize) Fe {
@@ -1087,7 +1087,7 @@ pub const Fe = struct {
         const t2: Fe = t.sqn(30).mul(t);
         const t3: Fe = t2.sqn(60).mul(t2);
         const t4: Fe = t3.sqn(120).mul(t3).sqn(10).mul(u).sqn(3).mul(_11).sq();
-        return @bitCast(bool, @truncate(u1, ~(t4.toBytes()[1] & 1)));
+        return @as(bool, @bitCast(@as(u1, @truncate(~(t4.toBytes()[1] & 1)))));
     }
     fn uncheckedSqrt(x2: Fe) Fe {
         var e: Fe = x2.pow2523();

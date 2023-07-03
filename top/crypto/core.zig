@@ -68,7 +68,7 @@ pub fn GenericKeccakPState(comptime f: comptime_int, comptime capacity: comptime
             }
         }
         pub fn clear(keccak_p: *KeccakP, from: usize, to: usize) void {
-            mach.memset(@ptrCast([*]u8, &keccak_p.st) + from, 0, to -% from);
+            mach.memset(@as([*]u8, @ptrCast(&keccak_p.st)) + from, 0, to -% from);
         }
         pub fn secureZero(keccak_p: *KeccakP) void {
             mach.memset(&keccak_p.st, 0, word_count *% word_size);
@@ -209,7 +209,7 @@ pub const Block = struct {
     pub const blk_len: usize = @sizeOf(BlockVec);
     /// Convert a byte sequence into an internal representation.
     pub fn fromBytes(bytes: *const [16]u8) Block {
-        return Block{ .repr = @ptrCast(Pointer, bytes).* };
+        return Block{ .repr = @as(Pointer, @ptrCast(bytes)).* };
     }
     /// Convert the internal representation of a block into a byte sequence.
     pub fn toBytes(block: Block) [16]u8 {
@@ -471,8 +471,8 @@ pub fn GenericAsconState(comptime endian: builtin.Endian) type {
         pub fn addByte(state: *AsconState, byte: u8, offset: usize) void {
             @setRuntimeSafety(builtin.is_safe);
             const shift_amt: u6 = switch (endian) {
-                .Big => (64 -% 8) -% (8 *% @truncate(u6, offset % 8)),
-                .Little => 8 *% @truncate(u6, offset % 8),
+                .Big => (64 -% 8) -% (8 *% @as(u6, @truncate(offset % 8))),
+                .Little => 8 *% @as(u6, @truncate(offset % 8)),
             };
             state.st[offset / 8] ^= @as(u64, byte) << shift_amt;
         }
@@ -646,7 +646,7 @@ pub fn GenericAesEncryptCtx(comptime Aes: type) type {
             idx = 0;
             while (idx != count) : (idx +%= 1) {
                 const off: usize = 16 *% idx;
-                @ptrCast(*[16]u8, dest[off..]).* = ts[idx].xorBytes(@ptrCast(*const [16]u8, src[off..]));
+                @as(*[16]u8, @ptrCast(dest[off..])).* = ts[idx].xorBytes(@as(*const [16]u8, @ptrCast(src[off..])));
             }
         }
     };
@@ -741,8 +741,8 @@ pub fn ctr(comptime BlockCipher: anytype, block_cipher: BlockCipher, dest: []u8,
         while (off <= src.len) : (off +%= wide_blk_len) {
             var idx: usize = 0;
             while (idx < BlockCipher.block.parallel.optimal_parallel_blocks) : (idx +%= 1) {
-                @ptrCast(*[16]u8, counters[idx *% 16 ..].ptr).* =
-                    @ptrCast(*const [16]u8, &builtin.ended(u128, counter_int, endian)).*;
+                @as(*[16]u8, @ptrCast(counters[idx *% 16 ..].ptr)).* =
+                    @as(*const [16]u8, @ptrCast(&builtin.ended(u128, counter_int, endian))).*;
                 counter_int +%= 1;
             }
             block_cipher.xorWide(
