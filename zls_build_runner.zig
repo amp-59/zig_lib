@@ -35,7 +35,7 @@ pub const BuildConfig = struct {
     };
 };
 inline fn cpy(buf: []u8, any: anytype) u64 {
-    @ptrCast(*@TypeOf(any), buf.ptr).* = any;
+    @as(*@TypeOf(any), @ptrCast(buf.ptr)).* = any;
     return any.len;
 }
 fn lengthJSON(cfg: *const BuildConfig) u64 {
@@ -147,7 +147,8 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     if (args.len < 5) {
         return error.MissingEnvironmentPaths;
     }
-    const toplevel: *Node = Node.init(&allocator, args, vars);
+    Node.initState(args, vars);
+    const toplevel: *Node = Node.init(&allocator);
     try meta.wrap(
         root.buildMain(&allocator, toplevel),
     );
