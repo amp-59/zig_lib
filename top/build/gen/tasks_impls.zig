@@ -428,14 +428,13 @@ fn writeOptString(
     switch (variant) {
         .write_buf => {
             if (prefer_ptrcast and opt_string.len < 32) {
-                array.writeMany("@ptrCast(");
-                array.writeMany("*[");
+                array.writeMany("@as(*[");
                 if (combine_char and char != types.ParamSpec.immediate) {
                     array.writeFormat(fmt.ud64(opt_string.len +% 1));
                 } else {
                     array.writeFormat(fmt.ud64(opt_string.len));
                 }
-                array.writeMany("]u8,buf+len).*=\"");
+                array.writeMany("]u8,@ptrCast(buf+len)).*=\"");
                 array.writeMany(opt_string);
                 if (combine_char and char != types.ParamSpec.immediate) {
                     array.writeFormat(fmt.esc(char));
