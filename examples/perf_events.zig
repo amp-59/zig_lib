@@ -96,22 +96,30 @@ const Fds = struct {
     }
 };
 fn findPathFd(vars: [][*:0]u8, name: [:0]const u8) !u64 {
-    const cwd: u64 = 100;
+    var dir_fd: u64 = 100;
+    dir_fd = -%dir_fd;
     if (name[0] == '/') {
-        return -%cwd;
+        return dir_fd;
+    }
+    if (file.accessAt(.{}, dir_fd, name, .{ .exec = true })) {
+        return dir_fd;
+    } else |err| {
+        if (err != error.NoSuchFileOrDirectory and
+            err != error.Access)
+        {
+            return err;
+        }
     }
     var itr: proc.PathIterator = .{
         .paths = proc.environmentValue(vars, "PATH").?,
     };
     while (itr.next()) |dirname| {
-        const dir_fd: u64 = file.path(path_spec, dirname);
+        dir_fd = file.path(path_spec, dirname);
         if (file.accessAt(.{}, dir_fd, name, .{ .exec = true })) {
             itr.done();
             return dir_fd;
-        } else |err| {
-            if (err == error.NoSuchFileOrDirectory or
-                err == error.Access)
-                file.close(close_spec, dir_fd);
+        } else |_| {
+            file.close(close_spec, dir_fd);
         }
     }
     return error.NoExecutableInPath;

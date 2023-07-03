@@ -81,7 +81,7 @@ pub fn testStatusExtended() !void {
     _ = st;
 }
 pub fn testCopyFileRange() !void {
-    builtin.debug.write(@src().fn_name ++ ":\n");
+    testing.announce(@src());
     const src_fd: u64 = try meta.wrap(file.create(create_spec, pathname1, file.mode.regular));
     const dest_fd: u64 = try meta.wrap(file.create(create_spec, pathname2, file.mode.regular));
     var rng: file.DeviceRandomBytes(65536) = .{};
@@ -98,7 +98,7 @@ pub fn testCopyFileRange() !void {
     try meta.wrap(file.unlink(unlink_spec, test_dir ++ "file_test2"));
 }
 pub fn testFileOperationsRound1() !void {
-    builtin.debug.write(@src().fn_name ++ ":\n");
+    testing.announce(@src());
     var buf: [4096]u8 = undefined;
     _ = try file.getCwd(.{}, &buf);
     try meta.wrap(file.makeDir(make_dir_spec, test_dir ++ "file_test", file.mode.directory));
@@ -111,7 +111,7 @@ pub fn testFileOperationsRound1() !void {
     try meta.wrap(file.unlink(unlink_spec, test_dir ++ "file_test2"));
 }
 pub fn testSocketOpenAndClose() !void {
-    builtin.debug.write(@src().fn_name ++ ":\n");
+    testing.announce(@src());
     const unix_tcp_fd: u64 = try file.socket(.{}, .unix, .tcp, .ip);
     const unix_udp_fd: u64 = try file.socket(.{}, .unix, .udp, .ip);
     const ipv6_udp_fd: u64 = try file.socket(.{}, .ipv6, .udp, .ip);
@@ -126,7 +126,7 @@ pub fn testSocketOpenAndClose() !void {
     try file.close(.{}, unix_tcp_fd);
 }
 pub fn testClientIPv4(args: [][*:0]u8) !void {
-    builtin.debug.write(@src().fn_name ++ ":\n");
+    testing.announce(@src());
     var addrinfo: file.Socket.Address = file.Socket.AddressIPv4.create(55478, .{ 127, 0, 0, 1 });
     const fd: u64 = try file.socket(.{ .options = .{ .non_block = false } }, .ipv4, .udp, .ip);
     try file.connect(.{}, fd, &addrinfo, 16);
@@ -138,7 +138,7 @@ pub fn testClientIPv4(args: [][*:0]u8) !void {
     builtin.debug.write("\n");
 }
 pub fn testServerIPv4() !void {
-    builtin.debug.write(@src().fn_name ++ ":\n");
+    testing.announce(@src());
     var addrinfo: file.Socket.Address = file.Socket.AddressIPv4.create(55478, .{ 127, 0, 0, 1 });
     const fd: u64 = try file.socket(.{ .options = .{ .non_block = false } }, .ipv4, .udp, .udp);
     try file.bind(.{}, fd, &addrinfo, 16);
@@ -149,7 +149,7 @@ pub fn testServerIPv4() !void {
     try file.sendTo(.{ .return_type = void }, fd, buf[0..len], 0, &sender_addrinfo, sender_addrlen);
 }
 pub fn testClientIPv6(args: [][*:0]u8) !void {
-    builtin.debug.write(@src().fn_name ++ ":\n");
+    testing.announce(@src());
     var addrinfo: file.Socket.Address = file.Socket.AddressIPv6.create(55480, 0, .{ 0, 0, 0, 0, 0, 0, 0, 0 }, 0);
     const fd: u64 = try file.socket(.{ .options = .{ .non_block = false } }, .ipv6, .udp, .ip);
     try file.connect(.{}, fd, &addrinfo, 28);
@@ -161,7 +161,7 @@ pub fn testClientIPv6(args: [][*:0]u8) !void {
     builtin.debug.write("\n");
 }
 pub fn testServerIPv6() !void {
-    builtin.debug.write(@src().fn_name ++ ":\n");
+    testing.announce(@src());
     var addrinfo: file.Socket.Address = file.Socket.AddressIPv6.create(55480, 0, .{ 0, 0, 0, 0, 0, 0, 0, 0 }, 0);
     const fd: u64 = try file.socket(.{ .options = .{ .non_block = false } }, .ipv6, .udp, .udp);
     try file.bind(.{}, fd, &addrinfo, 28);
@@ -172,7 +172,7 @@ pub fn testServerIPv6() !void {
     try file.sendTo(.{ .return_type = void }, fd, buf[0..len], 0, &sender_addrinfo, sender_addrlen);
 }
 pub fn testClientAndServerIPv4(args: [][*:0]u8) !void {
-    builtin.debug.write(@src().fn_name ++ ":\n");
+    testing.announce(@src());
     if (try proc.fork(.{}) == 0) {
         try testServerIPv4();
         builtin.proc.exit(0);
@@ -181,7 +181,7 @@ pub fn testClientAndServerIPv4(args: [][*:0]u8) !void {
     try testClientIPv4(args);
 }
 pub fn testClientAndServerIPv6(args: [][*:0]u8) !void {
-    builtin.debug.write(@src().fn_name ++ ":\n");
+    testing.announce(@src());
     if (try proc.fork(.{}) == 0) {
         try testServerIPv6();
         builtin.proc.exit(0);
@@ -190,7 +190,7 @@ pub fn testClientAndServerIPv6(args: [][*:0]u8) !void {
     try testClientIPv6(args);
 }
 pub fn testFileTests() !void {
-    builtin.debug.write(@src().fn_name ++ ":\n");
+    testing.announce(@src());
     try file.makeDir(make_dir_spec, test_dir ++ "file_test", file.mode.directory);
     try file.pathAssert(stat_spec, test_dir ++ "file_test", .directory);
     const fd: u64 = try file.open(open_dir_spec, test_dir ++ "file_test");
@@ -202,7 +202,7 @@ pub fn testFileTests() !void {
     try file.removeDir(remove_dir_spec, test_dir ++ "file_test");
 }
 fn testFileOperationsRound2() !void {
-    builtin.debug.write(@src().fn_name ++ ":\n");
+    testing.announce(@src());
     try meta.wrap(file.makeDir(make_dir_spec, test_dir ++ "file_test", file.mode.directory));
     const dir_fd: u64 = try meta.wrap(file.open(open_dir_spec, test_dir ++ "file_test"));
     try meta.wrap(file.makeDirAt(make_dir_spec, dir_fd, "file_test", file.mode.directory));
@@ -229,7 +229,7 @@ fn testFileOperationsRound2() !void {
     try meta.wrap(file.truncate(ftruncate_spec, mem_fd, 4096));
 }
 fn testPathOperations() !void {
-    builtin.debug.write(@src().fn_name ++ ":\n");
+    testing.announce(@src());
     try meta.wrap(testing.expectEqualMany(u8, "file_test", file.basename(test_dir ++ "file_test")));
     try meta.wrap(testing.expectEqualMany(u8, "file_test", file.basename("1000/file_test")));
     try meta.wrap(testing.expectEqualMany(u8, "file", file.basename("file")));
@@ -295,7 +295,7 @@ fn testStandardChannel() !void {
     }
 }
 fn testLink() !void {
-    builtin.debug.write(@src().fn_name ++ ":\n");
+    testing.announce(@src());
     const fd: u64 = try file.create(create_spec, test_dir ++ "file_test", file.mode.regular);
     try file.close(close_spec, fd);
     try file.link(link_spec, test_dir ++ "file_test", test_dir ++ "file_test_link");
@@ -303,7 +303,7 @@ fn testLink() !void {
     try file.unlink(unlink_spec, test_dir ++ "file_test_link");
 }
 fn testSymbolicLink() !void {
-    builtin.debug.write(@src().fn_name ++ ":\n");
+    testing.announce(@src());
     const fd: u64 = try file.create(create_spec, test_dir ++ "file_test", file.mode.regular);
     try file.close(close_spec, fd);
     try file.symbolicLink(link_spec, test_dir ++ "file_test", test_dir ++ "file_test_link");
@@ -311,7 +311,7 @@ fn testSymbolicLink() !void {
     try file.unlink(unlink_spec, test_dir ++ "file_test_link");
 }
 fn testLinkAt() !void {
-    builtin.debug.write(@src().fn_name ++ ":\n");
+    testing.announce(@src());
     const dir_fd: u64 = try file.path(path_spec, test_dir);
     const fd: u64 = try file.createAt(create_spec, dir_fd, "file_test", file.mode.regular);
     try file.close(close_spec, fd);
@@ -321,7 +321,7 @@ fn testLinkAt() !void {
     try file.close(close_spec, dir_fd);
 }
 fn testSymbolicLinkAt() !void {
-    builtin.debug.write(@src().fn_name ++ ":\n");
+    testing.announce(@src());
     const dir_fd: u64 = try file.path(path_spec, test_dir);
     const fd: u64 = try file.createAt(create_spec, dir_fd, "file_test", file.mode.regular);
     try file.close(close_spec, fd);
@@ -355,7 +355,7 @@ fn testBasicDirectoryIterator() !void {
     }
 }
 fn testSampleReports() void {
-    builtin.debug.write(@src().fn_name ++ ":\n");
+    testing.announce(@src());
     file.debug.sampleAllReports();
 }
 pub fn main(args: [][*:0]u8) !void {
