@@ -8,7 +8,7 @@ fn testParseFloatNaNAndInf() !void {
     inline for ([_]type{ f16, f32, f64, f128 }) |T| {
         if (T == f128) return;
         const Z = @Type(.{ .Int = .{ .signedness = .unsigned, .bits = @typeInfo(T).Float.bits } });
-        try builtin.expectEqual(Z, @bitCast(Z, try parse.parseFloat(T, "nAn")), @bitCast(Z, math.float.nan(T)));
+        try builtin.expectEqual(Z, @as(Z, @bitCast(try parse.parseFloat(T, "nAn"))), @as(Z, @bitCast(math.float.nan(T))));
         try builtin.expectEqual(T, try parse.parseFloat(T, "inF"), math.float.inf(T));
         try builtin.expectEqual(T, try parse.parseFloat(T, "-INF"), -math.float.inf(T));
     }
