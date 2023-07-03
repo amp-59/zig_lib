@@ -32,7 +32,7 @@ pub const Xoroshiro128 = struct {
             while (b != 64) : (b +%= 1) {
                 const x0: u64 = xoro.s[0];
                 var x1: u64 = xoro.s[1];
-                if ((entry & (@as(u64, 1) << @intCast(u6, b))) != 0) {
+                if ((entry & (@as(u64, 1) << @as(u6, @intCast(b)))) != 0) {
                     s0 ^= x0;
                     s1 ^= x1;
                 }
@@ -56,14 +56,14 @@ pub const Xoroshiro128 = struct {
             var val: u64 = xoro.next();
             var r_idx: usize = 0;
             while (r_idx < 8) : (r_idx +%= 1) {
-                buf[l_idx + r_idx] = @truncate(u8, val);
+                buf[l_idx + r_idx] = @as(u8, @truncate(val));
                 val >>= 8;
             }
         }
         if (l_idx != buf.len) {
             var rem: u64 = xoro.next();
             while (l_idx != buf.len) : (l_idx +%= 1) {
-                buf[l_idx] = @truncate(u8, rem);
+                buf[l_idx] = @as(u8, @truncate(rem));
                 rem >>= 8;
             }
         }
@@ -76,3 +76,4 @@ pub const Xoroshiro128 = struct {
         return z ^ (z >> 31);
     }
 };
+pub const Random = struct {};
