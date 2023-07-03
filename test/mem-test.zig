@@ -9,82 +9,47 @@ const file = top.file;
 const spec = top.spec;
 const builtin = top.builtin;
 const testing = top.testing;
-
 pub usingnamespace proc.start;
-
 pub const runtime_assertions: bool = true;
 pub const logging_default: builtin.Logging.Default = spec.logging.default.verbose;
 pub const AddressSpace = spec.address_space.regular_128;
-
-const move_spec = .{
-    .options = .{},
-    .logging = spec.logging.success_error.verbose,
-    .errors = .{ .abort = sys.mremap_errors },
-};
-const map_spec = .{
-    .options = .{},
-    .logging = spec.logging.acquire_error.verbose,
-    .errors = .{ .abort = sys.mmap_errors },
-};
-const resize_spec = .{
-    .logging = spec.logging.success_error.verbose,
-    .errors = .{ .abort = sys.mremap_errors },
-};
-const unmap_spec = .{
-    .logging = spec.logging.release_error.verbose,
-    .errors = .{ .abort = sys.munmap_errors },
-};
-const advise_spec = .{
-    .options = .{ .property = .{ .dump = true } },
-    .logging = spec.logging.success_error.verbose,
-    .errors = .{ .abort = sys.madvise_errors },
-};
-const protect_spec = .{
-    .options = .{ .none = true },
-    .logging = spec.logging.success_error.verbose,
-    .errors = .{ .abort = sys.madvise_errors },
-};
-const wr_spec: mem.ReinterpretSpec = .{
-    .composite = .{ .format = true },
-    .reference = .{ .dereference = &.{} },
-};
-const mem_fd_spec: mem.FdSpec = .{
-    .logging = spec.logging.acquire_error.verbose,
-    .errors = .{ .throw = sys.memfd_create_errors },
-};
-fn testProtect() void {
+fn testProtect() !void {
+    testing.announce(@src());
     var addr: u64 = 0x7000000;
     const end: u64 = 0x10000000;
     var len: u64 = end - addr;
-    try meta.wrap(mem.map(map_spec, addr, len));
-    try meta.wrap(mem.protect(protect_spec, addr, 4096));
-    try meta.wrap(mem.unmap(unmap_spec, addr, len));
+    try meta.wrap(mem.map(.{}, addr, len));
+    try meta.wrap(mem.protect(.{}, addr, 4096));
+    try meta.wrap(mem.unmap(.{}, addr, len));
 }
 fn testLowSystemMemoryOperations() !void {
-    try meta.wrap(mem.unmap(unmap_spec, 0x7000000, 0x3000000 * 2));
+    testing.announce(@src());
+    try meta.wrap(mem.unmap(.{}, 0x7000000, 0x3000000 * 2));
     var addr: u64 = 0x7000000;
     const end: u64 = 0x10000000;
-    var len: u64 = end - addr;
-    try meta.wrap(mem.map(map_spec, addr, len));
-    try meta.wrap(mem.move(move_spec, addr, len, addr + len));
-    try meta.wrap(mem.protect(protect_spec, addr + len, len));
+    var len: u64 = end -% addr;
+    try meta.wrap(mem.map(.{}, addr, len));
+    try meta.wrap(mem.move(.{}, addr, len, addr + len));
+    try meta.wrap(mem.protect(.{}, addr + len, len));
     addr += len;
-    try meta.wrap(mem.resize(resize_spec, addr, len, len * 2));
+    try meta.wrap(mem.resize(.{}, addr, len, len * 2));
     len *= 2;
-    try meta.wrap(mem.advise(advise_spec, addr, len));
-    try meta.wrap(mem.unmap(unmap_spec, addr, len));
+    try meta.wrap(mem.advise(.{}, addr, len));
+    try meta.wrap(mem.unmap(.{}, addr, len));
 }
 fn testMapGenericOverhead() !void {
+    testing.announce(@src());
     var addr: u64 = 0x7000000;
     var len: u64 = 0x3000000;
     var end: u64 = addr + len;
     try meta.wrap(mem.map(.{ .options = .{ .populate = true } }, addr, len));
-    try meta.wrap(mem.unmap(unmap_spec, addr, len));
+    try meta.wrap(mem.unmap(.{}, addr, len));
     addr = end;
     try meta.wrap(mem.map(.{ .options = .{ .populate = false, .visibility = .shared } }, end, len));
-    try meta.wrap(mem.unmap(unmap_spec, addr, len));
+    try meta.wrap(mem.unmap(.{}, addr, len));
 }
 fn testRtAllocatedImplementation() !void {
+    testing.announce(@src());
     const repeats: u64 = 0x100;
     const Allocator = mem.GenericRtArenaAllocator(.{
         .options = .{ .trace_state = false },
@@ -132,6 +97,7 @@ fn testRtAllocatedImplementation() !void {
     try testing.expectEqualMany(u8, array_ab.readAll(), array_b.readAll());
 }
 fn testAllocatedImplementation() !void {
+    testing.announce(@src());
     const repeats: u64 = 0x100;
     const Allocator = mem.GenericArenaAllocator(.{
         // Allocations will begin offset 1GiB into the virtual address space.
@@ -184,6 +150,7 @@ fn testAllocatedImplementation() !void {
     try testing.expectEqualMany(u8, array_ab.readAll(), array_b.readAll());
 }
 fn testAutomaticImplementation() !void {
+    testing.announce(@src());
     {
         const array = mem.view("Hello, World!12340x1fee1dead");
         try testing.expectEqualMany(u8, array.readAll(), "Hello, World!12340x1fee1dead");
@@ -210,6 +177,7 @@ fn testAutomaticImplementation() !void {
     }
 }
 fn testUtilityTestFunctions() !void {
+    testing.announce(@src());
     const hello: [:0]const u8 = "Hello, world!";
     try testing.expect(mem.order(u8, "abcd", "bee") == .lt);
     try testing.expect(mem.order(u8, "abc", "abc") == .eq);
@@ -249,6 +217,7 @@ fn testUtilityTestFunctions() !void {
 }
 
 fn testLallocator() !void {
+    testing.announce(@src());
     const AllocatorL = struct {}.GenericLinkedAllocator(.{
         .AddressSpace = AddressSpace,
         .arena_index = 0,
@@ -303,20 +272,24 @@ fn testLallocator() !void {
     allocator.deallocateAll();
 }
 fn testSimpleAllocator() void {
+    testing.announce(@src());
     var allocator: mem.SimpleAllocator = .{};
     var buf: []u8 = allocator.allocate(u8, 256);
     allocator.deallocate(u8, buf);
     allocator.unmap();
 }
+fn testSampleAllReports() !void {
+    testing.announce(@src());
+    mem.debug.sampleAllReports();
+}
 pub fn main() !void {
     testSimpleAllocator();
-    //try meta.wrap(testLallocator());
-    try meta.wrap(testMapGenericOverhead());
-    try meta.wrap(testProtect());
-    try meta.wrap(testLowSystemMemoryOperations());
-    try meta.wrap(testAutomaticImplementation());
-    try meta.wrap(testAllocatedImplementation());
-    try meta.wrap(testRtAllocatedImplementation());
-    try meta.wrap(testUtilityTestFunctions());
-    mem.debug.sampleAllReports();
+    try testMapGenericOverhead();
+    try testProtect();
+    try testLowSystemMemoryOperations();
+    try testAutomaticImplementation();
+    try testAllocatedImplementation();
+    try testRtAllocatedImplementation();
+    try testUtilityTestFunctions();
+    try testSampleAllReports();
 }
