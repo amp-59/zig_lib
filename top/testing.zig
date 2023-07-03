@@ -6,10 +6,21 @@ const mem = @import("./mem.zig");
 const fmt = @import("./fmt.zig");
 const sys = @import("./sys.zig");
 const file = @import("./file.zig");
+const mach = @import("./mach.zig");
 const meta = @import("./meta.zig");
 const spec = @import("./spec.zig");
 const algo = @import("./algo.zig");
 const builtin = @import("./builtin.zig");
+pub fn announce(src: builtin.SourceLocation) void {
+    var buf: [4096]u8 = undefined;
+    buf[0] = '\r';
+    buf[1] = '[';
+    mach.memcpy(buf[2..].ptr, &tab.kill.line_right, tab.kill.line_right.len);
+    mach.memcpy(buf[6..].ptr, src.fn_name.ptr, src.fn_name.len);
+    buf[6 +% src.fn_name.len] = ']';
+    buf[7 +% src.fn_name.len] = '\n';
+    builtin.debug.write(buf[0 .. 6 +% src.fn_name.len +% 2]);
+}
 pub fn arrayOfCharsLength(s: []const u8) u64 {
     var len: u64 = 0;
     len += 2;
