@@ -1328,8 +1328,8 @@ pub const debug = struct {
         logAlwaysAIO(&buf, &.{ about_error_p0_s, error_name, ", rc=", fmt.ud8(rc).readAll(), "\n" });
     }
     fn errorFaultRcNotice(error_name: []const u8, message: []const u8, rc: u8) void {
-        errorNotice(error_name);
-        faultRcNotice(message, rc);
+        var buf: [4096]u8 = undefined;
+        logAlwaysAIO(&buf, &.{ about_fault_p0_s, about_error_s, error_name, ", ", message, ", rc=", fmt.ud8(rc).readAll(), "\n" });
     }
     fn errorNotice(error_name: []const u8) void {
         var buf: [4096]u8 = undefined;
@@ -1344,8 +1344,8 @@ pub const debug = struct {
         logAlwaysAIO(&buf, &.{ about_fault_p0_s, message, ", rc=", fmt.ud8(rc).readAll(), "\n" });
     }
     fn errorFaultNotice(error_name: []const u8, message: []const u8) void {
-        errorNotice(error_name);
-        faultNotice(message);
+        var buf: [4096]u8 = undefined;
+        logAlwaysAIO(&buf, &.{ about_fault_p0_s, about_error_s, error_name, ", ", message, "\n" });
     }
     fn comparisonFailedString(comptime T: type, what: []const u8, symbol: []const u8, buf: [*]u8, arg1: T, arg2: T, help_read: bool) u64 {
         var len: u64 = mach.memcpyMulti(buf, &[_][]const u8{
@@ -1666,8 +1666,6 @@ pub const debug = struct {
         var buf: [1024]u8 = undefined;
         var len: u64 = 0;
         const idx_s: []const u8 = fmt.ud64(idx).readAll();
-        @as(*[debug.about_fault_p0_s.len]u8, @ptrCast(&buf)).* = debug.about_fault_p0_s.*;
-        len +%= debug.about_fault_p0_s.len;
         if (max_len == 0) {
             @as(*[10]u8, @ptrCast(buf[len..].ptr)).* = "indexing (".*;
             len +%= 10;
@@ -1699,11 +1697,7 @@ pub const debug = struct {
         var buf: [1024]u8 = undefined;
         const expected_s: []const u8 = fmt.udsize(expected).readAll();
         const actual_s: []const u8 = fmt.udsize(actual).readAll();
-        const len: u64 = mach.memcpyMulti(&buf, &[_][]const u8{
-            debug.about_fault_p0_s, "sentinel mismatch: expected ",
-            expected_s,             ", found ",
-            actual_s,               "\n",
-        });
+        const len: u64 = mach.memcpyMulti(&buf, &[_][]const u8{ "sentinel mismatch: expected ", expected_s, ", found ", actual_s });
         panic(buf[0..len], null, ret_addr);
     }
     pub noinline fn panicStartGreaterThanEnd(lower: usize, upper: usize) noreturn {
@@ -1713,11 +1707,7 @@ pub const debug = struct {
         var buf: [1024]u8 = undefined;
         const lower_s: []const u8 = fmt.ud64(lower).readAll();
         const upper_s: []const u8 = fmt.ud64(upper).readAll();
-        const len: u64 = mach.memcpyMulti(&buf, &[_][]const u8{
-            debug.about_fault_p0_s, "start index ",
-            lower_s,                " is larger than end index ",
-            upper_s,                "\n",
-        });
+        const len: u64 = mach.memcpyMulti(&buf, &[_][]const u8{ "start index ", lower_s, " is larger than end index ", upper_s });
         panic(buf[0..len], null, ret_addr);
     }
     pub noinline fn panicInactiveUnionField(active: anytype, wanted: @TypeOf(active)) noreturn {
@@ -1725,11 +1715,9 @@ pub const debug = struct {
         @setRuntimeSafety(false);
         const ret_addr: usize = @returnAddress();
         var buf: [1024]u8 = undefined;
-        const len: u64 = mach.memcpyMulti(&buf, &[_][]const u8{
-            debug.about_fault_p0_s, "access of union field '",
-            @tagName(wanted),       "' while field '",
-            @tagName(active),       "' is active\n",
-        });
+        const wanted_s: []const u8 = @tagName(wanted);
+        const active_s: []const u8 = @tagName(active);
+        const len: u64 = mach.memcpyMulti(&buf, &[_][]const u8{ "access of union field '", wanted_s, "' while field '", active_s, "' is active" });
         panic(buf[0..len], null, ret_addr);
     }
     pub noinline fn panicUnwrapError(st: ?*StackTrace, err: anyerror) noreturn {
@@ -1738,7 +1726,7 @@ pub const debug = struct {
         }
         const ret_addr: usize = @returnAddress();
         var buf: [1024]u8 = undefined;
-        const len: u64 = mach.memcpyMulti(&buf, &[_][]const u8{ debug.about_fault_p0_s, "error is discarded: ", @errorName(err), "\n" });
+        const len: u64 = mach.memcpyMulti(&buf, &[_][]const u8{ "error is discarded: ", @errorName(err) });
         panic(buf[0..len], st, ret_addr);
     }
     fn checkNonScalarSentinel(expected: anytype, actual: @TypeOf(expected)) void {
@@ -4571,19 +4559,40 @@ pub const my_trace: Trace = .{
             .pc_addr = "\x1b[38;5;247m",
             .sidebar = "|",
             .sidebar_fill = ": ",
-            .syntax = &.{
-                .{ .style = "", .tags = zig.Token.Tag.other },
-                .{ .style = tab.fx.color.fg.orange24, .tags = &.{.number_literal} },
-                .{ .style = tab.fx.color.fg.light_green, .tags = zig.Token.Tag.strings },
-                .{ .style = tab.fx.color.fg.bracket, .tags = zig.Token.Tag.bracket },
-                .{ .style = tab.fx.color.fg.magenta24, .tags = zig.Token.Tag.operator },
-                .{ .style = tab.fx.color.fg.red24, .tags = zig.Token.Tag.builtin_fn },
-                .{ .style = tab.fx.color.fg.cyan24, .tags = zig.Token.Tag.macro_keyword },
-                .{ .style = tab.fx.color.fg.light_purple, .tags = zig.Token.Tag.call_keyword },
-                .{ .style = tab.fx.color.fg.redwine, .tags = zig.Token.Tag.container_keyword },
-                .{ .style = tab.fx.color.fg.white24, .tags = zig.Token.Tag.cond_keyword },
-                .{ .style = tab.fx.color.fg.yellow24, .tags = zig.Token.Tag.goto_keyword ++ zig.Token.Tag.value_keyword },
-            },
+            .syntax = &.{ .{
+                .style = "",
+                .tags = zig.Token.Tag.other,
+            }, .{
+                .style = tab.fx.color.fg.orange24,
+                .tags = &.{.number_literal},
+            }, .{
+                .style = tab.fx.color.fg.light_green,
+                .tags = zig.Token.Tag.strings,
+            }, .{
+                .style = tab.fx.color.fg.bracket,
+                .tags = zig.Token.Tag.bracket,
+            }, .{
+                .style = tab.fx.color.fg.magenta24,
+                .tags = zig.Token.Tag.operator,
+            }, .{
+                .style = tab.fx.color.fg.red24,
+                .tags = zig.Token.Tag.builtin_fn,
+            }, .{
+                .style = tab.fx.color.fg.cyan24,
+                .tags = zig.Token.Tag.macro_keyword,
+            }, .{
+                .style = tab.fx.color.fg.light_purple,
+                .tags = zig.Token.Tag.call_keyword,
+            }, .{
+                .style = tab.fx.color.fg.redwine,
+                .tags = zig.Token.Tag.container_keyword,
+            }, .{
+                .style = tab.fx.color.fg.white24,
+                .tags = zig.Token.Tag.cond_keyword,
+            }, .{
+                .style = tab.fx.color.fg.yellow24,
+                .tags = zig.Token.Tag.goto_keyword ++ zig.Token.Tag.value_keyword,
+            } },
         },
     },
 };
