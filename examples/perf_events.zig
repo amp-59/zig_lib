@@ -12,10 +12,8 @@ const time = zig_lib.time;
 const builtin = zig_lib.builtin;
 const testing = zig_lib.testing;
 const perf = @import("../top/perf.zig");
-
 pub usingnamespace proc.start;
 pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
-
 const event_spec: perf.PerfEventSpec = .{ .errors = .{} };
 const event_ctl_spec: perf.PerfEventControlSpec = .{ .errors = .{} };
 const read_spec: file.ReadSpec = .{ .errors = .{}, .return_type = void, .child = u64 };
@@ -24,9 +22,7 @@ const close_spec: file.CloseSpec = .{ .errors = .{} };
 const fork_spec: proc.ForkSpec = .{ .errors = .{} };
 const path_spec: file.PathSpec = .{ .errors = .{} };
 const Array = mem.StaticString(1024 *% 1024);
-
 const about = builtin.fmt.about("perf");
-
 const hw_counters: []const perf.Measurement = &.{
     .{ .name = about ++ "cycles\t\t\t", .config = .{ .hardware = .cpu_cycles } },
     .{ .name = about ++ "instructions\t\t", .config = .{ .hardware = .instructions } },
@@ -43,7 +39,6 @@ const sw_counters: []const perf.Measurement = &.{
 const Fds = struct {
     hw: [hw_counters.len]u64,
     sw: [sw_counters.len]u64,
-
     fn init() Fds {
         var hw_fds: [hw_counters.len]u64 = undefined;
         var sw_fds: [sw_counters.len]u64 = undefined;
@@ -100,7 +95,11 @@ const Fds = struct {
         fds.* = init();
     }
 };
-fn findDirFd(vars: [][*:0]u8, name: [:0]const u8) !u64 {
+fn findPathFd(vars: [][*:0]u8, name: [:0]const u8) !u64 {
+    const cwd: u64 = 100;
+    if (name[0] == '/') {
+        return -%cwd;
+    }
     var itr: proc.PathIterator = .{
         .paths = proc.environmentValue(vars, "PATH").?,
     };
@@ -114,22 +113,25 @@ fn findDirFd(vars: [][*:0]u8, name: [:0]const u8) !u64 {
                 err == error.Access)
                 file.close(close_spec, dir_fd);
         }
-    } else {
-        return error.NoExecutableInPath;
     }
+    return error.NoExecutableInPath;
+}
+fn forwardExec(args: [][*:0]u8, vars: [][*:0]u8, dir_fd: u64, name: [:0]const u8) !void {
+    const pid: u64 = proc.fork(fork_spec);
+    if (pid == 0) {
+        return file.execAt(.{}, dir_fd, name, args[1..], vars);
+    }
+    proc.waitPid(wait_spec, .{ .pid = pid });
 }
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     if (args.len <= 1) {
         return error.MissingArguments;
     }
     const name: [:0]const u8 = meta.manyToSlice(args[1]);
-    const dir_fd: u64 = try findDirFd(vars, name);
+    const dir_fd: u64 = try findPathFd(vars, name);
+    defer file.close(close_spec, dir_fd);
     var fds: Fds = Fds.init();
-    const pid: u64 = proc.fork(fork_spec);
-    if (pid == 0) {
-        return file.execAt(.{}, dir_fd, name, args[1..], vars);
-    }
-    proc.waitPid(wait_spec, .{ .pid = pid });
+    defer fds.deinit();
+    try forwardExec(args, vars, dir_fd, name);
     fds.print();
-    file.close(close_spec, dir_fd);
 }
