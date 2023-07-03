@@ -313,67 +313,67 @@ fn Aegis128LGeneric(comptime tag_bits: u9) type {
         pub const key_len: comptime_int = 16;
         pub const blk_len: comptime_int = 32;
         const State = State128L;
-        pub fn encrypt(cipher: []u8, tag: *[tag_len]u8, message: []const u8, bytes: []const u8, nonce: [nonce_len]u8, key: [key_len]u8) void {
-            builtin.assert(cipher.len == message.len);
+        pub fn encrypt(cipher: []u8, tag: *[tag_len]u8, msg: []const u8, bytes: []const u8, nonce: [nonce_len]u8, key: [key_len]u8) void {
+            builtin.assert(cipher.len == msg.len);
             var state: State128L = State128L.init(key, nonce);
             var src: [32]u8 align(16) = undefined;
             var dst: [32]u8 align(16) = undefined;
-            var i: usize = 0;
-            while (i +% 32 <= bytes.len) : (i +%= 32) {
-                state.absorb(bytes[i..][0..32]);
+            var idx: usize = 0;
+            while (idx +% 32 <= bytes.len) : (idx +%= 32) {
+                state.absorb(bytes[idx..][0..32]);
             }
             if (bytes.len % 32 != 0) {
                 @memset(src[0..], 0);
-                @memcpy(src[0 .. bytes.len % 32], bytes[i..][0 .. bytes.len % 32]);
+                @memcpy(src[0 .. bytes.len % 32], bytes[idx..][0 .. bytes.len % 32]);
                 state.absorb(&src);
             }
-            i = 0;
-            while (i +% 32 <= message.len) : (i +%= 32) {
-                state.enc(cipher[i..][0..32], message[i..][0..32]);
+            idx = 0;
+            while (idx +% 32 <= msg.len) : (idx +%= 32) {
+                state.enc(cipher[idx..][0..32], msg[idx..][0..32]);
             }
-            if (message.len % 32 != 0) {
+            if (msg.len % 32 != 0) {
                 @memset(src[0..], 0);
-                @memcpy(src[0 .. message.len % 32], message[i..][0 .. message.len % 32]);
+                @memcpy(src[0 .. msg.len % 32], msg[idx..][0 .. msg.len % 32]);
                 state.enc(&dst, &src);
-                @memcpy(cipher[i..][0 .. message.len % 32], dst[0 .. message.len % 32]);
+                @memcpy(cipher[idx..][0 .. msg.len % 32], dst[0 .. msg.len % 32]);
             }
-            tag.* = state.mac(tag_bits, bytes.len, message.len);
+            tag.* = state.mac(tag_bits, bytes.len, msg.len);
         }
-        pub fn decrypt(message: []u8, cipher: []const u8, tag: [tag_len]u8, bytes: []const u8, nonce: [nonce_len]u8, key: [key_len]u8) !void {
-            builtin.assert(cipher.len == message.len);
+        pub fn decrypt(msg: []u8, cipher: []const u8, tag: [tag_len]u8, bytes: []const u8, nonce: [nonce_len]u8, key: [key_len]u8) !void {
+            builtin.assert(cipher.len == msg.len);
             var state: State128L = State128L.init(key, nonce);
             var src: [32]u8 align(16) = undefined;
             var dst: [32]u8 align(16) = undefined;
-            var i: usize = 0;
-            while (i +% 32 <= bytes.len) : (i +%= 32) {
-                state.absorb(bytes[i..][0..32]);
+            var idx: usize = 0;
+            while (idx +% 32 <= bytes.len) : (idx +%= 32) {
+                state.absorb(bytes[idx..][0..32]);
             }
             if (bytes.len % 32 != 0) {
                 @memset(src[0..], 0);
-                @memcpy(src[0 .. bytes.len % 32], bytes[i..][0 .. bytes.len % 32]);
+                @memcpy(src[0 .. bytes.len % 32], bytes[idx..][0 .. bytes.len % 32]);
                 state.absorb(&src);
             }
-            i = 0;
-            while (i +% 32 <= message.len) : (i +%= 32) {
-                state.dec(message[i..][0..32], cipher[i..][0..32]);
+            idx = 0;
+            while (idx +% 32 <= msg.len) : (idx +%= 32) {
+                state.dec(msg[idx..][0..32], cipher[idx..][0..32]);
             }
-            if (message.len % 32 != 0) {
+            if (msg.len % 32 != 0) {
                 @memset(src[0..], 0);
-                @memcpy(src[0 .. message.len % 32], cipher[i..][0 .. message.len % 32]);
+                @memcpy(src[0 .. msg.len % 32], cipher[idx..][0 .. msg.len % 32]);
                 state.dec(&dst, &src);
-                @memcpy(message[i..][0 .. message.len % 32], dst[0 .. message.len % 32]);
-                @memset(dst[0 .. message.len % 32], 0);
+                @memcpy(msg[idx..][0 .. msg.len % 32], dst[0 .. msg.len % 32]);
+                @memset(dst[0 .. msg.len % 32], 0);
                 const blocks = &state.blocks;
                 blocks[0] = blocks[0].xorBlocks(core.Block.fromBytes(dst[0..16]));
                 blocks[4] = blocks[4].xorBlocks(core.Block.fromBytes(dst[16..32]));
             }
-            const computed_tag = state.mac(tag_bits, bytes.len, message.len);
+            const computed_tag = state.mac(tag_bits, bytes.len, msg.len);
             var acc: u8 = 0;
             for (computed_tag, 0..) |_, j| {
                 acc |= (computed_tag[j] ^ tag[j]);
             }
             if (acc != 0) {
-                @memset(message, undefined);
+                @memset(msg, undefined);
                 return error.AuthenticationFailed;
             }
         }
@@ -466,65 +466,65 @@ fn Aegis256Generic(comptime tag_bits: u9) type {
         pub const key_len = 32;
         pub const blk_len = 16;
         const State = State256;
-        pub fn encrypt(cipher: []u8, tag: *[tag_len]u8, message: []const u8, bytes: []const u8, nonce: [nonce_len]u8, key: [key_len]u8) void {
-            builtin.assert(cipher.len == message.len);
+        pub fn encrypt(cipher: []u8, tag: *[tag_len]u8, msg: []const u8, bytes: []const u8, nonce: [nonce_len]u8, key: [key_len]u8) void {
+            builtin.assert(cipher.len == msg.len);
             var state = State256.init(key, nonce);
             var src: [16]u8 align(16) = undefined;
             var dst: [16]u8 align(16) = undefined;
-            var i: usize = 0;
-            while (i +% 16 <= bytes.len) : (i +%= 16) {
-                state.enc(&dst, bytes[i..][0..16]);
+            var idx: usize = 0;
+            while (idx +% 16 <= bytes.len) : (idx +%= 16) {
+                state.enc(&dst, bytes[idx..][0..16]);
             }
             if (bytes.len % 16 != 0) {
                 @memset(src[0..], 0);
-                @memcpy(src[0 .. bytes.len % 16], bytes[i..][0 .. bytes.len % 16]);
+                @memcpy(src[0 .. bytes.len % 16], bytes[idx..][0 .. bytes.len % 16]);
                 state.enc(&dst, &src);
             }
-            i = 0;
-            while (i +% 16 <= message.len) : (i +%= 16) {
-                state.enc(cipher[i..][0..16], message[i..][0..16]);
+            idx = 0;
+            while (idx +% 16 <= msg.len) : (idx +%= 16) {
+                state.enc(cipher[idx..][0..16], msg[idx..][0..16]);
             }
-            if (message.len % 16 != 0) {
+            if (msg.len % 16 != 0) {
                 @memset(src[0..], 0);
-                @memcpy(src[0 .. message.len % 16], message[i..][0 .. message.len % 16]);
+                @memcpy(src[0 .. msg.len % 16], msg[idx..][0 .. msg.len % 16]);
                 state.enc(&dst, &src);
-                @memcpy(cipher[i..][0 .. message.len % 16], dst[0 .. message.len % 16]);
+                @memcpy(cipher[idx..][0 .. msg.len % 16], dst[0 .. msg.len % 16]);
             }
-            tag.* = state.mac(tag_bits, bytes.len, message.len);
+            tag.* = state.mac(tag_bits, bytes.len, msg.len);
         }
-        pub fn decrypt(message: []u8, cipher: []const u8, tag: [tag_len]u8, bytes: []const u8, nonce: [nonce_len]u8, key: [key_len]u8) !void {
+        pub fn decrypt(msg: []u8, cipher: []const u8, tag: [tag_len]u8, bytes: []const u8, nonce: [nonce_len]u8, key: [key_len]u8) !void {
             var state = State256.init(key, nonce);
             var src: [16]u8 align(16) = undefined;
             var dst: [16]u8 align(16) = undefined;
-            var i: usize = 0;
-            while (i +% 16 <= bytes.len) : (i +%= 16) {
-                state.enc(&dst, bytes[i..][0..16]);
+            var idx: usize = 0;
+            while (idx +% 16 <= bytes.len) : (idx +%= 16) {
+                state.enc(&dst, bytes[idx..][0..16]);
             }
             if (bytes.len % 16 != 0) {
                 @memset(src[0..], 0);
-                @memcpy(src[0 .. bytes.len % 16], bytes[i..][0 .. bytes.len % 16]);
+                @memcpy(src[0 .. bytes.len % 16], bytes[idx..][0 .. bytes.len % 16]);
                 state.enc(&dst, &src);
             }
-            i = 0;
-            while (i +% 16 <= message.len) : (i +%= 16) {
-                state.dec(message[i..][0..16], cipher[i..][0..16]);
+            idx = 0;
+            while (idx +% 16 <= msg.len) : (idx +%= 16) {
+                state.dec(msg[idx..][0..16], cipher[idx..][0..16]);
             }
-            if (message.len % 16 != 0) {
+            if (msg.len % 16 != 0) {
                 @memset(src[0..], 0);
-                @memcpy(src[0 .. message.len % 16], cipher[i..][0 .. message.len % 16]);
+                @memcpy(src[0 .. msg.len % 16], cipher[idx..][0 .. msg.len % 16]);
                 state.dec(&dst, &src);
-                @memcpy(message[i..][0 .. message.len % 16], dst[0 .. message.len % 16]);
-                @memset(dst[0 .. message.len % 16], 0);
+                @memcpy(msg[idx..][0 .. msg.len % 16], dst[0 .. msg.len % 16]);
+                @memset(dst[0 .. msg.len % 16], 0);
                 const blocks = &state.blocks;
                 blocks[0] = blocks[0].xorBlocks(core.Block.fromBytes(&dst));
             }
-            const computed_tag = state.mac(tag_bits, bytes.len, message.len);
+            const computed_tag = state.mac(tag_bits, bytes.len, msg.len);
             var acc: u8 = 0;
             for (computed_tag, 0..) |_, j| {
                 acc |= (computed_tag[j] ^ tag[j]);
             }
             if (acc != 0) {
-                @memset(message, undefined);
+                @memset(msg, undefined);
                 return error.AuthenticationFailed;
             }
         }
@@ -594,43 +594,43 @@ pub fn GenericCmac(comptime BlockCipher: type) type {
         cipher_ctx: BlockCipherCtx,
         k1: Block,
         k2: Block,
-        buf: Block = [_]u8{0} ** blk_len,
+        buf: Block = zeros,
         pos: usize = 0,
         const Cmac = @This();
         pub const key_len: comptime_int = BlockCipher.key_bits / 8;
         pub const blk_len: comptime_int = BlockCipher.block.blk_len;
         pub const mac_len: comptime_int = blk_len;
+        const zeros: [blk_len]u8 = [1]u8{0} ** blk_len;
         pub fn create(out: *[mac_len]u8, msg: []const u8, key: *const [key_len]u8) void {
             var ctx: Cmac = Cmac.init(key);
             ctx.update(msg);
             ctx.final(out);
         }
         pub fn init(key: *const [key_len]u8) Cmac {
-            const cipher_ctx = BlockCipher.initEnc(key.*);
-            const zeros = [_]u8{0} ** blk_len;
+            const cipher_ctx: BlockCipherCtx = BlockCipher.initEnc(key.*);
             var k1: Block = undefined;
             cipher_ctx.encrypt(&k1, &zeros);
             k1 = double(k1);
             return .{ .cipher_ctx = cipher_ctx, .k1 = k1, .k2 = double(k1) };
         }
         pub fn update(mac: *Cmac, msg: []const u8) void {
-            const left = blk_len -% mac.pos;
-            var m = msg;
-            if (m.len > left) {
-                for (mac.buf[mac.pos..], 0..) |*b, i| b.* ^= m[i];
-                m = m[left..];
+            const left: usize = blk_len -% mac.pos;
+            var bytes: []const u8 = msg;
+            if (bytes.len > left) {
+                for (mac.buf[mac.pos..], 0..) |*byte, idx| byte.* ^= bytes[idx];
+                bytes = bytes[left..];
                 mac.cipher_ctx.encrypt(&mac.buf, &mac.buf);
                 mac.pos = 0;
             }
-            while (m.len > blk_len) {
-                for (mac.buf[0..blk_len], 0..) |*b, i| b.* ^= m[i];
-                m = m[blk_len..];
+            while (bytes.len > blk_len) {
+                for (mac.buf[0..blk_len], 0..) |*byte, idx| byte.* ^= bytes[idx];
+                bytes = bytes[blk_len..];
                 mac.cipher_ctx.encrypt(&mac.buf, &mac.buf);
                 mac.pos = 0;
             }
-            if (m.len != 0) {
-                for (mac.buf[mac.pos..][0..m.len], 0..) |*b, i| b.* ^= m[i];
-                mac.pos +%= m.len;
+            if (bytes.len != 0) {
+                for (mac.buf[mac.pos..][0..bytes.len], 0..) |*byte, idx| byte.* ^= bytes[idx];
+                mac.pos +%= bytes.len;
             }
         }
         pub fn final(mac: *Cmac, out: *[mac_len]u8) void {
