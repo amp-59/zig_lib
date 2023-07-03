@@ -258,6 +258,7 @@ pub const FutexOp = enum(u64) {
 };
 pub const WaitSpec = struct {
     options: Options = .{},
+    return_type: type = Return,
     errors: sys.ErrorPolicy = .{ .throw = sys.wait_errors },
     logging: builtin.Logging.SuccessError = .{},
     const Specification = @This();
@@ -486,7 +487,7 @@ pub fn getGroupId() u16 {
 pub fn getEffectiveGroupId() u16 {
     return @as(u16, @truncate(sys.call(.getegid, .{}, u64, .{})));
 }
-pub fn waitPid(comptime spec: WaitSpec, id: WaitSpec.For) sys.ErrorUnion(spec.errors, Return) {
+pub fn waitPid(comptime spec: WaitSpec, id: WaitSpec.For) sys.ErrorUnion(spec.errors, spec.return_type) {
     const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
     var ret: Return = undefined;
     const status_addr: u64 = @intFromPtr(&ret.status);
@@ -495,7 +496,9 @@ pub fn waitPid(comptime spec: WaitSpec, id: WaitSpec.For) sys.ErrorUnion(spec.er
         if (logging.Success) {
             debug.waitNotice(id, ret);
         }
-        return ret;
+        if (spec.return_type == Return) {
+            return ret;
+        }
     } else |wait_error| {
         if (logging.Error) {
             debug.waitError(wait_error);
@@ -1257,13 +1260,13 @@ pub const debug = opaque {
     }
     fn futexWakeOpNotice(futex1: *u32, futex2: *u32, count1: u32, count2: u32, wake_op: FutexOp.WakeOp, ret: u64) void {
         _ = wake_op;
-        const addr1_s: fmt.Type.Ux64 = .{ .value = @intFromPtr(futex1) };
-        const word1_s: fmt.Type.Ud64 = .{ .value = futex1.* };
-        const addr2_s: fmt.Type.Ux64 = .{ .value = @intFromPtr(futex2) };
-        const word2_s: fmt.Type.Ud64 = .{ .value = futex2.* };
-        const count1_s: fmt.Type.Ud64 = .{ .value = count1 };
-        const count2_s: fmt.Type.Ud64 = .{ .value = count2 };
-        const ret_s: fmt.Type.Ud64 = .{ .value = ret };
+        const addr1_s: []const u8 = builtin.fmt.ux64(@intFromPtr(futex1)).readAll();
+        const word1_s: []const u8 = builtin.fmt.ud64(futex1.*).readAll();
+        const addr2_s: []const u8 = builtin.fmt.ux64(@intFromPtr(futex2)).readAll();
+        const word2_s: []const u8 = builtin.fmt.ud64(futex2.*).readAll();
+        const count1_s: []const u8 = builtin.fmt.ud64(count1).readAll();
+        const count2_s: []const u8 = builtin.fmt.ud64(count2).readAll();
+        const ret_s: []const u8 = builtin.fmt.ud64(ret).readAll();
         var buf: [3072]u8 = undefined;
         builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
             about_futex_wake_0_s, "futex1=@", addr1_s,  ", word1=",
