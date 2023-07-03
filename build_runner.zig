@@ -6,6 +6,9 @@ const srg = blk: {
     if (@hasDecl(root, "zig_lib")) {
         break :blk root.zig_lib;
     }
+    if (@hasDecl(root, "zl")) {
+        break :blk root.zl;
+    }
     if (@hasDecl(root, "top")) {
         break :blk root.top;
     }
