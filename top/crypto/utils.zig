@@ -19,7 +19,7 @@ pub fn timingSafeEql(comptime T: type, a: T, b: T) bool {
             const s = @typeInfo(C).Int.bits;
             const Cu = @Type(.{ .Int = .{ .signedness = .unsigned, .bits = s } });
             const Cext = @Type(.{ .Int = .{ .signedness = .unsigned, .bits = s +% 1 } });
-            return @bitCast(bool, @truncate(u1, (@as(Cext, @bitCast(Cu, acc)) -% 1) >> s));
+            return @bitCast(@as(u1, @truncate((@as(Cext, @as(Cu, @bitCast(acc))) -% 1) >> s)));
         },
         .Vector => |info| {
             const C = info.child;
@@ -30,7 +30,7 @@ pub fn timingSafeEql(comptime T: type, a: T, b: T) bool {
             const s = @typeInfo(C).Int.bits;
             const Cu = @Type(.{ .Int = .{ .signedness = .unsigned, .bits = s } });
             const Cext = @Type(.{ .Int = .{ .signedness = .unsigned, .bits = s +% 1 } });
-            return @bitCast(bool, @truncate(u1, (@as(Cext, @bitCast(Cu, acc)) -% 1) >> s));
+            return @bitCast(@as(u1, @truncate((@as(Cext, @as(Cu, @bitCast(acc))) -% 1) >> s)));
         },
         else => {
             @compileError("Only arrays and vectors can be compared");
@@ -54,14 +54,14 @@ pub fn timingSafeCompare(comptime T: type, a: []const T, b: []const T, endian: b
             idx -%= 1;
             const x1 = a[idx];
             const x2 = b[idx];
-            gt |= @truncate(T, (@as(Cext, x2) -% @as(Cext, x1)) >> bits) & eq;
-            eq &= @truncate(T, (@as(Cext, (x2 ^ x1)) -% 1) >> bits);
+            gt |= @as(T, @truncate((@as(Cext, x2) -% @as(Cext, x1)) >> bits)) & eq;
+            eq &= @truncate((@as(Cext, (x2 ^ x1)) -% 1) >> bits);
         }
     } else {
         for (a, 0..) |x1, idx| {
             const x2 = b[idx];
-            gt |= @truncate(T, (@as(Cext, x2) -% @as(Cext, x1)) >> bits) & eq;
-            eq &= @truncate(T, (@as(Cext, (x2 ^ x1)) -% 1) >> bits);
+            gt |= @as(T, @truncate((@as(Cext, x2) -% @as(Cext, x1)) >> bits)) & eq;
+            eq &= @truncate((@as(Cext, (x2 ^ x1)) -% 1) >> bits);
         }
     }
     if (gt != 0) {
@@ -96,7 +96,7 @@ pub fn timingSafeAdd(comptime T: type, a: []const T, b: []const T, result: []T, 
             carry = ov1[1] | ov2[1];
         }
     }
-    return @bitCast(bool, carry);
+    return @bitCast(carry);
 }
 /// Subtract two integers serialized as arrays of the same size, in constant time.
 /// The result is stored into `result`, and `true` is returned if an underflow occurred.
@@ -123,7 +123,7 @@ pub fn timingSafeSub(comptime T: type, a: []const T, b: []const T, result: []T, 
             borrow = ov1[1] | ov2[1];
         }
     }
-    return @bitCast(bool, borrow);
+    return @as(bool, @bitCast(borrow));
 }
 /// Sets a slice to zeroes.
 /// Prevents the store from being optimized out.
