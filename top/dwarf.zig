@@ -1439,7 +1439,7 @@ pub const DwarfInfo = extern struct {
                 pos +%= 1;
                 switch (@as(LNE, @enumFromInt(sub_op))) {
                     LNE.end_sequence => {
-                        prog.state.end_sequence = true;
+                        prog.state.is_end_sequence = true;
                         if (prog.checkLineMatch(allocator, unit)) |info| {
                             return info;
                         }
@@ -1448,7 +1448,7 @@ pub const DwarfInfo = extern struct {
                     LNE.set_address => {
                         const addr: usize = @as(*align(1) usize, @ptrCast(buf + pos)).*;
                         pos +%= @sizeOf(usize);
-                        prog.state.address = addr;
+                        prog.state.addr = addr;
                     },
                     LNE.define_file => {
                         if (parseFileEntry(bytes[pos..])) |fent| {
@@ -1470,24 +1470,23 @@ pub const DwarfInfo = extern struct {
                 const inc_addr: u8 = min_instr_len *% (adjusted_opcode / line_range);
                 const inc_line: i32 = @as(i32, line_base) +% @as(i32, adjusted_opcode % line_range);
                 prog.state.line +%= inc_line;
-                prog.state.address +%= inc_addr;
-
+                prog.state.addr +%= inc_addr;
                 if (prog.checkLineMatch(allocator, unit)) |info| {
                     return info;
                 }
-                prog.state.basic_block = false;
+                prog.state.is_basic_block = false;
             } else {
                 switch (@as(LNS, @enumFromInt(opcode))) {
                     LNS.copy => {
                         if (prog.checkLineMatch(allocator, unit)) |info| {
                             return info;
                         }
-                        prog.state.basic_block = false;
+                        prog.state.is_basic_block = false;
                     },
                     LNS.advance_pc => {
                         const arg = parse.noexcept.readLEB128(usize, bytes[pos..]);
                         pos +%= arg[1];
-                        prog.state.address +%= arg[0] *% min_instr_len;
+                        prog.state.addr +%= arg[0] *% min_instr_len;
                     },
                     LNS.advance_line => {
                         const arg = parse.noexcept.readLEB128(i64, bytes[pos..]);
@@ -1508,16 +1507,16 @@ pub const DwarfInfo = extern struct {
                         prog.state.is_stmt = !prog.state.is_stmt;
                     },
                     LNS.set_basic_block => {
-                        prog.state.basic_block = true;
+                        prog.state.is_basic_block = true;
                     },
                     LNS.const_add_pc => {
                         const inc_addr: u8 = min_instr_len *% ((255 -% opcode_base) / line_range);
-                        prog.state.address +%= inc_addr;
+                        prog.state.addr +%= inc_addr;
                     },
                     LNS.fixed_advance_pc => {
                         const arg: u16 = @as(*align(1) u16, @ptrCast(buf + pos)).*;
                         pos +%= 2;
-                        prog.state.address +%= arg;
+                        prog.state.addr +%= arg;
                     },
                     else => {
                         if (opcode -% 1 >= opcode_lens.len) {
@@ -1674,38 +1673,46 @@ const FileEntry = struct {
         return ret[0..len :0];
     }
 };
-// Credit stays with the standard library for this thing.
-// Hard to say whether it is required.
+// TODO: Inline this abstraction.
 const LineNumberProgram = struct {
-    default_is_stmt: bool,
-    target_address: u64,
+    /// Target address for this iteration
+    addr: u64,
+    /// Previous valid line state (if any)
     prev: ?State,
+    /// Current line state
     state: State,
+    /// Default flags
+    is_stmt: bool,
     const State = struct {
-        address: u64 = 0,
+        /// Current address
+        addr: u64 = 0,
+        /// Current file index
         file: usize = 1,
+        /// Current line in file
         line: i64 = 1,
+        /// Current column in line
         column: u64 = 0,
+        /// Flags
         is_stmt: bool,
-        basic_block: bool = false,
-        end_sequence: bool = false,
+        is_basic_block: bool = false,
+        is_end_sequence: bool = false,
     };
     fn reset(lnp: *LineNumberProgram) void {
         lnp.prev = null;
-        lnp.state = .{ .is_stmt = lnp.default_is_stmt };
+        lnp.state = .{ .is_stmt = lnp.is_stmt };
     }
-    fn init(is_stmt: bool, target_address: u64) LineNumberProgram {
+    fn init(is_stmt: bool, addr: u64) LineNumberProgram {
         return .{
-            .default_is_stmt = is_stmt,
-            .target_address = target_address,
+            .is_stmt = is_stmt,
+            .addr = addr,
             .prev = null,
             .state = .{ .is_stmt = is_stmt },
         };
     }
-    fn checkLineMatch(prog: *LineNumberProgram, allocator: *Allocator, unit: *const Unit) ?SourceLocation {
-        if (prog.prev) |prev| {
-            if (prog.target_address >= prev.address and
-                prog.target_address <= prog.state.address)
+    fn checkLineMatch(lnp: *LineNumberProgram, allocator: *Allocator, unit: *const Unit) ?SourceLocation {
+        if (lnp.prev) |prev| {
+            if (lnp.addr >= prev.addr and
+                lnp.addr <= lnp.state.addr)
             {
                 if (prev.file == 0) {
                     builtin.proc.exitError(error.InvalidEncoding, 2);
@@ -1722,13 +1729,13 @@ const LineNumberProgram = struct {
                     .line = if (prev.line != 0)
                         @intCast(prev.line)
                     else
-                        @intCast(prog.state.line),
+                        @intCast(lnp.state.line),
                     .column = prev.column,
                     .file = entry.pathname(allocator, unit.dirs),
                 };
             }
         }
-        prog.prev = prog.state;
+        lnp.prev = lnp.state;
         return null;
     }
 };
