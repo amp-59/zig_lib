@@ -210,7 +210,7 @@ pub fn init(host: anytype, buf: [*]u8) !void {
     if (false) {
         utils.bytes(&seed);
     }
-    const host_len: u16 = @intCast(u16, host.len);
+    const host_len: u16 = @as(u16, @intCast(host.len));
     const hello_rand: [32]u8 = seed[0..32].*;
     const legacy_session_id: [32]u8 = seed[32..64].*;
     const x25519_kp_seed: [32]u8 = seed[64..96].*;
@@ -236,57 +236,57 @@ pub fn init(host: anytype, buf: [*]u8) !void {
     };
     const Size16 = *align(1) u16;
     const Size24 = *align(1) u24;
-    @ptrCast(Size24, buf).* = @bitCast(u24, [3]u8{ @intFromEnum(ContentType.handshake), 0x03, 0x01 });
+    @as(Size24, @ptrCast(buf)).* = @as(u24, @bitCast([3]u8{ @intFromEnum(ContentType.handshake), 0x03, 0x01 }));
     var pos: u16 = 3;
-    @ptrCast(Size16, buf + pos).* = @byteSwap(@intCast(u16, 1472 +% host_len));
+    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(@as(u16, @intCast(1472 +% host_len)));
     pos +%= 2;
     buf[pos] = @intFromEnum(HandshakeType.client_hello);
     pos +%= 1;
-    @ptrCast(Size24, buf + pos).* = @byteSwap(@intCast(u24, 1468 +% host_len));
+    @as(Size24, @ptrCast(buf + pos)).* = @byteSwap(@as(u24, @intCast(1468 +% host_len)));
     pos +%= 3;
-    @ptrCast(Size16, buf + pos).* = @byteSwap(@intFromEnum(ProtocolVersion.tls_1_2));
+    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(@intFromEnum(ProtocolVersion.tls_1_2));
     pos +%= 2;
-    @ptrCast(*[32]u8, buf + pos).* = hello_rand;
+    @as(*[32]u8, @ptrCast(buf + pos)).* = hello_rand;
     pos +%= 32;
     buf[pos] = 32;
     pos +%= 1;
-    @ptrCast(*[32]u8, buf + pos).* = legacy_session_id;
+    @as(*[32]u8, @ptrCast(buf + pos)).* = legacy_session_id;
     pos +%= 32;
 
     // Cipher suite:
-    @ptrCast(Size16, buf + pos).* = @byteSwap(@as(u16, 10));
+    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(@as(u16, 10));
     pos +%= 2;
-    @ptrCast(*[10]u8, buf + pos).* = @bitCast([10]u8, [5]u16{
+    @as(*[10]u8, @ptrCast(buf + pos)).* = @as([10]u8, @bitCast([5]u16{
         @byteSwap(@intFromEnum(CipherSuite.AEGIS_128L_SHA256)),
         @byteSwap(@intFromEnum(CipherSuite.AEGIS_256_SHA384)),
         @byteSwap(@intFromEnum(CipherSuite.AES_128_GCM_SHA256)),
         @byteSwap(@intFromEnum(CipherSuite.AES_256_GCM_SHA384)),
         @byteSwap(@intFromEnum(CipherSuite.CHACHA20_POLY1305_SHA256)),
-    });
+    }));
     pos +%= 10;
 
     // Compression:
-    @ptrCast(Size16, buf + pos).* = @byteSwap(@as(u16, 0x0100));
+    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(@as(u16, 0x0100));
     pos +%= 2;
-    @ptrCast(Size16, buf + pos).* = @byteSwap(1385 +% host_len);
+    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(1385 +% host_len);
     pos +%= 2;
 
     // Versions:
-    @ptrCast(Size16, buf + pos).* = @byteSwap(@intFromEnum(ExtensionType.supported_versions));
+    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(@intFromEnum(ExtensionType.supported_versions));
     pos +%= 2;
-    @ptrCast(Size16, buf + pos).* = @byteSwap(@as(u16, 3));
+    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(@as(u16, 3));
     pos +%= 2;
-    @ptrCast(*[3]u8, buf + pos).* = [_]u8{ 0x02, 0x03, 0x04 };
+    @as(*[3]u8, @ptrCast(buf + pos)).* = [_]u8{ 0x02, 0x03, 0x04 };
     pos +%= 3;
 
     // Algorithms:
-    @ptrCast(Size16, buf + pos).* = @byteSwap(@intFromEnum(ExtensionType.signature_algorithms));
+    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(@intFromEnum(ExtensionType.signature_algorithms));
     pos +%= 2;
-    @ptrCast(Size16, buf + pos).* = @byteSwap(@as(u16, 22));
+    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(@as(u16, 22));
     pos +%= 2;
-    @ptrCast(Size16, buf + pos).* = @byteSwap(@as(u16, 20));
+    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(@as(u16, 20));
     pos +%= 2;
-    @ptrCast(*align(1) [10]u16, buf + pos).* = .{
+    @as(*align(1) [10]u16, @ptrCast(buf + pos)).* = .{
         @byteSwap(@intFromEnum(SignatureScheme.ecdsa_secp256r1_sha256)),
         @byteSwap(@intFromEnum(SignatureScheme.ecdsa_secp384r1_sha384)),
         @byteSwap(@intFromEnum(SignatureScheme.ecdsa_secp521r1_sha512)),
@@ -301,13 +301,13 @@ pub fn init(host: anytype, buf: [*]u8) !void {
     pos +%= 20;
 
     // Groups:
-    @ptrCast(Size16, buf + pos).* = @byteSwap(@intFromEnum(ExtensionType.supported_groups));
+    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(@intFromEnum(ExtensionType.supported_groups));
     pos +%= 2;
-    @ptrCast(Size16, buf + pos).* = @byteSwap(@as(u16, 8));
+    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(@as(u16, 8));
     pos +%= 2;
-    @ptrCast(Size16, buf + pos).* = @byteSwap(@as(u16, 6));
+    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(@as(u16, 6));
     pos +%= 2;
-    @ptrCast(*align(1) [3]u16, buf + pos).* = .{
+    @as(*align(1) [3]u16, @ptrCast(buf + pos)).* = .{
         @byteSwap(@intFromEnum(NamedGroup.x25519_kyber768d00)),
         @byteSwap(@intFromEnum(NamedGroup.secp256r1)),
         @byteSwap(@intFromEnum(NamedGroup.x25519)),
@@ -315,51 +315,51 @@ pub fn init(host: anytype, buf: [*]u8) !void {
     pos +%= 6;
 
     // Key share extension:
-    @ptrCast(Size16, buf + pos).* = @byteSwap(@intFromEnum(ExtensionType.key_share));
+    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(@intFromEnum(ExtensionType.key_share));
     pos +%= 2;
-    @ptrCast(Size16, buf + pos).* = @byteSwap(1466 -% pos);
+    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(1466 -% pos);
     pos +%= 2;
 
     // Key share payload total length: 1325
-    @ptrCast(Size16, buf + pos).* = @byteSwap(@as(u16, 1325));
+    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(@as(u16, 1325));
     pos +%= 2;
 
     // x25519:
-    @ptrCast(Size16, buf + pos).* = @byteSwap(@intFromEnum(NamedGroup.x25519));
+    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(@intFromEnum(NamedGroup.x25519));
     pos +%= 2;
-    @ptrCast(Size16, buf + pos).* = @byteSwap(@as(u16, 32));
+    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(@as(u16, 32));
     pos +%= 2;
-    @ptrCast(*[32]u8, buf + pos).* = x25519_kp.public_key;
+    @as(*[32]u8, @ptrCast(buf + pos)).* = x25519_kp.public_key;
     pos +%= 32;
 
     // secp256r1:
-    @ptrCast(Size16, buf + pos).* = @byteSwap(@intFromEnum(NamedGroup.secp256r1));
+    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(@intFromEnum(NamedGroup.secp256r1));
     pos +%= 2;
-    @ptrCast(Size16, buf + pos).* = @byteSwap(@as(u16, 65));
+    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(@as(u16, 65));
     pos +%= 2;
-    @ptrCast(*[65]u8, buf + pos).* = secp256r1_kp.public_key.toUncompressedSec1();
+    @as(*[65]u8, @ptrCast(buf + pos)).* = secp256r1_kp.public_key.toUncompressedSec1();
     pos +%= 65;
 
     // x25519_kyber768d00:
-    @ptrCast(Size16, buf + pos).* = @byteSwap(@intFromEnum(NamedGroup.x25519_kyber768d00));
+    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(@intFromEnum(NamedGroup.x25519_kyber768d00));
     pos +%= 2;
-    @ptrCast(Size16, buf + pos).* = @byteSwap(@as(u16, 1216));
+    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(@as(u16, 1216));
     pos +%= 2;
-    @ptrCast(*[32]u8, buf + pos).* = x25519_kp.public_key;
+    @as(*[32]u8, @ptrCast(buf + pos)).* = x25519_kp.public_key;
     pos +%= 32;
-    @ptrCast(*[1184]u8, buf + pos).* = kyber768_kp.public_key.toBytes();
+    @as(*[1184]u8, @ptrCast(buf + pos)).* = kyber768_kp.public_key.toBytes();
     pos +%= 1184;
 
     // Server name:
-    @ptrCast(Size16, buf + pos).* = @byteSwap(@intFromEnum(ExtensionType.server_name));
+    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(@intFromEnum(ExtensionType.server_name));
     pos +%= 2;
-    @ptrCast(Size16, buf + pos).* = @byteSwap(host_len + 5);
+    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(host_len + 5);
     pos +%= 2;
-    @ptrCast(Size16, buf + pos).* = @byteSwap(host_len + 3);
+    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(host_len + 3);
     pos +%= 2;
     buf[pos] = 0;
     pos +%= 1;
-    @ptrCast(Size16, buf + pos).* = @byteSwap(host_len);
+    @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(host_len);
     pos +%= 2;
 
     builtin.assertEqual(u64, pos, 1477);
