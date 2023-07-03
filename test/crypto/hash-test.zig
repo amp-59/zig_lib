@@ -9,24 +9,32 @@ const builtin = zig_lib.builtin;
 const testing = zig_lib.testing;
 pub usingnamespace proc.start;
 pub const runtime_assertions: bool = true;
+
+pub const signal_handlers: builtin.SignalHandlers = .{
+    .SegmentationFault = true,
+    .BusError = true,
+    .IllegalInstruction = true,
+    .FloatingPointError = true,
+    .Trap = true,
+};
 pub const htest = struct {
     pub fn assertEqualHash(allocator: *mem.SimpleAllocator, comptime Hasher: anytype, expected_hex: [:0]const u8, input: []const u8) !void {
-        const hash_buf: []u8 = allocator.allocate(u8, Hasher.len);
+        const hash_buf: []u8 = allocator.allocate(u8, Hasher.len *% 2);
         mach.memset(hash_buf.ptr, 0, hash_buf.len);
         if (meta.fnParams(Hasher.hash).len == 3) {
-            Hasher.hash(input, hash_buf, .{});
+            Hasher.hash(input, hash_buf[0..Hasher.len], .{});
         } else {
-            Hasher.hash(input, hash_buf);
+            Hasher.hash(input, hash_buf[0..Hasher.len]);
         }
-        try assertEqual(allocator, expected_hex, hash_buf);
+        try assertEqual(allocator, expected_hex, hash_buf[0..Hasher.len]);
     }
     pub fn assertEqual(allocator: *mem.SimpleAllocator, expected_hex: [:0]const u8, input: []const u8) !void {
-        const bytes_buf: []u8 = allocator.allocate(u8, expected_hex.len / 2);
+        const bytes_buf: []u8 = allocator.allocate(u8, expected_hex.len);
         mach.memset(bytes_buf.ptr, 0, bytes_buf.len);
-        for (bytes_buf, 0..) |*byte, idx| {
+        for (bytes_buf[0 .. bytes_buf.len / 2], 0..) |*byte, idx| {
             byte.* = builtin.parse.ux(u8, expected_hex[2 * idx .. 2 * idx + 2]);
         }
-        try testing.expectEqualMany(u8, bytes_buf, input);
+        try testing.expectEqualMany(u8, bytes_buf[0 .. bytes_buf.len / 2], input);
     }
 };
 fn testSha3224Single(allocator: *mem.SimpleAllocator) !void {
@@ -809,7 +817,7 @@ fn testBlake3(hasher: *crypto.hash.Blake3, input_len: usize, expected_hex: [262]
     const initial_state: crypto.hash.Blake3 = hasher.*;
     // Setup input pattern
     var input_pattern: [251]u8 = undefined;
-    for (&input_pattern, 0..) |*e, i| e.* = @truncate(u8, i);
+    for (&input_pattern, 0..) |*e, i| e.* = @as(u8, @truncate(i));
     // Write repeating input pattern to hasher
     var input_counter: u64 = input_len;
     while (input_counter > 0) {
@@ -919,7 +927,7 @@ fn testSha256AlignedFinal() !void {
 }
 pub fn hashTestMain() !void {
     var allocator: mem.SimpleAllocator = .{};
-    defer allocator.unmap();
+
     try testSha3224Single(&allocator);
     try testSha3224Streaming(&allocator);
     try testSha3256Single(&allocator);
@@ -983,5 +991,6 @@ pub fn hashTestMain() !void {
         try testSha256Streaming(&allocator);
         try testSha256AlignedFinal();
     }
+    allocator.unmap();
 }
 pub const main = hashTestMain;
