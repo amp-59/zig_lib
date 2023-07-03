@@ -1439,16 +1439,16 @@ pub const DwarfInfo = extern struct {
                 pos +%= 1;
                 switch (@as(LNE, @enumFromInt(sub_op))) {
                     LNE.end_sequence => {
-                        prog.end_sequence = true;
+                        prog.state.end_sequence = true;
                         if (prog.checkLineMatch(allocator, unit)) |info| {
                             return info;
                         }
                         prog.reset();
                     },
                     LNE.set_address => {
-                        const addr = @as(*align(1) usize, @ptrCast(buf + pos)).*;
-                        pos +%= 8;
-                        prog.address = addr;
+                        const addr: usize = @as(*align(1) usize, @ptrCast(buf + pos)).*;
+                        pos +%= @sizeOf(usize);
+                        prog.state.address = addr;
                     },
                     LNE.define_file => {
                         if (parseFileEntry(bytes[pos..])) |fent| {
@@ -1457,11 +1457,11 @@ pub const DwarfInfo = extern struct {
                         }
                     },
                     else => {
-                        const fwd_amt: isize = @as(isize, @bitCast(op_size[0] -% 1));
+                        const fwd_amt: isize = @bitCast(op_size[0] -% 1);
                         if (fwd_amt < 0) {
-                            pos -%= @as(usize, @intCast(-fwd_amt));
+                            pos -%= @intCast(-fwd_amt);
                         } else {
-                            pos +%= @as(usize, @intCast(fwd_amt));
+                            pos +%= @intCast(fwd_amt);
                         }
                     },
                 }
@@ -1469,54 +1469,55 @@ pub const DwarfInfo = extern struct {
                 const adjusted_opcode: u8 = opcode -% opcode_base;
                 const inc_addr: u8 = min_instr_len *% (adjusted_opcode / line_range);
                 const inc_line: i32 = @as(i32, line_base) +% @as(i32, adjusted_opcode % line_range);
-                prog.line +%= inc_line;
-                prog.address +%= inc_addr;
+                prog.state.line +%= inc_line;
+                prog.state.address +%= inc_addr;
+
                 if (prog.checkLineMatch(allocator, unit)) |info| {
                     return info;
                 }
-                prog.basic_block = false;
+                prog.state.basic_block = false;
             } else {
                 switch (@as(LNS, @enumFromInt(opcode))) {
                     LNS.copy => {
                         if (prog.checkLineMatch(allocator, unit)) |info| {
                             return info;
                         }
-                        prog.basic_block = false;
+                        prog.state.basic_block = false;
                     },
                     LNS.advance_pc => {
                         const arg = parse.noexcept.readLEB128(usize, bytes[pos..]);
                         pos +%= arg[1];
-                        prog.address +%= arg[0] *% min_instr_len;
+                        prog.state.address +%= arg[0] *% min_instr_len;
                     },
                     LNS.advance_line => {
                         const arg = parse.noexcept.readLEB128(i64, bytes[pos..]);
                         pos +%= arg[1];
-                        prog.line +%= arg[0];
+                        prog.state.line +%= arg[0];
                     },
                     LNS.set_file => {
                         const arg = parse.noexcept.readLEB128(usize, bytes[pos..]);
                         pos +%= arg[1];
-                        prog.file = arg[0];
+                        prog.state.file = arg[0];
                     },
                     LNS.set_column => {
                         const arg = parse.noexcept.readLEB128(u64, bytes[pos..]);
                         pos +%= arg[1];
-                        prog.column = arg[0];
+                        prog.state.column = arg[0];
                     },
                     LNS.negate_stmt => {
-                        prog.is_stmt = !prog.is_stmt;
+                        prog.state.is_stmt = !prog.state.is_stmt;
                     },
                     LNS.set_basic_block => {
-                        prog.basic_block = true;
+                        prog.state.basic_block = true;
                     },
                     LNS.const_add_pc => {
                         const inc_addr: u8 = min_instr_len *% ((255 -% opcode_base) / line_range);
-                        prog.address +%= inc_addr;
+                        prog.state.address +%= inc_addr;
                     },
                     LNS.fixed_advance_pc => {
                         const arg: u16 = @as(*align(1) u16, @ptrCast(buf + pos)).*;
                         pos +%= 2;
-                        prog.address +%= arg;
+                        prog.state.address +%= arg;
                     },
                     else => {
                         if (opcode -% 1 >= opcode_lens.len) {
@@ -1676,92 +1677,58 @@ const FileEntry = struct {
 // Credit stays with the standard library for this thing.
 // Hard to say whether it is required.
 const LineNumberProgram = struct {
-    address: u64,
-    file: usize,
-    line: i64,
-    column: u64,
-    is_stmt: bool,
-    basic_block: bool,
-    end_sequence: bool,
     default_is_stmt: bool,
     target_address: u64,
-    prev_valid: bool = false,
-    prev_address: u64 = 0,
-    prev_file: usize = undefined,
-    prev_line: i64 = undefined,
-    prev_column: u64 = undefined,
-    prev_is_stmt: bool = undefined,
-    prev_basic_block: bool = undefined,
-    prev_end_sequence: bool = undefined,
+    prev: ?State,
+    state: State,
+    const State = struct {
+        address: u64 = 0,
+        file: usize = 1,
+        line: i64 = 1,
+        column: u64 = 0,
+        is_stmt: bool,
+        basic_block: bool = false,
+        end_sequence: bool = false,
+    };
     fn reset(lnp: *LineNumberProgram) void {
-        lnp.address = 0;
-        lnp.file = 1;
-        lnp.line = 1;
-        lnp.column = 0;
-        lnp.is_stmt = lnp.default_is_stmt;
-        lnp.basic_block = false;
-        lnp.end_sequence = false;
-        lnp.prev_valid = false;
-        lnp.prev_address = 0;
-        lnp.prev_file = undefined;
-        lnp.prev_line = undefined;
-        lnp.prev_column = undefined;
-        lnp.prev_is_stmt = undefined;
-        lnp.prev_basic_block = undefined;
-        lnp.prev_end_sequence = undefined;
+        lnp.prev = null;
+        lnp.state = .{ .is_stmt = lnp.default_is_stmt };
     }
     fn init(is_stmt: bool, target_address: u64) LineNumberProgram {
         return .{
-            .address = 0,
-            .file = 1,
-            .line = 1,
-            .column = 0,
-            .is_stmt = is_stmt,
-            .basic_block = false,
-            .end_sequence = false,
             .default_is_stmt = is_stmt,
             .target_address = target_address,
-            .prev_valid = false,
-            .prev_address = 0,
+            .prev = null,
+            .state = .{ .is_stmt = is_stmt },
         };
     }
-    fn checkLineMatch(
-        prog: *LineNumberProgram,
-        allocator: *Allocator,
-        unit: *const Unit,
-    ) ?SourceLocation {
-        if (prog.prev_valid and
-            prog.target_address >= prog.prev_address and
-            prog.target_address < prog.address)
-        {
-            if (prog.prev_file == 0) {
-                builtin.proc.exitError(error.InvalidEncoding, 2);
+    fn checkLineMatch(prog: *LineNumberProgram, allocator: *Allocator, unit: *const Unit) ?SourceLocation {
+        if (prog.prev) |prev| {
+            if (prog.target_address >= prev.address and
+                prog.target_address <= prog.state.address)
+            {
+                if (prev.file == 0) {
+                    builtin.proc.exitError(error.InvalidEncoding, 2);
+                }
+                const idx: usize = prev.file -% 1;
+                if (idx >= unit.files_len) {
+                    builtin.proc.exitError(error.InvalidEncoding, 2);
+                }
+                const entry: FileEntry = unit.files[idx];
+                if (entry.dir_idx >= unit.dirs_len) {
+                    builtin.proc.exitError(error.InvalidEncoding, 2);
+                }
+                return .{
+                    .line = if (prev.line != 0)
+                        @intCast(prev.line)
+                    else
+                        @intCast(prog.state.line),
+                    .column = prev.column,
+                    .file = entry.pathname(allocator, unit.dirs),
+                };
             }
-            const idx: u64 = prog.prev_file -% 1;
-            if (idx >= unit.files_len) {
-                builtin.proc.exitError(error.InvalidEncoding, 2);
-            }
-            const entry: FileEntry = unit.files[idx];
-            if (entry.dir_idx >= unit.dirs_len) {
-                builtin.proc.exitError(error.InvalidEncoding, 2);
-            }
-            return .{
-                .line = if (prog.prev_line == 0)
-                    @as(u64, @intCast(prog.line))
-                else
-                    @as(u64, @intCast(prog.prev_line)),
-                .column = prog.prev_column,
-                .file = entry.pathname(allocator, unit.dirs),
-            };
         }
-        prog.prev_valid = true;
-        prog.prev_address = prog.address;
-        prog.prev_file = prog.file;
-        prog.prev_line = prog.line;
-        prog.prev_column = prog.column;
-        prog.prev_is_stmt = prog.is_stmt;
-        prog.prev_basic_block = prog.basic_block;
-        prog.prev_end_sequence = prog.end_sequence;
+        prog.prev = prog.state;
         return null;
     }
 };
