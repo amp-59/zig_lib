@@ -2409,6 +2409,7 @@ pub const vectors = [_]TestVector{
         .result = .valid,
     },
 };
+pub const sip_test_key: *const [16]u8 = "\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f";
 pub const sip_6424_vectors: []const [8]u8 = &.{
     "\x31\x0e\x0e\xdd\x47\xdb\x6f\x72".*,
     "\xfd\x67\xdc\x93\xc5\x39\xf8\x74".*,
