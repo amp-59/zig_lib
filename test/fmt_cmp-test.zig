@@ -20,6 +20,9 @@ pub const signal_handlers = .{
 };
 const about = builtin.fmt.about("futex");
 
+// Debug: Equal fastest build
+// Debug: Worst performance
+// Release: Worst performance
 fn zigLibBasicMessage(futex1: *u32, futex2: *u32, count1: u32, count2: u32, ret: u64) void {
     const addr1_s: []const u8 = builtin.fmt.ux64(@intFromPtr(futex1)).readAll();
     const word1_s: []const u8 = builtin.fmt.ud64(futex1.*).readAll();
@@ -28,7 +31,7 @@ fn zigLibBasicMessage(futex1: *u32, futex2: *u32, count1: u32, count2: u32, ret:
     const count1_s: []const u8 = builtin.fmt.ud64(count1).readAll();
     const count2_s: []const u8 = builtin.fmt.ud64(count2).readAll();
     const ret_s: []const u8 = builtin.fmt.ud64(ret).readAll();
-    var buf: [3072]u8 = undefined;
+    var buf: [4096]u8 = undefined;
     builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
         about,    "futex1=@", addr1_s,  ", word1=",
         word1_s,  ", max1=",  count1_s, ", futex2=@",
@@ -57,7 +60,6 @@ fn zigLibContainerWriteArray(futex1: *u32, futex2: *u32, count1: u32, count2: u3
     array.writeOne('\n');
     builtin.debug.write(array.readAll());
 }
-// ~8% fewer instructions to compile
 fn zigLibContainerWriteSlices(futex1: *u32, futex2: *u32, count1: u32, count2: u32, ret: u64) void {
     var array: mem.StaticArray(u8, 4096) = undefined;
     array.undefineAll();
@@ -79,7 +81,6 @@ fn zigLibContainerWriteSlices(futex1: *u32, futex2: *u32, count1: u32, count2: u
     array.writeMany("\n");
     builtin.debug.write(array.readAll());
 }
-// ~8% fewer instructions to compile vs 1
 fn zigLibContainerFormatter(futex1: *u32, futex2: *u32, count1: u32, count2: u32, ret: u64) void {
     var array: mem.StaticArray(u8, 4096) = undefined;
     array.undefineAll();
@@ -105,39 +106,43 @@ fn standardLibFormatter(futex1: *u32, futex2: *u32, count1: u32, count2: u32, re
     }) catch {};
     builtin.debug.write(fbu.buffer[0..fbu.pos]);
 }
-// This is the best optimised result.
+// Debug: Equal fastest build
+// Debug: Best performance
+// Release: Best performance
 fn zigLibOptimisedMessage(futex1: *u32, futex2: *u32, count1: u32, count2: u32, ret: u64) void {
+    @setRuntimeSafety(false);
     var fmt_ux64: fmt.Type.Ux64 = .{ .value = @intFromPtr(futex1) };
     var fmt_ud64: fmt.Type.Ud64 = .{ .value = futex1.* };
-    var buf: [4096]u8 = undefined;
-    @as(*[about.len]u8, @ptrCast(&buf)).* = about.*;
+    var bytes: [4096]u8 = undefined;
+    var buf: [*]u8 = &bytes;
+    @as(*[about.len]u8, @ptrCast(buf)).* = about.*;
     var len: u64 = about.len;
-    @as(*[8]u8, @ptrCast(buf[len..].ptr)).* = "futex1=@".*;
+    @as(*[8]u8, @ptrCast(buf + len)).* = "futex1=@".*;
     len +%= 8;
-    len +%= fmt_ux64.formatWriteBuf(buf[len..].ptr);
-    @as(*[8]u8, @ptrCast(buf[len..].ptr)).* = ", word1=".*;
+    len +%= fmt_ux64.formatWriteBuf(buf + len);
+    @as(*[8]u8, @ptrCast(buf + len)).* = ", word1=".*;
     len +%= 8;
-    len +%= fmt_ud64.formatWriteBuf(buf[len..].ptr);
-    @as(*[7]u8, @ptrCast(buf[len..].ptr)).* = ", max1=".*;
+    len +%= fmt_ud64.formatWriteBuf(buf + len);
+    @as(*[7]u8, @ptrCast(buf + len)).* = ", max1=".*;
     len +%= 7;
     fmt_ud64.value = count1;
-    len +%= fmt_ud64.formatWriteBuf(buf[len..].ptr);
-    @as(*[10]u8, @ptrCast(buf[len..].ptr)).* = ", futex2=@".*;
+    len +%= fmt_ud64.formatWriteBuf(buf + len);
+    @as(*[10]u8, @ptrCast(buf + len)).* = ", futex2=@".*;
     len +%= 10;
     fmt_ux64.value = @intFromPtr(futex2);
-    len +%= fmt_ux64.formatWriteBuf(buf[len..].ptr);
-    @as(*[8]u8, @ptrCast(buf[len..].ptr)).* = ", word2=".*;
+    len +%= fmt_ux64.formatWriteBuf(buf + len);
+    @as(*[8]u8, @ptrCast(buf + len)).* = ", word2=".*;
     len +%= 8;
     fmt_ud64.value = futex2.*;
-    len +%= fmt_ud64.formatWriteBuf(buf[len..].ptr);
-    @as(*[7]u8, @ptrCast(buf[len..].ptr)).* = ", max2=".*;
+    len +%= fmt_ud64.formatWriteBuf(buf + len);
+    @as(*[7]u8, @ptrCast(buf + len)).* = ", max2=".*;
     len +%= 7;
     fmt_ud64.value = count2;
-    len +%= fmt_ud64.formatWriteBuf(buf[len..].ptr);
-    @as(*[6]u8, @ptrCast(buf[len..].ptr)).* = ", res=".*;
+    len +%= fmt_ud64.formatWriteBuf(buf + len);
+    @as(*[6]u8, @ptrCast(buf + len)).* = ", res=".*;
     len +%= 6;
     fmt_ud64.value = ret;
-    len +%= fmt_ud64.formatWriteBuf(buf[len..].ptr);
+    len +%= fmt_ud64.formatWriteBuf(buf + len);
     buf[len] = '\n';
     builtin.debug.write(buf[0 .. len +% 1]);
 }
