@@ -251,11 +251,11 @@ pub fn GenericBlake2b(comptime out_bits: usize) type {
             for (&blake_2b.h) |*x| x.* = mem.nativeToLittle(u64, x.*);
             mach.memcpy(dest.ptr, @as([*]u8, @ptrCast(&blake_2b.h)), 64);
         }
-        fn round(blake_2b: *Blake2b, b: *const [128]u8, last: bool) void {
+        fn round(blake_2b: *Blake2b, bytes: *const [128]u8, last: bool) void {
             var m: [16]u64 = undefined;
             var v: [16]u64 = undefined;
             for (&m, 0..) |*r, i| {
-                r.* = mem.readIntLittle(u64, b[8 *% i ..][0..8]);
+                r.* = mem.readIntLittle(u64, bytes[8 *% i ..][0..8]);
             }
             var k: usize = 0;
             while (k < 8) : (k +%= 1) {
@@ -688,7 +688,7 @@ pub const Md5 = struct {
         }
         const rem: []const u8 = bytes[off..];
         mach.memcpy(md5.buf[md5.buf_len..].ptr, rem.ptr, rem.len);
-        md5.buf_len +%= @as(u8, @intCast(rem.len));
+        md5.buf_len +%= @intCast(rem.len);
         md5.total_len +%= bytes.len;
     }
     pub fn final(md5: *Md5, dest: []u8) void {
@@ -704,7 +704,7 @@ pub const Md5 = struct {
         var off: u64 = md5.total_len >> 5;
         md5.buf[56] = @as(u8, @intCast(md5.total_len & 0x1f)) << 3;
         while (idx < 8) : (idx +%= 1) {
-            md5.buf[56 +% idx] = @as(u8, @intCast(off & 0xff));
+            md5.buf[56 +% idx] = @intCast(off & 0xff);
             off >>= 8;
         }
         md5.round(md5.buf[0..]);
@@ -852,6 +852,82 @@ fn GenericSha2x64(comptime params: Sha2Params64) type {
                     ((v[r.a] & (v[r.b] | v[r.c])) | (v[r.b] & v[r.c]));
             }
             sha.s +%= @as(u64x8, v);
+        }
+    };
+}
+pub const Sha384oSha384 = GenericComposition(Sha384, Sha384);
+pub const Sha512oSha512 = GenericComposition(Sha512, Sha512);
+pub const Sha384 = GenericSha2x64(.{ .init_vec = tab.init_vec.sha384, .digest_bits = 384 });
+pub const Sha512256 = GenericSha2x64(.{ .init_vec = tab.init_vec.sha512_256, .digest_bits = 256 });
+pub const Sha512T256 = GenericSha2x64(.{ .init_vec = tab.init_vec.sha512_t_256, .digest_bits = 256 });
+pub const Shake128 = Shake(128);
+pub const Shake256 = Shake(256);
+pub fn TurboShake128(comptime delim: ?u8) type {
+    return TurboShake(128, delim);
+}
+pub fn TurboShake256(comptime delim: ?u8) type {
+    return TurboShake(256, delim);
+}
+pub fn Shake(comptime security_level: u11) type {
+    return GenericShakeLike(security_level, 0x1f, 24);
+}
+pub fn TurboShake(comptime security_level: u11, comptime delim: ?u8) type {
+    return GenericShakeLike(security_level, delim orelse 0x1f, 12);
+}
+fn GenericShakeLike(comptime security_level: u11, comptime delim: u8, comptime rounds: u5) type {
+    return struct {
+        st: State = .{},
+        buf: [State.rate]u8 = undefined,
+        offset: usize = 0,
+        padded: bool = false,
+        const ShakeLike = @This();
+        const State = core.GenericKeccakPState(1600, security_level *% 2, delim, rounds);
+        pub const len: comptime_int = security_level / 2;
+        pub const blk_len: comptime_int = State.rate;
+        pub fn hash(bytes: []const u8, dest: []u8) void {
+            var st: ShakeLike = .{};
+            st.update(bytes);
+            st.squeeze(dest);
+        }
+        pub fn update(shake: *ShakeLike, bytes: []const u8) void {
+            shake.st.absorb(bytes);
+        }
+        pub fn squeeze(shake: *ShakeLike, dest: []u8) void {
+            if (!shake.padded) {
+                shake.st.pad();
+                shake.padded = true;
+            }
+            var bytes: []u8 = dest;
+            if (shake.offset > 0) {
+                var off: usize = shake.buf.len -% shake.offset;
+                if (off > 0) {
+                    off = @min(off, bytes.len);
+                    mach.memcpy(bytes.ptr, shake.buf[shake.offset..].ptr, off);
+                    bytes = bytes[off..];
+                    shake.offset +%= off;
+                    if (bytes.len == 0) {
+                        return;
+                    }
+                }
+            }
+            const full_blocks: []u8 = bytes[0 .. bytes.len -% bytes.len % State.rate];
+            if (full_blocks.len > 0) {
+                shake.st.squeeze(full_blocks);
+                bytes = bytes[full_blocks.len..];
+            }
+            if (bytes.len > 0) {
+                shake.st.squeeze(shake.buf[0..]);
+                @memcpy(bytes[0..], shake.buf[0..bytes.len]);
+                shake.offset = bytes.len;
+            }
+        }
+        pub fn final(shake: *ShakeLike, dest: []u8) void {
+            shake.squeeze(dest);
+            shake.st.st.clear(0, State.rate);
+        }
+        fn write(shake: *ShakeLike, bytes: []const u8) usize {
+            shake.update(bytes);
+            return bytes.len;
         }
     };
 }
