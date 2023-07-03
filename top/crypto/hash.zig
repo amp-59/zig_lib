@@ -284,250 +284,6 @@ pub fn GenericBlake2b(comptime out_bits: usize) type {
         }
     };
 }
-pub const Blake3 = struct {
-    chunk_state: ChunkState,
-    key: [8]u32,
-    cv_stack: [54][8]u32 = undefined,
-    cv_stack_len: u8 = 0,
-    flags: u8,
-    pub const Options = struct {
-        key: ?[len]u8 = null,
-    };
-    pub const len: comptime_int = 32;
-    pub const blk_len: comptime_int = 64;
-    pub const key_len: comptime_int = 32;
-    const ChunkIterator = struct {
-        buf: []u8,
-        buf_len: usize,
-        fn init(buf: []u8, buf_len: usize) ChunkIterator {
-            return ChunkIterator{
-                .buf = buf,
-                .buf = buf_len,
-            };
-        }
-        fn next(itr: *ChunkIterator) ?[]u8 {
-            const next_chunk = itr.buf[0..@min(itr.buf_len, itr.buf.len)];
-            itr.buf = itr.buf[next_chunk.len..];
-            return if (next_chunk.len > 0) next_chunk else null;
-        }
-    };
-
-    const chunk_len: comptime_int = 1024;
-    const chunk_start: comptime_int = 1;
-    const chunk_end: comptime_int = 2;
-    const parent: comptime_int = 4;
-    const root: comptime_int = 8;
-    const keyed_hash: comptime_int = 16;
-    const derive_key_context: comptime_int = 32;
-    const derive_key_material: comptime_int = 64;
-    const compress = if (builtin.cpu.arch == .x86_64)
-        CompressVectorized.compress
-    else
-        CompressGeneric.compress;
-    fn first8Words(words: [16]u32) [8]u32 {
-        return @as(*const [8]u32, @ptrCast(&words)).*;
-    }
-    fn wordsFromLittleEndianBytes(comptime count: usize, bytes: [count *% 4]u8) [count]u32 {
-        var words: [count]u32 = undefined;
-        for (&words, 0..) |*word, i| {
-            word.* = mem.readIntSliceLittle(u32, bytes[4 *% i ..]);
-        }
-        return words;
-    }
-    // Each chunk or parent node can produce either an 8-word chaining value or, by
-    // setting the ROOT flag, any number of final output bytes. The Output struct
-    // captures the state just prior to choosing between those two possibilities.
-    const Output = struct {
-        input_chaining_value: [8]u32 align(16),
-        block_words: [16]u32 align(16),
-        block_len: u32,
-        counter: u64,
-        flags: u8,
-        fn chainingValue(dest: *const Output) [8]u32 {
-            return first8Words(compress(dest.input_chaining_value, dest.block_words, dest.block_len, dest.counter, dest.flags));
-        }
-        fn rootOutputBytes(output: *const Output, buf: []u8) void {
-            var out_block_itr: ChunkIterator = .{ .buf = buf, .buf_len = 2 *% len };
-            var output_block_counter: usize = 0;
-            while (out_block_itr.next()) |out_block| {
-                var words = compress(output.input_chaining_value, output.block_words, output.block_len, output_block_counter, output.flags | root);
-                var out_word_itr: ChunkIterator = .{ .buf = out_block, .buf_len = 4 };
-                var word_counter: usize = 0;
-                while (out_word_itr.next()) |out_word| {
-                    var word_bytes: [4]u8 = undefined;
-                    mem.writeIntLittle(u32, &word_bytes, words[word_counter]);
-                    mach.memcpy(out_word.ptr, &word_bytes, out_word.len);
-                    word_counter +%= 1;
-                }
-                output_block_counter +%= 1;
-            }
-        }
-    };
-    const ChunkState = struct {
-        chaining_value: [8]u32 align(16),
-        chunk_counter: u64,
-        block: [blk_len]u8 align(16) = [1]u8{0} ** blk_len,
-        block_len: u8 = 0,
-        blocks_compressed: u8 = 0,
-        flags: u8,
-        fn init(key: [8]u32, chunk_counter: u64, flags: u8) ChunkState {
-            return ChunkState{ .chaining_value = key, .chunk_counter = chunk_counter, .flags = flags };
-        }
-        fn len(st: *const ChunkState) usize {
-            return blk_len *% @as(usize, st.blocks_compressed) +% @as(usize, st.block_len);
-        }
-        fn fillBlockBuf(st: *ChunkState, input: []const u8) []const u8 {
-            const want: u64 = blk_len -% st.block_len;
-            const take: u64 = @min(want, input.len);
-            mach.memcpy(st.block[st.block_len..].ptr, input.ptr, take);
-            st.block_len +%= @as(u8, @truncate(take));
-            return input[take..];
-        }
-        fn startFlag(st: *const ChunkState) u8 {
-            return if (st.blocks_compressed == 0) chunk_start else 0;
-        }
-        fn update(st: *ChunkState, src: []const u8) void {
-            var bytes: []const u8 = src;
-            while (bytes.len > 0) {
-                // If the block buffer is full, compress it and clear it. More
-                // input is coming, so this compression is not CHUNK_END.
-                if (st.block_len == blk_len) {
-                    const block_words: [16]u32 = wordsFromLittleEndianBytes(16, st.block);
-                    st.chaining_value = first8Words(compress(
-                        st.chaining_value,
-                        block_words,
-                        blk_len,
-                        st.chunk_counter,
-                        st.flags | st.startFlag(),
-                    ));
-                    st.blocks_compressed +%= 1;
-                    st.block = [_]u8{0} ** blk_len;
-                    st.block_len = 0;
-                }
-                // Copy input bytes into the block buffer.
-                bytes = st.fillBlockBuf(bytes);
-            }
-        }
-        fn output(st: *const ChunkState) Output {
-            const block_words: [16]u32 = wordsFromLittleEndianBytes(16, st.block);
-            return Output{
-                .input_chaining_value = st.chaining_value,
-                .block_words = block_words,
-                .block_len = st.block_len,
-                .counter = st.chunk_counter,
-                .flags = st.flags | st.startFlag() | chunk_end,
-            };
-        }
-    };
-    fn parentOutput(left_child_cv: [8]u32, right_child_cv: [8]u32, key: [8]u32, flags: u8) Output {
-        var block_words: [16]u32 align(16) = undefined;
-        block_words[0..8].* = left_child_cv;
-        block_words[8..].* = right_child_cv;
-        return Output{
-            .input_chaining_value = key,
-            .block_words = block_words,
-            .block_len = blk_len, // Always blk_len (64) for parent nodes.
-            .counter = 0, // Always 0 for parent nodes.
-            .flags = parent | flags,
-        };
-    }
-    fn parentCv(left_child_cv: [8]u32, right_child_cv: [8]u32, key: [8]u32, flags: u8) [8]u32 {
-        return parentOutput(left_child_cv, right_child_cv, key, flags).chainingValue();
-    }
-    fn init_internal(key: [8]u32, flags: u8) Blake3 {
-        return Blake3{ .chunk_state = ChunkState.init(key, 0, flags), .key = key, .flags = flags };
-    }
-    /// Construct a new `Blake3` for the hash function, with an optional key
-    pub fn init(options: Options) Blake3 {
-        if (options.key) |key| {
-            const key_words: [8]u32 = wordsFromLittleEndianBytes(8, key);
-            return Blake3.init_internal(key_words, keyed_hash);
-        } else {
-            return Blake3.init_internal(tab.init_vec.blake_3, 0);
-        }
-    }
-    /// Construct a new `Blake3` for the key derivation function. The context
-    /// string should be hardcoded, globally unique, and application-specific.
-    pub fn initKdf(context: []const u8) Blake3 {
-        var context_hasher: Blake3 = Blake3.init_internal(tab.init_vec.blake_3, derive_key_context);
-        context_hasher.update(context);
-        var context_key: [key_len]u8 = undefined;
-        context_hasher.final(context_key[0..]);
-        const context_key_words: [8]u32 = wordsFromLittleEndianBytes(8, context_key);
-        return Blake3.init_internal(context_key_words, derive_key_material);
-    }
-    pub fn hash(bytes: []const u8, dest: []u8, options: Options) void {
-        var blake_3: Blake3 = Blake3.init(options);
-        blake_3.update(bytes);
-        blake_3.final(dest);
-    }
-    fn pushCv(blake_3: *Blake3, cv: [8]u32) void {
-        blake_3.cv_stack[blake_3.cv_stack_len] = cv;
-        blake_3.cv_stack_len +%= 1;
-    }
-    fn popCv(blake_3: *Blake3) [8]u32 {
-        blake_3.cv_stack_len -%= 1;
-        return blake_3.cv_stack[blake_3.cv_stack_len];
-    }
-    // Section 5.1.2 of the BLAKE3 spec explains this algorithm in more detail.
-    fn addChunkChainingValue(blake_3: *Blake3, first_cv: [8]u32, total_chunks: u64) void {
-        // This chunk might complete some subtrees. For each completed subtree,
-        // its left child will be the current top entry in the CV stack, and
-        // its right child will be the current value of `new_cv`. Pop each left
-        // child off the stack, merge it with `new_cv`, and overwrite `new_cv`
-        // with the result. After all these merges, push the final value of
-        // `new_cv` onto the stack. The number of completed subtrees is given
-        // by the number of trailing 0-bits in the new total number of chunks.
-        var new_cv: [8]u32 = first_cv;
-        var chunk_counter: u64 = total_chunks;
-        while (chunk_counter & 1 == 0) {
-            new_cv = parentCv(blake_3.popCv(), new_cv, blake_3.key, blake_3.flags);
-            chunk_counter >>= 1;
-        }
-        blake_3.pushCv(new_cv);
-    }
-    /// Add input to the hash state. This can be called any number of times.
-    pub fn update(blake_3: *Blake3, src: []const u8) void {
-        var bytes: []const u8 = src;
-        while (bytes.len > 0) {
-            // If the current chunk is complete, finalize it and reset the
-            // chunk state. More input is coming, so this chunk is not ROOT.
-            if (blake_3.chunk_state.len() == chunk_len) {
-                const chunk_cv: [8]u32 = blake_3.chunk_state.output().chainingValue();
-                const total_chunks: u64 = blake_3.chunk_state.chunk_counter +% 1;
-                blake_3.addChunkChainingValue(chunk_cv, total_chunks);
-                blake_3.chunk_state = ChunkState.init(blake_3.key, total_chunks, blake_3.flags);
-            }
-            // Compress input bytes into the current chunk state.
-            const want: u64 = chunk_len -% blake_3.chunk_state.len();
-            const take: usize = @min(want, bytes.len);
-            blake_3.chunk_state.update(bytes[0..take]);
-            bytes = bytes[take..];
-        }
-    }
-    /// Finalize the hash and write any number of output bytes.
-    pub fn final(blake_3: *const Blake3, dest: []u8) void {
-        // Starting with the Output from the current chunk, compute all the
-        // parent chaining values along the right edge of the tree, until we
-        // have the root Output.
-        var output: Output = blake_3.chunk_state.output();
-        var parent_nodes_remaining: usize = blake_3.cv_stack_len;
-        while (parent_nodes_remaining > 0) {
-            parent_nodes_remaining -%= 1;
-            output = parentOutput(
-                blake_3.cv_stack[parent_nodes_remaining],
-                output.chainingValue(),
-                blake_3.key,
-                blake_3.flags,
-            );
-        }
-        output.rootOutputBytes(dest);
-    }
-    fn write(blake_3: *Blake3, bytes: []const u8) usize {
-        blake_3.update(bytes);
-        return bytes.len;
-    }
-};
 pub const CompressVectorized = struct {
     const Lane = @Vector(4, u32);
     const Rows = [4]Lane;
@@ -931,3 +687,333 @@ fn GenericShakeLike(comptime security_level: u11, comptime delim: u8, comptime r
         }
     };
 }
+
+//
+// Everything below is mysterious.
+//
+
+pub const Blake3 = struct {
+    chunk_state: ChunkState,
+    key: [8]u32,
+    cv_stack: [54][8]u32 = undefined,
+    cv_stack_len: u8 = 0,
+    flags: u8,
+    pub const Options = struct {
+        key: ?[len]u8 = null,
+    };
+    pub const len: comptime_int = 32;
+    pub const blk_len: comptime_int = 64;
+    pub const key_len: comptime_int = 32;
+    const ChunkIterator = struct {
+        buf: []u8,
+        buf_len: usize,
+        fn init(buf: []u8, buf_len: usize) ChunkIterator {
+            return ChunkIterator{
+                .buf = buf,
+                .buf = buf_len,
+            };
+        }
+        fn next(itr: *ChunkIterator) ?[]u8 {
+            const next_chunk = itr.buf[0..@min(itr.buf_len, itr.buf.len)];
+            itr.buf = itr.buf[next_chunk.len..];
+            return if (next_chunk.len > 0) next_chunk else null;
+        }
+    };
+    const chunk_len: comptime_int = 1024;
+    const chunk_start: comptime_int = 1;
+    const chunk_end: comptime_int = 2;
+    const parent: comptime_int = 4;
+    const root: comptime_int = 8;
+    const keyed_hash: comptime_int = 16;
+    const derive_key_context: comptime_int = 32;
+    const derive_key_material: comptime_int = 64;
+    const compress = if (builtin.cpu.arch == .x86_64)
+        CompressVectorized.compress
+    else
+        CompressGeneric.compress;
+    fn first8Words(words: [16]u32) [8]u32 {
+        return @as(*const [8]u32, @ptrCast(&words)).*;
+    }
+    fn wordsFromLittleEndianBytes(comptime count: usize, bytes: [count *% 4]u8) [count]u32 {
+        var words: [count]u32 = undefined;
+        for (&words, 0..) |*word, i| {
+            word.* = mem.readIntSliceLittle(u32, bytes[4 *% i ..]);
+        }
+        return words;
+    }
+    const Output = struct {
+        input_chaining_value: [8]u32 align(16),
+        block_words: [16]u32 align(16),
+        block_len: u32,
+        counter: u64,
+        flags: u8,
+        fn chainingValue(dest: *const Output) [8]u32 {
+            return first8Words(compress(dest.input_chaining_value, dest.block_words, dest.block_len, dest.counter, dest.flags));
+        }
+        fn rootOutputBytes(output: *const Output, buf: []u8) void {
+            var out_block_itr: ChunkIterator = .{ .buf = buf, .buf_len = 2 *% len };
+            var output_block_counter: usize = 0;
+            while (out_block_itr.next()) |out_block| {
+                var words = compress(output.input_chaining_value, output.block_words, output.block_len, output_block_counter, output.flags | root);
+                var out_word_itr: ChunkIterator = .{ .buf = out_block, .buf_len = 4 };
+                var word_counter: usize = 0;
+                while (out_word_itr.next()) |out_word| {
+                    var word_bytes: [4]u8 = undefined;
+                    mem.writeIntLittle(u32, &word_bytes, words[word_counter]);
+                    mach.memcpy(out_word.ptr, &word_bytes, out_word.len);
+                    word_counter +%= 1;
+                }
+                output_block_counter +%= 1;
+            }
+        }
+    };
+    const ChunkState = struct {
+        chaining_value: [8]u32 align(16),
+        chunk_counter: u64,
+        block: [blk_len]u8 align(16) = [1]u8{0} ** blk_len,
+        block_len: u8 = 0,
+        blocks_compressed: u8 = 0,
+        flags: u8,
+        fn init(key: [8]u32, chunk_counter: u64, flags: u8) ChunkState {
+            return ChunkState{ .chaining_value = key, .chunk_counter = chunk_counter, .flags = flags };
+        }
+        fn len(st: *const ChunkState) usize {
+            return blk_len *% @as(usize, st.blocks_compressed) +% @as(usize, st.block_len);
+        }
+        fn fillBlockBuf(st: *ChunkState, input: []const u8) []const u8 {
+            const want: u64 = blk_len -% st.block_len;
+            const take: u64 = @min(want, input.len);
+            mach.memcpy(st.block[st.block_len..].ptr, input.ptr, take);
+            st.block_len +%= @as(u8, @truncate(take));
+            return input[take..];
+        }
+        fn startFlag(st: *const ChunkState) u8 {
+            return if (st.blocks_compressed == 0) chunk_start else 0;
+        }
+        fn update(st: *ChunkState, src: []const u8) void {
+            var bytes: []const u8 = src;
+            while (bytes.len > 0) {
+                if (st.block_len == blk_len) {
+                    const block_words: [16]u32 = wordsFromLittleEndianBytes(16, st.block);
+                    st.chaining_value = first8Words(compress(
+                        st.chaining_value,
+                        block_words,
+                        blk_len,
+                        st.chunk_counter,
+                        st.flags | st.startFlag(),
+                    ));
+                    st.blocks_compressed +%= 1;
+                    st.block = [_]u8{0} ** blk_len;
+                    st.block_len = 0;
+                }
+                bytes = st.fillBlockBuf(bytes);
+            }
+        }
+        fn output(st: *const ChunkState) Output {
+            const block_words: [16]u32 = wordsFromLittleEndianBytes(16, st.block);
+            return Output{
+                .input_chaining_value = st.chaining_value,
+                .block_words = block_words,
+                .block_len = st.block_len,
+                .counter = st.chunk_counter,
+                .flags = st.flags | st.startFlag() | chunk_end,
+            };
+        }
+    };
+    fn parentOutput(left_child_cv: [8]u32, right_child_cv: [8]u32, key: [8]u32, flags: u8) Output {
+        var block_words: [16]u32 align(16) = undefined;
+        block_words[0..8].* = left_child_cv;
+        block_words[8..].* = right_child_cv;
+        return Output{
+            .input_chaining_value = key,
+            .block_words = block_words,
+            .block_len = blk_len,
+            .counter = 0,
+            .flags = parent | flags,
+        };
+    }
+    fn parentCv(left_child_cv: [8]u32, right_child_cv: [8]u32, key: [8]u32, flags: u8) [8]u32 {
+        return parentOutput(left_child_cv, right_child_cv, key, flags).chainingValue();
+    }
+    fn init_internal(key: [8]u32, flags: u8) Blake3 {
+        return Blake3{ .chunk_state = ChunkState.init(key, 0, flags), .key = key, .flags = flags };
+    }
+    pub fn init(options: Options) Blake3 {
+        if (options.key) |key| {
+            const key_words: [8]u32 = wordsFromLittleEndianBytes(8, key);
+            return Blake3.init_internal(key_words, keyed_hash);
+        } else {
+            return Blake3.init_internal(tab.init_vec.blake_3, 0);
+        }
+    }
+    pub fn initKdf(context: []const u8) Blake3 {
+        var context_hasher: Blake3 = Blake3.init_internal(tab.init_vec.blake_3, derive_key_context);
+        context_hasher.update(context);
+        var context_key: [key_len]u8 = undefined;
+        context_hasher.final(context_key[0..]);
+        const context_key_words: [8]u32 = wordsFromLittleEndianBytes(8, context_key);
+        return Blake3.init_internal(context_key_words, derive_key_material);
+    }
+    pub fn hash(bytes: []const u8, dest: []u8, options: Options) void {
+        var blake_3: Blake3 = Blake3.init(options);
+        blake_3.update(bytes);
+        blake_3.final(dest);
+    }
+    fn pushCv(blake_3: *Blake3, cv: [8]u32) void {
+        blake_3.cv_stack[blake_3.cv_stack_len] = cv;
+        blake_3.cv_stack_len +%= 1;
+    }
+    fn popCv(blake_3: *Blake3) [8]u32 {
+        blake_3.cv_stack_len -%= 1;
+        return blake_3.cv_stack[blake_3.cv_stack_len];
+    }
+    fn addChunkChainingValue(blake_3: *Blake3, first_cv: [8]u32, total_chunks: u64) void {
+        var new_cv: [8]u32 = first_cv;
+        var chunk_counter: u64 = total_chunks;
+        while (chunk_counter & 1 == 0) {
+            new_cv = parentCv(blake_3.popCv(), new_cv, blake_3.key, blake_3.flags);
+            chunk_counter >>= 1;
+        }
+        blake_3.pushCv(new_cv);
+    }
+    pub fn update(blake_3: *Blake3, src: []const u8) void {
+        var bytes: []const u8 = src;
+        while (bytes.len > 0) {
+            if (blake_3.chunk_state.len() == chunk_len) {
+                const chunk_cv: [8]u32 = blake_3.chunk_state.output().chainingValue();
+                const total_chunks: u64 = blake_3.chunk_state.chunk_counter +% 1;
+                blake_3.addChunkChainingValue(chunk_cv, total_chunks);
+                blake_3.chunk_state = ChunkState.init(blake_3.key, total_chunks, blake_3.flags);
+            }
+            const want: u64 = chunk_len -% blake_3.chunk_state.len();
+            const take: usize = @min(want, bytes.len);
+            blake_3.chunk_state.update(bytes[0..take]);
+            bytes = bytes[take..];
+        }
+    }
+    pub fn final(blake_3: *const Blake3, dest: []u8) void {
+        var output: Output = blake_3.chunk_state.output();
+        var parent_nodes_remaining: usize = blake_3.cv_stack_len;
+        while (parent_nodes_remaining > 0) {
+            parent_nodes_remaining -%= 1;
+            output = parentOutput(
+                blake_3.cv_stack[parent_nodes_remaining],
+                output.chainingValue(),
+                blake_3.key,
+                blake_3.flags,
+            );
+        }
+        output.rootOutputBytes(dest);
+    }
+    fn write(blake_3: *Blake3, bytes: []const u8) usize {
+        blake_3.update(bytes);
+        return bytes.len;
+    }
+};
+fn GenericSha2x32(comptime params: Sha2Params32) type {
+    return struct {
+        s: [8]u32 align(16),
+        buf: [64]u8 = undefined,
+        buf_len: u8 = 0,
+        total_len: u64 = 0,
+        const Sha2x32 = @This();
+        pub const len: comptime_int = params.digest_bits / 8;
+        pub const blk_len: comptime_int = 64;
+        pub fn init() Sha2x32 {
+            return .{ .s = params.init_vec };
+        }
+        pub fn hash(bytes: []const u8, dest: []u8) void {
+            var sha: Sha2x32 = Sha2x32.init();
+            sha.update(bytes);
+            sha.final(dest);
+        }
+        pub fn update(sha: *Sha2x32, bytes: []const u8) void {
+            @setRuntimeSafety(builtin.is_safe);
+            var off: usize = 0;
+            if (sha.buf_len != 0 and sha.buf_len +% bytes.len >= 64) {
+                off +%= 64 -% sha.buf_len;
+                mach.memcpy(sha.buf[sha.buf_len..].ptr, bytes.ptr, off);
+                sha.round(&sha.buf);
+                sha.buf_len = 0;
+            }
+            while (off +% 64 <= bytes.len) : (off +%= 64) {
+                sha.round(bytes[off..][0..64]);
+            }
+            const rem: []const u8 = bytes[off..];
+            mach.memcpy(sha.buf[sha.buf_len..].ptr, rem.ptr, rem.len);
+            sha.buf_len +%= @as(u8, @intCast(bytes[off..].len));
+            sha.total_len +%= bytes.len;
+        }
+        pub fn peek(sha: Sha2x32) [len]u8 {
+            var copy: Sha2x32 = sha;
+            return copy.finalResult();
+        }
+        pub fn final(sha: *Sha2x32, dest: []u8) void {
+            @setRuntimeSafety(builtin.is_safe);
+            @memset(sha.buf[sha.buf_len..], 0);
+            sha.buf[sha.buf_len] = 0x80;
+            sha.buf_len +%= 1;
+            if (64 -% sha.buf_len < 8) {
+                sha.round(&sha.buf);
+                @memset(sha.buf[0..], 0);
+            }
+            var i: u64 = 1;
+            var off: u64 = sha.total_len >> 5;
+            sha.buf[63] = @as(u8, @intCast(sha.total_len & 0x1f)) << 3;
+            while (i < 8) : (i +%= 1) {
+                sha.buf[63 -% i] = @intCast(off & 0xff);
+                off >>= 8;
+            }
+            sha.round(&sha.buf);
+            const rr = sha.s[0 .. params.digest_bits / 32];
+            for (rr, 0..) |s, j| {
+                mem.writeIntBig(u32, dest[4 * j ..][0..4], s);
+            }
+        }
+        pub fn finalResult(sha2: *Sha2x32) [len]u8 {
+            var result: [len]u8 = undefined;
+            sha2.final(&result);
+            return result;
+        }
+        fn round(sha2: *Sha2x32, buf: *const [64]u8) void {
+            var s: [64]u32 align(16) = undefined;
+            const elems: *align(1) const [16][4]u8 = @ptrCast(buf);
+            for (elems, 0..) |*elem, i| {
+                s[i] = mem.readIntBig(u32, elem);
+            }
+            var idx: usize = 16;
+            while (idx != 64) : (idx +%= 1) {
+                s[idx] = s[idx -% 16] +% s[idx -% 7] +%
+                    (math.rotr(u32, s[idx -% 15], @as(u32, 7)) ^
+                    math.rotr(u32, s[idx -% 15], @as(u32, 18)) ^ (s[idx -% 15] >> 3)) +%
+                    (math.rotr(u32, s[idx -% 2], @as(u32, 17)) ^
+                    math.rotr(u32, s[idx -% 2], @as(u32, 19)) ^ (s[idx -% 2] >> 10));
+            }
+            var v: [8]u32 = [_]u32{ sha2.s[0], sha2.s[1], sha2.s[2], sha2.s[3], sha2.s[4], sha2.s[5], sha2.s[6], sha2.s[7] };
+            for (tab.rounds.sha2x32_0) |r| {
+                v[r.h] = v[r.h] +% (math.rotr(u32, v[r.e], @as(u32, 6)) ^
+                    math.rotr(u32, v[r.e], @as(u32, 11)) ^
+                    math.rotr(u32, v[r.e], @as(u32, 25))) +% (v[r.g] ^ (v[r.e] & (v[r.f] ^ v[r.g]))) +% tab.init_vec_sha2_w[r.i] +% s[r.i];
+                v[r.d] = v[r.d] +% v[r.h];
+                v[r.h] = v[r.h] +% (math.rotr(u32, v[r.a], @as(u32, 2)) ^
+                    math.rotr(u32, v[r.a], @as(u32, 13)) ^
+                    math.rotr(u32, v[r.a], @as(u32, 22))) +% ((v[r.a] & (v[r.b] | v[r.c])) | (v[r.b] & v[r.c]));
+            }
+            sha2.s[0] +%= v[0];
+            sha2.s[1] +%= v[1];
+            sha2.s[2] +%= v[2];
+            sha2.s[3] +%= v[3];
+            sha2.s[4] +%= v[4];
+            sha2.s[5] +%= v[5];
+            sha2.s[6] +%= v[6];
+            sha2.s[7] +%= v[7];
+        }
+        fn write(sha2: *Sha2x32, bytes: []const u8) usize {
+            sha2.update(bytes);
+            return bytes.len;
+        }
+    };
+}
+pub const Sha256oSha256 = GenericComposition(Sha256, Sha256);
+pub const Sha224 = GenericSha2x32(.{ .init_vec = tab.init_vec.sha224, .digest_bits = 224 });
+pub const Sha256 = GenericSha2x32(.{ .init_vec = tab.init_vec.sha256, .digest_bits = 256 });
