@@ -15,7 +15,7 @@ pub const logging_default: builtin.Logging.Default = .{
     .Fault = true,
 };
 pub const runtime_assertions: bool = true;
-fn basicTests() !void {
+fn testBasicMetaFunctions() !void {
     try builtin.expectEqual(i1, -1, meta.extrema(i1).min);
     try builtin.expectEqual(u1, 1, meta.extrema(u1).max);
     try builtin.expect(8 == meta.alignAW(7));
@@ -47,7 +47,7 @@ fn basicTests() !void {
     try builtin.expect(@hasField(E, "two"));
     try builtin.expect(@hasField(E, "three"));
 }
-fn alignTests() !void {
+fn testAlignmentMetaFunctions() !void {
     try builtin.expect(32 == comptime meta.alignCX(-964392));
     try builtin.expect(8 == comptime meta.alignCX(-128));
     try builtin.expect(16 == comptime meta.alignCX(-129));
@@ -56,7 +56,7 @@ fn alignTests() !void {
     try builtin.expect(u8 == meta.AlignSizeBW(u9));
     try builtin.expect(u8 == meta.AlignSizeAW(u7));
 }
-fn bitCastTests() !void {
+fn testBitCastMetaFunctions() !void {
     const S = packed struct {
         x: u3,
         y: u6,
@@ -65,39 +65,39 @@ fn bitCastTests() !void {
     try builtin.expect(u9 == @TypeOf(meta.leastBitCast(s)));
     try builtin.expect(u16 == @TypeOf(meta.leastRealBitCast(s)));
 }
-fn memoryTests() !void {
-    {
-        const Element = u3;
-        const T = [16:0]Element;
-        const E = meta.Element(T);
-        const U = meta.ArrayPointerToSlice(*T);
-        try builtin.expect([:0]Element == U);
-        builtin.assertEqual(type, *T, meta.SliceToArrayPointer(U, @typeInfo(T).Array.len));
-        comptime var t: T = T{ 1, 2, 3, 4, 0, 0, 0, 0, 0, 0, 0, 0, 5, 6, 7, 0 };
-        comptime var u: U = &t;
-        builtin.assertEqual(type, meta.Element(T), E);
-        builtin.assertEqual(type, meta.Element(*T), E);
-        for (meta.arrayPointerToSlice(&t), 0..) |e, i| builtin.assertEqual(E, e, u[i]);
-        for (meta.sliceToArrayPointer(u), 0..) |e, i| builtin.assertEqual(E, e, t[i]);
-        const m: [:0]Element = meta.manyToSlice(u.ptr);
-        builtin.assertEqual(u64, 4, m.len);
-    }
+fn testMemoryMetaFunctions() !void {
+    const Element = u3;
+    const T = [16:0]Element;
+    const E = meta.Element(T);
+    const U = meta.ArrayPointerToSlice(*T);
+    try builtin.expect([:0]Element == U);
+    builtin.assertEqual(type, *T, meta.SliceToArrayPointer(U, @typeInfo(T).Array.len));
+    comptime var t: T = T{ 1, 2, 3, 4, 0, 0, 0, 0, 0, 0, 0, 0, 5, 6, 7, 0 };
+    comptime var u: U = &t;
+    builtin.assertEqual(type, meta.Element(T), E);
+    builtin.assertEqual(type, meta.Element(*T), E);
+    for (meta.arrayPointerToSlice(&t), 0..) |e, i| builtin.assertEqual(E, e, u[i]);
+    for (meta.sliceToArrayPointer(u), 0..) |e, i| builtin.assertEqual(E, e, t[i]);
+    const m: [:0]Element = meta.manyToSlice(u.ptr);
+    builtin.assertEqual(u64, 4, m.len);
+    try testInitializer();
+}
+fn testInitializer() !void {
     const T = struct {
         x: u64 = 0,
         y: u32 = 0,
         z: u16 = 0,
     };
-    const c: []const meta.Initializer = &meta.initializers(T, .{ .x = 25, .y = 14 });
+    const c: []const meta.Initializer = &meta.initializers(T, .{ .x = 25, .y = 15 });
     var t: T = meta.initialize(T, c);
-
-    try builtin.expectEqual(T, t, .{ .x = 25, .y = 14 });
+    try builtin.expectEqual(T, t, .{ .x = 25, .y = 15 });
     builtin.expectEqual(T, t, .{ .x = 25, .y = 15 }) catch |err| {
         builtin.assertEqual(anyerror, error.UnexpectedValue, err);
     };
 }
 pub fn main(_: anytype, _: [][*:0]u8) !void {
-    try basicTests();
-    try bitCastTests();
-    try alignTests();
-    try memoryTests();
+    try testBasicMetaFunctions();
+    try testBitCastMetaFunctions();
+    try testAlignmentMetaFunctions();
+    try testMemoryMetaFunctions();
 }
