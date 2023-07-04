@@ -175,10 +175,7 @@ fn tests(allocator: *build.Allocator, node: *Node) void {
     zls_build_runner_test.descr = "Test ZLS special build runner";
     cmdline_writer_test.descr = "Test generated command line writer functions";
     build_stress_test.descr = "Try to produce builder errors";
-
     algo_test.task.info.build.mode = .ReleaseFast;
-    fmt_cmp_test.task.info.build.mode = .Debug;
-
     cryptoTests(allocator, node.addGroup(allocator, "crypto_tests"));
     for ([_]*Node{
         build_runner_test,
