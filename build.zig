@@ -24,6 +24,22 @@ var build_cmd: build.tasks.BuildCommand = .{
 const format_cmd: build.tasks.FormatCommand = .{
     .ast_check = true,
 };
+fn setSmall(node: *Node) void {
+    node.task.info.build.mode = .ReleaseSmall;
+    node.task.info.build.strip = true;
+}
+fn setFast(node: *Node) void {
+    node.task.info.build.mode = .ReleaseFast;
+    node.task.info.build.strip = true;
+}
+fn setDebug(node: *Node) void {
+    node.task.info.build.mode = .Debug;
+    node.task.info.build.strip = true;
+}
+fn addTracer(node: *Node) void {
+    node.task.info.build.mode = .Debug;
+    node.task.info.build.strip = false;
+}
 pub fn buildMain(allocator: *build.Allocator, toplevel: *Node) !void {
     tests(allocator, toplevel.addGroup(allocator, "tests"));
     examples(allocator, toplevel.addGroup(allocator, "examples"));
@@ -208,22 +224,6 @@ fn cryptoTests(allocator: *build.Allocator, node: *Node) void {
     utils_test.descr = "Test crypto utility functions";
     hash_test.descr = "Test hashing functions";
     pcurves_test.descr = "Test point curve operations";
-}
-fn setSmall(node: *Node) void {
-    node.task.info.build.mode = .ReleaseSmall;
-    node.task.info.build.strip = true;
-}
-fn setFast(node: *Node) void {
-    node.task.info.build.mode = .ReleaseFast;
-    node.task.info.build.strip = true;
-}
-fn setDebug(node: *Node) void {
-    node.task.info.build.mode = .Debug;
-    node.task.info.build.strip = true;
-}
-fn addTracer(node: *Node) void {
-    node.task.info.build.mode = .Debug;
-    node.task.info.build.strip = false;
 }
 fn buildgen(allocator: *build.Allocator, node: *Node) void {
     const bg_aux: *Node = node.addGroup(allocator, "_buildgen");
