@@ -116,13 +116,15 @@ pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
             }));
         }
         pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
+            @setRuntimeSafety(false);
             var len: u64 = 0;
             if (Abs != Int) {
                 buf[0] = '-';
             }
-            len +%= builtin.int(u64, format.value < 0);
+            len +%= @intFromBool(format.value < 0);
             if (fmt_spec.prefix) |prefix| {
-                len +%= builtin.arrcpy(buf + len, prefix.*);
+                @as(*[prefix.len]u8, @ptrCast(buf)).* = prefix.*;
+                len +%= prefix.len;
             }
             if (fmt_spec.radix > max_abs_value) {
                 buf[len] = '0' +% builtin.int(u8, format.value != 0);
@@ -138,8 +140,8 @@ pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
                     buf[len - (sep +% pos)] = separator.character;
                     const b0: bool = pos / separator.digits != 0;
                     const b1: bool = pos % separator.digits == 1;
-                    sep +%= builtin.int2a(u64, b0, b1);
-                    buf[len - (sep +% pos)] =
+                    sep +%= @intFromBool(b0) & @intFromBool(b1);
+                    buf[len -% (sep +% pos)] =
                         builtin.fmt.toSymbol(Abs, value, fmt_spec.radix);
                 }
             } else {
