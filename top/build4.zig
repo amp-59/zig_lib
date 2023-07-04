@@ -273,23 +273,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         name: [:0]u8,
         descr: [:0]const u8,
         task: Task,
-        impl: packed struct {
-            args: [*][*:0]u8,
-            args_max_len: u64,
-            args_len: u64,
-            paths: [*]types.Path,
-            paths_max_len: u64,
-            paths_len: u64,
-            nodes: [*]*Node,
-            nodes_max_len: u64,
-            nodes_len: u64,
-            deps: [*]Dependency,
-            deps_max_len: u64,
-            deps_len: u64,
-            cfgs: [*]Config,
-            cfgs_max_len: u64,
-            cfgs_len: u64,
-        },
         flags: packed struct {
             /// Whether the node will be shown by list commands.
             is_hidden: bool = false,
@@ -312,17 +295,32 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 /// Builder will create a configuration root. Enables usage of
                 /// configuration constants.
                 configure_root: bool = true,
-                /// Builder will add unconditionally add `trace` object to
+                /// Builder will unconditionally add `trace` object to
                 /// compile command.
                 add_stack_traces: bool = false,
             };
+        },
+        impl: packed struct {
+            args: [*][*:0]u8,
+            args_max_len: u64,
+            args_len: u64,
+            paths: [*]types.Path,
+            paths_max_len: u64,
+            paths_len: u64,
+            nodes: [*]*Node,
+            nodes_max_len: u64,
+            nodes_len: u64,
+            deps: [*]Dependency,
+            deps_max_len: u64,
+            deps_len: u64,
+            cfgs: [*]Config,
+            cfgs_max_len: u64,
+            cfgs_len: u64,
         },
         const Node = @This();
         const GlobalState = struct {
             pub var args: [][*:0]u8 = undefined;
             pub var vars: [][*:0]u8 = undefined;
-            pub var euid: u16 = undefined;
-            pub var egid: u16 = undefined;
             pub var trace: *Node = undefined;
             pub var build_root_fd: u64 = undefined;
             pub var config_root_fd: u64 = undefined;
@@ -526,8 +524,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             return toplevel.impl.paths[1].names[0];
         }
         pub fn initState(args: [][*:0]u8, vars: [][*:0]u8) void {
-            GlobalState.euid = sys.call_noexcept(.geteuid, u16, .{});
-            GlobalState.egid = sys.call_noexcept(.getegid, u16, .{});
             GlobalState.args = args;
             GlobalState.vars = vars;
             GlobalState.build_root_fd = try meta.wrap(file.path(path1(), mach.manyToSlice80(args[2])));
