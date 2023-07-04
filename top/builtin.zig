@@ -4550,7 +4550,6 @@ pub const my_trace: Trace = .{
     .Fault = !builtin.strip_debug_info,
     .Signal = !builtin.strip_debug_info,
     .options = .{
-        .relative_path = true,
         .show_line_no = true,
         .show_pc_addr = false,
         .write_sidebar = true,
