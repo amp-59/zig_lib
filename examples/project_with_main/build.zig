@@ -26,7 +26,7 @@ var build_cmd: build.tasks.BuildCommand = .{
 // target (as below), and `build` is the name of import containing build system
 // components.
 pub fn buildMain(allocator: *build.Allocator, toplevel: *BuildNode) !void {
-    const main: *BuildNode = toplevel.addBuildWithDescr(
+    const main: *BuildNode = toplevel.addBuild(
         allocator,
         build_cmd,
         "main",
