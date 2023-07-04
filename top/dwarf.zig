@@ -75,8 +75,12 @@ pub const LineLocation = struct {
         return buf[loc.start..loc.finish];
     }
     pub fn update(loc: *LineLocation, buf: []u8, line: u64) bool {
-        if (loc.line == line) {
-            return true;
+        if (loc.line != 0) {
+            loc.finish +%= 1;
+            loc.start = loc.finish;
+        }
+        if (loc.line > line) {
+            loc.* = .{};
         }
         while (loc.finish != buf.len) : (loc.finish +%= 1) {
             if (buf[loc.finish] == '\n') {
