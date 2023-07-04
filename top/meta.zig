@@ -1286,7 +1286,7 @@ pub const Initializer = struct {
     src_addr: u64,
     src_len: u64,
 };
-pub inline fn initializers(comptime T: type, comptime any: anytype) [@typeInfo(@TypeOf(any)).Struct.fields.len]Initializer {
+pub fn initializers(comptime T: type, comptime any: T) [@typeInfo(@TypeOf(any)).Struct.fields.len]Initializer {
     const fields: []const builtin.Type.StructField = @typeInfo(@TypeOf(any)).Struct.fields;
     var inits: [fields.len]Initializer = undefined;
     inline for (fields, 0..) |field, idx| {
