@@ -298,6 +298,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             do_init: bool = !builder_spec.options.never_initialize,
             /// Whether a node will be processed after returning from `buildMain`.
             do_update: bool = !builder_spec.options.never_update,
+            /// Whether a node will be processed on invokation of a user defined update command.
+            do_user_update: bool = !builder_spec.options.never_update,
             /// Flags relevant to group nodes.
             group: Group = .{},
             /// Flags relevant to build-* worker nodes.
@@ -405,7 +407,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             const size_of: comptime_int = @sizeOf(types.Path);
             const addr_buf: *u64 = @ptrCast(&node.impl.paths);
-            const ret: *types.Path = @ptrFromInt(allocator.addGeneric(size_of, init_len.paths, addr_buf, &node.impl.paths_max_len, node.impl.paths_len));
+            const ret: *types.Path = @ptrFromInt(allocator.addGeneric(size_of, //
+                init_len.paths, addr_buf, &node.impl.paths_max_len, node.impl.paths_len));
             node.impl.paths_len +%= 1;
             return ret;
         }
@@ -413,7 +416,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             const size_of: comptime_int = @sizeOf(*Node);
             const addr_buf: *u64 = @ptrCast(&node.impl.nodes);
-            const ret: **Node = @ptrFromInt(allocator.addGeneric(size_of, init_len.nodes, addr_buf, &node.impl.nodes_max_len, node.impl.nodes_len));
+            const ret: **Node = @ptrFromInt(allocator.addGeneric(size_of, //
+                init_len.nodes, addr_buf, &node.impl.nodes_max_len, node.impl.nodes_len));
             node.impl.nodes_len +%= 1;
             return ret;
         }
@@ -421,7 +425,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             const size_of: comptime_int = @sizeOf(Dependency);
             const addr_buf: *u64 = @ptrCast(&node.impl.deps);
-            const ret: *Dependency = @ptrFromInt(allocator.addGeneric(size_of, init_len.deps, addr_buf, &node.impl.deps_max_len, node.impl.deps_len));
+            const ret: *Dependency = @ptrFromInt(allocator.addGeneric(size_of, //
+                init_len.deps, addr_buf, &node.impl.deps_max_len, node.impl.deps_len));
             node.impl.deps_len +%= 1;
             mem.zero(Dependency, ret);
             return ret;
@@ -431,7 +436,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             if (builder_spec.options.enable_usage_validation) {}
             const size_of: comptime_int = @sizeOf([*:0]u8);
             const addr_buf: *u64 = @ptrCast(&node.impl.args);
-            const ret: *[*:0]u8 = @ptrFromInt(allocator.addGeneric(size_of, init_len.args, addr_buf, &node.impl.args_max_len, node.impl.args_len));
+            const ret: *[*:0]u8 = @ptrFromInt(allocator.addGeneric(size_of, //
+                init_len.args, addr_buf, &node.impl.args_max_len, node.impl.args_len));
             node.impl.args_len +%= 1;
             return ret;
         }
@@ -442,7 +448,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             if (builder_spec.options.enable_usage_validation) {}
             const size_of: comptime_int = @sizeOf(Config);
             const addr_buf: *u64 = @ptrCast(&node.impl.cfgs);
-            const ptr: *Config = @ptrFromInt(allocator.addGeneric(size_of, init_len.cfgs, addr_buf, &node.impl.cfgs_max_len, node.impl.cfgs_len));
+            const ptr: *Config = @ptrFromInt(allocator.addGeneric(size_of, //
+                init_len.cfgs, addr_buf, &node.impl.cfgs_max_len, node.impl.cfgs_len));
             ptr.* = config;
             node.impl.cfgs_len +%= 1;
         }
@@ -451,7 +458,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             if (builder_spec.options.enable_usage_validation) {}
             const size_of: comptime_int = @sizeOf(types.Module);
             const addr_buf: *u64 = @ptrCast(&node.impl.cfgs);
-            const ptr: *types.Module = @ptrFromInt(allocator.addGeneric(size_of, init_len.cfgs, addr_buf, &node.impl.cfgs_max_len, node.impl.cfgs_len));
+            const ptr: *types.Module = @ptrFromInt(allocator.addGeneric(size_of, //
+                init_len.cfgs, addr_buf, &node.impl.cfgs_max_len, node.impl.cfgs_len));
             ptr.* = module;
             node.impl.cfgs_len +%= 1;
         }
@@ -503,7 +511,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         }
         pub fn initSpecialNodes(allocator: *mem.SimpleAllocator, toplevel: *Node) void {
             if (builder_spec.options.special.trace) |build_cmd| {
-                const special: *Node = try toplevel.addBuild(allocator, build_cmd, "trace", paths.trace_root);
+                const special: *Node = toplevel.addBuild(allocator, build_cmd, "trace", paths.trace_root);
                 special.flags.is_special = true;
                 special.flags.build.configure_root = false;
                 GlobalState.trace = special;
@@ -555,7 +563,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             return node;
         }
         /// Initialize a new group command
-        pub fn addGroup(toplevel: *Node, allocator: *mem.SimpleAllocator, name: []const u8) !*Node {
+        pub fn addGroup(toplevel: *Node, allocator: *mem.SimpleAllocator, name: []const u8) *Node {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             const node: *Node = allocator.create(Node);
             node.flags = .{};
@@ -569,7 +577,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             return node;
         }
         /// Initialize a new `zig fmt` command.
-        pub fn addFormat(toplevel: *Node, allocator: *mem.SimpleAllocator, format_cmd: FormatCommand, name: []const u8, pathname: []const u8) !*Node {
+        pub fn addFormat(toplevel: *Node, allocator: *mem.SimpleAllocator, format_cmd: FormatCommand, name: []const u8, pathname: []const u8) *Node {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             if (!builder_spec.options.commands.format)
                 @compileError("format task disabled");
@@ -590,7 +598,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             return node;
         }
         /// Initialize a new `zig ar` command.
-        pub fn addArchive(toplevel: *Node, allocator: *mem.SimpleAllocator, archive_cmd: ArchiveCommand, name: []const u8, deps: []const *Node) !*Node {
+        pub fn addArchive(toplevel: *Node, allocator: *mem.SimpleAllocator, archive_cmd: ArchiveCommand, name: []const u8, deps: []const *Node) *Node {
             if (!builder_spec.options.commands.archive)
                 @compileError("archive task disabled");
             @setRuntimeSafety(builder_spec.options.enable_safety);
@@ -611,7 +619,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             initializeCommand(allocator, toplevel, node);
             return node;
         }
-        pub fn addBuild(toplevel: *Node, allocator: *mem.SimpleAllocator, build_cmd: BuildCommand, name: []const u8, root: []const u8) !*Node {
+        pub fn addBuild(toplevel: *Node, allocator: *mem.SimpleAllocator, build_cmd: BuildCommand, name: []const u8, root: []const u8) *Node {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             if (!builder_spec.options.commands.build)
                 @compileError("build task disabled");
@@ -635,7 +643,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             initializeCommand(allocator, toplevel, node);
             return node;
         }
-        pub fn addObjcopy(toplevel: *Node, allocator: *mem.SimpleAllocator, objcopy_cmd: ObjcopyCommand, name: []const u8, holder: *Node) void {
+        pub fn addObjcopy(toplevel: *Node, allocator: *mem.SimpleAllocator, objcopy_cmd: ObjcopyCommand, name: []const u8, holder: *Node) *Node {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             if (!builder_spec.options.commands.build)
                 @compileError("objcopy task disabled");
@@ -650,6 +658,69 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             node.task.info.objcopy.* = objcopy_cmd;
             initializeCommand(allocator, toplevel, node);
             return node;
+        }
+        /// Initialize a new group command with description.
+        pub fn addGroupWithDescr(
+            toplevel: *Node,
+            allocator: *mem.SimpleAllocator,
+            name: []const u8,
+            descr: [:0]const u8,
+        ) *Node {
+            const ret: *Node = toplevel.addGroup(allocator, name);
+            ret.descr = descr;
+            return ret;
+        }
+        /// Initialize a new `zig fmt` command with description.
+        pub fn addFormatWithDescr(
+            toplevel: *Node,
+            allocator: *mem.SimpleAllocator,
+            format_cmd: FormatCommand,
+            name: []const u8,
+            pathname: []const u8,
+            descr: [:0]const u8,
+        ) !*Node {
+            const ret: *Node = toplevel.addFormat(allocator, format_cmd, name, pathname);
+            ret.descr = descr;
+            return ret;
+        }
+        /// Initialize a new `zig ar` command with description.
+        pub fn addArchiveWithDescr(
+            toplevel: *Node,
+            allocator: *mem.SimpleAllocator,
+            archive_cmd: ArchiveCommand,
+            name: []const u8,
+            deps: []const *Node,
+            descr: [:0]const u8,
+        ) *Node {
+            const ret: *Node = toplevel.addArchive(allocator, archive_cmd, name, deps);
+            ret.descr = descr;
+            return ret;
+        }
+        /// Initialize a new `zig build-*` command with description.
+        pub fn addBuildWithDescr(
+            toplevel: *Node,
+            allocator: *mem.SimpleAllocator,
+            build_cmd: BuildCommand,
+            name: []const u8,
+            root: []const u8,
+            descr: [:0]const u8,
+        ) *Node {
+            const ret: *Node = toplevel.addBuild(allocator, build_cmd, name, root);
+            ret.descr = descr;
+            return ret;
+        }
+        /// Initialize a new `zig objcopy` command with description.
+        pub fn addObjcopyWithDescr(
+            toplevel: *Node,
+            allocator: *mem.SimpleAllocator,
+            objcopy_cmd: ObjcopyCommand,
+            name: []const u8,
+            holder: *Node,
+            descr: [:0]const u8,
+        ) *Node {
+            const ret: *Node = toplevel.addObjcopy(allocator, objcopy_cmd, name, holder);
+            ret.descr = descr;
+            return ret;
         }
         fn initializeCommand(allocator: *mem.SimpleAllocator, toplevel: *Node, node: *Node) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
@@ -786,12 +857,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     allocator.next = save;
                 }
             }
-            fn system(args: [][*:0]u8, job: *types.JobInfo) sys.ErrorUnion(.{
-                .throw = builder_spec.errors.clock.throw ++
-                    builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
-                .abort = builder_spec.errors.clock.throw ++
-                    builder_spec.errors.fork.abort ++ builder_spec.errors.execve.abort ++ builder_spec.errors.waitpid.abort,
-            }, void) {
+            fn system(args: [][*:0]u8, job: *types.JobInfo) void {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
                 const zig_exe: [:0]const u8 = mach.manyToSlice80(args[0]);
                 job.ts = try meta.wrap(time.get(clock(), .realtime));
@@ -803,12 +869,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 job.ts = time.diff(try meta.wrap(time.get(clock(), .realtime)), job.ts);
                 job.ret.sys = proc.Status.exit(ret.status);
             }
-            fn server(allocator: *mem.SimpleAllocator, args: [][*:0]u8, job: *types.JobInfo, dest_pathname: [:0]const u8) sys.ErrorUnion(.{
-                .throw = builder_spec.errors.clock.throw ++
-                    builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
-                .abort = builder_spec.errors.clock.throw ++
-                    builder_spec.errors.fork.abort ++ builder_spec.errors.execve.abort ++ builder_spec.errors.waitpid.abort,
-            }, void) {
+            fn server(allocator: *mem.SimpleAllocator, args: [][*:0]u8, job: *types.JobInfo, dest_pathname: [:0]const u8) void {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
                 const zig_exe: [:0]const u8 = mach.manyToSlice80(GlobalState.args[1]);
                 const in: file.Pipe = try meta.wrap(file.makePipe(pipe()));
@@ -877,12 +938,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 }
                 unreachable;
             }
-            fn executeCommandInternal(toplevel: *const Node, allocator: *mem.SimpleAllocator, node: *Node, task: types.Task, arena_index: u64) sys.ErrorUnion(.{
-                .throw = builder_spec.errors.clock.throw ++
-                    builder_spec.errors.fork.throw ++ builder_spec.errors.execve.throw ++ builder_spec.errors.waitpid.throw,
-                .abort = builder_spec.errors.clock.abort ++
-                    builder_spec.errors.fork.abort ++ builder_spec.errors.execve.abort ++ builder_spec.errors.waitpid.abort,
-            }, bool) {
+            fn executeCommandInternal(toplevel: *const Node, allocator: *mem.SimpleAllocator, node: *Node, task: types.Task, arena_index: u64) bool {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
                 const job: *types.JobInfo = allocator.create(types.JobInfo);
                 var old_size: u64 = 0;
@@ -2129,7 +2185,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 const line_s: []const u8 = builtin.fmt.ud64(line).readAll();
                 const column_s: []const u8 = builtin.fmt.ud64(column).readAll();
                 var len: u64 = 0;
-                @as(*@TypeOf(about.trace_s.*), @ptrCast(buf + len)).* = about.trace_s.*;
+                @as(*[11:0]u8, @ptrCast(buf + len)).* = about.trace_s.*;
                 len +%= about.trace_s.len;
                 mach.memcpy(buf + len, pathname.ptr, pathname.len);
                 len +%= pathname.len;
@@ -2141,21 +2197,21 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 len +%= 1;
                 mach.memcpy(buf + len, column_s.ptr, column_s.len);
                 len +%= column_s.len;
-                @as(*[4]u8, @ptrCast(buf + len)).* = about.reset_s.*;
+                @as(*[4:0]u8, @ptrCast(buf + len)).* = about.reset_s.*;
                 return len +% 4;
             }
             fn writeTimes(buf: [*]u8, count: u64) u64 {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
                 const count_s: []const u8 = builtin.fmt.ud64(count).readAll();
-                @as(*[4]u8, @ptrCast(buf - 1)).* = about.faint_s.*;
+                @as(*[4:0]u8, @ptrCast(buf - 1)).* = about.faint_s.*;
                 var len: u64 = about.faint_s.len -% 1;
-                @as(*[2]u8, @ptrCast(buf + len)).* = " (".*;
+                @as(*[2:0]u8, @ptrCast(buf + len)).* = " (".*;
                 len +%= 2;
                 mach.memcpy(buf + len, count_s.ptr, count_s.len);
                 len +%= count_s.len;
-                mach.memcpy(buf + len, " times)", 7);
+                @as(*[7:0]u8, @ptrCast(buf + len)).* = " times)".*;
                 len +%= 7;
-                @as(*[5]u8, @ptrCast(buf + len)).* = about.new_s.*;
+                @as(*[5:0]u8, @ptrCast(buf + len)).* = about.new_s.*;
                 return len +% 5;
             }
             fn writeCaret(buf: [*]u8, bytes: [*:0]u8, src: *types.SourceLocation) u64 {
