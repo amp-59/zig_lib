@@ -82,7 +82,7 @@ pub const LineLocation = struct {
         if (loc.line > line) {
             loc.* = .{};
         }
-        while (loc.finish != buf.len) : (loc.finish +%= 1) {
+        while (loc.finish < buf.len) : (loc.finish +%= 1) {
             if (buf[loc.finish] == '\n') {
                 loc.line +%= 1;
                 if (loc.line == line) {
