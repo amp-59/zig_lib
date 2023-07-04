@@ -2404,9 +2404,13 @@ pub const SignalAlternateStack = struct {
     len: u64 = 0x1000000,
 };
 pub const Trace = struct {
+    /// Show trace on alarm.
     Error: bool = false,
+    /// Show trace on panic.
     Fault: bool = true,
+    /// Show trace on signal.
     Signal: bool = true,
+    /// Control output formatting.
     options: Options = .{},
     pub const Options = struct {
         /// Unwind this many frames. max_depth = 0 is unlimited.
@@ -2425,11 +2429,6 @@ pub const Trace = struct {
         write_caret: bool = true,
         /// Define composition of stack trace text.
         tokens: Tokens = .{},
-        /// Whether to display file pathnames relative to the current working
-        /// directory.
-        relative_path: bool = true,
-        /// Determines whether `printStackTrace` will be compiled with this
-        /// compile unit.
         pub const Tokens = struct {
             /// Apply this style to the line number text.
             line_no: ?[]const u8 = null,
@@ -2443,7 +2442,9 @@ pub const Trace = struct {
             caret: []const u8 = tab.fx.color.fg.light_green ++ "^" ++ tab.fx.none,
             /// Fill text between `sidebar` and `caret` with this character.
             caret_fill: []const u8 = " ",
-            /// Apply `style` for every Zig token tag in `tags`.
+            /// Apply style for non-token text (comments)
+            comment: ?[]const u8 = null,
+            /// Apply `style` to every Zig token tag in `tags`.
             syntax: ?[]const Mapping = null,
             pub const Mapping = struct {
                 style: []const u8 = "",
@@ -3401,6 +3402,7 @@ pub const zig = struct {
                 .slash_equal,            .ampersand,
                 .ampersand_equal,        .question_mark,
                 .tilde,                  .angle_bracket_left,
+                .ellipsis2,              .ellipsis3,
                 .equal_angle_bracket_right, //
                 .angle_bracket_left_equal,
                 .angle_bracket_angle_bracket_left,
@@ -3484,7 +3486,6 @@ pub const zig = struct {
             pub const other: []const zig.Token.Tag = &.{
                 .invalid,
                 .identifier,
-                .char_literal,
                 .container_doc_comment,
                 .doc_comment,
                 .invalid_periodasterisks,
@@ -3492,8 +3493,6 @@ pub const zig = struct {
                 .comma,
                 .colon,
                 .semicolon,
-                .ellipsis2,
-                .ellipsis3,
                 .eof,
             };
         };
@@ -4483,12 +4482,16 @@ pub const zig = struct {
         switch (tag) {
             .invalid => return "invalid bytes",
             .identifier => return "an identifier",
-            .string_literal, .multiline_string_literal_line => return "a string literal",
             .char_literal => return "a character literal",
             .eof => return "EOF",
             .builtin => return "a builtin function",
             .number_literal => return "a number literal",
-            .doc_comment, .container_doc_comment => return "a document comment",
+            .string_literal,
+            .multiline_string_literal_line,
+            => return "a string literal",
+            .doc_comment,
+            .container_doc_comment,
+            => return "a document comment",
             else => return tag.lexeme(),
         }
     }
@@ -4559,12 +4562,16 @@ pub const my_trace: Trace = .{
             .pc_addr = "\x1b[38;5;247m",
             .sidebar = "|",
             .sidebar_fill = ": ",
+            .comment = "\x1b[2m",
             .syntax = &.{ .{
                 .style = "",
                 .tags = zig.Token.Tag.other,
             }, .{
                 .style = tab.fx.color.fg.orange24,
                 .tags = &.{.number_literal},
+            }, .{
+                .style = tab.fx.color.fg.yellow24,
+                .tags = &.{.char_literal},
             }, .{
                 .style = tab.fx.color.fg.light_green,
                 .tags = zig.Token.Tag.strings,
