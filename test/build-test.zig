@@ -69,14 +69,14 @@ fn buildMain(allocator: *build.Allocator, toplevel: *Node) !void {
         }
     };
     const stress_dir_fd: u64 = try file.pathAt(.{}, test_dir_fd, "stress");
-    const node: *Node = try toplevel.addBuild(allocator, .{ .kind = .exe }, "top", "test/stress/top.zig");
+    const node: *Node = toplevel.addBuild(allocator, .{ .kind = .exe }, "top", "test/stress/top.zig");
     try gen.truncateFile(.{ .return_type = void }, "test/stress/top.zig", text ++
         \\pub fn main() void {}
     );
     inline for (0..10) |x| {
         const x_s = comptime builtin.fmt.cx(x);
         const x_root = "f_" ++ x_s ++ ".zig";
-        const x_node: *Node = try toplevel.addBuild(allocator, .{ .kind = .obj }, x_s, "test/stress/" ++ x_root);
+        const x_node: *Node = toplevel.addBuild(allocator, .{ .kind = .obj }, x_s, "test/stress/" ++ x_root);
         x_node.flags.is_hidden = true;
         node.dependOnObject(allocator, x_node);
         try gen.truncateFileAt(.{ .return_type = void }, stress_dir_fd, x_root, text ++ "export fn func_" ++ x_s ++ "() void {}");
@@ -84,8 +84,8 @@ fn buildMain(allocator: *build.Allocator, toplevel: *Node) !void {
             const y_s = x_s ++ comptime builtin.fmt.cx(y);
             const y_root = "f_" ++ y_s ++ ".zig";
             const y_root_c = "f_" ++ y_s ++ ".c";
-            const y_node: *Node = try toplevel.addBuild(allocator, .{ .kind = .obj }, y_s, "test/stress/" ++ y_root);
-            const y_node_c: *Node = try toplevel.addBuild(allocator, .{ .kind = .obj }, y_s ++ "_c", "test/stress/" ++ y_root_c);
+            const y_node: *Node = toplevel.addBuild(allocator, .{ .kind = .obj }, y_s, "test/stress/" ++ y_root);
+            const y_node_c: *Node = toplevel.addBuild(allocator, .{ .kind = .obj }, y_s ++ "_c", "test/stress/" ++ y_root_c);
             try gen.truncateFileAt(.{ .return_type = void }, stress_dir_fd, y_root, text ++ "export fn func_" ++ y_s ++ "() void {}");
             try gen.truncateFileAt(.{ .return_type = void }, stress_dir_fd, y_root_c, "void c_func_" ++ y_s ++ "() {}");
             y_node.flags.is_hidden = true;
@@ -96,8 +96,8 @@ fn buildMain(allocator: *build.Allocator, toplevel: *Node) !void {
                 const z_s = y_s ++ comptime builtin.fmt.cx(z);
                 const z_root = "f_" ++ z_s ++ ".zig";
                 const z_root_c = "f_" ++ z_s ++ ".c";
-                const z_node: *Node = try toplevel.addBuild(allocator, .{ .kind = .obj }, z_s, "test/stress/" ++ z_root);
-                const z_node_c: *Node = try toplevel.addBuild(allocator, .{ .kind = .obj }, z_s ++ "_c", "test/stress/" ++ z_root_c);
+                const z_node: *Node = toplevel.addBuild(allocator, .{ .kind = .obj }, z_s, "test/stress/" ++ z_root);
+                const z_node_c: *Node = toplevel.addBuild(allocator, .{ .kind = .obj }, z_s ++ "_c", "test/stress/" ++ z_root_c);
                 try gen.truncateFileAt(.{ .return_type = void }, stress_dir_fd, z_root, text ++ "export fn func_" ++ z_s ++ "() void {}");
                 try gen.truncateFileAt(.{ .return_type = void }, stress_dir_fd, z_root_c, "void c_func_" ++ z_s ++ "() {}");
                 z_node.flags.is_hidden = true;
