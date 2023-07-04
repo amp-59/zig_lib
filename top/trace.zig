@@ -3,6 +3,7 @@ const sys = @import("./sys.zig");
 const fmt = @import("./fmt.zig");
 const zig = @import("./zig.zig");
 const spec = @import("./spec.zig");
+const math = @import("./math.zig");
 const mach = @import("./mach.zig");
 const algo = @import("./algo.zig");
 const file = @import("./file.zig");
@@ -35,50 +36,40 @@ const Number = union(enum) {
     none,
 };
 pub const StackIterator = struct {
-    first_addr: ?u64,
-    frame_addr: u64,
-    const frame_addr_off: u64 = if (false //isRISCV
-    ) 2 * @sizeOf(usize) else if (false // isSPARC
-    ) 14 * @sizeOf(usize) else 0;
-    const frame_addr_bias: u64 = if (false // isSPARC
-    ) 2047 else 0;
-    const instr_addr_off: u64 = if (false // native_arch == .powerpc64le
-    ) 2 *% @sizeOf(usize) else @sizeOf(usize);
-    pub fn init(first_addr: ?usize, frame_addr: ?usize) StackIterator {
+    first_addr: ?usize,
+    frame_addr: usize,
+    pub fn init(first_address: ?usize, frame_addr: ?usize) StackIterator {
         return .{
-            .first_addr = first_addr,
+            .first_addr = first_address,
             .frame_addr = frame_addr orelse @frameAddress(),
         };
     }
     pub fn next(itr: *StackIterator) ?usize {
-        var next_addr: u64 = itr.next_internal() orelse {
-            return null;
-        };
+        var addr: usize = itr.next_internal() orelse return null;
         if (itr.first_addr) |first_addr| {
-            while (next_addr != first_addr) {
-                next_addr = itr.next_internal() orelse {
-                    return null;
-                };
+            while (addr != first_addr) {
+                addr = itr.next_internal() orelse return null;
             }
             itr.first_addr = null;
         }
-        return next_addr;
+        return addr;
     }
     fn next_internal(itr: *StackIterator) ?usize {
-        const frame_addr: u64 = itr.frame_addr -% frame_addr_off;
-        if (frame_addr > itr.frame_addr) {
+        if (itr.frame_addr == 0) {
             return null;
         }
-        if (frame_addr == 0) {
+        const next_addr: usize = @as(*const usize, @ptrFromInt(itr.frame_addr)).*;
+        if (next_addr != 0 and
+            next_addr < itr.frame_addr)
+        {
             return null;
         }
-        const new_frame_addr: u64 = @as(*usize, @ptrFromInt(frame_addr)).* +% frame_addr_bias;
-        if (new_frame_addr < itr.frame_addr) {
+        const pc = @addWithOverflow(itr.frame_addr, @sizeOf(usize));
+        if (pc[1] != 0) {
             return null;
         }
-        const new_instr_addr: u64 = @as(*usize, @ptrFromInt(frame_addr +% instr_addr_off)).*;
-        itr.frame_addr = new_frame_addr;
-        return new_instr_addr;
+        itr.frame_addr = next_addr;
+        return @as(*usize, @ptrFromInt(pc[0])).*;
     }
 };
 fn writeLastLine(trace: *const builtin.Trace, buf: [*]u8, width: u64, break_line_count: u8) u64 {
