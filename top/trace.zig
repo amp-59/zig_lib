@@ -186,33 +186,43 @@ fn writeSourceLine(
     buf: [*]u8,
     width: u64,
     fbuf: []u8,
-    loc: *const dwarf.LineLocation,
+    loc: *dwarf.LineLocation,
     itr: *builtin.zig.TokenIterator,
     tok: *builtin.zig.Token,
 ) u64 {
-    var loc_itr: dwarf.LineLocation = loc.*;
     var len: u64 = 0;
     if (trace.options.write_sidebar) {
-        len +%= writeSideBar(trace, width, buf, .{ .line_no = loc_itr.line });
+        len +%= writeSideBar(trace, width, buf, .{ .line_no = loc.line });
     }
     if (trace.options.tokens.syntax) |syntax| {
-        while (itr.buf_pos < loc_itr.start) {
+        while (itr.buf_pos <= loc.start) {
             tok.* = itr.next();
         }
-        const finish: u64 = loc_itr.finish;
-        while (itr.buf_pos <= finish) {
-            loc_itr.finish = tok.loc.finish;
-            len +%= highlight(buf + len, tok, syntax);
-            mach.memcpy(buf + len, loc_itr.ptr(fbuf), loc_itr.len());
-            len +%= loc_itr.len();
-            loc_itr.start = loc_itr.finish;
-            tok.* = itr.next();
+        var bytes: []const u8 = fbuf[loc.start..@min(loc.finish, tok.loc.start)];
+        mach.memcpy(buf + len, bytes.ptr, bytes.len);
+        len +%= bytes.len;
+        loc.start +%= bytes.len;
+        while (loc.start < loc.finish) {
+            if (loc.start < tok.loc.start) {
+                bytes = fbuf[loc.start..tok.loc.start];
+                mach.memcpy(buf + len, bytes.ptr, bytes.len);
+                len +%= bytes.len;
+            }
+            if (loc.finish > tok.loc.start) {
+                len +%= highlight(buf + len, tok, syntax);
+            }
+            bytes = fbuf[tok.loc.start..tok.loc.finish];
+            loc.start = tok.loc.finish;
+            mach.memcpy(buf + len, bytes.ptr, bytes.len);
+            len +%= bytes.len;
+            len -%= @intFromBool(buf[len -% 1] == '\n');
             @as(*[4]u8, @ptrCast(buf + len)).* = "\x1b[0m".*;
             len +%= 4;
+            tok.* = itr.next();
         }
     } else {
-        mach.memcpy(buf + len, loc_itr.ptr(fbuf), loc_itr.len());
-        len +%= loc_itr.len();
+        mach.memcpy(buf + len, loc.ptr(fbuf), loc.len());
+        len +%= loc.len();
     }
     if (buf[len -% 1] != '\n') {
         buf[len] = '\n';
@@ -267,8 +277,8 @@ fn writeSourceContext(
     var itr: builtin.zig.TokenIterator = .{ .buf = fbuf, .buf_pos = 0, .inval = null };
     var tok: builtin.zig.Token = .{ .tag = .eof, .loc = .{ .start = 0, .finish = 0 } };
     var len: u64 = 0;
+    var loc: dwarf.LineLocation = .{};
     while (line != max) : (line +%= 1) {
-        var loc: dwarf.LineLocation = .{};
         if (loc.update(fbuf, line)) {
             len +%= writeSourceLine(trace, buf + len, width, fbuf, &loc, &itr, &tok);
             if (line == src.line and trace.options.write_caret) {
