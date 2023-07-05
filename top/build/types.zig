@@ -42,7 +42,6 @@ pub const State = enum(u8) {
 };
 // zig fmt: on
 pub const Lock = mem.ThreadSafeSet(State.list.len, State, Task);
-
 pub const Config = struct {
     name: []const u8,
     value: Value,
@@ -74,12 +73,12 @@ pub const Config = struct {
             },
             .String => |value| {
                 const len_s: []const u8 = builtin.fmt.ud64(value.len).readAll();
-                @as(*[3]u8, @ptrCast(buf + len)).* = ": [".*;
-                len +%= 3;
+                @as(*[10]u8, @ptrCast(buf + len)).* = ": *const [".*;
+                len +%= 10;
                 @memcpy(buf + len, len_s);
                 len +%= len_s.len;
-                @as(*[12]u8, @ptrCast(buf + len)).* = "]const u8 = ".*;
-                len +%= 12;
+                @as(*[6]u8, @ptrCast(buf + len)).* = "]u8 = ".*;
+                len +%= 6;
                 buf[len] = '"';
                 len +%= 1;
                 @memcpy(buf + len, value);
@@ -92,9 +91,9 @@ pub const Config = struct {
         return len +% 2;
     }
     pub fn formatWrite(cfg: Config, array: anytype) void {
-        array.writeMany("pub const @\"");
+        array.writeMany("pub const ");
         array.writeMany(cfg.name);
-        array.writeMany("\" = ");
+        array.writeMany(" = ");
         switch (cfg.value) {
             .Int => |value| {
                 const int_s: []const u8 = builtin.fmt.ud64(value).readAll();
