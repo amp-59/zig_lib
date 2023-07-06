@@ -19,7 +19,7 @@ const ExprTag = enum(u8) {
     call,
     call_member,
 };
-pub const Expr = struct {
+pub const Expr = extern struct {
     data1: u64,
     data2: u64,
     const unit: u64 = 1;
@@ -113,10 +113,10 @@ pub const Expr = struct {
             .constant => len +%= fmt.ud64(format.data1).formatLength(),
             .symbol => len +%= format.data2 & mask,
             .type => len +%= formatLengthType(format),
-            .call => len +%= formatLengthCall(format),
-            .call_member => len +%= formatLengthCallMember(format),
             .join => len +%= formatLengthJoin(format),
             .list => len +%= formatLengthList(format),
+            .call => len +%= formatLengthCall(format),
+            .call_member => len +%= formatLengthCallMember(format),
         }
         return len;
     }
@@ -175,64 +175,17 @@ pub const Expr = struct {
         format.type().formatWrite(array);
     }
     pub fn formatWrite(format: Expr, array: anytype) void {
-        if (debug.show_expressions) {
-            debug.showOpen(format);
-        }
         switch (format.tag()) {
             .scrub => array.undefine(format.scrub()),
             .constant => array.writeFormat(fmt.ud64(format.data1)),
             .symbol => array.writeMany(format.symbol()),
             .type => formatWriteType(format, array),
-            .call => formatWriteCall(format, array),
-            .call_member => formatWriteCallMember(format, array),
             .join => formatWriteJoin(format, array),
             .list => formatWriteList(format, array),
-        }
-        if (debug.show_expressions) {
-            debug.showClose();
+            .call => formatWriteCall(format, array),
+            .call_member => formatWriteCallMember(format, array),
         }
     }
-    pub const debug = struct {
-        pub const show_expressions: bool = builtin.define("show_expressions", bool, false);
-        var depth: u64 = 0;
-        var array: mem.StaticString(4096) = undefined;
-        fn showOpen(expr: Expr) void {
-            array.writeMany("expr.");
-            array.writeMany(@tagName(expr.tag()));
-            array.writeMany("(");
-            switch (expr.tag()) {
-                .symbol => {
-                    if (tok.symbolName(expr.symbol())) |named| {
-                        array.writeMany("tok.");
-                        array.writeMany(named);
-                    } else {
-                        array.writeMany("\x1b[91m");
-                        array.writeMany(expr.symbol());
-                        array.writeMany("\x1b[0m");
-                    }
-                },
-                .constant => {
-                    array.writeFormat(fmt.ud64(expr.constant()));
-                },
-                else => {},
-            }
-            depth +%= 1;
-        }
-        fn showClose() void {
-            depth -%= 1;
-            array.writeMany("),");
-            if (depth == 0) {
-                array.overwriteOneBack(';');
-                array.writeOne('\n');
-                builtin.debug.write(array.readAll());
-            }
-        }
-        pub fn showFunction(any: anytype) void {
-            array.undefineAll();
-            array.writeMany(@tagName(any));
-            array.writeMany("\n");
-        }
-    };
 };
 pub fn subst(buf: []Expr, what: struct { dst: Expr, src: Expr }) void {
     for (buf) |*ptr| {
