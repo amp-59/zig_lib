@@ -206,7 +206,30 @@ fn testChacha20TestVector5() !void {
     crypto.aead.ChaCha20With64BitNonce.xor(&result, &msg, 0, key, nonce);
     try testing.expectEqualMany(u8, &expected_result, &result);
 }
-
+fn testXchacha201() !void {
+    const key: [32]u8 = [1]u8{69} ** 32;
+    const nonce: [24]u8 = [1]u8{42} ** 24;
+    var cipher: [sunscreen.len]u8 = undefined;
+    crypto.aead.XChaCha20IETF.xor(&cipher, sunscreen, 0, key, nonce);
+    var buf: [2 *% cipher.len]u8 = undefined;
+    try testing.expectEqualMany(u8, fmt.bytesToHex(&buf, &cipher), "e0a1bcf939654afdbdc1746ec49832647c19d891f0d1a81fc0c1703b4514bdea584b512f6908c2c5e9dd18d5cbc1805de5803fe3b9ca5f193fb8359e91fab0c3bb40309a292eb1cf49685c65c4a3adf4f11db0cd2b6b67fbc174bc2e860e8f769fd3565bbfad1c845e05a0fed9be167c240d");
+}
+fn testXchacha202() !void {
+    const key: [32]u8 = [1]u8{69} ** 32;
+    const nonce: [24]u8 = [1]u8{42} ** 24;
+    const bytes: []const u8 = "Additional data";
+    var cipher: [sunscreen.len]u8 = undefined;
+    var tag: [crypto.aead.XChaCha20Poly1305.tag_len]u8 = undefined;
+    crypto.aead.XChaCha20Poly1305.encrypt(&cipher, &tag, sunscreen, bytes, nonce, key);
+    var dest: [sunscreen.len]u8 = undefined;
+    try crypto.aead.XChaCha20Poly1305.decrypt(&dest, &cipher, tag, bytes, nonce, key);
+    var buf: [2 *% (cipher.len +% tag.len)]u8 = undefined;
+    try testing.expectEqualMany(u8, fmt.bytesToHex(&buf, &cipher), "994d2dd32333f48e53650c02c7a2abb8e018b0836d7175aec779f52e961780768f815c58f1aa52d211498db89b9216763f569c9433a6bbfcefb4d4a49387a4c5207fbb3b5a92b5941294df30588c6740d39dc16fa1f0e634f7246cf7cdcb978e44347d89381b7a74eb7084f754b90bde9aaf");
+    try testing.expectEqualMany(u8, fmt.bytesToHex(&buf, &tag), "5a94b8f2a85efd0b50692ae2d425e234");
+    try testing.expectEqualMany(u8, &dest, sunscreen);
+    cipher[0] +%= 1;
+    try testing.expectError(error.AuthenticationFailed, crypto.aead.XChaCha20Poly1305.decrypt(&dest, &cipher, tag, sunscreen, nonce, key));
+}
 fn testAes256GcmEmptyMessageAndNoAssociatedData(allocator: *mem.SimpleAllocator) !void {
     const key: [crypto.aead.Aes256Gcm.key_len]u8 = [_]u8{0x69} ** crypto.aead.Aes256Gcm.key_len;
     const nonce: [crypto.aead.Aes256Gcm.nonce_len]u8 = [_]u8{0x42} ** crypto.aead.Aes256Gcm.nonce_len;
@@ -263,6 +286,8 @@ pub fn aeadTestMain() !void {
     try testChacha20TestVector3();
     try testChacha20TestVector4();
     try testChacha20TestVector5();
+    try testXchacha201();
+    try testXchacha202();
     var allocator: mem.SimpleAllocator = .{};
     try testAes256GcmAssociatedDataOnly(&allocator);
     try testAes256GcmEmptyMessageAndNoAssociatedData(&allocator);
