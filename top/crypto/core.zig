@@ -44,7 +44,7 @@ pub fn GenericKeccakPState(comptime f: comptime_int, comptime capacity: comptime
         pub fn init(bytes: [blk_len]u8) KeccakP {
             var ret: KeccakP = undefined;
             for (&ret.st, 0..) |*word, idx| {
-                word.* = mem.readIntLittle(Word, bytes[word_size * idx ..][0..word_size]);
+                word.* = mem.readIntLittle(Word, bytes[word_size *% idx ..][0..word_size]);
             }
             return ret;
         }
