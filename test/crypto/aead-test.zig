@@ -68,9 +68,33 @@ fn testChacha20TestVector1() !void {
     crypto.aead.ChaCha20With64BitNonce.xor(&result, &msg, 0, key, nonce);
     try testing.expectEqualMany(u8, &expected_result, &result);
 }
+fn testChacha20TestVector2() !void {
+    const expected_result: [64]u8 = .{
+        0x45, 0x40, 0xf0, 0x5a, 0x9f, 0x1f, 0xb2, 0x96,
+        0xd7, 0x73, 0x6e, 0x7b, 0x20, 0x8e, 0x3c, 0x96,
+        0xeb, 0x4f, 0xe1, 0x83, 0x46, 0x88, 0xd2, 0x60,
+        0x4f, 0x45, 0x09, 0x52, 0xed, 0x43, 0x2d, 0x41,
+        0xbb, 0xe2, 0xa0, 0xb6, 0xea, 0x75, 0x66, 0xd2,
+        0xa5, 0xd1, 0xe7, 0xe2, 0x0d, 0x42, 0xaf, 0x2c,
+        0x53, 0xd7, 0x92, 0xb1, 0xc4, 0x3f, 0xea, 0x81,
+        0x7e, 0x9a, 0xd2, 0x75, 0xae, 0x54, 0x69, 0x63,
+    };
+    const msg: [64]u8 = [1]u8{0} ** 64;
+    var result: [64]u8 = undefined;
+    const key: [32]u8 = .{
+        0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 1,
+    };
+    const nonce: [8]u8 = [1]u8{0} ** 8;
+    crypto.aead.ChaCha20With64BitNonce.xor(&result, &msg, 0, key, nonce);
+    try testing.expectEqualMany(u8, &expected_result, &result);
+}
 pub fn aeadTestMain() !void {
     try testChacha20AEADAPI();
     try testChacha20TestVectorSunscreen();
     try testChacha20TestVector1();
+    try testChacha20TestVector2();
 }
 pub const main = aeadTestMain;
