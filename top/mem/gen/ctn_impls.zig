@@ -28,9 +28,6 @@ const Allocator = config.Allocator;
 const AddressSpace = config.AddressSpace;
 const Array = Allocator.StructuredVector(u8);
 fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: types.Container, ctn_fn_info: ctn_fn.Fn) void {
-    if (expr.Expr.debug.show_expressions) {
-        expr.Expr.debug.showFunction(ctn_fn_info);
-    }
     const child_size: [:0]const u8 = if (ctn_detail.layout == .structured) tok.child_size_name else tok.call_sizeof_child;
     const unit: expr.Expr = if (ctn_detail.layout == .structured) expr.constant(1) else expr.symbol(tok.amount_unit);
     var define: [3]expr.Expr = makeImplFnMemberCall(allocator, ctn_detail, .define);

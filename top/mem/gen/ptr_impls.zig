@@ -37,6 +37,10 @@ const FnArgLists = struct {
         []gen.ArgList,
     };
 };
+const FnArgListMap = struct {
+    []const FnArgLists.Value,
+    []const FnArgLists,
+};
 const Info = struct {
     start: u64,
     alias: ?ptr_fn.Fn = null,
@@ -44,10 +48,7 @@ const Info = struct {
         info.alias = ptr_fn_info;
     }
 };
-fn deduceUniqueInterfaceStructs(allocator: *Allocator, array: *Array, impl_details: []types.Implementation) struct {
-    []const FnArgLists.Value,
-    []const FnArgLists,
-} {
+fn deduceUniqueInterfaceStructs(allocator: *Allocator, array: *Array, impl_details: []types.Implementation) FnArgListMap {
     var key_len: u64 = 0;
     for (ptr_fn.list) |ptr_fn_info| {
         if (!ptr_fn_info.interface()) {
@@ -1095,10 +1096,7 @@ pub fn main() !void {
     );
     file.read(read_impl_spec, fd, details);
     file.close(spec.generic.noexcept, fd);
-    const arg_lists: struct {
-        []const FnArgLists.Value,
-        []const FnArgLists,
-    } = deduceUniqueInterfaceStructs(&allocator, &array, details);
+    const arg_lists: FnArgListMap = deduceUniqueInterfaceStructs(&allocator, &array, details);
     for (types.Kind.list) |kind| {
         for (details, 0..) |impl_detail, impl_detail_idx| {
             if (impl_detail.kind == kind) {
