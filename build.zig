@@ -203,7 +203,7 @@ fn cryptoTests(allocator: *build.Allocator, node: *Node) void {
     const rng_test: *Node = node.addBuild(allocator, build_cmd, "rng_test", "test/rng-test.zig");
     //const kyber_test: *Node = node.addBuild(allocator, build_cmd, "kyber_test", "test/crypto/kyber-test.zig");
     const ecdsa_test: *Node = node.addBuild(allocator, build_cmd, "ecdsa_test", "test/crypto/ecdsa-test.zig");
-    //const aead_test: *Node = node.addBuild(allocator, build_cmd, "aead_test", "test/crypto/aead-test.zig");
+    const aead_test: *Node = node.addBuild(allocator, build_cmd, "aead_test", "test/crypto/aead-test.zig");
     //const auth_test: *Node = node.addBuild(allocator, build_cmd, "auth_test", "test/crypto/auth-test.zig");
     const dh_test: *Node = node.addBuild(allocator, build_cmd, "dh_test", "test/crypto/dh-test.zig");
     //const tls_test: *Node = node.addBuild(allocator, build_cmd, "tls_test", "test/crypto/tls-test.zig");
@@ -214,7 +214,7 @@ fn cryptoTests(allocator: *build.Allocator, node: *Node) void {
     rng_test.descr = "Test random number generation functions";
     //kyber_test.descr = "Test post-quantum 'Kyber' key exchange functions and types";
     ecdsa_test.descr = "Test ECDSA";
-    //aead_test.descr = "Test authenticated encryption functions and types";
+    aead_test.descr = "Test authenticated encryption functions and types";
     //auth_test.descr = "Test authentication";
     dh_test.descr = "Test many 25519-related functions";
     //tls_test.descr = "Test TLS";

@@ -8,6 +8,7 @@ const testing = zig_lib.testing;
 pub usingnamespace proc.start;
 pub const runtime_assertions: bool = true;
 const htest = @import("./hash-test.zig").htest;
+const tab = @import("./tab.zig");
 
 const sunscreen: []const u8 = "Ladies and Gentlemen of the class of '99: If I could offer you only one tip for the future, sunscreen would be it.";
 
@@ -278,6 +279,39 @@ fn testAes256GcmMessageAndAssociatedData(allocator: *mem.SimpleAllocator) !void 
     try htest.assertEqual(allocator, "5ca1642d90009fea33d01f78cf6eefaf01", &cipher);
     try htest.assertEqual(allocator, "64accec679d444e2373bd9f6796c0d2c", &tag);
 }
+fn testGhash(allocator: *mem.SimpleAllocator) !void {
+    const key: [16]u8 = [1]u8{0x42} ** 16;
+    const msg: [256]u8 = [1]u8{0x69} ** 256;
+    var st: crypto.aead.Ghash = crypto.aead.Ghash.init(&key);
+    st.update(&msg);
+    var out: [16]u8 = undefined;
+    st.final(&out);
+    try htest.assertEqual(allocator, "889295fa746e8b174bf4ec80a65dea41", &out);
+    st = crypto.aead.Ghash.init(&key);
+    st.update(msg[0..100]);
+    st.update(msg[100..]);
+    st.final(&out);
+    try htest.assertEqual(allocator, "889295fa746e8b174bf4ec80a65dea41", &out);
+}
+fn testGhashVectors(allocator: *mem.SimpleAllocator) !void {
+    var key: [16]u8 = undefined;
+    var idx: usize = 0;
+    while (idx < key.len) : (idx +%= 1) {
+        key[idx] = @as(u8, @intCast(idx *% 15 +% 1));
+    }
+    inline for (tab.ghash_vectors) |tv| {
+        var msg: [tv.len]u8 = undefined;
+        idx = 0;
+        while (idx < msg.len) : (idx +%= 1) {
+            msg[idx] = @as(u8, @truncate(idx % 254 +% 1));
+        }
+        var st: crypto.aead.Ghash = crypto.aead.Ghash.init(&key);
+        st.update(&msg);
+        var out: [16]u8 = undefined;
+        st.final(&out);
+        try htest.assertEqual(allocator, tv.hash, &out);
+    }
+}
 pub fn aeadTestMain() !void {
     try testChacha20AEADAPI();
     try testChacha20TestVectorSunscreen();
@@ -293,5 +327,7 @@ pub fn aeadTestMain() !void {
     try testAes256GcmEmptyMessageAndNoAssociatedData(&allocator);
     try testAes256GcmMessageOnly(&allocator);
     try testAes256GcmMessageAndAssociatedData(&allocator);
+    try testGhash(&allocator);
+    try testGhashVectors(&allocator);
 }
 pub const main = aeadTestMain;
