@@ -4,7 +4,7 @@ const proc = @import("../proc.zig");
 const spec = @import("../spec.zig");
 const builtin = @import("../builtin.zig");
 
-const build = @import("./../build4.zig");
+const build = @import("./../build.zig");
 const types = @import("./types.zig");
 
 const Node = build.GenericNode(.{

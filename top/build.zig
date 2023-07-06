@@ -2495,19 +2495,19 @@ pub usingnamespace struct {
 };
 fn libraryRoot() [:0]const u8 {
     comptime {
-        const build4: [:0]const u8 = @src().file;
-        var idx: u64 = build4.len -% 1;
-        while (build4[idx] != '/') {
+        const pathname: [:0]const u8 = @src().file;
+        var idx: u64 = pathname.len -% 1;
+        while (pathname[idx] != '/') {
             idx -%= 1;
         }
         idx -%= 1;
-        while (build4[idx] != '/') {
+        while (pathname[idx] != '/') {
             idx -%= 1;
             if (idx == 0) break;
         }
         if (idx == 0) {
             return ".";
         }
-        return build4[0..idx] ++ [0:0]u8{};
+        return pathname[0..idx] ++ [0:0]u8{};
     }
 }

@@ -3,7 +3,7 @@ const zig_lib = struct {
     const sys = @import("./sys.zig");
     const file = @import("./file.zig");
     const meta = @import("./meta.zig");
-    const build = @import("./build4.zig");
+    const build = @import("./build.zig");
     const serial = @import("./serial.zig");
     const builtin = @import("./builtin.zig");
 };
