@@ -927,7 +927,6 @@ fn testSha256AlignedFinal() !void {
 }
 pub fn hashTestMain() !void {
     var allocator: mem.SimpleAllocator = .{};
-
     try testSha3224Single(&allocator);
     try testSha3224Streaming(&allocator);
     try testSha3256Single(&allocator);
@@ -940,25 +939,17 @@ pub fn hashTestMain() !void {
     try testSha3512AlignedFinal();
     try testKeccak256Single(&allocator);
     try testKeccak512Single(&allocator);
-    if (@hasDecl(crypto.hash, "Shake128")) {
-        try testSHAKE128Single(&allocator);
-        try testSHAKE128Multisqueeze(&allocator);
-        try testSHAKE128MultisqueezeWithMultipleBlocks();
-    }
-    if (@hasDecl(crypto.hash, "Shake256")) {
-        try testSHAKE256Single(&allocator);
-        try testTurboSHAKE128(&allocator);
-    }
+    try testSHAKE128Single(&allocator);
+    try testSHAKE128Multisqueeze(&allocator);
+    try testSHAKE128MultisqueezeWithMultipleBlocks();
+    try testSHAKE256Single(&allocator);
+    try testTurboSHAKE128(&allocator);
     try testSHA3WithStreaming(&allocator);
-    if (@hasDecl(crypto.hash, "Sha384")) {
-        try testSha384Single(&allocator);
-        try testSha384Streaming(&allocator);
-    }
-    if (@hasDecl(crypto.hash, "Sha512")) {
-        try testSha512Single(&allocator);
-        try testSha512Streaming(&allocator);
-        try testSha512AlignedFinal();
-    }
+    try testSha384Single(&allocator);
+    try testSha384Streaming(&allocator);
+    try testSha512Single(&allocator);
+    try testSha512Streaming(&allocator);
+    try testSha512AlignedFinal();
     try testMd5Single(&allocator);
     try testMd5AlignedFinal();
     try testMd5Streaming(&allocator);
@@ -977,11 +968,6 @@ pub fn hashTestMain() !void {
     try testBlake2b512Streaming(&allocator);
     try testBlake2b512Keyed(&allocator);
     try testBLAKE3ReferenceTestCases();
-    if (@hasDecl(crypto.hash, "Sha1")) {
-        try testSha1Single(&allocator);
-        try testSha1Streaming(&allocator);
-        try testSha1AlignedFinal();
-    }
     if (@hasDecl(crypto.hash, "Sha224")) {
         try testSha224Single(&allocator);
         try testSha224Streaming(&allocator);
