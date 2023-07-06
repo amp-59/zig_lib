@@ -109,7 +109,7 @@ fn tvTry(vector: tab.TestVector) !void {
 fn testECDSATestVectorsFromProjectWycheproof() !void {
     var false_positive: u64 = 0;
     var false_negative: u64 = 0;
-    for (&tab.vectors) |vector| {
+    for (&tab.ecdsa_vectors) |vector| {
         const which: bool = vector.result == .valid or vector.result == .acceptable;
         if (tvTry(vector)) {
             false_positive +%= @intFromBool(!which);

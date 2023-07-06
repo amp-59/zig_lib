@@ -98,7 +98,7 @@ fn testEd25519WithBlindKeys() !void {
     try testing.expectEqualMany(u8, &public_key.toBytes(), &key_pair.public_key.toBytes());
 }
 fn testEd25519TestVectors() !void {
-    for (tab.entries) |entry| {
+    for (tab.ed25519_vectors) |entry| {
         var msg: [32]u8 = undefined;
         _ = try fmt.hexToBytes(&msg, entry.msg);
         var public_key_bytes: [32]u8 = undefined;

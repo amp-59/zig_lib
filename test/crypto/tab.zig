@@ -4,7 +4,7 @@ pub const Ed25519TestVector = struct {
     sig: *const [128:0]u8,
     expected: ?anyerror,
 };
-pub const entries = [_]Ed25519TestVector{
+pub const ed25519_vectors: [12]Ed25519TestVector = .{
     .{
         .msg = "8c93255d71dcab10e8f379c26200f3c7bd5f09d9bc3068d3ef4edeb4853022b6",
         .key = "c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac03fa",
@@ -85,7 +85,7 @@ pub const TestVector = struct {
     result: Result,
     const Result = enum { valid, invalid, acceptable };
 };
-pub const vectors = [_]TestVector{
+pub const ecdsa_vectors: [387]TestVector = .{
     .{
         .key = "042927b10512bae3eddcfe467828128bad2903269919f7086069c8c4df6c732838c7787964eaac00e5921fb1498a60f4606766b3d9685001558d1a974e7341513e",
         .msg = "313233343030",
@@ -2541,4 +2541,21 @@ pub const sip_12824_vectors: []const [16]u8 = &.{
     "\x76\x97\x00\x9a\x6a\x83\x1d\xfe\xcc\xa9\x1c\x59\x93\x67\x0f\x7a".*,
     "\x58\x53\x54\x23\x21\xf5\x67\xa0\x05\xd5\x47\xa4\xf0\x47\x59\xbd".*,
     "\x51\x50\xd1\x77\x2f\x50\x83\x4a\x50\x3e\x06\x9a\x97\x3f\xbd\x7c".*,
+};
+pub const GHASHVec = struct {
+    len: usize,
+    hash: [:0]const u8,
+};
+pub const ghash_vectors: [11]GHASHVec = .{
+    .{ .len = 5263, .hash = "b9395f37c131cd403a327ccf82ec016a" },
+    .{ .len = 1361, .hash = "8c24cb3664e9a36e32ddef0c8178ab33" },
+    .{ .len = 1344, .hash = "015d7243b52d62eee8be33a66a9658cc" },
+    .{ .len = 1000, .hash = "56e148799944193f351f2014ef9dec9d" },
+    .{ .len = 512, .hash = "ca4882ce40d37546185c57709d17d1ca" },
+    .{ .len = 128, .hash = "d36dc3aac16cfe21a75cd5562d598c1c" },
+    .{ .len = 111, .hash = "6e2bea99700fd19cf1694e7b56543320" },
+    .{ .len = 80, .hash = "aa28f4092a7cca155f3de279cf21aa17" },
+    .{ .len = 16, .hash = "9d7eb5ed121a52a4b0996e4ec9b98911" },
+    .{ .len = 1, .hash = "968a203e5c7a98b6d4f3112f4d6b89a7" },
+    .{ .len = 0, .hash = "00000000000000000000000000000000" },
 };
