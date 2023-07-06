@@ -29,20 +29,29 @@ fn testChacha20AEADAPI() !void {
 }
 fn testChacha20TestVectorSunscreen() !void {
     const expected_result: [114]u8 = .{
-        0x6e, 0x2e, 0x35, 0x9a, 0x25, 0x68, 0xf9, 0x80, 0x41, 0xba, 0x07, 0x28, 0xdd, 0x0d, 0x69, 0x81,
-        0xe9, 0x7e, 0x7a, 0xec, 0x1d, 0x43, 0x60, 0xc2, 0x0a, 0x27, 0xaf, 0xcc, 0xfd, 0x9f, 0xae, 0x0b,
-        0xf9, 0x1b, 0x65, 0xc5, 0x52, 0x47, 0x33, 0xab, 0x8f, 0x59, 0x3d, 0xab, 0xcd, 0x62, 0xb3, 0x57,
-        0x16, 0x39, 0xd6, 0x24, 0xe6, 0x51, 0x52, 0xab, 0x8f, 0x53, 0x0c, 0x35, 0x9f, 0x08, 0x61, 0xd8,
-        0x07, 0xca, 0x0d, 0xbf, 0x50, 0x0d, 0x6a, 0x61, 0x56, 0xa3, 0x8e, 0x08, 0x8a, 0x22, 0xb6, 0x5e,
-        0x52, 0xbc, 0x51, 0x4d, 0x16, 0xcc, 0xf8, 0x06, 0x81, 0x8c, 0xe9, 0x1a, 0xb7, 0x79, 0x37, 0x36,
-        0x5a, 0xf9, 0x0b, 0xbf, 0x74, 0xa3, 0x5b, 0xe6, 0xb4, 0x0b, 0x8e, 0xed, 0xf2, 0x78, 0x5e, 0x42,
+        0x6e, 0x2e, 0x35, 0x9a, 0x25, 0x68, 0xf9, 0x80,
+        0x41, 0xba, 0x07, 0x28, 0xdd, 0x0d, 0x69, 0x81,
+        0xe9, 0x7e, 0x7a, 0xec, 0x1d, 0x43, 0x60, 0xc2,
+        0x0a, 0x27, 0xaf, 0xcc, 0xfd, 0x9f, 0xae, 0x0b,
+        0xf9, 0x1b, 0x65, 0xc5, 0x52, 0x47, 0x33, 0xab,
+        0x8f, 0x59, 0x3d, 0xab, 0xcd, 0x62, 0xb3, 0x57,
+        0x16, 0x39, 0xd6, 0x24, 0xe6, 0x51, 0x52, 0xab,
+        0x8f, 0x53, 0x0c, 0x35, 0x9f, 0x08, 0x61, 0xd8,
+        0x07, 0xca, 0x0d, 0xbf, 0x50, 0x0d, 0x6a, 0x61,
+        0x56, 0xa3, 0x8e, 0x08, 0x8a, 0x22, 0xb6, 0x5e,
+        0x52, 0xbc, 0x51, 0x4d, 0x16, 0xcc, 0xf8, 0x06,
+        0x81, 0x8c, 0xe9, 0x1a, 0xb7, 0x79, 0x37, 0x36,
+        0x5a, 0xf9, 0x0b, 0xbf, 0x74, 0xa3, 0x5b, 0xe6,
+        0xb4, 0x0b, 0x8e, 0xed, 0xf2, 0x78, 0x5e, 0x42,
         0x87, 0x4d,
     };
     var result1: [114]u8 = undefined;
     var result2: [114]u8 = undefined;
     const key: [32]u8 = .{
-        0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15,
-        16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
+        0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+        0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
+        0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
+        0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
     };
     const nonce: [12]u8 = .{ 0, 0, 0, 0, 0, 0, 0, 0x4a, 0, 0, 0, 0 };
     crypto.aead.ChaCha20IETF.xor(&result1, sunscreen, 1, key, nonce);
@@ -198,6 +207,54 @@ fn testChacha20TestVector5() !void {
     try testing.expectEqualMany(u8, &expected_result, &result);
 }
 
+fn testAes256GcmEmptyMessageAndNoAssociatedData(allocator: *mem.SimpleAllocator) !void {
+    const key: [crypto.aead.Aes256Gcm.key_len]u8 = [_]u8{0x69} ** crypto.aead.Aes256Gcm.key_len;
+    const nonce: [crypto.aead.Aes256Gcm.nonce_len]u8 = [_]u8{0x42} ** crypto.aead.Aes256Gcm.nonce_len;
+    const bytes: []const u8 = "";
+    const msg: []const u8 = "";
+    var cipher: [msg.len]u8 = undefined;
+    var tag: [crypto.aead.Aes256Gcm.tag_len]u8 = undefined;
+    crypto.aead.Aes256Gcm.encrypt(&cipher, &tag, msg, bytes, nonce, key);
+    try htest.assertEqual(allocator, "6b6ff610a16fa4cd59f1fb7903154e92", &tag);
+}
+fn testAes256GcmAssociatedDataOnly(allocator: *mem.SimpleAllocator) !void {
+    const key: [crypto.aead.Aes256Gcm.key_len]u8 = [_]u8{0x69} ** crypto.aead.Aes256Gcm.key_len;
+    const nonce: [crypto.aead.Aes256Gcm.nonce_len]u8 = [_]u8{0x42} ** crypto.aead.Aes256Gcm.nonce_len;
+    const msg: []const u8 = "";
+    const bytes: []const u8 = "Test with associated data";
+    var cipher: [msg.len]u8 = undefined;
+    var tag: [crypto.aead.Aes256Gcm.tag_len]u8 = undefined;
+    crypto.aead.Aes256Gcm.encrypt(&cipher, &tag, msg, bytes, nonce, key);
+    try htest.assertEqual(allocator, "262ed164c2dfb26e080a9d108dd9dd4c", &tag);
+}
+fn testAes256GcmMessageOnly(allocator: *mem.SimpleAllocator) !void {
+    const key: [crypto.aead.Aes256Gcm.key_len]u8 = [_]u8{0x69} ** crypto.aead.Aes256Gcm.key_len;
+    const nonce: [crypto.aead.Aes256Gcm.nonce_len]u8 = [_]u8{0x42} ** crypto.aead.Aes256Gcm.nonce_len;
+    const msg: []const u8 = "Test with message only";
+    const bytes: []const u8 = "";
+    var cipher: [msg.len]u8 = undefined;
+    var dest: [msg.len]u8 = undefined;
+    var tag: [crypto.aead.Aes256Gcm.tag_len]u8 = undefined;
+    crypto.aead.Aes256Gcm.encrypt(&cipher, &tag, msg, bytes, nonce, key);
+    try crypto.aead.Aes256Gcm.decrypt(&dest, &cipher, tag, bytes, nonce, key);
+    try testing.expectEqualMany(u8, msg, &dest);
+    try htest.assertEqual(allocator, "5ca1642d90009fea33d01f78cf6eefaf01d539472f7c", &cipher);
+    try htest.assertEqual(allocator, "07cd7fc9103e2f9e9bf2dfaa319caff4", &tag);
+}
+fn testAes256GcmMessageAndAssociatedData(allocator: *mem.SimpleAllocator) !void {
+    const key: [crypto.aead.Aes256Gcm.key_len]u8 = [_]u8{0x69} ** crypto.aead.Aes256Gcm.key_len;
+    const nonce: [crypto.aead.Aes256Gcm.nonce_len]u8 = [_]u8{0x42} ** crypto.aead.Aes256Gcm.nonce_len;
+    const msg: []const u8 = "Test with message";
+    const bytes: []const u8 = "Test with associated data";
+    var cipher: [msg.len]u8 = undefined;
+    var dest: [msg.len]u8 = undefined;
+    var tag: [crypto.aead.Aes256Gcm.tag_len]u8 = undefined;
+    crypto.aead.Aes256Gcm.encrypt(&cipher, &tag, msg, bytes, nonce, key);
+    try crypto.aead.Aes256Gcm.decrypt(&dest, &cipher, tag, bytes, nonce, key);
+    try testing.expectEqualMany(u8, msg, &dest);
+    try htest.assertEqual(allocator, "5ca1642d90009fea33d01f78cf6eefaf01", &cipher);
+    try htest.assertEqual(allocator, "64accec679d444e2373bd9f6796c0d2c", &tag);
+}
 pub fn aeadTestMain() !void {
     try testChacha20AEADAPI();
     try testChacha20TestVectorSunscreen();
@@ -206,5 +263,10 @@ pub fn aeadTestMain() !void {
     try testChacha20TestVector3();
     try testChacha20TestVector4();
     try testChacha20TestVector5();
+    var allocator: mem.SimpleAllocator = .{};
+    try testAes256GcmAssociatedDataOnly(&allocator);
+    try testAes256GcmEmptyMessageAndNoAssociatedData(&allocator);
+    try testAes256GcmMessageOnly(&allocator);
+    try testAes256GcmMessageAndAssociatedData(&allocator);
 }
 pub const main = aeadTestMain;
