@@ -707,13 +707,13 @@ pub const Aes128 = struct {
     pub const key_bits: comptime_int = 128;
     pub const rounds: comptime_int = ((key_bits - 64) / 32 + 8);
     pub const block = Block;
-    const Aes128EncryptCtx = GenericAesEncryptCtx(Aes128);
-    const Aes128DecryptCtx = GenericAesDecryptCtx(Aes128);
-    pub fn initEnc(key: [key_bits / 8]u8) Aes128EncryptCtx {
-        return Aes128EncryptCtx.init(key);
+    pub const EncryptCtx = GenericAesEncryptCtx(Aes128);
+    pub const DecryptCtx = GenericAesDecryptCtx(Aes128);
+    pub fn initEnc(key: [key_bits / 8]u8) EncryptCtx {
+        return EncryptCtx.init(key);
     }
-    pub fn initDec(key: [key_bits / 8]u8) Aes128DecryptCtx {
-        return Aes128DecryptCtx.init(key);
+    pub fn initDec(key: [key_bits / 8]u8) DecryptCtx {
+        return DecryptCtx.init(key);
     }
 };
 /// AES-256 with the standard key schedule.
@@ -721,13 +721,13 @@ pub const Aes256 = struct {
     pub const key_bits: comptime_int = 256;
     pub const rounds: comptime_int = ((key_bits - 64) / 32 + 8);
     pub const block = Block;
-    const Aes256EncryptCtx = GenericAesEncryptCtx(Aes256);
-    const Aes256DecryptCtx = GenericAesDecryptCtx(Aes256);
-    pub fn initEnc(key: [key_bits / 8]u8) Aes256EncryptCtx {
-        return Aes256EncryptCtx.init(key);
+    pub const EncryptCtx = GenericAesEncryptCtx(Aes256);
+    pub const DecryptCtx = GenericAesDecryptCtx(Aes256);
+    pub fn initEnc(key: [key_bits / 8]u8) EncryptCtx {
+        return EncryptCtx.init(key);
     }
-    pub fn initDec(key: [key_bits / 8]u8) Aes256DecryptCtx {
-        return Aes256DecryptCtx.init(key);
+    pub fn initDec(key: [key_bits / 8]u8) DecryptCtx {
+        return DecryptCtx.init(key);
     }
 };
 pub fn ctr(comptime BlockCipher: anytype, block_cipher: BlockCipher, dest: []u8, src: []const u8, iv: [BlockCipher.blk_len]u8, endian: builtin.Endian) void {
