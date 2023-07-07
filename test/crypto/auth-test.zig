@@ -61,6 +61,25 @@ fn testSiphash12824Sanity() !void {
         try builtin.expectEqual(@TypeOf(out), out, vector);
     }
 }
+fn testSipHashIterativeNonDivisibleUpdate() !void {
+    var buf: [1024]u8 = undefined;
+    for (&buf, 0..) |*e, i| {
+        e.* = @as(u8, @truncate(i));
+    }
+    const key: []const u8 = "0x128dad08f12307";
+    const Siphash64 = crypto.auth.GenericSipHash64(2, 4);
+    var end: usize = 9;
+    while (end < buf.len) : (end +%= 9) {
+        const non_iterative_hash: u64 = Siphash64.toInt(buf[0..end], key[0..]);
+        var siphash: Siphash64 = Siphash64.init(key);
+        var idx: usize = 0;
+        while (idx != end) : (idx +%= 7) {
+            siphash.update(buf[idx..@min(idx +% 7, end)]);
+        }
+        const iterative_hash: u64 = siphash.finalInt();
+        try builtin.expectEqual(u64, iterative_hash, non_iterative_hash);
+    }
+}
 fn testCmacAes128Example1Len0() !void {
     const key: [16]u8 = .{
         0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6, 0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c,
@@ -166,6 +185,35 @@ fn testAegis128LTestVector3(allocator: *mem.SimpleAllocator) !void {
     try testing.expectEqualMany(u8, &msg, &out);
     try htest.assertEqual(allocator, "83cc600dc4e3e7e62d4055826174f149", &tag);
 }
+fn testAegis128LMac(allocator: *mem.SimpleAllocator) !void {
+    const key: [crypto.auth.Aegis128LMac.key_len]u8 = [1]u8{0} ** crypto.auth.Aegis128LMac.key_len;
+    var msg: [64]u8 = undefined;
+    for (&msg, 0..) |*byte, i| {
+        byte.* = @as(u8, @truncate(i));
+    }
+    const st_init: crypto.auth.Aegis128LMac = crypto.auth.Aegis128LMac.init(&key);
+    var st = st_init;
+    var tag: [crypto.auth.Aegis128LMac.mac_len]u8 = undefined;
+    st.update(msg[0..32]);
+    st.update(msg[32..]);
+    st.final(&tag);
+    try htest.assertEqual(allocator, "f8840849602738d81037cbaa0f584ea95759e2ac60263ce77346bcdc79fe4319", &tag);
+    st = st_init;
+    st.update(msg[0..31]);
+    st.update(msg[31..]);
+    st.final(&tag);
+    try htest.assertEqual(allocator, "f8840849602738d81037cbaa0f584ea95759e2ac60263ce77346bcdc79fe4319", &tag);
+    st = st_init;
+    st.update(msg[0..14]);
+    st.update(msg[14..30]);
+    st.update(msg[30..]);
+    st.final(&tag);
+    try htest.assertEqual(allocator, "f8840849602738d81037cbaa0f584ea95759e2ac60263ce77346bcdc79fe4319", &tag);
+    var empty: [0]u8 = undefined;
+    const nonce = [_]u8{0x00} ** crypto.auth.Aegis128L_256.nonce_len;
+    crypto.auth.Aegis128L_256.encrypt(&empty, &tag, &empty, &msg, nonce, key);
+    try htest.assertEqual(allocator, "f8840849602738d81037cbaa0f584ea95759e2ac60263ce77346bcdc79fe4319", &tag);
+}
 fn testAegis256TestVector1(allocator: *mem.SimpleAllocator) !void {
     const key: [crypto.auth.Aegis256.key_len]u8 = [2]u8{ 16, 1 } ++ [1]u8{0} ** 30;
     const nonce: [crypto.auth.Aegis256.nonce_len]u8 = [3]u8{ 16, 0, 2 } ++ [1]u8{0} ** 29;
@@ -227,6 +275,7 @@ fn authTestMain() !void {
     try testAegis128LTestVector1(&allocator);
     try testAegis128LTestVector2(&allocator);
     try testAegis128LTestVector3(&allocator);
+    try testAegis128LMac(&allocator);
     try testAegis256TestVector1(&allocator);
     try testAegis256TestVector2(&allocator);
     try testAegis256TestVector3(&allocator);
