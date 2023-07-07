@@ -335,7 +335,7 @@ pub fn containerDeclsToBitField(comptime Container: type, comptime backing_integ
         array.writeFormat(fmt.ud16(diff));
         array.writeMany("=0,\n");
     }
-    array.writeMany("fn assert(flags:@This(),val:" ++ size_name ++ ")void{\nbuiltin.assertEqual(" ++ size_name ++ ", @bitCast(" ++ size_name ++ ",flags)==val);\n}\n");
+    array.writeMany("fn assert(flags:@This(),val:" ++ size_name ++ ")void{\nbuiltin.assertEqual(" ++ size_name ++ ", @as(" ++ size_name ++ ",@bitCast(flags)),val);\n}\n");
     array.writeMany("comptime{\n");
     enum_count = 0;
     for (bit_field_sets) |set| {

@@ -721,12 +721,10 @@ pub fn GenericBitFieldSet(comptime backing_integer: type) type {
         tag: enum { E, F },
         pairs: []const BitFieldPair,
         const BitFieldSet = @This();
-
         const BitFieldPair = struct {
             name: []const u8,
             value: backing_integer,
         };
-
         fn sortSets(sets: []const BitFieldSet) []const BitFieldSet {
             var sorted: [sets.len]BitFieldSet = sliceToArrayPointer(sets).*;
             var l_idx: comptime_int = 1;
@@ -798,7 +796,6 @@ fn sortDecls(comptime Container: type) []const builtin.Type.Declaration {
     }
     return ret;
 }
-
 pub fn containerDeclsToBitFieldSets(comptime Container: type, comptime backing_integer: type) []const GenericBitFieldSet(backing_integer) {
     const BitFieldSet = GenericBitFieldSet(backing_integer);
     const BitFieldPair = BitFieldSet.BitFieldPair;
