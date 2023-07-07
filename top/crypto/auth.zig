@@ -55,10 +55,10 @@ pub fn GenericHmac(comptime Hash: type) type {
         }
     };
 }
-pub fn SipHash64(comptime c_rounds: usize, comptime d_rounds: usize) type {
+pub fn GenericSipHash64(comptime c_rounds: usize, comptime d_rounds: usize) type {
     return GenericSipHash(u64, c_rounds, d_rounds);
 }
-pub fn SipHash128(comptime c_rounds: usize, comptime d_rounds: usize) type {
+pub fn GenericSipHash128(comptime c_rounds: usize, comptime d_rounds: usize) type {
     return GenericSipHash(u128, c_rounds, d_rounds);
 }
 fn GenericSipHashStateless(comptime T: type, comptime c_rounds: usize, comptime d_rounds: usize) type {
