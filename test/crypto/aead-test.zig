@@ -46,8 +46,8 @@ fn testChacha20TestVectorSunscreen() !void {
         0xb4, 0x0b, 0x8e, 0xed, 0xf2, 0x78, 0x5e, 0x42,
         0x87, 0x4d,
     };
-    var result1: [114]u8 = undefined;
-    var result2: [114]u8 = undefined;
+    var out1: [114]u8 = undefined;
+    var out2: [114]u8 = undefined;
     const key: [32]u8 = .{
         0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
         0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
@@ -55,10 +55,10 @@ fn testChacha20TestVectorSunscreen() !void {
         0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
     };
     const nonce: [12]u8 = .{ 0, 0, 0, 0, 0, 0, 0, 0x4a, 0, 0, 0, 0 };
-    crypto.aead.ChaCha20IETF.xor(&result1, sunscreen, 1, key, nonce);
-    try testing.expectEqualMany(u8, &expected_output, &result1);
-    crypto.aead.ChaCha20IETF.xor(&result2, &result1, 1, key, nonce);
-    try testing.expect(mem.order(u8, sunscreen, &result2) == .eq);
+    crypto.aead.ChaCha20IETF.xor(&out1, sunscreen, 1, key, nonce);
+    try testing.expectEqualMany(u8, &expected_output, &out1);
+    crypto.aead.ChaCha20IETF.xor(&out2, &out1, 1, key, nonce);
+    try testing.expect(mem.order(u8, sunscreen, &out2) == .eq);
 }
 fn testChacha20TestVector1() !void {
     const expected_output: [64]u8 = .{
@@ -72,11 +72,11 @@ fn testChacha20TestVector1() !void {
         0xc3, 0x87, 0xb6, 0x69, 0xb2, 0xee, 0x65, 0x86,
     };
     const msg: [64]u8 = [1]u8{0} ** 64;
-    var result: [64]u8 = undefined;
+    var out: [64]u8 = undefined;
     const key: [32]u8 = [1]u8{0} ** 32;
     const nonce: [8]u8 = [1]u8{0} ** 8;
-    crypto.aead.ChaCha20With64BitNonce.xor(&result, &msg, 0, key, nonce);
-    try testing.expectEqualMany(u8, &expected_output, &result);
+    crypto.aead.ChaCha20With64BitNonce.xor(&out, &msg, 0, key, nonce);
+    try testing.expectEqualMany(u8, &expected_output, &out);
 }
 fn testChacha20TestVector2() !void {
     const expected_output: [64]u8 = .{
@@ -112,16 +112,7 @@ fn testChacha20TestVector3() !void {
         0x52, 0x77, 0x06, 0x2e, 0xb7, 0xa0, 0x43, 0x3e,
         0x44, 0x5f, 0x41, 0xe3,
     };
-    const msg: [60]u8 = .{
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00,
-    };
+    const msg: [60]u8 = [1]u8{0} ** 60;
     var result: [60]u8 = undefined;
     const key: [32]u8 = [1]u8{0} ** 32;
     const nonce: [8]u8 = .{ 0, 0, 0, 0, 0, 0, 0, 1 };
@@ -139,16 +130,7 @@ fn testChacha20TestVector4() !void {
         0x5d, 0xdc, 0x49, 0x7a, 0x0b, 0x46, 0x6e, 0x7d,
         0x6b, 0xbd, 0xb0, 0x04, 0x1b, 0x2f, 0x58, 0x6b,
     };
-    const msg: [64]u8 = .{
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    };
+    const msg: [64]u8 = [1]u8{0} ** 64;
     var result: [64]u8 = undefined;
     const key: [32]u8 = .{
         0, 0, 0, 0, 0, 0, 0, 0,
@@ -222,14 +204,14 @@ fn testXchacha202() !void {
     var cipher: [sunscreen.len]u8 = undefined;
     var tag: [crypto.aead.XChaCha20Poly1305.tag_len]u8 = undefined;
     crypto.aead.XChaCha20Poly1305.encrypt(&cipher, &tag, sunscreen, bytes, nonce, key);
-    var dest: [sunscreen.len]u8 = undefined;
-    try crypto.aead.XChaCha20Poly1305.decrypt(&dest, &cipher, tag, bytes, nonce, key);
+    var out: [sunscreen.len]u8 = undefined;
+    try crypto.aead.XChaCha20Poly1305.decrypt(&out, &cipher, tag, bytes, nonce, key);
     var buf: [2 *% (cipher.len +% tag.len)]u8 = undefined;
     try testing.expectEqualMany(u8, fmt.bytesToHex(&buf, &cipher), "994d2dd32333f48e53650c02c7a2abb8e018b0836d7175aec779f52e961780768f815c58f1aa52d211498db89b9216763f569c9433a6bbfcefb4d4a49387a4c5207fbb3b5a92b5941294df30588c6740d39dc16fa1f0e634f7246cf7cdcb978e44347d89381b7a74eb7084f754b90bde9aaf");
     try testing.expectEqualMany(u8, fmt.bytesToHex(&buf, &tag), "5a94b8f2a85efd0b50692ae2d425e234");
-    try testing.expectEqualMany(u8, &dest, sunscreen);
+    try testing.expectEqualMany(u8, &out, sunscreen);
     cipher[0] +%= 1;
-    try testing.expectError(error.AuthenticationFailed, crypto.aead.XChaCha20Poly1305.decrypt(&dest, &cipher, tag, sunscreen, nonce, key));
+    try testing.expectError(error.AuthenticationFailed, crypto.aead.XChaCha20Poly1305.decrypt(&out, &cipher, tag, sunscreen, nonce, key));
 }
 fn testSeal1() !void {
     const msg: []const u8 = "";
@@ -317,32 +299,32 @@ fn testOpen2() !void {
         0x63, 0x72, 0x65, 0x65, 0x6e, 0x20, 0x77, 0x6f, 0x75, 0x6c, 0x64, 0x20, 0x62, 0x65, 0x20, 0x69,
         0x74, 0x2e,
     };
-    var dest: [expected_output.len]u8 = undefined;
-    try crypto.aead.ChaCha20Poly1305.decrypt(&dest, cipher[0..expected_output.len], cipher[expected_output.len..].*, &bytes, nonce, key);
-    try testing.expectEqualMany(u8, expected_output[0..], &dest);
+    var out: [expected_output.len]u8 = undefined;
+    try crypto.aead.ChaCha20Poly1305.decrypt(&out, cipher[0..expected_output.len], cipher[expected_output.len..].*, &bytes, nonce, key);
+    try testing.expectEqualMany(u8, expected_output[0..], &out);
     var bad_cipher = cipher;
     bad_cipher[0] ^= 1;
     try testing.expectError(
         error.AuthenticationFailed,
-        crypto.aead.ChaCha20Poly1305.decrypt(&dest, bad_cipher[0..dest.len], bad_cipher[dest.len..].*, &bytes, nonce, key),
+        crypto.aead.ChaCha20Poly1305.decrypt(&out, bad_cipher[0..out.len], bad_cipher[out.len..].*, &bytes, nonce, key),
     );
     var bad_bytes = bytes;
     bad_bytes[0] ^= 1;
     try testing.expectError(
         error.AuthenticationFailed,
-        crypto.aead.ChaCha20Poly1305.decrypt(&dest, cipher[0..dest.len], cipher[dest.len..].*, &bad_bytes, nonce, key),
+        crypto.aead.ChaCha20Poly1305.decrypt(&out, cipher[0..out.len], cipher[out.len..].*, &bad_bytes, nonce, key),
     );
     var bad_key = key;
     bad_key[0] ^= 1;
     try testing.expectError(
         error.AuthenticationFailed,
-        crypto.aead.ChaCha20Poly1305.decrypt(&dest, cipher[0..dest.len], cipher[dest.len..].*, &bytes, nonce, bad_key),
+        crypto.aead.ChaCha20Poly1305.decrypt(&out, cipher[0..out.len], cipher[out.len..].*, &bytes, nonce, bad_key),
     );
     var bad_nonce = nonce;
     bad_nonce[0] ^= 1;
     try testing.expectError(
         error.AuthenticationFailed,
-        crypto.aead.ChaCha20Poly1305.decrypt(&dest, cipher[0..dest.len], cipher[dest.len..].*, &bytes, bad_nonce, key),
+        crypto.aead.ChaCha20Poly1305.decrypt(&out, cipher[0..out.len], cipher[out.len..].*, &bytes, bad_nonce, key),
     );
 }
 fn testAes256GcmEmptyMessageAndNoAssociatedData(allocator: *mem.SimpleAllocator) !void {
@@ -371,11 +353,11 @@ fn testAes256GcmMessageOnly(allocator: *mem.SimpleAllocator) !void {
     const msg: []const u8 = "Test with message only";
     const bytes: []const u8 = "";
     var cipher: [msg.len]u8 = undefined;
-    var dest: [msg.len]u8 = undefined;
+    var out: [msg.len]u8 = undefined;
     var tag: [crypto.aead.Aes256Gcm.tag_len]u8 = undefined;
     crypto.aead.Aes256Gcm.encrypt(&cipher, &tag, msg, bytes, nonce, key);
-    try crypto.aead.Aes256Gcm.decrypt(&dest, &cipher, tag, bytes, nonce, key);
-    try testing.expectEqualMany(u8, msg, &dest);
+    try crypto.aead.Aes256Gcm.decrypt(&out, &cipher, tag, bytes, nonce, key);
+    try testing.expectEqualMany(u8, msg, &out);
     try htest.assertEqual(allocator, "5ca1642d90009fea33d01f78cf6eefaf01d539472f7c", &cipher);
     try htest.assertEqual(allocator, "07cd7fc9103e2f9e9bf2dfaa319caff4", &tag);
 }
@@ -385,11 +367,11 @@ fn testAes256GcmMessageAndAssociatedData(allocator: *mem.SimpleAllocator) !void 
     const msg: []const u8 = "Test with message";
     const bytes: []const u8 = "Test with associated data";
     var cipher: [msg.len]u8 = undefined;
-    var dest: [msg.len]u8 = undefined;
+    var out: [msg.len]u8 = undefined;
     var tag: [crypto.aead.Aes256Gcm.tag_len]u8 = undefined;
     crypto.aead.Aes256Gcm.encrypt(&cipher, &tag, msg, bytes, nonce, key);
-    try crypto.aead.Aes256Gcm.decrypt(&dest, &cipher, tag, bytes, nonce, key);
-    try testing.expectEqualMany(u8, msg, &dest);
+    try crypto.aead.Aes256Gcm.decrypt(&out, &cipher, tag, bytes, nonce, key);
+    try testing.expectEqualMany(u8, msg, &out);
     try htest.assertEqual(allocator, "5ca1642d90009fea33d01f78cf6eefaf01", &cipher);
     try htest.assertEqual(allocator, "64accec679d444e2373bd9f6796c0d2c", &tag);
 }
