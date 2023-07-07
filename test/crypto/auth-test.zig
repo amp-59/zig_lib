@@ -166,6 +166,52 @@ fn testAegis128LTestVector3(allocator: *mem.SimpleAllocator) !void {
     try testing.expectEqualMany(u8, &msg, &out);
     try htest.assertEqual(allocator, "83cc600dc4e3e7e62d4055826174f149", &tag);
 }
+fn testAegis256TestVector1(allocator: *mem.SimpleAllocator) !void {
+    const key: [crypto.auth.Aegis256.key_len]u8 = [2]u8{ 16, 1 } ++ [1]u8{0} ** 30;
+    const nonce: [crypto.auth.Aegis256.nonce_len]u8 = [3]u8{ 16, 0, 2 } ++ [1]u8{0} ** 29;
+    const bytes: [8]u8 = .{ 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07 };
+    const msg: [32]u8 = .{ 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f };
+    var cipher: [msg.len]u8 = undefined;
+    var out: [msg.len]u8 = undefined;
+    var tag: [crypto.auth.Aegis256.tag_len]u8 = undefined;
+    crypto.auth.Aegis256.encrypt(&cipher, &tag, &msg, &bytes, nonce, key);
+    try crypto.auth.Aegis256.decrypt(&out, &cipher, tag, &bytes, nonce, key);
+    try testing.expectEqualMany(u8, &msg, &out);
+    try htest.assertEqual(allocator, "f373079ed84b2709faee373584585d60accd191db310ef5d8b11833df9dec711", &cipher);
+    try htest.assertEqual(allocator, "8d86f91ee606e9ff26a01b64ccbdd91d", &tag);
+    cipher[0] +%= 1;
+    try builtin.expect(error.AuthenticationFailed == crypto.auth.Aegis256.decrypt(&out, &cipher, tag, &bytes, nonce, key));
+    cipher[0] -%= 1;
+    tag[0] +%= 1;
+    try builtin.expect(error.AuthenticationFailed == crypto.auth.Aegis256.decrypt(&out, &cipher, tag, &bytes, nonce, key));
+}
+fn testAegis256TestVector2(allocator: *mem.SimpleAllocator) !void {
+    const key: [crypto.auth.Aegis256.key_len]u8 = [1]u8{0} ** 32;
+    const nonce: [crypto.auth.Aegis256.nonce_len]u8 = [1]u8{0} ** 32;
+    const bytes: [0]u8 = [0]u8{};
+    const msg: [16]u8 = [1]u8{0} ** 16;
+    var cipher: [msg.len]u8 = undefined;
+    var out: [msg.len]u8 = undefined;
+    var tag: [crypto.auth.Aegis256.tag_len]u8 = undefined;
+    crypto.auth.Aegis256.encrypt(&cipher, &tag, &msg, &bytes, nonce, key);
+    try crypto.auth.Aegis256.decrypt(&out, &cipher, tag, &bytes, nonce, key);
+    try testing.expectEqualMany(u8, &msg, &out);
+    try htest.assertEqual(allocator, "b98f03a947807713d75a4fff9fc277a6", &cipher);
+    try htest.assertEqual(allocator, "478f3b50dc478ef7d5cf2d0f7cc13180", &tag);
+}
+fn testAegis256TestVector3(allocator: *mem.SimpleAllocator) !void {
+    const key: [crypto.auth.Aegis256.key_len]u8 = [1]u8{0} ** 32;
+    const nonce: [crypto.auth.Aegis256.nonce_len]u8 = [1]u8{0} ** 32;
+    const bytes: [0]u8 = [0]u8{};
+    const msg: [0]u8 = [_]u8{};
+    var cipher: [msg.len]u8 = undefined;
+    var out: [msg.len]u8 = undefined;
+    var tag: [crypto.auth.Aegis256.tag_len]u8 = undefined;
+    crypto.auth.Aegis256.encrypt(&cipher, &tag, &msg, &bytes, nonce, key);
+    try crypto.auth.Aegis256.decrypt(&out, &cipher, tag, &bytes, nonce, key);
+    try testing.expectEqualMany(u8, &msg, &out);
+    try htest.assertEqual(allocator, "f7a0878f68bd083e8065354071fc27c3", &tag);
+}
 fn authTestMain() !void {
     var allocator: mem.SimpleAllocator = .{};
     defer allocator.unmap();
@@ -178,9 +224,11 @@ fn authTestMain() !void {
     try testCmacAes128Example2Len16();
     try testCmacAes128Example3Len40();
     try testCmacAes128Example4Len64();
-
     try testAegis128LTestVector1(&allocator);
     try testAegis128LTestVector2(&allocator);
     try testAegis128LTestVector3(&allocator);
+    try testAegis256TestVector1(&allocator);
+    try testAegis256TestVector2(&allocator);
+    try testAegis256TestVector3(&allocator);
 }
 pub const main = authTestMain;
