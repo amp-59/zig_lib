@@ -1,6 +1,7 @@
 const zig_lib = @import("../zig_lib.zig");
 const sys = zig_lib.sys;
 const gen = zig_lib.gen;
+const builtin = zig_lib.builtin;
 
 const perf = @import("../top/perf.zig");
 
@@ -29,8 +30,15 @@ pub fn main() void {
         gen.containerDeclsToBitField(sys.STATX.ATTR, usize, "StatusExtendedAttributes");
         gen.containerDeclsToBitField(sys.STATX, usize, "StatusExtendedFields");
         gen.containerDeclsToBitField(Access, usize, "Access");
+        gen.containerDeclsToBitField(sys.AT, usize, "At");
     }
-    gen.containerDeclsToBitField(sys.AT, usize, "At");
+    if (false) {
+        gen.containerDeclsToBitField(sys.TC.C, usize, "Control");
+        gen.containerDeclsToBitField(sys.TC.I, usize, "Input");
+        gen.containerDeclsToBitField(sys.TC.L, usize, "Local");
+        gen.containerDeclsToBitField(sys.TC.O, usize, "Output");
+        gen.containerDeclsToBitField(sys.TC.V, usize, "Special");
+    }
     if (false) {
         gen.containerDeclsToBitField(perf.Mem.Blk, usize, "Blk");
         gen.containerDeclsToBitField(perf.Mem.Hops, usize, "Hops");
