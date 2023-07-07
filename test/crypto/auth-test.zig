@@ -9,9 +9,8 @@ const builtin = zig_lib.builtin;
 const testing = zig_lib.testing;
 pub usingnamespace proc.start;
 pub const runtime_assertions: bool = true;
-const tab = @import("./tab.zig");
 const htest = @import("./hash-test.zig").htest;
-
+const tab = @import("./tab.zig");
 fn testHmacMd5(allocator: *mem.SimpleAllocator) !void {
     var out: [crypto.auth.HmacMd5.mac_len]u8 = undefined;
     crypto.auth.HmacMd5.create(out[0..], "", "");
@@ -251,7 +250,7 @@ fn testAegis256TestVector3(allocator: *mem.SimpleAllocator) !void {
     const key: [crypto.auth.Aegis256.key_len]u8 = [1]u8{0} ** 32;
     const nonce: [crypto.auth.Aegis256.nonce_len]u8 = [1]u8{0} ** 32;
     const bytes: [0]u8 = [0]u8{};
-    const msg: [0]u8 = [_]u8{};
+    const msg: [0]u8 = [0]u8{};
     var cipher: [msg.len]u8 = undefined;
     var out: [msg.len]u8 = undefined;
     var tag: [crypto.auth.Aegis256.tag_len]u8 = undefined;

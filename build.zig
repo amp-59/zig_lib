@@ -206,7 +206,7 @@ fn cryptoTests(allocator: *build.Allocator, node: *Node) void {
     const aead_test: *Node = node.addBuild(allocator, build_cmd, "aead_test", "test/crypto/aead-test.zig");
     const auth_test: *Node = node.addBuild(allocator, build_cmd, "auth_test", "test/crypto/auth-test.zig");
     const dh_test: *Node = node.addBuild(allocator, build_cmd, "dh_test", "test/crypto/dh-test.zig");
-    //const tls_test: *Node = node.addBuild(allocator, build_cmd, "tls_test", "test/crypto/tls-test.zig");
+    const tls_test: *Node = node.addBuild(allocator, build_cmd, "tls_test", "test/crypto/tls-test.zig");
     const core_test: *Node = node.addBuild(allocator, build_cmd, "core_test", "test/crypto/core-test.zig");
     const utils_test: *Node = node.addBuild(allocator, build_cmd, "utils_test", "test/crypto/utils-test.zig");
     const hash_test: *Node = node.addBuild(allocator, build_cmd, "hash_test", "test/crypto/hash-test.zig");
@@ -217,7 +217,7 @@ fn cryptoTests(allocator: *build.Allocator, node: *Node) void {
     aead_test.descr = "Test authenticated encryption functions and types";
     auth_test.descr = "Test authentication";
     dh_test.descr = "Test many 25519-related functions";
-    //tls_test.descr = "Test TLS";
+    tls_test.descr = "Test TLS";
     core_test.descr = "Test core crypto functions and types";
     utils_test.descr = "Test crypto utility functions";
     hash_test.descr = "Test hashing functions";

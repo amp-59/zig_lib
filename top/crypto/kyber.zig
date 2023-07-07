@@ -13,15 +13,15 @@ const Params = struct {
     du: u8,
     dv: u8,
 };
-pub const Kyber512 = Kyber(.{ .name = "Kyber512", .k = 2, .eta1 = 3, .du = 10, .dv = 4 });
-pub const Kyber768 = Kyber(.{ .name = "Kyber768", .k = 3, .eta1 = 2, .du = 10, .dv = 4 });
-pub const Kyber1024 = Kyber(.{ .name = "Kyber1024", .k = 4, .eta1 = 2, .du = 11, .dv = 5 });
-pub const modes = [_]type{ Kyber512, Kyber768, Kyber1024 };
+pub const Kyber512 = GenericKyber(.{ .name = "Kyber512", .k = 2, .eta1 = 3, .du = 10, .dv = 4 });
+pub const Kyber768 = GenericKyber(.{ .name = "Kyber768", .k = 3, .eta1 = 2, .du = 10, .dv = 4 });
+pub const Kyber1024 = GenericKyber(.{ .name = "Kyber1024", .k = 4, .eta1 = 2, .du = 11, .dv = 5 });
+pub const modes: [3]type = .{ Kyber512, Kyber768, Kyber1024 };
 const h_len: comptime_int = 32;
 const inner_seed_len: comptime_int = 32;
 const common_encaps_seed_len: comptime_int = 32;
 const common_shared_key_size: comptime_int = 32;
-fn Kyber(comptime p: Params) type {
+fn GenericKyber(comptime p: Params) type {
     return struct {
         pub const ciphertext_len = Poly.compressedSize(p.du) *% p.k +% Poly.compressedSize(p.dv);
         const Self = @This();
@@ -417,6 +417,7 @@ pub const Poly = struct {
         return @divTrunc(N *% d, 8);
     }
     pub fn compress(p: Poly, comptime d: u8) [compressedSize(d)]u8 {
+        @setRuntimeSafety(builtin.is_safe);
         @setEvalBranchQuota(10000);
         const q_over_2: comptime_int = @divTrunc(Q, 2);
         const two_d_min_1: comptime_int = (1 << d) -% 1;
@@ -457,6 +458,7 @@ pub const Poly = struct {
         return out;
     }
     pub fn decompress(comptime d: u8, in: *const [compressedSize(d)]u8) Poly {
+        @setRuntimeSafety(builtin.is_safe);
         @setEvalBranchQuota(10000);
         const in_len: comptime_int = @divTrunc(N *% d, 8);
         builtin.assertEqual(comptime_int, in_len *% 8, d *% N);

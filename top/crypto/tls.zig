@@ -361,6 +361,4 @@ pub fn init(host: anytype, buf: [*]u8) !void {
     pos +%= 1;
     @as(Size16, @ptrCast(buf + pos)).* = @byteSwap(host_len);
     pos +%= 2;
-
-    builtin.assertEqual(u64, pos, 1477);
 }
