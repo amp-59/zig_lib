@@ -12,6 +12,20 @@ pub const runtime_assertions: bool = true;
 const tab = @import("./tab.zig");
 const htest = @import("./hash-test.zig").htest;
 
+fn testHmacMd5(allocator: *mem.SimpleAllocator) !void {
+    var out: [crypto.auth.HmacMd5.mac_len]u8 = undefined;
+    crypto.auth.HmacMd5.create(out[0..], "", "");
+    try htest.assertEqual(allocator, "74e6f7298a9c2d168935f58c001bad88", out[0..]);
+    crypto.auth.HmacMd5.create(out[0..], "The quick brown fox jumps over the lazy dog", "key");
+    try htest.assertEqual(allocator, "80070713463e7749b90c2dc24911e275", out[0..]);
+}
+fn testHmacSha256(allocator: *mem.SimpleAllocator) !void {
+    var out: [crypto.auth.HmacSha256.mac_len]u8 = undefined;
+    crypto.auth.HmacSha256.create(out[0..], "", "");
+    try htest.assertEqual(allocator, "b613679a0814d9ec772f95d778c35fc5ff1697c493715653c6c712144292c5ad", out[0..]);
+    crypto.auth.HmacSha256.create(out[0..], "The quick brown fox jumps over the lazy dog", "key");
+    try htest.assertEqual(allocator, "f7bc83f430538424b13298e6aa6fb143ef4d59a14946175997479dbc2d1a3cd8", out[0..]);
+}
 fn testSiphash6424Sanity() !void {
     const SipHash64 = crypto.auth.GenericSipHash64(2, 4);
     var buffer: [64]u8 = undefined;
@@ -91,12 +105,14 @@ fn testCmacAes128Example4Len64() !void {
     crypto.auth.CmacAes128.create(&out, &msg, &key);
     try testing.expectEqualMany(u8, &out, &exp);
 }
+
 fn authTestMain() !void {
     var allocator: mem.SimpleAllocator = .{};
     defer allocator.unmap();
+    try testHmacMd5(&allocator);
+    try testHmacSha256(&allocator);
     try testSiphash6424Sanity();
     try testSiphash12824Sanity();
-
     try testCmacAes128Example1Len0();
     try testCmacAes128Example2Len16();
     try testCmacAes128Example3Len40();
