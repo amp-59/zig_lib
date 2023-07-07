@@ -1108,7 +1108,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 }
             } else {
                 if (state_logging.Attempt) {
-                    debug.noExchangeNotice(node, debug.about.state_0_s, task, old_state, new_state, arena_index);
+                    debug.noExchangeNotice(node, debug.state_0_s, task, old_state, new_state, arena_index);
                 }
             }
             return ret;
@@ -1123,7 +1123,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 }
             } else {
                 if (state_logging.Fault) {
-                    debug.noExchangeNotice(node, debug.about.state_1_s, task, old_state, new_state, arena_index);
+                    debug.noExchangeNotice(node, debug.state_1_s, task, old_state, new_state, arena_index);
                 }
                 builtin.proc.exitGroup(2);
             }
@@ -1745,8 +1745,10 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             var buf: [4096 *% 8]u8 = undefined;
             var len: u64 = 0;
             for ([_][]const u8{
-                debug.about.zig_exe_s,    debug.about.build_root_s,
-                debug.about.cache_root_s, debug.about.global_cache_root_s,
+                "pub const zig_exe: [:0]const u8 = \"",
+                "\";\npub const build_root: [:0]const u8 = \"",
+                "\";\npub const cache_root: [:0]const u8 = \"",
+                "\";\npub const global_cache_root: [:0]const u8 = \"",
             }, [_][]const u8{
                 mach.manyToSlice80(GlobalState.args[1]),
                 build_root,
@@ -1834,15 +1836,15 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         const format_lock = .{ .bytes = .{ .null, .null, .ready, .null, .null, .null, .null } };
         const archive_lock = .{ .bytes = .{ .null, .null, .null, .null, .null, .ready, .null } };
         const debug = struct {
-            const about_ar_s: builtin.fmt.AboutSrc = builtin.fmt.about("ar");
-            const about_run_s: builtin.fmt.AboutSrc = builtin.fmt.about("run");
-            const about_format_s: builtin.fmt.AboutSrc = builtin.fmt.about("fmt");
-            const about_build_exe_s: builtin.fmt.AboutSrc = builtin.fmt.about("build-exe");
-            const about_build_obj_s: builtin.fmt.AboutSrc = builtin.fmt.about("build-obj");
-            const about_build_lib_s: builtin.fmt.AboutSrc = builtin.fmt.about("build-lib");
-            const about_state_0_s: builtin.fmt.AboutSrc = builtin.fmt.about("state");
-            const about_state_1_s: builtin.fmt.AboutSrc = builtin.fmt.about("state-fault");
             const about = .{
+                .ar_s = builtin.fmt.about("ar"),
+                .run_s = builtin.fmt.about("run"),
+                .format_s = builtin.fmt.about("fmt"),
+                .build_exe_s = builtin.fmt.about("build-exe"),
+                .build_obj_s = builtin.fmt.about("build-obj"),
+                .build_lib_s = builtin.fmt.about("build-lib"),
+                .state_0_s = builtin.fmt.about("state"),
+                .state_1_s = builtin.fmt.about("state-fault"),
                 .bytes_s = " bytes, ",
                 .green_s = "\x1b[92;1m",
                 .red_s = "\x1b[91;1m",
@@ -1856,11 +1858,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 .hi_green_s = "\x1b[38;5;46m",
                 .hi_red_s = "\x1b[38;5;196m",
                 .special_s = "\x1b[38;2;54;208;224;1m",
-                .zig_exe_s = "pub const zig_exe: [:0]const u8 = \"",
-                .build_root_s = "\";\npub const build_root: [:0]const u8 = \"",
-                .cache_root_s = "\";\npub const cache_root: [:0]const u8 = \"",
-                .global_cache_root_s = "\";\npub const global_cache_root: [:0]const u8 = \"",
             };
+
             const fancy_hl_line: bool = false;
             fn writeWaitingOn(node: *Node, arena_index: AddressSpace.Index) void {
                 var buf: [4096]u8 = undefined;
@@ -1940,7 +1939,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
                 var buf: [32768]u8 = undefined;
                 var len: u64 = 0;
-                @as(*[24]u8, @ptrCast(&buf)).* = builtin.debug.about_error_p0_s.*;
+                @as(*[24]u8, @ptrCast(&buf)).* = builtin.debug.about.error_p0_s.*;
                 len +%= 24;
                 @memcpy(buf[len..].ptr, node.name);
                 len +%= node.name.len;
@@ -1984,13 +1983,13 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 var buf: [32768]u8 = undefined;
                 const about_s: []const u8 = switch (task) {
                     else => unreachable,
-                    .archive => about_ar_s,
-                    .format => about_format_s,
-                    .run => about_run_s,
+                    .archive => about.ar_s,
+                    .format => about.format_s,
+                    .run => about.run_s,
                     .build => switch (node.task.info.build.kind) {
-                        .exe => about_build_exe_s,
-                        .obj => about_build_obj_s,
-                        .lib => about_build_lib_s,
+                        .exe => about.build_exe_s,
+                        .obj => about.build_obj_s,
+                        .lib => about.build_lib_s,
                     },
                 };
                 var len: u64 = about_s.len;
@@ -2017,7 +2016,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 len +%= 5;
                 const exit_s: []const u8 = builtin.fmt.ud64(job.ret.sys).readAll();
                 if (task == .build) {
-                    var style_s: [:0]const u8 = about.bold_s;
+                    var style_s: []const u8 = about.bold_s;
                     const res: UpdateAnswer = UpdateAnswer.enumFromInt(job.ret.srv);
                     const msg_s: []const u8 = @tagName(res);
                     if (res == .failed) {
@@ -2044,7 +2043,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     buf[len] = ']';
                     len +%= 1;
                 } else {
-                    const style_s: [:0]const u8 = switch (job.ret.sys) {
+                    const style_s: []const u8 = switch (job.ret.sys) {
                         builder_spec.options.system_expected_status => about.bold_s,
                         else => about.red_s,
                     };
@@ -2180,7 +2179,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 const line_s: []const u8 = builtin.fmt.ud64(line).readAll();
                 const column_s: []const u8 = builtin.fmt.ud64(column).readAll();
                 var len: u64 = 0;
-                @as(*[11:0]u8, @ptrCast(buf + len)).* = about.trace_s.*;
+                @as(*[11]u8, @ptrCast(buf + len)).* = about.trace_s.*;
                 len +%= about.trace_s.len;
                 mach.memcpy(buf + len, pathname.ptr, pathname.len);
                 len +%= pathname.len;
@@ -2192,21 +2191,21 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 len +%= 1;
                 mach.memcpy(buf + len, column_s.ptr, column_s.len);
                 len +%= column_s.len;
-                @as(*[4:0]u8, @ptrCast(buf + len)).* = about.reset_s.*;
+                @as(*[4]u8, @ptrCast(buf + len)).* = about.reset_s.*;
                 return len +% 4;
             }
             fn writeTimes(buf: [*]u8, count: u64) u64 {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
                 const count_s: []const u8 = builtin.fmt.ud64(count).readAll();
-                @as(*[4:0]u8, @ptrCast(buf - 1)).* = about.faint_s.*;
+                @as(*[4]u8, @ptrCast(buf - 1)).* = about.faint_s.*;
                 var len: u64 = about.faint_s.len -% 1;
-                @as(*[2:0]u8, @ptrCast(buf + len)).* = " (".*;
+                @as(*[2]u8, @ptrCast(buf + len)).* = " (".*;
                 len +%= 2;
                 mach.memcpy(buf + len, count_s.ptr, count_s.len);
                 len +%= count_s.len;
-                @as(*[7:0]u8, @ptrCast(buf + len)).* = " times)".*;
+                @as(*[7]u8, @ptrCast(buf + len)).* = " times)".*;
                 len +%= 7;
-                @as(*[5:0]u8, @ptrCast(buf + len)).* = about.new_s.*;
+                @as(*[5]u8, @ptrCast(buf + len)).* = about.new_s.*;
                 return len +% 5;
             }
             fn writeCaret(buf: [*]u8, bytes: [*:0]u8, src: *types.SourceLocation) u64 {
