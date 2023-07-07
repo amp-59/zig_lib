@@ -1834,15 +1834,15 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         const format_lock = .{ .bytes = .{ .null, .null, .ready, .null, .null, .null, .null } };
         const archive_lock = .{ .bytes = .{ .null, .null, .null, .null, .null, .ready, .null } };
         const debug = struct {
+            const about_ar_s: builtin.fmt.AboutSrc = builtin.fmt.about("ar");
+            const about_run_s: builtin.fmt.AboutSrc = builtin.fmt.about("run");
+            const about_format_s: builtin.fmt.AboutSrc = builtin.fmt.about("fmt");
+            const about_build_exe_s: builtin.fmt.AboutSrc = builtin.fmt.about("build-exe");
+            const about_build_obj_s: builtin.fmt.AboutSrc = builtin.fmt.about("build-obj");
+            const about_build_lib_s: builtin.fmt.AboutSrc = builtin.fmt.about("build-lib");
+            const about_state_0_s: builtin.fmt.AboutSrc = builtin.fmt.about("state");
+            const about_state_1_s: builtin.fmt.AboutSrc = builtin.fmt.about("state-fault");
             const about = .{
-                .ar_s = builtin.fmt.about("ar"),
-                .run_s = builtin.fmt.about("run"),
-                .format_s = builtin.fmt.about("fmt"),
-                .build_exe_s = builtin.fmt.about("build-exe"),
-                .build_obj_s = builtin.fmt.about("build-obj"),
-                .build_lib_s = builtin.fmt.about("build-lib"),
-                .state_0_s = builtin.fmt.about("state"),
-                .state_1_s = builtin.fmt.about("state-fault"),
                 .bytes_s = " bytes, ",
                 .green_s = "\x1b[92;1m",
                 .red_s = "\x1b[91;1m",
@@ -1984,13 +1984,13 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 var buf: [32768]u8 = undefined;
                 const about_s: []const u8 = switch (task) {
                     else => unreachable,
-                    .archive => about.ar_s,
-                    .format => about.format_s,
-                    .run => about.run_s,
+                    .archive => about_ar_s,
+                    .format => about_format_s,
+                    .run => about_run_s,
                     .build => switch (node.task.info.build.kind) {
-                        .exe => about.build_exe_s,
-                        .obj => about.build_obj_s,
-                        .lib => about.build_lib_s,
+                        .exe => about_build_exe_s,
+                        .obj => about_build_obj_s,
+                        .lib => about_build_lib_s,
                     },
                 };
                 var len: u64 = about_s.len;
@@ -2024,11 +2024,10 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                         style_s = about.red_s;
                     }
                     if (node.flags.is_special) {
-                        if (res != .cached) {
-                            style_s = about.special_s;
-                        } else {
+                        if (res == .cached) {
                             return;
                         }
+                        style_s = about.special_s;
                     }
                     buf[len] = '[';
                     len +%= 1;
