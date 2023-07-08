@@ -428,7 +428,6 @@ fn Types(comptime Allocator: type) type {
 fn Specs(comptime Allocator: type) type {
     return struct {
         const map_spec: mem.MapSpec = .{
-            .options = .{ .populate = Allocator.allocator_spec.options.require_populate },
             .errors = Allocator.allocator_spec.errors.map,
             .logging = Allocator.allocator_spec.logging.map,
         };
