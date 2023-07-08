@@ -1515,7 +1515,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             return .{
                 .errors = builder_spec.errors.map,
                 .logging = builder_spec.logging.map,
-                .options = thread_map_options,
             };
         }
         fn open() file.OpenSpec {
