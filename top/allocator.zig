@@ -554,7 +554,7 @@ pub fn GenericRtArenaAllocator(comptime spec: RtArenaAllocatorSpec) type {
                 .up_addr = lb_addr,
                 .ua_addr = ua_addr,
             };
-            try meta.wrap(special.acquire(AddressSpace, address_space, arena_index));
+            try meta.wrap(mem.acquire(AddressSpace, address_space, arena_index));
             if (Allocator.allocator_spec.options.require_map) {
                 try meta.wrap(Allocator.mapInit(&allocator));
             }
@@ -565,7 +565,7 @@ pub fn GenericRtArenaAllocator(comptime spec: RtArenaAllocatorSpec) type {
             if (Allocator.allocator_spec.options.require_unmap) {
                 try meta.wrap(Allocator.unmapAll(allocator));
             }
-            try meta.wrap(special.release(AddressSpace, address_space, arena_index));
+            try meta.wrap(mem.release(AddressSpace, address_space, arena_index));
         }
         pub usingnamespace Types(Allocator);
         pub usingnamespace Specs(Allocator);

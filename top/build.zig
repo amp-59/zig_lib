@@ -532,7 +532,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         pub fn init(allocator: *mem.SimpleAllocator) *Node {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             if (!thread_space_options.require_map) {
-                mem.map(map(), stack_lb_addr, stack_aligned_bytes * max_thread_count);
+                mem.map(map(), .{}, .{}, stack_lb_addr, stack_aligned_bytes * max_thread_count);
             }
             var node: *Node = allocator.create(Node);
             node.flags = .{};
@@ -1108,7 +1108,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 }
             } else {
                 if (state_logging.Attempt) {
-                    debug.noExchangeNotice(node, debug.state_0_s, task, old_state, new_state, arena_index);
+                    debug.noExchangeNotice(node, debug.about.state_0_s, task, old_state, new_state, arena_index);
                 }
             }
             return ret;
@@ -1123,7 +1123,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 }
             } else {
                 if (state_logging.Fault) {
-                    debug.noExchangeNotice(node, debug.state_1_s, task, old_state, new_state, arena_index);
+                    debug.noExchangeNotice(node, debug.about.state_1_s, task, old_state, new_state, arena_index);
                 }
                 builtin.proc.exitGroup(2);
             }
