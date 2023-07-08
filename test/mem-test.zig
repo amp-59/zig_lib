@@ -18,8 +18,8 @@ fn testProtect() !void {
     var addr: u64 = 0x7000000;
     const end: u64 = 0x10000000;
     var len: u64 = end - addr;
-    try meta.wrap(mem.map(.{}, addr, len));
-    try meta.wrap(mem.protect(.{}, addr, 4096));
+    try meta.wrap(mem.map(.{}, .{}, .{}, addr, len));
+    try meta.wrap(mem.protect(.{}, .{ .read = true }, addr, 4096));
     try meta.wrap(mem.unmap(.{}, addr, len));
 }
 fn testLowSystemMemoryOperations() !void {
@@ -28,13 +28,13 @@ fn testLowSystemMemoryOperations() !void {
     var addr: u64 = 0x7000000;
     const end: u64 = 0x10000000;
     var len: u64 = end -% addr;
-    try meta.wrap(mem.map(.{}, addr, len));
+    try meta.wrap(mem.map(.{}, .{}, .{}, addr, len));
     try meta.wrap(mem.move(.{}, addr, len, addr + len));
-    try meta.wrap(mem.protect(.{}, addr + len, len));
+    try meta.wrap(mem.protect(.{}, .{ .read = true }, addr + len, len));
     addr += len;
     try meta.wrap(mem.resize(.{}, addr, len, len * 2));
     len *= 2;
-    try meta.wrap(mem.advise(.{}, addr, len));
+    try meta.wrap(mem.advise(.{}, .hugepage, addr, len));
     try meta.wrap(mem.unmap(.{}, addr, len));
 }
 fn testMapGenericOverhead() !void {
@@ -42,10 +42,10 @@ fn testMapGenericOverhead() !void {
     var addr: u64 = 0x7000000;
     var len: u64 = 0x3000000;
     var end: u64 = addr + len;
-    try meta.wrap(mem.map(.{ .options = .{ .populate = true } }, addr, len));
+    try meta.wrap(mem.map(.{}, .{ .populate = true }, .{}, addr, len));
     try meta.wrap(mem.unmap(.{}, addr, len));
     addr = end;
-    try meta.wrap(mem.map(.{ .options = .{ .populate = false, .visibility = .shared } }, end, len));
+    try meta.wrap(mem.map(.{}, .{ .populate = false, .visibility = .shared }, .{}, end, len));
     try meta.wrap(mem.unmap(.{}, addr, len));
 }
 fn testRtAllocatedImplementation() !void {
