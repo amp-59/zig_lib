@@ -15,6 +15,7 @@ pub usingnamespace _reference;
 pub usingnamespace _container;
 pub usingnamespace _allocator;
 pub usingnamespace _list;
+
 pub const Map = struct {
     pub const Options = meta.EnumBitField(enum(u64) {
         anonymous = MAP.ANONYMOUS,
@@ -138,6 +139,36 @@ pub const MapSpec = struct {
     logging: builtin.Logging.AcquireError = .{},
     const Specification = @This();
 
+    const Map = packed struct(usize) {
+        visibility: enum(u2) { shared = 1, private = 2, shared_validate = 3 } = .private,
+        zb2: u2 = 0,
+        fixed: bool = false,
+        anonymous: bool = true,
+        @"32bit": bool = false,
+        zb7: u1 = 0,
+        grows_down: bool = false,
+        zb9: u2 = 0,
+        deny_write: bool = false,
+        executable: bool = false,
+        locked: bool = false,
+        no_reserve: bool = false,
+        populate: bool = false,
+        non_block: bool = false,
+        stack: bool = false,
+        huge_tlb: bool = false,
+        sync: bool = false,
+        fixed_noreplace: bool = false,
+        zb21: u43 = 0,
+    };
+    const Protect = packed struct(usize) {
+        read: bool = true,
+        write: bool = true,
+        exec: bool = false,
+        zb3: u21 = 0,
+        grows_down: bool = false,
+        grows_up: bool = false,
+        zb26: u38 = 0,
+    };
     pub const Options = struct {
         anonymous: bool = true,
         visibility: _Map.Visibility = .private,
@@ -148,44 +179,6 @@ pub const MapSpec = struct {
         grows_down: bool = false,
         sync: bool = false,
     };
-    pub fn flags(comptime spec: Specification) Map.Options {
-        var flags_bitfield: Map.Options = .{ .val = 0 };
-        flags_bitfield.set(.fixed_no_replace);
-        switch (spec.options.visibility) {
-            .private => flags_bitfield.set(.private),
-            .shared => flags_bitfield.set(.shared),
-            .shared_validate => flags_bitfield.set(.shared_validate),
-        }
-        if (spec.options.anonymous) {
-            flags_bitfield.set(.anonymous);
-        }
-        if (spec.options.grows_down) {
-            flags_bitfield.set(.grows_down);
-            flags_bitfield.set(.stack);
-        }
-        if (spec.options.populate) {
-            builtin.assert(spec.options.visibility == .private);
-            flags_bitfield.set(.populate);
-        }
-        if (spec.options.sync) {
-            builtin.assert(spec.options.visibility == .shared_validate);
-            flags_bitfield.set(.sync);
-        }
-        comptime return flags_bitfield;
-    }
-    pub fn prot(comptime spec: Specification) Prot.Options {
-        var prot_bitfield: Prot.Options = .{ .val = 0 };
-        if (spec.options.read) {
-            prot_bitfield.set(.read);
-        }
-        if (spec.options.write) {
-            prot_bitfield.set(.write);
-        }
-        if (spec.options.exec) {
-            prot_bitfield.set(.exec);
-        }
-        comptime return prot_bitfield;
-    }
 };
 pub const SyncSpec = struct {
     options: Options = .{},
@@ -791,11 +784,11 @@ pub fn testReleaseElementary(comptime AddressSpace: type, address_space: *Addres
     }
     return ret;
 }
-pub fn map(comptime spec: MapSpec, addr: u64, len: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
-    const mmap_prot: Prot.Options = comptime spec.prot();
-    const mmap_flags: Map.Options = comptime spec.flags();
+pub fn map(comptime spec: MapSpec, flags: MapSpec.Map, prot: MapSpec.Protect, addr: u64, len: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
     const logging: builtin.Logging.AcquireError = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.mmap, spec.errors, spec.return_type, .{ addr, len, mmap_prot.val, mmap_flags.val, ~@as(u64, 0), 0 }))) |ret| {
+    if (meta.wrap(sys.call(.mmap, spec.errors, spec.return_type, .{
+        addr, len, @as(usize, @bitCast(prot)), @as(usize, @bitCast(flags)), ~@as(u64, 0), 0,
+    }))) |ret| {
         if (logging.Acquire) {
             debug.mapNotice(addr, len);
         }
@@ -1769,7 +1762,7 @@ pub const SimpleAllocator = struct {
         allocator.finish = allocator.start;
     }
     pub fn init_arena(arena: mem.Arena) Allocator {
-        mem.map(map_spec, arena.lb_addr, 4096);
+        mem.map(map_spec, .{}, .{}, arena.lb_addr, 4096);
         return .{
             .start = arena.lb_addr,
             .next = arena.lb_addr,
@@ -1811,7 +1804,7 @@ pub const SimpleAllocator = struct {
         if (next > allocator.finish) {
             const len: u64 = allocator.finish -% allocator.start;
             const finish: u64 = mach.alignA64(next, @max(4096, len));
-            map(map_spec, allocator.finish, finish -% allocator.finish);
+            map(map_spec, .{}, .{}, allocator.finish, finish -% allocator.finish);
             allocator.finish = finish;
         }
         allocator.next = next;
@@ -1830,7 +1823,7 @@ pub const SimpleAllocator = struct {
             if (new_next > allocator.finish) {
                 const len: u64 = allocator.finish -% allocator.start;
                 const finish: u64 = mach.alignA64(new_next, @max(4096, len));
-                map(map_spec, allocator.finish, finish -% allocator.finish);
+                map(map_spec, .{}, .{}, allocator.finish, finish -% allocator.finish);
                 allocator.finish = finish;
             }
             allocator.next = new_next;
