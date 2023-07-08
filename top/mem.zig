@@ -15,29 +15,6 @@ pub usingnamespace _reference;
 pub usingnamespace _container;
 pub usingnamespace _allocator;
 pub usingnamespace _list;
-
-pub const Map = struct {
-    pub const Options = meta.EnumBitField(enum(u64) {
-        anonymous = MAP.ANONYMOUS,
-        file = MAP.FILE,
-        shared = MAP.SHARED,
-        private = MAP.PRIVATE,
-        shared_validate = MAP.SHARED_VALIDATE,
-        fixed = MAP.FIXED,
-        fixed_no_replace = MAP.FIXED_NOREPLACE,
-        grows_down = MAP.GROWSDOWN,
-        deny_write = MAP.DENYWRITE,
-        executable = MAP.EXECUTABLE,
-        locked = MAP.LOCKED,
-        no_reserve = MAP.NORESERVE,
-        populate = MAP.POPULATE,
-        non_block = MAP.NONBLOCK,
-        stack = MAP.STACK,
-        huge_tlb = MAP.HUGETLB,
-        sync = MAP.SYNC,
-        const MAP = sys.MAP;
-    });
-};
 pub const Sync = struct {
     pub const Options = meta.EnumBitField(enum(u64) {
         synchronous = MS.SYNC,
@@ -66,31 +43,52 @@ pub const Remap = struct {
         const REMAP = sys.REMAP;
     });
 };
-pub const Advice = struct {
-    pub const Options = meta.EnumBitField(enum(u64) {
-        normal = MADV.NORMAL,
-        random = MADV.RANDOM,
-        sequential = MADV.SEQUENTIAL,
-        immediate = MADV.WILLNEED,
-        deferred = MADV.DONTNEED,
-        reclaim = MADV.COLD,
-        free = MADV.FREE,
-        remove = MADV.REMOVE,
-        pageout = MADV.PAGEOUT,
-        poison = MADV.HWPOISON,
-        mergeable = MADV.MERGEABLE,
-        unmergeable = MADV.UNMERGEABLE,
-        hugepage = MADV.HUGEPAGE,
-        no_hugepage = MADV.NOHUGEPAGE,
-        dump = MADV.DODUMP,
-        no_dump = MADV.DONTDUMP,
-        fork = MADV.DOFORK,
-        no_fork = MADV.DONTFORK,
-        wipe_on_fork = MADV.WIPEONFORK,
-        keep_on_fork = MADV.KEEPONFORK,
-        const MADV = sys.MADV;
-        const Tag = @This();
-    });
+pub const Advice = enum(usize) {
+    normal = 0,
+    random = 1,
+    sequential = 2,
+    will_need = 3,
+    dont_need = 4,
+    free = 8,
+    remove = 9,
+    dont_fork = 10,
+    do_fork = 11,
+    mergeable = 12,
+    unmergeable = 13,
+    hugepage = 14,
+    no_hugepage = 15,
+    dont_dump = 16,
+    do_dump = 17,
+    wipe_on_fork = 18,
+    keep_on_fork = 19,
+    cold = 20,
+    pageout = 21,
+    hw_poison = 100,
+    fn describe(advice: Advice) []const u8 {
+        switch (advice) {
+            .normal => return "expect normal usage",
+            .random => return "expect page references in random order",
+            .sequential => return "expect page references in sequential order",
+            .will_need => return "expect access in the near future",
+            .dont_need => return "do not expect access in the near future",
+            .remove => return "swap out backing store",
+            .free => return "swap out pages as needed",
+            .pageout => return "swap out pages now",
+            .cold => return "reclaim pages",
+            .hw_poison => return "illegal access",
+            .mergeable => return "merge identical pages",
+            .unmergeable => return "do not merge identical pages",
+            .hugepage => return "expect large contiguous mappings",
+            .no_hugepage => return "do not expect large contiguous mappings",
+            .do_dump => return "include in core dump",
+            .dont_dump => return "exclude from core dump",
+            .do_fork => return "available to child processes",
+            .dont_fork => return "unavailable to child processes",
+            .wipe_on_fork => return "wiping on fork",
+            .keep_on_fork => return "keeping on fork",
+        }
+        return "(unknown advise)";
+    }
 };
 pub const Fd = struct {
     pub const Options = meta.EnumBitField(enum(u64) {
@@ -100,47 +98,9 @@ pub const Fd = struct {
         const MFD = sys.MFD;
     });
 };
-const _Map = struct {
-    const Protection = packed struct(usize) {
-        read: bool = true,
-        write: bool = true,
-        exec: bool = false,
-        zb3: u21 = 0,
-        grows_down: bool = false,
-        grows_up: bool = false,
-        zb26: u38 = 0,
-    };
+const Map = struct {
     const Flags = packed struct(usize) {
         visibility: Visibility = .private,
-        zb2: u2 = 0,
-        fixed: bool = false,
-        anonymous: bool = true,
-        zb6: u2 = 0,
-        grows_down: bool = false,
-        zb9: u2 = 0,
-        deny_write: bool = false,
-        executable: bool = false,
-        locked: bool = false,
-        no_reserve: bool = false,
-        populate: bool = false,
-        non_block: bool = false,
-        stack: bool = false,
-        hugetlb: bool = false,
-        sync: bool = false,
-        fixed_noreplace: bool = true,
-        zb21: u43 = 0,
-    };
-    const Visibility = enum(u2) { shared = 1, private = 2, shared_validate = 3 };
-};
-pub const MapSpec = struct {
-    options: Options = .{},
-    errors: sys.ErrorPolicy = .{ .throw = sys.mmap_errors },
-    return_type: type = void,
-    logging: builtin.Logging.AcquireError = .{},
-    const Specification = @This();
-
-    const Map = packed struct(usize) {
-        visibility: enum(u2) { shared = 1, private = 2, shared_validate = 3 } = .private,
         zb2: u2 = 0,
         fixed: bool = false,
         anonymous: bool = true,
@@ -157,10 +117,11 @@ pub const MapSpec = struct {
         stack: bool = false,
         huge_tlb: bool = false,
         sync: bool = false,
-        fixed_noreplace: bool = false,
+        fixed_noreplace: bool = true,
         zb21: u43 = 0,
     };
-    const Protect = packed struct(usize) {
+    const Visibility = enum(u2) { shared = 1, private = 2, shared_validate = 3 };
+    const Protection = packed struct(usize) {
         read: bool = true,
         write: bool = true,
         exec: bool = false,
@@ -169,16 +130,12 @@ pub const MapSpec = struct {
         grows_up: bool = false,
         zb26: u38 = 0,
     };
-    pub const Options = struct {
-        anonymous: bool = true,
-        visibility: _Map.Visibility = .private,
-        read: bool = true,
-        write: bool = true,
-        exec: bool = false,
-        populate: bool = false,
-        grows_down: bool = false,
-        sync: bool = false,
-    };
+};
+pub const MapSpec = struct {
+    errors: sys.ErrorPolicy = .{ .throw = sys.mmap_errors },
+    return_type: type = void,
+    logging: builtin.Logging.AcquireError = .{},
+    const Specification = @This();
 };
 pub const SyncSpec = struct {
     options: Options = .{},
@@ -233,193 +190,24 @@ pub const UnmapSpec = struct {
     const Specification = @This();
 };
 pub const ProtectSpec = struct {
-    options: Options = .{},
     errors: sys.ErrorPolicy = .{ .throw = sys.mprotect_errors },
     return_type: type = void,
     logging: builtin.Logging.SuccessError = .{},
     const Specification = @This();
-    pub const Options = struct {
-        none: bool = false,
-        read: bool = false,
-        write: bool = false,
+    const Protection = packed struct(usize) {
+        read: bool = true,
+        write: bool = true,
         exec: bool = false,
-        grows_up: bool = false,
+        zb3: u21 = 0,
         grows_down: bool = false,
+        grows_up: bool = false,
+        zb26: u38 = 0,
     };
-    pub fn prot(comptime spec: Specification) Prot.Options {
-        var prot_bitfield: Prot.Options = .{ .val = 0 };
-        if (spec.options.read) {
-            prot_bitfield.set(.read);
-        }
-        if (spec.options.write) {
-            prot_bitfield.set(.write);
-        }
-        if (spec.options.exec) {
-            prot_bitfield.set(.exec);
-        }
-        if (spec.options.none) {
-            prot_bitfield.set(.none);
-        }
-        if (spec.options.grows_down) {
-            prot_bitfield.set(.grows_down);
-        }
-        if (spec.options.grows_up) {
-            prot_bitfield.set(.grows_up);
-        }
-        comptime return prot_bitfield;
-    }
 };
 pub const AdviseSpec = struct {
-    options: Options = .{},
     errors: sys.ErrorPolicy = .{ .throw = sys.madvise_errors },
     return_type: type = void,
     logging: builtin.Logging.SuccessError = .{},
-    const Options = struct {
-        usage: ?Usage = null,
-        action: ?Action = null,
-        property: ?Property = null,
-    };
-    const Usage = enum { normal, random, sequential, immediate, deferred };
-    const Action = enum { reclaim, free, remove, pageout, poison };
-    const Property = union(enum) { mergeable: bool, hugepage: bool, dump: bool, fork: bool, wipe_on_fork: bool };
-    pub fn advice(comptime spec: AdviseSpec) Advice.Options {
-        var advice_bitfield: Advice.Options = .{ .val = 0 };
-        if (spec.options.usage) |usage| {
-            switch (usage) {
-                .normal => {
-                    advice_bitfield.set(.normal);
-                },
-                .random => {
-                    advice_bitfield.set(.random);
-                },
-                .sequential => {
-                    advice_bitfield.set(.sequential);
-                },
-                .immediate => {
-                    advice_bitfield.set(.immediate);
-                },
-                .deferred => {
-                    advice_bitfield.set(.deferred);
-                },
-            }
-        }
-        if (spec.options.action) |action| {
-            switch (action) {
-                .remove => {
-                    advice_bitfield.set(.remove);
-                },
-                .free => {
-                    advice_bitfield.set(.free);
-                },
-                .reclaim => {
-                    advice_bitfield.set(.reclaim);
-                },
-                .pageout => {
-                    advice_bitfield.set(.pageout);
-                },
-                .poison => {
-                    advice_bitfield.set(.poison);
-                },
-            }
-        }
-        if (spec.options.property) |property| {
-            switch (property) {
-                .mergeable => |mergeable| {
-                    if (mergeable) {
-                        advice_bitfield.set(.mergeable);
-                    } else {
-                        advice_bitfield.set(.unmergeable);
-                    }
-                },
-                .hugepage => |hugepage| {
-                    if (hugepage) {
-                        advice_bitfield.set(.hugepage);
-                    } else {
-                        advice_bitfield.set(.no_hugepage);
-                    }
-                },
-                .dump => |dump| {
-                    if (dump) {
-                        advice_bitfield.set(.dump);
-                    } else {
-                        advice_bitfield.set(.no_dump);
-                    }
-                },
-                .fork => |fork| {
-                    if (fork) {
-                        advice_bitfield.set(.fork);
-                    } else {
-                        advice_bitfield.set(.no_fork);
-                    }
-                },
-                .wipe_on_fork => |wipe_on_fork| {
-                    if (wipe_on_fork) {
-                        advice_bitfield.set(.wipe_on_fork);
-                    } else {
-                        advice_bitfield.set(.keep_on_fork);
-                    }
-                },
-            }
-        }
-        if (advice_bitfield.val == 0) {
-            advice_bitfield.set(.normal);
-        }
-        comptime return advice_bitfield;
-    }
-    pub fn describe(comptime spec: AdviseSpec) []const u8 {
-        if (spec.options.usage) |usage| {
-            switch (usage) {
-                .normal => return "expect normal usage",
-                .random => return "expect page references in random order",
-                .sequential => return "expect page references in sequential order",
-                .immediate => return "expect access in the near future",
-                .deferred => return "do not expect access in the near future",
-            }
-        }
-        if (spec.options.action) |action| {
-            switch (action) {
-                .remove => return "swap out backing store",
-                .free => return "swap out pages as needed",
-                .pageout => return "swap out pages now",
-                .reclaim => return "reclaim pages",
-                .poison => return "illegal access",
-            }
-        }
-        if (spec.options.property) |property| {
-            switch (property) {
-                .mergeable => |mergeable| {
-                    if (mergeable) {
-                        return "merge identical pages";
-                    } else {
-                        return "do not merge identical pages";
-                    }
-                },
-                .hugepage => |hugepage| {
-                    if (hugepage) {
-                        return "expect large contiguous mappings";
-                    } else {
-                        return "do not expect large contiguous mappings";
-                    }
-                },
-                .dump => |dump| if (dump) {
-                    return "include in core dump";
-                } else {
-                    return "exclude from core dump";
-                },
-                .fork => |fork| if (fork) {
-                    return "available to child processes";
-                } else {
-                    return "unavailable to child processes";
-                },
-                .wipe_on_fork => |wipe_on_fork| if (wipe_on_fork) {
-                    return "wiping on fork";
-                } else {
-                    return "keeping on fork";
-                },
-            }
-        }
-        return "(unknown advise)";
-    }
 };
 pub const FdSpec = struct {
     options: Options = .{},
@@ -784,7 +572,7 @@ pub fn testReleaseElementary(comptime AddressSpace: type, address_space: *Addres
     }
     return ret;
 }
-pub fn map(comptime spec: MapSpec, flags: MapSpec.Map, prot: MapSpec.Protect, addr: u64, len: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
+pub fn map(comptime spec: MapSpec, flags: Map.Flags, prot: Map.Protection, addr: u64, len: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
     const logging: builtin.Logging.AcquireError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.mmap, spec.errors, spec.return_type, .{
         addr, len, @as(usize, @bitCast(prot)), @as(usize, @bitCast(flags)), ~@as(u64, 0), 0,
@@ -859,10 +647,9 @@ pub fn unmap(comptime spec: UnmapSpec, addr: u64, len: u64) sys.ErrorUnion(spec.
         return unmap_error;
     }
 }
-pub fn protect(comptime spec: ProtectSpec, addr: u64, len: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
-    const prot: Prot.Options = comptime spec.prot();
+pub fn protect(comptime spec: ProtectSpec, prot: ProtectSpec.Protection, addr: u64, len: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
     const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.mprotect, spec.errors, spec.return_type, .{ addr, len, prot.val }))) {
+    if (meta.wrap(sys.call(.mprotect, spec.errors, spec.return_type, .{ addr, len, @as(usize, @bitCast(prot)) }))) {
         if (logging.Success) {
             debug.protectNotice(addr, len, "<description>");
         }
@@ -873,16 +660,15 @@ pub fn protect(comptime spec: ProtectSpec, addr: u64, len: u64) sys.ErrorUnion(s
         return protect_error;
     }
 }
-pub fn advise(comptime spec: AdviseSpec, addr: u64, len: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
-    const advice: Advice.Options = comptime spec.advice();
+pub fn advise(comptime spec: AdviseSpec, advice: Advice, addr: u64, len: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
     const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.madvise, spec.errors, spec.return_type, .{ addr, len, advice.val }))) {
+    if (meta.wrap(sys.call(.madvise, spec.errors, spec.return_type, .{ addr, len, @intFromEnum(advice) }))) {
         if (logging.Success) {
-            debug.adviseNotice(addr, len, spec.describe());
+            debug.adviseNotice(addr, len, advice.describe());
         }
     } else |madvise_error| {
         if (logging.Error) {
-            debug.adviseError(madvise_error, addr, len, spec.describe());
+            debug.adviseError(madvise_error, addr, len, advice.describe());
         }
         return madvise_error;
     }
