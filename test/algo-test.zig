@@ -46,8 +46,8 @@ pub const S = struct {
 pub fn compareSorts() !void {
     const size = 0x400000;
     const T = u64;
-    try mem.map(.{ .options = .{} }, size, size);
-    try mem.map(.{ .options = .{} }, size + size, size);
+    try mem.map(.{}, .{}, .{}, size, size);
+    try mem.map(.{}, .{}, .{}, size + size, size);
     const rnbuf: []u8 = @as([*]u8, @ptrFromInt(size))[0..size];
     try file.readRandom(rnbuf);
     const values_1 = @as([*]T, @ptrFromInt(size))[0..(size / @sizeOf(T))];
