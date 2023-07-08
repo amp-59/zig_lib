@@ -10,7 +10,7 @@ const testing = zig_lib.testing;
 
 pub usingnamespace proc.start;
 
-pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
+pub const logging_override: builtin.Logging.Override = spec.logging.override.verbose;
 
 const Node = build.GenericNode(.{ .options = .{
     .commands = .{ .archive = true },
