@@ -7,7 +7,6 @@ const meta = @import("./meta.zig");
 const algo = @import("./algo.zig");
 const builtin = @import("./builtin.zig");
 const container = @import("./container.zig");
-const special = mem;
 pub const ArenaAllocatorOptions = struct {
     /// Experimental feature:
     check_parametric: bool = builtin.is_debug,
@@ -255,7 +254,7 @@ fn GenericAllocatorInterface(comptime Allocator: type) type {
             if (Allocator.allocator_spec.options.prefer_remap) {
                 if (Allocator.allocator_spec.options.require_geometric_growth) {
                     const t_bytes: u64 = builtin.max(u64, allocator.mapped_byte_count(), s_bytes);
-                    try meta.wrap(special.resize(
+                    try meta.wrap(mem.resize(
                         Allocator.remap_spec,
                         mapped_byte_address(allocator),
                         mapped_byte_count(allocator),
@@ -263,7 +262,7 @@ fn GenericAllocatorInterface(comptime Allocator: type) type {
                     ));
                     allocator.up_addr +%= t_bytes;
                 } else {
-                    try meta.wrap(special.resize(
+                    try meta.wrap(mem.resize(
                         Allocator.remap_spec,
                         mapped_byte_address(allocator),
                         mapped_byte_count(allocator),
@@ -274,10 +273,10 @@ fn GenericAllocatorInterface(comptime Allocator: type) type {
             } else if (s_bytes >= 4096) {
                 if (Allocator.allocator_spec.options.require_geometric_growth) {
                     const t_bytes: u64 = builtin.max(u64, allocator.mapped_byte_count(), s_bytes);
-                    try meta.wrap(special.map(Allocator.map_spec, .{}, .{}, unmapped_byte_address(allocator), t_bytes));
+                    try meta.wrap(mem.map(Allocator.map_spec, .{}, .{}, unmapped_byte_address(allocator), t_bytes));
                     allocator.up_addr +%= t_bytes;
                 } else {
-                    try meta.wrap(special.map(Allocator.map_spec, .{}, .{}, unmapped_byte_address(allocator), s_bytes));
+                    try meta.wrap(mem.map(Allocator.map_spec, .{}, .{}, unmapped_byte_address(allocator), s_bytes));
                     allocator.up_addr +%= s_bytes;
                 }
             }
@@ -286,16 +285,16 @@ fn GenericAllocatorInterface(comptime Allocator: type) type {
             builtin.assertEqual(u64, s_bytes & 4095, 0);
             if (s_bytes >= 4096) {
                 allocator.up_addr -%= s_bytes;
-                return special.unmap(Allocator.unmap_spec, unmapped_byte_address(allocator), s_bytes);
+                return mem.unmap(Allocator.unmap_spec, unmapped_byte_address(allocator), s_bytes);
             }
         }
         fn mapInit(allocator: *Allocator) sys.ErrorUnion(Allocator.map_spec.errors, void) {
             if (Allocator.allocator_spec.options.prefer_remap) {
                 const s_bytes: u64 = Allocator.allocator_spec.options.init_commit orelse 4096;
-                try meta.wrap(special.map(Allocator.map_spec, .{}, .{}, unmapped_byte_address(allocator), s_bytes));
+                try meta.wrap(mem.map(Allocator.map_spec, .{}, .{}, unmapped_byte_address(allocator), s_bytes));
                 allocator.up_addr +%= s_bytes;
             } else if (Allocator.allocator_spec.options.init_commit) |s_bytes| {
-                try meta.wrap(special.map(Allocator.map_spec, .{}, .{}, unmapped_byte_address(allocator), s_bytes));
+                try meta.wrap(mem.map(Allocator.map_spec, .{}, .{}, unmapped_byte_address(allocator), s_bytes));
                 allocator.up_addr +%= s_bytes;
             }
         }
@@ -486,13 +485,13 @@ pub fn GenericArenaAllocator(comptime spec: ArenaAllocatorSpec) type {
             };
             switch (@TypeOf(AddressSpace.addr_spec)) {
                 mem.RegularAddressSpaceSpec => {
-                    try meta.wrap(special.acquire(AddressSpace, address_space, spec.arena_index));
+                    try meta.wrap(mem.acquire(AddressSpace, address_space, spec.arena_index));
                 },
                 mem.DiscreteAddressSpaceSpec => {
-                    try meta.wrap(special.acquireStatic(AddressSpace, address_space, spec.arena_index));
+                    try meta.wrap(mem.acquireStatic(AddressSpace, address_space, spec.arena_index));
                 },
                 mem.ElementaryAddressSpaceSpec => {
-                    try meta.wrap(special.acquireElementary(AddressSpace, address_space));
+                    try meta.wrap(mem.acquireElementary(AddressSpace, address_space));
                 },
                 else => @compileError("invalid address space for this allocator"),
             }
@@ -508,13 +507,13 @@ pub fn GenericArenaAllocator(comptime spec: ArenaAllocatorSpec) type {
             }
             switch (@TypeOf(AddressSpace.addr_spec)) {
                 mem.RegularAddressSpaceSpec => {
-                    try meta.wrap(special.release(AddressSpace, address_space, spec.arena_index));
+                    try meta.wrap(mem.release(AddressSpace, address_space, spec.arena_index));
                 },
                 mem.DiscreteAddressSpaceSpec => {
-                    try meta.wrap(special.releaseStatic(AddressSpace, address_space, spec.arena_index));
+                    try meta.wrap(mem.releaseStatic(AddressSpace, address_space, spec.arena_index));
                 },
                 mem.ElementaryAddressSpaceSpec => {
-                    try meta.wrap(special.releaseElementary(AddressSpace, address_space));
+                    try meta.wrap(mem.releaseElementary(AddressSpace, address_space));
                 },
                 else => @compileError("invalid address space for this allocator"),
             }
