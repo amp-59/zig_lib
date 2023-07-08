@@ -274,10 +274,10 @@ fn GenericAllocatorInterface(comptime Allocator: type) type {
             } else if (s_bytes >= 4096) {
                 if (Allocator.allocator_spec.options.require_geometric_growth) {
                     const t_bytes: u64 = builtin.max(u64, allocator.mapped_byte_count(), s_bytes);
-                    try meta.wrap(special.map(Allocator.map_spec, unmapped_byte_address(allocator), t_bytes));
+                    try meta.wrap(special.map(Allocator.map_spec, .{}, .{}, unmapped_byte_address(allocator), t_bytes));
                     allocator.up_addr +%= t_bytes;
                 } else {
-                    try meta.wrap(special.map(Allocator.map_spec, unmapped_byte_address(allocator), s_bytes));
+                    try meta.wrap(special.map(Allocator.map_spec, .{}, .{}, unmapped_byte_address(allocator), s_bytes));
                     allocator.up_addr +%= s_bytes;
                 }
             }
@@ -292,10 +292,10 @@ fn GenericAllocatorInterface(comptime Allocator: type) type {
         fn mapInit(allocator: *Allocator) sys.ErrorUnion(Allocator.map_spec.errors, void) {
             if (Allocator.allocator_spec.options.prefer_remap) {
                 const s_bytes: u64 = Allocator.allocator_spec.options.init_commit orelse 4096;
-                try meta.wrap(special.map(Allocator.map_spec, unmapped_byte_address(allocator), s_bytes));
+                try meta.wrap(special.map(Allocator.map_spec, .{}, .{}, unmapped_byte_address(allocator), s_bytes));
                 allocator.up_addr +%= s_bytes;
             } else if (Allocator.allocator_spec.options.init_commit) |s_bytes| {
-                try meta.wrap(special.map(Allocator.map_spec, unmapped_byte_address(allocator), s_bytes));
+                try meta.wrap(special.map(Allocator.map_spec, .{}, .{}, unmapped_byte_address(allocator), s_bytes));
                 allocator.up_addr +%= s_bytes;
             }
         }
