@@ -504,29 +504,50 @@ pub const serializer = struct {
         };
     };
 };
+pub const file = struct {
+    pub const map = struct {
+        pub const flags = struct {
+            pub const regular: zig_lib.file.Map.Flags = .{
+                .visibility = .shared,
+            };
+            pub const executable: zig_lib.file.Map.Flags = .{
+                .populate = true,
+                .visibility = .private,
+            };
+        };
+        pub const prot = struct {
+            pub const regular: zig_lib.file.Map.Protection = .{
+                .read = true,
+                .write = true,
+                .exec = false,
+            };
+            pub const executable: zig_lib.file.Map.Protection = .{
+                .read = true,
+                .write = false,
+                .exec = true,
+            };
+        };
+    };
+    pub const create = struct {
+        pub const truncate: zig_lib.file.Open.Flags = .{
+            .truncate = true,
+            .write = true,
+            .exclusive = false,
+        };
+    };
+    pub const open = struct {
+        pub const append: zig_lib.file.Open.Flags = .{
+            .write_only = true,
+            .append = true,
+            .exclusive = false,
+        };
+    };
+};
 const sys = struct {
     pub const generic = struct {
         pub const noexcept = .{ .errors = .{} };
     };
     pub const mmap = struct {
-        pub const options = struct {
-            pub const executable: zig_lib.file.MapSpec.Options = .{
-                .visibility = .private,
-                .read = true,
-                .write = false,
-                .exec = true,
-                .populate = true,
-                .sync = false,
-            };
-            pub const regular: zig_lib.file.MapSpec.Options = .{
-                .visibility = .shared,
-                .read = true,
-                .write = true,
-                .exec = false,
-                .populate = false,
-                .sync = false,
-            };
-        };
         pub const errors = struct {
             pub const all: []const zig_lib.sys.ErrorCode = &.{
                 .ACCES, .AGAIN, .BADF,     .EXIST, .INVAL,  .NFILE,
@@ -591,14 +612,6 @@ const sys = struct {
         };
     };
     pub const open = struct {
-        pub const append_zen: zig_lib.file.OpenSpec = .{
-            .errors = .{ .throw = sys.open.errors.all },
-            .options = .{ .write_only = true, .append = true },
-        };
-        pub const append_noexcept: zig_lib.file.OpenSpec = .{
-            .errors = .{},
-            .options = .{ .read_write = true, .append = true },
-        };
         pub const errors = struct {
             pub const all: []const zig_lib.sys.ErrorCode = &.{
                 .ACCES, .FBIG,        .NOTDIR,   .EXIST,  .OPNOTSUPP, .MFILE, .NOSPC,
