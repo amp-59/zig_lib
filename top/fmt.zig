@@ -623,21 +623,23 @@ pub fn GenericRangeFormat(comptime fmt_spec: PolynomialFormatSpec) type {
             const upper_fmt: SubFormat = SubFormat{ .value = format.upper };
             const lower_s: SubFormat.StaticString = lower_fmt.formatConvert();
             const upper_s: SubFormat.StaticString = upper_fmt.formatConvert();
-            var i: u64 = 0;
+            var idx: u64 = 0;
             const lower_s_count: u64 = lower_s.len();
             const upper_s_count: u64 = upper_s.len();
-            while (i != lower_s_count) : (i +%= 1) {
-                if (upper_s.readOneAt(i) != lower_s.readOneAt(i)) {
+            while (idx != lower_s_count) : (idx +%= 1) {
+                if (upper_s.readOneAt(idx) != lower_s.readOneAt(idx)) {
                     break;
                 }
             }
-            array.writeMany(upper_s.readAll()[0..i]);
+            array.writeMany(upper_s.readAll()[0..idx]);
             array.writeOne('{');
-            var z: u64 = upper_s_count -% lower_s_count;
-            while (z != 0) : (z -%= 1) array.writeOne('0');
-            array.writeMany(lower_s.readAll()[i..lower_s_count]);
+            var del: u64 = upper_s_count -% lower_s_count;
+            while (del != 0) : (del -%= 1) {
+                array.writeOne('0');
+            }
+            array.writeMany(lower_s.readAll()[idx..lower_s_count]);
             array.writeMany("..");
-            array.writeMany(upper_s.readAll()[i..upper_s_count]);
+            array.writeMany(upper_s.readAll()[idx..upper_s_count]);
             array.writeOne('}');
         }
         pub fn init(lower: SubFormat.Int, upper: SubFormat.Int) Format {
@@ -841,85 +843,6 @@ pub fn GenericChangedRangeFormat(comptime fmt_spec: ChangedRangeFormatSpec) type
             };
         }
     });
-}
-pub const ListFormatSpec = struct {
-    item: type,
-    transform: ?meta.Generic = null,
-    separator: []const u8 = ", ",
-    omit_trailing_separator: bool = true,
-    reinterpret: mem.ReinterpretSpec = spec.reinterpret.fmt,
-};
-pub fn GenericListFormat(comptime fmt_spec: ListFormatSpec) type {
-    return (struct {
-        values: []const fmt_spec.item,
-        const Format = @This();
-        pub fn formatWrite(format: Format, array: anytype) void {
-            if (fmt_spec.omit_trailing_separator) {
-                if (format.values.len != 0) {
-                    if (fmt_spec.transform) |transform| {
-                        array.writeFormat(meta.typeCast(transform)(format.values[0]));
-                    } else {
-                        array.writeMany(format.values[0]);
-                    }
-                }
-                if (format.values.len != 1) {
-                    for (format.values[1..]) |value| {
-                        array.writeAny(fmt_spec.reinterpret, fmt_spec.separator);
-                        if (fmt_spec.transform) |transform| {
-                            array.writeFormat(meta.typeCast(transform)(value));
-                        } else {
-                            array.writeMany(value);
-                        }
-                    }
-                }
-            } else {
-                for (format.values) |value| {
-                    if (fmt_spec.transform) |transform| {
-                        array.writeFormat(meta.typeCast(transform)(value));
-                    } else {
-                        array.writeMany(value);
-                    }
-                    array.writeMany(fmt_spec.separator);
-                }
-            }
-        }
-        pub fn formatLength(format: Format) u64 {
-            var len: u64 = 0;
-            if (fmt_spec.omit_trailing_separator) {
-                if (format.values.len != 0) {
-                    len +%= mem.ReinterpretSpec.lengthAny(fmt_spec.reinterpret, fmt_spec.separator);
-                    if (fmt_spec.transform) |transform| {
-                        len +%= mem.ReinterpretSpec.lengthFormat(meta.typeCast(transform)(format.values[0]));
-                    } else {
-                        len +%= format.values.len;
-                    }
-                }
-                if (format.values.len != 1) {
-                    for (format.values[1..]) |value| {
-                        len +%= mem.ReinterpretSpec.lengthAny(fmt_spec.reinterpret, fmt_spec.separator);
-                        if (fmt_spec.transform) |transform| {
-                            len +%= mem.ReinterpretSpec.lengthFormat(meta.typeCast(transform)(value));
-                        } else {
-                            len +%= format.value.len;
-                        }
-                    }
-                }
-            } else {
-                for (format.values) |value| {
-                    if (fmt_spec.transform) |transform| {
-                        len +%= mem.ReinterpretSpec.lengthFormat(meta.typeCast(transform)(value));
-                    } else {
-                        len +%= format.value.len;
-                    }
-                    len +%= mem.ReinterpretSpec.lengthAny(fmt_spec.reinterpret, fmt_spec.separator);
-                }
-            }
-            return len;
-        }
-    });
-}
-pub fn list(values: []const []const u8) GenericListFormat(.{ .item = []const u8 }) {
-    return .{ .values = values };
 }
 pub fn GenericDateTimeFormat(comptime DateTime: type) type {
     return (struct {
