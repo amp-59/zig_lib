@@ -98,8 +98,8 @@ pub const Fd = struct {
         const MFD = sys.MFD;
     });
 };
-const Map = struct {
-    const Flags = packed struct(usize) {
+pub const Map = struct {
+    pub const Flags = packed struct(usize) {
         visibility: Visibility = .private,
         zb2: u2 = 0,
         fixed: bool = false,
@@ -120,8 +120,12 @@ const Map = struct {
         fixed_noreplace: bool = true,
         zb21: u43 = 0,
     };
-    const Visibility = enum(u2) { shared = 1, private = 2, shared_validate = 3 };
-    const Protection = packed struct(usize) {
+    pub const Visibility = enum(u2) {
+        shared = 1,
+        private = 2,
+        shared_validate = 3,
+    };
+    pub const Protection = packed struct(usize) {
         read: bool = true,
         write: bool = true,
         exec: bool = false,
