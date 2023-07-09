@@ -341,9 +341,18 @@ fn testBinarySize() void {
     array.writeFormat(fmt.ux64(@intFromPtr(&array)));
     builtin.debug.write(array.readAll());
 }
+fn testGenericRangeFormat() !void {
+    var array: PrintArray = undefined;
+    array.undefineAll();
+    const Range = fmt.GenericRangeFormat(.{ .bits = 64, .signedness = .unsigned, .radix = 16, .width = .min });
+    const range_fmt: Range = .{ .lower = 0x7f2, .upper = 0x7f3 };
+    array.writeFormat(range_fmt);
+    try testing.expectEqualString("7f{2..3}", array.readAll());
+}
 pub fn main() !void {
     try testBytesToHex();
     try testHexToBytes();
+    try testGenericRangeFormat();
     try @import("./fmt/utf8.zig").utf8TestMain();
     try @import("./fmt/ascii.zig").asciiTestMain();
     if (test_size) {
