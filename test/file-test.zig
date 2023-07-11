@@ -219,8 +219,15 @@ fn testPathAt(dir_fd: u64) !u64 {
     return file.pathAt(path_spec, dir_fd, "file_test");
 }
 fn testCreate() !void {
+    testing.announce(@src());
     const fd: u64 = try file.create(create_spec, test_dir ++ "file_test/file_test/file_test", file.mode.regular);
     try file.close(close_spec, fd);
+}
+fn testPathRegular() !void {
+    const path_reg_fd: u64 = try meta.wrap(file.path(file_path_spec, test_dir ++ "file_test/file_test/file_test"));
+    try file.assertNot(stat_spec, path_reg_fd, .unknown);
+    try file.assert(stat_spec, path_reg_fd, .regular);
+    try meta.wrap(file.close(close_spec, path_reg_fd));
 }
 fn testFileOperationsRound2() !void {
     testing.announce(@src());
@@ -230,9 +237,7 @@ fn testFileOperationsRound2() !void {
     try testPath();
     var path_dir_fd: u64 = try testPathAt(dir_fd);
     try testCreate();
-    const path_reg_fd: u64 = try meta.wrap(file.path(file_path_spec, test_dir ++ "file_test/file_test/file_test"));
-    try file.assertNot(stat_spec, path_reg_fd, .unknown);
-    try file.assert(stat_spec, path_reg_fd, .regular);
+    try testPathRegular();
     try file.makeNode(make_node_spec, test_dir ++ "file_test/regular", .{}, .{});
     try file.unlink(unlink_spec, test_dir ++ "file_test/regular");
     try file.makeNode(make_node_spec, test_dir ++ "file_test/fifo", .{ .kind = .named_pipe }, .{});
@@ -241,7 +246,6 @@ fn testFileOperationsRound2() !void {
     try file.write(.{}, new_in_fd, builtin.fmt.ud64(new_in_fd).readAll());
     try file.duplicateTo(.{}, new_in_fd, new_in_fd +% 1);
     try file.write(.{}, new_in_fd +% 1, builtin.fmt.ud64(new_in_fd +% 1).readAll());
-    try meta.wrap(file.close(close_spec, path_reg_fd));
     try meta.wrap(file.unlinkAt(unlink_spec, path_dir_fd, "file_test"));
     try meta.wrap(file.close(close_spec, path_dir_fd));
     try meta.wrap(file.removeDir(remove_dir_spec, test_dir ++ "file_test/file_test"));
