@@ -205,12 +205,31 @@ fn testMakeDir() !void {
     testing.announce(@src());
     try meta.wrap(file.makeDir(make_dir_spec, test_dir ++ "file_test", file.mode.directory));
 }
+fn testMakeDirAt(dir_fd: u64) !void {
+    testing.announce(@src());
+    try file.makeDirAt(make_dir_spec, dir_fd, "file_test", file.mode.directory);
+}
+fn testPath() !void {
+    testing.announce(@src());
+    var path_dir_fd: u64 = try file.path(path_spec, test_dir ++ "file_test/file_test");
+    try file.close(close_spec, path_dir_fd);
+}
+fn testPathAt(dir_fd: u64) !u64 {
+    testing.announce(@src());
+    return file.pathAt(path_spec, dir_fd, "file_test");
+}
+fn testCreate() !void {
+    const fd: u64 = try file.create(create_spec, test_dir ++ "file_test/file_test/file_test", file.mode.regular);
+    try file.close(close_spec, fd);
+}
 fn testFileOperationsRound2() !void {
+    testing.announce(@src());
     try testMakeDir();
     const dir_fd: u64 = try file.open(open_dir_spec, test_dir ++ "file_test");
-    try file.makeDirAt(make_dir_spec, dir_fd, "file_test", file.mode.directory);
-    var path_dir_fd: u64 = try meta.wrap(file.path(path_spec, test_dir ++ "file_test/file_test"));
-    try meta.wrap(file.close(close_spec, try meta.wrap(file.create(create_spec, test_dir ++ "file_test/file_test/file_test", file.mode.regular))));
+    try testMakeDirAt(dir_fd);
+    try testPath();
+    var path_dir_fd: u64 = try testPathAt(dir_fd);
+    try testCreate();
     const path_reg_fd: u64 = try meta.wrap(file.path(file_path_spec, test_dir ++ "file_test/file_test/file_test"));
     try file.assertNot(stat_spec, path_reg_fd, .unknown);
     try file.assert(stat_spec, path_reg_fd, .regular);
