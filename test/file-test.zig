@@ -201,11 +201,14 @@ pub fn testFileTests() !void {
     try file.close(close_spec, fd);
     try file.removeDir(remove_dir_spec, test_dir ++ "file_test");
 }
-fn testFileOperationsRound2() !void {
+fn testMakeDir() !void {
     testing.announce(@src());
     try meta.wrap(file.makeDir(make_dir_spec, test_dir ++ "file_test", file.mode.directory));
-    const dir_fd: u64 = try meta.wrap(file.open(open_dir_spec, test_dir ++ "file_test"));
-    try meta.wrap(file.makeDirAt(make_dir_spec, dir_fd, "file_test", file.mode.directory));
+}
+fn testFileOperationsRound2() !void {
+    try testMakeDir();
+    const dir_fd: u64 = try file.open(open_dir_spec, test_dir ++ "file_test");
+    try file.makeDirAt(make_dir_spec, dir_fd, "file_test", file.mode.directory);
     var path_dir_fd: u64 = try meta.wrap(file.path(path_spec, test_dir ++ "file_test/file_test"));
     try meta.wrap(file.close(close_spec, try meta.wrap(file.create(create_spec, test_dir ++ "file_test/file_test/file_test", file.mode.regular))));
     const path_reg_fd: u64 = try meta.wrap(file.path(file_path_spec, test_dir ++ "file_test/file_test/file_test"));
