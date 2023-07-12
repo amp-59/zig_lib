@@ -189,18 +189,15 @@ pub fn testClientAndServerIPv6(args: [][*:0]u8) !void {
     try time.sleep(.{}, .{ .nsec = 50000 });
     try testClientIPv6(args);
 }
-fn testPathAssert() !void {
-    const path: [:0]const u8 = test_dir ++ "file_test";
+fn testPathAssert(path: [:0]const u8) !void {
     testing.announce(@src());
     try file.pathAssert(stat_spec, path, .directory);
 }
-fn testPathIs() !void {
-    const path: [:0]const u8 = test_dir ++ "file_test";
+fn testPathIs(path: [:0]const u8) !void {
     testing.announce(@src());
     try builtin.expect(try file.pathIs(stat_spec, path, .directory));
 }
-fn testPathIsNot() !void {
-    const path: [:0]const u8 = test_dir ++ "file_test";
+fn testPathIsNot(path: [:0]const u8) !void {
     testing.announce(@src());
     try builtin.expect(try file.pathIsNot(stat_spec, path, .regular));
     try builtin.expect(try file.pathIsNot(stat_spec, path, .block_special));
@@ -221,16 +218,17 @@ fn testFileIsNot(fd: u64) !void {
     try builtin.expect(try file.isNot(stat_spec, .symbolic_link, fd));
 }
 pub fn testFileTests() !void {
+    const path: [:0]const u8 = test_dir ++ "file_test";
     testing.announce(@src());
-    try file.makeDir(make_dir_spec, test_dir ++ "file_test", file.mode.directory);
-    try testPathAssert();
-    try testPathIs();
-    try testPathIsNot();
-    const fd: u64 = try file.open(open_dir_spec, test_dir ++ "file_test");
+    try file.makeDir(make_dir_spec, path, file.mode.directory);
+    try testPathAssert(path);
+    try testPathIs(path);
+    try testPathIsNot(path);
+    const fd: u64 = try file.open(open_dir_spec, path);
     try testFileIs(fd);
     try testFileIsNot(fd);
     try file.close(close_spec, fd);
-    try file.removeDir(remove_dir_spec, test_dir ++ "file_test");
+    try file.removeDir(remove_dir_spec, path);
 }
 fn testMakeDir() !void {
     testing.announce(@src());
