@@ -190,17 +190,35 @@ pub fn testClientAndServerIPv6(args: [][*:0]u8) !void {
     try testClientIPv6(args);
 }
 fn testPathAssert() !void {
+    const path: [:0]const u8 = test_dir ++ "file_test";
     testing.announce(@src());
-    try file.pathAssert(stat_spec, test_dir ++ "file_test", .directory);
+    try file.pathAssert(stat_spec, path, .directory);
 }
 fn testPathIs() !void {
+    const path: [:0]const u8 = test_dir ++ "file_test";
     testing.announce(@src());
-    try builtin.expect(try file.pathIs(stat_spec, test_dir ++ "file_test", .directory));
+    try builtin.expect(try file.pathIs(stat_spec, path, .directory));
 }
 fn testPathIsNot() !void {
+    const path: [:0]const u8 = test_dir ++ "file_test";
     testing.announce(@src());
-    try builtin.expect(try file.pathIsNot(stat_spec, test_dir ++ "file_test", .regular));
-    try builtin.expect(try file.pathIsNot(stat_spec, test_dir ++ "file_test", .block_special));
+    try builtin.expect(try file.pathIsNot(stat_spec, path, .regular));
+    try builtin.expect(try file.pathIsNot(stat_spec, path, .block_special));
+    try builtin.expect(try file.pathIsNot(stat_spec, path, .named_pipe));
+    try builtin.expect(try file.pathIsNot(stat_spec, path, .socket));
+    try builtin.expect(try file.pathIsNot(stat_spec, path, .symbolic_link));
+}
+fn testFileIs(fd: u64) !void {
+    testing.announce(@src());
+    try builtin.expect(try file.is(stat_spec, fd, .directory));
+}
+fn testFileIsNot(fd: u64) !void {
+    testing.announce(@src());
+    try builtin.expect(try file.isNot(stat_spec, .regular, fd));
+    try builtin.expect(try file.isNot(stat_spec, .block_special, fd));
+    try builtin.expect(try file.isNot(stat_spec, .named_pipe, fd));
+    try builtin.expect(try file.isNot(stat_spec, .socket, fd));
+    try builtin.expect(try file.isNot(stat_spec, .symbolic_link, fd));
 }
 pub fn testFileTests() !void {
     testing.announce(@src());
@@ -208,9 +226,9 @@ pub fn testFileTests() !void {
     try testPathAssert();
     try testPathIs();
     try testPathIsNot();
-
     const fd: u64 = try file.open(open_dir_spec, test_dir ++ "file_test");
-    try builtin.expect(try file.is(stat_spec, fd, .directory));
+    try testFileIs(fd);
+    try testFileIsNot(fd);
     try file.close(close_spec, fd);
     try file.removeDir(remove_dir_spec, test_dir ++ "file_test");
 }
