@@ -189,14 +189,27 @@ pub fn testClientAndServerIPv6(args: [][*:0]u8) !void {
     try time.sleep(.{}, .{ .nsec = 50000 });
     try testClientIPv6(args);
 }
+fn testPathAssert() !void {
+    testing.announce(@src());
+    try file.pathAssert(stat_spec, test_dir ++ "file_test", .directory);
+}
+fn testPathIs() !void {
+    testing.announce(@src());
+    try builtin.expect(try file.pathIs(stat_spec, test_dir ++ "file_test", .directory));
+}
+fn testPathIsNot() !void {
+    testing.announce(@src());
+    try builtin.expect(try file.pathIsNot(stat_spec, test_dir ++ "file_test", .regular));
+    try builtin.expect(try file.pathIsNot(stat_spec, test_dir ++ "file_test", .block_special));
+}
 pub fn testFileTests() !void {
     testing.announce(@src());
     try file.makeDir(make_dir_spec, test_dir ++ "file_test", file.mode.directory);
-    try file.pathAssert(stat_spec, test_dir ++ "file_test", .directory);
+    try testPathAssert();
+    try testPathIs();
+    try testPathIsNot();
+
     const fd: u64 = try file.open(open_dir_spec, test_dir ++ "file_test");
-    try builtin.expect(try file.pathIs(stat_spec, test_dir ++ "file_test", .directory));
-    try builtin.expect(try file.pathIsNot(stat_spec, test_dir ++ "file_test", .regular));
-    try builtin.expect(try file.pathIsNot(stat_spec, test_dir ++ "file_test", .block_special));
     try builtin.expect(try file.is(stat_spec, fd, .directory));
     try file.close(close_spec, fd);
     try file.removeDir(remove_dir_spec, test_dir ++ "file_test");
