@@ -1675,11 +1675,9 @@ pub fn statusExtended(comptime spec: StatusExtendedSpec, fd: u64, pathname: [:0]
 ///     up_addr: u64 = alignAbove(addr + st.size, page_size),
 /// };
 /// ```
-pub fn map(comptime map_spec: MapSpec, fd: u64, addr: u64, len: u64) sys.ErrorUnion(map_spec.errors, map_spec.return_type) {
-    const flags: mem.Map.Options = comptime map_spec.flags();
-    const prot: mem.Prot.Options = comptime map_spec.prot();
+pub fn map(comptime map_spec: MapSpec, prot: Map.Protection, flags: Map.Flags, fd: u64, addr: u64, len: u64) sys.ErrorUnion(map_spec.errors, map_spec.return_type) {
     const logging: builtin.Logging.AcquireError = comptime map_spec.logging.override();
-    if (meta.wrap(sys.call(.mmap, map_spec.errors, map_spec.return_type, .{ addr, len, prot.val, flags.val, fd, 0 }))) {
+    if (meta.wrap(sys.call(.mmap, map_spec.errors, map_spec.return_type, .{ addr, len, @as(usize, @bitCast(prot)), @as(usize, @bitCast(flags)), fd, 0 }))) {
         if (logging.Acquire) {
             mem.debug.mapNotice(addr, len);
         }
