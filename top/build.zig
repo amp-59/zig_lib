@@ -319,8 +319,17 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         },
         const Node = @This();
         const GlobalState = struct {
+            /// Arguments after principal arguments, i.e. argv[5..]
             pub var args: [][*:0]u8 = undefined;
+
+            /// Environment variables
             pub var vars: [][*:0]u8 = undefined;
+
+            pub var zig_exe: [:0]const u8 = "";
+            pub var build_root: [:0]const u8 = "";
+            pub var cache_root: [:0]const u8 = "";
+            pub var global_cache_root: [:0]const u8 = "";
+
             pub var trace: *Node = undefined;
             pub var build_root_fd: u64 = undefined;
             pub var config_root_fd: u64 = undefined;
@@ -431,7 +440,9 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         }
         fn addArg(node: *Node, allocator: *mem.SimpleAllocator) *[*:0]u8 {
             @setRuntimeSafety(builder_spec.options.enable_safety);
-            if (builder_spec.options.enable_usage_validation) {}
+            if (builder_spec.options.enable_usage_validation) {
+                builtin.assert(node.tag == .worker and (node.task.tag == .build or node.task.tag == .run));
+            }
             const size_of: comptime_int = @sizeOf([*:0]u8);
             const addr_buf: *u64 = @ptrCast(&node.impl.args);
             const ret: *[*:0]u8 = @ptrFromInt(allocator.addGeneric(size_of, //
@@ -443,7 +454,9 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         /// `node` must be `build-exe` worker.
         pub fn addConfig(node: *Node, allocator: *mem.SimpleAllocator, config: Config) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
-            if (builder_spec.options.enable_usage_validation) {}
+            if (builder_spec.options.enable_usage_validation) {
+                builtin.assert(node.tag == .worker and node.task.tag == .build);
+            }
             const size_of: comptime_int = @sizeOf(Config);
             const addr_buf: *u64 = @ptrCast(&node.impl.cfgs);
             const ptr: *Config = @ptrFromInt(allocator.addGeneric(size_of, //
@@ -1584,43 +1597,14 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 }
             }
         };
-        // any:     paths[0], build root directory
-        // build:   paths[1], root/core source file pathname
-        // format:  paths[0], source file or directory pathname
-        // archive: paths[0], target archive file pathname
-        fn primaryInput(node: *const Node) types.Path {
-            @setRuntimeSafety(builder_spec.options.enable_safety);
-            switch (node.task) {
-                .build => {
-                    return node.paths[1];
-                },
-                .format, .archive, .any => {
-                    return node.paths[0];
-                },
-                else => |tag| if (builtin.logging_general.Fault) {
-                    builtin.proc.exitErrorFault(error.NoInput, @tagName(tag), 3);
-                } else {
-                    unreachable;
-                },
+        pub fn archivePath(node: *Node) types.Path {
+            if (builder_spec.options.enable_usage_validation) {
+                _ = node;
             }
         }
-        // any:     paths[1], cache root directory
-        // build:   paths[0], binary installation file pathname
-        // archive: paths[0], target archive file pathname
-        fn primaryOutput(node: *const Node) types.Path {
-            @setRuntimeSafety(builder_spec.options.enable_safety);
-            switch (node.task) {
-                .build, .archive => {
-                    return node.paths[0];
-                },
-                .any => {
-                    return node.paths[1];
-                },
-                else => |tag| if (builtin.logging_general.Fault) {
-                    builtin.proc.exitErrorFault(error.NoOutput, @tagName(tag), 3);
-                } else {
-                    unreachable;
-                },
+        pub fn binaryPath(node: *Node) types.Path {
+            if (builder_spec.options.enable_usage_validation) {
+                _ = node;
             }
         }
         fn writeConfigRoot(allocator: *mem.SimpleAllocator, node: *Node) void {
@@ -2373,7 +2357,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     }
                     const is_last: bool = deps_idx == node.impl.deps_len -% 1;
                     const is_only: bool = dep_node.impl.deps_len == 0;
-                    mach.memcpy(buf1 + len1, if (is_last) "  " else "| ", 2);
+                    @memcpy(buf1 + len1, if (is_last) "  " else "| ");
                     buf0[len] = '\n';
                     len +%= 1;
                     mach.memcpy(buf0 + len, buf1, len1);
@@ -2385,7 +2369,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     len +%= 2;
                     mach.memcpy(buf0 + len, dep_node.name.ptr, dep_node.name.len);
                     len +%= dep_node.name.len;
-                    if (dep_node.flags.is_hidden and dep_node.impl.paths_len != 0) {
+                    if (dep_node.impl.paths_len != 0) {
                         len +%= writeSubNode(buf0 + len, len1 +% 2, dep_node, name_width, root_width);
                     }
                     len = writeAndWalkInternal(buf0, len, buf1, len1 +% 2, dep_node, name_width, root_width);
