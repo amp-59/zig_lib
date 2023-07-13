@@ -529,14 +529,14 @@ pub const file = struct {
         };
     };
     pub const create = struct {
-        pub const truncate: zig_lib.file.Open.Flags = .{
+        pub const truncate = .{
             .truncate = true,
             .write = true,
             .exclusive = false,
         };
     };
     pub const open = struct {
-        pub const append: zig_lib.file.Open.Flags = .{
+        pub const append = .{
             .write_only = true,
             .append = true,
             .exclusive = false,
