@@ -25,97 +25,17 @@ const Array = Allocator.StructuredVector(u8);
 const Details = Allocator.StructuredVector(types.Implementation);
 const read_impl_spec: file.ReadSpec = .{ .child = types.Implementation, .errors = .{}, .return_type = void };
 
-const FnArgLists = struct {
-    keys: []Key,
-    keys_len: u64 = 0,
-    const Key = struct {
-        ptr_fn.Fn,
-        u64,
-    };
-    const Value = struct {
-        ptr_fn.Fn,
-        []gen.ArgList,
-    };
-};
-const FnArgListMap = struct {
-    []const FnArgLists.Value,
-    []const FnArgLists,
-};
 const Info = struct {
-    start: u64,
+    start: usize,
     alias: ?ptr_fn.Fn = null,
     fn setAlias(info: *Info, ptr_fn_info: ptr_fn.Fn) void {
         info.alias = ptr_fn_info;
     }
 };
-fn deduceUniqueInterfaceStructs(allocator: *Allocator, array: *Array, impl_details: []types.Implementation) FnArgListMap {
-    var key_len: u64 = 0;
-    for (ptr_fn.list) |ptr_fn_info| {
-        if (!ptr_fn_info.interface()) {
-            continue;
-        }
-        key_len +%= 1;
-    }
-    const arg_list_vals: []FnArgLists.Value = allocator.allocate(FnArgLists.Value, key_len);
-    const arg_list_maps: []FnArgLists = allocator.allocate(FnArgLists, impl_details.len);
-    for (arg_list_maps) |*arg_list_map| {
-        arg_list_map.keys = allocator.allocate(FnArgLists.Key, key_len);
-        arg_list_map.keys_len = 0;
-    }
-    var key_idx: u64 = 0;
-    for (ptr_fn.list) |ptr_fn_info| {
-        if (!ptr_fn_info.interface()) {
-            continue;
-        }
-        const arg_lists: []gen.ArgList = allocator.allocate(gen.ArgList, impl_details.len);
-        var arg_lists_len: u64 = 0;
-        lo: for (impl_details, 0..) |impl_detail, impl_detail_idx| {
-            if (!ptr_fn_info.hasCapability(impl_detail)) {
-                continue :lo;
-            }
-            const arg_list_map: *FnArgLists = &arg_list_maps[impl_detail_idx];
-            const arg_list: gen.ArgList = ptr_fn_info.argList(impl_detail, .Parameter);
-            if (arg_list.len == 0) {
-                continue :lo;
-            }
-            uniq: for (arg_lists[0..arg_lists_len], 0..) |unique_arg_list, unique_arg_list_idx| {
-                if (unique_arg_list.len != arg_list.len) {
-                    continue :uniq;
-                }
-                for (unique_arg_list.readAll(), arg_list.readAll()) |u, v| {
-                    if (u.ptr != v.ptr) {
-                        continue :uniq;
-                    }
-                }
-                arg_list_map.keys[arg_list_map.keys_len] = .{
-                    ptr_fn_info,
-                    unique_arg_list_idx,
-                };
-                arg_list_map.keys_len +%= 1;
-                continue :lo;
-            }
-            arg_list_map.keys[arg_list_map.keys_len] = .{ ptr_fn_info, arg_lists_len };
-            arg_list_map.keys_len +%= 1;
 
-            arg_lists[arg_lists_len] = arg_list;
-            arg_lists_len +%= 1;
-        }
-        arg_list_vals[key_idx] = .{
-            ptr_fn_info,
-            arg_lists[0..arg_lists_len],
-        };
-        key_idx +%= 1;
-    }
-    for (arg_list_vals) |kv| {
-        for (kv[1], 0..) |arg_list, arg_list_idx| {
-            writeInterfaceStruct(array, kv[0], arg_list_idx, arg_list);
-        }
-    }
-    return .{ arg_list_vals, arg_list_maps };
-}
 fn resizeInitializer(allocator: *Allocator, impl_variant: types.Implementation) *[3]expr.Expr {
     var buf: []expr.Expr = allocator.allocate(expr.Expr, 8);
-    var len: u64 = 0;
+    var len: usize = 0;
     const andn_undefined_65535: *[3]expr.Expr = allocator.duplicate([3]expr.Expr, expr.andn(
         expr.symbol(tok.undefined_byte_address_word_access),
         expr.constant(65535),
@@ -209,7 +129,7 @@ fn constructInitializer(allocator: *Allocator, impl_variant: types.Implementatio
         expr.symbol(source_aligned_byte_address_name),
     ));
     var buf: []expr.Expr = allocator.allocate(expr.Expr, 8);
-    var len: u64 = 0;
+    var len: usize = 0;
     if (impl_variant.fields.allocated_byte_address) {
         if (impl_variant.techs.single_packed_approximate_capacity or
             impl_variant.techs.double_packed_approximate_capacity)
@@ -918,14 +838,14 @@ fn writeSignature(
     array: *Array,
     impl_variant: types.Implementation,
     ptr_fn_info: ptr_fn.Fn,
-    arg_lists: []const FnArgLists.Value,
-    key: FnArgLists,
+    arg_lists: []const ptr_fn.FnArgLists.Value,
+    key: ptr_fn.FnArgLists,
 ) void {
     for (key.keys[0..key.keys_len]) |ki_pair| {
         if (ki_pair[0] == ptr_fn_info) {
             for (arg_lists[0..key.keys_len]) |kv_pair| {
                 if (kv_pair[0] == ptr_fn_info) {
-                    const arg_list_idx: u64 = ki_pair[1];
+                    const arg_list_idx: usize = ki_pair[1];
                     const arg_list: gen.ArgList = kv_pair[1][arg_list_idx];
                     array.writeMany("pub inline fn ");
                     array.writeMany(ptr_fn_info.fnName());
@@ -951,7 +871,13 @@ fn writeSignature(
     }
     ptr_fn_info.writeSignature(array, impl_variant);
 }
-fn writeFunctions(allocator: *Allocator, array: *Array, impl_variant: types.Implementation, arg_lists: []const FnArgLists.Value, key: FnArgLists) void {
+fn writeFunctions(
+    allocator: *Allocator,
+    array: *Array,
+    impl_variant: types.Implementation,
+    arg_lists: []const ptr_fn.FnArgLists.Value,
+    key: ptr_fn.FnArgLists,
+) void {
     for (ptr_fn.list) |ptr_fn_info| {
         if (ptr_fn_info != .deallocate and ptr_fn_info.hasCapability(impl_variant)) {
             var info: Info = .{ .start = array.len() };
@@ -1057,7 +983,13 @@ inline fn writeFields(array: *Array, impl_variant: types.Implementation) void {
     writeComptimeField(array, impl_variant, ptr_fn.Fn.writable_byte_count);
     writeComptimeField(array, impl_variant, ptr_fn.Fn.aligned_byte_count);
 }
-inline fn writeTypeFunction(allocator: *Allocator, array: *Array, impl_variant: types.Implementation, arg_lists: []const FnArgLists.Value, key: FnArgLists) void {
+inline fn writeTypeFunction(
+    allocator: *Allocator,
+    array: *Array,
+    impl_variant: types.Implementation,
+    arg_lists: []const ptr_fn.FnArgLists.Value,
+    key: ptr_fn.FnArgLists,
+) void {
     array.writeMany("pub fn ");
     array.writeFormat(impl_variant);
     array.writeMany("(" ++ tok.comptime_keyword ++ tok.impl_spec_name ++ tok.colon_operator ++ tok.generic_spec_type_name);
@@ -1068,7 +1000,7 @@ inline fn writeTypeFunction(allocator: *Allocator, array: *Array, impl_variant: 
     writeFunctions(allocator, array, impl_variant, arg_lists, key);
     array.writeMany("});\n}\n");
 }
-fn writeInterfaceStruct(array: *Array, ptr_fn_info: ptr_fn.Fn, idx: u64, arg_list: gen.ArgList) void {
+fn writeInterfaceStruct(array: *Array, ptr_fn_info: ptr_fn.Fn, idx: usize, arg_list: gen.ArgList) void {
     array.writeMany("const ");
     array.writeMany(@tagName(ptr_fn_info));
     array.writeFormat(fmt.ud64(idx));
@@ -1096,7 +1028,12 @@ pub fn main() !void {
     );
     file.read(read_impl_spec, fd, details);
     file.close(spec.generic.noexcept, fd);
-    const arg_lists: FnArgListMap = deduceUniqueInterfaceStructs(&allocator, &array, details);
+    const arg_lists: ptr_fn.FnArgListMap = ptr_fn.deduceUniqueInterfaceStructs(&allocator, details);
+    for (arg_lists[0]) |kv| {
+        for (kv[1], 0..) |arg_list, arg_list_idx| {
+            writeInterfaceStruct(&array, kv[0], arg_list_idx, arg_list);
+        }
+    }
     for (types.Kind.list) |kind| {
         for (details, 0..) |impl_detail, impl_detail_idx| {
             if (impl_detail.kind == kind) {
