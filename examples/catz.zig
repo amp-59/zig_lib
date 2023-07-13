@@ -23,7 +23,7 @@ pub fn main(args_in: [][*:0]u8) !void {
         };
         if (st.mode.kind == .regular) {
             const len: u64 = mach.alignA64(st.size, 4096);
-            file.map(.{ .options = .{ .visibility = .private } }, fd, addr, len) catch {
+            file.map(.{}, .{}, .{ .visibility = .shared }, fd, addr, len) catch {
                 continue;
             };
             defer mem.unmap(.{ .errors = .{} }, addr, len);
