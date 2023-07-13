@@ -537,6 +537,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             return GlobalState.global_cache_root;
         }
         pub fn initState(args: [][*:0]u8, vars: [][*:0]u8) void {
+            @setRuntimeSafety(builder_spec.options.enable_safety);
             GlobalState.args = args;
             GlobalState.vars = vars;
             GlobalState.zig_exe = mach.manyToSlice80(args[1]);
@@ -544,6 +545,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             GlobalState.cache_root = mach.manyToSlice80(args[3]);
             GlobalState.global_cache_root = mach.manyToSlice80(args[4]);
             GlobalState.build_root_fd = try meta.wrap(file.path(path1(), GlobalState.build_root));
+            GlobalState.config_root_fd = try meta.wrap(file.pathAt(path1(), GlobalState.build_root_fd, builder_spec.options.names.zig_build_dir));
         }
         /// Initialize a toplevel node.
         pub fn init(allocator: *mem.SimpleAllocator) *Node {
@@ -570,7 +572,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             }
             node.task.tag = .any;
             node.task.lock = omni_lock;
-            writeBuildContext();
             return node;
         }
         /// Initialize a new group command
@@ -1613,12 +1614,21 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             const build_cmd: *BuildCommand = node.task.info.build;
             var buf: [32768]u8 = undefined;
             var len: u64 = 0;
-            @as(*[28]u8, @ptrCast(buf[len..].ptr)).* = "pub usingnamespace @import(\"".*;
-            len +%= 28;
-            @memcpy(buf[len..].ptr, builder_spec.options.names.config);
-            len +%= builder_spec.options.names.config.len;
-            @as(*[8]u8, @ptrCast(buf[len..].ptr)).* = ".zig\");\n".*;
-            len +%= 8;
+            for ([_][]const u8{ "zig_exe", "build_root", "cache_root", "global_cache_root" }, [_][]const u8{
+                GlobalState.zig_exe,    GlobalState.build_root,
+                GlobalState.cache_root, GlobalState.global_cache_root,
+            }) |decl, value| {
+                @as(*[10]u8, @ptrCast(buf[len..].ptr)).* = "pub const ".*;
+                len +%= 10;
+                @memcpy(buf[len..].ptr, decl);
+                len +%= decl.len;
+                @as(*[16]u8, @ptrCast(buf[len..].ptr)).* = ":[:0]const u8 =\"".*;
+                len +%= 16;
+                @memcpy(buf[len..].ptr, value);
+                len +%= value.len;
+                @as(*[3]u8, @ptrCast(buf[len..].ptr)).* = "\";\n".*;
+                len +%= 3;
+            }
             @as(*[31]u8, @ptrCast(buf[len..].ptr)).* = "pub usingnamespace @import(\"../".*;
             len +%= 31;
             @memcpy(buf[len..].ptr, node.impl.paths[1].names[1]);
@@ -1717,39 +1727,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             file.close(close(), root_fd);
             node.impl.paths[1].names[1] = builder_spec.options.names.zig_build_dir;
             node.impl.paths[1].addName(allocator).* = name;
-        }
-        fn writeBuildContext() void {
-            @setRuntimeSafety(builder_spec.options.enable_safety);
-            const cache_root_fd: u64 = try meta.wrap(file.pathAt(path1(), GlobalState.build_root_fd, builder_spec.options.names.zig_build_dir));
-            const context_fd: u64 = try meta.wrap(file.createAt(create(), cache_root_fd, builder_spec.options.names.config ++
-                builder_spec.options.extensions.zig, file.mode.regular));
-            GlobalState.config_root_fd = cache_root_fd;
-            var buf: [4096 *% 8]u8 = undefined;
-            var len: u64 = 0;
-            for ([_][]const u8{
-                "pub const zig_exe: [:0]const u8 = \"",
-                "\";\npub const build_root: [:0]const u8 = \"",
-                "\";\npub const cache_root: [:0]const u8 = \"",
-                "\";\npub const global_cache_root: [:0]const u8 = \"",
-            }, [_][]const u8{
-                GlobalState.zig_exe,
-                GlobalState.build_root,
-                GlobalState.cache_root,
-                GlobalState.global_cache_root,
-            }) |decl, value| {
-                @memcpy(buf[len..].ptr, decl);
-                len +%= decl.len;
-                @memcpy(buf[len..].ptr, value);
-                len +%= value.len;
-            }
-            @as(*[3]u8, @ptrCast(buf[len..].ptr)).* = "\";\n".*;
-            len +%= 3;
-            try meta.wrap(
-                file.write(write(), context_fd, buf[0..len]),
-            );
-            try meta.wrap(
-                file.close(close(), context_fd),
-            );
         }
         fn writeRecord(node: *Node, job: *types.JobInfo) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
