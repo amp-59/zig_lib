@@ -52,6 +52,39 @@ pub const Access = packed struct(usize) {
     read: bool = false,
     zb3: u61 = 0,
 };
+pub const Map = struct {
+    pub const Flags = packed struct(usize) {
+        visibility: Visibility = .shared,
+        zb2: u2 = 0,
+        fixed: bool = false,
+        anonymous: bool = true,
+        @"32bit": bool = false,
+        zb7: u1 = 0,
+        grows_down: bool = false,
+        zb9: u2 = 0,
+        deny_write: bool = false,
+        executable: bool = false,
+        locked: bool = false,
+        no_reserve: bool = false,
+        populate: bool = false,
+        non_block: bool = false,
+        stack: bool = false,
+        huge_tlb: bool = false,
+        sync: bool = false,
+        fixed_noreplace: bool = true,
+        zb21: u43 = 0,
+    };
+    pub const Visibility = enum { shared, shared_validate, private };
+    pub const Protection = packed struct(usize) {
+        read: bool = true,
+        write: bool = true,
+        exec: bool = false,
+        zb3: u21 = 0,
+        grows_down: bool = false,
+        grows_up: bool = false,
+        zb26: u38 = 0,
+    };
+};
 pub const Kind = enum(u4) {
     unknown = 0,
     regular = MODE.R.IFREG,
@@ -64,6 +97,29 @@ pub const Kind = enum(u4) {
     const MODE = sys.S;
 };
 pub const Open = struct {
+    pub const Flags = packed struct(usize) {
+        write_only: bool = false,
+        read_write: bool = false,
+        zb2: u4 = 0,
+        create: bool = false,
+        exclusive: bool = false,
+        no_ctty: bool = true,
+        truncate: bool = false,
+        append: bool = false,
+        non_block: bool = false,
+        dsync: bool = false,
+        @"async": bool = false,
+        no_cache: bool = false,
+        zb15: u1 = 0,
+        directory: bool = false,
+        no_follow: bool = false,
+        no_atime: bool = false,
+        close_on_exec: bool = true,
+        zb20: u1 = 0,
+        path: bool = false,
+        temporary: bool = false,
+        zb23: u41 = 0,
+    };
     pub const Options = meta.EnumBitField(enum(u64) {
         no_cache = OPEN.DIRECT,
         no_atime = OPEN.NOATIME,
@@ -86,6 +142,7 @@ pub const Open = struct {
         const OPEN = sys.O;
     });
 };
+
 pub const Whence = enum(u64) { // set, cur, end
     set = SEEK.SET,
     cur = SEEK.CUR,
@@ -828,51 +885,9 @@ pub const ReadLinkSpec = struct {
     const Specification = @This();
 };
 pub const MapSpec = struct {
-    options: Options = .{},
     errors: sys.ErrorPolicy = .{ .throw = sys.mmap_errors },
     return_type: type = void,
     logging: builtin.Logging.AcquireError = .{},
-    const Specification = @This();
-    pub const Options = struct {
-        visibility: Visibility = .shared,
-        read: bool = true,
-        write: bool = true,
-        exec: bool = false,
-        populate: bool = false,
-        sync: bool = false,
-        const Visibility = enum { shared, shared_validate, private };
-    };
-    pub fn flags(comptime map_spec: Specification) mem.Map.Options {
-        var flags_bitfield: mem.Map.Options = .{ .val = 0 };
-        switch (map_spec.options.visibility) {
-            .private => flags_bitfield.set(.private),
-            .shared => flags_bitfield.set(.shared),
-            .shared_validate => flags_bitfield.set(.shared_validate),
-        }
-        if (map_spec.options.populate) {
-            builtin.assert(map_spec.options.visibility == .private);
-            flags_bitfield.set(.populate);
-        }
-        if (map_spec.options.sync) {
-            builtin.assert(map_spec.options.visibility == .shared_validate);
-            flags_bitfield.set(.sync);
-        }
-        flags_bitfield.set(.fixed);
-        comptime return flags_bitfield;
-    }
-    pub fn prot(comptime map_spec: Specification) mem.Prot.Options {
-        var prot_bitfield: mem.Prot.Options = .{ .val = 0 };
-        if (map_spec.options.read) {
-            prot_bitfield.set(.read);
-        }
-        if (map_spec.options.write) {
-            prot_bitfield.set(.write);
-        }
-        if (map_spec.options.exec) {
-            prot_bitfield.set(.exec);
-        }
-        comptime return prot_bitfield;
-    }
 };
 pub const CopySpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.copy_file_range_errors },
