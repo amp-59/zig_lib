@@ -5,6 +5,10 @@ const builtin = zig_lib.builtin;
 
 const perf = @import("../top/perf.zig");
 
+comptime {
+    _ = zig_lib.mach;
+}
+
 pub const Access = enum(u32) {
     pub const file = 0x0;
     pub const exec = 0x1;
@@ -14,23 +18,24 @@ pub const Access = enum(u32) {
 
 pub fn main() void {
     if (false) {
+        gen.containerDeclsToBitField(sys.MAP, usize, "Map");
+        gen.containerDeclsToBitField(sys.PROT, usize, "Protect");
+        gen.containerDeclsToBitField(sys.MADV, usize, "Advise");
+        gen.containerDeclsToBitField(sys.AT, usize, "At");
+    }
+    if (false) {
         gen.containerDeclsToBitField(sys.CLONE, u32, "Clone");
         gen.containerDeclsToBitField(sys.FPE, usize, "FloatingPointError");
         gen.containerDeclsToBitField(sys.SS, usize, "SignalStack");
         gen.containerDeclsToBitField(sys.SA, usize, "SignalAction");
-        gen.containerDeclsToBitField(sys.MAP, usize, "Map");
-        gen.containerDeclsToBitField(sys.PROT, usize, "Protect");
-        gen.containerDeclsToBitField(sys.MADV, usize, "MAdvise");
         gen.containerDeclsToBitField(sys.REMAP, usize, "Remap");
         gen.containerDeclsToBitField(sys.MS, usize, "Sync");
-        gen.containerDeclsToBitField(sys.PROT, usize, "Prot");
         gen.containerDeclsToBitField(sys.O, usize, "Open");
         gen.containerDeclsToBitField(sys.RWF, usize, "ReadWrite");
         gen.containerDeclsToBitField(sys.S, usize, "Status");
         gen.containerDeclsToBitField(sys.STATX.ATTR, usize, "StatusExtendedAttributes");
         gen.containerDeclsToBitField(sys.STATX, usize, "StatusExtendedFields");
         gen.containerDeclsToBitField(Access, usize, "Access");
-        gen.containerDeclsToBitField(sys.AT, usize, "At");
     }
     if (false) {
         gen.containerDeclsToBitField(sys.TC.C, usize, "Control");
