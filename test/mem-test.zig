@@ -17,7 +17,8 @@ fn testProtect() !void {
     testing.announce(@src());
     var addr: u64 = 0x7000000;
     const end: u64 = 0x10000000;
-    var len: u64 = end - addr;
+    var len: u64 = end -% addr;
+
     try meta.wrap(mem.map(.{}, .{}, .{}, addr, len));
     try meta.wrap(mem.protect(.{}, .{ .read = true }, addr, 4096));
     try meta.wrap(mem.unmap(.{}, addr, len));
@@ -29,10 +30,10 @@ fn testLowSystemMemoryOperations() !void {
     const end: u64 = 0x10000000;
     var len: u64 = end -% addr;
     try meta.wrap(mem.map(.{}, .{}, .{}, addr, len));
-    try meta.wrap(mem.move(.{}, addr, len, addr + len));
-    try meta.wrap(mem.protect(.{}, .{ .read = true }, addr + len, len));
-    addr += len;
-    try meta.wrap(mem.resize(.{}, addr, len, len * 2));
+    try meta.wrap(mem.move(.{}, addr, len, addr +% len));
+    try meta.wrap(mem.protect(.{}, .{ .read = true }, addr +% len, len));
+    addr +%= len;
+    try meta.wrap(mem.resize(.{}, addr, len, len *% 2));
     len *= 2;
     try meta.wrap(mem.advise(.{}, .hugepage, addr, len));
     try meta.wrap(mem.unmap(.{}, addr, len));
@@ -41,11 +42,11 @@ fn testMapGenericOverhead() !void {
     testing.announce(@src());
     var addr: u64 = 0x7000000;
     var len: u64 = 0x3000000;
-    var end: u64 = addr + len;
-    try meta.wrap(mem.map(.{}, .{ .populate = true }, .{}, addr, len));
+    var end: u64 = addr +% len;
+    try meta.wrap(mem.map(.{}, .{}, .{ .populate = true }, addr, len));
     try meta.wrap(mem.unmap(.{}, addr, len));
     addr = end;
-    try meta.wrap(mem.map(.{}, .{ .populate = false, .visibility = .shared }, .{}, end, len));
+    try meta.wrap(mem.map(.{}, .{}, .{ .populate = false, .visibility = .shared }, end, len));
     try meta.wrap(mem.unmap(.{}, addr, len));
 }
 fn testRtAllocatedImplementation() !void {
@@ -62,8 +63,8 @@ fn testRtAllocatedImplementation() !void {
     const ArrayA = Allocator.StructuredStreamHolder(u8);
     var array_a: ArrayA = ArrayA.init(&allocator);
     {
-        var i: u64 = 0;
-        while (i != repeats) : (i += 1) {
+        var idx: usize = 0;
+        while (idx != repeats) : (idx +%= 1) {
             try array_a.appendMany(&allocator, "Hello, world!");
             try array_a.appendCount(&allocator, 4, "1234".*);
             try array_a.appendFormat(&allocator, fmt.ux(0x1fee1dead));
@@ -81,8 +82,8 @@ fn testRtAllocatedImplementation() !void {
     var array_b: ArrayB = try ArrayB.init(&allocator, 256);
     defer array_b.deinit(&allocator);
     {
-        var i: u64 = 0;
-        while (i != repeats) : (i += 1) {
+        var idx: usize = 0;
+        while (idx != repeats) : (idx +%= 1) {
             try array_b.appendMany(&allocator, "Hello, world!");
             try array_b.appendCount(&allocator, 4, "1234".*);
             try array_b.appendFormat(&allocator, fmt.ux(0x1fee1dead));
@@ -116,7 +117,7 @@ fn testAllocatedImplementation() !void {
     var array_a: ArrayA = ArrayA.init(&allocator);
     {
         var i: u64 = 0;
-        while (i != repeats) : (i += 1) {
+        while (i != repeats) : (i +%= 1) {
             try array_a.appendMany(&allocator, "Hello, world!");
             try array_a.appendCount(&allocator, 4, "1234".*);
             try array_a.appendFormat(&allocator, fmt.ux(0x1fee1dead));
@@ -134,8 +135,8 @@ fn testAllocatedImplementation() !void {
     var array_b: ArrayB = try ArrayB.init(&allocator, 256);
     defer array_b.deinit(&allocator);
     {
-        var i: u64 = 0;
-        while (i != repeats) : (i += 1) {
+        var idx: u64 = 0;
+        while (idx != repeats) : (idx +%= 1) {
             try array_b.appendMany(&allocator, "Hello, world!");
             try array_b.appendCount(&allocator, 4, "1234".*);
             try array_b.appendFormat(&allocator, fmt.ux(0x1fee1dead));
