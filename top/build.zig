@@ -325,10 +325,10 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             /// Environment variables
             pub var vars: [][*:0]u8 = undefined;
 
-            pub var zig_exe: [:0]const u8 = "";
-            pub var build_root: [:0]const u8 = "";
-            pub var cache_root: [:0]const u8 = "";
-            pub var global_cache_root: [:0]const u8 = "";
+            pub var zig_exe: [:0]u8 = undefined;
+            pub var build_root: [:0]u8 = undefined;
+            pub var cache_root: [:0]u8 = undefined;
+            pub var global_cache_root: [:0]u8 = undefined;
 
             pub var trace: *Node = undefined;
             pub var build_root_fd: u64 = undefined;
@@ -487,8 +487,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         pub fn addToplevelArgs(node: *Node, allocator: *mem.SimpleAllocator) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             for ([_][*:0]u8{
-                GlobalState.args[1], GlobalState.args[2],
-                GlobalState.args[3], GlobalState.args[4],
+                GlobalState.zig_exe,    GlobalState.build_root,
+                GlobalState.cache_root, GlobalState.global_cache_root,
             }) |arg| {
                 node.addArg(allocator).* = arg;
             }
@@ -528,18 +528,22 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 GlobalState.trace = special;
             }
         }
-        pub fn cacheRoot(toplevel: *Node) [:0]const u8 {
+        pub fn cacheRoot() [:0]const u8 {
             @setRuntimeSafety(builder_spec.options.enable_safety);
-            return toplevel.impl.paths[0].names[0];
+            return GlobalState.cache_root;
         }
-        pub fn globalCacheRoot(toplevel: *Node) [:0]const u8 {
+        pub fn globalCacheRoot() [:0]const u8 {
             @setRuntimeSafety(builder_spec.options.enable_safety);
-            return toplevel.impl.paths[1].names[0];
+            return GlobalState.global_cache_root;
         }
         pub fn initState(args: [][*:0]u8, vars: [][*:0]u8) void {
             GlobalState.args = args;
             GlobalState.vars = vars;
-            GlobalState.build_root_fd = try meta.wrap(file.path(path1(), mach.manyToSlice80(args[2])));
+            GlobalState.zig_exe = mach.manyToSlice80(args[1]);
+            GlobalState.build_root = mach.manyToSlice80(args[2]);
+            GlobalState.cache_root = mach.manyToSlice80(args[3]);
+            GlobalState.global_cache_root = mach.manyToSlice80(args[4]);
+            GlobalState.build_root_fd = try meta.wrap(file.path(path1(), GlobalState.build_root));
         }
         /// Initialize a toplevel node.
         pub fn init(allocator: *mem.SimpleAllocator) *Node {
@@ -549,8 +553,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             }
             var node: *Node = allocator.create(Node);
             node.flags = .{};
-            node.addPath(allocator).addName(allocator).* = mach.manyToSlice80(GlobalState.args[2]);
-            node.addPath(allocator).addName(allocator).* = mach.manyToSlice80(GlobalState.args[3]);
             node.name = duplicate(allocator, builder_spec.options.names.toplevel_node);
             node.tag = .group;
             node.impl.args = GlobalState.args.ptr;
@@ -568,7 +570,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             }
             node.task.tag = .any;
             node.task.lock = omni_lock;
-            writeBuildContext(node.cacheRoot(), node.globalCacheRoot());
+            writeBuildContext();
             return node;
         }
         /// Initialize a new group command
@@ -577,7 +579,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             const node: *Node = allocator.create(Node);
             node.flags = .{};
             toplevel.addNode(allocator).* = node;
-            node.impl.paths = toplevel.impl.paths;
             node.tag = .group;
             node.name = duplicate(allocator, name);
             node.flags.is_hidden = name[0] == '_';
@@ -599,7 +600,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             node.name = duplicate(allocator, name);
             const target_path: *types.Path = node.addPath(allocator);
             if (pathname[0] != '/') {
-                target_path.addName(allocator).* = toplevel.impl.paths[0].names[0];
+                target_path.addName(allocator).* = GlobalState.build_root;
             }
             target_path.addName(allocator).* = duplicate(allocator, pathname);
             node.task.info.format.* = format_cmd;
@@ -619,7 +620,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             node.task.info = .{ .archive = allocator.create(ArchiveCommand) };
             node.name = duplicate(allocator, name);
             const archive_path: *types.Path = node.addPath(allocator);
-            archive_path.addName(allocator).* = toplevel.impl.paths[0].names[0];
+            archive_path.addName(allocator).* = GlobalState.build_root;
             archive_path.addName(allocator).* = archiveRelative(allocator, node.name);
             node.task.info.archive.* = archive_cmd;
             for (deps) |dep| {
@@ -632,7 +633,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             if (!builder_spec.options.commands.build)
                 @compileError("build task disabled");
-            const main_pkg_path: [:0]const u8 = toplevel.impl.paths[0].names[0];
+            const main_pkg_path: [:0]const u8 = GlobalState.build_root;
             const node: *Node = allocator.create(Node);
             node.flags = .{};
             toplevel.addNode(allocator).* = node;
@@ -741,7 +742,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 if (node.task.tag == .build) {
                     node.task.info.build.listen = .@"-";
                     if (builder_spec.options.main_pkg_path_to_build_root) {
-                        node.task.info.build.main_pkg_path = toplevel.impl.paths[0].names[0];
+                        node.task.info.build.main_pkg_path = GlobalState.build_root;
                     }
                     node.task.lock = obj_lock;
                     if (node.task.info.build.kind == .exe and
@@ -1717,7 +1718,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             node.impl.paths[1].names[1] = builder_spec.options.names.zig_build_dir;
             node.impl.paths[1].addName(allocator).* = name;
         }
-        fn writeBuildContext(build_root: [:0]const u8, cache_root: [:0]const u8) void {
+        fn writeBuildContext() void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             const cache_root_fd: u64 = try meta.wrap(file.pathAt(path1(), GlobalState.build_root_fd, builder_spec.options.names.zig_build_dir));
             const context_fd: u64 = try meta.wrap(file.createAt(create(), cache_root_fd, builder_spec.options.names.config ++
@@ -1731,10 +1732,10 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 "\";\npub const cache_root: [:0]const u8 = \"",
                 "\";\npub const global_cache_root: [:0]const u8 = \"",
             }, [_][]const u8{
-                mach.manyToSlice80(GlobalState.args[1]),
-                build_root,
-                cache_root,
-                mach.manyToSlice80(GlobalState.args[4]),
+                GlobalState.zig_exe,
+                GlobalState.build_root,
+                GlobalState.cache_root,
+                GlobalState.global_cache_root,
             }) |decl, value| {
                 @memcpy(buf[len..].ptr, decl);
                 len +%= decl.len;
