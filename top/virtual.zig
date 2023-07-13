@@ -759,7 +759,6 @@ fn DiscreteTypes(comptime AddressSpace: type) type {
 fn Specs(comptime AddressSpace: type) type {
     return struct {
         pub const map_spec = .{
-            .options = .{},
             .errors = AddressSpace.addr_spec.errors.map,
             .logging = AddressSpace.addr_spec.logging.map,
         };
