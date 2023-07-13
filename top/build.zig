@@ -1640,16 +1640,16 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             len +%= node.impl.paths[1].names[1].len;
             @as(*[4]u8, @ptrCast(buf[len..].ptr)).* = "\");\n".*;
             len +%= 4;
-            @as(*[34]u8, @ptrCast(buf[len..].ptr)).* = "pub const dependencies = struct {\n".*;
-            len +%= 34;
+            @as(*[31]u8, @ptrCast(buf[len..].ptr)).* = "pub const dependencies=struct{\n".*;
+            len +%= 31;
             if (build_cmd.dependencies) |dependencies| {
                 for (dependencies) |dependency| {
-                    @as(*[16]u8, @ptrCast(buf[len..].ptr)).* = "    pub const @\"".*;
-                    len +%= 16;
+                    @as(*[12]u8, @ptrCast(buf[len..].ptr)).* = "pub const @\"".*;
+                    len +%= 12;
                     @memcpy(buf[len..].ptr, dependency.name);
                     len +%= dependency.name.len;
-                    @as(*[19]u8, @ptrCast(buf[len..].ptr)).* = "\": ?[:0]const u8 = ".*;
-                    len +%= 19;
+                    @as(*[16]u8, @ptrCast(buf[len..].ptr)).* = "\":?[:0]const u8=".*;
+                    len +%= 16;
                     if (dependency.import) |import| {
                         buf[len] = '"';
                         len +%= 1;
@@ -1671,8 +1671,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     len +%= 12;
                     @memcpy(buf[len..].ptr, module.name);
                     len +%= module.name.len;
-                    @as(*[16]u8, @ptrCast(buf[len..].ptr)).* = "\": [:0]const u8=".*;
-                    len +%= 16;
+                    @as(*[15]u8, @ptrCast(buf[len..].ptr)).* = "\":[:0]const u8=".*;
+                    len +%= 15;
                     buf[len] = '"';
                     len +%= 1;
                     @memcpy(buf[len..].ptr, module.path);
@@ -1681,8 +1681,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     len +%= 3;
                 }
             }
-            @as(*[38]u8, @ptrCast(buf[len..].ptr)).* = "};\npub const compile_units = struct {\n".*;
-            len +%= 38;
+            @as(*[35]u8, @ptrCast(buf[len..].ptr)).* = "};\npub const compile_units=struct{\n".*;
+            len +%= 35;
             for (node.impl.deps[0..node.impl.deps_len]) |dep| {
                 if (dep.on_node == node) {
                     continue;
@@ -1707,8 +1707,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             for (node.impl.cfgs[0..node.impl.cfgs_len]) |cfg| {
                 len +%= cfg.formatWriteBuf(buf[len..].ptr);
             }
-            if (true) {
-                //if (builder_spec.options.write_hist_serial) {
+            if (builder_spec.options.write_hist_serial) {
                 var hist: types.hist_tasks.BuildCommand = types.hist_tasks.BuildCommand.convert(node.task.info.build);
                 const bytes = @as(*[@sizeOf(types.hist_tasks.BuildCommand)]u8, @ptrCast(&hist));
                 @as(*[31]u8, @ptrCast(buf[len..].ptr)).* = "pub const serial:[]const u8=&.{".*;
