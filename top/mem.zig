@@ -327,7 +327,7 @@ pub noinline fn monitor(comptime T: type, ptr: *T) void {
 fn acquireMap(comptime AddressSpace: type, address_space: *AddressSpace) AddressSpace.map_void {
     const spec: mem.RegularAddressSpaceSpec = AddressSpace.addr_spec;
     if (address_space.set(spec.divisions)) {
-        return map(AddressSpace.map_spec, spec.addressable_byte_address(), spec.addressable_byte_count());
+        return map(AddressSpace.map_spec, .{}, .{}, spec.addressable_byte_address(), spec.addressable_byte_count());
     }
 }
 fn releaseUnmap(comptime AddressSpace: type, address_space: *AddressSpace) AddressSpace.unmap_void {
@@ -576,7 +576,7 @@ pub fn testReleaseElementary(comptime AddressSpace: type, address_space: *Addres
     }
     return ret;
 }
-pub fn map(comptime spec: MapSpec, flags: Map.Flags, prot: Map.Protection, addr: u64, len: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
+pub fn map(comptime spec: MapSpec, prot: Map.Protection, flags: Map.Flags, addr: u64, len: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
     const logging: builtin.Logging.AcquireError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.mmap, spec.errors, spec.return_type, .{
         addr, len, @as(usize, @bitCast(prot)), @as(usize, @bitCast(flags)), ~@as(u64, 0), 0,
@@ -1908,3 +1908,7 @@ pub fn asBytes(ptr: anytype) AsBytesReturnType(@TypeOf(ptr)) {
     return @ptrCast(@alignCast(ptr));
 }
 pub const toBytes = meta.toBytes;
+// TODO:
+// SyncSpec
+// MoveSpec
+// FdSpec
