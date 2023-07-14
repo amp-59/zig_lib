@@ -165,10 +165,10 @@ pub fn shl(comptime T: type, value: T, shift_amt: anytype) T {
         @typeInfo(ShiftAmount).Int.signedness == .signed)
     {
         if (shift_amt < 0) {
-            return value >> casted_shift_amt;
+            return value >> @intCast(casted_shift_amt);
         }
     }
-    return value << casted_shift_amt;
+    return value << @intCast(casted_shift_amt);
 }
 pub fn shr(comptime T: type, a: T, shift_amt: anytype) T {
     const ShiftAmount = @TypeOf(shift_amt);
@@ -192,10 +192,10 @@ pub fn shr(comptime T: type, a: T, shift_amt: anytype) T {
         @typeInfo(ShiftAmount).Int.signedness == .signed)
     {
         if (shift_amt < 0) {
-            return a << casted_shift_amt;
+            return a << @intCast(casted_shift_amt);
         }
     }
-    return a >> casted_shift_amt;
+    return a >> @intCast(casted_shift_amt);
 }
 pub fn log2(comptime T: type, x: T) builtin.ShiftAmount(T) {
     return @as(builtin.ShiftAmount(T), @intCast(@typeInfo(T).Int.bits - 1 - @clz(x)));
