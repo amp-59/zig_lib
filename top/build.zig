@@ -809,14 +809,17 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         pub fn dependOn(node: *Node, allocator: *mem.SimpleAllocator, on_node: *Node, on_task: ?types.Task) void {
             node.addDep(allocator).* = .{ .task = node.task.tag, .on_node = on_node, .on_task = on_task orelse on_node.task.tag, .on_state = .finished };
         }
+        /// Must be worker.(archive|build)
         pub fn dependOnObject(node: *Node, allocator: *mem.SimpleAllocator, on_node: *Node) void {
             node.addPath(allocator).* = on_node.impl.paths[0];
             node.addDep(allocator).* = .{ .task = node.task.tag, .on_node = on_node, .on_task = .build, .on_state = .finished };
         }
+        /// Must be worker.archive
         pub fn dependOnArchive(node: *Node, allocator: *mem.SimpleAllocator, on_node: *Node) void {
             node.addPath(allocator).* = on_node.impl.paths[0];
             node.addDep(allocator).* = .{ .task = node.task.tag, .on_node = on_node, .on_task = .archive, .on_state = .finished };
         }
+        /// Must be worker.build
         fn dependOnSelfExe(node: *Node, allocator: *mem.SimpleAllocator) void {
             node.addArg(allocator).* = node.impl.paths[0].concatenate(allocator);
             node.addDep(allocator).* = .{ .task = .run, .on_node = node, .on_task = .build, .on_state = .finished };
@@ -920,18 +923,23 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 return node.impl.args[0..node.impl.args_len];
             }
             inline fn taskArgs(allocator: *mem.SimpleAllocator, toplevel: *const Node, node: *Node, task: types.Task) [][*:0]u8 {
+                @setRuntimeSafety(builder_spec.options.enable_safety);
                 if (compile_state.build and task == .build) {
                     return makeArgPtrs(allocator, try meta.wrap(buildWrite(allocator, node.task.info.build, node.impl.paths[1..node.impl.paths_len])));
-                } else if (compile_state.format and task == .format) {
+                }
+                if (compile_state.format and task == .format) {
                     return makeArgPtrs(allocator, try meta.wrap(formatWrite(allocator, node.task.info.format, node.impl.paths[0])));
-                } else if (compile_state.archive and task == .archive) {
+                }
+                if (compile_state.archive and task == .archive) {
                     return makeArgPtrs(allocator, try meta.wrap(archiveWrite(allocator, node.task.info.archive, node.impl.paths[0..node.impl.paths_len])));
-                } else if (compile_state.objcopy and task == .objcopy) {
+                }
+                if (compile_state.objcopy and task == .objcopy) {
                     return makeArgPtrs(allocator, try meta.wrap(objcopyWrite(allocator, node.task.info.objcopy, node.impl.paths[1])));
-                } else if (task == .run) {
+                }
+                if (task == .run) {
                     return runWrite(allocator, node, build.args[toplevel.impl.args_len..toplevel.impl.args_max_len]);
                 }
-                unreachable;
+                builtin.proc.exitError(error.InvalidTask, 2);
             }
             fn executeCommandInternal(toplevel: *const Node, allocator: *mem.SimpleAllocator, node: *Node, task: types.Task, arena_index: u64) bool {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
@@ -1329,7 +1337,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     return if (!result) builtin.proc.exitError(error.UnfinishedRequest, 2);
                 }
             }
-            builtin.proc.exitErrorFault(error.NotACommand, mach.manyToSlice80(build.args[5]), 2);
+            const name: [:0]const u8 = if (build.args.len == 5) "null" else mach.manyToSlice80(build.args[5]);
+            builtin.proc.exitErrorFault(error.NotACommand, name, 2);
         }
         const paths = .{
             .zig_out_exe_dir = builder_spec.options.names.zig_out_dir ++ "/" ++ builder_spec.options.names.exe_out_dir,
