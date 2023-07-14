@@ -7,7 +7,7 @@ const builtin = srg.builtin;
 pub const Node = build.GenericNode(.{});
 pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
 
-var build_cmd: build.tasks.BuildCommand = .{
+var build_cmd: build.BuildCommand = .{
     .kind = .exe,
     .mode = .ReleaseSmall,
     .stack_check = false,
@@ -21,7 +21,7 @@ var build_cmd: build.tasks.BuildCommand = .{
     .gc_sections = true,
     .omit_frame_pointer = false,
 };
-const format_cmd: build.tasks.FormatCommand = .{
+const format_cmd: build.FormatCommand = .{
     .ast_check = true,
 };
 fn setSmall(node: *Node) void {
@@ -201,7 +201,6 @@ fn cryptoTests(allocator: *build.Allocator, node: *Node) void {
         build_cmd.strip = strip_save;
     }
     const rng_test: *Node = node.addBuild(allocator, build_cmd, "rng_test", "test/rng-test.zig");
-    //const kyber_test: *Node = node.addBuild(allocator, build_cmd, "kyber_test", "test/crypto/kyber-test.zig");
     const ecdsa_test: *Node = node.addBuild(allocator, build_cmd, "ecdsa_test", "test/crypto/ecdsa-test.zig");
     const aead_test: *Node = node.addBuild(allocator, build_cmd, "aead_test", "test/crypto/aead-test.zig");
     const auth_test: *Node = node.addBuild(allocator, build_cmd, "auth_test", "test/crypto/auth-test.zig");
@@ -212,7 +211,6 @@ fn cryptoTests(allocator: *build.Allocator, node: *Node) void {
     const hash_test: *Node = node.addBuild(allocator, build_cmd, "hash_test", "test/crypto/hash-test.zig");
     const pcurves_test: *Node = node.addBuild(allocator, build_cmd, "pcurves_test", "test/crypto/pcurves-test.zig");
     rng_test.descr = "Test random number generation functions";
-    //kyber_test.descr = "Test post-quantum 'Kyber' key exchange functions and types";
     ecdsa_test.descr = "Test ECDSA";
     aead_test.descr = "Test authenticated encryption functions and types";
     auth_test.descr = "Test authentication";
@@ -222,6 +220,9 @@ fn cryptoTests(allocator: *build.Allocator, node: *Node) void {
     utils_test.descr = "Test crypto utility functions";
     hash_test.descr = "Test hashing functions";
     pcurves_test.descr = "Test point curve operations";
+    //const kyber_test: *Node = node.addBuild(allocator, build_cmd, "kyber_test", "test/crypto/kyber-test.zig");
+    //kyber_test.descr = "Test post-quantum 'Kyber' key exchange functions and types";
+
 }
 fn buildgen(allocator: *build.Allocator, node: *Node) void {
     const bg_aux: *Node = node.addGroup(allocator, "_buildgen");
