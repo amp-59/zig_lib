@@ -486,8 +486,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         pub fn addToplevelArgs(node: *Node, allocator: *mem.SimpleAllocator) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             for ([_][*:0]u8{
-                GlobalState.zig_exe,    GlobalState.build_root,
-                GlobalState.cache_root, GlobalState.global_cache_root,
+                build.zig_exe,    build.build_root,
+                build.cache_root, build.global_cache_root,
             }) |arg| {
                 node.addArg(allocator).* = arg;
             }
@@ -521,30 +521,21 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         }
         pub fn initSpecialNodes(allocator: *mem.SimpleAllocator, toplevel: *Node) void {
             if (builder_spec.options.special.trace) |build_cmd| {
-                const special: *Node = toplevel.addBuild(allocator, build_cmd, "trace", paths.trace_root);
-                special.flags.is_special = true;
-                special.flags.build.configure_root = false;
-                GlobalState.trace = special;
+                special.trace = toplevel.addBuild(allocator, build_cmd, "trace", paths.trace_root);
+                special.trace.flags.is_special = true;
+                special.trace.flags.build.configure_root = false;
             }
-        }
-        pub fn cacheRoot() [:0]const u8 {
-            @setRuntimeSafety(builder_spec.options.enable_safety);
-            return GlobalState.cache_root;
-        }
-        pub fn globalCacheRoot() [:0]const u8 {
-            @setRuntimeSafety(builder_spec.options.enable_safety);
-            return GlobalState.global_cache_root;
         }
         pub fn initState(args: [][*:0]u8, vars: [][*:0]u8) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
-            GlobalState.args = args;
-            GlobalState.vars = vars;
-            GlobalState.zig_exe = mach.manyToSlice80(args[1]);
-            GlobalState.build_root = mach.manyToSlice80(args[2]);
-            GlobalState.cache_root = mach.manyToSlice80(args[3]);
-            GlobalState.global_cache_root = mach.manyToSlice80(args[4]);
-            GlobalState.build_root_fd = try meta.wrap(file.path(path1(), GlobalState.build_root));
-            GlobalState.config_root_fd = try meta.wrap(file.pathAt(path1(), GlobalState.build_root_fd, builder_spec.options.names.zig_build_dir));
+            build.args = args;
+            build.vars = vars;
+            build.zig_exe = mach.manyToSlice80(args[1]);
+            build.build_root = mach.manyToSlice80(args[2]);
+            build.cache_root = mach.manyToSlice80(args[3]);
+            build.global_cache_root = mach.manyToSlice80(args[4]);
+            build.build_root_fd = try meta.wrap(file.path(path1(), build.build_root));
+            build.config_root_fd = try meta.wrap(file.pathAt(path1(), build.build_root_fd, builder_spec.options.names.zig_build_dir));
         }
         /// Initialize a toplevel node.
         pub fn init(allocator: *mem.SimpleAllocator) *Node {
