@@ -12,6 +12,28 @@ const virtual = @import("./virtual.zig");
 const types = @import("./build/types.zig");
 const build = @This();
 pub usingnamespace types;
+pub usingnamespace struct {
+    /// Arguments after principal arguments, i.e. argv[5..]
+    pub var args: [][*:0]u8 = undefined;
+
+    /// Environment variables
+    pub var vars: [][*:0]u8 = undefined;
+
+    /// File system path of Zig executable.
+    pub var zig_exe: [:0]u8 = undefined;
+    /// File system path of directory containing build.zig.
+    pub var build_root: [:0]u8 = undefined;
+    /// File system path of package special cache directory.
+    pub var cache_root: [:0]u8 = undefined;
+    /// File system path of user login cache directory.
+    pub var global_cache_root: [:0]u8 = undefined;
+
+    pub var build_root_fd: u64 = undefined;
+    pub var config_root_fd: u64 = undefined;
+
+    var cmd_idx: usize = 5;
+    var task_idx: usize = cmd_idx;
+};
 pub const BuilderSpec = struct {
     /// Builder options
     options: Options = .{},
