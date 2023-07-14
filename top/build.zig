@@ -43,16 +43,6 @@ pub const BuilderSpec = struct {
     /// which must be implemented in assembly.
     errors: Errors = .{},
     pub const Options = struct {
-        commands: struct {
-            /// Enable `zig build-(exe|obj|lib)` command.
-            build: bool = true,
-            /// Enable `zig fmt` command.
-            format: bool = true,
-            /// Enable `zig ar` command.
-            archive: bool = false,
-            /// Enable `zig objcopy` command.
-            objcopy: bool = false,
-        } = .{},
         /// The maximum number of threads in addition to main.
         /// Bytes allowed per thread arena (dynamic maximum)
         arena_aligned_bytes: u64 = 8 * 1024 * 1024,
@@ -153,8 +143,10 @@ pub const BuilderSpec = struct {
         special: struct {
             /// Defines formatter type used to pass configuration values to program.
             Config: type = types.Config,
-            /// Defines compile commands for stack tracer object
-            trace: ?types.tasks.BuildCommand = .{ .kind = .obj, .mode = .ReleaseSmall, .strip = true },
+            /// Defines generid command type used to pass function pointers to node.
+            Command: ?type = null,
+            /// Defines compile commands for stack tracer object.
+            trace: ?types.BuildCommand = .{ .kind = .obj, .mode = .ReleaseSmall, .strip = true },
         } = .{},
         extensions: struct {
             /// Extension for Zig source files.
@@ -339,56 +331,41 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             cfgs_max_len: u64,
             cfgs_len: u64,
         },
-        const Node = @This();
-        const GlobalState = struct {
-            /// Arguments after principal arguments, i.e. argv[5..]
-            pub var args: [][*:0]u8 = undefined;
-
-            /// Environment variables
-            pub var vars: [][*:0]u8 = undefined;
-
-            pub var zig_exe: [:0]u8 = undefined;
-            pub var build_root: [:0]u8 = undefined;
-            pub var cache_root: [:0]u8 = undefined;
-            pub var global_cache_root: [:0]u8 = undefined;
-
-            pub var trace: *Node = undefined;
-            pub var build_root_fd: u64 = undefined;
-            pub var config_root_fd: u64 = undefined;
+        const CompileState = struct {
+            /// Enables `zig build-(exe|obj|lib)` commands.
+            build: bool = false,
+            /// Enables `zig fmt` commands.
+            format: bool = false,
+            /// Enables `zig ar` commands.
+            archive: bool = false,
+            /// Enables `zig objcopy` commands.
+            objcopy: bool = false,
         };
         const Task = extern struct {
             tag: types.Task,
             lock: types.Lock,
             info: Info,
             const Info = extern union {
-                build: *BuildCommand,
-                format: *FormatCommand,
-                archive: *ArchiveCommand,
-                objcopy: *ObjcopyCommand,
+                build: *types.BuildCommand,
+                format: *types.FormatCommand,
+                archive: *types.ArchiveCommand,
+                objcopy: *types.ObjcopyCommand,
             };
+        };
+        const Node = @This();
+        const special = struct {
+            pub var trace: *Node = undefined;
+        };
+        const compile_state: *CompileState = blk: {
+            comptime var res: CompileState = .{};
+            break :blk &res;
         };
         pub const specification: BuilderSpec = builder_spec;
         pub const max_thread_count: u64 =
             builder_spec.options.max_thread_count;
         pub const stack_aligned_bytes: u64 =
             builder_spec.options.stack_aligned_bytes;
-        const BuildCommand = meta.maybe(
-            builder_spec.options.commands.build,
-            types.tasks.BuildCommand,
-        );
         pub const Config = builder_spec.options.special.Config;
-        const FormatCommand = meta.maybe(
-            builder_spec.options.commands.build,
-            types.tasks.FormatCommand,
-        );
-        const ArchiveCommand = meta.maybe(
-            builder_spec.options.commands.build,
-            types.tasks.ArchiveCommand,
-        );
-        const ObjcopyCommand = meta.maybe(
-            builder_spec.options.commands.build,
-            types.tasks.ObjcopyCommand,
-        );
         const max_arena_count: u64 =
             if (max_thread_count == 0) 4 else max_thread_count + 1;
         const arena_aligned_bytes: u64 =
