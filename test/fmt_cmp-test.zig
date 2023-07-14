@@ -39,27 +39,6 @@ fn zigLibBasicMessage(futex1: *u32, futex2: *u32, count1: u32, count2: u32, ret:
         count2_s, ", res=",   ret_s,    "\n",
     });
 }
-fn zigLibContainerWriteArray(futex1: *u32, futex2: *u32, count1: u32, count2: u32, ret: u64) void {
-    var array: mem.StaticArray(u8, 4096) = undefined;
-    array.undefineAll();
-    array.writeCount(about.len, about.*);
-    array.writeCount(8, "futex1=@".*);
-    array.writeFormat(fmt.ux64(@intFromPtr(futex1)));
-    array.writeCount(8, ", word1=".*);
-    array.writeFormat(fmt.ud64(futex1.*));
-    array.writeCount(7, ", max1=".*);
-    array.writeFormat(fmt.ud64(count1));
-    array.writeCount(10, ", futex2=@".*);
-    array.writeFormat(fmt.ux64(@intFromPtr(futex2)));
-    array.writeCount(8, ", word2=".*);
-    array.writeFormat(fmt.ud64(futex2.*));
-    array.writeCount(7, ", max2=".*);
-    array.writeFormat(fmt.ud64(count2));
-    array.writeCount(6, ", res=".*);
-    array.writeFormat(fmt.ud64(ret));
-    array.writeOne('\n');
-    builtin.debug.write(array.readAll());
-}
 fn zigLibContainerWriteSlices(futex1: *u32, futex2: *u32, count1: u32, count2: u32, ret: u64) void {
     var array: mem.StaticArray(u8, 4096) = undefined;
     array.undefineAll();
@@ -116,7 +95,7 @@ fn zigLibOptimisedMessage(futex1: *u32, futex2: *u32, count1: u32, count2: u32, 
     var bytes: [4096]u8 = undefined;
     var buf: [*]u8 = &bytes;
     @as(*[about.len]u8, @ptrCast(buf)).* = about.*;
-    var len: u64 = about.len;
+    var len: usize = about.len;
     @as(*[8]u8, @ptrCast(buf + len)).* = "futex1=@".*;
     len +%= 8;
     len +%= fmt_ux64.formatWriteBuf(buf + len);
