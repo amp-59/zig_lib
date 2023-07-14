@@ -12,7 +12,7 @@ const build = zig_lib.build;
 pub const BuildNode: type = build.GenericNode(.{});
 
 /// This is a template compile command to build the target.
-var build_cmd: build.tasks.BuildCommand = .{
+var build_cmd: build.BuildCommand = .{
     .kind = .exe,
     .modules = &.{.{
         .name = "zig_lib",
