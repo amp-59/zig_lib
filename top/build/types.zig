@@ -6,7 +6,8 @@ const file = @import("../file.zig");
 const meta = @import("../meta.zig");
 const spec = @import("../spec.zig");
 const builtin = @import("../builtin.zig");
-pub const tasks = @import("./tasks.zig");
+const types = @This();
+pub usingnamespace @import("./tasks.zig");
 pub const hist_tasks = @import("./hist_tasks.zig");
 pub const Allocator = mem.SimpleAllocator;
 pub const Node = enum(u8) { group, worker };
@@ -527,7 +528,7 @@ pub const Record = packed struct {
     size: u32,
     /// Extra
     detail: hist_tasks.BuildCommand,
-    pub fn init(job: *JobInfo, build_cmd: *tasks.BuildCommand) Record {
+    pub fn init(job: *JobInfo, build_cmd: *types.BuildCommand) Record {
         return .{
             .durat = @as(u32, @intCast((job.ts.sec * 1_000) +% (job.ts.nsec / 1_000_000))),
             .size = @as(u32, @intCast(job.st.size)),
