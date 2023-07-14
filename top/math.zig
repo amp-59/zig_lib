@@ -95,13 +95,12 @@ pub fn rotr(comptime T: type, value: T, rot_amt: anytype) T {
     const RotateAmount = @TypeOf(rot_amt);
     if (@typeInfo(T) == .Vector) {
         const C = @typeInfo(T).Vector.child;
-        const len: usize = @typeInfo(T).Vector.len;
         if (C == u0) {
             return 0;
         }
         builtin.assert(@typeInfo(C).Int.signedness != .signed);
         const shift_amt = @as(builtin.ShiftAmount(C), @intCast(@mod(rot_amt, @typeInfo(C).Int.bits)));
-        return (value >> @splat(len, shift_amt)) | (value << @splat(len, 1 +% ~shift_amt));
+        return (value >> @splat(shift_amt)) | (value << @splat(1 +% ~shift_amt));
     } else {
         builtin.assert(@typeInfo(T).Int.signedness != .signed);
         const ShiftAmount = builtin.ShiftAmount(T);
@@ -122,13 +121,12 @@ pub fn rotl(comptime T: type, value: T, rot_amt: anytype) T {
     const RotateAmount = @TypeOf(rot_amt);
     if (@typeInfo(T) == .Vector) {
         const C = @typeInfo(T).Vector.child;
-        const len: usize = @typeInfo(T).Vector.len;
         if (C == u0) {
             return 0;
         }
         builtin.assert(@typeInfo(C).Int.signedness != .signed);
         const shift_amt = @as(builtin.ShiftAmount(C), @intCast(@mod(rot_amt, @typeInfo(C).Int.bits)));
-        return (value << @splat(len, shift_amt)) | (value >> @splat(len, 1 +% ~shift_amt));
+        return (value << @splat(shift_amt)) | (value >> @splat(1 +% ~shift_amt));
     } else {
         builtin.assert(@typeInfo(T).Int.signedness != .signed);
         const ShiftAmount = builtin.ShiftAmount(T);
@@ -153,9 +151,9 @@ pub fn shl(comptime T: type, value: T, shift_amt: anytype) T {
             const C = @typeInfo(T).Vector.child;
             const len: usize = @typeInfo(T).Vector.len;
             if (abs_shift_amt >= @typeInfo(C).Int.bits) {
-                return @splat(len, @as(C, 0));
+                return @as(@Vector(len, C), @splat(@as(C, 0)));
             }
-            break :blk @splat(len, @as(builtin.ShiftAmount(C), @intCast(abs_shift_amt)));
+            break :blk @as(@Vector(len, C), @splat(@as(builtin.ShiftAmount(C), @intCast(abs_shift_amt))));
         } else {
             if (abs_shift_amt >= @typeInfo(T).Int.bits) {
                 return 0;
@@ -180,9 +178,9 @@ pub fn shr(comptime T: type, a: T, shift_amt: anytype) T {
             const C = @typeInfo(T).Vector.child;
             const len = @typeInfo(T).Vector.len;
             if (abs_shift_amt >= @typeInfo(C).Int.bits) {
-                return @splat(len, @as(C, 0));
+                return @as(@Vector(len, C), @splat(@as(C, 0)));
             }
-            break :blk @splat(len, @as(builtin.ShiftAmount(C), @intCast(abs_shift_amt)));
+            break :blk @as(@Vector(len, C), @splat(@as(builtin.ShiftAmount(C), @intCast(abs_shift_amt))));
         } else {
             if (abs_shift_amt >= @typeInfo(T).Int.bits) {
                 return 0;
