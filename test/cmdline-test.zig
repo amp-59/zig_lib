@@ -13,7 +13,6 @@ pub usingnamespace proc.start;
 pub const logging_override: builtin.Logging.Override = spec.logging.override.verbose;
 
 const Node = build.GenericNode(.{ .options = .{
-    .commands = .{ .archive = true },
     .max_cmdline_len = null,
 } });
 
@@ -26,7 +25,6 @@ pub fn testComplexStructureBuildMain(allocator: *build.Allocator, builder: *Node
         .{ .name = "zig_lib", .path = "zig_lib.zig" },
         .{ .name = "@build", .path = "./build.zig" },
     };
-
     var build_cmd: build.BuildCommand = .{
         .kind = .exe,
         .mode = .ReleaseSmall,
