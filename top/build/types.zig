@@ -40,6 +40,16 @@ pub const State = enum(u8) {
     /// The task is complete.
     finished =  0b100000,
     pub const list: []const State = meta.tagList(State);
+    pub fn style(st: State) [:0]const u8 {
+        switch (st) {
+            .failed, .cancelled => return "\x1b[91m",
+            .ready => return "\x1b[93m",
+            .blocking => return "\x1b[96m",
+            .working =>  return"\x1b[95m",
+            .finished =>  return"\x1b[92m",
+            .null => unreachable,
+        }
+    }
 };
 // zig fmt: on
 pub const Lock = mem.ThreadSafeSet(State.list.len, State, Task);
