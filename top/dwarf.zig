@@ -823,30 +823,6 @@ const Constant = struct {
     }
 };
 pub const DwarfInfo = extern struct {
-    info: [*]u8,
-    info_len: u64,
-    abbrev: [*]u8,
-    abbrev_len: u64,
-    str: [*]u8,
-    str_len: u64,
-    str_offsets: [*]u8,
-    str_offsets_len: u64,
-    line: [*]u8,
-    line_len: u64,
-    line_str: [*]u8,
-    line_str_len: u64,
-    ranges: [*]u8,
-    ranges_len: u64,
-    loclists: [*]u8,
-    loclists_len: u64,
-    rnglists: [*]u8,
-    rnglists_len: u64,
-    addr: [*]u8,
-    addr_len: u64,
-    names: [*]u8,
-    names_len: u64,
-    frame: [*]u8,
-    frame_len: u64,
     /// All `AbbrevTable`s listed by this DwarfInfo.
     abbrev_tabs: [*]AbbrevTable,
     abbrev_tabs_max_len: u64,
@@ -863,6 +839,32 @@ pub const DwarfInfo = extern struct {
     addr_info: [*]AddressInfo,
     addr_info_max_len: u64,
     addr_info_len: u64,
+    impl: extern struct {
+        info: [*]u8,
+        info_len: u64,
+        abbrev: [*]u8,
+        abbrev_len: u64,
+        str: [*]u8,
+        str_len: u64,
+        str_offsets: [*]u8,
+        str_offsets_len: u64,
+        line: [*]u8,
+        line_len: u64,
+        line_str: [*]u8,
+        line_str_len: u64,
+        ranges: [*]u8,
+        ranges_len: u64,
+        loclists: [*]u8,
+        loclists_len: u64,
+        rnglists: [*]u8,
+        rnglists_len: u64,
+        addr: [*]u8,
+        addr_len: u64,
+        names: [*]u8,
+        names_len: u64,
+        frame: [*]u8,
+        frame_len: u64,
+    },
     pub const AddressInfo = struct {
         /// Lookup address.
         addr: u64 = 0,
@@ -894,20 +896,21 @@ pub const DwarfInfo = extern struct {
         @setRuntimeSafety(false);
         const ehdr: *exe.Elf64_Ehdr = @as(*exe.Elf64_Ehdr, @ptrFromInt(ehdr_addr));
         const qwords: comptime_int = @divExact(@sizeOf(DwarfInfo), 8);
+        const offset: comptime_int = @divExact(@offsetOf(DwarfInfo, "impl"), 8);
         var ret: [qwords]u64 = [_]u64{0} ** qwords;
-        var shdr: *exe.Elf64_Shdr = @as(*exe.Elf64_Shdr, @ptrFromInt(ehdr_addr +% ehdr.e_shoff +% ehdr.e_shstrndx *% ehdr.e_shentsize));
+        var shdr: *exe.Elf64_Shdr = @ptrFromInt(ehdr_addr +% ehdr.e_shoff +% ehdr.e_shstrndx *% ehdr.e_shentsize);
         var strtab_addr: u64 = ehdr_addr +% shdr.sh_offset;
         var addr: u64 = ehdr_addr +% ehdr.e_shoff;
         var shdr_idx: u64 = 0;
         while (shdr_idx != ehdr.e_shnum) : (shdr_idx +%= 1) {
-            shdr = @as(*exe.Elf64_Shdr, @ptrFromInt(addr));
+            shdr = @ptrFromInt(addr);
             for (DwarfInfo.names, 0..) |field_name, field_idx| {
-                const str: [*:0]u8 = @as([*:0]u8, @ptrFromInt(strtab_addr +% shdr.sh_name));
-                var idx: u64 = 0;
+                const str: [*:0]u8 = @ptrFromInt(strtab_addr +% shdr.sh_name);
+                var idx: usize = 0;
                 while (str[idx] != 0) : (idx +%= 1) {
                     if (field_name[idx] != str[idx]) break;
                 } else {
-                    const pair_idx: u64 = field_idx *% 2;
+                    const pair_idx: usize = (field_idx *% 2) +% offset;
                     ret[pair_idx +% 0] = ehdr_addr +% shdr.sh_offset;
                     ret[pair_idx +% 1] = shdr.sh_size;
                 }
@@ -969,8 +972,8 @@ pub const DwarfInfo = extern struct {
     }
     pub fn scanAllCompileUnits(dwarf_info: *DwarfInfo, allocator: *Allocator) void {
         var unit_off: u64 = 0;
-        while (unit_off < dwarf_info.info_len) {
-            const unit: *Unit = Unit.init(allocator, dwarf_info, dwarf_info.info, unit_off);
+        while (unit_off < dwarf_info.impl.info_len) {
+            const unit: *Unit = Unit.init(allocator, dwarf_info, dwarf_info.impl.info, unit_off);
             try populateUnit(allocator, dwarf_info, unit);
             const next_off: u64 = switch (unit.word_size) {
                 .qword => 12 +% unit.len,
@@ -1008,7 +1011,7 @@ pub const DwarfInfo = extern struct {
         var cur_info_entry: Die = info_entry.*;
         while (depth > 0) : (depth -%= 1) {
             if (cur_info_entry.get(.name)) |form_val| {
-                return getAttrString(dwarf_info, unit, form_val, dwarf_info.str[0..dwarf_info.str_len]);
+                return getAttrString(dwarf_info, unit, form_val, dwarf_info.impl.str[0..dwarf_info.impl.str_len]);
             }
             if (cur_info_entry.get(.abstract_origin)) |form_val| {
                 if (form_val.* != .Ref) {
@@ -1065,7 +1068,7 @@ pub const DwarfInfo = extern struct {
         dwarf_info: *DwarfInfo,
         abbrev_tab: *AbbrevTable,
     ) !void {
-        const abbrev_bytes: []const u8 = dwarf_info.abbrev[abbrev_tab.off..dwarf_info.abbrev_len];
+        const abbrev_bytes: []const u8 = dwarf_info.impl.abbrev[abbrev_tab.off..dwarf_info.impl.abbrev_len];
         while (true) {
             const code = parse.noexcept.readLEB128(u64, abbrev_bytes[abbrev_tab.len..]);
             abbrev_tab.len +%= code[1];
@@ -1109,7 +1112,7 @@ pub const DwarfInfo = extern struct {
         unit: *Unit,
         info_entry: *Die,
     ) !void {
-        const info_entry_bytes: []u8 = dwarf_info.info[info_entry.off..dwarf_info.info_len];
+        const info_entry_bytes: []u8 = dwarf_info.impl.info[info_entry.off..dwarf_info.impl.info_len];
         const code = parse.noexcept.readLEB128(u64, info_entry_bytes);
         info_entry.len = code[1];
         info_entry.kvs_len = 0;
@@ -1162,10 +1165,10 @@ pub const DwarfInfo = extern struct {
         return .{ .{ .name = dir }, dir.len +% 1 };
     }
     fn getLineString(dwarf_info: DwarfInfo, offset: u64) [:0]const u8 {
-        return getStringGeneric(dwarf_info.line_str[0..dwarf_info.line_str_len], offset);
+        return getStringGeneric(dwarf_info.impl.line_str[0..dwarf_info.impl.line_str_len], offset);
     }
     fn getString(dwarf_info: DwarfInfo, offset: u64) [:0]const u8 {
-        return getStringGeneric(dwarf_info.str[0..dwarf_info.str_len], offset);
+        return getStringGeneric(dwarf_info.impl.str[0..dwarf_info.impl.str_len], offset);
     }
     pub fn getSymbolName(dwarf_info: *DwarfInfo, instr_addr: u64) ?[]const u8 {
         for (dwarf_info.funcs[0..dwarf_info.funcs_len]) |*func| {
@@ -1178,27 +1181,27 @@ pub const DwarfInfo = extern struct {
         return null;
     }
     fn readDebugAddr(dwarf_info: DwarfInfo, addr_base: u64, index: u64) u64 {
-        if (dwarf_info.addr_len == 0) {
+        if (dwarf_info.impl.addr_len == 0) {
             builtin.proc.exitError(error.InvalidEncoding, 2);
         }
         if (addr_base < 8) {
             builtin.proc.exitError(error.InvalidEncoding, 2);
         }
-        const ver: u16 = @as(*align(1) u16, @ptrCast(dwarf_info.addr + addr_base - 4)).*;
+        const ver: u16 = @as(*align(1) u16, @ptrCast(dwarf_info.impl.addr + addr_base - 4)).*;
         if (ver != 5) {
             builtin.proc.exitError(error.InvalidEncoding, 2);
         }
-        const addr_size: u8 = dwarf_info.addr[addr_base -% 2];
-        const seg_size: u8 = dwarf_info.addr[addr_base -% 1];
+        const addr_size: u8 = dwarf_info.impl.addr[addr_base -% 2];
+        const seg_size: u8 = dwarf_info.impl.addr[addr_base -% 1];
         const off: u64 = @as(usize, @intCast(addr_base +% (addr_size +% seg_size) *% index));
-        if (off +% addr_size > dwarf_info.addr_len) {
+        if (off +% addr_size > dwarf_info.impl.addr_len) {
             builtin.proc.exitError(error.InvalidEncoding, 2);
         }
         switch (addr_size) {
-            1 => return dwarf_info.addr[off],
-            2 => return @as(*align(1) u16, @ptrCast(dwarf_info.addr + off)).*,
-            4 => return @as(*align(1) u32, @ptrCast(dwarf_info.addr + off)).*,
-            8 => return @as(*align(1) u64, @ptrCast(dwarf_info.addr + off)).*,
+            1 => return dwarf_info.impl.addr[off],
+            2 => return @as(*align(1) u16, @ptrCast(dwarf_info.impl.addr + off)).*,
+            4 => return @as(*align(1) u32, @ptrCast(dwarf_info.impl.addr + off)).*,
+            8 => return @as(*align(1) u64, @ptrCast(dwarf_info.impl.addr + off)).*,
             else => builtin.proc.exitError(error.InvalidEncoding, 2),
         }
     }
@@ -1211,10 +1214,10 @@ pub const DwarfInfo = extern struct {
                 return dwarf_info.getString(offset);
             },
             .StrOffset => |index| {
-                if (dwarf_info.str_offsets_len == 0) {
+                if (dwarf_info.impl.str_offsets_len == 0) {
                     builtin.proc.exitError(error.InvalidEncoding, 2);
                 }
-                const str_offsets: []u8 = dwarf_info.str_offsets[0..dwarf_info.str_offsets_len];
+                const str_offsets: []u8 = dwarf_info.impl.str_offsets[0..dwarf_info.impl.str_offsets_len];
                 if (unit.str_offsets_base == 0) {
                     builtin.proc.exitError(error.InvalidEncoding, 2);
                 }
@@ -1223,13 +1226,13 @@ pub const DwarfInfo = extern struct {
                     if (off +% 8 > str_offsets.len) {
                         builtin.proc.exitError(error.InvalidEncoding, 2);
                     }
-                    return getStringGeneric(opt_str, @as(*align(1) u64, @ptrCast(dwarf_info.str_offsets + off)).*);
+                    return getStringGeneric(opt_str, @as(*align(1) u64, @ptrCast(dwarf_info.impl.str_offsets + off)).*);
                 } else {
                     const off: usize = unit.str_offsets_base +% (4 *% index);
                     if (off +% 4 > str_offsets.len) {
                         builtin.proc.exitError(error.InvalidEncoding, 2);
                     }
-                    return getStringGeneric(opt_str, @as(*align(1) u32, @ptrCast(dwarf_info.str_offsets + off)).*);
+                    return getStringGeneric(opt_str, @as(*align(1) u32, @ptrCast(dwarf_info.impl.str_offsets + off)).*);
                 }
             },
             .LineStrPtr => |offset| {
@@ -1246,8 +1249,8 @@ pub const DwarfInfo = extern struct {
                 return unit;
             }
             const gev5: bool = unit.version >= 5;
-            const ranges_len: u64 = mach.cmov64(gev5, dwarf_info.rnglists_len, dwarf_info.ranges_len);
-            const ranges: [*]u8 = mach.cmovx(gev5, dwarf_info.rnglists, dwarf_info.ranges);
+            const ranges_len: u64 = mach.cmov64(gev5, dwarf_info.impl.rnglists_len, dwarf_info.impl.ranges_len);
+            const ranges: [*]u8 = mach.cmovx(gev5, dwarf_info.impl.rnglists, dwarf_info.impl.ranges);
             const ranges_val = unit.info_entry.get(.ranges) orelse {
                 continue;
             };
@@ -1271,7 +1274,7 @@ pub const DwarfInfo = extern struct {
                 else => builtin.proc.exitError(error.InvalidEncoding, 2),
             };
             var base_address: usize = unit.info_entry.address(dwarf_info, .low_pc, unit) orelse 0;
-            const buf: [*]u8 = dwarf_info.ranges;
+            const buf: [*]u8 = dwarf_info.impl.ranges;
             var pos: u64 = ranges_offset;
             if (unit.version < 5) {
                 while (true) {
@@ -1297,15 +1300,15 @@ pub const DwarfInfo = extern struct {
                     switch (kind) {
                         .end_of_list => break,
                         .base_addressx => {
-                            const idx = parse.noexcept.readLEB128(usize, buf[pos..dwarf_info.ranges_len]);
+                            const idx = parse.noexcept.readLEB128(usize, buf[pos..dwarf_info.impl.ranges_len]);
                             pos +%= idx[1];
                             base_address = dwarf_info.readDebugAddr(unit.addr_base, idx[0]);
                         },
                         .startx_endx => {
-                            const start_idx = parse.noexcept.readLEB128(usize, buf[pos..dwarf_info.ranges_len]);
+                            const start_idx = parse.noexcept.readLEB128(usize, buf[pos..dwarf_info.impl.ranges_len]);
                             pos +%= start_idx[1];
                             const start_addr: usize = dwarf_info.readDebugAddr(unit.addr_base, start_idx[0]);
-                            const end_idx = parse.noexcept.readLEB128(usize, buf[pos..dwarf_info.ranges_len]);
+                            const end_idx = parse.noexcept.readLEB128(usize, buf[pos..dwarf_info.impl.ranges_len]);
                             pos +%= end_idx[1];
                             const end_addr: usize = dwarf_info.readDebugAddr(unit.addr_base, end_idx[0]);
                             if (target_address >= start_addr and target_address < end_addr) {
@@ -1313,18 +1316,18 @@ pub const DwarfInfo = extern struct {
                             }
                         },
                         .startx_length => {
-                            const start_index = parse.noexcept.readLEB128(usize, buf[pos..dwarf_info.ranges_len]);
+                            const start_index = parse.noexcept.readLEB128(usize, buf[pos..dwarf_info.impl.ranges_len]);
                             const start_addr: usize = dwarf_info.readDebugAddr(unit.addr_base, start_index[0]);
-                            const len = parse.noexcept.readLEB128(usize, buf[pos..dwarf_info.ranges_len]);
+                            const len = parse.noexcept.readLEB128(usize, buf[pos..dwarf_info.impl.ranges_len]);
                             const end_addr: u64 = start_addr + len[0];
                             if (target_address >= start_addr and target_address < end_addr) {
                                 return unit;
                             }
                         },
                         .offset_pair => {
-                            const start_addr = parse.noexcept.readLEB128(usize, buf[pos..dwarf_info.ranges_len]);
+                            const start_addr = parse.noexcept.readLEB128(usize, buf[pos..dwarf_info.impl.ranges_len]);
                             pos +%= start_addr[1];
-                            const end_addr = parse.noexcept.readLEB128(usize, buf[pos..dwarf_info.ranges_len]);
+                            const end_addr = parse.noexcept.readLEB128(usize, buf[pos..dwarf_info.impl.ranges_len]);
                             pos +%= end_addr[1];
                             if (target_address >= base_address + start_addr[0] and
                                 target_address < base_address + end_addr[0])
@@ -1348,7 +1351,7 @@ pub const DwarfInfo = extern struct {
                         .start_length => {
                             const start_addr = @as(*align(1) usize, @ptrCast(buf + pos)).*;
                             pos +%= @sizeOf(usize);
-                            const len = parse.noexcept.readLEB128(usize, buf[pos..dwarf_info.ranges_len]);
+                            const len = parse.noexcept.readLEB128(usize, buf[pos..dwarf_info.impl.ranges_len]);
                             const end_addr = start_addr + len[0];
                             if (target_address >= start_addr and target_address < end_addr) {
                                 return unit;
@@ -1371,12 +1374,12 @@ pub const DwarfInfo = extern struct {
             const form_val: *const FormValue = unit.info_entry.get(.comp_dir) orelse {
                 builtin.proc.exitError(error.InvalidEncoding, 2);
             };
-            break :blk getAttrString(dwarf_info, unit, form_val, dwarf_info.line_str[0..dwarf_info.line_str_len]);
+            break :blk getAttrString(dwarf_info, unit, form_val, dwarf_info.impl.line_str[0..dwarf_info.impl.line_str_len]);
         };
         const line_off: u64 = unit.info_entry.offset(.stmt_list) orelse {
             builtin.proc.exitError(error.InvalidEncoding, 2);
         };
-        const line_unit: *Unit = Unit.init(allocator, dwarf_info, dwarf_info.line, line_off);
+        const line_unit: *Unit = Unit.init(allocator, dwarf_info, dwarf_info.impl.line, line_off);
         const obv_files_len: u64 = unit.files_len;
         defer {
             if (obv_files_len != 0) unit.files_len = obv_files_len;
@@ -1385,11 +1388,11 @@ pub const DwarfInfo = extern struct {
             .qword => line_unit.len +% 12,
             .dword => line_unit.len +% 8,
         };
-        const buf: [*]u8 = dwarf_info.line;
-        const bytes: []u8 = buf[0..dwarf_info.line_len];
+        const buf: [*]u8 = dwarf_info.impl.line;
+        const bytes: []u8 = buf[0..dwarf_info.impl.line_len];
         var pos: u64 = line_unit.info_entry.off;
         const next_off: u64 = (pos +% line_unit.abbrev_tab.off) -% 1;
-        const min_instr_len: u8 = dwarf_info.line[pos -% 1];
+        const min_instr_len: u8 = dwarf_info.impl.line[pos -% 1];
         if (min_instr_len == 0) {
             builtin.proc.exitError(error.InvalidEncoding, 2);
         }
