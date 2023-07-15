@@ -1976,7 +1976,7 @@ pub const parse = struct {
         return add_result[0];
     }
     pub inline fn sigFigList(comptime T: type, comptime radix: u7) []const T {
-        if (comptime tab.sigFigList(T, radix)) |list| {
+        if (comptime math.sigFigList(T, radix)) |list| {
             return list;
         }
         comptime var value: T = 0;
