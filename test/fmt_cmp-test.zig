@@ -1,3 +1,22 @@
+//! Control:
+//! build-exe:      fmt_cmp_test, ReleaseFast, stripped, exit=[updated,0], 624 bytes, 0.065s [0]
+//! perf:           cycles		131,246,822
+//! perf:           instructions	144,186,557
+//! perf:           cache-references	8,106,756
+//! perf:           cache-misses	1,770,227
+//! perf:           branch-misses	1,127,291
+//! perf:           cpu-clock		183,594,554
+//! perf:           task-clock		179,082,099
+//! perf:           page-faults		7,259
+//! run:            perf, exit=0, 0.122s [0]
+//! perf:           cycles		452
+//! perf:           instructions	9
+//! perf:           cache-references	28
+//! perf:           cache-misses	25
+//! perf:           branch-misses	2
+//! perf:           cpu-clock		52,600
+//! perf:           task-clock		50,470
+//! perf:           page-faults		1
 const zl = @import("../zig_lib.zig");
 const fmt = zl.fmt;
 const mem = zl.mem;
@@ -48,7 +67,6 @@ fn standardLibFormatter(futex1: *u32, futex2: *u32, count1: u32, count2: u32, re
     }) catch {};
     builtin.debug.write(fbu.buffer[0..fbu.pos]);
 }
-
 /// build-exe:      fmt_cmp_test, ReleaseFast, stripped, exit=[updated,0], 2208(-144) => 2064 bytes, 0.186s [0]
 /// perf:           cycles		517,930,037
 /// perf:           instructions	615,558,402
@@ -135,7 +153,6 @@ fn zigLibContainerWriteSlices(futex1: *u32, futex2: *u32, count1: u32, count2: u
 /// perf:           task-clock		195,777,735
 /// perf:           page-faults		7,796
 /// run:            perf, exit=0, 0.146s [0]
-/// futex:          futex1=@0x7fff60da23a4, word1=240, max1=1, futex2=@0x7fff60da23a0, word2=241, max2=0, res=2
 /// perf:           cycles		2,798
 /// perf:           instructions	1,376
 /// perf:           cache-references	129
@@ -219,25 +236,6 @@ fn zigLibOptimisedMessage(futex1: *u32, futex2: *u32, count1: u32, count2: u32, 
     buf[len] = '\n';
     builtin.debug.write(buf[0 .. len +% 1]);
 }
-/// Control:
-/// build-exe:      fmt_cmp_test, ReleaseFast, stripped, exit=[updated,0], 1240(-616) => 624 bytes, 0.065s [0]
-/// perf:           cycles		131,246,822
-/// perf:           instructions	144,186,557
-/// perf:           cache-references	8,106,756
-/// perf:           cache-misses	1,770,227
-/// perf:           branch-misses	1,127,291
-/// perf:           cpu-clock		183,594,554
-/// perf:           task-clock		179,082,099
-/// perf:           page-faults		7,259
-/// run:            perf, exit=0, 0.122s [0]
-/// perf:           cycles		452
-/// perf:           instructions	9
-/// perf:           cache-references	28
-/// perf:           cache-misses	25
-/// perf:           branch-misses	2
-/// perf:           cpu-clock		52,600
-/// perf:           task-clock		50,470
-/// perf:           page-faults		1
 pub fn main() void {
     var futex0: u32 = 0xf0;
     var futex1: u32 = 0xf1;
