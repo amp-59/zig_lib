@@ -26,7 +26,7 @@ pub fn DiscreteBitSet(comptime elements: u16, comptime val_type: type, comptime 
             pub fn indexToShiftAmount(index: idx_type) Shift {
                 return @as(Shift, @intCast((word_bit_size -% 1) -% @rem(index, word_bit_size)));
             }
-            pub fn get(bit_set: *BitSet, index: idx_type) val_type {
+            pub fn get(bit_set: *const BitSet, index: idx_type) val_type {
                 const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
                 return bit_set.bits[index / word_bit_size] & bit_mask != 0;
             }
@@ -48,7 +48,7 @@ pub fn DiscreteBitSet(comptime elements: u16, comptime val_type: type, comptime 
             pub inline fn indexToShiftAmount(index: idx_type) Shift {
                 return @as(Shift, @intCast((data_info.Int.bits -% 1) -% index));
             }
-            pub fn get(bit_set: *BitSet, index: idx_type) val_type {
+            pub fn get(bit_set: *const BitSet, index: idx_type) val_type {
                 const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
                 return bit_set.bits & bit_mask != 0;
             }
@@ -70,7 +70,7 @@ pub fn DiscreteBitSet(comptime elements: u16, comptime val_type: type, comptime 
             pub inline fn indexToShiftAmount(index: idx_type) Shift {
                 return @as(Shift, @intCast((word_bit_size -% 1) -% @rem(index, word_bit_size)));
             }
-            pub fn get(bit_set: *BitSet, index: idx_type) val_type {
+            pub fn get(bit_set: *const BitSet, index: idx_type) val_type {
                 const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
                 return bit_set.bits[index / word_bit_size] & bit_mask != 0;
             }
@@ -92,7 +92,7 @@ pub fn DiscreteBitSet(comptime elements: u16, comptime val_type: type, comptime 
             pub inline fn indexToShiftAmount(index: idx_type) Shift {
                 return @as(Shift, @intCast((data_info.Int.bits -% 1) -% @intFromEnum(index)));
             }
-            pub fn get(bit_set: *BitSet, index: idx_type) val_type {
+            pub fn get(bit_set: *const BitSet, index: idx_type) val_type {
                 const bit_mask: Word = @as(Word, 1) << indexToShiftAmount(index);
                 return bit_set.bits & bit_mask != 0;
             }
@@ -112,7 +112,7 @@ fn ThreadSafeSetBoolInt(comptime elements: u16, comptime idx_type: type) type {
         bytes: [elements]u8 align(4) = builtin.zero([elements]u8),
         pub const SafeSet: type = @This();
         const mutexes: comptime_int = @divExact(@sizeOf(@This()), 4);
-        pub fn get(safe_set: *SafeSet, index: idx_type) bool {
+        pub fn get(safe_set: *const SafeSet, index: idx_type) bool {
             return safe_set.bytes[index] != 0;
         }
         pub fn set(safe_set: *SafeSet, index: idx_type) void {
@@ -137,7 +137,7 @@ fn ThreadSafeSetBoolEnum(comptime elements: u16, comptime idx_type: type) type {
         bytes: [elements]u8 align(4) = builtin.zero([elements]u8),
         pub const SafeSet: type = @This();
         const mutexes: comptime_int = @divExact(@sizeOf(@This()), 4);
-        pub fn get(safe_set: *SafeSet, index: idx_type) bool {
+        pub fn get(safe_set: *const SafeSet, index: idx_type) bool {
             return safe_set.bytes[@intFromEnum(index)] != 0;
         }
         pub fn set(safe_set: *SafeSet, index: idx_type) void {
@@ -162,7 +162,7 @@ fn ThreadSafeSetEnumInt(comptime elements: u16, comptime val_type: type, comptim
         bytes: [elements]val_type align(4) = builtin.zero([elements]val_type),
         pub const SafeSet: type = @This();
         const mutexes: comptime_int = @divExact(@sizeOf(@This()), 4);
-        pub fn get(safe_set: *SafeSet, index: idx_type) val_type {
+        pub fn get(safe_set: *const SafeSet, index: idx_type) val_type {
             return safe_set.bytes[index];
         }
         pub fn set(safe_set: *SafeSet, index: idx_type, to: val_type) void {
@@ -181,7 +181,7 @@ fn ThreadSafeSetEnumEnum(comptime elements: u16, comptime val_type: type, compti
         bytes: [elements]val_type align(4) = builtin.zero([elements]val_type),
         pub const SafeSet: type = @This();
         const mutexes: comptime_int = @divExact(@sizeOf(@This()), 4);
-        pub fn get(safe_set: *SafeSet, index: idx_type) val_type {
+        pub fn get(safe_set: *const SafeSet, index: idx_type) val_type {
             return safe_set.bytes[@intFromEnum(index)];
         }
         pub fn set(safe_set: *SafeSet, index: idx_type, to: val_type) void {
@@ -234,7 +234,7 @@ fn GenericMultiSet(
                 comptime return directory[index].field_index;
             }
         }
-        pub fn get(multi_set: *MultiSet, comptime index: spec.idx_type) spec.val_type {
+        pub fn get(multi_set: *const MultiSet, comptime index: spec.idx_type) spec.val_type {
             return multi_set.fields[fieldIndex(index)].get(arenaIndex(index));
         }
         pub fn set(multi_set: *MultiSet, comptime index: spec.idx_type) void {
@@ -863,7 +863,7 @@ pub fn GenericDiscreteAddressSpace(comptime spec: DiscreteAddressSpaceSpec) type
         pub const Index: type = spec.idx_type;
         pub const Value: type = spec.val_type;
         pub const addr_spec: DiscreteAddressSpaceSpec = spec;
-        pub fn get(address_space: *DiscreteAddressSpace, comptime index: Index) bool {
+        pub fn get(address_space: *const DiscreteAddressSpace, comptime index: Index) bool {
             return address_space.impl.get(index);
         }
         pub fn unset(address_space: *DiscreteAddressSpace, comptime index: Index) bool {
