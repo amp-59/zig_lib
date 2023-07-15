@@ -28,8 +28,6 @@ const builtin = zl.builtin;
 
 pub usingnamespace proc.start;
 
-pub const message_style = "\x1b[96;1m";
-
 pub const signal_handlers = .{
     .SegmentationFault = false,
     .IllegalInstruction = false,
