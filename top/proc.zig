@@ -903,7 +903,7 @@ noinline fn callErrorOrMediaReturnValueFunction(comptime Fn: type, result_addr: 
         @as(*meta.Args(Fn), @ptrFromInt(args_addr)).*,
     );
 }
-pub fn callClone(comptime spec: CloneSpec, stack_addr: u64, stack_len: u64, result_ptr: anytype, comptime function: anytype, args: meta.Args(@TypeOf(function))) sys.ErrorUnion(spec.errors, spec.return_type) {
+pub fn clone(comptime spec: CloneSpec, stack_addr: u64, stack_len: u64, result_ptr: anytype, comptime function: anytype, args: meta.Args(@TypeOf(function))) sys.ErrorUnion(spec.errors, spec.return_type) {
     @setRuntimeSafety(false);
     const Fn: type = @TypeOf(function);
     const Args: type = meta.Args(@TypeOf(function));
