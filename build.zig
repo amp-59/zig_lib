@@ -186,6 +186,7 @@ fn tests(allocator: *build.Allocator, node: *Node) void {
     }) |target| {
         target.addToplevelArgs(allocator);
     }
+    fmt_cmp_test.task.info.build.mode = .ReleaseFast;
     node.task.tag = .build;
     addTracer(proc_test);
     debug2_test.flags.do_update = true;
