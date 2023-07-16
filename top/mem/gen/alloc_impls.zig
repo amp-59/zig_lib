@@ -305,6 +305,11 @@ pub fn main() !void {
             }
             alloc_fn_info.writeSignature(&array, kind);
             array.writeMany("{\n");
+
+            array.writeMany("const P = meta.FnParam0(s_impl_type.");
+            array.writeMany(@tagName(alloc_fn_info));
+            array.writeMany(");");
+
             if (unique_arg_list.len != 0) {
                 writeFieldDeductionInternal(&allocator, &array, unique_arg_list.readAll(), list_map);
             }
