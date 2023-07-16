@@ -978,6 +978,24 @@ pub fn GenericStructOfBool(comptime Struct: type) type {
         }
     };
 }
+pub fn TagUnion(comptime Union: type, comptime tag_type: type) type {
+    const union_info: builtin.Type = @typeInfo(Union);
+    return @Type(.{ .Union = .{
+        .fields = union_info.Union.fields,
+        .tag_type = tag_type,
+        .layout = .Auto,
+        .decls = &.{},
+    } });
+}
+pub fn tagUnion(comptime Union: type, comptime tag_type: type, value: Union, tag: tag_type) TagUnion(Union, tag_type) {
+    switch (tag) {
+        inline else => |tag_tag| return @unionInit(
+            TagUnion(Union, tag_type),
+            @tagName(tag_tag),
+            @field(value, @tagName(tag_tag)),
+        ),
+    }
+}
 pub fn TaggedUnion(comptime Union: type) type {
     var tag_type_fields: []const builtin.Type.EnumField = empty;
     var value: comptime_int = 0;
