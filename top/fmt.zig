@@ -1030,12 +1030,17 @@ pub fn isValidId(values: []const u8) bool {
 const EscapedStringFormatSpec = struct {
     single_quote: []const u8 = "\'",
     double_quote: []const u8 = "\\\"",
+    open_quote: ?[]const u8 = "\"",
+    close_quote: ?[]const u8 = "\"",
 };
 pub fn GenericEscapedStringFormat(comptime fmt_spec: EscapedStringFormatSpec) type {
     const T = struct {
         value: []const u8,
         const Format = @This();
         pub fn formatWrite(format: Format, array: anytype) void {
+            if (fmt_spec.open_quote) |open_quote| {
+                array.writeMany(open_quote);
+            }
             for (format.value) |byte| {
                 switch (byte) {
                     else => array.writeFormat(esc(byte)),
@@ -1050,9 +1055,19 @@ pub fn GenericEscapedStringFormat(comptime fmt_spec: EscapedStringFormatSpec) ty
                     },
                 }
             }
+            if (fmt_spec.close_quote) |close_quote| {
+                array.writeMany(close_quote);
+            }
         }
         pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
             var len: u64 = 0;
+            if (fmt_spec.open_quote) |open_quote| {
+                const OQ = [open_quote.len]u8;
+                const dest: *OQ = @ptrCast(buf + len);
+                const src: *const OQ = @ptrCast(open_quote.ptr);
+                dest.* = src.*;
+                len +%= open_quote.len;
+            }
             const DQ = [fmt_spec.double_quote.len]u8;
             const SQ = [fmt_spec.single_quote.len]u8;
             for (format.value) |byte| {
@@ -1076,13 +1091,13 @@ pub fn GenericEscapedStringFormat(comptime fmt_spec: EscapedStringFormatSpec) ty
                     },
                     '"' => {
                         const dest: *DQ = @ptrCast(buf + len);
-                        const src: *DQ = @ptrCast(fmt_spec.double_quote.ptr);
+                        const src: *const DQ = @ptrCast(fmt_spec.double_quote.ptr);
                         dest.* = src.*;
                         len +%= fmt_spec.double_quote.len;
                     },
                     '\'' => {
                         const dest: *SQ = @ptrCast(buf + len);
-                        const src: *SQ = @ptrCast(fmt_spec.single_quote.ptr);
+                        const src: *const SQ = @ptrCast(fmt_spec.single_quote.ptr);
                         dest.* = src.*;
                         len +%= fmt_spec.single_quote.len;
                     },
@@ -1092,10 +1107,20 @@ pub fn GenericEscapedStringFormat(comptime fmt_spec: EscapedStringFormatSpec) ty
                     },
                 }
             }
+            if (fmt_spec.close_quote) |close_quote| {
+                const CQ = [close_quote.len]u8;
+                const dest: *CQ = @ptrCast(buf + len);
+                const src: *const CQ = @ptrCast(close_quote.ptr);
+                dest.* = src.*;
+                len +%= close_quote.len;
+            }
             return len;
         }
         pub fn formatLength(format: Format) u64 {
             var len: u64 = 0;
+            if (fmt_spec.open_quote) |open_quote| {
+                len +%= open_quote.len;
+            }
             for (format.value) |byte| {
                 switch (byte) {
                     else => len +%= esc(byte).formatLength(),
@@ -1109,6 +1134,9 @@ pub fn GenericEscapedStringFormat(comptime fmt_spec: EscapedStringFormatSpec) ty
                         len +%= 1;
                     },
                 }
+            }
+            if (fmt_spec.close_quote) |close_quote| {
+                len +%= close_quote.len;
             }
             return len;
         }
