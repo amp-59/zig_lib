@@ -62,11 +62,11 @@ fn testCloneAndFutex() !void {
     var allocator: mem.SimpleAllocator = .{};
     var futex1: u32 = 16;
     var futex2: u32 = 16;
-    try proc.callClone(.{ .return_type = void }, allocator.allocateRaw(4096, 16), 4096, {}, testFutexWait, .{&futex1});
+    try proc.clone(.{ .return_type = void }, allocator.allocateRaw(4096, 16), 4096, {}, testFutexWait, .{&futex1});
     try time.sleep(.{}, .{ .nsec = 0x10000 });
-    try proc.callClone(.{ .return_type = void }, allocator.allocateRaw(4096, 16), 4096, {}, testFutexWakeOp, .{ &futex1, &futex2 });
+    try proc.clone(.{ .return_type = void }, allocator.allocateRaw(4096, 16), 4096, {}, testFutexWakeOp, .{ &futex1, &futex2 });
     try time.sleep(.{}, .{ .nsec = 0x20000 });
-    try proc.callClone(.{ .return_type = void }, allocator.allocateRaw(4096, 16), 4096, {}, testFutexWake, .{&futex2});
+    try proc.clone(.{ .return_type = void }, allocator.allocateRaw(4096, 16), 4096, {}, testFutexWake, .{&futex2});
     try builtin.expectEqual(u32, 16, futex1);
     try builtin.expectEqual(u32, 32, futex2);
 }
