@@ -29,12 +29,33 @@ pub const RenderSpec = struct {
     inline_field_types: bool = true,
     enable_comptime_iterator: bool = false,
     address_view: bool = false,
-    ignore_formatter_decls: bool = true,
-    ignore_reinterpret_decls: bool = true,
-    ignore_container_decls: bool = false,
-    attempt_render_pointer_many: bool = true,
+
     pointer_many_len_field_name_suffix: []const u8 = "_len",
     pointer_many_max_len_field_name_suffix: []const u8 = "max_len",
+    views: packed struct(u4) {
+        /// Represents a normal slice where all values are to be shown, maybe used in extern structs.
+        /// field_name: [*]T,
+        /// field_name_len: usize,
+        extern_slice: bool = true,
+        /// Represents a slice where only `field_name_len` values are to be shown.
+        /// field_name: []T
+        /// field_name_len: usize,
+        zig_resizeable: bool = true,
+        /// Represents a statically sized buffer  where only `field_name_len` values are to be shown.
+        /// field_name: [n]T
+        /// field_name_len: usize,
+        static_resizeable: bool = true,
+        /// Represents a buffer with length and capacity, maybe used in extern structs.
+        /// field_name: [*]T,
+        /// field_name_max_len: usize,
+        /// field_name_len: usize,
+        extern_resizeable: bool = true,
+    } = .{},
+    decls: struct {
+        ignore_formatter: bool = true,
+        ignore_container: bool = false,
+        ignore_reinterpret: bool = true,
+    } = .{},
 };
 pub inline fn any(value: anytype) AnyFormat(.{}, @TypeOf(value)) {
     return .{ .value = value };
@@ -481,12 +502,12 @@ inline fn formatLengthOmitTrailingComma(comptime omit_trailing_comma: bool, fiel
     return builtin.int2a(u64, !omit_trailing_comma, fields_len != 0);
 }
 pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
-    if (!spec.ignore_formatter_decls) {
+    if (!spec.decls.ignore_formatter) {
         if (@hasDecl(Struct, "formatWrite") and @hasDecl(Struct, "formatLength")) {
             return FormatFormat(Struct);
         }
     }
-    if (!spec.ignore_container_decls) {
+    if (!spec.decls.ignore_container) {
         if (@hasDecl(Struct, "readAll") and @hasDecl(Struct, "len")) {
             return ContainerFormat(spec, Struct);
         }
@@ -531,28 +552,66 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
             writeFormat(array, field_format);
             array.writeCount(2, ", ".*);
         }
-        fn deduceFieldPrimitiveArraySize(comptime field_name: []const u8, comptime field_type: type) bool {
-            const field_type_info: builtin.Type = @typeInfo(field_type);
-            if (field_type_info == .Pointer and field_type_info.Pointer.Size == .Many) {
-                const len_field_name: []const u8 = field_name ++ "_len";
-                if (@hasField(Struct, len_field_name) and
-                    @TypeOf(@field(undef, len_field_name)))
-                {
-                    comptime return true;
-                }
-            }
-            comptime return false;
-        }
         pub fn formatWrite(format: anytype, array: anytype) void {
             if (fields.len == 0) {
                 array.writeMany(type_name ++ "{}");
             } else {
+                comptime var field_idx: usize = 0;
                 var fields_len: usize = 0;
                 array.writeMany(type_name ++ "{ ");
-                inline for (fields) |field| {
+                inline while (field_idx != fields.len) : (field_idx +%= 1) {
+                    const field: builtin.Type.StructField = fields[field_idx];
                     const field_name_format: fmt.IdentifierFormat = .{ .value = field.name };
                     const field_value: field.type = @field(format.value, field.name);
-                    const field_spec: RenderSpec = if (comptime meta.DistalChild(field.type) == type) field_spec_if_type else field_spec_if_not_type;
+                    const field_type_info: builtin.Type = @typeInfo(field.type);
+                    const field_spec: RenderSpec = if (meta.DistalChild(field.type) == type) field_spec_if_type else field_spec_if_not_type;
+                    if (field_type_info == .Pointer) {
+                        if (field_type_info.Pointer.size == .Many) {
+                            const len_field_name: []const u8 = field.name ++ spec.pointer_many_len_field_name_suffix;
+                            if (field_type_info.Pointer.size == .Many) {
+                                if (spec.views.extern_slice and field_idx +% 1 < fields.len) {
+                                    const len_field: builtin.Type.StructField = fields[field_idx +% 1];
+                                    if (comptime mem.testEqualMany(u8, len_field.name, len_field_name)) {
+                                        const view = field_value[0..@field(format.value, len_field.name)];
+                                        writeFieldInitializer(array, field_name_format, render(field_spec, view));
+                                        fields_len +%= 1;
+                                        continue;
+                                    }
+                                }
+                                if (spec.views.extern_resizeable and field_idx +% 2 < fields.len) {
+                                    const len_field: builtin.Type.StructField = fields[field_idx +% 2];
+                                    if (comptime mem.testEqualMany(u8, len_field.name, len_field_name)) {
+                                        const view = field_value[0..@field(format.value, len_field.name)];
+                                        writeFieldInitializer(array, field_name_format, render(field_spec, view));
+                                        fields_len +%= 1;
+                                        continue;
+                                    }
+                                }
+                            }
+                            if (field_type_info.Pointer.size == .Slice) {
+                                if (spec.views.zig_resizeable and field_idx +% 1 < fields.len) {
+                                    const len_field: builtin.Type.StructField = fields[field_idx +% 1];
+                                    if (comptime mem.testEqualMany(u8, len_field.name, len_field_name)) {
+                                        const view = field_value[0..@field(format.value, len_field.name)];
+                                        writeFieldInitializer(array, field_name_format, render(field_spec, view));
+                                        fields_len +%= 1;
+                                        continue;
+                                    }
+                                }
+                            }
+                        }
+                    } else if (field_type_info == .Array) {
+                        if (spec.views.static_resizeable and field_idx +% 1 < fields.len) {
+                            const len_field: builtin.Type.StructField = fields[field_idx +% 1];
+                            const len_field_name: []const u8 = field.name ++ spec.pointer_many_len_field_name_suffix;
+                            if (comptime mem.testEqualMany(u8, len_field.name, len_field_name)) {
+                                const view = field_value[0..@field(format.value, len_field.name)];
+                                writeFieldInitializer(array, field_name_format, render(field_spec, view));
+                                fields_len +%= 1;
+                                continue;
+                            }
+                        }
+                    }
                     const field_format: AnyFormat(field_spec, field.type) = .{ .value = field_value };
                     if (spec.omit_default_fields and field.default_value != null) {
                         if (!builtin.testEqual(field.type, field_value, mem.pointerOpaque(field.type, field.default_value.?).*)) {
@@ -570,12 +629,64 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
         pub fn formatLength(format: anytype) u64 {
             var len: u64 = 0;
             len +%= type_name.len +% 2;
+            comptime var field_idx: usize = 0;
             var fields_len: usize = 0;
-            inline for (fields) |field| {
+            inline while (field_idx != fields.len) : (field_idx +%= 1) {
+                const field: builtin.Type.StructField = fields[field_idx];
                 const field_name_format: fmt.IdentifierFormat = .{ .value = field.name };
                 const field_spec: RenderSpec = if (comptime meta.DistalChild(field.type) == type) field_spec_if_type else field_spec_if_not_type;
                 const FieldFormat = AnyFormat(field_spec, field.type);
                 const field_value: field.type = @field(format.value, field.name);
+                const field_type_info: builtin.Type = @typeInfo(field.type);
+                if (field_type_info == .Pointer) {
+                    if (field_type_info.Pointer.size == .Many) {
+                        const len_field_name: []const u8 = field.name ++ spec.pointer_many_len_field_name_suffix;
+                        const max_len_field_name: []const u8 = field.name ++ spec.pointer_many_max_len_field_name_suffix;
+                        _ = max_len_field_name;
+                        if (field_type_info.Pointer.size == .Many) {
+                            if (spec.views.extern_slice and field_idx +% 1 < fields.len) {
+                                const len_field: builtin.Type.StructField = fields[field_idx +% 1];
+                                if (comptime mem.testEqualMany(u8, len_field.name, len_field_name)) {
+                                    const view = field_value[0..@field(format.value, len_field.name)];
+                                    len +%= 1 +% field_name_format.formatLength() +% 3 +% render(field_spec, view).formatLength() +% 2;
+                                    fields_len +%= 1;
+                                    continue;
+                                }
+                            }
+                            if (spec.views.extern_resizeable and field_idx +% 2 < fields.len) {
+                                const len_field: builtin.Type.StructField = fields[field_idx +% 2];
+                                if (comptime mem.testEqualMany(u8, len_field.name, len_field_name)) {
+                                    const view = field_value[0..@field(format.value, len_field.name)];
+                                    len +%= 1 +% field_name_format.formatLength() +% 3 +% render(field_spec, view).formatLength() +% 2;
+                                    fields_len +%= 1;
+                                    continue;
+                                }
+                            }
+                        }
+                        if (field_type_info.Pointer.size == .Slice) {
+                            if (spec.views.zig_resizeable and field_idx +% 1 < fields.len) {
+                                const len_field: builtin.Type.StructField = fields[field_idx +% 1];
+                                if (comptime mem.testEqualMany(u8, len_field.name, len_field_name)) {
+                                    const view = field_value[0..@field(format.value, len_field.name)];
+                                    len +%= 1 +% field_name_format.formatLength() +% 3 +% render(field_spec, view).formatLength() +% 2;
+                                    fields_len +%= 1;
+                                    continue;
+                                }
+                            }
+                        }
+                    }
+                } else if (field_type_info == .Array) {
+                    if (spec.views.static_resizeable and field_idx +% 1 < fields.len) {
+                        const len_field: builtin.Type.StructField = fields[field_idx +% 1];
+                        const len_field_name: []const u8 = field.name ++ spec.pointer_many_len_field_name_suffix;
+                        if (comptime mem.testEqualMany(u8, len_field.name, len_field_name)) {
+                            const view = field_value[0..@field(format.value, len_field.name)];
+                            len +%= 1 +% field_name_format.formatLength() +% 3 +% render(field_spec, view).formatLength() +% 2;
+                            fields_len +%= 1;
+                            continue;
+                        }
+                    }
+                }
                 if (spec.omit_default_fields and field.default_value != null) {
                     if (!builtin.testEqual(field.type, field_value, mem.pointerOpaque(field.type, field.default_value.?).*)) {
                         const field_format: FieldFormat = .{ .value = field_value };
@@ -596,7 +707,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
     return T;
 }
 pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
-    if (!spec.ignore_formatter_decls) {
+    if (!spec.decls.ignore_formatter) {
         if (@hasDecl(Union, "formatWrite") and @hasDecl(Union, "formatLength")) {
             return FormatFormat(Union);
         }
@@ -1098,6 +1209,7 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
                 }
             }
         }
+        const StringLiteral = fmt.GenericEscapedStringFormat(.{});
         pub fn formatLengthStringLiteral(format: anytype) u64 {
             var len: u64 = 0;
             len +%= 1;
@@ -1160,7 +1272,8 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
                 }
                 if (spec.string_literal) |render_string_literal| {
                     if (render_string_literal) {
-                        return formatWriteStringLiteral(format, array);
+                        const str_fmt: StringLiteral = .{ .value = format.value };
+                        return str_fmt.formatWrite(array);
                     }
                 }
             }
@@ -1182,7 +1295,8 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
                 }
                 if (spec.string_literal) |render_string_literal| {
                     if (render_string_literal) {
-                        return formatLengthStringLiteral(format);
+                        const str_fmt: StringLiteral = .{ .value = format.value };
+                        return str_fmt.formatLength();
                     }
                 }
             }
