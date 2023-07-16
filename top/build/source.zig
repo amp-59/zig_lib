@@ -21,7 +21,7 @@ export fn forwardToExecuteCloneThreadedDirty(
     stack_addr: u64,
     stack_len: u64,
 ) void {
-    proc.callClone(.{ .errors = .{}, .return_type = void }, stack_addr, stack_len, {}, Node.impl.executeCommandThreaded, .{
+    proc.clone(.{ .errors = .{}, .return_type = void }, stack_addr, stack_len, {}, Node.impl.executeCommandThreaded, .{
         address_space, thread_space, builder, node, task, arena_index,
     });
 }
