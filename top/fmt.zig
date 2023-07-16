@@ -123,11 +123,11 @@ pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
             }
             len +%= @intFromBool(format.value < 0);
             if (fmt_spec.prefix) |prefix| {
-                @as(*[prefix.len]u8, @ptrCast(buf)).* = prefix.*;
+                @as(*[prefix.len]u8, @ptrCast(buf + len)).* = prefix.*;
                 len +%= prefix.len;
             }
             if (fmt_spec.radix > max_abs_value) {
-                buf[len] = '0' +% builtin.int(u8, format.value != 0);
+                buf[len] = '0' +% @as(u8, @intFromBool(format.value != 0));
                 len +%= 1;
             } else if (fmt_spec.separator) |separator| {
                 const count: u64 = format.digits();
@@ -1075,11 +1075,15 @@ pub fn GenericEscapedStringFormat(comptime fmt_spec: EscapedStringFormatSpec) ty
                         len +%= 2;
                     },
                     '"' => {
-                        @as(*DQ, @ptrCast(buf + len)).* = @as(*const DQ, @ptrCast(fmt_spec.double_quote.ptr)).*;
+                        const dest: *DQ = @ptrCast(buf + len);
+                        const src: *DQ = @ptrCast(fmt_spec.double_quote.ptr);
+                        dest.* = src.*;
                         len +%= fmt_spec.double_quote.len;
                     },
                     '\'' => {
-                        @as(*SQ, @ptrCast(buf + len)).* = @as(*const SQ, @ptrCast(fmt_spec.single_quote.ptr)).*;
+                        const dest: *SQ = @ptrCast(buf + len);
+                        const src: *SQ = @ptrCast(fmt_spec.single_quote.ptr);
+                        dest.* = src.*;
                         len +%= fmt_spec.single_quote.len;
                     },
                     ' ', '!', '#'...'&', '('...'[', ']'...'~' => {
