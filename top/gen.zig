@@ -14,26 +14,26 @@ pub const ListKind = enum {
 };
 pub const ArgList = struct {
     args: [16][:0]const u8,
-    len: u8,
+    args_len: u8,
     kind: ListKind,
     ret: [:0]const u8,
     pub fn writeOne(arg_list: *ArgList, symbol: [:0]const u8) void {
-        arg_list.args[arg_list.len] = symbol;
-        arg_list.len +%= 1;
+        arg_list.args[arg_list.args_len] = symbol;
+        arg_list.args_len +%= 1;
     }
     pub fn readAll(arg_list: *const ArgList) []const [:0]const u8 {
-        return arg_list.args[0..arg_list.len];
+        return arg_list.args[0..arg_list.args_len];
     }
 };
 pub const DeclList = struct {
     decls: [24][:0]const u8,
-    len: u8,
+    decls_len: u8,
     pub fn writeOne(decl_list: *DeclList, symbol: [:0]const u8) void {
-        decl_list.decls[decl_list.len] = symbol;
-        decl_list.len +%= 1;
+        decl_list.decls[decl_list.decls_len] = symbol;
+        decl_list.decls_len +%= 1;
     }
     pub fn readAll(decl_list: *const DeclList) []const [:0]const u8 {
-        return decl_list.decls[0..decl_list.len];
+        return decl_list.decls[0..decl_list.decls_len];
     }
     pub fn have(decl_list: *const DeclList, symbol: [:0]const u8) bool {
         for (decl_list.readAll()) |decl| {
