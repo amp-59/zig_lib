@@ -29,10 +29,12 @@ pub const RenderSpec = struct {
     inline_field_types: bool = true,
     enable_comptime_iterator: bool = false,
     address_view: bool = false,
-
-    pointer_many_len_field_name_suffix: []const u8 = "_len",
-    pointer_many_max_len_field_name_suffix: []const u8 = "max_len",
-    views: packed struct(u4) {
+    names: struct {
+        len_field_suffix: []const u8 = "_len",
+        max_len_field_suffix: []const u8 = "_max_len",
+        tag_field_suffix: []const u8 = "_tag",
+    } = .{},
+    views: packed struct(u5) {
         /// Represents a normal slice where all values are to be shown, maybe used in extern structs.
         /// field_name: [*]T,
         /// field_name_len: usize,
@@ -50,11 +52,17 @@ pub const RenderSpec = struct {
         /// field_name_max_len: usize,
         /// field_name_len: usize,
         extern_resizeable: bool = true,
+        /// Represents a union with length and capacity, maybe used in extern structs.
+        /// field_name: U,
+        /// field_name_tag: E,
+        extern_tagged_union: bool = true,
     } = .{},
-    decls: struct {
-        ignore_formatter: bool = true,
-        ignore_container: bool = false,
-        ignore_reinterpret: bool = true,
+    decls: packed struct(u2) {
+        /// Prefer existing formatter declarations if present (unions and structs)
+        forward_formatter: bool = false,
+        /// Prefer `ContainerFormat` over `StructFormat` for apparent library
+        /// container types.
+        forward_container: bool = false,
     } = .{},
 };
 pub inline fn any(value: anytype) AnyFormat(.{}, @TypeOf(value)) {
@@ -502,12 +510,12 @@ inline fn formatLengthOmitTrailingComma(comptime omit_trailing_comma: bool, fiel
     return builtin.int2a(u64, !omit_trailing_comma, fields_len != 0);
 }
 pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
-    if (!spec.decls.ignore_formatter) {
+    if (spec.decls.forward_formatter) {
         if (@hasDecl(Struct, "formatWrite") and @hasDecl(Struct, "formatLength")) {
             return FormatFormat(Struct);
         }
     }
-    if (!spec.decls.ignore_container) {
+    if (spec.decls.forward_container) {
         if (@hasDecl(Struct, "readAll") and @hasDecl(Struct, "len")) {
             return ContainerFormat(spec, Struct);
         }
@@ -565,51 +573,47 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                     const field_value: field.type = @field(format.value, field.name);
                     const field_type_info: builtin.Type = @typeInfo(field.type);
                     const field_spec: RenderSpec = if (meta.DistalChild(field.type) == type) field_spec_if_type else field_spec_if_not_type;
-                    if (field_type_info == .Pointer) {
-                        if (field_type_info.Pointer.size == .Many) {
-                            const len_field_name: []const u8 = field.name ++ spec.pointer_many_len_field_name_suffix;
-                            if (field_type_info.Pointer.size == .Many) {
-                                if (spec.views.extern_slice and field_idx +% 1 < fields.len) {
-                                    const len_field: builtin.Type.StructField = fields[field_idx +% 1];
-                                    if (comptime mem.testEqualMany(u8, len_field.name, len_field_name)) {
-                                        const view = field_value[0..@field(format.value, len_field.name)];
-                                        writeFieldInitializer(array, field_name_format, render(field_spec, view));
-                                        fields_len +%= 1;
-                                        continue;
-                                    }
-                                }
-                                if (spec.views.extern_resizeable and field_idx +% 2 < fields.len) {
-                                    const len_field: builtin.Type.StructField = fields[field_idx +% 2];
-                                    if (comptime mem.testEqualMany(u8, len_field.name, len_field_name)) {
-                                        const view = field_value[0..@field(format.value, len_field.name)];
-                                        writeFieldInitializer(array, field_name_format, render(field_spec, view));
-                                        fields_len +%= 1;
-                                        continue;
-                                    }
-                                }
-                            }
-                            if (field_type_info.Pointer.size == .Slice) {
-                                if (spec.views.zig_resizeable and field_idx +% 1 < fields.len) {
-                                    const len_field: builtin.Type.StructField = fields[field_idx +% 1];
-                                    if (comptime mem.testEqualMany(u8, len_field.name, len_field_name)) {
-                                        const view = field_value[0..@field(format.value, len_field.name)];
-                                        writeFieldInitializer(array, field_name_format, render(field_spec, view));
-                                        fields_len +%= 1;
-                                        continue;
-                                    }
-                                }
-                            }
-                        }
-                    } else if (field_type_info == .Array) {
-                        if (spec.views.static_resizeable and field_idx +% 1 < fields.len) {
-                            const len_field: builtin.Type.StructField = fields[field_idx +% 1];
-                            const len_field_name: []const u8 = field.name ++ spec.pointer_many_len_field_name_suffix;
-                            if (comptime mem.testEqualMany(u8, len_field.name, len_field_name)) {
-                                const view = field_value[0..@field(format.value, len_field.name)];
+                    if (field_type_info == .Union) {
+                        if (field_type_info.Union.layout != .Auto) {
+                            const tag_field_name: []const u8 = field.name ++ spec.names.tag_field_suffix;
+                            if (spec.views.extern_tagged_union and @hasField(Struct, tag_field_name)) {
+                                const view = meta.tagUnion(field.type, meta.Field(Struct, tag_field_name), field_value, @field(format.value, tag_field_name));
                                 writeFieldInitializer(array, field_name_format, render(field_spec, view));
                                 fields_len +%= 1;
                                 continue;
                             }
+                        }
+                    } else if (field_type_info == .Pointer) {
+                        const len_field_name: []const u8 = field.name ++ spec.names.len_field_suffix;
+                        if (field_type_info.Pointer.size == .Many) {
+                            if (spec.views.extern_slice and @hasField(Struct, len_field_name)) {
+                                const view = field_value[0..@field(format.value, len_field_name)];
+                                writeFieldInitializer(array, field_name_format, render(field_spec, view));
+                                fields_len +%= 1;
+                                continue;
+                            }
+                            if (spec.views.extern_resizeable and @hasField(Struct, len_field_name)) {
+                                const view = field_value[0..@field(format.value, len_field_name)];
+                                writeFieldInitializer(array, field_name_format, render(field_spec, view));
+                                fields_len +%= 1;
+                                continue;
+                            }
+                        }
+                        if (field_type_info.Pointer.size == .Slice) {
+                            if (spec.views.zig_resizeable and @hasField(Struct, len_field_name)) {
+                                const view = field_value[0..@field(format.value, len_field_name)];
+                                writeFieldInitializer(array, field_name_format, render(field_spec, view));
+                                fields_len +%= 1;
+                                continue;
+                            }
+                        }
+                    } else if (field_type_info == .Array) {
+                        const len_field_name: []const u8 = field.name ++ spec.names.len_field_suffix;
+                        if (spec.views.static_resizeable and @hasField(Struct, len_field_name)) {
+                            const view = field_value[0..@field(format.value, len_field_name)];
+                            writeFieldInitializer(array, field_name_format, render(field_spec, view));
+                            fields_len +%= 1;
+                            continue;
                         }
                     }
                     const field_format: AnyFormat(field_spec, field.type) = .{ .value = field_value };
@@ -634,67 +638,59 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
             inline while (field_idx != fields.len) : (field_idx +%= 1) {
                 const field: builtin.Type.StructField = fields[field_idx];
                 const field_name_format: fmt.IdentifierFormat = .{ .value = field.name };
-                const field_spec: RenderSpec = if (comptime meta.DistalChild(field.type) == type) field_spec_if_type else field_spec_if_not_type;
-                const FieldFormat = AnyFormat(field_spec, field.type);
+                const field_spec: RenderSpec = if (meta.DistalChild(field.type) == type) field_spec_if_type else field_spec_if_not_type;
                 const field_value: field.type = @field(format.value, field.name);
                 const field_type_info: builtin.Type = @typeInfo(field.type);
-                if (field_type_info == .Pointer) {
-                    if (field_type_info.Pointer.size == .Many) {
-                        const len_field_name: []const u8 = field.name ++ spec.pointer_many_len_field_name_suffix;
-                        const max_len_field_name: []const u8 = field.name ++ spec.pointer_many_max_len_field_name_suffix;
-                        _ = max_len_field_name;
-                        if (field_type_info.Pointer.size == .Many) {
-                            if (spec.views.extern_slice and field_idx +% 1 < fields.len) {
-                                const len_field: builtin.Type.StructField = fields[field_idx +% 1];
-                                if (comptime mem.testEqualMany(u8, len_field.name, len_field_name)) {
-                                    const view = field_value[0..@field(format.value, len_field.name)];
-                                    len +%= 1 +% field_name_format.formatLength() +% 3 +% render(field_spec, view).formatLength() +% 2;
-                                    fields_len +%= 1;
-                                    continue;
-                                }
-                            }
-                            if (spec.views.extern_resizeable and field_idx +% 2 < fields.len) {
-                                const len_field: builtin.Type.StructField = fields[field_idx +% 2];
-                                if (comptime mem.testEqualMany(u8, len_field.name, len_field_name)) {
-                                    const view = field_value[0..@field(format.value, len_field.name)];
-                                    len +%= 1 +% field_name_format.formatLength() +% 3 +% render(field_spec, view).formatLength() +% 2;
-                                    fields_len +%= 1;
-                                    continue;
-                                }
-                            }
-                        }
-                        if (field_type_info.Pointer.size == .Slice) {
-                            if (spec.views.zig_resizeable and field_idx +% 1 < fields.len) {
-                                const len_field: builtin.Type.StructField = fields[field_idx +% 1];
-                                if (comptime mem.testEqualMany(u8, len_field.name, len_field_name)) {
-                                    const view = field_value[0..@field(format.value, len_field.name)];
-                                    len +%= 1 +% field_name_format.formatLength() +% 3 +% render(field_spec, view).formatLength() +% 2;
-                                    fields_len +%= 1;
-                                    continue;
-                                }
-                            }
-                        }
-                    }
-                } else if (field_type_info == .Array) {
-                    if (spec.views.static_resizeable and field_idx +% 1 < fields.len) {
-                        const len_field: builtin.Type.StructField = fields[field_idx +% 1];
-                        const len_field_name: []const u8 = field.name ++ spec.pointer_many_len_field_name_suffix;
-                        if (comptime mem.testEqualMany(u8, len_field.name, len_field_name)) {
-                            const view = field_value[0..@field(format.value, len_field.name)];
+                if (field_type_info == .Union) {
+                    if (field_type_info.Union.layout != .Auto) {
+                        const tag_field_name: []const u8 = field.name ++ spec.names.tag_field_suffix;
+                        if (spec.views.extern_tagged_union and @hasField(Struct, tag_field_name)) {
+                            const view = meta.tagUnion(field.type, meta.Field(tag_field_name), field_value, @field(format.value, tag_field_name));
                             len +%= 1 +% field_name_format.formatLength() +% 3 +% render(field_spec, view).formatLength() +% 2;
                             fields_len +%= 1;
                             continue;
                         }
                     }
+                } else if (field_type_info == .Pointer) {
+                    const len_field_name: []const u8 = field.name ++ spec.names.len_field_suffix;
+                    if (field_type_info.Pointer.size == .Many) {
+                        if (spec.views.extern_slice and @hasField(Struct, len_field_name)) {
+                            const view = field_value[0..@field(format.value, len_field_name)];
+                            len +%= 1 +% field_name_format.formatLength() +% 3 +% render(field_spec, view).formatLength() +% 2;
+                            fields_len +%= 1;
+                            continue;
+                        }
+                        if (spec.views.extern_resizeable and @hasField(Struct, len_field_name)) {
+                            const view = field_value[0..@field(format.value, len_field_name)];
+                            len +%= 1 +% field_name_format.formatLength() +% 3 +% render(field_spec, view).formatLength() +% 2;
+                            fields_len +%= 1;
+                            continue;
+                        }
+                    }
+                    if (field_type_info.Pointer.size == .Slice) {
+                        if (spec.views.zig_resizeable and @hasField(Struct, len_field_name)) {
+                            const view = field_value[0..@field(format.value, len_field_name)];
+                            len +%= 1 +% field_name_format.formatLength() +% 3 +% render(field_spec, view).formatLength() +% 2;
+                            fields_len +%= 1;
+                            continue;
+                        }
+                    }
+                } else if (field_type_info == .Array) {
+                    const len_field_name: []const u8 = field.name ++ spec.names.len_field_suffix;
+                    if (spec.views.static_resizeable and @hasField(Struct, len_field_name)) {
+                        const view = field_value[0..@field(format.value, len_field_name)];
+                        len +%= 1 +% field_name_format.formatLength() +% 3 +% view.formatLength() +% 2;
+                        fields_len +%= 1;
+                        continue;
+                    }
                 }
+                const field_format: AnyFormat(field_spec, field.type) = .{ .value = field_value };
                 if (spec.omit_default_fields and field.default_value != null) {
                     if (!builtin.testEqual(field.type, field_value, mem.pointerOpaque(field.type, field.default_value.?).*)) {
-                        const field_format: FieldFormat = .{ .value = field_value };
                         len +%= 1 +% field_name_format.formatLength() +% 3 +% field_format.formatLength() +% 2;
                         fields_len +%= 1;
                     }
                 } else {
-                    const field_format: FieldFormat = .{ .value = field_value };
                     len +%= 1 +% field_name_format.formatLength() +% 3 +% field_format.formatLength() +% 2;
                     fields_len +%= 1;
                 }
@@ -707,7 +703,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
     return T;
 }
 pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
-    if (!spec.decls.ignore_formatter) {
+    if (spec.decls.forward_formatter) {
         if (@hasDecl(Union, "formatWrite") and @hasDecl(Union, "formatLength")) {
             return FormatFormat(Union);
         }
@@ -832,7 +828,7 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
         fn formatWriteUntagged(format: Format, array: anytype) void {
             if (@hasDecl(Union, "tagged") and
                 @hasDecl(Union, "Tagged") and
-                !spec.ignore_reinterpret_decls)
+                spec.view.extern_tagged_union)
             {
                 const TaggedFormat = AnyFormat(spec, Union.Tagged);
                 const tagged_format: TaggedFormat = .{ .value = format.value.tagged() };
@@ -852,7 +848,7 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
             var len: u64 = 0;
             if (@hasDecl(Union, "tagged") and
                 @hasDecl(Union, "Tagged") and
-                !spec.ignore_reinterpret_decls)
+                spec.view.extern_tagged_union)
             {
                 const TaggedFormat = AnyFormat(spec, Union.Tagged);
                 len +%= TaggedFormat.formatLength(.{ .value = format.value.tagged() });
