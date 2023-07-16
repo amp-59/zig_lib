@@ -347,7 +347,6 @@ pub const Fn = enum(u5) {
         }
     }
 };
-
 pub const FnArgLists = struct {
     keys: []Key,
     keys_len: usize = 0,

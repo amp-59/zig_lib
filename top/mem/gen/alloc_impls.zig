@@ -198,7 +198,11 @@ fn writeFieldDeductionInternal(
         haveField(allocator, impl_set, arg_list[0]),
     );
     if (filtered[1].len != 0) {
-        writeDeclExpr(array, arg_list[0]);
+        if (filtered[0].len != 0 and
+            arg_list[0].ptr != tok.impl_name.ptr)
+        {
+            writeDeclExpr(array, arg_list[0]);
+        }
         if (filtered[1].len == 1) {
             try meta.wrap(
                 writeImplementationDeduction(allocator, array, filtered[1][0]),
@@ -216,7 +220,9 @@ fn writeFieldDeductionInternal(
         }
     }
     if (filtered[0].len != 0) {
-        if (filtered[1].len != 0) {
+        if (arg_list[0].ptr != tok.impl_name.ptr and
+            filtered[1].len != 0)
+        {
             array.writeMany("}else{\n");
         }
         if (filtered[0].len == 1) {
@@ -235,7 +241,10 @@ fn writeFieldDeductionInternal(
             }
         }
     }
-    if (filtered[1].len != 0) {
+    if (arg_list[0].ptr != tok.impl_name.ptr and
+        filtered[0].len != 0 and
+        filtered[1].len != 0)
+    {
         array.writeMany("}\n");
     }
 }
@@ -250,8 +259,6 @@ pub fn main() !void {
     defer allocator.deinit(&address_space);
     var array: Array = Array.init(&allocator, 1024 * 4096);
     array.writeMany("const meta = @import(\"../meta.zig\");\n");
-    array.writeMany("comptime{\n");
-    array.writeMany("const s_impl_type: type = u64;\n");
     var fd: u64 = file.open(spec.generic.noexcept, config.impl_detail_path);
     const st: file.Status = file.status(spec.generic.noexcept, fd);
     const details: []types.Implementation = allocator.allocate(
@@ -261,6 +268,10 @@ pub fn main() !void {
     file.read(read_impl_spec, fd, details);
     file.close(spec.generic.noexcept, fd);
     var len: [types.Kind.list.len]u64 = .{0} ** types.Kind.list.len;
+
+    const arg_lists: ptr_fn.FnArgListMap = ptr_fn.deduceUniqueInterfaceStructs(&allocator, details);
+    _ = arg_lists;
+
     for (types.Kind.list, 0..) |kind, kind_idx| {
         for (details) |impl_detail| {
             if (impl_detail.kind == kind) {
@@ -268,22 +279,9 @@ pub fn main() !void {
             }
         }
     }
-    for (ptr_fn.list) |ptr_fn_info| {
-        if (ptr_fn_info != .allocate and
-            ptr_fn_info != .deallocate and
-            ptr_fn_info != .reallocate and
-            ptr_fn_info != .move)
-        {
-            continue;
-        }
+    for (alloc_fn.list) |alloc_fn_info| {
+        const ptr_fn_info: ptr_fn.Fn = alloc_fn_info.convert();
         for (types.Kind.list, 0..) |kind, kind_idx| {
-            array.writeMany("{ // ");
-            array.writeMany(@tagName(kind));
-            array.writeMany("\n");
-            array.writeMany("const P = meta.FnParam0(s_impl_type.");
-            array.writeMany(@tagName(ptr_fn_info));
-            array.writeMany(");\n");
-
             const save: Allocator.Save = allocator.save();
             defer allocator.restore(save);
             var list_map: []ArgListMap = allocator.allocate(ArgListMap, len[kind_idx]);
@@ -294,24 +292,25 @@ pub fn main() !void {
                     idx +%= 1;
                 }
             }
-            var arg_list: gen.ArgList = list_map[0][1];
+            var unique_arg_list: gen.ArgList = list_map[0][1];
             for (list_map[1..]) |pair| {
                 lo: for (pair[1].readAll()) |arg| {
-                    for (arg_list.readAll()) |unique_arg| {
+                    for (unique_arg_list.readAll()) |unique_arg| {
                         if (arg.ptr == unique_arg.ptr) {
                             continue :lo;
                         }
                     }
-                    arg_list.writeOne(arg);
+                    unique_arg_list.writeOne(arg);
                 }
             }
-            if (arg_list.len != 0) {
-                writeFieldDeductionInternal(&allocator, &array, arg_list.readAll(), list_map);
+            alloc_fn_info.writeSignature(&array, kind);
+            array.writeMany("{\n");
+            if (unique_arg_list.len != 0) {
+                writeFieldDeductionInternal(&allocator, &array, unique_arg_list.readAll(), list_map);
             }
             array.writeMany("}\n");
         }
     }
-    array.writeMany("}\n");
     if (!config.write_separate_source_files) {
         try gen.truncateFile(.{ .return_type = void }, config.allocator_file_path, array.readAll());
     }
