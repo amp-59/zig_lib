@@ -216,7 +216,15 @@ fn testSpecificCases() !void {
         pub const x: u64 = 25;
         pub const y: u64 = 50;
     } }, "struct { pub const x: u64 = 25; pub const y: u64 = 50; }");
+    try runTest(&allocator, &array, render.StructFormat(.{
+        .infer_type_names = true,
+        .omit_trailing_comma = true,
+    }, ExternTaggedUnion){ .value = .{ .x = .{ .a = 14 }, .x_tag = .a } }, ".{ .x = .{ .a = 14 }, .x_tag = .a }");
 }
+const ExternTaggedUnion = struct {
+    x: packed union { a: u64, b: u32 },
+    x_tag: enum { a, b },
+};
 pub fn testOneBigCase() !void {
     var array: mem.StaticString(0x10000) = .{};
     array.writeFormat(comptime render.GenericTypeDescrFormat(.{ .options = .{ .depth = 0 } }).init(mem.AbstractSpec));
