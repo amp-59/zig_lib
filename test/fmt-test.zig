@@ -336,11 +336,7 @@ fn testHexToBytes() !void {
         }
     };
 }
-fn testBinarySize() void {
-    var array: PrintArray = .{};
-    array.writeFormat(fmt.ux64(@intFromPtr(&array)));
-    builtin.debug.write(array.readAll());
-}
+
 fn testGenericRangeFormat() !void {
     var array: PrintArray = undefined;
     array.undefineAll();
@@ -355,12 +351,9 @@ pub fn main() !void {
     try testGenericRangeFormat();
     try @import("./fmt/utf8.zig").utf8TestMain();
     try @import("./fmt/ascii.zig").asciiTestMain();
-    if (test_size) {
-        try meta.wrap(testBinarySize());
-    } else {
-        try meta.wrap(testEquivalentIntToStringFormat());
-        try meta.wrap(testEquivalentLEBFormatAndParse());
-        try meta.wrap(testBytesFormat());
-        try meta.wrap(testNonChildIntegers());
-    }
+
+    try meta.wrap(testEquivalentIntToStringFormat());
+    try meta.wrap(testEquivalentLEBFormatAndParse());
+    try meta.wrap(testBytesFormat());
+    try meta.wrap(testNonChildIntegers());
 }
