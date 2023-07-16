@@ -2277,6 +2277,7 @@ pub const Type = struct {
     pub const Iosize = @TypeOf(iosize(undefined));
     pub const Idsize = @TypeOf(idsize(undefined));
     pub const Ixsize = @TypeOf(ixsize(undefined));
+    pub const Esc = @TypeOf(esc(undefined));
     pub fn Ib(comptime Int: type) type {
         return @TypeOf(ib(@as(Int, undefined)));
     }
