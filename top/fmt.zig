@@ -1008,21 +1008,39 @@ pub fn typeName(comptime T: type) []const u8 {
     };
 }
 pub fn isValidId(values: []const u8) bool {
-    if (values.len == 0) return false;
-    if (mem.testEqualMany(u8, "_", values)) {
+    if (values.len == 0) {
         return false;
     }
-    for (values, 0..) |c, i| {
-        switch (c) {
-            '_', 'a'...'z', 'A'...'Z' => {
+    var byte: u8 = values[0];
+    if (values.len == 1 and byte == '_') {
+        return false;
+    }
+    if (byte >= '0' and byte <= '9') {
+        return false;
+    }
+    var idx: usize = 0;
+    if (byte == 'i' or byte == 'u') {
+        idx +%= 1;
+        while (idx != values.len) : (idx +%= 1) {
+            switch (values[idx]) {
+                '0'...'9' => {
+                    continue;
+                },
+                '_', 'a'...'z', 'A'...'Z' => {
+                    break;
+                },
+                else => {
+                    return false;
+                },
+            }
+        } else return false;
+    }
+    while (idx != values.len) : (idx +%= 1) {
+        switch (values[idx]) {
+            '0'...'9', '_', 'a'...'z', 'A'...'Z' => {
                 continue;
             },
-            '0'...'9' => if (i == 0) {
-                return false;
-            },
-            else => {
-                return false;
-            },
+            else => return false,
         }
     }
     return builtin.zig.keyword(values) == null;
