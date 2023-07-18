@@ -1,3 +1,10 @@
+const abstract = .{};
+const lit = .{};
+const fmt = .{};
+const zig = .{};
+const mem = .{};
+const meta = .{};
+const builtin = .{};
 pub const TokenIterator = struct {
     buffer: [:0]const u8,
     index: usize,

@@ -1,7 +1,5 @@
 const zl = @import("../zig_lib.zig");
-
 pub usingnamespace zl.start;
-
 const @"test" = struct {
     const algo = @import("algo-test.zig");
     const builtin = @import("builtin-test.zig");
@@ -73,5 +71,4 @@ pub fn main() !void {
     _ = zl.meta.refAllDecls(Allocator0, null);
     _ = zl.meta.refAllDecls(Allocator1, null);
 }
-
 const std = if (@hasDecl(zl.builtin.root, "is_zig_lib") and zl.builtin.root.is_zig_lib) zl else @import("std");

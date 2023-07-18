@@ -1827,7 +1827,7 @@ pub fn seek(comptime seek_spec: SeekSpec, fd: u64, offset: u64, whence: Whence) 
         if (logging.Success) {
             debug.seekNotice(fd, offset, whence, ret);
         }
-        if (seek_spec.return_type == usize) {
+        if (seek_spec.return_type != void) {
             return ret;
         }
     } else |seek_error| {

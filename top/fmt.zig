@@ -564,7 +564,7 @@ pub fn GenericChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type
         pub fn formatLength(format: Format) u64 {
             const old_fmt: Bytes = bytes(format.old_value);
             const new_fmt: Bytes = bytes(format.new_value);
-            var len: u64 = 0;
+            var len: usize = 0;
             len +%= old_fmt.formatLength();
             if (format.old_value != format.new_value) {
                 if (format.old_value > format.new_value) {
@@ -603,7 +603,7 @@ pub fn GenericRangeFormat(comptime fmt_spec: PolynomialFormatSpec) type {
             tmp.prefix = null;
             break :blk tmp;
         });
-        pub const max_len: u64 = (SubFormat.max_len) * 2 +% 4;
+        pub const max_len: u64 = (SubFormat.max_len) *% 2 +% 4;
         pub fn formatLength(format: Format) u64 {
             const lower_fmt: SubFormat = SubFormat{ .value = format.lower };
             const upper_fmt: SubFormat = SubFormat{ .value = format.upper };
@@ -709,7 +709,7 @@ pub const ChangedRangeFormatSpec = struct {
     arrow_style: []const u8 = " => ",
 };
 pub fn GenericChangedRangeFormat(comptime fmt_spec: ChangedRangeFormatSpec) type {
-    return (struct {
+    const T = struct {
         old_lower: OldGenericPolynomialFormat.Int,
         old_upper: OldGenericPolynomialFormat.Int,
         new_lower: NewGenericPolynomialFormat.Int,
@@ -842,10 +842,11 @@ pub fn GenericChangedRangeFormat(comptime fmt_spec: ChangedRangeFormatSpec) type
                 .new_upper = new_upper,
             };
         }
-    });
+    };
+    return T;
 }
 pub fn GenericDateTimeFormat(comptime DateTime: type) type {
-    return (struct {
+    const T = struct {
         value: DateTime,
         const Format: type = @This();
         pub const max_len: u64 = 19;
@@ -901,7 +902,8 @@ pub fn GenericDateTimeFormat(comptime DateTime: type) type {
                 @compileError("TODO: sig.fig. Formatter");
             }
         }
-    });
+    };
+    return T;
 }
 pub const IdentifierFormat = struct {
     value: []const u8,
