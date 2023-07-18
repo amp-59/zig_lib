@@ -6,8 +6,8 @@
 // a module and can import itself from anywhere.
 pub const zl = @import("zig_lib/zig_lib.zig");
 
-const spec = zig_lib.spec;
-const build = zig_lib.build;
+const spec = zl.spec;
+const build = zl.build;
 
 pub const BuildNode: type = build.GenericNode(.{});
 
