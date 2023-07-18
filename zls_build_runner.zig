@@ -1,5 +1,8 @@
 const root = @import("@build");
-const zig_lib = blk: {
+const zl = blk: {
+    if (@hasDecl(root, "zl")) {
+        break :blk root.zl;
+    }
     if (@hasDecl(root, "srg")) {
         break :blk root.srg;
     }
@@ -8,19 +11,19 @@ const zig_lib = blk: {
     }
 };
 
-const mem = zig_lib.mem;
-const sys = zig_lib.sys;
-const proc = zig_lib.proc;
-const meta = zig_lib.meta;
-const file = zig_lib.file;
-const mach = zig_lib.mach;
-const spec = zig_lib.spec;
-const build = zig_lib.build;
-const builtin = zig_lib.builtin;
-const testing = zig_lib.testing;
+const mem = zl.mem;
+const sys = zl.sys;
+const proc = zl.proc;
+const meta = zl.meta;
+const file = zl.file;
+const mach = zl.mach;
+const spec = zl.spec;
+const build = zl.build;
+const builtin = zl.builtin;
+const testing = zl.testing;
 const dependencies = @import("@dependencies");
 pub usingnamespace root;
-pub usingnamespace proc.start;
+pub usingnamespace zl.start;
 pub const is_debug: bool = false;
 const Node = if (@hasDecl(root, "Node"))
     root.Node
