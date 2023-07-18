@@ -1,8 +1,8 @@
-const srg = @import("../zig_lib.zig");
-const sys = srg.sys;
-const mem = srg.mem;
-const file = srg.file;
-const builtin = srg.builtin;
+const zl = @import("../zig_lib.zig");
+const sys = zl.sys;
+const mem = zl.mem;
+const file = zl.file;
+const builtin = zl.builtin;
 
 const hello_world = "Hello, world!\n";
 

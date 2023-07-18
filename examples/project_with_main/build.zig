@@ -4,7 +4,7 @@
 // This has to be public so that the zl build runner can use the build import.
 // The standard does not require this, as it is implicitly available as
 // a module and can import itself from anywhere.
-pub const zig_lib = @import("zig_lib/zig_lib.zig");
+pub const zl = @import("zig_lib/zig_lib.zig");
 
 const spec = zig_lib.spec;
 const build = zig_lib.build;

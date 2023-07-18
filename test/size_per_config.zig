@@ -1,16 +1,16 @@
-const srg = @import("../zig_lib.zig");
-const mem = srg.mem;
-const sys = srg.sys;
-const fmt = srg.fmt;
-const proc = srg.proc;
-const mach = srg.mach;
-const time = srg.time;
-const meta = srg.meta;
-const spec = srg.spec;
-const builtin = srg.builtin;
+const zl = @import("../zig_lib.zig");
+const mem = zl.mem;
+const sys = zl.sys;
+const fmt = zl.fmt;
+const proc = zl.proc;
+const mach = zl.mach;
+const time = zl.time;
+const meta = zl.meta;
+const spec = zl.spec;
+const builtin = zl.builtin;
 
 pub usingnamespace mach;
-pub usingnamespace proc.start;
+pub usingnamespace zl.start;
 
 // pub const AddressSpace = mem.GenericRegularAddressSpace(.{
 //    .lb_addr = 0x0,

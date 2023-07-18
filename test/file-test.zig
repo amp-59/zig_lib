@@ -1,18 +1,18 @@
-const top = @import("../zig_lib.zig");
-const sys = top.sys;
-const mem = top.mem;
-const fmt = top.fmt;
-const file = top.file;
-const meta = top.meta;
-const mach = top.mach;
-const time = top.time;
-const proc = top.proc;
-const spec = top.spec;
-const build = top.build;
-const builtin = top.builtin;
-const testing = top.testing;
+const zl = @import("../zig_lib.zig");
+const sys = zl.sys;
+const mem = zl.mem;
+const fmt = zl.fmt;
+const file = zl.file;
+const meta = zl.meta;
+const mach = zl.mach;
+const time = zl.time;
+const proc = zl.proc;
+const spec = zl.spec;
+const build = zl.build;
+const builtin = zl.builtin;
+const testing = zl.testing;
 
-pub usingnamespace proc.start;
+pub usingnamespace zl.start;
 
 pub const runtime_assertions: bool = true;
 pub const logging_default: builtin.Logging.Default = spec.logging.default.verbose;

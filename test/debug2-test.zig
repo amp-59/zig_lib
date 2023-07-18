@@ -1,13 +1,14 @@
-const top = @import("../zig_lib.zig");
-const proc = top.proc;
-const time = top.time;
-const file = top.file;
-const spec = top.spec;
-const build = top.build;
-const builtin = top.builtin;
-pub usingnamespace proc.start;
+const zl = @import("../zig_lib.zig");
+const proc = zl.proc;
+const time = zl.time;
+const file = zl.file;
+const spec = zl.spec;
+const build = zl.build;
+const builtin = zl.builtin;
 
 const root = @import("./debug-test.zig");
+
+pub usingnamespace zl.start;
 
 pub const trace: builtin.Trace = root.trace;
 pub const have_stack_traces: bool = true;

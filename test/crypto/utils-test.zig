@@ -1,10 +1,10 @@
-const zig_lib = @import("../../zig_lib.zig");
+const zl = @import("../../zig_lib.zig");
 const math = zig_lib.math;
 const proc = zig_lib.proc;
 const crypto = zig_lib.crypto;
 const testing = zig_lib.testing;
 const builtin = zig_lib.builtin;
-pub usingnamespace proc.start;
+pub usingnamespace zl.start;
 pub const runtime_assertions: bool = true;
 fn testTimingSafeEql() !void {
     var a: [100]u8 = undefined;

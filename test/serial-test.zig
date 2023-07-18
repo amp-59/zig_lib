@@ -1,20 +1,20 @@
-const top = @import("../zig_lib.zig");
-const mem = top.mem;
-const fmt = top.fmt;
-const proc = top.proc;
-const file = top.file;
-const mach = top.mach;
-const meta = top.meta;
-const spec = top.spec;
-const build = top.build;
-const serial = top.serial;
-const builtin = top.builtin;
-const testing = top.testing;
+const zl = @import("../zig_lib.zig");
+const mem = zl.mem;
+const fmt = zl.fmt;
+const proc = zl.proc;
+const file = zl.file;
+const mach = zl.mach;
+const meta = zl.meta;
+const spec = zl.spec;
+const build = zl.build;
+const serial = zl.serial;
+const builtin = zl.builtin;
+const testing = zl.testing;
 
 const attr = @import("../top/mem/gen/attr.zig");
 const mem_types = @import("../top/mem/gen/types.zig");
 
-pub usingnamespace proc.start;
+pub usingnamespace zl.start;
 
 pub const logging_override: builtin.Logging.Override = spec.logging.override.verbose;
 pub const signal_handlers: builtin.SignalHandlers = .{

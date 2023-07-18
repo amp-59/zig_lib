@@ -1,12 +1,12 @@
-const zig_lib = @import("../zig_lib.zig");
-const mem = zig_lib.mem;
-const file = zig_lib.file;
-const proc = zig_lib.proc;
-const meta = zig_lib.meta;
-const spec = zig_lib.spec;
-const builtin = zig_lib.builtin;
+const zl = @import("../zig_lib.zig");
+const mem = zl.mem;
+const file = zl.file;
+const proc = zl.proc;
+const meta = zl.meta;
+const spec = zl.spec;
+const builtin = zl.builtin;
 
-pub usingnamespace proc.start;
+pub usingnamespace zl.start;
 
 pub const AddressSpace = spec.address_space.exact_8;
 pub const runtime_assertions: bool = false;

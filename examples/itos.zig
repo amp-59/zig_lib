@@ -1,13 +1,13 @@
-const srg = @import("../zig_lib.zig");
-const mem = srg.mem;
-const sys = srg.sys;
-const proc = srg.proc;
-const mach = srg.mach;
-const meta = srg.meta;
-const file = srg.file;
-const spec = srg.spec;
-const builtin = srg.builtin;
-pub usingnamespace proc.start;
+const zl = @import("../zig_lib.zig");
+const mem = zl.mem;
+const sys = zl.sys;
+const proc = zl.proc;
+const mach = zl.mach;
+const meta = zl.meta;
+const file = zl.file;
+const spec = zl.spec;
+const builtin = zl.builtin;
+pub usingnamespace zl.start;
 pub const logging_override: builtin.Logging.Override = .{
     .Error = true,
 };

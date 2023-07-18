@@ -1,15 +1,15 @@
-const srg = @import("../zig_lib.zig");
-const sys = srg.sys;
-const fmt = srg.fmt;
-const mem = srg.mem;
-const file = srg.file;
-const meta = srg.meta;
-const mach = srg.mach;
-const proc = srg.proc;
-const spec = srg.spec;
-const thread = srg.thread;
-const builtin = srg.builtin;
-pub usingnamespace proc.start;
+const zl = @import("../zig_lib.zig");
+const sys = zl.sys;
+const fmt = zl.fmt;
+const mem = zl.mem;
+const file = zl.file;
+const meta = zl.meta;
+const mach = zl.mach;
+const proc = zl.proc;
+const spec = zl.spec;
+const thread = zl.thread;
+const builtin = zl.builtin;
+pub usingnamespace zl.start;
 pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
 pub const signal_handlers = .{
     .SegmentationFault = false,

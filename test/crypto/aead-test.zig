@@ -1,11 +1,11 @@
-const zig_lib = @import("../../zig_lib.zig");
+const zl = @import("../../zig_lib.zig");
 const mem = zig_lib.mem;
 const fmt = zig_lib.fmt;
 const proc = zig_lib.proc;
 const crypto = zig_lib.crypto;
 const builtin = zig_lib.builtin;
 const testing = zig_lib.testing;
-pub usingnamespace proc.start;
+pub usingnamespace zl.start;
 pub const runtime_assertions: bool = true;
 const htest = @import("./hash-test.zig").htest;
 const tab = @import("./tab.zig");

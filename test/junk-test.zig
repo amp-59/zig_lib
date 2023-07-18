@@ -1,8 +1,8 @@
-const top = @import("../zig_lib.zig");
-const proc = top.proc;
-const testing = top.testing;
+const zl = @import("../zig_lib.zig");
+const proc = zl.proc;
+const testing = zl.testing;
 
-pub usingnamespace proc.start;
+pub usingnamespace zl.start;
 
 const print = testing.print;
 

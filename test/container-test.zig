@@ -1,16 +1,16 @@
-const top = @import("../zig_lib.zig");
-const mem = top.mem;
-const file = top.file;
-const meta = top.meta;
-const proc = top.proc;
-const spec = top.spec;
-const builtin = top.builtin;
-const testing = top.testing;
+const zl = @import("../zig_lib.zig");
+const mem = zl.mem;
+const file = zl.file;
+const meta = zl.meta;
+const proc = zl.proc;
+const spec = zl.spec;
+const builtin = zl.builtin;
+const testing = zl.testing;
 const Allocator = mem.GenericArenaAllocator(.{
     .arena_index = 0,
     .AddressSpace = AddressSpace,
 });
-pub usingnamespace proc.start;
+pub usingnamespace zl.start;
 pub const AddressSpace = spec.address_space.regular_128;
 pub fn testAutomaticAppend(comptime reinterpret_spec: mem.ReinterpretSpec, comptime dst_type: type, expected: []const dst_type, any: anytype) void {
     const Array = mem.StaticArray(dst_type, 4096);

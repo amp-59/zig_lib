@@ -1,13 +1,13 @@
-const top = @import("../zig_lib.zig");
-const mem = top.mem;
-const fmt = top.fmt;
-const proc = top.proc;
-const meta = top.meta;
-const file = top.file;
-const spec = top.spec;
-const builtin = top.builtin;
+const zl = @import("../zig_lib.zig");
+const mem = zl.mem;
+const fmt = zl.fmt;
+const proc = zl.proc;
+const meta = zl.meta;
+const file = zl.file;
+const spec = zl.spec;
+const builtin = zl.builtin;
 
-pub usingnamespace proc.start;
+pub usingnamespace zl.start;
 
 pub const AddressSpace = spec.address_space.exact_8;
 
@@ -25,6 +25,6 @@ pub fn main() !void {
         .omit_container_decls = false,
         .inline_field_types = false,
         .infer_type_names = false,
-    }, top.file));
+    }, zl.file));
     builtin.debug.write(array.readAll(allocator));
 }

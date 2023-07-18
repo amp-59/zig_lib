@@ -1,8 +1,8 @@
-const top = @import("../../zig_lib.zig");
-const math = top.math;
-const parse = top.parse;
-const builtin = top.builtin;
-const testing = top.testing;
+const zl = @import("../../zig_lib.zig");
+const math = zl.math;
+const parse = zl.parse;
+const builtin = zl.builtin;
+const testing = zl.testing;
 
 fn testParseFloatNaNAndInf() !void {
     inline for ([_]type{ f16, f32, f64, f128 }) |T| {
@@ -129,7 +129,7 @@ fn testParseFloat() !void {
     }
 }
 pub fn floatTestMain() !void {
-    if (@hasDecl(top.parse, "parseFloat")) {
+    if (@hasDecl(zl.parse, "parseFloat")) {
         try testParseFloatNaNAndInf();
         try testParseFloat11169();
         try testParseFloatHexSpecial();

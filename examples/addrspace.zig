@@ -1,13 +1,13 @@
-const zig_lib = @import("../zig_lib.zig");
-const mem = zig_lib.mem;
-const fmt = zig_lib.fmt;
-const proc = zig_lib.proc;
-const meta = zig_lib.meta;
-const file = zig_lib.file;
-const virtual = zig_lib.virtual;
-const testing = zig_lib.testing;
+const zl = @import("../zig_lib.zig");
+const mem = zl.mem;
+const fmt = zl.fmt;
+const proc = zl.proc;
+const meta = zl.meta;
+const file = zl.file;
+const virtual = zl.virtual;
+const testing = zl.testing;
 
-pub usingnamespace proc.start;
+pub usingnamespace zl.start;
 
 const regular_address_space_with_two_subspaces = virtual.RegularAddressSpaceSpec{
     .label = "regular-4x5B",

@@ -1,16 +1,16 @@
-const top = @import("../zig_lib.zig");
-const mem = top.mem;
-const fmt = top.fmt;
-const tab = top.tab;
-const sys = top.sys;
-const proc = top.proc;
-const meta = top.meta;
-const file = top.file;
-const mach = top.mach;
-const spec = top.spec;
-const builtin = top.builtin;
+const zl = @import("../zig_lib.zig");
+const mem = zl.mem;
+const fmt = zl.fmt;
+const tab = zl.tab;
+const sys = zl.sys;
+const proc = zl.proc;
+const meta = zl.meta;
+const file = zl.file;
+const mach = zl.mach;
+const spec = zl.spec;
+const builtin = zl.builtin;
 
-pub usingnamespace proc.start;
+pub usingnamespace zl.start;
 
 pub const AddressSpace = spec.address_space.exact_8;
 pub const runtime_assertions: bool = true;

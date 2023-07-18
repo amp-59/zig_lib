@@ -1,15 +1,15 @@
-const srg = @import("../zig_lib.zig");
-const sys = srg.sys;
-const fmt = srg.fmt;
-const file = srg.file;
-const mem = srg.mem;
-const proc = srg.proc;
-const meta = srg.meta;
-const spec = srg.spec;
-const builtin = srg.builtin;
-const testing = srg.testing;
+const zl = @import("../zig_lib.zig");
+const sys = zl.sys;
+const fmt = zl.fmt;
+const file = zl.file;
+const mem = zl.mem;
+const proc = zl.proc;
+const meta = zl.meta;
+const spec = zl.spec;
+const builtin = zl.builtin;
+const testing = zl.testing;
 
-pub usingnamespace proc.start;
+pub usingnamespace zl.start;
 
 const ModeRes = extern struct {
     fbs: [*]u32,

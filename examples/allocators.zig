@@ -1,13 +1,13 @@
-const srg = @import("../zig_lib.zig");
-const mem = srg.mem;
-const fmt = srg.fmt;
-const proc = srg.proc;
-const meta = srg.meta;
-const spec = srg.spec;
-const virtual = srg.virtual;
-const testing = srg.testing;
+const zl = @import("../zig_lib.zig");
+const mem = zl.mem;
+const fmt = zl.fmt;
+const proc = zl.proc;
+const meta = zl.meta;
+const spec = zl.spec;
+const virtual = zl.virtual;
+const testing = zl.testing;
 
-pub usingnamespace proc.start;
+pub usingnamespace zl.start;
 pub const AddressSpace = virtual.GenericRegularAddressSpace(multi_arena);
 
 // This is 1GiB. I allow this much for the binary mapping. Not sure if sound,

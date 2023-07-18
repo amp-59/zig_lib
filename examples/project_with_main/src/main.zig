@@ -1,12 +1,12 @@
-const srg = @import("zig_lib");
-const mem = srg.mem;
-const proc = srg.proc;
-const meta = srg.meta;
-const spec = srg.spec;
-const builtin = srg.builtin;
+const zl = @import("zig_lib");
+const mem = zl.mem;
+const proc = zl.proc;
+const meta = zl.meta;
+const spec = zl.spec;
+const builtin = zl.builtin;
 
 // Use zl startup code to speed compilation and reduce binary size.
-pub usingnamespace proc.start;
+pub usingnamespace zl.start;
 
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     // Use undefined to avoid pulling in memset for register-sized assignments
@@ -29,7 +29,7 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
         // This specification configures `writeAny` to dereference pointers with
         // the same child type as the container, and by default converts
         // sentinel-terminated-slices-to-many to full slices.
-        array.writeAny(srg.spec.reinterpret.ptr, .{ vars[idx], '\n' });
+        array.writeAny(zl.spec.reinterpret.ptr, .{ vars[idx], '\n' });
     }
     builtin.debug.write(array.readAll());
     array.undefineAll();

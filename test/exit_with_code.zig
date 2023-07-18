@@ -1,8 +1,8 @@
-const srg = @import("zig_lib");
-const proc = srg.proc;
-const builtin = srg.builtin;
+const zl = @import("zig_lib");
+const proc = zl.proc;
+const builtin = zl.builtin;
 
-pub usingnamespace proc.start;
+pub usingnamespace zl.start;
 
 pub fn main(args: anytype) u8 {
     if (args.len == 0) {

@@ -1,4 +1,4 @@
-const zig_lib = @import("../../zig_lib.zig");
+const zl = @import("../../zig_lib.zig");
 const fmt = zig_lib.fmt;
 const mach = zig_lib.mach;
 const file = zig_lib.file;
@@ -8,7 +8,7 @@ const crypto = zig_lib.crypto;
 const builtin = zig_lib.builtin;
 const testing = zig_lib.testing;
 const tab = @import("./tab.zig");
-pub usingnamespace proc.start;
+pub usingnamespace zl.start;
 pub const runtime_assertions: bool = true;
 fn testECDSABasicOperationsOverEcdsaP384Sha384() !void {
     const Scheme = crypto.ecdsa.EcdsaP384Sha384;

@@ -1,14 +1,14 @@
-const top = @import("../zig_lib.zig");
-const proc = top.proc;
-const builtin = top.builtin;
+const zl = @import("../zig_lib.zig");
+const proc = zl.proc;
+const builtin = zl.builtin;
 
 extern fn otherMain(x: u64) void;
 
-pub usingnamespace proc.start;
+pub usingnamespace zl.start;
 
 pub const logging_override: builtin.Logging.Override = .{};
 
-pub const trace = .{};
+pub const trace = builtin.my_trace;
 
 fn nested0(z: u64) !void {
     var x: u64 = 0;

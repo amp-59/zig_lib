@@ -1,15 +1,15 @@
-const srg = @import("../zig_lib.zig");
-const mem = srg.mem;
-const sys = srg.sys;
-const fmt = srg.fmt;
-const proc = srg.proc;
-const meta = srg.meta;
-const file = srg.file;
-const build = srg.build;
-const spec = srg.spec;
-const builtin = srg.builtin;
+const zl = @import("../zig_lib.zig");
+const mem = zl.mem;
+const sys = zl.sys;
+const fmt = zl.fmt;
+const proc = zl.proc;
+const meta = zl.meta;
+const file = zl.file;
+const build = zl.build;
+const spec = zl.spec;
+const builtin = zl.builtin;
 
-pub usingnamespace proc.start;
+pub usingnamespace zl.start;
 pub const is_verbose: bool = false;
 pub const logging_override: builtin.Logging.Override = .{
     .Attempt = false,

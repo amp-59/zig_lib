@@ -1,15 +1,15 @@
-const srg = @import("../zig_lib.zig");
-const mem = srg.mem;
-const gen = srg.gen;
-const sys = srg.sys;
-const proc = srg.proc;
-const spec = srg.spec;
-const file = srg.file;
-const meta = srg.meta;
-const build = srg.build;
-const builtin = srg.builtin;
+const zl = @import("../zig_lib.zig");
+const mem = zl.mem;
+const gen = zl.gen;
+const sys = zl.sys;
+const proc = zl.proc;
+const spec = zl.spec;
+const file = zl.file;
+const meta = zl.meta;
+const build = zl.build;
+const builtin = zl.builtin;
 
-pub usingnamespace proc.start;
+pub usingnamespace zl.start;
 
 const Node = build.GenericNode(.{
     .options = .{ .max_thread_count = 8 },
@@ -56,7 +56,7 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     );
 }
 const text =
-    \\const zig_lib = @import("../../zig_lib.zig");
+    \\const zl = @import("../../zig_lib.zig");
     \\pub usingnamespace zig_lib.proc.start;
     \\
 ;

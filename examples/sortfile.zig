@@ -1,13 +1,13 @@
-const srg = @import("zig_lib");
-const mem = srg.mem;
-const fmt = srg.fmt;
-const meta = srg.meta;
-const file = srg.file;
-const proc = srg.proc;
-const algo = srg.algo;
-const builtin = srg.builtin;
+const zl = @import("zig_lib");
+const mem = zl.mem;
+const fmt = zl.fmt;
+const meta = zl.meta;
+const file = zl.file;
+const proc = zl.proc;
+const algo = zl.algo;
+const builtin = zl.builtin;
 
-pub usingnamespace proc.start;
+pub usingnamespace zl.start;
 
 const fbuf_start: u64 = 0x40000000;
 const mbuf_start: u64 = 0x10000000000;

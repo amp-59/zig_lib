@@ -1,13 +1,13 @@
-const srg = @import("../zig_lib.zig");
-const mem = srg.mem;
-const fmt = srg.fmt;
-const proc = srg.proc;
-const file = srg.file;
-const meta = srg.meta;
-const spec = srg.spec;
-const builtin = srg.builtin;
+const zl = @import("../zig_lib.zig");
+const mem = zl.mem;
+const fmt = zl.fmt;
+const proc = zl.proc;
+const file = zl.file;
+const meta = zl.meta;
+const spec = zl.spec;
+const builtin = zl.builtin;
 
-pub usingnamespace proc.start;
+pub usingnamespace zl.start;
 
 pub const AddressSpace = spec.address_space.regular_128;
 pub const logging_default: builtin.Logging.Default = .{

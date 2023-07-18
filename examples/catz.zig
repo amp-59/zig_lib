@@ -1,11 +1,11 @@
-const srg = @import("../zig_lib.zig");
-const mem = srg.mem;
-const proc = srg.proc;
-const file = srg.file;
-const mach = srg.mach;
-const meta = srg.meta;
+const zl = @import("../zig_lib.zig");
+const mem = zl.mem;
+const proc = zl.proc;
+const file = zl.file;
+const mach = zl.mach;
+const meta = zl.meta;
 
-pub usingnamespace proc.start;
+pub usingnamespace zl.start;
 
 pub fn main(args_in: [][*:0]u8) !void {
     if (args_in.len == 1) {

@@ -1,11 +1,11 @@
-const top = @import("../zig_lib.zig");
-const gen = top.gen;
-const sys = top.sys;
-const builtin = top.builtin;
-const meta = top.meta;
-const proc = top.proc;
-const testing = top.testing;
-pub usingnamespace proc.start;
+const zl = @import("../zig_lib.zig");
+const gen = zl.gen;
+const sys = zl.sys;
+const builtin = zl.builtin;
+const meta = zl.meta;
+const proc = zl.proc;
+const testing = zl.testing;
+pub usingnamespace zl.start;
 pub const logging_default: builtin.Logging.Default = .{
     .Attempt = true,
     .Success = true,

@@ -1,22 +1,22 @@
-const srg = @import("zig_lib");
-const lit = srg.lit;
-const sys = srg.sys;
-const fmt = srg.fmt;
-const zig = srg.zig;
-const mem = srg.mem;
-const mach = srg.mach;
-const time = srg.time;
-const file = srg.file;
-const meta = srg.meta;
-const proc = srg.proc;
-const spec = srg.spec;
-const thread = srg.thread;
-const builtin = srg.builtin;
-const abstract = srg.abstract;
+const zl = @import("zig_lib");
+const lit = zl.lit;
+const sys = zl.sys;
+const fmt = zl.fmt;
+const zig = zl.zig;
+const mem = zl.mem;
+const mach = zl.mach;
+const time = zl.time;
+const file = zl.file;
+const meta = zl.meta;
+const proc = zl.proc;
+const spec = zl.spec;
+const thread = zl.thread;
+const builtin = zl.builtin;
+const abstract = zl.abstract;
 
 const std = @import("std");
 
-pub usingnamespace proc.start;
+pub usingnamespace zl.start;
 
 pub const AddressSpace = spec.address_space.regular_128;
 pub const runtime_assertions: bool = false;

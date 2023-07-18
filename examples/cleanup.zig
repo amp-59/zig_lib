@@ -1,12 +1,12 @@
-const srg = @import("../zig_lib.zig");
-const mem = srg.mem;
-const proc = srg.proc;
-const file = srg.file;
-const mach = srg.mach;
-const meta = srg.meta;
-const builtin = srg.builtin;
+const zl = @import("../zig_lib.zig");
+const mem = zl.mem;
+const proc = zl.proc;
+const file = zl.file;
+const mach = zl.mach;
+const meta = zl.meta;
+const builtin = zl.builtin;
 
-pub usingnamespace proc.start;
+pub usingnamespace zl.start;
 
 const rm_bits: []const [:0]const u8 = &.{
     ".section\t\".note.GNU-stack\",\"\",@progbits",

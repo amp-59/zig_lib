@@ -1,16 +1,16 @@
-const top = @import("../zig_lib.zig");
-const mem = top.mem;
-const fmt = top.fmt;
-const meta = top.meta;
-const proc = top.proc;
-const mach = top.mach;
-const file = top.file;
-const spec = top.spec;
-const virtual = top.virtual;
-const builtin = top.builtin;
-const testing = top.testing;
+const zl = @import("../zig_lib.zig");
+const mem = zl.mem;
+const fmt = zl.fmt;
+const meta = zl.meta;
+const proc = zl.proc;
+const mach = zl.mach;
+const file = zl.file;
+const spec = zl.spec;
+const virtual = zl.virtual;
+const builtin = zl.builtin;
+const testing = zl.testing;
 
-pub usingnamespace proc.start;
+pub usingnamespace zl.start;
 pub usingnamespace root;
 
 const root = opaque {
