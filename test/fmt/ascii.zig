@@ -119,7 +119,7 @@ fn testIndexOfIgnoreCase() !void {
     try builtin.expect(fmt.ascii.indexOfFirstEqualStringIgnoreCase("ThReE fOUr", "one two three four five six seven eight nine ten eleven").? == 8);
     try builtin.expect(fmt.ascii.indexOfFirstEqualStringIgnoreCase("Two tWo", "one two three four five six seven eight nine ten eleven") == null);
 }
-pub fn asciiTestMain() !void {
+pub fn testAscii() !void {
     try testWhitespace();
     try testASCIICharacterClasses();
     try testLowerString();

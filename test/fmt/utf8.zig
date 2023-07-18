@@ -73,7 +73,7 @@ fn testUtf8ValidCodepoint() !void {
     try testing.expect(!fmt.utf8.testValidCodepoint(0xdfff));
     try testing.expect(!fmt.utf8.testValidCodepoint(0x110000));
 }
-pub fn utf8TestMain() !void {
+pub fn testUtf8() !void {
     try testUtf8Encode();
     try testUtf8EncodeError();
     try testUtf8IteratorOnAscii();
