@@ -4,7 +4,7 @@ const proc = @import("./proc.zig");
 const mach = @import("./mach.zig");
 const meta = @import("./meta.zig");
 const builtin = @import("./builtin.zig");
-const AddressSpace = builtin.AddressSpace();
+const AddressSpace = builtin.VirtualAddressSpace();
 pub fn map(comptime spec: MapSpec, arena_index: u8) sys.ErrorUnion(spec.errors, u64) {
     const up_addr = AddressSpace.high(arena_index);
     const s_bytes: u64 = 8192;
