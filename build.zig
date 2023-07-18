@@ -95,10 +95,12 @@ fn examples(allocator: *build.Allocator, node: *Node) void {
     const hello: *Node = node.addBuild(allocator, build_cmd, "hello", "examples/hello.zig");
     const pathsplit: *Node = node.addBuild(allocator, build_cmd, "pathsplit", "examples/pathsplit.zig");
     const declprint: *Node = node.addBuild(allocator, build_cmd, "declprint", "examples/declprint.zig");
+    const pipeout: *Node = node.addBuild(allocator, .{ .kind = .exe, .mode = .Debug, .strip = false }, "pipeout", "examples/pipeout.zig");
     readdir.descr = "Shows how to iterate directory entries";
     dynamic.descr = "Shows how to allocate dynamic memory";
     custom.descr = "Shows a complex custom address space";
     allocators.descr = "Shows how to use many allocators";
+    pipeout.descr = "Shows how to redirect child process output to file";
     display.descr = "Shows using `ioctl` to get display resources (idkso)";
     mca.descr = "Example program useful for extracting section from assembly for machine code analysis";
     statz.descr = "Build statistics file reader";
