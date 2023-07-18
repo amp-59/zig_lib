@@ -3,42 +3,6 @@ pub const Target = struct {
     os: Os,
     abi: Abi,
     ofmt: ObjectFormat,
-    pub const Version = struct {
-        major: usize,
-        minor: usize,
-        patch: usize,
-        pre: ?[]const u8 = null,
-        build: ?[]const u8 = null,
-    };
-    pub const Range = struct {
-        min: Version,
-        max: Version,
-    };
-    pub const LinuxVersionRange = struct {
-        range: Range,
-        glibc: Version,
-    };
-    pub const WindowsVersion = enum(u32) {
-        nt4 = 67108864,
-        win2k = 83886080,
-        xp = 83951616,
-        ws2003 = 84017152,
-        vista = 100663296,
-        win7 = 100728832,
-        win8 = 100794368,
-        win8_1 = 100859904,
-        win10 = 167772160,
-        win10_th2 = 167772161,
-        win10_rs1 = 167772162,
-        win10_rs2 = 167772163,
-        win10_rs3 = 167772164,
-        win10_rs4 = 167772165,
-        win10_rs5 = 167772166,
-        win10_19h1 = 167772167,
-        win10_vb = 167772168,
-        win10_mn = 167772169,
-        win10_fe = 167772170,
-    };
     pub const Set = struct {
         ints: [5]usize,
     };
@@ -123,7 +87,9 @@ pub const Target = struct {
         };
     };
     pub const Os = struct {
-        tag: enum(u6) {
+        tag: Tag,
+        version_range: VersionRange,
+        pub const Tag = enum(u6) {
             freestanding = 0,
             ananas = 1,
             cloudabi = 2,
@@ -168,8 +134,44 @@ pub const Target = struct {
             vulkan = 41,
             plan9 = 42,
             other = 43,
-        },
-        version_range: union {
+        };
+        pub const Version = struct {
+            major: usize,
+            minor: usize,
+            patch: usize,
+            pre: ?[]const u8 = null,
+            build: ?[]const u8 = null,
+        };
+        pub const Range = struct {
+            min: Version,
+            max: Version,
+        };
+        pub const LinuxVersionRange = struct {
+            range: Range,
+            glibc: Version,
+        };
+        pub const WindowsVersion = enum(u32) {
+            nt4 = 67108864,
+            win2k = 83886080,
+            xp = 83951616,
+            ws2003 = 84017152,
+            vista = 100663296,
+            win7 = 100728832,
+            win8 = 100794368,
+            win8_1 = 100859904,
+            win10 = 167772160,
+            win10_th2 = 167772161,
+            win10_rs1 = 167772162,
+            win10_rs2 = 167772163,
+            win10_rs3 = 167772164,
+            win10_rs4 = 167772165,
+            win10_rs5 = 167772166,
+            win10_19h1 = 167772167,
+            win10_vb = 167772168,
+            win10_mn = 167772169,
+            win10_fe = 167772170,
+        };
+        pub const VersionRange = union {
             none: void,
             semver: Range,
             linux: LinuxVersionRange,
@@ -177,7 +179,7 @@ pub const Target = struct {
                 min: WindowsVersion,
                 max: WindowsVersion,
             },
-        },
+        };
     };
     pub const Abi = enum(u6) {
         none = 0,
