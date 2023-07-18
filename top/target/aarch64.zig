@@ -1,4 +1,5 @@
-pub const Target = @import("../target.zig").Target;
+pub const target = @import("../target.zig");
+pub const feat = @import("./feat.zig");
 pub const Feature = enum(u8) {
     a510 = 0,
     a65 = 1,
@@ -199,7 +200,7 @@ pub const Feature = enum(u8) {
     zcz_fp_workaround = 196,
     zcz_gp = 197,
 };
-pub const all_features: []const Target.Feature = &.{
+pub const all_features: []const target.Target.Feature = &.{
     .{ .name = "a510", .llvm_name = "a510", .description = "Cortex-A510 ARM processors", .dependencies = .{ .ints = .{ 9223372036854775808, 1, 17592186044416, 0, 0 } } },
     .{ .index = 1, .name = "a65", .llvm_name = "a65", .description = "Cortex-A65 ARM processors", .dependencies = .{ .ints = .{ 13835339530258874368, 17, 0, 0, 0 } } },
     .{ .index = 2, .name = "a710", .llvm_name = "a710", .description = "Cortex-A710 ARM processors", .dependencies = .{ .ints = .{ 9223653520421421056, 262145, 17592186044416, 0, 0 } } },
@@ -400,71 +401,72 @@ pub const all_features: []const Target.Feature = &.{
     .{ .index = 197, .name = "zcz_gp", .llvm_name = "zcz-gp", .description = "Has zero-cycle zeroing instructions for generic registers", .dependencies = .{ .ints = .{ 0, 0, 0, 0, 0 } } },
 };
 pub const cpu = struct {
-    pub const a64fx: Target.Cpu.Model = .{ .name = "a64fx", .llvm_name = "a64fx", .features = .{ .ints = .{ 17179873408, 25769803776, 299067229864192, 0, 0 } } };
-    pub const ampere1: Target.Cpu.Model = .{ .name = "ampere1", .llvm_name = "ampere1", .features = .{ .ints = .{ 4611686027017326784, 146029150225, 4521191813415424, 0, 0 } } };
-    pub const ampere1a: Target.Cpu.Model = .{ .name = "ampere1a", .llvm_name = "ampere1a", .features = .{ .ints = .{ 4611686027017326784, 146033344529, 4521191813423616, 0, 0 } } };
-    pub const apple_a10: Target.Cpu.Model = .{ .name = "apple_a10", .llvm_name = "apple-a10", .features = .{ .ints = .{ 4810363384064, 8805756706821, 9295429630892703744, 12, 0 } } };
-    pub const apple_a11: Target.Cpu.Model = .{ .name = "apple_a11", .llvm_name = "apple-a11", .features = .{ .ints = .{ 2305847682138124544, 8589934597, 281474976710656, 12, 0 } } };
-    pub const apple_a12: Target.Cpu.Model = .{ .name = "apple_a12", .llvm_name = "apple-a12", .features = .{ .ints = .{ 2305847682138124544, 8589934597, 562949953421312, 12, 0 } } };
-    pub const apple_a13: Target.Cpu.Model = .{ .name = "apple_a13", .llvm_name = "apple-a13", .features = .{ .ints = .{ 288235049076142336, 8589934597, 1125899906843136, 12, 0 } } };
-    pub const apple_a14: Target.Cpu.Model = .{ .name = "apple_a14", .llvm_name = "apple-a14", .features = .{ .ints = .{ 15276214609502024576, 42949672991, 1125899932009024, 12, 0 } } };
-    pub const apple_a15: Target.Cpu.Model = .{ .name = "apple_a15", .llvm_name = "apple-a15", .features = .{ .ints = .{ 4899921067503530240, 8589934623, 4503599627371008, 12, 0 } } };
-    pub const apple_a16: Target.Cpu.Model = .{ .name = "apple_a16", .llvm_name = "apple-a16", .features = .{ .ints = .{ 4899921067503530240, 8589935135, 4503599627371008, 12, 0 } } };
-    pub const apple_a7: Target.Cpu.Model = .{ .name = "apple_a7", .llvm_name = "apple-a7", .features = .{ .ints = .{ 4672924430592, 8589934597, 72057594037927936, 28, 0 } } };
-    pub const apple_a8: Target.Cpu.Model = .{ .name = "apple_a8", .llvm_name = "apple-a8", .features = .{ .ints = .{ 4672924430592, 8589934597, 72057594037927936, 28, 0 } } };
-    pub const apple_a9: Target.Cpu.Model = .{ .name = "apple_a9", .llvm_name = "apple-a9", .features = .{ .ints = .{ 4672924430592, 8589934597, 72057594037927936, 28, 0 } } };
-    pub const apple_latest: Target.Cpu.Model = .{ .name = "apple_latest", .llvm_name = "apple-latest", .features = .{ .ints = .{ 4899921067503530240, 8589935135, 4503599627371008, 12, 0 } } };
-    pub const apple_m1: Target.Cpu.Model = .{ .name = "apple_m1", .llvm_name = "apple-m1", .features = .{ .ints = .{ 15276214609502024576, 42949672991, 1125899932009024, 12, 0 } } };
-    pub const apple_m2: Target.Cpu.Model = .{ .name = "apple_m2", .llvm_name = "apple-m2", .features = .{ .ints = .{ 4899921067503530240, 8589934623, 4503599627371008, 12, 0 } } };
-    pub const apple_s4: Target.Cpu.Model = .{ .name = "apple_s4", .llvm_name = "apple-s4", .features = .{ .ints = .{ 2305847682138124544, 8589934597, 562949953421312, 12, 0 } } };
-    pub const apple_s5: Target.Cpu.Model = .{ .name = "apple_s5", .llvm_name = "apple-s5", .features = .{ .ints = .{ 2305847682138124544, 8589934597, 562949953421312, 12, 0 } } };
-    pub const carmel: Target.Cpu.Model = .{ .name = "carmel", .llvm_name = "carmel", .features = .{ .ints = .{ 2305843284091600896, 0, 281474976710656, 0, 0 } } };
-    pub const cortex_a34: Target.Cpu.Model = .{ .name = "cortex_a34", .llvm_name = "cortex-a34", .features = .{ .ints = .{ 412316860416, 8589934592, 72057594037927936, 0, 0 } } };
-    pub const cortex_a35: Target.Cpu.Model = .{ .name = "cortex_a35", .llvm_name = "cortex-a35", .features = .{ .ints = .{ 412316860416, 8589934592, 72057594037927936, 0, 0 } } };
-    pub const cortex_a510: Target.Cpu.Model = .{ .name = "cortex_a510", .llvm_name = "cortex-a510", .features = .{ .ints = .{ 288793326105264129, 8594129920, 4611686018964258816, 0, 0 } } };
-    pub const cortex_a53: Target.Cpu.Model = .{ .name = "cortex_a53", .llvm_name = "cortex-a53", .features = .{ .ints = .{ 9223373548683329536, 8589934593, 72075186223972352, 0, 0 } } };
-    pub const cortex_a55: Target.Cpu.Model = .{ .name = "cortex_a55", .llvm_name = "cortex-a55", .features = .{ .ints = .{ 16140918931559809024, 1108101562369, 299067162755072, 0, 0 } } };
-    pub const cortex_a57: Target.Cpu.Model = .{ .name = "cortex_a57", .llvm_name = "cortex-a57", .features = .{ .ints = .{ 9223655023660040192, 25769803793, 72075186223972352, 0, 0 } } };
-    pub const cortex_a65: Target.Cpu.Model = .{ .name = "cortex_a65", .llvm_name = "cortex-a65", .features = .{ .ints = .{ 2305860876277645314, 1108101562368, 281474993487872, 0, 0 } } };
-    pub const cortex_a65ae: Target.Cpu.Model = .{ .name = "cortex_a65ae", .llvm_name = "cortex-a65ae", .features = .{ .ints = .{ 2305860876277645314, 1108101562368, 281474993487872, 0, 0 } } };
-    pub const cortex_a710: Target.Cpu.Model = .{ .name = "cortex_a710", .llvm_name = "cortex-a710", .features = .{ .ints = .{ 288793326105264132, 8594129920, 4611686018964258816, 0, 0 } } };
-    pub const cortex_a715: Target.Cpu.Model = .{ .name = "cortex_a715", .llvm_name = "cortex-a715", .features = .{ .ints = .{ 9512446846526685184, 8594392065, 4611703611151351808, 0, 0 } } };
-    pub const cortex_a72: Target.Cpu.Model = .{ .name = "cortex_a72", .llvm_name = "cortex-a72", .features = .{ .ints = .{ 9223653924148346880, 8589934609, 72057594037927936, 0, 0 } } };
-    pub const cortex_a73: Target.Cpu.Model = .{ .name = "cortex_a73", .llvm_name = "cortex-a73", .features = .{ .ints = .{ 9223653924148346880, 8589934593, 72057594037927936, 0, 0 } } };
-    pub const cortex_a75: Target.Cpu.Model = .{ .name = "cortex_a75", .llvm_name = "cortex-a75", .features = .{ .ints = .{ 11529514388109131776, 1108101562369, 281474976710656, 0, 0 } } };
-    pub const cortex_a76: Target.Cpu.Model = .{ .name = "cortex_a76", .llvm_name = "cortex-a76", .features = .{ .ints = .{ 2305860876277645320, 1108101562368, 281474993487872, 0, 0 } } };
-    pub const cortex_a76ae: Target.Cpu.Model = .{ .name = "cortex_a76ae", .llvm_name = "cortex-a76ae", .features = .{ .ints = .{ 2305860876277645320, 1108101562368, 281474993487872, 0, 0 } } };
-    pub const cortex_a77: Target.Cpu.Model = .{ .name = "cortex_a77", .llvm_name = "cortex-a77", .features = .{ .ints = .{ 11529514396699066368, 1108101824513, 281474993487872, 0, 0 } } };
-    pub const cortex_a78: Target.Cpu.Model = .{ .name = "cortex_a78", .llvm_name = "cortex-a78", .features = .{ .ints = .{ 2305860876277645328, 1108101562368, 281474994536448, 0, 0 } } };
-    pub const cortex_a78c: Target.Cpu.Model = .{ .name = "cortex_a78c", .llvm_name = "cortex-a78c", .features = .{ .ints = .{ 324277040234627104, 1112396529664, 281474994536448, 0, 0 } } };
-    pub const cortex_r82: Target.Cpu.Model = .{ .name = "cortex_r82", .llvm_name = "cortex-r82", .features = .{ .ints = .{ 288230444871188480, 42949672960, 144115188092633152, 0, 0 } } };
-    pub const cortex_x1: Target.Cpu.Model = .{ .name = "cortex_x1", .llvm_name = "cortex-x1", .features = .{ .ints = .{ 11529514396699066368, 1108101824513, 299067180580864, 0, 0 } } };
-    pub const cortex_x1c: Target.Cpu.Model = .{ .name = "cortex_x1c", .llvm_name = "cortex-x1c", .features = .{ .ints = .{ 11565543193718030336, 4410931806209, 299067180580864, 0, 0 } } };
-    pub const cortex_x2: Target.Cpu.Model = .{ .name = "cortex_x2", .llvm_name = "cortex-x2", .features = .{ .ints = .{ 9512446846526685184, 8594392065, 4611703611150303232, 0, 0 } } };
-    pub const cortex_x3: Target.Cpu.Model = .{ .name = "cortex_x3", .llvm_name = "cortex-x3", .features = .{ .ints = .{ 9512446837936750592, 8594392065, 4611703611151351808, 0, 0 } } };
-    pub const cyclone: Target.Cpu.Model = .{ .name = "cyclone", .llvm_name = "cyclone", .features = .{ .ints = .{ 4672924430592, 8589934597, 72057594037927936, 28, 0 } } };
-    pub const emag: Target.Cpu.Model = .{ .name = "emag", .llvm_name = null, .features = .{ .ints = .{ 412316860416, 8589934592, 72057594037927936, 0, 0 } } };
-    pub const exynos_m1: Target.Cpu.Model = .{ .name = "exynos_m1", .llvm_name = null, .features = .{ .ints = .{ 145241500299558912, 8589934593, 72110370596064256, 0, 0 } } };
-    pub const exynos_m2: Target.Cpu.Model = .{ .name = "exynos_m2", .llvm_name = null, .features = .{ .ints = .{ 145241500299558912, 8589934593, 72075186223975424, 0, 0 } } };
-    pub const exynos_m3: Target.Cpu.Model = .{ .name = "exynos_m3", .llvm_name = "exynos-m3", .features = .{ .ints = .{ 13980299555581722624, 25770065945, 72075186223972352, 0, 0 } } };
-    pub const exynos_m4: Target.Cpu.Model = .{ .name = "exynos_m4", .llvm_name = "exynos-m4", .features = .{ .ints = .{ 16286160019542519808, 8590196763, 299067162755072, 8, 0 } } };
-    pub const exynos_m5: Target.Cpu.Model = .{ .name = "exynos_m5", .llvm_name = "exynos-m5", .features = .{ .ints = .{ 16286160019542519808, 8590196763, 299067162755072, 8, 0 } } };
-    pub const falkor: Target.Cpu.Model = .{ .name = "falkor", .llvm_name = "falkor", .features = .{ .ints = .{ 1511828488192, 8821863088128, 72075186223976448, 8, 0 } } };
-    pub const generic: Target.Cpu.Model = .{ .name = "generic", .llvm_name = "generic", .features = .{ .ints = .{ 9224216461784907776, 8388609, 17592186044416, 0, 0 } } };
-    pub const kryo: Target.Cpu.Model = .{ .name = "kryo", .llvm_name = "kryo", .features = .{ .ints = .{ 1511828488192, 25770065920, 72075186223972352, 8, 0 } } };
-    pub const neoverse_512tvb: Target.Cpu.Model = .{ .name = "neoverse_512tvb", .llvm_name = "neoverse-512tvb", .features = .{ .ints = .{ 9511884163398107136, 146029151233, 1143492177821696, 0, 0 } } };
-    pub const neoverse_e1: Target.Cpu.Model = .{ .name = "neoverse_e1", .llvm_name = "neoverse-e1", .features = .{ .ints = .{ 11529232913132421120, 1108101562369, 299067179532288, 0, 0 } } };
-    pub const neoverse_n1: Target.Cpu.Model = .{ .name = "neoverse_n1", .llvm_name = "neoverse-n1", .features = .{ .ints = .{ 11529514388109131776, 1108101824513, 299067180580864, 0, 0 } } };
-    pub const neoverse_n2: Target.Cpu.Model = .{ .name = "neoverse_n2", .llvm_name = "neoverse-n2", .features = .{ .ints = .{ 9224216736662945792, 8594392065, 2269392536600576, 0, 0 } } };
-    pub const neoverse_v1: Target.Cpu.Model = .{ .name = "neoverse_v1", .llvm_name = "neoverse-v1", .features = .{ .ints = .{ 9511884163398107136, 146029151233, 1143492177821696, 0, 0 } } };
-    pub const neoverse_v2: Target.Cpu.Model = .{ .name = "neoverse_v2", .llvm_name = "neoverse-v2", .features = .{ .ints = .{ 289074801081974784, 146033345537, 4611703611151351808, 0, 0 } } };
-    pub const saphira: Target.Cpu.Model = .{ .name = "saphira", .llvm_name = "saphira", .features = .{ .ints = .{ 1374389534720, 25770065920, 1143492093935616, 8, 0 } } };
-    pub const thunderx: Target.Cpu.Model = .{ .name = "thunderx", .llvm_name = "thunderx", .features = .{ .ints = .{ 412316860416, 25769803776, 72075186223972352, 0, 0 } } };
-    pub const thunderx2t99: Target.Cpu.Model = .{ .name = "thunderx2t99", .llvm_name = "thunderx2t99", .features = .{ .ints = .{ 274877911168, 17179869184, 158329674399744, 0, 0 } } };
-    pub const thunderx3t110: Target.Cpu.Model = .{ .name = "thunderx3t110", .llvm_name = "thunderx3t110", .features = .{ .ints = .{ 274877976704, 25769803776, 580542173020160, 0, 0 } } };
-    pub const thunderxt81: Target.Cpu.Model = .{ .name = "thunderxt81", .llvm_name = "thunderxt81", .features = .{ .ints = .{ 412316860416, 25769803776, 72075186223972352, 0, 0 } } };
-    pub const thunderxt83: Target.Cpu.Model = .{ .name = "thunderxt83", .llvm_name = "thunderxt83", .features = .{ .ints = .{ 412316860416, 25769803776, 72075186223972352, 0, 0 } } };
-    pub const thunderxt88: Target.Cpu.Model = .{ .name = "thunderxt88", .llvm_name = "thunderxt88", .features = .{ .ints = .{ 412316860416, 25769803776, 72075186223972352, 0, 0 } } };
-    pub const tsv110: Target.Cpu.Model = .{ .name = "tsv110", .llvm_name = "tsv110", .features = .{ .ints = .{ 288249342727290880, 8589934593, 299067163803648, 0, 0 } } };
-    pub const xgene1: Target.Cpu.Model = .{ .name = "xgene1", .llvm_name = null, .features = .{ .ints = .{ 0, 8589934592, 72057594037927936, 0, 0 } } };
+    pub const a64fx: target.Target.Cpu.Model = .{ .name = "a64fx", .llvm_name = "a64fx", .features = .{ .ints = .{ 17179873408, 25769803776, 299067229864192, 0, 0 } } };
+    pub const ampere1: target.Target.Cpu.Model = .{ .name = "ampere1", .llvm_name = "ampere1", .features = .{ .ints = .{ 4611686027017326784, 146029150225, 4521191813415424, 0, 0 } } };
+    pub const ampere1a: target.Target.Cpu.Model = .{ .name = "ampere1a", .llvm_name = "ampere1a", .features = .{ .ints = .{ 4611686027017326784, 146033344529, 4521191813423616, 0, 0 } } };
+    pub const apple_a10: target.Target.Cpu.Model = .{ .name = "apple_a10", .llvm_name = "apple-a10", .features = .{ .ints = .{ 4810363384064, 8805756706821, 9295429630892703744, 12, 0 } } };
+    pub const apple_a11: target.Target.Cpu.Model = .{ .name = "apple_a11", .llvm_name = "apple-a11", .features = .{ .ints = .{ 2305847682138124544, 8589934597, 281474976710656, 12, 0 } } };
+    pub const apple_a12: target.Target.Cpu.Model = .{ .name = "apple_a12", .llvm_name = "apple-a12", .features = .{ .ints = .{ 2305847682138124544, 8589934597, 562949953421312, 12, 0 } } };
+    pub const apple_a13: target.Target.Cpu.Model = .{ .name = "apple_a13", .llvm_name = "apple-a13", .features = .{ .ints = .{ 288235049076142336, 8589934597, 1125899906843136, 12, 0 } } };
+    pub const apple_a14: target.Target.Cpu.Model = .{ .name = "apple_a14", .llvm_name = "apple-a14", .features = .{ .ints = .{ 15276214609502024576, 42949672991, 1125899932009024, 12, 0 } } };
+    pub const apple_a15: target.Target.Cpu.Model = .{ .name = "apple_a15", .llvm_name = "apple-a15", .features = .{ .ints = .{ 4899921067503530240, 8589934623, 4503599627371008, 12, 0 } } };
+    pub const apple_a16: target.Target.Cpu.Model = .{ .name = "apple_a16", .llvm_name = "apple-a16", .features = .{ .ints = .{ 4899921067503530240, 8589935135, 4503599627371008, 12, 0 } } };
+    pub const apple_a7: target.Target.Cpu.Model = .{ .name = "apple_a7", .llvm_name = "apple-a7", .features = .{ .ints = .{ 4672924430592, 8589934597, 72057594037927936, 28, 0 } } };
+    pub const apple_a8: target.Target.Cpu.Model = .{ .name = "apple_a8", .llvm_name = "apple-a8", .features = .{ .ints = .{ 4672924430592, 8589934597, 72057594037927936, 28, 0 } } };
+    pub const apple_a9: target.Target.Cpu.Model = .{ .name = "apple_a9", .llvm_name = "apple-a9", .features = .{ .ints = .{ 4672924430592, 8589934597, 72057594037927936, 28, 0 } } };
+    pub const apple_latest: target.Target.Cpu.Model = .{ .name = "apple_latest", .llvm_name = "apple-latest", .features = .{ .ints = .{ 4899921067503530240, 8589935135, 4503599627371008, 12, 0 } } };
+    pub const apple_m1: target.Target.Cpu.Model = .{ .name = "apple_m1", .llvm_name = "apple-m1", .features = .{ .ints = .{ 15276214609502024576, 42949672991, 1125899932009024, 12, 0 } } };
+    pub const apple_m2: target.Target.Cpu.Model = .{ .name = "apple_m2", .llvm_name = "apple-m2", .features = .{ .ints = .{ 4899921067503530240, 8589934623, 4503599627371008, 12, 0 } } };
+    pub const apple_s4: target.Target.Cpu.Model = .{ .name = "apple_s4", .llvm_name = "apple-s4", .features = .{ .ints = .{ 2305847682138124544, 8589934597, 562949953421312, 12, 0 } } };
+    pub const apple_s5: target.Target.Cpu.Model = .{ .name = "apple_s5", .llvm_name = "apple-s5", .features = .{ .ints = .{ 2305847682138124544, 8589934597, 562949953421312, 12, 0 } } };
+    pub const carmel: target.Target.Cpu.Model = .{ .name = "carmel", .llvm_name = "carmel", .features = .{ .ints = .{ 2305843284091600896, 0, 281474976710656, 0, 0 } } };
+    pub const cortex_a34: target.Target.Cpu.Model = .{ .name = "cortex_a34", .llvm_name = "cortex-a34", .features = .{ .ints = .{ 412316860416, 8589934592, 72057594037927936, 0, 0 } } };
+    pub const cortex_a35: target.Target.Cpu.Model = .{ .name = "cortex_a35", .llvm_name = "cortex-a35", .features = .{ .ints = .{ 412316860416, 8589934592, 72057594037927936, 0, 0 } } };
+    pub const cortex_a510: target.Target.Cpu.Model = .{ .name = "cortex_a510", .llvm_name = "cortex-a510", .features = .{ .ints = .{ 288793326105264129, 8594129920, 4611686018964258816, 0, 0 } } };
+    pub const cortex_a53: target.Target.Cpu.Model = .{ .name = "cortex_a53", .llvm_name = "cortex-a53", .features = .{ .ints = .{ 9223373548683329536, 8589934593, 72075186223972352, 0, 0 } } };
+    pub const cortex_a55: target.Target.Cpu.Model = .{ .name = "cortex_a55", .llvm_name = "cortex-a55", .features = .{ .ints = .{ 16140918931559809024, 1108101562369, 299067162755072, 0, 0 } } };
+    pub const cortex_a57: target.Target.Cpu.Model = .{ .name = "cortex_a57", .llvm_name = "cortex-a57", .features = .{ .ints = .{ 9223655023660040192, 25769803793, 72075186223972352, 0, 0 } } };
+    pub const cortex_a65: target.Target.Cpu.Model = .{ .name = "cortex_a65", .llvm_name = "cortex-a65", .features = .{ .ints = .{ 2305860876277645314, 1108101562368, 281474993487872, 0, 0 } } };
+    pub const cortex_a65ae: target.Target.Cpu.Model = .{ .name = "cortex_a65ae", .llvm_name = "cortex-a65ae", .features = .{ .ints = .{ 2305860876277645314, 1108101562368, 281474993487872, 0, 0 } } };
+    pub const cortex_a710: target.Target.Cpu.Model = .{ .name = "cortex_a710", .llvm_name = "cortex-a710", .features = .{ .ints = .{ 288793326105264132, 8594129920, 4611686018964258816, 0, 0 } } };
+    pub const cortex_a715: target.Target.Cpu.Model = .{ .name = "cortex_a715", .llvm_name = "cortex-a715", .features = .{ .ints = .{ 9512446846526685184, 8594392065, 4611703611151351808, 0, 0 } } };
+    pub const cortex_a72: target.Target.Cpu.Model = .{ .name = "cortex_a72", .llvm_name = "cortex-a72", .features = .{ .ints = .{ 9223653924148346880, 8589934609, 72057594037927936, 0, 0 } } };
+    pub const cortex_a73: target.Target.Cpu.Model = .{ .name = "cortex_a73", .llvm_name = "cortex-a73", .features = .{ .ints = .{ 9223653924148346880, 8589934593, 72057594037927936, 0, 0 } } };
+    pub const cortex_a75: target.Target.Cpu.Model = .{ .name = "cortex_a75", .llvm_name = "cortex-a75", .features = .{ .ints = .{ 11529514388109131776, 1108101562369, 281474976710656, 0, 0 } } };
+    pub const cortex_a76: target.Target.Cpu.Model = .{ .name = "cortex_a76", .llvm_name = "cortex-a76", .features = .{ .ints = .{ 2305860876277645320, 1108101562368, 281474993487872, 0, 0 } } };
+    pub const cortex_a76ae: target.Target.Cpu.Model = .{ .name = "cortex_a76ae", .llvm_name = "cortex-a76ae", .features = .{ .ints = .{ 2305860876277645320, 1108101562368, 281474993487872, 0, 0 } } };
+    pub const cortex_a77: target.Target.Cpu.Model = .{ .name = "cortex_a77", .llvm_name = "cortex-a77", .features = .{ .ints = .{ 11529514396699066368, 1108101824513, 281474993487872, 0, 0 } } };
+    pub const cortex_a78: target.Target.Cpu.Model = .{ .name = "cortex_a78", .llvm_name = "cortex-a78", .features = .{ .ints = .{ 2305860876277645328, 1108101562368, 281474994536448, 0, 0 } } };
+    pub const cortex_a78c: target.Target.Cpu.Model = .{ .name = "cortex_a78c", .llvm_name = "cortex-a78c", .features = .{ .ints = .{ 324277040234627104, 1112396529664, 281474994536448, 0, 0 } } };
+    pub const cortex_r82: target.Target.Cpu.Model = .{ .name = "cortex_r82", .llvm_name = "cortex-r82", .features = .{ .ints = .{ 288230444871188480, 42949672960, 144115188092633152, 0, 0 } } };
+    pub const cortex_x1: target.Target.Cpu.Model = .{ .name = "cortex_x1", .llvm_name = "cortex-x1", .features = .{ .ints = .{ 11529514396699066368, 1108101824513, 299067180580864, 0, 0 } } };
+    pub const cortex_x1c: target.Target.Cpu.Model = .{ .name = "cortex_x1c", .llvm_name = "cortex-x1c", .features = .{ .ints = .{ 11565543193718030336, 4410931806209, 299067180580864, 0, 0 } } };
+    pub const cortex_x2: target.Target.Cpu.Model = .{ .name = "cortex_x2", .llvm_name = "cortex-x2", .features = .{ .ints = .{ 9512446846526685184, 8594392065, 4611703611150303232, 0, 0 } } };
+    pub const cortex_x3: target.Target.Cpu.Model = .{ .name = "cortex_x3", .llvm_name = "cortex-x3", .features = .{ .ints = .{ 9512446837936750592, 8594392065, 4611703611151351808, 0, 0 } } };
+    pub const cyclone: target.Target.Cpu.Model = .{ .name = "cyclone", .llvm_name = "cyclone", .features = .{ .ints = .{ 4672924430592, 8589934597, 72057594037927936, 28, 0 } } };
+    pub const emag: target.Target.Cpu.Model = .{ .name = "emag", .llvm_name = null, .features = .{ .ints = .{ 412316860416, 8589934592, 72057594037927936, 0, 0 } } };
+    pub const exynos_m1: target.Target.Cpu.Model = .{ .name = "exynos_m1", .llvm_name = null, .features = .{ .ints = .{ 145241500299558912, 8589934593, 72110370596064256, 0, 0 } } };
+    pub const exynos_m2: target.Target.Cpu.Model = .{ .name = "exynos_m2", .llvm_name = null, .features = .{ .ints = .{ 145241500299558912, 8589934593, 72075186223975424, 0, 0 } } };
+    pub const exynos_m3: target.Target.Cpu.Model = .{ .name = "exynos_m3", .llvm_name = "exynos-m3", .features = .{ .ints = .{ 13980299555581722624, 25770065945, 72075186223972352, 0, 0 } } };
+    pub const exynos_m4: target.Target.Cpu.Model = .{ .name = "exynos_m4", .llvm_name = "exynos-m4", .features = .{ .ints = .{ 16286160019542519808, 8590196763, 299067162755072, 8, 0 } } };
+    pub const exynos_m5: target.Target.Cpu.Model = .{ .name = "exynos_m5", .llvm_name = "exynos-m5", .features = .{ .ints = .{ 16286160019542519808, 8590196763, 299067162755072, 8, 0 } } };
+    pub const falkor: target.Target.Cpu.Model = .{ .name = "falkor", .llvm_name = "falkor", .features = .{ .ints = .{ 1511828488192, 8821863088128, 72075186223976448, 8, 0 } } };
+    pub const generic: target.Target.Cpu.Model = .{ .name = "generic", .llvm_name = "generic", .features = .{ .ints = .{ 9224216461784907776, 8388609, 17592186044416, 0, 0 } } };
+    pub const kryo: target.Target.Cpu.Model = .{ .name = "kryo", .llvm_name = "kryo", .features = .{ .ints = .{ 1511828488192, 25770065920, 72075186223972352, 8, 0 } } };
+    pub const neoverse_512tvb: target.Target.Cpu.Model = .{ .name = "neoverse_512tvb", .llvm_name = "neoverse-512tvb", .features = .{ .ints = .{ 9511884163398107136, 146029151233, 1143492177821696, 0, 0 } } };
+    pub const neoverse_e1: target.Target.Cpu.Model = .{ .name = "neoverse_e1", .llvm_name = "neoverse-e1", .features = .{ .ints = .{ 11529232913132421120, 1108101562369, 299067179532288, 0, 0 } } };
+    pub const neoverse_n1: target.Target.Cpu.Model = .{ .name = "neoverse_n1", .llvm_name = "neoverse-n1", .features = .{ .ints = .{ 11529514388109131776, 1108101824513, 299067180580864, 0, 0 } } };
+    pub const neoverse_n2: target.Target.Cpu.Model = .{ .name = "neoverse_n2", .llvm_name = "neoverse-n2", .features = .{ .ints = .{ 9224216736662945792, 8594392065, 2269392536600576, 0, 0 } } };
+    pub const neoverse_v1: target.Target.Cpu.Model = .{ .name = "neoverse_v1", .llvm_name = "neoverse-v1", .features = .{ .ints = .{ 9511884163398107136, 146029151233, 1143492177821696, 0, 0 } } };
+    pub const neoverse_v2: target.Target.Cpu.Model = .{ .name = "neoverse_v2", .llvm_name = "neoverse-v2", .features = .{ .ints = .{ 289074801081974784, 146033345537, 4611703611151351808, 0, 0 } } };
+    pub const saphira: target.Target.Cpu.Model = .{ .name = "saphira", .llvm_name = "saphira", .features = .{ .ints = .{ 1374389534720, 25770065920, 1143492093935616, 8, 0 } } };
+    pub const thunderx: target.Target.Cpu.Model = .{ .name = "thunderx", .llvm_name = "thunderx", .features = .{ .ints = .{ 412316860416, 25769803776, 72075186223972352, 0, 0 } } };
+    pub const thunderx2t99: target.Target.Cpu.Model = .{ .name = "thunderx2t99", .llvm_name = "thunderx2t99", .features = .{ .ints = .{ 274877911168, 17179869184, 158329674399744, 0, 0 } } };
+    pub const thunderx3t110: target.Target.Cpu.Model = .{ .name = "thunderx3t110", .llvm_name = "thunderx3t110", .features = .{ .ints = .{ 274877976704, 25769803776, 580542173020160, 0, 0 } } };
+    pub const thunderxt81: target.Target.Cpu.Model = .{ .name = "thunderxt81", .llvm_name = "thunderxt81", .features = .{ .ints = .{ 412316860416, 25769803776, 72075186223972352, 0, 0 } } };
+    pub const thunderxt83: target.Target.Cpu.Model = .{ .name = "thunderxt83", .llvm_name = "thunderxt83", .features = .{ .ints = .{ 412316860416, 25769803776, 72075186223972352, 0, 0 } } };
+    pub const thunderxt88: target.Target.Cpu.Model = .{ .name = "thunderxt88", .llvm_name = "thunderxt88", .features = .{ .ints = .{ 412316860416, 25769803776, 72075186223972352, 0, 0 } } };
+    pub const tsv110: target.Target.Cpu.Model = .{ .name = "tsv110", .llvm_name = "tsv110", .features = .{ .ints = .{ 288249342727290880, 8589934593, 299067163803648, 0, 0 } } };
+    pub const xgene1: target.Target.Cpu.Model = .{ .name = "xgene1", .llvm_name = null, .features = .{ .ints = .{ 0, 8589934592, 72057594037927936, 0, 0 } } };
 };
+pub usingnamespace feat.GenericFeatureSet(Feature);
