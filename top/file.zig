@@ -57,7 +57,7 @@ pub const Map = struct {
         visibility: Visibility = .shared,
         zb2: u2 = 0,
         fixed: bool = false,
-        anonymous: bool = true,
+        anonymous: bool = false,
         @"32bit": bool = false,
         zb7: u1 = 0,
         grows_down: bool = false,
@@ -549,7 +549,7 @@ pub const WriteSpec = struct {
 pub const SyncSpec = struct {
     options: Options = .{},
     errors: sys.ErrorPolicy = .{ .throw = sys.sync_errors },
-    return_type: type = u64,
+    return_type: type = void,
     logging: builtin.Logging.SuccessError = .{},
     pub const Options = packed struct {
         flush_metadata: bool = true,
