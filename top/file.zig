@@ -1823,11 +1823,13 @@ pub fn seek(comptime seek_spec: SeekSpec, fd: u64, offset: u64, whence: Whence) 
     seek_spec.return_type,
 ) {
     const logging: builtin.Logging.SuccessError = comptime seek_spec.logging.override();
-    if (meta.wrap(sys.call(.lseek, seek_spec.errors, seek_spec.return_type, .{ fd, offset, @intFromEnum(whence) }))) |ret| {
+    if (meta.wrap(sys.call(.lseek, seek_spec.errors, usize, .{ fd, offset, @intFromEnum(whence) }))) |ret| {
         if (logging.Success) {
             debug.seekNotice(fd, offset, whence, ret);
         }
-        return ret;
+        if (seek_spec.return_type == usize) {
+            return ret;
+        }
     } else |seek_error| {
         if (logging.Error) {
             debug.seekError(seek_error, fd, offset, whence);
