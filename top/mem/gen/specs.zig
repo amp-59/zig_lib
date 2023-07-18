@@ -13,7 +13,7 @@ const attr = @import("./attr.zig");
 const types = @import("./types.zig");
 const config = @import("./config.zig");
 const ctn_fn = @import("./ctn_fn.zig");
-pub usingnamespace proc.start;
+pub usingnamespace @import("../../start.zig");
 pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
 pub const runtime_assertions: bool = false;
 const Array = mem.StaticString(1024 * 1024);

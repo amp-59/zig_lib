@@ -61,7 +61,7 @@ pub const Fn = enum(u16) {
     pub fn argList(alloc_fn_info: Fn, impl_kind: types.Kind, list_kind: gen.ListKind) gen.ArgList {
         var arg_list: gen.ArgList = .{
             .args = undefined,
-            .len = 0,
+            .args_len = 0,
             .kind = list_kind,
             .ret = alloc_fn_info.returnType(impl_kind),
         };

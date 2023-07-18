@@ -1,9 +1,9 @@
-const zig_lib = @import("../zig_lib.zig");
-const proc = zig_lib.proc;
-const builtin = zig_lib.builtin;
-const testing = zig_lib.testing;
+const zl = @import("../zig_lib.zig");
+const proc = zl.proc;
+const builtin = zl.builtin;
+const testing = zl.testing;
 
-pub usingnamespace proc.start;
+pub usingnamespace zl.start;
 
 pub const runtime_assertions: bool = true;
 pub const comptime_assertions: bool = true;

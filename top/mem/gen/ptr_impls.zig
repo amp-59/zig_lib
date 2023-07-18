@@ -15,7 +15,7 @@ const attr = @import("./attr.zig");
 const types = @import("./types.zig");
 const config = @import("./config.zig");
 const ptr_fn = @import("./ptr_fn.zig");
-pub usingnamespace proc.start;
+pub usingnamespace @import("../../start.zig");
 pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
 pub const runtime_assertions: bool = false;
 pub const show_expressions: bool = false;
@@ -838,8 +838,8 @@ fn writeSignature(
     array: *Array,
     impl_variant: types.Implementation,
     ptr_fn_info: ptr_fn.Fn,
-    arg_lists: []const ptr_fn.FnArgLists.Value,
-    key: ptr_fn.FnArgLists,
+    arg_lists: []const ptr_fn.FnArgs.Value,
+    key: ptr_fn.FnArgs.Index,
 ) void {
     for (key.keys[0..key.keys_len]) |ki_pair| {
         if (ki_pair[0] == ptr_fn_info) {
@@ -875,8 +875,8 @@ fn writeFunctions(
     allocator: *Allocator,
     array: *Array,
     impl_variant: types.Implementation,
-    arg_lists: []const ptr_fn.FnArgLists.Value,
-    key: ptr_fn.FnArgLists,
+    arg_lists: []const ptr_fn.FnArgs.Value,
+    key: ptr_fn.FnArgs.Index,
 ) void {
     for (ptr_fn.list) |ptr_fn_info| {
         if (ptr_fn_info != .deallocate and ptr_fn_info.hasCapability(impl_variant)) {
@@ -987,8 +987,8 @@ inline fn writeTypeFunction(
     allocator: *Allocator,
     array: *Array,
     impl_variant: types.Implementation,
-    arg_lists: []const ptr_fn.FnArgLists.Value,
-    key: ptr_fn.FnArgLists,
+    arg_lists: []const ptr_fn.FnArgs.Value,
+    key: ptr_fn.FnArgs.Index,
 ) void {
     array.writeMany("pub fn ");
     array.writeFormat(impl_variant);
@@ -1028,7 +1028,7 @@ pub fn main() !void {
     );
     file.read(read_impl_spec, fd, details);
     file.close(spec.generic.noexcept, fd);
-    const arg_lists: ptr_fn.FnArgListMap = ptr_fn.deduceUniqueInterfaceStructs(&allocator, details);
+    const arg_lists: ptr_fn.FnArgs.Map = ptr_fn.deduceUniqueInterfaceStructs(&allocator, details);
     for (arg_lists[0]) |kv| {
         for (kv[1], 0..) |arg_list, arg_list_idx| {
             writeInterfaceStruct(&array, kv[0], arg_list_idx, arg_list);

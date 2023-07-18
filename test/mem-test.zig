@@ -110,7 +110,7 @@ fn testAllocatedImplementation() !void {
         .logging = spec.allocator.logging.silent,
         .AddressSpace = AddressSpace,
     });
-    var address_space: builtin.AddressSpace() = .{};
+    var address_space: builtin.VirtualAddressSpace() = .{};
     var allocator: Allocator = try Allocator.init(&address_space);
     defer allocator.deinit(&address_space);
     const ArrayA = Allocator.StructuredStreamHolder(u8);

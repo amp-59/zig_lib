@@ -1,12 +1,12 @@
 const zl = @import("../../zig_lib.zig");
-const fmt = zig_lib.fmt;
-const mem = zig_lib.mem;
-const mach = zig_lib.mach;
-const meta = zig_lib.meta;
-const proc = zig_lib.proc;
-const crypto = zig_lib.crypto;
-const builtin = zig_lib.builtin;
-const testing = zig_lib.testing;
+const fmt = zl.fmt;
+const mem = zl.mem;
+const mach = zl.mach;
+const meta = zl.meta;
+const proc = zl.proc;
+const crypto = zl.crypto;
+const builtin = zl.builtin;
+const testing = zl.testing;
 pub usingnamespace zl.start;
 pub const runtime_assertions: bool = true;
 

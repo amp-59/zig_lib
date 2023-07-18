@@ -1,11 +1,11 @@
-const zig_lib = @import("../zig_lib.zig");
-const zig = zig_lib.zig;
-const proc = zig_lib.proc;
-const file = zig_lib.file;
-const testing = zig_lib.testing;
-const builtin = zig_lib.builtin;
+const zl = @import("../zig_lib.zig");
+const zig = zl.zig;
+const proc = zl.proc;
+const file = zl.file;
+const testing = zl.testing;
+const builtin = zl.builtin;
 
-pub usingnamespace proc.start;
+pub usingnamespace zl.start;
 
 fn testKeywords() !void {
     try testTokenize("test const else", &.{ .keyword_test, .keyword_const, .keyword_else });

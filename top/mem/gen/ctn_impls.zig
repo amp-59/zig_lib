@@ -15,7 +15,7 @@ const types = @import("./types.zig");
 const config = @import("./config.zig");
 const ctn_fn = @import("./ctn_fn.zig");
 const ptr_fn = @import("./ptr_fn.zig");
-pub usingnamespace proc.start;
+pub usingnamespace @import("../../start.zig");
 pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
 pub const runtime_assertions: bool = false;
 pub const show_expressions: bool = false;
@@ -873,7 +873,7 @@ fn writeFunctionBody(allocator: *Allocator, array: *Array, ctn_detail: types.Con
                 var discard_paramm: [3]expr.Expr = expr.discard(expr.symbol(param_name));
                 array.writeFormat(expr.join(&discard_paramm));
             }
-            if (arg_list.len == 0) {
+            if (arg_list.args_len == 0) {
                 var discard_this: [3]expr.Expr = expr.discard(expr.symbol(tok.call_this));
                 array.writeFormat(expr.join(&discard_this));
             }

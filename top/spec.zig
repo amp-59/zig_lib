@@ -1,4 +1,4 @@
-const zig_lib = struct {
+const zl = struct {
     const mem = @import("./mem.zig");
     const sys = @import("./sys.zig");
     const file = @import("./file.zig");
@@ -17,13 +17,13 @@ pub fn add(args1: anytype, args2: anytype) @TypeOf(args1) {
     return ret;
 }
 pub const address_space = struct {
-    pub const regular_128 = zig_lib.mem.GenericRegularAddressSpace(.{
+    pub const regular_128 = zl.mem.GenericRegularAddressSpace(.{
         .lb_addr = 0,
         .lb_offset = 0x40000000,
         .divisions = 128,
     });
-    pub const exact_8 = zig_lib.mem.GenericDiscreteAddressSpace(.{
-        .list = &[_]zig_lib.mem.Arena{
+    pub const exact_8 = zl.mem.GenericDiscreteAddressSpace(.{
+        .list = &[_]zl.mem.Arena{
             .{ .lb_addr = 0x00040000000, .up_addr = 0x10000000000 },
             .{ .lb_addr = 0x10000000000, .up_addr = 0x20000000000 },
             .{ .lb_addr = 0x20000000000, .up_addr = 0x30000000000 },
@@ -35,22 +35,22 @@ pub const address_space = struct {
         },
     });
     pub const logging = struct {
-        pub const verbose: zig_lib.mem.AddressSpaceLogging = .{
+        pub const verbose: zl.mem.AddressSpaceLogging = .{
             .acquire = spec.logging.acquire_error_fault.verbose,
             .release = spec.logging.release_error_fault.verbose,
             .map = spec.logging.acquire_error.verbose,
             .unmap = spec.logging.release_error.verbose,
         };
-        pub const silent: zig_lib.mem.AddressSpaceLogging = zig_lib.builtin.zero(zig_lib.mem.AddressSpaceLogging);
+        pub const silent: zl.mem.AddressSpaceLogging = zl.builtin.zero(zl.mem.AddressSpaceLogging);
     };
     pub const errors = struct {
-        pub const noexcept: zig_lib.mem.AddressSpaceErrors = .{
+        pub const noexcept: zl.mem.AddressSpaceErrors = .{
             .release = .ignore,
             .acquire = .ignore,
             .map = .{},
             .unmap = .{},
         };
-        pub const zen: zig_lib.mem.AddressSpaceErrors = .{
+        pub const zen: zl.mem.AddressSpaceErrors = .{
             .acquire = .{ .throw = error.UnderSupply },
             .release = .abort,
             .map = .{ .throw = sys.mmap.errors.all },
@@ -59,26 +59,26 @@ pub const address_space = struct {
     };
 };
 pub const reinterpret = struct {
-    pub const flat: zig_lib.mem.ReinterpretSpec = .{};
-    pub const ptr: zig_lib.mem.ReinterpretSpec = .{
+    pub const flat: zl.mem.ReinterpretSpec = .{};
+    pub const ptr: zl.mem.ReinterpretSpec = .{
         .reference = .{ .dereference = &.{} },
     };
-    pub const fmt: zig_lib.mem.ReinterpretSpec = reinterpretRecursively(.{
+    pub const fmt: zl.mem.ReinterpretSpec = reinterpretRecursively(.{
         .reference = ptr.reference,
         .aggregate = .{ .iterate = true },
         .composite = .{ .format = true },
         .symbol = .{ .tag_name = true },
     });
-    pub const print: zig_lib.mem.ReinterpretSpec = reinterpretRecursively(.{
+    pub const print: zl.mem.ReinterpretSpec = reinterpretRecursively(.{
         .reference = ptr.reference,
         .aggregate = .{ .iterate = true },
         .composite = .{ .format = true },
         .symbol = .{ .tag_name = true },
         .integral = .{ .format = .dec },
     });
-    pub const follow: zig_lib.mem.ReinterpretSpec = blk: {
-        var rs_0: zig_lib.mem.ReinterpretSpec = .{};
-        var rs_1: zig_lib.mem.ReinterpretSpec = .{ .reference = .{
+    pub const follow: zl.mem.ReinterpretSpec = blk: {
+        var rs_0: zl.mem.ReinterpretSpec = .{};
+        var rs_1: zl.mem.ReinterpretSpec = .{ .reference = .{
             .dereference = &rs_0,
         } };
         rs_1.reference.dereference = &rs_0;
@@ -87,9 +87,9 @@ pub const reinterpret = struct {
         } };
         break :blk rs_1;
     };
-    fn reinterpretRecursively(comptime reinterpret_spec: zig_lib.mem.ReinterpretSpec) zig_lib.mem.ReinterpretSpec {
-        var rs_0: zig_lib.mem.ReinterpretSpec = reinterpret_spec;
-        var rs_1: zig_lib.mem.ReinterpretSpec = reinterpret_spec;
+    fn reinterpretRecursively(comptime reinterpret_spec: zl.mem.ReinterpretSpec) zl.mem.ReinterpretSpec {
+        var rs_0: zl.mem.ReinterpretSpec = reinterpret_spec;
+        var rs_1: zl.mem.ReinterpretSpec = reinterpret_spec;
         rs_0.reference.dereference = &rs_1;
         rs_1.reference.dereference = &rs_0;
         return rs_1;
@@ -97,24 +97,24 @@ pub const reinterpret = struct {
 };
 pub const channel = struct {
     pub const errors = struct {
-        pub const zen: zig_lib.file.ChannelSpec.Errors = .{
+        pub const zen: zl.file.ChannelSpec.Errors = .{
             .pipe = .{ .throw = sys.pipe.errors.all },
             .dup3 = .{ .throw = sys.dup.errors.all },
             .close = .{ .abort = sys.close.errors.all },
         };
-        pub const noexcept: zig_lib.file.ChannelSpec.Errors = .{
+        pub const noexcept: zl.file.ChannelSpec.Errors = .{
             .pipe = .{},
             .dup3 = .{},
             .close = .{},
         };
     };
     pub const logging = struct {
-        pub const verbose: zig_lib.file.ChannelSpec.Logging = .{
+        pub const verbose: zl.file.ChannelSpec.Logging = .{
             .dup3 = spec.logging.success_error.verbose,
             .pipe = spec.logging.acquire_error.verbose,
             .close = spec.logging.release_error.verbose,
         };
-        pub const silent: zig_lib.file.ChannelSpec.Logging = .{
+        pub const silent: zl.file.ChannelSpec.Logging = .{
             .dup3 = spec.logging.success_error.silent,
             .pipe = spec.logging.acquire_error.silent,
             .close = spec.logging.release_error.silent,
@@ -127,7 +127,7 @@ pub const builder = struct {
         .logging = builder.logging.default,
     };
     pub const errors = struct {
-        pub const noexcept: zig_lib.build.BuilderSpec.Errors = .{
+        pub const noexcept: zl.build.BuilderSpec.Errors = .{
             .fork = .{},
             .write = .{},
             .read = .{},
@@ -149,7 +149,7 @@ pub const builder = struct {
             .stat = .{},
             .unlink = .{},
         };
-        pub const zen: zig_lib.build.BuilderSpec.Errors = .{
+        pub const zen: zl.build.BuilderSpec.Errors = .{
             .write = .{ .abort = sys.write.errors.all },
             .read = .{ .abort = sys.read.errors.all },
             .mknod = .{ .throw = sys.mknod.errors.all },
@@ -171,7 +171,7 @@ pub const builder = struct {
             .close = .{ .abort = sys.close.errors.all },
             .unlink = .{ .abort = sys.unlink.errors.all },
         };
-        pub const critical: zig_lib.build.BuilderSpec.Errors = add(zen, .{
+        pub const critical: zl.build.BuilderSpec.Errors = add(zen, .{
             .close = .{ .throw = sys.close.errors.all },
             .unmap = .{ .throw = sys.munmap.errors.all },
         });
@@ -197,13 +197,13 @@ pub const builder = struct {
             .close = .{},
             .unlink = .{},
         };
-        pub const verbose: zig_lib.build.BuilderSpec.Logging = zig_lib.builtin.all(zig_lib.build.BuilderSpec.Logging);
-        pub const silent: zig_lib.build.BuilderSpec.Logging = zig_lib.builtin.zero(zig_lib.build.BuilderSpec.Logging);
+        pub const verbose: zl.build.BuilderSpec.Logging = zl.builtin.all(zl.build.BuilderSpec.Logging);
+        pub const silent: zl.build.BuilderSpec.Logging = zl.builtin.zero(zl.build.BuilderSpec.Logging);
     };
 };
 pub const logging = struct {
     pub const default = struct {
-        pub const verbose: zig_lib.builtin.Logging.Default = .{
+        pub const verbose: zl.builtin.Logging.Default = .{
             .Attempt = true,
             .Success = true,
             .Acquire = true,
@@ -211,7 +211,7 @@ pub const logging = struct {
             .Error = true,
             .Fault = true,
         };
-        pub const silent: zig_lib.builtin.Logging.Default = .{
+        pub const silent: zl.builtin.Logging.Default = .{
             .Attempt = false,
             .Success = false,
             .Acquire = false,
@@ -221,7 +221,7 @@ pub const logging = struct {
         };
     };
     pub const override = struct {
-        pub const verbose: zig_lib.builtin.Logging.Override = .{
+        pub const verbose: zl.builtin.Logging.Override = .{
             .Attempt = true,
             .Success = true,
             .Acquire = true,
@@ -229,7 +229,7 @@ pub const logging = struct {
             .Error = true,
             .Fault = true,
         };
-        pub const silent: zig_lib.builtin.Logging.Override = .{
+        pub const silent: zl.builtin.Logging.Override = .{
             .Attempt = false,
             .Success = false,
             .Acquire = false,
@@ -239,93 +239,93 @@ pub const logging = struct {
         };
     };
     pub const attempt_error = struct {
-        pub const verbose: zig_lib.builtin.Logging.AttemptError =
-            zig_lib.builtin.all(zig_lib.builtin.Logging.AttemptError);
-        pub const silent: zig_lib.builtin.Logging.AttemptError =
-            zig_lib.builtin.zero(zig_lib.builtin.Logging.AttemptError);
+        pub const verbose: zl.builtin.Logging.AttemptError =
+            zl.builtin.all(zl.builtin.Logging.AttemptError);
+        pub const silent: zl.builtin.Logging.AttemptError =
+            zl.builtin.zero(zl.builtin.Logging.AttemptError);
     };
     pub const attempt_fault = struct {
-        pub const verbose: zig_lib.builtin.Logging.AttemptFault =
-            zig_lib.builtin.all(zig_lib.builtin.Logging.AttemptFault);
-        pub const silent: zig_lib.builtin.Logging.AttemptFault =
-            zig_lib.builtin.zero(zig_lib.builtin.Logging.AttemptFault);
+        pub const verbose: zl.builtin.Logging.AttemptFault =
+            zl.builtin.all(zl.builtin.Logging.AttemptFault);
+        pub const silent: zl.builtin.Logging.AttemptFault =
+            zl.builtin.zero(zl.builtin.Logging.AttemptFault);
     };
     pub const attempt_success_error = struct {
-        pub const verbose: zig_lib.builtin.Logging.AttemptSuccessError =
-            zig_lib.builtin.all(zig_lib.builtin.Logging.AttemptSuccessError);
-        pub const silent: zig_lib.builtin.Logging.AttemptSuccessError =
-            zig_lib.builtin.zero(zig_lib.builtin.Logging.AttemptSuccessError);
+        pub const verbose: zl.builtin.Logging.AttemptSuccessError =
+            zl.builtin.all(zl.builtin.Logging.AttemptSuccessError);
+        pub const silent: zl.builtin.Logging.AttemptSuccessError =
+            zl.builtin.zero(zl.builtin.Logging.AttemptSuccessError);
     };
     pub const attempt_error_fault = struct {
-        pub const verbose: zig_lib.builtin.Logging.AttemptErrorFault =
-            zig_lib.builtin.all(zig_lib.builtin.Logging.AttemptErrorFault);
-        pub const silent: zig_lib.builtin.Logging.AttemptErrorFault =
-            zig_lib.builtin.zero(zig_lib.builtin.Logging.AttemptErrorFault);
+        pub const verbose: zl.builtin.Logging.AttemptErrorFault =
+            zl.builtin.all(zl.builtin.Logging.AttemptErrorFault);
+        pub const silent: zl.builtin.Logging.AttemptErrorFault =
+            zl.builtin.zero(zl.builtin.Logging.AttemptErrorFault);
     };
     pub const success_error = struct {
-        pub const verbose: zig_lib.builtin.Logging.SuccessError =
-            zig_lib.builtin.all(zig_lib.builtin.Logging.SuccessError);
-        pub const silent: zig_lib.builtin.Logging.SuccessError =
-            zig_lib.builtin.zero(zig_lib.builtin.Logging.SuccessError);
+        pub const verbose: zl.builtin.Logging.SuccessError =
+            zl.builtin.all(zl.builtin.Logging.SuccessError);
+        pub const silent: zl.builtin.Logging.SuccessError =
+            zl.builtin.zero(zl.builtin.Logging.SuccessError);
     };
     pub const success_fault = struct {
-        pub const verbose: zig_lib.builtin.Logging.SuccessFault =
-            zig_lib.builtin.all(zig_lib.builtin.Logging.SuccessFault);
-        pub const silent: zig_lib.builtin.Logging.SuccessFault =
-            zig_lib.builtin.zero(zig_lib.builtin.Logging.SuccessFault);
+        pub const verbose: zl.builtin.Logging.SuccessFault =
+            zl.builtin.all(zl.builtin.Logging.SuccessFault);
+        pub const silent: zl.builtin.Logging.SuccessFault =
+            zl.builtin.zero(zl.builtin.Logging.SuccessFault);
     };
     pub const success_error_fault = struct {
-        pub const verbose: zig_lib.builtin.Logging.SuccessErrorFault =
-            zig_lib.builtin.all(zig_lib.builtin.Logging.SuccessErrorFault);
-        pub const silent: zig_lib.builtin.Logging.SuccessErrorFault =
-            zig_lib.builtin.zero(zig_lib.builtin.Logging.SuccessErrorFault);
+        pub const verbose: zl.builtin.Logging.SuccessErrorFault =
+            zl.builtin.all(zl.builtin.Logging.SuccessErrorFault);
+        pub const silent: zl.builtin.Logging.SuccessErrorFault =
+            zl.builtin.zero(zl.builtin.Logging.SuccessErrorFault);
     };
     pub const acquire_error = struct {
-        pub const verbose: zig_lib.builtin.Logging.AcquireError =
-            zig_lib.builtin.all(zig_lib.builtin.Logging.AcquireError);
-        pub const silent: zig_lib.builtin.Logging.AcquireError =
-            zig_lib.builtin.zero(zig_lib.builtin.Logging.AcquireError);
+        pub const verbose: zl.builtin.Logging.AcquireError =
+            zl.builtin.all(zl.builtin.Logging.AcquireError);
+        pub const silent: zl.builtin.Logging.AcquireError =
+            zl.builtin.zero(zl.builtin.Logging.AcquireError);
     };
     pub const acquire_fault = struct {
-        pub const verbose: zig_lib.builtin.Logging.AcquireFault =
-            zig_lib.builtin.all(zig_lib.builtin.Logging.AcquireFault);
-        pub const silent: zig_lib.builtin.Logging.AcquireFault =
-            zig_lib.builtin.zero(zig_lib.builtin.Logging.AcquireFault);
+        pub const verbose: zl.builtin.Logging.AcquireFault =
+            zl.builtin.all(zl.builtin.Logging.AcquireFault);
+        pub const silent: zl.builtin.Logging.AcquireFault =
+            zl.builtin.zero(zl.builtin.Logging.AcquireFault);
     };
     pub const acquire_error_fault = struct {
-        pub const verbose: zig_lib.builtin.Logging.AcquireErrorFault =
-            zig_lib.builtin.all(zig_lib.builtin.Logging.AcquireErrorFault);
-        pub const silent: zig_lib.builtin.Logging.AcquireErrorFault =
-            zig_lib.builtin.zero(zig_lib.builtin.Logging.AcquireErrorFault);
+        pub const verbose: zl.builtin.Logging.AcquireErrorFault =
+            zl.builtin.all(zl.builtin.Logging.AcquireErrorFault);
+        pub const silent: zl.builtin.Logging.AcquireErrorFault =
+            zl.builtin.zero(zl.builtin.Logging.AcquireErrorFault);
     };
     pub const release_error = struct {
-        pub const verbose: zig_lib.builtin.Logging.ReleaseError =
-            zig_lib.builtin.all(zig_lib.builtin.Logging.ReleaseError);
-        pub const silent: zig_lib.builtin.Logging.ReleaseError =
-            zig_lib.builtin.zero(zig_lib.builtin.Logging.ReleaseError);
+        pub const verbose: zl.builtin.Logging.ReleaseError =
+            zl.builtin.all(zl.builtin.Logging.ReleaseError);
+        pub const silent: zl.builtin.Logging.ReleaseError =
+            zl.builtin.zero(zl.builtin.Logging.ReleaseError);
     };
     pub const release_fault = struct {
-        pub const verbose: zig_lib.builtin.Logging.ReleaseFault =
-            zig_lib.builtin.all(zig_lib.builtin.Logging.ReleaseFault);
-        pub const silent: zig_lib.builtin.Logging.ReleaseFault =
-            zig_lib.builtin.zero(zig_lib.builtin.Logging.ReleaseFault);
+        pub const verbose: zl.builtin.Logging.ReleaseFault =
+            zl.builtin.all(zl.builtin.Logging.ReleaseFault);
+        pub const silent: zl.builtin.Logging.ReleaseFault =
+            zl.builtin.zero(zl.builtin.Logging.ReleaseFault);
     };
     pub const release_error_fault = struct {
-        pub const verbose: zig_lib.builtin.Logging.ReleaseErrorFault =
-            zig_lib.builtin.all(zig_lib.builtin.Logging.ReleaseErrorFault);
-        pub const silent: zig_lib.builtin.Logging.ReleaseErrorFault =
-            zig_lib.builtin.zero(zig_lib.builtin.Logging.ReleaseErrorFault);
+        pub const verbose: zl.builtin.Logging.ReleaseErrorFault =
+            zl.builtin.all(zl.builtin.Logging.ReleaseErrorFault);
+        pub const silent: zl.builtin.Logging.ReleaseErrorFault =
+            zl.builtin.zero(zl.builtin.Logging.ReleaseErrorFault);
     };
 };
 pub const dir = struct {
     pub const options = struct {
-        pub const eager: zig_lib.file.DirStreamOptions = .{
+        pub const eager: zl.file.DirStreamOptions = .{
             .init_read_all = true,
             .shrink_after_read = true,
             .make_list = true,
             .close_on_deinit = true,
         };
-        pub const lazy: zig_lib.file.DirStreamOptions = .{
+        pub const lazy: zl.file.DirStreamOptions = .{
             .init_read_all = false,
             .shrink_after_read = false,
             .make_list = false,
@@ -333,29 +333,29 @@ pub const dir = struct {
         };
     };
     pub const logging = struct {
-        pub const silent: zig_lib.file.DirStreamLogging = .{
+        pub const silent: zl.file.DirStreamLogging = .{
             .open = spec.logging.acquire_error.silent,
             .close = spec.logging.release_error.silent,
             .getdents = spec.logging.success_error.silent,
         };
-        pub const verbose: zig_lib.file.DirStreamLogging = .{
+        pub const verbose: zl.file.DirStreamLogging = .{
             .open = spec.logging.acquire_error.verbose,
             .close = spec.logging.release_error.verbose,
             .getdents = spec.logging.success_error.verbose,
         };
     };
     pub const errors = struct {
-        pub const zen: zig_lib.file.DirStreamErrors = .{
+        pub const zen: zl.file.DirStreamErrors = .{
             .open = .{ .throw = sys.open.errors.all },
             .close = .{ .abort = sys.open.errors.all },
             .getdents = .{ .throw = sys.getdents.errors.all },
         };
-        pub const noexcept: zig_lib.file.DirStreamErrors = .{
+        pub const noexcept: zl.file.DirStreamErrors = .{
             .open = .{},
             .close = .{},
             .getdents = .{},
         };
-        pub const critical: zig_lib.file.DirStreamErrors = .{
+        pub const critical: zl.file.DirStreamErrors = .{
             .open = .{ .throw = sys.open.errors.all },
             .close = .{ .throw = sys.open.errors.all },
             .getdents = .{ .throw = sys.getdents.errors.all },
@@ -364,7 +364,7 @@ pub const dir = struct {
 };
 pub const allocator = struct {
     pub const options = struct {
-        pub const small: zig_lib.mem.ArenaAllocatorOptions = .{
+        pub const small: zl.mem.ArenaAllocatorOptions = .{
             .count_branches = false,
             .count_allocations = false,
             .count_useful_bytes = false,
@@ -372,14 +372,14 @@ pub const allocator = struct {
             .prefer_remap = false,
         };
         // TODO: Describe conditions where this is better.
-        pub const fast: zig_lib.mem.ArenaAllocatorOptions = .{
+        pub const fast: zl.mem.ArenaAllocatorOptions = .{
             .count_branches = false,
             .count_allocations = true,
             .count_useful_bytes = true,
             .check_parametric = false,
             .require_geometric_growth = true,
         };
-        pub const debug: zig_lib.mem.ArenaAllocatorOptions = .{
+        pub const debug: zl.mem.ArenaAllocatorOptions = .{
             .count_branches = true,
             .count_allocations = true,
             .count_useful_bytes = true,
@@ -387,7 +387,7 @@ pub const allocator = struct {
             .trace_state = true,
             .trace_clients = true,
         };
-        pub const small_composed: zig_lib.mem.ArenaAllocatorOptions = .{
+        pub const small_composed: zl.mem.ArenaAllocatorOptions = .{
             .count_branches = false,
             .count_allocations = false,
             .count_useful_bytes = false,
@@ -396,7 +396,7 @@ pub const allocator = struct {
             .require_map = false,
             .require_unmap = false,
         };
-        pub const fast_composed: zig_lib.mem.ArenaAllocatorOptions = .{
+        pub const fast_composed: zl.mem.ArenaAllocatorOptions = .{
             .count_branches = false,
             .count_allocations = true,
             .count_useful_bytes = true,
@@ -405,7 +405,7 @@ pub const allocator = struct {
             .require_map = false,
             .require_unmap = false,
         };
-        pub const debug_composed: zig_lib.mem.ArenaAllocatorOptions = .{
+        pub const debug_composed: zl.mem.ArenaAllocatorOptions = .{
             .count_branches = true,
             .count_allocations = true,
             .count_useful_bytes = true,
@@ -417,7 +417,7 @@ pub const allocator = struct {
         };
     };
     pub const logging = struct {
-        pub const verbose: zig_lib.mem.AllocatorLogging = .{
+        pub const verbose: zl.mem.AllocatorLogging = .{
             .head = true,
             .sentinel = true,
             .metadata = true,
@@ -432,7 +432,7 @@ pub const allocator = struct {
             .reinterpret = true,
             .deallocate = true,
         };
-        pub const silent: zig_lib.mem.AllocatorLogging = .{
+        pub const silent: zl.mem.AllocatorLogging = .{
             .head = false,
             .sentinel = false,
             .metadata = false,
@@ -449,17 +449,17 @@ pub const allocator = struct {
         };
     };
     pub const errors = struct {
-        pub const zen: zig_lib.mem.AllocatorErrors = .{
+        pub const zen: zl.mem.AllocatorErrors = .{
             .map = .{ .throw = sys.mmap.errors.mem },
             .remap = .{ .throw = sys.mremap.errors.all },
             .unmap = .{ .abort = sys.munmap.errors.all },
         };
-        pub const noexcept: zig_lib.mem.AllocatorErrors = .{
+        pub const noexcept: zl.mem.AllocatorErrors = .{
             .map = .{},
             .remap = .{},
             .unmap = .{},
         };
-        pub const critical: zig_lib.mem.AllocatorErrors = .{
+        pub const critical: zl.mem.AllocatorErrors = .{
             .map = .{ .throw = sys.mmap.errors.mem },
             .remap = .{ .throw = sys.mremap.errors.all },
             .unmap = .{ .throw = sys.munmap.errors.all },
@@ -468,7 +468,7 @@ pub const allocator = struct {
 };
 pub const serializer = struct {
     pub const errors = struct {
-        pub const noexcept: zig_lib.serial.SerialSpec.Errors = .{
+        pub const noexcept: zl.serial.SerialSpec.Errors = .{
             .create = .{},
             .open = .{},
             .close = .{},
@@ -476,7 +476,7 @@ pub const serializer = struct {
             .read = .{},
             .write = .{},
         };
-        pub const critical: zig_lib.serial.SerialSpec.Errors = .{
+        pub const critical: zl.serial.SerialSpec.Errors = .{
             .create = .{ .throw = sys.open.errors.all },
             .open = .{ .throw = sys.open.errors.all },
             .close = .{ .throw = sys.close.errors.all },
@@ -486,7 +486,7 @@ pub const serializer = struct {
         };
     };
     pub const logging = struct {
-        pub const verbose: zig_lib.serial.SerialSpec.Logging = .{
+        pub const verbose: zl.serial.SerialSpec.Logging = .{
             .create = spec.logging.acquire_error.verbose,
             .open = spec.logging.acquire_error.verbose,
             .close = spec.logging.release_error.verbose,
@@ -494,7 +494,7 @@ pub const serializer = struct {
             .write = spec.logging.success_error.verbose,
             .stat = spec.logging.success_error_fault.verbose,
         };
-        pub const silent: zig_lib.serial.SerialSpec.Logging = .{
+        pub const silent: zl.serial.SerialSpec.Logging = .{
             .create = spec.logging.acquire_error.silent,
             .open = spec.logging.acquire_error.silent,
             .close = spec.logging.release_error.silent,
@@ -507,21 +507,21 @@ pub const serializer = struct {
 pub const file = struct {
     pub const map = struct {
         pub const flags = struct {
-            pub const regular: zig_lib.file.Map.Flags = .{
+            pub const regular: zl.file.Map.Flags = .{
                 .visibility = .shared,
             };
-            pub const executable: zig_lib.file.Map.Flags = .{
+            pub const executable: zl.file.Map.Flags = .{
                 .populate = true,
                 .visibility = .private,
             };
         };
         pub const prot = struct {
-            pub const regular: zig_lib.file.Map.Protection = .{
+            pub const regular: zl.file.Map.Protection = .{
                 .read = true,
                 .write = true,
                 .exec = false,
             };
-            pub const executable: zig_lib.file.Map.Protection = .{
+            pub const executable: zl.file.Map.Protection = .{
                 .read = true,
                 .write = false,
                 .exec = true,
@@ -549,52 +549,52 @@ const sys = struct {
     };
     pub const mmap = struct {
         pub const errors = struct {
-            pub const all: []const zig_lib.sys.ErrorCode = &.{
+            pub const all: []const zl.sys.ErrorCode = &.{
                 .ACCES, .AGAIN, .BADF,     .EXIST, .INVAL,  .NFILE,
                 .NODEV, .NOMEM, .OVERFLOW, .PERM,  .TXTBSY,
             };
-            pub const mem: []const zig_lib.sys.ErrorCode = &.{
+            pub const mem: []const zl.sys.ErrorCode = &.{
                 .EXIST, .INVAL, .NOMEM,
             };
-            pub const file: []const zig_lib.sys.ErrorCode = &.{
+            pub const file: []const zl.sys.ErrorCode = &.{
                 .EXIST, .INVAL, .NOMEM, .NFILE, .NODEV, .TXTBSY,
             };
         };
     };
     pub const mremap = struct {
         pub const errors = struct {
-            pub const all: []const zig_lib.sys.ErrorCode = &.{
+            pub const all: []const zl.sys.ErrorCode = &.{
                 .AGAIN, .FAULT, .INVAL, .NOMEM,
             };
         };
     };
     pub const munmap = struct {
         pub const errors = struct {
-            pub const all: []const zig_lib.sys.ErrorCode = &.{.INVAL};
+            pub const all: []const zl.sys.ErrorCode = &.{.INVAL};
         };
     };
     pub const brk = struct {
         pub const errors = struct {
-            pub const all: []const zig_lib.sys.ErrorCode = &.{.NOMEM};
+            pub const all: []const zl.sys.ErrorCode = &.{.NOMEM};
         };
     };
     pub const chdir = struct {
         pub const errors = struct {
-            pub const all: []const zig_lib.sys.ErrorCode = &.{
+            pub const all: []const zl.sys.ErrorCode = &.{
                 .NAMETOOLONG, .LOOP, .ACCES, .IO, .BADF, .FAULT, .NOTDIR, .NOMEM, .NOENT,
             };
         };
     };
     pub const close = struct {
         pub const errors = struct {
-            pub const all: []const zig_lib.sys.ErrorCode = &.{
+            pub const all: []const zl.sys.ErrorCode = &.{
                 .INTR, .IO, .BADF, .NOSPC,
             };
         };
     };
     pub const clone3 = struct {
         pub const errors = struct {
-            pub const all: []const zig_lib.sys.ErrorCode = &.{
+            pub const all: []const zl.sys.ErrorCode = &.{
                 .PERM,      .AGAIN, .INVAL,   .EXIST, .USERS,
                 .OPNOTSUPP, .NOMEM, .RESTART, .BUSY,  .NOSPC,
             };
@@ -602,18 +602,18 @@ const sys = struct {
     };
     pub const create = struct {
         /// Replace existing file
-        pub const truncate_zen: zig_lib.file.CreateSpec = .{
+        pub const truncate_zen: zl.file.CreateSpec = .{
             .errors = .{ .throw = sys.open.errors.all },
             .options = .{ .exclusive = false },
         };
-        pub const truncate_noexcept: zig_lib.file.CreateSpec = .{
+        pub const truncate_noexcept: zl.file.CreateSpec = .{
             .errors = .{},
             .options = .{ .truncate = true, .write = true, .exclusive = false },
         };
     };
     pub const open = struct {
         pub const errors = struct {
-            pub const all: []const zig_lib.sys.ErrorCode = &.{
+            pub const all: []const zl.sys.ErrorCode = &.{
                 .ACCES, .FBIG,        .NOTDIR,   .EXIST,  .OPNOTSUPP, .MFILE, .NOSPC,
                 .NOENT, .NAMETOOLONG, .OVERFLOW, .TXTBSY, .AGAIN,     .BADF,  .ISDIR,
                 .LOOP,  .NODEV,       .DQUOT,    .NOMEM,  .ROFS,      .NFILE, .INTR,
@@ -623,21 +623,21 @@ const sys = struct {
     };
     pub const read = struct {
         pub const errors = struct {
-            pub const all: []const zig_lib.sys.ErrorCode = &.{
+            pub const all: []const zl.sys.ErrorCode = &.{
                 .AGAIN, .BADF, .FAULT, .INTR, .INVAL, .IO, .ISDIR,
             };
         };
     };
     pub const clock_gettime = struct {
         pub const errors = struct {
-            pub const all: []const zig_lib.sys.ErrorCode = &.{
+            pub const all: []const zl.sys.ErrorCode = &.{
                 .ACCES, .FAULT, .INVAL, .NODEV, .OPNOTSUPP, .PERM,
             };
         };
     };
     pub const execve = struct {
         pub const errors = struct {
-            pub const all: []const zig_lib.sys.ErrorCode = &.{
+            pub const all: []const zl.sys.ErrorCode = &.{
                 .ACCES, .IO,     .LIBBAD, .NOTDIR,  .MFILE, .NOENT, .NAMETOOLONG, .TXTBSY,
                 .ISDIR, .LOOP,   .NOMEM,  .@"2BIG", .NFILE, .PERM,  .FAULT,       .AGAIN,
                 .INVAL, .NOEXEC,
@@ -646,81 +646,81 @@ const sys = struct {
     };
     pub const fork = struct {
         pub const errors = struct {
-            pub const all: []const zig_lib.sys.ErrorCode = &.{
+            pub const all: []const zl.sys.ErrorCode = &.{
                 .NOSYS, .AGAIN, .NOMEM, .RESTART,
             };
         };
     };
     pub const getcwd = struct {
         pub const errors = struct {
-            pub const all: []const zig_lib.sys.ErrorCode = &.{
+            pub const all: []const zl.sys.ErrorCode = &.{
                 .ACCES, .FAULT, .INVAL, .NAMETOOLONG, .NOENT, .NOMEM, .RANGE,
             };
         };
     };
     pub const getdents = struct {
         pub const errors = struct {
-            pub const all: []const zig_lib.sys.ErrorCode = &.{
+            pub const all: []const zl.sys.ErrorCode = &.{
                 .BADF, .FAULT, .INVAL, .NOENT, .NOTDIR,
             };
         };
     };
     pub const getrandom = struct {
         pub const errors = struct {
-            pub const all: []const zig_lib.sys.ErrorCode = &.{
+            pub const all: []const zl.sys.ErrorCode = &.{
                 .AGAIN, .FAULT, .INTR, .INVAL, .NOSYS,
             };
         };
     };
     pub const dup = struct {
         pub const errors = struct {
-            pub const all: []const zig_lib.sys.ErrorCode = &.{
+            pub const all: []const zl.sys.ErrorCode = &.{
                 .BADF, .BUSY, .INTR, .INVAL, .MFILE,
             };
         };
     };
     pub const dup2 = struct {
         pub const errors = struct {
-            pub const all: []const zig_lib.sys.ErrorCode = &.{
+            pub const all: []const zl.sys.ErrorCode = &.{
                 .BADF, .BUSY, .INTR, .INVAL, .MFILE,
             };
         };
     };
     pub const dup3 = struct {
         pub const errors = struct {
-            pub const all: []const zig_lib.sys.ErrorCode = &.{
+            pub const all: []const zl.sys.ErrorCode = &.{
                 .BADF, .BUSY, .INTR, .INVAL, .MFILE,
             };
         };
     };
     pub const poll = struct {
         pub const errors = struct {
-            pub const all: []const zig_lib.sys.ErrorCode = &.{
+            pub const all: []const zl.sys.ErrorCode = &.{
                 .FAULT, .INTR, .INVAL, .NOMEM,
             };
         };
     };
     pub const ioctl = struct {
         pub const errors = struct {
-            pub const all: []const zig_lib.sys.ErrorCode = &.{
+            pub const all: []const zl.sys.ErrorCode = &.{
                 .NOTTY, .BADF, .FAULT, .INVAL,
             };
         };
     };
     pub const madvise = struct {
         pub const errors = struct {
-            pub const all: []const zig_lib.sys.ErrorCode = &.{
+            pub const all: []const zl.sys.ErrorCode = &.{
                 .ACCES, .AGAIN, .BADF, .INVAL, .IO, .NOMEM, .PERM,
             };
         };
     };
     pub const mkdir = struct {
         pub const errors = struct {
-            pub const all: []const zig_lib.sys.ErrorCode = &.{
+            pub const all: []const zl.sys.ErrorCode = &.{
                 .ACCES,       .BADF,  .DQUOT, .EXIST, .FAULT,  .INVAL, .LOOP, .MLINK,
                 .NAMETOOLONG, .NOENT, .NOMEM, .NOSPC, .NOTDIR, .PERM,  .ROFS,
             };
-            pub const noexcl: []const zig_lib.sys.ErrorCode = &.{
+            pub const noexcl: []const zl.sys.ErrorCode = &.{
                 .ACCES,       .BADF,  .DQUOT, .FAULT, .INVAL,  .LOOP, .MLINK,
                 .NAMETOOLONG, .NOENT, .NOMEM, .NOSPC, .NOTDIR, .PERM, .ROFS,
             };
@@ -728,14 +728,14 @@ const sys = struct {
     };
     pub const memfd_create = struct {
         pub const errors = struct {
-            pub const all: []const zig_lib.sys.ErrorCode = &.{
+            pub const all: []const zl.sys.ErrorCode = &.{
                 .FAULT, .INVAL, .MFILE, .NOMEM,
             };
         };
     };
     pub const truncate = struct {
         pub const errors = struct {
-            pub const all: []const zig_lib.sys.ErrorCode = &.{
+            pub const all: []const zl.sys.ErrorCode = &.{
                 .ACCES,  .FAULT, .FBIG, .INTR,   .IO,    .ISDIR, .LOOP, .NAMETOOLONG,
                 .NOTDIR, .PERM,  .ROFS, .TXTBSY, .INVAL, .BADF,
             };
@@ -743,7 +743,7 @@ const sys = struct {
     };
     pub const mknod = struct {
         pub const errors = struct {
-            pub const all: []const zig_lib.sys.ErrorCode = &.{
+            pub const all: []const zl.sys.ErrorCode = &.{
                 .ACCES,       .BADF,  .DQUOT, .EXIST, .FAULT,  .INVAL, .LOOP,
                 .NAMETOOLONG, .NOENT, .NOMEM, .NOSPC, .NOTDIR, .PERM,  .ROFS,
             };
@@ -751,24 +751,24 @@ const sys = struct {
     };
     pub const open_by_handle_at = struct {
         pub const errors = struct {
-            pub const all: []const zig_lib.sys.ErrorCode = open.errors.all ++ [1]zig_lib.sys.ErrorCode{.STALE};
+            pub const all: []const zl.sys.ErrorCode = open.errors.all ++ [1]zl.sys.ErrorCode{.STALE};
         };
     };
     pub const name_to_handle_at = struct {
         pub const errors = struct {
-            pub const all: []const zig_lib.sys.ErrorCode = open.errors.all ++ [1]zig_lib.sys.ErrorCode{.STALE};
+            pub const all: []const zl.sys.ErrorCode = open.errors.all ++ [1]zl.sys.ErrorCode{.STALE};
         };
     };
     pub const nanosleep = struct {
         pub const errors = struct {
-            pub const all: []const zig_lib.sys.ErrorCode = &.{
+            pub const all: []const zl.sys.ErrorCode = &.{
                 .INTR, .FAULT, .INVAL, .OPNOTSUPP,
             };
         };
     };
     pub const readlink = struct {
         pub const errors = struct {
-            pub const all: []const zig_lib.sys.ErrorCode = &.{
+            pub const all: []const zl.sys.ErrorCode = &.{
                 .ACCES,       .BADF,  .FAULT, .INVAL,  .IO, .LOOP,
                 .NAMETOOLONG, .NOENT, .NOMEM, .NOTDIR,
             };
@@ -776,7 +776,7 @@ const sys = struct {
     };
     pub const rmdir = struct {
         pub const errors = struct {
-            pub const all: []const zig_lib.sys.ErrorCode = &.{
+            pub const all: []const zl.sys.ErrorCode = &.{
                 .ACCES, .BUSY,  .FAULT,  .INVAL,    .LOOP, .NAMETOOLONG,
                 .NOENT, .NOMEM, .NOTDIR, .NOTEMPTY, .PERM, .ROFS,
             };
@@ -784,14 +784,14 @@ const sys = struct {
     };
     pub const sigaction = struct {
         pub const errors = struct {
-            pub const all: []const zig_lib.sys.ErrorCode = &.{
+            pub const all: []const zl.sys.ErrorCode = &.{
                 .FAULT, .INVAL,
             };
         };
     };
     pub const stat = struct {
         pub const errors = struct {
-            pub const all: []const zig_lib.sys.ErrorCode = &.{
+            pub const all: []const zl.sys.ErrorCode = &.{
                 .ACCES,       .BADF,  .FAULT, .INVAL,  .LOOP,
                 .NAMETOOLONG, .NOENT, .NOMEM, .NOTDIR, .OVERFLOW,
             };
@@ -799,7 +799,7 @@ const sys = struct {
     };
     pub const unlink = struct {
         pub const errors = struct {
-            pub const all: []const zig_lib.sys.ErrorCode = &.{
+            pub const all: []const zl.sys.ErrorCode = &.{
                 .ACCES, .BUSY,  .FAULT,  .IO,   .ISDIR, .LOOP, .NAMETOOLONG,
                 .NOENT, .NOMEM, .NOTDIR, .PERM, .ROFS,  .BADF, .INVAL,
             };
@@ -807,7 +807,7 @@ const sys = struct {
     };
     pub const write = struct {
         pub const errors = struct {
-            pub const all: []const zig_lib.sys.ErrorCode = &.{
+            pub const all: []const zl.sys.ErrorCode = &.{
                 .AGAIN, .BADF,  .DESTADDRREQ, .DQUOT, .FAULT, .FBIG,
                 .INTR,  .INVAL, .IO,          .NOSPC, .PERM,  .PIPE,
             };
@@ -815,21 +815,21 @@ const sys = struct {
     };
     pub const wait = struct {
         pub const errors = struct {
-            pub const all: []const zig_lib.sys.ErrorCode = &.{
+            pub const all: []const zl.sys.ErrorCode = &.{
                 .SRCH, .INTR, .AGAIN, .INVAL, .CHILD,
             };
         };
     };
     pub const waitid = struct {
         pub const errors = struct {
-            pub const all: []const zig_lib.sys.ErrorCode = &.{
+            pub const all: []const zl.sys.ErrorCode = &.{
                 .AGAIN, .CHILD, .INTR, .INVAL, .SRCH,
             };
         };
     };
     pub const pipe = struct {
         pub const errors = struct {
-            pub const all: []const zig_lib.sys.ErrorCode = &.{
+            pub const all: []const zl.sys.ErrorCode = &.{
                 .FAULT, .INVAL, .MFILE, .NFILE, .NOPKG,
             };
         };

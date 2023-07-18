@@ -1,11 +1,11 @@
-const zig_lib = @import("../zig_lib.zig");
-const proc = zig_lib.proc;
-const mem1 = zig_lib.mem;
-const builtin = zig_lib.builtin;
+const zl = @import("../zig_lib.zig");
+const proc = zl.proc;
+const mem1 = zl.mem;
+const builtin = zl.builtin;
 const mem = struct {
     usingnamespace @import("../top/mem/ctn.zig");
 };
-pub usingnamespace proc.start;
+pub usingnamespace zl.start;
 pub fn main() void {
     if (false) {
         const Auto = mem.AutomaticStructuredReadWriteResize(.{

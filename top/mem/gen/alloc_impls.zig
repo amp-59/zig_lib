@@ -15,8 +15,7 @@ const types = @import("./types.zig");
 const config = @import("./config.zig");
 const ptr_fn = @import("./ptr_fn.zig");
 const alloc_fn = @import("./alloc_fn.zig");
-pub usingnamespace proc.start;
-
+pub usingnamespace @import("../../start.zig");
 pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
 pub const runtime_assertions: bool = false;
 pub const show_expressions: bool = false;
@@ -182,10 +181,16 @@ fn writeImplementationDeduction(
     array.writeMany("\n");
 }
 
-fn writeDeclExpr(array: *Array, symbol: [:0]const u8) void {
+fn writeDeclCond(array: *Array, symbol: [:0]const u8) void {
     array.writeMany("if(@hasField(P, \"");
     array.writeMany(symbol);
     array.writeMany("\")){\n");
+}
+fn writeDeclExpr(array: *Array, symbol: [:0]const u8, impl_set: []const ArgListMap) void {
+    _ = impl_set;
+    array.writeMany("const ");
+    array.writeMany(symbol);
+    array.writeMany(" = undefined;\n");
 }
 fn writeFieldDeductionInternal(
     allocator: *config.Allocator,
@@ -201,8 +206,9 @@ fn writeFieldDeductionInternal(
         if (filtered[0].len != 0 and
             arg_list[0].ptr != tok.impl_name.ptr)
         {
-            writeDeclExpr(array, arg_list[0]);
+            writeDeclCond(array, arg_list[0]);
         }
+        writeDeclExpr(array, arg_list[0], filtered[1]);
         if (filtered[1].len == 1) {
             try meta.wrap(
                 writeImplementationDeduction(allocator, array, filtered[1][0]),
@@ -269,8 +275,10 @@ pub fn main() !void {
     file.close(spec.generic.noexcept, fd);
     var len: [types.Kind.list.len]u64 = .{0} ** types.Kind.list.len;
 
-    const arg_lists: ptr_fn.FnArgListMap = ptr_fn.deduceUniqueInterfaceStructs(&allocator, details);
-    _ = arg_lists;
+    const arg_lists: ptr_fn.FnArgs.Map = ptr_fn.deduceUniqueInterfaceStructs(&allocator, details);
+    for (arg_lists[0], arg_lists[1]) |val, list| {
+        testing.print(.{ fmt.render(.{ .string_literal = true }, val), fmt.any(list), '\n' });
+    }
 
     for (types.Kind.list, 0..) |kind, kind_idx| {
         for (details) |impl_detail| {
@@ -305,12 +313,11 @@ pub fn main() !void {
             }
             alloc_fn_info.writeSignature(&array, kind);
             array.writeMany("{\n");
-
             array.writeMany("const P = meta.FnParam0(s_impl_type.");
             array.writeMany(@tagName(alloc_fn_info));
-            array.writeMany(");");
+            array.writeMany(");\n");
 
-            if (unique_arg_list.len != 0) {
+            if (unique_arg_list.args_len != 0) {
                 writeFieldDeductionInternal(&allocator, &array, unique_arg_list.readAll(), list_map);
             }
             array.writeMany("}\n");

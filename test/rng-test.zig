@@ -1,10 +1,10 @@
-const zig_lib = @import("../zig_lib.zig");
-const mem = zig_lib.mem;
-const rng = zig_lib.rng;
-const proc = zig_lib.proc;
-const builtin = zig_lib.builtin;
-const testing = zig_lib.testing;
-pub usingnamespace proc.start;
+const zl = @import("../zig_lib.zig");
+const mem = zl.mem;
+const rng = zl.rng;
+const proc = zl.proc;
+const builtin = zl.builtin;
+const testing = zl.testing;
+pub usingnamespace zl.start;
 pub const runtime_assertions: bool = true;
 fn testXoroshiroSequence() !void {
     var r: rng.Xoroshiro128 = rng.Xoroshiro128.init(0);

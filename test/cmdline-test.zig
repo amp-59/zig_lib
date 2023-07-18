@@ -1,15 +1,15 @@
-const zig_lib = @import("../zig_lib.zig");
-const sys = zig_lib.sys;
-const fmt = zig_lib.fmt;
-const mem = zig_lib.mem;
-const proc = zig_lib.proc;
-const spec = zig_lib.spec;
-const meta = zig_lib.meta;
-const build = zig_lib.build;
-const builtin = zig_lib.builtin;
-const testing = zig_lib.testing;
+const zl = @import("../zig_lib.zig");
+const sys = zl.sys;
+const fmt = zl.fmt;
+const mem = zl.mem;
+const proc = zl.proc;
+const spec = zl.spec;
+const meta = zl.meta;
+const build = zl.build;
+const builtin = zl.builtin;
+const testing = zl.testing;
 
-pub usingnamespace proc.start;
+pub usingnamespace zl.start;
 
 pub const logging_override: builtin.Logging.Override = spec.logging.override.verbose;
 

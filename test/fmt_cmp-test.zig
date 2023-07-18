@@ -26,7 +26,7 @@ const mach = zl.mach;
 const time = zl.time;
 const builtin = zl.builtin;
 
-pub usingnamespace proc.start;
+pub usingnamespace zl.start;
 
 pub const signal_handlers = .{
     .SegmentationFault = false,

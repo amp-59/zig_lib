@@ -1,8 +1,8 @@
-const zig_lib = @import("../zig_lib.zig");
-const proc = zig_lib.proc;
-const spec = zig_lib.spec;
-const builtin = zig_lib.builtin;
-pub usingnamespace proc.start;
+const zl = @import("../zig_lib.zig");
+const proc = zl.proc;
+const spec = zl.spec;
+const builtin = zl.builtin;
+pub usingnamespace zl.start;
 pub const runtime_assertions: bool = true;
 pub const discard_errors: bool = true;
 

@@ -82,7 +82,7 @@ pub const Fn = enum(u5) {
         const Variant = @TypeOf(impl_variant);
         var arg_list: gen.ArgList = .{
             .args = undefined,
-            .len = 0,
+            .args_len = 0,
             .kind = list_kind,
             .ret = ptr_fn_info.returnType(),
         };
@@ -347,17 +347,27 @@ pub const Fn = enum(u5) {
         }
     }
 };
-pub const FnArgLists = struct {
-    keys: []Key,
-    keys_len: usize = 0,
-    pub const Key = struct { Fn, usize };
-    pub const Value = struct { Fn, []gen.ArgList };
+
+pub const FnArgs = struct {
+    pub const Index = struct {
+        keys: []Key,
+        keys_len: usize = 0,
+    };
+    pub const Key = struct {
+        Fn,
+        usize,
+    };
+    pub const Value = struct {
+        Fn,
+        []gen.ArgList,
+    };
+    pub const Map = struct {
+        []const Value,
+        []const Index,
+    };
 };
-pub const FnArgListMap = struct {
-    []const FnArgLists.Value,
-    []const FnArgLists,
-};
-pub fn deduceUniqueInterfaceStructs(allocator: *config.Allocator, impl_details: []types.Implementation) FnArgListMap {
+
+pub fn deduceUniqueInterfaceStructs(allocator: *config.Allocator, impl_details: []types.Implementation) FnArgs.Map {
     var key_len: usize = 0;
     for (list) |ptr_fn_info| {
         if (!ptr_fn_info.interface()) {
@@ -365,10 +375,10 @@ pub fn deduceUniqueInterfaceStructs(allocator: *config.Allocator, impl_details: 
         }
         key_len +%= 1;
     }
-    const arg_list_vals: []FnArgLists.Value = allocator.allocate(FnArgLists.Value, key_len);
-    const arg_list_maps: []FnArgLists = allocator.allocate(FnArgLists, impl_details.len);
+    const arg_list_vals: []FnArgs.Value = allocator.allocate(FnArgs.Value, key_len);
+    const arg_list_maps: []FnArgs.Index = allocator.allocate(FnArgs.Index, impl_details.len);
     for (arg_list_maps) |*arg_list_map| {
-        arg_list_map.keys = allocator.allocate(FnArgLists.Key, key_len);
+        arg_list_map.keys = allocator.allocate(FnArgs.Key, key_len);
         arg_list_map.keys_len = 0;
     }
     var key_idx: usize = 0;
@@ -382,13 +392,13 @@ pub fn deduceUniqueInterfaceStructs(allocator: *config.Allocator, impl_details: 
             if (!ptr_fn_info.hasCapability(impl_detail)) {
                 continue :lo;
             }
-            const arg_list_map: *FnArgLists = &arg_list_maps[impl_detail_idx];
+            const arg_list_map: *FnArgs.Index = &arg_list_maps[impl_detail_idx];
             const arg_list: gen.ArgList = ptr_fn_info.argList(impl_detail, .Parameter);
-            if (arg_list.len == 0) {
+            if (arg_list.args_len == 0) {
                 continue :lo;
             }
             un: for (arg_lists[0..arg_lists_len], 0..) |unique_arg_list, unique_arg_list_idx| {
-                if (unique_arg_list.len != arg_list.len) {
+                if (unique_arg_list.args_len != arg_list.args_len) {
                     continue :un;
                 }
                 for (unique_arg_list.readAll(), arg_list.readAll()) |u, v| {

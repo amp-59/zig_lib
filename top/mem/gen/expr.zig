@@ -262,7 +262,7 @@ const Init = struct {
         return packMore(.call, exprs);
     }
     pub fn impl0(allocator: anytype, ptr_fn_info: ptr_fn.Fn, arg_list: *const gen.ArgList) Expr {
-        const exprs: []Expr = allocator.allocate(Expr, arg_list.len +% 3);
+        const exprs: []Expr = allocator.allocate(Expr, arg_list.args_len +% 3);
         var idx: u64 = 0;
         exprs[idx] = Init.symbol(ptr_fn_info.fnName());
         idx +%= 1;
@@ -273,7 +273,7 @@ const Init = struct {
         return packMore(.call, exprs[0..idx]);
     }
     pub fn impl1(allocator: anytype, ptr_fn_info: ptr_fn.Fn, arg_list: *const gen.ArgList, tokens: Tokens) Expr {
-        const exprs: []Expr = allocator.allocate(Expr, arg_list.len +% 3);
+        const exprs: []Expr = allocator.allocate(Expr, arg_list.args_len +% 3);
         var idx: u64 = 0;
         exprs[idx] = Init.symbol(ptr_fn_info.fnName());
         idx +%= 1;
@@ -302,7 +302,7 @@ const Init = struct {
     }
     pub fn intr(allocator: anytype, ctn_detail: types.Container, ctn_fn_info: ctn_fn.Fn) Expr {
         const arg_list: gen.ArgList = ctn_fn_info.argList(ctn_detail, .Argument);
-        const exprs: []Expr = allocator.allocate(Expr, arg_list.len +% 1);
+        const exprs: []Expr = allocator.allocate(Expr, arg_list.args_len +% 1);
         var idx: u64 = 0;
         exprs[idx] = Init.symbol(ctn_fn_info.fnName());
         idx +%= 1;

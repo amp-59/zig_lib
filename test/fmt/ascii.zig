@@ -1,9 +1,9 @@
-const zig_lib = @import("../../zig_lib.zig");
-const mem = zig_lib.mem;
-const fmt = zig_lib.fmt;
-const proc = zig_lib.proc;
-const testing = zig_lib.testing;
-const builtin = zig_lib.builtin;
+const zl = @import("../../zig_lib.zig");
+const mem = zl.mem;
+const fmt = zl.fmt;
+const proc = zl.proc;
+const testing = zl.testing;
+const builtin = zl.builtin;
 fn testWhitespace() !void {
     for (fmt.ascii.whitespace) |char| {
         try builtin.expect(fmt.ascii.isWhitespace(char));

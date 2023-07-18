@@ -1,12 +1,12 @@
-const zig_lib = @import("../zig_lib.zig");
-const sys = zig_lib.sys;
-const gen = zig_lib.gen;
-const builtin = zig_lib.builtin;
+const zl = @import("../zig_lib.zig");
+const sys = zl.sys;
+const gen = zl.gen;
+const builtin = zl.builtin;
 
 const perf = @import("../top/perf.zig");
 
 comptime {
-    _ = zig_lib.mach;
+    _ = zl.mach;
 }
 
 pub const Access = enum(u32) {

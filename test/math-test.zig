@@ -1,10 +1,10 @@
-const zig_lib = @import("../zig_lib.zig");
-const fmt = zig_lib.fmt;
-const proc = zig_lib.proc;
-const math = zig_lib.math;
-const builtin = zig_lib.builtin;
-const testing = zig_lib.testing;
-pub usingnamespace proc.start;
+const zl = @import("../zig_lib.zig");
+const fmt = zl.fmt;
+const proc = zl.proc;
+const math = zl.math;
+const builtin = zl.builtin;
+const testing = zl.testing;
+pub usingnamespace zl.start;
 fn testShl() !void {
     try builtin.expect(math.shl(u8, 0b11111111, @as(usize, 3)) == 0b11111000);
     try builtin.expect(math.shl(u8, 0b11111111, @as(usize, 8)) == 0);

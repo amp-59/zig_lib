@@ -6,15 +6,14 @@ const proc = @import("../../proc.zig");
 const builtin = @import("../../builtin.zig");
 const types = @import("./types.zig");
 const config = @import("./config.zig");
-pub usingnamespace proc.start;
+pub usingnamespace @import("../../start.zig");
 inline fn writeDeclaration(array: *types.Array, comptime name: []const u8, comptime T: type) void {
     array.writeMany("pub const " ++ name ++ "=");
     array.writeFormat(comptime types.TypeDescr.declare(name, T));
     array.writeMany(";\n");
 }
 pub fn main() !void {
-    const std = @import("std");
-    const Target = std.Target;
+    const Target = @import("std").Target;
     const fd: u64 = try file.create(.{ .options = .{ .exclusive = false } }, config.toplevel_source_path, file.mode.regular);
     var allocator: mem.SimpleAllocator = .{};
     var array: *types.Array = allocator.create(types.Array);
@@ -27,10 +26,6 @@ pub fn main() !void {
         \\ofmt:ObjectFormat,
         \\
     );
-    writeDeclaration(array, "Version", std.SemanticVersion);
-    writeDeclaration(array, "Range", std.SemanticVersion.Range);
-    writeDeclaration(array, "LinuxVersionRange", Target.Os.LinuxVersionRange);
-    writeDeclaration(array, "WindowsVersion", Target.Os.WindowsVersion);
     writeDeclaration(array, "Set", Target.Cpu.Feature.Set);
     writeDeclaration(array, "Feature", Target.Cpu.Feature);
     array.writeMany(
@@ -43,7 +38,19 @@ pub fn main() !void {
     writeDeclaration(array, "Model", Target.Cpu.Model);
     writeDeclaration(array, "Arch", Target.Cpu.Arch);
     array.writeMany("};\n");
-    writeDeclaration(array, "Os", Target.Os);
+    array.writeMany(
+        \\pub const Os=struct{
+        \\tag:Tag,
+        \\version_range:VersionRange,
+        \\
+    );
+    writeDeclaration(array, "Tag", Target.Os.Tag);
+    writeDeclaration(array, "Version", @import("std").SemanticVersion);
+    writeDeclaration(array, "Range", @import("std").SemanticVersion.Range);
+    writeDeclaration(array, "LinuxVersionRange", Target.Os.LinuxVersionRange);
+    writeDeclaration(array, "WindowsVersion", Target.Os.WindowsVersion);
+    writeDeclaration(array, "VersionRange", Target.Os.VersionRange);
+    array.writeMany("};\n");
     writeDeclaration(array, "Abi", Target.Abi);
     writeDeclaration(array, "ObjectFormat", Target.ObjectFormat);
     inline for (config.arch_names) |pair| {

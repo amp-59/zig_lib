@@ -9,7 +9,7 @@ const builtin = @import("../../builtin.zig");
 const tasks = @import("../tasks.zig");
 const attr = @import("./attr.zig");
 const config = @import("./config.zig");
-pub usingnamespace proc.start;
+pub usingnamespace @import("../../start.zig");
 pub const runtime_assertions: bool = false;
 pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
 const max_len: u64 = attr.format_command_options.len + attr.build_command_options.len;

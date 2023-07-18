@@ -1,10 +1,10 @@
 const zl = @import("../../zig_lib.zig");
-const fmt = zig_lib.fmt;
-const meta = zig_lib.meta;
-const proc = zig_lib.proc;
-const crypto = zig_lib.crypto;
-const builtin = zig_lib.builtin;
-const testing = zig_lib.testing;
+const fmt = zl.fmt;
+const meta = zl.meta;
+const proc = zl.proc;
+const crypto = zl.crypto;
+const builtin = zl.builtin;
+const testing = zl.testing;
 pub usingnamespace zl.start;
 pub const runtime_assertions: bool = true;
 fn testP256ECDHKeyExchange() !void {

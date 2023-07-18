@@ -1,15 +1,15 @@
-const zig_lib = @import("../zig_lib.zig");
-const mem = zig_lib.mem;
-const fmt = zig_lib.fmt;
-const proc = zig_lib.proc;
-const time = zig_lib.time;
-const spec = zig_lib.spec;
-const builtin = zig_lib.builtin;
-const testing = zig_lib.testing;
+const zl = @import("../zig_lib.zig");
+const mem = zl.mem;
+const fmt = zl.fmt;
+const proc = zl.proc;
+const time = zl.time;
+const spec = zl.spec;
+const builtin = zl.builtin;
+const testing = zl.testing;
 
 pub const logging_override: builtin.Logging.Override = spec.logging.override.verbose;
 
-pub usingnamespace proc.start;
+pub usingnamespace zl.start;
 
 pub fn main() !void {
     var dt: time.DateTime = time.DateTime.init(1683108561);

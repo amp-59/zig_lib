@@ -1,7 +1,7 @@
 const root = @import("@build");
-const srg = blk: {
-    if (@hasDecl(root, "srg")) {
-        break :blk root.srg;
+const zl = blk: {
+    if (@hasDecl(root, "zl")) {
+        break :blk root.zl;
     }
     if (@hasDecl(root, "zig_lib")) {
         break :blk root.zig_lib;
@@ -13,14 +13,15 @@ const srg = blk: {
         break :blk root.top;
     }
 };
-const mem = srg.mem;
-const sys = srg.sys;
-const proc = srg.proc;
-const meta = srg.meta;
-const build = srg.build;
-const builtin = srg.builtin;
+const mem = zl.mem;
+const sys = zl.sys;
+const proc = zl.proc;
+const meta = zl.meta;
+const build = zl.build;
+const builtin = zl.builtin;
 pub usingnamespace root;
-pub usingnamespace proc.start;
+pub usingnamespace zl.start;
+
 const Node = builtin.define("Node", type, build.GenericNode(.{}));
 
 pub const logging_default: builtin.Logging.Default = .{

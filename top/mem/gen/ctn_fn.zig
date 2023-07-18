@@ -179,7 +179,7 @@ pub const Fn = enum(u8) {
     pub fn argList(ctn_fn_info: Fn, ctn_detail: types.Container, list_kind: gen.ListKind) gen.ArgList {
         var arg_list: gen.ArgList = .{
             .args = undefined,
-            .len = 0,
+            .args_len = 0,
             .kind = list_kind,
             .ret = ctn_fn_info.returnType(),
         };

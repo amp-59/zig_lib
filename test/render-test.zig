@@ -1,16 +1,16 @@
-const top = @import("../zig_lib.zig");
-const mem = top.mem;
-const fmt = top.fmt;
-const proc = top.proc;
-const meta = top.meta;
-const file = top.file;
+const zl = @import("../zig_lib.zig");
+const mem = zl.mem;
+const fmt = zl.fmt;
+const proc = zl.proc;
+const meta = zl.meta;
+const file = zl.file;
 const render = fmt;
-const spec = top.spec;
-const builtin = top.builtin;
-const testing = top.testing;
-const tokenizer = top.tokenizer;
+const spec = zl.spec;
+const builtin = zl.builtin;
+const testing = zl.testing;
+const tokenizer = zl.tokenizer;
 const virtual_test = @import("./virtual-test.zig");
-pub usingnamespace proc.start;
+pub usingnamespace zl.start;
 pub const logging_override: builtin.Logging.Override = spec.logging.override.verbose;
 pub const AddressSpace = spec.address_space.regular_128;
 pub const runtime_assertions: bool = true;
@@ -145,7 +145,7 @@ fn minimalRunTest(_: *Allocator, array: anytype, format: anytype, expected: ?[]c
     array.undefineAll();
 }
 fn testSpecificCases() !void {
-    var address_space: builtin.AddressSpace() = .{};
+    var address_space: builtin.VirtualAddressSpace() = .{};
     var allocator: Allocator = if (use_alloc) try Allocator.init(&address_space) else undefined;
     defer if (use_alloc) allocator.deinit(&address_space);
     var dst: [16384]u8 = undefined;
@@ -234,7 +234,7 @@ pub fn testHugeCase() !void {
     var address_space: builtin.AddressSpace() = .{};
     var allocator: Allocator = try Allocator.init(&address_space);
     var unlimited_array: Allocator.StructuredVector(u8) = try Allocator.StructuredVector(u8).init(&allocator, 1024 * 1024);
-    const sys = top.sys;
+    const sys = zl.sys;
     try unlimited_array.appendAny(spec.reinterpret.fmt, &allocator, comptime render.TypeFormat(.{ .omit_container_decls = false, .radix = 2 }){ .value = sys });
     builtin.debug.write(unlimited_array.readAll());
     builtin.debug.write("\n");
