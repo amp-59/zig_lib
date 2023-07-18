@@ -1,8 +1,8 @@
-pub const srg = @import("./zig_lib.zig");
-const proc = srg.proc;
-const spec = srg.spec;
-const build = srg.build;
-const builtin = srg.builtin;
+pub const zl = @import("./zig_lib.zig");
+const proc = zl.proc;
+const spec = zl.spec;
+const build = zl.build;
+const builtin = zl.builtin;
 
 pub const Node = build.GenericNode(.{});
 pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
@@ -45,6 +45,7 @@ pub fn buildMain(allocator: *build.Allocator, toplevel: *Node) !void {
     examples(allocator, toplevel.addGroup(allocator, "examples"));
     memgen(allocator, toplevel.addGroup(allocator, "memgen"));
     buildgen(allocator, toplevel.addGroup(allocator, "buildgen"));
+    targetgen(allocator, toplevel.addGroup(allocator, "targetgen"));
 }
 fn memgen(allocator: *build.Allocator, node: *Node) void {
     const mg_aux: *Node = node.addGroup(allocator, "_memgen");
@@ -72,6 +73,7 @@ fn memgen(allocator: *build.Allocator, node: *Node) void {
     mg_ctn.dependOn(allocator, mg_ctn_impls, .run);
     mg_ctn_kinds.dependOn(allocator, mg_specs, .run);
     mg_specs.task.info.build.mode = .Debug;
+    mg_alloc.task.info.format.ast_check = false;
     node.task.tag = .format;
 }
 fn examples(allocator: *build.Allocator, node: *Node) void {
@@ -178,10 +180,8 @@ fn tests(allocator: *build.Allocator, node: *Node) void {
     algo_test.task.info.build.mode = .ReleaseFast;
     cryptoTests(allocator, node.addGroup(allocator, "crypto_tests"));
     for ([_]*Node{
-        build_runner_test,
-        zls_build_runner_test,
-        cmdline_writer_test,
-        serial_test,
+        build_runner_test,   zls_build_runner_test,
+        cmdline_writer_test, serial_test,
         build_stress_test,
     }) |target| {
         target.addToplevelArgs(allocator);
@@ -241,7 +241,17 @@ fn buildgen(allocator: *build.Allocator, node: *Node) void {
     node.task.tag = .format;
 }
 fn targetgen(allocator: *build.Allocator, node: *Node) void {
-    const tg_cpu_impl: *Node = node.addBuild(allocator, build_cmd, "tg_feat_impls", "top/target/gen/feat_impls.zig");
-    tg_cpu_impl.descr = "";
+    const tg_aux: *Node = node.addGroup(allocator, "_targetgen");
+    const tg_arch_impls: *Node = tg_aux.addBuild(allocator, build_cmd, "tg_arch_impls", "top/target/gen/arch_impls.zig");
+    const tg_arch: *Node = node.addFormat(allocator, format_cmd, "tg_arch", "top/target");
+    const tg_target_impl: *Node = tg_aux.addBuild(allocator, build_cmd, "tg_target_impl", "top/target/gen/target_impl.zig");
+    const tg_target: *Node = node.addFormat(allocator, format_cmd, "tg_target_impl", "top/target.zig");
+    tg_target_impl.dependOn(allocator, tg_arch_impls, .run);
+    tg_arch.dependOn(allocator, tg_arch_impls, .run);
+    tg_target.dependOn(allocator, tg_target_impl, .run);
+    tg_arch_impls.descr = "Generate target information for supported architectures";
+    tg_arch.descr = "Reformat generated builder command line data structures into canonical form";
+    node.task.tag = .format;
 }
+
 pub const message_style: [:0]const u8 = "\x1b[2m";
