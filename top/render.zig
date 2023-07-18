@@ -1560,14 +1560,17 @@ pub const TypeDescrFormatSpec = struct {
     const Options = struct {
         token: type = []const u8,
         depth: u64 = 0,
+        decls: bool = false,
         default_field_values: bool = false,
-        identifier_name: bool = false,
+        identifier_name: bool = true,
     };
     const Tokens = struct {
+        decl: [:0]const u8 = "pub const ",
         lbrace: [:0]const u8 = " {\n",
         equal: [:0]const u8 = " = ",
         rbrace: [:0]const u8 = "}",
         next: [:0]const u8 = ",\n",
+        end: [:0]const u8 = ";\n",
         colon: [:0]const u8 = ": ",
         indent: [:0]const u8 = "    ",
     };
@@ -1580,9 +1583,46 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
         const TypeDescrFormat = @This();
         var depth: u64 = spec.options.depth;
         pub const Reference = struct { spec: spec.options.token, type: *const TypeDescrFormat };
-        pub const Enumeration = struct { spec: spec.options.token, fields: []const Decl };
-        pub const Composition = struct { spec: spec.options.token, fields: []const Field };
+        pub const Enumeration = if (spec.options.decls)
+            struct { spec: spec.options.token, fields: []const Tag, decls: []const Decl }
+        else
+            struct { spec: spec.options.token, fields: []const Tag };
+        pub const Composition = if (spec.options.decls)
+            struct { spec: spec.options.token, fields: []const Field, decls: []const Decl }
+        else
+            struct { spec: spec.options.token, fields: []const Field };
         pub const Decl = struct {
+            name: spec.options.token,
+            type: TypeDescrFormat,
+            const Format = @This();
+            pub fn formatWrite(format: Format, array: anytype) void {
+                array.writeMany(spec.tokens.decl);
+                if (spec.options.identifier_name) {
+                    array.writeFormat(fmt.IdentifierFormat{ .value = format.name });
+                } else {
+                    array.writeMany(format.name);
+                }
+                array.writeMany(spec.tokens.equal);
+                writeFormat(array, format.type);
+                array.writeMany(spec.tokens.end);
+                for (0..depth) |_| array.writeMany(spec.tokens.indent);
+            }
+            pub fn formatLength(format: Format) u64 {
+                var len: u64 = 0;
+                len +%= spec.tokens.decl.len;
+                if (spec.options.identifier_name) {
+                    len +%= (fmt.IdentifierFormat{ .value = format.name }).formatLength();
+                } else {
+                    len +%= format.name.len;
+                }
+                len +%= spec.tokens.equal.len;
+                len +%= format.type.formatLength();
+                len +%= spec.tokens.end.len;
+                len +%= depth *% spec.tokens.indent.len;
+                return len;
+            }
+        };
+        pub const Tag = struct {
             name: spec.options.token,
             value: u64,
             const Format = @This();
@@ -1680,12 +1720,6 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
             Enumeration: Enumeration,
             Composition: Composition,
         };
-        pub fn fields(type_descr: TypeDescrFormat) []const Field {
-            return type_descr.type_decl.Composition.fields;
-        }
-        pub fn decls(type_descr: TypeDescrFormat) []const Decl {
-            return type_descr.type_decl.Enumeration.fields;
-        }
         pub fn formatWrite(type_descr: TypeDescrFormat, array: anytype) void {
             switch (type_descr) {
                 .type_name => |type_name| array.writeMany(type_name),
@@ -1706,6 +1740,11 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                             for (struct_defn.fields) |field| {
                                 writeFormat(array, field);
                             }
+                            if (spec.options.decls) {
+                                for (struct_defn.decls) |field| {
+                                    writeFormat(array, field);
+                                }
+                            }
                             array.undefine(spec.tokens.indent.len);
                             array.writeMany(spec.tokens.rbrace);
                             depth -%= 1;
@@ -1717,6 +1756,11 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                             for (0..depth) |_| array.writeMany(spec.tokens.indent);
                             for (enum_defn.fields) |field| {
                                 writeFormat(array, field);
+                            }
+                            if (spec.options.decls) {
+                                for (enum_defn.decls) |field| {
+                                    writeFormat(array, field);
+                                }
                             }
                             array.undefine(spec.tokens.indent.len);
                             array.writeMany(spec.tokens.rbrace);
@@ -1747,6 +1791,11 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                             for (struct_defn.fields) |field| {
                                 len +%= field.formatLength();
                             }
+                            if (spec.options.decls) {
+                                for (struct_defn.decls) |decl| {
+                                    len +%= decl.formatLength();
+                                }
+                            }
                             len -%= spec.tokens.indent.len;
                             len +%= spec.tokens.rbrace.len;
                             depth -%= 1;
@@ -1758,6 +1807,11 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                             len +%= depth *% spec.tokens.indent.len;
                             for (enum_defn.fields) |field| {
                                 len +%= field.formatLength();
+                            }
+                            if (spec.options.decls) {
+                                for (enum_defn.decls) |decl| {
+                                    len +%= decl.formatLength();
+                                }
                             }
                             len -%= spec.tokens.indent.len;
                             len +%= spec.tokens.rbrace.len;
@@ -1778,60 +1832,297 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
             );
             return @as(*const GenericTypeDescrFormat(cast_spec), @ptrCast(type_descr)).*;
         }
-        fn defaultFieldValue(
+        inline fn defaultFieldValue(
             comptime field_type: type,
             comptime default_value_opt: ?*const anyopaque,
         ) ?spec.options.token {
             if (default_value_opt) |default_value_ptr| {
-                return builtin.fmt.cx(mem.pointerOpaque(field_type, default_value_ptr).*);
+                const default_value = mem.pointerOpaque(field_type, default_value_ptr).*;
+                return builtin.fmt.cx(default_value);
             } else {
                 return null;
             }
         }
+        inline fn defaultDeclareCriteria(
+            comptime T: type,
+            comptime decl: builtin.Type.Declaration,
+        ) ?type {
+            if (decl.is_pub) {
+                const u = @field(T, decl.name);
+                const U = @TypeOf(u);
+                if (U == type and meta.isContainer(u) and u != T) {
+                    return u;
+                }
+            }
+            return null;
+        }
+        const TypeDecl = struct { []const u8, type };
+        const types: *[]const TypeDecl = blk: {
+            var res: []const TypeDecl = &.{};
+            break :blk &res;
+        };
+        pub inline fn declare(comptime name: []const u8, comptime T: type) TypeDescrFormat {
+            comptime {
+                const type_info: builtin.Type = @typeInfo(T);
+                for (types.*) |type_decl| {
+                    if (type_decl[1] == T) {
+                        return .{ .type_name = type_decl[0] };
+                    }
+                } else {
+                    types.* = types.* ++ [1]TypeDecl{.{ name, T }};
+                }
+                switch (type_info) {
+                    else => return .{ .type_name = @typeName(T) },
+                    .Struct => |struct_info| {
+                        if (spec.options.decls) {
+                            var type_decls: []const Decl = &.{};
+                            for (struct_info.decls) |decl| {
+                                if (defaultDeclareCriteria(T, decl)) |U| {
+                                    type_decls = type_decls ++ [1]Decl{.{
+                                        .name = decl.name,
+                                        .type = declare(decl.name, U),
+                                    }};
+                                }
+                            }
+                            var type_fields: []const Field = &.{};
+                            for (struct_info.fields) |field| {
+                                type_fields = type_fields ++ [1]Field{.{
+                                    .name = field.name,
+                                    .type = init(field.type),
+                                    .default_value = defaultFieldValue(field.type, field.default_value),
+                                }};
+                            }
+                            return .{ .type_decl = .{ .Composition = .{
+                                .spec = builtin.fmt.typeDeclSpecifier(type_info),
+                                .fields = type_fields,
+                                .decls = type_decls,
+                            } } };
+                        } else {
+                            var type_fields: []const Field = &.{};
+                            for (struct_info.fields) |field| {
+                                type_fields = type_fields ++ [1]Field{.{
+                                    .name = field.name,
+                                    .type = init(field.type),
+                                    .default_value = defaultFieldValue(field.type, field.default_value),
+                                }};
+                            }
+                            return .{ .type_decl = .{ .Composition = .{
+                                .spec = builtin.fmt.typeDeclSpecifier(type_info),
+                                .fields = type_fields,
+                            } } };
+                        }
+                    },
+                    .Union => |union_info| {
+                        if (spec.options.decls) {
+                            var type_decls: []const Decl = &.{};
+                            for (union_info.decls) |decl| {
+                                if (defaultDeclareCriteria(T, decl)) |U| {
+                                    type_decls = type_decls ++ [1]Decl{.{
+                                        .name = decl.name,
+                                        .type = declare(decl.name, U),
+                                    }};
+                                }
+                            }
+                            var type_fields: []const Field = &.{};
+                            for (union_info.fields) |field| {
+                                type_fields = type_fields ++ [1]Field{.{
+                                    .name = field.name,
+                                    .type = init(field.type),
+                                }};
+                            }
+                            return .{ .type_decl = .{ .Composition = .{
+                                .spec = builtin.fmt.typeDeclSpecifier(type_info),
+                                .fields = type_fields,
+                                .decls = type_decls,
+                            } } };
+                        } else {
+                            var type_fields: []const Field = &.{};
+                            for (union_info.fields) |field| {
+                                type_fields = type_fields ++ [1]Field{.{
+                                    .name = field.name,
+                                    .type = init(field.type),
+                                }};
+                            }
+                            return .{ .type_decl = .{ .Composition = .{
+                                .spec = builtin.fmt.typeDeclSpecifier(type_info),
+                                .fields = type_fields,
+                            } } };
+                        }
+                    },
+                    .Enum => |enum_info| {
+                        if (spec.options.decls) {
+                            var type_decls: []const Decl = &.{};
+                            for (enum_info.decls) |decl| {
+                                if (defaultDeclareCriteria(T, decl)) |U| {
+                                    type_decls = type_decls ++ [1]Decl{.{
+                                        .name = decl.name,
+                                        .type = declare(decl.name, U),
+                                    }};
+                                }
+                            }
+                            var type_fields: []const Tag = &.{};
+                            for (enum_info.fields) |field| {
+                                type_fields = type_fields ++ [1]Tag{.{
+                                    .name = field.name,
+                                    .value = field.value,
+                                }};
+                            }
+                            return .{ .type_decl = .{ .Enumeration = .{
+                                .spec = builtin.fmt.typeDeclSpecifier(type_info),
+                                .fields = type_fields,
+                                .decls = type_decls,
+                            } } };
+                        } else {
+                            var type_fields: []const Tag = &.{};
+                            for (enum_info.fields) |field| {
+                                type_fields = type_fields ++ [1]Tag{.{
+                                    .name = field.name,
+                                    .value = field.value,
+                                }};
+                            }
+                            return .{ .type_decl = .{ .Enumeration = .{
+                                .spec = builtin.fmt.typeDeclSpecifier(type_info),
+                                .fields = type_fields,
+                            } } };
+                        }
+                    },
+                    .Optional => |optional_info| {
+                        return .{ .type_refer = .{
+                            .spec = builtin.fmt.typeDeclSpecifier(type_info),
+                            .type = &init(optional_info.child),
+                        } };
+                    },
+                    .Pointer => |pointer_info| {
+                        return .{ .type_refer = .{
+                            .spec = builtin.fmt.typeDeclSpecifier(type_info),
+                            .type = &init(pointer_info.child),
+                        } };
+                    },
+                }
+            }
+        }
         pub inline fn init(comptime T: type) TypeDescrFormat {
             comptime {
+                for (types.*) |type_decl| {
+                    if (type_decl[1] == T) {
+                        return .{ .type_name = type_decl[0] };
+                    }
+                }
                 const type_info: builtin.Type = @typeInfo(T);
                 switch (type_info) {
                     else => return .{ .type_name = @typeName(T) },
                     .Struct => |struct_info| {
-                        comptime var type_decl: []const Field = &.{};
-                        for (struct_info.fields) |field| {
-                            type_decl = type_decl ++ [1]Field{.{
-                                .name = field.name,
-                                .type = init(field.type),
-                                .default_value = defaultFieldValue(field.type, field.default_value),
-                            }};
+                        if (spec.options.decls) {
+                            var type_decls: []const Decl = &.{};
+                            for (struct_info.decls) |decl| {
+                                if (defaultDeclareCriteria(T, decl)) |U| {
+                                    type_decls = type_decls ++ [1]Decl{.{
+                                        .name = decl.name,
+                                        .type = declare(decl.name, U),
+                                    }};
+                                }
+                            }
+                            var type_fields: []const Field = &.{};
+                            for (struct_info.fields) |field| {
+                                type_fields = type_fields ++ [1]Field{.{
+                                    .name = field.name,
+                                    .type = init(field.type),
+                                    .default_value = defaultFieldValue(field.type, field.default_value),
+                                }};
+                            }
+                            return .{ .type_decl = .{ .Composition = .{
+                                .spec = builtin.fmt.typeDeclSpecifier(type_info),
+                                .fields = type_fields,
+                                .decls = type_decls,
+                            } } };
+                        } else {
+                            var type_fields: []const Field = &.{};
+                            for (struct_info.fields) |field| {
+                                type_fields = type_fields ++ [1]Field{.{
+                                    .name = field.name,
+                                    .type = init(field.type),
+                                    .default_value = defaultFieldValue(field.type, field.default_value),
+                                }};
+                            }
+                            return .{ .type_decl = .{ .Composition = .{
+                                .spec = builtin.fmt.typeDeclSpecifier(type_info),
+                                .fields = type_fields,
+                            } } };
                         }
-                        return .{ .type_decl = .{ .Composition = .{
-                            .spec = builtin.fmt.typeDeclSpecifier(type_info),
-                            .fields = type_decl,
-                        } } };
                     },
                     .Union => |union_info| {
-                        comptime var type_decl: []const Field = &.{};
-                        for (union_info.fields) |field| {
-                            type_decl = type_decl ++ [1]Field{.{
-                                .name = field.name,
-                                .type = init(field.type),
-                            }};
+                        if (spec.options.decls) {
+                            var type_decls: []const Decl = &.{};
+                            for (union_info.decls) |decl| {
+                                if (defaultDeclareCriteria(T, decl)) |U| {
+                                    type_decls = type_decls ++ [1]Decl{.{
+                                        .name = decl.name,
+                                        .type = declare(decl.name, U),
+                                    }};
+                                }
+                            }
+                            var type_fields: []const Field = &.{};
+                            for (union_info.fields) |field| {
+                                type_fields = type_fields ++ [1]Field{.{
+                                    .name = field.name,
+                                    .type = init(field.type),
+                                }};
+                            }
+                            return .{ .type_decl = .{ .Composition = .{
+                                .spec = builtin.fmt.typeDeclSpecifier(type_info),
+                                .fields = type_fields,
+                                .decls = type_decls,
+                            } } };
+                        } else {
+                            var type_fields: []const Field = &.{};
+                            for (union_info.fields) |field| {
+                                type_fields = type_fields ++ [1]Field{.{
+                                    .name = field.name,
+                                    .type = init(field.type),
+                                }};
+                            }
+                            return .{ .type_decl = .{ .Composition = .{
+                                .spec = builtin.fmt.typeDeclSpecifier(type_info),
+                                .fields = type_fields,
+                            } } };
                         }
-                        return .{ .type_decl = .{ .Composition = .{
-                            .spec = builtin.fmt.typeDeclSpecifier(type_info),
-                            .fields = type_decl,
-                        } } };
                     },
                     .Enum => |enum_info| {
-                        var type_decl: []const Decl = &.{};
-                        for (enum_info.fields) |field| {
-                            type_decl = type_decl ++ [1]Decl{.{
-                                .name = field.name,
-                                .value = field.value,
-                            }};
+                        if (spec.options.decls) {
+                            var type_decls: []const Decl = &.{};
+                            for (enum_info.decls) |decl| {
+                                if (defaultDeclareCriteria(T, decl)) |U| {
+                                    type_decls = type_decls ++ [1]Decl{.{
+                                        .name = decl.name,
+                                        .type = declare(decl.name, U),
+                                    }};
+                                }
+                            }
+                            var type_fields: []const Tag = &.{};
+                            for (enum_info.fields) |field| {
+                                type_fields = type_fields ++ [1]Tag{.{
+                                    .name = field.name,
+                                    .value = field.value,
+                                }};
+                            }
+                            return .{ .type_decl = .{ .Enumeration = .{
+                                .spec = builtin.fmt.typeDeclSpecifier(type_info),
+                                .fields = type_fields,
+                                .decls = type_decls,
+                            } } };
+                        } else {
+                            var type_fields: []const Tag = &.{};
+                            for (enum_info.fields) |field| {
+                                type_fields = type_fields ++ [1]Tag{.{
+                                    .name = field.name,
+                                    .value = field.value,
+                                }};
+                            }
+                            return .{ .type_decl = .{ .Enumeration = .{
+                                .spec = builtin.fmt.typeDeclSpecifier(type_info),
+                                .fields = type_fields,
+                            } } };
                         }
-                        return .{ .type_decl = .{ .Enumeration = .{
-                            .spec = builtin.fmt.typeDeclSpecifier(type_info),
-                            .fields = type_decl,
-                        } } };
                     },
                     .Optional => |optional_info| {
                         return .{ .type_refer = .{
