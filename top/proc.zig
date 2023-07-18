@@ -650,23 +650,6 @@ fn futexRequeue(comptime futex_spec: FutexSpec, futex1: *u32, futex2: *u32, coun
         return futex_error;
     }
 }
-pub const start = if (builtin.output_mode == .Exe)
-    struct {
-        comptime {
-            @export(_start, .{ .name = "_start" });
-        }
-        pub fn _start() callconv(.Naked) noreturn {
-            static.stack_addr = asm volatile (
-                \\xorq  %%rbp,  %%rbp
-                : [argc] "={rsp}" (-> u64),
-            );
-            @call(.never_inline, callMain, .{});
-        }
-        pub usingnamespace builtin.debug;
-    }
-else
-    builtin.debug;
-
 const SignalActionSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.sigaction_errors },
     return_type: type = void,
@@ -809,11 +792,10 @@ pub fn updateSignalStack(
         return sigaltstack_error;
     }
 }
-
-const static = opaque {
-    var stack_addr: u64 = 0;
+pub const static = struct {
+    pub var stack_addr: usize = undefined;
 };
-pub noinline fn callMain() noreturn {
+pub noinline fn start() noreturn {
     @setRuntimeSafety(false);
     @setAlignStack(16);
     if (builtin.output_mode != .Exe) {
