@@ -578,7 +578,7 @@ pub fn GenericLinkedList(comptime list_spec: ListSpec) type {
             }
         }
         pub const Graphics = struct {
-            const AddressSpace = builtin.AddressSpace();
+            const AddressSpace = builtin.VirtualAddressSpace();
             const IOAllocator = mem.GenericArenaAllocator(.{
                 .AddressSpace = AddressSpace,
                 .arena_index = AddressSpace.addr_spec.count() -% 1,
@@ -1078,7 +1078,7 @@ pub fn GenericLinkedListView(comptime list_spec: ListViewSpec) type {
             return ret;
         }
         pub const Graphics = struct {
-            const AddressSpace = builtin.AddressSpace();
+            const AddressSpace = builtin.VirtualAddressSpace();
             const IOAllocator = mem.GenericArenaAllocator(.{
                 .AddressSpace = AddressSpace,
                 .arena_index = AddressSpace.addr_spec.count() -% 1,
