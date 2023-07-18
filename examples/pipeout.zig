@@ -16,7 +16,7 @@ const Array = mem.StaticString(0x1000000);
 
 const pipe_spec = .{ .options = .{ .close_on_exec = false } };
 const create_spec = .{ .options = .{ .read = true, .exclusive = false } };
-const targets_pathname: [:0]const u8 = builtin.root.cache_root ++ "targets.json";
+const targets_pathname: [:0]const u8 = builtin.root.cache_root ++ "/targets.json";
 
 pub fn main(_: anytype, vars: [][*:0]u8) !void {
     const fd: u64 = try file.create(create_spec, targets_pathname, file.mode.regular);
