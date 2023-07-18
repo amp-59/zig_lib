@@ -601,11 +601,16 @@ pub inline fn sliceToBytes(comptime E: type, values: []const E) []const u8 {
     return @as([*]const u8, @ptrCast(values.ptr))[0 .. @sizeOf(E) * values.len];
 }
 pub inline fn bytesToSlice(comptime E: type, bytes: []const u8) []const E {
-    const ptr: [*]const E = @ptrCast(bytes.ptr);
-    return ptr[0..@divExact(bytes.len, @sizeOf(E))];
+    return @as([*]const E, @ptrCast(bytes.ptr))[0..@divExact(bytes.len, @sizeOf(E))];
 }
 pub inline fn toBytes(any: anytype) [@sizeOf(@TypeOf(any))]u8 {
     return @as(*const [@sizeOf(@TypeOf(any))]u8, @ptrCast(&any)).*;
+}
+pub inline fn toBytes2(any: anytype) [@sizeOf(@TypeOf(any))]u8 {
+    var dest: [@sizeOf(@TypeOf(any))]u8 = undefined;
+    const src: *const [@sizeOf(@TypeOf(any))]u8 = @ptrCast(&any);
+    @memcpy(&dest, src);
+    return dest;
 }
 pub fn bytesTo(comptime E: type, comptime bytes: []const u8) E {
     const ret: *const E = @ptrCast(bytes.ptr);
