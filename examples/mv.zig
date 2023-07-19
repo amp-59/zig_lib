@@ -6,11 +6,12 @@ const spec = zl.spec;
 const file = zl.file;
 const mach = zl.mach;
 const meta = zl.meta;
+const debug = zl.debug;
 const builtin = zl.builtin;
 
 pub usingnamespace zl.start;
 
-pub const logging_override: builtin.Logging.Override = spec.logging.override.verbose;
+pub const logging_override: debug.Logging.Override = spec.logging.override.verbose;
 
 pub fn copy(src_pathname: [:0]const u8, dest_pathname: [:0]const u8) !void {
     blk: {
@@ -20,7 +21,7 @@ pub fn copy(src_pathname: [:0]const u8, dest_pathname: [:0]const u8) !void {
         if (to_fd > 1024) break :blk;
         const size: u64 = file.status(.{ .errors = .{} }, from_fd).size;
         if (size == 0) break :blk;
-        builtin.assertEqual(u64, size, file.copy(.{ .errors = .{} }, from_fd, null, to_fd, null, size));
+        debug.assertEqual(u64, size, file.copy(.{ .errors = .{} }, from_fd, null, to_fd, null, size));
     }
 }
 pub fn main(args: [][*:0]u8) !void {
