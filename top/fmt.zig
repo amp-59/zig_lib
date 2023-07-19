@@ -1506,8 +1506,8 @@ pub fn bytesToHex(dest: []u8, src: []const u8) []const u8 {
     var idx: u64 = 0;
     const max_idx: u64 = @min(dest.len / 2, src.len);
     while (idx != max_idx) : (idx +%= 1) {
-        dest[idx *% 2 +% 0] = builtin.fmt.toSymbol(u8, src[idx] / 16, 16);
-        dest[idx *% 2 +% 1] = builtin.fmt.toSymbol(u8, src[idx] & 15, 16);
+        dest[idx *% 2 +% 0] = toSymbol(u8, src[idx] / 16, 16);
+        dest[idx *% 2 +% 1] = toSymbol(u8, src[idx] & 15, 16);
     }
     return dest[0 .. src.len *% 2];
 }
@@ -1655,7 +1655,7 @@ pub inline fn ud(value: anytype) GenericPolynomialFormat(.{
     .bits = blk: {
         const T: type = @TypeOf(value);
         if (T == comptime_int) {
-            builtin.assertAboveOrEqual(comptime_int, value, 0);
+            debug.assertAboveOrEqual(comptime_int, value, 0);
             break :blk meta.alignCX(value);
         } else {
             break :blk meta.alignSizeAW(T);
@@ -1671,7 +1671,7 @@ pub inline fn udh(value: anytype) GenericPolynomialFormat(.{
     .bits = blk: {
         const T: type = @TypeOf(value);
         if (T == comptime_int) {
-            builtin.assertAboveOrEqual(comptime_int, value, 0);
+            debug.assertAboveOrEqual(comptime_int, value, 0);
             break :blk meta.alignCX(value);
         } else {
             break :blk meta.alignSizeAW(T);
@@ -1688,7 +1688,7 @@ pub inline fn ub(value: anytype) GenericPolynomialFormat(.{
     .bits = blk: {
         const T: type = @TypeOf(value);
         if (T == comptime_int) {
-            builtin.assertAboveOrEqual(comptime_int, value, 0);
+            debug.assertAboveOrEqual(comptime_int, value, 0);
             break :blk meta.alignCX(value);
         } else {
             break :blk meta.alignSizeAW(T);
@@ -1705,7 +1705,7 @@ pub inline fn ux(value: anytype) GenericPolynomialFormat(.{
     .bits = blk: {
         const T: type = @TypeOf(value);
         if (T == comptime_int) {
-            builtin.assertAboveOrEqual(comptime_int, value, 0);
+            debug.assertAboveOrEqual(comptime_int, value, 0);
             break :blk meta.alignCX(value);
         } else {
             break :blk meta.alignSizeAW(T);
@@ -1722,7 +1722,7 @@ pub inline fn id(value: anytype) GenericPolynomialFormat(.{
     .bits = blk: {
         const T: type = @TypeOf(value);
         if (T == comptime_int) {
-            builtin.assertAboveOrEqual(comptime_int, value, 0);
+            debug.assertAboveOrEqual(comptime_int, value, 0);
             break :blk meta.alignCX(value);
         } else {
             break :blk meta.alignSizeAW(T);
@@ -1738,7 +1738,7 @@ pub inline fn idh(value: anytype) GenericPolynomialFormat(.{
     .bits = blk: {
         const T: type = @TypeOf(value);
         if (T == comptime_int) {
-            builtin.assertAboveOrEqual(comptime_int, value, 0);
+            debug.assertAboveOrEqual(comptime_int, value, 0);
             break :blk meta.alignCX(value);
         } else {
             break :blk meta.alignSizeAW(T);
@@ -1755,7 +1755,7 @@ pub inline fn ib(value: anytype) GenericPolynomialFormat(.{
     .bits = blk: {
         const T: type = @TypeOf(value);
         if (T == comptime_int) {
-            builtin.assertAboveOrEqual(comptime_int, value, 0);
+            debug.assertAboveOrEqual(comptime_int, value, 0);
             break :blk meta.alignCX(value);
         } else {
             break :blk meta.alignSizeAW(T);
@@ -1772,7 +1772,7 @@ pub inline fn ix(value: anytype) GenericPolynomialFormat(.{
     .bits = blk: {
         const T: type = @TypeOf(value);
         if (T == comptime_int) {
-            builtin.assertAboveOrEqual(comptime_int, value, 0);
+            debug.assertAboveOrEqual(comptime_int, value, 0);
             break :blk meta.alignCX(value);
         } else {
             break :blk meta.alignSizeAW(T);
