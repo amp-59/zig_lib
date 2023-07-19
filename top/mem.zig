@@ -1269,6 +1269,133 @@ fn mid(comptime T: type, comptime U: type, values: []const T) []const U {
     const mid_len: u64 = mach.div64(aligned_bytes, @sizeOf(U));
     return @as([*]const U, @ptrFromInt(ab_addr))[0..mid_len];
 }
+fn testEqualArray(comptime T: type, comptime array_info: builtin.Type.Array, arg1: T, arg2: T) bool {
+    var i: usize = 0;
+    while (i != array_info.len) : (i += 1) {
+        if (!testEqual(array_info.child, arg1[i], arg2[i])) {
+            return false;
+        }
+    }
+    return true;
+}
+fn testEqualSlice(comptime T: type, comptime pointer_info: builtin.Type.Pointer, arg1: T, arg2: T) bool {
+    if (arg1.len != arg2.len) {
+        return false;
+    }
+    if (arg1.ptr == arg2.ptr) {
+        return true;
+    }
+    var i: usize = 0;
+    while (i != arg1.len) : (i += 1) {
+        if (!testEqual(pointer_info.child, arg1[i], arg2[i])) {
+            return false;
+        }
+    }
+    return true;
+}
+fn testEqualPointer(comptime T: type, comptime pointer_info: builtin.Type.Pointer, arg1: T, arg2: T) bool {
+    if (@typeInfo(pointer_info.child) != .Fn) {
+        return arg1 == arg2;
+    }
+    return false;
+}
+fn testIdenticalStruct(comptime T: type, comptime struct_info: builtin.Type.Struct, arg1: T, arg2: T) bool {
+    if (struct_info.layout == .Packed) {
+        return @as(struct_info.backing_integer.?, @bitCast(arg1)) == @as(struct_info.backing_integer.?, @bitCast(arg2));
+    }
+    return testEqualStruct(T, struct_info, arg1, arg2);
+}
+fn testEqualStruct(comptime T: type, comptime struct_info: builtin.Type.Struct, arg1: T, arg2: T) bool {
+    inline for (struct_info.fields) |field| {
+        if (!testEqual(
+            field.type,
+            @field(arg1, field.name),
+            @field(arg2, field.name),
+        )) {
+            return false;
+        }
+    }
+    return true;
+}
+fn testIdenticalUnion(comptime T: type, comptime union_info: builtin.Type.Union, arg1: T, arg2: T) bool {
+    return testEqual(union_info.tag_type.?, arg1, arg2) and
+        mach.testEqualMany8(
+        @as(*const [@sizeOf(T)]u8, @ptrCast(&arg1)),
+        @as(*const [@sizeOf(T)]u8, @ptrCast(&arg2)),
+    );
+}
+fn testEqualUnion(comptime T: type, comptime union_info: builtin.Type.Union, arg1: T, arg2: T) bool {
+    if (union_info.tag_type) |tag_type| {
+        if (@intFromEnum(arg1) != @intFromEnum(arg2)) {
+            return false;
+        }
+        inline for (union_info.fields) |field| {
+            if (@intFromEnum(arg1) == @intFromEnum(@field(tag_type, field.name))) {
+                if (!testEqual(
+                    field.type,
+                    @field(arg1, field.name),
+                    @field(arg2, field.name),
+                )) {
+                    return false;
+                }
+            }
+        }
+    }
+    return testIdenticalUnion(T, union_info, arg1, arg2);
+}
+fn testEqualOptional(comptime T: type, comptime optional_info: builtin.Type.Optional, arg1: T, arg2: T) bool {
+    if (@typeInfo(optional_info.child) == .Pointer and
+        @typeInfo(optional_info.child).Pointer.size != .Slice and
+        @typeInfo(optional_info.child).Pointer.size != .C)
+    {
+        return arg1 == arg2;
+    }
+    return false;
+}
+pub fn testEqual(comptime T: type, arg1: T, arg2: T) bool {
+    const type_info: builtin.Type = @typeInfo(T);
+    switch (type_info) {
+        .Array => |array_info| {
+            return testEqualArray(T, array_info, arg1, arg2);
+        },
+        .Pointer => |pointer_info| if (pointer_info.size == .Slice) {
+            return testEqualSlice(T, pointer_info, arg1, arg2);
+        } else {
+            return testEqualPointer(T, pointer_info, arg1, arg2);
+        },
+        .Optional => |optional_info| {
+            return testEqualOptional(T, optional_info, arg1, arg2);
+        },
+        .Struct => |struct_info| {
+            return testEqualStruct(T, struct_info, arg1, arg2);
+        },
+        .Union => |union_info| {
+            return testEqualUnion(T, union_info, arg1, arg2);
+        },
+        .Type,
+        .Void,
+        .Bool,
+        .Int,
+        .Float,
+        .ComptimeFloat,
+        .ComptimeInt,
+        .Null,
+        .ErrorSet,
+        .Enum,
+        .Opaque,
+        .AnyFrame,
+        .EnumLiteral,
+        => return arg1 == arg2,
+        .Fn,
+        .NoReturn,
+        .ErrorUnion,
+        .Frame,
+        .Vector,
+        .Undefined,
+        => return false,
+    }
+    return false;
+}
 // These should be in builtin.zig, but cannot adhere to the test-error-fault
 // standard yet--that is, their assert* and expect* counterparts cannot be added
 // to builtin--so they are here temporarily as utility functions.
