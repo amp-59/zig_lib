@@ -152,7 +152,7 @@ pub const my_trace: debug.Trace = .{
             .comment = "\x1b[2m",
             .syntax = &.{ .{
                 .style = "",
-                .tags = builtin.Token.Tag.other,
+                .tags = parse.Token.Tag.other,
             }, .{
                 .style = tab.fx.color.fg.orange24,
                 .tags = &.{.number_literal},
@@ -161,31 +161,31 @@ pub const my_trace: debug.Trace = .{
                 .tags = &.{.char_literal},
             }, .{
                 .style = tab.fx.color.fg.light_green,
-                .tags = builtin.Token.Tag.strings,
+                .tags = parse.Token.Tag.strings,
             }, .{
                 .style = tab.fx.color.fg.bracket,
-                .tags = builtin.Token.Tag.bracket,
+                .tags = parse.Token.Tag.bracket,
             }, .{
                 .style = tab.fx.color.fg.magenta24,
-                .tags = builtin.Token.Tag.operator,
+                .tags = parse.Token.Tag.operator,
             }, .{
                 .style = tab.fx.color.fg.red24,
-                .tags = builtin.Token.Tag.builtin_fn,
+                .tags = parse.Token.Tag.builtin_fn,
             }, .{
                 .style = tab.fx.color.fg.cyan24,
-                .tags = builtin.Token.Tag.macro_keyword,
+                .tags = parse.Token.Tag.macro_keyword,
             }, .{
                 .style = tab.fx.color.fg.light_purple,
-                .tags = builtin.Token.Tag.call_keyword,
+                .tags = parse.Token.Tag.call_keyword,
             }, .{
                 .style = tab.fx.color.fg.redwine,
-                .tags = builtin.Token.Tag.container_keyword,
+                .tags = parse.Token.Tag.container_keyword,
             }, .{
                 .style = tab.fx.color.fg.white24,
-                .tags = builtin.Token.Tag.cond_keyword,
+                .tags = parse.Token.Tag.cond_keyword,
             }, .{
                 .style = tab.fx.color.fg.yellow24,
-                .tags = builtin.Token.Tag.goto_keyword ++ builtin.zig.Token.Tag.value_keyword,
+                .tags = parse.Token.Tag.goto_keyword ++ parse.Token.Tag.value_keyword,
             } },
         },
     },
@@ -220,7 +220,7 @@ pub fn ZigError(comptime Value: type, comptime return_codes: []const Value) type
     var error_set: type = error{};
     for (return_codes) |error_code| {
         error_set = error_set || @Type(.{
-            .ErrorSet = &[1]zig_lib.Type.Error{.{ .name = error_code.errorName() }},
+            .ErrorSet = &[1]zig.Type.Error{.{ .name = error_code.errorName() }},
         });
     }
     return error_set;
@@ -343,7 +343,7 @@ pub fn int3v(comptime T: type, value1: bool, value2: bool, value3: bool) T {
         return intCast(T, ret);
     }
 }
-pub fn ended(comptime T: type, value: T, endian: zig_lib.Endian) T {
+pub fn ended(comptime T: type, value: T, endian: zig.Endian) T {
     if (endian == native_endian) {
         return value;
     } else {
@@ -748,7 +748,7 @@ pub inline fn zero(comptime T: type) T {
 }
 pub inline fn all(comptime T: type) T {
     const data: [@sizeOf(T)]u8 align(@max(1, @alignOf(T))) = .{~@as(u8, 0)} ** @sizeOf(T);
-    return @as(*const T, @ptrCast(&data)).*;
+    comptime return @as(*const T, @ptrCast(&data)).*;
 }
 pub inline fn addr(any: anytype) usize {
     if (@typeInfo(@TypeOf(any)).Pointer.size == .Slice) {
@@ -805,42 +805,42 @@ pub const static = struct {
     }
     fn normalAddAssign(comptime T: type, comptime arg1: *T, comptime arg2: T) void {
         const result: Overflow(T) = overflowingAddReturn(T, arg1.*, arg2);
-        if (comptime_assertions and result[1] != 0) {
+        if (runtime_assertions and result[1] != 0) {
             debug.static.addCausedOverflow(T, arg1.*, arg2);
         }
         arg1.* = result[0];
     }
     fn normalAddReturn(comptime T: type, comptime arg1: T, comptime arg2: T) T {
         const result: Overflow(T) = overflowingAddReturn(T, arg1, arg2);
-        if (comptime_assertions and result[1] != 0) {
+        if (runtime_assertions and result[1] != 0) {
             debug.static.addCausedOverflow(T, arg1, arg2);
         }
         return result[0];
     }
     fn normalSubAssign(comptime T: type, comptime arg1: *T, comptime arg2: T) void {
         const result: Overflow(T) = overflowingSubReturn(T, arg1.*, arg2);
-        if (comptime_assertions and arg1.* < arg2) {
+        if (runtime_assertions and arg1.* < arg2) {
             debug.static.subCausedOverflow(T, arg1.*, arg2);
         }
         arg1.* = result[0];
     }
     fn normalSubReturn(comptime T: type, comptime arg1: T, comptime arg2: T) T {
         const result: Overflow(T) = overflowingSubReturn(T, arg1, arg2);
-        if (comptime_assertions and result[1] != 0) {
+        if (runtime_assertions and result[1] != 0) {
             debug.static.subCausedOverflow(T, arg1, arg2);
         }
         return result[0];
     }
     fn normalMulAssign(comptime T: type, comptime arg1: *T, comptime arg2: T) void {
         const result: Overflow(T) = overflowingMulReturn(T, arg1.*, arg2);
-        if (comptime_assertions and result[1] != 0) {
+        if (runtime_assertions and result[1] != 0) {
             debug.static.mulCausedOverflow(T, arg1.*, arg2);
         }
         arg1.* = result[0];
     }
     fn normalMulReturn(comptime T: type, comptime arg1: T, comptime arg2: T) T {
         const result: Overflow(T) = overflowingMulReturn(T, arg1, arg2);
-        if (comptime_assertions and result[1] != 0) {
+        if (runtime_assertions and result[1] != 0) {
             debug.static.mulCausedOverflow(T, arg1, arg2);
         }
         return result[0];
@@ -848,7 +848,7 @@ pub const static = struct {
     fn exactDivisionAssign(comptime T: type, comptime arg1: *T, comptime arg2: T) void {
         const result: T = arg1.* / arg2;
         const remainder: T = static.normalSubReturn(T, arg1.*, (result * arg2));
-        if (comptime_assertions and remainder != 0) {
+        if (runtime_assertions and remainder != 0) {
             debug.static.exactDivisionWithRemainder(T, arg1.*, arg2, result, remainder);
         }
         arg1.* = result;
@@ -856,659 +856,11 @@ pub const static = struct {
     fn exactDivisionReturn(comptime T: type, comptime arg1: T, comptime arg2: T) T {
         const result: T = arg1 / arg2;
         const remainder: T = static.normalSubReturn(T, arg1, (result * arg2));
-        if (comptime_assertions and remainder != 0) {
+        if (runtime_assertions and remainder != 0) {
             debug.static.exactDivisionWithRemainder(T, arg1, arg2, result, remainder);
         }
         return result;
     }
-};
-pub const proc = struct {
-    pub fn exitNotice(return_code: u8) noreturn {
-        @setCold(true);
-        if (logging_general.Success) {
-            debug.exitRcNotice(return_code);
-        }
-        exit(return_code);
-    }
-    pub fn exitGroupNotice(return_code: u8) noreturn {
-        @setCold(true);
-        if (logging_general.Success) {
-            debug.exitRcNotice(return_code);
-        }
-        exitGroup(return_code);
-    }
-    pub fn exitError(exit_error: anytype, return_code: u8) noreturn {
-        @setCold(true);
-        if (logging_general.Fault) {
-            debug.errorRcNotice(@errorName(exit_error), return_code);
-        }
-        exit(return_code);
-    }
-    pub fn exitGroupError(exit_error: anytype, return_code: u8) noreturn {
-        @setCold(true);
-        if (logging_general.Fault) {
-            debug.errorRcNotice(@errorName(exit_error), return_code);
-        }
-        exitGroup(return_code);
-    }
-    pub fn exitFault(message: []const u8, return_code: u8) noreturn {
-        @setCold(true);
-        if (logging_general.Fault) {
-            debug.faultRcNotice(message, return_code);
-        }
-        exit(return_code);
-    }
-    pub fn exitGroupFault(message: []const u8, return_code: u8) noreturn {
-        @setCold(true);
-        if (logging_general.Fault) {
-            debug.faultRcNotice(message, return_code);
-        }
-        exitGroup(return_code);
-    }
-    pub fn exitErrorFault(exit_error: anytype, message: []const u8, return_code: u8) noreturn {
-        @setCold(true);
-        if (logging_general.Fault and
-            logging_general.Error)
-        {
-            debug.errorFaultRcNotice(@errorName(exit_error), message, return_code);
-        } else if (logging_general.Fault) {
-            debug.faultRcNotice(message, return_code);
-        } else if (logging_general.Error) {
-            debug.errorRcNotice(@errorName(exit_error), return_code);
-        }
-        exitGroup(return_code);
-    }
-    pub fn exitGroupErrorFault(exit_error: anytype, message: []const u8, return_code: u8) noreturn {
-        @setCold(true);
-        if (logging_general.Fault and
-            logging_general.Error)
-        {
-            debug.exitErrorFault(@errorName(exit_error), message, return_code);
-        } else if (logging_general.Fault) {
-            debug.exitFault(message, return_code);
-        } else if (logging_general.Error) {
-            debug.exitErrorRc(@errorName(exit_error), return_code);
-        }
-        exitGroup(return_code);
-    }
-    pub fn exit(rc: u8) noreturn {
-        asm volatile (
-            \\syscall
-            :
-            : [sysno] "{rax}" (60), // linux sys_exit
-              [arg1] "{rdi}" (rc), // exit code
-        );
-        unreachable;
-    }
-    pub fn exitGroup(rc: u8) noreturn {
-        asm volatile (
-            \\syscall
-            :
-            : [sysno] "{rax}" (231), // linux sys_exit_group
-              [arg1] "{rdi}" (rc), // exit code
-        );
-        unreachable;
-    }
-};
-pub const debug = struct {
-    pub fn itos(comptime T: type, value: T) fmt.Generic(T).Array10 {
-        return fmt.Generic(T).dec(value);
-    }
-    const size: usize = 4096;
-    pub const printStackTrace = blk: {
-        if (have_stack_traces) {
-            break :blk special.printStackTrace;
-        } else {
-            break :blk special.trace.printStackTrace;
-        }
-    };
-    pub const about_error_s = "\x1b[91;1merror\x1b[0m=";
-    pub const about_exit_0_s: [:0]const u8 = fmt.about("exit");
-    pub const about_fault_p0_s = blk: {
-        var lhs: [:0]const u8 = "fault";
-        lhs = message_prefix ++ lhs;
-        lhs = lhs ++ message_suffix;
-        const len: u64 = lhs.len;
-        lhs = "\x1b[1m" ++ lhs ++ message_no_style;
-        break :blk lhs ++ " " ** (message_indent - len);
-    };
-    pub const about_error_p0_s = blk: {
-        var lhs: [:0]const u8 = "error";
-        lhs = message_prefix ++ lhs;
-        lhs = lhs ++ message_suffix;
-        const len: u64 = lhs.len;
-        lhs = "\x1b[1m" ++ lhs ++ message_no_style;
-        break :blk lhs ++ " " ** (message_indent - len);
-    };
-    const about_test_1_s = "test failed";
-    const about_assertion_1_s = "assertion failed";
-    fn exitRcNotice(rc: u8) void {
-        var buf: [4096]u8 = undefined;
-        logAlwaysAIO(&buf, &.{ about_exit_0_s, "rc=", fmt.ud8(rc).readAll(), "\n" });
-    }
-    fn errorRcNotice(error_name: []const u8, rc: u8) void {
-        var buf: [4096]u8 = undefined;
-        logAlwaysAIO(&buf, &.{ about_error_p0_s, error_name, ", rc=", fmt.ud8(rc).readAll(), "\n" });
-    }
-    fn errorFaultRcNotice(error_name: []const u8, message: []const u8, rc: u8) void {
-        var buf: [4096]u8 = undefined;
-        logAlwaysAIO(&buf, &.{ about_fault_p0_s, about_error_s, error_name, ", ", message, ", rc=", fmt.ud8(rc).readAll(), "\n" });
-    }
-    fn errorNotice(error_name: []const u8) void {
-        var buf: [4096]u8 = undefined;
-        logAlwaysAIO(&buf, &.{ about_error_p0_s, error_name, "\n" });
-    }
-    fn faultNotice(message: []const u8) void {
-        var buf: [4096]u8 = undefined;
-        logAlwaysAIO(&buf, &.{ about_fault_p0_s, message, "\n" });
-    }
-    fn faultRcNotice(message: []const u8, rc: u8) void {
-        var buf: [4096]u8 = undefined;
-        logAlwaysAIO(&buf, &.{ about_fault_p0_s, message, ", rc=", fmt.ud8(rc).readAll(), "\n" });
-    }
-    fn errorFaultNotice(error_name: []const u8, message: []const u8) void {
-        var buf: [4096]u8 = undefined;
-        logAlwaysAIO(&buf, &.{ about_fault_p0_s, about_error_s, error_name, ", ", message, "\n" });
-    }
-    fn comparisonFailedString(comptime T: type, what: []const u8, symbol: []const u8, buf: [*]u8, arg1: T, arg2: T, help_read: bool) u64 {
-        var len: u64 = mach.memcpyMulti(buf, &[_][]const u8{
-            what,   itos(T, arg1).readAll(),
-            symbol, itos(T, arg2).readAll(),
-        });
-        if (help_read) {
-            @memcpy(buf + len, ", i.e. ");
-            len +%= 7;
-            if (arg1 > arg2) {
-                len += mach.memcpyMulti(buf + len, &[_][]const u8{ itos(T, arg1 -% arg2).readAll(), symbol, "0" });
-            } else {
-                len += mach.memcpyMulti(buf + len, &[_][]const u8{ "0", symbol, itos(T, arg2 -% arg1).readAll() });
-            }
-        }
-        return len;
-    }
-    fn intCastTruncatedBitsString(comptime T: type, comptime U: type, buf: [*]u8, arg1: U) u64 {
-        return mach.memcpyMulti(buf, &[_][]const u8{
-            "integer cast truncated bits: ",                  itos(U, arg1).readAll(),
-            " greater than " ++ @typeName(T) ++ " maximum (", itos(T, ~@as(T, 0)).readAll(),
-            ")",
-        });
-    }
-    fn subCausedOverflowString(comptime T: type, what: []const u8, buf: [*]u8, arg1: T, arg2: T, help_read: bool) u64 {
-        var len: u64 = 0;
-        len += mach.memcpyMulti(buf, &[_][]const u8{
-            what,                    " integer overflow: ",
-            itos(T, arg1).readAll(), " - ",
-            itos(T, arg2).readAll(),
-        });
-        if (help_read) {
-            @memcpy(buf + len, ", i.e. ");
-            len +%= 7;
-            len += mach.memcpyMulti(buf + len, &[_][]const u8{ "0 - ", itos(T, arg2 -% arg1).readAll() });
-        }
-        return len;
-    }
-    fn addCausedOverflowString(comptime T: type, what: []const u8, buf: [*]u8, arg1: T, arg2: T, help_read: bool) u64 {
-        var len: u64 = 0;
-        len += mach.memcpyMulti(buf, &[_][]const u8{
-            what,                    " integer overflow: ",
-            itos(T, arg1).readAll(), " + ",
-            itos(T, arg2).readAll(),
-        });
-        if (help_read) {
-            @memcpy(buf + len, ", i.e. ");
-            len +%= 7;
-            const argl: T = ~@as(T, 0);
-            const argr: T = (arg2 +% arg1) -% argl;
-            len += mach.memcpyMulti(buf + len, &[_][]const u8{ itos(T, argl).readAll(), " + ", itos(T, argr).readAll() });
-        }
-        return len;
-    }
-    fn mulCausedOverflowString(comptime T: type, what: []const u8, buf: []u8, arg1: T, arg2: T) u64 {
-        return mach.memcpyMulti(buf.ptr, &[_][]const u8{
-            what,                    ": integer overflow: ",
-            itos(T, arg1).readAll(), " * ",
-            itos(T, arg2).readAll(),
-        });
-    }
-    fn exactDivisionWithRemainderString(comptime T: type, what: []const u8, buf: []u8, arg1: T, arg2: T, result: T, remainder: T) u64 {
-        return mach.memcpyMulti(buf.ptr, &[_][]const u8{
-            what,                         ": exact division had a remainder: ",
-            itos(T, arg1).readAll(),      "/",
-            itos(T, arg2).readAll(),      " == ",
-            itos(T, result).readAll(),    "r",
-            itos(T, remainder).readAll(),
-        });
-    }
-    fn incorrectAlignmentString(comptime Pointer: type, what: []const u8, buf: []u8, address: usize, alignment: usize, remainder: u64) u64 {
-        return mach.memcpyMulti(buf.ptr, &[_][]const u8{
-            what,                                      ": incorrect alignment: ",
-            @typeName(Pointer),                        " align(",
-            itos(u64, alignment).readAll(),            "): ",
-            itos(u64, address).readAll(),              " == ",
-            itos(u64, address -% remainder).readAll(), "+",
-            itos(u64, remainder).readAll(),
-        });
-    }
-    fn intCastTruncatedBitsFault(comptime T: type, comptime U: type, arg: U, ret_addr: usize) noreturn {
-        @setCold(true);
-        var buf: [size]u8 = undefined;
-        const len: u64 = debug.intCastTruncatedBitsString(T, U, &buf, arg);
-        panic(buf[0..len], null, ret_addr);
-    }
-    fn subCausedOverflowError(comptime T: type, arg1: T, arg2: T) Error {
-        @setCold(true);
-        var buf: [size]u8 = undefined;
-        const len: u64 = debug.subCausedOverflowString(T, @typeName(T), &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
-        alarm(buf[0..len], @errorReturnTrace(), @returnAddress());
-        return error.SubCausedOverflow;
-    }
-    fn subCausedOverflowFault(comptime T: type, arg1: T, arg2: T, ret_addr: usize) noreturn {
-        @setCold(true);
-        var buf: [size]u8 = undefined;
-        const len: u64 = debug.subCausedOverflowString(T, @typeName(T), &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
-        panic(buf[0..len], null, ret_addr);
-    }
-    fn addCausedOverflowError(comptime T: type, arg1: T, arg2: T) Error {
-        @setCold(true);
-        var buf: [size]u8 = undefined;
-        const len: u64 = debug.addCausedOverflowString(T, @typeName(T), &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
-        alarm(buf[0..len], @errorReturnTrace(), @returnAddress());
-        return error.AddCausedOverflow;
-    }
-    fn addCausedOverflowFault(comptime T: type, arg1: T, arg2: T, ret_addr: usize) noreturn {
-        @setCold(true);
-        var buf: [size]u8 = undefined;
-        const len: u64 = debug.addCausedOverflowString(T, @typeName(T), &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
-        panic(buf[0..len], null, ret_addr);
-    }
-    fn mulCausedOverflowError(comptime T: type, arg1: T, arg2: T) Error {
-        @setCold(true);
-        var buf: [size]u8 = undefined;
-        const len: u64 = mulCausedOverflowString(T, @typeName(T), &buf, arg1, arg2);
-        alarm(buf[0..len], @errorReturnTrace(), @returnAddress());
-        return error.MulCausedOverflow;
-    }
-    fn mulCausedOverflowFault(comptime T: type, arg1: T, arg2: T, ret_addr: usize) noreturn {
-        @setCold(true);
-        var buf: [size]u8 = undefined;
-        const len: u64 = mulCausedOverflowString(T, @typeName(T), &buf, arg1, arg2);
-        panic(buf[0..len], null, ret_addr);
-    }
-    fn exactDivisionWithRemainderError(comptime T: type, arg1: T, arg2: T, result: T, remainder: T) Error {
-        @setCold(true);
-        var buf: [size]u8 = undefined;
-        const len: u64 = exactDivisionWithRemainderString(T, @typeName(T), &buf, arg1, arg2, result, remainder);
-        alarm(buf[0..len], @errorReturnTrace(), @returnAddress());
-        return error.ExactDivisionWithRemainder;
-    }
-    fn exactDivisionWithRemainderFault(comptime T: type, arg1: T, arg2: T, result: T, remainder: T, ret_addr: usize) noreturn {
-        @setCold(true);
-        var buf: [size]u8 = undefined;
-        const len: u64 = exactDivisionWithRemainderString(T, @typeName(T), &buf, arg1, arg2, result, remainder);
-        panic(buf[0..len], null, ret_addr);
-    }
-    fn incorrectAlignmentError(comptime T: type, address: usize, alignment: usize) Error {
-        @setCold(true);
-        const remainder: usize = address & (@typeInfo(T).Pointer.alignment -% 1);
-        var buf: [size]u8 = undefined;
-        const len: u64 = incorrectAlignmentString(T, @typeName(T), &buf, address, alignment, remainder);
-        alarm(buf[0..len], @errorReturnTrace(), @returnAddress());
-        return error.IncorrectAlignment;
-    }
-    fn incorrectAlignmentFault(comptime T: type, buf: *[size]u8, address: usize, alignment: usize, ret_addr: usize) noreturn {
-        @setCold(true);
-        const remainder: usize = address & (@typeInfo(T).Pointer.alignment -% 1);
-        const len: u64 = incorrectAlignmentString(T, @typeName(T), &buf, address, alignment, remainder);
-        panic(buf[0..len], null, ret_addr);
-    }
-    fn comparisonFailedFault(comptime T: type, symbol: []const u8, arg1: anytype, arg2: @TypeOf(arg1), ret_addr: usize) noreturn {
-        @setCold(true);
-        const about_fault_s: []const u8 = @typeName(T) ++ " failed assertion: ";
-        var buf: [size]u8 = undefined;
-        const len: u64 = switch (@typeInfo(T)) {
-            .Int => comparisonFailedString(T, about_fault_s, symbol, &buf, arg1, arg2, @min(arg1, arg2) > 10_000),
-            .Enum => mach.memcpyMulti(&buf, &[_][]const u8{ about_fault_s, @tagName(arg1), symbol, @tagName(arg2) }),
-            .Type => mach.memcpyMulti(&buf, &[_][]const u8{ about_fault_s, @typeName(arg1), symbol, @typeName(arg2) }),
-            else => mach.memcpyMulti(&buf, &[_][]const u8{ about_fault_s, "unexpected value" }),
-        };
-        panic(buf[0..len], null, ret_addr);
-    }
-    fn comparisonFailedError(comptime T: type, symbol: []const u8, arg1: anytype, arg2: @TypeOf(arg1)) Unexpected {
-        @setCold(true);
-        const about_s: []const u8 = @typeName(T) ++ " failed test: ";
-        var buf: [size]u8 = undefined;
-        const len: u64 = switch (@typeInfo(T)) {
-            .Int => comparisonFailedString(T, about_s, symbol, &buf, arg1, arg2, @min(arg1, arg2) > 10_000),
-            .Enum => mach.memcpyMulti(&buf, &[_][]const u8{ about_s, @tagName(arg1), symbol, @tagName(arg2) }),
-            .Type => mach.memcpyMulti(&buf, &[_][]const u8{ about_s, @typeName(arg1), symbol, @typeName(arg2) }),
-            else => mach.memcpyMulti(&buf, &[_][]const u8{ about_s, "unexpected value" }),
-        };
-        alarm(buf[0..len], @errorReturnTrace(), @returnAddress());
-        return error.UnexpectedValue;
-    }
-    pub fn sampleAllReports() void {
-        const T = u64;
-        comptime var arg1: T = 2048;
-        comptime var arg2: T = 4098;
-        comptime var result: T = 2;
-        const remainder: T = 2;
-        expectEqual(T, arg1, arg2) catch {};
-        expectNotEqual(T, arg1, arg2) catch {};
-        expectAbove(T, arg1, arg2) catch {};
-        expectBelow(T, arg1, arg2) catch {};
-        expectAboveOrEqual(T, arg1, arg2) catch {};
-        expectBelowOrEqual(T, arg1, arg2) catch {};
-        subCausedOverflowError(T, arg1, arg2) catch {};
-        addCausedOverflowError(T, arg1, arg2) catch {};
-        mulCausedOverflowError(T, arg1, arg2) catch {};
-        exactDivisionWithRemainderError(T, arg1, arg2, result, remainder) catch {};
-        incorrectAlignmentError(*T, arg2, remainder) catch {};
-        subCausedOverflowError(T, ~arg1, ~arg2) catch {};
-        addCausedOverflowError(T, ~arg1, ~arg2) catch {};
-        mulCausedOverflowError(T, ~arg1, ~arg2) catch {};
-        exactDivisionWithRemainderError(T, ~arg1, ~arg2, result, remainder) catch {};
-        incorrectAlignmentError(*T, ~arg2, remainder) catch {};
-    }
-    pub fn write(buf: []const u8) void {
-        if (@inComptime()) {
-            return @compileLog(buf);
-        } else {
-            asm volatile (
-                \\syscall # write
-                :
-                : [_] "{rax}" (1), // linux sys_write
-                  [_] "{rdi}" (2), // stderr
-                  [_] "{rsi}" (buf.ptr),
-                  [_] "{rdx}" (buf.len),
-                : "rcx", "r11", "memory", "rax"
-            );
-        }
-    }
-    pub fn read(comptime n: u64) struct { buf: [n]u8, len: u64 } {
-        var buf: [n]u8 = undefined;
-        return .{
-            .buf = buf,
-            .len = asm volatile (
-                \\syscall # read
-                : [_] "={rax}" (-> usize),
-                : [_] "{rax}" (0), // linux sys_read
-                  [_] "{rdi}" (0), // stdin
-                  [_] "{rsi}" (&buf),
-                  [_] "{rdx}" (n),
-                : "rcx", "r11", "memory"
-            ),
-        };
-    }
-    pub inline fn name(buf: []u8) u64 {
-        const rc: i64 = asm volatile (
-            \\syscall
-            : [_] "={rax}" (-> isize),
-            : [_] "{rax}" (89), // linux sys_readlink
-              [_] "{rdi}" ("/proc/self/exe"), // symlink to executable
-              [_] "{rsi}" (buf.ptr), // message buf ptr
-              [_] "{rdx}" (buf.len), // message buf len
-            : "rcx", "r11", "memory"
-        );
-        return if (rc < 0) ~@as(u64, 0) else @as(u64, @intCast(rc));
-    }
-    pub inline fn logSuccess(buf: []const u8) void {
-        if (logging_general.Success) write(buf);
-    }
-    pub inline fn logAcquire(buf: []const u8) void {
-        if (logging_general.Acquire) write(buf);
-    }
-    pub inline fn logRelease(buf: []const u8) void {
-        if (logging_general.Release) write(buf);
-    }
-    pub inline fn logError(buf: []const u8) void {
-        if (logging_general.Error) write(buf);
-    }
-    pub inline fn logFault(buf: []const u8) void {
-        if (logging_general.Fault) write(buf);
-    }
-    pub fn logAlwaysAIO(buf: []u8, slices: []const []const u8) void {
-        @setRuntimeSafety(false);
-        write(buf[0..mach.memcpyMulti(buf.ptr, slices)]);
-    }
-    pub fn logSuccessAIO(buf: []u8, slices: []const []const u8) void {
-        @setRuntimeSafety(false);
-        logSuccess(buf[0..mach.memcpyMulti(buf.ptr, slices)]);
-    }
-    pub fn logAcquireAIO(buf: []u8, slices: []const []const u8) void {
-        @setRuntimeSafety(false);
-        logAcquire(buf[0..mach.memcpyMulti(buf.ptr, slices)]);
-    }
-    pub fn logReleaseAIO(buf: []u8, slices: []const []const u8) void {
-        @setRuntimeSafety(false);
-        logRelease(buf[0..mach.memcpyMulti(buf.ptr, slices)]);
-    }
-    pub fn logErrorAIO(buf: []u8, slices: []const []const u8) void {
-        @setCold(true);
-        @setRuntimeSafety(false);
-        logError(buf[0..mach.memcpyMulti(buf.ptr, slices)]);
-    }
-    pub fn logFaultAIO(buf: []u8, slices: []const []const u8) void {
-        @setCold(true);
-        @setRuntimeSafety(false);
-        logFault(buf[0..mach.memcpyMulti(buf.ptr, slices)]);
-    }
-    pub noinline fn alarm(msg: []const u8, _: @TypeOf(@errorReturnTrace()), ret_addr: usize) void {
-        @setCold(true);
-        @setRuntimeSafety(false);
-        if (want_stack_traces and trace.Error) {
-            printStackTrace(&trace, ret_addr, 0);
-        }
-        @call(.always_inline, errorNotice, .{msg});
-    }
-    pub noinline fn panic(msg: []const u8, _: @TypeOf(@errorReturnTrace()), ret_addr: ?usize) noreturn {
-        @setCold(true);
-        @setRuntimeSafety(false);
-        if (want_stack_traces and trace.Fault) {
-            printStackTrace(&trace, ret_addr orelse @returnAddress(), 0);
-        }
-        @call(.always_inline, proc.exitGroupFault, .{ msg, 2 });
-    }
-    pub noinline fn panicExtra(msg: []const u8, ctx_ptr: *const anyopaque) noreturn {
-        @setCold(true);
-        @setRuntimeSafety(false);
-        const regs: mach.RegisterState = @as(
-            *mach.RegisterState,
-            @ptrFromInt(@intFromPtr(ctx_ptr) +% mach.RegisterState.offset),
-        ).*;
-        if (want_stack_traces and trace.Signal) {
-            printStackTrace(&trace, regs.rip, regs.rbp);
-        }
-        @call(.always_inline, proc.exitGroupFault, .{ msg, 2 });
-    }
-    // This function is an example for how the other panic handlers should look.
-    // Obviously this is tedious to code so not all at once.
-    pub noinline fn panicOutOfBounds(idx: u64, max_len: u64) noreturn {
-        @setCold(true);
-        @setRuntimeSafety(false);
-        const ret_addr: u64 = @returnAddress();
-        var buf: [1024]u8 = undefined;
-        var len: u64 = 0;
-        const idx_s: []const u8 = fmt.ud64(idx).readAll();
-        if (max_len == 0) {
-            @as(*[10]u8, @ptrCast(buf[len..].ptr)).* = "indexing (".*;
-            len +%= 10;
-            mach.memcpy(buf[len..].ptr, idx_s.ptr, idx_s.len);
-            len +%= idx_s.len;
-        } else {
-            @as(*[6]u8, @ptrCast(buf[len..].ptr)).* = "index ".*;
-            len +%= 6;
-            mach.memcpy(buf[len..].ptr, idx_s.ptr, idx_s.len);
-            len +%= idx_s.len;
-        }
-        mach.memcpy(buf[len..].ptr, idx_s.ptr, idx_s.len);
-        if (max_len == 0) {
-            @as(*[18]u8, @ptrCast(buf[len..].ptr)).* = ") into empty array".*;
-            len +%= 18;
-        } else {
-            const max_len_s: []const u8 = fmt.ud64(max_len -% 1).readAll();
-            @as(*[15]u8, @ptrCast(buf[len..].ptr)).* = " above maximum ".*;
-            len +%= 15;
-            mach.memcpy(buf[len..].ptr, max_len_s.ptr, max_len_s.len);
-            len +%= max_len_s.len;
-        }
-        panic(buf[0..len], null, ret_addr);
-    }
-    pub noinline fn panicSentinelMismatch(expected: anytype, actual: @TypeOf(expected)) noreturn {
-        @setCold(true);
-        @setRuntimeSafety(false);
-        const ret_addr: usize = @returnAddress();
-        var buf: [1024]u8 = undefined;
-        const expected_s: []const u8 = fmt.udsize(expected).readAll();
-        const actual_s: []const u8 = fmt.udsize(actual).readAll();
-        const len: u64 = mach.memcpyMulti(&buf, &[_][]const u8{ "sentinel mismatch: expected ", expected_s, ", found ", actual_s });
-        panic(buf[0..len], null, ret_addr);
-    }
-    pub noinline fn panicStartGreaterThanEnd(lower: usize, upper: usize) noreturn {
-        @setCold(true);
-        @setRuntimeSafety(false);
-        const ret_addr: usize = @returnAddress();
-        var buf: [1024]u8 = undefined;
-        const lower_s: []const u8 = fmt.ud64(lower).readAll();
-        const upper_s: []const u8 = fmt.ud64(upper).readAll();
-        const len: u64 = mach.memcpyMulti(&buf, &[_][]const u8{ "start index ", lower_s, " is larger than end index ", upper_s });
-        panic(buf[0..len], null, ret_addr);
-    }
-    pub noinline fn panicInactiveUnionField(active: anytype, wanted: @TypeOf(active)) noreturn {
-        @setCold(true);
-        @setRuntimeSafety(false);
-        const ret_addr: usize = @returnAddress();
-        var buf: [1024]u8 = undefined;
-        const wanted_s: []const u8 = @tagName(wanted);
-        const active_s: []const u8 = @tagName(active);
-        const len: u64 = mach.memcpyMulti(&buf, &[_][]const u8{ "access of union field '", wanted_s, "' while field '", active_s, "' is active" });
-        panic(buf[0..len], null, ret_addr);
-    }
-    pub noinline fn panicUnwrapError(st: ?*StackTrace, err: anyerror) noreturn {
-        if (!discard_errors) {
-            @compileError("error is discarded");
-        }
-        const ret_addr: usize = @returnAddress();
-        var buf: [1024]u8 = undefined;
-        const len: u64 = mach.memcpyMulti(&buf, &[_][]const u8{ "error is discarded: ", @errorName(err) });
-        panic(buf[0..len], st, ret_addr);
-    }
-    fn checkNonScalarSentinel(expected: anytype, actual: @TypeOf(expected)) void {
-        if (!testEqual(@TypeOf(expected), expected, actual)) {
-            panicSentinelMismatch(expected, actual);
-        }
-    }
-    inline fn addErrRetTraceAddr(st: *StackTrace, ret_addr: usize) void {
-        if (st.addrs_len < st.addrs.len) {
-            st.addrs[st.addrs_len] = ret_addr;
-        }
-        st.addrs_len +%= 1;
-    }
-    noinline fn returnError(st: *StackTrace) void {
-        @setCold(true);
-        @setRuntimeSafety(false);
-        addErrRetTraceAddr(st, @returnAddress());
-    }
-    const static = struct {
-        fn subCausedOverflow(comptime T: type, comptime arg1: T, comptime arg2: T) noreturn {
-            comptime {
-                var msg: [size]u8 = undefined;
-                @compileError(msg[0..debug.overflowedSubString(T, &msg, arg1, arg2, @min(arg1, arg2) > 10_000)]);
-            }
-        }
-        fn addCausedOverflow(comptime T: type, comptime arg1: T, comptime arg2: T) noreturn {
-            comptime {
-                var msg: [size]u8 = undefined;
-                @compileError(msg[0..debug.overflowedAddString(T, &msg, arg1, arg2, @min(arg1, arg2) > 10_000)]);
-            }
-        }
-        fn mulCausedOverflow(comptime T: type, comptime arg1: T, comptime arg2: T) noreturn {
-            comptime {
-                var msg: [size]u8 = undefined;
-                @compileError(msg[0..debug.mulCausedOverflowString(T, &msg, arg1, arg2, @min(arg1, arg2) > 10_000)]);
-            }
-        }
-        fn exactDivisionWithRemainder(
-            comptime T: type,
-            comptime arg1: T,
-            comptime arg2: T,
-            comptime result: T,
-            comptime remainder: T,
-        ) noreturn {
-            comptime {
-                var buf: [size]u8 = undefined;
-                var len: u64 = 0;
-                for ([_][]const u8{
-                    @typeName(T),                 ": exact division had a remainder: ",
-                    itos(T, arg1).readAll(),      "/",
-                    itos(T, arg2).readAll(),      " == ",
-                    itos(T, result).readAll(),    "r",
-                    itos(T, remainder).readAll(), "\n",
-                }) |s| {
-                    for (s, 0..) |c, idx| buf[len +% idx] = c;
-                    len +%= s.len;
-                }
-                @compileError(buf[0..len]);
-            }
-        }
-        fn incorrectAlignment(
-            comptime T: type,
-            comptime type_name: []const u8,
-            comptime address: T,
-            comptime alignment: T,
-            comptime result: T,
-            comptime remainder: T,
-        ) noreturn {
-            comptime {
-                var buf: [size]u8 = undefined;
-                var len: u64 = 0;
-                for ([_][]const u8{
-                    @typeName(T),                 ": incorrect alignment: ",
-                    type_name,                    " align(",
-                    itos(T, alignment).readAll(), "): ",
-                    itos(T, address).readAll(),   " == ",
-                    itos(T, result).readAll(),    "+",
-                    itos(T, remainder).readAll(), "\n",
-                }) |s| {
-                    for (s, 0..) |c, idx| buf[len +% idx] = c;
-                    len +%= s.len;
-                }
-                @compileError(buf[0..len]);
-            }
-        }
-        inline fn comparisonFailed(
-            comptime T: type,
-            comptime symbol: []const u8,
-            comptime arg1: T,
-            comptime arg2: T,
-        ) void {
-            comptime {
-                var buf: [size]u8 = undefined;
-                var len: u64 = 0;
-                for ([_][]const u8{
-                    @typeName(T),            " assertion failed ",
-                    itos(T, arg1).readAll(), symbol,
-                    itos(T, arg2).readAll(), if (@min(arg1, arg2) > 10_000) ", i.e. " else "\n",
-                }) |s| {
-                    for (s, 0..) |c, idx| buf[len +% idx] = c;
-                    len +%= s.len;
-                }
-                if (@min(arg1, arg2) > 10_000) {
-                    if (arg1 > arg2) {
-                        for ([_][]const u8{ itos(T, arg1 -% arg2).readAll(), symbol, "0\n" }) |s| {
-                            for (s, 0..) |c, idx| buf[len +% idx] = c;
-                            len +%= s.len;
-                        }
-                    } else {
-                        for ([_][]const u8{ "0", symbol, itos(T, arg2 -% arg1).readAll(), "\n" }) |s| {
-                            for (s, 0..) |c, idx| buf[len +% idx] = c;
-                            len +%= s.len;
-                        }
-                    }
-                }
-                @compileError(buf[0..len]);
-            }
-        }
-    };
 };
 pub const parse = struct {
     pub const E = error{BadParse};
@@ -1679,361 +1031,1338 @@ pub const parse = struct {
         }
         return value;
     }
-};
-pub const fmt = struct {
-    pub const about_blank_s = blk: {
-        const indent = (" " ** message_indent);
-        if (message_style) |style| {
-            break :blk style ++ indent ++ message_no_style;
-        }
-        break :blk indent;
+    const KV = struct { []const u8, Token.Tag };
+    const keywords: [49]KV = .{
+        // 0
+        // 1
+        // 2
+        .{ "or", .keyword_or },
+        .{ "fn", .keyword_fn },
+        .{ "if", .keyword_if },
+        // 3
+        .{ "for", .keyword_for },
+        .{ "and", .keyword_and },
+        .{ "asm", .keyword_asm },
+        .{ "var", .keyword_var },
+        .{ "pub", .keyword_pub },
+        .{ "try", .keyword_try },
+        // 4
+        .{ "test", .keyword_test },
+        .{ "else", .keyword_else },
+        .{ "enum", .keyword_enum },
+        // 5
+        .{ "error", .keyword_error },
+        .{ "union", .keyword_union },
+        .{ "while", .keyword_while },
+        .{ "align", .keyword_align },
+        .{ "async", .keyword_async },
+        .{ "await", .keyword_await },
+        .{ "break", .keyword_break },
+        .{ "catch", .keyword_catch },
+        .{ "const", .keyword_const },
+        .{ "defer", .keyword_defer },
+        // 6
+        .{ "struct", .keyword_struct },
+        .{ "opaque", .keyword_opaque },
+        .{ "orelse", .keyword_orelse },
+        .{ "packed", .keyword_packed },
+        .{ "resume", .keyword_resume },
+        .{ "return", .keyword_return },
+        .{ "export", .keyword_export },
+        .{ "extern", .keyword_extern },
+        .{ "inline", .keyword_inline },
+        .{ "switch", .keyword_switch },
+        // 7
+        .{ "anytype", .keyword_anytype },
+        .{ "suspend", .keyword_suspend },
+        .{ "noalias", .keyword_noalias },
+        // 8
+        .{ "volatile", .keyword_volatile },
+        .{ "errdefer", .keyword_errdefer },
+        .{ "comptime", .keyword_comptime },
+        .{ "callconv", .keyword_callconv },
+        .{ "continue", .keyword_continue },
+        .{ "noinline", .keyword_noinline },
+        .{ "anyframe", .keyword_anyframe },
+        // 9 -- Except for unreachable and usingnamespace, the following keywords
+        //      are very cold.
+        .{ "addrspace", .keyword_addrspace },
+        .{ "allowzero", .keyword_allowzero },
+        .{ "nosuspend", .keyword_nosuspend },
+        // 12
+        .{ "linksection", .keyword_linksection },
+        .{ "threadlocal", .keyword_threadlocal },
+        .{ "unreachable", .keyword_unreachable },
+        // 13
+        .{ "usingnamespace", .keyword_usingnamespace },
     };
-    pub const AboutSrc = @TypeOf(about_blank_s);
-    pub const AboutDest = @TypeOf(@constCast(about_blank_s));
-    pub fn about(comptime s: [:0]const u8) AboutSrc {
-        var lhs: [:0]const u8 = s;
-        lhs = message_prefix ++ lhs;
-        lhs = lhs ++ message_suffix;
-        const len: u64 = lhs.len;
-        if (message_style) |style| {
-            lhs = style ++ lhs ++ message_no_style;
-        }
-        if (len >= message_indent) {
-            @compileError(s ++ " is too long");
-        }
-        return lhs ++ " " ** (message_indent - len);
-    }
-    pub fn ci(comptime value: comptime_int) []const u8 {
-        if (value < 0) {
-            const s: []const u8 = @typeName([-value]void);
-            return "-" ++ s[1 .. s.len -% 5];
-        } else {
-            const s: []const u8 = @typeName([value]void);
-            return s[1 .. s.len -% 5];
-        }
-    }
-    pub fn cx(comptime value: anytype) []const u8 {
-        const S: type = @TypeOf(value);
-        const T = [:value]S;
-        const s_type_name: []const u8 = @typeName(S);
-        const t_type_name: []const u8 = @typeName(T);
-        return t_type_name[2 .. t_type_name.len -% (s_type_name.len +% 1)];
-    }
-    pub inline fn bin(comptime Int: type, value: Int) Generic(Int).Array2 {
-        return Generic(Int).bin(value);
-    }
-    pub inline fn oct(comptime Int: type, value: Int) Generic(Int).Array8 {
-        return Generic(Int).oct(value);
-    }
-    pub inline fn dec(comptime Int: type, value: Int) Generic(Int).Array10 {
-        return Generic(Int).dec(value);
-    }
-    pub inline fn hex(comptime Int: type, value: Int) Generic(Int).Array16 {
-        return Generic(Int).hex(value);
-    }
-    pub const ub8 = Generic(u8).bin;
-    pub const ub16 = Generic(u16).bin;
-    pub const ub32 = Generic(u32).bin;
-    pub const ub64 = Generic(u64).bin;
-    pub const ubsize = Generic(usize).bin;
-    pub const uo8 = Generic(u8).oct;
-    pub const uo16 = Generic(u16).oct;
-    pub const uo32 = Generic(u32).oct;
-    pub const uo64 = Generic(u64).oct;
-    pub const uosize = Generic(usize).oct;
-    pub const ud8 = Generic(u8).dec;
-    pub const ud16 = Generic(u16).dec;
-    pub const ud32 = Generic(u32).dec;
-    pub const ud64 = Generic(u64).dec;
-    pub const udsize = Generic(usize).dec;
-    pub const ux8 = Generic(u8).hex;
-    pub const ux16 = Generic(u16).hex;
-    pub const ux32 = Generic(u32).hex;
-    pub const ux64 = Generic(u64).hex;
-    pub const uxsize = Generic(usize).hex;
-    pub const ib8 = Generic(i8).bin;
-    pub const ib16 = Generic(i16).bin;
-    pub const ib32 = Generic(i32).bin;
-    pub const ib64 = Generic(i64).bin;
-    pub const ibsize = Generic(isize).bin;
-    pub const io8 = Generic(i8).oct;
-    pub const io16 = Generic(i16).oct;
-    pub const io32 = Generic(i32).oct;
-    pub const io64 = Generic(i64).oct;
-    pub const iosize = Generic(isize).oct;
-    pub const id8 = Generic(i8).dec;
-    pub const id16 = Generic(i16).dec;
-    pub const id32 = Generic(i32).dec;
-    pub const id64 = Generic(i64).dec;
-    pub const idsize = Generic(isize).dec;
-    pub const ix8 = Generic(i8).hex;
-    pub const ix16 = Generic(i16).hex;
-    pub const ix32 = Generic(i32).hex;
-    pub const ix64 = Generic(i64).hex;
-    pub const ixsize = Generic(isize).hex;
-    pub const nsec = Generic(u64).nsec;
-    fn maxSigFig(comptime T: type, comptime radix: u7) comptime_int {
-        @setRuntimeSafety(false);
-        const U = @Type(.{ .Int = .{ .bits = @bitSizeOf(T), .signedness = .unsigned } });
-        var value: if (@bitSizeOf(U) < 8) u8 else U = 0;
-        var len: u16 = 0;
-        if (radix != 10) {
-            len += 2;
-        }
-        value -%= 1;
-        while (value != 0) : (value /= radix) {
-            len += 1;
-        }
-        return len;
-    }
-    pub fn length(
-        comptime U: type,
-        abs_value: if (@bitSizeOf(U) < 8) u8 else U,
-        comptime radix: u7,
-    ) usize {
-        @setRuntimeSafety(false);
-        if (@bitSizeOf(U) == 1) {
-            return 1;
-        }
-        var value: @TypeOf(abs_value) = abs_value;
-        var count: u64 = 0;
-        while (value != 0) : (value /= radix) {
-            count +%= 1;
-        }
-        return @max(1, count);
-    }
-    pub fn toSymbol(comptime T: type, value: T, comptime radix: u7) u8 {
-        @setRuntimeSafety(false);
-        if (@bitSizeOf(T) < 8) {
-            return toSymbol(u8, value, radix);
-        }
-        const result: u8 = @as(u8, @intCast(@rem(value, radix)));
-        const dx = .{
-            .d = @as(u8, '9' -% 9),
-            .x = @as(u8, 'f' -% 15),
+    pub const Token = struct {
+        tag: Tag,
+        loc: Loc,
+        pub const Loc = struct {
+            start: usize = 0,
+            finish: usize = 0,
         };
-        if (radix > 10) {
-            return result +% if (result < 10) dx.d else dx.x;
-        } else {
-            return result +% dx.d;
+        pub const Tag = enum {
+            invalid,
+            invalid_periodasterisks,
+            identifier,
+            string_literal,
+            multiline_string_literal_line,
+            char_literal,
+            eof,
+            builtin,
+            bang,
+            pipe,
+            pipe_pipe,
+            pipe_equal,
+            equal,
+            equal_equal,
+            equal_angle_bracket_right,
+            bang_equal,
+            l_paren,
+            r_paren,
+            semicolon,
+            percent,
+            percent_equal,
+            l_brace,
+            r_brace,
+            l_bracket,
+            r_bracket,
+            period,
+            period_asterisk,
+            ellipsis2,
+            ellipsis3,
+            caret,
+            caret_equal,
+            plus,
+            plus_plus,
+            plus_equal,
+            plus_percent,
+            plus_percent_equal,
+            plus_pipe,
+            plus_pipe_equal,
+            minus,
+            minus_equal,
+            minus_percent,
+            minus_percent_equal,
+            minus_pipe,
+            minus_pipe_equal,
+            asterisk,
+            asterisk_equal,
+            asterisk_asterisk,
+            asterisk_percent,
+            asterisk_percent_equal,
+            asterisk_pipe,
+            asterisk_pipe_equal,
+            arrow,
+            colon,
+            slash,
+            slash_equal,
+            comma,
+            ampersand,
+            ampersand_equal,
+            question_mark,
+            angle_bracket_left,
+            angle_bracket_left_equal,
+            angle_bracket_angle_bracket_left,
+            angle_bracket_angle_bracket_left_equal,
+            angle_bracket_angle_bracket_left_pipe,
+            angle_bracket_angle_bracket_left_pipe_equal,
+            angle_bracket_right,
+            angle_bracket_right_equal,
+            angle_bracket_angle_bracket_right,
+            angle_bracket_angle_bracket_right_equal,
+            tilde,
+            number_literal,
+            doc_comment,
+            container_doc_comment,
+            keyword_addrspace,
+            keyword_align,
+            keyword_allowzero,
+            keyword_and,
+            keyword_anyframe,
+            keyword_anytype,
+            keyword_asm,
+            keyword_async,
+            keyword_await,
+            keyword_break,
+            keyword_callconv,
+            keyword_catch,
+            keyword_comptime,
+            keyword_const,
+            keyword_continue,
+            keyword_defer,
+            keyword_else,
+            keyword_enum,
+            keyword_errdefer,
+            keyword_error,
+            keyword_export,
+            keyword_extern,
+            keyword_fn,
+            keyword_for,
+            keyword_if,
+            keyword_inline,
+            keyword_noalias,
+            keyword_noinline,
+            keyword_nosuspend,
+            keyword_opaque,
+            keyword_or,
+            keyword_orelse,
+            keyword_packed,
+            keyword_pub,
+            keyword_resume,
+            keyword_return,
+            keyword_linksection,
+            keyword_struct,
+            keyword_suspend,
+            keyword_switch,
+            keyword_test,
+            keyword_threadlocal,
+            keyword_try,
+            keyword_union,
+            keyword_unreachable,
+            keyword_usingnamespace,
+            keyword_var,
+            keyword_volatile,
+            keyword_while,
+            pub const strings: []const Token.Tag = &.{
+                .string_literal,
+                .multiline_string_literal_line,
+            };
+            pub const bracket: []const Token.Tag = &.{
+                .l_brace,
+                .r_brace,
+                .l_bracket,
+                .r_bracket,
+                .l_paren,
+                .r_paren,
+            };
+            pub const operator: []const Token.Tag = &.{
+                .arrow,                  .bang,
+                .pipe,                   .pipe_pipe,
+                .pipe_equal,             .equal,
+                .equal_equal,            .bang_equal,
+                .percent,                .percent_equal,
+                .period_asterisk,        .caret,
+                .caret_equal,            .plus,
+                .plus_plus,              .plus_equal,
+                .plus_percent,           .plus_percent_equal,
+                .plus_pipe,              .plus_pipe_equal,
+                .minus,                  .minus_equal,
+                .minus_percent,          .minus_percent_equal,
+                .minus_pipe,             .minus_pipe_equal,
+                .asterisk,               .asterisk_equal,
+                .asterisk_asterisk,      .asterisk_percent,
+                .asterisk_percent_equal, .asterisk_pipe,
+                .asterisk_pipe_equal,    .slash,
+                .slash_equal,            .ampersand,
+                .ampersand_equal,        .question_mark,
+                .tilde,                  .angle_bracket_left,
+                .ellipsis2,              .ellipsis3,
+                .equal_angle_bracket_right, //
+                .angle_bracket_left_equal,
+                .angle_bracket_angle_bracket_left,
+                .angle_bracket_angle_bracket_left_equal,
+                .angle_bracket_angle_bracket_left_pipe,
+                .angle_bracket_angle_bracket_left_pipe_equal,
+                .angle_bracket_right,
+                .angle_bracket_right_equal,
+                .angle_bracket_angle_bracket_right,
+                .angle_bracket_angle_bracket_right_equal,
+            };
+            pub const builtin_fn: []const Token.Tag = &.{
+                .builtin,
+                .keyword_align,
+                .keyword_addrspace,
+                .keyword_linksection,
+                .keyword_callconv,
+            };
+            pub const macro_keyword: []const Token.Tag = &.{
+                .keyword_defer,
+                .keyword_async,
+                .keyword_await,
+                .keyword_export,
+                .keyword_extern,
+                .keyword_resume,
+                .keyword_suspend,
+                .keyword_errdefer,
+                .keyword_nosuspend,
+                .keyword_unreachable,
+            };
+            pub const container_keyword: []const Token.Tag = &.{
+                .keyword_enum,
+                .keyword_packed,
+                .keyword_opaque,
+                .keyword_struct,
+                .keyword_union,
+                .keyword_error,
+            };
+            pub const qual_keyword: []const Token.Tag = &.{
+                .keyword_volatile,
+                .keyword_allowzero,
+            };
+            pub const call_keyword: []const Token.Tag = &.{
+                .keyword_asm,
+                .keyword_catch,
+                .keyword_inline,
+                .keyword_noalias,
+                .keyword_noinline,
+            };
+            pub const cond_keyword: []const Token.Tag = &.{
+                .keyword_fn,
+                .keyword_if,
+                .keyword_or,
+                .keyword_for,
+                .keyword_and,
+                .keyword_try,
+                .keyword_else,
+                .keyword_test,
+                .keyword_while,
+                .keyword_switch,
+                .keyword_orelse,
+                .keyword_anytype,
+                .keyword_anyframe,
+            };
+            pub const goto_keyword: []const Token.Tag = &.{
+                .keyword_break,
+                .keyword_return,
+                .keyword_continue,
+            };
+            pub const value_keyword: []const Token.Tag = &.{
+                .keyword_pub,
+                .keyword_var,
+                .keyword_const,
+                .keyword_comptime,
+                .keyword_threadlocal,
+                .keyword_usingnamespace,
+            };
+            pub const other: []const Token.Tag = &.{
+                .invalid,
+                .identifier,
+                .container_doc_comment,
+                .doc_comment,
+                .invalid_periodasterisks,
+                .period,
+                .comma,
+                .colon,
+                .semicolon,
+                .eof,
+            };
+        };
+    };
+    pub const TokenIterator = struct {
+        buf: [:0]const u8,
+        buf_pos: usize,
+        inval: ?Token,
+        const State = enum {
+            start,
+            identifier,
+            builtin,
+            string_literal,
+            string_literal_backslash,
+            multiline_string_literal_line,
+            char_literal,
+            char_literal_backslash,
+            char_literal_hex_escape,
+            char_literal_unicode_escape_saw_u,
+            char_literal_unicode_escape,
+            char_literal_unicode_invalid,
+            char_literal_unicode,
+            char_literal_end,
+            backslash,
+            equal,
+            bang,
+            pipe,
+            minus,
+            minus_percent,
+            minus_pipe,
+            asterisk,
+            asterisk_percent,
+            asterisk_pipe,
+            slash,
+            line_comment_start,
+            line_comment,
+            doc_comment_start,
+            doc_comment,
+            int,
+            int_exponent,
+            int_period,
+            float,
+            float_exponent,
+            ampersand,
+            caret,
+            percent,
+            plus,
+            plus_percent,
+            plus_pipe,
+            angle_bracket_left,
+            angle_bracket_angle_bracket_left,
+            angle_bracket_angle_bracket_left_pipe,
+            angle_bracket_right,
+            angle_bracket_angle_bracket_right,
+            period,
+            period_2,
+            period_asterisk,
+            saw_at_sign,
+        };
+        pub fn next(itr: *TokenIterator) Token {
+            @setRuntimeSafety(false);
+            if (itr.inval) |token| {
+                itr.inval = null;
+                return token;
+            }
+            var state: State = .start;
+            var ret = Token{
+                .tag = .eof,
+                .loc = .{ .start = itr.buf_pos },
+            };
+            var esc_no: usize = undefined;
+            var rem_cp: usize = undefined;
+            while (true) : (itr.buf_pos +%= 1) {
+                const c: u8 = itr.buf[itr.buf_pos];
+                switch (state) {
+                    .start => switch (c) {
+                        0 => {
+                            if (itr.buf_pos != itr.buf.len) {
+                                ret.tag = .invalid;
+                                ret.loc.start = itr.buf_pos;
+                                itr.buf_pos +%= 1;
+                                ret.loc.finish = itr.buf_pos;
+                                return ret;
+                            }
+                            break;
+                        },
+                        ' ', '\n', '\t', '\r' => ret.loc.start = itr.buf_pos +% 1,
+                        '"' => {
+                            state = .string_literal;
+                            ret.tag = .string_literal;
+                        },
+                        '\'' => state = .char_literal,
+                        'a'...'z', 'A'...'Z', '_' => {
+                            state = .identifier;
+                            ret.tag = .identifier;
+                        },
+                        '@' => state = .saw_at_sign,
+                        '=' => state = .equal,
+                        '!' => state = .bang,
+                        '|' => state = .pipe,
+                        '(' => {
+                            ret.tag = .l_paren;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        ')' => {
+                            ret.tag = .r_paren;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        '[' => {
+                            ret.tag = .l_bracket;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        ']' => {
+                            ret.tag = .r_bracket;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        ';' => {
+                            ret.tag = .semicolon;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        ',' => {
+                            ret.tag = .comma;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        '?' => {
+                            ret.tag = .question_mark;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        ':' => {
+                            ret.tag = .colon;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        '%' => state = .percent,
+                        '*' => state = .asterisk,
+                        '+' => state = .plus,
+                        '<' => state = .angle_bracket_left,
+                        '>' => state = .angle_bracket_right,
+                        '^' => state = .caret,
+                        '\\' => {
+                            state = .backslash;
+                            ret.tag = .multiline_string_literal_line;
+                        },
+                        '{' => {
+                            ret.tag = .l_brace;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        '}' => {
+                            ret.tag = .r_brace;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        '~' => {
+                            ret.tag = .tilde;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        '.' => state = .period,
+                        '-' => state = .minus,
+                        '/' => state = .slash,
+                        '&' => state = .ampersand,
+                        '0'...'9' => {
+                            state = .int;
+                            ret.tag = .number_literal;
+                        },
+                        else => {
+                            ret.tag = .invalid;
+                            ret.loc.finish = itr.buf_pos;
+                            itr.buf_pos +%= 1;
+                            return ret;
+                        },
+                    },
+                    .saw_at_sign => switch (c) {
+                        '"' => {
+                            ret.tag = .identifier;
+                            state = .string_literal;
+                        },
+                        'a'...'z', 'A'...'Z', '_' => {
+                            state = .builtin;
+                            ret.tag = .builtin;
+                        },
+                        else => {
+                            ret.tag = .invalid;
+                            break;
+                        },
+                    },
+                    .ampersand => switch (c) {
+                        '=' => {
+                            ret.tag = .ampersand_equal;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        else => {
+                            ret.tag = .ampersand;
+                            break;
+                        },
+                    },
+                    .asterisk => switch (c) {
+                        '=' => {
+                            ret.tag = .asterisk_equal;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        '*' => {
+                            ret.tag = .asterisk_asterisk;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        '%' => state = .asterisk_percent,
+                        '|' => state = .asterisk_pipe,
+                        else => {
+                            ret.tag = .asterisk;
+                            break;
+                        },
+                    },
+                    .asterisk_percent => switch (c) {
+                        '=' => {
+                            ret.tag = .asterisk_percent_equal;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        else => {
+                            ret.tag = .asterisk_percent;
+                            break;
+                        },
+                    },
+                    .asterisk_pipe => switch (c) {
+                        '=' => {
+                            ret.tag = .asterisk_pipe_equal;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        else => {
+                            ret.tag = .asterisk_pipe;
+                            break;
+                        },
+                    },
+                    .percent => switch (c) {
+                        '=' => {
+                            ret.tag = .percent_equal;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        else => {
+                            ret.tag = .percent;
+                            break;
+                        },
+                    },
+                    .plus => switch (c) {
+                        '=' => {
+                            ret.tag = .plus_equal;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        '+' => {
+                            ret.tag = .plus_plus;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        '%' => state = .plus_percent,
+                        '|' => state = .plus_pipe,
+                        else => {
+                            ret.tag = .plus;
+                            break;
+                        },
+                    },
+                    .plus_percent => switch (c) {
+                        '=' => {
+                            ret.tag = .plus_percent_equal;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        else => {
+                            ret.tag = .plus_percent;
+                            break;
+                        },
+                    },
+                    .plus_pipe => switch (c) {
+                        '=' => {
+                            ret.tag = .plus_pipe_equal;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        else => {
+                            ret.tag = .plus_pipe;
+                            break;
+                        },
+                    },
+                    .caret => switch (c) {
+                        '=' => {
+                            ret.tag = .caret_equal;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        else => {
+                            ret.tag = .caret;
+                            break;
+                        },
+                    },
+                    .identifier => switch (c) {
+                        'a'...'z', 'A'...'Z', '_', '0'...'9' => {},
+                        else => {
+                            if (keyword(itr.buf[ret.loc.start..itr.buf_pos])) |tag| {
+                                ret.tag = tag;
+                            }
+                            break;
+                        },
+                    },
+                    .builtin => switch (c) {
+                        'a'...'z', 'A'...'Z', '_', '0'...'9' => {},
+                        else => break,
+                    },
+                    .backslash => switch (c) {
+                        '\\' => state = .multiline_string_literal_line,
+                        else => {
+                            ret.tag = .invalid;
+                            break;
+                        },
+                    },
+                    .string_literal => switch (c) {
+                        '\\' => state = .string_literal_backslash,
+                        '"' => {
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        0 => {
+                            if (itr.buf_pos == itr.buf.len) {
+                                ret.tag = .invalid;
+                                break;
+                            } else {
+                                itr.checkChar();
+                            }
+                        },
+                        '\n' => {
+                            ret.tag = .invalid;
+                            break;
+                        },
+                        else => itr.checkChar(),
+                    },
+                    .string_literal_backslash => switch (c) {
+                        0, '\n' => {
+                            ret.tag = .invalid;
+                            break;
+                        },
+                        else => state = .string_literal,
+                    },
+                    .char_literal => switch (c) {
+                        0 => {
+                            ret.tag = .invalid;
+                            break;
+                        },
+                        '\\' => state = .char_literal_backslash,
+                        '\'', 0x80...0xbf, 0xf8...0xff => {
+                            ret.tag = .invalid;
+                            break;
+                        },
+                        0xc0...0xdf => {
+                            rem_cp = 1;
+                            state = .char_literal_unicode;
+                        },
+                        0xe0...0xef => {
+                            rem_cp = 2;
+                            state = .char_literal_unicode;
+                        },
+                        0xf0...0xf7 => {
+                            rem_cp = 3;
+                            state = .char_literal_unicode;
+                        },
+                        '\n' => {
+                            ret.tag = .invalid;
+                            break;
+                        },
+                        else => state = .char_literal_end,
+                    },
+                    .char_literal_backslash => switch (c) {
+                        0, '\n' => {
+                            ret.tag = .invalid;
+                            break;
+                        },
+                        'x' => {
+                            state = .char_literal_hex_escape;
+                            esc_no = 0;
+                        },
+                        'u' => state = .char_literal_unicode_escape_saw_u,
+                        else => state = .char_literal_end,
+                    },
+                    .char_literal_hex_escape => switch (c) {
+                        '0'...'9', 'a'...'f', 'A'...'F' => {
+                            esc_no +%= 1;
+                            if (esc_no == 2) {
+                                state = .char_literal_end;
+                            }
+                        },
+                        else => {
+                            ret.tag = .invalid;
+                            break;
+                        },
+                    },
+                    .char_literal_unicode_escape_saw_u => switch (c) {
+                        0 => {
+                            ret.tag = .invalid;
+                            break;
+                        },
+                        '{' => state = .char_literal_unicode_escape,
+                        else => {
+                            ret.tag = .invalid;
+                            state = .char_literal_unicode_invalid;
+                        },
+                    },
+                    .char_literal_unicode_escape => switch (c) {
+                        0 => {
+                            ret.tag = .invalid;
+                            break;
+                        },
+                        '0'...'9', 'a'...'f', 'A'...'F' => {},
+                        '}' => state = .char_literal_end,
+                        else => {
+                            ret.tag = .invalid;
+                            state = .char_literal_unicode_invalid;
+                        },
+                    },
+                    .char_literal_unicode_invalid => switch (c) {
+                        '0'...'9', 'a'...'z', 'A'...'Z', '}' => {},
+                        else => break,
+                    },
+                    .char_literal_end => switch (c) {
+                        '\'' => {
+                            ret.tag = .char_literal;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        else => {
+                            ret.tag = .invalid;
+                            break;
+                        },
+                    },
+                    .char_literal_unicode => switch (c) {
+                        0x80...0xbf => {
+                            rem_cp -%= 1;
+                            if (rem_cp == 0) {
+                                state = .char_literal_end;
+                            }
+                        },
+                        else => {
+                            ret.tag = .invalid;
+                            break;
+                        },
+                    },
+                    .multiline_string_literal_line => switch (c) {
+                        0 => break,
+                        '\n' => {
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        '\t' => {},
+                        else => itr.checkChar(),
+                    },
+                    .bang => switch (c) {
+                        '=' => {
+                            ret.tag = .bang_equal;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        else => {
+                            ret.tag = .bang;
+                            break;
+                        },
+                    },
+                    .pipe => switch (c) {
+                        '=' => {
+                            ret.tag = .pipe_equal;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        '|' => {
+                            ret.tag = .pipe_pipe;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        else => {
+                            ret.tag = .pipe;
+                            break;
+                        },
+                    },
+                    .equal => switch (c) {
+                        '=' => {
+                            ret.tag = .equal_equal;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        '>' => {
+                            ret.tag = .equal_angle_bracket_right;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        else => {
+                            ret.tag = .equal;
+                            break;
+                        },
+                    },
+                    .minus => switch (c) {
+                        '>' => {
+                            ret.tag = .arrow;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        '=' => {
+                            ret.tag = .minus_equal;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        '%' => state = .minus_percent,
+                        '|' => state = .minus_pipe,
+                        else => {
+                            ret.tag = .minus;
+                            break;
+                        },
+                    },
+                    .minus_percent => switch (c) {
+                        '=' => {
+                            ret.tag = .minus_percent_equal;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        else => {
+                            ret.tag = .minus_percent;
+                            break;
+                        },
+                    },
+                    .minus_pipe => switch (c) {
+                        '=' => {
+                            ret.tag = .minus_pipe_equal;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        else => {
+                            ret.tag = .minus_pipe;
+                            break;
+                        },
+                    },
+                    .angle_bracket_left => switch (c) {
+                        '<' => state = .angle_bracket_angle_bracket_left,
+                        '=' => {
+                            ret.tag = .angle_bracket_left_equal;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        else => {
+                            ret.tag = .angle_bracket_left;
+                            break;
+                        },
+                    },
+                    .angle_bracket_angle_bracket_left => switch (c) {
+                        '=' => {
+                            ret.tag = .angle_bracket_angle_bracket_left_equal;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        '|' => state = .angle_bracket_angle_bracket_left_pipe,
+                        else => {
+                            ret.tag = .angle_bracket_angle_bracket_left;
+                            break;
+                        },
+                    },
+                    .angle_bracket_angle_bracket_left_pipe => switch (c) {
+                        '=' => {
+                            ret.tag = .angle_bracket_angle_bracket_left_pipe_equal;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        else => {
+                            ret.tag = .angle_bracket_angle_bracket_left_pipe;
+                            break;
+                        },
+                    },
+                    .angle_bracket_right => switch (c) {
+                        '>' => state = .angle_bracket_angle_bracket_right,
+                        '=' => {
+                            ret.tag = .angle_bracket_right_equal;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        else => {
+                            ret.tag = .angle_bracket_right;
+                            break;
+                        },
+                    },
+                    .angle_bracket_angle_bracket_right => switch (c) {
+                        '=' => {
+                            ret.tag = .angle_bracket_angle_bracket_right_equal;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        else => {
+                            ret.tag = .angle_bracket_angle_bracket_right;
+                            break;
+                        },
+                    },
+                    .period => switch (c) {
+                        '.' => state = .period_2,
+                        '*' => state = .period_asterisk,
+                        else => {
+                            ret.tag = .period;
+                            break;
+                        },
+                    },
+                    .period_2 => switch (c) {
+                        '.' => {
+                            ret.tag = .ellipsis3;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        else => {
+                            ret.tag = .ellipsis2;
+                            break;
+                        },
+                    },
+                    .period_asterisk => switch (c) {
+                        '*' => {
+                            ret.tag = .invalid_periodasterisks;
+                            break;
+                        },
+                        else => {
+                            ret.tag = .period_asterisk;
+                            break;
+                        },
+                    },
+                    .slash => switch (c) {
+                        '/' => state = .line_comment_start,
+                        '=' => {
+                            ret.tag = .slash_equal;
+                            itr.buf_pos +%= 1;
+                            break;
+                        },
+                        else => {
+                            ret.tag = .slash;
+                            break;
+                        },
+                    },
+                    .line_comment_start => switch (c) {
+                        0 => {
+                            if (itr.buf_pos != itr.buf.len) {
+                                ret.tag = .invalid;
+                                itr.buf_pos +%= 1;
+                            }
+                            break;
+                        },
+                        '/' => state = .doc_comment_start,
+                        '!' => {
+                            ret.tag = .container_doc_comment;
+                            state = .doc_comment;
+                        },
+                        '\n' => {
+                            state = .start;
+                            ret.loc.start = itr.buf_pos +% 1;
+                        },
+                        '\t' => state = .line_comment,
+                        else => {
+                            state = .line_comment;
+                            itr.checkChar();
+                        },
+                    },
+                    .doc_comment_start => switch (c) {
+                        '/' => state = .line_comment,
+                        0, '\n' => {
+                            ret.tag = .doc_comment;
+                            break;
+                        },
+                        '\t' => {
+                            state = .doc_comment;
+                            ret.tag = .doc_comment;
+                        },
+                        else => {
+                            state = .doc_comment;
+                            ret.tag = .doc_comment;
+                            itr.checkChar();
+                        },
+                    },
+                    .line_comment => switch (c) {
+                        0 => {
+                            if (itr.buf_pos != itr.buf.len) {
+                                ret.tag = .invalid;
+                                itr.buf_pos +%= 1;
+                            }
+                            break;
+                        },
+                        '\n' => {
+                            state = .start;
+                            ret.loc.start = itr.buf_pos +% 1;
+                        },
+                        '\t' => {},
+                        else => itr.checkChar(),
+                    },
+                    .doc_comment => switch (c) {
+                        0, '\n' => break,
+                        '\t' => {},
+                        else => itr.checkChar(),
+                    },
+                    .int => switch (c) {
+                        '.' => state = .int_period,
+                        '_',
+                        'a'...'d',
+                        'f'...'o',
+                        'q'...'z',
+                        'A'...'D',
+                        'F'...'O',
+                        'Q'...'Z',
+                        '0'...'9',
+                        => {},
+                        'e', 'E', 'p', 'P' => state = .int_exponent,
+                        else => break,
+                    },
+                    .int_exponent => switch (c) {
+                        '-', '+' => state = .float,
+                        else => {
+                            itr.buf_pos -%= 1;
+                            state = .int;
+                        },
+                    },
+                    .int_period => switch (c) {
+                        '_',
+                        'a'...'d',
+                        'f'...'o',
+                        'q'...'z',
+                        'A'...'D',
+                        'F'...'O',
+                        'Q'...'Z',
+                        '0'...'9',
+                        => state = .float,
+                        'e', 'E', 'p', 'P' => state = .float_exponent,
+                        else => {
+                            itr.buf_pos -%= 1;
+                            break;
+                        },
+                    },
+                    .float => switch (c) {
+                        '_',
+                        'a'...'d',
+                        'f'...'o',
+                        'q'...'z',
+                        'A'...'D',
+                        'F'...'O',
+                        'Q'...'Z',
+                        '0'...'9',
+                        => {},
+                        'e', 'E', 'p', 'P' => state = .float_exponent,
+                        else => break,
+                    },
+                    .float_exponent => switch (c) {
+                        '-', '+' => state = .float,
+                        else => {
+                            itr.buf_pos -%= 1;
+                            state = .float;
+                        },
+                    },
+                }
+            }
+            if (ret.tag == .eof) {
+                if (itr.inval) |token| {
+                    itr.inval = null;
+                    return token;
+                }
+                ret.loc.start = itr.buf_pos;
+            }
+            ret.loc.finish = itr.buf_pos;
+            return ret;
         }
-    }
-    pub fn Generic(comptime Int: type) type {
-        const T = struct {
-            const Abs = math.Absolute(Int);
-            const len2: comptime_int = maxSigFig(Int, 2) +% 1;
-            const len8: comptime_int = maxSigFig(Int, 8) +% 1;
-            const len10: comptime_int = maxSigFig(Int, 10) +% 1;
-            const len16: comptime_int = maxSigFig(Int, 16) +% 1;
-            const Array2 = Array(len2);
-            const Array8 = Array(len8);
-            const Array10 = Array(len10);
-            const Array16 = Array(len16);
-            fn bin(value: Int) Array2 {
-                @setRuntimeSafety(false);
-                var ret: Array2 = undefined;
-                ret.len = ret.buf.len;
-                if (value == 0) {
-                    while (ret.len != 3) {
-                        ret.len -%= 1;
-                        ret.buf[ret.len] = '0';
-                    }
-                    ret.len -%= 2;
-                    @as(*[2]u8, @ptrCast(&ret.buf[ret.len])).* = "0b".*;
-                    return ret;
-                }
-                var abs_value: Abs = if (Int != Abs and value < 0)
-                    @as(Abs, @intCast(-value))
-                else
-                    @as(Abs, @intCast(value));
-                while (abs_value != 0) : (abs_value /= 2) {
-                    ret.len -%= 1;
-                    ret.buf[ret.len] = '0' +% @as(u8, @intCast(@rem(abs_value, 2)));
-                }
-                while (ret.len != 3) {
-                    ret.len -%= 1;
-                    ret.buf[ret.len] = '0';
-                }
-                ret.len -%= 2;
-                @as(*[2]u8, @ptrCast(ret.buf[ret.len..].ptr)).* = "0b".*;
-                if (value < 0) {
-                    ret.len -%= 1;
-                    ret.buf[ret.len] = '-';
-                }
-                return ret;
+        fn checkChar(itr: *TokenIterator) void {
+            if (itr.inval != null) {
+                return;
             }
-            fn oct(value: Int) Array8 {
-                @setRuntimeSafety(false);
-                var ret: Array8 = undefined;
-                ret.len = ret.buf.len;
-                if (value == 0) {
-                    ret.len -%= 3;
-                    @as(*[3]u8, @ptrCast(ret.buf[ret.len..].ptr)).* = "0o0".*;
-                    return ret;
-                }
-                var abs_value: Abs = if (Int != Abs and value < 0)
-                    @as(Abs, @intCast(-value))
-                else
-                    @as(Abs, @intCast(value));
-                while (abs_value != 0) : (abs_value /= 8) {
-                    ret.len -%= 1;
-                    ret.buf[ret.len] = '0' +% @as(u8, @intCast(@rem(abs_value, 8)));
-                }
-                ret.len -%= 2;
-                @as(*[2]u8, @ptrCast(ret.buf[ret.len..].ptr)).* = "0o".*;
-                if (value < 0) {
-                    ret.len -%= 1;
-                    ret.buf[ret.len] = '-';
-                }
-                return ret;
+            const inval_len: u64 = itr.invalLen();
+            if (inval_len == 0) {
+                return;
             }
-            fn dec(value: Int) Array10 {
-                @setRuntimeSafety(false);
-                var ret: Array10 = undefined;
-                ret.len = ret.buf.len;
-                if (value == 0) {
-                    ret.len -%= 1;
-                    ret.buf[ret.len] = '0';
-                    return ret;
-                }
-                var abs_value: Abs = if (Int != Abs and value < 0)
-                    @as(Abs, @intCast(-value))
-                else
-                    @as(Abs, @intCast(value));
-                while (abs_value != 0) : (abs_value /= 10) {
-                    ret.len -%= 1;
-                    ret.buf[ret.len] = '0' +% @as(u8, @intCast(@rem(abs_value, 10)));
-                }
-                if (value < 0) {
-                    ret.len -%= 1;
-                    ret.buf[ret.len] = '-';
-                }
-                return ret;
-            }
-            fn hex(value: Int) Array16 {
-                @setRuntimeSafety(false);
-                var ret: Array16 = undefined;
-                ret.len = ret.buf.len;
-                if (value == 0) {
-                    ret.len -%= 3;
-                    @as(*[3]u8, @ptrCast(ret.buf[ret.len..].ptr)).* = "0x0".*;
-                    return ret;
-                }
-                var abs_value: Abs = if (Int != Abs and value < 0)
-                    @as(Abs, @bitCast(-value))
-                else
-                    @as(Abs, @intCast(value));
-                while (abs_value != 0) : (abs_value /= 16) {
-                    ret.len -%= 1;
-                    ret.buf[ret.len] = toSymbol(Abs, abs_value, 16);
-                }
-                ret.len -%= 2;
-                @as(*[2]u8, @ptrCast(ret.buf[ret.len..].ptr)).* = "0x".*;
-                if (value < 0) {
-                    ret.len -%= 1;
-                    ret.buf[ret.len] = '-';
-                }
-                return ret;
-            }
-            fn nsec(value: Int) Array10 {
-                @setRuntimeSafety(false);
-                var ret: Array10 = @This().dec(value);
-                while (ret.buf.len -% ret.len < 9) {
-                    ret.len -%= 1;
-                    ret.buf[ret.len] = '0';
-                }
-                return ret;
-            }
-            fn Array(comptime len: comptime_int) type {
-                return struct {
-                    len: u64,
-                    buf: [len]u8 align(8),
-                    pub fn readAll(array: *const @This()) []const u8 {
-                        return array.buf[array.len..];
-                    }
+            itr.inval = .{
+                .tag = .invalid,
+                .loc = .{
+                    .start = itr.buf_pos,
+                    .finish = itr.buf_pos +% inval_len,
+                },
+            };
+        }
+        fn invalLen(itr: *TokenIterator) u8 {
+            const byte: u8 = itr.buf[itr.buf_pos];
+            if (byte < 0x80) {
+                // Removed carriage return tolerance.
+                return @intFromBool(byte <= 0x1F) | @intFromBool(byte == 0x7F);
+            } else {
+                const len: u8 = switch (byte) {
+                    0b0000_0000...0b0111_1111 => 1,
+                    0b1100_0000...0b1101_1111 => 2,
+                    0b1110_0000...0b1110_1111 => 3,
+                    0b1111_0000...0b1111_0111 => 4,
+                    else => return 1,
                 };
+                if (itr.buf_pos +% len > itr.buf.len) {
+                    return @as(u8, @intCast(itr.buf.len -% itr.buf_pos));
+                }
+                const bytes: []const u8 = itr.buf[itr.buf_pos .. itr.buf_pos +% len];
+                if (len == 2) {
+                    var value: u32 = bytes[0] & 0b00011111;
+                    if (bytes[1] & 0b11000000 != 0b10000000) {
+                        return len;
+                    }
+                    value <<= 6;
+                    value |= bytes[1] & 0b00111111;
+                    if (value < 0x80 or value == 0x85) {
+                        return len;
+                    }
+                } else //
+                if (len == 3) {
+                    var value: u32 = bytes[0] & 0b00001111;
+                    if (bytes[1] & 0b11000000 != 0b10000000) {
+                        return len;
+                    }
+                    value <<= 6;
+                    value |= bytes[1] & 0b00111111;
+                    if (bytes[2] & 0b11000000 != 0b10000000) {
+                        return len;
+                    }
+                    value <<= 6;
+                    value |= bytes[2] & 0b00111111;
+                    if (value < 0x800) {
+                        return len;
+                    }
+                    if (0xd800 <= value and value <= 0xdfff) {
+                        return len;
+                    }
+                    if (value == 0x2028 or value == 0x2029) {
+                        return len;
+                    }
+                } else //
+                if (len == 4) {
+                    var value: u32 = bytes[0] & 0b00000111;
+                    if (bytes[1] & 0b11000000 != 0b10000000) {
+                        return len;
+                    }
+                    value <<= 6;
+                    value |= bytes[1] & 0b00111111;
+                    if (bytes[2] & 0b11000000 != 0b10000000) {
+                        return len;
+                    }
+                    value <<= 6;
+                    value |= bytes[2] & 0b00111111;
+                    if (bytes[3] & 0b11000000 != 0b10000000) {
+                        return len;
+                    }
+                    value <<= 6;
+                    value |= bytes[3] & 0b00111111;
+                    if (value < 0x10000 or value > 0x10FFFF) {
+                        return len;
+                    }
+                }
+                itr.buf_pos +%= len -% 1;
             }
-        };
-        return T;
+            return 0;
+        }
+    };
+    pub fn lexeme(tag: Token.Tag) ?[]const u8 {
+        switch (tag) {
+            .invalid_periodasterisks => return ".**",
+            .bang => return "!",
+            .pipe => return "|",
+            .pipe_pipe => return "||",
+            .pipe_equal => return "|=",
+            .equal => return "=",
+            .equal_equal => return "==",
+            .equal_angle_bracket_right => return "=>",
+            .bang_equal => return "!=",
+            .l_paren => return "(",
+            .r_paren => return ")",
+            .semicolon => return ";",
+            .percent => return "%",
+            .percent_equal => return "%=",
+            .l_brace => return "{",
+            .r_brace => return "}",
+            .l_bracket => return "[",
+            .r_bracket => return "]",
+            .period => return ".",
+            .period_asterisk => return ".*",
+            .ellipsis2 => return "..",
+            .ellipsis3 => return "...",
+            .caret => return "^",
+            .caret_equal => return "^=",
+            .plus => return "+",
+            .plus_plus => return "++",
+            .plus_equal => return "+=",
+            .plus_percent => return "+%",
+            .plus_percent_equal => return "+%=",
+            .plus_pipe => return "+|",
+            .plus_pipe_equal => return "+|=",
+            .minus => return "-",
+            .minus_equal => return "-=",
+            .minus_percent => return "-%",
+            .minus_percent_equal => return "-%=",
+            .minus_pipe => return "-|",
+            .minus_pipe_equal => return "-|=",
+            .asterisk => return "*",
+            .asterisk_equal => return "*=",
+            .asterisk_asterisk => return "**",
+            .asterisk_percent => return "*%",
+            .asterisk_percent_equal => return "*%=",
+            .asterisk_pipe => return "*|",
+            .asterisk_pipe_equal => return "*|=",
+            .arrow => return "->",
+            .colon => return ":",
+            .slash => return "/",
+            .slash_equal => return "/=",
+            .comma => return ",",
+            .ampersand => return "&",
+            .ampersand_equal => return "&=",
+            .question_mark => return "?",
+            .angle_bracket_left => return "<",
+            .angle_bracket_left_equal => return "<=",
+            .angle_bracket_angle_bracket_left => return "<<",
+            .angle_bracket_angle_bracket_left_equal => return "<<=",
+            .angle_bracket_angle_bracket_left_pipe => return "<<|",
+            .angle_bracket_angle_bracket_left_pipe_equal => return "<<|=",
+            .angle_bracket_right => return ">",
+            .angle_bracket_right_equal => return ">=",
+            .angle_bracket_angle_bracket_right => return ">>",
+            .angle_bracket_angle_bracket_right_equal => return ">>=",
+            .tilde => return "~",
+            .keyword_addrspace => return "addrspace",
+            .keyword_align => return "align",
+            .keyword_allowzero => return "allowzero",
+            .keyword_and => return "and",
+            .keyword_anyframe => return "anyframe",
+            .keyword_anytype => return "anytype",
+            .keyword_asm => return "asm",
+            .keyword_async => return "async",
+            .keyword_await => return "await",
+            .keyword_break => return "break",
+            .keyword_callconv => return "callconv",
+            .keyword_catch => return "catch",
+            .keyword_comptime => return "comptime",
+            .keyword_const => return "const",
+            .keyword_continue => return "continue",
+            .keyword_defer => return "defer",
+            .keyword_else => return "else",
+            .keyword_enum => return "enum",
+            .keyword_errdefer => return "errdefer",
+            .keyword_error => return "error",
+            .keyword_export => return "export",
+            .keyword_extern => return "extern",
+            .keyword_fn => return "fn",
+            .keyword_for => return "for",
+            .keyword_if => return "if",
+            .keyword_inline => return "inline",
+            .keyword_noalias => return "noalias",
+            .keyword_noinline => return "noinline",
+            .keyword_nosuspend => return "nosuspend",
+            .keyword_opaque => return "opaque",
+            .keyword_or => return "or",
+            .keyword_orelse => return "orelse",
+            .keyword_packed => return "packed",
+            .keyword_pub => return "pub",
+            .keyword_resume => return "resume",
+            .keyword_return => return "return",
+            .keyword_linksection => return "linksection",
+            .keyword_struct => return "struct",
+            .keyword_suspend => return "suspend",
+            .keyword_switch => return "switch",
+            .keyword_test => return "test",
+            .keyword_threadlocal => return "threadlocal",
+            .keyword_try => return "try",
+            .keyword_union => return "union",
+            .keyword_unreachable => return "unreachable",
+            .keyword_usingnamespace => return "usingnamespace",
+            .keyword_var => return "var",
+            .keyword_volatile => return "volatile",
+            .keyword_while => return "while",
+            else => return null,
+        }
     }
-    pub fn typeTypeName(comptime id: TypeId) []const u8 {
-        return switch (id) {
-            .Type => "type",
-            .Void => "void",
-            .Bool => "bool",
-            .NoReturn => "noreturn",
-            .Int => "integer",
-            .Float => "float",
-            .Pointer => "pointer",
-            .Array => "array",
-            .Struct => "struct",
-            .ComptimeFloat => "comptime_float",
-            .ComptimeInt => "comptime_int",
-            .Undefined => "undefined",
-            .Null => "null",
-            .Optional => "optional",
-            .ErrorUnion => "error union",
-            .ErrorSet => "error set",
-            .Enum => "enum",
-            .Union => "union",
-            .Fn => "function",
-            .Opaque => "opaque",
-            .Frame => "frame",
-            .AnyFrame => "anyframe",
-            .Vector => "vector",
-            .EnumLiteral => "enum literal",
-        };
+    pub fn symbol(tag: Token.Tag) []const u8 {
+        switch (tag) {
+            .invalid => return "invalid bytes",
+            .identifier => return "an identifier",
+            .char_literal => return "a character literal",
+            .eof => return "EOF",
+            .builtin => return "a builtin function",
+            .number_literal => return "a number literal",
+            .string_literal,
+            .multiline_string_literal_line,
+            => return "a string literal",
+            .doc_comment,
+            .container_doc_comment,
+            => return "a document comment",
+            else => return tag.lexeme(),
+        }
     }
-    pub fn typeDeclSpecifier(comptime type_info: Type) []const u8 {
-        return switch (type_info) {
-            .Array, .Pointer, .Optional => {
-                const type_name: []const u8 = @typeName(@Type(type_info));
-                const child_type_name: []const u8 = @typeName(@field(type_info, @tagName(type_info)).child);
-                return type_name[0 .. type_name.len -% child_type_name.len];
-            },
-            .Enum => |enum_info| {
-                return "enum(" ++ @typeName(enum_info.tag_type) ++ ")";
-            },
-            .Struct => |struct_info| {
-                switch (struct_info.layout) {
-                    .Packed => {
-                        if (struct_info.backing_integer) |backing_integer| {
-                            return "packed struct(" ++ @typeName(backing_integer) ++ ")";
-                        } else {
-                            return "packed struct";
-                        }
-                    },
-                    .Extern => return "extern struct",
-                    .Auto => return "struct",
+    pub fn keyword(str: []const u8) ?Token.Tag {
+        lo: for (keywords) |kv| {
+            if (kv[0].len != str.len) {
+                continue;
+            }
+            for (str, kv[0]) |x, y| {
+                if (x != y) {
+                    continue :lo;
                 }
-            },
-            .Union => |union_info| {
-                switch (union_info.layout) {
-                    .Packed => {
-                        if (union_info.tag_type != null) {
-                            return "packed union(enum)";
-                        } else {
-                            return "packed union";
-                        }
-                    },
-                    .Extern => return "extern union",
-                    .Auto => {
-                        if (union_info.tag_type != null) {
-                            return "union(enum)";
-                        } else {
-                            return "union";
-                        }
-                    },
-                }
-            },
-            .Opaque => "opaque",
-            .ErrorSet => "error",
-            else => @compileError(@typeName(@Type(type_info))),
-        };
+            }
+            return kv[1];
+        }
+        return null;
     }
 };
-// These are defined by the library builder
-const root_src_file: [:0]const u8 = define("root_src_file", [:0]const u8, undefined);
 /// Return an absolute path to a project file.
 pub fn absolutePath(comptime relative: [:0]const u8) [:0]const u8 {
     return root.build_root ++ "/" ++ relative;
@@ -2047,707 +2376,6 @@ pub fn VirtualAddressSpace() type {
         );
     }
     return root.AddressSpace;
-}
-pub const SignalHandlers = packed struct {
-    /// Report receipt of signal 11 SIGSEGV.
-    SegmentationFault: bool,
-    /// Report receipt of signal 4 SIGILL.
-    IllegalInstruction: bool,
-    /// Report receipt of signal 7 SIGBUS.
-    BusError: bool,
-    /// Report receipt of signal 8 SIGFPE.
-    FloatingPointError: bool,
-    /// Report receipt of signal 5 SIGTRAP.
-    Trap: bool,
-};
-pub const SignalAlternateStack = struct {
-    /// Address of lowest mapped byte of alternate stack.
-    addr: u64 = 0x3f000000,
-    /// Initial mapping length of alternate stack.
-    len: u64 = 0x1000000,
-};
-pub const Trace = struct {
-    /// Show trace on alarm.
-    Error: bool = false,
-    /// Show trace on panic.
-    Fault: bool = true,
-    /// Show trace on signal.
-    Signal: bool = true,
-    /// Control output formatting.
-    options: Options = .{},
-    pub const Options = struct {
-        /// Unwind this many frames. max_depth = 0 is unlimited.
-        max_depth: u8 = 0,
-        /// Write this many lines of source code context.
-        context_line_count: u8 = 0,
-        /// Allow this many blank lines between source code contexts.
-        break_line_count: u8 = 0,
-        /// Show the source line number on source lines.
-        show_line_no: bool = true,
-        /// Show the program counter on the caret line.
-        show_pc_addr: bool = false,
-        /// Control sidebar inclusion and appearance.
-        write_sidebar: bool = true,
-        /// Write extra line to indicate column.
-        write_caret: bool = true,
-        /// Define composition of stack trace text.
-        tokens: Tokens = .{},
-        pub const Tokens = struct {
-            /// Apply this style to the line number text.
-            line_no: ?[]const u8 = null,
-            /// Apply this style to the program counter address text.
-            pc_addr: ?[]const u8 = null,
-            /// Separate context information from sidebar with this text.
-            sidebar: []const u8 = "|",
-            /// Substitute absent `line_no` or `pc_addr` address with this text.
-            sidebar_fill: []const u8 = " ",
-            /// Indicate column number with this text.
-            caret: []const u8 = tab.fx.color.fg.light_green ++ "^" ++ tab.fx.none,
-            /// Fill text between `sidebar` and `caret` with this character.
-            caret_fill: []const u8 = " ",
-            /// Apply style for non-token text (comments)
-            comment: ?[]const u8 = null,
-            /// Apply `style` to every Zig token tag in `tags`.
-            syntax: ?[]const Mapping = null,
-            pub const Mapping = struct {
-                style: []const u8 = "",
-                tags: []const zig.Token.Tag = meta.tagList(zig.Token.Tag),
-            };
-        };
-    };
-};
-pub const Logging = packed struct {
-    pub const Default = packed struct {
-        /// Report attempted actions
-        Attempt: bool,
-        /// Report major successful actions
-        Success: bool,
-        /// Report actions which acquire a finite resource
-        Acquire: bool,
-        /// Report actions which release a finite resource
-        Release: bool,
-        /// Report actions which throw an error
-        Error: bool,
-        /// Report actions which terminate the program
-        Fault: bool,
-    };
-    pub const Override = struct {
-        /// Report attempted actions
-        Attempt: ?bool = null,
-        /// Report major successful actions
-        Success: ?bool = null,
-        /// Report actions which acquire a finite resource
-        Acquire: ?bool = null,
-        /// Report actions which release a finite resource
-        Release: ?bool = null,
-        /// Report actions which throw an error
-        Error: ?bool = null,
-        /// Report actions which terminate the program
-        Fault: ?bool = null,
-    };
-    pub const AttemptError = packed struct(u2) {
-        Attempt: bool = logging_default.Attempt,
-        Error: bool = logging_default.Error,
-        pub fn override(comptime logging: AttemptError) AttemptError {
-            comptime return .{
-                .Attempt = logging_override.Attempt orelse logging.Attempt,
-                .Error = logging_override.Error orelse logging.Error,
-            };
-        }
-    };
-    pub const SuccessError = packed struct(u2) {
-        Success: bool = logging_default.Success,
-        Error: bool = logging_default.Error,
-        pub fn override(comptime logging: SuccessError) SuccessError {
-            comptime return .{
-                .Success = logging_override.Success orelse logging.Success,
-                .Error = logging_override.Error orelse logging.Error,
-            };
-        }
-    };
-    pub const AttemptSuccessError = packed struct(u3) {
-        Attempt: bool = logging_default.Attempt,
-        Success: bool = logging_default.Success,
-        Error: bool = logging_default.Error,
-        pub fn override(comptime logging: AttemptSuccessError) AttemptSuccessError {
-            comptime return .{
-                .Attempt = logging_override.Attempt orelse logging.Attempt,
-                .Success = logging_override.Success orelse logging.Success,
-                .Error = logging_override.Error orelse logging.Error,
-            };
-        }
-    };
-    pub const AcquireError = packed struct(u2) {
-        Acquire: bool = logging_default.Acquire,
-        Error: bool = logging_default.Error,
-        pub fn override(comptime logging: AcquireError) AcquireError {
-            comptime return .{
-                .Acquire = logging_override.Acquire orelse logging.Acquire,
-                .Error = logging_override.Error orelse logging.Error,
-            };
-        }
-    };
-    pub const AttemptAcquireError = packed struct(u3) {
-        Attempt: bool = logging_default.Attempt,
-        Acquire: bool = logging_default.Acquire,
-        Error: bool = logging_default.Error,
-        pub fn override(comptime logging: AttemptAcquireError) AttemptAcquireError {
-            comptime return .{
-                .Attempt = logging_override.Attempt orelse logging.Attempt,
-                .Acquire = logging_override.Acquire orelse logging.Acquire,
-                .Error = logging_override.Error orelse logging.Error,
-            };
-        }
-    };
-    pub const SuccessAcquireError = packed struct(u3) {
-        Success: bool = logging_default.Success,
-        Acquire: bool = logging_default.Acquire,
-        Error: bool = logging_default.Error,
-        pub fn override(comptime logging: SuccessAcquireError) SuccessAcquireError {
-            comptime return .{
-                .Success = logging_override.Success orelse logging.Success,
-                .Acquire = logging_override.Acquire orelse logging.Acquire,
-                .Error = logging_override.Error orelse logging.Error,
-            };
-        }
-    };
-    pub const AttemptSuccessAcquireError = packed struct(u4) {
-        Attempt: bool = logging_default.Attempt,
-        Success: bool = logging_default.Success,
-        Acquire: bool = logging_default.Acquire,
-        Error: bool = logging_default.Error,
-        pub fn override(comptime logging: AttemptSuccessAcquireError) AttemptSuccessAcquireError {
-            comptime return .{
-                .Attempt = logging_override.Attempt orelse logging.Attempt,
-                .Success = logging_override.Success orelse logging.Success,
-                .Acquire = logging_override.Acquire orelse logging.Acquire,
-                .Error = logging_override.Error orelse logging.Error,
-            };
-        }
-    };
-    pub const ReleaseError = packed struct(u2) {
-        Release: bool = logging_default.Release,
-        Error: bool = logging_default.Error,
-        pub fn override(comptime logging: ReleaseError) ReleaseError {
-            comptime return .{
-                .Release = logging_override.Release orelse logging.Release,
-                .Error = logging_override.Error orelse logging.Error,
-            };
-        }
-    };
-    pub const AttemptReleaseError = packed struct(u3) {
-        Attempt: bool = logging_default.Attempt,
-        Release: bool = logging_default.Release,
-        Error: bool = logging_default.Error,
-        pub fn override(comptime logging: AttemptReleaseError) AttemptReleaseError {
-            comptime return .{
-                .Attempt = logging_override.Attempt orelse logging.Attempt,
-                .Release = logging_override.Release orelse logging.Release,
-                .Error = logging_override.Error orelse logging.Error,
-            };
-        }
-    };
-    pub const SuccessReleaseError = packed struct(u3) {
-        Success: bool = logging_default.Success,
-        Release: bool = logging_default.Release,
-        Error: bool = logging_default.Error,
-        pub fn override(comptime logging: SuccessReleaseError) SuccessReleaseError {
-            comptime return .{
-                .Success = logging_override.Success orelse logging.Success,
-                .Release = logging_override.Release orelse logging.Release,
-                .Error = logging_override.Error orelse logging.Error,
-            };
-        }
-    };
-    pub const AttemptSuccessReleaseError = packed struct(u4) {
-        Attempt: bool = logging_default.Attempt,
-        Success: bool = logging_default.Success,
-        Release: bool = logging_default.Release,
-        Error: bool = logging_default.Error,
-        pub fn override(comptime logging: AttemptSuccessReleaseError) AttemptSuccessReleaseError {
-            comptime return .{
-                .Attempt = logging_override.Attempt orelse logging.Attempt,
-                .Success = logging_override.Success orelse logging.Success,
-                .Release = logging_override.Release orelse logging.Release,
-                .Error = logging_override.Error orelse logging.Error,
-            };
-        }
-    };
-    pub const AcquireReleaseError = packed struct(u3) {
-        Acquire: bool = logging_default.Acquire,
-        Release: bool = logging_default.Release,
-        Error: bool = logging_default.Error,
-        pub fn override(comptime logging: AcquireReleaseError) AcquireReleaseError {
-            comptime return .{
-                .Acquire = logging_override.Acquire orelse logging.Acquire,
-                .Release = logging_override.Release orelse logging.Release,
-                .Error = logging_override.Error orelse logging.Error,
-            };
-        }
-    };
-    pub const AttemptAcquireReleaseError = packed struct(u4) {
-        Attempt: bool = logging_default.Attempt,
-        Acquire: bool = logging_default.Acquire,
-        Release: bool = logging_default.Release,
-        Error: bool = logging_default.Error,
-        pub fn override(comptime logging: AttemptAcquireReleaseError) AttemptAcquireReleaseError {
-            comptime return .{
-                .Attempt = logging_override.Attempt orelse logging.Attempt,
-                .Acquire = logging_override.Acquire orelse logging.Acquire,
-                .Release = logging_override.Release orelse logging.Release,
-                .Error = logging_override.Error orelse logging.Error,
-            };
-        }
-    };
-    pub const SuccessAcquireReleaseError = packed struct(u4) {
-        Success: bool = logging_default.Success,
-        Acquire: bool = logging_default.Acquire,
-        Release: bool = logging_default.Release,
-        Error: bool = logging_default.Error,
-        pub fn override(comptime logging: SuccessAcquireReleaseError) SuccessAcquireReleaseError {
-            comptime return .{
-                .Success = logging_override.Success orelse logging.Success,
-                .Acquire = logging_override.Acquire orelse logging.Acquire,
-                .Release = logging_override.Release orelse logging.Release,
-                .Error = logging_override.Error orelse logging.Error,
-            };
-        }
-    };
-    pub const AttemptSuccessAcquireReleaseError = packed struct(u5) {
-        Attempt: bool = logging_default.Attempt,
-        Success: bool = logging_default.Success,
-        Acquire: bool = logging_default.Acquire,
-        Release: bool = logging_default.Release,
-        Error: bool = logging_default.Error,
-        pub fn override(comptime logging: AttemptSuccessAcquireReleaseError) AttemptSuccessAcquireReleaseError {
-            comptime return .{
-                .Attempt = logging_override.Attempt orelse logging.Attempt,
-                .Success = logging_override.Success orelse logging.Success,
-                .Acquire = logging_override.Acquire orelse logging.Acquire,
-                .Release = logging_override.Release orelse logging.Release,
-                .Error = logging_override.Error orelse logging.Error,
-            };
-        }
-    };
-    pub const AttemptFault = packed struct(u2) {
-        Attempt: bool = logging_default.Attempt,
-        Fault: bool = logging_default.Fault,
-        pub fn override(comptime logging: AttemptFault) AttemptFault {
-            comptime return .{
-                .Attempt = logging_override.Attempt orelse logging.Attempt,
-                .Fault = logging_override.Fault orelse logging.Fault,
-            };
-        }
-    };
-    pub const SuccessFault = packed struct(u2) {
-        Success: bool = logging_default.Success,
-        Fault: bool = logging_default.Fault,
-        pub fn override(comptime logging: SuccessFault) SuccessFault {
-            comptime return .{
-                .Success = logging_override.Success orelse logging.Success,
-                .Fault = logging_override.Fault orelse logging.Fault,
-            };
-        }
-    };
-    pub const AttemptSuccessFault = packed struct(u3) {
-        Attempt: bool = logging_default.Attempt,
-        Success: bool = logging_default.Success,
-        Fault: bool = logging_default.Fault,
-        pub fn override(comptime logging: AttemptSuccessFault) AttemptSuccessFault {
-            comptime return .{
-                .Attempt = logging_override.Attempt orelse logging.Attempt,
-                .Success = logging_override.Success orelse logging.Success,
-                .Fault = logging_override.Fault orelse logging.Fault,
-            };
-        }
-    };
-    pub const AcquireFault = packed struct(u2) {
-        Acquire: bool = logging_default.Acquire,
-        Fault: bool = logging_default.Fault,
-        pub fn override(comptime logging: AcquireFault) AcquireFault {
-            comptime return .{
-                .Acquire = logging_override.Acquire orelse logging.Acquire,
-                .Fault = logging_override.Fault orelse logging.Fault,
-            };
-        }
-    };
-    pub const AttemptAcquireFault = packed struct(u3) {
-        Attempt: bool = logging_default.Attempt,
-        Acquire: bool = logging_default.Acquire,
-        Fault: bool = logging_default.Fault,
-        pub fn override(comptime logging: AttemptAcquireFault) AttemptAcquireFault {
-            comptime return .{
-                .Attempt = logging_override.Attempt orelse logging.Attempt,
-                .Acquire = logging_override.Acquire orelse logging.Acquire,
-                .Fault = logging_override.Fault orelse logging.Fault,
-            };
-        }
-    };
-    pub const SuccessAcquireFault = packed struct(u3) {
-        Success: bool = logging_default.Success,
-        Acquire: bool = logging_default.Acquire,
-        Fault: bool = logging_default.Fault,
-        pub fn override(comptime logging: SuccessAcquireFault) SuccessAcquireFault {
-            comptime return .{
-                .Success = logging_override.Success orelse logging.Success,
-                .Acquire = logging_override.Acquire orelse logging.Acquire,
-                .Fault = logging_override.Fault orelse logging.Fault,
-            };
-        }
-    };
-    pub const AttemptSuccessAcquireFault = packed struct(u4) {
-        Attempt: bool = logging_default.Attempt,
-        Success: bool = logging_default.Success,
-        Acquire: bool = logging_default.Acquire,
-        Fault: bool = logging_default.Fault,
-        pub fn override(comptime logging: AttemptSuccessAcquireFault) AttemptSuccessAcquireFault {
-            comptime return .{
-                .Attempt = logging_override.Attempt orelse logging.Attempt,
-                .Success = logging_override.Success orelse logging.Success,
-                .Acquire = logging_override.Acquire orelse logging.Acquire,
-                .Fault = logging_override.Fault orelse logging.Fault,
-            };
-        }
-    };
-    pub const ReleaseFault = packed struct(u2) {
-        Release: bool = logging_default.Release,
-        Fault: bool = logging_default.Fault,
-        pub fn override(comptime logging: ReleaseFault) ReleaseFault {
-            comptime return .{
-                .Release = logging_override.Release orelse logging.Release,
-                .Fault = logging_override.Fault orelse logging.Fault,
-            };
-        }
-    };
-    pub const AttemptReleaseFault = packed struct(u3) {
-        Attempt: bool = logging_default.Attempt,
-        Release: bool = logging_default.Release,
-        Fault: bool = logging_default.Fault,
-        pub fn override(comptime logging: AttemptReleaseFault) AttemptReleaseFault {
-            comptime return .{
-                .Attempt = logging_override.Attempt orelse logging.Attempt,
-                .Release = logging_override.Release orelse logging.Release,
-                .Fault = logging_override.Fault orelse logging.Fault,
-            };
-        }
-    };
-    pub const SuccessReleaseFault = packed struct(u3) {
-        Success: bool = logging_default.Success,
-        Release: bool = logging_default.Release,
-        Fault: bool = logging_default.Fault,
-        pub fn override(comptime logging: SuccessReleaseFault) SuccessReleaseFault {
-            comptime return .{
-                .Success = logging_override.Success orelse logging.Success,
-                .Release = logging_override.Release orelse logging.Release,
-                .Fault = logging_override.Fault orelse logging.Fault,
-            };
-        }
-    };
-    pub const AttemptSuccessReleaseFault = packed struct(u4) {
-        Attempt: bool = logging_default.Attempt,
-        Success: bool = logging_default.Success,
-        Release: bool = logging_default.Release,
-        Fault: bool = logging_default.Fault,
-        pub fn override(comptime logging: AttemptSuccessReleaseFault) AttemptSuccessReleaseFault {
-            comptime return .{
-                .Attempt = logging_override.Attempt orelse logging.Attempt,
-                .Success = logging_override.Success orelse logging.Success,
-                .Release = logging_override.Release orelse logging.Release,
-                .Fault = logging_override.Fault orelse logging.Fault,
-            };
-        }
-    };
-    pub const AcquireReleaseFault = packed struct(u3) {
-        Acquire: bool = logging_default.Acquire,
-        Release: bool = logging_default.Release,
-        Fault: bool = logging_default.Fault,
-        pub fn override(comptime logging: AcquireReleaseFault) AcquireReleaseFault {
-            comptime return .{
-                .Acquire = logging_override.Acquire orelse logging.Acquire,
-                .Release = logging_override.Release orelse logging.Release,
-                .Fault = logging_override.Fault orelse logging.Fault,
-            };
-        }
-    };
-    pub const AttemptAcquireReleaseFault = packed struct(u4) {
-        Attempt: bool = logging_default.Attempt,
-        Acquire: bool = logging_default.Acquire,
-        Release: bool = logging_default.Release,
-        Fault: bool = logging_default.Fault,
-        pub fn override(comptime logging: AttemptAcquireReleaseFault) AttemptAcquireReleaseFault {
-            comptime return .{
-                .Attempt = logging_override.Attempt orelse logging.Attempt,
-                .Acquire = logging_override.Acquire orelse logging.Acquire,
-                .Release = logging_override.Release orelse logging.Release,
-                .Fault = logging_override.Fault orelse logging.Fault,
-            };
-        }
-    };
-    pub const SuccessAcquireReleaseFault = packed struct(u4) {
-        Success: bool = logging_default.Success,
-        Acquire: bool = logging_default.Acquire,
-        Release: bool = logging_default.Release,
-        Fault: bool = logging_default.Fault,
-        pub fn override(comptime logging: SuccessAcquireReleaseFault) SuccessAcquireReleaseFault {
-            comptime return .{
-                .Success = logging_override.Success orelse logging.Success,
-                .Acquire = logging_override.Acquire orelse logging.Acquire,
-                .Release = logging_override.Release orelse logging.Release,
-                .Fault = logging_override.Fault orelse logging.Fault,
-            };
-        }
-    };
-    pub const AttemptSuccessAcquireReleaseFault = packed struct(u5) {
-        Attempt: bool = logging_default.Attempt,
-        Success: bool = logging_default.Success,
-        Acquire: bool = logging_default.Acquire,
-        Release: bool = logging_default.Release,
-        Fault: bool = logging_default.Fault,
-        pub fn override(comptime logging: AttemptSuccessAcquireReleaseFault) AttemptSuccessAcquireReleaseFault {
-            comptime return .{
-                .Attempt = logging_override.Attempt orelse logging.Attempt,
-                .Success = logging_override.Success orelse logging.Success,
-                .Acquire = logging_override.Acquire orelse logging.Acquire,
-                .Release = logging_override.Release orelse logging.Release,
-                .Fault = logging_override.Fault orelse logging.Fault,
-            };
-        }
-    };
-    pub const ErrorFault = packed struct(u2) {
-        Error: bool = logging_default.Error,
-        Fault: bool = logging_default.Fault,
-        pub fn override(comptime logging: ErrorFault) ErrorFault {
-            comptime return .{
-                .Error = logging_override.Error orelse logging.Error,
-                .Fault = logging_override.Fault orelse logging.Fault,
-            };
-        }
-    };
-    pub const AttemptErrorFault = packed struct(u3) {
-        Attempt: bool = logging_default.Attempt,
-        Error: bool = logging_default.Error,
-        Fault: bool = logging_default.Fault,
-        pub fn override(comptime logging: AttemptErrorFault) AttemptErrorFault {
-            comptime return .{
-                .Attempt = logging_override.Attempt orelse logging.Attempt,
-                .Error = logging_override.Error orelse logging.Error,
-                .Fault = logging_override.Fault orelse logging.Fault,
-            };
-        }
-    };
-    pub const SuccessErrorFault = packed struct(u3) {
-        Success: bool = logging_default.Success,
-        Error: bool = logging_default.Error,
-        Fault: bool = logging_default.Fault,
-        pub fn override(comptime logging: SuccessErrorFault) SuccessErrorFault {
-            comptime return .{
-                .Success = logging_override.Success orelse logging.Success,
-                .Error = logging_override.Error orelse logging.Error,
-                .Fault = logging_override.Fault orelse logging.Fault,
-            };
-        }
-    };
-    pub const AttemptSuccessErrorFault = packed struct(u4) {
-        Attempt: bool = logging_default.Attempt,
-        Success: bool = logging_default.Success,
-        Error: bool = logging_default.Error,
-        Fault: bool = logging_default.Fault,
-        pub fn override(comptime logging: AttemptSuccessErrorFault) AttemptSuccessErrorFault {
-            comptime return .{
-                .Attempt = logging_override.Attempt orelse logging.Attempt,
-                .Success = logging_override.Success orelse logging.Success,
-                .Error = logging_override.Error orelse logging.Error,
-                .Fault = logging_override.Fault orelse logging.Fault,
-            };
-        }
-    };
-    pub const AcquireErrorFault = packed struct(u3) {
-        Acquire: bool = logging_default.Acquire,
-        Error: bool = logging_default.Error,
-        Fault: bool = logging_default.Fault,
-        pub fn override(comptime logging: AcquireErrorFault) AcquireErrorFault {
-            comptime return .{
-                .Acquire = logging_override.Acquire orelse logging.Acquire,
-                .Error = logging_override.Error orelse logging.Error,
-                .Fault = logging_override.Fault orelse logging.Fault,
-            };
-        }
-    };
-    pub const AttemptAcquireErrorFault = packed struct(u4) {
-        Attempt: bool = logging_default.Attempt,
-        Acquire: bool = logging_default.Acquire,
-        Error: bool = logging_default.Error,
-        Fault: bool = logging_default.Fault,
-        pub fn override(comptime logging: AttemptAcquireErrorFault) AttemptAcquireErrorFault {
-            comptime return .{
-                .Attempt = logging_override.Attempt orelse logging.Attempt,
-                .Acquire = logging_override.Acquire orelse logging.Acquire,
-                .Error = logging_override.Error orelse logging.Error,
-                .Fault = logging_override.Fault orelse logging.Fault,
-            };
-        }
-    };
-    pub const SuccessAcquireErrorFault = packed struct(u4) {
-        Success: bool = logging_default.Success,
-        Acquire: bool = logging_default.Acquire,
-        Error: bool = logging_default.Error,
-        Fault: bool = logging_default.Fault,
-        pub fn override(comptime logging: SuccessAcquireErrorFault) SuccessAcquireErrorFault {
-            comptime return .{
-                .Success = logging_override.Success orelse logging.Success,
-                .Acquire = logging_override.Acquire orelse logging.Acquire,
-                .Error = logging_override.Error orelse logging.Error,
-                .Fault = logging_override.Fault orelse logging.Fault,
-            };
-        }
-    };
-    pub const AttemptSuccessAcquireErrorFault = packed struct(u5) {
-        Attempt: bool = logging_default.Attempt,
-        Success: bool = logging_default.Success,
-        Acquire: bool = logging_default.Acquire,
-        Error: bool = logging_default.Error,
-        Fault: bool = logging_default.Fault,
-        pub fn override(comptime logging: AttemptSuccessAcquireErrorFault) AttemptSuccessAcquireErrorFault {
-            comptime return .{
-                .Attempt = logging_override.Attempt orelse logging.Attempt,
-                .Success = logging_override.Success orelse logging.Success,
-                .Acquire = logging_override.Acquire orelse logging.Acquire,
-                .Error = logging_override.Error orelse logging.Error,
-                .Fault = logging_override.Fault orelse logging.Fault,
-            };
-        }
-    };
-    pub const ReleaseErrorFault = packed struct(u3) {
-        Release: bool = logging_default.Release,
-        Error: bool = logging_default.Error,
-        Fault: bool = logging_default.Fault,
-        pub fn override(comptime logging: ReleaseErrorFault) ReleaseErrorFault {
-            comptime return .{
-                .Release = logging_override.Release orelse logging.Release,
-                .Error = logging_override.Error orelse logging.Error,
-                .Fault = logging_override.Fault orelse logging.Fault,
-            };
-        }
-    };
-    pub const AttemptReleaseErrorFault = packed struct(u4) {
-        Attempt: bool = logging_default.Attempt,
-        Release: bool = logging_default.Release,
-        Error: bool = logging_default.Error,
-        Fault: bool = logging_default.Fault,
-        pub fn override(comptime logging: AttemptReleaseErrorFault) AttemptReleaseErrorFault {
-            comptime return .{
-                .Attempt = logging_override.Attempt orelse logging.Attempt,
-                .Release = logging_override.Release orelse logging.Release,
-                .Error = logging_override.Error orelse logging.Error,
-                .Fault = logging_override.Fault orelse logging.Fault,
-            };
-        }
-    };
-    pub const SuccessReleaseErrorFault = packed struct(u4) {
-        Success: bool = logging_default.Success,
-        Release: bool = logging_default.Release,
-        Error: bool = logging_default.Error,
-        Fault: bool = logging_default.Fault,
-        pub fn override(comptime logging: SuccessReleaseErrorFault) SuccessReleaseErrorFault {
-            comptime return .{
-                .Success = logging_override.Success orelse logging.Success,
-                .Release = logging_override.Release orelse logging.Release,
-                .Error = logging_override.Error orelse logging.Error,
-                .Fault = logging_override.Fault orelse logging.Fault,
-            };
-        }
-    };
-    pub const AttemptSuccessReleaseErrorFault = packed struct(u5) {
-        Attempt: bool = logging_default.Attempt,
-        Success: bool = logging_default.Success,
-        Release: bool = logging_default.Release,
-        Error: bool = logging_default.Error,
-        Fault: bool = logging_default.Fault,
-        pub fn override(comptime logging: AttemptSuccessReleaseErrorFault) AttemptSuccessReleaseErrorFault {
-            comptime return .{
-                .Attempt = logging_override.Attempt orelse logging.Attempt,
-                .Success = logging_override.Success orelse logging.Success,
-                .Release = logging_override.Release orelse logging.Release,
-                .Error = logging_override.Error orelse logging.Error,
-                .Fault = logging_override.Fault orelse logging.Fault,
-            };
-        }
-    };
-    pub const AcquireReleaseErrorFault = packed struct(u4) {
-        Acquire: bool = logging_default.Acquire,
-        Release: bool = logging_default.Release,
-        Error: bool = logging_default.Error,
-        Fault: bool = logging_default.Fault,
-        pub fn override(comptime logging: AcquireReleaseErrorFault) AcquireReleaseErrorFault {
-            comptime return .{
-                .Acquire = logging_override.Acquire orelse logging.Acquire,
-                .Release = logging_override.Release orelse logging.Release,
-                .Error = logging_override.Error orelse logging.Error,
-                .Fault = logging_override.Fault orelse logging.Fault,
-            };
-        }
-    };
-    pub const AttemptAcquireReleaseErrorFault = packed struct(u5) {
-        Attempt: bool = logging_default.Attempt,
-        Acquire: bool = logging_default.Acquire,
-        Release: bool = logging_default.Release,
-        Error: bool = logging_default.Error,
-        Fault: bool = logging_default.Fault,
-        pub fn override(comptime logging: AttemptAcquireReleaseErrorFault) AttemptAcquireReleaseErrorFault {
-            comptime return .{
-                .Attempt = logging_override.Attempt orelse logging.Attempt,
-                .Acquire = logging_override.Acquire orelse logging.Acquire,
-                .Release = logging_override.Release orelse logging.Release,
-                .Error = logging_override.Error orelse logging.Error,
-                .Fault = logging_override.Fault orelse logging.Fault,
-            };
-        }
-    };
-    pub fn Field(comptime Spec: type) type {
-        return @TypeOf(@field(@as(Spec, undefined), "logging"));
-    }
-};
-pub fn loggingTypes() []const type {
-    var ret: []const type = &.{};
-    var bits: u6 = 0;
-    while (true) : (bits +%= 1) {
-        var fields: @TypeOf(@typeInfo(Logging.Default).Struct.fields) = &.{};
-        const logging: Logging.Default = @as(Logging.Default, @bitCast(bits));
-        inline for (@typeInfo(Logging.Default).Struct.fields) |field| {
-            if (@field(logging, field.name)) {
-                fields = fields ++ .{field};
-            }
-        }
-        if (@popCount(bits) <= 1) {
-            continue;
-        }
-        if (!logging.Error and !logging.Fault) {
-            continue;
-        }
-        ret = ret ++ .{@Type(.{ .Struct = .{
-            .layout = .Packed,
-            .fields = fields,
-            .decls = &.{},
-            .is_tuple = false,
-        } })};
-        if (logging.Acquire and logging.Release and
-            logging.Attempt and logging.Error and logging.Fault)
-        {
-            break;
-        }
-    }
-    return ret;
-}
-pub fn define(comptime symbol: []const u8, comptime T: type, comptime default: T) T {
-    if (@hasDecl(root, symbol)) {
-        return @field(root, symbol);
-    }
-    if (@typeInfo(@TypeOf(default)) != .Fn) {
-        return default;
-    }
-    if (@TypeOf(default) != T) {
-        return @call(.auto, default, .{});
-    }
 }
 pub const Version = struct {
     major: u32,
@@ -2849,97 +2477,406 @@ pub const Version = struct {
         };
     }
 };
-fn Src() type {
-    const S = @TypeOf(@src());
-    return S;
-}
 fn Overflow(comptime T: type) type {
-    const S = struct { T, u1 };
-    return S;
+    return struct { T, u1 };
 }
-pub const SourceLocation = Src();
-pub const Mode = @TypeOf(builtin.mode);
-pub const Type = @TypeOf(@typeInfo(void));
-pub const TypeId = @typeInfo(Type).Union.tag_type.?;
-pub const Endian = @TypeOf(builtin.cpu.arch.endian());
-pub const Signedness = @TypeOf(@as(Type.Int, undefined).signedness);
-pub const StackTrace = @typeInfo(@typeInfo(@TypeOf(@errorReturnTrace())).Optional.child).Pointer.child;
-pub const CallingConvention = @TypeOf(@typeInfo(fn () noreturn).Fn.calling_convention);
+pub const native_endian: zig.Endian = switch (builtin.cpu.arch) {
+    .avr,
+    .arm,
+    .aarch64_32,
+    .aarch64,
+    .amdgcn,
+    .amdil,
+    .amdil64,
+    .bpfel,
+    .csky,
+    .xtensa,
+    .hexagon,
+    .hsail,
+    .hsail64,
+    .kalimba,
+    .le32,
+    .le64,
+    .mipsel,
+    .mips64el,
+    .msp430,
+    .nvptx,
+    .nvptx64,
+    .sparcel,
+    .tcele,
+    .powerpcle,
+    .powerpc64le,
+    .r600,
+    .riscv32,
+    .riscv64,
+    .x86,
+    .x86_64,
+    .wasm32,
+    .wasm64,
+    .xcore,
+    .thumb,
+    .spir,
+    .spir64,
+    .renderscript32,
+    .renderscript64,
+    .shave,
+    .ve,
+    .spu_2,
+    .spirv32,
+    .spirv64,
+    .dxil,
+    .loongarch32,
+    .loongarch64,
+    => .Little,
+    .arc,
+    .armeb,
+    .aarch64_be,
+    .bpfeb,
+    .m68k,
+    .mips,
+    .mips64,
+    .powerpc,
+    .powerpc64,
+    .thumbeb,
+    .sparc,
+    .sparc64,
+    .tce,
+    .lanai,
+    .s390x,
+    => |tag| @compileError("Unsupported architecture: " ++ @tagName(tag)),
+};
+/// The following definitions must match the compiler definitions, or else bad things will happen.
+const zig = if (is_zig_lib) zig_lib else std_lib;
+const zig_lib = struct {
+    pub const StackTrace = struct { index: usize, instruction_addresses: []usize };
+    pub const GlobalLinkage = enum { Internal, Strong, Weak, LinkOnce };
+    pub const SymbolVisibility = enum { default, hidden, protected };
+    pub const AtomicOrder = enum { Unordered, Monotonic, Acquire, Release, AcqRel, SeqCst };
+    pub const ReduceOp = enum { And, Or, Xor, Min, Max, Add, Mul };
+    pub const AtomicRmwOp = enum { Xchg, Add, Sub, And, Nand, Or, Xor, Max, Min };
+    pub const CodeModel = enum { default, tiny, small, kernel, medium, large };
+    pub const OptimizeMode = enum { Debug, ReleaseSafe, ReleaseFast, ReleaseSmall };
+    pub const CallingConvention = enum(u8) {
+        /// This is the default Zig calling convention used when not using `export` on `fn`
+        /// and no other calling convention is specified.
+        Unspecified,
+        /// Matches the C ABI for the target.
+        /// This is the default calling convention when using `export` on `fn`
+        /// and no other calling convention is specified.
+        C,
+        /// This makes a function not have any function prologue or epilogue,
+        /// making the function itself uncallable in regular Zig code.
+        /// This can be useful when integrating with assembly.
+        Naked,
+        /// Functions with this calling convention are called asynchronously,
+        /// as if called as `async function()`.
+        Async,
+        /// Functions with this calling convention are inlined at all call sites.
+        Inline,
+        /// x86-only.
+        Interrupt,
+        Signal,
+        /// x86-only.
+        Stdcall,
+        /// x86-only.
+        Fastcall,
+        /// x86-only.
+        Vectorcall,
+        /// x86-only.
+        Thiscall,
+        /// ARM Procedure Call Standard (obsolete)
+        /// ARM-only.
+        APCS,
+        /// ARM Architecture Procedure Call Standard (current standard)
+        /// ARM-only.
+        AAPCS,
+        /// ARM Architecture Procedure Call Standard Vector Floating-Point
+        /// ARM-only.
+        AAPCSVFP,
+        /// x86-64-only.
+        SysV,
+        /// x86-64-only.
+        Win64,
+        /// AMD GPU, NVPTX, or SPIR-V kernel
+        Kernel,
+    };
+    pub const AddressSpace = enum(u5) {
+        // CPU address spaces.
+        generic,
+        gs,
+        fs,
+        ss,
+        // GPU address spaces.
+        global,
+        constant,
+        param,
+        shared,
+        local,
+        // AVR address spaces.
+        flash,
+        flash1,
+        flash2,
+        flash3,
+        flash4,
+        flash5,
+    };
+    pub const SourceLocation = struct {
+        file: [:0]const u8,
+        fn_name: [:0]const u8,
+        line: u32,
+        column: u32,
+    };
+    pub const TypeId = @typeInfo(Type).Union.tag_type.?;
+    pub const Type = union(enum) {
+        Type: void,
+        Void: void,
+        Bool: void,
+        NoReturn: void,
+        Int: Int,
+        Float: Float,
+        Pointer: Pointer,
+        Array: Array,
+        Struct: Struct,
+        ComptimeFloat: void,
+        ComptimeInt: void,
+        Undefined: void,
+        Null: void,
+        Optional: Optional,
+        ErrorUnion: ErrorUnion,
+        ErrorSet: ErrorSet,
+        Enum: Enum,
+        Union: Union,
+        Fn: Fn,
+        Opaque: Opaque,
+        Frame: Frame,
+        AnyFrame: AnyFrame,
+        Vector: Vector,
+        EnumLiteral: void,
+        pub const Int = struct { signedness: Signedness, bits: u16 };
+        pub const Float = struct { bits: u16 };
+        pub const Pointer = struct {
+            size: Size,
+            is_const: bool,
+            is_volatile: bool,
+            alignment: comptime_int,
+            address_space: AddressSpace,
+            child: type,
+            is_allowzero: bool,
+            sentinel: ?*const anyopaque,
+            pub const Size = enum(u2) { One, Many, Slice, C };
+        };
+        pub const Array = struct {
+            len: comptime_int,
+            child: type,
+            sentinel: ?*const anyopaque,
+        };
+        pub const ContainerLayout = enum(u2) { Auto, Extern, Packed };
+        pub const StructField = struct {
+            name: []const u8,
+            type: type,
+            default_value: ?*const anyopaque,
+            is_comptime: bool,
+            alignment: comptime_int,
+        };
+        pub const Struct = struct {
+            layout: ContainerLayout,
+            backing_integer: ?type = null,
+            fields: []const StructField,
+            decls: []const Declaration,
+            is_tuple: bool,
+        };
+        pub const Optional = struct { child: type };
+        pub const ErrorUnion = struct { error_set: type, payload: type };
+        pub const Error = struct { name: []const u8 };
+        pub const ErrorSet = ?[]const Error;
+        pub const EnumField = struct {
+            name: []const u8,
+            value: comptime_int,
+        };
+        pub const Enum = struct {
+            tag_type: type,
+            fields: []const EnumField,
+            decls: []const Declaration,
+            is_exhaustive: bool,
+        };
+        pub const UnionField = struct {
+            name: []const u8,
+            type: type,
+            alignment: comptime_int,
+        };
+        pub const Union = struct {
+            layout: ContainerLayout,
+            tag_type: ?type,
+            fields: []const UnionField,
+            decls: []const Declaration,
+        };
+        pub const Fn = struct {
+            calling_convention: CallingConvention,
+            alignment: comptime_int,
+            is_generic: bool,
+            is_var_args: bool,
+            return_type: ?type,
+            params: []const Param,
+            pub const Param = struct {
+                is_generic: bool,
+                is_noalias: bool,
+                type: ?type,
+            };
+        };
+        pub const Opaque = struct { decls: []const Declaration };
+        pub const Frame = struct { function: *const anyopaque };
+        pub const AnyFrame = struct { child: ?type };
+        pub const Vector = struct { len: comptime_int, child: type };
+        pub const Declaration = struct { name: []const u8, is_pub: bool };
+    };
+    pub const FloatMode = enum { Strict, Optimized };
+    pub const Endian = enum { Big, Little };
+    pub const Signedness = enum { signed, unsigned };
+    pub const OutputMode = enum { Exe, Lib, Obj };
+    pub const LinkMode = enum { Static, Dynamic };
+    pub const WasiExecModel = enum { command, reactor };
+    pub const CallModifier = enum {
+        /// Equivalent to function call syntax.
+        auto,
+        /// Equivalent to async keyword used with function call syntax.
+        async_kw,
+        /// Prevents tail call optimization. This guarantees that the return
+        /// address will point to the callsite, as opposed to the callsite's
+        /// callsite. If the call is otherwise required to be tail-called
+        /// or inlined, a compile error is emitted instead.
+        never_tail,
+        /// Guarantees that the call will not be inlined. If the call is
+        /// otherwise required to be inlined, a compile error is emitted instead.
+        never_inline,
+        /// Asserts that the function call will not suspend. This allows a
+        /// non-async function to call an async function.
+        no_async,
+        /// Guarantees that the call will be generated with tail call optimization.
+        /// If this is not possible, a compile error is emitted instead.
+        always_tail,
+        /// Guarantees that the call will be inlined at the callsite.
+        /// If this is not possible, a compile error is emitted instead.
+        always_inline,
+        /// Evaluates the call at compile-time. If the call cannot be completed at
+        /// compile-time, a compile error is emitted instead.
+        compile_time,
+    };
+    pub const VaListAarch64 = @compileError("VaList not supported");
+    pub const VaListHexagon = @compileError("VaList not supported");
+    pub const VaListPowerPc = @compileError("VaList not supported");
+    pub const VaListS390x = @compileError("VaList not supported");
+    pub const VaListX86_64 = @compileError("VaList not supported");
+    pub const VaList = @compileError("VaList not supported");
+    pub const PrefetchOptions = struct {
+        /// Whether the prefetch should prepare for a read or a write.
+        rw: Rw = .read,
+        /// The data's locality in an inclusive range from 0 to 3.
+        ///
+        /// 0 means no temporal locality. That is, the data can be immediately
+        /// dropped from the cache after it is accessed.
+        ///
+        /// 3 means high temporal locality. That is, the data should be kept in
+        /// the cache as it is likely to be accessed again soon.
+        locality: u2 = 3,
+        /// The cache that the prefetch should be performed on.
+        cache: Cache = .data,
+        pub const Rw = enum(u1) { read, write };
+        pub const Cache = enum(u1) { instruction, data };
+    };
+    pub const ExportOptions = struct {
+        name: []const u8,
+        linkage: GlobalLinkage = .Strong,
+        section: ?[]const u8 = null,
+        visibility: SymbolVisibility = .default,
+    };
+    pub const ExternOptions = struct {
+        name: []const u8,
+        library_name: ?[]const u8 = null,
+        linkage: GlobalLinkage = .Strong,
+        is_thread_local: bool = false,
+    };
+    pub const CompilerBackend = enum(u64) {
+        /// It is allowed for a compiler implementation to not reveal its identity,
+        /// in which case this value is appropriate. Be cool and make sure your
+        /// code supports `other` Zig compilers!
+        other = 0,
+        /// The original Zig compiler created in 2015 by Andrew Kelley. Implemented
+        /// in C++. Used LLVM. Deleted from the ZSF ziglang/zig codebase on
+        /// December 6th, 2022.
+        stage1 = 1,
+        /// The reference implementation self-hosted compiler of Zig, using the
+        /// LLVM backend.
+        stage2_llvm = 2,
+        /// The reference implementation self-hosted compiler of Zig, using the
+        /// backend that generates C source code.
+        /// Note that one can observe whether the compilation will output C code
+        /// directly with `object_format` value rather than the `compiler_backend` value.
+        stage2_c = 3,
+        /// The reference implementation self-hosted compiler of Zig, using the
+        /// WebAssembly backend.
+        stage2_wasm = 4,
+        /// The reference implementation self-hosted compiler of Zig, using the
+        /// arm backend.
+        stage2_arm = 5,
+        /// The reference implementation self-hosted compiler of Zig, using the
+        /// x86_64 backend.
+        stage2_x86_64 = 6,
+        /// The reference implementation self-hosted compiler of Zig, using the
+        /// aarch64 backend.
+        stage2_aarch64 = 7,
+        /// The reference implementation self-hosted compiler of Zig, using the
+        /// x86 backend.
+        stage2_x86 = 8,
+        /// The reference implementation self-hosted compiler of Zig, using the
+        /// riscv64 backend.
+        stage2_riscv64 = 9,
+        /// The reference implementation self-hosted compiler of Zig, using the
+        /// sparc64 backend.
+        stage2_sparc64 = 10,
+        /// The reference implementation self-hosted compiler of Zig, using the
+        /// spirv backend.
+        stage2_spirv64 = 11,
+        _,
+    };
+    pub const TestFn = struct {
+        name: []const u8,
+        func: *const fn () anyerror!void,
+        async_frame_size: ?usize,
+    };
+    pub const Mode = OptimizeMode;
+};
+const std_lib = struct {
+    const std = @import("std");
+    pub const StackTrace = std.builtin.StackTrace;
+    pub const GlobalLinkage = std.builtin.GlobalLinkage;
+    pub const SymbolVisibility = std.builtin.SymbolVisibility;
+    pub const AtomicOrder = std.builtin.AtomicOrder;
+    pub const ReduceOp = std.builtin.ReduceOp;
+    pub const AtomicRmwOp = std.builtin.AtomicRmwOp;
+    pub const CodeModel = std.builtin.CodeModel;
+    pub const OptimizeMode = std.builtin.OptimizeMode;
+    pub const CallingConvention = std.builtin.CallingConvention;
+    pub const AddressSpace = std.builtin.AddressSpace;
+    pub const SourceLocation = std.builtin.SourceLocation;
+    pub const TypeId = std.builtin.TypeId;
+    pub const Type = std.builtin.Type;
+    pub const FloatMode = std.builtin.FloatMode;
+    pub const Endian = std.builtin.Endian;
+    pub const Signedness = std.builtin.Signedness;
+    pub const OutputMode = std.builtin.OutputMode;
+    pub const LinkMode = std.builtin.LinkMode;
+    pub const WasiExecModel = std.builtin.WasiExecModel;
+    pub const CallModifier = std.builtin.CallModifier;
+    pub const PrefetchOptions = std.builtin.PrefetchOptions;
+    pub const ExportOptions = std.builtin.ExportOptions;
+    pub const ExternOptions = std.builtin.ExternOptions;
+    pub const CompilerBackend = std.builtin.CompilerBackend;
+    pub const TestFn = std.builtin.TestFn;
+    pub const Mode = std.builtin.Mode;
+};
+pub usingnamespace zig;
+pub usingnamespace builtin;
 
-fn indexOfSentinel(any: anytype) usize {
-    const T = @TypeOf(any);
-    const type_info: Type = @typeInfo(T);
-    if (type_info.Pointer.sentinel == null) {
-        @compileError(@typeName(T));
-    }
-    const sentinel: type_info.Pointer.child =
-        @as(*const type_info.Pointer.child, @ptrCast(type_info.Pointer.sentinel.?)).*;
-    var idx: usize = 0;
-    while (any[idx] != sentinel) idx +%= 1;
-    return idx;
+pub fn define(comptime symbol: []const u8, comptime T: type, comptime default: T) T {
+    return if (@hasDecl(root, symbol)) @field(root, symbol) else default;
 }
-const special = struct {
-    /// Namespace containing definition of `printStackTrace`.
-    const trace = @import("./trace.zig");
-
-    /// Used by panic functions if executable is static linked with special
-    /// module object `trace.o`.
-    extern fn printStackTrace(*const Trace, u64, u64) void;
-};
-pub const my_trace: Trace = .{
-    .Error = !builtin.strip_debug_info,
-    .Fault = !builtin.strip_debug_info,
-    .Signal = !builtin.strip_debug_info,
-    .options = .{
-        .show_line_no = true,
-        .show_pc_addr = false,
-        .write_sidebar = true,
-        .write_caret = true,
-        .break_line_count = 1,
-        .context_line_count = 1,
-        .tokens = .{
-            .line_no = "\x1b[2m",
-            .pc_addr = "\x1b[38;5;247m",
-            .sidebar = "|",
-            .sidebar_fill = ": ",
-            .comment = "\x1b[2m",
-            .syntax = &.{ .{
-                .style = "",
-                .tags = zig.Token.Tag.other,
-            }, .{
-                .style = tab.fx.color.fg.orange24,
-                .tags = &.{.number_literal},
-            }, .{
-                .style = tab.fx.color.fg.yellow24,
-                .tags = &.{.char_literal},
-            }, .{
-                .style = tab.fx.color.fg.light_green,
-                .tags = zig.Token.Tag.strings,
-            }, .{
-                .style = tab.fx.color.fg.bracket,
-                .tags = zig.Token.Tag.bracket,
-            }, .{
-                .style = tab.fx.color.fg.magenta24,
-                .tags = zig.Token.Tag.operator,
-            }, .{
-                .style = tab.fx.color.fg.red24,
-                .tags = zig.Token.Tag.builtin_fn,
-            }, .{
-                .style = tab.fx.color.fg.cyan24,
-                .tags = zig.Token.Tag.macro_keyword,
-            }, .{
-                .style = tab.fx.color.fg.light_purple,
-                .tags = zig.Token.Tag.call_keyword,
-            }, .{
-                .style = tab.fx.color.fg.redwine,
-                .tags = zig.Token.Tag.container_keyword,
-            }, .{
-                .style = tab.fx.color.fg.white24,
-                .tags = zig.Token.Tag.cond_keyword,
-            }, .{
-                .style = tab.fx.color.fg.yellow24,
-                .tags = zig.Token.Tag.goto_keyword ++ zig.Token.Tag.value_keyword,
-            } },
-        },
-    },
-};
