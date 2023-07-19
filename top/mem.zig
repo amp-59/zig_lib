@@ -1,8 +1,10 @@
 const sys = @import("./sys.zig");
+const fmt = @import("./fmt.zig");
 const meta = @import("./meta.zig");
 const mach = @import("./mach.zig");
 const math = @import("./math.zig");
 const proc = @import("./proc.zig");
+const debug = @import("./debug.zig");
 const builtin = @import("./builtin.zig");
 const _virtual = @import("./virtual.zig");
 const _reference = @import("./reference.zig");
@@ -138,14 +140,14 @@ pub const Map = struct {
 pub const MapSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.mmap_errors },
     return_type: type = void,
-    logging: builtin.Logging.AcquireError = .{},
+    logging: debug.Logging.AcquireError = .{},
     const Specification = @This();
 };
 pub const SyncSpec = struct {
     options: Options = .{},
     errors: sys.ErrorPolicy = .{ .throw = sys.msync_errors },
     return_type: type = void,
-    logging: builtin.Logging.AcquireError = .{},
+    logging: debug.Logging.AcquireError = .{},
     const Specification = @This();
     pub const Options = struct {
         non_block: bool = false,
@@ -168,7 +170,7 @@ pub const MoveSpec = struct {
     options: Options = .{},
     errors: sys.ErrorPolicy = .{ .throw = sys.mremap_errors },
     return_type: type = void,
-    logging: builtin.Logging.SuccessError = .{},
+    logging: debug.Logging.SuccessError = .{},
     const Specification = @This();
     const Options = struct { no_unmap: bool = false };
     pub fn flags(comptime spec: Specification) Remap.Options {
@@ -184,19 +186,19 @@ pub const MoveSpec = struct {
 pub const RemapSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.mremap_errors },
     return_type: type = void,
-    logging: builtin.Logging.SuccessError = .{},
+    logging: debug.Logging.SuccessError = .{},
     const Specification = @This();
 };
 pub const UnmapSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.munmap_errors },
     return_type: type = void,
-    logging: builtin.Logging.ReleaseError = .{},
+    logging: debug.Logging.ReleaseError = .{},
     const Specification = @This();
 };
 pub const ProtectSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.mprotect_errors },
     return_type: type = void,
-    logging: builtin.Logging.SuccessError = .{},
+    logging: debug.Logging.SuccessError = .{},
     const Specification = @This();
     const Protection = packed struct(usize) {
         read: bool = true,
@@ -211,13 +213,13 @@ pub const ProtectSpec = struct {
 pub const AdviseSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.madvise_errors },
     return_type: type = void,
-    logging: builtin.Logging.SuccessError = .{},
+    logging: debug.Logging.SuccessError = .{},
 };
 pub const FdSpec = struct {
     options: Options = .{},
     errors: sys.ErrorPolicy = .{ .throw = sys.memfd_create_errors },
     return_type: type = u64,
-    logging: builtin.Logging.AcquireError = .{},
+    logging: debug.Logging.AcquireError = .{},
     const Specification = @This();
     const Options = struct {
         allow_sealing: bool = false,
@@ -384,96 +386,96 @@ pub fn acquire(comptime AddressSpace: type, address_space: *AddressSpace, index:
     const spec: mem.RegularAddressSpaceSpec = AddressSpace.addr_spec;
     const lb_addr: u64 = AddressSpace.low(index);
     const up_addr: u64 = AddressSpace.high(index);
-    const logging: builtin.Logging.AcquireErrorFault = comptime spec.logging.acquire.override();
+    const logging: debug.Logging.AcquireErrorFault = comptime spec.logging.acquire.override();
     if (acquireSet(AddressSpace, address_space, index)) {
         if (spec.options.require_map) {
             try meta.wrap(acquireMap(AddressSpace, address_space));
         }
         if (logging.Acquire) {
-            debug.aboutIndexLbAddrUpAddrLabelNotice(debug.about_acq_0_s, index, lb_addr, up_addr, spec.label);
+            about.aboutIndexLbAddrUpAddrLabelNotice(about.acq_0_s, index, lb_addr, up_addr, spec.label);
         }
     } else if (spec.errors.acquire == .throw) {
         if (logging.Error) {
-            debug.aboutIndexLbAddrUpAddrLabelError(debug.about_acq_1_s, @errorName(spec.errors.acquire.throw), index, lb_addr, up_addr, spec.label);
+            about.aboutIndexLbAddrUpAddrLabelError(about.acq_1_s, @errorName(spec.errors.acquire.throw), index, lb_addr, up_addr, spec.label);
         }
         return spec.errors.acquire.throw;
     } else if (spec.errors.acquire == .abort) {
-        builtin.proc.exitFault(debug.about_acq_2_s, 2);
+        proc.exitFault(about.acq_2_s, 2);
     }
 }
 pub fn acquireStatic(comptime AddressSpace: type, address_space: *AddressSpace, comptime index: AddressSpace.Index) AddressSpace.acquire_void(index) {
     const spec = AddressSpace.addr_spec;
     const lb_addr: u64 = comptime AddressSpace.low(index);
     const up_addr: u64 = comptime AddressSpace.high(index);
-    const logging: builtin.Logging.AcquireErrorFault = comptime spec.logging.acquire.override();
+    const logging: debug.Logging.AcquireErrorFault = comptime spec.logging.acquire.override();
     if (acquireStaticSet(AddressSpace, address_space, index)) {
         if (logging.Acquire) {
-            debug.aboutIndexLbAddrUpAddrLabelNotice(debug.about_acq_0_s, index, lb_addr, up_addr, spec.label);
+            about.aboutIndexLbAddrUpAddrLabelNotice(about.acq_0_s, index, lb_addr, up_addr, spec.label);
         }
     } else if (spec.errors.acquire == .throw) {
         if (logging.Error) {
-            debug.aboutIndexLbAddrUpAddrLabelError(debug.about_acq_1_s, @errorName(spec.errors.acquire.throw), index, lb_addr, up_addr, spec.label);
+            about.aboutIndexLbAddrUpAddrLabelError(about.acq_1_s, @errorName(spec.errors.acquire.throw), index, lb_addr, up_addr, spec.label);
         }
         return spec.errors.acquire.throw;
     } else if (spec.errors.acquire == .abort) {
-        builtin.proc.exitFault(debug.about_acq_2_s, 2);
+        proc.exitFault(about.acq_2_s, 2);
     }
 }
 pub fn acquireElementary(comptime AddressSpace: type, address_space: *AddressSpace) AddressSpace.acquire_void {
     const spec = AddressSpace.addr_spec;
     const lb_addr: u64 = address_space.low();
     const up_addr: u64 = address_space.high();
-    const logging: builtin.Logging.AcquireErrorFault = comptime spec.logging.acquire.override();
+    const logging: debug.Logging.AcquireErrorFault = comptime spec.logging.acquire.override();
     if (acquireElementarySet(AddressSpace, address_space)) {
         if (logging.Acquire) {
-            debug.arenaAcquireNotice(null, lb_addr, up_addr, spec.label);
+            about.arenaAcquireNotice(null, lb_addr, up_addr, spec.label);
         }
     } else if (spec.errors.acquire == .throw) {
         if (logging.Error) {
-            debug.aboutIndexLbAddrUpAddrLabelError(debug.about_acq_1_s, @errorName(spec.errors.acquire.throw), null, lb_addr, up_addr, spec.label);
+            about.aboutIndexLbAddrUpAddrLabelError(about.acq_1_s, @errorName(spec.errors.acquire.throw), null, lb_addr, up_addr, spec.label);
         }
         return spec.errors.acquire.throw;
     } else if (spec.errors.acquire == .abort) {
-        builtin.proc.exitFault(debug.about_acq_2_s, 2);
+        proc.exitFault(about.acq_2_s, 2);
     }
 }
 pub fn release(comptime AddressSpace: type, address_space: *AddressSpace, index: AddressSpace.Index) AddressSpace.release_void {
     const spec: mem.RegularAddressSpaceSpec = AddressSpace.addr_spec;
     const lb_addr: u64 = AddressSpace.low(index);
     const up_addr: u64 = AddressSpace.high(index);
-    const logging: builtin.Logging.ReleaseErrorFault = comptime spec.logging.release.override();
+    const logging: debug.Logging.ReleaseErrorFault = comptime spec.logging.release.override();
     if (releaseUnset(AddressSpace, address_space, index)) {
         if (logging.Release) {
-            debug.aboutIndexLbAddrUpAddrLabelNotice(debug.about_rel_0_s, index, lb_addr, up_addr, spec.label);
+            about.aboutIndexLbAddrUpAddrLabelNotice(about.rel_0_s, index, lb_addr, up_addr, spec.label);
         }
         if (spec.options.require_unmap) {
             try meta.wrap(releaseUnmap(AddressSpace, address_space));
         }
     } else if (spec.errors.release == .throw) {
         if (logging.Error) {
-            debug.aboutIndexLbAddrUpAddrLabelError(debug.about_rel_1_s, @errorName(spec.errors.throw), index, lb_addr, up_addr, spec.label);
+            about.aboutIndexLbAddrUpAddrLabelError(about.rel_1_s, @errorName(spec.errors.throw), index, lb_addr, up_addr, spec.label);
         }
         return spec.errors.release.throw;
     } else if (spec.errors.release == .abort) {
-        builtin.proc.exitFault(debug.about_rel_2_s, 2);
+        proc.exitFault(about.rel_2_s, 2);
     }
 }
 pub fn releaseStatic(comptime AddressSpace: type, address_space: *AddressSpace, comptime index: AddressSpace.Index) AddressSpace.release_void(index) {
     const spec = AddressSpace.addr_spec;
     const lb_addr: u64 = comptime AddressSpace.low(index);
     const up_addr: u64 = comptime AddressSpace.high(index);
-    const logging: builtin.Logging.ReleaseErrorFault = comptime spec.logging.release.override();
+    const logging: debug.Logging.ReleaseErrorFault = comptime spec.logging.release.override();
     if (releaseStaticUnset(AddressSpace, address_space, index)) {
         if (logging.Release) {
-            debug.aboutIndexLbAddrUpAddrLabelNotice(debug.about_rel_0_s, index, lb_addr, up_addr, spec.label);
+            about.aboutIndexLbAddrUpAddrLabelNotice(about.rel_0_s, index, lb_addr, up_addr, spec.label);
         }
     } else if (spec.errors.release == .throw) {
         if (logging.Error) {
-            debug.aboutIndexLbAddrUpAddrLabelError(debug.about_rel_1_s, @errorName(spec.errors.throw), index, lb_addr, up_addr, spec.label);
+            about.aboutIndexLbAddrUpAddrLabelError(about.rel_1_s, @errorName(spec.errors.throw), index, lb_addr, up_addr, spec.label);
         }
         return spec.errors.release.throw;
     } else if (spec.errors.release == .abort) {
-        builtin.proc.exitFault(debug.about_rel_2_s, 2);
+        proc.exitFault(about.rel_2_s, 2);
     }
 }
 pub fn releaseElementary(comptime AddressSpace: type, address_space: *AddressSpace) AddressSpace.release_void {
@@ -482,29 +484,29 @@ pub fn releaseElementary(comptime AddressSpace: type, address_space: *AddressSpa
     const up_addr: u64 = address_space.high();
     if (releaseElementaryUnset(AddressSpace, address_space)) {
         if (spec.logging.release.Release) {
-            debug.aboutIndexLbAddrUpAddrLabelNotice(debug.about_rel_0_s, null, lb_addr, up_addr, spec.label);
+            about.aboutIndexLbAddrUpAddrLabelNotice(about.rel_0_s, null, lb_addr, up_addr, spec.label);
         }
     } else if (spec.errors.release == .throw) {
         if (spec.logging.release.Error) {
-            debug.aboutIndexLbAddrUpAddrLabelError(debug.about_rel_1_s, @errorName(spec.errors.throw), null, lb_addr, up_addr, spec.label);
+            about.aboutIndexLbAddrUpAddrLabelError(about.rel_1_s, @errorName(spec.errors.throw), null, lb_addr, up_addr, spec.label);
         }
         return spec.errors.release.throw;
     } else if (spec.errors.release == .abort) {
-        builtin.proc.exitFault(debug.about_rel_2_s, 2);
+        proc.exitFault(about.rel_2_s, 2);
     }
 }
 pub fn testAcquire(comptime AddressSpace: type, address_space: *AddressSpace, index: AddressSpace.Index) AddressSpace.acquire_bool {
     const spec: mem.RegularAddressSpaceSpec = AddressSpace.addr_spec;
     const lb_addr: u64 = AddressSpace.low(index);
     const up_addr: u64 = AddressSpace.high(index);
-    const logging: builtin.Logging.AcquireErrorFault = comptime spec.logging.acquire.override();
+    const logging: debug.Logging.AcquireErrorFault = comptime spec.logging.acquire.override();
     const ret: bool = acquireSet(AddressSpace, address_space, index);
     if (ret) {
         if (spec.options.require_map) {
             try meta.wrap(acquireMap(AddressSpace, address_space));
         }
         if (logging.Acquire) {
-            debug.aboutIndexLbAddrUpAddrLabelNotice(debug.about_acq_0_s, index, lb_addr, up_addr, spec.label);
+            about.aboutIndexLbAddrUpAddrLabelNotice(about.acq_0_s, index, lb_addr, up_addr, spec.label);
         }
     }
     return ret;
@@ -513,11 +515,11 @@ pub fn testAcquireStatic(comptime AddressSpace: type, address_space: *AddressSpa
     const spec = AddressSpace.addr_spec;
     const lb_addr: u64 = comptime AddressSpace.low(index);
     const up_addr: u64 = comptime AddressSpace.high(index);
-    const logging: builtin.Logging.AcquireErrorFault = comptime spec.logging.acquire.override();
+    const logging: debug.Logging.AcquireErrorFault = comptime spec.logging.acquire.override();
     const ret: bool = acquireStaticSet(AddressSpace, address_space, index);
     if (ret) {
         if (logging.Acquire) {
-            debug.aboutIndexLbAddrUpAddrLabelNotice(debug.about_acq_0_s, index, lb_addr, up_addr, spec.label);
+            about.aboutIndexLbAddrUpAddrLabelNotice(about.acq_0_s, index, lb_addr, up_addr, spec.label);
         }
     }
     return ret;
@@ -526,11 +528,11 @@ pub fn testAcquireElementary(comptime AddressSpace: type, address_space: *Addres
     const spec = AddressSpace.addr_spec;
     const lb_addr: u64 = comptime address_space.low();
     const up_addr: u64 = comptime address_space.high();
-    const logging: builtin.Logging.AcquireErrorFault = comptime spec.logging.acquire.override();
+    const logging: debug.Logging.AcquireErrorFault = comptime spec.logging.acquire.override();
     const ret: bool = acquireElementarySet(AddressSpace, address_space);
     if (ret) {
         if (logging.Acquire) {
-            debug.aboutIndexLbAddrUpAddrLabelNotice(debug.about_acq_0_s, null, lb_addr, up_addr, spec.label);
+            about.aboutIndexLbAddrUpAddrLabelNotice(about.acq_0_s, null, lb_addr, up_addr, spec.label);
         }
     }
     return ret;
@@ -539,11 +541,11 @@ pub fn testRelease(comptime AddressSpace: type, address_space: *AddressSpace, in
     const spec: mem.RegularAddressSpaceSpec = AddressSpace.addr_spec;
     const lb_addr: u64 = AddressSpace.low(index);
     const up_addr: u64 = AddressSpace.high(index);
-    const logging: builtin.Logging.ReleaseErrorFault = comptime spec.logging.release.override();
+    const logging: debug.Logging.ReleaseErrorFault = comptime spec.logging.release.override();
     const ret: bool = releaseUnset(AddressSpace, address_space, index);
     if (ret) {
         if (logging.Release) {
-            debug.arenaReleaseNotice(index, lb_addr, up_addr, spec.label);
+            about.arenaReleaseNotice(index, lb_addr, up_addr, spec.label);
         }
         if (spec.options.require_unmap) {
             try meta.wrap(releaseUnmap(AddressSpace, address_space));
@@ -555,11 +557,11 @@ pub fn tryReleaseStatic(comptime AddressSpace: type, address_space: *AddressSpac
     const spec = AddressSpace.addr_spec;
     const lb_addr: u64 = comptime AddressSpace.low(index);
     const up_addr: u64 = comptime AddressSpace.high(index);
-    const logging: builtin.Logging.ReleaseErrorFault = comptime spec.logging.release.override();
+    const logging: debug.Logging.ReleaseErrorFault = comptime spec.logging.release.override();
     const ret: bool = releaseStaticUnset(AddressSpace, address_space, index);
     if (ret) {
         if (logging.Release) {
-            debug.arenaReleaseNotice(index, lb_addr, up_addr, spec.label);
+            about.arenaReleaseNotice(index, lb_addr, up_addr, spec.label);
         }
     }
     return ret;
@@ -571,108 +573,108 @@ pub fn testReleaseElementary(comptime AddressSpace: type, address_space: *Addres
     const ret: bool = releaseElementaryUnset(AddressSpace, address_space);
     if (ret) {
         if (spec.logging.release.Release) {
-            debug.arenaReleaseNotice(null, lb_addr, up_addr, spec.label);
+            about.arenaReleaseNotice(null, lb_addr, up_addr, spec.label);
         }
     }
     return ret;
 }
 pub fn map(comptime spec: MapSpec, prot: Map.Protection, flags: Map.Flags, addr: u64, len: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
-    const logging: builtin.Logging.AcquireError = comptime spec.logging.override();
+    const logging: debug.Logging.AcquireError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.mmap, spec.errors, spec.return_type, .{
         addr, len, @as(usize, @bitCast(prot)), @as(usize, @bitCast(flags)), ~@as(u64, 0), 0,
     }))) |ret| {
         if (logging.Acquire) {
-            debug.mapNotice(addr, len);
+            about.aboutAddrLenNotice(about.map_0_s, addr, len);
         }
         if (spec.return_type != void) {
             return ret;
         }
     } else |map_error| {
         if (logging.Error) {
-            debug.mapError(map_error, addr, len);
+            about.aboutAddrLenError(about.map_0_s, @errorName(map_error), addr, len);
         }
         return map_error;
     }
 }
 pub fn sync(comptime sync_spec: SyncSpec, addr: u64, len: u64) sys.ErrorUnion(sync_spec.errors, sync_spec.return_type) {
     const msync_flags: Sync.Options = comptime sync_spec.flags();
-    const logging: builtin.Logging.AcquireError = comptime sync_spec.logging.override();
+    const logging: debug.Logging.AcquireError = comptime sync_spec.logging.override();
     if (meta.wrap(sys.call(.sync, sync_spec.errors, sync_spec.return_type, .{ addr, len, msync_flags.val }))) |ret| {
         if (logging.Acquire) {
-            debug.syncNotice(addr, len);
+            about.syncNotice(addr, len);
         }
         if (sync_spec.return_type != void) {
             return ret;
         }
     } else |sync_error| {
         if (logging.Error) {
-            debug.syncError(sync_error, addr, len);
+            about.syncError(sync_error, addr, len);
         }
         return sync_error;
     }
 }
 pub fn move(comptime spec: MoveSpec, old_addr: u64, old_len: u64, new_addr: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
     const mremap_flags: Remap.Options = comptime spec.flags();
-    const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
+    const logging: debug.Logging.SuccessError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.mremap, spec.errors, spec.return_type, .{ old_addr, old_len, old_len, mremap_flags.val, new_addr }))) {
         if (logging.Success) {
-            debug.aboutRemapNotice(debug.about_remap_0_s, old_addr, old_len, new_addr, null);
+            about.aboutRemapNotice(about.remap_0_s, old_addr, old_len, new_addr, null);
         }
     } else |mremap_error| {
         if (logging.Error) {
-            debug.remapError(mremap_error, old_addr, old_len, new_addr, null);
+            about.aboutRemapError(about.move_0_s, @errorName(mremap_error), old_addr, old_len, new_addr, null);
         }
         return mremap_error;
     }
 }
 pub fn resize(comptime spec: RemapSpec, old_addr: u64, old_len: u64, new_len: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
-    const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
+    const logging: debug.Logging.SuccessError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.mremap, spec.errors, spec.return_type, .{ old_addr, old_len, new_len, 0, 0 }))) {
         if (logging.Success) {
-            debug.aboutRemapNotice(debug.about_resize_0_s, old_addr, old_len, null, new_len);
+            about.aboutRemapNotice(about.resize_0_s, old_addr, old_len, null, new_len);
         }
     } else |mremap_error| {
         if (logging.Error) {
-            debug.remapError(mremap_error, old_addr, old_len, null, new_len);
+            about.aboutRemapError(about.resize_0_s, @errorName(mremap_error), old_addr, old_len, null, new_len);
         }
         return mremap_error;
     }
 }
 pub fn unmap(comptime spec: UnmapSpec, addr: u64, len: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
-    const logging: builtin.Logging.ReleaseError = comptime spec.logging.override();
+    const logging: debug.Logging.ReleaseError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.munmap, spec.errors, spec.return_type, .{ addr, len }))) {
         if (logging.Release) {
-            debug.unmapNotice(addr, len);
+            about.aboutAddrLenNotice(about.unmap_0_s, addr, len);
         }
     } else |unmap_error| {
         if (logging.Error) {
-            debug.unmapError(unmap_error, addr, len);
+            about.aboutAddrLenError(about.unmap_0_s, @errorName(unmap_error), addr, len);
         }
         return unmap_error;
     }
 }
 pub fn protect(comptime spec: ProtectSpec, prot: ProtectSpec.Protection, addr: u64, len: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
-    const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
+    const logging: debug.Logging.SuccessError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.mprotect, spec.errors, spec.return_type, .{ addr, len, @as(usize, @bitCast(prot)) }))) {
         if (logging.Success) {
-            debug.protectNotice(addr, len, "<description>");
+            about.aboutAddrLenDescrNotice(about.protect_0_s, addr, len, "<description>");
         }
     } else |protect_error| {
         if (logging.Error) {
-            debug.protectError(protect_error, addr, len, "<description>");
+            about.aboutAddrLenDescrError(about.protect_0_s, @errorName(protect_error), addr, len, "<description>");
         }
         return protect_error;
     }
 }
 pub fn advise(comptime spec: AdviseSpec, advice: Advice, addr: u64, len: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
-    const logging: builtin.Logging.SuccessError = comptime spec.logging.override();
+    const logging: debug.Logging.SuccessError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.madvise, spec.errors, spec.return_type, .{ addr, len, @intFromEnum(advice) }))) {
         if (logging.Success) {
-            debug.adviseNotice(addr, len, advice.describe());
+            about.aboutAddrLenDescrNotice(about.advice_0_s, addr, len, advice.describe());
         }
     } else |madvise_error| {
         if (logging.Error) {
-            debug.adviseError(madvise_error, addr, len, advice.describe());
+            about.aboutAddrLenDescrError(about.advice_0_s, @errorName(madvise_error), addr, len, advice.describe());
         }
         return madvise_error;
     }
