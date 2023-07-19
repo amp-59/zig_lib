@@ -105,12 +105,6 @@ fn GenericFormat(comptime Format: type) type {
             array.writeFormat(format);
             return array;
         }
-        fn checkLen(len: u64) u64 {
-            if (@hasDecl(Format, "max_len") and len != Format.max_len) {
-                builtin.debug.logFault("formatter max length exceeded");
-            }
-            return len;
-        }
     };
     return T;
 }
@@ -141,15 +135,15 @@ pub const PolynomialFormatSpec = struct {
     separator: ?Separator = null,
 };
 pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
-    const T = struct {
+    const T = packed struct {
         value: Int,
         const Format: type = @This();
         const Int: type = @Type(.{ .Int = .{ .bits = fmt_spec.bits, .signedness = fmt_spec.signedness } });
         const Abs: type = @Type(.{ .Int = .{ .bits = fmt_spec.bits, .signedness = .unsigned } });
         const min_abs_value: Abs = fmt_spec.range.min orelse 0;
         const max_abs_value: Abs = fmt_spec.range.max orelse ~@as(Abs, 0);
-        const min_digits_count: u16 = builtin.fmt.length(Abs, min_abs_value, fmt_spec.radix);
-        const max_digits_count: u16 = builtin.fmt.length(Abs, max_abs_value, fmt_spec.radix);
+        const min_digits_count: u16 = length(Abs, min_abs_value, fmt_spec.radix);
+        const max_digits_count: u16 = length(Abs, max_abs_value, fmt_spec.radix);
         pub const spec: PolynomialFormatSpec = fmt_spec;
         pub const StaticString = mem.StaticString(max_len);
         const max_len: u64 = blk: {
@@ -181,7 +175,7 @@ pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
                 return 1;
             }
             const digits_len: u64 = switch (fmt_spec.width) {
-                .min => builtin.fmt.length(Abs, format.absolute(), fmt_spec.radix),
+                .min => length(Abs, format.absolute(), fmt_spec.radix),
                 .max => max_digits_count,
                 .fixed => |fixed| fixed,
             };
@@ -230,7 +224,7 @@ pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
                     const b1: bool = pos % separator.digits == 1;
                     sep +%= @intFromBool(b0) & @intFromBool(b1);
                     buf[len -% (sep +% pos)] =
-                        builtin.fmt.toSymbol(Abs, value, fmt_spec.radix);
+                        toSymbol(Abs, value, fmt_spec.radix);
                 }
             } else {
                 const count: u64 = format.digits();
@@ -240,7 +234,7 @@ pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
                 while (pos != count) : (value /= fmt_spec.radix) {
                     pos +%= 1;
                     buf[len -% pos] =
-                        builtin.fmt.toSymbol(Abs, value, fmt_spec.radix);
+                        toSymbol(Abs, value, fmt_spec.radix);
                 }
             }
             return len;
@@ -262,7 +256,7 @@ pub fn uo(value: anytype) GenericPolynomialFormat(.{
     .bits = blk: {
         const T: type = @TypeOf(value);
         if (T == comptime_int) {
-            builtin.assert(value > 0);
+            debug.assert(value > 0);
             break :blk meta.alignCX(value);
         } else {
             break :blk meta.alignSizeAW(T);
