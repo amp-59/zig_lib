@@ -3,12 +3,13 @@ const tab = @import("./tab.zig");
 const mach = @import("./mach.zig");
 const meta = @import("./meta.zig");
 const math = @import("./math.zig");
+const debug = @import("./debug.zig");
+
 pub const root = @import("root");
-pub usingnamespace builtin;
 
-pub const zig = @import("./builtin/zig.zig");
-
-pub const native_endian = builtin.cpu.arch.endian();
+/// Determines whether this library must supply compiler function types and
+/// target information.
+pub const is_zig_lib: bool = @hasDecl(@import("std"), "zig_lib");
 
 /// * Determines defaults for various allocator checks.
 pub const is_safe: bool = define("is_safe", bool, builtin.mode == .ReleaseSafe);
@@ -18,17 +19,6 @@ pub const is_fast: bool = define("is_fast", bool, builtin.mode == .ReleaseFast);
 /// * Determine whether signals for floating point errors should be handled
 ///   verbosely.
 pub const is_debug: bool = define("is_debug", bool, builtin.mode == .Debug);
-
-pub const have_stack_traces: bool = define("have_stack_traces", bool, false);
-pub const want_stack_traces: bool = define("want_stack_traces", bool, builtin.mode == .Debug and !builtin.strip_debug_info);
-
-/// Determines whether calling `panicUnwrapError` is legal.
-pub const discard_errors: bool = define("discard_errors", bool, !(is_debug or is_safe));
-/// Determines whether `assert*` functions will be called at runtime.
-pub const runtime_assertions: bool = define("runtime_assertions", bool, is_debug or is_safe);
-/// Determines whether `static.assert*` functions will be called at comptime
-/// time.
-pub const comptime_assertions: bool = define("comptime_assertions", bool, is_debug);
 
 /// The primary reason that these constants exist is to distinguish between
 /// reports from the build runner and reports from a run command.
@@ -44,19 +34,63 @@ pub const message_suffix: [:0]const u8 = define("message_suffix", [:0]const u8, 
 pub const message_indent: u8 = define("message_indent", u8, 16);
 /// Sequence used to undo `message_style` if defined.
 pub const message_no_style: [:0]const u8 = "\x1b[0m";
-/// These values define all default field values for all logging sub-types.
-pub const logging_default: Logging.Default = define(
+pub const have_stack_traces: bool = define("have_stack_traces", bool, false);
+pub const want_stack_traces: bool = define("want_stack_traces", bool, builtin.mode == .Debug and !builtin.strip_debug_info);
+/// Determines whether calling `panicUnwrapError` is legal.
+pub const discard_errors: bool = define("discard_errors", bool, true);
+/// Determines whether `assert*` functions will be called at runtime.
+pub const runtime_assertions: bool = define("runtime_assertions", bool, builtin.mode == .Debug or builtin.mode == .ReleaseSafe);
+/// Determines whether `static.assert*` functions will be called at comptime
+/// time.
+pub const comptime_assertions: bool = define("comptime_assertions", bool, builtin.mode == .Debug);
+/// Determines text output in case of panic without formatting
+pub const panic_messages = define("panic_messages", type, struct {
+    pub const unreach: [:0]const u8 = "reached unreachable code";
+    pub const unwrap_null: [:0]const u8 = "attempt to use null value";
+    pub const cast_to_null: [:0]const u8 = "cast causes pointer to be null";
+    pub const incorrect_alignment: [:0]const u8 = "incorrect alignment";
+    pub const invalid_error_code: [:0]const u8 = "invalid error code";
+    pub const cast_truncated_data: [:0]const u8 = "integer cast truncated bits";
+    pub const negative_to_unsigned: [:0]const u8 = "attempt to cast negative value to unsigned integer";
+    pub const integer_overflow: [:0]const u8 = "integer overflow";
+    pub const shl_overflow: [:0]const u8 = "left shift overflowed bits";
+    pub const shr_overflow: [:0]const u8 = "right shift overflowed bits";
+    pub const divide_by_zero: [:0]const u8 = "division by zero";
+    pub const exact_division_remainder: [:0]const u8 = "exact division produced remainder";
+    pub const inactive_union_field: [:0]const u8 = "access of inactive union field";
+    pub const integer_part_out_of_bounds: [:0]const u8 = "integer part of floating point value out of bounds";
+    pub const corrupt_switch: [:0]const u8 = "switch on corrupt value";
+    pub const shift_rhs_too_big: [:0]const u8 = "shift amount is greater than the type size";
+    pub const invalid_enum_value: [:0]const u8 = "invalid enum value";
+    pub const sentinel_mismatch: [:0]const u8 = "sentinel mismatch";
+    pub const unwrap_error: [:0]const u8 = "attempt to unwrap error";
+    pub const index_out_of_bounds: [:0]const u8 = "index out of bounds";
+    pub const start_index_greater_than_end: [:0]const u8 = "start index is larger than end index";
+    pub const for_len_mismatch: [:0]const u8 = "for loop over objects with non-equal lengths";
+    pub const memcpy_len_mismatch: [:0]const u8 = "@memcpy arguments have non-equal lengths";
+    pub const memcpy_alias: [:0]const u8 = "@memcpy arguments alias";
+    pub const noreturn_returned: [:0]const u8 = "'noreturn' function returned";
+});
+pub const panic = define("panic", debug.PanicFn, debug.panic);
+pub const panicSentinelMismatch = define("panicSentinelMismatch", debug.PanicSentinelMismatchFn, debug.panicSentinelMismatch);
+pub const panicUnwrapError = define("panicUnwrapError", debug.PanicUnwrapErrorFn, debug.panicUnwrapError);
+pub const panicOutOfBounds = define("panicOutOfBounds", debug.PanicOutOfBoundsFn, debug.panicOutOfBounds);
+pub const panicStartGreaterThanEnd = define("startGreaterThanEnd", debug.PanicStartGreaterThanEndFn, debug.panicStartGreaterThanEnd);
+pub const panicInactiveUnionField = define("panicInactiveUnionField", debug.PanicInactiveUnionFieldFn, debug.panicInactiveUnionField);
+pub const alarm = define("alarm", debug.AlarmFn, debug.alarm);
+
+pub const logging_default: debug.Logging.Default = define(
     "logging_default",
-    Logging.Default,
+    debug.Logging.Default,
     .{
         // Never report attempted actions
         .Attempt = false,
         // Never report successful actions
         .Success = false,
         // Report actions where a resource is acquired when build mode is debug
-        .Acquire = is_debug,
+        .Acquire = builtin.mode == .Debug,
         // Report actions where a resource is released when build mode is debug
-        .Release = is_debug,
+        .Release = builtin.mode == .Debug,
         // Always report errors
         .Error = true,
         // Always report faults
