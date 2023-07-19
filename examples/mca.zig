@@ -5,13 +5,14 @@ const fmt = zl.fmt;
 const proc = zl.proc;
 const meta = zl.meta;
 const file = zl.file;
-const build = zl.build;
 const spec = zl.spec;
+const build = zl.build;
+const debug = zl.debug;
 const builtin = zl.builtin;
 
 pub usingnamespace zl.start;
 pub const is_verbose: bool = false;
-pub const logging_override: builtin.Logging.Override = .{
+pub const logging_override: debug.Logging.Override = .{
     .Attempt = false,
     .Success = false,
     .Acquire = false,
@@ -130,19 +131,19 @@ const Segments = mem.GenericLinkedList(.{
     .Allocator = Allocator,
 });
 fn printFound(name: []const u8) void {
-    builtin.debug.write("found: ");
-    builtin.debug.write(name);
-    builtin.debug.write("\n");
+    debug.write("found: ");
+    debug.write(name);
+    debug.write("\n");
 }
 fn printPruned(name: []const u8) void {
-    builtin.debug.write("pruned: ");
-    builtin.debug.write(name);
-    builtin.debug.write("\n");
+    debug.write("pruned: ");
+    debug.write(name);
+    debug.write("\n");
 }
 fn printPassed(name: []const u8) void {
-    builtin.debug.write("passed: ");
-    builtin.debug.write(name);
-    builtin.debug.write("\n");
+    debug.write("passed: ");
+    debug.write(name);
+    debug.write("\n");
 }
 fn parseInput(allocator: *Allocator, buf: []const u8) Allocator.allocate_payload(Segments) {
     var segments: Segments = try Segments.init(allocator);
