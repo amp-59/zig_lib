@@ -7,10 +7,11 @@ const meta = zl.meta;
 const mach = zl.mach;
 const proc = zl.proc;
 const spec = zl.spec;
+const debug = zl.debug;
 const thread = zl.thread;
 const builtin = zl.builtin;
 pub usingnamespace zl.start;
-pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
+pub const logging_override: debug.Logging.Override = spec.logging.override.silent;
 pub const signal_handlers = .{
     .SegmentationFault = false,
     .IllegalInstruction = false,
@@ -130,11 +131,11 @@ const empty_dir_arrow_s: [:0]const u8 = del_s ++ "|-- ";
 const last_empty_dir_arrow_s: [:0]const u8 = del_s ++ "`-- ";
 
 // config constants derived by `message_style` library configuration
-const about_dirs_s: [:0]const u8 = builtin.fmt.about("dirs");
-const about_files_s: [:0]const u8 = builtin.fmt.about("files");
-const about_links_s: [:0]const u8 = builtin.fmt.about("links");
-const about_depth_s: [:0]const u8 = builtin.fmt.about("depth");
-const about_errors_s: [:0]const u8 = builtin.fmt.about("errors");
+const about_dirs_s: [:0]const u8 = fmt.about("dirs");
+const about_files_s: [:0]const u8 = fmt.about("files");
+const about_links_s: [:0]const u8 = fmt.about("links");
+const about_depth_s: [:0]const u8 = fmt.about("depth");
+const about_errors_s: [:0]const u8 = fmt.about("errors");
 
 // user config end
 const write_spec: file.WriteSpec = .{
@@ -355,7 +356,7 @@ pub fn main(args: [][*:0]u8) !void {
             }) catch if (count_errors) {
                 status.errors +%= 1;
             };
-            builtin.debug.write(array.readAll(allocator_1));
+            debug.write(array.readAll(allocator_1));
             show(status);
         }
     }
