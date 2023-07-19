@@ -6,6 +6,7 @@ const time = @import("./time.zig");
 const meta = @import("./meta.zig");
 const mach = @import("./mach.zig");
 const proc = @import("./proc.zig");
+const debug = @import("./debug.zig");
 const builtin = @import("./builtin.zig");
 const testing = @import("./testing.zig");
 const virtual = @import("./virtual.zig");
@@ -15,10 +16,8 @@ pub usingnamespace types;
 pub usingnamespace struct {
     /// Arguments after principal arguments, i.e. argv[5..]
     pub var args: [][*:0]u8 = undefined;
-
     /// Environment variables
     pub var vars: [][*:0]u8 = undefined;
-
     /// File system path of Zig executable.
     pub var zig_exe: [:0]u8 = undefined;
     /// File system path of directory containing build.zig.
@@ -27,10 +26,8 @@ pub usingnamespace struct {
     pub var cache_root: [:0]u8 = undefined;
     /// File system path of user login cache directory.
     pub var global_cache_root: [:0]u8 = undefined;
-
     pub var build_root_fd: u64 = undefined;
     pub var config_root_fd: u64 = undefined;
-
     var cmd_idx: usize = undefined;
     var task_idx: usize = undefined;
     var error_count: u8 = undefined;
@@ -194,51 +191,51 @@ pub const BuilderSpec = struct {
         ///     Attempt => When resulting in no change of state.
         ///     Success => When resulting in change of state.
         ///     Fault   => When the change of state results in any abort.
-        state: builtin.Logging.AttemptSuccessFault = .{},
+        state: debug.Logging.AttemptSuccessFault = .{},
         /// Report completion of tasks with summary of results:
         ///     Attempt => When the task was unable to complete due to a
         ///                dependency.
         ///     Success => When the task completes without any errors.
         ///     Error   => When the task completes with errors.
-        stats: builtin.Logging.SuccessError = .{},
+        stats: debug.Logging.SuccessError = .{},
         /// Report `open` Acquire and Error.
-        open: builtin.Logging.AcquireError = .{},
+        open: debug.Logging.AcquireError = .{},
         /// Report `close` Release and Error.
-        close: builtin.Logging.ReleaseError = .{},
+        close: debug.Logging.ReleaseError = .{},
         /// Report `create` Acquire and Error.
-        create: builtin.Logging.AcquireError = .{},
+        create: debug.Logging.AcquireError = .{},
         /// Report `dup3` Success and Error.
-        dup3: builtin.Logging.SuccessError = .{},
+        dup3: debug.Logging.SuccessError = .{},
         /// Report `execve` Success and Error.
-        execve: builtin.Logging.AttemptError = .{},
+        execve: debug.Logging.AttemptError = .{},
         /// Report `fork` Attempt and Error.
-        fork: builtin.Logging.SuccessError = .{},
+        fork: debug.Logging.SuccessError = .{},
         /// Report `map` Success and Error.
-        map: builtin.Logging.AcquireError = .{},
+        map: debug.Logging.AcquireError = .{},
         /// Report `mkdir` Success and Error.
-        mkdir: builtin.Logging.SuccessError = .{},
+        mkdir: debug.Logging.SuccessError = .{},
         /// Report `mknod` Success and Error.
-        mknod: builtin.Logging.SuccessError = .{},
+        mknod: debug.Logging.SuccessError = .{},
         /// Report `path` Success and Error.
-        path: builtin.Logging.AcquireError = .{},
+        path: debug.Logging.AcquireError = .{},
         /// Report `pipe` Success and Error.
-        pipe: builtin.Logging.AcquireError = .{},
+        pipe: debug.Logging.AcquireError = .{},
         /// Report `waitpid` Success and Error.
-        waitpid: builtin.Logging.SuccessError = .{},
+        waitpid: debug.Logging.SuccessError = .{},
         /// Report `read` Success and Error.
-        read: builtin.Logging.SuccessError = .{},
+        read: debug.Logging.SuccessError = .{},
         /// Report `unmap` Release and Error.
-        unmap: builtin.Logging.ReleaseError = .{},
+        unmap: debug.Logging.ReleaseError = .{},
         /// Report `write` Success and Error.
-        write: builtin.Logging.SuccessError = .{},
+        write: debug.Logging.SuccessError = .{},
         /// Report `stat` Success and Error.
-        stat: builtin.Logging.SuccessError = .{},
+        stat: debug.Logging.SuccessError = .{},
         /// Report `poll` Success and Error.
-        poll: builtin.Logging.AttemptSuccessError = .{},
+        poll: debug.Logging.AttemptSuccessError = .{},
         /// Report `link` Success and Error.
-        link: builtin.Logging.SuccessError = .{},
+        link: debug.Logging.SuccessError = .{},
         /// Report `unlink` Success and Error.
-        unlink: builtin.Logging.SuccessError = .{},
+        unlink: debug.Logging.SuccessError = .{},
     };
     pub const Errors = struct {
         /// Error values for `open` system function.
@@ -320,20 +317,20 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         },
         impl: packed struct {
             args: [*][*:0]u8,
-            args_max_len: u64,
-            args_len: u64,
+            args_max_len: usize,
+            args_len: usize,
             paths: [*]types.Path,
-            paths_max_len: u64,
-            paths_len: u64,
+            paths_max_len: usize,
+            paths_len: usize,
             nodes: [*]*Node,
-            nodes_max_len: u64,
-            nodes_len: u64,
+            nodes_max_len: usize,
+            nodes_len: usize,
             deps: [*]Dependency,
-            deps_max_len: u64,
-            deps_len: u64,
+            deps_max_len: usize,
+            deps_len: usize,
             cfgs: [*]Config,
-            cfgs_max_len: u64,
-            cfgs_len: u64,
+            cfgs_max_len: usize,
+            cfgs_len: usize,
         },
         const CompileState = struct {
             /// Enables `zig build-(exe|obj|lib)` commands.
