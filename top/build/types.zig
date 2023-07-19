@@ -64,6 +64,7 @@ pub const Config = struct {
     pub fn formatWriteBuf(cfg: Config, buf: [*]u8) u64 {
         @setRuntimeSafety(false);
         var len: u64 = 0;
+        var ud64: fmt.Type.Ud64 = undefined;
         @as(*[10]u8, @ptrCast(buf)).* = "pub const ".*;
         len +%= 10;
         @memcpy(buf + len, cfg.name);
@@ -72,9 +73,8 @@ pub const Config = struct {
             .Int => |value| {
                 @as(*[17]u8, @ptrCast(buf + len)).* = ": comptime_int = ".*;
                 len +%= 17;
-                const int_s: []const u8 = builtin.fmt.ud64(value).readAll();
-                @memcpy(buf + len, int_s);
-                len +%= int_s.len;
+                ud64 = @bitCast(value);
+                len +%= ud64.formatWriteBuf(buf + len);
             },
             .Bool => |value| {
                 @as(*[9]u8, @ptrCast(buf + len)).* = ": bool = ".*;
@@ -83,11 +83,10 @@ pub const Config = struct {
                 len +%= if (value) 4 else 5;
             },
             .String => |value| {
-                const len_s: []const u8 = builtin.fmt.ud64(value.len).readAll();
                 @as(*[10]u8, @ptrCast(buf + len)).* = ": *const [".*;
                 len +%= 10;
-                @memcpy(buf + len, len_s);
-                len +%= len_s.len;
+                ud64 = @bitCast(value.len);
+                len +%= ud64.formatWriteBuf(buf + len);
                 @as(*[6]u8, @ptrCast(buf + len)).* = "]u8 = ".*;
                 len +%= 6;
                 buf[len] = '"';
@@ -107,8 +106,7 @@ pub const Config = struct {
         array.writeMany(" = ");
         switch (cfg.value) {
             .Int => |value| {
-                const int_s: []const u8 = builtin.fmt.ud64(value).readAll();
-                array.writeMany(int_s);
+                array.writeFormat(fmt.ud64(value));
             },
             .Bool => |value| {
                 array.writeMany(if (value) "true" else "false");
@@ -122,18 +120,20 @@ pub const Config = struct {
         array.writeMany(";\n");
     }
     pub fn formatLength(cfg: Config) u64 {
-        var len: u64 = 12 +% cfg.name.len +% 4;
+        @setRuntimeSafety(false);
+        var ud64: fmt.Type.Ud64 = undefined;
+        var len: u64 = 10 +% cfg.name.len;
         switch (cfg.value) {
             .Int => |value| {
-                len +%= builtin.fmt.ud64(value).readAll().len;
+                ud64 = @bitCast(value);
+                len +%= 17 +% ud64.formatLength();
             },
             .Bool => |value| {
-                len +%= if (value) 4 else 5;
+                len +%= 9 +% if (value) 4 else 5;
             },
             .String => |value| {
-                len +%= 1;
-                len +%= value.len;
-                len +%= 1;
+                ud64 = @bitCast(value.len);
+                len +%= 18 +% ud64.formatLength() + value.len;
             },
         }
         return len +% 2;
@@ -163,14 +163,14 @@ pub const Module = struct {
     pub fn formatWriteBuf(mod: Module, buf: [*]u8) u64 {
         @setRuntimeSafety(false);
         var len: u64 = 6;
-        mach.memcpy(buf, "--mod\x00", 6);
-        mach.memcpy(buf + len, mod.name.ptr, mod.name.len);
+        @memcpy(buf, "--mod\x00");
+        @memcpy(buf + len, mod.name);
         len = len +% mod.name.len;
         buf[len] = ':';
         len +%= 1;
         if (mod.deps) |deps| {
             for (deps) |dep_name| {
-                mach.memcpy(buf + len, dep_name.ptr, dep_name.len);
+                @memcpy(buf + len, dep_name);
                 len = len +% dep_name.len;
                 buf[len] = ',';
                 len = len +% 1;
@@ -181,7 +181,7 @@ pub const Module = struct {
         }
         buf[len] = ':';
         len = len +% 1;
-        mach.memcpy(buf + len, mod.path.ptr, mod.path.len);
+        @memcpy(buf + len, mod.path);
         len = len +% mod.path.len;
         buf[len] = 0;
         return len +% 1;
@@ -228,15 +228,15 @@ pub const ModuleDependencies = struct {
     pub fn formatWriteBuf(mod_deps: ModuleDependencies, buf: [*]u8) u64 {
         @setRuntimeSafety(false);
         var len: u64 = 7;
-        mach.memcpy(buf, "--deps\x00", 7);
+        @memcpy(buf, "--deps\x00");
         for (mod_deps.value) |mod_dep| {
             if (mod_dep.import) |name| {
-                mach.memcpy(buf + len, name.ptr, name.len);
+                @memcpy(buf + len, name);
                 len = len +% name.len;
                 buf[len] = '=';
                 len = len +% 1;
             }
-            mach.memcpy(buf + len, mod_dep.name.ptr, mod_dep.name.len);
+            @memcpy(buf + len, mod_dep.name);
             len = len +% mod_dep.name.len;
             buf[len] = ',';
             len = len +% 1;
@@ -272,12 +272,12 @@ pub const Macro = struct {
     pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
         @setRuntimeSafety(false);
         @as(*[2]u8, @ptrCast(buf)).* = "-D".*;
-        mach.memcpy(buf + 2, format.name.ptr, format.name.len);
+        @memcpy(buf + 2, format.name);
         var len: u64 = 2 +% format.name.len;
         if (format.value) |value| {
             buf[len] = '=';
             len = len +% 1;
-            mach.memcpy(buf + len, value.ptr, value.len);
+            @memcpy(buf + len, value);
             len = len +% value.len;
         }
         buf[len] = 0;
@@ -307,14 +307,14 @@ pub const CFlags = struct {
     pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
         @setRuntimeSafety(false);
         var len: u64 = 8;
-        mach.memcpy(buf, "-cflags\x00", 8);
+        @memcpy(buf, "-cflags\x00");
         for (format.value) |flag| {
-            mach.memcpy(buf + len, flag.ptr, flag.len);
+            @memcpy(buf + len, flag);
             len = len +% flag.len;
             buf[len] = 0;
             len = len +% 1;
         }
-        mach.memcpy(buf + len, "--\x00", 3);
+        @memcpy(buf + len, "--\x00");
         return len +% 3;
     }
     pub fn formatLength(format: Format) u64 {
@@ -348,12 +348,12 @@ pub const Path = struct {
         @setRuntimeSafety(false);
         var len: u64 = 0;
         if (format.names_len != 0) {
-            mach.memcpy(buf + len, format.names[0].ptr, format.names[0].len);
+            @memcpy(buf + len, format.names[0]);
             len +%= format.names[0].len;
             for (format.names[1..format.names_len]) |name| {
                 buf[len] = '/';
                 len +%= 1;
-                mach.memcpy(buf + len, name.ptr, name.len);
+                @memcpy(buf + len, name);
                 len +%= name.len;
             }
         }
@@ -561,11 +561,11 @@ pub const OldPath = struct {
     pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
         @setRuntimeSafety(false);
         var len: u64 = format.absolute.len;
-        mach.memcpy(buf, format.absolute.ptr, format.absolute.len);
+        @memcpy(buf, format.absolute);
         if (format.relative.len != 0) {
             buf[len] = '/';
             len = len +% 1;
-            mach.memcpy(buf + len, format.relative.ptr, format.relative.len);
+            @memcpy(buf + len, format.relative);
             len = len +% format.relative.len;
         }
         buf[len] = 0;
