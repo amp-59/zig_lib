@@ -1,14 +1,16 @@
 const zl = @import("../zig_lib.zig");
 const mem = zl.mem;
+const fmt = zl.fmt;
 const sys = zl.sys;
 const proc = zl.proc;
 const mach = zl.mach;
 const meta = zl.meta;
 const file = zl.file;
 const spec = zl.spec;
+const debug = zl.debug;
 const builtin = zl.builtin;
 pub usingnamespace zl.start;
-pub const logging_override: builtin.Logging.Override = .{
+pub const logging_override: debug.Logging.Override = .{
     .Error = true,
 };
 const Output = enum(u8) {
@@ -56,11 +58,12 @@ const opt_map: []const Options.Map = &.{
 };
 fn loopInner(options: Options, arg: []const u8) !void {
     const val: u64 = try builtin.parse.any(u64, arg);
+    var buf: [8 * @sizeOf(usize)]u8 = undefined;
     file.write(.{ .errors = .{} }, 1, switch (options.output) {
-        .hex => builtin.fmt.ux64(val).readAll(),
-        .dec => builtin.fmt.ud64(val).readAll(),
-        .oct => builtin.fmt.uo64(val).readAll(),
-        .bin => builtin.fmt.ub64(val).readAll(),
+        .hex => buf[0..fmt.uxsize(val).formatWriteBuf(&buf)],
+        .dec => buf[0..fmt.udsize(val).formatWriteBuf(&buf)],
+        .oct => buf[0..fmt.uosize(val).formatWriteBuf(&buf)],
+        .bin => buf[0..fmt.ubsize(val).formatWriteBuf(&buf)],
         .auto => blk: {
             if (val <= ~@as(u8, 0)) {
                 break :blk @as(*const [1]u8, @ptrCast(&@as(u8, @intCast(val))));
