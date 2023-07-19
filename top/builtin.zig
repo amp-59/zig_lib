@@ -99,9 +99,9 @@ pub const logging_default: debug.Logging.Default = define(
 );
 /// These values (optionally) define all override field values for all logging
 /// sub-types and all default field values for the general logging type.
-pub const logging_override: Logging.Override = define(
+pub const logging_override: debug.Logging.Override = define(
     "logging_override",
-    Logging.Override,
+    debug.Logging.Override,
     .{
         .Attempt = null,
         .Success = null,
@@ -111,47 +111,86 @@ pub const logging_override: Logging.Override = define(
         .Fault = null,
     },
 );
-pub const logging_general: Logging.Default = .{
-    .Attempt = logging_override.Attempt orelse logging_default.Attempt,
-    .Success = logging_override.Success orelse logging_default.Success,
-    .Acquire = logging_override.Acquire orelse logging_default.Acquire,
-    .Release = logging_override.Release orelse logging_default.Release,
-    .Error = logging_override.Error orelse logging_default.Error,
-    .Fault = logging_override.Fault orelse logging_default.Fault,
-};
+
 /// All enabled in build mode `Debug`.
-pub const signal_handlers: SignalHandlers = define(
+pub const signal_handlers: debug.SignalHandlers = define(
     "signal_handlers",
-    SignalHandlers,
+    debug.SignalHandlers,
     .{
-        .SegmentationFault = logging_general.Fault,
-        .IllegalInstruction = logging_general.Fault,
-        .BusError = logging_general.Fault,
-        .FloatingPointError = logging_general.Fault,
+        .SegmentationFault = debug.logging_general.Fault,
+        .IllegalInstruction = debug.logging_general.Fault,
+        .BusError = debug.logging_general.Fault,
+        .FloatingPointError = debug.logging_general.Fault,
         .Trap = logging_default.Fault,
     },
 );
 /// Enabled if `SegmentationFault` enabled. This is because the alternate stack
 /// is only likely to be useful in the event of stack overflow, which is only
 /// reported by SIGSEGV.
-pub const signal_stack: ?SignalAlternateStack = define(
+pub const signal_stack: ?debug.SignalAlternateStack = define(
     "signal_stack",
-    ?SignalAlternateStack,
+    ?debug.SignalAlternateStack,
     if (signal_handlers.SegmentationFault) .{} else null,
 );
-pub const trace: Trace = define("trace", Trace, .{});
-pub const Error = error{
-    SubCausedOverflow,
-    AddCausedOverflow,
-    MulCausedOverflow,
-    LeftShiftCausedOverflow,
-    ExactDivisionWithRemainder,
-    IncorrectAlignment,
+pub const trace: debug.Trace = define("trace", debug.Trace, .{});
+pub const my_trace: debug.Trace = .{
+    .Error = !builtin.strip_debug_info,
+    .Fault = !builtin.strip_debug_info,
+    .Signal = !builtin.strip_debug_info,
+    .options = .{
+        .show_line_no = true,
+        .show_pc_addr = false,
+        .write_sidebar = true,
+        .write_caret = true,
+        .break_line_count = 1,
+        .context_line_count = 1,
+        .tokens = .{
+            .line_no = "\x1b[2m",
+            .pc_addr = "\x1b[38;5;247m",
+            .sidebar = "|",
+            .sidebar_fill = ": ",
+            .comment = "\x1b[2m",
+            .syntax = &.{ .{
+                .style = "",
+                .tags = builtin.Token.Tag.other,
+            }, .{
+                .style = tab.fx.color.fg.orange24,
+                .tags = &.{.number_literal},
+            }, .{
+                .style = tab.fx.color.fg.yellow24,
+                .tags = &.{.char_literal},
+            }, .{
+                .style = tab.fx.color.fg.light_green,
+                .tags = builtin.Token.Tag.strings,
+            }, .{
+                .style = tab.fx.color.fg.bracket,
+                .tags = builtin.Token.Tag.bracket,
+            }, .{
+                .style = tab.fx.color.fg.magenta24,
+                .tags = builtin.Token.Tag.operator,
+            }, .{
+                .style = tab.fx.color.fg.red24,
+                .tags = builtin.Token.Tag.builtin_fn,
+            }, .{
+                .style = tab.fx.color.fg.cyan24,
+                .tags = builtin.Token.Tag.macro_keyword,
+            }, .{
+                .style = tab.fx.color.fg.light_purple,
+                .tags = builtin.Token.Tag.call_keyword,
+            }, .{
+                .style = tab.fx.color.fg.redwine,
+                .tags = builtin.Token.Tag.container_keyword,
+            }, .{
+                .style = tab.fx.color.fg.white24,
+                .tags = builtin.Token.Tag.cond_keyword,
+            }, .{
+                .style = tab.fx.color.fg.yellow24,
+                .tags = builtin.Token.Tag.goto_keyword ++ builtin.zig.Token.Tag.value_keyword,
+            } },
+        },
+    },
 };
-pub const Unexpected = error{
-    UnexpectedValue,
-    UnexpectedLength,
-};
+
 /// `E` must be an error type.
 pub fn InternalError(comptime E: type) type {
     const U = union(enum) {
