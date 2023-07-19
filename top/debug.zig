@@ -298,16 +298,36 @@ pub fn assertEqualMemory(comptime T: type, arg1: T, arg2: T) void {
 }
 pub fn exitRcNotice(rc: u8) void {
     var buf: [4096]u8 = undefined;
-    logAlwaysAIO(&buf, &.{ about.exit_0_s, "rc=", fmt.old.ud8(rc).readAll(), "\n" });
+    var len: usize = about.error_p0_s.len;
+    @as(*[about.error_p0_s.len]u8, @ptrCast(&buf)).* = about.error_p0_s.*;
+    @as(debug.about.ErrorDest, @ptrCast(buf[len..].ptr)).* = debug.about.error_s.*;
+    len +%= debug.about.error_s.len;
+    @as(*[5]u8, @ptrCast(buf[len..].ptr)).* = ", rc=".*;
+    len +%= 5;
+    len +%= fmt.ud64(rc).formatWriteBuf(buf[len..].ptr);
+    buf[len] = '\n';
+    len +%= 1;
+    write(buf[0..len]);
 }
 pub fn errorRcNotice(error_name: []const u8, rc: u8) void {
     var buf: [4096]u8 = undefined;
-    logAlwaysAIO(&buf, &.{ about.error_p0_s, error_name, ", rc=", fmt.old.ud8(rc).readAll(), "\n" });
+    var len: usize = about.error_p0_s.len;
+    @as(*[about.error_p0_s.len]u8, @ptrCast(&buf)).* = about.error_p0_s.*;
+    @as(debug.about.ErrorDest, @ptrCast(buf[len..].ptr)).* = debug.about.error_s.*;
+    len +%= debug.about.error_s.len;
+    @memcpy(buf[len..].ptr, error_name);
+    len +%= error_name.len;
+    @as(*[5]u8, @ptrCast(buf[len..].ptr)).* = ", rc=".*;
+    len +%= 5;
+    len +%= fmt.ud64(rc).formatWriteBuf(buf[len..].ptr);
+    buf[len] = '\n';
+    len +%= 1;
+    write(buf[0..len]);
 }
 pub fn errorFaultRcNotice(error_name: []const u8, message: []const u8, rc: u8) void {
     var buf: [4096]u8 = undefined;
     var len: usize = about.fault_p0_s.len;
-    @as(fmt.AboutDest, @ptrCast(&buf)).* = about.fault_p0_s.*;
+    @as(*[about.fault_p0_s]u8, @ptrCast(&buf)).* = about.fault_p0_s.*;
     @as(debug.about.ErrorDest, @ptrCast(buf[len..].ptr)).* = debug.about.error_s.*;
     len +%= debug.about.error_s.len;
     @memcpy(buf[len..].ptr, error_name);
@@ -325,7 +345,11 @@ pub fn errorFaultRcNotice(error_name: []const u8, message: []const u8, rc: u8) v
 }
 pub fn errorNotice(error_name: []const u8) void {
     var buf: [4096]u8 = undefined;
-    logAlwaysAIO(&buf, &.{ about.error_p0_s, error_name, "\n" });
+    var len: usize = about.error_p0_s.len;
+    @as(*[about.error_p0_s.len]u8, @ptrCast(&buf)).* = about.error_p0_s.*;
+    @memcpy(buf[len..].ptr, error_name);
+    len +%= error_name.len;
+    write(buf[0..len]);
 }
 pub fn faultNotice(message: []const u8) void {
     var buf: [4096]u8 = undefined;
@@ -354,7 +378,19 @@ pub fn faultRcNotice(message: []const u8, rc: u8) void {
 }
 pub fn errorFaultNotice(error_name: []const u8, message: []const u8) void {
     var buf: [4096]u8 = undefined;
-    logAlwaysAIO(&buf, &.{ about.fault_p0_s, about.error_s, error_name, ", ", message, "\n" });
+    var len: usize = about.fault_p0_s.len;
+    @as(*[about.fault_p0_s]u8, @ptrCast(&buf)).* = about.fault_p0_s.*;
+    @as(debug.about.ErrorDest, @ptrCast(buf[len..].ptr)).* = debug.about.error_s.*;
+    len +%= debug.about.error_s.len;
+    @memcpy(buf[len..].ptr, error_name);
+    len +%= error_name.len;
+    @as(*[2]u8, @ptrCast(buf[len..].ptr)).* = ", ".*;
+    len +%= 2;
+    @memcpy(buf[len..].ptr, message);
+    len +%= message.len;
+    buf[len] = '\n';
+    len +%= 1;
+    write(buf[0..len]);
 }
 fn comparisonFailedString(comptime T: type, what: []const u8, symbol: []const u8, buf: [*]u8, arg1: T, arg2: T, help_read: bool) u64 {
     var len: u64 = mach.memcpyMulti(buf, &[_][]const u8{
@@ -749,12 +785,10 @@ pub noinline fn panicExtra(msg: []const u8, ctx_ptr: *const anyopaque) noreturn 
     }
     @call(.always_inline, proc.exitGroupFault, .{ msg, 2 });
 }
-// This function is an example for how the other panic handlers should look.
-// Obviously this is tedious to code so not all at once.
-pub noinline fn panicOutOfBounds(idx: u64, max_len: u64) noreturn {
+pub noinline fn panicOutOfBounds(idx: usize, max_len: usize) noreturn {
     @setCold(true);
     @setRuntimeSafety(false);
-    const ret_addr: u64 = @returnAddress();
+    const ret_addr: usize = @returnAddress();
     var buf: [1024]u8 = undefined;
     var len: u64 = 0;
     var ud64: fmt.Type.Ud64 = @bitCast(idx);
@@ -815,12 +849,12 @@ pub noinline fn panicInactiveUnionField(active: anytype, wanted: @TypeOf(active)
     const ret_addr: usize = @returnAddress();
     var buf: [1024]u8 = undefined;
     var len: usize = 0;
-    @as(*[12]u8, @ptrCast(&buf)).* = "access of union field '".*;
-    len +%= 12;
+    @as(*[23]u8, @ptrCast(&buf)).* = "access of union field '".*;
+    len +%= 23;
     @memcpy(buf[len..].ptr, @tagName(wanted));
     len +%= @tagName(wanted).len;
-    @as(*[12]u8, @ptrCast(buf[len..].ptr)).* = "' while field '".*;
-    len +%= 12;
+    @as(*[15]u8, @ptrCast(buf[len..].ptr)).* = "' while field '".*;
+    len +%= 15;
     @memcpy(buf[len..].ptr, @tagName(active));
     len +%= @tagName(active).len;
     @as(*[12]u8, @ptrCast(buf[len..].ptr)).* = "' is active".*;
