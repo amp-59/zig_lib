@@ -2398,33 +2398,33 @@ fn uniformChangedIntFormatSpec(comptime bits: u16, comptime signedness: builtin.
         .del_fmt_spec = old_fmt_spec,
     };
 }
-pub fn ubd(old: anytype, new: anytype) blk: {
-    const T: type = if (@TypeOf(old) == comptime_int) u128 else @TypeOf(old);
-    const U: type = if (@TypeOf(new) == comptime_int) u128 else @TypeOf(new);
+pub fn ubd(old_int: anytype, new_int: anytype) blk: {
+    const T: type = if (@TypeOf(old_int) == comptime_int) u128 else @TypeOf(old_int);
+    const U: type = if (@TypeOf(new_int) == comptime_int) u128 else @TypeOf(new_int);
     break :blk GenericChangedIntFormat(uniformChangedIntFormatSpec(@max(@bitSizeOf(T), @bitSizeOf(U)), .unsigned, 2));
 } {
-    return .{ .old_value = old, .new_value = new };
+    return .{ .old_int_value = old_int, .new_int_value = new_int };
 }
-pub fn uod(old: anytype, new: anytype) blk: {
-    const T: type = if (@TypeOf(old) == comptime_int) u128 else @TypeOf(old);
-    const U: type = if (@TypeOf(new) == comptime_int) u128 else @TypeOf(new);
+pub fn uod(old_int: anytype, new_int: anytype) blk: {
+    const T: type = if (@TypeOf(old_int) == comptime_int) u128 else @TypeOf(old_int);
+    const U: type = if (@TypeOf(new_int) == comptime_int) u128 else @TypeOf(new_int);
     break :blk GenericChangedIntFormat(uniformChangedIntFormatSpec(@max(@bitSizeOf(T), @bitSizeOf(U)), .unsigned, 8));
 } {
-    return .{ .old_value = old, .new_value = new };
+    return .{ .old_int_value = old_int, .new_int_value = new_int };
 }
-pub fn udd(old: anytype, new: anytype) blk: {
-    const T: type = if (@TypeOf(old) == comptime_int) u128 else @TypeOf(old);
-    const U: type = if (@TypeOf(new) == comptime_int) u128 else @TypeOf(new);
+pub fn udd(old_int: anytype, new_int: anytype) blk: {
+    const T: type = if (@TypeOf(old_int) == comptime_int) u128 else @TypeOf(old_int);
+    const U: type = if (@TypeOf(new_int) == comptime_int) u128 else @TypeOf(new_int);
     break :blk GenericChangedIntFormat(uniformChangedIntFormatSpec(@max(@bitSizeOf(T), @bitSizeOf(U)), .unsigned, 10));
 } {
-    return .{ .old_value = old, .new_value = new };
+    return .{ .old_int_value = old_int, .new_int_value = new_int };
 }
-pub fn uxd(old: anytype, new: anytype) blk: {
-    const T: type = if (@TypeOf(old) == comptime_int) u128 else @TypeOf(old);
-    const U: type = if (@TypeOf(new) == comptime_int) u128 else @TypeOf(new);
+pub fn uxd(old_int: anytype, new_int: anytype) blk: {
+    const T: type = if (@TypeOf(old_int) == comptime_int) u128 else @TypeOf(old_int);
+    const U: type = if (@TypeOf(new_int) == comptime_int) u128 else @TypeOf(new_int);
     break :blk GenericChangedIntFormat(uniformChangedIntFormatSpec(@max(@bitSizeOf(T), @bitSizeOf(U)), .unsigned, 16));
 } {
-    return .{ .old_value = old, .new_value = new };
+    return .{ .old_int_value = old_int, .new_int_value = new_int };
 }
 pub const Type = struct {
     pub const Ib8 = @TypeOf(ib8(undefined));
@@ -2512,4 +2512,197 @@ pub const Type = struct {
         .del_fmt_spec = .{ .bits = 64, .signedness = .unsigned, .radix = 10, .width = .min },
     });
     pub const BytesDel = GenericChangedBytesFormat(.{});
+};
+pub const old = struct {
+    pub inline fn bin(comptime Int: type, value: Int) Generic(Int).Array2 {
+        return Generic(Int).bin(value);
+    }
+    pub inline fn oct(comptime Int: type, value: Int) Generic(Int).Array8 {
+        return Generic(Int).oct(value);
+    }
+    pub inline fn dec(comptime Int: type, value: Int) Generic(Int).Array10 {
+        return Generic(Int).dec(value);
+    }
+    pub inline fn hex(comptime Int: type, value: Int) Generic(Int).Array16 {
+        return Generic(Int).hex(value);
+    }
+    pub const ub8 = Generic(u8).bin;
+    pub const ub16 = Generic(u16).bin;
+    pub const ub32 = Generic(u32).bin;
+    pub const ub64 = Generic(u64).bin;
+    pub const ubsize = Generic(usize).bin;
+    pub const uo8 = Generic(u8).oct;
+    pub const uo16 = Generic(u16).oct;
+    pub const uo32 = Generic(u32).oct;
+    pub const uo64 = Generic(u64).oct;
+    pub const uosize = Generic(usize).oct;
+    pub const ud8 = Generic(u8).dec;
+    pub const ud16 = Generic(u16).dec;
+    pub const ud32 = Generic(u32).dec;
+    pub const ud64 = Generic(u64).dec;
+    pub const udsize = Generic(usize).dec;
+    pub const ux8 = Generic(u8).hex;
+    pub const ux16 = Generic(u16).hex;
+    pub const ux32 = Generic(u32).hex;
+    pub const ux64 = Generic(u64).hex;
+    pub const uxsize = Generic(usize).hex;
+    pub const ib8 = Generic(i8).bin;
+    pub const ib16 = Generic(i16).bin;
+    pub const ib32 = Generic(i32).bin;
+    pub const ib64 = Generic(i64).bin;
+    pub const ibsize = Generic(isize).bin;
+    pub const io8 = Generic(i8).oct;
+    pub const io16 = Generic(i16).oct;
+    pub const io32 = Generic(i32).oct;
+    pub const io64 = Generic(i64).oct;
+    pub const iosize = Generic(isize).oct;
+    pub const id8 = Generic(i8).dec;
+    pub const id16 = Generic(i16).dec;
+    pub const id32 = Generic(i32).dec;
+    pub const id64 = Generic(i64).dec;
+    pub const idsize = Generic(isize).dec;
+    pub const ix8 = Generic(i8).hex;
+    pub const ix16 = Generic(i16).hex;
+    pub const ix32 = Generic(i32).hex;
+    pub const ix64 = Generic(i64).hex;
+    pub const ixsize = Generic(isize).hex;
+    pub const nsec = Generic(u64).nsec;
+    pub fn Generic(comptime Int: type) type {
+        const T = struct {
+            const Abs = math.Absolute(Int);
+            const len2: comptime_int = maxSigFig(Int, 2) +% 1;
+            const len8: comptime_int = maxSigFig(Int, 8) +% 1;
+            const len10: comptime_int = maxSigFig(Int, 10) +% 1;
+            const len16: comptime_int = maxSigFig(Int, 16) +% 1;
+            pub const Array2 = Array(len2);
+            pub const Array8 = Array(len8);
+            pub const Array10 = Array(len10);
+            pub const Array16 = Array(len16);
+            pub fn bin(value: Int) Array2 {
+                @setRuntimeSafety(false);
+                var ret: Array2 = undefined;
+                ret.len = ret.buf.len;
+                if (value == 0) {
+                    while (ret.len != 3) {
+                        ret.len -%= 1;
+                        ret.buf[ret.len] = '0';
+                    }
+                    ret.len -%= 2;
+                    @as(*[2]u8, @ptrCast(&ret.buf[ret.len])).* = "0b".*;
+                    return ret;
+                }
+                var abs_value: Abs = if (Int != Abs and value < 0)
+                    @intCast(-value)
+                else
+                    @intCast(value);
+                while (abs_value != 0) : (abs_value /= 2) {
+                    ret.len -%= 1;
+                    ret.buf[ret.len] = '0' +% @as(u8, @intCast(@rem(abs_value, 2)));
+                }
+                while (ret.len != 3) {
+                    ret.len -%= 1;
+                    ret.buf[ret.len] = '0';
+                }
+                ret.len -%= 2;
+                @as(*[2]u8, @ptrCast(ret.buf[ret.len..].ptr)).* = "0b".*;
+                if (value < 0) {
+                    ret.len -%= 1;
+                    ret.buf[ret.len] = '-';
+                }
+                return ret;
+            }
+            pub fn oct(value: Int) Array8 {
+                @setRuntimeSafety(false);
+                var ret: Array8 = undefined;
+                ret.len = ret.buf.len;
+                if (value == 0) {
+                    ret.len -%= 3;
+                    @as(*[3]u8, @ptrCast(ret.buf[ret.len..].ptr)).* = "0o0".*;
+                    return ret;
+                }
+                var abs_value: Abs = if (Int != Abs and value < 0)
+                    @as(Abs, @intCast(-value))
+                else
+                    @as(Abs, @intCast(value));
+                while (abs_value != 0) : (abs_value /= 8) {
+                    ret.len -%= 1;
+                    ret.buf[ret.len] = '0' +% @as(u8, @intCast(@rem(abs_value, 8)));
+                }
+                ret.len -%= 2;
+                @as(*[2]u8, @ptrCast(ret.buf[ret.len..].ptr)).* = "0o".*;
+                if (value < 0) {
+                    ret.len -%= 1;
+                    ret.buf[ret.len] = '-';
+                }
+                return ret;
+            }
+            pub fn dec(value: Int) Array10 {
+                @setRuntimeSafety(false);
+                var ret: Array10 = undefined;
+                ret.len = ret.buf.len;
+                if (value == 0) {
+                    ret.len -%= 1;
+                    ret.buf[ret.len] = '0';
+                    return ret;
+                }
+                var abs_value: Abs = if (Int != Abs and value < 0)
+                    @as(Abs, @intCast(-value))
+                else
+                    @as(Abs, @intCast(value));
+                while (abs_value != 0) : (abs_value /= 10) {
+                    ret.len -%= 1;
+                    ret.buf[ret.len] = '0' +% @as(u8, @intCast(@rem(abs_value, 10)));
+                }
+                if (value < 0) {
+                    ret.len -%= 1;
+                    ret.buf[ret.len] = '-';
+                }
+                return ret;
+            }
+            pub fn hex(value: Int) Array16 {
+                @setRuntimeSafety(false);
+                var ret: Array16 = undefined;
+                ret.len = ret.buf.len;
+                if (value == 0) {
+                    ret.len -%= 3;
+                    @as(*[3]u8, @ptrCast(ret.buf[ret.len..].ptr)).* = "0x0".*;
+                    return ret;
+                }
+                var abs_value: Abs = if (Int != Abs and value < 0)
+                    @as(Abs, @bitCast(-value))
+                else
+                    @as(Abs, @intCast(value));
+                while (abs_value != 0) : (abs_value /= 16) {
+                    ret.len -%= 1;
+                    ret.buf[ret.len] = toSymbol(Abs, abs_value, 16);
+                }
+                ret.len -%= 2;
+                @as(*[2]u8, @ptrCast(ret.buf[ret.len..].ptr)).* = "0x".*;
+                if (value < 0) {
+                    ret.len -%= 1;
+                    ret.buf[ret.len] = '-';
+                }
+                return ret;
+            }
+            pub fn nsec(value: Int) Array10 {
+                @setRuntimeSafety(false);
+                var ret: Array10 = @This().dec(value);
+                while (ret.buf.len -% ret.len < 9) {
+                    ret.len -%= 1;
+                    ret.buf[ret.len] = '0';
+                }
+                return ret;
+            }
+            fn Array(comptime len: comptime_int) type {
+                return struct {
+                    len: u64,
+                    buf: [len]u8 align(8),
+                    pub fn readAll(array: *const @This()) []const u8 {
+                        return array.buf[array.len..];
+                    }
+                };
+            }
+        };
+        return T;
+    }
 };
