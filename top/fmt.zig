@@ -1,14 +1,102 @@
 const tab = @import("./tab.zig");
 const mem = @import("./mem.zig");
+const math = @import("./math.zig");
 const meta = @import("./meta.zig");
 const mach = @import("./mach.zig");
 const time = @import("./time.zig");
 const spec = @import("./spec.zig");
+const debug = @import("./debug.zig");
 const builtin = @import("./builtin.zig");
 const _render = @import("./render.zig");
 pub const utf8 = @import("./fmt/utf8.zig");
 pub const ascii = @import("./fmt/ascii.zig");
 pub usingnamespace _render;
+
+pub fn about(comptime s: [:0]const u8) AboutSrc {
+    var lhs: [:0]const u8 = s;
+    lhs = builtin.message_prefix ++ lhs;
+    lhs = lhs ++ builtin.message_suffix;
+    const len: u64 = lhs.len;
+    if (builtin.message_style) |style| {
+        lhs = style ++ lhs ++ builtin.message_no_style;
+    }
+    if (len >= builtin.message_indent) {
+        @compileError(s ++ " is too long");
+    }
+    return lhs ++ " " ** (builtin.message_indent - len);
+}
+pub const AboutSrc = @TypeOf(blank_s);
+pub const AboutDest = @TypeOf(@constCast(blank_s));
+pub const blank_s = blk: {
+    const indent = (" " ** builtin.message_indent);
+    if (builtin.message_style) |style| {
+        break :blk style ++ indent ++ builtin.message_no_style;
+    }
+    break :blk indent;
+};
+pub fn ci(comptime value: comptime_int) []const u8 {
+    if (value < 0) {
+        const s: []const u8 = @typeName([-value]void);
+        return "-" ++ s[1 .. s.len -% 5];
+    } else {
+        const s: []const u8 = @typeName([value]void);
+        return s[1 .. s.len -% 5];
+    }
+}
+pub fn cx(comptime value: anytype) []const u8 {
+    const S: type = @TypeOf(value);
+    const T = [:value]S;
+    const s_type_name: []const u8 = @typeName(S);
+    const t_type_name: []const u8 = @typeName(T);
+    return t_type_name[2 .. t_type_name.len -% (s_type_name.len +% 1)];
+}
+fn maxSigFig(comptime T: type, comptime radix: u7) comptime_int {
+    @setRuntimeSafety(false);
+    const U = @Type(.{ .Int = .{ .bits = @bitSizeOf(T), .signedness = .unsigned } });
+    var value: if (@bitSizeOf(U) < 8) u8 else U = 0;
+    var len: u16 = 0;
+    if (radix != 10) {
+        len += 2;
+    }
+    value -%= 1;
+    while (value != 0) : (value /= radix) {
+        len += 1;
+    }
+    return len;
+}
+pub fn length(
+    comptime U: type,
+    abs_value: if (@bitSizeOf(U) < 8) u8 else U,
+    comptime radix: u7,
+) usize {
+    @setRuntimeSafety(false);
+    if (@bitSizeOf(U) == 1) {
+        return 1;
+    }
+    var value: @TypeOf(abs_value) = abs_value;
+    var count: u64 = 0;
+    while (value != 0) : (value /= radix) {
+        count +%= 1;
+    }
+    return @max(1, count);
+}
+pub fn toSymbol(comptime T: type, value: T, comptime radix: u7) u8 {
+    @setRuntimeSafety(false);
+    if (@bitSizeOf(T) < 8) {
+        return toSymbol(u8, value, radix);
+    }
+    const result: u8 = @as(u8, @intCast(@rem(value, radix)));
+    const dx = .{
+        .d = @as(u8, '9' -% 9),
+        .x = @as(u8, 'f' -% 15),
+    };
+    if (radix > 10) {
+        return result +% if (result < 10) dx.d else dx.x;
+    } else {
+        return result +% dx.d;
+    }
+}
+
 fn GenericFormat(comptime Format: type) type {
     const T = struct {
         const StaticString = mem.StaticString(Format.max_len);
