@@ -1411,7 +1411,7 @@ pub fn testEqualMany(comptime T: type, l_values: []const T, r_values: []const T)
     }
     var idx: u64 = 0;
     while (idx != l_values.len) {
-        if (!builtin.testEqual(T, l_values[idx], r_values[idx])) return false;
+        if (!mem.testEqual(T, l_values[idx], r_values[idx])) return false;
         idx +%= 1;
     }
     return true;
@@ -1442,6 +1442,92 @@ pub fn testEqualManyBack(comptime T: type, suffix_values: []const T, values: []c
 }
 pub fn testEqualManyIn(comptime T: type, find_values: []const T, values: []const T) bool {
     return indexOfFirstEqualMany(T, find_values, values) != null;
+}
+pub fn testEqualMemory(comptime T: type, arg1: T, arg2: T) bool {
+    switch (@typeInfo(T)) {
+        else => @compileError(@typeName(T)),
+        .Int, .Enum, .Bool, .Void => return arg1 == arg2,
+        .Struct => |struct_info| {
+            inline for (struct_info.fields) |field| {
+                if (!testEqualMemory(field.type, @field(arg1, field.name), @field(arg2, field.name))) {
+                    return false;
+                }
+            }
+            return true;
+        },
+        .Union => |union_info| {
+            if (union_info.tag_type) |tag_type| {
+                if (@as(tag_type, arg1) != @as(tag_type, arg2)) {
+                    return false;
+                }
+                switch (arg1) {
+                    inline else => |value, tag| {
+                        return testEqualMemory(@TypeOf(value), value, @field(arg2, @tagName(tag)));
+                    },
+                }
+            } else {
+                @compileError(@typeName(T));
+            }
+        },
+        .Optional => |optional_info| {
+            if (arg1 != null and arg2 != null) {
+                return testEqualMemory(optional_info.child, arg1.?, arg2.?);
+            }
+            return arg1 == null and arg2 == null;
+        },
+        .Array => |array_info| {
+            return testEqualMemory([]const array_info.child, &arg1, &arg2);
+        },
+        .Pointer => |pointer_info| {
+            switch (pointer_info.size) {
+                .Many => {
+                    const len1: usize = indexOfSentinel(arg1);
+                    const len2: usize = indexOfSentinel(arg2);
+                    if (len1 != len2) {
+                        return false;
+                    }
+                    if (arg1 == arg2) {
+                        return true;
+                    }
+                    for (arg1[0..len1], arg2[0..len2]) |value1, value2| {
+                        if (!testEqualMemory(pointer_info.child, value1, value2)) {
+                            return false;
+                        }
+                    }
+                    return true;
+                },
+                .Slice => {
+                    if (arg1.len != arg2.len) {
+                        return false;
+                    }
+                    if (arg1.ptr == arg2.ptr) {
+                        return true;
+                    }
+                    for (arg1, arg2) |value1, value2| {
+                        if (!testEqualMemory(pointer_info.child, value1, value2)) {
+                            return false;
+                        }
+                    }
+                    return true;
+                },
+                else => return testEqualMemory(pointer_info.child, arg1.*, arg2.*),
+            }
+        },
+    }
+}
+pub fn indexOfSentinel(any: anytype) usize {
+    const T = @TypeOf(any);
+    const type_info: builtin.Type = @typeInfo(T);
+    if (type_info.Pointer.sentinel == null) {
+        @compileError(@typeName(T));
+    }
+    const sentinel: type_info.Pointer.child =
+        @as(*const type_info.Pointer.child, @ptrCast(type_info.Pointer.sentinel.?)).*;
+    var idx: usize = 0;
+    while (any[idx] != sentinel) {
+        idx +%= 1;
+    }
+    return idx;
 }
 pub fn indexOfFirstEqualOne(comptime T: type, value: T, values: []const T) ?u64 {
     var idx: u64 = 0;
