@@ -1037,60 +1037,6 @@ pub fn GenericPrettyFormatAddressSpaceHierarchy(comptime ToplevelAddressSpace: t
         }
     });
 }
-fn typeNameDemangle(comptime type_name: []const u8, comptime decl_name: []const u8) []const u8 {
-    var ret: []const u8 = type_name;
-    var index: u64 = type_name.len;
-    while (index != 0) {
-        index -%= 1;
-        if (type_name[index] == '_') {
-            break;
-        }
-        if (type_name[index] < '0' or
-            type_name[index] > '9')
-        {
-            return type_name;
-        }
-    }
-    const serial = index;
-    ret = type_name[0..index];
-    if (ret.len < decl_name.len) {
-        return type_name;
-    }
-    for (ret[ret.len -% decl_name.len ..], 0..) |c, i| {
-        if (c != decl_name[i]) {
-            return type_name;
-        }
-    }
-    index -%= decl_name.len;
-    return ret[0..index] ++ type_name[serial..];
-}
-pub fn typeName(comptime T: type) []const u8 {
-    const type_info: builtin.Type = @typeInfo(T);
-    const type_name: [:0]const u8 = @typeName(T);
-    comptime switch (type_info) {
-        .Pointer => |pointer_info| {
-            return builtin.fmt.typeDeclSpecifier(type_info) ++
-                typeName(pointer_info.child);
-        },
-        .Array => |array_info| {
-            return builtin.fmt.typeDeclSpecifier(type_info) ++
-                typeName(array_info.child);
-        },
-        .Struct => {
-            return typeNameDemangle(type_name, "__struct");
-        },
-        .Enum => {
-            return typeNameDemangle(type_name, "__enum");
-        },
-        .Union => {
-            return typeNameDemangle(type_name, "__union");
-        },
-        .Opaque => {
-            return typeNameDemangle(type_name, "__opaque");
-        },
-        else => return type_name,
-    };
-}
 pub fn isValidId(values: []const u8) bool {
     if (values.len == 0) {
         return false;
@@ -1127,7 +1073,134 @@ pub fn isValidId(values: []const u8) bool {
             else => return false,
         }
     }
-    return builtin.zig.keyword(values) == null;
+    return builtin.parse.keyword(values) == null;
+}
+pub fn typeName(comptime T: type) []const u8 {
+    const type_info: builtin.Type = @typeInfo(T);
+    const type_name: [:0]const u8 = @typeName(T);
+    comptime switch (type_info) {
+        .Pointer => |pointer_info| {
+            return typeDeclSpecifier(type_info) ++ typeName(pointer_info.child);
+        },
+        .Array => |array_info| {
+            return typeDeclSpecifier(type_info) ++ typeName(array_info.child);
+        },
+        .Struct => {
+            return typeNameDemangle(type_name, "__struct");
+        },
+        .Enum => {
+            return typeNameDemangle(type_name, "__enum");
+        },
+        .Union => {
+            return typeNameDemangle(type_name, "__union");
+        },
+        .Opaque => {
+            return typeNameDemangle(type_name, "__opaque");
+        },
+        else => return type_name,
+    };
+}
+fn typeNameDemangle(comptime type_name: []const u8, comptime decl_name: []const u8) []const u8 {
+    var ret: []const u8 = type_name;
+    var index: u64 = type_name.len;
+    while (index != 0) {
+        index -%= 1;
+        if (type_name[index] == '_') {
+            break;
+        }
+        if (type_name[index] < '0' or
+            type_name[index] > '9')
+        {
+            return type_name;
+        }
+    }
+    const serial = index;
+    ret = type_name[0..index];
+    if (ret.len < decl_name.len) {
+        return type_name;
+    }
+    for (ret[ret.len -% decl_name.len ..], 0..) |c, i| {
+        if (c != decl_name[i]) {
+            return type_name;
+        }
+    }
+    index -%= decl_name.len;
+    return ret[0..index] ++ type_name[serial..];
+}
+pub fn typeTypeName(comptime type_id: builtin.TypeId) []const u8 {
+    return switch (type_id) {
+        .zig.Type => "type",
+        .Void => "void",
+        .Bool => "bool",
+        .NoReturn => "noreturn",
+        .Int => "integer",
+        .Float => "float",
+        .Pointer => "pointer",
+        .Array => "array",
+        .Struct => "struct",
+        .ComptimeFloat => "comptime_float",
+        .ComptimeInt => "comptime_int",
+        .Undefined => "undefined",
+        .Null => "null",
+        .Optional => "optional",
+        .ErrorUnion => "error union",
+        .ErrorSet => "error set",
+        .Enum => "enum",
+        .Union => "union",
+        .Fn => "function",
+        .Opaque => "opaque",
+        .Frame => "frame",
+        .AnyFrame => "anyframe",
+        .Vector => "vector",
+        .EnumLiteral => "enum literal",
+    };
+}
+pub fn typeDeclSpecifier(comptime type_info: builtin.Type) []const u8 {
+    return switch (type_info) {
+        .Array, .Pointer, .Optional => {
+            const type_name: []const u8 = @typeName(@Type(type_info));
+            const child_type_name: []const u8 = @typeName(@field(type_info, @tagName(type_info)).child);
+            return type_name[0 .. type_name.len -% child_type_name.len];
+        },
+        .Enum => |enum_info| {
+            return "enum(" ++ @typeName(enum_info.tag_type) ++ ")";
+        },
+        .Struct => |struct_info| {
+            switch (struct_info.layout) {
+                .Packed => {
+                    if (struct_info.backing_integer) |backing_integer| {
+                        return "packed struct(" ++ @typeName(backing_integer) ++ ")";
+                    } else {
+                        return "packed struct";
+                    }
+                },
+                .Extern => return "extern struct",
+                .Auto => return "struct",
+            }
+        },
+        .Union => |union_info| {
+            switch (union_info.layout) {
+                .Packed => {
+                    if (union_info.tag_type != null) {
+                        return "packed union(enum)";
+                    } else {
+                        return "packed union";
+                    }
+                },
+                .Extern => return "extern union",
+                .Auto => {
+                    if (union_info.tag_type != null) {
+                        return "union(enum)";
+                    } else {
+                        return "union";
+                    }
+                },
+            }
+        },
+        .Opaque => "opaque",
+        .ErrorSet => "error",
+        else => @compileError(@typeName(@Type(type_info))),
+    };
 }
 const EscapedStringFormatSpec = struct {
     single_quote: []const u8 = "\'",
