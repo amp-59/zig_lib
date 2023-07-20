@@ -6,11 +6,12 @@ const proc = zl.proc;
 const mach = zl.mach;
 const spec = zl.spec;
 const meta = zl.meta;
+const debug = zl.debug;
 const builtin = zl.builtin;
 const testing = zl.testing;
 
 pub usingnamespace zl.start;
-pub const logging_override: builtin.Logging.Override = spec.logging.override.verbose;
+pub const logging_override: debug.Logging.Override = spec.logging.override.verbose;
 
 const Array = mem.StaticString(0x1000000);
 
