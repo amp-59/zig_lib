@@ -44,8 +44,8 @@ pub fn main(args: [][*:0]u8) !void {
         var index: u64 = 1;
         while (list.at(index)) |entry| : (index +%= 1) {
             // Write directory entry name to stderr
-            builtin.debug.write(entry.name());
-            builtin.debug.write("\n");
+            debug.write(entry.name());
+            debug.write("\n");
         }
     }
 }

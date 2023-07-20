@@ -36,7 +36,7 @@ fn showFile(buf: []u64) void {
     array.undefineAll();
     for (buf) |value| {
         if (array.avail() < 128) {
-            builtin.debug.write(array.readAll());
+            debug.write(array.readAll());
             array.undefineAll();
         }
         const len: u64 = array.len();
@@ -53,7 +53,7 @@ fn showFile(buf: []u64) void {
 
 pub fn main(args: [][*:0]u8) !void {
     if (args.len != 3) {
-        builtin.debug.logFault(
+        debug.logFault(
             \\sortfile (sort|show) <pathname>
             \\
         );

@@ -103,7 +103,7 @@ fn fileBuf(allocator: *zig.Allocator.Node, dir_fd: u64, name: [:0]const u8) !zig
     defer file.close(close_spec, fd);
     const st: file.Stat = try file.fstat(stat_spec, fd);
     var file_buf: zig.SourceArray = try zig.SourceArray.init(allocator, st.size);
-    builtin.assertEqual(u64, st.size, try file.read(.{}, fd, file_buf.referAllDefined(), st.size));
+    debug.assertEqual(u64, st.size, try file.read(.{}, fd, file_buf.referAllDefined(), st.size));
     return file_buf;
 }
 
@@ -223,7 +223,7 @@ fn parseAndWalk(address_space: *AddressSpace, arg: [:0]const u8) !u64 {
         }
         nanos += root.ts.nsec;
         if (print_times) {
-            builtin.debug.write(print_array.readAll());
+            debug.write(print_array.readAll());
         }
         print_array.undefineAll();
     }
@@ -233,7 +233,7 @@ fn parseAndWalk(address_space: *AddressSpace, arg: [:0]const u8) !u64 {
         .{ fmt.ud(Test.sample), '/', fmt.ud(Test.sample_size) },
         lit.position.restore,
     });
-    builtin.debug.write(print_array.readAll());
+    debug.write(print_array.readAll());
     return nanos;
 }
 
@@ -265,7 +265,7 @@ pub fn threadMain(address_space: *AddressSpace, args_in: [][*:0]u8) !void {
             ": ",             fmt.udh(sum.? / Test.sample_size),
             '\n',
         });
-        builtin.debug.write(print_array.readAll());
+        debug.write(print_array.readAll());
     }
 }
 pub fn main(args: [][*:0]u8, _: [][*:0]u8) !void {

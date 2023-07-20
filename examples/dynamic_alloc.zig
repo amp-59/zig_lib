@@ -31,5 +31,5 @@ pub fn main() !void {
         " using dynamic memory\n",
     });
 
-    builtin.debug.write(array.readAll(allocator));
+    debug.write(array.readAll(allocator));
 }

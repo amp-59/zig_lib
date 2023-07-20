@@ -5,12 +5,13 @@ const proc = zl.proc;
 const file = zl.file;
 const meta = zl.meta;
 const spec = zl.spec;
+const debug = zl.debug;
 const builtin = zl.builtin;
 
 pub usingnamespace zl.start;
 
 pub const AddressSpace = spec.address_space.regular_128;
-pub const logging_default: builtin.Logging.Default = .{
+pub const logging_default: debug.Logging.Default = .{
     .Attempt = true,
     .Success = true,
     .Acquire = true,
@@ -85,6 +86,6 @@ pub fn main(args: [][*:0]u8) !void {
         defer path_split.deinit(&allocator);
         var array: mem.StaticString(1024 * 512) = .{};
         array.writeAny(spec.reinterpret.fmt, fmt.any(path_split));
-        builtin.debug.write(array.readAll());
+        debug.write(array.readAll());
     }
 }

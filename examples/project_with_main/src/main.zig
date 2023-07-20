@@ -15,13 +15,13 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     array.undefineAll();
 
     // Here the basic utilities are used to print arguments to stderr.
-    builtin.debug.write("args:\n");
+    debug.write("args:\n");
     var idx: u64 = 1;
     while (idx != args.len) : (idx +%= 1) {
-        builtin.debug.write(builtin.fmt.ud64(idx).readAll());
-        builtin.debug.write(": ");
-        builtin.debug.write(meta.manyToSlice(args[idx]));
-        builtin.debug.write("\n");
+        debug.write(fmt.old.ud64(idx).readAll());
+        debug.write(": ");
+        debug.write(meta.manyToSlice(args[idx]));
+        debug.write("\n");
     }
     idx = 0;
     array.writeMany("vars:\n");
@@ -31,6 +31,6 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
         // sentinel-terminated-slices-to-many to full slices.
         array.writeAny(zl.spec.reinterpret.ptr, .{ vars[idx], '\n' });
     }
-    builtin.debug.write(array.readAll());
+    debug.write(array.readAll());
     array.undefineAll();
 }

@@ -26,5 +26,5 @@ pub fn main() !void {
         .inline_field_types = false,
         .infer_type_names = false,
     }, zl.file));
-    builtin.debug.write(array.readAll(allocator));
+    debug.write(array.readAll(allocator));
 }
