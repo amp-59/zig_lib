@@ -25,7 +25,7 @@ const @"test" = struct {
     const time = @import("time-test.zig");
     const virtual = @import("virtual-test.zig");
 };
-pub const logging_override: zl.builtin.Logging.Override = zl.spec.logging.override.verbose;
+pub const logging_override: zl.debug.Logging.Override = zl.spec.logging.override.verbose;
 pub const AddressSpace = zl.spec.address_space.exact_8;
 const Allocator0 = zl.mem.GenericArenaAllocator(.{
     .arena_index = 0,

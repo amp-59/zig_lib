@@ -4,6 +4,7 @@ const mem = zl.mem;
 const meta = zl.meta;
 const file = zl.file;
 const proc = zl.proc;
+const debug = zl.debug;
 const parse = zl.parse;
 const builtin = zl.builtin;
 const testing = zl.testing;
@@ -15,6 +16,109 @@ fn testNonChildIntegers() !void {
     var array: PrintArray = .{};
     array.writeAny(.{ .integral = .{ .format = .hex } }, @as(u64, 0xdeadbeef));
     try testing.expectEqualMany(u8, "0xdeadbeef", array.readAll());
+}
+pub fn testIntToString() !void {
+    const T: type = u64;
+    var arg1: T = 0;
+    var iint: i64 = -0xfee1dead;
+    try testing.expectEqualMany(u8, builtin.fmt.ix64(iint).readAll(), "-0xfee1dead");
+    iint = -0x0;
+    try testing.expectEqualMany(u8, builtin.fmt.ix64(iint).readAll(), "0x0");
+    var uint: u64 = 0xdeadbeef;
+    try testing.expectEqualMany(u8, builtin.fmt.ux64(uint).readAll(), "0xdeadbeef");
+    const bs: [2]bool = .{ true, false };
+    for (bs) |b_0| {
+        builtin.assertEqual(u64, @intFromBool(b_0), builtin.int(u64, b_0));
+        for (bs) |b_1| {
+            builtin.assertEqual(u64, @intFromBool(b_0 or b_1), builtin.int2v(u64, b_0, b_1));
+            builtin.assertEqual(u64, @intFromBool(b_0 and b_1), builtin.int2a(u64, b_0, b_1));
+            for (bs) |b_2| {
+                builtin.assertEqual(u64, @intFromBool(b_0 or b_1 or b_2), builtin.int3v(u64, b_0, b_1, b_2));
+                builtin.assertEqual(u64, @intFromBool(b_0 and b_1 and b_2), builtin.int3a(u64, b_0, b_1, b_2));
+            }
+        }
+    }
+    try testing.expectEqualMany(u8, builtin.fmt.ub8(0).readAll(), "0b00000000");
+    try testing.expectEqualMany(u8, builtin.fmt.ub8(1).readAll(), "0b00000001");
+    const start = @intFromPtr(&arg1);
+    var inc: u64 = 1;
+    uint = start;
+    while (uint - start < 0x100000) : ({
+        uint +%= inc;
+        inc +%= 1;
+    }) {
+        builtin.assertEqual(u64, uint, builtin.parse.ub(u64, builtin.fmt.ub64(uint).readAll()));
+        builtin.assertEqual(u64, uint, builtin.parse.uo(u64, builtin.fmt.uo64(uint).readAll()));
+        builtin.assertEqual(u64, uint, builtin.parse.ud(u64, builtin.fmt.ud64(uint).readAll()));
+        builtin.assertEqual(u64, uint, builtin.parse.ux(u64, builtin.fmt.ux64(uint).readAll()));
+        builtin.assertEqual(u32, @as(u32, @truncate(uint)), builtin.parse.ub(u32, builtin.fmt.ub32(@as(u32, @truncate(uint))).readAll()));
+        builtin.assertEqual(u32, @as(u32, @truncate(uint)), builtin.parse.uo(u32, builtin.fmt.uo32(@as(u32, @truncate(uint))).readAll()));
+        builtin.assertEqual(u32, @as(u32, @truncate(uint)), builtin.parse.ud(u32, builtin.fmt.ud32(@as(u32, @truncate(uint))).readAll()));
+        builtin.assertEqual(u32, @as(u32, @truncate(uint)), builtin.parse.ux(u32, builtin.fmt.ux32(@as(u32, @truncate(uint))).readAll()));
+        builtin.assertEqual(u16, @as(u16, @truncate(uint)), builtin.parse.ub(u16, builtin.fmt.ub16(@as(u16, @truncate(uint))).readAll()));
+        builtin.assertEqual(u16, @as(u16, @truncate(uint)), builtin.parse.uo(u16, builtin.fmt.uo16(@as(u16, @truncate(uint))).readAll()));
+        builtin.assertEqual(u16, @as(u16, @truncate(uint)), builtin.parse.ud(u16, builtin.fmt.ud16(@as(u16, @truncate(uint))).readAll()));
+        builtin.assertEqual(u16, @as(u16, @truncate(uint)), builtin.parse.ux(u16, builtin.fmt.ux16(@as(u16, @truncate(uint))).readAll()));
+        builtin.assertEqual(u8, @as(u8, @truncate(uint)), builtin.parse.ub(u8, builtin.fmt.ub8(@as(u8, @truncate(uint))).readAll()));
+        builtin.assertEqual(u8, @as(u8, @truncate(uint)), builtin.parse.uo(u8, builtin.fmt.uo8(@as(u8, @truncate(uint))).readAll()));
+        builtin.assertEqual(u8, @as(u8, @truncate(uint)), builtin.parse.ud(u8, builtin.fmt.ud8(@as(u8, @truncate(uint))).readAll()));
+        builtin.assertEqual(u8, @as(u8, @truncate(uint)), builtin.parse.ux(u8, builtin.fmt.ux8(@as(u8, @truncate(uint))).readAll()));
+        try builtin.expectEqual(u64, uint, builtin.parse.ub(u64, builtin.fmt.ub64(uint).readAll()));
+        try builtin.expectEqual(u64, uint, builtin.parse.uo(u64, builtin.fmt.uo64(uint).readAll()));
+        try builtin.expectEqual(u64, uint, builtin.parse.ud(u64, builtin.fmt.ud64(uint).readAll()));
+        try builtin.expectEqual(u64, uint, builtin.parse.ux(u64, builtin.fmt.ux64(uint).readAll()));
+        try builtin.expectEqual(u32, @as(u32, @truncate(uint)), builtin.parse.ub(u32, builtin.fmt.ub32(@as(u32, @truncate(uint))).readAll()));
+        try builtin.expectEqual(u32, @as(u32, @truncate(uint)), builtin.parse.uo(u32, builtin.fmt.uo32(@as(u32, @truncate(uint))).readAll()));
+        try builtin.expectEqual(u32, @as(u32, @truncate(uint)), builtin.parse.ud(u32, builtin.fmt.ud32(@as(u32, @truncate(uint))).readAll()));
+        try builtin.expectEqual(u32, @as(u32, @truncate(uint)), builtin.parse.ux(u32, builtin.fmt.ux32(@as(u32, @truncate(uint))).readAll()));
+        try builtin.expectEqual(u16, @as(u16, @truncate(uint)), builtin.parse.ub(u16, builtin.fmt.ub16(@as(u16, @truncate(uint))).readAll()));
+        try builtin.expectEqual(u16, @as(u16, @truncate(uint)), builtin.parse.uo(u16, builtin.fmt.uo16(@as(u16, @truncate(uint))).readAll()));
+        try builtin.expectEqual(u16, @as(u16, @truncate(uint)), builtin.parse.ud(u16, builtin.fmt.ud16(@as(u16, @truncate(uint))).readAll()));
+        try builtin.expectEqual(u16, @as(u16, @truncate(uint)), builtin.parse.ux(u16, builtin.fmt.ux16(@as(u16, @truncate(uint))).readAll()));
+        try builtin.expectEqual(u8, @as(u8, @truncate(uint)), builtin.parse.ub(u8, builtin.fmt.ub8(@as(u8, @truncate(uint))).readAll()));
+        try builtin.expectEqual(u8, @as(u8, @truncate(uint)), builtin.parse.uo(u8, builtin.fmt.uo8(@as(u8, @truncate(uint))).readAll()));
+        try builtin.expectEqual(u8, @as(u8, @truncate(uint)), builtin.parse.ud(u8, builtin.fmt.ud8(@as(u8, @truncate(uint))).readAll()));
+        try builtin.expectEqual(u8, @as(u8, @truncate(uint)), builtin.parse.ux(u8, builtin.fmt.ux8(@as(u8, @truncate(uint))).readAll()));
+    }
+    iint = @as(isize, @bitCast(start));
+    inc = 1;
+    while (iint < 0x100000) : ({
+        uint +%= inc;
+        inc +%= 1;
+    }) {
+        builtin.assertEqual(i64, iint, builtin.parse.ib(i64, builtin.fmt.ib64(iint).readAll()));
+        builtin.assertEqual(i64, iint, builtin.parse.io(i64, builtin.fmt.io64(iint).readAll()));
+        builtin.assertEqual(i64, iint, builtin.parse.id(i64, builtin.fmt.id64(iint).readAll()));
+        builtin.assertEqual(i64, iint, builtin.parse.ix(i64, builtin.fmt.ix64(iint).readAll()));
+        builtin.assertEqual(i32, @as(i32, @truncate(iint)), builtin.parse.ib(i32, builtin.fmt.ib32(@as(i32, @truncate(iint))).readAll()));
+        builtin.assertEqual(i32, @as(i32, @truncate(iint)), builtin.parse.io(i32, builtin.fmt.io32(@as(i32, @truncate(iint))).readAll()));
+        builtin.assertEqual(i32, @as(i32, @truncate(iint)), builtin.parse.id(i32, builtin.fmt.id32(@as(i32, @truncate(iint))).readAll()));
+        builtin.assertEqual(i32, @as(i32, @truncate(iint)), builtin.parse.ix(i32, builtin.fmt.ix32(@as(i32, @truncate(iint))).readAll()));
+        builtin.assertEqual(i16, @as(i16, @truncate(iint)), builtin.parse.ib(i16, builtin.fmt.ib16(@as(i16, @truncate(iint))).readAll()));
+        builtin.assertEqual(i16, @as(i16, @truncate(iint)), builtin.parse.io(i16, builtin.fmt.io16(@as(i16, @truncate(iint))).readAll()));
+        builtin.assertEqual(i16, @as(i16, @truncate(iint)), builtin.parse.id(i16, builtin.fmt.id16(@as(i16, @truncate(iint))).readAll()));
+        builtin.assertEqual(i16, @as(i16, @truncate(iint)), builtin.parse.ix(i16, builtin.fmt.ix16(@as(i16, @truncate(iint))).readAll()));
+        builtin.assertEqual(i8, @as(i8, @truncate(iint)), builtin.parse.ib(i8, builtin.fmt.ib8(@as(i8, @truncate(iint))).readAll()));
+        builtin.assertEqual(i8, @as(i8, @truncate(iint)), builtin.parse.io(i8, builtin.fmt.io8(@as(i8, @truncate(iint))).readAll()));
+        builtin.assertEqual(i8, @as(i8, @truncate(iint)), builtin.parse.id(i8, builtin.fmt.id8(@as(i8, @truncate(iint))).readAll()));
+        builtin.assertEqual(i8, @as(i8, @truncate(iint)), builtin.parse.ix(i8, builtin.fmt.ix8(@as(i8, @truncate(iint))).readAll()));
+        try builtin.expectEqual(i64, iint, builtin.parse.ib(i64, builtin.fmt.ib64(iint).readAll()));
+        try builtin.expectEqual(i64, iint, builtin.parse.io(i64, builtin.fmt.io64(iint).readAll()));
+        try builtin.expectEqual(i64, iint, builtin.parse.id(i64, builtin.fmt.id64(iint).readAll()));
+        try builtin.expectEqual(i64, iint, builtin.parse.ix(i64, builtin.fmt.ix64(iint).readAll()));
+        try builtin.expectEqual(i32, @as(i32, @truncate(iint)), builtin.parse.ib(i32, builtin.fmt.ib32(@as(i32, @truncate(iint))).readAll()));
+        try builtin.expectEqual(i32, @as(i32, @truncate(iint)), builtin.parse.io(i32, builtin.fmt.io32(@as(i32, @truncate(iint))).readAll()));
+        try builtin.expectEqual(i32, @as(i32, @truncate(iint)), builtin.parse.id(i32, builtin.fmt.id32(@as(i32, @truncate(iint))).readAll()));
+        try builtin.expectEqual(i32, @as(i32, @truncate(iint)), builtin.parse.ix(i32, builtin.fmt.ix32(@as(i32, @truncate(iint))).readAll()));
+        try builtin.expectEqual(i16, @as(i16, @truncate(iint)), builtin.parse.ib(i16, builtin.fmt.ib16(@as(i16, @truncate(iint))).readAll()));
+        try builtin.expectEqual(i16, @as(i16, @truncate(iint)), builtin.parse.io(i16, builtin.fmt.io16(@as(i16, @truncate(iint))).readAll()));
+        try builtin.expectEqual(i16, @as(i16, @truncate(iint)), builtin.parse.id(i16, builtin.fmt.id16(@as(i16, @truncate(iint))).readAll()));
+        try builtin.expectEqual(i16, @as(i16, @truncate(iint)), builtin.parse.ix(i16, builtin.fmt.ix16(@as(i16, @truncate(iint))).readAll()));
+        try builtin.expectEqual(i8, @as(i8, @truncate(iint)), builtin.parse.ib(i8, builtin.fmt.ib8(@as(i8, @truncate(iint))).readAll()));
+        try builtin.expectEqual(i8, @as(i8, @truncate(iint)), builtin.parse.io(i8, builtin.fmt.io8(@as(i8, @truncate(iint))).readAll()));
+        try builtin.expectEqual(i8, @as(i8, @truncate(iint)), builtin.parse.id(i8, builtin.fmt.id8(@as(i8, @truncate(iint))).readAll()));
+        try builtin.expectEqual(i8, @as(i8, @truncate(iint)), builtin.parse.ix(i8, builtin.fmt.ix8(@as(i8, @truncate(iint))).readAll()));
+    }
 }
 fn testBytesFormat() !void {
     for ([_]struct { []const u8, u64 }{
@@ -67,11 +171,12 @@ fn testBytesFormat() !void {
         .{ "5.851EiB", 6747100094387843530 },
         .{ "1.462GiB", 1570931657 },
         .{ "23.408KiB", 23970 },
-        .{ "15.999EiB", ~@as(u64, 0) },
+        .{ "15.999EiB", -0 },
     }) |pair| {
         try testing.expectEqualMany(u8, pair[0], fmt.bytes(pair[1]).formatConvert().readAll());
     }
 }
+fn testChangedIntFormat() !void {}
 fn testEquivalentIntToStringFormat() !void {
     const ubin = fmt.GenericPolynomialFormat(.{ .bits = 1, .radix = 2, .signedness = .unsigned, .width = .max, .prefix = "0b" });
     const sbin = fmt.GenericPolynomialFormat(.{ .bits = 1, .radix = 2, .signedness = .signed, .width = .max, .prefix = "0b" });
@@ -82,7 +187,7 @@ fn testEquivalentIntToStringFormat() !void {
     try testing.expectEqualMany(u8, "-0b1", (sbin{ .value = -1 }).formatConvert().readAll());
     try testing.expectEqualMany(u8, "0b0", (ubin{ .value = 0 }).formatConvert().readAll());
     try testing.expectEqualMany(u8, "0b1", (ubin{ .value = 1 }).formatConvert().readAll());
-    try testing.expectEqualMany(u8, builtin.fmt.ub64(uint).readAll(), fmt.ub64(uint).formatConvert().readAll());
+    try testing.expectEqualMany(u8, fmt.old.ub64(uint).readAll(), fmt.ub64(uint).formatConvert().readAll());
     while (uint < seed +% 0x1000) : (uint +%= 1) {
         const uint_32: u32 = @as(u32, @truncate(uint));
         const uint_16: u16 = @as(u16, @truncate(uint));
@@ -92,45 +197,45 @@ fn testEquivalentIntToStringFormat() !void {
         const sint_16: i16 = @bitReverse(@as(i16, @bitCast(@as(u16, @truncate(uint)))));
         const sint_8: i8 = @bitReverse(@as(i8, @bitCast(@as(u8, @truncate(uint)))));
 
-        try testing.expectEqualMany(u8, builtin.fmt.ub64(uint).readAll(), fmt.ub64(uint).formatConvert().readAll());
-        try testing.expectEqualMany(u8, builtin.fmt.ub32(uint_32).readAll(), fmt.ub32(uint_32).formatConvert().readAll());
-        try testing.expectEqualMany(u8, builtin.fmt.ub16(uint_16).readAll(), fmt.ub16(uint_16).formatConvert().readAll());
-        try testing.expectEqualMany(u8, builtin.fmt.ub8(uint_8).readAll(), fmt.ub8(uint_8).formatConvert().readAll());
+        try testing.expectEqualMany(u8, fmt.old.ub64(uint).readAll(), fmt.ub64(uint).formatConvert().readAll());
+        try testing.expectEqualMany(u8, fmt.old.ub32(uint_32).readAll(), fmt.ub32(uint_32).formatConvert().readAll());
+        try testing.expectEqualMany(u8, fmt.old.ub16(uint_16).readAll(), fmt.ub16(uint_16).formatConvert().readAll());
+        try testing.expectEqualMany(u8, fmt.old.ub8(uint_8).readAll(), fmt.ub8(uint_8).formatConvert().readAll());
 
-        try testing.expectEqualMany(u8, builtin.fmt.uo64(uint).readAll(), fmt.uo64(uint).formatConvert().readAll());
-        try testing.expectEqualMany(u8, builtin.fmt.uo32(uint_32).readAll(), fmt.uo32(uint_32).formatConvert().readAll());
-        try testing.expectEqualMany(u8, builtin.fmt.uo16(uint_16).readAll(), fmt.uo16(uint_16).formatConvert().readAll());
-        try testing.expectEqualMany(u8, builtin.fmt.uo8(uint_8).readAll(), fmt.uo8(uint_8).formatConvert().readAll());
+        try testing.expectEqualMany(u8, fmt.old.uo64(uint).readAll(), fmt.uo64(uint).formatConvert().readAll());
+        try testing.expectEqualMany(u8, fmt.old.uo32(uint_32).readAll(), fmt.uo32(uint_32).formatConvert().readAll());
+        try testing.expectEqualMany(u8, fmt.old.uo16(uint_16).readAll(), fmt.uo16(uint_16).formatConvert().readAll());
+        try testing.expectEqualMany(u8, fmt.old.uo8(uint_8).readAll(), fmt.uo8(uint_8).formatConvert().readAll());
 
-        try testing.expectEqualMany(u8, builtin.fmt.ud64(uint).readAll(), fmt.ud64(uint).formatConvert().readAll());
-        try testing.expectEqualMany(u8, builtin.fmt.ud32(uint_32).readAll(), fmt.ud32(uint_32).formatConvert().readAll());
-        try testing.expectEqualMany(u8, builtin.fmt.ud16(uint_16).readAll(), fmt.ud16(uint_16).formatConvert().readAll());
-        try testing.expectEqualMany(u8, builtin.fmt.ud8(uint_8).readAll(), fmt.ud8(uint_8).formatConvert().readAll());
+        try testing.expectEqualMany(u8, fmt.old.ud64(uint).readAll(), fmt.ud64(uint).formatConvert().readAll());
+        try testing.expectEqualMany(u8, fmt.old.ud32(uint_32).readAll(), fmt.ud32(uint_32).formatConvert().readAll());
+        try testing.expectEqualMany(u8, fmt.old.ud16(uint_16).readAll(), fmt.ud16(uint_16).formatConvert().readAll());
+        try testing.expectEqualMany(u8, fmt.old.ud8(uint_8).readAll(), fmt.ud8(uint_8).formatConvert().readAll());
 
-        try testing.expectEqualMany(u8, builtin.fmt.ux64(uint).readAll(), fmt.ux64(uint).formatConvert().readAll());
-        try testing.expectEqualMany(u8, builtin.fmt.ux32(uint_32).readAll(), fmt.ux32(uint_32).formatConvert().readAll());
-        try testing.expectEqualMany(u8, builtin.fmt.ux16(uint_16).readAll(), fmt.ux16(uint_16).formatConvert().readAll());
-        try testing.expectEqualMany(u8, builtin.fmt.ux8(uint_8).readAll(), fmt.ux8(uint_8).formatConvert().readAll());
+        try testing.expectEqualMany(u8, fmt.old.ux64(uint).readAll(), fmt.ux64(uint).formatConvert().readAll());
+        try testing.expectEqualMany(u8, fmt.old.ux32(uint_32).readAll(), fmt.ux32(uint_32).formatConvert().readAll());
+        try testing.expectEqualMany(u8, fmt.old.ux16(uint_16).readAll(), fmt.ux16(uint_16).formatConvert().readAll());
+        try testing.expectEqualMany(u8, fmt.old.ux8(uint_8).readAll(), fmt.ux8(uint_8).formatConvert().readAll());
 
-        try testing.expectEqualMany(u8, builtin.fmt.ib64(sint_64).readAll(), fmt.ib64(sint_64).formatConvert().readAll());
-        try testing.expectEqualMany(u8, builtin.fmt.ib32(sint_32).readAll(), fmt.ib32(sint_32).formatConvert().readAll());
-        try testing.expectEqualMany(u8, builtin.fmt.ib16(sint_16).readAll(), fmt.ib16(sint_16).formatConvert().readAll());
-        try testing.expectEqualMany(u8, builtin.fmt.ib8(sint_8).readAll(), fmt.ib8(sint_8).formatConvert().readAll());
+        try testing.expectEqualMany(u8, fmt.old.ib64(sint_64).readAll(), fmt.ib64(sint_64).formatConvert().readAll());
+        try testing.expectEqualMany(u8, fmt.old.ib32(sint_32).readAll(), fmt.ib32(sint_32).formatConvert().readAll());
+        try testing.expectEqualMany(u8, fmt.old.ib16(sint_16).readAll(), fmt.ib16(sint_16).formatConvert().readAll());
+        try testing.expectEqualMany(u8, fmt.old.ib8(sint_8).readAll(), fmt.ib8(sint_8).formatConvert().readAll());
 
-        try testing.expectEqualMany(u8, builtin.fmt.io64(sint_64).readAll(), fmt.io64(sint_64).formatConvert().readAll());
-        try testing.expectEqualMany(u8, builtin.fmt.io32(sint_32).readAll(), fmt.io32(sint_32).formatConvert().readAll());
-        try testing.expectEqualMany(u8, builtin.fmt.io16(sint_16).readAll(), fmt.io16(sint_16).formatConvert().readAll());
-        try testing.expectEqualMany(u8, builtin.fmt.io8(sint_8).readAll(), fmt.io8(sint_8).formatConvert().readAll());
+        try testing.expectEqualMany(u8, fmt.old.io64(sint_64).readAll(), fmt.io64(sint_64).formatConvert().readAll());
+        try testing.expectEqualMany(u8, fmt.old.io32(sint_32).readAll(), fmt.io32(sint_32).formatConvert().readAll());
+        try testing.expectEqualMany(u8, fmt.old.io16(sint_16).readAll(), fmt.io16(sint_16).formatConvert().readAll());
+        try testing.expectEqualMany(u8, fmt.old.io8(sint_8).readAll(), fmt.io8(sint_8).formatConvert().readAll());
 
-        try testing.expectEqualMany(u8, builtin.fmt.id64(sint_64).readAll(), fmt.id64(sint_64).formatConvert().readAll());
-        try testing.expectEqualMany(u8, builtin.fmt.id32(sint_32).readAll(), fmt.id32(sint_32).formatConvert().readAll());
-        try testing.expectEqualMany(u8, builtin.fmt.id16(sint_16).readAll(), fmt.id16(sint_16).formatConvert().readAll());
-        try testing.expectEqualMany(u8, builtin.fmt.id8(sint_8).readAll(), fmt.id8(sint_8).formatConvert().readAll());
+        try testing.expectEqualMany(u8, fmt.old.id64(sint_64).readAll(), fmt.id64(sint_64).formatConvert().readAll());
+        try testing.expectEqualMany(u8, fmt.old.id32(sint_32).readAll(), fmt.id32(sint_32).formatConvert().readAll());
+        try testing.expectEqualMany(u8, fmt.old.id16(sint_16).readAll(), fmt.id16(sint_16).formatConvert().readAll());
+        try testing.expectEqualMany(u8, fmt.old.id8(sint_8).readAll(), fmt.id8(sint_8).formatConvert().readAll());
 
-        try testing.expectEqualMany(u8, builtin.fmt.ix64(sint_64).readAll(), fmt.ix64(sint_64).formatConvert().readAll());
-        try testing.expectEqualMany(u8, builtin.fmt.ix32(sint_32).readAll(), fmt.ix32(sint_32).formatConvert().readAll());
-        try testing.expectEqualMany(u8, builtin.fmt.ix16(sint_16).readAll(), fmt.ix16(sint_16).formatConvert().readAll());
-        try testing.expectEqualMany(u8, builtin.fmt.ix8(sint_8).readAll(), fmt.ix8(sint_8).formatConvert().readAll());
+        try testing.expectEqualMany(u8, fmt.old.ix64(sint_64).readAll(), fmt.ix64(sint_64).formatConvert().readAll());
+        try testing.expectEqualMany(u8, fmt.old.ix32(sint_32).readAll(), fmt.ix32(sint_32).formatConvert().readAll());
+        try testing.expectEqualMany(u8, fmt.old.ix16(sint_16).readAll(), fmt.ix16(sint_16).formatConvert().readAll());
+        try testing.expectEqualMany(u8, fmt.old.ix8(sint_8).readAll(), fmt.ix8(sint_8).formatConvert().readAll());
     }
 }
 fn testWriteLEB128UnsignedFixed() !void {
@@ -185,7 +290,7 @@ fn testEquivalentLEBFormatAndParse() !void {
     var uint: u64 = 0;
     const seed: u64 = @intFromPtr(&uint);
     uint = seed;
-    try testing.expectEqualMany(u8, builtin.fmt.ub64(uint).readAll(), fmt.ub64(uint).formatConvert().readAll());
+    try testing.expectEqualMany(u8, fmt.old.ub64(uint).readAll(), fmt.ub64(uint).formatConvert().readAll());
     while (uint < seed +% 0x1000) : (uint +%= 1) {
         const uint_32: u32 = @as(u32, @truncate(uint));
         const uint_16: u16 = @as(u16, @truncate(uint));
@@ -204,28 +309,28 @@ fn testEquivalentLEBFormatAndParse() !void {
         const sint_8_fmt: I8 = .{ .value = sint_8 };
         array.undefineAll();
         uint_64_fmt.formatWrite(&array);
-        try builtin.expectEqual(u64, uint, (try parse.readLEB128(u64, array.readAll()))[0]);
+        try debug.expectEqual(u64, uint, (try parse.readLEB128(u64, array.readAll()))[0]);
         array.undefineAll();
         uint_32_fmt.formatWrite(&array);
-        try builtin.expectEqual(u32, uint_32, (try parse.readLEB128(u32, array.readAll()))[0]);
+        try debug.expectEqual(u32, uint_32, (try parse.readLEB128(u32, array.readAll()))[0]);
         array.undefineAll();
         uint_16_fmt.formatWrite(&array);
-        try builtin.expectEqual(u16, uint_16, (try parse.readLEB128(u16, array.readAll()))[0]);
+        try debug.expectEqual(u16, uint_16, (try parse.readLEB128(u16, array.readAll()))[0]);
         array.undefineAll();
         uint_8_fmt.formatWrite(&array);
-        try builtin.expectEqual(u8, uint_8, (try parse.readLEB128(u8, array.readAll()))[0]);
+        try debug.expectEqual(u8, uint_8, (try parse.readLEB128(u8, array.readAll()))[0]);
         array.undefineAll();
         sint_64_fmt.formatWrite(&array);
-        try builtin.expectEqual(i64, sint_64, (try parse.readLEB128(i64, array.readAll()))[0]);
+        try debug.expectEqual(i64, sint_64, (try parse.readLEB128(i64, array.readAll()))[0]);
         array.undefineAll();
         sint_32_fmt.formatWrite(&array);
-        try builtin.expectEqual(i32, sint_32, (try parse.readLEB128(i32, array.readAll()))[0]);
+        try debug.expectEqual(i32, sint_32, (try parse.readLEB128(i32, array.readAll()))[0]);
         array.undefineAll();
         sint_16_fmt.formatWrite(&array);
-        try builtin.expectEqual(i16, sint_16, (try parse.readLEB128(i16, array.readAll()))[0]);
+        try debug.expectEqual(i16, sint_16, (try parse.readLEB128(i16, array.readAll()))[0]);
         array.undefineAll();
         sint_8_fmt.formatWrite(&array);
-        try builtin.expectEqual(i8, sint_8, (try parse.readLEB128(i8, array.readAll()))[0]);
+        try debug.expectEqual(i8, sint_8, (try parse.readLEB128(i8, array.readAll()))[0]);
     }
     if (test_stream) {
         try testing.expectError(error.EndOfStream, testReadLEB128Stream(i64, "\x80"));
@@ -301,9 +406,6 @@ fn testEquivalentLEBFormatAndParse() !void {
 
     try testReadLEB128Seq(u64, 4, "\x81\x01\x3f\x80\x7f\x80\x80\x80\x00");
 }
-
-pub const render_radix: u16 = 16;
-
 fn testBytesToHex() !void {
     const input: []const u8 = "0123456789abcdef";
     var buf0: [2 *% input.len]u8 = undefined;
@@ -336,7 +438,6 @@ fn testHexToBytes() !void {
         }
     };
 }
-
 fn testGenericRangeFormat() !void {
     var array: PrintArray = undefined;
     array.undefineAll();
@@ -346,14 +447,13 @@ fn testGenericRangeFormat() !void {
     try testing.expectEqualString("7f{2..3}", array.readAll());
 }
 pub fn main() !void {
+    try testBytesFormat();
     try testBytesToHex();
     try testHexToBytes();
     try testGenericRangeFormat();
-    try @import("./fmt/utf8.zig").utf8TestMain();
-    try @import("./fmt/ascii.zig").asciiTestMain();
-
-    try meta.wrap(testEquivalentIntToStringFormat());
-    try meta.wrap(testEquivalentLEBFormatAndParse());
-    try meta.wrap(testBytesFormat());
-    try meta.wrap(testNonChildIntegers());
+    try testEquivalentIntToStringFormat();
+    try testEquivalentLEBFormatAndParse();
+    try testNonChildIntegers();
+    try @import("./fmt/utf8.zig").testUtf8();
+    try @import("./fmt/ascii.zig").testAscii();
 }

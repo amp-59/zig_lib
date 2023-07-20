@@ -5,6 +5,7 @@ const file = zl.file;
 const proc = zl.proc;
 const meta = zl.meta;
 const spec = zl.spec;
+const debug = zl.debug;
 const builtin = zl.builtin;
 
 pub usingnamespace zl.start;
@@ -99,7 +100,7 @@ fn testAllMovement(list: LinkedList) !void {
     while (tmp.next()) |next| tmp = next;
     var n_bwd: u64 = 0;
     while (tmp.prev()) |prev| : (n_bwd += 1) tmp = prev;
-    try builtin.expectEqual(u64, n_bwd + (builtin.int(u1, list.count != 0)), list.count);
+    try debug.expectEqual(u64, n_bwd + (builtin.int(u1, list.count != 0)), list.count);
 }
 pub fn main() !void {
     const big_num: comptime_int = 1024;
@@ -128,7 +129,7 @@ pub fn main() !void {
         const prepends_per_round: u64 = @max(1, random.readOne(Big));
         const inserts_per_round: u64 = big_num - (appends_per_round + prepends_per_round);
 
-        try builtin.expectEqual(u64, 0, allocator_0.metadata.count);
+        try debug.expectEqual(u64, 0, allocator_0.metadata.count);
         var list: LinkedList = try LinkedList.init(&allocator_0);
         var operation_count: u64 = 0;
         while (operation_count != appends_per_round) : (operation_count += 1) {
@@ -156,16 +157,16 @@ pub fn main() !void {
             const mid: u64 = builtin.min(u64, list.count - 1, random.readOne(Count));
             const s_mid: *T = list.at(mid).?;
             const t_mid: LinkedList.Node = list.extract(mid).?;
-            try builtin.expectEqual(u64, s_end.i, t_end.read().i);
-            try builtin.expectEqual(u64, s_mid.i, t_mid.read().i);
-            try builtin.expectEqual(u64, s_begin.*.i, t_begin.read().i);
-            try builtin.expectEqual(u64, list.count, count - 3);
+            try debug.expectEqual(u64, s_end.i, t_end.read().i);
+            try debug.expectEqual(u64, s_mid.i, t_mid.read().i);
+            try debug.expectEqual(u64, s_begin.*.i, t_begin.read().i);
+            try debug.expectEqual(u64, list.count, count - 3);
             list.retire(t_end);
             list.retire(t_mid);
             list.retire(t_begin);
         }
         try testAllMovement(list);
-        if (builtin.logging_general.Success) {
+        if (debug.logging_general.Success) {
             try LinkedList.Graphics.show(list, &address_space);
         }
         list.deinit(&allocator_0);
@@ -173,7 +174,7 @@ pub fn main() !void {
             z.deinit(&allocator_0);
         }
         disruption.undefineAll(allocator_1);
-        try builtin.expectEqual(u64, 0, disruption.len(allocator_1));
-        try builtin.expectEqual(u64, 0, allocator_0.metadata.count);
+        try debug.expectEqual(u64, 0, disruption.len(allocator_1));
+        try debug.expectEqual(u64, 0, allocator_0.metadata.count);
     }
 }

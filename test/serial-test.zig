@@ -7,6 +7,7 @@ const mach = zl.mach;
 const meta = zl.meta;
 const spec = zl.spec;
 const build = zl.build;
+const debug = zl.debug;
 const serial = zl.serial;
 const builtin = zl.builtin;
 const testing = zl.testing;
@@ -16,7 +17,7 @@ const mem_types = @import("../top/mem/gen/types.zig");
 
 pub usingnamespace zl.start;
 
-pub const logging_override: builtin.Logging.Override = spec.logging.override.verbose;
+pub const logging_override: debug.Logging.Override = spec.logging.override.verbose;
 pub const signal_handlers: builtin.SignalHandlers = .{
     .SegmentationFault = true,
     .BusError = true,
@@ -2505,7 +2506,7 @@ pub fn testVarietyStructure(address_space: *Allocator.AddressSpace) !void {
     const u: Return = try meta.wrap(serial.serialRead(serial_spec, Return, &allocator, builtin.absolutePath("zig-out/bin/variety_0")));
     try meta.wrap(serial.serialWrite(serial_spec, @TypeOf(u), &allocator, builtin.absolutePath("zig-out/bin/variety_1"), u));
     const t: Return = try meta.wrap(serial.serialRead(serial_spec, Return, &allocator, builtin.absolutePath("zig-out/bin/variety_1")));
-    builtin.assertEqualMemory(Return, u, t);
+    debug.assertEqualMemory(Return, u, t);
 }
 const serial_spec: serial.SerialSpec = .{
     .Allocator = Allocator,
@@ -2521,7 +2522,7 @@ pub fn testLargeStructure(address_space: *Allocator.AddressSpace) !void {
     try meta.wrap(serial.serialWrite(serial_spec, []const mem_types.AbstractSpecification, &allocator, builtin.absolutePath("zig-out/bin/variety_0"), spec_sets_b));
     const spec_sets_c: []const mem_types.AbstractSpecification =
         try meta.wrap(serial.serialRead(serial_spec, []const mem_types.AbstractSpecification, &allocator, builtin.absolutePath("zig-out/bin/variety_0")));
-    builtin.assertEqualMemory([]const mem_types.AbstractSpecification, spec_sets_b, spec_sets_c);
+    debug.assertEqualMemory([]const mem_types.AbstractSpecification, spec_sets_b, spec_sets_c);
 }
 const Node = build.GenericNode(.{});
 
@@ -2559,18 +2560,18 @@ pub fn testLongComplexCase(address_space: *AddressSpace) !void {
 
     try meta.wrap(serial.serialWrite(serial_spec, []const []const []const mem_types.Specifier, &allocator, builtin.absolutePath("zig-out/bin/spec"), spec_sets_0));
     const spec_sets_1: [][][]mem_types.Specifier = try meta.wrap(serial.serialRead(serial_spec, []const []const []const mem_types.Specifier, &allocator, builtin.absolutePath("zig-out/bin/spec")));
-    try builtin.expectEqualMemory([]const []const []const mem_types.Specifier, spec_sets_0, spec_sets_1);
+    try debug.expectEqualMemory([]const []const []const mem_types.Specifier, spec_sets_0, spec_sets_1);
 
     try meta.wrap(serial.serialWrite(serial_spec, []const []const mem_types.Specifier, &allocator, builtin.absolutePath("zig-out/bin/spec"), spec_sets_0[0]));
     const spec_set_1: [][]mem_types.Specifier = try meta.wrap(serial.serialRead(serial_spec, [][]mem_types.Specifier, &allocator, builtin.absolutePath("zig-out/bin/spec")));
-    try builtin.expectEqualMemory([]const []const mem_types.Specifier, spec_set_1, spec_sets_0[0]);
+    try debug.expectEqualMemory([]const []const mem_types.Specifier, spec_set_1, spec_sets_0[0]);
 
     try meta.wrap(serial.serialWrite(serial_spec, []const mem_types.Specifier, &allocator, builtin.absolutePath("zig-out/bin/spec"), spec_sets_0[0][0]));
     const specs_1: []mem_types.Specifier = try meta.wrap(serial.serialRead(serial_spec, []mem_types.Specifier, &allocator, builtin.absolutePath("zig-out/bin/spec")));
-    try builtin.expectEqualMemory([]const mem_types.Specifier, specs_1, spec_sets_0[0][0]);
+    try debug.expectEqualMemory([]const mem_types.Specifier, specs_1, spec_sets_0[0][0]);
     try meta.wrap(serial.serialWrite(serial_spec, mem_types.Specifier, &allocator, builtin.absolutePath("zig-out/bin/spec"), spec_sets_0[0][0][0]));
     const spec_1: mem_types.Specifier = try meta.wrap(serial.serialRead(serial_spec, mem_types.Specifier, &allocator, builtin.absolutePath("zig-out/bin/spec")));
-    try builtin.expectEqualMemory(mem_types.Specifier, spec_1, spec_sets_0[0][0][0]);
+    try debug.expectEqualMemory(mem_types.Specifier, spec_1, spec_sets_0[0][0][0]);
 }
 pub fn testWriteSerialFeatures(address_space: *AddressSpace) !void {
     const test_optionals_and_slices: bool = true;
@@ -2608,7 +2609,7 @@ pub fn testWriteSerialFeatures(address_space: *AddressSpace) !void {
             var allocator: Allocator = try Allocator.init(address_space);
             defer allocator.deinit(address_space);
             const t: S = try meta.wrap(serial.serialRead(serial_spec, S, &allocator, "zig-out/bin/serial_feature_test"));
-            try builtin.expectEqualMemory(S, s, t);
+            try debug.expectEqualMemory(S, s, t);
         }
     }
 }

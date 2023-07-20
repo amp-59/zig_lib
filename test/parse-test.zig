@@ -4,6 +4,7 @@ const mem = zl.mem;
 const meta = zl.meta;
 const file = zl.file;
 const proc = zl.proc;
+const debug = zl.debug;
 const builtin = zl.builtin;
 const testing = zl.testing;
 pub usingnamespace zl.start;

@@ -38,7 +38,7 @@ fn testEd25519Signature() !void {
         "10a442b4a80cc4225b154f43bef28d2472ca80221951262eb8e0df9091575e2687cc486e77263c3418c757522d54f84b0359236abbbd4acd20dc297fdca66808",
     );
     try sig.verify("test", key_pair.public_key);
-    try builtin.expect(error.SignatureVerificationFailed == sig.verify("TEST", key_pair.public_key));
+    try debug.expect(error.SignatureVerificationFailed == sig.verify("TEST", key_pair.public_key));
 }
 fn testEd25519BatchVerification() !void {
     var idx: usize = 0;
@@ -64,7 +64,7 @@ fn testEd25519BatchVerification() !void {
         };
         try crypto.dh.Ed25519.verifyBatch(2, signature_batch);
         signature_batch[1].sig = sig1;
-        try builtin.expect(error.SignatureVerificationFailed == crypto.dh.Ed25519.verifyBatch(signature_batch.len, signature_batch));
+        try debug.expect(error.SignatureVerificationFailed == crypto.dh.Ed25519.verifyBatch(signature_batch.len, signature_batch));
     }
 }
 fn testEd25519SignaturesWithStreaming() !void {
@@ -104,14 +104,14 @@ fn testEd25519TestVectors() !void {
         var public_key_bytes: [32]u8 = undefined;
         _ = try fmt.hexToBytes(&public_key_bytes, entry.key);
         const public_key: crypto.dh.Ed25519.PublicKey = crypto.dh.Ed25519.PublicKey.fromBytes(public_key_bytes) catch |err| {
-            try builtin.expectEqual(anyerror, entry.expected.?, err);
+            try debug.expectEqual(anyerror, entry.expected.?, err);
             continue;
         };
         var sig_bytes: [64]u8 = undefined;
         _ = try fmt.hexToBytes(&sig_bytes, entry.sig);
         const sig: crypto.dh.Ed25519.Signature = crypto.dh.Ed25519.Signature.fromBytes(sig_bytes);
         if (entry.expected) |error_type| {
-            try builtin.expect(error_type == sig.verify(&msg, public_key));
+            try debug.expect(error_type == sig.verify(&msg, public_key));
         } else {
             try sig.verify(&msg, public_key);
         }
@@ -142,9 +142,9 @@ fn testEdwards25519PointAdditionSubtraction() !void {
     const q: crypto.dh.Edwards25519 = try crypto.dh.Edwards25519.base_point.clampedMul(s2);
     const r: crypto.dh.Edwards25519 = p.add(q).add(q).sub(q).sub(q);
     try r.rejectIdentity();
-    try builtin.expect(error.IdentityElement == r.sub(p).rejectIdentity());
-    try builtin.expect(error.IdentityElement == p.sub(p).rejectIdentity());
-    try builtin.expect(error.IdentityElement == p.sub(q).add(q).sub(p).rejectIdentity());
+    try debug.expect(error.IdentityElement == r.sub(p).rejectIdentity());
+    try debug.expect(error.IdentityElement == p.sub(p).rejectIdentity());
+    try debug.expect(error.IdentityElement == p.sub(q).add(q).sub(p).rejectIdentity());
 }
 fn testEdwards25519UniformToPoint(allocator: *mem.SimpleAllocator) !void {
     var r: [32]u8 = .{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31 };
@@ -227,7 +227,7 @@ fn testEdwards25519PackingUnpacking() !void {
     };
     for (small_order_ss) |small_order_s| {
         const small_p: crypto.dh.Edwards25519 = try crypto.dh.Edwards25519.fromBytes(small_order_s);
-        try builtin.expect(error.WeakPublicKey == small_p.mul(s));
+        try debug.expect(error.WeakPublicKey == small_p.mul(s));
     }
 }
 const field_order_s = s: {
@@ -283,15 +283,15 @@ fn testScalarFieldInversion() !void {
 fn testRandomScalar() !void {
     const s1: crypto.scalar.CompressedScalar = crypto.scalar.randomX();
     const s2: crypto.scalar.CompressedScalar = crypto.scalar.randomX();
-    try builtin.expect(!mem.testEqualMany(u8, &s1, &s2));
+    try debug.expect(!mem.testEqualMany(u8, &s1, &s2));
 }
 fn test64BitReduction() !void {
     const bytes: [64]u8 = field_order_s ++ [1]u8{0} ** 32;
     const x: crypto.scalar.Scalar = crypto.scalar.Scalar.fromBytes64(bytes);
-    try builtin.expect(x.isZero());
+    try debug.expect(x.isZero());
 }
 fn testNonCanonicalScalar25519() !void {
-    try builtin.expect(error.NonCanonical == crypto.scalar.rejectNonCanonical(.{
+    try debug.expect(error.NonCanonical == crypto.scalar.rejectNonCanonical(.{
         0xed, 0xd3, 0xf5, 0x5c, 0x1a, 0x63, 0x12, 0x58,
         0xd6, 0x9c, 0xf7, 0xa2, 0xde, 0xf9, 0xde, 0x14,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -320,7 +320,7 @@ fn testCurve25519() !void {
     );
     try crypto.dh.Curve25519.rejectNonCanonical(s);
     s[31] |= 0x80;
-    try builtin.expect(error.NonCanonical == crypto.dh.Curve25519.rejectNonCanonical(s));
+    try debug.expect(error.NonCanonical == crypto.dh.Curve25519.rejectNonCanonical(s));
 }
 fn testCurve25519SmallOrderCheck() !void {
     var s: [32]u8 = [_]u8{1} ++ [_]u8{0} ** 31;
@@ -369,15 +369,15 @@ fn testCurve25519SmallOrderCheck() !void {
         },
     };
     for (small_order_ss) |small_order_s| {
-        try builtin.expect(error.WeakPublicKey == crypto.dh.Curve25519.fromBytes(small_order_s).clearCofactor());
-        try builtin.expect(error.WeakPublicKey == crypto.dh.Curve25519.fromBytes(small_order_s).mul(s));
+        try debug.expect(error.WeakPublicKey == crypto.dh.Curve25519.fromBytes(small_order_s).clearCofactor());
+        try debug.expect(error.WeakPublicKey == crypto.dh.Curve25519.fromBytes(small_order_s).mul(s));
         var extra: [32]u8 = small_order_s;
         extra[31] ^= 0x80;
-        try builtin.expect(error.WeakPublicKey == crypto.dh.Curve25519.fromBytes(extra).mul(s));
+        try debug.expect(error.WeakPublicKey == crypto.dh.Curve25519.fromBytes(extra).mul(s));
         var valid: [32]u8 = small_order_s;
         valid[31] = 0x40;
         s[0] = 0;
-        try builtin.expect(error.IdentityElement == crypto.dh.Curve25519.fromBytes(valid).mul(s));
+        try debug.expect(error.IdentityElement == crypto.dh.Curve25519.fromBytes(valid).mul(s));
     }
 }
 fn testX25519PublicKeyCalculationFromSecretKey() !void {
@@ -392,7 +392,7 @@ fn testX25519PublicKeyCalculationFromSecretKey() !void {
         "f1814f0e8ff1043d8a44d25babff3cedcae6c22c3edaa48f857ae70de2baae50",
     );
     const public_key_calculated: [32]u8 = try crypto.dh.X25519.recoverPublicKey(secret_key);
-    try builtin.expectEqual([32]u8, public_key_calculated, public_key_expected);
+    try debug.expectEqual([32]u8, public_key_calculated, public_key_expected);
 }
 fn testX25519Rfc7748Vector1() !void {
     const secret_key: [32]u8 = .{
@@ -414,7 +414,7 @@ fn testX25519Rfc7748Vector1() !void {
         0x54, 0xb4, 0x07, 0x55, 0x77, 0xa2, 0x85, 0x52,
     };
     const output = try crypto.dh.X25519.scalarmult(secret_key, public_key);
-    try builtin.expectEqual([32]u8, output, expected_output);
+    try debug.expectEqual([32]u8, output, expected_output);
 }
 fn testX25519Rfc7748Vector2() !void {
     const secret_key: [32]u8 = .{
@@ -436,7 +436,7 @@ fn testX25519Rfc7748Vector2() !void {
         0xe6, 0xf8, 0xf7, 0x64, 0x7a, 0xac, 0x79, 0x57,
     };
     const output = try crypto.dh.X25519.scalarmult(secret_key, public_key);
-    try builtin.expectEqual([32]u8, output, expected_output);
+    try debug.expectEqual([32]u8, output, expected_output);
 }
 fn testX25519Rfc7748OneIteration() !void {
     if (return) {} // Verified 28-06-2023
@@ -460,7 +460,7 @@ fn testX25519Rfc7748OneIteration() !void {
         u = k;
         k = output;
     }
-    try builtin.expectEqual([32]u8, k, expected_output);
+    try debug.expectEqual([32]u8, k, expected_output);
 }
 fn testX5519Rfc77481000Iterations() !void {
     if (return) {} // Verified 28-06-2023
@@ -484,7 +484,7 @@ fn testX5519Rfc77481000Iterations() !void {
         u = k;
         k = output;
     }
-    try builtin.expectEqual([32]u8, k, expected_output);
+    try debug.expectEqual([32]u8, k, expected_output);
 }
 fn testX25519Rfc77481000000Iterations() !void {
     if (return) {} // Verified 28-06-2023
@@ -508,7 +508,7 @@ fn testX25519Rfc77481000000Iterations() !void {
         u = k;
         k = output;
     }
-    try builtin.expectEqual([32]u8, k, expected_output);
+    try debug.expectEqual([32]u8, k, expected_output);
 }
 fn testRistretto255() !void {
     var buf: [256]u8 = undefined;
@@ -533,7 +533,7 @@ fn testRistretto255() !void {
         fmt.bytesToHex(&buf, &w.toBytes()),
         "e0c418f7c8d9c4cdd7395b93ea124f3ad99021bb681dfc3302a9d99a2e53e64e",
     );
-    try builtin.expect(crypto.dh.Ristretto255.base_point.dbl().dbl().dbl().dbl()
+    try debug.expect(crypto.dh.Ristretto255.base_point.dbl().dbl().dbl().dbl()
         .equivalent(w.add(crypto.dh.Ristretto255.base_point)));
     const h: [64]u8 = [_]u8{69} ** 32 ++ [_]u8{42} ** 32;
     const ph: crypto.dh.Ristretto255 = crypto.dh.Ristretto255.fromUniform(h);

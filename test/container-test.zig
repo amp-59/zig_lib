@@ -4,6 +4,7 @@ const file = zl.file;
 const meta = zl.meta;
 const proc = zl.proc;
 const spec = zl.spec;
+const debug = zl.debug;
 const builtin = zl.builtin;
 const testing = zl.testing;
 const Allocator = mem.GenericArenaAllocator(.{

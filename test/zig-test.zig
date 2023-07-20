@@ -558,12 +558,12 @@ fn testTokenize(source: [:0]const u8, expected_token_tags: []const builtin.zig.T
     var tokenizer = builtin.zig.TokenIterator{ .buf = source, .buf_pos = 0, .inval = null };
     for (expected_token_tags) |expected_token_tag| {
         const token = tokenizer.next();
-        try builtin.expectEqual(builtin.zig.Token.Tag, expected_token_tag, token.tag);
+        try debug.expectEqual(builtin.zig.Token.Tag, expected_token_tag, token.tag);
     }
     const last_token = tokenizer.next();
-    try builtin.expectEqual(builtin.zig.Token.Tag, builtin.zig.Token.Tag.eof, last_token.tag);
-    try builtin.expectEqual(usize, source.len, last_token.loc.start);
-    try builtin.expectEqual(usize, source.len, last_token.loc.finish);
+    try debug.expectEqual(builtin.zig.Token.Tag, builtin.zig.Token.Tag.eof, last_token.tag);
+    try debug.expectEqual(usize, source.len, last_token.loc.start);
+    try debug.expectEqual(usize, source.len, last_token.loc.finish);
 }
 fn testTokenIterator() !void {
     try testKeywords();

@@ -24,6 +24,7 @@ const spec = zl.spec;
 const proc = zl.proc;
 const mach = zl.mach;
 const time = zl.time;
+const debug = zl.debug;
 const builtin = zl.builtin;
 
 pub usingnamespace zl.start;
@@ -35,7 +36,7 @@ pub const signal_handlers = .{
     .FloatingPointError = false,
     .Trap = false,
 };
-const about = builtin.fmt.about("futex");
+const about = fmt.about("futex");
 
 /// build-exe:      fmt_cmp_test, ReleaseFast, stripped, exit=[updated,0], 624(+1584) => 2208 bytes, 0.197s [0]
 /// perf:           cycles		530,416,380
@@ -63,7 +64,7 @@ fn standardLibFormatter(futex1: *u32, futex2: *u32, count1: u32, count2: u32, re
     std.fmt.format(fbu.writer(), "{s}futex1=@0x{x}, word1={}, max1={}, futex2=@0x{x}, word2={}, max2={}, res={}\n", .{
         about, @intFromPtr(futex1), futex1.*, count1, @intFromPtr(futex2), futex2.*, count2, ret,
     }) catch {};
-    builtin.debug.write(fbu.buffer[0..fbu.pos]);
+    debug.write(fbu.buffer[0..fbu.pos]);
 }
 /// build-exe:      fmt_cmp_test, ReleaseFast, stripped, exit=[updated,0], 2208(-144) => 2064 bytes, 0.186s [0]
 /// perf:           cycles		517,930,037
@@ -96,7 +97,7 @@ fn zigLibContainerFormatter(futex1: *u32, futex2: *u32, count1: u32, count2: u32
         fmt.ud64(count2),              ", res=",
         fmt.ud64(ret),                 '\n',
     });
-    builtin.debug.write(array.readAll());
+    debug.write(array.readAll());
 }
 /// build-exe:      fmt_cmp_test, ReleaseFast, stripped, exit=[updated,0], 2064(+184) => 2248 bytes, 0.149s [0]
 /// perf:           cycles		340,785,354
@@ -135,7 +136,7 @@ fn zigLibContainerWriteSlices(futex1: *u32, futex2: *u32, count1: u32, count2: u
     array.writeMany(", res=");
     array.writeFormat(fmt.ud64(ret));
     array.writeMany("\n");
-    builtin.debug.write(array.readAll());
+    debug.write(array.readAll());
 }
 /// Debug: Equal fastest build
 /// Debug: Worst performance
@@ -160,15 +161,15 @@ fn zigLibContainerWriteSlices(futex1: *u32, futex2: *u32, count1: u32, count2: u
 /// perf:           task-clock		71,780
 /// perf:           page-faults		3
 fn zigLibBasicMessage(futex1: *u32, futex2: *u32, count1: u32, count2: u32, ret: u64) void {
-    const addr1_s: []const u8 = builtin.fmt.ux64(@intFromPtr(futex1)).readAll();
-    const word1_s: []const u8 = builtin.fmt.ud64(futex1.*).readAll();
-    const addr2_s: []const u8 = builtin.fmt.ux64(@intFromPtr(futex2)).readAll();
-    const word2_s: []const u8 = builtin.fmt.ud64(futex2.*).readAll();
-    const count1_s: []const u8 = builtin.fmt.ud64(count1).readAll();
-    const count2_s: []const u8 = builtin.fmt.ud64(count2).readAll();
-    const ret_s: []const u8 = builtin.fmt.ud64(ret).readAll();
+    const addr1_s: []const u8 = fmt.old.ux64(@intFromPtr(futex1)).readAll();
+    const word1_s: []const u8 = fmt.old.ud64(futex1.*).readAll();
+    const addr2_s: []const u8 = fmt.old.ux64(@intFromPtr(futex2)).readAll();
+    const word2_s: []const u8 = fmt.old.ud64(futex2.*).readAll();
+    const count1_s: []const u8 = fmt.old.ud64(count1).readAll();
+    const count2_s: []const u8 = fmt.old.ud64(count2).readAll();
+    const ret_s: []const u8 = fmt.old.ud64(ret).readAll();
     var buf: [4096]u8 = undefined;
-    builtin.debug.logAlwaysAIO(&buf, &[_][]const u8{
+    debug.logAlwaysAIO(&buf, &[_][]const u8{
         about,    "futex1=@", addr1_s,  ", word1=",
         word1_s,  ", max1=",  count1_s, ", futex2=@",
         addr2_s,  ", word2=", word2_s,  ", max2=",
@@ -232,7 +233,7 @@ fn zigLibOptimisedMessage(futex1: *u32, futex2: *u32, count1: u32, count2: u32, 
     fmt_ud64.value = ret;
     len +%= fmt_ud64.formatWriteBuf(buf + len);
     buf[len] = '\n';
-    builtin.debug.write(buf[0 .. len +% 1]);
+    debug.write(buf[0 .. len +% 1]);
 }
 pub fn main() void {
     var futex0: u32 = 0xf0;

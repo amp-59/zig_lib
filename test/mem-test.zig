@@ -7,11 +7,12 @@ const mach = zl.mach;
 const meta = zl.meta;
 const file = zl.file;
 const spec = zl.spec;
+const debug = zl.debug;
 const builtin = zl.builtin;
 const testing = zl.testing;
 pub usingnamespace zl.start;
 pub const runtime_assertions: bool = true;
-pub const logging_default: builtin.Logging.Default = spec.logging.default.verbose;
+pub const logging_default: debug.Logging.Default = spec.logging.default.verbose;
 pub const AddressSpace = spec.address_space.regular_128;
 fn testProtect() !void {
     testing.announce(@src());
@@ -156,7 +157,7 @@ fn testAutomaticImplementation() !void {
         const array = mem.view("Hello, World!12340x1fee1dead");
         try testing.expectEqualMany(u8, array.readAll(), "Hello, World!12340x1fee1dead");
         try testing.expectEqualMany(u8, "World!", &array.readCountAt("World!".len, "Hello, ".len));
-        try builtin.expectEqual(u64, array.readAll().len, array.impl.allocated_byte_count());
+        try debug.expectEqual(u64, array.readAll().len, array.impl.allocated_byte_count());
     }
     {
         const StaticString = mem.StructuredAutomaticStreamVector(u8, null, 256, 1, .{});
@@ -185,36 +186,36 @@ fn testUtilityTestFunctions() !void {
     try testing.expect(mem.order(u8, "abc", "abc0") == .lt);
     try testing.expect(mem.order(u8, "", "") == .eq);
     try testing.expect(mem.order(u8, "", "a") == .lt);
-    try builtin.expect(mem.testEqualManyFront(u8, "1", "10"));
-    try builtin.expect(mem.testEqualManyBack(u8, "0", "10"));
-    try builtin.expect(!mem.testEqualManyFront(u8, "0", "10"));
-    try builtin.expect(!mem.testEqualManyBack(u8, "1", "10"));
-    try builtin.expect(!mem.testEqualManyFront(u8, "012", "10"));
-    try builtin.expect(!mem.testEqualManyBack(u8, "124", "10"));
-    try builtin.expectEqual(u64, 5, mem.indexOfFirstEqualOne(u8, ',', hello).?);
-    try builtin.expectEqual(u64, 0, mem.indexOfFirstEqualOne(u8, 'H', hello).?);
-    try builtin.expectEqual(u64, 12, mem.indexOfFirstEqualOne(u8, '!', hello).?);
-    try builtin.expectEqual(u64, 0, mem.indexOfFirstEqualMany(u8, "Hello", hello).?);
-    try builtin.expectEqual(u64, 7, mem.indexOfFirstEqualMany(u8, "world", hello).?);
-    try builtin.expectEqual(u64, 7, mem.indexOfLastEqualMany(u8, "world", hello).?);
-    try builtin.expectEqual(u64, 5, mem.indexOfFirstEqualAny(u8, ", ", hello).?);
-    try builtin.expectEqual(u64, 6, mem.indexOfLastEqualAny(u8, ", ", hello).?);
-    try builtin.expectEqual(u64, 0, mem.indexOfFirstEqualAny(u8, "!H", hello).?);
-    try builtin.expectEqual(u64, 12, mem.indexOfLastEqualAny(u8, "!H", hello).?);
-    try builtin.expect(mem.indexOfFirstEqualOne(u8, 'f', hello) == null);
-    try builtin.expect(mem.indexOfFirstEqualMany(u8, "foo", hello) == null);
-    try builtin.expect(mem.indexOfFirstEqualMany(u8, hello, "foo") == null);
-    try builtin.expect(mem.indexOfFirstEqualMany(u8, "", hello) == null);
+    try debug.expect(mem.testEqualManyFront(u8, "1", "10"));
+    try debug.expect(mem.testEqualManyBack(u8, "0", "10"));
+    try debug.expect(!mem.testEqualManyFront(u8, "0", "10"));
+    try debug.expect(!mem.testEqualManyBack(u8, "1", "10"));
+    try debug.expect(!mem.testEqualManyFront(u8, "012", "10"));
+    try debug.expect(!mem.testEqualManyBack(u8, "124", "10"));
+    try debug.expectEqual(u64, 5, mem.indexOfFirstEqualOne(u8, ',', hello).?);
+    try debug.expectEqual(u64, 0, mem.indexOfFirstEqualOne(u8, 'H', hello).?);
+    try debug.expectEqual(u64, 12, mem.indexOfFirstEqualOne(u8, '!', hello).?);
+    try debug.expectEqual(u64, 0, mem.indexOfFirstEqualMany(u8, "Hello", hello).?);
+    try debug.expectEqual(u64, 7, mem.indexOfFirstEqualMany(u8, "world", hello).?);
+    try debug.expectEqual(u64, 7, mem.indexOfLastEqualMany(u8, "world", hello).?);
+    try debug.expectEqual(u64, 5, mem.indexOfFirstEqualAny(u8, ", ", hello).?);
+    try debug.expectEqual(u64, 6, mem.indexOfLastEqualAny(u8, ", ", hello).?);
+    try debug.expectEqual(u64, 0, mem.indexOfFirstEqualAny(u8, "!H", hello).?);
+    try debug.expectEqual(u64, 12, mem.indexOfLastEqualAny(u8, "!H", hello).?);
+    try debug.expect(mem.indexOfFirstEqualOne(u8, 'f', hello) == null);
+    try debug.expect(mem.indexOfFirstEqualMany(u8, "foo", hello) == null);
+    try debug.expect(mem.indexOfFirstEqualMany(u8, hello, "foo") == null);
+    try debug.expect(mem.indexOfFirstEqualMany(u8, "", hello) == null);
     try testing.expectEqualMany(u8, ".field", mem.readBeforeFirstEqualMany(u8, " = ", ".field = value,").?);
     try testing.expectEqualMany(u8, "value,", mem.readAfterFirstEqualMany(u8, " = ", ".field = value,").?);
     try testing.expectEqualMany(u8, "", mem.readAfterFirstEqualMany(u8, " = ", ".field = ").?);
     try testing.expectEqualMany(u8, "", mem.readBeforeFirstEqualMany(u8, " = ", " = value,").?);
-    try builtin.expectEqual(u64, 3, mem.indexOfNearestEqualMany(u8, "345", "0123456789", 3).?);
-    try builtin.expectEqual(u64, 8, mem.indexOfNearestEqualMany(u8, "8", "0123456789", 8).?);
-    try builtin.expectEqual(u64, 4, mem.indexOfNearestEqualMany(u8, "4", "0123456789", 4).?);
-    try builtin.expectEqual(u64, 0, mem.indexOfNearestEqualMany(u8, "0123456789", "0123456789", 0).?);
+    try debug.expectEqual(u64, 3, mem.indexOfNearestEqualMany(u8, "345", "0123456789", 3).?);
+    try debug.expectEqual(u64, 8, mem.indexOfNearestEqualMany(u8, "8", "0123456789", 8).?);
+    try debug.expectEqual(u64, 4, mem.indexOfNearestEqualMany(u8, "4", "0123456789", 4).?);
+    try debug.expectEqual(u64, 0, mem.indexOfNearestEqualMany(u8, "0123456789", "0123456789", 0).?);
 
-    try builtin.expectEqual(u64, @as(u64, @bitCast([8]u8{ 0, 0, 0, 0, 0, 5, 5, 5 })), mem.readIntVar(u64, &[3]u8{ 5, 5, 5 }, 3));
+    try debug.expectEqual(u64, @as(u64, @bitCast([8]u8{ 0, 0, 0, 0, 0, 5, 5, 5 })), mem.readIntVar(u64, &[3]u8{ 5, 5, 5 }, 3));
 }
 
 fn testLallocator() !void {
@@ -281,7 +282,7 @@ fn testSimpleAllocator() void {
 }
 fn testSampleAllReports() !void {
     testing.announce(@src());
-    mem.debug.sampleAllReports();
+    mem.about.sampleAllReports();
 }
 pub fn main() !void {
     testSimpleAllocator();

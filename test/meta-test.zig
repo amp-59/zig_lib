@@ -1,12 +1,13 @@
 const zl = @import("../zig_lib.zig");
 const gen = zl.gen;
 const sys = zl.sys;
-const builtin = zl.builtin;
 const meta = zl.meta;
 const proc = zl.proc;
+const debug = zl.debug;
 const testing = zl.testing;
+const builtin = zl.builtin;
 pub usingnamespace zl.start;
-pub const logging_default: builtin.Logging.Default = .{
+pub const logging_default: debug.Logging.Default = .{
     .Attempt = true,
     .Success = true,
     .Acquire = true,
@@ -16,45 +17,45 @@ pub const logging_default: builtin.Logging.Default = .{
 };
 pub const runtime_assertions: bool = true;
 fn testBasicMetaFunctions() !void {
-    try builtin.expectEqual(i1, -1, meta.extrema(i1).min);
-    try builtin.expectEqual(u1, 1, meta.extrema(u1).max);
-    try builtin.expect(8 == meta.alignAW(7));
-    try builtin.expect(16 == meta.alignAW(9));
-    try builtin.expect(32 == meta.alignAW(25));
-    try builtin.expect(64 == meta.alignAW(48));
-    try builtin.expect(0 == meta.alignBW(7));
-    try builtin.expect(8 == meta.alignBW(9));
-    try builtin.expect(16 == meta.alignBW(25));
-    try builtin.expect(32 == meta.alignBW(48));
-    try builtin.expect(meta.isEnum(enum { e }));
-    try builtin.expect(meta.isContainer(struct {}));
-    try builtin.expect(meta.isContainer(packed struct {}));
-    try builtin.expect(meta.isContainer(packed struct(u32) { _: u32 }));
-    try builtin.expect(meta.isContainer(extern struct {}));
-    try builtin.expect(meta.isContainer(union {}));
-    try builtin.expect(meta.isContainer(extern union {}));
-    try builtin.expect(meta.isContainer(packed union {}));
-    try builtin.expect(meta.isTag(@TypeOf(.LiterallyATag)));
-    try builtin.expect(meta.isTag(@TypeOf(enum { ASymbolicKindOfTag }.ASymbolicKindOfTag)));
-    try builtin.expect(meta.isTag(@TypeOf(struct {})));
-    try builtin.expect(meta.isFunction(@TypeOf(main)));
-    try builtin.expect(meta.isFunction(@TypeOf(struct {
+    try debug.expectEqual(i1, -1, meta.extrema(i1).min);
+    try debug.expectEqual(u1, 1, meta.extrema(u1).max);
+    try debug.expect(8 == meta.alignAW(7));
+    try debug.expect(16 == meta.alignAW(9));
+    try debug.expect(32 == meta.alignAW(25));
+    try debug.expect(64 == meta.alignAW(48));
+    try debug.expect(0 == meta.alignBW(7));
+    try debug.expect(8 == meta.alignBW(9));
+    try debug.expect(16 == meta.alignBW(25));
+    try debug.expect(32 == meta.alignBW(48));
+    try debug.expect(meta.isEnum(enum { e }));
+    try debug.expect(meta.isContainer(struct {}));
+    try debug.expect(meta.isContainer(packed struct {}));
+    try debug.expect(meta.isContainer(packed struct(u32) { _: u32 }));
+    try debug.expect(meta.isContainer(extern struct {}));
+    try debug.expect(meta.isContainer(union {}));
+    try debug.expect(meta.isContainer(extern union {}));
+    try debug.expect(meta.isContainer(packed union {}));
+    try debug.expect(meta.isTag(@TypeOf(.LiterallyATag)));
+    try debug.expect(meta.isTag(@TypeOf(enum { ASymbolicKindOfTag }.ASymbolicKindOfTag)));
+    try debug.expect(meta.isTag(@TypeOf(struct {})));
+    try debug.expect(meta.isFunction(@TypeOf(main)));
+    try debug.expect(meta.isFunction(@TypeOf(struct {
         fn other(_: *@This()) void {}
     }.other)));
-    try builtin.expect(0 == meta.sentinel([:0]u8).?);
+    try debug.expect(0 == meta.sentinel([:0]u8).?);
     const E = meta.tagNamesEnum(&.{ "one", "two", "three" });
-    try builtin.expect(@hasField(E, "one"));
-    try builtin.expect(@hasField(E, "two"));
-    try builtin.expect(@hasField(E, "three"));
+    try debug.expect(@hasField(E, "one"));
+    try debug.expect(@hasField(E, "two"));
+    try debug.expect(@hasField(E, "three"));
 }
 fn testAlignmentMetaFunctions() !void {
-    try builtin.expect(32 == comptime meta.alignCX(-964392));
-    try builtin.expect(8 == comptime meta.alignCX(-128));
-    try builtin.expect(16 == comptime meta.alignCX(-129));
-    try builtin.expect(8 == meta.alignSizeBW(u9));
-    try builtin.expect(8 == meta.alignSizeAW(u7));
-    try builtin.expect(u8 == meta.AlignSizeBW(u9));
-    try builtin.expect(u8 == meta.AlignSizeAW(u7));
+    try debug.expect(32 == comptime meta.alignCX(-964392));
+    try debug.expect(8 == comptime meta.alignCX(-128));
+    try debug.expect(16 == comptime meta.alignCX(-129));
+    try debug.expect(8 == meta.alignSizeBW(u9));
+    try debug.expect(8 == meta.alignSizeAW(u7));
+    try debug.expect(u8 == meta.AlignSizeBW(u9));
+    try debug.expect(u8 == meta.AlignSizeAW(u7));
 }
 fn testBitCastMetaFunctions() !void {
     const S = packed struct {
@@ -62,24 +63,24 @@ fn testBitCastMetaFunctions() !void {
         y: u6,
     };
     var s: S = .{ .x = 1, .y = 25 };
-    try builtin.expect(u9 == @TypeOf(meta.leastBitCast(s)));
-    try builtin.expect(u16 == @TypeOf(meta.leastRealBitCast(s)));
+    try debug.expect(u9 == @TypeOf(meta.leastBitCast(s)));
+    try debug.expect(u16 == @TypeOf(meta.leastRealBitCast(s)));
 }
 fn testMemoryMetaFunctions() !void {
     const Element = u3;
     const T = [16:0]Element;
     const E = meta.Element(T);
     const U = meta.ArrayPointerToSlice(*T);
-    try builtin.expect([:0]Element == U);
-    builtin.assertEqual(type, *T, meta.SliceToArrayPointer(U, @typeInfo(T).Array.len));
+    try debug.expect([:0]Element == U);
+    debug.assertEqual(type, *T, meta.SliceToArrayPointer(U, @typeInfo(T).Array.len));
     comptime var t: T = T{ 1, 2, 3, 4, 0, 0, 0, 0, 0, 0, 0, 0, 5, 6, 7, 0 };
     comptime var u: U = &t;
-    builtin.assertEqual(type, meta.Element(T), E);
-    builtin.assertEqual(type, meta.Element(*T), E);
-    for (meta.arrayPointerToSlice(&t), 0..) |e, i| builtin.assertEqual(E, e, u[i]);
-    for (meta.sliceToArrayPointer(u), 0..) |e, i| builtin.assertEqual(E, e, t[i]);
+    debug.assertEqual(type, meta.Element(T), E);
+    debug.assertEqual(type, meta.Element(*T), E);
+    for (meta.arrayPointerToSlice(&t), 0..) |e, i| debug.assertEqual(E, e, u[i]);
+    for (meta.sliceToArrayPointer(u), 0..) |e, i| debug.assertEqual(E, e, t[i]);
     const m: [:0]Element = meta.manyToSlice(u.ptr);
-    builtin.assertEqual(u64, 4, m.len);
+    debug.assertEqual(u64, 4, m.len);
     try testInitializer();
 }
 fn testInitializer() !void {
@@ -90,9 +91,9 @@ fn testInitializer() !void {
     };
     const c: []const meta.Initializer = &meta.initializers(T, .{ .x = 25, .y = 15 });
     var t: T = meta.initialize(T, c);
-    try builtin.expectEqual(T, t, .{ .x = 25, .y = 15 });
-    builtin.expectEqual(T, t, .{ .x = 25, .y = 15 }) catch |err| {
-        builtin.assertEqual(anyerror, error.UnexpectedValue, err);
+    try debug.expectEqual(T, t, .{ .x = 25, .y = 15 });
+    debug.expectEqual(T, t, .{ .x = 25, .y = 15 }) catch |err| {
+        debug.assertEqual(anyerror, error.UnexpectedValue, err);
     };
 }
 pub fn main(_: anytype, _: [][*:0]u8) !void {

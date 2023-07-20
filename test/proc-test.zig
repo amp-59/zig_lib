@@ -9,14 +9,15 @@ const time = zl.time;
 const meta = zl.meta;
 const file = zl.file;
 const spec = zl.spec;
+const debug = zl.debug;
 const build = zl.build;
 const builtin = zl.builtin;
 const testing = zl.testing;
 pub usingnamespace zl.start;
 pub const runtime_assertions: bool = true;
-pub const logging_override: builtin.Logging.Override = spec.logging.override.verbose;
+pub const logging_override: debug.Logging.Override = spec.logging.override.verbose;
 
-pub const signal_handlers: builtin.SignalHandlers = .{
+pub const signal_handlers: debug.SignalHandlers = .{
     .SegmentationFault = true,
     .BusError = true,
     .IllegalInstruction = true,
@@ -45,8 +46,8 @@ const Mapping = extern struct {
 fn printHere(x: u64) void {
     var buf: [512]u8 = undefined;
     var len: u64 = fmt.ux64(x).formatWriteBuf(&buf);
-    builtin.debug.write(buf[0..len]);
-    builtin.debug.write("\n");
+    debug.write(buf[0..len]);
+    debug.write("\n");
 }
 fn testFutexWake(futex2: *u32) void {
     proc.futexWake(.{}, futex2, 1) catch {};
@@ -67,8 +68,8 @@ fn testCloneAndFutex() !void {
     try proc.clone(.{ .return_type = void }, allocator.allocateRaw(4096, 16), 4096, {}, testFutexWakeOp, .{ &futex1, &futex2 });
     try time.sleep(.{}, .{ .nsec = 0x20000 });
     try proc.clone(.{ .return_type = void }, allocator.allocateRaw(4096, 16), 4096, {}, testFutexWake, .{&futex2});
-    try builtin.expectEqual(u32, 16, futex1);
-    try builtin.expectEqual(u32, 32, futex2);
+    try debug.expectEqual(u32, 16, futex1);
+    try debug.expectEqual(u32, 32, futex2);
 }
 fn testFindNameInPath(vars: [][*:0]u8) !void {
     var itr: proc.PathIterator = .{
@@ -100,17 +101,17 @@ fn testFindNameInPath(vars: [][*:0]u8) !void {
 }
 fn testVClockGettime(aux: *const anyopaque) !void {
     const vdso_addr: u64 = proc.auxiliaryValue(aux, .vdso_addr).?;
-    const clock_gettime: time.ClockGetTime = proc.getVSyscall(time.ClockGetTime, vdso_addr, "clock_gettime").?;
+    const clock_gettime: time.ClockGetTime = proc.load(time.ClockGetTime, vdso_addr, "clock_gettime").?;
     var vts: time.TimeSpec = undefined;
     _ = clock_gettime(.realtime, &vts);
     const ts: time.TimeSpec = try time.get(.{}, .realtime);
     const ts_diff: time.TimeSpec = time.diff(ts, vts);
-    try builtin.expectEqual(u64, ts_diff.sec, 0);
-    try builtin.expectBelowOrEqual(u64, ts_diff.nsec, 1000);
+    try debug.expectEqual(u64, ts_diff.sec, 0);
+    try debug.expectBelowOrEqual(u64, ts_diff.nsec, 1000);
 }
 fn handlerFn(_: sys.SignalCode) void {}
 fn handlerSigInfoFn(_: sys.SignalCode, _: *const proc.SignalInfo, _: ?*const anyopaque) void {
-    builtin.proc.exit(0);
+    proc.exit(0);
 }
 fn testUpdateSignalAction() !void {
     var buf: [4096]u8 = undefined;
@@ -125,10 +126,25 @@ fn recursion(buf: *[4096]u8) void {
     @memcpy(&next, buf);
     recursion(&next);
 }
-pub fn main(_: anytype, vars: anytype, aux: anytype) !void {
-    try testCloneAndFutex();
-    proc.debug.sampleAllReports();
-    try testFindNameInPath(vars);
+pub fn main(args: [][*:0]u8, vars: [][*:0]u8, aux: anytype) !void {
+    _ = vars;
+    //try testCloneAndFutex();
+    //proc.about.sampleAllReports();
+    //try testFindNameInPath(vars);
     try testVClockGettime(aux);
-    try testUpdateSignalAction();
+    //try testUpdateSignalAction();
+    //
+    //
+
+    var fd: u64 = try file.open(.{}, meta.manyToSlice(args[0]));
+    const st: file.Status = try file.status(.{}, fd);
+    const len: usize = mach.alignA64(st.size, 4096);
+    try file.map(.{}, .{}, spec.file.map.flags.regular, fd, 0x40000000, len);
+
+    const add = proc.load(*@TypeOf(addTwo), 0x40000000, "addTwo").?;
+    try debug.expectEqual(u64, 11, add(5, 6));
+}
+
+export fn addTwo(arg1: u64, arg2: u64) u64 {
+    return arg1 +% arg2;
 }

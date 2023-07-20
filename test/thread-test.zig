@@ -8,13 +8,14 @@ const meta = zl.meta;
 const file = zl.file;
 const time = zl.time;
 const spec = zl.spec;
+const debug = zl.debug;
 const virtual = zl.virtual;
 const testing = zl.testing;
 const builtin = zl.builtin;
 
 pub usingnamespace zl.start;
 
-pub const logging_override: builtin.Logging.Override = spec.logging.override.verbose;
+pub const logging_override: debug.Logging.Override = spec.logging.override.verbose;
 pub const runtime_assertions: bool = true;
 
 const discrete_list: []const mem.Arena = &.{
@@ -75,11 +76,11 @@ fn testThreadSafeRegular() !void {
     }
     thread_index = 0;
     while (thread_index != ThreadSpace.addr_spec.count()) : (thread_index += 1) {
-        try builtin.expect(thread_space.atomicExchange(thread_index, .working, .done));
+        try debug.expect(thread_space.atomicExchange(thread_index, .working, .done));
     }
     thread_index = 0;
     while (thread_index != ThreadSpace.addr_spec.count()) : (thread_index += 1) {
-        try builtin.expect(thread_space.atomicExchange(thread_index, .done, .idle));
+        try debug.expect(thread_space.atomicExchange(thread_index, .done, .idle));
     }
 }
 fn testThreadSafeDiscrete() !void {
@@ -100,11 +101,11 @@ fn testThreadSafeDiscrete() !void {
     }
     thread_index = 0;
     inline while (thread_index != comptime ThreadSpace.addr_spec.count()) : (thread_index += 1) {
-        try builtin.expect(thread_space.atomicExchange(thread_index, .working, .done));
+        try debug.expect(thread_space.atomicExchange(thread_index, .working, .done));
     }
     thread_index = 0;
     inline while (thread_index != comptime ThreadSpace.addr_spec.count()) : (thread_index += 1) {
-        try builtin.expect(thread_space.atomicExchange(thread_index, .done, .idle));
+        try debug.expect(thread_space.atomicExchange(thread_index, .done, .idle));
     }
 }
 fn testQuickThread() !void {
@@ -120,7 +121,7 @@ fn testQuickThread() !void {
     const S = struct {
         export fn getIt(ts: *ThreadSpace, thread_index: ThreadSpace.Index, y: u64) u64 {
             const ret: u64 = y;
-            builtin.assert(ts.atomicExchange(thread_index, .working, .done));
+            debug.assert(ts.atomicExchange(thread_index, .working, .done));
             return ret;
         }
     };

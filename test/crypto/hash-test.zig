@@ -4,13 +4,14 @@ const mem = zl.mem;
 const mach = zl.mach;
 const meta = zl.meta;
 const proc = zl.proc;
+const debug = zl.debug;
 const crypto = zl.crypto;
 const builtin = zl.builtin;
 const testing = zl.testing;
 pub usingnamespace zl.start;
 pub const runtime_assertions: bool = true;
 
-pub const signal_handlers: builtin.SignalHandlers = .{
+pub const signal_handlers: debug.SignalHandlers = .{
     .SegmentationFault = true,
     .BusError = true,
     .IllegalInstruction = true,
@@ -178,7 +179,7 @@ fn testSHAKE128MultisqueezeWithMultipleBlocks() !void {
     var h2: crypto.hash.Shake128 = .{};
     h2.update("hello123");
     h2.squeeze(&out2);
-    try builtin.expectEqualMemory([]const u8, &out, &out2);
+    try debug.expectEqualMemory([]const u8, &out, &out2);
 }
 fn testSHAKE256Single(allocator: *mem.SimpleAllocator) !void {
     var out: [10]u8 = undefined;
@@ -831,7 +832,7 @@ fn testBlake3(hasher: *crypto.hash.Blake3, input_len: usize, expected_hex: [262]
     // Compare to expected value
     var expected_bytes: [expected_hex.len / 2]u8 = undefined;
     _ = try meta.wrap(fmt.hexToBytes(expected_bytes[0..], expected_hex[0..]));
-    try builtin.expectEqualMemory(@TypeOf(actual_bytes), actual_bytes, expected_bytes);
+    try debug.expectEqualMemory(@TypeOf(actual_bytes), actual_bytes, expected_bytes);
     // Restore initial state
     hasher.* = initial_state;
 }

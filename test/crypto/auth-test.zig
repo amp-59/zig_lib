@@ -47,7 +47,7 @@ fn testSiphash6424Sanity() !void {
         buffer[i] = @as(u8, @intCast(i));
         var out: [SipHash64.mac_len]u8 = undefined;
         SipHash64.create(&out, buffer[0..i], tab.sip_test_key);
-        try builtin.expectEqual(@TypeOf(out), out, vector);
+        try debug.expectEqual(@TypeOf(out), out, vector);
     }
 }
 fn testSiphash12824Sanity() !void {
@@ -57,7 +57,7 @@ fn testSiphash12824Sanity() !void {
         buffer[i] = @as(u8, @intCast(i));
         var out: [SipHash128.mac_len]u8 = undefined;
         SipHash128.create(&out, buffer[0..i], tab.sip_test_key);
-        try builtin.expectEqual(@TypeOf(out), out, vector);
+        try debug.expectEqual(@TypeOf(out), out, vector);
     }
 }
 fn testSipHashIterativeNonDivisibleUpdate() !void {
@@ -76,7 +76,7 @@ fn testSipHashIterativeNonDivisibleUpdate() !void {
             siphash.update(buf[idx..@min(idx +% 7, end)]);
         }
         const iterative_hash: u64 = siphash.finalInt();
-        try builtin.expectEqual(u64, iterative_hash, non_iterative_hash);
+        try debug.expectEqual(u64, iterative_hash, non_iterative_hash);
     }
 }
 fn testCmacAes128Example1Len0() !void {
@@ -152,10 +152,10 @@ fn testAegis128LTestVector1(allocator: *mem.SimpleAllocator) !void {
     try htest.assertEqual(allocator, "79d94593d8c2119d7e8fd9b8fc77845c5c077a05b2528b6ac54b563aed8efe84", &cipher);
     try htest.assertEqual(allocator, "cc6f3372f6aa1bb82388d695c3962d9a", &tag);
     cipher[0] +%= 1;
-    try builtin.expect(error.AuthenticationFailed == crypto.auth.Aegis128L.decrypt(&out, &cipher, tag, &bytes, nonce, key));
+    try debug.expect(error.AuthenticationFailed == crypto.auth.Aegis128L.decrypt(&out, &cipher, tag, &bytes, nonce, key));
     cipher[0] -%= 1;
     tag[0] +%= 1;
-    try builtin.expect(error.AuthenticationFailed == crypto.auth.Aegis128L.decrypt(&out, &cipher, tag, &bytes, nonce, key));
+    try debug.expect(error.AuthenticationFailed == crypto.auth.Aegis128L.decrypt(&out, &cipher, tag, &bytes, nonce, key));
 }
 fn testAegis128LTestVector2(allocator: *mem.SimpleAllocator) !void {
     const key: [crypto.auth.Aegis128L.key_len]u8 = [_]u8{0x00} ** 16;
@@ -227,10 +227,10 @@ fn testAegis256TestVector1(allocator: *mem.SimpleAllocator) !void {
     try htest.assertEqual(allocator, "f373079ed84b2709faee373584585d60accd191db310ef5d8b11833df9dec711", &cipher);
     try htest.assertEqual(allocator, "8d86f91ee606e9ff26a01b64ccbdd91d", &tag);
     cipher[0] +%= 1;
-    try builtin.expect(error.AuthenticationFailed == crypto.auth.Aegis256.decrypt(&out, &cipher, tag, &bytes, nonce, key));
+    try debug.expect(error.AuthenticationFailed == crypto.auth.Aegis256.decrypt(&out, &cipher, tag, &bytes, nonce, key));
     cipher[0] -%= 1;
     tag[0] +%= 1;
-    try builtin.expect(error.AuthenticationFailed == crypto.auth.Aegis256.decrypt(&out, &cipher, tag, &bytes, nonce, key));
+    try debug.expect(error.AuthenticationFailed == crypto.auth.Aegis256.decrypt(&out, &cipher, tag, &bytes, nonce, key));
 }
 fn testAegis256TestVector2(allocator: *mem.SimpleAllocator) !void {
     const key: [crypto.auth.Aegis256.key_len]u8 = [1]u8{0} ** 32;

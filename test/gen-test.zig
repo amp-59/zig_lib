@@ -1,6 +1,7 @@
 const zl = @import("../zig_lib.zig");
 const sys = zl.sys;
 const gen = zl.gen;
+const debug = zl.debug;
 const builtin = zl.builtin;
 
 const perf = @import("../top/perf.zig");

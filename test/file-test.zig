@@ -9,15 +9,14 @@ const time = zl.time;
 const proc = zl.proc;
 const spec = zl.spec;
 const build = zl.build;
+const debug = zl.debug;
 const builtin = zl.builtin;
 const testing = zl.testing;
 
 pub usingnamespace zl.start;
 
 pub const runtime_assertions: bool = true;
-pub const logging_default: builtin.Logging.Default = spec.logging.default.verbose;
-
-const default_errors: bool = !@hasDecl(@import("root"), "errors");
+pub const logging_default: debug.Logging.Default = spec.logging.default.verbose;
 
 const getcwd_spec: file.GetWorkingDirectorySpec = .{};
 const make_dir_spec: file.MakeDirSpec = .{};
@@ -86,7 +85,7 @@ pub fn testCopyFileRange() !void {
     const dest_fd: u64 = try meta.wrap(file.create(create_spec, pathname2, file.mode.regular));
     var rng: file.DeviceRandomBytes(65536) = .{};
     try meta.wrap(file.write(write_spec, src_fd, &rng.readCount(u8, 65536)));
-    builtin.assertEqual(u64, 0, try meta.wrap(file.seek(seek_spec, src_fd, 0, .set)));
+    debug.assertEqual(u64, 0, try meta.wrap(file.seek(seek_spec, src_fd, 0, .set)));
     var src_off: u64 = 4096;
     var dest_off: u64 = 0;
     _ = try meta.wrap(file.copy(copy_spec, dest_fd, &dest_off, src_fd, &src_off, 65536));
@@ -133,9 +132,9 @@ pub fn testClientIPv4(args: [][*:0]u8) !void {
     var buf: [500]u8 = undefined;
     try file.write(.{}, fd, meta.manyToSlice(args[0]));
     const len: u64 = try file.read(.{ .return_type = u64 }, fd, &buf);
-    builtin.debug.write(comptime builtin.fmt.about("ipv4") ++ "server responds: ");
-    builtin.debug.write(buf[0..len]);
-    builtin.debug.write("\n");
+    debug.write(comptime fmt.old.about("ipv4") ++ "server responds: ");
+    debug.write(buf[0..len]);
+    debug.write("\n");
 }
 pub fn testServerIPv4() !void {
     testing.announce(@src());
@@ -156,9 +155,9 @@ pub fn testClientIPv6(args: [][*:0]u8) !void {
     var buf: [500]u8 = undefined;
     try file.write(.{}, fd, meta.manyToSlice(args[0]));
     const len: u64 = try file.read(.{ .return_type = u64 }, fd, &buf);
-    builtin.debug.write(comptime builtin.fmt.about("ipv6") ++ "server responds: ");
-    builtin.debug.write(buf[0..len]);
-    builtin.debug.write("\n");
+    debug.write(comptime fmt.old.about("ipv6") ++ "server responds: ");
+    debug.write(buf[0..len]);
+    debug.write("\n");
 }
 pub fn testServerIPv6() !void {
     testing.announce(@src());
@@ -175,7 +174,7 @@ pub fn testClientAndServerIPv4(args: [][*:0]u8) !void {
     testing.announce(@src());
     if (try proc.fork(.{}) == 0) {
         try testServerIPv4();
-        builtin.proc.exit(0);
+        proc.exit(0);
     }
     try time.sleep(.{}, .{ .nsec = 50000 });
     try testClientIPv4(args);
@@ -184,7 +183,7 @@ pub fn testClientAndServerIPv6(args: [][*:0]u8) !void {
     testing.announce(@src());
     if (try proc.fork(.{}) == 0) {
         try testServerIPv6();
-        builtin.proc.exit(0);
+        proc.exit(0);
     }
     try time.sleep(.{}, .{ .nsec = 50000 });
     try testClientIPv6(args);
@@ -195,27 +194,27 @@ fn testPathAssert(path: [:0]const u8) !void {
 }
 fn testPathIs(path: [:0]const u8) !void {
     testing.announce(@src());
-    try builtin.expect(try file.pathIs(stat_spec, path, .directory));
+    try debug.expect(try file.pathIs(stat_spec, path, .directory));
 }
 fn testPathIsNot(path: [:0]const u8) !void {
     testing.announce(@src());
-    try builtin.expect(try file.pathIsNot(stat_spec, path, .regular));
-    try builtin.expect(try file.pathIsNot(stat_spec, path, .block_special));
-    try builtin.expect(try file.pathIsNot(stat_spec, path, .named_pipe));
-    try builtin.expect(try file.pathIsNot(stat_spec, path, .socket));
-    try builtin.expect(try file.pathIsNot(stat_spec, path, .symbolic_link));
+    try debug.expect(try file.pathIsNot(stat_spec, path, .regular));
+    try debug.expect(try file.pathIsNot(stat_spec, path, .block_special));
+    try debug.expect(try file.pathIsNot(stat_spec, path, .named_pipe));
+    try debug.expect(try file.pathIsNot(stat_spec, path, .socket));
+    try debug.expect(try file.pathIsNot(stat_spec, path, .symbolic_link));
 }
 fn testFileIs(fd: u64) !void {
     testing.announce(@src());
-    try builtin.expect(try file.is(stat_spec, fd, .directory));
+    try debug.expect(try file.is(stat_spec, fd, .directory));
 }
 fn testFileIsNot(fd: u64) !void {
     testing.announce(@src());
-    try builtin.expect(try file.isNot(stat_spec, .regular, fd));
-    try builtin.expect(try file.isNot(stat_spec, .block_special, fd));
-    try builtin.expect(try file.isNot(stat_spec, .named_pipe, fd));
-    try builtin.expect(try file.isNot(stat_spec, .socket, fd));
-    try builtin.expect(try file.isNot(stat_spec, .symbolic_link, fd));
+    try debug.expect(try file.isNot(stat_spec, .regular, fd));
+    try debug.expect(try file.isNot(stat_spec, .block_special, fd));
+    try debug.expect(try file.isNot(stat_spec, .named_pipe, fd));
+    try debug.expect(try file.isNot(stat_spec, .socket, fd));
+    try debug.expect(try file.isNot(stat_spec, .symbolic_link, fd));
 }
 pub fn testFileTests() !void {
     const path: [:0]const u8 = test_dir ++ "file_test";
@@ -277,9 +276,9 @@ fn testFileOperationsRound2() !void {
     try testPathRegular();
     try testMakeNode();
     const new_in_fd: u64 = try file.duplicate(.{}, 0);
-    try file.write(.{}, new_in_fd, builtin.fmt.ud64(new_in_fd).readAll());
+    try file.write(.{}, new_in_fd, fmt.old.ud64(new_in_fd).readAll());
     try file.duplicateTo(.{}, new_in_fd, new_in_fd +% 1);
-    try file.write(.{}, new_in_fd +% 1, builtin.fmt.ud64(new_in_fd +% 1).readAll());
+    try file.write(.{}, new_in_fd +% 1, fmt.old.ud64(new_in_fd +% 1).readAll());
     try meta.wrap(file.unlinkAt(unlink_spec, path_dir_fd, "file_test"));
     try meta.wrap(file.close(close_spec, path_dir_fd));
     try meta.wrap(file.removeDir(remove_dir_spec, test_dir ++ "file_test/file_test"));
@@ -315,7 +314,7 @@ fn testPackedModeStruct() !void {
     fd = try file.open(open_spec, "./0123456789");
     const st: file.Status = try file.status(stat_spec, fd);
     try file.unlink(unlink_spec, "./0123456789");
-    try builtin.expectEqual(u16, int, @as(u16, @bitCast(st.mode)));
+    try debug.expectEqual(u16, int, @as(u16, @bitCast(st.mode)));
 }
 fn testStandardChannel() !void {
     const Channel = file.GenericChannel(.{
@@ -342,7 +341,7 @@ fn testStandardChannel() !void {
         o_array.writeFormat(fmt.ud64(i_array.len()));
         o_array.writeMany("\n");
         try file.write(.{}, chan.out.write, o_array.readAll());
-        builtin.proc.exit(0);
+        proc.exit(0);
     } else {
         try meta.wrap(file.close(Channel.decls.close_spec, chan.in.read));
         try meta.wrap(file.close(Channel.decls.close_spec, chan.out.write));
@@ -391,9 +390,11 @@ fn testSymbolicLinkAt() !void {
     try file.close(close_spec, dir_fd);
 }
 fn testPreClean() !void {
+    testing.announce(@src());
     file.unlink(unlink_spec, test_dir ++ "file_test1") catch {};
     file.unlink(unlink_spec, test_dir ++ "file_test2") catch {};
     file.unlink(unlink_spec, test_dir ++ "file_test/file_test/file_test") catch {};
+    file.unlink(unlink_spec, test_dir ++ "file_test") catch {};
     file.removeDir(remove_dir_spec, test_dir ++ "file_test/file_test") catch {};
     file.removeDir(remove_dir_spec, test_dir ++ "file_test") catch {};
 }
@@ -416,7 +417,7 @@ fn testBasicDirectoryIterator() !void {
 }
 fn testSampleReports() void {
     testing.announce(@src());
-    file.debug.sampleAllReports();
+    file.about.sampleAllReports();
 }
 pub fn main(args: [][*:0]u8) !void {
     try meta.wrap(testBasicDirectoryIterator());

@@ -6,12 +6,13 @@ const proc = zl.proc;
 const spec = zl.spec;
 const meta = zl.meta;
 const build = zl.build;
+const debug = zl.debug;
 const builtin = zl.builtin;
 const testing = zl.testing;
 
 pub usingnamespace zl.start;
 
-pub const logging_override: builtin.Logging.Override = spec.logging.override.verbose;
+pub const logging_override: debug.Logging.Override = spec.logging.override.verbose;
 
 const Node = build.GenericNode(.{ .options = .{
     .max_cmdline_len = null,
@@ -25,7 +26,7 @@ fn testConfigValues() void {
     array.impl.ub_word +%= colour.formatWriteBuf(array.referAllUndefined().ptr);
     array.impl.ub_word +%= size.formatWriteBuf(array.referAllUndefined().ptr);
     array.impl.ub_word +%= name.formatWriteBuf(array.referAllUndefined().ptr);
-    builtin.debug.write(array.readAll());
+    debug.write(array.readAll());
 }
 fn testManyCompileOptionsWithArguments(args: anytype, vars: anytype) !void {
     const build_cmd = .{
@@ -77,7 +78,7 @@ fn testManyCompileOptionsWithArguments(args: anytype, vars: anytype) !void {
     }, "lib0", &.{t0});
 
     testing.print(fmt.any(t1));
-    try builtin.expect(Node.executeToplevel(&address_space, &thread_space, &allocator, toplevel, t1, .archive));
+    try debug.expect(Node.executeToplevel(&address_space, &thread_space, &allocator, toplevel, t1, .archive));
 }
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     try testManyCompileOptionsWithArguments(args, vars);

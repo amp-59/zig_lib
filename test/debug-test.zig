@@ -1,12 +1,13 @@
 const zl = @import("../zig_lib.zig");
 const proc = zl.proc;
+const debug = zl.debug;
 const builtin = zl.builtin;
 
 extern fn otherMain(x: u64) void;
 
 pub usingnamespace zl.start;
 
-pub const logging_override: builtin.Logging.Override = .{};
+pub const logging_override: debug.Logging.Override = .{};
 
 pub const trace = builtin.my_trace;
 

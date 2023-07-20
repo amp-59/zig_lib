@@ -4,13 +4,14 @@ const time = zl.time;
 const file = zl.file;
 const spec = zl.spec;
 const build = zl.build;
+const debug = zl.debug;
 const builtin = zl.builtin;
 
 const root = @import("./debug-test.zig");
 
 pub usingnamespace zl.start;
 
-pub const trace: builtin.Trace = root.trace;
+pub const trace: debug.Trace = root.trace;
 pub const have_stack_traces: bool = true;
 
 fn nested0(z: u64) !void {

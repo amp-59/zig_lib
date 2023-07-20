@@ -7,6 +7,7 @@ const mach = zl.mach;
 const time = zl.time;
 const meta = zl.meta;
 const spec = zl.spec;
+const debug = zl.debug;
 const builtin = zl.builtin;
 
 pub usingnamespace mach;

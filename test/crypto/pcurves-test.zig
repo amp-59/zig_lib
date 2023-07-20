@@ -14,7 +14,7 @@ fn testP256ECDHKeyExchange() !void {
     const dhB = try crypto.pcurves.P256.base_point.mul(dhb, .Little);
     const shareda = try dhA.mul(dhb, .Little);
     const sharedb = try dhB.mul(dha, .Little);
-    try builtin.expect(shareda.equivalent(sharedb));
+    try debug.expect(shareda.equivalent(sharedb));
 }
 fn testP256PointFromAffineCoordinates() !void {
     const xh: [:0]const u8 = "6B17D1F2E12C4247F8BCE6E563A440F277037D812DEB33A0F4A13945D898C296";
@@ -24,7 +24,7 @@ fn testP256PointFromAffineCoordinates() !void {
     var ys: [32]u8 = undefined;
     _ = try meta.wrap(fmt.hexToBytes(&ys, yh));
     var p = try crypto.pcurves.P256.fromSerializedAffineCoordinates(xs, ys, .Big);
-    try builtin.expect(p.equivalent(crypto.pcurves.P256.base_point));
+    try debug.expect(p.equivalent(crypto.pcurves.P256.base_point));
 }
 fn testP256TestVectors() !void {
     const expected: []const [:0]const u8 = &[10][:0]const u8{
@@ -68,32 +68,32 @@ fn testP256CompressedSec1EncodingDecoding() !void {
     const p = crypto.pcurves.P256.random();
     const s = p.toCompressedSec1();
     const q = try crypto.pcurves.P256.fromSec1(&s);
-    try builtin.expect(p.equivalent(q));
+    try debug.expect(p.equivalent(q));
 }
 fn testP256UncompressedSec1EncodingDecoding() !void {
     const p = crypto.pcurves.P256.random();
     const s = p.toUncompressedSec1();
     const q = try crypto.pcurves.P256.fromSec1(&s);
-    try builtin.expect(p.equivalent(q));
+    try debug.expect(p.equivalent(q));
 }
 fn testP256PublicKeyIsTheNeutralElement() !void {
     const n = crypto.pcurves.P256.scalar.Scalar.zero.toBytes(.Little);
     const p = crypto.pcurves.P256.random();
-    try builtin.expect(error.IdentityElement == p.mul(n, .Little));
+    try debug.expect(error.IdentityElement == p.mul(n, .Little));
 }
 fn testP256PublicKeyIsTheNeutralElementPublicVerification() !void {
     const n = crypto.pcurves.P256.scalar.Scalar.zero.toBytes(.Little);
     const p = crypto.pcurves.P256.random();
-    try builtin.expect(error.IdentityElement == p.mulPublic(n, .Little));
+    try debug.expect(error.IdentityElement == p.mulPublic(n, .Little));
 }
 fn testP256FieldElementNonCanonicalEncoding() !void {
     const s = [_]u8{0xff} ** 32;
-    try builtin.expect(error.NonCanonical == crypto.pcurves.P256.Fe.fromBytes(s, .Little));
+    try debug.expect(error.NonCanonical == crypto.pcurves.P256.Fe.fromBytes(s, .Little));
 }
 fn testP256NeutralElementDecoding() !void {
-    try builtin.expect(error.InvalidEncoding == crypto.pcurves.P256.fromAffineCoordinates(.{ .x = crypto.pcurves.P256.Fe.zero, .y = crypto.pcurves.P256.Fe.zero }));
+    try debug.expect(error.InvalidEncoding == crypto.pcurves.P256.fromAffineCoordinates(.{ .x = crypto.pcurves.P256.Fe.zero, .y = crypto.pcurves.P256.Fe.zero }));
     const p = try crypto.pcurves.P256.fromAffineCoordinates(.{ .x = crypto.pcurves.P256.Fe.zero, .y = crypto.pcurves.P256.Fe.one });
-    try builtin.expect(error.IdentityElement == p.rejectIdentity());
+    try debug.expect(error.IdentityElement == p.rejectIdentity());
 }
 fn testP256DoubleBaseMultiplication() !void {
     const p1 = crypto.pcurves.P256.base_point;
@@ -102,7 +102,7 @@ fn testP256DoubleBaseMultiplication() !void {
     const s2 = [_]u8{0x02} ** 32;
     const pr1 = try crypto.pcurves.P256.mulDoubleBasePublic(p1, s1, p2, s2, .Little);
     const pr2 = (try p1.mul(s1, .Little)).add(try p2.mul(s2, .Little));
-    try builtin.expect(pr1.equivalent(pr2));
+    try debug.expect(pr1.equivalent(pr2));
 }
 fn testP256DoubleBaseMultiplicationWithLargeScalars() !void {
     const p1 = crypto.pcurves.P256.base_point;
@@ -111,7 +111,7 @@ fn testP256DoubleBaseMultiplicationWithLargeScalars() !void {
     const s2 = [_]u8{0xdd} ** 32;
     const pr1 = try crypto.pcurves.P256.mulDoubleBasePublic(p1, s1, p2, s2, .Little);
     const pr2 = (try p1.mul(s1, .Little)).add(try p2.mul(s2, .Little));
-    try builtin.expect(pr1.equivalent(pr2));
+    try debug.expect(pr1.equivalent(pr2));
 }
 fn testP256ScalarInverse() !void {
     const expected = "3b549196a13c898a6f6e84dfb3a22c40a8b9b17fb88e408ea674e451cd01d0a6";
@@ -131,7 +131,7 @@ fn testP384ECDHKeyExchange() !void {
     const dhB = try crypto.pcurves.P384.base_point.mul(dhb, .Little);
     const shareda = try dhA.mul(dhb, .Little);
     const sharedb = try dhB.mul(dha, .Little);
-    try builtin.expect(shareda.equivalent(sharedb));
+    try debug.expect(shareda.equivalent(sharedb));
 }
 fn testP384PointFromAffineCoordinates() !void {
     const xh: [:0]const u8 = "aa87ca22be8b05378eb1c71ef320ad746e1d3b628ba79b9859f741e082542a385502f25dbf55296c3a545e3872760ab7";
@@ -141,7 +141,7 @@ fn testP384PointFromAffineCoordinates() !void {
     var ys: [48]u8 = undefined;
     _ = try meta.wrap(fmt.hexToBytes(&ys, yh));
     var p = try crypto.pcurves.P384.fromSerializedAffineCoordinates(xs, ys, .Big);
-    try builtin.expect(p.equivalent(crypto.pcurves.P384.base_point));
+    try debug.expect(p.equivalent(crypto.pcurves.P384.base_point));
 }
 fn testP384TestVectors() !void {
     const expected: [11][:0]const u8 = [_][:0]const u8{
@@ -188,32 +188,32 @@ fn testP384CompressedSec1EncodingDecoding() !void {
     const s = p.toCompressedSec1();
     try testing.expectEqualMany(u8, s0[1..49], s[1..49]);
     const q = try crypto.pcurves.P384.fromSec1(&s);
-    try builtin.expect(p.equivalent(q));
+    try debug.expect(p.equivalent(q));
 }
 fn testP384UncompressedSec1EncodingDecoding() !void {
     const p = crypto.pcurves.P384.random();
     const s = p.toUncompressedSec1();
     const q = try crypto.pcurves.P384.fromSec1(&s);
-    try builtin.expect(p.equivalent(q));
+    try debug.expect(p.equivalent(q));
 }
 fn testP384PublicKeyIsTheNeutralElement() !void {
     const n = crypto.pcurves.P384.scalar.Scalar.zero.toBytes(.Little);
     const p = crypto.pcurves.P384.random();
-    try builtin.expect(error.IdentityElement == p.mul(n, .Little));
+    try debug.expect(error.IdentityElement == p.mul(n, .Little));
 }
 fn testP384PublicKeyIsTheNeutralElementPublicVerification() !void {
     const n = crypto.pcurves.P384.scalar.Scalar.zero.toBytes(.Little);
     const p = crypto.pcurves.P384.random();
-    try builtin.expect(error.IdentityElement == p.mulPublic(n, .Little));
+    try debug.expect(error.IdentityElement == p.mulPublic(n, .Little));
 }
 fn testP384FieldElementNonCanonicalEncoding() !void {
     const s = [_]u8{0xff} ** 48;
-    try builtin.expect(error.NonCanonical == crypto.pcurves.P384.Fe.fromBytes(s, .Little));
+    try debug.expect(error.NonCanonical == crypto.pcurves.P384.Fe.fromBytes(s, .Little));
 }
 fn testP384NeutralElementDecoding() !void {
-    try builtin.expect(error.InvalidEncoding == crypto.pcurves.P384.fromAffineCoordinates(.{ .x = crypto.pcurves.P384.Fe.zero, .y = crypto.pcurves.P384.Fe.zero }));
+    try debug.expect(error.InvalidEncoding == crypto.pcurves.P384.fromAffineCoordinates(.{ .x = crypto.pcurves.P384.Fe.zero, .y = crypto.pcurves.P384.Fe.zero }));
     const p = try crypto.pcurves.P384.fromAffineCoordinates(.{ .x = crypto.pcurves.P384.Fe.zero, .y = crypto.pcurves.P384.Fe.one });
-    try builtin.expect(error.IdentityElement == p.rejectIdentity());
+    try debug.expect(error.IdentityElement == p.rejectIdentity());
 }
 fn testP384DoubleBaseMultiplication() !void {
     const p1 = crypto.pcurves.P384.base_point;
@@ -222,7 +222,7 @@ fn testP384DoubleBaseMultiplication() !void {
     const s2 = [_]u8{0x02} ** 48;
     const pr1 = try crypto.pcurves.P384.mulDoubleBasePublic(p1, s1, p2, s2, .Little);
     const pr2 = (try p1.mul(s1, .Little)).add(try p2.mul(s2, .Little));
-    try builtin.expect(pr1.equivalent(pr2));
+    try debug.expect(pr1.equivalent(pr2));
 }
 fn testP384DoubleBaseMultiplicationWithLargeScalars() !void {
     const p1 = crypto.pcurves.P384.base_point;
@@ -231,7 +231,7 @@ fn testP384DoubleBaseMultiplicationWithLargeScalars() !void {
     const s2 = [_]u8{0xdd} ** 48;
     const pr1 = try crypto.pcurves.P384.mulDoubleBasePublic(p1, s1, p2, s2, .Little);
     const pr2 = (try p1.mul(s1, .Little)).add(try p2.mul(s2, .Little));
-    try builtin.expect(pr1.equivalent(pr2));
+    try debug.expect(pr1.equivalent(pr2));
 }
 fn testP384ScalarInverse() !void {
     const expected = "a3cc705f33b5679a66e76ce66e68055c927c5dba531b2837b18fe86119511091b54d733f26b2e7a0f6fa2e7ea21ca806";
@@ -245,10 +245,10 @@ fn testP384ScalarInverse() !void {
     const inverse = scalar.invert();
     const inverse2 = inverse.invert();
     try testing.expectEqualMany(u8, &out, &inverse.toBytes(.Big));
-    try builtin.expect(inverse2.equivalent(scalar));
+    try debug.expect(inverse2.equivalent(scalar));
     const sq = scalar.sq();
     const sqr = try sq.sqrt();
-    try builtin.expect(sqr.equivalent(scalar));
+    try debug.expect(sqr.equivalent(scalar));
 }
 fn testSecp256k1ECDHKeyExchange() !void {
     const dha = crypto.pcurves.Secp256k1.scalar.randomX(.Little);
@@ -257,7 +257,7 @@ fn testSecp256k1ECDHKeyExchange() !void {
     const dhB = try crypto.pcurves.Secp256k1.base_point.mul(dhb, .Little);
     const shareda = try dhA.mul(dhb, .Little);
     const sharedb = try dhB.mul(dha, .Little);
-    try builtin.expect(shareda.equivalent(sharedb));
+    try debug.expect(shareda.equivalent(sharedb));
 }
 fn testSecp256k1ECDHKeyExchangeIncludingPublicMultiplication() !void {
     const dha = crypto.pcurves.Secp256k1.scalar.randomX(.Little);
@@ -266,7 +266,7 @@ fn testSecp256k1ECDHKeyExchangeIncludingPublicMultiplication() !void {
     const dhB = try crypto.pcurves.Secp256k1.base_point.mulPublic(dhb, .Little);
     const shareda = try dhA.mul(dhb, .Little);
     const sharedb = try dhB.mulPublic(dha, .Little);
-    try builtin.expect(shareda.equivalent(sharedb));
+    try debug.expect(shareda.equivalent(sharedb));
 }
 fn testSecp256k1PointFromAffineCoordinates() !void {
     const xh = "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798";
@@ -276,7 +276,7 @@ fn testSecp256k1PointFromAffineCoordinates() !void {
     var ys: [32]u8 = undefined;
     _ = try meta.wrap(fmt.hexToBytes(&ys, yh));
     var p = try crypto.pcurves.Secp256k1.fromSerializedAffineCoordinates(xs, ys, .Big);
-    try builtin.expect(p.equivalent(crypto.pcurves.Secp256k1.base_point));
+    try debug.expect(p.equivalent(crypto.pcurves.Secp256k1.base_point));
 }
 fn testSecp256k1TestVectors() !void {
     const expected: [10][]const u8 = .{
@@ -321,32 +321,32 @@ fn testSecp256k1CompressedSec1EncodingDecoding() !void {
     const p = crypto.pcurves.Secp256k1.random();
     const s = p.toCompressedSec1();
     const q = try crypto.pcurves.Secp256k1.fromSec1(&s);
-    try builtin.expect(p.equivalent(q));
+    try debug.expect(p.equivalent(q));
 }
 fn testSecp256k1UncompressedSec1EncodingDecoding() !void {
     const p = crypto.pcurves.Secp256k1.random();
     const s = p.toUncompressedSec1();
     const q = try crypto.pcurves.Secp256k1.fromSec1(&s);
-    try builtin.expect(p.equivalent(q));
+    try debug.expect(p.equivalent(q));
 }
 fn testSecp256k1PublicKeyIsTheNeutralElement() !void {
     const n = crypto.pcurves.Secp256k1.scalar.Scalar.zero.toBytes(.Little);
     const p = crypto.pcurves.Secp256k1.random();
-    try builtin.expect(error.IdentityElement == p.mul(n, .Little));
+    try debug.expect(error.IdentityElement == p.mul(n, .Little));
 }
 fn testSecp256k1PublicKeyIsTheNeutralElementPublicVerification() !void {
     const n = crypto.pcurves.Secp256k1.scalar.Scalar.zero.toBytes(.Little);
     const p = crypto.pcurves.Secp256k1.random();
-    try builtin.expect(error.IdentityElement == p.mulPublic(n, .Little));
+    try debug.expect(error.IdentityElement == p.mulPublic(n, .Little));
 }
 fn testSecp256k1FieldElementNonCanonicalEncoding() !void {
     const s = [_]u8{0xff} ** 32;
-    try builtin.expect(error.NonCanonical == crypto.pcurves.Secp256k1.Fe.fromBytes(s, .Little));
+    try debug.expect(error.NonCanonical == crypto.pcurves.Secp256k1.Fe.fromBytes(s, .Little));
 }
 fn testSecp256k1NeutralElementDecoding() !void {
-    try builtin.expect(error.InvalidEncoding == crypto.pcurves.Secp256k1.fromAffineCoordinates(.{ .x = crypto.pcurves.Secp256k1.Fe.zero, .y = crypto.pcurves.Secp256k1.Fe.zero }));
+    try debug.expect(error.InvalidEncoding == crypto.pcurves.Secp256k1.fromAffineCoordinates(.{ .x = crypto.pcurves.Secp256k1.Fe.zero, .y = crypto.pcurves.Secp256k1.Fe.zero }));
     const p = try crypto.pcurves.Secp256k1.fromAffineCoordinates(.{ .x = crypto.pcurves.Secp256k1.Fe.zero, .y = crypto.pcurves.Secp256k1.Fe.one });
-    try builtin.expect(error.IdentityElement == p.rejectIdentity());
+    try debug.expect(error.IdentityElement == p.rejectIdentity());
 }
 fn testSecp256k1DoubleBaseMultiplication() !void {
     const p1 = crypto.pcurves.Secp256k1.base_point;
@@ -355,7 +355,7 @@ fn testSecp256k1DoubleBaseMultiplication() !void {
     const s2 = [_]u8{0x02} ** 32;
     const pr1 = try crypto.pcurves.Secp256k1.mulDoubleBasePublic(p1, s1, p2, s2, .Little);
     const pr2 = (try p1.mul(s1, .Little)).add(try p2.mul(s2, .Little));
-    try builtin.expect(pr1.equivalent(pr2));
+    try debug.expect(pr1.equivalent(pr2));
 }
 fn testSecp256k1ScalarInverse() !void {
     const expected = "08d0684a0fe8ea978b68a29e4b4ffdbd19eeb59db25301cf23ecbe568e1f9822";

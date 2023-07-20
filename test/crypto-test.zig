@@ -1,12 +1,13 @@
 const zl = @import("../zig_lib.zig");
 const proc = zl.proc;
 const spec = zl.spec;
+const debug = zl.debug;
 const builtin = zl.builtin;
 pub usingnamespace zl.start;
 pub const runtime_assertions: bool = true;
 pub const discard_errors: bool = true;
 
-// pub const logging_override: builtin.Logging.Override = spec.logging.override.verbose;
+// pub const logging_override: debug.Logging.Override = spec.logging.override.verbose;
 
 pub fn main() !void {
     //try @import("./crypto/aead-test.zig").aeadTestMain();

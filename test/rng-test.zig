@@ -2,6 +2,7 @@ const zl = @import("../zig_lib.zig");
 const mem = zl.mem;
 const rng = zl.rng;
 const proc = zl.proc;
+const debug = zl.debug;
 const builtin = zl.builtin;
 const testing = zl.testing;
 pub usingnamespace zl.start;
@@ -16,7 +17,7 @@ fn testXoroshiroSequence() !void {
         0x9ac19f9706ca3cac, 0xf62b426578c1e3fb,
     };
     for (seq1) |s| {
-        try builtin.expect(s == r.next());
+        try debug.expect(s == r.next());
     }
     r.jump();
     const seq2: [6]u64 = .{
@@ -25,7 +26,7 @@ fn testXoroshiroSequence() !void {
         0xa860a1da7c9cd8a0, 0x658a96efe3f86550,
     };
     for (seq2) |s| {
-        try builtin.expect(s == r.next());
+        try debug.expect(s == r.next());
     }
 }
 fn testXoroshiroFill() !void {

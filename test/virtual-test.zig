@@ -6,6 +6,7 @@ const proc = zl.proc;
 const mach = zl.mach;
 const file = zl.file;
 const spec = zl.spec;
+const debug = zl.debug;
 const virtual = zl.virtual;
 const builtin = zl.builtin;
 const testing = zl.testing;
@@ -17,7 +18,7 @@ const root = opaque {
     pub const AddressSpace = spec.address_space.regular_128;
 };
 
-pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
+pub const logging_override: debug.Logging.Override = spec.logging.override.silent;
 
 const PrintArray = mem.StaticString(16384);
 var print_array: PrintArray = undefined;
@@ -107,9 +108,9 @@ fn testArenaIntersection() !void {
     var a: virtual.Arena = arenaFromBits(0b000000000111111111110000000000000);
     var b: virtual.Arena = arenaFromBits(0b000000000000000111111111110000000);
     var x: virtual.Intersection(virtual.Arena) = virtual.intersection2(virtual.Arena, a, b).?;
-    try builtin.expectEqual(u64, arenaToBits(x.l), 0b0000000000000000000000000000000000000000000000000001111110000000);
-    try builtin.expectEqual(u64, arenaToBits(x.x), 0b0000000000000000000000000000000000000000000000111110000000000000);
-    try builtin.expectEqual(u64, arenaToBits(x.h), 0b0000000000000000000000000000000000000000111111000000000000000000);
+    try debug.expectEqual(u64, arenaToBits(x.l), 0b0000000000000000000000000000000000000000000000000001111110000000);
+    try debug.expectEqual(u64, arenaToBits(x.x), 0b0000000000000000000000000000000000000000000000111110000000000000);
+    try debug.expectEqual(u64, arenaToBits(x.h), 0b0000000000000000000000000000000000000000111111000000000000000000);
 }
 fn testRegularAddressSpace() !void {
     const AddressSpace = virtual.GenericRegularAddressSpace(.{ .divisions = 8, .lb_offset = 0x40000000 });
@@ -121,7 +122,7 @@ fn testRegularAddressSpace() !void {
     while (i != AddressSpace.addr_spec.divisions) : (i += 1) {
         try mem.acquire(AddressSpace, &address_space, i);
     }
-    try builtin.expectEqual(u64, AddressSpace.addr_spec.divisions, address_space.count());
+    try debug.expectEqual(u64, AddressSpace.addr_spec.divisions, address_space.count());
 }
 fn testDiscreteAddressSpace(comptime list: anytype) !void {
     const AddressSpace = virtual.GenericDiscreteAddressSpace(.{ .list = list });
@@ -134,12 +135,12 @@ fn testDiscreteAddressSpace(comptime list: anytype) !void {
     inline while (i != AddressSpace.addr_spec.list.len) : (i += 1) {
         try mem.acquireStatic(AddressSpace, &address_space, i);
     }
-    try builtin.expectEqual(u64, AddressSpace.addr_spec.list.len, address_space.count());
+    try debug.expectEqual(u64, AddressSpace.addr_spec.list.len, address_space.count());
     i = 1;
     inline while (i != AddressSpace.addr_spec.list.len) : (i += 1) {
         mem.releaseStatic(AddressSpace, &address_space, i);
     }
-    try builtin.expectEqual(u64, AddressSpace.addr_spec.list.len, 0);
+    try debug.expectEqual(u64, AddressSpace.addr_spec.list.len, 0);
 }
 fn testDiscreteSubSpaceFromDiscrete(comptime sup_spec: virtual.DiscreteAddressSpaceSpec, comptime sub_spec: virtual.DiscreteAddressSpaceSpec) !void {
     const AddressSpace = comptime blk: {
@@ -187,10 +188,10 @@ fn testTaggedSets() !void {
         },
     });
     var k: K = .{};
-    try builtin.expect(k.set(.a));
-    try builtin.expect(k.set(.b));
-    try builtin.expect(k.set(.c));
-    try builtin.expect(k.set(.d));
+    try debug.expect(k.set(.a));
+    try debug.expect(k.set(.b));
+    try debug.expect(k.set(.c));
+    try debug.expect(k.set(.d));
     testing.print(fmt.any(k));
 }
 fn Clone(comptime function: anytype) type {

@@ -117,8 +117,8 @@ fn testECDSATestVectorsFromProjectWycheproof() !void {
             false_negative +%= @intFromBool(which);
         }
     }
-    builtin.assertEqual(u64, false_negative, 0);
-    builtin.assertEqual(u64, false_positive, 0);
+    debug.assertEqual(u64, false_negative, 0);
+    debug.assertEqual(u64, false_positive, 0);
 }
 pub fn ecdsaTestMain() !void {
     try testECDSABasicOperationsOverEcdsaP384Sha384();

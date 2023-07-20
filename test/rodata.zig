@@ -2,8 +2,10 @@
 //! Experimental. This is a test file because if at some point this
 //! functionality is removed from the language these tests should fail.
 const zl = @import("zig_lib");
+const fmt = zl.fmt;
 const meta = zl.meta;
 const file = zl.file;
+const debug = zl.debug;
 const testing = zl.testing;
 const builtin = zl.builtin;
 
@@ -57,8 +59,8 @@ pub fn main() !void {
     testing.expectEqualMany(u8, Test.assign_strings, "first");
 
     data1[0] = 'a';
-    builtin.debug.write(data2);
-    builtin.debug.write("\n");
-    builtin.debug.write(builtin.fmt.ux64(@intFromPtr(data2.ptr)).readAll());
-    builtin.debug.write("\n");
+    debug.write(data2);
+    debug.write("\n");
+    debug.write(fmt.old.ux64(@intFromPtr(data2.ptr)).readAll());
+    debug.write("\n");
 }

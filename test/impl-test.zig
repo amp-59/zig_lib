@@ -8,13 +8,14 @@ const meta = zl.meta;
 const file = zl.file;
 const mach = zl.mach;
 const spec = zl.spec;
+const debug = zl.debug;
 const builtin = zl.builtin;
 
 pub usingnamespace zl.start;
 
 pub const AddressSpace = spec.address_space.exact_8;
 pub const runtime_assertions: bool = true;
-pub const logging_default: builtin.Logging.Default = .{
+pub const logging_default: debug.Logging.Default = .{
     .Attempt = true,
     .Success = true,
     .Acquire = true,
@@ -22,7 +23,7 @@ pub const logging_default: builtin.Logging.Default = .{
     .Error = true,
     .Fault = true,
 };
-pub const logging_override: builtin.Logging.Override = .{
+pub const logging_override: debug.Logging.Override = .{
     .Attempt = false,
     .Success = false,
     .Acquire = false,
@@ -94,25 +95,25 @@ fn announceAnalysis(comptime impl_type: type) void {
     var array: PrintArray = .{};
     if (@hasDecl(impl_type, "child")) {
         const low_alignment: u64 = comptime if (@hasDecl(impl_type, "unit_alignment")) impl_type.unit_alignment else impl_type.low_alignment;
-        const layout_align_s: []const u8 = comptime ": " ++ @typeName(impl_type.child) ++ " align(" ++ builtin.fmt.ci(low_alignment) ++ ")";
+        const layout_align_s: []const u8 = comptime ": " ++ @typeName(impl_type.child) ++ " align(" ++ fmt.old.ci(low_alignment) ++ ")";
         array.writeMany(tab.fx.color.fg.hi_blue ++ tab.fx.style.bold);
         array.writeMany(comptime fmt.typeName(impl_type));
         array.writeMany(layout_align_s ++ tab.fx.none ++ "\n");
     } else {
         const low_alignment: u64 = comptime if (@hasDecl(impl_type, "unit_alignment")) impl_type.unit_alignment else impl_type.low_alignment;
-        const aligns_s: []const u8 = comptime ": align(" ++ tab.ud8[low_alignment] ++ ") align(" ++ builtin.fmt.ci(low_alignment) ++ ")";
+        const aligns_s: []const u8 = comptime ": align(" ++ tab.ud8[low_alignment] ++ ") align(" ++ fmt.old.ci(low_alignment) ++ ")";
         array.writeMany(tab.fx.color.fg.hi_blue ++ tab.fx.style.bold);
         array.writeMany(comptime fmt.typeName(impl_type));
         array.writeMany(aligns_s ++ tab.fx.none ++ "\n");
     }
-    builtin.debug.write(array.readAll());
+    debug.write(array.readAll());
 }
 fn getBetween(comptime T: type, lower: ?u64, upper: ?u64) u64 {
     const zero: T = 0;
     const min: T = @as(T, @intCast(lower orelse zero));
     const max: T = @as(T, @intCast(upper orelse ~zero));
-    builtin.assertAbove(T, max, 0);
-    builtin.assertAbove(T, max, min + 1);
+    debug.assertAbove(T, max, 0);
+    debug.assertAbove(T, max, min + 1);
     while (true) {
         const first_attempt: T = @max(random.readOne(T), 1);
         var ret: T = first_attempt;
@@ -133,25 +134,25 @@ fn getBetween(comptime T: type, lower: ?u64, upper: ?u64) u64 {
     unreachable;
 }
 fn getAboveAmount(n_amt: mem.Amount, comptime factor: u64) mem.Amount {
-    builtin.assertAboveOrEqual(u64, mem.amountToCountOfLength(n_amt, factor), 16);
+    debug.assertAboveOrEqual(u64, mem.amountToCountOfLength(n_amt, factor), 16);
     var ret: mem.Amount = .{ .count = random.readOne(u8) };
     while (builtin.eval2b(mem.amountToCountOfLength(ret, factor) <= n_amt.countV(factor), ret.countV(factor) < 16)) ret.count = random.readOne(u8);
     return ret;
 }
 fn getBelowAmount(n_amt: mem.Amount, comptime factor: u64) mem.Amount {
-    builtin.assertAboveOrEqual(u64, mem.amountToCountOfLength(n_amt, factor), 16);
+    debug.assertAboveOrEqual(u64, mem.amountToCountOfLength(n_amt, factor), 16);
     var ret: mem.Amount = .{ .count = random.readOne(u8) };
     while (builtin.eval2b(mem.amountToCountOfLength(ret, factor) >= n_amt.countV(factor), ret.countV(factor) < 16)) ret.count = random.readOne(u8);
     return ret;
 }
 fn getAbove(bytes: u64) u64 {
-    builtin.assertAboveOrEqual(u64, bytes, 16);
+    debug.assertAboveOrEqual(u64, bytes, 16);
     var val: u64 = random.readOne(u8);
     while (builtin.eval2b(val <= bytes, val < 0)) val = random.readOne(u8);
     return val;
 }
 fn getBelow(bytes: u64) u64 {
-    builtin.assertAboveOrEqual(u64, bytes, 16);
+    debug.assertAboveOrEqual(u64, bytes, 16);
     var val: u64 = random.readOne(u8);
     while (builtin.eval2b(val >= bytes, val < 8)) val = random.readOne(u8);
     return val;
@@ -181,10 +182,10 @@ const RWAddresses = extern struct {
         };
     }
     fn assertEqual(s_addresses: Addresses, t_addresses: Addresses) void {
-        builtin.assertEqual(u64, s_addresses.low, t_addresses.low);
-        builtin.assertEqual(u64, s_addresses.start, t_addresses.start);
-        builtin.assertEqual(u64, s_addresses.finish, t_addresses.finish);
-        builtin.assertEqual(u64, s_addresses.high, t_addresses.high);
+        debug.assertEqual(u64, s_addresses.low, t_addresses.low);
+        debug.assertEqual(u64, s_addresses.start, t_addresses.start);
+        debug.assertEqual(u64, s_addresses.finish, t_addresses.finish);
+        debug.assertEqual(u64, s_addresses.high, t_addresses.high);
     }
     const showWithReferenceWrite = showTwo;
     fn showTwo(s_addresses: Addresses, t_addresses: Addresses, array: *PrintArray) void {
@@ -220,11 +221,11 @@ const RWPPAddresses = extern struct {
         };
     }
     fn assertEqual(s_addresses: Addresses, t_addresses: Addresses) void {
-        builtin.assertEqual(u64, s_addresses.low, t_addresses.low);
-        builtin.assertEqual(u64, s_addresses.start, t_addresses.start);
-        builtin.assertEqual(u64, s_addresses.next, t_addresses.next);
-        builtin.assertEqual(u64, s_addresses.finish, t_addresses.finish);
-        builtin.assertEqual(u64, s_addresses.high, t_addresses.high);
+        debug.assertEqual(u64, s_addresses.low, t_addresses.low);
+        debug.assertEqual(u64, s_addresses.start, t_addresses.start);
+        debug.assertEqual(u64, s_addresses.next, t_addresses.next);
+        debug.assertEqual(u64, s_addresses.finish, t_addresses.finish);
+        debug.assertEqual(u64, s_addresses.high, t_addresses.high);
     }
     const showWithReferenceWrite = showTwo;
     fn showTwo(s_addresses: Addresses, t_addresses: Addresses, array: *PrintArray) void {
@@ -253,8 +254,8 @@ const RWOffsets = extern struct {
         return .{ .capacity = any_rw_values.capacity, .bytes = any_rw_values.bytes };
     }
     fn assertEqual(s_offsets: Offsets, t_offsets: Offsets) void {
-        builtin.assertEqual(u64, s_offsets.capacity, t_offsets.capacity);
-        builtin.assertEqual(u64, s_offsets.bytes, t_offsets.bytes);
+        debug.assertEqual(u64, s_offsets.capacity, t_offsets.capacity);
+        debug.assertEqual(u64, s_offsets.bytes, t_offsets.bytes);
     }
     const showWithReferenceWrite = showTwo;
     fn showTwo(s_offsets: Offsets, t_offsets: Offsets, array: *PrintArray) void {
@@ -279,10 +280,10 @@ const RWPPOffsets = extern struct {
         return offsets.capacity / factor;
     }
     fn assertEqual(s_offsets: Offsets, t_offsets: Offsets) void {
-        builtin.assertEqual(u64, s_offsets.capacity, t_offsets.capacity);
-        builtin.assertEqual(u64, s_offsets.bytes, t_offsets.bytes);
-        builtin.assertEqual(u64, s_offsets.length, t_offsets.length);
-        builtin.assertEqual(u64, s_offsets.available, t_offsets.available);
+        debug.assertEqual(u64, s_offsets.capacity, t_offsets.capacity);
+        debug.assertEqual(u64, s_offsets.bytes, t_offsets.bytes);
+        debug.assertEqual(u64, s_offsets.length, t_offsets.length);
+        debug.assertEqual(u64, s_offsets.available, t_offsets.available);
     }
     const showWithReferenceWrite = showTwo;
     fn showTwo(s_offsets: Offsets, t_offsets: Offsets, array: *PrintArray) void {
@@ -322,8 +323,8 @@ const RWDValues = extern struct {
                 array.writeMany("unequal bytes offset ");
                 array.writeFormat(fmt.ud(byte_offset));
                 array.writeMany("\n");
-                builtin.debug.write(array.readAll());
-                builtin.assertEqual(u8, s_memory[byte_offset], t_memory[byte_offset]);
+                debug.write(array.readAll());
+                debug.assertEqual(u8, s_memory[byte_offset], t_memory[byte_offset]);
             }
         }
     }
@@ -334,7 +335,7 @@ const RWDValues = extern struct {
             array.writeFormat(src_fmt);
             _ = values;
             if (array.impl.defined_byte_count() != src_fmt.formatLength()) {
-                builtin.debug.write(array.readAll());
+                debug.write(array.readAll());
             }
         }
         fn showWithReference(s_values: Values, t_values: Values, src: builtin.SourceLocation) void {
@@ -345,7 +346,7 @@ const RWDValues = extern struct {
             s_values.offsets.showWithReferenceWrite(t_values.offsets, &array);
             if (array.impl.defined_byte_count() != src_fmt.formatLength()) {
                 array.writeOne('\n');
-                builtin.debug.write(array.readAll());
+                debug.write(array.readAll());
             }
         }
         fn showTwo(s_values: Values, t_values: Values, src: builtin.SourceLocation) void {
@@ -356,7 +357,7 @@ const RWDValues = extern struct {
             s_values.offsets.showTwo(t_values.offsets, &array);
             if (array.impl.defined_byte_count() != src_fmt.formatLength()) {
                 array.writeOne('\n');
-                builtin.debug.write(array.readAll());
+                debug.write(array.readAll());
             }
         }
         fn showFour(s_values: Values, t_values: Values, u_values: Values, v_values: Values, src: builtin.SourceLocation) void {
@@ -367,7 +368,7 @@ const RWDValues = extern struct {
             s_values.offsets.showFour(t_values.offsets, u_values.offsets, v_values.offsets, &array);
             if (array.impl.defined_byte_count() != src_fmt.formatLength()) {
                 array.writeOne('\n');
-                builtin.debug.write(array.readAll());
+                debug.write(array.readAll());
             }
         }
     };
@@ -387,34 +388,34 @@ const RWPPDValues = extern struct {
         s_values.offsets.assertEqual(t_values.offsets);
     }
     fn assertFull(values: Values) void {
-        builtin.assertEqual(u64, values.offsets.length + values.offsets.available, values.offsets.capacity);
-        builtin.assertEqual(u64, values.offsets.length, values.offsets.capacity);
-        builtin.assertEqual(u64, values.offsets.available, 0);
-        builtin.assertEqual(u64, values.addresses.next, values.addresses.finish);
+        debug.assertEqual(u64, values.offsets.length + values.offsets.available, values.offsets.capacity);
+        debug.assertEqual(u64, values.offsets.length, values.offsets.capacity);
+        debug.assertEqual(u64, values.offsets.available, 0);
+        debug.assertEqual(u64, values.addresses.next, values.addresses.finish);
     }
     fn assertEmpty(values: Values) void {
-        builtin.assertEqual(u64, values.offsets.length + values.offsets.available, values.offsets.capacity);
-        builtin.assertEqual(u64, values.offsets.length, 0);
-        builtin.assertEqual(u64, values.offsets.available, values.offsets.capacity);
-        builtin.assertEqual(u64, values.offsets.next, values.offsets.start);
+        debug.assertEqual(u64, values.offsets.length + values.offsets.available, values.offsets.capacity);
+        debug.assertEqual(u64, values.offsets.length, 0);
+        debug.assertEqual(u64, values.offsets.available, values.offsets.capacity);
+        debug.assertEqual(u64, values.offsets.next, values.offsets.start);
     }
     fn assertConsistent(values: Values) void {
-        builtin.assertNotEqual(u64, 0, values.addresses.low);
-        builtin.assertAboveOrEqual(u64, values.addresses.start, values.addresses.low);
-        builtin.assertAboveOrEqual(u64, values.addresses.next, values.addresses.start);
-        builtin.assertAboveOrEqual(u64, values.addresses.finish, values.addresses.next);
-        builtin.assertAboveOrEqual(u64, values.addresses.high, values.addresses.finish);
+        debug.assertNotEqual(u64, 0, values.addresses.low);
+        debug.assertAboveOrEqual(u64, values.addresses.start, values.addresses.low);
+        debug.assertAboveOrEqual(u64, values.addresses.next, values.addresses.start);
+        debug.assertAboveOrEqual(u64, values.addresses.finish, values.addresses.next);
+        debug.assertAboveOrEqual(u64, values.addresses.high, values.addresses.finish);
         values.offsets.assertEqual(values.addresses.offsets());
     }
     fn assertEqualMemory(s_values: Values, t_values: Values) void {
         const min_length: u64 = @min(s_values.offsets.length, t_values.offsets.length);
         const max_length: u64 = @min(s_values.offsets.length, t_values.offsets.length);
-        builtin.assertEqual(u64, min_length, max_length);
+        debug.assertEqual(u64, min_length, max_length);
         const s_memory: []u8 = @as([*]u8, @ptrFromInt(s_values.addresses.start))[0..max_length];
         const t_memory: []u8 = @as([*]u8, @ptrFromInt(t_values.addresses.start))[0..max_length];
         var byte_offset: u64 = 0;
         while (byte_offset != max_length) : (byte_offset += 1) {
-            builtin.assertEqual(u8, s_memory[byte_offset], t_memory[byte_offset]);
+            debug.assertEqual(u8, s_memory[byte_offset], t_memory[byte_offset]);
         }
     }
     fn requestCount(values: Values) u64 {
@@ -438,7 +439,7 @@ const RWPPDValues = extern struct {
             array.writeFormat(src_fmt);
             _ = values;
             if (array.impl.defined_byte_count() != src_fmt.formatLength()) {
-                builtin.debug.write(array.readAll());
+                debug.write(array.readAll());
             }
         }
         fn showWithReference(s_values: Values, t_values: Values, src: builtin.SourceLocation) void {
@@ -449,7 +450,7 @@ const RWPPDValues = extern struct {
             s_values.offsets.showWithReferenceWrite(t_values.offsets, &array);
             if (array.impl.defined_byte_count() != src_fmt.formatLength()) {
                 array.writeOne('\n');
-                builtin.debug.write(array.readAll());
+                debug.write(array.readAll());
             }
         }
         fn showTwo(s_values: Values, t_values: Values, src: builtin.SourceLocation) void {
@@ -460,7 +461,7 @@ const RWPPDValues = extern struct {
             s_values.offsets.showTwo(t_values.offsets, &array);
             if (array.impl.defined_byte_count() != src_fmt.formatLength()) {
                 array.writeOne('\n');
-                builtin.debug.write(array.readAll());
+                debug.write(array.readAll());
             }
         }
         fn showFour(s_values: Values, t_values: Values, u_values: Values, v_values: Values, src: builtin.SourceLocation) void {
@@ -471,7 +472,7 @@ const RWPPDValues = extern struct {
             s_values.offsets.showFour(t_values.offsets, u_values.offsets, v_values.offsets, &array);
             if (array.impl.defined_byte_count() != src_fmt.formatLength()) {
                 array.writeOne('\n');
-                builtin.debug.write(array.readAll());
+                debug.write(array.readAll());
             }
         }
     };
@@ -483,11 +484,11 @@ pub const RWPPXValues = extern struct {
     const Addresses = RWPPAddresses;
     const Offsets = RWPPOffsets;
     fn assertEqualMemory(s_values: Values, t_values: Values) void {
-        builtin.assertEqual(u64, s_values.capacity, t_values.capacity);
+        debug.assertEqual(u64, s_values.capacity, t_values.capacity);
         const s_memory: []u8 = @as([*]u8, @ptrFromInt(s_values.start))[0..s_values.capacity];
         const t_memory: []u8 = @as([*]u8, @ptrFromInt(t_values.start))[0..t_values.capacity];
         for (s_memory, 0..) |value, index| {
-            builtin.assertEqual(u8, value, t_memory[index]);
+            debug.assertEqual(u8, value, t_memory[index]);
         }
     }
     fn assertConsistent(values: Values) void {
@@ -503,7 +504,7 @@ pub const RWPPXValues = extern struct {
             values.addresses.show();
             values.offsets.show();
             if (array.impl.defined_byte_count() != src_fmt.formatLength()) {
-                builtin.debug.write(array.readAll());
+                debug.write(array.readAll());
             }
         }
         fn showWithReference(s_values: Values, t_values: Values, src: builtin.SourceLocation) void {
@@ -514,7 +515,7 @@ pub const RWPPXValues = extern struct {
             s_values.offsets.showWithReferenceWrite(t_values.offsets, &array);
             if (array.impl.defined_byte_count() != src_fmt.formatLength()) {
                 array.writeOne('\n');
-                builtin.debug.write(array.readAll());
+                debug.write(array.readAll());
             }
         }
         fn showFour(s_values: Values, t_values: Values, u_values: Values, v_values: Values, src: builtin.SourceLocation) void {
@@ -525,7 +526,7 @@ pub const RWPPXValues = extern struct {
             s_values.offsets.showFour(t_values.offsets, u_values.offsets, v_values.offsets, &array);
             if (array.impl.defined_byte_count() != src_fmt.formatLength()) {
                 array.writeOne('\n');
-                builtin.debug.write(array.readAll());
+                debug.write(array.readAll());
             }
         }
     };

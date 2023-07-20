@@ -9,12 +9,13 @@ const algo = zl.algo;
 const file = zl.file;
 const time = zl.time;
 const spec = zl.spec;
+const debug = zl.debug;
 const parse = zl.parse;
 const crypto = zl.crypto;
 const builtin = zl.builtin;
 const testing = zl.testing;
 pub usingnamespace zl.start;
-pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
+pub const logging_override: debug.Logging.Override = spec.logging.override.silent;
 pub const runtime_assertions: bool = false;
 pub const AddressSpace = spec.address_space.regular_128;
 const show_best_cases: bool = false;
@@ -97,8 +98,8 @@ pub fn approximationTest() void {
         total_returned +%= s_aligned_bytes;
         if (n_aligned_bytes -% s_aligned_bytes == 0 and show_best_cases) {
             const ss: []const []const u8 = &[_][]const u8{
-                builtin.fmt.ud32(@as(u32, @intCast(s_aligned_bytes))).readAll(), " ",
-                builtin.fmt.ub32(@as(u32, @intCast(s_aligned_bytes))).readAll(), "\n",
+                fmt.old.ud32(@as(u32, @intCast(s_aligned_bytes))).readAll(), " ",
+                fmt.old.ub32(@as(u32, @intCast(s_aligned_bytes))).readAll(), "\n",
             };
             if (len +% 128 > buf.len) {
                 print(&buf, len, ss);
@@ -108,7 +109,7 @@ pub fn approximationTest() void {
             }
         }
     }
-    builtin.assertBelow(u64, total_returned - total_requested, (2 *% total_requested) / 100);
+    debug.assertBelow(u64, total_returned - total_requested, (2 *% total_requested) / 100);
 }
 pub fn main() !void {
     if (builtin.is_fast) {

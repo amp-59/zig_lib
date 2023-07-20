@@ -4,14 +4,14 @@ const fmt = zl.fmt;
 const proc = zl.proc;
 const meta = zl.meta;
 const file = zl.file;
-const render = fmt;
 const spec = zl.spec;
+const debug = zl.debug;
 const builtin = zl.builtin;
 const testing = zl.testing;
 const tokenizer = zl.tokenizer;
 const virtual_test = @import("./virtual-test.zig");
 pub usingnamespace zl.start;
-pub const logging_override: builtin.Logging.Override = spec.logging.override.verbose;
+pub const logging_override: debug.Logging.Override = spec.logging.override.verbose;
 pub const AddressSpace = spec.address_space.regular_128;
 pub const runtime_assertions: bool = true;
 const FakeAllocator = struct {
@@ -61,7 +61,7 @@ fn testLoopFormatAgainstStandard(comptime ThisAddressSpace: type) anyerror!void 
     if (use_std) {
         try buf.flush();
     } else {
-        builtin.debug.write(array.readAll());
+        debug.write(array.readAll());
     }
 }
 fn testWithComplexList(comptime what: fn (comptime type) anyerror!void) anyerror!void {
@@ -131,7 +131,7 @@ fn allocateRunTest(allocator: *Allocator, array: *Array, format: anytype, expect
     if (expected) |value| {
         try testing.expectEqualMany(u8, array.readAll(allocator.*), value);
     } else {
-        builtin.debug.write(array.readAll(allocator.*));
+        debug.write(array.readAll(allocator.*));
     }
     array.undefineAll(allocator.*);
 }
@@ -140,7 +140,7 @@ fn minimalRunTest(_: *Allocator, array: anytype, format: anytype, expected: ?[]c
     if (expected) |value| {
         try testing.expectEqualMany(u8, array.readAll(), value);
     } else {
-        builtin.debug.write(array.readAll());
+        debug.write(array.readAll());
     }
     array.undefineAll();
 }
@@ -169,54 +169,54 @@ fn testSpecificCases() !void {
             };
         }
     };
-    try runTest(&allocator, &array, render.TypeFormat(.{}){ .value = packed struct(u128) { a: u64, b: u64 } }, "packed struct(u128) { a: u64, b: u64, }");
-    try runTest(&allocator, &array, render.TypeFormat(.{}){ .value = packed struct(u64) { a: void, b: u64 } }, "packed struct(u64) { a: void, b: u64, }");
-    try runTest(&allocator, &array, render.TypeFormat(.{}){ .value = packed union { a: u64, b: u64 } }, "packed union { a: u64, b: u64, }");
-    try runTest(&allocator, &array, render.TypeFormat(.{}){ .value = enum { a, b } }, "enum(u1) { a, b, }");
-    try runTest(&allocator, &array, render.TypeFormat(.{}){ .value = u64 }, "u64");
-    try runTest(&allocator, &array, render.ComptimeIntFormat{ .value = 111111111 }, "111111111");
-    try runTest(&allocator, &array, render.ComptimeIntFormat{ .value = -111111111 }, "-111111111");
+    try runTest(&allocator, &array, fmt.TypeFormat(.{}){ .value = packed struct(u128) { a: u64, b: u64 } }, "packed struct(u128) { a: u64, b: u64, }");
+    try runTest(&allocator, &array, fmt.TypeFormat(.{}){ .value = packed struct(u64) { a: void, b: u64 } }, "packed struct(u64) { a: void, b: u64, }");
+    try runTest(&allocator, &array, fmt.TypeFormat(.{}){ .value = packed union { a: u64, b: u64 } }, "packed union { a: u64, b: u64, }");
+    try runTest(&allocator, &array, fmt.TypeFormat(.{}){ .value = enum { a, b } }, "enum(u1) { a, b, }");
+    try runTest(&allocator, &array, fmt.TypeFormat(.{}){ .value = u64 }, "u64");
+    try runTest(&allocator, &array, fmt.ComptimeIntFormat{ .value = 111111111 }, "111111111");
+    try runTest(&allocator, &array, fmt.ComptimeIntFormat{ .value = -111111111 }, "-111111111");
     try runTest(
         &allocator,
         &array,
-        render.PointerSliceFormat(.{}, []const u64){ .value = &.{ 1, 2, 3, 4, 5, 6 } },
+        fmt.PointerSliceFormat(.{}, []const u64){ .value = &.{ 1, 2, 3, 4, 5, 6 } },
         "[]const u64{ 1, 2, 3, 4, 5, 6 }",
     );
     try runTest(
         &allocator,
         &array,
-        render.PointerSliceFormat(.{ .omit_trailing_comma = false }, []const u64){ .value = &.{ 7, 8, 9, 10, 11, 12 } },
+        fmt.PointerSliceFormat(.{ .omit_trailing_comma = false }, []const u64){ .value = &.{ 7, 8, 9, 10, 11, 12 } },
         "[]const u64{ 7, 8, 9, 10, 11, 12, }",
     );
-    try runTest(&allocator, &array, render.PointerSliceFormat(.{}, []const u64){ .value = &.{} }, "[]const u64{}");
+    try runTest(&allocator, &array, fmt.PointerSliceFormat(.{}, []const u64){ .value = &.{} }, "[]const u64{}");
     try runTest(
         &allocator,
         &array,
-        render.ArrayFormat(.{}, [6]u64){ .value = .{ 1, 2, 3, 4, 5, 6 } },
+        fmt.ArrayFormat(.{}, [6]u64){ .value = .{ 1, 2, 3, 4, 5, 6 } },
         "[6]u64{ 1, 2, 3, 4, 5, 6 }",
     );
-    try runTest(&allocator, &array, render.ArrayFormat(.{}, [0]u64){ .value = .{} }, "[0]u64{}");
+    try runTest(&allocator, &array, fmt.ArrayFormat(.{}, [0]u64){ .value = .{} }, "[0]u64{}");
     try runTest(
         &allocator,
         &array,
-        render.PointerManyFormat(.{}, [*:0]const u64){ .value = @as([:0]const u64, &[_:0]u64{ 1, 2, 3, 4, 5, 6 }).ptr },
+        fmt.PointerManyFormat(.{}, [*:0]const u64){ .value = @as([:0]const u64, &[_:0]u64{ 1, 2, 3, 4, 5, 6 }).ptr },
         "[:0]const u64{ 1, 2, 3, 4, 5, 6 }",
     );
     try runTest(
         &allocator,
         &array,
-        render.PointerManyFormat(.{}, [*]const u64){ .value = @as([:0]const u64, &[_:0]u64{ 1, 2, 3, 4, 5, 6 }).ptr },
+        fmt.PointerManyFormat(.{}, [*]const u64){ .value = @as([:0]const u64, &[_:0]u64{ 1, 2, 3, 4, 5, 6 }).ptr },
         "[*]const u64{ ... }",
     );
-    try runTest(&allocator, &array, render.PointerSliceFormat(.{}, []const u8){ .value = array.readAll() }, "\"\"");
-    try runTest(&allocator, &array, render.EnumLiteralFormat{ .value = .EnumLiteral }, ".EnumLiteral");
-    try runTest(&allocator, &array, render.NullFormat{}, "null");
-    try runTest(&allocator, &array, render.VoidFormat{}, "{}");
-    try runTest(&allocator, &array, render.TypeFormat(.{ .omit_container_decls = false }){ .value = struct {
+    try runTest(&allocator, &array, fmt.PointerSliceFormat(.{}, []const u8){ .value = array.readAll() }, "\"\"");
+    try runTest(&allocator, &array, fmt.EnumLiteralFormat{ .value = .EnumLiteral }, ".EnumLiteral");
+    try runTest(&allocator, &array, fmt.NullFormat{}, "null");
+    try runTest(&allocator, &array, fmt.VoidFormat{}, "{}");
+    try runTest(&allocator, &array, fmt.TypeFormat(.{ .omit_container_decls = false }){ .value = struct {
         pub const x: u64 = 25;
         pub const y: u64 = 50;
     } }, "struct { pub const x: u64 = 25; pub const y: u64 = 50; }");
-    try runTest(&allocator, &array, render.StructFormat(.{
+    try runTest(&allocator, &array, fmt.StructFormat(.{
         .infer_type_names = true,
         .omit_trailing_comma = true,
     }, ExternTaggedUnion){ .value = .{ .x = .{ .a = 14 }, .x_tag = .a } }, ".{ .x = .{ .a = 14 }, .x_tag = .a }");
@@ -227,17 +227,17 @@ const ExternTaggedUnion = struct {
 };
 pub fn testOneBigCase() !void {
     var array: mem.StaticString(0x10000) = .{};
-    array.writeFormat(comptime render.GenericTypeDescrFormat(.{ .options = .{ .depth = 0 } }).init(mem.AbstractSpec));
-    builtin.debug.write(array.readAll());
+    array.writeFormat(comptime fmt.GenericTypeDescrFormat(.{ .options = .{ .depth = 0 } }).init(mem.AbstractSpec));
+    debug.write(array.readAll());
 }
 pub fn testHugeCase() !void {
     var address_space: builtin.AddressSpace() = .{};
     var allocator: Allocator = try Allocator.init(&address_space);
     var unlimited_array: Allocator.StructuredVector(u8) = try Allocator.StructuredVector(u8).init(&allocator, 1024 * 1024);
     const sys = zl.sys;
-    try unlimited_array.appendAny(spec.reinterpret.fmt, &allocator, comptime render.TypeFormat(.{ .omit_container_decls = false, .radix = 2 }){ .value = sys });
-    builtin.debug.write(unlimited_array.readAll());
-    builtin.debug.write("\n");
+    try unlimited_array.appendAny(spec.reinterpret.fmt, &allocator, comptime fmt.TypeFormat(.{ .omit_container_decls = false, .radix = 2 }){ .value = sys });
+    debug.write(unlimited_array.readAll());
+    debug.write("\n");
     unlimited_array.undefineAll();
 }
 pub fn main() !void {
