@@ -1,5 +1,6 @@
 const zl = @import("../zig_lib.zig");
 const fmt = zl.fmt;
+const mem = zl.mem;
 const file = zl.file;
 const spec = zl.spec;
 const meta = zl.meta;
@@ -16,7 +17,10 @@ pub fn main(args: [][*:0]u8) !void {
     for (args[1..]) |arg| {
         const fd: u64 = try file.open(.{}, meta.manyToSlice(arg));
         for (rcd_buf[0..try file.read(.{ .child = build.Record }, fd, &rcd_buf)]) |rcd| {
-            testing.print(.{ fmt.any(rcd), '\n' });
+            var array: mem.StaticString(4096) = undefined;
+            array.undefineAll();
+            array.writeFormat(fmt.any(rcd));
+            array.writeOne('\n');
         }
     }
 }

@@ -2,6 +2,8 @@ const zl = @import("../zig_lib.zig");
 const sys = zl.sys;
 const mem = zl.mem;
 const file = zl.file;
+const proc = zl.proc;
+const debug = zl.debug;
 const builtin = zl.builtin;
 
 const hello_world = "Hello, world!\n";

@@ -5,6 +5,7 @@ const proc = zl.proc;
 const meta = zl.meta;
 const file = zl.file;
 const spec = zl.spec;
+const debug = zl.debug;
 const builtin = zl.builtin;
 
 pub usingnamespace zl.start;

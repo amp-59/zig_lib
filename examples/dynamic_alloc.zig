@@ -1,10 +1,10 @@
 const zl = @import("../zig_lib.zig");
-
 const mem = zl.mem;
 const fmt = zl.fmt;
 const proc = zl.proc;
 const file = zl.file;
 const spec = zl.spec;
+const debug = zl.debug;
 const builtin = zl.builtin;
 
 pub const AddressSpace = spec.address_space.regular_128;
