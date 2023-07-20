@@ -5,35 +5,9 @@ const proc = zl.proc;
 const debug = zl.debug;
 const builtin = zl.builtin;
 const testing = zl.testing;
-
 pub usingnamespace zl.start;
-
 pub const runtime_assertions: bool = true;
 pub const comptime_assertions: bool = true;
-
-pub fn comptimeIntToStringNoob(comptime value: comptime_int) []const u8 {
-    var s: []const u8 = "";
-    var y = if (value < 0) -value else value;
-    while (y != 0) : (y /= 10) {
-        s = s ++ [1]u8{(y % 10) + 48};
-    }
-    return if (value < 0) "-" ++ s else s;
-}
-pub fn comptimeIntToStringPro(comptime value: comptime_int) []const u8 {
-    if (value < 0) {
-        const s: []const u8 = @typeName([-value]void);
-        return "-" ++ s[1 .. s.len - 5];
-    } else {
-        const s: []const u8 = @typeName([value]void);
-        return s[1 .. s.len - 5];
-    }
-}
-pub fn testComptimeIntToString() void {
-    @setEvalBranchQuota(0x10000);
-    inline for (0x0..0x10000) |index| {
-        _ = comptime comptimeIntToStringPro(index);
-    }
-}
 fn expectVersionEqual(text: []const u8, v1: u32, v2: u32, v3: u32) !void {
     const v = try builtin.Version.parseVersion(text);
     debug.assertEqual(u32, v.major, v1);

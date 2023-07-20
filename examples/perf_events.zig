@@ -9,11 +9,12 @@ const spec = zl.spec;
 const mach = zl.spec;
 const file = zl.file;
 const time = zl.time;
+const debug = zl.debug;
 const builtin = zl.builtin;
 const testing = zl.testing;
 const perf = @import("../top/perf.zig");
 pub usingnamespace zl.start;
-pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
+pub const logging_override: debug.Logging.Override = spec.logging.override.silent;
 const event_spec: perf.PerfEventSpec = .{ .errors = .{} };
 const event_ctl_spec: perf.PerfEventControlSpec = .{ .errors = .{} };
 const read_spec: file.ReadSpec = .{ .errors = .{}, .return_type = void, .child = u64 };
@@ -22,7 +23,7 @@ const close_spec: file.CloseSpec = .{ .errors = .{} };
 const fork_spec: proc.ForkSpec = .{ .errors = .{} };
 const path_spec: file.PathSpec = .{ .errors = .{} };
 const Array = mem.StaticString(1024 *% 1024);
-const about = builtin.fmt.about("perf");
+const about = fmt.about("perf");
 const hw_counters: []const perf.Measurement = &.{
     .{ .name = about ++ "cycles\t\t\t", .config = .{ .hardware = .cpu_cycles } },
     .{ .name = about ++ "instructions\t\t", .config = .{ .hardware = .instructions } },
@@ -87,7 +88,7 @@ const Fds = struct {
             file.readOne(read_spec, fds.sw[idx], &result);
             array.writeAny(spec.reinterpret.fmt, .{ sw_counters[idx].name, fmt.udh(result), '\n' });
         }
-        builtin.debug.write(array.readAll());
+        debug.write(array.readAll());
         fds.reset();
     }
     fn reset(fds: *Fds) void {

@@ -2,11 +2,10 @@ pub const zl = @import("./zig_lib.zig");
 const proc = zl.proc;
 const spec = zl.spec;
 const build = zl.build;
+const debug = zl.debug;
 const builtin = zl.builtin;
-
 pub const Node = build.GenericNode(.{});
-pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
-
+pub const logging_override: debug.Logging.Override = spec.logging.override.silent;
 var build_cmd: build.BuildCommand = .{
     .kind = .exe,
     .mode = .ReleaseSmall,
@@ -181,6 +180,7 @@ fn tests(allocator: *build.Allocator, node: *Node) void {
     build_stress_test.descr = "Try to produce builder errors";
     algo_test.task.info.build.mode = .ReleaseFast;
     cryptoTests(allocator, node.addGroup(allocator, "crypto_tests"));
+
     for ([_]*Node{
         build_runner_test,   zls_build_runner_test,
         cmdline_writer_test, serial_test,
