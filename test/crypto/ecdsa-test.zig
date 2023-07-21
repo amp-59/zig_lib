@@ -4,6 +4,7 @@ const mach = zl.mach;
 const file = zl.file;
 const proc = zl.proc;
 const meta = zl.meta;
+const debug = zl.debug;
 const crypto = zl.crypto;
 const builtin = zl.builtin;
 const testing = zl.testing;

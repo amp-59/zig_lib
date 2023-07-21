@@ -36,13 +36,6 @@ fn ()
                 echo $error "'$other_zl_zig_build': no such file or directory; did nothing"
                 return 2;
             fi;
-            if test -f "$other_zl_zig_build"; then
-                if ! sed -i 's/pub const build = if (false)/pub const build = if (true)/' "$other_zl_zig_build"; then
-                    return 2;
-                fi;
-            else
-                echo $warn "replacing bad link"
-            fi;
             if ! rm "$std_build_runner"; then
                 return 2;
             fi;

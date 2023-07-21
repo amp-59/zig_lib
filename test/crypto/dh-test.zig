@@ -3,6 +3,7 @@ const mem = zl.mem;
 const fmt = zl.fmt;
 const file = zl.file;
 const proc = zl.proc;
+const debug = zl.debug;
 const crypto = zl.crypto;
 const builtin = zl.builtin;
 const testing = zl.testing;
