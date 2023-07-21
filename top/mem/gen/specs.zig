@@ -200,7 +200,7 @@ fn haveSpec(allocator: *config.Allocator, spec_set: []const []const types.Specif
     var f_len: u64 = 0;
     for (spec_set) |p_info| {
         for (p_info) |s_v_field| {
-            if (builtin.testEqual(types.Specifier, p_field, s_v_field)) {
+            if (mem.testEqual(types.Specifier, p_field, s_v_field)) {
                 t[t_len] = p_info;
                 t_len +%= 1;
                 break;
@@ -839,20 +839,20 @@ fn validateAllSerial(
     var f_impl_details: []const types.Implementation = attr.getImplDetails(allocator);
     for (f_x_p_infos, x_p_infos, 0..) |xx, yy, idx_0| {
         for (xx, yy, 0..) |x, y, idx_1| {
-            if (!builtin.testEqualMemory(@TypeOf(x), x, y)) {
+            if (!mem.testEqualMemory(@TypeOf(x), x, y)) {
                 nonEqualIndices("params", .{ idx_0, idx_1 });
             }
         }
     }
     for (f_x_q_infos, x_q_infos, 0..) |xx, yy, idx_0| {
         for (xx, yy, 0..) |x, y, idx_1| {
-            if (!builtin.testEqualMemory(@TypeOf(x), x, y)) {
+            if (!mem.testEqualMemory(@TypeOf(x), x, y)) {
                 nonEqualIndices("options", .{ idx_0, idx_1 });
             }
         }
     }
     for (f_impl_details, impl_details, 0..) |x, y, idx_0| {
-        if (!builtin.testEqualMemory(@TypeOf(x), x, y)) {
+        if (!mem.testEqualMemory(@TypeOf(x), x, y)) {
             nonEqualIndices("details", .{idx_0});
         }
     }
@@ -864,7 +864,7 @@ fn validateAllSerial(
         while (j != spec_sets[i].len) : (j +%= 1) {
             var k: u64 = 0;
             while (k != spec_sets[i][j].len) : (k +%= 1) {
-                if (!builtin.testEqualMemory(
+                if (!mem.testEqualMemory(
                     @TypeOf(f_spec_sets[i][j][k]),
                     f_spec_sets[i][j][k],
                     spec_sets[i][j][k],
@@ -880,7 +880,7 @@ fn validateAllSerial(
         while (j != tech_sets[i].len) : (j +%= 1) {
             var k: u64 = 0;
             while (k != tech_sets[i][j].len) : (k +%= 1) {
-                if (!builtin.testEqualMemory(
+                if (!mem.testEqualMemory(
                     @TypeOf(f_tech_sets[i][j][k]),
                     f_tech_sets[i][j][k],
                     tech_sets[i][j][k],

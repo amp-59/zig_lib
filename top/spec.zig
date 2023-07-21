@@ -1,12 +1,4 @@
-const zl = struct {
-    const mem = @import("./mem.zig");
-    const sys = @import("./sys.zig");
-    const file = @import("./file.zig");
-    const meta = @import("./meta.zig");
-    const build = @import("./build.zig");
-    const serial = @import("./serial.zig");
-    const builtin = @import("./builtin.zig");
-};
+const zl = @import("../zig_lib.zig");
 const spec = @This();
 pub usingnamespace sys;
 pub fn add(args1: anytype, args2: anytype) @TypeOf(args1) {
@@ -203,7 +195,7 @@ pub const builder = struct {
 };
 pub const logging = struct {
     pub const default = struct {
-        pub const verbose: zl.builtin.Logging.Default = .{
+        pub const verbose: zl.debug.Logging.Default = .{
             .Attempt = true,
             .Success = true,
             .Acquire = true,
@@ -211,7 +203,7 @@ pub const logging = struct {
             .Error = true,
             .Fault = true,
         };
-        pub const silent: zl.builtin.Logging.Default = .{
+        pub const silent: zl.debug.Logging.Default = .{
             .Attempt = false,
             .Success = false,
             .Acquire = false,
@@ -221,7 +213,7 @@ pub const logging = struct {
         };
     };
     pub const override = struct {
-        pub const verbose: zl.builtin.Logging.Override = .{
+        pub const verbose: zl.debug.Logging.Override = .{
             .Attempt = true,
             .Success = true,
             .Acquire = true,
@@ -229,7 +221,7 @@ pub const logging = struct {
             .Error = true,
             .Fault = true,
         };
-        pub const silent: zl.builtin.Logging.Override = .{
+        pub const silent: zl.debug.Logging.Override = .{
             .Attempt = false,
             .Success = false,
             .Acquire = false,
@@ -239,82 +231,82 @@ pub const logging = struct {
         };
     };
     pub const attempt_error = struct {
-        pub const verbose: zl.builtin.Logging.AttemptError =
-            zl.builtin.all(zl.builtin.Logging.AttemptError);
-        pub const silent: zl.builtin.Logging.AttemptError =
-            zl.builtin.zero(zl.builtin.Logging.AttemptError);
+        pub const verbose: zl.debug.Logging.AttemptError =
+            zl.builtin.all(zl.debug.Logging.AttemptError);
+        pub const silent: zl.debug.Logging.AttemptError =
+            zl.builtin.zero(zl.debug.Logging.AttemptError);
     };
     pub const attempt_fault = struct {
-        pub const verbose: zl.builtin.Logging.AttemptFault =
-            zl.builtin.all(zl.builtin.Logging.AttemptFault);
-        pub const silent: zl.builtin.Logging.AttemptFault =
-            zl.builtin.zero(zl.builtin.Logging.AttemptFault);
+        pub const verbose: zl.debug.Logging.AttemptFault =
+            zl.builtin.all(zl.debug.Logging.AttemptFault);
+        pub const silent: zl.debug.Logging.AttemptFault =
+            zl.builtin.zero(zl.debug.Logging.AttemptFault);
     };
     pub const attempt_success_error = struct {
-        pub const verbose: zl.builtin.Logging.AttemptSuccessError =
-            zl.builtin.all(zl.builtin.Logging.AttemptSuccessError);
-        pub const silent: zl.builtin.Logging.AttemptSuccessError =
-            zl.builtin.zero(zl.builtin.Logging.AttemptSuccessError);
+        pub const verbose: zl.debug.Logging.AttemptSuccessError =
+            zl.builtin.all(zl.debug.Logging.AttemptSuccessError);
+        pub const silent: zl.debug.Logging.AttemptSuccessError =
+            zl.builtin.zero(zl.debug.Logging.AttemptSuccessError);
     };
     pub const attempt_error_fault = struct {
-        pub const verbose: zl.builtin.Logging.AttemptErrorFault =
-            zl.builtin.all(zl.builtin.Logging.AttemptErrorFault);
-        pub const silent: zl.builtin.Logging.AttemptErrorFault =
-            zl.builtin.zero(zl.builtin.Logging.AttemptErrorFault);
+        pub const verbose: zl.debug.Logging.AttemptErrorFault =
+            zl.builtin.all(zl.debug.Logging.AttemptErrorFault);
+        pub const silent: zl.debug.Logging.AttemptErrorFault =
+            zl.builtin.zero(zl.debug.Logging.AttemptErrorFault);
     };
     pub const success_error = struct {
-        pub const verbose: zl.builtin.Logging.SuccessError =
-            zl.builtin.all(zl.builtin.Logging.SuccessError);
-        pub const silent: zl.builtin.Logging.SuccessError =
-            zl.builtin.zero(zl.builtin.Logging.SuccessError);
+        pub const verbose: zl.debug.Logging.SuccessError =
+            zl.builtin.all(zl.debug.Logging.SuccessError);
+        pub const silent: zl.debug.Logging.SuccessError =
+            zl.builtin.zero(zl.debug.Logging.SuccessError);
     };
     pub const success_fault = struct {
-        pub const verbose: zl.builtin.Logging.SuccessFault =
-            zl.builtin.all(zl.builtin.Logging.SuccessFault);
-        pub const silent: zl.builtin.Logging.SuccessFault =
-            zl.builtin.zero(zl.builtin.Logging.SuccessFault);
+        pub const verbose: zl.debug.Logging.SuccessFault =
+            zl.builtin.all(zl.debug.Logging.SuccessFault);
+        pub const silent: zl.debug.Logging.SuccessFault =
+            zl.builtin.zero(zl.debug.Logging.SuccessFault);
     };
     pub const success_error_fault = struct {
-        pub const verbose: zl.builtin.Logging.SuccessErrorFault =
-            zl.builtin.all(zl.builtin.Logging.SuccessErrorFault);
-        pub const silent: zl.builtin.Logging.SuccessErrorFault =
-            zl.builtin.zero(zl.builtin.Logging.SuccessErrorFault);
+        pub const verbose: zl.debug.Logging.SuccessErrorFault =
+            zl.builtin.all(zl.debug.Logging.SuccessErrorFault);
+        pub const silent: zl.debug.Logging.SuccessErrorFault =
+            zl.builtin.zero(zl.debug.Logging.SuccessErrorFault);
     };
     pub const acquire_error = struct {
-        pub const verbose: zl.builtin.Logging.AcquireError =
-            zl.builtin.all(zl.builtin.Logging.AcquireError);
-        pub const silent: zl.builtin.Logging.AcquireError =
-            zl.builtin.zero(zl.builtin.Logging.AcquireError);
+        pub const verbose: zl.debug.Logging.AcquireError =
+            zl.builtin.all(zl.debug.Logging.AcquireError);
+        pub const silent: zl.debug.Logging.AcquireError =
+            zl.builtin.zero(zl.debug.Logging.AcquireError);
     };
     pub const acquire_fault = struct {
-        pub const verbose: zl.builtin.Logging.AcquireFault =
-            zl.builtin.all(zl.builtin.Logging.AcquireFault);
-        pub const silent: zl.builtin.Logging.AcquireFault =
-            zl.builtin.zero(zl.builtin.Logging.AcquireFault);
+        pub const verbose: zl.debug.Logging.AcquireFault =
+            zl.builtin.all(zl.debug.Logging.AcquireFault);
+        pub const silent: zl.debug.Logging.AcquireFault =
+            zl.builtin.zero(zl.debug.Logging.AcquireFault);
     };
     pub const acquire_error_fault = struct {
-        pub const verbose: zl.builtin.Logging.AcquireErrorFault =
-            zl.builtin.all(zl.builtin.Logging.AcquireErrorFault);
-        pub const silent: zl.builtin.Logging.AcquireErrorFault =
-            zl.builtin.zero(zl.builtin.Logging.AcquireErrorFault);
+        pub const verbose: zl.debug.Logging.AcquireErrorFault =
+            zl.builtin.all(zl.debug.Logging.AcquireErrorFault);
+        pub const silent: zl.debug.Logging.AcquireErrorFault =
+            zl.builtin.zero(zl.debug.Logging.AcquireErrorFault);
     };
     pub const release_error = struct {
-        pub const verbose: zl.builtin.Logging.ReleaseError =
-            zl.builtin.all(zl.builtin.Logging.ReleaseError);
-        pub const silent: zl.builtin.Logging.ReleaseError =
-            zl.builtin.zero(zl.builtin.Logging.ReleaseError);
+        pub const verbose: zl.debug.Logging.ReleaseError =
+            zl.builtin.all(zl.debug.Logging.ReleaseError);
+        pub const silent: zl.debug.Logging.ReleaseError =
+            zl.builtin.zero(zl.debug.Logging.ReleaseError);
     };
     pub const release_fault = struct {
-        pub const verbose: zl.builtin.Logging.ReleaseFault =
-            zl.builtin.all(zl.builtin.Logging.ReleaseFault);
-        pub const silent: zl.builtin.Logging.ReleaseFault =
-            zl.builtin.zero(zl.builtin.Logging.ReleaseFault);
+        pub const verbose: zl.debug.Logging.ReleaseFault =
+            zl.builtin.all(zl.debug.Logging.ReleaseFault);
+        pub const silent: zl.debug.Logging.ReleaseFault =
+            zl.builtin.zero(zl.debug.Logging.ReleaseFault);
     };
     pub const release_error_fault = struct {
-        pub const verbose: zl.builtin.Logging.ReleaseErrorFault =
-            zl.builtin.all(zl.builtin.Logging.ReleaseErrorFault);
-        pub const silent: zl.builtin.Logging.ReleaseErrorFault =
-            zl.builtin.zero(zl.builtin.Logging.ReleaseErrorFault);
+        pub const verbose: zl.debug.Logging.ReleaseErrorFault =
+            zl.builtin.all(zl.debug.Logging.ReleaseErrorFault);
+        pub const silent: zl.debug.Logging.ReleaseErrorFault =
+            zl.builtin.zero(zl.debug.Logging.ReleaseErrorFault);
     };
 };
 pub const dir = struct {
@@ -508,11 +500,12 @@ pub const file = struct {
     pub const map = struct {
         pub const flags = struct {
             pub const regular: zl.file.Map.Flags = .{
-                .visibility = .shared,
+                .visibility = .private,
             };
             pub const executable: zl.file.Map.Flags = .{
                 .populate = true,
-                .visibility = .private,
+                .executable = true,
+                .visibility = .shared,
             };
         };
         pub const prot = struct {

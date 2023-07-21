@@ -189,7 +189,7 @@ pub const Expr = extern struct {
 };
 pub fn subst(buf: []Expr, what: struct { dst: Expr, src: Expr }) void {
     for (buf) |*ptr| {
-        if (builtin.testEqual(Expr, what.dst, ptr.*)) {
+        if (mem.testEqual(Expr, what.dst, ptr.*)) {
             ptr.* = what.src;
             return;
         }
