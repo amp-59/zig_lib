@@ -1,6 +1,7 @@
 const mem = @import("../mem.zig");
 const math = @import("../math.zig");
 const mach = @import("../mach.zig");
+const debug = @import("../debug.zig");
 const builtin = @import("../builtin.zig");
 const tab = @import("./tab.zig");
 const core = @import("./core.zig");
@@ -200,7 +201,7 @@ pub fn GenericBlake2b(comptime out_bits: usize) type {
         pub const blk_len: comptime_int = 128;
         pub const key_len: comptime_int = 32;
         pub fn init(options: Options) Blake2b {
-            builtin.assert(8 <= out_bits and out_bits <= 512);
+            debug.assert(8 <= out_bits and out_bits <= 512);
             var ret: Blake2b = undefined;
             ret.h = tab.init_vec.blake_2b;
             ret.h[0] ^= 0x01010000 ^ (options.key.len << 8) ^ (options.expected_out_bits >> 3);

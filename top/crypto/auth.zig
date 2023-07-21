@@ -1,6 +1,7 @@
 const mem = @import("../mem.zig");
 const math = @import("../math.zig");
 const mach = @import("../mach.zig");
+const debug = @import("../debug.zig");
 const builtin = @import("../builtin.zig");
 const core = @import("./core.zig");
 const hash = @import("./hash.zig");
@@ -62,8 +63,8 @@ pub fn GenericSipHash128(comptime c_rounds: usize, comptime d_rounds: usize) typ
     return GenericSipHash(u128, c_rounds, d_rounds);
 }
 fn GenericSipHashStateless(comptime T: type, comptime c_rounds: usize, comptime d_rounds: usize) type {
-    builtin.assert(T == u64 or T == u128);
-    builtin.assert(c_rounds > 0 and d_rounds > 0);
+    debug.assert(T == u64 or T == u128);
+    debug.assert(c_rounds > 0 and d_rounds > 0);
     return struct {
         v0: u64,
         v1: u64,
@@ -157,8 +158,8 @@ fn GenericSipHashStateless(comptime T: type, comptime c_rounds: usize, comptime 
     };
 }
 fn GenericSipHash(comptime T: type, comptime c_rounds: usize, comptime d_rounds: usize) type {
-    builtin.assert(T == u64 or T == u128);
-    builtin.assert(c_rounds > 0 and d_rounds > 0);
+    debug.assert(T == u64 or T == u128);
+    debug.assert(c_rounds > 0 and d_rounds > 0);
     return struct {
         state: State,
         buf: [8]u8,
@@ -306,7 +307,7 @@ const State128L = struct {
     }
 };
 fn Aegis128LGeneric(comptime tag_bits: u9) type {
-    builtin.assert(tag_bits == 128 or tag_bits == 256);
+    debug.assert(tag_bits == 128 or tag_bits == 256);
     return struct {
         pub const tag_len: comptime_int = tag_bits / 8;
         pub const nonce_len: comptime_int = 16;
@@ -314,7 +315,7 @@ fn Aegis128LGeneric(comptime tag_bits: u9) type {
         pub const blk_len: comptime_int = 32;
         const State = State128L;
         pub fn encrypt(cipher: []u8, tag: *[tag_len]u8, msg: []const u8, bytes: []const u8, nonce: [nonce_len]u8, key: [key_len]u8) void {
-            builtin.assert(cipher.len == msg.len);
+            debug.assert(cipher.len == msg.len);
             var state: State128L = State128L.init(key, nonce);
             var src: [32]u8 align(16) = undefined;
             var dst: [32]u8 align(16) = undefined;
@@ -340,7 +341,7 @@ fn Aegis128LGeneric(comptime tag_bits: u9) type {
             tag.* = state.mac(tag_bits, bytes.len, msg.len);
         }
         pub fn decrypt(msg: []u8, cipher: []const u8, tag: [tag_len]u8, bytes: []const u8, nonce: [nonce_len]u8, key: [key_len]u8) !void {
-            builtin.assert(cipher.len == msg.len);
+            debug.assert(cipher.len == msg.len);
             var state: State128L = State128L.init(key, nonce);
             var src: [32]u8 align(16) = undefined;
             var dst: [32]u8 align(16) = undefined;
@@ -459,7 +460,7 @@ const State256 = struct {
     }
 };
 fn Aegis256Generic(comptime tag_bits: u9) type {
-    builtin.assert(tag_bits == 128 or tag_bits == 256); // tag must be 128 or 256 bits
+    debug.assert(tag_bits == 128 or tag_bits == 256); // tag must be 128 or 256 bits
     return struct {
         pub const tag_len = tag_bits / 8;
         pub const nonce_len = 32;
@@ -467,7 +468,7 @@ fn Aegis256Generic(comptime tag_bits: u9) type {
         pub const blk_len = 16;
         const State = State256;
         pub fn encrypt(cipher: []u8, tag: *[tag_len]u8, msg: []const u8, bytes: []const u8, nonce: [nonce_len]u8, key: [key_len]u8) void {
-            builtin.assert(cipher.len == msg.len);
+            debug.assert(cipher.len == msg.len);
             var state = State256.init(key, nonce);
             var src: [16]u8 align(16) = undefined;
             var dst: [16]u8 align(16) = undefined;
@@ -678,7 +679,7 @@ pub fn GenericHkdf(comptime Hmac: type) type {
         fn expandInternal() void {}
         pub fn expand(out: []u8, ctx: []const u8, prk: [prk_len]u8) void {
             @setRuntimeSafety(false);
-            builtin.assertBelowOrEqual(u64, out.len, prk_len *% 255);
+            debug.assertBelowOrEqual(u64, out.len, prk_len *% 255);
             var idx: usize = 0;
             var counter: [1]u8 = [1]u8{1};
             while (idx +% prk_len <= out.len) : (idx +%= prk_len) {
@@ -690,7 +691,7 @@ pub fn GenericHkdf(comptime Hmac: type) type {
                 st.update(&counter);
                 st.final(out[idx..][0..prk_len]);
                 counter[0] +%= 1;
-                builtin.assert(counter[0] != 1);
+                debug.assert(counter[0] != 1);
             }
             const left: usize = out.len % prk_len;
             if (left > 0) {

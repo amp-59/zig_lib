@@ -1,6 +1,7 @@
 const mem = @import("../mem.zig");
 const math = @import("../math.zig");
 const mach = @import("../mach.zig");
+const debug = @import("../debug.zig");
 const builtin = @import("../builtin.zig");
 const safety: bool = false;
 pub const KeccakPStateSpec = struct {
@@ -339,7 +340,7 @@ pub const Block = struct {
     };
 };
 fn GenericKeySchedule(comptime Aes: type) type {
-    builtin.assert(Aes.rounds == 10 or Aes.rounds == 14);
+    debug.assert(Aes.rounds == 10 or Aes.rounds == 14);
     return struct {
         round_keys: [Aes.rounds + 1]Block,
         const KeySchedule = @This();
@@ -525,7 +526,7 @@ pub fn GenericAsconState(comptime endian: builtin.Endian) type {
         /// The rate is expressed in bytes and must be a multiple of the word size (8).
         pub fn permuteRatchet(state: *AsconState, comptime rounds: u4, comptime rate: u6) void {
             const capacity: usize = blk_len -% rate;
-            builtin.assert(capacity > 0 and capacity % 8 == 0); // capacity must be a multiple of 64 bits
+            debug.assert(capacity > 0 and capacity % 8 == 0); // capacity must be a multiple of 64 bits
             var mask: [capacity / 8]u64 = undefined;
             for (&mask, state.st[state.st.len -% mask.len ..]) |*m, x| m.* = x;
             state.permuteR(rounds);
@@ -653,7 +654,7 @@ pub fn GenericAesEncryptCtx(comptime Aes: type) type {
 }
 /// A context to perform decryption using the standard AES key schedule.
 pub fn GenericAesDecryptCtx(comptime Aes: type) type {
-    builtin.assert(Aes.key_bits == 128 or Aes.key_bits == 256);
+    debug.assert(Aes.key_bits == 128 or Aes.key_bits == 256);
     return struct {
         key_schedule: KeySchedule,
         const AesDecryptCtx = @This();
@@ -731,7 +732,7 @@ pub const Aes256 = struct {
     }
 };
 pub fn ctr(comptime BlockCipher: anytype, block_cipher: BlockCipher, dest: []u8, src: []const u8, iv: [BlockCipher.blk_len]u8, endian: builtin.Endian) void {
-    builtin.assert(dest.len >= src.len);
+    debug.assert(dest.len >= src.len);
     const wide_blk_len: u64 = BlockCipher.block.parallel.optimal_parallel_blocks *% 16;
     var counter: [BlockCipher.blk_len]u8 = undefined;
     var counter_int: u128 = mem.readInt(u128, &iv, endian);

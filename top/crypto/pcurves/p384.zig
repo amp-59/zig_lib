@@ -1,3 +1,4 @@
+const debug = @import("../../debug.zig");
 const builtin = @import("../../builtin.zig");
 const errors = @import("../errors.zig");
 const tab = @import("./tab.zig");
@@ -325,15 +326,15 @@ pub const P384 = extern struct {
             x.* += carry;
             carry = (x.* + 8) >> 4;
             x.* -= carry * 16;
-            builtin.assert(x.* >= -8 and x.* <= 8);
+            debug.assert(x.* >= -8 and x.* <= 8);
         }
         e[96] = carry;
         // Now, e[*] is between -8 and 8, including e[64]
-        builtin.assert(carry >= -8 and carry <= 8);
+        debug.assert(carry >= -8 and carry <= 8);
         return e;
     }
     fn pcMul(pc: *const [9]P384, s: [48]u8, comptime vartime: bool) errors.IdentityElementError!P384 {
-        builtin.assert(vartime);
+        debug.assert(vartime);
         const e = slide(s);
         var q = P384.identity_element;
         var pos = e.len - 1;

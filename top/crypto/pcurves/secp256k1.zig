@@ -1,4 +1,5 @@
 const mem = @import("../../mem.zig");
+const debug = @import("../../debug.zig");
 const builtin = @import("../../builtin.zig");
 const errors = @import("../errors.zig");
 const tab = @import("./tab.zig");
@@ -324,15 +325,15 @@ pub const Secp256k1 = struct {
             x.* += carry;
             carry = (x.* + 8) >> 4;
             x.* -= carry * 16;
-            builtin.assert(x.* >= -8 and x.* <= 8);
+            debug.assert(x.* >= -8 and x.* <= 8);
         }
         e[64] = carry;
         // Now, e[*] is between -8 and 8, including e[64]
-        builtin.assert(carry >= -8 and carry <= 8);
+        debug.assert(carry >= -8 and carry <= 8);
         return e;
     }
     fn pcMul(pc: *const [9]Secp256k1, s: [32]u8, comptime vartime: bool) !Secp256k1 {
-        builtin.assert(vartime);
+        debug.assert(vartime);
         const e = slide(s);
         var q = Secp256k1.identity_element;
         var pos = e.len - 1;
@@ -423,8 +424,8 @@ pub const Secp256k1 = struct {
             break :pc &pc1_array;
         };
         const pc2 = precompute(p2, 8);
-        builtin.assert(s1[s1.len / 2] == 0);
-        builtin.assert(s2[s2.len / 2] == 0);
+        debug.assert(s1[s1.len / 2] == 0);
+        debug.assert(s2[s2.len / 2] == 0);
         const e1 = slide(s1);
         const e2 = slide(s2);
         var q = Secp256k1.identity_element;

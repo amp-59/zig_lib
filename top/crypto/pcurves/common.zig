@@ -1,4 +1,5 @@
 const mem = @import("../../mem.zig");
+const debug = @import("../../debug.zig");
 const builtin = @import("../../builtin.zig");
 const utils = @import("../utils.zig");
 const errors = @import("../errors.zig");
@@ -232,7 +233,7 @@ pub fn Field(comptime params: FieldParams) type {
         }
         // x=x2^((field_order+1)/4) w/ field order=3 (mod 4).
         fn uncheckedSqrt(x2: Fe) Fe {
-            builtin.assert(field_order % 4 == 3);
+            debug.assert(field_order % 4 == 3);
             if (field_order == 115792089210356248762697446949407573530086143415290314195533631308867097853951) {
                 const t11 = x2.mul(x2.sq());
                 const t1111 = t11.mul(t11.sqn(2));

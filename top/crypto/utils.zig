@@ -1,5 +1,8 @@
 const sys = @import("../sys.zig");
+const fmt = @import("../fmt.zig");
 const math = @import("../math.zig");
+const proc = @import("../proc.zig");
+const debug = @import("../debug.zig");
 const builtin = @import("../builtin.zig");
 const random = @import("./random.zig");
 /// Compares two arrays in constant time (for a given length) and returns whether they are equal.
@@ -40,7 +43,7 @@ pub fn timingSafeEql(comptime T: type, a: T, b: T) bool {
 /// Compare two integers serialized as arrays of the same size, in constant time.
 /// Returns .lt if a<b, .gt if a>b and .eq if a=b
 pub fn timingSafeCompare(comptime T: type, a: []const T, b: []const T, endian: builtin.Endian) math.Order {
-    builtin.assert(a.len == b.len);
+    debug.assert(a.len == b.len);
     const bits = switch (@typeInfo(T)) {
         .Int => |cinfo| if (cinfo.signedness != .unsigned) @compileError("Elements to be compared must be unsigned") else cinfo.bits,
         else => @compileError("Elements to be compared must be integers"),
@@ -76,7 +79,7 @@ pub fn timingSafeCompare(comptime T: type, a: []const T, b: []const T, endian: b
 pub fn timingSafeAdd(comptime T: type, a: []const T, b: []const T, result: []T, endian: builtin.Endian) bool {
     const Overflow = struct { T, u1 };
     const len: usize = a.len;
-    builtin.assert(len == b.len and len == result.len);
+    debug.assert(len == b.len and len == result.len);
     var carry: u1 = 0;
     if (endian == .Little) {
         var idx: usize = 0;
@@ -102,7 +105,7 @@ pub fn timingSafeAdd(comptime T: type, a: []const T, b: []const T, result: []T, 
 /// The result is stored into `result`, and `true` is returned if an underflow occurred.
 pub fn timingSafeSub(comptime T: type, a: []const T, b: []const T, result: []T, endian: builtin.Endian) bool {
     const len = a.len;
-    builtin.assert(len == b.len and len == result.len);
+    debug.assert(len == b.len and len == result.len);
     const Overflow = struct { T, u1 };
     var borrow: u1 = 0;
     if (endian == .Little) {
@@ -131,7 +134,7 @@ pub fn secureZero(comptime T: type, _: []T) void {
     if (@sizeOf(T) == 1) {
         @compileError("mach.memset(buf, 0, buf.len);");
     } else {
-        @compileError("mach.memset(@ptrCast([*]u8, buf.ptr), 0, " ++ builtin.fmt.cx(@sizeOf(T)) ++ " *% buf.len);");
+        @compileError("mach.memset(@ptrCast([*]u8, buf.ptr), 0, " ++ fmt.cx(@sizeOf(T)) ++ " *% buf.len);");
     }
 }
 pub fn bytes(buf: []u8) void {
@@ -140,6 +143,6 @@ pub fn bytes(buf: []u8) void {
         buf.len,
         sys.GRND.RANDOM,
     }) catch |getrandom_error| {
-        builtin.proc.exitError(getrandom_error, 2);
+        proc.exitError(getrandom_error, 2);
     };
 }

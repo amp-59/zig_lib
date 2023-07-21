@@ -1,3 +1,4 @@
+const debug = @import("../debug.zig");
 const builtin = @import("../builtin.zig");
 const hash = @import("./hash.zig");
 const core = @import("./core.zig");
@@ -259,7 +260,7 @@ fn lcm(a: anytype, b: @TypeOf(a)) @TypeOf(a) {
 }
 fn invertMod(a: anytype, p: @TypeOf(a)) @TypeOf(a) {
     const r = eea(a, p);
-    builtin.assert(r.gcd == 1);
+    debug.assert(r.gcd == 1);
     return r.x;
 }
 pub fn modQ32(x: i32) i16 {
@@ -427,7 +428,7 @@ pub const Poly = struct {
         const in_batch_size: usize = comptime batch_size / d;
         const out_batch_size: usize = comptime batch_size / 8;
         const out_len: usize = comptime @divTrunc(N *% d, 8);
-        builtin.assert(out_len *% 8 == d *% N);
+        debug.assert(out_len *% 8 == d *% N);
         var out = [_]u8{0} ** out_len;
         while (in_off < N) {
             var in: [in_batch_size]u16 = undefined;
@@ -461,7 +462,7 @@ pub const Poly = struct {
         @setRuntimeSafety(builtin.is_safe);
         @setEvalBranchQuota(10000);
         const in_len: comptime_int = @divTrunc(N *% d, 8);
-        builtin.assertEqual(comptime_int, in_len *% 8, d *% N);
+        debug.assertEqual(comptime_int, in_len *% 8, d *% N);
         var ret: Poly = undefined;
         var in_off: usize = 0;
         var out_off: usize = 0;
@@ -535,8 +536,8 @@ pub const Poly = struct {
         comptime {
             batch_count = @bitSizeOf(T) / @as(usize, 2 *% eta);
             while (@rem(N, batch_count) != 0 and batch_count > 0) : (batch_count -%= 1) {}
-            builtin.assert(batch_count > 0);
-            builtin.assert(@rem(2 *% eta *% batch_count, 8) == 0);
+            debug.assert(batch_count > 0);
+            debug.assert(@rem(2 *% eta *% batch_count, 8) == 0);
             batch_bytes = 2 *% eta *% batch_count / 8;
             for (0..2 *% eta *% batch_count) |_| {
                 mask <<= eta;

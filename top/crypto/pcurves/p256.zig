@@ -1,4 +1,5 @@
 const builtin = @import("../../builtin.zig");
+const debug = @import("../../debug.zig");
 const errors = @import("../errors.zig");
 const tab = @import("./tab.zig");
 const common = @import("./common.zig");
@@ -326,15 +327,15 @@ pub const P256 = struct {
             x.* += carry;
             carry = (x.* + 8) >> 4;
             x.* -= carry * 16;
-            builtin.assert(x.* >= -8 and x.* <= 8);
+            debug.assert(x.* >= -8 and x.* <= 8);
         }
         e[64] = carry;
         // Now, e[*] is between -8 and 8, including e[64]
-        builtin.assert(carry >= -8 and carry <= 8);
+        debug.assert(carry >= -8 and carry <= 8);
         return e;
     }
     fn pcMul(pc: *const [9]P256, s: [32]u8, comptime vartime: bool) errors.IdentityElementError!P256 {
-        builtin.assert(vartime);
+        debug.assert(vartime);
         const e = slide(s);
         var q = P256.identity_element;
         var pos = e.len - 1;

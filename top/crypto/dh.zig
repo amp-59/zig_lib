@@ -1,5 +1,6 @@
 const mem = @import("../mem.zig");
 const file = @import("../file.zig");
+const debug = @import("../debug.zig");
 const builtin = @import("../builtin.zig");
 const tab = @import("./tab.zig");
 const hash = @import("./hash.zig");
@@ -535,7 +536,7 @@ pub const Edwards25519 = struct {
     // NAF could be useful to half the size of precomputation tables, but we intentionally
     // avoid these to keep the standard library lightweight.
     fn pcMul(pc: *const [9]Edwards25519, s: [32]u8, comptime vartime: bool) !Edwards25519 {
-        builtin.assert(vartime);
+        debug.assert(vartime);
         const e: [64]i8 = slide(s);
         var q: Edwards25519 = Edwards25519.identity_element;
         var pos: usize = 2 *% 32 -% 1;
@@ -724,7 +725,7 @@ pub const Edwards25519 = struct {
         return montToEd(elr.x, elr.y).clearCofactor();
     }
     fn stringToPoints(comptime n: usize, ctx: []const u8, s: []const u8) [n]Edwards25519 {
-        builtin.assert(n <= 2);
+        debug.assert(n <= 2);
         const h_l: usize = 48;
         var xctx: []const u8 = ctx;
         var hctx: [hash.Sha512.len]u8 = undefined;

@@ -1,6 +1,7 @@
+const debug = @import("../../../debug.zig");
 const builtin = @import("../../../builtin.zig");
-const errors = @import("../../errors.zig");
 const utils = @import("../../utils.zig");
+const errors = @import("../../errors.zig");
 const common = @import("../common.zig");
 const Field = common.Field;
 /// Number of bytes required to encode a scalar.
@@ -133,7 +134,7 @@ const ScalarDouble = struct {
     x1: Fe,
     x2: Fe,
     fn fromBytes(comptime bits: usize, s_: [bits / 8]u8, endian: builtin.Endian) ScalarDouble {
-        builtin.assert(bits > 0 and bits <= 512 and bits >= Fe.saturated_bits and bits <= Fe.saturated_bits * 2);
+        debug.assert(bits > 0 and bits <= 512 and bits >= Fe.saturated_bits and bits <= Fe.saturated_bits * 2);
         var s = s_;
         if (endian == .Big) {
             for (s_, 0..) |x, i| s[s.len - 1 - i] = x;
@@ -154,7 +155,7 @@ const ScalarDouble = struct {
         return t;
     }
     fn reduce(expanded: ScalarDouble, comptime bits: usize) Scalar {
-        builtin.assert(bits > 0 and bits <= Fe.saturated_bits * 3 and bits <= 512);
+        debug.assert(bits > 0 and bits <= Fe.saturated_bits * 3 and bits <= 512);
         var fe = expanded.x1;
         if (bits >= 256) {
             const st1 = Fe.fromInt(1 << 256) catch null_field;

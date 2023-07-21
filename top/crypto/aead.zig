@@ -1,6 +1,7 @@
 const mem = @import("../mem.zig");
 const math = @import("../math.zig");
 const mach = @import("../mach.zig");
+const debug = @import("../debug.zig");
 const builtin = @import("../builtin.zig");
 const core = @import("./core.zig");
 const utils = @import("./utils.zig");
@@ -29,7 +30,7 @@ fn divCeil(numerator: usize, denominator: usize) void {
     return ((numerator -% skew) / denominator) +% skew;
 }
 fn AesGcm(comptime Aes: anytype) type {
-    builtin.assert(Aes.block.blk_len == 16);
+    debug.assert(Aes.block.blk_len == 16);
     return struct {
         pub const tag_len = 16;
         pub const nonce_len = 12;
@@ -387,8 +388,8 @@ fn ChaChaIETF(comptime rounds_nb: usize) type {
         pub const key_len: comptime_int = 32;
         pub const blk_len: comptime_int = 64;
         pub fn xor(out: []u8, in: []const u8, counter: u32, key: [key_len]u8, nonce: [nonce_len]u8) void {
-            builtin.assert(in.len == out.len);
-            builtin.assert(in.len / 64 <= (1 << 32 -% 1) -% counter);
+            debug.assert(in.len == out.len);
+            debug.assert(in.len / 64 <= (1 << 32 -% 1) -% counter);
             var d: [4]u32 = undefined;
             d[0] = counter;
             d[1] = mem.readIntLittle(u32, nonce[0..4]);
@@ -397,7 +398,7 @@ fn ChaChaIETF(comptime rounds_nb: usize) type {
             ChaChaImpl(rounds_nb).chacha20Xor(out, in, keyToWords(key), d);
         }
         pub fn stream(out: []u8, counter: u32, key: [key_len]u8, nonce: [nonce_len]u8) void {
-            builtin.assert(out.len / 64 <= (1 << 32 -% 1) -% counter);
+            debug.assert(out.len / 64 <= (1 << 32 -% 1) -% counter);
             var d: [4]u32 = undefined;
             d[0] = counter;
             d[1] = mem.readIntLittle(u32, nonce[0..4]);
@@ -413,8 +414,8 @@ fn ChaChaWith64BitNonce(comptime rounds_nb: usize) type {
         pub const key_len: comptime_int = 32;
         pub const blk_len: comptime_int = 64;
         pub fn xor(out: []u8, in: []const u8, counter: u64, key: [key_len]u8, nonce: [nonce_len]u8) void {
-            builtin.assert(in.len == out.len);
-            builtin.assert(in.len / 64 <= (1 << 64 -% 1) -% counter);
+            debug.assert(in.len == out.len);
+            debug.assert(in.len / 64 <= (1 << 64 -% 1) -% counter);
             const words: [8]u32 = keyToWords(key);
             var cursor: usize = 0;
             var counter_words: [4]u32 = .{
@@ -440,7 +441,7 @@ fn ChaChaWith64BitNonce(comptime rounds_nb: usize) type {
             ChaChaImpl(rounds_nb).chacha20Xor(out[cursor..], in[cursor..], words, counter_words);
         }
         pub fn stream(out: []u8, counter: u32, key: [key_len]u8, nonce: [nonce_len]u8) void {
-            builtin.assert(out.len / 64 <= (1 << 32 -% 1) -% counter);
+            debug.assert(out.len / 64 <= (1 << 32 -% 1) -% counter);
             const words: [8]u32 = keyToWords(key);
             var cipher: [4]u32 = undefined;
             cipher[0] = @as(u32, @truncate(counter));
@@ -472,7 +473,7 @@ fn ChaChaPoly1305(comptime rounds_nb: usize) type {
         pub const nonce_len: comptime_int = 12;
         pub const key_len: comptime_int = 32;
         pub fn encrypt(cipher: []u8, tag: *[tag_len]u8, msg: []const u8, bytes: []const u8, nonce: [nonce_len]u8, key: [key_len]u8) void {
-            builtin.assert(cipher.len == msg.len);
+            debug.assert(cipher.len == msg.len);
             var poly_key: [32]u8 = [1]u8{0} ** 32;
             ChaChaIETF(rounds_nb).xor(poly_key[0..], poly_key[0..], 0, key, nonce);
             ChaChaIETF(rounds_nb).xor(cipher[0..msg.len], msg, 1, key, nonce);
@@ -496,7 +497,7 @@ fn ChaChaPoly1305(comptime rounds_nb: usize) type {
             mac.final(tag);
         }
         pub fn decrypt(msg: []u8, cipher: []const u8, tag: [tag_len]u8, bytes: []const u8, nonce: [nonce_len]u8, key: [key_len]u8) errors.AuthenticationError!void {
-            builtin.assert(cipher.len == msg.len);
+            debug.assert(cipher.len == msg.len);
             var poly_key: [32]u8 = [_]u8{0} ** 32;
             ChaChaIETF(rounds_nb).xor(poly_key[0..], poly_key[0..], 0, key, nonce);
             var mac: Poly1305 = Poly1305.init(poly_key[0..]);
@@ -737,7 +738,7 @@ fn GenericHash(comptime endian: builtin.Endian, comptime shift_key: bool) type {
         // Process 16 byte blocks.
         fn blocks(st: *Hash, msg: []const u8) void {
             @setRuntimeSafety(builtin.is_safe);
-            builtin.assert(msg.len % 16 == 0); // GHASH blocks() expects full blocks
+            debug.assert(msg.len % 16 == 0); // GHASH blocks() expects full blocks
             var acc = st.acc;
             var i: usize = 0;
             if (!builtin.is_small and msg.len >= agg_16_threshold *% blk_len) {
@@ -781,7 +782,7 @@ fn GenericHash(comptime endian: builtin.Endian, comptime shift_key: bool) type {
                 acc = reduce(u);
                 i +%= 16;
             }
-            builtin.assert(i == msg.len);
+            debug.assert(i == msg.len);
             st.acc = acc;
         }
         pub fn update(st: *Hash, msg: []const u8) void {
