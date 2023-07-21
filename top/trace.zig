@@ -11,7 +11,6 @@ const debug = @import("./debug.zig");
 const dwarf = @import("./dwarf.zig");
 const builtin = @import("./builtin.zig");
 const testing = @import("./testing.zig");
-
 pub const Allocator = mem.SimpleAllocator;
 pub const logging_override: debug.Logging.Override = debug.Logging.Override{
     .Acquire = false,
@@ -376,6 +375,12 @@ pub export fn printStackTrace(trace: *const debug.Trace, first_addr: usize, fram
     var file_map: FileMap = FileMap.init(&allocator, 8);
     const exe_buf: []u8 = fastAllocFile(&allocator, &file_map, tab.self_link_s);
     var dwarf_info: dwarf.DwarfInfo = dwarf.DwarfInfo.init(@intFromPtr(exe_buf.ptr));
+    if (dwarf.logging_abbrev_entry or
+        dwarf.logging_summary or
+        dwarf.logging_info_entry)
+    {
+        dwarf.DwarfInfo.active = &dwarf_info;
+    }
     dwarf_info.scanAllCompileUnits(&allocator);
     var buf: []u8 = allocator.allocate(u8, 1024 *% 4096);
     var len: u64 = 0;
