@@ -7,6 +7,7 @@ const proc = @import("./proc.zig");
 const spec = @import("./spec.zig");
 const file = @import("./file.zig");
 const parse = @import("./parse.zig");
+const debug = @import("./debug.zig");
 const builtin = @import("./builtin.zig");
 const testing = @import("./testing.zig");
 const Allocator = mem.SimpleAllocator;
@@ -17,7 +18,7 @@ const WordSize = enum(u8) {
     dword = 4,
     qword = 8,
 };
-const Range = extern struct {
+const Range = packed struct {
     start: u64 = 0,
     end: u64 = 0,
 };
@@ -26,26 +27,16 @@ pub const SourceLocation = struct {
     line: u64,
     column: u64,
     const Format = @This();
-    pub fn formatWrite(format: Format, array: anytype) void {
-        array.writeMany("\x1b[1m");
-        const cwd: [:0]const u8 = file.getCwd(.{ .errors = .{} }, array.referAllUndefined());
-        if (mach.testEqualMany8(cwd, format.file[0..cwd.len])) {
-            array.writeMany(format.file[cwd.len +% 1 ..]);
-        } else {
-            array.writeMany(format.file);
-        }
-        array.writeOne(':');
-        array.writeFormat(fmt.ud64(format.line));
-        array.writeOne(':');
-        array.writeFormat(fmt.ud64(format.column));
-        array.writeMany("\x1b[0m");
-    }
+    var cwd: struct { buf: [4096]u8, buf_len: usize } = undefined;
     pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
-        mach.memcpy(buf, "\x1b[1m", 4);
+        if (cwd.buf_len == 0) {
+            cwd.buf_len = sys.call_noexcept(.getcwd, u64, .{ @intFromPtr(&cwd.buf), 4096 }) -% 1;
+        }
+        @as(*[4]u8, @ptrCast(buf)).* = "\x1b[1m".*;
         var len: u64 = 4;
-        const cwd_len: u64 = sys.call_noexcept(.getcwd, u64, .{ @intFromPtr(buf + len), 4096 }) -% 1;
-        if (mach.testEqualMany8(buf[len .. len +% cwd_len], format.file[0..cwd_len])) {
-            const path: []const u8 = format.file[cwd_len +% 1 ..];
+        var ud64: fmt.Type.Ud64 = @bitCast(format.line);
+        if (mach.testEqualMany8(cwd.buf[0..cwd.buf_len], format.file[0..cwd.buf_len])) {
+            const path: []const u8 = format.file[cwd.buf_len +% 1 ..];
             mach.memcpy(buf + len, path.ptr, path.len);
             len +%= path.len;
         } else {
@@ -54,10 +45,11 @@ pub const SourceLocation = struct {
         }
         buf[len] = ':';
         len +%= 1;
-        len +%= fmt.ud64(format.line).formatWriteBuf(buf + len);
+        len +%= ud64.formatWriteBuf(buf + len);
         buf[len] = ':';
         len +%= 1;
-        len +%= fmt.ud64(format.column).formatWriteBuf(buf + len);
+        ud64 = @bitCast(format.column);
+        len +%= ud64.formatWriteBuf(buf + len);
         @as(*[4]u8, @ptrCast(buf + len)).* = "\x1b[0m".*;
         return len +% 4;
     }
@@ -581,18 +573,19 @@ pub const Unit = extern struct {
     abbrev_tab: *AbbrevTable,
     info_entry: *Die,
     dirs: [*]FileEntry,
-    dirs_max_len: u64,
-    dirs_len: u64,
+    dirs_max_len: Size,
+    dirs_len: Size,
     files: [*]FileEntry,
-    files_max_len: u64,
-    files_len: u64,
+    files_max_len: Size,
+    files_len: Size,
+    const Size = usize;
     fn addDir(unit: *Unit, allocator: *Allocator) *FileEntry {
         @setRuntimeSafety(false);
         const size_of: comptime_int = @sizeOf(FileEntry);
         const addr_buf: *u64 = @as(*u64, @ptrCast(&unit.dirs));
         const ret: *FileEntry = @as(
             *FileEntry,
-            @ptrFromInt(allocator.addGeneric(size_of, 1, addr_buf, &unit.dirs_max_len, unit.dirs_len)),
+            @ptrFromInt(allocator.addGenericSize(Size, size_of, 1, addr_buf, &unit.dirs_max_len, unit.dirs_len)),
         );
         unit.dirs_len +%= 1;
         mem.zero(FileEntry, ret);
@@ -604,7 +597,7 @@ pub const Unit = extern struct {
         const addr_buf: *u64 = @as(*u64, @ptrCast(&unit.files));
         const ret: *FileEntry = @as(
             *FileEntry,
-            @ptrFromInt(allocator.addGeneric(size_of, 1, addr_buf, &unit.files_max_len, unit.files_len)),
+            @ptrFromInt(allocator.addGenericSize(Size, size_of, 1, addr_buf, &unit.files_max_len, unit.files_len)),
         );
         unit.files_len +%= 1;
         mem.zero(FileEntry, ret);
@@ -685,7 +678,7 @@ const AbbrevTable = struct {
         fn addKeyVal(entry: *Entry, allocator: *Allocator) *KeyVal {
             @setRuntimeSafety(false);
             const size_of: comptime_int = @sizeOf(KeyVal);
-            const addr_buf: *u64 = @as(*u64, @ptrCast(&entry.kvs));
+            const addr_buf: *u64 = @ptrCast(&entry.kvs);
             const ret: *KeyVal = @as(
                 *KeyVal,
                 @ptrFromInt(allocator.addGeneric(size_of, 1, addr_buf, &entry.kvs_max_len, entry.kvs_len)),
@@ -698,7 +691,7 @@ const AbbrevTable = struct {
     fn addEntry(table: *AbbrevTable, allocator: *Allocator) *AbbrevTable.Entry {
         @setRuntimeSafety(false);
         const size_of: comptime_int = @sizeOf(AbbrevTable.Entry);
-        const addr_buf: *u64 = @as(*u64, @ptrCast(&table.ents));
+        const addr_buf: *u64 = @ptrCast(&table.ents);
         const ret: *AbbrevTable.Entry = @as(
             *AbbrevTable.Entry,
             @ptrFromInt(allocator.addGeneric(size_of, 1, addr_buf, &table.ents_max_len, table.ents_len)),
@@ -866,6 +859,7 @@ pub const DwarfInfo = extern struct {
         frame: [*]u8,
         frame_len: u64,
     },
+    pub var active: ?*DwarfInfo = null;
     pub const AddressInfo = struct {
         /// Lookup address.
         addr: u64 = 0,
@@ -956,7 +950,7 @@ pub const DwarfInfo = extern struct {
         try parseAbbrevTable(allocator, dwarf_info, unit.abbrev_tab);
         try parseDie(allocator, dwarf_info, unit, unit.info_entry);
         if (dwarf_summary) {
-            debug.unitAbstractNotice(unit);
+            about.unitAbstractNotice(unit);
         }
         if (unit.info_entry.get(.str_offsets_base)) |form_val| {
             unit.str_offsets_base = form_val.getUInt(usize);
@@ -1104,7 +1098,7 @@ pub const DwarfInfo = extern struct {
             }
         }
         if (dwarf_abbrev_entry) {
-            debug.abbrevTableNotice(abbrev_tab);
+            about.abbrevTableNotice(abbrev_tab);
         }
     }
     fn parseDie(
@@ -1140,7 +1134,7 @@ pub const DwarfInfo = extern struct {
             }
         }
         if (dwarf_info_entry) {
-            try debug.debugDieNotice(info_entry);
+            try about.debugDieNotice(info_entry);
         }
     }
     fn parseFileEntry(bytes: []u8) ?struct { FileEntry, u64 } {
@@ -1383,7 +1377,7 @@ pub const DwarfInfo = extern struct {
         const line_unit: *Unit = Unit.init(allocator, dwarf_info, dwarf_info.impl.line, line_off);
         const obv_files_len: u64 = unit.files_len;
         defer {
-            if (obv_files_len != 0) unit.files_len = obv_files_len;
+            if (obv_files_len != 0) unit.files_len = @truncate(obv_files_len);
         }
         const next_unit_off = line_off +% switch (line_unit.word_size) {
             .qword => line_unit.len +% 12,
@@ -1747,13 +1741,13 @@ const LineNumberProgram = struct {
         return null;
     }
 };
-const debug = struct {
-    const about_dwarf: [:0]const u8 = fmt.old.about("dwarf");
-    const about_abbrev_tab: [:0]const u8 = fmt.old.about("abbrev");
-    const about_abbrev_code: [:0]const u8 = fmt.old.about("code");
-    const about_debug_entry: [:0]const u8 = fmt.old.about("full");
-    const about_dwarf_version: [:0]const u8 = fmt.old.about("dwarf-version");
-    const about_dwarf_addrsize: [:0]const u8 = fmt.old.about("dwarf-addrsize");
+const about = struct {
+    const dwarf_s: fmt.AboutSrc = fmt.about("dwarf");
+    const abbrev_tab_s: fmt.AboutSrc = fmt.about("abbrev");
+    const abbrev_code_s: fmt.AboutSrc = fmt.about("code");
+    const debug_entry_s: fmt.AboutSrc = fmt.about("full");
+    const dwarf_version_s: fmt.AboutSrc = fmt.about("dwarf-version");
+    const dwarf_addrsize_s: fmt.AboutSrc = fmt.about("dwarf-addrsize");
     fn printIntAt(src: builtin.SourceLocation, msg: []const u8, int: u64) void {
         @setRuntimeSafety(false);
         var buf: [512]u8 = undefined;
@@ -1773,129 +1767,149 @@ const debug = struct {
     }
     fn unitAbstractNotice(unit: *Unit) void {
         @setRuntimeSafety(false);
-        const ver_s: []const u8 = fmt.old.ud64(unit.version).readAll();
-        const unit_len_s: []const u8 = fmt.old.ud64(unit.len).readAll();
-        const word_size_s: []const u8 = @tagName(unit.word_size);
-        const addr_size_s: []const u8 = fmt.old.ud64(unit.addr_size).readAll();
         var buf: [512]u8 = undefined;
         var len: u64 = 0;
-        mach.memcpy(&buf, about_dwarf.ptr, about_dwarf.len);
-        len +%= about_dwarf.len;
+        var ud64: fmt.Type.Ud64 = .{ .value = unit.version };
+        @as(fmt.AboutDest, @ptrCast(&buf)).* = dwarf_s.*;
+        len +%= dwarf_s.len;
         @as(*[4]u8, @ptrCast(buf[len..].ptr)).* = "ver=".*;
         len +%= 4;
-        mach.memcpy(buf[len..].ptr, ver_s.ptr, ver_s.len);
-        len +%= ver_s.len;
+        len +%= ud64.formatWriteBuf(buf[len..].ptr);
         @as(*[11]u8, @ptrCast(buf[len..].ptr)).* = ", unit_len=".*;
         len +%= 11;
-        mach.memcpy(buf[len..].ptr, unit_len_s.ptr, unit_len_s.len);
-        len +%= unit_len_s.len;
+        ud64 = @bitCast(unit.len);
+        len +%= ud64.formatWriteBuf(buf[len..].ptr);
         @as(*[12]u8, @ptrCast(buf[len..].ptr)).* = ", word_size=".*;
         len +%= 12;
-        mach.memcpy(buf[len..].ptr, word_size_s.ptr, word_size_s.len);
-        len +%= word_size_s.len;
+        ud64.value = @intFromEnum(unit.word_size);
+        len +%= ud64.formatWriteBuf(buf[len..].ptr);
         @as(*[12]u8, @ptrCast(buf[len..].ptr)).* = ", addr_size=".*;
         len +%= 12;
-        mach.memcpy(buf[len..].ptr, addr_size_s.ptr, addr_size_s.len);
-        len +%= addr_size_s.len;
+        ud64.value = unit.addr_size;
+        len +%= ud64.formatWriteBuf(buf[len..].ptr);
         buf[len] = '\n';
         debug.write(buf[0 .. len +% 1]);
     }
     fn abbrevTableNotice(abbrev_tab: *AbbrevTable) void {
         @setRuntimeSafety(false);
-        var buf: [512]u8 = undefined;
-        debug.write(about_abbrev_tab ++ "\n");
+        var buf: [32768]u8 = undefined;
+        var tmp: [24]u8 = undefined;
+        var len: usize = 0;
+        var id64: fmt.Type.Id64 = undefined;
+        @as(fmt.AboutDest, @ptrCast(&buf)).* = abbrev_tab_s.*;
+        len +%= abbrev_tab_s.len;
         for (abbrev_tab.ents[0..abbrev_tab.ents_len]) |*ent| {
-            const tag_id_s: []const u8 = @tagName(ent.head.tag);
-            const code_s: []const u8 = fmt.old.ud64(ent.head.code).readAll();
-            debug.logAlwaysAIO(&buf, &.{ about_abbrev_code, code_s, ", ", tag_id_s, "\n" });
+            len = 0;
+            @as(fmt.AboutDest, @ptrCast(buf[len..].ptr)).* = abbrev_code_s.*;
+            len +%= abbrev_code_s.len;
+            id64 = @bitCast(ent.head.code);
+            len +%= id64.formatWriteBuf(buf[len..].ptr);
+            @as(*[2]u8, @ptrCast(buf[len..].ptr)).* = ", ".*;
+            len +%= 2;
+            @memcpy(buf[len..].ptr, @tagName(ent.head.tag));
+            len +%= @tagName(ent.head.tag).len;
+            buf[len] = '\n';
+            len +%= 1;
             for (ent.kvs[0..ent.kvs_len], 0..) |*kv, kv_idx| {
-                var len: u64 = 0;
-                const kv_idx_s: []const u8 = fmt.old.ud64(kv_idx).readAll();
-                mach.memset(buf[len..].ptr, ' ', 4 -% kv_idx_s.len);
-                len +%= 4 -% kv_idx_s.len;
-                mach.memcpy(buf[len..].ptr, kv_idx_s.ptr, kv_idx_s.len);
-                len +%= kv_idx_s.len;
+                id64 = @bitCast(kv_idx);
+                const tmp_len: usize = id64.formatWriteBuf(&tmp);
+                @as(*[4]u8, @ptrCast(buf[len..].ptr)).* = "    ".*;
+                len +%= 4 -% tmp_len;
+                @memcpy(buf[len..].ptr, tmp[0..tmp_len]);
+                len +%= tmp_len;
                 buf[len] = ':';
                 len +%= 1;
-                mach.memset(buf[len..].ptr, ' ', 11);
+                @memset(buf[len .. len +% 11], ' ');
                 len +%= 11;
-                const attr_s: []const u8 = @tagName(kv.attr);
-                mach.memcpy(buf[len..].ptr, attr_s.ptr, attr_s.len);
-                len +%= attr_s.len;
+                @memcpy(buf[len..].ptr, @tagName(kv.attr));
+                len +%= @tagName(kv.attr).len;
                 @as(*[2]u8, @ptrCast(buf[len..].ptr)).* = ": ".*;
                 len +%= 2;
-                const form_s: []const u8 = @tagName(kv.form);
-                mach.memcpy(buf[len..].ptr, form_s.ptr, form_s.len);
-                len +%= form_s.len;
+                @memcpy(buf[len..].ptr, @tagName(kv.form));
+                len +%= @tagName(kv.form).len;
                 if (kv.payload != 0) {
                     @as(*[3]u8, @ptrCast(buf[len..].ptr)).* = " = ".*;
                     len +%= 3;
-                    const payload_s: []const u8 = fmt.old.id64(kv.payload).readAll();
-                    mach.memcpy(buf[len..].ptr, payload_s.ptr, payload_s.len);
-                    len +%= payload_s.len;
+                    id64 = @bitCast(kv.payload);
+                    len +%= id64.formatWriteBuf(buf[len..].ptr);
                 }
                 buf[len] = '\n';
-                len +%= 1;
-                debug.write(buf[0..len]);
+                debug.write(buf[0 .. len +% 1]);
+                len = 0;
             }
         }
     }
     fn debugDieNotice(info_entry: *Die) !void {
         @setRuntimeSafety(false);
-        var buf: [512]u8 = undefined;
-        const tag_id_s: []const u8 = @tagName(info_entry.head.tag);
-        debug.logAlwaysAIO(&buf, &.{ about_debug_entry, tag_id_s, "\n" });
+        var buf: [32768]u8 = undefined;
+        var tmp: [24]u8 = undefined;
+        var len: usize = debug_entry_s.len;
+        var id64: fmt.Type.Id64 = undefined;
+        @as(fmt.AboutDest, @ptrCast(&buf)).* = debug_entry_s.*;
+        @memcpy(buf[len..].ptr, @tagName(info_entry.head.tag));
+        len +%= @tagName(info_entry.head.tag).len;
+        buf[len] = '\n';
+        len +%= 1;
         for (info_entry.kvs[0..info_entry.kvs_len], 0..) |*kv, kv_idx| {
-            var len: u64 = 0;
-            const attr_idx_s: []const u8 = fmt.old.ud64(kv_idx).readAll();
-            mach.memset(buf[len..].ptr, ' ', 4 -% attr_idx_s.len);
-            len +%= 4 -% attr_idx_s.len;
-            mach.memcpy(buf[len..].ptr, attr_idx_s.ptr, attr_idx_s.len);
-            len +%= attr_idx_s.len;
+            id64 = @bitCast(kv_idx);
+            const tmp_len: usize = id64.formatWriteBuf(&tmp);
+            @as(*[4]u8, @ptrCast(buf[len..].ptr)).* = "    ".*;
+            len +%= 4 -% tmp_len;
+            @memcpy(buf[len..].ptr, tmp[0..tmp_len]);
+            len +%= tmp_len;
             buf[len] = ':';
             len +%= 1;
-            mach.memset(buf[len..].ptr, ' ', 11);
+            @memset(buf[len .. len +% 11], ' ');
             len +%= 11;
-            const attr_id_s: []const u8 = @tagName(kv.key);
-            mach.memcpy(buf[len..].ptr, attr_id_s.ptr, attr_id_s.len);
-            len +%= attr_id_s.len;
+            @memcpy(buf[len..].ptr, @tagName(kv.key));
+            len +%= @tagName(kv.key).len;
             @as(*[2]u8, @ptrCast(buf[len..].ptr)).* = ": ".*;
             len +%= 2;
-            const attr_type_s: []const u8 = @tagName(kv.val);
-            mach.memcpy(buf[len..].ptr, attr_type_s.ptr, attr_type_s.len);
-            len +%= attr_type_s.len;
+            @memcpy(buf[len..], @tagName(kv.val));
+            len +%= @tagName(kv.val).len;
             @as(*[3]u8, @ptrCast(buf[len..].ptr)).* = " = ".*;
             len +%= 3;
             switch (kv.val) {
                 .Address => |addr| {
-                    const addr_s: []const u8 = fmt.old.ux64(addr).readAll();
-                    mach.memcpy(buf[len..].ptr, addr_s.ptr, addr_s.len);
+                    id64 = @bitCast(addr);
+                    len +%= id64.formatWriteBuf(buf[len..].ptr);
                 },
                 .AddrOffset => |addrx| {
-                    const addrx_s: []const u8 = fmt.old.ud64(addrx).readAll();
-                    mach.memcpy(buf[len..].ptr, addrx_s.ptr, addrx_s.len);
+                    id64 = @bitCast(addrx);
+                    len +%= id64.formatWriteBuf(buf[len..].ptr);
                 },
                 .Block => |block| {
+                    debug.write(buf[0..len]);
+                    len = 0;
                     debug.write(block);
                 },
                 .Const => |val| {
-                    if (val.signed) {
-                        const signed: i64 = val.asSignedLe();
-                        const signed_s: []const u8 = fmt.old.id64(signed).readAll();
-                        mach.memcpy(buf[len..].ptr, signed_s.ptr, signed_s.len);
-                        len +%= signed_s.len;
+                    id64 = @bitCast(val.payload);
+                    len +%= id64.formatWriteBuf(buf[len..].ptr);
+                },
+                .StrPtr => |ptr| {
+                    if (DwarfInfo.active) |dwarf_info| {
+                        debug.write(buf[0..len]);
+                        len = 0;
+                        debug.write(dwarf_info.getString(ptr));
                     } else {
-                        const unsigned: u64 = val.asUnsignedLe();
-                        const unsigned_s: []const u8 = fmt.old.ud64(unsigned).readAll();
-                        mach.memcpy(buf[len..].ptr, unsigned_s.ptr, unsigned_s.len);
-                        len +%= unsigned_s.len;
+                        buf[len] = '@';
+                        len +%= 1;
+                        id64 = @bitCast(ptr);
+                        len +%= id64.formatWriteBuf(buf[len..].ptr);
                     }
+                },
+                .Ref => |ref| {
+                    buf[len] = '@';
+                    len +%= 1;
+                    id64 = @bitCast(ref);
+                    len +%= id64.formatWriteBuf(buf[len..].ptr);
                 },
                 else => {},
             }
             buf[len] = '\n';
-            len +%= 1;
-            debug.write(buf[0..len]);
+            debug.write(buf[0 .. len +% 1]);
+            len = 0;
         }
     }
 };

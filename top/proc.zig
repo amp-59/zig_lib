@@ -801,6 +801,9 @@ pub noinline fn start() noreturn {
     if (builtin.output_mode != .Exe) {
         unreachable;
     }
+    if (builtin.position_independent_code) {
+        @compileError("unsupported: PIC");
+    }
     const Main: type = @TypeOf(builtin.root.main);
     const main: Main = builtin.root.main;
     const main_type_info: builtin.Type = @typeInfo(Main);
