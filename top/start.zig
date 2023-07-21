@@ -13,7 +13,9 @@ pub usingnamespace blk: {
         }
         break :blk _0;
     } else if (builtin.output_mode == .Exe) {
-        break :blk _1;
+        if (!@hasDecl(builtin.root, "_start")) {
+            break :blk _1;
+        }
     }
     break :blk debug;
 };

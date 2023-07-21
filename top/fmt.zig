@@ -2406,28 +2406,28 @@ pub fn ubd(old_int: anytype, new_int: anytype) blk: {
     const U: type = if (@TypeOf(new_int) == comptime_int) u128 else @TypeOf(new_int);
     break :blk GenericChangedIntFormat(uniformChangedIntFormatSpec(@max(@bitSizeOf(T), @bitSizeOf(U)), .unsigned, 2));
 } {
-    return .{ .old_int_value = old_int, .new_int_value = new_int };
+    return .{ .old_value = old_int, .new_value = new_int };
 }
 pub fn uod(old_int: anytype, new_int: anytype) blk: {
     const T: type = if (@TypeOf(old_int) == comptime_int) u128 else @TypeOf(old_int);
     const U: type = if (@TypeOf(new_int) == comptime_int) u128 else @TypeOf(new_int);
     break :blk GenericChangedIntFormat(uniformChangedIntFormatSpec(@max(@bitSizeOf(T), @bitSizeOf(U)), .unsigned, 8));
 } {
-    return .{ .old_int_value = old_int, .new_int_value = new_int };
+    return .{ .old_value = old_int, .new_value = new_int };
 }
 pub fn udd(old_int: anytype, new_int: anytype) blk: {
     const T: type = if (@TypeOf(old_int) == comptime_int) u128 else @TypeOf(old_int);
     const U: type = if (@TypeOf(new_int) == comptime_int) u128 else @TypeOf(new_int);
     break :blk GenericChangedIntFormat(uniformChangedIntFormatSpec(@max(@bitSizeOf(T), @bitSizeOf(U)), .unsigned, 10));
 } {
-    return .{ .old_int_value = old_int, .new_int_value = new_int };
+    return .{ .old_value = old_int, .new_value = new_int };
 }
 pub fn uxd(old_int: anytype, new_int: anytype) blk: {
     const T: type = if (@TypeOf(old_int) == comptime_int) u128 else @TypeOf(old_int);
     const U: type = if (@TypeOf(new_int) == comptime_int) u128 else @TypeOf(new_int);
     break :blk GenericChangedIntFormat(uniformChangedIntFormatSpec(@max(@bitSizeOf(T), @bitSizeOf(U)), .unsigned, 16));
 } {
-    return .{ .old_int_value = old_int, .new_int_value = new_int };
+    return .{ .old_value = old_int, .new_value = new_int };
 }
 pub const Type = struct {
     pub const Ib8 = @TypeOf(ib8(undefined));
