@@ -6,8 +6,8 @@ const zl = blk: {
     if (@hasDecl(root, "zig_lib")) {
         break :blk root.zig_lib;
     }
-    if (@hasDecl(root, "zl")) {
-        break :blk root.zl;
+    if (@hasDecl(root, "srg")) {
+        break :blk root.srg;
     }
     if (@hasDecl(root, "top")) {
         break :blk root.top;
@@ -17,14 +17,15 @@ const mem = zl.mem;
 const sys = zl.sys;
 const proc = zl.proc;
 const meta = zl.meta;
+const debug = zl.debug;
 const build = zl.build;
 const builtin = zl.builtin;
 pub usingnamespace root;
 pub usingnamespace zl.start;
 
-const Node = builtin.define("Node", type, build.GenericNode(.{}));
+const Node = if (@hasDecl(root, "Node")) root.Node else build.GenericNode(.{});
 
-pub const logging_default: builtin.Logging.Default = .{
+pub const logging_default: debug.Logging.Default = .{
     .Attempt = false,
     .Success = false,
     .Acquire = false,
@@ -39,7 +40,7 @@ pub const signal_handlers = .{
     .Trap = false,
     .SegmentationFault = false,
 };
-pub const trace: builtin.Trace = .{
+pub const trace: debug.Trace = .{
     .Error = false,
     .Fault = false,
     .Signal = false,
