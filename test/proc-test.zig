@@ -126,25 +126,22 @@ fn recursion(buf: *[4096]u8) void {
     @memcpy(&next, buf);
     recursion(&next);
 }
-pub fn main(args: [][*:0]u8, vars: [][*:0]u8, aux: anytype) !void {
-    _ = vars;
-    //try testCloneAndFutex();
-    //proc.about.sampleAllReports();
-    //try testFindNameInPath(vars);
-    try testVClockGettime(aux);
-    //try testUpdateSignalAction();
-    //
-    //
-
+export fn addTwo(arg1: u64, arg2: u64) u64 {
+    return arg1 +% arg2;
+}
+fn testGetOtherSymbol(args: [][*:0]u8) !void {
     var fd: u64 = try file.open(.{}, meta.manyToSlice(args[0]));
     const st: file.Status = try file.status(.{}, fd);
     const len: usize = mach.alignA64(st.size, 4096);
     try file.map(.{}, .{}, spec.file.map.flags.regular, fd, 0x40000000, len);
-
     const add = proc.load(*@TypeOf(addTwo), 0x40000000, "addTwo").?;
     try debug.expectEqual(u64, 11, add(5, 6));
 }
-
-export fn addTwo(arg1: u64, arg2: u64) u64 {
-    return arg1 +% arg2;
+pub fn main(args: [][*:0]u8, vars: [][*:0]u8, aux: anytype) !void {
+    try testCloneAndFutex();
+    try testFindNameInPath(vars);
+    try testGetOtherSymbol(args);
+    try testVClockGettime(aux);
+    try testUpdateSignalAction();
+    proc.about.sampleAllReports();
 }
