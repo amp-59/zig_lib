@@ -1,5 +1,6 @@
 const sys = @import("./sys.zig");
 const meta = @import("./meta.zig");
+const debug = @import("./debug.zig");
 const builtin = @import("./builtin.zig");
 
 pub const Measurement = struct {
@@ -329,7 +330,7 @@ pub const Flags = packed struct(u8) {
     zb4: u4 = 0,
 };
 pub const PerfEventSpec = struct {
-    logging: builtin.Logging.SuccessError = .{},
+    logging: debug.Logging.SuccessError = .{},
     errors: sys.ErrorPolicy = .{ .throw = sys.perf_event_open_errors },
 };
 pub fn eventOpen(comptime perf_spec: PerfEventSpec, event: *const Event, pid: Process, cpu: CPU, fd: u64, flags: Flags) sys.ErrorUnion(perf_spec.errors, u64) {
@@ -342,7 +343,7 @@ pub fn eventOpen(comptime perf_spec: PerfEventSpec, event: *const Event, pid: Pr
     }
 }
 pub const PerfEventControlSpec = struct {
-    logging: builtin.Logging.SuccessError = .{},
+    logging: debug.Logging.SuccessError = .{},
     errors: sys.ErrorPolicy = .{ .throw = sys.ioctl_errors },
 };
 pub fn eventControl(comptime perf_spec: PerfEventControlSpec, fd: u64, ctl: Event.IOC, apply_group: bool) sys.ErrorUnion(perf_spec.errors, void) {

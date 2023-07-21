@@ -5,6 +5,7 @@ const file = @import("./file.zig");
 const mach = @import("./mach.zig");
 const meta = @import("./meta.zig");
 const spec = @import("./spec.zig");
+const debug = @import("./debug.zig");
 const builtin = @import("./builtin.zig");
 
 pub const TypeDescr = fmt.GenericTypeDescrFormat(.{});
@@ -55,9 +56,9 @@ pub const TruncateSpec = struct {
         close: sys.ErrorPolicy = .{ .throw = sys.close_errors },
     };
     const Logging = struct {
-        create: builtin.Logging.AcquireError = .{},
-        write: builtin.Logging.SuccessError = .{},
-        close: builtin.Logging.ReleaseError = .{},
+        create: debug.Logging.AcquireError = .{},
+        write: debug.Logging.SuccessError = .{},
+        close: debug.Logging.ReleaseError = .{},
     };
     fn errors(comptime truncate_spec: TruncateSpec) sys.ErrorPolicy {
         return .{
@@ -116,9 +117,9 @@ pub const AppendSpec = struct {
         close: sys.ErrorPolicy = .{ .throw = sys.close_errors },
     };
     const Logging = struct {
-        open: builtin.Logging.AcquireError = .{},
-        write: builtin.Logging.SuccessError = .{},
-        close: builtin.Logging.ReleaseError = .{},
+        open: debug.Logging.AcquireError = .{},
+        write: debug.Logging.SuccessError = .{},
+        close: debug.Logging.ReleaseError = .{},
     };
     fn open(comptime append_spec: AppendSpec) file.OpenSpec {
         return .{
@@ -168,9 +169,9 @@ pub const ReadSpec = struct {
         close: sys.ErrorPolicy = .{ .throw = sys.close_errors },
     };
     const Logging = struct {
-        open: builtin.Logging.AcquireError = .{},
-        read: builtin.Logging.SuccessError = .{},
-        close: builtin.Logging.ReleaseError = .{},
+        open: debug.Logging.AcquireError = .{},
+        read: debug.Logging.SuccessError = .{},
+        close: debug.Logging.ReleaseError = .{},
     };
     fn open(comptime read_spec: ReadSpec) file.OpenSpec {
         return .{
@@ -335,7 +336,7 @@ pub fn containerDeclsToBitField(comptime Container: type, comptime backing_integ
         array.writeFormat(fmt.ud16(diff));
         array.writeMany("=0,\n");
     }
-    array.writeMany("fn assert(flags:@This(),val:" ++ size_name ++ ")void{\nbuiltin.assertEqual(" ++ size_name ++ ", @as(" ++ size_name ++ ",@bitCast(flags)),val);\n}\n");
+    array.writeMany("fn assert(flags:@This(),val:" ++ size_name ++ ")void{\ndebug.assertEqual(" ++ size_name ++ ", @as(" ++ size_name ++ ",@bitCast(flags)),val);\n}\n");
     array.writeMany("comptime{\n");
     enum_count = 0;
     for (bit_field_sets) |set| {

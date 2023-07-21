@@ -2,6 +2,7 @@ const mem = @import("./mem.zig");
 const sys = @import("./sys.zig");
 const fmt = @import("./fmt.zig");
 const meta = @import("./meta.zig");
+const debug = @import("./debug.zig");
 const builtin = @import("./builtin.zig");
 const DT = enum(u32) {
     NULL = NULL,
@@ -472,8 +473,8 @@ pub const Header = struct {
             return error.InvalidElfMagic;
         }
         if (hdr32.e_ident[EI.VERSION] != 1) {
-            if (builtin.logging_general.Error) {
-                debug.badVersionError(hdr32);
+            if (debug.logging_general.Error) {
+                about.badVersionError(hdr32);
             }
             return error.InvalidElfVersion;
         }
@@ -481,8 +482,8 @@ pub const Header = struct {
             ELFDATA2LSB => .Little,
             ELFDATA2MSB => .Big,
             else => {
-                if (builtin.logging_general.Error) {
-                    debug.badEndianError(hdr32);
+                if (debug.logging_general.Error) {
+                    about.badEndianError(hdr32);
                 }
                 return error.InvalidElfEndian;
             },
@@ -893,12 +894,12 @@ pub const Elf_MIPS_ABIFlags_v0 = extern struct {
     flags2: u32,
 };
 comptime {
-    builtin.assert(@sizeOf(Elf32_Ehdr) == 52);
-    builtin.assert(@sizeOf(Elf64_Ehdr) == 64);
-    builtin.assert(@sizeOf(Elf32_Phdr) == 32);
-    builtin.assert(@sizeOf(Elf64_Phdr) == 56);
-    builtin.assert(@sizeOf(Elf32_Shdr) == 40);
-    builtin.assert(@sizeOf(Elf64_Shdr) == 64);
+    debug.assert(@sizeOf(Elf32_Ehdr) == 52);
+    debug.assert(@sizeOf(Elf64_Ehdr) == 64);
+    debug.assert(@sizeOf(Elf32_Phdr) == 32);
+    debug.assert(@sizeOf(Elf64_Phdr) == 56);
+    debug.assert(@sizeOf(Elf32_Shdr) == 40);
+    debug.assert(@sizeOf(Elf64_Shdr) == 64);
 }
 pub const Auxv = switch (@sizeOf(usize)) {
     4 => Elf32_auxv_t,
@@ -1546,10 +1547,10 @@ pub const STV = enum(u2) {
     HIDDEN = 2,
     PROTECTED = 3,
 };
-const debug = opaque {
+const about = opaque {
     const PrintArray = mem.StaticString(4096);
     const about_elf_1_s: []const u8 = "elf:           ";
-    const about_elf_0_s: []const u8 = "elf-error:     offset=";
+    const about_elf_s: []const u8 = "elf-error:     offset=";
     fn badEndianError(hdr32: *Elf32_Ehdr) void {
         const offset: u64 = @intFromPtr(&hdr32.e_ident[EI.DATA]) - @intFromPtr(hdr32);
         var array: PrintArray = .{};

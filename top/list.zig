@@ -4,6 +4,7 @@ const meta = @import("./meta.zig");
 const mach = @import("./mach.zig");
 const file = @import("./file.zig");
 const spec = @import("./spec.zig");
+const debug = @import("./debug.zig");
 const builtin = @import("./builtin.zig");
 pub const ListSpec = struct {
     child: type,
@@ -653,7 +654,7 @@ pub fn GenericLinkedList(comptime list_spec: ListSpec) type {
                         });
                     }
                 }
-                builtin.debug.write(array.readAll(allocator));
+                debug.write(array.readAll(allocator));
             }
         };
     };
@@ -1141,7 +1142,7 @@ pub fn GenericLinkedListView(comptime list_spec: ListViewSpec) type {
                         });
                     }
                 }
-                builtin.debug.write(array.readAll());
+                debug.write(array.readAll());
             }
         };
     });
