@@ -508,10 +508,10 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             }
             rc = sys.call_noexcept(.newfstatat, u64, .{ root_fd, @intFromPtr(name.ptr), @intFromPtr(&st), 0 });
             if (rc != 0) {
-                proc.exitFault(name, 2);
+                proc.exitErrorFault(error.NoSuchFileOrDirectory, name, 2);
             }
             if (st.mode.kind != .directory) {
-                proc.exitFault(name, 2);
+                proc.exitErrorFault(error.NotADirectory, name, 2);
             }
         }
         const maybe_hide: bool =
@@ -545,6 +545,16 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             build.cache_root = mach.manyToSlice80(args[3]);
             build.global_cache_root = mach.manyToSlice80(args[4]);
             build.build_root_fd = try meta.wrap(file.path(path1(), build.build_root));
+            for ([6][:0]const u8{
+                builder_spec.options.names.zig_out_dir,
+                paths.zig_out_exe_dir,
+                paths.zig_out_lib_dir,
+                paths.zig_out_aux_dir,
+                builder_spec.options.names.zig_build_dir,
+                builder_spec.options.names.zig_stat_dir,
+            }) |name| {
+                makeRootDirectory(build.build_root_fd, name);
+            }
             build.config_root_fd = try meta.wrap(file.pathAt(path1(), build.build_root_fd, builder_spec.options.names.zig_build_dir));
             build.cmd_idx = 5;
             build.task_idx = 5;
@@ -563,16 +573,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             node.impl.args = build.args.ptr;
             node.impl.args_max_len = build.args.len;
             node.impl.args_len = build.args.len;
-            for ([6][:0]const u8{
-                builder_spec.options.names.zig_out_dir,
-                paths.zig_out_exe_dir,
-                paths.zig_out_lib_dir,
-                paths.zig_out_aux_dir,
-                builder_spec.options.names.zig_build_dir,
-                builder_spec.options.names.zig_stat_dir,
-            }) |name| {
-                makeRootDirectory(build.build_root_fd, name);
-            }
             node.task.tag = .any;
             node.task.lock = omni_lock;
             return node;
