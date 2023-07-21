@@ -10,6 +10,7 @@ const mach = @import("./mach.zig");
 const meta = @import("./meta.zig");
 const spec = @import("./spec.zig");
 const algo = @import("./algo.zig");
+const debug = @import("./debug.zig");
 const builtin = @import("./builtin.zig");
 pub fn announce(src: builtin.SourceLocation) void {
     var buf: [4096]u8 = undefined;
@@ -19,7 +20,7 @@ pub fn announce(src: builtin.SourceLocation) void {
     mach.memcpy(buf[6..].ptr, src.fn_name.ptr, src.fn_name.len);
     buf[6 +% src.fn_name.len] = ']';
     buf[7 +% src.fn_name.len] = '\n';
-    builtin.debug.write(buf[0 .. 6 +% src.fn_name.len +% 2]);
+    debug.write(buf[0 .. 6 +% src.fn_name.len +% 2]);
 }
 pub fn arrayOfCharsLength(s: []const u8) u64 {
     var len: u64 = 0;
@@ -66,18 +67,18 @@ pub fn showSpecialCase(comptime T: type, arg1: []const T, arg2: []const T) void 
     if (@inComptime()) {
         @compileError(buf[0..len] ++ arg1 ++ "\n" ++ arg2 ++ "\n");
     } else {
-        builtin.debug.write(buf[0..len]);
-        builtin.debug.write(arg1);
-        builtin.debug.write("\n");
-        builtin.debug.write(arg2);
-        builtin.debug.write("\n");
+        debug.write(buf[0..len]);
+        debug.write(arg1);
+        debug.write("\n");
+        debug.write(arg2);
+        debug.write("\n");
     }
 }
 // Q: Why not put this in builtin, according to specification?
 // A: Because without a low level value renderer it can only serve special
 // cases. fault-error-test requires the former two variants render the error
 // value. That is not yet possible.
-pub fn expectEqualMany(comptime T: type, arg1: []const T, arg2: []const T) builtin.Unexpected!void {
+pub fn expectEqualMany(comptime T: type, arg1: []const T, arg2: []const T) debug.Unexpected!void {
     if (arg1.len != arg2.len) {
         if (T == u8) {
             showSpecialCase(T, arg1, arg2);
@@ -102,7 +103,7 @@ pub fn expectError(arg1: anytype, arg2: anytype) !void {
         return error.UnexpectedValue;
     }
 }
-pub const expect = builtin.expect;
+pub const expect = debug.expect;
 
 pub fn arbitraryFieldOrder(comptime T: type) void {
     const s = struct {
@@ -298,7 +299,7 @@ pub fn printSizeBreakDown(comptime T: type, type_rename: ?[:0]const u8) u64 {
         array.writeOne('\n');
     }
     array.writeOne('\n');
-    builtin.debug.write(array.readAll());
+    debug.write(array.readAll());
     return array.readAll().len;
 }
 const reinterpret_spec: mem.ReinterpretSpec = builtin.define("reinterpret_spec", mem.ReinterpretSpec, blk: {
@@ -310,7 +311,7 @@ pub fn printN(comptime n: usize, any: anytype) void {
     var array: mem.StaticString(n) = undefined;
     array.undefineAll();
     array.writeAny(reinterpret_spec, any);
-    builtin.debug.write(array.readAll());
+    debug.write(array.readAll());
 }
 const Static = struct {
     const Allocator = mem.GenericArenaAllocator(.{
@@ -343,7 +344,7 @@ pub fn print(any: anytype) void {
     };
     array.undefineAll();
     array.writeAny(reinterpret_spec, any);
-    builtin.debug.write(array.readAll());
+    debug.write(array.readAll());
 }
 pub fn uniqueSet(comptime T: type, set: []const T) void {
     var l_index: usize = 0;
@@ -351,7 +352,7 @@ pub fn uniqueSet(comptime T: type, set: []const T) void {
         var r_index: usize = l_index;
         while (r_index != set.len) : (r_index +%= 1) {
             if (l_index != r_index) {
-                if (builtin.testEqual(T, set[l_index], set[r_index])) {
+                if (mem.testEqual(T, set[l_index], set[r_index])) {
                     printN(4096, .{
                         "non-unique: ", l_index,
                         " == ",         r_index,
@@ -374,17 +375,17 @@ pub fn printResources() !void {
         const name: [:0]const u8 = meta.manyToSlice(builtin.ptrCast([*:0]u8, &ent.array));
         if (ent.kind == sys.S.IFLNKR) {
             const pathname: [:0]const u8 = try file.readLinkAt(.{}, dir_fd, name, buf[len..]);
-            builtin.debug.write(name);
-            builtin.debug.write(" -> ");
-            builtin.debug.write(pathname);
-            builtin.debug.write("\n");
+            debug.write(name);
+            debug.write(" -> ");
+            debug.write(pathname);
+            debug.write("\n");
         }
         off +%= ent.reclen;
     }
     file.close(.{ .errors = .{} }, dir_fd);
     const maps_fd: u64 = try file.open(.{}, "/proc/self/maps");
     len = try file.read(.{}, maps_fd, &buf);
-    builtin.debug.write(buf[0..len]);
+    debug.write(buf[0..len]);
     file.close(.{}, maps_fd);
     const status_fd: u64 = try file.open(.{}, "/proc/self/status");
     _ = try file.send(.{}, 1, status_fd, null, ~@as(u64, 0));
