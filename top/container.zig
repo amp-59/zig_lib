@@ -351,16 +351,6 @@ const @"1" = opaque {
                 return memory.writeMany(@errorName(any));
             }
         }
-        if (comptime write_spec.integral.format) |kind| {
-            if (src_type_info == .Int and dst_type == u8) {
-                return memory.writeMany(switch (kind) {
-                    .bin => fmt.old.bin,
-                    .oct => fmt.old.oct,
-                    .dec => fmt.old.dec,
-                    .hex => fmt.old.hex,
-                }(src_type, any).readAll());
-            }
-        }
         debug.assert(src_type == dst_type);
     }
     pub fn writeAnyUnstructured(comptime child: type, comptime write_spec: ReinterpretSpec, memory: anytype, any: anytype) void {
@@ -494,16 +484,6 @@ const @"1" = opaque {
         if (comptime write_spec.symbol.error_name) {
             if (src_type_info == .ErrorSet and dst_type == u8) {
                 return memory.writeMany(child, @errorName(any));
-            }
-        }
-        if (comptime write_spec.integral.format) |kind| {
-            if (src_type_info == .Int and dst_type == u8) {
-                return memory.writeMany(switch (kind) {
-                    .bin => fmt.old.bin,
-                    .oct => fmt.old.oct,
-                    .dec => fmt.old.dec,
-                    .hex => fmt.old.hex,
-                }(src_type, any).readAll());
             }
         }
         debug.assert(src_type == dst_type);
@@ -733,16 +713,6 @@ const @"1" = opaque {
                     len = @max(len, e.name.len);
                 }
                 return len;
-            }
-        }
-        if (comptime write_spec.integral.format) |kind| {
-            if (src_type_info == .Int and dst_type == u8) {
-                return switch (kind) {
-                    .bin => fmt.old.bin,
-                    .oct => fmt.old.oct,
-                    .dec => fmt.old.dec,
-                    .hex => fmt.old.hex,
-                }(src_type, any).readAll().len;
             }
         }
         debug.assert(src_type == dst_type);
