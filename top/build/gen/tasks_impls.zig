@@ -224,7 +224,7 @@ fn writeIntegerString(array: *Array, arg_string: []const u8, variant: types.Vari
             array.writeMany("));\n");
         },
         .length => {
-            array.writeMany("len+%=fmt.Type.Ud64.formatWriteBuf(.{.value=");
+            array.writeMany("len+%=fmt.Type.Ud64.formatLength(.{.value=");
             array.writeMany(arg_string);
             array.writeMany("});\n");
         },
