@@ -1909,6 +1909,17 @@ pub const SimpleAllocator = struct {
         }
         return ptr.* +% (size *% len);
     }
+    pub fn addGenericSize(allocator: *Allocator, comptime Size: type, size: usize, init_len: Size, ptr: *usize, max_len: *Size, len: Size) u64 {
+        const new_max_len: Size = len +% 2;
+        if (max_len.* == 0) {
+            ptr.* = allocateInternal(allocator, size *% init_len, 8);
+            max_len.* = init_len;
+        } else if (len == max_len.*) {
+            ptr.* = reallocateInternal(allocator, ptr.*, size *% max_len.*, size *% new_max_len, 8);
+            max_len.* = new_max_len;
+        }
+        return ptr.* +% (size *% len);
+    }
     pub const allocateRaw = allocateInternal;
     pub const reallocateRaw = reallocateInternal;
     pub const deallocateRaw = deallocateInternal;
