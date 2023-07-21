@@ -1,5 +1,8 @@
+const fmt = @import("../fmt.zig");
+const proc = @import("../proc.zig");
 const meta = @import("../meta.zig");
 const mach = @import("../mach.zig");
+const debug = @import("../debug.zig");
 const builtin = @import("../builtin.zig");
 const reference = @import("./ptr.zig");
 // start-document container-template.zig

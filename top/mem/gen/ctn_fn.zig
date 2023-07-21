@@ -2,6 +2,7 @@ const fmt = @import("../../fmt.zig");
 const gen = @import("../../gen.zig");
 const meta = @import("../../meta.zig");
 const algo = @import("../../algo.zig");
+const debug = @import("../../debug.zig");
 const builtin = @import("../../builtin.zig");
 const testing = @import("../../testing.zig");
 const tok = @import("./tok.zig");

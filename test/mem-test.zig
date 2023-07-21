@@ -19,7 +19,6 @@ fn testProtect() !void {
     var addr: u64 = 0x7000000;
     const end: u64 = 0x10000000;
     var len: u64 = end -% addr;
-
     try meta.wrap(mem.map(.{}, .{}, .{}, addr, len));
     try meta.wrap(mem.protect(.{}, .{ .read = true }, addr, 4096));
     try meta.wrap(mem.unmap(.{}, addr, len));
