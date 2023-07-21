@@ -1,4 +1,5 @@
 const fmt = @import("./fmt.zig");
+const mem = @import("./mem.zig");
 const mach = @import("./mach.zig");
 const debug = @import("./debug.zig");
 const builtin = @import("./builtin.zig");

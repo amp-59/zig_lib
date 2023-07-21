@@ -1348,20 +1348,43 @@ pub const about = opaque {
         debug.write(buf[0 .. len +% 1]);
     }
     fn signalActionError(rt_sigaction_error: anytype, signo: sys.SignalCode, handler: SignalAction.Handler) void {
-        if (return) {}
-        const handler_raw: usize = @as(usize, @bitCast(handler));
-        const handler_addr_s: []const u8 = fmt.old.ux64(handler_raw).readAll();
-        const handler_set_s: []const u8 = if (handler_raw == 1) "ignore" else "default";
-        const handler_s: []const u8 = if (handler_raw > 1) handler_addr_s else handler_set_s;
+        const handler_raw: usize = @bitCast(handler);
+        var ux64: fmt.Type.Ux64 = @bitCast(handler_raw);
         var buf: [560]u8 = undefined;
-        debug.logAlwaysAIO(&buf, &[_][]const u8{ sig_s, debug.about.error_s, @errorName(rt_sigaction_error), ", SIG", @tagName(signo), " -> ", handler_s, "\n" });
+        var len: usize = sig_s.len;
+        @as(fmt.AboutDest, @ptrCast(&buf)).* = sig_s.*;
+        @as(debug.about.ErrorDest, @ptrCast(buf[len..].ptr)).* = debug.about.error_s.*;
+        len +%= debug.about.error_s.len;
+        @memcpy(buf[len..].ptr, @errorName(rt_sigaction_error));
+        len +%= @errorName(rt_sigaction_error).len;
+        @as(*[5]u8, @ptrCast(buf[len..].ptr)).* = ", SIG".*;
+        @memcpy(buf[len..].ptr, @tagName(signo));
+        len +%= @tagName(signo).len;
+        if (handler_raw > 1) {
+            len +%= ux64.formatWriteBuf(buf[len..].ptr);
+        } else {
+            @memcpy(buf[len..].ptr, if (handler_raw == 1) "ignore" else "default");
+            len +%= 8 -% handler_raw;
+        }
+        @as(*[4]u8, @ptrCast(buf[len..].ptr)).* = " -> ".*;
+        len +%= 4;
     }
     fn signalStackError(sigaltstack_error: anytype, new_st: SignalStack) void {
-        if (return) {}
         var buf: [560]u8 = undefined;
-        const new_st_start_s: []const u8 = fmt.old.ux64(new_st.addr).readAll();
-        const new_st_finish_s: []const u8 = fmt.old.ux64(new_st.addr +% new_st.len).readAll();
-        debug.logAlwaysAIO(&buf, &[_][]const u8{ sig_s, debug.about.error_s, @errorName(sigaltstack_error), new_st_start_s, "..", new_st_finish_s, "\n" });
+        var len: usize = sig_s.len;
+        var ux64: fmt.Type.Ux64 = @bitCast(new_st.addr);
+        @as(fmt.AboutDest, @ptrCast(&buf)).* = sig_s.*;
+        @as(debug.about.ErrorDest, @ptrCast(buf[len..].ptr)).* = debug.about.error_s.*;
+        len +%= debug.about.error_s.len;
+        @memcpy(buf[len..].ptr, @errorName(sigaltstack_error));
+        len +%= @errorName(sigaltstack_error).len;
+        len +%= ux64.formatWriteBuf(buf[len..].ptr);
+        @as(*[2]u8, @ptrCast(buf[len..].ptr)).* = "..".*;
+        len +%= 2;
+        ux64 = @bitCast(new_st.addr +% new_st.len);
+        len +%= ux64.formatWriteBuf(buf[len..].ptr);
+        buf[len] = '\n';
+        debug.write(buf[0 .. len +% 1]);
     }
     fn futexWaitError(futex_error: anytype, futex: *u32, value: u32, timeout: *const time.TimeSpec) void {
         @setRuntimeSafety(builtin.is_safe);
@@ -1391,7 +1414,7 @@ pub const about = opaque {
         ud64 = @bitCast(timeout.nsec);
         len +%= ud64.formatWriteBuf(buf[len..].ptr);
         buf[len] = '\n';
-        debug.write(buf[0..len]);
+        debug.write(buf[0 .. len +% 1]);
     }
     fn futexWakeError(futex_error: anytype, futex: *u32, count: u64) void {
         @setRuntimeSafety(builtin.is_safe);
@@ -1415,7 +1438,7 @@ pub const about = opaque {
         ud64 = @bitCast(count);
         len +%= ud64.formatWriteBuf(buf[len..].ptr);
         buf[len] = '\n';
-        debug.write(buf[0..len]);
+        debug.write(buf[0 .. len +% 1]);
     }
     fn futexWakeOpError(futex_error: anytype, futex1: *u32, futex2: *u32, count1: u32, count2: u32, wake_op: FutexOp.WakeOp) void {
         _ = wake_op;
