@@ -936,18 +936,18 @@ pub const about = struct {
     }
     fn writeComparisonFailed(comptime T: type, what: []const u8, symbol: []const u8, buf: [*]u8, arg1: T, arg2: T, help_read: bool) u64 {
         var len: usize = what.len;
-        var ud: fmt.Type.Ud(T) = @bitCast(arg1);
+        var ud: fmt.Type.Xd(T) = .{ .value = arg1 };
         @memcpy(buf, what);
         len +%= ud.formatWriteBuf(buf + len);
         @memcpy(buf + len, symbol);
         len +%= symbol.len;
-        ud = @bitCast(arg2);
+        ud = .{ .value = arg2 };
         len +%= ud.formatWriteBuf(buf + len);
         if (help_read) {
             @as(*[7]u8, @ptrCast(buf + len)).* = ", i.e. ".*;
             len +%= 7;
             if (arg1 > arg2) {
-                ud = @bitCast(arg1 -% arg2);
+                ud = .{ .value = arg1 -% arg2 };
                 len +%= ud.formatWriteBuf(buf + len);
                 @memcpy(buf + len, symbol);
                 len +%= symbol.len;
@@ -958,7 +958,7 @@ pub const about = struct {
                 len +%= 1;
                 @memcpy(buf + len, symbol);
                 len +%= symbol.len;
-                ud = @bitCast(arg2 -% arg1);
+                ud = .{ .value = arg2 -% arg1 };
                 len +%= ud.formatWriteBuf(buf + len);
             }
         }
@@ -967,7 +967,7 @@ pub const about = struct {
     fn writeIntCastTruncatedBits(comptime T: type, comptime U: type, buf: [*]u8, arg1: U) u64 {
         var len: usize = 29;
         @as(*[29]u8, @ptrCast(buf)).* = "integer cast truncated bits: ".*;
-        len +%= fmt.Type.Ud(U).formatWriteBuf(@bitCast(arg1), buf);
+        len +%= fmt.Type.Xd(U).formatWriteBuf(.{ .value = arg1 }, buf);
         @as(*[26]u8, @ptrCast(buf + len)).* = (" greater than " ++ @typeName(T) ++ " maximum (").*;
         len +%= 26;
         len +%= fmt.ud(~@as(T, 0)).formatWriteBuf(buf);
@@ -976,85 +976,85 @@ pub const about = struct {
     }
     fn writeSubCausedOverflow(comptime T: type, what: []const u8, buf: [*]u8, arg1: T, arg2: T, help_read: bool) u64 {
         var len: u64 = what.len;
-        var ud: fmt.Type.Ud(T) = @bitCast(arg1);
+        var ud: fmt.Type.Xd(T) = .{ .value = arg1 };
         @memcpy(buf, what);
         @as(*[19]u8, @ptrCast(buf + len)).* = " integer overflow: ".*;
         len +%= 19;
         len +%= ud.formatWriteBuf(buf + len);
         @as(*[3]u8, @ptrCast(buf + len)).* = " - ".*;
         len +%= 3;
-        ud = @bitCast(arg2);
+        ud = .{ .value = arg2 };
         len +%= ud.formatWriteBuf(buf + len);
         if (help_read) {
             @as(*[11]u8, @ptrCast(buf + len)).* = ", i.e. 0 - ".*;
             len +%= 11;
-            ud = @bitCast(arg2 -% arg1);
+            ud = .{ .value = arg2 -% arg1 };
             len +%= ud.formatWriteBuf(buf + len);
         }
         return len;
     }
     fn writeAddCausedOverflow(comptime T: type, what: []const u8, buf: [*]u8, arg1: T, arg2: T, help_read: bool) u64 {
         var len: u64 = what.len;
-        var ud: fmt.Type.Ud(T) = @bitCast(arg1);
+        var ud: fmt.Type.Xd(T) = .{ .value = arg1 };
         @memcpy(buf, what);
         @as(*[19]u8, @ptrCast(buf + len)).* = " integer overflow: ".*;
         len +%= 19;
         len +%= ud.formatWriteBuf(buf + len);
         @as(*[3]u8, @ptrCast(buf + len)).* = " + ".*;
         len +%= 3;
-        ud = @bitCast(arg2);
+        ud = .{ .value = arg2 };
         len +%= ud.formatWriteBuf(buf + len);
         if (help_read) {
             @as(*[7]u8, @ptrCast(buf + len)).* = ", i.e. ".*;
             len +%= 7;
             const argl: T = ~@as(T, 0);
             const argr: T = (arg2 +% arg1) -% argl;
-            ud = @bitCast(argl);
+            ud = .{ .value = argl };
             len +%= ud.formatWriteBuf(buf + len);
             @as(*[3]u8, @ptrCast(buf + len)).* = " + ".*;
             len +%= 3;
-            ud = @bitCast(argr);
+            ud = .{ .value = argr };
             len +%= ud.formatWriteBuf(buf + len);
         }
         return len;
     }
     fn writeMulCausedOverflow(comptime T: type, what: []const u8, buf: [*]u8, arg1: T, arg2: T) u64 {
         var len: u64 = what.len;
-        var ud: fmt.Type.Ud(T) = @bitCast(arg1);
+        var ud: fmt.Type.Xd(T) = .{ .value = arg1 };
         @memcpy(buf, what);
         @as(*[19]u8, @ptrCast(buf + len)).* = " integer overflow: ".*;
         len +%= 19;
         len +%= ud.formatWriteBuf(buf + len);
         @as(*[3]u8, @ptrCast(buf + len)).* = " * ".*;
         len +%= 3;
-        ud = @bitCast(arg2);
+        ud = .{ .value = arg2 };
         len +%= ud.formatWriteBuf(buf + len);
         return len;
     }
     fn writeExactDivisionWithRemainder(comptime T: type, what: []const u8, buf: [*]u8, arg1: T, arg2: T, result: T, remainder: T) u64 {
         var len: u64 = what.len;
-        var ud: fmt.Type.Ud(T) = @bitCast(arg1);
+        var ud: fmt.Type.Xd(T) = .{ .value = arg1 };
         @memcpy(buf, what);
         @as(*[34]u8, @ptrCast(buf + len)).* = ": exact division had a remainder: ".*;
         len +%= 34;
         len +%= ud.formatWriteBuf(buf + len);
         buf[len] = '/';
         len +%= 1;
-        ud = @bitCast(arg2);
+        ud = .{ .value = arg2 };
         len +%= ud.formatWriteBuf(buf + len);
         @as(*[4]u8, @ptrCast(buf + len)).* = " == ".*;
         len +%= 4;
-        ud = @bitCast(result);
+        ud = .{ .value = result };
         len +%= ud.formatWriteBuf(buf + len);
         buf[len] = 'r';
         len +%= 1;
-        ud = @bitCast(remainder);
+        ud = .{ .value = remainder };
         len +%= ud.formatWriteBuf(buf + len);
         return len;
     }
     fn writeIncorrectAlignment(comptime Pointer: type, what: []const u8, buf: [*]u8, address: usize, alignment: usize, remainder: u64) u64 {
         var len: u64 = what.len;
-        var udsize: fmt.Type.Udsize = @bitCast(alignment);
+        var udsize: fmt.Type.Xd(usize) = .{ .value = alignment };
         @memcpy(buf, what);
         @as(*[34]u8, @ptrCast(buf + len)).* = (": incorrect alignment: " ++ @typeName(Pointer) ++ " align(").*;
         len +%= 34;
