@@ -1,5 +1,6 @@
 const sys = @import("./sys.zig");
 const mach = @import("./mach.zig");
+const proc = @import("./proc.zig");
 const meta = @import("./meta.zig");
 const builtin = @import("./builtin.zig");
 pub const TimeSpec = extern struct {
@@ -152,7 +153,7 @@ pub const DateTime = extern struct {
     }
     pub fn init(epoch_seconds: u64) DateTime {
         if (epoch_seconds < leap_epoch) {
-            builtin.proc.exitGroupFault("TODO: Dates before epoch", 2);
+            proc.exitGroupFault("TODO: Dates before epoch", 2);
         } else {
             const secs: u64 = epoch_seconds - leap_epoch;
             const days: u64 = secs / 86_400;

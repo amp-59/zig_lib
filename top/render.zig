@@ -11,6 +11,7 @@ const tab = @import("./tab.zig");
 const fmt = @import("./fmt.zig");
 const mem = @import("./mem.zig");
 const meta = @import("./meta.zig");
+const debug = @import("./debug.zig");
 const builtin = @import("./builtin.zig");
 pub const RenderSpec = struct {
     radix: u7 = 10,
@@ -119,20 +120,6 @@ pub fn AnyFormat(comptime spec: RenderSpec, comptime Type: type) type {
         else => @compileError(@typeName(Type)),
     }
 }
-pub fn GenericRenderFormat(comptime Format: type) type {
-    comptime {
-        builtin.assertNotEqual(builtin.TypeId, @typeInfo(Format), .Pointer);
-    }
-    const T = struct {
-        fn checkLen(len: u64) u64 {
-            if (@hasDecl(Format, "max_len") and len != Format.max_len) {
-                builtin.debug.logFault("formatter max length exceeded");
-            }
-            return len;
-        }
-    };
-    return T;
-}
 pub fn GenericFormat(comptime spec: RenderSpec) type {
     const T = struct {
         value: meta.Generic,
@@ -206,7 +193,6 @@ pub fn ArrayFormat(comptime spec: RenderSpec, comptime Array: type) type {
             }
             return len;
         }
-        pub usingnamespace GenericRenderFormat(Format);
     };
     return T;
 }
@@ -223,7 +209,6 @@ pub const BoolFormat = struct {
     pub inline fn formatLength(format: Format) u64 {
         return if (format.value) 4 else 5;
     }
-    pub usingnamespace GenericRenderFormat(Format);
 };
 pub fn TypeFormat(comptime spec: RenderSpec) type {
     const T = struct {
@@ -321,9 +306,9 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
             switch (type_info) {
                 .Struct => |struct_info| {
                     if (struct_info.fields.len == 0 and struct_info.decls.len == 0) {
-                        array.writeMany(comptime builtin.fmt.typeDeclSpecifier(type_info) ++ " {}");
+                        array.writeMany(comptime fmt.typeDeclSpecifier(type_info) ++ " {}");
                     } else {
-                        array.writeMany(comptime builtin.fmt.typeDeclSpecifier(type_info) ++ " { ");
+                        array.writeMany(comptime fmt.typeDeclSpecifier(type_info) ++ " { ");
                         inline for (struct_info.fields) |field| {
                             writeStructField(array, field.name, field.type, meta.defaultValue(field));
                         }
@@ -343,9 +328,9 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                 },
                 .Union => |union_info| {
                     if (union_info.fields.len == 0 and union_info.decls.len == 0) {
-                        array.writeMany(comptime builtin.fmt.typeDeclSpecifier(type_info) ++ " {}");
+                        array.writeMany(comptime fmt.typeDeclSpecifier(type_info) ++ " {}");
                     } else {
-                        array.writeMany(comptime builtin.fmt.typeDeclSpecifier(type_info) ++ " { ");
+                        array.writeMany(comptime fmt.typeDeclSpecifier(type_info) ++ " { ");
                         inline for (union_info.fields) |field| {
                             writeUnionField(array, field.name, field.type);
                         }
@@ -365,9 +350,9 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                 },
                 .Enum => |enum_info| {
                     if (enum_info.fields.len == 0 and enum_info.decls.len == 0) {
-                        array.writeMany(comptime builtin.fmt.typeDeclSpecifier(type_info) ++ " {}");
+                        array.writeMany(comptime fmt.typeDeclSpecifier(type_info) ++ " {}");
                     } else {
-                        array.writeMany(comptime builtin.fmt.typeDeclSpecifier(type_info) ++ " { ");
+                        array.writeMany(comptime fmt.typeDeclSpecifier(type_info) ++ " { ");
                         inline for (enum_info.fields) |field| {
                             writeEnumField(array, field.name);
                         }
@@ -396,9 +381,9 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
             switch (type_info) {
                 .Struct => |struct_info| {
                     if (struct_info.fields.len == 0 and struct_info.decls.len == 0) {
-                        len +%= comptime builtin.fmt.typeDeclSpecifier(type_info).len +% 3;
+                        len +%= comptime fmt.typeDeclSpecifier(type_info).len +% 3;
                     } else {
-                        len +%= comptime builtin.fmt.typeDeclSpecifier(type_info).len +% 3;
+                        len +%= comptime fmt.typeDeclSpecifier(type_info).len +% 3;
                         inline for (struct_info.fields) |field| {
                             const field_name_format: fmt.IdentifierFormat = .{ .value = field.name };
                             if (spec.inline_field_types) {
@@ -430,9 +415,9 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                 },
                 .Union => |union_info| {
                     if (union_info.fields.len == 0 and union_info.decls.len == 0) {
-                        len +%= comptime builtin.fmt.typeDeclSpecifier(type_info).len +% 3;
+                        len +%= comptime fmt.typeDeclSpecifier(type_info).len +% 3;
                     } else {
-                        len +%= comptime builtin.fmt.typeDeclSpecifier(type_info).len +% 3;
+                        len +%= comptime fmt.typeDeclSpecifier(type_info).len +% 3;
                         inline for (union_info.fields) |field| {
                             const field_name_format: fmt.IdentifierFormat = .{ .value = field.name };
                             if (field.type == void) {
@@ -464,9 +449,9 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                 },
                 .Enum => |enum_info| {
                     if (enum_info.fields.len == 0 and enum_info.decls.len == 0) {
-                        len +%= comptime builtin.fmt.typeDeclSpecifier(type_info).len +% 3;
+                        len +%= comptime fmt.typeDeclSpecifier(type_info).len +% 3;
                     } else {
-                        len +%= comptime builtin.fmt.typeDeclSpecifier(type_info).len +% 3;
+                        len +%= comptime fmt.typeDeclSpecifier(type_info).len +% 3;
                         inline for (enum_info.fields) |field| {
                             const field_name_format: fmt.IdentifierFormat = .{ .value = field.name };
                             len +%= field_name_format.formatLength() +% 2;
@@ -491,7 +476,6 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
             }
             return len;
         }
-        pub usingnamespace GenericRenderFormat(Format);
     };
     return T;
 }
@@ -618,7 +602,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                     }
                     const field_format: AnyFormat(field_spec, field.type) = .{ .value = field_value };
                     if (spec.omit_default_fields and field.default_value != null) {
-                        if (!builtin.testEqual(field.type, field_value, mem.pointerOpaque(field.type, field.default_value.?).*)) {
+                        if (!mem.testEqual(field.type, field_value, mem.pointerOpaque(field.type, field.default_value.?).*)) {
                             writeFieldInitializer(array, field_name_format, field_format);
                             fields_len +%= 1;
                         }
@@ -686,7 +670,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                 }
                 const field_format: AnyFormat(field_spec, field.type) = .{ .value = field_value };
                 if (spec.omit_default_fields and field.default_value != null) {
-                    if (!builtin.testEqual(field.type, field_value, mem.pointerOpaque(field.type, field.default_value.?).*)) {
+                    if (!mem.testEqual(field.type, field_value, mem.pointerOpaque(field.type, field.default_value.?).*)) {
                         len +%= 1 +% field_name_format.formatLength() +% 3 +% field_format.formatLength() +% 2;
                         fields_len +%= 1;
                     }
@@ -698,7 +682,6 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
             len +%= formatLengthOmitTrailingComma(omit_trailing_comma, fields_len);
             return len;
         }
-        pub usingnamespace GenericRenderFormat(Format);
     };
     return T;
 }
@@ -924,7 +907,6 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
             }
             return len;
         }
-        pub usingnamespace GenericRenderFormat(Format);
     };
     return T;
 }
@@ -949,7 +931,6 @@ pub fn EnumFormat(comptime spec: RenderSpec, comptime Enum: type) type {
             const tag_name_format: fmt.IdentifierFormat = .{ .value = @tagName(format.value) };
             return 1 +% tag_name_format.formatLength();
         }
-        pub usingnamespace GenericRenderFormat(Format);
     };
     return T;
 }
@@ -966,18 +947,16 @@ pub const EnumLiteralFormat = struct {
         const tag_name_format: fmt.IdentifierFormat = .{ .value = @tagName(format.value) };
         return 1 +% tag_name_format.formatLength();
     }
-    pub usingnamespace GenericRenderFormat(Format);
 };
 pub const ComptimeIntFormat = struct {
     value: comptime_int,
     const Format = @This();
     pub fn formatWrite(comptime format: Format, array: anytype) void {
-        array.writeMany(builtin.fmt.ci(format.value));
+        array.writeMany(fmt.ci(format.value));
     }
     pub fn formatLength(comptime format: Format) u64 {
-        return builtin.fmt.ci(format.value).len;
+        return fmt.ci(format.value).len;
     }
-    pub usingnamespace GenericRenderFormat(Format);
 };
 pub fn IntFormat(comptime spec: RenderSpec, comptime Int: type) type {
     const T = struct {
@@ -987,7 +966,7 @@ pub fn IntFormat(comptime spec: RenderSpec, comptime Int: type) type {
         const type_info: builtin.Type = @typeInfo(Int);
         const max_abs_value: Abs = ~@as(Abs, 0);
         const radix: Abs = @min(max_abs_value, spec.radix);
-        const max_digits_count: u16 = builtin.fmt.length(Abs, max_abs_value, radix);
+        const max_digits_count: u16 = fmt.length(Abs, max_abs_value, radix);
         const prefix: []const u8 = tab.int_prefixes[radix];
         const max_len: u64 = blk: {
             var len: u64 = max_digits_count;
@@ -1021,13 +1000,13 @@ pub fn IntFormat(comptime spec: RenderSpec, comptime Int: type) type {
                     @intFromBool(format.value != 0);
                 next += 1;
             } else {
-                const count: u64 = builtin.fmt.length(Abs, absolute, radix);
+                const count: u64 = fmt.length(Abs, absolute, radix);
                 next += count;
                 var len: u64 = 0;
                 while (len != count) : (value /= radix) {
                     len +%= 1;
                     @as(*u8, @ptrFromInt(next -% len)).* =
-                        builtin.fmt.toSymbol(Abs, value, radix);
+                        fmt.toSymbol(Abs, value, radix);
                 }
             }
             array.define(next -% start);
@@ -1041,9 +1020,8 @@ pub fn IntFormat(comptime spec: RenderSpec, comptime Int: type) type {
                 1 +% ~@as(Abs, @bitCast(format.value))
             else
                 @as(Abs, @bitCast(format.value));
-            return len +% builtin.fmt.length(Abs, absolute, radix);
+            return len +% fmt.length(Abs, absolute, radix);
         }
-        pub usingnamespace GenericRenderFormat(Format);
     };
     return T;
 }
@@ -1130,7 +1108,6 @@ pub fn PointerOneFormat(comptime spec: RenderSpec, comptime Pointer: type) type 
             }
             return len;
         }
-        pub usingnamespace GenericRenderFormat(Format);
     };
     return T;
 }
@@ -1298,7 +1275,6 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
             }
             return formatLengthAny(format);
         }
-        pub usingnamespace GenericRenderFormat(Format);
     };
     return T;
 }
@@ -1330,7 +1306,6 @@ pub fn PointerManyFormat(comptime spec: RenderSpec, comptime Pointer: type) type
                 return slice_fmt.formatLength();
             }
         }
-        pub usingnamespace GenericRenderFormat(Format);
     };
     return T;
 }
@@ -1375,7 +1350,6 @@ pub fn OptionalFormat(comptime spec: RenderSpec, comptime Optional: type) type {
             }
             return len;
         }
-        pub usingnamespace GenericRenderFormat(Format);
     };
     return T;
 }
@@ -1391,7 +1365,6 @@ pub const NullFormat = struct {
     pub fn formatLength() u64 {
         return 4;
     }
-    pub usingnamespace GenericRenderFormat(Format);
 };
 pub const VoidFormat = struct {
     comptime value: void = {},
@@ -1405,7 +1378,6 @@ pub const VoidFormat = struct {
     pub fn formatLength() u64 {
         return 2;
     }
-    pub usingnamespace GenericRenderFormat(Format);
 };
 pub const NoReturnFormat = struct {
     comptime value: void = {},
@@ -1419,7 +1391,6 @@ pub const NoReturnFormat = struct {
     pub fn formatLength() u64 {
         return 8;
     }
-    pub usingnamespace GenericRenderFormat(Format);
 };
 pub fn VectorFormat(comptime spec: RenderSpec, comptime Vector: type) type {
     const T = struct {
@@ -1456,7 +1427,6 @@ pub fn VectorFormat(comptime spec: RenderSpec, comptime Vector: type) type {
             }
             return len;
         }
-        pub usingnamespace GenericRenderFormat(Format);
     };
     return T;
 }
@@ -1486,7 +1456,6 @@ pub fn ErrorUnionFormat(comptime spec: RenderSpec, comptime ErrorUnion: type) ty
             }
             return len;
         }
-        pub usingnamespace GenericRenderFormat(Format);
     };
     return T;
 }
@@ -1501,7 +1470,6 @@ pub fn ErrorSetFormat(comptime ErrorSet: type) type {
         pub fn formatLength(format: Format) u64 {
             return 6 +% @errorName(format.value).len;
         }
-        pub usingnamespace GenericRenderFormat(Format);
     };
     return T;
 }
@@ -1826,27 +1794,20 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
             type_descr: *const TypeDescrFormat,
             comptime cast_spec: TypeDescrFormatSpec,
         ) GenericTypeDescrFormat(cast_spec) {
-            builtin.assert(
+            debug.assert(
                 cast_spec.options.default_field_values ==
                     spec.options.default_field_values,
             );
             return @as(*const GenericTypeDescrFormat(cast_spec), @ptrCast(type_descr)).*;
         }
-        inline fn defaultFieldValue(
-            comptime field_type: type,
-            comptime default_value_opt: ?*const anyopaque,
-        ) ?spec.options.token {
+        inline fn defaultFieldValue(comptime default_value_opt: ?*const anyopaque) ?spec.options.token {
             if (default_value_opt) |default_value_ptr| {
-                const default_value = mem.pointerOpaque(field_type, default_value_ptr).*;
-                return builtin.fmt.cx(default_value);
+                return fmt.cx(default_value_ptr);
             } else {
                 return null;
             }
         }
-        inline fn defaultDeclareCriteria(
-            comptime T: type,
-            comptime decl: builtin.Type.Declaration,
-        ) ?type {
+        inline fn defaultDeclareCriteria(comptime T: type, comptime decl: builtin.Type.Declaration) ?type {
             if (decl.is_pub) {
                 const u = @field(T, decl.name);
                 const U = @TypeOf(u);
@@ -1889,11 +1850,11 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                                 type_fields = type_fields ++ [1]Field{.{
                                     .name = field.name,
                                     .type = init(field.type),
-                                    .default_value = defaultFieldValue(field.type, field.default_value),
+                                    .default_value = defaultFieldValue(field.default_value),
                                 }};
                             }
                             return .{ .type_decl = .{ .Composition = .{
-                                .spec = builtin.fmt.typeDeclSpecifier(type_info),
+                                .spec = fmt.typeDeclSpecifier(type_info),
                                 .fields = type_fields,
                                 .decls = type_decls,
                             } } };
@@ -1903,11 +1864,11 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                                 type_fields = type_fields ++ [1]Field{.{
                                     .name = field.name,
                                     .type = init(field.type),
-                                    .default_value = defaultFieldValue(field.type, field.default_value),
+                                    .default_value = defaultFieldValue(field.default_value),
                                 }};
                             }
                             return .{ .type_decl = .{ .Composition = .{
-                                .spec = builtin.fmt.typeDeclSpecifier(type_info),
+                                .spec = fmt.typeDeclSpecifier(type_info),
                                 .fields = type_fields,
                             } } };
                         }
@@ -1931,7 +1892,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                                 }};
                             }
                             return .{ .type_decl = .{ .Composition = .{
-                                .spec = builtin.fmt.typeDeclSpecifier(type_info),
+                                .spec = fmt.typeDeclSpecifier(type_info),
                                 .fields = type_fields,
                                 .decls = type_decls,
                             } } };
@@ -1944,7 +1905,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                                 }};
                             }
                             return .{ .type_decl = .{ .Composition = .{
-                                .spec = builtin.fmt.typeDeclSpecifier(type_info),
+                                .spec = fmt.typeDeclSpecifier(type_info),
                                 .fields = type_fields,
                             } } };
                         }
@@ -1968,7 +1929,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                                 }};
                             }
                             return .{ .type_decl = .{ .Enumeration = .{
-                                .spec = builtin.fmt.typeDeclSpecifier(type_info),
+                                .spec = fmt.typeDeclSpecifier(type_info),
                                 .fields = type_fields,
                                 .decls = type_decls,
                             } } };
@@ -1981,20 +1942,20 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                                 }};
                             }
                             return .{ .type_decl = .{ .Enumeration = .{
-                                .spec = builtin.fmt.typeDeclSpecifier(type_info),
+                                .spec = fmt.typeDeclSpecifier(type_info),
                                 .fields = type_fields,
                             } } };
                         }
                     },
                     .Optional => |optional_info| {
                         return .{ .type_refer = .{
-                            .spec = builtin.fmt.typeDeclSpecifier(type_info),
+                            .spec = fmt.typeDeclSpecifier(type_info),
                             .type = &init(optional_info.child),
                         } };
                     },
                     .Pointer => |pointer_info| {
                         return .{ .type_refer = .{
-                            .spec = builtin.fmt.typeDeclSpecifier(type_info),
+                            .spec = fmt.typeDeclSpecifier(type_info),
                             .type = &init(pointer_info.child),
                         } };
                     },
@@ -2027,11 +1988,11 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                                 type_fields = type_fields ++ [1]Field{.{
                                     .name = field.name,
                                     .type = init(field.type),
-                                    .default_value = defaultFieldValue(field.type, field.default_value),
+                                    .default_value = defaultFieldValue(field.default_value),
                                 }};
                             }
                             return .{ .type_decl = .{ .Composition = .{
-                                .spec = builtin.fmt.typeDeclSpecifier(type_info),
+                                .spec = fmt.typeDeclSpecifier(type_info),
                                 .fields = type_fields,
                                 .decls = type_decls,
                             } } };
@@ -2041,11 +2002,11 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                                 type_fields = type_fields ++ [1]Field{.{
                                     .name = field.name,
                                     .type = init(field.type),
-                                    .default_value = defaultFieldValue(field.type, field.default_value),
+                                    .default_value = defaultFieldValue(field.default_value),
                                 }};
                             }
                             return .{ .type_decl = .{ .Composition = .{
-                                .spec = builtin.fmt.typeDeclSpecifier(type_info),
+                                .spec = fmt.typeDeclSpecifier(type_info),
                                 .fields = type_fields,
                             } } };
                         }
@@ -2069,7 +2030,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                                 }};
                             }
                             return .{ .type_decl = .{ .Composition = .{
-                                .spec = builtin.fmt.typeDeclSpecifier(type_info),
+                                .spec = fmt.typeDeclSpecifier(type_info),
                                 .fields = type_fields,
                                 .decls = type_decls,
                             } } };
@@ -2082,7 +2043,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                                 }};
                             }
                             return .{ .type_decl = .{ .Composition = .{
-                                .spec = builtin.fmt.typeDeclSpecifier(type_info),
+                                .spec = fmt.typeDeclSpecifier(type_info),
                                 .fields = type_fields,
                             } } };
                         }
@@ -2106,7 +2067,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                                 }};
                             }
                             return .{ .type_decl = .{ .Enumeration = .{
-                                .spec = builtin.fmt.typeDeclSpecifier(type_info),
+                                .spec = fmt.typeDeclSpecifier(type_info),
                                 .fields = type_fields,
                                 .decls = type_decls,
                             } } };
@@ -2119,20 +2080,20 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                                 }};
                             }
                             return .{ .type_decl = .{ .Enumeration = .{
-                                .spec = builtin.fmt.typeDeclSpecifier(type_info),
+                                .spec = fmt.typeDeclSpecifier(type_info),
                                 .fields = type_fields,
                             } } };
                         }
                     },
                     .Optional => |optional_info| {
                         return .{ .type_refer = .{
-                            .spec = builtin.fmt.typeDeclSpecifier(type_info),
+                            .spec = fmt.typeDeclSpecifier(type_info),
                             .type = &init(optional_info.child),
                         } };
                     },
                     .Pointer => |pointer_info| {
                         return .{ .type_refer = .{
-                            .spec = builtin.fmt.typeDeclSpecifier(type_info),
+                            .spec = fmt.typeDeclSpecifier(type_info),
                             .type = &init(pointer_info.child),
                         } };
                     },

@@ -1,6 +1,8 @@
 const sys = @import("./sys.zig");
+const fmt = @import("./fmt.zig");
 const meta = @import("./meta.zig");
 const mach = @import("./mach.zig");
+const debug = @import("./debug.zig");
 const builtin = @import("./builtin.zig");
 const word_bit_size: u8 = @bitSizeOf(u64);
 pub const ResourceError = error{ UnderSupply, OverSupply };
@@ -342,10 +344,10 @@ pub const Arena = extern struct {
     options: ArenaOptions = .{},
 };
 pub const AddressSpaceLogging = packed struct {
-    acquire: builtin.Logging.AcquireErrorFault = .{},
-    release: builtin.Logging.ReleaseErrorFault = .{},
-    map: builtin.Logging.AcquireError = .{},
-    unmap: builtin.Logging.ReleaseError = .{},
+    acquire: debug.Logging.AcquireErrorFault = .{},
+    release: debug.Logging.ReleaseErrorFault = .{},
+    map: debug.Logging.AcquireError = .{},
+    unmap: debug.Logging.ReleaseError = .{},
 };
 pub const AddressSpaceErrors = struct {
     acquire: ResourceErrorPolicy = .{ .throw = error.UnderSupply },
@@ -376,7 +378,7 @@ pub const DiscreteMultiArena = struct {
         };
     }
     pub fn Implementation(comptime multi_arena: MultiArena) type {
-        builtin.assertNotEqual(u64, multi_arena.list.len, 0);
+        debug.assertNotEqual(u64, multi_arena.list.len, 0);
         var directory: Directory(multi_arena) = undefined;
         var fields: []const builtin.Type.StructField = meta.empty;
         var thread_safe_state: bool = multi_arena.list[0].options.thread_safe;
@@ -384,12 +386,12 @@ pub const DiscreteMultiArena = struct {
         for (multi_arena.list, 0..) |super_arena, index| {
             if (thread_safe_state and !super_arena.options.thread_safe) {
                 const T: type = ThreadSafeSet(arena_index +% 1, multi_arena.val_type, multi_arena.idx_type);
-                fields = fields ++ [1]builtin.Type.StructField{meta.structField(T, builtin.fmt.ci(fields.len), .{})};
+                fields = fields ++ [1]builtin.Type.StructField{meta.structField(T, fmt.ci(fields.len), .{})};
                 directory[index] = .{ .arena_index = 0, .field_index = fields.len };
                 arena_index = 1;
             } else if (!thread_safe_state and super_arena.options.thread_safe) {
                 const T: type = DiscreteBitSet(arena_index +% 1, multi_arena.val_type, multi_arena.idx_type);
-                fields = fields ++ [1]builtin.Type.StructField{meta.structField(T, builtin.fmt.ci(fields.len), .{})};
+                fields = fields ++ [1]builtin.Type.StructField{meta.structField(T, fmt.ci(fields.len), .{})};
                 directory[index] = .{ .arena_index = 0, .field_index = fields.len };
                 arena_index = 1;
             } else {
@@ -400,7 +402,7 @@ pub const DiscreteMultiArena = struct {
         }
         const GenericSet = if (thread_safe_state) ThreadSafeSet else DiscreteBitSet;
         const T: type = GenericSet(arena_index +% 1, multi_arena.val_type, multi_arena.idx_type);
-        fields = fields ++ [1]builtin.Type.StructField{meta.structField(T, builtin.fmt.ci(fields.len), .{})};
+        fields = fields ++ [1]builtin.Type.StructField{meta.structField(T, fmt.ci(fields.len), .{})};
         if (fields.len == 1) {
             return fields[0].type;
         }
@@ -1002,15 +1004,15 @@ fn GenericAddressSpace(comptime AddressSpace: type) type {
         pub fn SubSpace(comptime label_or_index: anytype) type {
             return GenericSubSpace(AddressSpace.addr_spec.subspace.?, label_or_index);
         }
-        const debug = struct {
-            const about_set_0_s: []const u8 = builtin.fmt.about("set");
-            const about_set_1_s: []const u8 = builtin.fmt.about("unset");
+        const about = struct {
+            const about_set_s: []const u8 = fmt.old.about("set");
+            const about_set_1_s: []const u8 = fmt.old.about("unset");
             fn formatWriteRegular(address_space: AddressSpace, array: anytype) void {
                 var arena_index: AddressSpace.Index = 0;
-                array.writeMany(about_set_0_s);
+                array.writeMany(about_set_s);
                 while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index +%= 1) {
                     if (!address_space.impl.get(arena_index)) {
-                        array.writeMany(builtin.fmt.dec(AddressSpace.Index, arena_index).readAll());
+                        array.writeMany(fmt.old.dec(AddressSpace.Index, arena_index).readAll());
                         array.writeCount(2, ", ".*);
                     }
                 }
@@ -1018,7 +1020,7 @@ fn GenericAddressSpace(comptime AddressSpace: type) type {
                 array.writeMany(about_set_1_s);
                 while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index +%= 1) {
                     if (address_space.impl.get(arena_index)) {
-                        array.writeMany(builtin.fmt.dec(AddressSpace.Index, arena_index).readAll());
+                        array.writeMany(fmt.old.dec(AddressSpace.Index, arena_index).readAll());
                         array.writeCount(2, ", ".*);
                     }
                 }
@@ -1026,10 +1028,10 @@ fn GenericAddressSpace(comptime AddressSpace: type) type {
             fn formatLengthRegular(address_space: AddressSpace) u64 {
                 var len: u64 = 0;
                 var arena_index: AddressSpace.Index = 0;
-                len +%= about_set_0_s.len;
+                len +%= about_set_s.len;
                 while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index +%= 1) {
                     if (!address_space.impl.get(arena_index)) {
-                        len +%= builtin.fmt.length(AddressSpace.Index, arena_index, 10);
+                        len +%= fmt.old.length(AddressSpace.Index, arena_index, 10);
                         len +%= 2;
                     }
                 }
@@ -1037,7 +1039,7 @@ fn GenericAddressSpace(comptime AddressSpace: type) type {
                 len +%= about_set_1_s.len;
                 while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index +%= 1) {
                     if (address_space.impl.get(arena_index)) {
-                        len +%= builtin.fmt.length(AddressSpace.Index, arena_index, 10);
+                        len +%= fmt.old.length(AddressSpace.Index, arena_index, 10);
                         len +%= 2;
                     }
                 }
@@ -1045,10 +1047,10 @@ fn GenericAddressSpace(comptime AddressSpace: type) type {
             }
             fn formatWriteDiscrete(address_space: AddressSpace, array: anytype) void {
                 comptime var arena_index: AddressSpace.Index = 0;
-                array.writeMany(about_set_0_s);
+                array.writeMany(about_set_s);
                 inline while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index +%= 1) {
                     if (!address_space.impl.get(arena_index)) {
-                        array.writeMany(builtin.fmt.dec(AddressSpace.Index, arena_index).readAll());
+                        array.writeMany(fmt.old.dec(AddressSpace.Index, arena_index).readAll());
                         array.writeCount(2, ", ".*);
                     }
                 }
@@ -1056,7 +1058,7 @@ fn GenericAddressSpace(comptime AddressSpace: type) type {
                 array.writeMany(about_set_1_s);
                 inline while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index +%= 1) {
                     if (address_space.impl.get(arena_index)) {
-                        array.writeMany(builtin.fmt.dec(AddressSpace.Index, arena_index).readAll());
+                        array.writeMany(fmt.old.dec(AddressSpace.Index, arena_index).readAll());
                         array.writeCount(2, ", ".*);
                     }
                 }
@@ -1064,10 +1066,10 @@ fn GenericAddressSpace(comptime AddressSpace: type) type {
             fn formatLengthDiscrete(address_space: AddressSpace) u64 {
                 var len: u64 = 0;
                 comptime var arena_index: AddressSpace.Index = 0;
-                len +%= about_set_0_s.len;
+                len +%= about_set_s.len;
                 inline while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index +%= 1) {
                     if (address_space.impl.get(AddressSpace.Index, arena_index)) {
-                        len +%= builtin.fmt.length(AddressSpace.Index, arena_index, 10);
+                        len +%= fmt.old.length(AddressSpace.Index, arena_index, 10);
                         len +%= 2;
                     }
                 }
@@ -1075,7 +1077,7 @@ fn GenericAddressSpace(comptime AddressSpace: type) type {
                 len +%= about_set_1_s.len;
                 inline while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index +%= 1) {
                     if (!address_space.impl.get(AddressSpace.Index, arena_index)) {
-                        len +%= builtin.fmt.length(AddressSpace.Index, arena_index, 10);
+                        len +%= fmt.old.length(AddressSpace.Index, arena_index, 10);
                         len +%= 2;
                     }
                 }

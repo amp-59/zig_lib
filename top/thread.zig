@@ -3,6 +3,7 @@ const sys = @import("./sys.zig");
 const proc = @import("./proc.zig");
 const mach = @import("./mach.zig");
 const meta = @import("./meta.zig");
+const debug = @import("./debug.zig");
 const builtin = @import("./builtin.zig");
 const AddressSpace = builtin.VirtualAddressSpace();
 pub fn map(comptime spec: MapSpec, arena_index: u8) sys.ErrorUnion(spec.errors, u64) {
@@ -11,7 +12,7 @@ pub fn map(comptime spec: MapSpec, arena_index: u8) sys.ErrorUnion(spec.errors, 
     const st_addr: u64 = up_addr - s_bytes;
     const mmap_prot: mem.Prot = spec.prot();
     const mmap_flags: mem.Map = spec.flags();
-    const logging: builtin.Logging.AcquireErrorFault = comptime spec.logging.override();
+    const logging: debug.Logging.AcquireErrorFault = comptime spec.logging.override();
     if (meta.wrap(sys.call(.mmap, spec.errors, void, .{ st_addr, s_bytes, mmap_prot.val, mmap_flags.val, ~@as(u64, 0), 0 }))) {
         if (logging.Acquire) {
             mem.debug.mapNotice(st_addr, s_bytes);
@@ -28,7 +29,7 @@ pub fn unmap(comptime spec: mem.UnmapSpec, arena_index: u8) sys.ErrorUnion(spec.
     const up_addr = AddressSpace.high(arena_index);
     const st_addr = mach.alignA64(up_addr - 8192, 4096);
     const len: u64 = up_addr - st_addr;
-    const logging: builtin.Logging.ReleaseError = comptime spec.logging.override();
+    const logging: debug.Logging.ReleaseError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.munmap, spec.errors, spec.return_type, .{ st_addr, up_addr - st_addr }))) {
         if (logging.Release) {
             mem.debug.unmapNotice(st_addr, len);
@@ -43,7 +44,7 @@ pub fn unmap(comptime spec: mem.UnmapSpec, arena_index: u8) sys.ErrorUnion(spec.
 pub const MapSpec = struct {
     options: Options,
     errors: sys.ErrorPolicy = .{ .throw = sys.mmap_errors },
-    logging: builtin.Logging.AcquireErrorFault = .{},
+    logging: debug.Logging.AcquireErrorFault = .{},
     const Specification = @This();
     const Visibility = enum { shared, shared_validate, private };
     const Options = struct {
@@ -71,11 +72,11 @@ pub const MapSpec = struct {
             flags_bitfield.set(.stack);
         }
         if (spec.options.populate) {
-            builtin.assert(spec.options.visibility == .private);
+            debug.assert(spec.options.visibility == .private);
             flags_bitfield.set(.populate);
         }
         if (spec.options.sync) {
-            builtin.assert(spec.options.visibility == .shared_validate);
+            debug.assert(spec.options.visibility == .shared_validate);
             flags_bitfield.set(.sync);
         }
         return flags_bitfield;

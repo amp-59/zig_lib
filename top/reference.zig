@@ -1,5 +1,6 @@
 const mach = @import("./mach.zig");
 const algo = @import("./algo.zig");
+const debug = @import("./debug.zig");
 const builtin = @import("./builtin.zig");
 fn automatic_storage_address(impl: anytype) u64 {
     return @intFromPtr(impl) + @offsetOf(@TypeOf(impl.*), "auto");
@@ -208,7 +209,7 @@ pub const Specification0 = struct {
                 @compileError("no specification matching mode '" ++ @tagName(invalid) ++ "'");
             },
         }
-        builtin.assert(@typeInfo(@TypeOf(techs)) == .Struct);
+        debug.assert(@typeInfo(@TypeOf(techs)) == .Struct);
         return null;
     }
     pub const implementations = .{
@@ -1086,7 +1087,7 @@ pub const Specification1 = struct {
                 @compileError("no specification matching mode '" ++ @tagName(invalid) ++ "'");
             },
         }
-        builtin.assert(@typeInfo(@TypeOf(techs)) == .Struct);
+        debug.assert(@typeInfo(@TypeOf(techs)) == .Struct);
         return null;
     }
     pub const implementations = .{
@@ -2012,7 +2013,7 @@ pub const Specification2 = struct {
                 @compileError("no specification matching mode '" ++ @tagName(invalid) ++ "'");
             },
         }
-        builtin.assert(@typeInfo(@TypeOf(techs)) == .Struct);
+        debug.assert(@typeInfo(@TypeOf(techs)) == .Struct);
         return null;
     }
     pub const implementations = .{
@@ -2694,7 +2695,7 @@ pub const Specification3 = struct {
                 @compileError("no specification matching mode '" ++ @tagName(invalid) ++ "'");
             },
         }
-        builtin.assert(@typeInfo(@TypeOf(techs)) == .Struct);
+        debug.assert(@typeInfo(@TypeOf(techs)) == .Struct);
         return null;
     }
     pub const implementations = .{
@@ -3412,7 +3413,7 @@ pub const Specification4 = struct {
                 @compileError("no specification matching mode '" ++ @tagName(invalid) ++ "'");
             },
         }
-        builtin.assert(@typeInfo(@TypeOf(techs)) == .Struct);
+        debug.assert(@typeInfo(@TypeOf(techs)) == .Struct);
         return null;
     }
     pub const implementations = .{
@@ -4080,7 +4081,7 @@ pub const Specification5 = struct {
                 @compileError("no specification matching mode '" ++ @tagName(invalid) ++ "'");
             },
         }
-        builtin.assert(@typeInfo(@TypeOf(techs)) == .Struct);
+        debug.assert(@typeInfo(@TypeOf(techs)) == .Struct);
         return null;
     }
     pub const implementations = .{
@@ -4760,7 +4761,7 @@ pub const Specification6 = struct {
                 @compileError("no specification matching mode '" ++ @tagName(invalid) ++ "'");
             },
         }
-        builtin.assert(@typeInfo(@TypeOf(techs)) == .Struct);
+        debug.assert(@typeInfo(@TypeOf(techs)) == .Struct);
         return null;
     }
     pub const implementations = .{
@@ -5760,7 +5761,7 @@ pub const Specification7 = struct {
                 @compileError("no specification matching mode '" ++ @tagName(invalid) ++ "'");
             },
         }
-        builtin.assert(@typeInfo(@TypeOf(techs)) == .Struct);
+        debug.assert(@typeInfo(@TypeOf(techs)) == .Struct);
         return null;
     }
     pub const implementations = .{
@@ -6784,7 +6785,7 @@ pub const Specification8 = struct {
                 @compileError("no specification matching mode '" ++ @tagName(invalid) ++ "'");
             },
         }
-        builtin.assert(@typeInfo(@TypeOf(techs)) == .Struct);
+        debug.assert(@typeInfo(@TypeOf(techs)) == .Struct);
         return null;
     }
     pub const implementations = .{
@@ -7785,7 +7786,7 @@ pub const Specification9 = struct {
                 @compileError("no specification matching mode '" ++ @tagName(invalid) ++ "'");
             },
         }
-        builtin.assert(@typeInfo(@TypeOf(techs)) == .Struct);
+        debug.assert(@typeInfo(@TypeOf(techs)) == .Struct);
         return null;
     }
     pub const implementations = .{
@@ -8808,7 +8809,7 @@ pub const Specification10 = struct {
                 @compileError("no specification matching mode '" ++ @tagName(invalid) ++ "'");
             },
         }
-        builtin.assert(@typeInfo(@TypeOf(techs)) == .Struct);
+        debug.assert(@typeInfo(@TypeOf(techs)) == .Struct);
         return null;
     }
     pub const implementations = .{
@@ -9796,7 +9797,7 @@ pub const Specification11 = struct {
                 @compileError("no specification matching mode '" ++ @tagName(invalid) ++ "'");
             },
         }
-        builtin.assert(@typeInfo(@TypeOf(techs)) == .Struct);
+        debug.assert(@typeInfo(@TypeOf(techs)) == .Struct);
         return null;
     }
     pub const implementations = .{
@@ -10754,7 +10755,7 @@ pub const Specification12 = struct {
                 @compileError("no specification matching mode '" ++ @tagName(invalid) ++ "'");
             },
         }
-        builtin.assert(@typeInfo(@TypeOf(techs)) == .Struct);
+        debug.assert(@typeInfo(@TypeOf(techs)) == .Struct);
         return null;
     }
     pub const implementations = .{
@@ -11111,7 +11112,7 @@ pub const Specification13 = struct {
                 @compileError("no specification matching mode '" ++ @tagName(invalid) ++ "'");
             },
         }
-        builtin.assert(@typeInfo(@TypeOf(techs)) == .Struct);
+        debug.assert(@typeInfo(@TypeOf(techs)) == .Struct);
         return null;
     }
     pub const implementations = .{
@@ -11487,7 +11488,7 @@ pub const Specification14 = struct {
                 @compileError("no specification matching mode '" ++ @tagName(invalid) ++ "'");
             },
         }
-        builtin.assert(@typeInfo(@TypeOf(techs)) == .Struct);
+        debug.assert(@typeInfo(@TypeOf(techs)) == .Struct);
         return null;
     }
     pub const implementations = .{

@@ -5,6 +5,7 @@ const file = @import("./file.zig");
 const meta = @import("./meta.zig");
 const mach = @import("./mach.zig");
 const spec = @import("./spec.zig");
+const debug = @import("./debug.zig");
 const builtin = @import("./builtin.zig");
 const testing = @import("./testing.zig");
 pub fn length(comptime T: type, any: anytype) u64 {
@@ -283,12 +284,12 @@ pub const SerialSpec = struct {
     errors: Errors = .{},
     logging: Logging = .{},
     pub const Logging = struct {
-        create: builtin.Logging.AcquireError = .{},
-        open: builtin.Logging.AcquireError = .{},
-        read: builtin.Logging.SuccessError = .{},
-        write: builtin.Logging.SuccessError = .{},
-        close: builtin.Logging.ReleaseError = .{},
-        stat: builtin.Logging.SuccessErrorFault = .{},
+        create: debug.Logging.AcquireError = .{},
+        open: debug.Logging.AcquireError = .{},
+        read: debug.Logging.SuccessError = .{},
+        write: debug.Logging.SuccessError = .{},
+        close: debug.Logging.ReleaseError = .{},
+        stat: debug.Logging.SuccessErrorFault = .{},
     };
     pub const Errors = struct {
         create: sys.ErrorPolicy = .{ .throw = sys.open_errors },

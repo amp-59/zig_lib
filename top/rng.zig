@@ -1,5 +1,6 @@
 const mem = @import("./mem.zig");
 const math = @import("./math.zig");
+const debug = @import("./debug.zig");
 const builtin = @import("./builtin.zig");
 
 pub const Xoroshiro128 = struct {
@@ -83,9 +84,9 @@ pub const Random = struct {
     fillFn: *const fn (ptr: *anyopaque, buf: []u8) void,
     pub fn init(pointer: anytype, comptime fillFn: fn (ptr: @TypeOf(pointer), buf: []u8) void) Random {
         const Ptr = @TypeOf(pointer);
-        builtin.assert(@typeInfo(Ptr) == .Pointer);
-        builtin.assert(@typeInfo(Ptr).Pointer.size == .One);
-        builtin.assert(@typeInfo(@typeInfo(Ptr).Pointer.child) == .Struct);
+        debug.assert(@typeInfo(Ptr) == .Pointer);
+        debug.assert(@typeInfo(Ptr).Pointer.size == .One);
+        debug.assert(@typeInfo(@typeInfo(Ptr).Pointer.child) == .Struct);
         const gen = struct {
             fn fill(ptr: *anyopaque, buf: []u8) void {
                 const alignment: usize = @typeInfo(Ptr).Pointer.alignment;
@@ -115,10 +116,10 @@ pub const Random = struct {
         return @as(T, @bitCast(unsigned_result));
     }
     pub fn uintLessThan(r: Random, comptime T: type, less_than: T) T {
-        comptime builtin.assert(@typeInfo(T).Int.signedness == .unsigned);
+        comptime debug.assert(@typeInfo(T).Int.signedness == .unsigned);
         const bits = @typeInfo(T).Int.bits;
-        comptime builtin.assert(bits <= 64);
-        builtin.assert(0 < less_than);
+        comptime debug.assert(bits <= 64);
+        debug.assert(0 < less_than);
         const small_bits = @divTrunc(bits + 31, 32) * 32;
         const Small = @Type(.{ .Int = .{ .signedness = .unsigned, .bits = small_bits } });
         const Large = @Type(.{ .Int = .{ .signedness = .unsigned, .bits = small_bits * 2 } });
@@ -142,7 +143,7 @@ pub const Random = struct {
         return @as(T, @intCast(m >> small_bits));
     }
     pub fn uintAtMostBiased(r: Random, comptime T: type, at_most: T) T {
-        builtin.assert(@typeInfo(T).Int.signedness == .unsigned);
+        debug.assert(@typeInfo(T).Int.signedness == .unsigned);
         if (at_most == ~@as(T, 0)) {
             // have the full range
             return r.int(T);
@@ -150,7 +151,7 @@ pub const Random = struct {
         return r.uintLessThanBiased(T, at_most + 1);
     }
     pub fn uintAtMost(r: Random, comptime T: type, at_most: T) T {
-        builtin.assert(@typeInfo(T).Int.signedness == .unsigned);
+        debug.assert(@typeInfo(T).Int.signedness == .unsigned);
         if (at_most == ~@as(T, 0)) {
             // have the full range
             var buf: [@sizeOf(T)]u8 align(@alignOf(T)) = undefined;
@@ -160,7 +161,7 @@ pub const Random = struct {
         return r.uintLessThan(T, at_most + 1);
     }
     pub fn intRangeLessThanBiased(r: Random, comptime T: type, at_least: T, less_than: T) T {
-        builtin.assert(at_least < less_than);
+        debug.assert(at_least < less_than);
         const info = @typeInfo(T).Int;
         if (info.signedness == .signed) {
             const UnsignedT = @Type(.{ .Int = .{ .signedness = .unsigned, .bits = info.bits } });
@@ -173,7 +174,7 @@ pub const Random = struct {
         }
     }
     pub fn intRangeLessThan(r: Random, comptime T: type, at_least: T, less_than: T) T {
-        builtin.assert(at_least < less_than);
+        debug.assert(at_least < less_than);
         const info = @typeInfo(T).Int;
         if (info.signedness == .signed) {
             const UnsignedT = @Type(.{ .Int = .{ .signedness = .unsigned, .bits = info.bits } });
@@ -186,7 +187,7 @@ pub const Random = struct {
         }
     }
     pub fn intRangeAtMostBiased(r: Random, comptime T: type, at_least: T, at_most: T) T {
-        builtin.assert(at_least <= at_most);
+        debug.assert(at_least <= at_most);
         const info = @typeInfo(T).Int;
         if (info.signedness == .signed) {
             const UnsignedT = @Type(.{ .Int = .{ .signedness = .unsigned, .bits = info.bits } });
@@ -199,7 +200,7 @@ pub const Random = struct {
         }
     }
     pub fn intRangeAtMost(r: Random, comptime T: type, at_least: T, at_most: T) T {
-        builtin.assert(at_least <= at_most);
+        debug.assert(at_least <= at_most);
         const info = @typeInfo(T).Int;
         if (info.signedness == .signed) {
             const UnsignedT = @Type(.{ .Int = .{ .signedness = .unsigned, .bits = info.bits } });
@@ -266,7 +267,7 @@ pub const Random = struct {
     }
     fn MinArrayIndex(comptime Index: type) type {
         const index_info = @typeInfo(Index).Int;
-        builtin.assert(index_info.signedness == .unsigned);
+        debug.assert(index_info.signedness == .unsigned);
         return if (index_info.bits >= @typeInfo(usize).Int.bits) usize else Index;
     }
 };
