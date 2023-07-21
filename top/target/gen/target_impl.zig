@@ -7,6 +7,7 @@ const builtin = @import("../../builtin.zig");
 const types = @import("./types.zig");
 const config = @import("./config.zig");
 pub usingnamespace @import("../../start.zig");
+const create_spec: file.CreateSpec = .{ .options = .{ .exclusive = false } };
 inline fn writeDeclaration(array: *types.Array, comptime name: []const u8, comptime T: type) void {
     array.writeMany("pub const " ++ name ++ "=");
     array.writeFormat(comptime types.TypeDescr.declare(name, T));
@@ -14,7 +15,7 @@ inline fn writeDeclaration(array: *types.Array, comptime name: []const u8, compt
 }
 pub fn main() !void {
     const Target = @import("std").Target;
-    const fd: u64 = try file.create(.{ .options = .{ .exclusive = false } }, config.toplevel_source_path, file.mode.regular);
+    const fd: u64 = try file.create(create_spec, config.toplevel_source_path, file.mode.regular);
     var allocator: mem.SimpleAllocator = .{};
     var array: *types.Array = allocator.create(types.Array);
     array.undefineAll();

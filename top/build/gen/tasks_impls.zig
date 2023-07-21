@@ -5,13 +5,14 @@ const proc = @import("../../proc.zig");
 const file = @import("../../file.zig");
 const spec = @import("../../spec.zig");
 const mach = @import("../../mach.zig");
+const debug = @import("../../debug.zig");
 const builtin = @import("../../builtin.zig");
 const attr = @import("./attr.zig");
 const types = @import("./types.zig");
 const config = @import("./config.zig");
 pub usingnamespace @import("../../start.zig");
 pub const runtime_assertions: bool = false;
-pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
+pub const logging_override: debug.Logging.Override = spec.logging.override.silent;
 const max_len: u64 = attr.format_command_options.len + attr.build_command_options.len;
 const Array = mem.StaticString(64 * 1024 * 1024);
 const Array2 = mem.StaticString(64 * 1024);
@@ -213,15 +214,9 @@ fn writeOne(array: *Array, one: u8, variant: types.Variant) void {
 fn writeIntegerString(array: *Array, arg_string: []const u8, variant: types.Variant) void {
     switch (variant) {
         .write_buf => {
-            array.writeMany("const s:[]const u8=ud64(");
+            array.writeMany("len+%=fmt.Type.Ud64.formatWriteBuf(.{.value=");
             array.writeMany(arg_string);
-            array.writeMany(").readAll();\n");
-            if (prefer_builtin_memcpy) {
-                array.writeMany("@memcpy(buf+len,s);\n");
-            } else {
-                array.writeMany("mach.memcpy(buf+len,s.ptr,s.len);\n");
-            }
-            array.writeMany("len=len+s.len;\n");
+            array.writeMany("},buf+len);\n");
         },
         .write => {
             array.writeMany("array.writeFormat(fmt.ud64(");
@@ -229,9 +224,9 @@ fn writeIntegerString(array: *Array, arg_string: []const u8, variant: types.Vari
             array.writeMany("));\n");
         },
         .length => {
-            array.writeMany("len+%=ud64(");
+            array.writeMany("len+%=fmt.Type.Ud64.formatWriteBuf(.{.value=");
             array.writeMany(arg_string);
-            array.writeMany(").readAll().len;\n");
+            array.writeMany("});\n");
         },
     }
 }
@@ -700,12 +695,12 @@ pub fn writeFunctionBody(array: *Array, options: []const types.ParamSpec, varian
 fn unhandledCommandFieldAndNo(param_spec: types.ParamSpec, no_param_spec: types.InverseParamSpec) void {
     var buf: [4096]u8 = undefined;
     var len: u64 = mach.memcpyMulti(&buf, &.{ param_spec.name, ": ", @tagName(param_spec.tag), "+", @tagName(no_param_spec.tag) });
-    builtin.proc.exitFault(buf[0..len], 2);
+    proc.exitFault(buf[0..len], 2);
 }
 fn unhandledCommandField(param_spec: types.ParamSpec) void {
     var buf: [4096]u8 = undefined;
     var len: u64 = mach.memcpyMulti(&buf, &.{ param_spec.name, ": ", @tagName(param_spec.tag), "\n" });
-    builtin.proc.exitFault(buf[0..len], 2);
+    proc.exitFault(buf[0..len], 2);
 }
 fn writeFile(array: *Array, pathname: [:0]const u8) void {
     const build_fd: u64 = file.create(create_spec, pathname, file.mode.regular);
