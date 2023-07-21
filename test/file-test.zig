@@ -132,7 +132,7 @@ pub fn testClientIPv4(args: [][*:0]u8) !void {
     var buf: [500]u8 = undefined;
     try file.write(.{}, fd, meta.manyToSlice(args[0]));
     const len: u64 = try file.read(.{ .return_type = u64 }, fd, &buf);
-    debug.write(comptime fmt.old.about("ipv4") ++ "server responds: ");
+    debug.write(comptime fmt.about("ipv4") ++ "server responds: ");
     debug.write(buf[0..len]);
     debug.write("\n");
 }
@@ -155,7 +155,7 @@ pub fn testClientIPv6(args: [][*:0]u8) !void {
     var buf: [500]u8 = undefined;
     try file.write(.{}, fd, meta.manyToSlice(args[0]));
     const len: u64 = try file.read(.{ .return_type = u64 }, fd, &buf);
-    debug.write(comptime fmt.old.about("ipv6") ++ "server responds: ");
+    debug.write(comptime fmt.about("ipv6") ++ "server responds: ");
     debug.write(buf[0..len]);
     debug.write("\n");
 }
@@ -276,9 +276,7 @@ fn testFileOperationsRound2() !void {
     try testPathRegular();
     try testMakeNode();
     const new_in_fd: u64 = try file.duplicate(.{}, 0);
-    try file.write(.{}, new_in_fd, fmt.old.ud64(new_in_fd).readAll());
     try file.duplicateTo(.{}, new_in_fd, new_in_fd +% 1);
-    try file.write(.{}, new_in_fd +% 1, fmt.old.ud64(new_in_fd +% 1).readAll());
     try meta.wrap(file.unlinkAt(unlink_spec, path_dir_fd, "file_test"));
     try meta.wrap(file.close(close_spec, path_dir_fd));
     try meta.wrap(file.removeDir(remove_dir_spec, test_dir ++ "file_test/file_test"));
@@ -420,8 +418,8 @@ fn testSampleReports() void {
     file.about.sampleAllReports();
 }
 pub fn main(args: [][*:0]u8) !void {
-    try meta.wrap(testBasicDirectoryIterator());
     try meta.wrap(testPreClean());
+    try meta.wrap(testBasicDirectoryIterator());
     try meta.wrap(testFileOperationsRound1());
     try meta.wrap(testFileOperationsRound2());
     try meta.wrap(testStandardChannel());
