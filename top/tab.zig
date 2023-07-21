@@ -275,3 +275,65 @@ const key = struct {
     pub const f11: [5]u8 = .{ 0x1b, 0x5b, 0x32, 0x33, 0x7e };
     pub const f12: [5]u8 = .{ 0x1b, 0x5b, 0x32, 0x34, 0x7e };
 };
+pub const kw = .{
+    // 2
+    .{ "or", .keyword_or },
+    .{ "fn", .keyword_fn },
+    .{ "if", .keyword_if },
+    // 3
+    .{ "for", .keyword_for },
+    .{ "and", .keyword_and },
+    .{ "asm", .keyword_asm },
+    .{ "var", .keyword_var },
+    .{ "pub", .keyword_pub },
+    .{ "try", .keyword_try },
+    // 4
+    .{ "test", .keyword_test },
+    .{ "else", .keyword_else },
+    .{ "enum", .keyword_enum },
+    // 5
+    .{ "error", .keyword_error },
+    .{ "union", .keyword_union },
+    .{ "while", .keyword_while },
+    .{ "align", .keyword_align },
+    .{ "async", .keyword_async },
+    .{ "await", .keyword_await },
+    .{ "break", .keyword_break },
+    .{ "catch", .keyword_catch },
+    .{ "const", .keyword_const },
+    .{ "defer", .keyword_defer },
+    // 6
+    .{ "struct", .keyword_struct },
+    .{ "opaque", .keyword_opaque },
+    .{ "orelse", .keyword_orelse },
+    .{ "packed", .keyword_packed },
+    .{ "resume", .keyword_resume },
+    .{ "return", .keyword_return },
+    .{ "export", .keyword_export },
+    .{ "extern", .keyword_extern },
+    .{ "inline", .keyword_inline },
+    .{ "switch", .keyword_switch },
+    // 7
+    .{ "anytype", .keyword_anytype },
+    .{ "suspend", .keyword_suspend },
+    .{ "noalias", .keyword_noalias },
+    // 8
+    .{ "volatile", .keyword_volatile },
+    .{ "errdefer", .keyword_errdefer },
+    .{ "comptime", .keyword_comptime },
+    .{ "callconv", .keyword_callconv },
+    .{ "continue", .keyword_continue },
+    .{ "noinline", .keyword_noinline },
+    .{ "anyframe", .keyword_anyframe },
+    // 9 -- Except for unreachable and usingnamespace, the following keywords
+    //      are very cold.
+    .{ "addrspace", .keyword_addrspace },
+    .{ "allowzero", .keyword_allowzero },
+    .{ "nosuspend", .keyword_nosuspend },
+    // 12
+    .{ "linksection", .keyword_linksection },
+    .{ "threadlocal", .keyword_threadlocal },
+    .{ "unreachable", .keyword_unreachable },
+    // 13
+    .{ "usingnamespace", .keyword_usingnamespace },
+};

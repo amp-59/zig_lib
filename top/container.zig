@@ -1,5 +1,8 @@
+const fmt = @import("./fmt.zig");
 const meta = @import("./meta.zig");
 const mach = @import("./mach.zig");
+const proc = @import("./proc.zig");
+const debug = @import("./debug.zig");
 const builtin = @import("./builtin.zig");
 const reference = @import("./reference.zig");
 pub const Amount = union(enum) { // bytes: u64, count: u64 };
@@ -351,14 +354,14 @@ const @"1" = opaque {
         if (comptime write_spec.integral.format) |kind| {
             if (src_type_info == .Int and dst_type == u8) {
                 return memory.writeMany(switch (kind) {
-                    .bin => builtin.fmt.bin,
-                    .oct => builtin.fmt.oct,
-                    .dec => builtin.fmt.dec,
-                    .hex => builtin.fmt.hex,
+                    .bin => fmt.old.bin,
+                    .oct => fmt.old.oct,
+                    .dec => fmt.old.dec,
+                    .hex => fmt.old.hex,
                 }(src_type, any).readAll());
             }
         }
-        builtin.assert(src_type == dst_type);
+        debug.assert(src_type == dst_type);
     }
     pub fn writeAnyUnstructured(comptime child: type, comptime write_spec: ReinterpretSpec, memory: anytype, any: anytype) void {
         const dst_type: type = child;
@@ -496,14 +499,14 @@ const @"1" = opaque {
         if (comptime write_spec.integral.format) |kind| {
             if (src_type_info == .Int and dst_type == u8) {
                 return memory.writeMany(switch (kind) {
-                    .bin => builtin.fmt.bin,
-                    .oct => builtin.fmt.oct,
-                    .dec => builtin.fmt.dec,
-                    .hex => builtin.fmt.hex,
+                    .bin => fmt.old.bin,
+                    .oct => fmt.old.oct,
+                    .dec => fmt.old.dec,
+                    .hex => fmt.old.hex,
                 }(src_type, any).readAll());
             }
         }
-        builtin.assert(src_type == dst_type);
+        debug.assert(src_type == dst_type);
     }
     pub inline fn writeArgsStructured(comptime child: type, comptime write_spec: ReinterpretSpec, memory: anytype, args: anytype) void {
         inline for (args) |arg| {
@@ -563,22 +566,31 @@ const @"1" = opaque {
             format.formatWrite(memory);
         }
     }
-    fn formatLengthFault(format_type_name: []const u8, operator_symbol: []const u8, s_len: u64, t_len: u64) noreturn {
+    fn formatLengthFault(format_type_name: []const u8, operator_symbol: anytype, s_len: u64, t_len: u64) noreturn {
         const help_read: bool = t_len > 99_999;
         const notation: []const u8 = if (help_read) ", i.e. " else "\n";
         var buf: [32768]u8 = undefined;
-        var len: u64 = mach.memcpyMulti(&buf, &[_][]const u8{
-            format_type_name, builtin.fmt.ud64(t_len).readAll(),
-            operator_symbol,  builtin.fmt.ud64(s_len).readAll(),
-            notation,
-        });
+        var len: usize = 0;
+        var ud64: fmt.Type.Ud64 = @bitCast(t_len);
+        @memcpy(&buf, format_type_name);
+        len +%= format_type_name.len;
+        len +%= ud64.formatWriteBuf(buf[len..].ptr);
+        @as(*[operator_symbol.len]u8, @ptrCast(&buf)).* = operator_symbol.*;
+        len +%= operator_symbol.len;
+        ud64 = @bitCast(s_len);
+        len +%= ud64.formatWriteBuf(buf[len..].ptr);
+        @memcpy(buf[len..].ptr, notation);
         if (help_read) {
-            len += mach.memcpyMulti(buf[len..].ptr, &[_][]const u8{
-                "0", operator_symbol, builtin.fmt.ud64(t_len -% s_len).readAll(), "\n",
-            });
+            buf[len] = '0';
+            len +%= 1;
+            @as(*[operator_symbol.len]u8, @ptrCast(&buf)).* = operator_symbol.*;
+            len +%= operator_symbol.len;
+            ud64 = @bitCast(t_len -% s_len);
+            len +%= ud64.formatWriteBuf(buf[len..].ptr);
         }
-        builtin.debug.write(buf[0..len]);
-        builtin.proc.exit(2);
+        buf[len] = '\n';
+        debug.write(buf[0 .. len +% 1]);
+        proc.exit(2);
     }
     pub fn lengthAny(comptime child: type, comptime write_spec: ReinterpretSpec, any: anytype) u64 {
         const dst_type: type = child;
@@ -726,14 +738,14 @@ const @"1" = opaque {
         if (comptime write_spec.integral.format) |kind| {
             if (src_type_info == .Int and dst_type == u8) {
                 return switch (kind) {
-                    .bin => builtin.fmt.bin,
-                    .oct => builtin.fmt.oct,
-                    .dec => builtin.fmt.dec,
-                    .hex => builtin.fmt.hex,
+                    .bin => fmt.old.bin,
+                    .oct => fmt.old.oct,
+                    .dec => fmt.old.dec,
+                    .hex => fmt.old.hex,
                 }(src_type, any).readAll().len;
             }
         }
-        builtin.assert(src_type == dst_type);
+        debug.assert(src_type == dst_type);
     }
     pub fn lengthFormat(comptime child: type, format: anytype) u64 {
         const Format: type = @TypeOf(format);
