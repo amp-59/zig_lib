@@ -1,3 +1,4 @@
+null: void,
 pub const builtin = @import("./top/builtin.zig");
 pub const tab = @import("./top/tab.zig");
 pub const sys = @import("./top/sys.zig");
@@ -17,6 +18,7 @@ pub const spec = @import("./top/spec.zig");
 pub const parse = @import("./top/parse.zig");
 pub const start = @import("./top/start.zig");
 pub const build = @import("./top/build.zig");
+pub const debug = @import("./top/debug.zig");
 pub const trace = @import("./top/trace.zig");
 pub const dwarf = @import("./top/dwarf.zig");
 pub const thread = @import("./top/thread.zig");

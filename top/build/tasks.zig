@@ -1786,7 +1786,7 @@ pub const BuildCommand = struct {
         }
         if (cmd.passes) |passes| {
             len +%= 19;
-            len +%= fmt.Type.Ud64.formatWriteBuf(.{ .value = passes });
+            len +%= fmt.Type.Ud64.formatLength(.{ .value = passes });
             len +%= 1;
         }
         if (cmd.main_pkg_path) |main_pkg_path| {
@@ -2038,12 +2038,12 @@ pub const BuildCommand = struct {
         }
         if (cmd.stack) |stack| {
             len +%= 8;
-            len +%= fmt.Type.Ud64.formatWriteBuf(.{ .value = stack });
+            len +%= fmt.Type.Ud64.formatLength(.{ .value = stack });
             len +%= 1;
         }
         if (cmd.image_base) |image_base| {
             len +%= 13;
-            len +%= fmt.Type.Ud64.formatWriteBuf(.{ .value = image_base });
+            len +%= fmt.Type.Ud64.formatLength(.{ .value = image_base });
             len +%= 1;
         }
         if (cmd.macros) |macros| {
@@ -2610,7 +2610,7 @@ pub const ObjcopyCommand = struct {
         }
         if (cmd.pad_to) |pad_to| {
             len +%= 9;
-            len +%= fmt.Type.Ud64.formatWriteBuf(.{ .value = pad_to });
+            len +%= fmt.Type.Ud64.formatLength(.{ .value = pad_to });
             len +%= 1;
         }
         if (cmd.strip_debug) {
