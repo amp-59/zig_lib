@@ -11,6 +11,10 @@ pub const root = @import("root");
 /// target information.
 pub const is_zig_lib: bool = @hasDecl(@import("std"), "zig_lib");
 
+/// Determines whether the library should provide `_start`
+pub const has_start_in_root: bool = @hasDecl(root, "_start");
+pub const is_executable: bool = builtin.output_mode == .Exe;
+
 /// * Determines defaults for various allocator checks.
 pub const is_safe: bool = define("is_safe", bool, builtin.mode == .ReleaseSafe);
 pub const is_small: bool = define("is_small", bool, builtin.mode == .ReleaseSmall);
