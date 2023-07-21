@@ -2,6 +2,7 @@ const zl = @import("../zig_lib.zig");
 const zig = zl.zig;
 const proc = zl.proc;
 const file = zl.file;
+const debug = zl.debug;
 const testing = zl.testing;
 const builtin = zl.builtin;
 
@@ -554,14 +555,14 @@ fn testNullByteBeforeEof() !void {
     try testTokenize("///\x00\n", &.{ .doc_comment, .invalid });
     try testTokenize("/// NUL\x00\n", &.{ .doc_comment, .invalid });
 }
-fn testTokenize(source: [:0]const u8, expected_token_tags: []const builtin.zig.Token.Tag) !void {
-    var tokenizer = builtin.zig.TokenIterator{ .buf = source, .buf_pos = 0, .inval = null };
+fn testTokenize(source: [:0]const u8, expected_token_tags: []const builtin.parse.Token.Tag) !void {
+    var tokenizer = builtin.parse.TokenIterator{ .buf = source, .buf_pos = 0, .inval = null };
     for (expected_token_tags) |expected_token_tag| {
         const token = tokenizer.next();
-        try debug.expectEqual(builtin.zig.Token.Tag, expected_token_tag, token.tag);
+        try debug.expectEqual(builtin.parse.Token.Tag, expected_token_tag, token.tag);
     }
     const last_token = tokenizer.next();
-    try debug.expectEqual(builtin.zig.Token.Tag, builtin.zig.Token.Tag.eof, last_token.tag);
+    try debug.expectEqual(builtin.parse.Token.Tag, builtin.parse.Token.Tag.eof, last_token.tag);
     try debug.expectEqual(usize, source.len, last_token.loc.start);
     try debug.expectEqual(usize, source.len, last_token.loc.finish);
 }
