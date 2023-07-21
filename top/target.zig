@@ -7,8 +7,8 @@ pub const Target = struct {
         ints: [5]usize,
     };
     pub const Feature = struct {
-        index: u9 = 0,
-        name: []const u8 = "",
+        index: u9 = undefined,
+        name: []const u8 = undefined,
         llvm_name: ?[:0]const u8,
         description: []const u8,
         dependencies: Set,

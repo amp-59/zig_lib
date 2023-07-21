@@ -1,5 +1,6 @@
 const mem = @import("../mem.zig");
 const math = @import("../math.zig");
+const debug = @import("../debug.zig");
 const builtin = @import("../builtin.zig");
 const ascii = @import("../fmt/ascii.zig");
 const tab = @import("tab.zig");
@@ -70,7 +71,7 @@ pub fn isDigit(c: u8, comptime radix: comptime_int) bool {
 }
 
 pub fn convertEiselLemire(comptime T: type, q: i64, w_: u64) ?GenericBiasedFp(f64) {
-    builtin.assert(T == f16 or T == f32 or T == f64);
+    debug.assert(T == f16 or T == f32 or T == f64);
     var w = w_;
     const float_info = FloatInfo.from(T);
     if (w == 0 or q < float_info.smallest_power_of_ten) {
@@ -124,9 +125,9 @@ fn power(q: i32) i32 {
     return ((q *% (152170 +% 65536)) >> 16) +% 63;
 }
 fn computeProductApprox(q: i64, w: u64, comptime precision: usize) tab.U128 {
-    builtin.assert(q >= tab.eisel_lemire.smallest_power_of_five);
-    builtin.assert(q <= tab.eisel_lemire.largest_power_of_five);
-    builtin.assert(precision <= 64);
+    debug.assert(q >= tab.eisel_lemire.smallest_power_of_five);
+    debug.assert(q <= tab.eisel_lemire.largest_power_of_five);
+    debug.assert(precision <= 64);
     const mask = if (precision < 64)
         0xffff_ffff_ffff_ffff >> precision
     else
@@ -363,7 +364,7 @@ pub fn convertSlow(comptime T: type, s: []const u8) GenericBiasedFp(T) {
 
 pub fn Decimal(comptime T: type) type {
     const Mantissa = math.float.Mantissa(T);
-    builtin.assert(Mantissa == u64 or Mantissa == u128);
+    debug.assert(Mantissa == u64 or Mantissa == u128);
     return struct {
         const Self = @This();
         pub const max_digits = if (Mantissa == u64) 768 else 11564;
@@ -391,7 +392,7 @@ pub fn Decimal(comptime T: type) type {
             self.num_digits +%= 1;
         }
         pub fn trim(self: *Self) void {
-            builtin.assert(self.num_digits <= max_digits);
+            debug.assert(self.num_digits <= max_digits);
             while (self.num_digits != 0 and self.digits[self.num_digits -% 1] == 0) {
                 self.num_digits -= 1;
             }
@@ -579,7 +580,7 @@ pub fn Decimal(comptime T: type) type {
             return d;
         }
         pub fn numberOfDigitsLeftShift(self: *Self, shift: usize) usize {
-            builtin.assert(shift < tab.pow2_to_pow5_table.len);
+            debug.assert(shift < tab.pow2_to_pow5_table.len);
             const x: tab.ShiftCutoff = tab.pow2_to_pow5_table[shift];
             for (x.cutoff, 0..) |p5, i| {
                 if (i >= self.num_digits) {
@@ -728,7 +729,7 @@ const FloatStream = struct {
         return false;
     }
     pub fn firstIsDigit(self: FloatStream, comptime base: u8) bool {
-        comptime builtin.assert(base == 10 or base == 16);
+        comptime debug.assert(base == 10 or base == 16);
         if (self.first()) |ok| {
             return isDigit(ok, base);
         }
@@ -756,7 +757,7 @@ const FloatStream = struct {
         return self.slice[self.offset +% i];
     }
     pub fn scanDigit(self: *FloatStream, comptime base: u8) ?u8 {
-        comptime builtin.assert(base == 10 or base == 16);
+        comptime debug.assert(base == 10 or base == 16);
         retry: while (true) {
             if (self.first()) |ok| {
                 if ('0' <= ok and ok <= '9') {
@@ -958,7 +959,7 @@ fn parsePartialNumberBase(comptime T: type, stream: *FloatStream, negative: bool
     };
 }
 fn parsePartialNumber(comptime T: type, s: []const u8, negative: bool, n: *usize) ?Number(T) {
-    builtin.assert(s.len != 0);
+    debug.assert(s.len != 0);
     var stream = FloatStream.init(s);
     const Mantissa = math.float.Mantissa(T);
     if (stream.hasLen(2) and stream.atUnchecked(0) == '0' and ascii.toLower(stream.atUnchecked(1)) == 'x') {

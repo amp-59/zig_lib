@@ -1442,7 +1442,7 @@ fn expectTopLevelDecl(
                 const fn_decl_index = try reserveNode(ast, allocator.n, .fn_decl);
                 errdefer unreserveNode(ast, allocator.n, fn_decl_index);
                 const body_block = try parseBlock(ast, allocator, array_s);
-                builtin.assert(body_block != 0);
+                debug.assert(body_block != 0);
                 return setNode(ast, allocator.n, fn_decl_index, .{
                     .tag = .fn_decl,
                     .main_token = ast.nodes.readOneAt(allocator.n.*, fn_proto).main_token,
@@ -2242,7 +2242,7 @@ fn parseExprPrecedence(
     array_s: *zig.StateArray,
     min_prec: i32,
 ) Error!zig.Index {
-    builtin.assert(min_prec >= 0);
+    debug.assert(min_prec >= 0);
     var node = try parsePrefixExpr(ast, allocator, array_s);
     if (node == 0) {
         return null_node;
@@ -4266,7 +4266,7 @@ fn parseIf(
     _ = try expectToken(ast, allocator.e, .r_paren);
     _ = try parsePtrPayload(ast, allocator.e);
     const then_expr = try bodyParseFn(ast, allocator, array_s);
-    builtin.assert(then_expr != 0);
+    debug.assert(then_expr != 0);
     _ = eatToken(ast, .keyword_else) orelse return addNode(ast, allocator.n, .{
         .tag = .if_simple,
         .main_token = if_token,
@@ -4274,7 +4274,7 @@ fn parseIf(
     });
     _ = try parsePayload(ast, allocator.e);
     const else_expr = try bodyParseFn(ast, allocator, array_s);
-    builtin.assert(then_expr != 0);
+    debug.assert(then_expr != 0);
     return addNode(ast, allocator.n, .{
         .tag = .@"if",
         .main_token = if_token,
@@ -4324,7 +4324,7 @@ fn eatToken(ast: *abstract.ProtoSyntaxTree, tag: zig.Token.Tag) ?zig.Index {
 }
 fn assertToken(ast: *abstract.ProtoSyntaxTree, tag: zig.Token.Tag) zig.Index {
     const token = nextToken(ast);
-    builtin.assert(readTagAt(ast, token) == tag);
+    debug.assert(readTagAt(ast, token) == tag);
     return token;
 }
 fn expectToken(ast: *abstract.ProtoSyntaxTree, allocator_e: *AllocatorE, tag: zig.Token.Tag) Error!zig.Index {
