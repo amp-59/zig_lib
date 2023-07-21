@@ -11,9 +11,9 @@ const debug = @import("./debug.zig");
 const builtin = @import("./builtin.zig");
 const testing = @import("./testing.zig");
 const Allocator = mem.SimpleAllocator;
-const dwarf_summary: bool = false;
-const dwarf_abbrev_entry: bool = false;
-const dwarf_info_entry: bool = false;
+pub const logging_summary: bool = false;
+pub const logging_abbrev_entry: bool = false;
+pub const logging_info_entry: bool = false;
 const WordSize = enum(u8) {
     dword = 4,
     qword = 8,
@@ -949,7 +949,7 @@ pub const DwarfInfo = extern struct {
     fn populateUnit(allocator: *Allocator, dwarf_info: *DwarfInfo, unit: *Unit) !void {
         try parseAbbrevTable(allocator, dwarf_info, unit.abbrev_tab);
         try parseDie(allocator, dwarf_info, unit, unit.info_entry);
-        if (dwarf_summary) {
+        if (logging_summary) {
             about.unitAbstractNotice(unit);
         }
         if (unit.info_entry.get(.str_offsets_base)) |form_val| {
@@ -1097,7 +1097,7 @@ pub const DwarfInfo = extern struct {
                 }
             }
         }
-        if (dwarf_abbrev_entry) {
+        if (logging_abbrev_entry) {
             about.abbrevTableNotice(abbrev_tab);
         }
     }
@@ -1133,7 +1133,7 @@ pub const DwarfInfo = extern struct {
                 info_entry.kvs[kv_idx].val.Const.payload = @bitCast(kv.payload);
             }
         }
-        if (dwarf_info_entry) {
+        if (logging_info_entry) {
             try about.debugDieNotice(info_entry);
         }
     }
