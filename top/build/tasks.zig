@@ -1109,9 +1109,7 @@ pub const BuildCommand = struct {
         if (cmd.passes) |passes| {
             @as(*[19]u8, @ptrCast(buf + len)).* = "-fopt-bisect-limit\x3d".*;
             len +%= 19;
-            const s: []const u8 = ud64(passes).readAll();
-            @memcpy(buf + len, s);
-            len = len + s.len;
+            len +%= fmt.Type.Ud64.formatWriteBuf(.{ .value = passes }, buf + len);
             buf[len] = 0;
             len +%= 1;
         }
@@ -1459,18 +1457,14 @@ pub const BuildCommand = struct {
         if (cmd.stack) |stack| {
             @as(*[8]u8, @ptrCast(buf + len)).* = "--stack\x00".*;
             len +%= 8;
-            const s: []const u8 = ud64(stack).readAll();
-            @memcpy(buf + len, s);
-            len = len + s.len;
+            len +%= fmt.Type.Ud64.formatWriteBuf(.{ .value = stack }, buf + len);
             buf[len] = 0;
             len +%= 1;
         }
         if (cmd.image_base) |image_base| {
             @as(*[13]u8, @ptrCast(buf + len)).* = "--image-base\x00".*;
             len +%= 13;
-            const s: []const u8 = ud64(image_base).readAll();
-            @memcpy(buf + len, s);
-            len = len + s.len;
+            len +%= fmt.Type.Ud64.formatWriteBuf(.{ .value = image_base }, buf + len);
             buf[len] = 0;
             len +%= 1;
         }
@@ -1792,7 +1786,7 @@ pub const BuildCommand = struct {
         }
         if (cmd.passes) |passes| {
             len +%= 19;
-            len +%= ud64(passes).readAll().len;
+            len +%= fmt.Type.Ud64.formatWriteBuf(.{ .value = passes });
             len +%= 1;
         }
         if (cmd.main_pkg_path) |main_pkg_path| {
@@ -2044,12 +2038,12 @@ pub const BuildCommand = struct {
         }
         if (cmd.stack) |stack| {
             len +%= 8;
-            len +%= ud64(stack).readAll().len;
+            len +%= fmt.Type.Ud64.formatWriteBuf(.{ .value = stack });
             len +%= 1;
         }
         if (cmd.image_base) |image_base| {
             len +%= 13;
-            len +%= ud64(image_base).readAll().len;
+            len +%= fmt.Type.Ud64.formatWriteBuf(.{ .value = image_base });
             len +%= 1;
         }
         if (cmd.macros) |macros| {
@@ -2563,9 +2557,7 @@ pub const ObjcopyCommand = struct {
         if (cmd.pad_to) |pad_to| {
             @as(*[9]u8, @ptrCast(buf + len)).* = "--pad-to\x00".*;
             len +%= 9;
-            const s: []const u8 = ud64(pad_to).readAll();
-            @memcpy(buf + len, s);
-            len = len + s.len;
+            len +%= fmt.Type.Ud64.formatWriteBuf(.{ .value = pad_to }, buf + len);
             buf[len] = 0;
             len +%= 1;
         }
@@ -2618,7 +2610,7 @@ pub const ObjcopyCommand = struct {
         }
         if (cmd.pad_to) |pad_to| {
             len +%= 9;
-            len +%= ud64(pad_to).readAll().len;
+            len +%= fmt.Type.Ud64.formatWriteBuf(.{ .value = pad_to });
             len +%= 1;
         }
         if (cmd.strip_debug) {
