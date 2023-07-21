@@ -240,6 +240,9 @@ pub fn assertAbove(comptime T: type, arg1: T, arg2: T) void {
         }
     }
 }
+pub fn assertEqualWord(arg1: *align(1) const u32, arg2: *align(1) const u32) void {
+    assert(arg1.* == arg2.*);
+}
 pub fn assertEqualMemory(comptime T: type, arg1: T, arg2: T) void {
     switch (@typeInfo(T)) {
         else => @compileError(@typeName(T)),
@@ -745,11 +748,11 @@ const static = struct {
             var buf: [4096]u8 = undefined;
             var len: u64 = 0;
             for ([_][]const u8{
-                @typeName(T),                 ": exact division had a remainder: ",
-                itos(T, arg1).readAll(),      "/",
-                itos(T, arg2).readAll(),      " == ",
-                itos(T, result).readAll(),    "r",
-                itos(T, remainder).readAll(), "\n",
+                @typeName(T),      ": exact division had a remainder: ",
+                fmt.ci(arg1),      "/",
+                fmt.ci(arg2),      " == ",
+                fmt.ci(result),    "r",
+                fmt.ci(remainder), "\n",
             }) |s| {
                 for (s, 0..) |c, idx| buf[len +% idx] = c;
                 len +%= s.len;
@@ -769,12 +772,12 @@ const static = struct {
             var buf: [4096]u8 = undefined;
             var len: u64 = 0;
             for ([_][]const u8{
-                @typeName(T),                 ": incorrect alignment: ",
-                type_name,                    " align(",
-                itos(T, alignment).readAll(), "): ",
-                itos(T, address).readAll(),   " == ",
-                itos(T, result).readAll(),    "+",
-                itos(T, remainder).readAll(), "\n",
+                @typeName(T),      ": incorrect alignment: ",
+                type_name,         " align(",
+                fmt.ci(alignment), "): ",
+                fmt.ci(address),   " == ",
+                fmt.ci(result),    "+",
+                fmt.ci(remainder), "\n",
             }) |s| {
                 for (s, 0..) |c, idx| buf[len +% idx] = c;
                 len +%= s.len;
@@ -792,21 +795,21 @@ const static = struct {
             var buf: [4096]u8 = undefined;
             var len: u64 = 0;
             for ([_][]const u8{
-                @typeName(T),            " assertion failed ",
-                itos(T, arg1).readAll(), symbol,
-                itos(T, arg2).readAll(), if (@min(arg1, arg2) > 10_000) ", i.e. " else "\n",
+                @typeName(T), " assertion failed ",
+                fmt.ci(arg1), symbol,
+                fmt.ci(arg2), if (@min(arg1, arg2) > 10_000) ", i.e. " else "\n",
             }) |s| {
                 for (s, 0..) |c, idx| buf[len +% idx] = c;
                 len +%= s.len;
             }
             if (@min(arg1, arg2) > 10_000) {
                 if (arg1 > arg2) {
-                    for ([_][]const u8{ itos(T, arg1 -% arg2).readAll(), symbol, "0\n" }) |s| {
+                    for ([_][]const u8{ fmt.ci(arg1 -% arg2), symbol, "0\n" }) |s| {
                         for (s, 0..) |c, idx| buf[len +% idx] = c;
                         len +%= s.len;
                     }
                 } else {
-                    for ([_][]const u8{ "0", symbol, itos(T, arg2 -% arg1).readAll(), "\n" }) |s| {
+                    for ([_][]const u8{ "0", symbol, fmt.ci(arg2 -% arg1), "\n" }) |s| {
                         for (s, 0..) |c, idx| buf[len +% idx] = c;
                         len +%= s.len;
                     }
@@ -827,13 +830,14 @@ const special = struct {
 pub const about = struct {
     pub const ErrorSrc = @TypeOf(error_s);
     pub const ErrorDest = @TypeOf(@constCast(error_s));
+    pub const ErrorPDest = @TypeOf(@constCast(error_p0_s));
+    pub const FaultPDest = @TypeOf(@constCast(fault_p0_s));
     pub const error_s = "\x1b[91;1merror\x1b[0m=";
-    pub const exit_0_s: [:0]const u8 = fmt.about("exit");
     pub const fault_p0_s = blk: {
         var lhs: [:0]const u8 = "fault";
         lhs = builtin.message_prefix ++ lhs;
         lhs = lhs ++ builtin.message_suffix;
-        const len: u64 = lhs.len;
+        const len: usize = lhs.len;
         lhs = "\x1b[1m" ++ lhs ++ builtin.message_no_style;
         break :blk lhs ++ " " ** (builtin.message_indent - len);
     };
@@ -841,7 +845,7 @@ pub const about = struct {
         var lhs: [:0]const u8 = "error";
         lhs = builtin.message_prefix ++ lhs;
         lhs = lhs ++ builtin.message_suffix;
-        const len: u64 = lhs.len;
+        const len: usize = lhs.len;
         lhs = "\x1b[1m" ++ lhs ++ builtin.message_no_style;
         break :blk lhs ++ " " ** (builtin.message_indent - len);
     };
@@ -861,12 +865,10 @@ pub const about = struct {
     }
     pub fn exitRcNotice(rc: u8) void {
         var buf: [4096]u8 = undefined;
-        var len: usize = about.error_p0_s.len;
-        @as(*[about.error_p0_s.len]u8, @ptrCast(&buf)).* = about.error_p0_s.*;
-        @as(debug.about.ErrorDest, @ptrCast(buf[len..].ptr)).* = debug.about.error_s.*;
-        len +%= debug.about.error_s.len;
-        @as(*[5]u8, @ptrCast(buf[len..].ptr)).* = ", rc=".*;
-        len +%= 5;
+        var len: usize = fmt.about_exit_s.len;
+        @as(fmt.AboutDest, @ptrCast(&buf)).* = fmt.about_exit_s.*;
+        @as(*[3]u8, @ptrCast(buf[len..].ptr)).* = "rc=".*;
+        len +%= 3;
         len +%= fmt.ud64(rc).formatWriteBuf(buf[len..].ptr);
         buf[len] = '\n';
         write(buf[0 .. len +% 1]);
@@ -874,7 +876,7 @@ pub const about = struct {
     pub fn errorRcNotice(error_name: []const u8, rc: u8) void {
         var buf: [4096]u8 = undefined;
         var len: usize = about.error_p0_s.len;
-        @as(*[about.error_p0_s.len]u8, @ptrCast(&buf)).* = about.error_p0_s.*;
+        @as(debug.about.ErrorPDest, @ptrCast(&buf)).* = about.error_p0_s.*;
         @as(debug.about.ErrorDest, @ptrCast(buf[len..].ptr)).* = debug.about.error_s.*;
         len +%= debug.about.error_s.len;
         @memcpy(buf[len..].ptr, error_name);
@@ -888,7 +890,7 @@ pub const about = struct {
     pub fn errorFaultRcNotice(error_name: []const u8, message: []const u8, rc: u8) void {
         var buf: [4096]u8 = undefined;
         var len: usize = about.fault_p0_s.len;
-        @as(*[about.fault_p0_s]u8, @ptrCast(&buf)).* = about.fault_p0_s.*;
+        @as(debug.about.FaultPDest, @ptrCast(&buf)).* = about.fault_p0_s.*;
         @as(debug.about.ErrorDest, @ptrCast(buf[len..].ptr)).* = debug.about.error_s.*;
         len +%= debug.about.error_s.len;
         @memcpy(buf[len..].ptr, error_name);
