@@ -6,6 +6,8 @@ const builtin = zl.builtin;
 
 const perf = @import("../top/perf.zig");
 
+pub usingnamespace zl.start;
+
 comptime {
     _ = zl.mach;
 }

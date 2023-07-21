@@ -18,7 +18,7 @@ const mem_types = @import("../top/mem/gen/types.zig");
 pub usingnamespace zl.start;
 
 pub const logging_override: debug.Logging.Override = spec.logging.override.verbose;
-pub const signal_handlers: builtin.SignalHandlers = .{
+pub const signal_handlers: debug.SignalHandlers = .{
     .SegmentationFault = true,
     .BusError = true,
     .IllegalInstruction = true,

@@ -2,6 +2,7 @@ const zl = @import("../../zig_lib.zig");
 const fmt = zl.fmt;
 const meta = zl.meta;
 const proc = zl.proc;
+const debug = zl.debug;
 const crypto = zl.crypto;
 const builtin = zl.builtin;
 const testing = zl.testing;
