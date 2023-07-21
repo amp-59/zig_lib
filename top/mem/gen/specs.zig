@@ -5,6 +5,7 @@ const proc = @import("../../proc.zig");
 const file = @import("../../file.zig");
 const meta = @import("../../meta.zig");
 const spec = @import("../../spec.zig");
+const debug = @import("../../debug.zig");
 const serial = @import("../../serial.zig");
 const testing = @import("../../testing.zig");
 const builtin = @import("../../builtin.zig");
@@ -14,7 +15,7 @@ const types = @import("./types.zig");
 const config = @import("./config.zig");
 const ctn_fn = @import("./ctn_fn.zig");
 pub usingnamespace @import("../../start.zig");
-pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
+pub const logging_override: debug.Logging.Override = spec.logging.override.silent;
 pub const runtime_assertions: bool = false;
 const Array = mem.StaticString(1024 * 1024);
 const validate_all_serial: bool = false;
@@ -822,7 +823,7 @@ fn nonEqualIndices(name: []const u8, any: anytype) void {
         },
     }
     array.writeOne('\n');
-    builtin.debug.write(array.readAll());
+    debug.write(array.readAll());
 }
 fn validateAllSerial(
     allocator: *config.Allocator,

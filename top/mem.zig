@@ -392,11 +392,11 @@ pub fn acquire(comptime AddressSpace: type, address_space: *AddressSpace, index:
             try meta.wrap(acquireMap(AddressSpace, address_space));
         }
         if (logging.Acquire) {
-            about.aboutIndexLbAddrUpAddrLabelNotice(about.acq_0_s, index, lb_addr, up_addr, spec.label);
+            about.aboutIndexLbAddrUpAddrLabelNotice(about.acq_s, index, lb_addr, up_addr, spec.label);
         }
     } else if (spec.errors.acquire == .throw) {
         if (logging.Error) {
-            about.aboutIndexLbAddrUpAddrLabelError(about.acq_1_s, @errorName(spec.errors.acquire.throw), index, lb_addr, up_addr, spec.label);
+            about.aboutIndexLbAddrUpAddrLabelError(about.acq_s, @errorName(spec.errors.acquire.throw), index, lb_addr, up_addr, spec.label);
         }
         return spec.errors.acquire.throw;
     } else if (spec.errors.acquire == .abort) {
@@ -410,11 +410,11 @@ pub fn acquireStatic(comptime AddressSpace: type, address_space: *AddressSpace, 
     const logging: debug.Logging.AcquireErrorFault = comptime spec.logging.acquire.override();
     if (acquireStaticSet(AddressSpace, address_space, index)) {
         if (logging.Acquire) {
-            about.aboutIndexLbAddrUpAddrLabelNotice(about.acq_0_s, index, lb_addr, up_addr, spec.label);
+            about.aboutIndexLbAddrUpAddrLabelNotice(about.acq_s, index, lb_addr, up_addr, spec.label);
         }
     } else if (spec.errors.acquire == .throw) {
         if (logging.Error) {
-            about.aboutIndexLbAddrUpAddrLabelError(about.acq_1_s, @errorName(spec.errors.acquire.throw), index, lb_addr, up_addr, spec.label);
+            about.aboutIndexLbAddrUpAddrLabelError(about.acq_s, @errorName(spec.errors.acquire.throw), index, lb_addr, up_addr, spec.label);
         }
         return spec.errors.acquire.throw;
     } else if (spec.errors.acquire == .abort) {
@@ -432,7 +432,7 @@ pub fn acquireElementary(comptime AddressSpace: type, address_space: *AddressSpa
         }
     } else if (spec.errors.acquire == .throw) {
         if (logging.Error) {
-            about.aboutIndexLbAddrUpAddrLabelError(about.acq_1_s, @errorName(spec.errors.acquire.throw), null, lb_addr, up_addr, spec.label);
+            about.aboutIndexLbAddrUpAddrLabelError(about.acq_s, @errorName(spec.errors.acquire.throw), null, lb_addr, up_addr, spec.label);
         }
         return spec.errors.acquire.throw;
     } else if (spec.errors.acquire == .abort) {
@@ -446,7 +446,7 @@ pub fn release(comptime AddressSpace: type, address_space: *AddressSpace, index:
     const logging: debug.Logging.ReleaseErrorFault = comptime spec.logging.release.override();
     if (releaseUnset(AddressSpace, address_space, index)) {
         if (logging.Release) {
-            about.aboutIndexLbAddrUpAddrLabelNotice(about.rel_0_s, index, lb_addr, up_addr, spec.label);
+            about.aboutIndexLbAddrUpAddrLabelNotice(about.rel_s, index, lb_addr, up_addr, spec.label);
         }
         if (spec.options.require_unmap) {
             try meta.wrap(releaseUnmap(AddressSpace, address_space));
@@ -467,7 +467,7 @@ pub fn releaseStatic(comptime AddressSpace: type, address_space: *AddressSpace, 
     const logging: debug.Logging.ReleaseErrorFault = comptime spec.logging.release.override();
     if (releaseStaticUnset(AddressSpace, address_space, index)) {
         if (logging.Release) {
-            about.aboutIndexLbAddrUpAddrLabelNotice(about.rel_0_s, index, lb_addr, up_addr, spec.label);
+            about.aboutIndexLbAddrUpAddrLabelNotice(about.rel_s, index, lb_addr, up_addr, spec.label);
         }
     } else if (spec.errors.release == .throw) {
         if (logging.Error) {
@@ -484,7 +484,7 @@ pub fn releaseElementary(comptime AddressSpace: type, address_space: *AddressSpa
     const up_addr: u64 = address_space.high();
     if (releaseElementaryUnset(AddressSpace, address_space)) {
         if (spec.logging.release.Release) {
-            about.aboutIndexLbAddrUpAddrLabelNotice(about.rel_0_s, null, lb_addr, up_addr, spec.label);
+            about.aboutIndexLbAddrUpAddrLabelNotice(about.rel_s, null, lb_addr, up_addr, spec.label);
         }
     } else if (spec.errors.release == .throw) {
         if (spec.logging.release.Error) {
@@ -506,7 +506,7 @@ pub fn testAcquire(comptime AddressSpace: type, address_space: *AddressSpace, in
             try meta.wrap(acquireMap(AddressSpace, address_space));
         }
         if (logging.Acquire) {
-            about.aboutIndexLbAddrUpAddrLabelNotice(about.acq_0_s, index, lb_addr, up_addr, spec.label);
+            about.aboutIndexLbAddrUpAddrLabelNotice(about.acq_s, index, lb_addr, up_addr, spec.label);
         }
     }
     return ret;
@@ -519,7 +519,7 @@ pub fn testAcquireStatic(comptime AddressSpace: type, address_space: *AddressSpa
     const ret: bool = acquireStaticSet(AddressSpace, address_space, index);
     if (ret) {
         if (logging.Acquire) {
-            about.aboutIndexLbAddrUpAddrLabelNotice(about.acq_0_s, index, lb_addr, up_addr, spec.label);
+            about.aboutIndexLbAddrUpAddrLabelNotice(about.acq_s, index, lb_addr, up_addr, spec.label);
         }
     }
     return ret;
@@ -532,7 +532,7 @@ pub fn testAcquireElementary(comptime AddressSpace: type, address_space: *Addres
     const ret: bool = acquireElementarySet(AddressSpace, address_space);
     if (ret) {
         if (logging.Acquire) {
-            about.aboutIndexLbAddrUpAddrLabelNotice(about.acq_0_s, null, lb_addr, up_addr, spec.label);
+            about.aboutIndexLbAddrUpAddrLabelNotice(about.acq_s, null, lb_addr, up_addr, spec.label);
         }
     }
     return ret;
@@ -584,14 +584,14 @@ pub fn map(comptime spec: MapSpec, prot: Map.Protection, flags: Map.Flags, addr:
         addr, len, @as(usize, @bitCast(prot)), @as(usize, @bitCast(flags)), ~@as(u64, 0), 0,
     }))) |ret| {
         if (logging.Acquire) {
-            about.aboutAddrLenNotice(about.map_0_s, addr, len);
+            about.aboutAddrLenNotice(about.map_s, addr, len);
         }
         if (spec.return_type != void) {
             return ret;
         }
     } else |map_error| {
         if (logging.Error) {
-            about.aboutAddrLenError(about.map_0_s, @errorName(map_error), addr, len);
+            about.aboutAddrLenError(about.map_s, @errorName(map_error), addr, len);
         }
         return map_error;
     }
@@ -618,11 +618,11 @@ pub fn move(comptime spec: MoveSpec, old_addr: u64, old_len: u64, new_addr: u64)
     const logging: debug.Logging.SuccessError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.mremap, spec.errors, spec.return_type, .{ old_addr, old_len, old_len, mremap_flags.val, new_addr }))) {
         if (logging.Success) {
-            about.aboutRemapNotice(about.remap_0_s, old_addr, old_len, new_addr, null);
+            about.aboutRemapNotice(about.remap_s, old_addr, old_len, new_addr, null);
         }
     } else |mremap_error| {
         if (logging.Error) {
-            about.aboutRemapError(about.move_0_s, @errorName(mremap_error), old_addr, old_len, new_addr, null);
+            about.aboutRemapError(about.move_s, @errorName(mremap_error), old_addr, old_len, new_addr, null);
         }
         return mremap_error;
     }
@@ -631,11 +631,11 @@ pub fn resize(comptime spec: RemapSpec, old_addr: u64, old_len: u64, new_len: u6
     const logging: debug.Logging.SuccessError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.mremap, spec.errors, spec.return_type, .{ old_addr, old_len, new_len, 0, 0 }))) {
         if (logging.Success) {
-            about.aboutRemapNotice(about.resize_0_s, old_addr, old_len, null, new_len);
+            about.aboutRemapNotice(about.resize_s, old_addr, old_len, null, new_len);
         }
     } else |mremap_error| {
         if (logging.Error) {
-            about.aboutRemapError(about.resize_0_s, @errorName(mremap_error), old_addr, old_len, null, new_len);
+            about.aboutRemapError(about.resize_s, @errorName(mremap_error), old_addr, old_len, null, new_len);
         }
         return mremap_error;
     }
@@ -644,11 +644,11 @@ pub fn unmap(comptime spec: UnmapSpec, addr: u64, len: u64) sys.ErrorUnion(spec.
     const logging: debug.Logging.ReleaseError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.munmap, spec.errors, spec.return_type, .{ addr, len }))) {
         if (logging.Release) {
-            about.aboutAddrLenNotice(about.unmap_0_s, addr, len);
+            about.aboutAddrLenNotice(about.unmap_s, addr, len);
         }
     } else |unmap_error| {
         if (logging.Error) {
-            about.aboutAddrLenError(about.unmap_0_s, @errorName(unmap_error), addr, len);
+            about.aboutAddrLenError(about.unmap_s, @errorName(unmap_error), addr, len);
         }
         return unmap_error;
     }
@@ -657,11 +657,11 @@ pub fn protect(comptime spec: ProtectSpec, prot: ProtectSpec.Protection, addr: u
     const logging: debug.Logging.SuccessError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.mprotect, spec.errors, spec.return_type, .{ addr, len, @as(usize, @bitCast(prot)) }))) {
         if (logging.Success) {
-            about.aboutAddrLenDescrNotice(about.protect_0_s, addr, len, "<description>");
+            about.aboutAddrLenDescrNotice(about.protect_s, addr, len, "<description>");
         }
     } else |protect_error| {
         if (logging.Error) {
-            about.aboutAddrLenDescrError(about.protect_0_s, @errorName(protect_error), addr, len, "<description>");
+            about.aboutAddrLenDescrError(about.protect_s, @errorName(protect_error), addr, len, "<description>");
         }
         return protect_error;
     }
@@ -670,47 +670,46 @@ pub fn advise(comptime spec: AdviseSpec, advice: Advice, addr: u64, len: u64) sy
     const logging: debug.Logging.SuccessError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.madvise, spec.errors, spec.return_type, .{ addr, len, @intFromEnum(advice) }))) {
         if (logging.Success) {
-            about.aboutAddrLenDescrNotice(about.advice_0_s, addr, len, advice.describe());
+            about.aboutAddrLenDescrNotice(about.advice_s, addr, len, advice.describe());
         }
     } else |madvise_error| {
         if (logging.Error) {
-            about.aboutAddrLenDescrError(about.advice_0_s, @errorName(madvise_error), addr, len, advice.describe());
+            about.aboutAddrLenDescrError(about.advice_s, @errorName(madvise_error), addr, len, advice.describe());
         }
         return madvise_error;
     }
 }
-pub fn fd(comptime spec: FdSpec, name: [:0]const u8) sys.ErrorUnion(spec.errors, spec.return_type) {
-    const name_buf_addr: u64 = @intFromPtr(name.ptr);
+pub fn fd(comptime spec: FdSpec, pathname: [:0]const u8) sys.ErrorUnion(spec.errors, spec.return_type) {
+    const name_buf_addr: u64 = @intFromPtr(pathname.ptr);
     const flags: mem.Fd.Options = comptime spec.flags();
     const logging: debug.Logging.AcquireError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.memfd_create, spec.errors, spec.return_type, .{ name_buf_addr, flags.val }))) |mem_fd| {
         if (logging.Acquire) {
-            mem.about.memFdNotice(name, mem_fd);
+            about.aboutMemFdPathnameMotice(about.memfd_s, mem_fd, pathname);
         }
         return mem_fd;
     } else |memfd_create_error| {
         if (logging.Error) {
-            mem.about.memFdError(memfd_create_error, name);
+            about.aboutPathnameError(about.memfd_s, @errorName(memfd_create_error), pathname);
         }
         return memfd_create_error;
     }
 }
 pub const about = opaque {
-    const map_0_s: fmt.AboutSrc = fmt.about("map");
-    const acq_0_s: fmt.AboutSrc = fmt.about("acq");
-    const acq_1_s: fmt.AboutSrc = fmt.about("acq-error");
-    const rel_0_s: fmt.AboutSrc = fmt.about("rel");
-    const rel_1_s: fmt.AboutSrc = fmt.about("rel-error");
+    const map_s: fmt.AboutSrc = fmt.about("map");
+    const acq_s: fmt.AboutSrc = fmt.about("acq");
+    const rel_s: fmt.AboutSrc = fmt.about("rel");
     const acq_2_s: fmt.AboutSrc = fmt.about("acq-fault\n");
     const rel_2_s: fmt.AboutSrc = fmt.about("rel-fault\n");
-    const move_0_s: fmt.AboutSrc = fmt.about("move");
-    const unmap_0_s: fmt.AboutSrc = fmt.about("unmap");
-    const remap_0_s: fmt.AboutSrc = fmt.about("remap");
-    const memfd_0_s: fmt.AboutSrc = fmt.about("memfd");
-    const resize_0_s: fmt.AboutSrc = fmt.about("resize");
-    const advice_0_s: fmt.AboutSrc = fmt.about("advice");
-    const protect_0_s: fmt.AboutSrc = fmt.about("protect");
+    const move_s: fmt.AboutSrc = fmt.about("move");
+    const unmap_s: fmt.AboutSrc = fmt.about("unmap");
+    const remap_s: fmt.AboutSrc = fmt.about("remap");
+    const memfd_s: fmt.AboutSrc = fmt.about("memfd");
+    const resize_s: fmt.AboutSrc = fmt.about("resize");
+    const advice_s: fmt.AboutSrc = fmt.about("advice");
+    const protect_s: fmt.AboutSrc = fmt.about("protect");
     pub fn aboutAddrLenNotice(about_s: fmt.AboutSrc, addr: u64, len: u64) void {
+        @setRuntimeSafety(false);
         var buf: [4096]u8 = undefined;
         var pos: usize = about_s.len;
         @as(fmt.AboutDest, @ptrCast(&buf)).* = about_s.*;
@@ -726,6 +725,7 @@ pub const about = opaque {
         debug.write(buf[0..pos]);
     }
     fn aboutAddrLenDescrNotice(about_s: fmt.AboutSrc, addr: u64, len: u64, description_s: []const u8) void {
+        @setRuntimeSafety(false);
         var buf: [4096]u8 = undefined;
         var pos: usize = about_s.len;
         @as(fmt.AboutDest, @ptrCast(&buf)).* = about_s.*;
@@ -745,6 +745,7 @@ pub const about = opaque {
         debug.write(buf[0..pos]);
     }
     pub fn aboutRemapNotice(about_s: fmt.AboutSrc, old_addr: u64, old_len: u64, maybe_new_addr: ?u64, maybe_new_len: ?u64) void {
+        @setRuntimeSafety(false);
         var buf: [4096]u8 = undefined;
         var pos: usize = about_s.len;
         const new_addr: u64 = maybe_new_addr orelse old_addr;
@@ -770,6 +771,7 @@ pub const about = opaque {
         debug.write(buf[0..pos]);
     }
     fn aboutIndexLbAddrUpAddrLabelNotice(about_s: fmt.AboutSrc, index: ?u64, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
+        @setRuntimeSafety(false);
         var buf: [4096]u8 = undefined;
         var pos: usize = about_s.len;
         @as(fmt.AboutDest, @ptrCast(&buf)).* = about_s.*;
@@ -793,6 +795,7 @@ pub const about = opaque {
         debug.write(buf[0..pos]);
     }
     fn aboutMemFdPathnameMotice(about_s: fmt.AboutSrc, mem_fd: u64, pathname: [:0]const u8) void {
+        @setRuntimeSafety(false);
         var buf: [4096]u8 = undefined;
         var pos: usize = about_s.len;
         @as(fmt.AboutDest, @ptrCast(&buf)).* = about_s.*;
@@ -806,6 +809,7 @@ pub const about = opaque {
         debug.write(buf[0..pos]);
     }
     pub fn aboutAddrLenError(about_s: fmt.AboutSrc, error_name: []const u8, addr: u64, len: u64) void {
+        @setRuntimeSafety(false);
         var buf: [4096]u8 = undefined;
         var pos: usize = about_s.len;
         @as(fmt.AboutDest, @ptrCast(&buf)).* = about_s.*;
@@ -827,6 +831,7 @@ pub const about = opaque {
         debug.write(buf[0..pos]);
     }
     pub fn aboutAddrLenDescrError(about_s: fmt.AboutSrc, error_name: []const u8, addr: u64, len: u64, description_s: []const u8) void {
+        @setRuntimeSafety(false);
         var buf: [4096]u8 = undefined;
         var pos: usize = about_s.len;
         @as(fmt.AboutDest, @ptrCast(&buf)).* = about_s.*;
@@ -852,6 +857,7 @@ pub const about = opaque {
         debug.write(buf[0..pos]);
     }
     fn aboutRemapError(about_s: fmt.AboutSrc, error_name: []const u8, old_addr: u64, old_len: u64, maybe_new_addr: ?u64, maybe_new_len: ?u64) void {
+        @setRuntimeSafety(false);
         var buf: [4096]u8 = undefined;
         var pos: usize = about_s.len;
         const new_addr: u64 = maybe_new_addr orelse old_addr;
@@ -883,6 +889,7 @@ pub const about = opaque {
         debug.write(buf[0..pos]);
     }
     fn aboutIndexLbAddrUpAddrLabelError(about_s: fmt.AboutSrc, error_name: [:0]const u8, index: ?u64, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
+        @setRuntimeSafety(false);
         var buf: [4096]u8 = undefined;
         var pos: usize = about_s.len;
         const label_s: []const u8 = label orelse "arena";
@@ -912,6 +919,7 @@ pub const about = opaque {
         debug.write(buf[0..pos]);
     }
     fn aboutPathnameError(about_s: fmt.AboutSrc, error_name: []const u8, pathname: [:0]const u8) void {
+        @setRuntimeSafety(false);
         var buf: [4096]u8 = undefined;
         var pos: usize = about_s.len;
         @as(fmt.AboutDest, @ptrCast(&buf)).* = about_s.*;
@@ -938,16 +946,16 @@ pub const about = opaque {
         aboutAddrLenNotice(about_s, addr1, len1);
         aboutAddrLenDescrNotice(about_s, addr1, len1, "<missing>");
         aboutRemapNotice(about_s, addr1, len1, addr2, len2);
-        aboutRemapNotice(remap_0_s, addr1, len1, addr2, len2);
-        aboutRemapNotice(resize_0_s, addr1, len1, null, len2);
-        aboutRemapNotice(move_0_s, addr1, len1, addr2, null);
-        aboutMemFdPathnameMotice(memfd_0_s, fd1, pathname1);
+        aboutRemapNotice(remap_s, addr1, len1, addr2, len2);
+        aboutRemapNotice(resize_s, addr1, len1, null, len2);
+        aboutRemapNotice(move_s, addr1, len1, addr2, null);
+        aboutMemFdPathnameMotice(memfd_s, fd1, pathname1);
         aboutAddrLenError(about_s, "UnmapError", addr1, len1);
         aboutAddrLenDescrError(about_s, "ProtectError", addr1, len1, "<missing>");
-        aboutRemapError(remap_0_s, "RemapError", addr1, len1, addr2, len2);
-        aboutRemapError(resize_0_s, "ResizeError", addr1, len1, null, len2);
-        aboutRemapError(move_0_s, "MoveError", addr1, len1, addr2, null);
-        aboutPathnameError(memfd_0_s, "MemFdError", pathname1);
+        aboutRemapError(remap_s, "RemapError", addr1, len1, addr2, len2);
+        aboutRemapError(resize_s, "ResizeError", addr1, len1, null, len2);
+        aboutRemapError(move_s, "MoveError", addr1, len1, addr2, null);
+        aboutPathnameError(memfd_s, "MemFdError", pathname1);
     }
 };
 pub fn literalView(comptime s: [:0]const u8) mem.StructuredAutomaticView(u8, &@as(u8, 0), s.len, null, .{}) {
@@ -2013,7 +2021,7 @@ pub fn GenericSimpleMap(comptime Key: type, comptime Value: type) type {
         }
         pub fn get(array: *const Array, key: Key) ?Value {
             for (array.pairs) |pair| {
-                if (builtin.testEqualMemory(Key, pair.key, key)) {
+                if (testEqualMemory(Key, pair.key, key)) {
                     return pair.val;
                 }
             }
@@ -2021,7 +2029,7 @@ pub fn GenericSimpleMap(comptime Key: type, comptime Value: type) type {
         }
         pub fn refer(array: *const Array, key: Key) ?*Value {
             for (array.pairs) |pair| {
-                if (builtin.testEqualMemory(Key, pair.key, key)) {
+                if (testEqualMemory(Key, pair.key, key)) {
                     return &pair.val;
                 }
             }
@@ -2030,7 +2038,7 @@ pub fn GenericSimpleMap(comptime Key: type, comptime Value: type) type {
         pub fn remove(array: *Array, key: Key) void {
             const end: *Pair = array.pairs[array.pairs_len -% 1];
             for (array.pairs) |*pair| {
-                if (builtin.testEqualMemory(Key, pair.*.key, key)) {
+                if (testEqualMemory(Key, pair.*.key, key)) {
                     pair.* = end;
                     array.pairs_len -%= 1;
                 }
@@ -2107,7 +2115,7 @@ pub fn writeInt(comptime T: type, buffer: *[@divExact(@typeInfo(T).Int.bits, 8)]
     }
 }
 pub fn writeIntSliceLittle(comptime T: type, dest: []u8, value: T) void {
-    builtin.assert(dest.len >= @divExact(@typeInfo(T).Int.bits, 8));
+    comptime debug.assert(dest.len >= @divExact(@typeInfo(T).Int.bits, 8));
     if (@typeInfo(T).Int.bits == 0) {
         return @memset(dest, 0);
     } else if (@typeInfo(T).Int.bits == 8) {
@@ -2126,7 +2134,7 @@ pub fn writeIntSliceLittle(comptime T: type, dest: []u8, value: T) void {
     }
 }
 pub fn writeIntSliceBig(comptime T: type, dest: []u8, value: T) void {
-    builtin.assert(dest.len >= @divExact(@typeInfo(T).Int.bits, 8));
+    comptime debug.assert(dest.len >= @divExact(@typeInfo(T).Int.bits, 8));
     if (@typeInfo(T).Int.bits == 0) {
         return @memset(dest, 0);
     } else if (@typeInfo(T).Int.bits == 8) {
@@ -2192,7 +2200,7 @@ pub fn nativeToBig(comptime T: type, x: T) T {
 }
 pub fn readIntSliceNative(comptime T: type, bytes: []const u8) T {
     const n = @divExact(@typeInfo(T).Int.bits, 8);
-    builtin.assert(bytes.len >= n);
+    debug.assert(bytes.len >= n);
     return readIntNative(T, bytes[0..n]);
 }
 pub fn readIntSliceForeign(comptime T: type, bytes: []const u8) T {

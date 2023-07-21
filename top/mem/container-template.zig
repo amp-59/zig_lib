@@ -350,14 +350,14 @@ pub const reinterpret = opaque {
         if (comptime write_spec.integral.format) |kind| {
             if (src_type_info == .Int and dst_type == u8) {
                 return memory.writeMany(switch (kind) {
-                    .bin => builtin.fmt.bin,
-                    .oct => builtin.fmt.oct,
-                    .dec => builtin.fmt.dec,
-                    .hex => builtin.fmt.hex,
+                    .bin => fmt.old.bin,
+                    .oct => fmt.old.oct,
+                    .dec => fmt.old.dec,
+                    .hex => fmt.old.hex,
                 }(src_type, any).readAll());
             }
         }
-        builtin.assert(src_type == dst_type);
+        debug.assert(src_type == dst_type);
     }
     pub fn writeAnyUnstructured(comptime child: type, comptime write_spec: ReinterpretSpec, memory: anytype, any: anytype) void {
         const dst_type: type = child;
@@ -495,14 +495,14 @@ pub const reinterpret = opaque {
         if (comptime write_spec.integral.format) |kind| {
             if (src_type_info == .Int and dst_type == u8) {
                 return memory.writeMany(switch (kind) {
-                    .bin => builtin.fmt.bin,
-                    .oct => builtin.fmt.oct,
-                    .dec => builtin.fmt.dec,
-                    .hex => builtin.fmt.hex,
+                    .bin => fmt.old.bin,
+                    .oct => fmt.old.oct,
+                    .dec => fmt.old.dec,
+                    .hex => fmt.old.hex,
                 }(src_type, any).readAll());
             }
         }
-        builtin.assert(src_type == dst_type);
+        debug.assert(src_type == dst_type);
     }
     pub inline fn writeArgsStructured(comptime child: type, comptime write_spec: ReinterpretSpec, memory: anytype, args: anytype) void {
         inline for (args) |arg| {
@@ -538,7 +538,7 @@ pub const reinterpret = opaque {
             @compileError("formatter type '" ++ @typeName(Format) ++ "' requires declaration 'formatWrite'");
         }
         if (builtin.runtime_assertions) {
-            const what: []const u8 = builtin.debug.typeFault(Format) ++ ".length(), ";
+            const what: []const u8 = debug.typeFault(Format) ++ ".length(), ";
             if (builtin.is_fast or builtin.is_small) {
                 const s_len: u64 = format.formatLength();
                 const len_0: u64 = memory.impl.undefined_byte_address();
@@ -567,17 +567,17 @@ pub const reinterpret = opaque {
         const notation: []const u8 = if (help_read) ", i.e. " else "\n";
         var buf: [512]u8 = undefined;
         var len: u64 = mach.memcpyMulti(&buf, &[_][]const u8{
-            format_type_name, builtin.fmt.ud64(t_len).readAll(),
-            operator_symbol,  builtin.fmt.ud64(s_len).readAll(),
+            format_type_name, fmt.old.ud64(t_len).readAll(),
+            operator_symbol,  fmt.old.ud64(s_len).readAll(),
             notation,
         });
         if (help_read) {
             len += mach.memcpyMulti(buf[len..].ptr, &[_][]const u8{
-                "0", operator_symbol, builtin.fmt.ud64(t_len -% s_len).readAll(), "\n",
+                "0", operator_symbol, fmt.old.ud64(t_len -% s_len).readAll(), "\n",
             });
         }
-        builtin.debug.write(buf[0..len]);
-        builtin.proc.exit(2);
+        debug.write(buf[0..len]);
+        proc.exit(2);
     }
     pub fn lengthAny(comptime child: type, comptime write_spec: ReinterpretSpec, any: anytype) u64 {
         const dst_type: type = child;
@@ -725,14 +725,14 @@ pub const reinterpret = opaque {
         if (comptime write_spec.integral.format) |kind| {
             if (src_type_info == .Int and dst_type == u8) {
                 return switch (kind) {
-                    .bin => builtin.fmt.bin,
-                    .oct => builtin.fmt.oct,
-                    .dec => builtin.fmt.dec,
-                    .hex => builtin.fmt.hex,
+                    .bin => fmt.old.bin,
+                    .oct => fmt.old.oct,
+                    .dec => fmt.old.dec,
+                    .hex => fmt.old.hex,
                 }(src_type, any).readAll().len;
             }
         }
-        builtin.assert(src_type == dst_type);
+        debug.assert(src_type == dst_type);
     }
     pub fn lengthFormat(comptime child: type, format: anytype) u64 {
         const Format: type = @TypeOf(format);

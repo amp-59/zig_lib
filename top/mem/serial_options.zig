@@ -1,9 +1,10 @@
 const types = @import("./types.zig");
 const config = @import("./config.zig");
 const spec = @import("../spec.zig");
+const debug = @import("../debug.zig");
 const serial = @import("../serial.zig");
 const builtin = @import("../builtin.zig");
-pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
+pub const logging_override: debug.Logging.Override = spec.logging.override.silent;
 export fn serializeOptions(allocator: *config.Allocator, val: *const []const []const types.Technique) void {
     serial.serialWrite(config.serial_spec, @TypeOf(val.*), allocator, config.options_path, val.*);
 }

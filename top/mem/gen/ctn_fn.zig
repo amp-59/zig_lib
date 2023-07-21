@@ -1099,12 +1099,12 @@ pub const utility = struct {
     pub fn showPseudoSorted() void {
         var unsorted: [list.len]Fn = list;
         algo.shellSort(Fn, Sort.comparison, Sort.transform, &unsorted);
-        builtin.debug.write("pub const Fn = enum(" ++ @typeName(@typeInfo(Fn).Enum.tag_type.?) ++ ") {\n");
+        debug.write("pub const Fn = enum(" ++ @typeName(@typeInfo(Fn).Enum.tag_type.?) ++ ") {\n");
         for (unsorted) |sorted| {
-            builtin.debug.write("    ");
-            builtin.debug.write(@tagName(sorted));
-            builtin.debug.write(",\n");
+            debug.write("    ");
+            debug.write(@tagName(sorted));
+            debug.write(",\n");
         }
-        builtin.debug.write("};\n");
+        debug.write("};\n");
     }
 };

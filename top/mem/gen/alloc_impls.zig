@@ -5,6 +5,7 @@ const proc = @import("../../proc.zig");
 const file = @import("../../file.zig");
 const meta = @import("../../meta.zig");
 const spec = @import("../../spec.zig");
+const debug = @import("../../debug.zig");
 const serial = @import("../../serial.zig");
 const testing = @import("../../testing.zig");
 const builtin = @import("../../builtin.zig");
@@ -16,7 +17,7 @@ const config = @import("./config.zig");
 const ptr_fn = @import("./ptr_fn.zig");
 const alloc_fn = @import("./alloc_fn.zig");
 pub usingnamespace @import("../../start.zig");
-pub const logging_override: builtin.Logging.Override = spec.logging.override.silent;
+pub const logging_override: debug.Logging.Override = spec.logging.override.silent;
 pub const runtime_assertions: bool = false;
 pub const show_expressions: bool = false;
 

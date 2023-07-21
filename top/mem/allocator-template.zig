@@ -5,6 +5,7 @@ const sys = @import("../sys.zig");
 const mach = @import("../mach.zig");
 const meta = @import("../meta.zig");
 const algo = @import("../algo.zig");
+const debug = @import("../debug.zig");
 const builtin = @import("../builtin.zig");
 const container = @import("../container.zig");
 // start-document options-template.zig
@@ -85,26 +86,26 @@ pub const PageAllocatorOptions = struct {
 };
 pub const AllocatorLogging = packed struct {
     /// Report updates to allocator state
-    head: bool = builtin.logging_general.Success,
-    sentinel: bool = builtin.logging_general.Success,
-    metadata: bool = builtin.logging_general.Success,
-    branches: bool = builtin.logging_general.Success,
+    head: bool = debug.logging_general.Success,
+    sentinel: bool = debug.logging_general.Success,
+    metadata: bool = debug.logging_general.Success,
+    branches: bool = debug.logging_general.Success,
     /// Report `mmap` Acquire and Release.
-    map: builtin.Logging.AcquireError = .{},
+    map: debug.Logging.AcquireError = .{},
     /// Report `munmap` Release and Error.
-    unmap: builtin.Logging.ReleaseError = .{},
+    unmap: debug.Logging.ReleaseError = .{},
     /// Report `mremap` Success and Error.
-    remap: builtin.Logging.SuccessError = .{},
+    remap: debug.Logging.SuccessError = .{},
     /// Report `madvise` Success and Error.
-    advise: builtin.Logging.SuccessError = .{},
+    advise: debug.Logging.SuccessError = .{},
     /// Report when a reference is created.
-    allocate: bool = builtin.logging_general.Acquire,
+    allocate: bool = debug.logging_general.Acquire,
     /// Report when a reference is modified (move/resize).
-    reallocate: bool = builtin.logging_general.Success,
+    reallocate: bool = debug.logging_general.Success,
     /// Report when a reference is converted to another kind of reference.
-    reinterpret: bool = builtin.logging_general.Success,
+    reinterpret: bool = debug.logging_general.Success,
     /// Report when a reference is destroyed.
-    deallocate: bool = builtin.logging_general.Release,
+    deallocate: bool = debug.logging_general.Release,
     inline fn isSilent(comptime logging: AllocatorLogging) bool {
         comptime {
             return 0 == meta.leastBitCast(logging);
@@ -256,7 +257,7 @@ fn GenericAllocatorInterface(comptime Allocator: type) type {
             }
         }
         pub fn map(allocator: *Allocator, s_bytes: u64) Allocator.allocate_void {
-            builtin.assertEqual(u64, s_bytes & 4095, 0);
+            debug.assertEqual(u64, s_bytes & 4095, 0);
             if (Allocator.allocator_spec.options.prefer_remap) {
                 if (Allocator.allocator_spec.options.require_geometric_growth) {
                     const t_bytes: u64 = builtin.max(u64, allocator.mapped_byte_count(), s_bytes);
@@ -288,7 +289,7 @@ fn GenericAllocatorInterface(comptime Allocator: type) type {
             }
         }
         pub fn unmap(allocator: *Allocator, s_bytes: u64) Allocator.deallocate_void {
-            builtin.assertEqual(u64, s_bytes & 4095, 0);
+            debug.assertEqual(u64, s_bytes & 4095, 0);
             if (s_bytes >= 4096) {
                 allocator.up_addr -%= s_bytes;
                 return special.unmap(Allocator.unmap_spec, unmapped_byte_address(allocator), s_bytes);
@@ -307,10 +308,10 @@ fn GenericAllocatorInterface(comptime Allocator: type) type {
         fn unmapAll(allocator: *Allocator) Allocator.deallocate_void {
             const x_bytes: u64 = allocator.mapped_byte_count();
             if (Allocator.allocator_spec.options.count_useful_bytes) {
-                builtin.assertBelowOrEqual(u64, allocator.metadata.utility, 0);
+                debug.assertBelowOrEqual(u64, allocator.metadata.utility, 0);
             }
             if (Allocator.allocator_spec.options.count_allocations) {
-                builtin.assertBelowOrEqual(u64, allocator.metadata.count, 0);
+                debug.assertBelowOrEqual(u64, allocator.metadata.count, 0);
             }
             return allocator.unmap(x_bytes);
         }
@@ -319,10 +320,10 @@ fn GenericAllocatorInterface(comptime Allocator: type) type {
             const t_bytes: u64 = mach.sub64(t_ua_addr, mapped_byte_address(allocator));
             const x_bytes: u64 = mach.sub64(mapped_byte_count(allocator), t_bytes);
             if (Allocator.allocator_spec.options.count_useful_bytes) {
-                builtin.assertBelowOrEqual(u64, allocator.metadata.utility, t_bytes);
+                debug.assertBelowOrEqual(u64, allocator.metadata.utility, t_bytes);
             }
             if (Allocator.allocator_spec.options.count_allocations) {
-                builtin.assertBelowOrEqual(u64, allocator.metadata.count, t_bytes);
+                debug.assertBelowOrEqual(u64, allocator.metadata.count, t_bytes);
             }
             return allocator.unmap(x_bytes);
         }
@@ -331,10 +332,10 @@ fn GenericAllocatorInterface(comptime Allocator: type) type {
             const x_bytes: u64 = mach.sub64(t_ua_addr, allocator.unmapped_byte_address());
             const t_bytes: u64 = mach.add64(allocator.mapped_byte_count(), x_bytes);
             if (Allocator.allocator_spec.options.max_acquire) |max| {
-                builtin.assertBelowOrEqual(u64, x_bytes, max);
+                debug.assertBelowOrEqual(u64, x_bytes, max);
             }
             if (Allocator.allocator_spec.options.max_commit) |max| {
-                builtin.assertBelowOrEqual(u64, t_bytes, max);
+                debug.assertBelowOrEqual(u64, t_bytes, max);
             }
             if (Allocator.allocator_spec.options.require_map) {
                 return allocator.map(x_bytes);
@@ -519,7 +520,7 @@ pub fn GenericArenaAllocator(comptime spec: ArenaAllocatorSpec) type {
         const Branches = struct {};
         const Graphics = GenericArenaAllocatorGraphics(Allocator);
         comptime {
-            builtin.assertEqual(u64, 1, unit_alignment);
+            debug.assertEqual(u64, 1, unit_alignment);
         }
     });
 }
@@ -573,7 +574,7 @@ pub fn GenericRtArenaAllocator(comptime spec: RtArenaAllocatorSpec) type {
         const Branches = struct {};
         const Graphics = GenericArenaAllocatorGraphics(Allocator);
         comptime {
-            builtin.assertEqual(u64, 1, unit_alignment);
+            debug.assertEqual(u64, 1, unit_alignment);
         }
     });
 }
@@ -680,13 +681,13 @@ const Branches = struct {
             var array: PrintArray = undefined;
             array.undefineAll();
             showWrite(branches, &array);
-            builtin.debug.write(array.readAll());
+            debug.write(array.readAll());
         }
         pub fn showWithReference(t_branches: Branches, s_branches: *Branches) void {
             var array: PrintArray = undefined;
             array.undefineAll();
             showWithReferenceWrite(t_branches, s_branches, &array);
-            builtin.debug.write(array.readAll());
+            debug.write(array.readAll());
         }
     };
 };
@@ -696,7 +697,7 @@ const special = opaque {
     fn map(comptime spec: mem.MapSpec, addr: u64, len: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
         const mmap_prot: mem.Prot = comptime spec.prot();
         const mmap_flags: mem.Map = comptime spec.flags();
-        const logging: builtin.Logging.AcquireErrorFault = comptime spec.logging.override();
+        const logging: debug.Logging.AcquireErrorFault = comptime spec.logging.override();
         if (meta.wrap(sys.call(.mmap, spec.errors, spec.return_type, .{ addr, len, mmap_prot.val, mmap_flags.val, ~@as(u64, 0), 0 }))) {
             if (logging.Acquire) {
                 debug.mapNotice(addr, len);
@@ -710,7 +711,7 @@ const special = opaque {
     }
     fn move(comptime spec: mem.MoveSpec, old_addr: u64, old_len: u64, new_addr: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
         const mremap_flags: mem.Remap = comptime spec.flags();
-        const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
+        const logging: debug.Logging.SuccessErrorFault = comptime spec.logging.override();
         if (meta.wrap(sys.call(.mremap, spec.errors, spec.return_type, .{ old_addr, old_len, old_len, mremap_flags.val, new_addr }))) {
             if (logging.Success) {
                 debug.moveNotice(old_addr, old_len, new_addr);
@@ -723,7 +724,7 @@ const special = opaque {
         }
     }
     fn resize(comptime spec: mem.RemapSpec, old_addr: u64, old_len: u64, new_len: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
-        const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
+        const logging: debug.Logging.SuccessErrorFault = comptime spec.logging.override();
         if (meta.wrap(sys.call(.mremap, spec.errors, spec.return_type, .{ old_addr, old_len, new_len, 0, 0 }))) {
             if (logging.Success) {
                 debug.resizeNotice(old_addr, old_len, new_len);
@@ -736,7 +737,7 @@ const special = opaque {
         }
     }
     fn unmap(comptime spec: mem.UnmapSpec, addr: u64, len: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
-        const logging: builtin.Logging.ReleaseErrorFault = comptime spec.logging.override();
+        const logging: debug.Logging.ReleaseErrorFault = comptime spec.logging.override();
         if (meta.wrap(sys.call(.munmap, spec.errors, spec.return_type, .{ addr, len }))) {
             if (logging.Release) {
                 debug.unmapNotice(addr, len);
@@ -749,7 +750,7 @@ const special = opaque {
         }
     }
     fn advise(comptime spec: mem.AdviseSpec, addr: u64, len: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
-        const logging: builtin.Logging.SuccessErrorFault = comptime spec.logging.override();
+        const logging: debug.Logging.SuccessErrorFault = comptime spec.logging.override();
         const advice: mem.Advice = spec.advice();
         if (meta.wrap(sys.call(.madvise, spec.errors, spec.return_type, .{ addr, len, advice.val }))) {
             if (logging.Success) {
@@ -822,7 +823,7 @@ const special = opaque {
         const spec: mem.RegularAddressSpaceSpec = AddressSpace.addr_spec;
         const lb_addr: u64 = AddressSpace.low(index);
         const up_addr: u64 = AddressSpace.high(index);
-        const logging: builtin.Logging.AcquireErrorFault = comptime spec.logging.acquire.override();
+        const logging: debug.Logging.AcquireErrorFault = comptime spec.logging.acquire.override();
         if (acquireSet(AddressSpace, address_space, index)) {
             if (spec.options.require_map) {
                 try meta.wrap(acquireMap(AddressSpace, address_space));
@@ -836,14 +837,14 @@ const special = opaque {
             }
             return spec.errors.acquire.throw;
         } else if (spec.errors.acquire == .abort) {
-            builtin.proc.exitFault(debug.about_acq_2_s, 2);
+            proc.exitFault(debug.about_acq_2_s, 2);
         }
     }
     pub fn acquireStatic(comptime AddressSpace: type, address_space: *AddressSpace, comptime index: AddressSpace.Index) AddressSpace.acquire_void(index) {
         const spec = AddressSpace.addr_spec;
         const lb_addr: u64 = comptime AddressSpace.low(index);
         const up_addr: u64 = comptime AddressSpace.high(index);
-        const logging: builtin.Logging.AcquireErrorFault = comptime spec.logging.acquire.override();
+        const logging: debug.Logging.AcquireErrorFault = comptime spec.logging.acquire.override();
         if (acquireStaticSet(AddressSpace, address_space, index)) {
             if (logging.Acquire) {
                 debug.arenaAcquireNotice(index, lb_addr, up_addr, spec.label);
@@ -854,14 +855,14 @@ const special = opaque {
             }
             return spec.errors.acquire.throw;
         } else if (spec.errors.acquire == .abort) {
-            builtin.proc.exitFault(debug.about_acq_2_s, 2);
+            proc.exitFault(debug.about_acq_2_s, 2);
         }
     }
     pub fn acquireElementary(comptime AddressSpace: type, address_space: *AddressSpace) AddressSpace.acquire_void {
         const spec = AddressSpace.addr_spec;
         const lb_addr: u64 = address_space.low();
         const up_addr: u64 = address_space.high();
-        const logging: builtin.Logging.AcquireErrorFault = comptime spec.logging.acquire.override();
+        const logging: debug.Logging.AcquireErrorFault = comptime spec.logging.acquire.override();
         if (acquireElementarySet(AddressSpace, address_space)) {
             if (logging.Acquire) {
                 debug.arenaAcquireNotice(null, lb_addr, up_addr, spec.label);
@@ -872,14 +873,14 @@ const special = opaque {
             }
             return spec.errors.acquire.throw;
         } else if (spec.errors.acquire == .abort) {
-            builtin.proc.exitFault(debug.about_acq_2_s, 2);
+            proc.exitFault(debug.about_acq_2_s, 2);
         }
     }
     pub fn release(comptime AddressSpace: type, address_space: *AddressSpace, index: AddressSpace.Index) AddressSpace.release_void {
         const spec: mem.RegularAddressSpaceSpec = AddressSpace.addr_spec;
         const lb_addr: u64 = AddressSpace.low(index);
         const up_addr: u64 = AddressSpace.high(index);
-        const logging: builtin.Logging.ReleaseErrorFault = comptime spec.logging.release.override();
+        const logging: debug.Logging.ReleaseErrorFault = comptime spec.logging.release.override();
         if (releaseUnset(AddressSpace, address_space, index)) {
             if (logging.Release) {
                 debug.arenaReleaseNotice(index, lb_addr, up_addr, spec.label);
@@ -893,14 +894,14 @@ const special = opaque {
             }
             return spec.errors.release.throw;
         } else if (spec.errors.release == .abort) {
-            builtin.proc.exitFault(debug.about_rel_2_s, 2);
+            proc.exitFault(debug.about_rel_2_s, 2);
         }
     }
     pub fn releaseStatic(comptime AddressSpace: type, address_space: *AddressSpace, comptime index: AddressSpace.Index) AddressSpace.release_void(index) {
         const spec = AddressSpace.addr_spec;
         const lb_addr: u64 = AddressSpace.low(index);
         const up_addr: u64 = AddressSpace.high(index);
-        const logging: builtin.Logging.ReleaseErrorFault = comptime spec.logging.release.override();
+        const logging: debug.Logging.ReleaseErrorFault = comptime spec.logging.release.override();
         if (releaseStaticUnset(AddressSpace, address_space, index)) {
             if (logging.Release) {
                 debug.arenaReleaseNotice(index, lb_addr, up_addr, spec.label);
@@ -911,7 +912,7 @@ const special = opaque {
             }
             return spec.errors.release.throw;
         } else if (spec.errors.release == .abort) {
-            builtin.proc.exitFault(debug.about_rel_2_s, 2);
+            proc.exitFault(debug.about_rel_2_s, 2);
         }
     }
     pub fn releaseElementary(comptime AddressSpace: type, address_space: *AddressSpace) AddressSpace.release_void {
@@ -928,7 +929,7 @@ const special = opaque {
             }
             return spec.errors.release.throw;
         } else if (spec.errors.release == .abort) {
-            builtin.proc.exitFault(debug.about_rel_2_s, 2);
+            proc.exitFault(debug.about_rel_2_s, 2);
         }
     }
 };
@@ -937,37 +938,37 @@ const debug = opaque {
     const ArenaRange = fmt.AddressRangeFormat;
     const ChangedArenaRange = fmt.ChangedAddressRangeFormat;
     const ChangedBytes = fmt.ChangedBytesFormat(.{});
-    const about_next_s: []const u8 = builtin.fmt.about("next");
-    const about_count_s: []const u8 = builtin.fmt.about("count");
-    const about_map_0_s: []const u8 = builtin.fmt.about("map");
-    const about_map_1_s: []const u8 = builtin.fmt.about("map-error");
-    const about_acq_0_s: []const u8 = builtin.fmt.about("acq");
-    const about_acq_1_s: []const u8 = builtin.fmt.about("acq-error");
-    const about_rel_0_s: []const u8 = builtin.fmt.about("rel");
-    const about_rel_1_s: []const u8 = builtin.fmt.about("rel-error");
-    const about_acq_2_s: []const u8 = builtin.fmt.about("acq-fault\n");
-    const about_rel_2_s: []const u8 = builtin.fmt.about("rel-fault\n");
-    const about_brk_1_s: []const u8 = builtin.fmt.about("brk-error");
-    const about_no_op_s: []const u8 = builtin.fmt.about("no-op");
-    const about_move_0_s: []const u8 = builtin.fmt.about("move");
-    const about_move_1_s: []const u8 = builtin.fmt.about("move-error");
-    const about_finish_s: []const u8 = builtin.fmt.about("finish");
-    const about_holder_s: []const u8 = builtin.fmt.about("holder");
-    const about_unmap_0_s: []const u8 = builtin.fmt.about("unmap");
-    const about_unmap_1_s: []const u8 = builtin.fmt.about("unmap-error");
-    const about_remap_0_s: []const u8 = builtin.fmt.about("remap");
-    const about_remap_1_s: []const u8 = builtin.fmt.about("remap-error");
-    const about_utility_s: []const u8 = builtin.fmt.about("utility");
-    const about_capacity_s: []const u8 = builtin.fmt.about("capacity");
-    const about_resize_0_s: []const u8 = builtin.fmt.about("resize");
-    const about_resize_1_s: []const u8 = builtin.fmt.about("resize-error");
-    const about_advice_0_s: []const u8 = builtin.fmt.about("advice");
-    const about_advice_1_s: []const u8 = builtin.fmt.about("advice-error");
-    const about_remapped_s: []const u8 = builtin.fmt.about("remapped");
-    const about_allocated_s: []const u8 = builtin.fmt.about("allocated");
-    const about_filo_error_s: []const u8 = builtin.fmt.about("filo-error");
-    const about_deallocated_s: []const u8 = builtin.fmt.about("deallocated");
-    const about_reallocated_s: []const u8 = builtin.fmt.about("reallocated");
+    const about_next_s: []const u8 = fmt.old.about("next");
+    const about_count_s: []const u8 = fmt.old.about("count");
+    const about_map_s: []const u8 = fmt.old.about("map");
+    const about_map_1_s: []const u8 = fmt.old.about("map-error");
+    const about_acq_s: []const u8 = fmt.old.about("acq");
+    const about_acq_1_s: []const u8 = fmt.old.about("acq-error");
+    const about_rel_s: []const u8 = fmt.old.about("rel");
+    const about_rel_1_s: []const u8 = fmt.old.about("rel-error");
+    const about_acq_2_s: []const u8 = fmt.old.about("acq-fault\n");
+    const about_rel_2_s: []const u8 = fmt.old.about("rel-fault\n");
+    const about_brk_1_s: []const u8 = fmt.old.about("brk-error");
+    const about_no_op_s: []const u8 = fmt.old.about("no-op");
+    const about_move_s: []const u8 = fmt.old.about("move");
+    const about_move_1_s: []const u8 = fmt.old.about("move-error");
+    const about_finish_s: []const u8 = fmt.old.about("finish");
+    const about_holder_s: []const u8 = fmt.old.about("holder");
+    const about_unmap_s: []const u8 = fmt.old.about("unmap");
+    const about_unmap_1_s: []const u8 = fmt.old.about("unmap-error");
+    const about_remap_s: []const u8 = fmt.old.about("remap");
+    const about_remap_1_s: []const u8 = fmt.old.about("remap-error");
+    const about_utility_s: []const u8 = fmt.old.about("utility");
+    const about_capacity_s: []const u8 = fmt.old.about("capacity");
+    const about_resize_s: []const u8 = fmt.old.about("resize");
+    const about_resize_1_s: []const u8 = fmt.old.about("resize-error");
+    const about_advice_s: []const u8 = fmt.old.about("advice");
+    const about_advice_1_s: []const u8 = fmt.old.about("advice-error");
+    const about_remapped_s: []const u8 = fmt.old.about("remapped");
+    const about_allocated_s: []const u8 = fmt.old.about("allocated");
+    const about_filo_error_s: []const u8 = fmt.old.about("filo-error");
+    const about_deallocated_s: []const u8 = fmt.old.about("deallocated");
+    const about_reallocated_s: []const u8 = fmt.old.about("reallocated");
     const pretty_bytes: bool = true;
     fn writeErrorName(array: *PrintArray, error_name: []const u8) void {
         array.writeMany("(");
@@ -1030,10 +1031,10 @@ const debug = opaque {
     }
     fn writeModifyOperation(array: *PrintArray, s_ab_addr: u64, s_aligned_bytes: u64, t_ab_addr: u64, t_aligned_bytes: u64) void {
         if (s_aligned_bytes != t_aligned_bytes and s_ab_addr == t_ab_addr) {
-            return array.writeMany(about_resize_0_s);
+            return array.writeMany(about_resize_s);
         }
         if (s_aligned_bytes == t_aligned_bytes and s_ab_addr != t_ab_addr) {
-            return array.writeMany(about_move_0_s);
+            return array.writeMany(about_move_s);
         }
         if (s_ab_addr != t_ab_addr) {
             return array.writeMany(about_reallocated_s);
@@ -1217,23 +1218,23 @@ const debug = opaque {
     fn mapNotice(addr: u64, len: u64) void {
         var array: PrintArray = undefined;
         array.undefineAll();
-        array.writeMany(about_map_0_s);
+        array.writeMany(about_map_s);
         writeAddressRangeBytes(&array, addr, addr +% len);
         array.writeMany("\n");
-        builtin.debug.write(array.readAll());
+        debug.write(array.readAll());
     }
     fn unmapNotice(addr: u64, len: u64) void {
         var array: PrintArray = undefined;
         array.undefineAll();
-        array.writeMany(about_unmap_0_s);
+        array.writeMany(about_unmap_s);
         writeAddressRangeBytes(&array, addr, addr +% len);
         array.writeMany("\n");
-        builtin.debug.write(array.readAll());
+        debug.write(array.readAll());
     }
     fn arenaAcquireNotice(index_opt: ?u64, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
         var array: PrintArray = undefined;
         array.undefineAll();
-        array.writeMany(about_acq_0_s);
+        array.writeMany(about_acq_s);
         array.writeMany(label orelse "arena");
         array.writeMany("-");
         if (index_opt) |index| {
@@ -1242,12 +1243,12 @@ const debug = opaque {
         array.writeMany(", ");
         writeAddressRangeBytes(&array, lb_addr, up_addr);
         array.writeMany("\n");
-        builtin.debug.write(array.readAll());
+        debug.write(array.readAll());
     }
     fn arenaReleaseNotice(index_opt: ?u64, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
         var array: PrintArray = undefined;
         array.undefineAll();
-        array.writeMany(about_rel_0_s);
+        array.writeMany(about_rel_s);
         array.writeMany(label orelse "arena");
         array.writeMany("-");
         if (index_opt) |index| {
@@ -1256,33 +1257,33 @@ const debug = opaque {
         array.writeMany(", ");
         writeAddressRangeBytes(&array, lb_addr, up_addr);
         array.writeMany("\n");
-        builtin.debug.write(array.readAll());
+        debug.write(array.readAll());
     }
     fn adviseNotice(addr: u64, len: u64, description_s: []const u8) void {
         var array: PrintArray = undefined;
         array.undefineAll();
-        array.writeMany(about_advice_0_s);
+        array.writeMany(about_advice_s);
         writeAddressRangeBytes(&array, addr, addr +% len);
         array.writeMany(", ");
         array.writeMany(description_s);
         array.writeMany("\n");
-        builtin.debug.write(array.readAll());
+        debug.write(array.readAll());
     }
     fn resizeNotice(old_addr: u64, old_len: u64, new_len: u64) void {
         var array: PrintArray = undefined;
         array.undefineAll();
-        array.writeMany(about_remap_0_s);
+        array.writeMany(about_remap_s);
         writeChangedAddressRangeBytes(&array, old_addr, old_addr +% old_len, old_addr, old_addr +% new_len);
         array.writeMany("\n");
-        builtin.debug.write(array.readAll());
+        debug.write(array.readAll());
     }
     fn moveNotice(old_addr: u64, old_len: u64, new_addr: u64) void {
         var array: PrintArray = undefined;
         array.undefineAll();
-        array.writeMany(about_move_0_s);
+        array.writeMany(about_move_s);
         writeChangedAddressRangeBytes(&array, old_addr, old_addr +% old_len, new_addr, new_addr +% old_len);
         array.writeMany("\n");
-        builtin.debug.write(array.readAll());
+        debug.write(array.readAll());
     }
     fn mapError(map_error: anytype, addr: u64, len: u64) void {
         var array: PrintArray = undefined;
@@ -1292,7 +1293,7 @@ const debug = opaque {
         array.writeMany(" ");
         writeErrorName(&array, @errorName(map_error));
         array.writeMany("\n");
-        builtin.debug.write(array.readAll());
+        debug.write(array.readAll());
     }
     fn unmapError(unmap_error: anytype, addr: u64, len: u64) void {
         var array: PrintArray = undefined;
@@ -1302,7 +1303,7 @@ const debug = opaque {
         array.writeMany(" ");
         writeErrorName(&array, @errorName(unmap_error));
         array.writeMany("\n");
-        builtin.debug.write(array.readAll());
+        debug.write(array.readAll());
     }
     fn arenaAcquireError(arena_error: anytype, index: u64, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
         var array: PrintArray = undefined;
@@ -1316,7 +1317,7 @@ const debug = opaque {
         array.writeMany(" ");
         writeErrorName(&array, @errorName(arena_error));
         array.writeMany("\n");
-        builtin.debug.write(array.readAll());
+        debug.write(array.readAll());
     }
     fn arenaReleaseError(arena_error: anytype, index: u64, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
         var array: PrintArray = undefined;
@@ -1330,7 +1331,7 @@ const debug = opaque {
         array.writeMany(" ");
         writeErrorName(&array, @errorName(arena_error));
         array.writeMany("\n");
-        builtin.debug.write(array.readAll());
+        debug.write(array.readAll());
     }
     fn adviseError(madvise_error: anytype, addr: u64, len: u64, description_s: []const u8) void {
         var array: PrintArray = undefined;
@@ -1342,7 +1343,7 @@ const debug = opaque {
         array.writeMany(", ");
         writeErrorName(&array, @errorName(madvise_error));
         array.writeMany("\n");
-        builtin.debug.write(array.readAll());
+        debug.write(array.readAll());
     }
     fn resizeError(mremap_err: anytype, old_addr: u64, old_len: u64, new_len: u64) void {
         var array: PrintArray = undefined;
@@ -1352,7 +1353,7 @@ const debug = opaque {
         array.writeMany(" ");
         writeErrorName(&array, @errorName(mremap_err));
         array.writeMany("\n");
-        builtin.debug.write(array.readAll());
+        debug.write(array.readAll());
     }
     fn moveError(mremap_err: anytype, old_addr: u64, old_len: u64, new_addr: u64) void {
         var array: PrintArray = undefined;
@@ -1362,7 +1363,7 @@ const debug = opaque {
         array.writeMany(" ");
         writeErrorName(&array, @errorName(mremap_err));
         array.writeMany("\n");
-        builtin.debug.write(array.readAll());
+        debug.write(array.readAll());
     }
     fn showAllocateOneStructured(comptime s_child: type, s_ab_addr: u64, src: builtin.SourceLocation, ret_addr: u64) void {
         const src_fmt: fmt.SourceLocationFormat = fmt.sourceLocation(src, ret_addr);
@@ -1373,7 +1374,7 @@ const debug = opaque {
         array.writeFormat(src_fmt);
         array.writeMany(about_allocated_s);
         writeAboutOneAllocation(&array, s_child, s_ab_addr, s_uw_addr, s_aligned_bytes);
-        builtin.debug.write(array.readAll());
+        debug.write(array.readAll());
     }
     fn showAllocateManyStructured(
         comptime s_child: type,
@@ -1391,7 +1392,7 @@ const debug = opaque {
         array.writeFormat(src_fmt);
         array.writeMany(about_allocated_s);
         writeAboutManyAllocation(&array, s_child, s_ab_addr, s_uw_addr, s_aligned_bytes, s_sentinel);
-        builtin.debug.write(array.readAll());
+        debug.write(array.readAll());
     }
     pub fn showAllocateHolderStructured(
         comptime s_child: type,
@@ -1409,7 +1410,7 @@ const debug = opaque {
         array.writeFormat(src_fmt);
         array.writeMany(about_allocated_s);
         writeAboutHolderAllocation(&array, s_child, s_ab_addr, s_ua_addr, s_aligned_bytes, s_sentinel);
-        builtin.debug.write(array.readAll());
+        debug.write(array.readAll());
     }
     fn showReallocateManyStructured(
         comptime s_child: type,
@@ -1436,7 +1437,7 @@ const debug = opaque {
         writeAlignedBytesB(&array, s_aligned_bytes, t_aligned_bytes);
         writeManyArrayNotationB(&array, s_child, t_child, s_aligned_bytes, t_aligned_bytes, s_sentinel, t_sentinel);
         array.overwriteManyBack("\n\n");
-        builtin.debug.write(array.readAll());
+        debug.write(array.readAll());
     }
     fn showReallocateHolderStructured(
         comptime s_child: type,
@@ -1463,7 +1464,7 @@ const debug = opaque {
         writeAlignedBytesB(&array, s_aligned_bytes, t_aligned_bytes);
         writeHolderArrayNotationB(&array, s_child, t_child, s_aligned_bytes, t_aligned_bytes, s_sentinel, t_sentinel);
         array.overwriteManyBack("\n\n");
-        builtin.debug.write(array.readAll());
+        debug.write(array.readAll());
     }
     fn showDeallocateOneStructured(comptime s_child: type, s_ab_addr: u64, src: builtin.SourceLocation, ret_addr: u64) void {
         const src_fmt: fmt.SourceLocationFormat = fmt.sourceLocation(src, ret_addr);
@@ -1474,7 +1475,7 @@ const debug = opaque {
         array.writeFormat(src_fmt);
         array.writeMany(about_deallocated_s);
         writeAboutOneAllocation(&array, s_child, s_ab_addr, s_uw_addr, s_aligned_bytes);
-        builtin.debug.write(array.readAll());
+        debug.write(array.readAll());
     }
     fn showDeallocateManyStructured(
         comptime s_child: type,
@@ -1493,7 +1494,7 @@ const debug = opaque {
         array.writeFormat(src_fmt);
         array.writeMany(about_deallocated_s);
         writeAboutManyAllocation(&array, s_child, s_ab_addr, s_uw_addr, s_aligned_bytes, s_sentinel);
-        builtin.debug.write(array.readAll());
+        debug.write(array.readAll());
     }
     fn showDeallocateHolderStructured(
         comptime s_child: type,
@@ -1511,7 +1512,7 @@ const debug = opaque {
         array.writeFormat(src_fmt);
         array.writeMany(about_deallocated_s);
         writeAboutHolderAllocation(&array, s_child, s_ab_addr, s_ua_addr, s_aligned_bytes, s_sentinel);
-        builtin.debug.write(array.readAll());
+        debug.write(array.readAll());
     }
     fn showAllocateManyUnstructured(s_ab_addr: u64, s_up_addr: u64, src: builtin.SourceLocation, ret_addr: u64) void {
         const src_fmt: fmt.SourceLocationFormat = fmt.sourceLocation(src, ret_addr);
@@ -1522,7 +1523,7 @@ const debug = opaque {
         array.writeFormat(src_fmt);
         array.writeMany(about_allocated_s);
         writeAboutUnstructuredAllocation(&array, s_ab_addr, s_uw_addr, s_aligned_bytes);
-        builtin.debug.write(array.readAll());
+        debug.write(array.readAll());
     }
     fn showReallocateManyUnstructured(s_ab_addr: u64, s_up_addr: u64, t_ab_addr: u64, t_up_addr: u64, src: builtin.SourceLocation, ret_addr: u64) void {
         const src_fmt: fmt.SourceLocationFormat = fmt.sourceLocation(src, ret_addr);
@@ -1535,7 +1536,7 @@ const debug = opaque {
         writeAddressSpaceB(&array, s_ab_addr, s_up_addr, t_ab_addr, t_up_addr);
         writeAlignedBytesB(&array, s_aligned_bytes, t_aligned_bytes);
         array.overwriteManyBack("\n\n");
-        builtin.debug.write(array.readAll());
+        debug.write(array.readAll());
     }
     fn showReallocateHolderUnstructured(s_ab_addr: u64, s_up_addr: u64, t_ab_addr: u64, t_up_addr: u64, src: builtin.SourceLocation, ret_addr: u64) void {
         const src_fmt: fmt.SourceLocationFormat = fmt.sourceLocation(src, ret_addr);
@@ -1548,7 +1549,7 @@ const debug = opaque {
         writeAddressSpaceB(&array, s_ab_addr, s_up_addr, t_ab_addr, t_up_addr);
         writeAlignedBytesB(&array, s_aligned_bytes, t_aligned_bytes);
         array.overwriteManyBack("\n\n");
-        builtin.debug.write(array.readAll());
+        debug.write(array.readAll());
     }
     fn showAllocateHolderUnstructured(s_ab_addr: u64, s_up_addr: u64, src: builtin.SourceLocation, ret_addr: u64) void {
         const src_fmt: fmt.SourceLocationFormat = fmt.sourceLocation(src, ret_addr);
@@ -1561,7 +1562,7 @@ const debug = opaque {
         writeAddressSpaceA(&array, s_ab_addr, s_ua_addr);
         writeAlignedBytesA(&array, s_aligned_bytes);
         array.overwriteManyBack("\n\n");
-        builtin.debug.write(array.readAll());
+        debug.write(array.readAll());
     }
     fn showDeallocateManyUnstructured(s_ab_addr: u64, s_up_addr: u64, src: builtin.SourceLocation, ret_addr: u64) void {
         const src_fmt: fmt.SourceLocationFormat = fmt.sourceLocation(src, ret_addr);
@@ -1573,7 +1574,7 @@ const debug = opaque {
         writeAddressSpaceA(&array, s_ab_addr, s_up_addr);
         writeAlignedBytesA(&array, s_aligned_bytes);
         array.overwriteManyBack("\n\n");
-        builtin.debug.write(array.readAll());
+        debug.write(array.readAll());
     }
     fn showDeallocateHolderUnstructured(s_ab_addr: u64, s_up_addr: u64, src: builtin.SourceLocation, ret_addr: u64) void {
         const src_fmt: fmt.SourceLocationFormat = fmt.sourceLocation(src, ret_addr);
@@ -1585,10 +1586,10 @@ const debug = opaque {
         writeAddressSpaceA(&array, s_ab_addr, s_up_addr);
         writeAlignedBytesA(&array, s_aligned_bytes);
         array.overwriteManyBack("\n\n");
-        builtin.debug.write(array.readAll());
+        debug.write(array.readAll());
     }
     fn showFiloDeallocateViolationAndExit(allocator: anytype, s_up_addr: u64, src: builtin.SourceLocation) void {
-        if (builtin.is_fast or builtin.is_small) builtin.debug.logFault(about_filo_error_s ++ "bad deallocate");
+        if (builtin.is_fast or builtin.is_small) debug.logFault(about_filo_error_s ++ "bad deallocate");
         const src_fmt: fmt.SourceLocationFormat = fmt.sourceLocation(src, @returnAddress());
         const s_ua_addr: u64 = allocator.unallocated_byte_address();
         const d_aligned_bytes: u64 = s_ua_addr -% s_up_addr;
@@ -1598,10 +1599,10 @@ const debug = opaque {
         array.writeMany(about_filo_error_s ++ "attempted deallocation ");
         array.writeFormat(fmt.bytes(d_aligned_bytes));
         array.writeMany(" below segment maximum\n\n");
-        builtin.debug.logFault(array.readAll());
+        debug.logFault(array.readAll());
     }
     fn showFiloResizeViolationAndExit(allocator: anytype, s_up_addr: u64, src: builtin.SourceLocation) void {
-        if (builtin.is_fast or builtin.is_small) builtin.debug.logFault(about_filo_error_s ++ "bad resize");
+        if (builtin.is_fast or builtin.is_small) debug.logFault(about_filo_error_s ++ "bad resize");
         const src_fmt: fmt.SourceLocationFormat = fmt.sourceLocation(src, @returnAddress());
         const s_ua_addr: u64 = allocator.unallocated_byte_address();
         const d_aligned_bytes: u64 = s_ua_addr -% s_up_addr;
@@ -1611,7 +1612,7 @@ const debug = opaque {
         array.writeMany(about_filo_error_s ++ "attempted resize ");
         array.writeFormat(fmt.bytes(d_aligned_bytes));
         array.writeMany(" below segment maximum\n\n");
-        builtin.debug.logFault(array.readAll());
+        debug.logFault(array.readAll());
     }
 };
 // finish-document debug-template.zig
@@ -1829,7 +1830,7 @@ fn GenericArenaAllocatorGraphics(comptime Allocator: type) type {
             }
             if (array.len() != src_fmt.formatLength()) {
                 array.writeOne('\n');
-                builtin.debug.write(array.readAll());
+                debug.write(array.readAll());
             }
         }
         pub fn showWithReference(allocator: *Allocator, src: builtin.SourceLocation) void {
@@ -1890,7 +1891,7 @@ fn GenericArenaAllocatorGraphics(comptime Allocator: type) type {
                 }
                 if (array.len() != src_fmt.formatLength()) {
                     array.writeOne('\n');
-                    builtin.debug.write(array.readAll());
+                    debug.write(array.readAll());
                 }
             } else {
                 return show(allocator, src);
