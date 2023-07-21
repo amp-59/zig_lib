@@ -14,6 +14,10 @@ pub const Error = error{
     ExactDivisionWithRemainder,
     IncorrectAlignment,
 };
+pub const Unexpected = error{
+    UnexpectedValue,
+    UnexpectedLength,
+};
 pub const PanicFn = @TypeOf(panic);
 pub const PanicExtraFn = @TypeOf(panicExtra);
 pub const PanicOutOfBoundsFn = @TypeOf(panicOutOfBounds);
@@ -22,20 +26,6 @@ pub const PanicStartGreaterThanEndFn = @TypeOf(panicStartGreaterThanEnd);
 pub const PanicInactiveUnionFieldFn = @TypeOf(panicInactiveUnionField);
 pub const PanicUnwrapErrorFn = @TypeOf(panicUnwrapError);
 pub const AlarmFn = @TypeOf(alarm);
-pub const Unexpected = error{
-    UnexpectedValue,
-    UnexpectedLength,
-};
-pub fn itos(comptime T: type, value: T) fmt.old.Generic(T).Array10 {
-    return fmt.old.Generic(T).dec(value);
-}
-pub const printStackTrace = blk: {
-    if (builtin.have_stack_traces) {
-        break :blk special.printStackTrace;
-    } else {
-        break :blk special.trace.printStackTrace;
-    }
-};
 pub const SignalHandlers = packed struct {
     /// Report receipt of signal 11 SIGSEGV.
     SegmentationFault: bool,
@@ -586,6 +576,13 @@ pub fn logFaultAIO(buf: []u8, slices: []const []const u8) void {
     @setRuntimeSafety(false);
     logFault(buf[0..mach.memcpyMulti(buf.ptr, slices)]);
 }
+pub const printStackTrace = blk: {
+    if (builtin.have_stack_traces) {
+        break :blk special.printStackTrace;
+    } else {
+        break :blk special.trace.printStackTrace;
+    }
+};
 pub noinline fn alarm(msg: []const u8, _: @TypeOf(@errorReturnTrace()), ret_addr: usize) void {
     @setCold(true);
     @setRuntimeSafety(false);
@@ -699,7 +696,10 @@ pub noinline fn panicUnwrapError(st: ?*builtin.StackTrace, err: anyerror) noretu
     }
     const ret_addr: usize = @returnAddress();
     var buf: [1024]u8 = undefined;
-    const len: u64 = mach.memcpyMulti(&buf, &[_][]const u8{ "error is discarded: ", @errorName(err) });
+    var len: usize = 24;
+    @as(*[24]u8, @ptrCast(&buf)).* = "error is discarded: ".*;
+    @memcpy(buf[len..].ptr, @errorName(err));
+    len +%= @errorName(err).len;
     builtin.panic(buf[0..len], st, ret_addr);
 }
 fn checkNonScalarSentinel(expected: comptime_int, actual: anytype) void {
