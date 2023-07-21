@@ -23,6 +23,9 @@ var build_cmd: build.BuildCommand = .{
 const format_cmd: build.FormatCommand = .{
     .ast_check = true,
 };
+fn setStripped(node: *Node) void {
+    node.task.info.build.strip = true;
+}
 fn setSmall(node: *Node) void {
     node.task.info.build.mode = .ReleaseSmall;
     node.task.info.build.strip = true;
@@ -180,7 +183,6 @@ fn tests(allocator: *build.Allocator, node: *Node) void {
     build_stress_test.descr = "Try to produce builder errors";
     algo_test.task.info.build.mode = .ReleaseFast;
     cryptoTests(allocator, node.addGroup(allocator, "crypto_tests"));
-
     for ([_]*Node{
         build_runner_test,   zls_build_runner_test,
         cmdline_writer_test, serial_test,
@@ -225,7 +227,6 @@ fn cryptoTests(allocator: *build.Allocator, node: *Node) void {
     pcurves_test.descr = "Test point curve operations";
     //const kyber_test: *Node = node.addBuild(allocator, build_cmd, "kyber_test", "test/crypto/kyber-test.zig");
     //kyber_test.descr = "Test post-quantum 'Kyber' key exchange functions and types";
-
 }
 fn buildgen(allocator: *build.Allocator, node: *Node) void {
     const bg_aux: *Node = node.addGroup(allocator, "_buildgen");
