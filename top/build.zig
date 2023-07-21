@@ -337,18 +337,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             wait_tick: usize,
         },
         const Size = usize;
-        const CompileState = struct {
-            /// Enables `zig build-(exe|obj|lib)` commands.
-            build: bool = false,
-            /// Enables `zig fmt` commands.
-            format: bool = false,
-            /// Enables `zig ar` commands.
-            archive: bool = false,
-            /// Enables `zig objcopy` commands.
-            objcopy: bool = false,
-            /// Enables `execve`.
-            run: bool = false,
-        };
         const Task = extern struct {
             tag: types.Task,
             lock: types.Lock,
@@ -364,9 +352,32 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         const special = struct {
             pub var trace: *Node = undefined;
         };
-        const compile_state: *CompileState = blk: {
-            comptime var res: CompileState = .{};
-            break :blk &res;
+        pub const compile_state = struct {
+            /// Enables `zig build-(exe|obj|lib)` commands.
+            pub const build: *bool = blk: {
+                var res: bool = false;
+                break :blk &res;
+            };
+            /// Enables `zig fmt` commands.
+            pub const format: *bool = blk: {
+                var res: bool = false;
+                break :blk &res;
+            };
+            /// Enables `zig ar` commands.
+            pub const archive: *bool = blk: {
+                var res: bool = false;
+                break :blk &res;
+            };
+            /// Enables `zig objcopy` commands.
+            pub const objcopy: *bool = blk: {
+                var res: bool = false;
+                break :blk &res;
+            };
+            /// Enables `execve`.
+            pub const run: *bool = blk: {
+                var res: bool = false;
+                break :blk &res;
+            };
         };
         pub const specification: BuilderSpec = builder_spec;
         pub const max_thread_count: u64 =
@@ -594,9 +605,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         /// Initialize a new `zig fmt` command.
         pub fn addFormat(toplevel: *Node, allocator: *mem.SimpleAllocator, format_cmd: types.FormatCommand, name: []const u8, pathname: []const u8) *Node {
             @setRuntimeSafety(builder_spec.options.enable_safety);
-            comptime {
-                compile_state.format = true;
-            }
+            comptime compile_state.format.* = true;
             const node: *Node = allocator.create(Node);
             node.flags = .{};
             toplevel.addNode(allocator).* = node;
@@ -616,9 +625,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         /// Initialize a new `zig ar` command.
         pub fn addArchive(toplevel: *Node, allocator: *mem.SimpleAllocator, archive_cmd: types.ArchiveCommand, name: []const u8, deps: []const *Node) *Node {
             @setRuntimeSafety(builder_spec.options.enable_safety);
-            comptime {
-                compile_state.archive = true;
-            }
+            comptime compile_state.archive.* = true;
             const node: *Node = allocator.create(Node);
             node.flags = .{};
             toplevel.addNode(allocator).* = node;
@@ -638,9 +645,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         }
         pub fn addBuild(toplevel: *Node, allocator: *mem.SimpleAllocator, build_cmd: types.BuildCommand, name: []const u8, root: []const u8) *Node {
             @setRuntimeSafety(builder_spec.options.enable_safety);
-            comptime {
-                compile_state.build = true;
-            }
+            comptime compile_state.build.* = true;
             const main_pkg_path: [:0]const u8 = build.build_root;
             const node: *Node = allocator.create(Node);
             node.flags = .{};
@@ -663,7 +668,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         }
         pub fn addObjcopy(toplevel: *Node, allocator: *mem.SimpleAllocator, objcopy_cmd: types.ObjcopyCommand, name: []const u8, holder: *Node) *Node {
             @setRuntimeSafety(builder_spec.options.enable_safety);
-            compile_state.objcopy = true;
+            comptime compile_state.objcopy.* = true;
             const node: *Node = allocator.create(Node);
             node.flags = .{};
             toplevel.addNode(allocator).* = node;
@@ -943,16 +948,16 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             }
             inline fn taskArgs(allocator: *mem.SimpleAllocator, toplevel: *const Node, node: *Node, task: types.Task) [][*:0]u8 {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
-                if (compile_state.build and task == .build) {
+                if (compile_state.build.* and task == .build) {
                     return makeArgPtrs(allocator, try meta.wrap(buildWrite(allocator, node.task.info.build, node.impl.paths[1..node.impl.paths_len])));
                 }
-                if (compile_state.format and task == .format) {
+                if (compile_state.format.* and task == .format) {
                     return makeArgPtrs(allocator, try meta.wrap(formatWrite(allocator, node.task.info.format, node.impl.paths[0])));
                 }
-                if (compile_state.archive and task == .archive) {
+                if (compile_state.archive.* and task == .archive) {
                     return makeArgPtrs(allocator, try meta.wrap(archiveWrite(allocator, node.task.info.archive, node.impl.paths[0..node.impl.paths_len])));
                 }
-                if (compile_state.objcopy and task == .objcopy) {
+                if (compile_state.objcopy.* and task == .objcopy) {
                     return makeArgPtrs(allocator, try meta.wrap(objcopyWrite(allocator, node.task.info.objcopy, node.impl.paths[1])));
                 }
                 if (task == .run) {
