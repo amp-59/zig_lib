@@ -689,8 +689,8 @@ pub noinline fn panicInactiveUnionField(active: anytype, wanted: @TypeOf(active)
     len +%= 15;
     @memcpy(buf[len..].ptr, @tagName(active));
     len +%= @tagName(active).len;
-    @as(*[12]u8, @ptrCast(buf[len..].ptr)).* = "' is active".*;
-    len +%= 12;
+    @as(*[11]u8, @ptrCast(buf[len..].ptr)).* = "' is active".*;
+    len +%= 11;
     builtin.panic(buf[0..len], null, ret_addr);
 }
 pub noinline fn panicUnwrapError(st: ?*builtin.StackTrace, err: anyerror) noreturn {
