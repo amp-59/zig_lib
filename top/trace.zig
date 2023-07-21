@@ -7,12 +7,13 @@ const math = @import("./math.zig");
 const mach = @import("./mach.zig");
 const algo = @import("./algo.zig");
 const file = @import("./file.zig");
+const debug = @import("./debug.zig");
 const dwarf = @import("./dwarf.zig");
 const builtin = @import("./builtin.zig");
 const testing = @import("./testing.zig");
 
 pub const Allocator = mem.SimpleAllocator;
-pub const logging_override: builtin.Logging.Override = builtin.Logging.Override{
+pub const logging_override: debug.Logging.Override = debug.Logging.Override{
     .Acquire = false,
     .Attempt = false,
     .Error = false,
@@ -72,7 +73,7 @@ pub const StackIterator = struct {
         return @as(*usize, @ptrFromInt(pc[0])).*;
     }
 };
-fn writeLastLine(trace: *const builtin.Trace, buf: [*]u8, width: u64, break_line_count: u8) u64 {
+fn writeLastLine(trace: *const debug.Trace, buf: [*]u8, width: u64, break_line_count: u8) u64 {
     var len: u64 = 0;
     var idx: u64 = 0;
     while (idx != break_line_count) : (idx +%= 1) {
@@ -89,7 +90,7 @@ fn writeLastLine(trace: *const builtin.Trace, buf: [*]u8, width: u64, break_line
     }
     return len +% 4;
 }
-fn writeSideBar(trace: *const builtin.Trace, width: u64, buf: [*]u8, number: Number) u64 {
+fn writeSideBar(trace: *const debug.Trace, width: u64, buf: [*]u8, number: Number) u64 {
     const sidebar: []const u8 = trace.options.tokens.sidebar;
     const sidebar_char: bool = sidebar.len == 1;
     var tmp: [8]u8 = undefined;
@@ -157,7 +158,7 @@ fn writeFiller(buf: [*]u8, filler: []const u8, fill_len: u64) u64 {
         return len;
     }
 }
-fn writeCaret(trace: *const builtin.Trace, buf: [*]u8, width: u64, addr: u64, column: u64) u64 {
+fn writeCaret(trace: *const debug.Trace, buf: [*]u8, width: u64, addr: u64, column: u64) u64 {
     const caret: []const u8 = trace.options.tokens.caret;
     var len: u64 = 0;
     if (trace.options.write_sidebar) {
@@ -170,7 +171,7 @@ fn writeCaret(trace: *const builtin.Trace, buf: [*]u8, width: u64, addr: u64, co
     buf[len] = '\n';
     return len +% 1;
 }
-fn highlight(buf: [*]u8, tok: *builtin.zig.Token, syntax: anytype) u64 {
+fn highlight(buf: [*]u8, tok: *builtin.parse.Token, syntax: anytype) u64 {
     for (syntax) |pair| {
         for (pair.tags) |tag| {
             if (tok.tag == tag) {
@@ -182,13 +183,13 @@ fn highlight(buf: [*]u8, tok: *builtin.zig.Token, syntax: anytype) u64 {
     return 0;
 }
 fn writeSourceLine(
-    trace: *const builtin.Trace,
+    trace: *const debug.Trace,
     buf: [*]u8,
     width: u64,
     fbuf: []u8,
     loc: *dwarf.LineLocation,
-    itr: *builtin.zig.TokenIterator,
-    tok: *builtin.zig.Token,
+    itr: *builtin.parse.TokenIterator,
+    tok: *builtin.parse.Token,
 ) u64 {
     var len: u64 = 0;
     if (trace.options.write_sidebar) {
@@ -262,7 +263,7 @@ fn writeExtendedSourceLocation(
     return len;
 }
 fn writeSourceContext(
-    trace: *const builtin.Trace,
+    trace: *const debug.Trace,
     allocator: *Allocator,
     file_map: *FileMap,
     buf: [*]u8,
@@ -274,8 +275,8 @@ fn writeSourceContext(
     const max: u64 = src.line +% trace.options.context_line_count +% 1;
     var line: u64 = min;
     const fbuf: [:0]u8 = fastAllocFile(allocator, file_map, src.file);
-    var itr: builtin.zig.TokenIterator = .{ .buf = fbuf, .buf_pos = 0, .inval = null };
-    var tok: builtin.zig.Token = .{ .tag = .eof, .loc = .{ .start = 0, .finish = 0 } };
+    var itr: builtin.parse.TokenIterator = .{ .buf = fbuf, .buf_pos = 0, .inval = null };
+    var tok: builtin.parse.Token = .{ .tag = .eof, .loc = .{ .start = 0, .finish = 0 } };
     var len: u64 = 0;
     var loc: dwarf.LineLocation = .{};
     while (line != max) : (line +%= 1) {
@@ -289,7 +290,7 @@ fn writeSourceContext(
     return len;
 }
 fn writeSourceCodeAtAddress(
-    trace: *const builtin.Trace,
+    trace: *const debug.Trace,
     allocator: *Allocator,
     file_map: *FileMap,
     dwarf_info: *dwarf.DwarfInfo,
@@ -336,9 +337,9 @@ fn printMessage(buf: [*]u8, addr_info: *dwarf.DwarfInfo.AddressInfo) void {
         len +%= 12;
         @memcpy(tmp[len..].ptr, msg[idx..]);
         len +%= msg[idx..].len;
-        builtin.debug.write(tmp[0..len]);
+        debug.write(tmp[0..len]);
     } else {
-        builtin.debug.write(msg);
+        debug.write(msg);
     }
 }
 fn fastAllocFile(allocator: *Allocator, file_map: *FileMap, pathname: [:0]const u8) [:0]u8 {
@@ -369,7 +370,7 @@ fn maximumSideBarWidth(itr: StackIterator) u64 {
     }
     return max_len +% 1;
 }
-pub export fn printStackTrace(trace: *const builtin.Trace, first_addr: usize, frame_addr: usize) void {
+pub export fn printStackTrace(trace: *const debug.Trace, first_addr: usize, frame_addr: usize) void {
     var allocator: Allocator = .{ .start = Level.start, .next = Level.start, .finish = Level.start };
     defer allocator.unmap();
     var file_map: FileMap = FileMap.init(&allocator, 8);

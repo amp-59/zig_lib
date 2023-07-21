@@ -737,13 +737,7 @@ const static = struct {
             @compileError(msg[0..about.writeMulCausedOverflow(T, &msg, arg1, arg2, @min(arg1, arg2) > 10_000)]);
         }
     }
-    fn exactDivisionWithRemainder(
-        comptime T: type,
-        comptime arg1: T,
-        comptime arg2: T,
-        comptime result: T,
-        comptime remainder: T,
-    ) noreturn {
+    fn exactDivisionWithRemainder(comptime T: type, comptime arg1: T, comptime arg2: T, comptime result: T, comptime remainder: T) noreturn {
         comptime {
             var buf: [4096]u8 = undefined;
             var len: u64 = 0;
@@ -760,14 +754,7 @@ const static = struct {
             @compileError(buf[0..len]);
         }
     }
-    fn incorrectAlignment(
-        comptime T: type,
-        comptime type_name: []const u8,
-        comptime address: T,
-        comptime alignment: T,
-        comptime result: T,
-        comptime remainder: T,
-    ) noreturn {
+    fn incorrectAlignment(comptime T: type, comptime type_name: []const u8, comptime address: T, comptime alignment: T, comptime result: T, comptime remainder: T) noreturn {
         comptime {
             var buf: [4096]u8 = undefined;
             var len: u64 = 0;
@@ -785,12 +772,7 @@ const static = struct {
             @compileError(buf[0..len]);
         }
     }
-    inline fn comparisonFailed(
-        comptime T: type,
-        comptime symbol: []const u8,
-        comptime arg1: T,
-        comptime arg2: T,
-    ) void {
+    inline fn comparisonFailed(comptime T: type, comptime symbol: []const u8, comptime arg1: T, comptime arg2: T) void {
         comptime {
             var buf: [4096]u8 = undefined;
             var len: u64 = 0;

@@ -1,10 +1,11 @@
-const builtin = @import("./builtin.zig");
 const proc = @import("./proc.zig");
+const debug = @import("./debug.zig");
+const builtin = @import("./builtin.zig");
 comptime {
     _ = @import("./mach.zig");
 }
 pub usingnamespace blk: {
-    if (@hasDecl(builtin.root, "zig_lib") and builtin.root.zig_lib) {
+    if (builtin.is_zig_lib) {
         // zl is captain now.
         if (!@hasDecl(builtin.root, "_start")) {
             // User has not defined `_start` in `root`.
@@ -14,10 +15,10 @@ pub usingnamespace blk: {
     } else if (builtin.output_mode == .Exe) {
         break :blk _1;
     }
-    break :blk builtin.debug;
+    break :blk debug;
 };
 const _0 = struct {
-    fn _start() callconv(.Naked) noreturn {
+    fn _start() callconv(.Naked) if (builtin.output_mode == .Exe) noreturn else void {
         proc.static.stack_addr = asm volatile (
             \\xorq  %%rbp,  %%rbp
             : [argc] "={rsp}" (-> u64),
@@ -26,12 +27,12 @@ const _0 = struct {
     }
 };
 const _1 = struct {
-    pub export fn _start() callconv(.Naked) noreturn {
+    pub export fn _start() callconv(.Naked) if (builtin.output_mode == .Exe) noreturn else void {
         proc.static.stack_addr = asm volatile (
             \\xorq  %%rbp,  %%rbp
             : [argc] "={rsp}" (-> u64),
         );
         @call(.never_inline, proc.start, .{});
     }
-    pub usingnamespace builtin.debug;
+    pub usingnamespace debug;
 };
