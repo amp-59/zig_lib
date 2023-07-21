@@ -12,6 +12,15 @@ pub const utf8 = @import("./fmt/utf8.zig");
 pub const ascii = @import("./fmt/ascii.zig");
 pub usingnamespace _render;
 
+pub const AboutSrc = blk: {
+    var len: usize = 0;
+    if (builtin.message_style) |style| {
+        len +%= style.len;
+        len +%= builtin.message_no_style.len;
+    }
+    len +%= builtin.message_indent;
+    break :blk *const [len:0]u8;
+};
 pub fn about(comptime s: [:0]const u8) AboutSrc {
     var lhs: [:0]const u8 = s;
     lhs = builtin.message_prefix ++ lhs;
@@ -25,15 +34,9 @@ pub fn about(comptime s: [:0]const u8) AboutSrc {
     }
     return lhs ++ " " ** (builtin.message_indent - len);
 }
-pub const AboutSrc = @TypeOf(blank_s);
-pub const AboutDest = @TypeOf(@constCast(blank_s));
-pub const blank_s = blk: {
-    const indent = (" " ** builtin.message_indent);
-    if (builtin.message_style) |style| {
-        break :blk style ++ indent ++ builtin.message_no_style;
-    }
-    break :blk indent;
-};
+pub const about_blank_s: AboutSrc = about("");
+pub const AboutDest = @TypeOf(@constCast(about_blank_s));
+pub const about_exit_s: AboutSrc = about("exit");
 pub fn ci(comptime value: comptime_int) []const u8 {
     if (value < 0) {
         const s: []const u8 = @typeName([-value]void);
@@ -2485,6 +2488,7 @@ pub const Type = struct {
     pub const Idsize = @TypeOf(idsize(undefined));
     pub const Ixsize = @TypeOf(ixsize(undefined));
     pub const Esc = @TypeOf(esc(undefined));
+    pub const NSec = @TypeOf(nsec(undefined));
     pub fn Ib(comptime Int: type) type {
         return @TypeOf(ib(@as(Int, undefined)));
     }
@@ -2579,6 +2583,9 @@ pub const old = struct {
             pub const Array10 = Array(len10);
             pub const Array16 = Array(len16);
             pub fn bin(value: Int) Array2 {
+                if (true) {
+                    @compileError("TODO: Rewrite to use new formatters");
+                }
                 @setRuntimeSafety(false);
                 var ret: Array2 = undefined;
                 ret.len = ret.buf.len;
@@ -2612,6 +2619,9 @@ pub const old = struct {
                 return ret;
             }
             pub fn oct(value: Int) Array8 {
+                if (true) {
+                    @compileError("TODO: Rewrite to use new formatters");
+                }
                 @setRuntimeSafety(false);
                 var ret: Array8 = undefined;
                 ret.len = ret.buf.len;
@@ -2637,6 +2647,9 @@ pub const old = struct {
                 return ret;
             }
             pub fn dec(value: Int) Array10 {
+                if (true) {
+                    @compileError("TODO: Rewrite to use new formatters");
+                }
                 @setRuntimeSafety(false);
                 var ret: Array10 = undefined;
                 ret.len = ret.buf.len;
@@ -2660,6 +2673,9 @@ pub const old = struct {
                 return ret;
             }
             pub fn hex(value: Int) Array16 {
+                if (true) {
+                    @compileError("TODO: Rewrite to use new formatters");
+                }
                 @setRuntimeSafety(false);
                 var ret: Array16 = undefined;
                 ret.len = ret.buf.len;

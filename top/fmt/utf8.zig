@@ -1,3 +1,4 @@
+const debug = @import("../debug.zig");
 const builtin = @import("../builtin.zig");
 pub const replacement_character: u32 = 0xFFFD;
 
@@ -39,8 +40,8 @@ pub fn decode2(bytes: []const u8) !u32 {
     return value;
 }
 pub fn decode3(bytes: []const u8) !u32 {
-    //builtin.assertEqual(u64, bytes.len, 3);
-    //builtin.assertEqual(u64, bytes[0] & 0b11110000, 0b11100000);
+    //debug.assertEqual(u64, bytes.len, 3);
+    //debug.assertEqual(u64, bytes[0] & 0b11110000, 0b11100000);
     var value: u32 = bytes[0] & 0b00001111;
     if (bytes[1] & 0b11000000 != 0b10000000) {
         return error.InvalidEncoding;
@@ -61,8 +62,8 @@ pub fn decode3(bytes: []const u8) !u32 {
     return value;
 }
 pub fn decode4(bytes: []const u8) !u32 {
-    //builtin.assertEqual(u64, bytes.len, 4);
-    //builtin.assertEqual(u64, bytes[0] & 0b11111000, 0b11110000);
+    //debug.assertEqual(u64, bytes.len, 4);
+    //debug.assertEqual(u64, bytes[0] & 0b11111000, 0b11110000);
     var value: u32 = bytes[0] & 0b00000111;
     if (bytes[1] & 0b11000000 != 0b10000000) {
         return error.InvalidEncoding;
@@ -86,7 +87,7 @@ pub fn decode4(bytes: []const u8) !u32 {
 }
 pub fn encode(value: u32, out: []u8) !u8 {
     const ret: u8 = try codepointSequenceLength(value);
-    builtin.assertAboveOrEqual(u64, out.len, ret);
+    debug.assertAboveOrEqual(u64, out.len, ret);
     switch (ret) {
         1 => out[0] = @as(u8, @intCast(value)),
         2 => {
@@ -139,47 +140,47 @@ pub const noexcept = struct {
     }
     fn decode2(bytes: []const u8) u32 {
         var value: u32 = bytes[0] & 0b00011111;
-        builtin.assertEqual(u8, bytes[1] & 0b11000000, 0b10000000);
+        debug.assertEqual(u8, bytes[1] & 0b11000000, 0b10000000);
         value <<= 6;
         value |= bytes[1] & 0b00111111;
-        builtin.assertAboveOrEqual(u32, value, 0x80);
+        debug.assertAboveOrEqual(u32, value, 0x80);
         return value;
     }
     fn decode3(bytes: []const u8) u32 {
-        builtin.assertEqual(u64, bytes.len, 3);
-        builtin.assertEqual(u64, bytes[0] & 0b11110000, 0b11100000);
+        debug.assertEqual(u64, bytes.len, 3);
+        debug.assertEqual(u64, bytes[0] & 0b11110000, 0b11100000);
         var value: u32 = bytes[0] & 0b00001111;
-        builtin.assertEqual(u8, bytes[1] & 0b11000000, 0b10000000);
+        debug.assertEqual(u8, bytes[1] & 0b11000000, 0b10000000);
         value <<= 6;
         value |= bytes[1] & 0b00111111;
-        builtin.assertEqual(u8, bytes[2] & 0b11000000, 0b10000000);
+        debug.assertEqual(u8, bytes[2] & 0b11000000, 0b10000000);
         value <<= 6;
         value |= bytes[2] & 0b00111111;
-        builtin.assertAboveOrEqual(u32, value, 0x800);
-        builtin.assertBelow(u32, value, 0xd800);
-        builtin.assertAbove(u32, value, 0xdfff);
+        debug.assertAboveOrEqual(u32, value, 0x800);
+        debug.assertBelow(u32, value, 0xd800);
+        debug.assertAbove(u32, value, 0xdfff);
         return value;
     }
     fn decode4(bytes: []const u8) u32 {
-        builtin.assertEqual(u64, bytes.len, 4);
-        builtin.assertEqual(u64, bytes[0] & 0b11111000, 0b11110000);
+        debug.assertEqual(u64, bytes.len, 4);
+        debug.assertEqual(u64, bytes[0] & 0b11111000, 0b11110000);
         var value: u32 = bytes[0] & 0b00000111;
-        builtin.assertEqual(u8, bytes[1] & 0b11000000, 0b10000000);
+        debug.assertEqual(u8, bytes[1] & 0b11000000, 0b10000000);
         value <<= 6;
         value |= bytes[1] & 0b00111111;
-        builtin.assertEqual(u8, bytes[2] & 0b11000000, 0b10000000);
+        debug.assertEqual(u8, bytes[2] & 0b11000000, 0b10000000);
         value <<= 6;
         value |= bytes[2] & 0b00111111;
-        builtin.assertEqual(u8, bytes[3] & 0b11000000, 0b10000000);
+        debug.assertEqual(u8, bytes[3] & 0b11000000, 0b10000000);
         value <<= 6;
         value |= bytes[3] & 0b00111111;
-        builtin.assertAboveOrEqual(u32, value, 0x10000);
-        builtin.assertBelowOrEqual(u32, value, 0x10FFFF);
+        debug.assertAboveOrEqual(u32, value, 0x10000);
+        debug.assertBelowOrEqual(u32, value, 0x10FFFF);
         return value;
     }
     pub fn encode(value: u32, out: []u8) u8 {
         const ret: u8 = noexcept.codepointSequenceLength(value);
-        builtin.assertAboveOrEqual(u64, out.len, ret);
+        debug.assertAboveOrEqual(u64, out.len, ret);
         switch (ret) {
             1 => out[0] = @as(u8, @intCast(value)),
             2 => {
@@ -187,8 +188,8 @@ pub const noexcept = struct {
                 out[1] = @as(u8, @intCast(0b10000000 | (value & 0b111111)));
             },
             3 => {
-                builtin.assertBelow(u32, value, 0xd800);
-                builtin.assertAbove(u32, value, 0xdfff);
+                debug.assertBelow(u32, value, 0xd800);
+                debug.assertAbove(u32, value, 0xdfff);
                 out[0] = @as(u8, @intCast(0b11100000 | (value >> 12)));
                 out[1] = @as(u8, @intCast(0b10000000 | ((value >> 6) & 0b111111)));
                 out[2] = @as(u8, @intCast(0b10000000 | (value & 0b111111)));

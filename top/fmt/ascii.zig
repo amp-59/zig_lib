@@ -1,5 +1,6 @@
 const mem = @import("../mem.zig");
 const math = @import("../math.zig");
+const debug = @import("../debug.zig");
 const builtin = @import("../builtin.zig");
 pub const control_code = struct {
     pub const start_of_heading: u8 = 0x01;
@@ -121,7 +122,7 @@ pub fn toLower(c: u8) u8 {
     }
 }
 fn transformChars(dest: []u8, src: []const u8, transform: *const fn (u8) u8) []u8 {
-    builtin.assertAboveOrEqual(u64, dest.len, src.len);
+    debug.assertAboveOrEqual(u64, dest.len, src.len);
     for (src, 0..) |value, idx| {
         dest[idx] = transform(value);
     }
