@@ -1,5 +1,7 @@
-const builtin = @import("./builtin.zig");
+const fmt = @import("./fmt.zig");
 const mach = @import("./mach.zig");
+const debug = @import("./debug.zig");
+const builtin = @import("./builtin.zig");
 pub const Empty = struct {};
 pub const empty = &.{};
 pub const default = .{};
@@ -53,21 +55,21 @@ pub fn assertType(comptime T: type, comptime tag: builtin.TypeId) void {
     if (builtin.comptime_assertions) {
         const type_info: builtin.Type = @typeInfo(T);
         if (type_info != tag) {
-            debug.unexpectedTypeTypeError(T, type_info, tag);
+            about.unexpectedTypeTypeError(T, type_info, tag);
         }
     }
 }
 pub fn assertHasDecl(comptime T: type, decl_name: []const u8) void {
     if (builtin.comptime_assertions) {
         if (!@hasDecl(T, decl_name)) {
-            debug.declError(T, decl_name);
+            about.declError(T, decl_name);
         }
     }
 }
 pub fn assertHasField(comptime T: type, field_name: []const u8) void {
     if (builtin.comptime_assertions) {
         if (!@hasField(T, field_name)) {
-            debug.fieldError(T, field_name);
+            about.fieldError(T, field_name);
         }
     }
 }
@@ -75,7 +77,7 @@ pub fn assertContinuousEnumeration(comptime E: type) void {
     var value: @typeInfo(E).Enum.tag_type = 0;
     inline for (@typeInfo(E).Enum.fields) |field| {
         if (field.value != value) {
-            debug.enumFieldValueNotContinuous(E, value, field.name, field.value);
+            about.enumFieldValueNotContinuous(E, value, field.name, field.value);
         }
         value +%= 1;
     }
@@ -140,7 +142,7 @@ pub fn maybe(comptime cond: bool, comptime T: type) type {
         .Opaque => return opaque {},
         .Enum => return enum {},
         else => {
-            debug.unexpectedTypeTypesError(type_info, T, .{ .Int, .Struct, .Opaque, .Enum });
+            about.unexpectedTypeTypesError(type_info, T, .{ .Int, .Struct, .Opaque, .Enum });
         },
     }
 }
@@ -194,7 +196,7 @@ pub fn Tuple(comptime T: type) type {
 pub fn Args(comptime Fn: type) type {
     var fields: []const builtin.Type.StructField = empty;
     inline for (@typeInfo(Fn).Fn.params, 0..) |arg, i| {
-        fields = concat(builtin.Type.StructField, fields, structField(arg.type.?, builtin.fmt.ci(i), null));
+        fields = concat(builtin.Type.StructField, fields, structField(arg.type.?, fmt.ci(i), null));
     }
     return @Type(tupleInfo(fields));
 }
@@ -510,7 +512,7 @@ pub inline fn sliceToArrayPointer(comptime any: anytype) SliceToArrayPointer(@Ty
 pub fn Child(comptime T: type) type {
     switch (@typeInfo(T)) {
         else => |type_info| {
-            debug.unexpectedTypeTypesError(T, type_info, .{ .Optional, .Array, .Pointer, .Enum, .Int, .Struct, .Union });
+            about.unexpectedTypeTypesError(T, type_info, .{ .Optional, .Array, .Pointer, .Enum, .Int, .Struct, .Union });
         },
         .Array, .Pointer => {
             return Element(T);
@@ -543,7 +545,7 @@ pub fn Child(comptime T: type) type {
 pub fn Element(comptime T: type) type {
     switch (@typeInfo(T)) {
         else => |type_info| {
-            debug.unexpectedTypeTypesError(T, type_info, .{ .Array, .Pointer });
+            about.unexpectedTypeTypesError(T, type_info, .{ .Array, .Pointer });
         },
         .Array => |array_info| {
             return array_info.child;
@@ -557,7 +559,7 @@ pub fn Element(comptime T: type) type {
                     return array_info.child;
                 },
                 else => |child_type_info| {
-                    debug.unexpectedTypeTypeError(T, child_type_info, .Array);
+                    about.unexpectedTypeTypeError(T, child_type_info, .Array);
                 },
             }
         },
@@ -566,7 +568,7 @@ pub fn Element(comptime T: type) type {
 pub fn sentinel(comptime T: type) ?Element(T) {
     switch (@typeInfo(T)) {
         else => |type_info| {
-            debug.unexpectedTypeTypesError(T, type_info, .{ .Array, .Pointer });
+            about.unexpectedTypeTypesError(T, type_info, .{ .Array, .Pointer });
         },
         .Array => |array_info| {
             if (array_info.sentinel) |sentinel_ptr| {
@@ -690,7 +692,7 @@ pub fn manyToSlice(any: anytype) ManyToSlice(@TypeOf(any)) {
                 }
                 break :blk len;
             }
-            debug.unexpectedTypeTypesError(T, type_info, .{ .Array, .Pointer });
+            about.unexpectedTypeTypesError(T, type_info, .{ .Array, .Pointer });
         },
     };
     return any[0..len :comptime sentinel(T).?];
@@ -703,7 +705,7 @@ pub fn ManyToSlice(comptime T: type) type {
 /// A useful meta type for representing bit fields with uncertain values.
 /// Properly rendered by `fmt.any`. E must be an enumeration type.
 pub fn EnumBitField(comptime E: type) type {
-    builtin.assert(isEnum(E));
+    debug.assert(isEnum(E));
     return (packed union {
         tag: Tag,
         val: Int,
@@ -1371,7 +1373,7 @@ pub fn refAllDeclsInternal(comptime T: type, comptime types: []const type, compt
             lo: for (resolve(@typeInfo(T)).decls) |decl| {
                 if (black_list) |names| {
                     for (names) |name| {
-                        if (builtin.testEqualMemory([]const u8, decl.name, name)) {
+                        if (mem.testEqualMemory([]const u8, decl.name, name)) {
                             continue :lo;
                         }
                     }
@@ -1402,7 +1404,7 @@ pub fn refAllDecls(comptime T: type, comptime black_list: ?[]const []const u8) v
             lo: for (resolve(@typeInfo(T)).decls) |decl| {
                 if (black_list) |names| {
                     for (names) |name| {
-                        if (builtin.testEqualMemory([]const u8, decl.name, name)) {
+                        if (mem.testEqualMemory([]const u8, decl.name, name)) {
                             continue :lo;
                         }
                     }
@@ -1416,7 +1418,7 @@ pub fn refAllDecls(comptime T: type, comptime black_list: ?[]const []const u8) v
         }
     }
 }
-const debug = opaque {
+const about = opaque {
     fn typeTypeName(comptime any: builtin.TypeId) []const u8 {
         switch (any) {
             .Type => return "type",
@@ -1547,45 +1549,9 @@ const debug = opaque {
         @compileError(declList("undeclared identifier '" ++ identifier ++
             "' in container '" ++ @typeName(T) ++ "' with declarations: ", declList(@typeInfo(T))));
     }
-    fn invalidTypeErrorDescr(comptime Invalid: type, comptime descr: []const u8) noreturn {
-        @compileError("invalid type `" ++ @typeName(Invalid) ++ "': " ++ descr ++ "\n");
-    }
-    fn standardNoDeclError(comptime T: type, decl_name: []const u8) noreturn {
-        @compileError("container '" ++ @typeName(T) ++ "' has no member called '" ++ decl_name ++ "'");
-    }
-    fn standardNoFieldError(comptime T: type, field_name: []const u8) noreturn {
-        @compileError("no member named '" ++ field_name ++ "' in " ++ typeTypeName(@typeInfo(T)) ++ " '" ++ @typeName(T) ++ "'");
-    }
-    fn unexpectedTypeBytesError(comptime T: type, bytes: u64) void {
-        const required_bytes_s: []const u8 = builtin.fmt.ud(bytes).readAll();
-        const found_bytes_s: []const u8 = builtin.fmt.ud(@sizeOf(T)).readAll();
-        @compileError("static assertion failed: object '" ++ @typeName(T) ++
-            "' size " ++ found_bytes_s ++ " does not match requirement " ++ required_bytes_s);
-    }
-    fn unexpectedTypeBitsError(comptime T: type, bits: u64) void {
-        const required_bits_s: []const u8 = builtin.fmt.ud(bits).readAll();
-        const found_bits_s: []const u8 = builtin.fmt.ud(@bitSizeOf(T)).readAll();
-        @compileError("static assertion failed: object '" ++ @typeName(T) ++
-            "' bit size " ++ found_bits_s ++ " does not match requirement " ++ required_bits_s);
-    }
-    fn initializeNothingError(comptime T: type, comptime U: type) noreturn {
-        @compileError("cannot initialize " ++ @typeName(T) ++ " with value of type " ++ @typeName(U));
-    }
-    fn initializeComptimeFieldError(comptime T: type, comptime field: builtin.Type.StructField) noreturn {
-        @compileError("cannot initialize comptime field '" ++ field.name ++ "' in " ++ @typeName(T));
-    }
     fn enumFieldValueNotContinuous(comptime T: type, value: anytype, field_name: []const u8, field_value: anytype) noreturn {
         @compileError("field '" ++ field_name ++ "' of index tag type '" ++ @typeName(T) ++
-            "' is not continuous: expected value " ++ builtin.fmt.ci(value) ++ ", found value " ++ builtin.fmt.ci(field_value));
-    }
-    fn unexpectedVariantError(comptime T: type, value: anytype, yes: anytype, no: anytype) noreturn {
-        if (no.len != 0) {
-            inline for (no) |n| if (value == n) @compileError("invalid variant of " ++ @typeName(T) ++ ": " ++ @tagName(value));
-        }
-        if (yes.len != 0) {
-            inline for (yes) |y| if (value == y) return;
-        }
-        @compileError("unlisted variant of " ++ @typeName(T) ++ ": " ++ @tagName(value));
+            "' is not continuous: expected value " ++ fmt.old.ci(value) ++ ", found value " ++ fmt.old.ci(field_value));
     }
 };
 const static = opaque {
