@@ -2510,6 +2510,34 @@ pub const Type = struct {
     pub fn Ux(comptime Int: type) type {
         return @TypeOf(ux(@as(Int, undefined)));
     }
+    pub fn Xb(comptime Int: type) type {
+        if (@typeInfo(Int).Int.signedness == .signed) {
+            return @TypeOf(ib(@as(Int, undefined)));
+        } else {
+            return @TypeOf(ub(@as(Int, undefined)));
+        }
+    }
+    pub fn Xd(comptime Int: type) type {
+        if (@typeInfo(Int).Int.signedness == .signed) {
+            return @TypeOf(id(@as(Int, undefined)));
+        } else {
+            return @TypeOf(ud(@as(Int, undefined)));
+        }
+    }
+    pub fn Xx(comptime Int: type) type {
+        if (@typeInfo(Int).Int.signedness == .signed) {
+            return @TypeOf(ix(@as(Int, undefined)));
+        } else {
+            return @TypeOf(ux(@as(Int, undefined)));
+        }
+    }
+    pub fn Xo(comptime Int: type) type {
+        if (@typeInfo(Int).Int.signedness == .signed) {
+            unreachable;
+        } else {
+            return @TypeOf(uo(@as(Int, undefined)));
+        }
+    }
     pub const UDel = GenericChangedIntFormat(.{
         .old_fmt_spec = .{ .bits = 64, .signedness = .unsigned, .radix = 10, .width = .min },
         .new_fmt_spec = .{ .bits = 64, .signedness = .unsigned, .radix = 10, .width = .min },
