@@ -1,5 +1,6 @@
 const mach = @import("./mach.zig");
 const meta = @import("./meta.zig");
+const debug = @import("./debug.zig");
 const builtin = @import("./builtin.zig");
 pub inline fn sigFigList(comptime T: type, comptime radix: u7) ?[]const T {
     switch (T) {
@@ -178,11 +179,11 @@ pub fn rotr(comptime T: type, value: T, rot_amt: anytype) T {
         if (C == u0) {
             return 0;
         }
-        builtin.assert(@typeInfo(C).Int.signedness != .signed);
+        debug.assert(@typeInfo(C).Int.signedness != .signed);
         const shift_amt = @as(builtin.ShiftAmount(C), @intCast(@mod(rot_amt, @typeInfo(C).Int.bits)));
         return (value >> @splat(shift_amt)) | (value << @splat(1 +% ~shift_amt));
     } else {
-        builtin.assert(@typeInfo(T).Int.signedness != .signed);
+        debug.assert(@typeInfo(T).Int.signedness != .signed);
         const ShiftAmount = builtin.ShiftAmount(T);
         const bit_size_of: u16 = @typeInfo(T).Int.bits;
         if (T == u0) {
@@ -204,11 +205,11 @@ pub fn rotl(comptime T: type, value: T, rot_amt: anytype) T {
         if (C == u0) {
             return 0;
         }
-        builtin.assert(@typeInfo(C).Int.signedness != .signed);
+        debug.assert(@typeInfo(C).Int.signedness != .signed);
         const shift_amt = @as(builtin.ShiftAmount(C), @intCast(@mod(rot_amt, @typeInfo(C).Int.bits)));
         return (value << @splat(shift_amt)) | (value >> @splat(1 +% ~shift_amt));
     } else {
-        builtin.assert(@typeInfo(T).Int.signedness != .signed);
+        debug.assert(@typeInfo(T).Int.signedness != .signed);
         const ShiftAmount = builtin.ShiftAmount(T);
         const bit_size_of: u16 = @typeInfo(T).Int.bits;
         if (T == u0) {

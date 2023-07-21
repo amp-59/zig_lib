@@ -3,6 +3,7 @@ const mem = @import("./mem.zig");
 const meta = @import("./meta.zig");
 const file = @import("./file.zig");
 const mach = @import("./mach.zig");
+const debug = @import("./debug.zig");
 const builtin = @import("./builtin.zig");
 pub const DirStreamSpec = struct {
     Allocator: type,
@@ -24,9 +25,9 @@ pub const DirStreamOptions = struct {
     close_on_deinit: bool = true,
 };
 pub const DirStreamLogging = struct {
-    open: builtin.Logging.AcquireError = .{},
-    close: builtin.Logging.ReleaseError = .{},
-    getdents: builtin.Logging.SuccessError = .{},
+    open: debug.Logging.AcquireError = .{},
+    close: debug.Logging.ReleaseError = .{},
+    getdents: debug.Logging.SuccessError = .{},
 };
 pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
     return (struct {
@@ -151,7 +152,7 @@ pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
         }
         comptime {
             if (dir_spec.options.make_list) {
-                builtin.assert(dir_spec.options.init_read_all);
+                debug.assert(dir_spec.options.init_read_all);
             }
         }
     });

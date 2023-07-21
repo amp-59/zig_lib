@@ -1,6 +1,7 @@
 const sys = @import("./sys.zig");
 const meta = @import("./meta.zig");
 const file = @import("./file.zig");
+const debug = @import("./debug.zig");
 const builtin = @import("./builtin.zig");
 pub const ChannelSpec = struct {
     errors: Errors,
@@ -11,9 +12,9 @@ pub const ChannelSpec = struct {
         close: sys.ErrorPolicy,
     };
     pub const Logging = struct {
-        pipe: builtin.Logging.AcquireError,
-        dup3: builtin.Logging.SuccessError,
-        close: builtin.Logging.ReleaseError,
+        pipe: debug.Logging.AcquireError,
+        dup3: debug.Logging.SuccessError,
+        close: debug.Logging.ReleaseError,
     };
 };
 pub fn GenericChannel(comptime chan_spec: ChannelSpec) type {
