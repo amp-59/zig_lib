@@ -2115,7 +2115,7 @@ pub fn writeInt(comptime T: type, buffer: *[@divExact(@typeInfo(T).Int.bits, 8)]
     }
 }
 pub fn writeIntSliceLittle(comptime T: type, dest: []u8, value: T) void {
-    comptime debug.assert(dest.len >= @divExact(@typeInfo(T).Int.bits, 8));
+    debug.assert(dest.len >= @divExact(@typeInfo(T).Int.bits, 8));
     if (@typeInfo(T).Int.bits == 0) {
         return @memset(dest, 0);
     } else if (@typeInfo(T).Int.bits == 8) {
@@ -2134,7 +2134,7 @@ pub fn writeIntSliceLittle(comptime T: type, dest: []u8, value: T) void {
     }
 }
 pub fn writeIntSliceBig(comptime T: type, dest: []u8, value: T) void {
-    comptime debug.assert(dest.len >= @divExact(@typeInfo(T).Int.bits, 8));
+    debug.assert(dest.len >= @divExact(@typeInfo(T).Int.bits, 8));
     if (@typeInfo(T).Int.bits == 0) {
         return @memset(dest, 0);
     } else if (@typeInfo(T).Int.bits == 8) {
