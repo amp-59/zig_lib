@@ -337,7 +337,7 @@ pub fn containerDeclsToBitField(comptime Container: type, comptime backing_integ
         array.writeMany("=0,\n");
     }
     array.writeMany("fn assert(flags:@This(),val:" ++ size_name ++ ")void{\ndebug.assertEqual(" ++ size_name ++ ", @as(" ++ size_name ++ ",@bitCast(flags)),val);\n}\n");
-    array.writeMany("comptime{\n");
+    array.writeMany("comptime{");
     enum_count = 0;
     for (bit_field_sets) |set| {
         if (set.tag == .E) {
@@ -368,7 +368,11 @@ pub fn containerDeclsToBitField(comptime Container: type, comptime backing_integ
             }
         }
     }
-    array.writeMany("}\n");
+    if (array.readOneBack() != '{') {
+        array.writeMany("}\n");
+    } else {
+        array.undefine("comptime {".len);
+    }
     array.writeMany("};\n");
     file.write(.{ .errors = .{} }, 1, array.readAll());
 }
@@ -445,5 +449,5 @@ pub fn allPanicDeclarations() void {
         array.writeMany("else\n");
         array.writeMany("    default." ++ name ++ ";\n\n");
     }
-    debug.write(array.readAll());
+    file.write(.{ .errors = .{} }, 1, array.readAll());
 }
