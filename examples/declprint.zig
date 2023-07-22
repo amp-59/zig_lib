@@ -21,7 +21,6 @@ pub fn main() !void {
     var allocator: Allocator = try Allocator.init(&address_space);
     defer allocator.deinit(&address_space);
     var array: Allocator.StructuredHolder(u8) = Allocator.StructuredHolder(u8).init(&allocator);
-
     try array.appendAny(spec.reinterpret.fmt, &allocator, comptime fmt.render(.{
         .omit_container_decls = false,
         .inline_field_types = false,
