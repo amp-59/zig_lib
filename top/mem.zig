@@ -1811,6 +1811,9 @@ pub fn indexOfNearestEqualMany(comptime T: type, arg1: []const T, arg2: []const 
 pub inline fn zero(comptime T: type, ptr: *T) void {
     mach.memset(@as([*]u8, @ptrCast(ptr)), 0, @sizeOf(T));
 }
+pub inline fn unstable(comptime T: type, val: T) T {
+    return @as(*const volatile T, @ptrCast(&val)).*;
+}
 pub const SimpleAllocator = struct {
     start: u64 = 0x40000000,
     next: u64 = 0x40000000,
