@@ -1,6 +1,7 @@
 const zl = @import("../zig_lib.zig");
 const sys = zl.sys;
 const gen = zl.gen;
+const mem = zl.mem;
 const debug = zl.debug;
 const builtin = zl.builtin;
 
@@ -18,15 +19,18 @@ pub const Access = enum(u32) {
     pub const write = 0x2;
     pub const read = 0x4;
 };
-
 pub fn main() void {
-    if (false) {
+    var b: bool = mem.unstable(bool, true);
+    if (b) {
+        gen.allPanicDeclarations();
+    }
+    if (b) {
         gen.containerDeclsToBitField(sys.MAP, usize, "Map");
         gen.containerDeclsToBitField(sys.PROT, usize, "Protect");
         gen.containerDeclsToBitField(sys.MADV, usize, "Advise");
         gen.containerDeclsToBitField(sys.AT, usize, "At");
     }
-    if (false) {
+    if (b) {
         gen.containerDeclsToBitField(sys.CLONE, u32, "Clone");
         gen.containerDeclsToBitField(sys.FPE, usize, "FloatingPointError");
         gen.containerDeclsToBitField(sys.SS, usize, "SignalStack");
@@ -38,25 +42,16 @@ pub fn main() void {
         gen.containerDeclsToBitField(sys.S, usize, "Status");
         gen.containerDeclsToBitField(sys.STATX.ATTR, usize, "StatusExtendedAttributes");
         gen.containerDeclsToBitField(sys.STATX, usize, "StatusExtendedFields");
-        gen.containerDeclsToBitField(Access, usize, "Access");
     }
-    if (false) {
+    gen.containerDeclsToBitField(Access, usize, "Access");
+    if (b) {
         gen.containerDeclsToBitField(sys.TC.C, usize, "Control");
         gen.containerDeclsToBitField(sys.TC.I, usize, "Input");
         gen.containerDeclsToBitField(sys.TC.L, usize, "Local");
         gen.containerDeclsToBitField(sys.TC.O, usize, "Output");
         gen.containerDeclsToBitField(sys.TC.V, usize, "Special");
     }
-    if (false) {
-        gen.containerDeclsToBitField(perf.Mem.Blk, usize, "Blk");
-        gen.containerDeclsToBitField(perf.Mem.Hops, usize, "Hops");
-        gen.containerDeclsToBitField(perf.Mem.Lock, usize, "Lock");
-        gen.containerDeclsToBitField(perf.Mem.Lvl, usize, "Lvl");
-        gen.containerDeclsToBitField(perf.Mem.LvlNum, usize, "LvlNum");
-        gen.containerDeclsToBitField(perf.Mem.Op, usize, "Op");
-        gen.containerDeclsToBitField(perf.Mem.Remote, usize, "Remote");
-        gen.containerDeclsToBitField(perf.Mem.Snoop, usize, "Snoop");
-        gen.containerDeclsToBitField(perf.Mem.TLB, usize, "TLB");
+    if (b) {
         gen.containerDeclsToBitField(perf.Branch.Spec, usize, "Spec");
         gen.containerDeclsToBitField(perf.Branch.New, usize, "New");
         gen.containerDeclsToBitField(perf.Branch.Private, usize, "Private");
