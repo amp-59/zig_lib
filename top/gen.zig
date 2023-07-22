@@ -421,3 +421,29 @@ pub fn allLoggingTypes() !void {
     }
     file.write(.{ .errors = .{} }, 1, array.readAll());
 }
+pub fn allPanicDeclarations() void {
+    var array: mem.StaticString(4096) = undefined;
+    array.undefineAll();
+    const names: []const []const u8 = &.{
+        "panic",
+        "panicInactiveUnionField",
+        "panicOutOfBounds",
+        "panicSentinelMismatch",
+        "panicStartGreaterThanEnd",
+        "panicUnwrapError",
+    };
+    inline for (names) |name| {
+        array.writeMany(
+            \\/// This function is used by the Zig language code generation and
+            \\/// therefore must be kept in sync with the compiler implementation.
+            \\
+        );
+        array.writeMany("pub const " ++ name ++ " = if (@hasDecl(root, \"" ++ name ++ "\"))\n");
+        array.writeMany("    root." ++ name ++ "\n");
+        array.writeMany("else if (@hasDecl(root, \"os\") and @hasDecl(root.os, \"" ++ name ++ "\"))\n");
+        array.writeMany("    root.os." ++ name ++ "\n");
+        array.writeMany("else\n");
+        array.writeMany("    default." ++ name ++ ";\n\n");
+    }
+    debug.write(array.readAll());
+}
