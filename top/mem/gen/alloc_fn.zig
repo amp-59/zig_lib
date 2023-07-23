@@ -63,7 +63,7 @@ pub const Fn = enum(u16) {
             .args = undefined,
             .args_len = 0,
             .kind = list_kind,
-            .ret = alloc_fn_info.returnType(impl_kind),
+            .ret = alloc_fn_info.returnType(),
         };
         const impl_type_symbol: [:0]const u8 = switch (list_kind) {
             else => tok.source_impl_type_param,
@@ -77,6 +77,16 @@ pub const Fn = enum(u16) {
             else => tok.source_count_param,
             .Argument => tok.source_count_name,
         };
+        _ = count_symbol;
+        const amount_symbol: [:0]const u8 = switch (list_kind) {
+            else => tok.source_amount_param,
+            .Argument => tok.source_amount_name,
+        };
+        const allocator_symbol: [:0]const u8 = switch (list_kind) {
+            else => tok.allocator_ptr_param,
+            .Argument => tok.allocator_name,
+        };
+        arg_list.writeOne(allocator_symbol);
         arg_list.writeOne(impl_type_symbol);
         if (alloc_fn_info != .allocate) {
             arg_list.writeOne(impl_symbol);
@@ -89,7 +99,7 @@ pub const Fn = enum(u16) {
             .resizeDecrement,
             => switch (impl_kind) {
                 .dynamic, .parametric => {
-                    arg_list.writeOne(count_symbol);
+                    arg_list.writeOne(amount_symbol);
                 },
                 else => {},
             },
@@ -97,8 +107,7 @@ pub const Fn = enum(u16) {
         }
         return arg_list;
     }
-    pub fn returnType(alloc_fn_info: Fn, impl_kind: types.Kind) [:0]const u8 {
-        _ = impl_kind;
+    pub fn returnType(alloc_fn_info: Fn) [:0]const u8 {
         switch (alloc_fn_info) {
             .allocate => return tok.source_impl_type_name,
             .deallocate,
@@ -107,9 +116,7 @@ pub const Fn = enum(u16) {
             .resizeBelow,
             .resizeIncrement,
             .resizeDecrement,
-            => {
-                return tok.void_type_name;
-            },
+            => return tok.void_type_name,
         }
     }
     pub fn writeSignature(alloc_fn_info: Fn, array: anytype, impl_kind: types.Kind) void {
@@ -130,6 +137,17 @@ pub const Fn = enum(u16) {
         }
         array.writeMany(")");
         array.writeMany(arg_list.ret);
+    }
+    pub fn declList(alloc_fn_info: Fn, impl_kind: types.Kind) gen.DeclList {
+        const arg_list: gen.ArgList = alloc_fn_info.argList(impl_kind, .Argument);
+        var decl_list: gen.DeclList = .{
+            .decls = undefined,
+            .decls_len = 0,
+        };
+        for (arg_list.readAll()) |arg| {
+            decl_list.writeOne(arg);
+        }
+        return decl_list;
     }
 };
 
