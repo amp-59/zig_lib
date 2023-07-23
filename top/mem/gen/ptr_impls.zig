@@ -837,17 +837,16 @@ fn writeFunctionBodyGeneric(
 }
 fn writeSignature(
     array: *Array,
+    arg_lists_map: *const ptr_fn.FnArgs.Map,
     impl_variant: types.Implementation,
     ptr_fn_info: ptr_fn.Fn,
-    arg_lists: []const ptr_fn.FnArgs.Value,
-    key: ptr_fn.FnArgs.Index,
 ) void {
-    for (key.keys[0..key.keys_len]) |ki_pair| {
-        if (ki_pair[0] == ptr_fn_info) {
-            for (arg_lists[0..key.keys_len]) |kv_pair| {
-                if (kv_pair[0] == ptr_fn_info) {
-                    const arg_list_idx: usize = ki_pair[1];
-                    const arg_list: gen.ArgList = kv_pair[1][arg_list_idx];
+    const idxs: ptr_fn.FnArgs.Index = arg_lists_map.idxs[impl_variant.ptr];
+    for (idxs.keys[0..idxs.keys_len]) |ki_pair| {
+        if (ki_pair.ptr_fn_info == ptr_fn_info) {
+            for (arg_lists_map.vals[0..idxs.keys_len]) |kv_pair| {
+                if (kv_pair.ptr_fn_info == ptr_fn_info) {
+                    const arg_list: gen.ArgList = kv_pair.arg_lists[ki_pair.arg_list_idx];
                     array.writeMany("pub inline fn ");
                     array.writeMany(ptr_fn_info.fnName());
                     array.writeMany("(");
@@ -862,7 +861,7 @@ fn writeSignature(
                         else => unreachable,
                     }
                     array.writeMany(@tagName(ptr_fn_info));
-                    array.writeFormat(fmt.ud64(arg_list_idx));
+                    array.writeFormat(fmt.ud64(ki_pair.arg_list_idx));
                     array.writeMany(")");
                     array.writeMany(arg_list.ret);
                     return;
@@ -875,14 +874,13 @@ fn writeSignature(
 fn writeFunctions(
     allocator: *Allocator,
     array: *Array,
+    arg_lists_map: *const ptr_fn.FnArgs.Map,
     impl_variant: types.Implementation,
-    arg_lists: []const ptr_fn.FnArgs.Value,
-    key: ptr_fn.FnArgs.Index,
 ) void {
     for (ptr_fn.list) |ptr_fn_info| {
         if (ptr_fn_info != .deallocate and ptr_fn_info.hasCapability(impl_variant)) {
             var info: Info = .{ .start = array.len() };
-            writeSignature(array, impl_variant, ptr_fn_info, arg_lists, key);
+            writeSignature(array, arg_lists_map, impl_variant, ptr_fn_info);
             writeFunctionBodyGeneric(allocator, array, impl_variant, ptr_fn_info, &info);
             writeSimpleRedecl(array, &ptr_fn_info, &info);
         }
@@ -937,7 +935,7 @@ fn writeSimpleRedecl(array: *Array, ptr_fn_info: *const ptr_fn.Fn, info: *Info) 
         info.alias = null;
     }
 }
-inline fn writeComptimeField(array: *Array, impl_variant: types.Implementation, ptr_fn_info: ptr_fn.Fn) void {
+fn writeComptimeField(array: *Array, impl_variant: types.Implementation, ptr_fn_info: ptr_fn.Fn) void {
     const args_list: gen.ArgList = ptr_fn_info.argList(impl_variant, .Parameter);
     if (expr.comptimeField(args_list)) {
         array.writeMany(tok.comptime_keyword);
@@ -951,7 +949,7 @@ inline fn writeComptimeField(array: *Array, impl_variant: types.Implementation, 
         array.writeMany(tok.end_elem);
     }
 }
-inline fn writeFields(array: *Array, impl_variant: types.Implementation) void {
+fn writeFields(array: *Array, impl_variant: types.Implementation) void {
     writeComptimeField(array, impl_variant, ptr_fn.Fn.allocated_byte_address);
     writeComptimeField(array, impl_variant, ptr_fn.Fn.aligned_byte_address);
     writeComptimeField(array, impl_variant, ptr_fn.Fn.unallocated_byte_address);
@@ -984,12 +982,11 @@ inline fn writeFields(array: *Array, impl_variant: types.Implementation) void {
     writeComptimeField(array, impl_variant, ptr_fn.Fn.writable_byte_count);
     writeComptimeField(array, impl_variant, ptr_fn.Fn.aligned_byte_count);
 }
-inline fn writeTypeFunction(
+fn writeTypeFunction(
     allocator: *Allocator,
     array: *Array,
+    arg_lists_map: *const ptr_fn.FnArgs.Map,
     impl_variant: types.Implementation,
-    arg_lists: []const ptr_fn.FnArgs.Value,
-    key: ptr_fn.FnArgs.Index,
 ) void {
     array.writeMany("pub fn ");
     array.writeFormat(impl_variant);
@@ -998,7 +995,7 @@ inline fn writeTypeFunction(
     array.writeMany(")type{\nreturn(struct{\n");
     writeFields(array, impl_variant);
     writeDeclarations(array, impl_variant);
-    writeFunctions(allocator, array, impl_variant, arg_lists, key);
+    writeFunctions(allocator, array, arg_lists_map, impl_variant);
     array.writeMany("});\n}\n");
 }
 fn writeInterfaceStruct(array: *Array, ptr_fn_info: ptr_fn.Fn, idx: usize, arg_list: gen.ArgList) void {
@@ -1007,9 +1004,7 @@ fn writeInterfaceStruct(array: *Array, ptr_fn_info: ptr_fn.Fn, idx: usize, arg_l
     array.writeFormat(fmt.ud64(idx));
     array.writeMany("=struct{");
     for (arg_list.readAll()) |arg| {
-        if (arg.ptr != tok.impl_const_param.ptr and
-            arg.ptr != tok.impl_param.ptr)
-        {
+        if (!ptr_fn.isPtrParam(arg)) {
             array.writeMany(arg);
             array.writeMany(",");
         }
@@ -1029,16 +1024,16 @@ pub fn main() !void {
     );
     file.read(read_impl_spec, fd, details);
     file.close(spec.generic.noexcept, fd);
-    const arg_lists: ptr_fn.FnArgs.Map = ptr_fn.deduceUniqueInterfaceStructs(&allocator, details);
-    for (arg_lists[0]) |kv| {
-        for (kv[1], 0..) |arg_list, arg_list_idx| {
-            writeInterfaceStruct(&array, kv[0], arg_list_idx, arg_list);
+    const arg_lists_map: ptr_fn.FnArgs.Map = ptr_fn.deduceUniqueInterfaceStructs(&allocator, details);
+    for (arg_lists_map.vals) |kv| {
+        for (kv.arg_lists, 0..) |arg_list, arg_list_idx| {
+            writeInterfaceStruct(&array, kv.ptr_fn_info, arg_list_idx, arg_list);
         }
     }
     for (types.Kind.list) |kind| {
-        for (details, 0..) |impl_detail, impl_detail_idx| {
+        for (details) |impl_detail| {
             if (impl_detail.kind == kind) {
-                writeTypeFunction(&allocator, &array, impl_detail, arg_lists[0], arg_lists[1][impl_detail_idx]);
+                writeTypeFunction(&allocator, &array, &arg_lists_map, impl_detail);
             }
         }
         if (config.write_separate_source_files) {
