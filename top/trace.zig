@@ -181,55 +181,6 @@ fn highlight(buf: [*]u8, tok: *builtin.parse.Token, syntax: anytype) u64 {
     }
     return 0;
 }
-fn writeSourceLine(
-    trace: *const debug.Trace,
-    buf: [*]u8,
-    width: u64,
-    fbuf: []u8,
-    loc: *dwarf.LineLocation,
-    itr: *builtin.parse.TokenIterator,
-    tok: *builtin.parse.Token,
-) u64 {
-    var len: u64 = 0;
-    if (trace.options.write_sidebar) {
-        len +%= writeSideBar(trace, width, buf, .{ .line_no = loc.line });
-    }
-    if (trace.options.tokens.syntax) |syntax| {
-        while (itr.buf_pos <= loc.start) {
-            tok.* = itr.next();
-        }
-        var bytes: []const u8 = fbuf[loc.start..@min(loc.finish, tok.loc.start)];
-        mach.memcpy(buf + len, bytes.ptr, bytes.len);
-        len +%= bytes.len;
-        loc.start +%= bytes.len;
-        while (loc.start < loc.finish) {
-            if (loc.start < tok.loc.start) {
-                bytes = fbuf[loc.start..tok.loc.start];
-                mach.memcpy(buf + len, bytes.ptr, bytes.len);
-                len +%= bytes.len;
-            }
-            if (loc.finish > tok.loc.start) {
-                len +%= highlight(buf + len, tok, syntax);
-            }
-            bytes = fbuf[tok.loc.start..tok.loc.finish];
-            loc.start = tok.loc.finish;
-            mach.memcpy(buf + len, bytes.ptr, bytes.len);
-            len +%= bytes.len;
-            len -%= @intFromBool(buf[len -% 1] == '\n');
-            @as(*[4]u8, @ptrCast(buf + len)).* = "\x1b[0m".*;
-            len +%= 4;
-            tok.* = itr.next();
-        }
-    } else {
-        mach.memcpy(buf + len, loc.ptr(fbuf), loc.len());
-        len +%= loc.len();
-    }
-    if (buf[len -% 1] != '\n') {
-        buf[len] = '\n';
-        len +%= 1;
-    }
-    return len;
-}
 fn writeExtendedSourceLocation(
     dwarf_info: *dwarf.DwarfInfo,
     buf: [*]u8,
@@ -280,7 +231,43 @@ fn writeSourceContext(
     var loc: dwarf.LineLocation = .{};
     while (line != max) : (line +%= 1) {
         if (loc.update(fbuf, line)) {
-            len +%= writeSourceLine(trace, buf + len, width, fbuf, &loc, &itr, &tok);
+            if (trace.options.write_sidebar) {
+                len +%= writeSideBar(trace, width, buf + len, .{ .line_no = loc.line });
+            }
+            if (trace.options.tokens.syntax) |syntax| {
+                while (itr.buf_pos <= loc.start) {
+                    tok = itr.next();
+                }
+                var bytes: []const u8 = fbuf[loc.start..@min(loc.finish, tok.loc.start)];
+                mach.memcpy(buf + len, bytes.ptr, bytes.len);
+                len +%= bytes.len;
+                loc.start +%= bytes.len;
+                while (loc.start < loc.finish) {
+                    if (loc.start < tok.loc.start) {
+                        bytes = fbuf[loc.start..tok.loc.start];
+                        mach.memcpy(buf + len, bytes.ptr, bytes.len);
+                        len +%= bytes.len;
+                    }
+                    if (loc.finish > tok.loc.start) {
+                        len +%= highlight(buf + len, &tok, syntax);
+                    }
+                    bytes = fbuf[tok.loc.start..tok.loc.finish];
+                    loc.start = tok.loc.finish;
+                    mach.memcpy(buf + len, bytes.ptr, bytes.len);
+                    len +%= bytes.len;
+                    len -%= @intFromBool(buf[len -% 1] == '\n');
+                    @as(*[4]u8, @ptrCast(buf + len)).* = "\x1b[0m".*;
+                    len +%= 4;
+                    tok = itr.next();
+                }
+            } else {
+                mach.memcpy(buf + len, loc.ptr(fbuf), loc.len());
+                len +%= loc.len();
+            }
+            if (buf[len -% 1] != '\n') {
+                buf[len] = '\n';
+                len +%= 1;
+            }
             if (line == src.line and trace.options.write_caret) {
                 len +%= writeCaret(trace, buf + len, width, addr, src.column);
             }
