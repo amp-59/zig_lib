@@ -26,6 +26,3 @@ pub const serial = @import("./top/serial.zig");
 pub const target = @import("./top/target.zig");
 pub const testing = @import("./top/testing.zig");
 pub const virtual = @import("./top/virtual.zig");
-comptime {
-    _ = start;
-}
