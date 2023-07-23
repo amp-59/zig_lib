@@ -13,7 +13,6 @@ pub const TypeDescr = fmt.GenericTypeDescrFormat(.{
         .default_field_values = true,
     },
 });
-
 pub const AbstractSpecification = struct {
     kind: Kind,
     layout: Layout,

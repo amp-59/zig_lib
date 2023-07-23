@@ -73,9 +73,27 @@ pub const Fn = enum(u16) {
             else => tok.source_impl_ptr_param,
             .Argument => tok.impl_name,
         };
+        const count_symbol: [:0]const u8 = switch (list_kind) {
+            else => tok.source_count_param,
+            .Argument => tok.source_count_name,
+        };
         arg_list.writeOne(impl_type_symbol);
         if (alloc_fn_info != .allocate) {
             arg_list.writeOne(impl_symbol);
+        }
+        switch (alloc_fn_info) {
+            .allocate,
+            .resizeAbove,
+            .resizeIncrement,
+            .resizeBelow,
+            .resizeDecrement,
+            => switch (impl_kind) {
+                .dynamic, .parametric => {
+                    arg_list.writeOne(count_symbol);
+                },
+                else => {},
+            },
+            else => {},
         }
         return arg_list;
     }
