@@ -10,6 +10,7 @@ pub const generic_type_name: [:0]const u8 = "anytype";
 pub const builtin_namespace: [:0]const u8 = "builtin";
 pub const reference_namespace: [:0]const u8 = "reference";
 pub const container_namespace: [:0]const u8 = "container";
+pub const mem_namespace: [:0]const u8 = "mem";
 pub const mach_namespace: [:0]const u8 = "mach";
 pub const meta_namespace: [:0]const u8 = "meta";
 
@@ -465,10 +466,10 @@ fn sliceType(
         return "[]" ++ type_name;
     }
 }
-fn fieldAccess(comptime symbol: [:0]const u8, field_name: [:0]const u8) [:0]const u8 {
-    return symbol ++ period_operator ++ field_name;
+pub inline fn fieldAccess(comptime symbol: [:0]const u8, field_name: [:0]const u8) [:0]const u8 {
+    comptime return symbol ++ period_operator ++ field_name;
 }
-fn callSimple(comptime symbol: [:0]const u8) [:0]const u8 {
+pub fn callSimple(comptime symbol: [:0]const u8) [:0]const u8 {
     return symbol ++ "()";
 }
 fn amountCount(comptime symbol: [:0]const u8) [:0]const u8 {

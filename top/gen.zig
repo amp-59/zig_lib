@@ -36,6 +36,17 @@ pub const DeclList = struct {
     pub fn readAll(decl_list: *const DeclList) []const [:0]const u8 {
         return decl_list.decls[0..decl_list.decls_len];
     }
+    pub fn haveElse(
+        decl_list: *const DeclList,
+        symbol1: [:0]const u8,
+        symbol2: [:0]const u8,
+    ) [:0]const u8 {
+        if (decl_list.have(symbol1)) {
+            return symbol1;
+        } else {
+            return symbol2;
+        }
+    }
     pub fn have(decl_list: *const DeclList, symbol: [:0]const u8) bool {
         for (decl_list.readAll()) |decl| {
             if (decl.ptr == symbol.ptr) {
