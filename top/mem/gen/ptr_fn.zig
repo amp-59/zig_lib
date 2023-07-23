@@ -2,14 +2,33 @@ const gen = @import("../../gen.zig");
 const meta = @import("../../meta.zig");
 const builtin = @import("../../builtin.zig");
 const testing = @import("../../testing.zig");
-
 const tok = @import("./tok.zig");
 const attr = @import("./attr.zig");
 const types = @import("./types.zig");
 const config = @import("./config.zig");
-
-pub const list = meta.tagList(Fn);
-
+pub const list: []const Fn = meta.tagList(Fn);
+pub const interface_list: []const Fn = blk: {
+    var res: []const Fn = &.{};
+    for (list) |ptr_fn_info| {
+        if (ptr_fn_info.interface()) {
+            res = res ++ [1]Fn{ptr_fn_info};
+        }
+    }
+    break :blk res;
+};
+pub fn hasPtrParam(arg_list: gen.ArgList) bool {
+    for (arg_list.readAll()) |arg| {
+        if (isPtrParam(arg)) {
+            return true;
+        }
+    }
+}
+pub fn isPtrParam(arg: [:0]const u8) bool {
+    return arg.ptr == tok.impl_const_param.ptr or arg.ptr == tok.impl_param.ptr;
+}
+pub fn isPtrSymbol(arg: [:0]const u8) bool {
+    return arg.ptr == tok.impl_name.ptr;
+}
 pub const Fn = enum(u5) {
     allocated_byte_address = 0,
     aligned_byte_address = 1,
@@ -347,45 +366,47 @@ pub const Fn = enum(u5) {
         }
     }
 };
-
 pub const FnArgs = struct {
     pub const Index = struct {
         keys: []Key,
         keys_len: usize = 0,
     };
     pub const Key = struct {
-        Fn,
-        usize,
+        ptr_fn_info: Fn,
+        arg_list_idx: usize,
     };
     pub const Value = struct {
-        Fn,
-        []gen.ArgList,
+        ptr_fn_info: Fn,
+        arg_lists: []gen.ArgList,
     };
     pub const Map = struct {
-        []const Value,
-        []const Index,
+        vals: []const Value,
+        idxs: []const Index,
+
+        pub fn lookup(map: *const FnArgs.Map, impl_detail: types.Implementation, ptr_fn_info: Fn) ?gen.ArgList {
+            const idx: Index = map.idxs[impl_detail.ptr];
+            for (idx.keys[0..idx.keys_len]) |ki_pair| {
+                if (ki_pair.ptr_fn_info == ptr_fn_info) {
+                    for (map.vals) |kv_pair| {
+                        if (kv_pair.ptr_fn_info == ptr_fn_info) {
+                            return kv_pair.arg_lists[ki_pair.arg_list_idx];
+                        }
+                    }
+                }
+            }
+            return null;
+        }
     };
 };
-
 pub fn deduceUniqueInterfaceStructs(allocator: *config.Allocator, impl_details: []types.Implementation) FnArgs.Map {
-    var key_len: usize = 0;
-    for (list) |ptr_fn_info| {
-        if (!ptr_fn_info.interface()) {
-            continue;
-        }
-        key_len +%= 1;
-    }
-    const arg_list_vals: []FnArgs.Value = allocator.allocate(FnArgs.Value, key_len);
+    const arg_list_vals: []FnArgs.Value = allocator.allocate(FnArgs.Value, interface_list.len);
     const arg_list_maps: []FnArgs.Index = allocator.allocate(FnArgs.Index, impl_details.len);
     for (arg_list_maps) |*arg_list_map| {
-        arg_list_map.keys = allocator.allocate(FnArgs.Key, key_len);
+        arg_list_map.keys = allocator.allocate(FnArgs.Key, interface_list.len);
         arg_list_map.keys_len = 0;
     }
     var key_idx: usize = 0;
-    for (list) |ptr_fn_info| {
-        if (!ptr_fn_info.interface()) {
-            continue;
-        }
+    for (interface_list) |ptr_fn_info| {
         const arg_lists: []gen.ArgList = allocator.allocate(gen.ArgList, impl_details.len);
         var arg_lists_len: usize = 0;
         lo: for (impl_details, 0..) |impl_detail, impl_detail_idx| {
@@ -407,22 +428,25 @@ pub fn deduceUniqueInterfaceStructs(allocator: *config.Allocator, impl_details: 
                     }
                 }
                 arg_list_map.keys[arg_list_map.keys_len] = .{
-                    ptr_fn_info,
-                    unique_arg_list_idx,
+                    .ptr_fn_info = ptr_fn_info,
+                    .arg_list_idx = unique_arg_list_idx,
                 };
                 arg_list_map.keys_len +%= 1;
                 continue :lo;
             }
-            arg_list_map.keys[arg_list_map.keys_len] = .{ ptr_fn_info, arg_lists_len };
+            arg_list_map.keys[arg_list_map.keys_len] = .{
+                .ptr_fn_info = ptr_fn_info,
+                .arg_list_idx = arg_lists_len,
+            };
             arg_list_map.keys_len +%= 1;
             arg_lists[arg_lists_len] = arg_list;
             arg_lists_len +%= 1;
         }
         arg_list_vals[key_idx] = .{
-            ptr_fn_info,
-            arg_lists[0..arg_lists_len],
+            .ptr_fn_info = ptr_fn_info,
+            .arg_lists = arg_lists[0..arg_lists_len],
         };
         key_idx +%= 1;
     }
-    return .{ arg_list_vals, arg_list_maps };
+    return .{ .vals = arg_list_vals, .idxs = arg_list_maps };
 }
