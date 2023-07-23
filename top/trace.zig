@@ -5,12 +5,10 @@ const zig = @import("./zig.zig");
 const spec = @import("./spec.zig");
 const math = @import("./math.zig");
 const mach = @import("./mach.zig");
-const algo = @import("./algo.zig");
 const file = @import("./file.zig");
 const debug = @import("./debug.zig");
 const dwarf = @import("./dwarf.zig");
 const builtin = @import("./builtin.zig");
-const testing = @import("./testing.zig");
 pub const Allocator = mem.SimpleAllocator;
 pub const logging_override: debug.Logging.Override = debug.Logging.Override{
     .Acquire = false,
@@ -73,6 +71,7 @@ pub const StackIterator = struct {
     }
 };
 fn writeLastLine(trace: *const debug.Trace, buf: [*]u8, width: u64, break_line_count: u8) u64 {
+    @setRuntimeSafety(builtin.is_safe);
     var len: u64 = 0;
     var idx: u64 = 0;
     while (idx != break_line_count) : (idx +%= 1) {
@@ -90,6 +89,7 @@ fn writeLastLine(trace: *const debug.Trace, buf: [*]u8, width: u64, break_line_c
     return len +% 4;
 }
 fn writeSideBar(trace: *const debug.Trace, width: u64, buf: [*]u8, number: Number) u64 {
+    @setRuntimeSafety(builtin.is_safe);
     const sidebar: []const u8 = trace.options.tokens.sidebar;
     const sidebar_char: bool = sidebar.len == 1;
     var tmp: [8]u8 = undefined;
@@ -145,6 +145,7 @@ fn writeSideBar(trace: *const debug.Trace, width: u64, buf: [*]u8, number: Numbe
     return len;
 }
 fn writeFiller(buf: [*]u8, filler: []const u8, fill_len: u64) u64 {
+    @setRuntimeSafety(builtin.is_safe);
     if (filler.len == 1) {
         mach.memset(buf, filler[0], fill_len);
         return fill_len;
@@ -158,6 +159,7 @@ fn writeFiller(buf: [*]u8, filler: []const u8, fill_len: u64) u64 {
     }
 }
 fn writeCaret(trace: *const debug.Trace, buf: [*]u8, width: u64, addr: u64, column: u64) u64 {
+    @setRuntimeSafety(builtin.is_safe);
     const caret: []const u8 = trace.options.tokens.caret;
     var len: u64 = 0;
     if (trace.options.write_sidebar) {
@@ -171,10 +173,11 @@ fn writeCaret(trace: *const debug.Trace, buf: [*]u8, width: u64, addr: u64, colu
     return len +% 1;
 }
 fn highlight(buf: [*]u8, tok: *builtin.parse.Token, syntax: anytype) u64 {
+    @setRuntimeSafety(builtin.is_safe);
     for (syntax) |pair| {
         for (pair.tags) |tag| {
             if (tok.tag == tag) {
-                mach.memcpy(buf, pair.style.ptr, pair.style.len);
+                @memcpy(buf, pair.style);
                 return pair.style.len;
             }
         }
@@ -188,6 +191,7 @@ fn writeExtendedSourceLocation(
     unit: *const dwarf.Unit,
     src: dwarf.SourceLocation,
 ) u64 {
+    @setRuntimeSafety(builtin.is_safe);
     var len: u64 = src.formatWriteBuf(buf);
     @as(*[2]u8, @ptrCast(buf + len)).* = ": ".*;
     len +%= 2;
@@ -221,6 +225,7 @@ fn writeSourceContext(
     addr: u64,
     src: dwarf.SourceLocation,
 ) u64 {
+    @setRuntimeSafety(builtin.is_safe);
     const min: u64 = src.line -| trace.options.context_line_count;
     const max: u64 = src.line +% trace.options.context_line_count +% 1;
     var line: u64 = min;
@@ -239,13 +244,13 @@ fn writeSourceContext(
                     tok = itr.next();
                 }
                 var bytes: []const u8 = fbuf[loc.start..@min(loc.finish, tok.loc.start)];
-                mach.memcpy(buf + len, bytes.ptr, bytes.len);
+                @memcpy(buf + len, bytes);
                 len +%= bytes.len;
                 loc.start +%= bytes.len;
                 while (loc.start < loc.finish) {
                     if (loc.start < tok.loc.start) {
                         bytes = fbuf[loc.start..tok.loc.start];
-                        mach.memcpy(buf + len, bytes.ptr, bytes.len);
+                        @memcpy(buf + len, bytes);
                         len +%= bytes.len;
                     }
                     if (loc.finish > tok.loc.start) {
@@ -253,7 +258,7 @@ fn writeSourceContext(
                     }
                     bytes = fbuf[tok.loc.start..tok.loc.finish];
                     loc.start = tok.loc.finish;
-                    mach.memcpy(buf + len, bytes.ptr, bytes.len);
+                    @memcpy(buf + len, bytes);
                     len +%= bytes.len;
                     len -%= @intFromBool(buf[len -% 1] == '\n');
                     @as(*[4]u8, @ptrCast(buf + len)).* = "\x1b[0m".*;
@@ -261,8 +266,9 @@ fn writeSourceContext(
                     tok = itr.next();
                 }
             } else {
-                mach.memcpy(buf + len, loc.ptr(fbuf), loc.len());
-                len +%= loc.len();
+                const bytes: []const u8 = loc.slice(fbuf);
+                @memcpy(buf + len, bytes);
+                len +%= bytes.len;
             }
             if (buf[len -% 1] != '\n') {
                 buf[len] = '\n';
@@ -285,6 +291,7 @@ fn writeSourceCodeAtAddress(
     width: u64,
     addr: u64,
 ) ?dwarf.DwarfInfo.AddressInfo {
+    @setRuntimeSafety(builtin.is_safe);
     for (dwarf_info.addr_info[0..dwarf_info.addr_info_len]) |*addr_info| {
         if (addr_info.addr == addr) {
             addr_info.count +%= 1;
@@ -304,6 +311,7 @@ fn writeSourceCodeAtAddress(
     return null;
 }
 fn printMessage(buf: [*]u8, addr_info: *dwarf.DwarfInfo.AddressInfo) void {
+    @setRuntimeSafety(builtin.is_safe);
     const msg = buf[addr_info.start..addr_info.finish];
     var tmp: [32768]u8 = undefined;
     var len: u64 = 0;
@@ -329,6 +337,7 @@ fn printMessage(buf: [*]u8, addr_info: *dwarf.DwarfInfo.AddressInfo) void {
     }
 }
 fn fastAllocFile(allocator: *Allocator, file_map: *FileMap, pathname: [:0]const u8) [:0]u8 {
+    @setRuntimeSafety(builtin.is_safe);
     for (file_map.pairs[0..file_map.pairs_len]) |l_pair| {
         if (mach.testEqualMany8(l_pair.key, pathname)) {
             return l_pair.val;
@@ -349,6 +358,7 @@ fn fastAllocFile(allocator: *Allocator, file_map: *FileMap, pathname: [:0]const 
     return ret;
 }
 fn maximumSideBarWidth(itr: StackIterator) u64 {
+    @setRuntimeSafety(builtin.is_safe);
     var tmp: StackIterator = itr;
     var max_len: u64 = 0;
     while (tmp.next()) |addr| {
@@ -357,6 +367,7 @@ fn maximumSideBarWidth(itr: StackIterator) u64 {
     return max_len +% 1;
 }
 pub export fn printStackTrace(trace: *const debug.Trace, first_addr: usize, frame_addr: usize) void {
+    @setRuntimeSafety(builtin.is_safe);
     var allocator: Allocator = .{ .start = Level.start, .next = Level.start, .finish = Level.start };
     defer allocator.unmap();
     var file_map: FileMap = FileMap.init(&allocator, 8);
