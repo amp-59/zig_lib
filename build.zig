@@ -67,9 +67,9 @@ fn memgen(allocator: *build.Allocator, node: *Node) void {
     mg_ptr.descr = "Reformat generated generic pointers into canonical form";
     mg_ctn.descr = "Reformat generated generic containers into canonical form";
     mg_alloc.descr = "Reformat generated generic allocators into canonical form";
-    mg_alloc_impls.dependOn(allocator, mg_specs, .run);
     mg_ptr_impls.dependOn(allocator, mg_specs, .run);
     mg_ctn_impls.dependOn(allocator, mg_specs, .run);
+    mg_alloc_impls.dependOn(allocator, mg_ptr_impls, .run);
     mg_alloc.dependOn(allocator, mg_alloc_impls, .run);
     mg_ptr.dependOn(allocator, mg_ptr_impls, .run);
     mg_ctn.dependOn(allocator, mg_ctn_impls, .run);
@@ -77,6 +77,7 @@ fn memgen(allocator: *build.Allocator, node: *Node) void {
     mg_specs.task.info.build.mode = .Debug;
     mg_alloc.task.info.format.ast_check = false;
     node.task.tag = .format;
+    addTracer(mg_alloc_impls);
 }
 fn examples(allocator: *build.Allocator, node: *Node) void {
     build_cmd.kind = .exe;
@@ -116,6 +117,21 @@ fn examples(allocator: *build.Allocator, node: *Node) void {
     perf.descr = "Integrated performance";
     statz.task.info.build.mode = .Debug;
     statz.task.info.build.strip = false;
+    node.task.tag = .build;
+}
+fn useCaseTests(allocator: *build.Allocator, node: *Node) void {
+    const std_lib_cfg_pkg: *Node = node.addBuild(allocator, build_cmd, "user_std_lib_cfg_pkg", "test/user/std_lib_cfg_pkg.zig");
+    const std_lib_pkg: *Node = node.addBuild(allocator, build_cmd, "user_std_lib_pkg", "test/user/std_lib_pkg.zig");
+    const std_lib_cfg: *Node = node.addBuild(allocator, build_cmd, "user_std_lib_cfg", "test/user/std_lib_cfg.zig");
+    const std_lib: *Node = node.addBuild(allocator, build_cmd, "user_std_lib", "test/user/std_lib.zig");
+    std_lib_cfg_pkg.descr = "Standard builtin, with build configuration, library package";
+    std_lib_cfg.descr = "Standard builtin, with build configuration, without library package";
+    std_lib_pkg.descr = "Standard builtin, without build configuration, with library package";
+    std_lib.descr = "Standard builtin, without build configuration, without library package";
+    std_lib_cfg_pkg.addModuleDependency(allocator, "zl", build.root ++ ".zig");
+    std_lib_pkg.addModuleDependency(allocator, "zl", build.root ++ ".zig");
+    std_lib_pkg.flags.build.configure_root = false;
+    std_lib.flags.build.configure_root = false;
     node.task.tag = .build;
 }
 fn tests(allocator: *build.Allocator, node: *Node) void {
@@ -183,6 +199,7 @@ fn tests(allocator: *build.Allocator, node: *Node) void {
     build_stress_test.descr = "Try to produce builder errors";
     algo_test.task.info.build.mode = .ReleaseFast;
     cryptoTests(allocator, node.addGroup(allocator, "crypto_tests"));
+    useCaseTests(allocator, node.addGroup(allocator, "use_case_tests"));
     for ([_]*Node{
         build_runner_test,   zls_build_runner_test,
         cmdline_writer_test, serial_test,
