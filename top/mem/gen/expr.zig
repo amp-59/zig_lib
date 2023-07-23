@@ -486,6 +486,7 @@ pub inline fn interfacePointerCount(expr1: Expr, expr2: Expr, expr3: Expr) [4]Ex
 pub inline fn interfacePointerCountWithSentinel(expr1: Expr, expr2: Expr, expr3: Expr, expr4: Expr) [5]Expr {
     return fnCall4(tok.intr_pointer_count_with_sentinel_fn_name, expr1, expr2, expr3, expr4);
 }
+
 pub inline fn amountOfTypeToBytes(expr1: Expr, expr2: Expr) [3]Expr {
     return fnCall2(tok.amount_of_type_to_bytes_fn_name, expr1, expr2);
 }
@@ -503,6 +504,24 @@ pub inline fn amountReservedToCount(expr1: Expr, expr2: Expr) [3]Expr {
 }
 pub inline fn amountReservedToBytes(expr1: Expr, expr2: Expr) [3]Expr {
     return fnCall2(tok.amount_reserved_to_bytes_fn_name, expr1, expr2);
+}
+pub inline fn amountOfTypeToBytesNs(expr1: Expr, expr2: Expr) [3]Expr {
+    return fnCall2(tok.fieldAccess(tok.mem_namespace, tok.amount_of_type_to_bytes_fn_name), expr1, expr2);
+}
+pub inline fn amountOfLengthToBytesNs(expr1: Expr, expr2: Expr) [3]Expr {
+    return fnCall2(tok.fieldAccess(tok.mem_namespace, tok.amount_of_length_to_bytes_fn_name), expr1, expr2);
+}
+pub inline fn amountToCountOfTypeNs(expr1: Expr, expr2: Expr) [3]Expr {
+    return fnCall2(tok.fieldAccess(tok.mem_namespace, tok.amount_to_count_of_type_name), expr1, expr2);
+}
+pub inline fn amountToCountOfLengthNs(expr1: Expr, expr2: Expr) [3]Expr {
+    return fnCall2(tok.fieldAccess(tok.mem_namespace, tok.amount_to_count_of_length_fn_name), expr1, expr2);
+}
+pub inline fn amountReservedToCountNs(expr1: Expr, expr2: Expr) [3]Expr {
+    return fnCall2(tok.fieldAccess(tok.mem_namespace, tok.amount_reserved_to_count_fn_name), expr1, expr2);
+}
+pub inline fn amountReservedToBytesNs(expr1: Expr, expr2: Expr) [3]Expr {
+    return fnCall2(tok.fieldAccess(tok.mem_namespace, tok.amount_reserved_to_bytes_fn_name), expr1, expr2);
 }
 pub inline fn initialize(symbol: [:0]const u8, expr1: Expr) [4]Expr {
     return .{ Init.symbol(tok.period_operator), Init.symbol(symbol), Init.symbol(tok.equal_operator), expr1 };
