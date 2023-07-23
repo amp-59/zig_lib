@@ -467,15 +467,28 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             ptr.* = config;
             node.impl.cfgs_len +%= 1;
         }
-        pub fn addModule(node: *Node, allocator: *mem.SimpleAllocator, module: types.Module) void {
+        pub fn addModuleDependency(node: *Node, allocator: *mem.SimpleAllocator, name: [:0]const u8, pathname: [:0]const u8) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
-            if (builder_spec.options.enable_usage_validation) {}
-            const size_of: comptime_int = @sizeOf(types.Module);
-            const addr_buf: *u64 = @ptrCast(&node.impl.cfgs);
-            const ptr: *types.Module = @ptrFromInt(allocator.addGenericSize(Size, size_of, //
-                init_len.cfgs, addr_buf, &node.impl.cfgs_max_len, node.impl.cfgs_len));
-            ptr.* = module;
-            node.impl.cfgs_len +%= 1;
+            if (node.task.info.build.dependencies) |src| {
+                const dest: [*]types.ModuleDependency = @ptrFromInt(allocator.allocateRaw(@sizeOf(types.Module) *% src.len +% 1, 8));
+                @memcpy(dest, src);
+                dest[src.len] = .{ .name = name };
+                node.task.info.build.dependencies = dest[0 .. src.len +% 1];
+            } else {
+                const dest: [*]types.ModuleDependency = @ptrFromInt(allocator.allocateRaw(@sizeOf(types.Module), 8));
+                dest[0] = .{ .name = name };
+                node.task.info.build.dependencies = dest[0..1];
+            }
+            if (node.task.info.build.modules) |src| {
+                const dest: [*]types.Module = @ptrFromInt(allocator.allocateRaw(@sizeOf(types.Module) *% src.len +% 1, 8));
+                @memcpy(dest, src);
+                dest[src.len] = .{ .name = name, .path = pathname };
+                node.task.info.build.modules = dest[0 .. src.len +% 1];
+            } else {
+                const dest: [*]types.Module = @ptrFromInt(allocator.allocateRaw(@sizeOf(types.Module), 8));
+                dest[0] = .{ .name = name, .path = pathname };
+                node.task.info.build.modules = dest[0..1];
+            }
         }
         pub fn addRunArg(node: *Node, allocator: *mem.SimpleAllocator, arg: []const u8) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
@@ -582,6 +595,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             node.flags.is_hidden = name[0] == '_';
             node.task.tag = .any;
             node.task.lock = omni_lock;
+
             return node;
         }
         /// Initialize a new `zig fmt` command.
