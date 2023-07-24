@@ -1544,7 +1544,7 @@ pub const TypeDescrFormatSpec = struct {
     };
 };
 pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
-    return (union(enum) {
+    const U = union(enum) {
         type_name: []const u8,
         type_decl: Container,
         type_refer: Reference,
@@ -2100,5 +2100,6 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                 }
             }
         }
-    });
+    };
+    return U;
 }
