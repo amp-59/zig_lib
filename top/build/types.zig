@@ -13,6 +13,7 @@ pub const Allocator = mem.SimpleAllocator;
 pub const Node = enum(u8) { group, worker };
 pub const OutputMode = enum(u2) { exe, lib, obj };
 pub const AuxOutputMode = enum(u3) { @"asm", llvm_ir, llvm_bc, h, docs, analysis };
+pub const AutoOnOff = enum { auto, off, on };
 pub const Task = enum(u8) {
     null = 0,
     any = 1,
@@ -56,35 +57,31 @@ pub const Lock = mem.ThreadSafeSet(State.list.len, State, Task);
 pub const Config = struct {
     name: []const u8,
     value: Value,
-    const Value = union(enum) {
-        Int: usize,
-        Bool: bool,
-        String: []const u8,
-    };
+    pub const Value = union(enum) { Int: usize, Bool: bool, String: []const u8 };
     pub fn formatWriteBuf(cfg: Config, buf: [*]u8) u64 {
         @setRuntimeSafety(false);
         var len: u64 = 0;
         var ud64: fmt.Type.Ud64 = undefined;
-        @as(*[10]u8, @ptrCast(buf)).* = "pub const ".*;
-        len +%= 10;
+        @as(*[12]u8, @ptrCast(buf)).* = "pub const @\"".*;
+        len +%= 12;
         @memcpy(buf + len, cfg.name);
         len +%= cfg.name.len;
         switch (cfg.value) {
             .Int => |value| {
-                @as(*[17]u8, @ptrCast(buf + len)).* = ": comptime_int = ".*;
-                len +%= 17;
+                @as(*[18]u8, @ptrCast(buf + len)).* = "\": comptime_int = ".*;
+                len +%= 18;
                 ud64 = @bitCast(value);
                 len +%= ud64.formatWriteBuf(buf + len);
             },
             .Bool => |value| {
-                @as(*[9]u8, @ptrCast(buf + len)).* = ": bool = ".*;
-                len +%= 9;
+                @as(*[10]u8, @ptrCast(buf + len)).* = "\": bool = ".*;
+                len +%= 10;
                 @memcpy(buf + len, if (value) "true" else "false");
                 len +%= if (value) 4 else 5;
             },
             .String => |value| {
-                @as(*[10]u8, @ptrCast(buf + len)).* = ": *const [".*;
-                len +%= 10;
+                @as(*[11]u8, @ptrCast(buf + len)).* = "\": *const [".*;
+                len +%= 11;
                 ud64 = @bitCast(value.len);
                 len +%= ud64.formatWriteBuf(buf + len);
                 @as(*[6]u8, @ptrCast(buf + len)).* = "]u8 = ".*;
