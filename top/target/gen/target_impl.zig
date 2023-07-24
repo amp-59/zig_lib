@@ -6,48 +6,43 @@ const proc = @import("../../proc.zig");
 const builtin = @import("../../builtin.zig");
 const types = @import("./types.zig");
 const config = @import("./config.zig");
+const Target = @import("std").Target;
+const Version = @import("std").SemanticVersion;
+const VersionRange = @import("std").SemanticVersion.Range;
 pub usingnamespace @import("../../start.zig");
-const create_spec: file.CreateSpec = .{ .options = .{ .exclusive = false } };
-inline fn writeDeclaration(array: *types.Array, comptime name: []const u8, comptime T: type) void {
+const create_spec: file.CreateSpec = .{
+    .options = .{ .exclusive = false },
+};
+fn writeDeclaration(array: *types.Array, comptime name: []const u8, comptime T: type) void {
     array.writeMany("pub const " ++ name ++ "=");
     array.writeFormat(comptime types.TypeDescr.declare(name, T));
     array.writeMany(";\n");
 }
 pub fn main() !void {
-    const Target = @import("std").Target;
     const fd: u64 = try file.create(create_spec, config.toplevel_source_path, file.mode.regular);
     var allocator: mem.SimpleAllocator = .{};
     var array: *types.Array = allocator.create(types.Array);
     array.undefineAll();
-    array.writeMany(
-        \\pub const Target=struct{
-        \\cpu:Cpu,
-        \\os:Os,
-        \\abi:Abi,
-        \\ofmt:ObjectFormat,
-        \\
-    );
+    array.writeMany("pub const Target=struct{\n");
+    array.writeMany("cpu:Cpu,\n");
+    array.writeMany("os:Os,\n");
+    array.writeMany("abi:Abi,\n");
+    array.writeMany("ofmt:ObjectFormat,\n");
     writeDeclaration(array, "Set", Target.Cpu.Feature.Set);
     writeDeclaration(array, "Feature", Target.Cpu.Feature);
-    array.writeMany(
-        \\pub const Cpu=struct{
-        \\arch:Arch,
-        \\model:*const Model,
-        \\features:Set,
-        \\
-    );
+    array.writeMany("pub const Cpu=struct{\n");
+    array.writeMany("arch:Arch,\n");
+    array.writeMany("model:*const Model,\n");
+    array.writeMany("features:Set,\n");
     writeDeclaration(array, "Model", Target.Cpu.Model);
     writeDeclaration(array, "Arch", Target.Cpu.Arch);
     array.writeMany("};\n");
-    array.writeMany(
-        \\pub const Os=struct{
-        \\tag:Tag,
-        \\version_range:VersionRange,
-        \\
-    );
+    array.writeMany("pub const Os=struct{\n");
+    array.writeMany("tag:Tag,\n");
+    array.writeMany("version_range:VersionRange,\n");
     writeDeclaration(array, "Tag", Target.Os.Tag);
-    writeDeclaration(array, "Version", @import("std").SemanticVersion);
-    writeDeclaration(array, "Range", @import("std").SemanticVersion.Range);
+    writeDeclaration(array, "Version", Version);
+    writeDeclaration(array, "Range", VersionRange);
     writeDeclaration(array, "LinuxVersionRange", Target.Os.LinuxVersionRange);
     writeDeclaration(array, "WindowsVersion", Target.Os.WindowsVersion);
     writeDeclaration(array, "VersionRange", Target.Os.VersionRange);
