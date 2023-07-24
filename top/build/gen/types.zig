@@ -11,6 +11,8 @@ pub const Attributes = struct {
     fn_name: []const u8,
     /// Function call
     params: []const ParamSpec,
+    /// Extra function namespace
+    type_fn_name: ?[]const u8 = null,
 };
 pub const ProtoTypeDescr = fmt.GenericTypeDescrFormat(.{
     .options = .{
@@ -26,9 +28,12 @@ pub const ProtoTypeDescr = fmt.GenericTypeDescrFormat(.{
         .indent = "",
     },
 });
-pub const ProtoTypeDescrMap = [2]ProtoTypeDescr;
+pub const ProtoTypeDescrMap = struct {
+    store: *const ProtoTypeDescr = &boolean,
+    write: ?*const ProtoTypeDescr = null,
+    parse: ?*const ProtoTypeDescr = null,
+};
 pub const boolean: ProtoTypeDescr = ProtoTypeDescr.init(bool);
-
 const Tag = enum {
     boolean_field,
     symbol_field,
@@ -65,11 +70,17 @@ pub const ParamSpec = struct {
     /// Describes how the field type should be written to the command struct,
     /// can be `*const ProtoTypeDescr` or `*const [2]ProtoTypeDescr` depending
     /// on the kind of parameter.
-    type: *align(8) const anyopaque = &boolean,
+    type: ProtoTypeDescrMap = .{},
     /// Specifies whether option arguments are separated with '\x00' or '='
     /// If `null` the separator is determined by context
     /// If `immediate` (255) no separator is written
     char: ?u8 = null,
+    /// Miscellaneous controls
+    flags: struct {
+        /// Do not include in parser generation irrespective of any other
+        /// control.
+        never_parse: bool = false,
+    } = .{},
     pub const immediate: u8 = 255;
     pub fn isField(param_spec: ParamSpec) bool {
         return !param_spec.isFnParam() and !param_spec.isLiteral();
@@ -90,12 +101,6 @@ pub const ParamSpec = struct {
             else => return false,
         }
     }
-    pub fn parameter(param_spec: @This()) ProtoTypeDescr {
-        return @as(*const ProtoTypeDescr, @ptrCast(param_spec.type)).*;
-    }
-    pub fn formatter(param_spec: @This()) ProtoTypeDescr {
-        return @as(*const ProtoTypeDescrMap, @ptrCast(param_spec.type))[1];
-    }
 };
 pub const InverseParamSpec = struct {
     /// Command line flag/switch
@@ -103,15 +108,9 @@ pub const InverseParamSpec = struct {
     /// Describes how the argument should be written to the command line buffer
     tag: Tag = .boolean_field,
     /// Describes how the field type should be written to the command struct
-    type: *align(8) const anyopaque = &boolean,
+    type: ProtoTypeDescrMap = .{},
     /// Specifies whether option arguments are separated with '\x00' or '='
     /// If `null` the separator is determined by context
     /// If `immediate` (255) no separator is written
     char: ?u8 = null,
-    pub fn parameter(param_spec: @This()) ProtoTypeDescr {
-        return @as(*const ProtoTypeDescr, @ptrCast(param_spec.type)).*;
-    }
-    pub fn formatter(param_spec: @This()) ProtoTypeDescr {
-        return @as(*const [2]ProtoTypeDescrMap, @ptrCast(param_spec.type))[1];
-    }
 };
