@@ -46,8 +46,8 @@ fn writeType(fields_array: *Array, types_array: *Array2, param_spec: types.Param
     if (param_spec.and_no) |no_param_spec| {
         const yes_bool: bool = param_spec.tag == .boolean_field;
         const no_bool: bool = no_param_spec.tag == .boolean_field;
-        const yes_type: ?types.ProtoTypeDescr = if (yes_bool) null else param_spec.parameter();
-        const no_type: ?types.ProtoTypeDescr = if (no_bool) null else no_param_spec.parameter();
+        const yes_type: ?types.ProtoTypeDescr = if (yes_bool) null else param_spec.type.store.*;
+        const no_type: ?types.ProtoTypeDescr = if (no_bool) null else no_param_spec.type.store.*;
         if (yes_bool != no_bool) {
             if (config.declare_task_field_types) {
                 fields_array.writeMany("?");
@@ -92,12 +92,21 @@ fn writeType(fields_array: *Array, types_array: *Array2, param_spec: types.Param
             types_array.writeMany("pub const ");
             types_array.writeMany(param_spec.name);
             types_array.writeMany("_type=");
-            types_array.writeFormat(param_spec.parameter());
+            types_array.writeFormat(param_spec.type.store.*);
             types_array.writeMany(";\n");
         } else {
-            fields_array.writeFormat(param_spec.parameter());
+            fields_array.writeFormat(param_spec.type.store.*);
         }
     }
+}
+fn writeSetRuntimeSafety(array: *Array) void {
+    array.writeMany("@setRuntimeSafety(builtin.is_safe);\n");
+}
+fn writeDeclareLength(array: *Array) void {
+    array.writeMany("var len:usize=0;\n");
+}
+fn writeReturnLength(array: *Array) void {
+    array.writeMany("return len;\n");
 }
 fn writeIf(array: *Array, value_name: []const u8) void {
     array.writeMany("if(");
@@ -536,12 +545,12 @@ fn writeOptionalFormatter(
     }
     writeFormatterInternal(array, arg_string, variant);
 }
-pub fn writeFunctionBody(array: *Array, options: []const types.ParamSpec, variant: types.Variant) void {
-    array.writeMany("@setRuntimeSafety(safety);\n");
+pub fn writeFunctionBody(array: *Array, params: []const types.ParamSpec, variant: types.Variant) void {
+    writeSetRuntimeSafety(array);
     if (variant != .write) {
-        array.writeMany("var len:u64=0;\n");
+        writeDeclareLength(array);
     }
-    for (options) |param_spec| {
+    for (params) |param_spec| {
         const if_boolean_field_value: []const u8 = param_spec.name;
         const if_optional_field_value: []const u8 = param_spec.name;
         const if_optional_field_capture: []const u8 = param_spec.name;
@@ -554,7 +563,7 @@ pub fn writeFunctionBody(array: *Array, options: []const types.ParamSpec, varian
             continue;
         }
         if (param_spec.tag == .mapped_param) {
-            writeMapped(array, &.{}, param_spec.name, variant, param_spec.formatter(), param_spec.char orelse '\x00');
+            writeMapped(array, &.{}, param_spec.name, variant, param_spec.type.write.?.*, param_spec.char orelse '\x00');
             continue;
         }
         if (param_spec.tag == .string_literal) {
@@ -627,9 +636,7 @@ pub fn writeFunctionBody(array: *Array, options: []const types.ParamSpec, varian
             unhandledCommandFieldAndNo(param_spec, no_param_spec);
         } else {
             if (param_spec.tag == .boolean_field) {
-                array.writeMany("if(cmd.");
-                array.writeMany(if_boolean_field_value);
-                array.writeMany("){\n");
+                writeIfField(array, if_boolean_field_value);
                 writeOptStringExtra(array, param_spec.string, variant, param_spec.char orelse '\x00');
                 writeIfClose(array);
                 continue;
@@ -659,13 +666,13 @@ pub fn writeFunctionBody(array: *Array, options: []const types.ParamSpec, varian
             }
             if (param_spec.tag == .optional_formatter_field) {
                 writeIfOptionalField(array, if_optional_field_value, if_optional_field_capture);
-                writeFormatter(array, param_spec.string, if_optional_field_capture, variant, param_spec.char orelse '\x00');
+                writeFormatter(array, &.{}, if_optional_field_capture, variant, param_spec.char orelse '\x00');
                 writeIfClose(array);
                 continue;
             }
             if (param_spec.tag == .optional_mapped_field) {
                 writeIfOptionalField(array, if_optional_field_value, if_optional_field_capture);
-                writeMapped(array, param_spec.string, if_optional_field_capture, variant, param_spec.formatter(), param_spec.char orelse '\x00');
+                writeMapped(array, &.{}, if_optional_field_capture, variant, param_spec.type.write.?.*, param_spec.char orelse '\x00');
                 writeIfClose(array);
                 continue;
             }
@@ -689,7 +696,7 @@ pub fn writeFunctionBody(array: *Array, options: []const types.ParamSpec, varian
         }
     }
     if (variant != .write) {
-        array.writeMany("return len;\n");
+        writeReturnLength(array);
     }
 }
 fn unhandledCommandFieldAndNo(param_spec: types.ParamSpec, no_param_spec: types.InverseParamSpec) void {
@@ -721,7 +728,7 @@ fn writeFunctionSignatureFromAttributes(array: *Array, attributes: types.Attribu
         if (param_spec.isFnParam()) {
             array.writeMany(param_spec.name);
             array.writeMany(":");
-            array.writeFormat(param_spec.parameter());
+            array.writeFormat(param_spec.type.store.*);
             array.writeMany(",");
         }
     }
@@ -768,6 +775,15 @@ fn writeFunction(array: *Array, attributes: types.Attributes, variant: types.Var
     writeFunctionBody(array, attributes.params, variant);
     array.writeMany("}\n");
 }
+fn writeUsingFunctions(array: *Array, attributes: types.Attributes) void {
+    if (attributes.type_fn_name) |type_fn_name| {
+        array.writeMany("pub usingnamespace types.");
+        array.writeMany(type_fn_name);
+        array.writeMany("(");
+        array.writeMany(attributes.type_name);
+        array.writeMany(");\n");
+    }
+}
 fn writeTaskStructFromAttributes(allocator: *mem.SimpleAllocator, array: *Array, attributes: types.Attributes) void {
     array.writeMany("pub const ");
     array.writeMany(attributes.type_name);
@@ -776,6 +792,7 @@ fn writeTaskStructFromAttributes(allocator: *mem.SimpleAllocator, array: *Array,
     writeFunction(array, attributes, .write);
     writeFunction(array, attributes, .write_buf);
     writeFunction(array, attributes, .length);
+    writeUsingFunctions(array, attributes);
     array.writeMany("};\n");
 }
 pub fn main() !void {
@@ -797,4 +814,5 @@ pub fn main() !void {
     }
     try gen.truncateFile(.{ .return_type = void }, config.tasks_path, array.readAll());
     array.undefineAll();
+    try file.write(.{}, 1, array.readAll());
 }
