@@ -2786,6 +2786,7 @@ const zig_lib = struct {
     };
     pub const Mode = OptimizeMode;
 };
+pub const ObjectFormat = @TypeOf(builtin.target.ofmt);
 const std_lib = struct {
     const std = @import("std");
     pub const StackTrace = std.builtin.StackTrace;
