@@ -18,6 +18,8 @@ pub const tasks_path: [:0]const u8 = primarySourceFile("tasks.zig");
 pub const tasks_template_path: [:0]const u8 = builtin.root.build_root ++ "/top/build/gen/tasks-template.zig";
 pub const hist_tasks_path: [:0]const u8 = primarySourceFile("hist_tasks.zig");
 pub const hist_tasks_template_path: [:0]const u8 = builtin.root.build_root ++ "/top/build/gen/hist_tasks-template.zig";
+pub const parsers_path: [:0]const u8 = primarySourceFile("parsers.zig");
+pub const parsers_tasks_template_path: [:0]const u8 = builtin.root.build_root ++ "/top/build/gen/parsers-template.zig";
 
 pub fn primarySourceFile(comptime name: [:0]const u8) [:0]const u8 {
     return if (name[0] != '/') builtin.root.build_root ++ "/top/build/" ++ name else name;
