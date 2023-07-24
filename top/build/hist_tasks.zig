@@ -8,7 +8,7 @@ pub const BuildCommand = packed struct {
         listen: bool = false,
         code_model: bool = false,
         red_zone: bool = false,
-        builtin: bool = false,
+        implicit_builtins: bool = false,
         omit_frame_pointer: bool = false,
         mode: bool = false,
         pic: bool = false,
@@ -42,7 +42,7 @@ pub const BuildCommand = packed struct {
         listen: @typeInfo(@TypeOf(@field(undef, "listen"))).Optional.child = undefined,
         code_model: @typeInfo(@TypeOf(@field(undef, "code_model"))).Optional.child = undefined,
         red_zone: bool = undefined,
-        builtin: bool = undefined,
+        implicit_builtins: bool = undefined,
         omit_frame_pointer: bool = undefined,
         mode: @typeInfo(@TypeOf(@field(undef, "mode"))).Optional.child = undefined,
         pic: bool = undefined,
@@ -81,8 +81,8 @@ pub const BuildCommand = packed struct {
         ret.val.code_model = cmd.code_model.?;
         ret.key.red_zone = cmd.red_zone != null;
         ret.val.red_zone = cmd.red_zone.?;
-        ret.key.builtin = cmd.builtin != null;
-        ret.val.builtin = cmd.builtin.?;
+        ret.key.implicit_builtins = cmd.implicit_builtins != null;
+        ret.val.implicit_builtins = cmd.implicit_builtins.?;
         ret.key.omit_frame_pointer = cmd.omit_frame_pointer != null;
         ret.val.omit_frame_pointer = cmd.omit_frame_pointer.?;
         ret.key.mode = cmd.mode != null;
