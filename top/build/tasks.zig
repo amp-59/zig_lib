@@ -62,14 +62,7 @@ pub const BuildCommand = struct {
     /// Specify target CPU and feature set
     cpu: ?[]const u8 = null,
     /// Limit range of code and data virtual addresses
-    code_model: ?enum(u3) {
-        default = 0,
-        tiny = 1,
-        small = 2,
-        kernel = 3,
-        medium = 4,
-        large = 5,
-    } = null,
+    code_model: ?builtin.CodeModel = null,
     /// Enable the "red-zone"
     red_zone: ?bool = null,
     /// Enable implicit builtin knowledge of functions
@@ -139,17 +132,7 @@ pub const BuildCommand = struct {
     /// plan9                  Plan 9 from Bell Labs object format
     /// hex (planned feature)  Intel IHEX
     /// raw (planned feature)  Dump machine code directly
-    format: ?enum(u4) {
-        elf = 0,
-        c = 1,
-        wasm = 2,
-        coff = 3,
-        macho = 4,
-        spirv = 5,
-        plan9 = 6,
-        hex = 7,
-        raw = 8,
-    } = null,
+    format: ?builtin.ObjectFormat = null,
     /// Add directory to AFTER include search path
     dirafter: ?[]const u8 = null,
     /// Add directory to SYSTEM include search path
@@ -246,11 +229,7 @@ pub const BuildCommand = struct {
         norelro = 8,
     } = null,
     /// Enable or disable colored error messages
-    color: ?enum(u2) {
-        auto = 0,
-        off = 1,
-        on = 2,
-    } = null,
+    color: ?types.AutoOnOff = null,
     /// Print timing diagnostics
     time_report: bool = false,
     /// Print stack size diagnostics
@@ -276,7 +255,7 @@ pub const BuildCommand = struct {
     /// Enable dumping of the linker's state in JSON
     debug_link_snapshot: bool = false,
     pub fn formatWrite(cmd: *BuildCommand, zig_exe: []const u8, files: []const types.Path, array: anytype) void {
-        @setRuntimeSafety(safety);
+        @setRuntimeSafety(builtin.is_safe);
         array.writeMany(zig_exe);
         array.writeOne(0);
         array.writeMany("build-");
@@ -827,8 +806,8 @@ pub const BuildCommand = struct {
         }
     }
     pub fn formatWriteBuf(cmd: *BuildCommand, zig_exe: []const u8, files: []const types.Path, buf: [*]u8) u64 {
-        @setRuntimeSafety(safety);
-        var len: u64 = 0;
+        @setRuntimeSafety(builtin.is_safe);
+        var len: usize = 0;
         @memcpy(buf + len, zig_exe);
         len +%= zig_exe.len;
         buf[len] = 0;
@@ -1574,8 +1553,8 @@ pub const BuildCommand = struct {
         return len;
     }
     pub fn formatLength(cmd: *BuildCommand, zig_exe: []const u8, files: []const types.Path) u64 {
-        @setRuntimeSafety(safety);
-        var len: u64 = 0;
+        @setRuntimeSafety(builtin.is_safe);
+        var len: usize = 0;
         len +%= zig_exe.len;
         len +%= 1;
         len +%= 6;
@@ -2126,14 +2105,11 @@ pub const BuildCommand = struct {
         }
         return len;
     }
+    pub usingnamespace types.GenericBuildCommand(BuildCommand);
 };
 pub const FormatCommand = struct {
     /// Enable or disable colored error messages
-    color: ?enum(u2) {
-        auto = 0,
-        off = 1,
-        on = 2,
-    } = null,
+    color: ?types.AutoOnOff = null,
     /// Format code from stdin; output to stdout
     stdin: bool = false,
     /// List non-conforming files and exit with an error if the list is non-empty
@@ -2143,7 +2119,7 @@ pub const FormatCommand = struct {
     /// Exclude file or directory from formatting
     exclude: ?[]const u8 = null,
     pub fn formatWrite(cmd: *FormatCommand, zig_exe: []const u8, pathname: types.Path, array: anytype) void {
-        @setRuntimeSafety(safety);
+        @setRuntimeSafety(builtin.is_safe);
         array.writeMany(zig_exe);
         array.writeOne(0);
         array.writeMany("fmt\x00");
@@ -2169,8 +2145,8 @@ pub const FormatCommand = struct {
         array.writeFormat(pathname);
     }
     pub fn formatWriteBuf(cmd: *FormatCommand, zig_exe: []const u8, pathname: types.Path, buf: [*]u8) u64 {
-        @setRuntimeSafety(safety);
-        var len: u64 = 0;
+        @setRuntimeSafety(builtin.is_safe);
+        var len: usize = 0;
         @memcpy(buf + len, zig_exe);
         len +%= zig_exe.len;
         buf[len] = 0;
@@ -2209,8 +2185,8 @@ pub const FormatCommand = struct {
         return len;
     }
     pub fn formatLength(cmd: *FormatCommand, zig_exe: []const u8, pathname: types.Path) u64 {
-        @setRuntimeSafety(safety);
-        var len: u64 = 0;
+        @setRuntimeSafety(builtin.is_safe);
+        var len: usize = 0;
         len +%= zig_exe.len;
         len +%= 1;
         len +%= 4;
@@ -2287,7 +2263,7 @@ pub const ArchiveCommand = struct {
         x = 5,
     },
     pub fn formatWrite(cmd: *ArchiveCommand, zig_exe: []const u8, files: []const types.Path, array: anytype) void {
-        @setRuntimeSafety(safety);
+        @setRuntimeSafety(builtin.is_safe);
         array.writeMany(zig_exe);
         array.writeOne(0);
         array.writeMany("ar\x00");
@@ -2342,8 +2318,8 @@ pub const ArchiveCommand = struct {
         array.writeFormat(types.Files{ .value = files });
     }
     pub fn formatWriteBuf(cmd: *ArchiveCommand, zig_exe: []const u8, files: []const types.Path, buf: [*]u8) u64 {
-        @setRuntimeSafety(safety);
-        var len: u64 = 0;
+        @setRuntimeSafety(builtin.is_safe);
+        var len: usize = 0;
         @memcpy(buf + len, zig_exe);
         len +%= zig_exe.len;
         buf[len] = 0;
@@ -2422,8 +2398,8 @@ pub const ArchiveCommand = struct {
         return len;
     }
     pub fn formatLength(cmd: *ArchiveCommand, zig_exe: []const u8, files: []const types.Path) u64 {
-        @setRuntimeSafety(safety);
-        var len: u64 = 0;
+        @setRuntimeSafety(builtin.is_safe);
+        var len: usize = 0;
         len +%= zig_exe.len;
         len +%= 1;
         len +%= 3;
@@ -2489,7 +2465,7 @@ pub const ObjcopyCommand = struct {
     add_gnu_debuglink: ?[]const u8 = null,
     extract_to: ?[]const u8 = null,
     pub fn formatWrite(cmd: *ObjcopyCommand, zig_exe: []const u8, file: types.Path, array: anytype) void {
-        @setRuntimeSafety(safety);
+        @setRuntimeSafety(builtin.is_safe);
         array.writeMany(zig_exe);
         array.writeOne(0);
         array.writeMany("objcopy\x00");
@@ -2530,8 +2506,8 @@ pub const ObjcopyCommand = struct {
         array.writeFormat(file);
     }
     pub fn formatWriteBuf(cmd: *ObjcopyCommand, zig_exe: []const u8, file: types.Path, buf: [*]u8) u64 {
-        @setRuntimeSafety(safety);
-        var len: u64 = 0;
+        @setRuntimeSafety(builtin.is_safe);
+        var len: usize = 0;
         @memcpy(buf + len, zig_exe);
         len +%= zig_exe.len;
         buf[len] = 0;
@@ -2593,8 +2569,8 @@ pub const ObjcopyCommand = struct {
         return len;
     }
     pub fn formatLength(cmd: *ObjcopyCommand, zig_exe: []const u8, file: types.Path) u64 {
-        @setRuntimeSafety(safety);
-        var len: u64 = 0;
+        @setRuntimeSafety(builtin.is_safe);
+        var len: usize = 0;
         len +%= zig_exe.len;
         len +%= 1;
         len +%= 8;
@@ -2638,11 +2614,7 @@ pub const ObjcopyCommand = struct {
 };
 pub const TableGenCommand = struct {
     /// Use colors in output (default=autodetect)
-    color: ?enum(u2) {
-        auto = 0,
-        off = 1,
-        on = 2,
-    } = null,
+    color: ?types.AutoOnOff = null,
     /// Define macros
     macros: ?[]const types.Macro = null,
     /// Add directories to include search path
@@ -2730,7 +2702,7 @@ pub const TableGenCommand = struct {
     /// Output file
     output: ?[]const u8 = null,
     pub fn formatWrite(cmd: *TableGenCommand, array: anytype) void {
-        @setRuntimeSafety(safety);
+        @setRuntimeSafety(builtin.is_safe);
         if (cmd.color) |color| {
             array.writeMany("--color\x00");
             array.writeMany(@tagName(color));
@@ -2877,8 +2849,8 @@ pub const TableGenCommand = struct {
         }
     }
     pub fn formatWriteBuf(cmd: *TableGenCommand, buf: [*]u8) u64 {
-        @setRuntimeSafety(safety);
-        var len: u64 = 0;
+        @setRuntimeSafety(builtin.is_safe);
+        var len: usize = 0;
         if (cmd.color) |color| {
             @as(*[8]u8, @ptrCast(buf + len)).* = "--color\x00".*;
             len +%= 8;
@@ -3077,8 +3049,8 @@ pub const TableGenCommand = struct {
         return len;
     }
     pub fn formatLength(cmd: *TableGenCommand) u64 {
-        @setRuntimeSafety(safety);
-        var len: u64 = 0;
+        @setRuntimeSafety(builtin.is_safe);
+        var len: usize = 0;
         if (cmd.color) |color| {
             len +%= 8;
             len +%= @tagName(color).len;
@@ -3236,7 +3208,7 @@ pub const HarecCommand = struct {
     typedefs: bool = false,
     namespace: bool = false,
     pub fn formatWrite(cmd: *HarecCommand, harec_exe: []const u8, array: anytype) void {
-        @setRuntimeSafety(safety);
+        @setRuntimeSafety(builtin.is_safe);
         array.writeMany(harec_exe);
         array.writeOne(0);
         if (cmd.arch) |arch| {
@@ -3267,8 +3239,8 @@ pub const HarecCommand = struct {
         }
     }
     pub fn formatWriteBuf(cmd: *HarecCommand, harec_exe: []const u8, buf: [*]u8) u64 {
-        @setRuntimeSafety(safety);
-        var len: u64 = 0;
+        @setRuntimeSafety(builtin.is_safe);
+        var len: usize = 0;
         @memcpy(buf + len, harec_exe);
         len +%= harec_exe.len;
         buf[len] = 0;
@@ -3313,8 +3285,8 @@ pub const HarecCommand = struct {
         return len;
     }
     pub fn formatLength(cmd: *HarecCommand, harec_exe: []const u8) u64 {
-        @setRuntimeSafety(safety);
-        var len: u64 = 0;
+        @setRuntimeSafety(builtin.is_safe);
+        var len: usize = 0;
         len +%= harec_exe.len;
         len +%= 1;
         if (cmd.arch) |arch| {
