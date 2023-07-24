@@ -732,7 +732,7 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
         }
         inline fn showCreate(comptime child: type, ptr: *child) void {
             if (Allocator.allocator_spec.logging.allocate) {
-                debug.showAllocateOneStructured(
+                about.showAllocateOneStructured(
                     child,
                     @intFromPtr(ptr),
                     @src(),
@@ -742,7 +742,7 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
         }
         inline fn showAllocate(comptime child: type, buf: []child, comptime sentinel: ?*const child) void {
             if (Allocator.allocator_spec.logging.allocate) {
-                debug.showAllocateManyStructured(
+                about.showAllocateManyStructured(
                     child,
                     @intFromPtr(buf.ptr),
                     @intFromPtr(buf.ptr) +% @sizeOf(child) *% (buf.len +% @as(u64, @intFromBool(sentinel != null))),
@@ -754,7 +754,7 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
         }
         inline fn showReallocate(comptime child: type, s_buf: []child, t_buf: []child, comptime sentinel: ?*const child) void {
             if (Allocator.allocator_spec.logging.reallocate) {
-                debug.showReallocateManyStructured(
+                about.showReallocateManyStructured(
                     child,
                     child,
                     @intFromPtr(s_buf.ptr),
@@ -770,7 +770,7 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
         }
         inline fn showDeallocate(comptime child: type, buf: []child, comptime sentinel: ?*const child) void {
             if (Allocator.allocator_spec.logging.allocate) {
-                debug.showDeallocateManyStructured(
+                about.showDeallocateManyStructured(
                     child,
                     @intFromPtr(buf.ptr),
                     @intFromPtr(buf.ptr) +% @sizeOf(child) *% (buf.len +% @as(u64, @intFromBool(sentinel != null))),
