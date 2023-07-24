@@ -553,17 +553,22 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             build.cache_root = mach.manyToSlice80(args[3]);
             build.global_cache_root = mach.manyToSlice80(args[4]);
             build.build_root_fd = try meta.wrap(file.path(path1(), build.build_root));
-            for ([6][:0]const u8{
+            for ([3][:0]const u8{
                 builder_spec.options.names.zig_out_dir,
-                paths.zig_out_exe_dir,
-                paths.zig_out_lib_dir,
-                paths.zig_out_aux_dir,
                 builder_spec.options.names.zig_build_dir,
                 builder_spec.options.names.zig_stat_dir,
             }) |name| {
                 makeRootDirectory(build.build_root_fd, name);
             }
             build.config_root_fd = try meta.wrap(file.pathAt(path1(), build.build_root_fd, builder_spec.options.names.zig_build_dir));
+            build.output_root_fd = try meta.wrap(file.pathAt(path1(), build.build_root_fd, builder_spec.options.names.zig_out_dir));
+            for ([3][:0]const u8{
+                builder_spec.options.names.exe_out_dir,
+                builder_spec.options.names.lib_out_dir,
+                builder_spec.options.names.aux_out_dir,
+            }) |name| {
+                makeRootDirectory(build.output_root_fd, name);
+            }
             build.cmd_idx = 5;
             build.task_idx = 5;
             build.error_count = 0;
@@ -579,8 +584,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             node.name = duplicate(allocator, builder_spec.options.names.toplevel_node);
             node.tag = .group;
             node.impl.args = build.args.ptr;
-            node.impl.args_max_len = @intCast(build.args.len);
-            node.impl.args_len = @intCast(build.args.len);
+            node.impl.args_max_len = build.args.len;
+            node.impl.args_len = build.args.len;
             node.task.tag = .any;
             node.task.lock = omni_lock;
             return node;
