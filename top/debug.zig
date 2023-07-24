@@ -635,7 +635,7 @@ pub noinline fn panicOutOfBounds(idx: usize, max_len: usize) noreturn {
         len +%= ud64.formatWriteBuf(buf[len..].ptr);
         @as(*[15]u8, @ptrCast(buf[len..].ptr)).* = " above maximum ".*;
         len +%= 15;
-        ud64 = @bitCast(max_len);
+        ud64 = @bitCast(max_len -% 1);
         len +%= ud64.formatWriteBuf(buf[len..].ptr);
     }
     builtin.panic(buf[0..len], null, ret_addr);
