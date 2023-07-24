@@ -28,6 +28,7 @@ pub usingnamespace struct {
     pub var global_cache_root: [:0]u8 = undefined;
     pub var build_root_fd: u64 = undefined;
     pub var config_root_fd: u64 = undefined;
+    pub var output_root_fd: u64 = undefined;
     var cmd_idx: usize = undefined;
     var task_idx: usize = undefined;
     var error_count: u8 = undefined;
@@ -141,7 +142,7 @@ pub const BuilderSpec = struct {
             /// directory.
             aux_out_dir: [:0]const u8 = "aux",
             /// Optional pathname to root source used to compile tracer object.
-            trace_root: ?[:0]const u8 = null,
+            trace_root: [:0]const u8 = build.root ++ "/top/trace.zig",
         } = .{},
         special: struct {
             /// Defines formatter type used to pass configuration values to program.
@@ -538,7 +539,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         pub fn initSpecialNodes(allocator: *mem.SimpleAllocator, toplevel: *Node) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             if (builder_spec.options.special.trace) |build_cmd| {
-                special.trace = toplevel.addBuild(allocator, build_cmd, "trace", paths.trace_root);
+                special.trace = toplevel.addBuild(allocator, build_cmd, "trace", builder_spec.options.names.trace_root);
                 special.trace.flags.is_special = true;
                 special.trace.flags.build.configure_root = false;
             }
