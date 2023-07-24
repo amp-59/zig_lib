@@ -26,8 +26,11 @@ pub usingnamespace struct {
     pub var cache_root: [:0]u8 = undefined;
     /// File system path of user login cache directory.
     pub var global_cache_root: [:0]u8 = undefined;
+    /// File descriptor for directory containing `build.zig`
     pub var build_root_fd: u64 = undefined;
+    /// File descriptor for directory containing build configuration root source files.
     pub var config_root_fd: u64 = undefined;
+    /// File descriptor for directory containing build task output files.
     pub var output_root_fd: u64 = undefined;
     var cmd_idx: usize = undefined;
     var task_idx: usize = undefined;
