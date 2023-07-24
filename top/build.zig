@@ -1285,28 +1285,32 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             try meta.wrap(file.close(close(), in.read));
             try meta.wrap(file.close(close(), out.write));
         }
+        const binary_prefix = builder_spec.options.names.zig_out_dir ++ "/" ++ builder_spec.options.names.exe_out_dir ++ "/";
+        const archive_prefix = builder_spec.options.names.zig_out_dir ++ "/" ++ builder_spec.options.names.lib_out_dir ++ "/lib";
+        const auxiliary_prefix = builder_spec.options.names.zig_out_dir ++ "/" ++ builder_spec.options.names.aux_out_dir ++ "/";
+
         fn binaryRelative(allocator: *mem.SimpleAllocator, name: [:0]u8, kind: types.OutputMode) [:0]const u8 {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             return concatenate(allocator, switch (kind) {
-                .exe => &[_][]const u8{ paths.zig_out_exe_dir ++ "/", name },
-                .lib => &[_][]const u8{ paths.zig_out_exe_dir ++ "/", name, builder_spec.options.extensions.lib },
-                .obj => &[_][]const u8{ paths.zig_out_exe_dir ++ "/", name, builder_spec.options.extensions.obj },
+                .exe => &[_][]const u8{ binary_prefix, name },
+                .lib => &[_][]const u8{ binary_prefix, name, builder_spec.options.extensions.lib },
+                .obj => &[_][]const u8{ binary_prefix, name, builder_spec.options.extensions.obj },
             });
         }
         fn archiveRelative(allocator: *mem.SimpleAllocator, name: [:0]u8) [:0]const u8 {
             @setRuntimeSafety(builder_spec.options.enable_safety);
-            return concatenate(allocator, &[_][]const u8{ paths.zig_out_lib_dir ++ "/lib", name, builder_spec.options.extensions.ar });
+            return concatenate(allocator, &[_][]const u8{ archive_prefix, name, builder_spec.options.extensions.ar });
         }
         fn auxiliaryRelative(allocator: *mem.SimpleAllocator, name: [:0]u8, kind: types.AuxOutputMode) [:0]u8 {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             return concatenate(allocator, switch (kind) {
-                .@"asm" => &[_][]const u8{ paths.zig_out_aux_dir ++ "/", name, builder_spec.options.extensions.@"asm" },
-                .llvm_ir => &[_][]const u8{ paths.zig_out_aux_dir ++ "/", name, builder_spec.options.extensions.llvm_ir },
-                .llvm_bc => &[_][]const u8{ paths.zig_out_aux_dir ++ "/", name, builder_spec.options.extensions.llvm_bc },
-                .h => &[_][]const u8{ paths.zig_out_aux_dir ++ "/", name, builder_spec.options.extensions.h },
-                .docs => &[_][]const u8{ paths.zig_out_aux_dir ++ "/", name, builder_spec.options.extensions.docs },
-                .analysis => &[_][]const u8{ paths.zig_out_aux_dir ++ "/", name, builder_spec.options.extensions.analysis },
-                .implib => &[_][]const u8{ paths.zig_out_aux_dir ++ "/", name, builder_spec.options.extensions.implib },
+                .@"asm" => &[_][]const u8{ auxiliary_prefix, name, builder_spec.options.extensions.@"asm" },
+                .llvm_ir => &[_][]const u8{ auxiliary_prefix, name, builder_spec.options.extensions.llvm_ir },
+                .llvm_bc => &[_][]const u8{ auxiliary_prefix, name, builder_spec.options.extensions.llvm_bc },
+                .h => &[_][]const u8{ auxiliary_prefix, name, builder_spec.options.extensions.h },
+                .docs => &[_][]const u8{ auxiliary_prefix, name, builder_spec.options.extensions.docs },
+                .analysis => &[_][]const u8{ auxiliary_prefix, name, builder_spec.options.extensions.analysis },
+                .implib => &[_][]const u8{ auxiliary_prefix, name, builder_spec.options.extensions.implib },
             });
         }
         pub fn processCommandsInternal(
@@ -1320,7 +1324,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             const name: [:0]const u8 = mach.manyToSlice80(build.args[build.cmd_idx]);
             if (mach.testEqualMany8(name, node.name)) {
-                toplevel.impl.args_len = @intCast(build.cmd_idx +% 1);
+                toplevel.impl.args_len = build.cmd_idx +% 1;
                 return executeToplevel(address_space, thread_space, allocator, toplevel, node, maybe_task);
             } else {
                 for (node.impl.nodes[0..node.impl.nodes_len]) |sub_node| {
@@ -1364,12 +1368,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             const name: [:0]const u8 = if (build.args.len == 5) "null" else mach.manyToSlice80(build.args[5]);
             proc.exitErrorFault(error.NotACommand, name, 2);
         }
-        const paths = .{
-            .zig_out_exe_dir = builder_spec.options.names.zig_out_dir ++ "/" ++ builder_spec.options.names.exe_out_dir,
-            .zig_out_lib_dir = builder_spec.options.names.zig_out_dir ++ "/" ++ builder_spec.options.names.lib_out_dir,
-            .zig_out_aux_dir = builder_spec.options.names.zig_out_dir ++ "/" ++ builder_spec.options.names.aux_out_dir,
-            .trace_root = builder_spec.options.names.trace_root orelse libraryRoot() ++ "/top/trace.zig",
-        };
         const update_exit_message: [2]types.Message.ClientHeader = .{
             .{ .tag = .update, .bytes_len = 0 },
             .{ .tag = .exit, .bytes_len = 0 },
