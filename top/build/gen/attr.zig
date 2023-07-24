@@ -5,28 +5,29 @@ const repeatable_string_type: types.ProtoTypeDescr = types.ProtoTypeDescr.init(?
 const integer_type: types.ProtoTypeDescr = types.ProtoTypeDescr.init(usize);
 const optional_integer_type: types.ProtoTypeDescr = types.ProtoTypeDescr.init(?usize);
 const auto_on_off_type: types.ProtoTypeDescr = types.ProtoTypeDescr.init(?enum { auto, off, on });
-const optional_path_type: types.ProtoTypeDescr = .{
-    .type_name = "?types.Path",
+const optional_path_type: types.ProtoTypeDescrMap = .{
+    .store = .{ .type_name = "?types.Path" },
+    .parse = .{ .type_name = "types.Path" },
 };
 const paths_type: types.ProtoTypeDescrMap = .{
-    .{ .type_name = "[]const types.Path" },
-    .{ .type_name = "types.Files" },
+    .store = .{ .type_name = "[]const types.Path" },
+    .write = .{ .type_name = "types.Files" },
 };
 const optional_macro_slice_type: types.ProtoTypeDescrMap = .{
-    .{ .type_name = "?[]const types.Macro" },
-    .{ .type_name = "types.Macros" },
+    .store = .{ .type_name = "?[]const types.Macro" },
+    .write = .{ .type_name = "types.Macros" },
 };
 const optional_module_slice_type: types.ProtoTypeDescrMap = .{
-    .{ .type_name = "?[]const types.Module" },
-    .{ .type_name = "types.Modules" },
+    .store = .{ .type_name = "?[]const types.Module" },
+    .write = .{ .type_name = "types.Modules" },
 };
 const optional_dependencies_slice_type: types.ProtoTypeDescrMap = .{
-    .{ .type_name = "?[]const types.ModuleDependency" },
-    .{ .type_name = "types.ModuleDependencies" },
+    .store = .{ .type_name = "?[]const types.ModuleDependency" },
+    .write = .{ .type_name = "types.ModuleDependencies" },
 };
 const hmacro_slice_type: types.ProtoTypeDescrMap = .{
-    .{ .type_name = "?[]const types.HMacro" },
-    .{ .type_name = "types.HMacros" },
+    .store = .{ .type_name = "?[]const types.HMacro" },
+    .write = .{ .type_name = "types.HMacros" },
 };
 const output_mode_type: types.ProtoTypeDescr = .{
     .type_name = "types.OutputMode",
@@ -170,7 +171,7 @@ pub const zig_build_command_attributes: types.Attributes = .{
             .descr = &.{"Enable the \"red-zone\""},
         },
         .{
-            .name = "builtin",
+            .name = "implicit_builtins",
             .string = "-fbuiltin",
             .and_no = .{ .string = "-fno-builtin" },
             .descr = &.{"Enable implicit builtin knowledge of functions"},
@@ -207,7 +208,7 @@ pub const zig_build_command_attributes: types.Attributes = .{
             .name = "mode",
             .string = "-O",
             .tag = .optional_tag_field,
-            .type = &types.ProtoTypeDescr{ .type_name = "?@TypeOf(@import(\"builtin\").mode)" },
+            .type = &types.ProtoTypeDescr{ .type_name = "?builtin.OptimizeMode" },
             .descr = &.{
                 "Choose what to optimize for:",
                 "Debug          Optimizations off, safety on",
@@ -529,7 +530,7 @@ pub const zig_build_command_attributes: types.Attributes = .{
         .{
             .name = "cflags",
             .tag = .optional_mapped_field,
-            .type = &types.ProtoTypeDescrMap{ repeatable_string_type, .{ .type_name = "types.CFlags" } },
+            .type = &types.ProtoTypeDescrMap{ .store = repeatable_string_type, .write = .{ .type_name = "types.CFlags" } },
             .descr = &.{"Set extra flags for the next position C source files"},
         },
         .{

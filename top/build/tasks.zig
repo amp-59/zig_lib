@@ -1,6 +1,6 @@
-const ud64 = @import("../builtin.zig").fmt.ud64;
 const fmt = @import("../fmt.zig");
 const mach = @import("../mach.zig");
+const builtin = @import("../builtin.zig");
 const types = @import("./types.zig");
 const safety: bool = false;
 pub const BuildCommand = struct {
@@ -73,7 +73,7 @@ pub const BuildCommand = struct {
     /// Enable the "red-zone"
     red_zone: ?bool = null,
     /// Enable implicit builtin knowledge of functions
-    builtin: ?bool = null,
+    implicit_builtins: ?bool = null,
     /// Omit the stack frame pointer
     omit_frame_pointer: ?bool = null,
     /// (WASI) Execution model
@@ -90,7 +90,7 @@ pub const BuildCommand = struct {
     /// ReleaseSafe    Optimizations on, safety on
     /// ReleaseFast    Optimizations on, safety off
     /// ReleaseSmall   Size optimizations on, safety off
-    mode: ?@TypeOf(@import("builtin").mode) = null,
+    mode: ?builtin.OptimizeMode = null,
     /// Only run [limit] first LLVM optimization passes
     passes: ?usize = null,
     /// Set the directory of the root package
@@ -444,8 +444,8 @@ pub const BuildCommand = struct {
                 array.writeMany("-mno-red-zone\x00");
             }
         }
-        if (cmd.builtin) |builtin| {
-            if (builtin) {
+        if (cmd.implicit_builtins) |implicit_builtins| {
+            if (implicit_builtins) {
                 array.writeMany("-fbuiltin\x00");
             } else {
                 array.writeMany("-fno-builtin\x00");
@@ -1048,8 +1048,8 @@ pub const BuildCommand = struct {
                 len +%= 14;
             }
         }
-        if (cmd.builtin) |builtin| {
-            if (builtin) {
+        if (cmd.implicit_builtins) |implicit_builtins| {
+            if (implicit_builtins) {
                 @as(*[10]u8, @ptrCast(buf + len)).* = "-fbuiltin\x00".*;
                 len +%= 10;
             } else {
@@ -1743,8 +1743,8 @@ pub const BuildCommand = struct {
                 len +%= 14;
             }
         }
-        if (cmd.builtin) |builtin| {
-            if (builtin) {
+        if (cmd.implicit_builtins) |implicit_builtins| {
+            if (implicit_builtins) {
                 len +%= 10;
             } else {
                 len +%= 13;
