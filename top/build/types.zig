@@ -417,12 +417,8 @@ pub const CFlags = struct {
         len +%= 3;
         return len;
     }
-    pub fn formatParseArgs(args: [][*:0]u8, args_idx: *usize, _: [:0]const u8) Format {
-        _ = args_idx;
-        _ = args;
-    }
 };
-pub const Path = struct {
+pub const Path = extern struct {
     names: [*][:0]const u8,
     names_max_len: u64 = 0,
     names_len: u64 = 0,
@@ -467,31 +463,39 @@ pub const Path = struct {
         }
         return len;
     }
-    pub fn formatParseArgs(allocator: anytype, _: [][*:0]u8, _: *usize, arg: [:0]const u8) Format {
-        var ret: Path = undefined;
-        mem.zero(Path, &ret);
-        ret.addName(allocator).* = arg;
-        return ret;
-    }
-    pub inline fn relative(path: *const Path) [:0]const u8 {
-        return path.names[path.names_len -% 1];
+    pub fn formatParseArgs(allocator: anytype, _: [][*:0]u8, _: *usize, arg: [:0]const u8) Path {
+        @setRuntimeSafety(false);
+        if (arg.len == 0) {
+            @panic(arg);
+        }
+        const names: [*][:0]const u8 = @ptrFromInt(allocator.allocateRaw(16, 8));
+        names[0] = arg;
+        return .{
+            .names = names,
+            .names_len = 1,
+            .names_max_len = 1,
+        };
     }
     pub fn concatenate(path: Path, allocator: anytype) [:0]u8 {
         @setRuntimeSafety(false);
-        const buf: [*]u8 = @as([*]u8, @ptrFromInt(allocator.allocateRaw(path.formatLength(), 1)));
+        const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(path.formatLength(), 1));
         const len: u64 = path.formatWriteBuf(buf);
         return buf[0 .. len -% 1 :0];
     }
     pub fn addName(path: *Path, allocator: anytype) *[:0]const u8 {
         @setRuntimeSafety(false);
         const size_of: comptime_int = @sizeOf([:0]const u8);
-        const addr_buf: *u64 = @as(*u64, @ptrCast(&path.names));
-        const ret: *[:0]const u8 = @as(*[:0]const u8, @ptrFromInt(allocator.addGeneric(size_of, 2, addr_buf, &path.names_max_len, path.names_len)));
+        const addr_buf: *u64 = @ptrCast(&path.names);
+        const ret: *[:0]const u8 = @ptrFromInt(allocator.addGeneric(size_of, //
+            2, addr_buf, &path.names_max_len, path.names_len));
         path.names_len +%= 1;
         return ret;
     }
     pub fn temporary(names: []const [:0]const u8) Path {
         return .{ .names = @constCast(names.ptr), .names_len = names.len };
+    }
+    pub inline fn relative(path: *const Path) [:0]const u8 {
+        return path.names[path.names_len -% 1];
     }
 };
 pub const Files = struct {
