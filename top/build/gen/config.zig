@@ -31,3 +31,4 @@ pub fn auxiliaryDataFile(comptime name: [:0]const u8) [:0]const u8 {
     return if (name[0] != '/') zig_out_src_dir ++ "/" ++ name else name;
 }
 pub const declare_task_field_types: bool = false;
+pub const allow_comptime_configure_parser: bool = false;
