@@ -2107,6 +2107,528 @@ pub const BuildCommand = struct {
         }
         return len;
     }
+    pub fn formatParseArgs(cmd: *BuildCommand, allocator: anytype, args: [][*:0]u8) void {
+        @setRuntimeSafety(false);
+        var args_idx: usize = 0;
+        while (args_idx != args.len) : (args_idx +%= 1) {
+            var arg: [:0]const u8 = mach.manyToSlice80(args[args_idx]);
+            if (mach.testEqualMany8("-femit-bin", arg[0..10])) {
+                if (arg.len > 11 and arg[10] == '=') {
+                    cmd.emit_bin = .{ .yes = types.Path.formatParseArgs(allocator, args, &args_idx, arg[11..]) };
+                } else {
+                    cmd.emit_bin = .{ .yes = null };
+                }
+            } else if (mach.testEqualMany8("-fno-emit-bin", arg)) {
+                cmd.emit_bin = .no;
+            } else if (mach.testEqualMany8("-femit-asm", arg[0..10])) {
+                if (arg.len > 11 and arg[10] == '=') {
+                    cmd.emit_asm = .{ .yes = types.Path.formatParseArgs(allocator, args, &args_idx, arg[11..]) };
+                } else {
+                    cmd.emit_asm = .{ .yes = null };
+                }
+            } else if (mach.testEqualMany8("-fno-emit-asm", arg)) {
+                cmd.emit_asm = .no;
+            } else if (mach.testEqualMany8("-femit-llvm-ir", arg[0..14])) {
+                if (arg.len > 15 and arg[14] == '=') {
+                    cmd.emit_llvm_ir = .{ .yes = types.Path.formatParseArgs(allocator, args, &args_idx, arg[15..]) };
+                } else {
+                    cmd.emit_llvm_ir = .{ .yes = null };
+                }
+            } else if (mach.testEqualMany8("-fno-emit-llvm-ir", arg)) {
+                cmd.emit_llvm_ir = .no;
+            } else if (mach.testEqualMany8("-femit-llvm-bc", arg[0..14])) {
+                if (arg.len > 15 and arg[14] == '=') {
+                    cmd.emit_llvm_bc = .{ .yes = types.Path.formatParseArgs(allocator, args, &args_idx, arg[15..]) };
+                } else {
+                    cmd.emit_llvm_bc = .{ .yes = null };
+                }
+            } else if (mach.testEqualMany8("-fno-emit-llvm-bc", arg)) {
+                cmd.emit_llvm_bc = .no;
+            } else if (mach.testEqualMany8("-femit-h", arg[0..8])) {
+                if (arg.len > 9 and arg[8] == '=') {
+                    cmd.emit_h = .{ .yes = types.Path.formatParseArgs(allocator, args, &args_idx, arg[9..]) };
+                } else {
+                    cmd.emit_h = .{ .yes = null };
+                }
+            } else if (mach.testEqualMany8("-fno-emit-h", arg)) {
+                cmd.emit_h = .no;
+            } else if (mach.testEqualMany8("-femit-docs", arg[0..11])) {
+                if (arg.len > 12 and arg[11] == '=') {
+                    cmd.emit_docs = .{ .yes = types.Path.formatParseArgs(allocator, args, &args_idx, arg[12..]) };
+                } else {
+                    cmd.emit_docs = .{ .yes = null };
+                }
+            } else if (mach.testEqualMany8("-fno-emit-docs", arg)) {
+                cmd.emit_docs = .no;
+            } else if (mach.testEqualMany8("-femit-analysis", arg[0..15])) {
+                if (arg.len > 16 and arg[15] == '=') {
+                    cmd.emit_analysis = .{ .yes = types.Path.formatParseArgs(allocator, args, &args_idx, arg[16..]) };
+                } else {
+                    cmd.emit_analysis = .{ .yes = null };
+                }
+            } else if (mach.testEqualMany8("-fno-emit-analysis", arg)) {
+                cmd.emit_analysis = .no;
+            } else if (mach.testEqualMany8("-femit-implib", arg[0..13])) {
+                if (arg.len > 14 and arg[13] == '=') {
+                    cmd.emit_implib = .{ .yes = types.Path.formatParseArgs(allocator, args, &args_idx, arg[14..]) };
+                } else {
+                    cmd.emit_implib = .{ .yes = null };
+                }
+            } else if (mach.testEqualMany8("-fno-emit-implib", arg)) {
+                cmd.emit_implib = .no;
+            } else if (mach.testEqualMany8("--cache-dir", arg)) {
+                args_idx +%= 1;
+                if (args_idx != args.len) {
+                    cmd.cache_root = mach.manyToSlice80(args[args_idx]);
+                }
+            } else if (mach.testEqualMany8("--global-cache-dir", arg)) {
+                args_idx +%= 1;
+                if (args_idx != args.len) {
+                    cmd.global_cache_root = mach.manyToSlice80(args[args_idx]);
+                }
+            } else if (mach.testEqualMany8("--zig-lib-dir", arg)) {
+                args_idx +%= 1;
+                if (args_idx != args.len) {
+                    cmd.zig_lib_root = mach.manyToSlice80(args[args_idx]);
+                }
+            } else if (mach.testEqualMany8("--listen", arg)) {
+                args_idx +%= 1;
+                if (args_idx == args.len) {
+                    return;
+                }
+                arg = mach.manyToSlice80(args[args_idx]);
+                if (mach.testEqualMany8("none", arg)) {
+                    cmd.listen = .none;
+                } else if (mach.testEqualMany8("-", arg)) {
+                    cmd.listen = .@"-";
+                } else if (mach.testEqualMany8("ipv4", arg)) {
+                    cmd.listen = .ipv4;
+                }
+            } else if (mach.testEqualMany8("-target", arg)) {
+                args_idx +%= 1;
+                if (args_idx != args.len) {
+                    cmd.target = mach.manyToSlice80(args[args_idx]);
+                }
+            } else if (mach.testEqualMany8("-mcpu", arg)) {
+                args_idx +%= 1;
+                if (args_idx != args.len) {
+                    cmd.cpu = mach.manyToSlice80(args[args_idx]);
+                }
+            } else if (mach.testEqualMany8("-mcmodel", arg)) {
+                args_idx +%= 1;
+                if (args_idx == args.len) {
+                    return;
+                }
+                arg = mach.manyToSlice80(args[args_idx]);
+                if (mach.testEqualMany8("default", arg)) {
+                    cmd.code_model = .default;
+                } else if (mach.testEqualMany8("tiny", arg)) {
+                    cmd.code_model = .tiny;
+                } else if (mach.testEqualMany8("small", arg)) {
+                    cmd.code_model = .small;
+                } else if (mach.testEqualMany8("kernel", arg)) {
+                    cmd.code_model = .kernel;
+                } else if (mach.testEqualMany8("medium", arg)) {
+                    cmd.code_model = .medium;
+                } else if (mach.testEqualMany8("large", arg)) {
+                    cmd.code_model = .large;
+                }
+            } else if (mach.testEqualMany8("-mred-zone", arg)) {
+                cmd.red_zone = true;
+            } else if (mach.testEqualMany8("-mno-red-zone", arg)) {
+                cmd.red_zone = false;
+            } else if (mach.testEqualMany8("-fbuiltin", arg)) {
+                cmd.implicit_builtins = true;
+            } else if (mach.testEqualMany8("-fno-builtin", arg)) {
+                cmd.implicit_builtins = false;
+            } else if (mach.testEqualMany8("-fomit-frame-pointer", arg)) {
+                cmd.omit_frame_pointer = true;
+            } else if (mach.testEqualMany8("-fno-omit-frame-pointer", arg)) {
+                cmd.omit_frame_pointer = false;
+            } else if (mach.testEqualMany8("-mexec-model", arg)) {
+                args_idx +%= 1;
+                if (args_idx != args.len) {
+                    cmd.exec_model = mach.manyToSlice80(args[args_idx]);
+                }
+            } else if (mach.testEqualMany8("--name", arg)) {
+                args_idx +%= 1;
+                if (args_idx != args.len) {
+                    cmd.name = mach.manyToSlice80(args[args_idx]);
+                }
+            } else if (mach.testEqualMany8("-fsoname", arg)) {
+                args_idx +%= 1;
+                if (args_idx == args.len) {
+                    return;
+                }
+                arg = mach.manyToSlice80(args[args_idx]);
+                cmd.soname = .{ .yes = arg };
+            } else if (mach.testEqualMany8("-fno-soname", arg)) {
+                cmd.soname = .no;
+            } else if (mach.testEqualMany8("-O", arg[0..2])) {
+                if (arg.len == 2) {
+                    args_idx +%= 1;
+                    if (args_idx == args.len) {
+                        return;
+                    }
+                    arg = mach.manyToSlice80(args[args_idx]);
+                } else {
+                    arg = arg[2..];
+                }
+                if (mach.testEqualMany8("Debug", arg)) {
+                    cmd.mode = .Debug;
+                } else if (mach.testEqualMany8("ReleaseSafe", arg)) {
+                    cmd.mode = .ReleaseSafe;
+                } else if (mach.testEqualMany8("ReleaseFast", arg)) {
+                    cmd.mode = .ReleaseFast;
+                } else if (mach.testEqualMany8("ReleaseSmall", arg)) {
+                    cmd.mode = .ReleaseSmall;
+                }
+            } else if (mach.testEqualMany8("--main-pkg-path", arg)) {
+                args_idx +%= 1;
+                if (args_idx != args.len) {
+                    cmd.main_pkg_path = mach.manyToSlice80(args[args_idx]);
+                }
+            } else if (mach.testEqualMany8("-fPIC", arg)) {
+                cmd.pic = true;
+            } else if (mach.testEqualMany8("-fno-PIC", arg)) {
+                cmd.pic = false;
+            } else if (mach.testEqualMany8("-fPIE", arg)) {
+                cmd.pie = true;
+            } else if (mach.testEqualMany8("-fno-PIE", arg)) {
+                cmd.pie = false;
+            } else if (mach.testEqualMany8("-flto", arg)) {
+                cmd.lto = true;
+            } else if (mach.testEqualMany8("-fno-lto", arg)) {
+                cmd.lto = false;
+            } else if (mach.testEqualMany8("-fstack-check", arg)) {
+                cmd.stack_check = true;
+            } else if (mach.testEqualMany8("-fno-stack-check", arg)) {
+                cmd.stack_check = false;
+            } else if (mach.testEqualMany8("-fstack-check", arg)) {
+                cmd.stack_protector = true;
+            } else if (mach.testEqualMany8("-fno-stack-protector", arg)) {
+                cmd.stack_protector = false;
+            } else if (mach.testEqualMany8("-fsanitize-c", arg)) {
+                cmd.sanitize_c = true;
+            } else if (mach.testEqualMany8("-fno-sanitize-c", arg)) {
+                cmd.sanitize_c = false;
+            } else if (mach.testEqualMany8("-fvalgrind", arg)) {
+                cmd.valgrind = true;
+            } else if (mach.testEqualMany8("-fno-valgrind", arg)) {
+                cmd.valgrind = false;
+            } else if (mach.testEqualMany8("-fsanitize-thread", arg)) {
+                cmd.sanitize_thread = true;
+            } else if (mach.testEqualMany8("-fno-sanitize-thread", arg)) {
+                cmd.sanitize_thread = false;
+            } else if (mach.testEqualMany8("-funwind-tables", arg)) {
+                cmd.unwind_tables = true;
+            } else if (mach.testEqualMany8("-fno-unwind-tables", arg)) {
+                cmd.unwind_tables = false;
+            } else if (mach.testEqualMany8("-fLLVM", arg)) {
+                cmd.llvm = true;
+            } else if (mach.testEqualMany8("-fno-LLVM", arg)) {
+                cmd.llvm = false;
+            } else if (mach.testEqualMany8("-fClang", arg)) {
+                cmd.clang = true;
+            } else if (mach.testEqualMany8("-fno-Clang", arg)) {
+                cmd.clang = false;
+            } else if (mach.testEqualMany8("-freference-trace", arg)) {
+                cmd.reference_trace = true;
+            } else if (mach.testEqualMany8("-fno-reference-trace", arg)) {
+                cmd.reference_trace = false;
+            } else if (mach.testEqualMany8("-ferror-tracing", arg)) {
+                cmd.error_tracing = true;
+            } else if (mach.testEqualMany8("-fno-error-tracing", arg)) {
+                cmd.error_tracing = false;
+            } else if (mach.testEqualMany8("-fsingle-threaded", arg)) {
+                cmd.single_threaded = true;
+            } else if (mach.testEqualMany8("-fno-single-threaded", arg)) {
+                cmd.single_threaded = false;
+            } else if (mach.testEqualMany8("-ffunction-sections", arg)) {
+                cmd.function_sections = true;
+            } else if (mach.testEqualMany8("-fno-function-sections", arg)) {
+                cmd.function_sections = false;
+            } else if (mach.testEqualMany8("-fstrip", arg)) {
+                cmd.strip = true;
+            } else if (mach.testEqualMany8("-fno-strip", arg)) {
+                cmd.strip = false;
+            } else if (mach.testEqualMany8("-fformatted-panics", arg)) {
+                cmd.formatted_panics = true;
+            } else if (mach.testEqualMany8("-fno-formatted-panics", arg)) {
+                cmd.formatted_panics = false;
+            } else if (mach.testEqualMany8("-ofmt", arg)) {
+                args_idx +%= 1;
+                if (args_idx == args.len) {
+                    return;
+                }
+                arg = mach.manyToSlice80(args[args_idx]);
+                if (mach.testEqualMany8("coff", arg)) {
+                    cmd.format = .coff;
+                } else if (mach.testEqualMany8("dxcontainer", arg)) {
+                    cmd.format = .dxcontainer;
+                } else if (mach.testEqualMany8("elf", arg)) {
+                    cmd.format = .elf;
+                } else if (mach.testEqualMany8("macho", arg)) {
+                    cmd.format = .macho;
+                } else if (mach.testEqualMany8("spirv", arg)) {
+                    cmd.format = .spirv;
+                } else if (mach.testEqualMany8("wasm", arg)) {
+                    cmd.format = .wasm;
+                } else if (mach.testEqualMany8("c", arg)) {
+                    cmd.format = .c;
+                } else if (mach.testEqualMany8("hex", arg)) {
+                    cmd.format = .hex;
+                } else if (mach.testEqualMany8("raw", arg)) {
+                    cmd.format = .raw;
+                } else if (mach.testEqualMany8("plan9", arg)) {
+                    cmd.format = .plan9;
+                } else if (mach.testEqualMany8("nvptx", arg)) {
+                    cmd.format = .nvptx;
+                }
+            } else if (mach.testEqualMany8("-idirafter", arg)) {
+                args_idx +%= 1;
+                if (args_idx != args.len) {
+                    cmd.dirafter = mach.manyToSlice80(args[args_idx]);
+                }
+            } else if (mach.testEqualMany8("-isystem", arg)) {
+                args_idx +%= 1;
+                if (args_idx != args.len) {
+                    cmd.system = mach.manyToSlice80(args[args_idx]);
+                }
+            } else if (mach.testEqualMany8("--libc", arg)) {
+                args_idx +%= 1;
+                if (args_idx != args.len) {
+                    cmd.libc = mach.manyToSlice80(args[args_idx]);
+                }
+            } else if (mach.testEqualMany8("--library", arg)) {
+                args_idx +%= 1;
+                if (args_idx != args.len) {
+                    cmd.library = mach.manyToSlice80(args[args_idx]);
+                }
+            } else if (mach.testEqualMany8("-I", arg[0..2])) {
+                if (arg.len == 2) {
+                    args_idx +%= 1;
+                    if (args_idx == args.len) {
+                        return;
+                    }
+                    arg = mach.manyToSlice80(args[args_idx]);
+                } else {
+                    arg = arg[2..];
+                }
+                if (cmd.include) |src| {
+                    const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16 *% (src.len +% 1), 8));
+                    @memcpy(dest, src);
+                    dest[src.len] = arg;
+                    cmd.include = dest[0 .. src.len +% 1];
+                } else {
+                    const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16, 8));
+                    dest[0] = arg;
+                    cmd.include = dest[0..1];
+                }
+            } else if (mach.testEqualMany8("--needed-library", arg)) {
+                args_idx +%= 1;
+                if (args_idx == args.len) {
+                    return;
+                }
+                arg = mach.manyToSlice80(args[args_idx]);
+                if (cmd.needed_library) |src| {
+                    const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16 *% (src.len +% 1), 8));
+                    @memcpy(dest, src);
+                    dest[src.len] = arg;
+                    cmd.needed_library = dest[0 .. src.len +% 1];
+                } else {
+                    const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16, 8));
+                    dest[0] = arg;
+                    cmd.needed_library = dest[0..1];
+                }
+            } else if (mach.testEqualMany8("--library-directory", arg)) {
+                args_idx +%= 1;
+                if (args_idx == args.len) {
+                    return;
+                }
+                arg = mach.manyToSlice80(args[args_idx]);
+                if (cmd.library_directory) |src| {
+                    const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16 *% (src.len +% 1), 8));
+                    @memcpy(dest, src);
+                    dest[src.len] = arg;
+                    cmd.library_directory = dest[0 .. src.len +% 1];
+                } else {
+                    const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16, 8));
+                    dest[0] = arg;
+                    cmd.library_directory = dest[0..1];
+                }
+            } else if (mach.testEqualMany8("--script", arg)) {
+                args_idx +%= 1;
+                if (args_idx != args.len) {
+                    cmd.link_script = mach.manyToSlice80(args[args_idx]);
+                }
+            } else if (mach.testEqualMany8("--version-script", arg)) {
+                args_idx +%= 1;
+                if (args_idx != args.len) {
+                    cmd.version_script = mach.manyToSlice80(args[args_idx]);
+                }
+            } else if (mach.testEqualMany8("--dynamic-linker", arg)) {
+                args_idx +%= 1;
+                if (args_idx != args.len) {
+                    cmd.dynamic_linker = mach.manyToSlice80(args[args_idx]);
+                }
+            } else if (mach.testEqualMany8("--sysroot", arg)) {
+                args_idx +%= 1;
+                if (args_idx != args.len) {
+                    cmd.sysroot = mach.manyToSlice80(args[args_idx]);
+                }
+            } else if (mach.testEqualMany8("--entry", arg)) {
+                args_idx +%= 1;
+                if (args_idx != args.len) {
+                    cmd.entry = mach.manyToSlice80(args[args_idx]);
+                }
+            } else if (mach.testEqualMany8("-fLLD", arg)) {
+                cmd.lld = true;
+            } else if (mach.testEqualMany8("-fno-LLD", arg)) {
+                cmd.lld = false;
+            } else if (mach.testEqualMany8("-fcompiler-rt", arg)) {
+                cmd.compiler_rt = true;
+            } else if (mach.testEqualMany8("-fno-compiler-rt", arg)) {
+                cmd.compiler_rt = false;
+            } else if (mach.testEqualMany8("-rpath", arg)) {
+                args_idx +%= 1;
+                if (args_idx != args.len) {
+                    cmd.rpath = mach.manyToSlice80(args[args_idx]);
+                }
+            } else if (mach.testEqualMany8("-feach-lib-rpath", arg)) {
+                cmd.each_lib_rpath = true;
+            } else if (mach.testEqualMany8("-fno-each-lib-rpath", arg)) {
+                cmd.each_lib_rpath = false;
+            } else if (mach.testEqualMany8("-fallow-shlib-undefined", arg)) {
+                cmd.allow_shlib_undefined = true;
+            } else if (mach.testEqualMany8("-fno-allow-shlib-undefined", arg)) {
+                cmd.allow_shlib_undefined = false;
+            } else if (mach.testEqualMany8("--build-id", arg)) {
+                args_idx +%= 1;
+                if (args_idx == args.len) {
+                    return;
+                }
+                arg = mach.manyToSlice80(args[args_idx]);
+                if (mach.testEqualMany8("fast", arg)) {
+                    cmd.build_id = .fast;
+                } else if (mach.testEqualMany8("uuid", arg)) {
+                    cmd.build_id = .uuid;
+                } else if (mach.testEqualMany8("sha1", arg)) {
+                    cmd.build_id = .sha1;
+                } else if (mach.testEqualMany8("md5", arg)) {
+                    cmd.build_id = .md5;
+                } else if (mach.testEqualMany8("none", arg)) {
+                    cmd.build_id = .none;
+                }
+            } else if (mach.testEqualMany8("--compress-debug-sections=zlib", arg)) {
+                cmd.compress_debug_sections = true;
+            } else if (mach.testEqualMany8("--compress-debug-sections=none", arg)) {
+                cmd.compress_debug_sections = false;
+            } else if (mach.testEqualMany8("--gc-sections", arg)) {
+                cmd.gc_sections = true;
+            } else if (mach.testEqualMany8("--no-gc-sections", arg)) {
+                cmd.gc_sections = false;
+            } else if (mach.testEqualMany8("-D", arg[0..2])) {
+                if (arg.len == 2) {
+                    args_idx +%= 1;
+                    if (args_idx == args.len) {
+                        return;
+                    }
+                    arg = mach.manyToSlice80(args[args_idx]);
+                } else {
+                    arg = arg[2..];
+                }
+                if (cmd.macros) |src| {
+                    const dest: [*]types.Macro = @ptrFromInt(allocator.allocateRaw(
+                        @sizeOf(types.Macro) *% (src.len +% 1),
+                        @alignOf(types.Macro),
+                    ));
+                    @memcpy(dest, src);
+                    dest[src.len] = types.Macro.formatParseArgs(allocator, args, &args_idx, arg);
+                    cmd.macros = dest[0 .. src.len +% 1];
+                } else {
+                    const dest: [*]types.Macro = @ptrFromInt(allocator.allocateRaw(
+                        @sizeOf(types.Macro),
+                        @alignOf(types.Macro),
+                    ));
+                    dest[0] = types.Macro.formatParseArgs(allocator, args, &args_idx, arg);
+                    cmd.macros = dest[0..1];
+                }
+            } else if (mach.testEqualMany8("--mod", arg)) {
+                args_idx +%= 1;
+                if (args_idx == args.len) {
+                    return;
+                }
+                arg = mach.manyToSlice80(args[args_idx]);
+                if (cmd.modules) |src| {
+                    const dest: [*]types.Module = @ptrFromInt(allocator.allocateRaw(
+                        @sizeOf(types.Module) *% (src.len +% 1),
+                        @alignOf(types.Module),
+                    ));
+                    @memcpy(dest, src);
+                    dest[src.len] = types.Module.formatParseArgs(allocator, args, &args_idx, arg);
+                    cmd.modules = dest[0 .. src.len +% 1];
+                } else {
+                    const dest: [*]types.Module = @ptrFromInt(allocator.allocateRaw(
+                        @sizeOf(types.Module),
+                        @alignOf(types.Module),
+                    ));
+                    dest[0] = types.Module.formatParseArgs(allocator, args, &args_idx, arg);
+                    cmd.modules = dest[0..1];
+                }
+            } else if (mach.testEqualMany8("-lc", arg)) {
+                cmd.link_libc = true;
+            } else if (mach.testEqualMany8("-rdynamic", arg)) {
+                cmd.rdynamic = true;
+            } else if (mach.testEqualMany8("-dynamic", arg)) {
+                cmd.dynamic = true;
+            } else if (mach.testEqualMany8("-static", arg)) {
+                cmd.static = true;
+            } else if (mach.testEqualMany8("-Bsymbolic", arg)) {
+                cmd.symbolic = true;
+            } else if (mach.testEqualMany8("--color", arg)) {
+                args_idx +%= 1;
+                if (args_idx == args.len) {
+                    return;
+                }
+                arg = mach.manyToSlice80(args[args_idx]);
+                if (mach.testEqualMany8("auto", arg)) {
+                    cmd.color = .auto;
+                } else if (mach.testEqualMany8("off", arg)) {
+                    cmd.color = .off;
+                } else if (mach.testEqualMany8("on", arg)) {
+                    cmd.color = .on;
+                }
+            } else if (mach.testEqualMany8("-ftime-report", arg)) {
+                cmd.time_report = true;
+            } else if (mach.testEqualMany8("-fstack-report", arg)) {
+                cmd.stack_report = true;
+            } else if (mach.testEqualMany8("--verbose-link", arg)) {
+                cmd.verbose_link = true;
+            } else if (mach.testEqualMany8("--verbose-cc", arg)) {
+                cmd.verbose_cc = true;
+            } else if (mach.testEqualMany8("--verbose-air", arg)) {
+                cmd.verbose_air = true;
+            } else if (mach.testEqualMany8("--verbose-mir", arg)) {
+                cmd.verbose_mir = true;
+            } else if (mach.testEqualMany8("--verbose-llvm-ir", arg)) {
+                cmd.verbose_llvm_ir = true;
+            } else if (mach.testEqualMany8("--verbose-cimport", arg)) {
+                cmd.verbose_cimport = true;
+            } else if (mach.testEqualMany8("--verbose-llvm-cpu-features", arg)) {
+                cmd.verbose_llvm_cpu_features = true;
+            } else if (mach.testEqualMany8("--debug-log", arg)) {
+                args_idx +%= 1;
+                if (args_idx != args.len) {
+                    cmd.debug_log = mach.manyToSlice80(args[args_idx]);
+                }
+            } else if (mach.testEqualMany8("--debug-compile-errors", arg)) {
+                cmd.debug_compiler_errors = true;
+            } else if (mach.testEqualMany8("--debug-link-snapshot", arg)) {
+                cmd.debug_link_snapshot = true;
+            }
+        }
+    }
     pub usingnamespace types.GenericBuildCommand(BuildCommand);
 };
 pub const FormatCommand = struct {
