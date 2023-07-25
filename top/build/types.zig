@@ -376,9 +376,25 @@ pub const Macro = struct {
         }
         return len +% 1;
     }
-    pub fn formatParseArgs(args: [][*:0]u8, args_idx: *usize, _: [:0]const u8) Format {
-        _ = args_idx;
-        _ = args;
+    pub fn formatParseArgs(_: anytype, _: [][*:0]u8, _: *usize, arg: [:0]const u8) Macro {
+        if (arg.len == 0) {
+            @panic(arg);
+        }
+        var idx: usize = 0;
+        var pos: usize = 0;
+        while (idx != arg.len) : (idx +%= 1) {
+            if (arg[idx] == '=') {
+                pos = idx +% 1;
+                if (pos == arg.len) {
+                    break;
+                }
+                return .{
+                    .name = arg[0..idx],
+                    .value = arg[pos..],
+                };
+            }
+        }
+        return .{ .name = arg[0..idx] };
     }
 };
 pub const Macros = Aggregate(Macro);
@@ -520,10 +536,6 @@ pub const Files = struct {
             len +%= path.formatLength();
         }
         return len;
-    }
-    pub fn formatParseArgs(args: [][*:0]u8, args_idx: *usize, _: [:0]const u8) Format {
-        _ = args_idx;
-        _ = args;
     }
 };
 pub const Record = packed struct {
