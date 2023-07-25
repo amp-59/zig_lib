@@ -1,5 +1,6 @@
 const mem = @import("../mem.zig");
 const fmt = @import("../fmt.zig");
+const proc = @import("../proc.zig");
 const mach = @import("../mach.zig");
 const time = @import("../time.zig");
 const file = @import("../file.zig");
@@ -10,10 +11,52 @@ const types = @This();
 pub usingnamespace @import("./tasks.zig");
 pub const hist_tasks = @import("./hist_tasks.zig");
 pub const Allocator = mem.SimpleAllocator;
-pub const Node = enum(u8) { group, worker };
-pub const OutputMode = enum(u2) { exe, lib, obj };
-pub const AuxOutputMode = enum(u3) { @"asm", llvm_ir, llvm_bc, h, docs, analysis };
-pub const AutoOnOff = enum { auto, off, on };
+pub const Node = enum(u8) {
+    group,
+    worker,
+};
+pub const OutputMode = enum(u2) {
+    exe,
+    lib,
+    obj,
+};
+pub const AuxOutputMode = enum(u3) {
+    @"asm",
+    llvm_ir,
+    llvm_bc,
+    h,
+    docs,
+    analysis,
+};
+pub const AutoOnOff = enum {
+    auto,
+    off,
+    on,
+};
+pub const Listen = enum {
+    none,
+    @"-",
+    ipv4,
+};
+pub const BuildId = enum(u8) {
+    fast,
+    uuid,
+    sha1,
+    md5,
+    none,
+    _,
+};
+pub const LinkerFlags = enum {
+    nodelete,
+    notext,
+    defs,
+    origin,
+    nocopyreloc,
+    now,
+    lazy,
+    relro,
+    norelro,
+};
 pub const Task = enum(u8) {
     null = 0,
     any = 1,
