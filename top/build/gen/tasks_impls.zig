@@ -551,6 +551,9 @@ pub fn writeFunctionBody(array: *Array, params: []const types.ParamSpec, variant
         writeDeclareLength(array);
     }
     for (params) |param_spec| {
+        if (param_spec.flags.never_write) {
+            continue;
+        }
         const if_boolean_field_value: []const u8 = param_spec.name;
         const if_optional_field_value: []const u8 = param_spec.name;
         const if_optional_field_capture: []const u8 = param_spec.name;
@@ -744,6 +747,9 @@ fn writeFields(allocator: *mem.SimpleAllocator, array: *Array, attributes: types
     const save: u64 = allocator.next;
     defer allocator.next = save;
     for (attributes.params) |param_spec| {
+        if (param_spec.flags.never_write) {
+            continue;
+        }
         if (param_spec.name.len == 0) {
             continue;
         }
