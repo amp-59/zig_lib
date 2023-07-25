@@ -774,16 +774,9 @@ fn writeMemcpy(
 fn writeParseArgsFrom(
     array: *Array,
     type_name: []const u8,
-    index: usize,
 ) void {
     array.writeMany(type_name);
-    if (index == 0) {
-        array.writeMany(".formatParseArgs(allocator,args,&args_idx,arg)");
-    } else {
-        array.writeMany(".formatParseArgs(allocator,args,&args_idx,");
-        writeArgSliceFrom(array, index);
-        array.writeMany(")");
-    }
+    array.writeMany(".formatParseArgs(allocator,args,&args_idx,arg)");
 }
 fn writeAllocateRaw(array: *Array, type_name: []const u8, mb_size: ?usize, mb_alignment: ?usize) void {
     array.writeMany("const dest:[*]");
@@ -836,7 +829,7 @@ fn writeAddOptionalRepeatableFormatter(
     writeAllocateRawIncrement(array, type_name, null, null);
     writeMemcpy(array, "dest", "src");
     array.writeMany("dest[src.len]=");
-    writeParseArgsFrom(array, type_name, 0);
+    writeParseArgsFrom(array, type_name);
     array.writeMany(";\n");
     array.writeMany("cmd.");
     array.writeMany(field_name);
@@ -844,7 +837,7 @@ fn writeAddOptionalRepeatableFormatter(
     writeElse(array);
     writeAllocateRaw(array, type_name, null, null);
     array.writeMany("dest[0]=");
-    writeParseArgsFrom(array, type_name, 0);
+    writeParseArgsFrom(array, type_name);
     array.writeMany(";\n");
     array.writeMany("cmd.");
     array.writeMany(field_name);
@@ -857,7 +850,7 @@ fn writeAddOptionalRepeatableString(
 ) void {
     writeOpenOptionalField(array, field_name, "src");
     writeAllocateRawIncrement(array, "[]const u8", 16, 8);
-    array.writeMany("for(dest,src)|*ptr,val|ptr.*=val;\n");
+    writeMemcpy(array, "dest", "src");
     array.writeMany("dest[src.len]=arg;\n");
     array.writeMany("cmd.");
     array.writeMany(field_name);
