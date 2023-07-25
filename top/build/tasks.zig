@@ -2736,6 +2736,39 @@ pub const FormatCommand = struct {
         len +%= pathname.formatLength();
         return len;
     }
+    pub fn formatParseArgs(cmd: *FormatCommand, allocator: anytype, args: [][*:0]u8) void {
+        @setRuntimeSafety(false);
+        var args_idx: usize = 0;
+        while (args_idx != args.len) : (args_idx +%= 1) {
+            var arg: [:0]const u8 = mach.manyToSlice80(args[args_idx]);
+            if (mach.testEqualMany8("--color", arg)) {
+                args_idx +%= 1;
+                if (args_idx == args.len) {
+                    return;
+                }
+                arg = mach.manyToSlice80(args[args_idx]);
+                if (mach.testEqualMany8("auto", arg)) {
+                    cmd.color = .auto;
+                } else if (mach.testEqualMany8("off", arg)) {
+                    cmd.color = .off;
+                } else if (mach.testEqualMany8("on", arg)) {
+                    cmd.color = .on;
+                }
+            } else if (mach.testEqualMany8("--stdin", arg)) {
+                cmd.stdin = true;
+            } else if (mach.testEqualMany8("--check", arg)) {
+                cmd.check = true;
+            } else if (mach.testEqualMany8("--ast-check", arg)) {
+                cmd.ast_check = true;
+            } else if (mach.testEqualMany8("--exclude", arg)) {
+                args_idx +%= 1;
+                if (args_idx != args.len) {
+                    cmd.exclude = mach.manyToSlice80(args[args_idx]);
+                }
+            }
+            _ = allocator;
+        }
+    }
 };
 pub const ArchiveCommand = struct {
     /// Archive format to create
