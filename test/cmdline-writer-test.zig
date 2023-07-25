@@ -28,12 +28,40 @@ fn testConfigValues() void {
     array.impl.ub_word +%= name.formatWriteBuf(array.referAllUndefined().ptr);
     debug.write(array.readAll());
 }
+fn makeArgPtrs(allocator: *mem.SimpleAllocator, args: [:0]u8) [][*:0]u8 {
+    @setRuntimeSafety(false);
+    var count: u64 = 0;
+    for (args) |value| {
+        count +%= @intFromBool(value == 0);
+    }
+    const ptrs: [*][*:0]u8 = @as([*][*:0]u8, @ptrFromInt(allocator.allocateRaw(8 *% (count +% 1), 1)));
+    var len: usize = 0;
+    var idx: usize = 0;
+    var pos: u64 = 0;
+    while (idx != args.len) : (idx +%= 1) {
+        if (args[idx] == 0) {
+            ptrs[len] = args[pos..idx :0];
+            len +%= 1;
+            pos = idx +% 1;
+        }
+    }
+    ptrs[len] = comptime builtin.zero([*:0]u8);
+    return ptrs[0..len];
+}
 fn testManyCompileOptionsWithArguments(args: anytype, vars: anytype) !void {
-    const build_cmd = .{
+    var address_space: Node.AddressSpace = .{};
+    var thread_space: Node.ThreadSpace = .{};
+    var allocator: build.Allocator = build.Allocator.init_arena(Node.AddressSpace.arena(Node.max_thread_count));
+
+    var path: build.Path = @bitCast(@as([3]usize, .{ 0, 0, 0 }));
+    path.addName(&allocator).* = "any/path";
+
+    var build_cmd: build.BuildCommand = .{
         .kind = .obj,
         .allow_shlib_undefined = true,
         .build_id = .sha1,
         .cflags = &.{ "-O3", "-Wno-parentheses", "-Wno-format-security" },
+        .emit_bin = .{ .yes = path },
         .macros = &.{
             .{ .name = "true", .value = "false" },
             .{ .name = "false", .value = "true" },
@@ -57,13 +85,30 @@ fn testManyCompileOptionsWithArguments(args: anytype, vars: anytype) !void {
         .verbose_air = true,
         .verbose_cc = true,
         .verbose_cimport = true,
-        .z = &.{ .nodelete, .notext },
+        .lflags = &.{.nodelete},
         .mode = .Debug,
         .strip = true,
+        .dependencies = &.{
+            .{ .name = "zig_lib" },
+            .{ .name = "@build" },
+        },
+        .modules = &.{
+            .{ .name = "zig_lib", .path = build.root ++ "/zig_lib.zig" },
+            .{ .name = "@build", .path = "./build.zig" },
+        },
     };
-    var address_space: Node.AddressSpace = .{};
-    var thread_space: Node.ThreadSpace = .{};
-    var allocator: build.Allocator = build.Allocator.init_arena(Node.AddressSpace.arena(Node.max_thread_count));
+
+    var buf: [4096]u8 = .{0} ** 4096;
+    const len: usize = build_cmd.formatWriteBuf(builtin.root.zig_exe, &.{}, &buf);
+    const new_args: [][*:0]u8 = makeArgPtrs(&allocator, buf[0..len :0]);
+    var new_build_cmd: build.BuildCommand = .{ .kind = .exe };
+    new_build_cmd.formatParseArgs(&allocator, new_args);
+    var new_buf: [4096]u8 = .{0} ** 4096;
+    const new_len: usize = new_build_cmd.formatWriteBuf(builtin.root.zig_exe, &.{}, &new_buf);
+    const new_new_args: [][*:0]u8 = makeArgPtrs(&allocator, new_buf[0..new_len :0]);
+
+    _ = new_new_args;
+
     if (args.len < 5) {
         return error.MissingEnvironmentPaths;
     }
@@ -72,12 +117,7 @@ fn testManyCompileOptionsWithArguments(args: anytype, vars: anytype) !void {
 
     const g0: *Node = toplevel.addGroup(&allocator, "g0");
     const t0: *Node = g0.addBuild(&allocator, build_cmd, "target", @src().file);
-    const t1: *Node = g0.addArchive(&allocator, .{
-        .operation = .r,
-        .create = true,
-    }, "lib0", &.{t0});
-
-    testing.print(fmt.any(t1));
+    const t1: *Node = g0.addArchive(&allocator, .{ .operation = .r, .create = true }, "lib0", &.{t0});
     try debug.expect(Node.executeToplevel(&address_space, &thread_space, &allocator, toplevel, t1, .archive));
 }
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
