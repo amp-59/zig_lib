@@ -52,11 +52,7 @@ pub const BuildCommand = struct {
     /// Override Zig installation lib directory
     zig_lib_root: ?[]const u8 = null,
     /// [MISSING]
-    listen: ?enum(u2) {
-        none = 0,
-        @"-" = 1,
-        ipv4 = 2,
-    } = null,
+    listen: ?types.Listen = null,
     /// <arch><sub>-<os>-<abi> see the targets command
     target: ?[]const u8 = null,
     /// Specify target CPU and feature set
@@ -168,13 +164,7 @@ pub const BuildCommand = struct {
     /// Allow undefined symbols in shared libraries
     allow_shlib_undefined: ?bool = null,
     /// Help coordinate stripped binaries with debug symbols
-    build_id: ?enum(u8) {
-        fast = 0,
-        uuid = 1,
-        sha1 = 2,
-        md5 = 3,
-        none = 4,
-    } = null,
+    build_id: ?types.BuildId = null,
     /// Debug section compression:
     /// none   No compression
     /// zlib   Compression with deflate/inflate
@@ -217,7 +207,7 @@ pub const BuildCommand = struct {
     /// norelro                    Don't force all relocations to be read-only after processing
     /// common-page-size=[bytes]   Set the common page size for ELF binaries
     /// max-page-size=[bytes]      Set the max page size for ELF binaries
-    z: ?[]const enum(u4) {
+    lflags: ?[]const enum(u4) {
         nodelete = 0,
         notext = 1,
         defs = 2,
@@ -727,10 +717,14 @@ pub const BuildCommand = struct {
             array.writeOne(0);
         }
         if (cmd.macros) |macros| {
-            array.writeFormat(types.Macros{ .value = macros });
+            for (macros) |value| {
+                array.writeFormat(value);
+            }
         }
         if (cmd.modules) |modules| {
-            array.writeFormat(types.Modules{ .value = modules });
+            for (modules) |value| {
+                array.writeFormat(value);
+            }
         }
         if (cmd.dependencies) |dependencies| {
             array.writeFormat(types.ModuleDependencies{ .value = dependencies });
@@ -753,8 +747,8 @@ pub const BuildCommand = struct {
         if (cmd.symbolic) {
             array.writeMany("-Bsymbolic\x00");
         }
-        if (cmd.z) |z| {
-            for (z) |value| {
+        if (cmd.lflags) |lflags| {
+            for (lflags) |value| {
                 array.writeMany("-z\x00");
                 array.writeMany(@tagName(value));
                 array.writeOne(0);
@@ -1448,10 +1442,14 @@ pub const BuildCommand = struct {
             len +%= 1;
         }
         if (cmd.macros) |macros| {
-            len +%= types.Macros.formatWriteBuf(.{ .value = macros }, buf + len);
+            for (macros) |value| {
+                len +%= value.formatWriteBuf(buf + len);
+            }
         }
         if (cmd.modules) |modules| {
-            len +%= types.Modules.formatWriteBuf(.{ .value = modules }, buf + len);
+            for (modules) |value| {
+                len +%= value.formatWriteBuf(buf + len);
+            }
         }
         if (cmd.dependencies) |dependencies| {
             len +%= types.ModuleDependencies.formatWriteBuf(.{ .value = dependencies }, buf + len);
@@ -1479,8 +1477,8 @@ pub const BuildCommand = struct {
             @as(*[11]u8, @ptrCast(buf + len)).* = "-Bsymbolic\x00".*;
             len +%= 11;
         }
-        if (cmd.z) |z| {
-            for (z) |value| {
+        if (cmd.lflags) |lflags| {
+            for (lflags) |value| {
                 @as(*[3]u8, @ptrCast(buf + len)).* = "-z\x00".*;
                 len +%= 3;
                 @memcpy(buf + len, @tagName(value));
@@ -2026,10 +2024,14 @@ pub const BuildCommand = struct {
             len +%= 1;
         }
         if (cmd.macros) |macros| {
-            len +%= types.Macros.formatLength(.{ .value = macros });
+            for (macros) |value| {
+                len +%= value.formatLength();
+            }
         }
         if (cmd.modules) |modules| {
-            len +%= types.Modules.formatLength(.{ .value = modules });
+            for (modules) |value| {
+                len +%= value.formatLength();
+            }
         }
         if (cmd.dependencies) |dependencies| {
             len +%= types.ModuleDependencies.formatLength(.{ .value = dependencies });
@@ -2052,8 +2054,8 @@ pub const BuildCommand = struct {
         if (cmd.symbolic) {
             len +%= 11;
         }
-        if (cmd.z) |z| {
-            for (z) |value| {
+        if (cmd.lflags) |lflags| {
+            for (lflags) |value| {
                 len +%= 3;
                 len +%= @tagName(value).len;
                 len +%= 1;
