@@ -3011,6 +3011,61 @@ pub const ArchiveCommand = struct {
         len +%= types.Files.formatLength(.{ .value = files });
         return len;
     }
+    pub fn formatParseArgs(cmd: *ArchiveCommand, allocator: anytype, args: [][*:0]u8) void {
+        @setRuntimeSafety(false);
+        var args_idx: usize = 0;
+        while (args_idx != args.len) : (args_idx +%= 1) {
+            var arg: [:0]const u8 = mach.manyToSlice80(args[args_idx]);
+            if (mach.testEqualMany8("--format", arg)) {
+                args_idx +%= 1;
+                if (args_idx == args.len) {
+                    return;
+                }
+                arg = mach.manyToSlice80(args[args_idx]);
+                if (mach.testEqualMany8("default", arg)) {
+                    cmd.format = .default;
+                } else if (mach.testEqualMany8("gnu", arg)) {
+                    cmd.format = .gnu;
+                } else if (mach.testEqualMany8("darwin", arg)) {
+                    cmd.format = .darwin;
+                } else if (mach.testEqualMany8("bsd", arg)) {
+                    cmd.format = .bsd;
+                } else if (mach.testEqualMany8("bigarchive", arg)) {
+                    cmd.format = .bigarchive;
+                }
+            } else if (mach.testEqualMany8("--plugin", arg)) {
+                cmd.plugin = true;
+            } else if (mach.testEqualMany8("--output", arg)) {
+                args_idx +%= 1;
+                if (args_idx != args.len) {
+                    cmd.output = mach.manyToSlice80(args[args_idx]);
+                }
+            } else if (mach.testEqualMany8("--thin", arg)) {
+                cmd.thin = true;
+            } else if (mach.testEqualMany8("a", arg)) {
+                cmd.after = true;
+            } else if (mach.testEqualMany8("b", arg)) {
+                cmd.before = true;
+            } else if (mach.testEqualMany8("c", arg)) {
+                cmd.create = true;
+            } else if (mach.testEqualMany8("D", arg)) {
+                cmd.zero_ids = true;
+            } else if (mach.testEqualMany8("U", arg)) {
+                cmd.real_ids = true;
+            } else if (mach.testEqualMany8("L", arg)) {
+                cmd.append = true;
+            } else if (mach.testEqualMany8("o", arg)) {
+                cmd.preserve_dates = true;
+            } else if (mach.testEqualMany8("s", arg)) {
+                cmd.index = true;
+            } else if (mach.testEqualMany8("S", arg)) {
+                cmd.no_symbol_table = true;
+            } else if (mach.testEqualMany8("u", arg)) {
+                cmd.update = true;
+            }
+            _ = allocator;
+        }
+    }
 };
 pub const ObjcopyCommand = struct {
     output_target: ?[]const u8 = null,
@@ -3167,6 +3222,41 @@ pub const ObjcopyCommand = struct {
         }
         len +%= file.formatLength();
         return len;
+    }
+    pub fn formatParseArgs(cmd: *ObjcopyCommand, allocator: anytype, args: [][*:0]u8) void {
+        @setRuntimeSafety(false);
+        var args_idx: usize = 0;
+        while (args_idx != args.len) : (args_idx +%= 1) {
+            var arg: [:0]const u8 = mach.manyToSlice80(args[args_idx]);
+            if (mach.testEqualMany8("--output-target", arg)) {
+                args_idx +%= 1;
+                if (args_idx != args.len) {
+                    cmd.output_target = mach.manyToSlice80(args[args_idx]);
+                }
+            } else if (mach.testEqualMany8("--only-section", arg)) {
+                args_idx +%= 1;
+                if (args_idx != args.len) {
+                    cmd.only_section = mach.manyToSlice80(args[args_idx]);
+                }
+            } else if (mach.testEqualMany8("--strip-debug", arg)) {
+                cmd.strip_debug = true;
+            } else if (mach.testEqualMany8("--strip-all", arg)) {
+                cmd.strip_all = true;
+            } else if (mach.testEqualMany8("--only-keep-debug", arg)) {
+                cmd.debug_only = true;
+            } else if (mach.testEqualMany8("--add-gnu-debuglink", arg)) {
+                args_idx +%= 1;
+                if (args_idx != args.len) {
+                    cmd.add_gnu_debuglink = mach.manyToSlice80(args[args_idx]);
+                }
+            } else if (mach.testEqualMany8("--extract-to", arg)) {
+                args_idx +%= 1;
+                if (args_idx != args.len) {
+                    cmd.extract_to = mach.manyToSlice80(args[args_idx]);
+                }
+            }
+            _ = allocator;
+        }
     }
 };
 pub const TableGenCommand = struct {
