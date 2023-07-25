@@ -245,6 +245,47 @@ pub const Module = struct {
         len +%= 1;
         return len;
     }
+    pub fn formatParseArgs(allocator: anytype, _: [][*:0]u8, _: *usize, arg: [:0]const u8) Module {
+        var idx: usize = 0;
+        var len: usize = 0;
+        while (idx != arg.len) : (idx +%= 1) {
+            if (arg[idx] == ':') {
+                if (len == 0) {
+                    len = idx;
+                } else {
+                    break;
+                }
+            }
+        } else {
+            @panic(arg);
+        }
+        if (idx +% 1 == arg.len) {
+            @panic(arg);
+        }
+        var ret: Module = .{ .name = arg[0..len], .path = arg[idx +% 1 ..] };
+        if (idx != len +% 1) {
+            idx = len +% 1;
+            len = 1;
+        } else {
+            return ret;
+        }
+        var pos: usize = idx;
+        while (idx != arg.len) : (idx +%= 1) {
+            if (arg[idx] == ',') {
+                len +%= 1;
+            }
+        }
+        var deps: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16 *% len, 8));
+        idx = pos;
+        while (idx != arg.len) : (idx +%= 1) {
+            if (arg[idx] == ',') {
+                deps[len] = arg[pos..idx];
+                len +%= 1;
+                pos = idx +% 1;
+            }
+        }
+        return ret;
+    }
 };
 pub const Modules = Aggregate(Module);
 pub const ModuleDependency = struct {
