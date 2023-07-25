@@ -1,4 +1,5 @@
 const fmt = @import("../../fmt.zig");
+const config = @import("./config.zig");
 pub const Variant = enum(u2) {
     length,
     write_buf,
@@ -35,21 +36,30 @@ pub const ProtoTypeDescrMap = struct {
 };
 pub const boolean: ProtoTypeDescr = ProtoTypeDescr.init(bool);
 const Tag = enum {
-    boolean_field,
-    symbol_field,
+    /// Mandatory string field
     string_field,
+    /// Mandatory enumeration field
     tag_field,
+    /// Mandatory boolean field
+    boolean_field,
+    /// Mandatory integer field
     integer_field,
+    /// Mandatory direct formatter field
     formatter_field,
+    /// Mandatory indirect formatter field
     mapped_field,
-    optional_boolean_field,
+
     optional_string_field,
     optional_tag_field,
+    optional_boolean_field,
     optional_integer_field,
     optional_formatter_field,
     optional_mapped_field,
-    repeatable_string_field,
-    repeatable_tag_field,
+
+    optional_repeatable_formatter_field,
+    optional_repeatable_string_field,
+    optional_repeatable_tag_field,
+
     string_param,
     formatter_param,
     mapped_param,
@@ -76,10 +86,11 @@ pub const ParamSpec = struct {
     /// If `immediate` (255) no separator is written
     char: ?u8 = null,
     /// Miscellaneous controls
-    flags: struct {
-        /// Do not include in parser generation irrespective of any other
-        /// control.
-        never_parse: bool = false,
+    flags: packed struct {
+        /// Do not include in task struct definitions or writer functions
+        do_write: bool = true,
+        /// Do not include in parser functions
+        do_parse: bool = !config.allow_comptime_configure_parser,
     } = .{},
     pub const immediate: u8 = 255;
     pub fn isField(param_spec: ParamSpec) bool {
