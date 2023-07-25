@@ -3844,6 +3844,156 @@ pub const TableGenCommand = struct {
         }
         return len;
     }
+    pub fn formatParseArgs(cmd: *TableGenCommand, allocator: anytype, args: [][*:0]u8) void {
+        @setRuntimeSafety(false);
+        var args_idx: usize = 0;
+        while (args_idx != args.len) : (args_idx +%= 1) {
+            var arg: [:0]const u8 = mach.manyToSlice80(args[args_idx]);
+            if (mach.testEqualMany8("--color", arg)) {
+                args_idx +%= 1;
+                if (args_idx == args.len) {
+                    return;
+                }
+                arg = mach.manyToSlice80(args[args_idx]);
+                if (mach.testEqualMany8("auto", arg)) {
+                    cmd.color = .auto;
+                } else if (mach.testEqualMany8("off", arg)) {
+                    cmd.color = .off;
+                } else if (mach.testEqualMany8("on", arg)) {
+                    cmd.color = .on;
+                }
+            } else if (mach.testEqualMany8("-I", arg[0..2])) {
+                if (arg.len == 2) {
+                    args_idx +%= 1;
+                    if (args_idx == args.len) {
+                        return;
+                    }
+                    arg = mach.manyToSlice80(args[args_idx]);
+                } else {
+                    arg = arg[2..];
+                }
+                if (cmd.include) |src| {
+                    const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16 *% (src.len +% 1), 8));
+                    @memcpy(dest, src);
+                    dest[src.len] = arg;
+                    cmd.include = dest[0 .. src.len +% 1];
+                } else {
+                    const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16, 8));
+                    dest[0] = arg;
+                    cmd.include = dest[0..1];
+                }
+            } else if (mach.testEqualMany8("-d", arg[0..2])) {
+                if (arg.len == 2) {
+                    args_idx +%= 1;
+                    if (args_idx == args.len) {
+                        return;
+                    }
+                    arg = mach.manyToSlice80(args[args_idx]);
+                } else {
+                    arg = arg[2..];
+                }
+                if (cmd.dependencies) |src| {
+                    const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16 *% (src.len +% 1), 8));
+                    @memcpy(dest, src);
+                    dest[src.len] = arg;
+                    cmd.dependencies = dest[0 .. src.len +% 1];
+                } else {
+                    const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16, 8));
+                    dest[0] = arg;
+                    cmd.dependencies = dest[0..1];
+                }
+            } else if (mach.testEqualMany8("--print-records", arg)) {
+                cmd.print_records = true;
+            } else if (mach.testEqualMany8("--print-detailed-records", arg)) {
+                cmd.print_detailed_records = true;
+            } else if (mach.testEqualMany8("--null-backend", arg)) {
+                cmd.null_backend = true;
+            } else if (mach.testEqualMany8("--dump-json", arg)) {
+                cmd.dump_json = true;
+            } else if (mach.testEqualMany8("--gen-emitter", arg)) {
+                cmd.gen_emitter = true;
+            } else if (mach.testEqualMany8("--gen-register-info", arg)) {
+                cmd.gen_register_info = true;
+            } else if (mach.testEqualMany8("--gen-instr-info", arg)) {
+                cmd.gen_instr_info = true;
+            } else if (mach.testEqualMany8("--gen-instr-docs", arg)) {
+                cmd.gen_instr_docs = true;
+            } else if (mach.testEqualMany8("--gen-callingconv", arg)) {
+                cmd.gen_callingconv = true;
+            } else if (mach.testEqualMany8("--gen-asm-writer", arg)) {
+                cmd.gen_asm_writer = true;
+            } else if (mach.testEqualMany8("--gen-disassembler", arg)) {
+                cmd.gen_disassembler = true;
+            } else if (mach.testEqualMany8("--gen-pseudo-lowering", arg)) {
+                cmd.gen_pseudo_lowering = true;
+            } else if (mach.testEqualMany8("--gen-compress-inst-emitter", arg)) {
+                cmd.gen_compress_inst_emitter = true;
+            } else if (mach.testEqualMany8("--gen-asm-matcher", arg)) {
+                cmd.gen_asm_matcher = true;
+            } else if (mach.testEqualMany8("--gen-dag-isel", arg)) {
+                cmd.gen_dag_isel = true;
+            } else if (mach.testEqualMany8("--gen-dfa-packetizer", arg)) {
+                cmd.gen_dfa_packetizer = true;
+            } else if (mach.testEqualMany8("--gen-fast-isel", arg)) {
+                cmd.gen_fast_isel = true;
+            } else if (mach.testEqualMany8("--gen-subtarget", arg)) {
+                cmd.gen_subtarget = true;
+            } else if (mach.testEqualMany8("--gen-intrinsic-enums", arg)) {
+                cmd.gen_intrinsic_enums = true;
+            } else if (mach.testEqualMany8("--gen-intrinsic-impl", arg)) {
+                cmd.gen_intrinsic_impl = true;
+            } else if (mach.testEqualMany8("--print-enums", arg)) {
+                cmd.print_enums = true;
+            } else if (mach.testEqualMany8("--print-sets", arg)) {
+                cmd.print_sets = true;
+            } else if (mach.testEqualMany8("--gen-opt-parser-defs", arg)) {
+                cmd.gen_opt_parser_defs = true;
+            } else if (mach.testEqualMany8("--gen-opt-rst", arg)) {
+                cmd.gen_opt_rst = true;
+            } else if (mach.testEqualMany8("--gen-ctags", arg)) {
+                cmd.gen_ctags = true;
+            } else if (mach.testEqualMany8("--gen-attrs", arg)) {
+                cmd.gen_attrs = true;
+            } else if (mach.testEqualMany8("--gen-searchable-tables", arg)) {
+                cmd.gen_searchable_tables = true;
+            } else if (mach.testEqualMany8("--gen-global-isel", arg)) {
+                cmd.gen_global_isel = true;
+            } else if (mach.testEqualMany8("--gen-global-isel-combiner", arg)) {
+                cmd.gen_global_isel_combiner = true;
+            } else if (mach.testEqualMany8("--gen-x86-EVEX2VEX-tables", arg)) {
+                cmd.gen_x86_EVEX2VEX_tables = true;
+            } else if (mach.testEqualMany8("--gen-x86-fold-tables", arg)) {
+                cmd.gen_x86_fold_tables = true;
+            } else if (mach.testEqualMany8("--gen-x86-mnemonic-tables", arg)) {
+                cmd.gen_x86_mnemonic_tables = true;
+            } else if (mach.testEqualMany8("--gen-register-bank", arg)) {
+                cmd.gen_register_bank = true;
+            } else if (mach.testEqualMany8("--gen-exegesis", arg)) {
+                cmd.gen_exegesis = true;
+            } else if (mach.testEqualMany8("--gen-automata", arg)) {
+                cmd.gen_automata = true;
+            } else if (mach.testEqualMany8("--gen-directive-decl", arg)) {
+                cmd.gen_directive_decl = true;
+            } else if (mach.testEqualMany8("--gen-directive-impl", arg)) {
+                cmd.gen_directive_impl = true;
+            } else if (mach.testEqualMany8("--gen-dxil-operation", arg)) {
+                cmd.gen_dxil_operation = true;
+            } else if (mach.testEqualMany8("--gen-riscv-target_def", arg)) {
+                cmd.gen_riscv_target_def = true;
+            } else if (mach.testEqualMany8("-o", arg[0..2])) {
+                if (arg.len == 2) {
+                    args_idx +%= 1;
+                    if (args_idx == args.len) {
+                        return;
+                    }
+                    arg = mach.manyToSlice80(args[args_idx]);
+                } else {
+                    arg = arg[2..];
+                }
+                cmd.output = arg;
+            }
+        }
+    }
 };
 pub const HarecCommand = struct {
     arch: ?[]const u8 = null,
@@ -3963,5 +4113,59 @@ pub const HarecCommand = struct {
             len +%= 3;
         }
         return len;
+    }
+    pub fn formatParseArgs(cmd: *HarecCommand, allocator: anytype, args: [][*:0]u8) void {
+        @setRuntimeSafety(false);
+        var args_idx: usize = 0;
+        while (args_idx != args.len) : (args_idx +%= 1) {
+            var arg: [:0]const u8 = mach.manyToSlice80(args[args_idx]);
+            if (mach.testEqualMany8("-a", arg[0..2])) {
+                if (arg.len == 2) {
+                    args_idx +%= 1;
+                    if (args_idx == args.len) {
+                        return;
+                    }
+                    arg = mach.manyToSlice80(args[args_idx]);
+                } else {
+                    arg = arg[2..];
+                }
+                cmd.arch = arg;
+            } else if (mach.testEqualMany8("-o", arg[0..2])) {
+                if (arg.len == 2) {
+                    args_idx +%= 1;
+                    if (args_idx == args.len) {
+                        return;
+                    }
+                    arg = mach.manyToSlice80(args[args_idx]);
+                } else {
+                    arg = arg[2..];
+                }
+                cmd.output = arg;
+            } else if (mach.testEqualMany8("-T", arg[0..2])) {
+                if (arg.len == 2) {
+                    args_idx +%= 1;
+                    if (args_idx == args.len) {
+                        return;
+                    }
+                    arg = mach.manyToSlice80(args[args_idx]);
+                } else {
+                    arg = arg[2..];
+                }
+                if (cmd.tags) |src| {
+                    const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16 *% (src.len +% 1), 8));
+                    @memcpy(dest, src);
+                    dest[src.len] = arg;
+                    cmd.tags = dest[0 .. src.len +% 1];
+                } else {
+                    const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16, 8));
+                    dest[0] = arg;
+                    cmd.tags = dest[0..1];
+                }
+            } else if (mach.testEqualMany8("-t", arg)) {
+                cmd.typedefs = true;
+            } else if (mach.testEqualMany8("-N", arg)) {
+                cmd.namespace = true;
+            }
+        }
     }
 };
