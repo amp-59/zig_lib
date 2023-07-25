@@ -88,7 +88,7 @@ fn writeField(comptime field_type: type, field_name: []const u8, key_array: *Arr
             conv_array.writeMany(field_name);
             conv_array.writeMany("=cmd.");
             conv_array.writeMany(field_name);
-            conv_array.writeMany(" != null;\n");
+            conv_array.writeMany("!=null;\n");
             conv_array.writeMany("ret.val.");
             conv_array.writeMany(field_name);
             conv_array.writeMany("=cmd.");
@@ -105,7 +105,7 @@ fn writeDecl(decl_name: []const u8, key_array: *Array, val_array: *Array, conv_a
     key_array.writeMany("val:Val,\n");
     key_array.writeMany("const undef:tasks.");
     key_array.writeMany(decl_name);
-    key_array.writeMany(" = undefined;");
+    key_array.writeMany("=undefined;");
     key_array.writeMany("const Key=packed struct{\n");
     val_array.writeMany("const Val=packed struct{\n");
     conv_array.writeMany("pub fn convert(cmd:*tasks.");
