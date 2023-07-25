@@ -224,6 +224,9 @@ pub const ModuleDependencies = struct {
     }
     pub fn formatWriteBuf(mod_deps: ModuleDependencies, buf: [*]u8) u64 {
         @setRuntimeSafety(false);
+        if (mod_deps.value.len == 0) {
+            return 0;
+        }
         var len: u64 = 7;
         @memcpy(buf, "--deps\x00");
         for (mod_deps.value) |mod_dep| {
@@ -238,12 +241,14 @@ pub const ModuleDependencies = struct {
             buf[len] = ',';
             len = len +% 1;
         }
-        buf[len - 1] = 0;
+        buf[len -% 1] = 0;
         return len;
     }
     pub fn formatLength(mod_deps: ModuleDependencies) u64 {
-        var len: u64 = 0;
-        len +%= 7;
+        if (mod_deps.value.len == 0) {
+            return 0;
+        }
+        var len: u64 = 7;
         for (mod_deps.value) |mod_dep| {
             if (mod_dep.import) |name| {
                 len +%= name.len +% 1;
@@ -287,6 +292,10 @@ pub const Macro = struct {
         }
         return len +% 1;
     }
+    pub fn formatParseArgs(args: [][*:0]u8, args_idx: *usize, _: [:0]const u8) Format {
+        _ = args_idx;
+        _ = args;
+    }
 };
 pub const Macros = Aggregate(Macro);
 pub const CFlags = struct {
@@ -324,6 +333,10 @@ pub const CFlags = struct {
         len +%= 3;
         return len;
     }
+    pub fn formatParseArgs(args: [][*:0]u8, args_idx: *usize, _: [:0]const u8) Format {
+        _ = args_idx;
+        _ = args;
+    }
 };
 pub const Path = struct {
     names: [*][:0]const u8,
@@ -338,8 +351,8 @@ pub const Path = struct {
                 array.writeOne('/');
                 array.writeMany(name);
             }
+            array.writeOne(0);
         }
-        array.writeOne(0);
     }
     pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
         @setRuntimeSafety(false);
@@ -353,9 +366,9 @@ pub const Path = struct {
                 @memcpy(buf + len, name);
                 len +%= name.len;
             }
+            buf[len] = 0;
+            len +%= 1;
         }
-        buf[len] = 0;
-        len +%= 1;
         return len;
     }
     pub fn formatLength(format: Format) u64 {
@@ -366,10 +379,17 @@ pub const Path = struct {
             for (format.names[1..format.names_len]) |name| {
                 len +%= 1 +% name.len;
             }
+            len +%= 1;
         }
-        return len +% 1;
+        return len;
     }
-    pub fn relative(path: *Path) [:0]const u8 {
+    pub fn formatParseArgs(allocator: anytype, _: [][*:0]u8, _: *usize, arg: [:0]const u8) Format {
+        var ret: Path = undefined;
+        mem.zero(Path, &ret);
+        ret.addName(allocator).* = arg;
+        return ret;
+    }
+    pub inline fn relative(path: *const Path) [:0]const u8 {
         return path.names[path.names_len -% 1];
     }
     pub fn concatenate(path: Path, allocator: anytype) [:0]u8 {
@@ -413,7 +433,57 @@ pub const Files = struct {
         }
         return len;
     }
+    pub fn formatParseArgs(args: [][*:0]u8, args_idx: *usize, _: [:0]const u8) Format {
+        _ = args_idx;
+        _ = args;
+    }
 };
+pub const Record = packed struct {
+    /// Build duration in milliseconds, max 50 days
+    durat: u32,
+    /// Output size in bytes, max 4GiB
+    size: u32,
+    /// Extra
+    detail: hist_tasks.BuildCommand,
+    pub fn init(job: *JobInfo, build_cmd: *types.BuildCommand) Record {
+        return .{
+            .durat = @as(u32, @intCast((job.ts.sec * 1_000) +% (job.ts.nsec / 1_000_000))),
+            .size = @as(u32, @intCast(job.st.size)),
+            .detail = hist_tasks.BuildCommand.convert(build_cmd),
+        };
+    }
+};
+pub fn GenericBuildCommand(comptime BuildCommand: type) type {
+    return struct {
+        pub fn addModule(cmd: *BuildCommand, allocator: *mem.SimpleAllocator, name: [:0]const u8, pathname: [:0]const u8) void {
+            @setRuntimeSafety(builtin.is_safe);
+            if (cmd.modules) |src| {
+                const dest: [*]types.Module = @ptrFromInt(allocator.allocateRaw(@sizeOf(types.Module) *% src.len +% 1, 8));
+                @memcpy(dest, src);
+                dest[src.len] = .{ .name = name, .path = pathname };
+                cmd.modules = dest[0 .. src.len +% 1];
+            } else {
+                const dest: [*]types.Module = @ptrFromInt(allocator.allocateRaw(@sizeOf(types.Module), 8));
+                dest[0] = .{ .name = name, .path = pathname };
+                cmd.modules = dest[0..1];
+            }
+        }
+        pub fn addModuleDependency(cmd: *BuildCommand, allocator: *mem.SimpleAllocator, name: [:0]const u8, pathname: [:0]const u8) void {
+            @setRuntimeSafety(builtin.is_safe);
+            cmd.addModule(allocator, name, pathname);
+            if (cmd.dependencies) |src| {
+                const dest: [*]ModuleDependency = @ptrFromInt(allocator.allocateRaw(@sizeOf(types.Module) *% src.len +% 1, 8));
+                @memcpy(dest, src);
+                dest[src.len] = .{ .name = name };
+                cmd.dependencies = dest[0 .. src.len +% 1];
+            } else {
+                const dest: [*]ModuleDependency = @ptrFromInt(allocator.allocateRaw(@sizeOf(types.Module), 8));
+                dest[0] = .{ .name = name };
+                cmd.dependencies = dest[0..1];
+            }
+        }
+    };
+}
 fn Aggregate(comptime T: type) type {
     return struct {
         value: []const T,
@@ -437,6 +507,10 @@ fn Aggregate(comptime T: type) type {
                 len = len +% value.formatLength();
             }
             return len;
+        }
+        pub fn formatParseArgs(args: [][*:0]u8, args_idx: *usize, _: u8) Format {
+            _ = args_idx;
+            _ = args;
         }
     };
 }
@@ -527,50 +601,4 @@ pub const JobInfo = struct {
         sys: u8,
         srv: u8,
     },
-};
-pub const Record = packed struct {
-    /// Build duration in milliseconds, max 50 days
-    durat: u32,
-    /// Output size in bytes, max 4GiB
-    size: u32,
-    /// Extra
-    detail: hist_tasks.BuildCommand,
-    pub fn init(job: *JobInfo, build_cmd: *types.BuildCommand) Record {
-        return .{
-            .durat = @as(u32, @intCast((job.ts.sec * 1_000) +% (job.ts.nsec / 1_000_000))),
-            .size = @as(u32, @intCast(job.st.size)),
-            .detail = hist_tasks.BuildCommand.convert(build_cmd),
-        };
-    }
-};
-pub const OldPath = struct {
-    absolute: [:0]const u8,
-    relative: [:0]const u8 = &.{},
-    const Format = @This();
-    pub fn formatWrite(format: Format, array: anytype) void {
-        array.writeMany(format.absolute);
-        if (format.relative.len != 0) {
-            array.writeOne('/');
-            array.writeMany(format.relative.len);
-        }
-        array.writeOne(0);
-    }
-    pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
-        @setRuntimeSafety(false);
-        var len: u64 = format.absolute.len;
-        @memcpy(buf, format.absolute);
-        if (format.relative.len != 0) {
-            buf[len] = '/';
-            len = len +% 1;
-            @memcpy(buf + len, format.relative);
-            len = len +% format.relative.len;
-        }
-        buf[len] = 0;
-        return len +% 1;
-    }
-    pub fn formatLength(format: Format) u64 {
-        var len: u64 = format.absolute.len;
-        len +%= 1 +% format.relative.len;
-        return len +% 1;
-    }
 };
