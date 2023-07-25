@@ -3,46 +3,21 @@ const types = struct {
     pub usingnamespace @import("./types.zig");
     pub usingnamespace @import("../types.zig");
 };
-
-const Listen = enum {
-    none,
-    @"-",
-    ipv4,
-};
-const BuildId = enum(u8) {
-    fast,
-    uuid,
-    sha1,
-    md5,
-    none,
-    _,
-};
-const LinkerFlags = enum {
-    nodelete,
-    notext,
-    defs,
-    origin,
-    nocopyreloc,
-    now,
-    lazy,
-    relro,
-    norelro,
-};
 const string_type: types.ProtoTypeDescrMap = .{
     .store = &types.ProtoTypeDescr.init([]const u8),
 };
 const optional_string_type: types.ProtoTypeDescrMap = .{
     .store = &types.ProtoTypeDescr.init(?[]const u8),
 };
-const repeatable_string_type: types.ProtoTypeDescrMap = .{
+const optional_repeatable_string_type: types.ProtoTypeDescrMap = .{
     .store = &types.ProtoTypeDescr.init(?[]const []const u8),
 };
 const integer_type: types.ProtoTypeDescrMap = .{
     .store = &types.ProtoTypeDescr.init(usize),
 };
 const listen_type: types.ProtoTypeDescrMap = .{
-    .store = &types.ProtoTypeDescr.init(?Listen),
-    .parse = &types.ProtoTypeDescr.init(Listen),
+    .store = &.{ .type_name = "?types.Listen" },
+    .parse = &types.ProtoTypeDescr.init(types.Listen),
 };
 const optional_integer_type: types.ProtoTypeDescrMap = .{
     .store = &types.ProtoTypeDescr.init(?usize),
@@ -78,12 +53,12 @@ const hmacro_slice_type: types.ProtoTypeDescrMap = .{
     .write = &.{ .type_name = "types.HMacros" },
 };
 const build_id_type: types.ProtoTypeDescrMap = .{
-    .store = &types.ProtoTypeDescr.init(?BuildId),
-    .parse = &types.ProtoTypeDescr.init(BuildId),
+    .store = &.{ .type_name = "?types.BuildId" },
+    .parse = &types.ProtoTypeDescr.init(types.BuildId),
 };
 const linker_flags_type: types.ProtoTypeDescrMap = .{
-    .store = &types.ProtoTypeDescr.init(?[]const LinkerFlags),
-    .parse = &types.ProtoTypeDescr.init(LinkerFlags),
+    .store = &types.ProtoTypeDescr.init(?[]const types.LinkerFlags),
+    .parse = &.{ .type_name = "types.LinkerFlags" },
 };
 const optimize_type: types.ProtoTypeDescrMap = .{
     .store = &.{ .type_name = "?builtin.OptimizeMode" },
@@ -194,7 +169,6 @@ pub const zig_build_command_attributes: types.Attributes = .{
             .tag = .optional_string_field,
             .type = optional_string_type,
             .descr = &.{"Override the local cache directory"},
-            .flags = .{ .never_parse = true },
         },
         .{
             .name = "global_cache_root",
@@ -202,7 +176,6 @@ pub const zig_build_command_attributes: types.Attributes = .{
             .tag = .optional_string_field,
             .type = optional_string_type,
             .descr = &.{"Override the global cache directory"},
-            .flags = .{ .never_parse = true },
         },
         .{
             .name = "zig_lib_root",
@@ -291,6 +264,7 @@ pub const zig_build_command_attributes: types.Attributes = .{
                 "ReleaseFast    Optimizations on, safety off",
                 "ReleaseSmall   Size optimizations on, safety off",
             },
+            .flags = .{ .do_parse = true },
         },
         .{
             .name = "passes",
@@ -459,22 +433,22 @@ pub const zig_build_command_attributes: types.Attributes = .{
         .{
             .name = "include",
             .string = "-I",
-            .tag = .repeatable_string_field,
-            .type = repeatable_string_type,
+            .tag = .optional_repeatable_string_field,
+            .type = optional_repeatable_string_type,
             .descr = &.{"Add directories to include search path"},
         },
         .{
             .name = "needed_library",
             .string = "--needed-library",
-            .tag = .repeatable_string_field,
-            .type = repeatable_string_type,
+            .tag = .optional_repeatable_string_field,
+            .type = optional_repeatable_string_type,
             .descr = &.{"Link against system library (even if unused)"},
         },
         .{
             .name = "library_directory",
             .string = "--library-directory",
-            .tag = .repeatable_string_field,
-            .type = repeatable_string_type,
+            .tag = .optional_repeatable_string_field,
+            .type = optional_repeatable_string_type,
             .descr = &.{"Add a directory to the library search path"},
         },
         .{
@@ -586,14 +560,14 @@ pub const zig_build_command_attributes: types.Attributes = .{
         },
         .{
             .name = "macros",
-            .tag = .optional_mapped_field,
+            .tag = .optional_repeatable_formatter_field,
             .type = optional_macro_slice_type,
             .descr = &.{"Define C macros available within the `@cImport` namespace"},
             .string = "-D",
         },
         .{
             .name = "modules",
-            .tag = .optional_mapped_field,
+            .tag = .optional_repeatable_formatter_field,
             .type = optional_module_slice_type,
             .descr = &.{"Define modules available as dependencies for the current target"},
             .string = "--mod",
@@ -636,9 +610,9 @@ pub const zig_build_command_attributes: types.Attributes = .{
             .descr = &.{"Bind global references locally"},
         },
         .{
-            .name = "z",
+            .name = "lflags",
             .string = "-z",
-            .tag = .repeatable_tag_field,
+            .tag = .optional_repeatable_tag_field,
             .type = linker_flags_type,
             .descr = &.{
                 "Set linker extension flags:",
@@ -655,6 +629,7 @@ pub const zig_build_command_attributes: types.Attributes = .{
                 "common-page-size=[bytes]   Set the common page size for ELF binaries",
                 "max-page-size=[bytes]      Set the max page size for ELF binaries",
             },
+            .flags = .{ .do_parse = false },
         },
         .{
             .name = "files",
@@ -1020,16 +995,16 @@ pub const llvm_tblgen_command_attributes: types.Attributes = .{
         .{
             .name = "include",
             .string = "-I",
-            .tag = .repeatable_string_field,
-            .type = repeatable_string_type,
+            .tag = .optional_repeatable_string_field,
+            .type = optional_repeatable_string_type,
             .char = types.ParamSpec.immediate,
             .descr = &.{"Add directories to include search path"},
         },
         .{
             .name = "dependencies",
             .string = "-d",
-            .tag = .repeatable_string_field,
-            .type = repeatable_string_type,
+            .tag = .optional_repeatable_string_field,
+            .type = optional_repeatable_string_type,
             .descr = &.{"Add file dependencies"},
         },
         .{
@@ -1267,8 +1242,8 @@ pub const harec_attributes: types.Attributes = .{
         .{
             .name = "tags",
             .string = "-T",
-            .tag = .repeatable_string_field,
-            .type = repeatable_string_type,
+            .tag = .optional_repeatable_string_field,
+            .type = optional_repeatable_string_type,
             .char = types.ParamSpec.immediate,
         },
         .{
