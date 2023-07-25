@@ -696,8 +696,8 @@ pub noinline fn panicUnwrapError(st: ?*builtin.StackTrace, err: anyerror) noretu
     }
     const ret_addr: usize = @returnAddress();
     var buf: [1024]u8 = undefined;
-    var len: usize = 24;
-    @as(*[24]u8, @ptrCast(&buf)).* = "error is discarded: ".*;
+    var len: usize = 20;
+    @as(*[20]u8, @ptrCast(&buf)).* = "error is discarded: ".*;
     @memcpy(buf[len..].ptr, @errorName(err));
     len +%= @errorName(err).len;
     builtin.panic(buf[0..len], st, ret_addr);
