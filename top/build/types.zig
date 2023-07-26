@@ -127,8 +127,8 @@ pub const Config = struct {
                 len +%= 11;
                 ud64 = @bitCast(value.len);
                 len +%= ud64.formatWriteBuf(buf + len);
-                @as(*[6]u8, @ptrCast(buf + len)).* = "]u8 = ".*;
-                len +%= 6;
+                @as(*[8]u8, @ptrCast(buf + len)).* = ":0]u8 = ".*;
+                len +%= 8;
                 buf[len] = '"';
                 len +%= 1;
                 @memcpy(buf + len, value);
@@ -436,8 +436,8 @@ pub const CFlags = struct {
 };
 pub const Path = extern struct {
     names: [*][:0]const u8,
-    names_max_len: u64 = 0,
-    names_len: u64 = 0,
+    names_max_len: u64 = 1,
+    names_len: u64 = 1,
     const Format = @This();
     pub fn formatWrite(format: Format, array: anytype) void {
         @setRuntimeSafety(false);
@@ -486,11 +486,7 @@ pub const Path = extern struct {
         }
         const names: [*][:0]const u8 = @ptrFromInt(allocator.allocateRaw(16, 8));
         names[0] = arg;
-        return .{
-            .names = names,
-            .names_len = 1,
-            .names_max_len = 1,
-        };
+        return .{ .names = names };
     }
     pub fn concatenate(path: Path, allocator: anytype) [:0]u8 {
         @setRuntimeSafety(false);
