@@ -524,20 +524,20 @@ const @"1" = opaque {
         if (builtin.runtime_assertions) {
             const what: []const u8 = @typeName(Format) ++ ".length(), ";
             if (builtin.is_fast or builtin.is_small) {
-                const s_len: u64 = format.formatLength();
-                const len_0: u64 = memory.impl.undefined_byte_address();
+                const s_len: usize = format.formatLength();
+                const len_0: usize = memory.impl.undefined_byte_address();
                 format.formatWrite(memory);
-                const len_1: u64 = memory.impl.undefined_byte_address();
-                const t_len: u64 = builtin.sub(u64, len_1, len_0);
+                const len_1: usize = memory.impl.undefined_byte_address();
+                const t_len: usize = builtin.sub(usize, len_1, len_0);
                 if (s_len < t_len) {
                     formatLengthFault(what, " >= ", s_len, t_len);
                 }
             } else {
-                const s_len: u64 = format.formatLength();
-                const len_0: u64 = memory.impl.undefined_byte_address();
+                const s_len: usize = format.formatLength();
+                const len_0: usize = memory.impl.undefined_byte_address();
                 format.formatWrite(memory);
-                const len_1: u64 = memory.impl.undefined_byte_address();
-                const t_len: u64 = builtin.sub(u64, len_1, len_0);
+                const len_1: usize = memory.impl.undefined_byte_address();
+                const t_len: usize = builtin.sub(usize, len_1, len_0);
                 if (t_len != s_len) {
                     formatLengthFault(what, " == ", s_len, t_len);
                 }
@@ -550,27 +550,26 @@ const @"1" = opaque {
         const help_read: bool = t_len > 99_999;
         const notation: []const u8 = if (help_read) ", i.e. " else "\n";
         var buf: [32768]u8 = undefined;
+        const ptr: [*]u8 = &buf;
         var len: usize = 0;
         var ud64: fmt.Type.Ud64 = @bitCast(t_len);
-        @memcpy(&buf, format_type_name);
+        @memcpy(ptr, format_type_name);
         len +%= format_type_name.len;
-        len +%= ud64.formatWriteBuf(buf[len..].ptr);
-        @as(*[operator_symbol.len]u8, @ptrCast(&buf)).* = operator_symbol.*;
+        len +%= ud64.formatWriteBuf(ptr + len);
+        @as(*[operator_symbol.len]u8, @ptrCast(ptr + len)).* = operator_symbol.*;
         len +%= operator_symbol.len;
         ud64 = @bitCast(s_len);
-        len +%= ud64.formatWriteBuf(buf[len..].ptr);
-        @memcpy(buf[len..].ptr, notation);
+        len +%= ud64.formatWriteBuf(ptr + len);
+        @memcpy(ptr + len, notation);
         if (help_read) {
             buf[len] = '0';
             len +%= 1;
-            @as(*[operator_symbol.len]u8, @ptrCast(&buf)).* = operator_symbol.*;
+            @as(*[operator_symbol.len]u8, @ptrCast(ptr + len)).* = operator_symbol.*;
             len +%= operator_symbol.len;
             ud64 = @bitCast(t_len -% s_len);
-            len +%= ud64.formatWriteBuf(buf[len..].ptr);
+            len +%= ud64.formatWriteBuf(ptr + len);
         }
-        buf[len] = '\n';
-        debug.write(buf[0 .. len +% 1]);
-        proc.exit(2);
+        @panic(ptr[0..len]);
     }
     pub fn lengthAny(comptime child: type, comptime write_spec: ReinterpretSpec, any: anytype) u64 {
         const dst_type: type = child;
