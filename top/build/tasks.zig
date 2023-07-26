@@ -2180,16 +2180,22 @@ pub const BuildCommand = struct {
                 args_idx +%= 1;
                 if (args_idx != args.len) {
                     cmd.cache_root = mach.manyToSlice80(args[args_idx]);
+                } else {
+                    return;
                 }
             } else if (mach.testEqualMany8("--global-cache-dir", arg)) {
                 args_idx +%= 1;
                 if (args_idx != args.len) {
                     cmd.global_cache_root = mach.manyToSlice80(args[args_idx]);
+                } else {
+                    return;
                 }
             } else if (mach.testEqualMany8("--zig-lib-dir", arg)) {
                 args_idx +%= 1;
                 if (args_idx != args.len) {
                     cmd.zig_lib_root = mach.manyToSlice80(args[args_idx]);
+                } else {
+                    return;
                 }
             } else if (mach.testEqualMany8("--listen", arg)) {
                 args_idx +%= 1;
@@ -2208,11 +2214,15 @@ pub const BuildCommand = struct {
                 args_idx +%= 1;
                 if (args_idx != args.len) {
                     cmd.target = mach.manyToSlice80(args[args_idx]);
+                } else {
+                    return;
                 }
             } else if (mach.testEqualMany8("-mcpu", arg)) {
                 args_idx +%= 1;
                 if (args_idx != args.len) {
                     cmd.cpu = mach.manyToSlice80(args[args_idx]);
+                } else {
+                    return;
                 }
             } else if (mach.testEqualMany8("-mcmodel", arg)) {
                 args_idx +%= 1;
@@ -2249,11 +2259,15 @@ pub const BuildCommand = struct {
                 args_idx +%= 1;
                 if (args_idx != args.len) {
                     cmd.exec_model = mach.manyToSlice80(args[args_idx]);
+                } else {
+                    return;
                 }
             } else if (mach.testEqualMany8("--name", arg)) {
                 args_idx +%= 1;
                 if (args_idx != args.len) {
                     cmd.name = mach.manyToSlice80(args[args_idx]);
+                } else {
+                    return;
                 }
             } else if (mach.testEqualMany8("-fsoname", arg)) {
                 args_idx +%= 1;
@@ -2287,6 +2301,8 @@ pub const BuildCommand = struct {
                 args_idx +%= 1;
                 if (args_idx != args.len) {
                     cmd.main_pkg_path = mach.manyToSlice80(args[args_idx]);
+                } else {
+                    return;
                 }
             } else if (mach.testEqualMany8("-fPIC", arg)) {
                 cmd.pic = true;
@@ -2389,21 +2405,29 @@ pub const BuildCommand = struct {
                 args_idx +%= 1;
                 if (args_idx != args.len) {
                     cmd.dirafter = mach.manyToSlice80(args[args_idx]);
+                } else {
+                    return;
                 }
             } else if (mach.testEqualMany8("-isystem", arg)) {
                 args_idx +%= 1;
                 if (args_idx != args.len) {
                     cmd.system = mach.manyToSlice80(args[args_idx]);
+                } else {
+                    return;
                 }
             } else if (mach.testEqualMany8("--libc", arg)) {
                 args_idx +%= 1;
                 if (args_idx != args.len) {
                     cmd.libc = mach.manyToSlice80(args[args_idx]);
+                } else {
+                    return;
                 }
             } else if (mach.testEqualMany8("--library", arg)) {
                 args_idx +%= 1;
                 if (args_idx != args.len) {
                     cmd.library = mach.manyToSlice80(args[args_idx]);
+                } else {
+                    return;
                 }
             } else if (mach.testEqualMany8("-I", arg[0..2])) {
                 if (arg.len == 2) {
@@ -2461,26 +2485,36 @@ pub const BuildCommand = struct {
                 args_idx +%= 1;
                 if (args_idx != args.len) {
                     cmd.link_script = mach.manyToSlice80(args[args_idx]);
+                } else {
+                    return;
                 }
             } else if (mach.testEqualMany8("--version-script", arg)) {
                 args_idx +%= 1;
                 if (args_idx != args.len) {
                     cmd.version_script = mach.manyToSlice80(args[args_idx]);
+                } else {
+                    return;
                 }
             } else if (mach.testEqualMany8("--dynamic-linker", arg)) {
                 args_idx +%= 1;
                 if (args_idx != args.len) {
                     cmd.dynamic_linker = mach.manyToSlice80(args[args_idx]);
+                } else {
+                    return;
                 }
             } else if (mach.testEqualMany8("--sysroot", arg)) {
                 args_idx +%= 1;
                 if (args_idx != args.len) {
                     cmd.sysroot = mach.manyToSlice80(args[args_idx]);
+                } else {
+                    return;
                 }
             } else if (mach.testEqualMany8("--entry", arg)) {
                 args_idx +%= 1;
                 if (args_idx != args.len) {
                     cmd.entry = mach.manyToSlice80(args[args_idx]);
+                } else {
+                    return;
                 }
             } else if (mach.testEqualMany8("-fLLD", arg)) {
                 cmd.lld = true;
@@ -2494,6 +2528,8 @@ pub const BuildCommand = struct {
                 args_idx +%= 1;
                 if (args_idx != args.len) {
                     cmd.rpath = mach.manyToSlice80(args[args_idx]);
+                } else {
+                    return;
                 }
             } else if (mach.testEqualMany8("-feach-lib-rpath", arg)) {
                 cmd.each_lib_rpath = true;
@@ -2621,6 +2657,8 @@ pub const BuildCommand = struct {
                 args_idx +%= 1;
                 if (args_idx != args.len) {
                     cmd.debug_log = mach.manyToSlice80(args[args_idx]);
+                } else {
+                    return;
                 }
             } else if (mach.testEqualMany8("--debug-compile-errors", arg)) {
                 cmd.debug_compiler_errors = true;
@@ -2764,6 +2802,8 @@ pub const FormatCommand = struct {
                 args_idx +%= 1;
                 if (args_idx != args.len) {
                     cmd.exclude = mach.manyToSlice80(args[args_idx]);
+                } else {
+                    return;
                 }
             }
             _ = allocator;
@@ -3039,6 +3079,8 @@ pub const ArchiveCommand = struct {
                 args_idx +%= 1;
                 if (args_idx != args.len) {
                     cmd.output = mach.manyToSlice80(args[args_idx]);
+                } else {
+                    return;
                 }
             } else if (mach.testEqualMany8("--thin", arg)) {
                 cmd.thin = true;
@@ -3232,11 +3274,15 @@ pub const ObjcopyCommand = struct {
                 args_idx +%= 1;
                 if (args_idx != args.len) {
                     cmd.output_target = mach.manyToSlice80(args[args_idx]);
+                } else {
+                    return;
                 }
             } else if (mach.testEqualMany8("--only-section", arg)) {
                 args_idx +%= 1;
                 if (args_idx != args.len) {
                     cmd.only_section = mach.manyToSlice80(args[args_idx]);
+                } else {
+                    return;
                 }
             } else if (mach.testEqualMany8("--strip-debug", arg)) {
                 cmd.strip_debug = true;
@@ -3248,11 +3294,15 @@ pub const ObjcopyCommand = struct {
                 args_idx +%= 1;
                 if (args_idx != args.len) {
                     cmd.add_gnu_debuglink = mach.manyToSlice80(args[args_idx]);
+                } else {
+                    return;
                 }
             } else if (mach.testEqualMany8("--extract-to", arg)) {
                 args_idx +%= 1;
                 if (args_idx != args.len) {
                     cmd.extract_to = mach.manyToSlice80(args[args_idx]);
+                } else {
+                    return;
                 }
             }
             _ = allocator;
