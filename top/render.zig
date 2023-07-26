@@ -449,12 +449,12 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
             var len: usize = 0;
             if (spec.inline_field_types) {
                 const type_format: TypeFormat(field_type_spec) = .{ .value = field_type };
-                len +%= field_name_format.formatWriteBuf(buf + len);
+                len +%= field_name_format.formatWriteBuf(buf);
                 @as(*[2]u8, @ptrCast(buf + len)).* = ": ".*;
                 len +%= 2;
                 len +%= type_format.formatWriteBuf(buf + len);
             } else {
-                len +%= field_name_format.formatWriteBuf(buf + len);
+                len +%= field_name_format.formatWriteBuf(buf);
                 @as(*[2]u8, @ptrCast(buf + len)).* = ": ".*;
                 len +%= 2;
                 @as(meta.TypeName(field_type), @ptrCast(buf + len)).* = @typeName(field_type).*;
@@ -672,7 +672,7 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                                 len +%= lengthDecl(format, decl);
                             }
                         }
-                        len +%= @intFromBool(struct_info.fields.len != 0 and omit_trailing_comma);
+                        len +%= @intFromBool(struct_info.fields.len != 0 and !omit_trailing_comma);
                     }
                 },
                 .Union => |union_info| {
@@ -691,7 +691,7 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                                 len +%= lengthDecl(format, decl);
                             }
                         }
-                        len +%= @intFromBool(union_info.fields.len != 0 and omit_trailing_comma);
+                        len +%= @intFromBool(union_info.fields.len != 0 and !omit_trailing_comma);
                     }
                 },
                 .Enum => |enum_info| {
@@ -710,7 +710,7 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                                 len +%= lengthDecl(format, decl);
                             }
                         }
-                        len +%= @intFromBool(enum_info.fields.len != 0 and omit_trailing_comma);
+                        len +%= @intFromBool(enum_info.fields.len != 0 and !omit_trailing_comma);
                     }
                 },
                 else => {
@@ -886,10 +886,9 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
         }
         pub fn formatWriteBuf(format: anytype, buf: [*]u8) usize {
             @setRuntimeSafety(builtin.is_safe);
-            var len: usize = 0;
+            var len: usize = @typeName(Struct).len;
+            @as(meta.TypeName(Struct), @ptrCast(buf)).* = @typeName(Struct).*;
             if (fields.len == 0) {
-                @as(meta.TypeName(Struct), @ptrCast(buf)).* = @typeName(Struct).*;
-                len +%= @typeName(Struct).len;
                 @as(*[2]u8, @ptrCast(buf + len)).* = "{}".*;
                 len +%= 2;
             } else {
@@ -910,6 +909,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                                 const view = meta.tagUnion(field.type, meta.Field(Struct, tag_field_name), field_value, @field(format.value, tag_field_name));
                                 len +%= writeFieldInitializerBuf(buf + len, field_name_format, render(field_spec, view));
                                 fields_len +%= 1;
+                                continue;
                             }
                         }
                     } else if (field_type_info == .Pointer) {
@@ -919,11 +919,13 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                                 const view = field_value[0..@field(format.value, len_field_name)];
                                 len +%= writeFieldInitializerBuf(buf + len, field_name_format, render(field_spec, view));
                                 fields_len +%= 1;
+                                continue;
                             }
                             if (spec.views.extern_resizeable and @hasField(Struct, len_field_name)) {
                                 const view = field_value[0..@field(format.value, len_field_name)];
                                 len +%= writeFieldInitializerBuf(buf + len, field_name_format, render(field_spec, view));
                                 fields_len +%= 1;
+                                continue;
                             }
                         }
                         if (field_type_info.Pointer.size == .Slice) {
@@ -931,6 +933,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                                 const view = field_value[0..@field(format.value, len_field_name)];
                                 len +%= writeFieldInitializerBuf(buf + len, field_name_format, render(field_spec, view));
                                 fields_len +%= 1;
+                                continue;
                             }
                         }
                     } else if (field_type_info == .Array) {
@@ -939,18 +942,18 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                             const view = field_value[0..@field(format.value, len_field_name)];
                             len +%= writeFieldInitializerBuf(buf + len, field_name_format, render(field_spec, view));
                             fields_len +%= 1;
+                            continue;
                         }
-                    } else {
-                        const field_format: AnyFormat(field_spec, field.type) = .{ .value = field_value };
-                        if (spec.omit_default_fields and field.default_value != null) {
-                            if (!mem.testEqual(field.type, field_value, mem.pointerOpaque(field.type, field.default_value.?).*)) {
-                                len +%= writeFieldInitializerBuf(buf + len, field_name_format, field_format);
-                                fields_len +%= 1;
-                            }
-                        } else {
+                    }
+                    const field_format: AnyFormat(field_spec, field.type) = .{ .value = field_value };
+                    if (spec.omit_default_fields and field.default_value != null) {
+                        if (!mem.testEqual(field.type, field_value, mem.pointerOpaque(field.type, field.default_value.?).*)) {
                             len +%= writeFieldInitializerBuf(buf + len, field_name_format, field_format);
                             fields_len +%= 1;
                         }
+                    } else {
+                        len +%= writeFieldInitializerBuf(buf + len, field_name_format, field_format);
+                        fields_len +%= 1;
                     }
                 }
                 len +%= writeTrailingCommaBuf(buf + len, omit_trailing_comma, fields_len);
@@ -975,6 +978,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                             const view = meta.tagUnion(field.type, meta.Field(tag_field_name), field_value, @field(format.value, tag_field_name));
                             len +%= 1 +% field_name_format.formatLength() +% 3 +% render(field_spec, view).formatLength() +% 2;
                             fields_len +%= 1;
+                            continue;
                         }
                     }
                 } else if (field_type_info == .Pointer) {
@@ -984,11 +988,13 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                             const view = field_value[0..@field(format.value, len_field_name)];
                             len +%= 1 +% field_name_format.formatLength() +% 3 +% render(field_spec, view).formatLength() +% 2;
                             fields_len +%= 1;
+                            continue;
                         }
                         if (spec.views.extern_resizeable and @hasField(Struct, len_field_name)) {
                             const view = field_value[0..@field(format.value, len_field_name)];
                             len +%= 1 +% field_name_format.formatLength() +% 3 +% render(field_spec, view).formatLength() +% 2;
                             fields_len +%= 1;
+                            continue;
                         }
                     }
                     if (field_type_info.Pointer.size == .Slice) {
@@ -996,26 +1002,27 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                             const view = field_value[0..@field(format.value, len_field_name)];
                             len +%= 1 +% field_name_format.formatLength() +% 3 +% render(field_spec, view).formatLength() +% 2;
                             fields_len +%= 1;
+                            continue;
                         }
                     }
                 } else if (field_type_info == .Array) {
                     const len_field_name: []const u8 = field.name ++ spec.names.len_field_suffix;
                     if (spec.views.static_resizeable and @hasField(Struct, len_field_name)) {
                         const view = field_value[0..@field(format.value, len_field_name)];
-                        len +%= 1 +% field_name_format.formatLength() +% 3 +% view.formatLength() +% 2;
+                        len +%= 1 +% field_name_format.formatLength() +% 3 +% render(field_spec, view).formatLength() +% 2;
                         fields_len +%= 1;
+                        continue;
                     }
-                } else {
-                    const field_format: AnyFormat(field_spec, field.type) = .{ .value = field_value };
-                    if (spec.omit_default_fields and field.default_value != null) {
-                        if (!mem.testEqual(field.type, field_value, mem.pointerOpaque(field.type, field.default_value.?).*)) {
-                            len +%= 1 +% field_name_format.formatLength() +% 3 +% field_format.formatLength() +% 2;
-                            fields_len +%= 1;
-                        }
-                    } else {
+                }
+                const field_format: AnyFormat(field_spec, field.type) = .{ .value = field_value };
+                if (spec.omit_default_fields and field.default_value != null) {
+                    if (!mem.testEqual(field.type, field_value, mem.pointerOpaque(field.type, field.default_value.?).*)) {
                         len +%= 1 +% field_name_format.formatLength() +% 3 +% field_format.formatLength() +% 2;
                         fields_len +%= 1;
                     }
+                } else {
+                    len +%= 1 +% field_name_format.formatLength() +% 3 +% field_format.formatLength() +% 2;
+                    fields_len +%= 1;
                 }
             }
             len +%= formatLengthOmitTrailingComma(omit_trailing_comma, fields_len);
@@ -1085,7 +1092,7 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
             var x: enum_info.Enum.tag_type = w;
             comptime var i: u64 = enum_info.Enum.fields.len;
             inline while (i != 0) {
-                i -= 1;
+                i -%= 1;
                 const field: builtin.Type.EnumField = enum_info.Enum.fields[i];
                 if (field.value != 0 or w == 0) {
                     const y: enum_info.Enum.tag_type = @field(format.value, fields[1].name) & field.value;
@@ -1124,7 +1131,7 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
             var x: enum_info.Enum.tag_type = w;
             comptime var i: u64 = enum_info.Enum.fields.len;
             inline while (i != 0) {
-                i -= 1;
+                i -%= 1;
                 const field: builtin.Type.EnumField = enum_info.Enum.fields[i];
                 if (field.value != 0 or w == 0) {
                     const y: enum_info.Enum.tag_type = @field(format.value, fields[1].name) & field.value;
@@ -1462,35 +1469,7 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
         const max_len: u64 = 65536;
         const omit_trailing_comma: bool = spec.omit_trailing_comma orelse true;
         const type_name: []const u8 = typeName(Pointer, spec);
-        pub fn formatLengthAny(format: anytype) u64 {
-            var len: u64 = 0;
-            if (format.value.len == 0) {
-                if (spec.infer_type_names) {
-                    len +%= 1;
-                }
-                len +%= type_name.len +% 2;
-            } else {
-                if (spec.infer_type_names) {
-                    len +%= 1;
-                }
-                len +%= type_name.len +% 2;
-                if (spec.enable_comptime_iterator and comptime fmt.requireComptime(child)) {
-                    inline for (format.value) |element| {
-                        const sub_format: ChildFormat = .{ .value = element };
-                        len +%= sub_format.formatLength() +% 2;
-                    }
-                } else {
-                    for (format.value) |element| {
-                        const sub_format: ChildFormat = .{ .value = element };
-                        len +%= sub_format.formatLength() +% 2;
-                    }
-                }
-                if (!omit_trailing_comma) {
-                    len +%= 1;
-                }
-            }
-            return len;
-        }
+
         pub fn formatWriteAny(format: anytype, array: anytype) void {
             if (format.value.len == 0) {
                 if (spec.infer_type_names) {
@@ -1524,12 +1503,99 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
                 }
             }
         }
+        pub fn formatWriteBufAny(format: anytype, buf: [*]u8) usize {
+            var len: usize = 0;
+            if (format.value.len == 0) {
+                if (spec.infer_type_names) {
+                    buf[0] = '&';
+                    len +%= 1;
+                }
+                @memcpy(buf + len, type_name);
+                len +%= type_name.len;
+                @as(*[2]u8, @ptrCast(buf + len)).* = "{}".*;
+                len +%= 2;
+            } else {
+                if (spec.infer_type_names) {
+                    buf[0] = '&';
+                    len +%= 1;
+                }
+                @memcpy(buf + len, type_name);
+                len +%= type_name.len;
+                @as(*[2]u8, @ptrCast(buf + len)).* = "{ ".*;
+                len +%= 2;
+                if (spec.enable_comptime_iterator and comptime fmt.requireComptime(child)) {
+                    inline for (format.value) |element| {
+                        const sub_format: ChildFormat = .{ .value = element };
+                        len +%= sub_format.formatWriteBuf(buf);
+                        @as(*[2]u8, @ptrCast(buf + len)).* = ", ".*;
+                        len +%= 2;
+                    }
+                } else {
+                    for (format.value) |element| {
+                        const sub_format: ChildFormat = .{ .value = element };
+                        len +%= sub_format.formatWriteBuf(buf);
+                        @as(*[2]u8, @ptrCast(buf + len)).* = ", ".*;
+                        len +%= 2;
+                    }
+                }
+                if (omit_trailing_comma) {
+                    @as(*[2]u8, @ptrCast(buf + len)).* = " }".*;
+                    len +%= 2;
+                } else {
+                    buf[len] = '}';
+                    len +%= 1;
+                }
+            }
+            return len;
+        }
+        pub fn formatLengthAny(format: anytype) u64 {
+            var len: u64 = 0;
+            if (format.value.len == 0) {
+                if (spec.infer_type_names) {
+                    len +%= 1;
+                }
+                len +%= type_name.len +% 2;
+            } else {
+                if (spec.infer_type_names) {
+                    len +%= 1;
+                }
+                len +%= type_name.len +% 2;
+                if (spec.enable_comptime_iterator and comptime fmt.requireComptime(child)) {
+                    inline for (format.value) |element| {
+                        const sub_format: ChildFormat = .{ .value = element };
+                        len +%= sub_format.formatLength() +% 2;
+                    }
+                } else {
+                    for (format.value) |element| {
+                        const sub_format: ChildFormat = .{ .value = element };
+                        len +%= sub_format.formatLength() +% 2;
+                    }
+                }
+                if (!omit_trailing_comma) {
+                    len +%= 1;
+                }
+            }
+            return len;
+        }
+
         const StringLiteral = fmt.GenericEscapedStringFormat(.{});
         pub fn formatLengthStringLiteral(format: anytype) u64 {
             var len: u64 = 0;
             len +%= 1;
             for (format.value) |c| {
                 len +%= fmt.esc(c).formatLength();
+            }
+            len +%= 1;
+            return len;
+        }
+        pub fn formatLengthMultiLineStringLiteral(format: Format) u64 {
+            var len: u64 = 3;
+            for (format.value) |c| {
+                switch (c) {
+                    '\t' => 2,
+                    '\n' => 3,
+                    else => 1,
+                }
             }
             len +%= 1;
             return len;
@@ -1552,15 +1618,38 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
             }
             array.writeOne('\n');
         }
-        pub fn formatLengthMultiLineStringLiteral(format: Format) u64 {
-            var len: u64 = 3;
-            for (format.value) |c| {
-                switch (c) {
-                    '\t' => 2,
-                    '\n' => 3,
-                    else => 1,
+        pub fn formatWriteBufStringLiteral(format: anytype, buf: [*]u8) usize {
+            var len: usize = 0;
+            buf[len] = '"';
+            len +%= 1;
+            for (format.value) |byte| {
+                len +%= fmt.esc(byte).formatWriteBuf(buf);
+            }
+            buf[len] = '"';
+            len +%= 1;
+            return len;
+        }
+        pub fn formatWriteBufMultiLineStringLiteral(format: anytype, buf: [*]u8) usize {
+            var len: usize = 0;
+            @as(*[3]u8, @ptrCast(buf + len)).* = "\n\\\\".*;
+            len +%= 3;
+            for (format.value) |byte| {
+                switch (byte) {
+                    '\t' => {
+                        @as(*[2]u8, @ptrCast(buf + len)).* = "\\t".*;
+                        len +%= 2;
+                    },
+                    '\n' => {
+                        @as(*[3]u8, @ptrCast(buf + len)).* = "\n\\\\".*;
+                        len +%= 3;
+                    },
+                    else => {
+                        buf[len] = byte;
+                        len +%= 1;
+                    },
                 }
             }
+            buf[len] = '\n';
             len +%= 1;
             return len;
         }
@@ -1593,6 +1682,31 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
                 }
             }
             return formatWriteAny(format, array);
+        }
+        pub fn formatWriteBuf(format: anytype, buf: [*]u8) usize {
+            var len: usize = 0;
+            if (spec.address_view) {
+                const addr_view_format: AddressFormat = .{ .value = @intFromPtr(format.value.ptr) };
+                len +%= addr_view_format.formatWriteBuf(buf);
+            }
+            if (child == u8) {
+                if (spec.multi_line_string_literal) |render_string_literal| {
+                    if (render_string_literal) {
+                        if (isMultiLine(format.value)) {
+                            len +%= formatWriteBufMultiLineStringLiteral(format, buf);
+                        } else {
+                            len +%= formatWriteBufStringLiteral(format, buf);
+                        }
+                    }
+                }
+                if (spec.string_literal) |render_string_literal| {
+                    if (render_string_literal) {
+                        const str_fmt: StringLiteral = .{ .value = format.value };
+                        len +%= str_fmt.formatWriteBuf(buf);
+                    }
+                }
+            }
+            return formatWriteBufAny(format, buf);
         }
         pub fn formatLength(format: anytype) u64 {
             if (spec.address_view) {
@@ -1752,7 +1866,7 @@ pub fn VectorFormat(comptime spec: RenderSpec, comptime Vector: type) type {
                 array.writeMany(type_name);
                 array.writeMany("{ ");
                 comptime var i: u64 = 0;
-                inline while (i != vector_info.Vector.len) : (i += 1) {
+                inline while (i != vector_info.Vector.len) : (i +%= 1) {
                     const element_format: ChildFormat = .{ .value = format.value[i] };
                     writeFormat(array, element_format);
                     array.writeCount(2, ", ".*);
@@ -1763,7 +1877,7 @@ pub fn VectorFormat(comptime spec: RenderSpec, comptime Vector: type) type {
         pub fn formatLength(format: Format) u64 {
             var len: u64 = type_name.len +% 2;
             comptime var i: u64 = 0;
-            inline while (i != vector_info.Vector.len) : (i += 1) {
+            inline while (i != vector_info.Vector.len) : (i +%= 1) {
                 const element_format: ChildFormat = .{ .value = format.value[i] };
                 len +%= element_format.formatLength() +% 2;
             }
