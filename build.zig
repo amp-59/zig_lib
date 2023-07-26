@@ -47,6 +47,7 @@ fn addTracer(node: *Node) void {
 }
 pub fn buildMain(allocator: *build.Allocator, toplevel: *Node) !void {
     tests(allocator, toplevel.addGroup(allocator, "tests"));
+    useCaseTests(allocator, toplevel.addGroup(allocator, "use_case_tests"));
     examples(allocator, toplevel.addGroup(allocator, "examples"));
     memgen(allocator, toplevel.addGroup(allocator, "memgen"));
     buildgen(allocator, toplevel.addGroup(allocator, "buildgen"));
@@ -219,7 +220,6 @@ fn tests(allocator: *build.Allocator, node: *Node) void {
     utils_test.descr = "Test crypto utility functions";
     hash_test.descr = "Test hashing functions";
     pcurves_test.descr = "Test point curve operations";
-    useCaseTests(allocator, node.addGroup(allocator, "use_case_tests"));
     const build_stress_test: *Node = node.addBuild(allocator, builder_exe, "build_stress_test", "test/build-test.zig");
     const build_runner_test: *Node = node.addBuild(allocator, builder_exe, "build_runner_test", "build_runner.zig");
     const zls_build_runner_test: *Node = node.addBuild(allocator, builder_exe, "zls_build_runner_test", "zls_build_runner.zig");
