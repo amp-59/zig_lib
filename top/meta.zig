@@ -147,6 +147,9 @@ pub fn maybe(comptime cond: bool, comptime T: type) type {
         },
     }
 }
+pub fn TypeName(comptime T: type) type {
+    return @TypeOf(@constCast(@typeName(T)));
+}
 /// Return a simple struct field
 pub fn structField(comptime T: type, comptime field_name: []const u8, comptime default_value_opt: ?T) builtin.Type.StructField {
     if (default_value_opt) |default_value| {
@@ -155,7 +158,7 @@ pub fn structField(comptime T: type, comptime field_name: []const u8, comptime d
             .type = T,
             .default_value = blk: {
                 if (@TypeOf(default_value) == ?*const anyopaque) {
-                    break :blk @as(*const anyopaque, @ptrCast(&default_value));
+                    break :blk @ptrCast(&default_value);
                 } else {
                     break :blk &default_value;
                 }
