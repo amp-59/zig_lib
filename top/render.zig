@@ -436,6 +436,7 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
             @as(*[2]u8, @ptrCast(buf + len)).* = ": ".*;
             len +%= 2;
             @memcpy(buf + len, type_name_s);
+            len +%= type_name_s.len;
             @as(*[3]u8, @ptrCast(buf + len)).* = " = ".*;
             len +%= 3;
             decl_format.formatWriteBuf(buf);
@@ -504,8 +505,8 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
             return len;
         }
         pub fn formatWriteBuf(comptime format: Format, buf: [*]u8) usize {
-            var len: usize = 0;
             const type_info: builtin.Type = @typeInfo(format.value);
+            var len: usize = 0;
             switch (type_info) {
                 .Struct => |struct_info| {
                     const decl_spec_s = comptime meta.sliceToArrayPointer(fmt.typeDeclSpecifier(type_info)).*;
@@ -520,19 +521,19 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                         @as(*[3]u8, @ptrCast(buf + len)).* = " { ".*;
                         len +%= 3;
                         inline for (struct_info.fields) |field| {
-                            len +%= writeStructFieldBuf(buf, field.name, field.type, meta.defaultValue(field));
+                            len +%= writeStructFieldBuf(buf + len, field.name, field.type, meta.defaultValue(field));
                         }
                         if (!spec.omit_container_decls) {
                             inline for (struct_info.decls) |decl| {
-                                len +%= writeDeclBuf(format, buf, decl);
+                                len +%= writeDeclBuf(format, buf + len, decl);
                             }
                             len +%= writeTrailingComma(
-                                buf,
+                                buf + len,
                                 omit_trailing_comma,
                                 struct_info.fields.len +% struct_info.decls.len,
                             );
                         } else {
-                            len +%= writeTrailingCommaBuf(buf, omit_trailing_comma, struct_info.fields.len);
+                            len +%= writeTrailingCommaBuf(buf + len, omit_trailing_comma, struct_info.fields.len);
                         }
                     }
                 },
@@ -549,19 +550,19 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                         @as(*[3]u8, @ptrCast(buf + len)).* = " { ".*;
                         len +%= 3;
                         inline for (union_info.fields) |field| {
-                            len +%= writeUnionFieldBuf(buf, field.name, field.type);
+                            len +%= writeUnionFieldBuf(buf + len, field.name, field.type);
                         }
                         if (!spec.omit_container_decls) {
                             inline for (union_info.decls) |decl| {
-                                len +%= writeDeclBuf(format, buf, decl);
+                                len +%= writeDeclBuf(format, buf + len, decl);
                             }
                             len +%= writeTrailingCommaBuf(
-                                buf,
+                                buf + len,
                                 omit_trailing_comma,
                                 union_info.fields.len +% union_info.decls.len,
                             );
                         } else {
-                            len +%= writeTrailingCommaBuf(buf, omit_trailing_comma, union_info.fields.len);
+                            len +%= writeTrailingCommaBuf(buf + len, omit_trailing_comma, union_info.fields.len);
                         }
                     }
                 },
@@ -578,19 +579,19 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                         @as(*[3]u8, @ptrCast(buf + len)).* = " { ".*;
                         len +%= 3;
                         inline for (enum_info.fields) |field| {
-                            len +%= writeEnumFieldBuf(buf, field.name);
+                            len +%= writeEnumFieldBuf(buf + len, field.name);
                         }
                         if (!spec.omit_container_decls) {
                             inline for (enum_info.decls) |decl| {
-                                len +%= writeDeclBuf(format, buf, decl);
+                                len +%= writeDeclBuf(format, buf + len, decl);
                             }
                             len +%= writeTrailingCommaBuf(
-                                buf,
+                                buf + len,
                                 omit_trailing_comma,
                                 enum_info.fields.len +% enum_info.decls.len,
                             );
                         } else {
-                            len +%= writeTrailingCommaBuf(buf, omit_trailing_comma, enum_info.fields.len);
+                            len +%= writeTrailingCommaBuf(buf + len, omit_trailing_comma, enum_info.fields.len);
                         }
                     }
                 },
@@ -602,103 +603,119 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
             }
             return len;
         }
+        fn lengthStructField(field_name: []const u8, comptime field_type: type, field_default_value: ?field_type) usize {
+            const field_name_format: fmt.IdentifierFormat = .{ .value = field_name };
+            var len: usize = 0;
+            if (spec.inline_field_types) {
+                const type_format: TypeFormat(field_type_spec) = .{ .value = field_type };
+                len +%= field_name_format.formatLength();
+                len +%= 2;
+                len +%= type_format.formatLength();
+            } else {
+                len +%= field_name_format.formatLength();
+                len +%= 2;
+                len +%= @typeName(field_type).len;
+            }
+            if (field_default_value) |default_value| {
+                const field_format: AnyFormat(default_value_spec, field_type) = .{ .value = default_value };
+                len +%= 3;
+                len +%= field_format.formatLength();
+            }
+            len +%= 2;
+            return len;
+        }
+        fn lengthUnionField(field_name: []const u8, comptime field_type: type) usize {
+            const field_name_format: fmt.IdentifierFormat = .{ .value = field_name };
+            var len: usize = 0;
+            if (field_type == void) {
+                len +%= field_name_format.formatLength();
+                len +%= 2;
+            } else {
+                if (spec.inline_field_types) {
+                    const type_format: TypeFormat(field_type_spec) = .{ .value = field_type };
+                    len +%= field_name_format.formatLength();
+                    len +%= 2;
+                    len +%= type_format.formatLength();
+                } else {
+                    len +%= field_name_format.formatLength();
+                    len +%= 2;
+                    len +%= @typeName(field_type).len;
+                }
+                len +%= 2;
+            }
+            return len;
+        }
+        fn lengthEnumField(field_name: []const u8) usize {
+            const field_name_format: fmt.IdentifierFormat = .{ .value = field_name };
+            var len: usize = 0;
+            len +%= field_name_format.formatLength();
+            len +%= 2;
+            return len;
+        }
         pub fn formatLength(comptime format: Format) u64 {
+            var len: usize = 0;
             const type_info: builtin.Type = @typeInfo(format.value);
-            var len: u64 = 0;
             switch (type_info) {
                 .Struct => |struct_info| {
+                    const decl_spec_s = comptime meta.sliceToArrayPointer(fmt.typeDeclSpecifier(type_info)).*;
                     if (struct_info.fields.len == 0 and struct_info.decls.len == 0) {
-                        len +%= comptime fmt.typeDeclSpecifier(type_info).len +% 3;
+                        len +%= decl_spec_s.len;
+                        len +%= 3;
                     } else {
-                        len +%= comptime fmt.typeDeclSpecifier(type_info).len +% 3;
+                        len +%= decl_spec_s.len;
+                        len +%= 3;
                         inline for (struct_info.fields) |field| {
-                            const field_name_format: fmt.IdentifierFormat = .{ .value = field.name };
-                            if (spec.inline_field_types) {
-                                const type_format: TypeFormat(field_type_spec) = .{ .value = field.type };
-                                len +%= field_name_format.formatLength() +% 2 +% type_format.formatLength();
-                            } else {
-                                len +%= field_name_format.formatLength() +% 2 +% typeName(field.type, field_type_spec).len;
-                            }
-                            if (meta.defaultValue(field)) |default_value| {
-                                const field_format: AnyFormat(default_value_spec, field.type) = .{ .value = default_value };
-                                len +%= 3;
-                                len +%= field_format.formatLength();
-                            }
-                            len +%= 2;
+                            len +%= lengthStructField(field.name, field.type, meta.defaultValue(field));
                         }
                         if (!spec.omit_container_decls) {
                             inline for (struct_info.decls) |decl| {
                                 len +%= lengthDecl(format, decl);
                             }
-                            len +%= formatLengthOmitTrailingComma(
-                                omit_trailing_comma,
-                                struct_info.fields.len +% struct_info.decls.len,
-                            );
-                        } else {
-                            len +%= formatLengthOmitTrailingComma(omit_trailing_comma, struct_info.fields.len);
                         }
-                        len +%= 1;
+                        len +%= @intFromBool(struct_info.fields.len != 0 and omit_trailing_comma);
                     }
                 },
                 .Union => |union_info| {
+                    const decl_spec_s = comptime meta.sliceToArrayPointer(fmt.typeDeclSpecifier(type_info)).*;
                     if (union_info.fields.len == 0 and union_info.decls.len == 0) {
-                        len +%= comptime fmt.typeDeclSpecifier(type_info).len +% 3;
+                        len +%= decl_spec_s.len;
+                        len +%= 3;
                     } else {
-                        len +%= comptime fmt.typeDeclSpecifier(type_info).len +% 3;
+                        len +%= decl_spec_s.len;
+                        len +%= 3;
                         inline for (union_info.fields) |field| {
-                            const field_name_format: fmt.IdentifierFormat = .{ .value = field.name };
-                            if (field.type == void) {
-                                len +%= field_name_format.formatLength() +% 2;
-                            } else {
-                                if (spec.inline_field_types) {
-                                    len +%= field_name_format.formatLength() +% 2;
-                                    const type_format: TypeFormat(field_type_spec) = .{ .value = field.type };
-                                    len +%= type_format.formatLength();
-                                } else {
-                                    len +%= field_name_format.formatLength() +% 2 +% typeName(field.type, field_type_spec).len;
-                                }
-                                len +%= 2;
-                            }
+                            len +%= lengthUnionField(field.name, field.type);
                         }
                         if (!spec.omit_container_decls) {
                             inline for (union_info.decls) |decl| {
                                 len +%= lengthDecl(format, decl);
                             }
-                            len +%= formatLengthOmitTrailingComma(
-                                omit_trailing_comma,
-                                union_info.fields.len +% union_info.decls.len,
-                            );
-                        } else {
-                            len +%= formatLengthOmitTrailingComma(omit_trailing_comma, union_info.fields.len);
                         }
-                        len +%= 1;
+                        len +%= @intFromBool(union_info.fields.len != 0 and omit_trailing_comma);
                     }
                 },
                 .Enum => |enum_info| {
+                    const decl_spec_s = comptime meta.sliceToArrayPointer(fmt.typeDeclSpecifier(type_info)).*;
                     if (enum_info.fields.len == 0 and enum_info.decls.len == 0) {
-                        len +%= comptime fmt.typeDeclSpecifier(type_info).len +% 3;
+                        len +%= decl_spec_s.len;
+                        len +%= 3;
                     } else {
-                        len +%= comptime fmt.typeDeclSpecifier(type_info).len +% 3;
+                        len +%= decl_spec_s.len;
+                        len +%= 3;
                         inline for (enum_info.fields) |field| {
-                            const field_name_format: fmt.IdentifierFormat = .{ .value = field.name };
-                            len +%= field_name_format.formatLength() +% 2;
+                            len +%= lengthEnumField(field.name);
                         }
                         if (!spec.omit_container_decls) {
                             inline for (enum_info.decls) |decl| {
                                 len +%= lengthDecl(format, decl);
                             }
-                            len +%= formatLengthOmitTrailingComma(
-                                omit_trailing_comma,
-                                enum_info.fields.len +% enum_info.decls.len,
-                            );
-                        } else {
-                            len +%= formatLengthOmitTrailingComma(omit_trailing_comma, enum_info.fields.len);
                         }
-                        len +%= 1;
+                        len +%= @intFromBool(enum_info.fields.len != 0 and omit_trailing_comma);
                     }
                 },
                 else => {
-                    len +%= typeName(format.value, spec).len;
+                    const type_name_s: []const u8 = comptime typeName(format.value, spec);
+                    len +%= type_name_s.len;
                 },
             }
             return len;
@@ -723,7 +740,7 @@ fn writeTrailingCommaBuf(buf: [*]u8, omit_trailing_comma: bool, fields_len: u64)
         (buf - 1)[0] = '}';
     } else {
         if (omit_trailing_comma) {
-            @as(*[2]u8, @ptrCast(buf - 2)).* = " }".*;
+            (buf + len)[0..2].* = " }".*;
         } else {
             buf[0] = '}';
             len +%= 1;
@@ -855,6 +872,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
             }
         }
         fn writeFieldInitializerBuf(buf: [*]u8, field_name_format: fmt.IdentifierFormat, field_format: anytype) usize {
+            @setRuntimeSafety(builtin.is_safe);
             var len: usize = 0;
             buf[0] = '.';
             len +%= 1;
@@ -867,6 +885,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
             return len;
         }
         pub fn formatWriteBuf(format: anytype, buf: [*]u8) usize {
+            @setRuntimeSafety(builtin.is_safe);
             var len: usize = 0;
             if (fields.len == 0) {
                 @as(meta.TypeName(Struct), @ptrCast(buf)).* = @typeName(Struct).*;
@@ -889,9 +908,8 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                             const tag_field_name: []const u8 = field.name ++ spec.names.tag_field_suffix;
                             if (spec.views.extern_tagged_union and @hasField(Struct, tag_field_name)) {
                                 const view = meta.tagUnion(field.type, meta.Field(Struct, tag_field_name), field_value, @field(format.value, tag_field_name));
-                                len +%= writeFieldInitializerBuf(buf, field_name_format, render(field_spec, view));
+                                len +%= writeFieldInitializerBuf(buf + len, field_name_format, render(field_spec, view));
                                 fields_len +%= 1;
-                                continue;
                             }
                         }
                     } else if (field_type_info == .Pointer) {
@@ -899,46 +917,43 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                         if (field_type_info.Pointer.size == .Many) {
                             if (spec.views.extern_slice and @hasField(Struct, len_field_name)) {
                                 const view = field_value[0..@field(format.value, len_field_name)];
-                                len +%= writeFieldInitializerBuf(buf, field_name_format, render(field_spec, view));
+                                len +%= writeFieldInitializerBuf(buf + len, field_name_format, render(field_spec, view));
                                 fields_len +%= 1;
-                                continue;
                             }
                             if (spec.views.extern_resizeable and @hasField(Struct, len_field_name)) {
                                 const view = field_value[0..@field(format.value, len_field_name)];
-                                len +%= writeFieldInitializerBuf(buf, field_name_format, render(field_spec, view));
+                                len +%= writeFieldInitializerBuf(buf + len, field_name_format, render(field_spec, view));
                                 fields_len +%= 1;
-                                continue;
                             }
                         }
                         if (field_type_info.Pointer.size == .Slice) {
                             if (spec.views.zig_resizeable and @hasField(Struct, len_field_name)) {
                                 const view = field_value[0..@field(format.value, len_field_name)];
-                                len +%= writeFieldInitializerBuf(buf, field_name_format, render(field_spec, view));
+                                len +%= writeFieldInitializerBuf(buf + len, field_name_format, render(field_spec, view));
                                 fields_len +%= 1;
-                                continue;
                             }
                         }
                     } else if (field_type_info == .Array) {
                         const len_field_name: []const u8 = field.name ++ spec.names.len_field_suffix;
                         if (spec.views.static_resizeable and @hasField(Struct, len_field_name)) {
                             const view = field_value[0..@field(format.value, len_field_name)];
-                            len +%= writeFieldInitializerBuf(buf, field_name_format, render(field_spec, view));
-                            fields_len +%= 1;
-                            continue;
-                        }
-                    }
-                    const field_format: AnyFormat(field_spec, field.type) = .{ .value = field_value };
-                    if (spec.omit_default_fields and field.default_value != null) {
-                        if (!mem.testEqual(field.type, field_value, mem.pointerOpaque(field.type, field.default_value.?).*)) {
-                            len +%= writeFieldInitializerBuf(buf, field_name_format, field_format);
+                            len +%= writeFieldInitializerBuf(buf + len, field_name_format, render(field_spec, view));
                             fields_len +%= 1;
                         }
                     } else {
-                        len +%= writeFieldInitializerBuf(buf, field_name_format, field_format);
-                        fields_len +%= 1;
+                        const field_format: AnyFormat(field_spec, field.type) = .{ .value = field_value };
+                        if (spec.omit_default_fields and field.default_value != null) {
+                            if (!mem.testEqual(field.type, field_value, mem.pointerOpaque(field.type, field.default_value.?).*)) {
+                                len +%= writeFieldInitializerBuf(buf + len, field_name_format, field_format);
+                                fields_len +%= 1;
+                            }
+                        } else {
+                            len +%= writeFieldInitializerBuf(buf + len, field_name_format, field_format);
+                            fields_len +%= 1;
+                        }
                     }
                 }
-                len +%= writeTrailingCommaBuf(buf, omit_trailing_comma, fields_len);
+                len +%= writeTrailingCommaBuf(buf + len, omit_trailing_comma, fields_len);
             }
             return len;
         }
@@ -960,7 +975,6 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                             const view = meta.tagUnion(field.type, meta.Field(tag_field_name), field_value, @field(format.value, tag_field_name));
                             len +%= 1 +% field_name_format.formatLength() +% 3 +% render(field_spec, view).formatLength() +% 2;
                             fields_len +%= 1;
-                            continue;
                         }
                     }
                 } else if (field_type_info == .Pointer) {
@@ -970,13 +984,11 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                             const view = field_value[0..@field(format.value, len_field_name)];
                             len +%= 1 +% field_name_format.formatLength() +% 3 +% render(field_spec, view).formatLength() +% 2;
                             fields_len +%= 1;
-                            continue;
                         }
                         if (spec.views.extern_resizeable and @hasField(Struct, len_field_name)) {
                             const view = field_value[0..@field(format.value, len_field_name)];
                             len +%= 1 +% field_name_format.formatLength() +% 3 +% render(field_spec, view).formatLength() +% 2;
                             fields_len +%= 1;
-                            continue;
                         }
                     }
                     if (field_type_info.Pointer.size == .Slice) {
@@ -984,7 +996,6 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                             const view = field_value[0..@field(format.value, len_field_name)];
                             len +%= 1 +% field_name_format.formatLength() +% 3 +% render(field_spec, view).formatLength() +% 2;
                             fields_len +%= 1;
-                            continue;
                         }
                     }
                 } else if (field_type_info == .Array) {
@@ -993,18 +1004,18 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                         const view = field_value[0..@field(format.value, len_field_name)];
                         len +%= 1 +% field_name_format.formatLength() +% 3 +% view.formatLength() +% 2;
                         fields_len +%= 1;
-                        continue;
                     }
-                }
-                const field_format: AnyFormat(field_spec, field.type) = .{ .value = field_value };
-                if (spec.omit_default_fields and field.default_value != null) {
-                    if (!mem.testEqual(field.type, field_value, mem.pointerOpaque(field.type, field.default_value.?).*)) {
+                } else {
+                    const field_format: AnyFormat(field_spec, field.type) = .{ .value = field_value };
+                    if (spec.omit_default_fields and field.default_value != null) {
+                        if (!mem.testEqual(field.type, field_value, mem.pointerOpaque(field.type, field.default_value.?).*)) {
+                            len +%= 1 +% field_name_format.formatLength() +% 3 +% field_format.formatLength() +% 2;
+                            fields_len +%= 1;
+                        }
+                    } else {
                         len +%= 1 +% field_name_format.formatLength() +% 3 +% field_format.formatLength() +% 2;
                         fields_len +%= 1;
                     }
-                } else {
-                    len +%= 1 +% field_name_format.formatLength() +% 3 +% field_format.formatLength() +% 2;
-                    fields_len +%= 1;
                 }
             }
             len +%= formatLengthOmitTrailingComma(omit_trailing_comma, fields_len);
