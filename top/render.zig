@@ -202,7 +202,7 @@ pub fn ArrayFormat(comptime spec: RenderSpec, comptime Array: type) type {
                     }
                 }
                 if (omit_trailing_comma) {
-                    @as(*[2]u8, @ptrCast(buf + len - 2)).* = ", ".*;
+                    @as(*[2]u8, @ptrCast(buf + len - 2)).* = " }".*;
                 } else {
                     buf[len] = '}';
                     len +%= 1;
@@ -358,13 +358,13 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                             inline for (struct_info.decls) |decl| {
                                 writeDecl(format, array, decl);
                             }
-                            formatWriteOmitTrailingComma(
+                            writeTrailingComma(
                                 array,
                                 omit_trailing_comma,
                                 struct_info.fields.len +% struct_info.decls.len,
                             );
                         } else {
-                            formatWriteOmitTrailingComma(array, omit_trailing_comma, struct_info.fields.len);
+                            writeTrailingComma(array, omit_trailing_comma, struct_info.fields.len);
                         }
                     }
                 },
@@ -380,13 +380,13 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                             inline for (union_info.decls) |decl| {
                                 writeDecl(format, array, decl);
                             }
-                            formatWriteOmitTrailingComma(
+                            writeTrailingComma(
                                 array,
                                 omit_trailing_comma,
                                 union_info.fields.len +% union_info.decls.len,
                             );
                         } else {
-                            formatWriteOmitTrailingComma(array, omit_trailing_comma, union_info.fields.len);
+                            writeTrailingComma(array, omit_trailing_comma, union_info.fields.len);
                         }
                     }
                 },
@@ -402,13 +402,13 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                             inline for (enum_info.decls) |decl| {
                                 writeDecl(format, array, decl);
                             }
-                            formatWriteOmitTrailingComma(
+                            writeTrailingComma(
                                 array,
                                 omit_trailing_comma,
                                 enum_info.fields.len +% enum_info.decls.len,
                             );
                         } else {
-                            formatWriteOmitTrailingComma(array, omit_trailing_comma, enum_info.fields.len);
+                            writeTrailingComma(array, omit_trailing_comma, enum_info.fields.len);
                         }
                     }
                 },
@@ -506,9 +506,9 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
         pub fn formatWriteBuf(comptime format: Format, buf: [*]u8) usize {
             var len: usize = 0;
             const type_info: builtin.Type = @typeInfo(format.value);
-            const decl_spec_s = comptime meta.sliceToArrayPointer(fmt.typeDeclSpecifier(type_info)).*;
             switch (type_info) {
                 .Struct => |struct_info| {
+                    const decl_spec_s = comptime meta.sliceToArrayPointer(fmt.typeDeclSpecifier(type_info)).*;
                     if (struct_info.fields.len == 0 and struct_info.decls.len == 0) {
                         @as(*@TypeOf(decl_spec_s), @ptrCast(buf + len)).* = decl_spec_s;
                         len +%= decl_spec_s.len;
@@ -520,23 +520,24 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                         @as(*[3]u8, @ptrCast(buf + len)).* = " { ".*;
                         len +%= 3;
                         inline for (struct_info.fields) |field| {
-                            writeStructFieldBuf(buf, field.name, field.type, meta.defaultValue(field));
+                            len +%= writeStructFieldBuf(buf, field.name, field.type, meta.defaultValue(field));
                         }
                         if (!spec.omit_container_decls) {
                             inline for (struct_info.decls) |decl| {
                                 len +%= writeDeclBuf(format, buf, decl);
                             }
-                            len +%= formatWriteOmitTrailingComma(
+                            len +%= writeTrailingComma(
                                 buf,
                                 omit_trailing_comma,
                                 struct_info.fields.len +% struct_info.decls.len,
                             );
                         } else {
-                            len +%= formatWriteBufOmitTrailingComma(buf, omit_trailing_comma, struct_info.fields.len);
+                            len +%= writeTrailingCommaBuf(buf, omit_trailing_comma, struct_info.fields.len);
                         }
                     }
                 },
                 .Union => |union_info| {
+                    const decl_spec_s = comptime meta.sliceToArrayPointer(fmt.typeDeclSpecifier(type_info)).*;
                     if (union_info.fields.len == 0 and union_info.decls.len == 0) {
                         @as(*@TypeOf(decl_spec_s), @ptrCast(buf + len)).* = decl_spec_s;
                         len +%= decl_spec_s.len;
@@ -554,17 +555,18 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                             inline for (union_info.decls) |decl| {
                                 len +%= writeDeclBuf(format, buf, decl);
                             }
-                            len +%= formatWriteBufOmitTrailingComma(
+                            len +%= writeTrailingCommaBuf(
                                 buf,
                                 omit_trailing_comma,
                                 union_info.fields.len +% union_info.decls.len,
                             );
                         } else {
-                            formatWriteBufOmitTrailingComma(buf, omit_trailing_comma, union_info.fields.len);
+                            len +%= writeTrailingCommaBuf(buf, omit_trailing_comma, union_info.fields.len);
                         }
                     }
                 },
                 .Enum => |enum_info| {
+                    const decl_spec_s = comptime meta.sliceToArrayPointer(fmt.typeDeclSpecifier(type_info)).*;
                     if (enum_info.fields.len == 0 and enum_info.decls.len == 0) {
                         @as(*@TypeOf(decl_spec_s), @ptrCast(buf + len)).* = decl_spec_s;
                         len +%= decl_spec_s.len;
@@ -582,13 +584,13 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                             inline for (enum_info.decls) |decl| {
                                 len +%= writeDeclBuf(format, buf, decl);
                             }
-                            len +%= formatWriteBufOmitTrailingComma(
+                            len +%= writeTrailingCommaBuf(
                                 buf,
                                 omit_trailing_comma,
                                 enum_info.fields.len +% enum_info.decls.len,
                             );
                         } else {
-                            len +%= formatWriteBufOmitTrailingComma(buf, omit_trailing_comma, enum_info.fields.len);
+                            len +%= writeTrailingCommaBuf(buf, omit_trailing_comma, enum_info.fields.len);
                         }
                     }
                 },
@@ -704,7 +706,7 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
     };
     return T;
 }
-inline fn formatWriteOmitTrailingComma(array: anytype, comptime omit_trailing_comma: bool, fields_len: u64) void {
+inline fn writeTrailingComma(array: anytype, comptime omit_trailing_comma: bool, fields_len: u64) void {
     if (fields_len == 0) {
         array.overwriteOneBack('}');
     } else {
@@ -715,7 +717,7 @@ inline fn formatWriteOmitTrailingComma(array: anytype, comptime omit_trailing_co
         }
     }
 }
-fn formatWriteBufOmitTrailingComma(buf: [*]u8, omit_trailing_comma: bool, fields_len: u64) usize {
+fn writeTrailingCommaBuf(buf: [*]u8, omit_trailing_comma: bool, fields_len: u64) usize {
     var len: usize = 0;
     if (fields_len == 0) {
         (buf - 1)[0] = '}';
@@ -747,12 +749,11 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
         value: Struct,
         const Format = @This();
         const undef: Struct = @as(Struct, undefined);
-        const type_name: []const u8 = typeName(Struct, spec);
         const fields: []const builtin.Type.StructField = @typeInfo(Struct).Struct.fields;
         const omit_trailing_comma: bool = spec.omit_trailing_comma orelse false;
         const max_len: u64 = blk: {
             var len: u64 = 0;
-            len +%= type_name.len +% 2;
+            len +%= @typeName(Struct).len +% 2;
             if (fields.len == 0) {
                 len +%= 1;
             } else {
@@ -785,11 +786,11 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
         }
         pub fn formatWrite(format: anytype, array: anytype) void {
             if (fields.len == 0) {
-                array.writeMany(type_name ++ "{}");
+                array.writeMany(@typeName(Struct) ++ "{}");
             } else {
                 comptime var field_idx: usize = 0;
                 var fields_len: usize = 0;
-                array.writeMany(type_name ++ "{ ");
+                array.writeMany(@typeName(Struct) ++ "{ ");
                 inline while (field_idx != fields.len) : (field_idx +%= 1) {
                     const field: builtin.Type.StructField = fields[field_idx];
                     const field_name_format: fmt.IdentifierFormat = .{ .value = field.name };
@@ -850,12 +851,100 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                         fields_len +%= 1;
                     }
                 }
-                formatWriteOmitTrailingComma(array, omit_trailing_comma, fields_len);
+                writeTrailingComma(array, omit_trailing_comma, fields_len);
             }
+        }
+        fn writeFieldInitializerBuf(buf: [*]u8, field_name_format: fmt.IdentifierFormat, field_format: anytype) usize {
+            var len: usize = 0;
+            buf[0] = '.';
+            len +%= 1;
+            len +%= field_name_format.formatWriteBuf(buf + len);
+            @as(*[3]u8, @ptrCast(buf + len)).* = " = ".*;
+            len +%= 3;
+            len +%= field_format.formatWriteBuf(buf + len);
+            @as(*[2]u8, @ptrCast(buf + len)).* = ", ".*;
+            len +%= 2;
+            return len;
+        }
+        pub fn formatWriteBuf(format: anytype, buf: [*]u8) usize {
+            var len: usize = 0;
+            if (fields.len == 0) {
+                @as(meta.TypeName(Struct), @ptrCast(buf)).* = @typeName(Struct).*;
+                len +%= @typeName(Struct).len;
+                @as(*[2]u8, @ptrCast(buf + len)).* = "{}".*;
+                len +%= 2;
+            } else {
+                comptime var field_idx: usize = 0;
+                var fields_len: usize = 0;
+                @as(*[2]u8, @ptrCast(buf + len)).* = "{ ".*;
+                len +%= 2;
+                inline while (field_idx != fields.len) : (field_idx +%= 1) {
+                    const field: builtin.Type.StructField = fields[field_idx];
+                    const field_name_format: fmt.IdentifierFormat = .{ .value = field.name };
+                    const field_value: field.type = @field(format.value, field.name);
+                    const field_type_info: builtin.Type = @typeInfo(field.type);
+                    const field_spec: RenderSpec = if (meta.DistalChild(field.type) == type) field_spec_if_type else field_spec_if_not_type;
+                    if (field_type_info == .Union) {
+                        if (field_type_info.Union.layout != .Auto) {
+                            const tag_field_name: []const u8 = field.name ++ spec.names.tag_field_suffix;
+                            if (spec.views.extern_tagged_union and @hasField(Struct, tag_field_name)) {
+                                const view = meta.tagUnion(field.type, meta.Field(Struct, tag_field_name), field_value, @field(format.value, tag_field_name));
+                                len +%= writeFieldInitializerBuf(buf, field_name_format, render(field_spec, view));
+                                fields_len +%= 1;
+                                continue;
+                            }
+                        }
+                    } else if (field_type_info == .Pointer) {
+                        const len_field_name: []const u8 = field.name ++ spec.names.len_field_suffix;
+                        if (field_type_info.Pointer.size == .Many) {
+                            if (spec.views.extern_slice and @hasField(Struct, len_field_name)) {
+                                const view = field_value[0..@field(format.value, len_field_name)];
+                                len +%= writeFieldInitializerBuf(buf, field_name_format, render(field_spec, view));
+                                fields_len +%= 1;
+                                continue;
+                            }
+                            if (spec.views.extern_resizeable and @hasField(Struct, len_field_name)) {
+                                const view = field_value[0..@field(format.value, len_field_name)];
+                                len +%= writeFieldInitializerBuf(buf, field_name_format, render(field_spec, view));
+                                fields_len +%= 1;
+                                continue;
+                            }
+                        }
+                        if (field_type_info.Pointer.size == .Slice) {
+                            if (spec.views.zig_resizeable and @hasField(Struct, len_field_name)) {
+                                const view = field_value[0..@field(format.value, len_field_name)];
+                                len +%= writeFieldInitializerBuf(buf, field_name_format, render(field_spec, view));
+                                fields_len +%= 1;
+                                continue;
+                            }
+                        }
+                    } else if (field_type_info == .Array) {
+                        const len_field_name: []const u8 = field.name ++ spec.names.len_field_suffix;
+                        if (spec.views.static_resizeable and @hasField(Struct, len_field_name)) {
+                            const view = field_value[0..@field(format.value, len_field_name)];
+                            len +%= writeFieldInitializerBuf(buf, field_name_format, render(field_spec, view));
+                            fields_len +%= 1;
+                            continue;
+                        }
+                    }
+                    const field_format: AnyFormat(field_spec, field.type) = .{ .value = field_value };
+                    if (spec.omit_default_fields and field.default_value != null) {
+                        if (!mem.testEqual(field.type, field_value, mem.pointerOpaque(field.type, field.default_value.?).*)) {
+                            len +%= writeFieldInitializerBuf(buf, field_name_format, field_format);
+                            fields_len +%= 1;
+                        }
+                    } else {
+                        len +%= writeFieldInitializerBuf(buf, field_name_format, field_format);
+                        fields_len +%= 1;
+                    }
+                }
+                len +%= writeTrailingCommaBuf(buf, omit_trailing_comma, fields_len);
+            }
+            return len;
         }
         pub fn formatLength(format: anytype) u64 {
             var len: u64 = 0;
-            len +%= type_name.len +% 2;
+            len +%= @typeName(Struct).len +% 2;
             comptime var field_idx: usize = 0;
             var fields_len: usize = 0;
             inline while (field_idx != fields.len) : (field_idx +%= 1) {
@@ -1217,38 +1306,41 @@ pub fn IntFormat(comptime spec: RenderSpec, comptime Int: type) type {
             }
             break :blk len;
         };
-        pub fn formatWrite(format: Format, array: anytype) void {
-            const start: u64 = @intFromPtr(array.referOneUndefined());
-            var next: u64 = start;
+        pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
+            @setRuntimeSafety(false);
+            var len: u64 = 0;
             if (Abs != Int) {
-                @as(*u8, @ptrFromInt(next)).* = '-';
+                buf[0] = '-';
             }
-            next += @intFromBool(format.value < 0);
+            len +%= @intFromBool(format.value < 0);
             if (radix != 10) {
-                @as(*[prefix.len]u8, @ptrFromInt(next)).* =
-                    @as(*const [prefix.len]u8, @ptrCast(prefix.ptr)).*;
-                next +%= prefix.len;
+                @as(*[prefix.len]u8, @ptrCast(buf + len)).* = prefix.*;
+                len +%= prefix.len;
             }
-            const absolute: Abs = if (format.value < 0)
-                1 +% ~@as(Abs, @bitCast(format.value))
-            else
-                @as(Abs, @bitCast(format.value));
-            var value: Abs = absolute;
             if (radix > max_abs_value) {
-                @as(*u8, @ptrFromInt(next)).* = @as(u8, '0') +
-                    @intFromBool(format.value != 0);
-                next += 1;
+                buf[len] = '0' +% @as(u8, @intFromBool(format.value != 0));
+                len +%= 1;
             } else {
-                const count: u64 = fmt.length(Abs, absolute, radix);
-                next += count;
-                var len: u64 = 0;
-                while (len != count) : (value /= radix) {
-                    len +%= 1;
-                    @as(*u8, @ptrFromInt(next -% len)).* =
+                var value: Abs = if (format.value < 0)
+                    1 +% ~@as(Abs, @bitCast(format.value))
+                else
+                    @as(Abs, @bitCast(format.value));
+                const count: u64 = fmt.length(Abs, value, radix);
+                len +%= count;
+                var pos: u64 = 0;
+                while (pos != count) : (value /= radix) {
+                    pos +%= 1;
+                    buf[len -% pos] =
                         fmt.toSymbol(Abs, value, radix);
                 }
             }
-            array.define(next -% start);
+            return len;
+        }
+        pub fn formatWrite(format: Format, array: anytype) void {
+            array.define(@call(.always_inline, formatWriteBuf, .{
+                format,
+                @as([*]u8, @ptrCast(array.referOneUndefined())),
+            }));
         }
         pub fn formatLength(format: Format) u64 {
             var len: u64 = prefix.len;
