@@ -2656,13 +2656,16 @@ pub const about = struct {
     fn seekNotice(fd: u64, offset: u64, whence: Whence, to: u64) void {
         @setRuntimeSafety(builtin.is_safe);
         var buf: [32768]u8 = undefined;
-        var len: usize = 0;
+        var len: usize = seek_s.len;
+        @as(fmt.AboutDest, @ptrCast(&buf)).* = seek_s.*;
         @as(*[3]u8, @ptrCast(buf[len..].ptr)).* = "fd=".*;
         len +%= 3;
         len +%= fmt.ud64(fd).formatWriteBuf(buf[len..].ptr);
         @as(*[6]u8, @ptrCast(buf[len..].ptr)).* = ", cur=".*;
         len +%= 6;
         len +%= fmt.ud64(to).formatWriteBuf(buf[len..].ptr);
+        @as(*[2]u8, @ptrCast(buf[len..].ptr)).* = ", ".*;
+        len +%= 2;
         @memcpy(buf[len..].ptr, @tagName(whence));
         len +%= @tagName(whence).len;
         buf[len] = '+';
