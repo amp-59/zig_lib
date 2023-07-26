@@ -4,8 +4,10 @@ const spec = zl.spec;
 const build = zl.build;
 const debug = zl.debug;
 const builtin = zl.builtin;
+
 pub const Node = build.GenericNode(.{});
 pub const logging_override: debug.Logging.Override = spec.logging.override.silent;
+
 var build_cmd: build.BuildCommand = .{
     .kind = .exe,
     .mode = .ReleaseSmall,
@@ -13,12 +15,13 @@ var build_cmd: build.BuildCommand = .{
     .stack_protector = false,
     .image_base = 0x10000,
     .strip = true,
-    .compiler_rt = false,
     .reference_trace = true,
     .single_threaded = true,
     .function_sections = true,
     .gc_sections = true,
     .omit_frame_pointer = false,
+    .dependencies = &.{.{ .name = "zig_lib" }},
+    .modules = &.{.{ .name = "zig_lib", .path = build.root ++ "/zig_lib.zig" }},
 };
 const format_cmd: build.FormatCommand = .{
     .ast_check = true,
@@ -77,28 +80,28 @@ fn memgen(allocator: *build.Allocator, node: *Node) void {
     mg_specs.task.info.build.mode = .Debug;
     mg_alloc.task.info.format.ast_check = false;
     node.task.tag = .format;
-    addTracer(mg_alloc_impls);
 }
 fn examples(allocator: *build.Allocator, node: *Node) void {
-    build_cmd.kind = .exe;
-    build_cmd.strip = true;
-    build_cmd.mode = .ReleaseSmall;
-    const readdir: *Node = node.addBuild(allocator, build_cmd, "readdir", "examples/dir_iterator.zig");
-    const dynamic: *Node = node.addBuild(allocator, build_cmd, "dynamic", "examples/dynamic_alloc.zig");
-    const custom: *Node = node.addBuild(allocator, build_cmd, "addrspace", "examples/addrspace.zig");
-    const allocators: *Node = node.addBuild(allocator, build_cmd, "allocators", "examples/allocators.zig");
-    const display: *Node = node.addBuild(allocator, build_cmd, "display", "examples/display.zig");
-    const mca: *Node = node.addBuild(allocator, build_cmd, "mca", "examples/mca.zig");
-    const treez: *Node = node.addBuild(allocator, build_cmd, "treez", "examples/treez.zig");
-    const itos: *Node = node.addBuild(allocator, build_cmd, "itos", "examples/itos.zig");
-    const catz: *Node = node.addBuild(allocator, build_cmd, "catz", "examples/catz.zig");
-    const statz: *Node = node.addBuild(allocator, build_cmd, "statz", "examples/statz.zig");
-    const perf: *Node = node.addBuild(allocator, build_cmd, "perf", "examples/perf_events.zig");
-    const cleanup: *Node = node.addBuild(allocator, build_cmd, "cleanup", "examples/cleanup.zig");
-    const hello: *Node = node.addBuild(allocator, build_cmd, "hello", "examples/hello.zig");
-    const pathsplit: *Node = node.addBuild(allocator, build_cmd, "pathsplit", "examples/pathsplit.zig");
-    const declprint: *Node = node.addBuild(allocator, build_cmd, "declprint", "examples/declprint.zig");
-    const pipeout: *Node = node.addBuild(allocator, .{ .kind = .exe, .mode = .Debug, .strip = false }, "pipeout", "examples/pipeout.zig");
+    var eg_build_cmd: build.BuildCommand = build_cmd;
+    eg_build_cmd.kind = .exe;
+    eg_build_cmd.strip = true;
+    eg_build_cmd.mode = .ReleaseSmall;
+    const readdir: *Node = node.addBuild(allocator, eg_build_cmd, "readdir", "examples/dir_iterator.zig");
+    const dynamic: *Node = node.addBuild(allocator, eg_build_cmd, "dynamic", "examples/dynamic_alloc.zig");
+    const custom: *Node = node.addBuild(allocator, eg_build_cmd, "addrspace", "examples/addrspace.zig");
+    const allocators: *Node = node.addBuild(allocator, eg_build_cmd, "allocators", "examples/allocators.zig");
+    const display: *Node = node.addBuild(allocator, eg_build_cmd, "display", "examples/display.zig");
+    const mca: *Node = node.addBuild(allocator, eg_build_cmd, "mca", "examples/mca.zig");
+    const treez: *Node = node.addBuild(allocator, eg_build_cmd, "treez", "examples/treez.zig");
+    const itos: *Node = node.addBuild(allocator, eg_build_cmd, "itos", "examples/itos.zig");
+    const catz: *Node = node.addBuild(allocator, eg_build_cmd, "catz", "examples/catz.zig");
+    const statz: *Node = node.addBuild(allocator, eg_build_cmd, "statz", "examples/statz.zig");
+    const perf: *Node = node.addBuild(allocator, eg_build_cmd, "perf", "examples/perf_events.zig");
+    const cleanup: *Node = node.addBuild(allocator, eg_build_cmd, "cleanup", "examples/cleanup.zig");
+    const hello: *Node = node.addBuild(allocator, eg_build_cmd, "hello", "examples/hello.zig");
+    const pathsplit: *Node = node.addBuild(allocator, eg_build_cmd, "pathsplit", "examples/pathsplit.zig");
+    const declprint: *Node = node.addBuild(allocator, eg_build_cmd, "declprint", "examples/declprint.zig");
+    const pipeout: *Node = node.addBuild(allocator, eg_build_cmd, "pipeout", "examples/pipeout.zig");
     readdir.descr = "Shows how to iterate directory entries";
     dynamic.descr = "Shows how to allocate dynamic memory";
     custom.descr = "Shows a complex custom address space";
@@ -120,30 +123,36 @@ fn examples(allocator: *build.Allocator, node: *Node) void {
     node.task.tag = .build;
 }
 fn useCaseTests(allocator: *build.Allocator, node: *Node) void {
-    const std_lib_cfg_pkg: *Node = node.addBuild(allocator, build_cmd, "user_std_lib_cfg_pkg", "test/user/std_lib_cfg_pkg.zig");
-    const std_lib_pkg: *Node = node.addBuild(allocator, build_cmd, "user_std_lib_pkg", "test/user/std_lib_pkg.zig");
-    const std_lib_cfg: *Node = node.addBuild(allocator, build_cmd, "user_std_lib_cfg", "test/user/std_lib_cfg.zig");
-    const std_lib: *Node = node.addBuild(allocator, build_cmd, "user_std_lib", "test/user/std_lib.zig");
+    var uc_build_cmd: build.BuildCommand = build_cmd;
+    const std_lib_cfg_pkg: *Node = node.addBuild(allocator, uc_build_cmd, "user_std_lib_cfg_pkg", "test/user/std_lib_cfg_pkg.zig");
+    const std_lib_pkg: *Node = node.addBuild(allocator, uc_build_cmd, "user_std_lib_pkg", "test/user/std_lib_pkg.zig");
+    const std_lib_cfg: *Node = node.addBuild(allocator, uc_build_cmd, "user_std_lib_cfg", "test/user/std_lib_cfg.zig");
+    const std_lib: *Node = node.addBuild(allocator, uc_build_cmd, "user_std_lib", "test/user/std_lib.zig");
     std_lib_cfg_pkg.descr = "Standard builtin, with build configuration, library package";
     std_lib_cfg.descr = "Standard builtin, with build configuration, without library package";
     std_lib_pkg.descr = "Standard builtin, without build configuration, with library package";
     std_lib.descr = "Standard builtin, without build configuration, without library package";
-    std_lib_cfg_pkg.addModuleDependency(allocator, "zl", build.root ++ ".zig");
-    std_lib_pkg.addModuleDependency(allocator, "zl", build.root ++ ".zig");
-    std_lib_pkg.flags.build.configure_root = false;
-    std_lib.flags.build.configure_root = false;
+    std_lib_pkg.flags.build.do_configure = false;
+    std_lib.flags.build.do_configure = false;
+    std_lib_cfg.task.info.build.dependencies = &.{};
+    std_lib.task.info.build.dependencies = &.{};
+    std_lib_cfg.task.info.build.modules = &.{};
+    std_lib.task.info.build.modules = &.{};
     node.task.tag = .build;
 }
 fn tests(allocator: *build.Allocator, node: *Node) void {
-    const debug_exe = spec.add(build_cmd, .{ .mode = .Debug, .strip = false });
-    const debug_obj = spec.add(debug_exe, .{ .kind = .obj, .gc_sections = false });
-    const builder_exe = spec.add(debug_exe, .{
-        .modules = &.{.{ .name = "@build", .path = "./build.zig" }},
-        .dependencies = &.{.{ .name = "@build" }},
-    });
+    var quick_exe: build.BuildCommand = build_cmd;
+    quick_exe.mode = .Debug;
+    var debug_exe: build.BuildCommand = quick_exe;
+    debug_exe.strip = false;
+    var debug_obj: build.BuildCommand = debug_exe;
+    debug_obj.kind = .obj;
+    debug_obj.gc_sections = false;
+    var builder_exe: build.BuildCommand = debug_exe;
+    builder_exe.modules = &.{.{ .name = "@build", .path = "./build.zig" }};
+    builder_exe.dependencies = &.{.{ .name = "@build" }};
     const decl_test: *Node = node.addBuild(allocator, build_cmd, "decl_test", "test/decl-test.zig");
     const builtin_test: *Node = node.addBuild(allocator, build_cmd, "builtin_test", "test/builtin-test.zig");
-    addTracer(builtin_test);
     const meta_test: *Node = node.addBuild(allocator, build_cmd, "meta_test", "test/meta-test.zig");
     const gen_test: *Node = node.addBuild(allocator, build_cmd, "gen_test", "test/gen-test.zig");
     const algo_test: *Node = node.addBuild(allocator, build_cmd, "algo_test", "test/algo-test.zig");
@@ -165,10 +174,6 @@ fn tests(allocator: *build.Allocator, node: *Node) void {
     const proc_test: *Node = node.addBuild(allocator, build_cmd, "proc_test", "test/proc-test.zig");
     const debug_test: *Node = node.addBuild(allocator, debug_exe, "debug_test", "test/debug-test.zig");
     const debug2_test: *Node = node.addBuild(allocator, debug_obj, "debug2_test", "test/debug2-test.zig");
-    const build_stress_test: *Node = node.addBuild(allocator, builder_exe, "build_stress_test", "test/build-test.zig");
-    const build_runner_test: *Node = node.addBuild(allocator, builder_exe, "build_runner_test", "build_runner.zig");
-    const zls_build_runner_test: *Node = node.addBuild(allocator, builder_exe, "zls_build_runner_test", "zls_build_runner.zig");
-    const cmdline_writer_test: *Node = node.addBuild(allocator, builder_exe, "cmdline_test", "test/cmdline-test.zig");
     const serial_test: *Node = node.addBuild(allocator, builder_exe, "serial_test", "test/serial-test.zig");
     builtin_test.descr = "Test builtin functions";
     mem_test.descr = "Test low level memory management functions and basic container/allocator usage";
@@ -193,35 +198,7 @@ fn tests(allocator: *build.Allocator, node: *Node) void {
     virtual_test.descr = "Test address spaces, sub address spaces, and arenas";
     size_test.descr = "Test sizes of various things";
     debug_test.descr = "Test debugging functions";
-    build_runner_test.descr = "Test library build runner using the library build program";
-    zls_build_runner_test.descr = "Test ZLS special build runner";
-    cmdline_writer_test.descr = "Test generated command line writer functions";
-    build_stress_test.descr = "Try to produce builder errors";
     algo_test.task.info.build.mode = .ReleaseFast;
-    cryptoTests(allocator, node.addGroup(allocator, "crypto_tests"));
-    useCaseTests(allocator, node.addGroup(allocator, "use_case_tests"));
-    for ([_]*Node{
-        build_runner_test,   zls_build_runner_test,
-        cmdline_writer_test, serial_test,
-        build_stress_test,
-    }) |target| {
-        target.addToplevelArgs(allocator);
-    }
-    fmt_cmp_test.task.info.build.mode = .ReleaseFast;
-    node.task.tag = .build;
-    addTracer(proc_test);
-    debug2_test.flags.do_update = true;
-    debug_test.dependOnObject(allocator, debug2_test);
-}
-fn cryptoTests(allocator: *build.Allocator, node: *Node) void {
-    const mode_save: ?builtin.Mode = build_cmd.mode;
-    const strip_save: ?bool = build_cmd.strip;
-    build_cmd.mode = .Debug;
-    build_cmd.strip = true;
-    defer {
-        build_cmd.mode = mode_save;
-        build_cmd.strip = strip_save;
-    }
     const rng_test: *Node = node.addBuild(allocator, build_cmd, "rng_test", "test/rng-test.zig");
     const ecdsa_test: *Node = node.addBuild(allocator, build_cmd, "ecdsa_test", "test/crypto/ecdsa-test.zig");
     const aead_test: *Node = node.addBuild(allocator, build_cmd, "aead_test", "test/crypto/aead-test.zig");
@@ -242,20 +219,45 @@ fn cryptoTests(allocator: *build.Allocator, node: *Node) void {
     utils_test.descr = "Test crypto utility functions";
     hash_test.descr = "Test hashing functions";
     pcurves_test.descr = "Test point curve operations";
-    //const kyber_test: *Node = node.addBuild(allocator, build_cmd, "kyber_test", "test/crypto/kyber-test.zig");
-    //kyber_test.descr = "Test post-quantum 'Kyber' key exchange functions and types";
+    useCaseTests(allocator, node.addGroup(allocator, "use_case_tests"));
+    const build_stress_test: *Node = node.addBuild(allocator, builder_exe, "build_stress_test", "test/build-test.zig");
+    const build_runner_test: *Node = node.addBuild(allocator, builder_exe, "build_runner_test", "build_runner.zig");
+    const zls_build_runner_test: *Node = node.addBuild(allocator, builder_exe, "zls_build_runner_test", "zls_build_runner.zig");
+    const cmdline_writer_test: *Node = node.addBuild(allocator, quick_exe, "cmdline_writer_test", "test/cmdline-writer-test.zig");
+    const cmdline_parser_test: *Node = node.addBuild(allocator, quick_exe, "cmdline_parser_test", "test/cmdline-parser-test.zig");
+    build_runner_test.descr = "Test library build runner using the library build program";
+    zls_build_runner_test.descr = "Test ZLS special build runner";
+    cmdline_writer_test.descr = "Test generated command line writer functions";
+    cmdline_parser_test.descr = "Test generated command line parser functions";
+    build_stress_test.descr = "Try to produce builder errors";
+    for ([_]*Node{
+        build_runner_test,   zls_build_runner_test,
+        cmdline_writer_test, serial_test,
+        build_stress_test,
+    }) |builder_test_node| {
+        builder_test_node.addToplevelArgs(allocator);
+    }
+    fmt_cmp_test.task.info.build.mode = .ReleaseFast;
+    node.task.tag = .build;
+    addTracer(proc_test);
+    debug2_test.flags.do_update = true;
+    debug_test.dependOnObject(allocator, debug2_test);
 }
 fn buildgen(allocator: *build.Allocator, node: *Node) void {
+    var bg_build_cmd: build.BuildCommand = build_cmd;
+    var bg_format_cmd: build.FormatCommand = format_cmd;
+    bg_build_cmd.mode = .Debug;
+    bg_build_cmd.strip = true;
     const bg_aux: *Node = node.addGroup(allocator, "_buildgen");
-    const bg_tasks_impls: *Node = bg_aux.addBuild(allocator, build_cmd, "bg_tasks_impls", "top/build/gen/tasks_impls.zig");
-    const bg_tasks: *Node = node.addFormat(allocator, format_cmd, "bg_tasks", "top/build/tasks.zig");
+    const bg_tasks_impls: *Node = bg_aux.addBuild(allocator, bg_build_cmd, "bg_tasks_impls", "top/build/gen/tasks_impls.zig");
+    const bg_tasks: *Node = node.addFormat(allocator, bg_format_cmd, "bg_tasks", "top/build/tasks.zig");
+    const bg_hist_tasks_impls: *Node = bg_aux.addBuild(allocator, bg_build_cmd, "bg_hist_tasks_impls", "top/build/gen/hist_tasks_impls.zig");
+    const bg_hist_tasks: *Node = node.addFormat(allocator, bg_format_cmd, "bg_hist_tasks", "top/build/hist_tasks.zig");
     bg_tasks.dependOn(allocator, bg_tasks_impls, .run);
-    bg_tasks_impls.descr = "Generate builder command line data structures";
-    bg_tasks.descr = "Reformat generated builder command line data structures into canonical form";
-    const bg_hist_tasks_impls: *Node = bg_aux.addBuild(allocator, build_cmd, "bg_hist_tasks_impls", "top/build/gen/hist_tasks_impls.zig");
-    const bg_hist_tasks: *Node = node.addFormat(allocator, format_cmd, "bg_hist_tasks", "top/build/hist_tasks.zig");
     bg_hist_tasks_impls.dependOn(allocator, bg_tasks, .format);
     bg_hist_tasks.dependOn(allocator, bg_hist_tasks_impls, .run);
+    bg_tasks_impls.descr = "Generate builder command line data structures";
+    bg_tasks.descr = "Reformat generated builder command line data structures into canonical form";
     bg_hist_tasks_impls.descr = "Generate packed summary types for builder history";
     bg_hist_tasks.descr = "Reformat generated history task data structures into canonical form";
     node.task.tag = .format;
