@@ -571,16 +571,16 @@ pub fn futexWait(comptime futex_spec: FutexSpec, futex: *u32, value: u32, timeou
 ) {
     const logging: debug.Logging.AttemptSuccessAcquireReleaseError = comptime futex_spec.logging.override();
     if (logging.Attempt) {
-        debug.futexWaitAttempt(futex, value, timeout);
+        about.futexWaitAttempt(futex, value, timeout);
     }
     if (meta.wrap(sys.call(.futex, futex_spec.errors, futex_spec.return_type, .{ @intFromPtr(futex), 0, value, @intFromPtr(timeout), 0, 0 }))) |ret| {
         if (logging.Acquire) {
-            debug.futexWaitNotice(futex, value, timeout);
+            about.futexWaitNotice(futex, value, timeout);
         }
         return ret;
     } else |futex_error| {
         if (logging.Error) {
-            debug.futexWaitError(futex_error, futex, value, timeout);
+            about.futexWaitError(futex_error, futex, value, timeout);
         }
         return futex_error;
     }
@@ -591,18 +591,18 @@ pub fn futexWake(comptime futex_spec: FutexSpec, futex: *u32, count: u32) sys.Er
 ) {
     const logging: debug.Logging.AttemptSuccessAcquireReleaseError = comptime futex_spec.logging.override();
     if (logging.Attempt) {
-        debug.futexWakeAttempt(futex, count);
+        about.futexWakeAttempt(futex, count);
     }
     if (meta.wrap(sys.call(.futex, futex_spec.errors, u32, .{ @intFromPtr(futex), 1, count, 0, 0, 0 }))) |ret| {
         if (logging.Release) {
-            debug.futexWakeNotice(futex, count, ret);
+            about.futexWakeNotice(futex, count, ret);
         }
         if (futex_spec.return_type != void) {
             return ret;
         }
     } else |futex_error| {
         if (logging.Error) {
-            debug.futexWakeError(futex_error, futex, count);
+            about.futexWakeError(futex_error, futex, count);
         }
         return futex_error;
     }
@@ -613,17 +613,17 @@ pub fn futexWakeOp(comptime futex_spec: FutexSpec, futex1: *u32, futex2: *u32, c
 ) {
     const logging: debug.Logging.AttemptSuccessAcquireReleaseError = comptime futex_spec.logging.override();
     if (logging.Attempt) {
-        debug.futexWakeOpAttempt(futex1, futex2, count1, count2, wake_op);
+        about.futexWakeOpAttempt(futex1, futex2, count1, count2, wake_op);
     }
     if (meta.wrap(sys.call(.futex, futex_spec.errors, u32, .{
         @intFromPtr(futex1), 5, count1, count2, @intFromPtr(futex2), @as(u32, @bitCast(wake_op)),
     }))) |ret| {
         if (logging.Acquire) {
-            debug.futexWakeOpNotice(futex1, futex2, count1, count2, wake_op, ret);
+            about.futexWakeOpNotice(futex1, futex2, count1, count2, wake_op, ret);
         }
     } else |futex_error| {
         if (logging.Error) {
-            debug.futexWakeOpError(futex_error, futex1, futex2, count1, count2, wake_op);
+            about.futexWakeOpError(futex_error, futex1, futex2, count1, count2, wake_op);
         }
         return futex_error;
     }
@@ -972,6 +972,7 @@ pub fn load(comptime Fn: type, vdso_addr: u64, symbol: [:0]const u8) ?Fn {
     return null;
 }
 pub fn sectionAddress(ehdr_addr: u64, symbol: [:0]const u8) ?u64 {
+    @setRuntimeSafety(builtin.is_safe);
     const ehdr: *exe.Elf64_Ehdr = @ptrFromInt(ehdr_addr);
     var symtab_addr: u64 = 0;
     var strtab_addr: u64 = 0;

@@ -2593,7 +2593,6 @@ pub const about = struct {
         var len: usize = copy_s.len;
         var ud64: fmt.Type.Ud64 = @bitCast(src_fd);
         @as(fmt.AboutDest, @ptrCast(&buf)).* = copy_s.*;
-
         @as(*[7]u8, @ptrCast(buf[len..].ptr)).* = "src_fd=".*;
         len +%= 7;
         len +%= ud64.formatWriteBuf(buf[len..].ptr);
