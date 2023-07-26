@@ -1270,6 +1270,14 @@ pub fn EnumFormat(comptime spec: RenderSpec, comptime Enum: type) type {
             array.writeOne('.');
             writeFormat(array, tag_name_format);
         }
+        pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
+            if (spec.enum_to_int) {
+                return IntFormat(spec, type_info.Enum.tag_type).formatWriteBuf(.{ .value = @intFromEnum(format.value) }, buf);
+            }
+            const tag_name_format: fmt.IdentifierFormat = .{ .value = @tagName(format.value) };
+            buf[0] = '.';
+            return 1 +% tag_name_format.formatWriteBuf(buf + 1);
+        }
         pub fn formatLength(format: Format) u64 {
             if (spec.enum_to_int) {
                 return IntFormat(spec, type_info.Enum.tag_type).formatLength(.{ .value = @intFromEnum(format.value) });
