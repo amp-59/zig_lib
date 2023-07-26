@@ -1000,9 +1000,11 @@ pub const IdentifierFormat = struct {
             len +%= format.value.len;
         } else {
             @as(*[2]u8, @ptrCast(buf + len)).* = "@\"".*;
-            @memcpy(buf, format.value);
+            len +%= 2;
+            @memcpy(buf + len, format.value);
             len +%= format.value.len;
             buf[len] = '"';
+            len +%= 1;
         }
         return len;
     }
