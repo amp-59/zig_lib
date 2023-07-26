@@ -370,6 +370,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             };
         };
         const special = struct {
+            pub var toplevel: *Node = undefined;
             pub var trace: *Node = undefined;
         };
         pub const specification: BuilderSpec = builder_spec;
@@ -850,19 +851,18 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             node.addDep(allocator).* = .{ .task = .run, .on_node = node, .on_task = .build, .on_state = .finished };
         }
         pub const impl = struct {
-            fn install(src_pathname: [:0]u8, dest_pathname: [:0]const u8) void {
+            fn install(_: *Node, src_pathname: [:0]u8, dest_pathname: [:0]const u8) void {
                 file.unlink(unlink(), dest_pathname);
                 file.link(link(), src_pathname, dest_pathname);
             }
-            fn clientLoop(allocator: *mem.SimpleAllocator, job: *types.JobInfo, out: file.Pipe, dest_pathname: [:0]const u8) void {
+            fn clientLoop(allocator: *mem.SimpleAllocator, node: *Node, job: *types.JobInfo, out: file.Pipe, dest_pathname: [:0]const u8) void {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
                 const header: *types.Message.ServerHeader = allocator.create(types.Message.ServerHeader);
                 const save: u64 = allocator.next;
-                defer allocator.next = save;
                 var fd: file.PollFd = .{ .fd = out.read, .expect = .{ .input = true } };
                 while (try meta.wrap(file.pollOne(poll(), &fd, builder_spec.options.timeout_milliseconds))) {
                     try meta.wrap(file.readOne(read3(), out.read, header));
-                    const ptrs: MessagePtrs = .{ .msg = allocator.allocateAligned(u8, header.bytes_len +% 8, 4).ptr };
+                    const ptrs: MessagePtrs = .{ .msg = allocator.allocateAligned(u8, header.bytes_len +% 64, 4).ptr };
                     mach.memset(ptrs.msg, 0, header.bytes_len +% 1);
                     var len: usize = 0;
                     while (len != header.bytes_len) {
@@ -870,7 +870,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     }
                     if (header.tag == .emit_bin_path) break {
                         job.ret.srv = ptrs.msg[0];
-                        install(mach.manyToSlice80(ptrs.str + 1), dest_pathname);
+                        install(node, mach.manyToSlice80(ptrs.str + 1), dest_pathname);
                     };
                     if (header.tag == .error_bundle) break {
                         job.ret.srv = builder_spec.options.compiler_error_status;
@@ -882,30 +882,29 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             }
             fn system(args: [][*:0]u8, job: *types.JobInfo) void {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
-                const zig_exe: [:0]const u8 = mach.manyToSlice80(args[0]);
+                const exe: [:0]const u8 = mach.manyToSlice80(args[0]);
                 job.ts = try meta.wrap(time.get(clock(), .realtime));
                 const pid: u64 = try meta.wrap(proc.fork(fork()));
                 if (pid == 0) {
-                    try meta.wrap(file.execPath(execve(), zig_exe, args, build.vars));
+                    try meta.wrap(file.execPath(execve(), exe, args, build.vars));
                 }
                 const ret: proc.Return = try meta.wrap(proc.waitPid(waitpid(), .{ .pid = pid }));
                 job.ts = time.diff(try meta.wrap(time.get(clock(), .realtime)), job.ts);
                 job.ret.sys = proc.Status.exit(ret.status);
             }
-            fn server(allocator: *mem.SimpleAllocator, args: [][*:0]u8, job: *types.JobInfo, dest_pathname: [:0]const u8) void {
+            fn server(allocator: *mem.SimpleAllocator, node: *Node, args: [][*:0]u8, job: *types.JobInfo, dest_pathname: [:0]const u8) void {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
-                const zig_exe: [:0]const u8 = mach.manyToSlice80(build.args[1]);
                 const in: file.Pipe = try meta.wrap(file.makePipe(pipe()));
                 const out: file.Pipe = try meta.wrap(file.makePipe(pipe()));
                 job.ts = try meta.wrap(time.get(clock(), .realtime));
                 const pid: u64 = try meta.wrap(proc.fork(fork()));
                 if (pid == 0) {
                     try meta.wrap(openChild(in, out));
-                    try meta.wrap(file.execPath(execve(), zig_exe, args, build.vars));
+                    try meta.wrap(file.execPath(execve(), build.zig_exe, args, build.vars));
                 }
                 try meta.wrap(openParent(in, out));
                 try meta.wrap(file.write(write2(), in.write, &update_exit_message));
-                try meta.wrap(clientLoop(allocator, job, out, dest_pathname));
+                try meta.wrap(clientLoop(allocator, node, job, out, dest_pathname));
                 const rc: proc.Return = try meta.wrap(proc.waitPid(waitpid(), .{ .pid = pid }));
                 job.ts = time.diff(try meta.wrap(time.get(clock(), .realtime)), job.ts);
                 job.ret.sys = proc.Status.exit(rc.status);
@@ -914,30 +913,30 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             }
             fn buildWrite(allocator: *mem.SimpleAllocator, cmd: *types.BuildCommand, obj_paths: []const types.Path) [:0]u8 {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
-                const max_len: usize = builder_spec.options.max_cmdline_len orelse cmd.formatLength(mach.manyToSlice80(build.args[1]), obj_paths);
+                const max_len: usize = builder_spec.options.max_cmdline_len orelse cmd.formatLength(build.zig_exe, obj_paths);
                 const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
-                const len: usize = cmd.formatWriteBuf(mach.manyToSlice80(build.args[1]), obj_paths, buf);
+                const len: usize = cmd.formatWriteBuf(build.zig_exe, obj_paths, buf);
                 return buf[0..len :0];
             }
             fn objcopyWrite(allocator: *mem.SimpleAllocator, cmd: *types.ObjcopyCommand, obj_path: types.Path) [:0]u8 {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
-                const max_len: usize = builder_spec.options.max_cmdline_len orelse cmd.formatLength(mach.manyToSlice80(build.args[1]), obj_path);
+                const max_len: usize = builder_spec.options.max_cmdline_len orelse cmd.formatLength(build.zig_exe, obj_path);
                 const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
-                const len: usize = cmd.formatWriteBuf(mach.manyToSlice80(build.args[1]), obj_path, buf);
+                const len: usize = cmd.formatWriteBuf(build.zig_exe, obj_path, buf);
                 return buf[0..len :0];
             }
             fn archiveWrite(allocator: *mem.SimpleAllocator, cmd: *types.ArchiveCommand, obj_paths: []const types.Path) [:0]u8 {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
-                const max_len: usize = builder_spec.options.max_cmdline_len orelse cmd.formatLength(mach.manyToSlice80(build.args[1]), obj_paths);
+                const max_len: usize = builder_spec.options.max_cmdline_len orelse cmd.formatLength(build.zig_exe, obj_paths);
                 const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
-                const len: usize = cmd.formatWriteBuf(mach.manyToSlice80(build.args[1]), obj_paths, buf);
+                const len: usize = cmd.formatWriteBuf(build.zig_exe, obj_paths, buf);
                 return buf[0..len :0];
             }
             fn formatWrite(allocator: *mem.SimpleAllocator, cmd: *types.FormatCommand, root_path: types.Path) [:0]u8 {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
-                const max_len: usize = builder_spec.options.max_cmdline_len orelse cmd.formatLength(mach.manyToSlice80(build.args[1]), root_path);
+                const max_len: usize = builder_spec.options.max_cmdline_len orelse cmd.formatLength(build.zig_exe, root_path);
                 const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
-                const len: usize = cmd.formatWriteBuf(mach.manyToSlice80(build.args[1]), root_path, buf);
+                const len: usize = cmd.formatWriteBuf(build.zig_exe, root_path, buf);
                 return buf[0..len :0];
             }
             fn runWrite(allocator: *mem.SimpleAllocator, node: *Node, args: [][*:0]u8) [][*:0]u8 {
@@ -950,6 +949,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             inline fn taskArgs(allocator: *mem.SimpleAllocator, toplevel: *const Node, node: *Node, task: types.Task) [][*:0]u8 {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
                 if (do_build and task == .build) {
+                    node.task.info.build.formatParseArgs(allocator, build.args[build.cmd_idx..build.task_idx]);
                     return makeArgPtrs(allocator, try meta.wrap(buildWrite(allocator, node.task.info.build, node.impl.paths[1..node.impl.paths_len])));
                 }
                 if (do_format and task == .format) {
@@ -987,7 +987,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                             old_size = job.st.size;
                         }
                         if (task == .build) {
-                            try meta.wrap(impl.server(allocator, args, job, name));
+                            try meta.wrap(impl.server(allocator, node, args, job, name));
                         } else {
                             try meta.wrap(impl.system(args, job));
                         }
@@ -1286,14 +1286,15 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             try meta.wrap(file.close(close(), out.write));
         }
         const binary_prefix: [:0]const u8 = builder_spec.options.names.zig_out_dir ++ "/" ++ builder_spec.options.names.exe_out_dir ++ "/";
+        const library_prefix: [:0]const u8 = builder_spec.options.names.zig_out_dir ++ "/" ++ builder_spec.options.names.lib_out_dir ++ "/lib";
         const archive_prefix: [:0]const u8 = builder_spec.options.names.zig_out_dir ++ "/" ++ builder_spec.options.names.lib_out_dir ++ "/lib";
         const auxiliary_prefix: [:0]const u8 = builder_spec.options.names.zig_out_dir ++ "/" ++ builder_spec.options.names.aux_out_dir ++ "/";
         fn binaryRelative(allocator: *mem.SimpleAllocator, name: [:0]u8, kind: types.OutputMode) [:0]const u8 {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             return concatenate(allocator, switch (kind) {
                 .exe => &[_][]const u8{ binary_prefix, name },
-                .lib => &[_][]const u8{ binary_prefix, name, builder_spec.options.extensions.lib },
                 .obj => &[_][]const u8{ binary_prefix, name, builder_spec.options.extensions.obj },
+                .lib => &[_][]const u8{ library_prefix, name, builder_spec.options.extensions.lib },
             });
         }
         fn archiveRelative(allocator: *mem.SimpleAllocator, name: [:0]u8) [:0]const u8 {
@@ -1321,11 +1322,19 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             maybe_task: ?types.Task,
         ) ?bool {
             @setRuntimeSafety(builder_spec.options.enable_safety);
-            const name: [:0]const u8 = mach.manyToSlice80(build.args[build.cmd_idx]);
+            var name: [:0]const u8 = mach.manyToSlice80(build.args[build.cmd_idx]);
             if (mach.testEqualMany8(name, node.name)) {
                 toplevel.impl.args_len = build.cmd_idx +% 1;
+                build.task_idx = build.cmd_idx;
+                while (build.task_idx != build.args.len) : (build.task_idx +%= 1) {
+                    name = mach.manyToSlice80(build.args[build.task_idx]);
+                    if (mach.testEqualMany8(name, "--")) {
+                        build.task_idx +%= 1;
+                        break;
+                    }
+                }
                 return executeToplevel(address_space, thread_space, allocator, toplevel, node, maybe_task);
-            } else {
+            } else if (node.tag == .group) {
                 for (node.impl.nodes[0..node.impl.nodes_len]) |sub_node| {
                     if (processCommandsInternal(address_space, thread_space, allocator, toplevel, sub_node, maybe_task)) |result| {
                         return result;

@@ -95,10 +95,10 @@ fn testRtAllocatedImplementation() !void {
             array_b.unstream("Hello, ".len);
         }
     }
+    try debug.expectEqual(usize, 2, mem.editDistance("abc", "cb"));
     try testing.expect(0 == mem.editDistance("one", "one"));
     try testing.expect(1 == mem.editDistance("onE", "one"));
     try debug.expectEqual(usize, 2, mem.editDistance("cat", "cake"));
-
     try testing.expectEqualMany(u8, array_ab.readAll(), array_b.readAll());
 }
 fn testAllocatedImplementation() !void {
