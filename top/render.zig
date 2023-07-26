@@ -189,14 +189,14 @@ pub fn ArrayFormat(comptime spec: RenderSpec, comptime Array: type) type {
                 if (spec.enable_comptime_iterator and comptime fmt.requireComptime(child)) {
                     inline for (format.value) |element| {
                         const sub_format: ChildFormat = .{ .value = element };
-                        len +%= sub_format.formatWriteBuf(buf);
+                        len +%= sub_format.formatWriteBuf(buf + len);
                         @as(*[2]u8, @ptrCast(buf + len)).* = ", ".*;
                         len +%= 2;
                     }
                 } else {
                     for (format.value) |element| {
                         const sub_format: ChildFormat = .{ .value = element };
-                        len +%= sub_format.formatWriteBuf(buf);
+                        len +%= sub_format.formatWriteBuf(buf + len);
                         @as(*[2]u8, @ptrCast(buf + len)).* = ", ".*;
                         len +%= 2;
                     }
@@ -417,6 +417,189 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                 },
             }
         }
+        fn writeDeclBuf(comptime format: Format, buf: [*]u8, comptime decl: builtin.Type.Declaration) usize {
+            if (!decl.is_pub) {
+                return 0;
+            }
+            const decl_type: type = @TypeOf(@field(format.value, decl.name));
+            if (@typeInfo(decl_type) == .Fn) {
+                return 0;
+            }
+            const decl_value: decl_type = @field(format.value, decl.name);
+            const decl_name_format: fmt.IdentifierFormat = .{ .value = decl.name };
+            const decl_format: AnyFormat(default_value_spec, decl_type) = .{ .value = decl_value };
+            const type_name_s: []const u8 = comptime typeName(decl_type, field_type_spec);
+            var len: usize = 0;
+            @as(*[16]u8, @ptrCast(buf + len)).* = "pub const ";
+            len +%= 16;
+            len +%= decl_name_format.formatWriteBuf(buf + len);
+            @as(*[2]u8, @ptrCast(buf + len)).* = ": ".*;
+            len +%= 2;
+            @memcpy(buf + len, type_name_s);
+            @as(*[3]u8, @ptrCast(buf + len)).* = " = ".*;
+            len +%= 3;
+            decl_format.formatWriteBuf(buf);
+            @as(*[2]u8, @ptrCast(buf + len)).* = "; ".*;
+            len +%= 2;
+            return len;
+        }
+        fn writeStructFieldBuf(buf: [*]u8, field_name: []const u8, comptime field_type: type, field_default_value: ?field_type) usize {
+            const field_name_format: fmt.IdentifierFormat = .{ .value = field_name };
+            var len: usize = 0;
+            if (spec.inline_field_types) {
+                const type_format: TypeFormat(field_type_spec) = .{ .value = field_type };
+                len +%= field_name_format.formatWriteBuf(buf + len);
+                @as(*[2]u8, @ptrCast(buf + len)).* = ": ".*;
+                len +%= 2;
+                len +%= type_format.formatWriteBuf(buf + len);
+            } else {
+                len +%= field_name_format.formatWriteBuf(buf + len);
+                @as(*[2]u8, @ptrCast(buf + len)).* = ": ".*;
+                len +%= 2;
+                @as(meta.TypeName(field_type), @ptrCast(buf + len)).* = @typeName(field_type).*;
+                len +%= @typeName(field_type).len;
+            }
+            if (field_default_value) |default_value| {
+                const field_format: AnyFormat(default_value_spec, field_type) = .{ .value = default_value };
+                @as(*[3]u8, @ptrCast(buf + len)).* = " = ".*;
+                len +%= 3;
+                len +%= field_format.formatWriteBuf(buf + len);
+            }
+            @as(*[2]u8, @ptrCast(buf + len)).* = ", ".*;
+            len +%= 2;
+            return len;
+        }
+        fn writeUnionFieldBuf(buf: [*]u8, field_name: []const u8, comptime field_type: type) usize {
+            const field_name_format: fmt.IdentifierFormat = .{ .value = field_name };
+            var len: usize = 0;
+            if (field_type == void) {
+                len +%= field_name_format.formatWriteBuf(buf + len);
+                @as(*[2]u8, @ptrCast(buf + len)).* = ", ".*;
+                len +%= 2;
+            } else {
+                if (spec.inline_field_types) {
+                    const type_format: TypeFormat(field_type_spec) = .{ .value = field_type };
+                    len +%= field_name_format.formatWriteBuf(buf + len);
+                    @as(*[2]u8, @ptrCast(buf + len)).* = ": ".*;
+                    len +%= 2;
+                    len +%= type_format.formatWriteBuf(buf + len);
+                } else {
+                    len +%= field_name_format.formatWriteBuf(buf + len);
+                    @as(*[2]u8, @ptrCast(buf + len)).* = ": ".*;
+                    len +%= 2;
+                    @as(meta.TypeName(field_type), @ptrCast(buf + len)).* = @typeName(field_type).*;
+                    len +%= @typeName(field_type).len;
+                }
+                @as(*[2]u8, @ptrCast(buf + len)).* = ", ".*;
+                len +%= 2;
+            }
+            return len;
+        }
+        fn writeEnumFieldBuf(buf: [*]u8, field_name: []const u8) usize {
+            const field_name_format: fmt.IdentifierFormat = .{ .value = field_name };
+            var len: usize = 0;
+            len +%= field_name_format.formatWriteBuf(buf);
+            @as(*[2]u8, @ptrCast(buf + len)).* = ", ".*;
+            len +%= 2;
+            return len;
+        }
+        pub fn formatWriteBuf(comptime format: Format, buf: [*]u8) usize {
+            var len: usize = 0;
+            const type_info: builtin.Type = @typeInfo(format.value);
+            const decl_spec_s = comptime meta.sliceToArrayPointer(fmt.typeDeclSpecifier(type_info)).*;
+            switch (type_info) {
+                .Struct => |struct_info| {
+                    if (struct_info.fields.len == 0 and struct_info.decls.len == 0) {
+                        @as(*@TypeOf(decl_spec_s), @ptrCast(buf + len)).* = decl_spec_s;
+                        len +%= decl_spec_s.len;
+                        @as(*[3]u8, @ptrCast(buf + len)).* = " {}".*;
+                        len +%= 3;
+                    } else {
+                        @as(*@TypeOf(decl_spec_s), @ptrCast(buf + len)).* = decl_spec_s;
+                        len +%= decl_spec_s.len;
+                        @as(*[3]u8, @ptrCast(buf + len)).* = " { ".*;
+                        len +%= 3;
+                        inline for (struct_info.fields) |field| {
+                            writeStructFieldBuf(buf, field.name, field.type, meta.defaultValue(field));
+                        }
+                        if (!spec.omit_container_decls) {
+                            inline for (struct_info.decls) |decl| {
+                                len +%= writeDeclBuf(format, buf, decl);
+                            }
+                            len +%= formatWriteOmitTrailingComma(
+                                buf,
+                                omit_trailing_comma,
+                                struct_info.fields.len +% struct_info.decls.len,
+                            );
+                        } else {
+                            len +%= formatWriteBufOmitTrailingComma(buf, omit_trailing_comma, struct_info.fields.len);
+                        }
+                    }
+                },
+                .Union => |union_info| {
+                    if (union_info.fields.len == 0 and union_info.decls.len == 0) {
+                        @as(*@TypeOf(decl_spec_s), @ptrCast(buf + len)).* = decl_spec_s;
+                        len +%= decl_spec_s.len;
+                        @as(*[3]u8, @ptrCast(buf + len)).* = " {}".*;
+                        len +%= 3;
+                    } else {
+                        @as(*@TypeOf(decl_spec_s), @ptrCast(buf + len)).* = decl_spec_s;
+                        len +%= decl_spec_s.len;
+                        @as(*[3]u8, @ptrCast(buf + len)).* = " { ".*;
+                        len +%= 3;
+                        inline for (union_info.fields) |field| {
+                            len +%= writeUnionFieldBuf(buf, field.name, field.type);
+                        }
+                        if (!spec.omit_container_decls) {
+                            inline for (union_info.decls) |decl| {
+                                len +%= writeDeclBuf(format, buf, decl);
+                            }
+                            len +%= formatWriteBufOmitTrailingComma(
+                                buf,
+                                omit_trailing_comma,
+                                union_info.fields.len +% union_info.decls.len,
+                            );
+                        } else {
+                            formatWriteBufOmitTrailingComma(buf, omit_trailing_comma, union_info.fields.len);
+                        }
+                    }
+                },
+                .Enum => |enum_info| {
+                    if (enum_info.fields.len == 0 and enum_info.decls.len == 0) {
+                        @as(*@TypeOf(decl_spec_s), @ptrCast(buf + len)).* = decl_spec_s;
+                        len +%= decl_spec_s.len;
+                        @as(*[3]u8, @ptrCast(buf + len)).* = " {}".*;
+                        len +%= 3;
+                    } else {
+                        @as(*@TypeOf(decl_spec_s), @ptrCast(buf + len)).* = decl_spec_s;
+                        len +%= decl_spec_s.len;
+                        @as(*[3]u8, @ptrCast(buf + len)).* = " { ".*;
+                        len +%= 3;
+                        inline for (enum_info.fields) |field| {
+                            len +%= writeEnumFieldBuf(buf, field.name);
+                        }
+                        if (!spec.omit_container_decls) {
+                            inline for (enum_info.decls) |decl| {
+                                len +%= writeDeclBuf(format, buf, decl);
+                            }
+                            len +%= formatWriteBufOmitTrailingComma(
+                                buf,
+                                omit_trailing_comma,
+                                enum_info.fields.len +% enum_info.decls.len,
+                            );
+                        } else {
+                            len +%= formatWriteBufOmitTrailingComma(buf, omit_trailing_comma, enum_info.fields.len);
+                        }
+                    }
+                },
+                else => {
+                    const type_name_s: []const u8 = comptime typeName(format.value, spec);
+                    @memcpy(buf + len, type_name_s);
+                    len +%= type_name_s.len;
+                },
+            }
+            return len;
+        }
         pub fn formatLength(comptime format: Format) u64 {
             const type_info: builtin.Type = @typeInfo(format.value);
             var len: u64 = 0;
@@ -531,6 +714,20 @@ inline fn formatWriteOmitTrailingComma(array: anytype, comptime omit_trailing_co
             array.writeOne('}');
         }
     }
+}
+fn formatWriteBufOmitTrailingComma(buf: [*]u8, omit_trailing_comma: bool, fields_len: u64) usize {
+    var len: usize = 0;
+    if (fields_len == 0) {
+        (buf - 1)[0] = '}';
+    } else {
+        if (omit_trailing_comma) {
+            @as(*[2]u8, @ptrCast(buf - 2)).* = " }".*;
+        } else {
+            buf[0] = '}';
+            len +%= 1;
+        }
+    }
+    return len;
 }
 inline fn formatLengthOmitTrailingComma(comptime omit_trailing_comma: bool, fields_len: u64) u64 {
     return builtin.int2a(u64, !omit_trailing_comma, fields_len != 0);
