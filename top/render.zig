@@ -177,6 +177,39 @@ pub fn ArrayFormat(comptime spec: RenderSpec, comptime Array: type) type {
                 }
             }
         }
+        pub fn formatWriteBuf(format: anytype, buf: [*]u8) usize {
+            var len: usize = type_name.len;
+            @memcpy(buf, type_name);
+            if (format.value.len == 0) {
+                @as(*[2]u8, @ptrCast(buf + len)).* = "{}".*;
+                len +%= 2;
+            } else {
+                @as(*[2]u8, @ptrCast(buf + len)).* = "{ ".*;
+                len +%= 2;
+                if (spec.enable_comptime_iterator and comptime fmt.requireComptime(child)) {
+                    inline for (format.value) |element| {
+                        const sub_format: ChildFormat = .{ .value = element };
+                        len +%= sub_format.formatWriteBuf(buf);
+                        @as(*[2]u8, @ptrCast(buf + len)).* = ", ".*;
+                        len +%= 2;
+                    }
+                } else {
+                    for (format.value) |element| {
+                        const sub_format: ChildFormat = .{ .value = element };
+                        len +%= sub_format.formatWriteBuf(buf);
+                        @as(*[2]u8, @ptrCast(buf + len)).* = ", ".*;
+                        len +%= 2;
+                    }
+                }
+                if (omit_trailing_comma) {
+                    @as(*[2]u8, @ptrCast(buf + len - 2)).* = ", ".*;
+                } else {
+                    buf[len] = '}';
+                    len +%= 1;
+                }
+            }
+            return len;
+        }
         pub fn formatLength(format: anytype) u64 {
             var len: u64 = type_name.len +% 2;
             if (spec.enable_comptime_iterator and comptime fmt.requireComptime(child)) {
