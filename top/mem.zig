@@ -1404,12 +1404,20 @@ pub fn testEqual(comptime T: type, arg1: T, arg2: T) bool {
     }
     return false;
 }
-// These should be in builtin.zig, but cannot adhere to the test-error-fault
-// standard yet--that is, their assert* and expect* counterparts cannot be added
-// to builtin--so they are here temporarily as utility functions.
-//
-// TODO: Move the following functions to builtin, and create aliases with common
-// names. e.g. `startsWith` instead of `testEqualManyFront`.
+pub fn testEqualString(l_values: []const u8, r_values: []const u8) bool {
+    if (l_values.len != r_values.len) {
+        return false;
+    }
+    if (l_values.ptr == r_values.ptr) {
+        return true;
+    }
+    var idx: u64 = 0;
+    while (idx != l_values.len) {
+        if (l_values[idx] != r_values[idx]) return false;
+        idx +%= 1;
+    }
+    return true;
+}
 pub fn testEqualMany(comptime T: type, l_values: []const T, r_values: []const T) bool {
     if (l_values.len != r_values.len) {
         return false;
