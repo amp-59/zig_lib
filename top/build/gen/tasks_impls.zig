@@ -897,7 +897,9 @@ fn writeReturnIfIndexEqualToLength(array: *Array) void {
 fn writeAssignIfIndexNotEqualToLength(array: *Array, field_name: []const u8) void {
     array.writeMany("if(args_idx!=args.len){\n");
     writeAssignArgCurIndex(array, field_name);
-    array.writeMany("}\n");
+    writeElse(array);
+    array.writeMany("return;\n");
+    writeIfClose(array);
 }
 fn writeArgCurIndex(array: *Array) void {
     array.writeMany("mach.manyToSlice80(args[args_idx])");
