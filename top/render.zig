@@ -239,6 +239,15 @@ pub const BoolFormat = struct {
             array.writeCount(5, "false".*);
         }
     }
+    pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
+        if (format.value) {
+            @as(*[4]u8, @ptrCast(buf)).* = "true";
+            return 4;
+        } else {
+            @as(*[5]u8, @ptrCast(buf)).* = "false";
+            return 5;
+        }
+    }
     pub inline fn formatLength(format: Format) u64 {
         return if (format.value) 4 else 5;
     }
