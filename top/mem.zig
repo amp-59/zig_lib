@@ -1788,6 +1788,29 @@ pub fn orderedMatches(comptime T: type, l_values: []const T, r_values: []const T
     }
     return mats;
 }
+pub fn editDistance(l_values: []const u8, r_values: []const u8) usize {
+    if (l_values.len == 0) {
+        return r_values.len;
+    }
+    if (r_values.len == 0) {
+        return l_values.len;
+    }
+    const ll_values: []const u8 = l_values[0 .. l_values.len -% 1];
+    const rr_values: []const u8 = r_values[0 .. r_values.len -% 1];
+    var m_idx: usize = editDistance(ll_values, rr_values);
+    if (l_values[ll_values.len] == r_values[rr_values.len]) {
+        return m_idx;
+    }
+    const l_idx: usize = editDistance(l_values, rr_values);
+    const r_idx: usize = editDistance(ll_values, r_values);
+    if (m_idx > l_idx) {
+        m_idx = l_idx;
+    }
+    if (m_idx > r_idx) {
+        m_idx = r_idx;
+    }
+    return m_idx +% 1;
+}
 pub fn indexOfNearestEqualMany(comptime T: type, arg1: []const T, arg2: []const T, index: u64) ?u64 {
     const needle: []const u8 = if (arg1.len < arg2.len) arg1 else arg2;
     const haystack: []const u8 = if (arg1.len < arg2.len) arg2 else arg1;
