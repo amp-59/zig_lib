@@ -706,14 +706,14 @@ fn writeIncrementArgsIndex(array: *Array) void {
     array.writeMany("args_idx+%=1;\n");
 }
 fn writeStartsWith(array: *Array, opt_string: []const u8) void {
-    array.writeMany("mach.testEqualMany8(\"");
+    array.writeMany("eql(\"");
     array.writeMany(opt_string);
     array.writeMany("\",");
     writeArgSliceFromTo(array, 0, opt_string.len);
     array.writeMany(")");
 }
 fn writeEquals(array: *Array, opt_string: []const u8) void {
-    array.writeMany("mach.testEqualMany8(\"");
+    array.writeMany("eql(\"");
     array.writeMany(opt_string);
     array.writeMany("\",");
     array.writeMany("arg");
@@ -902,15 +902,15 @@ fn writeAssignIfIndexNotEqualToLength(array: *Array, field_name: []const u8) voi
     writeIfClose(array);
 }
 fn writeArgCurIndex(array: *Array) void {
-    array.writeMany("mach.manyToSlice80(args[args_idx])");
+    array.writeMany("str(args[args_idx])");
 }
 fn writeArgAnyIndex(array: *Array, index: usize) void {
-    array.writeMany("mach.manyToSlice80(args[");
+    array.writeMany("str(args[");
     array.writeFormat(fmt.ud64(index));
     array.writeMany("])");
 }
 fn writeArgAddIndex(array: *Array, offset: usize) void {
-    array.writeMany("mach.manyToSlice80(args[args_idx+%");
+    array.writeMany("str(args[args_idx+%");
     array.writeFormat(fmt.ud64(offset));
     array.writeMany("])");
 }
@@ -1282,8 +1282,12 @@ fn writeParserFunctionSignature(array: *Array, attributes: types.Attributes) voi
     array.writeMany(",allocator:anytype,args:[][*:0]u8)void{\n");
     array.writeMany("@setRuntimeSafety(false);\n");
     array.writeMany("var args_idx:usize=0;\n");
+    array.writeMany("const eql=if (builtin.output_mode==.Lib)");
+    array.writeMany("mem.testEqualString else mach.testEqualMany8;\n");
+    array.writeMany("const str=if (builtin.output_mode==.Lib)");
+    array.writeMany("meta.manyToSlice else mach.manyToSlice80;\n");
     array.writeMany("while(args_idx!=args.len):(args_idx+%=1){\n");
-    array.writeMany("var arg:[:0]const u8=mach.manyToSlice80(args[args_idx]);");
+    array.writeMany("var arg:[:0]const u8=str(args[args_idx]);");
 }
 fn writeUsingFunctions(array: *Array, attributes: types.Attributes) void {
     if (attributes.type_fn_name) |type_fn_name| {
