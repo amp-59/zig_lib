@@ -2109,6 +2109,12 @@ pub const BuildCommand = struct {
         }
         return len;
     }
+    pub var buildFormatParseArgs: ?*fn (
+        allocator: *types.Allocator,
+        build_cmd: *types.BuildCommand,
+        args: [*][*:0]u8,
+        args_len: usize,
+    ) callconv(.C) void = null;
     pub fn formatParseArgs(cmd: *BuildCommand, allocator: anytype, args: [][*:0]u8) void {
         @setRuntimeSafety(false);
         var args_idx: usize = 0;
@@ -2778,6 +2784,12 @@ pub const FormatCommand = struct {
         len +%= pathname.formatLength();
         return len;
     }
+    pub var formatFormatParseArgs: ?*fn (
+        allocator: *types.Allocator,
+        format_cmd: *types.FormatCommand,
+        args: [*][*:0]u8,
+        args_len: usize,
+    ) callconv(.C) void = null;
     pub fn formatParseArgs(cmd: *FormatCommand, allocator: anytype, args: [][*:0]u8) void {
         @setRuntimeSafety(false);
         var args_idx: usize = 0;
@@ -3057,6 +3069,12 @@ pub const ArchiveCommand = struct {
         len +%= types.Files.formatLength(.{ .value = files });
         return len;
     }
+    pub var archiveFormatParseArgs: ?*fn (
+        allocator: *types.Allocator,
+        archive_cmd: *types.ArchiveCommand,
+        args: [*][*:0]u8,
+        args_len: usize,
+    ) callconv(.C) void = null;
     pub fn formatParseArgs(cmd: *ArchiveCommand, allocator: anytype, args: [][*:0]u8) void {
         @setRuntimeSafety(false);
         var args_idx: usize = 0;
@@ -3273,6 +3291,12 @@ pub const ObjcopyCommand = struct {
         len +%= file.formatLength();
         return len;
     }
+    pub var objcopyFormatParseArgs: ?*fn (
+        allocator: *types.Allocator,
+        objcopy_cmd: *types.ObjcopyCommand,
+        args: [*][*:0]u8,
+        args_len: usize,
+    ) callconv(.C) void = null;
     pub fn formatParseArgs(cmd: *ObjcopyCommand, allocator: anytype, args: [][*:0]u8) void {
         @setRuntimeSafety(false);
         var args_idx: usize = 0;
@@ -3904,6 +3928,12 @@ pub const TableGenCommand = struct {
         }
         return len;
     }
+    pub var tblgenFormatParseArgs: ?*fn (
+        allocator: *types.Allocator,
+        tblgen_cmd: *types.TableGenCommand,
+        args: [*][*:0]u8,
+        args_len: usize,
+    ) callconv(.C) void = null;
     pub fn formatParseArgs(cmd: *TableGenCommand, allocator: anytype, args: [][*:0]u8) void {
         @setRuntimeSafety(false);
         var args_idx: usize = 0;
@@ -4176,6 +4206,12 @@ pub const HarecCommand = struct {
         }
         return len;
     }
+    pub var harecFormatParseArgs: ?*fn (
+        allocator: *types.Allocator,
+        harec_cmd: *types.HarecCommand,
+        args: [*][*:0]u8,
+        args_len: usize,
+    ) callconv(.C) void = null;
     pub fn formatParseArgs(cmd: *HarecCommand, allocator: anytype, args: [][*:0]u8) void {
         @setRuntimeSafety(false);
         var args_idx: usize = 0;
