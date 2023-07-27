@@ -1596,8 +1596,7 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
                     }
                 }
                 if (omit_trailing_comma) {
-                    @as(*[2]u8, @ptrCast(buf + len)).* = " }".*;
-                    len +%= 2;
+                    @as(*[2]u8, @ptrCast(buf + len - 2)).* = " }".*;
                 } else {
                     buf[len] = '}';
                     len +%= 1;
@@ -1634,16 +1633,12 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
             }
             return len;
         }
-
-        const StringLiteral = fmt.GenericEscapedStringFormat(.{});
         pub fn formatLengthStringLiteral(format: anytype) u64 {
-            var len: usize = 0;
-            len +%= 1;
+            var len: usize = 1;
             for (format.value) |c| {
                 len +%= fmt.esc(c).formatLength();
             }
-            len +%= 1;
-            return len;
+            return len +% 1;
         }
         pub fn formatLengthMultiLineStringLiteral(format: anytype) u64 {
             var len: usize = 3;
@@ -1654,8 +1649,7 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
                     else => len +%= 1,
                 }
             }
-            len +%= 1;
-            return len;
+            return len +% 1;
         }
         pub fn formatWriteStringLiteral(format: anytype, array: anytype) void {
             array.writeOne('"');
@@ -1676,20 +1670,17 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
             array.writeOne('\n');
         }
         pub fn formatWriteBufStringLiteral(format: anytype, buf: [*]u8) usize {
-            var len: usize = 0;
-            buf[len] = '"';
-            len +%= 1;
+            var len: usize = 1;
+            buf[0] = '"';
             for (format.value) |byte| {
                 len +%= fmt.esc(byte).formatWriteBuf(buf + len);
             }
             buf[len] = '"';
-            len +%= 1;
-            return len;
+            return len +% 1;
         }
         pub fn formatWriteBufMultiLineStringLiteral(format: anytype, buf: [*]u8) usize {
-            var len: usize = 0;
-            @as(*[3]u8, @ptrCast(buf + len)).* = "\n\\\\".*;
-            len +%= 3;
+            var len: usize = 3;
+            @as(*[3]u8, @ptrCast(buf)).* = "\n\\\\".*;
             for (format.value) |byte| {
                 switch (byte) {
                     '\n' => {
@@ -1707,8 +1698,7 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
                 }
             }
             buf[len] = '\n';
-            len +%= 1;
-            return len;
+            return len +% 1;
         }
         fn isMultiLine(values: []const u8) bool {
             for (values) |value| {
@@ -1716,6 +1706,7 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
             }
             return false;
         }
+        const StringLiteral = fmt.GenericEscapedStringFormat(.{});
         pub fn formatWrite(format: anytype, array: anytype) void {
             if (spec.address_view) {
                 const addr_view_format: AddressFormat = .{ .value = @intFromPtr(format.value.ptr) };
@@ -1741,51 +1732,53 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
             return formatWriteAny(format, array);
         }
         pub fn formatWriteBuf(format: anytype, buf: [*]u8) usize {
+            var len: usize = 0;
             if (spec.address_view) {
                 const addr_view_format: AddressFormat = .{ .value = @intFromPtr(format.value.ptr) };
-                return addr_view_format.formatWriteBuf(buf);
+                len +%= addr_view_format.formatWriteBuf(buf);
             }
             if (child == u8) {
                 if (spec.multi_line_string_literal) |render_string_literal| {
                     if (render_string_literal) {
                         if (isMultiLine(format.value)) {
-                            return formatWriteBufMultiLineStringLiteral(format, buf);
+                            return len +% formatWriteBufMultiLineStringLiteral(format, buf);
                         } else {
-                            return formatWriteBufStringLiteral(format, buf);
+                            return len +% formatWriteBufStringLiteral(format, buf);
                         }
                     }
                 }
                 if (spec.string_literal) |render_string_literal| {
                     if (render_string_literal) {
                         const str_fmt: StringLiteral = .{ .value = format.value };
-                        return str_fmt.formatWriteBuf(buf);
+                        return len +% str_fmt.formatWriteBuf(buf);
                     }
                 }
             }
-            return formatWriteBufAny(format, buf);
+            return len +% formatWriteBufAny(format, buf);
         }
         pub fn formatLength(format: anytype) usize {
+            var len: usize = 0;
             if (spec.address_view) {
-                return AddressFormat.formatLength(.{ .value = @intFromPtr(format.value.ptr) });
+                len +%= AddressFormat.formatLength(.{ .value = @intFromPtr(format.value.ptr) });
             }
             if (child == u8) {
                 if (spec.multi_line_string_literal) |render_string_literal| {
                     if (render_string_literal) {
                         if (isMultiLine(format.value)) {
-                            return formatLengthMultiLineStringLiteral(format);
+                            return len +% formatLengthMultiLineStringLiteral(format);
                         } else {
-                            return formatLengthStringLiteral(format);
+                            return len +% formatLengthStringLiteral(format);
                         }
                     }
                 }
                 if (spec.string_literal) |render_string_literal| {
                     if (render_string_literal) {
                         const str_fmt: StringLiteral = .{ .value = format.value };
-                        return str_fmt.formatLength();
+                        return len +% str_fmt.formatLength();
                     }
                 }
             }
-            return formatLengthAny(format);
+            return len +% formatLengthAny(format);
         }
     };
     return T;
