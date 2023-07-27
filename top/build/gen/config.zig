@@ -11,7 +11,6 @@ pub const build_command_options_path: [:0]const u8 = auxiliaryDataFile("build_co
 pub const format_command_options_path: [:0]const u8 = auxiliaryDataFile("format_command_options");
 
 pub const cmdline_path: [:0]const u8 = primarySourceFile("cmdline.zig");
-pub const abstract_cmdline_path: [:0]const u8 = primarySourceFile("abstract_cmdline.zig");
 pub const cmdline_template_path: [:0]const u8 = primarySourceFile("cmdline-template.zig");
 
 pub const tasks_path: [:0]const u8 = primarySourceFile("tasks.zig");
@@ -19,7 +18,7 @@ pub const tasks_template_path: [:0]const u8 = builtin.root.build_root ++ "/top/b
 pub const hist_tasks_path: [:0]const u8 = primarySourceFile("hist_tasks.zig");
 pub const hist_tasks_template_path: [:0]const u8 = builtin.root.build_root ++ "/top/build/gen/hist_tasks-template.zig";
 pub const parsers_path: [:0]const u8 = primarySourceFile("parsers.zig");
-pub const parsers_tasks_template_path: [:0]const u8 = builtin.root.build_root ++ "/top/build/gen/parsers-template.zig";
+pub const parsers_template_path: [:0]const u8 = builtin.root.build_root ++ "/top/build/gen/parsers-template.zig";
 
 pub fn primarySourceFile(comptime name: [:0]const u8) [:0]const u8 {
     return if (name[0] != '/') builtin.root.build_root ++ "/top/build/" ++ name else name;
