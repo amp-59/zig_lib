@@ -57,30 +57,30 @@ pub const Access = packed struct(usize) {
 };
 pub const Map = struct {
     pub const Flags = packed struct(usize) {
-        visibility: Visibility = .shared,
+        visibility: Visibility = .private,
         zb2: u2 = 0,
-        fixed: bool = false,
+        fixed: bool = true,
         anonymous: bool = false,
         @"32bit": bool = false,
         zb7: u1 = 0,
         grows_down: bool = false,
         zb9: u2 = 0,
-        deny_write: bool = false,
+        deny_write: bool = true,
         executable: bool = false,
         locked: bool = false,
         no_reserve: bool = false,
-        populate: bool = false,
+        populate: bool = true,
         non_block: bool = false,
         stack: bool = false,
         huge_tlb: bool = false,
         sync: bool = false,
-        fixed_noreplace: bool = true,
+        fixed_noreplace: bool = false,
         zb21: u43 = 0,
     };
     pub const Visibility = enum { shared, shared_validate, private };
     pub const Protection = packed struct(usize) {
         read: bool = true,
-        write: bool = true,
+        write: bool = false,
         exec: bool = false,
         zb3: u21 = 0,
         grows_down: bool = false,
@@ -1680,10 +1680,11 @@ pub fn statusExtended(comptime spec: StatusExtendedSpec, fd: u64, pathname: [:0]
 /// ```
 pub fn map(comptime map_spec: MapSpec, prot: Map.Protection, flags: Map.Flags, fd: u64, addr: u64, len: u64) sys.ErrorUnion(map_spec.errors, map_spec.return_type) {
     const logging: debug.Logging.AcquireError = comptime map_spec.logging.override();
-    if (meta.wrap(sys.call(.mmap, map_spec.errors, map_spec.return_type, .{ addr, len, @as(usize, @bitCast(prot)), @as(usize, @bitCast(flags)), fd, 0 }))) {
+    if (meta.wrap(sys.call(.mmap, map_spec.errors, map_spec.return_type, .{ addr, len, @as(usize, @bitCast(prot)), @as(usize, @bitCast(flags)), fd, 0 }))) |ret| {
         if (logging.Acquire) {
-            mem.about.aboutAddrLenNotice(about.map_s, addr, len);
+            mem.about.aboutAddrLenNotice(about.map_s, if (map_spec.return_type != void) ret else addr, len);
         }
+        return ret;
     } else |map_error| {
         if (logging.Error) {
             mem.about.aboutAddrLenError(about.map_s, @errorName(map_error), addr, len);
