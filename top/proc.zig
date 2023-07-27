@@ -967,7 +967,25 @@ pub fn clone(comptime spec: CloneSpec, stack_addr: u64, stack_len: u64, result_p
 }
 pub fn load(comptime Fn: type, vdso_addr: u64, symbol: [:0]const u8) ?Fn {
     if (sectionAddress(vdso_addr, symbol)) |addr| {
-        return @ptrFromInt(addr);
+        if (programOffset(vdso_addr)) |off| {
+            return @ptrFromInt(addr -% off);
+        }
+    }
+    return null;
+}
+pub fn programOffset(ehdr_addr: u64) ?u64 {
+    @setRuntimeSafety(builtin.is_safe);
+    const ehdr: *exe.Elf64_Ehdr = @ptrFromInt(ehdr_addr);
+    var addr: u64 = ehdr_addr +% ehdr.e_phoff;
+    var idx: usize = 0;
+    while (idx != ehdr.e_phnum) : ({
+        idx +%= 1;
+        addr +%= ehdr.e_phentsize;
+    }) {
+        const phdr: *exe.Elf64_Phdr = @ptrFromInt(addr);
+        if (phdr.p_flags.check(.X)) {
+            return phdr.p_vaddr -% phdr.p_offset;
+        }
     }
     return null;
 }
@@ -982,7 +1000,7 @@ pub fn sectionAddress(ehdr_addr: u64, symbol: [:0]const u8) ?u64 {
     var idx: usize = 0;
     while (idx != ehdr.e_shnum) : ({
         idx +%= 1;
-        addr +%= ehdr.e_shentsize;
+        addr = addr +% ehdr.e_shentsize;
     }) {
         const shdr: *exe.Elf64_Shdr = @ptrFromInt(addr);
         if (shdr.sh_type == .DYNSYM) {
@@ -1011,27 +1029,14 @@ pub fn sectionAddress(ehdr_addr: u64, symbol: [:0]const u8) ?u64 {
                     const symtab: [*]exe.Elf64_Sym = @ptrFromInt(symtab_addr);
                     var st_idx: u64 = 1;
                     lo: while (st_idx *% symtab_ents != dynsym_size) : (st_idx +%= 1) {
-                        debug.write(mach.manyToSlice80(strtab + symtab[st_idx].st_name));
                         for (symbol, strtab + symtab[st_idx].st_name) |x, y| {
                             if (x != y) {
                                 continue :lo;
                             }
                         }
-                        addr = ehdr_addr +% ehdr.e_phoff;
-                        idx = 0;
-                        while (idx != ehdr.e_phnum) : ({
-                            idx +%= 1;
-                            addr +%= ehdr.e_phentsize;
-                        }) {
-                            const phdr: *exe.Elf64_Phdr = @ptrFromInt(addr);
-                            if (phdr.p_flags.check(.X)) {
-                                return (ehdr_addr +% symtab[st_idx].st_value) +%
-                                    (phdr.p_offset -% phdr.p_paddr);
-                            }
-                        } else {
-                            return null;
-                        }
+                        return ehdr_addr +% symtab[st_idx].st_value;
                     }
+                    break;
                 }
             }
         }
@@ -1320,7 +1325,7 @@ pub const about = opaque {
         var buf: [32768]u8 = undefined;
         var len: usize = futex_wait_s.len;
         var ux64: fmt.Type.Ud64 = @bitCast(@intFromPtr(futex1));
-        var ud64: fmt.Type.Ud64 = @bitCast(@as(u32, futex1.*));
+        var ud64: fmt.Type.Ud64 = @bitCast(@as(u64, futex1.*));
         @as(fmt.AboutDest, @ptrCast(&buf)).* = futex_wake_s.*;
         @as(*[8]u8, @ptrCast(buf[len..].ptr)).* = "futex1=@".*;
         len +%= 8;
@@ -1330,7 +1335,7 @@ pub const about = opaque {
         len +%= ud64.formatWriteBuf(buf[len..].ptr);
         @as(*[7]u8, @ptrCast(buf[len..].ptr)).* = ", max1=".*;
         len +%= 7;
-        ud64 = @bitCast(count1);
+        ud64 = @bitCast(@as(u64, count1));
         len +%= ud64.formatWriteBuf(buf[len..].ptr);
         @as(*[10]u8, @ptrCast(buf[len..].ptr)).* = ", futex2=@".*;
         len +%= 10;
@@ -1338,11 +1343,11 @@ pub const about = opaque {
         len +%= ux64.formatWriteBuf(buf[len..].ptr);
         @as(*[8]u8, @ptrCast(buf[len..].ptr)).* = ", word2=".*;
         len +%= 8;
-        ud64 = @bitCast(futex2.*);
+        ud64 = @bitCast(@as(u64, futex2.*));
         len +%= ud64.formatWriteBuf(buf[len..].ptr);
         @as(*[7]u8, @ptrCast(buf[len..].ptr)).* = ", max2=".*;
         len +%= 7;
-        ud64 = @bitCast(count2);
+        ud64 = @bitCast(@as(u64, count2));
         len +%= ud64.formatWriteBuf(buf[len..].ptr);
         @as(*[6]u8, @ptrCast(buf[len..].ptr)).* = ", ret=".*;
         len +%= 6;
