@@ -1365,6 +1365,15 @@ fn writeWriterFunction(array: *Array, attributes: types.Attributes, variant: typ
     writeWriterFunctionSignature(array, attributes, variant);
     writeWriterFunctionBody(array, attributes.params, variant);
 }
+fn writeParserFnPtrDecl(array: *Array, attributes: types.Attributes) void {
+    array.writeMany("pub var ");
+    array.writeMany(attributes.fn_name);
+    array.writeMany("FormatParseArgs: ?*fn(allocator:*types.Allocator,");
+    array.writeMany(attributes.fn_name);
+    array.writeMany("_cmd: *types.");
+    array.writeMany(attributes.type_name);
+    array.writeMany(",args:[*][*:0]u8,args_len:usize,)callconv(.C)void = null;\n");
+}
 fn writeTaskStructFromAttributes(allocator: *mem.SimpleAllocator, array: *Array, attributes: types.Attributes) void {
     array.writeMany("pub const ");
     array.writeMany(attributes.type_name);
@@ -1373,6 +1382,7 @@ fn writeTaskStructFromAttributes(allocator: *mem.SimpleAllocator, array: *Array,
     writeWriterFunction(array, attributes, .write);
     writeWriterFunction(array, attributes, .write_buf);
     writeWriterFunction(array, attributes, .length);
+    writeParserFnPtrDecl(array, attributes);
     writeParserFunction(array, attributes);
     writeUsingFunctions(array, attributes);
     array.writeMany("};\n");
