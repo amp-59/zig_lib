@@ -178,6 +178,7 @@ pub fn ArrayFormat(comptime spec: RenderSpec, comptime Array: type) type {
             }
         }
         pub fn formatWriteBuf(format: anytype, buf: [*]u8) usize {
+            @setRuntimeSafety(builtin.is_safe);
             var len: usize = type_name.len;
             @memcpy(buf, type_name);
             if (format.value.len == 0) {
@@ -240,11 +241,12 @@ pub const BoolFormat = struct {
         }
     }
     pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
+        @setRuntimeSafety(builtin.is_safe);
         if (format.value) {
-            @as(*[4]u8, @ptrCast(buf)).* = "true";
+            @as(*[4]u8, @ptrCast(buf)).* = "true".*;
             return 4;
         } else {
-            @as(*[5]u8, @ptrCast(buf)).* = "false";
+            @as(*[5]u8, @ptrCast(buf)).* = "false".*;
             return 5;
         }
     }
@@ -418,6 +420,7 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
             }
         }
         fn writeDeclBuf(comptime format: Format, buf: [*]u8, comptime decl: builtin.Type.Declaration) usize {
+            @setRuntimeSafety(builtin.is_safe);
             if (!decl.is_pub) {
                 return 0;
             }
@@ -445,6 +448,7 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
             return len;
         }
         fn writeStructFieldBuf(buf: [*]u8, field_name: []const u8, comptime field_type: type, field_default_value: ?field_type) usize {
+            @setRuntimeSafety(builtin.is_safe);
             const field_name_format: fmt.IdentifierFormat = .{ .value = field_name };
             var len: usize = 0;
             if (spec.inline_field_types) {
@@ -471,6 +475,7 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
             return len;
         }
         fn writeUnionFieldBuf(buf: [*]u8, field_name: []const u8, comptime field_type: type) usize {
+            @setRuntimeSafety(builtin.is_safe);
             const field_name_format: fmt.IdentifierFormat = .{ .value = field_name };
             var len: usize = 0;
             if (field_type == void) {
@@ -497,6 +502,7 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
             return len;
         }
         fn writeEnumFieldBuf(buf: [*]u8, field_name: []const u8) usize {
+            @setRuntimeSafety(builtin.is_safe);
             const field_name_format: fmt.IdentifierFormat = .{ .value = field_name };
             var len: usize = 0;
             len +%= field_name_format.formatWriteBuf(buf);
@@ -505,6 +511,7 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
             return len;
         }
         pub fn formatWriteBuf(comptime format: Format, buf: [*]u8) usize {
+            @setRuntimeSafety(builtin.is_safe);
             const type_info: builtin.Type = @typeInfo(format.value);
             var len: usize = 0;
             switch (type_info) {
@@ -878,6 +885,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
         }
         fn writeFieldInitializerBuf(buf: [*]u8, field_name_format: fmt.IdentifierFormat, field_format: anytype) usize {
             @setRuntimeSafety(builtin.is_safe);
+            @setRuntimeSafety(builtin.is_safe);
             var len: usize = 0;
             buf[0] = '.';
             len +%= 1;
@@ -1211,9 +1219,6 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
             writeFormat(array, field_format);
             array.writeCount(2, ", ".*);
         }
-        fn formatLengthField(field_name_format: fmt.IdentifierFormat, field_format: anytype) u64 {
-            return 1 +% field_name_format.formatLength() +% 3 +% field_format.formatLength() +% 2;
-        }
         pub fn formatWrite(format: anytype, array: anytype) void {
             if (show_enum_field) {
                 format.formatWriteEnumField(array);
@@ -1238,6 +1243,51 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
                 }
                 array.overwriteCountBack(2, " }".*);
             }
+        }
+        fn formatWriteBufField(buf: [*]u8, field_name_format: fmt.IdentifierFormat, field_format: anytype) usize {
+            var len: usize = 0;
+            buf[len] = '.';
+            len +%= 1;
+            len +%= field_name_format.formatWriteBuf(buf + len);
+            @as(*[3]u8, @ptrCast(buf + len)).* = " = ".*;
+            len +%= 3;
+            len +%= field_format.formatWriteBuf(buf + len);
+            @as(*[2]u8, @ptrCast(buf + len)).* = ", ".*;
+            len +%= 2;
+            return len;
+        }
+        pub fn formatWriteBuf(format: anytype, buf: [*]u8) usize {
+            var len: usize = 0;
+            if (show_enum_field) {
+                format.formatWriteBufEnumField(buf);
+            } else if (tag_type == null) {
+                format.formatWriteBufUntagged(buf);
+            } else if (fields.len == 0) {
+                @as(*[2]u8, @ptrCast(buf + len)).* = "{}".*;
+                len +%= 2;
+            } else {
+                @as(*[2]u8, @ptrCast(buf + len)).* = "{ ".*;
+                len +%= 2;
+                inline for (fields) |field| {
+                    if (format.value == @field(tag_type.?, field.name)) {
+                        const field_name_format: fmt.IdentifierFormat = .{ .value = field.name };
+                        if (field.type == void) {
+                            len -%= 2;
+                            len +%= field_name_format.formatWriteBuf(buf + len);
+                        } else {
+                            const FieldFormat: type = AnyFormat(spec, field.type);
+                            const field_format: FieldFormat = .{ .value = @field(format.value, field.name) };
+                            len +%= formatWriteBufField(buf, field_name_format, field_format);
+                        }
+                    }
+                }
+                @as(*[2]u8, @ptrCast(buf + len - 2)).* = " }".*;
+            }
+            return len;
+        }
+
+        fn formatLengthField(field_name_format: fmt.IdentifierFormat, field_format: anytype) u64 {
+            return 1 +% field_name_format.formatLength() +% 3 +% field_format.formatLength() +% 2;
         }
         pub fn formatLength(format: Format) usize {
             var len: usize = 0;
