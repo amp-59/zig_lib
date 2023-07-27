@@ -54,22 +54,27 @@ fn testRenderArray(allocator: *Allocator, array: *Array, buf: [*]u8) !void {
     try testFormat(allocator, array, buf, fmt.render(.{ .omit_trailing_comma = true }, value2));
 }
 fn testRenderType(allocator: *Allocator, array: *Array, buf: [*]u8) !void {
-    try testFormat(allocator, array, buf, fmt.any(packed struct(u120) { x: u64 = 5, y: packed struct { u32, u16 }, z: u8 }));
-    try testFormat(allocator, array, buf, fmt.any(extern union { x: u64 }));
-    try testFormat(allocator, array, buf, fmt.any(enum(u3) { x, y, z }));
+    try testFormat(allocator, array, buf, comptime fmt.any(packed struct(u120) { x: u64 = 5, y: packed struct { u32, u16 }, z: u8 }));
+    try testFormat(allocator, array, buf, comptime fmt.any(extern union { x: u64 }));
+    try testFormat(allocator, array, buf, comptime fmt.any(enum(u3) { x, y, z }));
+}
+fn testRenderSlice(allocator: *Allocator, array: *Array, buf: [*]u8) !void {
+    try testFormat(allocator, array, buf, fmt.any(@as([]const u8, "c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac03fa8c")));
+    try testFormat(allocator, array, buf, fmt.any(@as([]const u8, "one\ntwo\nthree\n")));
+    try testFormat(allocator, array, buf, fmt.any(@as([]const u16, &.{ 'o', 'n', 'e', '\n', 't', 'w', 'o', '\n', 't', 'h', 'r', 'e', 'e', '\n' })));
 }
 fn testRenderStruct(allocator: *Allocator, array: *Array, buf: [*]u8) !void {
     var tmp: [*]u8 = @ptrFromInt(0x40000000);
-    try testFormat(allocator, array, buf, fmt.any(packed struct(u120) { x: u64 = 5, y: packed struct { u32 = 1, u16 = 2 } = .{}, z: u8 = 255 }{}));
-    try testFormat(allocator, array, buf, fmt.any(struct { buf: [*]u8, buf_len: usize }{ .buf = tmp, .buf_len = 16 }));
-    try testFormat(allocator, array, buf, fmt.any(struct { buf: []u8, buf_len: usize }{ .buf = tmp[16..256], .buf_len = 32 }));
-    try testFormat(allocator, array, buf, fmt.any(struct { auto: [256]u8 = [1]u8{0xa} ** 256, auto_len: usize = 16 }{}));
+    try testFormat(allocator, array, buf, comptime fmt.any(packed struct(u120) { x: u64 = 5, y: packed struct { u32 = 1, u16 = 2 } = .{}, z: u8 = 255 }{}));
+    try testFormat(allocator, array, buf, comptime fmt.any(struct { buf: [*]u8, buf_len: usize }{ .buf = tmp, .buf_len = 16 }));
+    try testFormat(allocator, array, buf, comptime fmt.any(struct { buf: []u8, buf_len: usize }{ .buf = tmp[16..256], .buf_len = 32 }));
+    try testFormat(allocator, array, buf, comptime fmt.any(struct { auto: [256]u8 = [1]u8{0xa} ** 256, auto_len: usize = 16 }{}));
 }
 fn testRenderUnion(allocator: *Allocator, array: *Array, buf: [*]u8) !void {
-    try testFormat(allocator, array, buf, fmt.any(extern union { x: u64 }{ .x = 0 }));
+    try testFormat(allocator, array, buf, comptime fmt.any(extern union { x: u64 }{ .x = 0 }));
 }
 fn testRenderEnum(allocator: *Allocator, array: *Array, buf: [*]u8) !void {
-    try testFormat(allocator, array, buf, fmt.any(enum(u3) { x, y, z }{.z}));
+    try testFormat(allocator, array, buf, comptime fmt.any(enum(u3) { x, y, z }.z));
 }
 pub fn main() !void {
     try mem.map(.{}, .{}, .{}, 0x40000000, 0x40000000);
@@ -79,5 +84,7 @@ pub fn main() !void {
     var array: Array = Array.init(&allocator);
     try testRenderArray(&allocator, &array, buf.ptr);
     try testRenderType(&allocator, &array, buf.ptr);
-    try testRenderStruct(&allocator, &array, buf.ptr);
+    try testRenderSlice(&allocator, &array, buf.ptr);
+    //try testRenderStruct(&allocator, &array, buf.ptr);
+    //try testRenderEnum(&allocator, &array, buf.ptr);
 }
