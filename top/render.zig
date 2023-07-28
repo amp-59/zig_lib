@@ -2211,14 +2211,14 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
         const Format = @This();
         var depth: u64 = spec.options.depth;
         const tab = .{
-            .decl = spec.tokens.decl[0 .. spec.tokens.decl.len -% 1].*,
-            .lbrace = spec.tokens.lbrace[0 .. spec.tokens.lbrace.len -% 1].*,
-            .equal = spec.tokens.equal[0 .. spec.tokens.equal.len -% 1].*,
-            .rbrace = spec.tokens.rbrace[0 .. spec.tokens.lbrace.len -% 1].*,
-            .next = spec.tokens.next[0 .. spec.tokens.lbrace.len -% 1].*,
-            .end = spec.tokens.end[0 .. spec.tokens.lbrace.len -% 1].*,
-            .colon = spec.tokens.colon[0 .. spec.tokens.lbrace.len -% 1].*,
-            .indent = spec.tokens.indent[0 .. spec.tokens.lbrace.len -% 1].*,
+            .decl = spec.tokens.decl[0..spec.tokens.decl.len].*,
+            .lbrace = spec.tokens.lbrace[0..spec.tokens.lbrace.len].*,
+            .equal = spec.tokens.equal[0..spec.tokens.equal.len].*,
+            .rbrace = spec.tokens.rbrace[0..spec.tokens.rbrace.len].*,
+            .next = spec.tokens.next[0..spec.tokens.next.len].*,
+            .end = spec.tokens.end[0..spec.tokens.end.len].*,
+            .colon = spec.tokens.colon[0..spec.tokens.colon.len].*,
+            .indent = spec.tokens.indent[0..spec.tokens.indent.len].*,
         };
         pub const Reference = struct { spec: spec.options.token, type: *const Format };
         pub const Enumeration = if (spec.options.decls)
@@ -2274,6 +2274,25 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                 array.writeMany(spec.tokens.next);
                 for (0..depth) |_| array.writeMany(spec.tokens.indent);
             }
+            pub fn formatWriteBuf(format: Tag, buf: [*]u8) usize {
+                var len: usize = 0;
+                if (spec.options.identifier_name) {
+                    len +%= fmt.IdentifierFormat.formatWriteBuf(.{ .value = format.name }, buf);
+                } else {
+                    @memcpy(buf, format.name);
+                    len +%= format.name;
+                }
+                @as(*@TypeOf(Format.tab.equal), @ptrCast(buf + len)).* = Format.tab.equal;
+                len +%= Format.tab.equal.len;
+                len +%= fmt.ud64(format.value).formatWriteBuf(buf + len);
+                @as(*@TypeOf(Format.tab.next), @ptrCast(buf + len)).* = Format.tab.next;
+                len +%= Format.tab.next.len;
+                for (0..depth) |_| {
+                    @as(*@TypeOf(Format.tab.indent), @ptrCast(buf + len)).* = Format.tab.indent;
+                    len +%= Format.tab.indent.len;
+                }
+                return len;
+            }
             pub fn formatLength(format: Tag) usize {
                 const int_format: fmt.Type.Ud64 = fmt.ud64(format.value);
                 var len: usize = 0;
@@ -2310,6 +2329,33 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                 array.writeMany(spec.tokens.next);
                 for (0..depth) |_| array.writeMany(spec.tokens.indent);
             }
+            pub fn formatWriteBuf(format: Field, buf: [*]u8) usize {
+                var len: usize = 0;
+                if (spec.options.identifier_name) {
+                    len +%= fmt.IdentifierFormat.formatWriteBuf(.{ .value = format.name }, buf);
+                } else {
+                    @memcpy(buf, format.name);
+                    len +%= format.name;
+                }
+                if (format.type) |field_type| {
+                    @as(*@TypeOf(Format.tab.colon), @ptrCast(buf + len)).* = Format.tab.colon;
+                    len +%= Format.tab.colon.len;
+                    len +%= field_type.formatWriteBuf(buf + len);
+                }
+                if (format.default_value) |default_value| {
+                    @as(*@TypeOf(Format.tab.equal), @ptrCast(buf + len)).* = Format.tab.equal;
+                    len +%= Format.tab.equal.len;
+                    @memcpy(buf + len, default_value);
+                    len +%= default_value.len;
+                }
+                @as(*@TypeOf(Format.tab.next), @ptrCast(buf + len)).* = Format.tab.next;
+                len +%= Format.tab.next.len;
+                for (0..depth) |_| {
+                    @as(*@TypeOf(Format.tab.indent), @ptrCast(buf + len)).* = Format.tab.indent;
+                    len +%= Format.tab.indent.len;
+                }
+                return len;
+            }
             pub fn formatLength(format: Field) usize {
                 var len: usize = 0;
                 if (spec.options.identifier_name) {
@@ -2339,6 +2385,21 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                 writeFormat(array, format.type);
                 array.writeMany(spec.tokens.next);
                 for (0..depth) |_| array.writeMany(spec.tokens.indent);
+            }
+            pub fn formatWriteBuf(format: Member, buf: [*]u8) usize {
+                var len: usize = 0;
+                @memcpy(buf, format.name);
+                len +%= format.name;
+                @as(*@TypeOf(Format.tab.colon), @ptrCast(buf + len)).* = Format.tab.colon;
+                len +%= Format.tab.colon.len;
+                len +%= format.type.formatWriteBuf(buf + len);
+                @as(*@TypeOf(Format.tab.next), @ptrCast(buf + len)).* = Format.tab.next;
+                len +%= Format.tab.next.len;
+                for (0..depth) |_| {
+                    @as(*@TypeOf(Format.tab.indent), @ptrCast(buf + len)).* = Format.tab.indent;
+                    len +%= Format.tab.indent.len;
+                }
+                return len;
             }
             pub fn formatLength(format: Member) usize {
                 var len: usize = 0;
@@ -2421,8 +2482,8 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                         spec.options.depth != depth)
                     {
                         for (0..depth) |_| {
-                            @memcpy(buf + len, spec.tokens.indent);
-                            len +%= spec.tokens.indent.len;
+                            @as(*@TypeOf(Format.tab.indent), @ptrCast(buf + len)).* = Format.tab.indent;
+                            len +%= Format.tab.indent.len;
                         }
                     }
                     switch (type_decl) {
@@ -2433,8 +2494,8 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                             @as(*@TypeOf(Format.tab.lbrace), @ptrCast(buf + len)).* = Format.tab.lbrace;
                             len +%= Format.tab.lbrace.len;
                             for (0..depth) |_| {
-                                @memcpy(buf + len, spec.tokens.indent);
-                                len +%= spec.tokens.indent.len;
+                                @as(*@TypeOf(Format.tab.indent), @ptrCast(buf + len)).* = Format.tab.indent;
+                                len +%= Format.tab.indent.len;
                             }
                             for (struct_defn.fields) |field| {
                                 len +%= field.formatWriteBuf(buf + len);
@@ -2456,8 +2517,8 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                             @as(*@TypeOf(Format.tab.lbrace), @ptrCast(buf + len)).* = Format.tab.lbrace;
                             len +%= Format.tab.lbrace.len;
                             for (0..depth) |_| {
-                                @memcpy(buf + len, spec.tokens.indent);
-                                len +%= spec.tokens.indent.len;
+                                @as(*@TypeOf(Format.tab.indent), @ptrCast(buf + len)).* = Format.tab.indent;
+                                len +%= Format.tab.indent.len;
                             }
                             for (enum_defn.fields) |field| {
                                 len +%= field.formatWriteBuf(buf + len);
@@ -2529,10 +2590,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
             }
             return len;
         }
-        pub fn cast(
-            type_descr: *const Format,
-            comptime cast_spec: TypeDescrFormatSpec,
-        ) GenericFormat(cast_spec) {
+        pub fn cast(type_descr: *const Format, comptime cast_spec: TypeDescrFormatSpec) GenericFormat(cast_spec) {
             debug.assert(
                 cast_spec.options.default_field_values ==
                     spec.options.default_field_values,
