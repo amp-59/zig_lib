@@ -1,11 +1,11 @@
 const sys = @import("./sys.zig");
 const mem = @import("./mem.zig");
-const exe = @import("./exe.zig");
+const elf = @import("./elf.zig");
 const fmt = @import("./fmt.zig");
-const mach = @import("./mach.zig");
 const proc = @import("./proc.zig");
 const spec = @import("./spec.zig");
 const file = @import("./file.zig");
+const meta = @import("./meta.zig");
 const parse = @import("./parse.zig");
 const debug = @import("./debug.zig");
 const builtin = @import("./builtin.zig");
@@ -27,7 +27,10 @@ pub const SourceLocation = struct {
     line: u64,
     column: u64,
     const Format = @This();
-    var cwd: struct { buf: [4096]u8, buf_len: usize } = undefined;
+    var cwd: struct {
+        buf: [4096]u8,
+        buf_len: usize,
+    } = undefined;
     pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
         if (cwd.buf_len == 0) {
             cwd.buf_len = sys.call_noexcept(.getcwd, u64, .{ @intFromPtr(&cwd.buf), 4096 }) -% 1;
@@ -35,12 +38,12 @@ pub const SourceLocation = struct {
         @as(*[4]u8, @ptrCast(buf)).* = "\x1b[1m".*;
         var len: u64 = 4;
         var ud64: fmt.Type.Ud64 = @bitCast(format.line);
-        if (mach.testEqualMany8(cwd.buf[0..cwd.buf_len], format.file[0..cwd.buf_len])) {
+        if (mem.testEqualString(cwd.buf[0..cwd.buf_len], format.file[0..cwd.buf_len])) {
             const path: []const u8 = format.file[cwd.buf_len +% 1 ..];
-            mach.memcpy(buf + len, path.ptr, path.len);
+            @memcpy(buf + len, path);
             len +%= path.len;
         } else {
-            mach.memcpy(buf + len, format.file.ptr, format.file.len);
+            @memcpy(buf + len, format.file);
             len +%= format.file.len;
         }
         buf[len] = ':';
@@ -889,11 +892,11 @@ pub const DwarfInfo = extern struct {
     };
     pub fn init(ehdr_addr: u64) DwarfInfo {
         @setRuntimeSafety(false);
-        const ehdr: *exe.Elf64_Ehdr = @ptrFromInt(ehdr_addr);
+        const ehdr: *elf.Elf64_Ehdr = @ptrFromInt(ehdr_addr);
         const qwords: comptime_int = @divExact(@sizeOf(DwarfInfo), 8);
         const offset: comptime_int = @divExact(@offsetOf(DwarfInfo, "impl"), 8);
         var ret: [qwords]u64 = .{0} ** qwords;
-        var shdr: *exe.Elf64_Shdr = @ptrFromInt(ehdr_addr +% ehdr.e_shoff +% (ehdr.e_shstrndx *% ehdr.e_shentsize));
+        var shdr: *elf.Elf64_Shdr = @ptrFromInt(ehdr_addr +% ehdr.e_shoff +% (ehdr.e_shstrndx *% ehdr.e_shentsize));
         var strtab_addr: u64 = ehdr_addr +% shdr.sh_offset;
         var addr: u64 = ehdr_addr +% ehdr.e_shoff;
         var shdr_idx: u64 = 0;
@@ -1139,7 +1142,7 @@ pub const DwarfInfo = extern struct {
     }
     fn parseFileEntry(bytes: []u8) ?struct { FileEntry, u64 } {
         var pos: u64 = 0;
-        const name: [:0]const u8 = mach.manyToSlice80(bytes.ptr);
+        const name: [:0]const u8 = mem.terminate(bytes.ptr, 0);
         if (name.len == 0) {
             return null;
         }
@@ -1153,7 +1156,7 @@ pub const DwarfInfo = extern struct {
         return .{ .{ .name = name, .dir_idx = dir_idx[0], .mtime = mtime[0], .size = size[0] }, pos };
     }
     fn parseDirectoryEntry(bytes: []u8) ?struct { FileEntry, u64 } {
-        const dir: [:0]const u8 = mach.manyToSlice80(bytes.ptr);
+        const dir: [:0]const u8 = mem.terminate(bytes.ptr, 0);
         if (dir.len == 0) {
             return null;
         }
@@ -1244,8 +1247,8 @@ pub const DwarfInfo = extern struct {
                 return unit;
             }
             const gev5: bool = unit.version >= 5;
-            const ranges_len: u64 = mach.cmov64(gev5, dwarf_info.impl.rnglists_len, dwarf_info.impl.ranges_len);
-            const ranges: [*]u8 = mach.cmovx(gev5, dwarf_info.impl.rnglists, dwarf_info.impl.ranges);
+            const ranges_len: u64 = if (gev5) dwarf_info.impl.rnglists_len else dwarf_info.impl.ranges_len;
+            const ranges: [*]u8 = if (gev5) dwarf_info.impl.rnglists else dwarf_info.impl.ranges;
             const ranges_val = unit.info_entry.get(.ranges) orelse {
                 continue;
             };
@@ -1559,7 +1562,7 @@ fn parseFormValue(allocator: *Allocator, unit: *Unit, bytes: []u8, form: Form) s
         .data4 => return .{ .{ .Const = .{ .signed = false, .payload = @as(*align(1) u32, @ptrCast(bytes)).* } }, 4 },
         .data8 => return .{ .{ .Const = .{ .signed = false, .payload = @as(*align(1) u64, @ptrCast(bytes)).* } }, 8 },
         .string => {
-            const str: [:0]u8 = mach.manyToSlice80(bytes.ptr);
+            const str: [:0]u8 = mem.terminate(bytes, 0);
             return .{ .{ .String = str }, str.len };
         },
         .block => {
@@ -1609,7 +1612,7 @@ fn parseFormValue(allocator: *Allocator, unit: *Unit, bytes: []u8, form: Form) s
         .exprloc => {
             const loc = parse.noexcept.readLEB128(usize, bytes);
             const expr: []u8 = allocator.allocate(u8, loc[0]);
-            mach.memcpy(expr.ptr, bytes[loc[1]..].ptr, expr.len);
+            @memcpy(expr, bytes[loc[1]..].ptr);
             return .{ .{ .ExprLoc = expr }, loc[1] +% expr.len };
         },
         .flag_present => return .{ .{ .Flag = true }, 0 },
@@ -1623,7 +1626,7 @@ fn parseFormValue(allocator: *Allocator, unit: *Unit, bytes: []u8, form: Form) s
         },
         .data16 => {
             var data: [16]u8 = undefined;
-            mach.memcpy(&data, bytes.ptr, 16);
+            @memcpy(&data, bytes.ptr);
             return .{ .{ .data16 = data }, 16 };
         },
         .line_strp => switch (unit.word_size) {
@@ -1665,11 +1668,11 @@ const FileEntry = struct {
         const dirname: []const u8 = dirs[entry.dir_idx].name;
         const ret: []u8 = allocator.allocate(u8, dirname.len +% entry.name.len +% 2);
         var len: u64 = 0;
-        mach.memcpy(ret.ptr, dirname.ptr, dirname.len);
+        @memcpy(ret.ptr, dirname);
         len +%= dirname.len;
         ret[len] = '/';
         len +%= 1;
-        mach.memcpy(ret.ptr + len, entry.name.ptr, entry.name.len);
+        @memcpy(ret.ptr + len, entry.name);
         len +%= entry.name.len;
         ret[len] = 0;
         return ret[0..len :0];
@@ -1752,14 +1755,14 @@ const about = struct {
         @setRuntimeSafety(false);
         var buf: [512]u8 = undefined;
         var len: u64 = 0;
-        mach.memcpy(&buf, src.fn_name.ptr, src.fn_name.len);
+        @memcpy(&buf, src.fn_name);
         len +%= src.fn_name.len;
         @as(*[2]u8, @ptrCast(buf[len..].ptr)).* = ": ".*;
         len +%= 2;
-        mach.memcpy(buf[len..].ptr, msg.ptr, msg.len);
+        @memcpy(buf[len..].ptr, msg);
         len +%= msg.len;
         const int_s: []const u8 = fmt.old.ud64(int).readAll();
-        mach.memcpy(buf[len..].ptr, int_s.ptr, int_s.len);
+        @memcpy(buf[len..].ptr, int_s);
         len +%= int_s.len;
         buf[len] = '\n';
         len +%= 1;
