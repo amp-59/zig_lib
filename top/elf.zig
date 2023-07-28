@@ -558,14 +558,14 @@ pub const Elf32_Sym = extern struct {
     st_name: u32,
     st_value: u32,
     st_size: u32,
-    st_info: u8,
-    st_other: u8,
+    st_info: STT,
+    st_other: STV,
     st_shndx: u16,
 };
 pub const Elf64_Sym = extern struct {
     st_name: u32,
-    st_info: u8,
-    st_other: u8,
+    st_info: STT,
+    st_other: STV,
     st_shndx: u16,
     st_value: u64,
     st_size: u64,
@@ -1419,9 +1419,175 @@ pub const R_X86_64_GOTPCRELX = 41;
 /// Load from 32 bit signed PC relative offset to GOT entry with REX prefix, relaxable
 pub const R_X86_64_REX_GOTPCRELX = 42;
 pub const R_X86_64_NUM = 43;
-pub const STV = enum(u2) {
+pub const STV = enum(u8) {
     DEFAULT = 0,
     INTERNAL = 1,
     HIDDEN = 2,
     PROTECTED = 3,
+};
+pub fn load(comptime Fn: type, vdso_addr: u64, symbol: [:0]const u8) ?Fn {
+    if (sectionAddress(vdso_addr, symbol)) |addr| {
+        if (programOffset(vdso_addr)) |off| {
+            return @ptrFromInt(addr -% off);
+        }
+    }
+    return null;
+}
+pub fn sectionAddress(ehdr_addr: u64, symbol: [:0]const u8) ?u64 {
+    @setRuntimeSafety(builtin.is_safe);
+    const ehdr: *Elf64_Ehdr = @ptrFromInt(ehdr_addr);
+    var symtab_addr: u64 = 0;
+    var strtab_addr: u64 = 0;
+    var symtab_ents: u64 = 0;
+    var dynsym_size: u64 = 0;
+    var addr: u64 = ehdr_addr +% ehdr.e_shoff;
+    var idx: usize = 0;
+    while (idx != ehdr.e_shnum) : ({
+        idx +%= 1;
+        addr = addr +% ehdr.e_shentsize;
+    }) {
+        const shdr: *Elf64_Shdr = @ptrFromInt(addr);
+        if (shdr.sh_type == .DYNSYM) {
+            dynsym_size = shdr.sh_size;
+        }
+        if (shdr.sh_type == .DYNAMIC) {
+            const dyn: [*]Elf64_Dyn = @ptrFromInt(ehdr_addr +% shdr.sh_offset);
+            var dyn_idx: u64 = 0;
+            while (true) : (dyn_idx +%= 1) {
+                if (dyn[dyn_idx].d_tag == .SYMTAB) {
+                    symtab_addr = ehdr_addr +% dyn[dyn_idx].d_val;
+                    dyn_idx +%= 1;
+                }
+                if (dyn[dyn_idx].d_tag == .SYMENT) {
+                    symtab_ents = dyn[dyn_idx].d_val;
+                    dyn_idx +%= 1;
+                }
+                if (dyn[dyn_idx].d_tag == .STRTAB) {
+                    strtab_addr = ehdr_addr +% dyn[dyn_idx].d_val;
+                }
+                if (symtab_addr != 0 and
+                    symtab_ents != 0 and
+                    strtab_addr != 0)
+                {
+                    const strtab: [*:0]u8 = @ptrFromInt(strtab_addr);
+                    const symtab: [*]Elf64_Sym = @ptrFromInt(symtab_addr);
+                    var st_idx: u64 = 1;
+                    lo: while (st_idx *% symtab_ents != dynsym_size) : (st_idx +%= 1) {
+                        for (symbol, strtab + symtab[st_idx].st_name) |x, y| {
+                            if (x != y) {
+                                continue :lo;
+                            }
+                        }
+                        return ehdr_addr +% symtab[st_idx].st_value;
+                    }
+                    break;
+                }
+            }
+        }
+    }
+    return null;
+}
+pub fn programOffset(ehdr_addr: u64) ?u64 {
+    @setRuntimeSafety(builtin.is_safe);
+    const ehdr: *Elf64_Ehdr = @ptrFromInt(ehdr_addr);
+    var addr: u64 = ehdr_addr +% ehdr.e_phoff;
+    var idx: usize = 0;
+    while (idx != ehdr.e_phnum) : ({
+        idx +%= 1;
+        addr +%= ehdr.e_phentsize;
+    }) {
+        const phdr: *Elf64_Phdr = @ptrFromInt(addr);
+        if (phdr.p_flags.check(.X)) {
+            return phdr.p_vaddr -% phdr.p_offset;
+        }
+    }
+    return null;
+}
+
+pub const ElfInfo = extern struct {
+    ehdr: *Elf64_Ehdr,
+    impl: extern struct {
+        dynamic: [*]Elf64_Dyn,
+        dynamic_len: u64,
+        dynstr: [*]u8,
+        dynstr_len: u64,
+        dynsym: [*]Elf64_Sym,
+        dynsym_len: u64,
+        strtab: [*]u8,
+        strtab_len: u64,
+        symtab: [*]Elf32_Sym,
+        symtab_len: u64,
+        text: [*]u8,
+        text_len: u64,
+        rodata: [*]u8,
+        rodata_len: u64,
+    },
+    const names: []const struct { []const u8, usize } = &.{
+        .{ ".dynamic", @sizeOf(Elf64_Dyn) },
+        .{ ".dynstr", @sizeOf(u8) },
+        .{ ".dynsym", @sizeOf(Elf64_Sym) },
+        .{ ".strtab", @sizeOf(u8) },
+        .{ ".symtab", @sizeOf(Elf64_Sym) },
+        .{ ".text", @sizeOf(u8) },
+        .{ ".rodata", @sizeOf(u8) },
+    };
+    const qwords: comptime_int = @divExact(@sizeOf(meta.Field(ElfInfo, "impl")), 8);
+    pub fn init(ehdr_addr: u64) ElfInfo {
+        @setRuntimeSafety(builtin.is_safe);
+        const ehdr: *Elf64_Ehdr = @ptrFromInt(ehdr_addr);
+        var impl: [qwords]u64 = .{0} ** qwords;
+        var shdr: *Elf64_Shdr = @ptrFromInt(ehdr_addr +% ehdr.e_shoff +% (ehdr.e_shstrndx *% ehdr.e_shentsize));
+        var strtab_addr: u64 = ehdr_addr +% shdr.sh_offset;
+        var addr: u64 = ehdr_addr +% ehdr.e_shoff;
+        var shdr_idx: u64 = 0;
+        while (shdr_idx != ehdr.e_shnum) : (shdr_idx +%= 1) {
+            shdr = @ptrFromInt(addr);
+            for (names, 0..) |field, field_idx| {
+                const str: [*:0]u8 = @ptrFromInt(strtab_addr +% shdr.sh_name);
+                var idx: usize = 0;
+                while (str[idx] != 0) : (idx +%= 1) {
+                    if (field[0][idx] != str[idx]) break;
+                } else {
+                    const pair_idx: usize = field_idx *% 2;
+                    impl[pair_idx +% 0] = ehdr_addr +% shdr.sh_offset;
+                    impl[pair_idx +% 1] = shdr.sh_size / field[1];
+                }
+            }
+            addr +%= ehdr.e_shentsize;
+        }
+        return .{ .ehdr = ehdr, .impl = @bitCast(impl) };
+    }
+    pub fn lookup(elf_info: ElfInfo, symbol: []const u8) ?Elf64_Sym {
+        @setRuntimeSafety(builtin.is_safe);
+        var dyn_idx: usize = 0;
+        while (dyn_idx != elf_info.impl.dynsym_len) : (dyn_idx +%= 1) {
+            const dyn: Elf64_Sym = elf_info.impl.dynsym[dyn_idx];
+            const str: [*]u8 = elf_info.impl.dynstr + dyn.st_name;
+            var idx: usize = 1;
+            while (str[idx] != 0) : (idx +%= 1) {
+                if (symbol[idx] != str[idx]) break;
+            } else {
+                return dyn;
+            }
+        }
+        return null;
+    }
+    pub fn executableOffset(elf_info: ElfInfo) u64 {
+        @setRuntimeSafety(builtin.is_safe);
+        var addr: u64 = @intFromPtr(elf_info.ehdr) +% elf_info.ehdr.e_phoff;
+        var phdr: *Elf64_Phdr = @ptrFromInt(addr);
+        var ph_idx: usize = 0;
+        while (ph_idx != elf_info.ehdr.e_phnum) : ({
+            ph_idx +%= 1;
+            addr +%= elf_info.ehdr.e_phentsize;
+            phdr = @ptrFromInt(addr);
+        }) {
+            if (phdr.p_flags.check(.X)) {
+                break;
+            }
+        } else {
+            unreachable;
+        }
+        return phdr.p_vaddr -% phdr.p_offset;
+    }
 };
