@@ -2516,7 +2516,7 @@ fn GenericArenaAllocatorIntermediate(comptime Allocator: type) type {
             if (s_up_addr == allocator.unallocated_byte_address()) {
                 Implementation.deallocateStaticUnitAlignedEndBoundary(allocator, n_count, s_aligned_bytes, s_lb_addr);
             } else if (Allocator.allocator_spec.options.require_filo_free) {
-                debug.showFiloDeallocateViolationAndExit(allocator, s_up_addr, @src());
+                about.showFiloDeallocateViolationAndExit(allocator, s_up_addr, @src());
             } else {
                 Implementation.deallocateStaticUnitAlignedEndInternal(allocator, n_count, s_aligned_bytes);
             }
@@ -2525,7 +2525,7 @@ fn GenericArenaAllocatorIntermediate(comptime Allocator: type) type {
             if (s_up_addr == allocator.unallocated_byte_address()) {
                 Implementation.deallocateStaticAnyAlignedEndBoundary(allocator, n_count, s_aligned_bytes, s_lb_addr);
             } else if (Allocator.allocator_spec.options.require_filo_free) {
-                debug.showFiloDeallocateViolationAndExit(allocator, s_up_addr, @src());
+                about.showFiloDeallocateViolationAndExit(allocator, s_up_addr, @src());
             } else {
                 Implementation.deallocateStaticAnyAlignedEndInternal(allocator, n_count, s_aligned_bytes);
             }
@@ -2534,7 +2534,7 @@ fn GenericArenaAllocatorIntermediate(comptime Allocator: type) type {
             if (s_up_addr == allocator.unallocated_byte_address()) {
                 Implementation.deallocateManyUnitAlignedEndBoundary(allocator, s_aligned_bytes, s_lb_addr);
             } else if (Allocator.allocator_spec.options.require_filo_free) {
-                debug.showFiloDeallocateViolationAndExit(allocator, s_up_addr, @src());
+                about.showFiloDeallocateViolationAndExit(allocator, s_up_addr, @src());
             } else {
                 Implementation.deallocateManyUnitAlignedEndInternal(allocator, s_aligned_bytes);
             }
@@ -2543,7 +2543,7 @@ fn GenericArenaAllocatorIntermediate(comptime Allocator: type) type {
             if (s_up_addr == allocator.unallocated_byte_address()) {
                 Implementation.deallocateManyAnyAlignedEndBoundary(allocator, s_aligned_bytes, s_lb_addr);
             } else if (Allocator.allocator_spec.options.require_filo_free) {
-                debug.showFiloDeallocateViolationAndExit(allocator, s_up_addr, @src());
+                about.showFiloDeallocateViolationAndExit(allocator, s_up_addr, @src());
             } else {
                 Implementation.deallocateManyAnyAlignedEndInternal(allocator, s_aligned_bytes);
             }
