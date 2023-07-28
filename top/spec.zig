@@ -1,4 +1,4 @@
-const zl = @import("../zig_lib.zig");
+const zl = @import("./std.zig");
 const spec = @This();
 pub usingnamespace sys;
 pub fn add(args1: anytype, args2: anytype) @TypeOf(args1) {
