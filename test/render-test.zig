@@ -17,7 +17,6 @@ pub const runtime_assertions: bool = true;
 pub const trace: debug.Trace = .{
     .options = .{ .tokens = builtin.my_trace.options.tokens },
 };
-
 const AddressSpace = mem.GenericRegularAddressSpace(.{
     .lb_addr = 0x40000000,
     .divisions = 128,
@@ -76,6 +75,14 @@ fn testRenderUnion(allocator: *Allocator, array: *Array, buf: [*]u8) !void {
 fn testRenderEnum(allocator: *Allocator, array: *Array, buf: [*]u8) !void {
     try testFormat(allocator, array, buf, comptime fmt.any(enum(u3) { x, y, z }.z));
 }
+fn testRenderTypeDescription(allocator: *Allocator, array: *Array, buf: [*]u8) !void {
+    const TypeDescr = fmt.GenericTypeDescrFormat(.{});
+    const any = TypeDescr.init;
+    try testFormat(allocator, array, buf, comptime any(packed struct(u120) { x: u64 = 5, y: packed struct { u32 = 1, u16 = 2 } = .{}, z: u8 = 255 }));
+    try testFormat(allocator, array, buf, comptime any(struct { buf: [*]u8, buf_len: usize }));
+    try testFormat(allocator, array, buf, comptime any(struct { buf: []u8, buf_len: usize }));
+    try testFormat(allocator, array, buf, comptime any(struct { auto: [256]u8 = [1]u8{0xa} ** 256, auto_len: usize = 16 }));
+}
 pub fn main() !void {
     try mem.map(.{}, .{}, .{}, 0x40000000, 0x40000000);
     var address_space: AddressSpace = .{};
@@ -85,6 +92,7 @@ pub fn main() !void {
     try testRenderArray(&allocator, &array, buf.ptr);
     try testRenderType(&allocator, &array, buf.ptr);
     try testRenderSlice(&allocator, &array, buf.ptr);
+    try testRenderTypeDescription(&allocator, &array, buf.ptr);
     //try testRenderStruct(&allocator, &array, buf.ptr);
     //try testRenderEnum(&allocator, &array, buf.ptr);
 }
