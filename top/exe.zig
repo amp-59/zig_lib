@@ -4,7 +4,7 @@ const fmt = @import("./fmt.zig");
 const meta = @import("./meta.zig");
 const debug = @import("./debug.zig");
 const builtin = @import("./builtin.zig");
-const DT = enum(u32) {
+pub const DT = enum(u32) {
     NULL = NULL,
     NEEDED = NEEDED,
     PLTRELSZ = PLTRELSZ,
@@ -1424,27 +1424,4 @@ pub const STV = enum(u2) {
     INTERNAL = 1,
     HIDDEN = 2,
     PROTECTED = 3,
-};
-const about = opaque {
-    const PrintArray = mem.StaticString(4096);
-    const about_elf_1_s: []const u8 = "elf:           ";
-    const about_elf_s: []const u8 = "elf-error:     offset=";
-    fn badEndianError(hdr32: *Elf32_Ehdr) void {
-        const offset: u64 = @intFromPtr(&hdr32.e_ident[EI.DATA]) - @intFromPtr(hdr32);
-        var array: PrintArray = .{};
-        array.writeMany(about_elf_1_s);
-        array.writeFormat(fmt.ux64(offset));
-        array.writeMany(", bad endian: ");
-        array.writeFormat(fmt.ud64(hdr32.e_ident[EI.DATA]));
-        array.writeMany("\n");
-    }
-    fn badVersionError(hdr32: *Elf32_Ehdr) void {
-        const offset: u64 = @intFromPtr(&hdr32.e_ident[EI.VERSION]) - @intFromPtr(hdr32);
-        var array: PrintArray = .{};
-        array.writeMany(about_elf_1_s);
-        array.writeFormat(fmt.ux64(offset));
-        array.writeMany(", bad version: ");
-        array.writeFormat(fmt.ud64(hdr32.e_ident[EI.VERSION]));
-        array.writeMany("\n");
-    }
 };
