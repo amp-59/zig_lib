@@ -1,6 +1,6 @@
 const sys = @import("./sys.zig");
 const fmt = @import("./fmt.zig");
-const exe = @import("./exe.zig");
+const elf = @import("./elf.zig");
 const meta = @import("./meta.zig");
 const time = @import("./time.zig");
 const file = @import("./file.zig");
@@ -964,84 +964,6 @@ pub fn clone(comptime spec: CloneSpec, stack_addr: u64, stack_len: u64, result_p
         return @as(spec.return_type, @intCast(rc));
     }
     unreachable;
-}
-pub fn load(comptime Fn: type, vdso_addr: u64, symbol: [:0]const u8) ?Fn {
-    if (sectionAddress(vdso_addr, symbol)) |addr| {
-        if (programOffset(vdso_addr)) |off| {
-            return @ptrFromInt(addr -% off);
-        }
-    }
-    return null;
-}
-pub fn programOffset(ehdr_addr: u64) ?u64 {
-    @setRuntimeSafety(builtin.is_safe);
-    const ehdr: *exe.Elf64_Ehdr = @ptrFromInt(ehdr_addr);
-    var addr: u64 = ehdr_addr +% ehdr.e_phoff;
-    var idx: usize = 0;
-    while (idx != ehdr.e_phnum) : ({
-        idx +%= 1;
-        addr +%= ehdr.e_phentsize;
-    }) {
-        const phdr: *exe.Elf64_Phdr = @ptrFromInt(addr);
-        if (phdr.p_flags.check(.X)) {
-            return phdr.p_vaddr -% phdr.p_offset;
-        }
-    }
-    return null;
-}
-pub fn sectionAddress(ehdr_addr: u64, symbol: [:0]const u8) ?u64 {
-    @setRuntimeSafety(builtin.is_safe);
-    const ehdr: *exe.Elf64_Ehdr = @ptrFromInt(ehdr_addr);
-    var symtab_addr: u64 = 0;
-    var strtab_addr: u64 = 0;
-    var symtab_ents: u64 = 0;
-    var dynsym_size: u64 = 0;
-    var addr: u64 = ehdr_addr +% ehdr.e_shoff;
-    var idx: usize = 0;
-    while (idx != ehdr.e_shnum) : ({
-        idx +%= 1;
-        addr = addr +% ehdr.e_shentsize;
-    }) {
-        const shdr: *exe.Elf64_Shdr = @ptrFromInt(addr);
-        if (shdr.sh_type == .DYNSYM) {
-            dynsym_size = shdr.sh_size;
-        }
-        if (shdr.sh_type == .DYNAMIC) {
-            const dyn: [*]exe.Elf64_Dyn = @ptrFromInt(ehdr_addr +% shdr.sh_offset);
-            var dyn_idx: u64 = 0;
-            while (true) : (dyn_idx +%= 1) {
-                if (dyn[dyn_idx].d_tag == .SYMTAB) {
-                    symtab_addr = ehdr_addr +% dyn[dyn_idx].d_val;
-                    dyn_idx +%= 1;
-                }
-                if (dyn[dyn_idx].d_tag == .SYMENT) {
-                    symtab_ents = dyn[dyn_idx].d_val;
-                    dyn_idx +%= 1;
-                }
-                if (dyn[dyn_idx].d_tag == .STRTAB) {
-                    strtab_addr = ehdr_addr +% dyn[dyn_idx].d_val;
-                }
-                if (symtab_addr != 0 and
-                    symtab_ents != 0 and
-                    strtab_addr != 0)
-                {
-                    const strtab: [*:0]u8 = @ptrFromInt(strtab_addr);
-                    const symtab: [*]exe.Elf64_Sym = @ptrFromInt(symtab_addr);
-                    var st_idx: u64 = 1;
-                    lo: while (st_idx *% symtab_ents != dynsym_size) : (st_idx +%= 1) {
-                        for (symbol, strtab + symtab[st_idx].st_name) |x, y| {
-                            if (x != y) {
-                                continue :lo;
-                            }
-                        }
-                        return ehdr_addr +% symtab[st_idx].st_value;
-                    }
-                    break;
-                }
-            }
-        }
-    }
-    return null;
 }
 /// Replaces argument at `index` with argument at `index` +% 1
 /// This is useful for extracting information from the program arguments in
