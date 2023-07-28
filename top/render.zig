@@ -1143,6 +1143,55 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
                 }
             }
         }
+        pub fn formatWriteBufEnumField(format: Format, buf: [*]u8) usize {
+            const enum_info: builtin.Type = @typeInfo(fields[0].type);
+            const w: enum_info.Enum.tag_type = @field(format.value, fields[1].name);
+            @as(*[10]u8, @ptrCast(buf)).* = "bit_field(".*;
+            var len: usize = 10;
+            @as(meta.TypeName(enum_info.Enum.tag_type), @ptrCast(buf + len)).* = @typeName(enum_info.Enum.tag_type).*;
+            len +%= @typeName(enum_info.Enum.tag_type).len;
+            @as(*[3]u8, @ptrCast(buf + len)).* = "){ ".*;
+            len +%= 3;
+            var x: enum_info.Enum.tag_type = w;
+            comptime var idx: u64 = enum_info.Enum.fields.len;
+            inline while (idx != 0) {
+                idx -%= 1;
+                const field: builtin.Type.EnumField = enum_info.Enum.fields[idx];
+                if (field.value != 0 or w == 0) {
+                    const y: enum_info.Enum.tag_type = @field(format.value, fields[1].name) & field.value;
+                    if (y == field.value) {
+                        buf[len] = '.';
+                        len +%= 1;
+                        const tag_name_format: fmt.IdentifierFormat = .{ .value = field.name };
+                        len +%= tag_name_format.formatWriteBuf(buf + len);
+                        @as(*[3]u8, @ptrCast(buf + len)).* = " | ".*;
+                        len +%= 3;
+                        x &= ~y;
+                    }
+                }
+            }
+            if (x != w) {
+                if (x != 0) {
+                    const int_format: IntFormat(spec, enum_info.Enum.tag_type) = .{ .value = x };
+                    len +%= int_format.formatWriteBuf(buf + len);
+                    @as(*[2]u8, @ptrCast(buf + len)).* = " }".*;
+                    len +%= 2;
+                } else {
+                    @as(*[2]u8, @ptrCast(buf + (len -% 1))).* = " }".*;
+                    len +%= 1;
+                }
+            } else {
+                if (x != 0) {
+                    const int_format: IntFormat(spec, enum_info.Enum.tag_type) = .{ .value = x };
+                    len +%= int_format.formatWriteBuf(buf + len);
+                    @as(*[2]u8, @ptrCast(buf + len)).* = " }".*;
+                    len +%= 2;
+                } else {
+                    (buf - 1)[len] = '}';
+                }
+            }
+            return len;
+        }
         pub fn formatLengthEnumField(format: Format) u64 {
             const enum_info: builtin.Type = @typeInfo(fields[0].type);
             const w: enum_info.Enum.tag_type = @field(format.value, fields[1].name);
@@ -1259,9 +1308,9 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
         pub fn formatWriteBuf(format: anytype, buf: [*]u8) usize {
             var len: usize = 0;
             if (show_enum_field) {
-                format.formatWriteBufEnumField(buf);
+                len +%= format.formatWriteBufEnumField(buf);
             } else if (tag_type == null) {
-                format.formatWriteBufUntagged(buf);
+                len +%= format.formatWriteBufUntagged(buf);
             } else if (fields.len == 0) {
                 @as(*[2]u8, @ptrCast(buf + len)).* = "{}".*;
                 len +%= 2;
