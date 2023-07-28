@@ -1209,55 +1209,62 @@ pub const about = opaque {
         debug.logAlwaysAIO(&buf, &[_][]const u8{ futex_wait_s, addr_s, ", word=", word_s, ", val=", value_s, ", sec=", sec_s, ", nsec=", nsec_s, "\n" });
     }
     fn futexWakeAttempt(futex: *u32, count: u64) void {
-        if (return) {}
-        const addr_s: []const u8 = fmt.old.ux64(@intFromPtr(futex)).readAll();
-        const word_s: []const u8 = fmt.old.ud64(futex.*).readAll();
-        const count_s: []const u8 = fmt.old.ud64(count).readAll();
-        var buf: [3072]u8 = undefined;
-        debug.logAlwaysAIO(&buf, &[_][]const u8{ futex_wake_s, addr_s, ", word=", word_s, ", max=", count_s, "\n" });
+        var buf: [256]u8 = undefined;
+        var len: usize = futex_wait_s.len;
+        var ux64: fmt.Type.Ux64 = .{ .value = @intFromPtr(futex) };
+        var ud64: fmt.Type.Ud64 = .{ .value = futex.* };
+        @as(fmt.AboutDest, @ptrCast(&buf)).* = futex_wake_s.*;
+        @as(*[6]u8, @ptrCast(buf[len..].ptr)).* = "futex=".*;
+        len +%= 6;
+        len +%= ux64.formatWriteBuf(buf[len..].ptr);
+        @as(*[7]u8, @ptrCast(buf[len..].ptr)).* = ", word=".*;
+        len +%= 7;
+        len +%= ud64.formatWriteBuf(buf[len..].ptr);
+        @as(*[6]u8, @ptrCast(buf[len..].ptr)).* = ", max=".*;
+        len +%= 6;
+        ud64.value = count;
+        len +%= ud64.formatWriteBuf(buf[len..].ptr);
+        buf[len] = '\n';
+        debug.write(buf[0 .. len +% 1]);
     }
     fn futexWakeNotice(futex: *u32, count: u64, ret: u64) void {
-        if (return) {}
-        const addr_s: []const u8 = fmt.old.ux64(@intFromPtr(futex)).readAll();
-        const word_s: []const u8 = fmt.old.ud64(futex.*).readAll();
-        const count_s: []const u8 = fmt.old.ud64(count).readAll();
-        const ret_s: []const u8 = fmt.old.ud64(ret).readAll();
-        var buf: [3072]u8 = undefined;
-        debug.logAlwaysAIO(&buf, &[_][]const u8{ futex_wake_s, addr_s, ", word=", word_s, ", max=", count_s, ", res=", ret_s, "\n" });
-    }
-    fn futexWakeOpAttempt(futex1: *u32, futex2: *u32, count1: u32, count2: u32, wake_op: FutexOp.WakeOp) void {
-        if (return) {}
-        _ = wake_op;
-        const addr1_s: []const u8 = fmt.old.ux64(@intFromPtr(futex1)).readAll();
-        const word1_s: []const u8 = fmt.old.ud64(futex1.*).readAll();
-        const addr2_s: []const u8 = fmt.old.ux64(@intFromPtr(futex2)).readAll();
-        const word2_s: []const u8 = fmt.old.ud64(futex2.*).readAll();
-        const count1_s: []const u8 = fmt.old.ud64(count1).readAll();
-        const count2_s: []const u8 = fmt.old.ud64(count2).readAll();
-        var buf: [3072]u8 = undefined;
-        debug.logAlwaysAIO(&buf, &[_][]const u8{
-            futex_wake_s, "futex1=@", addr1_s,  ", word1=",
-            word1_s,      ", max1=",  count1_s, ", futex2=@",
-            addr2_s,      ", word2=", word2_s,  ", max2=",
-            count2_s,     "\n",
-        });
-    }
-    fn futexWakeOpNotice(futex1: *u32, futex2: *u32, count1: u32, count2: u32, wake_op: FutexOp.WakeOp, ret: u64) void {
-        _ = wake_op;
-        var buf: [32768]u8 = undefined;
+        var buf: [256]u8 = undefined;
         var len: usize = futex_wait_s.len;
-        var ux64: fmt.Type.Ud64 = @bitCast(@intFromPtr(futex1));
-        var ud64: fmt.Type.Ud64 = @bitCast(@as(u64, futex1.*));
+        var ux64: fmt.Type.Ux64 = .{ .value = @intFromPtr(futex) };
+        var ud64: fmt.Type.Ud64 = .{ .value = futex.* };
         @as(fmt.AboutDest, @ptrCast(&buf)).* = futex_wake_s.*;
-        @as(*[8]u8, @ptrCast(buf[len..].ptr)).* = "futex1=@".*;
-        len +%= 8;
+        @as(*[6]u8, @ptrCast(buf[len..].ptr)).* = "futex=".*;
+        len +%= 6;
+        len +%= ux64.formatWriteBuf(buf[len..].ptr);
+        @as(*[7]u8, @ptrCast(buf[len..].ptr)).* = ", word=".*;
+        len +%= 7;
+        len +%= ud64.formatWriteBuf(buf[len..].ptr);
+        @as(*[6]u8, @ptrCast(buf[len..].ptr)).* = ", max=".*;
+        len +%= 6;
+        ud64.value = count;
+        len +%= ud64.formatWriteBuf(buf[len..].ptr);
+        @as(*[6]u8, @ptrCast(buf[len..].ptr)).* = ", ret=".*;
+        len +%= 6;
+        ud64.value = ret;
+        len +%= ud64.formatWriteBuf(buf[len..].ptr);
+        buf[len] = '\n';
+        debug.write(buf[0 .. len +% 1]);
+    }
+    fn futexWakeOpAttempt(futex1: *u32, futex2: *u32, count1: u32, count2: u32, _: FutexOp.WakeOp) void {
+        var buf: [256]u8 = undefined;
+        var len: usize = futex_wait_s.len;
+        var ux64: fmt.Type.Ux64 = .{ .value = @intFromPtr(futex1) };
+        var ud64: fmt.Type.Ud64 = .{ .value = futex1.* };
+        @as(fmt.AboutDest, @ptrCast(&buf)).* = futex_wake_s.*;
+        @as(*[7]u8, @ptrCast(buf[len..].ptr)).* = "futex1=".*;
+        len +%= 7;
         len +%= ux64.formatWriteBuf(buf[len..].ptr);
         @as(*[8]u8, @ptrCast(buf[len..].ptr)).* = ", word1=".*;
         len +%= 8;
         len +%= ud64.formatWriteBuf(buf[len..].ptr);
         @as(*[7]u8, @ptrCast(buf[len..].ptr)).* = ", max1=".*;
         len +%= 7;
-        ud64 = @bitCast(@as(u64, count1));
+        ud64.value = count1;
         len +%= ud64.formatWriteBuf(buf[len..].ptr);
         @as(*[10]u8, @ptrCast(buf[len..].ptr)).* = ", futex2=@".*;
         len +%= 10;
@@ -1265,15 +1272,46 @@ pub const about = opaque {
         len +%= ux64.formatWriteBuf(buf[len..].ptr);
         @as(*[8]u8, @ptrCast(buf[len..].ptr)).* = ", word2=".*;
         len +%= 8;
-        ud64 = @bitCast(@as(u64, futex2.*));
+        ud64.value = futex2.*;
         len +%= ud64.formatWriteBuf(buf[len..].ptr);
         @as(*[7]u8, @ptrCast(buf[len..].ptr)).* = ", max2=".*;
         len +%= 7;
-        ud64 = @bitCast(@as(u64, count2));
+        ud64.value = count2;
+        len +%= ud64.formatWriteBuf(buf[len..].ptr);
+        buf[len] = '\n';
+        debug.write(buf[0 .. len +% 1]);
+    }
+    fn futexWakeOpNotice(futex1: *u32, futex2: *u32, count1: u32, count2: u32, _: FutexOp.WakeOp, ret: u64) void {
+        var buf: [256]u8 = undefined;
+        var len: usize = futex_wait_s.len;
+        var ux64: fmt.Type.Ux64 = @bitCast(@intFromPtr(futex1));
+        var ud64: fmt.Type.Ud64 = @bitCast(@as(u64, futex1.*));
+        @as(fmt.AboutDest, @ptrCast(&buf)).* = futex_wake_s.*;
+        @as(*[7]u8, @ptrCast(buf[len..].ptr)).* = "futex1=".*;
+        len +%= 7;
+        len +%= ux64.formatWriteBuf(buf[len..].ptr);
+        @as(*[8]u8, @ptrCast(buf[len..].ptr)).* = ", word1=".*;
+        len +%= 8;
+        len +%= ud64.formatWriteBuf(buf[len..].ptr);
+        @as(*[7]u8, @ptrCast(buf[len..].ptr)).* = ", max1=".*;
+        len +%= 7;
+        ud64.value = count1;
+        len +%= ud64.formatWriteBuf(buf[len..].ptr);
+        @as(*[9]u8, @ptrCast(buf[len..].ptr)).* = ", futex2=".*;
+        len +%= 9;
+        ux64.value = @intFromPtr(futex2);
+        len +%= ux64.formatWriteBuf(buf[len..].ptr);
+        @as(*[8]u8, @ptrCast(buf[len..].ptr)).* = ", word2=".*;
+        len +%= 8;
+        ud64.value = futex2.*;
+        len +%= ud64.formatWriteBuf(buf[len..].ptr);
+        @as(*[7]u8, @ptrCast(buf[len..].ptr)).* = ", max2=".*;
+        len +%= 7;
+        ud64.value = count2;
         len +%= ud64.formatWriteBuf(buf[len..].ptr);
         @as(*[6]u8, @ptrCast(buf[len..].ptr)).* = ", ret=".*;
         len +%= 6;
-        ud64 = @bitCast(ret);
+        ud64.value = ret;
         len +%= ud64.formatWriteBuf(buf[len..].ptr);
         buf[len] = '\n';
         debug.write(buf[0 .. len +% 1]);
@@ -1281,7 +1319,7 @@ pub const about = opaque {
     fn signalActionError(rt_sigaction_error: anytype, signo: sys.SignalCode, handler: SignalAction.Handler) void {
         const handler_raw: usize = @bitCast(handler);
         var ux64: fmt.Type.Ux64 = @bitCast(handler_raw);
-        var buf: [560]u8 = undefined;
+        var buf: [256]u8 = undefined;
         var len: usize = sig_s.len;
         @as(fmt.AboutDest, @ptrCast(&buf)).* = sig_s.*;
         @as(debug.about.ErrorDest, @ptrCast(buf[len..].ptr)).* = debug.about.error_s.*;
@@ -1301,9 +1339,9 @@ pub const about = opaque {
         len +%= 4;
     }
     fn signalStackError(sigaltstack_error: anytype, new_st: SignalStack) void {
-        var buf: [560]u8 = undefined;
+        var buf: [256]u8 = undefined;
         var len: usize = sig_s.len;
-        var ux64: fmt.Type.Ux64 = @bitCast(new_st.addr);
+        var ux64: fmt.Type.Ux64 = .{ .value = new_st.addr };
         @as(fmt.AboutDest, @ptrCast(&buf)).* = sig_s.*;
         @as(debug.about.ErrorDest, @ptrCast(buf[len..].ptr)).* = debug.about.error_s.*;
         len +%= debug.about.error_s.len;
@@ -1319,10 +1357,10 @@ pub const about = opaque {
     }
     fn futexWaitError(futex_error: anytype, futex: *u32, value: u32, timeout: *const time.TimeSpec) void {
         @setRuntimeSafety(builtin.is_safe);
-        var buf: [32768]u8 = undefined;
+        var buf: [256]u8 = undefined;
         var len: usize = futex_wait_s.len;
-        var ux64: fmt.Type.Ud64 = @bitCast(@intFromPtr(futex));
-        var ud64: fmt.Type.Ud64 = @bitCast(@as(u64, futex.*));
+        var ux64: fmt.Type.Ud64 = .{ .value = @intFromPtr(futex) };
+        var ud64: fmt.Type.Ud64 = .{ .value = futex.* };
         @as(fmt.AboutDest, @ptrCast(&buf)).* = futex_wait_s.*;
         @as(debug.about.ErrorDest, @ptrCast(buf[len..].ptr)).* = debug.about.error_s.*;
         len +%= debug.about.error_s.len;
@@ -1336,7 +1374,7 @@ pub const about = opaque {
         len +%= ud64.formatWriteBuf(buf[len..].ptr);
         @as(*[6]u8, @ptrCast(buf[len..].ptr)).* = ", val=".*;
         len +%= 6;
-        ud64 = @bitCast(@as(u64, value));
+        ud64.value = value;
         len +%= ud64.formatWriteBuf(buf[len..].ptr);
         @as(*[6]u8, @ptrCast(buf[len..].ptr)).* = ", sec=".*;
         ud64 = @bitCast(timeout.sec);
@@ -1349,10 +1387,10 @@ pub const about = opaque {
     }
     fn futexWakeError(futex_error: anytype, futex: *u32, count: u64) void {
         @setRuntimeSafety(builtin.is_safe);
-        var buf: [32768]u8 = undefined;
+        var buf: [256]u8 = undefined;
         var len: usize = futex_wait_s.len;
-        var ux64: fmt.Type.Ud64 = @bitCast(@intFromPtr(futex));
-        var ud64: fmt.Type.Ud64 = @bitCast(@as(u64, futex.*));
+        var ux64: fmt.Type.Ud64 = .{ .value = @intFromPtr(futex) };
+        var ud64: fmt.Type.Ud64 = .{ .value = futex.* };
         @as(fmt.AboutDest, @ptrCast(&buf)).* = futex_wait_s.*;
         @as(debug.about.ErrorDest, @ptrCast(buf[len..].ptr)).* = debug.about.error_s.*;
         len +%= debug.about.error_s.len;
@@ -1366,17 +1404,17 @@ pub const about = opaque {
         len +%= ud64.formatWriteBuf(buf[len..].ptr);
         @as(*[6]u8, @ptrCast(buf[len..].ptr)).* = ", max=".*;
         len +%= 6;
-        ud64 = @bitCast(count);
+        ud64.value = count;
         len +%= ud64.formatWriteBuf(buf[len..].ptr);
         buf[len] = '\n';
         debug.write(buf[0 .. len +% 1]);
     }
-    fn futexWakeOpError(futex_error: anytype, futex1: *u32, futex2: *u32, count1: u32, count2: u32, wake_op: FutexOp.WakeOp) void {
-        _ = wake_op;
-        var buf: [32768]u8 = undefined;
+    fn futexWakeOpError(futex_error: anytype, futex1: *u32, futex2: *u32, count1: u32, count2: u32, _: FutexOp.WakeOp) void {
+        @setRuntimeSafety(false);
+        var buf: [256]u8 = undefined;
         var len: usize = futex_wait_s.len;
-        var ux64: fmt.Type.Ud64 = @bitCast(@intFromPtr(futex1));
-        var ud64: fmt.Type.Ud64 = @bitCast(@as(u64, futex1.*));
+        var ux64: fmt.Type.Ud64 = .{ .value = @intFromPtr(futex1) };
+        var ud64: fmt.Type.Ud64 = .{ .value = futex1.* };
         @as(fmt.AboutDest, @ptrCast(&buf)).* = futex_wait_s.*;
         @as(debug.about.ErrorDest, @ptrCast(buf[len..].ptr)).* = debug.about.error_s.*;
         len +%= debug.about.error_s.len;
@@ -1390,21 +1428,20 @@ pub const about = opaque {
         len +%= ud64.formatWriteBuf(buf[len..].ptr);
         @as(*[7]u8, @ptrCast(buf[len..].ptr)).* = ", max1=".*;
         len +%= 7;
-        ud64 = @bitCast(@as(u64, count1));
+        ud64.value = count1;
         len +%= ud64.formatWriteBuf(buf[len..].ptr);
         @as(*[10]u8, @ptrCast(buf[len..].ptr)).* = ", futex2=@".*;
         len +%= 10;
-        ux64 = @bitCast(@intFromPtr(futex2));
+        ux64.value = @intFromPtr(futex2);
         len +%= ux64.formatWriteBuf(buf[len..].ptr);
         @as(*[8]u8, @ptrCast(buf[len..].ptr)).* = ", word2=".*;
         len +%= 8;
-        ud64 = @bitCast(@as(u64, futex2.*));
+        ud64.value = futex2.*;
         len +%= ud64.formatWriteBuf(buf[len..].ptr);
         @as(*[7]u8, @ptrCast(buf[len..].ptr)).* = ", max2=".*;
         len +%= 7;
-        ud64 = @bitCast(@as(u64, count2));
+        ud64.value = count2;
         len +%= ud64.formatWriteBuf(buf[len..].ptr);
-        buf[len] = '\n';
         debug.write(buf[0 .. len +% 1]);
     }
     pub fn exceptionHandler(sig: sys.SignalCode, info: *const SignalInfo, ctx: ?*const anyopaque) noreturn {
