@@ -1278,9 +1278,9 @@ fn mid(comptime T: type, comptime U: type, values: []const T) []const U {
     return @as([*]const U, @ptrFromInt(ab_addr))[0..mid_len];
 }
 fn testEqualArray(comptime T: type, comptime array_info: builtin.Type.Array, arg1: T, arg2: T) bool {
-    var i: usize = 0;
-    while (i != array_info.len) : (i += 1) {
-        if (!testEqual(array_info.child, arg1[i], arg2[i])) {
+    var idx: usize = 0;
+    while (idx != array_info.len) : (idx +% 1) {
+        if (!testEqual(array_info.child, arg1[idx], arg2[idx])) {
             return false;
         }
     }
@@ -1293,9 +1293,9 @@ fn testEqualSlice(comptime T: type, comptime pointer_info: builtin.Type.Pointer,
     if (arg1.ptr == arg2.ptr) {
         return true;
     }
-    var i: usize = 0;
-    while (i != arg1.len) : (i += 1) {
-        if (!testEqual(pointer_info.child, arg1[i], arg2[i])) {
+    var idx: usize = 0;
+    while (idx != arg1.len) : (idx +%= 1) {
+        if (!testEqual(pointer_info.child, arg1[idx], arg2[idx])) {
             return false;
         }
     }
@@ -1358,7 +1358,15 @@ fn testEqualOptional(comptime T: type, comptime optional_info: builtin.Type.Opti
     {
         return arg1 == arg2;
     }
-    return false;
+    if (arg1) |child1| {
+        if (arg2) |child2| {
+            return testEqual(optional_info.child, child1, child2);
+        } else {
+            return false;
+        }
+    } else {
+        return arg2 == null;
+    }
 }
 pub fn testEqual(comptime T: type, arg1: T, arg2: T) bool {
     const type_info: builtin.Type = @typeInfo(T);
@@ -1411,7 +1419,7 @@ pub fn testEqualString(l_values: []const u8, r_values: []const u8) bool {
     if (l_values.ptr == r_values.ptr) {
         return true;
     }
-    var idx: u64 = 0;
+    var idx: usize = 0;
     while (idx != l_values.len) {
         if (l_values[idx] != r_values[idx]) return false;
         idx +%= 1;
@@ -1425,7 +1433,7 @@ pub fn testEqualMany(comptime T: type, l_values: []const T, r_values: []const T)
     if (l_values.ptr == r_values.ptr) {
         return true;
     }
-    var idx: u64 = 0;
+    var idx: usize = 0;
     while (idx != l_values.len) {
         if (!mem.testEqual(T, l_values[idx], r_values[idx])) return false;
         idx +%= 1;
@@ -1546,7 +1554,7 @@ pub fn indexOfSentinel(any: anytype) usize {
     return idx;
 }
 pub fn indexOfFirstEqualOne(comptime T: type, value: T, values: []const T) ?u64 {
-    var idx: u64 = 0;
+    var idx: usize = 0;
     while (idx != values.len) {
         if (values[idx] == value) {
             return idx;
@@ -1556,7 +1564,7 @@ pub fn indexOfFirstEqualOne(comptime T: type, value: T, values: []const T) ?u64 
     return null;
 }
 pub fn indexOfLastEqualOne(comptime T: type, value: T, values: []const T) ?u64 {
-    var idx: u64 = values.len;
+    var idx: usize = values.len;
     while (idx != 0) {
         idx -%= 1;
         if (values[idx] == value) {
@@ -1570,7 +1578,7 @@ pub fn indexOfFirstEqualMany(comptime T: type, sub_values: []const T, values: []
         return null;
     }
     const max_idx: u64 = (values.len -% sub_values.len) +% 1;
-    var idx: u64 = 0;
+    var idx: usize = 0;
     while (idx != max_idx) {
         if (testEqualManyFront(T, sub_values, values[idx..])) {
             return idx;
@@ -1583,7 +1591,7 @@ pub fn indexOfFirstEqualAny(comptime T: type, sub_values: []const T, values: []c
     if (sub_values.len > values.len) {
         return null;
     }
-    var idx: u64 = 0;
+    var idx: usize = 0;
     while (idx != values.len) {
         for (sub_values) |value| {
             if (values[idx] == value) {
@@ -1599,7 +1607,7 @@ pub fn indexOfLastEqualMany(comptime T: type, sub_values: []const T, values: []c
         return null;
     }
     const max_idx: u64 = (values.len -% sub_values.len) +% 1;
-    var idx: u64 = max_idx;
+    var idx: usize = max_idx;
     while (idx != 0) {
         idx -%= 1;
         if (testEqualManyFront(T, sub_values, values[idx..])) {
@@ -1612,7 +1620,7 @@ pub fn indexOfLastEqualAny(comptime T: type, sub_values: []const T, values: []co
     if (sub_values.len > values.len) {
         return null;
     }
-    var idx: u64 = values.len;
+    var idx: usize = values.len;
     while (idx != 0) {
         idx -%= 1;
         for (sub_values) |value| {
@@ -1772,9 +1780,10 @@ pub fn readAfterLastEqualOneOrElseWithSentinel(
     return readAfterLastEqualOneWithSentinel(T, sentinel, value, values) orelse values;
 }
 pub fn order(comptime T: type, l_values: []const T, r_values: []const T) math.Order {
+    @setRuntimeSafety(builtin.is_safe);
     const max_idx: u64 = @min(l_values.len, r_values.len);
-    var idx: u64 = 0;
-    while (idx != max_idx) : (idx += 1) {
+    var idx: usize = 0;
+    while (idx != max_idx) : (idx +%= 1) {
         const o: math.Order = math.order(l_values[idx], r_values[idx]);
         if (o != .eq) {
             return o;
@@ -1783,6 +1792,7 @@ pub fn order(comptime T: type, l_values: []const T, r_values: []const T) math.Or
     return math.order(l_values.len, r_values.len);
 }
 pub fn orderedMatches(comptime T: type, l_values: []const T, r_values: []const T) u64 {
+    @setRuntimeSafety(builtin.is_safe);
     const j: bool = l_values.len < r_values.len;
     const s_values: []const T = if (j) l_values else r_values;
     const t_values: []const T = if (j) r_values else l_values;
@@ -1797,6 +1807,7 @@ pub fn orderedMatches(comptime T: type, l_values: []const T, r_values: []const T
     return mats;
 }
 pub fn editDistance(l_values: []const u8, r_values: []const u8) usize {
+    @setRuntimeSafety(builtin.is_safe);
     if (l_values.len == 0) {
         return r_values.len;
     }
@@ -1820,6 +1831,7 @@ pub fn editDistance(l_values: []const u8, r_values: []const u8) usize {
     return m_idx +% 1;
 }
 pub fn indexOfNearestEqualMany(comptime T: type, arg1: []const T, arg2: []const T, index: u64) ?u64 {
+    @setRuntimeSafety(builtin.is_safe);
     const needle: []const u8 = if (arg1.len < arg2.len) arg1 else arg2;
     const haystack: []const u8 = if (arg1.len < arg2.len) arg2 else arg1;
     var off: u64 = 0;
@@ -1844,6 +1856,14 @@ pub inline fn zero(comptime T: type, ptr: *T) void {
 }
 pub inline fn unstable(comptime T: type, val: T) T {
     return @as(*const volatile T, @ptrCast(&val)).*;
+}
+pub fn terminate(ptr: anytype, comptime value: @TypeOf(ptr[0])) [:value]@TypeOf(ptr[0]) {
+    @setRuntimeSafety(false);
+    var idx: usize = 0;
+    while (ptr[idx] != value) {
+        idx +%= 1;
+    }
+    return ptr[0..idx :value];
 }
 pub const SimpleAllocator = struct {
     start: u64 = 0x40000000,
@@ -1909,7 +1929,7 @@ pub const SimpleAllocator = struct {
         .logging = .{ .Release = false },
     };
     pub fn unmap(allocator: *Allocator) void {
-        mem.unmap(unmap_spec, allocator.start, allocator.finish - allocator.start);
+        mem.unmap(unmap_spec, allocator.start, allocator.finish -% allocator.start);
         allocator.next = allocator.start;
         allocator.finish = allocator.start;
     }
@@ -1928,12 +1948,13 @@ pub const SimpleAllocator = struct {
             .finish = @intFromPtr(buf.ptr + buf.len),
         };
     }
-    pub inline fn alignAbove(allocator: *Allocator, alignment: u64) u64 {
-        const mask: u64 = alignment -% 1;
+    pub fn alignAbove(allocator: *Allocator, alignment: usize) usize {
+        const mask: usize = alignment -% 1;
         return (allocator.next +% mask) & ~mask;
     }
-    pub fn addGeneric(allocator: *Allocator, size: u64, init_len: u64, ptr: *u64, max_len: *u64, len: u64) u64 {
-        const new_max_len: u64 = len +% 2;
+    pub fn addGeneric(allocator: *Allocator, size: usize, init_len: usize, ptr: *usize, max_len: *usize, len: usize) usize {
+        @setRuntimeSafety(builtin.is_safe);
+        const new_max_len: usize = len +% 2;
         if (max_len.* == 0) {
             ptr.* = allocateInternal(allocator, size *% init_len, 8);
             max_len.* = init_len;
@@ -1943,7 +1964,8 @@ pub const SimpleAllocator = struct {
         }
         return ptr.* +% (size *% len);
     }
-    pub fn addGenericSize(allocator: *Allocator, comptime Size: type, size: usize, init_len: Size, ptr: *usize, max_len: *Size, len: Size) u64 {
+    pub fn addGenericSize(allocator: *Allocator, comptime Size: type, size: usize, init_len: Size, ptr: *usize, max_len: *Size, len: Size) usize {
+        @setRuntimeSafety(builtin.is_safe);
         const new_max_len: Size = len +% 2;
         if (max_len.* == 0) {
             ptr.* = allocateInternal(allocator, size *% init_len, 8);
@@ -1959,14 +1981,15 @@ pub const SimpleAllocator = struct {
     pub const deallocateRaw = deallocateInternal;
     fn allocateInternal(
         allocator: *Allocator,
-        size_of: u64,
-        align_of: u64,
-    ) u64 {
-        const aligned: u64 = mach.alignA64(allocator.next, align_of);
-        const next: u64 = aligned +% size_of;
+        size_of: usize,
+        align_of: usize,
+    ) usize {
+        @setRuntimeSafety(builtin.is_safe);
+        const aligned: usize = mach.alignA64(allocator.next, align_of);
+        const next: usize = aligned +% size_of;
         if (next > allocator.finish) {
-            const len: u64 = allocator.finish -% allocator.start;
-            const finish: u64 = mach.alignA64(next, @max(4096, len));
+            const len: usize = allocator.finish -% allocator.start;
+            const finish: usize = mach.alignA64(next, @max(4096, len));
             map(map_spec, .{}, .{}, allocator.finish, finish -% allocator.finish);
             allocator.finish = finish;
         }
@@ -1975,33 +1998,34 @@ pub const SimpleAllocator = struct {
     }
     fn reallocateInternal(
         allocator: *Allocator,
-        old_aligned: u64,
-        old_size_of: u64,
-        new_size_of: u64,
-        align_of: u64,
-    ) u64 {
-        const old_next: u64 = old_aligned +% old_size_of;
-        const new_next: u64 = old_aligned +% new_size_of;
+        old_aligned: usize,
+        old_size_of: usize,
+        new_size_of: usize,
+        align_of: usize,
+    ) usize {
+        @setRuntimeSafety(builtin.is_safe);
+        const old_next: usize = old_aligned +% old_size_of;
+        const new_next: usize = old_aligned +% new_size_of;
         if (allocator.next == old_next) {
             if (new_next > allocator.finish) {
-                const len: u64 = allocator.finish -% allocator.start;
-                const finish: u64 = mach.alignA64(new_next, @max(4096, len));
+                const len: usize = allocator.finish -% allocator.start;
+                const finish: usize = mach.alignA64(new_next, @max(4096, len));
                 map(map_spec, .{}, .{}, allocator.finish, finish -% allocator.finish);
                 allocator.finish = finish;
             }
             allocator.next = new_next;
             return old_aligned;
         }
-        const new_aligned: u64 = allocator.allocateInternal(new_size_of, align_of);
+        const new_aligned: usize = allocator.allocateInternal(new_size_of, align_of);
         mach.addrcpy(new_aligned, old_aligned, old_size_of);
         return new_aligned;
     }
     fn deallocateInternal(
         allocator: *Allocator,
-        old_aligned: u64,
-        old_size_of: u64,
+        old_aligned: usize,
+        old_size_of: usize,
     ) void {
-        const old_next: u64 = old_aligned +% old_size_of;
+        const old_next: usize = old_aligned +% old_size_of;
         if (allocator.next == old_next) {
             allocator.next = old_next;
         }
@@ -2184,7 +2208,7 @@ pub fn writeIntSliceBig(comptime T: type, dest: []u8, value: T) void {
         return @memset(dest, 0);
     } else if (@typeInfo(T).Int.bits == 8) {
         @memset(dest, 0);
-        dest[dest.len - 1] = @as(u8, @bitCast(value));
+        dest[dest.len -% 1] = @as(u8, @bitCast(value));
         return;
     }
     const Int = @Type(.{ .Int = .{
@@ -2192,10 +2216,10 @@ pub fn writeIntSliceBig(comptime T: type, dest: []u8, value: T) void {
         .bits = @bitSizeOf(T),
     } });
     var bits: Int = @as(Int, @bitCast(value));
-    var index: u64 = dest.len;
-    while (index != 0) {
-        index -= 1;
-        dest[index] = @as(u8, @truncate(bits));
+    var idx: usize = dest.len;
+    while (idx != 0) {
+        idx -%= 1;
+        dest[idx] = @as(u8, @truncate(bits));
         bits >>= 8;
     }
 }
