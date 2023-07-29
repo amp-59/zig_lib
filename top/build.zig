@@ -529,12 +529,43 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 return;
             }
         }
+        fn loadAll(comptime Pointers: type, pathname: [:0]const u8) Pointers {
+            @setRuntimeSafety(builtin.is_safe);
+            const prot: file.Map.Protection = .{ .exec = true };
+            const flags: file.Map.Flags = .{};
+            var addr: usize = 0x80000000;
+            var st: file.Status = undefined;
+            const fd: u64 = sys.call_noexcept(.open, u64, .{ @intFromPtr(pathname.ptr), 0, 0 });
+            if (fd > 1024) {
+                proc.exitErrorFault(error.NoSuchFileOrDirectory, pathname, 2);
+            }
+            sys.call_noexcept(.fstat, void, .{ fd, @intFromPtr(&st) });
+            const len: usize = mach.alignA64(st.size, 4096);
+            const rc_addr1: usize = sys.call_noexcept(.mmap, usize, [6]usize{ addr, len, @bitCast(prot), @bitCast(flags), fd, 0 });
+            if (rc_addr1 != addr) {
+                proc.exitErrorFault(error.OutOfMemory, pathname, 2);
+            }
+            const elf_info: elf.ElfInfo = elf.ElfInfo.init(addr);
+            addr +%= elf_info.executableOffset();
+            const rc_addr2: usize = sys.call_noexcept(.mmap, usize, [6]usize{ addr, len, @bitCast(prot), @bitCast(flags), fd, 0 });
+            if (rc_addr2 != addr) {
+                proc.exitErrorFault(error.OutOfMemory, pathname, 2);
+            }
+            return elf_info.loadAll(Pointers);
+        }
         pub fn initSpecialNodes(allocator: *mem.SimpleAllocator, toplevel: *Node) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             if (builder_spec.options.special.trace) |build_cmd| {
-                special.trace = toplevel.addBuild(allocator, build_cmd, "trace", builder_spec.options.names.trace_root);
-                special.trace.flags.is_special = true;
-                special.trace.flags.build.do_configure = false;
+                const node: *Node = toplevel.addBuild(allocator, build_cmd, "trace", builder_spec.options.names.trace_root);
+                node.flags.is_special = true;
+                node.flags.build.do_configure = false;
+                special.trace = node;
+            }
+            if (builder_spec.options.special.parse) |build_cmd| {
+                const node: *Node = toplevel.addBuild(allocator, build_cmd, "parse", builder_spec.options.names.parse_root);
+                node.flags.is_special = true;
+                node.flags.build.do_configure = false;
+                special.parse = node;
             }
         }
         pub fn initState(args: [][*:0]u8, vars: [][*:0]u8) void {
