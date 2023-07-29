@@ -158,7 +158,9 @@ pub const BuilderSpec = struct {
             /// Defines generid command type used to pass function pointers to node.
             Command: ?type = null,
             /// Defines compile commands for stack tracer object.
-            trace: ?types.BuildCommand = .{ .kind = .obj, .mode = .ReleaseSmall, .strip = true },
+            trace: ?types.BuildCommand = .{ .kind = .obj, .mode = .Debug, .strip = true, .compiler_rt = false },
+            /// Defines compile commands for command line parser shared object.
+            parse: ?types.BuildCommand = .{ .kind = .lib, .mode = .Debug, .dynamic = true, .strip = true, .compiler_rt = false },
         } = .{},
         extensions: struct {
             /// Extension for Zig source files.
@@ -1373,7 +1375,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             thread_space: *ThreadSpace,
             allocator: *mem.SimpleAllocator,
             node: *Node,
-        ) void {
+        ) !void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             defer build.cmd_idx = 5;
             var maybe_task: ?types.Task = null;
