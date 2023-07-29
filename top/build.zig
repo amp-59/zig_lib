@@ -965,10 +965,9 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 node.impl.args_len -%= 1;
                 return node.impl.args[0..node.impl.args_len];
             }
-            inline fn taskArgs(allocator: *mem.SimpleAllocator, toplevel: *const Node, node: *Node, task: types.Task) [][*:0]u8 {
+            fn taskArgs(allocator: *mem.SimpleAllocator, toplevel: *const Node, node: *Node, task: types.Task) [][*:0]u8 {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
                 if (do_build and task == .build) {
-                    node.task.info.build.formatParseArgs(allocator, build.args[build.cmd_idx..build.task_idx]);
                     return makeArgPtrs(allocator, try meta.wrap(buildWrite(allocator, node.task.info.build, node.impl.paths[1..node.impl.paths_len])));
                 }
                 if (do_format and task == .format) {
@@ -1018,12 +1017,15 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     },
                     else => try meta.wrap(impl.system(args, job)),
                 }
-                if (builder_spec.options.write_build_task_record and keepGoing() and
+                if (builder_spec.options.write_build_task_record and
+                    keepGoing() and
                     task == .build)
                 {
                     writeRecord(node, job);
                 }
-                if (builder_spec.options.show_stats and keepGoing()) {
+                if (builder_spec.options.show_stats and
+                    keepGoing())
+                {
                     about.taskNotice(node, task, arena_index, old_size, new_size, job);
                 }
                 return status(job);
@@ -1041,7 +1043,9 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     if (sub_node == node and sub_node.task.tag == task) {
                         continue;
                     }
-                    if (keepGoing() and sub_node.exchange(task, .ready, .blocking, max_thread_count)) {
+                    if (keepGoing() and
+                        sub_node.exchange(task, .ready, .blocking, max_thread_count))
+                    {
                         try meta.wrap(impl.tryAcquireThread(address_space, thread_space, allocator, toplevel, sub_node, task));
                     }
                 }
@@ -1049,7 +1053,9 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     if (dep.on_node == node and dep.on_task == task) {
                         continue;
                     }
-                    if (keepGoing() and dep.on_node.exchange(dep.on_task, .ready, .blocking, max_thread_count)) {
+                    if (keepGoing() and
+                        dep.on_node.exchange(dep.on_task, .ready, .blocking, max_thread_count))
+                    {
                         try meta.wrap(impl.tryAcquireThread(address_space, thread_space, allocator, toplevel, dep.on_node, dep.on_task));
                     }
                 }
@@ -1410,7 +1416,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             .require_unmap = false,
         };
         const open_options = .{
-            .read = true,
             .no_follow = true,
         };
         const create_truncate_options = .{
@@ -1651,7 +1656,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             if (builder_spec.options.enable_usage_validation) {
                 assertNode(node, node.tag == .worker and node.task.tag == .build);
             }
-            return node.impl.paths[1];
+            return node.impl.paths[0];
         }
         pub fn rootPath(node: *Node) types.Path {
             @setRuntimeSafety(builder_spec.options.enable_safety);
@@ -1665,12 +1670,12 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             return extension.len < name.len and
                 mach.testEqualMany8(extension, name[name.len -% extension.len ..]);
         }
-        const keepGoing = if (impl.count_errors) keepGoingB else keepGoingA;
-        inline fn keepGoingA() bool {
-            comptime return true;
-        }
-        fn keepGoingB() bool {
-            return build.error_count <= builder_spec.options.max_error_count.?;
+        fn keepGoing() bool {
+            if (impl.count_errors) {
+                return build.error_count <= builder_spec.options.max_error_count.?;
+            } else {
+                comptime return true;
+            }
         }
         fn writeConfigRoot(allocator: *mem.SimpleAllocator, node: *Node) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
@@ -1966,7 +1971,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 buf[len] = '\n';
                 debug.write(buf[0 .. len +% 1]);
             }
-            inline fn incorrectNodeUsageError(node: *Node, msg: [:0]const u8) void {
+            fn incorrectNodeUsageError(node: *Node, msg: [:0]const u8) void {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
                 var buf: [32768]u8 = undefined;
                 var len: usize = 0;
@@ -2136,7 +2141,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 buf[len] = '\n';
                 debug.write(buf[0 .. len +% 1]);
             }
-            inline fn writeAbout(buf: [*]u8, kind: AboutKind) u64 {
+            fn writeAbout(buf: [*]u8, kind: AboutKind) u64 {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
                 var len: usize = 0;
                 switch (kind) {
@@ -2157,7 +2162,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 @as(*@TypeOf(tab.bold_s.*), @ptrCast(buf + len)).* = tab.bold_s.*;
                 return len +% tab.bold_s.len;
             }
-            inline fn writeTopSrcLoc(buf: [*]u8, extra: [*]u32, bytes: [*:0]u8, err_msg_idx: u32) u64 {
+            fn writeTopSrcLoc(buf: [*]u8, extra: [*]u32, bytes: [*:0]u8, err_msg_idx: u32) u64 {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
                 const err: *types.ErrorMessage = @ptrCast(extra + err_msg_idx);
                 const src: *types.SourceLocation = @ptrCast(extra + err.src_loc);
