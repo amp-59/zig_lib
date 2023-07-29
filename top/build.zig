@@ -601,7 +601,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         pub fn init(allocator: *mem.SimpleAllocator) *Node {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             const node: *Node = allocator.create(Node);
-
             node.flags = .{};
             node.name = duplicate(allocator, builder_spec.options.names.toplevel_node);
             node.tag = .group;
@@ -610,7 +609,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             node.impl.args_len = build.args.len;
             node.task.tag = .any;
             node.task.lock = omni_lock;
-
             mem.map(map(), .{}, .{}, stack_lb_addr, stack_aligned_bytes * max_thread_count);
             return node;
         }
@@ -619,14 +617,12 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             const node: *Node = allocator.create(Node);
             toplevel.addNode(allocator).* = node;
-
             node.tag = .group;
             node.flags = .{};
             node.name = duplicate(allocator, name);
             node.flags.is_hidden = name[0] == '_';
             node.task.tag = .any;
             node.task.lock = omni_lock;
-
             return node;
         }
         /// Initialize a new `zig fmt` command.
@@ -636,18 +632,15 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             const node: *Node = allocator.create(Node);
             const target_path: *types.Path = node.addPath(allocator);
             toplevel.addNode(allocator).* = node;
-
             node.tag = .worker;
             node.task.tag = .format;
             node.flags = .{};
             node.name = duplicate(allocator, name);
             node.task.info.format = allocator.create(types.FormatCommand);
             node.task.info.format.* = format_cmd;
-
             target_path.addName(allocator).* = build.build_root;
             target_path.names_len -%= if (pathname[0] == '/') 1 else 0;
             target_path.addName(allocator).* = duplicate(allocator, pathname);
-
             initializeCommand(allocator, toplevel, node);
             return node;
         }
@@ -658,17 +651,14 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             const archive_path: *types.Path = node.addPath(allocator);
             comptime do_archive = true;
             toplevel.addNode(allocator).* = node;
-
             node.tag = .worker;
             node.task.tag = .archive;
             node.flags = .{};
             node.name = duplicate(allocator, name);
             node.task.info.archive = allocator.create(types.ArchiveCommand);
             node.task.info.archive.* = archive_cmd;
-
             archive_path.addName(allocator).* = build.build_root;
             archive_path.addName(allocator).* = archiveRelative(allocator, node.name);
-
             for (deps) |dep| {
                 node.dependOnObject(allocator, dep);
             }
@@ -682,21 +672,17 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             const root_path: *types.Path = node.addPath(allocator);
             comptime do_build = true;
             toplevel.addNode(allocator).* = node;
-
             node.tag = .worker;
             node.task.tag = .build;
             node.flags = .{};
             node.name = duplicate(allocator, name);
             node.task.info.build = allocator.create(types.BuildCommand);
             node.task.info.build.* = build_cmd;
-
             binary_path.addName(allocator).* = build.build_root;
             binary_path.addName(allocator).* = binaryRelative(allocator, node.name, build_cmd.kind);
-
             root_path.addName(allocator).* = build.build_root;
             root_path.names_len -%= if (root[0] == '/') 1 else 0;
             root_path.addName(allocator).* = duplicate(allocator, root);
-
             initializeCommand(allocator, toplevel, node);
             return node;
         }
@@ -705,7 +691,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             const node: *Node = allocator.create(Node);
             comptime do_objcopy = true;
             toplevel.addNode(allocator).* = node;
-
             node.tag = .worker;
             node.task.tag = .build;
             node.flags = .{};
@@ -713,7 +698,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             node.addPath(allocator).* = holder.paths[0];
             node.task.info.objcopy = allocator.create(types.ObjcopyCommand);
             node.task.info.objcopy.* = objcopy_cmd;
-
             initializeCommand(allocator, toplevel, node);
             return node;
         }
@@ -829,13 +813,20 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             node.flags.do_update = false;
             if (node.tag == .worker) {
+                if (node.task.lock.get(.run) != .null) {
+                    node.dependOn(allocator, special.parse, .build);
+                }
                 if (node.task.tag == .build) {
+                    const mode: builtin.OptimizeMode = node.task.info.build.mode orelse .Debug;
                     if (node.flags.build.do_configure) {
-                        node.addConfig(allocator, "zig_exe", .{ .String = build.zig_exe });
-                        node.addConfig(allocator, "build_root", .{ .String = build.build_root });
-                        node.addConfig(allocator, "cache_root", .{ .String = build.cache_root });
-                        node.addConfig(allocator, "global_cache_root", .{ .String = build.global_cache_root });
-                        if (defaultAddStackTracesCriteria(node.task.info.build) or
+                        if (node.flags.build.add_build_context) {
+                            node.addConfig(allocator, "zig_exe", .{ .String = build.zig_exe });
+                            node.addConfig(allocator, "build_root", .{ .String = build.build_root });
+                            node.addConfig(allocator, "cache_root", .{ .String = build.cache_root });
+                            node.addConfig(allocator, "global_cache_root", .{ .String = build.global_cache_root });
+                        }
+                        if (builder_spec.options.add_debug_stack_traces and
+                            node.task.info.build.strip orelse (mode == .ReleaseSmall) or
                             node.flags.build.add_stack_traces)
                         {
                             node.addConfig(allocator, "have_stack_traces", .{ .Bool = true });
@@ -844,17 +835,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     }
                 }
             }
-        }
-        fn defaultAddStackTracesCriteria(build_cmd: *types.BuildCommand) bool {
-            if (builder_spec.options.add_debug_stack_traces) {
-                if (build_cmd.kind == .exe) {
-                    if (build_cmd.strip) |strip| {
-                        return !strip;
-                    }
-                    return (build_cmd.mode orelse .Debug) != .ReleaseSmall;
-                }
-            }
-            return false;
         }
         pub fn updateCommands(allocator: *mem.SimpleAllocator, toplevel: *Node, node: *Node) void {
             if (!node.flags.do_update) {
