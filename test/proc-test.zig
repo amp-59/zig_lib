@@ -54,6 +54,7 @@ fn testFutexWake(futex2: *u32) void {
 }
 fn testFutexWait(futex1: *u32) void {
     proc.futexWait(.{}, futex1, 0x10, &.{ .sec = 10 }) catch {};
+    futex1.* +%= 16;
 }
 fn testFutexWakeOp(futex1: *u32, futex2: *u32) void {
     proc.futexWakeOp(.{}, futex1, futex2, 1, 1, .{ .op = .Assign, .cmp = .Equal, .to = 0x20, .from = 0x10 }) catch {};
@@ -62,12 +63,12 @@ fn testCloneAndFutex() !void {
     var allocator: mem.SimpleAllocator = .{};
     var futex1: u32 = 16;
     var futex2: u32 = 16;
-    try proc.clone(.{ .return_type = void }, allocator.allocateRaw(4096, 16), 4096, {}, testFutexWait, .{&futex1});
+    try proc.clone(.{ .return_type = void }, allocator.allocateRaw(65536, 16), 65536, {}, testFutexWait, .{&futex1});
     try time.sleep(.{}, .{ .nsec = 0x10000 });
-    try proc.clone(.{ .return_type = void }, allocator.allocateRaw(4096, 16), 4096, {}, testFutexWakeOp, .{ &futex1, &futex2 });
+    try proc.clone(.{ .return_type = void }, allocator.allocateRaw(65536, 16), 65536, {}, testFutexWakeOp, .{ &futex1, &futex2 });
     try time.sleep(.{}, .{ .nsec = 0x20000 });
-    try proc.clone(.{ .return_type = void }, allocator.allocateRaw(4096, 16), 4096, {}, testFutexWake, .{&futex2});
-    try debug.expectEqual(u32, 16, futex1);
+    try proc.clone(.{ .return_type = void }, allocator.allocateRaw(65536, 16), 65536, {}, testFutexWake, .{&futex2});
+    try debug.expectEqual(u32, 32, futex1);
     try debug.expectEqual(u32, 32, futex2);
 }
 fn testFindNameInPath(vars: [][*:0]u8) !void {
@@ -137,7 +138,7 @@ fn recursion(buf: *[4096]u8) void {
     recursion(&next);
 }
 pub fn main(_: [][*:0]u8, vars: [][*:0]u8, aux: anytype) !void {
-    //try testCloneAndFutex();
+    try testCloneAndFutex();
     try testFindNameInPath(vars);
     try testVClockGettime(aux);
     try testUpdateSignalAction();
