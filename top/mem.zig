@@ -1279,7 +1279,7 @@ fn mid(comptime T: type, comptime U: type, values: []const T) []const U {
 }
 fn testEqualArray(comptime T: type, comptime array_info: builtin.Type.Array, arg1: T, arg2: T) bool {
     var idx: usize = 0;
-    while (idx != array_info.len) : (idx +% 1) {
+    while (idx != array_info.len) : (idx +%= 1) {
         if (!testEqual(array_info.child, arg1[idx], arg2[idx])) {
             return false;
         }

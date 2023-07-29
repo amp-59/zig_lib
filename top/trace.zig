@@ -9,6 +9,9 @@ const file = @import("./file.zig");
 const debug = @import("./debug.zig");
 const dwarf = @import("./dwarf.zig");
 const builtin = @import("./builtin.zig");
+
+pub fn _start() void {}
+
 pub const Allocator = mem.SimpleAllocator;
 pub const logging_override: debug.Logging.Override = debug.Logging.Override{
     .Acquire = false,
@@ -366,7 +369,7 @@ fn maximumSideBarWidth(itr: StackIterator) u64 {
     }
     return max_len +% 1;
 }
-pub export fn printStackTrace(trace: *const debug.Trace, first_addr: usize, frame_addr: usize) void {
+pub fn printStackTrace(trace: *const debug.Trace, first_addr: usize, frame_addr: usize) callconv(.C) void {
     @setRuntimeSafety(builtin.is_safe);
     var allocator: Allocator = .{ .start = Level.start, .next = Level.start, .finish = Level.start };
     defer allocator.unmap();
@@ -407,5 +410,10 @@ pub export fn printStackTrace(trace: *const debug.Trace, first_addr: usize, fram
         if (idx == trace.options.max_depth) {
             break;
         }
+    }
+}
+comptime {
+    if (builtin.output_mode == .Obj) {
+        @export(printStackTrace, .{ .name = "printStackTrace", .linkage = .Strong });
     }
 }
