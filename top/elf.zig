@@ -5,383 +5,171 @@ const meta = @import("./meta.zig");
 const debug = @import("./debug.zig");
 const builtin = @import("./builtin.zig");
 pub const DT = enum(u32) {
-    NULL = NULL,
-    NEEDED = NEEDED,
-    PLTRELSZ = PLTRELSZ,
-    PLTGOT = PLTGOT,
-    HASH = HASH,
-    STRTAB = STRTAB,
-    SYMTAB = SYMTAB,
-    RELA = RELA,
-    RELASZ = RELASZ,
-    RELAENT = RELAENT,
-    STRSZ = STRSZ,
-    SYMENT = SYMENT,
-    INIT = INIT,
-    FINI = FINI,
-    SONAME = SONAME,
-    RPATH = RPATH,
-    SYMBOLIC = SYMBOLIC,
-    REL = REL,
-    RELSZ = RELSZ,
-    RELENT = RELENT,
-    PLTREL = PLTREL,
-    DEBUG = DEBUG,
-    TEXTREL = TEXTREL,
-    JMPREL = JMPREL,
-    BIND_NOW = BIND_NOW,
-    INIT_ARRAY = INIT_ARRAY,
-    FINI_ARRAY = FINI_ARRAY,
-    INIT_ARRAYSZ = INIT_ARRAYSZ,
-    FINI_ARRAYSZ = FINI_ARRAYSZ,
-    RUNPATH = RUNPATH,
-    FLAGS = FLAGS,
-    ENCODING = ENCODING,
-    // PREINIT_ARRAY = PREINIT_ARRAY,
-    PREINIT_ARRAYSZ = PREINIT_ARRAYSZ,
-    SYMTAB_SHNDX = SYMTAB_SHNDX,
-    NUM = NUM,
-    LOOS = LOOS,
-    HIOS = HIOS,
-    LOPROC = LOPROC,
-    HIPROC = HIPROC,
-    PROCNUM = PROCNUM,
-    VALRNGLO = VALRNGLO,
-    GNU_PRELINKED = GNU_PRELINKED,
-    GNU_CONFLICTSZ = GNU_CONFLICTSZ,
-    GNU_LIBLISTSZ = GNU_LIBLISTSZ,
-    CHECKSUM = CHECKSUM,
-    PLTPADSZ = PLTPADSZ,
-    MOVEENT = MOVEENT,
-    MOVESZ = MOVESZ,
-    FEATURE_1 = FEATURE_1,
-    POSFLAG_1 = POSFLAG_1,
-    SYMINSZ = SYMINSZ,
-    SYMINENT = SYMINENT,
-    // VALRNGHI = VALRNGHI,
-    // VALNUM = VALNUM,
-    ADDRRNGLO = ADDRRNGLO,
-    GNU_HASH = GNU_HASH,
-    TLSDESC_PLT = TLSDESC_PLT,
-    TLSDESC_GOT = TLSDESC_GOT,
-    GNU_CONFLICT = GNU_CONFLICT,
-    GNU_LIBLIST = GNU_LIBLIST,
-    CONFIG = CONFIG,
-    DEPAUDIT = DEPAUDIT,
-    AUDIT = AUDIT,
-    PLTPAD = PLTPAD,
-    MOVETAB = MOVETAB,
-    SYMINFO = SYMINFO,
-    // ADDRRNGHI = ADDRRNGHI,
-    // ADDRNUM = ADDRNUM,
-    VERSYM = VERSYM,
-    RELACOUNT = RELACOUNT,
-    RELCOUNT = RELCOUNT,
-    FLAGS_1 = FLAGS_1,
-    VERDEF = VERDEF,
-    VERDEFNUM = VERDEFNUM,
-    VERNEED = VERNEED,
-    VERNEEDNUM = VERNEEDNUM,
-    // VERSIONTAGNUM = VERSIONTAGNUM,
-    AUXILIARY = AUXILIARY,
-    // FILTER = FILTER,
-    // EXTRANUM = EXTRANUM,
-    // SPARC_REGISTER = SPARC_REGISTER,
-    // SPARC_NUM = SPARC_NUM,
-    MIPS_RLD_VERSION = MIPS_RLD_VERSION,
-    MIPS_TIME_STAMP = MIPS_TIME_STAMP,
-    MIPS_ICHECKSUM = MIPS_ICHECKSUM,
-    MIPS_IVERSION = MIPS_IVERSION,
-    MIPS_FLAGS = MIPS_FLAGS,
-    MIPS_BASE_ADDRESS = MIPS_BASE_ADDRESS,
-    MIPS_MSYM = MIPS_MSYM,
-    MIPS_CONFLICT = MIPS_CONFLICT,
-    MIPS_LIBLIST = MIPS_LIBLIST,
-    MIPS_LOCAL_GOTNO = MIPS_LOCAL_GOTNO,
-    MIPS_CONFLICTNO = MIPS_CONFLICTNO,
-    MIPS_LIBLISTNO = MIPS_LIBLISTNO,
-    MIPS_SYMTABNO = MIPS_SYMTABNO,
-    MIPS_UNREFEXTNO = MIPS_UNREFEXTNO,
-    MIPS_GOTSYM = MIPS_GOTSYM,
-    MIPS_HIPAGENO = MIPS_HIPAGENO,
-    MIPS_RLD_MAP = MIPS_RLD_MAP,
-    MIPS_DELTA_CLASS = MIPS_DELTA_CLASS,
-    MIPS_DELTA_CLASS_NO = MIPS_DELTA_CLASS_NO,
-    MIPS_DELTA_INSTANCE = MIPS_DELTA_INSTANCE,
-    MIPS_DELTA_INSTANCE_NO = MIPS_DELTA_INSTANCE_NO,
-    MIPS_DELTA_RELOC = MIPS_DELTA_RELOC,
-    MIPS_DELTA_RELOC_NO = MIPS_DELTA_RELOC_NO,
-    MIPS_DELTA_SYM = MIPS_DELTA_SYM,
-    MIPS_DELTA_SYM_NO = MIPS_DELTA_SYM_NO,
-    MIPS_DELTA_CLASSSYM = MIPS_DELTA_CLASSSYM,
-    MIPS_DELTA_CLASSSYM_NO = MIPS_DELTA_CLASSSYM_NO,
-    MIPS_CXX_FLAGS = MIPS_CXX_FLAGS,
-    MIPS_PIXIE_INIT = MIPS_PIXIE_INIT,
-    MIPS_SYMBOL_LIB = MIPS_SYMBOL_LIB,
-    MIPS_LOCALPAGE_GOTIDX = MIPS_LOCALPAGE_GOTIDX,
-    MIPS_LOCAL_GOTIDX = MIPS_LOCAL_GOTIDX,
-    MIPS_HIDDEN_GOTIDX = MIPS_HIDDEN_GOTIDX,
-    MIPS_PROTECTED_GOTIDX = MIPS_PROTECTED_GOTIDX,
-    MIPS_OPTIONS = MIPS_OPTIONS,
-    MIPS_INTERFACE = MIPS_INTERFACE,
-    MIPS_DYNSTR_ALIGN = MIPS_DYNSTR_ALIGN,
-    MIPS_INTERFACE_SIZE = MIPS_INTERFACE_SIZE,
-    MIPS_RLD_TEXT_RESOLVE_ADDR = MIPS_RLD_TEXT_RESOLVE_ADDR,
-    MIPS_PERF_SUFFIX = MIPS_PERF_SUFFIX,
-    MIPS_COMPACT_SIZE = MIPS_COMPACT_SIZE,
-    MIPS_GP_VALUE = MIPS_GP_VALUE,
-    MIPS_AUX_DYNAMIC = MIPS_AUX_DYNAMIC,
-    MIPS_PLTGOT = MIPS_PLTGOT,
-    MIPS_RWPLT = MIPS_RWPLT,
-    MIPS_RLD_MAP_REL = MIPS_RLD_MAP_REL,
-    // MIPS_NUM = MIPS_NUM,
-    // ALPHA_PLTRO = ALPHA_PLTRO,
-    // ALPHA_NUM = ALPHA_NUM,
-    // PPC_GOT = PPC_GOT,
-    // PPC_OPT = PPC_OPT,
-    // PPC_NUM = PPC_NUM,
-    // PPC64_GLINK = PPC64_GLINK,
-    // PPC64_OPD = PPC64_OPD,
-    // PPC64_OPDSZ = PPC64_OPDSZ,
-    // PPC64_OPT = PPC64_OPT,
-    // PPC64_NUM = PPC64_NUM,
-    // IA_64_PLT_RESERVE = IA_64_PLT_RESERVE,
-    // IA_64_NUM = IA_64_NUM,
-    // NIOS2_GP = NIOS2_GP,
-    pub const NULL = 0;
-    pub const NEEDED = 1;
-    pub const PLTRELSZ = 2;
-    pub const PLTGOT = 3;
-    pub const HASH = 4;
-    pub const STRTAB = 5;
-    pub const SYMTAB = 6;
-    pub const RELA = 7;
-    pub const RELASZ = 8;
-    pub const RELAENT = 9;
-    pub const STRSZ = 10;
-    pub const SYMENT = 11;
-    pub const INIT = 12;
-    pub const FINI = 13;
-    pub const SONAME = 14;
-    pub const RPATH = 15;
-    pub const SYMBOLIC = 16;
-    pub const REL = 17;
-    pub const RELSZ = 18;
-    pub const RELENT = 19;
-    pub const PLTREL = 20;
-    pub const DEBUG = 21;
-    pub const TEXTREL = 22;
-    pub const JMPREL = 23;
-    pub const BIND_NOW = 24;
-    pub const INIT_ARRAY = 25;
-    pub const FINI_ARRAY = 26;
-    pub const INIT_ARRAYSZ = 27;
-    pub const FINI_ARRAYSZ = 28;
-    pub const RUNPATH = 29;
-    pub const FLAGS = 30;
-    pub const ENCODING = 32;
-    pub const PREINIT_ARRAY = 32;
-    pub const PREINIT_ARRAYSZ = 33;
-    pub const SYMTAB_SHNDX = 34;
-    pub const NUM = 35;
-    pub const LOOS = 0x6000000d;
-    pub const HIOS = 0x6ffff000;
-    pub const LOPROC = 0x70000000;
-    pub const HIPROC = 0x7fffffff;
-    pub const PROCNUM = MIPS_NUM;
-    pub const VALRNGLO = 0x6ffffd00;
-    pub const GNU_PRELINKED = 0x6ffffdf5;
-    pub const GNU_CONFLICTSZ = 0x6ffffdf6;
-    pub const GNU_LIBLISTSZ = 0x6ffffdf7;
-    pub const CHECKSUM = 0x6ffffdf8;
-    pub const PLTPADSZ = 0x6ffffdf9;
-    pub const MOVEENT = 0x6ffffdfa;
-    pub const MOVESZ = 0x6ffffdfb;
-    pub const FEATURE_1 = 0x6ffffdfc;
-    pub const POSFLAG_1 = 0x6ffffdfd;
-    pub const SYMINSZ = 0x6ffffdfe;
-    pub const SYMINENT = 0x6ffffdff;
-    pub const VALRNGHI = 0x6ffffdff;
-    pub const VALNUM = 12;
-    pub const ADDRRNGLO = 0x6ffffe00;
-    pub const GNU_HASH = 0x6ffffef5;
-    pub const TLSDESC_PLT = 0x6ffffef6;
-    pub const TLSDESC_GOT = 0x6ffffef7;
-    pub const GNU_CONFLICT = 0x6ffffef8;
-    pub const GNU_LIBLIST = 0x6ffffef9;
-    pub const CONFIG = 0x6ffffefa;
-    pub const DEPAUDIT = 0x6ffffefb;
-    pub const AUDIT = 0x6ffffefc;
-    pub const PLTPAD = 0x6ffffefd;
-    pub const MOVETAB = 0x6ffffefe;
-    pub const SYMINFO = 0x6ffffeff;
-    pub const ADDRRNGHI = 0x6ffffeff;
-    pub const ADDRNUM = 11;
-    pub const VERSYM = 0x6ffffff0;
-    pub const RELACOUNT = 0x6ffffff9;
-    pub const RELCOUNT = 0x6ffffffa;
-    pub const FLAGS_1 = 0x6ffffffb;
-    pub const VERDEF = 0x6ffffffc;
-    pub const VERDEFNUM = 0x6ffffffd;
-    pub const VERNEED = 0x6ffffffe;
-    pub const VERNEEDNUM = 0x6fffffff;
-    pub const VERSIONTAGNUM = 16;
-    pub const AUXILIARY = 0x7ffffffd;
-    pub const FILTER = 0x7fffffff;
-    pub const EXTRANUM = 3;
-    pub const SPARC_REGISTER = 0x70000001;
-    pub const SPARC_NUM = 2;
-    pub const MIPS_RLD_VERSION = 0x70000001;
-    pub const MIPS_TIME_STAMP = 0x70000002;
-    pub const MIPS_ICHECKSUM = 0x70000003;
-    pub const MIPS_IVERSION = 0x70000004;
-    pub const MIPS_FLAGS = 0x70000005;
-    pub const MIPS_BASE_ADDRESS = 0x70000006;
-    pub const MIPS_MSYM = 0x70000007;
-    pub const MIPS_CONFLICT = 0x70000008;
-    pub const MIPS_LIBLIST = 0x70000009;
-    pub const MIPS_LOCAL_GOTNO = 0x7000000a;
-    pub const MIPS_CONFLICTNO = 0x7000000b;
-    pub const MIPS_LIBLISTNO = 0x70000010;
-    pub const MIPS_SYMTABNO = 0x70000011;
-    pub const MIPS_UNREFEXTNO = 0x70000012;
-    pub const MIPS_GOTSYM = 0x70000013;
-    pub const MIPS_HIPAGENO = 0x70000014;
-    pub const MIPS_RLD_MAP = 0x70000016;
-    pub const MIPS_DELTA_CLASS = 0x70000017;
-    pub const MIPS_DELTA_CLASS_NO = 0x70000018;
-    pub const MIPS_DELTA_INSTANCE = 0x70000019;
-    pub const MIPS_DELTA_INSTANCE_NO = 0x7000001a;
-    pub const MIPS_DELTA_RELOC = 0x7000001b;
-    pub const MIPS_DELTA_RELOC_NO = 0x7000001c;
-    pub const MIPS_DELTA_SYM = 0x7000001d;
-    pub const MIPS_DELTA_SYM_NO = 0x7000001e;
-    pub const MIPS_DELTA_CLASSSYM = 0x70000020;
-    pub const MIPS_DELTA_CLASSSYM_NO = 0x70000021;
-    pub const MIPS_CXX_FLAGS = 0x70000022;
-    pub const MIPS_PIXIE_INIT = 0x70000023;
-    pub const MIPS_SYMBOL_LIB = 0x70000024;
-    pub const MIPS_LOCALPAGE_GOTIDX = 0x70000025;
-    pub const MIPS_LOCAL_GOTIDX = 0x70000026;
-    pub const MIPS_HIDDEN_GOTIDX = 0x70000027;
-    pub const MIPS_PROTECTED_GOTIDX = 0x70000028;
-    pub const MIPS_OPTIONS = 0x70000029;
-    pub const MIPS_INTERFACE = 0x7000002a;
-    pub const MIPS_DYNSTR_ALIGN = 0x7000002b;
-    pub const MIPS_INTERFACE_SIZE = 0x7000002c;
-    pub const MIPS_RLD_TEXT_RESOLVE_ADDR = 0x7000002d;
-    pub const MIPS_PERF_SUFFIX = 0x7000002e;
-    pub const MIPS_COMPACT_SIZE = 0x7000002f;
-    pub const MIPS_GP_VALUE = 0x70000030;
-    pub const MIPS_AUX_DYNAMIC = 0x70000031;
-    pub const MIPS_PLTGOT = 0x70000032;
-    pub const MIPS_RWPLT = 0x70000034;
-    pub const MIPS_RLD_MAP_REL = 0x70000035;
-    pub const MIPS_NUM = 0x36;
-    pub const ALPHA_PLTRO = (LOPROC + 0);
-    pub const ALPHA_NUM = 1;
-    pub const PPC_GOT = (LOPROC + 0);
-    pub const PPC_OPT = (LOPROC + 1);
-    pub const PPC_NUM = 2;
-    pub const PPC64_GLINK = (LOPROC + 0);
-    pub const PPC64_OPD = (LOPROC + 1);
-    pub const PPC64_OPDSZ = (LOPROC + 2);
-    pub const PPC64_OPT = (LOPROC + 3);
-    pub const PPC64_NUM = 4;
-    pub const IA_64_PLT_RESERVE = (LOPROC + 0);
-    pub const IA_64_NUM = 1;
-    pub const NIOS2_GP = 0x70000002;
+    NULL = 0,
+    NEEDED = 1,
+    PLTRELSZ = 2,
+    PLTGOT = 3,
+    HASH = 4,
+    STRTAB = 5,
+    SYMTAB = 6,
+    RELA = 7,
+    RELASZ = 8,
+    RELAENT = 9,
+    STRSZ = 10,
+    SYMENT = 11,
+    INIT = 12,
+    FINI = 13,
+    SONAME = 14,
+    RPATH = 15,
+    SYMBOLIC = 16,
+    REL = 17,
+    RELSZ = 18,
+    RELENT = 19,
+    PLTREL = 20,
+    DEBUG = 21,
+    TEXTREL = 22,
+    JMPREL = 23,
+    BIND_NOW = 24,
+    INIT_ARRAY = 25,
+    FINI_ARRAY = 26,
+    INIT_ARRAYSZ = 27,
+    FINI_ARRAYSZ = 28,
+    RUNPATH = 29,
+    FLAGS = 30,
+    ENCODING = 32,
+    PREINIT_ARRAYSZ = 33,
+    SYMTAB_SHNDX = 34,
+    NUM = 35,
+    LOOS = 1610612749,
+    HIOS = 1879044096,
+    LOPROC = 1879048192,
+    HIPROC = 2147483647,
+    PROCNUM = 54,
+    VALRNGLO = 1879047424,
+    GNU_PRELINKED = 1879047669,
+    GNU_CONFLICTSZ = 1879047670,
+    GNU_LIBLISTSZ = 1879047671,
+    CHECKSUM = 1879047672,
+    PLTPADSZ = 1879047673,
+    MOVEENT = 1879047674,
+    MOVESZ = 1879047675,
+    FEATURE_1 = 1879047676,
+    POSFLAG_1 = 1879047677,
+    SYMINSZ = 1879047678,
+    SYMINENT = 1879047679,
+    ADDRRNGLO = 1879047680,
+    GNU_HASH = 1879047925,
+    TLSDESC_PLT = 1879047926,
+    TLSDESC_GOT = 1879047927,
+    GNU_CONFLICT = 1879047928,
+    GNU_LIBLIST = 1879047929,
+    CONFIG = 1879047930,
+    DEPAUDIT = 1879047931,
+    AUDIT = 1879047932,
+    PLTPAD = 1879047933,
+    MOVETAB = 1879047934,
+    SYMINFO = 1879047935,
+    VERSYM = 1879048176,
+    RELACOUNT = 1879048185,
+    RELCOUNT = 1879048186,
+    FLAGS_1 = 1879048187,
+    VERDEF = 1879048188,
+    VERDEFNUM = 1879048189,
+    VERNEED = 1879048190,
+    VERNEEDNUM = 1879048191,
+    AUXILIARY = 2147483645,
+    MIPS_RLD_VERSION = 1879048193,
+    MIPS_TIME_STAMP = 1879048194,
+    MIPS_ICHECKSUM = 1879048195,
+    MIPS_IVERSION = 1879048196,
+    MIPS_FLAGS = 1879048197,
+    MIPS_BASE_ADDRESS = 1879048198,
+    MIPS_MSYM = 1879048199,
+    MIPS_CONFLICT = 1879048200,
+    MIPS_LIBLIST = 1879048201,
+    MIPS_LOCAL_GOTNO = 1879048202,
+    MIPS_CONFLICTNO = 1879048203,
+    MIPS_LIBLISTNO = 1879048208,
+    MIPS_SYMTABNO = 1879048209,
+    MIPS_UNREFEXTNO = 1879048210,
+    MIPS_GOTSYM = 1879048211,
+    MIPS_HIPAGENO = 1879048212,
+    MIPS_RLD_MAP = 1879048214,
+    MIPS_DELTA_CLASS = 1879048215,
+    MIPS_DELTA_CLASS_NO = 1879048216,
+    MIPS_DELTA_INSTANCE = 1879048217,
+    MIPS_DELTA_INSTANCE_NO = 1879048218,
+    MIPS_DELTA_RELOC = 1879048219,
+    MIPS_DELTA_RELOC_NO = 1879048220,
+    MIPS_DELTA_SYM = 1879048221,
+    MIPS_DELTA_SYM_NO = 1879048222,
+    MIPS_DELTA_CLASSSYM = 1879048224,
+    MIPS_DELTA_CLASSSYM_NO = 1879048225,
+    MIPS_CXX_FLAGS = 1879048226,
+    MIPS_PIXIE_INIT = 1879048227,
+    MIPS_SYMBOL_LIB = 1879048228,
+    MIPS_LOCALPAGE_GOTIDX = 1879048229,
+    MIPS_LOCAL_GOTIDX = 1879048230,
+    MIPS_HIDDEN_GOTIDX = 1879048231,
+    MIPS_PROTECTED_GOTIDX = 1879048232,
+    MIPS_OPTIONS = 1879048233,
+    MIPS_INTERFACE = 1879048234,
+    MIPS_DYNSTR_ALIGN = 1879048235,
+    MIPS_INTERFACE_SIZE = 1879048236,
+    MIPS_RLD_TEXT_RESOLVE_ADDR = 1879048237,
+    MIPS_PERF_SUFFIX = 1879048238,
+    MIPS_COMPACT_SIZE = 1879048239,
+    MIPS_GP_VALUE = 1879048240,
+    MIPS_AUX_DYNAMIC = 1879048241,
+    MIPS_PLTGOT = 1879048242,
+    MIPS_RWPLT = 1879048244,
+    MIPS_RLD_MAP_REL = 1879048245,
 };
-const PT = meta.EnumBitField(enum(u32) {
-    NULL = NULL,
-    LOAD = LOAD,
-    DYNAMIC = DYNAMIC,
-    INTERP = INTERP,
-    NOTE = NOTE,
-    SHLIB = SHLIB,
-    PHDR = PHDR,
-    TLS = TLS,
-    NUM = NUM,
-    LOOS = LOOS,
-    GNU_EH_FRAME = GNU_EH_FRAME,
-    GNU_RELRO = GNU_RELRO,
-    GNU_UNKNOWN = GNU_UNKNOWN,
-    LOSUNW = LOSUNW,
-    HISUNW = HISUNW,
-    GNU_STACK = GNU_STACK,
-    LOPROC = LOPROC,
-    HIPROC = HIPROC,
-    pub const NULL = 0;
-    pub const LOAD = 1;
-    pub const DYNAMIC = 2;
-    pub const INTERP = 3;
-    pub const NOTE = 4;
-    pub const SHLIB = 5;
-    pub const PHDR = 6;
-    pub const TLS = 7;
-    pub const NUM = 8;
-    pub const LOOS = 0x60000000;
-    pub const GNU_EH_FRAME = 0x6474e550;
-    pub const GNU_STACK = 0x6474e551;
-    pub const GNU_RELRO = 0x6474e552;
-    pub const GNU_UNKNOWN = 0x6474e553;
-    pub const LOSUNW = 0x6ffffffa;
-    pub const SUNWBSS = 0x6ffffffa;
-    pub const SUNWSTACK = 0x6ffffffb;
-    pub const HISUNW = 0x6fffffff;
-    pub const HIOS = 0x6fffffff;
-    pub const LOPROC = 0x70000000;
-    pub const HIPROC = 0x7fffffff;
+pub const PT = meta.EnumBitField(enum(u32) {
+    NULL = 0,
+    LOAD = 1,
+    DYNAMIC = 2,
+    INTERP = 3,
+    NOTE = 4,
+    SHLIB = 5,
+    PHDR = 6,
+    TLS = 7,
+    NUM = 8,
+    LOOS = 1610612736,
+    GNU_EH_FRAME = 1685382480,
+    GNU_RELRO = 1685382482,
+    GNU_UNKNOWN = 1685382483,
+    LOSUNW = 1879048186,
+    HISUNW = 1879048191,
+    GNU_STACK = 1685382481,
+    LOPROC = 1879048192,
+    HIPROC = 2147483647,
 });
-const SHT = enum(u32) {
-    NULL = NULL,
-    PROGBITS = PROGBITS,
-    SYMTAB = SYMTAB,
-    STRTAB = STRTAB,
-    RELA = RELA,
-    HASH = HASH,
-    DYNAMIC = DYNAMIC,
-    NOTE = NOTE,
-    NOBITS = NOBITS,
-    REL = REL,
-    SHLIB = SHLIB,
-    DYNSYM = DYNSYM,
-    INIT_ARRAY = INIT_ARRAY,
-    FINI_ARRAY = FINI_ARRAY,
-    PREINIT_ARRAY = PREINIT_ARRAY,
-    GROUP = GROUP,
-    SYMTAB_SHNDX = SYMTAB_SHNDX,
-    LOOS = LOOS,
-    GNU_HASH = GNU_HASH,
-    HIOS = HIOS,
-    LOPROC = LOPROC,
-    HIPROC = HIPROC,
-    LOUSER = LOUSER,
-    HIUSER = HIUSER,
-    pub const NULL = 0;
-    pub const PROGBITS = 1;
-    pub const SYMTAB = 2;
-    pub const STRTAB = 3;
-    pub const RELA = 4;
-    pub const HASH = 5;
-    pub const DYNAMIC = 6;
-    pub const NOTE = 7;
-    pub const NOBITS = 8;
-    pub const REL = 9;
-    pub const SHLIB = 10;
-    pub const DYNSYM = 11;
-    pub const INIT_ARRAY = 14;
-    pub const FINI_ARRAY = 15;
-    pub const PREINIT_ARRAY = 16;
-    pub const GROUP = 17;
-    pub const SYMTAB_SHNDX = 18;
-    pub const LOOS = 0x60000000;
-    pub const GNU_HASH = 0x6ffffff6;
-    pub const HIOS = 0x6fffffff;
-    pub const LOPROC = 0x70000000;
-    pub const HIPROC = 0x7fffffff;
-    pub const LOUSER = 0x80000000;
-    pub const HIUSER = 0xffffffff;
+pub const SHT = enum(u32) {
+    NULL = 0,
+    PROGBITS = 1,
+    SYMTAB = 2,
+    STRTAB = 3,
+    RELA = 4,
+    HASH = 5,
+    DYNAMIC = 6,
+    NOTE = 7,
+    NOBITS = 8,
+    REL = 9,
+    SHLIB = 10,
+    DYNSYM = 11,
+    INIT_ARRAY = 14,
+    FINI_ARRAY = 15,
+    PREINIT_ARRAY = 16,
+    GROUP = 17,
+    SYMTAB_SHNDX = 18,
+    LOOS = 1610612736,
+    GNU_HASH = 1879048182,
+    HIOS = 1879048191,
+    LOPROC = 1879048192,
+    HIPROC = 2147483647,
+    LOUSER = 2147483648,
+    HIUSER = 4294967295,
 };
 pub const STB_LOCAL = 0;
 pub const STB_GLOBAL = 1;
@@ -394,44 +182,20 @@ pub const STB_LOPROC = 13;
 pub const STB_HIPROC = 15;
 pub const STB_MIPS_SPLIT_COMMON = 13;
 pub const STT = meta.EnumBitField(enum(u8) {
-    NOTYPE = NOTYPE,
-    OBJECT = OBJECT,
-    FUNC = FUNC,
-    SECTION = SECTION,
-    FILE = FILE,
-    COMMON = COMMON,
-    TLS = TLS,
-    NUM = NUM,
-    LOOS = LOOS,
-    // GNU_IFUNC = GNU_IFUNC,
-    HIOS = HIOS,
-    LOPROC = LOPROC,
-    HIPROC = HIPROC,
-    UNKNOWN = UNKNOWN,
-    // SPARC_REGISTER = SPARC_REGISTER,
-    // PARISC_MILLICODE = PARISC_MILLICODE,
-    HP_OPAQUE = HP_OPAQUE,
-    // HP_STUB = HP_STUB,
-    pub const NOTYPE = 0;
-    pub const OBJECT = 1;
-    pub const FUNC = 2;
-    pub const SECTION = 3;
-    pub const FILE = 4;
-    pub const COMMON = 5;
-    pub const TLS = 6;
-    pub const NUM = 7;
-    pub const LOOS = 10;
-    pub const GNU_IFUNC = 10;
-    pub const HIOS = 12;
-    pub const LOPROC = 13;
-    pub const HIPROC = 15;
-    pub const UNKNOWN = 18;
-    pub const SPARC_REGISTER = 13;
-    pub const PARISC_MILLICODE = 13;
-    pub const HP_OPAQUE = (LOOS + 0x1);
-    pub const HP_STUB = (LOOS + 0x2);
-    pub const ARM_TFUNC = LOPROC;
-    pub const ARM_16BIT = HIPROC;
+    NOTYPE = 0,
+    OBJECT = 1,
+    FUNC = 2,
+    SECTION = 3,
+    FILE = 4,
+    COMMON = 5,
+    TLS = 6,
+    NUM = 7,
+    LOOS = 10,
+    HIOS = 12,
+    LOPROC = 13,
+    HIPROC = 15,
+    UNKNOWN = 18,
+    HP_OPAQUE = 11,
 });
 pub const VER_FLG_BASE = 0x1;
 pub const VER_FLG_WEAK = 0x2;
@@ -1333,177 +1097,101 @@ pub const SHN_LIVEPATCH = 0xff20;
 pub const SHN_ABS = 0xfff1;
 pub const SHN_COMMON = 0xfff2;
 pub const SHN_HIRESERVE = 0xffff;
+
 /// AMD x86-64 relocations.
-/// No reloc
-pub const R_X86_64_NONE = 0;
-/// Direct 64 bit
-pub const R_X86_64_64 = 1;
-/// PC relative 32 bit signed
-pub const R_X86_64_PC32 = 2;
-/// 32 bit GOT entry
-pub const R_X86_64_GOT32 = 3;
-/// 32 bit PLT address
-pub const R_X86_64_PLT32 = 4;
-/// Copy symbol at runtime
-pub const R_X86_64_COPY = 5;
-/// Create GOT entry
-pub const R_X86_64_GLOB_DAT = 6;
-/// Create PLT entry
-pub const R_X86_64_JUMP_SLOT = 7;
-/// Adjust by program base
-pub const R_X86_64_RELATIVE = 8;
-/// 32 bit signed PC relative offset to GOT
-pub const R_X86_64_GOTPCREL = 9;
-/// Direct 32 bit zero extended
-pub const R_X86_64_32 = 10;
-/// Direct 32 bit sign extended
-pub const R_X86_64_32S = 11;
-/// Direct 16 bit zero extended
-pub const R_X86_64_16 = 12;
-/// 16 bit sign extended pc relative
-pub const R_X86_64_PC16 = 13;
-/// Direct 8 bit sign extended
-pub const R_X86_64_8 = 14;
-/// 8 bit sign extended pc relative
-pub const R_X86_64_PC8 = 15;
-/// ID of module containing symbol
-pub const R_X86_64_DTPMOD64 = 16;
-/// Offset in module's TLS block
-pub const R_X86_64_DTPOFF64 = 17;
-/// Offset in initial TLS block
-pub const R_X86_64_TPOFF64 = 18;
-/// 32 bit signed PC relative offset to two GOT entries for GD symbol
-pub const R_X86_64_TLSGD = 19;
-/// 32 bit signed PC relative offset to two GOT entries for LD symbol
-pub const R_X86_64_TLSLD = 20;
-/// Offset in TLS block
-pub const R_X86_64_DTPOFF32 = 21;
-/// 32 bit signed PC relative offset to GOT entry for IE symbol
-pub const R_X86_64_GOTTPOFF = 22;
-/// Offset in initial TLS block
-pub const R_X86_64_TPOFF32 = 23;
-/// PC relative 64 bit
-pub const R_X86_64_PC64 = 24;
-/// 64 bit offset to GOT
-pub const R_X86_64_GOTOFF64 = 25;
-/// 32 bit signed pc relative offset to GOT
-pub const R_X86_64_GOTPC32 = 26;
-/// 64 bit GOT entry offset
-pub const R_X86_64_GOT64 = 27;
-/// 64 bit PC relative offset to GOT entry
-pub const R_X86_64_GOTPCREL64 = 28;
-/// 64 bit PC relative offset to GOT
-pub const R_X86_64_GOTPC64 = 29;
-/// Like GOT64, says PLT entry needed
-pub const R_X86_64_GOTPLT64 = 30;
-/// 64-bit GOT relative offset to PLT entry
-pub const R_X86_64_PLTOFF64 = 31;
-/// Size of symbol plus 32-bit addend
-pub const R_X86_64_SIZE32 = 32;
-/// Size of symbol plus 64-bit addend
-pub const R_X86_64_SIZE64 = 33;
-/// GOT offset for TLS descriptor
-pub const R_X86_64_GOTPC32_TLSDESC = 34;
-/// Marker for call through TLS descriptor
-pub const R_X86_64_TLSDESC_CALL = 35;
-/// TLS descriptor
-pub const R_X86_64_TLSDESC = 36;
-/// Adjust indirectly by program base
-pub const R_X86_64_IRELATIVE = 37;
-/// 64-bit adjust by program base
-pub const R_X86_64_RELATIVE64 = 38;
-/// 39 Reserved was R_X86_64_PC32_BND
-/// 40 Reserved was R_X86_64_PLT32_BND
-/// Load from 32 bit signed pc relative offset to GOT entry without REX prefix, relaxable
-pub const R_X86_64_GOTPCRELX = 41;
-/// Load from 32 bit signed PC relative offset to GOT entry with REX prefix, relaxable
-pub const R_X86_64_REX_GOTPCRELX = 42;
-pub const R_X86_64_NUM = 43;
+const R_X86_64 = enum(u8) {
+    /// No reloc
+    NONE = 0,
+    /// Direct 64 bit
+    @"64" = 1,
+    /// PC relative 32 bit signed
+    PC32 = 2,
+    /// 32 bit GOT entry
+    GOT32 = 3,
+    /// 32 bit PLT address
+    PLT32 = 4,
+    /// Copy symbol at runtime
+    COPY = 5,
+    /// Create GOT entry
+    GLOB_DAT = 6,
+    /// Create PLT entry
+    JUMP_SLOT = 7,
+    /// Adjust by program base
+    RELATIVE = 8,
+    /// 32 bit signed PC relative offset to GOT
+    GOTPCREL = 9,
+    /// Direct 32 bit zero extended
+    @"32" = 10,
+    /// Direct 32 bit sign extended
+    @"32S" = 11,
+    /// Direct 16 bit zero extended
+    @"16" = 12,
+    /// 16 bit sign extended pc relative
+    PC16 = 13,
+    /// Direct 8 bit sign extended
+    @"8" = 14,
+    /// 8 bit sign extended pc relative
+    PC8 = 15,
+    /// ID of module containing symbol
+    DTPMOD64 = 16,
+    /// Offset in module's TLS block
+    DTPOFF64 = 17,
+    /// Offset in initial TLS block
+    TPOFF64 = 18,
+    /// 32 bit signed PC relative offset to two GOT entries for GD symbol
+    TLSGD = 19,
+    /// 32 bit signed PC relative offset to two GOT entries for LD symbol
+    TLSLD = 20,
+    /// Offset in TLS block
+    DTPOFF32 = 21,
+    /// 32 bit signed PC relative offset to GOT entry for IE symbol
+    GOTTPOFF = 22,
+    /// Offset in initial TLS block
+    TPOFF32 = 23,
+    /// PC relative 64 bit
+    PC64 = 24,
+    /// 64 bit offset to GOT
+    GOTOFF64 = 25,
+    /// 32 bit signed pc relative offset to GOT
+    GOTPC32 = 26,
+    /// 64 bit GOT entry offset
+    GOT64 = 27,
+    /// 64 bit PC relative offset to GOT entry
+    GOTPCREL64 = 28,
+    /// 64 bit PC relative offset to GOT
+    GOTPC64 = 29,
+    /// Like GOT64, says PLT entry needed
+    GOTPLT64 = 30,
+    /// 64-bit GOT relative offset to PLT entry
+    PLTOFF64 = 31,
+    /// Size of symbol plus 32-bit addend
+    SIZE32 = 32,
+    /// Size of symbol plus 64-bit addend
+    SIZE64 = 33,
+    /// GOT offset for TLS descriptor
+    GOTPC32_TLSDESC = 34,
+    /// Marker for call through TLS descriptor
+    TLSDESC_CALL = 35,
+    /// TLS descriptor
+    TLSDESC = 36,
+    /// Adjust indirectly by program base
+    IRELATIVE = 37,
+    /// 64-bit adjust by program base
+    RELATIVE64 = 38,
+    /// 39 Reserved was R_X86_64_PC32_BND
+    /// 40 Reserved was R_X86_64_PLT32_BND
+    /// Load from 32 bit signed pc relative offset to GOT entry without REX prefix, relaxable
+    GOTPCRELX = 41,
+    /// Load from 32 bit signed PC relative offset to GOT entry with REX prefix, relaxable
+    REX_GOTPCRELX = 42,
+    NUM = 43,
+};
 pub const STV = enum(u8) {
     DEFAULT = 0,
     INTERNAL = 1,
     HIDDEN = 2,
     PROTECTED = 3,
 };
-pub fn load(comptime Fn: type, vdso_addr: u64, symbol: [:0]const u8) ?Fn {
-    if (sectionAddress(vdso_addr, symbol)) |addr| {
-        if (programOffset(vdso_addr)) |off| {
-            return @ptrFromInt(addr -% off);
-        }
-    }
-    return null;
-}
-pub fn sectionAddress(ehdr_addr: u64, symbol: [:0]const u8) ?u64 {
-    @setRuntimeSafety(builtin.is_safe);
-    const ehdr: *Elf64_Ehdr = @ptrFromInt(ehdr_addr);
-    var symtab_addr: u64 = 0;
-    var strtab_addr: u64 = 0;
-    var symtab_ents: u64 = 0;
-    var dynsym_size: u64 = 0;
-    var addr: u64 = ehdr_addr +% ehdr.e_shoff;
-    var idx: usize = 0;
-    while (idx != ehdr.e_shnum) : ({
-        idx +%= 1;
-        addr = addr +% ehdr.e_shentsize;
-    }) {
-        const shdr: *Elf64_Shdr = @ptrFromInt(addr);
-        if (shdr.sh_type == .DYNSYM) {
-            dynsym_size = shdr.sh_size;
-        }
-        if (shdr.sh_type == .DYNAMIC) {
-            const dyn: [*]Elf64_Dyn = @ptrFromInt(ehdr_addr +% shdr.sh_offset);
-            var dyn_idx: u64 = 0;
-            while (true) : (dyn_idx +%= 1) {
-                if (dyn[dyn_idx].d_tag == .SYMTAB) {
-                    symtab_addr = ehdr_addr +% dyn[dyn_idx].d_val;
-                    dyn_idx +%= 1;
-                }
-                if (dyn[dyn_idx].d_tag == .SYMENT) {
-                    symtab_ents = dyn[dyn_idx].d_val;
-                    dyn_idx +%= 1;
-                }
-                if (dyn[dyn_idx].d_tag == .STRTAB) {
-                    strtab_addr = ehdr_addr +% dyn[dyn_idx].d_val;
-                }
-                if (symtab_addr != 0 and
-                    symtab_ents != 0 and
-                    strtab_addr != 0)
-                {
-                    const strtab: [*:0]u8 = @ptrFromInt(strtab_addr);
-                    const symtab: [*]Elf64_Sym = @ptrFromInt(symtab_addr);
-                    var st_idx: u64 = 1;
-                    lo: while (st_idx *% symtab_ents != dynsym_size) : (st_idx +%= 1) {
-                        for (symbol, strtab + symtab[st_idx].st_name) |x, y| {
-                            if (x != y) {
-                                continue :lo;
-                            }
-                        }
-                        return ehdr_addr +% symtab[st_idx].st_value;
-                    }
-                    break;
-                }
-            }
-        }
-    }
-    return null;
-}
-pub fn programOffset(ehdr_addr: u64) ?u64 {
-    @setRuntimeSafety(builtin.is_safe);
-    const ehdr: *Elf64_Ehdr = @ptrFromInt(ehdr_addr);
-    var addr: u64 = ehdr_addr +% ehdr.e_phoff;
-    var idx: usize = 0;
-    while (idx != ehdr.e_phnum) : ({
-        idx +%= 1;
-        addr +%= ehdr.e_phentsize;
-    }) {
-        const phdr: *Elf64_Phdr = @ptrFromInt(addr);
-        if (phdr.p_flags.check(.X)) {
-            return phdr.p_vaddr -% phdr.p_offset;
-        }
-    }
-    return null;
-}
-
 pub const ElfInfo = extern struct {
     ehdr: *Elf64_Ehdr,
     impl: extern struct {
@@ -1515,23 +1203,24 @@ pub const ElfInfo = extern struct {
         dynsym_len: u64,
         strtab: [*]u8,
         strtab_len: u64,
-        symtab: [*]Elf32_Sym,
+        symtab: [*]Elf64_Sym,
         symtab_len: u64,
         text: [*]u8,
         text_len: u64,
         rodata: [*]u8,
         rodata_len: u64,
     },
-    const names: []const struct { []const u8, usize } = &.{
-        .{ ".dynamic", @sizeOf(Elf64_Dyn) },
-        .{ ".dynstr", @sizeOf(u8) },
-        .{ ".dynsym", @sizeOf(Elf64_Sym) },
-        .{ ".strtab", @sizeOf(u8) },
-        .{ ".symtab", @sizeOf(Elf64_Sym) },
-        .{ ".text", @sizeOf(u8) },
-        .{ ".rodata", @sizeOf(u8) },
+    const sections: []const struct { SHT, []const u8, usize } = &.{
+        .{ SHT.DYNAMIC, ".dynamic", @sizeOf(Elf64_Dyn) },
+        .{ SHT.STRTAB, ".dynstr", @sizeOf(u8) },
+        .{ SHT.DYNSYM, ".dynsym", @sizeOf(Elf64_Sym) },
+        .{ SHT.STRTAB, ".strtab", @sizeOf(u8) },
+        .{ SHT.SYMTAB, ".symtab", @sizeOf(Elf64_Sym) },
+        .{ SHT.PROGBITS, ".text", @sizeOf(u8) },
+        .{ SHT.PROGBITS, ".rodata", @sizeOf(u8) },
     };
     const qwords: comptime_int = @divExact(@sizeOf(meta.Field(ElfInfo, "impl")), 8);
+
     pub fn init(ehdr_addr: u64) ElfInfo {
         @setRuntimeSafety(builtin.is_safe);
         const ehdr: *Elf64_Ehdr = @ptrFromInt(ehdr_addr);
@@ -1540,39 +1229,31 @@ pub const ElfInfo = extern struct {
         var strtab_addr: u64 = ehdr_addr +% shdr.sh_offset;
         var addr: u64 = ehdr_addr +% ehdr.e_shoff;
         var shdr_idx: u64 = 0;
-        while (shdr_idx != ehdr.e_shnum) : (shdr_idx +%= 1) {
+        while (shdr_idx != ehdr.e_shnum) : ({
+            shdr_idx +%= 1;
+            addr +%= ehdr.e_shentsize;
             shdr = @ptrFromInt(addr);
-            for (names, 0..) |field, field_idx| {
+        }) {
+            for (sections, 0..) |field, field_idx| {
+                if (shdr.sh_type != field[0]) {
+                    continue;
+                }
                 const str: [*:0]u8 = @ptrFromInt(strtab_addr +% shdr.sh_name);
                 var idx: usize = 0;
                 while (str[idx] != 0) : (idx +%= 1) {
-                    if (field[0][idx] != str[idx]) break;
+                    if (field[1][idx] != str[idx]) {
+                        break;
+                    }
                 } else {
                     const pair_idx: usize = field_idx *% 2;
                     impl[pair_idx +% 0] = ehdr_addr +% shdr.sh_offset;
-                    impl[pair_idx +% 1] = shdr.sh_size / field[1];
+                    impl[pair_idx +% 1] = shdr.sh_size / field[2];
                 }
             }
-            addr +%= ehdr.e_shentsize;
         }
         return .{ .ehdr = ehdr, .impl = @bitCast(impl) };
     }
-    pub fn lookup(elf_info: ElfInfo, symbol: []const u8) ?Elf64_Sym {
-        @setRuntimeSafety(builtin.is_safe);
-        var dyn_idx: usize = 0;
-        while (dyn_idx != elf_info.impl.dynsym_len) : (dyn_idx +%= 1) {
-            const dyn: Elf64_Sym = elf_info.impl.dynsym[dyn_idx];
-            const str: [*]u8 = elf_info.impl.dynstr + dyn.st_name;
-            var idx: usize = 1;
-            while (str[idx] != 0) : (idx +%= 1) {
-                if (symbol[idx] != str[idx]) break;
-            } else {
-                return dyn;
-            }
-        }
-        return null;
-    }
-    pub fn executableOffset(elf_info: ElfInfo) u64 {
+    pub fn executableOffset(elf_info: *const ElfInfo) u64 {
         @setRuntimeSafety(builtin.is_safe);
         var addr: u64 = @intFromPtr(elf_info.ehdr) +% elf_info.ehdr.e_phoff;
         var phdr: *Elf64_Phdr = @ptrFromInt(addr);
@@ -1582,12 +1263,113 @@ pub const ElfInfo = extern struct {
             addr +%= elf_info.ehdr.e_phentsize;
             phdr = @ptrFromInt(addr);
         }) {
-            if (phdr.p_flags.check(.X)) {
-                break;
+            if (phdr.p_flags.val & 1 != 0) {
+                return phdr.p_vaddr -% phdr.p_offset;
             }
-        } else {
-            unreachable;
         }
-        return phdr.p_vaddr -% phdr.p_offset;
+        return 0;
     }
+    pub fn lookup(elf_info: *const ElfInfo, symbol: []const u8) ?Elf64_Sym {
+        @setRuntimeSafety(builtin.is_safe);
+        var dyn_idx: usize = 1;
+        while (dyn_idx != elf_info.impl.dynsym_len) : (dyn_idx +%= 1) {
+            const sym: Elf64_Sym = elf_info.impl.dynsym[dyn_idx];
+            const str: [*]u8 = elf_info.impl.dynstr + sym.st_name;
+            var idx: usize = 1;
+            while (str[idx] != 0) : (idx +%= 1) {
+                if (symbol[idx] != str[idx]) break;
+            } else {
+                return sym;
+            }
+        }
+        return null;
+    }
+    pub fn lookupFull(elf_info: *const ElfInfo, symbol: []const u8) ?Elf64_Sym {
+        @setRuntimeSafety(builtin.is_safe);
+        var sym_idx: usize = 1;
+        while (sym_idx != elf_info.impl.symtab_len) : (sym_idx +%= 1) {
+            const sym: Elf64_Sym = elf_info.impl.symtab[sym_idx];
+            const str: [*]u8 = elf_info.impl.strtab + sym.st_name;
+            var idx: usize = 1;
+            while (str[idx] != 0) : (idx +%= 1) {
+                if (symbol[idx] != str[idx]) break;
+            } else {
+                return sym;
+            }
+        }
+        return null;
+    }
+    pub fn loadAll(elf_info: *const ElfInfo, comptime Pointers: type) Pointers {
+        @setRuntimeSafety(false);
+        comptime var field_names: []const []const u8 = &.{};
+        comptime {
+            for (@typeInfo(Pointers).Struct.fields) |field| {
+                field_names = field_names ++ [1][]const u8{field.name};
+            }
+        }
+        var ret: [@sizeOf(Pointers) / @sizeOf(usize)]usize = undefined;
+        for (field_names, 0..) |field_name, idx| {
+            if (elf_info.lookup(field_name)) |res| {
+                ret[idx] = @intFromPtr(elf_info.ehdr) +% res.st_value;
+            }
+        }
+        return @bitCast(ret);
+    }
+    pub const about = struct {
+        const dynsym_s: fmt.AboutSrc = fmt.about("dynsym");
+        const symtab_s: fmt.AboutSrc = fmt.about("symtab");
+        pub fn dynamicSymbolsTable(elf_info: *const ElfInfo) void {
+            @setRuntimeSafety(builtin.is_safe);
+            const off: u64 = elf_info.executableOffset();
+            var buf: [4096]u8 = undefined;
+            var len: usize = 0;
+            var ux64: fmt.Type.Ux64 = undefined;
+            var dyn_idx: usize = 1;
+            while (dyn_idx != elf_info.impl.dynsym_len) : (dyn_idx +%= 1) {
+                const sym: Elf64_Sym = elf_info.impl.dynsym[dyn_idx];
+                const name: [:0]const u8 = mem.terminate(elf_info.impl.dynstr + sym.st_name, 0);
+                if (name.len != 0) {
+                    @as(fmt.AboutDest, @ptrCast(&buf)).* = dynsym_s.*;
+                    len = dynsym_s.len;
+                    @as(*[7]u8, @ptrCast(buf[len..].ptr)).* = ", addr=".*;
+                    len +%= 7;
+                    ux64.value = @intFromPtr(elf_info.ehdr) +% sym.st_value +% off;
+                    len +%= ux64.formatWriteBuf(buf[len..].ptr);
+                    @as(*[7]u8, @ptrCast(buf[len..].ptr)).* = ", name=".*;
+                    len +%= 7;
+                    @memcpy(buf[len..].ptr, name);
+                    len +%= name.len;
+                    buf[len] = '\n';
+                    len +%= 1;
+                    debug.write(buf[0..len]);
+                }
+            }
+        }
+        pub fn symbolsTable(elf_info: *const ElfInfo) void {
+            @setRuntimeSafety(builtin.is_safe);
+            const off: u64 = elf_info.executableOffset();
+            var buf: [4096]u8 = undefined;
+            var len: usize = 0;
+            var sym_idx: usize = 1;
+            while (sym_idx != elf_info.impl.symtab_len) : (sym_idx +%= 1) {
+                const sym: Elf64_Sym = elf_info.impl.symtab[sym_idx];
+                const name: [:0]const u8 = mem.terminate(elf_info.impl.strtab + sym.st_name, 0);
+                if (name.len != 0) {
+                    @as(fmt.AboutDest, @ptrCast(&buf)).* = symtab_s.*;
+                    len = symtab_s.len;
+                    @as(*[5]u8, @ptrCast(buf[len..].ptr)).* = "addr=".*;
+                    len +%= 5;
+                    var ux64: fmt.Type.Ux64 = .{ .value = @intFromPtr(elf_info.ehdr) +% sym.st_value +% off };
+                    len +%= ux64.formatWriteBuf(buf[len..].ptr);
+                    @as(*[7]u8, @ptrCast(buf[len..].ptr)).* = ", name=".*;
+                    len +%= 7;
+                    @memcpy(buf[len..].ptr, name);
+                    len +%= name.len;
+                    buf[len] = '\n';
+                    len +%= 1;
+                    debug.write(buf[0..len]);
+                }
+            }
+        }
+    };
 };
