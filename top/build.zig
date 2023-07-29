@@ -1,6 +1,7 @@
 const sys = @import("./sys.zig");
 const mem = @import("./mem.zig");
 const fmt = @import("./fmt.zig");
+const elf = @import("./elf.zig");
 const file = @import("./file.zig");
 const time = @import("./time.zig");
 const meta = @import("./meta.zig");
@@ -148,6 +149,8 @@ pub const BuilderSpec = struct {
             aux_out_dir: [:0]const u8 = "aux",
             /// Optional pathname to root source used to compile tracer object.
             trace_root: [:0]const u8 = build.root ++ "/top/trace.zig",
+            /// Optional pathname to root source used to compile command line parser shared object.
+            parse_root: [:0]const u8 = build.root ++ "/top/build/parsers.zig",
         } = .{},
         special: struct {
             /// Defines formatter type used to pass configuration values to program.
