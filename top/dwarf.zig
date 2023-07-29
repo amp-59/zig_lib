@@ -1755,15 +1755,14 @@ const about = struct {
         @setRuntimeSafety(false);
         var buf: [512]u8 = undefined;
         var len: u64 = 0;
+        var ud64: fmt.Type.Ud64 = .{ .value = int };
         @memcpy(&buf, src.fn_name);
         len +%= src.fn_name.len;
         @as(*[2]u8, @ptrCast(buf[len..].ptr)).* = ": ".*;
         len +%= 2;
         @memcpy(buf[len..].ptr, msg);
         len +%= msg.len;
-        const int_s: []const u8 = fmt.old.ud64(int).readAll();
-        @memcpy(buf[len..].ptr, int_s);
-        len +%= int_s.len;
+        len +%= ud64.formatWriteBuf(buf[len..].ptr);
         buf[len] = '\n';
         len +%= 1;
         debug.write(buf[0..len]);
