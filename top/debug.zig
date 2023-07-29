@@ -363,13 +363,13 @@ pub fn incorrectAlignmentFault(comptime T: type, buf: *[4096]u8, address: usize,
 }
 pub fn comparisonFailedFault(comptime T: type, symbol: []const u8, arg1: anytype, arg2: @TypeOf(arg1), ret_addr: usize) noreturn {
     @setCold(true);
-    const about_fault_s: []const u8 = @typeName(T) ++ " failed assertion: ";
+    const about_s: []const u8 = @typeName(T) ++ " failed assertion: ";
     var buf: [4096]u8 = undefined;
     const len: u64 = switch (@typeInfo(T)) {
-        .Int => about.writeComparisonFailed(T, about_fault_s, symbol, &buf, arg1, arg2, @min(arg1, arg2) > 10_000),
-        .Enum => mach.memcpyMulti(&buf, &[_][]const u8{ about_fault_s, @tagName(arg1), symbol, @tagName(arg2) }),
-        .Type => mach.memcpyMulti(&buf, &[_][]const u8{ about_fault_s, @typeName(arg1), symbol, @typeName(arg2) }),
-        else => mach.memcpyMulti(&buf, &[_][]const u8{ about_fault_s, "unexpected value" }),
+        .Int => about.writeComparisonFailed(T, about_s, symbol, &buf, arg1, arg2, @min(arg1, arg2) > 10_000),
+        .Enum => mach.memcpyMulti(&buf, &[_][]const u8{ about_s, @tagName(arg1), symbol, @tagName(arg2) }),
+        .Type => mach.memcpyMulti(&buf, &[_][]const u8{ about_s, @typeName(arg1), symbol, @typeName(arg2) }),
+        else => mach.memcpyMulti(&buf, &[_][]const u8{ about_s, "unexpected value" }),
     };
     builtin.panic(buf[0..len], null, ret_addr);
 }
@@ -386,7 +386,6 @@ pub fn comparisonFailedError(comptime T: type, symbol: []const u8, arg1: anytype
     builtin.alarm(buf[0..len], @errorReturnTrace(), @returnAddress());
     return error.UnexpectedValue;
 }
-
 pub fn expect(b: bool) debug.Unexpected!void {
     if (!b) {
         return error.UnexpectedValue;
@@ -501,7 +500,6 @@ pub fn sampleAllReports() void {
     subCausedOverflowError(T, ~arg1, ~arg2) catch {};
     addCausedOverflowError(T, ~arg1, ~arg2) catch {};
     mulCausedOverflowError(T, ~arg1, ~arg2) catch {};
-
     exactDivisionWithRemainderError(T, ~arg1, ~arg2, result, remainder) catch {};
     incorrectAlignmentError(*T, ~arg2, remainder) catch {};
 }
@@ -707,7 +705,7 @@ fn checkNonScalarSentinel(expected: comptime_int, actual: anytype) void {
         builtin.panicSentinelMismatch(expected, actual);
     }
 }
-inline fn addErrRetTraceAddr(st: *builtin.StackTrace, ret_addr: usize) void {
+fn addErrRetTraceAddr(st: *builtin.StackTrace, ret_addr: usize) void {
     if (st.addrs_len < st.addrs.len) {
         st.addrs[st.addrs_len] = ret_addr;
     }
