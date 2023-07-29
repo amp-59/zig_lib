@@ -803,32 +803,32 @@ pub const BuildCommand = struct {
     }
     pub fn formatWriteBuf(cmd: *BuildCommand, zig_exe: []const u8, files: []const types.Path, buf: [*]u8) u64 {
         @setRuntimeSafety(builtin.is_safe);
-        var len: usize = 0;
-        @memcpy(buf + len, zig_exe);
-        len +%= zig_exe.len;
-        buf[len] = 0;
-        len +%= 1;
-        @as(*[6]u8, @ptrCast(buf + len)).* = "build-".*;
-        len +%= 6;
-        @memcpy(buf + len, @tagName(cmd.kind));
-        len +%= @tagName(cmd.kind).len;
-        buf[len] = 0;
-        len +%= 1;
+        var ptr: [*]u8 = buf;
+        @memcpy(ptr, zig_exe);
+        ptr = ptr + zig_exe.len;
+        ptr[0] = 0;
+        ptr = ptr + 1;
+        ptr[0..6].* = "build-".*;
+        ptr = ptr + 6;
+        @memcpy(ptr, @tagName(cmd.kind));
+        ptr = ptr + @tagName(cmd.kind).len;
+        ptr[0] = 0;
+        ptr = ptr + 1;
         if (cmd.emit_bin) |emit_bin| {
             switch (emit_bin) {
                 .yes => |yes| {
                     if (yes) |arg| {
-                        @as(*[11]u8, @ptrCast(buf + len)).* = "-femit-bin\x3d".*;
-                        len +%= 11;
-                        len +%= arg.formatWriteBuf(buf + len);
+                        ptr[0..11].* = "-femit-bin\x3d".*;
+                        ptr = ptr + 11;
+                        ptr = ptr + arg.formatWriteBuf(ptr);
                     } else {
-                        @as(*[11]u8, @ptrCast(buf + len)).* = "-femit-bin\x00".*;
-                        len +%= 11;
+                        ptr[0..11].* = "-femit-bin\x00".*;
+                        ptr = ptr + 11;
                     }
                 },
                 .no => {
-                    @as(*[14]u8, @ptrCast(buf + len)).* = "-fno-emit-bin\x00".*;
-                    len +%= 14;
+                    ptr[0..14].* = "-fno-emit-bin\x00".*;
+                    ptr = ptr + 14;
                 },
             }
         }
@@ -836,17 +836,17 @@ pub const BuildCommand = struct {
             switch (emit_asm) {
                 .yes => |yes| {
                     if (yes) |arg| {
-                        @as(*[11]u8, @ptrCast(buf + len)).* = "-femit-asm\x3d".*;
-                        len +%= 11;
-                        len +%= arg.formatWriteBuf(buf + len);
+                        ptr[0..11].* = "-femit-asm\x3d".*;
+                        ptr = ptr + 11;
+                        ptr = ptr + arg.formatWriteBuf(ptr);
                     } else {
-                        @as(*[11]u8, @ptrCast(buf + len)).* = "-femit-asm\x00".*;
-                        len +%= 11;
+                        ptr[0..11].* = "-femit-asm\x00".*;
+                        ptr = ptr + 11;
                     }
                 },
                 .no => {
-                    @as(*[14]u8, @ptrCast(buf + len)).* = "-fno-emit-asm\x00".*;
-                    len +%= 14;
+                    ptr[0..14].* = "-fno-emit-asm\x00".*;
+                    ptr = ptr + 14;
                 },
             }
         }
@@ -854,17 +854,17 @@ pub const BuildCommand = struct {
             switch (emit_llvm_ir) {
                 .yes => |yes| {
                     if (yes) |arg| {
-                        @as(*[15]u8, @ptrCast(buf + len)).* = "-femit-llvm-ir\x3d".*;
-                        len +%= 15;
-                        len +%= arg.formatWriteBuf(buf + len);
+                        ptr[0..15].* = "-femit-llvm-ir\x3d".*;
+                        ptr = ptr + 15;
+                        ptr = ptr + arg.formatWriteBuf(ptr);
                     } else {
-                        @as(*[15]u8, @ptrCast(buf + len)).* = "-femit-llvm-ir\x00".*;
-                        len +%= 15;
+                        ptr[0..15].* = "-femit-llvm-ir\x00".*;
+                        ptr = ptr + 15;
                     }
                 },
                 .no => {
-                    @as(*[18]u8, @ptrCast(buf + len)).* = "-fno-emit-llvm-ir\x00".*;
-                    len +%= 18;
+                    ptr[0..18].* = "-fno-emit-llvm-ir\x00".*;
+                    ptr = ptr + 18;
                 },
             }
         }
@@ -872,17 +872,17 @@ pub const BuildCommand = struct {
             switch (emit_llvm_bc) {
                 .yes => |yes| {
                     if (yes) |arg| {
-                        @as(*[15]u8, @ptrCast(buf + len)).* = "-femit-llvm-bc\x3d".*;
-                        len +%= 15;
-                        len +%= arg.formatWriteBuf(buf + len);
+                        ptr[0..15].* = "-femit-llvm-bc\x3d".*;
+                        ptr = ptr + 15;
+                        ptr = ptr + arg.formatWriteBuf(ptr);
                     } else {
-                        @as(*[15]u8, @ptrCast(buf + len)).* = "-femit-llvm-bc\x00".*;
-                        len +%= 15;
+                        ptr[0..15].* = "-femit-llvm-bc\x00".*;
+                        ptr = ptr + 15;
                     }
                 },
                 .no => {
-                    @as(*[18]u8, @ptrCast(buf + len)).* = "-fno-emit-llvm-bc\x00".*;
-                    len +%= 18;
+                    ptr[0..18].* = "-fno-emit-llvm-bc\x00".*;
+                    ptr = ptr + 18;
                 },
             }
         }
@@ -890,17 +890,17 @@ pub const BuildCommand = struct {
             switch (emit_h) {
                 .yes => |yes| {
                     if (yes) |arg| {
-                        @as(*[9]u8, @ptrCast(buf + len)).* = "-femit-h\x3d".*;
-                        len +%= 9;
-                        len +%= arg.formatWriteBuf(buf + len);
+                        ptr[0..9].* = "-femit-h\x3d".*;
+                        ptr = ptr + 9;
+                        ptr = ptr + arg.formatWriteBuf(ptr);
                     } else {
-                        @as(*[9]u8, @ptrCast(buf + len)).* = "-femit-h\x00".*;
-                        len +%= 9;
+                        ptr[0..9].* = "-femit-h\x00".*;
+                        ptr = ptr + 9;
                     }
                 },
                 .no => {
-                    @as(*[12]u8, @ptrCast(buf + len)).* = "-fno-emit-h\x00".*;
-                    len +%= 12;
+                    ptr[0..12].* = "-fno-emit-h\x00".*;
+                    ptr = ptr + 12;
                 },
             }
         }
@@ -908,17 +908,17 @@ pub const BuildCommand = struct {
             switch (emit_docs) {
                 .yes => |yes| {
                     if (yes) |arg| {
-                        @as(*[12]u8, @ptrCast(buf + len)).* = "-femit-docs\x3d".*;
-                        len +%= 12;
-                        len +%= arg.formatWriteBuf(buf + len);
+                        ptr[0..12].* = "-femit-docs\x3d".*;
+                        ptr = ptr + 12;
+                        ptr = ptr + arg.formatWriteBuf(ptr);
                     } else {
-                        @as(*[12]u8, @ptrCast(buf + len)).* = "-femit-docs\x00".*;
-                        len +%= 12;
+                        ptr[0..12].* = "-femit-docs\x00".*;
+                        ptr = ptr + 12;
                     }
                 },
                 .no => {
-                    @as(*[15]u8, @ptrCast(buf + len)).* = "-fno-emit-docs\x00".*;
-                    len +%= 15;
+                    ptr[0..15].* = "-fno-emit-docs\x00".*;
+                    ptr = ptr + 15;
                 },
             }
         }
@@ -926,17 +926,17 @@ pub const BuildCommand = struct {
             switch (emit_analysis) {
                 .yes => |yes| {
                     if (yes) |arg| {
-                        @as(*[16]u8, @ptrCast(buf + len)).* = "-femit-analysis\x3d".*;
-                        len +%= 16;
-                        len +%= arg.formatWriteBuf(buf + len);
+                        ptr[0..16].* = "-femit-analysis\x3d".*;
+                        ptr = ptr + 16;
+                        ptr = ptr + arg.formatWriteBuf(ptr);
                     } else {
-                        @as(*[16]u8, @ptrCast(buf + len)).* = "-femit-analysis\x00".*;
-                        len +%= 16;
+                        ptr[0..16].* = "-femit-analysis\x00".*;
+                        ptr = ptr + 16;
                     }
                 },
                 .no => {
-                    @as(*[19]u8, @ptrCast(buf + len)).* = "-fno-emit-analysis\x00".*;
-                    len +%= 19;
+                    ptr[0..19].* = "-fno-emit-analysis\x00".*;
+                    ptr = ptr + 19;
                 },
             }
         }
@@ -944,613 +944,613 @@ pub const BuildCommand = struct {
             switch (emit_implib) {
                 .yes => |yes| {
                     if (yes) |arg| {
-                        @as(*[14]u8, @ptrCast(buf + len)).* = "-femit-implib\x3d".*;
-                        len +%= 14;
-                        len +%= arg.formatWriteBuf(buf + len);
+                        ptr[0..14].* = "-femit-implib\x3d".*;
+                        ptr = ptr + 14;
+                        ptr = ptr + arg.formatWriteBuf(ptr);
                     } else {
-                        @as(*[14]u8, @ptrCast(buf + len)).* = "-femit-implib\x00".*;
-                        len +%= 14;
+                        ptr[0..14].* = "-femit-implib\x00".*;
+                        ptr = ptr + 14;
                     }
                 },
                 .no => {
-                    @as(*[17]u8, @ptrCast(buf + len)).* = "-fno-emit-implib\x00".*;
-                    len +%= 17;
+                    ptr[0..17].* = "-fno-emit-implib\x00".*;
+                    ptr = ptr + 17;
                 },
             }
         }
         if (cmd.cache_root) |cache_root| {
-            @as(*[12]u8, @ptrCast(buf + len)).* = "--cache-dir\x00".*;
-            len +%= 12;
-            @memcpy(buf + len, cache_root);
-            len +%= cache_root.len;
-            buf[len] = 0;
-            len +%= 1;
+            ptr[0..12].* = "--cache-dir\x00".*;
+            ptr = ptr + 12;
+            @memcpy(ptr, cache_root);
+            ptr = ptr + cache_root.len;
+            ptr[0] = 0;
+            ptr = ptr + 1;
         }
         if (cmd.global_cache_root) |global_cache_root| {
-            @as(*[19]u8, @ptrCast(buf + len)).* = "--global-cache-dir\x00".*;
-            len +%= 19;
-            @memcpy(buf + len, global_cache_root);
-            len +%= global_cache_root.len;
-            buf[len] = 0;
-            len +%= 1;
+            ptr[0..19].* = "--global-cache-dir\x00".*;
+            ptr = ptr + 19;
+            @memcpy(ptr, global_cache_root);
+            ptr = ptr + global_cache_root.len;
+            ptr[0] = 0;
+            ptr = ptr + 1;
         }
         if (cmd.zig_lib_root) |zig_lib_root| {
-            @as(*[14]u8, @ptrCast(buf + len)).* = "--zig-lib-dir\x00".*;
-            len +%= 14;
-            @memcpy(buf + len, zig_lib_root);
-            len +%= zig_lib_root.len;
-            buf[len] = 0;
-            len +%= 1;
+            ptr[0..14].* = "--zig-lib-dir\x00".*;
+            ptr = ptr + 14;
+            @memcpy(ptr, zig_lib_root);
+            ptr = ptr + zig_lib_root.len;
+            ptr[0] = 0;
+            ptr = ptr + 1;
         }
         if (cmd.listen) |listen| {
-            @as(*[9]u8, @ptrCast(buf + len)).* = "--listen\x00".*;
-            len +%= 9;
-            @memcpy(buf + len, @tagName(listen));
-            len +%= @tagName(listen).len;
-            buf[len] = 0;
-            len +%= 1;
+            ptr[0..9].* = "--listen\x00".*;
+            ptr = ptr + 9;
+            @memcpy(ptr, @tagName(listen));
+            ptr = ptr + @tagName(listen).len;
+            ptr[0] = 0;
+            ptr = ptr + 1;
         }
         if (cmd.target) |target| {
-            @as(*[8]u8, @ptrCast(buf + len)).* = "-target\x00".*;
-            len +%= 8;
-            @memcpy(buf + len, target);
-            len +%= target.len;
-            buf[len] = 0;
-            len +%= 1;
+            ptr[0..8].* = "-target\x00".*;
+            ptr = ptr + 8;
+            @memcpy(ptr, target);
+            ptr = ptr + target.len;
+            ptr[0] = 0;
+            ptr = ptr + 1;
         }
         if (cmd.cpu) |cpu| {
-            @as(*[6]u8, @ptrCast(buf + len)).* = "-mcpu\x00".*;
-            len +%= 6;
-            @memcpy(buf + len, cpu);
-            len +%= cpu.len;
-            buf[len] = 0;
-            len +%= 1;
+            ptr[0..6].* = "-mcpu\x00".*;
+            ptr = ptr + 6;
+            @memcpy(ptr, cpu);
+            ptr = ptr + cpu.len;
+            ptr[0] = 0;
+            ptr = ptr + 1;
         }
         if (cmd.code_model) |code_model| {
-            @as(*[9]u8, @ptrCast(buf + len)).* = "-mcmodel\x00".*;
-            len +%= 9;
-            @memcpy(buf + len, @tagName(code_model));
-            len +%= @tagName(code_model).len;
-            buf[len] = 0;
-            len +%= 1;
+            ptr[0..9].* = "-mcmodel\x00".*;
+            ptr = ptr + 9;
+            @memcpy(ptr, @tagName(code_model));
+            ptr = ptr + @tagName(code_model).len;
+            ptr[0] = 0;
+            ptr = ptr + 1;
         }
         if (cmd.red_zone) |red_zone| {
             if (red_zone) {
-                @as(*[11]u8, @ptrCast(buf + len)).* = "-mred-zone\x00".*;
-                len +%= 11;
+                ptr[0..11].* = "-mred-zone\x00".*;
+                ptr = ptr + 11;
             } else {
-                @as(*[14]u8, @ptrCast(buf + len)).* = "-mno-red-zone\x00".*;
-                len +%= 14;
+                ptr[0..14].* = "-mno-red-zone\x00".*;
+                ptr = ptr + 14;
             }
         }
         if (cmd.implicit_builtins) |implicit_builtins| {
             if (implicit_builtins) {
-                @as(*[10]u8, @ptrCast(buf + len)).* = "-fbuiltin\x00".*;
-                len +%= 10;
+                ptr[0..10].* = "-fbuiltin\x00".*;
+                ptr = ptr + 10;
             } else {
-                @as(*[13]u8, @ptrCast(buf + len)).* = "-fno-builtin\x00".*;
-                len +%= 13;
+                ptr[0..13].* = "-fno-builtin\x00".*;
+                ptr = ptr + 13;
             }
         }
         if (cmd.omit_frame_pointer) |omit_frame_pointer| {
             if (omit_frame_pointer) {
-                @as(*[21]u8, @ptrCast(buf + len)).* = "-fomit-frame-pointer\x00".*;
-                len +%= 21;
+                ptr[0..21].* = "-fomit-frame-pointer\x00".*;
+                ptr = ptr + 21;
             } else {
-                @as(*[24]u8, @ptrCast(buf + len)).* = "-fno-omit-frame-pointer\x00".*;
-                len +%= 24;
+                ptr[0..24].* = "-fno-omit-frame-pointer\x00".*;
+                ptr = ptr + 24;
             }
         }
         if (cmd.exec_model) |exec_model| {
-            @as(*[13]u8, @ptrCast(buf + len)).* = "-mexec-model\x00".*;
-            len +%= 13;
-            @memcpy(buf + len, exec_model);
-            len +%= exec_model.len;
-            buf[len] = 0;
-            len +%= 1;
+            ptr[0..13].* = "-mexec-model\x00".*;
+            ptr = ptr + 13;
+            @memcpy(ptr, exec_model);
+            ptr = ptr + exec_model.len;
+            ptr[0] = 0;
+            ptr = ptr + 1;
         }
         if (cmd.name) |name| {
-            @as(*[7]u8, @ptrCast(buf + len)).* = "--name\x00".*;
-            len +%= 7;
-            @memcpy(buf + len, name);
-            len +%= name.len;
-            buf[len] = 0;
-            len +%= 1;
+            ptr[0..7].* = "--name\x00".*;
+            ptr = ptr + 7;
+            @memcpy(ptr, name);
+            ptr = ptr + name.len;
+            ptr[0] = 0;
+            ptr = ptr + 1;
         }
         if (cmd.soname) |soname| {
             switch (soname) {
                 .yes => |arg| {
-                    @as(*[9]u8, @ptrCast(buf + len)).* = "-fsoname\x00".*;
-                    len +%= 9;
-                    @memcpy(buf + len, arg);
-                    len +%= arg.len;
-                    buf[len] = 0;
-                    len +%= 1;
+                    ptr[0..9].* = "-fsoname\x00".*;
+                    ptr = ptr + 9;
+                    @memcpy(ptr, arg);
+                    ptr = ptr + arg.len;
+                    ptr[0] = 0;
+                    ptr = ptr + 1;
                 },
                 .no => {
-                    @as(*[12]u8, @ptrCast(buf + len)).* = "-fno-soname\x00".*;
-                    len +%= 12;
+                    ptr[0..12].* = "-fno-soname\x00".*;
+                    ptr = ptr + 12;
                 },
             }
         }
         if (cmd.mode) |mode| {
-            @as(*[3]u8, @ptrCast(buf + len)).* = "-O\x00".*;
-            len +%= 3;
-            @memcpy(buf + len, @tagName(mode));
-            len +%= @tagName(mode).len;
-            buf[len] = 0;
-            len +%= 1;
+            ptr[0..3].* = "-O\x00".*;
+            ptr = ptr + 3;
+            @memcpy(ptr, @tagName(mode));
+            ptr = ptr + @tagName(mode).len;
+            ptr[0] = 0;
+            ptr = ptr + 1;
         }
         if (cmd.passes) |passes| {
-            @as(*[19]u8, @ptrCast(buf + len)).* = "-fopt-bisect-limit\x3d".*;
-            len +%= 19;
-            len +%= fmt.Type.Ud64.formatWriteBuf(.{ .value = passes }, buf + len);
-            buf[len] = 0;
-            len +%= 1;
+            ptr[0..19].* = "-fopt-bisect-limit\x3d".*;
+            ptr = ptr + 19;
+            ptr = ptr + fmt.Type.Ud64.formatWriteBuf(.{ .value = passes }, ptr);
+            ptr[0] = 0;
+            ptr = ptr + 1;
         }
         if (cmd.main_pkg_path) |main_pkg_path| {
-            @as(*[16]u8, @ptrCast(buf + len)).* = "--main-pkg-path\x00".*;
-            len +%= 16;
-            @memcpy(buf + len, main_pkg_path);
-            len +%= main_pkg_path.len;
-            buf[len] = 0;
-            len +%= 1;
+            ptr[0..16].* = "--main-pkg-path\x00".*;
+            ptr = ptr + 16;
+            @memcpy(ptr, main_pkg_path);
+            ptr = ptr + main_pkg_path.len;
+            ptr[0] = 0;
+            ptr = ptr + 1;
         }
         if (cmd.pic) |pic| {
             if (pic) {
-                @as(*[6]u8, @ptrCast(buf + len)).* = "-fPIC\x00".*;
-                len +%= 6;
+                ptr[0..6].* = "-fPIC\x00".*;
+                ptr = ptr + 6;
             } else {
-                @as(*[9]u8, @ptrCast(buf + len)).* = "-fno-PIC\x00".*;
-                len +%= 9;
+                ptr[0..9].* = "-fno-PIC\x00".*;
+                ptr = ptr + 9;
             }
         }
         if (cmd.pie) |pie| {
             if (pie) {
-                @as(*[6]u8, @ptrCast(buf + len)).* = "-fPIE\x00".*;
-                len +%= 6;
+                ptr[0..6].* = "-fPIE\x00".*;
+                ptr = ptr + 6;
             } else {
-                @as(*[9]u8, @ptrCast(buf + len)).* = "-fno-PIE\x00".*;
-                len +%= 9;
+                ptr[0..9].* = "-fno-PIE\x00".*;
+                ptr = ptr + 9;
             }
         }
         if (cmd.lto) |lto| {
             if (lto) {
-                @as(*[6]u8, @ptrCast(buf + len)).* = "-flto\x00".*;
-                len +%= 6;
+                ptr[0..6].* = "-flto\x00".*;
+                ptr = ptr + 6;
             } else {
-                @as(*[9]u8, @ptrCast(buf + len)).* = "-fno-lto\x00".*;
-                len +%= 9;
+                ptr[0..9].* = "-fno-lto\x00".*;
+                ptr = ptr + 9;
             }
         }
         if (cmd.stack_check) |stack_check| {
             if (stack_check) {
-                @as(*[14]u8, @ptrCast(buf + len)).* = "-fstack-check\x00".*;
-                len +%= 14;
+                ptr[0..14].* = "-fstack-check\x00".*;
+                ptr = ptr + 14;
             } else {
-                @as(*[17]u8, @ptrCast(buf + len)).* = "-fno-stack-check\x00".*;
-                len +%= 17;
+                ptr[0..17].* = "-fno-stack-check\x00".*;
+                ptr = ptr + 17;
             }
         }
         if (cmd.stack_protector) |stack_protector| {
             if (stack_protector) {
-                @as(*[14]u8, @ptrCast(buf + len)).* = "-fstack-check\x00".*;
-                len +%= 14;
+                ptr[0..14].* = "-fstack-check\x00".*;
+                ptr = ptr + 14;
             } else {
-                @as(*[21]u8, @ptrCast(buf + len)).* = "-fno-stack-protector\x00".*;
-                len +%= 21;
+                ptr[0..21].* = "-fno-stack-protector\x00".*;
+                ptr = ptr + 21;
             }
         }
         if (cmd.sanitize_c) |sanitize_c| {
             if (sanitize_c) {
-                @as(*[13]u8, @ptrCast(buf + len)).* = "-fsanitize-c\x00".*;
-                len +%= 13;
+                ptr[0..13].* = "-fsanitize-c\x00".*;
+                ptr = ptr + 13;
             } else {
-                @as(*[16]u8, @ptrCast(buf + len)).* = "-fno-sanitize-c\x00".*;
-                len +%= 16;
+                ptr[0..16].* = "-fno-sanitize-c\x00".*;
+                ptr = ptr + 16;
             }
         }
         if (cmd.valgrind) |valgrind| {
             if (valgrind) {
-                @as(*[11]u8, @ptrCast(buf + len)).* = "-fvalgrind\x00".*;
-                len +%= 11;
+                ptr[0..11].* = "-fvalgrind\x00".*;
+                ptr = ptr + 11;
             } else {
-                @as(*[14]u8, @ptrCast(buf + len)).* = "-fno-valgrind\x00".*;
-                len +%= 14;
+                ptr[0..14].* = "-fno-valgrind\x00".*;
+                ptr = ptr + 14;
             }
         }
         if (cmd.sanitize_thread) |sanitize_thread| {
             if (sanitize_thread) {
-                @as(*[18]u8, @ptrCast(buf + len)).* = "-fsanitize-thread\x00".*;
-                len +%= 18;
+                ptr[0..18].* = "-fsanitize-thread\x00".*;
+                ptr = ptr + 18;
             } else {
-                @as(*[21]u8, @ptrCast(buf + len)).* = "-fno-sanitize-thread\x00".*;
-                len +%= 21;
+                ptr[0..21].* = "-fno-sanitize-thread\x00".*;
+                ptr = ptr + 21;
             }
         }
         if (cmd.unwind_tables) |unwind_tables| {
             if (unwind_tables) {
-                @as(*[16]u8, @ptrCast(buf + len)).* = "-funwind-tables\x00".*;
-                len +%= 16;
+                ptr[0..16].* = "-funwind-tables\x00".*;
+                ptr = ptr + 16;
             } else {
-                @as(*[19]u8, @ptrCast(buf + len)).* = "-fno-unwind-tables\x00".*;
-                len +%= 19;
+                ptr[0..19].* = "-fno-unwind-tables\x00".*;
+                ptr = ptr + 19;
             }
         }
         if (cmd.llvm) |llvm| {
             if (llvm) {
-                @as(*[7]u8, @ptrCast(buf + len)).* = "-fLLVM\x00".*;
-                len +%= 7;
+                ptr[0..7].* = "-fLLVM\x00".*;
+                ptr = ptr + 7;
             } else {
-                @as(*[10]u8, @ptrCast(buf + len)).* = "-fno-LLVM\x00".*;
-                len +%= 10;
+                ptr[0..10].* = "-fno-LLVM\x00".*;
+                ptr = ptr + 10;
             }
         }
         if (cmd.clang) |clang| {
             if (clang) {
-                @as(*[8]u8, @ptrCast(buf + len)).* = "-fClang\x00".*;
-                len +%= 8;
+                ptr[0..8].* = "-fClang\x00".*;
+                ptr = ptr + 8;
             } else {
-                @as(*[11]u8, @ptrCast(buf + len)).* = "-fno-Clang\x00".*;
-                len +%= 11;
+                ptr[0..11].* = "-fno-Clang\x00".*;
+                ptr = ptr + 11;
             }
         }
         if (cmd.reference_trace) |reference_trace| {
             if (reference_trace) {
-                @as(*[18]u8, @ptrCast(buf + len)).* = "-freference-trace\x00".*;
-                len +%= 18;
+                ptr[0..18].* = "-freference-trace\x00".*;
+                ptr = ptr + 18;
             } else {
-                @as(*[21]u8, @ptrCast(buf + len)).* = "-fno-reference-trace\x00".*;
-                len +%= 21;
+                ptr[0..21].* = "-fno-reference-trace\x00".*;
+                ptr = ptr + 21;
             }
         }
         if (cmd.error_tracing) |error_tracing| {
             if (error_tracing) {
-                @as(*[16]u8, @ptrCast(buf + len)).* = "-ferror-tracing\x00".*;
-                len +%= 16;
+                ptr[0..16].* = "-ferror-tracing\x00".*;
+                ptr = ptr + 16;
             } else {
-                @as(*[19]u8, @ptrCast(buf + len)).* = "-fno-error-tracing\x00".*;
-                len +%= 19;
+                ptr[0..19].* = "-fno-error-tracing\x00".*;
+                ptr = ptr + 19;
             }
         }
         if (cmd.single_threaded) |single_threaded| {
             if (single_threaded) {
-                @as(*[18]u8, @ptrCast(buf + len)).* = "-fsingle-threaded\x00".*;
-                len +%= 18;
+                ptr[0..18].* = "-fsingle-threaded\x00".*;
+                ptr = ptr + 18;
             } else {
-                @as(*[21]u8, @ptrCast(buf + len)).* = "-fno-single-threaded\x00".*;
-                len +%= 21;
+                ptr[0..21].* = "-fno-single-threaded\x00".*;
+                ptr = ptr + 21;
             }
         }
         if (cmd.function_sections) |function_sections| {
             if (function_sections) {
-                @as(*[20]u8, @ptrCast(buf + len)).* = "-ffunction-sections\x00".*;
-                len +%= 20;
+                ptr[0..20].* = "-ffunction-sections\x00".*;
+                ptr = ptr + 20;
             } else {
-                @as(*[23]u8, @ptrCast(buf + len)).* = "-fno-function-sections\x00".*;
-                len +%= 23;
+                ptr[0..23].* = "-fno-function-sections\x00".*;
+                ptr = ptr + 23;
             }
         }
         if (cmd.strip) |strip| {
             if (strip) {
-                @as(*[8]u8, @ptrCast(buf + len)).* = "-fstrip\x00".*;
-                len +%= 8;
+                ptr[0..8].* = "-fstrip\x00".*;
+                ptr = ptr + 8;
             } else {
-                @as(*[11]u8, @ptrCast(buf + len)).* = "-fno-strip\x00".*;
-                len +%= 11;
+                ptr[0..11].* = "-fno-strip\x00".*;
+                ptr = ptr + 11;
             }
         }
         if (cmd.formatted_panics) |formatted_panics| {
             if (formatted_panics) {
-                @as(*[19]u8, @ptrCast(buf + len)).* = "-fformatted-panics\x00".*;
-                len +%= 19;
+                ptr[0..19].* = "-fformatted-panics\x00".*;
+                ptr = ptr + 19;
             } else {
-                @as(*[22]u8, @ptrCast(buf + len)).* = "-fno-formatted-panics\x00".*;
-                len +%= 22;
+                ptr[0..22].* = "-fno-formatted-panics\x00".*;
+                ptr = ptr + 22;
             }
         }
         if (cmd.format) |format| {
-            @as(*[6]u8, @ptrCast(buf + len)).* = "-ofmt\x3d".*;
-            len +%= 6;
-            @memcpy(buf + len, @tagName(format));
-            len +%= @tagName(format).len;
-            buf[len] = 0;
-            len +%= 1;
+            ptr[0..6].* = "-ofmt\x3d".*;
+            ptr = ptr + 6;
+            @memcpy(ptr, @tagName(format));
+            ptr = ptr + @tagName(format).len;
+            ptr[0] = 0;
+            ptr = ptr + 1;
         }
         if (cmd.dirafter) |dirafter| {
-            @as(*[11]u8, @ptrCast(buf + len)).* = "-idirafter\x00".*;
-            len +%= 11;
-            @memcpy(buf + len, dirafter);
-            len +%= dirafter.len;
-            buf[len] = 0;
-            len +%= 1;
+            ptr[0..11].* = "-idirafter\x00".*;
+            ptr = ptr + 11;
+            @memcpy(ptr, dirafter);
+            ptr = ptr + dirafter.len;
+            ptr[0] = 0;
+            ptr = ptr + 1;
         }
         if (cmd.system) |system| {
-            @as(*[9]u8, @ptrCast(buf + len)).* = "-isystem\x00".*;
-            len +%= 9;
-            @memcpy(buf + len, system);
-            len +%= system.len;
-            buf[len] = 0;
-            len +%= 1;
+            ptr[0..9].* = "-isystem\x00".*;
+            ptr = ptr + 9;
+            @memcpy(ptr, system);
+            ptr = ptr + system.len;
+            ptr[0] = 0;
+            ptr = ptr + 1;
         }
         if (cmd.libc) |libc| {
-            @as(*[7]u8, @ptrCast(buf + len)).* = "--libc\x00".*;
-            len +%= 7;
-            @memcpy(buf + len, libc);
-            len +%= libc.len;
-            buf[len] = 0;
-            len +%= 1;
+            ptr[0..7].* = "--libc\x00".*;
+            ptr = ptr + 7;
+            @memcpy(ptr, libc);
+            ptr = ptr + libc.len;
+            ptr[0] = 0;
+            ptr = ptr + 1;
         }
         if (cmd.library) |library| {
-            @as(*[10]u8, @ptrCast(buf + len)).* = "--library\x00".*;
-            len +%= 10;
-            @memcpy(buf + len, library);
-            len +%= library.len;
-            buf[len] = 0;
-            len +%= 1;
+            ptr[0..10].* = "--library\x00".*;
+            ptr = ptr + 10;
+            @memcpy(ptr, library);
+            ptr = ptr + library.len;
+            ptr[0] = 0;
+            ptr = ptr + 1;
         }
         if (cmd.include) |include| {
             for (include) |value| {
-                @as(*[3]u8, @ptrCast(buf + len)).* = "-I\x00".*;
-                len +%= 3;
-                @memcpy(buf + len, value);
-                len +%= value.len;
-                buf[len] = 0;
-                len +%= 1;
+                ptr[0..3].* = "-I\x00".*;
+                ptr = ptr + 3;
+                @memcpy(ptr, value);
+                ptr = ptr + value.len;
+                ptr[0] = 0;
+                ptr = ptr + 1;
             }
         }
         if (cmd.needed_library) |needed_library| {
             for (needed_library) |value| {
-                @as(*[17]u8, @ptrCast(buf + len)).* = "--needed-library\x00".*;
-                len +%= 17;
-                @memcpy(buf + len, value);
-                len +%= value.len;
-                buf[len] = 0;
-                len +%= 1;
+                ptr[0..17].* = "--needed-library\x00".*;
+                ptr = ptr + 17;
+                @memcpy(ptr, value);
+                ptr = ptr + value.len;
+                ptr[0] = 0;
+                ptr = ptr + 1;
             }
         }
         if (cmd.library_directory) |library_directory| {
             for (library_directory) |value| {
-                @as(*[20]u8, @ptrCast(buf + len)).* = "--library-directory\x00".*;
-                len +%= 20;
-                @memcpy(buf + len, value);
-                len +%= value.len;
-                buf[len] = 0;
-                len +%= 1;
+                ptr[0..20].* = "--library-directory\x00".*;
+                ptr = ptr + 20;
+                @memcpy(ptr, value);
+                ptr = ptr + value.len;
+                ptr[0] = 0;
+                ptr = ptr + 1;
             }
         }
         if (cmd.link_script) |link_script| {
-            @as(*[9]u8, @ptrCast(buf + len)).* = "--script\x00".*;
-            len +%= 9;
-            @memcpy(buf + len, link_script);
-            len +%= link_script.len;
-            buf[len] = 0;
-            len +%= 1;
+            ptr[0..9].* = "--script\x00".*;
+            ptr = ptr + 9;
+            @memcpy(ptr, link_script);
+            ptr = ptr + link_script.len;
+            ptr[0] = 0;
+            ptr = ptr + 1;
         }
         if (cmd.version_script) |version_script| {
-            @as(*[17]u8, @ptrCast(buf + len)).* = "--version-script\x00".*;
-            len +%= 17;
-            @memcpy(buf + len, version_script);
-            len +%= version_script.len;
-            buf[len] = 0;
-            len +%= 1;
+            ptr[0..17].* = "--version-script\x00".*;
+            ptr = ptr + 17;
+            @memcpy(ptr, version_script);
+            ptr = ptr + version_script.len;
+            ptr[0] = 0;
+            ptr = ptr + 1;
         }
         if (cmd.dynamic_linker) |dynamic_linker| {
-            @as(*[17]u8, @ptrCast(buf + len)).* = "--dynamic-linker\x00".*;
-            len +%= 17;
-            @memcpy(buf + len, dynamic_linker);
-            len +%= dynamic_linker.len;
-            buf[len] = 0;
-            len +%= 1;
+            ptr[0..17].* = "--dynamic-linker\x00".*;
+            ptr = ptr + 17;
+            @memcpy(ptr, dynamic_linker);
+            ptr = ptr + dynamic_linker.len;
+            ptr[0] = 0;
+            ptr = ptr + 1;
         }
         if (cmd.sysroot) |sysroot| {
-            @as(*[10]u8, @ptrCast(buf + len)).* = "--sysroot\x00".*;
-            len +%= 10;
-            @memcpy(buf + len, sysroot);
-            len +%= sysroot.len;
-            buf[len] = 0;
-            len +%= 1;
+            ptr[0..10].* = "--sysroot\x00".*;
+            ptr = ptr + 10;
+            @memcpy(ptr, sysroot);
+            ptr = ptr + sysroot.len;
+            ptr[0] = 0;
+            ptr = ptr + 1;
         }
         if (cmd.entry) |entry| {
-            @as(*[8]u8, @ptrCast(buf + len)).* = "--entry\x00".*;
-            len +%= 8;
-            @memcpy(buf + len, entry);
-            len +%= entry.len;
-            buf[len] = 0;
-            len +%= 1;
+            ptr[0..8].* = "--entry\x00".*;
+            ptr = ptr + 8;
+            @memcpy(ptr, entry);
+            ptr = ptr + entry.len;
+            ptr[0] = 0;
+            ptr = ptr + 1;
         }
         if (cmd.lld) |lld| {
             if (lld) {
-                @as(*[6]u8, @ptrCast(buf + len)).* = "-fLLD\x00".*;
-                len +%= 6;
+                ptr[0..6].* = "-fLLD\x00".*;
+                ptr = ptr + 6;
             } else {
-                @as(*[9]u8, @ptrCast(buf + len)).* = "-fno-LLD\x00".*;
-                len +%= 9;
+                ptr[0..9].* = "-fno-LLD\x00".*;
+                ptr = ptr + 9;
             }
         }
         if (cmd.compiler_rt) |compiler_rt| {
             if (compiler_rt) {
-                @as(*[14]u8, @ptrCast(buf + len)).* = "-fcompiler-rt\x00".*;
-                len +%= 14;
+                ptr[0..14].* = "-fcompiler-rt\x00".*;
+                ptr = ptr + 14;
             } else {
-                @as(*[17]u8, @ptrCast(buf + len)).* = "-fno-compiler-rt\x00".*;
-                len +%= 17;
+                ptr[0..17].* = "-fno-compiler-rt\x00".*;
+                ptr = ptr + 17;
             }
         }
         if (cmd.rpath) |rpath| {
-            @as(*[7]u8, @ptrCast(buf + len)).* = "-rpath\x00".*;
-            len +%= 7;
-            @memcpy(buf + len, rpath);
-            len +%= rpath.len;
-            buf[len] = 0;
-            len +%= 1;
+            ptr[0..7].* = "-rpath\x00".*;
+            ptr = ptr + 7;
+            @memcpy(ptr, rpath);
+            ptr = ptr + rpath.len;
+            ptr[0] = 0;
+            ptr = ptr + 1;
         }
         if (cmd.each_lib_rpath) |each_lib_rpath| {
             if (each_lib_rpath) {
-                @as(*[17]u8, @ptrCast(buf + len)).* = "-feach-lib-rpath\x00".*;
-                len +%= 17;
+                ptr[0..17].* = "-feach-lib-rpath\x00".*;
+                ptr = ptr + 17;
             } else {
-                @as(*[20]u8, @ptrCast(buf + len)).* = "-fno-each-lib-rpath\x00".*;
-                len +%= 20;
+                ptr[0..20].* = "-fno-each-lib-rpath\x00".*;
+                ptr = ptr + 20;
             }
         }
         if (cmd.allow_shlib_undefined) |allow_shlib_undefined| {
             if (allow_shlib_undefined) {
-                @as(*[24]u8, @ptrCast(buf + len)).* = "-fallow-shlib-undefined\x00".*;
-                len +%= 24;
+                ptr[0..24].* = "-fallow-shlib-undefined\x00".*;
+                ptr = ptr + 24;
             } else {
-                @as(*[27]u8, @ptrCast(buf + len)).* = "-fno-allow-shlib-undefined\x00".*;
-                len +%= 27;
+                ptr[0..27].* = "-fno-allow-shlib-undefined\x00".*;
+                ptr = ptr + 27;
             }
         }
         if (cmd.build_id) |build_id| {
-            @as(*[11]u8, @ptrCast(buf + len)).* = "--build-id\x3d".*;
-            len +%= 11;
-            @memcpy(buf + len, @tagName(build_id));
-            len +%= @tagName(build_id).len;
-            buf[len] = 0;
-            len +%= 1;
+            ptr[0..11].* = "--build-id\x3d".*;
+            ptr = ptr + 11;
+            @memcpy(ptr, @tagName(build_id));
+            ptr = ptr + @tagName(build_id).len;
+            ptr[0] = 0;
+            ptr = ptr + 1;
         }
         if (cmd.compress_debug_sections) |compress_debug_sections| {
             if (compress_debug_sections) {
-                @as(*[31]u8, @ptrCast(buf + len)).* = "--compress-debug-sections=zlib\x00".*;
-                len +%= 31;
+                ptr[0..31].* = "--compress-debug-sections=zlib\x00".*;
+                ptr = ptr + 31;
             } else {
-                @as(*[31]u8, @ptrCast(buf + len)).* = "--compress-debug-sections=none\x00".*;
-                len +%= 31;
+                ptr[0..31].* = "--compress-debug-sections=none\x00".*;
+                ptr = ptr + 31;
             }
         }
         if (cmd.gc_sections) |gc_sections| {
             if (gc_sections) {
-                @as(*[14]u8, @ptrCast(buf + len)).* = "--gc-sections\x00".*;
-                len +%= 14;
+                ptr[0..14].* = "--gc-sections\x00".*;
+                ptr = ptr + 14;
             } else {
-                @as(*[17]u8, @ptrCast(buf + len)).* = "--no-gc-sections\x00".*;
-                len +%= 17;
+                ptr[0..17].* = "--no-gc-sections\x00".*;
+                ptr = ptr + 17;
             }
         }
         if (cmd.stack) |stack| {
-            @as(*[8]u8, @ptrCast(buf + len)).* = "--stack\x00".*;
-            len +%= 8;
-            len +%= fmt.Type.Ud64.formatWriteBuf(.{ .value = stack }, buf + len);
-            buf[len] = 0;
-            len +%= 1;
+            ptr[0..8].* = "--stack\x00".*;
+            ptr = ptr + 8;
+            ptr = ptr + fmt.Type.Ud64.formatWriteBuf(.{ .value = stack }, ptr);
+            ptr[0] = 0;
+            ptr = ptr + 1;
         }
         if (cmd.image_base) |image_base| {
-            @as(*[13]u8, @ptrCast(buf + len)).* = "--image-base\x00".*;
-            len +%= 13;
-            len +%= fmt.Type.Ud64.formatWriteBuf(.{ .value = image_base }, buf + len);
-            buf[len] = 0;
-            len +%= 1;
+            ptr[0..13].* = "--image-base\x00".*;
+            ptr = ptr + 13;
+            ptr = ptr + fmt.Type.Ud64.formatWriteBuf(.{ .value = image_base }, ptr);
+            ptr[0] = 0;
+            ptr = ptr + 1;
         }
         if (cmd.macros) |macros| {
             for (macros) |value| {
-                len +%= value.formatWriteBuf(buf + len);
+                ptr = ptr + value.formatWriteBuf(ptr);
             }
         }
         if (cmd.modules) |modules| {
             for (modules) |value| {
-                len +%= value.formatWriteBuf(buf + len);
+                ptr = ptr + value.formatWriteBuf(ptr);
             }
         }
         if (cmd.dependencies) |dependencies| {
-            len +%= types.ModuleDependencies.formatWriteBuf(.{ .value = dependencies }, buf + len);
+            ptr = ptr + types.ModuleDependencies.formatWriteBuf(.{ .value = dependencies }, ptr);
         }
         if (cmd.cflags) |cflags| {
-            len +%= types.CFlags.formatWriteBuf(.{ .value = cflags }, buf + len);
+            ptr = ptr + types.CFlags.formatWriteBuf(.{ .value = cflags }, ptr);
         }
         if (cmd.link_libc) {
-            @as(*[4]u8, @ptrCast(buf + len)).* = "-lc\x00".*;
-            len +%= 4;
+            ptr[0..4].* = "-lc\x00".*;
+            ptr = ptr + 4;
         }
         if (cmd.rdynamic) {
-            @as(*[10]u8, @ptrCast(buf + len)).* = "-rdynamic\x00".*;
-            len +%= 10;
+            ptr[0..10].* = "-rdynamic\x00".*;
+            ptr = ptr + 10;
         }
         if (cmd.dynamic) {
-            @as(*[9]u8, @ptrCast(buf + len)).* = "-dynamic\x00".*;
-            len +%= 9;
+            ptr[0..9].* = "-dynamic\x00".*;
+            ptr = ptr + 9;
         }
         if (cmd.static) {
-            @as(*[8]u8, @ptrCast(buf + len)).* = "-static\x00".*;
-            len +%= 8;
+            ptr[0..8].* = "-static\x00".*;
+            ptr = ptr + 8;
         }
         if (cmd.symbolic) {
-            @as(*[11]u8, @ptrCast(buf + len)).* = "-Bsymbolic\x00".*;
-            len +%= 11;
+            ptr[0..11].* = "-Bsymbolic\x00".*;
+            ptr = ptr + 11;
         }
         if (cmd.lflags) |lflags| {
             for (lflags) |value| {
-                @as(*[3]u8, @ptrCast(buf + len)).* = "-z\x00".*;
-                len +%= 3;
-                @memcpy(buf + len, @tagName(value));
-                len +%= @tagName(value).len;
-                buf[len] = 0;
-                len +%= 1;
+                ptr[0..3].* = "-z\x00".*;
+                ptr = ptr + 3;
+                @memcpy(ptr, @tagName(value));
+                ptr = ptr + @tagName(value).len;
+                ptr[0] = 0;
+                ptr = ptr + 1;
             }
         }
-        len +%= types.Files.formatWriteBuf(.{ .value = files }, buf + len);
+        ptr = ptr + types.Files.formatWriteBuf(.{ .value = files }, ptr);
         if (cmd.color) |color| {
-            @as(*[8]u8, @ptrCast(buf + len)).* = "--color\x00".*;
-            len +%= 8;
-            @memcpy(buf + len, @tagName(color));
-            len +%= @tagName(color).len;
-            buf[len] = 0;
-            len +%= 1;
+            ptr[0..8].* = "--color\x00".*;
+            ptr = ptr + 8;
+            @memcpy(ptr, @tagName(color));
+            ptr = ptr + @tagName(color).len;
+            ptr[0] = 0;
+            ptr = ptr + 1;
         }
         if (cmd.time_report) {
-            @as(*[14]u8, @ptrCast(buf + len)).* = "-ftime-report\x00".*;
-            len +%= 14;
+            ptr[0..14].* = "-ftime-report\x00".*;
+            ptr = ptr + 14;
         }
         if (cmd.stack_report) {
-            @as(*[15]u8, @ptrCast(buf + len)).* = "-fstack-report\x00".*;
-            len +%= 15;
+            ptr[0..15].* = "-fstack-report\x00".*;
+            ptr = ptr + 15;
         }
         if (cmd.verbose_link) {
-            @as(*[15]u8, @ptrCast(buf + len)).* = "--verbose-link\x00".*;
-            len +%= 15;
+            ptr[0..15].* = "--verbose-link\x00".*;
+            ptr = ptr + 15;
         }
         if (cmd.verbose_cc) {
-            @as(*[13]u8, @ptrCast(buf + len)).* = "--verbose-cc\x00".*;
-            len +%= 13;
+            ptr[0..13].* = "--verbose-cc\x00".*;
+            ptr = ptr + 13;
         }
         if (cmd.verbose_air) {
-            @as(*[14]u8, @ptrCast(buf + len)).* = "--verbose-air\x00".*;
-            len +%= 14;
+            ptr[0..14].* = "--verbose-air\x00".*;
+            ptr = ptr + 14;
         }
         if (cmd.verbose_mir) {
-            @as(*[14]u8, @ptrCast(buf + len)).* = "--verbose-mir\x00".*;
-            len +%= 14;
+            ptr[0..14].* = "--verbose-mir\x00".*;
+            ptr = ptr + 14;
         }
         if (cmd.verbose_llvm_ir) {
-            @as(*[18]u8, @ptrCast(buf + len)).* = "--verbose-llvm-ir\x00".*;
-            len +%= 18;
+            ptr[0..18].* = "--verbose-llvm-ir\x00".*;
+            ptr = ptr + 18;
         }
         if (cmd.verbose_cimport) {
-            @as(*[18]u8, @ptrCast(buf + len)).* = "--verbose-cimport\x00".*;
-            len +%= 18;
+            ptr[0..18].* = "--verbose-cimport\x00".*;
+            ptr = ptr + 18;
         }
         if (cmd.verbose_llvm_cpu_features) {
-            @as(*[28]u8, @ptrCast(buf + len)).* = "--verbose-llvm-cpu-features\x00".*;
-            len +%= 28;
+            ptr[0..28].* = "--verbose-llvm-cpu-features\x00".*;
+            ptr = ptr + 28;
         }
         if (cmd.debug_log) |debug_log| {
-            @as(*[12]u8, @ptrCast(buf + len)).* = "--debug-log\x00".*;
-            len +%= 12;
-            @memcpy(buf + len, debug_log);
-            len +%= debug_log.len;
-            buf[len] = 0;
-            len +%= 1;
+            ptr[0..12].* = "--debug-log\x00".*;
+            ptr = ptr + 12;
+            @memcpy(ptr, debug_log);
+            ptr = ptr + debug_log.len;
+            ptr[0] = 0;
+            ptr = ptr + 1;
         }
         if (cmd.debug_compiler_errors) {
-            @as(*[23]u8, @ptrCast(buf + len)).* = "--debug-compile-errors\x00".*;
-            len +%= 23;
+            ptr[0..23].* = "--debug-compile-errors\x00".*;
+            ptr = ptr + 23;
         }
         if (cmd.debug_link_snapshot) {
-            @as(*[22]u8, @ptrCast(buf + len)).* = "--debug-link-snapshot\x00".*;
-            len +%= 22;
+            ptr[0..22].* = "--debug-link-snapshot\x00".*;
+            ptr = ptr + 22;
         }
-        return len;
+        return @intFromPtr(ptr) -% @intFromPtr(buf);
     }
     pub fn formatLength(cmd: *BuildCommand, zig_exe: []const u8, files: []const types.Path) u64 {
         @setRuntimeSafety(builtin.is_safe);
@@ -2109,574 +2109,6 @@ pub const BuildCommand = struct {
         }
         return len;
     }
-    pub var buildFormatParseArgs: ?*fn (
-        allocator: *types.Allocator,
-        build_cmd: *types.BuildCommand,
-        args: [*][*:0]u8,
-        args_len: usize,
-    ) callconv(.C) void = null;
-    pub fn formatParseArgs(cmd: *BuildCommand, allocator: anytype, args: [][*:0]u8) void {
-        @setRuntimeSafety(false);
-        var args_idx: usize = 0;
-        const eql = if (builtin.output_mode == .Lib) mem.testEqualString else mach.testEqualMany8;
-        const str = if (builtin.output_mode == .Lib) meta.manyToSlice else mach.manyToSlice80;
-        while (args_idx != args.len) : (args_idx +%= 1) {
-            var arg: [:0]const u8 = str(args[args_idx]);
-            if (eql("-femit-bin", arg[0..10])) {
-                if (arg.len > 11 and arg[10] == '=') {
-                    cmd.emit_bin = .{ .yes = types.Path.formatParseArgs(allocator, args, &args_idx, arg[11..]) };
-                } else {
-                    cmd.emit_bin = .{ .yes = null };
-                }
-            } else if (eql("-fno-emit-bin", arg)) {
-                cmd.emit_bin = .no;
-            } else if (eql("-femit-asm", arg[0..10])) {
-                if (arg.len > 11 and arg[10] == '=') {
-                    cmd.emit_asm = .{ .yes = types.Path.formatParseArgs(allocator, args, &args_idx, arg[11..]) };
-                } else {
-                    cmd.emit_asm = .{ .yes = null };
-                }
-            } else if (eql("-fno-emit-asm", arg)) {
-                cmd.emit_asm = .no;
-            } else if (eql("-femit-llvm-ir", arg[0..14])) {
-                if (arg.len > 15 and arg[14] == '=') {
-                    cmd.emit_llvm_ir = .{ .yes = types.Path.formatParseArgs(allocator, args, &args_idx, arg[15..]) };
-                } else {
-                    cmd.emit_llvm_ir = .{ .yes = null };
-                }
-            } else if (eql("-fno-emit-llvm-ir", arg)) {
-                cmd.emit_llvm_ir = .no;
-            } else if (eql("-femit-llvm-bc", arg[0..14])) {
-                if (arg.len > 15 and arg[14] == '=') {
-                    cmd.emit_llvm_bc = .{ .yes = types.Path.formatParseArgs(allocator, args, &args_idx, arg[15..]) };
-                } else {
-                    cmd.emit_llvm_bc = .{ .yes = null };
-                }
-            } else if (eql("-fno-emit-llvm-bc", arg)) {
-                cmd.emit_llvm_bc = .no;
-            } else if (eql("-femit-h", arg[0..8])) {
-                if (arg.len > 9 and arg[8] == '=') {
-                    cmd.emit_h = .{ .yes = types.Path.formatParseArgs(allocator, args, &args_idx, arg[9..]) };
-                } else {
-                    cmd.emit_h = .{ .yes = null };
-                }
-            } else if (eql("-fno-emit-h", arg)) {
-                cmd.emit_h = .no;
-            } else if (eql("-femit-docs", arg[0..11])) {
-                if (arg.len > 12 and arg[11] == '=') {
-                    cmd.emit_docs = .{ .yes = types.Path.formatParseArgs(allocator, args, &args_idx, arg[12..]) };
-                } else {
-                    cmd.emit_docs = .{ .yes = null };
-                }
-            } else if (eql("-fno-emit-docs", arg)) {
-                cmd.emit_docs = .no;
-            } else if (eql("-femit-analysis", arg[0..15])) {
-                if (arg.len > 16 and arg[15] == '=') {
-                    cmd.emit_analysis = .{ .yes = types.Path.formatParseArgs(allocator, args, &args_idx, arg[16..]) };
-                } else {
-                    cmd.emit_analysis = .{ .yes = null };
-                }
-            } else if (eql("-fno-emit-analysis", arg)) {
-                cmd.emit_analysis = .no;
-            } else if (eql("-femit-implib", arg[0..13])) {
-                if (arg.len > 14 and arg[13] == '=') {
-                    cmd.emit_implib = .{ .yes = types.Path.formatParseArgs(allocator, args, &args_idx, arg[14..]) };
-                } else {
-                    cmd.emit_implib = .{ .yes = null };
-                }
-            } else if (eql("-fno-emit-implib", arg)) {
-                cmd.emit_implib = .no;
-            } else if (eql("--cache-dir", arg)) {
-                args_idx +%= 1;
-                if (args_idx != args.len) {
-                    cmd.cache_root = str(args[args_idx]);
-                } else {
-                    return;
-                }
-            } else if (eql("--global-cache-dir", arg)) {
-                args_idx +%= 1;
-                if (args_idx != args.len) {
-                    cmd.global_cache_root = str(args[args_idx]);
-                } else {
-                    return;
-                }
-            } else if (eql("--zig-lib-dir", arg)) {
-                args_idx +%= 1;
-                if (args_idx != args.len) {
-                    cmd.zig_lib_root = str(args[args_idx]);
-                } else {
-                    return;
-                }
-            } else if (eql("--listen", arg)) {
-                args_idx +%= 1;
-                if (args_idx == args.len) {
-                    return;
-                }
-                arg = str(args[args_idx]);
-                if (eql("none", arg)) {
-                    cmd.listen = .none;
-                } else if (eql("-", arg)) {
-                    cmd.listen = .@"-";
-                } else if (eql("ipv4", arg)) {
-                    cmd.listen = .ipv4;
-                }
-            } else if (eql("-target", arg)) {
-                args_idx +%= 1;
-                if (args_idx != args.len) {
-                    cmd.target = str(args[args_idx]);
-                } else {
-                    return;
-                }
-            } else if (eql("-mcpu", arg)) {
-                args_idx +%= 1;
-                if (args_idx != args.len) {
-                    cmd.cpu = str(args[args_idx]);
-                } else {
-                    return;
-                }
-            } else if (eql("-mcmodel", arg)) {
-                args_idx +%= 1;
-                if (args_idx == args.len) {
-                    return;
-                }
-                arg = str(args[args_idx]);
-                if (eql("default", arg)) {
-                    cmd.code_model = .default;
-                } else if (eql("tiny", arg)) {
-                    cmd.code_model = .tiny;
-                } else if (eql("small", arg)) {
-                    cmd.code_model = .small;
-                } else if (eql("kernel", arg)) {
-                    cmd.code_model = .kernel;
-                } else if (eql("medium", arg)) {
-                    cmd.code_model = .medium;
-                } else if (eql("large", arg)) {
-                    cmd.code_model = .large;
-                }
-            } else if (eql("-mred-zone", arg)) {
-                cmd.red_zone = true;
-            } else if (eql("-mno-red-zone", arg)) {
-                cmd.red_zone = false;
-            } else if (eql("-fbuiltin", arg)) {
-                cmd.implicit_builtins = true;
-            } else if (eql("-fno-builtin", arg)) {
-                cmd.implicit_builtins = false;
-            } else if (eql("-fomit-frame-pointer", arg)) {
-                cmd.omit_frame_pointer = true;
-            } else if (eql("-fno-omit-frame-pointer", arg)) {
-                cmd.omit_frame_pointer = false;
-            } else if (eql("-mexec-model", arg)) {
-                args_idx +%= 1;
-                if (args_idx != args.len) {
-                    cmd.exec_model = str(args[args_idx]);
-                } else {
-                    return;
-                }
-            } else if (eql("--name", arg)) {
-                args_idx +%= 1;
-                if (args_idx != args.len) {
-                    cmd.name = str(args[args_idx]);
-                } else {
-                    return;
-                }
-            } else if (eql("-fsoname", arg)) {
-                args_idx +%= 1;
-                if (args_idx == args.len) {
-                    return;
-                }
-                arg = str(args[args_idx]);
-                cmd.soname = .{ .yes = arg };
-            } else if (eql("-fno-soname", arg)) {
-                cmd.soname = .no;
-            } else if (eql("-O", arg[0..2])) {
-                if (arg.len == 2) {
-                    args_idx +%= 1;
-                    if (args_idx == args.len) {
-                        return;
-                    }
-                    arg = str(args[args_idx]);
-                } else {
-                    arg = arg[2..];
-                }
-                if (eql("Debug", arg)) {
-                    cmd.mode = .Debug;
-                } else if (eql("ReleaseSafe", arg)) {
-                    cmd.mode = .ReleaseSafe;
-                } else if (eql("ReleaseFast", arg)) {
-                    cmd.mode = .ReleaseFast;
-                } else if (eql("ReleaseSmall", arg)) {
-                    cmd.mode = .ReleaseSmall;
-                }
-            } else if (eql("--main-pkg-path", arg)) {
-                args_idx +%= 1;
-                if (args_idx != args.len) {
-                    cmd.main_pkg_path = str(args[args_idx]);
-                } else {
-                    return;
-                }
-            } else if (eql("-fPIC", arg)) {
-                cmd.pic = true;
-            } else if (eql("-fno-PIC", arg)) {
-                cmd.pic = false;
-            } else if (eql("-fPIE", arg)) {
-                cmd.pie = true;
-            } else if (eql("-fno-PIE", arg)) {
-                cmd.pie = false;
-            } else if (eql("-flto", arg)) {
-                cmd.lto = true;
-            } else if (eql("-fno-lto", arg)) {
-                cmd.lto = false;
-            } else if (eql("-fstack-check", arg)) {
-                cmd.stack_check = true;
-            } else if (eql("-fno-stack-check", arg)) {
-                cmd.stack_check = false;
-            } else if (eql("-fstack-check", arg)) {
-                cmd.stack_protector = true;
-            } else if (eql("-fno-stack-protector", arg)) {
-                cmd.stack_protector = false;
-            } else if (eql("-fsanitize-c", arg)) {
-                cmd.sanitize_c = true;
-            } else if (eql("-fno-sanitize-c", arg)) {
-                cmd.sanitize_c = false;
-            } else if (eql("-fvalgrind", arg)) {
-                cmd.valgrind = true;
-            } else if (eql("-fno-valgrind", arg)) {
-                cmd.valgrind = false;
-            } else if (eql("-fsanitize-thread", arg)) {
-                cmd.sanitize_thread = true;
-            } else if (eql("-fno-sanitize-thread", arg)) {
-                cmd.sanitize_thread = false;
-            } else if (eql("-funwind-tables", arg)) {
-                cmd.unwind_tables = true;
-            } else if (eql("-fno-unwind-tables", arg)) {
-                cmd.unwind_tables = false;
-            } else if (eql("-fLLVM", arg)) {
-                cmd.llvm = true;
-            } else if (eql("-fno-LLVM", arg)) {
-                cmd.llvm = false;
-            } else if (eql("-fClang", arg)) {
-                cmd.clang = true;
-            } else if (eql("-fno-Clang", arg)) {
-                cmd.clang = false;
-            } else if (eql("-freference-trace", arg)) {
-                cmd.reference_trace = true;
-            } else if (eql("-fno-reference-trace", arg)) {
-                cmd.reference_trace = false;
-            } else if (eql("-ferror-tracing", arg)) {
-                cmd.error_tracing = true;
-            } else if (eql("-fno-error-tracing", arg)) {
-                cmd.error_tracing = false;
-            } else if (eql("-fsingle-threaded", arg)) {
-                cmd.single_threaded = true;
-            } else if (eql("-fno-single-threaded", arg)) {
-                cmd.single_threaded = false;
-            } else if (eql("-ffunction-sections", arg)) {
-                cmd.function_sections = true;
-            } else if (eql("-fno-function-sections", arg)) {
-                cmd.function_sections = false;
-            } else if (eql("-fstrip", arg)) {
-                cmd.strip = true;
-            } else if (eql("-fno-strip", arg)) {
-                cmd.strip = false;
-            } else if (eql("-fformatted-panics", arg)) {
-                cmd.formatted_panics = true;
-            } else if (eql("-fno-formatted-panics", arg)) {
-                cmd.formatted_panics = false;
-            } else if (eql("-ofmt", arg)) {
-                args_idx +%= 1;
-                if (args_idx == args.len) {
-                    return;
-                }
-                arg = str(args[args_idx]);
-                if (eql("coff", arg)) {
-                    cmd.format = .coff;
-                } else if (eql("dxcontainer", arg)) {
-                    cmd.format = .dxcontainer;
-                } else if (eql("elf", arg)) {
-                    cmd.format = .elf;
-                } else if (eql("macho", arg)) {
-                    cmd.format = .macho;
-                } else if (eql("spirv", arg)) {
-                    cmd.format = .spirv;
-                } else if (eql("wasm", arg)) {
-                    cmd.format = .wasm;
-                } else if (eql("c", arg)) {
-                    cmd.format = .c;
-                } else if (eql("hex", arg)) {
-                    cmd.format = .hex;
-                } else if (eql("raw", arg)) {
-                    cmd.format = .raw;
-                } else if (eql("plan9", arg)) {
-                    cmd.format = .plan9;
-                } else if (eql("nvptx", arg)) {
-                    cmd.format = .nvptx;
-                }
-            } else if (eql("-idirafter", arg)) {
-                args_idx +%= 1;
-                if (args_idx != args.len) {
-                    cmd.dirafter = str(args[args_idx]);
-                } else {
-                    return;
-                }
-            } else if (eql("-isystem", arg)) {
-                args_idx +%= 1;
-                if (args_idx != args.len) {
-                    cmd.system = str(args[args_idx]);
-                } else {
-                    return;
-                }
-            } else if (eql("--libc", arg)) {
-                args_idx +%= 1;
-                if (args_idx != args.len) {
-                    cmd.libc = str(args[args_idx]);
-                } else {
-                    return;
-                }
-            } else if (eql("--library", arg)) {
-                args_idx +%= 1;
-                if (args_idx != args.len) {
-                    cmd.library = str(args[args_idx]);
-                } else {
-                    return;
-                }
-            } else if (eql("-I", arg[0..2])) {
-                if (arg.len == 2) {
-                    args_idx +%= 1;
-                    if (args_idx == args.len) {
-                        return;
-                    }
-                    arg = str(args[args_idx]);
-                } else {
-                    arg = arg[2..];
-                }
-                if (cmd.include) |src| {
-                    const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16 *% (src.len +% 1), 8));
-                    @memcpy(dest, src);
-                    dest[src.len] = arg;
-                    cmd.include = dest[0 .. src.len +% 1];
-                } else {
-                    const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16, 8));
-                    dest[0] = arg;
-                    cmd.include = dest[0..1];
-                }
-            } else if (eql("--needed-library", arg)) {
-                args_idx +%= 1;
-                if (args_idx == args.len) {
-                    return;
-                }
-                arg = str(args[args_idx]);
-                if (cmd.needed_library) |src| {
-                    const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16 *% (src.len +% 1), 8));
-                    @memcpy(dest, src);
-                    dest[src.len] = arg;
-                    cmd.needed_library = dest[0 .. src.len +% 1];
-                } else {
-                    const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16, 8));
-                    dest[0] = arg;
-                    cmd.needed_library = dest[0..1];
-                }
-            } else if (eql("--library-directory", arg)) {
-                args_idx +%= 1;
-                if (args_idx == args.len) {
-                    return;
-                }
-                arg = str(args[args_idx]);
-                if (cmd.library_directory) |src| {
-                    const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16 *% (src.len +% 1), 8));
-                    @memcpy(dest, src);
-                    dest[src.len] = arg;
-                    cmd.library_directory = dest[0 .. src.len +% 1];
-                } else {
-                    const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16, 8));
-                    dest[0] = arg;
-                    cmd.library_directory = dest[0..1];
-                }
-            } else if (eql("--script", arg)) {
-                args_idx +%= 1;
-                if (args_idx != args.len) {
-                    cmd.link_script = str(args[args_idx]);
-                } else {
-                    return;
-                }
-            } else if (eql("--version-script", arg)) {
-                args_idx +%= 1;
-                if (args_idx != args.len) {
-                    cmd.version_script = str(args[args_idx]);
-                } else {
-                    return;
-                }
-            } else if (eql("--dynamic-linker", arg)) {
-                args_idx +%= 1;
-                if (args_idx != args.len) {
-                    cmd.dynamic_linker = str(args[args_idx]);
-                } else {
-                    return;
-                }
-            } else if (eql("--sysroot", arg)) {
-                args_idx +%= 1;
-                if (args_idx != args.len) {
-                    cmd.sysroot = str(args[args_idx]);
-                } else {
-                    return;
-                }
-            } else if (eql("--entry", arg)) {
-                args_idx +%= 1;
-                if (args_idx != args.len) {
-                    cmd.entry = str(args[args_idx]);
-                } else {
-                    return;
-                }
-            } else if (eql("-fLLD", arg)) {
-                cmd.lld = true;
-            } else if (eql("-fno-LLD", arg)) {
-                cmd.lld = false;
-            } else if (eql("-fcompiler-rt", arg)) {
-                cmd.compiler_rt = true;
-            } else if (eql("-fno-compiler-rt", arg)) {
-                cmd.compiler_rt = false;
-            } else if (eql("-rpath", arg)) {
-                args_idx +%= 1;
-                if (args_idx != args.len) {
-                    cmd.rpath = str(args[args_idx]);
-                } else {
-                    return;
-                }
-            } else if (eql("-feach-lib-rpath", arg)) {
-                cmd.each_lib_rpath = true;
-            } else if (eql("-fno-each-lib-rpath", arg)) {
-                cmd.each_lib_rpath = false;
-            } else if (eql("-fallow-shlib-undefined", arg)) {
-                cmd.allow_shlib_undefined = true;
-            } else if (eql("-fno-allow-shlib-undefined", arg)) {
-                cmd.allow_shlib_undefined = false;
-            } else if (eql("--build-id", arg)) {
-                args_idx +%= 1;
-                if (args_idx == args.len) {
-                    return;
-                }
-                arg = str(args[args_idx]);
-                if (eql("fast", arg)) {
-                    cmd.build_id = .fast;
-                } else if (eql("uuid", arg)) {
-                    cmd.build_id = .uuid;
-                } else if (eql("sha1", arg)) {
-                    cmd.build_id = .sha1;
-                } else if (eql("md5", arg)) {
-                    cmd.build_id = .md5;
-                } else if (eql("none", arg)) {
-                    cmd.build_id = .none;
-                }
-            } else if (eql("--compress-debug-sections=zlib", arg)) {
-                cmd.compress_debug_sections = true;
-            } else if (eql("--compress-debug-sections=none", arg)) {
-                cmd.compress_debug_sections = false;
-            } else if (eql("--gc-sections", arg)) {
-                cmd.gc_sections = true;
-            } else if (eql("--no-gc-sections", arg)) {
-                cmd.gc_sections = false;
-            } else if (eql("-D", arg[0..2])) {
-                if (arg.len == 2) {
-                    args_idx +%= 1;
-                    if (args_idx == args.len) {
-                        return;
-                    }
-                    arg = str(args[args_idx]);
-                } else {
-                    arg = arg[2..];
-                }
-                if (cmd.macros) |src| {
-                    const dest: [*]types.Macro = @ptrFromInt(allocator.allocateRaw(
-                        @sizeOf(types.Macro) *% (src.len +% 1),
-                        @alignOf(types.Macro),
-                    ));
-                    @memcpy(dest, src);
-                    dest[src.len] = types.Macro.formatParseArgs(allocator, args, &args_idx, arg);
-                    cmd.macros = dest[0 .. src.len +% 1];
-                } else {
-                    const dest: [*]types.Macro = @ptrFromInt(allocator.allocateRaw(
-                        @sizeOf(types.Macro),
-                        @alignOf(types.Macro),
-                    ));
-                    dest[0] = types.Macro.formatParseArgs(allocator, args, &args_idx, arg);
-                    cmd.macros = dest[0..1];
-                }
-            } else if (eql("--mod", arg)) {
-                args_idx +%= 1;
-                if (args_idx == args.len) {
-                    return;
-                }
-                arg = str(args[args_idx]);
-                if (cmd.modules) |src| {
-                    const dest: [*]types.Module = @ptrFromInt(allocator.allocateRaw(
-                        @sizeOf(types.Module) *% (src.len +% 1),
-                        @alignOf(types.Module),
-                    ));
-                    @memcpy(dest, src);
-                    dest[src.len] = types.Module.formatParseArgs(allocator, args, &args_idx, arg);
-                    cmd.modules = dest[0 .. src.len +% 1];
-                } else {
-                    const dest: [*]types.Module = @ptrFromInt(allocator.allocateRaw(
-                        @sizeOf(types.Module),
-                        @alignOf(types.Module),
-                    ));
-                    dest[0] = types.Module.formatParseArgs(allocator, args, &args_idx, arg);
-                    cmd.modules = dest[0..1];
-                }
-            } else if (eql("-lc", arg)) {
-                cmd.link_libc = true;
-            } else if (eql("-rdynamic", arg)) {
-                cmd.rdynamic = true;
-            } else if (eql("-dynamic", arg)) {
-                cmd.dynamic = true;
-            } else if (eql("-static", arg)) {
-                cmd.static = true;
-            } else if (eql("-Bsymbolic", arg)) {
-                cmd.symbolic = true;
-            } else if (eql("--color", arg)) {
-                args_idx +%= 1;
-                if (args_idx == args.len) {
-                    return;
-                }
-                arg = str(args[args_idx]);
-                if (eql("auto", arg)) {
-                    cmd.color = .auto;
-                } else if (eql("off", arg)) {
-                    cmd.color = .off;
-                } else if (eql("on", arg)) {
-                    cmd.color = .on;
-                }
-            } else if (eql("-ftime-report", arg)) {
-                cmd.time_report = true;
-            } else if (eql("-fstack-report", arg)) {
-                cmd.stack_report = true;
-            } else if (eql("--verbose-link", arg)) {
-                cmd.verbose_link = true;
-            } else if (eql("--verbose-cc", arg)) {
-                cmd.verbose_cc = true;
-            } else if (eql("--verbose-air", arg)) {
-                cmd.verbose_air = true;
-            } else if (eql("--verbose-mir", arg)) {
-                cmd.verbose_mir = true;
-            } else if (eql("--verbose-llvm-ir", arg)) {
-                cmd.verbose_llvm_ir = true;
-            } else if (eql("--verbose-cimport", arg)) {
-                cmd.verbose_cimport = true;
-            } else if (eql("--verbose-llvm-cpu-features", arg)) {
-                cmd.verbose_llvm_cpu_features = true;
-            } else if (eql("--debug-log", arg)) {
-                args_idx +%= 1;
-                if (args_idx != args.len) {
-                    cmd.debug_log = str(args[args_idx]);
-                } else {
-                    return;
-                }
-            } else if (eql("--debug-compile-errors", arg)) {
-                cmd.debug_compiler_errors = true;
-            } else if (eql("--debug-link-snapshot", arg)) {
-                cmd.debug_link_snapshot = true;
-            }
-        }
-    }
     pub usingnamespace types.GenericBuildCommand(BuildCommand);
 };
 pub const FormatCommand = struct {
@@ -2718,43 +2150,43 @@ pub const FormatCommand = struct {
     }
     pub fn formatWriteBuf(cmd: *FormatCommand, zig_exe: []const u8, pathname: types.Path, buf: [*]u8) u64 {
         @setRuntimeSafety(builtin.is_safe);
-        var len: usize = 0;
-        @memcpy(buf + len, zig_exe);
-        len +%= zig_exe.len;
-        buf[len] = 0;
-        len +%= 1;
-        @as(*[4]u8, @ptrCast(buf + len)).* = "fmt\x00".*;
-        len +%= 4;
+        var ptr: [*]u8 = buf;
+        @memcpy(ptr, zig_exe);
+        ptr = ptr + zig_exe.len;
+        ptr[0] = 0;
+        ptr = ptr + 1;
+        ptr[0..4].* = "fmt\x00".*;
+        ptr = ptr + 4;
         if (cmd.color) |color| {
-            @as(*[8]u8, @ptrCast(buf + len)).* = "--color\x00".*;
-            len +%= 8;
-            @memcpy(buf + len, @tagName(color));
-            len +%= @tagName(color).len;
-            buf[len] = 0;
-            len +%= 1;
+            ptr[0..8].* = "--color\x00".*;
+            ptr = ptr + 8;
+            @memcpy(ptr, @tagName(color));
+            ptr = ptr + @tagName(color).len;
+            ptr[0] = 0;
+            ptr = ptr + 1;
         }
         if (cmd.stdin) {
-            @as(*[8]u8, @ptrCast(buf + len)).* = "--stdin\x00".*;
-            len +%= 8;
+            ptr[0..8].* = "--stdin\x00".*;
+            ptr = ptr + 8;
         }
         if (cmd.check) {
-            @as(*[8]u8, @ptrCast(buf + len)).* = "--check\x00".*;
-            len +%= 8;
+            ptr[0..8].* = "--check\x00".*;
+            ptr = ptr + 8;
         }
         if (cmd.ast_check) {
-            @as(*[12]u8, @ptrCast(buf + len)).* = "--ast-check\x00".*;
-            len +%= 12;
+            ptr[0..12].* = "--ast-check\x00".*;
+            ptr = ptr + 12;
         }
         if (cmd.exclude) |exclude| {
-            @as(*[10]u8, @ptrCast(buf + len)).* = "--exclude\x00".*;
-            len +%= 10;
-            @memcpy(buf + len, exclude);
-            len +%= exclude.len;
-            buf[len] = 0;
-            len +%= 1;
+            ptr[0..10].* = "--exclude\x00".*;
+            ptr = ptr + 10;
+            @memcpy(ptr, exclude);
+            ptr = ptr + exclude.len;
+            ptr[0] = 0;
+            ptr = ptr + 1;
         }
-        len +%= pathname.formatWriteBuf(buf + len);
-        return len;
+        ptr = ptr + pathname.formatWriteBuf(ptr);
+        return @intFromPtr(ptr) -% @intFromPtr(buf);
     }
     pub fn formatLength(cmd: *FormatCommand, zig_exe: []const u8, pathname: types.Path) u64 {
         @setRuntimeSafety(builtin.is_safe);
@@ -2783,49 +2215,6 @@ pub const FormatCommand = struct {
         }
         len +%= pathname.formatLength();
         return len;
-    }
-    pub var formatFormatParseArgs: ?*fn (
-        allocator: *types.Allocator,
-        format_cmd: *types.FormatCommand,
-        args: [*][*:0]u8,
-        args_len: usize,
-    ) callconv(.C) void = null;
-    pub fn formatParseArgs(cmd: *FormatCommand, allocator: anytype, args: [][*:0]u8) void {
-        @setRuntimeSafety(false);
-        var args_idx: usize = 0;
-        const eql = if (builtin.output_mode == .Lib) mem.testEqualString else mach.testEqualMany8;
-        const str = if (builtin.output_mode == .Lib) meta.manyToSlice else mach.manyToSlice80;
-        while (args_idx != args.len) : (args_idx +%= 1) {
-            var arg: [:0]const u8 = str(args[args_idx]);
-            if (eql("--color", arg)) {
-                args_idx +%= 1;
-                if (args_idx == args.len) {
-                    return;
-                }
-                arg = str(args[args_idx]);
-                if (eql("auto", arg)) {
-                    cmd.color = .auto;
-                } else if (eql("off", arg)) {
-                    cmd.color = .off;
-                } else if (eql("on", arg)) {
-                    cmd.color = .on;
-                }
-            } else if (eql("--stdin", arg)) {
-                cmd.stdin = true;
-            } else if (eql("--check", arg)) {
-                cmd.check = true;
-            } else if (eql("--ast-check", arg)) {
-                cmd.ast_check = true;
-            } else if (eql("--exclude", arg)) {
-                args_idx +%= 1;
-                if (args_idx != args.len) {
-                    cmd.exclude = str(args[args_idx]);
-                } else {
-                    return;
-                }
-            }
-            _ = allocator;
-        }
     }
 };
 pub const ArchiveCommand = struct {
@@ -2934,83 +2323,83 @@ pub const ArchiveCommand = struct {
     }
     pub fn formatWriteBuf(cmd: *ArchiveCommand, zig_exe: []const u8, files: []const types.Path, buf: [*]u8) u64 {
         @setRuntimeSafety(builtin.is_safe);
-        var len: usize = 0;
-        @memcpy(buf + len, zig_exe);
-        len +%= zig_exe.len;
-        buf[len] = 0;
-        len +%= 1;
-        @as(*[3]u8, @ptrCast(buf + len)).* = "ar\x00".*;
-        len +%= 3;
+        var ptr: [*]u8 = buf;
+        @memcpy(ptr, zig_exe);
+        ptr = ptr + zig_exe.len;
+        ptr[0] = 0;
+        ptr = ptr + 1;
+        ptr[0..3].* = "ar\x00".*;
+        ptr = ptr + 3;
         if (cmd.format) |format| {
-            @as(*[9]u8, @ptrCast(buf + len)).* = "--format\x00".*;
-            len +%= 9;
-            @memcpy(buf + len, @tagName(format));
-            len +%= @tagName(format).len;
-            buf[len] = 0;
-            len +%= 1;
+            ptr[0..9].* = "--format\x00".*;
+            ptr = ptr + 9;
+            @memcpy(ptr, @tagName(format));
+            ptr = ptr + @tagName(format).len;
+            ptr[0] = 0;
+            ptr = ptr + 1;
         }
         if (cmd.plugin) {
-            @as(*[9]u8, @ptrCast(buf + len)).* = "--plugin\x00".*;
-            len +%= 9;
+            ptr[0..9].* = "--plugin\x00".*;
+            ptr = ptr + 9;
         }
         if (cmd.output) |output| {
-            @as(*[9]u8, @ptrCast(buf + len)).* = "--output\x00".*;
-            len +%= 9;
-            @memcpy(buf + len, output);
-            len +%= output.len;
-            buf[len] = 0;
-            len +%= 1;
+            ptr[0..9].* = "--output\x00".*;
+            ptr = ptr + 9;
+            @memcpy(ptr, output);
+            ptr = ptr + output.len;
+            ptr[0] = 0;
+            ptr = ptr + 1;
         }
         if (cmd.thin) {
-            @as(*[7]u8, @ptrCast(buf + len)).* = "--thin\x00".*;
-            len +%= 7;
+            ptr[0..7].* = "--thin\x00".*;
+            ptr = ptr + 7;
         }
         if (cmd.after) {
-            @as(*[1]u8, @ptrCast(buf + len)).* = "a".*;
-            len +%= 1;
+            ptr[0..1].* = "a".*;
+            ptr = ptr + 1;
         }
         if (cmd.before) {
-            @as(*[1]u8, @ptrCast(buf + len)).* = "b".*;
-            len +%= 1;
+            ptr[0..1].* = "b".*;
+            ptr = ptr + 1;
         }
         if (cmd.create) {
-            @as(*[1]u8, @ptrCast(buf + len)).* = "c".*;
-            len +%= 1;
+            ptr[0..1].* = "c".*;
+            ptr = ptr + 1;
         }
         if (cmd.zero_ids) {
-            @as(*[1]u8, @ptrCast(buf + len)).* = "D".*;
-            len +%= 1;
+            ptr[0..1].* = "D".*;
+            ptr = ptr + 1;
         }
         if (cmd.real_ids) {
-            @as(*[1]u8, @ptrCast(buf + len)).* = "U".*;
-            len +%= 1;
+            ptr[0..1].* = "U".*;
+            ptr = ptr + 1;
         }
         if (cmd.append) {
-            @as(*[1]u8, @ptrCast(buf + len)).* = "L".*;
-            len +%= 1;
+            ptr[0..1].* = "L".*;
+            ptr = ptr + 1;
         }
         if (cmd.preserve_dates) {
-            @as(*[1]u8, @ptrCast(buf + len)).* = "o".*;
-            len +%= 1;
+            ptr[0..1].* = "o".*;
+            ptr = ptr + 1;
         }
         if (cmd.index) {
-            @as(*[1]u8, @ptrCast(buf + len)).* = "s".*;
-            len +%= 1;
+            ptr[0..1].* = "s".*;
+            ptr = ptr + 1;
         }
         if (cmd.no_symbol_table) {
-            @as(*[1]u8, @ptrCast(buf + len)).* = "S".*;
-            len +%= 1;
+            ptr[0..1].* = "S".*;
+            ptr = ptr + 1;
         }
         if (cmd.update) {
-            @as(*[1]u8, @ptrCast(buf + len)).* = "u".*;
-            len +%= 1;
+            ptr[0..1].* = "u".*;
+            ptr = ptr + 1;
         }
-        @memcpy(buf + len, @tagName(cmd.operation));
-        len +%= @tagName(cmd.operation).len;
-        buf[len] = 0;
-        len +%= 1;
-        len +%= types.Files.formatWriteBuf(.{ .value = files }, buf + len);
-        return len;
+        @memcpy(ptr, @tagName(cmd.operation));
+        ptr = ptr + @tagName(cmd.operation).len;
+        ptr[0] = 0;
+        ptr = ptr + 1;
+        ptr = ptr + types.Files.formatWriteBuf(.{ .value = files }, ptr);
+        return @intFromPtr(ptr) -% @intFromPtr(buf);
     }
     pub fn formatLength(cmd: *ArchiveCommand, zig_exe: []const u8, files: []const types.Path) u64 {
         @setRuntimeSafety(builtin.is_safe);
@@ -3069,71 +2458,6 @@ pub const ArchiveCommand = struct {
         len +%= types.Files.formatLength(.{ .value = files });
         return len;
     }
-    pub var archiveFormatParseArgs: ?*fn (
-        allocator: *types.Allocator,
-        archive_cmd: *types.ArchiveCommand,
-        args: [*][*:0]u8,
-        args_len: usize,
-    ) callconv(.C) void = null;
-    pub fn formatParseArgs(cmd: *ArchiveCommand, allocator: anytype, args: [][*:0]u8) void {
-        @setRuntimeSafety(false);
-        var args_idx: usize = 0;
-        const eql = if (builtin.output_mode == .Lib) mem.testEqualString else mach.testEqualMany8;
-        const str = if (builtin.output_mode == .Lib) meta.manyToSlice else mach.manyToSlice80;
-        while (args_idx != args.len) : (args_idx +%= 1) {
-            var arg: [:0]const u8 = str(args[args_idx]);
-            if (eql("--format", arg)) {
-                args_idx +%= 1;
-                if (args_idx == args.len) {
-                    return;
-                }
-                arg = str(args[args_idx]);
-                if (eql("default", arg)) {
-                    cmd.format = .default;
-                } else if (eql("gnu", arg)) {
-                    cmd.format = .gnu;
-                } else if (eql("darwin", arg)) {
-                    cmd.format = .darwin;
-                } else if (eql("bsd", arg)) {
-                    cmd.format = .bsd;
-                } else if (eql("bigarchive", arg)) {
-                    cmd.format = .bigarchive;
-                }
-            } else if (eql("--plugin", arg)) {
-                cmd.plugin = true;
-            } else if (eql("--output", arg)) {
-                args_idx +%= 1;
-                if (args_idx != args.len) {
-                    cmd.output = str(args[args_idx]);
-                } else {
-                    return;
-                }
-            } else if (eql("--thin", arg)) {
-                cmd.thin = true;
-            } else if (eql("a", arg)) {
-                cmd.after = true;
-            } else if (eql("b", arg)) {
-                cmd.before = true;
-            } else if (eql("c", arg)) {
-                cmd.create = true;
-            } else if (eql("D", arg)) {
-                cmd.zero_ids = true;
-            } else if (eql("U", arg)) {
-                cmd.real_ids = true;
-            } else if (eql("L", arg)) {
-                cmd.append = true;
-            } else if (eql("o", arg)) {
-                cmd.preserve_dates = true;
-            } else if (eql("s", arg)) {
-                cmd.index = true;
-            } else if (eql("S", arg)) {
-                cmd.no_symbol_table = true;
-            } else if (eql("u", arg)) {
-                cmd.update = true;
-            }
-            _ = allocator;
-        }
-    }
 };
 pub const ObjcopyCommand = struct {
     output_target: ?[]const u8 = null,
@@ -3187,66 +2511,66 @@ pub const ObjcopyCommand = struct {
     }
     pub fn formatWriteBuf(cmd: *ObjcopyCommand, zig_exe: []const u8, file: types.Path, buf: [*]u8) u64 {
         @setRuntimeSafety(builtin.is_safe);
-        var len: usize = 0;
-        @memcpy(buf + len, zig_exe);
-        len +%= zig_exe.len;
-        buf[len] = 0;
-        len +%= 1;
-        @as(*[8]u8, @ptrCast(buf + len)).* = "objcopy\x00".*;
-        len +%= 8;
+        var ptr: [*]u8 = buf;
+        @memcpy(ptr, zig_exe);
+        ptr = ptr + zig_exe.len;
+        ptr[0] = 0;
+        ptr = ptr + 1;
+        ptr[0..8].* = "objcopy\x00".*;
+        ptr = ptr + 8;
         if (cmd.output_target) |output_target| {
-            @as(*[16]u8, @ptrCast(buf + len)).* = "--output-target\x00".*;
-            len +%= 16;
-            @memcpy(buf + len, output_target);
-            len +%= output_target.len;
-            buf[len] = 0;
-            len +%= 1;
+            ptr[0..16].* = "--output-target\x00".*;
+            ptr = ptr + 16;
+            @memcpy(ptr, output_target);
+            ptr = ptr + output_target.len;
+            ptr[0] = 0;
+            ptr = ptr + 1;
         }
         if (cmd.only_section) |only_section| {
-            @as(*[15]u8, @ptrCast(buf + len)).* = "--only-section\x00".*;
-            len +%= 15;
-            @memcpy(buf + len, only_section);
-            len +%= only_section.len;
-            buf[len] = 0;
-            len +%= 1;
+            ptr[0..15].* = "--only-section\x00".*;
+            ptr = ptr + 15;
+            @memcpy(ptr, only_section);
+            ptr = ptr + only_section.len;
+            ptr[0] = 0;
+            ptr = ptr + 1;
         }
         if (cmd.pad_to) |pad_to| {
-            @as(*[9]u8, @ptrCast(buf + len)).* = "--pad-to\x00".*;
-            len +%= 9;
-            len +%= fmt.Type.Ud64.formatWriteBuf(.{ .value = pad_to }, buf + len);
-            buf[len] = 0;
-            len +%= 1;
+            ptr[0..9].* = "--pad-to\x00".*;
+            ptr = ptr + 9;
+            ptr = ptr + fmt.Type.Ud64.formatWriteBuf(.{ .value = pad_to }, ptr);
+            ptr[0] = 0;
+            ptr = ptr + 1;
         }
         if (cmd.strip_debug) {
-            @as(*[14]u8, @ptrCast(buf + len)).* = "--strip-debug\x00".*;
-            len +%= 14;
+            ptr[0..14].* = "--strip-debug\x00".*;
+            ptr = ptr + 14;
         }
         if (cmd.strip_all) {
-            @as(*[12]u8, @ptrCast(buf + len)).* = "--strip-all\x00".*;
-            len +%= 12;
+            ptr[0..12].* = "--strip-all\x00".*;
+            ptr = ptr + 12;
         }
         if (cmd.debug_only) {
-            @as(*[18]u8, @ptrCast(buf + len)).* = "--only-keep-debug\x00".*;
-            len +%= 18;
+            ptr[0..18].* = "--only-keep-debug\x00".*;
+            ptr = ptr + 18;
         }
         if (cmd.add_gnu_debuglink) |add_gnu_debuglink| {
-            @as(*[20]u8, @ptrCast(buf + len)).* = "--add-gnu-debuglink\x00".*;
-            len +%= 20;
-            @memcpy(buf + len, add_gnu_debuglink);
-            len +%= add_gnu_debuglink.len;
-            buf[len] = 0;
-            len +%= 1;
+            ptr[0..20].* = "--add-gnu-debuglink\x00".*;
+            ptr = ptr + 20;
+            @memcpy(ptr, add_gnu_debuglink);
+            ptr = ptr + add_gnu_debuglink.len;
+            ptr[0] = 0;
+            ptr = ptr + 1;
         }
         if (cmd.extract_to) |extract_to| {
-            @as(*[13]u8, @ptrCast(buf + len)).* = "--extract-to\x00".*;
-            len +%= 13;
-            @memcpy(buf + len, extract_to);
-            len +%= extract_to.len;
-            buf[len] = 0;
-            len +%= 1;
+            ptr[0..13].* = "--extract-to\x00".*;
+            ptr = ptr + 13;
+            @memcpy(ptr, extract_to);
+            ptr = ptr + extract_to.len;
+            ptr[0] = 0;
+            ptr = ptr + 1;
         }
-        len +%= file.formatWriteBuf(buf + len);
-        return len;
+        ptr = ptr + file.formatWriteBuf(ptr);
+        return @intFromPtr(ptr) -% @intFromPtr(buf);
     }
     pub fn formatLength(cmd: *ObjcopyCommand, zig_exe: []const u8, file: types.Path) u64 {
         @setRuntimeSafety(builtin.is_safe);
@@ -3290,57 +2614,6 @@ pub const ObjcopyCommand = struct {
         }
         len +%= file.formatLength();
         return len;
-    }
-    pub var objcopyFormatParseArgs: ?*fn (
-        allocator: *types.Allocator,
-        objcopy_cmd: *types.ObjcopyCommand,
-        args: [*][*:0]u8,
-        args_len: usize,
-    ) callconv(.C) void = null;
-    pub fn formatParseArgs(cmd: *ObjcopyCommand, allocator: anytype, args: [][*:0]u8) void {
-        @setRuntimeSafety(false);
-        var args_idx: usize = 0;
-        const eql = if (builtin.output_mode == .Lib) mem.testEqualString else mach.testEqualMany8;
-        const str = if (builtin.output_mode == .Lib) meta.manyToSlice else mach.manyToSlice80;
-        while (args_idx != args.len) : (args_idx +%= 1) {
-            var arg: [:0]const u8 = str(args[args_idx]);
-            if (eql("--output-target", arg)) {
-                args_idx +%= 1;
-                if (args_idx != args.len) {
-                    cmd.output_target = str(args[args_idx]);
-                } else {
-                    return;
-                }
-            } else if (eql("--only-section", arg)) {
-                args_idx +%= 1;
-                if (args_idx != args.len) {
-                    cmd.only_section = str(args[args_idx]);
-                } else {
-                    return;
-                }
-            } else if (eql("--strip-debug", arg)) {
-                cmd.strip_debug = true;
-            } else if (eql("--strip-all", arg)) {
-                cmd.strip_all = true;
-            } else if (eql("--only-keep-debug", arg)) {
-                cmd.debug_only = true;
-            } else if (eql("--add-gnu-debuglink", arg)) {
-                args_idx +%= 1;
-                if (args_idx != args.len) {
-                    cmd.add_gnu_debuglink = str(args[args_idx]);
-                } else {
-                    return;
-                }
-            } else if (eql("--extract-to", arg)) {
-                args_idx +%= 1;
-                if (args_idx != args.len) {
-                    cmd.extract_to = str(args[args_idx]);
-                } else {
-                    return;
-                }
-            }
-            _ = allocator;
-        }
     }
 };
 pub const TableGenCommand = struct {
@@ -3581,203 +2854,203 @@ pub const TableGenCommand = struct {
     }
     pub fn formatWriteBuf(cmd: *TableGenCommand, buf: [*]u8) u64 {
         @setRuntimeSafety(builtin.is_safe);
-        var len: usize = 0;
+        var ptr: [*]u8 = buf;
         if (cmd.color) |color| {
-            @as(*[8]u8, @ptrCast(buf + len)).* = "--color\x00".*;
-            len +%= 8;
-            @memcpy(buf + len, @tagName(color));
-            len +%= @tagName(color).len;
-            buf[len] = 0;
-            len +%= 1;
+            ptr[0..8].* = "--color\x00".*;
+            ptr = ptr + 8;
+            @memcpy(ptr, @tagName(color));
+            ptr = ptr + @tagName(color).len;
+            ptr[0] = 0;
+            ptr = ptr + 1;
         }
         if (cmd.macros) |macros| {
-            len +%= types.Macros.formatWriteBuf(.{ .value = macros }, buf + len);
+            ptr = ptr + types.Macros.formatWriteBuf(.{ .value = macros }, ptr);
         }
         if (cmd.include) |include| {
             for (include) |value| {
-                @as(*[2]u8, @ptrCast(buf + len)).* = "-I".*;
-                len +%= 2;
-                @memcpy(buf + len, value);
-                len +%= value.len;
-                buf[len] = 0;
-                len +%= 1;
+                ptr[0..2].* = "-I".*;
+                ptr = ptr + 2;
+                @memcpy(ptr, value);
+                ptr = ptr + value.len;
+                ptr[0] = 0;
+                ptr = ptr + 1;
             }
         }
         if (cmd.dependencies) |dependencies| {
             for (dependencies) |value| {
-                @as(*[3]u8, @ptrCast(buf + len)).* = "-d\x00".*;
-                len +%= 3;
-                @memcpy(buf + len, value);
-                len +%= value.len;
-                buf[len] = 0;
-                len +%= 1;
+                ptr[0..3].* = "-d\x00".*;
+                ptr = ptr + 3;
+                @memcpy(ptr, value);
+                ptr = ptr + value.len;
+                ptr[0] = 0;
+                ptr = ptr + 1;
             }
         }
         if (cmd.print_records) {
-            @as(*[16]u8, @ptrCast(buf + len)).* = "--print-records\x00".*;
-            len +%= 16;
+            ptr[0..16].* = "--print-records\x00".*;
+            ptr = ptr + 16;
         }
         if (cmd.print_detailed_records) {
-            @as(*[25]u8, @ptrCast(buf + len)).* = "--print-detailed-records\x00".*;
-            len +%= 25;
+            ptr[0..25].* = "--print-detailed-records\x00".*;
+            ptr = ptr + 25;
         }
         if (cmd.null_backend) {
-            @as(*[15]u8, @ptrCast(buf + len)).* = "--null-backend\x00".*;
-            len +%= 15;
+            ptr[0..15].* = "--null-backend\x00".*;
+            ptr = ptr + 15;
         }
         if (cmd.dump_json) {
-            @as(*[12]u8, @ptrCast(buf + len)).* = "--dump-json\x00".*;
-            len +%= 12;
+            ptr[0..12].* = "--dump-json\x00".*;
+            ptr = ptr + 12;
         }
         if (cmd.gen_emitter) {
-            @as(*[14]u8, @ptrCast(buf + len)).* = "--gen-emitter\x00".*;
-            len +%= 14;
+            ptr[0..14].* = "--gen-emitter\x00".*;
+            ptr = ptr + 14;
         }
         if (cmd.gen_register_info) {
-            @as(*[20]u8, @ptrCast(buf + len)).* = "--gen-register-info\x00".*;
-            len +%= 20;
+            ptr[0..20].* = "--gen-register-info\x00".*;
+            ptr = ptr + 20;
         }
         if (cmd.gen_instr_info) {
-            @as(*[17]u8, @ptrCast(buf + len)).* = "--gen-instr-info\x00".*;
-            len +%= 17;
+            ptr[0..17].* = "--gen-instr-info\x00".*;
+            ptr = ptr + 17;
         }
         if (cmd.gen_instr_docs) {
-            @as(*[17]u8, @ptrCast(buf + len)).* = "--gen-instr-docs\x00".*;
-            len +%= 17;
+            ptr[0..17].* = "--gen-instr-docs\x00".*;
+            ptr = ptr + 17;
         }
         if (cmd.gen_callingconv) {
-            @as(*[18]u8, @ptrCast(buf + len)).* = "--gen-callingconv\x00".*;
-            len +%= 18;
+            ptr[0..18].* = "--gen-callingconv\x00".*;
+            ptr = ptr + 18;
         }
         if (cmd.gen_asm_writer) {
-            @as(*[17]u8, @ptrCast(buf + len)).* = "--gen-asm-writer\x00".*;
-            len +%= 17;
+            ptr[0..17].* = "--gen-asm-writer\x00".*;
+            ptr = ptr + 17;
         }
         if (cmd.gen_disassembler) {
-            @as(*[19]u8, @ptrCast(buf + len)).* = "--gen-disassembler\x00".*;
-            len +%= 19;
+            ptr[0..19].* = "--gen-disassembler\x00".*;
+            ptr = ptr + 19;
         }
         if (cmd.gen_pseudo_lowering) {
-            @as(*[22]u8, @ptrCast(buf + len)).* = "--gen-pseudo-lowering\x00".*;
-            len +%= 22;
+            ptr[0..22].* = "--gen-pseudo-lowering\x00".*;
+            ptr = ptr + 22;
         }
         if (cmd.gen_compress_inst_emitter) {
-            @as(*[28]u8, @ptrCast(buf + len)).* = "--gen-compress-inst-emitter\x00".*;
-            len +%= 28;
+            ptr[0..28].* = "--gen-compress-inst-emitter\x00".*;
+            ptr = ptr + 28;
         }
         if (cmd.gen_asm_matcher) {
-            @as(*[18]u8, @ptrCast(buf + len)).* = "--gen-asm-matcher\x00".*;
-            len +%= 18;
+            ptr[0..18].* = "--gen-asm-matcher\x00".*;
+            ptr = ptr + 18;
         }
         if (cmd.gen_dag_isel) {
-            @as(*[15]u8, @ptrCast(buf + len)).* = "--gen-dag-isel\x00".*;
-            len +%= 15;
+            ptr[0..15].* = "--gen-dag-isel\x00".*;
+            ptr = ptr + 15;
         }
         if (cmd.gen_dfa_packetizer) {
-            @as(*[21]u8, @ptrCast(buf + len)).* = "--gen-dfa-packetizer\x00".*;
-            len +%= 21;
+            ptr[0..21].* = "--gen-dfa-packetizer\x00".*;
+            ptr = ptr + 21;
         }
         if (cmd.gen_fast_isel) {
-            @as(*[16]u8, @ptrCast(buf + len)).* = "--gen-fast-isel\x00".*;
-            len +%= 16;
+            ptr[0..16].* = "--gen-fast-isel\x00".*;
+            ptr = ptr + 16;
         }
         if (cmd.gen_subtarget) {
-            @as(*[16]u8, @ptrCast(buf + len)).* = "--gen-subtarget\x00".*;
-            len +%= 16;
+            ptr[0..16].* = "--gen-subtarget\x00".*;
+            ptr = ptr + 16;
         }
         if (cmd.gen_intrinsic_enums) {
-            @as(*[22]u8, @ptrCast(buf + len)).* = "--gen-intrinsic-enums\x00".*;
-            len +%= 22;
+            ptr[0..22].* = "--gen-intrinsic-enums\x00".*;
+            ptr = ptr + 22;
         }
         if (cmd.gen_intrinsic_impl) {
-            @as(*[21]u8, @ptrCast(buf + len)).* = "--gen-intrinsic-impl\x00".*;
-            len +%= 21;
+            ptr[0..21].* = "--gen-intrinsic-impl\x00".*;
+            ptr = ptr + 21;
         }
         if (cmd.print_enums) {
-            @as(*[14]u8, @ptrCast(buf + len)).* = "--print-enums\x00".*;
-            len +%= 14;
+            ptr[0..14].* = "--print-enums\x00".*;
+            ptr = ptr + 14;
         }
         if (cmd.print_sets) {
-            @as(*[13]u8, @ptrCast(buf + len)).* = "--print-sets\x00".*;
-            len +%= 13;
+            ptr[0..13].* = "--print-sets\x00".*;
+            ptr = ptr + 13;
         }
         if (cmd.gen_opt_parser_defs) {
-            @as(*[22]u8, @ptrCast(buf + len)).* = "--gen-opt-parser-defs\x00".*;
-            len +%= 22;
+            ptr[0..22].* = "--gen-opt-parser-defs\x00".*;
+            ptr = ptr + 22;
         }
         if (cmd.gen_opt_rst) {
-            @as(*[14]u8, @ptrCast(buf + len)).* = "--gen-opt-rst\x00".*;
-            len +%= 14;
+            ptr[0..14].* = "--gen-opt-rst\x00".*;
+            ptr = ptr + 14;
         }
         if (cmd.gen_ctags) {
-            @as(*[12]u8, @ptrCast(buf + len)).* = "--gen-ctags\x00".*;
-            len +%= 12;
+            ptr[0..12].* = "--gen-ctags\x00".*;
+            ptr = ptr + 12;
         }
         if (cmd.gen_attrs) {
-            @as(*[12]u8, @ptrCast(buf + len)).* = "--gen-attrs\x00".*;
-            len +%= 12;
+            ptr[0..12].* = "--gen-attrs\x00".*;
+            ptr = ptr + 12;
         }
         if (cmd.gen_searchable_tables) {
-            @as(*[24]u8, @ptrCast(buf + len)).* = "--gen-searchable-tables\x00".*;
-            len +%= 24;
+            ptr[0..24].* = "--gen-searchable-tables\x00".*;
+            ptr = ptr + 24;
         }
         if (cmd.gen_global_isel) {
-            @as(*[18]u8, @ptrCast(buf + len)).* = "--gen-global-isel\x00".*;
-            len +%= 18;
+            ptr[0..18].* = "--gen-global-isel\x00".*;
+            ptr = ptr + 18;
         }
         if (cmd.gen_global_isel_combiner) {
-            @as(*[27]u8, @ptrCast(buf + len)).* = "--gen-global-isel-combiner\x00".*;
-            len +%= 27;
+            ptr[0..27].* = "--gen-global-isel-combiner\x00".*;
+            ptr = ptr + 27;
         }
         if (cmd.gen_x86_EVEX2VEX_tables) {
-            @as(*[26]u8, @ptrCast(buf + len)).* = "--gen-x86-EVEX2VEX-tables\x00".*;
-            len +%= 26;
+            ptr[0..26].* = "--gen-x86-EVEX2VEX-tables\x00".*;
+            ptr = ptr + 26;
         }
         if (cmd.gen_x86_fold_tables) {
-            @as(*[22]u8, @ptrCast(buf + len)).* = "--gen-x86-fold-tables\x00".*;
-            len +%= 22;
+            ptr[0..22].* = "--gen-x86-fold-tables\x00".*;
+            ptr = ptr + 22;
         }
         if (cmd.gen_x86_mnemonic_tables) {
-            @as(*[26]u8, @ptrCast(buf + len)).* = "--gen-x86-mnemonic-tables\x00".*;
-            len +%= 26;
+            ptr[0..26].* = "--gen-x86-mnemonic-tables\x00".*;
+            ptr = ptr + 26;
         }
         if (cmd.gen_register_bank) {
-            @as(*[20]u8, @ptrCast(buf + len)).* = "--gen-register-bank\x00".*;
-            len +%= 20;
+            ptr[0..20].* = "--gen-register-bank\x00".*;
+            ptr = ptr + 20;
         }
         if (cmd.gen_exegesis) {
-            @as(*[15]u8, @ptrCast(buf + len)).* = "--gen-exegesis\x00".*;
-            len +%= 15;
+            ptr[0..15].* = "--gen-exegesis\x00".*;
+            ptr = ptr + 15;
         }
         if (cmd.gen_automata) {
-            @as(*[15]u8, @ptrCast(buf + len)).* = "--gen-automata\x00".*;
-            len +%= 15;
+            ptr[0..15].* = "--gen-automata\x00".*;
+            ptr = ptr + 15;
         }
         if (cmd.gen_directive_decl) {
-            @as(*[21]u8, @ptrCast(buf + len)).* = "--gen-directive-decl\x00".*;
-            len +%= 21;
+            ptr[0..21].* = "--gen-directive-decl\x00".*;
+            ptr = ptr + 21;
         }
         if (cmd.gen_directive_impl) {
-            @as(*[21]u8, @ptrCast(buf + len)).* = "--gen-directive-impl\x00".*;
-            len +%= 21;
+            ptr[0..21].* = "--gen-directive-impl\x00".*;
+            ptr = ptr + 21;
         }
         if (cmd.gen_dxil_operation) {
-            @as(*[21]u8, @ptrCast(buf + len)).* = "--gen-dxil-operation\x00".*;
-            len +%= 21;
+            ptr[0..21].* = "--gen-dxil-operation\x00".*;
+            ptr = ptr + 21;
         }
         if (cmd.gen_riscv_target_def) {
-            @as(*[23]u8, @ptrCast(buf + len)).* = "--gen-riscv-target_def\x00".*;
-            len +%= 23;
+            ptr[0..23].* = "--gen-riscv-target_def\x00".*;
+            ptr = ptr + 23;
         }
         if (cmd.output) |output| {
-            @as(*[3]u8, @ptrCast(buf + len)).* = "-o\x00".*;
-            len +%= 3;
-            @memcpy(buf + len, output);
-            len +%= output.len;
-            buf[len] = 0;
-            len +%= 1;
+            ptr[0..3].* = "-o\x00".*;
+            ptr = ptr + 3;
+            @memcpy(ptr, output);
+            ptr = ptr + output.len;
+            ptr[0] = 0;
+            ptr = ptr + 1;
         }
-        return len;
+        return @intFromPtr(ptr) -% @intFromPtr(buf);
     }
     pub fn formatLength(cmd: *TableGenCommand) u64 {
         @setRuntimeSafety(builtin.is_safe);
@@ -3928,164 +3201,6 @@ pub const TableGenCommand = struct {
         }
         return len;
     }
-    pub var tblgenFormatParseArgs: ?*fn (
-        allocator: *types.Allocator,
-        tblgen_cmd: *types.TableGenCommand,
-        args: [*][*:0]u8,
-        args_len: usize,
-    ) callconv(.C) void = null;
-    pub fn formatParseArgs(cmd: *TableGenCommand, allocator: anytype, args: [][*:0]u8) void {
-        @setRuntimeSafety(false);
-        var args_idx: usize = 0;
-        const eql = if (builtin.output_mode == .Lib) mem.testEqualString else mach.testEqualMany8;
-        const str = if (builtin.output_mode == .Lib) meta.manyToSlice else mach.manyToSlice80;
-        while (args_idx != args.len) : (args_idx +%= 1) {
-            var arg: [:0]const u8 = str(args[args_idx]);
-            if (eql("--color", arg)) {
-                args_idx +%= 1;
-                if (args_idx == args.len) {
-                    return;
-                }
-                arg = str(args[args_idx]);
-                if (eql("auto", arg)) {
-                    cmd.color = .auto;
-                } else if (eql("off", arg)) {
-                    cmd.color = .off;
-                } else if (eql("on", arg)) {
-                    cmd.color = .on;
-                }
-            } else if (eql("-I", arg[0..2])) {
-                if (arg.len == 2) {
-                    args_idx +%= 1;
-                    if (args_idx == args.len) {
-                        return;
-                    }
-                    arg = str(args[args_idx]);
-                } else {
-                    arg = arg[2..];
-                }
-                if (cmd.include) |src| {
-                    const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16 *% (src.len +% 1), 8));
-                    @memcpy(dest, src);
-                    dest[src.len] = arg;
-                    cmd.include = dest[0 .. src.len +% 1];
-                } else {
-                    const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16, 8));
-                    dest[0] = arg;
-                    cmd.include = dest[0..1];
-                }
-            } else if (eql("-d", arg[0..2])) {
-                if (arg.len == 2) {
-                    args_idx +%= 1;
-                    if (args_idx == args.len) {
-                        return;
-                    }
-                    arg = str(args[args_idx]);
-                } else {
-                    arg = arg[2..];
-                }
-                if (cmd.dependencies) |src| {
-                    const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16 *% (src.len +% 1), 8));
-                    @memcpy(dest, src);
-                    dest[src.len] = arg;
-                    cmd.dependencies = dest[0 .. src.len +% 1];
-                } else {
-                    const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16, 8));
-                    dest[0] = arg;
-                    cmd.dependencies = dest[0..1];
-                }
-            } else if (eql("--print-records", arg)) {
-                cmd.print_records = true;
-            } else if (eql("--print-detailed-records", arg)) {
-                cmd.print_detailed_records = true;
-            } else if (eql("--null-backend", arg)) {
-                cmd.null_backend = true;
-            } else if (eql("--dump-json", arg)) {
-                cmd.dump_json = true;
-            } else if (eql("--gen-emitter", arg)) {
-                cmd.gen_emitter = true;
-            } else if (eql("--gen-register-info", arg)) {
-                cmd.gen_register_info = true;
-            } else if (eql("--gen-instr-info", arg)) {
-                cmd.gen_instr_info = true;
-            } else if (eql("--gen-instr-docs", arg)) {
-                cmd.gen_instr_docs = true;
-            } else if (eql("--gen-callingconv", arg)) {
-                cmd.gen_callingconv = true;
-            } else if (eql("--gen-asm-writer", arg)) {
-                cmd.gen_asm_writer = true;
-            } else if (eql("--gen-disassembler", arg)) {
-                cmd.gen_disassembler = true;
-            } else if (eql("--gen-pseudo-lowering", arg)) {
-                cmd.gen_pseudo_lowering = true;
-            } else if (eql("--gen-compress-inst-emitter", arg)) {
-                cmd.gen_compress_inst_emitter = true;
-            } else if (eql("--gen-asm-matcher", arg)) {
-                cmd.gen_asm_matcher = true;
-            } else if (eql("--gen-dag-isel", arg)) {
-                cmd.gen_dag_isel = true;
-            } else if (eql("--gen-dfa-packetizer", arg)) {
-                cmd.gen_dfa_packetizer = true;
-            } else if (eql("--gen-fast-isel", arg)) {
-                cmd.gen_fast_isel = true;
-            } else if (eql("--gen-subtarget", arg)) {
-                cmd.gen_subtarget = true;
-            } else if (eql("--gen-intrinsic-enums", arg)) {
-                cmd.gen_intrinsic_enums = true;
-            } else if (eql("--gen-intrinsic-impl", arg)) {
-                cmd.gen_intrinsic_impl = true;
-            } else if (eql("--print-enums", arg)) {
-                cmd.print_enums = true;
-            } else if (eql("--print-sets", arg)) {
-                cmd.print_sets = true;
-            } else if (eql("--gen-opt-parser-defs", arg)) {
-                cmd.gen_opt_parser_defs = true;
-            } else if (eql("--gen-opt-rst", arg)) {
-                cmd.gen_opt_rst = true;
-            } else if (eql("--gen-ctags", arg)) {
-                cmd.gen_ctags = true;
-            } else if (eql("--gen-attrs", arg)) {
-                cmd.gen_attrs = true;
-            } else if (eql("--gen-searchable-tables", arg)) {
-                cmd.gen_searchable_tables = true;
-            } else if (eql("--gen-global-isel", arg)) {
-                cmd.gen_global_isel = true;
-            } else if (eql("--gen-global-isel-combiner", arg)) {
-                cmd.gen_global_isel_combiner = true;
-            } else if (eql("--gen-x86-EVEX2VEX-tables", arg)) {
-                cmd.gen_x86_EVEX2VEX_tables = true;
-            } else if (eql("--gen-x86-fold-tables", arg)) {
-                cmd.gen_x86_fold_tables = true;
-            } else if (eql("--gen-x86-mnemonic-tables", arg)) {
-                cmd.gen_x86_mnemonic_tables = true;
-            } else if (eql("--gen-register-bank", arg)) {
-                cmd.gen_register_bank = true;
-            } else if (eql("--gen-exegesis", arg)) {
-                cmd.gen_exegesis = true;
-            } else if (eql("--gen-automata", arg)) {
-                cmd.gen_automata = true;
-            } else if (eql("--gen-directive-decl", arg)) {
-                cmd.gen_directive_decl = true;
-            } else if (eql("--gen-directive-impl", arg)) {
-                cmd.gen_directive_impl = true;
-            } else if (eql("--gen-dxil-operation", arg)) {
-                cmd.gen_dxil_operation = true;
-            } else if (eql("--gen-riscv-target_def", arg)) {
-                cmd.gen_riscv_target_def = true;
-            } else if (eql("-o", arg[0..2])) {
-                if (arg.len == 2) {
-                    args_idx +%= 1;
-                    if (args_idx == args.len) {
-                        return;
-                    }
-                    arg = str(args[args_idx]);
-                } else {
-                    arg = arg[2..];
-                }
-                cmd.output = arg;
-            }
-        }
-    }
 };
 pub const HarecCommand = struct {
     arch: ?[]const u8 = null,
@@ -4129,49 +3244,49 @@ pub const HarecCommand = struct {
     }
     pub fn formatWriteBuf(cmd: *HarecCommand, harec_exe: []const u8, buf: [*]u8) u64 {
         @setRuntimeSafety(builtin.is_safe);
-        var len: usize = 0;
-        @memcpy(buf + len, harec_exe);
-        len +%= harec_exe.len;
-        buf[len] = 0;
-        len +%= 1;
+        var ptr: [*]u8 = buf;
+        @memcpy(ptr, harec_exe);
+        ptr = ptr + harec_exe.len;
+        ptr[0] = 0;
+        ptr = ptr + 1;
         if (cmd.arch) |arch| {
-            @as(*[3]u8, @ptrCast(buf + len)).* = "-a\x00".*;
-            len +%= 3;
-            @memcpy(buf + len, arch);
-            len +%= arch.len;
-            buf[len] = 0;
-            len +%= 1;
+            ptr[0..3].* = "-a\x00".*;
+            ptr = ptr + 3;
+            @memcpy(ptr, arch);
+            ptr = ptr + arch.len;
+            ptr[0] = 0;
+            ptr = ptr + 1;
         }
         if (cmd.defs) |defs| {
-            len +%= types.Macros.formatWriteBuf(.{ .value = defs }, buf + len);
+            ptr = ptr + types.Macros.formatWriteBuf(.{ .value = defs }, ptr);
         }
         if (cmd.output) |output| {
-            @as(*[3]u8, @ptrCast(buf + len)).* = "-o\x00".*;
-            len +%= 3;
-            @memcpy(buf + len, output);
-            len +%= output.len;
-            buf[len] = 0;
-            len +%= 1;
+            ptr[0..3].* = "-o\x00".*;
+            ptr = ptr + 3;
+            @memcpy(ptr, output);
+            ptr = ptr + output.len;
+            ptr[0] = 0;
+            ptr = ptr + 1;
         }
         if (cmd.tags) |tags| {
             for (tags) |value| {
-                @as(*[2]u8, @ptrCast(buf + len)).* = "-T".*;
-                len +%= 2;
-                @memcpy(buf + len, value);
-                len +%= value.len;
-                buf[len] = 0;
-                len +%= 1;
+                ptr[0..2].* = "-T".*;
+                ptr = ptr + 2;
+                @memcpy(ptr, value);
+                ptr = ptr + value.len;
+                ptr[0] = 0;
+                ptr = ptr + 1;
             }
         }
         if (cmd.typedefs) {
-            @as(*[3]u8, @ptrCast(buf + len)).* = "-t\x00".*;
-            len +%= 3;
+            ptr[0..3].* = "-t\x00".*;
+            ptr = ptr + 3;
         }
         if (cmd.namespace) {
-            @as(*[3]u8, @ptrCast(buf + len)).* = "-N\x00".*;
-            len +%= 3;
+            ptr[0..3].* = "-N\x00".*;
+            ptr = ptr + 3;
         }
-        return len;
+        return @intFromPtr(ptr) -% @intFromPtr(buf);
     }
     pub fn formatLength(cmd: *HarecCommand, harec_exe: []const u8) u64 {
         @setRuntimeSafety(builtin.is_safe);
@@ -4206,66 +3321,12 @@ pub const HarecCommand = struct {
         }
         return len;
     }
-    pub var harecFormatParseArgs: ?*fn (
-        allocator: *types.Allocator,
-        harec_cmd: *types.HarecCommand,
-        args: [*][*:0]u8,
-        args_len: usize,
-    ) callconv(.C) void = null;
-    pub fn formatParseArgs(cmd: *HarecCommand, allocator: anytype, args: [][*:0]u8) void {
-        @setRuntimeSafety(false);
-        var args_idx: usize = 0;
-        const eql = if (builtin.output_mode == .Lib) mem.testEqualString else mach.testEqualMany8;
-        const str = if (builtin.output_mode == .Lib) meta.manyToSlice else mach.manyToSlice80;
-        while (args_idx != args.len) : (args_idx +%= 1) {
-            var arg: [:0]const u8 = str(args[args_idx]);
-            if (eql("-a", arg[0..2])) {
-                if (arg.len == 2) {
-                    args_idx +%= 1;
-                    if (args_idx == args.len) {
-                        return;
-                    }
-                    arg = str(args[args_idx]);
-                } else {
-                    arg = arg[2..];
-                }
-                cmd.arch = arg;
-            } else if (eql("-o", arg[0..2])) {
-                if (arg.len == 2) {
-                    args_idx +%= 1;
-                    if (args_idx == args.len) {
-                        return;
-                    }
-                    arg = str(args[args_idx]);
-                } else {
-                    arg = arg[2..];
-                }
-                cmd.output = arg;
-            } else if (eql("-T", arg[0..2])) {
-                if (arg.len == 2) {
-                    args_idx +%= 1;
-                    if (args_idx == args.len) {
-                        return;
-                    }
-                    arg = str(args[args_idx]);
-                } else {
-                    arg = arg[2..];
-                }
-                if (cmd.tags) |src| {
-                    const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16 *% (src.len +% 1), 8));
-                    @memcpy(dest, src);
-                    dest[src.len] = arg;
-                    cmd.tags = dest[0 .. src.len +% 1];
-                } else {
-                    const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16, 8));
-                    dest[0] = arg;
-                    cmd.tags = dest[0..1];
-                }
-            } else if (eql("-t", arg)) {
-                cmd.typedefs = true;
-            } else if (eql("-N", arg)) {
-                cmd.namespace = true;
-            }
-        }
-    }
+};
+pub const ParseCommand = extern struct {
+    build: *fn (*BuildCommand, *types.Allocator, [*][*:0]u8, usize) void,
+    format: *fn (*FormatCommand, *types.Allocator, [*][*:0]u8, usize) void,
+    archive: *fn (*ArchiveCommand, *types.Allocator, [*][*:0]u8, usize) void,
+    objcopy: *fn (*ObjcopyCommand, *types.Allocator, [*][*:0]u8, usize) void,
+    tblgen: *fn (*TableGenCommand, *types.Allocator, [*][*:0]u8, usize) void,
+    harec: *fn (*HarecCommand, *types.Allocator, [*][*:0]u8, usize) void,
 };
