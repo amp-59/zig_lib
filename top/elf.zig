@@ -1210,19 +1210,18 @@ pub const ElfInfo = extern struct {
         rodata: [*]u8,
         rodata_len: u64,
     },
-    const sections: []const struct { SHT, []const u8, usize } = &.{
-        .{ SHT.DYNAMIC, ".dynamic", @sizeOf(Elf64_Dyn) },
-        .{ SHT.STRTAB, ".dynstr", @sizeOf(u8) },
-        .{ SHT.DYNSYM, ".dynsym", @sizeOf(Elf64_Sym) },
-        .{ SHT.STRTAB, ".strtab", @sizeOf(u8) },
-        .{ SHT.SYMTAB, ".symtab", @sizeOf(Elf64_Sym) },
-        .{ SHT.PROGBITS, ".text", @sizeOf(u8) },
-        .{ SHT.PROGBITS, ".rodata", @sizeOf(u8) },
-    };
     const qwords: comptime_int = @divExact(@sizeOf(meta.Field(ElfInfo, "impl")), 8);
-
     pub fn init(ehdr_addr: u64) ElfInfo {
         @setRuntimeSafety(builtin.is_safe);
+        const sections: []const struct { SHT, []const u8, usize } = &.{
+            .{ SHT.DYNAMIC, ".dynamic", @sizeOf(Elf64_Dyn) },
+            .{ SHT.STRTAB, ".dynstr", @sizeOf(u8) },
+            .{ SHT.DYNSYM, ".dynsym", @sizeOf(Elf64_Sym) },
+            .{ SHT.STRTAB, ".strtab", @sizeOf(u8) },
+            .{ SHT.SYMTAB, ".symtab", @sizeOf(Elf64_Sym) },
+            .{ SHT.PROGBITS, ".text", @sizeOf(u8) },
+            .{ SHT.PROGBITS, ".rodata", @sizeOf(u8) },
+        };
         const ehdr: *Elf64_Ehdr = @ptrFromInt(ehdr_addr);
         var impl: [qwords]u64 = .{0} ** qwords;
         var shdr: *Elf64_Shdr = @ptrFromInt(ehdr_addr +% ehdr.e_shoff +% (ehdr.e_shstrndx *% ehdr.e_shentsize));
@@ -1234,20 +1233,21 @@ pub const ElfInfo = extern struct {
             addr +%= ehdr.e_shentsize;
             shdr = @ptrFromInt(addr);
         }) {
-            for (sections, 0..) |field, field_idx| {
-                if (shdr.sh_type != field[0]) {
+            var section_idx: usize = 0;
+            while (section_idx != sections.len) : (section_idx +%= 1) {
+                if (shdr.sh_type != sections[section_idx][0]) {
                     continue;
                 }
                 const str: [*:0]u8 = @ptrFromInt(strtab_addr +% shdr.sh_name);
                 var idx: usize = 0;
                 while (str[idx] != 0) : (idx +%= 1) {
-                    if (field[1][idx] != str[idx]) {
+                    if (sections[section_idx][1][idx] != str[idx]) {
                         break;
                     }
                 } else {
-                    const pair_idx: usize = field_idx *% 2;
+                    const pair_idx: usize = section_idx *% 2;
                     impl[pair_idx +% 0] = ehdr_addr +% shdr.sh_offset;
-                    impl[pair_idx +% 1] = shdr.sh_size / field[2];
+                    impl[pair_idx +% 1] = shdr.sh_size / sections[section_idx][2];
                 }
             }
         }
@@ -1275,7 +1275,7 @@ pub const ElfInfo = extern struct {
         while (dyn_idx != elf_info.impl.dynsym_len) : (dyn_idx +%= 1) {
             const sym: Elf64_Sym = elf_info.impl.dynsym[dyn_idx];
             const str: [*]u8 = elf_info.impl.dynstr + sym.st_name;
-            var idx: usize = 1;
+            var idx: usize = 0;
             while (str[idx] != 0) : (idx +%= 1) {
                 if (symbol[idx] != str[idx]) break;
             } else {
@@ -1290,7 +1290,7 @@ pub const ElfInfo = extern struct {
         while (sym_idx != elf_info.impl.symtab_len) : (sym_idx +%= 1) {
             const sym: Elf64_Sym = elf_info.impl.symtab[sym_idx];
             const str: [*]u8 = elf_info.impl.strtab + sym.st_name;
-            var idx: usize = 1;
+            var idx: usize = 0;
             while (str[idx] != 0) : (idx +%= 1) {
                 if (symbol[idx] != str[idx]) break;
             } else {
