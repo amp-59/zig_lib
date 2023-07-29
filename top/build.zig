@@ -338,6 +338,9 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 add_stack_traces: bool = false,
                 /// Only meaningful when zig lib is not acting as standard.
                 add_zig_lib_rt: bool = false,
+                /// Define the compiler path, build root, cache root, and global
+                /// cache root as declarations to the build configuration root.
+                add_build_context: bool = true,
             };
         },
         impl: packed struct {
@@ -375,6 +378,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         const special = struct {
             pub var toplevel: *Node = undefined;
             pub var trace: *Node = undefined;
+            pub var parse: *Node = undefined;
+            pub var parsers: build.ParseCommand = undefined;
         };
         pub const specification: BuilderSpec = builder_spec;
         pub const max_thread_count: u64 =
