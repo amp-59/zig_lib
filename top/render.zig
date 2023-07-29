@@ -150,7 +150,7 @@ pub fn ArrayFormat(comptime spec: RenderSpec, comptime Array: type) type {
             tmp.infer_type_names = @typeInfo(child) == .Struct;
             break :blk tmp;
         };
-        pub fn formatWrite(format: anytype, array: anytype) void {
+        pub fn formatWrite(format: *const Format, array: anytype) void {
             if (format.value.len == 0) {
                 array.writeMany(type_name);
                 array.writeCount(2, "{}".*);
@@ -177,7 +177,7 @@ pub fn ArrayFormat(comptime spec: RenderSpec, comptime Array: type) type {
                 }
             }
         }
-        pub fn formatWriteBuf(format: anytype, buf: [*]u8) usize {
+        pub fn formatWriteBuf(format: *const Format, buf: [*]u8) usize {
             @setRuntimeSafety(builtin.is_safe);
             var len: usize = type_name.len;
             @memcpy(buf, type_name);
@@ -189,15 +189,15 @@ pub fn ArrayFormat(comptime spec: RenderSpec, comptime Array: type) type {
                 len +%= 2;
                 if (spec.enable_comptime_iterator and comptime fmt.requireComptime(child)) {
                     inline for (format.value) |element| {
-                        const sub_format: ChildFormat = .{ .value = element };
-                        len +%= sub_format.formatWriteBuf(buf + len);
+                        const element_format: ChildFormat = .{ .value = element };
+                        len +%= element_format.formatWriteBuf(buf + len);
                         @as(*[2]u8, @ptrCast(buf + len)).* = ", ".*;
                         len +%= 2;
                     }
                 } else {
                     for (format.value) |element| {
-                        const sub_format: ChildFormat = .{ .value = element };
-                        len +%= sub_format.formatWriteBuf(buf + len);
+                        const element_format: ChildFormat = .{ .value = element };
+                        len +%= element_format.formatWriteBuf(buf + len);
                         @as(*[2]u8, @ptrCast(buf + len)).* = ", ".*;
                         len +%= 2;
                     }
@@ -211,15 +211,17 @@ pub fn ArrayFormat(comptime spec: RenderSpec, comptime Array: type) type {
             }
             return len;
         }
-        pub fn formatLength(format: anytype) usize {
+        pub fn formatLength(format: *const Format) usize {
             var len: usize = type_name.len +% 2;
             if (spec.enable_comptime_iterator and comptime fmt.requireComptime(child)) {
                 inline for (format.value) |value| {
-                    len +%= ChildFormat.formatLength(.{ .value = value }) +% 2;
+                    const element_format: ChildFormat = .{ .value = value };
+                    len +%= element_format.formatLength() +% 2;
                 }
             } else {
                 for (format.value) |value| {
-                    len +%= ChildFormat.formatLength(.{ .value = value }) +% 2;
+                    const element_format: ChildFormat = .{ .value = value };
+                    len +%= element_format.formatLength() +% 2;
                 }
             }
             if (!omit_trailing_comma and format.value.len != 0) {
@@ -808,7 +810,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
             writeFormat(array, field_format);
             array.writeCount(2, ", ".*);
         }
-        pub fn formatWrite(format: anytype, array: anytype) void {
+        pub fn formatWrite(format: *const Format, array: anytype) void {
             if (spec.infer_type_names) {
                 array.writeMany(".{");
             } else {
@@ -885,7 +887,6 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
         }
         fn writeFieldInitializerBuf(buf: [*]u8, field_name_format: fmt.IdentifierFormat, field_format: anytype) usize {
             @setRuntimeSafety(builtin.is_safe);
-            @setRuntimeSafety(builtin.is_safe);
             var len: usize = 0;
             buf[0] = '.';
             len +%= 1;
@@ -897,7 +898,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
             len +%= 2;
             return len;
         }
-        pub fn formatWriteBuf(format: anytype, buf: [*]u8) usize {
+        pub fn formatWriteBuf(format: *const Format, buf: [*]u8) usize {
             @setRuntimeSafety(builtin.is_safe);
             var len: usize = 0;
             if (spec.infer_type_names) {
@@ -979,7 +980,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
             }
             return len;
         }
-        pub fn formatLength(format: anytype) usize {
+        pub fn formatLength(format: *const Format) usize {
             var len: usize = 0;
             len +%= @typeName(Struct).len +% 2;
             comptime var field_idx: usize = 0;
@@ -1268,7 +1269,7 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
             writeFormat(array, field_format);
             array.writeCount(2, ", ".*);
         }
-        pub fn formatWrite(format: anytype, array: anytype) void {
+        pub fn formatWrite(format: *const Format, array: anytype) void {
             if (show_enum_field) {
                 format.formatWriteEnumField(array);
             } else if (tag_type == null) {
@@ -1294,6 +1295,7 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
             }
         }
         fn formatWriteBufField(buf: [*]u8, field_name_format: fmt.IdentifierFormat, field_format: anytype) usize {
+            @setRuntimeSafety(builtin.is_safe);
             var len: usize = 0;
             buf[len] = '.';
             len +%= 1;
@@ -1305,7 +1307,8 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
             len +%= 2;
             return len;
         }
-        pub fn formatWriteBuf(format: anytype, buf: [*]u8) usize {
+        pub fn formatWriteBuf(format: *const Format, buf: [*]u8) usize {
+            @setRuntimeSafety(builtin.is_safe);
             var len: usize = 0;
             if (show_enum_field) {
                 len +%= format.formatWriteBufEnumField(buf);
@@ -1334,7 +1337,6 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
             }
             return len;
         }
-
         fn formatLengthField(field_name_format: fmt.IdentifierFormat, field_format: anytype) u64 {
             return 1 +% field_name_format.formatLength() +% 3 +% field_format.formatLength() +% 2;
         }
@@ -1381,6 +1383,7 @@ pub fn EnumFormat(comptime spec: RenderSpec, comptime Enum: type) type {
             writeFormat(array, tag_name_format);
         }
         pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
+            @setRuntimeSafety(builtin.is_safe);
             if (spec.enum_to_int) {
                 return IntFormat(spec, type_info.Enum.tag_type).formatWriteBuf(.{ .value = @intFromEnum(format.value) }, buf);
             }
@@ -1408,6 +1411,7 @@ pub const EnumLiteralFormat = struct {
         writeFormat(array, tag_name_format);
     }
     pub fn formatWriteBuf(comptime format: Format, buf: [*]u8) usize {
+        @setRuntimeSafety(builtin.is_safe);
         const tag_name_format: fmt.IdentifierFormat = .{ .value = @tagName(format.value) };
         buf[0] = '.';
         return 1 +% tag_name_format.formatWriteBuf(buf + 1);
@@ -1448,7 +1452,7 @@ pub fn IntFormat(comptime spec: RenderSpec, comptime Int: type) type {
             break :blk len;
         };
         pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
-            @setRuntimeSafety(false);
+            @setRuntimeSafety(builtin.is_safe);
             var len: usize = 0;
             if (Abs != Int) {
                 buf[0] = '-';
@@ -1507,6 +1511,7 @@ const AddressFormat = struct {
         array.writeMany(")");
     }
     pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
+        @setRuntimeSafety(builtin.is_safe);
         var len: usize = 0;
         const addr_format = fmt.uxsize(format.value);
         @as(*[2]u8, @ptrCast(buf)).* = "@(".*;
@@ -1532,7 +1537,7 @@ pub fn PointerOneFormat(comptime spec: RenderSpec, comptime Pointer: type) type 
         const SubFormat = meta.Return(fmt.ux64);
         const child: type = @typeInfo(Pointer).Pointer.child;
         const max_len: usize = (4 +% typeName(Pointer, spec).len +% 3) +% AnyFormat(spec, child).max_len +% 1;
-        pub fn formatWrite(format: anytype, array: anytype) void {
+        pub fn formatWrite(format: *const Format, array: anytype) void {
             const address: usize = @intFromPtr(format.value);
             const type_name: []const u8 = comptime typeName(Pointer, spec);
             if (child == anyopaque) {
@@ -1560,7 +1565,8 @@ pub fn PointerOneFormat(comptime spec: RenderSpec, comptime Pointer: type) type 
                 }
             }
         }
-        pub fn formatWriteBuf(format: anytype, buf: [*]u8) usize {
+        pub fn formatWriteBuf(format: *const Format, buf: [*]u8) usize {
+            @setRuntimeSafety(builtin.is_safe);
             const address: usize = @intFromPtr(format.value);
             const type_name: []const u8 = comptime typeName(Pointer, spec);
             var len: usize = 0;
@@ -1637,7 +1643,7 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
         const max_len: usize = 65536;
         const omit_trailing_comma: bool = spec.omit_trailing_comma orelse true;
         const type_name: []const u8 = typeName(Pointer, spec);
-        pub fn formatWriteAny(format: anytype, array: anytype) void {
+        pub fn formatWriteAny(format: *const Format, array: anytype) void {
             if (format.value.len == 0) {
                 if (spec.infer_type_names) {
                     array.writeOne('&');
@@ -1670,7 +1676,7 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
                 }
             }
         }
-        pub fn formatWriteBufAny(format: anytype, buf: [*]u8) usize {
+        pub fn formatWriteBufAny(format: *const Format, buf: [*]u8) usize {
             var len: usize = 0;
             if (format.value.len == 0) {
                 if (spec.infer_type_names) {
@@ -1714,7 +1720,7 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
             }
             return len;
         }
-        pub fn formatLengthAny(format: anytype) u64 {
+        pub fn formatLengthAny(format: *const Format) u64 {
             var len: usize = 0;
             if (format.value.len == 0) {
                 if (spec.infer_type_names) {
@@ -1743,14 +1749,14 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
             }
             return len;
         }
-        pub fn formatLengthStringLiteral(format: anytype) u64 {
+        pub fn formatLengthStringLiteral(format: *const Format) u64 {
             var len: usize = 1;
             for (format.value) |c| {
                 len +%= fmt.esc(c).formatLength();
             }
             return len +% 1;
         }
-        pub fn formatLengthMultiLineStringLiteral(format: anytype) u64 {
+        pub fn formatLengthMultiLineStringLiteral(format: *const Format) u64 {
             var len: usize = 3;
             for (format.value) |byte| {
                 switch (byte) {
@@ -1761,14 +1767,14 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
             }
             return len +% 1;
         }
-        pub fn formatWriteStringLiteral(format: anytype, array: anytype) void {
+        pub fn formatWriteStringLiteral(format: *const Format, array: anytype) void {
             array.writeOne('"');
             for (format.value) |byte| {
                 array.writeFormat(fmt.esc(byte));
             }
             array.writeOne('"');
         }
-        pub fn formatWriteMultiLineStringLiteral(format: anytype, array: anytype) void {
+        pub fn formatWriteMultiLineStringLiteral(format: *const Format, array: anytype) void {
             array.writeMany("\n\\\\");
             for (format.value) |byte| {
                 switch (byte) {
@@ -1779,7 +1785,7 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
             }
             array.writeOne('\n');
         }
-        pub fn formatWriteBufStringLiteral(format: anytype, buf: [*]u8) usize {
+        pub fn formatWriteBufStringLiteral(format: *const Format, buf: [*]u8) usize {
             var len: usize = 1;
             buf[0] = '"';
             for (format.value) |byte| {
@@ -1788,7 +1794,7 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
             buf[len] = '"';
             return len +% 1;
         }
-        pub fn formatWriteBufMultiLineStringLiteral(format: anytype, buf: [*]u8) usize {
+        pub fn formatWriteBufMultiLineStringLiteral(format: *const Format, buf: [*]u8) usize {
             var len: usize = 3;
             @as(*[3]u8, @ptrCast(buf)).* = "\n\\\\".*;
             for (format.value) |byte| {
@@ -1817,7 +1823,7 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
             return false;
         }
         const StringLiteral = fmt.GenericEscapedStringFormat(.{});
-        pub fn formatWrite(format: anytype, array: anytype) void {
+        pub fn formatWrite(format: *const Format, array: anytype) void {
             if (spec.address_view) {
                 const addr_view_format: AddressFormat = .{ .value = @intFromPtr(format.value.ptr) };
                 writeFormat(array, addr_view_format);
@@ -1841,7 +1847,8 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
             }
             return formatWriteAny(format, array);
         }
-        pub fn formatWriteBuf(format: anytype, buf: [*]u8) usize {
+        pub fn formatWriteBuf(format: *const Format, buf: [*]u8) usize {
+            @setRuntimeSafety(builtin.is_safe);
             var len: usize = 0;
             if (spec.address_view) {
                 const addr_view_format: AddressFormat = .{ .value = @intFromPtr(format.value.ptr) };
@@ -1866,7 +1873,7 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
             }
             return len +% formatWriteBufAny(format, buf);
         }
-        pub fn formatLength(format: anytype) usize {
+        pub fn formatLength(format: *const Format) usize {
             var len: usize = 0;
             if (spec.address_view) {
                 len +%= AddressFormat.formatLength(.{ .value = @intFromPtr(format.value.ptr) });
@@ -1915,6 +1922,7 @@ pub fn PointerManyFormat(comptime spec: RenderSpec, comptime Pointer: type) type
             }
         }
         pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
+            @setRuntimeSafety(builtin.is_safe);
             var len: usize = 0;
             if (type_info.Pointer.sentinel) |sentinel_ptr| {
                 const sentinel: child = comptime mem.pointerOpaque(child, sentinel_ptr).*;
@@ -1955,7 +1963,7 @@ pub fn OptionalFormat(comptime spec: RenderSpec, comptime Optional: type) type {
         const type_name: []const u8 = typeName(Optional);
         const max_len: usize = (4 +% type_name.len +% 2) +% @max(1 +% ChildFormat.max_len, 5);
         const render_readable: bool = true;
-        pub fn formatWrite(format: anytype, array: anytype) void {
+        pub fn formatWrite(format: *const Format, array: anytype) void {
             if (!render_readable) {
                 array.writeCount(4, "@as(".*);
                 array.writeMany(type_name);
@@ -1971,7 +1979,8 @@ pub fn OptionalFormat(comptime spec: RenderSpec, comptime Optional: type) type {
                 array.writeOne(')');
             }
         }
-        pub fn formatWriteBuf(format: anytype, buf: [*]u8) usize {
+        pub fn formatWriteBuf(format: *const Format, buf: [*]u8) usize {
+            @setRuntimeSafety(builtin.is_safe);
             var len: usize = 0;
             if (!render_readable) {
                 @as(*[4]u8, @ptrCast(buf)).* = "@as(".*;
@@ -1994,7 +2003,7 @@ pub fn OptionalFormat(comptime spec: RenderSpec, comptime Optional: type) type {
             }
             return len;
         }
-        pub fn formatLength(format: anytype) usize {
+        pub fn formatLength(format: *const Format) usize {
             var len: usize = 0;
             if (!render_readable) {
                 len +%= 4 +% type_name.len +% 2;
@@ -2275,6 +2284,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                 for (0..depth) |_| array.writeMany(spec.tokens.indent);
             }
             pub fn formatWriteBuf(format: Tag, buf: [*]u8) usize {
+                @setRuntimeSafety(builtin.is_safe);
                 var len: usize = 0;
                 if (spec.options.identifier_name) {
                     len +%= fmt.IdentifierFormat.formatWriteBuf(.{ .value = format.name }, buf);
@@ -2330,6 +2340,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                 for (0..depth) |_| array.writeMany(spec.tokens.indent);
             }
             pub fn formatWriteBuf(format: Field, buf: [*]u8) usize {
+                @setRuntimeSafety(builtin.is_safe);
                 var len: usize = 0;
                 if (spec.options.identifier_name) {
                     len +%= fmt.IdentifierFormat.formatWriteBuf(.{ .value = format.name }, buf);
@@ -2387,6 +2398,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                 for (0..depth) |_| array.writeMany(spec.tokens.indent);
             }
             pub fn formatWriteBuf(format: Member, buf: [*]u8) usize {
+                @setRuntimeSafety(builtin.is_safe);
                 var len: usize = 0;
                 @memcpy(buf, format.name);
                 len +%= format.name;
@@ -2466,6 +2478,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
             }
         }
         pub fn formatWriteBuf(type_descr: Format, buf: [*]u8) usize {
+            @setRuntimeSafety(builtin.is_safe);
             var len: usize = 0;
             switch (type_descr) {
                 .type_name => |type_name| {
