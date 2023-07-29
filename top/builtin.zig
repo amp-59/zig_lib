@@ -232,6 +232,7 @@ pub fn ZigError(comptime Value: type, comptime return_codes: []const Value) type
 /// Attempt to match a return value against a set of error codes--returning the
 /// corresponding zig error on success.
 pub fn zigErrorThrow(comptime Value: type, comptime values: []const Value, ret: isize) ZigError(Value, values)!void {
+    @setRuntimeSafety(false);
     const E = ZigError(Value, values);
     inline for (values) |value| {
         if (ret == @intFromEnum(value)) {
@@ -242,6 +243,7 @@ pub fn zigErrorThrow(comptime Value: type, comptime values: []const Value, ret: 
 /// Attempt to match a return value against a set of error codes--aborting the
 /// program on success.
 pub fn zigErrorAbort(comptime Value: type, comptime values: []const Value, ret: isize) void {
+    @setRuntimeSafety(false);
     inline for (values) |value| {
         if (ret == @intFromEnum(value)) {
             debug.panic(value.errorName(), null, @returnAddress());

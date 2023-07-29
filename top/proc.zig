@@ -571,9 +571,9 @@ pub fn futexWait(comptime futex_spec: FutexSpec, futex: *u32, value: u32, timeou
 ) {
     const logging: debug.Logging.AttemptSuccessAcquireReleaseError = comptime futex_spec.logging.override();
     if (logging.Attempt) {
-        about.futexWaitAttempt(futex, value, timeout);
+        about.futexWaitNotice(futex, value, timeout);
     }
-    if (meta.wrap(sys.call(.futex, futex_spec.errors, futex_spec.return_type, .{ @intFromPtr(futex), 0, value, @intFromPtr(timeout), 0, 0 }))) |ret| {
+    if (meta.wrap(sys.call(.futex, futex_spec.errors, futex_spec.return_type, [6]usize{ @intFromPtr(futex), 0, value, @intFromPtr(timeout), 0, 0 }))) |ret| {
         if (logging.Acquire) {
             about.futexWaitNotice(futex, value, timeout);
         }
@@ -593,7 +593,7 @@ pub fn futexWake(comptime futex_spec: FutexSpec, futex: *u32, count: u32) sys.Er
     if (logging.Attempt) {
         about.futexWakeAttempt(futex, count);
     }
-    if (meta.wrap(sys.call(.futex, futex_spec.errors, u32, .{ @intFromPtr(futex), 1, count, 0, 0, 0 }))) |ret| {
+    if (meta.wrap(sys.call(.futex, futex_spec.errors, u32, [6]usize{ @intFromPtr(futex), 1, count, 0, 0, 0 }))) |ret| {
         if (logging.Release) {
             about.futexWakeNotice(futex, count, ret);
         }
@@ -615,7 +615,7 @@ pub fn futexWakeOp(comptime futex_spec: FutexSpec, futex1: *u32, futex2: *u32, c
     if (logging.Attempt) {
         about.futexWakeOpAttempt(futex1, futex2, count1, count2, wake_op);
     }
-    if (meta.wrap(sys.call(.futex, futex_spec.errors, u32, .{
+    if (meta.wrap(sys.call(.futex, futex_spec.errors, u32, [6]usize{
         @intFromPtr(futex1), 5, count1, count2, @intFromPtr(futex2), @as(u32, @bitCast(wake_op)),
     }))) |ret| {
         if (logging.Acquire) {
@@ -637,7 +637,7 @@ fn futexRequeue(comptime futex_spec: FutexSpec, futex1: *u32, futex2: *u32, coun
     if (logging.Attempt) {
         //
     }
-    if (meta.wrap(sys.call(.futex, futex_spec.errors, futex_spec.return_type, .{
+    if (meta.wrap(sys.call(.futex, futex_spec.errors, futex_spec.return_type, [6]usize{
         @intFromPtr(futex1), 3 +% @intFromBool(from != 0), count1, count2, @intFromPtr(futex2), from.?,
     }))) {
         if (logging.Acquire) {
@@ -776,6 +776,7 @@ pub fn updateSignalStack(
     sigaltstack_spec.errors,
     sigaltstack_spec.return_type,
 ) {
+    @setRuntimeSafety(false);
     const logging: debug.Logging.SuccessError = comptime sigaltstack_spec.logging.override();
     const new_stack_buf_addr: u64 = @intFromPtr(&new_stack);
     const old_stack_buf_addr: u64 = if (old_stack) |old| @intFromPtr(old) else 0;
@@ -801,12 +802,7 @@ pub noinline fn start() noreturn {
     if (builtin.output_mode != .Exe) {
         unreachable;
     }
-    if (builtin.position_independent_code) {
-        @compileError("unsupported: PIC");
-    }
-    const Main: type = @TypeOf(builtin.root.main);
-    const main: Main = builtin.root.main;
-    const main_type_info: builtin.Type = @typeInfo(Main);
+    const main_type_info: builtin.Type = @typeInfo(@TypeOf(builtin.root.main));
     const main_return_type: type = main_type_info.Fn.return_type.?;
     const main_return_type_info: builtin.Type = @typeInfo(main_return_type);
     const params = blk_0: {
@@ -849,25 +845,27 @@ pub noinline fn start() noreturn {
             break :blk_0 .{ args[0..args_len], vars[0..vars_len], auxv };
         }
     };
+
     if (@as(u5, @bitCast(builtin.signal_handlers)) != 0) {
         enableExceptionHandlers();
     }
     if (main_return_type == void) {
-        @call(.auto, main, params);
+        @call(.auto, builtin.root.main, params);
         exitNotice(0);
     }
     if (main_return_type == u8) {
-        exitNotice(@call(.auto, main, params));
+        exitNotice(@call(.auto, builtin.root.main, params));
     }
     if (main_return_type_info == .ErrorUnion and
         main_return_type_info.ErrorUnion.payload == void)
     {
-        if (@call(.auto, main, params)) {
+        if (@call(.auto, builtin.root.main, params)) {
             exitNotice(0);
         } else |err| {
             exitError(err, @as(u8, @intCast(@intFromError(err))));
         }
     }
+
     if (main_return_type_info == .ErrorUnion and
         main_return_type_info.ErrorUnion.payload == u8)
     {
@@ -877,6 +875,7 @@ pub noinline fn start() noreturn {
             exitError(err, @as(u8, @intCast(@intFromError(err))));
         }
     }
+
     debug.assert(main_return_type_info != .ErrorSet);
 }
 // If the return value is greater than word size or is a zig error union, this
@@ -1188,25 +1187,32 @@ pub const about = opaque {
             });
         }
     }
-    fn futexWaitAttempt(futex: *u32, value: u32, timeout: *const time.TimeSpec) void {
-        if (return) {}
-        const addr_s: []const u8 = fmt.old.ux64(@intFromPtr(futex)).readAll();
-        const word_s: []const u8 = fmt.old.ud64(futex.*).readAll();
-        const value_s: []const u8 = fmt.old.ud64(value).readAll();
-        const sec_s: []const u8 = fmt.old.ud64(timeout.sec).readAll();
-        const nsec_s: []const u8 = fmt.old.ud64(timeout.nsec).readAll();
-        var buf: [3072]u8 = undefined;
-        debug.logAlwaysAIO(&buf, &[_][]const u8{ futex_wait_s, addr_s, ", word=", word_s, ", val=", value_s, ", sec=", sec_s, ", nsec=", nsec_s, "\n" });
-    }
     fn futexWaitNotice(futex: *u32, value: u32, timeout: *const time.TimeSpec) void {
-        if (return) {}
-        const addr_s: []const u8 = fmt.old.ux64(@intFromPtr(futex)).readAll();
-        const word_s: []const u8 = fmt.old.ud64(futex.*).readAll();
-        const value_s: []const u8 = fmt.old.ud64(value).readAll();
-        const sec_s: []const u8 = fmt.old.ud64(timeout.sec).readAll();
-        const nsec_s: []const u8 = fmt.old.ud64(timeout.nsec).readAll();
-        var buf: [3072]u8 = undefined;
-        debug.logAlwaysAIO(&buf, &[_][]const u8{ futex_wait_s, addr_s, ", word=", word_s, ", val=", value_s, ", sec=", sec_s, ", nsec=", nsec_s, "\n" });
+        var buf: [256]u8 = undefined;
+        var len: usize = futex_wait_s.len;
+        var ux64: fmt.Type.Ux64 = .{ .value = @intFromPtr(futex) };
+        var ud64: fmt.Type.Ud64 = .{ .value = futex.* };
+        @as(fmt.AboutDest, @ptrCast(&buf)).* = futex_wait_s.*;
+        @as(*[7]u8, @ptrCast(buf[len..].ptr)).* = "futex1=".*;
+        len +%= 7;
+        len +%= ux64.formatWriteBuf(buf[len..].ptr);
+        @as(*[8]u8, @ptrCast(buf[len..].ptr)).* = ", word1=".*;
+        len +%= 8;
+        len +%= ud64.formatWriteBuf(buf[len..].ptr);
+        @as(*[6]u8, @ptrCast(buf[len..].ptr)).* = ", max=".*;
+        len +%= 6;
+        ud64.value = value;
+        len +%= ud64.formatWriteBuf(buf[len..].ptr);
+        @as(*[6]u8, @ptrCast(buf[len..].ptr)).* = ", sec=".*;
+        len +%= 6;
+        ud64.value = timeout.sec;
+        len +%= ud64.formatWriteBuf(buf[len..].ptr);
+        @as(*[7]u8, @ptrCast(buf[len..].ptr)).* = ", nsec=".*;
+        len +%= 7;
+        ud64.value = timeout.nsec;
+        len +%= ud64.formatWriteBuf(buf[len..].ptr);
+        buf[len] = '\n';
+        debug.write(buf[0 .. len +% 1]);
     }
     fn futexWakeAttempt(futex: *u32, count: u64) void {
         var buf: [256]u8 = undefined;
@@ -1266,8 +1272,8 @@ pub const about = opaque {
         len +%= 7;
         ud64.value = count1;
         len +%= ud64.formatWriteBuf(buf[len..].ptr);
-        @as(*[10]u8, @ptrCast(buf[len..].ptr)).* = ", futex2=@".*;
-        len +%= 10;
+        @as(*[9]u8, @ptrCast(buf[len..].ptr)).* = ", futex2=".*;
+        len +%= 9;
         ux64.value = @intFromPtr(futex2);
         len +%= ux64.formatWriteBuf(buf[len..].ptr);
         @as(*[8]u8, @ptrCast(buf[len..].ptr)).* = ", word2=".*;
@@ -1284,8 +1290,8 @@ pub const about = opaque {
     fn futexWakeOpNotice(futex1: *u32, futex2: *u32, count1: u32, count2: u32, _: FutexOp.WakeOp, ret: u64) void {
         var buf: [256]u8 = undefined;
         var len: usize = futex_wait_s.len;
-        var ux64: fmt.Type.Ux64 = @bitCast(@intFromPtr(futex1));
-        var ud64: fmt.Type.Ud64 = @bitCast(@as(u64, futex1.*));
+        var ux64: fmt.Type.Ux64 = .{ .value = @intFromPtr(futex1) };
+        var ud64: fmt.Type.Ud64 = .{ .value = futex1.* };
         @as(fmt.AboutDest, @ptrCast(&buf)).* = futex_wake_s.*;
         @as(*[7]u8, @ptrCast(buf[len..].ptr)).* = "futex1=".*;
         len +%= 7;
@@ -1350,7 +1356,7 @@ pub const about = opaque {
         len +%= ux64.formatWriteBuf(buf[len..].ptr);
         @as(*[2]u8, @ptrCast(buf[len..].ptr)).* = "..".*;
         len +%= 2;
-        ux64 = @bitCast(new_st.addr +% new_st.len);
+        ux64.value = new_st.addr +% new_st.len;
         len +%= ux64.formatWriteBuf(buf[len..].ptr);
         buf[len] = '\n';
         debug.write(buf[0 .. len +% 1]);
@@ -1366,7 +1372,7 @@ pub const about = opaque {
         len +%= debug.about.error_s.len;
         @memcpy(buf[len..].ptr, @errorName(futex_error));
         len +%= @errorName(futex_error).len;
-        @as(*[9]u8, @ptrCast(&buf)).* = ", futex=@".*;
+        @as(*[8]u8, @ptrCast(&buf)).* = ", futex=".*;
         len +%= 8;
         len +%= ux64.formatWriteBuf(buf[len..].ptr);
         @as(*[7]u8, @ptrCast(buf[len..].ptr)).* = ", word=".*;
@@ -1377,10 +1383,10 @@ pub const about = opaque {
         ud64.value = value;
         len +%= ud64.formatWriteBuf(buf[len..].ptr);
         @as(*[6]u8, @ptrCast(buf[len..].ptr)).* = ", sec=".*;
-        ud64 = @bitCast(timeout.sec);
+        ud64.value = timeout.sec;
         len +%= ud64.formatWriteBuf(buf[len..].ptr);
         @as(*[7]u8, @ptrCast(buf[len..].ptr)).* = ", nsec=".*;
-        ud64 = @bitCast(timeout.nsec);
+        ud64.value = timeout.nsec;
         len +%= ud64.formatWriteBuf(buf[len..].ptr);
         buf[len] = '\n';
         debug.write(buf[0 .. len +% 1]);
