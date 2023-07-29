@@ -240,7 +240,7 @@ pub const BuilderSpec = struct {
         /// Report `write` Success and Error.
         write: debug.Logging.SuccessError = .{},
         /// Report `stat` Success and Error.
-        stat: debug.Logging.SuccessError = .{},
+        stat: debug.Logging.SuccessErrorFault = .{},
         /// Report `poll` Success and Error.
         poll: debug.Logging.AttemptSuccessError = .{},
         /// Report `link` Success and Error.
