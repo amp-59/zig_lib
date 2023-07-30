@@ -158,9 +158,9 @@ pub const BuilderSpec = struct {
             /// Defines generid command type used to pass function pointers to node.
             Command: ?type = null,
             /// Defines compile commands for stack tracer object.
-            trace: ?types.BuildCommand = .{ .kind = .obj, .mode = .Debug, .strip = true, .compiler_rt = false },
+            trace: ?types.BuildCommand = .{ .kind = .obj, .mode = .ReleaseSmall, .strip = true, .compiler_rt = false },
             /// Defines compile commands for command line parser shared object.
-            parse: ?types.BuildCommand = .{ .kind = .lib, .mode = .Debug, .dynamic = true, .strip = true, .compiler_rt = false },
+            parse: ?types.BuildCommand = .{ .kind = .lib, .mode = .ReleaseSmall, .dynamic = true, .strip = true, .compiler_rt = false },
         } = .{},
         extensions: struct {
             /// Extension for Zig source files.
@@ -541,7 +541,10 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             if (fd > 1024) {
                 proc.exitErrorFault(error.NoSuchFileOrDirectory, pathname, 2);
             }
-            sys.call_noexcept(.fstat, void, .{ fd, @intFromPtr(&st) });
+            const rc: usize = sys.call_noexcept(.fstat, usize, .{ fd, @intFromPtr(&st) });
+            if (rc != 0) {
+                proc.exitErrorFault(error.NoSuchFileOrDirectory, pathname, 2);
+            }
             const len: usize = mach.alignA64(st.size, 4096);
             const rc_addr1: usize = sys.call_noexcept(.mmap, usize, [6]usize{ addr, len, @bitCast(prot), @bitCast(flags), fd, 0 });
             if (rc_addr1 != addr) {
@@ -828,8 +831,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                             node.addConfig(allocator, "global_cache_root", .{ .String = build.global_cache_root });
                         }
                         if (builder_spec.options.add_debug_stack_traces and
-                            node.task.info.build.strip orelse (mode == .ReleaseSmall) or
-                            node.flags.build.add_stack_traces)
+                            !(node.task.info.build.strip orelse (mode == .ReleaseSmall) or
+                            node.flags.build.add_stack_traces))
                         {
                             node.addConfig(allocator, "have_stack_traces", .{ .Bool = true });
                             node.dependOnObject(allocator, special.trace);
@@ -1375,7 +1378,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             thread_space: *ThreadSpace,
             allocator: *mem.SimpleAllocator,
             node: *Node,
-        ) !void {
+        ) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             defer build.cmd_idx = 5;
             var maybe_task: ?types.Task = null;
