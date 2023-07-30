@@ -1,8 +1,10 @@
 const zl = @import("zig_lib");
+const fmt = zl.fmt;
 const mem = zl.mem;
 const proc = zl.proc;
 const meta = zl.meta;
 const spec = zl.spec;
+const debug = zl.debug;
 const builtin = zl.builtin;
 
 // Use zl startup code to speed compilation and reduce binary size.
@@ -18,7 +20,7 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     debug.write("args:\n");
     var idx: u64 = 1;
     while (idx != args.len) : (idx +%= 1) {
-        debug.write(fmt.old.ud64(idx).readAll());
+        debug.write(fmt.ud64(idx).formatConvert().readAll());
         debug.write(": ");
         debug.write(meta.manyToSlice(args[idx]));
         debug.write("\n");

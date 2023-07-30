@@ -2189,7 +2189,6 @@ pub const TypeDescrFormatSpec = struct {
     token: type = []const u8,
     depth: u64 = 0,
     decls: bool = false,
-    special_enums: bool = false,
     identifier_name: bool = true,
     tokens: Tokens = .{},
     default_field_values: DefaultFieldValues = .fast,
@@ -2227,12 +2226,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
             .indent = spec.tokens.indent[0..spec.tokens.indent.len].*,
         };
         pub const Reference = struct { spec: spec.token, type: *const Format };
-
-        pub const Enumeration = if (spec.decls)
-            struct { spec: spec.token, fields: []const Tag, decls: []const Decl }
-        else
-            struct { spec: spec.token, fields: []const Tag };
-        pub const Composition = if (spec.decls)
+        pub const Container = if (spec.decls)
             struct { spec: spec.token, fields: []const Field, decls: []const Decl }
         else
             struct { spec: spec.token, fields: []const Field };
@@ -2456,10 +2450,6 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                 return len;
             }
         };
-        pub const Container = union(enum) {
-            Enumeration: Enumeration,
-            Composition: Composition,
-        };
         pub fn formatWrite(type_descr: Format, array: anytype) void {
             switch (type_descr) {
                 .type_name => |type_name| array.writeMany(type_name),
@@ -2471,42 +2461,21 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                     if (spec.depth != 0 and
                         spec.depth != depth)
                         for (0..depth) |_| array.writeMany(spec.tokens.indent);
-                    switch (type_decl) {
-                        .Composition => |struct_defn| {
-                            array.writeMany(struct_defn.spec);
-                            depth +%= 1;
-                            array.writeMany(spec.tokens.lbrace);
-                            for (0..depth) |_| array.writeMany(spec.tokens.indent);
-                            for (struct_defn.fields) |field| {
-                                writeFormat(array, field);
-                            }
-                            if (spec.decls) {
-                                for (struct_defn.decls) |field| {
-                                    writeFormat(array, field);
-                                }
-                            }
-                            array.undefine(spec.tokens.indent.len);
-                            array.writeMany(spec.tokens.rbrace);
-                            depth -%= 1;
-                        },
-                        .Enumeration => |enum_defn| {
-                            array.writeMany(enum_defn.spec);
-                            depth +%= 1;
-                            array.writeMany(spec.tokens.lbrace);
-                            for (0..depth) |_| array.writeMany(spec.tokens.indent);
-                            for (enum_defn.fields) |field| {
-                                writeFormat(array, field);
-                            }
-                            if (spec.decls) {
-                                for (enum_defn.decls) |field| {
-                                    writeFormat(array, field);
-                                }
-                            }
-                            array.undefine(spec.tokens.indent.len);
-                            array.writeMany(spec.tokens.rbrace);
-                            depth -%= 1;
-                        },
+                    array.writeMany(type_decl.spec);
+                    depth +%= 1;
+                    array.writeMany(spec.tokens.lbrace);
+                    for (0..depth) |_| array.writeMany(spec.tokens.indent);
+                    for (type_decl.fields) |field| {
+                        writeFormat(array, field);
                     }
+                    if (spec.decls) {
+                        for (type_decl.decls) |field| {
+                            writeFormat(array, field);
+                        }
+                    }
+                    array.undefine(spec.tokens.indent.len);
+                    array.writeMany(spec.tokens.rbrace);
+                    depth -%= 1;
                 },
             }
         }
@@ -2532,54 +2501,27 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                             len +%= Format.tab.indent.len;
                         }
                     }
-                    switch (type_decl) {
-                        .Composition => |struct_defn| {
-                            @memcpy(buf + len, struct_defn.spec);
-                            len +%= struct_defn.spec.len;
-                            depth +%= 1;
-                            @as(*@TypeOf(Format.tab.lbrace), @ptrCast(buf + len)).* = Format.tab.lbrace;
-                            len +%= Format.tab.lbrace.len;
-                            for (0..depth) |_| {
-                                @as(*@TypeOf(Format.tab.indent), @ptrCast(buf + len)).* = Format.tab.indent;
-                                len +%= Format.tab.indent.len;
-                            }
-                            for (struct_defn.fields) |field| {
-                                len +%= field.formatWriteBuf(buf + len);
-                            }
-                            if (spec.decls) {
-                                for (struct_defn.decls) |field| {
-                                    len +%= field.formatWriteBuf(buf + len);
-                                }
-                            }
-                            len -%= spec.tokens.indent.len;
-                            @as(*@TypeOf(Format.tab.rbrace), @ptrCast(buf + len)).* = Format.tab.rbrace;
-                            len +%= Format.tab.rbrace.len;
-                            depth -%= 1;
-                        },
-                        .Enumeration => |enum_defn| {
-                            @memcpy(buf + len, enum_defn.spec);
-                            len +%= enum_defn.spec.len;
-                            depth +%= 1;
-                            @as(*@TypeOf(Format.tab.lbrace), @ptrCast(buf + len)).* = Format.tab.lbrace;
-                            len +%= Format.tab.lbrace.len;
-                            for (0..depth) |_| {
-                                @as(*@TypeOf(Format.tab.indent), @ptrCast(buf + len)).* = Format.tab.indent;
-                                len +%= Format.tab.indent.len;
-                            }
-                            for (enum_defn.fields) |field| {
-                                len +%= field.formatWriteBuf(buf + len);
-                            }
-                            if (spec.decls) {
-                                for (enum_defn.decls) |field| {
-                                    len +%= field.formatWriteBuf(buf + len);
-                                }
-                            }
-                            len -%= spec.tokens.indent.len;
-                            @as(*@TypeOf(Format.tab.rbrace), @ptrCast(buf + len)).* = Format.tab.rbrace;
-                            len +%= Format.tab.rbrace.len;
-                            depth -%= 1;
-                        },
+                    @memcpy(buf + len, type_decl.spec);
+                    len +%= type_decl.spec.len;
+                    depth +%= 1;
+                    @as(*@TypeOf(Format.tab.lbrace), @ptrCast(buf + len)).* = Format.tab.lbrace;
+                    len +%= Format.tab.lbrace.len;
+                    for (0..depth) |_| {
+                        @as(*@TypeOf(Format.tab.indent), @ptrCast(buf + len)).* = Format.tab.indent;
+                        len +%= Format.tab.indent.len;
                     }
+                    for (type_decl.fields) |field| {
+                        len +%= field.formatWriteBuf(buf + len);
+                    }
+                    if (spec.decls) {
+                        for (type_decl.decls) |field| {
+                            len +%= field.formatWriteBuf(buf + len);
+                        }
+                    }
+                    len -%= spec.tokens.indent.len;
+                    @as(*@TypeOf(Format.tab.rbrace), @ptrCast(buf + len)).* = Format.tab.rbrace;
+                    len +%= Format.tab.rbrace.len;
+                    depth -%= 1;
                 },
             }
             return len;
@@ -2596,42 +2538,21 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                     if (spec.depth != 0 and
                         spec.depth != depth)
                         len +%= depth *% spec.tokens.indent.len;
-                    switch (type_decl) {
-                        .Composition => |struct_defn| {
-                            len +%= struct_defn.spec.len;
-                            depth +%= 1;
-                            len +%= spec.tokens.lbrace.len;
-                            len +%= depth *% spec.tokens.indent.len;
-                            for (struct_defn.fields) |field| {
-                                len +%= field.formatLength();
-                            }
-                            if (spec.decls) {
-                                for (struct_defn.decls) |decl| {
-                                    len +%= decl.formatLength();
-                                }
-                            }
-                            len -%= spec.tokens.indent.len;
-                            len +%= spec.tokens.rbrace.len;
-                            depth -%= 1;
-                        },
-                        .Enumeration => |enum_defn| {
-                            len +%= enum_defn.spec.len;
-                            depth +%= 1;
-                            len +%= spec.tokens.lbrace.len;
-                            len +%= depth *% spec.tokens.indent.len;
-                            for (enum_defn.fields) |field| {
-                                len +%= field.formatLength();
-                            }
-                            if (spec.decls) {
-                                for (enum_defn.decls) |decl| {
-                                    len +%= decl.formatLength();
-                                }
-                            }
-                            len -%= spec.tokens.indent.len;
-                            len +%= spec.tokens.rbrace.len;
-                            depth -%= 1;
-                        },
+                    len +%= type_decl.spec.len;
+                    depth +%= 1;
+                    len +%= spec.tokens.lbrace.len;
+                    len +%= depth *% spec.tokens.indent.len;
+                    for (type_decl.fields) |field| {
+                        len +%= field.formatLength();
                     }
+                    if (spec.decls) {
+                        for (type_decl.decls) |decl| {
+                            len +%= decl.formatLength();
+                        }
+                    }
+                    len -%= spec.tokens.indent.len;
+                    len +%= spec.tokens.rbrace.len;
+                    depth -%= 1;
                 },
             }
             return len;
@@ -2706,11 +2627,11 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                                     .default_value = defaultFieldValue(field.type, field.default_value),
                                 }};
                             }
-                            return .{ .type_decl = .{ .Composition = .{
+                            return .{ .type_decl = .{
                                 .spec = fmt.typeDeclSpecifier(type_info),
                                 .fields = type_fields,
                                 .decls = type_decls,
-                            } } };
+                            } };
                         } else {
                             var type_fields: []const Field = &.{};
                             for (struct_info.fields) |field| {
@@ -2720,10 +2641,10 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                                     .default_value = defaultFieldValue(field.type, field.default_value),
                                 }};
                             }
-                            return .{ .type_decl = .{ .Composition = .{
+                            return .{ .type_decl = .{
                                 .spec = fmt.typeDeclSpecifier(type_info),
                                 .fields = type_fields,
-                            } } };
+                            } };
                         }
                     },
                     .Union => |union_info| {
@@ -2744,11 +2665,11 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                                     .type = init(field.type),
                                 }};
                             }
-                            return .{ .type_decl = .{ .Composition = .{
+                            return .{ .type_decl = .{
                                 .spec = fmt.typeDeclSpecifier(type_info),
                                 .fields = type_fields,
                                 .decls = type_decls,
-                            } } };
+                            } };
                         } else {
                             var type_fields: []const Field = &.{};
                             for (union_info.fields) |field| {
@@ -2757,10 +2678,10 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                                     .type = init(field.type),
                                 }};
                             }
-                            return .{ .type_decl = .{ .Composition = .{
+                            return .{ .type_decl = .{
                                 .spec = fmt.typeDeclSpecifier(type_info),
                                 .fields = type_fields,
-                            } } };
+                            } };
                         }
                     },
                     .Enum => |enum_info| {
@@ -2781,11 +2702,11 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                                     .value = .{ .enumeration = field.value },
                                 }};
                             }
-                            return .{ .type_decl = .{ .Composition = .{
+                            return .{ .type_decl = .{
                                 .spec = fmt.typeDeclSpecifier(type_info),
                                 .fields = type_fields,
                                 .decls = type_decls,
-                            } } };
+                            } };
                         } else {
                             var type_fields: []const Tag = &.{};
                             for (enum_info.fields) |field| {
@@ -2794,10 +2715,10 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                                     .value = field.value,
                                 }};
                             }
-                            return .{ .type_decl = .{ .Composition = .{
+                            return .{ .type_decl = .{
                                 .spec = fmt.typeDeclSpecifier(type_info),
                                 .fields = type_fields,
-                            } } };
+                            } };
                         }
                     },
                     .Optional => |optional_info| {
@@ -2844,11 +2765,11 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                                     .value = .{ .default = defaultFieldValue(field.type, field.default_value) },
                                 }};
                             }
-                            return .{ .type_decl = .{ .Composition = .{
+                            return .{ .type_decl = .{
                                 .spec = fmt.typeDeclSpecifier(type_info),
                                 .fields = type_fields,
                                 .decls = type_decls,
-                            } } };
+                            } };
                         } else {
                             var type_fields: []const Field = &.{};
                             for (struct_info.fields) |field| {
@@ -2858,10 +2779,10 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                                     .value = .{ .default = defaultFieldValue(field.type, field.default_value) },
                                 }};
                             }
-                            return .{ .type_decl = .{ .Composition = .{
+                            return .{ .type_decl = .{
                                 .spec = fmt.typeDeclSpecifier(type_info),
                                 .fields = type_fields,
-                            } } };
+                            } };
                         }
                     },
                     .Union => |union_info| {
@@ -2882,11 +2803,11 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                                     .type = init(field.type),
                                 }};
                             }
-                            return .{ .type_decl = .{ .Composition = .{
+                            return .{ .type_decl = .{
                                 .spec = fmt.typeDeclSpecifier(type_info),
                                 .fields = type_fields,
                                 .decls = type_decls,
-                            } } };
+                            } };
                         } else {
                             var type_fields: []const Field = &.{};
                             for (union_info.fields) |field| {
@@ -2895,10 +2816,10 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                                     .type = init(field.type),
                                 }};
                             }
-                            return .{ .type_decl = .{ .Composition = .{
+                            return .{ .type_decl = .{
                                 .spec = fmt.typeDeclSpecifier(type_info),
                                 .fields = type_fields,
-                            } } };
+                            } };
                         }
                     },
                     .Enum => |enum_info| {
@@ -2912,59 +2833,30 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                                     }};
                                 }
                             }
-                            if (spec.special_enums) {
-                                var type_fields: []const Tag = &.{};
-                                for (enum_info.fields) |field| {
-                                    type_fields = type_fields ++ [1]Tag{.{
-                                        .name = field.name,
-                                        .value = field.value,
-                                    }};
-                                }
-                                return .{ .type_decl = .{ .Enumeration = .{
-                                    .spec = fmt.typeDeclSpecifier(type_info),
-                                    .fields = type_fields,
-                                    .decls = type_decls,
-                                } } };
-                            } else {
-                                var type_fields: []const Field = &.{};
-                                for (enum_info.fields) |field| {
-                                    type_fields = type_fields ++ [1]Field{.{
-                                        .name = field.name,
-                                        .value = .{ .enumeration = field.value },
-                                    }};
-                                }
-                                return .{ .type_decl = .{ .Composition = .{
-                                    .spec = fmt.typeDeclSpecifier(type_info),
-                                    .fields = type_fields,
-                                    .decls = type_decls,
-                                } } };
+                            var type_fields: []const Field = &.{};
+                            for (enum_info.fields) |field| {
+                                type_fields = type_fields ++ [1]Field{.{
+                                    .name = field.name,
+                                    .value = .{ .enumeration = field.value },
+                                }};
                             }
+                            return .{ .type_decl = .{
+                                .spec = fmt.typeDeclSpecifier(type_info),
+                                .fields = type_fields,
+                                .decls = type_decls,
+                            } };
                         } else {
-                            if (spec.special_enums) {
-                                var type_fields: []const Tag = &.{};
-                                for (enum_info.fields) |field| {
-                                    type_fields = type_fields ++ [1]Tag{.{
-                                        .name = field.name,
-                                        .value = field.value,
-                                    }};
-                                }
-                                return .{ .type_decl = .{ .Enumeration = .{
-                                    .spec = fmt.typeDeclSpecifier(type_info),
-                                    .fields = type_fields,
-                                } } };
-                            } else {
-                                var type_fields: []const Field = &.{};
-                                for (enum_info.fields) |field| {
-                                    type_fields = type_fields ++ [1]Field{.{
-                                        .name = field.name,
-                                        .value = .{ .enumeration = field.value },
-                                    }};
-                                }
-                                return .{ .type_decl = .{ .Composition = .{
-                                    .spec = fmt.typeDeclSpecifier(type_info),
-                                    .fields = type_fields,
-                                } } };
+                            var type_fields: []const Field = &.{};
+                            for (enum_info.fields) |field| {
+                                type_fields = type_fields ++ [1]Field{.{
+                                    .name = field.name,
+                                    .value = .{ .enumeration = field.value },
+                                }};
                             }
+                            return .{ .type_decl = .{
+                                .spec = fmt.typeDeclSpecifier(type_info),
+                                .fields = type_fields,
+                            } };
                         }
                     },
                     .Optional => |optional_info| {
