@@ -37,2458 +37,2141 @@ const Allocator = mem.GenericArenaAllocator(.{
     .options = spec.allocator.options.small,
 });
 const AddressSpace = Allocator.AddressSpace;
+
 const spec_sets_a: []const mem_types.AbstractSpecification = attr.abstract_specs;
-const spec_sets_0: []const []const []const mem_types.Specifier = &.{ &.{ &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .default = .{
-    .tag = .count,
-    .type = .{ .type_name = "u64" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} } }, &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .default = .{
-    .tag = .count,
-    .type = .{ .type_name = "u64" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} } } }, &.{ &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .default = .{
-    .tag = .count,
-    .type = .{ .type_name = "u64" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} } }, &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .default = .{
-    .tag = .count,
-    .type = .{ .type_name = "u64" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} } } }, &.{ &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .default = .{
-    .tag = .count,
-    .type = .{ .type_name = "u64" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} } }, &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .default = .{
-    .tag = .count,
-    .type = .{ .type_name = "u64" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} } } }, &.{ &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .default = .{
-    .tag = .count,
-    .type = .{ .type_name = "u64" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} } }, &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .default = .{
-    .tag = .count,
-    .type = .{ .type_name = "u64" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} } } }, &.{ &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} } }, &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} } }, &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{ .{
-            .name = "lb_addr",
-            .type = .{ .type_name = "u64" },
-            .default_value = null,
-        }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
-    } } },
-} } }, &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{ .{
-            .name = "lb_addr",
-            .type = .{ .type_name = "u64" },
-            .default_value = null,
-        }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
-    } } },
-} } } }, &.{ &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} } }, &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} } }, &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{ .{
-            .name = "lb_addr",
-            .type = .{ .type_name = "u64" },
-            .default_value = null,
-        }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
-    } } },
-} } }, &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{ .{
-            .name = "lb_addr",
-            .type = .{ .type_name = "u64" },
-            .default_value = null,
-        }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
-    } } },
-} } } }, &.{ &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} } }, &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} } }, &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{ .{
-            .name = "lb_addr",
-            .type = .{ .type_name = "u64" },
-            .default_value = null,
-        }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
-    } } },
-} } }, &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{ .{
-            .name = "lb_addr",
-            .type = .{ .type_name = "u64" },
-            .default_value = null,
-        }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
-    } } },
-} } } }, &.{ &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} } }, &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} } }, &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{ .{
-            .name = "lb_addr",
-            .type = .{ .type_name = "u64" },
-            .default_value = null,
-        }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
-    } } },
-} } }, &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{ .{
-            .name = "lb_addr",
-            .type = .{ .type_name = "u64" },
-            .default_value = null,
-        }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
-    } } },
-} } } }, &.{ &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} } }, &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} } }, &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{ .{
-            .name = "lb_addr",
-            .type = .{ .type_name = "u64" },
-            .default_value = null,
-        }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
-    } } },
-} } }, &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{ .{
-            .name = "lb_addr",
-            .type = .{ .type_name = "u64" },
-            .default_value = null,
-        }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
-    } } },
-} } } }, &.{ &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} } }, &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} } }, &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{ .{
-            .name = "lb_addr",
-            .type = .{ .type_name = "u64" },
-            .default_value = null,
-        }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
-    } } },
-} } }, &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{ .{
-            .name = "lb_addr",
-            .type = .{ .type_name = "u64" },
-            .default_value = null,
-        }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
-    } } },
-} } } }, &.{ &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} } }, &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} } }, &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{ .{
-            .name = "lb_addr",
-            .type = .{ .type_name = "u64" },
-            .default_value = null,
-        }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
-    } } },
-} } }, &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{ .{
-            .name = "lb_addr",
-            .type = .{ .type_name = "u64" },
-            .default_value = null,
-        }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
-    } } },
-} } } }, &.{ &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} } }, &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} } }, &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{ .{
-            .name = "lb_addr",
-            .type = .{ .type_name = "u64" },
-            .default_value = null,
-        }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
-    } } },
-} } }, &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{ .{
-            .name = "lb_addr",
-            .type = .{ .type_name = "u64" },
-            .default_value = null,
-        }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
-    } } },
-} } } }, &.{ &.{.{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }}, &.{ .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} } }, &.{ .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{ .{
-            .name = "lb_addr",
-            .type = .{ .type_name = "u64" },
-            .default_value = null,
-        }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
-    } } },
-} } }, &.{ .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{ .{
-            .name = "lb_addr",
-            .type = .{ .type_name = "u64" },
-            .default_value = null,
-        }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
-    } } },
-} } } }, &.{ &.{.{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }}, &.{ .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} } }, &.{ .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{ .{
-            .name = "lb_addr",
-            .type = .{ .type_name = "u64" },
-            .default_value = null,
-        }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
-    } } },
-} } }, &.{ .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{ .{
-            .name = "lb_addr",
-            .type = .{ .type_name = "u64" },
-            .default_value = null,
-        }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
-    } } },
-} } } }, &.{ &.{.{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }}, &.{ .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} } }, &.{ .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{ .{
-            .name = "lb_addr",
-            .type = .{ .type_name = "u64" },
-            .default_value = null,
-        }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
-    } } },
-} } }, &.{ .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{ .{
-            .name = "lb_addr",
-            .type = .{ .type_name = "u64" },
-            .default_value = null,
-        }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
-    } } },
-} } } }, &.{ &.{.{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }}, &.{ .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} } }, &.{ .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{ .{
-            .name = "lb_addr",
-            .type = .{ .type_name = "u64" },
-            .default_value = null,
-        }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
-    } } },
-} } }, &.{ .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{ .{
-            .name = "lb_addr",
-            .type = .{ .type_name = "u64" },
-            .default_value = null,
-        }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
-    } } },
-} } } }, &.{ &.{.{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }}, &.{ .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} } }, &.{ .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{ .{
-            .name = "lb_addr",
-            .type = .{ .type_name = "u64" },
-            .default_value = null,
-        }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
-    } } },
-} } }, &.{ .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{ .{
-            .name = "lb_addr",
-            .type = .{ .type_name = "u64" },
-            .default_value = null,
-        }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
-    } } },
-} } } }, &.{ &.{.{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }}, &.{ .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} } }, &.{ .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{ .{
-            .name = "lb_addr",
-            .type = .{ .type_name = "u64" },
-            .default_value = null,
-        }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
-    } } },
-} } }, &.{ .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{ .{
-            .name = "lb_addr",
-            .type = .{ .type_name = "u64" },
-            .default_value = null,
-        }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
-    } } },
-} } } }, &.{ &.{.{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }}, &.{ .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} } }, &.{ .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{ .{
-            .name = "lb_addr",
-            .type = .{ .type_name = "u64" },
-            .default_value = null,
-        }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
-    } } },
-} } }, &.{ .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{ .{
-            .name = "lb_addr",
-            .type = .{ .type_name = "u64" },
-            .default_value = null,
-        }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
-    } } },
-} } } }, &.{ &.{.{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }}, &.{ .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} } }, &.{ .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{ .{
-            .name = "lb_addr",
-            .type = .{ .type_name = "u64" },
-            .default_value = null,
-        }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
-    } } },
-} } }, &.{ .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{ .{
-            .name = "lb_addr",
-            .type = .{ .type_name = "u64" },
-            .default_value = null,
-        }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
-    } } },
-} } } }, &.{ &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} } }, &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} } }, &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{ .{
-            .name = "lb_addr",
-            .type = .{ .type_name = "u64" },
-            .default_value = null,
-        }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
-    } } },
-} } }, &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{ .{
-            .name = "lb_addr",
-            .type = .{ .type_name = "u64" },
-            .default_value = null,
-        }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
-    } } },
-} } } }, &.{ &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} } }, &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} } }, &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{ .{
-            .name = "lb_addr",
-            .type = .{ .type_name = "u64" },
-            .default_value = null,
-        }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
-    } } },
-} } }, &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{ .{
-            .name = "lb_addr",
-            .type = .{ .type_name = "u64" },
-            .default_value = null,
-        }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
-    } } },
-} } } }, &.{ &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} } }, &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} } }, &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{ .{
-            .name = "lb_addr",
-            .type = .{ .type_name = "u64" },
-            .default_value = null,
-        }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
-    } } },
-} } }, &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{ .{
-            .name = "lb_addr",
-            .type = .{ .type_name = "u64" },
-            .default_value = null,
-        }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
-    } } },
-} } } }, &.{ &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} } }, &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} } }, &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{ .{
-            .name = "lb_addr",
-            .type = .{ .type_name = "u64" },
-            .default_value = null,
-        }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
-    } } },
-} } }, &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{ .{
-            .name = "lb_addr",
-            .type = .{ .type_name = "u64" },
-            .default_value = null,
-        }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
-    } } },
-} } } }, &.{ &.{.{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }}, &.{ .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} } }, &.{ .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{ .{
-            .name = "lb_addr",
-            .type = .{ .type_name = "u64" },
-            .default_value = null,
-        }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
-    } } },
-} } }, &.{ .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{ .{
-            .name = "lb_addr",
-            .type = .{ .type_name = "u64" },
-            .default_value = null,
-        }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
-    } } },
-} } } }, &.{ &.{.{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }}, &.{ .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} } }, &.{ .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{ .{
-            .name = "lb_addr",
-            .type = .{ .type_name = "u64" },
-            .default_value = null,
-        }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
-    } } },
-} } }, &.{ .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{ .{
-            .name = "lb_addr",
-            .type = .{ .type_name = "u64" },
-            .default_value = null,
-        }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
-    } } },
-} } } }, &.{ &.{.{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }}, &.{ .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} } }, &.{ .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{ .{
-            .name = "lb_addr",
-            .type = .{ .type_name = "u64" },
-            .default_value = null,
-        }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
-    } } },
-} } }, &.{ .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{ .{
-            .name = "lb_addr",
-            .type = .{ .type_name = "u64" },
-            .default_value = null,
-        }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
-    } } },
-} } } }, &.{ &.{.{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }}, &.{ .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} } }, &.{ .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{ .{
-            .name = "lb_addr",
-            .type = .{ .type_name = "u64" },
-            .default_value = null,
-        }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
-    } } },
-} } }, &.{ .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{ .{
-            .name = "lb_addr",
-            .type = .{ .type_name = "u64" },
-            .default_value = null,
-        }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
-    } } },
-} } } }, &.{ &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .default = .{
-    .tag = .Allocator,
-    .type = .{ .type_name = "type" },
-} } }, &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .default = .{
-    .tag = .Allocator,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} } } }, &.{ &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .default = .{
-    .tag = .Allocator,
-    .type = .{ .type_name = "type" },
-} } }, &.{ .{ .default = .{
-    .tag = .child,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .default = .{
-    .tag = .Allocator,
-    .type = .{ .type_name = "type" },
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} } } }, &.{ &.{.{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }}, &.{ .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} } }, &.{ .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{
-            .{
-                .name = "lb_addr",
-                .type = .{ .type_name = "u64" },
-                .default_value = null,
+const spec_sets_0: []const []const []const mem_types.Specifier = &.{
+    &.{ &.{ .{ .default = .{
+        .tag = .child,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } }, .{ .default = .{
+        .tag = .count,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+    } }, .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } } }, &.{ .{ .default = .{
+        .tag = .child,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } }, .{ .default = .{
+        .tag = .count,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+    } }, .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .optional_variant = .{
+        .tag = .sentinel,
+        .type = .{ .type_ref = .{
+            .spec = "*const ",
+            .type = &.{ .type_decl = .{
+                .name = "anyopaque",
+            } },
+        } },
+    } } } },
+    &.{ &.{ .{ .default = .{
+        .tag = .child,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } }, .{ .default = .{
+        .tag = .count,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+    } }, .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } } }, &.{ .{ .default = .{
+        .tag = .child,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } }, .{ .default = .{
+        .tag = .count,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+    } }, .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .optional_variant = .{
+        .tag = .sentinel,
+        .type = .{ .type_ref = .{
+            .spec = "*const ",
+            .type = &.{ .type_decl = .{
+                .name = "anyopaque",
+            } },
+        } },
+    } } } },
+    &.{ &.{ .{ .default = .{
+        .tag = .child,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } }, .{ .default = .{
+        .tag = .count,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+    } }, .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } } }, &.{ .{ .default = .{
+        .tag = .child,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } }, .{ .default = .{
+        .tag = .count,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+    } }, .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .optional_variant = .{
+        .tag = .sentinel,
+        .type = .{ .type_ref = .{
+            .spec = "*const ",
+            .type = &.{ .type_decl = .{
+                .name = "anyopaque",
+            } },
+        } },
+    } } } },
+    &.{ &.{ .{ .default = .{
+        .tag = .child,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } }, .{ .default = .{
+        .tag = .count,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+    } }, .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } } }, &.{ .{ .default = .{
+        .tag = .child,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } }, .{ .default = .{
+        .tag = .count,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+    } }, .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .optional_variant = .{
+        .tag = .sentinel,
+        .type = .{ .type_ref = .{
+            .spec = "*const ",
+            .type = &.{ .type_decl = .{
+                .name = "anyopaque",
+            } },
+        } },
+    } } } },
+    &.{ &.{ .{ .default = .{
+        .tag = .child,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } }, .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } } }, &.{ .{ .default = .{
+        .tag = .child,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } }, .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .optional_variant = .{
+        .tag = .sentinel,
+        .type = .{ .type_ref = .{
+            .spec = "*const ",
+            .type = &.{ .type_decl = .{
+                .name = "anyopaque",
+            } },
+        } },
+    } } }, &.{ .{ .default = .{
+        .tag = .child,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } }, .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .decl_optional_variant = .{
+        .ctn_tag = .Allocator,
+        .decl_tag = .arena,
+        .ctn_type = .{ .type_decl = .{
+            .name = "type",
+        } },
+        .decl_type = .{ .type_decl = .{
+            .defn = .{
+                .spec = "struct",
+                .fields = &.{ .{
+                    .name = "lb_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                }, .{
+                    .name = "up_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                } },
             },
-            .{
-                .name = "up_addr",
-                .type = .{ .type_name = "u64" },
-                .default_value = null,
+        } },
+    } } }, &.{ .{ .default = .{
+        .tag = .child,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } }, .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .optional_variant = .{
+        .tag = .sentinel,
+        .type = .{ .type_ref = .{
+            .spec = "*const ",
+            .type = &.{ .type_decl = .{
+                .name = "anyopaque",
+            } },
+        } },
+    } }, .{ .decl_optional_variant = .{
+        .ctn_tag = .Allocator,
+        .decl_tag = .arena,
+        .ctn_type = .{ .type_decl = .{
+            .name = "type",
+        } },
+        .decl_type = .{ .type_decl = .{
+            .defn = .{
+                .spec = "struct",
+                .fields = &.{ .{
+                    .name = "lb_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                }, .{
+                    .name = "up_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                } },
             },
-        },
-    } } },
-} } }, &.{ .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{ .{
-            .name = "lb_addr",
-            .type = .{ .type_name = "u64" },
-            .default_value = null,
-        }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
-    } } },
-} } } }, &.{ &.{.{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }}, &.{ .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} } }, &.{ .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{ .{
-            .name = "lb_addr",
-            .type = .{ .type_name = "u64" },
-            .default_value = null,
-        }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
-    } } },
-} } }, &.{ .{ .optional_derived = .{
-    .tag = .low_alignment,
-    .type = .{ .type_name = "u64" },
-    .fn_name = "lowAlignment",
-} }, .{ .optional_variant = .{
-    .tag = .sentinel,
-    .type = .{ .type_refer = .{
-        .spec = "*const ",
-        .type = &.{ .type_name = "anyopaque" },
-    } },
-} }, .{ .decl_optional_variant = .{
-    .ctn_tag = .Allocator,
-    .decl_tag = .arena,
-    .ctn_type = .{ .type_name = "type" },
-    .decl_type = .{ .type_decl = .{ .Composition = .{
-        .spec = "struct",
-        .fields = &.{ .{
-            .name = "lb_addr",
-            .type = .{ .type_name = "u64" },
-            .default_value = null,
-        }, .{ .name = "up_addr", .type = .{ .type_name = "u64" }, .default_value = null } },
-    } } },
-} } } } };
-const tech_sets_0: []const []const []const mem_types.Technique = &.{ &.{&.{}}, &.{&.{}}, &.{&.{}}, &.{&.{}}, &.{ &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .lazy_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .unit_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .disjunct_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }} }, &.{ &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .lazy_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .unit_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .disjunct_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }} }, &.{ &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .lazy_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .unit_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .disjunct_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }} }, &.{ &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .lazy_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .unit_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .disjunct_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }} }, &.{ &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .lazy_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .unit_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .disjunct_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{ .{ .standalone = .single_packed_approximate_capacity }, .{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .lazy_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} } }, &.{ .{ .standalone = .single_packed_approximate_capacity }, .{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .unit_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} } }, &.{ .{ .standalone = .single_packed_approximate_capacity }, .{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .disjunct_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} } } }, &.{ &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .lazy_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .unit_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .disjunct_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{ .{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .lazy_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }, .{ .mutually_exclusive = .{
-    .kind = .optional,
-    .opt_tag = .capacity,
-    .tech_tag = .single_packed_approximate_capacity,
-    .tech_tags = &.{ .single_packed_approximate_capacity, .double_packed_approximate_capacity },
-} } }, &.{ .{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .lazy_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }, .{ .mutually_exclusive = .{
-    .kind = .optional,
-    .opt_tag = .capacity,
-    .tech_tag = .double_packed_approximate_capacity,
-    .tech_tags = &.{ .single_packed_approximate_capacity, .double_packed_approximate_capacity },
-} } }, &.{ .{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .unit_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }, .{ .mutually_exclusive = .{
-    .kind = .optional,
-    .opt_tag = .capacity,
-    .tech_tag = .single_packed_approximate_capacity,
-    .tech_tags = &.{ .single_packed_approximate_capacity, .double_packed_approximate_capacity },
-} } }, &.{ .{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .unit_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }, .{ .mutually_exclusive = .{
-    .kind = .optional,
-    .opt_tag = .capacity,
-    .tech_tag = .double_packed_approximate_capacity,
-    .tech_tags = &.{ .single_packed_approximate_capacity, .double_packed_approximate_capacity },
-} } }, &.{ .{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .disjunct_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }, .{ .mutually_exclusive = .{
-    .kind = .optional,
-    .opt_tag = .capacity,
-    .tech_tag = .single_packed_approximate_capacity,
-    .tech_tags = &.{ .single_packed_approximate_capacity, .double_packed_approximate_capacity },
-} } }, &.{ .{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .disjunct_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }, .{ .mutually_exclusive = .{
-    .kind = .optional,
-    .opt_tag = .capacity,
-    .tech_tag = .double_packed_approximate_capacity,
-    .tech_tags = &.{ .single_packed_approximate_capacity, .double_packed_approximate_capacity },
-} } } }, &.{ &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .lazy_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .unit_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .disjunct_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{ .{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .lazy_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }, .{ .mutually_exclusive = .{
-    .kind = .optional,
-    .opt_tag = .capacity,
-    .tech_tag = .single_packed_approximate_capacity,
-    .tech_tags = &.{ .single_packed_approximate_capacity, .double_packed_approximate_capacity },
-} } }, &.{ .{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .lazy_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }, .{ .mutually_exclusive = .{
-    .kind = .optional,
-    .opt_tag = .capacity,
-    .tech_tag = .double_packed_approximate_capacity,
-    .tech_tags = &.{ .single_packed_approximate_capacity, .double_packed_approximate_capacity },
-} } }, &.{ .{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .unit_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }, .{ .mutually_exclusive = .{
-    .kind = .optional,
-    .opt_tag = .capacity,
-    .tech_tag = .single_packed_approximate_capacity,
-    .tech_tags = &.{ .single_packed_approximate_capacity, .double_packed_approximate_capacity },
-} } }, &.{ .{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .unit_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }, .{ .mutually_exclusive = .{
-    .kind = .optional,
-    .opt_tag = .capacity,
-    .tech_tag = .double_packed_approximate_capacity,
-    .tech_tags = &.{ .single_packed_approximate_capacity, .double_packed_approximate_capacity },
-} } }, &.{ .{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .disjunct_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }, .{ .mutually_exclusive = .{
-    .kind = .optional,
-    .opt_tag = .capacity,
-    .tech_tag = .single_packed_approximate_capacity,
-    .tech_tags = &.{ .single_packed_approximate_capacity, .double_packed_approximate_capacity },
-} } }, &.{ .{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .disjunct_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }, .{ .mutually_exclusive = .{
-    .kind = .optional,
-    .opt_tag = .capacity,
-    .tech_tag = .double_packed_approximate_capacity,
-    .tech_tags = &.{ .single_packed_approximate_capacity, .double_packed_approximate_capacity },
-} } } }, &.{ &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .lazy_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .unit_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .disjunct_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{ .{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .lazy_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }, .{ .mutually_exclusive = .{
-    .kind = .optional,
-    .opt_tag = .capacity,
-    .tech_tag = .single_packed_approximate_capacity,
-    .tech_tags = &.{ .single_packed_approximate_capacity, .double_packed_approximate_capacity },
-} } }, &.{ .{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .lazy_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }, .{ .mutually_exclusive = .{
-    .kind = .optional,
-    .opt_tag = .capacity,
-    .tech_tag = .double_packed_approximate_capacity,
-    .tech_tags = &.{ .single_packed_approximate_capacity, .double_packed_approximate_capacity },
-} } }, &.{ .{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .unit_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }, .{ .mutually_exclusive = .{
-    .kind = .optional,
-    .opt_tag = .capacity,
-    .tech_tag = .single_packed_approximate_capacity,
-    .tech_tags = &.{ .single_packed_approximate_capacity, .double_packed_approximate_capacity },
-} } }, &.{ .{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .unit_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }, .{ .mutually_exclusive = .{
-    .kind = .optional,
-    .opt_tag = .capacity,
-    .tech_tag = .double_packed_approximate_capacity,
-    .tech_tags = &.{ .single_packed_approximate_capacity, .double_packed_approximate_capacity },
-} } }, &.{ .{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .disjunct_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }, .{ .mutually_exclusive = .{
-    .kind = .optional,
-    .opt_tag = .capacity,
-    .tech_tag = .single_packed_approximate_capacity,
-    .tech_tags = &.{ .single_packed_approximate_capacity, .double_packed_approximate_capacity },
-} } }, &.{ .{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .disjunct_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }, .{ .mutually_exclusive = .{
-    .kind = .optional,
-    .opt_tag = .capacity,
-    .tech_tag = .double_packed_approximate_capacity,
-    .tech_tags = &.{ .single_packed_approximate_capacity, .double_packed_approximate_capacity },
-} } } }, &.{ &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .lazy_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .unit_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .disjunct_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }} }, &.{ &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .lazy_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .unit_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .disjunct_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }} }, &.{ &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .lazy_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .unit_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .disjunct_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }} }, &.{ &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .lazy_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .unit_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .disjunct_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }} }, &.{ &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .lazy_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .unit_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .disjunct_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{ .{ .standalone = .single_packed_approximate_capacity }, .{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .lazy_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} } }, &.{ .{ .standalone = .single_packed_approximate_capacity }, .{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .unit_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} } }, &.{ .{ .standalone = .single_packed_approximate_capacity }, .{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .disjunct_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} } } }, &.{ &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .lazy_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .unit_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .disjunct_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{ .{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .lazy_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }, .{ .mutually_exclusive = .{
-    .kind = .optional,
-    .opt_tag = .capacity,
-    .tech_tag = .single_packed_approximate_capacity,
-    .tech_tags = &.{ .single_packed_approximate_capacity, .double_packed_approximate_capacity },
-} } }, &.{ .{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .lazy_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }, .{ .mutually_exclusive = .{
-    .kind = .optional,
-    .opt_tag = .capacity,
-    .tech_tag = .double_packed_approximate_capacity,
-    .tech_tags = &.{ .single_packed_approximate_capacity, .double_packed_approximate_capacity },
-} } }, &.{ .{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .unit_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }, .{ .mutually_exclusive = .{
-    .kind = .optional,
-    .opt_tag = .capacity,
-    .tech_tag = .single_packed_approximate_capacity,
-    .tech_tags = &.{ .single_packed_approximate_capacity, .double_packed_approximate_capacity },
-} } }, &.{ .{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .unit_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }, .{ .mutually_exclusive = .{
-    .kind = .optional,
-    .opt_tag = .capacity,
-    .tech_tag = .double_packed_approximate_capacity,
-    .tech_tags = &.{ .single_packed_approximate_capacity, .double_packed_approximate_capacity },
-} } }, &.{ .{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .disjunct_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }, .{ .mutually_exclusive = .{
-    .kind = .optional,
-    .opt_tag = .capacity,
-    .tech_tag = .single_packed_approximate_capacity,
-    .tech_tags = &.{ .single_packed_approximate_capacity, .double_packed_approximate_capacity },
-} } }, &.{ .{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .disjunct_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }, .{ .mutually_exclusive = .{
-    .kind = .optional,
-    .opt_tag = .capacity,
-    .tech_tag = .double_packed_approximate_capacity,
-    .tech_tags = &.{ .single_packed_approximate_capacity, .double_packed_approximate_capacity },
-} } } }, &.{ &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .lazy_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .unit_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .disjunct_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{ .{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .lazy_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }, .{ .mutually_exclusive = .{
-    .kind = .optional,
-    .opt_tag = .capacity,
-    .tech_tag = .single_packed_approximate_capacity,
-    .tech_tags = &.{ .single_packed_approximate_capacity, .double_packed_approximate_capacity },
-} } }, &.{ .{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .lazy_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }, .{ .mutually_exclusive = .{
-    .kind = .optional,
-    .opt_tag = .capacity,
-    .tech_tag = .double_packed_approximate_capacity,
-    .tech_tags = &.{ .single_packed_approximate_capacity, .double_packed_approximate_capacity },
-} } }, &.{ .{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .unit_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }, .{ .mutually_exclusive = .{
-    .kind = .optional,
-    .opt_tag = .capacity,
-    .tech_tag = .single_packed_approximate_capacity,
-    .tech_tags = &.{ .single_packed_approximate_capacity, .double_packed_approximate_capacity },
-} } }, &.{ .{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .unit_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }, .{ .mutually_exclusive = .{
-    .kind = .optional,
-    .opt_tag = .capacity,
-    .tech_tag = .double_packed_approximate_capacity,
-    .tech_tags = &.{ .single_packed_approximate_capacity, .double_packed_approximate_capacity },
-} } }, &.{ .{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .disjunct_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }, .{ .mutually_exclusive = .{
-    .kind = .optional,
-    .opt_tag = .capacity,
-    .tech_tag = .single_packed_approximate_capacity,
-    .tech_tags = &.{ .single_packed_approximate_capacity, .double_packed_approximate_capacity },
-} } }, &.{ .{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .disjunct_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }, .{ .mutually_exclusive = .{
-    .kind = .optional,
-    .opt_tag = .capacity,
-    .tech_tag = .double_packed_approximate_capacity,
-    .tech_tags = &.{ .single_packed_approximate_capacity, .double_packed_approximate_capacity },
-} } } }, &.{ &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .lazy_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .unit_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .disjunct_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{ .{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .lazy_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }, .{ .mutually_exclusive = .{
-    .kind = .optional,
-    .opt_tag = .capacity,
-    .tech_tag = .single_packed_approximate_capacity,
-    .tech_tags = &.{ .single_packed_approximate_capacity, .double_packed_approximate_capacity },
-} } }, &.{ .{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .lazy_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }, .{ .mutually_exclusive = .{
-    .kind = .optional,
-    .opt_tag = .capacity,
-    .tech_tag = .double_packed_approximate_capacity,
-    .tech_tags = &.{ .single_packed_approximate_capacity, .double_packed_approximate_capacity },
-} } }, &.{ .{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .unit_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }, .{ .mutually_exclusive = .{
-    .kind = .optional,
-    .opt_tag = .capacity,
-    .tech_tag = .single_packed_approximate_capacity,
-    .tech_tags = &.{ .single_packed_approximate_capacity, .double_packed_approximate_capacity },
-} } }, &.{ .{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .unit_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }, .{ .mutually_exclusive = .{
-    .kind = .optional,
-    .opt_tag = .capacity,
-    .tech_tag = .double_packed_approximate_capacity,
-    .tech_tags = &.{ .single_packed_approximate_capacity, .double_packed_approximate_capacity },
-} } }, &.{ .{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .disjunct_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }, .{ .mutually_exclusive = .{
-    .kind = .optional,
-    .opt_tag = .capacity,
-    .tech_tag = .single_packed_approximate_capacity,
-    .tech_tags = &.{ .single_packed_approximate_capacity, .double_packed_approximate_capacity },
-} } }, &.{ .{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .disjunct_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }, .{ .mutually_exclusive = .{
-    .kind = .optional,
-    .opt_tag = .capacity,
-    .tech_tag = .double_packed_approximate_capacity,
-    .tech_tags = &.{ .single_packed_approximate_capacity, .double_packed_approximate_capacity },
-} } } }, &.{ &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .lazy_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .unit_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .disjunct_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }} }, &.{ &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .lazy_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .unit_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .disjunct_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }} }, &.{ &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .lazy_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .unit_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .disjunct_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }} }, &.{ &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .lazy_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .unit_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .disjunct_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }} }, &.{ &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .lazy_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .unit_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .disjunct_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }} }, &.{ &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .lazy_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .unit_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .disjunct_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }} }, &.{ &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .lazy_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .unit_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .disjunct_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }} }, &.{ &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .lazy_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .unit_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .disjunct_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
-} }} }, &.{ &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .lazy_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .unit_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment },
-} }} }, &.{ &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .lazy_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .unit_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment },
-} }} }, &.{ &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .lazy_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .unit_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment },
-} }} }, &.{ &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .lazy_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment },
-} }}, &.{.{ .mutually_exclusive = .{
-    .kind = .mandatory,
-    .opt_tag = .alignment,
-    .tech_tag = .unit_alignment,
-    .tech_tags = &.{ .lazy_alignment, .unit_alignment },
-} }} } };
+        } },
+    } } } },
+    &.{ &.{ .{ .default = .{
+        .tag = .child,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } }, .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } } }, &.{ .{ .default = .{
+        .tag = .child,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } }, .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .optional_variant = .{
+        .tag = .sentinel,
+        .type = .{ .type_ref = .{
+            .spec = "*const ",
+            .type = &.{ .type_decl = .{
+                .name = "anyopaque",
+            } },
+        } },
+    } } }, &.{ .{ .default = .{
+        .tag = .child,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } }, .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .decl_optional_variant = .{
+        .ctn_tag = .Allocator,
+        .decl_tag = .arena,
+        .ctn_type = .{ .type_decl = .{
+            .name = "type",
+        } },
+        .decl_type = .{ .type_decl = .{
+            .defn = .{
+                .spec = "struct",
+                .fields = &.{ .{
+                    .name = "lb_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                }, .{
+                    .name = "up_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                } },
+            },
+        } },
+    } } }, &.{ .{ .default = .{
+        .tag = .child,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } }, .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .optional_variant = .{
+        .tag = .sentinel,
+        .type = .{ .type_ref = .{
+            .spec = "*const ",
+            .type = &.{ .type_decl = .{
+                .name = "anyopaque",
+            } },
+        } },
+    } }, .{ .decl_optional_variant = .{
+        .ctn_tag = .Allocator,
+        .decl_tag = .arena,
+        .ctn_type = .{ .type_decl = .{
+            .name = "type",
+        } },
+        .decl_type = .{ .type_decl = .{
+            .defn = .{
+                .spec = "struct",
+                .fields = &.{ .{
+                    .name = "lb_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                }, .{
+                    .name = "up_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                } },
+            },
+        } },
+    } } } },
+    &.{ &.{ .{ .default = .{
+        .tag = .child,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } }, .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } } }, &.{ .{ .default = .{
+        .tag = .child,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } }, .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .optional_variant = .{
+        .tag = .sentinel,
+        .type = .{ .type_ref = .{
+            .spec = "*const ",
+            .type = &.{ .type_decl = .{
+                .name = "anyopaque",
+            } },
+        } },
+    } } }, &.{ .{ .default = .{
+        .tag = .child,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } }, .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .decl_optional_variant = .{
+        .ctn_tag = .Allocator,
+        .decl_tag = .arena,
+        .ctn_type = .{ .type_decl = .{
+            .name = "type",
+        } },
+        .decl_type = .{ .type_decl = .{
+            .defn = .{
+                .spec = "struct",
+                .fields = &.{ .{
+                    .name = "lb_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                }, .{
+                    .name = "up_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                } },
+            },
+        } },
+    } } }, &.{ .{ .default = .{
+        .tag = .child,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } }, .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .optional_variant = .{
+        .tag = .sentinel,
+        .type = .{ .type_ref = .{
+            .spec = "*const ",
+            .type = &.{ .type_decl = .{
+                .name = "anyopaque",
+            } },
+        } },
+    } }, .{ .decl_optional_variant = .{
+        .ctn_tag = .Allocator,
+        .decl_tag = .arena,
+        .ctn_type = .{ .type_decl = .{
+            .name = "type",
+        } },
+        .decl_type = .{ .type_decl = .{
+            .defn = .{
+                .spec = "struct",
+                .fields = &.{ .{
+                    .name = "lb_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                }, .{
+                    .name = "up_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                } },
+            },
+        } },
+    } } } },
+    &.{ &.{ .{ .default = .{
+        .tag = .child,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } }, .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } } }, &.{ .{ .default = .{
+        .tag = .child,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } }, .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .optional_variant = .{
+        .tag = .sentinel,
+        .type = .{ .type_ref = .{
+            .spec = "*const ",
+            .type = &.{ .type_decl = .{
+                .name = "anyopaque",
+            } },
+        } },
+    } } }, &.{ .{ .default = .{
+        .tag = .child,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } }, .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .decl_optional_variant = .{
+        .ctn_tag = .Allocator,
+        .decl_tag = .arena,
+        .ctn_type = .{ .type_decl = .{
+            .name = "type",
+        } },
+        .decl_type = .{ .type_decl = .{
+            .defn = .{
+                .spec = "struct",
+                .fields = &.{ .{
+                    .name = "lb_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                }, .{
+                    .name = "up_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                } },
+            },
+        } },
+    } } }, &.{ .{ .default = .{
+        .tag = .child,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } }, .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .optional_variant = .{
+        .tag = .sentinel,
+        .type = .{ .type_ref = .{
+            .spec = "*const ",
+            .type = &.{ .type_decl = .{
+                .name = "anyopaque",
+            } },
+        } },
+    } }, .{ .decl_optional_variant = .{
+        .ctn_tag = .Allocator,
+        .decl_tag = .arena,
+        .ctn_type = .{ .type_decl = .{
+            .name = "type",
+        } },
+        .decl_type = .{ .type_decl = .{
+            .defn = .{
+                .spec = "struct",
+                .fields = &.{ .{
+                    .name = "lb_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                }, .{
+                    .name = "up_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                } },
+            },
+        } },
+    } } } },
+    &.{ &.{.{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }}, &.{ .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .optional_variant = .{
+        .tag = .sentinel,
+        .type = .{ .type_ref = .{
+            .spec = "*const ",
+            .type = &.{ .type_decl = .{
+                .name = "anyopaque",
+            } },
+        } },
+    } } }, &.{ .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .decl_optional_variant = .{
+        .ctn_tag = .Allocator,
+        .decl_tag = .arena,
+        .ctn_type = .{ .type_decl = .{
+            .name = "type",
+        } },
+        .decl_type = .{ .type_decl = .{
+            .defn = .{
+                .spec = "struct",
+                .fields = &.{ .{
+                    .name = "lb_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                }, .{
+                    .name = "up_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                } },
+            },
+        } },
+    } } }, &.{ .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .optional_variant = .{
+        .tag = .sentinel,
+        .type = .{ .type_ref = .{
+            .spec = "*const ",
+            .type = &.{ .type_decl = .{
+                .name = "anyopaque",
+            } },
+        } },
+    } }, .{ .decl_optional_variant = .{
+        .ctn_tag = .Allocator,
+        .decl_tag = .arena,
+        .ctn_type = .{ .type_decl = .{
+            .name = "type",
+        } },
+        .decl_type = .{ .type_decl = .{
+            .defn = .{
+                .spec = "struct",
+                .fields = &.{ .{
+                    .name = "lb_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                }, .{
+                    .name = "up_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                } },
+            },
+        } },
+    } } } },
+    &.{ &.{.{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }}, &.{ .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .optional_variant = .{
+        .tag = .sentinel,
+        .type = .{ .type_ref = .{
+            .spec = "*const ",
+            .type = &.{ .type_decl = .{
+                .name = "anyopaque",
+            } },
+        } },
+    } } }, &.{ .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .decl_optional_variant = .{
+        .ctn_tag = .Allocator,
+        .decl_tag = .arena,
+        .ctn_type = .{ .type_decl = .{
+            .name = "type",
+        } },
+        .decl_type = .{ .type_decl = .{
+            .defn = .{
+                .spec = "struct",
+                .fields = &.{ .{
+                    .name = "lb_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                }, .{
+                    .name = "up_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                } },
+            },
+        } },
+    } } }, &.{ .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .optional_variant = .{
+        .tag = .sentinel,
+        .type = .{ .type_ref = .{
+            .spec = "*const ",
+            .type = &.{ .type_decl = .{
+                .name = "anyopaque",
+            } },
+        } },
+    } }, .{ .decl_optional_variant = .{
+        .ctn_tag = .Allocator,
+        .decl_tag = .arena,
+        .ctn_type = .{ .type_decl = .{
+            .name = "type",
+        } },
+        .decl_type = .{ .type_decl = .{
+            .defn = .{
+                .spec = "struct",
+                .fields = &.{ .{
+                    .name = "lb_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                }, .{
+                    .name = "up_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                } },
+            },
+        } },
+    } } } },
+    &.{ &.{.{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }}, &.{ .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .optional_variant = .{
+        .tag = .sentinel,
+        .type = .{ .type_ref = .{
+            .spec = "*const ",
+            .type = &.{ .type_decl = .{
+                .name = "anyopaque",
+            } },
+        } },
+    } } }, &.{ .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .decl_optional_variant = .{
+        .ctn_tag = .Allocator,
+        .decl_tag = .arena,
+        .ctn_type = .{ .type_decl = .{
+            .name = "type",
+        } },
+        .decl_type = .{ .type_decl = .{
+            .defn = .{
+                .spec = "struct",
+                .fields = &.{ .{
+                    .name = "lb_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                }, .{
+                    .name = "up_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                } },
+            },
+        } },
+    } } }, &.{ .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .optional_variant = .{
+        .tag = .sentinel,
+        .type = .{ .type_ref = .{
+            .spec = "*const ",
+            .type = &.{ .type_decl = .{
+                .name = "anyopaque",
+            } },
+        } },
+    } }, .{ .decl_optional_variant = .{
+        .ctn_tag = .Allocator,
+        .decl_tag = .arena,
+        .ctn_type = .{ .type_decl = .{
+            .name = "type",
+        } },
+        .decl_type = .{ .type_decl = .{
+            .defn = .{
+                .spec = "struct",
+                .fields = &.{ .{
+                    .name = "lb_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                }, .{
+                    .name = "up_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                } },
+            },
+        } },
+    } } } },
+    &.{ &.{.{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }}, &.{ .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .optional_variant = .{
+        .tag = .sentinel,
+        .type = .{ .type_ref = .{
+            .spec = "*const ",
+            .type = &.{ .type_decl = .{
+                .name = "anyopaque",
+            } },
+        } },
+    } } }, &.{ .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .decl_optional_variant = .{
+        .ctn_tag = .Allocator,
+        .decl_tag = .arena,
+        .ctn_type = .{ .type_decl = .{
+            .name = "type",
+        } },
+        .decl_type = .{ .type_decl = .{
+            .defn = .{
+                .spec = "struct",
+                .fields = &.{ .{
+                    .name = "lb_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                }, .{
+                    .name = "up_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                } },
+            },
+        } },
+    } } }, &.{ .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .optional_variant = .{
+        .tag = .sentinel,
+        .type = .{ .type_ref = .{
+            .spec = "*const ",
+            .type = &.{ .type_decl = .{
+                .name = "anyopaque",
+            } },
+        } },
+    } }, .{ .decl_optional_variant = .{
+        .ctn_tag = .Allocator,
+        .decl_tag = .arena,
+        .ctn_type = .{ .type_decl = .{
+            .name = "type",
+        } },
+        .decl_type = .{ .type_decl = .{
+            .defn = .{
+                .spec = "struct",
+                .fields = &.{ .{
+                    .name = "lb_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                }, .{
+                    .name = "up_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                } },
+            },
+        } },
+    } } } },
+    &.{ &.{ .{ .default = .{
+        .tag = .child,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } }, .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } } }, &.{ .{ .default = .{
+        .tag = .child,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } }, .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .optional_variant = .{
+        .tag = .sentinel,
+        .type = .{ .type_ref = .{
+            .spec = "*const ",
+            .type = &.{ .type_decl = .{
+                .name = "anyopaque",
+            } },
+        } },
+    } } }, &.{ .{ .default = .{
+        .tag = .child,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } }, .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .decl_optional_variant = .{
+        .ctn_tag = .Allocator,
+        .decl_tag = .arena,
+        .ctn_type = .{ .type_decl = .{
+            .name = "type",
+        } },
+        .decl_type = .{ .type_decl = .{
+            .defn = .{
+                .spec = "struct",
+                .fields = &.{ .{
+                    .name = "lb_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                }, .{
+                    .name = "up_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                } },
+            },
+        } },
+    } } }, &.{ .{ .default = .{
+        .tag = .child,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } }, .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .optional_variant = .{
+        .tag = .sentinel,
+        .type = .{ .type_ref = .{
+            .spec = "*const ",
+            .type = &.{ .type_decl = .{
+                .name = "anyopaque",
+            } },
+        } },
+    } }, .{ .decl_optional_variant = .{
+        .ctn_tag = .Allocator,
+        .decl_tag = .arena,
+        .ctn_type = .{ .type_decl = .{
+            .name = "type",
+        } },
+        .decl_type = .{ .type_decl = .{
+            .defn = .{
+                .spec = "struct",
+                .fields = &.{ .{
+                    .name = "lb_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                }, .{
+                    .name = "up_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                } },
+            },
+        } },
+    } } } },
+    &.{ &.{ .{ .default = .{
+        .tag = .child,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } }, .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } } }, &.{ .{ .default = .{
+        .tag = .child,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } }, .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .optional_variant = .{
+        .tag = .sentinel,
+        .type = .{ .type_ref = .{
+            .spec = "*const ",
+            .type = &.{ .type_decl = .{
+                .name = "anyopaque",
+            } },
+        } },
+    } } }, &.{ .{ .default = .{
+        .tag = .child,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } }, .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .decl_optional_variant = .{
+        .ctn_tag = .Allocator,
+        .decl_tag = .arena,
+        .ctn_type = .{ .type_decl = .{
+            .name = "type",
+        } },
+        .decl_type = .{ .type_decl = .{
+            .defn = .{
+                .spec = "struct",
+                .fields = &.{ .{
+                    .name = "lb_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                }, .{
+                    .name = "up_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                } },
+            },
+        } },
+    } } }, &.{ .{ .default = .{
+        .tag = .child,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } }, .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .optional_variant = .{
+        .tag = .sentinel,
+        .type = .{ .type_ref = .{
+            .spec = "*const ",
+            .type = &.{ .type_decl = .{
+                .name = "anyopaque",
+            } },
+        } },
+    } }, .{ .decl_optional_variant = .{
+        .ctn_tag = .Allocator,
+        .decl_tag = .arena,
+        .ctn_type = .{ .type_decl = .{
+            .name = "type",
+        } },
+        .decl_type = .{ .type_decl = .{
+            .defn = .{
+                .spec = "struct",
+                .fields = &.{ .{
+                    .name = "lb_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                }, .{
+                    .name = "up_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                } },
+            },
+        } },
+    } } } },
+    &.{ &.{ .{ .default = .{
+        .tag = .child,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } }, .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } } }, &.{ .{ .default = .{
+        .tag = .child,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } }, .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .optional_variant = .{
+        .tag = .sentinel,
+        .type = .{ .type_ref = .{
+            .spec = "*const ",
+            .type = &.{ .type_decl = .{
+                .name = "anyopaque",
+            } },
+        } },
+    } } }, &.{ .{ .default = .{
+        .tag = .child,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } }, .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .decl_optional_variant = .{
+        .ctn_tag = .Allocator,
+        .decl_tag = .arena,
+        .ctn_type = .{ .type_decl = .{
+            .name = "type",
+        } },
+        .decl_type = .{ .type_decl = .{
+            .defn = .{
+                .spec = "struct",
+                .fields = &.{ .{
+                    .name = "lb_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                }, .{
+                    .name = "up_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                } },
+            },
+        } },
+    } } }, &.{ .{ .default = .{
+        .tag = .child,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } }, .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .optional_variant = .{
+        .tag = .sentinel,
+        .type = .{ .type_ref = .{
+            .spec = "*const ",
+            .type = &.{ .type_decl = .{
+                .name = "anyopaque",
+            } },
+        } },
+    } }, .{ .decl_optional_variant = .{
+        .ctn_tag = .Allocator,
+        .decl_tag = .arena,
+        .ctn_type = .{ .type_decl = .{
+            .name = "type",
+        } },
+        .decl_type = .{ .type_decl = .{
+            .defn = .{
+                .spec = "struct",
+                .fields = &.{ .{
+                    .name = "lb_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                }, .{
+                    .name = "up_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                } },
+            },
+        } },
+    } } } },
+    &.{ &.{ .{ .default = .{
+        .tag = .child,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } }, .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } } }, &.{ .{ .default = .{
+        .tag = .child,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } }, .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .optional_variant = .{
+        .tag = .sentinel,
+        .type = .{ .type_ref = .{
+            .spec = "*const ",
+            .type = &.{ .type_decl = .{
+                .name = "anyopaque",
+            } },
+        } },
+    } } }, &.{ .{ .default = .{
+        .tag = .child,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } }, .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .decl_optional_variant = .{
+        .ctn_tag = .Allocator,
+        .decl_tag = .arena,
+        .ctn_type = .{ .type_decl = .{
+            .name = "type",
+        } },
+        .decl_type = .{ .type_decl = .{
+            .defn = .{
+                .spec = "struct",
+                .fields = &.{ .{
+                    .name = "lb_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                }, .{
+                    .name = "up_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                } },
+            },
+        } },
+    } } }, &.{ .{ .default = .{
+        .tag = .child,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } }, .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .optional_variant = .{
+        .tag = .sentinel,
+        .type = .{ .type_ref = .{
+            .spec = "*const ",
+            .type = &.{ .type_decl = .{
+                .name = "anyopaque",
+            } },
+        } },
+    } }, .{ .decl_optional_variant = .{
+        .ctn_tag = .Allocator,
+        .decl_tag = .arena,
+        .ctn_type = .{ .type_decl = .{
+            .name = "type",
+        } },
+        .decl_type = .{ .type_decl = .{
+            .defn = .{
+                .spec = "struct",
+                .fields = &.{ .{
+                    .name = "lb_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                }, .{
+                    .name = "up_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                } },
+            },
+        } },
+    } } } },
+    &.{ &.{.{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }}, &.{ .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .optional_variant = .{
+        .tag = .sentinel,
+        .type = .{ .type_ref = .{
+            .spec = "*const ",
+            .type = &.{ .type_decl = .{
+                .name = "anyopaque",
+            } },
+        } },
+    } } }, &.{ .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .decl_optional_variant = .{
+        .ctn_tag = .Allocator,
+        .decl_tag = .arena,
+        .ctn_type = .{ .type_decl = .{
+            .name = "type",
+        } },
+        .decl_type = .{ .type_decl = .{
+            .defn = .{
+                .spec = "struct",
+                .fields = &.{ .{
+                    .name = "lb_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                }, .{
+                    .name = "up_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                } },
+            },
+        } },
+    } } }, &.{ .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .optional_variant = .{
+        .tag = .sentinel,
+        .type = .{ .type_ref = .{
+            .spec = "*const ",
+            .type = &.{ .type_decl = .{
+                .name = "anyopaque",
+            } },
+        } },
+    } }, .{ .decl_optional_variant = .{
+        .ctn_tag = .Allocator,
+        .decl_tag = .arena,
+        .ctn_type = .{ .type_decl = .{
+            .name = "type",
+        } },
+        .decl_type = .{ .type_decl = .{
+            .defn = .{
+                .spec = "struct",
+                .fields = &.{ .{
+                    .name = "lb_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                }, .{
+                    .name = "up_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                } },
+            },
+        } },
+    } } } },
+    &.{ &.{.{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }}, &.{ .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .optional_variant = .{
+        .tag = .sentinel,
+        .type = .{ .type_ref = .{
+            .spec = "*const ",
+            .type = &.{ .type_decl = .{
+                .name = "anyopaque",
+            } },
+        } },
+    } } }, &.{ .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .decl_optional_variant = .{
+        .ctn_tag = .Allocator,
+        .decl_tag = .arena,
+        .ctn_type = .{ .type_decl = .{
+            .name = "type",
+        } },
+        .decl_type = .{ .type_decl = .{
+            .defn = .{
+                .spec = "struct",
+                .fields = &.{ .{
+                    .name = "lb_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                }, .{
+                    .name = "up_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                } },
+            },
+        } },
+    } } }, &.{ .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .optional_variant = .{
+        .tag = .sentinel,
+        .type = .{ .type_ref = .{
+            .spec = "*const ",
+            .type = &.{ .type_decl = .{
+                .name = "anyopaque",
+            } },
+        } },
+    } }, .{ .decl_optional_variant = .{
+        .ctn_tag = .Allocator,
+        .decl_tag = .arena,
+        .ctn_type = .{ .type_decl = .{
+            .name = "type",
+        } },
+        .decl_type = .{ .type_decl = .{
+            .defn = .{
+                .spec = "struct",
+                .fields = &.{ .{
+                    .name = "lb_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                }, .{
+                    .name = "up_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                } },
+            },
+        } },
+    } } } },
+    &.{ &.{.{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }}, &.{ .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .optional_variant = .{
+        .tag = .sentinel,
+        .type = .{ .type_ref = .{
+            .spec = "*const ",
+            .type = &.{ .type_decl = .{
+                .name = "anyopaque",
+            } },
+        } },
+    } } }, &.{ .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .decl_optional_variant = .{
+        .ctn_tag = .Allocator,
+        .decl_tag = .arena,
+        .ctn_type = .{ .type_decl = .{
+            .name = "type",
+        } },
+        .decl_type = .{ .type_decl = .{
+            .defn = .{
+                .spec = "struct",
+                .fields = &.{ .{
+                    .name = "lb_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                }, .{
+                    .name = "up_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                } },
+            },
+        } },
+    } } }, &.{ .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .optional_variant = .{
+        .tag = .sentinel,
+        .type = .{ .type_ref = .{
+            .spec = "*const ",
+            .type = &.{ .type_decl = .{
+                .name = "anyopaque",
+            } },
+        } },
+    } }, .{ .decl_optional_variant = .{
+        .ctn_tag = .Allocator,
+        .decl_tag = .arena,
+        .ctn_type = .{ .type_decl = .{
+            .name = "type",
+        } },
+        .decl_type = .{ .type_decl = .{
+            .defn = .{
+                .spec = "struct",
+                .fields = &.{ .{
+                    .name = "lb_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                }, .{
+                    .name = "up_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                } },
+            },
+        } },
+    } } } },
+    &.{ &.{.{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }}, &.{ .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .optional_variant = .{
+        .tag = .sentinel,
+        .type = .{ .type_ref = .{
+            .spec = "*const ",
+            .type = &.{ .type_decl = .{
+                .name = "anyopaque",
+            } },
+        } },
+    } } }, &.{ .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .decl_optional_variant = .{
+        .ctn_tag = .Allocator,
+        .decl_tag = .arena,
+        .ctn_type = .{ .type_decl = .{
+            .name = "type",
+        } },
+        .decl_type = .{ .type_decl = .{
+            .defn = .{
+                .spec = "struct",
+                .fields = &.{ .{
+                    .name = "lb_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                }, .{
+                    .name = "up_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                } },
+            },
+        } },
+    } } }, &.{ .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .optional_variant = .{
+        .tag = .sentinel,
+        .type = .{ .type_ref = .{
+            .spec = "*const ",
+            .type = &.{ .type_decl = .{
+                .name = "anyopaque",
+            } },
+        } },
+    } }, .{ .decl_optional_variant = .{
+        .ctn_tag = .Allocator,
+        .decl_tag = .arena,
+        .ctn_type = .{ .type_decl = .{
+            .name = "type",
+        } },
+        .decl_type = .{ .type_decl = .{
+            .defn = .{
+                .spec = "struct",
+                .fields = &.{ .{
+                    .name = "lb_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                }, .{
+                    .name = "up_addr",
+                    .type = .{ .type_decl = .{
+                        .name = "u64",
+                    } },
+                } },
+            },
+        } },
+    } } } },
+    &.{ &.{ .{ .default = .{
+        .tag = .child,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } }, .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .default = .{
+        .tag = .Allocator,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } } }, &.{ .{ .default = .{
+        .tag = .child,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } }, .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .default = .{
+        .tag = .Allocator,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } }, .{ .optional_variant = .{
+        .tag = .sentinel,
+        .type = .{ .type_ref = .{
+            .spec = "*const ",
+            .type = &.{ .type_decl = .{
+                .name = "anyopaque",
+            } },
+        } },
+    } } } },
+    &.{ &.{ .{ .default = .{
+        .tag = .child,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } }, .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .default = .{
+        .tag = .Allocator,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } } }, &.{ .{ .default = .{
+        .tag = .child,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } }, .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .default = .{
+        .tag = .Allocator,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } }, .{ .optional_variant = .{
+        .tag = .sentinel,
+        .type = .{ .type_ref = .{
+            .spec = "*const ",
+            .type = &.{ .type_decl = .{
+                .name = "anyopaque",
+            } },
+        } },
+    } } } },
+    &.{ &.{ .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .default = .{
+        .tag = .Allocator,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } } }, &.{ .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .default = .{
+        .tag = .Allocator,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } }, .{ .optional_variant = .{
+        .tag = .sentinel,
+        .type = .{ .type_ref = .{
+            .spec = "*const ",
+            .type = &.{ .type_decl = .{
+                .name = "anyopaque",
+            } },
+        } },
+    } } } },
+    &.{ &.{ .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .default = .{
+        .tag = .Allocator,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } } }, &.{ .{ .optional_derived = .{
+        .tag = .low_alignment,
+        .type = .{ .type_decl = .{
+            .name = "u64",
+        } },
+        .fn_name = "lowAlignment",
+    } }, .{ .default = .{
+        .tag = .Allocator,
+        .type = .{ .type_decl = .{
+            .name = "type",
+        } },
+    } }, .{ .optional_variant = .{
+        .tag = .sentinel,
+        .type = .{ .type_ref = .{
+            .spec = "*const ",
+            .type = &.{ .type_decl = .{
+                .name = "anyopaque",
+            } },
+        } },
+    } } } },
+};
+const tech_sets_0: []const []const []const mem_types.Technique = &.{
+    &.{&.{}}, &.{&.{}}, &.{&.{}}, &.{&.{}},
+    &.{ &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .lazy_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
+    } }}, &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .unit_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
+    } }}, &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .disjunct_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
+    } }} },
+    &.{ &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .lazy_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
+    } }}, &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .unit_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
+    } }}, &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .disjunct_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
+    } }} },
+    &.{ &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .lazy_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
+    } }}, &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .unit_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
+    } }}, &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .disjunct_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
+    } }} },
+    &.{ &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .lazy_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
+    } }}, &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .unit_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
+    } }}, &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .disjunct_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
+    } }} },
+    &.{ &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .lazy_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
+    } }}, &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .unit_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
+    } }}, &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .disjunct_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
+    } }} },
+    &.{ &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .lazy_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
+    } }}, &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .unit_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
+    } }}, &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .disjunct_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
+    } }} },
+    &.{ &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .lazy_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
+    } }}, &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .unit_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
+    } }}, &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .disjunct_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
+    } }} },
+    &.{ &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .lazy_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
+    } }}, &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .unit_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
+    } }}, &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .disjunct_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
+    } }} },
+    &.{ &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .lazy_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
+    } }}, &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .unit_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
+    } }}, &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .disjunct_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
+    } }} },
+    &.{ &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .lazy_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
+    } }}, &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .unit_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
+    } }}, &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .disjunct_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
+    } }} },
+    &.{ &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .lazy_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
+    } }}, &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .unit_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
+    } }}, &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .disjunct_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
+    } }} },
+    &.{ &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .lazy_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
+    } }}, &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .unit_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
+    } }}, &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .disjunct_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
+    } }} },
+    &.{ &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .lazy_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
+    } }}, &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .unit_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
+    } }}, &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .disjunct_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
+    } }} },
+    &.{ &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .lazy_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
+    } }}, &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .unit_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
+    } }}, &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .disjunct_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
+    } }} },
+    &.{ &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .lazy_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
+    } }}, &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .unit_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
+    } }}, &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .disjunct_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
+    } }} },
+    &.{ &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .lazy_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
+    } }}, &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .unit_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
+    } }}, &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .disjunct_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment, .disjunct_alignment },
+    } }} },
+    &.{ &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .lazy_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment },
+    } }}, &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .unit_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment },
+    } }} },
+    &.{ &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .lazy_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment },
+    } }}, &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .unit_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment },
+    } }} },
+    &.{ &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .lazy_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment },
+    } }}, &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .unit_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment },
+    } }} },
+    &.{ &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .lazy_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment },
+    } }}, &.{.{ .mutually_exclusive = .{
+        .kind = .mandatory,
+        .opt_tag = .alignment,
+        .tech_tag = .unit_alignment,
+        .tech_tags = &.{ .lazy_alignment, .unit_alignment },
+    } }} },
+};
 
 const Variety = struct {
     x: []const []const u8,
