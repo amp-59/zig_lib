@@ -28,6 +28,7 @@ const Allocator = mem.GenericArenaAllocator(.{
     .logging = spec.allocator.logging.silent,
 });
 const Array = Allocator.StructuredHolder(u8);
+const TypeDescr = fmt.GenericTypeDescrFormat(.{});
 
 fn testFormat(allocator: *Allocator, array: *Array, buf: [*]u8, format: anytype) !void {
     try array.appendFormat(allocator, format);
@@ -38,6 +39,20 @@ fn testFormat(allocator: *Allocator, array: *Array, buf: [*]u8, format: anytype)
     debug.write(array.readAll(allocator.*));
     debug.write(buf[0..len]);
     try testing.expectEqualString(array.readAll(allocator.*), buf[0..len]);
+    array.undefineAll(allocator.*);
+}
+fn testFormats(allocator: *Allocator, array: *Array, format1: anytype, format2: anytype) !void {
+    try array.appendFormat(allocator, format1);
+    try array.appendOne(allocator, 0xa);
+    const slice1: []const u8 = array.readAll(allocator.*);
+    allocator.ub_addr +%= slice1.len;
+    try array.appendFormat(allocator, format2);
+    try array.appendOne(allocator, 0xa);
+    const slice2: []const u8 = array.readAll(allocator.*);
+    allocator.ub_addr %= slice1.len;
+    debug.write(slice1);
+    debug.write(slice2);
+    try testing.expectEqualString(slice1, slice2);
     array.undefineAll(allocator.*);
 }
 fn testRenderArray(allocator: *Allocator, array: *Array, buf: [*]u8) !void {
@@ -77,7 +92,6 @@ fn testRenderEnum(allocator: *Allocator, array: *Array, buf: [*]u8) !void {
     try testFormat(allocator, array, buf, comptime fmt.any(enum(u3) { x, y, z }.z));
 }
 fn testRenderTypeDescription(allocator: *Allocator, array: *Array, buf: [*]u8) !void {
-    const TypeDescr = fmt.GenericTypeDescrFormat(.{});
     const any = TypeDescr.init;
     try testFormat(allocator, array, buf, comptime any(packed struct(u120) { x: u64 = 5, y: packed struct { u32 = 1, u16 = 2 } = .{}, z: u8 = 255 }));
     try testFormat(allocator, array, buf, comptime any(struct { buf: [*]u8, buf_len: usize }));
@@ -85,6 +99,8 @@ fn testRenderTypeDescription(allocator: *Allocator, array: *Array, buf: [*]u8) !
     try testFormat(allocator, array, buf, comptime any(struct { auto: [256]u8 = [1]u8{0xa} ** 256, auto_len: usize = 16 }));
     const td1: TypeDescr = comptime TypeDescr.init(?union(enum) { yes: ?build.Path, no });
     const td2: TypeDescr = comptime TypeDescr.init(?union(enum) { yes: ?build.Path, no });
+    try testFormat(allocator, array, buf, comptime any(struct { auto: [256]u8 = [1]u8{0xa} ** 256, auto_len: usize = 16 }));
+    try testFormats(allocator, array, td1, td2);
     try debug.expectEqualMemory(TypeDescr, td1, td2);
 }
 pub fn main() !void {
