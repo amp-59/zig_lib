@@ -3,10 +3,8 @@ const fmt = @import("../../fmt.zig");
 
 pub const Array = mem.StaticString(1024 * 1024);
 pub const TypeDescr = fmt.GenericTypeDescrFormat(.{
-    .options = .{
-        //.default_field_values = true,
-        .identifier_name = true,
-    },
+    .identifier_name = true,
+    .default_field_values = .fast,
     .tokens = .{
         .lbrace = "{\n",
         .equal = "=",
