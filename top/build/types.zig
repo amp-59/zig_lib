@@ -604,10 +604,6 @@ fn Aggregate(comptime T: type) type {
             }
             return len;
         }
-        pub fn formatParseArgs(args: [][*:0]u8, args_idx: *usize, _: u8) Format {
-            _ = args_idx;
-            _ = args;
-        }
     };
 }
 pub const Message = struct {

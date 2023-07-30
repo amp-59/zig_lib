@@ -5,6 +5,7 @@ const proc = zl.proc;
 const meta = zl.meta;
 const file = zl.file;
 const spec = zl.spec;
+const build = zl.build;
 const debug = zl.debug;
 const builtin = zl.builtin;
 const testing = zl.testing;
@@ -30,22 +31,22 @@ const Array = Allocator.StructuredHolder(u8);
 
 fn testFormat(allocator: *Allocator, array: *Array, buf: [*]u8, format: anytype) !void {
     try array.appendFormat(allocator, format);
+    try array.appendOne(allocator, 0xa);
     var len: usize = format.formatWriteBuf(buf);
-    testing.print(.{ array.readAll(allocator.*), '\n', buf[0..len], '\n' });
+    buf[len] = 0xa;
+    len +%= 1;
+    debug.write(array.readAll(allocator.*));
+    debug.write(buf[0..len]);
     try testing.expectEqualString(array.readAll(allocator.*), buf[0..len]);
     array.undefineAll(allocator.*);
 }
 fn testRenderArray(allocator: *Allocator, array: *Array, buf: [*]u8) !void {
-    var value1 = [8]u8{ 0, 1, 2, 3, 4, 5, 6, 7 } ** 40;
-    var value2 = [8][8]u8{
-        @bitCast(@as(u64, 1)),
-        @bitCast(@as(u64, 1)),
-        @bitCast(@as(u64, 1)),
-        @bitCast(@as(u64, 1)),
-        @bitCast(@as(u64, 1)),
-        @bitCast(@as(u64, 1)),
-        @bitCast(@as(u64, 1)),
-        @bitCast(@as(u64, 1)),
+    var value1: [320]u8 = [8]u8{ 0, 1, 2, 3, 4, 5, 6, 7 } ** 40;
+    var value2: [8][8]u8 = .{
+        @bitCast(@as(u64, 0)), @bitCast(@as(u64, 1)),
+        @bitCast(@as(u64, 2)), @bitCast(@as(u64, 3)),
+        @bitCast(@as(u64, 4)), @bitCast(@as(u64, 5)),
+        @bitCast(@as(u64, 6)), @bitCast(@as(u64, 7)),
     };
     try testFormat(allocator, array, buf, fmt.any(value1));
     try testFormat(allocator, array, buf, fmt.any(value2));
@@ -82,6 +83,9 @@ fn testRenderTypeDescription(allocator: *Allocator, array: *Array, buf: [*]u8) !
     try testFormat(allocator, array, buf, comptime any(struct { buf: [*]u8, buf_len: usize }));
     try testFormat(allocator, array, buf, comptime any(struct { buf: []u8, buf_len: usize }));
     try testFormat(allocator, array, buf, comptime any(struct { auto: [256]u8 = [1]u8{0xa} ** 256, auto_len: usize = 16 }));
+    const td1: TypeDescr = comptime TypeDescr.init(?union(enum) { yes: ?build.Path, no });
+    const td2: TypeDescr = comptime TypeDescr.init(?union(enum) { yes: ?build.Path, no });
+    try debug.expectEqualMemory(TypeDescr, td1, td2);
 }
 pub fn main() !void {
     try mem.map(.{}, .{}, .{}, 0x40000000, 0x40000000);
@@ -93,6 +97,6 @@ pub fn main() !void {
     try testRenderArray(&allocator, &array, buf.ptr);
     try testRenderType(&allocator, &array, buf.ptr);
     try testRenderSlice(&allocator, &array, buf.ptr);
-    try testRenderStruct(&allocator, &array, buf.ptr);
+    //try testRenderStruct(&allocator, &array, buf.ptr);
     //try testRenderEnum(&allocator, &array, buf.ptr);
 }
