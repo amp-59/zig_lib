@@ -19,6 +19,7 @@ var build_cmd: build.BuildCommand = .{
     .single_threaded = true,
     .function_sections = true,
     .gc_sections = true,
+    .compiler_rt = false,
     .omit_frame_pointer = false,
     .dependencies = &.{.{ .name = "zig_lib" }},
     .modules = &.{.{ .name = "zig_lib", .path = build.root ++ "/zig_lib.zig" }},
