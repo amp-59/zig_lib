@@ -49,7 +49,7 @@ fn testFormats(allocator: *Allocator, array: *Array, format1: anytype, format2: 
     try array.appendFormat(allocator, format2);
     try array.appendOne(allocator, 0xa);
     const slice2: []const u8 = array.readAll(allocator.*);
-    allocator.ub_addr %= slice1.len;
+    allocator.ub_addr -%= slice1.len;
     debug.write(slice1);
     debug.write(slice2);
     try testing.expectEqualString(slice1, slice2);
@@ -97,9 +97,8 @@ fn testRenderTypeDescription(allocator: *Allocator, array: *Array, buf: [*]u8) !
     try testFormat(allocator, array, buf, comptime any(struct { buf: [*]u8, buf_len: usize }));
     try testFormat(allocator, array, buf, comptime any(struct { buf: []u8, buf_len: usize }));
     try testFormat(allocator, array, buf, comptime any(struct { auto: [256]u8 = [1]u8{0xa} ** 256, auto_len: usize = 16 }));
-    const td1: TypeDescr = comptime TypeDescr.init(?union(enum) { yes: ?build.Path, no });
-    const td2: TypeDescr = comptime TypeDescr.init(?union(enum) { yes: ?build.Path, no });
-    try testFormat(allocator, array, buf, comptime any(struct { auto: [256]u8 = [1]u8{0xa} ** 256, auto_len: usize = 16 }));
+    const td1: TypeDescr = comptime any(?union(enum) { yes: ?build.Path, no });
+    const td2: TypeDescr = comptime any(?union(enum) { yes: ?build.Path, no });
     try testFormats(allocator, array, td1, td2);
     try debug.expectEqualMemory(TypeDescr, td1, td2);
 }
