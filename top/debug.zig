@@ -46,7 +46,7 @@ pub const SignalAlternateStack = struct {
 };
 pub const Trace = struct {
     /// Show trace on alarm.
-    Error: bool = false,
+    Error: bool = true,
     /// Show trace on panic.
     Fault: bool = true,
     /// Show trace on signal.
