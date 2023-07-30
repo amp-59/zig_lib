@@ -16,68 +16,68 @@ const integer_type: types.ProtoTypeDescrMap = .{
     .store = &types.ProtoTypeDescr.init(usize),
 };
 const listen_type: types.ProtoTypeDescrMap = .{
-    .store = &.{ .type_name = "?types.Listen" },
+    .store = &.{ .type_decl = .{ .name = "?types.Listen" } },
     .parse = &types.ProtoTypeDescr.init(types.Listen),
 };
 const optional_integer_type: types.ProtoTypeDescrMap = .{
     .store = &types.ProtoTypeDescr.init(?usize),
 };
 const auto_on_off_type: types.ProtoTypeDescrMap = .{
-    .store = &.{ .type_name = "?types.AutoOnOff" },
+    .store = &.{ .type_decl = .{ .name = "?types.AutoOnOff" } },
     .parse = &types.ProtoTypeDescr.init(types.AutoOnOff),
 };
 const optional_path_type: types.ProtoTypeDescrMap = .{
-    .store = &.{ .type_name = "?types.Path" },
-    .parse = &.{ .type_name = "types.Path" },
+    .store = &.{ .type_decl = .{ .name = "?types.Path" } },
+    .parse = &.{ .type_decl = .{ .name = "types.Path" } },
 };
 const paths_type: types.ProtoTypeDescrMap = .{
-    .store = &.{ .type_name = "[]const types.Path" },
-    .write = &.{ .type_name = "types.Files" },
+    .store = &.{ .type_decl = .{ .name = "[]const types.Path" } },
+    .write = &.{ .type_decl = .{ .name = "types.Files" } },
 };
 const optional_macro_slice_type: types.ProtoTypeDescrMap = .{
-    .store = &.{ .type_name = "?[]const types.Macro" },
-    .write = &.{ .type_name = "types.Macros" },
-    .parse = &.{ .type_name = "types.Macro" },
+    .store = &.{ .type_decl = .{ .name = "?[]const types.Macro" } },
+    .write = &.{ .type_decl = .{ .name = "types.Macros" } },
+    .parse = &.{ .type_decl = .{ .name = "types.Macro" } },
 };
 const optional_module_slice_type: types.ProtoTypeDescrMap = .{
-    .store = &.{ .type_name = "?[]const types.Module" },
-    .write = &.{ .type_name = "types.Modules" },
-    .parse = &.{ .type_name = "types.Module" },
+    .store = &.{ .type_decl = .{ .name = "?[]const types.Module" } },
+    .write = &.{ .type_decl = .{ .name = "types.Modules" } },
+    .parse = &.{ .type_decl = .{ .name = "types.Module" } },
 };
 const optional_dependencies_slice_type: types.ProtoTypeDescrMap = .{
-    .store = &.{ .type_name = "?[]const types.ModuleDependency" },
-    .write = &.{ .type_name = "types.ModuleDependencies" },
+    .store = &.{ .type_decl = .{ .name = "?[]const types.ModuleDependency" } },
+    .write = &.{ .type_decl = .{ .name = "types.ModuleDependencies" } },
 };
 const hmacro_slice_type: types.ProtoTypeDescrMap = .{
-    .store = &.{ .type_name = "?[]const types.HMacro" },
-    .write = &.{ .type_name = "types.HMacros" },
+    .store = &.{ .type_decl = .{ .name = "?[]const types.HMacro" } },
+    .write = &.{ .type_decl = .{ .name = "types.HMacros" } },
 };
 const build_id_type: types.ProtoTypeDescrMap = .{
-    .store = &.{ .type_name = "?types.BuildId" },
+    .store = &.{ .type_decl = .{ .name = "?types.BuildId" } },
     .parse = &types.ProtoTypeDescr.init(types.BuildId),
 };
 const linker_flags_type: types.ProtoTypeDescrMap = .{
     .store = &types.ProtoTypeDescr.init(?[]const types.LinkerFlags),
-    .parse = &.{ .type_name = "types.LinkerFlags" },
+    .parse = &.{ .type_decl = .{ .name = "types.LinkerFlags" } },
 };
 const optimize_type: types.ProtoTypeDescrMap = .{
-    .store = &.{ .type_name = "?builtin.OptimizeMode" },
+    .store = &.{ .type_decl = .{ .name = "?builtin.OptimizeMode" } },
     .parse = &types.ProtoTypeDescr.init(builtin.OptimizeMode),
 };
 const code_model_type: types.ProtoTypeDescrMap = .{
-    .store = &.{ .type_name = "?builtin.CodeModel" },
+    .store = &.{ .type_decl = .{ .name = "?builtin.CodeModel" } },
     .parse = &types.ProtoTypeDescr.init(builtin.CodeModel),
 };
 const output_mode_type: types.ProtoTypeDescrMap = .{
-    .store = &.{ .type_name = "types.OutputMode" },
+    .store = &.{ .type_decl = .{ .name = "types.OutputMode" } },
 };
 const output_format_type: types.ProtoTypeDescrMap = .{
-    .store = &.{ .type_name = "?builtin.ObjectFormat" },
+    .store = &.{ .type_decl = .{ .name = "?builtin.ObjectFormat" } },
     .parse = &types.ProtoTypeDescr.init(builtin.ObjectFormat),
 };
 const cflags_type: types.ProtoTypeDescrMap = .{
     .store = &types.ProtoTypeDescr.init(?[]const []const u8),
-    .write = &.{ .type_name = "types.CFlags" },
+    .write = &.{ .type_decl = .{ .name = "types.CFlags" } },
 };
 pub const zig_build_command_attributes: types.Attributes = .{
     .type_name = "BuildCommand",
@@ -906,7 +906,7 @@ pub const zig_format_command_attributes: types.Attributes = .{
         .{
             .name = "pathname",
             .tag = .formatter_param,
-            .type = .{ .store = &.{ .type_name = "types.Path" } },
+            .type = .{ .store = &.{ .type_decl = .{ .name = "types.Path" } } },
             .descr = &.{"File system target for formatting operation. May be a file or a directory."},
         },
     },
@@ -970,7 +970,7 @@ pub const zig_objcopy_command_attributes: types.Attributes = .{
         .{
             .name = "file",
             .tag = .formatter_param,
-            .type = .{ .store = &.{ .type_name = "types.Path" } },
+            .type = .{ .store = &.{ .type_decl = .{ .name = "types.Path" } } },
             .descr = &.{"Target binary"},
         },
     },
