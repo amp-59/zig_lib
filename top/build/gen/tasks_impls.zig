@@ -16,9 +16,8 @@ pub const logging_default: debug.Logging.Default = spec.logging.default.silent;
 const Array = mem.StaticString(64 * 1024 * 1024);
 const Array2 = mem.StaticString(64 * 1024);
 
-const prefer_slice_notation: bool = true;
-const prefer_ptrcast: bool = false;
-const prefer_builtin_memcpy: bool = true;
+const notation: enum { slice, ptrcast, memcpy } = .slice;
+const memcpy: enum { builtin, mach } = .builtin;
 
 const combine_char: bool = true;
 const open_spec: file.OpenSpec = .{
@@ -209,7 +208,7 @@ fn writeOptFieldTagnamePtr(array: *Array, symbol_name: []const u8) void {
 fn writeNull(array: *Array, variant: types.Variant) void {
     switch (variant) {
         .write_buf => {
-            if (prefer_slice_notation) {
+            if (notation == .slice) {
                 array.writeMany("ptr[0]=0;\nptr=ptr+1;\n");
             } else {
                 array.writeMany("buf[len]=0;\nlen+%=1;\n");
@@ -224,7 +223,7 @@ fn writeNull(array: *Array, variant: types.Variant) void {
 fn writeOne(array: *Array, one: u8, variant: types.Variant) void {
     switch (variant) {
         .write_buf => {
-            if (prefer_slice_notation) {
+            if (notation == .slice) {
                 array.writeMany("ptr[0]=");
                 array.writeFormat(fmt.ud8(one));
                 array.writeMany(";\nptr=ptr+1;\n");
@@ -245,7 +244,7 @@ fn writeOne(array: *Array, one: u8, variant: types.Variant) void {
 fn writeIntegerString(array: *Array, arg_string: []const u8, variant: types.Variant) void {
     switch (variant) {
         .write_buf => {
-            if (prefer_slice_notation) {
+            if (notation == .slice) {
                 array.writeMany("ptr=ptr+fmt.Type.Ud64.formatWriteBuf(.{.value=");
                 array.writeMany(arg_string);
                 array.writeMany("},ptr);\n");
@@ -270,8 +269,8 @@ fn writeIntegerString(array: *Array, arg_string: []const u8, variant: types.Vari
 fn writeKindString(array: *Array, arg_string: []const u8, variant: types.Variant) void {
     switch (variant) {
         .write_buf => {
-            if (prefer_builtin_memcpy) {
-                if (prefer_slice_notation) {
+            if (memcpy == .builtin) {
+                if (notation == .slice) {
                     array.writeMany("@memcpy(ptr,");
                     writeFieldTagname(array, arg_string);
                     array.writeMany(");\n");
@@ -281,7 +280,7 @@ fn writeKindString(array: *Array, arg_string: []const u8, variant: types.Variant
                     array.writeMany(");\n");
                 }
             } else {
-                if (prefer_builtin_memcpy) {
+                if (memcpy == .builtin) {
                     array.writeMany("mach.memcpy(ptr,");
                     writeFieldTagnamePtr(array, arg_string);
                     array.writeMany(",");
@@ -295,7 +294,7 @@ fn writeKindString(array: *Array, arg_string: []const u8, variant: types.Variant
                     array.writeMany(");\n");
                 }
             }
-            if (prefer_slice_notation) {
+            if (notation == .slice) {
                 array.writeMany("ptr=ptr+");
                 writeFieldTagnameLen(array, arg_string);
                 array.writeMany(";\n");
@@ -318,8 +317,8 @@ fn writeKindString(array: *Array, arg_string: []const u8, variant: types.Variant
 fn writeTagString(array: *Array, arg_string: []const u8, variant: types.Variant) void {
     switch (variant) {
         .write_buf => {
-            if (prefer_builtin_memcpy) {
-                if (prefer_slice_notation) {
+            if (memcpy == .builtin) {
+                if (notation == .slice) {
                     array.writeMany("@memcpy(ptr,");
                     writeOptFieldTagname(array, arg_string);
                     array.writeMany(");\n");
@@ -333,7 +332,7 @@ fn writeTagString(array: *Array, arg_string: []const u8, variant: types.Variant)
                     writeTagString(array, arg_string, .length);
                 }
             } else {
-                if (prefer_slice_notation) {
+                if (notation == .slice) {
                     array.writeMany("mach.memcpy(ptr,@tagName(");
                     array.writeMany(arg_string);
                     array.writeMany(").ptr,@tagName(");
@@ -367,8 +366,8 @@ fn writeTagString(array: *Array, arg_string: []const u8, variant: types.Variant)
 fn writeArgString(array: *Array, arg_string: []const u8, variant: types.Variant) void {
     switch (variant) {
         .write_buf => {
-            if (prefer_builtin_memcpy) {
-                if (prefer_slice_notation) {
+            if (memcpy == .builtin) {
+                if (notation == .slice) {
                     array.writeMany("@memcpy(ptr,");
                     array.writeMany(arg_string);
                     array.writeMany(");\n");
@@ -378,7 +377,7 @@ fn writeArgString(array: *Array, arg_string: []const u8, variant: types.Variant)
                     array.writeMany(");\n");
                 }
             } else {
-                if (prefer_slice_notation) {
+                if (notation == .slice) {
                     array.writeMany("mach.memcpy(ptr,");
                     array.writeMany(arg_string);
                     array.writeMany(".ptr,");
@@ -392,7 +391,7 @@ fn writeArgString(array: *Array, arg_string: []const u8, variant: types.Variant)
                     array.writeMany(".len);\n");
                 }
             }
-            if (prefer_slice_notation) {
+            if (notation == .slice) {
                 array.writeMany("ptr=ptr+");
                 array.writeMany(arg_string);
                 array.writeMany(".len;\n");
@@ -415,7 +414,7 @@ fn writeArgString(array: *Array, arg_string: []const u8, variant: types.Variant)
 fn writeFormatterInternal(array: *Array, arg_string: []const u8, variant: types.Variant) void {
     switch (variant) {
         .write_buf => {
-            if (prefer_slice_notation) {
+            if (notation == .slice) {
                 array.writeMany("ptr=ptr+");
                 array.writeMany(arg_string);
                 array.writeMany(".formatWriteBuf(ptr);\n");
@@ -450,7 +449,7 @@ fn writeMapped(
     }
     switch (variant) {
         .write_buf => {
-            if (prefer_slice_notation) {
+            if (notation == .slice) {
                 array.writeMany("ptr=ptr+");
                 array.writeFormat(to);
                 array.writeMany(".formatWriteBuf(.{.value=");
@@ -484,7 +483,7 @@ fn writeCharacteristic(array: *Array, variant: types.Variant, char: u8) void {
     if (combine_char) return;
     switch (variant) {
         .write_buf => {
-            if (prefer_slice_notation) {
+            if (notation == .slice) {
                 array.writeMany("ptr[0]=");
                 array.writeFormat(fmt.ud8(char));
                 array.writeMany(";\n");
@@ -539,34 +538,36 @@ fn writeOptString(
 ) void {
     switch (variant) {
         .write_buf => {
-            if (prefer_ptrcast) {
-                array.writeMany("@as(*[");
-                if (combine_char and char != types.ParamSpec.immediate) {
-                    array.writeFormat(fmt.ud64(opt_string.len +% 1));
-                } else {
-                    array.writeFormat(fmt.ud64(opt_string.len));
-                }
-                array.writeMany("]u8,@ptrCast(buf+len)).*=\"");
-                array.writeMany(opt_string);
-                if (combine_char and char != types.ParamSpec.immediate) {
-                    array.writeFormat(fmt.esc(char));
-                }
-                array.writeMany("\".*;\n");
-            } else if (prefer_slice_notation) {
-                array.writeMany("ptr[0..");
-                if (combine_char and char != types.ParamSpec.immediate) {
-                    array.writeFormat(fmt.ud64(opt_string.len +% 1));
-                } else {
-                    array.writeFormat(fmt.ud64(opt_string.len));
-                }
-                array.writeMany("].*=\"");
-                array.writeMany(opt_string);
-                if (combine_char and char != types.ParamSpec.immediate) {
-                    array.writeFormat(fmt.esc(char));
-                }
-                array.writeMany("\".*;\n");
-            } else {
-                if (prefer_builtin_memcpy) {
+            switch (notation) {
+                .ptrcast => {
+                    array.writeMany("@as(*[");
+                    if (combine_char and char != types.ParamSpec.immediate) {
+                        array.writeFormat(fmt.ud64(opt_string.len +% 1));
+                    } else {
+                        array.writeFormat(fmt.ud64(opt_string.len));
+                    }
+                    array.writeMany("]u8,@ptrCast(buf+len)).*=\"");
+                    array.writeMany(opt_string);
+                    if (combine_char and char != types.ParamSpec.immediate) {
+                        array.writeFormat(fmt.esc(char));
+                    }
+                    array.writeMany("\".*;\n");
+                },
+                .slice => {
+                    array.writeMany("ptr[0..");
+                    if (combine_char and char != types.ParamSpec.immediate) {
+                        array.writeFormat(fmt.ud64(opt_string.len +% 1));
+                    } else {
+                        array.writeFormat(fmt.ud64(opt_string.len));
+                    }
+                    array.writeMany("].*=\"");
+                    array.writeMany(opt_string);
+                    if (combine_char and char != types.ParamSpec.immediate) {
+                        array.writeFormat(fmt.esc(char));
+                    }
+                    array.writeMany("\".*;\n");
+                },
+                .memcpy => if (memcpy == .builtin) {
                     array.writeMany("@memcpy(buf+len,\"");
                     array.writeMany(opt_string);
                     if (combine_char and char != types.ParamSpec.immediate) {
@@ -586,9 +587,9 @@ fn writeOptString(
                         array.writeFormat(fmt.ud64(opt_string.len));
                     }
                     array.writeMany(");\n");
-                }
+                },
             }
-            if (prefer_slice_notation) {
+            if (notation == .slice) {
                 array.writeMany("ptr=ptr+");
                 if (combine_char and char != types.ParamSpec.immediate) {
                     array.writeFormat(fmt.ud64(opt_string.len +% 1));
@@ -679,7 +680,7 @@ fn writeOptionalFormatter(
 pub fn writeWriterFunctionBody(array: *Array, params: []const types.ParamSpec, variant: types.Variant) void {
     writeSetRuntimeSafety(array);
     if (variant != .write) {
-        if (variant == .write_buf and prefer_slice_notation) {
+        if (variant == .write_buf and notation == .slice) {
             writeDeclarePointer(array);
         } else {
             writeDeclareLength(array);
@@ -825,7 +826,9 @@ pub fn writeWriterFunctionBody(array: *Array, params: []const types.ParamSpec, v
         }
     }
     if (variant != .write) {
-        if (variant == .write_buf and prefer_slice_notation) {
+        if (variant == .write_buf and
+            notation == .slice)
+        {
             writeReturnPointerDiff(array);
         } else {
             writeReturnLength(array);
