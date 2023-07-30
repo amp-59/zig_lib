@@ -66,9 +66,9 @@ fn writeType(fields_array: *Array, types_array: *Array2, param_spec: types.Param
                 });
                 types_array.writeMany(";\n");
             } else {
-                fields_array.writeFormat(types.ProtoTypeDescr{ .type_refer = .{
+                fields_array.writeFormat(types.ProtoTypeDescr{ .type_ref = .{
                     .spec = "?",
-                    .type = &.{ .type_decl = .{ .Composition = .{
+                    .type = &.{ .type_decl = .{ .defn = .{
                         .spec = "union(enum)",
                         .fields = &.{
                             .{ .name = "yes", .type = yes_type },

@@ -13,7 +13,7 @@ const config = @import("./config.zig");
 pub usingnamespace @import("../../start.zig");
 
 pub const runtime_assertions: bool = false;
-pub const logging_default: debug.Logging.Default = spec.logging.default.silent;
+pub const logging_default: debug.Logging.Default = spec.logging.default.verbose;
 const output_mode_decls: bool = false;
 
 const Array = mem.StaticString(64 * 1024 * 1024);
@@ -542,7 +542,7 @@ fn writeParserFunctionBody(array: *Array, attributes: types.Attributes) void {
                     writeOpenIfEqualTo(array, param_spec.name, param_spec.string);
                     writeNext(array);
                 }
-                for (param_spec.type.parse.?.type_decl.Enumeration.fields) |field| {
+                for (param_spec.type.parse.?.type_decl.defn.?.fields) |field| {
                     writeOpenIfEqualTo(array, param_spec.name, field.name);
                     writeAssignTag(array, param_spec.name, field.name);
                     writeIfElse(array);
@@ -585,8 +585,8 @@ fn writeParserFunctionBody(array: *Array, attributes: types.Attributes) void {
                     writeOpenIfEqualTo(array, param_spec.name, param_spec.string);
                     writeNext(array);
                 }
-                writeAddOptionalRepeatableTag(array, param_spec.name, param_spec.type.parse.?.type_name);
-                for (param_spec.type.store.type_refer.type.type_refer.type.type_decl.Enumeration.fields) |field| {
+                writeAddOptionalRepeatableTag(array, param_spec.name, param_spec.type.parse.?.type_decl.name.?);
+                for (param_spec.type.store.type_ref.type.type_ref.type.type_decl.defn.?.fields) |field| {
                     writeOpenIfEqualTo(array, param_spec.name, field.name);
                     writeAssignTagToPtr(array, param_spec.name, field.name);
                     writeIfElse(array);
@@ -603,7 +603,7 @@ fn writeParserFunctionBody(array: *Array, attributes: types.Attributes) void {
                     writeOpenIfEqualTo(array, param_spec.name, param_spec.string);
                     writeNext(array);
                 }
-                writeAddOptionalRepeatableFormatter(array, param_spec.name, param_spec.type.parse.?.type_name);
+                writeAddOptionalRepeatableFormatter(array, param_spec.name, param_spec.type.parse.?.type_decl.name.?);
                 do_discard = false;
                 writeIfElse(array);
             },
