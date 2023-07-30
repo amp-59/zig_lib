@@ -1,12 +1,3 @@
-//! REVISION:
-//! * `TypeFormat` should never be affected by `infer_type_names`.
-//! * `TypeFormat` should never be affected by `omit_type_names`.
-//! * Implement `fast_type_formatter`.
-//! * Consider merging or otherwise simplifying the following options:
-//!     - `infer_type_names`
-//!     - `infer_type_names_recursively`
-//!     - `omit_type_names`
-//! * Implement `address_view` or something similar, correctly.
 const tab = @import("./tab.zig");
 const fmt = @import("./fmt.zig");
 const mem = @import("./mem.zig");
@@ -24,9 +15,7 @@ pub const RenderSpec = struct {
     enum_to_int: bool = false,
     infer_type_names: bool = false,
     infer_type_names_recursively: bool = false,
-    type_cast_generic: bool = true,
     char_literal_formatter: type = fmt.Type.Esc,
-    fast_type_formatter: ?TypeDescrFormatSpec = null,
     inline_field_types: bool = true,
     enable_comptime_iterator: bool = false,
     address_view: bool = false,
@@ -35,28 +24,30 @@ pub const RenderSpec = struct {
         max_len_field_suffix: []const u8 = "_max_len",
         tag_field_suffix: []const u8 = "_tag",
     } = .{},
-    views: packed struct(u5) {
+    views: packed struct(u6) {
         /// Represents a normal slice where all values are to be shown, maybe used in extern structs.
         /// field_name: [*]T,
         /// field_name_len: usize,
-        extern_slice: bool = true,
+        extern_slice: bool = false,
         /// Represents a slice where only `field_name_len` values are to be shown.
         /// field_name: []T
         /// field_name_len: usize,
-        zig_resizeable: bool = true,
+        zig_resizeable: bool = false,
         /// Represents a statically sized buffer  where only `field_name_len` values are to be shown.
         /// field_name: [n]T
         /// field_name_len: usize,
-        static_resizeable: bool = true,
+        static_resizeable: bool = false,
         /// Represents a buffer with length and capacity, maybe used in extern structs.
         /// field_name: [*]T,
         /// field_name_max_len: usize,
         /// field_name_len: usize,
-        extern_resizeable: bool = true,
+        extern_resizeable: bool = false,
         /// Represents a union with length and capacity, maybe used in extern structs.
         /// field_name: U,
         /// field_name_tag: E,
-        extern_tagged_union: bool = true,
+        extern_tagged_union: bool = false,
+        /// Represents `anytype`
+        generic_type_cast: bool = true,
     } = .{},
     decls: packed struct(u2) {
         /// Prefer existing formatter declarations if present (unions and structs)
@@ -91,6 +82,7 @@ inline fn writeFormat(array: anytype, format: anytype) void {
     }
 }
 pub fn AnyFormat(comptime spec: RenderSpec, comptime Type: type) type {
+    @setEvalBranchQuota(~@as(u32, 0));
     if (Type == meta.Generic) {
         return GenericFormat(spec);
     }
@@ -203,7 +195,7 @@ pub fn ArrayFormat(comptime spec: RenderSpec, comptime Array: type) type {
                     }
                 }
                 if (omit_trailing_comma) {
-                    @as(*[2]u8, @ptrCast(buf + len - 2)).* = " }".*;
+                    @as(*[2]u8, @ptrCast(buf + (len - 2))).* = " }".*;
                 } else {
                     buf[len] = '}';
                     len +%= 1;
@@ -537,12 +529,12 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                                 len +%= writeDeclBuf(format, buf + len, decl);
                             }
                             len +%= writeTrailingComma(
-                                buf + len,
+                                buf + (len - 1),
                                 omit_trailing_comma,
                                 struct_info.fields.len +% struct_info.decls.len,
                             );
                         } else {
-                            len +%= writeTrailingCommaBuf(buf + len, omit_trailing_comma, struct_info.fields.len);
+                            len +%= writeTrailingCommaBuf(buf + (len - 1), omit_trailing_comma, struct_info.fields.len);
                         }
                     }
                 },
@@ -566,12 +558,12 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                                 len +%= writeDeclBuf(format, buf + len, decl);
                             }
                             len +%= writeTrailingCommaBuf(
-                                buf + len,
+                                buf + (len - 1),
                                 omit_trailing_comma,
                                 union_info.fields.len +% union_info.decls.len,
                             );
                         } else {
-                            len +%= writeTrailingCommaBuf(buf + len, omit_trailing_comma, union_info.fields.len);
+                            len +%= writeTrailingCommaBuf(buf + (len - 1), omit_trailing_comma, union_info.fields.len);
                         }
                     }
                 },
@@ -595,12 +587,12 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                                 len +%= writeDeclBuf(format, buf + len, decl);
                             }
                             len +%= writeTrailingCommaBuf(
-                                buf + len,
+                                buf + (len - 1),
                                 omit_trailing_comma,
                                 enum_info.fields.len +% enum_info.decls.len,
                             );
                         } else {
-                            len +%= writeTrailingCommaBuf(buf + len, omit_trailing_comma, enum_info.fields.len);
+                            len +%= writeTrailingCommaBuf(buf + (len - 1), omit_trailing_comma, enum_info.fields.len);
                         }
                     }
                 },
@@ -744,14 +736,15 @@ inline fn writeTrailingComma(array: anytype, comptime omit_trailing_comma: bool,
     }
 }
 fn writeTrailingCommaBuf(buf: [*]u8, omit_trailing_comma: bool, fields_len: usize) usize {
+    // The length starting at -1 is a workaround for compiler TODO implement sema comptime pointer subtract.
     var len: usize = 0;
     if (fields_len == 0) {
-        (buf - 1)[0] = '}';
+        buf[0] = '}';
     } else {
         if (omit_trailing_comma) {
-            (buf + len)[0..2].* = " }".*;
+            (buf + len)[1..3].* = " }".*;
         } else {
-            buf[0] = '}';
+            buf[1] = '}';
             len +%= 1;
         }
     }
@@ -976,7 +969,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                         fields_len +%= 1;
                     }
                 }
-                len +%= writeTrailingCommaBuf(buf + len, omit_trailing_comma, fields_len);
+                len +%= writeTrailingCommaBuf(buf + (len - 1), omit_trailing_comma, fields_len);
             }
             return len;
         }
@@ -2195,9 +2188,14 @@ pub const TypeDescrFormatSpec = struct {
     token: type = []const u8,
     depth: u64 = 0,
     decls: bool = false,
-    default_field_values: bool = false,
     identifier_name: bool = true,
     tokens: Tokens = .{},
+    default_field_values: DefaultFieldValues = .{ .exact = .{ .omit_trailing_comma = true, .infer_type_names = true } },
+    const DefaultFieldValues = union(enum) {
+        omit,
+        fast,
+        exact: RenderSpec,
+    };
     const Tokens = struct {
         decl: [:0]const u8 = "pub const ",
         lbrace: [:0]const u8 = " {\n",
@@ -2607,9 +2605,18 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
             );
             return @as(*const GenericFormat(cast_spec), @ptrCast(type_descr)).*;
         }
-        inline fn defaultFieldValue(comptime default_value_opt: ?*const anyopaque) ?spec.token {
+        inline fn defaultFieldValue(comptime field_type: type, comptime default_value_opt: ?*const anyopaque) ?spec.token {
             if (default_value_opt) |default_value_ptr| {
-                return fmt.cx(default_value_ptr);
+                switch (spec.default_field_values) {
+                    .omit => return null,
+                    .fast => return fmt.cx(default_value_ptr),
+                    .exact => |render_spec| {
+                        const value_fmt = render(render_spec, mem.pointerOpaque(field_type, default_value_ptr).*);
+                        const max_len: usize = value_fmt.formatLength();
+                        var buf: [max_len]u8 = undefined;
+                        return buf[0..value_fmt.formatWriteBuf(&buf)];
+                    },
+                }
             } else {
                 return null;
             }
@@ -2657,7 +2664,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                                 type_fields = type_fields ++ [1]Field{.{
                                     .name = field.name,
                                     .type = init(field.type),
-                                    .default_value = defaultFieldValue(field.default_value),
+                                    .default_value = defaultFieldValue(field.type, field.default_value),
                                 }};
                             }
                             return .{ .type_decl = .{ .Composition = .{
@@ -2671,7 +2678,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                                 type_fields = type_fields ++ [1]Field{.{
                                     .name = field.name,
                                     .type = init(field.type),
-                                    .default_value = defaultFieldValue(field.default_value),
+                                    .default_value = defaultFieldValue(field.type, field.default_value),
                                 }};
                             }
                             return .{ .type_decl = .{ .Composition = .{
@@ -2795,7 +2802,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                                 type_fields = type_fields ++ [1]Field{.{
                                     .name = field.name,
                                     .type = init(field.type),
-                                    .default_value = defaultFieldValue(field.default_value),
+                                    .default_value = defaultFieldValue(field.type, field.default_value),
                                 }};
                             }
                             return .{ .type_decl = .{ .Composition = .{
@@ -2809,7 +2816,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                                 type_fields = type_fields ++ [1]Field{.{
                                     .name = field.name,
                                     .type = init(field.type),
-                                    .default_value = defaultFieldValue(field.default_value),
+                                    .default_value = defaultFieldValue(field.type, field.default_value),
                                 }};
                             }
                             return .{ .type_decl = .{ .Composition = .{
