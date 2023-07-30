@@ -2317,13 +2317,18 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                 if (format.type) |field_type| {
                     array.writeMany(spec.tokens.colon);
                     writeFormat(array, field_type);
-                    if (format.value.default) |default_value| {
+                }
+                switch (format.value) {
+                    .default => |mb_default_value| {
+                        if (mb_default_value) |default_value| {
+                            array.writeMany(spec.tokens.equal);
+                            array.writeMany(default_value);
+                        }
+                    },
+                    .enumeration => {
                         array.writeMany(spec.tokens.equal);
-                        array.writeMany(default_value);
-                    }
-                } else {
-                    array.writeMany(spec.tokens.equal);
-                    array.writeFormat(fmt.ud64(format.value.enumeration));
+                        array.writeFormat(fmt.ud64(format.value.enumeration));
+                    },
                 }
                 array.writeMany(spec.tokens.next);
                 for (0..depth) |_| array.writeMany(spec.tokens.indent);
@@ -2341,16 +2346,21 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                     @as(*@TypeOf(Format.tab.colon), @ptrCast(buf + len)).* = Format.tab.colon;
                     len +%= Format.tab.colon.len;
                     len +%= field_type.formatWriteBuf(buf + len);
-                    if (format.value.default) |default_value| {
+                }
+                switch (format.value) {
+                    .default => |mb_default_value| {
+                        if (mb_default_value) |default_value| {
+                            @as(*@TypeOf(Format.tab.equal), @ptrCast(buf + len)).* = Format.tab.equal;
+                            len +%= Format.tab.equal.len;
+                            @memcpy(buf + len, default_value);
+                            len +%= default_value.len;
+                        }
+                    },
+                    .enumeration => {
                         @as(*@TypeOf(Format.tab.equal), @ptrCast(buf + len)).* = Format.tab.equal;
                         len +%= Format.tab.equal.len;
-                        @memcpy(buf + len, default_value);
-                        len +%= default_value.len;
-                    }
-                } else {
-                    @as(*@TypeOf(Format.tab.equal), @ptrCast(buf + len)).* = Format.tab.equal;
-                    len +%= Format.tab.equal.len;
-                    len +%= fmt.ud64(format.value.enumeration).formatWriteBuf(buf + len);
+                        len +%= fmt.ud64(format.value.enumeration).formatWriteBuf(buf + len);
+                    },
                 }
                 @as(*@TypeOf(Format.tab.next), @ptrCast(buf + len)).* = Format.tab.next;
                 len +%= Format.tab.next.len;
@@ -2370,13 +2380,18 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                 if (format.type) |field_type| {
                     len +%= spec.tokens.colon.len;
                     len +%= field_type.formatLength();
-                    if (format.value.default) |default_value| {
-                        len +%= spec.tokens.equal.len;
-                        len +%= default_value.len;
-                    }
-                } else {
-                    len +%= spec.tokens.equal.len;
-                    len +%= fmt.ud64(format.value.enumeration).formatLength();
+                }
+                switch (format.value) {
+                    .default => |mb_default_value| {
+                        if (mb_default_value) |default_value| {
+                            len +%= Format.tab.equal.len;
+                            len +%= default_value.len;
+                        }
+                    },
+                    .enumeration => {
+                        len +%= Format.tab.equal.len;
+                        len +%= fmt.ud64(format.value.enumeration).formatLength();
+                    },
                 }
                 len +%= spec.tokens.next.len;
                 len +%= depth *% spec.tokens.indent.len;
