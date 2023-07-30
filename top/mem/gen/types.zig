@@ -5,13 +5,11 @@ const builtin = @import("../../builtin.zig");
 const tok = @import("./tok.zig");
 
 pub const ProtoTypeDescr = fmt.GenericTypeDescrFormat(.{
-    .options = .{ .default_field_values = true },
+    .default_field_values = .fast,
 });
 pub const TypeDescr = fmt.GenericTypeDescrFormat(.{
-    .options = .{
-        .token = [:0]const u8,
-        .default_field_values = true,
-    },
+    .token = [:0]const u8,
+    .default_field_values = .fast,
 });
 pub const AbstractSpecification = struct {
     kind: Kind,
