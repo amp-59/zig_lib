@@ -16,10 +16,8 @@ pub const Attributes = struct {
     type_fn_name: ?[]const u8 = null,
 };
 pub const ProtoTypeDescr = fmt.GenericTypeDescrFormat(.{
-    .options = .{
-        .default_field_values = true,
-        .identifier_name = true,
-    },
+    .default_field_values = .fast,
+    .identifier_name = true,
     .tokens = .{
         .lbrace = "{\n",
         .equal = "=",
