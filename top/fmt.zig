@@ -53,6 +53,14 @@ pub fn cx(comptime value: anytype) []const u8 {
     const t_type_name: []const u8 = @typeName(T);
     return t_type_name[2 .. t_type_name.len -% (s_type_name.len +% 1)];
 }
+pub fn stringLiteralChar(byte: u8) []const u8 {
+    switch (byte) {
+        inline else => |value| {
+            const res = @typeName([:&[1]u8{value}][]const u8);
+            return res[3 .. res.len -% 12];
+        },
+    }
+}
 fn maxSigFig(comptime T: type, comptime radix: u7) comptime_int {
     @setRuntimeSafety(false);
     const U = @Type(.{ .Int = .{ .bits = @bitSizeOf(T), .signedness = .unsigned } });
