@@ -2189,10 +2189,10 @@ pub const TypeDescrFormatSpec = struct {
     token: type = []const u8,
     depth: u64 = 0,
     decls: bool = false,
+    special_enums: bool = false,
     identifier_name: bool = true,
     tokens: Tokens = .{},
-
-    default_field_values: DefaultFieldValues = .{ .exact = .{ .omit_trailing_comma = true, .infer_type_names = true } },
+    default_field_values: DefaultFieldValues = .fast,
     const DefaultFieldValues = union(enum) {
         omit,
         fast,
@@ -2242,7 +2242,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
             pub fn formatWrite(format: Decl, array: anytype) void {
                 array.writeMany(spec.tokens.decl);
                 if (spec.identifier_name) {
-                    array.writeFormat(fmt.IdentifierFormat{ .value = format.name });
+                    array.writeFormat(fmt.identifier(format.name));
                 } else {
                     array.writeMany(format.name);
                 }
@@ -2276,7 +2276,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                 var len: usize = 0;
                 len +%= spec.tokens.decl.len;
                 if (spec.identifier_name) {
-                    len +%= (fmt.IdentifierFormat{ .value = format.name }).formatLength();
+                    len +%= fmt.identifier(format.name).formatLength();
                 } else {
                     len +%= format.name.len;
                 }
@@ -2966,6 +2966,18 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                                 } } };
                             }
                         }
+                    },
+                    .Optional => |optional_info| {
+                        return .{ .type_refer = .{
+                            .spec = fmt.typeDeclSpecifier(type_info),
+                            .type = &init(optional_info.child),
+                        } };
+                    },
+                    .Pointer => |pointer_info| {
+                        return .{ .type_refer = .{
+                            .spec = fmt.typeDeclSpecifier(type_info),
+                            .type = &init(pointer_info.child),
+                        } };
                     },
                 }
             }
