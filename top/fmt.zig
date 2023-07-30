@@ -2301,6 +2301,9 @@ pub fn ixsize(value: isize) GenericPolynomialFormat(.{
 pub fn bytes(count: usize) Bytes {
     return Bytes.init(count);
 }
+pub fn identifier(name: []const u8) IdentifierFormat {
+    return .{ .value = name };
+}
 pub fn sourceLocation(value: builtin.SourceLocation, ret_addr: ?u64) SourceLocationFormat {
     return SourceLocationFormat.init(value, ret_addr);
 }
@@ -2546,6 +2549,20 @@ pub const Type = struct {
         .del_fmt_spec = .{ .bits = 64, .signedness = .unsigned, .radix = 10, .width = .min },
     });
     pub const BytesDel = GenericChangedBytesFormat(.{});
+    pub const Char = struct {
+        value: u8,
+        const Format = @This();
+        pub fn formatWrite(format: Format, array: anytype) void {
+            array.writeOne(format.value);
+        }
+        pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
+            buf[0] = format.value;
+            return 1;
+        }
+        pub fn formatLength(_: Format) usize {
+            return 1;
+        }
+    };
 };
 pub const old = struct {
     pub inline fn bin(comptime Int: type, value: Int) Generic(Int).Array2 {
