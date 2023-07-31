@@ -2150,24 +2150,23 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             }
             fn writeAbout(buf: [*]u8, kind: AboutKind) u64 {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
-                var len: usize = 0;
+                var ptr: [*]u8 = buf;
                 switch (kind) {
                     .@"error" => {
-                        @as(*@TypeOf(tab.bold_s.*), @ptrCast(buf + len)).* = tab.bold_s.*;
-                        len +%= tab.bold_s.len;
+                        ptr[0..4].* = tab.bold_s.*;
+                        ptr = ptr + tab.bold_s.len;
                     },
                     .note => {
-                        @as(*@TypeOf(tab.grey_s.*), @ptrCast(buf + len)).* = tab.grey_s.*;
-                        len +%= tab.grey_s.len;
+                        ptr[0..15].* = tab.grey_s.*;
+                        ptr = ptr + tab.grey_s.len;
                     },
                 }
-                const about_s: [:0]const u8 = @tagName(kind);
-                mach.memcpy(buf + len, about_s.ptr, about_s.len);
-                len +%= about_s.len;
-                @as(*[2]u8, @ptrCast(buf + len)).* = ": ".*;
-                len +%= 2;
-                @as(*@TypeOf(tab.bold_s.*), @ptrCast(buf + len)).* = tab.bold_s.*;
-                return len +% tab.bold_s.len;
+                @memcpy(ptr, @tagName(kind));
+                ptr = ptr + @tagName(kind).len;
+                ptr[0..2].* = ": ".*;
+                ptr = ptr + 2;
+                ptr[0..4].* = tab.bold_s.*;
+                return (@intFromPtr(ptr) -% @intFromPtr(buf)) +% tab.bold_s.len;
             }
             fn writeTopSrcLoc(buf: [*]u8, extra: [*]u32, bytes: [*:0]u8, err_msg_idx: u32) u64 {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
@@ -2181,7 +2180,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     ptr[0..2].* = ": ".*;
                     ptr = ptr + 2;
                 }
-                return (@intFromPtr(ptr) -% @intFromPtr(buf));
+                return @intFromPtr(ptr) -% @intFromPtr(buf);
             }
             fn writeError(buf: [*]u8, extra: [*]u32, bytes: [*:0]u8, err_msg_idx: u32, kind: AboutKind) u64 {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
@@ -2241,54 +2240,53 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 ptr[0..5].* = tab.new_s.*;
                 return (@intFromPtr(ptr) -% @intFromPtr(buf)) +% 5;
             }
-            fn writeCaret(buf: [*]u8, bytes: [*:0]u8, src: *types.SourceLocation) u64 {
+            fn writeCaret(buf: [*]u8, bytes: [*:0]u8, src: *types.SourceLocation) usize {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
                 const line: [:0]u8 = mach.manyToSlice80(bytes + src.src_line);
                 const before_caret: u64 = src.span_main -% src.span_start;
                 const indent: u64 = src.column -% before_caret;
                 const after_caret: u64 = src.span_end -% src.span_main -| 1;
-                var len: usize = 0;
-                mach.memcpy(buf, line.ptr, line.len);
-                len = line.len;
-                buf[len] = '\n';
-                len +%= 1;
-                mach.memset(buf + len, ' ', indent);
-                len +%= indent;
-                @as(*@TypeOf(tab.hi_green_s.*), @ptrCast(buf + len)).* = tab.hi_green_s.*;
-                len +%= tab.hi_green_s.len;
-                mach.memset(buf + len, '~', before_caret);
-                len +%= before_caret;
-                buf[len] = '^';
-                len +%= 1;
-                mach.memset(buf + len, '~', after_caret);
-                len +%= after_caret;
-                @as(*[5]u8, @ptrCast(buf + len)).* = tab.new_s.*;
-                return len +% tab.new_s.len;
+                @memcpy(buf, line);
+                var ptr: [*]u8 = buf + line.len;
+                ptr[0] = '\n';
+                ptr = ptr + 1;
+                @memset(ptr[0..indent], ' ');
+                ptr = ptr + indent;
+                ptr[0..10].* = tab.hi_green_s.*;
+                ptr = ptr + 10;
+                @memset(ptr[0..before_caret], '~');
+                ptr = ptr + before_caret;
+                ptr[0] = '^';
+                ptr = ptr + 1;
+                @memset(ptr[0..after_caret], '~');
+                ptr = ptr + after_caret;
+                ptr[0..5].* = tab.new_s.*;
+                return (@intFromPtr(ptr) -% @intFromPtr(buf)) +% tab.new_s.len;
             }
-            fn writeMessage(buf: [*]u8, bytes: [*:0]u8, start: u64, indent: u64) u64 {
+            fn writeMessage(buf: [*]u8, bytes: [*:0]u8, start: usize, indent: usize) usize {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
-                var len: usize = 0;
-                var next: u64 = start;
+                var ptr: [*]u8 = buf;
+                var next: usize = start;
                 var idx: usize = start;
                 while (bytes[idx] != 0) : (idx +%= 1) {
                     if (bytes[idx] == '\n') {
                         const line: []u8 = bytes[next..idx];
-                        mach.memcpy(buf + len, line.ptr, line.len);
-                        len +%= line.len;
-                        buf[len] = '\n';
-                        len +%= 1;
-                        mach.memset(buf + len, ' ', indent);
-                        len +%= indent;
+                        @memcpy(ptr, line);
+                        ptr = ptr + line.len;
+                        ptr[0] = '\n';
+                        ptr = ptr + 1;
+                        @memset(ptr[0..indent], ' ');
+                        ptr = ptr + indent;
                         next = idx +% 1;
                     }
                 }
                 const line: []u8 = bytes[next..idx];
-                mach.memcpy(buf + len, line.ptr, line.len);
-                len +%= line.len;
-                @as(*[5]u8, @ptrCast(buf + len)).* = tab.new_s.*;
-                return len +% tab.new_s.len;
+                @memcpy(ptr, line);
+                ptr = ptr + line.len;
+                ptr[0..5].* = tab.new_s.*;
+                return (@intFromPtr(ptr) -% @intFromPtr(buf)) +% tab.new_s.len;
             }
-            fn writeTrace(buf: [*]u8, extra: [*]u32, bytes: [*:0]u8, start: u64, ref_len: usize) u64 {
+            fn writeTrace(buf: [*]u8, extra: [*]u32, bytes: [*:0]u8, start: usize, ref_len: usize) usize {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
                 var ref_idx: usize = start +% types.SourceLocation.len;
                 buf[0..11].* = tab.trace_s.*;
@@ -2394,11 +2392,11 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     }
                 }
             }
-            fn writeAndWalkInternal(buf0: [*]u8, len0: usize, buf1: [*]u8, len1: usize, node: *const Node, name_width: usize, root_width: usize) usize {
+            fn writeAndWalkInternal(buf: [*]u8, end: [*]u8, tmp: [*]u8, len: usize, node: *const Node, name_width: usize, root_width: usize) usize {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
                 const deps: []Dependency = node.impl.deps[0..node.impl.deps_len];
-                var len: usize = len0;
-                var fin: *u8 = &buf0[0];
+                var ptr: [*]u8 = end;
+                var fin: *u8 = &buf[0];
                 var last_idx: usize = 0;
                 for (deps, 0..) |dep, dep_idx| {
                     if (wouldSkip(node, dep.on_node)) {
@@ -2410,22 +2408,22 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     if (wouldSkip(node, dep.on_node)) {
                         continue;
                     }
-                    @as(*[2]u8, @ptrCast(buf1 + len1)).* = if (deps_idx == last_idx) "  ".* else "| ".*;
-                    buf0[len] = '\n';
-                    len +%= 1;
-                    mach.memcpy(buf0 + len, buf1, len1);
-                    len +%= len1;
-                    fin = &buf0[len];
-                    @as(*[2]u8, @ptrCast(buf0 + len)).* = "|-".*;
-                    len +%= 2;
-                    @as(*[2]u8, @ptrCast(buf0 + len)).* = if (dep.on_node.impl.deps_len == 0) "> ".* else "+ ".*;
-                    len +%= 2;
-                    @memcpy(buf0 + len, dep.on_node.name);
-                    len +%= dep.on_node.name.len;
+                    (tmp + len)[0..2].* = if (deps_idx == last_idx or len == 0) "  ".* else "| ".*;
+                    ptr[0] = '\n';
+                    ptr = ptr + 1;
+                    @memcpy(ptr, tmp[0..len]);
+                    ptr = ptr + len;
+                    fin = &ptr[0];
+                    ptr[0..2].* = "|-".*;
+                    ptr = ptr + 2;
+                    ptr[0..2].* = if (dep.on_node.impl.deps_len == 0) "> ".* else "+ ".*;
+                    ptr = ptr + 2;
+                    @memcpy(ptr, dep.on_node.name);
+                    ptr = ptr + dep.on_node.name.len;
                     if (dep.on_node.impl.paths_len != 0) {
-                        len +%= writeSubNode(buf0 + len, len1 +% 2, dep.on_node, name_width, root_width);
+                        ptr = ptr + writeSubNode(ptr, len +% 2, dep.on_node, name_width, root_width);
                     }
-                    len = writeAndWalkInternal(buf0, len, buf1, len1 +% 2, dep.on_node, name_width, root_width);
+                    ptr = buf + writeAndWalkInternal(buf, ptr, tmp, len +% 2, dep.on_node, name_width, root_width);
                     if (deps_idx == last_idx) {
                         break;
                     }
@@ -2433,27 +2431,27 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 if (fin.* == '|') {
                     fin.* = '`';
                 }
-                return len;
+                return @intFromPtr(ptr - @intFromPtr(buf));
             }
-            fn writeSubNode(buf0: [*]u8, len1: usize, sub_node: *const Node, name_width: usize, root_width: usize) usize {
+            fn writeSubNode(buf: [*]u8, len: usize, sub_node: *const Node, name_width: usize, root_width: usize) usize {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
-                var len: usize = 0;
-                var count: usize = name_width -% (sub_node.name.len +% len1);
+                var count: usize = name_width -% (sub_node.name.len +% len);
+                var ptr: [*]u8 = buf;
                 const input: [:0]const u8 = sub_node.impl.paths[@intFromBool(sub_node.task.tag == .build)].names[1];
                 if (input.len != 0) {
-                    mach.memset(buf0 + len, ' ', count);
-                    len +%= count;
-                    @memcpy(buf0 + len, input);
-                    len +%= input.len;
+                    @memset(ptr[0..count], ' ');
+                    ptr = ptr + count;
+                    @memcpy(ptr, input);
+                    ptr = ptr + input.len;
                     if (sub_node.descr.len != 0) {
                         count = root_width -% input.len;
-                        mach.memset(buf0 + len, ' ', count);
-                        len +%= count;
-                        @memcpy(buf0 + len, sub_node.descr);
-                        len +%= sub_node.descr.len;
+                        @memset(ptr[0..count], ' ');
+                        ptr = ptr + count;
+                        @memcpy(ptr, sub_node.descr);
+                        ptr = ptr + sub_node.descr.len;
                     }
                 }
-                return len;
+                return @intFromPtr(ptr - @intFromPtr(buf));
             }
             fn writeToplevelCommandNotice(buf: [*]u8, tmp: [*]u8, len: usize, node: *const Node, name_width: usize, root_width: usize) usize {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
@@ -2465,7 +2463,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 }
                 ptr[0..4].* = about.tab.faint_s.*;
                 ptr = ptr + 4;
-                ptr = buf + writeAndWalkInternal(buf, @intFromPtr(ptr - @intFromPtr(buf)), tmp, len, node, name_width, root_width);
+                ptr = buf + writeAndWalkInternal(buf, ptr, tmp, len, node, name_width, root_width);
                 ptr[0..4].* = about.tab.reset_s.*;
                 ptr = ptr + tab.reset_s.len;
                 var last_idx: usize = 0;
@@ -2489,7 +2487,9 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     ptr = ptr + 2;
                     ptr[0..2].* = if (sub_node.impl.nodes_len == 0) "- ".* else "o ".*;
                     ptr = ptr + 2;
-                    if (sub_node.flags.is_hidden and sub_node.impl.paths_len != 0) {
+                    if (sub_node.flags.is_hidden and
+                        sub_node.impl.paths_len != 0)
+                    {
                         ptr = ptr + writeSubNode(ptr, len +% 4, sub_node, name_width, root_width);
                     }
                     @memcpy(ptr, sub_node.name);
