@@ -17,6 +17,7 @@ pub const logging_default: debug.Logging.Default = spec.logging.default.verbose;
 const output_mode_decls: bool = false;
 
 const Array = mem.StaticString(64 * 1024 * 1024);
+const Array256 = mem.StaticString(256);
 const open_spec: file.OpenSpec = .{
     .errors = .{},
     .logging = .{},
@@ -627,9 +628,6 @@ fn unhandledCommandField(param_spec: types.ParamSpec) void {
     var len: u64 = mach.memcpyMulti(&buf, &.{ param_spec.name, ": ", @tagName(param_spec.tag), "\n" });
     proc.exitFault(buf[0..len], 2);
 }
-comptime {
-    _ = @import("./../parsers.zig");
-}
 fn writeParserFunctionSpec(array: *Array, attributes: types.Attributes) void {
     if (config.allow_comptime_configure_parser) {
         array.writeMany("pub const ");
@@ -670,10 +668,119 @@ fn writeParserFunctionSignature(array: *Array, attributes: types.Attributes) voi
         array.writeMany("var arg:[:0]const u8=mem.terminate(args[args_idx],0);\n");
     }
 }
+fn writeFlagWithInverse(array: *Array, param_spec: types.ParamSpec, no_param_spec: types.InverseParamSpec) void {
+    var yes_idx: usize = 0;
+    var no_idx: usize = 0;
+    const yes_string: []const u8 = param_spec.string;
+    const no_string: []const u8 = no_param_spec.string;
+    var yes_array: Array256 = undefined;
+    var no_array: Array256 = undefined;
+    var no: bool = false;
+    yes_array.undefineAll();
+    no_array.undefineAll();
+    while (true) {
+        if (no_idx == no_string.len) {
+            break;
+        }
+        if (yes_idx == yes_string.len) {
+            break;
+        }
+        const yes_slice: []const u8 = yes_string[yes_idx..];
+        const no_slice: []const u8 = no_string[no_idx..];
+        if (yes_string[yes_idx] == no_string[no_idx]) {
+            if (no) {
+                if (mem.testEqualString(yes_slice, no_slice)) {
+                    if (yes_array.len() != 0 and no_array.len() != 0) {
+                        array.writeOne('(');
+                        array.writeMany(yes_array.readAll());
+                        array.writeOne('|');
+                        array.writeMany(no_array.readAll());
+                        array.writeOne(')');
+                    } else if (no_array.len() != 0) {
+                        array.writeOne('[');
+                        array.writeMany(no_array.readAll());
+                        array.writeOne(']');
+                    }
+                    break array.writeMany(yes_slice);
+                } else {
+                    if (yes_slice.len > no_slice.len) {
+                        yes_array.writeOne(yes_string[yes_idx]);
+                        yes_idx +%= 1;
+                    } else {
+                        no_array.writeOne(no_string[no_idx]);
+                        no_idx +%= 1;
+                    }
+                }
+            } else {
+                array.writeOne(yes_string[yes_idx]);
+                yes_idx +%= 1;
+                no_idx +%= 1;
+            }
+        } else {
+            no = true;
+            if (yes_slice.len > no_slice.len) {
+                yes_array.writeOne(yes_string[yes_idx]);
+                yes_idx +%= 1;
+            } else {
+                no_array.writeOne(no_string[no_idx]);
+                no_idx +%= 1;
+            }
+        }
+    }
+    if (param_spec.char) |char| {
+        array.writeOne('[');
+        array.writeOne(char);
+        array.writeOne(']');
+    }
+}
+fn writeParserFunctionHelp(array: *Array, attributes: types.Attributes) void {
+    array.writeMany("export const ");
+    array.writeMany(attributes.fn_name);
+    array.writeMany("_help = ");
+    var max_width: usize = 0;
+    for (attributes.params) |param_spec| {
+        if (param_spec.string.len != 0) {
+            const start: usize = array.len();
+            if (param_spec.and_no) |no_param_spec| {
+                writeFlagWithInverse(array, param_spec, no_param_spec);
+            } else {
+                array.writeMany(param_spec.string);
+            }
+            const finish: usize = array.len();
+            max_width = @max(max_width, mach.alignA64(4 +% (finish -% start), 4));
+            array.undefine(finish -% start);
+        }
+    }
+    for (attributes.params) |param_spec| {
+        if (param_spec.string.len != 0) {
+            array.writeMany("\\\\    ");
+            const start: usize = array.len();
+            if (param_spec.and_no) |no_param_spec| {
+                writeFlagWithInverse(array, param_spec, no_param_spec);
+            } else {
+                array.writeMany(param_spec.string);
+            }
+            const finish: usize = array.len();
+            const string_len: usize = finish -% start;
+            if (param_spec.descr.len != 0) {
+                for (0..max_width -% string_len) |_| array.writeMany(" ");
+                array.writeMany(param_spec.descr[0]);
+                for (param_spec.descr[1..]) |string| {
+                    array.writeMany("\n\\\\    ");
+                    for (0..max_width) |_| array.writeMany(" ");
+                    array.writeMany(string);
+                }
+            }
+            array.writeMany("\n");
+        }
+    }
+    array.writeMany("\n;");
+}
 fn writeParserFunction(array: *Array, attributes: types.Attributes) void {
     writeParserFunctionSignature(array, attributes);
     writeParserFunctionBody(array, attributes);
     writeParserFunctionSpec(array, attributes);
+    writeParserFunctionHelp(array, attributes);
 }
 pub fn main() !void {
     var allocator: mem.SimpleAllocator = .{};
