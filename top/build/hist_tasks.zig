@@ -34,7 +34,6 @@ pub const BuildCommand = packed struct {
         each_lib_rpath: bool = false,
         allow_shlib_undefined: bool = false,
         build_id: bool = false,
-        compress_debug_sections: bool = false,
         gc_sections: bool = false,
         color: bool = false,
     };
@@ -68,7 +67,6 @@ pub const BuildCommand = packed struct {
         each_lib_rpath: bool = undefined,
         allow_shlib_undefined: bool = undefined,
         build_id: @typeInfo(@TypeOf(@field(undef, "build_id"))).Optional.child = undefined,
-        compress_debug_sections: bool = undefined,
         gc_sections: bool = undefined,
         color: @typeInfo(@TypeOf(@field(undef, "color"))).Optional.child = undefined,
     };
@@ -133,8 +131,6 @@ pub const BuildCommand = packed struct {
         ret.val.allow_shlib_undefined = cmd.allow_shlib_undefined.?;
         ret.key.build_id = cmd.build_id != null;
         ret.val.build_id = cmd.build_id.?;
-        ret.key.compress_debug_sections = cmd.compress_debug_sections != null;
-        ret.val.compress_debug_sections = cmd.compress_debug_sections.?;
         ret.key.gc_sections = cmd.gc_sections != null;
         ret.val.gc_sections = cmd.gc_sections.?;
         ret.key.color = cmd.color != null;
