@@ -3,7 +3,7 @@ const _float = @import("./parse/float.zig");
 
 pub usingnamespace _float;
 
-pub fn readLEB128(comptime T: type, bytes: []const u8) !extern struct { T, u8 } {
+pub fn readLEB128(comptime T: type, bytes: []const u8) !struct { T, u8 } {
     const Int = meta.Child(T);
     const bit_size_of: comptime_int = @bitSizeOf(Int);
     const max_idx: comptime_int = (bit_size_of +% 6) / 7;
@@ -67,7 +67,7 @@ pub fn readLEB128(comptime T: type, bytes: []const u8) !extern struct { T, u8 } 
     }
 }
 pub const noexcept = struct {
-    pub fn readLEB128(comptime T: type, bytes: []const u8) extern struct { T, u8 } {
+    pub fn readLEB128(comptime T: type, bytes: []const u8) struct { T, u8 } {
         const Int = meta.Child(T);
         const bit_size_of: comptime_int = @bitSizeOf(Int);
         const max_idx: comptime_int = (bit_size_of +% 6) / 7;
