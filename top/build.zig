@@ -2019,6 +2019,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 const diff_size: u64 = @max(new_size, old_size) -% @min(new_size, old_size);
                 var ud64: fmt.Type.Ud64 = undefined;
                 var buf: [32768]u8 = undefined;
+                var ptr: [*]u8 = &buf;
                 const about_s: []const u8 = switch (task) {
                     else => unreachable,
                     .archive => tab.ar_s,
@@ -2030,33 +2031,32 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                         .lib => tab.build_lib_s,
                     },
                 };
-                var len: usize = about_s.len;
-                mach.memcpy(&buf, about_s.ptr, about_s.len);
-                mach.memcpy(buf[len..].ptr, node.name.ptr, node.name.len);
-                len +%= node.name.len;
-                @as(*[2]u8, @ptrCast(buf[len..].ptr)).* = ", ".*;
-                len +%= 2;
+                @memcpy(ptr, about_s);
+                ptr = ptr + about_s.len;
+                @memcpy(ptr, node.name);
+                ptr = ptr + node.name.len;
+                ptr[0..2].* = ", ".*;
+                ptr = ptr + 2;
                 if (task == .build) {
                     const mode: builtin.Mode = node.task.info.build.mode orelse .Debug;
                     const stripped: bool = node.task.info.build.strip orelse (mode == .ReleaseSmall);
-                    mach.memcpy(buf[len..].ptr, @tagName(mode).ptr, @tagName(mode).len);
-                    len +%= @tagName(mode).len;
-                    @as(*[2]u8, @ptrCast(buf[len..].ptr)).* = ", ".*;
-                    len +%= 2;
-                    @as(*[2]u8, @ptrCast(buf[len..].ptr)).* = "un".*;
-                    if (!stripped) len +%= 2;
-                    @as(*[8]u8, @ptrCast(buf[len..].ptr)).* = "stripped".*;
-                    len +%= 8;
-                    @as(*[2]u8, @ptrCast(buf[len..].ptr)).* = ", ".*;
-                    len +%= 2;
+                    @memcpy(ptr, @tagName(mode));
+                    ptr = ptr + @tagName(mode).len;
+                    ptr[0..2].* = ", ".*;
+                    ptr = ptr + 2;
+                    ptr[0..2].* = "un".*;
+                    if (!stripped) ptr = ptr + 2;
+                    ptr[0..8].* = "stripped".*;
+                    ptr = ptr + 8;
+                    ptr[0..2].* = ", ".*;
+                    ptr = ptr + 2;
                 }
-                @as(*[5]u8, @ptrCast(buf[len..].ptr)).* = "exit=".*;
-                len +%= 5;
-                ud64 = @bitCast(@as(u64, job.ret.sys));
+                ptr[0..5].* = "exit=".*;
+                ptr = ptr + 5;
+                ud64.value = job.ret.sys;
                 if (task == .build) {
-                    var style_s: []const u8 = tab.bold_s;
                     const res: UpdateAnswer = UpdateAnswer.enumFromInt(job.ret.srv);
-                    const msg_s: []const u8 = @tagName(res);
+                    var style_s: []const u8 = tab.bold_s;
                     if (res == .failed) {
                         style_s = tab.red_s;
                     }
@@ -2066,85 +2066,87 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                         }
                         style_s = tab.special_s;
                     }
-                    buf[len] = '[';
-                    len +%= 1;
-                    mach.memcpy(buf[len..].ptr, style_s.ptr, style_s.len);
-                    len +%= style_s.len;
-                    mach.memcpy(buf[len..].ptr, msg_s.ptr, msg_s.len);
-                    len +%= msg_s.len;
-                    @as(*[4]u8, @ptrCast(buf[len..].ptr)).* = tab.reset_s.*;
-                    len +%= 4;
-                    buf[len] = ',';
-                    len +%= 1;
-                    len +%= ud64.formatWriteBuf(buf[len..].ptr);
-                    buf[len] = ']';
-                    len +%= 1;
+                    ptr[0] = '[';
+                    ptr = ptr + 1;
+                    @memcpy(ptr, style_s);
+                    ptr = ptr + style_s.len;
+                    @memcpy(ptr, @tagName(res));
+                    ptr = ptr + @tagName(res).len;
+                    ptr[0..4].* = tab.reset_s.*;
+                    ptr = ptr + 4;
+                    ptr[0] = ',';
+                    ptr = ptr + 1;
+                    ptr = ptr + ud64.formatWriteBuf(ptr);
+                    ptr[0] = ']';
+                    ptr = ptr + 1;
                 } else {
-                    const style_s: []const u8 = switch (job.ret.sys) {
-                        builder_spec.options.system_expected_status => tab.bold_s,
-                        else => tab.red_s,
-                    };
-                    mach.memcpy(buf[len..].ptr, style_s.ptr, style_s.len);
-                    len +%= style_s.len;
-                    len +%= ud64.formatWriteBuf(buf[len..].ptr);
-                    @as(*[4]u8, @ptrCast(buf[len..].ptr)).* = tab.reset_s.*;
-                    len +%= 4;
+                    switch (job.ret.sys) {
+                        builder_spec.options.system_expected_status => {
+                            @memcpy(ptr, tab.bold_s);
+                            ptr = ptr + tab.bold_s.len;
+                        },
+                        else => {
+                            @memcpy(ptr, tab.red_s);
+                            ptr = ptr + tab.red_s.len;
+                        },
+                    }
+                    ptr = ptr + ud64.formatWriteBuf(ptr);
+                    ptr[0..4].* = tab.reset_s.*;
+                    ptr = ptr + 4;
                 }
-                @as(*[2]u8, @ptrCast(buf[len..].ptr)).* = ", ".*;
-                len +%= 2;
+                ptr[0..2].* = ", ".*;
+                ptr = ptr + 2;
                 if (task == .build or task == .archive) {
                     if (old_size == 0) {
-                        @as(*[5]u8, @ptrCast(buf[len..].ptr)).* = tab.gold_s.*;
-                        len +%= 5;
-                        ud64 = @bitCast(new_size);
-                        len +%= ud64.formatWriteBuf(buf[len..].ptr);
-                        @as(*[13]u8, @ptrCast(buf[len..].ptr)).* = ("*" ++ tab.reset_s ++ tab.bytes_s).*;
-                        len +%= 13;
+                        ptr[0..5].* = tab.gold_s.*;
+                        ptr = ptr + 5;
+                        ud64.value = new_size;
+                        ptr = ptr + ud64.formatWriteBuf(ptr);
+                        ptr[0..13].* = ("*" ++ tab.reset_s ++ tab.bytes_s).*;
+                        ptr = ptr + 13;
                     } else if (new_size == old_size) {
-                        ud64 = @bitCast(new_size);
-                        len +%= ud64.formatWriteBuf(buf[len..].ptr);
-                        @as(*[8]u8, @ptrCast(buf[len..].ptr)).* = tab.bytes_s.*;
-                        len +%= 8;
+                        ud64.value = new_size;
+                        ptr = ptr + ud64.formatWriteBuf(ptr);
+                        ptr[0..8].* = tab.bytes_s.*;
+                        ptr = ptr + 8;
                     } else {
-                        ud64 = @bitCast(old_size);
-                        len +%= ud64.formatWriteBuf(buf[len..].ptr);
-                        buf[len] = '(';
-                        len +%= 1;
-                        @as(*[7]u8, @ptrCast(buf[len..].ptr)).* = if (new_size > old_size) tab.red_s.* else tab.green_s.*;
-                        len +%= 7;
-                        buf[len] = if (new_size > old_size) '+' else '-';
-                        len +%= 1;
-                        ud64 = @bitCast(diff_size);
-                        len +%= ud64.formatWriteBuf(buf[len..].ptr);
-                        @as(*[4]u8, @ptrCast(buf[len..].ptr)).* = tab.reset_s.*;
-                        len +%= 4;
-                        @as(*[5]u8, @ptrCast(buf[len..].ptr)).* = ") => ".*;
-                        len +%= 5;
-                        ud64 = @bitCast(new_size);
-                        len +%= ud64.formatWriteBuf(buf[len..].ptr);
-                        @as(*[8]u8, @ptrCast(buf[len..].ptr)).* = tab.bytes_s.*;
-                        len +%= 8;
+                        ud64.value = old_size;
+                        ptr = ptr + ud64.formatWriteBuf(ptr);
+                        ptr[0] = '(';
+                        ptr = ptr + 1;
+                        ptr[0..7].* = if (new_size > old_size) tab.red_s.* else tab.green_s.*;
+                        ptr = ptr + 7;
+                        ptr[0] = if (new_size > old_size) '+' else '-';
+                        ptr = ptr + 1;
+                        ud64.value = diff_size;
+                        ptr = ptr + ud64.formatWriteBuf(ptr);
+                        ptr[0..4].* = tab.reset_s.*;
+                        ptr = ptr + 4;
+                        ptr[0..5].* = ") => ".*;
+                        ptr = ptr + 5;
+                        ud64.value = new_size;
+                        ptr = ptr + ud64.formatWriteBuf(ptr);
+                        ptr[0..8].* = tab.bytes_s.*;
+                        ptr = ptr + 8;
                     }
                 }
-                ud64 = @bitCast(job.ts.sec);
-                len +%= ud64.formatWriteBuf(buf[len..].ptr);
-                @as(*[4]u8, @ptrCast(buf[len..].ptr)).* = ".000".*;
-                len +%= 1;
-                ud64 = @bitCast(job.ts.nsec);
+                ud64.value = job.ts.sec;
+                ptr = ptr + ud64.formatWriteBuf(ptr);
+                ptr[0..4].* = ".000".*;
+                ptr = ptr + 1;
+                ud64.value = job.ts.nsec;
                 const figs: usize = fmt.length(u64, job.ts.nsec, 10);
-                len +%= 9 -% figs;
-                _ = ud64.formatWriteBuf(buf[len..].ptr);
-                len +%= figs -% 9;
-                len +%= 3;
-                buf[len] = 's';
-                len +%= 1;
-                if (builder_spec.options.show_arena_index and
-                    arena_index != max_thread_count)
-                {
-                    len +%= writeArenaIndex(buf[len..].ptr, arena_index);
+                ptr = ptr + (9 -% figs);
+                _ = ud64.formatWriteBuf(ptr);
+                ptr = ptr + (figs -% 9);
+                ptr = ptr + 3;
+                ptr[0] = 's';
+                ptr = ptr + 1;
+                if (builder_spec.options.show_arena_index and arena_index != max_thread_count) {
+                    ptr = ptr + writeArenaIndex(ptr, arena_index);
                 }
-                buf[len] = '\n';
-                debug.write(buf[0 .. len +% 1]);
+                ptr[0] = '\n';
+                debug.write(buf[0 .. (@intFromPtr(ptr) -% @intFromPtr(&buf)) +% 1]);
             }
             fn writeAbout(buf: [*]u8, kind: AboutKind) u64 {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
@@ -2453,19 +2455,19 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 }
                 return len;
             }
-            fn writeToplevelCommandNotice(buf0: [*]u8, buf1: [*]u8, len1: u64, node: *const Node, name_width: u64, root_width: u64) u64 {
+            fn writeToplevelCommandNotice(buf: [*]u8, tmp: [*]u8, len: usize, node: *const Node, name_width: usize, root_width: usize) usize {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
                 const nodes: []*Node = node.impl.nodes[0..node.impl.nodes_len];
-                var len: usize = 0;
-                var fin: *u8 = &buf0[0];
+                var ptr: [*]u8 = buf;
+                var fin: *u8 = &buf[0];
                 if (node.impl.paths_len != 0) {
-                    len = writeSubNode(buf0, len1, node, name_width, root_width);
+                    ptr = ptr + writeSubNode(buf, len, node, name_width, root_width);
                 }
-                @as(*[4]u8, @ptrCast(buf0 + len)).* = about.tab.faint_s.*;
-                len +%= about.tab.faint_s.len;
-                len = writeAndWalkInternal(buf0, len, buf1, len1, node, name_width, root_width);
-                @as(*[4]u8, @ptrCast(buf0 + len)).* = about.tab.reset_s.*;
-                len +%= tab.reset_s.len;
+                ptr[0..4].* = about.tab.faint_s.*;
+                ptr = ptr + 4;
+                ptr = buf + writeAndWalkInternal(buf, @intFromPtr(ptr - @intFromPtr(buf)), tmp, len, node, name_width, root_width);
+                ptr[0..4].* = about.tab.reset_s.*;
+                ptr = ptr + tab.reset_s.len;
                 var last_idx: usize = 0;
                 for (nodes, 0..) |sub_node, nodes_idx| {
                     if (wouldSkip(node, sub_node)) {
@@ -2477,22 +2479,22 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     if (wouldSkip(node, sub_node)) {
                         continue;
                     }
-                    @as(*[2]u8, @ptrCast(buf1 + len1)).* = if (nodes_idx == last_idx or len1 == 0) "  ".* else "| ".*;
-                    buf0[len] = '\n';
-                    len +%= 1;
-                    @memcpy(buf0 + len, buf1[0..len1]);
-                    len +%= len1;
-                    fin = &buf0[len];
-                    @as(*[2]u8, @ptrCast(buf0 + len)).* = if (len1 == 0) "  ".* else "|-".*;
-                    len +%= 2;
-                    @as(*[2]u8, @ptrCast(buf0 + len)).* = if (sub_node.impl.nodes_len == 0) "- ".* else "o ".*;
-                    len +%= 2;
+                    (tmp + len)[0..2].* = if (nodes_idx == last_idx or len == 0) "  ".* else "| ".*;
+                    ptr[0] = '\n';
+                    ptr = ptr + 1;
+                    @memcpy(ptr, tmp[0..len]);
+                    ptr = ptr + len;
+                    fin = &ptr[0];
+                    ptr[0..2].* = if (len == 0) "  ".* else "|-".*;
+                    ptr = ptr + 2;
+                    ptr[0..2].* = if (sub_node.impl.nodes_len == 0) "- ".* else "o ".*;
+                    ptr = ptr + 2;
                     if (sub_node.flags.is_hidden and sub_node.impl.paths_len != 0) {
-                        len +%= writeSubNode(buf0 + len, len1 +% 4, sub_node, name_width, root_width);
+                        ptr = ptr + writeSubNode(ptr, len +% 4, sub_node, name_width, root_width);
                     }
-                    @memcpy(buf0 + len, sub_node.name);
-                    len +%= sub_node.name.len;
-                    len +%= writeToplevelCommandNotice(buf0 + len, buf1, len1 +% 2, sub_node, name_width, root_width);
+                    @memcpy(ptr, sub_node.name);
+                    ptr = ptr + sub_node.name.len;
+                    ptr = ptr + writeToplevelCommandNotice(ptr, tmp, len +% 2, sub_node, name_width, root_width);
                     if (nodes_idx == last_idx) {
                         break;
                     }
@@ -2500,7 +2502,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 if (fin.* == '|') {
                     fin.* = '`';
                 }
-                return len;
+                return @intFromPtr(ptr - @intFromPtr(buf));
             }
             fn writeStateSummary(buf: [*]u8, node: *const Node) usize {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
