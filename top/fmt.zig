@@ -2638,9 +2638,6 @@ pub const old = struct {
             pub const Array10 = Array(len10);
             pub const Array16 = Array(len16);
             pub fn bin(value: Int) Array2 {
-                if (true) {
-                    @compileError("TODO: Rewrite to use new formatters");
-                }
                 @setRuntimeSafety(false);
                 var ret: Array2 = undefined;
                 ret.len = ret.buf.len;
@@ -2674,9 +2671,6 @@ pub const old = struct {
                 return ret;
             }
             pub fn oct(value: Int) Array8 {
-                if (true) {
-                    @compileError("TODO: Rewrite to use new formatters");
-                }
                 @setRuntimeSafety(false);
                 var ret: Array8 = undefined;
                 ret.len = ret.buf.len;
@@ -2702,9 +2696,6 @@ pub const old = struct {
                 return ret;
             }
             pub fn dec(value: Int) Array10 {
-                if (true) {
-                    @compileError("TODO: Rewrite to use new formatters");
-                }
                 @setRuntimeSafety(false);
                 var ret: Array10 = undefined;
                 ret.len = ret.buf.len;
@@ -2728,9 +2719,6 @@ pub const old = struct {
                 return ret;
             }
             pub fn hex(value: Int) Array16 {
-                if (true) {
-                    @compileError("TODO: Rewrite to use new formatters");
-                }
                 @setRuntimeSafety(false);
                 var ret: Array16 = undefined;
                 ret.len = ret.buf.len;
