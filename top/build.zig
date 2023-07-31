@@ -2171,19 +2171,15 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
                 const err: *types.ErrorMessage = @ptrCast(extra + err_msg_idx);
                 const src: *types.SourceLocation = @ptrCast(extra + err.src_loc);
-                var len: usize = tab.bold_s.len;
-                @as(*[4]u8, @ptrCast(buf)).* = tab.bold_s.*;
+                buf[0..4].* = tab.bold_s.*;
+                var ptr: [*]u8 = buf + 4;
                 if (err.src_loc != 0) {
-                    len +%= writeSourceLocation(
-                        buf + len,
-                        mach.manyToSlice80(bytes + src.src_path),
-                        src.line +% 1,
-                        src.column +% 1,
-                    );
-                    @as(*[2]u8, @ptrCast(buf + len)).* = ": ".*;
-                    len +%= 2;
+                    const src_file: [:0]const u8 = mach.manyToSlice80(bytes + src.src_path);
+                    ptr = ptr + writeSourceLocation(ptr, src_file, src.line +% 1, src.column +% 1);
+                    ptr[0..2].* = ": ".*;
+                    ptr = ptr + 2;
                 }
-                return len;
+                return (@intFromPtr(ptr) -% @intFromPtr(buf));
             }
             fn writeError(buf: [*]u8, extra: [*]u32, bytes: [*:0]u8, err_msg_idx: u32, kind: AboutKind) u64 {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
@@ -2214,33 +2210,34 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             fn writeSourceLocation(buf: [*]u8, pathname: [:0]const u8, line: u64, column: u64) u64 {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
                 var ud64: fmt.Type.Ud64 = @bitCast(line);
-                var len: usize = 0;
-                @as(*[11]u8, @ptrCast(buf + len)).* = tab.trace_s.*;
-                len +%= tab.trace_s.len;
-                mach.memcpy(buf + len, pathname.ptr, pathname.len);
-                len +%= pathname.len;
-                buf[len] = ':';
-                len +%= 1;
-                len +%= ud64.formatWriteBuf(buf + len);
-                buf[len] = ':';
-                len +%= 1;
-                ud64 = @bitCast(column);
-                len +%= ud64.formatWriteBuf(buf + len);
-                @as(*[4]u8, @ptrCast(buf + len)).* = tab.reset_s.*;
-                return len +% 4;
+                var ptr: [*]u8 = buf;
+                ptr[0..11].* = tab.trace_s.*;
+                ptr = ptr + 11;
+                @memcpy(ptr, pathname);
+                ptr = ptr + pathname.len;
+                ptr[0] = ':';
+                ptr = ptr + 1;
+                ptr = ptr + ud64.formatWriteBuf(ptr);
+                ptr[0] = ':';
+                ptr = ptr + 1;
+                ud64.value = column;
+                ptr = ptr + ud64.formatWriteBuf(ptr);
+                ptr[0..4].* = tab.reset_s.*;
+                return (@intFromPtr(ptr) -% @intFromPtr(buf)) +% 4;
             }
             fn writeTimes(buf: [*]u8, count: u64) u64 {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
-                var ud64: fmt.Type.Ud64 = @bitCast(count);
-                @as(*[4]u8, @ptrCast(buf - 1)).* = tab.faint_s.*;
-                var len: usize = tab.faint_s.len -% 1;
-                @as(*[2]u8, @ptrCast(buf + len)).* = " (".*;
-                len +%= 2;
-                len +%= ud64.formatWriteBuf(buf + len);
-                @as(*[7]u8, @ptrCast(buf + len)).* = " times)".*;
-                len +%= 7;
-                @as(*[5]u8, @ptrCast(buf + len)).* = tab.new_s.*;
-                return len +% 5;
+                var ud64: fmt.Type.Ud64 = .{ .value = count };
+                var ptr: [*]u8 = buf - 1;
+                ptr[0..4].* = tab.faint_s.*;
+                ptr = ptr + 3;
+                ptr[0..2].* = " (".*;
+                ptr = ptr + 2;
+                ptr = ptr + ud64.formatWriteBuf(ptr);
+                ptr[0..7].* = " times)".*;
+                ptr = ptr + 7;
+                ptr[0..5].* = tab.new_s.*;
+                return (@intFromPtr(ptr) -% @intFromPtr(buf)) +% 5;
             }
             fn writeCaret(buf: [*]u8, bytes: [*:0]u8, src: *types.SourceLocation) u64 {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
@@ -2249,31 +2246,10 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 const indent: u64 = src.column -% before_caret;
                 const after_caret: u64 = src.span_end -% src.span_main -| 1;
                 var len: usize = 0;
-                if (fancy_hl_line) {
-                    var pos: u64 = indent +% before_caret;
-                    mach.memcpy(buf, line.ptr, indent);
-                    len +%= indent;
-                    @as(*[tab.bold_s.len]u8, @ptrCast(buf + len)).* = tab.bold_s.*;
-                    len +%= tab.bold_s.len;
-                    mach.memcpy(buf + len, line[indent..pos].ptr, before_caret);
-                    len +%= before_caret;
-                    @as(*[tab.hi_red_s.len]u8, @ptrCast(buf + len)).* = tab.hi_red_s.*;
-                    len +%= tab.hi_red_s.len;
-                    buf[len] = line[pos];
-                    len +%= 1;
-                    pos = pos +% 1;
-                    @as(*[tab.bold_s.len]u8, @ptrCast(buf + len)).* = tab.bold_s.*;
-                    len +%= tab.bold_s.len;
-                    mach.memcpy(buf + len, line[pos .. pos + after_caret].ptr, after_caret);
-                    len +%= after_caret;
-                    buf[len] = '\n';
-                    len +%= 1;
-                } else {
-                    mach.memcpy(buf, line.ptr, line.len);
-                    len = line.len;
-                    buf[len] = '\n';
-                    len +%= 1;
-                }
+                mach.memcpy(buf, line.ptr, line.len);
+                len = line.len;
+                buf[len] = '\n';
+                len +%= 1;
                 mach.memset(buf + len, ' ', indent);
                 len +%= indent;
                 @as(*@TypeOf(tab.hi_green_s.*), @ptrCast(buf + len)).* = tab.hi_green_s.*;
@@ -2313,32 +2289,31 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             fn writeTrace(buf: [*]u8, extra: [*]u32, bytes: [*:0]u8, start: u64, ref_len: usize) u64 {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
                 var ref_idx: usize = start +% types.SourceLocation.len;
+                buf[0..11].* = tab.trace_s.*;
+                var ptr: [*]u8 = buf + 11;
+                ptr[0..15].* = "referenced by:\n".*;
+                ptr = ptr + 15;
                 var idx: usize = 0;
-                var len: usize = 0;
-                @as(*[11]u8, @ptrCast(buf + len)).* = tab.trace_s.*;
-                len +%= 11;
-                @as(*[15]u8, @ptrCast(buf + len)).* = "referenced by:\n".*;
-                len +%= 15;
                 while (idx != ref_len) : (idx +%= 1) {
                     const ref_trc: *types.ReferenceTrace = @ptrCast(extra + ref_idx);
                     if (ref_trc.src_loc != 0) {
                         const ref_src: *types.SourceLocation = @ptrCast(extra + ref_trc.src_loc);
                         const src_file: [:0]u8 = mach.manyToSlice80(bytes + ref_src.src_path);
                         const decl_name: [:0]u8 = mach.manyToSlice80(bytes + ref_trc.decl_name);
-                        mach.memset(buf + len, ' ', 4);
-                        len +%= 4;
-                        mach.memcpy(buf + len, decl_name.ptr, decl_name.len);
-                        len +%= decl_name.len;
-                        @as(*[2]u8, @ptrCast(buf + len)).* = ": ".*;
-                        len +%= 2;
-                        len +%= writeSourceLocation(buf + len, src_file, ref_src.line +% 1, ref_src.column +% 1);
-                        buf[len] = '\n';
-                        len +%= 1;
+                        @memset(ptr[0..4], ' ');
+                        ptr = ptr + 4;
+                        @memcpy(ptr, decl_name);
+                        ptr = ptr + decl_name.len;
+                        ptr[0..2].* = ": ".*;
+                        ptr = ptr + 2;
+                        ptr = ptr + writeSourceLocation(ptr, src_file, ref_src.line +% 1, ref_src.column +% 1);
+                        ptr[0] = '\n';
+                        ptr = ptr + 1;
                     }
                     ref_idx +%= types.ReferenceTrace.len;
                 }
-                @as(*[5]u8, @ptrCast(buf + len)).* = tab.new_s.*;
-                return len +% 5;
+                ptr[0..5].* = tab.new_s.*;
+                return (@intFromPtr(ptr) -% @intFromPtr(buf)) +% 5;
             }
             fn writeErrors(allocator: *mem.SimpleAllocator, ptrs: MessagePtrs) void {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
