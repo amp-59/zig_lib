@@ -777,13 +777,9 @@ fn sortDecls(comptime Container: type) []const builtin.Type.Declaration {
     while (l_idx < sorted.len) : (l_idx +%= 1) {
         var r_idx: usize = l_idx -% 1;
         const x: builtin.Type.Declaration = sorted[l_idx];
-        const x_val = if (x.is_pub and
-            @TypeOf(@field(Container, x.name)) != type) @field(Container, x.name) else 0;
+        const x_val = if (@TypeOf(@field(Container, x.name)) != type) @field(Container, x.name) else 0;
         while (r_idx < sorted.len) : (r_idx -%= 1) {
             const y: builtin.Type.Declaration = sorted[r_idx];
-            if (!y.is_pub) {
-                break;
-            }
             const y_val = @field(Container, y.name);
             if (@TypeOf(y_val) == type) {
                 break;
@@ -796,9 +792,6 @@ fn sortDecls(comptime Container: type) []const builtin.Type.Declaration {
         sorted[r_idx +% 1] = x;
     }
     for (sorted) |decl| {
-        if (!decl.is_pub) {
-            continue;
-        }
         const decl_val = @field(Container, decl.name);
         if (@TypeOf(decl_val) == type) {
             continue;
@@ -823,9 +816,6 @@ pub fn containerDeclsToBitFieldSets(comptime Container: type, comptime backing_i
         if (done[l_decl_idx]) {
             continue;
         }
-        if (!l_decl.is_pub) {
-            continue :lo;
-        }
         const l_field = @field(Container, l_decl.name);
         if (@TypeOf(l_field) == type) {
             continue;
@@ -847,9 +837,6 @@ pub fn containerDeclsToBitFieldSets(comptime Container: type, comptime backing_i
                 continue;
             }
             const r_decl: builtin.Type.Declaration = decls[r_decl_idx];
-            if (!r_decl.is_pub) {
-                continue;
-            }
             const r_field = @field(Container, r_decl.name);
             if (@TypeOf(r_field) == type) {
                 continue;
@@ -1522,10 +1509,8 @@ const about = opaque {
             else => unexpectedTypeTypesError(type_info, container_types),
         };
         for (container_info.decls) |decl| {
-            if (decl.is_pub) {
-                pub_num += 1;
-                pub_str = pub_str ++ ", '" ++ decl.name;
-            }
+            pub_num += 1;
+            pub_str = pub_str ++ ", '" ++ decl.name;
         }
         if (pub_num == 1) {
             return buf[0 .. buf.len - 3] ++ ": " ++ pub_str[2..pub_str.len] ++ "'";
@@ -1572,7 +1557,7 @@ const static = opaque {
         return true;
     }
 };
-pub const Bits64 = packed struct(u64) { bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false };
-pub const Bits32 = packed struct(u32) { bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false };
-pub const Bits16 = packed struct(u16) { bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false };
-pub const Bits8 = packed struct(u8) { bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false, bool = false };
+pub const Bits64 = @Vector(64, bool);
+pub const Bits32 = @Vector(32, bool);
+pub const Bits16 = @Vector(16, bool);
+pub const Bits8 = @Vector(8, bool);
