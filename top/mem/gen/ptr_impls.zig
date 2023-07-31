@@ -17,7 +17,6 @@ const types = @import("./types.zig");
 const config = @import("./config.zig");
 const ptr_fn = @import("./ptr_fn.zig");
 pub usingnamespace @import("../../start.zig");
-pub const logging_override: debug.Logging.Override = spec.logging.override.silent;
 pub const runtime_assertions: bool = false;
 pub const show_expressions: bool = false;
 const Allocator = config.Allocator;
@@ -25,7 +24,6 @@ const AddressSpace = Allocator.AddressSpace;
 const Array = Allocator.StructuredVector(u8);
 const Details = Allocator.StructuredVector(types.Implementation);
 const read_impl_spec: file.ReadSpec = .{ .child = types.Implementation, .errors = .{}, .return_type = void };
-
 const Info = struct {
     start: usize,
     alias: ?ptr_fn.Fn = null,
@@ -33,7 +31,6 @@ const Info = struct {
         info.alias = ptr_fn_info;
     }
 };
-
 fn resizeInitializer(allocator: *Allocator, impl_variant: types.Implementation) *[3]expr.Expr {
     var buf: []expr.Expr = allocator.allocate(expr.Expr, 8);
     var len: usize = 0;

@@ -18,7 +18,6 @@ const ptr_fn = @import("./ptr_fn.zig");
 const alloc_fn = @import("./alloc_fn.zig");
 pub usingnamespace @import("../../start.zig");
 pub const runtime_assertions: bool = false;
-pub const show_expressions: bool = false;
 const Allocator = config.Allocator;
 const AddressSpace = Allocator.AddressSpace;
 const Array = Allocator.StructuredVector(u8);

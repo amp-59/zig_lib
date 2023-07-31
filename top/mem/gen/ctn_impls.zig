@@ -17,7 +17,6 @@ const config = @import("./config.zig");
 const ctn_fn = @import("./ctn_fn.zig");
 const ptr_fn = @import("./ptr_fn.zig");
 pub usingnamespace @import("../../start.zig");
-pub const logging_override: debug.Logging.Override = spec.logging.override.silent;
 pub const runtime_assertions: bool = false;
 pub const show_expressions: bool = false;
 const read_ctn_spec: file.ReadSpec = .{
