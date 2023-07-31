@@ -1958,8 +1958,7 @@ pub fn OptionalFormat(comptime spec: RenderSpec, comptime Optional: type) type {
         const type_name: []const u8 = typeName(Optional);
         const max_len: usize = (4 +% type_name.len +% 2) +% @max(1 +% ChildFormat.max_len, 5);
         const render_readable: bool = true;
-
-        fn formatWrite(format: anytype, array: anytype) void {
+        pub fn formatWrite(format: anytype, array: anytype) void {
             if (odr) |prev| {
                 return prev.cast()(format, array);
             }
@@ -2219,6 +2218,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
         type_ref: Reference,
         const Format = @This();
         var depth: u64 = spec.depth;
+        pub var scope: []const Declaration = &.{};
         const tab = .{
             .decl = spec.tokens.decl[0..spec.tokens.decl.len].*,
             .lbrace = spec.tokens.lbrace[0..spec.tokens.lbrace.len].*,
@@ -2235,6 +2235,11 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
             fields: []const Field,
             decls: []const Declaration = &.{},
             pub fn formatWrite(format: Container, array: anytype) void {
+                for (scope) |decl| {
+                    if (mem.testEqualMemory(Container, format, decl.defn.?)) {
+                        return Format.formatWrite(.{ .type_decl = .{ .name = decl.name } }, array);
+                    }
+                }
                 array.writeMany(format.spec);
                 depth +%= 1;
                 array.writeMany(spec.tokens.lbrace);
@@ -2252,6 +2257,11 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                 depth -%= 1;
             }
             pub fn formatWriteBuf(format: Container, buf: [*]u8) usize {
+                for (scope) |decl| {
+                    if (mem.testEqualMemory(Container, format, decl.defn.?)) {
+                        return Format.formatWrite(.{ .type_decl = .{ .name = decl.name } }, buf);
+                    }
+                }
                 var len: usize = 0;
                 @memcpy(buf + len, format.spec);
                 len +%= format.spec.len;
@@ -2277,6 +2287,11 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                 return len;
             }
             pub fn formatLength(format: Container) usize {
+                for (scope) |decl| {
+                    if (mem.testEqualMemory(Container, format, decl.defn.?)) {
+                        return Format.formatLength(.{ .type_decl = .{ .name = decl.name } });
+                    }
+                }
                 var len: usize = 0;
                 len +%= format.spec.len;
                 depth +%= 1;
@@ -2590,7 +2605,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                                     .value = .{ .default = defaultFieldValue(field.type, field.default_value) },
                                 }};
                             }
-                            return .{ .type_decl = .{ .defn = .{
+                            return .{ .type_decl = .{ .name = name, .defn = .{
                                 .spec = fmt.typeDeclSpecifier(type_info),
                                 .fields = type_fields,
                                 .decls = type_decls,
@@ -2604,7 +2619,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                                     .value = .{ .default = defaultFieldValue(field.type, field.default_value) },
                                 }};
                             }
-                            return .{ .type_decl = .{ .defn = .{
+                            return .{ .type_decl = .{ .name = name, .defn = .{
                                 .spec = fmt.typeDeclSpecifier(type_info),
                                 .fields = type_fields,
                             } } };
@@ -2628,7 +2643,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                                     .type = init(field.type),
                                 }};
                             }
-                            return .{ .type_decl = .{ .defn = .{
+                            return .{ .type_decl = .{ .name = name, .defn = .{
                                 .spec = fmt.typeDeclSpecifier(type_info),
                                 .fields = type_fields,
                                 .decls = type_decls,
@@ -2641,7 +2656,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                                     .type = init(field.type),
                                 }};
                             }
-                            return .{ .type_decl = .{ .defn = .{
+                            return .{ .type_decl = .{ .name = name, .defn = .{
                                 .spec = fmt.typeDeclSpecifier(type_info),
                                 .fields = type_fields,
                             } } };
@@ -2665,7 +2680,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                                     .value = .{ .enumeration = field.value },
                                 }};
                             }
-                            return .{ .type_decl = .{ .defn = .{
+                            return .{ .type_decl = .{ .name = name, .defn = .{
                                 .spec = fmt.typeDeclSpecifier(type_info),
                                 .fields = type_fields,
                                 .decls = type_decls,
@@ -2678,20 +2693,20 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                                     .value = .{ .enumeration = field.value },
                                 }};
                             }
-                            return .{ .type_decl = .{ .defn = .{
+                            return .{ .type_decl = .{ .name = name, .defn = .{
                                 .spec = fmt.typeDeclSpecifier(type_info),
                                 .fields = type_fields,
                             } } };
                         }
                     },
                     .Optional => |optional_info| {
-                        return .{ .type_refer = .{
+                        return .{ .type_ref = .{
                             .spec = fmt.typeDeclSpecifier(type_info),
                             .type = &init(optional_info.child),
                         } };
                     },
                     .Pointer => |pointer_info| {
-                        return .{ .type_refer = .{ .defn = .{
+                        return .{ .type_ref = .{ .name = name, .defn = .{
                             .spec = fmt.typeDeclSpecifier(type_info),
                             .type = &init(pointer_info.child),
                         } } };
