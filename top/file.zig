@@ -3231,7 +3231,7 @@ pub const about = struct {
             ptr = ptr + len;
             ptr[0] = ':';
             ptr = ptr + 1;
-            mach.memset(ptr, ' ', 11);
+            @memset(ptr[0..11], ' ');
             ptr = ptr + 11;
             ptr = ptr + writeEvents(ptr, pollfd, "expect=", 4);
             ptr = ptr + writeEvents(ptr, pollfd, " actual=", 6);
