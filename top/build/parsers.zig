@@ -214,7 +214,7 @@ export fn build(cmd: *types.BuildCommand, allocator: *types.Allocator, args: [*]
             cmd.stack_check = true;
         } else if (mem.testEqualString("-fno-stack-check", arg)) {
             cmd.stack_check = false;
-        } else if (mem.testEqualString("-fstack-check", arg)) {
+        } else if (mem.testEqualString("-fstack-protector", arg)) {
             cmd.stack_protector = true;
         } else if (mem.testEqualString("-fno-stack-protector", arg)) {
             cmd.stack_protector = false;
@@ -450,10 +450,6 @@ export fn build(cmd: *types.BuildCommand, allocator: *types.Allocator, args: [*]
             } else if (mem.testEqualString("none", arg)) {
                 cmd.build_id = .none;
             }
-        } else if (mem.testEqualString("--compress-debug-sections=zlib", arg)) {
-            cmd.compress_debug_sections = true;
-        } else if (mem.testEqualString("--compress-debug-sections=none", arg)) {
-            cmd.compress_debug_sections = false;
         } else if (mem.testEqualString("--gc-sections", arg)) {
             cmd.gc_sections = true;
         } else if (mem.testEqualString("--no-gc-sections", arg)) {
@@ -561,6 +557,119 @@ export fn build(cmd: *types.BuildCommand, allocator: *types.Allocator, args: [*]
         }
     }
 }
+export const build_help = 
+    \\    build-
+    \\    -f[no-]emit-bin                 (default=yes) Output machine code
+    \\    -f[no-]emit-asm                 (default=no) Output assembly code (.s)
+    \\    -f[no-]emit-llvm-ir             (default=no) Output optimized LLVM IR (.ll)
+    \\    -f[no-]emit-llvm-bc             (default=no) Output optimized LLVM BC (.bc)
+    \\    -f[no-]emit-h                   (default=no) Output a C header file (.h)
+    \\    -f[no-]emit-docs                (default=no) Output documentation (.html)
+    \\    -f[no-]emit-analysis            (default=no) Output analysis (.json)
+    \\    -f[no-]emit-implib              (default=yes) Output an import when building a Windows DLL (.lib)
+    \\    --cache-dir                     Override the local cache directory
+    \\    --global-cache-dir              Override the global cache directory
+    \\    --zig-lib-dir                   Override Zig installation lib directory
+    \\    --listen                        [MISSING]
+    \\    -target                         <arch><sub>-<os>-<abi> see the targets command
+    \\    -mcpu                           Specify target CPU and feature set
+    \\    -mcmodel                        Limit range of code and data virtual addresses
+    \\    -m[no-]red-zone                 Enable the "red-zone"
+    \\    -f[no-]builtin                  Enable implicit builtin knowledge of functions
+    \\    -f[no-]omit-frame-pointer       Omit the stack frame pointer
+    \\    -mexec-model                    (WASI) Execution model
+    \\    --name                          Override root name
+    \\    -f[no-]soname                   Override the default SONAME value
+    \\    -O                              Choose what to optimize for:
+    \\                                      Debug          Optimizations off, safety on
+    \\                                      ReleaseSafe    Optimizations on, safety on
+    \\                                      ReleaseFast    Optimizations on, safety off
+    \\                                      ReleaseSmall   Size optimizations on, safety off
+    \\    -fopt-bisect-limit              Only run [limit] first LLVM optimization passes
+    \\    --main-pkg-path                 Set the directory of the root package
+    \\    -f[no-]PIC                      Enable Position Independent Code
+    \\    -f[no-]PIE                      Enable Position Independent Executable
+    \\    -f[no-]lto                      Enable Link Time Optimization
+    \\    -f[no-]stack-check              Enable stack probing in unsafe builds
+    \\    -f[no-]stack-protector          Enable stack protection in unsafe builds
+    \\    -f[no-]sanitize-c               Enable C undefined behaviour detection in unsafe builds
+    \\    -f[no-]valgrind                 Include valgrind client requests in release builds
+    \\    -f[no-]sanitize-thread          Enable thread sanitizer
+    \\    -f[no-]unwind-tables            Always produce unwind table entries for all functions
+    \\    -f[no-]LLVM                     Use LLVM as the codegen backend
+    \\    -f[no-]Clang                    Use Clang as the C/C++ compilation backend
+    \\    -f[no-]reference-trace          How many lines of reference trace should be shown per compile error
+    \\    -f[no-]error-tracing            Enable error tracing in `ReleaseFast` mode
+    \\    -f[no-]single-threaded          Code assumes there is only one thread
+    \\    -f[no-]function-sections        Places each function in a separate sections
+    \\    -f[no-]strip                    Omit debug symbols
+    \\    -f[no-]formatted-panics         Enable formatted safety panics
+    \\    -ofmt                           Override target object format:
+    \\                                      elf                    Executable and Linking Format
+    \\                                      c                      C source code
+    \\                                      wasm                   WebAssembly
+    \\                                      coff                   Common Object File Format (Windows)
+    \\                                      macho                  macOS relocatables
+    \\                                      spirv                  Standard, Portable Intermediate Representation V (SPIR-V)
+    \\                                      plan9                  Plan 9 from Bell Labs object format
+    \\                                      hex (planned feature)  Intel IHEX
+    \\                                      raw (planned feature)  Dump machine code directly
+    \\    -idirafter                      Add directory to AFTER include search path
+    \\    -isystem                        Add directory to SYSTEM include search path
+    \\    --libc                          Provide a file which specifies libc paths
+    \\    --library                       Link against system library (only if actually used)
+    \\    -I                              Add directories to include search path
+    \\    --needed-library                Link against system library (even if unused)
+    \\    --library-directory             Add a directory to the library search path
+    \\    --script                        Use a custom linker script
+    \\    --version-script                Provide a version .map file
+    \\    --dynamic-linker                Set the dynamic interpreter path
+    \\    --sysroot                       Set the system root directory
+    \\    --entry                         Set the entrypoint symbol name
+    \\    -f[no-]LLD                      Use LLD as the linker
+    \\    -f[no-]compiler-rt              (default) Include compiler-rt symbols in output
+    \\    -rpath                          Add directory to the runtime library search path
+    \\    -f[no-]each-lib-rpath           Ensure adding rpath for each used dynamic library
+    \\    -f[no-]allow-shlib-undefined    Allow undefined symbols in shared libraries
+    \\    --build-id                      Help coordinate stripped binaries with debug symbols
+    \\    --[no-]gc-sections              Force removal of functions and data that are unreachable
+    \\                                    by the entry point or exported symbols
+    \\    --stack                         Override default stack size
+    \\    --image-base                    Set base address for executable image
+    \\    -D                              Define C macros available within the `@cImport` namespace
+    \\    --mod                           Define modules available as dependencies for the current target
+    \\    -lc                             Link libc
+    \\    -rdynamic                       Add all symbols to the dynamic symbol table
+    \\    -dynamic                        Force output to be dynamically linked
+    \\    -static                         Force output to be statically linked
+    \\    -Bsymbolic                      Bind global references locally
+    \\    -z                              Set linker extension flags:
+    \\                                      nodelete                   Indicate that the object cannot be deleted from a process
+    \\                                      notext                     Permit read-only relocations in read-only segments
+    \\                                      defs                       Force a fatal error if any undefined symbols remain
+    \\                                      undefs                     Reverse of -z defs
+    \\                                      origin                     Indicate that the object must have its origin processed
+    \\                                      nocopyreloc                Disable the creation of copy relocations
+    \\                                      now (default)              Force all relocations to be processed on load
+    \\                                      lazy                       Don't force all relocations to be processed on load
+    \\                                      relro (default)            Force all relocations to be read-only after processing
+    \\                                      norelro                    Don't force all relocations to be read-only after processing
+    \\                                      common-page-size=[bytes]   Set the common page size for ELF binaries
+    \\                                      max-page-size=[bytes]      Set the max page size for ELF binaries
+    \\    --color                         Enable or disable colored error messages
+    \\    -ftime-report                   Print timing diagnostics
+    \\    -fstack-report                  Print stack size diagnostics
+    \\    --verbose-link                  Display linker invocations
+    \\    --verbose-cc                    Display C compiler invocations
+    \\    --verbose-air                   Enable compiler debug output for Zig AIR
+    \\    --verbose-mir                   Enable compiler debug output for Zig MIR
+    \\    --verbose-llvm-ir               Enable compiler debug output for LLVM IR
+    \\    --verbose-cimport               Enable compiler debug output for C imports
+    \\    --verbose-llvm-cpu-features     Enable compiler debug output for LLVM CPU features
+    \\    --debug-log                     Enable printing debug/info log messages for scope
+    \\    --debug-compile-errors          Crash with helpful diagnostics at the first compile error
+    \\    --debug-link-snapshot           Enable dumping of the linker's state in JSON
+;
 export fn format(cmd: *types.FormatCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
     @setRuntimeSafety(false);
     var args_idx: usize = 0;
@@ -596,6 +705,14 @@ export fn format(cmd: *types.FormatCommand, allocator: *types.Allocator, args: [
         _ = allocator;
     }
 }
+export const format_help = 
+    \\    fmt
+    \\    --color         Enable or disable colored error messages
+    \\    --stdin         Format code from stdin; output to stdout
+    \\    --check         List non-conforming files and exit with an error if the list is non-empty
+    \\    --ast-check     Run zig ast-check on every file
+    \\    --exclude       Exclude file or directory from formatting
+;
 export fn archive(cmd: *types.ArchiveCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
     @setRuntimeSafety(false);
     var args_idx: usize = 0;
@@ -653,6 +770,23 @@ export fn archive(cmd: *types.ArchiveCommand, allocator: *types.Allocator, args:
         _ = allocator;
     }
 }
+export const archive_help = 
+    \\    ar
+    \\    --format    Archive format to create
+    \\    --plugin    Ignored for compatibility
+    \\    --output    Extraction target directory
+    \\    --thin      Create a thin archive
+    \\    a           Put [files] after [relpos]
+    \\    b           Put [files] before [relpos] (same as [i])
+    \\    c           Do not warn if archive had to be created
+    \\    D           Use zero for timestamps and uids/gids (default)
+    \\    U           Use actual timestamps and uids/gids
+    \\    L           Add archive's contents
+    \\    o           Preserve original dates
+    \\    s           Create an archive index (cf. ranlib)
+    \\    S           do not build a symbol table
+    \\    u           update only [files] newer than archive contents
+;
 export fn objcopy(cmd: *types.ObjcopyCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
     @setRuntimeSafety(false);
     var args_idx: usize = 0;
@@ -696,6 +830,17 @@ export fn objcopy(cmd: *types.ObjcopyCommand, allocator: *types.Allocator, args:
         _ = allocator;
     }
 }
+export const objcopy_help = 
+    \\    objcopy
+    \\    --output-target
+    \\    --only-section
+    \\    --pad-to
+    \\    --strip-debug
+    \\    --strip-all
+    \\    --only-keep-debug
+    \\    --add-gnu-debuglink
+    \\    --extract-to
+;
 export fn tblgen(cmd: *types.TableGenCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
     @setRuntimeSafety(false);
     var args_idx: usize = 0;
@@ -846,6 +991,51 @@ export fn tblgen(cmd: *types.TableGenCommand, allocator: *types.Allocator, args:
         }
     }
 }
+export const tblgen_help = 
+    \\    --color                         Use colors in output (default=autodetect)
+    \\    -I                              Add directories to include search path
+    \\    -d                              Add file dependencies
+    \\    --print-records                 Print all records to stdout (default)
+    \\    --print-detailed-records        Print full details of all records to stdout
+    \\    --null-backend                  Do nothing after parsing (useful for timing)
+    \\    --dump-json                     Dump all records as machine-readable JSON
+    \\    --gen-emitter                   Generate machine code emitter
+    \\    --gen-register-info             Generate registers and register classes info
+    \\    --gen-instr-info                Generate instruction descriptions
+    \\    --gen-instr-docs                Generate instruction documentation
+    \\    --gen-callingconv               Generate calling convention descriptions
+    \\    --gen-asm-writer                Generate assembly writer
+    \\    --gen-disassembler              Generate disassembler
+    \\    --gen-pseudo-lowering           Generate pseudo instruction lowering
+    \\    --gen-compress-inst-emitter     Generate RISCV compressed instructions.
+    \\    --gen-asm-matcher               Generate assembly instruction matcher
+    \\    --gen-dag-isel                  Generate a DAG instruction selector
+    \\    --gen-dfa-packetizer            Generate DFA Packetizer for VLIW targets
+    \\    --gen-fast-isel                 Generate a "fast" instruction selector
+    \\    --gen-subtarget                 Generate subtarget enumerations
+    \\    --gen-intrinsic-enums           Generate intrinsic enums
+    \\    --gen-intrinsic-impl            Generate intrinsic information
+    \\    --print-enums                   Print enum values for a class
+    \\    --print-sets                    Print expanded sets for testing DAG exprs
+    \\    --gen-opt-parser-defs           Generate option definitions
+    \\    --gen-opt-rst                   Generate option RST
+    \\    --gen-ctags                     Generate ctags-compatible index
+    \\    --gen-attrs                     Generate attributes
+    \\    --gen-searchable-tables         Generate generic binary-searchable table
+    \\    --gen-global-isel               Generate GlobalISel selector
+    \\    --gen-global-isel-combiner      Generate GlobalISel combiner
+    \\    --gen-x86-EVEX2VEX-tables       Generate X86 EVEX to VEX compress tables
+    \\    --gen-x86-fold-tables           Generate X86 fold tables
+    \\    --gen-x86-mnemonic-tables       Generate X86 mnemonic tables
+    \\    --gen-register-bank             Generate registers bank descriptions
+    \\    --gen-exegesis                  Generate llvm-exegesis tables
+    \\    --gen-automata                  Generate generic automata
+    \\    --gen-directive-decl            Generate directive related declaration code (header file)
+    \\    --gen-directive-impl            Generate directive related implementation code
+    \\    --gen-dxil-operation            Generate DXIL operation information
+    \\    --gen-riscv-target_def          Generate the list of CPU for RISCV
+    \\    -o                              Output file
+;
 export fn harec(cmd: *types.HarecCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
     @setRuntimeSafety(false);
     var args_idx: usize = 0;
@@ -900,3 +1090,10 @@ export fn harec(cmd: *types.HarecCommand, allocator: *types.Allocator, args: [*]
         }
     }
 }
+export const harec_help = 
+    \\    -a
+    \\    -o      Output file
+    \\    -T
+    \\    -t
+    \\    -N
+;
