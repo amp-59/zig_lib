@@ -6,15 +6,15 @@ const debug = zl.debug;
 const builtin = zl.builtin;
 
 pub const Node = build.GenericNode(.{});
-pub const logging_override: debug.Logging.Override = spec.logging.override.silent;
 
 var build_cmd: build.BuildCommand = .{
     .kind = .exe,
-    .mode = .ReleaseSmall,
+    .mode = .Debug,
     .stack_check = false,
     .stack_protector = false,
     .image_base = 0x10000,
     .strip = true,
+    .error_tracing = true,
     .reference_trace = true,
     .single_threaded = true,
     .function_sections = true,
@@ -24,9 +24,8 @@ var build_cmd: build.BuildCommand = .{
     .dependencies = &.{.{ .name = "zig_lib" }},
     .modules = &.{.{ .name = "zig_lib", .path = build.root ++ "/zig_lib.zig" }},
 };
-const format_cmd: build.FormatCommand = .{
-    .ast_check = true,
-};
+const format_cmd: build.FormatCommand = .{ .ast_check = true };
+
 fn setStripped(node: *Node) void {
     node.task.info.build.strip = true;
 }
@@ -55,11 +54,14 @@ pub fn buildMain(allocator: *build.Allocator, toplevel: *Node) !void {
     targetgen(allocator, toplevel.addGroup(allocator, "targetgen"));
 }
 fn memgen(allocator: *build.Allocator, node: *Node) void {
+    var mg_build_cmd: build.BuildCommand = build_cmd;
+    mg_build_cmd.mode = .Debug;
+    mg_build_cmd.strip = true;
     const mg_aux: *Node = node.addGroup(allocator, "_memgen");
-    const mg_specs: *Node = mg_aux.addBuild(allocator, build_cmd, "mg_specs", "top/mem/gen/specs.zig");
-    const mg_ptr_impls: *Node = mg_aux.addBuild(allocator, build_cmd, "mg_ptr_impls", "top/mem/gen/ptr_impls.zig");
-    const mg_ctn_impls: *Node = mg_aux.addBuild(allocator, build_cmd, "mg_ctn_impls", "top/mem/gen/ctn_impls.zig");
-    const mg_alloc_impls: *Node = mg_aux.addBuild(allocator, build_cmd, "mg_alloc_impls", "top/mem/gen/alloc_impls.zig");
+    const mg_specs: *Node = mg_aux.addBuild(allocator, mg_build_cmd, "mg_specs", "top/mem/gen/specs.zig");
+    const mg_ptr_impls: *Node = mg_aux.addBuild(allocator, mg_build_cmd, "mg_ptr_impls", "top/mem/gen/ptr_impls.zig");
+    const mg_ctn_impls: *Node = mg_aux.addBuild(allocator, mg_build_cmd, "mg_ctn_impls", "top/mem/gen/ctn_impls.zig");
+    const mg_alloc_impls: *Node = mg_aux.addBuild(allocator, mg_build_cmd, "mg_alloc_impls", "top/mem/gen/alloc_impls.zig");
     const mg_ctn_kinds: *Node = node.addFormat(allocator, format_cmd, "mg_ctn_kinds", "top/mem/gen/ctn_kinds.zig");
     const mg_ctn: *Node = node.addFormat(allocator, format_cmd, "mg_ctn", "top/mem/ctn.zig");
     const mg_ptr: *Node = node.addFormat(allocator, format_cmd, "mg_ptr", "top/mem/ptr.zig");
@@ -162,6 +164,7 @@ fn tests(allocator: *build.Allocator, node: *Node) void {
     const file_test: *Node = node.addBuild(allocator, build_cmd, "file_test", "test/file-test.zig");
     const list_test: *Node = node.addBuild(allocator, build_cmd, "list_test", "test/list-test.zig");
     const fmt_test: *Node = node.addBuild(allocator, build_cmd, "fmt_test", "test/fmt-test.zig");
+    const elf_test: *Node = node.addBuild(allocator, debug_exe, "elf_test", "test/elf-test.zig");
     const fmt_cmp_test: *Node = node.addBuild(allocator, build_cmd, "fmt_cmp_test", "test/fmt_cmp-test.zig");
     const render_test: *Node = node.addBuild(allocator, build_cmd, "render_test", "test/render-test.zig");
     const thread_test: *Node = node.addBuild(allocator, build_cmd, "thread_test", "test/thread-test.zig");
@@ -178,6 +181,7 @@ fn tests(allocator: *build.Allocator, node: *Node) void {
     const debug2_test: *Node = node.addBuild(allocator, debug_obj, "debug2_test", "test/debug2-test.zig");
     const serial_test: *Node = node.addBuild(allocator, builder_exe, "serial_test", "test/serial-test.zig");
     builtin_test.descr = "Test builtin functions";
+    elf_test.descr = "Test ELF iterator";
     mem_test.descr = "Test low level memory management functions and basic container/allocator usage";
     mem2_test.descr = "Test v2 low level memory implementation";
     gen_test.descr = "Test generic code generation functions";
@@ -238,9 +242,11 @@ fn tests(allocator: *build.Allocator, node: *Node) void {
     }) |builder_test_node| {
         builder_test_node.addToplevelArgs(allocator);
     }
+    build_runner_test.flags.build.add_stack_traces = false;
     fmt_cmp_test.task.info.build.mode = .ReleaseFast;
+    fmt_cmp_test.task.info.build.strip = true;
+    fmt_cmp_test.task.info.build.emit_asm = .{ .yes = null };
     node.task.tag = .build;
-    addTracer(proc_test);
     debug2_test.flags.do_update = true;
     debug_test.dependOnObject(allocator, debug2_test);
 }
@@ -254,21 +260,31 @@ fn buildgen(allocator: *build.Allocator, node: *Node) void {
     const bg_tasks: *Node = node.addFormat(allocator, bg_format_cmd, "bg_tasks", "top/build/tasks.zig");
     const bg_hist_tasks_impls: *Node = bg_aux.addBuild(allocator, bg_build_cmd, "bg_hist_tasks_impls", "top/build/gen/hist_tasks_impls.zig");
     const bg_hist_tasks: *Node = node.addFormat(allocator, bg_format_cmd, "bg_hist_tasks", "top/build/hist_tasks.zig");
+    const bg_parsers_impls: *Node = bg_aux.addBuild(allocator, bg_build_cmd, "bg_parsers_impls", "top/build/gen/parsers_impls.zig");
+    const bg_parsers: *Node = node.addFormat(allocator, bg_format_cmd, "bg_parsers", "top/build/parsers.zig");
     bg_tasks.dependOn(allocator, bg_tasks_impls, .run);
     bg_hist_tasks_impls.dependOn(allocator, bg_tasks, .format);
     bg_hist_tasks.dependOn(allocator, bg_hist_tasks_impls, .run);
+    bg_parsers.dependOn(allocator, bg_parsers_impls, .run);
     bg_tasks_impls.descr = "Generate builder command line data structures";
     bg_tasks.descr = "Reformat generated builder command line data structures into canonical form";
     bg_hist_tasks_impls.descr = "Generate packed summary types for builder history";
     bg_hist_tasks.descr = "Reformat generated history task data structures into canonical form";
+    bg_parsers_impls.descr = "Generate exports for builder task command line parser functions";
+    bg_parsers_impls.descr = "exports for builder task command line parser functions";
+    bg_parsers.descr = "Reformat exports for builder task command line parser functions into canonical form";
     node.task.tag = .format;
 }
 fn targetgen(allocator: *build.Allocator, node: *Node) void {
+    var tg_build_cmd: build.BuildCommand = build_cmd;
+    var tg_format_cmd: build.FormatCommand = format_cmd;
+    tg_build_cmd.mode = .Debug;
+    tg_build_cmd.strip = true;
     const tg_aux: *Node = node.addGroup(allocator, "_targetgen");
-    const tg_arch_impls: *Node = tg_aux.addBuild(allocator, build_cmd, "tg_arch_impls", "top/target/gen/arch_impls.zig");
-    const tg_arch: *Node = node.addFormat(allocator, format_cmd, "tg_arch", "top/target");
-    const tg_target_impl: *Node = tg_aux.addBuild(allocator, build_cmd, "tg_target_impl", "top/target/gen/target_impl.zig");
-    const tg_target: *Node = node.addFormat(allocator, format_cmd, "tg_target_impl", "top/target.zig");
+    const tg_arch_impls: *Node = tg_aux.addBuild(allocator, tg_build_cmd, "tg_arch_impls", "top/target/gen/arch_impls.zig");
+    const tg_arch: *Node = node.addFormat(allocator, tg_format_cmd, "tg_arch", "top/target");
+    const tg_target_impl: *Node = tg_aux.addBuild(allocator, tg_build_cmd, "tg_target_impl", "top/target/gen/target_impl.zig");
+    const tg_target: *Node = node.addFormat(allocator, tg_format_cmd, "tg_target_impl", "top/target.zig");
     tg_target_impl.dependOn(allocator, tg_arch_impls, .run);
     tg_arch.dependOn(allocator, tg_arch_impls, .run);
     tg_target.dependOn(allocator, tg_target_impl, .run);
