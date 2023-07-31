@@ -77,10 +77,10 @@ pub const BuildCommand = struct {
         no,
     } = null,
     /// Choose what to optimize for:
-    /// Debug          Optimizations off, safety on
-    /// ReleaseSafe    Optimizations on, safety on
-    /// ReleaseFast    Optimizations on, safety off
-    /// ReleaseSmall   Size optimizations on, safety off
+    ///   Debug          Optimizations off, safety on
+    ///   ReleaseSafe    Optimizations on, safety on
+    ///   ReleaseFast    Optimizations on, safety off
+    ///   ReleaseSmall   Size optimizations on, safety off
     mode: ?builtin.OptimizeMode = null,
     /// Only run [limit] first LLVM optimization passes
     passes: ?usize = null,
@@ -121,15 +121,15 @@ pub const BuildCommand = struct {
     /// Enable formatted safety panics
     formatted_panics: ?bool = null,
     /// Override target object format:
-    /// elf                    Executable and Linking Format
-    /// c                      C source code
-    /// wasm                   WebAssembly
-    /// coff                   Common Object File Format (Windows)
-    /// macho                  macOS relocatables
-    /// spirv                  Standard, Portable Intermediate Representation V (SPIR-V)
-    /// plan9                  Plan 9 from Bell Labs object format
-    /// hex (planned feature)  Intel IHEX
-    /// raw (planned feature)  Dump machine code directly
+    ///   elf                    Executable and Linking Format
+    ///   c                      C source code
+    ///   wasm                   WebAssembly
+    ///   coff                   Common Object File Format (Windows)
+    ///   macho                  macOS relocatables
+    ///   spirv                  Standard, Portable Intermediate Representation V (SPIR-V)
+    ///   plan9                  Plan 9 from Bell Labs object format
+    ///   hex (planned feature)  Intel IHEX
+    ///   raw (planned feature)  Dump machine code directly
     format: ?builtin.ObjectFormat = null,
     /// Add directory to AFTER include search path
     dirafter: ?[]const u8 = null,
@@ -167,10 +167,6 @@ pub const BuildCommand = struct {
     allow_shlib_undefined: ?bool = null,
     /// Help coordinate stripped binaries with debug symbols
     build_id: ?types.BuildId = null,
-    /// Debug section compression:
-    /// none   No compression
-    /// zlib   Compression with deflate/inflate
-    compress_debug_sections: ?bool = null,
     /// Force removal of functions and data that are unreachable
     /// by the entry point or exported symbols
     gc_sections: ?bool = null,
@@ -197,18 +193,18 @@ pub const BuildCommand = struct {
     /// Bind global references locally
     symbolic: bool = false,
     /// Set linker extension flags:
-    /// nodelete                   Indicate that the object cannot be deleted from a process
-    /// notext                     Permit read-only relocations in read-only segments
-    /// defs                       Force a fatal error if any undefined symbols remain
-    /// undefs                     Reverse of -z defs
-    /// origin                     Indicate that the object must have its origin processed
-    /// nocopyreloc                Disable the creation of copy relocations
-    /// now (default)              Force all relocations to be processed on load
-    /// lazy                       Don't force all relocations to be processed on load
-    /// relro (default)            Force all relocations to be read-only after processing
-    /// norelro                    Don't force all relocations to be read-only after processing
-    /// common-page-size=[bytes]   Set the common page size for ELF binaries
-    /// max-page-size=[bytes]      Set the max page size for ELF binaries
+    ///   nodelete                   Indicate that the object cannot be deleted from a process
+    ///   notext                     Permit read-only relocations in read-only segments
+    ///   defs                       Force a fatal error if any undefined symbols remain
+    ///   undefs                     Reverse of -z defs
+    ///   origin                     Indicate that the object must have its origin processed
+    ///   nocopyreloc                Disable the creation of copy relocations
+    ///   now (default)              Force all relocations to be processed on load
+    ///   lazy                       Don't force all relocations to be processed on load
+    ///   relro (default)            Force all relocations to be read-only after processing
+    ///   norelro                    Don't force all relocations to be read-only after processing
+    ///   common-page-size=[bytes]   Set the common page size for ELF binaries
+    ///   max-page-size=[bytes]      Set the max page size for ELF binaries
     lflags: ?[]const enum(u4) {
         nodelete = 0,
         notext = 1,
@@ -496,7 +492,7 @@ pub const BuildCommand = struct {
         }
         if (cmd.stack_protector) |stack_protector| {
             if (stack_protector) {
-                array.writeMany("-fstack-check\x00");
+                array.writeMany("-fstack-protector\x00");
             } else {
                 array.writeMany("-fno-stack-protector\x00");
             }
@@ -693,13 +689,6 @@ pub const BuildCommand = struct {
             array.writeMany("--build-id\x3d");
             array.writeMany(@tagName(build_id));
             array.writeOne(0);
-        }
-        if (cmd.compress_debug_sections) |compress_debug_sections| {
-            if (compress_debug_sections) {
-                array.writeMany("--compress-debug-sections=zlib\x00");
-            } else {
-                array.writeMany("--compress-debug-sections=none\x00");
-            }
         }
         if (cmd.gc_sections) |gc_sections| {
             if (gc_sections) {
@@ -1134,8 +1123,8 @@ pub const BuildCommand = struct {
         }
         if (cmd.stack_protector) |stack_protector| {
             if (stack_protector) {
-                ptr[0..14].* = "-fstack-check\x00".*;
-                ptr = ptr + 14;
+                ptr[0..18].* = "-fstack-protector\x00".*;
+                ptr = ptr + 18;
             } else {
                 ptr[0..21].* = "-fno-stack-protector\x00".*;
                 ptr = ptr + 21;
@@ -1410,15 +1399,6 @@ pub const BuildCommand = struct {
             ptr = ptr + @tagName(build_id).len;
             ptr[0] = 0;
             ptr = ptr + 1;
-        }
-        if (cmd.compress_debug_sections) |compress_debug_sections| {
-            if (compress_debug_sections) {
-                ptr[0..31].* = "--compress-debug-sections=zlib\x00".*;
-                ptr = ptr + 31;
-            } else {
-                ptr[0..31].* = "--compress-debug-sections=none\x00".*;
-                ptr = ptr + 31;
-            }
         }
         if (cmd.gc_sections) |gc_sections| {
             if (gc_sections) {
@@ -1803,7 +1783,7 @@ pub const BuildCommand = struct {
         }
         if (cmd.stack_protector) |stack_protector| {
             if (stack_protector) {
-                len +%= 14;
+                len +%= 18;
             } else {
                 len +%= 21;
             }
@@ -2000,13 +1980,6 @@ pub const BuildCommand = struct {
             len +%= 11;
             len +%= @tagName(build_id).len;
             len +%= 1;
-        }
-        if (cmd.compress_debug_sections) |compress_debug_sections| {
-            if (compress_debug_sections) {
-                len +%= 31;
-            } else {
-                len +%= 31;
-            }
         }
         if (cmd.gc_sections) |gc_sections| {
             if (gc_sections) {
