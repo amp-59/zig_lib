@@ -5,7 +5,10 @@ const build = zl.build;
 const debug = zl.debug;
 const builtin = zl.builtin;
 
-pub const Node = build.GenericNode(.{});
+pub const Node = build.GenericNode(.{ .options = .{
+    .write_build_task_record = true,
+    .write_hist_serial = true,
+} });
 pub const logging_override: debug.Logging.Override = spec.logging.override.silent;
 
 var build_cmd: build.BuildCommand = .{
@@ -75,13 +78,13 @@ fn memgen(allocator: *build.Allocator, node: *Node) void {
     mg_ptr.descr = "Reformat generated generic pointers into canonical form";
     mg_ctn.descr = "Reformat generated generic containers into canonical form";
     mg_alloc.descr = "Reformat generated generic allocators into canonical form";
-    mg_ptr_impls.dependOn(allocator, mg_specs, .run);
-    mg_ctn_impls.dependOn(allocator, mg_specs, .run);
-    mg_alloc_impls.dependOn(allocator, mg_ptr_impls, .run);
-    mg_alloc.dependOn(allocator, mg_alloc_impls, .run);
-    mg_ptr.dependOn(allocator, mg_ptr_impls, .run);
-    mg_ctn.dependOn(allocator, mg_ctn_impls, .run);
-    mg_ctn_kinds.dependOn(allocator, mg_specs, .run);
+    mg_ptr_impls.dependOn(allocator, mg_specs);
+    mg_ctn_impls.dependOn(allocator, mg_specs);
+    mg_alloc_impls.dependOn(allocator, mg_ptr_impls);
+    mg_alloc.dependOnFull(allocator, .format, mg_alloc_impls, .run);
+    mg_ptr.dependOnFull(allocator, .format, mg_ptr_impls, .run);
+    mg_ctn.dependOnFull(allocator, .format, mg_ctn_impls, .run);
+    mg_ctn_kinds.dependOnFull(allocator, .format, mg_specs, .run);
     mg_specs.task.cmd.build.mode = .Debug;
     mg_alloc.task.cmd.format.ast_check = false;
     node.task.tag = .format;
@@ -265,10 +268,10 @@ fn buildgen(allocator: *build.Allocator, node: *Node) void {
     const bg_hist_tasks: *Node = node.addFormat(allocator, bg_format_cmd, "bg_hist_tasks", "top/build/hist_tasks.zig");
     const bg_parsers_impls: *Node = bg_aux.addBuild(allocator, bg_build_cmd, "bg_parsers_impls", "top/build/gen/parsers_impls.zig");
     const bg_parsers: *Node = node.addFormat(allocator, bg_format_cmd, "bg_parsers", "top/build/parsers.zig");
-    bg_tasks.dependOn(allocator, bg_tasks_impls, .run);
-    bg_hist_tasks_impls.dependOn(allocator, bg_tasks, .format);
-    bg_hist_tasks.dependOn(allocator, bg_hist_tasks_impls, .run);
-    bg_parsers.dependOn(allocator, bg_parsers_impls, .run);
+    bg_tasks.dependOn(allocator, bg_tasks_impls);
+    bg_hist_tasks_impls.dependOn(allocator, bg_tasks);
+    bg_hist_tasks.dependOn(allocator, bg_hist_tasks_impls);
+    bg_parsers.dependOn(allocator, bg_parsers_impls);
     bg_tasks_impls.descr = "Generate builder command line data structures";
     bg_tasks.descr = "Reformat generated builder command line data structures into canonical form";
     bg_hist_tasks_impls.descr = "Generate packed summary types for builder history";
@@ -288,9 +291,9 @@ fn targetgen(allocator: *build.Allocator, node: *Node) void {
     const tg_arch: *Node = node.addFormat(allocator, tg_format_cmd, "tg_arch", "top/target");
     const tg_target_impl: *Node = tg_aux.addBuild(allocator, tg_build_cmd, "tg_target_impl", "top/target/gen/target_impl.zig");
     const tg_target: *Node = node.addFormat(allocator, tg_format_cmd, "tg_target_impl", "top/target.zig");
-    tg_target_impl.dependOn(allocator, tg_arch_impls, .run);
-    tg_arch.dependOn(allocator, tg_arch_impls, .run);
-    tg_target.dependOn(allocator, tg_target_impl, .run);
+    tg_target_impl.dependOn(allocator, tg_arch_impls);
+    tg_arch.dependOnFull(allocator, .format, tg_arch_impls, .run);
+    tg_target.dependOnFull(allocator, .format, tg_target_impl, .run);
     tg_arch_impls.descr = "Generate target information for supported architectures";
     tg_arch.descr = "Reformat generated builder command line data structures into canonical form";
     node.task.tag = .format;
