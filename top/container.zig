@@ -78,8 +78,6 @@ pub const ReinterpretSpec = struct {
         comptime_int: bool = true,
         /// Attempt to write comptime known floats
         comptime_float: bool = true,
-        /// Attempt to render integer
-        format: ?enum { bin, oct, dec, hex } = null,
     };
     const Aggregate = struct {
         /// Copy @size(..child) bytes from *..child to end of range
