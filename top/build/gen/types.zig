@@ -14,10 +14,13 @@ pub const Attributes = struct {
     params: []const ParamSpec,
     /// Extra function namespace
     type_fn_name: ?[]const u8 = null,
+    /// Use these instead of new equivalent types.
+    type_decls: []const ProtoTypeDescr = &.{},
 };
 pub const ProtoTypeDescr = fmt.GenericTypeDescrFormat(.{
     .default_field_values = .fast,
     .identifier_name = true,
+    .option_5 = true,
     .tokens = .{
         .lbrace = "{\n",
         .equal = "=",
