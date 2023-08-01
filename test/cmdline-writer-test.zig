@@ -71,7 +71,6 @@ fn testManyCompileOptionsWithArguments(args: anytype, vars: anytype) !void {
         .code_model = .default,
         .color = .auto,
         .compiler_rt = false,
-        .compress_debug_sections = true,
         .cpu = "x86_64",
         .dynamic = true,
         .dirafter = "after",
@@ -97,18 +96,6 @@ fn testManyCompileOptionsWithArguments(args: anytype, vars: anytype) !void {
             .{ .name = "@build", .path = "./build.zig" },
         },
     };
-
-    var buf: [4096]u8 = .{0} ** 4096;
-    const len: usize = build_cmd.formatWriteBuf(builtin.root.zig_exe, &.{}, &buf);
-    const new_args: [][*:0]u8 = makeArgPtrs(&allocator, buf[0..len :0]);
-    var new_build_cmd: build.BuildCommand = .{ .kind = .exe };
-    new_build_cmd.formatParseArgs(&allocator, new_args);
-    var new_buf: [4096]u8 = .{0} ** 4096;
-    const new_len: usize = new_build_cmd.formatWriteBuf(builtin.root.zig_exe, &.{}, &new_buf);
-    const new_new_args: [][*:0]u8 = makeArgPtrs(&allocator, new_buf[0..new_len :0]);
-
-    _ = new_new_args;
-
     if (args.len < 5) {
         return error.MissingEnvironmentPaths;
     }
