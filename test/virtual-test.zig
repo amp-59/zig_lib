@@ -15,8 +15,6 @@ pub usingnamespace zl.start;
 
 const tab = @import("./tab.zig");
 
-pub const logging_override: debug.Logging.Override = spec.logging.override.verbose;
-
 const PrintArray = mem.StaticString(16384);
 var print_array: PrintArray = undefined;
 
@@ -102,7 +100,7 @@ fn testRegularAddressSubSpaceFromDiscrete(comptime sup_spec: virtual.DiscreteAdd
     defer allocator_2.deinit(&sub_space);
 }
 fn testTaggedSets() !void {
-    const E = enum { a, b, c, d };
+    const E = enum(u2) { a, b, c, d };
     const K = virtual.GenericDiscreteAddressSpace(.{
         .index_type = E,
         .label = "tagged",
