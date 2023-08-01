@@ -28,6 +28,9 @@ const debug = zl.debug;
 const builtin = zl.builtin;
 
 pub usingnamespace zl.start;
+comptime {
+    _ = zl.mach;
+}
 
 pub const signal_handlers = .{
     .SegmentationFault = false,
@@ -199,41 +202,79 @@ fn zigLibBasicMessage(futex1: *u32, futex2: *u32, count1: u32, count2: u32, ret:
 /// perf:           task-clock		73,380
 /// perf:           page-faults		3
 fn zigLibOptimisedMessage(futex1: *u32, futex2: *u32, count1: u32, count2: u32, ret: u64) void {
+    _ = zl.mach;
     @setRuntimeSafety(false);
-    var fmt_ux64: fmt.Type.Ux64 = .{ .value = @intFromPtr(futex1) };
-    var fmt_ud64: fmt.Type.Ud64 = .{ .value = futex1.* };
+    var ux64: fmt.Type.Ux64 = .{ .value = @intFromPtr(futex1) };
+    var ud64: fmt.Type.Ud64 = .{ .value = futex1.* };
     var bytes: [4096]u8 = undefined;
     var buf: [*]u8 = &bytes;
     @as(*[about.len]u8, @ptrCast(buf)).* = about.*;
     var len: usize = about.len;
     @as(*[8]u8, @ptrCast(buf + len)).* = "futex1=@".*;
     len +%= 8;
-    len +%= fmt_ux64.formatWriteBuf(buf + len);
+    len +%= ux64.formatWriteBuf(buf + len);
     @as(*[8]u8, @ptrCast(buf + len)).* = ", word1=".*;
     len +%= 8;
-    len +%= fmt_ud64.formatWriteBuf(buf + len);
+    len +%= ud64.formatWriteBuf(buf + len);
     @as(*[7]u8, @ptrCast(buf + len)).* = ", max1=".*;
     len +%= 7;
-    fmt_ud64.value = count1;
-    len +%= fmt_ud64.formatWriteBuf(buf + len);
+    ud64.value = count1;
+    len +%= ud64.formatWriteBuf(buf + len);
     @as(*[10]u8, @ptrCast(buf + len)).* = ", futex2=@".*;
     len +%= 10;
-    fmt_ux64.value = @intFromPtr(futex2);
-    len +%= fmt_ux64.formatWriteBuf(buf + len);
+    ux64.value = @intFromPtr(futex2);
+    len +%= ux64.formatWriteBuf(buf + len);
     @as(*[8]u8, @ptrCast(buf + len)).* = ", word2=".*;
     len +%= 8;
-    fmt_ud64.value = futex2.*;
-    len +%= fmt_ud64.formatWriteBuf(buf + len);
+    ud64.value = futex2.*;
+    len +%= ud64.formatWriteBuf(buf + len);
     @as(*[7]u8, @ptrCast(buf + len)).* = ", max2=".*;
     len +%= 7;
-    fmt_ud64.value = count2;
-    len +%= fmt_ud64.formatWriteBuf(buf + len);
+    ud64.value = count2;
+    len +%= ud64.formatWriteBuf(buf + len);
     @as(*[6]u8, @ptrCast(buf + len)).* = ", res=".*;
     len +%= 6;
-    fmt_ud64.value = ret;
-    len +%= fmt_ud64.formatWriteBuf(buf + len);
+    ud64.value = ret;
+    len +%= ud64.formatWriteBuf(buf + len);
     buf[len] = '\n';
     debug.write(buf[0 .. len +% 1]);
+}
+fn zigLibOptimisedMessage2(futex1: *u32, futex2: *u32, count1: u32, count2: u32, ret: u64) void {
+    @setRuntimeSafety(false);
+    var ux64: fmt.Type.Ux64 = .{ .value = @intFromPtr(futex1) };
+    var ud64: fmt.Type.Ud64 = .{ .value = futex1.* };
+    var bytes: [4096]u8 = undefined;
+    var buf: [*]u8 = &bytes;
+    buf[0..about.len].* = about.*;
+    buf = buf + about.len;
+    buf[0..8].* = "futex1=@".*;
+    buf = buf + 8;
+    buf = buf + ux64.formatWriteBuf(buf);
+    buf[0..8].* = ", word1=".*;
+    buf = buf + 8;
+    buf = buf + ud64.formatWriteBuf(buf);
+    buf[0..7].* = ", max1=".*;
+    buf = buf + 7;
+    ud64.value = count1;
+    buf = buf + ud64.formatWriteBuf(buf);
+    buf[0..10].* = ", futex2=@".*;
+    buf = buf + 10;
+    ux64.value = @intFromPtr(futex2);
+    buf = buf + ux64.formatWriteBuf(buf);
+    buf[0..8].* = ", word2=".*;
+    buf = buf + 8;
+    ud64.value = futex2.*;
+    buf = buf + ud64.formatWriteBuf(buf);
+    buf[0..7].* = ", max2=".*;
+    buf = buf + 7;
+    ud64.value = count2;
+    buf = buf + ud64.formatWriteBuf(buf);
+    buf[0..6].* = ", res=".*;
+    buf = buf + 6;
+    ud64.value = ret;
+    buf = buf + ud64.formatWriteBuf(buf);
+    buf[0] = '\n';
+    debug.write(bytes[0 .. (@intFromPtr(buf) -% @intFromPtr(&bytes)) +% 1]);
 }
 pub fn main() void {
     var futex0: u32 = 0xf0;
@@ -245,5 +286,6 @@ pub fn main() void {
     //zigLibContainerFormatter(&futex0, &futex1, count1, count2, ret);
     //zigLibContainerWriteSlices(&futex0, &futex1, count1, count2, ret);
     //zigLibBasicMessage(&futex0, &futex1, count1, count2, ret);
-    zigLibOptimisedMessage(&futex0, &futex1, count1, count2, ret);
+    //zigLibOptimisedMessage(&futex0, &futex1, count1, count2, ret);
+    zigLibOptimisedMessage2(&futex0, &futex1, count1, count2, ret);
 }
