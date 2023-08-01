@@ -15,6 +15,7 @@ const zl = blk: {
 };
 const mem = zl.mem;
 const sys = zl.sys;
+const elf = zl.elf;
 const proc = zl.proc;
 const meta = zl.meta;
 const debug = zl.debug;
@@ -46,12 +47,12 @@ pub const trace: debug.Trace = .{
     .Signal = false,
     .options = .{},
 };
-pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
+pub fn main(args: [][*:0]u8, vars: [][*:0]u8) void {
     var address_space: Node.AddressSpace = .{};
     var thread_space: Node.ThreadSpace = .{};
     var allocator: build.Allocator = build.Allocator.init_arena(Node.AddressSpace.arena(Node.max_thread_count));
     if (args.len < 5) {
-        return error.MissingEnvironmentPaths;
+        proc.exitError(error.MissingEnvironmentPaths, 2);
     }
     try meta.wrap(
         Node.initState(args, vars),
