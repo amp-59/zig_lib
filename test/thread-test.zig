@@ -61,7 +61,7 @@ fn testThreadSafeRegular() !void {
         .list = discrete_list,
         .subspace = &[_]meta.Generic{virtual.generic(.{
             .label = "thread",
-            .val_type = three_state,
+            .value_type = three_state,
             .lb_addr = 0x10000000000,
             .up_addr = 0x40400000000,
             .divisions = 16,
@@ -88,8 +88,8 @@ fn testThreadSafeDiscrete() !void {
         .label = "super",
         .list = discrete_list,
         .subspace = &[_]meta.Generic{virtual.generic(.{
+            .value_type = three_state,
             .label = "thread",
-            .val_type = three_state,
             .list = list,
         })},
     });
@@ -110,8 +110,8 @@ fn testThreadSafeDiscrete() !void {
 }
 fn testQuickThread() !void {
     const ThreadSpace = mem.GenericRegularAddressSpace(.{
+        .value_type = three_state,
         .label = "thread",
-        .val_type = three_state,
         .lb_addr = 0x10000000000,
         .up_addr = 0x10000000000 +% (16 *% 1024 * 1024),
         .divisions = 16,

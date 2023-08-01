@@ -1,4 +1,5 @@
 const zl = @import("../zig_lib.zig");
+const exe = zl.exe;
 const sys = zl.sys;
 const gen = zl.gen;
 const mem = zl.mem;
