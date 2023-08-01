@@ -2194,12 +2194,14 @@ pub const TypeDescrFormatSpec = struct {
     depth: u64 = 0,
     decls: bool = false,
     identifier_name: bool = true,
+    option_5: bool = false,
     tokens: Tokens = .{},
     default_field_values: DefaultFieldValues = .{ .exact = .{} },
     const DefaultFieldValues = union(enum) {
         omit,
         fast,
         exact: RenderSpec,
+        exact_safe: RenderSpec,
     };
     const Tokens = struct {
         decl: [:0]const u8 = "pub const ",
@@ -2234,10 +2236,18 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
             spec: spec.token,
             fields: []const Field,
             decls: []const Declaration = &.{},
-            pub fn formatWrite(format: Container, array: anytype) void {
+            fn matchDeclaration(format: Container) ?Format {
                 for (scope) |decl| {
                     if (mem.testEqualMemory(Container, format, decl.defn.?)) {
-                        return Format.formatWrite(.{ .type_decl = .{ .name = decl.name } }, array);
+                        return .{ .type_decl = .{ .name = decl.name } };
+                    }
+                }
+                return null;
+            }
+            pub fn formatWrite(format: Container, array: anytype) void {
+                if (spec.option_5) {
+                    if (matchDeclaration(format)) |decl| {
+                        return decl.formatWrite(array);
                     }
                 }
                 array.writeMany(format.spec);
@@ -2257,9 +2267,9 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                 depth -%= 1;
             }
             pub fn formatWriteBuf(format: Container, buf: [*]u8) usize {
-                for (scope) |decl| {
-                    if (mem.testEqualMemory(Container, format, decl.defn.?)) {
-                        return Format.formatWrite(.{ .type_decl = .{ .name = decl.name } }, buf);
+                if (spec.option_5) {
+                    if (matchDeclaration(format)) |decl| {
+                        return decl.formatWriteBuf(buf);
                     }
                 }
                 var len: usize = 0;
@@ -2287,9 +2297,9 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                 return len;
             }
             pub fn formatLength(format: Container) usize {
-                for (scope) |decl| {
-                    if (mem.testEqualMemory(Container, format, decl.defn.?)) {
-                        return Format.formatLength(.{ .type_decl = .{ .name = decl.name } });
+                if (spec.option_5) {
+                    if (matchDeclaration(format)) |decl| {
+                        return decl.formatLength();
                     }
                 }
                 var len: usize = 0;
@@ -2314,6 +2324,102 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
         pub const Declaration = struct {
             name: ?spec.token = null,
             defn: ?Container = null,
+            pub fn formatWrite(type_decl: Declaration, array: anytype) void {
+                if (spec.depth != 0 and
+                    spec.depth != depth)
+                {
+                    for (0..depth) |_| array.writeMany(spec.tokens.indent);
+                }
+                if (type_decl.name) |type_name| {
+                    if (type_decl.defn) |type_defn| {
+                        array.writeMany(spec.tokens.decl);
+                        if (spec.identifier_name) {
+                            array.writeFormat(fmt.identifier(type_name));
+                        } else {
+                            array.writeMany(type_name);
+                        }
+                        array.writeMany(spec.tokens.equal);
+                        writeFormat(array, type_defn);
+                        array.writeMany(spec.tokens.end);
+                        for (0..depth) |_| array.writeMany(spec.tokens.indent);
+                    } else {
+                        array.writeMany(type_name);
+                    }
+                } else {
+                    if (type_decl.defn) |type_defn| {
+                        writeFormat(array, type_defn);
+                    }
+                }
+            }
+            pub fn formatWriteBuf(type_decl: Declaration, buf: [*]u8) usize {
+                var len: usize = 0;
+                if (spec.depth != 0 and
+                    spec.depth != depth)
+                {
+                    for (0..depth) |_| {
+                        @as(*@TypeOf(Format.tab.indent), @ptrCast(buf + len)).* = Format.tab.indent;
+                        len +%= Format.tab.indent.len;
+                    }
+                }
+                if (type_decl.name) |type_name| {
+                    if (type_decl.defn) |type_defn| {
+                        @as(*@TypeOf(Format.tab.decl), @ptrCast(buf + len)).* = Format.tab.decl;
+                        len +%= Format.tab.decl.len;
+                        if (spec.identifier_name) {
+                            len +%= fmt.identifier(type_name).formatWriteBuf(buf + len);
+                        } else {
+                            @memcpy(buf, type_name);
+                            len +%= type_name.len;
+                        }
+                        @as(*@TypeOf(Format.tab.equal), @ptrCast(buf + len)).* = Format.tab.equal;
+                        len +%= Format.tab.equal.len;
+                        len +%= type_defn.formatWriteBuf(buf + len);
+                        @as(*@TypeOf(Format.tab.end), @ptrCast(buf + len)).* = Format.tab.end;
+                        len +%= Format.tab.end.len;
+                        for (0..depth) |_| {
+                            @as(*@TypeOf(Format.tab.indent), @ptrCast(buf + len)).* = Format.tab.indent;
+                            len +%= Format.tab.indent.len;
+                        }
+                    } else {
+                        @memcpy(buf, type_name);
+                        len +%= type_name.len;
+                    }
+                } else {
+                    if (type_decl.defn) |type_defn| {
+                        len +%= type_defn.formatWriteBuf(buf);
+                    }
+                }
+                return len;
+            }
+            pub fn formatLength(type_decl: Declaration) usize {
+                var len: usize = 0;
+                if (spec.depth != 0 and
+                    spec.depth != depth)
+                {
+                    len +%= depth *% Format.tab.indent.len;
+                }
+                if (type_decl.name) |type_name| {
+                    if (type_decl.defn) |type_defn| {
+                        len +%= Format.tab.decl.len;
+                        if (spec.identifier_name) {
+                            len +%= fmt.identifier(type_name).formatLength();
+                        } else {
+                            len +%= type_name.len;
+                        }
+                        len +%= Format.tab.equal.len;
+                        len +%= type_defn.formatLength();
+                        len +%= Format.tab.end.len;
+                        len +%= depth *% Format.tab.indent.len;
+                    } else {
+                        len +%= type_name.len;
+                    }
+                } else {
+                    if (type_decl.defn) |type_defn| {
+                        len +%= type_defn.formatLength();
+                    }
+                }
+                return len;
+            }
         };
         pub const Field = struct {
             name: spec.token,
@@ -2420,31 +2526,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                     type_ref.type.formatWrite(array);
                 },
                 .type_decl => |type_decl| {
-                    if (spec.depth != 0 and
-                        spec.depth != depth)
-                    {
-                        for (0..depth) |_| array.writeMany(spec.tokens.indent);
-                    }
-                    if (type_decl.name) |type_name| {
-                        if (type_decl.defn) |type_defn| {
-                            array.writeMany(spec.tokens.decl);
-                            if (spec.identifier_name) {
-                                array.writeFormat(fmt.identifier(type_name));
-                            } else {
-                                array.writeMany(type_name);
-                            }
-                            array.writeMany(spec.tokens.equal);
-                            writeFormat(array, type_defn);
-                            array.writeMany(spec.tokens.end);
-                            for (0..depth) |_| array.writeMany(spec.tokens.indent);
-                        } else {
-                            array.writeMany(type_name);
-                        }
-                    } else {
-                        if (type_decl.defn) |type_defn| {
-                            writeFormat(array, type_defn);
-                        }
-                    }
+                    type_decl.formatWrite(array);
                 },
             }
         }
@@ -2458,42 +2540,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                     len +%= type_ref.type.formatWriteBuf(buf + len);
                 },
                 .type_decl => |type_decl| {
-                    if (spec.depth != 0 and
-                        spec.depth != depth)
-                    {
-                        for (0..depth) |_| {
-                            @as(*@TypeOf(Format.tab.indent), @ptrCast(buf + len)).* = Format.tab.indent;
-                            len +%= Format.tab.indent.len;
-                        }
-                    }
-                    if (type_decl.name) |type_name| {
-                        if (type_decl.defn) |type_defn| {
-                            @as(*@TypeOf(Format.tab.decl), @ptrCast(buf + len)).* = Format.tab.decl;
-                            len +%= Format.tab.decl.len;
-                            if (spec.identifier_name) {
-                                len +%= fmt.identifier(type_name).formatWriteBuf(buf);
-                            } else {
-                                @memcpy(buf, type_name);
-                                len +%= type_name.len;
-                            }
-                            @as(*@TypeOf(Format.tab.equal), @ptrCast(buf + len)).* = Format.tab.equal;
-                            len +%= Format.tab.equal.len;
-                            len +%= type_defn.formatWriteBuf(buf + len);
-                            @as(*@TypeOf(Format.tab.end), @ptrCast(buf + len)).* = Format.tab.end;
-                            len +%= Format.tab.end.len;
-                            for (0..depth) |_| {
-                                @as(*@TypeOf(Format.tab.indent), @ptrCast(buf + len)).* = Format.tab.indent;
-                                len +%= Format.tab.indent.len;
-                            }
-                        } else {
-                            @memcpy(buf, type_name);
-                            len +%= type_name.len;
-                        }
-                    } else {
-                        if (type_decl.defn) |type_defn| {
-                            len +%= type_defn.formatWriteBuf(buf);
-                        }
-                    }
+                    len +%= type_decl.formatWriteBuf(buf);
                 },
             }
             return len;
@@ -2506,31 +2553,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                     len +%= type_ref.type.formatLength();
                 },
                 .type_decl => |type_decl| {
-                    if (spec.depth != 0 and
-                        spec.depth != depth)
-                    {
-                        len +%= depth *% Format.tab.indent.len;
-                    }
-                    if (type_decl.name) |type_name| {
-                        if (type_decl.defn) |type_defn| {
-                            len +%= Format.tab.decl.len;
-                            if (spec.identifier_name) {
-                                len +%= fmt.identifier(type_name).formatLength();
-                            } else {
-                                len +%= type_name.len;
-                            }
-                            len +%= Format.tab.equal.len;
-                            len +%= type_defn.formatLength();
-                            len +%= Format.tab.end.len;
-                            len +%= depth *% Format.tab.indent.len;
-                        } else {
-                            len +%= type_name.len;
-                        }
-                    } else {
-                        if (type_decl.defn) |type_defn| {
-                            len +%= type_defn.formatLength();
-                        }
-                    }
+                    len +%= type_decl.formatLength();
                 },
             }
             return len;
@@ -2554,18 +2577,28 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                         debug.assertEqual(usize, len, value_fmt.formatWriteBuf(&buf));
                         return buf[0..len];
                     },
+                    .exact_safe => |render_spec| {
+                        const fast: []const u8 = fmt.cx(default_value_ptr);
+                        if (fast[0] == '.') {
+                            const value_fmt = render(render_spec, mem.pointerOpaque(field_type, default_value_ptr).*);
+                            const len: usize = value_fmt.formatLength();
+                            var buf: [len]u8 = undefined;
+                            debug.assertEqual(usize, len, value_fmt.formatWriteBuf(&buf));
+                            return buf[0..len];
+                        } else {
+                            return fast;
+                        }
+                    },
                 }
             } else {
                 return null;
             }
         }
         inline fn defaultDeclareCriteria(comptime T: type, comptime decl: builtin.Type.Declaration) ?type {
-            if (decl.is_pub) {
-                const u = @field(T, decl.name);
-                const U = @TypeOf(u);
-                if (U == type and meta.isContainer(u) and u != T) {
-                    return u;
-                }
+            const u = @field(T, decl.name);
+            const U = @TypeOf(u);
+            if (U == type and meta.isContainer(u) and u != T) {
+                return u;
             }
             return null;
         }
@@ -2579,7 +2612,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                 const type_info: builtin.Type = @typeInfo(T);
                 for (types.*) |type_decl| {
                     if (type_decl[1] == T) {
-                        return .{ .type_name = type_decl[0] };
+                        return .{ .type_decl = .{ .name = type_decl[0] } };
                     }
                 } else {
                     types.* = types.* ++ [1]TypeDecl{.{ name, T }};
@@ -2591,10 +2624,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                             var type_decls: []const Declaration = &.{};
                             for (struct_info.decls) |decl| {
                                 if (defaultDeclareCriteria(T, decl)) |U| {
-                                    type_decls = type_decls ++ [1]Declaration{.{
-                                        .name = decl.name,
-                                        .type = declare(decl.name, U),
-                                    }};
+                                    type_decls = type_decls ++ [1]Declaration{declare(decl.name, U).type_decl};
                                 }
                             }
                             var type_fields: []const Field = &.{};
@@ -2630,10 +2660,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                             var type_decls: []const Declaration = &.{};
                             for (union_info.decls) |decl| {
                                 if (defaultDeclareCriteria(T, decl)) |U| {
-                                    type_decls = type_decls ++ [1]Declaration{.{
-                                        .name = decl.name,
-                                        .type = declare(decl.name, U),
-                                    }};
+                                    type_decls = type_decls ++ [1]Declaration{declare(decl.name, U).type_decl};
                                 }
                             }
                             var type_fields: []const Field = &.{};
@@ -2667,10 +2694,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                             var type_decls: []const Declaration = &.{};
                             for (enum_info.decls) |decl| {
                                 if (defaultDeclareCriteria(T, decl)) |U| {
-                                    type_decls = type_decls ++ [1]Declaration{.{
-                                        .name = decl.name,
-                                        .type = declare(decl.name, U),
-                                    }};
+                                    type_decls = type_decls ++ [1]Declaration{declare(decl.name, U).type_decl};
                                 }
                             }
                             var type_fields: []const Field = &.{};
@@ -2729,10 +2753,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                             var type_decls: []const Declaration = &.{};
                             for (struct_info.decls) |decl| {
                                 if (defaultDeclareCriteria(T, decl)) |U| {
-                                    type_decls = type_decls ++ [1]Declaration{.{
-                                        .name = decl.name,
-                                        .type = declare(decl.name, U),
-                                    }};
+                                    type_decls = type_decls ++ [1]Declaration{declare(decl.name, U).type_decl};
                                 }
                             }
                             var type_fields: []const Field = &.{};
@@ -2768,10 +2789,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                             var type_decls: []const Declaration = &.{};
                             for (union_info.decls) |decl| {
                                 if (defaultDeclareCriteria(T, decl)) |U| {
-                                    type_decls = type_decls ++ [1]Declaration{.{
-                                        .name = decl.name,
-                                        .type = declare(decl.name, U),
-                                    }};
+                                    type_decls = type_decls ++ [1]Declaration{declare(decl.name, U).type_decl};
                                 }
                             }
                             var type_fields: []const Field = &.{};
@@ -2805,10 +2823,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                             var type_decls: []const Declaration = &.{};
                             for (enum_info.decls) |decl| {
                                 if (defaultDeclareCriteria(T, decl)) |U| {
-                                    type_decls = type_decls ++ [1]Declaration{.{
-                                        .name = decl.name,
-                                        .type = declare(decl.name, U),
-                                    }};
+                                    type_decls = type_decls ++ [1]Declaration{declare(decl.name, U).type_decl};
                                 }
                             }
                             var type_fields: []const Field = &.{};
