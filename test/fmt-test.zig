@@ -12,11 +12,6 @@ pub usingnamespace zl.start;
 pub const runtime_assertions: bool = true;
 const PrintArray = mem.StaticString(4096);
 const test_size: bool = false;
-fn testNonChildIntegers() !void {
-    var array: PrintArray = .{};
-    array.writeAny(.{ .integral = .{ .format = .hex } }, @as(u64, 0xdeadbeef));
-    try testing.expectEqualMany(u8, "0xdeadbeef", array.readAll());
-}
 fn testIntToString() !void {
     const T: type = u64;
     var arg1: T = 0;
@@ -171,7 +166,7 @@ fn testBytesFormat() !void {
         .{ "5.851EiB", 6747100094387843530 },
         .{ "1.462GiB", 1570931657 },
         .{ "23.408KiB", 23970 },
-        .{ "15.999EiB", -0 },
+        .{ "15.999EiB", ~@as(u64, 0) },
     }) |pair| {
         try testing.expectEqualMany(u8, pair[0], fmt.bytes(pair[1]).formatConvert().readAll());
     }
@@ -451,7 +446,6 @@ pub fn main() !void {
     try testGenericRangeFormat();
     // try testEquivalentIntToStringFormat();
     try testEquivalentLEBFormatAndParse();
-    try testNonChildIntegers();
     try @import("./fmt/utf8.zig").testUtf8();
     try @import("./fmt/ascii.zig").testAscii();
 }

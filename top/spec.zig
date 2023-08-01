@@ -66,7 +66,6 @@ pub const reinterpret = struct {
         .aggregate = .{ .iterate = true },
         .composite = .{ .format = true },
         .symbol = .{ .tag_name = true },
-        .integral = .{ .format = .dec },
     });
     pub const follow: zl.mem.ReinterpretSpec = blk: {
         var rs_0: zl.mem.ReinterpretSpec = .{};

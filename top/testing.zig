@@ -302,11 +302,7 @@ pub fn printSizeBreakDown(comptime T: type, type_rename: ?[:0]const u8) u64 {
     debug.write(array.readAll());
     return array.readAll().len;
 }
-const reinterpret_spec: mem.ReinterpretSpec = builtin.define("reinterpret_spec", mem.ReinterpretSpec, blk: {
-    var tmp: mem.ReinterpretSpec = spec.reinterpret.fmt;
-    tmp.integral = .{ .format = .dec };
-    break :blk tmp;
-});
+const reinterpret_spec: mem.ReinterpretSpec = builtin.define("reinterpret_spec", mem.ReinterpretSpec, spec.reinterpret.fmt);
 pub fn printN(comptime n: usize, any: anytype) void {
     var array: mem.StaticString(n) = undefined;
     array.undefineAll();
