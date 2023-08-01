@@ -9,6 +9,7 @@ const debug = @import("../../debug.zig");
 const builtin = @import("../../builtin.zig");
 const tasks = @import("../tasks.zig");
 const attr = @import("./attr.zig");
+const types = @import("./types.zig");
 const config = @import("./config.zig");
 pub usingnamespace @import("../../start.zig");
 pub const runtime_assertions: bool = false;
@@ -147,14 +148,17 @@ pub fn main() !void {
     var conv_array: *Array = allocator.create(Array);
     conv_array.undefineAll();
     inline for (@typeInfo(tasks).Struct.decls) |decl| {
-        if (decl.is_pub) {
-            const Command = @field(tasks, decl.name);
-            writeDecl(decl.name, key_array, val_array, conv_array);
-            inline for (@typeInfo(Command).Struct.fields) |field| {
-                writeField(field.type, field.name, key_array, val_array, conv_array);
-            }
-            writeClose(array, key_array, val_array, conv_array);
+        const Command = @field(tasks, decl.name);
+        writeDecl(decl.name, key_array, val_array, conv_array);
+        switch (@typeInfo(Command)) {
+            .Struct => |struct_info| {
+                inline for (struct_info.fields) |field| {
+                    writeField(field.type, field.name, key_array, val_array, conv_array);
+                }
+            },
+            else => {},
         }
+        writeClose(array, key_array, val_array, conv_array);
     }
     try gen.appendFile(.{ .return_type = void }, config.hist_tasks_path, array.readAll());
 }
