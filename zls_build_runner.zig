@@ -119,7 +119,7 @@ fn lengthModules(node: *Node) u64 {
             len +%= lengthModules(node);
         }
         if (node.tag == .worker and node.task.tag == .build) {
-            if (node.task.info.build.modules) |mods| {
+            if (node.task.cmd.build.modules) |mods| {
                 len +%= mods.len;
             }
         }
@@ -134,7 +134,7 @@ fn writeModulesBuf(pkgs: [*]BuildConfig.Pkg, node: *Node) u64 {
             len +%= writeModulesBuf(pkgs, node);
         }
         if (node.tag == .worker and node.task.tag == .build) {
-            if (node.task.info.build.modules) |mods| {
+            if (node.task.cmd.build.modules) |mods| {
                 for (mods) |mod| {
                     pkgs[len] = .{ .name = mod.name, .path = mod.path };
                     len +%= 1;
