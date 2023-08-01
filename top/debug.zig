@@ -584,7 +584,7 @@ pub const printStackTrace = blk: {
 pub noinline fn alarm(msg: []const u8, _: @TypeOf(@errorReturnTrace()), ret_addr: usize) void {
     @setCold(true);
     @setRuntimeSafety(false);
-    if (builtin.want_stack_traces and builtin.trace.Error) {
+    if (builtin.have_stack_traces and builtin.trace.Error) {
         printStackTrace(&builtin.trace, ret_addr, 0);
     }
     @call(.always_inline, about.errorNotice, .{msg});
@@ -592,7 +592,7 @@ pub noinline fn alarm(msg: []const u8, _: @TypeOf(@errorReturnTrace()), ret_addr
 pub noinline fn panic(msg: []const u8, _: @TypeOf(@errorReturnTrace()), ret_addr: ?usize) noreturn {
     @setCold(true);
     @setRuntimeSafety(false);
-    if (builtin.want_stack_traces and builtin.trace.Fault) {
+    if (builtin.have_stack_traces and builtin.trace.Fault) {
         printStackTrace(&builtin.trace, ret_addr orelse @returnAddress(), 0);
     }
     @call(.always_inline, proc.exitGroupFault, .{ msg, 2 });
@@ -604,7 +604,7 @@ pub noinline fn panicExtra(msg: []const u8, ctx_ptr: *const anyopaque) noreturn 
         *mach.RegisterState,
         @ptrFromInt(@intFromPtr(ctx_ptr) +% mach.RegisterState.offset),
     ).*;
-    if (builtin.want_stack_traces and builtin.trace.Signal) {
+    if (builtin.have_stack_traces and builtin.trace.Signal) {
         printStackTrace(&builtin.trace, regs.rip, regs.rbp);
     }
     @call(.always_inline, proc.exitGroupFault, .{ msg, 2 });
