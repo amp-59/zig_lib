@@ -2670,7 +2670,7 @@ const zig_lib = struct {
         pub const Frame = struct { function: *const anyopaque };
         pub const AnyFrame = struct { child: ?type };
         pub const Vector = struct { len: comptime_int, child: type };
-        pub const Declaration = struct { name: []const u8, is_pub: bool };
+        pub const Declaration = struct { name: []const u8 };
     };
     pub const FloatMode = enum { Strict, Optimized };
     pub const Endian = enum { Big, Little };

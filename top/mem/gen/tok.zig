@@ -413,11 +413,9 @@ pub const list: []const KV = blk: {
             decl.name[1] == 'i' and
             decl.name[2] == 's' and
             decl.name[3] == 't') continue;
-        if (decl.is_pub) {
-            const value = @field(@This(), decl.name);
-            if (@TypeOf(value) == [:0]const u8) {
-                res = res ++ [1]KV{.{ .name = decl.name, .symbol = value }};
-            }
+        const value = @field(@This(), decl.name);
+        if (@TypeOf(value) == [:0]const u8) {
+            res = res ++ [1]KV{.{ .name = decl.name, .symbol = value }};
         }
     }
     break :blk res;
@@ -506,7 +504,7 @@ pub fn symbolName(symbol: [:0]const u8) ?[]const u8 {
     inline for (@typeInfo(@This()).Struct.decls) |decl| {
         const value = @field(@This(), decl.name);
         if (@TypeOf(value) == [:0]const u8) {
-            if (decl.is_pub and symbol.ptr == value.ptr) {
+            if (symbol.ptr == value.ptr) {
                 return decl.name;
             }
         }

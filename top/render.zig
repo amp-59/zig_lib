@@ -264,9 +264,6 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
             break :blk tmp;
         };
         fn writeDecl(comptime format: anytype, array: anytype, comptime decl: builtin.Type.Declaration) void {
-            if (!decl.is_pub) {
-                return;
-            }
             const decl_type: type = @TypeOf(@field(format.value, decl.name));
             if (@typeInfo(decl_type) == .Fn) {
                 return;
@@ -281,9 +278,6 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
             array.writeCount(2, "; ".*);
         }
         fn lengthDecl(comptime format: anytype, comptime decl: builtin.Type.Declaration) u64 {
-            if (!decl.is_pub) {
-                return 0;
-            }
             const decl_type: type = @TypeOf(@field(format.value, decl.name));
             if (@typeInfo(decl_type) == .Fn) {
                 return 0;
@@ -415,9 +409,6 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
         }
         fn writeDeclBuf(comptime format: Format, buf: [*]u8, comptime decl: builtin.Type.Declaration) usize {
             @setRuntimeSafety(builtin.is_safe);
-            if (!decl.is_pub) {
-                return 0;
-            }
             const decl_type: type = @TypeOf(@field(format.value, decl.name));
             if (@typeInfo(decl_type) == .Fn) {
                 return 0;
