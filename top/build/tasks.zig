@@ -5,48 +5,28 @@ const mach = @import("../mach.zig");
 const builtin = @import("../builtin.zig");
 const types = @import("./types.zig");
 const safety: bool = false;
+pub const PathUnion = union(enum) {
+    yes: ?types.Path,
+    no,
+};
 pub const BuildCommand = struct {
     kind: types.OutputMode,
     /// (default=yes) Output machine code
-    emit_bin: ?union(enum) {
-        yes: ?types.Path,
-        no,
-    } = null,
+    emit_bin: ?PathUnion = null,
     /// (default=no) Output assembly code (.s)
-    emit_asm: ?union(enum) {
-        yes: ?types.Path,
-        no,
-    } = null,
+    emit_asm: ?PathUnion = null,
     /// (default=no) Output optimized LLVM IR (.ll)
-    emit_llvm_ir: ?union(enum) {
-        yes: ?types.Path,
-        no,
-    } = null,
+    emit_llvm_ir: ?PathUnion = null,
     /// (default=no) Output optimized LLVM BC (.bc)
-    emit_llvm_bc: ?union(enum) {
-        yes: ?types.Path,
-        no,
-    } = null,
+    emit_llvm_bc: ?PathUnion = null,
     /// (default=no) Output a C header file (.h)
-    emit_h: ?union(enum) {
-        yes: ?types.Path,
-        no,
-    } = null,
+    emit_h: ?PathUnion = null,
     /// (default=no) Output documentation (.html)
-    emit_docs: ?union(enum) {
-        yes: ?types.Path,
-        no,
-    } = null,
+    emit_docs: ?PathUnion = null,
     /// (default=no) Output analysis (.json)
-    emit_analysis: ?union(enum) {
-        yes: ?types.Path,
-        no,
-    } = null,
+    emit_analysis: ?PathUnion = null,
     /// (default=yes) Output an import when building a Windows DLL (.lib)
-    emit_implib: ?union(enum) {
-        yes: ?types.Path,
-        no,
-    } = null,
+    emit_implib: ?PathUnion = null,
     /// Override the local cache directory
     cache_root: ?[]const u8 = null,
     /// Override the global cache directory
