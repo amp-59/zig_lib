@@ -1327,7 +1327,7 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
                         }
                     }
                 }
-                @as(*[2]u8, @ptrCast(buf + len -% 2)).* = " }".*;
+                @as(*[2]u8, @ptrCast(buf + (len -% 2))).* = " }".*;
             }
             return len;
         }
