@@ -29,6 +29,7 @@ const Allocator = mem.GenericArenaAllocator(.{
 });
 const Array = Allocator.StructuredHolder(u8);
 const TypeDescr = fmt.GenericTypeDescrFormat(.{});
+const BigTypeDescr = fmt.GenericTypeDescrFormat(.{ .decls = true, .default_field_values = .{ .exact_safe = .{} } });
 
 fn testFormat(allocator: *Allocator, array: *Array, buf: [*]u8, format: anytype) !void {
     try array.appendFormat(allocator, format);
@@ -69,7 +70,7 @@ fn testRenderArray(allocator: *Allocator, array: *Array, buf: [*]u8) !void {
     try testFormat(allocator, array, buf, fmt.render(.{ .omit_trailing_comma = true }, value2));
 }
 fn testRenderType(allocator: *Allocator, array: *Array, buf: [*]u8) !void {
-    try testFormat(allocator, array, buf, comptime fmt.any(packed struct(u120) { x: u64 = 5, y: packed struct { u32, u16 }, z: u8 }));
+    try testFormat(allocator, array, buf, comptime fmt.any(packed struct(u120) { x: u64 = 5, y: packed struct { @"0": u32, @"1": u16 }, z: u8 }));
     try testFormat(allocator, array, buf, comptime fmt.any(extern union { x: u64 }));
     try testFormat(allocator, array, buf, comptime fmt.any(enum(u3) { x, y, z }));
 }
@@ -80,7 +81,7 @@ fn testRenderSlice(allocator: *Allocator, array: *Array, buf: [*]u8) !void {
 }
 fn testRenderStruct(allocator: *Allocator, array: *Array, buf: [*]u8) !void {
     var tmp: [*]u8 = @ptrFromInt(0x40000000);
-    try testFormat(allocator, array, buf, fmt.any(packed struct(u120) { x: u64 = 5, y: packed struct { u32 = 1, u16 = 2 } = .{}, z: u8 = 255 }{}));
+    try testFormat(allocator, array, buf, fmt.any(packed struct(u120) { x: u64 = 5, y: struct { u32 = 1, u16 = 2 } = .{}, z: u8 = 255 }{}));
     try testFormat(allocator, array, buf, fmt.any(struct { buf: [*]u8, buf_len: usize }{ .buf = tmp, .buf_len = 16 }));
     try testFormat(allocator, array, buf, fmt.any(struct { buf: []u8, buf_len: usize }{ .buf = tmp[16..256], .buf_len = 32 }));
     try testFormat(allocator, array, buf, fmt.any(struct { auto: [256]u8 = [1]u8{0xa} ** 256, auto_len: usize = 16 }{}));
@@ -93,10 +94,13 @@ fn testRenderEnum(allocator: *Allocator, array: *Array, buf: [*]u8) !void {
 }
 fn testRenderTypeDescription(allocator: *Allocator, array: *Array, buf: [*]u8) !void {
     const any = TypeDescr.init;
-    try testFormat(allocator, array, buf, comptime any(packed struct(u120) { x: u64 = 5, y: packed struct { u32 = 1, u16 = 2 } = .{}, z: u8 = 255 }));
+    try testFormat(allocator, array, buf, //
+        comptime any(packed struct(u120) { x: u64 = 5, y: packed struct(u48) { @"0": u32 = 1, @"1": u16 = 2 } = .{}, z: u8 = 255 }));
     try testFormat(allocator, array, buf, comptime any(struct { buf: [*]u8, buf_len: usize }));
     try testFormat(allocator, array, buf, comptime any(struct { buf: []u8, buf_len: usize }));
     try testFormat(allocator, array, buf, comptime any(struct { auto: [256]u8 = [1]u8{0xa} ** 256, auto_len: usize = 16 }));
+    try testFormat(allocator, array, buf, comptime BigTypeDescr.declare("builtin", @import("std").builtin));
+    try testFormat(allocator, array, buf, comptime BigTypeDescr.declare("Target", @import("std").Target));
     const td1: TypeDescr = comptime any(?union(enum) { yes: ?build.Path, no });
     const td2: TypeDescr = comptime any(?union(enum) { yes: ?build.Path, no });
     try testFormats(allocator, array, td1, td2);
@@ -112,6 +116,7 @@ pub fn main() !void {
     try testRenderArray(&allocator, &array, buf.ptr);
     try testRenderType(&allocator, &array, buf.ptr);
     try testRenderSlice(&allocator, &array, buf.ptr);
+
     //try testRenderStruct(&allocator, &array, buf.ptr);
     //try testRenderEnum(&allocator, &array, buf.ptr);
 }
