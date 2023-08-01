@@ -195,7 +195,7 @@ pub fn ArrayFormat(comptime spec: RenderSpec, comptime Array: type) type {
                     }
                 }
                 if (omit_trailing_comma) {
-                    @as(*[2]u8, @ptrCast(buf + (len - 2))).* = " }".*;
+                    @as(*[2]u8, @ptrCast(buf + (len -% 2))).* = " }".*;
                 } else {
                     buf[len] = '}';
                     len +%= 1;
@@ -529,12 +529,12 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                                 len +%= writeDeclBuf(format, buf + len, decl);
                             }
                             len +%= writeTrailingComma(
-                                buf + (len - 1),
+                                buf + (len -% 1),
                                 omit_trailing_comma,
                                 struct_info.fields.len +% struct_info.decls.len,
                             );
                         } else {
-                            len +%= writeTrailingCommaBuf(buf + (len - 1), omit_trailing_comma, struct_info.fields.len);
+                            len +%= writeTrailingCommaBuf(buf + (len -% 1), omit_trailing_comma, struct_info.fields.len);
                         }
                     }
                 },
@@ -558,12 +558,12 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                                 len +%= writeDeclBuf(format, buf + len, decl);
                             }
                             len +%= writeTrailingCommaBuf(
-                                buf + (len - 1),
+                                buf + (len -% 1),
                                 omit_trailing_comma,
                                 union_info.fields.len +% union_info.decls.len,
                             );
                         } else {
-                            len +%= writeTrailingCommaBuf(buf + (len - 1), omit_trailing_comma, union_info.fields.len);
+                            len +%= writeTrailingCommaBuf(buf + (len -% 1), omit_trailing_comma, union_info.fields.len);
                         }
                     }
                 },
@@ -587,12 +587,12 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                                 len +%= writeDeclBuf(format, buf + len, decl);
                             }
                             len +%= writeTrailingCommaBuf(
-                                buf + (len - 1),
+                                buf + (len -% 1),
                                 omit_trailing_comma,
                                 enum_info.fields.len +% enum_info.decls.len,
                             );
                         } else {
-                            len +%= writeTrailingCommaBuf(buf + (len - 1), omit_trailing_comma, enum_info.fields.len);
+                            len +%= writeTrailingCommaBuf(buf + (len -% 1), omit_trailing_comma, enum_info.fields.len);
                         }
                     }
                 },
@@ -966,7 +966,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                         fields_len +%= 1;
                     }
                 }
-                len +%= writeTrailingCommaBuf(buf + (len - 1), omit_trailing_comma, fields_len);
+                len +%= writeTrailingCommaBuf(buf + (len -% 1), omit_trailing_comma, fields_len);
             }
             return len;
         }
@@ -1327,7 +1327,7 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
                         }
                     }
                 }
-                @as(*[2]u8, @ptrCast(buf + len - 2)).* = " }".*;
+                @as(*[2]u8, @ptrCast(buf + len -% 2)).* = " }".*;
             }
             return len;
         }
@@ -1706,7 +1706,7 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
                     }
                 }
                 if (omit_trailing_comma) {
-                    @as(*[2]u8, @ptrCast(buf + len - 2)).* = " }".*;
+                    @as(*[2]u8, @ptrCast(buf + (len -% 2))).* = " }".*;
                 } else {
                     buf[len] = '}';
                     len +%= 1;
@@ -2427,7 +2427,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
             value: Value = .{ .default = null },
             const Value = union(enum) {
                 default: ?spec.token,
-                enumeration: usize,
+                enumeration: isize,
             };
             pub fn formatWrite(format: Field, array: anytype) void {
                 if (spec.identifier_name) {
@@ -2448,7 +2448,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                     },
                     .enumeration => {
                         array.writeMany(spec.tokens.equal);
-                        array.writeFormat(fmt.ud64(format.value.enumeration));
+                        array.writeFormat(fmt.idsize(format.value.enumeration));
                     },
                 }
                 array.writeMany(spec.tokens.next);
@@ -2480,7 +2480,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                     .enumeration => {
                         @as(*@TypeOf(Format.tab.equal), @ptrCast(buf + len)).* = Format.tab.equal;
                         len +%= Format.tab.equal.len;
-                        len +%= fmt.ud64(format.value.enumeration).formatWriteBuf(buf + len);
+                        len +%= fmt.idsize(format.value.enumeration).formatWriteBuf(buf + len);
                     },
                 }
                 @as(*@TypeOf(Format.tab.next), @ptrCast(buf + len)).* = Format.tab.next;
@@ -2511,7 +2511,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                     },
                     .enumeration => {
                         len +%= Format.tab.equal.len;
-                        len +%= fmt.ud64(format.value.enumeration).formatLength();
+                        len +%= fmt.idsize(format.value.enumeration).formatLength();
                     },
                 }
                 len +%= spec.tokens.next.len;
@@ -2618,7 +2618,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                     types.* = types.* ++ [1]TypeDecl{.{ name, T }};
                 }
                 switch (type_info) {
-                    else => return .{ .type_name = @typeName(T) },
+                    else => return .{ .type_decl = .{ .name = @typeName(T) } },
                     .Struct => |struct_info| {
                         if (spec.decls) {
                             var type_decls: []const Declaration = &.{};
@@ -2701,7 +2701,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                             for (enum_info.fields) |field| {
                                 type_fields = type_fields ++ [1]Field{.{
                                     .name = field.name,
-                                    .value = .{ .enumeration = field.value },
+                                    .value = .{ .enumeration = @intCast(field.value) },
                                 }};
                             }
                             return .{ .type_decl = .{ .name = name, .defn = .{
@@ -2714,7 +2714,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                             for (enum_info.fields) |field| {
                                 type_fields = type_fields ++ [1]Field{.{
                                     .name = field.name,
-                                    .value = .{ .enumeration = field.value },
+                                    .value = .{ .enumeration = @intCast(field.value) },
                                 }};
                             }
                             return .{ .type_decl = .{ .name = name, .defn = .{
@@ -2830,7 +2830,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                             for (enum_info.fields) |field| {
                                 type_fields = type_fields ++ [1]Field{.{
                                     .name = field.name,
-                                    .value = .{ .enumeration = field.value },
+                                    .value = .{ .enumeration = @intCast(field.value) },
                                 }};
                             }
                             return .{ .type_decl = .{ .defn = .{
@@ -2843,7 +2843,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                             for (enum_info.fields) |field| {
                                 type_fields = type_fields ++ [1]Field{.{
                                     .name = field.name,
-                                    .value = .{ .enumeration = field.value },
+                                    .value = .{ .enumeration = @intCast(field.value) },
                                 }};
                             }
                             return .{ .type_decl = .{ .defn = .{
