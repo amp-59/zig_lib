@@ -383,6 +383,16 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             pub var parse: *Node = undefined;
             pub var parsers: build.ParseCommand = undefined;
         };
+        pub const Build = opaque {
+            pub inline fn dependOnObject(build_node: *Build, allocator: *mem.SimpleAllocator, on_node: *Build) void {
+                @setRuntimeSafety(false);
+                @call(.never_inline, Node.dependOnObject, .{
+                    @as(*Node, @ptrCast(@alignCast(build_node))),
+                    allocator,
+                    @as(*Node, @ptrCast(@alignCast(on_node))),
+                });
+            }
+        };
         pub const specification: BuilderSpec = builder_spec;
         pub const max_thread_count: u64 =
             builder_spec.options.max_thread_count;
@@ -819,7 +829,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             node.flags.do_update = false;
             if (node.tag == .worker) {
                 if (node.task.lock.get(.run) != .null) {
-                    node.dependOn(allocator, special.parse, .build);
+                    node.dependOnFull(allocator, .run, special.parse, .build);
                 }
                 if (node.task.tag == .build) {
                     const mode: builtin.OptimizeMode = node.task.cmd.build.mode orelse .Debug;
@@ -858,8 +868,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         pub fn addBuildAnon(toplevel: *Node, allocator: *mem.SimpleAllocator, build_cmd: types.BuildCommand, root: [:0]const u8) !*Node {
             return toplevel.addBuild(allocator, build_cmd, makeCommandName(allocator, root), root);
         }
-        pub fn dependOn(node: *Node, allocator: *mem.SimpleAllocator, on_node: *Node, on_task: ?types.Task) void {
-            node.addDep(allocator).* = .{ .task = node.task.tag, .on_node = on_node, .on_task = on_task orelse on_node.task.tag, .on_state = .finished };
+        pub fn dependOn(node: *Node, allocator: *mem.SimpleAllocator, on_node: *Node) void {
+            node.addDep(allocator).* = .{ .task = node.task.tag, .on_node = on_node, .on_task = on_node.task.tag, .on_state = .finished };
         }
         /// Must be worker.(archive|build)
         pub fn dependOnObject(node: *Node, allocator: *mem.SimpleAllocator, on_node: *Node) void {
@@ -875,6 +885,14 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         fn dependOnSelfExe(node: *Node, allocator: *mem.SimpleAllocator) void {
             node.addArg(allocator).* = node.impl.paths[0].concatenate(allocator);
             node.addDep(allocator).* = .{ .task = .run, .on_node = node, .on_task = .build, .on_state = .finished };
+        }
+        pub fn dependOnFull(node: *Node, allocator: *mem.SimpleAllocator, task: ?types.Task, on_node: *Node, on_task: ?types.Task) void {
+            node.addDep(allocator).* = .{
+                .task = task orelse node.task.tag,
+                .on_node = on_node,
+                .on_task = on_task orelse on_node.task.tag,
+                .on_state = .finished,
+            };
         }
         pub const impl = struct {
             fn install(src_pathname: [:0]u8, dest_pathname: [:0]const u8) void {
@@ -1057,7 +1075,9 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     }
                 }
                 for (node.impl.deps[0..node.impl.deps_len]) |dep| {
-                    if (dep.on_node == node and dep.on_task == task) {
+                    if (dep.on_node == node and
+                        dep.on_task == task or dep.task != task)
+                    {
                         continue;
                     }
                     if (keepGoing() and
