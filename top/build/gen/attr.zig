@@ -79,6 +79,17 @@ const cflags_type: types.ProtoTypeDescrMap = .{
     .store = &types.ProtoTypeDescr.init(?[]const []const u8),
     .write = &.{ .type_decl = .{ .name = "types.CFlags" } },
 };
+pub const scope: []const types.ProtoTypeDescr.Declaration = &.{
+    .{ .name = "PathUnion", .defn = .{
+        .spec = "union(enum)",
+        .fields = &.{ .{
+            .name = "yes",
+            .type = .{ .type_decl = .{ .name = "?types.Path" } },
+        }, .{
+            .name = "no",
+        } },
+    } },
+};
 pub const zig_build_command_attributes: types.Attributes = .{
     .type_name = "BuildCommand",
     .fn_name = "build",
@@ -709,7 +720,6 @@ pub const zig_build_command_attributes: types.Attributes = .{
         },
     },
 };
-
 pub const ranlib_command_options: []const types.ParamSpec = &.{
     .{
         .name = "real_ids",
@@ -720,7 +730,6 @@ pub const ranlib_command_options: []const types.ParamSpec = &.{
         },
     },
 };
-
 const Format = enum {
     default,
     gnu,
@@ -1255,4 +1264,12 @@ pub const harec_attributes: types.Attributes = .{
             .string = "-N",
         },
     },
+};
+pub const all: []const types.Attributes = &.{
+    zig_build_command_attributes,
+    zig_format_command_attributes,
+    zig_ar_command_attributes,
+    zig_objcopy_command_attributes,
+    llvm_tblgen_command_attributes,
+    harec_attributes,
 };
