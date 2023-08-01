@@ -6,6 +6,7 @@ const debug = zl.debug;
 const builtin = zl.builtin;
 
 pub const Node = build.GenericNode(.{});
+pub const logging_override: debug.Logging.Override = spec.logging.override.silent;
 
 var build_cmd: build.BuildCommand = .{
     .kind = .exe,
@@ -27,23 +28,23 @@ var build_cmd: build.BuildCommand = .{
 const format_cmd: build.FormatCommand = .{ .ast_check = true };
 
 fn setStripped(node: *Node) void {
-    node.task.info.build.strip = true;
+    node.task.cmd.build.strip = true;
 }
 fn setSmall(node: *Node) void {
-    node.task.info.build.mode = .ReleaseSmall;
-    node.task.info.build.strip = true;
+    node.task.cmd.build.mode = .ReleaseSmall;
+    node.task.cmd.build.strip = true;
 }
 fn setFast(node: *Node) void {
-    node.task.info.build.mode = .ReleaseFast;
-    node.task.info.build.strip = true;
+    node.task.cmd.build.mode = .ReleaseFast;
+    node.task.cmd.build.strip = true;
 }
 fn setDebug(node: *Node) void {
-    node.task.info.build.mode = .Debug;
-    node.task.info.build.strip = true;
+    node.task.cmd.build.mode = .Debug;
+    node.task.cmd.build.strip = true;
 }
 fn addTracer(node: *Node) void {
-    node.task.info.build.mode = .Debug;
-    node.task.info.build.strip = false;
+    node.task.cmd.build.mode = .Debug;
+    node.task.cmd.build.strip = false;
 }
 pub fn buildMain(allocator: *build.Allocator, toplevel: *Node) !void {
     tests(allocator, toplevel.addGroup(allocator, "tests"));
@@ -81,8 +82,8 @@ fn memgen(allocator: *build.Allocator, node: *Node) void {
     mg_ptr.dependOn(allocator, mg_ptr_impls, .run);
     mg_ctn.dependOn(allocator, mg_ctn_impls, .run);
     mg_ctn_kinds.dependOn(allocator, mg_specs, .run);
-    mg_specs.task.info.build.mode = .Debug;
-    mg_alloc.task.info.format.ast_check = false;
+    mg_specs.task.cmd.build.mode = .Debug;
+    mg_alloc.task.cmd.format.ast_check = false;
     node.task.tag = .format;
 }
 fn examples(allocator: *build.Allocator, node: *Node) void {
@@ -122,8 +123,8 @@ fn examples(allocator: *build.Allocator, node: *Node) void {
     declprint.descr = "Useful for printing declarations";
     pathsplit.descr = "Useful for splitting paths into dirnames and basename";
     perf.descr = "Integrated performance";
-    statz.task.info.build.mode = .Debug;
-    statz.task.info.build.strip = false;
+    statz.task.cmd.build.mode = .Debug;
+    statz.task.cmd.build.strip = false;
     node.task.tag = .build;
 }
 fn useCaseTests(allocator: *build.Allocator, node: *Node) void {
@@ -138,10 +139,10 @@ fn useCaseTests(allocator: *build.Allocator, node: *Node) void {
     std_lib.descr = "Standard builtin, without build configuration, without library package";
     std_lib_pkg.flags.build.do_configure = false;
     std_lib.flags.build.do_configure = false;
-    std_lib_cfg.task.info.build.dependencies = &.{};
-    std_lib.task.info.build.dependencies = &.{};
-    std_lib_cfg.task.info.build.modules = &.{};
-    std_lib.task.info.build.modules = &.{};
+    std_lib_cfg.task.cmd.build.dependencies = &.{};
+    std_lib.task.cmd.build.dependencies = &.{};
+    std_lib_cfg.task.cmd.build.modules = &.{};
+    std_lib.task.cmd.build.modules = &.{};
     node.task.tag = .build;
 }
 fn tests(allocator: *build.Allocator, node: *Node) void {
@@ -204,7 +205,7 @@ fn tests(allocator: *build.Allocator, node: *Node) void {
     virtual_test.descr = "Test address spaces, sub address spaces, and arenas";
     size_test.descr = "Test sizes of various things";
     debug_test.descr = "Test debugging functions";
-    algo_test.task.info.build.mode = .ReleaseFast;
+    algo_test.task.cmd.build.mode = .ReleaseFast;
     const rng_test: *Node = node.addBuild(allocator, build_cmd, "rng_test", "test/rng-test.zig");
     const ecdsa_test: *Node = node.addBuild(allocator, build_cmd, "ecdsa_test", "test/crypto/ecdsa-test.zig");
     const aead_test: *Node = node.addBuild(allocator, build_cmd, "aead_test", "test/crypto/aead-test.zig");
@@ -242,10 +243,12 @@ fn tests(allocator: *build.Allocator, node: *Node) void {
     }) |builder_test_node| {
         builder_test_node.addToplevelArgs(allocator);
     }
+    build_stress_test.task.cmd.build.mode = .Debug;
+    build_stress_test.task.cmd.build.strip = true;
     build_runner_test.flags.build.add_stack_traces = false;
-    fmt_cmp_test.task.info.build.mode = .ReleaseFast;
-    fmt_cmp_test.task.info.build.strip = true;
-    fmt_cmp_test.task.info.build.emit_asm = .{ .yes = null };
+    fmt_cmp_test.task.cmd.build.mode = .Debug;
+    fmt_cmp_test.task.cmd.build.strip = true;
+    fmt_cmp_test.task.cmd.build.emit_asm = .{ .yes = null };
     node.task.tag = .build;
     debug2_test.flags.do_update = true;
     debug_test.dependOnObject(allocator, debug2_test);
