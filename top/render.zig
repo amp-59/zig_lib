@@ -127,6 +127,12 @@ pub fn GenericFormat(comptime spec: RenderSpec) type {
     };
     return T;
 }
+pub fn eval(comptime spec: RenderSpec, comptime any_value: anytype) []const u8 {
+    const any_format = render(spec, any_value);
+    const len: usize = any_format.formatLength() +% 1;
+    var buf: [len]u8 = undefined;
+    return buf[0..any_format.formatWriteBuf(&buf)];
+}
 pub fn ArrayFormat(comptime spec: RenderSpec, comptime Array: type) type {
     const T = struct {
         value: Array,
@@ -519,13 +525,13 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                             inline for (struct_info.decls) |decl| {
                                 len +%= writeDeclBuf(format, buf + len, decl);
                             }
-                            len +%= writeTrailingComma(
-                                buf + (len -% 1),
+                            len +%= writeTrailingCommaBuf(
+                                buf + (len -% 2),
                                 omit_trailing_comma,
                                 struct_info.fields.len +% struct_info.decls.len,
                             );
                         } else {
-                            len +%= writeTrailingCommaBuf(buf + (len -% 1), omit_trailing_comma, struct_info.fields.len);
+                            len +%= writeTrailingCommaBuf(buf + (len -% 2), omit_trailing_comma, struct_info.fields.len);
                         }
                     }
                 },
@@ -549,12 +555,12 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                                 len +%= writeDeclBuf(format, buf + len, decl);
                             }
                             len +%= writeTrailingCommaBuf(
-                                buf + (len -% 1),
+                                buf + (len -% 2),
                                 omit_trailing_comma,
                                 union_info.fields.len +% union_info.decls.len,
                             );
                         } else {
-                            len +%= writeTrailingCommaBuf(buf + (len -% 1), omit_trailing_comma, union_info.fields.len);
+                            len +%= writeTrailingCommaBuf(buf + (len -% 2), omit_trailing_comma, union_info.fields.len);
                         }
                     }
                 },
@@ -578,12 +584,12 @@ pub fn TypeFormat(comptime spec: RenderSpec) type {
                                 len +%= writeDeclBuf(format, buf + len, decl);
                             }
                             len +%= writeTrailingCommaBuf(
-                                buf + (len -% 1),
+                                buf + (len -% 2),
                                 omit_trailing_comma,
                                 enum_info.fields.len +% enum_info.decls.len,
                             );
                         } else {
-                            len +%= writeTrailingCommaBuf(buf + (len -% 1), omit_trailing_comma, enum_info.fields.len);
+                            len +%= writeTrailingCommaBuf(buf + (len -% 2), omit_trailing_comma, enum_info.fields.len);
                         }
                     }
                 },
@@ -730,12 +736,12 @@ fn writeTrailingCommaBuf(buf: [*]u8, omit_trailing_comma: bool, fields_len: usiz
     // The length starting at -1 is a workaround for compiler TODO implement sema comptime pointer subtract.
     var len: usize = 0;
     if (fields_len == 0) {
-        buf[0] = '}';
+        buf[1] = '}';
     } else {
         if (omit_trailing_comma) {
-            (buf + len)[1..3].* = " }".*;
+            buf[0..2].* = " }".*;
         } else {
-            buf[1] = '}';
+            buf[2] = '}';
             len +%= 1;
         }
     }
@@ -957,7 +963,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
                         fields_len +%= 1;
                     }
                 }
-                len +%= writeTrailingCommaBuf(buf + (len -% 1), omit_trailing_comma, fields_len);
+                len +%= writeTrailingCommaBuf(buf + (len -% 2), omit_trailing_comma, fields_len);
             }
             return len;
         }
@@ -1163,7 +1169,7 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
                     @as(*[2]u8, @ptrCast(buf + len)).* = " }".*;
                     len +%= 2;
                 } else {
-                    @as(*[2]u8, @ptrCast(buf + (len -% 1))).* = " }".*;
+                    @as(*[2]u8, @ptrCast(buf + (len -% 2))).* = " }".*;
                     len +%= 1;
                 }
             } else {
@@ -1226,6 +1232,30 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
                     array.writeMany(")");
                 }
             }
+        }
+        fn formatWriteBufUntagged(format: Format, buf: [*]u8) usize {
+            var ptr: [*]u8 = buf;
+            if (@hasDecl(Union, "tagged") and
+                @hasDecl(Union, "Tagged") and
+                spec.view.extern_tagged_union)
+            {
+                const TaggedFormat = AnyFormat(spec, Union.Tagged);
+                const tagged_format: TaggedFormat = .{ .value = format.value.tagged() };
+                ptr = ptr + tagged_format.formatWriteBuf(ptr);
+            } else {
+                if (@sizeOf(Union) > @sizeOf(usize)) {
+                    ptr[0..2].* = "{}".*;
+                    ptr = ptr + 2;
+                } else {
+                    const int_format: fmt.Type.Ub(Int) = .{ .value = meta.leastRealBitCast(format.value) };
+                    ptr[0 .. 11 +% @typeName(Union).len].* = ("@bitCast(" ++ @typeName(Union) ++ ", ").*;
+                    ptr = ptr + 11 + @typeName(Union).len;
+                    ptr = ptr + int_format.formatWriteBuf(ptr);
+                    ptr[0] = ')';
+                    ptr = ptr + 1;
+                }
+            }
+            return @intFromPtr(ptr - @intFromPtr(buf));
         }
         fn formatLengthUntagged(format: Format) u64 {
             var len: usize = 0;
@@ -2562,23 +2592,14 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                     .omit => return null,
                     .fast => return fmt.cx(default_value_ptr),
                     .exact => |render_spec| {
-                        const value_fmt = render(render_spec, mem.pointerOpaque(field_type, default_value_ptr).*);
-                        const len: usize = value_fmt.formatLength();
-                        var buf: [len]u8 = undefined;
-                        debug.assertEqual(usize, len, value_fmt.formatWriteBuf(&buf));
-                        return buf[0..len];
+                        return comptime eval(render_spec, mem.pointerOpaque(field_type, default_value_ptr).*);
                     },
                     .exact_safe => |render_spec| {
                         const fast: []const u8 = fmt.cx(default_value_ptr);
-                        if (fast[0] == '.') {
-                            const value_fmt = render(render_spec, mem.pointerOpaque(field_type, default_value_ptr).*);
-                            const len: usize = value_fmt.formatLength();
-                            var buf: [len]u8 = undefined;
-                            debug.assertEqual(usize, len, value_fmt.formatWriteBuf(&buf));
-                            return buf[0..len];
-                        } else {
+                        if (fast[0] != '.') {
                             return fast;
                         }
+                        return comptime eval(render_spec, mem.pointerOpaque(field_type, default_value_ptr).*);
                     },
                 }
             } else {
@@ -2600,7 +2621,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
         };
         pub inline fn declare(comptime name: []const u8, comptime T: type) Format {
             comptime {
-                const type_info: builtin.Type = @typeInfo(T);
+                @setEvalBranchQuota(~@as(u32, 0));
                 for (types.*) |type_decl| {
                     if (type_decl[1] == T) {
                         return .{ .type_decl = .{ .name = type_decl[0] } };
@@ -2608,6 +2629,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                 } else {
                     types.* = types.* ++ [1]TypeDecl{.{ name, T }};
                 }
+                const type_info: builtin.Type = @typeInfo(T);
                 switch (type_info) {
                     else => return .{ .type_decl = .{ .name = @typeName(T) } },
                     .Struct => |struct_info| {
@@ -2731,6 +2753,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
         }
         pub fn init(comptime T: type) Format {
             comptime {
+                @setEvalBranchQuota(~@as(u32, 0));
                 for (types.*) |type_decl| {
                     if (type_decl[1] == T) {
                         return .{ .type_decl = .{ .name = type_decl[0] } };
