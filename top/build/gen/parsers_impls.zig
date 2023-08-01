@@ -734,9 +734,9 @@ fn writeFlagWithInverse(array: *Array, param_spec: types.ParamSpec, no_param_spe
     }
 }
 fn writeParserFunctionHelp(array: *Array, attributes: types.Attributes) void {
-    array.writeMany("export const ");
+    array.writeMany("const ");
     array.writeMany(attributes.fn_name);
-    array.writeMany("_help = ");
+    array.writeMany("_help: [*:0]const u8 = ");
     var max_width: usize = 0;
     for (attributes.params) |param_spec| {
         if (param_spec.string.len != 0) {
@@ -780,7 +780,6 @@ fn writeParserFunction(array: *Array, attributes: types.Attributes) void {
     writeParserFunctionSignature(array, attributes);
     writeParserFunctionBody(array, attributes);
     writeParserFunctionSpec(array, attributes);
-    writeParserFunctionHelp(array, attributes);
 }
 pub fn main() !void {
     var allocator: mem.SimpleAllocator = .{};
@@ -788,15 +787,11 @@ pub fn main() !void {
     const array: *Array = allocator.create(Array);
     const len: usize = try gen.readFile(.{ .return_type = usize }, config.parsers_template_path, array.referAllUndefined());
     array.define(len);
-    for (@as([]const types.Attributes, &.{
-        attr.zig_build_command_attributes,
-        attr.zig_format_command_attributes,
-        attr.zig_ar_command_attributes,
-        attr.zig_objcopy_command_attributes,
-        attr.llvm_tblgen_command_attributes,
-        attr.harec_attributes,
-    })) |attributes| {
+    for (attr.all) |attributes| {
         writeParserFunction(array, attributes);
+    }
+    for (attr.all) |attributes| {
+        writeParserFunctionHelp(array, attributes);
     }
     try gen.truncateFile(.{ .return_type = void }, config.parsers_path, array.readAll());
 }
