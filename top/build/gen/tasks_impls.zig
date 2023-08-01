@@ -41,61 +41,27 @@ const close_spec: file.CloseSpec = .{
     .errors = .{},
     .logging = .{},
 };
-fn writeType(fields_array: *Array, types_array: *Array2, param_spec: types.ParamSpec) void {
+fn writeType(fields_array: *Array, param_spec: types.ParamSpec) void {
     if (param_spec.and_no) |no_param_spec| {
         const yes_bool: bool = param_spec.tag == .boolean_field;
         const no_bool: bool = no_param_spec.tag == .boolean_field;
-        const yes_type: ?types.ProtoTypeDescr = if (yes_bool) null else param_spec.type.store.*;
-        const no_type: ?types.ProtoTypeDescr = if (no_bool) null else no_param_spec.type.store.*;
         if (yes_bool != no_bool) {
-            if (config.declare_task_field_types) {
-                fields_array.writeMany("?");
-                fields_array.writeMany(param_spec.name);
-                fields_array.writeMany("_type");
-                types_array.writeMany("pub const ");
-                types_array.writeMany(param_spec.name);
-                types_array.writeMany("_type=");
-                types_array.writeFormat(types.ProtoTypeDescr{
-                    .type_decl = .{ .Composition = .{
-                        .spec = "union(enum)",
-                        .fields = &.{
-                            .{ .name = "yes", .type = yes_type },
-                            .{ .name = "no", .type = no_type },
-                        },
-                    } },
-                });
-                types_array.writeMany(";\n");
-            } else {
-                fields_array.writeFormat(types.ProtoTypeDescr{ .type_ref = .{
-                    .spec = "?",
-                    .type = &.{ .type_decl = .{ .defn = .{
-                        .spec = "union(enum)",
-                        .fields = &.{
-                            .{ .name = "yes", .type = yes_type },
-                            .{ .name = "no", .type = no_type },
-                        },
-                    } } },
-                } });
-            }
+            const new_type: types.ProtoTypeDescr = .{ .type_ref = .{
+                .spec = "?",
+                .type = &.{ .type_decl = .{ .defn = .{
+                    .spec = "union(enum)",
+                    .fields = &.{
+                        .{ .name = "yes", .type = if (yes_bool) null else param_spec.type.store.* },
+                        .{ .name = "no", .type = if (no_bool) null else no_param_spec.type.store.* },
+                    },
+                } } },
+            } };
+            fields_array.writeFormat(new_type);
         } else {
             fields_array.writeFormat(comptime types.ProtoTypeDescr.init(?bool));
         }
     } else {
-        const need_decl: bool =
-            param_spec.tag == .optional_tag_field or
-            param_spec.tag == .optional_repeatable_tag_field;
-        if (config.declare_task_field_types and need_decl) {
-            fields_array.writeMany("?");
-            fields_array.writeMany(param_spec.name);
-            fields_array.writeMany("_type");
-            types_array.writeMany("pub const ");
-            types_array.writeMany(param_spec.name);
-            types_array.writeMany("_type=");
-            types_array.writeFormat(param_spec.type.store.*);
-            types_array.writeMany(";\n");
-        } else {
-            fields_array.writeFormat(param_spec.type.store.*);
-        }
+        fields_array.writeFormat(param_spec.type.store.*);
     }
 }
 fn writeSetRuntimeSafety(array: *Array) void {
@@ -889,7 +855,7 @@ fn writeFields(allocator: *mem.SimpleAllocator, array: *Array, attributes: types
             }
             array.writeMany(param_spec.name);
             array.writeMany(":");
-            writeType(array, types_array, param_spec);
+            writeType(array, param_spec);
             if (param_spec.and_no == null and
                 param_spec.tag == .boolean_field)
             {
@@ -902,6 +868,11 @@ fn writeFields(allocator: *mem.SimpleAllocator, array: *Array, attributes: types
         }
     }
     array.writeMany(types_array.readAll());
+}
+fn writeDeclarations(array: *Array, attributes: types.Attributes) void {
+    for (attributes.type_decls) |type_decl| {
+        array.writeFormat(type_decl);
+    }
 }
 fn writeWriterFunction(array: *Array, attributes: types.Attributes, variant: types.Variant) void {
     writeWriterFunctionSignature(array, attributes, variant);
@@ -930,6 +901,7 @@ fn writeTaskStructFromAttributes(allocator: *mem.SimpleAllocator, array: *Array,
     array.writeMany(attributes.type_name);
     array.writeMany("=struct{\n");
     writeFields(allocator, array, attributes);
+    writeDeclarations(array, attributes);
     writeWriterFunction(array, attributes, .write);
     writeWriterFunction(array, attributes, .write_buf);
     writeWriterFunction(array, attributes, .length);
@@ -963,13 +935,10 @@ pub fn main() !void {
     const fd: u64 = file.open(open_spec, config.tasks_template_path);
     array.define(file.read(read_spec, fd, array.referAllUndefined()));
     file.close(close_spec, fd);
-    writeStructs(&allocator, array, &[_]types.Attributes{
-        attr.zig_build_command_attributes,
-        attr.zig_format_command_attributes,
-        attr.zig_ar_command_attributes,
-        attr.zig_objcopy_command_attributes,
-        attr.llvm_tblgen_command_attributes,
-        attr.harec_attributes,
-    });
+    for (attr.scope) |decl| {
+        array.writeFormat(types.ProtoTypeDescr{ .type_decl = decl });
+    }
+    types.ProtoTypeDescr.scope = attr.scope;
+    writeStructs(&allocator, array, attr.all);
     try gen.truncateFile(.{ .return_type = void }, config.tasks_path, array.readAll());
 }
