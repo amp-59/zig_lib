@@ -12,7 +12,6 @@ const root = @import("./debug-test.zig");
 pub usingnamespace zl.start;
 
 pub const trace: debug.Trace = root.trace;
-pub const have_stack_traces: bool = true;
 
 fn nested0(z: u64) !void {
     var x: u64 = 0;
