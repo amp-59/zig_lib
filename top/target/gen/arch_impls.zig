@@ -32,9 +32,7 @@ pub fn main() !void {
         const arch = @field(Target, pair[0]);
         array.writeMany("pub const target=@import(\"../target.zig\");\n");
         array.writeMany("pub const feat=@import(\"./feat.zig\");\n");
-        array.writeMany("pub const Feature=");
         array.writeFormat(comptime types.TypeDescr.declare("Feature", arch.Feature));
-        array.writeMany(";\n");
         array.writeMany("pub const all_features:[]const target.Target.Feature=&.{");
         for (arch.all_features) |feature| {
             array.writeFormat(fmt.render(render_spec, feature));
