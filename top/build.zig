@@ -773,6 +773,9 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         }
         fn initializeCommand(allocator: *mem.SimpleAllocator, toplevel: *Node, node: *Node) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
+            if (!node.flags.do_init) {
+                return;
+            }
             node.flags.do_init = false;
             if (maybe_hide) {
                 maybeHide(toplevel, node);
@@ -821,7 +824,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 if (node.task.tag == .build) {
                     const mode: builtin.OptimizeMode = node.task.cmd.build.mode orelse .Debug;
                     if (node.flags.build.do_configure) {
-                        if (node.flags.build.add_build_context) {
+                        if (node.flags.build.want_build_context) {
                             node.addConfig(allocator, "zig_exe", .{ .String = build.zig_exe });
                             node.addConfig(allocator, "build_root", .{ .String = build.build_root });
                             node.addConfig(allocator, "cache_root", .{ .String = build.cache_root });
@@ -829,7 +832,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                         }
                         if (builder_spec.options.add_debug_stack_traces and
                             !(node.task.cmd.build.strip orelse (mode == .ReleaseSmall) or
-                            node.flags.build.add_stack_traces))
+                            node.flags.build.want_stack_traces))
                         {
                             if (node.task.cmd.build.kind == .exe) {
                                 node.addConfig(allocator, "have_stack_traces", .{ .Bool = true });
@@ -841,6 +844,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             }
         }
         pub fn updateCommands(allocator: *mem.SimpleAllocator, toplevel: *Node, node: *Node) void {
+            @setRuntimeSafety(builder_spec.options.enable_safety);
             if (!node.flags.do_update) {
                 return;
             }
@@ -2581,7 +2585,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             }
         };
     };
-    return Type;
+    return T;
 }
 fn libraryRoot() [:0]const u8 {
     comptime {
