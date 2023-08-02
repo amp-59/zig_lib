@@ -13,7 +13,7 @@ const builtin = @import("./builtin.zig");
 pub fn _start() void {}
 
 pub const Allocator = mem.SimpleAllocator;
-pub const logging_override: debug.Logging.Override = debug.Logging.Override{
+pub const logging_default: debug.Logging.Default = .{
     .Acquire = false,
     .Attempt = false,
     .Error = false,
