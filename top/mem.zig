@@ -1323,7 +1323,7 @@ fn testEqualStruct(comptime T: type, comptime struct_info: builtin.Type.Struct, 
 }
 fn testIdenticalUnion(comptime T: type, comptime union_info: builtin.Type.Union, arg1: T, arg2: T) bool {
     return testEqual(union_info.tag_type.?, arg1, arg2) and
-        mach.testEqualMany8(
+        mem.testEqualString(
         @as(*const [@sizeOf(T)]u8, @ptrCast(&arg1)),
         @as(*const [@sizeOf(T)]u8, @ptrCast(&arg2)),
     );
@@ -1469,7 +1469,18 @@ pub fn testEqualMemory(comptime T: type, arg1: T, arg2: T) bool {
         .Int, .Enum, .Bool, .Void => return arg1 == arg2,
         .Struct => |struct_info| {
             inline for (struct_info.fields) |field| {
-                if (!testEqualMemory(field.type, @field(arg1, field.name), @field(arg2, field.name))) {
+                comptime var field_type_info: builtin.Type = @typeInfo(field.type);
+                if (field_type_info == .Pointer and
+                    field_type_info.Pointer.size == .Many and
+                    @hasField(T, field.name ++ "_len"))
+                {
+                    const len1: usize = @field(arg1, field.name ++ "_len");
+                    const len2: usize = @field(arg2, field.name ++ "_len");
+                    field_type_info.Pointer.size = .Slice;
+                    if (!testEqualMemory(@Type(field_type_info), @field(arg1, field.name)[0..len1], @field(arg2, field.name)[0..len2])) {
+                        return false;
+                    }
+                } else if (!testEqualMemory(field.type, @field(arg1, field.name), @field(arg2, field.name))) {
                     return false;
                 }
             }
@@ -2305,4 +2316,3 @@ pub const toBytes = meta.toBytes;
 // SyncSpec
 // MoveSpec
 // FdSpec
-
