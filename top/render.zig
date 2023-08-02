@@ -128,10 +128,24 @@ pub fn GenericFormat(comptime spec: RenderSpec) type {
     return T;
 }
 pub fn eval(comptime spec: RenderSpec, comptime any_value: anytype) []const u8 {
+    if (!@inComptime()) {
+        @compileError("Must be called at compile time");
+    }
     const any_format = render(spec, any_value);
     const len: usize = any_format.formatLength() +% 1;
     var buf: [len]u8 = undefined;
     return buf[0..any_format.formatWriteBuf(&buf)];
+}
+pub fn descr(comptime spec: TypeDescrFormatSpec, comptime T: type) []const u8 {
+    if (@inComptime()) {
+        @compileError("Must not be called at compile time");
+    }
+    const any_format = comptime GenericTypeDescrFormat(spec).init(T);
+    const len: usize = comptime any_format.formatLength() +% 1;
+    const S = struct {
+        var buf: [len]u8 = undefined;
+    };
+    return S.buf[0..any_format.formatWriteBuf(&S.buf)];
 }
 pub fn ArrayFormat(comptime spec: RenderSpec, comptime Array: type) type {
     const T = struct {
@@ -2240,7 +2254,6 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
         type_decl: Declaration,
         type_ref: Reference,
         const Format = @This();
-        var depth: u64 = spec.depth;
         pub var scope: []const Declaration = &.{};
         const tab = .{
             .decl = spec.tokens.decl[0..spec.tokens.decl.len].*,
@@ -2265,87 +2278,82 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                 }
                 return null;
             }
-            pub fn formatWrite(format: Container, array: anytype) void {
+            fn formatWriteInternal(format: Container, array: anytype, depth: usize) void {
                 if (spec.option_5) {
                     if (matchDeclaration(format)) |decl| {
-                        return decl.formatWrite(array);
+                        return decl.formatWriteInternal(array, depth +% 1);
                     }
                 }
                 array.writeMany(format.spec);
-                depth +%= 1;
                 array.writeMany(spec.tokens.lbrace);
-                for (0..depth) |_| array.writeMany(spec.tokens.indent);
+                for (0..depth +% 1) |_| array.writeMany(spec.tokens.indent);
                 for (format.fields) |field| {
-                    writeFormat(array, field);
+                    field.formatWriteInternal(array, depth +% 1);
                 }
                 if (spec.decls) {
                     for (format.decls) |field| {
-                        writeFormat(array, field);
+                        field.formatWriteInternal(array, depth +% 1);
                     }
                 }
                 array.undefine(spec.tokens.indent.len);
                 array.writeMany(spec.tokens.rbrace);
-                depth -%= 1;
             }
-            pub fn formatWriteBuf(format: Container, buf: [*]u8) usize {
+            fn formatWriteBufInternal(format: Container, buf: [*]u8, depth: usize) usize {
                 if (spec.option_5) {
                     if (matchDeclaration(format)) |decl| {
-                        return decl.formatWriteBuf(buf);
+                        return decl.formatWriteBufInternal(buf, depth);
                     }
                 }
                 var len: usize = 0;
                 @memcpy(buf + len, format.spec);
                 len +%= format.spec.len;
-                depth +%= 1;
                 @as(*@TypeOf(Format.tab.lbrace), @ptrCast(buf + len)).* = Format.tab.lbrace;
                 len +%= Format.tab.lbrace.len;
-                for (0..depth) |_| {
+                for (0..depth +% 1) |_| {
                     @as(*@TypeOf(Format.tab.indent), @ptrCast(buf + len)).* = Format.tab.indent;
                     len +%= Format.tab.indent.len;
                 }
                 for (format.fields) |field| {
-                    len +%= field.formatWriteBuf(buf + len);
+                    len +%= field.formatWriteBufInternal(buf + len, depth +% 1);
                 }
                 if (spec.decls) {
                     for (format.decls) |field| {
-                        len +%= field.formatWriteBuf(buf + len);
+                        len +%= field.formatWriteBufInternal(buf + len, depth +% 1);
                     }
                 }
                 len -%= spec.tokens.indent.len;
                 @as(*@TypeOf(Format.tab.rbrace), @ptrCast(buf + len)).* = Format.tab.rbrace;
                 len +%= Format.tab.rbrace.len;
-                depth -%= 1;
                 return len;
             }
-            pub fn formatLength(format: Container) usize {
+            fn formatLengthInternal(format: Container, depth: usize) usize {
                 if (spec.option_5) {
                     if (matchDeclaration(format)) |decl| {
-                        return decl.formatLength();
+                        return decl.formatLengthInternal(depth);
                     }
                 }
                 var len: usize = 0;
                 len +%= format.spec.len;
-                depth +%= 1;
                 len +%= Format.tab.lbrace.len;
-                len +%= depth *% Format.tab.indent.len;
+                len +%= (depth +% 1) *% Format.tab.indent.len;
                 for (format.fields) |field| {
-                    len +%= field.formatLength();
+                    len +%= field.formatLengthInternal(depth +% 1);
                 }
                 if (spec.decls) {
                     for (format.decls) |field| {
-                        len +%= field.formatLength();
+                        len +%= field.formatLengthInternal(depth +% 1);
                     }
                 }
                 len -%= spec.tokens.indent.len;
                 len +%= Format.tab.rbrace.len;
-                depth -%= 1;
                 return len;
             }
         };
         pub const Declaration = struct {
             name: ?spec.token = null,
             defn: ?Container = null,
-            pub fn formatWrite(type_decl: Declaration, array: anytype) void {
+
+            pub fn formatWriteInternal(type_decl: Declaration, array: anytype, depth: usize) void {
                 if (spec.depth != 0 and
                     spec.depth != depth)
                 {
@@ -2360,7 +2368,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                             array.writeMany(type_name);
                         }
                         array.writeMany(spec.tokens.equal);
-                        writeFormat(array, type_defn);
+                        type_defn.formatWriteInternal(array, depth);
                         array.writeMany(spec.tokens.end);
                         for (0..depth) |_| array.writeMany(spec.tokens.indent);
                     } else {
@@ -2368,11 +2376,11 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                     }
                 } else {
                     if (type_decl.defn) |type_defn| {
-                        writeFormat(array, type_defn);
+                        type_defn.formatWriteInternal(array, depth);
                     }
                 }
             }
-            pub fn formatWriteBuf(type_decl: Declaration, buf: [*]u8) usize {
+            fn formatWriteBufInternal(type_decl: Declaration, buf: [*]u8, depth: usize) usize {
                 var len: usize = 0;
                 if (spec.depth != 0 and
                     spec.depth != depth)
@@ -2394,7 +2402,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                         }
                         @as(*@TypeOf(Format.tab.equal), @ptrCast(buf + len)).* = Format.tab.equal;
                         len +%= Format.tab.equal.len;
-                        len +%= type_defn.formatWriteBuf(buf + len);
+                        len +%= type_defn.formatWriteBufInternal(buf + len, depth);
                         @as(*@TypeOf(Format.tab.end), @ptrCast(buf + len)).* = Format.tab.end;
                         len +%= Format.tab.end.len;
                         for (0..depth) |_| {
@@ -2407,12 +2415,12 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                     }
                 } else {
                     if (type_decl.defn) |type_defn| {
-                        len +%= type_defn.formatWriteBuf(buf);
+                        len +%= type_defn.formatWriteBufInternal(buf, depth);
                     }
                 }
                 return len;
             }
-            pub fn formatLength(type_decl: Declaration) usize {
+            pub fn formatLengthInternal(type_decl: Declaration, depth: usize) usize {
                 var len: usize = 0;
                 if (spec.depth != 0 and
                     spec.depth != depth)
@@ -2428,7 +2436,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                             len +%= type_name.len;
                         }
                         len +%= Format.tab.equal.len;
-                        len +%= type_defn.formatLength();
+                        len +%= type_defn.formatLengthInternal(depth);
                         len +%= Format.tab.end.len;
                         len +%= depth *% Format.tab.indent.len;
                     } else {
@@ -2436,7 +2444,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                     }
                 } else {
                     if (type_decl.defn) |type_defn| {
-                        len +%= type_defn.formatLength();
+                        len +%= type_defn.formatLengthInternal(depth);
                     }
                 }
                 return len;
@@ -2450,15 +2458,15 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                 default: ?spec.token,
                 enumeration: isize,
             };
-            pub fn formatWrite(format: Field, array: anytype) void {
+            fn formatWriteInternal(format: Field, array: anytype, depth: usize) void {
                 if (spec.identifier_name) {
-                    array.writeFormat(fmt.IdentifierFormat{ .value = format.name });
+                    fmt.identifier(format.name).formatWrite(array);
                 } else {
                     array.writeMany(format.name);
                 }
                 if (format.type) |field_type| {
                     array.writeMany(spec.tokens.colon);
-                    writeFormat(array, field_type);
+                    field_type.formatWriteInternal(array, depth);
                 }
                 switch (format.value) {
                     .default => |mb_default_value| {
@@ -2475,11 +2483,11 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                 array.writeMany(spec.tokens.next);
                 for (0..depth) |_| array.writeMany(spec.tokens.indent);
             }
-            pub fn formatWriteBuf(format: Field, buf: [*]u8) usize {
+            fn formatWriteBufInternal(format: Field, buf: [*]u8, depth: usize) usize {
                 @setRuntimeSafety(builtin.is_safe);
                 var len: usize = 0;
                 if (spec.identifier_name) {
-                    len +%= fmt.IdentifierFormat.formatWriteBuf(.{ .value = format.name }, buf);
+                    len +%= fmt.identifier(format.name).formatWriteBuf(buf);
                 } else {
                     @memcpy(buf, format.name);
                     len +%= format.name;
@@ -2487,7 +2495,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                 if (format.type) |field_type| {
                     @as(*@TypeOf(Format.tab.colon), @ptrCast(buf + len)).* = Format.tab.colon;
                     len +%= Format.tab.colon.len;
-                    len +%= field_type.formatWriteBuf(buf + len);
+                    len +%= field_type.formatWriteBufInternal(buf + len, depth);
                 }
                 switch (format.value) {
                     .default => |mb_default_value| {
@@ -2512,7 +2520,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                 }
                 return len;
             }
-            pub fn formatLength(format: Field) usize {
+            fn formatLengthInternal(format: Field, depth: usize) usize {
                 var len: usize = 0;
                 if (spec.identifier_name) {
                     len +%= fmt.identifier(format.name).formatLength();
@@ -2521,7 +2529,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                 }
                 if (format.type) |field_type| {
                     len +%= spec.tokens.colon.len;
-                    len +%= field_type.formatLength();
+                    len +%= field_type.formatLengthInternal(depth);
                 }
                 switch (format.value) {
                     .default => |mb_default_value| {
@@ -2541,40 +2549,49 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
             }
         };
         pub fn formatWrite(type_descr: Format, array: anytype) void {
+            return type_descr.formatWriteInternal(array, spec.depth);
+        }
+        fn formatWriteInternal(type_descr: Format, array: anytype, depth: usize) void {
             switch (type_descr) {
                 .type_ref => |type_ref| {
                     array.writeMany(type_ref.spec);
-                    type_ref.type.formatWrite(array);
+                    type_ref.type.formatWriteInternal(array, depth);
                 },
                 .type_decl => |type_decl| {
-                    type_decl.formatWrite(array);
+                    type_decl.formatWriteInternal(array, depth);
                 },
             }
         }
         pub fn formatWriteBuf(type_descr: Format, buf: [*]u8) usize {
+            return type_descr.formatWriteBufInternal(buf, spec.depth);
+        }
+        fn formatWriteBufInternal(type_descr: Format, buf: [*]u8, depth: usize) usize {
             @setRuntimeSafety(builtin.is_safe);
             var len: usize = 0;
             switch (type_descr) {
                 .type_ref => |type_ref| {
                     @memcpy(buf + len, type_ref.spec);
                     len +%= type_ref.spec.len;
-                    len +%= type_ref.type.formatWriteBuf(buf + len);
+                    len +%= type_ref.type.formatWriteBufInternal(buf + len, depth);
                 },
                 .type_decl => |type_decl| {
-                    len +%= type_decl.formatWriteBuf(buf);
+                    len +%= type_decl.formatWriteBufInternal(buf, depth);
                 },
             }
             return len;
         }
         pub fn formatLength(type_descr: Format) usize {
+            return type_descr.formatLengthInternal(spec.depth);
+        }
+        fn formatLengthInternal(type_descr: Format, depth: usize) usize {
             var len: usize = 0;
             switch (type_descr) {
                 .type_ref => |type_ref| {
                     len +%= type_ref.spec.len;
-                    len +%= type_ref.type.formatLength();
+                    len +%= type_ref.type.formatLengthInternal(depth);
                 },
                 .type_decl => |type_decl| {
-                    len +%= type_decl.formatLength();
+                    len +%= type_decl.formatLengthInternal(depth);
                 },
             }
             return len;

@@ -983,9 +983,9 @@ fn GenericAddressSpace(comptime AddressSpace: type) type {
     return extern struct {
         pub fn formatWrite(address_space: AddressSpace, array: anytype) void {
             if (@TypeOf(AddressSpace.addr_spec) == DiscreteAddressSpaceSpec) {
-                return debug.formatWriteDiscrete(address_space, array);
+                return about.formatWriteDiscrete(address_space, array);
             } else {
-                return debug.formatWriteRegular(address_space, array);
+                return about.formatWriteRegular(address_space, array);
             }
         }
         pub fn formatLength(address_space: AddressSpace) u64 {
@@ -1002,14 +1002,14 @@ fn GenericAddressSpace(comptime AddressSpace: type) type {
             return GenericSubSpace(AddressSpace.addr_spec.subspace.?, label_or_index);
         }
         const about = struct {
-            const about_set_s: []const u8 = fmt.old.about("set");
-            const about_set_1_s: []const u8 = fmt.old.about("unset");
+            const about_set_s: []const u8 = fmt.about("set");
+            const about_set_1_s: []const u8 = fmt.about("unset");
             fn formatWriteRegular(address_space: AddressSpace, array: anytype) void {
                 var arena_index: AddressSpace.Index = 0;
                 array.writeMany(about_set_s);
                 while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index +%= 1) {
                     if (!address_space.impl.get(arena_index)) {
-                        array.writeMany(fmt.old.dec(AddressSpace.Index, arena_index).readAll());
+                        array.writeFormat(fmt.ud64(arena_index));
                         array.writeCount(2, ", ".*);
                     }
                 }
@@ -1017,7 +1017,7 @@ fn GenericAddressSpace(comptime AddressSpace: type) type {
                 array.writeMany(about_set_1_s);
                 while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index +%= 1) {
                     if (address_space.impl.get(arena_index)) {
-                        array.writeMany(fmt.old.dec(AddressSpace.Index, arena_index).readAll());
+                        array.writeFormat(fmt.ud64(arena_index));
                         array.writeCount(2, ", ".*);
                     }
                 }
@@ -1028,7 +1028,7 @@ fn GenericAddressSpace(comptime AddressSpace: type) type {
                 len +%= about_set_s.len;
                 while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index +%= 1) {
                     if (!address_space.impl.get(arena_index)) {
-                        len +%= fmt.old.length(AddressSpace.Index, arena_index, 10);
+                        len +%= fmt.length(AddressSpace.Index, arena_index, 10);
                         len +%= 2;
                     }
                 }
@@ -1036,7 +1036,7 @@ fn GenericAddressSpace(comptime AddressSpace: type) type {
                 len +%= about_set_1_s.len;
                 while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index +%= 1) {
                     if (address_space.impl.get(arena_index)) {
-                        len +%= fmt.old.length(AddressSpace.Index, arena_index, 10);
+                        len +%= fmt.length(AddressSpace.Index, arena_index, 10);
                         len +%= 2;
                     }
                 }
@@ -1047,7 +1047,7 @@ fn GenericAddressSpace(comptime AddressSpace: type) type {
                 array.writeMany(about_set_s);
                 inline while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index +%= 1) {
                     if (!address_space.impl.get(arena_index)) {
-                        array.writeMany(fmt.old.dec(AddressSpace.Index, arena_index).readAll());
+                        array.writeFormat(fmt.ud64(arena_index));
                         array.writeCount(2, ", ".*);
                     }
                 }
@@ -1055,7 +1055,7 @@ fn GenericAddressSpace(comptime AddressSpace: type) type {
                 array.writeMany(about_set_1_s);
                 inline while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index +%= 1) {
                     if (address_space.impl.get(arena_index)) {
-                        array.writeMany(fmt.old.dec(AddressSpace.Index, arena_index).readAll());
+                        array.writeFormat(fmt.ud64(arena_index));
                         array.writeCount(2, ", ".*);
                     }
                 }
@@ -1066,7 +1066,7 @@ fn GenericAddressSpace(comptime AddressSpace: type) type {
                 len +%= about_set_s.len;
                 inline while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index +%= 1) {
                     if (address_space.impl.get(AddressSpace.Index, arena_index)) {
-                        len +%= fmt.old.length(AddressSpace.Index, arena_index, 10);
+                        len +%= fmt.length(AddressSpace.Index, arena_index, 10);
                         len +%= 2;
                     }
                 }
@@ -1074,7 +1074,7 @@ fn GenericAddressSpace(comptime AddressSpace: type) type {
                 len +%= about_set_1_s.len;
                 inline while (arena_index != comptime AddressSpace.addr_spec.count()) : (arena_index +%= 1) {
                     if (!address_space.impl.get(AddressSpace.Index, arena_index)) {
-                        len +%= fmt.old.length(AddressSpace.Index, arena_index, 10);
+                        len +%= fmt.length(AddressSpace.Index, arena_index, 10);
                         len +%= 2;
                     }
                 }
