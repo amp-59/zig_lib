@@ -304,7 +304,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
     const maybe_hide: bool =
         builder_spec.options.hide_based_on_name_prefix != null or
         builder_spec.options.hide_based_on_group;
-    const Type = struct {
+    const T = struct {
         tag: types.Node,
         name: [:0]u8,
         descr: [:0]const u8,
@@ -320,26 +320,24 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             /// Whether a node will be processed on invokation of a user defined update command.
             do_user_update: bool = !builder_spec.options.never_update,
             /// Flags relevant to group nodes.
-            group: Group = .{},
-            /// Flags relevant to build-* worker nodes.
-            build: @This().Build = .{},
-            const Group = packed struct {
+            group: packed struct {
                 /// Whether independent nodes will be processed in parallel.
                 is_single_threaded: bool = false,
-            };
-            const Build = packed struct {
+            } = .{},
+            /// Flags relevant to build-* worker nodes.
+            build: packed struct {
                 /// Builder will create a configuration root. Enables usage of
                 /// configuration constants.
                 do_configure: bool = false,
                 /// Builder will unconditionally add `trace` object to
                 /// compile command.
-                add_stack_traces: bool = false,
+                want_stack_traces: bool = false,
                 /// Only meaningful when zig lib is not acting as standard.
-                add_zig_lib_rt: bool = false,
+                want_zig_lib_rt: bool = false,
                 /// Define the compiler path, build root, cache root, and global
                 /// cache root as declarations to the build configuration root.
-                add_build_context: bool = true,
-            };
+                want_build_context: bool = true,
+            } = .{},
         },
         impl: packed struct {
             args: [*][*:0]u8,
@@ -390,21 +388,15 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             }
         };
         pub const specification: BuilderSpec = builder_spec;
-        pub const max_thread_count: u64 =
-            builder_spec.options.max_thread_count;
-        pub const stack_aligned_bytes: u64 =
-            builder_spec.options.stack_aligned_bytes;
+        pub const max_thread_count: u64 = builder_spec.options.max_thread_count;
+        pub const stack_aligned_bytes: u64 = builder_spec.options.stack_aligned_bytes;
         pub const Config = builder_spec.options.special.Config;
-        const max_arena_count: u64 =
-            if (max_thread_count == 0) 4 else max_thread_count + 1;
-        const arena_aligned_bytes: u64 =
-            builder_spec.options.arena_aligned_bytes;
+        const max_arena_count: u64 = if (max_thread_count == 0) 4 else max_thread_count + 1;
+        const arena_aligned_bytes: u64 = builder_spec.options.arena_aligned_bytes;
         const stack_lb_addr: u64 = builder_spec.options.stack_lb_addr;
-        const stack_up_addr: u64 = stack_lb_addr +
-            (max_thread_count * stack_aligned_bytes);
+        const stack_up_addr: u64 = stack_lb_addr + (max_thread_count * stack_aligned_bytes);
         const arena_lb_addr: u64 = stack_up_addr;
-        const arena_up_addr: u64 = arena_lb_addr +
-            (max_arena_count * arena_aligned_bytes);
+        const arena_up_addr: u64 = arena_lb_addr + (max_arena_count * arena_aligned_bytes);
         pub const AddressSpace = mem.GenericRegularAddressSpace(.{
             .index_type = usize,
             .label = "arena",
