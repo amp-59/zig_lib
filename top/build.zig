@@ -84,8 +84,6 @@ pub const BuilderSpec = struct {
         show_waiting_tasks: bool = false,
         /// Enables logging for build job statistics.
         show_stats: bool = true,
-        /// Enables detail for node dependecy listings.
-        show_detailed_deps: bool = false,
         /// Include arena/thread index in task summaries and change of state
         /// notices.
         show_arena_index: bool = true,
@@ -93,8 +91,6 @@ pub const BuilderSpec = struct {
         enable_usage_validation: bool = false,
         /// Enable runtime safety.
         enable_safety: bool = false,
-        /// Require build runner compile DWARF parser and stack trace writers.
-        enable_history: bool = true,
         /// Enable advanced builder features, such as project-wide comptime
         /// constants and caching special modules.
         enable_build_configuration: bool = true,
