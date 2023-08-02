@@ -73,6 +73,10 @@ fn testRenderType(allocator: *Allocator, array: *Array, buf: [*]u8) !void {
     try testFormat(allocator, array, buf, comptime fmt.any(packed struct(u120) { x: u64 = 5, y: packed struct { @"0": u32, @"1": u16 }, z: u8 }));
     try testFormat(allocator, array, buf, comptime fmt.any(extern union { x: u64 }));
     try testFormat(allocator, array, buf, comptime fmt.any(enum(u3) { x, y, z }));
+    const render_spec: fmt.RenderSpec = .{ .omit_trailing_comma = true, .omit_container_decls = false };
+    try testFormat(allocator, array, buf, comptime fmt.render(render_spec, struct { x: u64 = 5, y: struct { @"0": u32, @"1": u16 }, z: u8 }));
+    try testFormat(allocator, array, buf, comptime fmt.render(render_spec, extern union { x: u64 }));
+    try testFormat(allocator, array, buf, comptime fmt.render(render_spec, enum(u3) { x, y, z }));
 }
 fn testRenderSlice(allocator: *Allocator, array: *Array, buf: [*]u8) !void {
     try testFormat(allocator, array, buf, fmt.any(@as([]const u8, "c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac03fa8c")));
@@ -116,7 +120,6 @@ pub fn main() !void {
     try testRenderArray(&allocator, &array, buf.ptr);
     try testRenderType(&allocator, &array, buf.ptr);
     try testRenderSlice(&allocator, &array, buf.ptr);
-
     //try testRenderStruct(&allocator, &array, buf.ptr);
     //try testRenderEnum(&allocator, &array, buf.ptr);
 }
