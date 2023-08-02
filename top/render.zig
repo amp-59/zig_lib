@@ -63,15 +63,26 @@ pub inline fn any(value: anytype) AnyFormat(.{}, @TypeOf(value)) {
 pub inline fn render(comptime spec: RenderSpec, value: anytype) AnyFormat(spec, @TypeOf(value)) {
     return .{ .value = value };
 }
-inline fn typeName(comptime T: type, comptime spec: RenderSpec) []const u8 {
+fn TypeName(comptime T: type, comptime spec: RenderSpec) type {
     if (spec.infer_type_names or
         spec.infer_type_names_recursively)
     {
-        return ".";
+        return *const [1]u8;
     } else if (spec.omit_type_names) {
-        return "";
+        return *const [0]u8;
     } else {
-        return comptime fmt.typeName(T);
+        return meta.TypeName(T);
+    }
+}
+fn typeName(comptime T: type, comptime spec: RenderSpec) TypeName(T, spec) {
+    if (spec.infer_type_names or
+        spec.infer_type_names_recursively)
+    {
+        comptime return ".";
+    } else if (spec.omit_type_names) {
+        comptime return "";
+    } else {
+        return comptime @typeName(T);
     }
 }
 inline fn writeFormat(array: anytype, format: anytype) void {
