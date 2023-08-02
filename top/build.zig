@@ -429,13 +429,12 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             on_task: types.Task,
             on_state: types.State,
         };
-        const init_len = builder_spec.options.init_len;
         fn addPath(node: *Node, allocator: *mem.SimpleAllocator) *types.Path {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             const size_of: comptime_int = @sizeOf(types.Path);
             const addr_buf: *u64 = @ptrCast(&node.impl.paths);
             const ret: *types.Path = @ptrFromInt(allocator.addGenericSize(Size, size_of, //
-                init_len.paths, addr_buf, &node.impl.paths_max_len, node.impl.paths_len));
+                builder_spec.options.init_len.paths, addr_buf, &node.impl.paths_max_len, node.impl.paths_len));
             node.impl.paths_len +%= 1;
             return ret;
         }
@@ -444,7 +443,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             const size_of: comptime_int = @sizeOf(*Node);
             const addr_buf: *u64 = @ptrCast(&node.impl.nodes);
             const ret: **Node = @ptrFromInt(allocator.addGenericSize(Size, size_of, //
-                init_len.nodes, addr_buf, &node.impl.nodes_max_len, node.impl.nodes_len));
+                builder_spec.options.init_len.nodes, addr_buf, &node.impl.nodes_max_len, node.impl.nodes_len));
             node.impl.nodes_len +%= 1;
             return ret;
         }
@@ -453,7 +452,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             const size_of: comptime_int = @sizeOf(Dependency);
             const addr_buf: *u64 = @ptrCast(&node.impl.deps);
             const ret: *Dependency = @ptrFromInt(allocator.addGenericSize(Size, size_of, //
-                init_len.deps, addr_buf, &node.impl.deps_max_len, node.impl.deps_len));
+                builder_spec.options.init_len.deps, addr_buf, &node.impl.deps_max_len, node.impl.deps_len));
             node.impl.deps_len +%= 1;
             mem.zero(Dependency, ret);
             return ret;
@@ -466,7 +465,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             const size_of: comptime_int = @sizeOf([*:0]u8);
             const addr_buf: *u64 = @ptrCast(&node.impl.args);
             const ret: *[*:0]u8 = @ptrFromInt(allocator.addGenericSize(Size, size_of, //
-                init_len.args, addr_buf, &node.impl.args_max_len, node.impl.args_len));
+                builder_spec.options.init_len.args, addr_buf, &node.impl.args_max_len, node.impl.args_len));
             node.impl.args_len +%= 1;
             return ret;
         }
@@ -480,7 +479,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             const size_of: comptime_int = @sizeOf(Config);
             const addr_buf: *u64 = @ptrCast(&node.impl.cfgs);
             const ptr: *Config = @ptrFromInt(allocator.addGenericSize(Size, size_of, //
-                init_len.cfgs, addr_buf, &node.impl.cfgs_max_len, node.impl.cfgs_len));
+                builder_spec.options.init_len.cfgs, addr_buf, &node.impl.cfgs_max_len, node.impl.cfgs_len));
             ptr.* = .{ .name = name, .value = value };
             node.impl.cfgs_len +%= 1;
         }
