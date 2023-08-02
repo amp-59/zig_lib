@@ -564,14 +564,31 @@ comptime {
     );
 }
 pub inline fn testEqualMany8(l_values: []const u8, r_values: []const u8) bool {
-    return _0.asmTestEqualMany8(l_values.ptr, l_values.len, r_values.ptr, r_values.len);
+    if (@inComptime()) {
+        if (l_values.len != r_values.len) {
+            return false;
+        }
+        if (l_values.ptr == r_values.ptr) {
+            return true;
+        }
+        for (l_values, r_values) |l, r| {
+            if (l != r) {
+                return false;
+            }
+        }
+        return true;
+    } else {
+        return _0.asmTestEqualMany8(l_values.ptr, l_values.len, r_values.ptr, r_values.len);
+    }
 }
 pub inline fn memcpyMulti(noalias dest: [*]u8, src: []const []const u8) u64 {
     if (@inComptime()) {
         var len: u64 = 0;
         for (src) |bytes| {
-            @memcpy(dest + len, bytes);
-            len +%= bytes.len;
+            for (bytes) |byte| {
+                dest[len] = byte;
+                len +%= 1;
+            }
         }
         return len;
     } else {
