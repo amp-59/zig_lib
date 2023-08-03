@@ -2202,7 +2202,20 @@ pub fn ErrorUnionFormat(comptime spec: RenderSpec, comptime ErrorUnion: type) ty
         const Format = @This();
         const type_info: builtin.Type = @typeInfo(ErrorUnion);
         const PayloadFormat: type = AnyFormat(spec, type_info.ErrorUnion.payload);
-        fn formatWriteBuf() void {}
+
+        pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
+            var len: usize = 0;
+            if (format.value) |value| {
+                const payload_format: PayloadFormat = .{ .value = value };
+                return payload_format.formatWriteBuf(buf);
+            } else |any_error| {
+                @as(*[6]u8, buf).* = "error.".*;
+                len +%= 6;
+                @memcpy(buf + len, @errorName(any_error));
+                len +%= @errorName(any_error).len;
+            }
+            return len;
+        }
         pub fn formatWrite(format: Format, array: anytype) void {
             if (spec.forward)
                 return array.define(@call(.always_inline, formatWriteBuf, .{
@@ -2296,6 +2309,9 @@ pub fn FormatFormat(comptime Struct: type) type {
     const T = struct {
         value: Struct,
         const Format = @This();
+        pub inline fn formatWriteBuf(format: Format, buf: [*]u8) usize {
+            return format.value.formatWriteBuf(buf);
+        }
         pub inline fn formatWrite(format: Format, array: anytype) void {
             return writeFormat(array, format.value);
         }
