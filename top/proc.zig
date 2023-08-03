@@ -1332,6 +1332,7 @@ pub const about = opaque {
         @memcpy(ptr, @errorName(rt_sigaction_error));
         ptr = ptr + @errorName(rt_sigaction_error).len;
         ptr[0..5].* = ", SIG".*;
+        ptr = ptr + 5;
         @memcpy(ptr, @tagName(signo));
         ptr = ptr + @tagName(signo).len;
         if (handler_raw > 1) {
@@ -1457,7 +1458,7 @@ pub const about = opaque {
         updateExceptionHandlers(&act);
         var buf: [8192]u8 = undefined;
         buf[0..3].* = "SIG".*;
-        var ptr: [*]u8 = buf[0..3];
+        var ptr: [*]u8 = buf[3..];
         @memcpy(ptr, @tagName(sig));
         ptr = ptr + @tagName(sig).len;
         ptr[0..12].* = " at address ".*;

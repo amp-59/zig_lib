@@ -71,7 +71,7 @@ fn TypeName(comptime T: type, comptime spec: RenderSpec) type {
     } else if (spec.omit_type_names) {
         return *const [0]u8;
     } else {
-        return meta.TypeName(T);
+        return @TypeOf(@typeName(T));
     }
 }
 fn typeName(comptime T: type, comptime spec: RenderSpec) TypeName(T, spec) {
