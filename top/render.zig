@@ -2254,13 +2254,18 @@ pub fn ContainerFormat(comptime spec: RenderSpec, comptime Struct: type) type {
             tmp.omit_type_names = true;
             break :blk spec;
         };
-        fn formatWriteBuf() void {}
+        pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
+            if (meta.GenericReturn(Struct.readAll)) |Values| {
+                const ValuesFormat = PointerSliceFormat(values_spec, Values);
+                const values_format: ValuesFormat = .{ .value = format.value.readAll() };
+                return values_format.formatWriteBuf(buf);
+            } else {
+                const ValuesFormat = PointerSliceFormat(values_spec, []const u8);
+                const values_format: ValuesFormat = .{ .value = format.value.readAll(u8) };
+                return values_format.formatWriteBuf(buf);
+            }
+        }
         pub fn formatWrite(format: Format, array: anytype) void {
-            if (spec.forward)
-                return array.define(@call(.always_inline, formatWriteBuf, .{
-                    format, array.referAllUndefined().ptr,
-                }));
-
             if (meta.GenericReturn(Struct.readAll)) |Values| {
                 const ValuesFormat = PointerSliceFormat(values_spec, Values);
                 const values_format: ValuesFormat = .{ .value = format.value.readAll() };
