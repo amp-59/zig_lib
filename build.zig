@@ -5,13 +5,14 @@ const build = zl.build;
 const debug = zl.debug;
 const builtin = zl.builtin;
 
-pub const Node = build.GenericNode(.{ .options = .{
+pub const Node = builtin.define("Node", type, build.GenericNode(.{ .options = .{
     .write_build_task_record = true,
     .write_hist_serial = true,
-} });
+} }));
+
 pub const logging_override: debug.Logging.Override = spec.logging.override.silent;
 
-var build_cmd: build.BuildCommand = .{
+pub const build_cmd: build.BuildCommand = .{
     .kind = .exe,
     .mode = .Debug,
     .stack_check = false,
@@ -28,7 +29,7 @@ var build_cmd: build.BuildCommand = .{
     .dependencies = &.{.{ .name = "zig_lib" }},
     .modules = &.{.{ .name = "zig_lib", .path = build.root ++ "/zig_lib.zig" }},
 };
-const format_cmd: build.FormatCommand = .{ .ast_check = true };
+pub const format_cmd: build.FormatCommand = .{ .ast_check = true };
 
 fn setStripped(node: *Node) void {
     node.task.cmd.build.strip = true;
@@ -100,7 +101,6 @@ fn examples(allocator: *build.Allocator, node: *Node) void {
     const allocators: *Node = node.addBuild(allocator, eg_build_cmd, "allocators", "examples/allocators.zig");
     const display: *Node = node.addBuild(allocator, eg_build_cmd, "display", "examples/display.zig");
     const mca: *Node = node.addBuild(allocator, eg_build_cmd, "mca", "examples/mca.zig");
-    const treez: *Node = node.addBuild(allocator, eg_build_cmd, "treez", "examples/treez.zig");
     const itos: *Node = node.addBuild(allocator, eg_build_cmd, "itos", "examples/itos.zig");
     const catz: *Node = node.addBuild(allocator, eg_build_cmd, "catz", "examples/catz.zig");
     const statz: *Node = node.addBuild(allocator, eg_build_cmd, "statz", "examples/statz.zig");
@@ -110,6 +110,7 @@ fn examples(allocator: *build.Allocator, node: *Node) void {
     const pathsplit: *Node = node.addBuild(allocator, eg_build_cmd, "pathsplit", "examples/pathsplit.zig");
     const declprint: *Node = node.addBuild(allocator, eg_build_cmd, "declprint", "examples/declprint.zig");
     const pipeout: *Node = node.addBuild(allocator, eg_build_cmd, "pipeout", "examples/pipeout.zig");
+    const treez: *Node = node.addBuild(allocator, eg_build_cmd, "treez", "examples/treez.zig");
     readdir.descr = "Shows how to iterate directory entries";
     dynamic.descr = "Shows how to allocate dynamic memory";
     custom.descr = "Shows a complex custom address space";
@@ -248,7 +249,7 @@ fn tests(allocator: *build.Allocator, node: *Node) void {
     }
     build_stress_test.task.cmd.build.mode = .Debug;
     build_stress_test.task.cmd.build.strip = true;
-    build_runner_test.flags.build.add_stack_traces = false;
+    build_runner_test.flags.build.want_stack_traces = false;
     fmt_cmp_test.task.cmd.build.mode = .Debug;
     fmt_cmp_test.task.cmd.build.strip = true;
     fmt_cmp_test.task.cmd.build.emit_asm = .{ .yes = null };
@@ -290,7 +291,7 @@ fn targetgen(allocator: *build.Allocator, node: *Node) void {
     const tg_arch_impls: *Node = tg_aux.addBuild(allocator, tg_build_cmd, "tg_arch_impls", "top/target/gen/arch_impls.zig");
     const tg_arch: *Node = node.addFormat(allocator, tg_format_cmd, "tg_arch", "top/target");
     const tg_target_impl: *Node = tg_aux.addBuild(allocator, tg_build_cmd, "tg_target_impl", "top/target/gen/target_impl.zig");
-    const tg_target: *Node = node.addFormat(allocator, tg_format_cmd, "tg_target_impl", "top/target.zig");
+    const tg_target: *Node = node.addFormat(allocator, tg_format_cmd, "tg_target", "top/target.zig");
     tg_target_impl.dependOn(allocator, tg_arch_impls);
     tg_arch.dependOnFull(allocator, .format, tg_arch_impls, .run);
     tg_target.dependOnFull(allocator, .format, tg_target_impl, .run);

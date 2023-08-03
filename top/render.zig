@@ -74,15 +74,15 @@ fn TypeName(comptime T: type, comptime spec: RenderSpec) type {
         return @TypeOf(@typeName(T));
     }
 }
-fn typeName(comptime T: type, comptime spec: RenderSpec) TypeName(T, spec) {
+inline fn typeName(comptime T: type, comptime spec: RenderSpec) TypeName(T, spec) {
     if (spec.infer_type_names or
         spec.infer_type_names_recursively)
     {
-        comptime return ".";
+        return ".";
     } else if (spec.omit_type_names) {
-        comptime return "";
+        return "";
     } else {
-        return comptime @typeName(T);
+        return @typeName(T);
     }
 }
 inline fn writeFormat(array: anytype, format: anytype) void {
