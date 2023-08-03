@@ -19,6 +19,7 @@ pub const RenderSpec = struct {
     inline_field_types: bool = true,
     enable_comptime_iterator: bool = false,
     address_view: bool = false,
+    forward: bool = false,
     names: struct {
         len_field_suffix: []const u8 = "_len",
         max_len_field_suffix: []const u8 = "_max_len",
@@ -147,7 +148,7 @@ pub fn eval(comptime spec: RenderSpec, comptime any_value: anytype) []const u8 {
     var buf: [len]u8 = undefined;
     return buf[0..any_format.formatWriteBuf(&buf)];
 }
-pub fn descr(comptime spec: TypeDescrFormatSpec, comptime T: type) []const u8 {
+pub fn typeDescr(comptime spec: TypeDescrFormatSpec, comptime T: type) []const u8 {
     if (@inComptime()) {
         @compileError("Must not be called at compile time");
     }
@@ -1385,7 +1386,7 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
         fn formatLengthField(field_name_format: fmt.IdentifierFormat, field_format: anytype) u64 {
             return 1 +% field_name_format.formatLength() +% 3 +% field_format.formatLength() +% 2;
         }
-        pub fn formatLength(format: Format) usize {
+        pub fn formatLength(format: anytype) usize {
             if (show_enum_field) {
                 return format.formatLengthEnumField();
             }
@@ -1472,6 +1473,11 @@ pub const ComptimeIntFormat = struct {
     const Format = @This();
     pub fn formatWrite(comptime format: Format, array: anytype) void {
         array.writeMany(fmt.ci(format.value));
+    }
+    pub fn formatWriteBuf(comptime format: Format, buf: [*]u8) usize {
+        const bytes: []const u8 = fmt.ci(format.value);
+        @memcpy(buf, bytes);
+        return bytes.len;
     }
     pub fn formatLength(comptime format: Format) usize {
         return fmt.ci(format.value).len;
@@ -1584,6 +1590,10 @@ pub fn PointerOneFormat(comptime spec: RenderSpec, comptime Pointer: type) type 
         const child: type = @typeInfo(Pointer).Pointer.child;
         const max_len: usize = (4 +% typeName(Pointer, spec).len +% 3) +% AnyFormat(spec, child).max_len +% 1;
         pub fn formatWrite(format: anytype, array: anytype) void {
+            if (spec.forward)
+                return array.define(@call(.always_inline, formatWriteBuf, .{
+                    format, array.referAllUndefined().ptr,
+                }));
             const address: usize = @intFromPtr(format.value);
             const type_name: []const u8 = comptime typeName(Pointer, spec);
             if (child == anyopaque) {
@@ -1870,6 +1880,11 @@ pub fn PointerSliceFormat(comptime spec: RenderSpec, comptime Pointer: type) typ
         }
         const StringLiteral = fmt.GenericEscapedStringFormat(.{});
         pub fn formatWrite(format: anytype, array: anytype) void {
+            if (spec.forward)
+                return array.define(@call(.always_inline, formatWriteBuf, .{
+                    format, array.referAllUndefined().ptr,
+                }));
+
             if (spec.address_view) {
                 const addr_view_format: AddressFormat = .{ .value = @intFromPtr(format.value.ptr) };
                 writeFormat(array, addr_view_format);
@@ -1955,6 +1970,11 @@ pub fn PointerManyFormat(comptime spec: RenderSpec, comptime Pointer: type) type
         const type_name: []const u8 = typeName(Pointer, spec);
         const child: type = type_info.Pointer.child;
         pub fn formatWrite(format: Format, array: anytype) void {
+            if (spec.forward)
+                return array.define(@call(.always_inline, formatWriteBuf, .{
+                    format, array.referAllUndefined().ptr,
+                }));
+
             if (type_info.Pointer.sentinel) |sentinel_ptr| {
                 const sentinel: child = comptime mem.pointerOpaque(child, sentinel_ptr).*;
                 var len: usize = 0;
@@ -2011,6 +2031,11 @@ pub fn OptionalFormat(comptime spec: RenderSpec, comptime Optional: type) type {
         const max_len: usize = (4 +% type_name.len +% 2) +% @max(1 +% ChildFormat.max_len, 5);
         const render_readable: bool = true;
         pub fn formatWrite(format: anytype, array: anytype) void {
+            if (spec.forward)
+                return array.define(@call(.always_inline, formatWriteBuf, .{
+                    format, array.referAllUndefined().ptr,
+                }));
+
             if (odr) |prev| {
                 return prev.cast()(format, array);
             }
@@ -2118,10 +2143,14 @@ pub fn VectorFormat(comptime spec: RenderSpec, comptime Vector: type) type {
         const ChildFormat: type = AnyFormat(spec, child);
         const vector_info: builtin.Type = @typeInfo(Vector);
         const child: type = vector_info.Vector.child;
-        const type_name: []const u8 = typeName(Vector);
+        const type_name: TypeName(Vector, spec) = typeName(Vector, spec);
         const max_len: usize = (type_name.len +% 2) +
             vector_info.Vector.len *% (ChildFormat.max_len +% 2);
         pub fn formatWrite(format: Format, array: anytype) void {
+            if (spec.forward)
+                return array.define(@call(.always_inline, formatWriteBuf, .{
+                    format, array.referAllUndefined().ptr,
+                }));
             if (vector_info.Vector.len == 0) {
                 array.writeMany(type_name);
                 array.writeMany("{}");
@@ -2135,6 +2164,24 @@ pub fn VectorFormat(comptime spec: RenderSpec, comptime Vector: type) type {
                     array.writeCount(2, ", ".*);
                 }
                 array.overwriteManyBack(" }");
+            }
+        }
+        pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
+            var len: usize = 0;
+            if (vector_info.Vector.len == 0) {
+                @as(*[type_name.len +% 2]u8, @ptrCast(buf + len)).* = (type_name ++ "{}").*;
+                len +%= type_name.len +% 2;
+            } else {
+                @as(*[type_name.len +% 2]u8, @ptrCast(buf + len)).* = (type_name ++ "{ ").*;
+                len +%= type_name.len +% 2;
+                comptime var idx: usize = 0;
+                inline while (idx != vector_info.Vector.len) : (idx +%= 1) {
+                    const element_format: ChildFormat = .{ .value = format.value[idx] };
+                    len +%= element_format.formatWriteBuf(buf + len);
+                    @as(*[2]u8, @ptrCast(buf + len)).* = ", ".*;
+                    len +%= 2;
+                }
+                @as(*[2]u8, @ptrCast(buf + (len -% 2))).* = ", ".*;
             }
         }
         pub fn formatLength(format: Format) usize {
@@ -2155,7 +2202,13 @@ pub fn ErrorUnionFormat(comptime spec: RenderSpec, comptime ErrorUnion: type) ty
         const Format = @This();
         const type_info: builtin.Type = @typeInfo(ErrorUnion);
         const PayloadFormat: type = AnyFormat(spec, type_info.ErrorUnion.payload);
+        fn formatWriteBuf() void {}
         pub fn formatWrite(format: Format, array: anytype) void {
+            if (spec.forward)
+                return array.define(@call(.always_inline, formatWriteBuf, .{
+                    format, array.referAllUndefined().ptr,
+                }));
+
             if (format.value) |value| {
                 const payload_format: PayloadFormat = .{ .value = value };
                 writeFormat(array, payload_format);
@@ -2201,7 +2254,13 @@ pub fn ContainerFormat(comptime spec: RenderSpec, comptime Struct: type) type {
             tmp.omit_type_names = true;
             break :blk spec;
         };
+        fn formatWriteBuf() void {}
         pub fn formatWrite(format: Format, array: anytype) void {
+            if (spec.forward)
+                return array.define(@call(.always_inline, formatWriteBuf, .{
+                    format, array.referAllUndefined().ptr,
+                }));
+
             if (meta.GenericReturn(Struct.readAll)) |Values| {
                 const ValuesFormat = PointerSliceFormat(values_spec, Values);
                 const values_format: ValuesFormat = .{ .value = format.value.readAll() };
@@ -2565,8 +2624,12 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                 return len;
             }
         };
-        pub fn formatWrite(type_descr: Format, array: anytype) void {
-            return type_descr.formatWriteInternal(array, spec.depth);
+        pub fn formatWrite(format: Format, array: anytype) void {
+            if (spec.forward)
+                return array.define(@call(.always_inline, formatWriteBuf, .{
+                    format, array.referAllUndefined().ptr,
+                }));
+            return format.formatWriteInternal(array, spec.depth);
         }
         fn formatWriteInternal(type_descr: Format, array: anytype, depth: usize) void {
             switch (type_descr) {
