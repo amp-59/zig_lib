@@ -21,11 +21,26 @@ const meta = zl.meta;
 const debug = zl.debug;
 const build = zl.build;
 const builtin = zl.builtin;
-pub usingnamespace root;
 pub usingnamespace zl.start;
-
-const Node = if (@hasDecl(root, "Node")) root.Node else build.GenericNode(.{});
-
+pub const Node =
+    if (@hasDecl(root, "Node"))
+    root.Node
+else
+    build.GenericNode(.{});
+pub const message_style: [:0]const u8 =
+    if (@hasDecl(root, "message_style"))
+    root.message_style
+else
+    "\x1b[2m";
+pub const logging_override: debug.Logging.Override =
+    if (@hasDecl(root, "logging_override")) root.logging_override else .{
+    .Attempt = null,
+    .Success = null,
+    .Acquire = null,
+    .Release = null,
+    .Error = null,
+    .Fault = null,
+};
 pub const logging_default: debug.Logging.Default = .{
     .Attempt = false,
     .Success = false,
