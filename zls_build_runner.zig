@@ -10,7 +10,6 @@ const zl = blk: {
         break :blk root.zig_lib;
     }
 };
-
 const mem = zl.mem;
 const sys = zl.sys;
 const proc = zl.proc;
@@ -21,9 +20,7 @@ const spec = zl.spec;
 const build = zl.build;
 const builtin = zl.builtin;
 const testing = zl.testing;
-const dependencies = @import("@dependencies");
 pub usingnamespace zl.start;
-pub const is_debug: bool = false;
 const Node = if (@hasDecl(root, "Node"))
     root.Node
 else
@@ -36,83 +33,130 @@ pub const BuildConfig = struct {
         path: []const u8,
     };
 };
+const tab = .{
+    .name = "\"name\":",
+    .path = "\"path\":",
+    .packages = "\"packages\":",
+    .include_dirs = "\"include_dirs\":",
+};
 fn jsonLength(cfg: *const BuildConfig) usize {
-    var len: usize = 39;
-    if (cfg.packages.len != 0) {
-        len +%= 27 +% cfg.packages.len +% cfg.packages[0].path.len;
-        len +%= 43 *% cfg.packages[1..].len;
-        for (cfg.packages[1..]) |pkg| {
-            len +%= pkg.name.len +% pkg.path.len;
+    @setRuntimeSafety(false);
+    var len: usize = 1 +% tab.packages.len;
+    if (cfg.packages.len == 0) {
+        len +%= 3;
+    } else {
+        len +%= 8 +%
+            tab.name.len +% cfg.packages[0].name.len +%
+            tab.path.len +% cfg.packages[0].path.len;
+        var pkg_idx: usize = 1;
+        while (pkg_idx != cfg.packages.len) : (pkg_idx +%= 1) {
+            len +%= 8 +%
+                tab.name.len +% cfg.packages[pkg_idx].name.len +%
+                tab.path.len +% cfg.packages[pkg_idx].path.len;
         }
+        len +%= 2;
     }
-    if (cfg.include_dirs.len != 0) {
-        len +%= 2 +% cfg.include_dirs[0].len;
-        len +%= 23 +% cfg.include_dirs[1..].len;
-        for (cfg.include_dirs[1..]) |dir| {
-            len +%= dir.len;
+    len +%= tab.include_dirs.len;
+    if (cfg.include_dirs.len == 0) {
+        len +%= 2;
+    } else {
+        len +%= 3 +% cfg.include_dirs[0].len;
+        var dir_idx: usize = 1;
+        while (dir_idx != cfg.include_dirs.len) : (dir_idx +%= 1) {
+            len +%= 3 +% cfg.include_dirs[dir_idx].len;
         }
+        len +%= 1;
     }
-    return len;
+    return len +% 1;
 }
 fn jsonWriteBuf(cfg: *const BuildConfig, buf: [*]u8) usize {
     @setRuntimeSafety(false);
     var ptr: [*]u8 = buf;
-    ptr[0..14].* = "{ \"packages\": ".*;
-    ptr = ptr + 14;
+    ptr[0] = '{';
+    ptr = ptr + 1;
+    ptr[0..11].* = tab.packages.*;
+    ptr = ptr + tab.packages.len;
     if (cfg.packages.len == 0) {
         ptr[0..3].* = "[],".*;
         ptr = ptr + 3;
     } else {
-        ptr[0..12].* = "[{ \"name\": \"".*;
-        ptr = ptr + 12;
+        ptr[0] = '[';
+        ptr[1] = '{';
+        ptr = ptr + 2;
+        ptr[0..7].* = tab.name.*;
+        ptr = ptr + tab.name.len;
+        ptr[0] = '"';
+        ptr = ptr + 1;
         @memcpy(ptr, cfg.packages[0].name);
         ptr = ptr + cfg.packages[0].name.len;
-        ptr[0..12].* = "\", \"path\": \"".*;
-        ptr = ptr + 12;
+        ptr[0] = '"';
+        ptr[1] = ',';
+        ptr = ptr + 2;
+        ptr[0..7].* = tab.path.*;
+        ptr = ptr + tab.path.len;
+        ptr[0] = '"';
+        ptr = ptr + 1;
         @memcpy(ptr, cfg.packages[0].path);
         ptr = ptr + cfg.packages[0].path.len;
-        ptr[0..3].* = "\" }".*;
-        ptr = ptr + 3;
-        for (cfg.packages[1..]) |pkg| {
-            ptr[0..28].* = ",\n               { \"name\": \"".*;
-            ptr = ptr + 28;
-            @memcpy(ptr, pkg.name);
-            ptr = ptr + pkg.name.len;
-            ptr[0..12].* = "\", \"path\": \"".*;
-            ptr = ptr + 12;
-            @memcpy(ptr, pkg.path);
-            ptr = ptr + pkg.path.len;
-            ptr[0..3].* = "\" }".*;
-            ptr = ptr + 3;
+        ptr[0] = '"';
+        ptr[1] = '}';
+        ptr = ptr + 2;
+        var pkg_idx: usize = 1;
+        while (pkg_idx != cfg.packages.len) : (pkg_idx +%= 1) {
+            ptr[0] = ',';
+            ptr[1] = '{';
+            ptr = ptr + 2;
+            ptr[0..7].* = tab.name.*;
+            ptr = ptr + tab.name.len;
+            ptr[0] = '"';
+            ptr = ptr + 1;
+            @memcpy(ptr, cfg.packages[pkg_idx].name);
+            ptr = ptr + cfg.packages[pkg_idx].name.len;
+            ptr[0] = '"';
+            ptr[1] = ',';
+            ptr = ptr + 2;
+            ptr[0..7].* = tab.path.*;
+            ptr = ptr + tab.path.len;
+            ptr[0] = '"';
+            ptr = ptr + 1;
+            @memcpy(ptr, cfg.packages[pkg_idx].path);
+            ptr = ptr + cfg.packages[pkg_idx].path.len;
+            ptr[0] = '"';
+            ptr[1] = '}';
+            ptr = ptr + 2;
         }
-        ptr[0..3].* = "],\n".*;
-        ptr = ptr + 3;
+        ptr[0] = ']';
+        ptr[1] = ',';
+        ptr = ptr + 2;
     }
-    ptr[0..18].* = "  \"include_dirs\": ".*;
-    ptr = ptr + 18;
+    ptr[0..15].* = tab.include_dirs.*;
+    ptr = ptr + tab.include_dirs.len;
     if (cfg.include_dirs.len == 0) {
         ptr[0..2].* = "[]".*;
         ptr = ptr + 2;
     } else {
-        ptr[0..2].* = "[\"".*;
+        ptr[0] = '[';
+        ptr[1] = '"';
         ptr = ptr + 2;
         @memcpy(ptr, cfg.include_dirs[0]);
         ptr = ptr + cfg.include_dirs[0].len;
         ptr[0] = '"';
         ptr = ptr + 1;
-        for (cfg.include_dirs[1..]) |dir| {
-            ptr[0..22].* = ",\n                   \"".*;
-            ptr = ptr + 22;
-            @memcpy(ptr, dir);
-            ptr = ptr + dir.len;
+        var dir_idx: usize = 1;
+        while (dir_idx != cfg.include_dirs.len) : (dir_idx +%= 1) {
+            ptr[0] = ',';
+            ptr[1] = '"';
+            ptr = ptr + 2;
+            @memcpy(ptr, cfg.include_dirs[dir_idx]);
+            ptr = ptr + cfg.include_dirs[dir_idx].len;
             ptr[0] = '"';
             ptr = ptr + 1;
         }
         ptr[0] = ']';
         ptr = ptr + 1;
     }
-    ptr[0..2].* = "}\n".*;
-    ptr = ptr + 2;
+    ptr[0] = '}';
+    ptr = ptr + 1;
     return @intFromPtr(ptr - @intFromPtr(buf));
 }
 fn lengthModules(node: *Node) usize {
