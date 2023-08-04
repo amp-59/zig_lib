@@ -304,6 +304,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
     const maybe_hide: bool =
         builder_spec.options.hide_based_on_name_prefix != null or
         builder_spec.options.hide_based_on_group;
+    const maybe_regen: bool = @hasDecl(builtin.root, "want_regen_metadata");
     const T = struct {
         tag: types.Node,
         name: [:0]u8,
@@ -319,6 +320,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             do_update: bool = !builder_spec.options.never_update,
             /// Whether a node will be processed on invokation of a user defined update command.
             do_user_update: bool = !builder_spec.options.never_update,
+            /// Whether a node will be processed on request to regenerate the build program.
+            do_regenerate: bool = true,
             /// Flags relevant to group nodes.
             group: packed struct {
                 /// Whether independent nodes will be processed in parallel.
