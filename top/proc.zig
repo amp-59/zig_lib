@@ -1467,7 +1467,7 @@ pub const about = opaque {
         ptr[0..2].* = ", ".*;
         ptr = ptr + 2;
         ptr = ptr + about.exe(ptr[0..4096]);
-        debug.panicExtra(buf[0..@intFromPtr(ptr - @intFromPtr(&buf))], ctx.?);
+        debug.panicSignal(buf[0..@intFromPtr(ptr - @intFromPtr(&buf))], ctx.?);
     }
     pub fn sampleAllReports() void {
         var futex0: u32 = 0xf0;

@@ -19,7 +19,7 @@ pub const Unexpected = error{
     UnexpectedLength,
 };
 pub const PanicFn = @TypeOf(panic);
-pub const PanicExtraFn = @TypeOf(panicExtra);
+pub const PanicExtraFn = @TypeOf(panicSignal);
 pub const PanicOutOfBoundsFn = @TypeOf(panicOutOfBounds);
 pub const PanicSentinelMismatchFn = @TypeOf(panicSentinelMismatch);
 pub const PanicStartGreaterThanEndFn = @TypeOf(panicStartGreaterThanEnd);
@@ -597,7 +597,7 @@ pub noinline fn panic(msg: []const u8, _: @TypeOf(@errorReturnTrace()), ret_addr
     }
     @call(.always_inline, proc.exitGroupFault, .{ msg, 2 });
 }
-pub noinline fn panicExtra(msg: []const u8, ctx_ptr: *const anyopaque) noreturn {
+pub noinline fn panicSignal(msg: []const u8, ctx_ptr: *const anyopaque) noreturn {
     @setCold(true);
     @setRuntimeSafety(false);
     const regs: mach.RegisterState = @as(
