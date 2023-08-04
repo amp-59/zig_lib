@@ -3,28 +3,65 @@ const zl = blk: {
     if (@hasDecl(root, "zl")) {
         break :blk root.zl;
     }
+    if (@hasDecl(root, "zig_lib")) {
+        break :blk root.zig_lib;
+    }
     if (@hasDecl(root, "srg")) {
         break :blk root.srg;
     }
-    if (@hasDecl(root, "zig_lib")) {
-        break :blk root.zig_lib;
+    if (@hasDecl(root, "top")) {
+        break :blk root.top;
     }
 };
 const mem = zl.mem;
 const sys = zl.sys;
 const proc = zl.proc;
-const meta = zl.meta;
 const file = zl.file;
-const mach = zl.mach;
-const spec = zl.spec;
+const meta = zl.meta;
+const debug = zl.debug;
 const build = zl.build;
 const builtin = zl.builtin;
-const testing = zl.testing;
 pub usingnamespace zl.start;
-const Node = if (@hasDecl(root, "Node"))
+pub const Node =
+    if (@hasDecl(root, "Node"))
     root.Node
 else
     build.GenericNode(.{});
+pub const message_style: [:0]const u8 =
+    if (@hasDecl(root, "message_style"))
+    root.message_style
+else
+    "\x1b[2m";
+pub const logging_override: debug.Logging.Override =
+    if (@hasDecl(root, "logging_override")) root.logging_override else .{
+    .Attempt = null,
+    .Success = null,
+    .Acquire = null,
+    .Release = null,
+    .Error = null,
+    .Fault = null,
+};
+pub const logging_default: debug.Logging.Default = .{
+    .Attempt = false,
+    .Success = false,
+    .Acquire = false,
+    .Release = false,
+    .Error = false,
+    .Fault = false,
+};
+pub const signal_handlers = .{
+    .IllegalInstruction = false,
+    .BusError = false,
+    .FloatingPointError = false,
+    .Trap = false,
+    .SegmentationFault = false,
+};
+pub const trace: debug.Trace = .{
+    .Error = false,
+    .Fault = false,
+    .Signal = false,
+    .options = .{},
+};
 pub const BuildConfig = struct {
     packages: []Pkg,
     include_dirs: []const []const u8,
@@ -69,67 +106,55 @@ fn jsonLength(cfg: *const BuildConfig) usize {
     }
     return len +% 1;
 }
+fn writePackage(pkg: BuildConfig.Pkg, buf: [*]u8) usize {
+    @setRuntimeSafety(false);
+    var ptr: [*]u8 = buf;
+    ptr[0] = '{';
+    ptr = ptr + 1;
+    ptr[0..tab.name.len].* = tab.name.*;
+    ptr = ptr + tab.name.len;
+    ptr[0] = '"';
+    ptr = ptr + 1;
+    @memcpy(ptr, pkg.name);
+    ptr = ptr + pkg.name.len;
+    ptr[0] = '"';
+    ptr[1] = ',';
+    ptr = ptr + 2;
+    ptr[0..tab.path.len].* = tab.path.*;
+    ptr = ptr + tab.path.len;
+    ptr[0] = '"';
+    ptr = ptr + 1;
+    @memcpy(ptr, pkg.path);
+    ptr = ptr + pkg.path.len;
+    ptr[0] = '"';
+    ptr[1] = '}';
+    return @intFromPtr(ptr - @intFromPtr(buf)) +% 2;
+}
 fn jsonWriteBuf(cfg: *const BuildConfig, buf: [*]u8) usize {
     @setRuntimeSafety(false);
     var ptr: [*]u8 = buf;
     ptr[0] = '{';
     ptr = ptr + 1;
-    ptr[0..11].* = tab.packages.*;
+    ptr[0..tab.packages.len].* = tab.packages.*;
     ptr = ptr + tab.packages.len;
     if (cfg.packages.len == 0) {
         ptr[0..3].* = "[],".*;
         ptr = ptr + 3;
     } else {
         ptr[0] = '[';
-        ptr[1] = '{';
-        ptr = ptr + 2;
-        ptr[0..7].* = tab.name.*;
-        ptr = ptr + tab.name.len;
-        ptr[0] = '"';
         ptr = ptr + 1;
-        @memcpy(ptr, cfg.packages[0].name);
-        ptr = ptr + cfg.packages[0].name.len;
-        ptr[0] = '"';
-        ptr[1] = ',';
-        ptr = ptr + 2;
-        ptr[0..7].* = tab.path.*;
-        ptr = ptr + tab.path.len;
-        ptr[0] = '"';
-        ptr = ptr + 1;
-        @memcpy(ptr, cfg.packages[0].path);
-        ptr = ptr + cfg.packages[0].path.len;
-        ptr[0] = '"';
-        ptr[1] = '}';
-        ptr = ptr + 2;
+        ptr = ptr + writePackage(cfg.packages[0], buf);
         var pkg_idx: usize = 1;
         while (pkg_idx != cfg.packages.len) : (pkg_idx +%= 1) {
             ptr[0] = ',';
-            ptr[1] = '{';
-            ptr = ptr + 2;
-            ptr[0..7].* = tab.name.*;
-            ptr = ptr + tab.name.len;
-            ptr[0] = '"';
             ptr = ptr + 1;
-            @memcpy(ptr, cfg.packages[pkg_idx].name);
-            ptr = ptr + cfg.packages[pkg_idx].name.len;
-            ptr[0] = '"';
-            ptr[1] = ',';
-            ptr = ptr + 2;
-            ptr[0..7].* = tab.path.*;
-            ptr = ptr + tab.path.len;
-            ptr[0] = '"';
-            ptr = ptr + 1;
-            @memcpy(ptr, cfg.packages[pkg_idx].path);
-            ptr = ptr + cfg.packages[pkg_idx].path.len;
-            ptr[0] = '"';
-            ptr[1] = '}';
-            ptr = ptr + 2;
+            ptr = ptr + writePackage(cfg.packages[pkg_idx], ptr);
         }
         ptr[0] = ']';
         ptr[1] = ',';
         ptr = ptr + 2;
     }
-    ptr[0..15].* = tab.include_dirs.*;
+    ptr[0..tab.include_dirs.len].* = tab.include_dirs.*;
     ptr = ptr + tab.include_dirs.len;
     if (cfg.include_dirs.len == 0) {
         ptr[0..2].* = "[]".*;
@@ -156,8 +181,7 @@ fn jsonWriteBuf(cfg: *const BuildConfig, buf: [*]u8) usize {
         ptr = ptr + 1;
     }
     ptr[0] = '}';
-    ptr = ptr + 1;
-    return @intFromPtr(ptr - @intFromPtr(buf));
+    return @intFromPtr(ptr - @intFromPtr(buf)) +% 1;
 }
 fn lengthModules(node: *Node) usize {
     @setRuntimeSafety(false);
@@ -192,10 +216,10 @@ fn writeModulesBuf(pkgs: [*]BuildConfig.Pkg, node: *Node) usize {
     }
     return len;
 }
-pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
+pub fn main(args: [][*:0]u8, vars: [][*:0]u8) void {
     var allocator: build.Allocator = build.Allocator.init_arena(Node.AddressSpace.arena(Node.max_thread_count));
     if (args.len < 5) {
-        return error.MissingEnvironmentPaths;
+        proc.exitError(error.MissingEnvironmentPaths, 2);
     }
     Node.initState(args, vars);
     const toplevel: *Node = Node.init(&allocator);
@@ -213,5 +237,5 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     const buf: []u8 = try meta.wrap(
         allocator.allocate(u8, jsonLength(&cfg)),
     );
-    try file.write(.{}, 1, buf[0..jsonWriteBuf(&cfg, buf.ptr)]);
+    file.write(.{ .errors = .{} }, 1, buf[0..jsonWriteBuf(&cfg, buf.ptr)]);
 }
