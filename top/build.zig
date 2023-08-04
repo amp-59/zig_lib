@@ -1766,103 +1766,103 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             const build_cmd: *types.BuildCommand = node.task.cmd.build;
             var buf: [32768]u8 = undefined;
-            var len: usize = 0;
             if (!keepGoing()) {
                 return;
             }
-            @as(*[31]u8, @ptrCast(buf[len..].ptr)).* = "pub usingnamespace @import(\"../".*;
-            len +%= 31;
-            @memcpy(buf[len..].ptr, node.impl.paths[1].names[1]);
-            len +%= node.impl.paths[1].names[1].len;
-            @as(*[4]u8, @ptrCast(buf[len..].ptr)).* = "\");\n".*;
-            len +%= 4;
-            @as(*[31]u8, @ptrCast(buf[len..].ptr)).* = "pub const dependencies=struct{\n".*;
-            len +%= 31;
+            var ptr: [*]u8 = &buf;
+            ptr[0..31].* = "pub usingnamespace @import(\"../".*;
+            ptr = ptr + 31;
+            @memcpy(ptr, node.impl.paths[1].names[1]);
+            ptr = ptr + node.impl.paths[1].names[1].len;
+            ptr[0..4].* = "\");\n".*;
+            ptr = ptr + 4;
+            ptr[0..31].* = "pub const dependencies=struct{\n".*;
+            ptr = ptr + 31;
             if (build_cmd.dependencies) |dependencies| {
                 for (dependencies) |dependency| {
-                    @as(*[12]u8, @ptrCast(buf[len..].ptr)).* = "pub const @\"".*;
-                    len +%= 12;
-                    mach.memcpy(buf[len..].ptr, dependency.name.ptr, dependency.name.len);
-                    len +%= dependency.name.len;
-                    @as(*[16]u8, @ptrCast(buf[len..].ptr)).* = "\":?[:0]const u8=".*;
-                    len +%= 16;
+                    ptr[0..12].* = "pub const @\"".*;
+                    ptr = ptr + 12;
+                    @memcpy(ptr, dependency.name);
+                    ptr = ptr + dependency.name.len;
+                    ptr[0..16].* = "\":?[:0]const u8=".*;
+                    ptr = ptr + 16;
                     if (dependency.import) |import| {
-                        buf[len] = '"';
-                        len +%= 1;
-                        mach.memcpy(buf[len..].ptr, import.ptr, import.len);
-                        len +%= import.len;
-                        @as(*[3]u8, @ptrCast(buf[len..].ptr)).* = "\";\n".*;
-                        len +%= 3;
+                        ptr[0] = '"';
+                        ptr = ptr + 1;
+                        @memcpy(ptr, import);
+                        ptr = ptr + import.len;
+                        ptr[0..3].* = "\";\n".*;
+                        ptr = ptr + 3;
                     } else {
-                        @as(*[6]u8, @ptrCast(buf[len..].ptr)).* = "null;\n".*;
-                        len +%= 6;
+                        ptr[0..6].* = "null;\n".*;
+                        ptr = ptr + 6;
                     }
                 }
             }
-            @as(*[29]u8, @ptrCast(buf[len..].ptr)).* = "};\npub const modules=struct{\n".*;
-            len +%= 29;
+            ptr[0..29].* = "};\npub const modules=struct{\n".*;
+            ptr = ptr + 29;
             if (build_cmd.modules) |modules| {
                 for (modules) |module| {
-                    @as(*[12]u8, @ptrCast(buf[len..].ptr)).* = "pub const @\"".*;
-                    len +%= 12;
-                    mach.memcpy(buf[len..].ptr, module.name.ptr, module.name.len);
-                    len +%= module.name.len;
-                    @as(*[15]u8, @ptrCast(buf[len..].ptr)).* = "\":[:0]const u8=".*;
-                    len +%= 15;
-                    buf[len] = '"';
-                    len +%= 1;
-                    mach.memcpy(buf[len..].ptr, module.path.ptr, module.path.len);
-                    len +%= module.path.len;
-                    @as(*[3]u8, @ptrCast(buf[len..].ptr)).* = "\";\n".*;
-                    len +%= 3;
+                    ptr[0..12].* = "pub const @\"".*;
+                    ptr = ptr + 12;
+                    @memcpy(ptr, module.name);
+                    ptr = ptr + module.name.len;
+                    ptr[0..15].* = "\":[:0]const u8=".*;
+                    ptr = ptr + 15;
+                    ptr[0] = '"';
+                    ptr = ptr + 1;
+                    @memcpy(ptr, module.path);
+                    ptr = ptr + module.path.len;
+                    ptr[0..3].* = "\";\n".*;
+                    ptr = ptr + 3;
                 }
             }
-            @as(*[35]u8, @ptrCast(buf[len..].ptr)).* = "};\npub const compile_units=struct{\n".*;
-            len +%= 35;
+            ptr[0..35].* = "};\npub const compile_units=struct{\n".*;
+            ptr = ptr + 35;
             for (node.impl.deps[0..node.impl.deps_len]) |dep| {
                 if (dep.on_node == node) {
                     continue;
                 }
                 if (dep.on_task == .build) {
-                    @as(*[12]u8, @ptrCast(buf[len..].ptr)).* = "pub const @\"".*;
-                    len +%= 12;
-                    mach.memcpy(buf[len..].ptr, dep.on_node.name.ptr, dep.on_node.name.len);
-                    len +%= dep.on_node.name.len;
-                    @as(*[15]u8, @ptrCast(buf[len..].ptr)).* = "\":[:0]const u8=".*;
-                    len +%= 15;
-                    buf[len] = '"';
-                    len +%= 1;
-                    len +%= dep.on_node.impl.paths[0].formatWriteBuf(buf[len..].ptr);
-                    len -%= 1;
-                    @as(*[3]u8, @ptrCast(buf[len..].ptr)).* = "\";\n".*;
-                    len +%= 3;
+                    ptr[0..12].* = "pub const @\"".*;
+                    ptr = ptr + 12;
+                    @memcpy(ptr, dep.on_node.name);
+                    ptr = ptr + dep.on_node.name.len;
+                    ptr[0..15].* = "\":[:0]const u8=".*;
+                    ptr = ptr + 15;
+                    ptr[0] = '"';
+                    ptr = ptr + 1;
+                    ptr = ptr + dep.on_node.impl.paths[0].formatWriteBuf(ptr);
+                    ptr = ptr - 1;
+                    ptr[0..3].* = "\";\n".*;
+                    ptr = ptr + 3;
                 }
             }
-            @as(*[3]u8, @ptrCast(buf[len..].ptr)).* = "};\n".*;
-            len +%= 3;
+            ptr[0..3].* = "};\n".*;
+            ptr = ptr + 3;
             for (node.impl.cfgs[0..node.impl.cfgs_len]) |cfg| {
-                len +%= cfg.formatWriteBuf(buf[len..].ptr);
+                ptr = ptr + cfg.formatWriteBuf(ptr);
             }
             if (builder_spec.options.write_hist_serial) {
                 var hist: types.hist_tasks.BuildCommand = types.hist_tasks.BuildCommand.convert(node.task.cmd.build);
                 const bytes = @as(*[@sizeOf(types.hist_tasks.BuildCommand)]u8, @ptrCast(&hist));
-                @as(*[31]u8, @ptrCast(buf[len..].ptr)).* = "pub const serial:[]const u8=&.{".*;
-                len +%= 31;
+                ptr[0..31].* = "pub const serial:[]const u8=&.{".*;
+                ptr = ptr + 31;
                 for (bytes) |byte| {
-                    len +%= fmt.ud64(byte).formatWriteBuf(buf[len..].ptr);
-                    buf[len] = ',';
-                    len +%= 1;
+                    ptr = ptr + fmt.ud64(byte).formatWriteBuf(ptr);
+                    ptr[0] = ',';
+                    ptr = ptr + 1;
                 }
-                len -%= 1;
-                @as(*[3]u8, @ptrCast(buf[len..].ptr)).* = "};\n".*;
-                len +%= 3;
+                ptr = ptr - 1;
+                ptr[0..3].* = "};\n".*;
+                ptr = ptr + 3;
             }
             const name: [:0]const u8 = concatenate(
                 allocator,
                 &[2][]const u8{ node.name, builder_spec.options.extensions.zig },
             );
             const root_fd: u64 = try meta.wrap(file.createAt(create(), build.config_root_fd, name, file.mode.regular));
-            file.write(write(), root_fd, buf[0..len]);
+            file.write(write(), root_fd, buf[0..@intFromPtr(ptr - @intFromPtr(&buf))]);
             file.close(close(), root_fd);
             node.impl.paths[1].names[1] = builder_spec.options.names.zig_build_dir;
             node.impl.paths[1].addName(allocator).* = name;
