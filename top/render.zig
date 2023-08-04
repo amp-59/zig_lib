@@ -789,7 +789,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
         const Format = @This();
         const undef: Struct = @as(Struct, undefined);
         const fields: []const builtin.Type.StructField = @typeInfo(Struct).Struct.fields;
-        const omit_trailing_comma: bool = spec.omit_trailing_comma orelse false;
+        const omit_trailing_comma: bool = spec.omit_trailing_comma orelse fields.len < 4;
         const max_len: usize = blk: {
             var len: usize = 0;
             len +%= @typeName(Struct).len +% 2;
@@ -2326,6 +2326,7 @@ pub const TypeDescrFormatSpec = struct {
     depth: u64 = 0,
     decls: bool = false,
     identifier_name: bool = true,
+    forward: bool = false,
     option_5: bool = false,
     tokens: Tokens = .{},
     default_field_values: DefaultFieldValues = .{ .exact = .{} },
