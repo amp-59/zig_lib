@@ -5,5 +5,5 @@ const fmt = zl.fmt;
 const debug = zl.debug;
 
 pub fn main() void {
-    debug.write(fmt.typeDescr(@import("std").builtin));
+    debug.write(fmt.typeDescr(.{ .decls = true }, @import("std").builtin));
 }
