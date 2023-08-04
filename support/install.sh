@@ -13,25 +13,6 @@ _install ()
     local zig_lib_dir_link="$zig_install_lib_dir/zig_lib";
     local std_build_runner="$zig_install_lib_dir/build_runner.zig";
     local std_build_runner_to="$zig_install_lib_dir/std_build_runner.zig";
-    local zl_build_runner="$(realpath "$support_dir/../build_runner.zig")";
-    local zl_zig_build="$(realpath "$support_dir/../build.zig")";
-    local source_text="pub usingnamespace if (@hasDecl(@import(\"@build\"), \"buildMain\"))
-    @import(\"./zig_lib/build_runner.zig\")
-else
-    @import(\"./std_build_runner.zig\");
-";
-    local info_text="
-pub const zl = @import(\"./zig_lib/zig_lib.zig\");
-
-//! Example build program:
-const build = zl.build;
-const Node = build.GenericNode(.{});
-
-pub fn buildMain(allocator: *build.Allocator, toplevel: *Node) void {
-    _ = allocator;
-    _ = toplevel;
-}
-";
     if test -L "$zig_lib_dir_link"; then
         if test "$zig_lib_dir" -ef $(realpath "$zig_lib_dir_link"); then
             if test -f "$std_build_runner_to"; then
@@ -74,7 +55,9 @@ pub fn buildMain(allocator: *build.Allocator, toplevel: *Node) void {
     fi;
     if ! test -e "$std_build_runner"; then
         if test -f "$std_build_runner_to"; then
-            echo "$source_text" > "$std_build_runner";
+            if ! cp "$support_dir/build_runner.zig" "$std_build_runner"; then
+                return 2;
+            fi;
         else
             echo $error "misplaced standard library build runner";
             return 2;
@@ -82,7 +65,21 @@ pub fn buildMain(allocator: *build.Allocator, toplevel: *Node) void {
         echo "installed:";
         echo "zl:  ${zig_lib_dir/#$HOME/'~'}";
         echo "std: ${zig_install_lib_dir/#$HOME/'~'}";
-        echo "$info_text";
+        if test "$PWD" -ef "$(dirname "$(dirname "$support_dir")")"; then
+            if ! mkdir -p src; then
+                return 2;
+            fi;
+            if ! test -e "./build.zig"; then
+                if ! cp "$support_dir/example_build.zig" "./build.zig"; then
+                    return 2;
+                fi;
+            fi;
+            if ! test -e "./src/main.zig"; then
+                if ! cp "$support_dir/example_main.zig" "./src/main.zig"; then
+                    return 2;
+                fi;
+            fi;
+        fi;
     fi
 }
 _install;
