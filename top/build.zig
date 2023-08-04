@@ -631,7 +631,10 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         /// Initialize a toplevel node.
         pub fn init(allocator: *mem.SimpleAllocator) *Node {
             @setRuntimeSafety(builder_spec.options.enable_safety);
-            const node: *Node = allocator.create(Node);
+            const node: *Node = @ptrFromInt(allocator.allocateRaw(
+                @sizeOf(Node),
+                @alignOf(Node),
+            ));
             node.flags = .{};
             node.name = duplicate(allocator, builder_spec.options.names.toplevel_node);
             node.tag = .group;
@@ -646,7 +649,10 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         /// Initialize a new group command
         pub fn addGroup(toplevel: *Node, allocator: *mem.SimpleAllocator, name: []const u8) *Node {
             @setRuntimeSafety(builder_spec.options.enable_safety);
-            const node: *Node = allocator.create(Node);
+            const node: *Node = @ptrFromInt(allocator.allocateRaw(
+                @sizeOf(Node),
+                @alignOf(Node),
+            ));
             toplevel.addNode(allocator).* = node;
             node.tag = .group;
             node.flags = .{};
@@ -656,18 +662,52 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             node.task.lock = omni_lock;
             return node;
         }
+        /// Initialize a new `zig build-(exe|obj|lib)` command.
+        pub fn addBuild(toplevel: *Node, allocator: *mem.SimpleAllocator, build_cmd: types.BuildCommand, name: []const u8, root: []const u8) *Node {
+            @setRuntimeSafety(builder_spec.options.enable_safety);
+            const node: *Node = @ptrFromInt(allocator.allocateRaw(
+                @sizeOf(Node),
+                @alignOf(Node),
+            ));
+            const binary_path: *types.Path = node.addPath(allocator);
+            const root_path: *types.Path = node.addPath(allocator);
+            comptime do_build = true;
+            toplevel.addNode(allocator).* = node;
+            node.tag = .worker;
+            node.task.tag = .build;
+            node.flags = .{};
+            node.name = duplicate(allocator, name);
+            node.task.cmd.build = @ptrFromInt(allocator.allocateRaw(
+                @sizeOf(types.BuildCommand),
+                @alignOf(types.BuildCommand),
+            ));
+            node.task.cmd.build.* = build_cmd;
+            binary_path.addName(allocator).* = build.build_root;
+            binary_path.addName(allocator).* = binaryRelative(allocator, node.name, build_cmd.kind);
+            root_path.addName(allocator).* = build.build_root;
+            root_path.names_len -%= if (root[0] == '/') 1 else 0;
+            root_path.addName(allocator).* = duplicate(allocator, root);
+            initializeCommand(allocator, toplevel, node);
+            return node;
+        }
         /// Initialize a new `zig fmt` command.
         pub fn addFormat(toplevel: *Node, allocator: *mem.SimpleAllocator, format_cmd: types.FormatCommand, name: []const u8, pathname: []const u8) *Node {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             comptime do_format = true;
-            const node: *Node = allocator.create(Node);
+            const node: *Node = @ptrFromInt(allocator.allocateRaw(
+                @sizeOf(Node),
+                @alignOf(Node),
+            ));
             const target_path: *types.Path = node.addPath(allocator);
             toplevel.addNode(allocator).* = node;
             node.tag = .worker;
             node.task.tag = .format;
             node.flags = .{};
             node.name = duplicate(allocator, name);
-            node.task.cmd.format = allocator.create(types.FormatCommand);
+            node.task.cmd.format = @ptrFromInt(allocator.allocateRaw(
+                @sizeOf(types.FormatCommand),
+                @alignOf(types.FormatCommand),
+            ));
             node.task.cmd.format.* = format_cmd;
             target_path.addName(allocator).* = build.build_root;
             target_path.names_len -%= if (pathname[0] == '/') 1 else 0;
@@ -678,15 +718,21 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         /// Initialize a new `zig ar` command.
         pub fn addArchive(toplevel: *Node, allocator: *mem.SimpleAllocator, archive_cmd: types.ArchiveCommand, name: []const u8, deps: []const *Node) *Node {
             @setRuntimeSafety(builder_spec.options.enable_safety);
-            const node: *Node = allocator.create(Node);
-            const archive_path: *types.Path = node.addPath(allocator);
             comptime do_archive = true;
+            const node: *Node = @ptrFromInt(allocator.allocateRaw(
+                @sizeOf(Node),
+                @alignOf(Node),
+            ));
+            const archive_path: *types.Path = node.addPath(allocator);
             toplevel.addNode(allocator).* = node;
             node.tag = .worker;
             node.task.tag = .archive;
             node.flags = .{};
             node.name = duplicate(allocator, name);
-            node.task.cmd.archive = allocator.create(types.ArchiveCommand);
+            node.task.cmd.archive = @ptrFromInt(allocator.allocateRaw(
+                @sizeOf(types.ArchiveCommand),
+                @alignOf(types.ArchiveCommand),
+            ));
             node.task.cmd.archive.* = archive_cmd;
             archive_path.addName(allocator).* = build.build_root;
             archive_path.addName(allocator).* = archiveRelative(allocator, node.name);
@@ -696,30 +742,13 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             initializeCommand(allocator, toplevel, node);
             return node;
         }
-        pub fn addBuild(toplevel: *Node, allocator: *mem.SimpleAllocator, build_cmd: types.BuildCommand, name: []const u8, root: []const u8) *Node {
-            @setRuntimeSafety(builder_spec.options.enable_safety);
-            const node: *Node = allocator.create(Node);
-            const binary_path: *types.Path = node.addPath(allocator);
-            const root_path: *types.Path = node.addPath(allocator);
-            comptime do_build = true;
-            toplevel.addNode(allocator).* = node;
-            node.tag = .worker;
-            node.task.tag = .build;
-            node.flags = .{};
-            node.name = duplicate(allocator, name);
-            node.task.cmd.build = allocator.create(types.BuildCommand);
-            node.task.cmd.build.* = build_cmd;
-            binary_path.addName(allocator).* = build.build_root;
-            binary_path.addName(allocator).* = binaryRelative(allocator, node.name, build_cmd.kind);
-            root_path.addName(allocator).* = build.build_root;
-            root_path.names_len -%= if (root[0] == '/') 1 else 0;
-            root_path.addName(allocator).* = duplicate(allocator, root);
-            initializeCommand(allocator, toplevel, node);
-            return node;
-        }
+        /// Initialize a new `zig objcopy` command.
         pub fn addObjcopy(toplevel: *Node, allocator: *mem.SimpleAllocator, objcopy_cmd: types.ObjcopyCommand, name: []const u8, holder: *Node) *Node {
             @setRuntimeSafety(builder_spec.options.enable_safety);
-            const node: *Node = allocator.create(Node);
+            const node: *Node = @ptrFromInt(allocator.allocateRaw(
+                @sizeOf(Node),
+                @alignOf(Node),
+            ));
             comptime do_objcopy = true;
             toplevel.addNode(allocator).* = node;
             node.tag = .worker;
@@ -727,7 +756,10 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             node.flags = .{};
             node.name = duplicate(allocator, name);
             node.addPath(allocator).* = holder.paths[0];
-            node.task.cmd.objcopy = allocator.create(types.ObjcopyCommand);
+            node.task.cmd.objcopy = @ptrFromInt(allocator.allocateRaw(
+                @sizeOf(types.ObjcopyCommand),
+                @alignOf(types.ObjcopyCommand),
+            ));
             node.task.cmd.objcopy.* = objcopy_cmd;
             initializeCommand(allocator, toplevel, node);
             return node;
@@ -802,7 +834,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         }
         fn initializeCommand(allocator: *mem.SimpleAllocator, toplevel: *Node, node: *Node) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
-            if (!node.flags.do_init) {
+            if (maybe_regen or !node.flags.do_init) {
                 return;
             }
             node.flags.do_init = false;
@@ -921,7 +953,10 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             }
             fn clientLoop(allocator: *mem.SimpleAllocator, job: *types.JobInfo, out: file.Pipe, dest_pathname: [:0]const u8) void {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
-                const header: *types.Message.ServerHeader = allocator.create(types.Message.ServerHeader);
+                const header: *types.Message.ServerHeader = @ptrFromInt(allocator.allocateRaw(
+                    @sizeOf(types.Message.ServerHeader),
+                    @alignOf(types.Message.ServerHeader),
+                ));
                 const save: u64 = allocator.next;
                 var fd: file.PollFd = .{ .fd = out.read, .expect = .{ .input = true } };
                 while (try meta.wrap(file.pollOne(poll(), &fd, builder_spec.options.timeout_milliseconds))) {
@@ -1031,7 +1066,10 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             }
             fn executeCommandInternal(toplevel: *const Node, allocator: *mem.SimpleAllocator, node: *Node, task: types.Task, arena_index: AddressSpace.Index) bool {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
-                const job: *types.JobInfo = allocator.create(types.JobInfo);
+                const job: *types.JobInfo = @ptrFromInt(allocator.allocateRaw(
+                    @sizeOf(types.JobInfo),
+                    @alignOf(types.JobInfo),
+                ));
                 var old_size: u64 = 0;
                 var new_size: u64 = 0;
                 if (builder_spec.options.enable_build_configuration and
@@ -1841,7 +1879,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         }
         pub fn duplicate(allocator: *mem.SimpleAllocator, values: []const u8) [:0]u8 {
             @setRuntimeSafety(builder_spec.options.enable_safety);
-            const buf: [*]u8 = @as([*]u8, @ptrFromInt(allocator.allocateRaw(values.len +% 1, 1)));
+            const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(values.len +% 1, 1));
             mach.memcpy(buf, values.ptr, values.len);
             buf[values.len] = 0;
             return buf[0..values.len :0];
@@ -1852,7 +1890,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             for (values) |value| {
                 len +%= value.len;
             }
-            const buf: [*]u8 = @as([*]u8, @ptrFromInt(allocator.allocateRaw(len +% 1, 1)));
+            const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(len +% 1, 1));
             var idx: usize = 0;
             for (values) |value| {
                 mach.memcpy(buf + idx, value.ptr, value.len);
@@ -1867,7 +1905,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             for (args) |value| {
                 count +%= @intFromBool(value == 0);
             }
-            const ptrs: [*][*:0]u8 = @as([*][*:0]u8, @ptrFromInt(allocator.allocateRaw(8 *% (count +% 1), 1)));
+            const ptrs: [*][*:0]u8 = @ptrFromInt(allocator.allocateRaw(8 *% (count +% 1), 1));
             var len: usize = 0;
             var idx: usize = 0;
             var pos: u64 = 0;
@@ -1883,8 +1921,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         }
         fn makeCommandName(allocator: *mem.SimpleAllocator, root: [:0]const u8) [:0]const u8 {
             @setRuntimeSafety(builder_spec.options.enable_safety);
-            const buf: [*]u8 = allocator.allocate(u8, root.len +% 1).ptr;
-            mach.memcpy(buf, root.ptr, root.len);
+            const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(root.len +% 1, 1));
+            @memcpy(buf, root);
             buf[root.len] = 0;
             var idx: usize = 0;
             while (idx != root.len and buf[idx] != 0x2e) : (idx +%= 1) {
