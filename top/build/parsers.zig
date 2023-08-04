@@ -1,7 +1,7 @@
 const mem = @import("../mem.zig");
 const types = @import("./types.zig");
 pub usingnamespace @import("../start.zig");
-export fn build(cmd: *types.BuildCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
+pub export fn build(cmd: *types.BuildCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
     @setRuntimeSafety(false);
     var args_idx: usize = 0;
     while (args_idx != args_len) : (args_idx +%= 1) {
@@ -561,7 +561,7 @@ export fn build(cmd: *types.BuildCommand, allocator: *types.Allocator, args: [*]
         }
     }
 }
-export fn format(cmd: *types.FormatCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
+pub export fn format(cmd: *types.FormatCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
     @setRuntimeSafety(false);
     var args_idx: usize = 0;
     while (args_idx != args_len) : (args_idx +%= 1) {
@@ -596,7 +596,7 @@ export fn format(cmd: *types.FormatCommand, allocator: *types.Allocator, args: [
         _ = allocator;
     }
 }
-export fn archive(cmd: *types.ArchiveCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
+pub export fn archive(cmd: *types.ArchiveCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
     @setRuntimeSafety(false);
     var args_idx: usize = 0;
     while (args_idx != args_len) : (args_idx +%= 1) {
@@ -653,7 +653,7 @@ export fn archive(cmd: *types.ArchiveCommand, allocator: *types.Allocator, args:
         _ = allocator;
     }
 }
-export fn objcopy(cmd: *types.ObjcopyCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
+pub export fn objcopy(cmd: *types.ObjcopyCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
     @setRuntimeSafety(false);
     var args_idx: usize = 0;
     while (args_idx != args_len) : (args_idx +%= 1) {
@@ -696,7 +696,7 @@ export fn objcopy(cmd: *types.ObjcopyCommand, allocator: *types.Allocator, args:
         _ = allocator;
     }
 }
-export fn tblgen(cmd: *types.TableGenCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
+pub export fn tblgen(cmd: *types.TableGenCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
     @setRuntimeSafety(false);
     var args_idx: usize = 0;
     while (args_idx != args_len) : (args_idx +%= 1) {
@@ -846,7 +846,7 @@ export fn tblgen(cmd: *types.TableGenCommand, allocator: *types.Allocator, args:
         }
     }
 }
-export fn harec(cmd: *types.HarecCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
+pub export fn harec(cmd: *types.HarecCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
     @setRuntimeSafety(false);
     var args_idx: usize = 0;
     while (args_idx != args_len) : (args_idx +%= 1) {

@@ -642,7 +642,7 @@ fn writeParserFunctionSpec(array: *Array, attributes: types.Attributes) void {
     }
 }
 fn writeParserFunctionSignature(array: *Array, attributes: types.Attributes) void {
-    array.writeMany("export fn ");
+    array.writeMany("pub export fn ");
     array.writeMany(attributes.fn_name);
     array.writeMany("(cmd:*types.");
     array.writeMany(attributes.type_name);
