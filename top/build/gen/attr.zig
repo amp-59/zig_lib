@@ -536,16 +536,16 @@ pub const zig_build_command_attributes: types.Attributes = .{
             .type = build_id_type,
             .descr = &.{"Help coordinate stripped binaries with debug symbols"},
         },
-        //.{
-        //    .name = "compress_debug_sections",
-        //    .string = "--compress-debug-sections=zlib",
-        //    .and_no = .{ .string = "--compress-debug-sections=none" },
-        //    .descr = &.{
-        //        "Debug section compression:",
-        //        "none   No compression",
-        //        "zlib   Compression with deflate/inflate",
-        //    },
-        //},
+        .{
+            .name = "eh_frame_hdr",
+            .string = "--eh-frame-hdr",
+            .descr = &.{"Enable C++ exception handling by passing --eh-frame-hdr to linker"},
+        },
+        .{
+            .name = "emit_relocs",
+            .string = "--emit-relocs",
+            .descr = &.{"Enable output of relocation sections for post build tools"},
+        },
         .{
             .name = "gc_sections",
             .string = "--gc-sections",
