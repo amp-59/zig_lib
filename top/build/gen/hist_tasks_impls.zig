@@ -13,7 +13,6 @@ const types = @import("./types.zig");
 const config = @import("./config.zig");
 pub usingnamespace @import("../../start.zig");
 pub const runtime_assertions: bool = false;
-pub const logging_override: debug.Logging.Override = spec.logging.override.silent;
 const max_len: u64 = attr.format_command_options.len + attr.build_command_options.len;
 const Array = mem.StaticString(1024 *% 1024);
 const Arrays = mem.StaticArray([]const u8, max_len);
@@ -137,10 +136,9 @@ pub fn main() !void {
     var allocator: mem.SimpleAllocator = .{};
     var array: *Array = allocator.create(Array);
     array.undefineAll();
-    const src_fd: u64 = file.open(open_spec, config.hist_tasks_template_path);
-    const src_st: file.Status = file.status(stat_spec, src_fd);
-    const dest_fd: u64 = file.create(create_spec, config.hist_tasks_path, file.mode.regular);
-    file.send(send_spec, dest_fd, src_fd, null, src_st.size);
+    const fd: u64 = file.open(open_spec, config.hist_tasks_template_path);
+    array.define(file.read(read_spec, fd, array.referAllUndefined()));
+    file.close(close_spec, fd);
     var key_array: *Array = allocator.create(Array);
     key_array.undefineAll();
     var val_array: *Array = allocator.create(Array);
@@ -150,15 +148,12 @@ pub fn main() !void {
     inline for (@typeInfo(tasks).Struct.decls) |decl| {
         const Command = @field(tasks, decl.name);
         writeDecl(decl.name, key_array, val_array, conv_array);
-        switch (@typeInfo(Command)) {
-            .Struct => |struct_info| {
-                inline for (struct_info.fields) |field| {
-                    writeField(field.type, field.name, key_array, val_array, conv_array);
-                }
-            },
-            else => {},
+        if (@typeInfo(Command) == .Struct) {
+            inline for (@typeInfo(Command).Struct.fields) |field| {
+                writeField(field.type, field.name, key_array, val_array, conv_array);
+            }
         }
         writeClose(array, key_array, val_array, conv_array);
     }
-    try gen.appendFile(.{ .return_type = void }, config.hist_tasks_path, array.readAll());
+    try gen.truncateFile(.{ .return_type = void }, config.hist_tasks_path, array.readAll());
 }
