@@ -380,10 +380,36 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             pub var parse: *Node = undefined;
             pub var parsers: build.ParseCommand = undefined;
         };
+        pub const Archive = struct {
+            pub inline fn command(archive_node: *Archive) *types.BuildCommand {
+                @setRuntimeSafety(false);
+                return @as(*Node, @ptrCast(@alignCast(archive_node))).task.cmd.archive;
+            }
+            pub inline fn dependOnObject(build_node: *Archive, allocator: *mem.SimpleAllocator, on_node: *Build) void {
+                @setRuntimeSafety(false);
+                return @call(.never_inline, Node.dependOnObject, .{
+                    @as(*Node, @ptrCast(@alignCast(build_node))),
+                    allocator,
+                    @as(*Node, @ptrCast(@alignCast(on_node))),
+                });
+            }
+        };
         pub const Build = opaque {
+            pub inline fn command(build_node: *Build) *types.BuildCommand {
+                @setRuntimeSafety(false);
+                return @as(*Node, @ptrCast(@alignCast(build_node))).task.cmd.build;
+            }
             pub inline fn dependOnObject(build_node: *Build, allocator: *mem.SimpleAllocator, on_node: *Build) void {
                 @setRuntimeSafety(false);
-                @call(.never_inline, Node.dependOnObject, .{
+                return @call(.never_inline, Node.dependOnObject, .{
+                    @as(*Node, @ptrCast(@alignCast(build_node))),
+                    allocator,
+                    @as(*Node, @ptrCast(@alignCast(on_node))),
+                });
+            }
+            pub inline fn dependOnArchive(build_node: *Build, allocator: *mem.SimpleAllocator, on_node: *Archive) void {
+                @setRuntimeSafety(false);
+                return @call(.never_inline, Node.dependOnArchive, .{
                     @as(*Node, @ptrCast(@alignCast(build_node))),
                     allocator,
                     @as(*Node, @ptrCast(@alignCast(on_node))),
