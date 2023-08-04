@@ -12,13 +12,10 @@ const types = @import("./types.zig");
 const config = @import("./config.zig");
 pub usingnamespace @import("../../start.zig");
 pub const runtime_assertions: bool = false;
-pub const logging_default: debug.Logging.Default = spec.logging.default.silent;
 const Array = mem.StaticString(64 * 1024 * 1024);
 const Array2 = mem.StaticString(64 * 1024);
-
 const notation: enum { slice, ptrcast, memcpy } = .slice;
 const memcpy: enum { builtin, mach } = .builtin;
-
 const combine_char: bool = true;
 const open_spec: file.OpenSpec = .{
     .errors = .{},
