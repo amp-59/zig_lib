@@ -147,6 +147,10 @@ pub const BuildCommand = struct {
     allow_shlib_undefined: ?bool = null,
     /// Help coordinate stripped binaries with debug symbols
     build_id: ?types.BuildId = null,
+    /// Enable C++ exception handling by passing --eh-frame-hdr to linker
+    eh_frame_hdr: bool = false,
+    /// Enable output of relocation sections for post build tools
+    emit_relocs: bool = false,
     /// Force removal of functions and data that are unreachable
     /// by the entry point or exported symbols
     gc_sections: ?bool = null,
@@ -669,6 +673,12 @@ pub const BuildCommand = struct {
             array.writeMany("--build-id\x3d");
             array.writeMany(@tagName(build_id));
             array.writeOne(0);
+        }
+        if (cmd.eh_frame_hdr) {
+            array.writeMany("--eh-frame-hdr\x00");
+        }
+        if (cmd.emit_relocs) {
+            array.writeMany("--emit-relocs\x00");
         }
         if (cmd.gc_sections) |gc_sections| {
             if (gc_sections) {
@@ -1380,6 +1390,14 @@ pub const BuildCommand = struct {
             ptr[0] = 0;
             ptr = ptr + 1;
         }
+        if (cmd.eh_frame_hdr) {
+            ptr[0..15].* = "--eh-frame-hdr\x00".*;
+            ptr = ptr + 15;
+        }
+        if (cmd.emit_relocs) {
+            ptr[0..14].* = "--emit-relocs\x00".*;
+            ptr = ptr + 14;
+        }
         if (cmd.gc_sections) |gc_sections| {
             if (gc_sections) {
                 ptr[0..14].* = "--gc-sections\x00".*;
@@ -1960,6 +1978,12 @@ pub const BuildCommand = struct {
             len +%= 11;
             len +%= @tagName(build_id).len;
             len +%= 1;
+        }
+        if (cmd.eh_frame_hdr) {
+            len +%= 15;
+        }
+        if (cmd.emit_relocs) {
+            len +%= 14;
         }
         if (cmd.gc_sections) |gc_sections| {
             if (gc_sections) {
