@@ -13,7 +13,6 @@ const config = @import("./config.zig");
 pub usingnamespace @import("../../start.zig");
 
 pub const runtime_assertions: bool = false;
-pub const logging_default: debug.Logging.Default = spec.logging.default.verbose;
 const output_mode_decls: bool = false;
 
 const Array = mem.StaticString(64 * 1024 * 1024);
