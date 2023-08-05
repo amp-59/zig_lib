@@ -1,17 +1,20 @@
-//const root = @import("@build");
-const mem = @import("../../mem.zig");
-const fmt = @import("../../fmt.zig");
-const gen = @import("../../gen.zig");
-const elf = @import("../../elf.zig");
-const spec = @import("../../spec.zig");
-const proc = @import("../../proc.zig");
-const meta = @import("../../meta.zig");
-const debug = @import("../../debug.zig");
-const build = @import("../../build.zig");
-const builtin = @import("../../builtin.zig");
-const root = @import("../rebuild.zig");
-const parse = @import("../parsers.zig");
-pub usingnamespace @import("../../start.zig");
+const root = @import("@build");
+
+const zl = root.zl;
+const mem = zl.mem;
+const fmt = zl.fmt;
+const gen = zl.gen;
+const elf = zl.elf;
+const spec = zl.spec;
+const proc = zl.proc;
+const meta = zl.meta;
+const debug = zl.debug;
+const build = zl.build;
+const builtin = zl.builtin;
+
+const parse = build.parse;
+pub usingnamespace zl.start;
+
 pub const want_regen_metadata: bool = true;
 pub const runtime_assertions: bool = false;
 pub const logging_override: debug.Logging.Override = .{
@@ -154,19 +157,31 @@ const CommandState = struct {
         const objcopy_cmd_buf: []*build.ObjcopyCommand = ObjcopyCommands.commands(allocator, node);
         const archive_cmd_buf: []*build.ArchiveCommand = ArchiveCommands.commands(allocator, node);
         if (build_cmd_buf.len != 0) {
-            const ld_idx: usize = indexOfCommonLeastDifferenceBuild(&.{ .allocator = allocator, .buf = build_cmd_buf });
+            const ld_idx: usize = indexOfCommonLeastDifferenceBuild(&.{
+                .allocator = allocator,
+                .buf = build_cmd_buf,
+            });
             ret.build_cmd = build_cmd_buf[ld_idx].*;
         }
         if (format_cmd_buf.len != 0) {
-            const ld_idx: usize = indexOfCommonLeastDifferenceFormat(&.{ .allocator = allocator, .buf = format_cmd_buf });
+            const ld_idx: usize = indexOfCommonLeastDifferenceFormat(&.{
+                .allocator = allocator,
+                .buf = format_cmd_buf,
+            });
             ret.format_cmd = format_cmd_buf[ld_idx].*;
         }
         if (objcopy_cmd_buf.len != 0) {
-            const ld_idx: usize = indexOfCommonLeastDifferenceObjcopy(&.{ .allocator = allocator, .buf = objcopy_cmd_buf });
+            const ld_idx: usize = indexOfCommonLeastDifferenceObjcopy(&.{
+                .allocator = allocator,
+                .buf = objcopy_cmd_buf,
+            });
             ret.objcopy_cmd = objcopy_cmd_buf[ld_idx].*;
         }
         if (archive_cmd_buf.len != 0) {
-            const ld_idx: usize = indexOfCommonLeastDifferenceArchive(&.{ .allocator = allocator, .buf = archive_cmd_buf });
+            const ld_idx: usize = indexOfCommonLeastDifferenceArchive(&.{
+                .allocator = allocator,
+                .buf = archive_cmd_buf,
+            });
             ret.archive_cmd = archive_cmd_buf[ld_idx].*;
         }
         return ret;
@@ -196,7 +211,7 @@ const Generic = struct {
         var ret: usize = 0;
         var sn_idx: usize = 0;
         while (sn_idx != node.impl.nodes_len) : (sn_idx +%= 1) {
-            ret +%= @intFromBool(node.impl.nodes[sn_idx].tag == task_tag);
+            ret +%= @intFromBool(node.impl.nodes[sn_idx].task.tag == task_tag);
         }
         return ret;
     }
@@ -206,6 +221,15 @@ fn isHidden(node: *Node) bool {
 }
 fn writeIfClose(array: *Array) void {
     array.writeMany("}\n");
+}
+fn writeWorkerCommandType(array: *Array, tag: build.Task) void {
+    switch (tag) {
+        .build => array.writeMany("build.BuildCommand"),
+        .archive => array.writeMany("build.ArchiveCommand"),
+        .objcopy => array.writeMany("build.ObjcopyCommand"),
+        .format => array.writeMany("build.FormatCommand"),
+        else => {},
+    }
 }
 fn nextWorker(group: *Node, cmd_state: *CommandState) ?*Node {
     var ret: ?*Node = null;
@@ -218,10 +242,22 @@ fn nextWorker(group: *Node, cmd_state: *CommandState) ?*Node {
             continue;
         }
         const edit_dist: usize = switch (node.task.tag) {
-            .build => fieldEditDistanceBuild(&.{ .s_cmd = &cmd_state.build_cmd.?, .t_cmd = node.task.cmd.build }),
-            .format => fieldEditDistanceFormat(&.{ .s_cmd = &cmd_state.format_cmd.?, .t_cmd = node.task.cmd.format }),
-            .objcopy => fieldEditDistanceObjcopy(&.{ .s_cmd = &cmd_state.objcopy_cmd.?, .t_cmd = node.task.cmd.objcopy }),
-            .archive => fieldEditDistanceArchive(&.{ .s_cmd = &cmd_state.archive_cmd.?, .t_cmd = node.task.cmd.archive }),
+            .build => fieldEditDistanceBuild(&.{
+                .s_cmd = &cmd_state.build_cmd.?,
+                .t_cmd = node.task.cmd.build,
+            }),
+            .format => fieldEditDistanceFormat(&.{
+                .s_cmd = &cmd_state.format_cmd.?,
+                .t_cmd = node.task.cmd.format,
+            }),
+            .objcopy => fieldEditDistanceObjcopy(&.{
+                .s_cmd = &cmd_state.objcopy_cmd.?,
+                .t_cmd = node.task.cmd.objcopy,
+            }),
+            .archive => fieldEditDistanceArchive(&.{
+                .s_cmd = &cmd_state.archive_cmd.?,
+                .t_cmd = node.task.cmd.archive,
+            }),
             else => unreachable,
         };
         if (edit_dist == 0) {
@@ -237,15 +273,6 @@ fn nextWorker(group: *Node, cmd_state: *CommandState) ?*Node {
         node.flags.do_regenerate = false;
     }
     return ret;
-}
-fn writeWorkerCommandType(array: *Array, tag: build.Task) void {
-    switch (tag) {
-        .build => array.writeMany("build.BuildCommand"),
-        .archive => array.writeMany("build.ArchiveCommand"),
-        .objcopy => array.writeMany("build.ObjcopyCommand"),
-        .format => array.writeMany("build.FormatCommand"),
-        else => {},
-    }
 }
 fn writeWorkerCommandFieldEdits(array: *Array, group: *Node, cmd_state: *CommandState, node: *Node) void {
     switch (node.task.tag) {
@@ -308,36 +335,33 @@ fn writeRelativePath(allocator: *build.Allocator, array: *Array, path: build.Pat
     }
 }
 fn writeDeclareWorkerBuildCommand(array: *Array, tag: build.Task, cmd: anytype) void {
-    array.writeMany("const ");
-    array.writeMany(@tagName(tag));
-    array.writeMany("_cmd:");
+    writeConstTagCmd(array, tag);
     writeWorkerCommandType(array, tag);
     array.writeOne('=');
     array.define(formatWriteBufBuildCommand(&cmd, array.referAllUndefined().ptr));
     array.writeMany(";\n");
 }
-fn writeDeclareWorkerFormatCommand(array: *Array, tag: build.Task, cmd: anytype) void {
+fn writeConstTagCmd(array: *Array, tag: build.Task) void {
     array.writeMany("const ");
     array.writeMany(@tagName(tag));
     array.writeMany("_cmd:");
+}
+fn writeDeclareWorkerFormatCommand(array: *Array, tag: build.Task, cmd: anytype) void {
+    writeConstTagCmd(array, tag);
     writeWorkerCommandType(array, tag);
     array.writeOne('=');
     array.define(formatWriteBufFormatCommand(&cmd, array.referAllUndefined().ptr));
     array.writeMany(";\n");
 }
 fn writeDeclareWorkerArchiveCommand(array: *Array, tag: build.Task, cmd: anytype) void {
-    array.writeMany("const ");
-    array.writeMany(@tagName(tag));
-    array.writeMany("_cmd:");
+    writeConstTagCmd(array, tag);
     writeWorkerCommandType(array, tag);
     array.writeOne('=');
     array.define(formatWriteBufArchiveCommand(&cmd, array.referAllUndefined().ptr));
     array.writeMany(";\n");
 }
 fn writeDeclareWorkerObjcopyCommand(array: *Array, tag: build.Task, cmd: anytype) void {
-    array.writeMany("const ");
-    array.writeMany(@tagName(tag));
-    array.writeMany("_cmd:");
+    writeConstTagCmd(array, tag);
     writeWorkerCommandType(array, tag);
     array.writeOne('=');
     array.define(formatWriteBufObjcopyCommand(&cmd, array.referAllUndefined().ptr));
@@ -481,52 +505,60 @@ fn writeDeclareGroup(allocator: *build.Allocator, array: *Array, toplevel: *Node
         array.writeMany("const save:usize=allocator.next;\n");
     }
     if (cmd_state.build_cmd) |*local_build_cmd| {
-        array.writeMany("var @\"");
-        array.writeMany(node.name);
-        array.writeMany("_build_cmd\":build.BuildCommand=build_cmd;\n");
-        array.define(writeFieldEditsBuild(&.{
-            .buf = array.referAllUndefined().ptr,
-            .node_name = node.name,
-            .s_cmd = &CommandState.toplevel.build_cmd.?,
-            .t_cmd = local_build_cmd,
-            .commit = false,
-        }));
+        if (Generic.countTask(node, .build) != 0) {
+            array.writeMany("var @\"");
+            array.writeMany(node.name);
+            array.writeMany("_build_cmd\":build.BuildCommand=build_cmd;\n");
+            array.define(writeFieldEditsBuild(&.{
+                .buf = array.referAllUndefined().ptr,
+                .node_name = node.name,
+                .s_cmd = &CommandState.toplevel.build_cmd.?,
+                .t_cmd = local_build_cmd,
+                .commit = false,
+            }));
+        }
     }
     if (cmd_state.format_cmd) |*local_format_cmd| {
-        array.writeMany("var @\"");
-        array.writeMany(node.name);
-        array.writeMany("_format_cmd\":build.FormatCommand=format_cmd;\n");
-        array.define(writeFieldEditsFormat(&.{
-            .buf = array.referAllUndefined().ptr,
-            .node_name = node.name,
-            .s_cmd = &CommandState.toplevel.format_cmd.?,
-            .t_cmd = local_format_cmd,
-            .commit = false,
-        }));
+        if (Generic.countTask(node, .format) != 0) {
+            array.writeMany("var @\"");
+            array.writeMany(node.name);
+            array.writeMany("_format_cmd\":build.FormatCommand=format_cmd;\n");
+            array.define(writeFieldEditsFormat(&.{
+                .buf = array.referAllUndefined().ptr,
+                .node_name = node.name,
+                .s_cmd = &CommandState.toplevel.format_cmd.?,
+                .t_cmd = local_format_cmd,
+                .commit = false,
+            }));
+        }
     }
     if (cmd_state.objcopy_cmd) |*local_objcopy_cmd| {
-        array.writeMany("var @\"");
-        array.writeMany(node.name);
-        array.writeMany("_objcopy_cmd\":build.objcopyCommand=objcopy_cmd;\n");
-        array.define(writeFieldEditsObjcopy(&.{
-            .buf = array.referAllUndefined().ptr,
-            .node_name = node.name,
-            .s_cmd = &CommandState.toplevel.objcopy_cmd.?,
-            .t_cmd = local_objcopy_cmd,
-            .commit = false,
-        }));
+        if (Generic.countTask(node, .objcopy) != 0) {
+            array.writeMany("var @\"");
+            array.writeMany(node.name);
+            array.writeMany("_objcopy_cmd\":build.objcopyCommand=objcopy_cmd;\n");
+            array.define(writeFieldEditsObjcopy(&.{
+                .buf = array.referAllUndefined().ptr,
+                .node_name = node.name,
+                .s_cmd = &CommandState.toplevel.objcopy_cmd.?,
+                .t_cmd = local_objcopy_cmd,
+                .commit = false,
+            }));
+        }
     }
     if (cmd_state.archive_cmd) |*local_archive_cmd| {
-        array.writeMany("var @\"");
-        array.writeMany(node.name);
-        array.writeMany("_archive_cmd\":build.archiveCommand=archive_cmd;\n");
-        array.define(writeFieldEditsArchive(&.{
-            .buf = array.referAllUndefined().ptr,
-            .node_name = node.name,
-            .s_cmd = &CommandState.toplevel.archive_cmd.?,
-            .t_cmd = local_archive_cmd,
-            .commit = false,
-        }));
+        if (Generic.countTask(node, .objcopy) != 0) {
+            array.writeMany("var @\"");
+            array.writeMany(node.name);
+            array.writeMany("_archive_cmd\":build.archiveCommand=archive_cmd;\n");
+            array.define(writeFieldEditsArchive(&.{
+                .buf = array.referAllUndefined().ptr,
+                .node_name = node.name,
+                .s_cmd = &CommandState.toplevel.archive_cmd.?,
+                .t_cmd = local_archive_cmd,
+                .commit = false,
+            }));
+        }
     }
     writeHiddenSubGroups(allocator, array, node);
     while (nextWorker(node, &cmd_state)) |sub_node| {
