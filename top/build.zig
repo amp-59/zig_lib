@@ -374,8 +374,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         const Size = usize;
         const Task = extern struct {
             tag: types.Task,
-            lock: types.Lock,
             cmd: Command,
+            lock: types.Lock,
         };
         const Command = extern union {
             build: *types.BuildCommand,
@@ -386,7 +386,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         pub const special = struct {
             var trace: *Node = undefined;
             var parse: *Node = undefined;
-            pub var fmt: *Node = undefined;
+            var fmt: *Node = undefined;
             var parsers: build.ParseCommand = undefined;
         };
         pub const Archive = struct {
@@ -607,6 +607,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 node.flags.build.do_configure = false;
                 special.parse = node;
             }
+            if (return) {}
             if (builder_spec.options.special.buildfmt_ar) |ar_cmd| {
                 const build_cmd: build.BuildCommand = builder_spec.options.special.buildfmt orelse .{};
                 const nodes: []const *Node = &.{
