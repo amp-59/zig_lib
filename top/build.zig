@@ -383,11 +383,11 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             archive: *types.ArchiveCommand,
             objcopy: *types.ObjcopyCommand,
         };
-        const special = struct {
-            pub var toplevel: *Node = undefined;
-            pub var trace: *Node = undefined;
-            pub var parse: *Node = undefined;
-            pub var parsers: build.ParseCommand = undefined;
+        pub const special = struct {
+            var trace: *Node = undefined;
+            var parse: *Node = undefined;
+            pub var fmt: *Node = undefined;
+            var parsers: build.ParseCommand = undefined;
         };
         pub const Archive = struct {
             pub inline fn command(archive_node: *Archive) *types.BuildCommand {
@@ -428,7 +428,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         pub const specification: BuilderSpec = builder_spec;
         pub const max_thread_count: u64 = builder_spec.options.max_thread_count;
         pub const stack_aligned_bytes: u64 = builder_spec.options.stack_aligned_bytes;
-        pub const Config = builder_spec.options.special.Config;
+        pub const Config = builder_spec.types.Config;
         const max_arena_count: u64 = if (max_thread_count == 0) 4 else max_thread_count + 1;
         const arena_aligned_bytes: u64 = builder_spec.options.arena_aligned_bytes;
         const stack_lb_addr: u64 = builder_spec.options.stack_lb_addr;
@@ -606,6 +606,24 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 node.flags.is_special = true;
                 node.flags.build.do_configure = false;
                 special.parse = node;
+            }
+            if (builder_spec.options.special.buildfmt_ar) |ar_cmd| {
+                const build_cmd: build.BuildCommand = builder_spec.options.special.buildfmt orelse .{};
+                const nodes: []const *Node = &.{
+                    toplevel.addBuild(allocator, build_cmd, "options_fmt", build.root ++ "/top/build/options-fmt.zig"),
+                    toplevel.addBuild(allocator, build_cmd, "build_fmt", build.root ++ "/top/build/build-fmt.zig"),
+                    toplevel.addBuild(allocator, build_cmd, "format_fmt", build.root ++ "/top/build/format-fmt.zig"),
+                    toplevel.addBuild(allocator, build_cmd, "objcopy_fmt", build.root ++ "/top/build/objcopy-fmt.zig"),
+                    toplevel.addBuild(allocator, build_cmd, "archive_fmt", build.root ++ "/top/build/archive-fmt.zig"),
+                };
+                for (nodes) |node| {
+                    node.flags.is_special = true;
+                    node.flags.build.do_configure = false;
+                }
+                const node: *Node = toplevel.addArchive(allocator, ar_cmd, "fmt", nodes);
+                node.flags.is_special = true;
+                node.flags.build.do_configure = false;
+                special.fmt = node;
             }
         }
         pub fn initState(args: [][*:0]u8, vars: [][*:0]u8) void {
