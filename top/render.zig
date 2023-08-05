@@ -46,7 +46,7 @@ pub const RenderSpec = struct {
         /// Represents a union with length and capacity, maybe used in extern structs.
         /// field_name: U,
         /// field_name_tag: E,
-        extern_tagged_union: bool = false,
+        extern_tagged_union: bool = true,
         /// Represents `anytype`
         generic_type_cast: bool = true,
     } = .{},
@@ -789,7 +789,7 @@ pub fn StructFormat(comptime spec: RenderSpec, comptime Struct: type) type {
         const Format = @This();
         const undef: Struct = @as(Struct, undefined);
         const fields: []const builtin.Type.StructField = @typeInfo(Struct).Struct.fields;
-        const omit_trailing_comma: bool = spec.omit_trailing_comma orelse fields.len < 4;
+        const omit_trailing_comma: bool = spec.omit_trailing_comma orelse (fields.len < 4);
         const max_len: usize = blk: {
             var len: usize = 0;
             len +%= @typeName(Struct).len +% 2;
@@ -2251,6 +2251,11 @@ pub fn ErrorSetFormat(comptime ErrorSet: type) type {
         pub fn formatWrite(format: Format, array: anytype) void {
             array.writeMany("error.");
             array.writeMany(@errorName(format.value));
+        }
+        pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
+            buf[0..6].* = "error.".*;
+            @memcpy(buf + 6, @errorName(format.value));
+            return 6 +% @errorName(format.value).len;
         }
         pub fn formatLength(format: Format) usize {
             return 6 +% @errorName(format.value).len;
