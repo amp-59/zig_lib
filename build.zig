@@ -5,14 +5,9 @@ const build = zl.build;
 const debug = zl.debug;
 const builtin = zl.builtin;
 
-pub const Node = builtin.define("Node", type, build.GenericNode(.{ .options = .{
-    .write_build_task_record = true,
-    .write_hist_serial = true,
-} }));
+pub const Node = build.GenericNode(.{ .options = .{} });
 
-pub const logging_override: debug.Logging.Override = spec.logging.override.silent;
-
-pub const build_cmd: build.BuildCommand = .{
+const build_cmd: build.BuildCommand = .{
     .kind = .exe,
     .mode = .Debug,
     .stack_check = false,
@@ -29,7 +24,7 @@ pub const build_cmd: build.BuildCommand = .{
     .dependencies = &.{.{ .name = "zig_lib" }},
     .modules = &.{.{ .name = "zig_lib", .path = build.root ++ "/zig_lib.zig" }},
 };
-pub const format_cmd: build.FormatCommand = .{ .ast_check = true };
+const format_cmd: build.FormatCommand = .{ .ast_check = true };
 
 fn setStripped(node: *Node) void {
     node.task.cmd.build.strip = true;
@@ -55,6 +50,7 @@ pub fn buildMain(allocator: *build.Allocator, toplevel: *Node) !void {
     useCaseTests(allocator, toplevel.addGroup(allocator, "use_case_tests"));
     examples(allocator, toplevel.addGroup(allocator, "examples"));
     memgen(allocator, toplevel.addGroup(allocator, "memgen"));
+    regen(allocator, toplevel.addGroup(allocator, "regen"));
     buildgen(allocator, toplevel.addGroup(allocator, "buildgen"));
     targetgen(allocator, toplevel.addGroup(allocator, "targetgen"));
 }
@@ -269,10 +265,10 @@ fn buildgen(allocator: *build.Allocator, node: *Node) void {
     const bg_hist_tasks: *Node = node.addFormat(allocator, bg_format_cmd, "bg_hist_tasks", "top/build/hist_tasks.zig");
     const bg_parsers_impls: *Node = bg_aux.addBuild(allocator, bg_build_cmd, "bg_parsers_impls", "top/build/gen/parsers_impls.zig");
     const bg_parsers: *Node = node.addFormat(allocator, bg_format_cmd, "bg_parsers", "top/build/parsers.zig");
-    bg_tasks.dependOn(allocator, bg_tasks_impls);
+    bg_tasks.dependOnFull(allocator, .format, bg_tasks_impls, .run);
     bg_hist_tasks_impls.dependOn(allocator, bg_tasks);
-    bg_hist_tasks.dependOn(allocator, bg_hist_tasks_impls);
-    bg_parsers.dependOn(allocator, bg_parsers_impls);
+    bg_hist_tasks.dependOnFull(allocator, .format, bg_hist_tasks_impls, .run);
+    bg_parsers.dependOnFull(allocator, .format, bg_parsers_impls, .run);
     bg_tasks_impls.descr = "Generate builder command line data structures";
     bg_tasks.descr = "Reformat generated builder command line data structures into canonical form";
     bg_hist_tasks_impls.descr = "Generate packed summary types for builder history";
@@ -280,6 +276,22 @@ fn buildgen(allocator: *build.Allocator, node: *Node) void {
     bg_parsers_impls.descr = "Generate exports for builder task command line parser functions";
     bg_parsers_impls.descr = "exports for builder task command line parser functions";
     bg_parsers.descr = "Reformat exports for builder task command line parser functions into canonical form";
+    node.task.tag = .format;
+}
+fn regen(allocator: *build.Allocator, node: *Node) void {
+    if (return) {}
+    var rg_build_cmd: build.BuildCommand = build_cmd;
+    var rg_format_cmd: build.FormatCommand = format_cmd;
+    rg_build_cmd.mode = .Debug;
+    rg_build_cmd.strip = true;
+    const rg_aux: *Node = node.addGroup(allocator, "_regen");
+    const rg_rebuild_impls: *Node = rg_aux.addBuild(allocator, rg_build_cmd, "rg_rebuild_impls", "top/build/gen/rebuild_impls.zig");
+    const rg_rebuild: *Node = node.addFormat(allocator, rg_format_cmd, "rg_rebuild", "top/build/rebuild.zig");
+    rg_rebuild_impls.dependOnArchive(allocator, Node.special.fmt);
+    rg_rebuild_impls.addToplevelArgs(allocator);
+    rg_rebuild.dependOnFull(allocator, .format, rg_rebuild_impls, .run);
+    rg_rebuild_impls.descr = "Regenerate build program maybe adding new elements";
+    rg_rebuild.descr = "Reformat regenerated build program into canonical form";
     node.task.tag = .format;
 }
 fn targetgen(allocator: *build.Allocator, node: *Node) void {
@@ -299,5 +311,3 @@ fn targetgen(allocator: *build.Allocator, node: *Node) void {
     tg_arch.descr = "Reformat generated builder command line data structures into canonical form";
     node.task.tag = .format;
 }
-
-pub const message_style: [:0]const u8 = "\x1b[2m";
