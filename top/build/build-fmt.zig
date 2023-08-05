@@ -1,6 +1,7 @@
 const fmt = @import("../fmt.zig");
 const build = @import("../build.zig");
 const render_spec: fmt.RenderSpec = .{ .infer_type_names = true };
+pub fn _start() void {}
 export fn formatWriteBufBuildCommand(build_cmd: *const build.BuildCommand, buf: [*]u8) usize {
     return fmt.render(render_spec, build_cmd.*).formatWriteBuf(buf);
 }
