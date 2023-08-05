@@ -25,7 +25,6 @@ pub const signal_handlers: debug.SignalHandlers = .{
     .Trap = true,
 };
 pub const runtime_assertions: bool = true;
-pub const tracing_override: bool = false;
 pub const comptime_assertions: bool = false;
 const test_real_examples: bool = true;
 const Allocator = mem.GenericArenaAllocator(.{
@@ -159,9 +158,7 @@ pub fn testWriteSerialFeatures(address_space: *AddressSpace) !void {
 pub fn main() !void {
     var address_space: AddressSpace = .{};
     try meta.wrap(testWriteSerialFeatures(&address_space));
-    if (test_real_examples) {
-        try meta.wrap(testLongComplexCase(&address_space));
-        try meta.wrap(testLargeStructure(&address_space));
-        try meta.wrap(testVarietyStructure(&address_space));
-    }
+    try meta.wrap(testLongComplexCase(&address_space));
+    try meta.wrap(testLargeStructure(&address_space));
+    try meta.wrap(testVarietyStructure(&address_space));
 }
