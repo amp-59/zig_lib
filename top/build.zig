@@ -1837,7 +1837,9 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 if (dep.on_node == node) {
                     continue;
                 }
-                if (dep.on_task == .build) {
+                if (dep.on_task == .build and
+                    dep.on_node.task.cmd.build.kind == .obj)
+                {
                     ptr[0..12].* = "pub const @\"".*;
                     ptr = ptr + 12;
                     @memcpy(ptr, dep.on_node.name);
@@ -1871,6 +1873,12 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 ptr[0..3].* = "};\n".*;
                 ptr = ptr + 3;
             }
+            ptr[0..26].* = "pub const build_config=.@\"".*;
+            ptr = ptr + 26;
+            @memcpy(ptr, node.name);
+            ptr = ptr + node.name.len;
+            ptr[0..3].* = "\";\n".*;
+            ptr = ptr + 3;
             const name: [:0]const u8 = concatenate(
                 allocator,
                 &[2][]const u8{ node.name, builder_spec.options.extensions.zig },
