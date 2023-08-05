@@ -1322,11 +1322,15 @@ fn testEqualStruct(comptime T: type, comptime struct_info: builtin.Type.Struct, 
     return true;
 }
 fn testIdenticalUnion(comptime T: type, comptime union_info: builtin.Type.Union, arg1: T, arg2: T) bool {
-    return testEqual(union_info.tag_type.?, arg1, arg2) and
-        mem.testEqualString(
-        @as(*const [@sizeOf(T)]u8, @ptrCast(&arg1)),
-        @as(*const [@sizeOf(T)]u8, @ptrCast(&arg2)),
-    );
+    if (@inComptime()) {
+        return false;
+    } else {
+        return testEqual(union_info.tag_type.?, arg1, arg2) and
+            mem.testEqualString(
+            @as(*const [@sizeOf(T)]u8, @ptrCast(&arg1)),
+            @as(*const [@sizeOf(T)]u8, @ptrCast(&arg2)),
+        );
+    }
 }
 fn testEqualUnion(comptime T: type, comptime union_info: builtin.Type.Union, arg1: T, arg2: T) bool {
     if (union_info.tag_type) |tag_type| {
@@ -1409,6 +1413,7 @@ pub fn testEqual(comptime T: type, arg1: T, arg2: T) bool {
     return false;
 }
 pub fn testEqualString(l_values: []const u8, r_values: []const u8) bool {
+    @setRuntimeSafety(builtin.is_safe);
     if (l_values.len != r_values.len) {
         return false;
     }
@@ -1423,6 +1428,7 @@ pub fn testEqualString(l_values: []const u8, r_values: []const u8) bool {
     return true;
 }
 pub fn testEqualMany(comptime T: type, l_values: []const T, r_values: []const T) bool {
+    @setRuntimeSafety(builtin.is_safe);
     if (l_values.len != r_values.len) {
         return false;
     }
@@ -1437,33 +1443,39 @@ pub fn testEqualMany(comptime T: type, l_values: []const T, r_values: []const T)
     return true;
 }
 pub fn testEqualOneFront(comptime T: type, value: T, values: []const T) bool {
+    @setRuntimeSafety(builtin.is_safe);
     if (values.len != 0) {
         return values[0] == value;
     }
     return false;
 }
 pub fn testEqualOneBack(comptime T: type, value: T, values: []const T) bool {
+    @setRuntimeSafety(builtin.is_safe);
     if (values.len != 0) {
         return values[values.len -% 1] == value;
     }
     return false;
 }
 pub fn testEqualManyFront(comptime T: type, prefix_values: []const T, values: []const T) bool {
+    @setRuntimeSafety(builtin.is_safe);
     if (prefix_values.len == 0 or prefix_values.len > values.len) {
         return false;
     }
     return testEqualMany(T, prefix_values, values[0..prefix_values.len]);
 }
 pub fn testEqualManyBack(comptime T: type, suffix_values: []const T, values: []const T) bool {
+    @setRuntimeSafety(builtin.is_safe);
     if (suffix_values.len == 0 or suffix_values.len > values.len) {
         return false;
     }
     return testEqualMany(T, suffix_values, values[values.len -% suffix_values.len ..]);
 }
 pub fn testEqualManyIn(comptime T: type, find_values: []const T, values: []const T) bool {
+    @setRuntimeSafety(builtin.is_safe);
     return indexOfFirstEqualMany(T, find_values, values) != null;
 }
 pub fn testEqualMemory(comptime T: type, arg1: T, arg2: T) bool {
+    @setRuntimeSafety(builtin.is_safe);
     switch (@typeInfo(T)) {
         else => @compileError(@typeName(T)),
         .Int, .Enum, .Bool, .Void => return arg1 == arg2,
@@ -1547,6 +1559,7 @@ pub fn testEqualMemory(comptime T: type, arg1: T, arg2: T) bool {
     }
 }
 pub fn indexOfSentinel(any: anytype) usize {
+    @setRuntimeSafety(builtin.is_safe);
     const T = @TypeOf(any);
     const type_info: builtin.Type = @typeInfo(T);
     if (type_info.Pointer.sentinel == null) {
@@ -1561,6 +1574,7 @@ pub fn indexOfSentinel(any: anytype) usize {
     return idx;
 }
 pub fn indexOfFirstEqualOne(comptime T: type, value: T, values: []const T) ?u64 {
+    @setRuntimeSafety(builtin.is_safe);
     var idx: usize = 0;
     while (idx != values.len) {
         if (values[idx] == value) {
@@ -1571,6 +1585,7 @@ pub fn indexOfFirstEqualOne(comptime T: type, value: T, values: []const T) ?u64 
     return null;
 }
 pub fn indexOfLastEqualOne(comptime T: type, value: T, values: []const T) ?u64 {
+    @setRuntimeSafety(builtin.is_safe);
     var idx: usize = values.len;
     while (idx != 0) {
         idx -%= 1;
@@ -1581,6 +1596,7 @@ pub fn indexOfLastEqualOne(comptime T: type, value: T, values: []const T) ?u64 {
     return null;
 }
 pub fn indexOfFirstEqualMany(comptime T: type, sub_values: []const T, values: []const T) ?u64 {
+    @setRuntimeSafety(builtin.is_safe);
     if (sub_values.len > values.len) {
         return null;
     }
@@ -1595,6 +1611,7 @@ pub fn indexOfFirstEqualMany(comptime T: type, sub_values: []const T, values: []
     return null;
 }
 pub fn indexOfFirstEqualAny(comptime T: type, sub_values: []const T, values: []const T) ?u64 {
+    @setRuntimeSafety(builtin.is_safe);
     if (sub_values.len > values.len) {
         return null;
     }
@@ -1610,6 +1627,7 @@ pub fn indexOfFirstEqualAny(comptime T: type, sub_values: []const T, values: []c
     return null;
 }
 pub fn indexOfLastEqualMany(comptime T: type, sub_values: []const T, values: []const T) ?u64 {
+    @setRuntimeSafety(builtin.is_safe);
     if (sub_values.len > values.len) {
         return null;
     }
@@ -1624,6 +1642,7 @@ pub fn indexOfLastEqualMany(comptime T: type, sub_values: []const T, values: []c
     return null;
 }
 pub fn indexOfLastEqualAny(comptime T: type, sub_values: []const T, values: []const T) ?u64 {
+    @setRuntimeSafety(builtin.is_safe);
     if (sub_values.len > values.len) {
         return null;
     }
@@ -1639,48 +1658,56 @@ pub fn indexOfLastEqualAny(comptime T: type, sub_values: []const T, values: []co
     return null;
 }
 pub fn readBeforeFirstEqualMany(comptime T: type, sub_values: []const T, values: []const T) ?[]const T {
+    @setRuntimeSafety(builtin.is_safe);
     if (indexOfFirstEqualMany(T, sub_values, values)) |index| {
         return values[0..index];
     }
     return null;
 }
 pub fn readAfterFirstEqualMany(comptime T: type, sub_values: []const T, values: []const T) ?[]const T {
+    @setRuntimeSafety(builtin.is_safe);
     if (indexOfFirstEqualMany(T, sub_values, values)) |index| {
         return values[index +% sub_values.len ..];
     }
     return null;
 }
 pub fn readBeforeLastEqualMany(comptime T: type, sub_values: []const T, values: []const T) ?[]const T {
+    @setRuntimeSafety(builtin.is_safe);
     if (indexOfLastEqualMany(T, sub_values, values)) |index| {
         return values[0..index];
     }
     return null;
 }
 pub fn readAfterLastEqualMany(comptime T: type, sub_values: []const T, values: []const T) ?[]const T {
+    @setRuntimeSafety(builtin.is_safe);
     if (indexOfLastEqualMany(T, sub_values, values)) |index| {
         return values[sub_values.len +% index ..];
     }
     return null;
 }
 pub fn readBeforeFirstEqualOne(comptime T: type, value: T, values: []const T) ?[]const T {
+    @setRuntimeSafety(builtin.is_safe);
     if (indexOfFirstEqualOne(T, value, values)) |index| {
         return values[0..index];
     }
     return null;
 }
 pub fn readAfterFirstEqualOne(comptime T: type, value: T, values: []const T) ?[]const T {
+    @setRuntimeSafety(builtin.is_safe);
     if (indexOfFirstEqualOne(T, value, values)) |index| {
         return values[index +% 1 ..];
     }
     return null;
 }
 pub fn readBeforeLastEqualOne(comptime T: type, value: T, values: []const T) ?[]const T {
+    @setRuntimeSafety(builtin.is_safe);
     if (indexOfLastEqualOne(T, value, values)) |index| {
         return values[0..index];
     }
     return null;
 }
 pub fn readAfterLastEqualOne(comptime T: type, value: T, values: []const T) ?[]const T {
+    @setRuntimeSafety(builtin.is_safe);
     if (indexOfLastEqualOne(T, value, values)) |index| {
         return values[index +% 1 ..];
     }
@@ -1692,6 +1719,7 @@ pub fn readAfterFirstEqualManyWithSentinel(
     sub_values: []const T,
     values: [:sentinel]const T,
 ) ?[:sentinel]const T {
+    @setRuntimeSafety(builtin.is_safe);
     if (indexOfFirstEqualMany(T, sub_values, values)) |index| {
         return values[index +% sub_values.len ..];
     }
@@ -1703,6 +1731,7 @@ pub fn readAfterLastEqualManyWithSentinel(
     sub_values: []const T,
     values: [:sentinel]const T,
 ) ?[:sentinel]const T {
+    @setRuntimeSafety(builtin.is_safe);
     if (indexOfLastEqualMany(T, sub_values, values)) |index| {
         return values[sub_values.len +% index ..];
     }
@@ -1714,6 +1743,7 @@ pub fn readAfterLastEqualOneWithSentinel(
     value: T,
     values: [:sentinel]const T,
 ) ?[:sentinel]const T {
+    @setRuntimeSafety(builtin.is_safe);
     if (indexOfLastEqualOne(T, value, values)) |index| {
         return values[index +% 1 ..];
     }
@@ -1725,6 +1755,7 @@ pub fn readAfterFirstEqualOneWithSentinel(
     value: T,
     values: [:sentinel]const T,
 ) ?[:sentinel]const T {
+    @setRuntimeSafety(builtin.is_safe);
     if (indexOfFirstEqualOne(T, value, values)) |index| {
         return values[index +% 1 ..];
     }
@@ -1859,7 +1890,7 @@ pub fn indexOfNearestEqualMany(comptime T: type, arg1: []const T, arg2: []const 
     return null;
 }
 pub inline fn zero(comptime T: type, ptr: *T) void {
-    mach.memset(@as([*]u8, @ptrCast(ptr)), 0, @sizeOf(T));
+    @memset(@as([*]u8, @ptrCast(ptr))[0..@sizeOf(T)], 0);
 }
 pub inline fn unstable(comptime T: type, val: T) T {
     return @as(*const volatile T, @ptrCast(&val)).*;
