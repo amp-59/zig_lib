@@ -47,6 +47,8 @@ pub const BuilderSpec = struct {
     /// Errors for system calls called by builder. This excludes `clone3`,
     /// which must be implemented in assembly.
     errors: Errors = .{},
+    /// Potentially user defined types.
+    types: Types = .{},
     pub const Options = struct {
         /// The maximum number of threads in addition to main.
         /// Bytes allowed per thread arena (dynamic maximum)
@@ -80,6 +82,8 @@ pub const BuilderSpec = struct {
         sleep_nanoseconds: usize = 50000,
         /// Time in milliseconds allowed per build node.
         timeout_milliseconds: usize = 1000 * 60 * 60 * 24,
+        /// Enables logging for task creation.
+        show_task_creation: bool = false,
         /// Enables logging for tasks waiting on dependencies.
         show_waiting_tasks: bool = false,
         /// Enables logging for build job statistics.
@@ -149,14 +153,13 @@ pub const BuilderSpec = struct {
             parse_root: [:0]const u8 = build.root ++ "/top/build/parsers.zig",
         } = .{},
         special: struct {
-            /// Defines formatter type used to pass configuration values to program.
-            Config: type = types.Config,
-            /// Defines generid command type used to pass function pointers to node.
-            Command: ?type = null,
             /// Defines compile commands for stack tracer object.
             trace: ?types.BuildCommand = .{ .kind = .obj, .mode = .ReleaseSmall, .strip = true, .compiler_rt = false },
             /// Defines compile commands for command line parser shared object.
             parse: ?types.BuildCommand = .{ .kind = .lib, .mode = .ReleaseSmall, .dynamic = true, .strip = true, .compiler_rt = false },
+            /// Defines archiver commands for builder formatter types.
+            buildfmt_ar: ?types.ArchiveCommand = .{ .operation = .r, .create = true },
+            buildfmt: ?types.BuildCommand = .{ .kind = .obj, .mode = .Debug, .strip = true, .compiler_rt = false },
         } = .{},
         extensions: struct {
             /// Extension for Zig source files.
@@ -289,6 +292,12 @@ pub const BuilderSpec = struct {
         link: sys.ErrorPolicy = .{},
         /// Error values for `unlink` system function.
         unlink: sys.ErrorPolicy = .{},
+    };
+    pub const Types = struct {
+        /// Defines formatter type used to pass configuration values to program.
+        Config: type = types.Config,
+        /// Defines generid command type used to pass function pointers to node.
+        Command: ?type = null,
     };
 };
 pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
