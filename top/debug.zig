@@ -428,7 +428,18 @@ pub fn expectEqualMemory(comptime T: type, arg1: T, arg2: T) debug.Unexpected!vo
         .Int, .Enum, .Bool => try expectEqual(T, arg1, arg2),
         .Struct => |struct_info| {
             inline for (struct_info.fields) |field| {
-                try expectEqualMemory(field.type, @field(arg1, field.name), @field(arg2, field.name));
+                comptime var field_type_info: builtin.Type = @typeInfo(field.type);
+                if (field_type_info == .Pointer and
+                    field_type_info.Pointer.size == .Many and
+                    @hasField(T, field.name ++ "_len"))
+                {
+                    const len1: usize = @field(arg1, field.name ++ "_len");
+                    const len2: usize = @field(arg2, field.name ++ "_len");
+                    field_type_info.Pointer.size = .Slice;
+                    try expectEqualMemory(@Type(field_type_info), @field(arg1, field.name)[0..len1], @field(arg2, field.name)[0..len2]);
+                } else {
+                    try expectEqualMemory(field.type, @field(arg1, field.name), @field(arg2, field.name));
+                }
             }
         },
         .Union => |union_info| {
@@ -575,16 +586,19 @@ pub fn logFaultAIO(buf: []u8, slices: []const []const u8) void {
     logFault(buf[0..mach.memcpyMulti(buf.ptr, slices)]);
 }
 pub const printStackTrace = blk: {
-    if (builtin.have_stack_traces) {
-        break :blk special.printStackTrace;
-    } else {
+    if (builtin.want_stack_traces and
+        !builtin.have_stack_traces and
+        builtin.output_mode == .Exe)
+    {
         break :blk special.trace.printStackTrace;
+    } else {
+        break :blk special.printStackTrace;
     }
 };
 pub noinline fn alarm(msg: []const u8, _: @TypeOf(@errorReturnTrace()), ret_addr: usize) void {
     @setCold(true);
     @setRuntimeSafety(false);
-    if (builtin.have_stack_traces and builtin.trace.Error) {
+    if (builtin.want_stack_traces and builtin.trace.Error) {
         printStackTrace(&builtin.trace, ret_addr, 0);
     }
     @call(.always_inline, about.errorNotice, .{msg});
@@ -592,7 +606,7 @@ pub noinline fn alarm(msg: []const u8, _: @TypeOf(@errorReturnTrace()), ret_addr
 pub noinline fn panic(msg: []const u8, _: @TypeOf(@errorReturnTrace()), ret_addr: ?usize) noreturn {
     @setCold(true);
     @setRuntimeSafety(false);
-    if (builtin.have_stack_traces and builtin.trace.Fault) {
+    if (builtin.want_stack_traces and builtin.trace.Fault) {
         printStackTrace(&builtin.trace, ret_addr orelse @returnAddress(), 0);
     }
     @call(.always_inline, proc.exitGroupFault, .{ msg, 2 });
@@ -604,7 +618,7 @@ pub noinline fn panicSignal(msg: []const u8, ctx_ptr: *const anyopaque) noreturn
         *mach.RegisterState,
         @ptrFromInt(@intFromPtr(ctx_ptr) +% mach.RegisterState.offset),
     ).*;
-    if (builtin.have_stack_traces and builtin.trace.Signal) {
+    if (builtin.want_stack_traces and builtin.trace.Signal) {
         printStackTrace(&builtin.trace, regs.rip, regs.rbp);
     }
     @call(.always_inline, proc.exitGroupFault, .{ msg, 2 });
