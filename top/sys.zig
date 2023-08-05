@@ -1965,6 +1965,7 @@ pub const Fn = enum(usize) {
             .listen,
             .symlink,
             .link,
+            .access,
             => return 2,
             .dup3,
             .read,
