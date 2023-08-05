@@ -103,42 +103,42 @@ pub const Config = struct {
     pub const Value = union(enum) { Int: usize, Bool: bool, String: []const u8 };
     pub fn formatWriteBuf(cfg: Config, buf: [*]u8) u64 {
         @setRuntimeSafety(false);
-        var len: u64 = 0;
+        var ptr: [*]u8 = buf;
         var ud64: fmt.Type.Ud64 = undefined;
-        @as(*[12]u8, @ptrCast(buf)).* = "pub const @\"".*;
-        len +%= 12;
-        @memcpy(buf + len, cfg.name);
-        len +%= cfg.name.len;
+        ptr[0..12].* = "pub const @\"".*;
+        ptr = ptr + 12;
+        @memcpy(ptr, cfg.name);
+        ptr = ptr + cfg.name.len;
         switch (cfg.value) {
             .Int => |value| {
-                @as(*[18]u8, @ptrCast(buf + len)).* = "\": comptime_int = ".*;
-                len +%= 18;
+                ptr[0..18].* = "\": comptime_int = ".*;
+                ptr = ptr + 18;
                 ud64 = @bitCast(value);
-                len +%= ud64.formatWriteBuf(buf + len);
+                ptr = ptr + ud64.formatWriteBuf(ptr);
             },
             .Bool => |value| {
-                @as(*[10]u8, @ptrCast(buf + len)).* = "\": bool = ".*;
-                len +%= 10;
-                @memcpy(buf + len, if (value) "true" else "false");
-                len +%= if (value) 4 else 5;
+                ptr[0..10].* = "\": bool = ".*;
+                ptr = ptr + 10;
+                ptr[0..5].* = if (value) "true\x00".* else "false".*;
+                ptr = ptr + 5 - @intFromBool(value);
             },
             .String => |value| {
-                @as(*[11]u8, @ptrCast(buf + len)).* = "\": *const [".*;
-                len +%= 11;
-                ud64 = @bitCast(value.len);
-                len +%= ud64.formatWriteBuf(buf + len);
-                @as(*[8]u8, @ptrCast(buf + len)).* = ":0]u8 = ".*;
-                len +%= 8;
-                buf[len] = '"';
-                len +%= 1;
-                @memcpy(buf + len, value);
-                len +%= value.len;
-                buf[len] = '"';
-                len +%= 1;
+                ptr[0..11].* = "\": *const [".*;
+                ptr = ptr + 11;
+                ud64.value = value.len;
+                ptr = ptr + ud64.formatWriteBuf(ptr);
+                ptr[0..8].* = ":0]u8 = ".*;
+                ptr = ptr + 8;
+                ptr[0] = '"';
+                ptr = ptr + 1;
+                @memcpy(ptr, value);
+                ptr = ptr + value.len;
+                ptr[0] = '"';
+                ptr = ptr + 1;
             },
         }
-        @as(*[2]u8, @ptrCast(buf + len)).* = ";\n".*;
-        return len +% 2;
+        ptr[0..2].* = ";\n".*;
+        return @intFromPtr(ptr - @intFromPtr(buf)) +% 2;
     }
     pub fn formatWrite(cfg: Config, array: anytype) void {
         array.writeMany("pub const ");
@@ -169,7 +169,7 @@ pub const Config = struct {
                 len +%= 17 +% ud64.formatLength();
             },
             .Bool => |value| {
-                len +%= 9 +% if (value) 4 else 5;
+                len +%= 9 +% (5 -% @intFromBool(value));
             },
             .String => |value| {
                 ud64 = @bitCast(value.len);
