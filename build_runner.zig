@@ -56,6 +56,7 @@ pub const signal_handlers = .{
     .Trap = false,
     .SegmentationFault = false,
 };
+pub const want_stack_traces: bool = false;
 pub const trace: debug.Trace = .{
     .Error = false,
     .Fault = false,
