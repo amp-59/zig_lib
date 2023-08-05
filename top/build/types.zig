@@ -582,6 +582,14 @@ pub fn GenericBuildCommand(comptime BuildCommand: type) type {
 }
 pub fn GenericCommand(comptime Command: type) type {
     return struct {
+        const field_name: []const u8 = switch (Command) {
+            types.BuildCommand => "build",
+            types.FormatCommand => "format",
+            types.ArchiveCommand => "archive",
+            types.ObjcopyCommand => "objcopy",
+            types.TableGenCommand => "tblgen",
+            else => "unknown",
+        };
         const render_spec: fmt.RenderSpec = .{
             .infer_type_names = true,
             .forward = true,
@@ -630,8 +638,8 @@ pub fn GenericCommand(comptime Command: type) type {
                 )) {
                     @memcpy(ptr, node_name[0..node_name.len]);
                     ptr = ptr + node_name.len;
-                    const len: usize = 12 +% field.name.len;
-                    ptr[0..len].* = ("_build_cmd." ++ field.name ++ "=").*;
+                    const len: usize = 7 +% field_name.len +% field.name.len;
+                    ptr[0..len].* = ("_" ++ field_name ++ "_cmd." ++ field.name ++ "=").*;
                     ptr = ptr + len;
                     ptr = ptr + fmt.render(render_spec, @field(t_cmd, field.name)).formatWriteBuf(ptr);
                     ptr[0..2].* = ";\n".*;
