@@ -1913,31 +1913,31 @@ pub const SimpleAllocator = struct {
     pub inline fn create(allocator: *Allocator, comptime T: type) *T {
         @setRuntimeSafety(false);
         const ret_addr: u64 = allocator.allocateInternal(@sizeOf(T), @max(min_align_of, @alignOf(T)));
-        return @as(*T, @ptrFromInt(ret_addr));
+        return @ptrFromInt(ret_addr);
     }
-    pub inline fn allocate(allocator: *Allocator, comptime T: type, count: u64) []T {
+    pub inline fn allocate(allocator: *Allocator, comptime T: type, count: usize) []T {
         @setRuntimeSafety(false);
-        const ret_addr: u64 = allocator.allocateInternal(@sizeOf(T) *% count, @max(min_align_of, @alignOf(T)));
+        const ret_addr: usize = allocator.allocateInternal(@sizeOf(T) *% count, @max(min_align_of, @alignOf(T)));
         return @as([*]T, @ptrFromInt(ret_addr))[0..count];
     }
-    pub inline fn reallocate(allocator: *Allocator, comptime T: type, buf: []T, count: u64) []T {
+    pub inline fn reallocate(allocator: *Allocator, comptime T: type, buf: []T, count: usize) []T {
         @setRuntimeSafety(false);
-        const ret_addr: u64 = allocator.reallocateInternal(@intFromPtr(buf.ptr), buf.len *% @sizeOf(T), count *% @sizeOf(T), @max(min_align_of, @alignOf(T)));
+        const ret_addr: usize = allocator.reallocateInternal(@intFromPtr(buf.ptr), buf.len *% @sizeOf(T), count *% @sizeOf(T), @max(min_align_of, @alignOf(T)));
         return @as([*]T, @ptrFromInt(ret_addr))[0..count];
     }
-    pub inline fn createAligned(allocator: *Allocator, comptime T: type, comptime align_of: u64) *align(align_of) T {
+    pub inline fn createAligned(allocator: *Allocator, comptime T: type, comptime align_of: usize) *align(align_of) T {
         @setRuntimeSafety(false);
-        const ret_addr: u64 = allocator.allocateInternal(@sizeOf(T), align_of);
-        return @as(*align(align_of) T, @ptrFromInt(ret_addr));
+        const ret_addr: usize = allocator.allocateInternal(@sizeOf(T), align_of);
+        return @ptrFromInt(ret_addr);
     }
-    pub inline fn allocateAligned(allocator: *Allocator, comptime T: type, count: u64, comptime align_of: u64) []align(align_of) T {
+    pub inline fn allocateAligned(allocator: *Allocator, comptime T: type, count: usize, comptime align_of: usize) []align(align_of) T {
         @setRuntimeSafety(false);
-        const ret_addr: u64 = allocator.allocateInternal(@sizeOf(T) *% count, align_of);
+        const ret_addr: usize = allocator.allocateInternal(@sizeOf(T) *% count, align_of);
         return @as([*]align(align_of) T, @ptrFromInt(ret_addr))[0..count];
     }
-    pub inline fn reallocateAligned(allocator: *Allocator, comptime T: type, buf: []T, count: u64, comptime align_of: u64) []align(align_of) T {
+    pub inline fn reallocateAligned(allocator: *Allocator, comptime T: type, buf: []T, count: usize, comptime align_of: usize) []align(align_of) T {
         @setRuntimeSafety(false);
-        const ret_addr: u64 = allocator.reallocateInternal(@intFromPtr(buf.ptr), buf.len *% @sizeOf(T), count *% @sizeOf(T), align_of);
+        const ret_addr: usize = allocator.reallocateInternal(@intFromPtr(buf.ptr), buf.len *% @sizeOf(T), count *% @sizeOf(T), align_of);
         return @as([*]align(align_of) T, @ptrFromInt(ret_addr))[0..count];
     }
     pub inline fn destroy(allocator: *Allocator, comptime T: type, ptr: *T) void {
@@ -1955,7 +1955,7 @@ pub const SimpleAllocator = struct {
     pub inline fn discard(allocator: *Allocator) void {
         allocator.next = allocator.start;
     }
-    pub inline fn utility(allocator: *Allocator) u64 {
+    pub inline fn utility(allocator: *Allocator) usize {
         return allocator.next -% allocator.start;
     }
     const map_spec = .{
