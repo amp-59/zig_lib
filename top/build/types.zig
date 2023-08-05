@@ -580,6 +580,71 @@ pub fn GenericBuildCommand(comptime BuildCommand: type) type {
         }
     };
 }
+pub fn GenericCommand(comptime Command: type) type {
+    return struct {
+        const render_spec: fmt.RenderSpec = .{
+            .infer_type_names = true,
+            .forward = true,
+        };
+        pub fn indexOfCommonLeastDifference(allocator: *Allocator, buf: []*Command) usize {
+            var counts: []usize = allocator.allocate(usize, buf.len);
+            var l_idx: usize = 0;
+            while (l_idx != buf.len) : (l_idx +%= 1) {
+                var r_idx: usize = 0;
+                while (r_idx != buf.len) : (r_idx +%= 1) {
+                    if (l_idx != r_idx) {
+                        counts[l_idx] +%= fieldEditDistance(buf[l_idx], buf[r_idx]);
+                    }
+                }
+            }
+            var min: usize = ~@as(usize, 0);
+            var ret: usize = 0;
+            for (counts, 0..) |count, idx| {
+                if (count < min) {
+                    min = count;
+                    ret = idx;
+                }
+            }
+            return ret;
+        }
+        pub fn fieldEditDistance(s_cmd: *Command, t_cmd: *Command) usize {
+            var len: usize = 0;
+            inline for (@typeInfo(Command).Struct.fields) |field| {
+                if (!mem.testEqualMemory(
+                    field.type,
+                    @field(s_cmd, field.name),
+                    @field(t_cmd, field.name),
+                )) {
+                    len +%= 1;
+                }
+            }
+            return len;
+        }
+        pub fn writeFieldEditDistance(buf: [*]u8, node_name: []const u8, s_cmd: *Command, t_cmd: *Command, commit: bool) usize {
+            var ptr: [*]u8 = buf;
+            inline for (@typeInfo(Command).Struct.fields) |field| {
+                if (!mem.testEqualMemory(
+                    field.type,
+                    @field(s_cmd, field.name),
+                    @field(t_cmd, field.name),
+                )) {
+                    @memcpy(ptr, node_name[0..node_name.len]);
+                    ptr = ptr + node_name.len;
+                    const len: usize = 12 +% field.name.len;
+                    ptr[0..len].* = ("_build_cmd." ++ field.name ++ "=").*;
+                    ptr = ptr + len;
+                    ptr = ptr + fmt.render(render_spec, @field(t_cmd, field.name)).formatWriteBuf(ptr);
+                    ptr[0..2].* = ";\n".*;
+                    ptr = ptr + 2;
+                    if (commit) {
+                        @field(s_cmd, field.name) = @field(t_cmd, field.name);
+                    }
+                }
+            }
+            return @intFromPtr(ptr - @intFromPtr(buf));
+        }
+    };
+}
 fn Aggregate(comptime T: type) type {
     return struct {
         value: []const T,
