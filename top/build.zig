@@ -626,7 +626,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 makeRootDirectory(build.output_root_fd, name);
             }
             build.cmd_idx = 5;
-            build.task_idx = 5;
             build.error_count = 0;
         }
         fn checkDuplicateName(group: *Node, name: []const u8) void {
@@ -1078,6 +1077,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 return node.impl.args[0..node.impl.args_len];
             }
             fn taskArgs(allocator: *mem.SimpleAllocator, toplevel: *const Node, node: *Node, task: types.Task) [][*:0]u8 {
+                _ = toplevel;
                 @setRuntimeSafety(builder_spec.options.enable_safety);
                 if (do_build and task == .build) {
                     return makeArgPtrs(allocator, try meta.wrap(buildWrite(allocator, node.task.cmd.build, node.impl.paths[1..node.impl.paths_len])));
@@ -2204,6 +2204,29 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 ptr[0] = '\n';
                 debug.write(buf[0 .. @intFromPtr(ptr - @intFromPtr(&buf)) +% 1]);
             }
+            fn writeNodeNameFull(buf: [*]u8, node: *const Node) usize {
+                @setRuntimeSafety(builder_spec.options.enable_safety);
+                var ptr: [*]u8 = buf;
+                if (node != node.impl.nodes[0]) {
+                    ptr = ptr + writeNodeNameFull(ptr, node.impl.nodes[0]);
+                    if (ptr != buf) {
+                        ptr[0] = '.';
+                        ptr = ptr + 1;
+                    }
+                    @memcpy(ptr, node.name);
+                    ptr = ptr + node.name.len;
+                }
+                return @intFromPtr(ptr) -% @intFromPtr(buf);
+            }
+            fn lengthNodeNameFull(node: *const Node) usize {
+                @setRuntimeSafety(builder_spec.options.enable_safety);
+                var len: usize = 0;
+                if (node != node.impl.nodes[0]) {
+                    len +%= lengthNodeNameFull(node.impl.nodes[0]);
+                    len +%= @intFromBool(len != 0) +% node.name.len;
+                }
+                return len;
+            }
             fn writeNodeNameRelative(buf: [*]u8, toplevel: *const Node, node: *const Node) usize {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
                 var ptr: [*]u8 = buf;
@@ -2246,8 +2269,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 };
                 @memcpy(ptr, about_s);
                 ptr = ptr + about_s.len;
-                @memcpy(ptr, node.name);
-                ptr = ptr + node.name.len;
+                ptr = ptr + writeNodeNameFull(ptr, node);
                 ptr[0..2].* = ", ".*;
                 ptr = ptr + 2;
                 if (task == .build) {
@@ -2831,3 +2853,4 @@ fn libraryRoot() [:0]const u8 {
         return pathname[0..idx] ++ [0:0]u8{};
     }
 }
+pub const parse = @import("./build/parsers.zig");
