@@ -91,8 +91,6 @@ pub const BuilderSpec = struct {
         /// Include arena/thread index in task summaries and change of state
         /// notices.
         show_arena_index: bool = true,
-        /// Enable assertions to ensure correct usage.
-        enable_usage_validation: bool = false,
         /// Enable runtime safety.
         enable_safety: bool = false,
         /// Enable advanced builder features, such as project-wide comptime
@@ -497,9 +495,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         }
         fn addArg(node: *Node, allocator: *mem.SimpleAllocator) *[*:0]u8 {
             @setRuntimeSafety(builder_spec.options.enable_safety);
-            if (builder_spec.options.enable_usage_validation) {
-                debug.assert(node.tag == .worker and (node.task.tag == .build or node.task.tag == .run));
-            }
             const size_of: comptime_int = @sizeOf([*:0]u8);
             const addr_buf: *u64 = @ptrCast(&node.impl.args);
             const ret: *[*:0]u8 = @ptrFromInt(allocator.addGenericSize(Size, size_of, //
@@ -511,9 +506,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         /// `node` must be `build-exe` worker.
         pub fn addConfig(node: *Node, allocator: *mem.SimpleAllocator, name: [:0]const u8, value: Config.Value) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
-            if (builder_spec.options.enable_usage_validation) {
-                debug.assert(node.tag == .worker and node.task.tag == .build);
-            }
             const size_of: comptime_int = @sizeOf(Config);
             const addr_buf: *u64 = @ptrCast(&node.impl.cfgs);
             const ptr: *Config = @ptrFromInt(allocator.addGenericSize(Size, size_of, //
