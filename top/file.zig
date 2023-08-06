@@ -3261,7 +3261,7 @@ pub const about = struct {
         }
         return @intFromPtr(ptr) -% @intFromPtr(buf);
     }
-    fn writeArgs(buf: [*]u8, pathname: [:0]const u8, args: []const [*:0]const u8) usize {
+    pub fn writeArgs(buf: [*]u8, pathname: [:0]const u8, args: []const [*:0]const u8) usize {
         var ptr: [*]u8 = buf;
         var idx: usize = 0;
         if (mach.testEqualMany8(
