@@ -34,8 +34,13 @@ pub usingnamespace struct {
     /// File descriptor for directory containing build task output files.
     pub var output_root_fd: u64 = undefined;
     var cmd_idx: usize = undefined;
-    var task_idx: usize = undefined;
     var error_count: u8 = undefined;
+
+    /// Parsed to modify the task info = args[cmd_args_idx..run_args_idx]
+    var cmd_args: [][*:0]u8 = undefined;
+    /// Appended to (currently) any run command = args[run_args_idx..]
+    var run_args: [][*:0]u8 = undefined;
+
     /// File system path to the project root of zig_lib
     pub const root: [:0]const u8 = libraryRoot();
 };
@@ -92,7 +97,7 @@ pub const BuilderSpec = struct {
         /// notices.
         show_arena_index: bool = true,
         /// Enable runtime safety.
-        enable_safety: bool = false,
+        enable_safety: bool = builtin.is_safe,
         /// Enable advanced builder features, such as project-wide comptime
         /// constants and caching special modules.
         enable_build_configuration: bool = true,
