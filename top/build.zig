@@ -1481,47 +1481,17 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             }
             return null;
         }
-        pub fn processCommandsInternal(
-            address_space: *AddressSpace,
-            thread_space: *ThreadSpace,
-            allocator: *mem.SimpleAllocator,
-            toplevel: *Node,
-            node: *Node,
-            maybe_task: ?types.Task,
-        ) ?bool {
-            @setRuntimeSafety(builder_spec.options.enable_safety);
-            var name: [:0]const u8 = mem.terminate(build.args[build.cmd_idx], 0);
-            if (mem.testEqualString(name, node.name)) {
-                toplevel.impl.args_len = build.cmd_idx +% 1;
-                build.task_idx = build.cmd_idx;
-                while (build.task_idx != build.args.len) : (build.task_idx +%= 1) {
-                    name = mem.terminate(build.args[build.task_idx], 0);
-                    if (mem.testEqualString(name, "--")) {
-                        build.task_idx +%= 1;
-                        break;
-                    }
-                }
-                return executeToplevel(address_space, thread_space, allocator, toplevel, node, maybe_task);
-            } else if (node.tag == .group) {
-                for (node.impl.nodes[1..node.impl.nodes_len]) |sub_node| {
-                    if (processCommandsInternal(address_space, thread_space, allocator, toplevel, sub_node, maybe_task)) |result| {
-                        return result;
-                    }
-                }
-            }
-            return null;
-        }
         pub fn processCommands(
             address_space: *AddressSpace,
             thread_space: *ThreadSpace,
             allocator: *mem.SimpleAllocator,
-            node: *Node,
+            toplevel: *Node,
         ) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             defer build.cmd_idx = 5;
             var maybe_task: ?types.Task = null;
             lo: while (build.cmd_idx != build.args.len) : (build.cmd_idx +%= 1) {
-                const name: [:0]const u8 = mem.terminate(build.args[build.cmd_idx], 0);
+                var name: [:0]const u8 = mem.terminate(build.args[build.cmd_idx], 0);
                 for (types.Task.list) |task| {
                     if (mem.testEqualString(name, @tagName(task))) {
                         maybe_task = task;
@@ -1529,20 +1499,31 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     }
                 }
                 if (mem.testEqualString(builder_spec.options.names.single_threaded_command, name)) {
-                    node.flags.group.is_single_threaded = true;
+                    toplevel.flags.group.is_single_threaded = true;
                     continue :lo;
                 }
                 if (mem.testEqualString(builder_spec.options.names.toplevel_list_command, name)) {
-                    return about.toplevelCommandNotice(allocator, node, true);
+                    return about.toplevelCommandNotice(allocator, toplevel, true);
                 }
-                if (processCommandsInternal(address_space, thread_space, allocator, node, node, maybe_task)) |result| {
-                    return if (!result) {
+                if (resolveNode(toplevel, name)) |node| {
+                    toplevel.impl.args_len = build.cmd_idx +% 1;
+                    build.task_idx = build.cmd_idx;
+                    while (build.task_idx != build.args.len) : (build.task_idx +%= 1) {
+                        name = mem.terminate(build.args[build.task_idx], 0);
+                        if (mem.testEqualString(name, "--")) {
+                            build.task_idx +%= 1;
+                            break;
+                        }
+                    }
+                    if (!executeToplevel(address_space, thread_space, allocator, toplevel, node, maybe_task)) {
                         proc.exitError(error.UnfinishedRequest, 2);
-                    };
+                    }
+                    break;
                 }
+            } else {
+                const name: [:0]const u8 = if (build.args.len == 5) "null" else mem.terminate(build.args[5], 0);
+                proc.exitErrorFault(error.NotACommand, name, 2);
             }
-            const name: [:0]const u8 = if (build.args.len == 5) "null" else mem.terminate(build.args[5], 0);
-            proc.exitErrorFault(error.NotACommand, name, 2);
         }
         const update_exit_message: [2]types.Message.ClientHeader = .{
             .{ .tag = .update, .bytes_len = 0 },
