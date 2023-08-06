@@ -2171,6 +2171,29 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 ptr[0] = '\n';
                 debug.write(buf[0 .. @intFromPtr(ptr - @intFromPtr(&buf)) +% 1]);
             }
+            fn writeNodeNameRelative(buf: [*]u8, toplevel: *const Node, node: *const Node) usize {
+                @setRuntimeSafety(builder_spec.options.enable_safety);
+                var ptr: [*]u8 = buf;
+                if (node != toplevel) {
+                    ptr = ptr + writeNodeNameRelative(ptr, node.impl.nodes[0]);
+                    if (ptr != buf) {
+                        ptr[0] = '.';
+                        ptr = ptr + 1;
+                    }
+                    @memcpy(ptr, node.name);
+                    ptr = ptr + node.name.len;
+                }
+                return @intFromPtr(ptr) -% @intFromPtr(buf);
+            }
+            fn lengthNodeNameRelative(toplevel: *const Node, node: *const Node) usize {
+                @setRuntimeSafety(builder_spec.options.enable_safety);
+                var len: usize = 0;
+                if (node != toplevel) {
+                    len +%= lengthNodeNameRelative(node.impl.nodes[0]);
+                    len +%= @intFromBool(len != 0) +% node.name.len;
+                }
+                return len;
+            }
             fn taskNotice(node: *Node, task: types.Task, arena_index: AddressSpace.Index, old_size: u64, new_size: u64, job: *types.JobInfo) void {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
                 const diff_size: u64 = @max(new_size, old_size) -% @min(new_size, old_size);
