@@ -1092,11 +1092,13 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     return makeArgPtrs(allocator, try meta.wrap(objcopyWrite(allocator, node.task.cmd.objcopy, node.impl.paths[1])));
                 }
                 if (task == .run) {
-                    return runWrite(allocator, node, build.args[toplevel.impl.args_len..toplevel.impl.args_max_len]);
+                    return runWrite(allocator, node, build.run_args);
                 }
                 proc.exitError(error.InvalidTask, 2);
             }
             fn executeCommandInternal(toplevel: *const Node, allocator: *mem.SimpleAllocator, node: *Node, task: types.Task, arena_index: AddressSpace.Index) bool {
+                const save: usize = allocator.next;
+                defer allocator.next = save;
                 @setRuntimeSafety(builder_spec.options.enable_safety);
                 const job: *types.JobInfo = @ptrFromInt(allocator.allocateRaw(
                     @sizeOf(types.JobInfo),
@@ -1486,6 +1488,22 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             }
             return null;
         }
+        fn splitArguments(cmd_args_idx: usize) void {
+            @setRuntimeSafety(false);
+            var run_args_idx: usize = cmd_args_idx;
+            while (run_args_idx != build.args.len) : (run_args_idx +%= 1) {
+                if (mem.testEqualString("--", mem.terminate(build.args[run_args_idx], 0))) {
+                    build.cmd_args = build.args[cmd_args_idx..run_args_idx];
+                    run_args_idx +%= 1;
+                    build.run_args = build.args[run_args_idx..];
+                    break;
+                }
+            } else {
+                build.cmd_args = build.args[cmd_args_idx..];
+                build.run_args = build.args[cmd_args_idx..];
+            }
+            about.commandLineNotice();
+        }
         pub fn processCommands(
             address_space: *AddressSpace,
             thread_space: *ThreadSpace,
@@ -1493,10 +1511,11 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             toplevel: *Node,
         ) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
-            defer build.cmd_idx = 5;
             var maybe_task: ?types.Task = null;
-            lo: while (build.cmd_idx != build.args.len) : (build.cmd_idx +%= 1) {
-                var name: [:0]const u8 = mem.terminate(build.args[build.cmd_idx], 0);
+            var run_args_idx: usize = 5;
+            var cmd_args_idx: usize = 5;
+            lo: while (cmd_args_idx != build.args.len) : (cmd_args_idx +%= 1) {
+                var name: [:0]const u8 = mem.terminate(build.args[cmd_args_idx], 0);
                 for (types.Task.list) |task| {
                     if (mem.testEqualString(name, @tagName(task))) {
                         maybe_task = task;
@@ -1511,12 +1530,15 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     return about.toplevelCommandNotice(allocator, toplevel, true);
                 }
                 if (resolveNode(toplevel, name)) |node| {
-                    toplevel.impl.args_len = build.cmd_idx +% 1;
-                    build.task_idx = build.cmd_idx;
-                    while (build.task_idx != build.args.len) : (build.task_idx +%= 1) {
-                        name = mem.terminate(build.args[build.task_idx], 0);
+                    toplevel.impl.args_len = cmd_args_idx +% 1;
+
+                    splitArguments(cmd_args_idx +% 1);
+
+                    run_args_idx = cmd_args_idx;
+                    while (run_args_idx != build.args.len) : (run_args_idx +%= 1) {
+                        name = mem.terminate(build.args[run_args_idx], 0);
                         if (mem.testEqualString(name, "--")) {
-                            build.task_idx +%= 1;
+                            run_args_idx +%= 1;
                             break;
                         }
                     }
@@ -1972,6 +1994,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             const tab = .{
                 .ar_s = fmt.about("ar"),
                 .run_s = fmt.about("run"),
+                .cmd_args_s = fmt.about("cmd-args"),
+                .run_args_s = fmt.about("run-args"),
                 .format_s = fmt.about("fmt"),
                 .add_s = fmt.about("add"),
                 .build_exe_s = fmt.about("build-exe"),
@@ -2743,6 +2767,25 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     len +%= 4;
                 }
                 return len;
+            }
+            fn commandLineNotice() void {
+                var buf: [4096]u8 = undefined;
+                var ptr: [*]u8 = &buf;
+                if (build.cmd_args.len != 0) {
+                    ptr[0..tab.cmd_args_s.len].* = tab.cmd_args_s.*;
+                    ptr = ptr + tab.cmd_args_s.len;
+                    ptr = ptr + file.about.writeArgs(ptr, &.{}, build.cmd_args);
+                    ptr[0] = '\n';
+                    ptr = ptr + 1;
+                }
+                if (build.run_args.len != 0) {
+                    ptr[0..tab.run_args_s.len].* = tab.run_args_s.*;
+                    ptr = ptr + tab.run_args_s.len;
+                    ptr = ptr + file.about.writeArgs(ptr, &.{}, build.run_args);
+                    ptr[0] = '\n';
+                    ptr = ptr + 1;
+                }
+                debug.write(buf[0..@intFromPtr(ptr - @intFromPtr(&buf))]);
             }
             fn toplevelCommandNotice(allocator: *mem.SimpleAllocator, toplevel: *const Node, show_deps: bool) void {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
