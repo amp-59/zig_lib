@@ -768,7 +768,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             archive_path.addName(allocator).* = build.build_root;
             archive_path.addName(allocator).* = archiveRelative(allocator, node.name);
             for (deps) |dep| {
-                node.dependOnObject(allocator, dep);
+                node.dependOn(allocator, dep);
             }
             initializeCommand(allocator, toplevel, node);
             if (builder_spec.options.show_task_creation) about.addNotice(node);
@@ -888,7 +888,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                         builder_spec.options.add_run_to_executables)
                     {
                         node.task.lock = exe_lock;
-                        node.dependOnSelfExe(allocator);
+                        node.dependOnFull(allocator, .run, node, .build);
                     }
                     if (testExtension(
                         node.impl.paths[1].relative(),
@@ -933,7 +933,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                         {
                             if (node.task.cmd.build.kind == .exe) {
                                 node.addConfig(allocator, "have_stack_traces", .{ .Bool = true });
-                                node.dependOnObject(allocator, special.trace);
+                                node.dependOn(allocator, special.trace);
                             }
                         }
                     }
@@ -956,31 +956,29 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         pub fn addBuildAnon(toplevel: *Node, allocator: *mem.SimpleAllocator, build_cmd: types.BuildCommand, root: [:0]const u8) *Node {
             return toplevel.addBuild(allocator, build_cmd, makeCommandName(allocator, root), root);
         }
+        fn dependOnExtra(node: *Node, allocator: *mem.SimpleAllocator, task: types.Task, on_node: *Node, on_task: types.Task) void {
+            if (task == .run) {
+                if (on_task == .build and node == on_node) {
+                    node.addArg(allocator).* = node.impl.paths[0].concatenate(allocator);
+                }
+            }
+            if (task == .build) {
+                if (on_task == .archive) {
+                    node.addPath(allocator).* = on_node.impl.paths[0];
+                }
+                if (on_task == .build and
+                    on_node.task.cmd.build.kind == .obj)
+                {
+                    node.addPath(allocator).* = on_node.impl.paths[0];
+                }
+            }
+        }
         pub fn dependOn(node: *Node, allocator: *mem.SimpleAllocator, on_node: *Node) void {
-            node.addDep(allocator).* = .{ .task = node.task.tag, .on_node = on_node, .on_task = on_node.task.tag, .on_state = .finished };
+            node.dependOnFull(allocator, node.task.tag, on_node, on_node.task.tag);
         }
-        /// Must be worker.(archive|build)
-        pub fn dependOnObject(node: *Node, allocator: *mem.SimpleAllocator, on_node: *Node) void {
-            node.addPath(allocator).* = on_node.impl.paths[0];
-            node.addDep(allocator).* = .{ .task = node.task.tag, .on_node = on_node, .on_task = .build, .on_state = .finished };
-        }
-        /// Must be worker.archive
-        pub fn dependOnArchive(node: *Node, allocator: *mem.SimpleAllocator, on_node: *Node) void {
-            node.addPath(allocator).* = on_node.impl.paths[0];
-            node.addDep(allocator).* = .{ .task = node.task.tag, .on_node = on_node, .on_task = .archive, .on_state = .finished };
-        }
-        /// Must be worker.build
-        fn dependOnSelfExe(node: *Node, allocator: *mem.SimpleAllocator) void {
-            node.addArg(allocator).* = node.impl.paths[0].concatenate(allocator);
-            node.addDep(allocator).* = .{ .task = .run, .on_node = node, .on_task = .build, .on_state = .finished };
-        }
-        pub fn dependOnFull(node: *Node, allocator: *mem.SimpleAllocator, task: ?types.Task, on_node: *Node, on_task: ?types.Task) void {
-            node.addDep(allocator).* = .{
-                .task = task orelse node.task.tag,
-                .on_node = on_node,
-                .on_task = on_task orelse on_node.task.tag,
-                .on_state = .finished,
-            };
+        pub fn dependOnFull(node: *Node, allocator: *mem.SimpleAllocator, task: types.Task, on_node: *Node, on_task: types.Task) void {
+            node.dependOnExtra(allocator, task, on_node, on_task);
+            node.addDep(allocator).* = .{ .task = task, .on_node = on_node, .on_task = on_task, .on_state = .finished };
         }
         pub const impl = struct {
             fn install(src_pathname: [:0]u8, dest_pathname: [:0]const u8) void {
@@ -1051,6 +1049,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 const max_len: usize = builder_spec.options.max_cmdline_len orelse cmd.formatLength(build.zig_exe, obj_paths);
                 const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
                 const len: usize = cmd.formatWriteBuf(build.zig_exe, obj_paths, buf);
+                buf[len] = 0;
                 return buf[0..len :0];
             }
             fn objcopyWrite(allocator: *mem.SimpleAllocator, cmd: *types.ObjcopyCommand, obj_path: types.Path) [:0]u8 {
@@ -1058,6 +1057,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 const max_len: usize = builder_spec.options.max_cmdline_len orelse cmd.formatLength(build.zig_exe, obj_path);
                 const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
                 const len: usize = cmd.formatWriteBuf(build.zig_exe, obj_path, buf);
+                buf[len] = 0;
                 return buf[0..len :0];
             }
             fn archiveWrite(allocator: *mem.SimpleAllocator, cmd: *types.ArchiveCommand, obj_paths: []const types.Path) [:0]u8 {
@@ -1065,6 +1065,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 const max_len: usize = builder_spec.options.max_cmdline_len orelse cmd.formatLength(build.zig_exe, obj_paths);
                 const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
                 const len: usize = cmd.formatWriteBuf(build.zig_exe, obj_paths, buf);
+                buf[len] = 0;
                 return buf[0..len :0];
             }
             fn formatWrite(allocator: *mem.SimpleAllocator, cmd: *types.FormatCommand, root_path: types.Path) [:0]u8 {
@@ -1072,6 +1073,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 const max_len: usize = builder_spec.options.max_cmdline_len orelse cmd.formatLength(build.zig_exe, root_path);
                 const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
                 const len: usize = cmd.formatWriteBuf(build.zig_exe, root_path, buf);
+                buf[len] = 0;
                 return buf[0..len :0];
             }
             fn runWrite(allocator: *mem.SimpleAllocator, node: *Node, args: [][*:0]u8) [][*:0]u8 {
