@@ -1449,6 +1449,38 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 else => &[_][]const u8{ auxiliary_prefix, name, builder_spec.options.extensions.@"asm" },
             });
         }
+        fn resolveNode(group: *Node, name: []const u8) ?*Node {
+            @setRuntimeSafety(false);
+            var idx: usize = 0;
+            while (idx != name.len) : (idx +%= 1) {
+                if (name[idx] == '.') {
+                    break;
+                }
+            } else {
+                idx = 1;
+                while (idx != group.impl.nodes_len) : (idx +%= 1) {
+                    if (mem.testEqualString(name, group.impl.nodes[idx].name)) {
+                        return group.impl.nodes[idx];
+                    }
+                }
+                return null;
+            }
+            const group_name: []const u8 = name[0..idx];
+            idx +%= 1;
+            if (idx == name.len) {
+                return null;
+            }
+            const sub_name: []const u8 = name[idx..];
+            idx = 1;
+            while (idx != group.impl.nodes_len) : (idx +%= 1) {
+                if (group.impl.nodes[idx].tag == .group and
+                    mem.testEqualString(group_name, group.impl.nodes[idx].name))
+                {
+                    return resolveNode(group.impl.nodes[idx], sub_name);
+                }
+            }
+            return null;
+        }
         pub fn processCommandsInternal(
             address_space: *AddressSpace,
             thread_space: *ThreadSpace,
