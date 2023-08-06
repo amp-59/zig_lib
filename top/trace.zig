@@ -329,7 +329,7 @@ fn printMessage(buf: [*]u8, addr_info: *dwarf.DwarfInfo.AddressInfo) void {
             @as(*[4]u8, @ptrCast(tmp[len..].ptr)).* = "\x1b[1m".*;
             len +%= 4;
         }
-        len +%= fmt.ud64(addr_info.count).formatWriteBuf(tmp[len..].ptr);
+        len +%= fmt.ud64(addr_info.count +% 1).formatWriteBuf(tmp[len..].ptr);
         @as(*[12]u8, @ptrCast(tmp[len..].ptr)).* = "\x1b[0m times) ".*;
         len +%= 12;
         @memcpy(tmp[len..].ptr, msg[idx..]);
