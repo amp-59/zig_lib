@@ -807,6 +807,18 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             if (builder_spec.options.show_task_creation) about.addNotice(node);
             return node;
         }
+        /// Initialize a new group command with default task.
+        pub fn addGroupWithTask(
+            group: *Node,
+            allocator: *mem.SimpleAllocator,
+            name: []const u8,
+            task: types.Task,
+        ) *Node {
+            @setRuntimeSafety(builder_spec.options.enable_safety);
+            const ret: *Node = group.addGroup(allocator, name);
+            ret.task.tag = task;
+            return ret;
+        }
         /// Initialize a new group command with description.
         pub fn addGroupWithDescr(
             group: *Node,
@@ -816,6 +828,20 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         ) *Node {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             const ret: *Node = group.addGroup(allocator, name);
+            ret.descr = descr;
+            return ret;
+        }
+        /// Initialize a new `zig build-*` command with description.
+        pub fn addBuildWithDescr(
+            group: *Node,
+            allocator: *mem.SimpleAllocator,
+            build_cmd: types.BuildCommand,
+            name: []const u8,
+            root: []const u8,
+            descr: [:0]const u8,
+        ) *Node {
+            @setRuntimeSafety(builder_spec.options.enable_safety);
+            const ret: *Node = group.addBuild(allocator, build_cmd, name, root);
             ret.descr = descr;
             return ret;
         }
@@ -844,20 +870,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         ) *Node {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             const ret: *Node = group.addArchive(allocator, archive_cmd, name, deps);
-            ret.descr = descr;
-            return ret;
-        }
-        /// Initialize a new `zig build-*` command with description.
-        pub fn addBuildWithDescr(
-            group: *Node,
-            allocator: *mem.SimpleAllocator,
-            build_cmd: types.BuildCommand,
-            name: []const u8,
-            root: []const u8,
-            descr: [:0]const u8,
-        ) *Node {
-            @setRuntimeSafety(builder_spec.options.enable_safety);
-            const ret: *Node = group.addBuild(allocator, build_cmd, name, root);
             ret.descr = descr;
             return ret;
         }
