@@ -937,7 +937,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             node.flags.do_update = false;
             if (node.tag == .worker) {
-                if (node.task.lock.get(.run) != .null) {
+                if (node.task.lock.get(.run) != .null and node.task.lock.int().* != run_lock.int().*) {
                     node.dependOnFull(allocator, .run, special.parse, .build);
                 }
                 if (node.task.tag == .build) {
@@ -1486,7 +1486,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 else => &[_][]const u8{ auxiliary_prefix, name, builder_spec.options.extensions.@"asm" },
             });
         }
-        fn resolveNode(group: *Node, name: []const u8) ?*Node {
+        pub fn find(group: *Node, name: []const u8) ?*Node {
             @setRuntimeSafety(false);
             var idx: usize = 0;
             while (idx != name.len) : (idx +%= 1) {
@@ -1513,7 +1513,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 if (group.impl.nodes[idx].tag == .group and
                     mem.testEqualString(group_name, group.impl.nodes[idx].name))
                 {
-                    return resolveNode(group.impl.nodes[idx], sub_name);
+                    return find(group.impl.nodes[idx], sub_name);
                 }
             }
             return null;
@@ -1532,7 +1532,9 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 build.cmd_args = build.args[cmd_args_idx..];
                 build.run_args = build.args[cmd_args_idx..];
             }
-            about.commandLineNotice();
+            if (builder_spec.options.show_command_lines) {
+                about.commandLineNotice();
+            }
         }
         pub fn processCommands(
             address_space: *AddressSpace,
@@ -1542,7 +1544,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         ) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             var maybe_task: ?types.Task = null;
-            var run_args_idx: usize = 5;
             var cmd_args_idx: usize = 5;
             lo: while (cmd_args_idx != build.args.len) : (cmd_args_idx +%= 1) {
                 var name: [:0]const u8 = mem.terminate(build.args[cmd_args_idx], 0);
