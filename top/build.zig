@@ -91,6 +91,8 @@ pub const BuilderSpec = struct {
         show_task_creation: bool = false,
         /// Enables logging for tasks waiting on dependencies.
         show_waiting_tasks: bool = false,
+        /// Show command line arguments for task commands and run commands.
+        show_command_lines: bool = false,
         /// Enables logging for build job statistics.
         show_stats: bool = true,
         /// Include arena/thread index in task summaries and change of state
@@ -389,7 +391,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         pub const special = struct {
             var trace: *Node = undefined;
             var parse: *Node = undefined;
-            var fmt: *Node = undefined;
+            pub var fmt: *Node = undefined;
             var parsers: build.ParseCommand = undefined;
         };
         pub const Archive = struct {
@@ -580,7 +582,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 node.flags.build.do_configure = false;
                 special.parse = node;
             }
-            if (return) {}
             if (builder_spec.options.special.buildfmt_ar) |ar_cmd| {
                 const build_cmd: build.BuildCommand = builder_spec.options.special.buildfmt orelse .{};
                 const nodes: []const *Node = &.{
