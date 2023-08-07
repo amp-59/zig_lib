@@ -110,8 +110,9 @@ pub fn DiscreteBitSet(comptime elements: u16, comptime value_type: type, comptim
 }
 fn ThreadSafeSetBoolInt(comptime elements: u16, comptime index_type: type) type {
     return extern struct {
-        bytes: [elements]u8 align(4) = builtin.zero([elements]u8),
+        bytes: [elements]u8 align(8) = builtin.zero([elements]u8),
         pub const SafeSet: type = @This();
+        const Int = @Type(.{ .Int = .{ .bits = 8 *% elements, .signedness = .unsigned } });
         const mutexes: comptime_int = @divExact(@sizeOf(@This()), 4);
         pub fn get(safe_set: *const SafeSet, index: index_type) bool {
             return safe_set.bytes[index] != 0;
@@ -123,20 +124,28 @@ fn ThreadSafeSetBoolInt(comptime elements: u16, comptime index_type: type) type 
             safe_set.bytes[index] = 0;
         }
         pub inline fn atomicSet(safe_set: *SafeSet, index: index_type) bool {
+            @setRuntimeSafety(false);
             return @cmpxchgStrong(u8, &safe_set.bytes[index], 0, 255, .SeqCst, .SeqCst) == null;
         }
         pub inline fn atomicUnset(safe_set: *SafeSet, index: index_type) bool {
+            @setRuntimeSafety(false);
             return @cmpxchgStrong(u8, &safe_set.bytes[index], 255, 0, .SeqCst, .SeqCst) == null;
         }
         pub fn mutex(safe_set: *SafeSet, index: index_type) *u32 {
+            @setRuntimeSafety(false);
             return @as(*u32, @ptrFromInt(mach.alignB64(@intFromPtr(&safe_set.bytes[index]), 4)));
+        }
+        pub fn int(safe_set: *const SafeSet) *const Int {
+            @setRuntimeSafety(false);
+            return @ptrCast(safe_set);
         }
     };
 }
 fn ThreadSafeSetBoolEnum(comptime elements: u16, comptime index_type: type) type {
     return extern struct {
-        bytes: [elements]u8 align(4) = builtin.zero([elements]u8),
+        bytes: [elements]u8 align(8) = builtin.zero([elements]u8),
         pub const SafeSet: type = @This();
+        const Int = @Type(.{ .Int = .{ .bits = 8 *% elements, .signedness = .unsigned } });
         const mutexes: comptime_int = @divExact(@sizeOf(@This()), 4);
         pub fn get(safe_set: *const SafeSet, index: index_type) bool {
             return safe_set.bytes[@intFromEnum(index)] != 0;
@@ -156,12 +165,16 @@ fn ThreadSafeSetBoolEnum(comptime elements: u16, comptime index_type: type) type
         pub fn mutex(safe_set: *SafeSet, index: index_type) *u32 {
             return @as(*u32, @ptrFromInt(mach.alignB64(@intFromPtr(&safe_set.bytes[@intFromEnum(index)]), 4)));
         }
+        pub fn int(safe_set: *const SafeSet) *const Int {
+            return @ptrCast(safe_set);
+        }
     };
 }
 fn ThreadSafeSetEnumInt(comptime elements: u16, comptime value_type: type, comptime index_type: type) type {
     return extern struct {
-        bytes: [elements]value_type align(4) = builtin.zero([elements]value_type),
+        bytes: [elements]value_type align(8) = builtin.zero([elements]value_type),
         pub const SafeSet: type = @This();
+        const Int = @Type(.{ .Int = .{ .bits = 8 *% elements, .signedness = .unsigned } });
         const mutexes: comptime_int = @divExact(@sizeOf(@This()), 4);
         pub fn get(safe_set: *const SafeSet, index: index_type) value_type {
             return safe_set.bytes[index];
@@ -175,12 +188,16 @@ fn ThreadSafeSetEnumInt(comptime elements: u16, comptime value_type: type, compt
         pub fn mutex(safe_set: *SafeSet, index: index_type) *u32 {
             return @as(*u32, @ptrFromInt(mach.alignB64(@intFromPtr(&safe_set.bytes[index]), 4)));
         }
+        pub fn int(safe_set: *const SafeSet) *const Int {
+            return @ptrCast(safe_set);
+        }
     };
 }
 fn ThreadSafeSetEnumEnum(comptime elements: u16, comptime value_type: type, comptime index_type: type) type {
     return extern struct {
-        bytes: [elements]value_type align(4) = builtin.zero([elements]value_type),
+        bytes: [elements]value_type align(8) = builtin.zero([elements]value_type),
         pub const SafeSet: type = @This();
+        const Int = @Type(.{ .Int = .{ .bits = 8 *% elements, .signedness = .unsigned } });
         const mutexes: comptime_int = @divExact(@sizeOf(@This()), 4);
         pub fn get(safe_set: *const SafeSet, index: index_type) value_type {
             return safe_set.bytes[@intFromEnum(index)];
@@ -194,10 +211,16 @@ fn ThreadSafeSetEnumEnum(comptime elements: u16, comptime value_type: type, comp
             return ret;
         }
         pub fn atomicExchange(safe_set: *SafeSet, index: index_type, if_state: value_type, to_state: value_type) callconv(.C) bool {
+            @setRuntimeSafety(false);
             return @cmpxchgStrong(value_type, &safe_set.bytes[@intFromEnum(index)], if_state, to_state, .SeqCst, .SeqCst) == null;
         }
         pub fn mutex(safe_set: *SafeSet, index: index_type) *u32 {
+            @setRuntimeSafety(false);
             return @as(*u32, @ptrFromInt(mach.alignB64(@intFromPtr(&safe_set.bytes[@intFromEnum(index)]), 4)));
+        }
+        pub fn int(safe_set: *const SafeSet) *const Int {
+            @setRuntimeSafety(false);
+            return @ptrCast(safe_set);
         }
     };
 }
