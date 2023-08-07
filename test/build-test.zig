@@ -80,7 +80,7 @@ fn buildMain(allocator: *build.Allocator, toplevel: *Node) !void {
         const x_root = "f_" ++ x_s ++ ".zig";
         const x_node: *Node = toplevel.addBuild(allocator, build_obj_cmd, x_s, "test/stress/" ++ x_root);
         x_node.flags.is_hidden = true;
-        node.dependOnObject(allocator, x_node);
+        node.dependOn(allocator, x_node);
         try gen.truncateFileAt(.{ .return_type = void }, stress_dir_fd, x_root, text ++ "export fn func_" ++ x_s ++ "() void {}");
         inline for (0..10) |y| {
             const y_s = x_s ++ comptime fmt.cx(y);
@@ -92,8 +92,8 @@ fn buildMain(allocator: *build.Allocator, toplevel: *Node) !void {
             try gen.truncateFileAt(.{ .return_type = void }, stress_dir_fd, y_root_c, "void c_func_" ++ y_s ++ "() {}");
             y_node.flags.is_hidden = true;
             y_node_c.flags.is_hidden = true;
-            x_node.dependOnObject(allocator, y_node);
-            x_node.dependOnObject(allocator, y_node_c);
+            x_node.dependOn(allocator, y_node);
+            x_node.dependOn(allocator, y_node_c);
             inline for (0..10) |z| {
                 const z_s = y_s ++ comptime fmt.cx(z);
                 const z_root = "f_" ++ z_s ++ ".zig";
@@ -104,8 +104,8 @@ fn buildMain(allocator: *build.Allocator, toplevel: *Node) !void {
                 try gen.truncateFileAt(.{ .return_type = void }, stress_dir_fd, z_root_c, "void c_func_" ++ z_s ++ "() {}");
                 z_node.flags.is_hidden = true;
                 z_node_c.flags.is_hidden = true;
-                y_node.dependOnObject(allocator, z_node);
-                y_node.dependOnObject(allocator, z_node_c);
+                y_node.dependOn(allocator, z_node);
+                y_node.dependOn(allocator, z_node_c);
             }
         }
     }
