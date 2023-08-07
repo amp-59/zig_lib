@@ -195,29 +195,29 @@ fn writeExtendedSourceLocation(
     src: dwarf.SourceLocation,
 ) u64 {
     @setRuntimeSafety(builtin.is_safe);
-    var len: u64 = src.formatWriteBuf(buf);
-    @as(*[2]u8, @ptrCast(buf + len)).* = ": ".*;
-    len +%= 2;
-    len +%= fmt.ux64(addr).formatWriteBuf(buf + len);
+    var ptr: [*]u8 = buf + src.formatWriteBuf(buf);
+    ptr[0..2].* = ": ".*;
+    ptr = ptr + 2;
+    ptr = ptr + fmt.ux64(addr).formatWriteBuf(ptr);
     if (dwarf_info.getSymbolName(addr)) |fn_name| {
-        @as(*[4]u8, @ptrCast(buf + len)).* = " in ".*;
-        len +%= 4;
-        @memcpy(buf + len, fn_name);
-        len +%= fn_name.len;
+        ptr[0..4].* = " in ".*;
+        ptr = ptr + 4;
+        @memcpy(ptr, fn_name);
+        ptr = ptr + fn_name.len;
     }
     if (unit.info_entry.get(.name)) |form_val| {
-        @as(*[2]u8, @ptrCast(buf + len)).* = " (".*;
-        len +%= 2;
+        ptr[0..2].* = " (".*;
+        ptr = ptr + 2;
         const name: []const u8 = form_val.getString(dwarf_info);
-        @memcpy(buf + len, name);
-        len +%= name.len;
-        @as(*[2]u8, @ptrCast(buf + len)).* = ")\n".*;
-        len +%= 2;
+        @memcpy(ptr, name);
+        ptr = ptr + name.len;
+        ptr[0..2].* = ")\n".*;
+        ptr = ptr + 2;
     } else {
-        buf[len] = '\n';
-        len +%= 1;
+        ptr[0] = '\n';
+        ptr = ptr + 1;
     }
-    return len;
+    return @intFromPtr(ptr - @intFromPtr(buf));
 }
 fn writeSourceContext(
     trace: *const debug.Trace,
