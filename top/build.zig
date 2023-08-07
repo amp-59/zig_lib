@@ -35,12 +35,10 @@ pub usingnamespace struct {
     pub var output_root_fd: u64 = undefined;
     var cmd_idx: usize = undefined;
     var error_count: u8 = undefined;
-
     /// Parsed to modify the task info = args[cmd_args_idx..run_args_idx]
     var cmd_args: [][*:0]u8 = undefined;
     /// Appended to (currently) any run command = args[run_args_idx..]
     var run_args: [][*:0]u8 = undefined;
-
     /// File system path to the project root of zig_lib
     pub const root: [:0]const u8 = libraryRoot();
 };
@@ -676,6 +674,25 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             if (builder_spec.options.show_task_creation) about.addNotice(node);
             return node;
         }
+        /// Initialize a new group command
+        pub fn addRun(group: *Node, allocator: *mem.SimpleAllocator, name: []const u8, args: []const []const u8) *Node {
+            @setRuntimeSafety(builder_spec.options.enable_safety);
+            const node: *Node = @ptrFromInt(allocator.allocateRaw(
+                @sizeOf(Node),
+                @alignOf(Node),
+            ));
+            checkDuplicateName(group, name);
+            group.addNode(allocator).* = node;
+            node.addNode(allocator).* = group;
+            node.tag = .worker;
+            node.flags = .{};
+            node.name = duplicate(allocator, name);
+            node.task.tag = .run;
+            node.task.lock = run_lock;
+            for (args) |arg| node.addRunArg(allocator, arg);
+            if (builder_spec.options.show_task_creation) about.addNotice(node);
+            return node;
+        }
         /// Initialize a new `zig build-(exe|obj|lib)` command.
         pub fn addBuild(group: *Node, allocator: *mem.SimpleAllocator, build_cmd: types.BuildCommand, name: []const u8, root: []const u8) *Node {
             @setRuntimeSafety(builder_spec.options.enable_safety);
@@ -701,7 +718,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             binary_path.addName(allocator).* = build.build_root;
             binary_path.addName(allocator).* = binaryRelative(allocator, node.name, build_cmd.kind);
             root_path.addName(allocator).* = build.build_root;
-            root_path.names_len -%= if (root[0] == '/') 1 else 0;
+            root_path.names_len -%= @intFromBool(root[0] == '/');
             root_path.addName(allocator).* = duplicate(allocator, root);
             initializeCommand(allocator, group, node);
             if (builder_spec.options.show_task_creation) about.addNotice(node);
@@ -729,7 +746,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             ));
             node.task.cmd.format.* = format_cmd;
             target_path.addName(allocator).* = build.build_root;
-            target_path.names_len -%= if (pathname[0] == '/') 1 else 0;
+            target_path.names_len -%= @intFromBool(pathname[0] == '/');
             target_path.addName(allocator).* = duplicate(allocator, pathname);
             initializeCommand(allocator, group, node);
             if (builder_spec.options.show_task_creation) about.addNotice(node);
