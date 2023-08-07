@@ -303,11 +303,11 @@ fn writeSourceCodeAtAddress(
     } else {
         if (dwarf_info.findCompileUnit(addr)) |unit| {
             if (dwarf_info.getSourceLocation(allocator, unit, addr)) |src| {
-                var len: u64 = pos;
-                len +%= writeExtendedSourceLocation(dwarf_info, buf + len, addr, unit, src);
-                len +%= writeSourceContext(trace, allocator, file_map, buf + len, width, addr, src);
-                len +%= writeLastLine(trace, buf + len, width, trace.options.break_line_count);
-                return .{ .addr = addr, .start = pos, .finish = pos +% len };
+                var ptr: [*]u8 = buf + pos;
+                ptr = ptr + writeExtendedSourceLocation(dwarf_info, ptr, addr, unit, src);
+                ptr = ptr + writeSourceContext(trace, allocator, file_map, ptr, width, addr, src);
+                ptr = ptr + writeLastLine(trace, ptr, width, trace.options.break_line_count);
+                return .{ .addr = addr, .start = pos, .finish = pos +% @intFromPtr(ptr - @intFromPtr(buf)) };
             }
         }
     }
@@ -317,28 +317,29 @@ fn printMessage(buf: [*]u8, addr_info: *dwarf.DwarfInfo.AddressInfo) void {
     @setRuntimeSafety(builtin.is_safe);
     const msg = buf[addr_info.start..addr_info.finish];
     var tmp: [32768]u8 = undefined;
-    var len: u64 = 0;
+    var ptr: [*]u8 = &tmp;
+    var idx: u64 = 0;
     if (addr_info.count != 0) {
-        var idx: u64 = 0;
         while (msg[idx] != '\n') idx +%= 1;
-        @memcpy(tmp[len..].ptr, msg[0..idx]);
-        len +%= idx;
-        @as(*[2]u8, @ptrCast(tmp[len..].ptr)).* = " (".*;
-        len +%= 2;
+        @memcpy(ptr, msg[0..idx]);
+        ptr = ptr + idx;
+        ptr[0..2].* = " (".*;
+        ptr = ptr + 2;
         if (addr_info.count > 16) {
-            @as(*[4]u8, @ptrCast(tmp[len..].ptr)).* = "\x1b[1m".*;
-            len +%= 4;
+            ptr[0..4].* = "\x1b[1m".*;
+            ptr = ptr + 4;
         }
-        len +%= fmt.ud64(addr_info.count +% 1).formatWriteBuf(tmp[len..].ptr);
-        @as(*[12]u8, @ptrCast(tmp[len..].ptr)).* = "\x1b[0m times) ".*;
-        len +%= 12;
-        @memcpy(tmp[len..].ptr, msg[idx..]);
-        len +%= msg[idx..].len;
-        debug.write(tmp[0..len]);
+        ptr = ptr + fmt.ud64(addr_info.count +% 1).formatWriteBuf(ptr);
+        ptr[0..12].* = "\x1b[0m times) ".*;
+        ptr = ptr + 12;
+        @memcpy(ptr, msg[idx..]);
+        ptr = ptr + msg[idx..].len;
+        debug.write(ptr[0..@intFromPtr(ptr - @intFromPtr(&tmp))]);
     } else {
         debug.write(msg);
     }
 }
+
 fn fastAllocFile(allocator: *Allocator, file_map: *FileMap, pathname: [:0]const u8) [:0]u8 {
     @setRuntimeSafety(builtin.is_safe);
     for (file_map.pairs[0..file_map.pairs_len]) |l_pair| {
