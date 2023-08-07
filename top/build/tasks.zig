@@ -3307,3 +3307,4 @@ pub const ParseCommand = extern struct {
     tblgen: *fn (*TableGenCommand, *types.Allocator, [*][*:0]u8, usize) void,
     harec: *fn (*HarecCommand, *types.Allocator, [*][*:0]u8, usize) void,
 };
+pub fn _start() void {}
