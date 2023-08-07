@@ -235,54 +235,54 @@ fn writeSourceContext(
     const fbuf: [:0]u8 = fastAllocFile(allocator, file_map, src.file);
     var itr: builtin.parse.TokenIterator = .{ .buf = fbuf, .buf_pos = 0, .inval = null };
     var tok: builtin.parse.Token = .{ .tag = .eof, .loc = .{ .start = 0, .finish = 0 } };
-    var len: u64 = 0;
+    var ptr: [*]u8 = buf;
     var loc: dwarf.LineLocation = .{};
     while (line != max) : (line +%= 1) {
         if (loc.update(fbuf, line)) {
             if (trace.options.write_sidebar) {
-                len +%= writeSideBar(trace, width, buf + len, .{ .line_no = loc.line });
+                ptr = ptr + writeSideBar(trace, width, ptr, .{ .line_no = loc.line });
             }
             if (trace.options.tokens.syntax) |syntax| {
                 while (itr.buf_pos <= loc.start) {
                     tok = itr.next();
                 }
                 var bytes: []const u8 = fbuf[loc.start..@min(loc.finish, tok.loc.start)];
-                @memcpy(buf + len, bytes);
-                len +%= bytes.len;
+                @memcpy(ptr, bytes);
+                ptr = ptr + bytes.len;
                 loc.start +%= bytes.len;
                 while (loc.start < loc.finish) {
                     if (loc.start < tok.loc.start) {
                         bytes = fbuf[loc.start..tok.loc.start];
-                        @memcpy(buf + len, bytes);
-                        len +%= bytes.len;
+                        @memcpy(ptr, bytes);
+                        ptr = ptr + bytes.len;
                     }
                     if (loc.finish > tok.loc.start) {
-                        len +%= highlight(buf + len, &tok, syntax);
+                        ptr = ptr + highlight(ptr, &tok, syntax);
                     }
                     bytes = fbuf[tok.loc.start..tok.loc.finish];
                     loc.start = tok.loc.finish;
-                    @memcpy(buf + len, bytes);
-                    len +%= bytes.len;
-                    len -%= @intFromBool(buf[len -% 1] == '\n');
-                    @as(*[4]u8, @ptrCast(buf + len)).* = "\x1b[0m".*;
-                    len +%= 4;
+                    @memcpy(ptr, bytes);
+                    ptr = ptr + bytes.len;
+                    ptr = ptr - @intFromBool((ptr - 1)[0] == '\n');
+                    ptr[0..4].* = "\x1b[0m".*;
+                    ptr = ptr + 4;
                     tok = itr.next();
                 }
             } else {
                 const bytes: []const u8 = loc.slice(fbuf);
-                @memcpy(buf + len, bytes);
-                len +%= bytes.len;
+                @memcpy(ptr, bytes);
+                ptr = ptr + bytes.len;
             }
-            if (buf[len -% 1] != '\n') {
-                buf[len] = '\n';
-                len +%= 1;
+            if ((ptr - 1)[0] != '\n') {
+                ptr[0] = '\n';
+                ptr = ptr + 1;
             }
             if (line == src.line and trace.options.write_caret) {
-                len +%= writeCaret(trace, buf + len, width, addr, src.column);
+                ptr = ptr + writeCaret(trace, ptr, width, addr, src.column);
             }
         }
     }
-    return len;
+    return @intFromPtr(ptr - @intFromPtr(buf));
 }
 fn writeSourceCodeAtAddress(
     trace: *const debug.Trace,
