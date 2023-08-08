@@ -90,17 +90,23 @@ pub const BuilderSpec = struct {
         hide_based_on_group: bool = true,
         /// Never list special nodes among or allow explicit building.
         hide_special: bool = true,
-        /// Disable all features related to default initialisation of nodes.
-        never_initialize: bool = false,
         /// Disable all features related to automatic updating of nodes.
         never_update: bool = false,
-        /// Add run task for all executable build outputs
-        add_run_to_executables: bool = true,
+        /// Nodes belonging to special groups are also special.
+        update_inherit_special: bool = true,
         /// Enable stack traces in runtime errors for executables where mode is
         /// Debug with debugging symbols included
-        add_debug_stack_traces: bool = true,
-        /// Pass --main-pkg-path=<build_root> for all compile commands.
-        main_pkg_path_to_build_root: bool = true,
+        update_debug_stack_traces: bool = true,
+        /// Disable all features related to default initialisation of nodes.
+        never_init: bool = false,
+        /// Add run task for all executable build outputs
+        init_executables: bool = true,
+        /// (Recommended) Pass --main-pkg-path=<build_root> for all compile commands.
+        init_main_pkg_path: bool = true,
+        /// (Recommended) Pass --cache-dir=<cache_root> for all compile commands.
+        init_cache_root: bool = true,
+        /// (Recommended) Pass --cache-dir=<cache_root> for all compile commands.
+        init_global_cache_root: bool = true,
         /// Record build command data in a condensed format.
         write_build_task_record: bool = false,
         /// Include build task record serialised in build configuration.
@@ -134,9 +140,11 @@ pub const BuilderSpec = struct {
             /// directory.
             aux_out_dir: [:0]const u8 = "aux",
             /// Optional pathname to root source used to compile tracer object.
-            trace_root: [:0]const u8 = build.root ++ "/top/trace.zig",
+            trace_root: [:0]const u8 = "top/trace.zig",
             /// Optional pathname to root source used to compile command line parser shared object.
-            parse_root: [:0]const u8 = build.root ++ "/top/build/parsers.zig",
+            parse_root: [:0]const u8 = "top/build/parsers.zig",
+            /// Optional pathname to root source used to compile command line parser shared object.
+            tasks_root: [:0]const u8 = "top/build/tasks.zig",
         } = .{},
         special: struct {
             /// Defines compile commands for stack tracer object.
