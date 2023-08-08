@@ -609,27 +609,30 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 }
             }
         }
-        /// Initialize a toplevel node.
-        pub fn init(allocator: *mem.SimpleAllocator) *Node {
+        pub fn init(allocator: *mem.SimpleAllocator, args: [][*:0]u8, vars: [][*:0]u8) *Node {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             const node: *Node = @ptrFromInt(allocator.allocateRaw(
                 @sizeOf(Node),
                 @alignOf(Node),
             ));
             node.flags = .{};
-            node.name = duplicate(allocator, builder_spec.options.names.toplevel_node);
+            node.name = @constCast(builder_spec.options.names.toplevel_node);
             node.addNode(allocator).* = node;
             node.tag = .group;
-            node.impl.args = build.args.ptr;
-            node.impl.args_max_len = build.args.len;
-            node.impl.args_len = build.args.len;
+            node.impl.paths = groupPaths(allocator, args[1..5]);
+            node.impl.paths_len = 4;
+            node.impl.paths_max_len = 4;
             node.task.tag = .any;
             node.task.lock = omni_lock;
             mem.map(map(), .{}, .{}, stack_lb_addr, stack_aligned_bytes * max_thread_count);
+            build.args = args;
+            build.vars = vars;
+            build.error_count = 0;
+            makeRootDirectories(node);
             return node;
         }
         /// Initialize a new group command
-        pub fn addGroup(group: *Node, allocator: *mem.SimpleAllocator, name: []const u8) *Node {
+        pub fn addGroupFull(group: *Node, allocator: *mem.SimpleAllocator, name: []const u8, zig_exe: []const u8, build_root: []const u8, cache_root: []const u8, global_cache_root: []const u8) *Node {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             const node: *Node = @ptrFromInt(allocator.allocateRaw(
                 @sizeOf(Node),
@@ -644,8 +647,22 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             node.flags.is_hidden = name[0] == '_';
             node.task.tag = .any;
             node.task.lock = omni_lock;
+            node.addPath(allocator).addName(allocator).* = duplicate(allocator, zig_exe);
+            node.addPath(allocator).addName(allocator).* = duplicate(allocator, build_root);
+            node.addPath(allocator).addName(allocator).* = duplicate(allocator, cache_root);
+            node.addPath(allocator).addName(allocator).* = duplicate(allocator, global_cache_root);
+            if (!mem.testEqualString(node.buildRoot(), group.buildRoot())) {
+                makeRootDirectories(node);
+            } else {
+                node.impl.build_root_fd = group.impl.build_root_fd;
+                node.impl.config_root_fd = group.impl.config_root_fd;
+                node.impl.output_root_fd = group.impl.output_root_fd;
+            }
             if (builder_spec.options.show_task_creation) about.addNotice(node);
             return node;
+        }
+        pub fn addGroup(group: *Node, allocator: *mem.SimpleAllocator, name: []const u8) *Node {
+            return group.addGroupFull(allocator, name, group.zigExe(), group.buildRoot(), group.cacheRoot(), group.globalCacheRoot());
         }
         /// Initialize a new group command
         pub fn addRun(group: *Node, allocator: *mem.SimpleAllocator, name: []const u8, args: []const []const u8) *Node {
