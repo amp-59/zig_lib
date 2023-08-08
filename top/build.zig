@@ -314,36 +314,34 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         descr: [:0]const u8,
         task: Task,
         flags: packed struct {
+            is_special: bool = false,
             /// Whether the node will be shown by list commands.
             is_hidden: bool = false,
-            is_special: bool = false,
+            /// Flags relevant to group nodes.
+            /// Whether independent nodes will be processed in parallel.
+            is_single_threaded: bool = false,
+            /// Whether a run task will be performed using the compiler server.
+            is_build_command: bool = false,
             /// Whether a node will be processed before being returned to `buildMain`.
-            do_init: bool = !builder_spec.options.never_initialize,
+            do_init: bool = !builder_spec.options.never_init,
             /// Whether a node will be processed after returning from `buildMain`.
             do_update: bool = !builder_spec.options.never_update,
             /// Whether a node will be processed on invokation of a user defined update command.
             do_user_update: bool = !builder_spec.options.never_update,
             /// Whether a node will be processed on request to regenerate the build program.
             do_regenerate: bool = true,
-            /// Flags relevant to group nodes.
-            group: packed struct {
-                /// Whether independent nodes will be processed in parallel.
-                is_single_threaded: bool = false,
-            } = .{},
             /// Flags relevant to build-* worker nodes.
-            build: packed struct {
-                /// Builder will create a configuration root. Enables usage of
-                /// configuration constants.
-                do_configure: bool = false,
-                /// Builder will unconditionally add `trace` object to
-                /// compile command.
-                want_stack_traces: bool = false,
-                /// Only meaningful when zig lib is not acting as standard.
-                want_zig_lib_rt: bool = false,
-                /// Define the compiler path, build root, cache root, and global
-                /// cache root as declarations to the build configuration root.
-                want_build_context: bool = true,
-            } = .{},
+            /// Builder will create a configuration root. Enables usage of
+            /// configuration constants.
+            want_build_config: bool = false,
+            /// Builder will unconditionally add `trace` object to
+            /// compile command.
+            want_stack_traces: bool = false,
+            /// Only meaningful when zig lib is not acting as standard.
+            want_zig_lib_rt: bool = false,
+            /// Define the compiler path, build root, cache root, and global
+            /// cache root as declarations to the build configuration root.
+            want_build_context: bool = true,
         },
         impl: packed struct {
             args: [*][*:0]u8,
