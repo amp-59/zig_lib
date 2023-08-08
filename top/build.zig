@@ -1292,7 +1292,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     try meta.wrap(time.sleep(sleep(), .{ .nsec = builder_spec.options.sleep_nanoseconds }));
                 }
                 if (keepGoing() and node.task.lock.get(task) == .working) {
-                    if (executeCommandInternal(toplevel, &allocator, node, task, arena_index)) {
+                    if (executeCommandInternal(&allocator, node, task, arena_index)) {
                         node.assertExchange(task, .working, .finished, arena_index);
                     } else {
                         if (count_errors) {
@@ -1320,7 +1320,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     try meta.wrap(time.sleep(sleep(), .{ .nsec = builder_spec.options.sleep_nanoseconds }));
                 }
                 if (node.task.lock.get(task) == .working) {
-                    if (executeCommandInternal(toplevel, allocator, node, task, max_thread_count)) {
+                    if (executeCommandInternal(allocator, node, task, max_thread_count)) {
                         node.assertExchange(task, .working, .finished, max_thread_count);
                     } else {
                         if (count_errors) {
@@ -1339,7 +1339,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 task: types.Task,
             ) void {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
-                if (!(max_thread_count == 0 or toplevel.flags.group.is_single_threaded)) {
+                if (!(max_thread_count == 0 or toplevel.flags.is_single_threaded)) {
                     var arena_index: AddressSpace.Index = 0;
                     while (arena_index != max_thread_count) : (arena_index +%= 1) {
                         if (mem.testAcquire(ThreadSpace, thread_space, arena_index)) {
@@ -1510,10 +1510,61 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             try meta.wrap(file.close(close(), in.read));
             try meta.wrap(file.close(close(), out.write));
         }
-        const binary_prefix: [:0]const u8 = builder_spec.options.names.zig_out_dir ++ "/" ++ builder_spec.options.names.exe_out_dir ++ "/";
-        const library_prefix: [:0]const u8 = builder_spec.options.names.zig_out_dir ++ "/" ++ builder_spec.options.names.lib_out_dir ++ "/lib";
-        const archive_prefix: [:0]const u8 = builder_spec.options.names.zig_out_dir ++ "/" ++ builder_spec.options.names.lib_out_dir ++ "/lib";
-        const auxiliary_prefix: [:0]const u8 = builder_spec.options.names.zig_out_dir ++ "/" ++ builder_spec.options.names.aux_out_dir ++ "/";
+        pub fn zigExe(node: *Node) [:0]const u8 {
+            @setRuntimeSafety(builder_spec.options.enable_safety);
+            if (node.tag == .worker) {
+                return node.impl.nodes[0].zigExe();
+            }
+            return node.impl.paths[0].names[0];
+        }
+        pub fn buildRoot(node: *Node) [:0]const u8 {
+            @setRuntimeSafety(builder_spec.options.enable_safety);
+            if (node.tag == .worker) {
+                return node.impl.nodes[0].buildRoot();
+            }
+            return node.impl.paths[1].names[0];
+        }
+        pub fn cacheRoot(node: *Node) [:0]const u8 {
+            @setRuntimeSafety(builder_spec.options.enable_safety);
+            if (node.tag == .worker) {
+                return node.impl.nodes[0].cacheRoot();
+            }
+            return node.impl.paths[2].names[0];
+        }
+        pub fn globalCacheRoot(node: *Node) [:0]const u8 {
+            @setRuntimeSafety(builder_spec.options.enable_safety);
+            if (node.tag == .worker) {
+                return node.impl.nodes[0].globalCacheRoot();
+            }
+            return node.impl.paths[3].names[0];
+        }
+        pub fn buildRootFd(node: *Node) u32 {
+            @setRuntimeSafety(builder_spec.options.enable_safety);
+            if (node.tag == .worker) {
+                return node.impl.nodes[0].buildRoot();
+            }
+            return node.impl.build_root_fd;
+        }
+        pub fn configRootFd(node: *Node) u32 {
+            @setRuntimeSafety(builder_spec.options.enable_safety);
+            if (node.tag == .worker) {
+                return node.impl.nodes[0].configRootFd();
+            }
+            return node.impl.config_root_fd;
+        }
+        pub fn outputRootFd(node: *Node) u32 {
+            @setRuntimeSafety(builder_spec.options.enable_safety);
+            if (node.tag == .worker) {
+                return node.impl.nodes[0].outputRootFd();
+            }
+            return node.impl.output_root_fd;
+        }
+        const lib_build_root = libraryRoot();
+        const lib_cache_root = lib_build_root ++ "/" ++ builder_spec.options.names.zig_cache_dir;
+        const binary_prefix = builder_spec.options.names.zig_out_dir ++ "/" ++ builder_spec.options.names.exe_out_dir ++ "/";
+        const library_prefix = builder_spec.options.names.zig_out_dir ++ "/" ++ builder_spec.options.names.lib_out_dir ++ "/lib";
+        const archive_prefix = builder_spec.options.names.zig_out_dir ++ "/" ++ builder_spec.options.names.lib_out_dir ++ "/lib";
+        const auxiliary_prefix = builder_spec.options.names.zig_out_dir ++ "/" ++ builder_spec.options.names.aux_out_dir ++ "/";
         fn binaryRelative(allocator: *mem.SimpleAllocator, name: [:0]u8, kind: types.OutputMode) [:0]const u8 {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             return concatenate(allocator, switch (kind) {
