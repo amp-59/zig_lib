@@ -379,9 +379,11 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             objcopy: *types.ObjcopyCommand,
         };
         pub const special = struct {
-            var trace: *Node = undefined;
-            var parse: *Node = undefined;
-            pub var fmt: *Node = undefined;
+            var toplevel: *Node = @ptrFromInt(@alignOf(Node));
+            var trace: *Node = @ptrFromInt(@alignOf(Node));
+            var parse: *Node = @ptrFromInt(@alignOf(Node));
+            var tasks: *Node = @ptrFromInt(@alignOf(Node));
+            pub var fmt: *Node = @ptrFromInt(@alignOf(Node));
             var parsers: build.ParseCommand = undefined;
         };
         pub const Archive = struct {
