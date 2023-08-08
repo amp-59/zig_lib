@@ -550,66 +550,55 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             }
             return elf_info.loadAll(Pointers);
         }
-        pub fn initSpecialNodes(allocator: *mem.SimpleAllocator, toplevel: *Node) void {
+        pub fn addSpecialNodes(toplevel: *Node, allocator: *mem.SimpleAllocator) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
+            const zero: *Node = toplevel.addGroupFull(allocator, "zero", //
+                toplevel.zigExe(), lib_build_root, lib_cache_root, toplevel.globalCacheRoot());
+            zero.flags.is_special = true;
+            const extra_flags: [5][]const u8 = .{ "--listen", "-", "-fno-compiler-rt", "-fstrip", "-dynamic" };
+            special.tasks = zero.addRun(allocator, "tasks", &(.{
+                zero.zigExe(),        "build-lib",            "--cache-dir",     zero.cacheRoot(),
+                "--global-cache-dir", zero.globalCacheRoot(), "--main-pkg-path", zero.buildRoot(),
+            } ++ extra_flags ++ .{lib_build_root ++ "/" ++ builder_spec.options.names.tasks_root}));
+            special.parse = zero.addRun(allocator, "parse", &(.{
+                zero.zigExe(),        "build-lib",            "--cache-dir",     zero.cacheRoot(),
+                "--global-cache-dir", zero.globalCacheRoot(), "--main-pkg-path", zero.buildRoot(),
+            } ++ extra_flags ++ .{lib_build_root ++ "/" ++ builder_spec.options.names.parse_root}));
+
             if (builder_spec.options.special.trace) |build_cmd| {
-                const node: *Node = toplevel.addBuild(allocator, build_cmd, "trace", builder_spec.options.names.trace_root);
-                node.flags.is_special = true;
-                node.flags.build.do_configure = false;
-                special.trace = node;
-            }
-            if (builder_spec.options.special.parse) |build_cmd| {
-                const node: *Node = toplevel.addBuild(allocator, build_cmd, "parse", builder_spec.options.names.parse_root);
-                node.flags.is_special = true;
-                node.flags.build.do_configure = false;
-                special.parse = node;
+                special.trace = zero.addBuild(allocator, build_cmd, "trace", builder_spec.options.names.trace_root);
             }
             if (builder_spec.options.special.buildfmt_ar) |ar_cmd| {
-                const build_cmd: build.BuildCommand = builder_spec.options.special.buildfmt orelse .{};
-                const nodes: []const *Node = &.{
-                    toplevel.addBuild(allocator, build_cmd, "options_fmt", build.root ++ "/top/build/options-fmt.zig"),
-                    toplevel.addBuild(allocator, build_cmd, "build_fmt", build.root ++ "/top/build/build-fmt.zig"),
-                    toplevel.addBuild(allocator, build_cmd, "format_fmt", build.root ++ "/top/build/format-fmt.zig"),
-                    toplevel.addBuild(allocator, build_cmd, "objcopy_fmt", build.root ++ "/top/build/objcopy-fmt.zig"),
-                    toplevel.addBuild(allocator, build_cmd, "archive_fmt", build.root ++ "/top/build/archive-fmt.zig"),
-                };
-                for (nodes) |node| {
-                    node.flags.is_special = true;
-                    node.flags.build.do_configure = false;
+                if (builder_spec.options.special.buildfmt_obj) |build_cmd| {
+                    special.fmt = zero.addArchive(allocator, ar_cmd, "fmt", &.{
+                        zero.addBuild(allocator, build_cmd, "options_fmt", "top/build/options-fmt.zig"),
+                        zero.addBuild(allocator, build_cmd, "build_fmt", "top/build/build-fmt.zig"),
+                        zero.addBuild(allocator, build_cmd, "format_fmt", "top/build/format-fmt.zig"),
+                        zero.addBuild(allocator, build_cmd, "objcopy_fmt", "top/build/objcopy-fmt.zig"),
+                        zero.addBuild(allocator, build_cmd, "archive_fmt", "top/build/archive-fmt.zig"),
+                    });
                 }
-                const node: *Node = toplevel.addArchive(allocator, ar_cmd, "fmt", nodes);
-                node.flags.is_special = true;
-                node.flags.build.do_configure = false;
-                special.fmt = node;
             }
         }
-        pub fn initState(args: [][*:0]u8, vars: [][*:0]u8) void {
+        fn makeRootDirectories(node: *Node) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
-            build.args = args;
-            build.vars = vars;
-            build.zig_exe = mem.terminate(args[1], 0);
-            build.build_root = mem.terminate(args[2], 0);
-            build.cache_root = mem.terminate(args[3], 0);
-            build.global_cache_root = mem.terminate(args[4], 0);
-            build.build_root_fd = try meta.wrap(file.path(path1(), build.build_root));
+            node.impl.build_root_fd = try meta.wrap(file.pathAt(path1(), @bitCast(@as(i64, -100)), node.buildRoot()));
             for ([3][:0]const u8{
                 builder_spec.options.names.zig_out_dir,
                 builder_spec.options.names.zig_build_dir,
                 builder_spec.options.names.zig_stat_dir,
             }) |name| {
-                makeRootDirectory(build.build_root_fd, name);
+                makeRootDirectory(node.impl.build_root_fd, name);
             }
-            build.config_root_fd = try meta.wrap(file.pathAt(path1(), build.build_root_fd, builder_spec.options.names.zig_build_dir));
-            build.output_root_fd = try meta.wrap(file.pathAt(path1(), build.build_root_fd, builder_spec.options.names.zig_out_dir));
+            node.impl.output_root_fd = try meta.wrap(file.pathAt(path1(), node.impl.build_root_fd, builder_spec.options.names.zig_out_dir));
             for ([3][:0]const u8{
                 builder_spec.options.names.exe_out_dir,
                 builder_spec.options.names.lib_out_dir,
                 builder_spec.options.names.aux_out_dir,
             }) |name| {
-                makeRootDirectory(build.output_root_fd, name);
+                makeRootDirectory(node.impl.output_root_fd, name);
             }
-            build.cmd_idx = 5;
-            build.error_count = 0;
+            node.impl.config_root_fd = try meta.wrap(file.pathAt(path1(), node.impl.build_root_fd, builder_spec.options.names.zig_build_dir));
         }
         fn checkDuplicateName(group: *Node, name: []const u8) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
