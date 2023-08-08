@@ -500,11 +500,11 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         }
         pub fn addToplevelArgs(node: *Node, allocator: *mem.SimpleAllocator) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
-            for ([_][*:0]u8{
-                build.zig_exe,    build.build_root,
-                build.cache_root, build.global_cache_root,
+            for ([_][:0]const u8{
+                node.zigExe(),    node.buildRoot(),
+                node.cacheRoot(), node.globalCacheRoot(),
             }) |arg| {
-                node.addArg(allocator).* = arg;
+                node.addArg(allocator).* = @constCast(arg);
             }
         }
         fn makeRootDirectory(root_fd: u64, name: [:0]const u8) void {
@@ -522,17 +522,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 proc.exitErrorFault(error.NotADirectory, name, 2);
             }
         }
-        fn maybeHide(toplevel: *Node, node: *Node) void {
-            @setRuntimeSafety(builder_spec.options.enable_safety);
-            if (builder_spec.options.hide_based_on_name_prefix) |prefix| {
-                node.flags.is_hidden = prefix == node.name[0];
-                return;
-            }
-            if (builder_spec.options.hide_based_on_group) {
-                node.flags.is_hidden = toplevel.options.is_hidden;
-                return;
-            }
-        }
+
         fn loadAll(comptime Pointers: type, pathname: [:0]const u8) Pointers {
             @setRuntimeSafety(builtin.is_safe);
             const prot: file.Map.Protection = .{ .exec = true };
