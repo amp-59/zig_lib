@@ -361,6 +361,9 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             paths_len: Size,
             wait_len: usize,
             wait_tick: usize,
+            build_root_fd: u32,
+            config_root_fd: u32,
+            output_root_fd: u32,
         },
         const Node = @This();
         const Size = usize;
