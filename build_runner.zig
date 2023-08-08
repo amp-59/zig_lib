@@ -32,6 +32,11 @@ pub const message_style: [:0]const u8 =
     root.message_style
 else
     "\x1b[2m";
+pub const enable_debugging: bool =
+    if (@hasDecl(root, "enable_debugging"))
+    root.enable_debugging
+else
+    false;
 pub const logging_override: debug.Logging.Override =
     if (@hasDecl(root, "logging_override")) root.logging_override else .{
     .Attempt = null,
@@ -41,26 +46,26 @@ pub const logging_override: debug.Logging.Override =
     .Error = null,
     .Fault = null,
 };
+pub const want_stack_traces: bool = enable_debugging;
 pub const logging_default: debug.Logging.Default = .{
-    .Attempt = false,
-    .Success = false,
-    .Acquire = false,
-    .Release = false,
-    .Error = false,
-    .Fault = false,
+    .Attempt = enable_debugging,
+    .Success = enable_debugging,
+    .Acquire = enable_debugging,
+    .Release = enable_debugging,
+    .Error = enable_debugging,
+    .Fault = enable_debugging,
 };
 pub const signal_handlers = .{
-    .IllegalInstruction = false,
-    .BusError = false,
-    .FloatingPointError = false,
-    .Trap = false,
-    .SegmentationFault = false,
+    .IllegalInstruction = enable_debugging,
+    .BusError = enable_debugging,
+    .FloatingPointError = enable_debugging,
+    .Trap = enable_debugging,
+    .SegmentationFault = enable_debugging,
 };
-pub const want_stack_traces: bool = false;
 pub const trace: debug.Trace = .{
-    .Error = false,
-    .Fault = false,
-    .Signal = false,
+    .Error = enable_debugging,
+    .Fault = enable_debugging,
+    .Signal = enable_debugging,
     .options = .{},
 };
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) void {
@@ -70,11 +75,8 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) void {
     if (args.len < 5) {
         proc.exitError(error.MissingEnvironmentPaths, 2);
     }
-    try meta.wrap(
-        Node.initState(args, vars),
-    );
-    const toplevel: *Node = try meta.wrap(Node.init(&allocator));
-    Node.initSpecialNodes(&allocator, toplevel);
+    const toplevel: *Node = Node.init(&allocator, args, vars);
+    toplevel.addSpecialNodes(&allocator);
     try meta.wrap(
         root.buildMain(&allocator, toplevel),
     );
