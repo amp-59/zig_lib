@@ -153,7 +153,7 @@ pub const BuilderSpec = struct {
             parse: ?types.BuildCommand = .{ .kind = .lib, .mode = .ReleaseSmall, .dynamic = true, .strip = true, .compiler_rt = false },
             /// Defines archiver commands for builder formatter types.
             buildfmt_ar: ?types.ArchiveCommand = .{ .operation = .r, .create = true },
-            buildfmt: ?types.BuildCommand = .{ .kind = .obj, .mode = .Debug, .strip = true, .compiler_rt = false },
+            buildfmt_obj: ?types.BuildCommand = .{ .kind = .obj, .mode = .Debug, .strip = true, .compiler_rt = false },
         } = .{},
         extensions: struct {
             /// Extension for Zig source files.
