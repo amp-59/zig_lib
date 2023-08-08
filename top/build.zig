@@ -440,6 +440,16 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             on_task: types.Task,
             on_state: types.State,
         };
+        fn groupPaths(allocator: *mem.SimpleAllocator, args: [][*:0]u8) [*]types.Path {
+            @setRuntimeSafety(false);
+            const paths: [*]types.Path = @ptrFromInt(allocator.allocateRaw(@sizeOf(types.Path) *% args.len, @alignOf(types.Path)));
+            const names: [*][:0]const u8 = @ptrFromInt(allocator.allocateRaw(16 *% args.len, 8));
+            for (0..args.len) |idx| {
+                names[idx] = mem.terminate(args[idx], 0);
+                paths[idx] = .{ .names = names + idx };
+            }
+            return paths;
+        }
         fn addPath(node: *Node, allocator: *mem.SimpleAllocator) *types.Path {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             const size_of: comptime_int = @sizeOf(types.Path);
@@ -680,6 +690,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             node.task.tag = .run;
             node.task.lock = run_lock;
             for (args) |arg| node.addRunArg(allocator, arg);
+            initializeCommand(allocator, node);
             if (builder_spec.options.show_task_creation) about.addNotice(node);
             return node;
         }
@@ -705,12 +716,12 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 @alignOf(types.BuildCommand),
             ));
             node.task.cmd.build.* = build_cmd;
-            binary_path.addName(allocator).* = build.build_root;
+            binary_path.addName(allocator).* = group.buildRoot();
             binary_path.addName(allocator).* = binaryRelative(allocator, node.name, build_cmd.kind);
-            root_path.addName(allocator).* = build.build_root;
+            root_path.addName(allocator).* = group.buildRoot();
             root_path.names_len -%= @intFromBool(root[0] == '/');
             root_path.addName(allocator).* = duplicate(allocator, root);
-            initializeCommand(allocator, group, node);
+            initializeCommand(allocator, node);
             if (builder_spec.options.show_task_creation) about.addNotice(node);
             return node;
         }
@@ -735,10 +746,10 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 @alignOf(types.FormatCommand),
             ));
             node.task.cmd.format.* = format_cmd;
-            target_path.addName(allocator).* = build.build_root;
+            target_path.addName(allocator).* = group.buildRoot();
             target_path.names_len -%= @intFromBool(pathname[0] == '/');
             target_path.addName(allocator).* = duplicate(allocator, pathname);
-            initializeCommand(allocator, group, node);
+            initializeCommand(allocator, node);
             if (builder_spec.options.show_task_creation) about.addNotice(node);
             return node;
         }
@@ -763,12 +774,12 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 @alignOf(types.ArchiveCommand),
             ));
             node.task.cmd.archive.* = archive_cmd;
-            archive_path.addName(allocator).* = build.build_root;
+            archive_path.addName(allocator).* = group.buildRoot();
             archive_path.addName(allocator).* = archiveRelative(allocator, node.name);
             for (deps) |dep| {
                 node.dependOn(allocator, dep);
             }
-            initializeCommand(allocator, group, node);
+            initializeCommand(allocator, node);
             if (builder_spec.options.show_task_creation) about.addNotice(node);
             return node;
         }
@@ -793,7 +804,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 @alignOf(types.ObjcopyCommand),
             ));
             node.task.cmd.objcopy.* = objcopy_cmd;
-            initializeCommand(allocator, group, node);
+            initializeCommand(allocator, node);
             if (builder_spec.options.show_task_creation) about.addNotice(node);
             return node;
         }
