@@ -19,28 +19,11 @@ pub usingnamespace struct {
     pub var args: [][*:0]u8 = undefined;
     /// Environment variables
     pub var vars: [][*:0]u8 = undefined;
-    /// File system path of Zig executable.
-    pub var zig_exe: [:0]u8 = undefined;
-    /// File system path of directory containing build.zig.
-    pub var build_root: [:0]u8 = undefined;
-    /// File system path of package special cache directory.
-    pub var cache_root: [:0]u8 = undefined;
-    /// File system path of user login cache directory.
-    pub var global_cache_root: [:0]u8 = undefined;
-    /// File descriptor for directory containing `build.zig`
-    pub var build_root_fd: u64 = undefined;
-    /// File descriptor for directory containing build configuration root source files.
-    pub var config_root_fd: u64 = undefined;
-    /// File descriptor for directory containing build task output files.
-    pub var output_root_fd: u64 = undefined;
-    var cmd_idx: usize = undefined;
     var error_count: u8 = undefined;
     /// Parsed to modify the task info = args[cmd_args_idx..run_args_idx]
     var cmd_args: [][*:0]u8 = undefined;
     /// Appended to (currently) any run command = args[run_args_idx..]
     var run_args: [][*:0]u8 = undefined;
-    /// File system path to the project root of zig_lib
-    pub const root: [:0]const u8 = libraryRoot();
 };
 pub const BuilderSpec = struct {
     /// Builder options
