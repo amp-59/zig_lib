@@ -38,9 +38,9 @@ pub const BuilderSpec = struct {
     pub const Options = struct {
         /// The maximum number of threads in addition to main.
         /// Bytes allowed per thread arena (dynamic maximum)
-        arena_aligned_bytes: usize = 8 * 1024 * 1024,
+        max_arena_aligned_bytes: usize = 8 * 1024 * 1024,
         /// Bytes allowed per thread stack (static maximum)
-        stack_aligned_bytes: usize = 8 * 1024 * 1024,
+        max_stack_aligned_bytes: usize = 8 * 1024 * 1024,
         /// max_thread_count=0 is single-threaded.
         max_thread_count: u8 = 8,
         /// Allow this many errors before exiting the thread group.
@@ -84,21 +84,21 @@ pub const BuilderSpec = struct {
         /// Enable advanced builder features, such as project-wide comptime
         /// constants and caching special modules.
         enable_build_configuration: bool = true,
-        /// Nodes with this name prefix are hidden in pre.
-        hide_based_on_name_prefix: ?u8 = '_',
-        /// Nodes with hidden parent/group nodes are also hidden
-        hide_based_on_group: bool = true,
         /// Never list special nodes among or allow explicit building.
         hide_special: bool = true,
         /// Disable all features related to automatic updating of nodes.
         never_update: bool = false,
-        /// Nodes belonging to special groups are also special.
-        update_inherit_special: bool = true,
         /// Enable stack traces in runtime errors for executables where mode is
         /// Debug with debugging symbols included
         update_debug_stack_traces: bool = true,
         /// Disable all features related to default initialisation of nodes.
         never_init: bool = false,
+        /// Nodes with this name prefix are hidden in pre.
+        init_hidden_by_name_prefix: ?u8 = '_',
+        /// Nodes with hidden parent/group nodes are also hidden
+        init_inherit_hidden: bool = true,
+        /// Nodes belonging to special groups are also special.
+        init_inherit_special: bool = true,
         /// Add run task for all executable build outputs
         init_executables: bool = true,
         /// (Recommended) Pass --main-pkg-path=<build_root> for all compile commands.
