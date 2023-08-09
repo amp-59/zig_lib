@@ -896,10 +896,21 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         }
         fn initializeCommand(allocator: *mem.SimpleAllocator, node: *Node) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
-            if (!maybe_regen and
-                node.flags.do_init)
-            {
+            if (builtin.root.exec_mode != .Regenerate and node.flags.do_init) {
                 node.flags.do_init = false;
+                if (builder_spec.options.init_inherit_special and
+                    node.impl.nodes[0].flags.is_special)
+                {
+                    node.flags.is_special = true;
+                }
+                if (builder_spec.options.init_inherit_hidden and
+                    node.impl.nodes[0].flags.is_hidden)
+                {
+                    node.flags.is_hidden = true;
+                }
+                if (builder_spec.options.init_hidden_by_name_prefix) |prefix| {
+                    node.flags.is_hidden = node.name[0] == prefix;
+                }
                 if (node.tag == .worker) {
                     if (node.task.tag == .build) {
                         node.task.cmd.build.listen = .@"-";
@@ -936,29 +947,14 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 if (node.tag == .group) {
                     node.task.lock = omni_lock;
                 }
-                if (builder_spec.options.hide_based_on_name_prefix != null or
-                    builder_spec.options.hide_based_on_group)
-                {
-                    if (builder_spec.options.hide_based_on_name_prefix) |prefix| {
-                        node.flags.is_hidden = node.name[0] == prefix;
-                    }
-                    if (builder_spec.options.hide_based_on_group) {
-                        node.flags.is_hidden = node.impl.nodes[0].flags.is_hidden;
-                    }
-                }
             }
             if (builder_spec.options.show_task_creation) {
                 about.addNotice(node);
             }
         }
-        fn updateCommand(allocator: *mem.SimpleAllocator, _: *Node, node: *Node) void {
+        fn updateCommand(allocator: *mem.SimpleAllocator, node: *Node) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             node.flags.do_update = false;
-            if (builder_spec.options.update_inherit_special and
-                node.impl.nodes[0].flags.is_special)
-            {
-                node.flags.is_special = true;
-            }
             if (node.tag == .worker) {
                 if (builder_spec.options.init_executables and
                     node.task.lock.int().* == exe_lock.int().*)
@@ -973,14 +969,14 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                             node.addConfig(allocator, "cache_root", .{ .String = node.cacheRoot() });
                             node.addConfig(allocator, "global_cache_root", .{ .String = node.globalCacheRoot() });
                         }
-                        if (builder_spec.options.update_debug_stack_traces and
-                            !(node.task.cmd.build.strip orelse
-                            ((node.task.cmd.build.mode orelse .Debug) == .ReleaseSmall) or
-                            node.flags.want_stack_traces))
-                        {
+                    }
+                    if (builder_spec.options.update_debug_stack_traces) {
+                        if (node.hasDebugInfo() or node.flags.want_stack_traces) {
                             if (node.task.cmd.build.kind == .exe) {
-                                node.addConfig(allocator, "have_stack_traces", .{ .Bool = true });
                                 node.dependOn(allocator, special.trace);
+                            }
+                            if (node.flags.want_build_config) {
+                                node.addConfig(allocator, "have_stack_traces", .{ .Bool = true });
                             }
                         }
                     }
@@ -1000,22 +996,23 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                             binary_path.addName(allocator).* = node.buildRoot();
                             binary_path.addName(allocator).* = binaryRelative(allocator, node.name, kind);
                             node.flags.is_build_command = true;
+                            break;
                         }
                     }
                 }
             }
         }
-        pub fn updateCommands(allocator: *mem.SimpleAllocator, group: *Node, node: *Node) void {
+        pub fn updateCommands(allocator: *mem.SimpleAllocator, node: *Node) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             if (!node.flags.do_update) {
                 return;
             }
-            updateCommand(allocator, group, node);
+            updateCommand(allocator, node);
             for (node.impl.nodes[1..node.impl.nodes_len]) |sub| {
-                updateCommands(allocator, group, sub);
+                updateCommands(allocator, sub);
             }
             for (node.impl.deps[0..node.impl.deps_len]) |dep| {
-                updateCommands(allocator, group, dep.on_node);
+                updateCommands(allocator, dep.on_node);
             }
         }
         pub fn addBuildAnon(group: *Node, allocator: *mem.SimpleAllocator, build_cmd: types.BuildCommand, root: [:0]const u8) *Node {
