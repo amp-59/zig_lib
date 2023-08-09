@@ -208,7 +208,7 @@ pub fn InternalError(comptime E: type) type {
     };
     return U;
 }
-/// `E` must be an Enum type.
+/// `E` must be a tagged type.
 pub fn ExternalError(comptime E: type) type {
     const T = struct {
         /// Throw error if unwrapping yields any of these values
