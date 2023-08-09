@@ -666,7 +666,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             node.tag = .group;
             node.flags = .{};
             node.name = duplicate(allocator, name);
-            node.flags.is_hidden = name[0] == '_';
             node.task.tag = .any;
             node.task.lock = omni_lock;
             node.addPath(allocator).addName(allocator).* = duplicate(allocator, zig_exe);
@@ -680,7 +679,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 node.impl.config_root_fd = group.impl.config_root_fd;
                 node.impl.output_root_fd = group.impl.output_root_fd;
             }
-            if (builder_spec.options.show_task_creation) about.addNotice(node);
+            initializeCommand(allocator, node);
             return node;
         }
         pub fn addGroup(group: *Node, allocator: *mem.SimpleAllocator, name: []const u8) *Node {
@@ -703,7 +702,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             node.task.lock = run_lock;
             for (args) |arg| node.addRunArg(allocator, arg);
             initializeCommand(allocator, node);
-            if (builder_spec.options.show_task_creation) about.addNotice(node);
             return node;
         }
         /// Initialize a new `zig build-(exe|obj|lib)` command.
@@ -734,7 +732,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             root_path.names_len -%= @intFromBool(root[0] == '/');
             root_path.addName(allocator).* = duplicate(allocator, root);
             initializeCommand(allocator, node);
-            if (builder_spec.options.show_task_creation) about.addNotice(node);
             return node;
         }
         /// Initialize a new `zig fmt` command.
@@ -762,7 +759,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             target_path.names_len -%= @intFromBool(pathname[0] == '/');
             target_path.addName(allocator).* = duplicate(allocator, pathname);
             initializeCommand(allocator, node);
-            if (builder_spec.options.show_task_creation) about.addNotice(node);
             return node;
         }
         /// Initialize a new `zig ar` command.
@@ -792,7 +788,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 node.dependOn(allocator, dep);
             }
             initializeCommand(allocator, node);
-            if (builder_spec.options.show_task_creation) about.addNotice(node);
             return node;
         }
         /// Initialize a new `zig objcopy` command.
@@ -817,7 +812,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             ));
             node.task.cmd.objcopy.* = objcopy_cmd;
             initializeCommand(allocator, node);
-            if (builder_spec.options.show_task_creation) about.addNotice(node);
             return node;
         }
         /// Initialize a new group command with default task.
