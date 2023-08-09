@@ -399,16 +399,16 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         };
         pub const specification: BuilderSpec = builder_spec;
         pub const max_thread_count: u64 = builder_spec.options.max_thread_count;
-        pub const stack_aligned_bytes: u64 = builder_spec.options.stack_aligned_bytes;
+        pub const stack_aligned_bytes: u64 = builder_spec.options.max_stack_aligned_bytes;
         pub const Config = builder_spec.types.Config;
         const max_arena_count: u64 = if (max_thread_count == 0) 4 else max_thread_count + 1;
-        const arena_aligned_bytes: u64 = builder_spec.options.arena_aligned_bytes;
+        const arena_aligned_bytes: u64 = builder_spec.options.max_arena_aligned_bytes;
         const stack_lb_addr: u64 = builder_spec.options.stack_lb_addr;
         const stack_up_addr: u64 = stack_lb_addr + (max_thread_count * stack_aligned_bytes);
         const arena_lb_addr: u64 = stack_up_addr;
         const arena_up_addr: u64 = arena_lb_addr + (max_arena_count * arena_aligned_bytes);
         pub const AddressSpace = mem.GenericRegularAddressSpace(.{
-            .index_type = usize,
+            .index_type = u8,
             .label = "arena",
             .errors = address_space_errors,
             .logging = builtin.zero(mem.AddressSpaceLogging),
@@ -418,7 +418,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             .options = address_space_options,
         });
         pub const ThreadSpace = mem.GenericRegularAddressSpace(.{
-            .index_type = usize,
+            .index_type = u8,
             .label = "stack",
             .errors = address_space_errors,
             .logging = builtin.zero(mem.AddressSpaceLogging),
