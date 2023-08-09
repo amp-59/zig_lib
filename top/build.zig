@@ -561,19 +561,32 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         }
         pub fn addSpecialNodes(toplevel: *Node, allocator: *mem.SimpleAllocator) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
-            const zero: *Node = toplevel.addGroupFull(allocator, "zero", //
-                toplevel.zigExe(), lib_build_root, lib_cache_root, toplevel.globalCacheRoot());
-            zero.flags.is_special = true;
-            const extra_flags: [5][]const u8 = .{ "--listen", "-", "-fno-compiler-rt", "-fstrip", "-dynamic" };
-            special.tasks = zero.addRun(allocator, "tasks", &(.{
-                zero.zigExe(),        "build-lib",            "--cache-dir",     zero.cacheRoot(),
-                "--global-cache-dir", zero.globalCacheRoot(), "--main-pkg-path", zero.buildRoot(),
-            } ++ extra_flags ++ .{lib_build_root ++ "/" ++ builder_spec.options.names.tasks_root}));
-            special.parse = zero.addRun(allocator, "parse", &(.{
-                zero.zigExe(),        "build-lib",            "--cache-dir",     zero.cacheRoot(),
-                "--global-cache-dir", zero.globalCacheRoot(), "--main-pkg-path", zero.buildRoot(),
-            } ++ extra_flags ++ .{lib_build_root ++ "/" ++ builder_spec.options.names.parse_root}));
-
+            const zero: *Node = toplevel.addGroupFull(
+                allocator,
+                "zero",
+                toplevel.zigExe(),
+                lib_build_root,
+                lib_cache_root,
+                toplevel.globalCacheRoot(),
+            );
+            special.tasks = zero.addRun(allocator, "tasks", &.{
+                zero.zigExe(),        "build-lib",
+                "--cache-dir",        zero.cacheRoot(),
+                "--global-cache-dir", zero.globalCacheRoot(),
+                "--main-pkg-path",    zero.buildRoot(),
+                "--listen",           "-",
+                "-fno-compiler-rt",   "-fstrip",
+                "-dynamic",           tasks_root,
+            });
+            special.parse = zero.addRun(allocator, "parse", &.{
+                zero.zigExe(),        "build-lib",
+                "--cache-dir",        zero.cacheRoot(),
+                "--global-cache-dir", zero.globalCacheRoot(),
+                "--main-pkg-path",    zero.buildRoot(),
+                "--listen",           "-",
+                "-fno-compiler-rt",   "-fstrip",
+                "-dynamic",           parse_root,
+            });
             if (builder_spec.options.special.trace) |build_cmd| {
                 special.trace = zero.addBuild(allocator, build_cmd, "trace", builder_spec.options.names.trace_root);
             }
