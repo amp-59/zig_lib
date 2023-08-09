@@ -450,49 +450,122 @@ fn writeAssignSpecifierFormatParser(
 fn writeParserFunctionBody(array: *Array, attributes: types.Attributes) void {
     var do_discard: bool = true;
     for (attributes.params) |param_spec| {
-        if (param_spec.string.len == 0 or
-            param_spec.tag == .string_literal or
-            !param_spec.flags.do_parse)
-        {
+        if (param_spec.string.len == 0 or !param_spec.flags.do_parse) {
             continue;
         }
         if (param_spec.and_no) |no_param_spec| {
             switch (param_spec.tag) {
-                .boolean_field => switch (no_param_spec.tag) {
-                    .boolean_field => {
+                .literal => {},
+                .param => {},
+                .field => |field| switch (no_param_spec.tag) {
+                    .field => |no_field| switch (field) {
+                        .boolean => switch (no_field) {
+                            .boolean => {
+                                writeOpenIfEqualTo(array, param_spec.name, param_spec.string);
+                                writeAssignBoolean(array, param_spec.name, true);
+                                writeIfElse(array);
+                                writeOpenIfEqualTo(array, param_spec.name, no_param_spec.string);
+                                writeAssignBoolean(array, param_spec.name, false);
+                                writeIfElse(array);
+                            },
+                            else => unhandledCommandFieldAndNo(param_spec, no_param_spec),
+                        },
+                        .string => switch (no_field) {
+                            .boolean => {
+                                writeOpenIfEqualTo(array, param_spec.name, param_spec.string);
+                                writeNext(array);
+                                writeAssignSpecifier(array, param_spec.name, .{ .yes = "arg" });
+                                writeIfElse(array);
+                                writeOpenIfEqualTo(array, param_spec.name, no_param_spec.string);
+                                writeAssignSpecifier(array, param_spec.name, .{ .no = null });
+                                writeIfElse(array);
+                            },
+                            else => unhandledCommandFieldAndNo(param_spec, no_param_spec),
+                        },
+                        .formatter => switch (no_field) {
+                            .boolean => {
+                                writeOpenIfStartsWith(array, param_spec.name, param_spec.string);
+                                writeIfElse(array);
+                                writeOpenIfEqualTo(array, param_spec.name, no_param_spec.string);
+                                writeAssignBoolean(array, param_spec.name, false);
+                                writeIfElse(array);
+                            },
+                            else => unhandledCommandFieldAndNo(param_spec, no_param_spec),
+                        },
+                        else => unhandledCommandFieldAndNo(param_spec, no_param_spec),
+                    },
+                    else => unhandledCommandFieldAndNo(param_spec, no_param_spec),
+                },
+                .optional_field => |optional_field| switch (no_param_spec.tag) {
+                    .field => |no_field| switch (optional_field) {
+                        .formatter => switch (no_field) {
+                            .boolean => {
+                                writeOpenIfOptional(array, param_spec.name, param_spec.string, param_spec.char orelse '=');
+                                writeAssignSpecifierFormatParser(
+                                    array,
+                                    param_spec.name,
+                                    param_spec.string.len +% 1,
+                                    .{ .yes = param_spec.type.parse.?.* },
+                                );
+                                writeElse(array);
+                                writeAssignSpecifier(array, param_spec.name, .{ .yes = "null" });
+                                writeIfClose(array);
+                                writeIfElse(array);
+                                writeOpenIfEqualTo(array, param_spec.name, no_param_spec.string);
+                                writeAssignSpecifier(array, param_spec.name, .{ .no = null });
+                                writeIfElse(array);
+                            },
+                            else => unhandledCommandFieldAndNo(param_spec, no_param_spec),
+                        },
+                        else => unhandledCommandFieldAndNo(param_spec, no_param_spec),
+                    },
+                    else => unhandledCommandFieldAndNo(param_spec, no_param_spec),
+                },
+            }
+        } else {
+            switch (param_spec.tag) {
+                .field => |field| switch (field) {
+                    .boolean => {
                         writeOpenIfEqualTo(array, param_spec.name, param_spec.string);
                         writeAssignBoolean(array, param_spec.name, true);
                         writeIfElse(array);
-                        writeOpenIfEqualTo(array, param_spec.name, no_param_spec.string);
-                        writeAssignBoolean(array, param_spec.name, false);
-                        writeIfElse(array);
                     },
-                    else => unhandledCommandFieldAndNo(param_spec, no_param_spec),
-                },
-                .string_field => switch (no_param_spec.tag) {
-                    .boolean_field => {
+                    .tag => {
                         writeOpenIfEqualTo(array, param_spec.name, param_spec.string);
-                        writeNext(array);
-                        writeAssignSpecifier(array, param_spec.name, .{ .yes = "arg" });
-                        writeIfElse(array);
-                        writeOpenIfEqualTo(array, param_spec.name, no_param_spec.string);
-                        writeAssignSpecifier(array, param_spec.name, .{ .no = null });
                         writeIfElse(array);
                     },
-                    else => unhandledCommandFieldAndNo(param_spec, no_param_spec),
+                    else => unhandledCommandField(param_spec),
                 },
-                .formatter_field => switch (no_param_spec.tag) {
-                    .boolean_field => {
-                        writeOpenIfStartsWith(array, param_spec.name, param_spec.string);
-                        writeIfElse(array);
-                        writeOpenIfEqualTo(array, param_spec.name, no_param_spec.string);
-                        writeAssignBoolean(array, param_spec.name, false);
+                .optional_field => |optional_field| switch (optional_field) {
+                    .string => {
+                        if (isSquishable(param_spec.string)) {
+                            writeOpenIfStartsWith(array, param_spec.name, param_spec.string);
+                            writeNextIfArgEqualToLength(array, param_spec.string.len);
+                            writeAssignArg(array, param_spec.name);
+                        } else {
+                            writeOpenIfEqualTo(array, param_spec.name, param_spec.string);
+                            writeIncrementArgsIndex(array);
+                            writeAssignIfIndexNotEqualToLength(array, param_spec.name);
+                        }
                         writeIfElse(array);
                     },
-                    else => unhandledCommandFieldAndNo(param_spec, no_param_spec),
-                },
-                .optional_formatter_field => switch (no_param_spec.tag) {
-                    .boolean_field => {
+                    .tag => {
+                        if (isSquishable(param_spec.string)) {
+                            writeOpenIfStartsWith(array, param_spec.name, param_spec.string);
+                            writeNextIfArgEqualToLength(array, param_spec.string.len);
+                        } else {
+                            writeOpenIfEqualTo(array, param_spec.name, param_spec.string);
+                            writeNext(array);
+                        }
+                        for (param_spec.type.parse.?.type_decl.defn.?.fields) |field| {
+                            writeOpenIfEqualTo(array, param_spec.name, field.name);
+                            writeAssignTag(array, param_spec.name, field.name);
+                            writeIfElse(array);
+                        }
+                        array.undefine(5);
+                        writeIfElse(array);
+                    },
+                    .mapped => {
                         writeOpenIfOptional(array, param_spec.name, param_spec.string, param_spec.char orelse '=');
                         writeAssignSpecifierFormatParser(
                             array,
@@ -504,110 +577,53 @@ fn writeParserFunctionBody(array: *Array, attributes: types.Attributes) void {
                         writeAssignSpecifier(array, param_spec.name, .{ .yes = "null" });
                         writeIfClose(array);
                         writeIfElse(array);
-                        writeOpenIfEqualTo(array, param_spec.name, no_param_spec.string);
-                        writeAssignSpecifier(array, param_spec.name, .{ .no = null });
+                    },
+                    .repeatable_string => {
+                        if (isSquishable(param_spec.string)) {
+                            writeOpenIfStartsWith(array, param_spec.name, param_spec.string);
+                            writeNextIfArgEqualToLength(array, param_spec.string.len);
+                        } else {
+                            writeOpenIfEqualTo(array, param_spec.name, param_spec.string);
+                            writeNext(array);
+                        }
+                        writeAddOptionalRepeatableString(array, param_spec.name);
+                        do_discard = false;
                         writeIfElse(array);
                     },
-                    else => unhandledCommandFieldAndNo(param_spec, no_param_spec),
+                    .repeatable_tag => {
+                        if (isSquishable(param_spec.string)) {
+                            writeOpenIfStartsWith(array, param_spec.name, param_spec.string);
+                            writeNextIfArgEqualToLength(array, param_spec.string.len);
+                        } else {
+                            writeOpenIfEqualTo(array, param_spec.name, param_spec.string);
+                            writeNext(array);
+                        }
+                        writeAddOptionalRepeatableTag(array, param_spec.name, param_spec.type.parse.?.type_decl.name.?);
+                        for (param_spec.type.store.type_ref.type.type_ref.type.type_decl.defn.?.fields) |field| {
+                            writeOpenIfEqualTo(array, param_spec.name, field.name);
+                            writeAssignTagToPtr(array, param_spec.name, field.name);
+                            writeIfElse(array);
+                        }
+                        array.undefine(5);
+                        do_discard = false;
+                        writeIfElse(array);
+                    },
+                    .repeatable_formatter => {
+                        if (isSquishable(param_spec.string)) {
+                            writeOpenIfStartsWith(array, param_spec.name, param_spec.string);
+                            writeNextIfArgEqualToLength(array, param_spec.string.len);
+                        } else {
+                            writeOpenIfEqualTo(array, param_spec.name, param_spec.string);
+                            writeNext(array);
+                        }
+                        writeAddOptionalRepeatableFormatter(array, param_spec.name, param_spec.type.parse.?.type_decl.name.?);
+                        do_discard = false;
+                        writeIfElse(array);
+                    },
+                    else => unhandledCommandField(param_spec),
                 },
-                else => unhandledCommandFieldAndNo(param_spec, no_param_spec),
+                else => unhandledCommandField(param_spec),
             }
-        } else switch (param_spec.tag) {
-            .boolean_field => {
-                writeOpenIfEqualTo(array, param_spec.name, param_spec.string);
-                writeAssignBoolean(array, param_spec.name, true);
-                writeIfElse(array);
-            },
-            .tag_field => {
-                writeOpenIfEqualTo(array, param_spec.name, param_spec.string);
-                writeIfElse(array);
-            },
-            .optional_string_field => {
-                if (isSquishable(param_spec.string)) {
-                    writeOpenIfStartsWith(array, param_spec.name, param_spec.string);
-                    writeNextIfArgEqualToLength(array, param_spec.string.len);
-                    writeAssignArg(array, param_spec.name);
-                } else {
-                    writeOpenIfEqualTo(array, param_spec.name, param_spec.string);
-                    writeIncrementArgsIndex(array);
-                    writeAssignIfIndexNotEqualToLength(array, param_spec.name);
-                }
-                writeIfElse(array);
-            },
-            .optional_tag_field => {
-                if (isSquishable(param_spec.string)) {
-                    writeOpenIfStartsWith(array, param_spec.name, param_spec.string);
-                    writeNextIfArgEqualToLength(array, param_spec.string.len);
-                } else {
-                    writeOpenIfEqualTo(array, param_spec.name, param_spec.string);
-                    writeNext(array);
-                }
-                for (param_spec.type.parse.?.type_decl.defn.?.fields) |field| {
-                    writeOpenIfEqualTo(array, param_spec.name, field.name);
-                    writeAssignTag(array, param_spec.name, field.name);
-                    writeIfElse(array);
-                }
-                array.undefine(5);
-                writeIfElse(array);
-            },
-            .optional_integer_field => {},
-            .optional_formatter_field => {},
-            .optional_mapped_field => {
-                writeOpenIfOptional(array, param_spec.name, param_spec.string, param_spec.char orelse '=');
-                writeAssignSpecifierFormatParser(
-                    array,
-                    param_spec.name,
-                    param_spec.string.len +% 1,
-                    .{ .yes = param_spec.type.parse.?.* },
-                );
-                writeElse(array);
-                writeAssignSpecifier(array, param_spec.name, .{ .yes = "null" });
-                writeIfClose(array);
-                writeIfElse(array);
-            },
-            .optional_repeatable_string_field => {
-                if (isSquishable(param_spec.string)) {
-                    writeOpenIfStartsWith(array, param_spec.name, param_spec.string);
-                    writeNextIfArgEqualToLength(array, param_spec.string.len);
-                } else {
-                    writeOpenIfEqualTo(array, param_spec.name, param_spec.string);
-                    writeNext(array);
-                }
-                writeAddOptionalRepeatableString(array, param_spec.name);
-                do_discard = false;
-                writeIfElse(array);
-            },
-            .optional_repeatable_tag_field => {
-                if (isSquishable(param_spec.string)) {
-                    writeOpenIfStartsWith(array, param_spec.name, param_spec.string);
-                    writeNextIfArgEqualToLength(array, param_spec.string.len);
-                } else {
-                    writeOpenIfEqualTo(array, param_spec.name, param_spec.string);
-                    writeNext(array);
-                }
-                writeAddOptionalRepeatableTag(array, param_spec.name, param_spec.type.parse.?.type_decl.name.?);
-                for (param_spec.type.store.type_ref.type.type_ref.type.type_decl.defn.?.fields) |field| {
-                    writeOpenIfEqualTo(array, param_spec.name, field.name);
-                    writeAssignTagToPtr(array, param_spec.name, field.name);
-                    writeIfElse(array);
-                }
-                array.undefine(5);
-                do_discard = false;
-                writeIfElse(array);
-            },
-            .optional_repeatable_formatter_field => {
-                if (isSquishable(param_spec.string)) {
-                    writeOpenIfStartsWith(array, param_spec.name, param_spec.string);
-                    writeNextIfArgEqualToLength(array, param_spec.string.len);
-                } else {
-                    writeOpenIfEqualTo(array, param_spec.name, param_spec.string);
-                    writeNext(array);
-                }
-                writeAddOptionalRepeatableFormatter(array, param_spec.name, param_spec.type.parse.?.type_decl.name.?);
-                do_discard = false;
-                writeIfElse(array);
-            },
-            else => unhandledCommandField(param_spec),
         }
     }
     array.undefine(5);
@@ -619,12 +635,24 @@ fn writeParserFunctionBody(array: *Array, attributes: types.Attributes) void {
 }
 fn unhandledCommandFieldAndNo(param_spec: types.ParamSpec, no_param_spec: types.InverseParamSpec) void {
     var buf: [4096]u8 = undefined;
-    var len: u64 = mach.memcpyMulti(&buf, &.{ param_spec.name, ": ", @tagName(param_spec.tag), "+", @tagName(no_param_spec.tag) });
+    var len: usize = 0;
+    @memcpy(buf[len..].ptr, param_spec.name);
+    len +%= param_spec.name.len;
+    buf[len..][0..5].* = "tag: ".*;
+    len +%= 5;
+    len +%= fmt.render(.{ .infer_type_names = true }, no_param_spec.tag).formatWriteBuf(buf[len..].ptr);
+    buf[len..][0..2].* = ", ".*;
+    len +%= 2;
     proc.exitFault(buf[0..len], 2);
 }
 fn unhandledCommandField(param_spec: types.ParamSpec) void {
     var buf: [4096]u8 = undefined;
-    var len: u64 = mach.memcpyMulti(&buf, &.{ param_spec.name, ": ", @tagName(param_spec.tag), "\n" });
+    var len: usize = 0;
+    @memcpy(buf[len..].ptr, param_spec.name);
+    len +%= param_spec.name.len;
+    buf[len..][0..5].* = "tag: ".*;
+    len +%= 5;
+    len +%= fmt.render(.{ .infer_type_names = true }, param_spec.tag).formatWriteBuf(buf[len..].ptr);
     proc.exitFault(buf[0..len], 2);
 }
 fn writeParserFunctionSpec(array: *Array, attributes: types.Attributes) void {
