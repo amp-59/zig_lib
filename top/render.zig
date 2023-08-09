@@ -1260,28 +1260,28 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
             }
         }
         fn formatWriteBufUntagged(format: Format, buf: [*]u8) usize {
-            var ptr: [*]u8 = buf;
+            var len: usize = 0;
             if (@hasDecl(Union, "tagged") and
                 @hasDecl(Union, "Tagged") and
                 spec.view.extern_tagged_union)
             {
                 const TaggedFormat = AnyFormat(spec, Union.Tagged);
                 const tagged_format: TaggedFormat = .{ .value = format.value.tagged() };
-                ptr = ptr + tagged_format.formatWriteBuf(ptr);
+                len +%= tagged_format.formatWriteBuf(buf);
             } else {
                 if (@sizeOf(Union) > @sizeOf(usize)) {
-                    ptr[0..2].* = "{}".*;
-                    ptr = ptr + 2;
+                    buf[0..2].* = "{}".*;
+                    len +%= 2;
                 } else {
                     const int_format: fmt.Type.Ub(Int) = .{ .value = meta.leastRealBitCast(format.value) };
-                    ptr[0 .. 11 +% @typeName(Union).len].* = ("@bitCast(" ++ @typeName(Union) ++ ", ").*;
-                    ptr = ptr + 11 + @typeName(Union).len;
-                    ptr = ptr + int_format.formatWriteBuf(ptr);
-                    ptr[0] = ')';
-                    ptr = ptr + 1;
+                    buf[0 .. 11 +% @typeName(Union).len].* = ("@bitCast(" ++ @typeName(Union) ++ ", ").*;
+                    len +%= 11 +% @typeName(Union).len;
+                    len +%= int_format.formatWriteBuf(buf + len);
+                    buf[len] = ')';
+                    len +%= 1;
                 }
             }
-            return @intFromPtr(ptr - @intFromPtr(buf));
+            return len;
         }
         fn formatLengthUntagged(format: Format) u64 {
             var len: usize = 0;
