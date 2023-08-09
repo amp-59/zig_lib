@@ -937,8 +937,8 @@ fn unhandledCommandFieldAndNo(param_spec: types.ParamSpec, no_param_spec: types.
     var len: usize = 0;
     @memcpy(buf[len..].ptr, param_spec.name);
     len +%= param_spec.name.len;
-    buf[len..][0..2].* = ": ".*;
-    len +%= 2;
+    buf[len..][0..5].* = "tag: ".*;
+    len +%= 5;
     len +%= fmt.render(.{ .infer_type_names = true }, no_param_spec.tag).formatWriteBuf(buf[len..].ptr);
     buf[len..][0..2].* = ", ".*;
     len +%= 2;
@@ -949,8 +949,8 @@ fn unhandledCommandField(param_spec: types.ParamSpec) void {
     var len: usize = 0;
     @memcpy(buf[len..].ptr, param_spec.name);
     len +%= param_spec.name.len;
-    buf[len..][0..2].* = ": ".*;
-    len +%= 2;
+    buf[len..][0..5].* = "tag: ".*;
+    len +%= 5;
     len +%= fmt.render(.{ .infer_type_names = true }, param_spec.tag).formatWriteBuf(buf[len..].ptr);
     proc.exitFault(buf[0..len], 2);
 }
