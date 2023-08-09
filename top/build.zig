@@ -303,20 +303,19 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
     comptime var do_archive: bool = false;
     // Enables `zig objcopy` commands.
     comptime var do_objcopy: bool = false;
-    // Enables logic to check for hid
-    const maybe_hide: bool =
-        builder_spec.options.hide_based_on_name_prefix != null or
-        builder_spec.options.hide_based_on_group;
-    const maybe_regen: bool = @hasDecl(builtin.root, "want_regen_metadata");
     const T = struct {
         tag: types.Node,
         name: [:0]u8,
         descr: [:0]const u8,
         task: Task,
         flags: packed struct {
+            /// Whether the node is maintained and defined by this library.
             is_special: bool = false,
             /// Whether the node will be shown by list commands.
             is_hidden: bool = false,
+            /// Whether the node task command is invoked directly from `processCommands`.
+            /// Determines whether command line arguments are appended.
+            is_primary: bool = false,
             /// Flags relevant to group nodes.
             /// Whether independent nodes will be processed in parallel.
             is_single_threaded: bool = false,
