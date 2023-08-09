@@ -16,6 +16,7 @@ const Array = mem.StaticString(64 * 1024 * 1024);
 const Array2 = mem.StaticString(64 * 1024);
 const notation: enum { slice, ptrcast, memcpy } = .slice;
 const memcpy: enum { builtin, mach } = .builtin;
+const usage: enum { lib, exe } = .exe;
 const combine_char: bool = true;
 const open_spec: file.OpenSpec = .{
     .errors = .{},
@@ -40,8 +41,8 @@ const close_spec: file.CloseSpec = .{
 };
 fn writeType(fields_array: *Array, param_spec: types.ParamSpec) void {
     if (param_spec.and_no) |no_param_spec| {
-        const yes_bool: bool = param_spec.tag == .boolean_field;
-        const no_bool: bool = no_param_spec.tag == .boolean_field;
+        const yes_bool: bool = param_spec.tag == .field and param_spec.tag.field == .boolean;
+        const no_bool: bool = no_param_spec.tag == .field and no_param_spec.tag.field == .boolean;
         if (yes_bool != no_bool) {
             const new_type: types.ProtoTypeDescr = .{ .type_ref = .{
                 .spec = "?",
@@ -243,7 +244,7 @@ fn writeKindString(array: *Array, arg_string: []const u8, variant: types.Variant
                     array.writeMany(");\n");
                 }
             } else {
-                if (memcpy == .builtin) {
+                if (notation == .slice) {
                     array.writeMany("mach.memcpy(ptr,");
                     writeFieldTagnamePtr(array, arg_string);
                     array.writeMany(",");
@@ -640,33 +641,24 @@ fn writeOptionalFormatter(
     }
     writeFormatterInternal(array, arg_string, variant);
 }
-pub fn writeWriterFunctionBody(array: *Array, params: []const types.ParamSpec, variant: types.Variant) void {
+fn writeWriterFunctionBody(array: *Array, params: []const types.ParamSpec, variant: types.Variant) void {
     writeSetRuntimeSafety(array);
-    if (variant != .write) {
-        if (variant == .write_buf and notation == .slice) {
-            writeDeclarePointer(array);
-        } else {
-            writeDeclareLength(array);
-        }
+    if (variant == .write_buf and notation == .slice) {
+        writeDeclarePointer(array);
+    } else if (variant != .write) {
+        writeDeclareLength(array);
     }
     for (params) |param_spec| {
         if (!param_spec.flags.do_write) {
             continue;
         }
-        const if_boolean_field_value: []const u8 = param_spec.name;
-        const if_optional_field_value: []const u8 = param_spec.name;
-        const if_optional_field_capture: []const u8 = param_spec.name;
-        switch (param_spec.tag) {
-            .string_param => writeArgStringExtra(array, param_spec.name, variant, param_spec.char orelse '\x00'),
-            .string_literal => writeOptStringExtra(array, param_spec.string, variant, param_spec.char orelse '\x00'),
-            .formatter_param => writeFormatter(array, &.{}, param_spec.name, variant, param_spec.char orelse '\x00'),
-            .mapped_param => writeMapped(array, &.{}, param_spec.name, variant, param_spec.type.write.?.*, param_spec.char orelse '\x00'),
-            else => if (param_spec.and_no) |no_param_spec| {
-                switch (param_spec.tag) {
-                    .boolean_field => switch (no_param_spec.tag) {
-                        .boolean_field => {
-                            writeIfOptionalField(array, if_optional_field_value, if_optional_field_capture);
-                            writeIf(array, if_optional_field_capture);
+        if (param_spec.and_no) |no_param_spec| switch (param_spec.tag) {
+            .field => |field| switch (no_param_spec.tag) {
+                .field => |no_field| switch (field) {
+                    .boolean => switch (no_field) {
+                        .boolean => {
+                            writeIfOptionalField(array, param_spec.name, param_spec.name);
+                            writeIf(array, param_spec.name);
                             writeOptStringExtra(array, param_spec.string, variant, param_spec.char orelse '\x00');
                             writeElse(array);
                             writeOptStringExtra(array, no_param_spec.string, variant, param_spec.char orelse '\x00');
@@ -675,10 +667,10 @@ pub fn writeWriterFunctionBody(array: *Array, params: []const types.ParamSpec, v
                         },
                         else => unhandledCommandFieldAndNo(param_spec, no_param_spec),
                     },
-                    .string_field => switch (no_param_spec.tag) {
-                        .boolean_field => {
-                            writeIfOptionalField(array, if_optional_field_value, if_optional_field_capture);
-                            writeSwitch(array, if_optional_field_capture);
+                    .string => switch (no_param_spec.tag.field) {
+                        .boolean => {
+                            writeIfOptionalField(array, param_spec.name, param_spec.name);
+                            writeSwitch(array, param_spec.name);
                             writeRequiredProng(array, "yes", "arg");
                             writeOptArgString(array, param_spec.string, "arg", variant, param_spec.char orelse '\x00');
                             writeProngClose(array);
@@ -690,10 +682,10 @@ pub fn writeWriterFunctionBody(array: *Array, params: []const types.ParamSpec, v
                         },
                         else => unhandledCommandFieldAndNo(param_spec, no_param_spec),
                     },
-                    .formatter_field => switch (no_param_spec.tag) {
-                        .boolean_field => {
-                            writeIfOptionalField(array, if_optional_field_value, if_optional_field_capture);
-                            writeSwitch(array, if_optional_field_capture);
+                    .formatter => switch (no_param_spec.tag.field) {
+                        .boolean => {
+                            writeIfOptionalField(array, param_spec.name, param_spec.name);
+                            writeSwitch(array, param_spec.name);
                             writeRequiredProng(array, "yes", "arg");
                             writeFormatter(array, param_spec.string, "arg", variant, param_spec.char orelse '\x00');
                             writeProngClose(array);
@@ -705,80 +697,99 @@ pub fn writeWriterFunctionBody(array: *Array, params: []const types.ParamSpec, v
                         },
                         else => unhandledCommandFieldAndNo(param_spec, no_param_spec),
                     },
-                    .optional_formatter_field => switch (no_param_spec.tag) {
-                        .boolean_field => {
-                            writeIfOptionalField(array, if_optional_field_value, if_optional_field_capture);
-                            writeSwitch(array, if_optional_field_capture);
-                            writeRequiredProng(array, "yes", "yes");
-                            writeIfOptional(array, "yes", "arg");
-                            writeOptionalFormatter(array, param_spec.string, "arg", variant, param_spec.char orelse '=');
-                            writeElse(array);
-                            writeOptStringExtra(array, param_spec.string, variant, param_spec.char orelse '\x00');
-                            writeIfClose(array);
-                            writeProngClose(array);
-                            writeProng(array, "no");
-                            writeOptStringExtra(array, no_param_spec.string, variant, param_spec.char orelse '\x00');
-                            writeProngClose(array);
-                            writeIfClose(array);
-                            writeIfClose(array);
-                        },
-                        else => unhandledCommandFieldAndNo(param_spec, no_param_spec),
-                    },
                     else => unhandledCommandFieldAndNo(param_spec, no_param_spec),
-                }
-            } else {
-                switch (param_spec.tag) {
-                    .boolean_field => {
-                        writeIfField(array, if_boolean_field_value);
+                },
+                else => unhandledCommandFieldAndNo(param_spec, no_param_spec),
+            },
+            .optional_field => switch (no_param_spec.tag) {
+                .field => |field| switch (field) {
+                    .boolean => {
+                        writeIfOptionalField(array, param_spec.name, param_spec.name);
+                        writeSwitch(array, param_spec.name);
+                        writeRequiredProng(array, "yes", "yes");
+                        writeIfOptional(array, "yes", "arg");
+                        writeOptionalFormatter(array, param_spec.string, "arg", variant, param_spec.char orelse '=');
+                        writeElse(array);
                         writeOptStringExtra(array, param_spec.string, variant, param_spec.char orelse '\x00');
                         writeIfClose(array);
-                    },
-                    .tag_field => {
-                        writeKindString(array, param_spec.name, variant);
-                        writeNull(array, variant);
-                    },
-                    .optional_string_field => {
-                        writeIfOptionalField(array, if_optional_field_value, if_optional_field_capture);
-                        writeOptArgString(array, param_spec.string, if_optional_field_capture, variant, param_spec.char orelse '\x00');
+                        writeProngClose(array);
+                        writeProng(array, "no");
+                        writeOptStringExtra(array, no_param_spec.string, variant, param_spec.char orelse '\x00');
+                        writeProngClose(array);
+                        writeIfClose(array);
                         writeIfClose(array);
                     },
-                    .optional_tag_field => {
-                        writeIfOptionalField(array, if_optional_field_value, if_optional_field_capture);
-                        writeOptTagString(array, param_spec.string, if_optional_field_capture, variant, param_spec.char orelse '\x00');
+                    else => unhandledCommandFieldAndNo(param_spec, no_param_spec),
+                },
+                else => unhandledCommandFieldAndNo(param_spec, no_param_spec),
+            },
+            else => unhandledCommandFieldAndNo(param_spec, no_param_spec),
+        } else switch (param_spec.tag) {
+            .param => |param| switch (param) {
+                .string => writeArgStringExtra(array, param_spec.name, variant, param_spec.char orelse '\x00'),
+                .formatter => writeFormatter(array, &.{}, param_spec.name, variant, param_spec.char orelse '\x00'),
+                .mapped => writeMapped(array, &.{}, param_spec.name, variant, param_spec.type.write.?.*, param_spec.char orelse '\x00'),
+            },
+            .literal => |literal| switch (literal) {
+                .string => writeOptStringExtra(array, param_spec.string, variant, param_spec.char orelse '\x00'),
+                else => unhandledCommandField(param_spec),
+            },
+            .field => |field| switch (field) {
+                .boolean => {
+                    writeIfField(array, param_spec.name);
+                    writeOptStringExtra(array, param_spec.string, variant, param_spec.char orelse '\x00');
+                    writeIfClose(array);
+                },
+                .tag => {
+                    writeKindString(array, param_spec.name, variant);
+                    writeNull(array, variant);
+                },
+                else => unhandledCommandField(param_spec),
+            },
+            .optional_field => |optional_field| {
+                switch (optional_field) {
+                    .string => {
+                        writeIfOptionalField(array, param_spec.name, param_spec.name);
+                        writeOptArgString(array, param_spec.string, param_spec.name, variant, param_spec.char orelse '\x00');
                         writeIfClose(array);
                     },
-                    .optional_integer_field => {
-                        writeIfOptionalField(array, if_optional_field_value, if_optional_field_capture);
-                        writeOptArgInteger(array, param_spec.string, if_optional_field_capture, variant, param_spec.char orelse '\x00');
+                    .tag => {
+                        writeIfOptionalField(array, param_spec.name, param_spec.name);
+                        writeOptTagString(array, param_spec.string, param_spec.name, variant, param_spec.char orelse '\x00');
                         writeIfClose(array);
                     },
-                    .optional_formatter_field => {
-                        writeIfOptionalField(array, if_optional_field_value, if_optional_field_capture);
-                        writeFormatter(array, &.{}, if_optional_field_capture, variant, param_spec.char orelse '\x00');
+                    .integer => {
+                        writeIfOptionalField(array, param_spec.name, param_spec.name);
+                        writeOptArgInteger(array, param_spec.string, param_spec.name, variant, param_spec.char orelse '\x00');
                         writeIfClose(array);
                     },
-                    .optional_mapped_field => {
-                        writeIfOptionalField(array, if_optional_field_value, if_optional_field_capture);
-                        writeMapped(array, &.{}, if_optional_field_capture, variant, param_spec.type.write.?.*, param_spec.char orelse '\x00');
+                    .formatter => {
+                        writeIfOptionalField(array, param_spec.name, param_spec.name);
+                        writeFormatter(array, &.{}, param_spec.name, variant, param_spec.char orelse '\x00');
                         writeIfClose(array);
                     },
-                    .optional_repeatable_formatter_field => {
-                        writeIfOptionalField(array, if_optional_field_value, if_optional_field_capture);
-                        writeForEach(array, if_optional_field_capture, "value");
+                    .mapped => {
+                        writeIfOptionalField(array, param_spec.name, param_spec.name);
+                        writeMapped(array, &.{}, param_spec.name, variant, param_spec.type.write.?.*, param_spec.char orelse '\x00');
+                        writeIfClose(array);
+                    },
+                    .repeatable_formatter => {
+                        writeIfOptionalField(array, param_spec.name, param_spec.name);
+                        writeForEach(array, param_spec.name, "value");
                         writeFormatter(array, &.{}, "value", variant, param_spec.char orelse '\x00');
                         writeIfClose(array);
                         writeIfClose(array);
                     },
-                    .optional_repeatable_string_field => {
-                        writeIfOptionalField(array, if_optional_field_value, if_optional_field_capture);
-                        writeForEach(array, if_optional_field_capture, "value");
+                    .repeatable_string => {
+                        writeIfOptionalField(array, param_spec.name, param_spec.name);
+                        writeForEach(array, param_spec.name, "value");
                         writeOptArgString(array, param_spec.string, "value", variant, param_spec.char orelse '\x00');
                         writeIfClose(array);
                         writeIfClose(array);
                     },
-                    .optional_repeatable_tag_field => {
-                        writeIfOptionalField(array, if_optional_field_value, if_optional_field_capture);
-                        writeForEach(array, if_optional_field_capture, "value");
+                    .repeatable_tag => {
+                        writeIfOptionalField(array, param_spec.name, param_spec.name);
+                        writeForEach(array, param_spec.name, "value");
                         writeOptTagString(array, param_spec.string, "value", variant, param_spec.char orelse '\x00');
                         writeIfClose(array);
                         writeIfClose(array);
@@ -788,14 +799,10 @@ pub fn writeWriterFunctionBody(array: *Array, params: []const types.ParamSpec, v
             },
         }
     }
-    if (variant != .write) {
-        if (variant == .write_buf and
-            notation == .slice)
-        {
-            writeReturnPointerDiff(array);
-        } else {
-            writeReturnLength(array);
-        }
+    if (variant == .write_buf and notation == .slice) {
+        writeReturnPointerDiff(array);
+    } else if (variant != .write) {
+        writeReturnLength(array);
     }
     writeIfClose(array);
 }
@@ -819,11 +826,17 @@ fn writeWriterFunctionSignature(array: *Array, attributes: types.Attributes, var
     array.writeMany(attributes.type_name);
     array.writeMany(",");
     for (attributes.params) |param_spec| {
-        if (param_spec.isFnParam()) {
-            array.writeMany(param_spec.name);
-            array.writeMany(":");
-            array.writeFormat(param_spec.type.store.*);
-            array.writeMany(",");
+        if (param_spec.tag == .param) {
+            if (usage == .lib) {
+                array.writeMany(",");
+                array.writeMany(param_spec.name);
+                array.writeMany("_len:usize,");
+            } else {
+                array.writeMany(param_spec.name);
+                array.writeMany(":");
+                array.writeFormat(param_spec.type.store.*);
+                array.writeMany(",");
+            }
         }
     }
     array.undefine(builtin.int(u1, variant == .length));
@@ -844,7 +857,9 @@ fn writeFields(allocator: *mem.SimpleAllocator, array: *Array, attributes: types
         if (param_spec.name.len == 0) {
             continue;
         }
-        if (param_spec.isField()) {
+        if (param_spec.tag == .field or
+            param_spec.tag == .optional_field)
+        {
             for (param_spec.descr) |line| {
                 array.writeMany("/// ");
                 array.writeMany(line);
@@ -853,15 +868,17 @@ fn writeFields(allocator: *mem.SimpleAllocator, array: *Array, attributes: types
             array.writeMany(param_spec.name);
             array.writeMany(":");
             writeType(array, param_spec);
-            if (param_spec.and_no == null and
-                param_spec.tag == .boolean_field)
-            {
-                array.writeMany("=false,\n");
-            } else if (param_spec.tag != .tag_field) {
-                array.writeMany("=null,\n");
-            } else {
-                array.writeMany(",\n");
+            if (param_spec.tag == .field) {
+                if (param_spec.and_no != null) {
+                    array.writeMany("=null");
+                } else if (param_spec.tag.field == .boolean) {
+                    array.writeMany("=false");
+                }
             }
+            if (param_spec.tag == .optional_field) {
+                array.writeMany("=null");
+            }
+            array.writeMany(",\n");
         }
     }
     array.writeMany(types_array.readAll());
@@ -917,12 +934,24 @@ fn writeStructs(allocator: *mem.SimpleAllocator, array: *Array, attributes_set: 
 }
 fn unhandledCommandFieldAndNo(param_spec: types.ParamSpec, no_param_spec: types.InverseParamSpec) void {
     var buf: [4096]u8 = undefined;
-    var len: u64 = mach.memcpyMulti(&buf, &.{ param_spec.name, ": ", @tagName(param_spec.tag), "+", @tagName(no_param_spec.tag) });
+    var len: usize = 0;
+    @memcpy(buf[len..].ptr, param_spec.name);
+    len +%= param_spec.name.len;
+    buf[len..][0..2].* = ": ".*;
+    len +%= 2;
+    len +%= fmt.render(.{ .infer_type_names = true }, no_param_spec.tag).formatWriteBuf(buf[len..].ptr);
+    buf[len..][0..2].* = ", ".*;
+    len +%= 2;
     proc.exitFault(buf[0..len], 2);
 }
 fn unhandledCommandField(param_spec: types.ParamSpec) void {
     var buf: [4096]u8 = undefined;
-    var len: u64 = mach.memcpyMulti(&buf, &.{ param_spec.name, ": ", @tagName(param_spec.tag), "\n" });
+    var len: usize = 0;
+    @memcpy(buf[len..].ptr, param_spec.name);
+    len +%= param_spec.name.len;
+    buf[len..][0..2].* = ": ".*;
+    len +%= 2;
+    len +%= fmt.render(.{ .infer_type_names = true }, param_spec.tag).formatWriteBuf(buf[len..].ptr);
     proc.exitFault(buf[0..len], 2);
 }
 pub fn main() !void {
