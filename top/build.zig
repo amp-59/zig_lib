@@ -1051,38 +1051,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             node.addDep(allocator).* = .{ .task = task, .on_node = on_node, .on_task = on_task, .on_state = .finished };
         }
         pub const impl = struct {
-            fn install(src_pathname: [:0]u8, dest_pathname: [:0]const u8) void {
-                file.unlink(unlink(), dest_pathname);
-                file.link(link(), src_pathname, dest_pathname);
-            }
-            fn clientLoop(allocator: *mem.SimpleAllocator, job: *types.JobInfo, out: file.Pipe, dest_pathname: [:0]const u8) void {
-                @setRuntimeSafety(builder_spec.options.enable_safety);
-                const header: *types.Message.ServerHeader = @ptrFromInt(allocator.allocateRaw(
-                    @sizeOf(types.Message.ServerHeader),
-                    @alignOf(types.Message.ServerHeader),
-                ));
-                const save: u64 = allocator.next;
-                var fd: file.PollFd = .{ .fd = out.read, .expect = .{ .input = true } };
-                while (try meta.wrap(file.pollOne(poll(), &fd, builder_spec.options.timeout_milliseconds))) {
-                    try meta.wrap(file.readOne(read3(), out.read, header));
-                    const ptrs: MessagePtrs = .{ .msg = allocator.allocateAligned(u8, header.bytes_len +% 64, 4).ptr };
-                    mach.memset(ptrs.msg, 0, header.bytes_len +% 1);
-                    var len: usize = 0;
-                    while (len != header.bytes_len) {
-                        len +%= try meta.wrap(file.read(read2(), out.read, ptrs.msg[len..header.bytes_len]));
-                    }
-                    if (header.tag == .emit_bin_path) break {
-                        job.ret.srv = ptrs.msg[0];
-                        install(mem.terminate(ptrs.str + 1, 0), dest_pathname);
-                    };
-                    if (header.tag == .error_bundle) break {
-                        job.ret.srv = builder_spec.options.compiler_error_status;
-                        about.writeErrors(allocator, ptrs);
-                    };
-                    fd.actual = .{};
-                    allocator.next = save;
-                }
-            }
             fn system(args: [][*:0]u8, job: *types.JobInfo) void {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
                 const exe: [:0]const u8 = mem.terminate(args[0], 0);
@@ -1097,6 +1065,10 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             }
             fn server(allocator: *mem.SimpleAllocator, args: [][*:0]u8, job: *types.JobInfo, zig_exe: [:0]const u8, dest_pathname: [:0]const u8) void {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
+                const header: *types.Message.ServerHeader = @ptrFromInt(allocator.allocateRaw(
+                    @sizeOf(types.Message.ServerHeader),
+                    @alignOf(types.Message.ServerHeader),
+                ));
                 const in: file.Pipe = try meta.wrap(file.makePipe(pipe()));
                 const out: file.Pipe = try meta.wrap(file.makePipe(pipe()));
                 job.ts = try meta.wrap(time.get(clock(), .realtime));
@@ -1106,8 +1078,33 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     try meta.wrap(file.execPath(execve(), zig_exe, args, build.vars));
                 }
                 try meta.wrap(openParent(in, out));
-                try meta.wrap(file.write(write2(), in.write, &update_exit_message));
-                try meta.wrap(clientLoop(allocator, job, out, dest_pathname));
+                try meta.wrap(file.write(write2(), in.write, update_exit_message[0..1]));
+                const save: u64 = allocator.next;
+                var fd: file.PollFd = .{ .fd = out.read, .expect = .{ .input = true } };
+                while (try meta.wrap(file.pollOne(poll(), &fd, builder_spec.options.timeout_milliseconds))) {
+                    try meta.wrap(file.readOne(read3(), out.read, header));
+                    const ptrs: MessagePtrs = .{ .msg = allocator.allocateAligned(u8, header.bytes_len +% 64, 4).ptr };
+                    mach.memset(ptrs.msg, 0, header.bytes_len +% 1);
+                    var len: usize = 0;
+                    while (len != header.bytes_len) {
+                        len +%= try meta.wrap(file.read(read2(), out.read, ptrs.msg[len..header.bytes_len]));
+                    }
+                    if (header.tag == .emit_bin_path) break {
+                        job.ret.srv = ptrs.msg[0];
+                        file.unlink(unlink(), dest_pathname);
+                        file.link(link(), mem.terminate(ptrs.str + 1, 0), dest_pathname);
+                    };
+                    if (header.tag == .error_bundle) break {
+                        job.ret.srv = builder_spec.options.compiler_error_status;
+                        about.writeErrors(allocator, ptrs);
+                    };
+                    allocator.next = save;
+                } else {
+                    if (fd.actual.hangup) {
+                        job.ret.srv = builder_spec.options.compiler_error_status;
+                    }
+                }
+                try meta.wrap(file.write(write2(), in.write, update_exit_message[1..2]));
                 const rc: proc.Return = try meta.wrap(proc.waitPid(waitpid(), .{ .pid = pid }));
                 job.ts = time.diff(try meta.wrap(time.get(clock(), .realtime)), job.ts);
                 job.ret.sys = proc.Status.exit(rc.status);
