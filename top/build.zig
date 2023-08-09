@@ -1293,7 +1293,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     unreachable;
                 }
                 var allocator: mem.SimpleAllocator = mem.SimpleAllocator.init_arena(Node.AddressSpace.arena(arena_index));
-                impl.spawnDeps(address_space, thread_space, &allocator, toplevel, node, task);
+                impl.spawnDeps(address_space, thread_space, &allocator, toplevel, node, task, arena_index);
                 while (keepGoing() and nodeWait(node, task, arena_index)) {
                     try meta.wrap(time.sleep(sleep(), .{ .nsec = builder_spec.options.sleep_nanoseconds }));
                 }
@@ -1317,22 +1317,23 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 toplevel: *const Node,
                 node: *Node,
                 task: types.Task,
+                arena_index: AddressSpace.Index,
             ) void {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
                 const save: u64 = allocator.next;
                 defer allocator.next = save;
-                impl.spawnDeps(address_space, thread_space, allocator, toplevel, node, task);
-                while (keepGoing() and nodeWait(node, task, max_thread_count)) {
+                impl.spawnDeps(address_space, thread_space, allocator, toplevel, node, task, arena_index);
+                while (keepGoing() and nodeWait(node, task, arena_index)) {
                     try meta.wrap(time.sleep(sleep(), .{ .nsec = builder_spec.options.sleep_nanoseconds }));
                 }
                 if (node.task.lock.get(task) == .working) {
                     if (executeCommandInternal(allocator, node, task, max_thread_count)) {
-                        node.assertExchange(task, .working, .finished, max_thread_count);
+                        node.assertExchange(task, .working, .finished, arena_index);
                     } else {
                         if (count_errors) {
                             build.error_count +%= 1;
                         }
-                        node.assertExchange(task, .working, .failed, max_thread_count);
+                        node.assertExchange(task, .working, .failed, arena_index);
                     }
                 }
             }
@@ -1343,18 +1344,19 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 toplevel: *const Node,
                 node: *Node,
                 task: types.Task,
+                arena_index: AddressSpace.Index,
             ) void {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
-                if (!(max_thread_count == 0 or toplevel.flags.is_single_threaded)) {
-                    var arena_index: AddressSpace.Index = 0;
-                    while (arena_index != max_thread_count) : (arena_index +%= 1) {
-                        if (mem.testAcquire(ThreadSpace, thread_space, arena_index)) {
-                            const stack_addr: u64 = ThreadSpace.low(arena_index);
-                            return forwardToExecuteCloneThreaded(address_space, thread_space, toplevel, node, task, arena_index, stack_addr, stack_aligned_bytes);
+                if (max_thread_count != 0) {
+                    var idx: AddressSpace.Index = 0;
+                    while (idx != max_thread_count) : (idx +%= 1) {
+                        if (mem.testAcquire(ThreadSpace, thread_space, idx)) {
+                            const addr: u64 = ThreadSpace.low(idx);
+                            return forwardToExecuteCloneThreaded(address_space, thread_space, toplevel, node, task, idx, addr, stack_aligned_bytes);
                         }
                     }
                 }
-                try meta.wrap(impl.executeCommandSynchronised(address_space, thread_space, allocator, toplevel, node, task));
+                try meta.wrap(impl.executeCommandSynchronised(address_space, thread_space, allocator, toplevel, node, task, arena_index));
             }
         };
         pub fn executeToplevel(
@@ -1368,7 +1370,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             const task: types.Task = maybe_task orelse node.task.tag;
             if (node.exchange(task, .ready, .blocking, max_thread_count)) {
-                try meta.wrap(impl.tryAcquireThread(address_space, thread_space, allocator, toplevel, node, task));
+                try meta.wrap(impl.tryAcquireThread(address_space, thread_space, allocator, toplevel, node, task, max_thread_count));
             }
             while (toplevelWait(thread_space)) {
                 try meta.wrap(time.sleep(sleep(), .{ .nsec = builder_spec.options.sleep_nanoseconds }));
@@ -1565,8 +1567,18 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             }
             return node.impl.output_root_fd;
         }
-        const lib_build_root = libraryRoot();
-        const lib_cache_root = lib_build_root ++ "/" ++ builder_spec.options.names.zig_cache_dir;
+        pub fn hasDebugInfo(node: *Node) bool {
+            @setRuntimeSafety(builder_spec.options.enable_safety);
+            if (node.task.cmd.build.strip) |strip| {
+                return strip;
+            } else {
+                return (node.task.cmd.build.mode orelse .Debug) == .ReleaseSmall;
+            }
+        }
+        pub const lib_build_root = libraryRoot();
+        pub const lib_cache_root = lib_build_root ++ "/" ++ builder_spec.options.names.zig_cache_dir;
+        const tasks_root = lib_build_root ++ "/" ++ builder_spec.options.names.tasks_root;
+        const parse_root = lib_build_root ++ "/" ++ builder_spec.options.names.parse_root;
         const binary_prefix = builder_spec.options.names.zig_out_dir ++ "/" ++ builder_spec.options.names.exe_out_dir ++ "/";
         const library_prefix = builder_spec.options.names.zig_out_dir ++ "/" ++ builder_spec.options.names.lib_out_dir ++ "/lib";
         const archive_prefix = builder_spec.options.names.zig_out_dir ++ "/" ++ builder_spec.options.names.lib_out_dir ++ "/lib";
