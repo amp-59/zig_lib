@@ -1682,6 +1682,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     return about.toplevelCommandNotice(allocator, toplevel, true);
                 }
                 if (toplevel.find(name)) |node| {
+                    node.flags.is_primary = true;
                     toplevel.impl.args_len = cmd_args_idx +% 1;
                     splitArguments(cmd_args_idx +% 1);
                     if (!executeToplevel(address_space, thread_space, allocator, toplevel, node, maybe_task)) {
@@ -1926,17 +1927,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             cached = builder_spec.options.compiler_cache_hit_status,
             failed = builder_spec.options.compiler_error_status,
             other,
-            fn enumFromInt(srv: u8) UpdateAnswer {
-                switch (srv) {
-                    builder_spec.options
-                        .compiler_cache_hit_status => return .cached,
-                    builder_spec.options
-                        .compiler_error_status => return .failed,
-                    builder_spec.options
-                        .compiler_expected_status => return .updated,
-                    else => return .other,
-                }
-            }
         };
         pub fn testExtension(name: []const u8, extension: []const u8) bool {
             @setRuntimeSafety(builder_spec.options.enable_safety);
@@ -2396,6 +2386,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             }
             fn taskNotice(node: *Node, task: types.Task, arena_index: AddressSpace.Index, old_size: u64, new_size: u64, job: *types.JobInfo) void {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
+                const ans: UpdateAnswer = @enumFromInt(job.ret.srv);
                 const diff_size: u64 = @max(new_size, old_size) -% @min(new_size, old_size);
                 var ud64: fmt.Type.Ud64 = undefined;
                 var buf: [32768]u8 = undefined;
@@ -2434,13 +2425,12 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 ptr = ptr + 5;
                 ud64.value = job.ret.sys;
                 if (task == .build) {
-                    const res: UpdateAnswer = UpdateAnswer.enumFromInt(job.ret.srv);
                     var style_s: []const u8 = tab.bold_s;
-                    if (res == .failed) {
+                    if (ans == .failed) {
                         style_s = tab.red_s;
                     }
                     if (node.flags.is_special) {
-                        if (res == .cached) {
+                        if (ans == .cached) {
                             return;
                         }
                         style_s = tab.special_s;
@@ -2449,8 +2439,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     ptr = ptr + 1;
                     @memcpy(ptr, style_s);
                     ptr = ptr + style_s.len;
-                    @memcpy(ptr, @tagName(res));
-                    ptr = ptr + @tagName(res).len;
+                    @memcpy(ptr, @tagName(ans));
+                    ptr = ptr + @tagName(ans).len;
                     ptr[0..4].* = tab.reset_s.*;
                     ptr = ptr + 4;
                     ptr[0] = ',';
@@ -2479,37 +2469,39 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 ptr[0..2].* = ", ".*;
                 ptr = ptr + 2;
                 if (task == .build or task == .archive) {
-                    if (old_size == 0) {
-                        ptr[0..5].* = tab.gold_s.*;
-                        ptr = ptr + 5;
-                        ud64.value = new_size;
-                        ptr = ptr + ud64.formatWriteBuf(ptr);
-                        ptr[0..13].* = ("*" ++ tab.reset_s ++ tab.bytes_s).*;
-                        ptr = ptr + 13;
-                    } else if (new_size == old_size) {
-                        ud64.value = new_size;
-                        ptr = ptr + ud64.formatWriteBuf(ptr);
-                        ptr[0..8].* = tab.bytes_s.*;
-                        ptr = ptr + 8;
-                    } else {
-                        ud64.value = old_size;
-                        ptr = ptr + ud64.formatWriteBuf(ptr);
-                        ptr[0] = '(';
-                        ptr = ptr + 1;
-                        ptr[0..7].* = if (new_size > old_size) tab.red_s.* else tab.green_s.*;
-                        ptr = ptr + 7;
-                        ptr[0] = if (new_size > old_size) '+' else '-';
-                        ptr = ptr + 1;
-                        ud64.value = diff_size;
-                        ptr = ptr + ud64.formatWriteBuf(ptr);
-                        ptr[0..4].* = tab.reset_s.*;
-                        ptr = ptr + 4;
-                        ptr[0..5].* = ") => ".*;
-                        ptr = ptr + 5;
-                        ud64.value = new_size;
-                        ptr = ptr + ud64.formatWriteBuf(ptr);
-                        ptr[0..8].* = tab.bytes_s.*;
-                        ptr = ptr + 8;
+                    if (ans != .failed) {
+                        if (old_size == 0) {
+                            ptr[0..5].* = tab.gold_s.*;
+                            ptr = ptr + 5;
+                            ud64.value = new_size;
+                            ptr = ptr + ud64.formatWriteBuf(ptr);
+                            ptr[0..13].* = ("*" ++ tab.reset_s ++ tab.bytes_s).*;
+                            ptr = ptr + 13;
+                        } else if (new_size == old_size) {
+                            ud64.value = new_size;
+                            ptr = ptr + ud64.formatWriteBuf(ptr);
+                            ptr[0..8].* = tab.bytes_s.*;
+                            ptr = ptr + 8;
+                        } else {
+                            ud64.value = old_size;
+                            ptr = ptr + ud64.formatWriteBuf(ptr);
+                            ptr[0] = '(';
+                            ptr = ptr + 1;
+                            ptr[0..7].* = if (new_size > old_size) tab.red_s.* else tab.green_s.*;
+                            ptr = ptr + 7;
+                            ptr[0] = if (new_size > old_size) '+' else '-';
+                            ptr = ptr + 1;
+                            ud64.value = diff_size;
+                            ptr = ptr + ud64.formatWriteBuf(ptr);
+                            ptr[0..4].* = tab.reset_s.*;
+                            ptr = ptr + 4;
+                            ptr[0..5].* = ") => ".*;
+                            ptr = ptr + 5;
+                            ud64.value = new_size;
+                            ptr = ptr + ud64.formatWriteBuf(ptr);
+                            ptr[0..8].* = tab.bytes_s.*;
+                            ptr = ptr + 8;
+                        }
                     }
                 }
                 ud64.value = job.ts.sec;
@@ -2964,24 +2956,27 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 }
                 debug.write(buf[0..@intFromPtr(ptr - @intFromPtr(&buf))]);
             }
-            fn toplevelCommandNotice(allocator: *mem.SimpleAllocator, toplevel: *const Node, show_deps: bool) void {
+            fn toplevelCommandNotice(allocator: *mem.SimpleAllocator, node: *const Node, show_deps: bool) void {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
+                if (node.tag == .worker) {
+                    return toplevelCommandNotice(allocator, node.impl.nodes[0], show_deps);
+                }
                 const save: u64 = allocator.next;
                 defer allocator.next = save;
                 var name_width: u64 = 0;
                 var root_width: u64 = 0;
                 const buf0: [*]u8 = @ptrFromInt(allocator.allocateRaw(1024 *% 1024, 1));
                 mach.memset(buf0, 'E', 1024 *% 1024);
-                var len0: u64 = toplevel.name.len;
+                var len0: u64 = node.name.len;
                 const buf1: [*]u8 = @ptrFromInt(allocator.allocateRaw(4096, 1));
                 mach.memset(buf1, 'E', 4096);
-                mach.memcpy(buf0, toplevel.name.ptr, toplevel.name.len);
-                lengthToplevelCommandNotice(0, toplevel, show_deps, &name_width, &root_width);
+                mach.memcpy(buf0, node.name.ptr, node.name.len);
+                lengthToplevelCommandNotice(0, node, show_deps, &name_width, &root_width);
                 name_width +%= 4;
                 name_width &= ~@as(u64, 3);
                 root_width +%= 4;
                 root_width &= ~@as(u64, 3);
-                len0 +%= writeToplevelCommandNotice(buf0 + len0, buf1, 0, toplevel, show_deps, name_width, root_width);
+                len0 +%= writeToplevelCommandNotice(buf0 + len0, buf1, 0, node, show_deps, name_width, root_width);
                 buf0[len0] = '\n';
                 len0 +%= 1;
                 debug.write(buf0[0..len0]);
