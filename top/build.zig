@@ -1149,7 +1149,9 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             }
             fn runWrite(allocator: *mem.SimpleAllocator, node: *Node, args: [][*:0]u8) [][*:0]u8 {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
-                for (args) |run_arg| node.addArg(allocator).* = run_arg;
+                if (node.flags.is_primary) {
+                    for (args) |run_arg| node.addArg(allocator).* = run_arg;
+                }
                 node.addArg(allocator).* = comptime builtin.zero([*:0]u8);
                 node.impl.args_len -%= 1;
                 return node.impl.args[0..node.impl.args_len];
@@ -1238,6 +1240,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 toplevel: *const Node,
                 node: *const Node,
                 task: types.Task,
+                arena_index: AddressSpace.Index,
             ) void {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
                 for (node.impl.nodes[1..node.impl.nodes_len]) |sub_node| {
@@ -1247,7 +1250,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     if (keepGoing() and
                         sub_node.exchange(task, .ready, .blocking, max_thread_count))
                     {
-                        try meta.wrap(impl.tryAcquireThread(address_space, thread_space, allocator, toplevel, sub_node, task));
+                        try meta.wrap(impl.tryAcquireThread(address_space, thread_space, allocator, toplevel, sub_node, task, arena_index));
                     }
                 }
                 for (node.impl.deps[0..node.impl.deps_len]) |dep| {
@@ -1259,7 +1262,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     if (keepGoing() and
                         dep.on_node.exchange(dep.on_task, .ready, .blocking, max_thread_count))
                     {
-                        try meta.wrap(impl.tryAcquireThread(address_space, thread_space, allocator, toplevel, dep.on_node, dep.on_task));
+                        try meta.wrap(impl.tryAcquireThread(address_space, thread_space, allocator, toplevel, dep.on_node, dep.on_task, arena_index));
                     }
                 }
             }
@@ -1280,7 +1283,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             pub export fn executeCommandThreaded(
                 address_space: *AddressSpace,
                 thread_space: *ThreadSpace,
-                toplevel: *const Node,
+                toplevel: *Node,
                 node: *Node,
                 task: types.Task,
                 arena_index: AddressSpace.Index,
