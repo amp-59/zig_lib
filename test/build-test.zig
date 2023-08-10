@@ -10,33 +10,33 @@ const meta = zl.meta;
 const debug = zl.debug;
 const build = zl.build;
 const builtin = zl.builtin;
-
 pub usingnamespace zl.start;
-
 const Node = build.GenericNode(.{
     .options = .{ .max_thread_count = 8 },
 });
-pub const logging_override: debug.Logging.Override = spec.logging.override.silent;
+pub const message_style = "";
+pub const enable_debugging: bool = false;
+pub const exec_mode = .Run;
+pub const want_stack_traces: bool = enable_debugging;
 pub const logging_default: debug.Logging.Default = .{
-    .Attempt = true,
-    .Success = true,
-    .Acquire = true,
-    .Release = true,
-    .Error = true,
-    .Fault = true,
+    .Attempt = enable_debugging,
+    .Success = enable_debugging,
+    .Acquire = enable_debugging,
+    .Release = enable_debugging,
+    .Error = enable_debugging,
+    .Fault = enable_debugging,
 };
 pub const signal_handlers = .{
-    .IllegalInstruction = true,
-    .BusError = true,
-    .FloatingPointError = true,
-    .Trap = true,
-    .SegmentationFault = true,
+    .IllegalInstruction = enable_debugging,
+    .BusError = enable_debugging,
+    .FloatingPointError = enable_debugging,
+    .Trap = enable_debugging,
+    .SegmentationFault = enable_debugging,
 };
-// Change this to `builtin.Trace` to crash compiler.
 pub const trace: debug.Trace = .{
-    .Error = true,
-    .Fault = true,
-    .Signal = true,
+    .Error = enable_debugging,
+    .Fault = enable_debugging,
+    .Signal = enable_debugging,
     .options = .{},
 };
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
