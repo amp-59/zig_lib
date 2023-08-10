@@ -706,7 +706,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             node.name = duplicate(allocator, name);
             node.task.tag = .run;
             node.task.lock = run_lock;
-            for (args) |arg| node.addRunArg(allocator, arg);
+            for (args) |arg| node.addArg(allocator).* = duplicate(allocator, arg);
             initializeCommand(allocator, node);
             return node;
         }
@@ -790,9 +790,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             node.task.cmd.archive.* = archive_cmd;
             archive_path.addName(allocator).* = group.buildRoot();
             archive_path.addName(allocator).* = archiveRelative(allocator, node.name);
-            for (deps) |dep| {
-                node.dependOn(allocator, dep);
-            }
+            for (deps) |dep| node.dependOn(allocator, dep);
             initializeCommand(allocator, node);
             return node;
         }
@@ -962,10 +960,15 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             node.flags.do_update = false;
             if (node.tag == .worker) {
-                if (builder_spec.options.init_executables and
-                    node.task.lock.int().* == exe_lock.int().*)
-                {
-                    node.dependOnFull(allocator, .run, special.parse, .run);
+                if (builder_spec.options.lazy_features) {
+                    if (node.tag == .worker and node.task.tag != .run) {
+                        node.dependOn(allocator, special.cmd_writers);
+                    }
+                    if (builder_spec.options.init_executables and
+                        node.task.lock.int().* == exe_lock.int().*)
+                    {
+                        node.dependOnFull(allocator, .run, special.cmd_parsers, .run);
+                    }
                 }
                 if (node.task.tag == .build) {
                     if (node.flags.want_build_config) {
@@ -1019,6 +1022,11 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             }
             for (node.impl.deps[0..node.impl.deps_len]) |dep| {
                 updateCommands(allocator, dep.on_node);
+            }
+            if (builder_spec.options.show_base_memory_usage and
+                node == node.impl.nodes[0])
+            {
+                about.baseMemoryUsageNotice(allocator);
             }
         }
         pub fn addBuildAnon(group: *Node, allocator: *mem.SimpleAllocator, build_cmd: types.BuildCommand, root: [:0]const u8) *Node {
