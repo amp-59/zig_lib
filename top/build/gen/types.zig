@@ -1,5 +1,7 @@
 const fmt = @import("../../fmt.zig");
+const mem = @import("../../mem.zig");
 const config = @import("./config.zig");
+pub const Context = enum { Lib, Exe };
 pub const Variant = enum(u2) {
     length,
     write_buf,
@@ -36,36 +38,35 @@ pub const ProtoTypeDescrMap = struct {
     parse: ?*const ProtoTypeDescr = null,
 };
 pub const boolean: ProtoTypeDescr = ProtoTypeDescr.init(bool);
-const Tag = enum {
-    /// Mandatory string field
-    string_field,
-    /// Mandatory enumeration field
-    tag_field,
-    /// Mandatory boolean field
-    boolean_field,
-    /// Mandatory integer field
-    integer_field,
-    /// Mandatory direct formatter field
-    formatter_field,
-    /// Mandatory indirect formatter field
-    mapped_field,
-
-    optional_string_field,
-    optional_tag_field,
-    optional_boolean_field,
-    optional_integer_field,
-    optional_formatter_field,
-    optional_mapped_field,
-
-    optional_repeatable_formatter_field,
-    optional_repeatable_string_field,
-    optional_repeatable_tag_field,
-
-    string_param,
-    formatter_param,
-    mapped_param,
-    integer_literal,
-    string_literal,
+const Tag = union(enum) {
+    field: enum {
+        string,
+        tag,
+        boolean,
+        integer,
+        formatter,
+        mapped,
+    },
+    optional_field: enum {
+        string,
+        tag,
+        boolean,
+        integer,
+        formatter,
+        mapped,
+        repeatable_string,
+        repeatable_tag,
+        repeatable_formatter,
+    },
+    param: enum {
+        string,
+        formatter,
+        repeatable_formatter,
+    },
+    literal: enum {
+        integer,
+        string,
+    },
 };
 pub const ParamSpec = struct {
     /// Command struct field name
@@ -77,7 +78,7 @@ pub const ParamSpec = struct {
     /// Description to be inserted above the field as documentation comment
     descr: []const []const u8 = &.{},
     /// Describes how the argument should be written to the command line buffer
-    tag: Tag = .boolean_field,
+    tag: Tag = .{ .field = .boolean },
     /// Describes how the field type should be written to the command struct,
     /// can be `*const ProtoTypeDescr` or `*const [2]ProtoTypeDescr` depending
     /// on the kind of parameter.
@@ -95,30 +96,20 @@ pub const ParamSpec = struct {
     } = .{},
     pub const immediate: u8 = 255;
     pub fn isField(param_spec: ParamSpec) bool {
-        return !param_spec.isFnParam() and !param_spec.isLiteral();
+        return param_spec.tag == .field;
     }
     pub fn isLiteral(param_spec: ParamSpec) bool {
-        switch (param_spec.tag) {
-            .string_literal, .integer_literal => {
-                return true;
-            },
-            else => return false,
-        }
+        return param_spec.tag == .literal;
     }
-    pub fn isFnParam(param_info: ParamSpec) bool {
-        switch (param_info.tag) {
-            .string_param, .formatter_param, .mapped_param => {
-                return true;
-            },
-            else => return false,
-        }
+    pub fn isFnParam(param_spec: ParamSpec) bool {
+        return param_spec.tag == .param;
     }
 };
 pub const InverseParamSpec = struct {
     /// Command line flag/switch
     string: []const u8 = &.{},
     /// Describes how the argument should be written to the command line buffer
-    tag: Tag = .boolean_field,
+    tag: Tag = .{ .field = .boolean },
     /// Describes how the field type should be written to the command struct
     type: ProtoTypeDescrMap = .{},
     /// Specifies whether option arguments are separated with '\x00' or '='
