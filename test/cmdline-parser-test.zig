@@ -17,7 +17,9 @@ pub const logging_override: debug.Logging.Override = spec.logging.override.verbo
 
 var s: struct { x: ?usize = null, y: usize = 50 } = .{};
 
-fn loadAll(comptime Pointers: type, pathname: [:0]const u8) Pointers {
+const ElfInfo = elf.GenericElfInfo(.{ .Allocator = mem.SimpleAllocator });
+
+fn loadAll(comptime Pointers: type, pathname: [:0]const u8, ptrs: *Pointers) void {
     @setRuntimeSafety(builtin.is_safe);
     const prot: file.Map.Protection = .{ .exec = true };
     const flags: file.Map.Flags = .{};
@@ -33,13 +35,9 @@ fn loadAll(comptime Pointers: type, pathname: [:0]const u8) Pointers {
     if (rc_addr1 != addr) {
         proc.exitErrorFault(error.OutOfMemory, pathname, 2);
     }
-    const elf_info: elf.ElfInfo = elf.ElfInfo.init(addr);
-    addr +%= elf_info.executableOffset();
-    const rc_addr2: usize = sys.call_noexcept(.mmap, usize, [6]usize{ addr, len, @bitCast(prot), @bitCast(flags), fd, 0 });
-    if (rc_addr2 != addr) {
-        proc.exitErrorFault(error.OutOfMemory, pathname, 2);
-    }
-    return elf_info.loadAll(Pointers);
+    var elf_info: ElfInfo = ElfInfo.init(addr, len);
+    elf_info.remap(fd);
+    return elf_info.loadAll(Pointers, ptrs);
 }
 fn writeField(array: *mem.StaticArray(u8, 4096), field_name: []const u8, field_value: anytype) void {
     array.writeOne('.');
@@ -50,9 +48,10 @@ fn writeField(array: *mem.StaticArray(u8, 4096), field_name: []const u8, field_v
 }
 pub fn main(args: anytype) !void {
     var allocator: mem.SimpleAllocator = .{};
-    const ptrs: build.ParseCommand = loadAll(build.ParseCommand, "zig-out/lib/libparse.so");
+    var ptrs: build.Fns = .{};
+    loadAll(build.Fns, "zig-out/lib/libcmd_parsers.so", &ptrs);
     var cmd: build.BuildCommand = .{ .kind = .exe };
-    ptrs.build(&cmd, &allocator, args.ptr, args.len);
+    ptrs.formatParseArgsBuildCommand(&cmd, &allocator, args.ptr, args.len);
     var array: mem.StaticArray(u8, 4096) = undefined;
     array.undefineAll();
     array.writeMany("node.addBuild(allocator, .{ ");
