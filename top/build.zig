@@ -36,16 +36,18 @@ pub const BuilderSpec = struct {
     /// Potentially user defined types.
     types: Types = .{},
     pub const Options = struct {
-        /// The maximum number of threads in addition to main.
         /// Bytes allowed per thread arena (dynamic maximum)
         max_arena_aligned_bytes: usize = 8 * 1024 * 1024,
         /// Bytes allowed per thread stack (static maximum)
         max_stack_aligned_bytes: usize = 8 * 1024 * 1024,
+        /// The maximum number of threads in addition to main.
         /// max_thread_count=0 is single-threaded.
         max_thread_count: u8 = 8,
         /// Allow this many errors before exiting the thread group.
         /// A value of `null` will attempt to report all errors and exit from main.
         max_error_count: ?u8 = 0,
+        /// Lowest allocated byte address for file mappings.
+        dyn_lb_addr: usize = 0x400000000000,
         /// Lowest allocated byte address for thread stacks. This field and the
         /// two previous fields derive the arena lowest allocated byte address,
         /// as this is the first unallocated byte address of the thread space.
@@ -79,6 +81,8 @@ pub const BuilderSpec = struct {
         /// Include arena/thread index in task summaries and change of state
         /// notices.
         show_arena_index: bool = true,
+        /// Show the size of the declared tasks at startup.
+        show_base_memory_usage: bool = false,
         /// Enable runtime safety.
         enable_safety: bool = builtin.is_safe,
         /// Enable advanced builder features, such as project-wide comptime
@@ -111,6 +115,8 @@ pub const BuilderSpec = struct {
         write_build_task_record: bool = false,
         /// Include build task record serialised in build configuration.
         write_hist_serial: bool = false,
+        /// Compile builder features as required.
+        lazy_features: bool = false,
         names: struct {
             /// Name of the toplevel 'builder' node.
             toplevel_node: [:0]const u8 = "toplevel",

@@ -13,6 +13,8 @@ pub usingnamespace zl.start;
 
 pub const trace: debug.Trace = root.trace;
 
+pub const want_stack_traces = false;
+
 fn nested0(z: u64) !void {
     var x: u64 = 0;
     const y: u64 = z + @intFromPtr(&x);
