@@ -1585,6 +1585,13 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             try meta.wrap(file.close(close(), in.read));
             try meta.wrap(file.close(close(), out.write));
         }
+        pub fn toplevelNode(node: *Node) *Node {
+            @setRuntimeSafety(builder_spec.options.enable_safety);
+            if (node.impl.nodes[0] == node) {
+                return node;
+            }
+            return node.impl.nodes[0].toplevelNode();
+        }
         pub fn zigExe(node: *Node) [:0]const u8 {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             if (node.tag == .worker) {
@@ -1644,8 +1651,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         }
         pub const lib_build_root = libraryRoot();
         pub const lib_cache_root = lib_build_root ++ "/" ++ builder_spec.options.names.zig_cache_dir;
-        const tasks_root = lib_build_root ++ "/" ++ builder_spec.options.names.tasks_root;
-        const parse_root = lib_build_root ++ "/" ++ builder_spec.options.names.parse_root;
+        const writers_root = lib_build_root ++ "/" ++ builder_spec.options.names.cmd_writers_root;
+        const parsers_root = lib_build_root ++ "/" ++ builder_spec.options.names.cmd_parsers_root;
         const binary_prefix = builder_spec.options.names.zig_out_dir ++ "/" ++ builder_spec.options.names.exe_out_dir ++ "/";
         const library_prefix = builder_spec.options.names.zig_out_dir ++ "/" ++ builder_spec.options.names.lib_out_dir ++ "/lib";
         const archive_prefix = builder_spec.options.names.zig_out_dir ++ "/" ++ builder_spec.options.names.lib_out_dir ++ "/lib";
@@ -1750,7 +1757,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 }
                 if (toplevel.find(name)) |node| {
                     node.flags.is_primary = true;
-                    toplevel.impl.args_len = cmd_args_idx +% 1;
+                    toplevel.impl.args_len = @intCast(cmd_args_idx +% 1);
                     splitArguments(cmd_args_idx +% 1);
                     if (!executeToplevel(address_space, thread_space, allocator, toplevel, node, maybe_task)) {
                         proc.exitError(error.UnfinishedRequest, 2);
@@ -1759,6 +1766,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 }
             } else {
                 const name: [:0]const u8 = if (build.args.len == 5) "null" else mem.terminate(build.args[5], 0);
+                about.toplevelCommandNotice(allocator, toplevel, false);
                 proc.exitErrorFault(error.NotACommand, name, 2);
             }
         }
