@@ -1122,40 +1122,95 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 job.ret.sys = proc.Status.exit(rc.status);
                 try meta.wrap(file.close(close(), in.write));
                 try meta.wrap(file.close(close(), out.read));
+                if (builder_spec.options.lazy_features and node.flags.is_dyn_ext) {
+                    loadAll(dest_pathname);
+                }
             }
             fn buildWrite(allocator: *mem.SimpleAllocator, node: *Node, obj_paths: []const types.Path) [:0]u8 {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
+                const zig_exe: []const u8 = node.zigExe();
                 const cmd: *types.BuildCommand = node.task.cmd.build;
-                const max_len: usize = builder_spec.options.max_cmdline_len orelse cmd.formatLength(node.zigExe(), obj_paths);
+                const max_len: usize = builder_spec.options.max_cmdline_len orelse blk: {
+                    if (builder_spec.options.lazy_features) {
+                        break :blk special.fns.formatLengthBuildCommand(cmd, zig_exe.ptr, zig_exe.len, obj_paths.ptr, obj_paths.len);
+                    } else {
+                        break :blk cmd.formatLength(zig_exe, obj_paths);
+                    }
+                };
                 const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
-                const len: usize = cmd.formatWriteBuf(node.zigExe(), obj_paths, buf);
+                const len: usize = blk: {
+                    if (builder_spec.options.lazy_features) {
+                        break :blk special.fns.formatWriteBufBuildCommand(cmd, zig_exe.ptr, zig_exe.len, obj_paths.ptr, obj_paths.len, buf);
+                    } else {
+                        break :blk cmd.formatWriteBuf(zig_exe, obj_paths, buf);
+                    }
+                };
                 buf[len] = 0;
                 return buf[0..len :0];
             }
             fn objcopyWrite(allocator: *mem.SimpleAllocator, node: *Node, obj_path: types.Path) [:0]u8 {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
+                const zig_exe: []const u8 = node.zigExe();
                 const cmd: *types.ObjcopyCommand = node.task.cmd.objcopy;
-                const max_len: usize = builder_spec.options.max_cmdline_len orelse cmd.formatLength(node.zigExe(), obj_path);
+                const max_len: usize = builder_spec.options.max_cmdline_len orelse blk: {
+                    if (builder_spec.options.lazy_features) {
+                        break :blk special.fns.formatLengthObjcopyCommand(cmd, zig_exe.ptr, zig_exe.len, obj_path);
+                    } else {
+                        break :blk cmd.formatLength(zig_exe, obj_path);
+                    }
+                };
                 const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
-                const len: usize = cmd.formatWriteBuf(node.zigExe(), obj_path, buf);
+                const len: usize = blk: {
+                    if (builder_spec.options.lazy_features) {
+                        break :blk special.fns.formatWriteBufObjcopyCommand(cmd, zig_exe.ptr, zig_exe.len, obj_path, buf);
+                    } else {
+                        break :blk cmd.formatWriteBuf(zig_exe, obj_path, buf);
+                    }
+                };
                 buf[len] = 0;
                 return buf[0..len :0];
             }
             fn archiveWrite(allocator: *mem.SimpleAllocator, node: *Node, obj_paths: []const types.Path) [:0]u8 {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
+                const zig_exe: []const u8 = node.zigExe();
                 const cmd: *build.ArchiveCommand = node.task.cmd.archive;
-                const max_len: usize = builder_spec.options.max_cmdline_len orelse cmd.formatLength(node.zigExe(), obj_paths);
+                const max_len: usize = builder_spec.options.max_cmdline_len orelse blk: {
+                    if (builder_spec.options.lazy_features) {
+                        break :blk special.fns.formatLengthArchiveCommand(cmd, zig_exe.ptr, zig_exe.len, obj_paths.ptr, obj_paths.len);
+                    } else {
+                        break :blk cmd.formatLength(zig_exe, obj_paths);
+                    }
+                };
                 const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
-                const len: usize = cmd.formatWriteBuf(node.zigExe(), obj_paths, buf);
+                const len: usize = blk: {
+                    if (builder_spec.options.lazy_features) {
+                        break :blk special.fns.formatWriteBufArchiveCommand(cmd, zig_exe.ptr, zig_exe.len, obj_paths.ptr, obj_paths.len, buf);
+                    } else {
+                        break :blk cmd.formatWriteBuf(zig_exe, obj_paths, buf);
+                    }
+                };
                 buf[len] = 0;
                 return buf[0..len :0];
             }
             fn formatWrite(allocator: *mem.SimpleAllocator, node: *Node, root_path: types.Path) [:0]u8 {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
+                const zig_exe: []const u8 = node.zigExe();
                 const cmd: *build.FormatCommand = node.task.cmd.format;
-                const max_len: usize = builder_spec.options.max_cmdline_len orelse cmd.formatLength(node.zigExe(), root_path);
+                const max_len: usize = builder_spec.options.max_cmdline_len orelse blk: {
+                    if (false and builder_spec.options.lazy_features) {
+                        break :blk special.fns.formatLengthFormatCommand(cmd, zig_exe.ptr, zig_exe.len, root_path);
+                    } else {
+                        break :blk cmd.formatLength(zig_exe, root_path);
+                    }
+                };
                 const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
-                const len: usize = cmd.formatWriteBuf(node.zigExe(), root_path, buf);
+                const len: usize = blk: {
+                    if (false and builder_spec.options.lazy_features) {
+                        break :blk special.fns.formatWriteBufFormatCommand(cmd, zig_exe.ptr, zig_exe.len, root_path, buf);
+                    } else {
+                        break :blk cmd.formatWriteBuf(zig_exe, root_path, buf);
+                    }
+                };
                 buf[len] = 0;
                 return buf[0..len :0];
             }
@@ -1205,16 +1260,16 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     writeConfigRoot(allocator, node);
                 }
                 const args: [][*:0]u8 = taskArgs(allocator, node, task);
+                const name: [:0]const u8 = node.impl.paths[0].concatenate(allocator);
                 switch (task) {
                     .build, .archive => {
-                        const name: [:0]const u8 = node.impl.paths[0].concatenate(allocator);
                         if (0 == sys.call_noexcept(.newfstatat, usize, .{
                             0, @intFromPtr(name.ptr), @intFromPtr(&job.st), 0,
                         })) {
                             old_size = job.st.size;
                         }
                         if (task == .build) {
-                            try meta.wrap(impl.server(allocator, args, job, node.zigExe(), name));
+                            try meta.wrap(impl.server(allocator, node, args, job, name));
                         } else {
                             try meta.wrap(impl.system(args, job));
                         }
@@ -1226,7 +1281,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     },
                     .run => {
                         if (node.flags.is_build_command) {
-                            try meta.wrap(impl.server(allocator, args, job, node.zigExe(), node.impl.paths[0].concatenate(allocator)));
+                            try meta.wrap(impl.server(allocator, node, args, job, name));
                         } else {
                             try meta.wrap(impl.system(args, job));
                         }
