@@ -44,15 +44,13 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     var thread_space: Node.ThreadSpace = .{};
     var allocator: build.Allocator = build.Allocator.init_arena(Node.AddressSpace.arena(Node.max_thread_count));
     if (args.len < 5) {
-        return error.MissingEnvironmentPaths;
+        proc.exitError(error.MissingEnvironmentPaths, 2);
     }
-    Node.initState(args, vars);
-    const toplevel: *Node = try meta.wrap(Node.init(&allocator));
-    Node.initSpecialNodes(&allocator, toplevel);
+    const toplevel: *Node = Node.init(&allocator, args, vars);
     try meta.wrap(
         buildMain(&allocator, toplevel),
     );
-    Node.updateCommands(&allocator, toplevel, toplevel);
+    Node.updateCommands(&allocator, toplevel);
     try meta.wrap(
         Node.processCommands(&address_space, &thread_space, &allocator, toplevel),
     );
