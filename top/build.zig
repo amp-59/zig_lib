@@ -1077,7 +1077,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 job.ts = time.diff(try meta.wrap(time.get(clock(), .realtime)), job.ts);
                 job.ret.sys = proc.Status.exit(ret.status);
             }
-            fn server(allocator: *mem.SimpleAllocator, args: [][*:0]u8, job: *types.JobInfo, zig_exe: [:0]const u8, dest_pathname: [:0]const u8) void {
+            fn server(allocator: *mem.SimpleAllocator, node: *Node, args: [][*:0]u8, job: *types.JobInfo, dest_pathname: [:0]const u8) void {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
                 const header: *types.Message.ServerHeader = @ptrFromInt(allocator.allocateRaw(
                     @sizeOf(types.Message.ServerHeader),
@@ -1089,7 +1089,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 const pid: u64 = try meta.wrap(proc.fork(fork()));
                 if (pid == 0) {
                     try meta.wrap(openChild(in, out));
-                    try meta.wrap(file.execPath(execve(), zig_exe, args, build.vars));
+                    try meta.wrap(file.execPath(execve(), node.zigExe(), args, build.vars));
                 }
                 try meta.wrap(openParent(in, out));
                 try meta.wrap(file.write(write2(), in.write, update_exit_message[0..1]));
@@ -1113,10 +1113,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                         about.writeErrors(allocator, ptrs);
                     };
                     allocator.next = save;
-                } else {
-                    if (fd.actual.hangup) {
-                        job.ret.srv = builder_spec.options.compiler_error_status;
-                    }
+                } else if (fd.actual.hangup) {
+                    job.ret.srv = builder_spec.options.compiler_error_status;
                 }
                 try meta.wrap(file.write(write2(), in.write, update_exit_message[1..2]));
                 const rc: proc.Return = try meta.wrap(proc.waitPid(waitpid(), .{ .pid = pid }));
