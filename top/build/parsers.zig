@@ -1,14 +1,21 @@
 const mem = @import("../mem.zig");
 const types = @import("./types.zig");
+const debug = @import("../debug.zig");
+const parse = @import("../parse.zig");
 pub usingnamespace @import("../start.zig");
-pub export fn build(cmd: *types.BuildCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
+export fn formatParseArgsBuildCommand(cmd: *types.BuildCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
     @setRuntimeSafety(false);
     var args_idx: usize = 0;
     while (args_idx != args_len) : (args_idx +%= 1) {
         var arg: [:0]const u8 = mem.terminate(args[args_idx], 0);
         if (mem.testEqualString("-femit-bin", arg[0..10])) {
             if (arg.len > 11 and arg[10] == '=') {
-                cmd.emit_bin = .{ .yes = types.Path.formatParseArgs(allocator, args[0..args_len], &args_idx, arg[11..]) };
+                cmd.emit_bin = .{ .yes = types.Path.formatParseArgs(
+                    allocator,
+                    args[0..args_len],
+                    &args_idx,
+                    arg[11..],
+                ) };
             } else {
                 cmd.emit_bin = .{ .yes = null };
             }
@@ -16,7 +23,12 @@ pub export fn build(cmd: *types.BuildCommand, allocator: *types.Allocator, args:
             cmd.emit_bin = .no;
         } else if (mem.testEqualString("-femit-asm", arg[0..10])) {
             if (arg.len > 11 and arg[10] == '=') {
-                cmd.emit_asm = .{ .yes = types.Path.formatParseArgs(allocator, args[0..args_len], &args_idx, arg[11..]) };
+                cmd.emit_asm = .{ .yes = types.Path.formatParseArgs(
+                    allocator,
+                    args[0..args_len],
+                    &args_idx,
+                    arg[11..],
+                ) };
             } else {
                 cmd.emit_asm = .{ .yes = null };
             }
@@ -24,7 +36,12 @@ pub export fn build(cmd: *types.BuildCommand, allocator: *types.Allocator, args:
             cmd.emit_asm = .no;
         } else if (mem.testEqualString("-femit-llvm-ir", arg[0..14])) {
             if (arg.len > 15 and arg[14] == '=') {
-                cmd.emit_llvm_ir = .{ .yes = types.Path.formatParseArgs(allocator, args[0..args_len], &args_idx, arg[15..]) };
+                cmd.emit_llvm_ir = .{ .yes = types.Path.formatParseArgs(
+                    allocator,
+                    args[0..args_len],
+                    &args_idx,
+                    arg[15..],
+                ) };
             } else {
                 cmd.emit_llvm_ir = .{ .yes = null };
             }
@@ -32,7 +49,12 @@ pub export fn build(cmd: *types.BuildCommand, allocator: *types.Allocator, args:
             cmd.emit_llvm_ir = .no;
         } else if (mem.testEqualString("-femit-llvm-bc", arg[0..14])) {
             if (arg.len > 15 and arg[14] == '=') {
-                cmd.emit_llvm_bc = .{ .yes = types.Path.formatParseArgs(allocator, args[0..args_len], &args_idx, arg[15..]) };
+                cmd.emit_llvm_bc = .{ .yes = types.Path.formatParseArgs(
+                    allocator,
+                    args[0..args_len],
+                    &args_idx,
+                    arg[15..],
+                ) };
             } else {
                 cmd.emit_llvm_bc = .{ .yes = null };
             }
@@ -40,7 +62,12 @@ pub export fn build(cmd: *types.BuildCommand, allocator: *types.Allocator, args:
             cmd.emit_llvm_bc = .no;
         } else if (mem.testEqualString("-femit-h", arg[0..8])) {
             if (arg.len > 9 and arg[8] == '=') {
-                cmd.emit_h = .{ .yes = types.Path.formatParseArgs(allocator, args[0..args_len], &args_idx, arg[9..]) };
+                cmd.emit_h = .{ .yes = types.Path.formatParseArgs(
+                    allocator,
+                    args[0..args_len],
+                    &args_idx,
+                    arg[9..],
+                ) };
             } else {
                 cmd.emit_h = .{ .yes = null };
             }
@@ -48,7 +75,12 @@ pub export fn build(cmd: *types.BuildCommand, allocator: *types.Allocator, args:
             cmd.emit_h = .no;
         } else if (mem.testEqualString("-femit-docs", arg[0..11])) {
             if (arg.len > 12 and arg[11] == '=') {
-                cmd.emit_docs = .{ .yes = types.Path.formatParseArgs(allocator, args[0..args_len], &args_idx, arg[12..]) };
+                cmd.emit_docs = .{ .yes = types.Path.formatParseArgs(
+                    allocator,
+                    args[0..args_len],
+                    &args_idx,
+                    arg[12..],
+                ) };
             } else {
                 cmd.emit_docs = .{ .yes = null };
             }
@@ -56,7 +88,12 @@ pub export fn build(cmd: *types.BuildCommand, allocator: *types.Allocator, args:
             cmd.emit_docs = .no;
         } else if (mem.testEqualString("-femit-analysis", arg[0..15])) {
             if (arg.len > 16 and arg[15] == '=') {
-                cmd.emit_analysis = .{ .yes = types.Path.formatParseArgs(allocator, args[0..args_len], &args_idx, arg[16..]) };
+                cmd.emit_analysis = .{ .yes = types.Path.formatParseArgs(
+                    allocator,
+                    args[0..args_len],
+                    &args_idx,
+                    arg[16..],
+                ) };
             } else {
                 cmd.emit_analysis = .{ .yes = null };
             }
@@ -64,7 +101,12 @@ pub export fn build(cmd: *types.BuildCommand, allocator: *types.Allocator, args:
             cmd.emit_analysis = .no;
         } else if (mem.testEqualString("-femit-implib", arg[0..13])) {
             if (arg.len > 14 and arg[13] == '=') {
-                cmd.emit_implib = .{ .yes = types.Path.formatParseArgs(allocator, args[0..args_len], &args_idx, arg[14..]) };
+                cmd.emit_implib = .{ .yes = types.Path.formatParseArgs(
+                    allocator,
+                    args[0..args_len],
+                    &args_idx,
+                    arg[14..],
+                ) };
             } else {
                 cmd.emit_implib = .{ .yes = null };
             }
@@ -190,6 +232,13 @@ pub export fn build(cmd: *types.BuildCommand, allocator: *types.Allocator, args:
                 cmd.mode = .ReleaseFast;
             } else if (mem.testEqualString("ReleaseSmall", arg)) {
                 cmd.mode = .ReleaseSmall;
+            }
+        } else if (mem.testEqualString("-fopt-bisect-limit", arg)) {
+            args_idx +%= 1;
+            if (args_idx != args_len) {
+                cmd.passes = parse.ud(usize, mem.terminate(args[args_idx], 0));
+            } else {
+                return;
             }
         } else if (mem.testEqualString("--main-pkg-path", arg)) {
             args_idx +%= 1;
@@ -458,6 +507,20 @@ pub export fn build(cmd: *types.BuildCommand, allocator: *types.Allocator, args:
             cmd.gc_sections = true;
         } else if (mem.testEqualString("--no-gc-sections", arg)) {
             cmd.gc_sections = false;
+        } else if (mem.testEqualString("--stack", arg)) {
+            args_idx +%= 1;
+            if (args_idx != args_len) {
+                cmd.stack = parse.ud(usize, mem.terminate(args[args_idx], 0));
+            } else {
+                return;
+            }
+        } else if (mem.testEqualString("--image-base", arg)) {
+            args_idx +%= 1;
+            if (args_idx != args_len) {
+                cmd.image_base = parse.ud(usize, mem.terminate(args[args_idx], 0));
+            } else {
+                return;
+            }
         } else if (mem.testEqualString("-D", arg[0..2])) {
             if (arg.len == 2) {
                 args_idx +%= 1;
@@ -558,10 +621,12 @@ pub export fn build(cmd: *types.BuildCommand, allocator: *types.Allocator, args:
             cmd.debug_compiler_errors = true;
         } else if (mem.testEqualString("--debug-link-snapshot", arg)) {
             cmd.debug_link_snapshot = true;
+        } else if (mem.testEqualString("--help", arg)) {
+            debug.write(build_help);
         }
     }
 }
-pub export fn format(cmd: *types.FormatCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
+export fn formatParseArgsFormatCommand(cmd: *types.FormatCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
     @setRuntimeSafety(false);
     var args_idx: usize = 0;
     while (args_idx != args_len) : (args_idx +%= 1) {
@@ -592,11 +657,13 @@ pub export fn format(cmd: *types.FormatCommand, allocator: *types.Allocator, arg
             } else {
                 return;
             }
+        } else if (mem.testEqualString("--help", arg)) {
+            debug.write(format_help);
         }
         _ = allocator;
     }
 }
-pub export fn archive(cmd: *types.ArchiveCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
+export fn formatParseArgsArchiveCommand(cmd: *types.ArchiveCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
     @setRuntimeSafety(false);
     var args_idx: usize = 0;
     while (args_idx != args_len) : (args_idx +%= 1) {
@@ -649,11 +716,13 @@ pub export fn archive(cmd: *types.ArchiveCommand, allocator: *types.Allocator, a
             cmd.no_symbol_table = true;
         } else if (mem.testEqualString("u", arg)) {
             cmd.update = true;
+        } else if (mem.testEqualString("--help", arg)) {
+            debug.write(archive_help);
         }
         _ = allocator;
     }
 }
-pub export fn objcopy(cmd: *types.ObjcopyCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
+export fn formatParseArgsObjcopyCommand(cmd: *types.ObjcopyCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
     @setRuntimeSafety(false);
     var args_idx: usize = 0;
     while (args_idx != args_len) : (args_idx +%= 1) {
@@ -669,6 +738,13 @@ pub export fn objcopy(cmd: *types.ObjcopyCommand, allocator: *types.Allocator, a
             args_idx +%= 1;
             if (args_idx != args_len) {
                 cmd.only_section = mem.terminate(args[args_idx], 0);
+            } else {
+                return;
+            }
+        } else if (mem.testEqualString("--pad-to", arg)) {
+            args_idx +%= 1;
+            if (args_idx != args_len) {
+                cmd.pad_to = parse.ud(usize, mem.terminate(args[args_idx], 0));
             } else {
                 return;
             }
@@ -692,11 +768,13 @@ pub export fn objcopy(cmd: *types.ObjcopyCommand, allocator: *types.Allocator, a
             } else {
                 return;
             }
+        } else if (mem.testEqualString("--help", arg)) {
+            debug.write(objcopy_help);
         }
         _ = allocator;
     }
 }
-pub export fn tblgen(cmd: *types.TableGenCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
+export fn formatParseArgsTableGenCommand(cmd: *types.TableGenCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
     @setRuntimeSafety(false);
     var args_idx: usize = 0;
     while (args_idx != args_len) : (args_idx +%= 1) {
@@ -843,10 +921,12 @@ pub export fn tblgen(cmd: *types.TableGenCommand, allocator: *types.Allocator, a
                 arg = arg[2..];
             }
             cmd.output = arg;
+        } else if (mem.testEqualString("--help", arg)) {
+            debug.write(tblgen_help);
         }
     }
 }
-pub export fn harec(cmd: *types.HarecCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
+export fn formatParseArgsHarecCommand(cmd: *types.HarecCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
     @setRuntimeSafety(false);
     var args_idx: usize = 0;
     while (args_idx != args_len) : (args_idx +%= 1) {
@@ -897,10 +977,12 @@ pub export fn harec(cmd: *types.HarecCommand, allocator: *types.Allocator, args:
             cmd.typedefs = true;
         } else if (mem.testEqualString("-N", arg)) {
             cmd.namespace = true;
+        } else if (mem.testEqualString("--help", arg)) {
+            debug.write(harec_help);
         }
     }
 }
-const build_help: [*:0]const u8 = 
+const build_help: [:0]const u8 =
     \\    build-
     \\    -f[no-]emit-bin                 (default=yes) Output machine code
     \\    -f[no-]emit-asm                 (default=no) Output assembly code (.s)
@@ -1015,7 +1097,7 @@ const build_help: [*:0]const u8 =
     \\    --debug-compile-errors          Crash with helpful diagnostics at the first compile error
     \\    --debug-link-snapshot           Enable dumping of the linker's state in JSON
 ;
-const format_help: [*:0]const u8 = 
+const format_help: [:0]const u8 =
     \\    fmt
     \\    --color         Enable or disable colored error messages
     \\    --stdin         Format code from stdin; output to stdout
@@ -1023,7 +1105,7 @@ const format_help: [*:0]const u8 =
     \\    --ast-check     Run zig ast-check on every file
     \\    --exclude       Exclude file or directory from formatting
 ;
-const archive_help: [*:0]const u8 = 
+const archive_help: [:0]const u8 =
     \\    ar
     \\    --format    Archive format to create
     \\    --plugin    Ignored for compatibility
@@ -1040,7 +1122,7 @@ const archive_help: [*:0]const u8 =
     \\    S           do not build a symbol table
     \\    u           update only [files] newer than archive contents
 ;
-const objcopy_help: [*:0]const u8 = 
+const objcopy_help: [:0]const u8 =
     \\    objcopy
     \\    --output-target
     \\    --only-section
@@ -1051,7 +1133,7 @@ const objcopy_help: [*:0]const u8 =
     \\    --add-gnu-debuglink
     \\    --extract-to
 ;
-const tblgen_help: [*:0]const u8 = 
+const tblgen_help: [:0]const u8 =
     \\    --color                         Use colors in output (default=autodetect)
     \\    -I                              Add directories to include search path
     \\    -d                              Add file dependencies
@@ -1096,7 +1178,7 @@ const tblgen_help: [*:0]const u8 =
     \\    --gen-riscv-target_def          Generate the list of CPU for RISCV
     \\    -o                              Output file
 ;
-const harec_help: [*:0]const u8 = 
+const harec_help: [:0]const u8 =
     \\    -a
     \\    -o      Output file
     \\    -T
