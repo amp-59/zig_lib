@@ -9,11 +9,13 @@ const builtin = zl.builtin;
 const testing = zl.testing;
 
 pub const logging_override: debug.Logging.Override = spec.logging.override.verbose;
+pub const runtime_assertions: bool = true;
 
 pub usingnamespace zl.start;
 
 pub fn main() !void {
     var dt: time.DateTime = time.DateTime.init(1683108561);
+    var pdt: time.PackedDateTime = dt.pack();
     try debug.expectEqual(u64, dt.getHour(), 10);
     try debug.expectEqual(u64, dt.getMinute(), 9);
     try debug.expectEqual(u64, dt.getSecond(), 21);
@@ -21,9 +23,16 @@ pub fn main() !void {
     try debug.expectEqual(u64, dt.getMonth(), 5);
     try debug.expectEqual(u64, dt.getYear(), 2023);
 
+    try debug.expectEqual(u64, pdt.getHour(), 10);
+    try debug.expectEqual(u64, pdt.getMinute(), 9);
+    try debug.expectEqual(u64, pdt.getSecond(), 21);
+    try debug.expectEqual(u64, pdt.getMonthDay(), 3);
+    try debug.expectEqual(u64, pdt.getMonth(), 5);
+    try debug.expectEqual(u64, pdt.getYear(), 2023);
+
     const ts: time.TimeSpec = try time.get(.{}, .realtime);
     dt = time.DateTime.init(ts.sec);
-    const pdt: time.PackedDateTime = dt.pack();
+    pdt = dt.pack();
 
     try debug.expectEqual(u64, dt.getHour(), pdt.getHour());
     try debug.expectEqual(u64, dt.getMinute(), pdt.getMinute());
