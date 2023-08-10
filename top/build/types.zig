@@ -15,6 +15,11 @@ pub const Node = enum(u8) {
     group,
     worker,
 };
+pub const ExecMode = enum(u8) {
+    Run,
+    Regenerate,
+    Analyse,
+};
 pub const OutputMode = enum(u2) {
     exe,
     lib,
