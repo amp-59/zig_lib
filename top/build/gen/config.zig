@@ -1,5 +1,13 @@
 const builtin = @import("../../builtin.zig");
-
+pub const runtime_assertions: bool = false;
+pub const logging_default = .{
+    .Success = true,
+    .Acquire = true,
+    .Release = true,
+    .Attempt = true,
+    .Error = true,
+    .Fault = true,
+};
 /// Auxiliary products of builder implementation generator go here. These are
 /// generated source files (src) or serialised data (bin). They exist to speed
 /// subsequent steps and will be replaced whenever missing.
@@ -10,13 +18,15 @@ pub const zig_out_bin_dir: [:0]const u8 = zig_out_dir ++ "/bin";
 pub const build_command_options_path: [:0]const u8 = auxiliaryDataFile("build_command_options");
 pub const format_command_options_path: [:0]const u8 = auxiliaryDataFile("format_command_options");
 
-pub const cmdline_path: [:0]const u8 = primarySourceFile("cmdline.zig");
-pub const cmdline_template_path: [:0]const u8 = primarySourceFile("cmdline-template.zig");
-
 pub const tasks_path: [:0]const u8 = primarySourceFile("tasks.zig");
 pub const tasks_template_path: [:0]const u8 = builtin.root.build_root ++ "/top/build/gen/tasks-template.zig";
+
+pub const writers_path: [:0]const u8 = primarySourceFile("writers.zig");
+pub const writers_template_path: [:0]const u8 = builtin.root.build_root ++ "/top/build/gen/writers-template.zig";
+
 pub const hist_tasks_path: [:0]const u8 = primarySourceFile("hist_tasks.zig");
 pub const hist_tasks_template_path: [:0]const u8 = builtin.root.build_root ++ "/top/build/gen/hist_tasks-template.zig";
+
 pub const parsers_path: [:0]const u8 = primarySourceFile("parsers.zig");
 pub const parsers_template_path: [:0]const u8 = builtin.root.build_root ++ "/top/build/gen/parsers-template.zig";
 
