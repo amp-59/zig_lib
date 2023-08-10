@@ -49,64 +49,64 @@ pub inline fn shrx32(value: u32, shift_amt: u32) u32 {
 // what the shift_amt types are; we know them already and want to save the
 // compiler the extra work.
 pub inline fn shl64(value: u64, shift_amt: u64) u64 {
-    return value << @as(u6, @truncate(shift_amt));
+    return value << @truncate(shift_amt);
 }
 pub inline fn shl32(value: u32, shift_amt: u32) u32 {
-    return value << @as(u5, @truncate(shift_amt));
+    return value << @truncate(shift_amt);
 }
 pub inline fn shl16(value: u16, shift_amt: u16) u16 {
-    return value << @as(u4, @truncate(shift_amt));
+    return value << @truncate(shift_amt);
 }
 pub inline fn shl8(value: u8, shift_amt: u8) u8 {
-    return value << @as(u3, @truncate(shift_amt));
+    return value << @truncate(shift_amt);
 }
 pub inline fn shr64(value: u64, shift_amt: u64) u64 {
-    return value >> @as(u6, @truncate(shift_amt));
+    return value >> @truncate(shift_amt);
 }
 pub inline fn shr32(value: u32, shift_amt: u32) u32 {
-    return value >> @as(u5, @truncate(shift_amt));
+    return value >> @truncate(shift_amt);
 }
 pub inline fn shr16(value: u16, shift_amt: u16) u16 {
-    return value >> @as(u4, @truncate(shift_amt));
+    return value >> @truncate(shift_amt);
 }
 pub inline fn shr8(value: u8, shift_amt: u8) u8 {
-    return value >> @as(u3, @truncate(shift_amt));
+    return value >> @truncate(shift_amt);
 }
 pub inline fn shl64T(comptime T: type, value: u64, shift_amt: u64) T {
-    return @as(T, @intCast(value << @as(u6, @truncate(shift_amt))));
+    return @as(T, @truncate(value << @truncate(shift_amt)));
 }
 pub inline fn shl32T(comptime T: type, value: u32, shift_amt: u32) T {
-    return @as(T, @intCast(value << @as(u5, @truncate(shift_amt))));
+    return @as(T, @truncate(value << @truncate(shift_amt)));
 }
 pub inline fn shl16T(comptime T: type, value: u16, shift_amt: u16) T {
-    return @as(T, @intCast(value << @as(u4, @truncate(shift_amt))));
+    return @as(T, @truncate(value << @truncate(shift_amt)));
 }
 pub inline fn shl8T(comptime T: type, value: u8, shift_amt: u8) T {
-    return @as(T, @intCast(value << @as(u3, @truncate(shift_amt))));
+    return @as(T, @truncate(value << @truncate(shift_amt)));
 }
 pub inline fn shr64T(comptime T: type, value: u64, shift_amt: u64) T {
-    return @as(T, @intCast(value >> @as(u6, @truncate(shift_amt))));
+    return @as(T, @truncate(value >> @truncate(shift_amt)));
 }
 pub inline fn shr32T(comptime T: type, value: u32, shift_amt: u16) T {
-    return @as(T, @intCast(value >> @as(u5, @truncate(shift_amt))));
+    return @as(T, @truncate(value >> @truncate(shift_amt)));
 }
 pub inline fn shr16T(comptime T: type, value: u16, shift_amt: u16) T {
-    return @as(T, @intCast(value >> @as(u4, @truncate(shift_amt))));
+    return @as(T, @truncate(value >> @truncate(shift_amt)));
 }
 pub inline fn shr8T(comptime T: type, value: u8, shift_amt: u8) T {
-    return @as(T, @intCast(value >> @as(u3, @truncate(shift_amt))));
+    return @as(T, @truncate(value >> @truncate(shift_amt)));
 }
 pub inline fn shr64TM(comptime T: type, value: u64, shift_amt: u64, comptime pop_count: comptime_int) T {
-    return @as(T, @intCast(value >> @as(u6, @intCast(shift_amt)))) & ((1 << pop_count) -% 1);
+    return @as(T, @truncate(value >> @truncate(shift_amt))) & ((1 << pop_count) -% 1);
 }
 pub inline fn shr32TM(comptime T: type, value: u32, shift_amt: u32, comptime pop_count: comptime_int) T {
-    return @as(T, @intCast(value >> @as(u5, @intCast(shift_amt)))) & ((1 << pop_count) -% 1);
+    return @as(T, @truncate(value >> @truncate(shift_amt))) & ((1 << pop_count) -% 1);
 }
 pub inline fn shr16TM(comptime T: type, value: u16, shift_amt: u16, comptime pop_count: comptime_int) T {
-    return @as(T, @intCast(value >> @as(u4, @intCast(shift_amt)))) & ((1 << pop_count) -% 1);
+    return @as(T, @truncate(value >> @truncate(shift_amt))) & ((1 << pop_count) -% 1);
 }
 pub inline fn shr8TM(comptime T: type, value: u8, shift_amt: u8, comptime pop_count: comptime_int) T {
-    return @as(T, @intCast(value >> @as(u3, @intCast(shift_amt)))) & ((1 << pop_count) -% 1);
+    return @as(T, @truncate(value >> @truncate(shift_amt))) & ((1 << pop_count) -% 1);
 }
 // Conditional moves--for integers prefer dedicated functions. Prevents lazy-
 // evaluating the conditional values by ordering their evaluation before the
