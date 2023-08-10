@@ -76,7 +76,7 @@ fn testManyCompileOptionsWithArguments(args: anytype, vars: anytype) !void {
         .library_directory = &.{ "/usr/lib64", "/usr/lib32" },
         .include = &.{ "/usr/include", "/usr/include/c++" },
         .each_lib_rpath = true,
-        .entry = "_start",
+        //.entry = "_start",
         .error_tracing = true,
         .format = .elf,
         .verbose_air = true,
@@ -105,12 +105,7 @@ fn testManyCompileOptionsWithArguments(args: anytype, vars: anytype) !void {
     Node.updateCommands(&allocator, toplevel);
     Node.processCommands(&address_space, &thread_space, &allocator, toplevel);
 }
-pub usingnamespace if (@import("builtin").output_mode == .Obj) struct {
-    pub export fn _start() void {}
-    pub fn main() void {}
-} else struct {
-    pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
-        try testManyCompileOptionsWithArguments(args, vars);
-        testConfigValues();
-    }
-};
+pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
+    try testManyCompileOptionsWithArguments(args, vars);
+    testConfigValues();
+}
