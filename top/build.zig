@@ -528,12 +528,13 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 proc.exitErrorFault(error.NotADirectory, name, 2);
             }
         }
-
-        fn loadAll(comptime Pointers: type, pathname: [:0]const u8) Pointers {
+        fn loadAll(pathname: [:0]const u8) void {
             @setRuntimeSafety(builtin.is_safe);
             const prot: file.Map.Protection = .{ .exec = true };
             const flags: file.Map.Flags = .{};
-            var addr: usize = 0x80000000;
+            const S = struct {
+                var addr: usize = builder_spec.options.dyn_lb_addr;
+            };
             var st: file.Status = undefined;
             const fd: u64 = sys.call_noexcept(.open, u64, .{ @intFromPtr(pathname.ptr), 0, 0 });
             if (fd > 1024) {
@@ -544,59 +545,67 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 proc.exitErrorFault(error.NoSuchFileOrDirectory, pathname, 2);
             }
             const len: usize = mach.alignA64(st.size, 4096);
+            const addr: usize = @atomicRmw(usize, &S.addr, .Add, len, .SeqCst);
             const rc_addr1: usize = sys.call_noexcept(.mmap, usize, [6]usize{ addr, len, @bitCast(prot), @bitCast(flags), fd, 0 });
             if (rc_addr1 != addr) {
                 proc.exitErrorFault(error.OutOfMemory, pathname, 2);
             }
-            const elf_info: elf.ElfInfo = elf.ElfInfo.init(addr);
-            addr +%= elf_info.executableOffset();
-            const rc_addr2: usize = sys.call_noexcept(.mmap, usize, [6]usize{ addr, len, @bitCast(prot), @bitCast(flags), fd, 0 });
-            if (rc_addr2 != addr) {
-                proc.exitErrorFault(error.OutOfMemory, pathname, 2);
-            }
-            return elf_info.loadAll(Pointers);
+            var elf_info: elf.ElfInfo = elf.ElfInfo.init(addr, len);
+            elf_info.remap(fd);
+            file.close(close(), fd);
+            return elf_info.loadAll(build.Fns, &special.fns);
         }
         pub fn addSpecialNodes(toplevel: *Node, allocator: *mem.SimpleAllocator) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
+            const zig_exe: []const u8 = toplevel.zigExe();
+            const global_cache_root: []const u8 = toplevel.globalCacheRoot();
             const zero: *Node = toplevel.addGroupFull(
                 allocator,
                 "zero",
-                toplevel.zigExe(),
+                zig_exe,
                 lib_build_root,
                 lib_cache_root,
-                toplevel.globalCacheRoot(),
+                global_cache_root,
             );
-            special.tasks = zero.addRun(allocator, "tasks", &.{
-                zero.zigExe(),        "build-lib",
-                "--cache-dir",        zero.cacheRoot(),
-                "--global-cache-dir", zero.globalCacheRoot(),
-                "--main-pkg-path",    zero.buildRoot(),
-                "--listen",           "-",
-                "-fno-compiler-rt",   "-fstrip",
-                "-dynamic",           tasks_root,
-            });
-            special.parse = zero.addRun(allocator, "parse", &.{
-                zero.zigExe(),        "build-lib",
-                "--cache-dir",        zero.cacheRoot(),
-                "--global-cache-dir", zero.globalCacheRoot(),
-                "--main-pkg-path",    zero.buildRoot(),
-                "--listen",           "-",
-                "-fno-compiler-rt",   "-fstrip",
-                "-dynamic",           parse_root,
-            });
+            zero.flags = .{ .is_special = true };
+
+            if (builder_spec.options.lazy_features) {
+                special.cmd_writers = zero.addRun(allocator, "cmd_writers", &.{
+                    zero.zigExe(),        "build-lib",
+                    "--cache-dir",        zero.cacheRoot(),
+                    "--global-cache-dir", zero.globalCacheRoot(),
+                    "--main-pkg-path",    zero.buildRoot(),
+                    "--listen",           "-",
+                    "-fno-compiler-rt",   "-fstrip",
+                    "-fno-stack-check",   "-fsingle-threaded",
+                    "-dynamic",           writers_root,
+                });
+                special.cmd_writers.flags.is_dyn_ext = true;
+                special.cmd_parsers = zero.addRun(allocator, "cmd_parsers", &.{
+                    zero.zigExe(),        "build-lib",
+                    "--cache-dir",        zero.cacheRoot(),
+                    "--global-cache-dir", zero.globalCacheRoot(),
+                    "--main-pkg-path",    zero.buildRoot(),
+                    "--listen",           "-",
+                    "-fno-compiler-rt",   "-fstrip",
+                    "-fno-stack-check",   "-fsingle-threaded",
+                    "-dynamic",           parsers_root,
+                });
+                special.cmd_parsers.flags.is_dyn_ext = true;
+                if (builder_spec.options.special.buildfmt_ar) |ar_cmd| {
+                    if (builder_spec.options.special.buildfmt_obj) |build_cmd| {
+                        _ = zero.addArchive(allocator, ar_cmd, "fmt", &.{
+                            zero.addBuild(allocator, build_cmd, "options_fmt", "top/build/options-fmt.zig"),
+                            zero.addBuild(allocator, build_cmd, "build_fmt", "top/build/build-fmt.zig"),
+                            zero.addBuild(allocator, build_cmd, "format_fmt", "top/build/format-fmt.zig"),
+                            zero.addBuild(allocator, build_cmd, "objcopy_fmt", "top/build/objcopy-fmt.zig"),
+                            zero.addBuild(allocator, build_cmd, "archive_fmt", "top/build/archive-fmt.zig"),
+                        });
+                    }
+                }
+            }
             if (builder_spec.options.special.trace) |build_cmd| {
                 special.trace = zero.addBuild(allocator, build_cmd, "trace", builder_spec.options.names.trace_root);
-            }
-            if (builder_spec.options.special.buildfmt_ar) |ar_cmd| {
-                if (builder_spec.options.special.buildfmt_obj) |build_cmd| {
-                    special.fmt = zero.addArchive(allocator, ar_cmd, "fmt", &.{
-                        zero.addBuild(allocator, build_cmd, "options_fmt", "top/build/options-fmt.zig"),
-                        zero.addBuild(allocator, build_cmd, "build_fmt", "top/build/build-fmt.zig"),
-                        zero.addBuild(allocator, build_cmd, "format_fmt", "top/build/format-fmt.zig"),
-                        zero.addBuild(allocator, build_cmd, "objcopy_fmt", "top/build/objcopy-fmt.zig"),
-                        zero.addBuild(allocator, build_cmd, "archive_fmt", "top/build/archive-fmt.zig"),
-                    });
-                }
             }
         }
         fn makeRootDirectories(node: *Node) void {
