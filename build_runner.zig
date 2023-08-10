@@ -46,6 +46,7 @@ pub const logging_override: debug.Logging.Override =
     .Error = null,
     .Fault = null,
 };
+pub const exec_mode = .Run;
 pub const want_stack_traces: bool = enable_debugging;
 pub const logging_default: debug.Logging.Default = .{
     .Attempt = enable_debugging,
@@ -80,7 +81,7 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) void {
     try meta.wrap(
         root.buildMain(&allocator, toplevel),
     );
-    Node.updateCommands(&allocator, toplevel, toplevel);
+    Node.updateCommands(&allocator, toplevel);
     try meta.wrap(
         Node.processCommands(&address_space, &thread_space, &allocator, toplevel),
     );
