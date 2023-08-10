@@ -148,15 +148,15 @@ pub const BuilderSpec = struct {
             /// Optional pathname to root source used to compile tracer object.
             trace_root: [:0]const u8 = "top/trace.zig",
             /// Optional pathname to root source used to compile command line parser shared object.
-            parse_root: [:0]const u8 = "top/build/parsers.zig",
+            cmd_parsers_root: [:0]const u8 = "top/build/parsers.zig",
             /// Optional pathname to root source used to compile command line parser shared object.
-            tasks_root: [:0]const u8 = "top/build/tasks.zig",
+            cmd_writers_root: [:0]const u8 = "top/build/writers.zig",
         } = .{},
         special: struct {
             /// Defines compile commands for stack tracer object.
             trace: ?types.BuildCommand = .{ .kind = .obj, .mode = .ReleaseSmall, .strip = true, .compiler_rt = false },
             /// Defines compile commands for command line parser shared object.
-            parse: ?types.BuildCommand = .{ .kind = .lib, .mode = .ReleaseSmall, .dynamic = true, .strip = true, .compiler_rt = false },
+            parsers: ?types.BuildCommand = .{ .kind = .lib, .mode = .ReleaseSmall, .dynamic = true, .strip = true, .compiler_rt = false },
             /// Defines archiver commands for builder formatter types.
             buildfmt_ar: ?types.ArchiveCommand = .{ .operation = .r, .create = true },
             buildfmt_obj: ?types.BuildCommand = .{ .kind = .obj, .mode = .Debug, .strip = true, .compiler_rt = false },
@@ -322,6 +322,9 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             /// Whether the node task command is invoked directly from `processCommands`.
             /// Determines whether command line arguments are appended.
             is_primary: bool = false,
+            /// Whether a library pathname should be used to load function pointers.
+            /// Determines whether command line arguments are appended.
+            is_dyn_ext: bool = false,
             /// Flags relevant to group nodes.
             /// Whether independent nodes will be processed in parallel.
             is_single_threaded: bool = false,
@@ -384,12 +387,10 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             objcopy: *types.ObjcopyCommand,
         };
         pub const special = struct {
-            var toplevel: *Node = @ptrFromInt(@alignOf(Node));
             var trace: *Node = @ptrFromInt(@alignOf(Node));
-            var parse: *Node = @ptrFromInt(@alignOf(Node));
-            var tasks: *Node = @ptrFromInt(@alignOf(Node));
-            pub var fmt: *Node = @ptrFromInt(@alignOf(Node));
-            var parsers: build.ParseCommand = undefined;
+            var cmd_parsers: *Node = @ptrFromInt(@alignOf(Node));
+            var cmd_writers: *Node = @ptrFromInt(@alignOf(Node));
+            var fns: build.Fns = undefined;
         };
         pub const Archive = struct {
             pub inline fn command(archive_node: *Archive) *types.BuildCommand {
