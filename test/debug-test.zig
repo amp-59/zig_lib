@@ -7,8 +7,7 @@ extern fn otherMain(x: u64) void;
 
 pub usingnamespace zl.start;
 
-pub const logging_override: debug.Logging.Override = .{};
-
+pub const logging_override: debug.Logging.Override = zl.spec.logging.override.verbose;
 pub const trace = builtin.my_trace;
 
 fn nested0(z: u64) !void {
