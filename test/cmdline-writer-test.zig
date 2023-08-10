@@ -48,14 +48,13 @@ fn makeArgPtrs(allocator: *mem.SimpleAllocator, args: [:0]u8) [][*:0]u8 {
     ptrs[len] = comptime builtin.zero([*:0]u8);
     return ptrs[0..len];
 }
+pub const exec_mode: build.ExecMode = .Run;
 fn testManyCompileOptionsWithArguments(args: anytype, vars: anytype) !void {
     var address_space: Node.AddressSpace = .{};
     var thread_space: Node.ThreadSpace = .{};
     var allocator: build.Allocator = build.Allocator.init_arena(Node.AddressSpace.arena(Node.max_thread_count));
 
-    var path: build.Path = @bitCast(@as([3]usize, .{ 0, 0, 0 }));
-    path.addName(&allocator).* = "any/path";
-
+    var path: build.Path = .{ .names = @constCast(&[_][:0]const u8{"any"}) };
     var build_cmd: build.BuildCommand = .{
         .kind = .obj,
         .allow_shlib_undefined = true,
@@ -67,7 +66,6 @@ fn testManyCompileOptionsWithArguments(args: anytype, vars: anytype) !void {
             .{ .name = "false", .value = "true" },
             .{ .name = "__zig__" },
         },
-        .clang = true,
         .code_model = .default,
         .color = .auto,
         .compiler_rt = false,
@@ -92,22 +90,27 @@ fn testManyCompileOptionsWithArguments(args: anytype, vars: anytype) !void {
             .{ .name = "@build" },
         },
         .modules = &.{
-            .{ .name = "zig_lib", .path = build.root ++ "/zig_lib.zig" },
+            .{ .name = "zig_lib", .path = Node.lib_build_root ++ "/zig_lib.zig" },
             .{ .name = "@build", .path = "./build.zig" },
         },
     };
     if (args.len < 5) {
-        return error.MissingEnvironmentPaths;
+        proc.exitError(error.MissingEnvironmentPaths, 2);
     }
-    Node.initState(args, vars);
-    const toplevel: *Node = Node.init(&allocator);
-
+    const toplevel: *Node = Node.init(&allocator, args, vars);
     const g0: *Node = toplevel.addGroup(&allocator, "g0");
     const t0: *Node = g0.addBuild(&allocator, build_cmd, "target", @src().file);
     const t1: *Node = g0.addArchive(&allocator, .{ .operation = .r, .create = true }, "lib0", &.{t0});
-    try debug.expect(Node.executeToplevel(&address_space, &thread_space, &allocator, toplevel, t1, .archive));
+    _ = t1;
+    Node.updateCommands(&allocator, toplevel);
+    Node.processCommands(&address_space, &thread_space, &allocator, toplevel);
 }
-pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
-    try testManyCompileOptionsWithArguments(args, vars);
-    testConfigValues();
-}
+pub usingnamespace if (@import("builtin").output_mode == .Obj) struct {
+    pub export fn _start() void {}
+    pub fn main() void {}
+} else struct {
+    pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
+        try testManyCompileOptionsWithArguments(args, vars);
+        testConfigValues();
+    }
+};
