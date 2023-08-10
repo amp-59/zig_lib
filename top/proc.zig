@@ -192,7 +192,7 @@ pub const Wait = struct {
         const WAIT = sys.WAIT;
     });
 };
-pub const Return = struct {
+pub const Return = extern struct {
     pid: u32,
     status: u32,
 };
@@ -278,10 +278,10 @@ pub const WaitSpec = struct {
         const val: isize = switch (id) {
             .ppid => 0,
             .any => -1,
-            .pid => |val| @as(isize, @intCast(val)),
-            .pgid => |val| @as(isize, @intCast(val)),
+            .pid => |val| @intCast(val),
+            .pgid => |val| @intCast(val),
         };
-        return @as(usize, @bitCast(val));
+        return @bitCast(val);
     }
     fn flags(comptime spec: WaitSpec) Wait {
         var ret: Wait = .{ .val = 0 };
@@ -490,7 +490,7 @@ pub fn getEffectiveGroupId() u16 {
 }
 pub fn waitPid(comptime spec: WaitSpec, id: WaitSpec.For) sys.ErrorUnion(spec.errors, spec.return_type) {
     const logging: debug.Logging.SuccessError = comptime spec.logging.override();
-    var ret: Return = undefined;
+    var ret: Return = comptime builtin.all(Return);
     const status_addr: u64 = @intFromPtr(&ret.status);
     if (meta.wrap(sys.call(.wait4, spec.errors, u32, .{ WaitSpec.pid(id), status_addr, 0, 0, 0 }))) |pid| {
         ret.pid = pid;
@@ -896,7 +896,7 @@ pub fn shift(args: *[][*:0]u8, index: u64) void {
 /// init: ArgsIterator{ .args = args }
 pub const ArgsIterator = struct {
     args: [][*:0]u8,
-    args_idx: u64 = 1,
+    args_idx: usize = 1,
     pub fn next(itr: *ArgsIterator) ?[:0]const u8 {
         if (itr.args_idx <= itr.args.len) {
             const arg: [*:0]const u8 = itr.args[itr.args_idx];
@@ -913,12 +913,12 @@ pub const ArgsIterator = struct {
 pub const PathIterator = struct {
     /// environmentValue(vars, "PATH").?
     paths: [:0]u8,
-    paths_idx: u64 = 0,
+    paths_idx: usize = 0,
     pub fn next(itr: *PathIterator) ?[:0]u8 {
         if (itr.paths_idx == itr.paths.len) {
             return null;
         }
-        const idx: u64 = itr.paths_idx;
+        const idx: usize = itr.paths_idx;
         while (itr.paths_idx != itr.paths.len) : (itr.paths_idx +%= 1) {
             if (itr.paths[itr.paths_idx] == ':') {
                 const end: u64 = itr.paths_idx;
@@ -931,7 +931,7 @@ pub const PathIterator = struct {
         }
     }
     pub fn done(itr: *PathIterator) void {
-        var idx: u64 = 0;
+        var idx: usize = 0;
         while (idx != itr.paths_idx) : (idx +%= 1) {
             if (itr.paths[idx] == 0) {
                 itr.paths[idx] = ':';
@@ -950,18 +950,19 @@ pub fn auxiliaryValue(auxv: *const anyopaque, comptime tag: AuxiliaryVectorEntry
     return null;
 }
 pub fn environmentValue(vars: [][*:0]u8, key: [:0]const u8) ?[:0]u8 {
+    @setRuntimeSafety(builtin.is_safe);
     for (vars) |key_value| {
         const key_len: u64 = blk: {
-            var idx: u64 = 0;
+            var idx: usize = 0;
             while (key_value[idx] != '=') idx +%= 1;
             break :blk idx;
         };
-        if (!mach.testEqualMany8(key, key_value[0..key_len])) {
+        if (!mem.testEqualString(key, key_value[0..key_len])) {
             continue;
         }
-        const val_idx: u64 = key_len +% 1;
-        const end_idx: u64 = blk: {
-            var idx: u64 = val_idx;
+        const val_idx: usize = key_len +% 1;
+        const end_idx: usize = blk: {
+            var idx: usize = val_idx;
             while (key_value[idx] != 0) idx +%= 1;
             break :blk idx;
         };
@@ -1046,8 +1047,8 @@ pub const about = opaque {
         buf[0..fork_s.len].* = fork_s.*;
         var ptr: [*]u8 = buf[fork_s.len..];
         ptr[0..4].* = "pid=".*;
-        ptr = ptr + 4;
-        ptr = ptr + ud64.formatWriteBuf(ptr);
+        ptr += 4;
+        ptr += ud64.formatWriteBuf(ptr);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr - @intFromPtr(&buf)) + 1]);
     }
@@ -1062,14 +1063,14 @@ pub const about = opaque {
         buf[0..wait_s.len].* = wait_s.*;
         var ptr: [*]u8 = buf[wait_s.len..];
         @memcpy(ptr, @tagName(id));
-        ptr = ptr + @tagName(id).len;
+        ptr += @tagName(id).len;
         ptr[0..6].* = ", pid=".*;
-        ptr = ptr + 6;
-        ptr = ptr + ud64.formatWriteBuf(ptr);
+        ptr += 6;
+        ptr += ud64.formatWriteBuf(ptr);
         @memcpy(ptr, status_s);
-        ptr = ptr + status_s.len;
+        ptr += status_s.len;
         ud64 = @bitCast(code);
-        ptr = ptr + ud64.formatWriteBuf(ptr);
+        ptr += ud64.formatWriteBuf(ptr);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr - @intFromPtr(&buf)) + 1]);
     }
@@ -1108,23 +1109,23 @@ pub const about = opaque {
         buf[0..futex_wait_s.len].* = futex_wait_s.*;
         var ptr: [*]u8 = buf[futex_wait_s.len..];
         ptr[0..7].* = "futex1=".*;
-        ptr = ptr + 7;
-        ptr = ptr + ux64.formatWriteBuf(ptr);
+        ptr += 7;
+        ptr += ux64.formatWriteBuf(ptr);
         ptr[0..8].* = ", word1=".*;
-        ptr = ptr + 8;
-        ptr = ptr + ud64.formatWriteBuf(ptr);
-        ptr[0..6].* = ", max=".*;
-        ptr = ptr + 6;
+        ptr += 8;
+        ptr += ud64.formatWriteBuf(ptr);
+        ptr[0..6].* = ", val=".*;
+        ptr += 6;
         ud64.value = value;
-        ptr = ptr + ud64.formatWriteBuf(ptr);
+        ptr += ud64.formatWriteBuf(ptr);
         ptr[0..6].* = ", sec=".*;
-        ptr = ptr + 6;
+        ptr += 6;
         ud64.value = timeout.sec;
-        ptr = ptr + ud64.formatWriteBuf(ptr);
+        ptr += ud64.formatWriteBuf(ptr);
         ptr[0..7].* = ", nsec=".*;
-        ptr = ptr + 7;
+        ptr += 7;
         ud64.value = timeout.nsec;
-        ptr = ptr + ud64.formatWriteBuf(ptr);
+        ptr += ud64.formatWriteBuf(ptr);
         ptr[0] = '\n';
         debug.write(buf[0..(@intFromPtr(ptr - @intFromPtr(&buf)) +% 1)]);
     }
@@ -1135,15 +1136,15 @@ pub const about = opaque {
         buf[0..futex_wake_s.len].* = futex_wake_s.*;
         var ptr: [*]u8 = buf[futex_wake_s.len..];
         ptr[0..6].* = "futex=".*;
-        ptr = ptr + 6;
-        ptr = ptr + ux64.formatWriteBuf(ptr);
+        ptr += 6;
+        ptr += ux64.formatWriteBuf(ptr);
         ptr[0..7].* = ", word=".*;
-        ptr = ptr + 7;
-        ptr = ptr + ud64.formatWriteBuf(ptr);
+        ptr += 7;
+        ptr += ud64.formatWriteBuf(ptr);
         ptr[0..6].* = ", max=".*;
-        ptr = ptr + 6;
+        ptr += 6;
         ud64.value = count;
-        ptr = ptr + ud64.formatWriteBuf(ptr);
+        ptr += ud64.formatWriteBuf(ptr);
         ptr[0] = '\n';
         debug.write(buf[0..(@intFromPtr(ptr - @intFromPtr(&buf)) +% 1)]);
     }
@@ -1154,19 +1155,19 @@ pub const about = opaque {
         buf[0..futex_wake_s.len].* = futex_wake_s.*;
         var ptr: [*]u8 = buf[futex_wake_s.len..];
         ptr[0..6].* = "futex=".*;
-        ptr = ptr + 6;
-        ptr = ptr + ux64.formatWriteBuf(ptr);
+        ptr += 6;
+        ptr += ux64.formatWriteBuf(ptr);
         ptr[0..7].* = ", word=".*;
-        ptr = ptr + 7;
-        ptr = ptr + ud64.formatWriteBuf(ptr);
+        ptr += 7;
+        ptr += ud64.formatWriteBuf(ptr);
         ptr[0..6].* = ", max=".*;
-        ptr = ptr + 6;
+        ptr += 6;
         ud64.value = count;
-        ptr = ptr + ud64.formatWriteBuf(ptr);
+        ptr += ud64.formatWriteBuf(ptr);
         ptr[0..6].* = ", ret=".*;
-        ptr = ptr + 6;
+        ptr += 6;
         ud64.value = ret;
-        ptr = ptr + ud64.formatWriteBuf(ptr);
+        ptr += ud64.formatWriteBuf(ptr);
         ptr[0] = '\n';
         debug.write(buf[0..(@intFromPtr(ptr - @intFromPtr(&buf)) +% 1)]);
     }
@@ -1177,27 +1178,27 @@ pub const about = opaque {
         buf[0..futex_wake_s.len].* = futex_wake_s.*;
         var ptr: [*]u8 = buf[futex_wake_s.len..];
         ptr[0..7].* = "futex1=".*;
-        ptr = ptr + 7;
-        ptr = ptr + ux64.formatWriteBuf(ptr);
+        ptr += 7;
+        ptr += ux64.formatWriteBuf(ptr);
         ptr[0..8].* = ", word1=".*;
-        ptr = ptr + 8;
-        ptr = ptr + ud64.formatWriteBuf(ptr);
+        ptr += 8;
+        ptr += ud64.formatWriteBuf(ptr);
         ptr[0..7].* = ", max1=".*;
-        ptr = ptr + 7;
+        ptr += 7;
         ud64.value = count1;
-        ptr = ptr + ud64.formatWriteBuf(ptr);
+        ptr += ud64.formatWriteBuf(ptr);
         ptr[0..9].* = ", futex2=".*;
-        ptr = ptr + 9;
+        ptr += 9;
         ux64.value = @intFromPtr(futex2);
-        ptr = ptr + ux64.formatWriteBuf(ptr);
+        ptr += ux64.formatWriteBuf(ptr);
         ptr[0..8].* = ", word2=".*;
-        ptr = ptr + 8;
+        ptr += 8;
         ud64.value = futex2.*;
-        ptr = ptr + ud64.formatWriteBuf(ptr);
+        ptr += ud64.formatWriteBuf(ptr);
         ptr[0..7].* = ", max2=".*;
-        ptr = ptr + 7;
+        ptr += 7;
         ud64.value = count2;
-        ptr = ptr + ud64.formatWriteBuf(ptr);
+        ptr += ud64.formatWriteBuf(ptr);
         ptr[0] = '\n';
         debug.write(buf[0..(@intFromPtr(ptr - @intFromPtr(&buf)) +% 1)]);
     }
@@ -1208,31 +1209,31 @@ pub const about = opaque {
         buf[0..futex_wake_s.len].* = futex_wake_s.*;
         var ptr: [*]u8 = buf[futex_wake_s.len..];
         ptr[0..7].* = "futex1=".*;
-        ptr = ptr + 7;
-        ptr = ptr + ux64.formatWriteBuf(ptr);
+        ptr += 7;
+        ptr += ux64.formatWriteBuf(ptr);
         ptr[0..8].* = ", word1=".*;
-        ptr = ptr + 8;
-        ptr = ptr + ud64.formatWriteBuf(ptr);
+        ptr += 8;
+        ptr += ud64.formatWriteBuf(ptr);
         ptr[0..7].* = ", max1=".*;
-        ptr = ptr + 7;
+        ptr += 7;
         ud64.value = count1;
-        ptr = ptr + ud64.formatWriteBuf(ptr);
+        ptr += ud64.formatWriteBuf(ptr);
         ptr[0..9].* = ", futex2=".*;
-        ptr = ptr + 9;
+        ptr += 9;
         ux64.value = @intFromPtr(futex2);
-        ptr = ptr + ux64.formatWriteBuf(ptr);
+        ptr += ux64.formatWriteBuf(ptr);
         ptr[0..8].* = ", word2=".*;
-        ptr = ptr + 8;
+        ptr += 8;
         ud64.value = futex2.*;
-        ptr = ptr + ud64.formatWriteBuf(ptr);
+        ptr += ud64.formatWriteBuf(ptr);
         ptr[0..7].* = ", max2=".*;
-        ptr = ptr + 7;
+        ptr += 7;
         ud64.value = count2;
-        ptr = ptr + ud64.formatWriteBuf(ptr);
+        ptr += ud64.formatWriteBuf(ptr);
         ptr[0..6].* = ", ret=".*;
-        ptr = ptr + 6;
+        ptr += 6;
         ud64.value = ret;
-        ptr = ptr + ud64.formatWriteBuf(ptr);
+        ptr += ud64.formatWriteBuf(ptr);
         ptr[0] = '\n';
         debug.write(buf[0..(@intFromPtr(ptr - @intFromPtr(&buf)) +% 1)]);
     }
@@ -1243,21 +1244,21 @@ pub const about = opaque {
         buf[0..sig_s.len].* = sig_s.*;
         var ptr: [*]u8 = buf[sig_s.len..];
         ptr[0..debug.about.error_s.len].* = debug.about.error_s.*;
-        ptr = ptr + debug.about.error_s.len;
+        ptr += debug.about.error_s.len;
         @memcpy(ptr, @errorName(rt_sigaction_error));
-        ptr = ptr + @errorName(rt_sigaction_error).len;
+        ptr += @errorName(rt_sigaction_error).len;
         ptr[0..5].* = ", SIG".*;
-        ptr = ptr + 5;
+        ptr += 5;
         @memcpy(ptr, @tagName(signo));
-        ptr = ptr + @tagName(signo).len;
+        ptr += @tagName(signo).len;
         if (handler_raw > 1) {
-            ptr = ptr + ux64.formatWriteBuf(ptr);
+            ptr += ux64.formatWriteBuf(ptr);
         } else {
             @memcpy(ptr, if (handler_raw == 1) "ignore" else "default");
-            ptr = ptr + (8 -% handler_raw);
+            ptr += (8 -% handler_raw);
         }
         ptr[0..4].* = " -> ".*;
-        ptr = ptr + 4;
+        ptr += 4;
         debug.write(buf[0..@intFromPtr(ptr - @intFromPtr(&buf))]);
     }
     fn signalStackError(sigaltstack_error: anytype, new_st: SignalStack) void {
@@ -1266,14 +1267,14 @@ pub const about = opaque {
         buf[0..sig_s.len].* = sig_s.*;
         var ptr: [*]u8 = buf[sig_s.len..];
         ptr[0..debug.about.error_s.len].* = debug.about.error_s.*;
-        ptr = ptr + debug.about.error_s.len;
+        ptr += debug.about.error_s.len;
         @memcpy(ptr, @errorName(sigaltstack_error));
-        ptr = ptr + @errorName(sigaltstack_error).len;
-        ptr = ptr + ux64.formatWriteBuf(ptr);
+        ptr += @errorName(sigaltstack_error).len;
+        ptr += ux64.formatWriteBuf(ptr);
         ptr[0..2].* = "..".*;
-        ptr = ptr + 2;
+        ptr += 2;
         ux64.value = new_st.addr +% new_st.len;
-        ptr = ptr + ux64.formatWriteBuf(ptr);
+        ptr += ux64.formatWriteBuf(ptr);
         ptr[0] = '\n';
         debug.write(buf[0..(@intFromPtr(ptr - @intFromPtr(&buf)) +% 1)]);
     }
@@ -1285,25 +1286,25 @@ pub const about = opaque {
         buf[0..futex_wait_s.len].* = futex_wait_s.*;
         var ptr: [*]u8 = buf[futex_wait_s.len..];
         ptr[0..debug.about.error_s.len].* = debug.about.error_s.*;
-        ptr = ptr + debug.about.error_s.len;
+        ptr += debug.about.error_s.len;
         @memcpy(ptr, @errorName(futex_error));
-        ptr = ptr + @errorName(futex_error).len;
+        ptr += @errorName(futex_error).len;
         ptr[0..8].* = ", futex=".*;
-        ptr = ptr + 8;
-        ptr = ptr + ux64.formatWriteBuf(ptr);
+        ptr += 8;
+        ptr += ux64.formatWriteBuf(ptr);
         ptr[0..7].* = ", word=".*;
-        ptr = ptr + 7;
-        ptr = ptr + ud64.formatWriteBuf(ptr);
+        ptr += 7;
+        ptr += ud64.formatWriteBuf(ptr);
         ptr[0..6].* = ", val=".*;
-        ptr = ptr + 6;
+        ptr += 6;
         ud64.value = value;
-        ptr = ptr + ud64.formatWriteBuf(ptr);
+        ptr += ud64.formatWriteBuf(ptr);
         ptr[0..6].* = ", sec=".*;
         ud64.value = timeout.sec;
-        ptr = ptr + ud64.formatWriteBuf(ptr);
+        ptr += ud64.formatWriteBuf(ptr);
         ptr[0..7].* = ", nsec=".*;
         ud64.value = timeout.nsec;
-        ptr = ptr + ud64.formatWriteBuf(ptr);
+        ptr += ud64.formatWriteBuf(ptr);
         ptr[0] = '\n';
         debug.write(buf[0..(@intFromPtr(ptr - @intFromPtr(&buf)) +% 1)]);
     }
@@ -1315,19 +1316,19 @@ pub const about = opaque {
         buf[0..futex_wait_s.len].* = futex_wait_s.*;
         var ptr: [*]u8 = buf[futex_wait_s.len..];
         ptr[0..debug.about.error_s.len].* = debug.about.error_s.*;
-        ptr = ptr + debug.about.error_s.len;
+        ptr += debug.about.error_s.len;
         @memcpy(ptr, @errorName(futex_error));
-        ptr = ptr + @errorName(futex_error).len;
+        ptr += @errorName(futex_error).len;
         ptr[0..7].* = "futex=@".*;
-        ptr = ptr + 7;
-        ptr = ptr + ux64.formatWriteBuf(ptr);
+        ptr += 7;
+        ptr += ux64.formatWriteBuf(ptr);
         ptr[0..7].* = ", word=".*;
-        ptr = ptr + 7;
-        ptr = ptr + ud64.formatWriteBuf(ptr);
+        ptr += 7;
+        ptr += ud64.formatWriteBuf(ptr);
         ptr[0..6].* = ", max=".*;
-        ptr = ptr + 6;
+        ptr += 6;
         ud64.value = count;
-        ptr = ptr + ud64.formatWriteBuf(ptr);
+        ptr += ud64.formatWriteBuf(ptr);
         ptr[0] = '\n';
         debug.write(buf[0..(@intFromPtr(ptr - @intFromPtr(&buf)) +% 1)]);
     }
@@ -1337,33 +1338,33 @@ pub const about = opaque {
         buf[0..futex_wait_s.len].* = futex_wait_s.*;
         var ptr: [*]u8 = buf[futex_wait_s.len..];
         ptr[0..debug.about.error_s.len].* = debug.about.error_s.*;
-        ptr = ptr + debug.about.error_s.len;
+        ptr += debug.about.error_s.len;
         @memcpy(ptr, @errorName(futex_error));
-        ptr = ptr + @errorName(futex_error).len;
+        ptr += @errorName(futex_error).len;
         var ux64: fmt.Type.Ud64 = .{ .value = @intFromPtr(futex1) };
         var ud64: fmt.Type.Ud64 = .{ .value = futex1.* };
         ptr[0..10].* = ", futex1=@".*;
-        ptr = ptr + 10;
-        ptr = ptr + ux64.formatWriteBuf(ptr);
+        ptr += 10;
+        ptr += ux64.formatWriteBuf(ptr);
         ptr[0..8].* = ", word1=".*;
-        ptr = ptr + 8;
-        ptr = ptr + ud64.formatWriteBuf(ptr);
+        ptr += 8;
+        ptr += ud64.formatWriteBuf(ptr);
         ptr[0..7].* = ", max1=".*;
-        ptr = ptr + 7;
+        ptr += 7;
         ud64.value = count1;
-        ptr = ptr + ud64.formatWriteBuf(ptr);
+        ptr += ud64.formatWriteBuf(ptr);
         ptr[0..10].* = ", futex2=@".*;
-        ptr = ptr + 10;
+        ptr += 10;
         ux64.value = @intFromPtr(futex2);
-        ptr = ptr + ux64.formatWriteBuf(ptr);
+        ptr += ux64.formatWriteBuf(ptr);
         ptr[0..8].* = ", word2=".*;
-        ptr = ptr + 8;
+        ptr += 8;
         ud64.value = futex2.*;
-        ptr = ptr + ud64.formatWriteBuf(ptr);
+        ptr += ud64.formatWriteBuf(ptr);
         ptr[0..7].* = ", max2=".*;
-        ptr = ptr + 7;
+        ptr += 7;
         ud64.value = count2;
-        ptr = ptr + ud64.formatWriteBuf(ptr);
+        ptr += ud64.formatWriteBuf(ptr);
         ptr[0] = '\n';
         debug.write(buf[0..(@intFromPtr(ptr - @intFromPtr(&buf)) +% 1)]);
     }
@@ -1375,13 +1376,13 @@ pub const about = opaque {
         buf[0..3].* = "SIG".*;
         var ptr: [*]u8 = buf[3..];
         @memcpy(ptr, @tagName(sig));
-        ptr = ptr + @tagName(sig).len;
+        ptr += @tagName(sig).len;
         ptr[0..12].* = " at address ".*;
-        ptr = ptr + 12;
-        ptr = ptr + fmt.ux64(info.fields.fault.addr).formatWriteBuf(ptr);
+        ptr += 12;
+        ptr += fmt.ux64(info.fields.fault.addr).formatWriteBuf(ptr);
         ptr[0..2].* = ", ".*;
-        ptr = ptr + 2;
-        ptr = ptr + about.exe(ptr[0..4096]);
+        ptr += 2;
+        ptr += about.exe(ptr[0..4096]);
         debug.panicSignal(buf[0..@intFromPtr(ptr - @intFromPtr(&buf))], ctx.?);
     }
     pub fn sampleAllReports() void {
@@ -1593,15 +1594,15 @@ pub fn GenericOptions(comptime Options: type) type {
                 var ptr: [*]u8 = &buf;
                 const bad_opt: []const u8 = getBadOpt(arg);
                 @memcpy(ptr, about_opt_s);
-                ptr = ptr + about_opt_s.len;
+                ptr += about_opt_s.len;
                 @memcpy(ptr, debug.about.error_s);
-                ptr = ptr + debug.about.error_s.len;
+                ptr += debug.about.error_s.len;
                 ptr[0] = '\'';
-                ptr = ptr + 1;
+                ptr += 1;
                 @memcpy(ptr, bad_opt);
-                ptr = ptr + bad_opt.len;
+                ptr += bad_opt.len;
                 ptr[0..2].* = "'\n".*;
-                ptr = ptr + 2;
+                ptr += 2;
                 for (all_options) |option| {
                     const min: u64 = @intFromPtr(ptr - @intFromPtr(&buf));
                     if (option.long) |long_switch| {
@@ -1609,40 +1610,40 @@ pub fn GenericOptions(comptime Options: type) type {
                             @max(bad_opt.len, long_switch.len) / 2)
                         {
                             @memcpy(ptr, about_opt_s);
-                            ptr = ptr + about_opt_s.len;
+                            ptr += about_opt_s.len;
                             if (option.short) |short_switch| {
                                 ptr[0] = '\'';
-                                ptr = ptr + 1;
+                                ptr += 1;
                                 @memcpy(ptr, short_switch);
-                                ptr = ptr + short_switch.len;
+                                ptr += short_switch.len;
                                 ptr[0..3].* = "', ".*;
-                                ptr = ptr + 3;
+                                ptr += 3;
                             }
                             ptr[0] = '\'';
-                            ptr = ptr + 1;
+                            ptr += 1;
                             @memcpy(ptr, long_switch);
-                            ptr = ptr + long_switch.len;
+                            ptr += long_switch.len;
                             ptr[0] = '\'';
-                            ptr = ptr + 1;
+                            ptr += 1;
                         }
                     }
                     if (min != @intFromPtr(ptr - @intFromPtr(&buf))) {
                         if (option.descr) |descr| {
                             ptr[0] = '\t';
-                            ptr = ptr + 1;
+                            ptr += 1;
                             @memcpy(ptr, descr);
-                            ptr = ptr + descr.len;
+                            ptr += descr.len;
                         }
                         ptr[0] = '\n';
-                        ptr = ptr + 1;
+                        ptr += 1;
                     }
                 }
                 @memcpy(ptr, about_stop_s);
-                ptr = ptr + about_stop_s.len;
+                ptr += about_stop_s.len;
                 debug.write(buf[0..@intFromPtr(ptr - @intFromPtr(&buf))]);
             }
             fn getBadOpt(arg: [:0]const u8) []const u8 {
-                var idx: u64 = 0;
+                var idx: usize = 0;
                 while (idx != arg.len) : (idx +%= 1) {
                     if (arg[idx] == '=') {
                         return arg[0..idx];
@@ -1651,10 +1652,10 @@ pub fn GenericOptions(comptime Options: type) type {
                 return arg;
             }
             fn matchLongSwitch(bad_opt: []const u8, long_switch: []const u8) u64 {
-                var l_idx: u64 = 0;
+                var l_idx: usize = 0;
                 var mats: u64 = 0;
                 lo: while (true) : (l_idx +%= 1) {
-                    var r_idx: u64 = 0;
+                    var r_idx: usize = 0;
                     while (r_idx < long_switch.len) : (r_idx +%= 1) {
                         if (l_idx +% mats >= bad_opt.len) {
                             break :lo;

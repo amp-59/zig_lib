@@ -713,15 +713,15 @@ pub const about = opaque {
         var buf: [4096]u8 = undefined;
         buf[0..about_s.len].* = about_s.*;
         var ptr: [*]u8 = buf[about_s.len..];
-        ptr = ptr + fmt.ux64(addr).formatWriteBuf(ptr);
+        ptr += fmt.ux64(addr).formatWriteBuf(ptr);
         ptr[0..2].* = "..".*;
-        ptr = ptr + 2;
-        ptr = ptr + fmt.ux64(addr +% len).formatWriteBuf(ptr);
+        ptr += 2;
+        ptr += fmt.ux64(addr +% len).formatWriteBuf(ptr);
         ptr[0..2].* = ", ".*;
-        ptr = ptr + 2;
-        ptr = ptr + fmt.ud64(len).formatWriteBuf(ptr);
+        ptr += 2;
+        ptr += fmt.ud64(len).formatWriteBuf(ptr);
         ptr[0..7].* = " bytes\n".*;
-        ptr = ptr + 7;
+        ptr += 7;
         debug.write(buf[0..@intFromPtr(ptr - @intFromPtr(&buf))]);
     }
     fn aboutAddrLenDescrNotice(about_s: fmt.AboutSrc, addr: u64, len: u64, description_s: []const u8) void {
@@ -729,17 +729,17 @@ pub const about = opaque {
         var buf: [4096]u8 = undefined;
         buf[0..about_s.len].* = about_s.*;
         var ptr: [*]u8 = buf[about_s.len..];
-        ptr = ptr + fmt.ux64(addr).formatWriteBuf(ptr);
+        ptr += fmt.ux64(addr).formatWriteBuf(ptr);
         ptr[0..2].* = "..".*;
-        ptr = ptr + 2;
-        ptr = ptr + fmt.ux64(addr +% len).formatWriteBuf(ptr);
+        ptr += 2;
+        ptr += fmt.ux64(addr +% len).formatWriteBuf(ptr);
         ptr[0..2].* = ", ".*;
-        ptr = ptr + 2;
-        ptr = ptr + fmt.ud64(len).formatWriteBuf(ptr);
+        ptr += 2;
+        ptr += fmt.ud64(len).formatWriteBuf(ptr);
         ptr[0..8].* = " bytes, ".*;
-        ptr = ptr + 8;
+        ptr += 8;
         @memcpy(ptr, description_s);
-        ptr = ptr + description_s.len;
+        ptr += description_s.len;
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr - @intFromPtr(&buf)) +% 1]);
     }
@@ -752,21 +752,21 @@ pub const about = opaque {
         const notation_s: *const [3]u8 = mach.cmovx(new_len < old_len, ", -", ", +");
         buf[0..about_s.len].* = about_s.*;
         var ptr: [*]u8 = buf[about_s.len..];
-        ptr = ptr + fmt.ux64(old_addr).formatWriteBuf(ptr);
+        ptr += fmt.ux64(old_addr).formatWriteBuf(ptr);
         ptr[0..2].* = "..".*;
-        ptr = ptr + 2;
-        ptr = ptr + fmt.ux64(old_addr +% old_len).formatWriteBuf(ptr);
+        ptr += 2;
+        ptr += fmt.ux64(old_addr +% old_len).formatWriteBuf(ptr);
         ptr[0..4].* = " -> ".*;
-        ptr = ptr + 4;
-        ptr = ptr + fmt.ux64(new_addr).formatWriteBuf(ptr);
+        ptr += 4;
+        ptr += fmt.ux64(new_addr).formatWriteBuf(ptr);
         ptr[0..2].* = "..".*;
-        ptr = ptr + 2;
-        ptr = ptr + fmt.ux64(new_addr +% new_len).formatWriteBuf(ptr);
+        ptr += 2;
+        ptr += fmt.ux64(new_addr +% new_len).formatWriteBuf(ptr);
         ptr[0..3].* = notation_s.*;
-        ptr = ptr + 3;
-        ptr = ptr + fmt.ud64(abs_diff).formatWriteBuf(ptr);
+        ptr += 3;
+        ptr += fmt.ud64(abs_diff).formatWriteBuf(ptr);
         ptr[0..7].* = " bytes\n".*;
-        ptr = ptr + 7;
+        ptr += 7;
         debug.write(buf[0..@intFromPtr(ptr - @intFromPtr(&buf))]);
     }
     fn aboutIndexLbAddrUpAddrLabelNotice(about_s: fmt.AboutSrc, index: ?u64, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
@@ -776,21 +776,21 @@ pub const about = opaque {
         var ptr: [*]u8 = buf[about_s.len..];
         const label_s: []const u8 = label orelse "arena";
         @memcpy(ptr, label_s);
-        ptr = ptr + label_s.len;
+        ptr += label_s.len;
         ptr[0] = '-';
-        ptr = ptr + 1;
-        ptr = ptr + fmt.ud64(index orelse 0).formatWriteBuf(ptr);
+        ptr += 1;
+        ptr += fmt.ud64(index orelse 0).formatWriteBuf(ptr);
         ptr[0..2].* = ", ".*;
-        ptr = ptr + 2;
-        ptr = ptr + fmt.ux64(lb_addr).formatWriteBuf(ptr);
+        ptr += 2;
+        ptr += fmt.ux64(lb_addr).formatWriteBuf(ptr);
         ptr[0..2].* = "..".*;
-        ptr = ptr + 2;
-        ptr = ptr + fmt.ux64(up_addr).formatWriteBuf(ptr);
+        ptr += 2;
+        ptr += fmt.ux64(up_addr).formatWriteBuf(ptr);
         ptr[0..2].* = ", ".*;
-        ptr = ptr + 2;
-        ptr = ptr + fmt.ud64(up_addr -% lb_addr).formatWriteBuf(ptr);
+        ptr += 2;
+        ptr += fmt.ud64(up_addr -% lb_addr).formatWriteBuf(ptr);
         ptr[0..7].* = " bytes\n".*;
-        ptr = ptr + 7;
+        ptr += 7;
         debug.write(buf[0..@intFromPtr(ptr - @intFromPtr(&buf))]);
     }
     fn aboutMemFdPathnameMotice(about_s: fmt.AboutSrc, mem_fd: u64, pathname: [:0]const u8) void {
@@ -799,10 +799,10 @@ pub const about = opaque {
         buf[0..about_s.len].* = about_s.*;
         var ptr: [*]u8 = buf[about_s.len..];
         @memcpy(ptr, pathname);
-        ptr = ptr + pathname.len;
+        ptr += pathname.len;
         ptr[0..7].* = "mem_fd=".*;
-        ptr = ptr + 7;
-        ptr = ptr + fmt.ud64(mem_fd).formatWriteBuf(ptr);
+        ptr += 7;
+        ptr += fmt.ud64(mem_fd).formatWriteBuf(ptr);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr - @intFromPtr(&buf)) +% 1]);
     }
@@ -812,20 +812,20 @@ pub const about = opaque {
         buf[0..about_s.len].* = about_s.*;
         var ptr: [*]u8 = buf[about_s.len..];
         ptr[0..debug.about.error_s.len].* = debug.about.error_s.*;
-        ptr = ptr + debug.about.error_s.len;
+        ptr += debug.about.error_s.len;
         @memcpy(ptr, error_name);
-        ptr = ptr + error_name.len;
+        ptr += error_name.len;
         ptr[0..2].* = ", ".*;
-        ptr = ptr + 2;
-        ptr = ptr + fmt.ux64(addr).formatWriteBuf(ptr);
+        ptr += 2;
+        ptr += fmt.ux64(addr).formatWriteBuf(ptr);
         ptr[0..2].* = "..".*;
-        ptr = ptr + 2;
-        ptr = ptr + fmt.ux64(addr +% len).formatWriteBuf(ptr);
+        ptr += 2;
+        ptr += fmt.ux64(addr +% len).formatWriteBuf(ptr);
         ptr[0..2].* = ", ".*;
-        ptr = ptr + 2;
-        ptr = ptr + fmt.ud64(len).formatWriteBuf(ptr);
+        ptr += 2;
+        ptr += fmt.ud64(len).formatWriteBuf(ptr);
         ptr[0..7].* = " bytes\n".*;
-        ptr = ptr + 7;
+        ptr += 7;
         debug.write(buf[0..@intFromPtr(ptr - @intFromPtr(&buf))]);
     }
     pub fn aboutAddrLenDescrError(about_s: fmt.AboutSrc, error_name: []const u8, addr: u64, len: u64, description_s: []const u8) void {
@@ -834,22 +834,22 @@ pub const about = opaque {
         buf[0..about_s.len].* = about_s.*;
         var ptr: [*]u8 = buf[about_s.len..];
         ptr[0..debug.about.error_s.len].* = debug.about.error_s.*;
-        ptr = ptr + debug.about.error_s.len;
+        ptr += debug.about.error_s.len;
         @memcpy(ptr, error_name);
-        ptr = ptr + error_name.len;
+        ptr += error_name.len;
         ptr[0..2].* = ", ".*;
-        ptr = ptr + 2;
-        ptr = ptr + fmt.ux64(addr).formatWriteBuf(ptr);
+        ptr += 2;
+        ptr += fmt.ux64(addr).formatWriteBuf(ptr);
         ptr[0..2].* = "..".*;
-        ptr = ptr + 2;
-        ptr = ptr + fmt.ux64(addr +% len).formatWriteBuf(ptr);
+        ptr += 2;
+        ptr += fmt.ux64(addr +% len).formatWriteBuf(ptr);
         ptr[0..2].* = ", ".*;
-        ptr = ptr + 2;
-        ptr = ptr + fmt.ud64(len).formatWriteBuf(ptr);
+        ptr += 2;
+        ptr += fmt.ud64(len).formatWriteBuf(ptr);
         ptr[0..8].* = " bytes, ".*;
-        ptr = ptr + 8;
+        ptr += 8;
         @memcpy(ptr, description_s);
-        ptr = ptr + description_s.len;
+        ptr += description_s.len;
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr - @intFromPtr(&buf)) +% 1]);
     }
@@ -863,26 +863,26 @@ pub const about = opaque {
         buf[0..about_s.len].* = about_s.*;
         var ptr: [*]u8 = buf[about_s.len..];
         ptr[0..debug.about.error_s.len].* = debug.about.error_s.*;
-        ptr = ptr + debug.about.error_s.len;
+        ptr += debug.about.error_s.len;
         @memcpy(ptr, error_name);
-        ptr = ptr + error_name.len;
+        ptr += error_name.len;
         ptr[0..2].* = ", ".*;
-        ptr = ptr + 2;
-        ptr = ptr + fmt.ux64(old_addr).formatWriteBuf(ptr);
+        ptr += 2;
+        ptr += fmt.ux64(old_addr).formatWriteBuf(ptr);
         ptr[0..2].* = "..".*;
-        ptr = ptr + 2;
-        ptr = ptr + fmt.ux64(old_addr +% old_len).formatWriteBuf(ptr);
+        ptr += 2;
+        ptr += fmt.ux64(old_addr +% old_len).formatWriteBuf(ptr);
         ptr[0..4].* = " -> ".*;
-        ptr = ptr + 4;
-        ptr = ptr + fmt.ux64(new_addr).formatWriteBuf(ptr);
+        ptr += 4;
+        ptr += fmt.ux64(new_addr).formatWriteBuf(ptr);
         ptr[0..2].* = "..".*;
-        ptr = ptr + 2;
-        ptr = ptr + fmt.ux64(new_addr +% new_len).formatWriteBuf(ptr);
+        ptr += 2;
+        ptr += fmt.ux64(new_addr +% new_len).formatWriteBuf(ptr);
         ptr[0..3].* = notation_s.*;
-        ptr = ptr + 3;
-        ptr = ptr + fmt.ud64(abs_diff).formatWriteBuf(ptr);
+        ptr += 3;
+        ptr += fmt.ud64(abs_diff).formatWriteBuf(ptr);
         ptr[0..7].* = " bytes\n".*;
-        ptr = ptr + 7;
+        ptr += 7;
         debug.write(buf[0..@intFromPtr(ptr - @intFromPtr(&buf))]);
     }
     fn aboutIndexLbAddrUpAddrLabelError(about_s: fmt.AboutSrc, error_name: [:0]const u8, index: ?u64, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
@@ -892,27 +892,27 @@ pub const about = opaque {
         buf[0..about_s.len].* = about_s.*;
         var ptr: [*]u8 = buf[about_s.len..];
         ptr[0..debug.about.error_s.len].* = debug.about.error_s.*;
-        ptr = ptr + debug.about.error_s.len;
+        ptr += debug.about.error_s.len;
         @memcpy(ptr, error_name);
-        ptr = ptr + error_name.len;
+        ptr += error_name.len;
         ptr[0..2].* = ", ".*;
-        ptr = ptr + 2;
+        ptr += 2;
         @memcpy(ptr, label_s);
-        ptr = ptr + label_s.len;
+        ptr += label_s.len;
         ptr[0] = '-';
-        ptr = ptr + 1;
-        ptr = ptr + fmt.ud64(index orelse 0).formatWriteBuf(ptr);
+        ptr += 1;
+        ptr += fmt.ud64(index orelse 0).formatWriteBuf(ptr);
         ptr[0..2].* = ", ".*;
-        ptr = ptr + 2;
-        ptr = ptr + fmt.ux64(lb_addr).formatWriteBuf(ptr);
+        ptr += 2;
+        ptr += fmt.ux64(lb_addr).formatWriteBuf(ptr);
         ptr[0..2].* = "..".*;
-        ptr = ptr + 2;
-        ptr = ptr + fmt.ux64(up_addr).formatWriteBuf(ptr);
+        ptr += 2;
+        ptr += fmt.ux64(up_addr).formatWriteBuf(ptr);
         ptr[0..2].* = ", ".*;
-        ptr = ptr + 2;
-        ptr = ptr + fmt.ud64(up_addr -% lb_addr).formatWriteBuf(ptr);
+        ptr += 2;
+        ptr += fmt.ud64(up_addr -% lb_addr).formatWriteBuf(ptr);
         ptr[0..7].* = " bytes\n".*;
-        ptr = ptr + 7;
+        ptr += 7;
         debug.write(buf[0..@intFromPtr(ptr - @intFromPtr(&buf))]);
     }
     fn aboutPathnameError(about_s: fmt.AboutSrc, error_name: []const u8, pathname: [:0]const u8) void {
@@ -921,13 +921,13 @@ pub const about = opaque {
         buf[0..about_s.len].* = about_s.*;
         var ptr: [*]u8 = buf[about_s.len..];
         ptr[0..debug.about.error_s.len].* = debug.about.error_s.*;
-        ptr = ptr + debug.about.error_s.len;
+        ptr += debug.about.error_s.len;
         @memcpy(ptr, error_name);
-        ptr = ptr + error_name.len;
+        ptr += error_name.len;
         ptr[0..2].* = ", ".*;
-        ptr = ptr + 2;
+        ptr += 2;
         @memcpy(ptr, pathname);
-        ptr = ptr + pathname.len;
+        ptr += pathname.len;
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr - @intFromPtr(&buf)) +% 1]);
     }
@@ -1422,7 +1422,9 @@ pub fn testEqualString(l_values: []const u8, r_values: []const u8) bool {
     }
     var idx: usize = 0;
     while (idx != l_values.len) {
-        if (l_values[idx] != r_values[idx]) return false;
+        if (l_values[idx] != r_values[idx]) {
+            return false;
+        }
         idx +%= 1;
     }
     return true;
@@ -1437,7 +1439,9 @@ pub fn testEqualMany(comptime T: type, l_values: []const T, r_values: []const T)
     }
     var idx: usize = 0;
     while (idx != l_values.len) {
-        if (!mem.testEqual(T, l_values[idx], r_values[idx])) return false;
+        if (!mem.testEqual(T, l_values[idx], r_values[idx])) {
+            return false;
+        }
         idx +%= 1;
     }
     return true;
