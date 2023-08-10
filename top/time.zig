@@ -155,6 +155,7 @@ pub const DateTime = extern struct {
         if (epoch_seconds < leap_epoch) {
             proc.exitGroupFault("TODO: Dates before epoch", 2);
         } else {
+            @setRuntimeSafety(false);
             const secs: u64 = epoch_seconds - leap_epoch;
             const days: u64 = secs / 86_400;
             var rem_secs: u64 = secs % 86_400;
@@ -194,13 +195,13 @@ pub const DateTime = extern struct {
             months -%= mach.cmov8z(months > 9, 12);
             const year: u64 = years +% builtin.int(u64, months > 9);
             return .{
-                .yday = @as(u16, @intCast(year_day)),
-                .mday = @as(u8, @intCast(rem_days)),
-                .wday = @as(u8, @intCast((days +% 3) % 7)),
-                .mon = @as(u8, @intCast(months +% 2)),
-                .hour = @as(u8, @intCast(rem_secs / 3600)),
-                .min = @as(u8, @intCast((rem_secs / 60) % 60)),
-                .sec = @as(u8, @intCast(rem_secs % 60)),
+                .yday = @intCast(year_day),
+                .mday = @intCast(rem_days),
+                .wday = @intCast((days +% 3) % 7),
+                .mon = @intCast(months +% 2),
+                .hour = @intCast(rem_secs / 3600),
+                .min = @intCast((rem_secs / 60) % 60),
+                .sec = @intCast(rem_secs % 60),
                 .year = year,
             };
         }
