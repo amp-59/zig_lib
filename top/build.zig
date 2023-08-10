@@ -504,16 +504,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             ptr.* = .{ .name = name, .value = value };
             node.impl.cfgs_len +%= 1;
         }
-        pub fn addRunArg(node: *Node, allocator: *mem.SimpleAllocator, arg: []const u8) void {
-            @setRuntimeSafety(builder_spec.options.enable_safety);
-            if (@intFromPtr(arg.ptr) <= arena_up_addr and
-                @intFromPtr(arg.ptr) >= arena_lb_addr)
-            {
-                node.addArg(allocator).* = @ptrCast(@constCast(arg.ptr));
-            } else {
-                node.addArg(allocator).* = duplicate(allocator, arg);
-            }
-        }
         pub fn addToplevelArgs(node: *Node, allocator: *mem.SimpleAllocator) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             for ([_][:0]const u8{
