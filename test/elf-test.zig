@@ -10,32 +10,41 @@ const build = zl.build;
 const debug = zl.debug;
 const builtin = zl.builtin;
 const testing = zl.testing;
-
 pub usingnamespace zl.start;
 const Allocator = mem.SimpleAllocator;
 pub const logging_default = spec.logging.default.verbose;
 
-pub fn loadAll(comptime Pointers: type, pathname: [:0]const u8, args: anytype) !void {
-    var ptrs: Pointers = undefined;
-    {
+pub const want_stack_traces: bool = false;
+
+const ElfInfo = elf.GenericElfInfo(.{
+    .Allocator = mem.SimpleAllocator,
+});
+
+pub fn loadAll(comptime Pointers: type, pathname: [:0]const u8, ptrs: *Pointers) void {
+    @setRuntimeSafety(false);
+    const static = struct {
         var addr: usize = 0x80000000;
+    };
+    {
         const fd: u64 = file.open(.{ .errors = .{} }, pathname);
         const st: file.Status = file.status(.{ .errors = .{} }, fd);
         const len: usize = mach.alignA64(st.size, 4096);
-        file.map(.{ .errors = .{} }, .{}, .{}, fd, addr, len, 0);
-        const elf_info: elf.ElfInfo = elf.ElfInfo.init(addr);
-        addr +%= elf_info.executableOffset();
-        file.map(.{ .errors = .{} }, .{ .exec = true }, .{}, fd, addr, len, 0);
-        ptrs = elf_info.loadAll(Pointers);
+
+        file.map(.{ .errors = .{} }, .{ .exec = true }, .{}, fd, static.addr, len, 0);
+        var elf_info: ElfInfo = ElfInfo.init(static.addr, len);
+        ElfInfo.about.readElfNotice(&elf_info);
+        elf_info.remap(fd);
+        elf_info.loadAll(Pointers, ptrs);
+        file.close(.{ .errors = .{} }, fd);
+        static.addr +%= len;
     }
+}
+pub fn main(args: [][*:0]u8) !void {
+    var ptrs: build.Fns = undefined;
+    loadAll(build.Fns, "zig-out/lib/libcmd_writers.so", &ptrs);
+    loadAll(build.Fns, "zig-out/lib/libcmd_parsers.so", &ptrs);
     var build_cmd: build.BuildCommand = .{ .kind = .exe };
     var allocator: mem.SimpleAllocator = .{};
-    ptrs.build(&build_cmd, &allocator, args.ptr, args.len);
-    var buf: [4096]u8 = undefined;
-    const len: usize = fmt.any(build_cmd).formatWriteBuf(&buf);
-    buf[len] = 0xa;
-    debug.write(buf[0 .. len +% 1]);
-}
-pub fn main(args: anytype) !void {
-    try loadAll(build.ParseCommand, "zig-out/lib/libparse.so", args);
+
+    ptrs.formatParseArgsBuildCommand(&build_cmd, &allocator, args.ptr, args.len);
 }
