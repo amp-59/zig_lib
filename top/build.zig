@@ -2287,6 +2287,18 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 len +%= @tagName(task).len;
                 return len;
             }
+            fn baseMemoryUsageNotice(allocator: *mem.SimpleAllocator) void {
+                @setRuntimeSafety(builder_spec.options.enable_safety);
+                var buf: [4096]u8 = undefined;
+                var ptr: [*]u8 = &buf;
+                ptr[0..tab.mem_s.len].* = tab.mem_s.*;
+                ptr += tab.mem_s.len;
+                ptr += fmt.ud64(allocator.next -% allocator.start).formatWriteBuf(ptr);
+                ptr[0..8].* = tab.bytes_s.*;
+                ptr += 6;
+                ptr[0] = '\n';
+                debug.write(buf[0 .. @intFromPtr(ptr - @intFromPtr(&buf)) +% 1]);
+            }
             fn exchangeNotice(node: *const Node, task: types.Task, old: types.State, new: types.State, arena_index: AddressSpace.Index) void {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
                 var buf: [32768]u8 = undefined;
@@ -2893,12 +2905,23 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             fn primaryInputName(node: *const Node) [:0]const u8 {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
                 if (node.tag == .worker) {
-                    switch (node.task.tag) {
-                        .build, .archive => return node.impl.paths[1].names[1],
-                        else => return node.impl.paths[0].names[1],
+                    if (node.task.tag == .build or
+                        node.task.tag == .archive)
+                    {
+                        return node.impl.paths[1].names[1];
+                    }
+                    if (node.task.tag == .format) {
+                        return node.impl.paths[0].names[1];
+                    }
+                    if (node.task.tag == .run) {
+                        if (node.flags.is_build_command) {
+                            return mem.terminate(node.impl.args[node.impl.args_len -% 1], 0);
+                        } else {
+                            return node.impl.paths[0].names[1];
+                        }
                     }
                 }
-                return node.impl.paths[1].names[0];
+                return "<missing>";
             }
             fn writeSubNode(buf: [*]u8, len: usize, sub_node: *const Node, name_width: usize, root_width: usize) usize {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
