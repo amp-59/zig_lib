@@ -169,5 +169,5 @@ pub fn start() callconv(.C) noreturn {
             proc.exitError(err, @intCast(@intFromError(err)));
         }
     }
-    debug.assert(main_return_type_info != .ErrorSet);
+    @compileError(@TypeOf(main_return_type_info, .ErrorSet));
 }
