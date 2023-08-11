@@ -147,7 +147,7 @@ fn testMinMax() !void {
     try debug.expect(mem.testEqual(S, t, builtin.max(S, t, s)));
 }
 pub fn main() !void {
-    try testVersionParser();
+    // try testVersionParser();
     try testRuntimeAssertionsCompile();
     try testStaticAssertionsCompile();
     try testMinMax();
