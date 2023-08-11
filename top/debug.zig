@@ -586,13 +586,16 @@ pub fn logFaultAIO(buf: []u8, slices: []const []const u8) void {
     logFault(buf[0..mach.memcpyMulti(buf.ptr, slices)]);
 }
 pub const printStackTrace = blk: {
+    const S = struct {
+        extern fn printStackTrace(*const Trace, usize, usize) void;
+    };
     if (builtin.want_stack_traces and
         !builtin.have_stack_traces and
         builtin.output_mode == .Exe)
     {
-        break :blk special.trace.printStackTrace;
+        break :blk @import("./trace.zig").printStackTrace;
     } else {
-        break :blk special.printStackTrace;
+        break :blk &S.printStackTrace;
     }
 };
 pub noinline fn alarm(msg: []const u8, _: @TypeOf(@errorReturnTrace()), ret_addr: usize) void {
@@ -812,14 +815,6 @@ const static = struct {
             @compileError(buf[0..len]);
         }
     }
-};
-const special = struct {
-    /// Namespace containing definition of `printStackTrace`.
-    const trace = @import("./trace.zig");
-
-    /// Used by panic functions if executable is static linked with special
-    /// module object `trace.o`.
-    extern fn printStackTrace(*const Trace, u64, u64) void;
 };
 pub const about = struct {
     pub const ErrorSrc = @TypeOf(error_s);
