@@ -484,7 +484,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             mem.zero(Dependency, ret);
             return ret;
         }
-        pub fn addArg(node: *Node, allocator: *mem.SimpleAllocator) *[*:0]u8 {
+        fn addArg(node: *Node, allocator: *mem.SimpleAllocator) *[*:0]u8 {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             const size_of: comptime_int = @sizeOf([*:0]u8);
             const addr_buf: *u64 = @ptrCast(&node.impl.args);
@@ -492,6 +492,16 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 builder_spec.options.init_len.args, addr_buf, &node.impl.args_max_len, node.impl.args_len));
             node.impl.args_len +%= 1;
             return ret;
+        }
+        pub fn addRunArg(node: *Node, allocator: *mem.SimpleAllocator, arg: []const u8) void {
+            @setRuntimeSafety(builder_spec.options.enable_safety);
+            if (@intFromPtr(arg.ptr) <= arena_up_addr and
+                @intFromPtr(arg.ptr) >= arena_lb_addr)
+            {
+                node.addArg(allocator).* = @ptrCast(@constCast(arg.ptr));
+            } else {
+                node.addArg(allocator).* = duplicate(allocator, arg);
+            }
         }
         /// Add constant declaration to build configuration.
         /// `node` must be `build-exe` worker.
@@ -568,7 +578,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 global_cache_root,
             );
             zero.flags = .{ .is_special = true };
-
             if (builder_spec.options.lazy_features) {
                 special.cmd_writers = zero.addRun(allocator, "cmd_writers", &.{
                     zero.zigExe(),        "build-lib",
