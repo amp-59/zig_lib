@@ -23,7 +23,7 @@ const build_cmd: build.BuildCommand = .{
 const format_cmd: build.FormatCommand = .{
     .ast_check = true,
 };
-pub const enable_debugging: bool = true;
+pub const enable_debugging: bool = false;
 pub fn testGroup(allocator: *build.Allocator, group: *Node) void {
     var test_build_cmd: build.BuildCommand = build_cmd;
     const decls: *Node = group.addBuild(allocator, test_build_cmd, "decls", "test/decl-test.zig");

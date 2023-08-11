@@ -11,45 +11,16 @@ const tasks = @import("../tasks.zig");
 const attr = @import("./attr.zig");
 const types = @import("./types.zig");
 const config = @import("./config.zig");
+const common = @import("./common_impls.zig");
 pub usingnamespace @import("../../start.zig");
+pub usingnamespace config;
 pub const runtime_assertions: bool = false;
 const max_len: u64 = attr.format_command_options.len + attr.build_command_options.len;
-const Array = mem.StaticString(1024 *% 1024);
 const Arrays = mem.StaticArray([]const u8, max_len);
 const Indices = mem.StaticArray(u64, max_len);
 const prefer_ptrcast: bool = true;
 const prefer_builtin_memcpy: bool = true;
 const combine_char: bool = true;
-const open_spec: file.OpenSpec = .{
-    .errors = .{},
-    .logging = .{},
-};
-const stat_spec: file.StatusSpec = .{
-    .errors = .{},
-    .logging = .{},
-};
-const send_spec: file.SendSpec = .{
-    .errors = .{},
-    .logging = .{},
-    .return_type = void,
-};
-const create_spec: file.CreateSpec = .{
-    .errors = .{},
-    .logging = .{},
-    .options = .{ .exclusive = false },
-};
-const write_spec: file.WriteSpec = .{
-    .errors = .{},
-    .logging = .{},
-};
-const read_spec: file.ReadSpec = .{
-    .errors = .{},
-    .logging = .{},
-};
-const close_spec: file.CloseSpec = .{
-    .errors = .{},
-    .logging = .{},
-};
 pub const InlineTypeDescr = fmt.GenericTypeDescrFormat(.{
     .options = .{
         .default_field_values = true,
@@ -64,7 +35,7 @@ pub const InlineTypeDescr = fmt.GenericTypeDescrFormat(.{
         .indent = "",
     },
 });
-fn writeField(comptime field_type: type, field_name: []const u8, key_array: *Array, val_array: *Array, conv_array: *Array) void {
+fn writeField(comptime field_type: type, field_name: []const u8, key_array: *common.Array, val_array: *common.Array, conv_array: *common.Array) void {
     const type_info: builtin.Type = @typeInfo(field_type);
     if (type_info == .Optional) {
         const child_type: type = type_info.Optional.child;
@@ -97,7 +68,7 @@ fn writeField(comptime field_type: type, field_name: []const u8, key_array: *Arr
         }
     }
 }
-fn writeDecl(decl_name: []const u8, key_array: *Array, val_array: *Array, conv_array: *Array) void {
+fn writeDecl(decl_name: []const u8, key_array: *common.Array, val_array: *common.Array, conv_array: *common.Array) void {
     key_array.writeMany("pub const ");
     key_array.writeMany(decl_name);
     key_array.writeMany("=packed struct{\n");
@@ -118,7 +89,7 @@ fn writeDecl(decl_name: []const u8, key_array: *Array, val_array: *Array, conv_a
     conv_array.writeMany(decl_name);
     conv_array.writeMany("=undefined;\n");
 }
-fn writeClose(array: *Array, key_array: *Array, val_array: *Array, conv_array: *Array) void {
+fn writeClose(array: *common.Array, key_array: *common.Array, val_array: *common.Array, conv_array: *common.Array) void {
     if (mem.indexOfFirstEqualMany(u8, ":bool", key_array.readAll()) != null) {
         array.writeMany(key_array.readAll());
         array.writeMany("};\n");
@@ -134,16 +105,15 @@ fn writeClose(array: *Array, key_array: *Array, val_array: *Array, conv_array: *
 }
 pub fn main() !void {
     var allocator: mem.SimpleAllocator = .{};
-    var array: *Array = allocator.create(Array);
-    array.undefineAll();
-    const fd: u64 = file.open(open_spec, config.hist_tasks_template_path);
-    array.define(file.read(read_spec, fd, array.referAllUndefined()));
-    file.close(close_spec, fd);
-    var key_array: *Array = allocator.create(Array);
+    const array: *common.Array = allocator.create(common.Array);
+    const len: usize = try gen.readFile(.{ .return_type = usize }, config.hist_tasks_template_path, array.referAllUndefined());
+    array.define(len);
+
+    var key_array: *common.Array = allocator.create(common.Array);
     key_array.undefineAll();
-    var val_array: *Array = allocator.create(Array);
+    var val_array: *common.Array = allocator.create(common.Array);
     val_array.undefineAll();
-    var conv_array: *Array = allocator.create(Array);
+    var conv_array: *common.Array = allocator.create(common.Array);
     conv_array.undefineAll();
     inline for (@typeInfo(tasks).Struct.decls) |decl| {
         const Command = @field(tasks, decl.name);
