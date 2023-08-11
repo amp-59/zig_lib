@@ -23,7 +23,7 @@ const build_cmd: build.BuildCommand = .{
 const format_cmd: build.FormatCommand = .{
     .ast_check = true,
 };
-pub const enable_debugging: bool = false;
+pub const enable_debugging: bool = true;
 pub fn testGroup(allocator: *build.Allocator, group: *Node) void {
     var test_build_cmd: build.BuildCommand = build_cmd;
     const decls: *Node = group.addBuild(allocator, test_build_cmd, "decls", "test/decl-test.zig");
@@ -210,7 +210,6 @@ pub fn regenGroup(allocator: *build.Allocator, regen: *Node) void {
     rebuild_impls.descr = "Regenerate build program maybe adding new elements";
     rebuild.descr = "Reformat regenerated build program into canonical form";
     rebuild_impls.addToplevelArgs(allocator);
-    rebuild_impls.dependOnFull(allocator, .build, regen.toplevelNode().find("zero.fmt").?, .archive);
     rebuild.dependOnFull(allocator, .format, rebuild_impls, .run);
 }
 pub fn buildgenGroup(allocator: *build.Allocator, buildgen: *Node) void {
@@ -240,7 +239,6 @@ pub fn buildgenGroup(allocator: *build.Allocator, buildgen: *Node) void {
     writers.dependOnFull(allocator, .format, writers_impls, .run);
 }
 pub fn targetgenGroup(allocator: *build.Allocator, targetgen: *Node) void {
-    targetgen.descr = "";
     var targetgen_format_cmd: build.FormatCommand = format_cmd;
     const _targetgen = targetgen.addGroup(allocator, "_targetgen");
     var _targetgen_build_cmd: build.BuildCommand = build_cmd;
@@ -255,7 +253,6 @@ pub fn targetgenGroup(allocator: *build.Allocator, targetgen: *Node) void {
     target.dependOnFull(allocator, .format, target_impl, .run);
 }
 pub fn buildMain(allocator: *build.Allocator, toplevel: *Node) void {
-    toplevel.descr = "";
     testGroup(allocator, toplevel.addGroupWithTask(allocator, "test", .build));
     userGroup(allocator, toplevel.addGroupWithTask(allocator, "user", .build));
     exampleGroup(allocator, toplevel.addGroupWithTask(allocator, "example", .build));
