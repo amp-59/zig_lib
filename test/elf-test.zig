@@ -16,9 +16,7 @@ pub const logging_default = spec.logging.default.verbose;
 
 pub const want_stack_traces: bool = false;
 
-const ElfInfo = elf.GenericElfInfo(.{
-    .Allocator = mem.SimpleAllocator,
-});
+const ElfInfo = elf.GenericElfInfo(.{});
 
 pub fn loadAll(comptime Pointers: type, pathname: [:0]const u8, ptrs: *Pointers) void {
     @setRuntimeSafety(false);
