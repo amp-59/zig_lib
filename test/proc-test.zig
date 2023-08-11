@@ -100,10 +100,12 @@ fn testFindNameInPath(vars: [][*:0]u8) !void {
     }
 }
 fn testVClockGettime(aux: *const anyopaque) !void {
+    const ElfInfo = zl.elf.GenericElfInfo(.{});
     const vdso_addr: u64 = proc.auxiliaryValue(aux, .vdso_addr).?;
-    const elf_info: zl.elf.ElfInfo = zl.elf.ElfInfo.init(vdso_addr);
+    var elf_info: ElfInfo = ElfInfo.init(vdso_addr, 0);
     if (elf_info.lookup("clock_gettime")) |symbol| {
-        const clock_gettime: time.ClockGetTime = @ptrFromInt(vdso_addr +% elf_info.executableOffset() +% symbol.st_value);
+        const clock_gettime: time.ClockGetTime = @ptrFromInt(vdso_addr +% symbol.st_value);
+
         const ts1: time.TimeSpec = try time.get(.{}, .realtime);
         const ts2: time.TimeSpec = try time.get(.{}, .realtime);
         var vts1: time.TimeSpec = undefined;
