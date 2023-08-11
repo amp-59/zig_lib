@@ -484,7 +484,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             mem.zero(Dependency, ret);
             return ret;
         }
-        fn addArg(node: *Node, allocator: *mem.SimpleAllocator) *[*:0]u8 {
+        pub fn addArg(node: *Node, allocator: *mem.SimpleAllocator) *[*:0]u8 {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             const size_of: comptime_int = @sizeOf([*:0]u8);
             const addr_buf: *u64 = @ptrCast(&node.impl.args);
