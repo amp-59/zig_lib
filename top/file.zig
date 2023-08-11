@@ -1665,14 +1665,6 @@ pub fn statusExtended(comptime spec: StatusExtendedSpec, fd: u64, pathname: [:0]
     }
     return st;
 }
-/// Returns a pointer to the end of the file. In terms of library containers:
-/// ```zig
-/// struct {
-///     lb_addr: u64 = addr,
-///     ub_addr: u64 = addr + st.size,
-///     up_addr: u64 = alignAbove(addr + st.size, page_size),
-/// };
-/// ```
 pub fn map(comptime map_spec: mem.MapSpec, prot: Map.Protection, flags: Map.Flags, fd: u64, addr: u64, len: u64, off: u64) sys.ErrorUnion(map_spec.errors, map_spec.return_type) {
     const logging: debug.Logging.AcquireError = comptime map_spec.logging.override();
     if (meta.wrap(sys.call(.mmap, map_spec.errors, map_spec.return_type, [6]usize{ addr, len, @bitCast(prot), @bitCast(flags), fd, off }))) |ret| {
