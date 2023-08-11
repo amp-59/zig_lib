@@ -8,7 +8,7 @@ const meta = zl.meta;
 const file = zl.file;
 const spec = zl.spec;
 const debug = zl.debug;
-const builtin = zl.builtin;
+const parse = zl.parse;
 pub usingnamespace zl.start;
 pub const logging_override: debug.Logging.Override = .{
     .Error = true,
@@ -57,7 +57,7 @@ const opt_map: []const Options.Map = &.{
     .{ .field_name = "output", .long = "u64", .assign = .{ .any = &(.u64) }, .descr = "Output raw 64 bit integer" },
 };
 fn loopInner(options: Options, arg: []const u8) !void {
-    const val: u64 = try builtin.parse.any(u64, arg);
+    const val: u64 = try parse.any(u64, arg);
     var buf: [8 * @sizeOf(usize)]u8 = undefined;
     file.write(.{ .errors = .{} }, 1, switch (options.output) {
         .hex => buf[0..fmt.uxsize(val).formatWriteBuf(&buf)],
