@@ -1,7 +1,9 @@
 const mem = @import("./mem.zig");
 const sys = @import("./sys.zig");
 const fmt = @import("./fmt.zig");
+const file = @import("./file.zig");
 const meta = @import("./meta.zig");
+const mach = @import("./mach.zig");
 const debug = @import("./debug.zig");
 const builtin = @import("./builtin.zig");
 pub const DT = enum(u32) {
@@ -535,14 +537,6 @@ pub const Elf_MIPS_ABIFlags_v0 = extern struct {
     flags1: u32,
     flags2: u32,
 };
-comptime {
-    debug.assert(@sizeOf(Elf32_Ehdr) == 52);
-    debug.assert(@sizeOf(Elf64_Ehdr) == 64);
-    debug.assert(@sizeOf(Elf32_Phdr) == 32);
-    debug.assert(@sizeOf(Elf64_Phdr) == 56);
-    debug.assert(@sizeOf(Elf32_Shdr) == 40);
-    debug.assert(@sizeOf(Elf64_Shdr) == 64);
-}
 pub const Auxv = switch (@sizeOf(usize)) {
     4 => Elf32_auxv_t,
     8 => Elf64_auxv_t,
@@ -969,35 +963,6 @@ pub const EM = enum(u16) {
     /// Fujitsu FR-V
     FRV = 0x5441,
     _,
-    pub fn toTargetCpuArch(em: EM) ?@TypeOf(@import("builtin").cpu.arch) {
-        return switch (em) {
-            .AVR => .avr,
-            .MSP430 => .msp430,
-            .ARC => .arc,
-            .ARM => .arm,
-            .HEXAGON => .hexagon,
-            .@"68K" => .m68k,
-            .MIPS => .mips,
-            .MIPS_RS3_LE => .mipsel,
-            .PPC => .powerpc,
-            .SPARC => .sparc,
-            // .@"386" => .i386,
-            .XCORE => .xcore,
-            .CSR_KALIMBA => .kalimba,
-            .LANAI => .lanai,
-            .AARCH64 => .aarch64,
-            .PPC64 => .powerpc64,
-            .RISCV => .riscv64,
-            .X86_64 => .x86_64,
-            .BPF => .bpfel,
-            .SPARCV9 => .sparc64,
-            .S390 => .s390x,
-            .SPU_2 => .spu_2,
-            // there's many cases we don't (yet) handle, or will never have a
-            // zig target cpu arch equivalent (such as null).
-            else => null,
-        };
-    }
 };
 /// Section data should be writable during execution.
 pub const SHF_WRITE = 0x1;
