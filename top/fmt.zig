@@ -6,6 +6,7 @@ const mach = @import("./mach.zig");
 const time = @import("./time.zig");
 const spec = @import("./spec.zig");
 const debug = @import("./debug.zig");
+const parse = @import("./parse.zig");
 const builtin = @import("./builtin.zig");
 const _render = @import("./render.zig");
 pub const utf8 = @import("./fmt/utf8.zig");
@@ -1534,8 +1535,8 @@ pub fn hexToBytes(dest: []u8, src: []const u8) ![]const u8 {
     var idx: u64 = 0;
     while (idx < src.len) : (idx +%= 2) {
         dest[idx / 2] =
-            try builtin.parse.fromSymbolChecked(src[idx], 16) << 4 |
-            try builtin.parse.fromSymbolChecked(src[idx +% 1], 16);
+            try parse.fromSymbolChecked(src[idx], 16) << 4 |
+            try parse.fromSymbolChecked(src[idx +% 1], 16);
     }
     return dest[0 .. idx / 2];
 }
@@ -1544,8 +1545,8 @@ pub fn hexToBytes2(dest: []u8, src: []const u8) []const u8 {
     var idx: u64 = 0;
     while (idx < src.len) : (idx +%= 2) {
         dest[idx / 2] =
-            builtin.parse.fromSymbol(src[idx], 16) << 4 |
-            builtin.parse.fromSymbol(src[idx +% 1], 16);
+            parse.fromSymbol(src[idx], 16) << 4 |
+            parse.fromSymbol(src[idx +% 1], 16);
     }
     return dest[0 .. idx / 2];
 }

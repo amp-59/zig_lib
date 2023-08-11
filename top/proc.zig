@@ -1440,7 +1440,7 @@ pub fn GenericOptions(comptime Options: type) type {
         fn getOptInternal(comptime flag: Option, options: *Options, args: *[][*:0]u8, index: u64, offset: u64) void {
             const field = &@field(options, flag.field_name);
             const Field = @TypeOf(field.*);
-            const arg: [:0]const u8 = meta.manyToSlice(args.*[index]);
+            const arg: [:0]const u8 = mem.terminate(args.*[index], 0);
             switch (flag.assign) {
                 .boolean => |value| {
                     shift(args, index);
@@ -1453,7 +1453,7 @@ pub fn GenericOptions(comptime Options: type) type {
                     if (args.len == index) {
                         getOptInternalArrityError(arg);
                     }
-                    field.* = meta.manyToSlice(args.*[index])[offset..];
+                    field.* = mem.terminate(args.*[index], 0)[offset..];
                     shift(args, index);
                 },
                 .convert => |convert| {
@@ -1463,7 +1463,7 @@ pub fn GenericOptions(comptime Options: type) type {
                     if (args.len == index) {
                         getOptInternalArrityError(arg);
                     }
-                    convert(options, meta.manyToSlice(args.*[index])[offset..]);
+                    convert(options, mem.terminate(args.*[index], 0)[offset..]);
                     shift(args, index);
                 },
                 .action => |action| {
@@ -1530,7 +1530,7 @@ pub fn GenericOptions(comptime Options: type) type {
                     if (index == args.len) {
                         break :lo;
                     }
-                    const arg1: [:0]const u8 = meta.manyToSlice(args.*[index]);
+                    const arg1: [:0]const u8 = mem.terminate(args.*[index], 0);
                     if (option.long) |long_switch| blk: {
                         if (mach.testEqualMany8(long_switch, arg1)) {
                             option.getOptInternal(&options, args, index, 0);
@@ -1563,7 +1563,7 @@ pub fn GenericOptions(comptime Options: type) type {
                         }
                     }
                 }
-                const arg1: [:0]const u8 = meta.manyToSlice(args.*[index]);
+                const arg1: [:0]const u8 = mem.terminate(args.*[index], 0);
                 if (mach.testEqualMany8("--", arg1)) {
                     shift(args, index);
                     break :lo;
