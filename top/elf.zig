@@ -1159,9 +1159,18 @@ pub const STV = enum(u8) {
 };
 
 pub const LoaderSpec = struct {
+    options: Options = .{},
     errors: Errors = .{},
     logging: Logging = .{},
-    pub const Logging = struct {
+    AddressSpace: type,
+    info_arena_index: comptime_int,
+    file_arena_index: comptime_int,
+    const Options = struct {
+        show_defined: bool = false,
+        show_undefined: bool = false,
+        show_redefined: bool = false,
+    };
+    pub const Logging = packed struct {
         create: debug.Logging.AcquireError = .{},
         open: debug.Logging.AcquireError = .{},
         read: debug.Logging.SuccessError = .{},
