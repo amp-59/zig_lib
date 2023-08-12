@@ -1177,6 +1177,7 @@ pub const LoaderSpec = struct {
         write: debug.Logging.SuccessError = .{},
         close: debug.Logging.ReleaseError = .{},
         stat: debug.Logging.SuccessErrorFault = .{},
+        map: debug.Logging.AcquireError = .{},
     };
     pub const Errors = struct {
         create: sys.ErrorPolicy = .{ .throw = sys.open_errors },
@@ -1185,50 +1186,18 @@ pub const LoaderSpec = struct {
         read: sys.ErrorPolicy = .{ .throw = sys.read_errors },
         write: sys.ErrorPolicy = .{ .throw = sys.write_errors },
         close: sys.ErrorPolicy = .{ .abort = sys.close_errors },
+        map: sys.ErrorPolicy = .{ .throw = sys.mmap_errors },
     };
-    fn stat(comptime load_spec: LoaderSpec) file.StatusSpec {
-        return .{
-            .logging = load_spec.logging.stat,
-            .errors = load_spec.errors.stat,
-        };
-    }
-    fn read(comptime load_spec: LoaderSpec) file.ReadSpec {
-        return .{
-            .return_type = void,
-            .logging = load_spec.logging.read,
-            .errors = load_spec.errors.read,
-        };
-    }
-    fn write(comptime load_spec: LoaderSpec) file.WriteSpec {
-        return .{
-            .logging = load_spec.logging.read,
-            .errors = load_spec.errors.read,
-        };
-    }
-    fn close(comptime load_spec: LoaderSpec) file.CloseSpec {
-        return .{
-            .logging = load_spec.logging.close,
-            .errors = load_spec.errors.close,
-        };
-    }
-    fn create(comptime load_spec: LoaderSpec) file.CreateSpec {
-        return .{
-            .logging = load_spec.logging.create,
-            .errors = load_spec.errors.create,
-            .options = .{ .exclusive = false },
-        };
-    }
-    fn open(comptime load_spec: LoaderSpec) file.OpenSpec {
-        return .{
-            .logging = load_spec.logging.open,
-            .errors = load_spec.errors.open,
-        };
-    }
-    fn map(comptime load_spec: LoaderSpec) file.OpenSpec {
-        return .{
-            .logging = load_spec.logging.map,
-            .errors = load_spec.errors.map,
-        };
+    fn arena(comptime spec: LoaderSpec) mem.Arena {
+        if (@TypeOf(spec.AddressSpace.addr_spec) == mem.DiscreteAddressSpaceSpec or
+            @TypeOf(spec.AddressSpace.addr_spec) == mem.RegularAddressSpaceSpec)
+        {
+            return spec.AddressSpace.arena(spec.arena_index);
+        }
+        if (@TypeOf(spec.AddressSpace.addr_spec) == mem.ElementaryAddressSpaceSpec) {
+            return spec.AddressSpace.arena();
+        }
+        @compileError("invalid address space for this allocator");
     }
 };
 pub fn GenericElfInfo(comptime loader_spec: LoaderSpec) type {
