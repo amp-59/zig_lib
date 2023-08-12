@@ -985,7 +985,7 @@ pub fn exec(comptime exec_spec: ExecuteSpec, fd: u64, args: exec_spec.args_type,
     const flags: At = comptime exec_spec.flags();
     const logging: debug.Logging.AttemptError = comptime exec_spec.logging.override();
     if (logging.Attempt) {
-        about.executeNotice(args[0], args);
+        about.executeNotice(mem.terminate(args[0], 0), args);
     }
     if (meta.wrap(sys.call(.execveat, exec_spec.errors, exec_spec.return_type, .{ fd, @intFromPtr(""), args_addr, vars_addr, flags.val }))) {
         @panic("reached unreachable");
