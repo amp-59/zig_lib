@@ -2395,7 +2395,11 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                 }
                 if (spec.decls) {
                     for (format.decls) |field| {
-                        field.formatWriteInternal(array, depth +% 1);
+                        if (field.name != null and
+                            field.defn != null)
+                        {
+                            field.formatWriteInternal(array, depth +% 1);
+                        }
                     }
                 }
                 array.undefine(spec.tokens.indent.len);
@@ -2421,7 +2425,11 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                 }
                 if (spec.decls) {
                     for (format.decls) |field| {
-                        len +%= field.formatWriteBufInternal(buf + len, depth +% 1);
+                        if (field.name != null and
+                            field.defn != null)
+                        {
+                            len +%= field.formatWriteBufInternal(buf + len, depth +% 1);
+                        }
                     }
                 }
                 len -%= spec.tokens.indent.len;
@@ -2444,7 +2452,11 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
                 }
                 if (spec.decls) {
                     for (format.decls) |field| {
-                        len +%= field.formatLengthInternal(depth +% 1);
+                        if (field.name != null and
+                            field.defn != null)
+                        {
+                            len +%= field.formatLengthInternal(depth +% 1);
+                        }
                     }
                 }
                 len -%= spec.tokens.indent.len;
@@ -2455,7 +2467,6 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
         pub const Declaration = struct {
             name: ?spec.token = null,
             defn: ?Container = null,
-
             pub fn formatWriteInternal(type_decl: Declaration, array: anytype, depth: usize) void {
                 if (spec.depth != 0 and
                     spec.depth != depth)
