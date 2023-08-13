@@ -406,11 +406,11 @@ pub inline fn xor8(arg1: u8, arg2: u8) u8 {
     return xor(u8, arg1, arg2);
 }
 pub inline fn alignA(value: anytype, alignment: @TypeOf(value)) @TypeOf(value) {
-    const mask: @TypeOf(value) = alignment - 1;
+    const mask: @TypeOf(value) = alignment -% 1;
     return (value +% mask) & ~mask;
 }
 pub inline fn alignB(value: anytype, alignment: @TypeOf(value)) @TypeOf(value) {
-    const mask: @TypeOf(value) = alignment - 1;
+    const mask: @TypeOf(value) = alignment -% 1;
     return value & ~mask;
 }
 pub inline fn alignA64(value: u64, alignment: u64) u64 {
@@ -514,14 +514,7 @@ const is_small = @import("builtin").mode == .ReleaseSmall;
 const is_fast = @import("builtin").mode == .ReleaseFast;
 const is_debug = @import("builtin").mode == .Debug;
 const is_test = @import("builtin").is_test;
-pub fn rngcpy(to: usize, from: usize, len: usize) void {
-    asm volatile ("rep movsb"
-        :
-        : [_] "{rdi}" (to),
-          [_] "{rsi}" (from),
-          [_] "{rcx}" (len),
-    );
-}
+
 pub extern fn memset(dest: [*]u8, value: u8, count: usize) void;
 pub extern fn memcpy(noalias dest: [*]u8, noalias src: [*]const u8, len: u64) void;
 pub const addrcpy = @as(*const fn (dest: usize, src: usize, len: usize) void, @ptrCast(&memcpy));
