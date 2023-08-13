@@ -749,12 +749,16 @@ pub inline fn ptrCast(comptime T: type, any: anytype) T {
     }
 }
 pub inline fn zero(comptime T: type) T {
-    const data: [@sizeOf(T)]u8 align(@max(1, @alignOf(T))) = .{@as(u8, 0)} ** @sizeOf(T);
-    comptime return @as(*const T, @ptrCast(&data)).*;
+    comptime {
+        const data: [@sizeOf(T)]u8 align(@max(1, @alignOf(T))) = .{@as(u8, 0)} ** @sizeOf(T);
+        return @as(*const T, @ptrCast(&data)).*;
+    }
 }
 pub inline fn all(comptime T: type) T {
-    const data: [@sizeOf(T)]u8 align(@max(1, @alignOf(T))) = .{~@as(u8, 0)} ** @sizeOf(T);
-    comptime return @as(*const T, @ptrCast(&data)).*;
+    comptime {
+        const data: [@sizeOf(T)]u8 align(@max(1, @alignOf(T))) = .{~@as(u8, 0)} ** @sizeOf(T);
+        return @as(*const T, @ptrCast(&data)).*;
+    }
 }
 pub inline fn addr(any: anytype) usize {
     if (@typeInfo(@TypeOf(any)).Pointer.size == .Slice) {
@@ -2141,6 +2145,25 @@ pub const parse = struct {
 /// Return an absolute path to a project file.
 pub fn absolutePath(comptime relative: [:0]const u8) [:0]const u8 {
     return root.build_root ++ "/" ++ relative;
+}
+pub const lib_root: [:0]const u8 = libraryRoot();
+fn libraryRoot() [:0]const u8 {
+    comptime {
+        const pathname: [:0]const u8 = @src().file;
+        var idx: usize = pathname.len -% 1;
+        while (pathname[idx] != '/') {
+            idx -%= 1;
+        }
+        idx -%= 1;
+        while (pathname[idx] != '/') {
+            idx -%= 1;
+            if (idx == 0) break;
+        }
+        if (idx == 0) {
+            return ".";
+        }
+        return pathname[0..idx] ++ [0:0]u8{};
+    }
 }
 pub fn VirtualAddressSpace() type {
     if (!@hasDecl(root, "AddressSpace")) {
