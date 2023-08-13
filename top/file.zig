@@ -1674,7 +1674,7 @@ pub fn map(comptime map_spec: mem.MapSpec, prot: Map.Protection, flags: Map.Flag
         return ret;
     } else |map_error| {
         if (logging.Error) {
-            about.aboutAddrFdOffsetError(about.map_s, @errorName(map_error), addr, len);
+            about.aboutAddrLenFdOffsetError(about.map_s, @errorName(map_error), fd, addr, len, off);
         }
         return map_error;
     }
@@ -2236,7 +2236,7 @@ pub const about = struct {
         ptr[0] = '\n';
         debug.write(buf[0 .. (@intFromPtr(ptr) -% @intFromPtr(&buf)) +% 1]);
     }
-    pub fn aboutAddrLenFdOffsetNotice(about_s: fmt.AboutSrc, fd: usize, addr: u64, len: u64, offset: usize) void {
+    pub fn aboutFdAddrLenOffsetNotice(about_s: fmt.AboutSrc, fd: usize, addr: u64, len: u64, offset: usize) void {
         @setRuntimeSafety(false);
         var buf: [4096]u8 = undefined;
         var ud64: fmt.Type.Ud64 = .{ .value = fd };
@@ -2669,13 +2669,15 @@ pub const about = struct {
         ptr[0..6].* = ", cur=".*;
         ptr += 6;
         ptr += fmt.ud64(to).formatWriteBuf(ptr);
-        ptr[0..2].* = ", ".*;
-        ptr += 2;
-        @memcpy(ptr, @tagName(whence));
-        ptr += @tagName(whence).len;
-        ptr[0] = '+';
-        ptr += 1;
-        ptr += fmt.ud64(offset).formatWriteBuf(ptr);
+        if (whence != .set) {
+            ptr[0..2].* = ", ".*;
+            ptr += 2;
+            @memcpy(ptr, @tagName(whence));
+            ptr += @tagName(whence).len;
+            ptr[0] = '+';
+            ptr += 1;
+            ptr += fmt.ud64(offset).formatWriteBuf(ptr);
+        }
         ptr[0] = '\n';
         debug.write(buf[0 .. (@intFromPtr(ptr) -% @intFromPtr(&buf)) +% 1]);
     }
@@ -2724,7 +2726,7 @@ pub const about = struct {
         ptr[0] = '\n';
         debug.write(buf[0 .. (@intFromPtr(ptr) -% @intFromPtr(&buf)) +% 1]);
     }
-    pub fn aboutAddrLenFdOffsetError(about_s: fmt.AboutSrc, error_name: []const u8, fd: usize, addr: u64, len: u64, offset: usize) void {
+    pub fn aboutFdAddrLenOffsetError(about_s: fmt.AboutSrc, error_name: []const u8, fd: usize, addr: u64, len: u64, offset: usize) void {
         @setCold(true);
         @setRuntimeSafety(builtin.is_safe);
         var buf: [4096]u8 = undefined;
@@ -3360,6 +3362,8 @@ pub const about = struct {
         const actual: Events = .{ .hangup = true };
         const pollfd: PollFd = .{ .fd = 1, .expect = expect, .actual = actual };
         var pollfds: [3]PollFd = .{pollfd} ** 3;
+        const addr: usize = 0x40000000;
+        const len: usize = 0x10000;
         var timeout: u64 = 86400;
         var off1: usize = 256;
         var off2: usize = 256;
@@ -3367,6 +3371,7 @@ pub const about = struct {
         aboutFdModeNotice(about_s, fd1, mode.regular);
         aboutFdLenNotice(about_s, fd1, 4096);
         aboutFdMaxLenLenNotice(about_s, fd1, 8192, 4096);
+        aboutFdAddrLenOffsetNotice(about_s, fd1, addr, len, off1);
         aboutPathnameNotice(about_s, pathname1);
         aboutPathnameModeNotice(about_s, pathname1, mode.regular);
         aboutDirFdNameModeNotice(about_s, fd1, name1, mode.regular);
@@ -3378,6 +3383,7 @@ pub const about = struct {
         copyNotice(fd1, &off1, fd2, &off2, 512, 256);
         listenNotice(fd1, 100);
         aboutFdFdNotice(about_s, "fd1=", "fd2=", fd1, fd2);
+        aboutFdAddrLenOffsetError(about_s, "MapError", fd1, addr, len, off1);
         aboutPathnameOffsetError(about_s, "TruncateError", pathname1, 256);
         aboutFdOffsetError(about_s, "TruncateError", fd1, offset);
         pathMustBeFault(pathname1, .regular, mode.directory);
