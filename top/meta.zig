@@ -176,6 +176,15 @@ pub fn structField(comptime T: type, comptime field_name: []const u8, comptime d
         };
     }
 }
+pub inline fn fieldNames(comptime T: type) []const []const u8 {
+    comptime {
+        var symbols: []const []const u8 = &.{};
+        for (resolve(@typeInfo(T)).fields) |field| {
+            symbols = symbols ++ [1][]const u8{field.name};
+        }
+        return symbols;
+    }
+}
 /// Assist creation of struct types
 pub fn structInfo(
     comptime layout: builtin.Type.ContainerLayout,
