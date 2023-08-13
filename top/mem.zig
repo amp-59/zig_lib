@@ -1899,7 +1899,7 @@ pub inline fn zero(comptime T: type, ptr: *T) void {
 pub inline fn unstable(comptime T: type, val: T) T {
     return @as(*const volatile T, @ptrCast(&val)).*;
 }
-pub fn terminate(ptr: anytype, comptime value: @TypeOf(ptr[0])) [:value]@TypeOf(ptr[0]) {
+pub fn terminate(ptr: [*]u8, comptime value: u8) [:value]u8 {
     @setRuntimeSafety(false);
     var idx: usize = 0;
     while (ptr[idx] != value) {
