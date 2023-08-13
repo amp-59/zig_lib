@@ -1083,7 +1083,12 @@ pub fn ReturnErrorSet(comptime any_function: anytype) type {
             debug.unexpectedTypeTypesError(T, type_info, .{ .Fn, .Struct });
         },
         .Fn => {
-            return @typeInfo(@typeInfo(@TypeOf(any_function)).Fn.return_type.?).ErrorUnion.error_set;
+            const type_info: builtin.Type = @typeInfo(@typeInfo(@TypeOf(any_function)).Fn.return_type.?);
+            if (type_info == .ErrorUnion) {
+                return type_info.ErrorUnion.error_set;
+            } else {
+                return error{};
+            }
         },
         .Struct => {
             var errors: type = error{};
