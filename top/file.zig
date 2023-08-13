@@ -1669,12 +1669,12 @@ pub fn map(comptime map_spec: mem.MapSpec, prot: Map.Protection, flags: Map.Flag
     const logging: debug.Logging.AcquireError = comptime map_spec.logging.override();
     if (meta.wrap(sys.call(.mmap, map_spec.errors, map_spec.return_type, [6]usize{ addr, len, @bitCast(prot), @bitCast(flags), fd, off }))) |ret| {
         if (logging.Acquire) {
-            about.aboutAddrLenFdOffsetNotice(about.map_s, fd, if (map_spec.return_type != void) ret else addr, len, off);
+            about.aboutFdAddrLenOffsetNotice(about.map_s, fd, if (map_spec.return_type != void) ret else addr, len, off);
         }
         return ret;
     } else |map_error| {
         if (logging.Error) {
-            about.aboutAddrLenFdOffsetError(about.map_s, @errorName(map_error), fd, addr, len, off);
+            about.aboutFdAddrLenOffsetError(about.map_s, @errorName(map_error), fd, addr, len, off);
         }
         return map_error;
     }
@@ -3051,13 +3051,15 @@ pub const about = struct {
         ptr[0..5].* = ", to=".*;
         ptr += 5;
         ptr += fmt.ud64(offset).formatWriteBuf(ptr);
-        ptr[0..2].* = ", ".*;
-        ptr += 2;
-        @memcpy(ptr, @tagName(whence));
-        ptr += @tagName(whence).len;
-        ptr[0] = '+';
-        ptr += 1;
-        ptr += fmt.ud64(offset).formatWriteBuf(ptr);
+        if (whence != .set) {
+            ptr[0..2].* = ", ".*;
+            ptr += 2;
+            @memcpy(ptr, @tagName(whence));
+            ptr += @tagName(whence).len;
+            ptr[0] = '+';
+            ptr += 1;
+            ptr += fmt.ud64(offset).formatWriteBuf(ptr);
+        }
         ptr[0] = '\n';
         debug.write(buf[0 .. (@intFromPtr(ptr) -% @intFromPtr(&buf)) +% 1]);
     }
