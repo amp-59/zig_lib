@@ -1562,7 +1562,7 @@ fn parseFormValue(allocator: *Allocator, unit: *Unit, bytes: []u8, form: Form) s
         .data4 => return .{ .{ .Const = .{ .signed = false, .payload = @as(*align(1) u32, @ptrCast(bytes)).* } }, 4 },
         .data8 => return .{ .{ .Const = .{ .signed = false, .payload = @as(*align(1) u64, @ptrCast(bytes)).* } }, 8 },
         .string => {
-            const str: [:0]u8 = mem.terminate(bytes, 0);
+            const str: [:0]u8 = mem.terminate(bytes.ptr, 0);
             return .{ .{ .String = str }, str.len };
         },
         .block => {
