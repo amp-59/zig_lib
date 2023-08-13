@@ -2255,7 +2255,7 @@ pub const about = struct {
         ptr += ux64.formatWriteBuf(ptr);
         ptr[0..2].* = "..".*;
         ptr += 2;
-        ux64.value = addr -% len;
+        ux64.value = addr +% len;
         ptr += ux64.formatWriteBuf(ptr);
         ptr[0..2].* = ", ".*;
         ptr += 2;
@@ -2513,7 +2513,6 @@ pub const about = struct {
         @memcpy(ptr, name2);
         ptr += name2.len;
         ptr[0] = '\n';
-
         debug.write(buf[0 .. (@intFromPtr(ptr) -% @intFromPtr(&buf)) +% 1]);
     }
     fn socketNotice(fd: u64, dom: Socket.Domain, conn: Socket.Connection) void {
@@ -2533,7 +2532,6 @@ pub const about = struct {
         @memcpy(ptr, @tagName(conn));
         ptr += @tagName(conn).len;
         ptr[0] = '\n';
-
         debug.write(buf[0 .. (@intFromPtr(ptr) -% @intFromPtr(&buf)) +% 1]);
     }
     fn aboutPathnamePathnameNotice(about_s: fmt.AboutSrc, relation_s: [:0]const u8, pathname1: [:0]const u8, pathname2: [:0]const u8) void {
@@ -2725,6 +2723,40 @@ pub const about = struct {
         }
         ptr[0] = '\n';
         debug.write(buf[0 .. (@intFromPtr(ptr) -% @intFromPtr(&buf)) +% 1]);
+    }
+    pub fn aboutAddrLenFdOffsetError(about_s: fmt.AboutSrc, error_name: []const u8, fd: usize, addr: u64, len: u64, offset: usize) void {
+        @setCold(true);
+        @setRuntimeSafety(builtin.is_safe);
+        var buf: [4096]u8 = undefined;
+        var ud64: fmt.Type.Ud64 = .{ .value = fd };
+        var ux64: fmt.Type.Ux64 = .{ .value = addr };
+        buf[0..about_s.len].* = about_s.*;
+        var ptr: [*]u8 = buf[about_s.len..].ptr;
+        ptr[0..debug.about.error_s.len].* = debug.about.error_s.*;
+        ptr += debug.about.error_s.len;
+        @memcpy(ptr, error_name);
+        ptr += error_name.len;
+        ptr[0..5].* = ", fd=".*;
+        ptr += 5;
+        ptr += ud64.formatWriteBuf(ptr);
+        ptr[0..9].* = ", offset=".*;
+        ptr += 9;
+        ud64.value = offset;
+        ptr += ud64.formatWriteBuf(ptr);
+        ptr[0..2].* = ", ".*;
+        ptr += 2;
+        ptr += ux64.formatWriteBuf(ptr);
+        ptr[0..2].* = "..".*;
+        ptr += 2;
+        ux64.value = addr +% len;
+        ptr += ux64.formatWriteBuf(ptr);
+        ptr[0..2].* = ", ".*;
+        ptr += 2;
+        ud64.value = len;
+        ptr += ud64.formatWriteBuf(ptr);
+        ptr[0..7].* = " bytes\n".*;
+        ptr += 7;
+        debug.write(buf[0..@intFromPtr(ptr - @intFromPtr(&buf))]);
     }
     fn aboutDirFdNameError(about_s: fmt.AboutSrc, error_name: [:0]const u8, dir_fd: u64, name: [:0]const u8) void {
         @setCold(true);
