@@ -457,6 +457,22 @@ pub const allocator = struct {
         };
     };
 };
+pub const loader = struct {
+    pub const logging = struct {
+        pub const verbose = zl.builtin.all(zl.elf.LoaderSpec.Logging);
+        pub const silent = zl.builtin.zero(zl.elf.LoaderSpec.Logging);
+    };
+    pub const errors = struct {
+        pub const noexcept = .{
+            .open = .{},
+            .seek = .{},
+            .read = .{},
+            .map = .{},
+            .unmap = .{},
+            .close = .{},
+        };
+    };
+};
 pub const serializer = struct {
     pub const errors = struct {
         pub const noexcept: zl.serial.SerialSpec.Errors = .{
