@@ -1669,12 +1669,12 @@ pub fn map(comptime map_spec: mem.MapSpec, prot: Map.Protection, flags: Map.Flag
     const logging: debug.Logging.AcquireError = comptime map_spec.logging.override();
     if (meta.wrap(sys.call(.mmap, map_spec.errors, map_spec.return_type, [6]usize{ addr, len, @bitCast(prot), @bitCast(flags), fd, off }))) |ret| {
         if (logging.Acquire) {
-            mem.about.aboutAddrLenNotice(about.map_s, if (map_spec.return_type != void) ret else addr, len);
+            about.aboutAddrLenFdOffsetNotice(about.map_s, fd, if (map_spec.return_type != void) ret else addr, len, off);
         }
         return ret;
     } else |map_error| {
         if (logging.Error) {
-            mem.about.aboutAddrLenError(about.map_s, @errorName(map_error), addr, len);
+            about.aboutAddrFdOffsetError(about.map_s, @errorName(map_error), addr, len);
         }
         return map_error;
     }
@@ -2235,6 +2235,35 @@ pub const about = struct {
         ptr += fmt.ud64(fd).formatWriteBuf(ptr);
         ptr[0] = '\n';
         debug.write(buf[0 .. (@intFromPtr(ptr) -% @intFromPtr(&buf)) +% 1]);
+    }
+    pub fn aboutAddrLenFdOffsetNotice(about_s: fmt.AboutSrc, fd: usize, addr: u64, len: u64, offset: usize) void {
+        @setRuntimeSafety(false);
+        var buf: [4096]u8 = undefined;
+        var ud64: fmt.Type.Ud64 = .{ .value = fd };
+        var ux64: fmt.Type.Ux64 = .{ .value = addr };
+        buf[0..about_s.len].* = about_s.*;
+        var ptr: [*]u8 = buf[about_s.len..];
+        ptr[0..3].* = "fd=".*;
+        ptr += 3;
+        ptr += ud64.formatWriteBuf(ptr);
+        ptr[0..9].* = ", offset=".*;
+        ptr += 9;
+        ud64.value = offset;
+        ptr += ud64.formatWriteBuf(ptr);
+        ptr[0..2].* = ", ".*;
+        ptr += 2;
+        ptr += ux64.formatWriteBuf(ptr);
+        ptr[0..2].* = "..".*;
+        ptr += 2;
+        ux64.value = addr -% len;
+        ptr += ux64.formatWriteBuf(ptr);
+        ptr[0..2].* = ", ".*;
+        ptr += 2;
+        ud64.value = len;
+        ptr += ud64.formatWriteBuf(ptr);
+        ptr[0..7].* = " bytes\n".*;
+        ptr += 7;
+        debug.write(buf[0..@intFromPtr(ptr - @intFromPtr(&buf))]);
     }
     fn aboutFdModeNotice(about_s: fmt.AboutSrc, fd: u64, file_mode: Mode) void {
         @setRuntimeSafety(builtin.is_safe);
