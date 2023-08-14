@@ -79,8 +79,6 @@ pub const ReinterpretSpec = struct {
         comptime_int: bool = true,
         /// Attempt to write comptime known floats
         comptime_float: bool = true,
-        /// Attempt to render integer
-        format: ?enum { bin, oct, dec, hex } = null,
     };
     const Aggregate = struct {
         /// Copy @size(..child) bytes from *..child to end of range
@@ -126,7 +124,7 @@ pub const ReinterpretSpec = struct {
         type_name: bool = false,
     };
 };
-pub const reinterpret = opaque {
+pub const reinterpret = struct {
     fn isEquivalent(comptime child: type, comptime write_spec: ReinterpretSpec, comptime dst_type: type, comptime src_type: type) bool {
         const dst_type_info: builtin.Type = @typeInfo(dst_type);
         const src_type_info: builtin.Type = @typeInfo(src_type);
@@ -350,16 +348,6 @@ pub const reinterpret = opaque {
                 return memory.writeMany(@errorName(any));
             }
         }
-        if (comptime write_spec.integral.format) |kind| {
-            if (src_type_info == .Int and dst_type == u8) {
-                return memory.writeMany(switch (kind) {
-                    .bin => fmt.old.bin,
-                    .oct => fmt.old.oct,
-                    .dec => fmt.old.dec,
-                    .hex => fmt.old.hex,
-                }(src_type, any).readAll());
-            }
-        }
         debug.assert(src_type == dst_type);
     }
     pub fn writeAnyUnstructured(comptime child: type, comptime write_spec: ReinterpretSpec, memory: anytype, any: anytype) void {
@@ -495,16 +483,6 @@ pub const reinterpret = opaque {
                 return memory.writeMany(child, @errorName(any));
             }
         }
-        if (comptime write_spec.integral.format) |kind| {
-            if (src_type_info == .Int and dst_type == u8) {
-                return memory.writeMany(switch (kind) {
-                    .bin => fmt.old.bin,
-                    .oct => fmt.old.oct,
-                    .dec => fmt.old.dec,
-                    .hex => fmt.old.hex,
-                }(src_type, any).readAll());
-            }
-        }
         debug.assert(src_type == dst_type);
     }
     pub inline fn writeArgsStructured(comptime child: type, comptime write_spec: ReinterpretSpec, memory: anytype, args: anytype) void {
@@ -541,22 +519,22 @@ pub const reinterpret = opaque {
             @compileError("formatter type '" ++ @typeName(Format) ++ "' requires declaration 'formatWrite'");
         }
         if (builtin.runtime_assertions) {
-            const what: []const u8 = debug.typeFault(Format) ++ ".length(), ";
+            const what: []const u8 = @typeName(Format) ++ ".length(), ";
             if (builtin.is_fast or builtin.is_small) {
-                const s_len: u64 = format.formatLength();
-                const len_0: u64 = memory.impl.undefined_byte_address();
+                const s_len: usize = format.formatLength();
+                const len_0: usize = memory.impl.undefined_byte_address();
                 format.formatWrite(memory);
-                const len_1: u64 = memory.impl.undefined_byte_address();
-                const t_len: u64 = builtin.sub(u64, len_1, len_0);
+                const len_1: usize = memory.impl.undefined_byte_address();
+                const t_len: usize = builtin.sub(usize, len_1, len_0);
                 if (s_len < t_len) {
                     formatLengthFault(what, " >= ", s_len, t_len);
                 }
             } else {
-                const s_len: u64 = format.formatLength();
-                const len_0: u64 = memory.impl.undefined_byte_address();
+                const s_len: usize = format.formatLength();
+                const len_0: usize = memory.impl.undefined_byte_address();
                 format.formatWrite(memory);
-                const len_1: u64 = memory.impl.undefined_byte_address();
-                const t_len: u64 = builtin.sub(u64, len_1, len_0);
+                const len_1: usize = memory.impl.undefined_byte_address();
+                const t_len: usize = builtin.sub(usize, len_1, len_0);
                 if (t_len != s_len) {
                     formatLengthFault(what, " == ", s_len, t_len);
                 }
@@ -565,22 +543,30 @@ pub const reinterpret = opaque {
             format.formatWrite(memory);
         }
     }
-    fn formatLengthFault(format_type_name: []const u8, operator_symbol: []const u8, s_len: u64, t_len: u64) noreturn {
+    fn formatLengthFault(format_type_name: []const u8, operator_symbol: anytype, s_len: u64, t_len: u64) noreturn {
         const help_read: bool = t_len > 99_999;
         const notation: []const u8 = if (help_read) ", i.e. " else "\n";
-        var buf: [512]u8 = undefined;
-        var len: u64 = mach.memcpyMulti(&buf, &[_][]const u8{
-            format_type_name, fmt.old.ud64(t_len).readAll(),
-            operator_symbol,  fmt.old.ud64(s_len).readAll(),
-            notation,
-        });
+        var buf: [32768]u8 = undefined;
+        const ptr: [*]u8 = &buf;
+        var len: usize = 0;
+        var ud64: fmt.Type.Ud64 = @bitCast(t_len);
+        @memcpy(ptr, format_type_name);
+        len +%= format_type_name.len;
+        len +%= ud64.formatWriteBuf(ptr + len);
+        @as(*[operator_symbol.len]u8, @ptrCast(ptr + len)).* = operator_symbol.*;
+        len +%= operator_symbol.len;
+        ud64 = @bitCast(s_len);
+        len +%= ud64.formatWriteBuf(ptr + len);
+        @memcpy(ptr + len, notation);
         if (help_read) {
-            len += mach.memcpyMulti(buf[len..].ptr, &[_][]const u8{
-                "0", operator_symbol, fmt.old.ud64(t_len -% s_len).readAll(), "\n",
-            });
+            buf[len] = '0';
+            len +%= 1;
+            @as(*[operator_symbol.len]u8, @ptrCast(ptr + len)).* = operator_symbol.*;
+            len +%= operator_symbol.len;
+            ud64 = @bitCast(t_len -% s_len);
+            len +%= ud64.formatWriteBuf(ptr + len);
         }
-        debug.write(buf[0..len]);
-        proc.exit(2);
+        @panic(ptr[0..len]);
     }
     pub fn lengthAny(comptime child: type, comptime write_spec: ReinterpretSpec, any: anytype) u64 {
         const dst_type: type = child;
@@ -725,16 +711,6 @@ pub const reinterpret = opaque {
                 return len;
             }
         }
-        if (comptime write_spec.integral.format) |kind| {
-            if (src_type_info == .Int and dst_type == u8) {
-                return switch (kind) {
-                    .bin => fmt.old.bin,
-                    .oct => fmt.old.oct,
-                    .dec => fmt.old.dec,
-                    .hex => fmt.old.hex,
-                }(src_type, any).readAll().len;
-            }
-        }
         debug.assert(src_type == dst_type);
     }
     pub fn lengthFormat(comptime child: type, format: anytype) u64 {
@@ -764,9 +740,8 @@ pub const reinterpret = opaque {
     }
     pub fn lengthArgs(comptime child: type, comptime write_spec: ReinterpretSpec, args: anytype) u64 {
         var len: u64 = 0;
-        comptime var index: u64 = 0;
-        inline while (index != args.len) : (index += 1) {
-            len += lengthAny(child, write_spec, args[index]);
+        inline for (args) |arg| {
+            len += lengthAny(child, write_spec, arg);
         }
         return len;
     }
