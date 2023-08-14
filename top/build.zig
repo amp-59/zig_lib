@@ -566,9 +566,10 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     "--global-cache-dir", zero.globalCacheRoot(),
                     "--main-pkg-path",    zero.buildRoot(),
                     "--listen",           "-",
-                    "-fno-compiler-rt",   "-fstrip",
-                    "-fno-stack-check",   "-fsingle-threaded",
-                    "-dynamic",           writers_root,
+                    "-OReleaseSmall",     "-fstrip",
+                    "-fno-compiler-rt",   "-fno-stack-check",
+                    "-fsingle-threaded",  "-dynamic",
+                    writers_root,
                 });
                 special.cmd_writers.flags.is_dyn_ext = true;
                 special.cmd_parsers = zero.addRun(allocator, "cmd_parsers", &.{
@@ -577,25 +578,131 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     "--global-cache-dir", zero.globalCacheRoot(),
                     "--main-pkg-path",    zero.buildRoot(),
                     "--listen",           "-",
-                    "-fno-compiler-rt",   "-fstrip",
-                    "-fno-stack-check",   "-fsingle-threaded",
-                    "-dynamic",           parsers_root,
+                    "-OReleaseSmall",     "-fno-compiler-rt",
+                    "-fstrip",            "-fno-stack-check",
+                    "-fsingle-threaded",  "-dynamic",
+                    parsers_root,
                 });
                 special.cmd_parsers.flags.is_dyn_ext = true;
-                if (builder_spec.options.special.buildfmt_ar) |ar_cmd| {
-                    if (builder_spec.options.special.buildfmt_obj) |build_cmd| {
-                        _ = zero.addArchive(allocator, ar_cmd, "fmt", &.{
-                            zero.addBuild(allocator, build_cmd, "options_fmt", "top/build/options-fmt.zig"),
-                            zero.addBuild(allocator, build_cmd, "build_fmt", "top/build/build-fmt.zig"),
-                            zero.addBuild(allocator, build_cmd, "format_fmt", "top/build/format-fmt.zig"),
-                            zero.addBuild(allocator, build_cmd, "objcopy_fmt", "top/build/objcopy-fmt.zig"),
-                            zero.addBuild(allocator, build_cmd, "archive_fmt", "top/build/archive-fmt.zig"),
-                        });
-                    }
-                }
             }
             if (builder_spec.options.special.trace) |build_cmd| {
                 special.trace = zero.addBuild(allocator, build_cmd, "trace", builder_spec.options.names.trace_root);
+            }
+        }
+        fn initializeCommand(allocator: *mem.SimpleAllocator, node: *Node) void {
+            @setRuntimeSafety(builder_spec.options.enable_safety);
+            if (builtin.root.exec_mode != .Regenerate and node.flags.do_init) {
+                node.flags.do_init = false;
+                if (builder_spec.options.init_inherit_special and
+                    node.impl.nodes[0].flags.is_special)
+                {
+                    node.flags.is_special = true;
+                }
+                if (builder_spec.options.init_inherit_hidden and
+                    node.impl.nodes[0].flags.is_hidden)
+                {
+                    node.flags.is_hidden = true;
+                }
+                if (builder_spec.options.init_hidden_by_name_prefix) |prefix| {
+                    node.flags.is_hidden = node.name[0] == prefix;
+                }
+                if (node.tag == .worker) {
+                    if (node.task.tag == .build) {
+                        node.task.cmd.build.listen = .@"-";
+                        if (builder_spec.options.update_debug_stack_traces and
+                            node.task.cmd.build.kind == .exe and node.hasDebugInfo())
+                        {
+                            node.flags.want_stack_traces = true;
+                        }
+                        if (builder_spec.options.init_main_pkg_path) {
+                            node.task.cmd.build.main_pkg_path = node.buildRoot();
+                        }
+                        if (builder_spec.options.init_cache_root) {
+                            node.task.cmd.build.cache_root = node.cacheRoot();
+                        }
+                        if (builder_spec.options.init_global_cache_root) {
+                            node.task.cmd.build.global_cache_root = node.globalCacheRoot();
+                        }
+                        node.task.lock = obj_lock;
+                        if (node.task.cmd.build.kind == .exe and
+                            builder_spec.options.init_executables)
+                        {
+                            node.task.lock = exe_lock;
+                            node.dependOnFull(allocator, .run, node, .build);
+                        }
+                        if (testExtension(node.impl.paths[1].relative(), builder_spec.options.extensions.zig)) {
+                            node.flags.want_build_config = true;
+                        }
+                    }
+                    if (node.task.tag == .format) {
+                        node.task.lock = format_lock;
+                    }
+                    if (node.task.tag == .run) {
+                        node.task.lock = run_lock;
+                    }
+                    if (node.task.tag == .archive) {
+                        node.task.lock = archive_lock;
+                    }
+                }
+                if (builder_spec.options.lazy_features) {
+                    if (node.tag == .worker and node.task.tag != .run) {
+                        node.dependOn(allocator, special.cmd_writers);
+                    }
+                    if (builder_spec.options.init_executables and
+                        node.task.lock.int().* == exe_lock.int().*)
+                    {
+                        node.dependOn(allocator, special.cmd_parsers);
+                    }
+                }
+                if (node.tag == .group) {
+                    node.task.lock = omni_lock;
+                }
+            }
+            if (builder_spec.options.show_task_creation) {
+                about.addNotice(node);
+            }
+        }
+        fn updateCommand(allocator: *mem.SimpleAllocator, node: *Node) void {
+            @setRuntimeSafety(builder_spec.options.enable_safety);
+            node.flags.do_update = false;
+            if (node.tag == .worker) {
+                if (node.task.tag == .build) {
+                    if (node.flags.want_build_config) {
+                        if (node.flags.want_build_context) {
+                            node.addConfig(allocator, "zig_exe", .{ .String = node.zigExe() });
+                            node.addConfig(allocator, "build_root", .{ .String = node.buildRoot() });
+                            node.addConfig(allocator, "cache_root", .{ .String = node.cacheRoot() });
+                            node.addConfig(allocator, "global_cache_root", .{ .String = node.globalCacheRoot() });
+                        }
+                    }
+                    if (builder_spec.options.update_debug_stack_traces) {
+                        if (node.flags.want_stack_traces) {
+                            node.dependOn(allocator, special.trace);
+                            if (node.flags.want_build_config) {
+                                node.addConfig(allocator, "have_stack_traces", .{ .Bool = true });
+                            }
+                        }
+                    }
+                }
+                if (node.task.tag == .run) {
+                    var arg: []const u8 = mem.terminate(node.impl.args[0], 0);
+                    if (!mem.testEqualString(node.zigExe(), arg)) {
+                        return;
+                    }
+                    arg = mem.terminate(node.impl.args[1], 0);
+                    if (arg.len != 9) {
+                        return;
+                    }
+                    for (&[_]types.OutputMode{ .exe, .obj, .lib }) |kind| {
+                        if (mem.testEqualString(arg[arg.len -% 3 ..], @tagName(kind))) {
+                            node.flags.is_build_command = true;
+                            const binary_path: *types.Path = node.addPath(allocator);
+                            binary_path.addName(allocator).* = node.buildRoot();
+                            binary_path.addName(allocator).* = binaryRelative(allocator, node.name, kind);
+                            break;
+                        }
+                    }
+                }
             }
         }
         fn makeRootDirectories(node: *Node) void {
@@ -887,119 +994,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             const ret: *Node = group.addObjcopy(allocator, objcopy_cmd, name, holder);
             ret.descr = descr;
             return ret;
-        }
-        fn initializeCommand(allocator: *mem.SimpleAllocator, node: *Node) void {
-            @setRuntimeSafety(builder_spec.options.enable_safety);
-            if (builtin.root.exec_mode != .Regenerate and node.flags.do_init) {
-                node.flags.do_init = false;
-                if (builder_spec.options.init_inherit_special and
-                    node.impl.nodes[0].flags.is_special)
-                {
-                    node.flags.is_special = true;
-                }
-                if (builder_spec.options.init_inherit_hidden and
-                    node.impl.nodes[0].flags.is_hidden)
-                {
-                    node.flags.is_hidden = true;
-                }
-                if (builder_spec.options.init_hidden_by_name_prefix) |prefix| {
-                    node.flags.is_hidden = node.name[0] == prefix;
-                }
-                if (node.tag == .worker) {
-                    if (node.task.tag == .build) {
-                        node.task.cmd.build.listen = .@"-";
-                        if (builder_spec.options.init_main_pkg_path) {
-                            node.task.cmd.build.main_pkg_path = node.buildRoot();
-                        }
-                        if (builder_spec.options.init_cache_root) {
-                            node.task.cmd.build.cache_root = node.cacheRoot();
-                        }
-                        if (builder_spec.options.init_global_cache_root) {
-                            node.task.cmd.build.global_cache_root = node.globalCacheRoot();
-                        }
-                        node.task.lock = obj_lock;
-                        if (node.task.cmd.build.kind == .exe and
-                            builder_spec.options.init_executables)
-                        {
-                            node.task.lock = exe_lock;
-                            node.dependOnFull(allocator, .run, node, .build);
-                        }
-                        if (testExtension(node.impl.paths[1].relative(), builder_spec.options.extensions.zig)) {
-                            node.flags.want_build_config = true;
-                        }
-                    }
-                    if (node.task.tag == .format) {
-                        node.task.lock = format_lock;
-                    }
-                    if (node.task.tag == .run) {
-                        node.task.lock = run_lock;
-                    }
-                    if (node.task.tag == .archive) {
-                        node.task.lock = archive_lock;
-                    }
-                }
-                if (node.tag == .group) {
-                    node.task.lock = omni_lock;
-                }
-            }
-            if (builder_spec.options.show_task_creation) {
-                about.addNotice(node);
-            }
-        }
-        fn updateCommand(allocator: *mem.SimpleAllocator, node: *Node) void {
-            @setRuntimeSafety(builder_spec.options.enable_safety);
-            node.flags.do_update = false;
-            if (node.tag == .worker) {
-                if (builder_spec.options.lazy_features) {
-                    if (node.tag == .worker and node.task.tag != .run) {
-                        node.dependOn(allocator, special.cmd_writers);
-                    }
-                    if (builder_spec.options.init_executables and
-                        node.task.lock.int().* == exe_lock.int().*)
-                    {
-                        node.dependOnFull(allocator, .run, special.cmd_parsers, .run);
-                    }
-                }
-                if (node.task.tag == .build) {
-                    if (node.flags.want_build_config) {
-                        if (node.flags.want_build_context) {
-                            node.addConfig(allocator, "zig_exe", .{ .String = node.zigExe() });
-                            node.addConfig(allocator, "build_root", .{ .String = node.buildRoot() });
-                            node.addConfig(allocator, "cache_root", .{ .String = node.cacheRoot() });
-                            node.addConfig(allocator, "global_cache_root", .{ .String = node.globalCacheRoot() });
-                        }
-                    }
-                    if (builder_spec.options.update_debug_stack_traces) {
-                        if (node.hasDebugInfo() or node.flags.want_stack_traces) {
-                            if (node.task.cmd.build.kind == .exe) {
-                                node.dependOn(allocator, special.trace);
-                            }
-                            if (node.flags.want_build_config) {
-                                node.addConfig(allocator, "have_stack_traces", .{ .Bool = true });
-                            }
-                        }
-                    }
-                }
-                if (node.task.tag == .run) {
-                    var arg: []const u8 = mem.terminate(node.impl.args[0], 0);
-                    if (!mem.testEqualString(node.zigExe(), arg)) {
-                        return;
-                    }
-                    arg = mem.terminate(node.impl.args[1], 0);
-                    if (arg.len != 9) {
-                        return;
-                    }
-                    for (&[_]types.OutputMode{ .exe, .obj, .lib }) |kind| {
-                        if (mem.testEqualString(arg[arg.len -% 3 ..], @tagName(kind))) {
-                            const binary_path: *types.Path = node.addPath(allocator);
-                            binary_path.addName(allocator).* = node.buildRoot();
-                            binary_path.addName(allocator).* = binaryRelative(allocator, node.name, kind);
-                            node.flags.is_build_command = true;
-                            break;
-                        }
-                    }
-                }
-            }
         }
         pub fn updateCommands(allocator: *mem.SimpleAllocator, node: *Node) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
