@@ -8,45 +8,6 @@ const testing = zl.testing;
 pub usingnamespace zl.start;
 pub const runtime_assertions: bool = true;
 pub const comptime_assertions: bool = true;
-fn expectVersionEqual(text: []const u8, v1: u32, v2: u32, v3: u32) !void {
-    const v = try builtin.Version.parseVersion(text);
-    debug.assertEqual(u32, v.major, v1);
-    debug.assertEqual(u32, v.minor, v2);
-    debug.assertEqual(u32, v.patch, v3);
-}
-fn expectVersionError(text: []const u8, expected_err: anyerror) !void {
-    _ = builtin.Version.parseVersion(text) catch |actual_err| {
-        if (actual_err == expected_err) return;
-        return actual_err;
-    };
-    return error.Unreachable;
-}
-fn testVersionParser() !void {
-    try expectVersionEqual("2.6.32.11-svn21605", 2, 6, 32); // Debian PPC
-    try expectVersionEqual("2.11.2(0.329/5/3)", 2, 11, 2); // MinGW
-    try expectVersionEqual("5.4.0-1018-raspi", 5, 4, 0); // Ubuntu
-    try expectVersionEqual("5.7.12_3", 5, 7, 12); // Void
-    try expectVersionEqual("2.13-DEVELOPMENT", 2, 13, 0); // DragonFly
-    try expectVersionEqual("2.3-35", 2, 3, 0);
-    try expectVersionEqual("1a.4", 1, 0, 0);
-    try expectVersionEqual("3.b1.0", 3, 0, 0);
-    try expectVersionEqual("1.4beta", 1, 4, 0);
-    try expectVersionEqual("2.7.pre", 2, 7, 0);
-    try expectVersionEqual("0..3", 0, 0, 0);
-    try expectVersionEqual("8.008.", 8, 8, 0);
-    try expectVersionEqual("01...", 1, 0, 0);
-    try expectVersionEqual("55", 55, 0, 0);
-    try expectVersionEqual("4294967295.0.1", 4294967295, 0, 1);
-    try expectVersionEqual("429496729_6", 429496729, 0, 0);
-    try expectVersionError("foobar", error.InvalidVersion);
-    try expectVersionError("", error.InvalidVersion);
-    try expectVersionError("-1", error.InvalidVersion);
-    try expectVersionError("+4", error.InvalidVersion);
-    try expectVersionError(".", error.InvalidVersion);
-    try expectVersionError("....3", error.InvalidVersion);
-    try expectVersionError("4294967296", error.Overflow);
-    try expectVersionError("5000877755", error.Overflow);
-}
 fn testRuntimeAssertionsCompile() !void {
     const T: type = u64;
     var b: bool = true;
