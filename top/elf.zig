@@ -1257,7 +1257,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                     }
                 }
                 if (loader_spec.options.show_sections) {
-                    about.readElfNotice(info);
+                    about.readSectionNotice(info);
                 }
             }
         };
@@ -1412,51 +1412,50 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 }
                 debug.write(buf[0..@intFromPtr(ptr - @intFromPtr(&buf))]);
             }
-            pub fn readElfNotice(info: *const Info) void {
+            pub fn readSectionNotice(info: *const Info) void {
                 @setRuntimeSafety(builtin.is_safe);
                 var ux64: fmt.Type.Ux64 = undefined;
                 var ud64: fmt.Type.Ud64 = undefined;
-                for (info.links) |pair| {
-                    var buf: [4096]u8 = undefined;
-                    var ptr: [*]u8 = &buf;
-                    if (@intFromPtr(pair.shdr) == 0) {
-                        continue;
+                for (info.links, 0..) |link, tags_idx| {
+                    if (link) |shdr| {
+                        var buf: [4096]u8 = undefined;
+                        var ptr: [*]u8 = &buf;
+                        if (@intFromPtr(shdr) == 0) {
+                            continue;
+                        }
+                        ptr[0..section_s.len].* = section_s.*;
+                        ptr += section_s.len;
+                        @memcpy(ptr, @tagName(tags[tags_idx]));
+                        ptr += @tagName(tags[tags_idx]).len;
+                        ptr[0..2].* = ": ".*;
+                        ptr += 2;
+                        ptr[0..5].* = "addr=".*;
+                        ptr += 5;
+                        ux64.value = info.base_addr +% shdr.sh_addr;
+                        ptr += ux64.formatWriteBuf(ptr);
+                        ptr[0..9].* = ", offset=".*;
+                        ptr += 9;
+                        ud64.value = shdr.sh_offset;
+                        ptr += ud64.formatWriteBuf(ptr);
+                        ptr[0..2].* = ", ".*;
+                        ptr += 2;
+                        ud64.value = shdr.sh_size;
+                        ptr += ud64.formatWriteBuf(ptr);
+                        ptr[0..6].* = " bytes".*;
+                        ptr += 6;
+                        ptr[0] = '\n';
+                        debug.write(buf[0 .. @intFromPtr(ptr - @intFromPtr(&buf)) +% 1]);
                     }
-                    ptr[0..section_s.len].* = section_s.*;
-                    ptr += section_s.len;
-                    @memcpy(ptr, @tagName(pair.tag));
-                    ptr += @tagName(pair.tag).len;
-                    ptr[0..2].* = ": ".*;
-                    ptr += 2;
-                    ptr[0..5].* = "addr=".*;
-                    ptr += 5;
-                    ux64.value = info.base_addr +% pair.shdr.sh_addr;
-                    ptr += ux64.formatWriteBuf(ptr);
-                    ptr[0..9].* = ", offset=".*;
-                    ptr += 9;
-                    ud64.value = pair.shdr.sh_offset;
-                    ptr += ud64.formatWriteBuf(ptr);
-                    ptr[0..2].* = ", ".*;
-                    ptr += 2;
-                    ud64.value = pair.shdr.sh_size;
-                    ptr += ud64.formatWriteBuf(ptr);
-                    ptr[0..6].* = " bytes".*;
-                    ptr += 6;
-                    ptr[0] = '\n';
-                    if (pair.tag == .@".dynsym") {
-                        writeDynSym(info);
-                    }
-                    debug.write(buf[0 .. @intFromPtr(ptr - @intFromPtr(&buf)) +% 1]);
                 }
             }
-            fn writeDynSym(info: *const Info) void {
+            fn writeDynSym(info: *const Info, dynsym_shdr: *Elf64_Shdr) void {
                 @setRuntimeSafety(builtin.is_safe);
-                var dyn_idx: usize = 0;
+                var dyn_idx: usize = 1;
                 var buf: [4096]u8 = undefined;
                 var ptr: [*]u8 = &buf;
-                while (dyn_idx != info.dynsym_len) : (dyn_idx +%= 1) {
-                    const sym: Elf64_Sym = info.dynsym[dyn_idx];
-                    var name: [:0]u8 = mem.terminate(info.dynstr + sym.st_name, 0);
+                while (dyn_idx < @divExact(dynsym_shdr.sh_size, dynsym_shdr.sh_entsize)) : (dyn_idx +%= 1) {
+                    const sym: Elf64_Sym = info.impl.dynsym[dyn_idx];
+                    var name: [:0]u8 = mem.terminate(info.impl.dynstr + sym.st_name, 0);
                     var ud64: fmt.Type.Ud64 = .{ .value = sym.st_value };
                     ptr[0..dynsym_s.len].* = dynsym_s.*;
                     ptr += dynsym_s.len;
