@@ -1245,7 +1245,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 }
                 proc.exitError(error.InvalidTask, 2);
             }
-
             fn executeCommandInternal(allocator: *mem.SimpleAllocator, node: *Node, task: types.Task, arena_index: AddressSpace.Index) bool {
                 const save: usize = allocator.next;
                 defer allocator.next = save;
@@ -1256,11 +1255,11 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 ));
                 var old_size: u64 = 0;
                 var new_size: u64 = 0;
-                if (builder_spec.options.enable_build_configuration and
+                if (builder_spec.options.write_build_configuration and
                     node.flags.want_build_config and
                     task == .build)
                 {
-                    writeConfigRoot(allocator, node);
+                    makeConfigRoot(allocator, node);
                 }
                 const args: [][*:0]u8 = taskArgs(allocator, node, task);
                 const name: [:0]const u8 = node.impl.paths[0].concatenate(allocator);
@@ -1294,7 +1293,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 if (builder_spec.options.write_build_task_record and
                     keepGoing() and task == .build)
                 {
-                    writeRecord(node, job);
+                    about.writeRecord(node, job);
                 }
                 if (builder_spec.options.show_stats and
                     keepGoing())
@@ -1569,11 +1568,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             if (job.ret.srv == builder_spec.options.compiler_error_status) {
                 return false;
             }
-            if (job.ret.srv == builder_spec.options.compiler_cache_hit_status or
-                job.ret.srv == builder_spec.options.compiler_expected_status)
-            {
-                return job.ret.sys == builder_spec.options.system_expected_status;
-            }
             return job.ret.sys == builder_spec.options.system_expected_status;
         }
         fn openChild(in: file.Pipe, out: file.Pipe) void {
@@ -1647,19 +1641,11 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         pub fn hasDebugInfo(node: *Node) bool {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             if (node.task.cmd.build.strip) |strip| {
-                return strip;
+                return !strip;
             } else {
-                return (node.task.cmd.build.mode orelse .Debug) == .ReleaseSmall;
+                return (node.task.cmd.build.mode orelse .Debug) != .ReleaseSmall;
             }
         }
-        pub const lib_build_root = libraryRoot();
-        pub const lib_cache_root = lib_build_root ++ "/" ++ builder_spec.options.names.zig_cache_dir;
-        const writers_root = lib_build_root ++ "/" ++ builder_spec.options.names.cmd_writers_root;
-        const parsers_root = lib_build_root ++ "/" ++ builder_spec.options.names.cmd_parsers_root;
-        const binary_prefix = builder_spec.options.names.zig_out_dir ++ "/" ++ builder_spec.options.names.exe_out_dir ++ "/";
-        const library_prefix = builder_spec.options.names.zig_out_dir ++ "/" ++ builder_spec.options.names.lib_out_dir ++ "/lib";
-        const archive_prefix = builder_spec.options.names.zig_out_dir ++ "/" ++ builder_spec.options.names.lib_out_dir ++ "/lib";
-        const auxiliary_prefix = builder_spec.options.names.zig_out_dir ++ "/" ++ builder_spec.options.names.aux_out_dir ++ "/";
         fn binaryRelative(allocator: *mem.SimpleAllocator, name: [:0]u8, kind: types.OutputMode) [:0]const u8 {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             return concatenate(allocator, switch (kind) {
@@ -1750,10 +1736,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                         maybe_task = task;
                         continue :lo;
                     }
-                }
-                if (mem.testEqualString(builder_spec.options.names.single_threaded_command, name)) {
-                    toplevel.flags.is_single_threaded = true;
-                    continue :lo;
                 }
                 if (mem.testEqualString(builder_spec.options.names.toplevel_list_command, name)) {
                     return about.toplevelCommandNotice(allocator, toplevel, true);
