@@ -121,6 +121,8 @@ pub const BuilderSpec = struct {
         /// Compile builder features as required.
         lazy_features: bool = true,
         names: struct {
+            /// Output naming strategy
+            output_strategy: enum { directories, first_name, full_name } = .full_name,
             /// Name of the toplevel 'builder' node.
             toplevel_node: [:0]const u8 = "toplevel",
             /// Name of the special command used to list available commands.
@@ -698,7 +700,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                             node.flags.is_build_command = true;
                             const binary_path: *types.Path = node.addPath(allocator);
                             binary_path.addName(allocator).* = node.buildRoot();
-                            binary_path.addName(allocator).* = binaryRelative(allocator, node.name, kind);
+                            binary_path.addName(allocator).* = binaryRelative(allocator, node, kind);
                             break;
                         }
                     }
@@ -830,7 +832,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             ));
             node.task.cmd.build.* = build_cmd;
             binary_path.addName(allocator).* = group.buildRoot();
-            binary_path.addName(allocator).* = binaryRelative(allocator, node.name, build_cmd.kind);
+            binary_path.addName(allocator).* = binaryRelative(allocator, node, build_cmd.kind);
             root_path.addName(allocator).* = group.buildRoot();
             root_path.names_len -%= @intFromBool(root[0] == '/');
             root_path.addName(allocator).* = duplicate(allocator, root);
@@ -1650,8 +1652,13 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 return (node.task.cmd.build.mode orelse .Debug) != .ReleaseSmall;
             }
         }
-        fn binaryRelative(allocator: *mem.SimpleAllocator, name: [:0]u8, kind: types.OutputMode) [:0]const u8 {
+        fn binaryRelative(allocator: *mem.SimpleAllocator, node: *Node, kind: types.OutputMode) [:0]const u8 {
             @setRuntimeSafety(builder_spec.options.enable_safety);
+            var buf: [512]u8 = undefined;
+            const name: []u8 = if (builder_spec.options.names.output_strategy == .full_name) blk: {
+                const len: usize = about.writeNodeNameFull(&buf, node, '-');
+                break :blk buf[0..len];
+            } else node.name;
             return concatenate(allocator, switch (kind) {
                 .exe => &[_][]const u8{ binary_prefix, name },
                 .obj => &[_][]const u8{ binary_prefix, name, builder_spec.options.extensions.obj },
@@ -1662,8 +1669,13 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             return concatenate(allocator, &[_][]const u8{ archive_prefix, name, builder_spec.options.extensions.ar });
         }
-        fn auxiliaryRelative(allocator: *mem.SimpleAllocator, name: [:0]u8, kind: types.AuxOutputMode) [:0]u8 {
+        fn auxiliaryRelative(allocator: *mem.SimpleAllocator, node: *Node, kind: types.AuxOutputMode) [:0]u8 {
             @setRuntimeSafety(builder_spec.options.enable_safety);
+            var buf: [512]u8 = undefined;
+            const name: []u8 = if (builder_spec.options.names.output_strategy == .full_name) blk: {
+                const len: usize = about.writeNodeNameFull(&buf, node, '-');
+                break :blk buf[0..len];
+            } else node.name;
             return concatenate(allocator, switch (kind) {
                 .llvm_ir => &[_][]const u8{ auxiliary_prefix, name, builder_spec.options.extensions.llvm_ir },
                 .llvm_bc => &[_][]const u8{ auxiliary_prefix, name, builder_spec.options.extensions.llvm_bc },
