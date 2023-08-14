@@ -416,32 +416,6 @@ fn writeCharacteristic(array: *Array, variant: types.Variant, char: u8) void {
         },
     }
 }
-fn writeOptStringExtra(
-    array: *Array,
-    opt_string: []const u8,
-    variant: types.Variant,
-    char: u8,
-) void {
-    if (combine_char) {
-        writeOptString(array, opt_string, variant, char);
-    } else {
-        writeOptString(array, opt_string, variant, char);
-        if (char != types.ParamSpec.immediate) {
-            writeCharacteristic(array, variant, char);
-        }
-    }
-}
-fn writeArgStringExtra(
-    array: *Array,
-    arg_string: []const u8,
-    variant: types.Variant,
-    char: u8,
-) void {
-    writeArgString(array, arg_string, variant);
-    if (char != types.ParamSpec.immediate) {
-        writeOne(array, char, variant);
-    }
-}
 fn writeOptString(
     array: *Array,
     opt_string: []const u8,
@@ -530,6 +504,32 @@ fn writeOptString(
             }
             array.writeMany(";\n");
         },
+    }
+}
+fn writeOptStringExtra(
+    array: *Array,
+    opt_string: []const u8,
+    variant: types.Variant,
+    char: u8,
+) void {
+    if (combine_char) {
+        writeOptString(array, opt_string, variant, char);
+    } else {
+        writeOptString(array, opt_string, variant, char);
+        if (char != types.ParamSpec.immediate) {
+            writeCharacteristic(array, variant, char);
+        }
+    }
+}
+fn writeArgStringExtra(
+    array: *Array,
+    arg_string: []const u8,
+    variant: types.Variant,
+    char: u8,
+) void {
+    writeArgString(array, arg_string, variant);
+    if (char != types.ParamSpec.immediate) {
+        writeOne(array, char, variant);
     }
 }
 fn writeOptArgInteger(
@@ -1683,8 +1683,6 @@ pub fn writeParserFunctionHelp(array: *Array, attributes: types.Attributes) void
     }
     array.writeMany("\n;");
 }
-
-
 pub fn writeFields(array: *Array, attributes: types.Attributes) void {
     var types_array: Array2 = undefined;
     types_array.undefineAll();
