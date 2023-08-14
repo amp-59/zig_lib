@@ -15,10 +15,11 @@ const types = @import("./build/types.zig");
 const build = @This();
 pub usingnamespace types;
 pub usingnamespace struct {
-    /// Arguments after principal arguments, i.e. argv[5..]
+    /// Program command line arguments
     pub var args: [][*:0]u8 = undefined;
     /// Environment variables
     pub var vars: [][*:0]u8 = undefined;
+    /// Number of errors since `processCommands`.
     var error_count: u8 = undefined;
     /// Parsed to modify the task info = args[cmd_args_idx..run_args_idx]
     var cmd_args: [][*:0]u8 = undefined;
@@ -26,7 +27,7 @@ pub usingnamespace struct {
     var run_args: [][*:0]u8 = undefined;
 };
 pub const BuilderSpec = struct {
-    /// Builder options
+    /// Builder options.
     options: Options = .{},
     /// Logging for system calls called by the builder.
     logging: Logging = .{},
@@ -36,18 +37,20 @@ pub const BuilderSpec = struct {
     /// Potentially user defined types.
     types: Types = .{},
     pub const Options = struct {
-        /// Bytes allowed per thread arena (dynamic maximum)
-        max_arena_aligned_bytes: usize = 8 * 1024 * 1024,
-        /// Bytes allowed per thread stack (static maximum)
-        max_stack_aligned_bytes: usize = 8 * 1024 * 1024,
         /// The maximum number of threads in addition to main.
         /// max_thread_count=0 is single-threaded.
         max_thread_count: u8 = 8,
         /// Allow this many errors before exiting the thread group.
         /// A value of `null` will attempt to report all errors and exit from main.
         max_error_count: ?u8 = 0,
-        /// Lowest allocated byte address for file mappings.
-        dyn_lb_addr: usize = 0x400000000000,
+        /// Lowest allocated byte address for dynamic library metadata mappings.
+        dyn_lb_info_addr: usize = 0x400000000000,
+        /// Lowest allocated byte address for dynamic library section mappings.
+        dyn_lb_sect_addr: usize = 0x500000000000,
+        /// Bytes allowed per thread arena (dynamic maximum)
+        max_arena_aligned_bytes: usize = 8 * 1024 * 1024,
+        /// Bytes allowed per thread stack (static maximum)
+        max_stack_aligned_bytes: usize = 8 * 1024 * 1024,
         /// Lowest allocated byte address for thread stacks. This field and the
         /// two previous fields derive the arena lowest allocated byte address,
         /// as this is the first unallocated byte address of the thread space.
@@ -85,9 +88,6 @@ pub const BuilderSpec = struct {
         show_base_memory_usage: bool = false,
         /// Enable runtime safety.
         enable_safety: bool = builtin.is_safe,
-        /// Enable advanced builder features, such as project-wide comptime
-        /// constants and caching special modules.
-        enable_build_configuration: bool = true,
         /// Never list special nodes among or allow explicit building.
         hide_special: bool = true,
         /// Disable all features related to automatic updating of nodes.
@@ -111,12 +111,15 @@ pub const BuilderSpec = struct {
         init_cache_root: bool = true,
         /// (Recommended) Pass --cache-dir=<cache_root> for all compile commands.
         init_global_cache_root: bool = true,
+        /// Enable advanced builder features, such as project-wide comptime
+        /// constants and caching special modules.
+        write_build_configuration: bool = true,
         /// Record build command data in a condensed format.
         write_build_task_record: bool = false,
         /// Include build task record serialised in build configuration.
         write_hist_serial: bool = false,
         /// Compile builder features as required.
-        lazy_features: bool = false,
+        lazy_features: bool = true,
         names: struct {
             /// Name of the toplevel 'builder' node.
             toplevel_node: [:0]const u8 = "toplevel",
@@ -124,10 +127,6 @@ pub const BuilderSpec = struct {
             toplevel_list_command: [:0]const u8 = "list",
             /// Name of the special command used to disable multi-threading.
             single_threaded_command: [:0]const u8 = "--single-threaded",
-            /// Module containing full paths of zig_exe, build_root,
-            /// cache_root, and global_cache_root. May be useful for
-            /// metaprogramming.
-            config: [:0]const u8 = "config",
             /// Basename of output directory relative to build root.
             zig_out_dir: [:0]const u8 = "zig-out",
             /// Basename of cache directory relative to build root.
@@ -155,11 +154,6 @@ pub const BuilderSpec = struct {
         special: struct {
             /// Defines compile commands for stack tracer object.
             trace: ?types.BuildCommand = .{ .kind = .obj, .mode = .ReleaseSmall, .strip = true, .compiler_rt = false },
-            /// Defines compile commands for command line parser shared object.
-            parsers: ?types.BuildCommand = .{ .kind = .lib, .mode = .ReleaseSmall, .dynamic = true, .strip = true, .compiler_rt = false },
-            /// Defines archiver commands for builder formatter types.
-            buildfmt_ar: ?types.ArchiveCommand = .{ .operation = .r, .create = true },
-            buildfmt_obj: ?types.BuildCommand = .{ .kind = .obj, .mode = .Debug, .strip = true, .compiler_rt = false },
         } = .{},
         extensions: struct {
             /// Extension for Zig source files.
@@ -212,6 +206,8 @@ pub const BuilderSpec = struct {
         stats: debug.Logging.SuccessError = .{},
         /// Report `open` Acquire and Error.
         open: debug.Logging.AcquireError = .{},
+        /// Report `seek` Acquire and Error.
+        seek: debug.Logging.SuccessError = .{},
         /// Report `close` Release and Error.
         close: debug.Logging.ReleaseError = .{},
         /// Report `create` Acquire and Error.
@@ -252,6 +248,8 @@ pub const BuilderSpec = struct {
     pub const Errors = struct {
         /// Error values for `open` system function.
         open: sys.ErrorPolicy = .{},
+        /// Error values for `seek` system function.
+        seek: sys.ErrorPolicy = .{},
         /// Error values for `close` system function.
         close: sys.ErrorPolicy = .{},
         /// Error values for `create` system function.
