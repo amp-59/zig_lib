@@ -455,7 +455,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             on_state: types.State,
         };
         fn groupPaths(allocator: *mem.SimpleAllocator, args: [][*:0]u8) [*]types.Path {
-            @setRuntimeSafety(false);
+            @setRuntimeSafety(builder_spec.options.enable_safety);
             const paths: [*]types.Path = @ptrFromInt(allocator.allocateRaw(@sizeOf(types.Path) *% args.len, @alignOf(types.Path)));
             const names: [*][:0]const u8 = @ptrFromInt(allocator.allocateRaw(16 *% args.len, 8));
             for (0..args.len) |idx| {
@@ -1671,7 +1671,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             });
         }
         pub fn find(group: *Node, name: []const u8) ?*Node {
-            @setRuntimeSafety(false);
+            @setRuntimeSafety(builder_spec.options.enable_safety);
             var idx: usize = 0;
             while (idx != name.len) : (idx +%= 1) {
                 if (name[idx] == '.') {
@@ -2395,7 +2395,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 debug.write(buf[0 .. len +% 1]);
             }
             fn addNotice(node: *Node) void {
-                @setRuntimeSafety(false);
+                @setRuntimeSafety(builder_spec.options.enable_safety);
                 var buf: [4096]u8 = undefined;
                 var ptr: [*]u8 = &buf;
                 ptr[0..tab.add_s.len].* = tab.add_s.*;
@@ -2664,8 +2664,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                         ptr += tab.bold_s.len;
                     },
                     .note => {
-                        ptr[0..15].* = tab.grey_s.*;
-                        ptr += tab.grey_s.len;
+                        ptr[0..15].* = "\x1b[0;38;5;250;1m".*;
+                        ptr += 15;
                     },
                 }
                 @memcpy(ptr, @tagName(kind));
@@ -2695,7 +2695,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 const src: *types.SourceLocation = @ptrCast(extra + err.src_loc);
                 const notes: [*]u32 = extra + err_msg_idx + types.ErrorMessage.len;
                 var len: usize = writeTopSrcLoc(buf, extra, bytes, err_msg_idx);
-                const pos: u64 = len +% @tagName(kind).len -% tab.trace_s.len -% 2;
+                const pos: u64 = len +% @tagName(kind).len -% 11 -% 2;
                 len +%= writeAbout(buf + len, kind);
                 len +%= writeMessage(buf + len, bytes, err.start, pos);
                 if (err.src_loc == 0) {
@@ -2719,7 +2719,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
                 var ud64: fmt.Type.Ud64 = .{ .value = line };
                 var ptr: [*]u8 = buf;
-                ptr[0..11].* = tab.trace_s.*;
+                ptr[0..11].* = "\x1b[38;5;247m".*;
                 ptr += 11;
                 @memcpy(ptr, pathname);
                 ptr += pathname.len;
@@ -2796,7 +2796,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             fn writeTrace(buf: [*]u8, extra: [*]u32, bytes: [*:0]u8, start: usize, ref_len: usize) usize {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
                 var ref_idx: usize = start +% types.SourceLocation.len;
-                buf[0..11].* = tab.trace_s.*;
+                buf[0..11].* = "\x1b[38;5;247m".*;
                 var ptr: [*]u8 = buf + 11;
                 ptr[0..15].* = "referenced by:\n".*;
                 ptr += 15;
@@ -2961,7 +2961,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                         }
                     }
                 }
-                return "<missing>";
+                return tab.null_s;
             }
             fn writeSubNode(buf: [*]u8, len: usize, sub_node: *const Node, name_width: usize, root_width: usize) usize {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
@@ -3129,22 +3129,3 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
     };
     return T;
 }
-fn libraryRoot() [:0]const u8 {
-    comptime {
-        const pathname: [:0]const u8 = @src().file;
-        var idx: usize = pathname.len -% 1;
-        while (pathname[idx] != '/') {
-            idx -%= 1;
-        }
-        idx -%= 1;
-        while (pathname[idx] != '/') {
-            idx -%= 1;
-            if (idx == 0) break;
-        }
-        if (idx == 0) {
-            return ".";
-        }
-        return pathname[0..idx] ++ [0:0]u8{};
-    }
-}
-pub const parse = @import("./build/parsers.zig");
