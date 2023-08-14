@@ -1016,7 +1016,10 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         pub fn addBuildAnon(group: *Node, allocator: *mem.SimpleAllocator, build_cmd: types.BuildCommand, root: [:0]const u8) *Node {
             return group.addBuild(allocator, build_cmd, makeCommandName(allocator, root), root);
         }
-        fn dependOnExtra(node: *Node, allocator: *mem.SimpleAllocator, task: types.Task, on_node: *Node, on_task: types.Task) void {
+        pub fn dependOn(node: *Node, allocator: *mem.SimpleAllocator, on_node: *Node) void {
+            node.dependOnFull(allocator, node.task.tag, on_node, on_node.task.tag);
+        }
+        pub fn dependOnFull(node: *Node, allocator: *mem.SimpleAllocator, task: types.Task, on_node: *Node, on_task: types.Task) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             if (task == .run) {
                 if (on_task == .build and node == on_node) {
@@ -1028,7 +1031,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     node.addPath(allocator).* = on_node.impl.paths[0];
                 }
                 if (on_task == .build and
-                    on_node.task.cmd.build.kind == .obj)
+                    (on_node.task.cmd.build.kind == .obj or
+                    on_node.task.cmd.build.kind == .lib))
                 {
                     node.addPath(allocator).* = on_node.impl.paths[0];
                 }
@@ -1040,13 +1044,12 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     node.addPath(allocator).* = on_node.impl.paths[0];
                 }
             }
-        }
-        pub fn dependOn(node: *Node, allocator: *mem.SimpleAllocator, on_node: *Node) void {
-            node.dependOnFull(allocator, node.task.tag, on_node, on_node.task.tag);
-        }
-        pub fn dependOnFull(node: *Node, allocator: *mem.SimpleAllocator, task: types.Task, on_node: *Node, on_task: types.Task) void {
-            node.dependOnExtra(allocator, task, on_node, on_task);
-            node.addDep(allocator).* = .{ .task = task, .on_node = on_node, .on_task = on_task, .on_state = .finished };
+            node.addDep(allocator).* = .{
+                .task = task,
+                .on_node = on_node,
+                .on_task = on_task,
+                .on_state = .finished,
+            };
         }
         pub const impl = struct {
             fn system(args: [][*:0]u8, job: *types.JobInfo) void {
