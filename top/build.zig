@@ -1109,19 +1109,21 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 job.ret.sys = proc.Status.exit(rc.status);
                 try meta.wrap(file.close(close(), in.write));
                 try meta.wrap(file.close(close(), out.read));
-                if (builder_spec.options.lazy_features and node.flags.is_dyn_ext) {
-                    loadAll(dest_pathname);
+                if (builder_spec.options.lazy_features and
+                    node.flags.is_dyn_ext)
+                {
+                    special.dyn_loader.load(dest_pathname).loadPointers(build.Fns, &special.fns);
                 }
             }
             fn buildWrite(allocator: *mem.SimpleAllocator, node: *Node, obj_paths: []const types.Path) [:0]u8 {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
                 const zig_exe: []const u8 = node.zigExe();
                 const cmd: *types.BuildCommand = node.task.cmd.build;
-                const max_len: usize = builder_spec.options.max_cmdline_len orelse blk: {
+                const max_len: usize = blk: {
                     if (builder_spec.options.lazy_features) {
                         break :blk special.fns.formatLengthBuildCommand(cmd, zig_exe.ptr, zig_exe.len, obj_paths.ptr, obj_paths.len);
                     } else {
-                        break :blk cmd.formatLength(zig_exe, obj_paths);
+                        break :blk builder_spec.options.max_cmdline_len orelse cmd.formatLength(zig_exe, obj_paths);
                     }
                 };
                 const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
@@ -1139,11 +1141,11 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
                 const zig_exe: []const u8 = node.zigExe();
                 const cmd: *types.ObjcopyCommand = node.task.cmd.objcopy;
-                const max_len: usize = builder_spec.options.max_cmdline_len orelse blk: {
+                const max_len: usize = blk: {
                     if (builder_spec.options.lazy_features) {
                         break :blk special.fns.formatLengthObjcopyCommand(cmd, zig_exe.ptr, zig_exe.len, obj_path);
                     } else {
-                        break :blk cmd.formatLength(zig_exe, obj_path);
+                        break :blk builder_spec.options.max_cmdline_len orelse cmd.formatLength(zig_exe, obj_path);
                     }
                 };
                 const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
@@ -1161,11 +1163,11 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
                 const zig_exe: []const u8 = node.zigExe();
                 const cmd: *build.ArchiveCommand = node.task.cmd.archive;
-                const max_len: usize = builder_spec.options.max_cmdline_len orelse blk: {
+                const max_len: usize = blk: {
                     if (builder_spec.options.lazy_features) {
                         break :blk special.fns.formatLengthArchiveCommand(cmd, zig_exe.ptr, zig_exe.len, obj_paths.ptr, obj_paths.len);
                     } else {
-                        break :blk cmd.formatLength(zig_exe, obj_paths);
+                        break :blk builder_spec.options.max_cmdline_len orelse cmd.formatLength(zig_exe, obj_paths);
                     }
                 };
                 const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
@@ -1183,16 +1185,16 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
                 const zig_exe: []const u8 = node.zigExe();
                 const cmd: *build.FormatCommand = node.task.cmd.format;
-                const max_len: usize = builder_spec.options.max_cmdline_len orelse blk: {
-                    if (false and builder_spec.options.lazy_features) {
+                const max_len: usize = blk: {
+                    if (builder_spec.options.lazy_features) {
                         break :blk special.fns.formatLengthFormatCommand(cmd, zig_exe.ptr, zig_exe.len, root_path);
                     } else {
-                        break :blk cmd.formatLength(zig_exe, root_path);
+                        break :blk builder_spec.options.max_cmdline_len orelse cmd.formatLength(zig_exe, root_path);
                     }
                 };
                 const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
                 const len: usize = blk: {
-                    if (false and builder_spec.options.lazy_features) {
+                    if (builder_spec.options.lazy_features) {
                         break :blk special.fns.formatWriteBufFormatCommand(cmd, zig_exe.ptr, zig_exe.len, root_path, buf);
                     } else {
                         break :blk cmd.formatWriteBuf(zig_exe, root_path, buf);
