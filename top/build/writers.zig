@@ -1,5 +1,4 @@
 const fmt = @import("../fmt.zig");
-const mem = @import("../mem.zig");
 const types = @import("./types.zig");
 pub usingnamespace @import("../start.zig");
 export fn formatWriteBufBuildCommand(cmd: *types.BuildCommand, zig_exe_ptr: [*]const u8, zig_exe_len: usize, files_ptr: [*]const types.Path, files_len: usize, buf: [*]u8) callconv(.C) usize {
@@ -378,24 +377,6 @@ export fn formatWriteBufBuildCommand(cmd: *types.BuildCommand, zig_exe_ptr: [*]c
         } else {
             ptr[0..19].* = "-fno-unwind-tables\x00".*;
             ptr += 19;
-        }
-    }
-    if (cmd.llvm) |llvm| {
-        if (llvm) {
-            ptr[0..7].* = "-fLLVM\x00".*;
-            ptr += 7;
-        } else {
-            ptr[0..10].* = "-fno-LLVM\x00".*;
-            ptr += 10;
-        }
-    }
-    if (cmd.clang) |clang| {
-        if (clang) {
-            ptr[0..8].* = "-fClang\x00".*;
-            ptr += 8;
-        } else {
-            ptr[0..11].* = "-fno-Clang\x00".*;
-            ptr += 11;
         }
     }
     if (cmd.reference_trace) |reference_trace| {
@@ -1040,20 +1021,6 @@ export fn formatLengthBuildCommand(cmd: *types.BuildCommand, zig_exe_ptr: [*]con
             len +%= 16;
         } else {
             len +%= 19;
-        }
-    }
-    if (cmd.llvm) |llvm| {
-        if (llvm) {
-            len +%= 7;
-        } else {
-            len +%= 10;
-        }
-    }
-    if (cmd.clang) |clang| {
-        if (clang) {
-            len +%= 8;
-        } else {
-            len +%= 11;
         }
     }
     if (cmd.reference_trace) |reference_trace| {
