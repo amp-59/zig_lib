@@ -39,12 +39,12 @@ else
     false;
 pub const logging_override: debug.Logging.Override =
     if (@hasDecl(root, "logging_override")) root.logging_override else .{
-    .Attempt = null,
-    .Success = null,
-    .Acquire = null,
-    .Release = null,
-    .Error = null,
-    .Fault = null,
+    .Attempt = enable_debugging,
+    .Success = enable_debugging,
+    .Acquire = enable_debugging,
+    .Release = enable_debugging,
+    .Error = enable_debugging,
+    .Fault = enable_debugging,
 };
 pub const exec_mode = .Run;
 pub const want_stack_traces: bool = enable_debugging;

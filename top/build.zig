@@ -566,8 +566,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     "--global-cache-dir", zero.globalCacheRoot(),
                     "--main-pkg-path",    zero.buildRoot(),
                     "--listen",           "-",
-                    "-OReleaseSmall",     "-fstrip",
-                    "-fno-compiler-rt",   "-fno-stack-check",
+                    "-OReleaseSmall",     "-fno-compiler-rt",
+                    "-fstrip",            "-fno-stack-check",
                     "-fsingle-threaded",  "-dynamic",
                     writers_root,
                 });
@@ -1362,8 +1362,14 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     unreachable;
                 }
                 var allocator: mem.SimpleAllocator = mem.SimpleAllocator.init_arena(Node.AddressSpace.arena(arena_index));
+                defer {
+                    allocator.unmap();
+                    mem.release(ThreadSpace, thread_space, arena_index);
+                }
                 impl.spawnDeps(address_space, thread_space, &allocator, toplevel, node, task, arena_index);
-                while (keepGoing() and nodeWait(node, task, arena_index)) {
+                while (keepGoing() and
+                    nodeWait(node, task, arena_index))
+                {
                     try meta.wrap(time.sleep(sleep(), .{ .nsec = builder_spec.options.sleep_nanoseconds }));
                 }
                 if (keepGoing() and node.task.lock.get(task) == .working) {
@@ -1376,8 +1382,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                         node.assertExchange(task, .working, .failed, arena_index);
                     }
                 }
-                allocator.unmap();
-                mem.release(ThreadSpace, thread_space, arena_index);
             }
             fn executeCommandSynchronised(
                 address_space: *AddressSpace,

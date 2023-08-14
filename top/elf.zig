@@ -1259,6 +1259,14 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
         };
         pub const lb_info_addr: comptime_int = loader_spec.options.lb_info_addr;
         pub const lb_sect_addr: comptime_int = loader_spec.options.lb_sect_addr;
+        const load_error_policy: sys.ErrorPolicy = .{
+            .throw = loader_spec.errors.open.throw ++ loader_spec.errors.seek.throw ++
+                loader_spec.errors.read.throw ++ loader_spec.errors.map.throw ++
+                loader_spec.errors.unmap.throw ++ loader_spec.errors.close.throw,
+            .abort = loader_spec.errors.open.abort ++ loader_spec.errors.seek.abort ++
+                loader_spec.errors.read.abort ++ loader_spec.errors.map.abort ++
+                loader_spec.errors.unmap.abort ++ loader_spec.errors.close.abort,
+        };
         const dynsym_idx: comptime_int = @intFromEnum(Tag.@".dynsym");
         const dynstr_idx: comptime_int = @intFromEnum(Tag.@".dynstr");
         const rodata_idx: comptime_int = @intFromEnum(Tag.@".rodata");
@@ -1269,12 +1277,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
         const map_prot_x = .{ .exec = true };
         const map_prot_r = .{ .read = true };
         const map_flags = .{ .fixed_noreplace = true };
-        pub fn load(loader: *DynamicLoader, pathname: [:0]const u8) sys.ErrorUnion(.{
-            .throw = loader_spec.errors.open.throw ++ loader_spec.errors.seek.throw ++
-                loader_spec.errors.read.throw ++ loader_spec.errors.map.throw ++ loader_spec.errors.unmap.throw ++ loader_spec.errors.close.throw,
-            .abort = loader_spec.errors.open.abort ++ loader_spec.errors.seek.abort ++
-                loader_spec.errors.read.abort ++ loader_spec.errors.map.abort ++ loader_spec.errors.unmap.abort ++ loader_spec.errors.close.abort,
-        }, *Info) {
+        pub fn load(loader: *DynamicLoader, pathname: [:0]const u8) sys.ErrorUnion(load_error_policy, *Info) {
             @setRuntimeSafety(builtin.is_safe);
             const info_addr: usize = alignA4096(@atomicRmw(usize, &loader.ub_info_addr, .Add, 4096, .SeqCst));
             const info_buf: [*]u8 = @ptrFromInt(info_addr);
