@@ -384,34 +384,39 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             archive: *types.ArchiveCommand,
             objcopy: *types.ObjcopyCommand,
         };
+        const MessagePtrs = packed union {
+            msg: [*]align(4) u8,
+            idx: [*]u32,
+            str: [*:0]u8,
+        };
+        const AboutKind = enum(u8) { @"error", note };
+        const UpdateAnswer = enum(u8) {
+            updated = builder_spec.options.compiler_expected_status,
+            cached = builder_spec.options.compiler_cache_hit_status,
+            failed = builder_spec.options.compiler_error_status,
+            _,
+        };
+        const SystemReturn = enum(u8) {
+            expected = builder_spec.options.system_expected_status,
+            _,
+        };
         pub const special = struct {
-            var trace: *Node = @ptrFromInt(@alignOf(Node));
-            var cmd_parsers: *Node = @ptrFromInt(@alignOf(Node));
-            var cmd_writers: *Node = @ptrFromInt(@alignOf(Node));
-            var fns: build.Fns = undefined;
-        };
-        pub const Archive = struct {
-            pub inline fn command(archive_node: *Archive) *types.BuildCommand {
-                @setRuntimeSafety(false);
-                return @as(*Node, @ptrCast(@alignCast(archive_node))).task.cmd.archive;
-            }
-        };
-        pub const Build = opaque {
-            pub inline fn command(build_node: *Build) *types.BuildCommand {
-                @setRuntimeSafety(false);
-                return @as(*Node, @ptrCast(@alignCast(build_node))).task.cmd.build;
-            }
+            var trace: *Node = @ptrFromInt(8);
+            var cmd_parsers: *Node = @ptrFromInt(8);
+            var cmd_writers: *Node = @ptrFromInt(8);
+            var fns: build.Fns = .{};
+            var dyn_loader: DynamicLoader = .{};
         };
         pub const specification: BuilderSpec = builder_spec;
-        pub const max_thread_count: u64 = builder_spec.options.max_thread_count;
-        pub const stack_aligned_bytes: u64 = builder_spec.options.max_stack_aligned_bytes;
+        pub const max_thread_count: usize = builder_spec.options.max_thread_count;
+        pub const stack_aligned_bytes: usize = builder_spec.options.max_stack_aligned_bytes;
         pub const Config = builder_spec.types.Config;
-        const max_arena_count: u64 = if (max_thread_count == 0) 4 else max_thread_count + 1;
-        const arena_aligned_bytes: u64 = builder_spec.options.max_arena_aligned_bytes;
-        const stack_lb_addr: u64 = builder_spec.options.stack_lb_addr;
-        const stack_up_addr: u64 = stack_lb_addr + (max_thread_count * stack_aligned_bytes);
-        const arena_lb_addr: u64 = stack_up_addr;
-        const arena_up_addr: u64 = arena_lb_addr + (max_arena_count * arena_aligned_bytes);
+        const max_arena_count: usize = if (max_thread_count == 0) 4 else max_thread_count + 1;
+        const arena_aligned_bytes: usize = builder_spec.options.max_arena_aligned_bytes;
+        const stack_lb_addr: usize = builder_spec.options.stack_lb_addr;
+        const stack_up_addr: usize = stack_lb_addr + (max_thread_count * stack_aligned_bytes);
+        const arena_lb_addr: usize = stack_up_addr;
+        const arena_up_addr: usize = arena_lb_addr + (max_arena_count * arena_aligned_bytes);
         pub const AddressSpace = mem.GenericRegularAddressSpace(.{
             .index_type = u8,
             .label = "arena",
@@ -432,11 +437,16 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             .up_addr = stack_up_addr,
             .options = thread_space_options,
         });
-        const OtherAllocator = mem.GenericRtArenamem.SimpleAllocator(.{
-            .logging = builtin.zero(mem.mem.SimpleAllocatorLogging),
+        const OtherAllocator = mem.GenericRtArenaAllocator(.{
+            .logging = builtin.zero(mem.AllocatorLogging),
             .errors = allocator_errors,
             .AddressSpace = AddressSpace,
             .options = allocator_options,
+        });
+        const DynamicLoader = elf.GenericDynamicLoader(.{
+            .options = dyn_loader_options,
+            .logging = dyn_loader_logging,
+            .errors = dyn_loader_errors,
         });
         pub const Dependency = struct {
             task: types.Task,
