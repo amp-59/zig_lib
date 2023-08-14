@@ -7,8 +7,10 @@ extern fn otherMain(x: u64) void;
 
 pub usingnamespace zl.start;
 
-pub const logging_override: debug.Logging.Override = zl.spec.logging.override.verbose;
+pub const logging_default: debug.Logging.Default = zl.spec.logging.default.silent;
 pub const trace = builtin.my_trace;
+
+pub const want_stack_traces: bool = true;
 
 fn nested0(z: u64) !void {
     var x: u64 = 0;
@@ -16,10 +18,7 @@ fn nested0(z: u64) !void {
     return otherMain(y);
 }
 pub fn main() !void {
-    var b: bool = true;
-    if (b) {
-        try nested0(8);
-    } else {
-        otherMain(8);
-    }
+    var x: usize = 0;
+    try nested0(x);
+    x -= 1;
 }
