@@ -1750,64 +1750,12 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     break;
                 }
             } else {
-                const name: [:0]const u8 = if (build.args.len == 5) "null" else mem.terminate(build.args[5], 0);
                 about.toplevelCommandNotice(allocator, toplevel, false);
-                proc.exitErrorFault(error.NotACommand, name, 2);
+                proc.exitErrorFault(error.NotACommand, //
+                    if (build.args.len == 5) about.tab.null_s else mem.terminate(build.args[5], 0), 2);
             }
         }
-        const update_exit_message: [2]types.Message.ClientHeader = .{
-            .{ .tag = .update, .bytes_len = 0 },
-            .{ .tag = .exit, .bytes_len = 0 },
-        };
-        const address_space_options = .{
-            .thread_safe = true,
-            .require_map = false,
-            .require_unmap = false,
-        };
-        const thread_space_options = .{
-            .thread_safe = true,
-            .require_map = false,
-            .require_unmap = false,
-        };
-        const open_options = .{
-            .no_follow = true,
-        };
-        const create_truncate_options = .{
-            .exclusive = false,
-            .truncate = true,
-        };
-        const create_append_options = .{
-            .exclusive = false,
-            .append = true,
-            .truncate = false,
-        };
-        const thread_map_options = .{
-            .grows_down = true,
-        };
-        const pipe_options = .{
-            .close_on_exec = false,
-        };
-        const allocator_errors = .{
-            .map = .{},
-            .remap = .{},
-            .unmap = .{},
-        };
-        const address_space_errors = .{
-            .release = .ignore,
-            .acquire = .ignore,
-            .map = .{},
-            .unmap = .{},
-        };
-        const allocator_options = .{
-            .count_branches = false,
-            .count_allocations = false,
-            .count_useful_bytes = false,
-            .check_parametric = false,
-            .prefer_remap = false,
-            .init_commit = arena_aligned_bytes,
-            .require_map = !address_space_options.require_map,
-            .require_unmap = !address_space_options.require_unmap,
-        };
+
         fn clock() time.ClockSpec {
             return .{ .errors = builder_spec.errors.clock };
         }
@@ -1973,21 +1921,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 .vars_type = [][*:0]u8,
             };
         }
-        fn clone() proc.CloneSpec {
-            return .{ .errors = .{}, .return_type = void };
-        }
-        const MessagePtrs = packed union {
-            msg: [*]align(4) u8,
-            idx: [*]u32,
-            str: [*:0]u8,
-        };
-        const AboutKind = enum { @"error", note };
-        const UpdateAnswer = enum(u8) {
-            updated = builder_spec.options.compiler_expected_status,
-            cached = builder_spec.options.compiler_cache_hit_status,
-            failed = builder_spec.options.compiler_error_status,
-            other,
-        };
         pub fn testExtension(name: []const u8, extension: []const u8) bool {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             return extension.len < name.len and
@@ -2000,7 +1933,170 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 comptime return true;
             }
         }
-        fn writeConfigRoot(allocator: *mem.SimpleAllocator, node: *Node) void {
+        pub const lib_build_root = builtin.lib_root;
+        pub const lib_cache_root = lib_build_root ++ "/" ++ builder_spec.options.names.zig_cache_dir;
+        const writers_root = lib_build_root ++ "/" ++ builder_spec.options.names.cmd_writers_root;
+        const parsers_root = lib_build_root ++ "/" ++ builder_spec.options.names.cmd_parsers_root;
+        const binary_prefix = builder_spec.options.names.zig_out_dir ++ "/" ++ builder_spec.options.names.exe_out_dir ++ "/";
+        const library_prefix = builder_spec.options.names.zig_out_dir ++ "/" ++ builder_spec.options.names.lib_out_dir ++ "/lib";
+        const archive_prefix = builder_spec.options.names.zig_out_dir ++ "/" ++ builder_spec.options.names.lib_out_dir ++ "/lib";
+        const auxiliary_prefix = builder_spec.options.names.zig_out_dir ++ "/" ++ builder_spec.options.names.aux_out_dir ++ "/";
+
+        const update_exit_message: [2]types.Message.ClientHeader = .{
+            .{ .tag = .update, .bytes_len = 0 },
+            .{ .tag = .exit, .bytes_len = 0 },
+        };
+        const address_space_options = .{
+            .thread_safe = true,
+            .require_map = false,
+            .require_unmap = false,
+        };
+        const thread_space_options = .{
+            .thread_safe = true,
+            .require_map = false,
+            .require_unmap = false,
+        };
+        const open_options = .{
+            .no_follow = true,
+        };
+        const create_truncate_options = .{
+            .exclusive = false,
+            .truncate = true,
+        };
+        const create_append_options = .{
+            .exclusive = false,
+            .append = true,
+            .truncate = false,
+        };
+        const thread_map_options = .{
+            .grows_down = true,
+        };
+        const pipe_options = .{
+            .close_on_exec = false,
+        };
+        const allocator_errors = .{
+            .map = builder_spec.errors.map,
+            .remap = builder_spec.errors.map,
+            .unmap = builder_spec.errors.unmap,
+        };
+        const address_space_errors = .{
+            .release = .ignore,
+            .acquire = .ignore,
+            .map = builder_spec.errors.map,
+            .unmap = builder_spec.errors.unmap,
+        };
+        const dyn_loader_options = .{
+            .lb_info_addr = builder_spec.options.dyn_lb_info_addr,
+            .lb_sect_addr = builder_spec.options.dyn_lb_sect_addr,
+        };
+        const dyn_loader_errors = .{
+            .open = builder_spec.errors.open,
+            .seek = builder_spec.errors.seek,
+            .read = builder_spec.errors.read,
+            .close = builder_spec.errors.close,
+            .map = builder_spec.errors.map,
+            .unmap = builder_spec.errors.unmap,
+        };
+        const dyn_loader_logging = .{
+            .open = builder_spec.logging.open,
+            .seek = builder_spec.logging.seek,
+            .read = builder_spec.logging.read,
+            .close = builder_spec.logging.close,
+            .map = builder_spec.logging.map,
+            .unmap = builder_spec.logging.unmap,
+        };
+        const allocator_options = .{
+            .count_branches = false,
+            .count_allocations = false,
+            .count_useful_bytes = false,
+            .check_parametric = false,
+            .prefer_remap = false,
+            .init_commit = arena_aligned_bytes,
+            .require_map = !address_space_options.require_map,
+            .require_unmap = !address_space_options.require_unmap,
+        };
+        const omni_lock: types.Lock = .{ .bytes = .{
+            .null,  .ready, .ready, .ready,
+            .ready, .ready, .null,
+        } };
+        const obj_lock: types.Lock = .{ .bytes = .{
+            .null, .null, .null, .ready,
+            .null, .null, .null,
+        } };
+        const exe_lock: types.Lock = .{ .bytes = .{
+            .null,  .null, .null, .ready,
+            .ready, .null, .null,
+        } };
+        const run_lock: types.Lock = .{ .bytes = .{
+            .null,  .null, .null, .null,
+            .ready, .null, .null,
+        } };
+        const format_lock: types.Lock = .{ .bytes = .{
+            .null, .null, .ready, .null,
+            .null, .null, .null,
+        } };
+        const archive_lock: types.Lock = .{ .bytes = .{
+            .null, .null,  .null, .null,
+            .null, .ready, .null,
+        } };
+        pub fn duplicate(allocator: *mem.SimpleAllocator, values: []const u8) [:0]u8 {
+            @setRuntimeSafety(builder_spec.options.enable_safety);
+            const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(values.len +% 1, 1));
+            mach.memcpy(buf, values.ptr, values.len);
+            buf[values.len] = 0;
+            return buf[0..values.len :0];
+        }
+        pub fn concatenate(allocator: *mem.SimpleAllocator, values: []const []const u8) [:0]u8 {
+            @setRuntimeSafety(builder_spec.options.enable_safety);
+            var len: usize = 0;
+            for (values) |value| {
+                len +%= value.len;
+            }
+            const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(len +% 1, 1));
+            var idx: usize = 0;
+            for (values) |value| {
+                mach.memcpy(buf + idx, value.ptr, value.len);
+                idx +%= value.len;
+            }
+            buf[len] = 0;
+            return buf[0..len :0];
+        }
+        fn makeArgPtrs(allocator: *mem.SimpleAllocator, args: [:0]u8) [][*:0]u8 {
+            @setRuntimeSafety(builder_spec.options.enable_safety);
+            var count: u64 = 0;
+            for (args) |value| {
+                count +%= @intFromBool(value == 0);
+            }
+            const ret: [*][*:0]u8 = @ptrFromInt(allocator.allocateRaw(8 *% (count +% 1), 1));
+            var len: usize = 0;
+            var idx: usize = 0;
+            var pos: u64 = 0;
+            while (idx != args.len) : (idx +%= 1) {
+                if (args[idx] == 0 or
+                    args[idx] == '\n')
+                {
+                    ret[len] = args[pos..idx :0];
+                    len +%= 1;
+                    pos = idx +% 1;
+                }
+            }
+            ret[len] = @ptrFromInt(8);
+            ret[len] -= 8;
+            return ret[0..len];
+        }
+        fn makeCommandName(allocator: *mem.SimpleAllocator, root: [:0]const u8) [:0]const u8 {
+            @setRuntimeSafety(builder_spec.options.enable_safety);
+            const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(root.len +% 1, 1));
+            @memcpy(buf, root);
+            buf[root.len] = 0;
+            var idx: usize = 0;
+            while (idx != root.len and buf[idx] != 0x2e) : (idx +%= 1) {
+                buf[idx] -%= @intFromBool(buf[idx] == 0x2f);
+            }
+            buf[idx] = 0;
+            return buf[0..idx :0];
+        }
+        fn makeConfigRoot(allocator: *mem.SimpleAllocator, node: *Node) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             const build_cmd: *types.BuildCommand = node.task.cmd.build;
             var buf: [32768]u8 = undefined;
@@ -2113,95 +2209,23 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             node.impl.paths[1].names[1] = builder_spec.options.names.zig_build_dir;
             node.impl.paths[1].addName(allocator).* = name;
         }
-        fn writeRecord(node: *Node, job: *types.JobInfo) void {
-            @setRuntimeSafety(builder_spec.options.enable_safety);
-            var buf: [4096]u8 = undefined;
-            const rcd: types.Record = types.Record.init(job, node.task.cmd.build);
-            const names: []const [:0]const u8 = &.{ node.buildRoot(), builder_spec.options.names.zig_stat_dir, node.name };
-            const len: usize = types.Path.temporary(names).formatWriteBuf(&buf) -% 1;
-            const fd: u64 = try meta.wrap(file.createAt(create2(), 0, buf[0..len :0], file.mode.regular));
-            try meta.wrap(file.writeOne(write3(), fd, rcd));
-            try meta.wrap(file.close(close(), fd));
-        }
-        pub fn duplicate(allocator: *mem.SimpleAllocator, values: []const u8) [:0]u8 {
-            @setRuntimeSafety(builder_spec.options.enable_safety);
-            const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(values.len +% 1, 1));
-            mach.memcpy(buf, values.ptr, values.len);
-            buf[values.len] = 0;
-            return buf[0..values.len :0];
-        }
-        pub fn concatenate(allocator: *mem.SimpleAllocator, values: []const []const u8) [:0]u8 {
-            @setRuntimeSafety(builder_spec.options.enable_safety);
-            var len: usize = 0;
-            for (values) |value| {
-                len +%= value.len;
-            }
-            const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(len +% 1, 1));
-            var idx: usize = 0;
-            for (values) |value| {
-                mach.memcpy(buf + idx, value.ptr, value.len);
-                idx +%= value.len;
-            }
-            buf[len] = 0;
-            return buf[0..len :0];
-        }
-        fn makeArgPtrs(allocator: *mem.SimpleAllocator, args: [:0]u8) [][*:0]u8 {
-            @setRuntimeSafety(builder_spec.options.enable_safety);
-            var count: u64 = 0;
-            for (args) |value| {
-                count +%= @intFromBool(value == 0);
-            }
-            const ret: [*][*:0]u8 = @ptrFromInt(allocator.allocateRaw(8 *% (count +% 1), 1));
-            var len: usize = 0;
-            var idx: usize = 0;
-            var pos: u64 = 0;
-            while (idx != args.len) : (idx +%= 1) {
-                if (args[idx] == 0 or
-                    args[idx] == '\n')
-                {
-                    ret[len] = args[pos..idx :0];
-                    len +%= 1;
-                    pos = idx +% 1;
-                }
-            }
-            ret[len] = @ptrFromInt(8);
-            ret[len] -= 8;
-            return ret[0..len];
-        }
-        fn makeCommandName(allocator: *mem.SimpleAllocator, root: [:0]const u8) [:0]const u8 {
-            @setRuntimeSafety(builder_spec.options.enable_safety);
-            const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(root.len +% 1, 1));
-            @memcpy(buf, root);
-            buf[root.len] = 0;
-            var idx: usize = 0;
-            while (idx != root.len and buf[idx] != 0x2e) : (idx +%= 1) {
-                buf[idx] -%= @intFromBool(buf[idx] == 0x2f);
-            }
-            buf[idx] = 0;
-            return buf[0..idx :0];
-        }
-        const omni_lock: types.Lock = .{ .bytes = .{ .null, .ready, .ready, .ready, .ready, .ready, .null } };
-        const obj_lock: types.Lock = .{ .bytes = .{ .null, .null, .null, .ready, .null, .null, .null } };
-        const exe_lock: types.Lock = .{ .bytes = .{ .null, .null, .null, .ready, .ready, .null, .null } };
-        const run_lock: types.Lock = .{ .bytes = .{ .null, .null, .null, .null, .ready, .null, .null } };
-        const format_lock: types.Lock = .{ .bytes = .{ .null, .null, .ready, .null, .null, .null, .null } };
-        const archive_lock: types.Lock = .{ .bytes = .{ .null, .null, .null, .null, .null, .ready, .null } };
         const about = struct {
             const tab = .{
                 .ar_s = fmt.about("ar"),
                 .run_s = fmt.about("run"),
+                .add_s = fmt.about("add"),
+                .mem_s = fmt.about("mem"),
+                .fmt_s = fmt.about("fmt"),
                 .unknown_s = fmt.about("unknown"),
                 .cmd_args_s = fmt.about("cmd-args"),
                 .run_args_s = fmt.about("run-args"),
-                .format_s = fmt.about("fmt"),
-                .add_s = fmt.about("add"),
                 .build_exe_s = fmt.about("build-exe"),
                 .build_obj_s = fmt.about("build-obj"),
                 .build_lib_s = fmt.about("build-lib"),
-                .mem_s = fmt.about("mem"),
                 .state_s = fmt.about("state"),
                 .state_1_s = fmt.about("state-fault"),
                 .waiting_s = fmt.about("waiting"),
+                .null_s = "(null)",
                 .bytes_s = " bytes, ",
                 .green_s = "\x1b[92;1m",
                 .red_s = "\x1b[91;1m",
