@@ -13,6 +13,7 @@ const zl = blk: {
         break :blk root.top;
     }
 };
+
 const mem = zl.mem;
 const sys = zl.sys;
 const proc = zl.proc;
@@ -26,22 +27,19 @@ pub const Node =
     if (@hasDecl(root, "Node"))
     root.Node
 else
-    build.GenericNode(.{});
+    build.GenericNode(.{ .options = .{} });
 pub const message_style: [:0]const u8 =
     if (@hasDecl(root, "message_style"))
     root.message_style
 else
-    "\x1b[2m";
+    "\x1b[3m";
+pub const enable_debugging: bool =
+    if (@hasDecl(root, "enable_debugging"))
+    root.enable_debugging
+else
+    false;
 pub const logging_override: debug.Logging.Override =
     if (@hasDecl(root, "logging_override")) root.logging_override else .{
-    .Attempt = null,
-    .Success = null,
-    .Acquire = null,
-    .Release = null,
-    .Error = null,
-    .Fault = null,
-};
-pub const logging_default: debug.Logging.Default = .{
     .Attempt = false,
     .Success = false,
     .Acquire = false,
@@ -49,17 +47,27 @@ pub const logging_default: debug.Logging.Default = .{
     .Error = false,
     .Fault = false,
 };
+pub const exec_mode = .Run;
+pub const want_stack_traces: bool = enable_debugging;
+pub const logging_default: debug.Logging.Default = .{
+    .Attempt = enable_debugging,
+    .Success = enable_debugging,
+    .Acquire = enable_debugging,
+    .Release = enable_debugging,
+    .Error = enable_debugging,
+    .Fault = enable_debugging,
+};
 pub const signal_handlers = .{
-    .IllegalInstruction = false,
-    .BusError = false,
-    .FloatingPointError = false,
-    .Trap = false,
-    .SegmentationFault = false,
+    .IllegalInstruction = enable_debugging,
+    .BusError = enable_debugging,
+    .FloatingPointError = enable_debugging,
+    .Trap = enable_debugging,
+    .SegmentationFault = enable_debugging,
 };
 pub const trace: debug.Trace = .{
-    .Error = false,
-    .Fault = false,
-    .Signal = false,
+    .Error = enable_debugging,
+    .Fault = enable_debugging,
+    .Signal = enable_debugging,
     .options = .{},
 };
 pub const BuildConfig = struct {
@@ -77,7 +85,7 @@ const tab = .{
     .include_dirs = "\"include_dirs\":",
 };
 fn jsonLength(cfg: *const BuildConfig) usize {
-    @setRuntimeSafety(false);
+    @setRuntimeSafety(builtin.is_safe);
     var len: usize = 1 +% tab.packages.len;
     if (cfg.packages.len == 0) {
         len +%= 3;
@@ -107,86 +115,86 @@ fn jsonLength(cfg: *const BuildConfig) usize {
     return len +% 1;
 }
 fn writePackage(pkg: BuildConfig.Pkg, buf: [*]u8) usize {
-    @setRuntimeSafety(false);
+    @setRuntimeSafety(builtin.is_safe);
     var ptr: [*]u8 = buf;
     ptr[0] = '{';
-    ptr = ptr + 1;
+    ptr += 1;
     ptr[0..tab.name.len].* = tab.name.*;
-    ptr = ptr + tab.name.len;
+    ptr += tab.name.len;
     ptr[0] = '"';
-    ptr = ptr + 1;
+    ptr += 1;
     @memcpy(ptr, pkg.name);
-    ptr = ptr + pkg.name.len;
+    ptr += pkg.name.len;
     ptr[0] = '"';
     ptr[1] = ',';
-    ptr = ptr + 2;
+    ptr += 2;
     ptr[0..tab.path.len].* = tab.path.*;
-    ptr = ptr + tab.path.len;
+    ptr += tab.path.len;
     ptr[0] = '"';
-    ptr = ptr + 1;
+    ptr += 1;
     @memcpy(ptr, pkg.path);
-    ptr = ptr + pkg.path.len;
+    ptr += pkg.path.len;
     ptr[0] = '"';
     ptr[1] = '}';
     return @intFromPtr(ptr - @intFromPtr(buf)) +% 2;
 }
 fn jsonWriteBuf(cfg: *const BuildConfig, buf: [*]u8) usize {
-    @setRuntimeSafety(false);
+    @setRuntimeSafety(builtin.is_safe);
     var ptr: [*]u8 = buf;
     ptr[0] = '{';
-    ptr = ptr + 1;
+    ptr += 1;
     ptr[0..tab.packages.len].* = tab.packages.*;
-    ptr = ptr + tab.packages.len;
+    ptr += tab.packages.len;
     if (cfg.packages.len == 0) {
         ptr[0..3].* = "[],".*;
-        ptr = ptr + 3;
+        ptr += 3;
     } else {
         ptr[0] = '[';
-        ptr = ptr + 1;
-        ptr = ptr + writePackage(cfg.packages[0], buf);
+        ptr += 1;
+        ptr += writePackage(cfg.packages[0], buf);
         var pkg_idx: usize = 1;
         while (pkg_idx != cfg.packages.len) : (pkg_idx +%= 1) {
             ptr[0] = ',';
-            ptr = ptr + 1;
-            ptr = ptr + writePackage(cfg.packages[pkg_idx], ptr);
+            ptr += 1;
+            ptr += writePackage(cfg.packages[pkg_idx], ptr);
         }
         ptr[0] = ']';
         ptr[1] = ',';
-        ptr = ptr + 2;
+        ptr += 2;
     }
     ptr[0..tab.include_dirs.len].* = tab.include_dirs.*;
-    ptr = ptr + tab.include_dirs.len;
+    ptr += tab.include_dirs.len;
     if (cfg.include_dirs.len == 0) {
         ptr[0..2].* = "[]".*;
-        ptr = ptr + 2;
+        ptr += 2;
     } else {
         ptr[0] = '[';
         ptr[1] = '"';
-        ptr = ptr + 2;
+        ptr += 2;
         @memcpy(ptr, cfg.include_dirs[0]);
-        ptr = ptr + cfg.include_dirs[0].len;
+        ptr += cfg.include_dirs[0].len;
         ptr[0] = '"';
-        ptr = ptr + 1;
+        ptr += 1;
         var dir_idx: usize = 1;
         while (dir_idx != cfg.include_dirs.len) : (dir_idx +%= 1) {
             ptr[0] = ',';
             ptr[1] = '"';
-            ptr = ptr + 2;
+            ptr += 2;
             @memcpy(ptr, cfg.include_dirs[dir_idx]);
-            ptr = ptr + cfg.include_dirs[dir_idx].len;
+            ptr += cfg.include_dirs[dir_idx].len;
             ptr[0] = '"';
-            ptr = ptr + 1;
+            ptr += 1;
         }
         ptr[0] = ']';
-        ptr = ptr + 1;
+        ptr += 1;
     }
     ptr[0] = '}';
     return @intFromPtr(ptr - @intFromPtr(buf)) +% 1;
 }
 fn lengthModules(node: *Node) usize {
-    @setRuntimeSafety(false);
+    @setRuntimeSafety(builtin.is_safe);
     var len: usize = 0;
-    for (node.impl.nodes[0..node.impl.nodes_len]) |sub_node| {
+    for (node.impl.nodes[1..node.impl.nodes_len]) |sub_node| {
         if (sub_node.tag == .group) {
             len +%= lengthModules(sub_node);
         }
@@ -199,9 +207,9 @@ fn lengthModules(node: *Node) usize {
     return len;
 }
 fn writeModulesBuf(pkgs: [*]BuildConfig.Pkg, node: *Node) usize {
-    @setRuntimeSafety(false);
+    @setRuntimeSafety(builtin.is_safe);
     var len: usize = 0;
-    for (node.impl.nodes[0..node.impl.nodes_len]) |sub_node| {
+    for (node.impl.nodes[1..node.impl.nodes_len]) |sub_node| {
         if (sub_node.tag == .group) {
             len +%= writeModulesBuf(pkgs, sub_node);
         }
@@ -217,12 +225,13 @@ fn writeModulesBuf(pkgs: [*]BuildConfig.Pkg, node: *Node) usize {
     return len;
 }
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) void {
+    @setRuntimeSafety(builtin.is_safe);
     var allocator: build.Allocator = build.Allocator.init_arena(Node.AddressSpace.arena(Node.max_thread_count));
     if (args.len < 5) {
         proc.exitError(error.MissingEnvironmentPaths, 2);
     }
-    Node.initState(args, vars);
-    const toplevel: *Node = Node.init(&allocator);
+    const toplevel: *Node = Node.init(&allocator, args, vars);
+    toplevel.addSpecialNodes(&allocator);
     try meta.wrap(
         root.buildMain(&allocator, toplevel),
     );
