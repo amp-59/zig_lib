@@ -138,9 +138,9 @@ pub const signal_stack: ?debug.SignalAlternateStack = define(
 );
 pub const trace: debug.Trace = define("trace", debug.Trace, .{});
 pub const my_trace: debug.Trace = .{
-    .Error = !builtin.strip_debug_info,
-    .Fault = !builtin.strip_debug_info,
-    .Signal = !builtin.strip_debug_info,
+    .Error = true,
+    .Fault = true,
+    .Signal = true,
     .options = .{
         .show_line_no = true,
         .show_pc_addr = false,
