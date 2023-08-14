@@ -1251,15 +1251,16 @@ pub const about = opaque {
         ptr += 5;
         @memcpy(ptr, @tagName(signo));
         ptr += @tagName(signo).len;
+        ptr[0..4].* = " -> ".*;
+        ptr += 4;
         if (handler_raw > 1) {
             ptr += ux64.formatWriteBuf(ptr);
         } else {
             @memcpy(ptr, if (handler_raw == 1) "ignore" else "default");
             ptr += (8 -% handler_raw);
         }
-        ptr[0..4].* = " -> ".*;
-        ptr += 4;
-        debug.write(buf[0..@intFromPtr(ptr - @intFromPtr(&buf))]);
+        ptr[0] = '\n';
+        debug.write(buf[0 .. @intFromPtr(ptr - @intFromPtr(&buf)) +% 1]);
     }
     fn signalStackError(sigaltstack_error: anytype, new_st: SignalStack) void {
         var buf: [256]u8 = undefined;
