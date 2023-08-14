@@ -1,11 +1,8 @@
 const mem = @import("../mem.zig");
 const fmt = @import("../fmt.zig");
 const proc = @import("../proc.zig");
-const mach = @import("../mach.zig");
 const time = @import("../time.zig");
 const file = @import("../file.zig");
-const meta = @import("../meta.zig");
-const spec = @import("../spec.zig");
 const builtin = @import("../builtin.zig");
 const types = @This();
 pub usingnamespace @import("./tasks.zig");
@@ -70,10 +67,10 @@ pub const Task = enum(u8) {
     run = 4,
     archive = 5,
     objcopy = 6,
-    pub const list: []const Task = meta.tagList(Task);
+    pub const list = [5]Task{ .format, .build, .run, .archive, .objcopy };
 };
-// zig fmt: off
 pub const State = enum(u8) {
+    // zig fmt: off
     /// The task does not exist for the target.
     null =      0b000000,
     /// The task was unable to complete due to an error.
@@ -88,20 +85,19 @@ pub const State = enum(u8) {
     cancelled = 0b010000,
     /// The task is complete.
     finished =  0b100000,
-    pub const list: []const State = meta.tagList(State);
+    // zig fmt: on
     pub fn style(st: State) [:0]const u8 {
         switch (st) {
             .failed, .cancelled => return "\x1b[91m",
             .ready => return "\x1b[93m",
             .blocking => return "\x1b[96m",
-            .working =>  return"\x1b[95m",
-            .finished =>  return"\x1b[92m",
+            .working => return "\x1b[95m",
+            .finished => return "\x1b[92m",
             .null => unreachable,
         }
     }
 };
-// zig fmt: on
-pub const Lock = mem.ThreadSafeSet(State.list.len, State, Task);
+pub const Lock = mem.ThreadSafeSet(7, State, Task);
 pub const Config = struct {
     name: []const u8,
     value: Value,
@@ -109,37 +105,36 @@ pub const Config = struct {
     pub fn formatWriteBuf(cfg: Config, buf: [*]u8) u64 {
         @setRuntimeSafety(false);
         var ptr: [*]u8 = buf;
-        var ud64: fmt.Type.Ud64 = undefined;
+        var ud64: fmt.Type.Ud64 = .{ .value = cfg.value.Int };
         ptr[0..12].* = "pub const @\"".*;
-        ptr = ptr + 12;
+        ptr += 12;
         @memcpy(ptr, cfg.name);
-        ptr = ptr + cfg.name.len;
+        ptr += cfg.name.len;
         switch (cfg.value) {
-            .Int => |value| {
+            .Int => {
                 ptr[0..18].* = "\": comptime_int = ".*;
-                ptr = ptr + 18;
-                ud64 = @bitCast(value);
-                ptr = ptr + ud64.formatWriteBuf(ptr);
+                ptr += 18;
+                ptr += ud64.formatWriteBuf(ptr);
             },
             .Bool => |value| {
                 ptr[0..10].* = "\": bool = ".*;
-                ptr = ptr + 10;
+                ptr += 10;
                 ptr[0..5].* = if (value) "true\x00".* else "false".*;
-                ptr = ptr + 5 - @intFromBool(value);
+                ptr += @as(usize, 5) -% @intFromBool(value);
             },
             .String => |value| {
                 ptr[0..11].* = "\": *const [".*;
-                ptr = ptr + 11;
+                ptr += 11;
                 ud64.value = value.len;
-                ptr = ptr + ud64.formatWriteBuf(ptr);
+                ptr += ud64.formatWriteBuf(ptr);
                 ptr[0..8].* = ":0]u8 = ".*;
-                ptr = ptr + 8;
+                ptr += 8;
                 ptr[0] = '"';
-                ptr = ptr + 1;
+                ptr += 1;
                 @memcpy(ptr, value);
-                ptr = ptr + value.len;
+                ptr += value.len;
                 ptr[0] = '"';
-                ptr = ptr + 1;
+                ptr += 1;
             },
         }
         ptr[0..2].* = ";\n".*;
@@ -166,11 +161,10 @@ pub const Config = struct {
     }
     pub fn formatLength(cfg: Config) u64 {
         @setRuntimeSafety(false);
-        var ud64: fmt.Type.Ud64 = undefined;
+        var ud64: fmt.Type.Ud64 = cfg.Int.value;
         var len: u64 = 10 +% cfg.name.len;
         switch (cfg.value) {
-            .Int => |value| {
-                ud64 = @bitCast(value);
+            .Int => {
                 len +%= 17 +% ud64.formatLength();
             },
             .Bool => |value| {
@@ -208,7 +202,7 @@ pub const Module = struct {
     pub fn formatWriteBuf(mod: Module, buf: [*]u8) u64 {
         @setRuntimeSafety(false);
         var len: u64 = 6;
-        @memcpy(buf, "--mod\x00");
+        buf[0..6].* = "--mod\x00".*;
         @memcpy(buf + len, mod.name);
         len = len +% mod.name.len;
         buf[len] = ':';
@@ -317,7 +311,7 @@ pub const ModuleDependencies = struct {
             return 0;
         }
         var len: u64 = 7;
-        @memcpy(buf, "--deps\x00");
+        buf[0..7].* = "--deps\x00".*;
         for (mod_deps.value) |mod_dep| {
             if (mod_dep.import) |name| {
                 @memcpy(buf + len, name);
@@ -362,7 +356,7 @@ pub const Macro = struct {
     }
     pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
         @setRuntimeSafety(false);
-        @as(*[2]u8, @ptrCast(buf)).* = "-D".*;
+        buf[0..2].* = "-D".*;
         @memcpy(buf + 2, format.name);
         var len: u64 = 2 +% format.name.len;
         if (format.value) |value| {
@@ -382,6 +376,7 @@ pub const Macro = struct {
         return len +% 1;
     }
     pub fn formatParseArgs(_: anytype, _: [][*:0]u8, _: *usize, arg: [:0]const u8) Macro {
+        @setRuntimeSafety(false);
         if (arg.len == 0) {
             @panic(arg);
         }
@@ -418,14 +413,14 @@ pub const CFlags = struct {
     pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
         @setRuntimeSafety(false);
         var len: u64 = 8;
-        @memcpy(buf, "-cflags\x00");
+        buf[0..8].* = "-cflags\x00".*;
         for (format.value) |flag| {
             @memcpy(buf + len, flag);
             len = len +% flag.len;
             buf[len] = 0;
             len = len +% 1;
         }
-        @memcpy(buf + len, "--\x00");
+        (buf + len)[0..3].* = "--\x00".*;
         return len +% 3;
     }
     pub fn formatLength(format: Format) u64 {
@@ -642,13 +637,13 @@ pub fn GenericCommand(comptime Command: type) type {
                     @field(t_cmd, field.name),
                 )) {
                     @memcpy(ptr, node_name[0..node_name.len]);
-                    ptr = ptr + node_name.len;
+                    ptr += node_name.len;
                     const len: usize = 7 +% field_name.len +% field.name.len;
                     ptr[0..len].* = ("_" ++ field_name ++ "_cmd." ++ field.name ++ "=").*;
-                    ptr = ptr + len;
-                    ptr = ptr + fmt.render(render_spec, @field(t_cmd, field.name)).formatWriteBuf(ptr);
+                    ptr += len;
+                    ptr += fmt.render(render_spec, @field(t_cmd, field.name)).formatWriteBuf(ptr);
                     ptr[0..2].* = ";\n".*;
-                    ptr = ptr + 2;
+                    ptr += 2;
                     if (commit) {
                         @field(s_cmd, field.name) = @field(t_cmd, field.name);
                     }
