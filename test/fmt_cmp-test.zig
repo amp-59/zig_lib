@@ -202,7 +202,6 @@ fn zigLibBasicMessage(futex1: *u32, futex2: *u32, count1: u32, count2: u32, ret:
 /// perf:           task-clock		73,380
 /// perf:           page-faults		3
 fn zigLibOptimisedMessage(futex1: *u32, futex2: *u32, count1: u32, count2: u32, ret: u64) void {
-    _ = zl.mach;
     @setRuntimeSafety(false);
     var ux64: fmt.Type.Ux64 = .{ .value = @intFromPtr(futex1) };
     var ud64: fmt.Type.Ud64 = .{ .value = futex1.* };
@@ -243,38 +242,38 @@ fn zigLibOptimisedMessage2(futex1: *u32, futex2: *u32, count1: u32, count2: u32,
     @setRuntimeSafety(false);
     var ux64: fmt.Type.Ux64 = .{ .value = @intFromPtr(futex1) };
     var ud64: fmt.Type.Ud64 = .{ .value = futex1.* };
-    var bytes: [4096]u8 = undefined;
-    var buf: [*]u8 = &bytes;
-    buf[0..about.len].* = about.*;
-    buf = buf + about.len;
-    buf[0..8].* = "futex1=@".*;
-    buf = buf + 8;
-    buf = buf + ux64.formatWriteBuf(buf);
-    buf[0..8].* = ", word1=".*;
-    buf = buf + 8;
-    buf = buf + ud64.formatWriteBuf(buf);
-    buf[0..7].* = ", max1=".*;
-    buf = buf + 7;
+    var buf: [4096]u8 = undefined;
+    var ptr: [*]u8 = &buf;
+    ptr[0..about.len].* = about.*;
+    ptr += about.len;
+    ptr[0..8].* = "futex1=@".*;
+    ptr += 8;
+    ptr += ux64.formatWriteBuf(ptr);
+    ptr[0..8].* = ", word1=".*;
+    ptr += 8;
+    ptr += ud64.formatWriteBuf(ptr);
+    ptr[0..7].* = ", max1=".*;
+    ptr += 7;
     ud64.value = count1;
-    buf = buf + ud64.formatWriteBuf(buf);
-    buf[0..10].* = ", futex2=@".*;
-    buf = buf + 10;
+    ptr += ud64.formatWriteBuf(ptr);
+    ptr[0..10].* = ", futex2=@".*;
+    ptr += 10;
     ux64.value = @intFromPtr(futex2);
-    buf = buf + ux64.formatWriteBuf(buf);
-    buf[0..8].* = ", word2=".*;
-    buf = buf + 8;
+    ptr += ux64.formatWriteBuf(ptr);
+    ptr[0..8].* = ", word2=".*;
+    ptr += 8;
     ud64.value = futex2.*;
-    buf = buf + ud64.formatWriteBuf(buf);
-    buf[0..7].* = ", max2=".*;
-    buf = buf + 7;
+    ptr += ud64.formatWriteBuf(ptr);
+    ptr[0..7].* = ", max2=".*;
+    ptr += 7;
     ud64.value = count2;
-    buf = buf + ud64.formatWriteBuf(buf);
-    buf[0..6].* = ", res=".*;
-    buf = buf + 6;
+    ptr += ud64.formatWriteBuf(ptr);
+    ptr[0..6].* = ", res=".*;
+    ptr += 6;
     ud64.value = ret;
-    buf = buf + ud64.formatWriteBuf(buf);
-    buf[0] = '\n';
-    debug.write(bytes[0 .. (@intFromPtr(buf) -% @intFromPtr(&bytes)) +% 1]);
+    ptr += ud64.formatWriteBuf(ptr);
+    ptr[0] = '\n';
+    debug.write(buf[0 .. (@intFromPtr(ptr) -% @intFromPtr(&buf)) +% 1]);
 }
 pub fn main() void {
     var futex0: u32 = 0xf0;
