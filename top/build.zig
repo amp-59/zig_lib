@@ -1214,6 +1214,20 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             }
             fn taskArgs(allocator: *mem.SimpleAllocator, node: *Node, task: types.Task) [][*:0]u8 {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
+                if (builder_spec.options.lazy_features and node.flags.is_primary) {
+                    if (do_build and task == .build) {
+                        special.fns.formatParseArgsBuildCommand(node.task.cmd.build, allocator, build.cmd_args.ptr, build.cmd_args.len);
+                    }
+                    if (do_format and task == .format) {
+                        special.fns.formatParseArgsFormatCommand(node.task.cmd.format, allocator, build.cmd_args.ptr, build.cmd_args.len);
+                    }
+                    if (do_archive and task == .archive) {
+                        special.fns.formatParseArgsArchiveCommand(node.task.cmd.archive, allocator, build.cmd_args.ptr, build.cmd_args.len);
+                    }
+                    if (do_objcopy and task == .objcopy) {
+                        special.fns.formatParseArgsObjcopyCommand(node.task.cmd.objcopy, allocator, build.cmd_args.ptr, build.cmd_args.len);
+                    }
+                }
                 if (do_build and task == .build) {
                     return makeArgPtrs(allocator, try meta.wrap(buildWrite(allocator, node, node.impl.paths[1..node.impl.paths_len])));
                 }
