@@ -347,18 +347,6 @@ pub const zig_build_command_attributes: types.Attributes = .{
             .descr = &.{"Always produce unwind table entries for all functions"},
         },
         .{
-            .name = "llvm",
-            .string = "-fLLVM",
-            .and_no = .{ .string = "-fno-LLVM" },
-            .descr = &.{"Use LLVM as the codegen backend"},
-        },
-        .{
-            .name = "clang",
-            .string = "-fClang",
-            .and_no = .{ .string = "-fno-Clang" },
-            .descr = &.{"Use Clang as the C/C++ compilation backend"},
-        },
-        .{
             .name = "reference_trace",
             .string = "-freference-trace",
             .and_no = .{ .string = "-fno-reference-trace" },
