@@ -546,33 +546,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 proc.exitErrorFault(error.NotADirectory, name, 2);
             }
         }
-        fn loadAll(pathname: [:0]const u8) void {
-            @setRuntimeSafety(builtin.is_safe);
-            const prot: file.Map.Protection = .{ .exec = true };
-            const flags: file.Map.Flags = .{};
-            const S = struct {
-                var addr: usize = builder_spec.options.dyn_lb_addr;
-            };
-            var st: file.Status = undefined;
-            const fd: u64 = sys.call_noexcept(.open, u64, .{ @intFromPtr(pathname.ptr), 0, 0 });
-            if (fd > 1024) {
-                proc.exitErrorFault(error.NoSuchFileOrDirectory, pathname, 2);
-            }
-            const rc: usize = sys.call_noexcept(.fstat, usize, .{ fd, @intFromPtr(&st) });
-            if (rc != 0) {
-                proc.exitErrorFault(error.NoSuchFileOrDirectory, pathname, 2);
-            }
-            const len: usize = mach.alignA64(st.size, 4096);
-            const addr: usize = @atomicRmw(usize, &S.addr, .Add, len, .SeqCst);
-            const rc_addr1: usize = sys.call_noexcept(.mmap, usize, [6]usize{ addr, len, @bitCast(prot), @bitCast(flags), fd, 0 });
-            if (rc_addr1 != addr) {
-                proc.exitErrorFault(error.OutOfMemory, pathname, 2);
-            }
-            var elf_info: elf.ElfInfo = elf.ElfInfo.init(addr, len);
-            elf_info.remap(fd);
-            file.close(close(), fd);
-            return elf_info.loadAll(build.Fns, &special.fns);
-        }
         pub fn addSpecialNodes(toplevel: *Node, allocator: *mem.SimpleAllocator) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             const zig_exe: []const u8 = toplevel.zigExe();
