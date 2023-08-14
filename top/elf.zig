@@ -1062,7 +1062,6 @@ pub const SHN_LIVEPATCH = 0xff20;
 pub const SHN_ABS = 0xfff1;
 pub const SHN_COMMON = 0xfff2;
 pub const SHN_HIRESERVE = 0xffff;
-
 /// AMD x86-64 relocations.
 const R_X86_64 = enum(u8) {
     /// No reloc
@@ -1200,16 +1199,13 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
         pub const Info = extern struct {
             ehdr: Elf64_Ehdr,
             shdr: [*]Elf64_Shdr,
-
             base_addr: usize,
             end_off: usize,
-
             links: [tags.len]?*Elf64_Shdr,
             impl: extern struct {
                 dynstr: [*]u8,
                 dynsym: [*]Elf64_Sym,
             },
-
             pub fn loadPointers(info: *Info, comptime Pointers: type, ptrs: *Pointers) void {
                 @setRuntimeSafety(builtin.is_safe);
                 const words: [*]usize = @ptrCast(ptrs);
@@ -1283,56 +1279,45 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             const info_addr: usize = alignA4096(@atomicRmw(usize, &loader.ub_info_addr, .Add, 4096, .SeqCst));
             const info_buf: [*]u8 = @ptrFromInt(info_addr);
             try meta.wrap(mem.map(map(), map_prot_r, map_flags, info_addr, 4096));
-
             const info: *Info = @ptrFromInt(info_addr);
             mem.zero(Info, info);
-
             const fd: usize = try meta.wrap(file.open(open(), pathname));
             try meta.wrap(file.read(read(), fd, info_buf[0..@sizeOf(Elf64_Ehdr)]));
-
             const shdr_len: usize = alignA4096(info.ehdr.e_shnum *% info.ehdr.e_shentsize);
             const shdr_addr: usize = alignA4096(@atomicRmw(usize, &loader.ub_info_addr, .Add, shdr_len, .SeqCst));
             const shdr_buf: [*]u8 = @ptrFromInt(shdr_addr);
             try meta.wrap(mem.map(map(), map_prot_r, map_flags, shdr_addr, shdr_len));
-
             try meta.wrap(file.seek(seek(), fd, info.ehdr.e_shoff, .set));
             try meta.wrap(file.read(read(), fd, shdr_buf[0..shdr_len]));
             info.shdr = @ptrFromInt(shdr_addr);
-
             var buf: [4096]u8 = undefined;
             const shstr: [*]u8 = &buf;
             try meta.wrap(file.seek(seek(), fd, info.shdr[info.ehdr.e_shstrndx].sh_offset, .set));
             try meta.wrap(file.read(read(), fd, shstr[0..info.shdr[info.ehdr.e_shstrndx].sh_size]));
-
             info.readSections(shstr);
             info.base_addr = alignA4096(@atomicRmw(usize, &loader.ub_sect_addr, .Add, info.end_off, .SeqCst));
-
             const rodata_shdr: *Elf64_Shdr = info.links[rodata_idx].?;
             const rodata_addr: usize = alignB4096(rodata_shdr.sh_addr);
             const rodata_end: usize = alignA4096(rodata_shdr.sh_addr +% rodata_shdr.sh_size);
             const rodata_off: usize = alignB4096(rodata_shdr.sh_offset);
             try meta.wrap(file.map(map(), map_prot_r, map_flags, fd, info.base_addr +% rodata_addr, rodata_end -% rodata_addr, rodata_off));
-
             const text_shdr: *Elf64_Shdr = info.links[text_idx].?;
             const text_addr: usize = alignB4096(text_shdr.sh_addr);
             const text_end: usize = alignA4096(text_shdr.sh_addr +% text_shdr.sh_size);
             const text_off: usize = alignB4096(text_shdr.sh_offset);
             try meta.wrap(file.map(map(), map_prot_x, map_flags, fd, info.base_addr +% text_addr, text_end -% text_addr, text_off));
-
             const dynsym_shdr: *Elf64_Shdr = info.links[dynsym_idx].?;
             const dynstr_shdr: *Elf64_Shdr = info.links[dynstr_idx].?;
             const dyn_len: usize = alignA4096(dynstr_shdr.sh_size +% dynsym_shdr.sh_size);
             const dyn_addr: usize = alignA4096(@atomicRmw(usize, &loader.ub_info_addr, .Add, dyn_len, .SeqCst));
             const dynsym_buf: [*]u8 = @ptrFromInt(dyn_addr);
             const dynstr_buf: [*]u8 = @ptrFromInt(dyn_addr +% dynsym_shdr.sh_size);
-
             // Consider combining actions if sections contiguous.
             try meta.wrap(mem.map(map(), map_prot_r, map_flags, dyn_addr, dyn_len));
             try meta.wrap(file.seek(seek(), fd, dynsym_shdr.sh_offset, .set));
             try meta.wrap(file.read(read(), fd, dynsym_buf[0..dynsym_shdr.sh_size]));
             try meta.wrap(file.seek(seek(), fd, dynstr_shdr.sh_offset, .set));
             try meta.wrap(file.read(read(), fd, dynstr_buf[0..dynstr_shdr.sh_size]));
-
             info.impl = .{
                 .dynsym = @ptrFromInt(dyn_addr),
                 .dynstr = @ptrCast(dynstr_buf),
@@ -1356,12 +1341,6 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
         fn read() file.ReadSpec {
             return .{
                 .return_type = void,
-                .logging = loader_spec.logging.read,
-                .errors = loader_spec.errors.read,
-            };
-        }
-        fn write() file.WriteSpec {
-            return .{
                 .logging = loader_spec.logging.read,
                 .errors = loader_spec.errors.read,
             };
