@@ -111,8 +111,9 @@ fn testRenderTypeDescription(allocator: *Allocator, array: *Array, buf: [*]u8) !
     try testFormat(allocator, array, buf, comptime any(struct { buf: [*]u8, buf_len: usize }));
     try testFormat(allocator, array, buf, comptime any(struct { buf: []u8, buf_len: usize }));
     try testFormat(allocator, array, buf, comptime any(struct { auto: [256]u8 = [1]u8{0xa} ** 256, auto_len: usize = 16 }));
-    try testFormat(allocator, array, buf, comptime BigTypeDescr.declare("builtin", @import("std").builtin));
-    try testFormat(allocator, array, buf, comptime BigTypeDescr.declare("Target", @import("std").Target));
+    try testFormat(allocator, array, buf, comptime BigTypeDescr.init(@import("std").builtin));
+    try testFormat(allocator, array, buf, comptime BigTypeDescr.declare("Os", @import("std").Target.Os));
+
     const td1: TypeDescr = comptime any(?union(enum) { yes: ?build.Path, no });
     const td2: TypeDescr = comptime any(?union(enum) { yes: ?build.Path, no });
     try testFormats(allocator, array, td1, td2);
