@@ -5,6 +5,7 @@ const mach = zl.mach;
 const meta = zl.meta;
 const proc = zl.proc;
 const debug = zl.debug;
+const parse = zl.parse;
 const crypto = zl.crypto;
 const builtin = zl.builtin;
 const testing = zl.testing;
@@ -33,7 +34,7 @@ pub const htest = struct {
         const bytes_buf: []u8 = allocator.allocate(u8, expected_hex.len);
         mach.memset(bytes_buf.ptr, 0, bytes_buf.len);
         for (bytes_buf[0 .. bytes_buf.len / 2], 0..) |*byte, idx| {
-            byte.* = builtin.parse.ux(u8, expected_hex[2 * idx .. 2 * idx + 2]);
+            byte.* = parse.ux(u8, expected_hex[2 * idx .. 2 * idx + 2]);
         }
         try testing.expectEqualMany(u8, bytes_buf[0 .. bytes_buf.len / 2], input);
     }
