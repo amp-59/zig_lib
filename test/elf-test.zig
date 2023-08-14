@@ -139,7 +139,7 @@ noinline fn doIt(loader: *Loader, pathname: [:0]const u8, ptrs: *build.Fns) blk:
     writers_info.loadPointers(build.Fns, ptrs);
 }
 const Loader = elf.GenericDynamicLoader(.{
-    .options = .{},
+    .options = .{ .show_sections = true },
     .logging = .{},
     .errors = spec.loader.errors.noexcept,
 });
