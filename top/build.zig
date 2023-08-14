@@ -2234,13 +2234,21 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 .gold_s = "\x1b[93m",
                 .bold_s = "\x1b[1m",
                 .faint_s = "\x1b[2m",
-                .grey_s = "\x1b[0;38;5;250;1m",
-                .trace_s = "\x1b[38;5;247m",
                 .hi_green_s = "\x1b[38;5;46m",
                 .hi_red_s = "\x1b[38;5;196m",
                 .special_s = "\x1b[38;2;54;208;224;1m",
             };
-            const fancy_hl_line: bool = false;
+            fn writeRecord(node: *Node, job: *types.JobInfo) void {
+                @setRuntimeSafety(builder_spec.options.enable_safety);
+                var buf: [4096]u8 = undefined;
+                const rcd: types.Record = types.Record.init(job, node.task.cmd.build);
+                const names: []const [:0]const u8 = &.{ node.buildRoot(), builder_spec.options.names.zig_stat_dir, node.name };
+                const len: usize = types.Path.temporary(names).formatWriteBuf(&buf) -% 1;
+                const fd: u64 = try meta.wrap(file.createAt(create2(), 0, buf[0..len :0], file.mode.regular));
+                try meta.wrap(file.writeOne(write3(), fd, rcd));
+                try meta.wrap(file.close(close(), fd));
+            }
+
             fn writeWaitingOn(node: *Node, arena_index: AddressSpace.Index) void {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
                 var buf: [4096]u8 = undefined;
@@ -2489,6 +2497,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             fn taskNotice(node: *Node, task: types.Task, arena_index: AddressSpace.Index, old_size: u64, new_size: u64, job: *types.JobInfo) void {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
                 const ans: UpdateAnswer = @enumFromInt(job.ret.srv);
+                const ret: SystemReturn = @enumFromInt(job.ret.sys);
                 const diff_size: u64 = @max(new_size, old_size) -% @min(new_size, old_size);
                 var ud64: fmt.Type.Ud64 = undefined;
                 var buf: [32768]u8 = undefined;
@@ -2496,7 +2505,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 const about_s: []const u8 = switch (task) {
                     else => "",
                     .archive => tab.ar_s,
-                    .format => tab.format_s,
+                    .format => tab.fmt_s,
                     .run => tab.run_s,
                     .build => switch (node.task.cmd.build.kind) {
                         .exe => tab.build_exe_s,
@@ -2511,13 +2520,25 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 ptr += 2;
                 if (task == .build) {
                     const mode: builtin.Mode = node.task.cmd.build.mode orelse .Debug;
-                    const stripped: bool = node.task.cmd.build.strip orelse (mode == .ReleaseSmall);
-                    @memcpy(ptr, @tagName(mode));
-                    ptr += @tagName(mode).len;
-                    ptr[0..2].* = ", ".*;
-                    ptr += 2;
-                    ptr[0..2].* = "un".*;
-                    if (!stripped) ptr += 2;
+                    switch (mode) {
+                        .Debug => {
+                            ptr[0..9].* = "Debug, un".*;
+                            ptr += 7;
+                        },
+                        .ReleaseSmall => {
+                            ptr[0..16].* = "ReleaseSmall, un".*;
+                            ptr += 14;
+                        },
+                        .ReleaseFast => {
+                            ptr[0..15].* = "ReleaseFast, un".*;
+                            ptr += 13;
+                        },
+                        .ReleaseSafe => {
+                            ptr[0..15].* = "ReleaseSafe, un".*;
+                            ptr += 13;
+                        },
+                    }
+                    if (node.hasDebugInfo()) ptr += 2;
                     ptr[0..8].* = "stripped".*;
                     ptr += 8;
                     ptr[0..2].* = ", ".*;
@@ -2527,22 +2548,35 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 ptr += 5;
                 ud64.value = job.ret.sys;
                 if (task == .build) {
-                    var style_s: []const u8 = tab.bold_s;
+                    ptr[0] = '[';
+                    ptr += 1;
                     if (ans == .failed) {
-                        style_s = tab.red_s;
-                    }
-                    if (node.flags.is_special) {
+                        ptr[0..tab.red_s.len].* = tab.red_s.*;
+                        ptr += tab.red_s.len;
+                    } else if (node.flags.is_special) {
                         if (ans == .cached) {
                             return;
                         }
-                        style_s = tab.special_s;
+                        ptr[0..tab.special_s.len].* = tab.special_s.*;
+                        ptr += tab.special_s.len;
+                    } else {
+                        ptr[0..tab.bold_s.len].* = tab.bold_s.*;
+                        ptr += tab.bold_s.len;
                     }
-                    ptr[0] = '[';
-                    ptr += 1;
-                    @memcpy(ptr, style_s);
-                    ptr += style_s.len;
-                    @memcpy(ptr, @tagName(ans));
-                    ptr += @tagName(ans).len;
+                    switch (ans) {
+                        .updated => {
+                            ptr[0..7].* = "updated".*;
+                            ptr += 7;
+                        },
+                        .cached => {
+                            ptr[0..6].* = "cached".*;
+                            ptr += 6;
+                        },
+                        else => {
+                            ptr[0..6].* = "failed".*;
+                            ptr += 6;
+                        },
+                    }
                     ptr[0..4].* = tab.reset_s.*;
                     ptr += 4;
                     ptr[0] = ',';
@@ -2551,18 +2585,15 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     ptr[0] = ']';
                     ptr += 1;
                 } else {
-                    switch (job.ret.sys) {
-                        builder_spec.options.system_expected_status => {
-                            if (node.flags.is_special) {
-                                return;
-                            }
-                            ptr[0..tab.bold_s.len].* = tab.bold_s.*;
-                            ptr += tab.bold_s.len;
-                        },
-                        else => {
-                            ptr[0..tab.red_s.len].* = tab.red_s.*;
-                            ptr += tab.red_s.len;
-                        },
+                    if (ret == .expected) {
+                        if (node.flags.is_special) {
+                            return;
+                        }
+                        ptr[0..tab.bold_s.len].* = tab.bold_s.*;
+                        ptr += tab.bold_s.len;
+                    } else {
+                        ptr[0..tab.red_s.len].* = tab.red_s.*;
+                        ptr += tab.red_s.len;
                     }
                     ptr += ud64.formatWriteBuf(ptr);
                     ptr[0..4].* = tab.reset_s.*;
