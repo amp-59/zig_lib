@@ -17,28 +17,8 @@ pub const logging_override: debug.Logging.Override = spec.logging.override.verbo
 
 var s: struct { x: ?usize = null, y: usize = 50 } = .{};
 
-const ElfInfo = elf.GenericElfInfo(.{ .Allocator = mem.SimpleAllocator });
+const DynamicLoader = elf.GenericDynamicLoader(.{});
 
-fn loadAll(comptime Pointers: type, pathname: [:0]const u8, ptrs: *Pointers) void {
-    @setRuntimeSafety(builtin.is_safe);
-    const prot: file.Map.Protection = .{ .exec = true };
-    const flags: file.Map.Flags = .{};
-    var addr: usize = 0x80000000;
-    var st: file.Status = undefined;
-    const fd: u64 = sys.call_noexcept(.open, u64, .{ @intFromPtr(pathname.ptr), 0, 0 });
-    if (fd > 1024) {
-        proc.exitErrorFault(error.NoSuchFileOrDirectory, pathname, 2);
-    }
-    sys.call_noexcept(.fstat, void, .{ fd, @intFromPtr(&st) });
-    const len: usize = mach.alignA64(st.size, 4096);
-    const rc_addr1: usize = sys.call_noexcept(.mmap, usize, [6]usize{ addr, len, @bitCast(prot), @bitCast(flags), fd, 0 });
-    if (rc_addr1 != addr) {
-        proc.exitErrorFault(error.OutOfMemory, pathname, 2);
-    }
-    var elf_info: ElfInfo = ElfInfo.init(addr, len);
-    elf_info.remap(fd);
-    return elf_info.loadAll(Pointers, ptrs);
-}
 fn writeField(array: *mem.StaticArray(u8, 4096), field_name: []const u8, field_value: anytype) void {
     array.writeOne('.');
     array.writeMany(field_name);
@@ -49,7 +29,10 @@ fn writeField(array: *mem.StaticArray(u8, 4096), field_name: []const u8, field_v
 pub fn main(args: anytype) !void {
     var allocator: mem.SimpleAllocator = .{};
     var ptrs: build.Fns = .{};
-    loadAll(build.Fns, "zig-out/lib/libcmd_parsers.so", &ptrs);
+    var loader: DynamicLoader = .{};
+    const info: *DynamicLoader.Info = try loader.load("zig-out/lib/libcmd_parsers.so");
+    info.loadPointers(build.Fns, &ptrs);
+
     var cmd: build.BuildCommand = .{ .kind = .exe };
     ptrs.formatParseArgsBuildCommand(&cmd, &allocator, args.ptr, args.len);
     var array: mem.StaticArray(u8, 4096) = undefined;

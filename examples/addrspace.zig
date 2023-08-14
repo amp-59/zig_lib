@@ -64,7 +64,7 @@ pub fn main() !void {
         .alignment = 4096,
         .subspace = virtual.genericSlice(.{
             .{
-                .label = "DyLib",
+                .label = "Loader",
                 .list = &[1]mem.Arena{.{
                     .lb_addr = 0x40000000,
                     .up_addr = 0x50000000,
@@ -90,7 +90,7 @@ pub fn main() !void {
     };
     {
         const SuperSpace = builder_like_address_space.instantiate();
-        const SubSpace0 = SuperSpace.SubSpace("DyLib");
+        const SubSpace0 = SuperSpace.SubSpace("Loader");
         const SubSpace1 = SuperSpace.SubSpace("Heap");
         const SubSpace2 = SuperSpace.SubSpace("Stack");
 
