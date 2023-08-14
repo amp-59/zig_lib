@@ -84,10 +84,6 @@ pub const BuildCommand = struct {
     sanitize_thread: ?bool = null,
     /// Always produce unwind table entries for all functions
     unwind_tables: ?bool = null,
-    /// Use LLVM as the codegen backend
-    llvm: ?bool = null,
-    /// Use Clang as the C/C++ compilation backend
-    clang: ?bool = null,
     /// How many lines of reference trace should be shown per compile error
     reference_trace: ?bool = null,
     /// Enable error tracing in `ReleaseFast` mode
@@ -600,24 +596,6 @@ pub const BuildCommand = struct {
             } else {
                 ptr[0..19].* = "-fno-unwind-tables\x00".*;
                 ptr += 19;
-            }
-        }
-        if (cmd.llvm) |llvm| {
-            if (llvm) {
-                ptr[0..7].* = "-fLLVM\x00".*;
-                ptr += 7;
-            } else {
-                ptr[0..10].* = "-fno-LLVM\x00".*;
-                ptr += 10;
-            }
-        }
-        if (cmd.clang) |clang| {
-            if (clang) {
-                ptr[0..8].* = "-fClang\x00".*;
-                ptr += 8;
-            } else {
-                ptr[0..11].* = "-fno-Clang\x00".*;
-                ptr += 11;
             }
         }
         if (cmd.reference_trace) |reference_trace| {
@@ -1262,20 +1240,6 @@ pub const BuildCommand = struct {
                 len +%= 19;
             }
         }
-        if (cmd.llvm) |llvm| {
-            if (llvm) {
-                len +%= 7;
-            } else {
-                len +%= 10;
-            }
-        }
-        if (cmd.clang) |clang| {
-            if (clang) {
-                len +%= 8;
-            } else {
-                len +%= 11;
-            }
-        }
         if (cmd.reference_trace) |reference_trace| {
             if (reference_trace) {
                 len +%= 18;
@@ -1817,20 +1781,6 @@ pub const BuildCommand = struct {
                 array.writeMany("-funwind-tables\x00");
             } else {
                 array.writeMany("-fno-unwind-tables\x00");
-            }
-        }
-        if (cmd.llvm) |llvm| {
-            if (llvm) {
-                array.writeMany("-fLLVM\x00");
-            } else {
-                array.writeMany("-fno-LLVM\x00");
-            }
-        }
-        if (cmd.clang) |clang| {
-            if (clang) {
-                array.writeMany("-fClang\x00");
-            } else {
-                array.writeMany("-fno-Clang\x00");
             }
         }
         if (cmd.reference_trace) |reference_trace| {
