@@ -20,8 +20,6 @@ pub const BuildCommand = packed struct {
         valgrind: bool = false,
         sanitize_thread: bool = false,
         unwind_tables: bool = false,
-        llvm: bool = false,
-        clang: bool = false,
         reference_trace: bool = false,
         error_tracing: bool = false,
         single_threaded: bool = false,
@@ -53,8 +51,6 @@ pub const BuildCommand = packed struct {
         valgrind: bool = undefined,
         sanitize_thread: bool = undefined,
         unwind_tables: bool = undefined,
-        llvm: bool = undefined,
-        clang: bool = undefined,
         reference_trace: bool = undefined,
         error_tracing: bool = undefined,
         single_threaded: bool = undefined,
@@ -103,10 +99,6 @@ pub const BuildCommand = packed struct {
         ret.val.sanitize_thread = cmd.sanitize_thread.?;
         ret.key.unwind_tables = cmd.unwind_tables != null;
         ret.val.unwind_tables = cmd.unwind_tables.?;
-        ret.key.llvm = cmd.llvm != null;
-        ret.val.llvm = cmd.llvm.?;
-        ret.key.clang = cmd.clang != null;
-        ret.val.clang = cmd.clang.?;
         ret.key.reference_trace = cmd.reference_trace != null;
         ret.val.reference_trace = cmd.reference_trace.?;
         ret.key.error_tracing = cmd.error_tracing != null;
