@@ -587,15 +587,20 @@ pub fn logFaultAIO(buf: []u8, slices: []const []const u8) void {
 }
 pub const printStackTrace = blk: {
     const S = struct {
+        /// Namespace containing definition of `printStackTrace`.
+        const trace = @import("./trace.zig");
+
+        /// Used by panic functions if executable is static linked with special
+        /// module object `trace.o`.
         extern fn printStackTrace(*const Trace, usize, usize) void;
     };
     if (builtin.want_stack_traces and
         !builtin.have_stack_traces and
         builtin.output_mode == .Exe)
     {
-        break :blk @import("./trace.zig").printStackTrace;
+        break :blk S.trace.printStackTrace;
     } else {
-        break :blk &S.printStackTrace;
+        break :blk S.printStackTrace;
     }
 };
 pub noinline fn alarm(msg: []const u8, _: @TypeOf(@errorReturnTrace()), ret_addr: usize) void {
