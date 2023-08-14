@@ -48,6 +48,7 @@ pub const logging_override: debug.Logging.Override =
 };
 pub const exec_mode = .Run;
 pub const want_stack_traces: bool = enable_debugging;
+pub const have_stack_traces: bool = false;
 pub const logging_default: debug.Logging.Default = .{
     .Attempt = enable_debugging,
     .Success = enable_debugging,
