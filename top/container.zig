@@ -123,7 +123,6 @@ pub const ReinterpretSpec = struct {
         type_name: bool = false,
     };
 };
-
 pub const reinterpret = @"1";
 const @"1" = opaque {
     fn isEquivalent(comptime child: type, comptime write_spec: ReinterpretSpec, comptime dst_type: type, comptime src_type: type) bool {
