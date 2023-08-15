@@ -303,78 +303,91 @@ pub fn assertEqualMemory(comptime T: type, arg1: T, arg2: T) void {
 }
 pub fn intCastTruncatedBitsFault(comptime T: type, comptime U: type, arg: U, ret_addr: usize) noreturn {
     @setCold(true);
+    @setRuntimeSafety(builtin.is_safe);
     var buf: [4096]u8 = undefined;
     const len: u64 = about.writeIntCastTruncatedBits(T, U, &buf, arg);
     builtin.panic(buf[0..len], null, ret_addr);
 }
-pub fn subCausedOverflowError(comptime T: type, arg1: T, arg2: T) Error {
+pub fn subCausedOverflowError(comptime T: type, arg1: T, arg2: T, ret_addr: ?usize) Error {
     @setCold(true);
+    @setRuntimeSafety(builtin.is_safe);
     var buf: [4096]u8 = undefined;
     const len: u64 = about.writeSubCausedOverflow(T, @typeName(T), &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
-    builtin.alarm(buf[0..len], @errorReturnTrace(), @returnAddress());
+    builtin.alarm(buf[0..len], @errorReturnTrace(), ret_addr orelse @returnAddress());
     return error.SubCausedOverflow;
 }
 pub fn subCausedOverflowFault(comptime T: type, arg1: T, arg2: T, ret_addr: usize) noreturn {
     @setCold(true);
+    @setRuntimeSafety(builtin.is_safe);
     var buf: [4096]u8 = undefined;
     const len: u64 = about.writeSubCausedOverflow(T, @typeName(T), &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
     builtin.panic(buf[0..len], null, ret_addr);
 }
-pub fn addCausedOverflowError(comptime T: type, arg1: T, arg2: T) Error {
+pub fn addCausedOverflowError(comptime T: type, arg1: T, arg2: T, ret_addr: ?usize) Error {
     @setCold(true);
+    @setRuntimeSafety(builtin.is_safe);
     var buf: [4096]u8 = undefined;
     const len: u64 = about.writeAddCausedOverflow(T, @typeName(T), &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
-    builtin.alarm(buf[0..len], @errorReturnTrace(), @returnAddress());
+    builtin.alarm(buf[0..len], @errorReturnTrace(), ret_addr orelse @returnAddress());
     return error.AddCausedOverflow;
 }
 pub fn addCausedOverflowFault(comptime T: type, arg1: T, arg2: T, ret_addr: usize) noreturn {
     @setCold(true);
+    @setRuntimeSafety(builtin.is_safe);
     var buf: [4096]u8 = undefined;
     const len: u64 = about.writeAddCausedOverflow(T, @typeName(T), &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
     builtin.panic(buf[0..len], null, ret_addr);
 }
-pub fn mulCausedOverflowError(comptime T: type, arg1: T, arg2: T) Error {
+pub fn mulCausedOverflowError(comptime T: type, arg1: T, arg2: T, ret_addr: ?usize) Error {
     @setCold(true);
+    @setRuntimeSafety(builtin.is_safe);
     var buf: [4096]u8 = undefined;
     const len: u64 = about.writeMulCausedOverflow(T, @typeName(T), &buf, arg1, arg2);
-    builtin.alarm(buf[0..len], @errorReturnTrace(), @returnAddress());
+    builtin.alarm(buf[0..len], @errorReturnTrace(), ret_addr orelse @returnAddress());
     return error.MulCausedOverflow;
 }
 pub fn mulCausedOverflowFault(comptime T: type, arg1: T, arg2: T, ret_addr: usize) noreturn {
     @setCold(true);
+    @setRuntimeSafety(builtin.is_safe);
     var buf: [4096]u8 = undefined;
     const len: u64 = about.writeMulCausedOverflow(T, @typeName(T), &buf, arg1, arg2);
     builtin.panic(buf[0..len], null, ret_addr);
 }
-pub fn exactDivisionWithRemainderError(comptime T: type, arg1: T, arg2: T, result: T, remainder: T) Error {
+pub fn exactDivisionWithRemainderError(comptime T: type, arg1: T, arg2: T, result: T, remainder: T, ret_addr: ?usize) Error {
     @setCold(true);
+    @setRuntimeSafety(builtin.is_safe);
     var buf: [4096]u8 = undefined;
     const len: u64 = about.writeExactDivisionWithRemainder(T, @typeName(T), &buf, arg1, arg2, result, remainder);
-    builtin.alarm(buf[0..len], @errorReturnTrace(), @returnAddress());
+    builtin.alarm(buf[0..len], @errorReturnTrace(), ret_addr orelse @returnAddress());
     return error.ExactDivisionWithRemainder;
 }
 pub fn exactDivisionWithRemainderFault(comptime T: type, arg1: T, arg2: T, result: T, remainder: T, ret_addr: usize) noreturn {
     @setCold(true);
+    @setRuntimeSafety(builtin.is_safe);
     var buf: [4096]u8 = undefined;
     const len: u64 = about.writeExactDivisionWithRemainder(T, @typeName(T), &buf, arg1, arg2, result, remainder);
     builtin.panic(buf[0..len], null, ret_addr);
 }
-pub fn incorrectAlignmentError(comptime T: type, address: usize, alignment: usize) Error {
+pub fn incorrectAlignmentError(comptime T: type, address: usize, alignment: usize, ret_addr: ?usize) Error {
     @setCold(true);
+    @setRuntimeSafety(builtin.is_safe);
     const remainder: usize = address & (@typeInfo(T).Pointer.alignment -% 1);
     var buf: [4096]u8 = undefined;
-    const len: u64 = about.writeIncorrectAlignment(T, @typeName(T), &buf, address, alignment, remainder);
-    builtin.alarm(buf[0..len], @errorReturnTrace(), @returnAddress());
+    const len: u64 = about.writeIncorrectAlignment(@typeName(T), &buf, address, alignment, remainder);
+    builtin.alarm(buf[0..len], @errorReturnTrace(), ret_addr orelse @returnAddress());
     return error.IncorrectAlignment;
 }
-pub fn incorrectAlignmentFault(comptime T: type, buf: *[4096]u8, address: usize, alignment: usize, ret_addr: usize) noreturn {
+pub fn incorrectAlignmentFault(comptime T: type, address: usize, alignment: usize, ret_addr: usize) noreturn {
     @setCold(true);
+    @setRuntimeSafety(builtin.is_safe);
     const remainder: usize = address & (@typeInfo(T).Pointer.alignment -% 1);
-    const len: u64 = about.writeIncorrectAlignment(T, @typeName(T), &buf, address, alignment, remainder);
+    var buf: [4096]u8 = undefined;
+    const len: u64 = about.writeIncorrectAlignment(@typeName(T), &buf, address, alignment, remainder);
     builtin.panic(buf[0..len], null, ret_addr);
 }
 pub fn comparisonFailedFault(comptime T: type, symbol: []const u8, arg1: anytype, arg2: @TypeOf(arg1), ret_addr: usize) noreturn {
     @setCold(true);
+    @setRuntimeSafety(builtin.is_safe);
     const about_s: []const u8 = @typeName(T) ++ " failed assertion: ";
     var buf: [4096]u8 = undefined;
     const len: u64 = switch (@typeInfo(T)) {
