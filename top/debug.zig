@@ -398,8 +398,9 @@ pub fn comparisonFailedFault(comptime T: type, symbol: []const u8, arg1: anytype
     };
     builtin.panic(buf[0..len], null, ret_addr);
 }
-pub fn comparisonFailedError(comptime T: type, symbol: []const u8, arg1: anytype, arg2: @TypeOf(arg1)) Unexpected {
+pub fn comparisonFailedError(comptime T: type, symbol: []const u8, arg1: anytype, arg2: @TypeOf(arg1), ret_addr: ?usize) Unexpected {
     @setCold(true);
+    @setRuntimeSafety(builtin.is_safe);
     const about_s: []const u8 = @typeName(T) ++ " failed test: ";
     var buf: [4096]u8 = undefined;
     const len: u64 = switch (@typeInfo(T)) {
@@ -408,9 +409,10 @@ pub fn comparisonFailedError(comptime T: type, symbol: []const u8, arg1: anytype
         .Type => mach.memcpyMulti(&buf, &[_][]const u8{ about_s, @typeName(arg1), symbol, @typeName(arg2) }),
         else => mach.memcpyMulti(&buf, &[_][]const u8{ about_s, "unexpected value" }),
     };
-    builtin.alarm(buf[0..len], @errorReturnTrace(), @returnAddress());
+    builtin.alarm(buf[0..len], @errorReturnTrace(), ret_addr orelse @returnAddress());
     return error.UnexpectedValue;
 }
+
 pub fn expect(b: bool) debug.Unexpected!void {
     if (!b) {
         return error.UnexpectedValue;
@@ -418,32 +420,32 @@ pub fn expect(b: bool) debug.Unexpected!void {
 }
 pub fn expectBelow(comptime T: type, arg1: T, arg2: T) debug.Unexpected!void {
     if (arg1 >= arg2) {
-        return debug.comparisonFailedError(T, " < ", arg1, arg2);
+        return debug.comparisonFailedError(T, " < ", arg1, arg2, @returnAddress());
     }
 }
 pub fn expectBelowOrEqual(comptime T: type, arg1: T, arg2: T) debug.Unexpected!void {
     if (arg1 > arg2) {
-        return debug.comparisonFailedError(T, " <= ", arg1, arg2);
+        return debug.comparisonFailedError(T, " <= ", arg1, arg2, @returnAddress());
     }
 }
 pub fn expectEqual(comptime T: type, arg1: T, arg2: T) debug.Unexpected!void {
     if (!mem.testEqual(T, arg1, arg2)) {
-        return debug.comparisonFailedError(T, " == ", arg1, arg2);
+        return debug.comparisonFailedError(T, " == ", arg1, arg2, @returnAddress());
     }
 }
 pub fn expectNotEqual(comptime T: type, arg1: T, arg2: T) debug.Unexpected!void {
     if (mem.testEqual(T, arg1, arg2)) {
-        return debug.comparisonFailedError(T, " != ", arg1, arg2);
+        return debug.comparisonFailedError(T, " != ", arg1, arg2, @returnAddress());
     }
 }
 pub fn expectAboveOrEqual(comptime T: type, arg1: T, arg2: T) debug.Unexpected!void {
     if (arg1 < arg2) {
-        return debug.comparisonFailedError(T, " >= ", arg1, arg2);
+        return debug.comparisonFailedError(T, " >= ", arg1, arg2, @returnAddress());
     }
 }
 pub fn expectAbove(comptime T: type, arg1: T, arg2: T) debug.Unexpected!void {
     if (arg1 <= arg2) {
-        return debug.comparisonFailedError(T, " > ", arg1, arg2);
+        return debug.comparisonFailedError(T, " > ", arg1, arg2, @returnAddress());
     }
 }
 pub fn expectEqualMemory(comptime T: type, arg1: T, arg2: T) debug.Unexpected!void {
