@@ -519,27 +519,35 @@ pub fn expectEqualMemory(comptime T: type, arg1: T, arg2: T) debug.Unexpected!vo
     }
 }
 pub fn sampleAllReports() void {
-    const T = u64;
-    comptime var arg1: T = 2048;
-    comptime var arg2: T = 4098;
-    comptime var result: T = 2;
-    const remainder: T = 2;
-    expectEqual(T, arg1, arg2) catch {};
-    expectNotEqual(T, arg1, arg2) catch {};
-    expectAbove(T, arg1, arg2) catch {};
-    expectBelow(T, arg1, arg2) catch {};
-    expectAboveOrEqual(T, arg1, arg2) catch {};
-    expectBelowOrEqual(T, arg1, arg2) catch {};
-    subCausedOverflowError(T, arg1, arg2) catch {};
-    addCausedOverflowError(T, arg1, arg2) catch {};
-    mulCausedOverflowError(T, arg1, arg2) catch {};
-    exactDivisionWithRemainderError(T, arg1, arg2, result, remainder) catch {};
-    incorrectAlignmentError(*T, arg2, remainder) catch {};
-    subCausedOverflowError(T, ~arg1, ~arg2) catch {};
-    addCausedOverflowError(T, ~arg1, ~arg2) catch {};
-    mulCausedOverflowError(T, ~arg1, ~arg2) catch {};
-    exactDivisionWithRemainderError(T, ~arg1, ~arg2, result, remainder) catch {};
-    incorrectAlignmentError(*T, ~arg2, remainder) catch {};
+    inline for (.{ u16, u32, u64, usize }) |T| {
+        var arg1: T = 2048;
+        var arg2: T = 4098;
+        var result: T = 2;
+        const remainder: T = 2;
+        expectEqual(T, arg1, arg2) catch {};
+        expectNotEqual(T, arg1, arg2) catch {};
+        expectAbove(T, arg1, arg2) catch {};
+        expectBelow(T, arg1, arg2) catch {};
+        expectAboveOrEqual(T, arg1, arg2) catch {};
+        expectBelowOrEqual(T, arg1, arg2) catch {};
+        subCausedOverflowError(T, arg1, arg2, null) catch {};
+        addCausedOverflowError(T, arg1, arg2, null) catch {};
+        mulCausedOverflowError(T, arg1, arg2, null) catch {};
+        exactDivisionWithRemainderError(T, arg1, arg2, result, remainder, null) catch {};
+        incorrectAlignmentError(*T, arg2, remainder, null) catch {};
+        subCausedOverflowError(T, ~arg1, ~arg2, null) catch {};
+        addCausedOverflowError(T, ~arg1, ~arg2, null) catch {};
+        mulCausedOverflowError(T, ~arg1, ~arg2, null) catch {};
+        exactDivisionWithRemainderError(T, ~arg1, ~arg2, result, remainder, null) catch {};
+        incorrectAlignmentError(*T, ~arg2, remainder, null) catch {};
+    }
+
+    about.faultNotice("message");
+    about.errorNotice(@errorName(error.Error));
+    about.errorFaultNotice(@errorName(error.Error), "message");
+    about.faultRcNotice("message", 2);
+    about.errorRcNotice(@errorName(error.Error), 1);
+    about.errorFaultRcNotice(@errorName(error.Error), "message", 2);
 }
 pub fn write(buf: []const u8) void {
     if (@inComptime()) {
