@@ -52,7 +52,9 @@ pub const exec_mode: build.ExecMode = .Run;
 fn testManyCompileOptionsWithArguments(args: anytype, vars: anytype) !void {
     var address_space: Node.AddressSpace = .{};
     var thread_space: Node.ThreadSpace = .{};
-    var allocator: build.Allocator = build.Allocator.init_arena(Node.AddressSpace.arena(Node.max_thread_count));
+    var allocator: build.Allocator = build.Allocator.init_arena(
+        Node.AddressSpace.arena(Node.specification.options.max_thread_count),
+    );
 
     var path: build.Path = .{ .names = @constCast(&[_][:0]const u8{"any"}) };
     var build_cmd: build.BuildCommand = .{
@@ -90,7 +92,7 @@ fn testManyCompileOptionsWithArguments(args: anytype, vars: anytype) !void {
             .{ .name = "@build" },
         },
         .modules = &.{
-            .{ .name = "zig_lib", .path = Node.lib_build_root ++ "/zig_lib.zig" },
+            .{ .name = "zig_lib", .path = builtin.lib_root ++ "/zig_lib.zig" },
             .{ .name = "@build", .path = "./build.zig" },
         },
     };

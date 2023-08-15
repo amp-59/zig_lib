@@ -30,7 +30,7 @@ pub fn main(args: anytype) !void {
     var allocator: mem.SimpleAllocator = .{};
     var ptrs: build.Fns = .{};
     var loader: DynamicLoader = .{};
-    const info: *DynamicLoader.Info = try loader.load("zig-out/lib/libcmd_parsers.so");
+    const info: *DynamicLoader.Info = try loader.load("zig-out/lib/libzero-cmd_parsers.so");
     info.loadPointers(build.Fns, &ptrs);
 
     var cmd: build.BuildCommand = .{ .kind = .exe };
