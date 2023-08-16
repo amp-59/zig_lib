@@ -15,7 +15,7 @@ pub const is_zig_lib: bool = @hasDecl(@import("std"), "zig_lib");
 pub const has_start_in_root: bool = @hasDecl(root, "_start");
 pub const is_executable: bool = builtin.output_mode == .Exe;
 
-/// * Determines defaults for various allocator checks.
+/// Determines `@setRuntimeSafety` for many scopes.
 pub const is_safe: bool = define("is_safe", bool, builtin.mode == .ReleaseSafe);
 pub const is_small: bool = define("is_small", bool, builtin.mode == .ReleaseSmall);
 pub const is_fast: bool = define("is_fast", bool, builtin.mode == .ReleaseFast);
@@ -38,15 +38,27 @@ pub const message_suffix: [:0]const u8 = define("message_suffix", [:0]const u8, 
 pub const message_indent: u8 = define("message_indent", u8, 16);
 /// Sequence used to undo `message_style` if defined.
 pub const message_no_style: [:0]const u8 = "\x1b[0m";
+
 pub const have_stack_traces: bool = define("have_stack_traces", bool, false);
 pub const want_stack_traces: bool = define("want_stack_traces", bool, builtin.mode == .Debug and !builtin.strip_debug_info);
+
 /// Determines whether calling `panicUnwrapError` is legal.
 pub const discard_errors: bool = define("discard_errors", bool, true);
 /// Determines whether `assert*` functions will be called at runtime.
 pub const runtime_assertions: bool = define("runtime_assertions", bool, builtin.mode == .Debug or builtin.mode == .ReleaseSafe);
-/// Determines whether `static.assert*` functions will be called at comptime
-/// time.
+/// Determines whether `static.assert*` functions will be called at compile time.
 pub const comptime_assertions: bool = define("comptime_assertions", bool, builtin.mode == .Debug);
+
+pub const panic = define("panic", debug.PanicFn, debug.panic);
+pub const panicSentinelMismatch = define("panicSentinelMismatch", debug.PanicSentinelMismatchFn, debug.panicSentinelMismatch);
+pub const panicUnwrapError = define("panicUnwrapError", debug.PanicUnwrapErrorFn, debug.panicUnwrapError);
+pub const panicOutOfBounds = define("panicOutOfBounds", debug.PanicOutOfBoundsFn, debug.panicOutOfBounds);
+pub const panicStartGreaterThanEnd = define("startGreaterThanEnd", debug.PanicStartGreaterThanEndFn, debug.panicStartGreaterThanEnd);
+pub const panicInactiveUnionField = define("panicInactiveUnionField", debug.PanicInactiveUnionFieldFn, debug.panicInactiveUnionField);
+pub const alarm = define("alarm", debug.AlarmFn, debug.alarm);
+
+pub const panic_return_value: u8 = define("panic_return_value", u8, 2);
+
 /// Determines text output in case of panic without formatting
 pub const panic_messages = define("panic_messages", type, struct {
     pub const unreach: [:0]const u8 = "reached unreachable code";
@@ -75,13 +87,6 @@ pub const panic_messages = define("panic_messages", type, struct {
     pub const memcpy_alias: [:0]const u8 = "@memcpy arguments alias";
     pub const noreturn_returned: [:0]const u8 = "'noreturn' function returned";
 });
-pub const panic = define("panic", debug.PanicFn, debug.panic);
-pub const panicSentinelMismatch = define("panicSentinelMismatch", debug.PanicSentinelMismatchFn, debug.panicSentinelMismatch);
-pub const panicUnwrapError = define("panicUnwrapError", debug.PanicUnwrapErrorFn, debug.panicUnwrapError);
-pub const panicOutOfBounds = define("panicOutOfBounds", debug.PanicOutOfBoundsFn, debug.panicOutOfBounds);
-pub const panicStartGreaterThanEnd = define("startGreaterThanEnd", debug.PanicStartGreaterThanEndFn, debug.panicStartGreaterThanEnd);
-pub const panicInactiveUnionField = define("panicInactiveUnionField", debug.PanicInactiveUnionFieldFn, debug.panicInactiveUnionField);
-pub const alarm = define("alarm", debug.AlarmFn, debug.alarm);
 
 pub const logging_default: debug.Logging.Default = define(
     "logging_default",
