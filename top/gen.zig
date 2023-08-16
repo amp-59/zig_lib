@@ -449,6 +449,12 @@ pub fn allPanicDeclarations() void {
     };
     inline for (names) |name| {
         array.writeMany(
+            \\/// This function type is used by the Zig language code generation and
+            \\/// therefore must be kept in sync with the compiler implementation.
+            \\
+        );
+        array.writeMany("const " ++ fmt.static.toTitlecase(name) ++ "Fn = @TypeOf(default." ++ name ++ ");\n");
+        array.writeMany(
             \\/// This function is used by the Zig language code generation and
             \\/// therefore must be kept in sync with the compiler implementation.
             \\

@@ -10,7 +10,7 @@ const build_cmd: zl.build.BuildCommand = .{
     .stack_protector = false,
     .reference_trace = true,
     .single_threaded = true,
-    .function_sections = true,
+    .function_sections = false,
     .strip = true,
     .compiler_rt = false,
     .gc_sections = true,
@@ -22,9 +22,36 @@ const format_cmd: build.FormatCommand = .{
     .ast_check = true,
 };
 pub const enable_debugging: bool = false;
+pub fn testLangGroup(allocator: *build.Allocator, group: *Node) void {
+    group.addBuild(allocator, build_cmd, "slice_layout", "test/lang/slice_layout.zig")
+        .descr = "Verify slice layout";
+}
+pub fn testTraceGroup(allocator: *build.Allocator, group: *Node) void {
+    var trace_build_cmd: build.BuildCommand = build_cmd;
+    trace_build_cmd.strip = false;
+    const access_inactive: *Node = group.addBuild(allocator, trace_build_cmd, "access_inactive", "test/trace/access_inactive.zig");
+    const assertion_failed: *Node = group.addBuild(allocator, trace_build_cmd, "assertion_failed", "test/trace/assertion_failed.zig");
+    const out_of_bounds: *Node = group.addBuild(allocator, trace_build_cmd, "out_of_bounds", "test/trace/out_of_bounds.zig");
+    const reach_unreachable: *Node = group.addBuild(allocator, trace_build_cmd, "reach_unreachable", "test/trace/reach_unreachable.zig");
+    const sentinel_mismatch: *Node = group.addBuild(allocator, trace_build_cmd, "sentinel_mismatch", "test/trace/sentinel_mismatch.zig");
+    const stack_overflow: *Node = group.addBuild(allocator, trace_build_cmd, "stack_overflow", "test/trace/stack_overflow.zig");
+    const start_gt_end: *Node = group.addBuild(allocator, trace_build_cmd, "start_gt_end", "test/trace/start_gt_end.zig");
+    const static_exe: *Node = group.addBuild(allocator, trace_build_cmd, "static_exe", "test/trace/static_exe.zig");
+    trace_build_cmd.kind = .obj;
+    trace_build_cmd.gc_sections = false;
+    const static_obj: *Node = group.addBuild(allocator, trace_build_cmd, "static_obj", "test/trace/static_obj.zig");
+    access_inactive.descr = "Test stack trace for accessing inactive union field (panicInactiveUnionField)";
+    out_of_bounds.descr = "Test stack trace for out-of-bounds (panicOutOfBounds)";
+    start_gt_end.descr = "Test stack trace for out-of-bounds (panicStartGreaterThanEnd)";
+    sentinel_mismatch.descr = "Test stack trace for sentinel mismatch (panicSentinelMismatch)";
+    assertion_failed.descr = "Test stack trace for assertion failed";
+    reach_unreachable.descr = "Test stack trace for reaching unreachable code";
+    stack_overflow.descr = "Test stack trace for stack overflow";
+    static_exe.dependOn(allocator, static_obj);
+}
 pub fn testGroup(allocator: *build.Allocator, group: *Node) void {
     var test_build_cmd: build.BuildCommand = build_cmd;
-    test_build_cmd.strip = false;
+    test_build_cmd.strip = true;
     const decls: *Node = group.addBuild(allocator, test_build_cmd, "decls", "test/decl-test.zig");
     const builtin: *Node = group.addBuild(allocator, test_build_cmd, "builtin", "test/builtin-test.zig");
     const meta: *Node = group.addBuild(allocator, test_build_cmd, "meta", "test/meta-test.zig");
@@ -56,17 +83,11 @@ pub fn testGroup(allocator: *build.Allocator, group: *Node) void {
     const pcurves: *Node = group.addBuild(allocator, test_build_cmd, "pcurves", "test/crypto/pcurves-test.zig");
     const cmdline_writer: *Node = group.addBuild(allocator, test_build_cmd, "cmdline_writer", "test/cmdline-writer-test.zig");
     const cmdline_parser: *Node = group.addBuild(allocator, test_build_cmd, "cmdline_parser", "test/cmdline-parser-test.zig");
+    testLangGroup(allocator, group.addGroup(allocator, "lang"));
+    testTraceGroup(allocator, group.addGroup(allocator, "trace"));
     const algo: *Node = group.addBuild(allocator, test_build_cmd, "algo", "test/algo-test.zig");
-    const debug: *Node = group.addBuild(allocator, test_build_cmd, "debug", "test/debug-test.zig");
-    test_build_cmd.kind = .obj;
-    test_build_cmd.gc_sections = false;
-    const debug2_test: *Node = group.addBuild(allocator, test_build_cmd, "debug2_test", "test/debug2-test.zig");
-    test_build_cmd.gc_sections = true;
-    test_build_cmd.kind = .exe;
-    debug.flags.want_stack_traces = true;
     test_build_cmd.strip = true;
     const fmt_cmp: *Node = group.addBuild(allocator, test_build_cmd, "fmt_cmp", "test/fmt_cmp-test.zig");
-    test_build_cmd.emit_asm = null;
     test_build_cmd.modules = &.{.{ .name = "@build", .path = "./build.zig" }};
     test_build_cmd.dependencies = &.{.{ .name = "@build" }};
     const build_stress: *Node = group.addBuild(allocator, test_build_cmd, "build_stress", "test/build-test.zig");
@@ -122,14 +143,12 @@ pub fn testGroup(allocator: *build.Allocator, group: *Node) void {
     cmdline_parser.descr = "Test generated command line parser functions";
     algo.descr = "Test sorting and compression functions";
     elf.descr = "Test ELF iterator";
-    debug.descr = "Test debugging functions";
     fmt_cmp.descr = "Compare formatting methods";
     build_stress.descr = "Try to produce builder errors";
     serial.descr = "Test data serialisation functions";
     build_runner.descr = "Test library build runner using the library build program";
     zls_build_runner.descr = "Test ZLS special build runner";
     cmdline_writer.addToplevelArgs(allocator);
-    debug.dependOn(allocator, debug2_test);
     build_stress.addToplevelArgs(allocator);
     serial.addToplevelArgs(allocator);
     build_runner.addToplevelArgs(allocator);
