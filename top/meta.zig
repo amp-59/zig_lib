@@ -810,9 +810,9 @@ fn sortDecls(comptime Container: type) []const builtin.Type.Declaration {
     return ret;
 }
 pub fn containerDeclsToBitFieldSets(comptime Container: type, comptime backing_integer: type) []const GenericBitFieldSet(backing_integer) {
+    @setEvalBranchQuota(~@as(u32, 0));
     const BitFieldSet = GenericBitFieldSet(backing_integer);
     const BitFieldPair = BitFieldSet.BitFieldPair;
-    @setEvalBranchQuota(~@as(u32, 0));
     const decls: []const builtin.Type.Declaration = sortDecls(Container);
     var done: [decls.len]bool = .{false} ** decls.len;
     var c_sets: []const BitFieldSet = &.{};
