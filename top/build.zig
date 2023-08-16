@@ -43,18 +43,16 @@ pub const BuilderSpec = struct {
         /// Allow this many errors before exiting the thread group.
         /// A value of `null` will attempt to report all errors and exit from main.
         max_error_count: ?u8 = 0,
-        /// Lowest allocated byte address for dynamic library metadata mappings.
-        dyn_lb_info_addr: usize = 0x400000000000,
-        /// Lowest allocated byte address for dynamic library section mappings.
-        dyn_lb_sect_addr: usize = 0x500000000000,
+        /// Lowest allocated byte address.
+        lb_addr: usize = 0x400000000000,
         /// Bytes allowed per thread arena (dynamic maximum)
         max_arena_aligned_bytes: usize = 8 * 1024 * 1024,
         /// Bytes allowed per thread stack (static maximum)
         max_stack_aligned_bytes: usize = 8 * 1024 * 1024,
-        /// Lowest allocated byte address for thread stacks. This field and the
-        /// two previous fields derive the arena lowest allocated byte address,
-        /// as this is the first unallocated byte address of the thread space.
-        stack_lb_addr: usize = 0x700000000000,
+        /// Bytes allowed for dynamic loader metadata (default=64KiB)
+        max_load_info_aligned_bytes: usize = 64 * 1024,
+        /// Bytes allowed for dynamic libraries (.text + .rodata) (default=8MiB)
+        max_load_sect_aligned_bytes: usize = 8 * 1024 * 1024,
         /// This value is compared with return codes to determine whether a
         /// system or compile command succeeded.
         system_expected_status: u8 = 0,
