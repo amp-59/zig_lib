@@ -1551,32 +1551,56 @@ pub fn hexToBytes2(dest: []u8, src: []const u8) []const u8 {
     return dest[0 .. idx / 2];
 }
 pub const static = struct {
-    fn concatUpper(comptime s: []const u8, comptime c: u8) []const u8 {
-        return switch (c) {
-            'a'...'z' => s ++ [1]u8{c -% ('a' -% 'A')},
-            else => s ++ [1]u8{c},
-        };
-    }
-    pub fn toInitialism(comptime names: []const []const u8) []const u8 {
-        var ret: []const u8 = meta.empty;
-        var state: bool = false;
-        for (names) |name| {
-            for (name) |c| {
-                if (c == '_' or c == '.') {
-                    state = true;
-                } else if (state) {
-                    ret = concatUpper(ret, c);
-                    state = false;
-                }
+    inline fn concatUpper(comptime s: []const u8, comptime c: u8) []const u8 {
+        comptime {
+            switch (c) {
+                'a'...'z' => return s ++ [1]u8{c -% ('a' -% 'A')},
+                else => return s ++ [1]u8{c},
             }
-            state = true;
         }
-        return static.toTitlecase(ret);
     }
-    pub fn toCamelCases(comptime names: []const []const u8) []const u8 {
-        var ret: []const u8 = meta.empty;
-        var state: bool = false;
-        for (names) |name| {
+    pub inline fn toInitialism(comptime names: []const []const u8) []const u8 {
+        comptime {
+            var ret: []const u8 = meta.empty;
+            var state: bool = false;
+            for (names) |name| {
+                for (name) |c| {
+                    if (c == '_' or c == '.') {
+                        state = true;
+                    } else if (state) {
+                        ret = concatUpper(ret, c);
+                        state = false;
+                    }
+                }
+                state = true;
+            }
+            return static.toTitlecase(ret);
+        }
+    }
+    pub inline fn toCamelCases(comptime names: []const []const u8) []const u8 {
+        comptime {
+            var ret: []const u8 = meta.empty;
+            var state: bool = false;
+            for (names) |name| {
+                for (name) |c| {
+                    if (c == '_' or c == '.') {
+                        state = true;
+                    } else if (state) {
+                        ret = concatUpper(ret, c);
+                        state = false;
+                    } else {
+                        ret = ret ++ [1]u8{c};
+                    }
+                }
+                state = true;
+            }
+            return ret;
+        }
+    }
+    pub inline fn toCamelCase(comptime name: []const u8) []const u8 {
+        comptime {
+            var ret: []const u8 = meta.empty;
+            var state: bool = false;
             for (name) |c| {
                 if (c == '_' or c == '.') {
                     state = true;
@@ -1587,26 +1611,10 @@ pub const static = struct {
                     ret = ret ++ [1]u8{c};
                 }
             }
-            state = true;
+            return ret;
         }
-        return ret;
     }
-    pub fn toCamelCase(comptime name: []const u8) []const u8 {
-        var ret: []const u8 = meta.empty;
-        var state: bool = false;
-        for (name) |c| {
-            if (c == '_' or c == '.') {
-                state = true;
-            } else if (state) {
-                ret = concatUpper(ret, c);
-                state = false;
-            } else {
-                ret = ret ++ [1]u8{c};
-            }
-        }
-        return ret;
-    }
-    pub fn toTitlecases(comptime names: []const []const u8) []const u8 {
+    pub inline fn toTitlecases(comptime names: []const []const u8) []const u8 {
         const rename: []const u8 = static.toCamelCases(names);
         if (rename[0] >= 'a') {
             return [1]u8{rename[0] -% ('a' -% 'A')} ++ rename[1..rename.len];
@@ -1614,7 +1622,7 @@ pub const static = struct {
             return rename;
         }
     }
-    pub fn toTitlecase(comptime name: []const u8) []const u8 {
+    pub inline fn toTitlecase(comptime name: []const u8) []const u8 {
         const rename: []const u8 = static.toCamelCase(name);
         if (rename[0] >= 'a') {
             return [1]u8{rename[0] -% ('a' -% 'A')} ++ rename[1..rename.len];
