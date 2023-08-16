@@ -73,7 +73,9 @@ pub const trace: debug.Trace = .{
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) void {
     var address_space: Node.AddressSpace = .{};
     var thread_space: Node.ThreadSpace = .{};
-    var allocator: build.Allocator = build.Allocator.init_arena(Node.AddressSpace.arena(Node.max_thread_count));
+    var allocator: build.Allocator = build.Allocator.init_arena(
+        Node.AddressSpace.arena(Node.specification.options.max_thread_count),
+    );
     if (args.len < 5) {
         proc.exitError(error.MissingEnvironmentPaths, 2);
     }
