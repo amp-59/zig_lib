@@ -51,7 +51,7 @@ pub const SourceLocation = struct {
         len +%= ud64.formatWriteBuf(buf + len);
         buf[len] = ':';
         len +%= 1;
-        ud64 = @bitCast(format.column);
+        ud64.value = format.column;
         len +%= ud64.formatWriteBuf(buf + len);
         @as(*[4]u8, @ptrCast(buf + len)).* = "\x1b[0m".*;
         return len +% 4;
@@ -977,6 +977,7 @@ pub const DwarfInfo = extern struct {
                 .qword => 12 +% unit.len,
                 .dword => 4 +% unit.len,
             };
+
             var info_entry: Die = comptime builtin.zero(Die);
             var pos: u64 = unit.info_entry.off +% unit.info_entry.len;
             while (pos < next_off) {
@@ -1548,6 +1549,7 @@ fn getStringGeneric(opt_str: ?[]const u8, offset: u64) [:0]const u8 {
     return str[offset .. offset +% last :0];
 }
 fn parseFormValue(allocator: *Allocator, unit: *Unit, bytes: []u8, form: Form) struct { FormValue, u64 } {
+    @setRuntimeSafety(builtin.is_safe);
     switch (form) {
         .addr => return .{ .{ .Address = @as(*align(1) usize, @ptrCast(bytes)).* }, @sizeOf(u64) },
         .block2 => {
@@ -1779,7 +1781,7 @@ const about = struct {
         len +%= ud64.formatWriteBuf(buf[len..].ptr);
         @as(*[11]u8, @ptrCast(buf[len..].ptr)).* = ", unit_len=".*;
         len +%= 11;
-        ud64 = @bitCast(unit.len);
+        ud64.value = unit.len;
         len +%= ud64.formatWriteBuf(buf[len..].ptr);
         @as(*[12]u8, @ptrCast(buf[len..].ptr)).* = ", word_size=".*;
         len +%= 12;
@@ -1804,7 +1806,7 @@ const about = struct {
             len = 0;
             @as(fmt.AboutDest, @ptrCast(buf[len..].ptr)).* = abbrev_code_s.*;
             len +%= abbrev_code_s.len;
-            id64 = @bitCast(ent.head.code);
+            id64.value = @bitCast(ent.head.code);
             len +%= id64.formatWriteBuf(buf[len..].ptr);
             @as(*[2]u8, @ptrCast(buf[len..].ptr)).* = ", ".*;
             len +%= 2;
@@ -1813,7 +1815,7 @@ const about = struct {
             buf[len] = '\n';
             len +%= 1;
             for (ent.kvs[0..ent.kvs_len], 0..) |*kv, kv_idx| {
-                id64 = @bitCast(kv_idx);
+                id64.value = @bitCast(kv_idx);
                 const tmp_len: usize = id64.formatWriteBuf(&tmp);
                 @as(*[4]u8, @ptrCast(buf[len..].ptr)).* = "    ".*;
                 len +%= 4 -% tmp_len;
@@ -1832,7 +1834,7 @@ const about = struct {
                 if (kv.payload != 0) {
                     @as(*[3]u8, @ptrCast(buf[len..].ptr)).* = " = ".*;
                     len +%= 3;
-                    id64 = @bitCast(kv.payload);
+                    id64.value = @bitCast(kv.payload);
                     len +%= id64.formatWriteBuf(buf[len..].ptr);
                 }
                 buf[len] = '\n';
@@ -1873,11 +1875,11 @@ const about = struct {
             len +%= 3;
             switch (kv.val) {
                 .Address => |addr| {
-                    id64 = @bitCast(addr);
+                    id64.value = @bitCast(addr);
                     len +%= id64.formatWriteBuf(buf[len..].ptr);
                 },
                 .AddrOffset => |addrx| {
-                    id64 = @bitCast(addrx);
+                    id64.value = @bitCast(addrx);
                     len +%= id64.formatWriteBuf(buf[len..].ptr);
                 },
                 .Block => |block| {
@@ -1897,14 +1899,14 @@ const about = struct {
                     } else {
                         buf[len] = '@';
                         len +%= 1;
-                        id64 = @bitCast(ptr);
+                        id64.value = @bitCast(ptr);
                         len +%= id64.formatWriteBuf(buf[len..].ptr);
                     }
                 },
                 .Ref => |ref| {
                     buf[len] = '@';
                     len +%= 1;
-                    id64 = @bitCast(ref);
+                    id64.value = @bitCast(ref);
                     len +%= id64.formatWriteBuf(buf[len..].ptr);
                 },
                 else => {},
