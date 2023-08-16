@@ -578,63 +578,22 @@ pub fn read(comptime n: u64) struct { buf: [n]u8, len: u64 } {
         ),
     };
 }
-pub inline fn logSuccess(buf: []const u8) void {
-    if (logging_general.Success) write(buf);
-}
-pub inline fn logAcquire(buf: []const u8) void {
-    if (logging_general.Acquire) write(buf);
-}
-pub inline fn logRelease(buf: []const u8) void {
-    if (logging_general.Release) write(buf);
-}
-pub inline fn logError(buf: []const u8) void {
-    if (logging_general.Error) write(buf);
-}
-pub inline fn logFault(buf: []const u8) void {
-    if (logging_general.Fault) write(buf);
-}
-pub fn logAlwaysAIO(buf: []u8, slices: []const []const u8) void {
-    @setRuntimeSafety(false);
-    write(buf[0..mach.memcpyMulti(buf.ptr, slices)]);
-}
-pub fn logSuccessAIO(buf: []u8, slices: []const []const u8) void {
-    @setRuntimeSafety(false);
-    logSuccess(buf[0..mach.memcpyMulti(buf.ptr, slices)]);
-}
-pub fn logAcquireAIO(buf: []u8, slices: []const []const u8) void {
-    @setRuntimeSafety(false);
-    logAcquire(buf[0..mach.memcpyMulti(buf.ptr, slices)]);
-}
-pub fn logReleaseAIO(buf: []u8, slices: []const []const u8) void {
-    @setRuntimeSafety(false);
-    logRelease(buf[0..mach.memcpyMulti(buf.ptr, slices)]);
-}
-pub fn logErrorAIO(buf: []u8, slices: []const []const u8) void {
-    @setCold(true);
-    @setRuntimeSafety(false);
-    logError(buf[0..mach.memcpyMulti(buf.ptr, slices)]);
-}
-pub fn logFaultAIO(buf: []u8, slices: []const []const u8) void {
-    @setCold(true);
-    @setRuntimeSafety(false);
-    logFault(buf[0..mach.memcpyMulti(buf.ptr, slices)]);
-}
-pub const printStackTrace = blk: {
-    const S = struct {
-        /// Namespace containing definition of `printStackTrace`.
-        const trace = @import("./trace.zig");
+const special = struct {
+    /// Namespace containing definition of `printStackTrace`.
+    const trace = @import("./trace.zig");
 
-        /// Used by panic functions if executable is static linked with special
-        /// module object `trace.o`.
-        extern fn printStackTrace(*const Trace, usize, usize) void;
-    };
+    /// Used by panic functions if executable is static linked with special
+    /// module object `trace.o`.
+    extern fn printStackTrace(*const Trace, u64, u64) void;
+};
+pub const printStackTrace = blk: {
     if (builtin.want_stack_traces and
         !builtin.have_stack_traces and
         builtin.output_mode == .Exe)
     {
-        break :blk S.trace.printStackTrace;
+        break :blk special.trace.printStackTrace;
     } else {
-        break :blk S.printStackTrace;
+        break :blk special.printStackTrace;
     }
 };
 pub noinline fn alarm(msg: []const u8, _: @TypeOf(@errorReturnTrace()), ret_addr: usize) void {
@@ -651,7 +610,7 @@ pub noinline fn panic(msg: []const u8, _: @TypeOf(@errorReturnTrace()), ret_addr
     if (builtin.want_stack_traces and builtin.trace.Fault) {
         printStackTrace(&builtin.trace, ret_addr orelse @returnAddress(), 0);
     }
-    @call(.always_inline, proc.exitGroupFault, .{ msg, 2 });
+    @call(.always_inline, proc.exitGroupFault, .{ msg, builtin.panic_return_value });
 }
 pub noinline fn panicSignal(msg: []const u8, ctx_ptr: *const anyopaque) noreturn {
     @setCold(true);
