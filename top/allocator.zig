@@ -1111,13 +1111,13 @@ const Branches = struct {
             var array: PrintArray = undefined;
             array.undefineAll();
             showWrite(branches, &array);
-            debug.logSuccess(array.readAll());
+            debug.write(array.readAll());
         }
         pub fn showWithReference(t_branches: Branches, s_branches: *Branches) void {
             var array: PrintArray = undefined;
             array.undefineAll();
             showWithReferenceWrite(t_branches, s_branches, &array);
-            debug.logSuccess(array.readAll());
+            debug.write(array.readAll());
         }
     };
 };
@@ -4074,7 +4074,7 @@ fn GenericArenaAllocatorGraphics(comptime Allocator: type) type {
             }
             if (array.len() != src_fmt.formatLength()) {
                 array.writeOne('\n');
-                debug.logSuccess(array.readAll());
+                debug.write(array.readAll());
             }
         }
         pub fn showWithReference(allocator: *Allocator, src: builtin.SourceLocation) void {
