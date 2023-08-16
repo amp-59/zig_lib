@@ -548,7 +548,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 node.addArg(allocator).* = @constCast(arg);
             }
         }
-        fn makeRootDirectory(root_fd: u64, name: [:0]const u8) void {
+        fn makeSubDirectory(root_fd: u64, name: [:0]const u8) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             var st: file.Status = undefined;
             var rc: u64 = sys.call_noexcept(.mkdirat, u64, .{ root_fd, @intFromPtr(name.ptr), @as(u16, @bitCast(file.mode.directory)) });
@@ -571,13 +571,13 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 allocator,
                 "zero",
                 zig_exe,
-                lib_build_root,
+                builtin.lib_root,
                 lib_cache_root,
                 global_cache_root,
             );
             zero.flags = .{ .is_special = true };
             if (builder_spec.options.lazy_features) {
-                special.cmd_writers = zero.addRun(allocator, "cmd_writers", &.{
+                Special.cmd_writers = zero.addRun(allocator, "cmd_writers", &.{
                     zero.zigExe(),        "build-lib",
                     "--cache-dir",        zero.cacheRoot(),
                     "--global-cache-dir", zero.globalCacheRoot(),
@@ -588,8 +588,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     "-fsingle-threaded",  "-dynamic",
                     writers_root,
                 });
-                special.cmd_writers.flags.is_dyn_ext = true;
-                special.cmd_parsers = zero.addRun(allocator, "cmd_parsers", &.{
+                Special.cmd_writers.flags.is_dyn_ext = true;
+                Special.cmd_parsers = zero.addRun(allocator, "cmd_parsers", &.{
                     zero.zigExe(),        "build-lib",
                     "--cache-dir",        zero.cacheRoot(),
                     "--global-cache-dir", zero.globalCacheRoot(),
