@@ -60,7 +60,6 @@ const about = fmt.about("futex");
 /// perf:           task-clock		72,940
 /// perf:           page-faults		3
 fn standardLibFormatter(futex1: *u32, futex2: *u32, count1: u32, count2: u32, ret: u64) void {
-    comptime _ = mach;
     const std = @import("std");
     var buf: [4096]u8 = undefined;
     var fbu = std.io.fixedBufferStream(&buf);
@@ -172,12 +171,17 @@ fn zigLibBasicMessage(futex1: *u32, futex2: *u32, count1: u32, count2: u32, ret:
     const count2_s: []const u8 = fmt.old.ud64(count2).readAll();
     const ret_s: []const u8 = fmt.old.ud64(ret).readAll();
     var buf: [4096]u8 = undefined;
-    debug.logAlwaysAIO(&buf, &[_][]const u8{
+    var len: usize = 0;
+    for (&[_][]const u8{
         about,    "futex1=@", addr1_s,  ", word1=",
         word1_s,  ", max1=",  count1_s, ", futex2=@",
         addr2_s,  ", word2=", word2_s,  ", max2=",
         count2_s, ", res=",   ret_s,    "\n",
-    });
+    }) |s| {
+        @memcpy(buf[len..].ptr, s);
+        len +%= s.len;
+    }
+    debug.write(buf[0..len]);
 }
 /// Debug: Equal fastest build
 /// Debug: Best performance
