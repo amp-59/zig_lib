@@ -315,7 +315,13 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
     comptime var do_objcopy: bool = false;
     const T = struct {
         tag: types.Node,
+        /// The tasks's 'first' name. Must be unique within the parent group.
+        /// Names will only be checked for uniqueness once: when the node is
+        /// added to its group with any of the `add(Build|Format|Archive|...)`
+        /// functions. If a non-unique name is contrived by manually editing
+        /// this field,
         name: [:0]u8,
+        /// Description text to be printed with task listing.
         descr: [:0]const u8,
         task: Task,
         flags: packed struct {
@@ -323,17 +329,18 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             is_special: bool = false,
             /// Whether the node will be shown by list commands.
             is_hidden: bool = false,
-            /// Whether the node task command is invoked directly from `processCommands`.
+            /// Whether the node task command has been invoked directly from
+            /// `processCommands` by the user command line.
             /// Determines whether command line arguments are appended.
             is_primary: bool = false,
             /// Whether a library pathname should be used to load function pointers.
-            /// Determines whether command line arguments are appended.
             is_dyn_ext: bool = false,
             /// Flags relevant to group nodes.
             /// Whether independent nodes will be processed in parallel.
             is_single_threaded: bool = false,
             /// Whether a run task will be performed using the compiler server.
             is_build_command: bool = false,
+
             /// Whether a node will be processed before being returned to `buildMain`.
             do_init: bool = !builder_spec.options.never_init,
             /// Whether a node will be processed after returning from `buildMain`.
@@ -342,6 +349,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             do_user_update: bool = !builder_spec.options.never_update,
             /// Whether a node will be processed on request to regenerate the build program.
             do_regenerate: bool = true,
+
             /// Flags relevant to build-* worker nodes.
             /// Builder will create a configuration root. Enables usage of
             /// configuration constants.
@@ -361,16 +369,16 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             nodes: [*]*Node,
             deps: [*]Dependency,
             cfgs: [*]Config,
-            nodes_max_len: Size,
-            nodes_len: Size,
-            deps_max_len: Size,
-            deps_len: Size,
-            cfgs_max_len: Size,
-            cfgs_len: Size,
-            args_max_len: Size,
-            args_len: Size,
-            paths_max_len: Size,
-            paths_len: Size,
+            nodes_max_len: usize,
+            nodes_len: usize,
+            deps_max_len: usize,
+            deps_len: usize,
+            cfgs_max_len: usize,
+            cfgs_len: usize,
+            args_max_len: usize,
+            args_len: usize,
+            paths_max_len: usize,
+            paths_len: usize,
             wait_len: usize,
             wait_tick: usize,
             build_root_fd: u32,
@@ -378,7 +386,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             output_root_fd: u32,
         },
         const Node = @This();
-        const Size = usize;
         const Task = extern struct {
             tag: types.Task,
             cmd: Command,
