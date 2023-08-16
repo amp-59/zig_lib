@@ -75,7 +75,7 @@ pub const BuilderSpec = struct {
         show_task_creation: bool = false,
         /// Enables logging for tasks waiting on dependencies.
         show_waiting_tasks: bool = false,
-        /// Show command line arguments for task commands and run commands.
+        /// Enables logging for command line arguments intended for task commands and run commands.
         show_command_lines: bool = false,
         /// Enables logging for build job statistics.
         show_stats: bool = true,
@@ -93,6 +93,8 @@ pub const BuilderSpec = struct {
         /// Enable stack traces in runtime errors for executables where mode is
         /// Debug with debugging symbols included
         update_debug_stack_traces: bool = true,
+        /// Add run task for all executable build outputs
+        update_executables: bool = true,
         /// Disable all features related to default initialisation of nodes.
         never_init: bool = false,
         /// Nodes with this name prefix are hidden in pre.
@@ -101,8 +103,6 @@ pub const BuilderSpec = struct {
         init_inherit_hidden: bool = true,
         /// Nodes belonging to special groups are also special.
         init_inherit_special: bool = true,
-        /// Add run task for all executable build outputs
-        init_executables: bool = true,
         /// (Recommended) Pass --main-pkg-path=<build_root> for all compile commands.
         init_main_pkg_path: bool = true,
         /// (Recommended) Pass --cache-dir=<cache_root> for all compile commands.
@@ -118,42 +118,48 @@ pub const BuilderSpec = struct {
         write_hist_serial: bool = false,
         /// Compile builder features as required.
         lazy_features: bool = true,
-        names: struct {
-            /// Output naming strategy
-            output_strategy: enum { directories, first_name, full_name } = .full_name,
-            /// Name of the toplevel 'builder' node.
-            toplevel_node: [:0]const u8 = "toplevel",
-            /// Name of the special command used to list available commands.
-            toplevel_list_command: [:0]const u8 = "list",
-            /// Name of the special command used to disable multi-threading.
-            single_threaded_command: [:0]const u8 = "--single-threaded",
-            /// Basename of output directory relative to build root.
-            zig_out_dir: [:0]const u8 = "zig-out",
-            /// Basename of cache directory relative to build root.
-            zig_cache_dir: [:0]const u8 = "zig-cache",
-            /// Basename of statistics directory relative to build root.
-            zig_stat_dir: [:0]const u8 = "zig-stat",
-            /// Basename of configuration directory relative to build root.
-            zig_build_dir: [:0]const u8 = "zig-build",
-            /// Basename of executables output directory relative to output
-            /// directory.
-            exe_out_dir: [:0]const u8 = "bin",
-            /// Basename of library output directory relative to output
-            /// directory.
-            lib_out_dir: [:0]const u8 = "lib",
-            /// Basename of auxiliary output directory relative to output
-            /// directory.
-            aux_out_dir: [:0]const u8 = "aux",
-            /// Optional pathname to root source used to compile tracer object.
-            trace_root: [:0]const u8 = "top/trace.zig",
-            /// Optional pathname to root source used to compile command line parser shared object.
-            cmd_parsers_root: [:0]const u8 = "top/build/parsers.zig",
-            /// Optional pathname to root source used to compile command line parser shared object.
-            cmd_writers_root: [:0]const u8 = "top/build/writers.zig",
-        } = .{},
+        /// Output naming strategy.
+        output_strategy: enum { directories, first_name, full_name } = .full_name,
+        /// Name of the toplevel 'builder' node.
+        toplevel_node: [:0]const u8 = "toplevel",
+        /// Name of the special command used to list available commands.
+        toplevel_list_command: [:0]const u8 = "list",
+        /// Name of the special command used to disable multi-threading.
+        single_threaded_command: [:0]const u8 = "--single-threaded",
+        /// Basename of output directory. Relative to build root.
+        output_dir: [:0]const u8 = "zig-out",
+        /// Basename of cache directory. Relative to build root.
+        cache_dir: [:0]const u8 = "zig-cache",
+        /// Basename of statistics directory. Relative to build root.
+        stat_dir: [:0]const u8 = "zig-stat",
+        /// Basename of configuration directory. Relative to build root.
+        config_dir: [:0]const u8 = "zig-build",
+        /// Basename of executables output directory. Relative to output
+        /// directory.
+        exe_out_dir: [:0]const u8 = "bin",
+        /// Basename of library output directory relative to output
+        /// directory.
+        lib_out_dir: [:0]const u8 = "lib",
+        /// Basename of auxiliary output directory relative to output
+        /// directory.
+        aux_out_dir: [:0]const u8 = "aux",
+        /// Pathname to root source used to compile tracer object.
+        trace_root: [:0]const u8 = "top/trace.zig",
+        /// Pathname to root source used to compile command line parser shared object.
+        cmd_parsers_root: [:0]const u8 = "top/build/parsers.zig",
+        /// Pathname to root source used to compile command line writer shared object.
+        cmd_writers_root: [:0]const u8 = "top/build/writers.zig",
+        /// Optional pathname to root source used to compile.
+        clone3_root: [:0]const u8 = "top/build/source.zig",
         special: struct {
             /// Defines compile commands for stack tracer object.
-            trace: ?types.BuildCommand = .{ .kind = .obj, .mode = .ReleaseSmall, .strip = true, .compiler_rt = false },
+            trace: ?types.BuildCommand = .{
+                .kind = .obj,
+                .pic = true,
+                .mode = .ReleaseSmall,
+                .strip = true,
+                .compiler_rt = false,
+            },
         } = .{},
         extensions: struct {
             /// Extension for Zig source files.

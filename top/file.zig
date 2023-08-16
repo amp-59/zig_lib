@@ -3251,7 +3251,7 @@ pub const about = struct {
             .symbolic_link => return symbolic_link_file_s,
         }
     }
-    fn writeUpdateOffset(buf: [*]u8, fd: fmt.Type.Udsize, off: fmt.Type.Udsize) u64 {
+    fn writeUpdateOffset(buf: [*]u8, fd: fmt.Type.Udsize, off: fmt.Type.Udsize) usize {
         @setRuntimeSafety(builtin.is_safe);
         var ptr: [*]u8 = buf;
         var len: u64 = 4 -% fd.formatLength();
@@ -3269,7 +3269,7 @@ pub const about = struct {
         ptr[0] = '\n';
         return (@intFromPtr(ptr) -% @intFromPtr(buf)) +% 1;
     }
-    fn writePollFds(buf: [*]u8, pollfds: []PollFd) u64 {
+    fn writePollFds(buf: [*]u8, pollfds: []PollFd) usize {
         @setRuntimeSafety(builtin.is_safe);
         var ptr: [*]u8 = buf;
         var tmp: [24]u8 = undefined;
@@ -3292,7 +3292,7 @@ pub const about = struct {
         }
         return @intFromPtr(ptr) -% @intFromPtr(buf);
     }
-    fn writeEvents(buf: [*]u8, pollfd: *PollFd, about_s: []const u8, off: u64) u64 {
+    fn writeEvents(buf: [*]u8, pollfd: *PollFd, about_s: []const u8, off: usize) usize {
         @setRuntimeSafety(builtin.is_safe);
         const events: Events = @as(*Events, @ptrFromInt(@intFromPtr(pollfd) + off)).*;
         if (@as(u16, @bitCast(events)) == 0) {
