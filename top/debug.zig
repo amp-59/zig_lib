@@ -184,7 +184,7 @@ pub fn assert(b: bool) void {
         if (@inComptime()) {
             @compileError("assertion failed\n");
         } else {
-            debug.logFault("assertion failed\n");
+            @panic("assertion failed\n");
         }
     }
 }
@@ -301,6 +301,111 @@ pub fn assertEqualMemory(comptime T: type, arg1: T, arg2: T) void {
         },
     }
 }
+pub fn expect(b: bool) debug.Unexpected!void {
+    if (!b) {
+        return error.UnexpectedValue;
+    }
+}
+pub fn expectBelow(comptime T: type, arg1: T, arg2: T) debug.Unexpected!void {
+    if (arg1 >= arg2) {
+        return debug.comparisonFailedError(T, " < ", arg1, arg2, @returnAddress());
+    }
+}
+pub fn expectBelowOrEqual(comptime T: type, arg1: T, arg2: T) debug.Unexpected!void {
+    if (arg1 > arg2) {
+        return debug.comparisonFailedError(T, " <= ", arg1, arg2, @returnAddress());
+    }
+}
+pub fn expectEqual(comptime T: type, arg1: T, arg2: T) debug.Unexpected!void {
+    if (!mem.testEqual(T, arg1, arg2)) {
+        return debug.comparisonFailedError(T, " == ", arg1, arg2, @returnAddress());
+    }
+}
+pub fn expectNotEqual(comptime T: type, arg1: T, arg2: T) debug.Unexpected!void {
+    if (mem.testEqual(T, arg1, arg2)) {
+        return debug.comparisonFailedError(T, " != ", arg1, arg2, @returnAddress());
+    }
+}
+pub fn expectAboveOrEqual(comptime T: type, arg1: T, arg2: T) debug.Unexpected!void {
+    if (arg1 < arg2) {
+        return debug.comparisonFailedError(T, " >= ", arg1, arg2, @returnAddress());
+    }
+}
+pub fn expectAbove(comptime T: type, arg1: T, arg2: T) debug.Unexpected!void {
+    if (arg1 <= arg2) {
+        return debug.comparisonFailedError(T, " > ", arg1, arg2, @returnAddress());
+    }
+}
+pub fn expectEqualMemory(comptime T: type, arg1: T, arg2: T) debug.Unexpected!void {
+    switch (@typeInfo(T)) {
+        else => @compileError(@typeName(T)),
+        .Void => {},
+        .Int, .Enum, .Bool => try expectEqual(T, arg1, arg2),
+        .Struct => |struct_info| {
+            inline for (struct_info.fields) |field| {
+                comptime var field_type_info: builtin.Type = @typeInfo(field.type);
+                if (field_type_info == .Pointer and
+                    field_type_info.Pointer.size == .Many and
+                    @hasField(T, field.name ++ "_len"))
+                {
+                    const len1: usize = @field(arg1, field.name ++ "_len");
+                    const len2: usize = @field(arg2, field.name ++ "_len");
+                    field_type_info.Pointer.size = .Slice;
+                    try expectEqualMemory(@Type(field_type_info), @field(arg1, field.name)[0..len1], @field(arg2, field.name)[0..len2]);
+                } else {
+                    try expectEqualMemory(field.type, @field(arg1, field.name), @field(arg2, field.name));
+                }
+            }
+        },
+        .Union => |union_info| {
+            if (union_info.tag_type) |tag_type| {
+                try expectEqual(tag_type, arg1, arg2);
+                switch (arg1) {
+                    inline else => |value, tag| {
+                        try expectEqualMemory(@TypeOf(value), value, @field(arg2, @tagName(tag)));
+                    },
+                }
+            } else {
+                @compileError(@typeName(T));
+            }
+        },
+        .Optional => |optional_info| {
+            if (arg1 != null and arg2 != null) {
+                try expectEqualMemory(optional_info.child, arg1.?, arg2.?);
+            } else {
+                try expect(arg1 == null and arg2 == null);
+            }
+        },
+        .Array => |array_info| {
+            try expectEqual([]const array_info.child, &arg1, &arg2);
+        },
+        .Pointer => |pointer_info| {
+            switch (pointer_info.size) {
+                .Many => {
+                    const len1: usize = mem.indexOfSentinel(arg1);
+                    const len2: usize = mem.indexOfSentinel(arg2);
+                    try expectEqual(usize, len1, len2);
+                    if (arg1 != arg2) {
+                        for (arg1[0..len1], arg2[0..len2]) |value1, value2| {
+                            try expectEqualMemory(pointer_info.child, value1, value2);
+                        }
+                    }
+                },
+                .Slice => {
+                    try expectEqual(usize, arg1.len, arg2.len);
+                    if (arg1.ptr != arg2.ptr) {
+                        for (arg1, arg2) |value1, value2| {
+                            try expectEqualMemory(pointer_info.child, value1, value2);
+                        }
+                    }
+                },
+                else => if (arg1 != arg2) {
+                    try expectEqualMemory(pointer_info.child, arg1.*, arg2.*);
+                },
+            }
+        },
+    }
+}
 pub fn intCastTruncatedBitsFault(comptime T: type, comptime U: type, arg: U, ret_addr: usize) noreturn {
     @setCold(true);
     @setRuntimeSafety(builtin.is_safe);
@@ -411,112 +516,6 @@ pub fn comparisonFailedError(comptime T: type, symbol: []const u8, arg1: anytype
     };
     builtin.alarm(buf[0..len], @errorReturnTrace(), ret_addr orelse @returnAddress());
     return error.UnexpectedValue;
-}
-
-pub fn expect(b: bool) debug.Unexpected!void {
-    if (!b) {
-        return error.UnexpectedValue;
-    }
-}
-pub fn expectBelow(comptime T: type, arg1: T, arg2: T) debug.Unexpected!void {
-    if (arg1 >= arg2) {
-        return debug.comparisonFailedError(T, " < ", arg1, arg2, @returnAddress());
-    }
-}
-pub fn expectBelowOrEqual(comptime T: type, arg1: T, arg2: T) debug.Unexpected!void {
-    if (arg1 > arg2) {
-        return debug.comparisonFailedError(T, " <= ", arg1, arg2, @returnAddress());
-    }
-}
-pub fn expectEqual(comptime T: type, arg1: T, arg2: T) debug.Unexpected!void {
-    if (!mem.testEqual(T, arg1, arg2)) {
-        return debug.comparisonFailedError(T, " == ", arg1, arg2, @returnAddress());
-    }
-}
-pub fn expectNotEqual(comptime T: type, arg1: T, arg2: T) debug.Unexpected!void {
-    if (mem.testEqual(T, arg1, arg2)) {
-        return debug.comparisonFailedError(T, " != ", arg1, arg2, @returnAddress());
-    }
-}
-pub fn expectAboveOrEqual(comptime T: type, arg1: T, arg2: T) debug.Unexpected!void {
-    if (arg1 < arg2) {
-        return debug.comparisonFailedError(T, " >= ", arg1, arg2, @returnAddress());
-    }
-}
-pub fn expectAbove(comptime T: type, arg1: T, arg2: T) debug.Unexpected!void {
-    if (arg1 <= arg2) {
-        return debug.comparisonFailedError(T, " > ", arg1, arg2, @returnAddress());
-    }
-}
-pub fn expectEqualMemory(comptime T: type, arg1: T, arg2: T) debug.Unexpected!void {
-    switch (@typeInfo(T)) {
-        else => @compileError(@typeName(T)),
-        .Void => {},
-        .Int, .Enum, .Bool => try expectEqual(T, arg1, arg2),
-        .Struct => |struct_info| {
-            inline for (struct_info.fields) |field| {
-                comptime var field_type_info: builtin.Type = @typeInfo(field.type);
-                if (field_type_info == .Pointer and
-                    field_type_info.Pointer.size == .Many and
-                    @hasField(T, field.name ++ "_len"))
-                {
-                    const len1: usize = @field(arg1, field.name ++ "_len");
-                    const len2: usize = @field(arg2, field.name ++ "_len");
-                    field_type_info.Pointer.size = .Slice;
-                    try expectEqualMemory(@Type(field_type_info), @field(arg1, field.name)[0..len1], @field(arg2, field.name)[0..len2]);
-                } else {
-                    try expectEqualMemory(field.type, @field(arg1, field.name), @field(arg2, field.name));
-                }
-            }
-        },
-        .Union => |union_info| {
-            if (union_info.tag_type) |tag_type| {
-                try expectEqual(tag_type, arg1, arg2);
-                switch (arg1) {
-                    inline else => |value, tag| {
-                        try expectEqualMemory(@TypeOf(value), value, @field(arg2, @tagName(tag)));
-                    },
-                }
-            } else {
-                @compileError(@typeName(T));
-            }
-        },
-        .Optional => |optional_info| {
-            if (arg1 != null and arg2 != null) {
-                try expectEqualMemory(optional_info.child, arg1.?, arg2.?);
-            } else {
-                try expect(arg1 == null and arg2 == null);
-            }
-        },
-        .Array => |array_info| {
-            try expectEqual([]const array_info.child, &arg1, &arg2);
-        },
-        .Pointer => |pointer_info| {
-            switch (pointer_info.size) {
-                .Many => {
-                    const len1: usize = mem.indexOfSentinel(arg1);
-                    const len2: usize = mem.indexOfSentinel(arg2);
-                    try expectEqual(usize, len1, len2);
-                    if (arg1 != arg2) {
-                        for (arg1[0..len1], arg2[0..len2]) |value1, value2| {
-                            try expectEqualMemory(pointer_info.child, value1, value2);
-                        }
-                    }
-                },
-                .Slice => {
-                    try expectEqual(usize, arg1.len, arg2.len);
-                    if (arg1.ptr != arg2.ptr) {
-                        for (arg1, arg2) |value1, value2| {
-                            try expectEqualMemory(pointer_info.child, value1, value2);
-                        }
-                    }
-                },
-                else => if (arg1 != arg2) {
-                    try expectEqualMemory(pointer_info.child, arg1.*, arg2.*);
-                },
-            }
-        },
-    }
 }
 pub fn sampleAllReports() void {
     inline for (.{ u16, u32, u64, usize }) |T| {
