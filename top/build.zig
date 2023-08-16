@@ -413,26 +413,36 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             expected = builder_spec.options.system_expected_status,
             _,
         };
-        pub const special = struct {
+        pub const Special = struct {
             var trace: *Node = @ptrFromInt(8);
             var cmd_parsers: *Node = @ptrFromInt(8);
             var cmd_writers: *Node = @ptrFromInt(8);
             var fns: build.Fns = .{};
             var dyn_loader: DynamicLoader = .{};
         };
-        pub const specification: BuilderSpec = builder_spec;
-        pub const max_thread_count: usize = builder_spec.options.max_thread_count;
-        pub const stack_aligned_bytes: usize = builder_spec.options.max_stack_aligned_bytes;
         pub const Config = builder_spec.types.Config;
-        const max_arena_count: usize = if (max_thread_count == 0) 4 else max_thread_count + 1;
-        const arena_aligned_bytes: usize = builder_spec.options.max_arena_aligned_bytes;
-        const stack_lb_addr: usize = builder_spec.options.stack_lb_addr;
-        const stack_up_addr: usize = stack_lb_addr + (max_thread_count * stack_aligned_bytes);
-        const arena_lb_addr: usize = stack_up_addr;
-        const arena_up_addr: usize = arena_lb_addr + (max_arena_count * arena_aligned_bytes);
+        pub const specification: BuilderSpec = builder_spec;
+        const max_thread_count: comptime_int = builder_spec.options.max_thread_count;
+        const max_arena_count: comptime_int = if (max_thread_count == 0) 4 else max_thread_count + 1;
+        const load_info_aligned_bytes: comptime_int = builder_spec.options.max_load_info_aligned_bytes;
+        const load_sect_aligned_bytes: comptime_int = builder_spec.options.max_load_sect_aligned_bytes;
+        const arena_aligned_bytes: comptime_int = builder_spec.options.max_arena_aligned_bytes;
+        const stack_aligned_bytes: comptime_int = builder_spec.options.max_stack_aligned_bytes;
+        const load_info_lb_addr: comptime_int = builder_spec.options.lb_addr;
+        const load_info_up_addr: comptime_int = load_info_lb_addr + builder_spec.options.max_load_info_aligned_bytes;
+        const load_sect_lb_addr: comptime_int = load_info_up_addr;
+        const load_sect_up_addr: comptime_int = load_sect_lb_addr + builder_spec.options.max_load_sect_aligned_bytes;
+        const stack_lb_addr: comptime_int = load_sect_up_addr;
+        const stack_up_addr: comptime_int = stack_lb_addr + (max_thread_count * stack_aligned_bytes);
+        const arena_lb_addr: comptime_int = stack_up_addr;
+        const arena_up_addr: comptime_int = arena_lb_addr + (max_arena_count * arena_aligned_bytes);
+        const aligned_bytes: comptime_int =
+            (max_thread_count * stack_aligned_bytes) +%
+            (max_arena_count * arena_aligned_bytes) +%
+            load_info_aligned_bytes +% load_sect_aligned_bytes;
         pub const AddressSpace = mem.GenericRegularAddressSpace(.{
-            .index_type = u8,
             .label = "arena",
+            .index_type = u8,
             .errors = address_space_errors,
             .logging = builtin.zero(mem.AddressSpaceLogging),
             .divisions = max_arena_count,
@@ -449,12 +459,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             .lb_addr = stack_lb_addr,
             .up_addr = stack_up_addr,
             .options = thread_space_options,
-        });
-        const OtherAllocator = mem.GenericRtArenaAllocator(.{
-            .logging = builtin.zero(mem.AllocatorLogging),
-            .errors = allocator_errors,
-            .AddressSpace = AddressSpace,
-            .options = allocator_options,
         });
         const DynamicLoader = elf.GenericDynamicLoader(.{
             .options = dyn_loader_options,
