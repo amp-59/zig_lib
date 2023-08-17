@@ -125,78 +125,6 @@ fn localGroup(node: *Node) *Node {
     }
     return localGroup(node.impl.nodes[0]);
 }
-
-fn writeNodeNameLocal(buf: [*]u8, node: *const Node, sep: u8) usize {
-    @setRuntimeSafety(builtin.is_safe);
-    var ptr: [*]u8 = buf;
-    if (node.tag == .group) {
-        if (node.flags.is_hidden) {
-            if (node.impl.nodes[0].flags.is_hidden) {
-                ptr += writeNodeNameLocal(buf, node.impl.nodes[0], '_');
-            }
-            if (ptr != buf) {
-                ptr[0] = sep;
-                ptr += 1;
-            }
-            @memcpy(ptr, node.name);
-            ptr += node.name.len;
-        } else {
-            if (node.flags.is_toplevel) {
-                ptr[0..8].* = "toplevel".*;
-                ptr += 8;
-            } else {
-                ptr[0..5].* = "group".*;
-                ptr += 5;
-            }
-        }
-    } else {
-        if (node.impl.nodes[0].flags.is_hidden) {
-            ptr += writeNodeNameLocal(buf, node.impl.nodes[0], '_');
-        }
-        if (ptr != buf) {
-            ptr[0] = sep;
-            ptr += 1;
-        }
-        @memcpy(ptr, node.name);
-        ptr += node.name.len;
-    }
-
-    return @intFromPtr(ptr) -% @intFromPtr(buf);
-}
-fn lengthNodeNameLocal(node: *const Node) usize {
-    @setRuntimeSafety(builtin.is_safe);
-    var len: usize = 0;
-    if (node.tag == .group) {
-        if (node.flags.is_hidden) {
-            if (node.impl.nodes[0].flags.is_hidden) {
-                len +%= lengthNodeNameLocal(node.impl.nodes[0]);
-            }
-            len +%= @intFromBool(len != 0);
-            len +%= node.name.len;
-        } else {
-            if (node.flags.is_toplevel) len +%= 8 else len +%= 5;
-        }
-    } else {
-        if (node.impl.nodes[0].flags.is_hidden) {
-            len +%= lengthNodeNameLocal(node.impl.nodes[0]);
-        }
-        len +%= @intFromBool(len != 0);
-        len +%= node.name.len;
-    }
-    return len;
-}
-fn isToplevel(node: *Node) bool {
-    return node.tag == .group and node == node.impl.nodes[0];
-}
-fn isInlinedGroup(node: *Node) bool {
-    return node.tag == .group and node.flags.is_hidden;
-}
-fn isInlined(node: *Node) bool {
-    if (node.tag == .group) {
-        return node.flags.is_hidden;
-    }
-    return isInlined(node.impl.nodes[0]);
-}
 fn countNode(node: *Node, node_tag: build.Node) usize {
     @setRuntimeSafety(false);
     var ret: usize = 0;
@@ -214,58 +142,6 @@ fn countTask(node: *Node, task_tag: build.Task) usize {
         ret +%= @intFromBool(node.impl.nodes[sn_idx].task.tag == task_tag);
     }
     return ret;
-}
-fn detectToplevelArgs(node: *Node) bool {
-    if (node.impl.args_len > 3) {
-        return node.impl.args[0] == node.zigExe().ptr and
-            node.impl.args[1] == node.buildRoot().ptr and
-            node.impl.args[2] == node.cacheRoot().ptr and
-            node.impl.args[3] == node.globalCacheRoot().ptr;
-    }
-    return false;
-}
-fn localFlags(allocator: *build.Allocator, node: *Node) []const u8 {
-    @setRuntimeSafety(builtin.is_safe);
-    const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(lengthNodeNameLocal(node) +% 6, 1));
-    const len: usize = writeNodeNameLocal(buf, node, '_');
-    @as(*[6]u8, @ptrCast(buf + len)).* = ".flags".*;
-    return buf[0 .. len +% 6];
-}
-fn localCommandName(allocator: *build.Allocator, local_name: []const u8, tag: build.Task) []const u8 {
-    @setRuntimeSafety(builtin.is_safe);
-    const len: usize = local_name.len +% 1 +% @tagName(tag).len +% 4;
-    const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(len, 1));
-    var ptr: [*]u8 = buf;
-    @memcpy(ptr, local_name);
-    ptr += local_name.len;
-    ptr[0] = '_';
-    ptr += 1;
-    @memcpy(ptr, @tagName(tag));
-    ptr += @tagName(tag).len;
-    ptr[0..4].* = "_cmd".*;
-    return buf[0..len];
-}
-fn localName(allocator: *build.Allocator, node: *Node) []const u8 {
-    @setRuntimeSafety(builtin.is_safe);
-    const ptr: [*]u8 = @ptrFromInt(allocator.allocateRaw(lengthNodeNameLocal(node), 1));
-    return ptr[0..writeNodeNameLocal(ptr, node, '_')];
-}
-fn writeLocalName(allocator: *build.Allocator, array: *Array, node: *Node) void {
-    const save: usize = allocator.next;
-    defer allocator.next = save;
-    array.writeFormat(fmt.identifier(localName(allocator, node)));
-}
-fn writeIfClose(array: *Array) void {
-    array.writeMany("}\n");
-}
-fn writeWorkerCommandType(array: *Array, tag: build.Task) void {
-    switch (tag) {
-        .build => array.writeMany("build.BuildCommand"),
-        .archive => array.writeMany("build.ArchiveCommand"),
-        .objcopy => array.writeMany("build.ObjcopyCommand"),
-        .format => array.writeMany("build.FormatCommand"),
-        else => {},
-    }
 }
 fn nextWorker(group: *Node, cmd_state: *CommandState) ?*Node {
     @setRuntimeSafety(builtin.is_safe);
@@ -300,24 +176,26 @@ fn nextWorker(group: *Node, cmd_state: *CommandState) ?*Node {
     }
     return ret;
 }
-fn writeWorkerCommandFieldEdits(allocator: *build.Allocator, array: *Array, group: *Node, cmd_state: *CommandState, node: *Node) void {
-    const local_name = localName(allocator, group);
-    const cmd_name = localCommandName(allocator, local_name, node.task.tag);
-    switch (node.task.tag) {
-        .build => if (cmd_state.build_cmd) |*local_build_cmd| {
-            array.define(cmds.build.writeFieldEditDistance(array.referAllUndefined().ptr, cmd_name, local_build_cmd, node.task.cmd.build, true));
-        },
-        .format => if (cmd_state.format_cmd) |*local_format_cmd| {
-            array.define(cmds.format.writeFieldEditDistance(array.referAllUndefined().ptr, cmd_name, local_format_cmd, node.task.cmd.format, true));
-        },
-        .objcopy => if (cmd_state.objcopy_cmd) |*local_objcopy_cmd| {
-            array.define(cmds.objcopy.writeFieldEditDistance(array.referAllUndefined().ptr, cmd_name, local_objcopy_cmd, node.task.cmd.objcopy, true));
-        },
-        .archive => if (cmd_state.archive_cmd) |*local_archive_cmd| {
-            array.define(cmds.archive.writeFieldEditDistance(array.referAllUndefined().ptr, cmd_name, local_archive_cmd, node.task.cmd.archive, true));
-        },
-        else => {},
+fn isToplevel(node: *Node) bool {
+    return node.tag == .group and node == node.impl.nodes[0];
+}
+fn isInlinedGroup(node: *Node) bool {
+    return node.tag == .group and node.flags.is_hidden;
+}
+fn isInlined(node: *Node) bool {
+    if (node.tag == .group) {
+        return node.flags.is_hidden;
     }
+    return isInlined(node.impl.nodes[0]);
+}
+fn detectToplevelArgs(node: *Node) bool {
+    if (node.impl.args_len > 3) {
+        return node.impl.args[0] == node.zigExe().ptr and
+            node.impl.args[1] == node.buildRoot().ptr and
+            node.impl.args[2] == node.cacheRoot().ptr and
+            node.impl.args[3] == node.globalCacheRoot().ptr;
+    }
+    return false;
 }
 fn writeConstTagCmd(array: *Array, tag: build.Task) void {
     array.writeMany("const ");
@@ -421,6 +299,127 @@ fn writeAddWorker(allocator: *build.Allocator, array: *Array, group: *Node, cmd_
     array.writeMany("\"");
     writeAddWorkerExtra(allocator, array, group, node);
     array.writeMany(");\n");
+}
+fn writeNodeNameLocal(buf: [*]u8, node: *const Node, sep: u8) usize {
+    @setRuntimeSafety(builtin.is_safe);
+    var ptr: [*]u8 = buf;
+    if (node.tag == .group) {
+        if (node.flags.is_hidden) {
+            if (node.impl.nodes[0].flags.is_hidden) {
+                ptr += writeNodeNameLocal(buf, node.impl.nodes[0], '_');
+            }
+            if (ptr != buf) {
+                ptr[0] = sep;
+                ptr += 1;
+            }
+            @memcpy(ptr, node.name);
+            ptr += node.name.len;
+        } else {
+            if (node.flags.is_toplevel) {
+                ptr[0..8].* = "toplevel".*;
+                ptr += 8;
+            } else {
+                ptr[0..5].* = "group".*;
+                ptr += 5;
+            }
+        }
+    } else {
+        if (node.impl.nodes[0].flags.is_hidden) {
+            ptr += writeNodeNameLocal(buf, node.impl.nodes[0], '_');
+        }
+        if (ptr != buf) {
+            ptr[0] = sep;
+            ptr += 1;
+        }
+        @memcpy(ptr, node.name);
+        ptr += node.name.len;
+    }
+
+    return @intFromPtr(ptr) -% @intFromPtr(buf);
+}
+fn lengthNodeNameLocal(node: *const Node) usize {
+    @setRuntimeSafety(builtin.is_safe);
+    var len: usize = 0;
+    if (node.tag == .group) {
+        if (node.flags.is_hidden) {
+            if (node.impl.nodes[0].flags.is_hidden) {
+                len +%= lengthNodeNameLocal(node.impl.nodes[0]);
+            }
+            len +%= @intFromBool(len != 0);
+            len +%= node.name.len;
+        } else {
+            if (node.flags.is_toplevel) len +%= 8 else len +%= 5;
+        }
+    } else {
+        if (node.impl.nodes[0].flags.is_hidden) {
+            len +%= lengthNodeNameLocal(node.impl.nodes[0]);
+        }
+        len +%= @intFromBool(len != 0);
+        len +%= node.name.len;
+    }
+    return len;
+}
+fn localFlags(allocator: *build.Allocator, node: *Node) []const u8 {
+    @setRuntimeSafety(builtin.is_safe);
+    const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(lengthNodeNameLocal(node) +% 6, 1));
+    const len: usize = writeNodeNameLocal(buf, node, '_');
+    @as(*[6]u8, @ptrCast(buf + len)).* = ".flags".*;
+    return buf[0 .. len +% 6];
+}
+fn localCommandName(allocator: *build.Allocator, local_name: []const u8, tag: build.Task) []const u8 {
+    @setRuntimeSafety(builtin.is_safe);
+    const len: usize = local_name.len +% 1 +% @tagName(tag).len +% 4;
+    const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(len, 1));
+    var ptr: [*]u8 = buf;
+    @memcpy(ptr, local_name);
+    ptr += local_name.len;
+    ptr[0] = '_';
+    ptr += 1;
+    @memcpy(ptr, @tagName(tag));
+    ptr += @tagName(tag).len;
+    ptr[0..4].* = "_cmd".*;
+    return buf[0..len];
+}
+fn localName(allocator: *build.Allocator, node: *Node) []const u8 {
+    @setRuntimeSafety(builtin.is_safe);
+    const ptr: [*]u8 = @ptrFromInt(allocator.allocateRaw(lengthNodeNameLocal(node), 1));
+    return ptr[0..writeNodeNameLocal(ptr, node, '_')];
+}
+fn writeLocalName(allocator: *build.Allocator, array: *Array, node: *Node) void {
+    const save: usize = allocator.next;
+    defer allocator.next = save;
+    array.writeFormat(fmt.identifier(localName(allocator, node)));
+}
+fn writeIfClose(array: *Array) void {
+    array.writeMany("}\n");
+}
+fn writeWorkerCommandType(array: *Array, tag: build.Task) void {
+    switch (tag) {
+        .build => array.writeMany("build.BuildCommand"),
+        .archive => array.writeMany("build.ArchiveCommand"),
+        .objcopy => array.writeMany("build.ObjcopyCommand"),
+        .format => array.writeMany("build.FormatCommand"),
+        else => {},
+    }
+}
+fn writeWorkerCommandFieldEdits(allocator: *build.Allocator, array: *Array, group: *Node, cmd_state: *CommandState, node: *Node) void {
+    const local_name = localName(allocator, group);
+    const cmd_name = localCommandName(allocator, local_name, node.task.tag);
+    switch (node.task.tag) {
+        .build => if (cmd_state.build_cmd) |*local_build_cmd| {
+            array.define(cmds.build.writeFieldEditDistance(array.referAllUndefined().ptr, cmd_name, local_build_cmd, node.task.cmd.build, true));
+        },
+        .format => if (cmd_state.format_cmd) |*local_format_cmd| {
+            array.define(cmds.format.writeFieldEditDistance(array.referAllUndefined().ptr, cmd_name, local_format_cmd, node.task.cmd.format, true));
+        },
+        .objcopy => if (cmd_state.objcopy_cmd) |*local_objcopy_cmd| {
+            array.define(cmds.objcopy.writeFieldEditDistance(array.referAllUndefined().ptr, cmd_name, local_objcopy_cmd, node.task.cmd.objcopy, true));
+        },
+        .archive => if (cmd_state.archive_cmd) |*local_archive_cmd| {
+            array.define(cmds.archive.writeFieldEditDistance(array.referAllUndefined().ptr, cmd_name, local_archive_cmd, node.task.cmd.archive, true));
+        },
+        else => {},
+    }
 }
 fn detectImplicitDependency(node: *Node, dep: Node.Dependency) bool {
     return node.task.tag == dep.task and dep.on_task == dep.on_node.task.tag;
@@ -640,7 +639,8 @@ fn writeBuildMain(allocator: *build.Allocator, array: *Array, toplevel: *Node) v
     array.writeMany("pub const zl=@import(\"../../zig_lib.zig\");\n");
     array.writeMany("const spec=zl.spec;\n");
     array.writeMany("const build=zl.build;\n");
-    array.writeMany(comptime "const Node = build.GenericNode(" ++ fmt.eval(.{ .infer_type_names = true }, Node.specification));
+    array.writeMany("const Node = build.GenericNode(");
+    array.writeMany(comptime fmt.eval(.{ .infer_type_names = true }, Node.specification));
     array.writeMany(");\n");
     if (CommandState.toplevel.build_cmd) |toplevel_build_cmd| {
         writeDeclareWorkerBuildCommand(array, .build, toplevel_build_cmd);
