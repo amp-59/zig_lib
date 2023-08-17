@@ -592,7 +592,7 @@ pub const ChangedBytesFormatSpec = struct {
     no_style: []const u8 = tab.fx.none,
 };
 pub fn GenericChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type {
-    return (struct {
+    const T = struct {
         old_value: u64,
         new_value: u64,
         const Format: type = @This();
@@ -622,6 +622,7 @@ pub fn GenericChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type
         }
         // TODO: Merge this with the body for ChangedIntFormat.
         pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
+            @setRuntimeSafety(builtin.is_safe);
             const old_fmt: Bytes = bytes(format.old_value);
             const new_fmt: Bytes = bytes(format.new_value);
             var len: u64 = old_fmt.formatWriteBuf(buf);
@@ -684,7 +685,8 @@ pub fn GenericChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type
         pub fn init(old_value: u64, new_value: u64) Format {
             return .{ .old_value = old_value, .new_value = new_value };
         }
-    });
+    };
+    return T;
 }
 pub fn GenericRangeFormat(comptime fmt_spec: PolynomialFormatSpec) type {
     return (struct {
