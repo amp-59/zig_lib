@@ -12,7 +12,7 @@ pub fn main() !void {
     const len: usize = try gen.readFile(.{ .return_type = usize }, config.parsers_template_path, array.referAllUndefined());
     array.define(len);
     for (attr.all) |attributes| {
-        common.writeParserFunction(array, attributes);
+        common.writeParserFunction(array, .C, attributes);
     }
     for (attr.all) |attributes| {
         common.writeParserFunctionHelp(array, attributes);
