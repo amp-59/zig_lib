@@ -7,11 +7,9 @@ const builtin = @import("../builtin.zig");
 const build = @import("./../build.zig");
 const types = @import("./types.zig");
 
-const Node = build.GenericNode(.{
-    .errors = spec.builder.errors.noexcept,
-    .logging = builtin.zero(build.BuilderSpec.Logging),
-});
-export fn forwardToExecuteCloneThreadedDirty(
+const Node = builtin.define(type, "Node", undefined);
+
+export fn forwardToExecuteCloneThreaded(
     address_space: *Node.AddressSpace,
     thread_space: *Node.ThreadSpace,
     builder: *Node,
