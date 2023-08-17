@@ -1,5 +1,6 @@
 const mem = @import("../mem.zig");
 const fmt = @import("../fmt.zig");
+const gen = @import("../gen.zig");
 const proc = @import("../proc.zig");
 const time = @import("../time.zig");
 const file = @import("../file.zig");
@@ -581,77 +582,40 @@ pub fn GenericBuildCommand(comptime BuildCommand: type) type {
     };
 }
 pub fn GenericCommand(comptime Command: type) type {
-    return struct {
-        const field_name: []const u8 = switch (Command) {
-            types.BuildCommand => "build",
-            types.FormatCommand => "format",
-            types.ArchiveCommand => "archive",
-            types.ObjcopyCommand => "objcopy",
-            types.TableGenCommand => "tblgen",
-            else => "unknown",
-        };
-        const render_spec: fmt.RenderSpec = .{
-            .infer_type_names = true,
-            .forward = true,
-        };
-        pub fn indexOfCommonLeastDifference(allocator: *Allocator, buf: []*Command) usize {
-            var counts: []usize = allocator.allocate(usize, buf.len);
-            var l_idx: usize = 0;
-            while (l_idx != buf.len) : (l_idx +%= 1) {
-                var r_idx: usize = 0;
-                while (r_idx != buf.len) : (r_idx +%= 1) {
-                    if (l_idx != r_idx) {
-                        counts[l_idx] +%= fieldEditDistance(buf[l_idx], buf[r_idx]);
-                    }
-                }
-            }
-            var min: usize = ~@as(usize, 0);
-            var ret: usize = 0;
-            for (counts, 0..) |count, idx| {
-                if (count < min) {
-                    min = count;
-                    ret = idx;
-                }
-            }
-            return ret;
-        }
-        pub fn fieldEditDistance(s_cmd: *Command, t_cmd: *Command) usize {
-            var len: usize = 0;
-            inline for (@typeInfo(Command).Struct.fields) |field| {
-                if (!mem.testEqualMemory(
-                    field.type,
-                    @field(s_cmd, field.name),
-                    @field(t_cmd, field.name),
-                )) {
-                    len +%= 1;
-                }
-            }
-            return len;
-        }
-        pub fn writeFieldEditDistance(buf: [*]u8, node_name: []const u8, s_cmd: *Command, t_cmd: *Command, commit: bool) usize {
-            var ptr: [*]u8 = buf;
-            inline for (@typeInfo(Command).Struct.fields) |field| {
-                if (!mem.testEqualMemory(
-                    field.type,
-                    @field(s_cmd, field.name),
-                    @field(t_cmd, field.name),
-                )) {
-                    @memcpy(ptr, node_name[0..node_name.len]);
-                    ptr += node_name.len;
-                    const len: usize = 7 +% field_name.len +% field.name.len;
-                    ptr[0..len].* = ("_" ++ field_name ++ "_cmd." ++ field.name ++ "=").*;
-                    ptr += len;
-                    ptr += fmt.render(render_spec, @field(t_cmd, field.name)).formatWriteBuf(ptr);
-                    ptr[0..2].* = ";\n".*;
-                    ptr += 2;
-                    if (commit) {
-                        @field(s_cmd, field.name) = @field(t_cmd, field.name);
-                    }
-                }
-            }
-            return @intFromPtr(ptr - @intFromPtr(buf));
-        }
+    const render_spec: fmt.RenderSpec = .{
+        .infer_type_names = true,
+        .forward = true,
     };
+    const field_name: []const u8 = switch (Command) {
+        types.BuildCommand => "build",
+        types.FormatCommand => "format",
+        types.ArchiveCommand => "archive",
+        types.ObjcopyCommand => "objcopy",
+        types.TableGenCommand => "tblgen",
+        else => "unknown",
+    };
+    const Editor = gen.StructEditor(render_spec, Command);
+    const T = struct {
+        pub const manifest = .{
+            .fieldEditDistance = gen.FnExport{ .prefix = field_name ++ "." },
+            .writeFieldEditDistance = gen.FnExport{ .prefix = field_name ++ "." },
+            .indexOfCommonLeastDifference = gen.FnExport{ .prefix = field_name ++ "." },
+            .formatWriteBuf = gen.FnExport{ .prefix = field_name ++ "." },
+            .formatParseArgs = gen.FnExport{ .prefix = field_name ++ "." },
+            .formatLength = gen.FnExport{ .prefix = field_name ++ "." },
+            .renderWriteBuf = gen.FnExport{ .prefix = field_name ++ "." },
+        };
+        pub fn renderWriteBuf(cmd: *const Command, buf: [*]u8) callconv(.C) usize {
+            return fmt.render(render_spec, cmd.*).formatWriteBuf(buf);
+        }
+        pub const fieldEditDistance = Editor.fieldEditDistance;
+        pub const writeFieldEditDistance = Editor.writeFieldEditDistance;
+        pub const indexOfCommonLeastDifference = Editor.indexOfCommonLeastDifference;
+        pub const formatWriteBuf = Command.formatWriteBuf;
+        pub const formatLength = Command.formatLength;
+        pub const formatParseArgs = Command.formatParseArgs;
+    };
+    return T;
 }
 fn Aggregate(comptime T: type) type {
     return struct {
