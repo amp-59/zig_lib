@@ -226,7 +226,9 @@ fn writeModulesBuf(pkgs: [*]BuildConfig.Pkg, node: *Node) usize {
 }
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) void {
     @setRuntimeSafety(builtin.is_safe);
-    var allocator: build.Allocator = build.Allocator.init_arena(Node.AddressSpace.arena(Node.max_thread_count));
+    var allocator: build.Allocator = build.Allocator.init_arena(
+        Node.AddressSpace.arena(Node.specification.options.max_thread_count),
+    );
     if (args.len < 5) {
         proc.exitError(error.MissingEnvironmentPaths, 2);
     }
