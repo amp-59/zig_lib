@@ -2,9 +2,10 @@ const mem = @import("../mem.zig");
 const types = @import("./types.zig");
 const debug = @import("../debug.zig");
 const parse = @import("../parse.zig");
+const builtin = @import("../builtin.zig");
 pub usingnamespace @import("../start.zig");
 export fn formatParseArgsBuildCommand(cmd: *types.BuildCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
-    @setRuntimeSafety(false);
+    @setRuntimeSafety(builtin.is_safe);
     var args_idx: usize = 0;
     while (args_idx != args_len) : (args_idx +%= 1) {
         var arg: [:0]const u8 = mem.terminate(args[args_idx], 0);
@@ -619,7 +620,7 @@ export fn formatParseArgsBuildCommand(cmd: *types.BuildCommand, allocator: *type
     }
 }
 export fn formatParseArgsFormatCommand(cmd: *types.FormatCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
-    @setRuntimeSafety(false);
+    @setRuntimeSafety(builtin.is_safe);
     var args_idx: usize = 0;
     while (args_idx != args_len) : (args_idx +%= 1) {
         var arg: [:0]const u8 = mem.terminate(args[args_idx], 0);
@@ -656,7 +657,7 @@ export fn formatParseArgsFormatCommand(cmd: *types.FormatCommand, allocator: *ty
     }
 }
 export fn formatParseArgsArchiveCommand(cmd: *types.ArchiveCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
-    @setRuntimeSafety(false);
+    @setRuntimeSafety(builtin.is_safe);
     var args_idx: usize = 0;
     while (args_idx != args_len) : (args_idx +%= 1) {
         var arg: [:0]const u8 = mem.terminate(args[args_idx], 0);
@@ -715,7 +716,7 @@ export fn formatParseArgsArchiveCommand(cmd: *types.ArchiveCommand, allocator: *
     }
 }
 export fn formatParseArgsObjcopyCommand(cmd: *types.ObjcopyCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
-    @setRuntimeSafety(false);
+    @setRuntimeSafety(builtin.is_safe);
     var args_idx: usize = 0;
     while (args_idx != args_len) : (args_idx +%= 1) {
         var arg: [:0]const u8 = mem.terminate(args[args_idx], 0);
@@ -767,7 +768,7 @@ export fn formatParseArgsObjcopyCommand(cmd: *types.ObjcopyCommand, allocator: *
     }
 }
 export fn formatParseArgsTableGenCommand(cmd: *types.TableGenCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
-    @setRuntimeSafety(false);
+    @setRuntimeSafety(builtin.is_safe);
     var args_idx: usize = 0;
     while (args_idx != args_len) : (args_idx +%= 1) {
         var arg: [:0]const u8 = mem.terminate(args[args_idx], 0);
@@ -919,7 +920,7 @@ export fn formatParseArgsTableGenCommand(cmd: *types.TableGenCommand, allocator:
     }
 }
 export fn formatParseArgsHarecCommand(cmd: *types.HarecCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
-    @setRuntimeSafety(false);
+    @setRuntimeSafety(builtin.is_safe);
     var args_idx: usize = 0;
     while (args_idx != args_len) : (args_idx +%= 1) {
         var arg: [:0]const u8 = mem.terminate(args[args_idx], 0);
