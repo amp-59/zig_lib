@@ -6,6 +6,7 @@ const config = @import("./config.zig");
 const context: types.Context = @import("root").context;
 const notation: enum { slice, ptrcast, memcpy } = .slice;
 const memcpy: enum { builtin, mach } = .builtin;
+const CallingConvention = enum { C, Zig };
 const combine_char: bool = true;
 pub const Array = mem.StaticString(64 * 1024 * 1024);
 pub const Array2 = mem.StaticString(64 * 1024);
@@ -945,10 +946,14 @@ fn writeMemcpy(
 }
 fn writeParseArgsFrom(
     array: *Array,
+    calling_convention: CallingConvention,
     type_name: []const u8,
 ) void {
     array.writeMany(type_name);
-    array.writeMany(".formatParseArgs(allocator,args[0..args_len],&args_idx,arg)");
+    switch (calling_convention) {
+        .C => array.writeMany(".formatParseArgs(allocator,args[0..args_len],&args_idx,arg)"),
+        .Zig => array.writeMany(".formatParseArgs(allocator,args,&args_idx,arg)"),
+    }
 }
 fn writeAllocateRaw(array: *Array, type_name: []const u8, mb_size: ?usize, mb_alignment: ?usize) void {
     array.writeMany("const dest:[*]");
@@ -994,6 +999,7 @@ fn writeAllocateRawIncrement(array: *Array, type_name: []const u8, mb_size: ?usi
 }
 fn writeAddOptionalRepeatableFormatter(
     array: *Array,
+    calling_convention: CallingConvention,
     field_name: []const u8,
     type_name: []const u8,
 ) void {
@@ -1001,7 +1007,7 @@ fn writeAddOptionalRepeatableFormatter(
     writeAllocateRawIncrement(array, type_name, null, null);
     writeMemcpy(array, "dest", "src");
     array.writeMany("dest[src.len]=");
-    writeParseArgsFrom(array, type_name);
+    writeParseArgsFrom(array, calling_convention, type_name);
     array.writeMany(";\n");
     array.writeMany("cmd.");
     array.writeMany(field_name);
@@ -1009,7 +1015,7 @@ fn writeAddOptionalRepeatableFormatter(
     writeElse(array);
     writeAllocateRaw(array, type_name, null, null);
     array.writeMany("dest[0]=");
-    writeParseArgsFrom(array, type_name);
+    writeParseArgsFrom(array, calling_convention, type_name);
     array.writeMany(";\n");
     array.writeMany("cmd.");
     array.writeMany(field_name);
@@ -1061,32 +1067,44 @@ fn writeAddOptionalRepeatableTag(
     writeIfClose(array);
     array.writeMany("};\n");
 }
-fn writeReturnIfIndexEqualToLength(array: *Array) void {
-    array.writeMany("if(args_idx==args_len){\n");
+fn writeArgsLen(array: *Array, calling_convention: CallingConvention) void {
+    switch (calling_convention) {
+        .C => array.writeMany("args_len"),
+        .Zig => array.writeMany("args.len"),
+    }
+}
+fn writeReturnIfIndexEqualToLength(array: *Array, calling_convention: CallingConvention) void {
+    array.writeMany("if(args_idx==");
+    writeArgsLen(array, calling_convention);
+    array.writeMany("){\n");
     array.writeMany("return;\n");
     array.writeMany("}\n");
 }
-fn writeAssignIfIndexNotEqualToLength(array: *Array, field_name: []const u8) void {
-    array.writeMany("if(args_idx!=args_len){\n");
+fn writeAssignIfIndexNotEqualToLength(array: *Array, calling_convention: CallingConvention, field_name: []const u8) void {
+    array.writeMany("if(args_idx!=");
+    writeArgsLen(array, calling_convention);
+    array.writeMany("){\n");
     writeAssignArgCurIndex(array, field_name);
     writeElse(array);
     array.writeMany("return;\n");
     writeIfClose(array);
 }
-fn writeAssignIfIntegerIfIndexNotEqualToLength(array: *Array, field_name: []const u8) void {
-    array.writeMany("if(args_idx!=args_len){\n");
+fn writeAssignIfIntegerIfIndexNotEqualToLength(array: *Array, calling_convention: CallingConvention, field_name: []const u8) void {
+    array.writeMany("if(args_idx!=");
+    writeArgsLen(array, calling_convention);
+    array.writeMany("){\n");
     writeAssignIfIntegerArgCurIndex(array, field_name);
     writeElse(array);
     array.writeMany("return;\n");
     writeIfClose(array);
 }
 fn writeArgCurIndex(array: *Array) void {
-    array.writeMany("mem.terminate(args[args_idx], 0)");
+    array.writeMany("mem.terminate(args[args_idx],0)");
 }
 fn writeArgAnyIndex(array: *Array, index: usize) void {
     array.writeMany("mem.terminate(args[");
     array.writeFormat(fmt.ud64(index));
-    array.writeMany("], 0)");
+    array.writeMany("],0)");
 }
 fn writeArgAddIndex(array: *Array, offset: usize) void {
     array.writeMany("mem.terminate(args[args_idx+%");
@@ -1115,9 +1133,9 @@ fn writeAssignCurIndex(array: *Array) void {
     writeArgCurIndex(array);
     array.writeMany(";\n");
 }
-fn writeNext(array: *Array) void {
+fn writeNext(array: *Array, calling_convention: CallingConvention) void {
     writeIncrementArgsIndex(array);
-    writeReturnIfIndexEqualToLength(array);
+    writeReturnIfIndexEqualToLength(array, calling_convention);
     writeAssignCurIndex(array);
 }
 fn writeCmpArgLength(array: *Array, symbol: []const u8, length: usize) void {
@@ -1142,16 +1160,24 @@ fn writeAssignArgToArgFrom(array: *Array, offset: usize) void {
     writeArgSliceFrom(array, offset);
     array.writeMany(";\n");
 }
-fn writeNextIfArgEqualToLength(array: *Array, length: usize) void {
+fn writeNextIfArgEqualToLength(
+    array: *Array,
+    calling_convention: CallingConvention,
+    length: usize,
+) void {
     writeOpenIfArgCmpLength(array, "==", length);
-    writeNext(array);
+    writeNext(array, calling_convention);
     writeElse(array);
     writeAssignArgToArgFrom(array, length);
     writeIfClose(array);
 }
-fn writeAssignArgNextIfArgEqualToLength(array: *Array, length: usize) void {
+fn writeAssignArgNextIfArgEqualToLength(
+    array: *Array,
+    calling_convention: CallingConvention,
+    length: usize,
+) void {
     writeOpenIfArgCmpLength(array, "==", length);
-    writeNext(array);
+    writeNext(array, calling_convention);
     writeElse(array);
     writeAssignArgToArgFrom(array, length);
     writeIfClose(array);
@@ -1244,6 +1270,7 @@ fn writeAssignSpecifier(
 }
 fn writeAssignSpecifierFormatParser(
     array: *Array,
+    calling_convention: CallingConvention,
     field_name: []const u8,
     offset: usize,
     specifier: union(enum) { yes: types.ProtoTypeDescr, no: types.ProtoTypeDescr },
@@ -1255,20 +1282,26 @@ fn writeAssignSpecifierFormatParser(
         .yes => |type_descr| {
             array.writeMany(".{.yes=");
             array.writeFormat(type_descr);
-            array.writeMany(".formatParseArgs(allocator,args[0..args_len],&args_idx,arg[");
+            switch (calling_convention) {
+                .C => array.writeMany(".formatParseArgs(allocator,args[0..args_len],&args_idx,arg["),
+                .Zig => array.writeMany(".formatParseArgs(allocator,args,&args_idx,arg["),
+            }
             array.writeFormat(fmt.ud64(offset));
             array.writeMany("..],)};\n");
         },
         .no => |type_descr| {
             array.writeMany(".{.no=");
             array.writeFormat(type_descr);
-            array.writeMany(".formatParseArgs(allocator,args[0..args_len],&args_idx,arg[");
+            switch (calling_convention) {
+                .C => array.writeMany(".formatParseArgs(allocator,args[0..args_len],&args_idx,arg["),
+                .Zig => array.writeMany(".formatParseArgs(allocator,args,&args_idx,arg["),
+            }
             array.writeFormat(fmt.ud64(offset));
             array.writeMany("..],)};\n");
         },
     }
 }
-fn writeParserFunctionBody(array: *Array, attributes: types.Attributes) void {
+fn writeParserFunctionBody(array: *Array, calling_convention: CallingConvention, attributes: types.Attributes) void {
     var do_discard: bool = true;
     for (attributes.params) |param_spec| {
         if (param_spec.string.len == 0 or !param_spec.flags.do_parse) {
@@ -1294,7 +1327,7 @@ fn writeParserFunctionBody(array: *Array, attributes: types.Attributes) void {
                         .string => switch (no_field) {
                             .boolean => {
                                 writeOpenIfEqualTo(array, param_spec.name, param_spec.string);
-                                writeNext(array);
+                                writeNext(array, calling_convention);
                                 writeAssignSpecifier(array, param_spec.name, .{ .yes = "arg" });
                                 writeIfElse(array);
                                 writeOpenIfEqualTo(array, param_spec.name, no_param_spec.string);
@@ -1324,6 +1357,7 @@ fn writeParserFunctionBody(array: *Array, attributes: types.Attributes) void {
                                 writeOpenIfOptional(array, param_spec.name, param_spec.string, param_spec.char orelse '=');
                                 writeAssignSpecifierFormatParser(
                                     array,
+                                    calling_convention,
                                     param_spec.name,
                                     param_spec.string.len +% 1,
                                     .{ .yes = param_spec.type.parse.?.* },
@@ -1361,34 +1395,34 @@ fn writeParserFunctionBody(array: *Array, attributes: types.Attributes) void {
                     .string => {
                         if (isSquishable(param_spec.string)) {
                             writeOpenIfStartsWith(array, param_spec.name, param_spec.string);
-                            writeNextIfArgEqualToLength(array, param_spec.string.len);
+                            writeNextIfArgEqualToLength(array, calling_convention, param_spec.string.len);
                             writeAssignArg(array, param_spec.name);
                         } else {
                             writeOpenIfEqualTo(array, param_spec.name, param_spec.string);
                             writeIncrementArgsIndex(array);
-                            writeAssignIfIndexNotEqualToLength(array, param_spec.name);
+                            writeAssignIfIndexNotEqualToLength(array, calling_convention, param_spec.name);
                         }
                         writeIfElse(array);
                     },
                     .integer => {
                         if (isSquishable(param_spec.string)) {
                             writeOpenIfStartsWith(array, param_spec.name, param_spec.string);
-                            writeNextIfArgEqualToLength(array, param_spec.string.len);
+                            writeNextIfArgEqualToLength(array, calling_convention, param_spec.string.len);
                             writeAssignIfIntegerArg(array, param_spec.name);
                         } else {
                             writeOpenIfEqualTo(array, param_spec.name, param_spec.string);
                             writeIncrementArgsIndex(array);
-                            writeAssignIfIntegerIfIndexNotEqualToLength(array, param_spec.name);
+                            writeAssignIfIntegerIfIndexNotEqualToLength(array, calling_convention, param_spec.name);
                         }
                         writeIfElse(array);
                     },
                     .tag => {
                         if (isSquishable(param_spec.string)) {
                             writeOpenIfStartsWith(array, param_spec.name, param_spec.string);
-                            writeNextIfArgEqualToLength(array, param_spec.string.len);
+                            writeNextIfArgEqualToLength(array, calling_convention, param_spec.string.len);
                         } else {
                             writeOpenIfEqualTo(array, param_spec.name, param_spec.string);
-                            writeNext(array);
+                            writeNext(array, calling_convention);
                         }
                         for (param_spec.type.parse.?.type_decl.defn.?.fields) |field| {
                             writeOpenIfEqualTo(array, param_spec.name, field.name);
@@ -1402,6 +1436,7 @@ fn writeParserFunctionBody(array: *Array, attributes: types.Attributes) void {
                         writeOpenIfOptional(array, param_spec.name, param_spec.string, param_spec.char orelse '=');
                         writeAssignSpecifierFormatParser(
                             array,
+                            calling_convention,
                             param_spec.name,
                             param_spec.string.len +% 1,
                             .{ .yes = param_spec.type.parse.?.* },
@@ -1414,10 +1449,10 @@ fn writeParserFunctionBody(array: *Array, attributes: types.Attributes) void {
                     .repeatable_string => {
                         if (isSquishable(param_spec.string)) {
                             writeOpenIfStartsWith(array, param_spec.name, param_spec.string);
-                            writeNextIfArgEqualToLength(array, param_spec.string.len);
+                            writeNextIfArgEqualToLength(array, calling_convention, param_spec.string.len);
                         } else {
                             writeOpenIfEqualTo(array, param_spec.name, param_spec.string);
-                            writeNext(array);
+                            writeNext(array, calling_convention);
                         }
                         writeAddOptionalRepeatableString(array, param_spec.name);
                         do_discard = false;
@@ -1426,10 +1461,10 @@ fn writeParserFunctionBody(array: *Array, attributes: types.Attributes) void {
                     .repeatable_tag => {
                         if (isSquishable(param_spec.string)) {
                             writeOpenIfStartsWith(array, param_spec.name, param_spec.string);
-                            writeNextIfArgEqualToLength(array, param_spec.string.len);
+                            writeNextIfArgEqualToLength(array, calling_convention, param_spec.string.len);
                         } else {
                             writeOpenIfEqualTo(array, param_spec.name, param_spec.string);
-                            writeNext(array);
+                            writeNext(array, calling_convention);
                         }
                         writeAddOptionalRepeatableTag(array, param_spec.name, param_spec.type.parse.?.type_decl.name.?);
                         for (param_spec.type.store.type_ref.type.type_ref.type.type_decl.defn.?.fields) |field| {
@@ -1444,12 +1479,17 @@ fn writeParserFunctionBody(array: *Array, attributes: types.Attributes) void {
                     .repeatable_formatter => {
                         if (isSquishable(param_spec.string)) {
                             writeOpenIfStartsWith(array, param_spec.name, param_spec.string);
-                            writeNextIfArgEqualToLength(array, param_spec.string.len);
+                            writeNextIfArgEqualToLength(array, calling_convention, param_spec.string.len);
                         } else {
                             writeOpenIfEqualTo(array, param_spec.name, param_spec.string);
-                            writeNext(array);
+                            writeNext(array, calling_convention);
                         }
-                        writeAddOptionalRepeatableFormatter(array, param_spec.name, param_spec.type.parse.?.type_decl.name.?);
+                        writeAddOptionalRepeatableFormatter(
+                            array,
+                            calling_convention,
+                            param_spec.name,
+                            param_spec.type.parse.?.type_decl.name.?,
+                        );
                         do_discard = false;
                         writeIfElse(array);
                     },
@@ -1486,20 +1526,27 @@ fn writeParserFunctionSpec(array: *Array, attributes: types.Attributes) void {
         array.writeMany("};\n");
     }
 }
-fn writeParserFunctionSignature(array: *Array, attributes: types.Attributes) void {
-    array.writeMany("export fn formatParseArgs");
-    array.writeMany(attributes.type_name);
+fn writeParserFunctionSignature(array: *Array, calling_convention: CallingConvention, attributes: types.Attributes) void {
+    switch (calling_convention) {
+        .C => {
+            array.writeMany("export fn formatParseArgs");
+            array.writeMany(attributes.type_name);
+        },
+        .Zig => array.writeMany("pub fn formatParseArgs"),
+    }
     array.writeMany("(cmd:*types.");
     array.writeMany(attributes.type_name);
-    if (config.allow_comptime_configure_parser) {
-        array.writeMany(",comptime spec:types.");
-        array.writeMany(attributes.type_name);
-        array.writeMany("ParserSpec");
+    switch (calling_convention) {
+        .C => array.writeMany(",allocator:*types.Allocator,args:[*][*:0]u8,args_len:usize)void{\n"),
+        .Zig => array.writeMany(",allocator:*types.Allocator,args:[][*:0]u8)void{\n"),
     }
-    array.writeMany(",allocator:*types.Allocator,args:[*][*:0]u8,args_len:usize)void{\n");
-    array.writeMany("@setRuntimeSafety(false);\n");
+    array.writeMany("@setRuntimeSafety(builtin.is_safe);\n");
     array.writeMany("var args_idx:usize=0;\n");
-    array.writeMany("while(args_idx!=args_len):(args_idx+%=1){\n");
+
+    switch (calling_convention) {
+        .C => array.writeMany("while(args_idx!=args_len):(args_idx+%=1){\n"),
+        .Zig => array.writeMany("while(args_idx!=args.len):(args_idx+%=1){\n"),
+    }
     array.writeMany("var arg:[:0]const u8=mem.terminate(args[args_idx],0);\n");
 }
 fn writeFlagWithInverse(array: *Array, param_spec: types.ParamSpec, no_param_spec: types.InverseParamSpec) void {
@@ -1635,9 +1682,13 @@ fn unhandledCommandField(param_spec: types.ParamSpec) void {
     len +%= fmt.render(.{ .infer_type_names = true }, param_spec.tag).formatWriteBuf(buf[len..].ptr);
     @panic(buf[0..len]);
 }
-pub fn writeParserFunction(array: *Array, attributes: types.Attributes) void {
-    writeParserFunctionSignature(array, attributes);
-    writeParserFunctionBody(array, attributes);
+pub fn writeParserFunction(
+    array: *Array,
+    calling_convention: CallingConvention,
+    attributes: types.Attributes,
+) void {
+    writeParserFunctionSignature(array, calling_convention, attributes);
+    writeParserFunctionBody(array, calling_convention, attributes);
     writeParserFunctionSpec(array, attributes);
 }
 pub fn writeParserFunctionHelp(array: *Array, attributes: types.Attributes) void {
