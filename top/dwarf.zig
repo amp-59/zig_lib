@@ -27,19 +27,14 @@ pub const SourceLocation = struct {
     line: u64,
     column: u64,
     const Format = @This();
-    var cwd: struct {
-        buf: [4096]u8,
-        buf_len: usize,
-    } = undefined;
+    pub var cwd: [:0]const u8 = undefined;
+
     pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
-        if (cwd.buf_len == 0) {
-            cwd.buf_len = sys.call_noexcept(.getcwd, u64, .{ @intFromPtr(&cwd.buf), 4096 }) -% 1;
-        }
         @as(*[4]u8, @ptrCast(buf)).* = "\x1b[1m".*;
         var len: u64 = 4;
         var ud64: fmt.Type.Ud64 = @bitCast(format.line);
-        if (mem.testEqualString(cwd.buf[0..cwd.buf_len], format.file[0..cwd.buf_len])) {
-            const path: []const u8 = format.file[cwd.buf_len +% 1 ..];
+        if (mem.testEqualString(cwd, format.file[0..cwd.len])) {
+            const path: []const u8 = format.file[cwd.len +% 1 ..];
             @memcpy(buf + len, path);
             len +%= path.len;
         } else {
@@ -585,11 +580,8 @@ pub const Unit = extern struct {
     fn addDir(unit: *Unit, allocator: *Allocator) *FileEntry {
         @setRuntimeSafety(false);
         const size_of: comptime_int = @sizeOf(FileEntry);
-        const addr_buf: *u64 = @as(*u64, @ptrCast(&unit.dirs));
-        const ret: *FileEntry = @as(
-            *FileEntry,
-            @ptrFromInt(allocator.addGenericSize(Size, size_of, 1, addr_buf, &unit.dirs_max_len, unit.dirs_len)),
-        );
+        const addr_buf: *usize = @ptrCast(&unit.dirs);
+        const ret: *FileEntry = @ptrFromInt(allocator.addGenericSize(Size, size_of, 1, addr_buf, &unit.dirs_max_len, unit.dirs_len));
         unit.dirs_len +%= 1;
         mem.zero(FileEntry, ret);
         return ret;
@@ -597,11 +589,8 @@ pub const Unit = extern struct {
     fn addFile(unit: *Unit, allocator: *Allocator) *FileEntry {
         @setRuntimeSafety(false);
         const size_of: comptime_int = @sizeOf(FileEntry);
-        const addr_buf: *u64 = @as(*u64, @ptrCast(&unit.files));
-        const ret: *FileEntry = @as(
-            *FileEntry,
-            @ptrFromInt(allocator.addGenericSize(Size, size_of, 1, addr_buf, &unit.files_max_len, unit.files_len)),
-        );
+        const addr_buf: *usize = @ptrCast(&unit.files);
+        const ret: *FileEntry = @ptrFromInt(allocator.addGenericSize(Size, size_of, 1, addr_buf, &unit.files_max_len, unit.files_len));
         unit.files_len +%= 1;
         mem.zero(FileEntry, ret);
         return ret;
@@ -681,11 +670,8 @@ const AbbrevTable = struct {
         fn addKeyVal(entry: *Entry, allocator: *Allocator) *KeyVal {
             @setRuntimeSafety(false);
             const size_of: comptime_int = @sizeOf(KeyVal);
-            const addr_buf: *u64 = @ptrCast(&entry.kvs);
-            const ret: *KeyVal = @as(
-                *KeyVal,
-                @ptrFromInt(allocator.addGeneric(size_of, 1, addr_buf, &entry.kvs_max_len, entry.kvs_len)),
-            );
+            const addr_buf: *usize = @ptrCast(&entry.kvs);
+            const ret: *KeyVal = @ptrFromInt(allocator.addGeneric(size_of, 1, addr_buf, &entry.kvs_max_len, entry.kvs_len));
             entry.kvs_len +%= 1;
             mem.zero(KeyVal, ret);
             return ret;
@@ -694,7 +680,7 @@ const AbbrevTable = struct {
     fn addEntry(table: *AbbrevTable, allocator: *Allocator) *AbbrevTable.Entry {
         @setRuntimeSafety(false);
         const size_of: comptime_int = @sizeOf(AbbrevTable.Entry);
-        const addr_buf: *u64 = @ptrCast(&table.ents);
+        const addr_buf: *usize = @ptrCast(&table.ents);
         const ret: *AbbrevTable.Entry = @as(
             *AbbrevTable.Entry,
             @ptrFromInt(allocator.addGeneric(size_of, 1, addr_buf, &table.ents_max_len, table.ents_len)),
@@ -915,36 +901,36 @@ pub const DwarfInfo = extern struct {
             }
             addr +%= ehdr.e_shentsize;
         }
-        return @as(DwarfInfo, @bitCast(ret));
+        return @bitCast(ret);
     }
     fn addAbbrevTable(dwarf_info: *DwarfInfo, allocator: *Allocator) *AbbrevTable {
         @setRuntimeSafety(false);
-        const addr_buf: *u64 = @as(*u64, @ptrCast(&dwarf_info.abbrev_tabs));
-        const ret: *AbbrevTable = @as(*AbbrevTable, @ptrFromInt(allocator.addGeneric(@sizeOf(AbbrevTable), 1, addr_buf, &dwarf_info.abbrev_tabs_max_len, dwarf_info.abbrev_tabs_len)));
+        const addr_buf: *usize = @ptrCast(&dwarf_info.abbrev_tabs);
+        const ret: *AbbrevTable = @ptrFromInt(allocator.addGeneric(@sizeOf(AbbrevTable), 1, addr_buf, &dwarf_info.abbrev_tabs_max_len, dwarf_info.abbrev_tabs_len));
         dwarf_info.abbrev_tabs_len +%= 1;
         mem.zero(AbbrevTable, ret);
         return ret;
     }
     fn addUnit(dwarf_info: *DwarfInfo, allocator: *Allocator) *Unit {
         @setRuntimeSafety(false);
-        const addr_buf: *u64 = @as(*u64, @ptrCast(&dwarf_info.units));
-        const ret: *Unit = @as(*Unit, @ptrFromInt(allocator.addGeneric(@sizeOf(Unit), 1, addr_buf, &dwarf_info.units_max_len, dwarf_info.units_len)));
+        const addr_buf: *usize = @ptrCast(&dwarf_info.units);
+        const ret: *Unit = @ptrFromInt(allocator.addGeneric(@sizeOf(Unit), 1, addr_buf, &dwarf_info.units_max_len, dwarf_info.units_len));
         dwarf_info.units_len +%= 1;
         mem.zero(Unit, ret);
         return ret;
     }
     fn addFunc(dwarf_info: *DwarfInfo, allocator: *Allocator) *Func {
         @setRuntimeSafety(false);
-        const addr_buf: *u64 = @as(*u64, @ptrCast(&dwarf_info.funcs));
-        const ret: *Func = @as(*Func, @ptrFromInt(allocator.addGeneric(@sizeOf(Func), 1, addr_buf, &dwarf_info.funcs_max_len, dwarf_info.funcs_len)));
+        const addr_buf: *usize = @ptrCast(&dwarf_info.funcs);
+        const ret: *Func = @ptrFromInt(allocator.addGeneric(@sizeOf(Func), 1, addr_buf, &dwarf_info.funcs_max_len, dwarf_info.funcs_len));
         dwarf_info.funcs_len +%= 1;
         mem.zero(Func, ret);
         return ret;
     }
     pub fn addAddressInfo(dwarf_info: *DwarfInfo, allocator: *Allocator) *AddressInfo {
         @setRuntimeSafety(false);
-        const addr_buf: *u64 = @as(*u64, @ptrCast(&dwarf_info.addr_info));
-        const ret: *AddressInfo = @as(*AddressInfo, @ptrFromInt(allocator.addGeneric(@sizeOf(AddressInfo), 1, addr_buf, &dwarf_info.addr_info_max_len, dwarf_info.addr_info_len)));
+        const addr_buf: *usize = @ptrCast(&dwarf_info.addr_info);
+        const ret: *AddressInfo = @ptrFromInt(allocator.addGeneric(@sizeOf(AddressInfo), 1, addr_buf, &dwarf_info.addr_info_max_len, dwarf_info.addr_info_len));
         dwarf_info.addr_info_len +%= 1;
         mem.zero(AddressInfo, ret);
         return ret;
