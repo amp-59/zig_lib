@@ -157,17 +157,17 @@ pub fn main() !void {
         stack2[0] = 0;
         if (true) {
             _ = try proc.clone(.{}, @intFromPtr(stack2.ptr), stack2.len, {}, doIt, .{
-                &loader, builtin.lib_root ++ "/zig-out/lib/libtest_writers.so", ptrs,
+                &loader, builtin.lib_root ++ "/zig-out/lib/libtest-test_parsers.so", ptrs,
             });
             _ = try proc.clone(.{}, @intFromPtr(stack1.ptr), stack1.len, {}, doIt, .{
-                &loader, builtin.lib_root ++ "/zig-out/lib/libtest_parsers.so", ptrs,
+                &loader, builtin.lib_root ++ "/zig-out/lib/libtest-test_writers.so", ptrs,
             });
         } else {
             _ = try meta.wrap(@call(.auto, doIt, .{
-                &loader, builtin.lib_root ++ "/zig-out/lib/libtest_writers.so", ptrs,
+                &loader, builtin.lib_root ++ "/zig-out/lib/libtest-test_parsers.so", ptrs,
             }));
             _ = try meta.wrap(@call(.auto, doIt, .{
-                &loader, builtin.lib_root ++ "/zig-out/lib/libtest_parsers.so", ptrs,
+                &loader, builtin.lib_root ++ "./zig-out/lib/libtest-test_writers.so", ptrs,
             }));
         }
         const words: *[@sizeOf(build.Fns) / @sizeOf(usize)]usize = @ptrCast(ptrs);
