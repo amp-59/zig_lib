@@ -56,6 +56,77 @@ pub const DeclList = struct {
         return false;
     }
 };
+pub const FnExport = struct {
+    prefix: ?[]const u8 = null,
+    name: ?[]const u8 = null,
+    suffix: ?[]const u8 = null,
+    param_names: ?[]const []const u8 = null,
+};
+pub fn StructEditor(comptime render_spec: fmt.RenderSpec, comptime Value: type) type {
+    const fields: []const builtin.Type.StructField = @typeInfo(Value).Struct.fields;
+    const T = struct {
+        pub fn indexOfCommonLeastDifference(allocator: *mem.SimpleAllocator, buf: []*Value) usize {
+            var counts: []usize = allocator.allocate(usize, buf.len);
+            var l_idx: usize = 0;
+            while (l_idx != buf.len) : (l_idx +%= 1) {
+                var r_idx: usize = 0;
+                while (r_idx != buf.len) : (r_idx +%= 1) {
+                    if (l_idx != r_idx) {
+                        counts[l_idx] +%= fieldEditDistance(buf[l_idx], buf[r_idx]);
+                    }
+                }
+            }
+            var min: usize = ~@as(usize, 0);
+            var ret: usize = 0;
+            for (counts, 0..) |count, idx| {
+                if (count < min) {
+                    min = count;
+                    ret = idx;
+                }
+            }
+            return ret;
+        }
+        pub fn fieldEditDistance(s_val: *Value, t_val: *Value) callconv(.C) usize {
+            var len: usize = 0;
+            inline for (fields) |field| {
+                if (!mem.testEqualMemory(
+                    field.type,
+                    @field(s_val, field.name),
+                    @field(t_val, field.name),
+                )) {
+                    len +%= 1;
+                }
+            }
+            return len;
+        }
+        pub fn writeFieldEditDistance(buf: [*]u8, name: []const u8, s_val: *Value, t_val: *Value, commit: bool) usize {
+            var ptr: [*]u8 = buf;
+            inline for (fields) |field| {
+                if (!mem.testEqualMemory(
+                    field.type,
+                    @field(s_val, field.name),
+                    @field(t_val, field.name),
+                )) {
+                    ptr += fmt.identifier(name).formatWriteBuf(ptr);
+                    ptr[0] = '.';
+                    ptr += 1;
+                    ptr[0..field.name.len].* = (field.name ++ "").*;
+                    ptr += field.name.len;
+                    ptr[0] = '=';
+                    ptr += 1;
+                    ptr += fmt.render(render_spec, @field(t_val, field.name)).formatWriteBuf(ptr);
+                    ptr[0..2].* = ";\n".*;
+                    ptr += 2;
+                    if (commit) {
+                        @field(s_val, field.name) = @field(t_val, field.name);
+                    }
+                }
+            }
+            return @intFromPtr(ptr - @intFromPtr(buf));
+        }
+    };
+    return T;
+}
 pub const TruncateSpec = struct {
     child: type = u8,
     return_type: type = void,
