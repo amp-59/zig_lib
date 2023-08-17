@@ -398,7 +398,7 @@ pub const FnArgs = struct {
         }
     };
 };
-pub fn deduceUniqueInterfaceStructs(allocator: *config.Allocator, impl_details: []types.Implementation) FnArgs.Map {
+pub fn deduceUniqueInterfaceStructs(allocator: *config.Allocator, impl_details: []const types.Implementation) FnArgs.Map {
     const arg_list_vals: []FnArgs.Value = allocator.allocate(FnArgs.Value, interface_list.len);
     const arg_list_maps: []FnArgs.Index = allocator.allocate(FnArgs.Index, impl_details.len);
     for (arg_list_maps) |*arg_list_map| {

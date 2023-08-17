@@ -21,7 +21,6 @@ pub const runtime_assertions: bool = false;
 pub const show_expressions: bool = false;
 const read_ctn_spec: file.ReadSpec = .{
     .child = types.Container,
-    .errors = .{},
     .return_type = void,
 };
 const Allocator = config.Allocator;
@@ -969,19 +968,18 @@ fn writeTypeFunction(allocator: *Allocator, array: *Array, ctn_detail: types.Con
     writeFunctions(allocator, array, ctn_detail);
     array.writeMany("});\n}\n");
 }
+const details = blk: {
+    const bytes: []const u8 = @embedFile("./zig-out/src/ctn_detail");
+    const len: usize = @divExact(bytes.len, @sizeOf(types.Container));
+    const ptr: [*]const types.Container = @ptrCast(@alignCast(bytes[0..bytes.len]));
+    break :blk ptr[0..len];
+};
 pub fn generateContainers() !void {
     var address_space: AddressSpace = .{};
     var allocator: Allocator = Allocator.init(&address_space);
     defer allocator.deinit(&address_space);
     var array: Array = Array.init(&allocator, 1024 * 4096);
-    var fd: u64 = file.open(spec.generic.noexcept, config.ctn_detail_path);
-    const st: file.Status = file.status(spec.generic.noexcept, fd);
-    const details: []types.Container = allocator.allocate(
-        types.Container,
-        st.count(types.Container),
-    );
-    file.read(read_ctn_spec, fd, details);
-    file.close(spec.generic.noexcept, fd);
+    const fd: u64 = try file.open(.{ .options = .{ .read_write = true, .append = true } }, config.container_file_path);
     var ctn_idx: u64 = 0;
     for (types.Kind.list) |kind| {
         for (details) |ctn_detail| {
@@ -1002,7 +1000,7 @@ pub fn generateContainers() !void {
         }
     }
     if (!config.write_separate_source_files) {
-        try gen.appendFile(.{ .return_type = void }, config.container_file_path, array.readAll());
+        try file.write(.{}, fd, array.readAll());
     }
 }
 pub const main = generateContainers;

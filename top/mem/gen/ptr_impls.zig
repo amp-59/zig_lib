@@ -947,9 +947,9 @@ fn writeComptimeField(array: *Array, impl_variant: types.Implementation, ptr_fn_
     }
 }
 fn writeFields(array: *Array, impl_variant: types.Implementation) void {
-    writeComptimeField(array, impl_variant, ptr_fn.Fn.allocated_byte_address);
-    writeComptimeField(array, impl_variant, ptr_fn.Fn.aligned_byte_address);
-    writeComptimeField(array, impl_variant, ptr_fn.Fn.unallocated_byte_address);
+    writeComptimeField(array, impl_variant, .allocated_byte_address);
+    writeComptimeField(array, impl_variant, .aligned_byte_address);
+    writeComptimeField(array, impl_variant, .unallocated_byte_address);
     if (impl_variant.fields.automatic_storage) {
         if (impl_variant.specs.sentinel) {
             array.writeMany(tok.automatic_storage_with_sentinel_field);
@@ -974,10 +974,10 @@ fn writeFields(array: *Array, impl_variant: types.Implementation) void {
         array.writeMany(tok.unallocated_byte_address_word_field);
         array.writeMany(tok.end_elem);
     }
-    writeComptimeField(array, impl_variant, ptr_fn.Fn.unwritable_byte_address);
-    writeComptimeField(array, impl_variant, ptr_fn.Fn.allocated_byte_count);
-    writeComptimeField(array, impl_variant, ptr_fn.Fn.writable_byte_count);
-    writeComptimeField(array, impl_variant, ptr_fn.Fn.aligned_byte_count);
+    writeComptimeField(array, impl_variant, .unwritable_byte_address);
+    writeComptimeField(array, impl_variant, .allocated_byte_count);
+    writeComptimeField(array, impl_variant, .writable_byte_count);
+    writeComptimeField(array, impl_variant, .aligned_byte_count);
 }
 fn writeTypeFunction(
     allocator: *Allocator,
@@ -1008,19 +1008,17 @@ fn writeInterfaceStruct(array: *Array, ptr_fn_info: ptr_fn.Fn, idx: usize, arg_l
     }
     array.writeMany("};\n");
 }
+const details = blk: {
+    const bytes: []const u8 = @embedFile("./zig-out/src/impl_detail");
+    const len: usize = @divExact(bytes.len, @sizeOf(types.Implementation));
+    const ptr: [*]const types.Implementation = @ptrCast(@alignCast(bytes[0..bytes.len]));
+    break :blk ptr[0..len];
+};
 pub fn main() !void {
     var address_space: AddressSpace = .{};
     var allocator: Allocator = Allocator.init(&address_space);
     defer allocator.deinit(&address_space);
     var array: Array = Array.init(&allocator, 1024 * 4096);
-    var fd: u64 = file.open(spec.generic.noexcept, config.impl_detail_path);
-    const st: file.Status = file.status(spec.generic.noexcept, fd);
-    const details: []types.Implementation = allocator.allocate(
-        types.Implementation,
-        st.count(types.Implementation),
-    );
-    file.read(read_impl_spec, fd, details);
-    file.close(spec.generic.noexcept, fd);
     const arg_lists_map: ptr_fn.FnArgs.Map = ptr_fn.deduceUniqueInterfaceStructs(&allocator, details);
     for (arg_lists_map.vals) |kv| {
         for (kv.arg_lists, 0..) |arg_list, arg_list_idx| {
@@ -1045,6 +1043,6 @@ pub fn main() !void {
         }
     }
     if (!config.write_separate_source_files) {
-        try gen.appendFile(.{ .return_type = void }, config.reference_file_path, array.readAll());
+        try gen.appendFile(.{}, config.reference_file_path, array.readAll());
     }
 }

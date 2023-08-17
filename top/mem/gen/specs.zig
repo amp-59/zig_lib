@@ -30,12 +30,10 @@ const write_spec: file.WriteSpec = .{
 const write_impl_spec: gen.TruncateSpec = .{
     .return_type = void,
     .child = types.Implementation,
-    .errors = .{},
 };
 const write_ctn_spec: gen.TruncateSpec = .{
     .return_type = void,
     .child = types.Container,
-    .errors = .{},
 };
 fn limits(
     spec_sets: []const []const []const types.Specifier,
