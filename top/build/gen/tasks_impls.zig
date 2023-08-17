@@ -24,7 +24,11 @@ pub fn main() !void {
         common.writeFields(array, attributes);
         common.writeDeclarations(array, attributes);
         common.writeWriterFunctions(array, attributes);
+        common.writeParserFunction(array, .Zig, attributes);
         array.writeMany("};\n");
+    }
+    for (attr.all) |attributes| {
+        common.writeParserFunctionHelp(array, attributes);
     }
     array.writeMany("pub const Fns=struct{\n");
     for (attr.all) |attributes| {
