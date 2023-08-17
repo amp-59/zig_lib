@@ -2371,7 +2371,7 @@ pub fn GenericTypeDescrFormat(comptime spec: TypeDescrFormatSpec) type {
         pub const Reference = struct { spec: spec.token, type: *const Format };
         pub const Container = struct {
             spec: spec.token,
-            fields: []const Field,
+            fields: []const Field = &.{},
             decls: []const Declaration = &.{},
             fn matchDeclaration(format: Container) ?Format {
                 for (scope) |decl| {
