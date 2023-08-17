@@ -6,7 +6,6 @@ const @"test" = struct {
     const cmdline = @import("cmdline-writer-test.zig");
     const container = @import("container-test.zig");
     const crypto = @import("crypto-test.zig");
-    const debug = @import("debug-test.zig");
     const file = @import("file-test.zig");
     const fmt = @import("fmt-test.zig");
     const impl = @import("impl-test.zig");
