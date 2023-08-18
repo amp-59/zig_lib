@@ -566,7 +566,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 proc.exitErrorFault(error.NotADirectory, name, 2);
             }
         }
-        pub fn addSpecialNodes(toplevel: *Node, allocator: *mem.SimpleAllocator) void {
+        fn addSpecialNodes(toplevel: *Node, allocator: *mem.SimpleAllocator) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             const zig_exe: []const u8 = toplevel.zigExe();
             const global_cache_root: []const u8 = toplevel.globalCacheRoot();
@@ -580,7 +580,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             );
             zero.flags = .{ .is_special = true };
             if (builder_spec.options.lazy_features) {
-                const lazy_lib = [_][]const u8{
+                Special.cmd_writers = zero.addRun(allocator, "cmd_writers", &[_][]const u8{
                     zero.zigExe(),        "build-lib",
                     "--cache-dir",        zero.cacheRoot(),
                     "--global-cache-dir", zero.globalCacheRoot(),
@@ -589,14 +589,10 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     "-OReleaseSmall",     "-fno-compiler-rt",
                     "-fstrip",            "-fno-stack-check",
                     "-fsingle-threaded",  "-dynamic",
-                };
-                Special.cmd_writers = zero.addRun(
-                    allocator,
-                    "cmd_writers",
-                    lazy_lib ++ &[1][]const u8{writers_root},
-                );
+                    writers_root,
+                });
                 Special.cmd_writers.flags.is_dyn_ext = true;
-                Special.cmd_parsers = zero.addRun(allocator, "cmd_parsers", &.{
+                Special.cmd_parsers = zero.addRun(allocator, "cmd_parsers", &[_][]const u8{
                     zero.zigExe(),        "build-lib",
                     "--cache-dir",        zero.cacheRoot(),
                     "--global-cache-dir", zero.globalCacheRoot(),
@@ -697,6 +693,9 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                             node.addConfig(allocator, "build_root", .{ .String = node.buildRoot() });
                             node.addConfig(allocator, "cache_root", .{ .String = node.cacheRoot() });
                             node.addConfig(allocator, "global_cache_root", .{ .String = node.globalCacheRoot() });
+                            if (node.task.cmd.build.main_pkg_path) |main_pkg_path| {
+                                node.addConfig(allocator, "main_pkg_path", .{ .String = main_pkg_path });
+                            }
                         }
                     }
                     if (builder_spec.options.update_debug_stack_traces) {
