@@ -780,6 +780,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             build.vars = vars;
             build.error_count = 0;
             makeSubDirectories(node);
+            node.addSpecialNodes(allocator);
             return node;
         }
         /// Initialize a new group command
