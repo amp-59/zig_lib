@@ -319,7 +319,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         /// Names will only be checked for uniqueness once: when the node is
         /// added to its group with any of the `add(Build|Format|Archive|...)`
         /// functions. If a non-unique name is contrived by manually editing
-        /// this field,
+        /// this field the state is undefined.
         name: [:0]u8,
         /// Description text to be printed with task listing.
         descr: [:0]const u8,
