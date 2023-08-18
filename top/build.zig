@@ -45,9 +45,9 @@ pub const BuilderSpec = struct {
         max_error_count: ?u8 = 0,
         /// Lowest allocated byte address.
         lb_addr: usize = 0x400000000000,
-        /// Bytes allowed per thread arena (dynamic maximum)
+        /// Bytes allowed per thread arena (default=8MiB)
         max_arena_aligned_bytes: usize = 8 * 1024 * 1024,
-        /// Bytes allowed per thread stack (static maximum)
+        /// Bytes allowed per thread stack (default=8MiB)
         max_stack_aligned_bytes: usize = 8 * 1024 * 1024,
         /// Bytes allowed for dynamic loader metadata (default=64KiB)
         max_load_info_aligned_bytes: usize = 64 * 1024,
