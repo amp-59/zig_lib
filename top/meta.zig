@@ -1,5 +1,6 @@
 const fmt = @import("./fmt.zig");
 const mem = @import("./mem.zig");
+const math = @import("./math.zig");
 const mach = @import("./mach.zig");
 const debug = @import("./debug.zig");
 const builtin = @import("./builtin.zig");
@@ -230,7 +231,7 @@ pub inline fn call(comptime function: anytype, arguments: anytype) @TypeOf(@call
     }
 }
 /// Align `count` below to bitSizeOf smallest real word bit count
-pub fn alignBW(comptime count: comptime_int) u16 {
+pub fn alignBitSizeBelow(comptime count: comptime_int) u16 {
     switch (count) {
         0...7 => return 0,
         8...15 => return 8,
@@ -243,7 +244,7 @@ pub fn alignBW(comptime count: comptime_int) u16 {
     }
 }
 /// Align `count` above to bitSizeOf smallest real word bit count
-pub fn alignAW(comptime count: comptime_int) u16 {
+pub fn alignBitSizeAbove(comptime count: comptime_int) u16 {
     switch (count) {
         0 => return 0,
         1...8 => return 8,
@@ -255,34 +256,9 @@ pub fn alignAW(comptime count: comptime_int) u16 {
         else => return 512,
     }
 }
-pub const Extrema = struct { min: comptime_int, max: comptime_int };
-/// Find the maximum and minimum arithmetical values for an integer type.
-pub fn extrema(comptime Int: type) Extrema {
-    switch (Int) {
-        u0, i0 => return .{ .min = 0, .max = 0 },
-        u1 => return .{ .min = 0, .max = 1 },
-        i1 => return .{ .min = -1, .max = 0 },
-        else => {
-            const U = @Type(.{ .Int = .{
-                .signedness = .unsigned,
-                .bits = @bitSizeOf(Int),
-            } });
-            const umax: U = ~@as(U, 0);
-            if (@typeInfo(Int).Int.signedness == .unsigned) {
-                return .{ .min = 0, .max = umax };
-            } else {
-                const imax: U = umax >> 1;
-                return .{
-                    .min = @as(Int, @bitCast(~imax)),
-                    .max = @as(Int, @bitCast(imax)),
-                };
-            }
-        },
-    }
-}
 /// Return the smallest real bitSizeOf the integer type required to store the
 /// comptime integer.
-pub fn alignCX(comptime value: comptime_int) u16 { // Needs a better name
+pub fn realBitSizeOf(comptime value: comptime_int) u16 {
     if (value > 0) {
         switch (value) {
             0...~@as(u8, 0) => return 8,
@@ -295,13 +271,13 @@ pub fn alignCX(comptime value: comptime_int) u16 { // Needs a better name
             else => return @compileLog(value),
         }
     } else {
-        const xi8: Extrema = extrema(i8);
-        const xi16: Extrema = extrema(i16);
-        const xi32: Extrema = extrema(i32);
-        const xi64: Extrema = extrema(i64);
-        const xi128: Extrema = extrema(i128);
-        const xi256: Extrema = extrema(i256);
-        const xi512: Extrema = extrema(i512);
+        const xi8: math.Extrema = math.extrema(i8);
+        const xi16: math.Extrema = math.extrema(i16);
+        const xi32: math.Extrema = math.extrema(i32);
+        const xi64: math.Extrema = math.extrema(i64);
+        const xi128: math.Extrema = math.extrema(i128);
+        const xi256: math.Extrema = math.extrema(i256);
+        const xi512: math.Extrema = math.extrema(i512);
         switch (value) {
             xi8.min...xi8.max => return 8,
             xi16.min...xi8.min - 1, xi8.max + 1...xi16.max => return 16,
@@ -314,22 +290,23 @@ pub fn alignCX(comptime value: comptime_int) u16 { // Needs a better name
         }
     }
 }
-pub inline fn alignSizeBW(comptime T: type) u16 { // Needs a better name
-    return alignBW(@bitSizeOf(T));
+pub inline fn alignBitSizeOfBelow(comptime T: type) u16 {
+    return alignBitSizeBelow(@bitSizeOf(T));
 }
-pub inline fn alignSizeAW(comptime T: type) u16 { // Needs a better name
-    return alignAW(@bitSizeOf(T));
+pub inline fn alignBitSizeOfAbove(comptime T: type) u16 {
+    return alignBitSizeAbove(@bitSizeOf(T));
 }
-pub fn AlignSizeAW(comptime T: type) type { // Needs a better name
+pub fn AlignBitSizeBelow(comptime T: type) type {
     var int_type_info: builtin.Type.Int = @typeInfo(T).Int;
-    int_type_info.bits = alignAW(int_type_info.bits);
+    int_type_info.bits = alignBitSizeBelow(int_type_info.bits);
     return @Type(.{ .Int = int_type_info });
 }
-pub fn AlignSizeBW(comptime T: type) type { // Needs a better name
+pub fn AlignBitSizeAbove(comptime T: type) type {
     var int_type_info: builtin.Type.Int = @typeInfo(T).Int;
-    int_type_info.bits = alignBW(int_type_info.bits);
+    int_type_info.bits = alignBitSizeAbove(int_type_info.bits);
     return @Type(.{ .Int = int_type_info });
 }
+
 /// Return the smallest integer type capable of storing `value`
 pub fn LeastBitSize(comptime value: anytype) type {
     const T: type = @TypeOf(value);
@@ -393,7 +370,7 @@ pub fn LeastRealBitSize(comptime value: anytype) type {
     }
     return @Type(.{
         .Int = .{
-            .bits = alignAW(@bitSizeOf(T) - @clz(value)),
+            .bits = alignBitSizeAbove(@bitSizeOf(T) - @clz(value)),
             .signedness = .unsigned,
         },
     });
@@ -467,7 +444,7 @@ pub inline fn leastBitCast(any: anytype) @Type(.{ .Int = .{
     return @as(U, @bitCast(any));
 }
 pub inline fn leastRealBitCast(any: anytype) @Type(.{ .Int = .{
-    .bits = alignAW(@bitSizeOf(@TypeOf(any))),
+    .bits = alignBitSizeAbove(@bitSizeOf(@TypeOf(any))),
     .signedness = .unsigned,
 } }) {
     return leastBitCast(any);
@@ -1339,7 +1316,7 @@ pub fn initialize(comptime T: type, inits: []const Initializer) T {
 }
 pub fn UniformData(comptime bits: u16) type {
     const word_size: u16 = @bitSizeOf(usize);
-    const real_bits: u16 = alignAW(bits);
+    const real_bits: u16 = alignBitSizeAbove(bits);
     switch (bits) {
         0...word_size => {
             return @Type(.{ .Int = .{ .bits = real_bits, .signedness = .unsigned } });
