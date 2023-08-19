@@ -56,7 +56,6 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) void {
         zl.proc.exitError(error.MissingEnvironmentPaths, 2);
     }
     const toplevel: *Node = Node.init(&allocator, args, vars);
-    toplevel.addSpecialNodes(&allocator);
     try zl.meta.wrap(
         root.buildMain(&allocator, toplevel),
     );
