@@ -1484,6 +1484,13 @@ pub const ComptimeIntFormat = struct {
     }
 };
 pub fn IntFormat(comptime spec: RenderSpec, comptime Int: type) type {
+    if (@bitSizeOf(Int) < 8) {
+        if (@typeInfo(Int).Int.signedness == .signed) {
+            return IntFormat(spec, i8);
+        } else {
+            return IntFormat(spec, u8);
+        }
+    }
     const T = struct {
         value: Int,
         const Format = @This();
