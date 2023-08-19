@@ -101,6 +101,40 @@ pub const Order = enum {
     eq,
     gt,
 };
+pub const Extrema = struct { min: comptime_int, max: comptime_int };
+/// Find the maximum and minimum arithmetical values for an integer type.
+pub fn extrema(comptime Int: type) Extrema {
+    switch (Int) {
+        u0, i0 => return .{ .min = 0, .max = 0 },
+        u1 => return .{ .min = 0, .max = 1 },
+        i1 => return .{ .min = -1, .max = 0 },
+        else => {
+            const U = @Type(.{ .Int = .{
+                .signedness = .unsigned,
+                .bits = @bitSizeOf(Int),
+            } });
+            const umax: U = ~@as(U, 0);
+            if (@typeInfo(Int).Int.signedness == .unsigned) {
+                return .{ .min = 0, .max = umax };
+            } else {
+                const imax: U = umax >> 1;
+                return .{
+                    .min = @as(Int, @bitCast(~imax)),
+                    .max = @as(Int, @bitCast(imax)),
+                };
+            }
+        },
+    }
+}
+/// Cast an integer to a different integer type. If the value doesn't fit,
+/// return null.
+pub fn cast(comptime Int: type, i: anytype) ?Int {
+    const x: Extrema = extrema(Int);
+    if (i <= x.max and i >= x.min) {
+        return @intCast(i);
+    }
+    return null;
+}
 pub fn order(a: anytype, b: anytype) Order {
     if (a == b) {
         return .eq;
