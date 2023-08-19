@@ -901,6 +901,12 @@ pub const DwarfInfo = extern struct {
             }
             addr +%= ehdr.e_shentsize;
         }
+        if (logging_abbrev_entry or
+            logging_summary or
+            logging_info_entry)
+        {
+            DwarfInfo.active = @ptrCast(&ret);
+        }
         return @bitCast(ret);
     }
     fn addAbbrevTable(dwarf_info: *DwarfInfo, allocator: *Allocator) *AbbrevTable {
