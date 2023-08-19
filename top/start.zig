@@ -157,7 +157,8 @@ pub fn start() callconv(.C) noreturn {
         if (@call(.auto, builtin.root.main, params)) {
             proc.exitNotice(0);
         } else |err| {
-            proc.exitError(err, @intCast(@intFromError(err)));
+            debug.alarm(@errorName(err), @errorReturnTrace(), @returnAddress());
+            proc.exit(@intCast(@intFromError(err)));
         }
     }
     if (main_return_type_info == .ErrorUnion and
@@ -166,7 +167,8 @@ pub fn start() callconv(.C) noreturn {
         if (@call(.auto, builtin.root.main, params)) |rc| {
             proc.exitNotice(rc);
         } else |err| {
-            proc.exitError(err, @intCast(@intFromError(err)));
+            debug.alarm(@errorName(err), @errorReturnTrace(), @returnAddress());
+            proc.exit(@intCast(@intFromError(err)));
         }
     }
     @compileError(@TypeOf(main_return_type_info, .ErrorSet));
