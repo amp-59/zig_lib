@@ -1680,9 +1680,9 @@ pub inline fn ud(value: anytype) GenericPolynomialFormat(.{
         const T: type = @TypeOf(value);
         if (T == comptime_int) {
             debug.assertAboveOrEqual(comptime_int, value, 0);
-            break :blk meta.alignCX(value);
+            break :blk meta.realBitSizeOf(value);
         } else {
-            break :blk meta.alignSizeAW(T);
+            break :blk meta.alignBitSizeOfAbove(T);
         }
     },
     .radix = 10,
@@ -1696,9 +1696,9 @@ pub inline fn udh(value: anytype) GenericPolynomialFormat(.{
         const T: type = @TypeOf(value);
         if (T == comptime_int) {
             debug.assertAboveOrEqual(comptime_int, value, 0);
-            break :blk meta.alignCX(value);
+            break :blk meta.realBitSizeOf(value);
         } else {
-            break :blk meta.alignSizeAW(T);
+            break :blk meta.alignBitSizeOfAbove(T);
         }
     },
     .radix = 10,
@@ -1713,9 +1713,9 @@ pub inline fn ub(value: anytype) GenericPolynomialFormat(.{
         const T: type = @TypeOf(value);
         if (T == comptime_int) {
             debug.assertAboveOrEqual(comptime_int, value, 0);
-            break :blk meta.alignCX(value);
+            break :blk meta.realBitSizeOf(value);
         } else {
-            break :blk meta.alignSizeAW(T);
+            break :blk meta.alignBitSizeOfAbove(T);
         }
     },
     .radix = 2,
@@ -1730,9 +1730,9 @@ pub inline fn ux(value: anytype) GenericPolynomialFormat(.{
         const T: type = @TypeOf(value);
         if (T == comptime_int) {
             debug.assertAboveOrEqual(comptime_int, value, 0);
-            break :blk meta.alignCX(value);
+            break :blk meta.realBitSizeOf(value);
         } else {
-            break :blk meta.alignSizeAW(T);
+            break :blk meta.alignBitSizeOfAbove(T);
         }
     },
     .radix = 16,
@@ -1746,10 +1746,9 @@ pub inline fn id(value: anytype) GenericPolynomialFormat(.{
     .bits = blk: {
         const T: type = @TypeOf(value);
         if (T == comptime_int) {
-            debug.assertAboveOrEqual(comptime_int, value, 0);
-            break :blk meta.alignCX(value);
+            break :blk meta.realBitSizeOf(value);
         } else {
-            break :blk meta.alignSizeAW(T);
+            break :blk meta.alignBitSizeOfAbove(T);
         }
     },
     .radix = 10,
@@ -1762,10 +1761,9 @@ pub inline fn idh(value: anytype) GenericPolynomialFormat(.{
     .bits = blk: {
         const T: type = @TypeOf(value);
         if (T == comptime_int) {
-            debug.assertAboveOrEqual(comptime_int, value, 0);
-            break :blk meta.alignCX(value);
+            break :blk meta.realBitSizeOf(value);
         } else {
-            break :blk meta.alignSizeAW(T);
+            break :blk meta.alignBitSizeOfAbove(T);
         }
     },
     .radix = 10,
@@ -1779,10 +1777,9 @@ pub inline fn ib(value: anytype) GenericPolynomialFormat(.{
     .bits = blk: {
         const T: type = @TypeOf(value);
         if (T == comptime_int) {
-            debug.assertAboveOrEqual(comptime_int, value, 0);
-            break :blk meta.alignCX(value);
+            break :blk meta.realBitSizeOf(value);
         } else {
-            break :blk meta.alignSizeAW(T);
+            break :blk meta.alignBitSizeOfAbove(T);
         }
     },
     .radix = 2,
@@ -1796,10 +1793,9 @@ pub inline fn ix(value: anytype) GenericPolynomialFormat(.{
     .bits = blk: {
         const T: type = @TypeOf(value);
         if (T == comptime_int) {
-            debug.assertAboveOrEqual(comptime_int, value, 0);
-            break :blk meta.alignCX(value);
+            break :blk meta.realBitSizeOf(value);
         } else {
-            break :blk meta.alignSizeAW(T);
+            break :blk meta.alignBitSizeOfAbove(T);
         }
     },
     .radix = 16,
