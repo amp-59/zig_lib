@@ -6,6 +6,7 @@ pub const elf = @import("./top/elf.zig");
 pub const gen = @import("./top/gen.zig");
 pub const rng = @import("./top/rng.zig");
 pub const fmt = @import("./top/fmt.zig");
+pub const x86 = @import("./top/x86.zig");
 pub const proc = @import("./top/proc.zig");
 pub const meta = @import("./top/meta.zig");
 pub const mach = @import("./top/mach.zig");
