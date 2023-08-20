@@ -118,14 +118,20 @@ pub fn fromSymbol(c: u8, comptime radix: u7) u8 {
         }
     }
 }
-pub inline fn fromSymbolChecked(c: u8, comptime radix: u7) !u8 {
+pub fn fromSymbolChecked(comptime Int: type, c: u8, comptime radix: u7) !Int {
     const value: u8 = fromSymbol(c, radix);
     if (value >= radix) {
         return error.InvalidEncoding;
     }
-    return value;
+    if (math.cast(Int, value)) |ret| {
+        return ret;
+    }
+    return error.Overflow;
 }
-fn nextSigFig(comptime T: type, prev: T, comptime radix: T) ?T {
+fn nextSigFig(comptime T: type, prev: T, comptime radix: u7) ?T {
+    if (radix > ~@as(T, 0)) {
+        return null;
+    }
     const mul_result = @mulWithOverflow(prev, radix);
     if (mul_result[1] != 0) {
         return null;
