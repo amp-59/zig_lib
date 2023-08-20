@@ -1401,6 +1401,7 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
                     if (format.value == @field(tag_type.?, field.name)) {
                         const field_name_format: fmt.IdentifierFormat = .{ .value = field.name };
                         if (field.type == void) {
+                            len -%= 2;
                             return len +% field_name_format.formatLength();
                         } else {
                             const FieldFormat: type = AnyFormat(spec, field.type);
