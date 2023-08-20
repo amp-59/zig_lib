@@ -150,16 +150,16 @@ pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
     const T = packed struct {
         value: Int,
         const Format: type = @This();
-        const Int: type = @Type(.{ .Int = .{ .bits = fmt_spec.bits, .signedness = fmt_spec.signedness } });
-        const Abs: type = @Type(.{ .Int = .{ .bits = fmt_spec.bits, .signedness = .unsigned } });
+        pub const Int: type = @Type(.{ .Int = .{ .bits = fmt_spec.bits, .signedness = fmt_spec.signedness } });
+        pub const Abs: type = @Type(.{ .Int = .{ .bits = fmt_spec.bits, .signedness = .unsigned } });
         const min_abs_value: Abs = fmt_spec.range.min orelse 0;
         const max_abs_value: Abs = fmt_spec.range.max orelse ~@as(Abs, 0);
         const min_digits_count: u16 = length(Abs, min_abs_value, fmt_spec.radix);
         const max_digits_count: u16 = length(Abs, max_abs_value, fmt_spec.radix);
         pub const spec: PolynomialFormatSpec = fmt_spec;
         pub const StaticString = mem.StaticString(max_len);
-        const max_len: u64 = blk: {
-            var len: u64 = 0;
+        const max_len: comptime_int = blk: {
+            var len: comptime_int = 0;
             if (fmt_spec.radix > max_abs_value) {
                 break :blk len +% 1;
             }
