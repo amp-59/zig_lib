@@ -418,7 +418,7 @@ pub fn subCausedOverflowError(comptime T: type, arg1: T, arg2: T, ret_addr: ?usi
     @setRuntimeSafety(builtin.is_safe);
     var buf: [4096]u8 = undefined;
     const len: u64 = about.writeSubCausedOverflow(T, @typeName(T), &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
-    builtin.alarm(buf[0..len], @errorReturnTrace(), ret_addr orelse @returnAddress());
+    builtin.alarm(buf[0..len], null, ret_addr orelse @returnAddress());
     return error.SubCausedOverflow;
 }
 pub fn subCausedOverflowFault(comptime T: type, arg1: T, arg2: T, ret_addr: usize) noreturn {
@@ -433,7 +433,7 @@ pub fn addCausedOverflowError(comptime T: type, arg1: T, arg2: T, ret_addr: ?usi
     @setRuntimeSafety(builtin.is_safe);
     var buf: [4096]u8 = undefined;
     const len: u64 = about.writeAddCausedOverflow(T, @typeName(T), &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
-    builtin.alarm(buf[0..len], @errorReturnTrace(), ret_addr orelse @returnAddress());
+    builtin.alarm(buf[0..len], null, ret_addr orelse @returnAddress());
     return error.AddCausedOverflow;
 }
 pub fn addCausedOverflowFault(comptime T: type, arg1: T, arg2: T, ret_addr: usize) noreturn {
@@ -448,7 +448,7 @@ pub fn mulCausedOverflowError(comptime T: type, arg1: T, arg2: T, ret_addr: ?usi
     @setRuntimeSafety(builtin.is_safe);
     var buf: [4096]u8 = undefined;
     const len: u64 = about.writeMulCausedOverflow(T, @typeName(T), &buf, arg1, arg2);
-    builtin.alarm(buf[0..len], @errorReturnTrace(), ret_addr orelse @returnAddress());
+    builtin.alarm(buf[0..len], null, ret_addr orelse @returnAddress());
     return error.MulCausedOverflow;
 }
 pub fn mulCausedOverflowFault(comptime T: type, arg1: T, arg2: T, ret_addr: usize) noreturn {
@@ -463,7 +463,7 @@ pub fn exactDivisionWithRemainderError(comptime T: type, arg1: T, arg2: T, resul
     @setRuntimeSafety(builtin.is_safe);
     var buf: [4096]u8 = undefined;
     const len: u64 = about.writeExactDivisionWithRemainder(T, @typeName(T), &buf, arg1, arg2, result, remainder);
-    builtin.alarm(buf[0..len], @errorReturnTrace(), ret_addr orelse @returnAddress());
+    builtin.alarm(buf[0..len], null, ret_addr orelse @returnAddress());
     return error.ExactDivisionWithRemainder;
 }
 pub fn exactDivisionWithRemainderFault(comptime T: type, arg1: T, arg2: T, result: T, remainder: T, ret_addr: usize) noreturn {
@@ -479,7 +479,7 @@ pub fn incorrectAlignmentError(comptime T: type, address: usize, alignment: usiz
     const remainder: usize = address & (@typeInfo(T).Pointer.alignment -% 1);
     var buf: [4096]u8 = undefined;
     const len: u64 = about.writeIncorrectAlignment(@typeName(T), &buf, address, alignment, remainder);
-    builtin.alarm(buf[0..len], @errorReturnTrace(), ret_addr orelse @returnAddress());
+    builtin.alarm(buf[0..len], null, ret_addr orelse @returnAddress());
     return error.IncorrectAlignment;
 }
 pub fn incorrectAlignmentFault(comptime T: type, address: usize, alignment: usize, ret_addr: usize) noreturn {
@@ -584,7 +584,9 @@ const special = struct {
 
     /// Used by panic functions if executable is static linked with special
     /// module object `trace.o`.
-    extern fn printStackTrace(*const Trace, u64, u64) void;
+    extern fn printStackTrace(*const Trace, usize, usize) void;
+    extern fn printSourceCodeAtAddress(*const Trace, usize) void;
+    extern fn printSourceCodeAtAddresses(*const Trace, [*]usize, usize, usize) void;
 };
 pub const printStackTrace = blk: {
     if (builtin.want_stack_traces and
@@ -596,23 +598,41 @@ pub const printStackTrace = blk: {
         break :blk special.printStackTrace;
     }
 };
-pub noinline fn alarm(msg: []const u8, _: @TypeOf(@errorReturnTrace()), ret_addr: usize) void {
+pub const printSourceCodeAtAddress = blk: {
+    if (builtin.want_stack_traces and
+        !builtin.have_stack_traces and
+        builtin.output_mode == .Exe)
+    {
+        break :blk special.trace.printSourceCodeAtAddress;
+    } else {
+        break :blk special.printSourceCodeAtAddress;
+    }
+};
+pub noinline fn alarm(error_name: []const u8, st: @TypeOf(@errorReturnTrace()), ret_addr: usize) void {
     @setCold(true);
     @setRuntimeSafety(false);
     if (builtin.want_stack_traces and builtin.trace.Error) {
-        printStackTrace(&builtin.trace, ret_addr, 0);
+        if (ret_addr == 0) {
+            if (st) |trace| {
+                for (trace.instruction_addresses[0..trace.index]) |addr| {
+                    printSourceCodeAtAddress(&builtin.trace, addr);
+                }
+            }
+        } else {
+            printStackTrace(&builtin.trace, ret_addr, 0);
+        }
     }
-    @call(.always_inline, about.errorNotice, .{msg});
+    @call(.always_inline, about.errorNotice, .{error_name});
 }
-pub noinline fn panic(msg: []const u8, _: @TypeOf(@errorReturnTrace()), ret_addr: ?usize) noreturn {
+pub noinline fn panic(message: []const u8, _: @TypeOf(@errorReturnTrace()), ret_addr: ?usize) noreturn {
     @setCold(true);
     @setRuntimeSafety(false);
     if (builtin.want_stack_traces and builtin.trace.Fault) {
         printStackTrace(&builtin.trace, ret_addr orelse @returnAddress(), 0);
     }
-    @call(.always_inline, proc.exitGroupFault, .{ msg, builtin.panic_return_value });
+    @call(.always_inline, proc.exitGroupFault, .{ message, builtin.panic_return_value });
 }
-pub noinline fn panicSignal(msg: []const u8, ctx_ptr: *const anyopaque) noreturn {
+pub noinline fn panicSignal(message: []const u8, ctx_ptr: *const anyopaque) noreturn {
     @setCold(true);
     @setRuntimeSafety(false);
     const regs: mach.RegisterState = @as(
@@ -622,7 +642,7 @@ pub noinline fn panicSignal(msg: []const u8, ctx_ptr: *const anyopaque) noreturn
     if (builtin.want_stack_traces and builtin.trace.Signal) {
         printStackTrace(&builtin.trace, regs.rip, regs.rbp);
     }
-    @call(.always_inline, proc.exitGroupFault, .{ msg, builtin.panic_return_value });
+    @call(.always_inline, proc.exitGroupFault, .{ message, builtin.panic_return_value });
 }
 inline fn panicOutOfBoundsEmpty(buf: [*]u8, idx: usize) usize {
     var ptr: [*]u8 = buf;
