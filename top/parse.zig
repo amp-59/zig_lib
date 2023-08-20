@@ -7,9 +7,12 @@ const _float = @import("./parse/float.zig");
 pub usingnamespace _float;
 
 pub const E = error{BadParse};
+const UnsignedOverflow = struct { usize, u1 };
+const SignedOverflow = struct { isize, u1 };
+
 pub fn ub(comptime T: type, str: []const u8) T {
     @setRuntimeSafety(builtin.is_safe);
-    const sig_fig_list: []const T = sigFigList(T, 2);
+    const sig_fig_list: []const T = comptime sigFigList(T, 2);
     var idx: u64 = 0;
     var value: T = 0;
     idx +%= @intFromBool(str[idx] == '0');
@@ -21,7 +24,7 @@ pub fn ub(comptime T: type, str: []const u8) T {
 }
 pub fn uo(comptime T: type, str: []const u8) T {
     @setRuntimeSafety(builtin.is_safe);
-    const sig_fig_list: []const T = sigFigList(T, 8);
+    const sig_fig_list: []const T = comptime sigFigList(T, 8);
     var idx: u64 = 0;
     var value: T = 0;
     idx +%= @intFromBool(str[idx] == '0');
@@ -33,7 +36,7 @@ pub fn uo(comptime T: type, str: []const u8) T {
 }
 pub fn ud(comptime T: type, str: []const u8) T {
     @setRuntimeSafety(builtin.is_safe);
-    const sig_fig_list: []const T = sigFigList(T, 10);
+    const sig_fig_list: []const T = comptime sigFigList(T, 10);
     var idx: u64 = 0;
     var value: T = 0;
     while (idx != str.len) : (idx +%= 1) {
@@ -43,7 +46,7 @@ pub fn ud(comptime T: type, str: []const u8) T {
 }
 pub fn ux(comptime T: type, str: []const u8) T {
     @setRuntimeSafety(builtin.is_safe);
-    const sig_fig_list: []const T = sigFigList(T, 16);
+    const sig_fig_list: []const T = comptime sigFigList(T, 16);
     var idx: u64 = 0;
     var value: T = 0;
     idx +%= @intFromBool(str[idx] == '0');
@@ -55,7 +58,7 @@ pub fn ux(comptime T: type, str: []const u8) T {
 }
 pub fn ib(comptime T: type, str: []const u8) T {
     @setRuntimeSafety(builtin.is_safe);
-    const sig_fig_list: []const T = sigFigList(T, 2);
+    const sig_fig_list: []const T = comptime sigFigList(T, 2);
     var idx: u64 = 0;
     var value: T = 0;
     idx +%= @intFromBool(str[idx] == '-');
@@ -68,7 +71,7 @@ pub fn ib(comptime T: type, str: []const u8) T {
 }
 pub fn io(comptime T: type, str: []const u8) T {
     @setRuntimeSafety(builtin.is_safe);
-    const sig_fig_list: []const T = sigFigList(T, 8);
+    const sig_fig_list: []const T = comptime sigFigList(T, 8);
     var idx: u64 = 0;
     var value: T = 0;
     idx +%= @intFromBool(str[idx] == '-');
@@ -81,7 +84,7 @@ pub fn io(comptime T: type, str: []const u8) T {
 }
 pub fn id(comptime T: type, str: []const u8) T {
     @setRuntimeSafety(builtin.is_safe);
-    const sig_fig_list: []const T = sigFigList(T, 10);
+    const sig_fig_list: []const T = comptime sigFigList(T, 10);
     var idx: u64 = 0;
     var value: T = 0;
     idx +%= @intFromBool(str[idx] == '-');
@@ -92,7 +95,7 @@ pub fn id(comptime T: type, str: []const u8) T {
 }
 pub fn ix(comptime T: type, str: []const u8) T {
     @setRuntimeSafety(builtin.is_safe);
-    const sig_fig_list: []const T = sigFigList(T, 16);
+    const sig_fig_list: []const T = comptime sigFigList(T, 16);
     var idx: u64 = 0;
     var value: T = 0;
     idx +%= @intFromBool(str[idx] == '-');
