@@ -303,6 +303,7 @@ pub fn assertEqualMemory(comptime T: type, arg1: T, arg2: T) void {
 }
 pub fn expect(b: bool) debug.Unexpected!void {
     if (!b) {
+        builtin.alarm(@errorName(error.UnexpectedValue), null, @returnAddress());
         return error.UnexpectedValue;
     }
 }
@@ -608,15 +609,23 @@ pub const printSourceCodeAtAddress = blk: {
         break :blk special.printSourceCodeAtAddress;
     }
 };
+pub const printSourceCodeAtAddresses = blk: {
+    if (builtin.want_stack_traces and
+        !builtin.have_stack_traces and
+        builtin.output_mode == .Exe)
+    {
+        break :blk special.trace.printSourceCodeAtAddresses;
+    } else {
+        break :blk special.printSourceCodeAtAddresses;
+    }
+};
 pub noinline fn alarm(error_name: []const u8, st: @TypeOf(@errorReturnTrace()), ret_addr: usize) void {
     @setCold(true);
     @setRuntimeSafety(false);
     if (builtin.want_stack_traces and builtin.trace.Error) {
         if (ret_addr == 0) {
             if (st) |trace| {
-                for (trace.instruction_addresses[0..trace.index]) |addr| {
-                    printSourceCodeAtAddress(&builtin.trace, addr);
-                }
+                printSourceCodeAtAddresses(&builtin.trace, trace.instruction_addresses.ptr, trace.index, ret_addr);
             }
         } else {
             printStackTrace(&builtin.trace, ret_addr, 0);
