@@ -1436,7 +1436,14 @@ pub fn GenericOptions(comptime Options: type) type {
         }
         fn getOptInternalArrityError(arg: [:0]const u8) void {
             var buf: [4096]u8 = undefined;
-            debug.logFaultAIO(&buf, &.{ "'", arg, "' requires an argument\n" });
+            var ptr: [*]u8 = &buf;
+            ptr[0] = '\'';
+            ptr += 1;
+            @memcpy(ptr, arg);
+            ptr += arg.len;
+            ptr[0..23].* = "' requires an argument\n".*;
+            ptr += 23;
+            debug.write(buf[0..@intFromPtr(ptr - @intFromPtr(&buf))]);
         }
         fn getOptInternal(comptime flag: Option, options: *Options, args: *[][*:0]u8, index: u64, offset: u64) void {
             const field = &@field(options, flag.field_name);
