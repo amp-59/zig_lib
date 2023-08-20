@@ -140,49 +140,136 @@ fn nextSigFig(comptime T: type, prev: T, comptime radix: u7) ?T {
     if (add_result[1] != 0) {
         return null;
     }
-    return add_result[0];
+    return math.cast(T, add_result[0]);
 }
 pub inline fn sigFigList(comptime T: type, comptime radix: u7) []const T {
-    if (comptime math.sigFigList(T, radix)) |list| {
+    if (math.sigFigList(T, radix)) |list| {
         return list;
     }
-    comptime var value: T = 0;
-    comptime var ret: []const T = &.{};
-    inline while (comptime nextSigFig(T, value, radix)) |next| {
+    var value: T = 0;
+    var ret: []const T = &.{};
+    while (nextSigFig(T, value, radix)) |next| {
         ret = ret ++ [1]T{value};
         value = next;
     } else {
         ret = ret ++ [1]T{value};
     }
-    comptime return ret;
+    return ret;
 }
-pub fn any(comptime T: type, str: []const u8) !T {
-    const signed: bool = str[0] == '-';
-    if (@typeInfo(T).Int.signedness == .unsigned and signed) {
-        return E.BadParse;
+pub fn any(comptime Int: type, str: []const u8) !Int {
+    if (@typeInfo(Int).Int.signedness == .unsigned) {
+        if (math.cast(Int, try unsigned(str))) |ret| {
+            return ret;
+        }
+    } else {
+        if (math.cast(Int, try signed(str))) |ret| {
+            return ret;
+        }
     }
-    var idx: u64 = @intFromBool(signed);
-    const is_zero: bool = str[idx] == '0';
-    idx += @intFromBool(is_zero);
+    return error.Overflow;
+}
+fn parseValidate(comptime T: type, str: []const u8, comptime radix: u7) !T {
+    const sig_fig_list: []const T = comptime sigFigList(T, radix);
+    var idx: u64 = 0;
+    var value: struct { T, u1 } = .{ 0, 0 };
+    while (idx != str.len) : (idx +%= 1) {
+        value = @addWithOverflow(value[0], try fromSymbolChecked(T, str[idx], radix) *% (sig_fig_list[str.len -% idx -% 1] +% 1));
+        if (value[1] != 0) {
+            return error.Overflow;
+        }
+    }
+    return value[0];
+}
+pub fn unsigned(str: []const u8) !usize {
+    @setRuntimeSafety(builtin.is_safe);
+    if (str.len == 0) {
+        return error.InvalidCharacter;
+    }
+    var idx: usize = 0;
+    idx +%= @intFromBool(str[idx] == '0');
     if (idx == str.len) {
         return 0;
     }
+    var radix: u8 = 10;
     switch (str[idx]) {
-        'b' => return parseValidate(T, str[idx +% 1 ..], 2),
-        'o' => return parseValidate(T, str[idx +% 1 ..], 8),
-        'x' => return parseValidate(T, str[idx +% 1 ..], 16),
-        else => return parseValidate(T, str[idx..], 10),
+        else => idx -%= 1,
+        'b' => radix = 2,
+        'o' => radix = 8,
+        'x' => radix = 16,
     }
-}
-fn parseValidate(comptime T: type, str: []const u8, comptime radix: u7) !T {
-    const sig_fig_list: []const T = sigFigList(T, radix);
-    var idx: u64 = 0;
-    var value: T = 0;
-    while (idx != str.len) : (idx +%= 1) {
-        value +%= try fromSymbolChecked(str[idx], radix) *% (sig_fig_list[str.len -% idx -% 1] +% 1);
+    idx +%= 1;
+    const end: usize = idx;
+    idx = str.len;
+    var res: UnsignedOverflow = .{ 0, 0 };
+    var ret: UnsignedOverflow = .{ 0, 0 };
+    while (idx != end) {
+        idx -%= 1;
+        ret = @addWithOverflow(ret[0], (res[0] +% 1) *% switch (str[idx]) {
+            '0'...'9' => |byte| (byte -% '0'),
+            'a'...'z' => |byte| (byte -% 'a' +% 0xa),
+            'A'...'Z' => |byte| (byte -% 'A' +% 0xa),
+            else => return error.InvalidCharacter,
+        });
+        if (ret[1] != 0) {
+            return 0;
+        }
+        res = @mulWithOverflow(res[0], radix);
+        if (res[1] != 0) {
+            break;
+        }
+        res = @addWithOverflow(res[0], radix -% 1);
+        if (res[1] != 0) {
+            break;
+        }
     }
-    return value;
+    return ret[0];
 }
+pub fn signed(str: []const u8) !isize {
+    @setRuntimeSafety(builtin.is_safe);
+    if (str.len == 0) {
+        return error.InvalidCharacter;
+    }
+    const neg: bool = str[0] == '-';
+    const pos: bool = str[0] == '+';
+    var idx: usize = @intFromBool(neg) + @intFromBool(pos);
+    idx +%= @intFromBool(str[idx] == '0');
+    if (idx == str.len) {
+        return 0;
+    }
+    var radix: u8 = 10;
+    switch (str[idx]) {
+        'x' => radix = 16,
+        'o' => radix = 8,
+        'b' => radix = 2,
+        else => idx -%= 1,
+    }
+    const end: usize = idx +% 1;
+    idx = str.len;
+    var res: UnsignedOverflow = .{ 0, 0 };
+    var ret: UnsignedOverflow = .{ 0, 0 };
+    while (idx != end) {
+        idx -%= 1;
+        ret = @addWithOverflow(ret[0], (res[0] +% 1) *% switch (str[idx]) {
+            '0'...'9' => |byte| (byte -% '0'),
+            'a'...'z' => |byte| (byte -% 'a' +% 0xa),
+            'A'...'Z' => |byte| (byte -% 'A' +% 0xa),
+            else => return error.InvalidCharacter,
+        });
+        if (ret[1] != 0) {
+            return 0;
+        }
+        res = @mulWithOverflow(res[0], radix);
+        if (res[1] != 0) {
+            break;
+        }
+        res = @addWithOverflow(res[0], radix -% 1);
+        if (res[1] != 0) {
+            break;
+        }
+    }
+    return @bitCast(if (neg) -%ret[0] else ret[0]);
+}
+
 pub fn readLEB128(comptime T: type, bytes: []const u8) !struct { T, u8 } {
     const Int = meta.Child(T);
     const bit_size_of: comptime_int = @bitSizeOf(Int);
@@ -290,5 +377,78 @@ pub const noexcept = struct {
             }
             unreachable;
         }
+    }
+    pub fn unsignedRadix(str: []const u8, radix: u8) usize {
+        @setRuntimeSafety(builtin.is_safe);
+        var res: usize = 0;
+        var ret: usize = 0;
+        var idx: usize = str.len;
+        while (idx != 0) {
+            idx -%= 1;
+            ret +%= (res +% 1) *% switch (str[idx]) {
+                '0'...'9' => |byte| (byte -% '0'),
+                'a'...'z' => |byte| (byte -% 'a' +% 0xa),
+                'A'...'Z' => |byte| (byte -% 'A' +% 0xa),
+                else => radix +% 1,
+            };
+            res *%= radix;
+            res +%= radix -% 1;
+        }
+        return ret;
+    }
+    pub fn unsigned(str: []const u8) usize {
+        @setRuntimeSafety(builtin.is_safe);
+        var idx: usize = 0;
+        idx +%= @intFromBool(str[idx] == '0');
+        if (idx == str.len) {
+            return 0;
+        }
+        var radix: u8 = 10;
+        switch (str[idx]) {
+            'x' => radix = 16,
+            'o' => radix = 8,
+            'b' => radix = 2,
+            else => idx -%= 1,
+        }
+        idx +%= 1;
+        return unsignedRadix(str[idx..], radix);
+    }
+    pub fn signedRadix(str: []const u8, radix: u8) isize {
+        @setRuntimeSafety(builtin.is_safe);
+        var res: isize = 0;
+        var ret: isize = 0;
+        var idx: usize = str.len;
+        while (idx != 0) {
+            idx -%= 1;
+            ret +%= (res +% 1) *% switch (str[idx]) {
+                '0'...'9' => |byte| (byte -% '0'),
+                'a'...'z' => |byte| (byte -% 'a' +% 0xa),
+                'A'...'Z' => |byte| (byte -% 'A' +% 0xa),
+                else => radix +% 1,
+            };
+            res *%= radix;
+            res +%= radix -% 1;
+        }
+        return ret;
+    }
+    pub fn signed(str: []const u8) isize {
+        @setRuntimeSafety(builtin.is_safe);
+        const neg: bool = str[0] == '-';
+        const pos: bool = str[0] == '+';
+        var idx: usize = @intFromBool(neg) | @intFromBool(pos);
+        idx +%= @intFromBool(str[idx] == '0');
+        if (idx == str.len) {
+            return 0;
+        }
+        var radix: u8 = 10;
+        switch (str[idx]) {
+            else => idx -%= 1,
+            'b' => radix = 2,
+            'o' => radix = 8,
+            'x' => radix = 16,
+        }
+        idx +%= 1;
+        const ret: isize = signedRadix(str[idx..], radix);
+        return if (neg) -ret else ret;
     }
 };
