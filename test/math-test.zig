@@ -6,6 +6,23 @@ const debug = zl.debug;
 const builtin = zl.builtin;
 const testing = zl.testing;
 pub usingnamespace zl.start;
+
+fn testCast() !void {
+    try testing.expect(math.cast(u8, 300) == null);
+    try testing.expect(math.cast(u8, @as(u32, 300)) == null);
+    try testing.expect(math.cast(i8, -200) == null);
+    try testing.expect(math.cast(i8, @as(i32, -200)) == null);
+    try testing.expect(math.cast(u8, -1) == null);
+    try testing.expect(math.cast(u8, @as(i8, -1)) == null);
+    try testing.expect(math.cast(u64, -1) == null);
+    try testing.expect(math.cast(u64, @as(i8, -1)) == null);
+
+    try testing.expect(math.cast(u8, 255).? == @as(u8, 255));
+    try testing.expect(math.cast(u8, @as(u32, 255)).? == @as(u8, 255));
+    try testing.expect(@TypeOf(math.cast(u8, 255).?) == u8);
+    try testing.expect(@TypeOf(math.cast(u8, @as(u32, 255)).?) == u8);
+}
+
 fn testShl() !void {
     try debug.expect(math.shl(u8, 0b11111111, @as(usize, 3)) == 0b11111000);
     try debug.expect(math.shl(u8, 0b11111111, @as(usize, 8)) == 0);
