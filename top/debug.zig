@@ -587,7 +587,7 @@ const special = struct {
     /// module object `trace.o`.
     extern fn printStackTrace(*const Trace, usize, usize) void;
     extern fn printSourceCodeAtAddress(*const Trace, usize) void;
-    extern fn printSourceCodeAtAddresses(*const Trace, [*]usize, usize, usize) void;
+    extern fn printSourceCodeAtAddresses(*const Trace, usize, [*]usize, usize) void;
 };
 pub const printStackTrace = blk: {
     if (builtin.want_stack_traces and
@@ -625,7 +625,7 @@ pub noinline fn alarm(error_name: []const u8, st: @TypeOf(@errorReturnTrace()), 
     if (builtin.want_stack_traces and builtin.trace.Error) {
         if (ret_addr == 0) {
             if (st) |trace| {
-                printSourceCodeAtAddresses(&builtin.trace, trace.instruction_addresses.ptr, trace.index, ret_addr);
+                printSourceCodeAtAddresses(&builtin.trace, ret_addr, trace.instruction_addresses.ptr, trace.index);
             }
         } else {
             printStackTrace(&builtin.trace, ret_addr, 0);
