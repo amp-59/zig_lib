@@ -805,8 +805,11 @@ noinline fn callErrorOrMediaReturnValueFunction(comptime Fn: type, result_addr: 
 }
 pub fn clone(comptime spec: CloneSpec, stack_addr: u64, stack_len: u64, result_ptr: anytype, comptime function: anytype, args: meta.Args(@TypeOf(function))) sys.ErrorUnion(spec.errors, spec.return_type) {
     @setRuntimeSafety(false);
-    const Fn: type = @TypeOf(function);
-    const Args: type = meta.Args(@TypeOf(function));
+    const Context = struct {
+        call: *const @TypeOf(function),
+        ret: *meta.Return(@TypeOf(function)),
+        args: meta.Args(@TypeOf(function)),
+    };
     const cl_args: CloneArgs = .{
         .flags = comptime spec.flags(),
         .stack_addr = stack_addr,
@@ -815,17 +818,11 @@ pub fn clone(comptime spec: CloneSpec, stack_addr: u64, stack_len: u64, result_p
         .parent_tid_addr = stack_addr +% 0x10,
         .tls_addr = stack_addr +% 0x20,
     };
+    const ret = if (@TypeOf(result_ptr) == void) @constCast(&result_ptr) else result_ptr;
     const cl_args_addr: u64 = @intFromPtr(&cl_args);
     const cl_args_size: u64 = @sizeOf(CloneArgs);
-    const ret_off: u64 = stack_len -% @sizeOf(u64);
-    const call_off: u64 = ret_off -% @sizeOf(u64);
-    const args_off: u64 = call_off -% @sizeOf(Args);
-    @as(**const Fn, @ptrFromInt(stack_addr +% call_off)).* = &function;
-    if (@TypeOf(result_ptr) != void) {
-        @as(*u64, @ptrFromInt(stack_addr +% ret_off)).* = @intFromPtr(result_ptr);
-    }
-    @as(*Args, @ptrFromInt(stack_addr +% args_off)).* = args;
-
+    const cl_ctx: *Context = @ptrFromInt(stack_addr +% (stack_len -% @sizeOf(Context)));
+    cl_ctx.* = .{ .call = &function, .ret = ret, .args = args };
     const rc: i64 = asm volatile (
         \\syscall # clone3
         : [ret] "={rax}" (-> i64),
@@ -842,29 +839,9 @@ pub fn clone(comptime spec: CloneSpec, stack_addr: u64, stack_len: u64, result_p
             :
             : "rbp", "rsp", "memory"
         );
-        const tl_ret_addr: u64 = tl_stack_addr -% @sizeOf(u64);
-        const tl_call_addr: u64 = tl_ret_addr -% @sizeOf(u64);
-        const tl_args_addr: u64 = tl_call_addr -% @sizeOf(Args);
-        if (@TypeOf(result_ptr) != void) {
-            if (@sizeOf(@TypeOf(result_ptr.*)) <= @sizeOf(usize) or
-                @typeInfo(@TypeOf(result_ptr.*)) != .ErrorUnion)
-            {
-                @as(**meta.Return(Fn), @ptrFromInt(tl_ret_addr)).*.* =
-                    @call(.never_inline, @as(**Fn, @ptrFromInt(tl_call_addr)).*, @as(*meta.Args(Fn), @ptrFromInt(tl_args_addr)).*);
-            } else {
-                @call(.never_inline, callErrorOrMediaReturnValueFunction, .{
-                    @TypeOf(function), tl_ret_addr, tl_call_addr, tl_args_addr,
-                });
-            }
-        } else {
-            @call(.never_inline, @as(**Fn, @ptrFromInt(tl_call_addr)).*, @as(*meta.Args(Fn), @ptrFromInt(tl_args_addr)).*);
-        }
-        asm volatile (
-            \\movq  $60,    %%rax
-            \\movq  $0,     %%rdi
-            \\syscall # exit
-            ::: "rax", "rdi");
-        unreachable;
+        const tl_ctx: *Context = @ptrFromInt(tl_stack_addr -% @sizeOf(Context));
+        tl_ctx.ret.* = @call(.never_inline, tl_ctx.call, tl_ctx.args);
+        exit(0);
     }
     if (spec.errors.throw.len != 0) {
         if (rc < 0) try builtin.zigErrorThrow(sys.ErrorCode, spec.errors.throw, rc);
