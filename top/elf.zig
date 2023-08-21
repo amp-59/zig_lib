@@ -1165,6 +1165,7 @@ pub const LoaderSpec = struct {
         lb_sect_addr: usize = 0x1000000000,
         show_defined: bool = false,
         show_sections: bool = false,
+        extra_sections: []const []const u8 = &.{},
     };
     pub const Logging = packed struct {
         open: debug.Logging.AcquireError = .{},
@@ -1188,40 +1189,38 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
         ub_info_addr: usize = lb_info_addr,
         ub_sect_addr: usize = lb_sect_addr,
         const DynamicLoader = @This();
-        const Tag = enum(u8) {
-            @".dynsym" = 0,
-            @".dynstr" = 1,
-            @".rodata" = 2,
-            @".text" = 3,
-            @".strtab" = 4,
-            @".dynamic" = 5,
-        };
         pub const Info = extern struct {
             ehdr: Elf64_Ehdr,
-            shdr: [*]Elf64_Shdr,
-            base_addr: usize,
-            end_off: usize,
-            links: [tags.len]?*Elf64_Shdr,
+            addr: usize,
+            len: usize,
+            links: [links_len]?*Elf64_Shdr,
             impl: extern struct {
+                shdr: [*]Elf64_Shdr,
                 dynstr: [*]u8,
                 dynsym: [*]Elf64_Sym,
             },
+            fn mapSection(info: *Info, prot: file.Map.Protection, fd: usize, shdr: *Elf64_Shdr) sys.ErrorUnion(loader_spec.errors.map, void) {
+                @setRuntimeSafety(builtin.is_safe);
+                const addr: usize = mach.alignB4096(shdr.sh_addr);
+                const len: usize = mach.alignA4096(shdr.sh_addr +% shdr.sh_size) -% addr;
+                const off: usize = mach.alignB4096(shdr.sh_offset);
+                try meta.wrap(file.map(map(), prot, .{ .fixed_noreplace = true }, fd, info.addr +% addr, len, off));
+            }
             pub fn loadPointers(info: *Info, comptime Pointers: type, ptrs: *Pointers) void {
                 @setRuntimeSafety(builtin.is_safe);
                 const words: [*]usize = @ptrCast(ptrs);
                 const dynsym_shdr: *Elf64_Shdr = info.links[dynsym_idx].?;
+                const max_idx: usize = @divExact(dynsym_shdr.sh_size, dynsym_shdr.sh_entsize);
                 for (meta.fieldNames(Pointers), 0..) |field_name, fields_idx| {
                     var dyn_idx: usize = 1;
-                    while (dyn_idx < @divExact(dynsym_shdr.sh_size, dynsym_shdr.sh_entsize)) : (dyn_idx +%= 1) {
+                    while (dyn_idx != max_idx) : (dyn_idx +%= 1) {
                         var idx: usize = 0;
                         var sym: Elf64_Sym = info.impl.dynsym[dyn_idx];
                         const str: [*]u8 = info.impl.dynstr + sym.st_name;
                         while (str[idx] != 0) : (idx +%= 1) {
-                            if (field_name[idx] != str[idx]) {
-                                break;
-                            }
+                            if (field_name[idx] != str[idx]) break;
                         } else {
-                            words[fields_idx] = info.base_addr +% sym.st_value;
+                            words[fields_idx] = info.addr +% sym.st_value;
                             break;
                         }
                     }
@@ -1238,16 +1237,14 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                         if (@intFromPtr(link.*) != 0) {
                             continue;
                         }
-                        const shdr: *Elf64_Shdr = &info.shdr[shdr_idx];
+                        const shdr: *Elf64_Shdr = &info.impl.shdr[shdr_idx];
                         var str: [*]u8 = shstr + shdr.sh_name;
                         var idx: usize = 1;
                         while (str[idx] != 0) : (idx +%= 1) {
-                            if (@tagName(tags[tags_idx])[idx] != str[idx]) {
-                                break;
-                            }
+                            if (sections[tags_idx][idx] != str[idx]) break;
                         } else {
                             link.* = shdr;
-                            info.end_off = @max(info.end_off, shdr.sh_addr +% shdr.sh_size);
+                            info.len = @max(info.len, shdr.sh_addr +% shdr.sh_size);
                             break;
                         }
                     }
@@ -1259,7 +1256,15 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
         };
         pub const lb_info_addr: comptime_int = loader_spec.options.lb_info_addr;
         pub const lb_sect_addr: comptime_int = loader_spec.options.lb_sect_addr;
-        const load_error_policy: sys.ErrorPolicy = .{
+        pub const links_len: comptime_int = @typeInfo(Tag).Enum.fields.len;
+        const sections = [_][]const u8{
+            ".dynsym", ".dynstr",
+            ".rodata", ".text",
+            ".strtab", ".dynamic",
+            ".symtab",
+        };
+        const Tag = meta.TagFromList(sections ++ loader_spec.options.extra_sections);
+        const ep0 = .{
             .throw = loader_spec.errors.open.throw ++ loader_spec.errors.seek.throw ++
                 loader_spec.errors.read.throw ++ loader_spec.errors.map.throw ++
                 loader_spec.errors.unmap.throw ++ loader_spec.errors.close.throw,
@@ -1267,72 +1272,68 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 loader_spec.errors.read.abort ++ loader_spec.errors.map.abort ++
                 loader_spec.errors.unmap.abort ++ loader_spec.errors.close.abort,
         };
-        const dynsym_idx: comptime_int = @intFromEnum(Tag.@".dynsym");
-        const dynstr_idx: comptime_int = @intFromEnum(Tag.@".dynstr");
-        const rodata_idx: comptime_int = @intFromEnum(Tag.@".rodata");
-        const text_idx: comptime_int = @intFromEnum(Tag.@".text");
-        const strtab_idx: comptime_int = @intFromEnum(Tag.@".strtab");
-        const dynamic_idx: comptime_int = @intFromEnum(Tag.@".dynamic");
-        const tags: []const Tag = meta.tagList(Tag);
-        const map_prot_x = .{ .exec = true };
-        const map_prot_r = .{ .read = true };
-        const map_flags = .{ .fixed_noreplace = true };
-        pub fn load(loader: *DynamicLoader, pathname: [:0]const u8) sys.ErrorUnion(load_error_policy, *Info) {
+        const ep1 = .{
+            .throw = loader_spec.errors.read.throw ++ loader_spec.errors.seek.throw,
+            .abort = loader_spec.errors.read.abort ++ loader_spec.errors.seek.abort,
+        };
+        const dynsym_idx: comptime_int = 0;
+        const dynstr_idx: comptime_int = 1;
+        const rodata_idx: comptime_int = 2;
+        const text_idx: comptime_int = 3;
+        const strtab_idx: comptime_int = 4;
+        const dynamic_idx: comptime_int = 5;
+        fn allocateInfo(loader: *DynamicLoader, size: usize) sys.ErrorUnion(loader_spec.errors.map, usize) {
             @setRuntimeSafety(builtin.is_safe);
-            const info_addr: usize = alignA4096(@atomicRmw(usize, &loader.ub_info_addr, .Add, 4096, .SeqCst));
-            const info_buf: [*]u8 = @ptrFromInt(info_addr);
-            try meta.wrap(mem.map(map(), map_prot_r, map_flags, info_addr, 4096));
-            const info: *Info = @ptrFromInt(info_addr);
-            mem.zero(Info, info);
+            const addr: usize = mach.alignA4096(@atomicRmw(usize, &loader.ub_info_addr, .Add, size, .SeqCst));
+            try meta.wrap(mem.map(map(), .{ .read = true }, .{ .fixed_noreplace = true }, addr, size));
+            return addr;
+        }
+        fn mapSections(loader: *DynamicLoader, fd: usize, info: *Info) sys.ErrorUnion(loader_spec.errors.map, void) {
+            @setRuntimeSafety(builtin.is_safe);
+            info.addr = mach.alignA4096(@atomicRmw(usize, &loader.ub_sect_addr, .Add, info.len, .SeqCst));
+            if (info.links[rodata_idx]) |rodata| {
+                try meta.wrap(info.mapSection(.{ .read = true }, fd, rodata));
+            }
+            if (info.links[text_idx]) |text| {
+                try meta.wrap(info.mapSection(.{ .exec = true }, fd, text));
+            }
+        }
+        pub fn load(loader: *DynamicLoader, pathname: [:0]const u8) sys.ErrorUnion(ep0, *Info) {
+            @setRuntimeSafety(builtin.is_safe);
             const fd: usize = try meta.wrap(file.open(open(), pathname));
+            const info_addr: usize = try meta.wrap(loader.allocateInfo(4096));
+            const info_buf: [*]u8 = @ptrFromInt(info_addr);
+            const info: *Info = @ptrFromInt(info_addr);
             try meta.wrap(file.read(read(), fd, info_buf[0..@sizeOf(Elf64_Ehdr)]));
-            const shdr_len: usize = alignA4096(info.ehdr.e_shnum *% info.ehdr.e_shentsize);
-            const shdr_addr: usize = alignA4096(@atomicRmw(usize, &loader.ub_info_addr, .Add, shdr_len, .SeqCst));
+            const shdr_len: usize = mach.alignA4096(info.ehdr.e_shnum *% info.ehdr.e_shentsize);
+            const shdr_addr: usize = try meta.wrap(loader.allocateInfo(shdr_len));
             const shdr_buf: [*]u8 = @ptrFromInt(shdr_addr);
-            try meta.wrap(mem.map(map(), map_prot_r, map_flags, shdr_addr, shdr_len));
-            try meta.wrap(file.seek(seek(), fd, info.ehdr.e_shoff, .set));
-            try meta.wrap(file.read(read(), fd, shdr_buf[0..shdr_len]));
-            info.shdr = @ptrFromInt(shdr_addr);
+            info.impl.shdr = @ptrFromInt(shdr_addr);
+            try meta.wrap(readAt(fd, info.ehdr.e_shoff, shdr_buf[0..shdr_len]));
             var buf: [4096]u8 = undefined;
             const shstr: [*]u8 = &buf;
-            try meta.wrap(file.seek(seek(), fd, info.shdr[info.ehdr.e_shstrndx].sh_offset, .set));
-            try meta.wrap(file.read(read(), fd, shstr[0..info.shdr[info.ehdr.e_shstrndx].sh_size]));
+            const shstr_len: usize = info.impl.shdr[info.ehdr.e_shstrndx].sh_size;
+            try meta.wrap(readAt(fd, info.impl.shdr[info.ehdr.e_shstrndx].sh_offset, shstr[0..shstr_len]));
             info.readSections(shstr);
-            info.base_addr = alignA4096(@atomicRmw(usize, &loader.ub_sect_addr, .Add, info.end_off, .SeqCst));
-            const rodata_shdr: *Elf64_Shdr = info.links[rodata_idx].?;
-            const rodata_addr: usize = alignB4096(rodata_shdr.sh_addr);
-            const rodata_end: usize = alignA4096(rodata_shdr.sh_addr +% rodata_shdr.sh_size);
-            const rodata_off: usize = alignB4096(rodata_shdr.sh_offset);
-            try meta.wrap(file.map(map(), map_prot_r, map_flags, fd, info.base_addr +% rodata_addr, rodata_end -% rodata_addr, rodata_off));
-            const text_shdr: *Elf64_Shdr = info.links[text_idx].?;
-            const text_addr: usize = alignB4096(text_shdr.sh_addr);
-            const text_end: usize = alignA4096(text_shdr.sh_addr +% text_shdr.sh_size);
-            const text_off: usize = alignB4096(text_shdr.sh_offset);
-            try meta.wrap(file.map(map(), map_prot_x, map_flags, fd, info.base_addr +% text_addr, text_end -% text_addr, text_off));
+            try meta.wrap(loader.mapSections(fd, info));
             const dynsym_shdr: *Elf64_Shdr = info.links[dynsym_idx].?;
             const dynstr_shdr: *Elf64_Shdr = info.links[dynstr_idx].?;
-            const dyn_len: usize = alignA4096(dynstr_shdr.sh_size +% dynsym_shdr.sh_size);
-            const dyn_addr: usize = alignA4096(@atomicRmw(usize, &loader.ub_info_addr, .Add, dyn_len, .SeqCst));
+            const dyn_len: usize = mach.alignA4096(dynstr_shdr.sh_size +% dynsym_shdr.sh_size);
+            const dyn_addr: usize = try meta.wrap(loader.allocateInfo(dyn_len));
             const dynsym_buf: [*]u8 = @ptrFromInt(dyn_addr);
             const dynstr_buf: [*]u8 = @ptrFromInt(dyn_addr +% dynsym_shdr.sh_size);
-            // Consider combining actions if sections contiguous.
-            try meta.wrap(mem.map(map(), map_prot_r, map_flags, dyn_addr, dyn_len));
-            try meta.wrap(file.seek(seek(), fd, dynsym_shdr.sh_offset, .set));
-            try meta.wrap(file.read(read(), fd, dynsym_buf[0..dynsym_shdr.sh_size]));
-            try meta.wrap(file.seek(seek(), fd, dynstr_shdr.sh_offset, .set));
-            try meta.wrap(file.read(read(), fd, dynstr_buf[0..dynstr_shdr.sh_size]));
-            info.impl = .{
-                .dynsym = @ptrFromInt(dyn_addr),
-                .dynstr = @ptrCast(dynstr_buf),
-            };
+            try meta.wrap(readAt(fd, dynsym_shdr.sh_offset, dynsym_buf[0..dynsym_shdr.sh_size]));
+            try meta.wrap(readAt(fd, dynstr_shdr.sh_offset, dynstr_buf[0..dynstr_shdr.sh_size]));
             try meta.wrap(file.close(close(), fd));
+            info.impl.dynsym = @ptrFromInt(dyn_addr);
+            info.impl.dynstr = @ptrCast(dynstr_buf);
             return info;
         }
-        fn alignA4096(value: usize) usize {
-            return (value +% @as(usize, 4095)) & ~@as(usize, 4095);
-        }
-        fn alignB4096(value: usize) usize {
-            return value & ~@as(usize, 4095);
+        // Consider making function is `file`.
+        fn readAt(fd: usize, offset: usize, buf: []u8) sys.ErrorUnion(ep1, void) {
+            @setRuntimeSafety(builtin.is_safe);
+            try meta.wrap(file.seek(seek(), fd, offset, .set));
+            try meta.wrap(file.read(read(), fd, buf));
         }
         fn seek() file.SeekSpec {
             return .{
@@ -1407,13 +1408,13 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                         }
                         ptr[0..section_s.len].* = section_s.*;
                         ptr += section_s.len;
-                        @memcpy(ptr, @tagName(tags[tags_idx]));
-                        ptr += @tagName(tags[tags_idx]).len;
+                        @memcpy(ptr, sections[tags_idx]);
+                        ptr += sections[tags_idx].len;
                         ptr[0..2].* = ": ".*;
                         ptr += 2;
                         ptr[0..5].* = "addr=".*;
                         ptr += 5;
-                        ux64.value = info.base_addr +% shdr.sh_addr;
+                        ux64.value = info.addr +% shdr.sh_addr;
                         ptr += ux64.formatWriteBuf(ptr);
                         ptr[0..9].* = ", offset=".*;
                         ptr += 9;
@@ -1465,7 +1466,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 }
             }
             fn symbolSectionName(info: *const Info, sym: Elf64_Sym) [:0]u8 {
-                const shstr: [*]u8 = @ptrFromInt(info.base_addr +% info.shdr[info.ehdr.e_shstrndx].sh_offset);
+                const shstr: [*]u8 = @ptrFromInt(info.addr +% info.shdr[info.ehdr.e_shstrndx].sh_offset);
                 return mem.terminate(shstr + info.shdr[sym.st_shndx].sh_name, 0);
             }
         };
