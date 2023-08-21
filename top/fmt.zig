@@ -483,8 +483,8 @@ pub fn GenericChangedIntFormat(comptime fmt_spec: ChangedIntFormatSpec) type {
         const OldIntFormat = GenericPolynomialFormat(fmt_spec.old_fmt_spec);
         const NewIntFormat = GenericPolynomialFormat(fmt_spec.new_fmt_spec);
         const DeltaIntFormat = GenericPolynomialFormat(fmt_spec.del_fmt_spec);
-        pub const max_len: u64 = @max(fmt_spec.dec_style.len, fmt_spec.inc_style.len) +%
-            OldIntFormat.max_len +% 1 +% DeltaIntFormat.max_len +% 5 +% fmt_spec.no_style.len +% NewIntFormat.max_len;
+        pub const max_len: comptime_int = @as(usize, @max(fmt_spec.dec_style.len, fmt_spec.inc_style.len)) +%
+            OldIntFormat.max_len +% 1 +% (DeltaIntFormat.max_len +% 5) +% fmt_spec.no_style.len +% NewIntFormat.max_len;
         fn formatWriteDelta(format: Format, array: anytype) void {
             if (format.old_value == format.new_value) {
                 array.writeMany("(+0)");
@@ -1537,8 +1537,8 @@ pub fn hexToBytes(dest: []u8, src: []const u8) ![]const u8 {
     var idx: u64 = 0;
     while (idx < src.len) : (idx +%= 2) {
         dest[idx / 2] =
-            try parse.fromSymbolChecked(src[idx], 16) << 4 |
-            try parse.fromSymbolChecked(src[idx +% 1], 16);
+            try parse.fromSymbolChecked(u8, src[idx], 16) << 4 |
+            try parse.fromSymbolChecked(u8, src[idx +% 1], 16);
     }
     return dest[0 .. idx / 2];
 }
