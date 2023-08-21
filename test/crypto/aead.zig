@@ -7,7 +7,7 @@ const builtin = zl.builtin;
 const testing = zl.testing;
 pub usingnamespace zl.start;
 pub const runtime_assertions: bool = true;
-const htest = @import("./hash-test.zig").htest;
+const htest = @import("./hash.zig").htest;
 const tab = @import("./tab.zig");
 
 const sunscreen: []const u8 = "Ladies and Gentlemen of the class of '99: If I could offer you only one tip for the future, sunscreen would be it.";

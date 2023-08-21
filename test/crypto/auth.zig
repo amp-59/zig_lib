@@ -10,7 +10,7 @@ const builtin = zl.builtin;
 const testing = zl.testing;
 pub usingnamespace zl.start;
 pub const runtime_assertions: bool = true;
-const htest = @import("./hash-test.zig").htest;
+const htest = @import("./hash.zig").htest;
 const tab = @import("./tab.zig");
 fn testHmacMd5(allocator: *mem.SimpleAllocator) !void {
     var out: [crypto.auth.HmacMd5.mac_len]u8 = undefined;
