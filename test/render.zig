@@ -10,7 +10,7 @@ const debug = zl.debug;
 const builtin = zl.builtin;
 const testing = zl.testing;
 const tokenizer = zl.tokenizer;
-const virtual_test = @import("./virtual-test.zig");
+const virtual = @import("./virtual.zig");
 pub usingnamespace zl.start;
 
 pub const logging_override: debug.Logging.Override = spec.logging.override.verbose;
