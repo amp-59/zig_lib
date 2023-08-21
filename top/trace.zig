@@ -373,10 +373,10 @@ fn maximumSideBarWidth(addrs: anytype) usize {
     }
     return max_len +% 1;
 }
-fn printSourceCodeAtAddress(trace: *const debug.Trace, addr: usize) callconv(.C) void {
+pub fn printSourceCodeAtAddress(trace: *const debug.Trace, addr: usize) callconv(.C) void {
     printSourceCodeAtAddresses(trace, 0, &[_]usize{addr}, 1);
 }
-fn printSourceCodeAtAddresses(trace: *const debug.Trace, ret_addr: usize, addrs: [*]const usize, addrs_len: usize) callconv(.C) void {
+pub fn printSourceCodeAtAddresses(trace: *const debug.Trace, ret_addr: usize, addrs: [*]const usize, addrs_len: usize) callconv(.C) void {
     @setRuntimeSafety(builtin.is_safe);
     var allocator: mem.SimpleAllocator = .{ .start = Level.start, .next = Level.start, .finish = Level.start };
     var buf: []u8 = allocator.allocate(u8, 4096);
