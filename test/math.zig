@@ -7,6 +7,10 @@ const builtin = zl.builtin;
 const testing = zl.testing;
 pub usingnamespace zl.start;
 
+fn testExtrema() !void {
+    try debug.expectEqual(i1, -1, math.extrema(i1).min);
+    try debug.expectEqual(u1, 1, math.extrema(u1).max);
+}
 fn testCast() !void {
     try testing.expect(math.cast(u8, 300) == null);
     try testing.expect(math.cast(u8, @as(u32, 300)) == null);
@@ -16,13 +20,11 @@ fn testCast() !void {
     try testing.expect(math.cast(u8, @as(i8, -1)) == null);
     try testing.expect(math.cast(u64, -1) == null);
     try testing.expect(math.cast(u64, @as(i8, -1)) == null);
-
     try testing.expect(math.cast(u8, 255).? == @as(u8, 255));
     try testing.expect(math.cast(u8, @as(u32, 255)).? == @as(u8, 255));
     try testing.expect(@TypeOf(math.cast(u8, 255).?) == u8);
     try testing.expect(@TypeOf(math.cast(u8, @as(u32, 255)).?) == u8);
 }
-
 fn testShl() !void {
     try debug.expect(math.shl(u8, 0b11111111, @as(usize, 3)) == 0b11111000);
     try debug.expect(math.shl(u8, 0b11111111, @as(usize, 8)) == 0);
@@ -119,4 +121,6 @@ pub fn main() !void {
     try testShl();
     try testShr();
     try testIsNan();
+    try testCast();
+    try testExtrema();
 }
