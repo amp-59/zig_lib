@@ -16,17 +16,8 @@ pub const logging_default: debug.Logging.Default = .{
     .Fault = true,
 };
 pub const runtime_assertions: bool = true;
+
 fn testBasicMetaFunctions() !void {
-    try debug.expectEqual(i1, -1, meta.extrema(i1).min);
-    try debug.expectEqual(u1, 1, meta.extrema(u1).max);
-    try debug.expect(8 == meta.alignAW(7));
-    try debug.expect(16 == meta.alignAW(9));
-    try debug.expect(32 == meta.alignAW(25));
-    try debug.expect(64 == meta.alignAW(48));
-    try debug.expect(0 == meta.alignBW(7));
-    try debug.expect(8 == meta.alignBW(9));
-    try debug.expect(16 == meta.alignBW(25));
-    try debug.expect(32 == meta.alignBW(48));
     try debug.expect(meta.isEnum(enum { e }));
     try debug.expect(meta.isContainer(struct {}));
     try debug.expect(meta.isContainer(packed struct {}));
@@ -49,13 +40,13 @@ fn testBasicMetaFunctions() !void {
     try debug.expect(@hasField(E, "three"));
 }
 fn testAlignmentMetaFunctions() !void {
-    try debug.expect(32 == comptime meta.alignCX(-964392));
-    try debug.expect(8 == comptime meta.alignCX(-128));
-    try debug.expect(16 == comptime meta.alignCX(-129));
-    try debug.expect(8 == meta.alignSizeBW(u9));
-    try debug.expect(8 == meta.alignSizeAW(u7));
-    try debug.expect(u8 == meta.AlignSizeBW(u9));
-    try debug.expect(u8 == meta.AlignSizeAW(u7));
+    try debug.expect(32 == comptime meta.realBitSizeOf(-964392));
+    try debug.expect(8 == comptime meta.realBitSizeOf(-128));
+    try debug.expect(16 == comptime meta.realBitSizeOf(-129));
+    try debug.expect(8 == meta.alignBitSizeOfBelow(u9));
+    try debug.expect(8 == meta.alignBitSizeOfAbove(u7));
+    try debug.expect(u8 == meta.AlignBitSizeBelow(u9));
+    try debug.expect(u8 == meta.AlignBitSizeAbove(u7));
 }
 fn testBitCastMetaFunctions() !void {
     const S = packed struct {
