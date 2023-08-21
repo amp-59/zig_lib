@@ -305,7 +305,7 @@ pub const SourceLocationFormat = struct {
         const ret_addr_fmt: AddrFormat = .{ .value = format.return_address };
         var len: u64 = 4;
         @as(*[4]u8, @ptrCast(buf)).* = "\x1b[1m".*;
-        mach.memcpy(buf + len, file_name.ptr, file_name.len);
+        @memcpy(buf + len, file_name);
         len +%= len;
         buf[len] = ':';
         len +%= 1;
@@ -318,7 +318,7 @@ pub const SourceLocationFormat = struct {
         len +%= ret_addr_fmt.formatWriteBuf(buf + len);
         @as(*[4]u8, @ptrCast(buf + len)).* = " in ".*;
         len +%= 4;
-        mach.memcpy(buf + len, fn_name.ptr, fn_name.len);
+        @memcpy(buf + len, fn_name);
         len +%= fn_name.len;
         @as(*[5]u8, @ptrCast(buf + len)).* = "\x1b[0m\n".*;
         return len +% 4;
@@ -427,7 +427,7 @@ pub const Bytes = struct {
             len +%= 1;
             len +%= format.formatRemainder().formatWriteBuf(buf + len);
         }
-        mach.memcpy(buf + len, @tagName(format.value.integer.unit).ptr, @tagName(format.value.integer.unit).len);
+        @memcpy(buf + len, @tagName(format.value.integer.unit));
         return len +% @tagName(format.value.integer.unit).len;
     }
     pub fn formatLength(format: Format) u64 {
@@ -483,8 +483,11 @@ pub fn GenericChangedIntFormat(comptime fmt_spec: ChangedIntFormatSpec) type {
         const OldIntFormat = GenericPolynomialFormat(fmt_spec.old_fmt_spec);
         const NewIntFormat = GenericPolynomialFormat(fmt_spec.new_fmt_spec);
         const DeltaIntFormat = GenericPolynomialFormat(fmt_spec.del_fmt_spec);
-        pub const max_len: comptime_int = @as(usize, @max(fmt_spec.dec_style.len, fmt_spec.inc_style.len)) +%
-            OldIntFormat.max_len +% 1 +% (DeltaIntFormat.max_len +% 5) +% fmt_spec.no_style.len +% NewIntFormat.max_len;
+        pub const max_len: comptime_int = OldIntFormat.max_len +% 1 +%
+            DeltaIntFormat.max_len +% 5 +%
+            fmt_spec.no_style.len +%
+            NewIntFormat.max_len +%
+            @max(fmt_spec.dec_style.len, fmt_spec.inc_style.len);
         fn formatWriteDelta(format: Format, array: anytype) void {
             if (format.old_value == format.new_value) {
                 array.writeMany("(+0)");
@@ -513,10 +516,10 @@ pub fn GenericChangedIntFormat(comptime fmt_spec: ChangedIntFormatSpec) type {
                 const del_fmt: DeltaIntFormat = .{ .value = format.new_value -% format.old_value };
                 buf[len] = '(';
                 len +%= 1;
-                mach.memcpy(buf + len, fmt_spec.inc_style.ptr, fmt_spec.inc_style.len);
+                @memcpy(buf + len, fmt_spec.inc_style);
                 len +%= fmt_spec.inc_style.len;
                 len +%= del_fmt.formatWriteBuf(buf + len);
-                mach.memcpy(buf + len, fmt_spec.no_style.ptr, fmt_spec.no_style.len);
+                @memcpy(buf + len, fmt_spec.no_style);
                 len +%= fmt_spec.no_style.len;
                 buf[len] = ')';
                 len +%= 1;
@@ -524,10 +527,10 @@ pub fn GenericChangedIntFormat(comptime fmt_spec: ChangedIntFormatSpec) type {
                 const del_fmt: DeltaIntFormat = .{ .value = format.old_value -% format.new_value };
                 buf[len] = '(';
                 len +%= 1;
-                mach.memcpy(buf + len, fmt_spec.dec_style.ptr, fmt_spec.dec_style.len);
+                @memcpy(buf + len, fmt_spec.dec_style);
                 len +%= fmt_spec.dec_style.len;
                 len +%= del_fmt.formatWriteBuf(buf + len);
-                mach.memcpy(buf + len, fmt_spec.no_style.ptr, fmt_spec.no_style.len);
+                @memcpy(buf + len, fmt_spec.no_style);
                 len +%= fmt_spec.no_style.len;
                 buf[len] = ')';
                 len +%= 1;
@@ -568,7 +571,7 @@ pub fn GenericChangedIntFormat(comptime fmt_spec: ChangedIntFormatSpec) type {
             const new_fmt: NewIntFormat = .{ .value = format.new_value };
             var len: u64 = old_fmt.formatWriteBuf(buf);
             len +%= format.formatWriteDeltaBuf(buf + len);
-            mach.memcpy(buf + len, fmt_spec.arrow_style.ptr, fmt_spec.arrow_style.len);
+            @memcpy(buf + len, fmt_spec.arrow_style);
             len +%= fmt_spec.arrow_style.len;
             len +%= new_fmt.formatWriteBuf(buf);
             return len;
@@ -631,10 +634,10 @@ pub fn GenericChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type
                     const del_fmt: Bytes = bytes(format.old_value -% format.new_value);
                     buf[len] = '(';
                     len +%= 1;
-                    mach.memcpy(buf + len, fmt_spec.dec_style.ptr, fmt_spec.dec_style.len);
+                    @memcpy(buf + len, fmt_spec.dec_style);
                     len +%= fmt_spec.dec_style.len;
                     len +%= del_fmt.formatWriteBuf(buf + len);
-                    mach.memcpy(buf + len, fmt_spec.no_style.ptr, fmt_spec.no_style.len);
+                    @memcpy(buf + len, fmt_spec.no_style);
                     len +%= fmt_spec.no_style.len;
                     buf[len] = ')';
                     len +%= 1;
@@ -642,10 +645,10 @@ pub fn GenericChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type
                     const del_fmt: Bytes = bytes(format.new_value -% format.old_value);
                     buf[len] = '(';
                     len +%= 1;
-                    mach.memcpy(buf + len, fmt_spec.inc_style.ptr, fmt_spec.inc_style.len);
+                    @memcpy(buf + len, fmt_spec.inc_style);
                     len +%= fmt_spec.inc_style.len;
                     len +%= del_fmt.formatWriteBuf(buf + len);
-                    mach.memcpy(buf + len, fmt_spec.no_style.ptr, fmt_spec.no_style.len);
+                    @memcpy(buf + len, fmt_spec.no_style);
                     len +%= fmt_spec.no_style.len;
                     buf[len] = ')';
                     len +%= 1;
@@ -1511,7 +1514,7 @@ pub fn toTitlecase(noalias buf: []u8, name: []const u8) []u8 {
     return rename;
 }
 pub fn untitle(noalias buf: []u8, noalias name: []const u8) []u8 {
-    mach.memcpy(buf.ptr, name.ptr, name.len);
+    @memcpy(buf.ptr, name);
     if (buf[0] >= 'a') {
         buf[0] +%= ('a' -% 'A');
     }
