@@ -366,28 +366,19 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             /// cache root as declarations to the build configuration root.
             want_build_context: bool = true,
         },
+        // zig fmt: off
         impl: packed struct {
-            args: [*][*:0]u8,
-            paths: [*]types.Path,
-            nodes: [*]*Node,
-            deps: [*]Dependency,
-            cfgs: [*]Config,
-            nodes_max_len: usize,
-            nodes_len: usize,
-            deps_max_len: usize,
-            deps_len: usize,
-            cfgs_max_len: usize,
-            cfgs_len: usize,
-            args_max_len: usize,
-            args_len: usize,
-            paths_max_len: usize,
-            paths_len: usize,
-            wait_len: usize,
-            wait_tick: usize,
+            args: [*][*:0]u8,       args_max_len: usize,    args_len: usize,
+            paths: [*]types.Path,   paths_max_len: usize,   paths_len: usize,
+            nodes: [*]*Node,        nodes_max_len: usize,   nodes_len: usize,
+            deps: [*]Dependency,    deps_max_len: usize,    deps_len: usize,
+            cfgs: [*]Config,        cfgs_max_len: usize,    cfgs_len: usize,
             build_root_fd: u32,
             config_root_fd: u32,
             output_root_fd: u32,
+            wait_len: usize, wait_tick: usize,
         },
+        // zig fmt: on
         const Node = @This();
         const Task = extern struct {
             tag: types.Task,
@@ -551,14 +542,14 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 node.addArg(allocator).* = @constCast(arg);
             }
         }
-        fn makeSubDirectory(root_fd: u64, name: [:0]const u8) void {
+        fn makeSubDirectory(dir_fd: u64, name: [:0]const u8) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             var st: file.Status = undefined;
-            var rc: u64 = sys.call_noexcept(.mkdirat, u64, .{ root_fd, @intFromPtr(name.ptr), @as(u16, @bitCast(file.mode.directory)) });
+            var rc: u64 = sys.call_noexcept(.mkdirat, u64, .{ dir_fd, @intFromPtr(name.ptr), @as(u16, @bitCast(file.mode.directory)) });
             if (rc == 0) {
                 return;
             }
-            rc = sys.call_noexcept(.newfstatat, u64, .{ root_fd, @intFromPtr(name.ptr), @intFromPtr(&st), 0 });
+            rc = sys.call_noexcept(.newfstatat, u64, .{ dir_fd, @intFromPtr(name.ptr), @intFromPtr(&st), 0 });
             if (rc != 0) {
                 proc.exitErrorFault(error.NoSuchFileOrDirectory, name, 2);
             }
@@ -1058,8 +1049,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     node.addPath(allocator).* = on_node.impl.paths[0];
                 }
                 if (on_task == .build and
-                    (on_node.task.cmd.build.kind == .obj or
-                    on_node.task.cmd.build.kind == .lib))
+                    on_node.task.cmd.build.kind == .obj)
                 {
                     node.addPath(allocator).* = on_node.impl.paths[0];
                 }
