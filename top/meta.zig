@@ -907,6 +907,14 @@ pub fn tagList(comptime E: type) []const E {
     }
     return &ret;
 }
+pub fn TagFromList(comptime names: []const []const u8) type {
+    const tag_type: type = @Type(.{ .Int = .{ .bits = realBitSizeOf(names.len), .signedness = .unsigned } });
+    var fields: [names.len]builtin.Type.EnumField = undefined;
+    for (names, 0..) |name, value| {
+        fields[value] = .{ .name = name, .value = value };
+    }
+    return @Type(.{ .Enum = .{ .tag_type = tag_type, .fields = &fields, .decls = &.{}, .is_exhaustive = true } });
+}
 pub fn valueList(comptime E: type) []const E {
     const enum_info: builtin.Type.Enum = @typeInfo(E).Enum;
     var ret: [enum_info.fields.len]LeastRealBitSize(enum_info.tag_type) = undefined;
@@ -943,7 +951,7 @@ pub fn GenericStructOfBool(comptime Struct: type) type {
         pub const Tag = blk: {
             const struct_info: builtin.Type.Struct = @typeInfo(Struct).Struct;
             var enum_fields: []const builtin.Type.EnumField = &.{};
-            inline for (struct_info.fields) |field| {
+            for (struct_info.fields) |field| {
                 enum_fields = enum_fields ++ [1]builtin.Type.EnumField{.{
                     .name = field.name,
                     .value = 1 << @bitOffsetOf(Struct, field.name),
