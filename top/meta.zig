@@ -17,6 +17,15 @@ pub const fn_types: []const builtin.TypeId = &[_]builtin.TypeId{.Fn};
 pub const data_types: []const builtin.TypeId = &[_]builtin.TypeId{ .Struct, .Union };
 pub const decl_types: []const builtin.TypeId = &[_]builtin.TypeId{ .Struct, .Union, .Enum };
 pub const container_types: []const builtin.TypeId = &[_]builtin.TypeId{ .Struct, .Enum, .Union, .Opaque };
+pub const enum_info_base: builtin.Type.Enum = .{ .tag_type = u0, .fields = &.{}, .decls = &.{}, .is_exhaustive = true };
+pub const enum_field_base: builtin.Type.EnumField = .{ .name = &.{}, .value = 0 };
+pub const union_info_base: builtin.Type.Union = .{ .tag_type = null, .layout = .Auto, .fields = &.{}, .decls = &.{} };
+pub const union_field_base: builtin.Type.UnionField = .{ .name = undefined, .type = undefined, .alignment = 0 };
+pub const struct_info_base: builtin.Type.Struct = .{ .fields = &.{}, .decls = &.{}, .layout = .Auto, .is_tuple = false };
+pub const struct_field_base: builtin.Type.StructField = .{ .name = undefined, .type = undefined, .default_value = null, .alignment = 0, .is_comptime = false };
+pub const tuple_info_base: builtin.Type.Struct = .{ .fields = &.{}, .decls = &.{}, .layout = .Auto, .is_tuple = true };
+pub const opaque_info_base: builtin.Type.Opaque = .{ .decls = &.{} };
+
 pub const Generic = struct {
     type: type,
     value: *const anyopaque,
