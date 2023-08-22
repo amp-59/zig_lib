@@ -985,13 +985,10 @@ pub fn GenericStructOfBool(comptime Struct: type) type {
     };
 }
 pub fn TagUnion(comptime Union: type, comptime tag_type: type) type {
-    const union_info: builtin.Type = @typeInfo(Union);
-    return @Type(.{ .Union = .{
-        .fields = union_info.Union.fields,
-        .tag_type = tag_type,
-        .layout = .Auto,
-        .decls = &.{},
-    } });
+    var union_info: builtin.Type = union_info_base;
+    union_info.fields = @typeInfo(Union).Union.fields;
+    union_info.tag_type = tag_type;
+    return @Type(.{ .Union = union_info });
 }
 pub fn tagUnion(comptime Union: type, comptime tag_type: type, value: Union, tag: tag_type) TagUnion(Union, tag_type) {
     switch (tag) {
@@ -1004,13 +1001,11 @@ pub fn tagUnion(comptime Union: type, comptime tag_type: type, value: Union, tag
 }
 pub fn TaggedUnion(comptime Union: type) type {
     var tag_type_fields: []const builtin.Type.EnumField = empty;
-    var value: comptime_int = 0;
-    for (@typeInfo(Union).Union.fields) |field| {
+    for (@typeInfo(Union).Union.fields, 0..) |field, value| {
         tag_type_fields = tag_type_fields ++ [1]builtin.Type.EnumField{.{
             .name = field.name,
             .value = value,
         }};
-        value +%= 1;
     }
     return @Type(.{ .Enum = .{ .fields = tag_type_fields } });
 }
