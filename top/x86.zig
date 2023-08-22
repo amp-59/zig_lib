@@ -4119,16 +4119,16 @@ pub const Encoding = struct {
     };
 };
 pub const Disassembler = struct {
-    code: []const u8,
-    pos: usize = 0,
+    buf: []const u8,
+    buf_pos: usize = 0,
     pub const Error = error{
         EndOfStream,
         LegacyPrefixAfterRex,
         UnknownOpcode,
         Todo,
     };
-    pub fn init(code: []const u8) Disassembler {
-        return .{ .code = code };
+    pub fn init(buf: []const u8) Disassembler {
+        return .{ .buf = buf };
     }
     pub fn next(dis: *Disassembler) Error!?Instruction {
         @setRuntimeSafety(builtin.is_safe);
@@ -4136,30 +4136,23 @@ pub const Disassembler = struct {
             error.EndOfStream => return null,
             else => |e| return e,
         };
-        const enc: Encoding = try dis.parseEncoding(prefixes) orelse return error.UnknownOpcode;
+        const enc: Encoding = try dis.parseEncoding(prefixes);
         switch (enc.data.op_en) {
             .np => return inst(enc, .{}),
             .d, .i => {
-                const imm = dis.parseImmediate(enc.data.ops[0]);
-                return inst(enc, .{
-                    .op1 = .{ .immediate = imm },
-                });
+                return inst(enc, .{ .op1 = .{ .immediate = dis.parseImmediate(enc.data.ops[0]) } });
             },
             .zi => {
-                const imm = dis.parseImmediate(enc.data.ops[1]);
                 return inst(enc, .{
                     .op1 = .{ .register = Register.rax.toBitSize(enc.data.ops[0].registerBitSize()) },
-                    .op2 = .{ .immediate = imm },
+                    .op2 = .{ .immediate = dis.parseImmediate(enc.data.ops[1]) },
                 });
             },
             .o, .oi => {
-                const reg_low_enc = @as(u3, @truncate(dis.code[dis.pos - 1]));
-                const op2: Instruction.Operand = if (enc.data.op_en == .oi) .{
-                    .immediate = dis.parseImmediate(enc.data.ops[1]),
-                } else .none;
+                const reg_low_enc: u3 = @truncate(dis.buf[dis.buf_pos - 1]);
                 return inst(enc, .{
                     .op1 = .{ .register = parseGpRegister(reg_low_enc, prefixes.rex.b, prefixes.rex, enc.data.ops[0].registerBitSize()) },
-                    .op2 = op2,
+                    .op2 = if (enc.data.op_en == .oi) .{ .immediate = dis.parseImmediate(enc.data.ops[1]) } else .none,
                 });
             },
             .m, .mi, .m1, .mc => {
@@ -4170,30 +4163,26 @@ pub const Disassembler = struct {
                 }, modrm.op1) orelse return error.UnknownOpcode;
                 const sib = if (modrm.sib()) try dis.parseSibByte() else null;
                 if (modrm.direct()) {
-                    const op2: Instruction.Operand = switch (act_enc.data.op_en) {
-                        .mi => .{ .immediate = dis.parseImmediate(act_enc.data.ops[1]) },
-                        .m1 => .{ .immediate = Immediate.u(1) },
-                        .mc => .{ .register = .cl },
-                        .m => .none,
-                        else => unreachable,
-                    };
                     return inst(act_enc, .{
                         .op1 = .{ .register = parseGpRegister(modrm.op2, prefixes.rex.b, prefixes.rex, act_enc.data.ops[0].registerBitSize()) },
-                        .op2 = op2,
+                        .op2 = switch (act_enc.data.op_en) {
+                            .mi => .{ .immediate = dis.parseImmediate(act_enc.data.ops[1]) },
+                            .m1 => .{ .immediate = Immediate.u(1) },
+                            .mc => .{ .register = .cl },
+                            else => .none,
+                        },
                     });
                 }
                 const disp = dis.parseDisplacement(modrm, sib);
-                const op2: Instruction.Operand = switch (act_enc.data.op_en) {
-                    .mi => .{ .immediate = dis.parseImmediate(act_enc.data.ops[1]) },
-                    .m1 => .{ .immediate = Immediate.u(1) },
-                    .mc => .{ .register = .cl },
-                    .m => .none,
-                    else => unreachable,
-                };
                 if (modrm.rip()) {
                     return inst(act_enc, .{
                         .op1 = .{ .memory = Memory.rip(Memory.PtrSize.fromBitSize(act_enc.data.ops[0].memBitSize()), disp) },
-                        .op2 = op2,
+                        .op2 = switch (act_enc.data.op_en) {
+                            .mi => .{ .immediate = dis.parseImmediate(act_enc.data.ops[1]) },
+                            .m1 => .{ .immediate = Immediate.u(1) },
+                            .mc => .{ .register = .cl },
+                            else => .none,
+                        },
                     });
                 }
                 const scale_index = if (sib) |info| info.scaleIndex(prefixes.rex) else null;
@@ -4207,13 +4196,18 @@ pub const Disassembler = struct {
                         .scale_index = scale_index,
                         .disp = disp,
                     }) },
-                    .op2 = op2,
+                    .op2 = switch (act_enc.data.op_en) {
+                        .mi => .{ .immediate = dis.parseImmediate(act_enc.data.ops[1]) },
+                        .m1 => .{ .immediate = Immediate.u(1) },
+                        .mc => .{ .register = .cl },
+                        else => .none,
+                    },
                 });
             },
             .fd => {
                 const seg = segmentRegister(prefixes.legacy);
-                const offset: u64 = @as(*align(1) const u64, @ptrCast(dis.code[dis.pos..].ptr)).*;
-                dis.pos +%= 8;
+                const offset: u64 = @as(*align(1) const u64, @ptrCast(dis.buf[dis.buf_pos..].ptr)).*;
+                dis.buf_pos +%= 8;
                 return inst(enc, .{
                     .op1 = .{ .register = Register.rax.toBitSize(enc.data.ops[0].registerBitSize()) },
                     .op2 = .{ .memory = Memory.moffs(seg, offset) },
@@ -4221,8 +4215,8 @@ pub const Disassembler = struct {
             },
             .td => {
                 const seg = segmentRegister(prefixes.legacy);
-                const offset: u64 = @as(*align(1) const u64, @ptrCast(dis.code[dis.pos..].ptr)).*;
-                dis.pos +%= 8;
+                const offset: u64 = @as(*align(1) const u64, @ptrCast(dis.buf[dis.buf_pos..].ptr)).*;
+                dis.buf_pos +%= 8;
                 return inst(enc, .{
                     .op1 = .{ .memory = Memory.moffs(seg, offset) },
                     .op2 = .{ .register = Register.rax.toBitSize(enc.data.ops[1].registerBitSize()) },
@@ -4238,19 +4232,16 @@ pub const Disassembler = struct {
                         .op2 = .{ .register = parseGpRegister(modrm.op1, prefixes.rex.x, prefixes.rex, src_bit_size) },
                     });
                 }
-                const dst_bit_size = enc.data.ops[0].memBitSize();
-                const disp = dis.parseDisplacement(modrm, sib);
-                const op3: Instruction.Operand = switch (enc.data.op_en) {
-                    .mri => .{ .immediate = dis.parseImmediate(enc.data.ops[2]) },
-                    .mrc => .{ .register = .cl },
-                    .mr => .none,
-                    else => unreachable,
-                };
+
                 if (modrm.rip()) {
                     return inst(enc, .{
-                        .op1 = .{ .memory = Memory.rip(Memory.PtrSize.fromBitSize(dst_bit_size), disp) },
+                        .op1 = .{ .memory = Memory.rip(Memory.PtrSize.fromBitSize(enc.data.ops[0].memBitSize()), dis.parseDisplacement(modrm, sib)) },
                         .op2 = .{ .register = parseGpRegister(modrm.op1, prefixes.rex.r, prefixes.rex, src_bit_size) },
-                        .op3 = op3,
+                        .op3 = switch (enc.data.op_en) {
+                            .mri => .{ .immediate = dis.parseImmediate(enc.data.ops[2]) },
+                            .mrc => .{ .register = .cl },
+                            else => .none,
+                        },
                     });
                 }
                 const scale_index = if (sib) |info| info.scaleIndex(prefixes.rex) else null;
@@ -4259,13 +4250,17 @@ pub const Disassembler = struct {
                 else
                     parseGpRegister(modrm.op2, prefixes.rex.b, prefixes.rex, 64);
                 return inst(enc, .{
-                    .op1 = .{ .memory = Memory.sib(Memory.PtrSize.fromBitSize(dst_bit_size), .{
+                    .op1 = .{ .memory = Memory.sib(Memory.PtrSize.fromBitSize(enc.data.ops[0].memBitSize()), .{
                         .base = if (base) |base_reg| .{ .register = base_reg } else .none,
                         .scale_index = scale_index,
-                        .disp = disp,
+                        .disp = dis.parseDisplacement(modrm, sib),
                     }) },
                     .op2 = .{ .register = parseGpRegister(modrm.op1, prefixes.rex.r, prefixes.rex, src_bit_size) },
-                    .op3 = op3,
+                    .op3 = switch (enc.data.op_en) {
+                        .mri => .{ .immediate = dis.parseImmediate(enc.data.ops[2]) },
+                        .mrc => .{ .register = .cl },
+                        else => .none,
+                    },
                 });
             },
             .rm, .rmi => {
@@ -4273,29 +4268,19 @@ pub const Disassembler = struct {
                 const sib = if (modrm.sib()) try dis.parseSibByte() else null;
                 const dst_bit_size = enc.data.ops[0].registerBitSize();
                 if (modrm.direct()) {
-                    const op3: Instruction.Operand = switch (enc.data.op_en) {
-                        .rm => .none,
-                        .rmi => .{ .immediate = dis.parseImmediate(enc.data.ops[2]) },
-                        else => unreachable,
-                    };
                     return inst(enc, .{
                         .op1 = .{ .register = parseGpRegister(modrm.op1, prefixes.rex.x, prefixes.rex, dst_bit_size) },
                         .op2 = .{ .register = parseGpRegister(modrm.op2, prefixes.rex.b, prefixes.rex, enc.data.ops[1].registerBitSize()) },
-                        .op3 = op3,
+                        .op3 = if (enc.data.op_en == .rmi) .{ .immediate = dis.parseImmediate(enc.data.ops[2]) } else .none,
                     });
                 }
                 const src_bit_size = if (enc.data.ops[1] == .m) dst_bit_size else enc.data.ops[1].memBitSize();
                 const disp = dis.parseDisplacement(modrm, sib);
-                const op3: Instruction.Operand = switch (enc.data.op_en) {
-                    .rmi => .{ .immediate = dis.parseImmediate(enc.data.ops[2]) },
-                    .rm => .none,
-                    else => unreachable,
-                };
                 if (modrm.rip()) {
                     return inst(enc, .{
                         .op1 = .{ .register = parseGpRegister(modrm.op1, prefixes.rex.r, prefixes.rex, dst_bit_size) },
                         .op2 = .{ .memory = Memory.rip(Memory.PtrSize.fromBitSize(src_bit_size), disp) },
-                        .op3 = op3,
+                        .op3 = if (enc.data.op_en == .rmi) .{ .immediate = dis.parseImmediate(enc.data.ops[2]) } else .none,
                     });
                 }
                 const scale_index = if (sib) |info| info.scaleIndex(prefixes.rex) else null;
@@ -4310,7 +4295,7 @@ pub const Disassembler = struct {
                         .scale_index = scale_index,
                         .disp = disp,
                     }) },
-                    .op3 = op3,
+                    .op3 = if (enc.data.op_en == .rmi) .{ .immediate = dis.parseImmediate(enc.data.ops[2]) } else .none,
                 });
             },
             .rm0, .vmi, .rvm, .rvmr, .rvmi, .mvr => |tag| {
@@ -4343,11 +4328,11 @@ pub const Disassembler = struct {
         const rex_prefix_mask: u4 = 0b0100;
         var res: Prefixes = .{};
         while (true) {
-            if (dis.code[dis.pos..].len == 0) {
+            if (dis.buf[dis.buf_pos..].len == 0) {
                 return error.EndOfStream;
             }
-            const byte: u8 = dis.code[dis.pos];
-            dis.pos +%= 1;
+            const byte: u8 = dis.buf[dis.buf_pos];
+            dis.buf_pos +%= 1;
             switch (byte) {
                 0xf0, 0xf2, 0xf3, 0x2e, 0x36, 0x26, 0x64, 0x65, 0x3e, 0x66, 0x67 => {
                     // Legacy prefix
@@ -4378,19 +4363,19 @@ pub const Disassembler = struct {
                         continue;
                     }
                     // TODO VEX prefix
-                    dis.pos -%= 1;
+                    dis.buf_pos -%= 1;
                     break;
                 },
             }
         }
         return res;
     }
-    fn parseEncoding(dis: *Disassembler, prefixes: Prefixes) !?Encoding {
+    fn parseEncoding(dis: *Disassembler, prefixes: Prefixes) !Encoding {
         var opcode: [3]u8 = .{ 0, 0, 0 };
         for (0..3) |opc_count| {
-            const byte: u8 = dis.code[dis.pos];
+            const byte: u8 = dis.buf[dis.buf_pos];
             opcode[opc_count] = byte;
-            dis.pos +%= 1;
+            dis.buf_pos +%= 1;
             if (byte == 0x0f) {
                 // Multi-byte opcode
             } else if (opc_count > 0) {
@@ -4410,14 +4395,16 @@ pub const Disassembler = struct {
                     return mnemonic;
                 } else {
                     // Try O* encoding
-                    return Encoding.findByOpcode(&.{opcode[0] & 0b1111_1000}, .{
+                    if (Encoding.findByOpcode(&.{opcode[0] & 0b1111_1000}, .{
                         .legacy = prefixes.legacy,
                         .rex = prefixes.rex,
-                    }, null);
+                    }, null)) |enc| {
+                        return enc;
+                    }
                 }
             }
         }
-        return null;
+        return error.UnknownOpcode;
     }
     fn parseGpRegister(low_enc: u4, is_extended: bool, rex: Rex, bit_size: u64) Register {
         const mask: u4 = if (is_extended) 0b1000 else 0b0000;
@@ -4431,34 +4418,34 @@ pub const Disassembler = struct {
         };
     }
     fn parseImmediate(dis: *Disassembler, kind: Encoding.Op) Immediate {
-        const ptr: [*]const u8 = dis.code[dis.pos..].ptr;
+        const ptr: [*]const u8 = dis.buf[dis.buf_pos..].ptr;
         switch (kind) {
             .imm8s, .rel8 => {
-                dis.pos +%= 1;
+                dis.buf_pos +%= 1;
                 return Immediate.s(@as(*const i8, @ptrCast(ptr)).*);
             },
             .imm16s, .rel16 => {
-                dis.pos +%= 2;
+                dis.buf_pos +%= 2;
                 return Immediate.s(@as(*align(1) const i16, @ptrCast(ptr)).*);
             },
             .imm32s, .rel32 => {
-                dis.pos +%= 4;
+                dis.buf_pos +%= 4;
                 return Immediate.s(@as(*align(1) const i32, @ptrCast(ptr)).*);
             },
             .imm8 => {
-                dis.pos +%= 1;
+                dis.buf_pos +%= 1;
                 return Immediate.u(@as(*const u8, @ptrCast(ptr)).*);
             },
             .imm16 => {
-                dis.pos +%= 2;
+                dis.buf_pos +%= 2;
                 return Immediate.u(@as(*align(1) const u16, @ptrCast(ptr)).*);
             },
             .imm32 => {
-                dis.pos +%= 4;
+                dis.buf_pos +%= 4;
                 return Immediate.u(@as(*align(1) const u32, @ptrCast(ptr)).*);
             },
             .imm64 => {
-                dis.pos +%= 8;
+                dis.buf_pos +%= 8;
                 return Immediate.u(@as(*align(1) const u64, @ptrCast(ptr)).*);
             },
             else => unreachable,
@@ -4479,11 +4466,11 @@ pub const Disassembler = struct {
         }
     };
     fn parseModRmByte(dis: *Disassembler) !ModRm {
-        if (dis.code[dis.pos..].len == 0) {
+        if (dis.buf[dis.buf_pos..].len == 0) {
             return error.EndOfStream;
         }
-        const modrm_byte: u8 = dis.code[dis.pos];
-        dis.pos +%= 1;
+        const modrm_byte: u8 = dis.buf[dis.buf_pos];
+        dis.buf_pos +%= 1;
         return ModRm{
             .mod = @truncate(modrm_byte >> 6),
             .op1 = @truncate(modrm_byte >> 3),
@@ -4518,9 +4505,9 @@ pub const Disassembler = struct {
         }
     };
     fn parseSibByte(dis: *Disassembler) !Sib {
-        if (dis.code[dis.pos..].len == 0) return error.EndOfStream;
-        const sib_byte = dis.code[dis.pos];
-        dis.pos += 1;
+        if (dis.buf[dis.buf_pos..].len == 0) return error.EndOfStream;
+        const sib_byte = dis.buf[dis.buf_pos];
+        dis.buf_pos += 1;
         return Sib{
             .scale = @truncate(sib_byte >> 6),
             .index = @truncate(sib_byte >> 3),
@@ -4528,25 +4515,25 @@ pub const Disassembler = struct {
         };
     }
     fn parseDisplacement(dis: *Disassembler, modrm: ModRm, sib: ?Sib) i32 {
-        const ptr: [*]const u8 = dis.code[dis.pos..].ptr;
+        const ptr: [*]const u8 = dis.buf[dis.buf_pos..].ptr;
         if (sib) |info| {
             if (info.base == 0b101 and modrm.mod == 0) {
-                dis.pos +%= 4;
+                dis.buf_pos +%= 4;
                 return @as(*align(1) const i32, @ptrCast(ptr)).*;
             }
         }
         if (modrm.rip()) {
-            dis.pos +%= 4;
+            dis.buf_pos +%= 4;
             return @as(*align(1) const i32, @ptrCast(ptr)).*;
         }
         switch (modrm.mod) {
             0b00 => return 0,
             0b01 => {
-                dis.pos +%= 1;
+                dis.buf_pos +%= 1;
                 return @as(*const i8, @ptrCast(ptr)).*;
             },
             0b10 => {
-                dis.pos +%= 4;
+                dis.buf_pos +%= 4;
                 return @as(*align(1) const i32, @ptrCast(ptr)).*;
             },
             0b11 => unreachable,
