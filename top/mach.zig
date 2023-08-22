@@ -405,6 +405,12 @@ pub inline fn orn8(arg1: u8, arg2: u8) u8 {
 pub inline fn xor8(arg1: u8, arg2: u8) u8 {
     return xor(u8, arg1, arg2);
 }
+pub fn alignA4096(value: usize) usize {
+    return (value +% @as(usize, 4095)) & ~@as(usize, 4095);
+}
+pub fn alignB4096(value: usize) usize {
+    return value & ~@as(usize, 4095);
+}
 pub inline fn alignA(value: anytype, alignment: @TypeOf(value)) @TypeOf(value) {
     const mask: @TypeOf(value) = alignment -% 1;
     return (value +% mask) & ~mask;
