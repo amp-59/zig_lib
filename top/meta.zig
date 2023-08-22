@@ -200,11 +200,16 @@ pub fn structInfo(
     comptime layout: builtin.Type.ContainerLayout,
     comptime fields: []const builtin.Type.StructField,
 ) builtin.Type {
-    return .{ .Struct = .{ .layout = layout, .fields = fields, .decls = empty, .is_tuple = false } };
+    var ret: builtin.Type.Struct = struct_info_base;
+    ret.fields = fields;
+    ret.layout = layout;
+    return .{ .Struct = ret };
 }
 /// Assist creation of tuple types
 pub fn tupleInfo(comptime fields: []const builtin.Type.StructField) builtin.Type {
-    return .{ .Struct = .{ .layout = .Auto, .fields = fields, .decls = empty, .is_tuple = true } };
+    var ret: builtin.Type.Struct = tuple_info_base;
+    ret.fields = fields;
+    return .{ .Struct = ret };
 }
 pub fn defaultValue(comptime struct_field: builtin.Type.StructField) ?struct_field.type {
     if (struct_field.default_value) |default_value_ptr| {
@@ -217,11 +222,11 @@ pub fn Tuple(comptime T: type) type {
     return @Type(tupleInfo(@typeInfo(T).Struct.fields));
 }
 pub fn Args(comptime Fn: type) type {
-    var fields: []const builtin.Type.StructField = empty;
-    inline for (@typeInfo(Fn).Fn.params, 0..) |arg, i| {
-        fields = concat(builtin.Type.StructField, fields, structField(arg.type.?, fmt.ci(i), null));
+    var tuple_info: builtin.Type.Struct = tuple_info_base;
+    for (@typeInfo(Fn).Fn.params, 0..) |arg, i| {
+        tuple_info.fields = tuple_info.fields ++ [1]builtin.Type.StructField{structField(arg.type.?, fmt.ci(i), null)};
     }
-    return @Type(tupleInfo(fields));
+    return @Type(.{ .Struct = tuple_info });
 }
 pub inline fn tuple(any: anytype) Tuple(@TypeOf(any)) {
     return any;
