@@ -109,12 +109,6 @@ pub const AllocatorLogging = packed struct {
     deallocate: bool = debug.logging_general.Release,
 };
 const _1: mem.Amount = .{ .count = 1 };
-const default_address_space_type = builtin.configExtra(
-    "AddressSpace",
-    type,
-    builtin.info.address_space.defaultValue,
-    .{ArenaAllocatorSpec},
-);
 pub const AllocatorErrors = struct {
     map: sys.ErrorPolicy = .{ .throw = sys.mmap_errors },
     remap: sys.ErrorPolicy = .{ .throw = sys.mremap_errors },
@@ -583,54 +577,83 @@ pub fn GenericRtArenaAllocator(comptime spec: RtArenaAllocatorSpec) type {
 fn GenericIrreversibleInterface(comptime Allocator: type) type {
     return struct {
         const Graphics = GenericArenaAllocatorGraphics(Allocator);
-        pub const Save = struct { u64 };
+        pub const Save = struct { usize };
         pub inline fn create(allocator: *Allocator, comptime s_child: type) Allocator.allocate_payload(*s_child) {
             @setRuntimeSafety(false);
-            defer Graphics.showWithReference(allocator, @src());
-            const s_ab_addr: u64 = try meta.wrap(
+            defer if (Allocator.allocator_spec.options.trace_state) {
+                Graphics.showWithReference(allocator, @src());
+            };
+            const s_ab_addr: usize = try meta.wrap(
                 allocator.allocateInternal(@sizeOf(s_child), @alignOf(s_child)),
             );
             const ret: *s_child = @ptrFromInt(s_ab_addr);
-            showCreate(s_child, ret);
+            if (Allocator.allocator_spec.logging.allocate) {
+                showCreate(s_child, ret);
+            }
             return ret;
         }
-        pub inline fn allocate(allocator: *Allocator, comptime s_child: type, count: u64) Allocator.allocate_payload([]s_child) {
+        pub inline fn allocate(allocator: *Allocator, comptime s_child: type, count: usize) Allocator.allocate_payload([]s_child) {
             @setRuntimeSafety(false);
-            defer Graphics.showWithReference(allocator, @src());
-            const s_ab_addr: u64 = try meta.wrap(
+            defer if (Allocator.allocator_spec.options.trace_state) {
+                Graphics.showWithReference(allocator, @src());
+            };
+            const s_ab_addr: usize = try meta.wrap(
                 allocator.allocateInternal(@sizeOf(s_child) *% count, @alignOf(s_child)),
             );
             const ptr: [*]s_child = @ptrFromInt(s_ab_addr);
             const ret: []s_child = ptr[0..count];
-            showAllocate(s_child, ret, null);
+            if (Allocator.allocator_spec.logging.allocate) {
+                showAllocate(s_child, ret, null);
+            }
             return ret;
         }
-        pub inline fn reallocate(allocator: *Allocator, comptime s_child: type, buf: []s_child, count: u64) Allocator.allocate_payload([]s_child) {
+        pub inline fn reallocate(allocator: *Allocator, comptime s_child: type, buf: []s_child, count: usize) Allocator.allocate_payload([]s_child) {
             @setRuntimeSafety(false);
-            defer Graphics.showWithReference(allocator, @src());
-            const s_ab_addr: u64 = try meta.wrap(
+            defer if (Allocator.allocator_spec.options.trace_state) {
+                Graphics.showWithReference(allocator, @src());
+            };
+            const s_ab_addr: usize = try meta.wrap(
                 allocator.reallocateInternal(@intFromPtr(buf.ptr), buf.len *% @sizeOf(s_child), count *% @sizeOf(s_child), @alignOf(s_child)),
             );
             const ptr: [*]s_child = @ptrFromInt(s_ab_addr);
             const ret: []s_child = ptr[0..count];
-            showReallocate(s_child, buf, ret, null);
+            if (Allocator.allocator_spec.logging.reallocate) {
+                showReallocate(s_child, buf, ret, null);
+            }
             return ret;
         }
-        pub inline fn createAligned(allocator: *Allocator, comptime s_child: type, comptime s_alignment: u64) *align(s_alignment) s_child {
+        pub inline fn createAligned(
+            allocator: *Allocator,
+            comptime s_child: type,
+            comptime s_alignment: usize,
+        ) *align(s_alignment) Allocator.allocate_payload(s_child) {
             @setRuntimeSafety(false);
-            defer Graphics.showWithReference(allocator, @src());
-            const s_ab_addr: u64 = allocator.allocateInternal(@sizeOf(s_child), s_alignment);
+            defer if (Allocator.allocator_spec.options.trace_state) {
+                Graphics.showWithReference(allocator, @src());
+            };
+            const s_ab_addr: usize = allocator.allocateInternal(@sizeOf(s_child), s_alignment);
             const ptr: *align(s_alignment) s_child = @ptrFromInt(s_ab_addr);
-            showCreate(s_child, ptr);
+            if (Allocator.allocator_spec.logging.allocate) {
+                showCreate(s_child, ptr);
+            }
             return ptr;
         }
-        pub inline fn allocateAligned(allocator: *Allocator, comptime s_child: type, count: u64, comptime s_alignment: u64) []align(s_alignment) s_child {
+        pub inline fn allocateAligned(
+            allocator: *Allocator,
+            comptime s_child: type,
+            count: usize,
+            comptime s_alignment: usize,
+        ) []align(s_alignment) Allocator.allocate_payload(s_child) {
             @setRuntimeSafety(false);
-            defer Graphics.showWithReference(allocator, @src());
-            const s_ab_addr: u64 = allocator.allocateInternal(@sizeOf(s_child) *% count, s_alignment);
+            defer if (Allocator.allocator_spec.options.trace_state) {
+                Graphics.showWithReference(allocator, @src());
+            };
+            const s_ab_addr: usize = allocator.allocateInternal(@sizeOf(s_child) *% count, s_alignment);
             const ptr: [*]align(s_alignment) s_child = @ptrFromInt(s_ab_addr);
             const ret: []align(s_alignment) s_child = ptr[0..count];
-            showAllocate(s_child, ret, null);
+            if (Allocator.allocator_spec.logging.allocate) {
+                showAllocate(s_child, ret, null);
+            }
             return ret;
         }
         pub inline fn deallocate(allocator: *Allocator, comptime s_child: type, buf: []s_child) void {
@@ -643,23 +666,20 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
             defer Graphics.showWithReference(allocator, @src());
             allocator.ub_addr = state[0];
         }
-        inline fn alignAbove(value: u64, alignment: u64) u64 {
-            const mask: u64 = alignment -% 1;
+        inline fn alignAbove(value: usize, alignment: usize) usize {
+            const mask: usize = alignment -% 1;
             return (value +% mask) & ~mask;
-        }
-        inline fn copy(dest: u64, src: u64, len: u64) void {
-            mach.memcpy(@as([*]u8, @ptrFromInt(dest)), @as([*]const u8, @ptrFromInt(src)), len);
         }
         pub const allocateRaw = allocateInternal;
         pub const reallocateRaw = reallocateInternal;
         pub const deallocateRaw = deallocateInternal;
         fn allocateInternal(
             allocator: *Allocator,
-            s_aligned_bytes: u64,
-            s_alignment: u64,
-        ) Allocator.allocate_payload(u64) {
-            const s_ab_addr: u64 = alignAbove(allocator.unallocated_byte_address(), s_alignment);
-            const s_up_addr: u64 = s_ab_addr +% s_aligned_bytes;
+            s_aligned_bytes: usize,
+            s_alignment: usize,
+        ) Allocator.allocate_payload(usize) {
+            const s_ab_addr: usize = alignAbove(allocator.unallocated_byte_address(), s_alignment);
+            const s_up_addr: usize = s_ab_addr +% s_aligned_bytes;
             if (Allocator.allocator_spec.options.require_map and s_up_addr > allocator.unmapped_byte_address()) {
                 try meta.wrap(allocator.mapBelow(s_up_addr));
             }
@@ -674,13 +694,13 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
         }
         fn reallocateInternal(
             allocator: *Allocator,
-            s_ab_addr: u64,
-            s_aligned_bytes: u64,
-            t_aligned_bytes: u64,
-            align_of: u64,
-        ) Allocator.allocate_payload(u64) {
-            const s_up_addr: u64 = s_ab_addr +% s_aligned_bytes;
-            const t_up_addr: u64 = s_ab_addr +% t_aligned_bytes;
+            s_ab_addr: usize,
+            s_aligned_bytes: usize,
+            t_aligned_bytes: usize,
+            align_of: usize,
+        ) Allocator.allocate_payload(usize) {
+            const s_up_addr: usize = s_ab_addr +% s_aligned_bytes;
+            const t_up_addr: usize = s_ab_addr +% t_aligned_bytes;
             if (allocator.unallocated_byte_address() == s_up_addr) {
                 if (t_up_addr > allocator.unmapped_byte_address()) {
                     try meta.wrap(allocator.mapBelow(t_up_addr));
@@ -688,8 +708,8 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
                 allocator.increment(t_up_addr);
                 return s_ab_addr;
             }
-            const t_ab_addr: u64 = try meta.wrap(allocator.allocateInternal(t_aligned_bytes, align_of));
-            copy(t_ab_addr, s_ab_addr, s_aligned_bytes);
+            const t_ab_addr: usize = try meta.wrap(allocator.allocateInternal(t_aligned_bytes, align_of));
+            mach.addrcpy(t_ab_addr, s_ab_addr, s_aligned_bytes);
             if (Allocator.allocator_spec.options.count_allocations) {
                 allocator.metadata.count +%= 1;
             }
@@ -700,10 +720,10 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
         }
         fn deallocateInternal(
             allocator: *Allocator,
-            s_aligned: u64,
-            s_aligned_bytes: u64,
+            s_aligned: usize,
+            s_aligned_bytes: usize,
         ) void {
-            const s_next: u64 = s_aligned +% s_aligned_bytes;
+            const s_next: usize = s_aligned +% s_aligned_bytes;
             if (allocator.unallocated_byte_address() == s_next) {
                 allocator.ub_addr = s_next;
             }
@@ -714,8 +734,8 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
                 allocator.metadata.count -%= s_aligned_bytes;
             }
         }
-        pub fn addGeneric(allocator: *Allocator, size: u64, init_len: u64, ptr: *u64, max_len: *u64, len: u64) u64 {
-            const new_max_len: u64 = len +% 2;
+        pub fn addGeneric(allocator: *Allocator, size: usize, init_len: usize, ptr: *usize, max_len: *usize, len: usize) usize {
+            const new_max_len: usize = len +% 2;
             if (max_len.* == 0) {
                 ptr.* = allocateInternal(allocator, size *% init_len, 8);
                 max_len.* = init_len;
@@ -731,54 +751,46 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
             return ret;
         }
         inline fn showCreate(comptime child: type, ptr: *child) void {
-            if (Allocator.allocator_spec.logging.allocate) {
-                about.showAllocateOneStructured(
-                    child,
-                    @intFromPtr(ptr),
-                    @src(),
-                    @returnAddress(),
-                );
-            }
+            about.showAllocateOneStructured(
+                child,
+                @intFromPtr(ptr),
+                @src(),
+                @returnAddress(),
+            );
         }
         inline fn showAllocate(comptime child: type, buf: []child, comptime sentinel: ?*const child) void {
-            if (Allocator.allocator_spec.logging.allocate) {
-                about.showAllocateManyStructured(
-                    child,
-                    @intFromPtr(buf.ptr),
-                    @intFromPtr(buf.ptr) +% @sizeOf(child) *% (buf.len +% @as(u64, @intFromBool(sentinel != null))),
-                    sentinel,
-                    @src(),
-                    @returnAddress(),
-                );
-            }
+            about.showAllocateManyStructured(
+                child,
+                @intFromPtr(buf.ptr),
+                @intFromPtr(buf.ptr) +% @sizeOf(child) *% (buf.len +% @intFromBool(sentinel != null)),
+                sentinel,
+                @src(),
+                @returnAddress(),
+            );
         }
         inline fn showReallocate(comptime child: type, s_buf: []child, t_buf: []child, comptime sentinel: ?*const child) void {
-            if (Allocator.allocator_spec.logging.reallocate) {
-                about.showReallocateManyStructured(
-                    child,
-                    child,
-                    @intFromPtr(s_buf.ptr),
-                    @intFromPtr(s_buf.ptr) +% @sizeOf(child) *% (s_buf.len +% @as(u64, @intFromBool(sentinel != null))),
-                    @intFromPtr(t_buf.ptr),
-                    @intFromPtr(t_buf.ptr) +% @sizeOf(child) *% (t_buf.len +% @as(u64, @intFromBool(sentinel != null))),
-                    sentinel,
-                    sentinel,
-                    @src(),
-                    @returnAddress(),
-                );
-            }
+            about.showReallocateManyStructured(
+                child,
+                child,
+                @intFromPtr(s_buf.ptr),
+                @intFromPtr(s_buf.ptr) +% @sizeOf(child) *% (s_buf.len +% @intFromBool(sentinel != null)),
+                @intFromPtr(t_buf.ptr),
+                @intFromPtr(t_buf.ptr) +% @sizeOf(child) *% (t_buf.len +% @intFromBool(sentinel != null)),
+                sentinel,
+                sentinel,
+                @src(),
+                @returnAddress(),
+            );
         }
         inline fn showDeallocate(comptime child: type, buf: []child, comptime sentinel: ?*const child) void {
-            if (Allocator.allocator_spec.logging.allocate) {
-                about.showDeallocateManyStructured(
-                    child,
-                    @intFromPtr(buf.ptr),
-                    @intFromPtr(buf.ptr) +% @sizeOf(child) *% (buf.len +% @as(u64, @intFromBool(sentinel != null))),
-                    sentinel,
-                    @src(),
-                    @returnAddress(),
-                );
-            }
+            about.showDeallocateManyStructured(
+                child,
+                @intFromPtr(buf.ptr),
+                @intFromPtr(buf.ptr) +% @sizeOf(child) *% (buf.len +% @intFromBool(sentinel != null)),
+                sentinel,
+                @src(),
+                @returnAddress(),
+            );
         }
     };
 }
