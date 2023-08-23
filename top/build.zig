@@ -810,7 +810,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 @sizeOf(Node),
                 @alignOf(Node),
             ));
-            checkDuplicateName(group, name);
+            checkName(group, name);
             group.addNode(allocator).* = node;
             node.addNode(allocator).* = group;
             node.tag = .group;
@@ -842,7 +842,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 @sizeOf(Node),
                 @alignOf(Node),
             ));
-            checkDuplicateName(group, name);
+            checkName(group, name);
             group.addNode(allocator).* = node;
             node.addNode(allocator).* = group;
             node.tag = .worker;
@@ -864,7 +864,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             ));
             const binary_path: *types.Path = node.addPath(allocator);
             const root_path: *types.Path = node.addPath(allocator);
-            checkDuplicateName(group, name);
+            checkName(group, name);
             group.addNode(allocator).* = node;
             node.addNode(allocator).* = group;
             node.tag = .worker;
@@ -893,7 +893,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 @alignOf(Node),
             ));
             const target_path: *types.Path = node.addPath(allocator);
-            checkDuplicateName(group, name);
+            checkName(group, name);
             group.addNode(allocator).* = node;
             node.addNode(allocator).* = group;
             node.tag = .worker;
@@ -920,7 +920,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 @alignOf(Node),
             ));
             const archive_path: *types.Path = node.addPath(allocator);
-            checkDuplicateName(group, name);
+            checkName(group, name);
             group.addNode(allocator).* = node;
             node.addNode(allocator).* = group;
             node.tag = .worker;
@@ -946,7 +946,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 @sizeOf(Node),
                 @alignOf(Node),
             ));
-            checkDuplicateName(group, name);
+            checkName(group, name);
             group.addNode(allocator).* = node;
             node.addNode(allocator).* = group;
             node.tag = .worker;
@@ -1063,39 +1063,9 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         pub fn addBuildAnon(group: *Node, allocator: *mem.SimpleAllocator, build_cmd: types.BuildCommand, root: [:0]const u8) *Node {
             return group.addBuild(allocator, build_cmd, makeCommandName(allocator, root), root);
         }
+        pub const dependOnFull = addDependency;
         pub fn dependOn(node: *Node, allocator: *mem.SimpleAllocator, on_node: *Node) void {
             node.dependOnFull(allocator, node.task.tag, on_node, on_node.task.tag);
-        }
-        pub fn dependOnFull(node: *Node, allocator: *mem.SimpleAllocator, task: types.Task, on_node: *Node, on_task: types.Task) void {
-            @setRuntimeSafety(builder_spec.options.enable_safety);
-            if (task == .run) {
-                if (on_task == .build and node == on_node) {
-                    node.addArg(allocator).* = node.impl.paths[0].concatenate(allocator);
-                }
-            }
-            if (task == .build) {
-                if (on_task == .archive) {
-                    node.addPath(allocator).* = on_node.impl.paths[0];
-                }
-                if (on_task == .build and
-                    on_node.task.cmd.build.kind == .obj)
-                {
-                    node.addPath(allocator).* = on_node.impl.paths[0];
-                }
-            }
-            if (task == .archive) {
-                if (on_task == .build and
-                    on_node.task.cmd.build.kind == .obj)
-                {
-                    node.addPath(allocator).* = on_node.impl.paths[0];
-                }
-            }
-            node.addDep(allocator).* = .{
-                .task = task,
-                .on_node = on_node,
-                .on_task = on_task,
-                .on_state = .finished,
-            };
         }
         pub const impl = struct {
             fn system(args: [][*:0]u8, job: *types.JobInfo) void {
@@ -1163,141 +1133,125 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     Special.dyn_loader.load(dest_pathname).loadPointers(build.Fns, &Special.fns);
                 }
             }
-            fn buildWrite(allocator: *mem.SimpleAllocator, node: *Node, obj_paths: []const types.Path) [:0]u8 {
-                @setRuntimeSafety(builder_spec.options.enable_safety);
-                const zig_exe: []const u8 = node.zigExe();
-                const cmd: *types.BuildCommand = node.task.cmd.build;
-                const max_len: usize = blk: {
-                    if (builder_spec.options.lazy_strategy != .none) {
-                        break :blk Special.fns.formatLengthBuildCommand(cmd, zig_exe.ptr, zig_exe.len, obj_paths.ptr, obj_paths.len);
-                    } else {
-                        break :blk builder_spec.options.max_cmdline_len orelse cmd.formatLength(zig_exe, obj_paths);
-                    }
-                };
-                const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
-                const len: usize = blk: {
-                    if (builder_spec.options.lazy_strategy != .none) {
-                        break :blk Special.fns.formatWriteBufBuildCommand(cmd, zig_exe.ptr, zig_exe.len, obj_paths.ptr, obj_paths.len, buf);
-                    } else {
-                        break :blk cmd.formatWriteBuf(zig_exe, obj_paths, buf);
-                    }
-                };
-                buf[len] = 0;
-                return buf[0..len :0];
-            }
-            fn objcopyWrite(allocator: *mem.SimpleAllocator, node: *Node, obj_path: types.Path) [:0]u8 {
-                @setRuntimeSafety(builder_spec.options.enable_safety);
-                const zig_exe: []const u8 = node.zigExe();
-                const cmd: *types.ObjcopyCommand = node.task.cmd.objcopy;
-                const max_len: usize = blk: {
-                    if (builder_spec.options.lazy_strategy != .none) {
-                        break :blk Special.fns.formatLengthObjcopyCommand(cmd, zig_exe.ptr, zig_exe.len, obj_path);
-                    } else {
-                        break :blk builder_spec.options.max_cmdline_len orelse cmd.formatLength(zig_exe, obj_path);
-                    }
-                };
-                const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
-                const len: usize = blk: {
-                    if (builder_spec.options.lazy_strategy != .none) {
-                        break :blk Special.fns.formatWriteBufObjcopyCommand(cmd, zig_exe.ptr, zig_exe.len, obj_path, buf);
-                    } else {
-                        break :blk cmd.formatWriteBuf(zig_exe, obj_path, buf);
-                    }
-                };
-                buf[len] = 0;
-                return buf[0..len :0];
-            }
-            fn archiveWrite(allocator: *mem.SimpleAllocator, node: *Node, obj_paths: []const types.Path) [:0]u8 {
-                @setRuntimeSafety(builder_spec.options.enable_safety);
-                const zig_exe: []const u8 = node.zigExe();
-                const cmd: *build.ArchiveCommand = node.task.cmd.archive;
-                const max_len: usize = blk: {
-                    if (builder_spec.options.lazy_strategy != .none) {
-                        break :blk Special.fns.formatLengthArchiveCommand(cmd, zig_exe.ptr, zig_exe.len, obj_paths.ptr, obj_paths.len);
-                    } else {
-                        break :blk builder_spec.options.max_cmdline_len orelse cmd.formatLength(zig_exe, obj_paths);
-                    }
-                };
-                const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
-                const len: usize = blk: {
-                    if (builder_spec.options.lazy_strategy != .none) {
-                        break :blk Special.fns.formatWriteBufArchiveCommand(cmd, zig_exe.ptr, zig_exe.len, obj_paths.ptr, obj_paths.len, buf);
-                    } else {
-                        break :blk cmd.formatWriteBuf(zig_exe, obj_paths, buf);
-                    }
-                };
-                buf[len] = 0;
-                return buf[0..len :0];
-            }
-            fn formatWrite(allocator: *mem.SimpleAllocator, node: *Node, root_path: types.Path) [:0]u8 {
-                @setRuntimeSafety(builder_spec.options.enable_safety);
-                const zig_exe: []const u8 = node.zigExe();
-                const cmd: *build.FormatCommand = node.task.cmd.format;
-                const max_len: usize = blk: {
-                    if (builder_spec.options.lazy_strategy != .none) {
-                        break :blk Special.fns.formatLengthFormatCommand(cmd, zig_exe.ptr, zig_exe.len, root_path);
-                    } else {
-                        break :blk builder_spec.options.max_cmdline_len orelse cmd.formatLength(zig_exe, root_path);
-                    }
-                };
-                const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
-                const len: usize = blk: {
-                    if (builder_spec.options.lazy_strategy != .none) {
-                        break :blk Special.fns.formatWriteBufFormatCommand(cmd, zig_exe.ptr, zig_exe.len, root_path, buf);
-                    } else {
-                        break :blk cmd.formatWriteBuf(zig_exe, root_path, buf);
-                    }
-                };
-                buf[len] = 0;
-                return buf[0..len :0];
-            }
-            fn runWrite(allocator: *mem.SimpleAllocator, node: *Node, args: [][*:0]u8) [][*:0]u8 {
-                @setRuntimeSafety(builder_spec.options.enable_safety);
-                if (node.flags.is_primary) {
-                    for (args) |run_arg| node.addArg(allocator).* = run_arg;
-                }
-                node.addArg(allocator).* = comptime builtin.zero([*:0]u8);
-                node.impl.args_len -%= 1;
-                return node.impl.args[0..node.impl.args_len];
-            }
             fn taskArgs(allocator: *mem.SimpleAllocator, node: *Node, task: types.Task, arena_index: AddressSpace.Index) [][*:0]u8 {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
-                if (builder_spec.options.lazy_strategy != .none and
-                    node.flags.is_primary and
-                    build.cmd_args.len != 0)
-                {
-                    executeCommandEmergency(allocator, Special.cmd_parsers, .run, arena_index);
-                    if (do_build and task == .build) {
-                        Special.fns.formatParseArgsBuildCommand(node.task.cmd.build, allocator, build.cmd_args.ptr, build.cmd_args.len);
+                if (task == .run) {
+                    if (node.flags.is_primary) {
+                        for (build.run_args) |run_arg| node.addArg(allocator).* = run_arg;
                     }
-                    if (do_format and task == .format) {
-                        Special.fns.formatParseArgsFormatCommand(node.task.cmd.format, allocator, build.cmd_args.ptr, build.cmd_args.len);
-                    }
-                    if (do_archive and task == .archive) {
-                        Special.fns.formatParseArgsArchiveCommand(node.task.cmd.archive, allocator, build.cmd_args.ptr, build.cmd_args.len);
-                    }
-                    if (do_objcopy and task == .objcopy) {
-                        Special.fns.formatParseArgsObjcopyCommand(node.task.cmd.objcopy, allocator, build.cmd_args.ptr, build.cmd_args.len);
-                    }
-                }
-                if (task != .run) {
-                    if (builder_spec.options.lazy_strategy == .emergency) {
-                        executeCommandEmergency(allocator, Special.cmd_writers, .run, arena_index);
-                    }
-                    if (do_build and task == .build) {
-                        return makeArgPtrs(allocator, try meta.wrap(buildWrite(allocator, node, node.impl.paths[1..node.impl.paths_len])));
-                    }
-                    if (do_format and task == .format) {
-                        return makeArgPtrs(allocator, try meta.wrap(formatWrite(allocator, node, node.impl.paths[0])));
-                    }
-                    if (do_archive and task == .archive) {
-                        return makeArgPtrs(allocator, try meta.wrap(archiveWrite(allocator, node, node.impl.paths[0..node.impl.paths_len])));
-                    }
-                    if (do_objcopy and task == .objcopy) {
-                        return makeArgPtrs(allocator, try meta.wrap(objcopyWrite(allocator, node, node.impl.paths[1])));
-                    }
+                    node.addArg(allocator).* = comptime builtin.zero([*:0]u8);
+                    node.impl.args_len -%= 1;
+                    return node.impl.args[0..node.impl.args_len];
                 } else {
-                    return runWrite(allocator, node, build.run_args);
+                    if (builder_spec.options.lazy_strategy != .none) {
+                        if (node.flags.is_primary and build.cmd_args.len != 0) {
+                            if (builder_spec.options.lazy_strategy == .emergency) {
+                                executeCommandEmergency(allocator, Special.cmd_parsers, .run, arena_index);
+                            }
+                            if (do_build and task == .build) {
+                                Special.fns.formatParseArgsBuildCommand(node.task.cmd.build, allocator, build.cmd_args.ptr, build.cmd_args.len);
+                            }
+                            if (do_format and task == .format) {
+                                Special.fns.formatParseArgsFormatCommand(node.task.cmd.format, allocator, build.cmd_args.ptr, build.cmd_args.len);
+                            }
+                            if (do_archive and task == .archive) {
+                                Special.fns.formatParseArgsArchiveCommand(node.task.cmd.archive, allocator, build.cmd_args.ptr, build.cmd_args.len);
+                            }
+                            if (do_objcopy and task == .objcopy) {
+                                Special.fns.formatParseArgsObjcopyCommand(node.task.cmd.objcopy, allocator, build.cmd_args.ptr, build.cmd_args.len);
+                            }
+                        }
+                        if (builder_spec.options.lazy_strategy == .emergency) {
+                            executeCommandEmergency(allocator, Special.cmd_writers, .run, arena_index);
+                        }
+                        const zig_exe: []const u8 = node.zigExe();
+                        if (do_build and task == .build) {
+                            const paths: []const types.Path = node.impl.paths[1..node.impl.paths_len];
+                            const cmd: *types.BuildCommand = node.task.cmd.build;
+                            const max_len: usize = Special.fns.formatLengthBuildCommand(cmd, zig_exe.ptr, zig_exe.len, paths.ptr, paths.len);
+                            const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
+                            const len: usize = Special.fns.formatWriteBufBuildCommand(cmd, zig_exe.ptr, zig_exe.len, paths.ptr, paths.len, buf);
+                            buf[len] = 0;
+                            return makeArgPtrs(allocator, buf[0..len :0]);
+                        }
+                        if (do_format and task == .format) {
+                            const cmd: *build.FormatCommand = node.task.cmd.format;
+                            const max_len: usize = Special.fns.formatLengthFormatCommand(cmd, zig_exe.ptr, zig_exe.len, node.impl.paths[0]);
+                            const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
+                            const len: usize = Special.fns.formatWriteBufFormatCommand(cmd, zig_exe.ptr, zig_exe.len, node.impl.paths[0], buf);
+                            buf[len] = 0;
+                            return makeArgPtrs(allocator, buf[0..len :0]);
+                        }
+                        if (do_archive and task == .archive) {
+                            const paths: []const types.Path = node.impl.paths[0..node.impl.paths_len];
+                            const cmd: *build.ArchiveCommand = node.task.cmd.archive;
+                            const max_len: usize = Special.fns.formatLengthArchiveCommand(cmd, zig_exe.ptr, zig_exe.len, paths.ptr, paths.len);
+                            const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
+                            const len: usize = Special.fns.formatWriteBufArchiveCommand(cmd, zig_exe.ptr, zig_exe.len, paths.ptr, paths.len, buf);
+                            buf[len] = 0;
+                            return makeArgPtrs(allocator, buf[0..len :0]);
+                        }
+                        if (do_objcopy and task == .objcopy) {
+                            const path: types.Path = node.impl.paths[1];
+                            const cmd: *types.ObjcopyCommand = node.task.cmd.objcopy;
+                            const max_len: usize = Special.fns.formatLengthObjcopyCommand(cmd, zig_exe.ptr, zig_exe.len, path);
+                            const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
+                            const len: usize = Special.fns.formatWriteBufObjcopyCommand(cmd, zig_exe.ptr, zig_exe.len, path, buf);
+                            buf[len] = 0;
+                            return makeArgPtrs(allocator, buf[0..len :0]);
+                        }
+                    } else {
+                        if (node.flags.is_primary and build.cmd_args.len != 0) {
+                            if (do_build and task == .build) {
+                                node.task.cmd.build.formatParseArgs(allocator, build.cmd_args);
+                            }
+                            if (do_format and task == .format) {
+                                node.task.cmd.format.formatParseArgs(allocator, build.cmd_args);
+                            }
+                            if (do_archive and task == .archive) {
+                                node.task.cmd.archive.formatParseArgs(allocator, build.cmd_args);
+                            }
+                            if (do_objcopy and task == .objcopy) {
+                                node.task.cmd.objcopy.formatParseArgs(allocator, build.cmd_args);
+                            }
+                        }
+                        const zig_exe: []const u8 = node.zigExe();
+                        if (do_build and task == .build) {
+                            const paths: []const types.Path = node.impl.paths[1..node.impl.paths_len];
+                            const cmd: *types.BuildCommand = node.task.cmd.build;
+                            const max_len: usize = builder_spec.options.max_cmdline_len orelse cmd.formatLength(zig_exe, paths);
+                            const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
+                            const len: usize = cmd.formatWriteBuf(zig_exe, paths, buf);
+                            buf[len] = 0;
+                            return makeArgPtrs(allocator, buf[0..len :0]);
+                        }
+                        if (do_format and task == .format) {
+                            const cmd: *build.FormatCommand = node.task.cmd.format;
+                            const max_len: usize = builder_spec.options.max_cmdline_len orelse cmd.formatLength(zig_exe, node.impl.paths[0]);
+                            const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
+                            const len: usize = cmd.formatWriteBuf(zig_exe, node.impl.paths[0], buf);
+                            buf[len] = 0;
+                            return makeArgPtrs(allocator, buf[0..len :0]);
+                        }
+                        if (do_archive and task == .archive) {
+                            const paths: []const types.Path = node.impl.paths[0..node.impl.paths_len];
+                            const cmd: *build.ArchiveCommand = node.task.cmd.archive;
+                            const max_len: usize = builder_spec.options.max_cmdline_len orelse cmd.formatLength(zig_exe, paths);
+                            const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
+                            const len: usize = cmd.formatWriteBuf(zig_exe, paths, buf);
+                            buf[len] = 0;
+                            return makeArgPtrs(allocator, buf[0..len :0]);
+                        }
+                        if (do_objcopy and task == .objcopy) {
+                            const path: types.Path = node.impl.paths[1];
+                            const cmd: *types.ObjcopyCommand = node.task.cmd.objcopy;
+                            const max_len: usize = builder_spec.options.max_cmdline_len orelse cmd.formatLength(zig_exe, path);
+                            const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
+                            const len: usize = cmd.formatWriteBuf(zig_exe, path, buf);
+                            buf[len] = 0;
+                            return makeArgPtrs(allocator, buf[0..len :0]);
+                        }
+                    }
                 }
                 proc.exitError(error.InvalidTask, 2);
             }
