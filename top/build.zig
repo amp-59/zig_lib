@@ -2223,27 +2223,34 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     ptr += 3;
                 }
             }
-            ptr[0..35].* = "};\npub const compile_units=struct{\n".*;
-            ptr += 35;
-            for (node.impl.deps[0..node.impl.deps_len]) |dep| {
-                if (dep.on_node == node) {
-                    continue;
+            for ([2]types.OutputMode{ .obj, .lib }) |out| {
+                if (out == .obj) {
+                    ptr[0..35].* = "};\npub const compile_units=struct{\n".*;
+                    ptr += 35;
+                } else {
+                    ptr[0..35].* = "};\npub const dynamic_units=struct{\n".*;
+                    ptr += 35;
                 }
-                if (dep.on_task == .build and
-                    dep.on_node.task.cmd.build.kind == .obj)
-                {
-                    ptr[0..12].* = "pub const @\"".*;
-                    ptr += 12;
-                    @memcpy(ptr, dep.on_node.name);
-                    ptr += dep.on_node.name.len;
-                    ptr[0..15].* = "\":[:0]const u8=".*;
-                    ptr += 15;
-                    ptr[0] = '"';
-                    ptr += 1;
-                    ptr += dep.on_node.impl.paths[0].formatWriteBuf(ptr);
-                    ptr = ptr - 1;
-                    ptr[0..3].* = "\";\n".*;
-                    ptr += 3;
+                for (node.impl.deps[0..node.impl.deps_len]) |dep| {
+                    if (dep.on_node == node) {
+                        continue;
+                    }
+                    if (dep.on_task == .build and
+                        dep.on_node.task.cmd.build.kind == out)
+                    {
+                        ptr[0..12].* = "pub const @\"".*;
+                        ptr += 12;
+                        @memcpy(ptr, dep.on_node.name);
+                        ptr += dep.on_node.name.len;
+                        ptr[0..15].* = "\":[:0]const u8=".*;
+                        ptr += 15;
+                        ptr[0] = '"';
+                        ptr += 1;
+                        ptr += dep.on_node.impl.paths[0].formatWriteBuf(ptr);
+                        ptr = ptr - 1;
+                        ptr[0..3].* = "\";\n".*;
+                        ptr += 3;
+                    }
                 }
             }
             ptr[0..3].* = "};\n".*;
@@ -2272,20 +2279,17 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             ptr[0..3].* = "\";\n".*;
             ptr += 3;
             const file_len: usize = @intFromPtr(ptr - @intFromPtr(&file_buf));
-
             var name_buf: [512]u8 = undefined;
             ptr = name_buf[about.writeNodeNameFull(&name_buf, node, '-')..].ptr;
             ptr[0..4].* = ".zig".*;
             ptr += 4;
             ptr[0] = 0;
-
             const name_len: usize = @intFromPtr(ptr - @intFromPtr(&name_buf));
-
             const root_fd: u64 = try meta.wrap(file.createAt(create(), node.configRootFd(), name_buf[0..name_len :0], file.mode.regular));
             file.write(write(), root_fd, file_buf[0..file_len]);
             file.close(close(), root_fd);
             node.impl.paths[1].names[1] = builder_spec.options.config_dir;
-            node.impl.paths[1].addName(allocator).* = name_buf[0..name_len :0];
+            node.impl.paths[1].addName(allocator).* = duplicate(allocator, name_buf[0..name_len :0]);
         }
         const about = struct {
             const tab = .{
@@ -2426,7 +2430,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             }
             fn noExchangeNotice(node: *Node, about_s: fmt.AboutSrc, task: types.Task, old: types.State, new: types.State, arena_index: AddressSpace.Index) void {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
-                if (old == .finished) {
+                if (old != .finished) {
                     var buf: [32768]u8 = undefined;
                     var len = writeNoExchangeTask(&buf, node, about_s, task, old, new, arena_index);
                     buf[len] = '\n';
@@ -2749,7 +2753,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 ptr[0..2].* = ": ".*;
                 ptr += 2;
                 ptr[0..4].* = tab.bold_s.*;
-                return (@intFromPtr(ptr) -% @intFromPtr(buf)) +% tab.bold_s.len;
+                ptr += tab.bold_s.len;
+                return @intFromPtr(ptr) -% @intFromPtr(buf);
             }
             fn writeTopSrcLoc(buf: [*]u8, extra: [*]u32, bytes: [*:0]u8, err_msg_idx: u32) usize {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
