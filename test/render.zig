@@ -38,7 +38,7 @@ fn testFormat(allocator: *Allocator, array: *Array, buf: [*]u8, format: anytype)
     buf[len] = 0xa;
     len +%= 1;
     debug.write(array.readAll(allocator.*));
-    debug.write(buf[0..len]);
+    try file.write(.{}, 1, buf[0..len]);
     try testing.expectEqualString(array.readAll(allocator.*), buf[0..len]);
     array.undefineAll(allocator.*);
 }
