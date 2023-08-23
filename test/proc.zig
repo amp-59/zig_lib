@@ -86,7 +86,7 @@ fn testFindNameInPath(vars: [][*:0]u8) !void {
         defer file.close(.{ .errors = .{} }, dir_fd);
         const fd: u64 = file.openAt(open_spec, dir_fd, "zig") catch continue;
         defer file.close(.{ .errors = .{} }, fd);
-        const st: file.Status = try file.status(.{}, fd);
+        const st: file.Status = try file.getStatus(.{}, fd);
         if (st.isExecutable(proc.getUserId(), proc.getGroupId())) {
             break itr.done();
         }
@@ -96,7 +96,7 @@ fn testFindNameInPath(vars: [][*:0]u8) !void {
         defer file.close(.{ .errors = .{} }, dir_fd);
         const fd: u64 = file.openAt(open_spec, dir_fd, "zig") catch continue;
         defer file.close(.{ .errors = .{} }, fd);
-        const st: file.Status = try file.status(.{}, fd);
+        const st: file.Status = try file.getStatus(.{}, fd);
         if (st.isExecutable(proc.getUserId(), proc.getGroupId())) {
             break itr.done();
         }
