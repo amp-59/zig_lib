@@ -337,16 +337,14 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             is_single_threaded: bool = false,
             /// Whether a run task will be performed using the compiler server.
             is_build_command: bool = false,
-
             /// Whether a node will be processed before being returned to `buildMain`.
-            do_init: bool = !builder_spec.options.never_init,
+            do_init: bool = true,
             /// Whether a node will be processed after returning from `buildMain`.
-            do_update: bool = !builder_spec.options.never_update,
+            do_update: bool = true,
             /// Whether a node will be processed on invokation of a user defined update command.
-            do_user_update: bool = !builder_spec.options.never_update,
+            do_user_update: bool = false,
             /// Whether a node will be processed on request to regenerate the build program.
             do_regenerate: bool = true,
-
             /// Flags relevant to build-* worker nodes.
             /// Builder will create a configuration root. Enables usage of
             /// configuration constants.
@@ -360,8 +358,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             /// cache root as declarations to the build configuration root.
             want_build_context: bool = true,
         },
-        // zig fmt: off
         impl: packed struct {
+            // zig fmt: off
             args: [*][*:0]u8,       args_max_len: usize,    args_len: usize,
             paths: [*]types.Path,   paths_max_len: usize,   paths_len: usize,
             nodes: [*]*Node,        nodes_max_len: usize,   nodes_len: usize,
@@ -371,8 +369,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             config_root_fd: u32,
             output_root_fd: u32,
             wait_len: usize, wait_tick: usize,
+            // zig fmt: on
         },
-        // zig fmt: on
         const Node = @This();
         const Task = extern struct {
             tag: types.Task,
@@ -408,7 +406,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             var fns: build.Fns = .{};
             var dyn_loader: DynamicLoader = .{};
         };
-        pub const Config = builder_spec.types.Config;
+        pub const Config = types.Config;
         pub const specification: BuilderSpec = builder_spec;
         const max_thread_count: comptime_int = builder_spec.options.max_thread_count;
         const max_arena_count: comptime_int = if (max_thread_count == 0) 4 else max_thread_count + 1;
