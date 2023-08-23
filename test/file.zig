@@ -76,7 +76,7 @@ const pathname_link2: [:0]const u8 = test_dir ++ file_name ++ "2";
 pub fn testStatusExtended() !void {
     const Fields = @TypeOf(statx_spec.options.fields);
     const nilx_spec: file.StatusExtendedSpec = comptime spec.add(statx_spec, .{ .options = .{ .fields = builtin.zero(Fields) } });
-    var st: file.StatusExtended = try meta.wrap(file.statusExtended(nilx_spec, 0, "/home"));
+    var st: file.StatusExtended = try meta.wrap(file.getStatusExtended(nilx_spec, 0, "/home"));
     _ = st;
 }
 pub fn testCopyFileRange() !void {
@@ -310,7 +310,7 @@ fn testPackedModeStruct() !void {
     var fd: u64 = try meta.wrap(file.create(create_spec, "./0123456789", mode));
     try file.close(close_spec, fd);
     fd = try file.open(open_spec, "./0123456789");
-    const st: file.Status = try file.status(stat_spec, fd);
+    const st: file.Status = try file.getStatus(stat_spec, fd);
     try file.unlink(unlink_spec, "./0123456789");
     try debug.expectEqual(u16, int, @as(u16, @bitCast(st.mode)));
 }
