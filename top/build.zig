@@ -1426,14 +1426,14 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 arena_index: AddressSpace.Index,
             ) void {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
-                const save: u64 = allocator.next;
+                const save: usize = allocator.next;
                 defer allocator.next = save;
                 impl.spawnDeps(address_space, thread_space, allocator, group, node, task, arena_index);
                 while (keepGoing() and nodeWait(node, task, arena_index)) {
                     try meta.wrap(time.sleep(sleep(), .{ .nsec = builder_spec.options.sleep_nanoseconds }));
                 }
                 if (node.task.lock.get(task) == .working) {
-                    if (executeCommandInternal(allocator, node, task, max_thread_count)) {
+                    if (executeCommandInternal(allocator, node, task, arena_index)) {
                         node.assertExchange(task, .working, .finished, arena_index);
                     } else {
                         if (count_errors) {
@@ -1695,7 +1695,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 return (node.task.cmd.build.mode orelse .Debug) != .ReleaseSmall;
             }
         }
-        fn binaryRelative(allocator: *mem.SimpleAllocator, node: *Node, kind: types.OutputMode) [:0]const u8 {
+        fn binaryRelative(allocator: *mem.SimpleAllocator, node: *Node, kind: types.OutputMode) [:0]u8 {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             var buf: [512]u8 = undefined;
             const name: []u8 = if (builder_spec.options.output_strategy == .full_name) blk: {
@@ -1708,7 +1708,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 .lib => &[_][]const u8{ library_prefix, name, builder_spec.options.extensions.lib },
             });
         }
-        fn archiveRelative(allocator: *mem.SimpleAllocator, name: [:0]u8) [:0]const u8 {
+        fn archiveRelative(allocator: *mem.SimpleAllocator, name: [:0]u8) [:0]u8 {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             return concatenate(allocator, &[_][]const u8{ archive_prefix, name, builder_spec.options.extensions.ar });
         }
