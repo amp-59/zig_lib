@@ -485,16 +485,6 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             node.impl.nodes_len +%= 1;
             return ret;
         }
-        fn addDep(node: *Node, allocator: *mem.SimpleAllocator) *Dependency {
-            @setRuntimeSafety(builder_spec.options.enable_safety);
-            const size_of: comptime_int = @sizeOf(Dependency);
-            const addr_buf: *u64 = @ptrCast(&node.impl.deps);
-            const ret: *Dependency = @ptrFromInt(allocator.addGeneric(size_of, //
-                builder_spec.options.init_len.deps, addr_buf, &node.impl.deps_max_len, node.impl.deps_len));
-            node.impl.deps_len +%= 1;
-            mem.zero(Dependency, ret);
-            return ret;
-        }
         fn addArg(node: *Node, allocator: *mem.SimpleAllocator) *[*:0]u8 {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             const size_of: comptime_int = @sizeOf([*:0]u8);
@@ -516,14 +506,51 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         }
         /// Add constant declaration to build configuration.
         /// `node` must be `build-exe` worker.
-        pub fn addConfig(node: *Node, allocator: *mem.SimpleAllocator, name: [:0]const u8, value: Config.Value) void {
+        pub fn addConfig(node: *Node, allocator: *mem.SimpleAllocator, name: [:0]const u8, value: types.Config.Value) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
-            const size_of: comptime_int = @sizeOf(Config);
+            const size_of: comptime_int = @sizeOf(types.Config);
             const addr_buf: *u64 = @ptrCast(&node.impl.cfgs);
-            const ptr: *Config = @ptrFromInt(allocator.addGeneric(size_of, //
+            const ptr: *types.Config = @ptrFromInt(allocator.addGeneric(size_of, //
                 builder_spec.options.init_len.cfgs, addr_buf, &node.impl.cfgs_max_len, node.impl.cfgs_len));
             ptr.* = .{ .name = name, .value = value };
             node.impl.cfgs_len +%= 1;
+        }
+        pub fn addDependency(node: *Node, allocator: *mem.SimpleAllocator, task: types.Task, on_node: *Node, on_task: types.Task) void {
+            @setRuntimeSafety(builder_spec.options.enable_safety);
+            const size_of: comptime_int = @sizeOf(Dependency);
+            const addr_buf: *u64 = @ptrCast(&node.impl.deps);
+            const ret: *Dependency = @ptrFromInt(allocator.addGeneric(size_of, //
+                builder_spec.options.init_len.deps, addr_buf, &node.impl.deps_max_len, node.impl.deps_len));
+            if (task == .run) {
+                if (on_task == .build and node == on_node) {
+                    node.addArg(allocator).* = node.impl.paths[0].concatenate(allocator);
+                }
+            }
+            if (task == .build) {
+                if (on_task == .archive) {
+                    node.addPath(allocator).* = on_node.impl.paths[0];
+                }
+                if (on_task == .build and
+                    on_node.task.cmd.build.kind == .obj)
+                {
+                    node.addPath(allocator).* = on_node.impl.paths[0];
+                }
+            }
+            if (task == .archive) {
+                if (on_task == .build and
+                    on_node.task.cmd.build.kind == .obj)
+                {
+                    node.addPath(allocator).* = on_node.impl.paths[0];
+                }
+            }
+            node.impl.deps_len +%= 1;
+            mem.zero(Dependency, ret);
+            ret.* = .{
+                .task = task,
+                .on_node = on_node,
+                .on_task = on_task,
+                .on_state = .finished,
+            };
         }
         pub fn addToplevelArgs(node: *Node, allocator: *mem.SimpleAllocator) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
