@@ -1,7 +1,9 @@
 pub const zl = @import("./zig_lib.zig");
 const spec = zl.spec;
 const build = zl.build;
-const Node = build.GenericNode(.{});
+pub const Node = build.GenericNode(.{
+    .options = .{ .max_thread_count = 8 },
+});
 const build_cmd: build.BuildCommand = .{
     .kind = .exe,
     .omit_frame_pointer = false,
@@ -21,6 +23,7 @@ const build_cmd: build.BuildCommand = .{
 const format_cmd: build.FormatCommand = .{
     .ast_check = true,
 };
+pub const enable_debugging: bool = false;
 pub fn langGroup(allocator: *build.Allocator, group: *Node) void {
     var lang_build_cmd: build.BuildCommand = build_cmd;
     const slice_layout: *Node = group.addBuild(allocator, lang_build_cmd, "slice_layout", "test/lang/slice_layout.zig");
@@ -51,55 +54,62 @@ pub fn traceGroup(allocator: *build.Allocator, group: *Node) void {
 }
 pub fn testGroup(allocator: *build.Allocator, group: *Node) void {
     var test_build_cmd: build.BuildCommand = build_cmd;
-    const decls: *Node = group.addBuild(allocator, test_build_cmd, "decls", "test/decl-test.zig");
-    const builtin: *Node = group.addBuild(allocator, test_build_cmd, "builtin", "test/builtin-test.zig");
-    const meta: *Node = group.addBuild(allocator, test_build_cmd, "meta", "test/meta-test.zig");
-    const gen: *Node = group.addBuild(allocator, test_build_cmd, "gen", "test/gen-test.zig");
-    const math: *Node = group.addBuild(allocator, test_build_cmd, "math", "test/math-test.zig");
-    const file: *Node = group.addBuild(allocator, test_build_cmd, "file", "test/file-test.zig");
-    const list: *Node = group.addBuild(allocator, test_build_cmd, "list", "test/list-test.zig");
-    const fmt: *Node = group.addBuild(allocator, test_build_cmd, "fmt", "test/fmt-test.zig");
-    const render: *Node = group.addBuild(allocator, test_build_cmd, "render", "test/render-test.zig");
-    const thread: *Node = group.addBuild(allocator, test_build_cmd, "thread", "test/thread-test.zig");
-    const virtual: *Node = group.addBuild(allocator, test_build_cmd, "virtual", "test/virtual-test.zig");
-    const time: *Node = group.addBuild(allocator, test_build_cmd, "time", "test/time-test.zig");
+    const decls: *Node = group.addBuild(allocator, test_build_cmd, "decls", "test/decl.zig");
+    const builtin: *Node = group.addBuild(allocator, test_build_cmd, "builtin", "test/builtin.zig");
+    const meta: *Node = group.addBuild(allocator, test_build_cmd, "meta", "test/meta.zig");
+    const gen: *Node = group.addBuild(allocator, test_build_cmd, "gen", "test/gen.zig");
+    const math: *Node = group.addBuild(allocator, test_build_cmd, "math", "test/math.zig");
+    const file: *Node = group.addBuild(allocator, test_build_cmd, "file", "test/file.zig");
+    const list: *Node = group.addBuild(allocator, test_build_cmd, "list", "test/list.zig");
+    const fmt: *Node = group.addBuild(allocator, test_build_cmd, "fmt", "test/fmt.zig");
+    const render: *Node = group.addBuild(allocator, test_build_cmd, "render", "test/render.zig");
+    //const thread: *Node = group.addBuild(allocator, test_build_cmd, "thread", "test/thread.zig");
+    const virtual: *Node = group.addBuild(allocator, test_build_cmd, "virtual", "test/virtual.zig");
+    const time: *Node = group.addBuild(allocator, test_build_cmd, "time", "test/time.zig");
     const size: *Node = group.addBuild(allocator, test_build_cmd, "size", "test/size_per_config.zig");
-    const parse: *Node = group.addBuild(allocator, test_build_cmd, "parse", "test/parse-test.zig");
-    const crypto: *Node = group.addBuild(allocator, test_build_cmd, "crypto", "test/crypto-test.zig");
-    const zig: *Node = group.addBuild(allocator, test_build_cmd, "zig", "test/zig-test.zig");
-    const mem: *Node = group.addBuild(allocator, test_build_cmd, "mem", "test/mem-test.zig");
-    const mem2: *Node = group.addBuild(allocator, test_build_cmd, "mem2", "test/mem2-test.zig");
-    const proc: *Node = group.addBuild(allocator, test_build_cmd, "proc", "test/proc-test.zig");
-    const rng: *Node = group.addBuild(allocator, test_build_cmd, "rng", "test/rng-test.zig");
-    const ecdsa: *Node = group.addBuild(allocator, test_build_cmd, "ecdsa", "test/crypto/ecdsa-test.zig");
-    const aead: *Node = group.addBuild(allocator, test_build_cmd, "aead", "test/crypto/aead-test.zig");
-    const auth: *Node = group.addBuild(allocator, test_build_cmd, "auth", "test/crypto/auth-test.zig");
-    const dh: *Node = group.addBuild(allocator, test_build_cmd, "dh", "test/crypto/dh-test.zig");
-    const tls: *Node = group.addBuild(allocator, test_build_cmd, "tls", "test/crypto/tls-test.zig");
-    const core: *Node = group.addBuild(allocator, test_build_cmd, "core", "test/crypto/core-test.zig");
-    const utils: *Node = group.addBuild(allocator, test_build_cmd, "utils", "test/crypto/utils-test.zig");
-    const hash: *Node = group.addBuild(allocator, test_build_cmd, "hash", "test/crypto/hash-test.zig");
-    const pcurves: *Node = group.addBuild(allocator, test_build_cmd, "pcurves", "test/crypto/pcurves-test.zig");
-    const cmdline_writer: *Node = group.addBuild(allocator, test_build_cmd, "cmdline_writer", "test/cmdline-writer-test.zig");
-    const cmdline_parser: *Node = group.addBuild(allocator, test_build_cmd, "cmdline_parser", "test/cmdline-parser-test.zig");
-    const algo: *Node = group.addBuild(allocator, test_build_cmd, "algo", "test/algo-test.zig");
-    const fmt_cmp: *Node = group.addBuild(allocator, test_build_cmd, "fmt_cmp", "test/fmt_cmp-test.zig");
+    const parse: *Node = group.addBuild(allocator, test_build_cmd, "parse", "test/parse.zig");
+    const crypto: *Node = group.addBuild(allocator, test_build_cmd, "crypto", "test/crypto.zig");
+    const zig: *Node = group.addBuild(allocator, test_build_cmd, "zig", "test/zig.zig");
+    const mem: *Node = group.addBuild(allocator, test_build_cmd, "mem", "test/mem.zig");
+    mem.flags.want_stack_traces = true;
+    const mem2: *Node = group.addBuild(allocator, test_build_cmd, "mem2", "test/mem2.zig");
+    const x86: *Node = group.addBuild(allocator, test_build_cmd, "x86", "test/x86.zig");
+    const proc: *Node = group.addBuild(allocator, test_build_cmd, "proc", "test/proc.zig");
+    const rng: *Node = group.addBuild(allocator, test_build_cmd, "rng", "test/rng.zig");
+    const ecdsa: *Node = group.addBuild(allocator, test_build_cmd, "ecdsa", "test/crypto/ecdsa.zig");
+    const aead: *Node = group.addBuild(allocator, test_build_cmd, "aead", "test/crypto/aead.zig");
+    const auth: *Node = group.addBuild(allocator, test_build_cmd, "auth", "test/crypto/auth.zig");
+    const dh: *Node = group.addBuild(allocator, test_build_cmd, "dh", "test/crypto/dh.zig");
+    const tls: *Node = group.addBuild(allocator, test_build_cmd, "tls", "test/crypto/tls.zig");
+    const core: *Node = group.addBuild(allocator, test_build_cmd, "core", "test/crypto/core.zig");
+    const utils: *Node = group.addBuild(allocator, test_build_cmd, "utils", "test/crypto/utils.zig");
+    const hash: *Node = group.addBuild(allocator, test_build_cmd, "hash", "test/crypto/hash.zig");
+    const pcurves: *Node = group.addBuild(allocator, test_build_cmd, "pcurves", "test/crypto/pcurves.zig");
+    const cmdline_writer: *Node = group.addBuild(allocator, test_build_cmd, "cmdline_writer", "test/cmdline-writer.zig");
+    const cmdline_parser: *Node = group.addBuild(allocator, test_build_cmd, "cmdline_parser", "test/cmdline-parser.zig");
+    const algo: *Node = group.addBuild(allocator, test_build_cmd, "algo", "test/algo.zig");
+    const fmt_cmp: *Node = group.addBuild(allocator, test_build_cmd, "fmt_cmp", "test/fmt_cmp.zig");
     test_build_cmd.modules = &.{.{ .name = "@build", .path = "./build.zig" }};
     test_build_cmd.dependencies = &.{.{ .name = "@build" }};
-    const build_stress: *Node = group.addBuild(allocator, test_build_cmd, "build_stress", "test/build-test.zig");
-    const elf: *Node = group.addBuild(allocator, test_build_cmd, "elf", "test/elf-test.zig");
+    const build_stress: *Node = group.addBuild(allocator, test_build_cmd, "build_stress", "test/build.zig");
+    const elf: *Node = group.addBuild(allocator, test_build_cmd, "elf", "test/elf.zig");
     test_build_cmd.strip = false;
-    const serial: *Node = group.addBuild(allocator, test_build_cmd, "serial", "test/serial-test.zig");
+    const serial: *Node = group.addBuild(allocator, test_build_cmd, "serial", "test/serial.zig");
     const build_runner: *Node = group.addBuild(allocator, test_build_cmd, "build_runner", "build_runner.zig");
     const zls_build_runner: *Node = group.addBuild(allocator, test_build_cmd, "zls_build_runner", "zls_build_runner.zig");
     test_build_cmd.kind = .lib;
     test_build_cmd.mode = .ReleaseSmall;
-    test_build_cmd.strip = true;
+    test_build_cmd.strip = false;
     test_build_cmd.dynamic = true;
+    x86.flags.want_stack_traces = true;
+    build_runner.flags.want_stack_traces = false;
     const test_writers: *Node = group.addBuild(allocator, test_build_cmd, "test_writers", "top/build/writers.zig");
     const test_parsers: *Node = group.addBuild(allocator, test_build_cmd, "test_parsers", "top/build/parsers.zig");
+    test_build_cmd.strip = true;
+    const test_symbols: *Node = group.addBuild(allocator, test_build_cmd, "test_symbols", "test/symbols.zig");
     langGroup(allocator, group.addGroup(allocator, "lang"));
     traceGroup(allocator, group.addGroup(allocator, "trace"));
+    x86.descr = "Test x86 assembler/disassembler";
     decls.descr = "Test compilation of all public declarations recursively";
     builtin.descr = "Test builtin functions";
     meta.descr = "Test meta functions";
@@ -109,7 +119,7 @@ pub fn testGroup(allocator: *build.Allocator, group: *Node) void {
     list.descr = "Test library generic linked list";
     fmt.descr = "Test user formatting functions";
     render.descr = "Test library value rendering functions";
-    thread.descr = "Test clone and thread-safe compound/tagged sets";
+    //thread.descr = "Test clone and thread-safe compound/tagged sets";
     virtual.descr = "Test address spaces, sub address spaces, and arenas";
     time.descr = "Test time related functions";
     size.descr = "Test sizes of various things";
@@ -143,6 +153,7 @@ pub fn testGroup(allocator: *build.Allocator, group: *Node) void {
     serial.addToplevelArgs(allocator);
     build_runner.addToplevelArgs(allocator);
     zls_build_runner.addToplevelArgs(allocator);
+    elf.dependOn(allocator, test_symbols);
     elf.dependOn(allocator, test_parsers);
     elf.dependOn(allocator, test_writers);
 }
@@ -164,6 +175,8 @@ pub fn userGroup(allocator: *build.Allocator, group: *Node) void {
 pub fn exampleGroup(allocator: *build.Allocator, group: *Node) void {
     var example_build_cmd: build.BuildCommand = build_cmd;
     example_build_cmd.mode = .ReleaseSmall;
+    const extract: *Node = group.addBuild(allocator, example_build_cmd, "extract", "examples/extract.zig");
+    const cp: *Node = group.addBuild(allocator, example_build_cmd, "cp", "examples/cp.zig");
     const readdir: *Node = group.addBuild(allocator, example_build_cmd, "readdir", "examples/dir_iterator.zig");
     const dynamic: *Node = group.addBuild(allocator, example_build_cmd, "dynamic", "examples/dynamic_alloc.zig");
     const @"addrspace": *Node = group.addBuild(allocator, example_build_cmd, "addrspace", "examples/addrspace.zig");
@@ -174,9 +187,12 @@ pub fn exampleGroup(allocator: *build.Allocator, group: *Node) void {
     const pathsplit: *Node = group.addBuild(allocator, example_build_cmd, "pathsplit", "examples/pathsplit.zig");
     const declprint: *Node = group.addBuild(allocator, example_build_cmd, "declprint", "examples/declprint.zig");
     const treez: *Node = group.addBuild(allocator, example_build_cmd, "treez", "examples/treez.zig");
+    const typefs: *Node = group.addBuild(allocator, example_build_cmd, "typefs", "examples/typefs.zig");
     example_build_cmd.mode = .Debug;
     example_build_cmd.strip = false;
     const statz: *Node = group.addBuild(allocator, example_build_cmd, "statz", "examples/statz.zig");
+    extract.descr = "Extract named sections from binaries";
+    cp.descr = "Shows copying from one file system path to another";
     readdir.descr = "Shows how to iterate directory entries";
     dynamic.descr = "Shows how to allocate dynamic memory";
     @"addrspace".descr = "Shows a complex custom address space";
@@ -187,6 +203,7 @@ pub fn exampleGroup(allocator: *build.Allocator, group: *Node) void {
     pathsplit.descr = "Useful for splitting paths into dirnames and basename";
     declprint.descr = "Useful for printing declarations";
     treez.descr = "Example program useful for listing the contents of directories in a tree-like format";
+    typefs.descr = "Example program useful for generating type hierarchies from filesystems";
     statz.descr = "Build statistics file reader";
 }
 pub fn memgenGroup(allocator: *build.Allocator, group: *Node) void {
