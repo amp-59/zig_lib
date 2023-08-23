@@ -12,7 +12,9 @@ const time = zl.time;
 const debug = zl.debug;
 const builtin = zl.builtin;
 const testing = zl.testing;
+
 const perf = @import("../top/perf.zig");
+
 pub usingnamespace zl.start;
 pub const logging_override: debug.Logging.Override = spec.logging.override.silent;
 const event_spec: perf.PerfEventSpec = .{ .errors = .{} };
@@ -125,8 +127,8 @@ fn findPathFd(vars: [][*:0]u8, name: [:0]const u8) !u64 {
     }
     return error.NoExecutableInPath;
 }
-fn forwardExec(args: [][*:0]u8, vars: [][*:0]u8, dir_fd: u64, name: [:0]const u8) !void {
-    const pid: u64 = proc.fork(fork_spec);
+fn forwardExec(args: [][*:0]u8, vars: [][*:0]u8, dir_fd: usize, name: [:0]const u8) !void {
+    const pid: usize = proc.fork(fork_spec);
     if (pid == 0) {
         return file.execAt(.{}, dir_fd, name, args[1..], vars);
     }

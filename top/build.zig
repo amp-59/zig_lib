@@ -34,8 +34,6 @@ pub const BuilderSpec = struct {
     /// Errors for system calls called by builder. This excludes `clone3`,
     /// which must be implemented in assembly.
     errors: Errors = .{},
-    /// Potentially user defined types.
-    types: Types = .{},
     pub const Options = struct {
         /// The maximum number of threads in addition to main.
         /// max_thread_count=0 is single-threaded.
@@ -107,7 +105,7 @@ pub const BuilderSpec = struct {
         init_main_pkg_path: bool = true,
         /// (Recommended) Pass --cache-dir=<cache_root> for all compile commands.
         init_cache_root: bool = true,
-        /// (Recommended) Pass --cache-dir=<cache_root> for all compile commands.
+        /// (Recommended) Pass --global-cache-dir=<cache_root> for all compile commands.
         init_global_cache_root: bool = true,
         /// Enable advanced builder features, such as project-wide comptime
         /// constants and caching special modules.
@@ -117,9 +115,11 @@ pub const BuilderSpec = struct {
         /// Include build task record serialised in build configuration.
         write_hist_serial: bool = false,
         /// Compile builder features as required.
-        lazy_features: bool = true,
+        lazy_strategy: enum { none, dependency, emergency } = .emergency,
         /// Output naming strategy.
         output_strategy: enum { directories, first_name, full_name } = .full_name,
+        /// Name separators for identifiers, commands, and output file names.
+        namespace_separator: struct { id: u8 = '_', cmd: u8 = '.', fs: u8 = '-' } = .{},
         /// Name of the toplevel 'builder' node.
         toplevel_node: [:0]const u8 = "toplevel",
         /// Name of the special command used to list available commands.
@@ -296,12 +296,6 @@ pub const BuilderSpec = struct {
         link: sys.ErrorPolicy = .{},
         /// Error values for `unlink` system function.
         unlink: sys.ErrorPolicy = .{},
-    };
-    pub const Types = struct {
-        /// Defines formatter type used to pass configuration values to program.
-        Config: type = types.Config,
-        /// Defines generid command type used to pass function pointers to node.
-        Command: ?type = null,
     };
 };
 pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
