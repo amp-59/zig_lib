@@ -365,7 +365,7 @@ pub fn serialRead(comptime serial_spec: SerialSpec, comptime S: type, allocator:
         file.open(open_spec, pathname),
     );
     const st: file.Status = try meta.wrap(
-        file.status(stat_spec, fd),
+        file.getStatus(stat_spec, fd),
     );
     const buf: []u8 = try meta.wrap(
         allocator.allocate(u8, st.size),
