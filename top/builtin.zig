@@ -2377,7 +2377,7 @@ const zig_lib = struct {
         Vector = 22,
         EnumLiteral = 23,
     };
-    pub const Type = union(enum) {
+    pub const Type = union(TypeId) {
         Type: void,
         Void: void,
         Bool: void,
