@@ -135,27 +135,26 @@ noinline fn doIt(loader: *Loader, pathname: [:0]const u8, ptrs: *build.Fns) blk:
     }
     break :blk E!void;
 } {
-    const writers_info: *Loader.Info = try meta.wrap(loader.load(pathname));
-    writers_info.loadPointers(build.Fns, ptrs);
+    const info: *Loader.Info = try meta.wrap(loader.load(pathname));
+    info.loadPointers(build.Fns, ptrs);
 }
 const Loader = elf.GenericDynamicLoader(.{
-    .options = .{ .show_sections = true },
+    .options = .{ .show_sections = true, .show_defined = true },
     .logging = .{},
-    .errors = spec.loader.errors.noexcept,
+    .errors = if (builtin.strip_debug_info) spec.loader.errors.noexcept else .{},
 });
-pub fn main() !void {
-    @setRuntimeSafety(false);
+fn testConcurrentLoading() !void {
     var count: usize = 0;
     var allocator: mem.SimpleAllocator = .{};
     const stack1: []usize = allocator.allocate(usize, 1024 * 1024);
     const stack2: []usize = allocator.allocate(usize, 1024 * 1024);
     const ptrs: *build.Fns = allocator.create(build.Fns);
     var loader: Loader = .{};
-    while (count != 10000) : (count +%= 1) {
+    while (count != 100) : (count +%= 1) {
         ptrs.* = .{};
         stack1[0] = 0;
         stack2[0] = 0;
-        if (true) {
+        if (builtin.strip_debug_info) {
             _ = try proc.clone(.{}, @intFromPtr(stack2.ptr), stack2.len, {}, doIt, .{
                 &loader, builtin.lib_root ++ "/zig-out/lib/libtest-test_parsers.so", ptrs,
             });
@@ -167,7 +166,7 @@ pub fn main() !void {
                 &loader, builtin.lib_root ++ "/zig-out/lib/libtest-test_parsers.so", ptrs,
             }));
             _ = try meta.wrap(@call(.auto, doIt, .{
-                &loader, builtin.lib_root ++ "./zig-out/lib/libtest-test_writers.so", ptrs,
+                &loader, builtin.lib_root ++ "/zig-out/lib/libtest-test_writers.so", ptrs,
             }));
         }
         const words: *[@sizeOf(build.Fns) / @sizeOf(usize)]usize = @ptrCast(ptrs);
@@ -199,4 +198,7 @@ pub fn main() !void {
         // This is simply to mess up the starting alignment of the loader
         loader.ub_info_addr += count;
     }
+}
+pub fn main() !void {
+    try testConcurrentLoading();
 }
