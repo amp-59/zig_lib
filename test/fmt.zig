@@ -16,10 +16,10 @@ fn testIntToString() !void {
     const T: type = u64;
     var arg1: T = 0;
     var iint: i64 = -0xfee1dead;
-    try testing.expectEqualMany(u8, builtin.fmt.ix64(iint).readAll(), "-0xfee1dead");
-    iint = -0x0;
-    try testing.expectEqualMany(u8, builtin.fmt.ix64(iint).readAll(), "0x0");
     var uint: u64 = 0xdeadbeef;
+    try testing.expectEqualMany(u8, builtin.fmt.ix64(iint).readAll(), "-0xfee1dead");
+    iint = 0x0;
+    try testing.expectEqualMany(u8, builtin.fmt.ix64(iint).readAll(), "0x0");
     try testing.expectEqualMany(u8, builtin.fmt.ux64(uint).readAll(), "0xdeadbeef");
     const bs: [2]bool = .{ true, false };
     for (bs) |b_0| {
