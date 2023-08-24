@@ -40,9 +40,9 @@ pub const SignalHandlers = packed struct {
 };
 pub const SignalAlternateStack = struct {
     /// Address of lowest mapped byte of alternate stack.
-    addr: u64 = 0x3f000000,
+    addr: usize = 0x3f000000,
     /// Initial mapping length of alternate stack.
-    len: u64 = 0x1000000,
+    len: usize = 0x1000000,
 };
 pub const Trace = struct {
     /// Show trace on alarm.

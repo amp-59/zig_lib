@@ -1213,13 +1213,13 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 @setRuntimeSafety(builtin.is_safe);
                 return info.links[@intFromEnum(tag)];
             }
-            fn allocateMeta(info: *Info, size_of: usize, align_of: usize) usize {
+            fn allocateMeta(info: *Info, size_of: usize, align_of: usize) sys.ErrorUnion(loader_spec.errors.map, usize) {
                 @setRuntimeSafety(builtin.is_safe);
                 const aligned: usize = mach.alignA64(info.meta_next, align_of);
                 const next: usize = aligned +% size_of;
                 if (next > info.meta_finish) {
                     const finish: usize = mach.alignA4096(next);
-                    mem.map(map(), .{}, .{}, info.meta_finish, finish -% info.meta_finish);
+                    try meta.wrap(mem.map(map(), .{}, .{}, info.meta_finish, finish -% info.meta_finish));
                     info.meta_finish = finish;
                 }
                 info.meta_next = next;
@@ -1302,23 +1302,23 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                     about.readSectionNotice(info);
                 }
             }
-            fn readInfo(info: *Info, fd: usize) void {
+            fn readInfo(info: *Info, fd: usize) sys.ErrorUnion(ep2, void) {
                 @setRuntimeSafety(builtin.is_safe);
                 const dynsym_shdr: *Elf64_Shdr = info.links[dynsym_idx].?;
                 const dynstr_shdr: *Elf64_Shdr = info.links[dynstr_idx].?;
-                const dynsym_buf: [*]u8 = @ptrFromInt(info.allocateMeta(dynsym_shdr.sh_size, 8));
+                const dynsym_buf: [*]u8 = @ptrFromInt(try meta.wrap(info.allocateMeta(dynsym_shdr.sh_size, 8)));
                 try meta.wrap(readAt(fd, dynsym_shdr.sh_offset, dynsym_buf, dynsym_shdr.sh_size));
                 if (@hasField(Tag, ".symtab")) {
                     if (info.links[symtab_idx]) |symtab_shdr| {
-                        info.impl.symtab = @ptrFromInt(info.allocateMeta(symtab_shdr.sh_size, 8));
+                        info.impl.symtab = @ptrFromInt(try meta.wrap(info.allocateMeta(symtab_shdr.sh_size, 8)));
                         try meta.wrap(readAt(fd, symtab_shdr.sh_offset, @ptrCast(info.impl.symtab), symtab_shdr.sh_size));
                     }
                 }
-                info.impl.dynstr = @ptrFromInt(info.allocateMeta(dynstr_shdr.sh_size, 1));
+                info.impl.dynstr = @ptrFromInt(try meta.wrap(info.allocateMeta(dynstr_shdr.sh_size, 1)));
                 try meta.wrap(readAt(fd, dynstr_shdr.sh_offset, info.impl.dynstr, dynstr_shdr.sh_size));
                 if (@hasField(Tag, ".strtab")) {
                     if (info.links[strtab_idx]) |strtab_shdr| {
-                        info.impl.strtab = @ptrFromInt(info.allocateMeta(strtab_shdr.sh_size, 1));
+                        info.impl.strtab = @ptrFromInt(try meta.wrap(info.allocateMeta(strtab_shdr.sh_size, 1)));
                         try meta.wrap(readAt(fd, strtab_shdr.sh_offset, @ptrCast(info.impl.strtab), strtab_shdr.sh_size));
                     }
                 }
@@ -1351,6 +1351,10 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             .throw = loader_spec.errors.read.throw ++ loader_spec.errors.seek.throw,
             .abort = loader_spec.errors.read.abort ++ loader_spec.errors.seek.abort,
         };
+        const ep2 = .{
+            .throw = loader_spec.errors.map.throw ++ ep1.throw,
+            .abort = loader_spec.errors.map.abort ++ ep1.abort,
+        };
         const dynsym_idx: comptime_int = 0;
         const dynstr_idx: comptime_int = 1;
         const rodata_idx: comptime_int = 2;
@@ -1360,20 +1364,20 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
         const dynamic_idx: comptime_int = 6;
         const symtab_idx: comptime_int = 7;
 
-        fn allocateInfo(loader: *DynamicLoader, fd: usize) sys.ErrorUnion(loader_spec.errors.map, *Info) {
+        fn allocateInfo(loader: *DynamicLoader, fd: usize) sys.ErrorUnion(ep2, *Info) {
             @setRuntimeSafety(builtin.is_safe);
             const len: usize = mach.alignA4096(try meta.wrap(file.seek(seek(), fd, 0, .end)));
             const addr: usize = mach.alignA4096(@atomicRmw(usize, &loader.ub_info_addr, .Add, len, .SeqCst));
-            mem.map(map(), .{}, .{}, addr, 4096);
+            try meta.wrap(mem.map(map(), .{}, .{}, addr, 4096));
             const info: *Info = @ptrFromInt(addr);
             info.meta_next = addr +% @sizeOf(Info);
             info.meta_finish = addr +% 4096;
             try meta.wrap(readAt(fd, 0, @ptrCast(info), @sizeOf(Elf64_Ehdr)));
             const shdr_len: usize = info.ehdr.e_shnum *% info.ehdr.e_shentsize;
-            info.impl.shdr = @ptrFromInt(info.allocateMeta(shdr_len, 8));
+            info.impl.shdr = @ptrFromInt(try meta.wrap(info.allocateMeta(shdr_len, 8)));
             try meta.wrap(readAt(fd, info.ehdr.e_shoff, @ptrCast(info.impl.shdr), shdr_len));
             const shstr_len: usize = info.impl.shdr[info.ehdr.e_shstrndx].sh_size;
-            info.impl.shstr = @ptrFromInt(info.allocateMeta(shstr_len, 1));
+            info.impl.shstr = @ptrFromInt(try meta.wrap(info.allocateMeta(shstr_len, 1)));
             try meta.wrap(readAt(fd, info.impl.shdr[info.ehdr.e_shstrndx].sh_offset, info.impl.shstr, shstr_len));
             return info;
         }
