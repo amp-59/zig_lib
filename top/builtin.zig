@@ -194,7 +194,8 @@ pub const my_trace: debug.Trace = .{
                 .tags = parse.Token.Tag.cond_keyword,
             }, .{
                 .style = tab.fx.color.fg.yellow24,
-                .tags = parse.Token.Tag.goto_keyword ++ parse.Token.Tag.value_keyword,
+                .tags = parse.Token.Tag.goto_keyword ++
+                    parse.Token.Tag.value_keyword,
             } },
         },
     },
@@ -2251,77 +2252,98 @@ pub const native_endian: zig.Endian = switch (builtin.cpu.arch) {
 /// The following definitions must match the compiler definitions, or else bad things will happen.
 const zig = if (is_zig_lib) zig_lib else std_lib;
 const zig_lib = struct {
-    pub const StackTrace = struct { index: usize, instruction_addresses: []usize };
-    pub const GlobalLinkage = enum { Internal, Strong, Weak, LinkOnce };
-    pub const SymbolVisibility = enum { default, hidden, protected };
-    pub const AtomicOrder = enum { Unordered, Monotonic, Acquire, Release, AcqRel, SeqCst };
-    pub const ReduceOp = enum { And, Or, Xor, Min, Max, Add, Mul };
-    pub const AtomicRmwOp = enum { Xchg, Add, Sub, And, Nand, Or, Xor, Max, Min };
-    pub const CodeModel = enum { default, tiny, small, kernel, medium, large };
-    pub const OptimizeMode = enum { Debug, ReleaseSafe, ReleaseFast, ReleaseSmall };
+    pub const StackTrace = struct {
+        index: usize,
+        instruction_addresses: []usize,
+    };
+    pub const GlobalLinkage = enum(u2) {
+        Internal = 0,
+        Strong = 1,
+        Weak = 2,
+        LinkOnce = 3,
+    };
+    pub const SymbolVisibility = enum(u2) {
+        default = 0,
+        hidden = 1,
+        protected = 2,
+    };
+    pub const AtomicOrder = enum(u3) {
+        Unordered = 0,
+        Monotonic = 1,
+        Acquire = 2,
+        Release = 3,
+        AcqRel = 4,
+        SeqCst = 5,
+    };
+    pub const ReduceOp = enum(u3) {
+        And = 0,
+        Or = 1,
+        Xor = 2,
+        Min = 3,
+        Max = 4,
+        Add = 5,
+        Mul = 6,
+    };
+    pub const AtomicRmwOp = enum(u4) {
+        Xchg = 0,
+        Add = 1,
+        Sub = 2,
+        And = 3,
+        Nand = 4,
+        Or = 5,
+        Xor = 6,
+        Max = 7,
+        Min = 8,
+    };
+    pub const CodeModel = enum(u3) {
+        default = 0,
+        tiny = 1,
+        small = 2,
+        kernel = 3,
+        medium = 4,
+        large = 5,
+    };
+    pub const OptimizeMode = enum(u2) {
+        Debug = 0,
+        ReleaseSafe = 1,
+        ReleaseFast = 2,
+        ReleaseSmall = 3,
+    };
     pub const CallingConvention = enum(u8) {
-        /// This is the default Zig calling convention used when not using `export` on `fn`
-        /// and no other calling convention is specified.
-        Unspecified,
-        /// Matches the C ABI for the target.
-        /// This is the default calling convention when using `export` on `fn`
-        /// and no other calling convention is specified.
-        C,
-        /// This makes a function not have any function prologue or epilogue,
-        /// making the function itself uncallable in regular Zig code.
-        /// This can be useful when integrating with assembly.
-        Naked,
-        /// Functions with this calling convention are called asynchronously,
-        /// as if called as `async function()`.
-        Async,
-        /// Functions with this calling convention are inlined at all call sites.
-        Inline,
-        /// x86-only.
-        Interrupt,
-        Signal,
-        /// x86-only.
-        Stdcall,
-        /// x86-only.
-        Fastcall,
-        /// x86-only.
-        Vectorcall,
-        /// x86-only.
-        Thiscall,
-        /// ARM Procedure Call Standard (obsolete)
-        /// ARM-only.
-        APCS,
-        /// ARM Architecture Procedure Call Standard (current standard)
-        /// ARM-only.
-        AAPCS,
-        /// ARM Architecture Procedure Call Standard Vector Floating-Point
-        /// ARM-only.
-        AAPCSVFP,
-        /// x86-64-only.
-        SysV,
-        /// x86-64-only.
-        Win64,
-        /// AMD GPU, NVPTX, or SPIR-V kernel
-        Kernel,
+        Unspecified = 0,
+        C = 1,
+        Naked = 2,
+        Async = 3,
+        Inline = 4,
+        Interrupt = 5,
+        Signal = 6,
+        Stdcall = 7,
+        Fastcall = 8,
+        Vectorcall = 9,
+        Thiscall = 10,
+        APCS = 11,
+        AAPCS = 12,
+        AAPCSVFP = 13,
+        SysV = 14,
+        Win64 = 15,
+        Kernel = 16,
     };
     pub const AddressSpace = enum(u5) {
-        // CPU address spaces.
-        generic,
-        gs,
-        fs,
-        ss,
-        // GPU address spaces.
-        global,
-        constant,
-        param,
-        shared,
-        local,
-        // AVR address spaces.
-        flash,
-        flash1,
-        flash2,
-        flash3,
-        flash4,
-        flash5,
+        generic = 0,
+        gs = 1,
+        fs = 2,
+        ss = 3,
+        global = 4,
+        constant = 5,
+        param = 6,
+        shared = 7,
+        local = 8,
+        flash = 9,
+        flash1 = 10,
+        flash2 = 11,
+        flash3 = 12,
+        flash4 = 13,
+        flash5 = 14,
     };
     pub const SourceLocation = struct {
         file: [:0]const u8,
@@ -2329,7 +2351,32 @@ const zig_lib = struct {
         line: u32,
         column: u32,
     };
-    pub const TypeId = @typeInfo(Type).Union.tag_type.?;
+    pub const TypeId = enum(u5) {
+        Type = 0,
+        Void = 1,
+        Bool = 2,
+        NoReturn = 3,
+        Int = 4,
+        Float = 5,
+        Pointer = 6,
+        Array = 7,
+        Struct = 8,
+        ComptimeFloat = 9,
+        ComptimeInt = 10,
+        Undefined = 11,
+        Null = 12,
+        Optional = 13,
+        ErrorUnion = 14,
+        ErrorSet = 15,
+        Enum = 16,
+        Union = 17,
+        Fn = 18,
+        Opaque = 19,
+        Frame = 20,
+        AnyFrame = 21,
+        Vector = 22,
+        EnumLiteral = 23,
+    };
     pub const Type = union(enum) {
         Type: void,
         Void: void,
@@ -2346,7 +2393,7 @@ const zig_lib = struct {
         Null: void,
         Optional: Optional,
         ErrorUnion: ErrorUnion,
-        ErrorSet: ErrorSet,
+        ErrorSet: ?[]const Error,
         Enum: Enum,
         Union: Union,
         Fn: Fn,
@@ -2355,8 +2402,16 @@ const zig_lib = struct {
         AnyFrame: AnyFrame,
         Vector: Vector,
         EnumLiteral: void,
-        pub const Int = struct { signedness: Signedness, bits: u16 };
-        pub const Float = struct { bits: u16 };
+        pub const Int = struct {
+            signedness: enum(u1) {
+                signed = 0,
+                unsigned = 1,
+            },
+            bits: u16,
+        };
+        pub const Float = struct {
+            bits: u16,
+        };
         pub const Pointer = struct {
             size: Size,
             is_const: bool,
@@ -2366,14 +2421,23 @@ const zig_lib = struct {
             child: type,
             is_allowzero: bool,
             sentinel: ?*const anyopaque,
-            pub const Size = enum(u2) { One, Many, Slice, C };
+            pub const Size = enum(u2) {
+                One = 0,
+                Many = 1,
+                Slice = 2,
+                C = 3,
+            };
         };
         pub const Array = struct {
             len: comptime_int,
             child: type,
             sentinel: ?*const anyopaque,
         };
-        pub const ContainerLayout = enum(u2) { Auto, Extern, Packed };
+        pub const ContainerLayout = enum(u2) {
+            Auto = 0,
+            Extern = 1,
+            Packed = 2,
+        };
         pub const StructField = struct {
             name: []const u8,
             type: type,
@@ -2385,13 +2449,21 @@ const zig_lib = struct {
             layout: ContainerLayout,
             backing_integer: ?type = null,
             fields: []const StructField,
-            decls: []const Declaration,
+            decls: []const struct {
+                name: []const u8,
+            },
             is_tuple: bool,
         };
-        pub const Optional = struct { child: type };
-        pub const ErrorUnion = struct { error_set: type, payload: type };
-        pub const Error = struct { name: []const u8 };
-        pub const ErrorSet = ?[]const Error;
+        pub const Optional = struct {
+            child: type,
+        };
+        pub const ErrorUnion = struct {
+            error_set: type,
+            payload: type,
+        };
+        pub const Error = struct {
+            name: []const u8,
+        };
         pub const EnumField = struct {
             name: []const u8,
             value: comptime_int,
@@ -2399,7 +2471,9 @@ const zig_lib = struct {
         pub const Enum = struct {
             tag_type: type,
             fields: []const EnumField,
-            decls: []const Declaration,
+            decls: []const struct {
+                name: []const u8,
+            },
             is_exhaustive: bool,
         };
         pub const UnionField = struct {
@@ -2411,7 +2485,9 @@ const zig_lib = struct {
             layout: ContainerLayout,
             tag_type: ?type,
             fields: []const UnionField,
-            decls: []const Declaration,
+            decls: []const struct {
+                name: []const u8,
+            },
         };
         pub const Fn = struct {
             calling_convention: CallingConvention,
@@ -2426,65 +2502,103 @@ const zig_lib = struct {
                 type: ?type,
             };
         };
-        pub const Opaque = struct { decls: []const Declaration };
-        pub const Frame = struct { function: *const anyopaque };
-        pub const AnyFrame = struct { child: ?type };
-        pub const Vector = struct { len: comptime_int, child: type };
-        pub const Declaration = struct { name: []const u8 };
+        pub const Opaque = struct {
+            decls: []const struct {
+                name: []const u8,
+            },
+        };
+        pub const Frame = struct {
+            function: *const anyopaque,
+        };
+        pub const AnyFrame = struct {
+            child: ?type,
+        };
+        pub const Vector = struct {
+            len: comptime_int,
+            child: type,
+        };
+        pub const Declaration = struct {
+            name: []const u8,
+        };
     };
-    pub const FloatMode = enum { Strict, Optimized };
-    pub const Endian = enum { Big, Little };
-    pub const Signedness = enum { signed, unsigned };
-    pub const OutputMode = enum { Exe, Lib, Obj };
-    pub const LinkMode = enum { Static, Dynamic };
-    pub const WasiExecModel = enum { command, reactor };
-    pub const CallModifier = enum {
-        /// Equivalent to function call syntax.
-        auto,
-        /// Equivalent to async keyword used with function call syntax.
-        async_kw,
-        /// Prevents tail call optimization. This guarantees that the return
-        /// address will point to the callsite, as opposed to the callsite's
-        /// callsite. If the call is otherwise required to be tail-called
-        /// or inlined, a compile error is emitted instead.
-        never_tail,
-        /// Guarantees that the call will not be inlined. If the call is
-        /// otherwise required to be inlined, a compile error is emitted instead.
-        never_inline,
-        /// Asserts that the function call will not suspend. This allows a
-        /// non-async function to call an async function.
-        no_async,
-        /// Guarantees that the call will be generated with tail call optimization.
-        /// If this is not possible, a compile error is emitted instead.
-        always_tail,
-        /// Guarantees that the call will be inlined at the callsite.
-        /// If this is not possible, a compile error is emitted instead.
-        always_inline,
-        /// Evaluates the call at compile-time. If the call cannot be completed at
-        /// compile-time, a compile error is emitted instead.
-        compile_time,
+    pub const FloatMode = enum(u1) {
+        Strict = 0,
+        Optimized = 1,
     };
-    pub const VaListAarch64 = @compileError("VaList not supported");
-    pub const VaListHexagon = @compileError("VaList not supported");
-    pub const VaListPowerPc = @compileError("VaList not supported");
-    pub const VaListS390x = @compileError("VaList not supported");
-    pub const VaListX86_64 = @compileError("VaList not supported");
-    pub const VaList = @compileError("VaList not supported");
+    pub const Endian = enum(u1) {
+        Big = 0,
+        Little = 1,
+    };
+    pub const Signedness = enum(u1) {
+        signed = 0,
+        unsigned = 1,
+    };
+    pub const OutputMode = enum(u2) {
+        Exe = 0,
+        Lib = 1,
+        Obj = 2,
+    };
+    pub const LinkMode = enum(u1) {
+        Static = 0,
+        Dynamic = 1,
+    };
+    pub const WasiExecModel = enum(u1) {
+        command = 0,
+        reactor = 1,
+    };
+    pub const CallModifier = enum(u3) {
+        auto = 0,
+        async_kw = 1,
+        never_tail = 2,
+        never_inline = 3,
+        no_async = 4,
+        always_tail = 5,
+        always_inline = 6,
+        compile_time = 7,
+    };
+    pub const VaListAarch64 = extern struct {
+        __stack: *anyopaque,
+        __gr_top: *anyopaque,
+        __vr_top: *anyopaque,
+        __gr_offs: c_int,
+        __vr_offs: c_int,
+    };
+    pub const VaListHexagon = extern struct {
+        __gpr: c_long,
+        __fpr: c_long,
+        __overflow_arg_area: *anyopaque,
+        __reg_save_area: *anyopaque,
+    };
+    pub const VaListPowerPc = extern struct {
+        gpr: u8,
+        fpr: u8,
+        reserved: c_ushort,
+        overflow_arg_area: *anyopaque,
+        reg_save_area: *anyopaque,
+    };
+    pub const VaListS390x = extern struct {
+        __current_saved_reg_area_pointer: *anyopaque,
+        __saved_reg_area_end_pointer: *anyopaque,
+        __overflow_area_pointer: *anyopaque,
+    };
+    pub const VaListX86_64 = extern struct {
+        gp_offset: c_uint,
+        fp_offset: c_uint,
+        overflow_arg_area: *anyopaque,
+        reg_save_area: *anyopaque,
+    };
     pub const PrefetchOptions = struct {
-        /// Whether the prefetch should prepare for a read or a write.
         rw: Rw = .read,
-        /// The data's locality in an inclusive range from 0 to 3.
-        ///
-        /// 0 means no temporal locality. That is, the data can be immediately
-        /// dropped from the cache after it is accessed.
-        ///
-        /// 3 means high temporal locality. That is, the data should be kept in
-        /// the cache as it is likely to be accessed again soon.
         locality: u2 = 3,
-        /// The cache that the prefetch should be performed on.
         cache: Cache = .data,
-        pub const Rw = enum(u1) { read, write };
-        pub const Cache = enum(u1) { instruction, data };
+        pub const Rw = enum(u1) {
+            read = 0,
+            write = 1,
+        };
+        pub const Cache = enum(u1) {
+            instruction = 0,
+            data = 1,
+        };
     };
     pub const ExportOptions = struct {
         name: []const u8,
@@ -2499,47 +2613,18 @@ const zig_lib = struct {
         is_thread_local: bool = false,
     };
     pub const CompilerBackend = enum(u64) {
-        /// It is allowed for a compiler implementation to not reveal its identity,
-        /// in which case this value is appropriate. Be cool and make sure your
-        /// code supports `other` Zig compilers!
         other = 0,
-        /// The original Zig compiler created in 2015 by Andrew Kelley. Implemented
-        /// in C++. Used LLVM. Deleted from the ZSF ziglang/zig codebase on
-        /// December 6th, 2022.
         stage1 = 1,
-        /// The reference implementation self-hosted compiler of Zig, using the
-        /// LLVM backend.
         stage2_llvm = 2,
-        /// The reference implementation self-hosted compiler of Zig, using the
-        /// backend that generates C source code.
-        /// Note that one can observe whether the compilation will output C code
-        /// directly with `object_format` value rather than the `compiler_backend` value.
         stage2_c = 3,
-        /// The reference implementation self-hosted compiler of Zig, using the
-        /// WebAssembly backend.
         stage2_wasm = 4,
-        /// The reference implementation self-hosted compiler of Zig, using the
-        /// arm backend.
         stage2_arm = 5,
-        /// The reference implementation self-hosted compiler of Zig, using the
-        /// x86_64 backend.
         stage2_x86_64 = 6,
-        /// The reference implementation self-hosted compiler of Zig, using the
-        /// aarch64 backend.
         stage2_aarch64 = 7,
-        /// The reference implementation self-hosted compiler of Zig, using the
-        /// x86 backend.
         stage2_x86 = 8,
-        /// The reference implementation self-hosted compiler of Zig, using the
-        /// riscv64 backend.
         stage2_riscv64 = 9,
-        /// The reference implementation self-hosted compiler of Zig, using the
-        /// sparc64 backend.
         stage2_sparc64 = 10,
-        /// The reference implementation self-hosted compiler of Zig, using the
-        /// spirv backend.
         stage2_spirv64 = 11,
-        _,
     };
     pub const TestFn = struct {
         name: []const u8,
