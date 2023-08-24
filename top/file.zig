@@ -11,6 +11,7 @@ const _dir = @import("./dir.zig");
 const _chan = @import("./chan.zig");
 pub usingnamespace _dir;
 pub usingnamespace _chan;
+pub const cwd: usize = @bitCast(@as(isize, -100));
 pub const mode = struct {
     pub const regular: Mode = .{
         .owner = .{ .read = true, .write = true, .execute = false },
