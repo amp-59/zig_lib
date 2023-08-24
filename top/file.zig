@@ -11,7 +11,7 @@ const _dir = @import("./dir.zig");
 const _chan = @import("./chan.zig");
 pub usingnamespace _dir;
 pub usingnamespace _chan;
-pub const cwd: usize = @bitCast(@as(isize, -100));
+pub const cwd: comptime_int = @as(usize, @bitCast(@as(isize, -100)));
 pub const mode = struct {
     pub const regular: Mode = .{
         .owner = .{ .read = true, .write = true, .execute = false },
@@ -612,7 +612,7 @@ pub const StatusSpec = struct {
     options: Options = .{},
     errors: sys.ErrorPolicy = .{ .throw = sys.stat_errors },
     logging: debug.Logging.SuccessErrorFault = .{},
-    return_type: ?type = null,
+    return_type: type = void,
     const Specification = @This();
     const Options = struct {
         no_follow: bool = false,
@@ -633,7 +633,7 @@ pub const StatusExtendedSpec = struct {
     options: Options = .{},
     errors: sys.ErrorPolicy = .{ .throw = sys.statx_errors },
     logging: debug.Logging.SuccessErrorFault = .{},
-    return_type: ?type = null,
+    return_type: type = void,
     const Specification = @This();
     pub const Options = struct {
         no_follow: bool = false,
@@ -1369,7 +1369,8 @@ fn makePathInternal(comptime spec: MakePathSpec, pathname: [:0]u8, comptime file
 }, void) {
     const stat_spec: StatusSpec = comptime spec.stat();
     const make_dir_spec: MakeDirSpec = spec.mkdir();
-    const st: Status = pathStatus(stat_spec, pathname) catch |err| blk: {
+    var st: Status = comptime builtin.zero(Status);
+    pathStatus(stat_spec, pathname, &st) catch |err| blk: {
         if (err == error.NoSuchFileOrDirectory) {
             const idx: u64 = indexOfDirnameFinish(pathname);
             debug.assertEqual(u8, pathname[idx], '/');
@@ -1380,7 +1381,7 @@ fn makePathInternal(comptime spec: MakePathSpec, pathname: [:0]u8, comptime file
             }
         }
         try makeDir(make_dir_spec, pathname, file_mode);
-        break :blk try pathStatus(stat_spec, pathname);
+        break :blk try pathStatus(stat_spec, pathname, &st);
     };
     if (st.mode.kind != .directory) {
         return error.NotADirectory;
@@ -1596,10 +1597,9 @@ pub fn removeDir(comptime spec: RemoveDirSpec, pathname: [:0]const u8) sys.Error
         return rmdir_error;
     }
 }
-pub fn pathStatus(comptime spec: StatusSpec, pathname: [:0]const u8) sys.ErrorUnion(spec.errors, Status) {
-    var st: Status = undefined;
+pub fn pathStatus(comptime spec: StatusSpec, pathname: [:0]const u8, st: *Status) sys.ErrorUnion(spec.errors, spec.return_type) {
     const pathname_buf_addr: u64 = @intFromPtr(pathname.ptr);
-    const st_buf_addr: u64 = @intFromPtr(&st);
+    const st_buf_addr: u64 = @intFromPtr(st);
     const logging: debug.Logging.SuccessErrorFault = comptime spec.logging.override();
     if (meta.wrap(sys.call(.stat, spec.errors, void, .{ pathname_buf_addr, st_buf_addr }))) {
         if (logging.Success) {
@@ -1611,11 +1611,9 @@ pub fn pathStatus(comptime spec: StatusSpec, pathname: [:0]const u8) sys.ErrorUn
         }
         return stat_error;
     }
-    return st;
 }
-pub fn status(comptime spec: StatusSpec, fd: u64) sys.ErrorUnion(spec.errors, Status) {
-    var st: Status = undefined;
-    const st_buf_addr: u64 = @intFromPtr(&st);
+pub fn status(comptime spec: StatusSpec, fd: usize, st: *Status) sys.ErrorUnion(spec.errors, spec.return_type) {
+    const st_buf_addr: usize = @intFromPtr(st);
     const logging: debug.Logging.SuccessErrorFault = comptime spec.logging.override();
     if (meta.wrap(sys.call(.fstat, spec.errors, void, .{ fd, st_buf_addr }))) {
         if (logging.Success) {
@@ -1627,12 +1625,10 @@ pub fn status(comptime spec: StatusSpec, fd: u64) sys.ErrorUnion(spec.errors, St
         }
         return stat_error;
     }
-    return st;
 }
-pub fn statusAt(comptime spec: StatusSpec, dir_fd: u64, name: [:0]const u8) sys.ErrorUnion(spec.errors, Status) {
-    var st: Status = undefined;
-    const name_buf_addr: u64 = @intFromPtr(name.ptr);
-    const st_buf_addr: u64 = @intFromPtr(&st);
+pub fn statusAt(comptime spec: StatusSpec, dir_fd: usize, name: [:0]const u8, st: *Status) sys.ErrorUnion(spec.errors, spec.return_type) {
+    const name_buf_addr: usize = @intFromPtr(name.ptr);
+    const st_buf_addr: usize = @intFromPtr(st);
     const flags: At = comptime spec.flags();
     const logging: debug.Logging.SuccessErrorFault = comptime spec.logging.override();
     if (meta.wrap(sys.call(.newfstatat, spec.errors, void, .{ dir_fd, name_buf_addr, st_buf_addr, flags.val }))) {
@@ -1645,14 +1641,12 @@ pub fn statusAt(comptime spec: StatusSpec, dir_fd: u64, name: [:0]const u8) sys.
         }
         return stat_error;
     }
-    return st;
 }
-pub fn statusExtended(comptime spec: StatusExtendedSpec, fd: u64, pathname: [:0]const u8) sys.ErrorUnion(spec.errors, StatusExtended) {
-    var st: StatusExtended = undefined;
+pub fn statusExtended(comptime spec: StatusExtendedSpec, fd: usize, pathname: [:0]const u8, st: *StatusExtended) sys.ErrorUnion(spec.errors, spec.return_type) {
     const pathname_buf_addr: u64 = @intFromPtr(pathname.ptr);
-    const st_buf_addr: u64 = @intFromPtr(&st);
+    const st_buf_addr: u64 = @intFromPtr(st);
     const flags: At = comptime spec.flags();
-    const mask: usize = @as(usize, @bitCast(spec.options.fields));
+    const mask: usize = @bitCast(spec.options.fields);
     const logging: debug.Logging.SuccessErrorFault = comptime spec.logging.override();
     if (meta.wrap(sys.call(.statx, spec.errors, void, .{ fd, pathname_buf_addr, flags.val, mask, st_buf_addr }))) {
         if (logging.Success) {
@@ -1664,6 +1658,25 @@ pub fn statusExtended(comptime spec: StatusExtendedSpec, fd: u64, pathname: [:0]
         }
         return stat_error;
     }
+}
+pub fn getPathStatus(comptime spec: StatusSpec, pathname: [:0]const u8) sys.ErrorUnion(spec.errors, Status) {
+    var st: Status = undefined;
+    try meta.wrap(pathStatus(spec, pathname, &st));
+    return st;
+}
+pub fn getStatus(comptime spec: StatusSpec, fd: usize) sys.ErrorUnion(spec.errors, Status) {
+    var st: Status = undefined;
+    try meta.wrap(status(spec, fd, &st));
+    return st;
+}
+pub fn getStatusAt(comptime spec: StatusSpec, dir_fd: usize, name: [:0]const u8) sys.ErrorUnion(spec.errors, Status) {
+    var st: StatusExtended = undefined;
+    try meta.wrap(statusAt(spec, dir_fd, name, &st));
+    return st;
+}
+pub fn getStatusExtended(comptime spec: StatusExtendedSpec, fd: usize, pathname: [:0]const u8) sys.ErrorUnion(spec.errors, StatusExtended) {
+    var st: StatusExtended = undefined;
+    try meta.wrap(statusExtended(spec, fd, pathname, &st));
     return st;
 }
 pub fn map(comptime map_spec: mem.MapSpec, prot: Map.Protection, flags: Map.Flags, fd: u64, addr: u64, len: u64, off: u64) sys.ErrorUnion(map_spec.errors, map_spec.return_type) {
@@ -1981,33 +1994,32 @@ pub fn access(comptime access_spec: AccessSpec, pathname: [:0]const u8, ok: Acce
 }
 pub fn pathIs(comptime stat_spec: StatusSpec, pathname: [:0]const u8, kind: Kind) sys.ErrorUnion(
     stat_spec.errors,
-    stat_spec.return_type orelse bool,
+    if (stat_spec.return_type == void) bool else stat_spec.return_type,
 ) {
-    const st: Status = try meta.wrap(pathStatus(stat_spec, pathname));
-    if (stat_spec.return_type) |return_type| {
-        if (return_type == ?Status) {
-            return mach.cmovZ(st.mode.kind == kind, st);
-        }
+    var st: Status = comptime builtin.zero(Status);
+    try meta.wrap(pathStatus(stat_spec, pathname, &st));
+    if (stat_spec.return_type == ?Status) {
+        return if (st.mode.kind == kind) st else null;
     }
     return st.mode.kind == kind;
 }
 pub fn pathIsNot(comptime stat_spec: StatusSpec, pathname: [:0]const u8, kind: Kind) sys.ErrorUnion(
     stat_spec.errors,
-    stat_spec.return_type orelse bool,
+    if (stat_spec.return_type == void) bool else stat_spec.return_type,
 ) {
-    const st: Status = try meta.wrap(pathStatus(stat_spec, pathname));
-    if (stat_spec.return_type) |return_type| {
-        if (return_type == ?Status) {
-            return mach.cmovZ(st.mode.kind != kind, st);
-        }
+    var st: Status = comptime builtin.zero(Status);
+    try meta.wrap(pathStatus(stat_spec, pathname, &st));
+    if (stat_spec.return_type == ?Status) {
+        return if (st.mode.kind != kind) st else null;
     }
     return st.mode.kind != kind;
 }
 pub fn pathAssert(comptime stat_spec: StatusSpec, pathname: [:0]const u8, kind: Kind) sys.ErrorUnion(
     stat_spec.errors,
-    stat_spec.return_type orelse void,
+    stat_spec.return_type,
 ) {
-    const st: Status = try meta.wrap(pathStatus(stat_spec, pathname));
+    var st: Status = comptime builtin.zero(Status);
+    try meta.wrap(pathStatus(stat_spec, pathname, &st));
     const res: bool = st.mode.kind == kind;
     const logging: debug.Logging.SuccessErrorFault = comptime stat_spec.logging.override();
     if (!res) {
@@ -2016,39 +2028,38 @@ pub fn pathAssert(comptime stat_spec: StatusSpec, pathname: [:0]const u8, kind: 
         }
         proc.exit(2);
     }
-    if (stat_spec.return_type) |return_type| {
-        return mach.cmovV(return_type == Status, st);
+    if (stat_spec.return_type == Status) {
+        return st;
     }
 }
 pub fn isAt(comptime stat_spec: StatusSpec, dir_fd: u64, name: [:0]const u8, kind: Kind) sys.ErrorUnion(
     stat_spec.errors,
-    stat_spec.return_type orelse bool,
+    if (stat_spec.return_type == void) bool else stat_spec.return_type,
 ) {
-    const st: Status = try meta.wrap(statusAt(stat_spec, dir_fd, name));
-    if (stat_spec.return_type) |return_type| {
-        if (return_type == ?Status) {
-            return mach.cmovZ(st.mode.kind == kind, st);
-        }
+    var st: Status = comptime builtin.zero(Status);
+    try meta.wrap(statusAt(stat_spec, dir_fd, name, &st));
+    if (stat_spec.return_type == ?Status) {
+        return if (st.mode.kind == kind) st else null;
     }
     return st.mode.kind == kind;
 }
 pub fn isNotAt(comptime stat_spec: StatusSpec, dir_fd: u64, name: [:0]const u8, kind: Kind) sys.ErrorUnion(
     stat_spec.errors,
-    stat_spec.return_type orelse bool,
+    if (stat_spec.return_type == void) bool else stat_spec.return_type,
 ) {
-    const st: Status = try meta.wrap(statusAt(stat_spec, dir_fd, name));
-    if (stat_spec.return_type) |return_type| {
-        if (return_type == ?Status) {
-            return mach.cmovZ(st.mode.kind != kind, st);
-        }
+    var st: Status = comptime builtin.zero(Status);
+    try meta.wrap(statusAt(stat_spec, dir_fd, name, &st));
+    if (stat_spec.return_type == ?Status) {
+        return if (st.mode.kind != kind) st else null;
     }
     return st.mode.kind != kind;
 }
 pub fn assertAt(comptime stat_spec: StatusSpec, dir_fd: u64, name: [:0]const u8, kind: Kind) sys.ErrorUnion(
     stat_spec.errors,
-    stat_spec.return_type orelse void,
+    stat_spec.return_type,
 ) {
-    const st: Status = try meta.wrap(statusAt(stat_spec, dir_fd, name));
+    var st: Status = comptime builtin.zero(Status);
+    try meta.wrap(statusAt(stat_spec, dir_fd, name, &st));
     const logging: debug.Logging.SuccessErrorFault = comptime stat_spec.logging.override();
     if (st.mode.kind != kind) {
         if (logging.Fault) {
@@ -2056,39 +2067,38 @@ pub fn assertAt(comptime stat_spec: StatusSpec, dir_fd: u64, name: [:0]const u8,
         }
         proc.exit(2);
     }
-    if (stat_spec.return_type) |return_type| {
-        return mach.cmovV(return_type == Status, st);
+    if (stat_spec.return_type == Status) {
+        return st;
     }
 }
 pub fn is(comptime stat_spec: StatusSpec, fd: u64, kind: Kind) sys.ErrorUnion(
     stat_spec.errors,
-    stat_spec.return_type orelse bool,
+    if (stat_spec.return_type == void) bool else stat_spec.return_type,
 ) {
-    const st: Status = try meta.wrap(status(stat_spec, fd));
-    if (stat_spec.return_type) |return_type| {
-        if (return_type == ?Status) {
-            return mach.cmovZ(st.mode.kind == kind, st);
-        }
+    var st: Status = comptime builtin.zero(Status);
+    try meta.wrap(status(stat_spec, fd, &st));
+    if (stat_spec.return_type == ?Status) {
+        return if (st.mode.kind == kind) st else null;
     }
     return st.mode.kind == kind;
 }
 pub fn isNot(comptime stat_spec: StatusSpec, kind: Kind, fd: u64) sys.ErrorUnion(
     stat_spec.errors,
-    stat_spec.return_type orelse bool,
+    if (stat_spec.return_type == void) bool else stat_spec.return_type,
 ) {
-    const st: Status = try meta.wrap(status(stat_spec, fd));
-    if (stat_spec.return_type) |return_type| {
-        if (return_type == ?Status) {
-            return mach.cmovZ(st.mode.kind != kind, st);
-        }
+    var st: Status = comptime builtin.zero(Status);
+    try meta.wrap(status(stat_spec, fd, &st));
+    if (stat_spec.return_type == ?Status) {
+        return mach.cmovZ(st.mode.kind != kind, st);
     }
     return st.mode.kind != kind;
 }
 pub fn assert(comptime stat_spec: StatusSpec, fd: u64, kind: Kind) sys.ErrorUnion(
     stat_spec.errors,
-    stat_spec.return_type orelse void,
+    stat_spec.return_type,
 ) {
-    const st: Status = try meta.wrap(status(stat_spec, fd));
+    var st: Status = comptime builtin.zero(Status);
+    try meta.wrap(status(stat_spec, fd, &st));
     const res: bool = st.mode.kind == kind;
     const logging: debug.Logging.SuccessErrorFault = comptime stat_spec.logging.override();
     if (!res) {
@@ -2097,15 +2107,16 @@ pub fn assert(comptime stat_spec: StatusSpec, fd: u64, kind: Kind) sys.ErrorUnio
         }
         proc.exit(2);
     }
-    if (stat_spec.return_type) |return_type| {
-        return mach.cmovV(return_type == Status, st);
+    if (stat_spec.return_type == Status) {
+        return st;
     }
 }
 pub fn assertNot(comptime stat_spec: StatusSpec, fd: u64, kind: Kind) sys.ErrorUnion(
     stat_spec.errors,
-    stat_spec.return_type orelse void,
+    stat_spec.return_type,
 ) {
-    const st: Status = try meta.wrap(status(stat_spec, fd));
+    var st: Status = comptime builtin.zero(Status);
+    try meta.wrap(status(stat_spec, fd, &st));
     const res: bool = st.mode.kind == kind;
     const logging: debug.Logging.SuccessErrorFault = comptime stat_spec.logging.override();
     if (res) {
@@ -2114,8 +2125,8 @@ pub fn assertNot(comptime stat_spec: StatusSpec, fd: u64, kind: Kind) sys.ErrorU
         }
         proc.exit(2);
     }
-    if (stat_spec.return_type) |return_type| {
-        return mach.cmovV(return_type == Status, st);
+    if (stat_spec.return_type == Status) {
+        return st;
     }
 }
 fn getTerminalAttributes() void {}
