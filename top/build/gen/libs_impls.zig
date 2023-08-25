@@ -16,6 +16,8 @@ const Variant = enum {
     externs,
     exports,
     wrappers,
+    var_decls,
+    ptr_fields,
 };
 const Names = struct {
     info: builtin.Type,
@@ -24,7 +26,7 @@ const Names = struct {
     export_name: []const u8,
     param_names: []const []const u8 = &.{},
 };
-fn typeRequireswrappers(comptime T: type) bool {
+fn typeRequiresWrappers(comptime T: type) bool {
     switch (@typeInfo(T)) {
         .Pointer => |pointer_info| {
             if (pointer_info.size == .Slice) {
@@ -47,11 +49,11 @@ fn typeRequireswrappers(comptime T: type) bool {
 }
 fn requireswrappers(comptime fn_info: builtin.Type.Fn) bool {
     inline for (fn_info.params) |param| {
-        if (typeRequireswrappers(param.type.?)) {
+        if (typeRequiresWrappers(param.type.?)) {
             return true;
         }
     }
-    return typeRequireswrappers(fn_info.return_type.?);
+    return typeRequiresWrappers(fn_info.return_type.?);
 }
 fn writeParameter(array: *Array, variant: Variant, comptime param_type: type, comptime prefix: []const u8) void {
     if (variant == .wrappers) {
@@ -226,6 +228,24 @@ fn writeSymbol(array: *common.Array, comptime T: type, variant: Variant) void {
         const field_type = @TypeOf(field);
         const field_type_info: builtin.Type = @typeInfo(field_type);
         switch (variant) {
+            .var_decls => {
+                array.writeMany("var ");
+                array.writeFormat(fmt.identifier(names.decl_name));
+                array.writeMany("(");
+                inline for (field_type_info.Fn.params, 0..) |param, idx| {
+                    writeParameter(array, variant, param.type.?, names.param_names[idx]);
+                }
+                array.writeMany(")callconv(.C);");
+            },
+            .ptr_fields => {
+                array.writeFormat(fmt.identifier(names.decl_name));
+                array.writeMany(":*fn(");
+                // Uncomment for segmentation fault
+                //inline for (field_type_info.Fn.params, 0..) |param, idx| {
+                //    writeParameter(array, variant, param.type.?, names.param_names[idx]);
+                //}
+                array.writeMany(")callconv(.C) = @ptrFromInt(8),\n");
+            },
             .exports => if (names.forward) {
                 array.writeMany("fn ");
                 array.writeFormat(fmt.identifier(names.decl_name));
@@ -273,6 +293,8 @@ fn writeSymbol(array: *common.Array, comptime T: type, variant: Variant) void {
                 array.writeMany(");\n");
                 array.writeMany("}\n");
             },
+
+            //else => {},
         }
     }
 }

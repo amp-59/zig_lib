@@ -535,7 +535,7 @@ pub const Files = struct {
         return len;
     }
 };
-pub const Record = packed struct {
+pub const Record = struct {
     /// Build duration in milliseconds, max 50 days
     durat: u32,
     /// Output size in bytes, max 4GiB
