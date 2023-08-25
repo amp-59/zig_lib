@@ -535,17 +535,17 @@ pub const Files = struct {
         return len;
     }
 };
-pub const Record = struct {
+pub const Record = packed struct {
     /// Build duration in milliseconds, max 50 days
     durat: u32,
     /// Output size in bytes, max 4GiB
     size: u32,
     /// Extra
     detail: hist_tasks.BuildCommand,
-    pub fn init(job: *JobInfo, build_cmd: *types.BuildCommand) Record {
+    pub fn init(build_cmd: *types.BuildCommand, st: *const file.Status, ts: *const time.TimeSpec) Record {
         return .{
-            .durat = @as(u32, @intCast((job.ts.sec * 1_000) +% (job.ts.nsec / 1_000_000))),
-            .size = @as(u32, @intCast(job.st.size)),
+            .durat = @as(u32, @intCast((ts.sec * 1_000) +% (ts.nsec / 1_000_000))),
+            .size = @as(u32, @intCast(st.size)),
             .detail = hist_tasks.BuildCommand.convert(build_cmd),
         };
     }
