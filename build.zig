@@ -1,9 +1,7 @@
 pub const zl = @import("./zig_lib.zig");
 const spec = zl.spec;
 const build = zl.build;
-pub const Node = build.GenericNode(.{
-    .options = .{ .max_thread_count = 8 },
-});
+pub const Node = build.GenericNode(.{});
 const build_cmd: build.BuildCommand = .{
     .kind = .exe,
     .omit_frame_pointer = false,
