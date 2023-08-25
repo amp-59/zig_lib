@@ -723,11 +723,3 @@ pub const ReferenceTrace = extern struct {
     };
     pub const len: u64 = 2;
 };
-pub const JobInfo = struct {
-    ts: time.TimeSpec,
-    st: file.Status,
-    ret: struct {
-        sys: u8,
-        srv: u8,
-    },
-};
