@@ -323,6 +323,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             is_single_threaded: bool = false,
             /// Whether a run task will be performed using the compiler server.
             is_build_command: bool = false,
+
             /// Whether a node will be processed before being returned to `buildMain`.
             do_init: bool = true,
             /// Whether a node will be processed after returning from `buildMain`.
@@ -331,6 +332,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             do_user_update: bool = false,
             /// Whether a node will be processed on request to regenerate the build program.
             do_regenerate: bool = true,
+
             /// Flags relevant to build-* worker nodes.
             /// Builder will create a configuration root. Enables usage of
             /// configuration constants.

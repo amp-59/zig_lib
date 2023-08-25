@@ -1,14 +1,8 @@
 const mem = @import("../../mem.zig");
-const fmt = @import("../../fmt.zig");
 const gen = @import("../../gen.zig");
-const proc = @import("../../proc.zig");
 const file = @import("../../file.zig");
 const meta = @import("../../meta.zig");
-const spec = @import("../../spec.zig");
 const debug = @import("../../debug.zig");
-const serial = @import("../../serial.zig");
-const testing = @import("../../testing.zig");
-const builtin = @import("../../builtin.zig");
 const tok = @import("./tok.zig");
 const expr = @import("./expr.zig");
 const attr = @import("./attr.zig");
@@ -332,24 +326,22 @@ fn writeFieldDeductionInternal(
         array.writeMany("}\n");
     }
 }
+const details = blk: {
+    const bytes: []const u8 = @embedFile("./zig-out/src/impl_detail");
+    const len: usize = @divExact(bytes.len, @sizeOf(types.Implementation));
+    const ptr: [*]const types.Implementation = @ptrCast(@alignCast(bytes[0..bytes.len]));
+    break :blk ptr[0..len];
+};
 pub fn main() !void {
     var address_space: AddressSpace = .{};
     var allocator: Allocator = Allocator.init(&address_space);
     defer allocator.deinit(&address_space);
     var array: Array = Array.init(&allocator, 1024 * 4096);
-    array.writeMany("const mem = @import(\"../mem.zig\");\n");
-    array.writeMany("const meta = @import(\"../meta.zig\");\n");
-    array.writeMany("const mach = @import(\"../mach.zig\");\n");
+    array.writeMany("const mem=@import(\"../mem.zig\");\n");
+    array.writeMany("const meta=@import(\"../meta.zig\");\n");
+    array.writeMany("const mach=@import(\"../mach.zig\");\n");
     array.writeMany("const " ++ tok.allocator_type_name ++ " = struct {};\n");
     array.writeMany("const " ++ tok.amount_type_name ++ " = struct {};\n");
-    var fd: u64 = file.open(spec.generic.noexcept, config.impl_detail_path);
-    const st: file.Status = file.status(spec.generic.noexcept, fd);
-    const details: []types.Implementation = allocator.allocate(
-        types.Implementation,
-        st.count(types.Implementation),
-    );
-    file.read(read_impl_spec, fd, details);
-    file.close(spec.generic.noexcept, fd);
     var len: [types.Kind.list.len]u64 = .{0} ** types.Kind.list.len;
     const param_lists_map: ptr_fn.FnArgs.Map = ptr_fn.deduceUniqueInterfaceStructs(&allocator, details);
     for (types.Kind.list, 0..) |kind, kind_idx| {
@@ -389,7 +381,7 @@ pub fn main() !void {
             alloc_fn_info.writeSignature(&array, kind);
             var decl_list: gen.DeclList = alloc_fn_info.declList(kind);
             array.writeMany("{\n");
-            array.writeMany("const P = meta.FnParam0(s_impl_type.");
+            array.writeMany("const P=meta.FnParam0(s_impl_type.");
             array.writeMany(@tagName(alloc_fn_info));
             array.writeMany(");\n");
             if (unique_arg_list.args_len != 0) {
