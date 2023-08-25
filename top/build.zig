@@ -601,8 +601,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     "-fsingle-threaded",  "-dynamic",
                     perf_events_root,
                 });
-                Special.cmd_parsers.flags.is_dyn_ext = true;
-                Special.cmd_parsers.flags.want_shallow_cache_check = true;
+                Special.perf_events.flags.is_dyn_ext = true;
+                Special.perf_events.flags.want_shallow_cache_check = true;
             }
             Special.trace = zero.addBuild(allocator, trace_build_cmd, "trace", builder_spec.options.trace_root);
         }
@@ -1354,8 +1354,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 address_space: *AddressSpace,
                 thread_space: *ThreadSpace,
                 allocator: *mem.SimpleAllocator,
-                group: *const Node,
-                node: *const Node,
+                group: *Node,
+                node: *Node,
                 task: types.Task,
                 arena_index: AddressSpace.Index,
             ) void {
@@ -1433,7 +1433,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 address_space: *AddressSpace,
                 thread_space: *ThreadSpace,
                 allocator: *mem.SimpleAllocator,
-                group: *const Node,
+                group: *Node,
                 node: *Node,
                 task: types.Task,
                 arena_index: AddressSpace.Index,
@@ -1460,7 +1460,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 address_space: *AddressSpace,
                 thread_space: *ThreadSpace,
                 allocator: *mem.SimpleAllocator,
-                group: *const Node,
+                group: *Node,
                 node: *Node,
                 task: types.Task,
                 arena_index: AddressSpace.Index,
