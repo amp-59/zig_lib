@@ -35,6 +35,52 @@ pub const InlineTypeDescr = fmt.GenericTypeDescrFormat(.{
         .indent = "",
     },
 });
+fn writeAnyField(comptime field_type: type, field_name: []const u8, key_array: *common.Array, val_array: *common.Array, conv_array: *common.Array) void {
+    const type_info: builtin.Type = @typeInfo(field_type);
+    if (type_info == .Optional) {
+        const child_type: type = type_info.Optional.child;
+        const child_type_info: builtin.Type = @typeInfo(child_type);
+        key_array.writeMany(field_name);
+        key_array.writeMany(":bool=false,\n");
+        val_array.writeMany(field_name);
+        val_array.writeMany(":");
+        if (child_type_info == .Bool) {
+            val_array.writeMany("bool");
+        } else {
+            val_array.writeMany("@typeInfo(@TypeOf(undef.");
+            val_array.writeMany(field_name);
+            val_array.writeMany(")).Optional.child");
+        }
+        val_array.writeMany("=undefined,\n");
+        conv_array.writeMany("ret.key.");
+        conv_array.writeMany(field_name);
+        conv_array.writeMany("=cmd.");
+        conv_array.writeMany(field_name);
+        conv_array.writeMany("!=null;\n");
+        conv_array.writeMany("ret.val.");
+        conv_array.writeMany(field_name);
+        conv_array.writeMany("=cmd.");
+        conv_array.writeMany(field_name);
+        conv_array.writeMany(".?;\n");
+    } else {
+        val_array.writeMany(field_name);
+        val_array.writeMany(":");
+        if (type_info == .Bool) {
+            val_array.writeMany("bool");
+        } else {
+            val_array.writeMany("@TypeOf(undef.");
+            val_array.writeMany(field_name);
+            val_array.writeMany(")");
+        }
+        val_array.writeMany("=undefined,\n");
+        conv_array.writeMany("ret.val.");
+        conv_array.writeMany(field_name);
+        conv_array.writeMany("=cmd.");
+        conv_array.writeMany(field_name);
+        conv_array.writeMany(";\n");
+    }
+}
+
 fn writeField(comptime field_type: type, field_name: []const u8, key_array: *common.Array, val_array: *common.Array, conv_array: *common.Array) void {
     const type_info: builtin.Type = @typeInfo(field_type);
     if (type_info == .Optional) {
@@ -108,7 +154,6 @@ pub fn main() !void {
     const array: *common.Array = allocator.create(common.Array);
     const len: usize = try gen.readFile(.{ .return_type = usize }, config.hist_tasks_template_path, array.referAllUndefined());
     array.define(len);
-
     var key_array: *common.Array = allocator.create(common.Array);
     key_array.undefineAll();
     var val_array: *common.Array = allocator.create(common.Array);
