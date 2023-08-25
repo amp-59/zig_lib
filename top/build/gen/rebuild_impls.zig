@@ -678,7 +678,6 @@ fn buildRunnerInit(args: [][*:0]u8, vars: [][*:0]u8, allocator: *build.Allocator
         proc.exitError(error.MissingEnvironmentPaths, 2);
     }
     const group: *Node = try meta.wrap(Node.init(allocator, args, vars));
-    group.addSpecialNodes(allocator);
     try meta.wrap(
         root.buildMain(allocator, group),
     );
