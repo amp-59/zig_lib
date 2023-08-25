@@ -92,7 +92,7 @@ pub const ParamSpec = struct {
         /// Do not include in task struct definitions or writer functions
         do_write: bool = true,
         /// Do not include in parser functions
-        do_parse: bool = !config.allow_comptime_configure_parser,
+        do_parse: bool = true,
     } = .{},
     pub const immediate: u8 = 255;
     pub fn isField(param_spec: ParamSpec) bool {
