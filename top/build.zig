@@ -86,27 +86,23 @@ pub const BuilderSpec = struct {
         enable_safety: bool = builtin.is_safe,
         /// Never list special nodes among or allow explicit building.
         hide_special: bool = true,
-        /// Disable all features related to automatic updating of nodes.
-        never_update: bool = false,
         /// Enable stack traces in runtime errors for executables where mode is
         /// Debug with debugging symbols included
         update_debug_stack_traces: bool = true,
         /// Add run task for all executable build outputs
         update_executables: bool = true,
-        /// Disable all features related to default initialisation of nodes.
-        never_init: bool = false,
         /// Nodes with this name prefix are hidden in pre.
         init_hidden_by_name_prefix: ?u8 = '_',
-        /// Nodes with hidden parent/group nodes are also hidden
-        init_inherit_hidden: bool = true,
-        /// Nodes belonging to special groups are also special.
-        init_inherit_special: bool = true,
         /// (Recommended) Pass --main-pkg-path=<build_root> for all compile commands.
         init_main_pkg_path: bool = true,
         /// (Recommended) Pass --cache-dir=<cache_root> for all compile commands.
         init_cache_root: bool = true,
         /// (Recommended) Pass --global-cache-dir=<cache_root> for all compile commands.
         init_global_cache_root: bool = true,
+        /// Nodes with hidden parent/group nodes are also hidden
+        inherit_hidden: bool = true,
+        /// Nodes belonging to special groups are also special.
+        inherit_special: bool = true,
         /// Enable advanced builder features, such as project-wide comptime
         /// constants and caching special modules.
         write_build_configuration: bool = true,
@@ -151,16 +147,6 @@ pub const BuilderSpec = struct {
         cmd_writers_root: [:0]const u8 = "top/build/writers.zig",
         /// Optional pathname to root source used to compile.
         clone3_root: [:0]const u8 = "top/build/source.zig",
-        special: struct {
-            /// Defines compile commands for stack tracer object.
-            trace: ?types.BuildCommand = .{
-                .kind = .obj,
-                .pic = true,
-                .mode = .ReleaseSmall,
-                .strip = true,
-                .compiler_rt = false,
-            },
-        } = .{},
         extensions: struct {
             /// Extension for Zig source files.
             zig: [:0]const u8 = ".zig",
