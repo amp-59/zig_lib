@@ -269,7 +269,7 @@ pub fn printSizeBreakDown(comptime T: type, type_rename: ?[:0]const u8) u64 {
     const type_info: builtin.Type = @typeInfo(T);
     var array: mem.StaticString(1048576) = .{};
     array.writeMany("const ");
-    array.writeMany(type_rename orelse fmt.typeName(T));
+    array.writeMany(type_rename orelse comptime fmt.typeName(T));
     if (type_info == .Struct or type_info == .Union) {
         if (@sizeOf(T) != 0) {
             if (type_info == .Struct) {
