@@ -290,7 +290,7 @@ fn fileBuf(allocator: *Allocator, name: [:0]const u8) !FixedString {
     var file_buf: String = String.init(allocator);
     const fd: u64 = try file.open(input_open_spec, name);
     defer file.close(input_close_spec, fd);
-    var st: file.Status = try file.status(.{}, fd);
+    var st: file.Status = try file.getStatus(.{}, fd);
     try file_buf.increment(allocator, st.size +% 1);
     file_buf.impl.define(try file.read(.{}, fd, file_buf.referAllUndefined(allocator.*)[0..st.size]));
     file_buf.writeOne('\n');
