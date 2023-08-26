@@ -11,6 +11,11 @@ const config = @import("./config.zig");
 const common = @import("./common_impls.zig");
 pub usingnamespace @import("../../start.zig");
 pub usingnamespace config;
+const commit: bool = true;
+const MajorVariant = enum {
+    library,
+    autoloader,
+};
 pub const Array = mem.StaticString(64 * 1024 * 1024);
 const Variant = enum {
     externs,
@@ -18,6 +23,7 @@ const Variant = enum {
     wrappers,
     var_decls,
     ptr_fields,
+    load_assign,
 };
 const Names = struct {
     info: builtin.Type,
@@ -56,7 +62,7 @@ fn requireswrappers(comptime fn_info: builtin.Type.Fn) bool {
     return typeRequiresWrappers(fn_info.return_type.?);
 }
 fn writeParameter(array: *Array, variant: Variant, comptime param_type: type, comptime prefix: []const u8) void {
-    if (variant == .wrappers) {
+    if (variant == .wrappers or variant == .ptr_fields) {
         array.writeMany(prefix);
         array.writeMany(":");
         array.writeFormat(comptime types.ProtoTypeDescr.init(param_type));
@@ -241,12 +247,21 @@ fn writeSymbol(array: *common.Array, comptime T: type, variant: Variant) void {
             },
             .ptr_fields => {
                 array.writeFormat(fmt.identifier(names.decl_name));
-                array.writeMany(":*fn(");
+                array.writeMany(":*const fn(");
                 // Uncomment for segmentation fault
-                //inline for (field_type_info.Fn.params, 0..) |param, idx| {
-                //    writeParameter(array, variant, param.type.?, names.param_names[idx]);
-                //}
-                array.writeMany(")callconv(.C) = @ptrFromInt(8),\n");
+                inline for (field_type_info.Fn.params, 0..) |param, idx| {
+                    writeParameter(array, variant, param.type.?, names.param_names[idx]);
+                }
+                array.writeMany(")");
+                array.writeFormat(comptime types.ProtoTypeDescr.init(field_type_info.Fn.return_type.?));
+                array.writeMany("=@ptrFromInt(8),\n");
+            },
+            .load_assign => {
+                array.writeMany("ptrs.");
+                array.writeFormat(fmt.identifier(names.decl_name));
+                array.writeMany("=&source.");
+                array.writeFormat(fmt.identifier(names.decl_name));
+                array.writeMany(";\n");
             },
             .exports => if (names.forward) {
                 array.writeMany("fn ");
@@ -309,7 +324,7 @@ const FormatCommands = build.GenericCommand(build.FormatCommand);
 const ObjcopyCommands = build.GenericCommand(build.ObjcopyCommand);
 const ArchiveCommands = build.GenericCommand(build.ArchiveCommand);
 fn writeImportBuild(array: *Array) void {
-    array.writeMany("const build = @import(\"@build\").zl.build;\n");
+    array.writeMany("const build = @import(\"./types.zig\");\n");
 }
 fn writePubUsingnamespace(array: *Array) void {
     array.writeMany("pub usingnamespace if(@import(\"builtin\").output_mode==.Exe)struct{\n");
@@ -320,12 +335,41 @@ fn writeElseStruct(array: *Array) void {
 fn writeStructClose(array: *Array) void {
     array.writeMany("};\n");
 }
+fn writeIfClose(array: *Array) void {
+    array.writeMany("}\n");
+}
 fn writeGenericCommand(array: *Array, type_name: []const u8) void {
     array.writeMany("const source = build.GenericCommand(");
     array.writeMany(type_name);
     array.writeMany(");\n");
 }
-fn writeBuildCommandLibrary(array: *Array) !void {
+fn writeExportLoad(array: *Array) void {
+    array.writeMany("comptime {\n");
+    array.writeMany("if (@import(\"builtin\").output_mode!=.Exe){\n");
+    array.writeMany("@export(load,.{.name=\"load\",.linkage=.Strong});\n");
+    array.writeMany("}\n");
+    array.writeMany("}\n");
+}
+fn writeLoadSignature(array: *Array) void {
+    array.writeMany("fn load(ptrs:*@This())callconv(.C)void{\n");
+}
+fn writeInternal(array: *Array, comptime variant: MajorVariant, comptime T: type) void {
+    if (variant == .library) {
+        writePubUsingnamespace(array);
+        writeSymbol(array, T, .externs);
+        writeSymbol(array, T, .wrappers);
+        writeElseStruct(array);
+        writeSymbol(array, T, .exports);
+        writeStructClose(array);
+    } else {
+        writeSymbol(array, T, .ptr_fields);
+        writeLoadSignature(array);
+        writeSymbol(array, T, .load_assign);
+        writeIfClose(array);
+        writeExportLoad(array);
+    }
+}
+fn writeBuildCommandLibrary(array: *Array, comptime variant: MajorVariant) !void {
     writeImportBuild(array);
     writeGenericCommand(array, "build.BuildCommand");
     types.ProtoTypeDescr.scope = &.{
@@ -333,16 +377,11 @@ fn writeBuildCommandLibrary(array: *Array) !void {
         comptime types.ProtoTypeDescr.declare("build.BuildCommand", build.BuildCommand).type_decl,
         comptime types.ProtoTypeDescr.declare("build.Allocator", build.Allocator).type_decl,
     };
-    writePubUsingnamespace(array);
-    writeSymbol(array, BuildCommands, .externs);
-    writeSymbol(array, BuildCommands, .wrappers);
-    writeElseStruct(array);
-    writeSymbol(array, BuildCommands, .exports);
-    writeStructClose(array);
-    try gen.truncateFile(.{ .return_type = void }, config.primarySourceFile("build.h.zig"), array.readAll());
+    writeInternal(array, variant, BuildCommands);
+    try writeOut(array, "build.ld.zig");
     array.undefineAll();
 }
-fn writeFormatCommandLibrary(array: *Array) !void {
+fn writeFormatCommandLibrary(array: *Array, comptime variant: MajorVariant) !void {
     writeImportBuild(array);
     writeGenericCommand(array, "build.FormatCommand");
     types.ProtoTypeDescr.scope = &.{
@@ -350,16 +389,12 @@ fn writeFormatCommandLibrary(array: *Array) !void {
         comptime types.ProtoTypeDescr.declare("build.FormatCommand", build.FormatCommand).type_decl,
         comptime types.ProtoTypeDescr.declare("build.Allocator", build.Allocator).type_decl,
     };
-    writePubUsingnamespace(array);
-    writeSymbol(array, FormatCommands, .externs);
-    writeSymbol(array, FormatCommands, .wrappers);
-    writeElseStruct(array);
-    writeSymbol(array, FormatCommands, .exports);
-    writeStructClose(array);
-    try gen.truncateFile(.{ .return_type = void }, config.primarySourceFile("format.h.zig"), array.readAll());
+    writeInternal(array, variant, FormatCommands);
+
+    try writeOut(array, "format.ld.zig");
     array.undefineAll();
 }
-fn writeArchiveCommandLibrary(array: *Array) !void {
+fn writeArchiveCommandLibrary(array: *Array, comptime variant: MajorVariant) !void {
     writeImportBuild(array);
     writeGenericCommand(array, "build.ArchiveCommand");
     types.ProtoTypeDescr.scope = &.{
@@ -367,16 +402,11 @@ fn writeArchiveCommandLibrary(array: *Array) !void {
         comptime types.ProtoTypeDescr.declare("build.ArchiveCommand", build.ArchiveCommand).type_decl,
         comptime types.ProtoTypeDescr.declare("build.Allocator", build.Allocator).type_decl,
     };
-    writePubUsingnamespace(array);
-    writeSymbol(array, ArchiveCommands, .externs);
-    writeSymbol(array, ArchiveCommands, .wrappers);
-    writeElseStruct(array);
-    writeSymbol(array, ArchiveCommands, .exports);
-    writeStructClose(array);
-    try gen.truncateFile(.{ .return_type = void }, config.primarySourceFile("archive.h.zig"), array.readAll());
+    writeInternal(array, variant, ArchiveCommands);
+    try writeOut(array, "archive.ld.zig");
     array.undefineAll();
 }
-fn writeObjcopyCommandLibrary(array: *Array) !void {
+fn writeObjcopyCommandLibrary(array: *Array, comptime variant: MajorVariant) !void {
     writeImportBuild(array);
     writeGenericCommand(array, "build.ObjcopyCommand");
     types.ProtoTypeDescr.scope = &.{
@@ -384,39 +414,38 @@ fn writeObjcopyCommandLibrary(array: *Array) !void {
         comptime types.ProtoTypeDescr.declare("build.ObjcopyCommand", build.ObjcopyCommand).type_decl,
         comptime types.ProtoTypeDescr.declare("build.Allocator", build.Allocator).type_decl,
     };
-    writePubUsingnamespace(array);
-    writeSymbol(array, ObjcopyCommands, .externs);
-    writeSymbol(array, ObjcopyCommands, .wrappers);
-    writeElseStruct(array);
-    writeSymbol(array, ObjcopyCommands, .exports);
-    writeStructClose(array);
-    try gen.truncateFile(.{ .return_type = void }, config.primarySourceFile("objcopy.h.zig"), array.readAll());
+    writeInternal(array, variant, ObjcopyCommands);
+    try writeOut(array, "objcopy.ld.zig");
     array.undefineAll();
 }
-fn writePerfEventsLibrary(array: *Array) !void {
+fn writePerfEventsLibrary(array: *Array, comptime variant: MajorVariant) !void {
     const perf = @import("../perf.zig");
-    array.writeMany("const source = @import(\"perf.zig\");\n");
-    array.writeFormat(comptime types.ProtoTypeDescr.declare("Fds", perf.Fds));
-    types.ProtoTypeDescr.scope = &.{
-        comptime types.ProtoTypeDescr.declare("Fds", perf.Fds).type_decl,
-    };
-    writePubUsingnamespace(array);
-    writeSymbol(array, perf, .externs);
-    writeSymbol(array, perf, .wrappers);
-    writeElseStruct(array);
-    writeSymbol(array, perf, .var_decls);
-    writeSymbol(array, perf, .exports);
-    writeStructClose(array);
-    try gen.truncateFile(.{ .return_type = void }, config.primarySourceFile("perf.h.zig"), array.readAll());
+    array.writeMany("const source=@import(\"perf.zig\");\n");
+    const fds_fmt = comptime types.ProtoTypeDescr.declare("Fds", perf.Fds);
+    array.writeFormat(fds_fmt);
+    types.ProtoTypeDescr.scope = &.{fds_fmt.type_decl};
+    writeInternal(array, variant, perf);
+    try writeOut(array, "perf.ld.zig");
     array.undefineAll();
+}
+fn writeOut(array: *Array, comptime name: [:0]const u8) !void {
+    if (commit) {
+        try gen.truncateFile(.{ .return_type = void }, config.primarySourceFile(name), array.readAll());
+    } else {
+        debug.write(array.readAll());
+    }
 }
 pub fn main() !void {
     var allocator: mem.SimpleAllocator = .{};
     defer allocator.unmap();
     const array: *common.Array = allocator.create(common.Array);
-    try writeBuildCommandLibrary(array);
-    try writeFormatCommandLibrary(array);
-    try writeArchiveCommandLibrary(array);
-    try writeObjcopyCommandLibrary(array);
-    try writePerfEventsLibrary(array);
+    switch (MajorVariant.autoloader) {
+        inline else => |variant| {
+            try writeBuildCommandLibrary(array, variant);
+            try writeFormatCommandLibrary(array, variant);
+            try writeArchiveCommandLibrary(array, variant);
+            try writeObjcopyCommandLibrary(array, variant);
+            try writePerfEventsLibrary(array, variant);
+        },
+    }
 }
