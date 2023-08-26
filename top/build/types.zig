@@ -510,6 +510,9 @@ pub const Path = extern struct {
     pub inline fn relative(path: *const Path) [:0]const u8 {
         return path.names[path.names_len -% 1];
     }
+    pub inline fn create(comptime names: []const [:0]const u8) Path {
+        return .{ .names = @constCast(names.ptr), .names_len = names.len };
+    }
 };
 pub const Files = struct {
     value: []const Path,
@@ -605,7 +608,7 @@ pub fn GenericCommand(comptime Command: type) type {
             .formatLength = gen.FnExport{ .prefix = field_name ++ "." },
             .renderWriteBuf = gen.FnExport{ .prefix = field_name ++ "." },
         };
-        pub fn renderWriteBuf(cmd: *const Command, buf: [*]u8) callconv(.C) usize {
+        pub fn renderWriteBuf(cmd: *const Command, buf: [*]u8) usize {
             return fmt.render(render_spec, cmd.*).formatWriteBuf(buf);
         }
         pub const fieldEditDistance = Editor.fieldEditDistance;
