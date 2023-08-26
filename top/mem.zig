@@ -685,7 +685,7 @@ pub fn fd(comptime spec: FdSpec, pathname: [:0]const u8) sys.ErrorUnion(spec.err
     const logging: debug.Logging.AcquireError = comptime spec.logging.override();
     if (meta.wrap(sys.call(.memfd_create, spec.errors, spec.return_type, .{ name_buf_addr, flags.val }))) |mem_fd| {
         if (logging.Acquire) {
-            about.aboutMemFdPathnameMotice(about.memfd_s, mem_fd, pathname);
+            about.aboutMemFdPathnameNotice(about.memfd_s, mem_fd, pathname);
         }
         return mem_fd;
     } else |memfd_create_error| {
@@ -793,7 +793,7 @@ pub const about = opaque {
         ptr += 7;
         debug.write(buf[0..@intFromPtr(ptr - @intFromPtr(&buf))]);
     }
-    fn aboutMemFdPathnameMotice(about_s: fmt.AboutSrc, mem_fd: u64, pathname: [:0]const u8) void {
+    fn aboutMemFdPathnameNotice(about_s: fmt.AboutSrc, mem_fd: u64, pathname: [:0]const u8) void {
         @setRuntimeSafety(false);
         var buf: [4096]u8 = undefined;
         buf[0..about_s.len].* = about_s.*;
@@ -945,7 +945,7 @@ pub const about = opaque {
         aboutRemapNotice(remap_s, addr1, len1, addr2, len2);
         aboutRemapNotice(resize_s, addr1, len1, null, len2);
         aboutRemapNotice(move_s, addr1, len1, addr2, null);
-        aboutMemFdPathnameMotice(memfd_s, fd1, pathname1);
+        aboutMemFdPathnameNotice(memfd_s, fd1, pathname1);
         aboutAddrLenError(about_s, "UnmapError", addr1, len1);
         aboutAddrLenDescrError(about_s, "ProtectError", addr1, len1, "<missing>");
         aboutRemapError(remap_s, "RemapError", addr1, len1, addr2, len2);
@@ -1899,13 +1899,13 @@ pub inline fn zero(comptime T: type, ptr: *T) void {
 pub inline fn unstable(comptime T: type, val: T) T {
     return @as(*const volatile T, @ptrCast(&val)).*;
 }
-pub fn terminate(ptr: [*]u8, comptime value: u8) [:value]u8 {
+pub fn terminate(ptr: [*]const u8, comptime value: u8) [:value]u8 {
     @setRuntimeSafety(false);
     var idx: usize = 0;
     while (ptr[idx] != value) {
         idx +%= 1;
     }
-    return ptr[0..idx :value];
+    return @constCast(ptr[0..idx :value]);
 }
 pub const SimpleAllocator = struct {
     start: u64 = 0x40000000,
