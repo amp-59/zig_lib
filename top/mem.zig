@@ -2176,7 +2176,7 @@ pub fn GenericSimpleMap(comptime Key: type, comptime Value: type) type {
 }
 pub fn GenericOptionalArrays(comptime TaggedUnion: type) type {
     const U = struct {
-        buf: [*]Elem = @ptrFromInt(8),
+        buf: [*]Elem = @ptrFromInt(@alignOf(Elem)),
         buf_max_len: usize = 0,
         buf_len: usize = 0,
         const Im = @This();

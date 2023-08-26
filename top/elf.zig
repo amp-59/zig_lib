@@ -1248,6 +1248,9 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 }
                 return null;
             }
+            pub inline fn entry(info: *const Info) usize {
+                return info.prog_addr +% info.ehdr.e_entry;
+            }
             pub inline fn dynamicSymbol(info: *const Info, sym_name: []const u8) ?*Elf64_Sym {
                 @setRuntimeSafety(builtin.is_safe);
                 return symbolGeneric(
@@ -1337,6 +1340,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             ".strtab",
             ".dynamic",
             ".symtab",
+            ".bss",
         };
         const Tag = meta.TagFromList(sections ++ loader_spec.options.extra_sections);
         const ep0 = .{
@@ -1363,6 +1367,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
         const strtab_idx: comptime_int = 5;
         const dynamic_idx: comptime_int = 6;
         const symtab_idx: comptime_int = 7;
+        const bss_idx: comptime_int = 8;
 
         fn allocateInfo(loader: *DynamicLoader, fd: usize) sys.ErrorUnion(ep2, *Info) {
             @setRuntimeSafety(builtin.is_safe);
