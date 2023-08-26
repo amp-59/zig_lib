@@ -800,8 +800,8 @@ pub const about = opaque {
         var ptr: [*]u8 = buf[about_s.len..];
         @memcpy(ptr, pathname);
         ptr += pathname.len;
-        ptr[0..7].* = "mem_fd=".*;
-        ptr += 7;
+        ptr[0..9].* = ", mem_fd=".*;
+        ptr += 9;
         ptr += fmt.ud64(mem_fd).formatWriteBuf(ptr);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr - @intFromPtr(&buf)) +% 1]);
