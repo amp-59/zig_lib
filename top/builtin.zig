@@ -2134,6 +2134,7 @@ pub const parse = struct {
         }
     }
     pub fn keyword(str: []const u8) ?Token.Tag {
+        @setRuntimeSafety(is_safe);
         lo: for (keywords) |kv| {
             if (kv[0].len != str.len) {
                 continue;
