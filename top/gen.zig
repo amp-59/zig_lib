@@ -86,7 +86,7 @@ pub fn StructEditor(comptime render_spec: fmt.RenderSpec, comptime Value: type) 
             }
             return ret;
         }
-        pub fn fieldEditDistance(s_val: *Value, t_val: *Value) usize {
+        pub fn fieldEditDistance(s_val: *Value, t_val: *Value) callconv(.C) usize {
             var len: usize = 0;
             inline for (fields) |field| {
                 if (!mem.testEqualMemory(
