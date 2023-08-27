@@ -404,15 +404,33 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             expected = builder_spec.options.system_expected_status,
             _,
         };
-        pub const Special = struct {
+        const new_extensions: bool = false;
+        const Special = if (new_extensions) struct {
+            const BuildCmdFns = @import("./build/build.auto.zig");
+            const FormatCmdFns = @import("./build/format.auto.zig");
+            const ArchiveCmdFns = @import("./build/archive.auto.zig");
+            const ObjcopyCmdFns = @import("./build/objcopy.auto.zig");
+            var build_cmd_fns: *Node = @ptrFromInt(8);
+            var format_cmd_fns: *Node = @ptrFromInt(8);
+            var archive_cmd_fns: *Node = @ptrFromInt(8);
+            var objcopy_cmd_fns: *Node = @ptrFromInt(8);
+            var fns: struct {
+                build: BuildCmdFns,
+                format: FormatCmdFns,
+                archive: ArchiveCmdFns,
+                objcopy: ObjcopyCmdFns,
+            } = undefined;
             var trace: *Node = @ptrFromInt(8);
+            var perf_events: *Node = @ptrFromInt(8);
+            var dyn_loader: DynamicLoader = .{};
+        } else struct {
             var cmd_parsers: *Node = @ptrFromInt(8);
             var cmd_writers: *Node = @ptrFromInt(8);
             var perf_events: *Node = @ptrFromInt(8);
+            var trace: *Node = @ptrFromInt(8);
             var fns: build.Fns = .{};
             var dyn_loader: DynamicLoader = .{};
         };
-        pub const Config = types.Config;
         pub const specification: BuilderSpec = builder_spec;
         const max_thread_count: comptime_int = builder_spec.options.max_thread_count;
         const max_arena_count: comptime_int = if (max_thread_count == 0) 4 else max_thread_count + 1;
