@@ -1008,6 +1008,7 @@ pub const IdentifierFormat = struct {
     value: []const u8,
     const Format: type = @This();
     pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
+        @setRuntimeSafety(builtin.is_safe);
         var len: u64 = 0;
         if (isValidId(format.value)) {
             @memcpy(buf, format.value);
@@ -1057,6 +1058,7 @@ pub fn GenericPrettyFormatAddressSpaceHierarchy(comptime ToplevelAddressSpace: t
     });
 }
 pub fn isValidId(values: []const u8) bool {
+    @setRuntimeSafety(builtin.is_safe);
     if (values.len == 0) {
         return false;
     }
