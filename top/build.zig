@@ -1154,7 +1154,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 const save: u64 = allocator.next;
                 var fd: file.PollFd = .{ .fd = out.read, .expect = .{ .input = true } };
                 while (try meta.wrap(file.pollOne(poll(), &fd, builder_spec.options.timeout_milliseconds))) {
-                    var hdr: types.Message.ServerHeader = comptime builtin.zero(types.Message.ServerHeader);
+                    var hdr: types.Message.ServerHeader = undefined;
                     try meta.wrap(file.readOne(read3(), out.read, &hdr));
                     const msg: [*:0]align(4) u8 = @ptrFromInt(allocator.allocateRaw(hdr.bytes_len +% 64, 4));
                     @memset(msg[0 .. hdr.bytes_len +% 1], 0);
@@ -1409,14 +1409,18 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 const args: [][*:0]u8 = taskArgs(allocator, node, task, arena_index);
                 const dest_pathname: [:0]const u8 = node.impl.paths[0].concatenate(allocator);
                 switch (task) {
-                    else => {
-                        rc = try meta.wrap(impl.system(args, &ts));
-                    },
+                    else => rc = try meta.wrap(impl.system(args, &ts)),
                     .build, .archive => {
                         try meta.wrap(file.statusAt(stat(), file.cwd, dest_pathname, &st));
                         old_size = st.size;
                         if (task == .build) {
-                            rc = try meta.wrap(impl.server(allocator, node, args, &ts, &ans, dest_pathname));
+                            const root_pathname: [:0]const u8 = node.impl.paths[1].concatenate(allocator);
+                            if (node.flags.want_shallow_cache_check) {
+                                ans = shallowCacheCheck(&st, dest_pathname, root_pathname);
+                            }
+                            if (ans == .updated) {
+                                rc = try meta.wrap(impl.server(allocator, node, args, &ts, &ans, dest_pathname));
+                            }
                         } else {
                             rc = try meta.wrap(impl.system(args, &ts));
                         }
@@ -1429,23 +1433,32 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                             if (node.flags.want_shallow_cache_check) {
                                 ans = shallowCacheCheck(&st, dest_pathname, root_pathname);
                             }
-                            rc = try meta.wrap(impl.server(allocator, node, args, &ts, &ans, dest_pathname));
+                            if (ans == .updated) {
+                                rc = try meta.wrap(impl.server(allocator, node, args, &ts, &ans, dest_pathname));
+                            }
                         } else {
                             rc = try meta.wrap(impl.system(args, &ts));
                         }
                     },
                 }
-                if (builder_spec.options.show_stats and
-                    keepGoing())
-                {
+                if (builder_spec.options.lazy_strategy != .none and node.flags.is_dyn_ext and keepGoing()) {
+                    loadDynamicExtension(node, dest_pathname);
+                }
+                if (builder_spec.options.show_stats and keepGoing()) {
                     about.taskNotice(node, task, arena_index, old_size, new_size, ts.sec, ts.nsec, ans, rc);
                 }
-                if (builder_spec.options.lazy_strategy != .none and
-                    node.flags.is_dyn_ext)
-                {
-                    Special.dyn_loader.load(dest_pathname).loadPointers(build.Fns, &Special.fns);
-                }
                 return status(ans, rc);
+            }
+            fn loadDynamicExtension(node: *Node, dest_pathname: [:0]const u8) void {
+                @setRuntimeSafety(builder_spec.options.enable_safety);
+                const info: *DynamicLoader.Info = Special.dyn_loader.load(dest_pathname);
+                if (new_extensions) {
+                    if (node.extra.ptr.any) |any| {
+                        info.autoLoad(any);
+                    }
+                } else {
+                    info.loadPointers(build.Fns, &Special.fns);
+                }
             }
             fn shallowCacheCheck(st: *file.Status, dest_pathname: [:0]const u8, root_pathname: [:0]const u8) UpdateAnswer {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
@@ -1453,21 +1466,21 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 const dest_sec: usize = st.mtime.sec;
                 try meta.wrap(file.statusAt(stat(), file.cwd, root_pathname, st));
                 const src_sec: usize = st.mtime.sec;
-                return if (dest_sec > src_sec) .cached else .updated;
+                return if (src_sec > dest_sec) .updated else .cached;
             }
             fn sameFile(pathname1: [:0]const u8, pathname2: [:0]const u8) bool {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
-                var st1: file.Status = comptime builtin.zero(file.Status);
-                var st2: file.Status = comptime builtin.zero(file.Status);
-                try meta.wrap(file.statusAt(stat(), file.cwd, pathname1, &st1));
-                if (st1.mode.kind == .unknown) {
+                var st: [2]file.Status = undefined;
+                mem.zero([2]file.Status, &st);
+                try meta.wrap(file.statusAt(stat(), file.cwd, pathname1, &st[0]));
+                if (st[0].mode.kind == .unknown) {
                     return false;
                 }
-                try meta.wrap(file.statusAt(stat(), file.cwd, pathname2, &st2));
-                if (st2.mode.kind == .unknown) {
+                try meta.wrap(file.statusAt(stat(), file.cwd, pathname2, &st[1]));
+                if (st[1].mode.kind == .unknown) {
                     return false;
                 }
-                return ((st1.dev == st2.dev) and (st1.ino == st2.ino));
+                return ((st[0].dev == st[1].dev) and (st[0].ino == st[1].ino));
             }
             fn spawnDeps(
                 address_space: *AddressSpace,
