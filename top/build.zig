@@ -352,17 +352,29 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             want_shallow_cache_check: bool = false,
         },
         impl: packed struct {
-            // zig fmt: off
-            args: [*][*:0]u8,       args_max_len: usize,    args_len: usize,
-            paths: [*]types.Path,   paths_max_len: usize,   paths_len: usize,
-            nodes: [*]*Node,        nodes_max_len: usize,   nodes_len: usize,
-            deps: [*]Dependency,    deps_max_len: usize,    deps_len: usize,
-            cfgs: [*]Config,        cfgs_max_len: usize,    cfgs_len: usize,
+            args: [*][*:0]u8,
+            args_max_len: usize,
+            args_len: usize,
+            paths: [*]types.Path,
+            paths_max_len: usize,
+            paths_len: usize,
+            nodes: [*]*Node,
+            nodes_max_len: usize,
+            nodes_len: usize,
+            deps: [*]Dependency,
+            deps_max_len: usize,
+            deps_len: usize,
+            cfgs: [*]types.Config,
+            cfgs_max_len: usize,
+            cfgs_len: usize,
+        },
+        extra: struct {
             build_root_fd: u32,
             config_root_fd: u32,
             output_root_fd: u32,
-            wait_len: usize, wait_tick: usize,
-            // zig fmt: on
+            wait_len: usize,
+            wait_tick: usize,
+            ptr: Pointer,
         },
         const Node = @This();
         const Task = extern struct {
@@ -375,6 +387,11 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             format: *types.FormatCommand,
             archive: *types.ArchiveCommand,
             objcopy: *types.ObjcopyCommand,
+        };
+        const Pointer = extern union {
+            addr: usize,
+            any: ?*anyopaque,
+            info: *DynamicLoader.Info,
         };
         const AboutKind = enum(u8) { @"error", note };
         const UpdateAnswer = enum(u8) {
