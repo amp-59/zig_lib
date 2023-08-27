@@ -597,49 +597,74 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                 lib_cache_root,
                 global_cache_root,
             );
-            zero.flags = .{ .is_special = true };
+            zero.flags = .{ .is_special = false };
             if (builder_spec.options.lazy_strategy != .none) {
-                Special.cmd_writers = zero.addRun(allocator, "cmd_writers", &[_][]const u8{
-                    zero.zigExe(),        "build-lib",
-                    "--cache-dir",        zero.cacheRoot(),
-                    "--global-cache-dir", zero.globalCacheRoot(),
-                    "--main-pkg-path",    zero.buildRoot(),
-                    "--listen",           "-",
-                    "-OReleaseSmall",     "-fno-compiler-rt",
-                    "-fstrip",            "-fno-stack-check",
-                    "-fsingle-threaded",  "-dynamic",
-                    cmd_writers_root,
-                });
-                Special.cmd_writers.flags.is_dyn_ext = true;
-                Special.cmd_writers.flags.want_shallow_cache_check = true;
-                Special.cmd_parsers = zero.addRun(allocator, "cmd_parsers", &[_][]const u8{
-                    zero.zigExe(),        "build-lib",
-                    "--cache-dir",        zero.cacheRoot(),
-                    "--global-cache-dir", zero.globalCacheRoot(),
-                    "--main-pkg-path",    zero.buildRoot(),
-                    "--listen",           "-",
-                    "-OReleaseSmall",     "-fno-compiler-rt",
-                    "-fstrip",            "-fno-stack-check",
-                    "-fsingle-threaded",  "-dynamic",
-                    cmd_parsers_root,
-                });
-                Special.cmd_parsers.flags.is_dyn_ext = true;
-                Special.cmd_parsers.flags.want_shallow_cache_check = true;
-                Special.perf_events = zero.addRun(allocator, "perf_events", &[_][]const u8{
-                    zero.zigExe(),        "build-lib",
-                    "--cache-dir",        zero.cacheRoot(),
-                    "--global-cache-dir", zero.globalCacheRoot(),
-                    "--main-pkg-path",    zero.buildRoot(),
-                    "--listen",           "-",
-                    "-OReleaseSmall",     "-fno-compiler-rt",
-                    "-fstrip",            "-fno-stack-check",
-                    "-fsingle-threaded",  "-dynamic",
-                    perf_events_root,
-                });
-                Special.perf_events.flags.is_dyn_ext = true;
-                Special.perf_events.flags.want_shallow_cache_check = true;
+                if (new_extensions) {
+                    for ([_]struct { **Node, []const u8, []const u8, *anyopaque }{
+                        .{ &Special.build_cmd_fns, "build_cmd_fns", "top/build/build.ld.zig", &Special.fns.build },
+                        .{ &Special.format_cmd_fns, "format_cmd_fns", "top/build/format.ld.zig", &Special.fns.format },
+                        .{ &Special.archive_cmd_fns, "archive_cmd_fns", "top/build/archive.ld.zig", &Special.fns.archive },
+                        .{ &Special.objcopy_cmd_fns, "objcopy_cmd_fns", "top/build/objcopy.ld.zig", &Special.fns.objcopy },
+                    }) |pair| {
+                        pair[0].* = zero.addRun(allocator, pair[1], &[_][]const u8{
+                            zero.zigExe(),        "build-lib",
+                            "--cache-dir",        zero.cacheRoot(),
+                            "--global-cache-dir", zero.globalCacheRoot(),
+                            "--main-pkg-path",    zero.buildRoot(),
+                            "--listen",           "-",
+                            "-fno-compiler-rt",   "-fstrip",
+                            "-fno-stack-check",   "-fsingle-threaded",
+                            "-dynamic",           "--entry",
+                            "load",               pair[2],
+                        });
+                        pair[0].*.flags.is_dyn_ext = true;
+                        pair[0].*.flags.want_shallow_cache_check = false;
+                        pair[0].*.extra.ptr = .{ .any = pair[3] };
+                    }
+                } else {
+                    Special.cmd_writers = zero.addRun(allocator, "cmd_writers", &[_][]const u8{
+                        zero.zigExe(),        "build-lib",
+                        "--cache-dir",        zero.cacheRoot(),
+                        "--global-cache-dir", zero.globalCacheRoot(),
+                        "--main-pkg-path",    zero.buildRoot(),
+                        "--listen",           "-",
+                        "-ODebug",            "-fno-compiler-rt",
+                        "-fstrip",            "-fno-stack-check",
+                        "-fsingle-threaded",  "-dynamic",
+                        cmd_writers_root,
+                    });
+                    Special.cmd_writers.flags.is_dyn_ext = true;
+                    Special.cmd_writers.flags.want_shallow_cache_check = true;
+                    Special.cmd_parsers = zero.addRun(allocator, "cmd_parsers", &[_][]const u8{
+                        zero.zigExe(),        "build-lib",
+                        "--cache-dir",        zero.cacheRoot(),
+                        "--global-cache-dir", zero.globalCacheRoot(),
+                        "--main-pkg-path",    zero.buildRoot(),
+                        "--listen",           "-",
+                        "-ODebug",            "-fno-compiler-rt",
+                        "-fstrip",            "-fno-stack-check",
+                        "-fsingle-threaded",  "-dynamic",
+                        cmd_parsers_root,
+                    });
+                    Special.cmd_parsers.flags.is_dyn_ext = true;
+                    Special.cmd_parsers.flags.want_shallow_cache_check = true;
+                    Special.perf_events = zero.addRun(allocator, "perf_events", &[_][]const u8{
+                        zero.zigExe(),        "build-lib",
+                        "--cache-dir",        zero.cacheRoot(),
+                        "--global-cache-dir", zero.globalCacheRoot(),
+                        "--main-pkg-path",    zero.buildRoot(),
+                        "--listen",           "-",
+                        "-ODebug",            "-fno-compiler-rt",
+                        "-fstrip",            "-fno-stack-check",
+                        "-fsingle-threaded",  "-dynamic",
+                        perf_events_root,
+                    });
+                    Special.perf_events.flags.is_dyn_ext = true;
+                    Special.perf_events.flags.want_shallow_cache_check = true;
+                }
             }
             Special.trace = zero.addBuild(allocator, trace_build_cmd, "trace", builder_spec.options.trace_root);
+            Special.perf_events = zero.addBuild(allocator, trace_build_cmd, "perf", builder_spec.options.perf_events_root);
         }
         fn initializeCommand(allocator: *mem.SimpleAllocator, node: *Node) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
@@ -1172,60 +1197,118 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                     return node.impl.args[0..node.impl.args_len];
                 } else {
                     if (builder_spec.options.lazy_strategy != .none) {
-                        if (node.flags.is_primary and build.cmd_args.len != 0) {
-                            if (builder_spec.options.lazy_strategy == .emergency) {
-                                executeCommandEmergency(allocator, Special.cmd_parsers, .run, arena_index);
+                        if (new_extensions) {
+                            switch (task) {
+                                .build => executeCommandEmergency(allocator, Special.build_cmd_fns, .run, arena_index),
+                                .format => executeCommandEmergency(allocator, Special.format_cmd_fns, .run, arena_index),
+                                .archive => executeCommandEmergency(allocator, Special.archive_cmd_fns, .run, arena_index),
+                                else => executeCommandEmergency(allocator, Special.objcopy_cmd_fns, .run, arena_index),
                             }
+                            if (node.flags.is_primary and build.cmd_args.len != 0) {
+                                if (do_build and task == .build) {
+                                    Special.fns.build.formatParseArgs(node.task.cmd.build, allocator, build.cmd_args);
+                                }
+                                if (do_format and task == .format) {
+                                    Special.fns.format.formatParseArgs(node.task.cmd.format, allocator, build.cmd_args);
+                                }
+                                if (do_archive and task == .archive) {
+                                    Special.fns.archive.formatParseArgs(node.task.cmd.archive, allocator, build.cmd_args);
+                                }
+                                if (do_objcopy and task == .objcopy) {
+                                    Special.fns.objcopy.formatParseArgs(node.task.cmd.objcopy, allocator, build.cmd_args);
+                                }
+                            }
+                            const zig_exe: []const u8 = node.zigExe();
                             if (do_build and task == .build) {
-                                Special.fns.formatParseArgsBuildCommand(node.task.cmd.build, allocator, build.cmd_args.ptr, build.cmd_args.len);
+                                const paths: []const types.Path = node.impl.paths[1..node.impl.paths_len];
+                                const cmd: *types.BuildCommand = node.task.cmd.build;
+                                const max_len: usize = Special.fns.build.formatLength(cmd, zig_exe, paths);
+                                const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
+                                const len: usize = Special.fns.build.formatWriteBuf(cmd, zig_exe, paths, buf);
+                                buf[len] = 0;
+                                return makeArgPtrs(allocator, buf[0..len :0]);
                             }
                             if (do_format and task == .format) {
-                                Special.fns.formatParseArgsFormatCommand(node.task.cmd.format, allocator, build.cmd_args.ptr, build.cmd_args.len);
+                                const cmd: *build.FormatCommand = node.task.cmd.format;
+                                const max_len: usize = Special.fns.format.formatLength(cmd, zig_exe, node.impl.paths[0]);
+                                const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
+                                const len: usize = Special.fns.format.formatWriteBuf(cmd, zig_exe, node.impl.paths[0], buf);
+                                buf[len] = 0;
+                                return makeArgPtrs(allocator, buf[0..len :0]);
                             }
                             if (do_archive and task == .archive) {
-                                Special.fns.formatParseArgsArchiveCommand(node.task.cmd.archive, allocator, build.cmd_args.ptr, build.cmd_args.len);
+                                const paths: []const types.Path = node.impl.paths[0..node.impl.paths_len];
+                                const cmd: *build.ArchiveCommand = node.task.cmd.archive;
+                                const max_len: usize = Special.fns.archive.formatLength(cmd, zig_exe, paths);
+                                const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
+                                const len: usize = Special.fns.archive.formatWriteBuf(cmd, zig_exe, paths, buf);
+                                buf[len] = 0;
+                                return makeArgPtrs(allocator, buf[0..len :0]);
                             }
                             if (do_objcopy and task == .objcopy) {
-                                Special.fns.formatParseArgsObjcopyCommand(node.task.cmd.objcopy, allocator, build.cmd_args.ptr, build.cmd_args.len);
+                                const cmd: *types.ObjcopyCommand = node.task.cmd.objcopy;
+                                const max_len: usize = Special.fns.objcopy.formatLength(cmd, zig_exe, node.impl.paths[1]);
+                                const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
+                                const len: usize = Special.fns.objcopy.formatWriteBuf(cmd, zig_exe, node.impl.paths[1], buf);
+                                buf[len] = 0;
+                                return makeArgPtrs(allocator, buf[0..len :0]);
                             }
-                        }
-                        if (builder_spec.options.lazy_strategy == .emergency) {
-                            executeCommandEmergency(allocator, Special.cmd_writers, .run, arena_index);
-                        }
-                        const zig_exe: []const u8 = node.zigExe();
-                        if (do_build and task == .build) {
-                            const paths: []const types.Path = node.impl.paths[1..node.impl.paths_len];
-                            const cmd: *types.BuildCommand = node.task.cmd.build;
-                            const max_len: usize = Special.fns.formatLengthBuildCommand(cmd, zig_exe.ptr, zig_exe.len, paths.ptr, paths.len);
-                            const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
-                            const len: usize = Special.fns.formatWriteBufBuildCommand(cmd, zig_exe.ptr, zig_exe.len, paths.ptr, paths.len, buf);
-                            buf[len] = 0;
-                            return makeArgPtrs(allocator, buf[0..len :0]);
-                        }
-                        if (do_format and task == .format) {
-                            const cmd: *build.FormatCommand = node.task.cmd.format;
-                            const max_len: usize = Special.fns.formatLengthFormatCommand(cmd, zig_exe.ptr, zig_exe.len, node.impl.paths[0]);
-                            const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
-                            const len: usize = Special.fns.formatWriteBufFormatCommand(cmd, zig_exe.ptr, zig_exe.len, node.impl.paths[0], buf);
-                            buf[len] = 0;
-                            return makeArgPtrs(allocator, buf[0..len :0]);
-                        }
-                        if (do_archive and task == .archive) {
-                            const paths: []const types.Path = node.impl.paths[0..node.impl.paths_len];
-                            const cmd: *build.ArchiveCommand = node.task.cmd.archive;
-                            const max_len: usize = Special.fns.formatLengthArchiveCommand(cmd, zig_exe.ptr, zig_exe.len, paths.ptr, paths.len);
-                            const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
-                            const len: usize = Special.fns.formatWriteBufArchiveCommand(cmd, zig_exe.ptr, zig_exe.len, paths.ptr, paths.len, buf);
-                            buf[len] = 0;
-                            return makeArgPtrs(allocator, buf[0..len :0]);
-                        }
-                        if (do_objcopy and task == .objcopy) {
-                            const cmd: *types.ObjcopyCommand = node.task.cmd.objcopy;
-                            const max_len: usize = Special.fns.formatLengthObjcopyCommand(cmd, zig_exe.ptr, zig_exe.len, node.impl.paths[1]);
-                            const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
-                            const len: usize = Special.fns.formatWriteBufObjcopyCommand(cmd, zig_exe.ptr, zig_exe.len, node.impl.paths[1], buf);
-                            buf[len] = 0;
-                            return makeArgPtrs(allocator, buf[0..len :0]);
+                        } else {
+                            if (node.flags.is_primary and build.cmd_args.len != 0) {
+                                if (builder_spec.options.lazy_strategy == .emergency) {
+                                    executeCommandEmergency(allocator, Special.cmd_parsers, .run, arena_index);
+                                }
+                                if (do_build and task == .build) {
+                                    Special.fns.formatParseArgsBuildCommand(node.task.cmd.build, allocator, build.cmd_args.ptr, build.cmd_args.len);
+                                }
+                                if (do_format and task == .format) {
+                                    Special.fns.formatParseArgsFormatCommand(node.task.cmd.format, allocator, build.cmd_args.ptr, build.cmd_args.len);
+                                }
+                                if (do_archive and task == .archive) {
+                                    Special.fns.formatParseArgsArchiveCommand(node.task.cmd.archive, allocator, build.cmd_args.ptr, build.cmd_args.len);
+                                }
+                                if (do_objcopy and task == .objcopy) {
+                                    Special.fns.formatParseArgsObjcopyCommand(node.task.cmd.objcopy, allocator, build.cmd_args.ptr, build.cmd_args.len);
+                                }
+                            }
+                            if (builder_spec.options.lazy_strategy == .emergency) {
+                                executeCommandEmergency(allocator, Special.cmd_writers, .run, arena_index);
+                            }
+                            const zig_exe: []const u8 = node.zigExe();
+                            if (do_build and task == .build) {
+                                const paths: []const types.Path = node.impl.paths[1..node.impl.paths_len];
+                                const cmd: *types.BuildCommand = node.task.cmd.build;
+                                const max_len: usize = Special.fns.formatLengthBuildCommand(cmd, zig_exe.ptr, zig_exe.len, paths.ptr, paths.len);
+                                const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
+                                const len: usize = Special.fns.formatWriteBufBuildCommand(cmd, zig_exe.ptr, zig_exe.len, paths.ptr, paths.len, buf);
+                                buf[len] = 0;
+                                return makeArgPtrs(allocator, buf[0..len :0]);
+                            }
+                            if (do_format and task == .format) {
+                                const cmd: *build.FormatCommand = node.task.cmd.format;
+                                const max_len: usize = Special.fns.formatLengthFormatCommand(cmd, zig_exe.ptr, zig_exe.len, node.impl.paths[0]);
+                                const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
+                                const len: usize = Special.fns.formatWriteBufFormatCommand(cmd, zig_exe.ptr, zig_exe.len, node.impl.paths[0], buf);
+                                buf[len] = 0;
+                                return makeArgPtrs(allocator, buf[0..len :0]);
+                            }
+                            if (do_archive and task == .archive) {
+                                const paths: []const types.Path = node.impl.paths[0..node.impl.paths_len];
+                                const cmd: *build.ArchiveCommand = node.task.cmd.archive;
+                                const max_len: usize = Special.fns.formatLengthArchiveCommand(cmd, zig_exe.ptr, zig_exe.len, paths.ptr, paths.len);
+                                const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
+                                const len: usize = Special.fns.formatWriteBufArchiveCommand(cmd, zig_exe.ptr, zig_exe.len, paths.ptr, paths.len, buf);
+                                buf[len] = 0;
+                                return makeArgPtrs(allocator, buf[0..len :0]);
+                            }
+                            if (do_objcopy and task == .objcopy) {
+                                const cmd: *types.ObjcopyCommand = node.task.cmd.objcopy;
+                                const max_len: usize = Special.fns.formatLengthObjcopyCommand(cmd, zig_exe.ptr, zig_exe.len, node.impl.paths[1]);
+                                const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(max_len, 1));
+                                const len: usize = Special.fns.formatWriteBufObjcopyCommand(cmd, zig_exe.ptr, zig_exe.len, node.impl.paths[1], buf);
+                                buf[len] = 0;
+                                return makeArgPtrs(allocator, buf[0..len :0]);
+                            }
                         }
                     } else {
                         if (node.flags.is_primary and build.cmd_args.len != 0) {
@@ -2108,6 +2191,8 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         const dyn_loader_options = .{
             .lb_info_addr = load_info_lb_addr,
             .lb_sect_addr = load_sect_lb_addr,
+            .show_defined = false,
+            .show_sections = false,
         };
         const dyn_loader_errors = .{
             .open = builder_spec.errors.open,
