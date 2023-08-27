@@ -48,8 +48,8 @@ pub const BuilderSpec = struct {
         max_arena_aligned_bytes: usize = 8 * 1024 * 1024,
         /// Bytes allowed per thread stack (default=8MiB)
         max_stack_aligned_bytes: usize = 8 * 1024 * 1024,
-        /// Bytes allowed for dynamic loader metadata (default=64KiB)
-        max_load_info_aligned_bytes: usize = 64 * 1024,
+        /// Bytes allowed for dynamic loader metadata (default=8MiB)
+        max_load_info_aligned_bytes: usize = 8 * 1024 * 1024,
         /// Bytes allowed for dynamic libraries (.text + .rodata) (default=8MiB)
         max_load_sect_aligned_bytes: usize = 8 * 1024 * 1024,
         /// This value is compared with return codes to determine whether a
