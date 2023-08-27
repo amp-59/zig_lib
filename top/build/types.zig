@@ -608,7 +608,7 @@ pub fn GenericCommand(comptime Command: type) type {
             .formatLength = gen.FnExport{ .prefix = field_name ++ "." },
             .renderWriteBuf = gen.FnExport{ .prefix = field_name ++ "." },
         };
-        pub fn renderWriteBuf(cmd: *const Command, buf: [*]u8) usize {
+        pub fn renderWriteBuf(cmd: *const Command, buf: [*]u8) callconv(.C) usize {
             return fmt.render(render_spec, cmd.*).formatWriteBuf(buf);
         }
         pub const fieldEditDistance = Editor.fieldEditDistance;
