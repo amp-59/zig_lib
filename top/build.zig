@@ -792,31 +792,32 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         }
         fn makeSubDirectories(node: *Node) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
-            node.impl.build_root_fd = try meta.wrap(file.pathAt(path(), file.cwd, node.buildRoot()));
+            node.extra.build_root_fd = try meta.wrap(file.pathAt(path(), file.cwd, node.buildRoot()));
+            var st: file.Status = undefined;
             for ([3][:0]const u8{
                 builder_spec.options.output_dir,
                 builder_spec.options.config_dir,
                 builder_spec.options.stat_dir,
             }) |name| {
-                var st: file.Status = comptime builtin.zero(file.Status);
-                try meta.wrap(file.statusAt(stat(), node.impl.build_root_fd, name, &st));
+                mem.zero(file.Status, &st);
+                try meta.wrap(file.statusAt(stat(), node.extra.build_root_fd, name, &st));
                 if (st.mode.kind == .unknown) {
-                    try meta.wrap(file.makeDirAt(mkdir(), node.impl.build_root_fd, name, file.mode.directory));
+                    try meta.wrap(file.makeDirAt(mkdir(), node.extra.build_root_fd, name, file.mode.directory));
                 }
             }
-            node.impl.output_root_fd = try meta.wrap(file.pathAt(path(), node.impl.build_root_fd, builder_spec.options.output_dir));
+            node.extra.output_root_fd = try meta.wrap(file.pathAt(path(), node.extra.build_root_fd, builder_spec.options.output_dir));
             for ([3][:0]const u8{
                 builder_spec.options.exe_out_dir,
                 builder_spec.options.lib_out_dir,
                 builder_spec.options.aux_out_dir,
             }) |name| {
-                var st: file.Status = comptime builtin.zero(file.Status);
-                try meta.wrap(file.statusAt(stat(), node.impl.output_root_fd, name, &st));
+                mem.zero(file.Status, &st);
+                try meta.wrap(file.statusAt(stat(), node.extra.output_root_fd, name, &st));
                 if (st.mode.kind == .unknown) {
-                    try meta.wrap(file.makeDirAt(mkdir(), node.impl.output_root_fd, name, file.mode.directory));
+                    try meta.wrap(file.makeDirAt(mkdir(), node.extra.output_root_fd, name, file.mode.directory));
                 }
             }
-            node.impl.config_root_fd = try meta.wrap(file.pathAt(path(), node.impl.build_root_fd, builder_spec.options.config_dir));
+            node.extra.config_root_fd = try meta.wrap(file.pathAt(path(), node.extra.build_root_fd, builder_spec.options.config_dir));
         }
         fn checkName(group: *Node, name: []const u8) void {
             @setRuntimeSafety(builder_spec.options.enable_safety);
@@ -882,9 +883,9 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             if (!mem.testEqualString(node.buildRoot(), group.buildRoot())) {
                 makeSubDirectories(node);
             } else {
-                node.impl.build_root_fd = group.impl.build_root_fd;
-                node.impl.config_root_fd = group.impl.config_root_fd;
-                node.impl.output_root_fd = group.impl.output_root_fd;
+                node.extra.build_root_fd = group.extra.build_root_fd;
+                node.extra.config_root_fd = group.extra.config_root_fd;
+                node.extra.output_root_fd = group.extra.output_root_fd;
             }
             initializeCommand(allocator, node);
             return node;
@@ -1691,11 +1692,11 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
         pub fn nodeWait(node: *Node, task: types.Task, arena_index: AddressSpace.Index) bool {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             if (builder_spec.options.show_waiting_tasks) {
-                if (node.impl.wait_len >> 28 > node.impl.wait_tick) {
+                if (node.extra.wait_len >> 28 > node.extra.wait_tick) {
                     about.writeWaitingOn(node, arena_index);
-                    node.impl.wait_tick +%= 1;
+                    node.extra.wait_tick +%= 1;
                 } else {
-                    node.impl.wait_len +%= builder_spec.options.sleep_nanoseconds;
+                    node.extra.wait_len +%= builder_spec.options.sleep_nanoseconds;
                 }
             }
             if (node.task.lock.get(task) == .blocking) {
@@ -1802,21 +1803,21 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             if (node.tag == .worker) {
                 return node.impl.nodes[0].buildRoot();
             }
-            return node.impl.build_root_fd;
+            return node.extra.build_root_fd;
         }
         pub fn configRootFd(node: *Node) u32 {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             if (node.tag == .worker) {
                 return node.impl.nodes[0].configRootFd();
             }
-            return node.impl.config_root_fd;
+            return node.extra.config_root_fd;
         }
         pub fn outputRootFd(node: *Node) u32 {
             @setRuntimeSafety(builder_spec.options.enable_safety);
             if (node.tag == .worker) {
                 return node.impl.nodes[0].outputRootFd();
             }
-            return node.impl.output_root_fd;
+            return node.extra.output_root_fd;
         }
         pub fn hasDebugInfo(node: *Node) bool {
             @setRuntimeSafety(builder_spec.options.enable_safety);
