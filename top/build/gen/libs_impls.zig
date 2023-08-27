@@ -11,19 +11,22 @@ const config = @import("./config.zig");
 const common = @import("./common_impls.zig");
 pub usingnamespace @import("../../start.zig");
 pub usingnamespace config;
+pub const Array = mem.StaticString(64 * 1024 * 1024);
 const commit: bool = true;
 const MajorVariant = enum {
     library,
     autoloader,
+    hybrid,
 };
-pub const Array = mem.StaticString(64 * 1024 * 1024);
-const Variant = enum {
+const MinorVariant = enum {
     externs,
     exports,
     wrappers,
     var_decls,
-    ptr_fields,
-    load_assign,
+    ptr_fields_source,
+    load_assign_source,
+    ptr_vars_export,
+    load_assign_export,
 };
 const Names = struct {
     info: builtin.Type,
@@ -61,8 +64,8 @@ fn requireswrappers(comptime fn_info: builtin.Type.Fn) bool {
     }
     return typeRequiresWrappers(fn_info.return_type.?);
 }
-fn writeParameter(array: *Array, variant: Variant, comptime param_type: type, comptime prefix: []const u8) void {
-    if (variant == .wrappers or variant == .ptr_fields) {
+fn writeParameter(array: *Array, v: MinorVariant, comptime param_type: type, comptime prefix: []const u8) void {
+    if (v == .wrappers or v == .ptr_fields_source) {
         array.writeMany(prefix);
         array.writeMany(":");
         array.writeFormat(comptime types.ProtoTypeDescr.init(param_type));
@@ -94,7 +97,7 @@ fn writeParameter(array: *Array, variant: Variant, comptime param_type: type, co
                     array.writeMany(",");
                 } else {
                     inline for (struct_info.fields) |field| {
-                        writeParameter(array, variant, field.type, prefix ++ "_" ++ field.name);
+                        writeParameter(array, v, field.type, prefix ++ "_" ++ field.name);
                     }
                 }
             },
@@ -107,8 +110,8 @@ fn writeParameter(array: *Array, variant: Variant, comptime param_type: type, co
         }
     }
 }
-fn writeArgument(array: *Array, variant: Variant, comptime param_type: type, comptime prefix: []const u8) void {
-    if (variant == .wrappers) {
+fn writeArgument(array: *Array, v: MinorVariant, comptime param_type: type, comptime prefix: []const u8) void {
+    if (v == .wrappers) {
         switch (@typeInfo(param_type)) {
             .Pointer => |pointer_info| {
                 if (pointer_info.size == .Slice) {
@@ -129,7 +132,7 @@ fn writeArgument(array: *Array, variant: Variant, comptime param_type: type, com
                     array.writeMany(",");
                 } else {
                     inline for (struct_info.fields) |field| {
-                        writeArgument(array, variant, field.type, prefix ++ "." ++ field.name);
+                        writeArgument(array, v, field.type, prefix ++ "." ++ field.name);
                     }
                 }
             },
@@ -157,7 +160,7 @@ fn writeArgument(array: *Array, variant: Variant, comptime param_type: type, com
                     array.writeMany(",");
                 } else {
                     inline for (struct_info.fields) |field| {
-                        writeArgument(array, variant, field.type, prefix ++ "_" ++ field.name);
+                        writeArgument(array, v, field.type, prefix ++ "_" ++ field.name);
                     }
                 }
             },
@@ -207,10 +210,10 @@ fn writeStringLiteral(array: *Array, string: []const u8) void {
         array.writeMany(fmt.stringLiteralChar(byte));
     }
 }
-fn writeSymbol(array: *common.Array, comptime T: type, variant: Variant) void {
+fn writeSymbol(array: *common.Array, comptime T: type, v: MinorVariant) void {
     @setEvalBranchQuota(~@as(u32, 0));
     const export_name_sets: []const Names = getNameSets(T);
-    if (variant == .exports) {
+    if (v == .exports) {
         array.writeMany("comptime{\n");
         inline for (export_name_sets) |set| {
             if (set.forward) {
@@ -233,49 +236,31 @@ fn writeSymbol(array: *common.Array, comptime T: type, variant: Variant) void {
         const field = @field(T, names.decl_name);
         const field_type = @TypeOf(field);
         const field_type_info: builtin.Type = @typeInfo(field_type);
-        switch (variant) {
+        switch (v) {
             .var_decls => {
                 array.writeMany("var ");
                 array.writeFormat(fmt.identifier(names.decl_name));
                 array.writeMany(":*fn(");
                 inline for (field_type_info.Fn.params, 0..) |param, idx| {
-                    writeParameter(array, variant, param.type.?, names.param_names[idx]);
+                    writeParameter(array, v, param.type.?, names.param_names[idx]);
                 }
                 array.writeMany(")callconv(.C)");
                 array.writeFormat(comptime types.ProtoTypeDescr.init(field_type_info.Fn.return_type.?));
                 array.writeMany("=@ptrFromInt(8);\n");
-            },
-            .ptr_fields => {
-                array.writeFormat(fmt.identifier(names.decl_name));
-                array.writeMany(":*const fn(");
-                // Uncomment for segmentation fault
-                inline for (field_type_info.Fn.params, 0..) |param, idx| {
-                    writeParameter(array, variant, param.type.?, names.param_names[idx]);
-                }
-                array.writeMany(")");
-                array.writeFormat(comptime types.ProtoTypeDescr.init(field_type_info.Fn.return_type.?));
-                array.writeMany("=@ptrFromInt(8),\n");
-            },
-            .load_assign => {
-                array.writeMany("ptrs.");
-                array.writeFormat(fmt.identifier(names.decl_name));
-                array.writeMany("=&source.");
-                array.writeFormat(fmt.identifier(names.decl_name));
-                array.writeMany(";\n");
             },
             .exports => if (names.forward) {
                 array.writeMany("fn ");
                 array.writeFormat(fmt.identifier(names.decl_name));
                 array.writeMany("(");
                 inline for (field_type_info.Fn.params, 0..) |param, idx| {
-                    writeParameter(array, variant, param.type.?, names.param_names[idx]);
+                    writeParameter(array, v, param.type.?, names.param_names[idx]);
                 }
                 array.writeMany(")callconv(.C)");
                 array.writeFormat(comptime types.ProtoTypeDescr.init(field_type_info.Fn.return_type.?));
                 array.writeMany("{\n");
                 array.writeMany("return source." ++ names.decl_name ++ "(");
                 inline for (field_type_info.Fn.params, 0..) |param, idx| {
-                    writeArgument(array, variant, param.type.?, names.param_names[idx]);
+                    writeArgument(array, v, param.type.?, names.param_names[idx]);
                 }
                 if (field_type_info.Fn.params.len != 0) {
                     array.undefine(1);
@@ -288,7 +273,7 @@ fn writeSymbol(array: *common.Array, comptime T: type, variant: Variant) void {
                 array.writeFormat(fmt.identifier(names.export_name));
                 array.writeMany("(");
                 inline for (field_type_info.Fn.params, 0..) |param, idx| {
-                    writeParameter(array, variant, param.type.?, names.param_names[idx]);
+                    writeParameter(array, v, param.type.?, names.param_names[idx]);
                 }
                 array.writeMany(")");
                 array.writeFormat(comptime types.ProtoTypeDescr.init(field_type_info.Fn.return_type.?));
@@ -297,7 +282,7 @@ fn writeSymbol(array: *common.Array, comptime T: type, variant: Variant) void {
             .wrappers => {
                 array.writeMany("pub fn " ++ names.decl_name ++ "(");
                 inline for (field_type_info.Fn.params, 0..) |param, idx| {
-                    writeParameter(array, variant, param.type.?, names.param_names[idx]);
+                    writeParameter(array, v, param.type.?, names.param_names[idx]);
                 }
                 array.writeMany(")");
                 array.writeFormat(comptime types.ProtoTypeDescr.init(field_type_info.Fn.return_type.?));
@@ -306,7 +291,7 @@ fn writeSymbol(array: *common.Array, comptime T: type, variant: Variant) void {
                 array.writeFormat(fmt.identifier(names.export_name));
                 array.writeMany("(");
                 inline for (field_type_info.Fn.params, 0..) |param, idx| {
-                    writeArgument(array, variant, param.type.?, names.param_names[idx]);
+                    writeArgument(array, v, param.type.?, names.param_names[idx]);
                 }
                 if (field_type_info.Fn.params.len != 0) {
                     array.undefine(1);
@@ -314,7 +299,40 @@ fn writeSymbol(array: *common.Array, comptime T: type, variant: Variant) void {
                 array.writeMany(");\n");
                 array.writeMany("}\n");
             },
-
+            .ptr_fields_source => {
+                array.writeFormat(fmt.identifier(names.decl_name));
+                array.writeMany(":*const fn(");
+                inline for (field_type_info.Fn.params, 0..) |param, idx| {
+                    writeParameter(array, v, param.type.?, names.param_names[idx]);
+                }
+                array.writeMany(")");
+                array.writeFormat(comptime types.ProtoTypeDescr.init(field_type_info.Fn.return_type.?));
+                array.writeMany("=@ptrFromInt(8),\n");
+            },
+            .load_assign_source => {
+                array.writeMany("ptrs.");
+                array.writeFormat(fmt.identifier(names.decl_name));
+                array.writeMany("=&source.");
+                array.writeFormat(fmt.identifier(names.decl_name));
+                array.writeMany(";\n");
+            },
+            .ptr_vars_export => {
+                array.writeMany("var ");
+                array.writeFormat(fmt.identifier(names.export_name));
+                array.writeMany(":*const fn(");
+                inline for (field_type_info.Fn.params, 0..) |param, idx| {
+                    writeParameter(array, v, param.type.?, names.param_names[idx]);
+                }
+                array.writeMany(")");
+                array.writeFormat(comptime types.ProtoTypeDescr.init(field_type_info.Fn.return_type.?));
+                array.writeMany("=@ptrFromInt(8);\n");
+            },
+            .load_assign_export => {
+                array.writeFormat(fmt.identifier(names.export_name));
+                array.writeMany("=&source.");
+                array.writeFormat(fmt.identifier(names.decl_name));
+                array.writeMany(";\n");
+            },
             //else => {},
         }
     }
@@ -353,23 +371,34 @@ fn writeExportLoad(array: *Array) void {
 fn writeLoadSignature(array: *Array) void {
     array.writeMany("fn load(ptrs:*@This())callconv(.C)void{\n");
 }
-fn writeInternal(array: *Array, comptime variant: MajorVariant, comptime T: type) void {
-    if (variant == .library) {
-        writePubUsingnamespace(array);
-        writeSymbol(array, T, .externs);
-        writeSymbol(array, T, .wrappers);
-        writeElseStruct(array);
-        writeSymbol(array, T, .exports);
-        writeStructClose(array);
-    } else {
-        writeSymbol(array, T, .ptr_fields);
-        writeLoadSignature(array);
-        writeSymbol(array, T, .load_assign);
-        writeIfClose(array);
-        writeExportLoad(array);
+fn writeInternal(array: *Array, comptime mv: MajorVariant, comptime T: type) void {
+    switch (mv) {
+        .library => {
+            writePubUsingnamespace(array);
+            writeSymbol(array, T, .externs);
+            writeSymbol(array, T, .wrappers);
+            writeElseStruct(array);
+            writeSymbol(array, T, .exports);
+            writeStructClose(array);
+        },
+        .hybrid => {
+            writeSymbol(array, T, .wrappers);
+            writeSymbol(array, T, .ptr_vars_export);
+            writeLoadSignature(array);
+            writeSymbol(array, T, .load_assign_export);
+            writeIfClose(array);
+            writeExportLoad(array);
+        },
+        .autoloader => {
+            writeSymbol(array, T, .ptr_fields_source);
+            writeLoadSignature(array);
+            writeSymbol(array, T, .load_assign_source);
+            writeIfClose(array);
+            writeExportLoad(array);
+        },
     }
 }
-fn writeBuildCommandLibrary(array: *Array, comptime variant: MajorVariant) !void {
+fn writeBuildCommandLibrary(array: *Array, comptime mv: MajorVariant) !void {
     writeImportBuild(array);
     writeGenericCommand(array, "build.BuildCommand");
     types.ProtoTypeDescr.scope = &.{
@@ -377,11 +406,11 @@ fn writeBuildCommandLibrary(array: *Array, comptime variant: MajorVariant) !void
         comptime types.ProtoTypeDescr.declare("build.BuildCommand", build.BuildCommand).type_decl,
         comptime types.ProtoTypeDescr.declare("build.Allocator", build.Allocator).type_decl,
     };
-    writeInternal(array, variant, BuildCommands);
-    try writeOut(array, "build.ld.zig");
+    writeInternal(array, mv, BuildCommands);
+    try writeOut(array, mv, "build");
     array.undefineAll();
 }
-fn writeFormatCommandLibrary(array: *Array, comptime variant: MajorVariant) !void {
+fn writeFormatCommandLibrary(array: *Array, comptime mv: MajorVariant) !void {
     writeImportBuild(array);
     writeGenericCommand(array, "build.FormatCommand");
     types.ProtoTypeDescr.scope = &.{
@@ -389,12 +418,11 @@ fn writeFormatCommandLibrary(array: *Array, comptime variant: MajorVariant) !voi
         comptime types.ProtoTypeDescr.declare("build.FormatCommand", build.FormatCommand).type_decl,
         comptime types.ProtoTypeDescr.declare("build.Allocator", build.Allocator).type_decl,
     };
-    writeInternal(array, variant, FormatCommands);
-
-    try writeOut(array, "format.ld.zig");
+    writeInternal(array, mv, FormatCommands);
+    try writeOut(array, mv, "format");
     array.undefineAll();
 }
-fn writeArchiveCommandLibrary(array: *Array, comptime variant: MajorVariant) !void {
+fn writeArchiveCommandLibrary(array: *Array, comptime mv: MajorVariant) !void {
     writeImportBuild(array);
     writeGenericCommand(array, "build.ArchiveCommand");
     types.ProtoTypeDescr.scope = &.{
@@ -402,11 +430,11 @@ fn writeArchiveCommandLibrary(array: *Array, comptime variant: MajorVariant) !vo
         comptime types.ProtoTypeDescr.declare("build.ArchiveCommand", build.ArchiveCommand).type_decl,
         comptime types.ProtoTypeDescr.declare("build.Allocator", build.Allocator).type_decl,
     };
-    writeInternal(array, variant, ArchiveCommands);
-    try writeOut(array, "archive.ld.zig");
+    writeInternal(array, mv, ArchiveCommands);
+    try writeOut(array, mv, "archive");
     array.undefineAll();
 }
-fn writeObjcopyCommandLibrary(array: *Array, comptime variant: MajorVariant) !void {
+fn writeObjcopyCommandLibrary(array: *Array, comptime mv: MajorVariant) !void {
     writeImportBuild(array);
     writeGenericCommand(array, "build.ObjcopyCommand");
     types.ProtoTypeDescr.scope = &.{
@@ -414,23 +442,27 @@ fn writeObjcopyCommandLibrary(array: *Array, comptime variant: MajorVariant) !vo
         comptime types.ProtoTypeDescr.declare("build.ObjcopyCommand", build.ObjcopyCommand).type_decl,
         comptime types.ProtoTypeDescr.declare("build.Allocator", build.Allocator).type_decl,
     };
-    writeInternal(array, variant, ObjcopyCommands);
-    try writeOut(array, "objcopy.ld.zig");
+    writeInternal(array, mv, ObjcopyCommands);
+    try writeOut(array, mv, "objcopy");
     array.undefineAll();
 }
-fn writePerfEventsLibrary(array: *Array, comptime variant: MajorVariant) !void {
+fn writePerfEventsLibrary(array: *Array, comptime mv: MajorVariant) !void {
     const perf = @import("../perf.zig");
     array.writeMany("const source=@import(\"perf.zig\");\n");
     const fds_fmt = comptime types.ProtoTypeDescr.declare("Fds", perf.Fds);
     array.writeFormat(fds_fmt);
     types.ProtoTypeDescr.scope = &.{fds_fmt.type_decl};
-    writeInternal(array, variant, perf);
-    try writeOut(array, "perf.ld.zig");
+    writeInternal(array, mv, perf);
+    try writeOut(array, mv, "perf");
     array.undefineAll();
 }
-fn writeOut(array: *Array, comptime name: [:0]const u8) !void {
+fn writeOut(array: *Array, comptime mv: MajorVariant, comptime name: [:0]const u8) !void {
     if (commit) {
-        try gen.truncateFile(.{ .return_type = void }, config.primarySourceFile(name), array.readAll());
+        try gen.truncateFile(.{ .return_type = void }, config.primarySourceFile(name ++ switch (mv) {
+            .hybrid => ".hyld.zig",
+            .autoloader => ".auto.zig",
+            .library => ".dl.zig",
+        }), array.readAll());
     } else {
         debug.write(array.readAll());
     }
@@ -439,7 +471,7 @@ pub fn main() !void {
     var allocator: mem.SimpleAllocator = .{};
     defer allocator.unmap();
     const array: *common.Array = allocator.create(common.Array);
-    switch (MajorVariant.autoloader) {
+    switch (MajorVariant.library) {
         inline else => |variant| {
             try writeBuildCommandLibrary(array, variant);
             try writeFormatCommandLibrary(array, variant);
