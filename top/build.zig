@@ -590,10 +590,10 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
             zero.flags = .{ .is_special = false };
             if (builder_spec.options.lazy_strategy != .none) {
                 for ([_]struct { **Node, []const u8, []const u8, *anyopaque }{
-                    .{ &Special.build_cmd_fns, "build_cmd_fns", "top/build/build.ld.zig", &Special.fns.build },
-                    .{ &Special.format_cmd_fns, "format_cmd_fns", "top/build/format.ld.zig", &Special.fns.format },
-                    .{ &Special.archive_cmd_fns, "archive_cmd_fns", "top/build/archive.ld.zig", &Special.fns.archive },
-                    .{ &Special.objcopy_cmd_fns, "objcopy_cmd_fns", "top/build/objcopy.ld.zig", &Special.fns.objcopy },
+                    .{ &Special.build_cmd_fns, "build_cmd_fns", "top/build/build.auto.zig", &Special.fns.build },
+                    .{ &Special.format_cmd_fns, "format_cmd_fns", "top/build/format.auto.zig", &Special.fns.format },
+                    .{ &Special.archive_cmd_fns, "archive_cmd_fns", "top/build/archive.auto.zig", &Special.fns.archive },
+                    .{ &Special.objcopy_cmd_fns, "objcopy_cmd_fns", "top/build/objcopy.auto.zig", &Special.fns.objcopy },
                 }) |pair| {
                     pair[0].* = zero.addRun(allocator, pair[1], &[_][]const u8{
                         zero.zigExe(),        "build-lib",
@@ -606,8 +606,7 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                         "-dynamic",           "--entry",
                         "load",               pair[2],
                     });
-                    pair[0].*.flags.is_dyn_ext = true;
-                    pair[0].*.flags.want_shallow_cache_check = false;
+                    pair[0].*.flags.want_shallow_cache_check = true;
                     pair[0].*.extra.ptr = .{ .any = pair[3] };
                 }
             }
@@ -1330,20 +1329,15 @@ pub fn GenericNode(comptime builder_spec: BuilderSpec) type {
                         }
                     },
                 }
-                if (builder_spec.options.lazy_strategy != .none and node.flags.is_dyn_ext and keepGoing()) {
-                    loadDynamicExtension(node, dest_pathname);
+                if (builder_spec.options.lazy_strategy != .none and keepGoing()) {
+                    if (node.extra.ptr.any) |any| {
+                        Special.dyn_loader.load(dest_pathname).autoLoad(any);
+                    }
                 }
                 if (builder_spec.options.show_stats and keepGoing()) {
                     about.taskNotice(node, task, arena_index, old_size, new_size, ts.sec, ts.nsec, ans, rc);
                 }
                 return status(ans, rc);
-            }
-            fn loadDynamicExtension(node: *Node, dest_pathname: [:0]const u8) void {
-                @setRuntimeSafety(builder_spec.options.enable_safety);
-                const info: *DynamicLoader.Info = Special.dyn_loader.load(dest_pathname);
-                if (node.extra.ptr.any) |any| {
-                    info.autoLoad(any);
-                }
             }
             fn shallowCacheCheck(st: *file.Status, dest_pathname: [:0]const u8, root_pathname: [:0]const u8) UpdateAnswer {
                 @setRuntimeSafety(builder_spec.options.enable_safety);
