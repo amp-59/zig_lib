@@ -880,7 +880,6 @@ pub const static = struct {
 };
 pub const parse = struct {
     const KV = struct { []const u8, Token.Tag };
-    const keywords: [49]KV = tab.kw;
     pub const Token = struct {
         tag: Tag,
         loc: Loc,
@@ -2135,6 +2134,7 @@ pub const parse = struct {
     }
     pub fn keyword(str: []const u8) ?Token.Tag {
         @setRuntimeSafety(is_safe);
+        const keywords: [49]KV = tab.kw;
         lo: for (keywords) |kv| {
             if (kv[0].len != str.len) {
                 continue;
