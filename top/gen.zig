@@ -110,7 +110,7 @@ pub fn StructEditor(comptime render_spec: fmt.RenderSpec, comptime Value: type) 
                     ptr += fmt.identifier(name).formatWriteBuf(ptr);
                     ptr[0] = '.';
                     ptr += 1;
-                    ptr[0..field.name.len].* = (field.name ++ "").*;
+                    ptr[0..field.name.len].* = field.name[0..field.name.len].*;
                     ptr += field.name.len;
                     ptr[0] = '=';
                     ptr += 1;
