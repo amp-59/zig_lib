@@ -9,6 +9,7 @@ const build = zl.build;
 const debug = zl.debug;
 const virtual = zl.virtual;
 const builtin = zl.builtin;
+const testing = zl.testing;
 pub usingnamespace zl.start;
 
 pub const logging_default = spec.logging.default.verbose;
@@ -118,6 +119,59 @@ fn testBuildCommand(args: [][*:0]u8, ptrs: *build.Fns) void {
         }
     }
 }
+fn testEntryAutoLoader() !void {
+    var loader: Loader = .{};
+    const build_core_info: *Loader.Info = try meta.wrap(loader.load(builtin.root.dynamic_units._test_build_core));
+    const build_extra_info: *Loader.Info = try meta.wrap(loader.load(builtin.root.dynamic_units._test_build_extra));
+    const format_core_info: *Loader.Info = try meta.wrap(loader.load(builtin.root.dynamic_units._test_format_core));
+    const format_extra_info: *Loader.Info = try meta.wrap(loader.load(builtin.root.dynamic_units._test_format_extra));
+    const archive_core_info: *Loader.Info = try meta.wrap(loader.load(builtin.root.dynamic_units._test_archive_core));
+    const archive_extra_info: *Loader.Info = try meta.wrap(loader.load(builtin.root.dynamic_units._test_archive_extra));
+    const objcopy_core_info: *Loader.Info = try meta.wrap(loader.load(builtin.root.dynamic_units._test_objcopy_core));
+    const objcopy_extra_info: *Loader.Info = try meta.wrap(loader.load(builtin.root.dynamic_units._test_objcopy_extra));
+
+    const VTable = struct {
+        perf: @import("../top/build/perf.auto.zig") = .{},
+        build_core: @import("../top/build/build_core.auto.zig") = .{},
+        build_extra: @import("../top/build/build_extra.auto.zig") = .{},
+        format_core: @import("../top/build/format_core.auto.zig") = .{},
+        format_extra: @import("../top/build/format_extra.auto.zig") = .{},
+        archive_core: @import("../top/build/archive_core.auto.zig") = .{},
+        archive_extra: @import("../top/build/archive_extra.auto.zig") = .{},
+        objcopy_core: @import("../top/build/objcopy_core.auto.zig") = .{},
+        objcopy_extra: @import("../top/build/objcopy_extra.auto.zig") = .{},
+    };
+    var vtable: VTable = .{};
+
+    build_core_info.autoLoad(&vtable.build_core);
+    build_extra_info.autoLoad(&vtable.build_extra);
+    format_core_info.autoLoad(&vtable.format_core);
+    format_extra_info.autoLoad(&vtable.format_extra);
+    objcopy_core_info.autoLoad(&vtable.objcopy_core);
+    objcopy_extra_info.autoLoad(&vtable.objcopy_extra);
+    archive_core_info.autoLoad(&vtable.archive_core);
+    archive_extra_info.autoLoad(&vtable.archive_extra);
+
+    {
+        const cmd1 = .{ .kind = .lib, .mode = .ReleaseSafe };
+        const cmd2 = .{ .kind = .exe, .mode = .ReleaseFast };
+        const core = vtable.build_core;
+        const extra = vtable.build_extra;
+
+        var buf: [4096]u8 = undefined;
+        var len: usize = 0;
+        const zig_exe: []const u8 = builtin.root.zig_exe;
+        const paths: []const build.Path = &.{build.Path.create(&.{ builtin.root.main_pkg_path, @src().file })};
+        len = core.formatWriteBuf(@constCast(&cmd1), zig_exe, paths, &buf);
+        debug.write(buf[0..len]);
+        try debug.expect(len == core.formatLength(@constCast(&cmd1), zig_exe, paths));
+        len = extra.writeFieldEditDistance(&buf, "name", @constCast(&cmd1), @constCast(&cmd2), false);
+        debug.write(buf[0..len]);
+        len = extra.fieldEditDistance(@constCast(&cmd1), @constCast(&cmd2));
+        try debug.expect(len == 2);
+    }
+}
+
 inline fn makeArgs(comptime args: []const [:0]const u8) [][*:0]u8 {
     comptime {
         var ret: [args.len][*:0]u8 = undefined;
@@ -156,17 +210,17 @@ fn testConcurrentLoading() !void {
         stack2[0] = 0;
         if (builtin.strip_debug_info) {
             _ = try proc.clone(.{}, @intFromPtr(stack2.ptr), stack2.len, {}, doIt, .{
-                &loader, builtin.lib_root ++ "/zig-out/lib/libtest-test_parsers.so", ptrs,
+                &loader, builtin.root.dynamic_units._test_parsers, ptrs,
             });
             _ = try proc.clone(.{}, @intFromPtr(stack1.ptr), stack1.len, {}, doIt, .{
-                &loader, builtin.lib_root ++ "/zig-out/lib/libtest-test_writers.so", ptrs,
+                &loader, builtin.root.dynamic_units._test_writers, ptrs,
             });
         } else {
             _ = try meta.wrap(@call(.auto, doIt, .{
-                &loader, builtin.lib_root ++ "/zig-out/lib/libtest-test_parsers.so", ptrs,
+                &loader, builtin.root.dynamic_units._test_parsers, ptrs,
             }));
             _ = try meta.wrap(@call(.auto, doIt, .{
-                &loader, builtin.lib_root ++ "/zig-out/lib/libtest-test_writers.so", ptrs,
+                &loader, builtin.root.dynamic_units._test_writers, ptrs,
             }));
         }
         const words: *[@sizeOf(build.Fns) / @sizeOf(usize)]usize = @ptrCast(ptrs);
@@ -201,4 +255,5 @@ fn testConcurrentLoading() !void {
 }
 pub fn main() !void {
     try testConcurrentLoading();
+    try testEntryAutoLoader();
 }
