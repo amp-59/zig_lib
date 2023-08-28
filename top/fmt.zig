@@ -474,7 +474,7 @@ pub const ChangedIntFormatSpec = struct {
     arrow_style: []const u8 = " => ",
 };
 pub fn GenericChangedIntFormat(comptime fmt_spec: ChangedIntFormatSpec) type {
-    return (struct {
+    const T = struct {
         old_value: Old,
         new_value: New,
         const Format: type = @This();
@@ -587,7 +587,8 @@ pub fn GenericChangedIntFormat(comptime fmt_spec: ChangedIntFormatSpec) type {
             return len;
         }
         pub usingnamespace GenericFormat(Format);
-    });
+    };
+    return T;
 }
 pub const ChangedBytesFormatSpec = struct {
     dec_style: []const u8 = tab.fx.color.fg.red ++ "-",
@@ -596,8 +597,8 @@ pub const ChangedBytesFormatSpec = struct {
 };
 pub fn GenericChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type {
     const T = struct {
-        old_value: u64,
-        new_value: u64,
+        old_value: usize,
+        new_value: usize,
         const Format: type = @This();
         pub fn formatWrite(format: Format, array: anytype) void {
             const old_fmt: Bytes = bytes(format.old_value);
@@ -1059,6 +1060,7 @@ pub fn GenericPrettyFormatAddressSpaceHierarchy(comptime ToplevelAddressSpace: t
 }
 pub fn isValidId(values: []const u8) bool {
     @setRuntimeSafety(builtin.is_safe);
+
     if (values.len == 0) {
         return false;
     }
