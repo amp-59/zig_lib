@@ -454,8 +454,8 @@ pub const Status = struct {
     pub inline fn exit(status: u32) u8 {
         return mach.shr32T(u8, status & 0xff00, 8);
     }
-    pub inline fn term(status: u32) u32 {
-        return status & 0x7f;
+    pub inline fn term(status: u32) sys.SignalCode {
+        return @enumFromInt(status & 0x7f);
     }
     pub inline fn stop(status: u32) u32 {
         return Status.exit(status);
