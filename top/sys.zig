@@ -1925,6 +1925,7 @@ pub const Fn = enum(usize) {
     landlock_add_rule = 445,
     landlock_restrict_self = 446,
     memfd_secret = 447,
+    //undefined: comptime_int = ~@as(usize, 0),
     fn Args(comptime function: Fn) type {
         return [args(function)]usize;
     }
