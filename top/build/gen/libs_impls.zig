@@ -312,9 +312,9 @@ fn writeSymbol(array: *common.Array, comptime T: type, v: MinorVariant) void {
             .load_assign_source => {
                 array.writeMany("ptrs.");
                 array.writeFormat(fmt.identifier(names.decl_name));
-                array.writeMany("=&source.");
+                array.writeMany("=@ptrCast(&source.");
                 array.writeFormat(fmt.identifier(names.decl_name));
-                array.writeMany(";\n");
+                array.writeMany(");\n");
             },
             .ptr_vars_export => {
                 array.writeMany("var ");
@@ -471,7 +471,7 @@ pub fn main() !void {
     var allocator: mem.SimpleAllocator = .{};
     defer allocator.unmap();
     const array: *common.Array = allocator.create(common.Array);
-    switch (MajorVariant.library) {
+    switch (MajorVariant.autoloader) {
         inline else => |variant| {
             try writeBuildCommandLibrary(array, variant);
             try writeFormatCommandLibrary(array, variant);
