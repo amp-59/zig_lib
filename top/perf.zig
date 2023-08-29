@@ -210,7 +210,7 @@ pub const Count = struct {
         };
     };
 };
-const Type = enum(u32) {
+pub const Type = enum(u32) {
     hardware = 0,
     software = 1,
     tracepoint = 2,
