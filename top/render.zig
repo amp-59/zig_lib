@@ -1616,18 +1616,20 @@ pub fn PointerOneFormat(comptime spec: RenderSpec, comptime Pointer: type) type 
                     const addr_view_format: AddressFormat = .{ .value = address };
                     writeFormat(array, addr_view_format);
                 }
+                if (!spec.infer_type_names) {
+                    array.writeCount(6 +% type_name.len, ("@as(" ++ type_name ++ ", ").*);
+                }
                 if (@typeInfo(child) == .Fn) {
-                    array.writeMany("*call");
-                } else {
-                    const sub_format: AnyFormat(spec, child) = .{ .value = format.value.* };
-                    if (!spec.infer_type_names) {
-                        array.writeCount(6 +% type_name.len, ("@as(" ++ type_name ++ ", ").*);
-                    }
-                    array.writeOne('&');
+                    const sub_format: SubFormat = .{ .value = address };
+                    array.writeMany("@");
                     writeFormat(array, sub_format);
-                    if (!spec.infer_type_names) {
-                        array.writeOne(')');
-                    }
+                } else {
+                    array.writeOne('&');
+                    const sub_format: AnyFormat(spec, child) = .{ .value = format.value.* };
+                    writeFormat(array, sub_format);
+                }
+                if (!spec.infer_type_names) {
+                    array.writeOne(')');
                 }
             }
         }
@@ -1648,21 +1650,24 @@ pub fn PointerOneFormat(comptime spec: RenderSpec, comptime Pointer: type) type 
                     const addr_view_format: AddressFormat = .{ .value = address };
                     len +%= addr_view_format.formatWriteBuf(buf);
                 }
+                if (!spec.infer_type_names) {
+                    @as(*[6 +% type_name.len]u8, @ptrCast(buf + len)).* = ("@as(" ++ type_name ++ ", ").*;
+                    len +%= 6 +% type_name.len;
+                }
                 if (@typeInfo(child) == .Fn) {
-                    @as(*[5]u8, @ptrCast(buf + len)).* = "*call";
-                } else {
-                    const sub_format: AnyFormat(spec, child) = .{ .value = format.value.* };
-                    if (!spec.infer_type_names) {
-                        @as(*[6 +% type_name.len]u8, @ptrCast(buf + len)).* = ("@as(" ++ type_name ++ ", ").*;
-                        len +%= 6 +% type_name.len;
-                    }
-                    buf[len] = '&';
+                    const sub_format: SubFormat = .{ .value = address };
+                    buf[len] = '@';
                     len +%= 1;
                     len +%= sub_format.formatWriteBuf(buf + len);
-                    if (!spec.infer_type_names) {
-                        buf[len] = ')';
-                        len +%= 1;
-                    }
+                } else {
+                    buf[len] = '&';
+                    len +%= 1;
+                    const sub_format: AnyFormat(spec, child) = .{ .value = format.value.* };
+                    len +%= sub_format.formatWriteBuf(buf + len);
+                }
+                if (!spec.infer_type_names) {
+                    buf[len] = ')';
+                    len +%= 1;
                 }
             }
             return len;
@@ -1681,18 +1686,20 @@ pub fn PointerOneFormat(comptime spec: RenderSpec, comptime Pointer: type) type 
                     const addr_view_format: AddressFormat = .{ .value = address };
                     len +%= addr_view_format.formatLength();
                 }
+                if (!spec.infer_type_names) {
+                    len +%= 6 +% type_name.len;
+                }
                 if (@typeInfo(child) == .Fn) {
-                    len +%= 5;
-                } else {
-                    const sub_format: AnyFormat(spec, child) = .{ .value = format.value.* };
-                    if (!spec.infer_type_names) {
-                        len +%= 6 +% type_name.len;
-                    }
+                    const sub_format: SubFormat = .{ .value = address };
                     len +%= 1;
                     len +%= sub_format.formatLength();
-                    if (!spec.infer_type_names) {
-                        len +%= 1;
-                    }
+                } else {
+                    len +%= 1;
+                    const sub_format: AnyFormat(spec, child) = .{ .value = format.value.* };
+                    len +%= sub_format.formatLength();
+                }
+                if (!spec.infer_type_names) {
+                    len +%= 1;
                 }
             }
             return len;
