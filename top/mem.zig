@@ -2191,7 +2191,7 @@ pub fn GenericOptionalArrays(comptime TaggedUnion: type) type {
         fn sizeOf(comptime tag: ImTag) comptime_int {
             return @sizeOf(Child(tag));
         }
-        fn getInternal(im: *Im, tag: ImTag) ?*Elem {
+        fn getInternal(im: *const Im, tag: ImTag) ?*Elem {
             @setRuntimeSafety(builtin.is_safe);
             var idx: usize = 0;
             while (idx != im.buf_len) : (idx +%= 1) {
@@ -2223,7 +2223,7 @@ pub fn GenericOptionalArrays(comptime TaggedUnion: type) type {
             elem.max_len = val.len;
             elem.tag_len = val.len | (@as(usize, @intFromEnum(tag)) << shift_amt);
         }
-        pub fn get(im: *Im, comptime tag: ImTag) []Child(tag) {
+        pub fn get(im: *const Im, comptime tag: ImTag) []Child(tag) {
             @setRuntimeSafety(builtin.is_safe);
             const res: *Elem = im.getInternal(tag).?;
             return @as([*]Child(tag), @ptrFromInt(res.addr))[0 .. res.tag_len & bit_mask];
@@ -2231,6 +2231,13 @@ pub fn GenericOptionalArrays(comptime TaggedUnion: type) type {
         pub fn add(im: *Im, allocator: *mem.SimpleAllocator, comptime tag: ImTag) *Child(tag) {
             @setRuntimeSafety(builtin.is_safe);
             return @ptrFromInt(addInternal(im, allocator, tag, sizeOf(tag)));
+        }
+        pub fn len(im: *Im, comptime tag: ImTag) usize {
+            @setRuntimeSafety(builtin.is_safe);
+            if (im.getInternal(tag)) |res| {
+                return res.tag_len & bit_mask;
+            }
+            return 0;
         }
     };
     return U;
@@ -2278,7 +2285,7 @@ pub fn GenericOptionals(comptime TaggedUnion: type) type {
             @setRuntimeSafety(builtin.is_safe);
             return @as(*Child(tag), @ptrFromInt(im.getInternal(tag))).*;
         }
-        pub fn add(im: *Im, comptime tag: ImTag, allocator: *mem.SimpleAllocator) *Child(tag) {
+        pub fn add(im: *Im, allocator: *mem.SimpleAllocator, comptime tag: ImTag) *Child(tag) {
             @setRuntimeSafety(builtin.is_safe);
             return @ptrFromInt(im.createInternal(allocator, tag, sizeOf(tag)));
         }
