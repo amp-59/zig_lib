@@ -2174,17 +2174,22 @@ pub fn GenericSimpleMap(comptime Key: type, comptime Value: type) type {
         }
     };
 }
-pub fn GenericOptionalArrays(comptime TaggedUnion: type) type {
-    const U = struct {
+pub fn GenericOptionalArrays(comptime Int: type, comptime TaggedUnion: type) type {
+    const U = packed struct {
         buf: [*]Elem = @ptrFromInt(@alignOf(Elem)),
-        buf_max_len: usize = 0,
-        buf_len: usize = 0,
+        buf_max_len: Size = 0,
+        buf_len: Size = 0,
         const Im = @This();
         const ImTag = @typeInfo(TaggedUnion).Union.tag_type.?;
-        const Elem = struct { addr: usize, max_len: usize, tag_len: usize };
+        const Elem = packed struct {
+            addr: usize,
+            max_len: Size,
+            tag_len: Size,
+        };
         const bit_size_of: comptime_int = @bitSizeOf(@typeInfo(ImTag).Enum.tag_type);
-        const shift_amt: comptime_int = @bitSizeOf(usize) -% bit_size_of;
-        const bit_mask: comptime_int = ~@as(usize, 0) >> bit_size_of;
+        const shift_amt: comptime_int = @bitSizeOf(Int) - bit_size_of;
+        const bit_mask: comptime_int = ~@as(Int, 0) >> bit_size_of;
+        const Size = @Type(.{ .Int = .{ .bits = @max(meta.alignBitSizeAbove(bit_size_of), @bitSizeOf(Int)), .signedness = .unsigned } });
         fn Child(comptime tag: ImTag) type {
             return meta.Field(TaggedUnion, @tagName(tag));
         }
@@ -2203,16 +2208,16 @@ pub fn GenericOptionalArrays(comptime TaggedUnion: type) type {
         }
         fn create(im: *Im, allocator: *mem.SimpleAllocator, tag: ImTag) *Elem {
             @setRuntimeSafety(builtin.is_safe);
-            const ret: *Elem = @ptrFromInt(allocator.addGeneric(24, 1, @ptrCast(&im.buf), &im.buf_max_len, im.buf_len));
+            const ret: *Elem = @ptrFromInt(allocator.addGenericSize(Size, @sizeOf(Elem), 1, @ptrCast(&im.buf), &im.buf_max_len, im.buf_len));
             im.buf_len +%= 1;
-            ret.tag_len = @as(usize, @intFromEnum(tag));
-            ret.tag_len <<= shift_amt;
+            ret.tag_len = @intFromEnum(tag);
+            ret.tag_len = @shlExact(ret.tag_len, shift_amt);
             return ret;
         }
         fn addInternal(im: *Im, allocator: *mem.SimpleAllocator, tag: ImTag, size_of: usize) usize {
             @setRuntimeSafety(builtin.is_safe);
             const elem: *Elem = im.getInternal(tag) orelse im.create(allocator, tag);
-            const ret: usize = allocator.addGeneric(size_of, 1, &elem.addr, &elem.max_len, elem.tag_len & bit_mask);
+            const ret: usize = allocator.addGenericSize(Size, size_of, 1, &elem.addr, &elem.max_len, elem.tag_len & bit_mask);
             elem.tag_len +%= 1;
             return ret;
         }
@@ -2220,19 +2225,21 @@ pub fn GenericOptionalArrays(comptime TaggedUnion: type) type {
             @setRuntimeSafety(builtin.is_safe);
             const elem: *Elem = im.create(allocator, tag);
             elem.addr = @intFromPtr(val.ptr);
-            elem.max_len = val.len;
-            elem.tag_len = val.len | (@as(usize, @intFromEnum(tag)) << shift_amt);
+            elem.max_len = @intCast(val.len);
+            elem.tag_len = elem.max_len | (@as(Size, @intFromEnum(tag)) << shift_amt);
         }
         pub fn get(im: *const Im, comptime tag: ImTag) []Child(tag) {
             @setRuntimeSafety(builtin.is_safe);
-            const res: *Elem = im.getInternal(tag).?;
-            return @as([*]Child(tag), @ptrFromInt(res.addr))[0 .. res.tag_len & bit_mask];
+            if (im.getInternal(tag)) |res| {
+                return @as([*]Child(tag), @ptrFromInt(res.addr))[0 .. res.tag_len & bit_mask];
+            }
+            return @constCast(&.{});
         }
         pub fn add(im: *Im, allocator: *mem.SimpleAllocator, comptime tag: ImTag) *Child(tag) {
             @setRuntimeSafety(builtin.is_safe);
             return @ptrFromInt(addInternal(im, allocator, tag, sizeOf(tag)));
         }
-        pub fn len(im: *Im, comptime tag: ImTag) usize {
+        pub fn len(im: *Im, comptime tag: ImTag) Size {
             @setRuntimeSafety(builtin.is_safe);
             if (im.getInternal(tag)) |res| {
                 return res.tag_len & bit_mask;
