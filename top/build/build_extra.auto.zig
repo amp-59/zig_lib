@@ -1,5 +1,8 @@
 const build = @import("./types.zig");
-const source = build.GenericCommand(build.BuildCommand);
+comptime {
+    _ = @import("../mach.zig");
+}
+const source = build.GenericExtraCommand(build.BuildCommand);
 renderWriteBuf: *const fn (
     p_0: *const build.BuildCommand,
     p_1: [*]u8,

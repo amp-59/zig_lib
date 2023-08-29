@@ -1,4 +1,7 @@
 const build = @import("./types.zig");
+comptime {
+    _ = @import("../mach.zig");
+}
 const source = build.GenericCommand(build.BuildCommand);
 formatWriteBuf: *const fn (
     p_0: *build.BuildCommand,
