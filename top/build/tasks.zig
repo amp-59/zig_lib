@@ -4231,7 +4231,7 @@ pub const HarecCommand = struct {
         }
     }
 };
-const build_help: [:0]const u8 = 
+const build_help: [:0]const u8 =
     \\    build-
     \\    -f[no-]emit-bin                 (default=yes) Output machine code
     \\    -f[no-]emit-asm                 (default=no) Output assembly code (.s)
@@ -4344,7 +4344,7 @@ const build_help: [:0]const u8 =
     \\    --debug-compile-errors          Crash with helpful diagnostics at the first compile error
     \\    --debug-link-snapshot           Enable dumping of the linker's state in JSON
 ;
-const format_help: [:0]const u8 = 
+const format_help: [:0]const u8 =
     \\    fmt
     \\    --color         Enable or disable colored error messages
     \\    --stdin         Format code from stdin; output to stdout
@@ -4352,7 +4352,7 @@ const format_help: [:0]const u8 =
     \\    --ast-check     Run zig ast-check on every file
     \\    --exclude       Exclude file or directory from formatting
 ;
-const archive_help: [:0]const u8 = 
+const archive_help: [:0]const u8 =
     \\    ar
     \\    --format    Archive format to create
     \\    --plugin    Ignored for compatibility
@@ -4369,7 +4369,7 @@ const archive_help: [:0]const u8 =
     \\    S           do not build a symbol table
     \\    u           update only [files] newer than archive contents
 ;
-const objcopy_help: [:0]const u8 = 
+const objcopy_help: [:0]const u8 =
     \\    objcopy
     \\    --output-target
     \\    --only-section
@@ -4380,7 +4380,7 @@ const objcopy_help: [:0]const u8 =
     \\    --add-gnu-debuglink
     \\    --extract-to
 ;
-const tblgen_help: [:0]const u8 = 
+const tblgen_help: [:0]const u8 =
     \\    --color                         Use colors in output (default=autodetect)
     \\    -I                              Add directories to include search path
     \\    -d                              Add file dependencies
@@ -4425,7 +4425,7 @@ const tblgen_help: [:0]const u8 =
     \\    --gen-riscv-target_def          Generate the list of CPU for RISCV
     \\    -o                              Output file
 ;
-const harec_help: [:0]const u8 = 
+const harec_help: [:0]const u8 =
     \\    -a
     \\    -o      Output file
     \\    -T

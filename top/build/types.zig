@@ -584,11 +584,12 @@ pub fn GenericBuildCommand(comptime BuildCommand: type) type {
         }
     };
 }
-pub fn GenericCommand(comptime Command: type) type {
+pub fn GenericExtraCommand(comptime Command: type) type {
     const render_spec: fmt.RenderSpec = .{
         .infer_type_names = true,
         .forward = true,
     };
+    const Editor = gen.StructEditor(render_spec, Command);
     const field_name: []const u8 = switch (Command) {
         types.BuildCommand => "build",
         types.FormatCommand => "format",
@@ -597,15 +598,11 @@ pub fn GenericCommand(comptime Command: type) type {
         types.TableGenCommand => "tblgen",
         else => "unknown",
     };
-    const Editor = gen.StructEditor(render_spec, Command);
     const T = struct {
         pub const manifest = .{
             .fieldEditDistance = gen.FnExport{ .prefix = field_name ++ "." },
             .writeFieldEditDistance = gen.FnExport{ .prefix = field_name ++ "." },
             .indexOfCommonLeastDifference = gen.FnExport{ .prefix = field_name ++ "." },
-            .formatWriteBuf = gen.FnExport{ .prefix = field_name ++ "." },
-            .formatParseArgs = gen.FnExport{ .prefix = field_name ++ "." },
-            .formatLength = gen.FnExport{ .prefix = field_name ++ "." },
             .renderWriteBuf = gen.FnExport{ .prefix = field_name ++ "." },
         };
         pub fn renderWriteBuf(cmd: *const Command, buf: [*]u8) callconv(.C) usize {
@@ -614,6 +611,24 @@ pub fn GenericCommand(comptime Command: type) type {
         pub const fieldEditDistance = Editor.fieldEditDistance;
         pub const writeFieldEditDistance = Editor.writeFieldEditDistance;
         pub const indexOfCommonLeastDifference = Editor.indexOfCommonLeastDifference;
+    };
+    return T;
+}
+pub fn GenericCommand(comptime Command: type) type {
+    const field_name: []const u8 = switch (Command) {
+        types.BuildCommand => "build",
+        types.FormatCommand => "format",
+        types.ArchiveCommand => "archive",
+        types.ObjcopyCommand => "objcopy",
+        types.TableGenCommand => "tblgen",
+        else => "unknown",
+    };
+    const T = struct {
+        pub const manifest = .{
+            .formatWriteBuf = gen.FnExport{ .prefix = field_name ++ "." },
+            .formatParseArgs = gen.FnExport{ .prefix = field_name ++ "." },
+            .formatLength = gen.FnExport{ .prefix = field_name ++ "." },
+        };
         pub const formatWriteBuf = Command.formatWriteBuf;
         pub const formatLength = Command.formatLength;
         pub const formatParseArgs = Command.formatParseArgs;
