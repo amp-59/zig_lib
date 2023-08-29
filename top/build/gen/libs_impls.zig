@@ -337,12 +337,11 @@ fn writeSymbol(array: *common.Array, comptime T: type, v: MinorVariant) void {
         }
     }
 }
-const BuildCommands = build.GenericCommand(build.BuildCommand);
-const FormatCommands = build.GenericCommand(build.FormatCommand);
-const ObjcopyCommands = build.GenericCommand(build.ObjcopyCommand);
-const ArchiveCommands = build.GenericCommand(build.ArchiveCommand);
 fn writeImportBuild(array: *Array) void {
     array.writeMany("const build = @import(\"./types.zig\");\n");
+}
+fn writeImportMach(array: *Array) void {
+    array.writeMany("comptime {_=@import(\"../mach.zig\");}");
 }
 fn writePubUsingnamespace(array: *Array) void {
     array.writeMany("pub usingnamespace if(@import(\"builtin\").output_mode==.Exe)struct{\n");
@@ -358,6 +357,11 @@ fn writeIfClose(array: *Array) void {
 }
 fn writeGenericCommand(array: *Array, type_name: []const u8) void {
     array.writeMany("const source = build.GenericCommand(");
+    array.writeMany(type_name);
+    array.writeMany(");\n");
+}
+fn writeGenericExtraCommand(array: *Array, type_name: []const u8) void {
+    array.writeMany("const source = build.GenericExtraCommand(");
     array.writeMany(type_name);
     array.writeMany(");\n");
 }
@@ -398,57 +402,68 @@ fn writeInternal(array: *Array, comptime mv: MajorVariant, comptime T: type) voi
         },
     }
 }
-fn writeBuildCommandLibrary(array: *Array, comptime mv: MajorVariant) !void {
+
+fn writeCommandCoreLibrary(array: *Array, comptime Command: type, comptime type_name: []const u8, comptime mv: MajorVariant) !void {
     writeImportBuild(array);
-    writeGenericCommand(array, "build.BuildCommand");
+    writeImportMach(array);
+    writeGenericCommand(array, type_name);
     types.ProtoTypeDescr.scope = &.{
         comptime types.ProtoTypeDescr.declare("build.Path", build.Path).type_decl,
-        comptime types.ProtoTypeDescr.declare("build.BuildCommand", build.BuildCommand).type_decl,
+        comptime types.ProtoTypeDescr.declare(type_name, Command).type_decl,
         comptime types.ProtoTypeDescr.declare("build.Allocator", build.Allocator).type_decl,
     };
-    writeInternal(array, mv, BuildCommands);
-    try writeOut(array, mv, "build");
-    array.undefineAll();
+    writeInternal(array, mv, build.GenericCommand(Command));
 }
-fn writeFormatCommandLibrary(array: *Array, comptime mv: MajorVariant) !void {
+fn writeCommandExtraLibrary(array: *Array, comptime Command: type, comptime type_name: []const u8, comptime mv: MajorVariant) !void {
     writeImportBuild(array);
-    writeGenericCommand(array, "build.FormatCommand");
+    writeImportMach(array);
+    writeGenericExtraCommand(array, type_name);
     types.ProtoTypeDescr.scope = &.{
         comptime types.ProtoTypeDescr.declare("build.Path", build.Path).type_decl,
-        comptime types.ProtoTypeDescr.declare("build.FormatCommand", build.FormatCommand).type_decl,
+        comptime types.ProtoTypeDescr.declare(type_name, Command).type_decl,
         comptime types.ProtoTypeDescr.declare("build.Allocator", build.Allocator).type_decl,
     };
-    writeInternal(array, mv, FormatCommands);
-    try writeOut(array, mv, "format");
+    writeInternal(array, mv, build.GenericExtraCommand(Command));
+}
+fn writeOutCommandCoreLibrary(
+    array: *Array,
+    comptime mv: MajorVariant,
+    comptime name: [:0]const u8,
+    comptime Command: type,
+    comptime type_name: []const u8,
+) !void {
+    try writeCommandCoreLibrary(array, Command, type_name, mv);
+    try writeOut(array, mv, name);
     array.undefineAll();
 }
-fn writeArchiveCommandLibrary(array: *Array, comptime mv: MajorVariant) !void {
-    writeImportBuild(array);
-    writeGenericCommand(array, "build.ArchiveCommand");
-    types.ProtoTypeDescr.scope = &.{
-        comptime types.ProtoTypeDescr.declare("build.Path", build.Path).type_decl,
-        comptime types.ProtoTypeDescr.declare("build.ArchiveCommand", build.ArchiveCommand).type_decl,
-        comptime types.ProtoTypeDescr.declare("build.Allocator", build.Allocator).type_decl,
-    };
-    writeInternal(array, mv, ArchiveCommands);
-    try writeOut(array, mv, "archive");
+fn writeOutCommandExtraLibrary(
+    array: *Array,
+    comptime mv: MajorVariant,
+    comptime name: [:0]const u8,
+    comptime Command: type,
+    comptime type_name: []const u8,
+) !void {
+    try writeCommandExtraLibrary(array, Command, type_name, mv);
+    try writeOut(array, mv, name);
     array.undefineAll();
 }
-fn writeObjcopyCommandLibrary(array: *Array, comptime mv: MajorVariant) !void {
-    writeImportBuild(array);
-    writeGenericCommand(array, "build.ObjcopyCommand");
-    types.ProtoTypeDescr.scope = &.{
-        comptime types.ProtoTypeDescr.declare("build.Path", build.Path).type_decl,
-        comptime types.ProtoTypeDescr.declare("build.ObjcopyCommand", build.ObjcopyCommand).type_decl,
-        comptime types.ProtoTypeDescr.declare("build.Allocator", build.Allocator).type_decl,
-    };
-    writeInternal(array, mv, ObjcopyCommands);
-    try writeOut(array, mv, "objcopy");
-    array.undefineAll();
+fn writeCoreLibraries(array: *Array, comptime mv: MajorVariant) !void {
+    try writeOutCommandCoreLibrary(array, mv, "build_core", build.BuildCommand, "build.BuildCommand");
+    try writeOutCommandCoreLibrary(array, mv, "format_core", build.FormatCommand, "build.FormatCommand");
+    try writeOutCommandCoreLibrary(array, mv, "objcopy_core", build.ObjcopyCommand, "build.ObjcopyCommand");
+    try writeOutCommandCoreLibrary(array, mv, "archive_core", build.ArchiveCommand, "build.ArchiveCommand");
 }
+fn writeExtraLibraries(array: *Array, comptime mv: MajorVariant) !void {
+    try writeOutCommandExtraLibrary(array, mv, "build_extra", build.BuildCommand, "build.BuildCommand");
+    try writeOutCommandExtraLibrary(array, mv, "format_extra", build.FormatCommand, "build.FormatCommand");
+    try writeOutCommandExtraLibrary(array, mv, "objcopy_extra", build.ObjcopyCommand, "build.ObjcopyCommand");
+    try writeOutCommandExtraLibrary(array, mv, "archive_extra", build.ArchiveCommand, "build.ArchiveCommand");
+}
+
 fn writePerfEventsLibrary(array: *Array, comptime mv: MajorVariant) !void {
     const perf = @import("../perf.zig");
     array.writeMany("const source=@import(\"perf.zig\");\n");
+    writeImportMach(array);
     const fds_fmt = comptime types.ProtoTypeDescr.declare("Fds", perf.Fds);
     array.writeFormat(fds_fmt);
     types.ProtoTypeDescr.scope = &.{fds_fmt.type_decl};
@@ -456,6 +471,7 @@ fn writePerfEventsLibrary(array: *Array, comptime mv: MajorVariant) !void {
     try writeOut(array, mv, "perf");
     array.undefineAll();
 }
+
 fn writeOut(array: *Array, comptime mv: MajorVariant, comptime name: [:0]const u8) !void {
     if (commit) {
         try gen.truncateFile(.{ .return_type = void }, config.primarySourceFile(name ++ switch (mv) {
@@ -473,10 +489,8 @@ pub fn main() !void {
     const array: *common.Array = allocator.create(common.Array);
     switch (MajorVariant.autoloader) {
         inline else => |variant| {
-            try writeBuildCommandLibrary(array, variant);
-            try writeFormatCommandLibrary(array, variant);
-            try writeArchiveCommandLibrary(array, variant);
-            try writeObjcopyCommandLibrary(array, variant);
+            try writeCoreLibraries(array, variant);
+            try writeExtraLibraries(array, variant);
             try writePerfEventsLibrary(array, variant);
         },
     }
