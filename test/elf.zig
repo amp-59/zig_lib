@@ -171,7 +171,6 @@ fn testEntryAutoLoader() !void {
         try debug.expect(len == 2);
     }
 }
-
 inline fn makeArgs(comptime args: []const [:0]const u8) [][*:0]u8 {
     comptime {
         var ret: [args.len][*:0]u8 = undefined;
