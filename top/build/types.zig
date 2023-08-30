@@ -12,7 +12,6 @@ const tasks = @import("./tasks.zig");
 pub usingnamespace tasks;
 pub const Allocator = mem.SimpleAllocator;
 pub const VTable = struct {
-    node_core_fns: @import("./node_core.auto.zig") = .{},
     build_cmd_core_fns: @import("./build_core.auto.zig") = .{},
     build_cmd_extra_fns: @import("./build_extra.auto.zig") = .{},
     format_cmd_core_fns: @import("./format_core.auto.zig") = .{},
@@ -568,12 +567,12 @@ pub const Record = packed struct {
     /// Output size in bytes, max 4GiB
     size: u32,
     /// Extra
-    detail: hist_tasks.BuildCommand,
+    detail: @import("./hist_tasks.zig").BuildCommand,
     pub fn init(build_cmd: *types.BuildCommand, st: *const file.Status, ts: *const time.TimeSpec) Record {
         return .{
             .durat = @as(u32, @intCast((ts.sec * 1_000) +% (ts.nsec / 1_000_000))),
             .size = @as(u32, @intCast(st.size)),
-            .detail = hist_tasks.BuildCommand.convert(build_cmd),
+            .detail = @import("./hist_tasks.zig").BuildCommand.convert(build_cmd),
         };
     }
 };

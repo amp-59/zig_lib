@@ -1,12 +1,12 @@
 const builtin = @import("../../builtin.zig");
 pub const runtime_assertions: bool = false;
 pub const logging_default = .{
-    .Success = true,
-    .Acquire = true,
-    .Release = true,
-    .Attempt = true,
-    .Error = true,
-    .Fault = true,
+    .Success = false,
+    .Acquire = false,
+    .Release = false,
+    .Attempt = false,
+    .Error = false,
+    .Fault = false,
 };
 /// Auxiliary products of builder implementation generator go here. These are
 /// generated source files (src) or serialised data (bin). They exist to speed
