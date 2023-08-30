@@ -5,10 +5,23 @@ const proc = @import("../proc.zig");
 const time = @import("../time.zig");
 const file = @import("../file.zig");
 const builtin = @import("../builtin.zig");
+const tab = @import("./tab.zig");
+const com = @import("./com.zig");
 const types = @This();
-pub usingnamespace @import("./tasks.zig");
-pub const hist_tasks = @import("./hist_tasks.zig");
+const tasks = @import("./tasks.zig");
+pub usingnamespace tasks;
 pub const Allocator = mem.SimpleAllocator;
+pub const VTable = struct {
+    node_core_fns: @import("./node_core.auto.zig") = .{},
+    build_cmd_core_fns: @import("./build_core.auto.zig") = .{},
+    build_cmd_extra_fns: @import("./build_extra.auto.zig") = .{},
+    format_cmd_core_fns: @import("./format_core.auto.zig") = .{},
+    format_cmd_extra_fns: @import("./format_extra.auto.zig") = .{},
+    archive_cmd_core_fns: @import("./archive_core.auto.zig") = .{},
+    archive_cmd_extra_fns: @import("./archive_extra.auto.zig") = .{},
+    objcopy_cmd_core_fns: @import("./objcopy_core.auto.zig") = .{},
+    objcopy_cmd_extra_fns: @import("./objcopy_extra.auto.zig") = .{},
+};
 pub const Node = enum(u8) {
     group,
     worker,
