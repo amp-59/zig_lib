@@ -1,26 +1,24 @@
-const build = @import("./types.zig");
-comptime {
-    _ = @import("../mach.zig");
-}
-const source = build.GenericExtraCommand(build.ArchiveCommand);
+const types = @import("./types.zig");
+pub usingnamespace @import("../start.zig");
+const source = types.GenericExtraCommand(types.ArchiveCommand);
 renderWriteBuf: *const fn (
-    p_0: *const build.ArchiveCommand,
+    p_0: *const types.ArchiveCommand,
     p_1: [*]u8,
 ) usize = @ptrFromInt(8),
 fieldEditDistance: *const fn (
-    p_0: *build.ArchiveCommand,
-    p_1: *build.ArchiveCommand,
+    p_0: *types.ArchiveCommand,
+    p_1: *types.ArchiveCommand,
 ) usize = @ptrFromInt(8),
 writeFieldEditDistance: *const fn (
     p_0: [*]u8,
     p_1: []const u8,
-    p_2: *build.ArchiveCommand,
-    p_3: *build.ArchiveCommand,
+    p_2: *types.ArchiveCommand,
+    p_3: *types.ArchiveCommand,
     p_4: bool,
 ) usize = @ptrFromInt(8),
 indexOfCommonLeastDifference: *const fn (
-    p_0: *build.Allocator,
-    p_1: []*build.ArchiveCommand,
+    p_0: *types.Allocator,
+    p_1: []*types.ArchiveCommand,
 ) usize = @ptrFromInt(8),
 fn load(ptrs: *@This()) callconv(.C) void {
     ptrs.renderWriteBuf = @ptrCast(&source.renderWriteBuf);
