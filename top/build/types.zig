@@ -112,6 +112,11 @@ pub const State = enum(u8) {
     }
 };
 pub const Lock = mem.ThreadSafeSet(7, State, Task);
+pub const Extension = struct {
+    name: []const u8,
+    path: []const u8,
+    offset: usize = 0,
+};
 pub const Config = struct {
     name: []const u8,
     value: Value,
@@ -447,6 +452,12 @@ pub const CFlags = struct {
         len +%= 3;
         return len;
     }
+};
+pub const EnvPaths = struct {
+    zig_exe: ?[]const u8 = null,
+    build_root: ?[]const u8 = null,
+    cache_root: ?[]const u8 = null,
+    global_cache_root: ?[]const u8 = null,
 };
 pub const Path = extern struct {
     names: [*][:0]const u8,
