@@ -765,3 +765,501 @@ pub const ReferenceTrace = extern struct {
     };
     pub const len: u64 = 2;
 };
+pub const Flags = packed struct {
+    /// Self-explanatory. An alternative to this flag is testing whether
+    /// node == node.impl.nodes[0], as the toplevel is its own parent node.
+    is_toplevel: bool = false,
+    /// Whether the node is maintained and defined by this library.
+    is_special: bool = false,
+    /// Whether the node will be shown by list commands.
+    is_hidden: bool = false,
+    /// Whether the node task command has been invoked directly from
+    /// `processCommands` by the user command line.
+    /// Determines whether command line arguments are appended.
+    is_primary: bool = false,
+    /// Whether independent nodes will be processed in parallel.
+    is_single_threaded: bool = false,
+    /// Whether a run task will be performed using the compiler server.
+    is_build_command: bool = false,
+    /// Whether a node will be processed before being returned to `buildMain`.
+    do_init: bool = true,
+    /// Whether a node will be processed after returning from `buildMain`.
+    do_update: bool = true,
+    /// Whether a node will be processed on invokation of a user defined update command.
+    do_user_update: bool = false,
+    /// Whether a node will be processed on request to regenerate the build program.
+    do_regenerate: bool = true,
+    /// Builder will create a configuration root. Enables usage of
+    /// configuration constants.
+    want_build_config: bool = false,
+    /// Whether to monitor build/run performance counters.
+    want_perf_events: bool = false,
+    /// Builder will unconditionally add `trace` object to
+    /// compile command.
+    want_stack_traces: bool = false,
+    /// Only meaningful when zig lib is not acting as standard.
+    want_zig_lib_rt: bool = false,
+    /// Define the compiler path, build root, cache root, and global
+    /// cache root as declarations to the build configuration root.
+    want_build_context: bool = true,
+    /// Whether modification times of output binaries and root sources may
+    /// be used to determine a cache hit. Useful for generated files.
+    /// This check is performed by the builder.
+    want_shallow_cache_check: bool = false,
+};
+
+pub const Node5 = struct {
+    tag: types.Node,
+    /// The node's 'first' name. Must be unique within the parent group.
+    /// Names will only be checked for uniqueness once: when the node is
+    /// added to its group with any of the `add(Build|Format|Archive|...)`
+    /// functions. If a non-unique name is contrived by manually editing
+    /// this field the state is undefined.
+    name: [:0]u8,
+    /// Description text to be printed with task listing.
+    descr: [:0]const u8,
+
+    tasks: Tasks,
+    flags: Flags,
+    lists: Lists,
+    extra: Extra,
+
+    const Tasks = struct {
+        /// Primary (default) task for this node.
+        tag: types.Task,
+        /// Compile command information for this node. Can be a pointer to any
+        /// command struct.
+        cmd: types.Command,
+        /// State information for any tasks associated with this node.
+        lock: types.Lock,
+    };
+    const Size = u16;
+    pub const Depn = struct {
+        /// The node holding this dependency will block on this task ...
+        task: types.Task,
+        /// Until node given by nodes[on_idx] has ...
+        on_idx: Size,
+        /// This task ...
+        on_task: types.Task,
+        /// Is in this state.
+        on_state: types.State,
+    };
+    pub const Lists = mem.GenericOptionalArrays(Size, union(enum) {
+        nodes: *Node5,
+        deps: Depn,
+        paths: types.Path,
+
+        args: [*:0]u8,
+        vars: [*:0]u8,
+        cmd_args: [*:0]u8,
+        run_args: [*:0]u8,
+
+        cfgs: types.Config,
+    });
+    pub const Extra = mem.GenericOptionals(union(enum) {
+        dir_fds: DirFds,
+        wait: Wait,
+        load: Loadables,
+        basic_stats: BasicStats,
+    });
+    pub const Stats = struct {
+        basic: BasicStats,
+        extra: ExtraStats,
+    };
+    pub const Wait = struct {
+        len: usize,
+        tick: usize,
+    };
+    pub const DirFds = struct {
+        build_root: usize,
+        config_root: usize,
+        output_root: usize,
+    };
+    pub const BasicStats = struct {
+        status: u8,
+        server: u8,
+        del_time: time.TimeSpec,
+        del_size: struct { old_size: usize, new_size: usize },
+    };
+    pub const ExtraStats = struct {
+        elf_info_addr: usize,
+        perf_events_addr: usize,
+    };
+    pub const Loadables = union {
+        dyn_loader_addr: usize,
+        vtable_addr: usize,
+    };
+    var toplevel: *Node5 = undefined;
+    pub fn init(allocator: *mem.SimpleAllocator, name: [:0]const u8, args: [][*:0]u8, vars: [][*:0]u8) *Node5 {
+        @setRuntimeSafety(builtin.is_safe);
+        const node: *Node5 = @ptrFromInt(allocator.allocateRaw(@sizeOf(Node5), @alignOf(Node5)));
+        toplevel = node;
+        node.flags = .{ .is_toplevel = true };
+        node.lists.add(allocator, .nodes).* = node;
+        node.name = com.duplicate(allocator, name);
+        node.tag = .group;
+        node.lists.add(allocator, .paths).addName(allocator).* = com.duplicate(allocator, mem.terminate(args[1], 0));
+        node.lists.add(allocator, .paths).addName(allocator).* = com.duplicate(allocator, mem.terminate(args[2], 0));
+        node.lists.add(allocator, .paths).addName(allocator).* = com.duplicate(allocator, mem.terminate(args[3], 0));
+        node.lists.add(allocator, .paths).addName(allocator).* = com.duplicate(allocator, mem.terminate(args[4], 0));
+        node.tasks.tag = .any;
+        node.tasks.lock = tab.omni_lock;
+        node.lists.set(allocator, .args, args);
+        node.lists.set(allocator, .vars, vars);
+        Builder.initializeGroup(allocator, node);
+        Builder.initializeExtensions(allocator, node);
+        return node;
+    }
+    pub fn addGroup(group: *Node5, allocator: *mem.SimpleAllocator, name: []const u8, paths: types.EnvPaths) *Node5 {
+        @setRuntimeSafety(builtin.is_safe);
+        const node: *Node5 = @ptrFromInt(allocator.allocateRaw(@sizeOf(Node5), @alignOf(Node5)));
+        group.lists.add(allocator, .nodes).* = node;
+        node.lists.add(allocator, .nodes).* = group;
+        node.tag = .group;
+        node.flags = .{};
+        node.name = com.duplicate(allocator, name);
+        node.tasks.tag = .any;
+        node.tasks.lock = tab.omni_lock;
+        node.lists.add(allocator, .paths).addName(allocator).* = com.duplicate(allocator, paths.zig_exe orelse group.zigExe());
+        node.lists.add(allocator, .paths).addName(allocator).* = com.duplicate(allocator, paths.build_root orelse group.buildRoot());
+        node.lists.add(allocator, .paths).addName(allocator).* = com.duplicate(allocator, paths.cache_root orelse group.cacheRoot());
+        node.lists.add(allocator, .paths).addName(allocator).* = com.duplicate(allocator, paths.global_cache_root orelse group.globalCacheRoot());
+        Builder.initializeGroup(allocator, node);
+        return node;
+    }
+    pub fn addBuild(group: *Node5, allocator: *mem.SimpleAllocator, build_cmd: types.BuildCommand, name: []const u8, root: []const u8) *Node5 {
+        @setRuntimeSafety(builtin.is_safe);
+        const node: *Node5 = @ptrFromInt(allocator.allocateRaw(@sizeOf(Node5), @alignOf(Node5)));
+        node.tasks.cmd.build = @ptrFromInt(allocator.allocateRaw(@sizeOf(types.BuildCommand), @alignOf(types.BuildCommand)));
+        const binary_path: *types.Path = node.lists.add(allocator, .paths);
+        const root_path: *types.Path = node.lists.add(allocator, .paths);
+        group.lists.add(allocator, .nodes).* = node;
+        node.lists.add(allocator, .nodes).* = group;
+        node.tag = .worker;
+        node.tasks.tag = .build;
+        node.flags = .{};
+        node.name = com.duplicate(allocator, name);
+        node.tasks.cmd.build.* = build_cmd;
+        binary_path.addName(allocator).* = group.buildRoot();
+        binary_path.addName(allocator).* = Builder.binaryRelative(allocator, node, build_cmd.kind);
+        root_path.addName(allocator).* = group.buildRoot();
+        root_path.addName(allocator).* = com.duplicate(allocator, root);
+        Builder.initializeCommand(allocator, node);
+        return node;
+    }
+    pub fn addRun(group: *Node5, allocator: *mem.SimpleAllocator, name: []const u8, args: []const []const u8) *Node5 {
+        @setRuntimeSafety(builtin.is_safe);
+        const node: *Node5 = @ptrFromInt(allocator.allocateRaw(@sizeOf(Node5), @alignOf(Node5)));
+        group.lists.add(allocator, .nodes).* = node;
+        node.lists.add(allocator, .nodes).* = group;
+        node.tag = .worker;
+        node.tasks.tag = .run;
+        node.flags = .{};
+        node.name = com.duplicate(allocator, name);
+        for (args) |arg| node.lists.add(allocator, .run_args).* = com.duplicate(allocator, arg);
+        Builder.initializeCommand(allocator, node);
+        return node;
+    }
+    pub fn addDepn(node: *Node5, allocator: *mem.SimpleAllocator, task: types.Task, on_node: *Node5, on_task: types.Task) void {
+        @setRuntimeSafety(builtin.is_safe);
+        const idx: Size = node.lists.len(.nodes);
+        const dep: *Depn = node.lists.add(allocator, .deps);
+        node.lists.add(allocator, .nodes).* = on_node;
+        if (task == .run) {
+            if (on_task == .build and node == on_node) {
+                node.lists.add(allocator, .args).* = node.lists.get(.paths)[0].concatenate(allocator);
+            }
+        }
+        const on_paths: []types.Path = on_node.lists.get(.paths);
+        if (task == .build) {
+            if (on_task == .archive) {
+                node.lists.add(allocator, .paths).* = on_paths[0];
+            }
+            if (on_task == .build and
+                on_node.tasks.cmd.build.kind == .obj)
+            {
+                node.lists.add(allocator, .paths).* = on_paths[0];
+            }
+        }
+        if (task == .archive) {
+            if (on_task == .build and
+                on_node.tasks.cmd.build.kind == .obj)
+            {
+                node.lists.add(allocator, .paths).* = on_paths[0];
+            }
+        }
+        dep.* = .{ .task = task, .on_task = on_task, .on_state = .finished, .on_idx = idx };
+    }
+    pub fn dependOn(node: *Node5, allocator: *mem.SimpleAllocator, on_node: *Node5) void {
+        node.addDepn(
+            allocator,
+            if (node == on_node) .run else node.tasks.tag,
+            on_node,
+            on_node.tasks.tag,
+        );
+    }
+    pub fn groupNode(node: *Node5) *Node5 {
+        @setRuntimeSafety(builtin.is_safe);
+        return node.lists.get(.nodes)[0];
+    }
+    pub fn zigExe(node: *Node5) [:0]const u8 {
+        @setRuntimeSafety(builtin.is_safe);
+        if (node.tag == .worker) {
+            return node.groupNode().zigExe();
+        }
+        return node.lists.get(.paths)[0].names[0];
+    }
+    pub fn buildRoot(node: *Node5) [:0]const u8 {
+        @setRuntimeSafety(builtin.is_safe);
+        if (node.tag == .worker) {
+            return node.groupNode().buildRoot();
+        }
+        return node.lists.get(.paths)[1].names[0];
+    }
+    pub fn cacheRoot(node: *Node5) [:0]const u8 {
+        @setRuntimeSafety(builtin.is_safe);
+        if (node.tag == .worker) {
+            return node.groupNode().cacheRoot();
+        }
+        return node.lists.get(.paths)[2].names[0];
+    }
+    pub fn globalCacheRoot(node: *Node5) [:0]const u8 {
+        @setRuntimeSafety(builtin.is_safe);
+        if (node.tag == .worker) {
+            return node.groupNode().globalCacheRoot();
+        }
+        return node.lists.get(.paths)[3].names[0];
+    }
+    pub fn buildRootFd(node: *Node5) usize {
+        @setRuntimeSafety(builtin.is_safe);
+        if (node.tag == .worker) {
+            return node.groupNode().buildRoot();
+        }
+        return node.extra.get(.dir_fds).build_root;
+    }
+    pub fn configRootFd(node: *Node5) usize {
+        @setRuntimeSafety(builtin.is_safe);
+        if (node.tag == .worker) {
+            return node.groupNode().configRootFd();
+        }
+        return node.extra.get(.dir_fds).config_root;
+    }
+    pub fn outputRootFd(node: *Node5) usize {
+        @setRuntimeSafety(builtin.is_safe);
+        if (node.tag == .worker) {
+            return node.groupNode().outputRootFd();
+        }
+        return node.extra.get(.dir_fds).output_root;
+    }
+    pub fn vTable() usize {
+        @setRuntimeSafety(builtin.is_safe);
+        return libraryNode().extra.get(.load).vtable_addr;
+    }
+    fn dynLoader() usize {
+        @setRuntimeSafety(builtin.is_safe);
+        return Node5.toplevel.extra.get(.loader_addr);
+    }
+    fn libraryNode() *Node5 {
+        @setRuntimeSafety(builtin.is_safe);
+        return Node5.toplevel.find("zero", '.').?;
+    }
+    pub fn extensionNode(name: [:0]const u8) *Node5 {
+        @setRuntimeSafety(builtin.is_safe);
+        return libraryNode().find(name, '.').?;
+    }
+    pub fn hasDebugInfo(node: *Node5) bool {
+        @setRuntimeSafety(builtin.is_safe);
+        if (node.tasks.cmd.build.strip) |strip| {
+            return !strip;
+        } else {
+            return (node.tasks.cmd.build.mode orelse .Debug) != .ReleaseSmall;
+        }
+    }
+    pub fn formatWriteNameFull(node: *const Node5, sep: u8, buf: [*]u8) usize {
+        @setRuntimeSafety(builtin.is_safe);
+        var ptr: [*]u8 = buf;
+        if (!node.flags.is_toplevel) {
+            ptr += node.lists.get(.nodes)[0].formatWriteNameFull(sep, ptr);
+            if (ptr != buf) {
+                ptr[0] = sep;
+                ptr += 1;
+            }
+            @memcpy(ptr, node.name);
+            ptr += node.name.len;
+        }
+        return @intFromPtr(ptr) -% @intFromPtr(buf);
+    }
+    pub fn formatLengthNameFull(node: *const Node5) usize {
+        @setRuntimeSafety(builtin.is_safe);
+        var len: usize = 0;
+        if (!node.flags.is_toplevel) {
+            len +%= node.lists.get(.nodes)[0].formatLengthNameFull();
+            len +%= @intFromBool(len != 0) +% node.name.len;
+        }
+        return len;
+    }
+    pub fn formatWriteNameRelative(node: *const Node5, group: *const Node5, sep: u8, buf: [*]u8) usize {
+        @setRuntimeSafety(builtin.is_safe);
+        var ptr: [*]u8 = buf;
+        if (node != group) {
+            ptr += node.lists.get(.nodes)[0].formatWriteNameRelative(sep, ptr);
+            if (ptr != buf) {
+                ptr[0] = sep;
+                ptr += 1;
+            }
+            @memcpy(ptr, node.name);
+            ptr += node.name.len;
+        }
+        return @intFromPtr(ptr) -% @intFromPtr(buf);
+    }
+    pub fn formatLengthNameRelative(node: *const Node5, group: *const Node5) usize {
+        @setRuntimeSafety(builtin.is_safe);
+        var len: usize = 0;
+        if (node != group) {
+            len +%= node.lists.get(.nodes)[0].formatLengthNameRelative(group);
+            len +%= @intFromBool(len != 0) +% node.name.len;
+        }
+        return len;
+    }
+    pub fn formatWriteConfigRootName(node: *const Node5, buf: [*]u8) usize {
+        @setRuntimeSafety(builtin.is_safe);
+        var ptr: [*]u8 = buf + node.formatWriteNameFull('-', buf);
+        ptr[0..4].* = ".zig".*;
+        ptr += 4;
+        ptr[0] = 0;
+        return @intFromPtr(ptr - @intFromPtr(buf));
+    }
+    pub fn formatWriteConfigRoot(node: *const Node5, buf: [*]u8) usize {
+        @setRuntimeSafety(builtin.is_safe);
+        const paths: []types.Path = node.lists.get(.paths);
+        const nodes: []*Node5 = node.lists.get(.nodes);
+        const deps: []Depn = node.lists.get(.deps);
+        const cfgs: []types.Config = node.lists.get(.cfgs);
+        const build_cmd: *types.BuildCommand = node.tasks.cmd.build;
+        var ptr: [*]u8 = buf;
+        ptr[0..31].* = "pub usingnamespace @import(\"../".*;
+        ptr += 31;
+        @memcpy(ptr, paths[1].names[1]);
+        ptr += paths[1].names[1].len;
+        ptr[0..4].* = "\");\n".*;
+        ptr += 4;
+        ptr[0..31].* = "pub const dependencies=struct{\n".*;
+        ptr += 31;
+        if (build_cmd.dependencies) |dependencies| {
+            for (dependencies) |dependency| {
+                ptr[0..12].* = "pub const @\"".*;
+                ptr += 12;
+                @memcpy(ptr, dependency.name);
+                ptr += dependency.name.len;
+                ptr[0..16].* = "\":?[:0]const u8=".*;
+                ptr += 16;
+                if (dependency.import) |import| {
+                    ptr[0] = '"';
+                    ptr += 1;
+                    @memcpy(ptr, import);
+                    ptr += import.len;
+                    ptr[0..3].* = "\";\n".*;
+                    ptr += 3;
+                } else {
+                    ptr[0..6].* = "null;\n".*;
+                    ptr += 6;
+                }
+            }
+        }
+        ptr[0..29].* = "};\npub const modules=struct{\n".*;
+        ptr += 29;
+        if (build_cmd.modules) |modules| {
+            for (modules) |module| {
+                ptr[0..12].* = "pub const @\"".*;
+                ptr += 12;
+                @memcpy(ptr, module.name);
+                ptr += module.name.len;
+                ptr[0..15].* = "\":[:0]const u8=".*;
+                ptr += 15;
+                ptr[0] = '"';
+                ptr += 1;
+                @memcpy(ptr, module.path);
+                ptr += module.path.len;
+                ptr[0..3].* = "\";\n".*;
+                ptr += 3;
+            }
+        }
+        for ([2]types.OutputMode{ .obj, .lib }) |out| {
+            if (out == .obj) {
+                ptr[0..35].* = "};\npub const compile_units=struct{\n".*;
+                ptr += 35;
+            } else {
+                ptr[0..35].* = "};\npub const dynamic_units=struct{\n".*;
+                ptr += 35;
+            }
+            for (deps) |dep| {
+                if (nodes[dep.on_idx] == node) {
+                    continue;
+                }
+                if (dep.on_task == .build and
+                    nodes[dep.on_idx].tasks.cmd.build.kind == out)
+                {
+                    const on_paths: []types.Path = nodes[dep.on_idx].lists.get(.paths);
+                    ptr[0..12].* = "pub const @\"".*;
+                    ptr += 12;
+                    @memcpy(ptr, nodes[dep.on_idx].name);
+                    ptr += nodes[dep.on_idx].name.len;
+                    ptr[0..15].* = "\":[:0]const u8=".*;
+                    ptr += 15;
+                    ptr[0] = '"';
+                    ptr += 1;
+                    ptr += on_paths[0].formatWriteBuf(ptr);
+                    ptr = ptr - 1;
+                    ptr[0..3].* = "\";\n".*;
+                    ptr += 3;
+                }
+            }
+        }
+        ptr[0..3].* = "};\n".*;
+        ptr += 3;
+        for (cfgs) |cfg| {
+            ptr += cfg.formatWriteBuf(ptr);
+        }
+        ptr[0..26].* = "pub const build_config=.@\"".*;
+        ptr += 26;
+        @memcpy(ptr, node.name);
+        ptr += node.name.len;
+        ptr[0..3].* = "\";\n".*;
+        ptr += 3;
+        return @intFromPtr(ptr - @intFromPtr(buf));
+    }
+    pub fn find(group: *Node5, name: []const u8, sep: u8) ?*Node5 {
+        @setRuntimeSafety(builtin.is_safe);
+        const nodes: []*Node5 = group.lists.get(.nodes);
+        var idx: usize = 0;
+        while (idx != name.len) : (idx +%= 1) {
+            if (name[idx] == sep) {
+                break;
+            }
+        } else {
+            idx = 1;
+            while (idx != nodes.len) : (idx +%= 1) {
+                if (mem.testEqualString(name, nodes[idx].name)) {
+                    return nodes[idx];
+                }
+            }
+            return null;
+        }
+        const group_name: []const u8 = name[0..idx];
+        idx +%= 1;
+        if (idx == name.len) {
+            return null;
+        }
+        const sub_name: []const u8 = name[idx..];
+        idx = 1;
+        while (idx != nodes.len) : (idx +%= 1) {
+            if (nodes[idx].tag == .group and
+                mem.testEqualString(group_name, nodes[idx].name))
+            {
+                return find(nodes[idx], sub_name, sep);
+            }
+        }
+        return null;
+    }
+    const Builder = builtin.root.Builder;
+};
