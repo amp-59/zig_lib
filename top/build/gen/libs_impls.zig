@@ -338,10 +338,10 @@ fn writeSymbol(array: *common.Array, comptime T: type, v: MinorVariant) void {
     }
 }
 fn writeImportBuild(array: *Array) void {
-    array.writeMany("const build = @import(\"./types.zig\");\n");
+    array.writeMany("const types = @import(\"./types.zig\");\n");
 }
 fn writeImportMach(array: *Array) void {
-    array.writeMany("comptime {_=@import(\"../mach.zig\");}");
+    array.writeMany("pub usingnamespace @import(\"../start.zig\");\n");
 }
 fn writePubUsingnamespace(array: *Array) void {
     array.writeMany("pub usingnamespace if(@import(\"builtin\").output_mode==.Exe)struct{\n");
@@ -356,12 +356,12 @@ fn writeIfClose(array: *Array) void {
     array.writeMany("}\n");
 }
 fn writeGenericCommand(array: *Array, type_name: []const u8) void {
-    array.writeMany("const source = build.GenericCommand(");
+    array.writeMany("const source = types.GenericCommand(");
     array.writeMany(type_name);
     array.writeMany(");\n");
 }
 fn writeGenericExtraCommand(array: *Array, type_name: []const u8) void {
-    array.writeMany("const source = build.GenericExtraCommand(");
+    array.writeMany("const source = types.GenericExtraCommand(");
     array.writeMany(type_name);
     array.writeMany(");\n");
 }
@@ -408,9 +408,9 @@ fn writeCommandCoreLibrary(array: *Array, comptime Command: type, comptime type_
     writeImportMach(array);
     writeGenericCommand(array, type_name);
     types.ProtoTypeDescr.scope = &.{
-        comptime types.ProtoTypeDescr.declare("build.Path", build.Path).type_decl,
+        comptime types.ProtoTypeDescr.declare("types.Path", build.Path).type_decl,
         comptime types.ProtoTypeDescr.declare(type_name, Command).type_decl,
-        comptime types.ProtoTypeDescr.declare("build.Allocator", build.Allocator).type_decl,
+        comptime types.ProtoTypeDescr.declare("types.Allocator", build.Allocator).type_decl,
     };
     writeInternal(array, mv, build.GenericCommand(Command));
 }
@@ -419,9 +419,9 @@ fn writeCommandExtraLibrary(array: *Array, comptime Command: type, comptime type
     writeImportMach(array);
     writeGenericExtraCommand(array, type_name);
     types.ProtoTypeDescr.scope = &.{
-        comptime types.ProtoTypeDescr.declare("build.Path", build.Path).type_decl,
+        comptime types.ProtoTypeDescr.declare("types.Path", build.Path).type_decl,
         comptime types.ProtoTypeDescr.declare(type_name, Command).type_decl,
-        comptime types.ProtoTypeDescr.declare("build.Allocator", build.Allocator).type_decl,
+        comptime types.ProtoTypeDescr.declare("types.Allocator", build.Allocator).type_decl,
     };
     writeInternal(array, mv, build.GenericExtraCommand(Command));
 }
@@ -448,16 +448,18 @@ fn writeOutCommandExtraLibrary(
     array.undefineAll();
 }
 fn writeCoreLibraries(array: *Array, comptime mv: MajorVariant) !void {
-    try writeOutCommandCoreLibrary(array, mv, "build_core", build.BuildCommand, "build.BuildCommand");
-    try writeOutCommandCoreLibrary(array, mv, "format_core", build.FormatCommand, "build.FormatCommand");
-    try writeOutCommandCoreLibrary(array, mv, "objcopy_core", build.ObjcopyCommand, "build.ObjcopyCommand");
-    try writeOutCommandCoreLibrary(array, mv, "archive_core", build.ArchiveCommand, "build.ArchiveCommand");
+    try writeOutCommandCoreLibrary(array, mv, "build_core", build.BuildCommand, "types.BuildCommand");
+    try writeOutCommandCoreLibrary(array, mv, "format_core", build.FormatCommand, "types.FormatCommand");
+    try writeOutCommandCoreLibrary(array, mv, "objcopy_core", build.ObjcopyCommand, "types.ObjcopyCommand");
+    try writeOutCommandCoreLibrary(array, mv, "archive_core", build.ArchiveCommand, "types.ArchiveCommand");
+    try writeOutCommandCoreLibrary(array, mv, "tblgen_core", build.TableGenCommand, "types.TableGenCommand");
+    try writeOutCommandCoreLibrary(array, mv, "harec_core", build.HarecCommand, "types.HarecCommand");
 }
 fn writeExtraLibraries(array: *Array, comptime mv: MajorVariant) !void {
-    try writeOutCommandExtraLibrary(array, mv, "build_extra", build.BuildCommand, "build.BuildCommand");
-    try writeOutCommandExtraLibrary(array, mv, "format_extra", build.FormatCommand, "build.FormatCommand");
-    try writeOutCommandExtraLibrary(array, mv, "objcopy_extra", build.ObjcopyCommand, "build.ObjcopyCommand");
-    try writeOutCommandExtraLibrary(array, mv, "archive_extra", build.ArchiveCommand, "build.ArchiveCommand");
+    try writeOutCommandExtraLibrary(array, mv, "build_extra", build.BuildCommand, "types.BuildCommand");
+    try writeOutCommandExtraLibrary(array, mv, "format_extra", build.FormatCommand, "types.FormatCommand");
+    try writeOutCommandExtraLibrary(array, mv, "objcopy_extra", build.ObjcopyCommand, "types.ObjcopyCommand");
+    try writeOutCommandExtraLibrary(array, mv, "archive_extra", build.ArchiveCommand, "types.ArchiveCommand");
 }
 
 fn writePerfEventsLibrary(array: *Array, comptime mv: MajorVariant) !void {
@@ -471,7 +473,20 @@ fn writePerfEventsLibrary(array: *Array, comptime mv: MajorVariant) !void {
     try writeOut(array, mv, "perf");
     array.undefineAll();
 }
-
+fn writeNodeCoreFnsLibrary(array: *Array, comptime mv: MajorVariant) void {
+    const Node5 = @import("../../build.zig").Node5;
+    types.ProtoTypeDescr.scope = &.{
+        comptime types.ProtoTypeDescr.declare("types.Node5", Node5).type_decl,
+        comptime types.ProtoTypeDescr.declare("types.Task", build.Task).type_decl,
+        comptime types.ProtoTypeDescr.declare("types.Lock", build.Lock).type_decl,
+    };
+    writeSymbol(array, Node5, .ptr_fields_source);
+    writeLoadSignature(array);
+    writeSymbol(array, Node5, .load_assign_source);
+    writeIfClose(array);
+    writeExportLoad(array);
+    try writeOut(array, mv, "node_core");
+}
 fn writeOut(array: *Array, comptime mv: MajorVariant, comptime name: [:0]const u8) !void {
     if (commit) {
         try gen.truncateFile(.{ .return_type = void }, config.primarySourceFile(name ++ switch (mv) {
@@ -492,6 +507,7 @@ pub fn main() !void {
             try writeCoreLibraries(array, variant);
             try writeExtraLibraries(array, variant);
             try writePerfEventsLibrary(array, variant);
+            try writeNodeCoreFnsLibrary(array, variant);
         },
     }
 }
