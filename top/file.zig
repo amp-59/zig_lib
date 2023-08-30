@@ -146,7 +146,6 @@ pub const Open = struct {
         const OPEN = sys.O;
     });
 };
-
 pub const Whence = enum(u64) { // set, cur, end
     set = SEEK.SET,
     cur = SEEK.CUR,

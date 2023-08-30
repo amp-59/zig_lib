@@ -92,18 +92,18 @@ pub const logging_default: debug.Logging.Default = define(
     "logging_default",
     debug.Logging.Default,
     .{
-        // Never report attempted actions
+        // Never report attempted actions.
         .Attempt = false,
-        // Never report successful actions
+        // Never report successful actions.
         .Success = false,
-        // Report actions where a resource is acquired when build mode is debug
+        // Report actions where a resource is acquired when build mode is debug.
         .Acquire = builtin.mode == .Debug,
-        // Report actions where a resource is released when build mode is debug
+        // Report actions where a resource is released when build mode is debug.
         .Release = builtin.mode == .Debug,
-        // Always report errors
-        .Error = true,
-        // Always report faults
-        .Fault = true,
+        // Report errors when not small.
+        .Error = builtin.mode != .ReleaseSmall,
+        // Report faults when not small.
+        .Fault = builtin.mode != .ReleaseSmall,
     },
 );
 /// These values (optionally) define all override field values for all logging
@@ -130,7 +130,7 @@ pub const signal_handlers: debug.SignalHandlers = define(
         .IllegalInstruction = debug.logging_general.Fault,
         .BusError = debug.logging_general.Fault,
         .FloatingPointError = debug.logging_general.Fault,
-        .Trap = logging_default.Fault,
+        .Trap = debug.logging_general.Fault,
     },
 );
 /// Enabled if `SegmentationFault` enabled. This is because the alternate stack
