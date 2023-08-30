@@ -30,9 +30,12 @@ pub fn main() !void {
     for (attr.all) |attributes| {
         common.writeParserFunctionHelp(array, attributes);
     }
-    array.writeMany("pub const Fns=struct{\n");
+    array.writeMany("pub const Command=struct{\n");
     for (attr.all) |attributes| {
-        common.writeFunctionExternSignatures(array, attributes);
+        array.writeMany(attributes.fn_name);
+        array.writeMany(":*");
+        array.writeMany(attributes.type_name);
+        array.writeMany(",\n");
     }
     array.writeMany("};\n");
     try gen.truncateFile(.{ .return_type = void }, config.tasks_path, array.readAll());
