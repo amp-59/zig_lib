@@ -54,6 +54,30 @@ pub fn cx(comptime value: anytype) []const u8 {
     const t_type_name: []const u8 = @typeName(T);
     return t_type_name[2 .. t_type_name.len -% (s_type_name.len +% 1)];
 }
+
+pub fn strcpy(dest: [*]u8, src: []const u8) usize {
+    @setRuntimeSafety(false);
+    for (src, 0..) |byte, idx| dest[idx] = byte;
+    return src.len;
+}
+pub fn strset(dest: [*]u8, byte: u8, len: usize) usize {
+    @setRuntimeSafety(false);
+    for (dest[0..len]) |*ptr| ptr.* = byte;
+    return len;
+}
+pub fn strcpyEqu(dest: [*]u8, src: []const u8) [*]u8 {
+    @setRuntimeSafety(false);
+    for (src, 0..) |byte, idx| dest[idx] = byte;
+    return dest + src.len;
+}
+pub fn strsetEqu(dest: [*]u8, byte: u8, len: usize) [*]u8 {
+    @setRuntimeSafety(false);
+    for (dest[0..len]) |*ptr| ptr.* = byte;
+    return dest + len;
+}
+pub fn strlen(dest: [*]u8, src: [*]u8) usize {
+    return @intFromPtr(dest) -% @intFromPtr(src);
+}
 pub fn stringLiteralChar(byte: u8) []const u8 {
     switch (byte) {
         inline else => |value| {
