@@ -4,7 +4,6 @@ const debug = @import("../debug.zig");
 const parse = @import("../parse.zig");
 const builtin = @import("../builtin.zig");
 const types = @import("./types.zig");
-const safety: bool = false;
 pub const PathUnion = union(enum) {
     yes: ?types.Path,
     no,
@@ -225,14 +224,12 @@ pub const BuildCommand = struct {
     pub fn formatWriteBuf(cmd: *types.BuildCommand, zig_exe: []const u8, files: []const types.Path, buf: [*]u8) usize {
         @setRuntimeSafety(false);
         var ptr: [*]u8 = buf;
-        @memcpy(ptr, zig_exe);
-        ptr += zig_exe.len;
+        ptr = fmt.strcpyEqu(ptr, zig_exe);
         ptr[0] = 0;
         ptr += 1;
         ptr[0..6].* = "build-".*;
         ptr += 6;
-        @memcpy(ptr, @tagName(cmd.kind));
-        ptr += @tagName(cmd.kind).len;
+        ptr = fmt.strcpyEqu(ptr, @tagName(cmd.kind));
         ptr[0] = 0;
         ptr += 1;
         if (cmd.emit_bin) |emit_bin| {
@@ -382,56 +379,49 @@ pub const BuildCommand = struct {
         if (cmd.cache_root) |cache_root| {
             ptr[0..12].* = "--cache-dir\x00".*;
             ptr += 12;
-            @memcpy(ptr, cache_root);
-            ptr += cache_root.len;
+            ptr = fmt.strcpyEqu(ptr, cache_root);
             ptr[0] = 0;
             ptr += 1;
         }
         if (cmd.global_cache_root) |global_cache_root| {
             ptr[0..19].* = "--global-cache-dir\x00".*;
             ptr += 19;
-            @memcpy(ptr, global_cache_root);
-            ptr += global_cache_root.len;
+            ptr = fmt.strcpyEqu(ptr, global_cache_root);
             ptr[0] = 0;
             ptr += 1;
         }
         if (cmd.zig_lib_root) |zig_lib_root| {
             ptr[0..14].* = "--zig-lib-dir\x00".*;
             ptr += 14;
-            @memcpy(ptr, zig_lib_root);
-            ptr += zig_lib_root.len;
+            ptr = fmt.strcpyEqu(ptr, zig_lib_root);
             ptr[0] = 0;
             ptr += 1;
         }
         if (cmd.listen) |listen| {
             ptr[0..9].* = "--listen\x00".*;
             ptr += 9;
-            @memcpy(ptr, @tagName(listen));
-            ptr += @tagName(listen).len;
+            ptr = fmt.strcpyEqu(ptr, @tagName(listen));
             ptr[0] = 0;
             ptr += 1;
         }
         if (cmd.target) |target| {
             ptr[0..8].* = "-target\x00".*;
             ptr += 8;
-            @memcpy(ptr, target);
-            ptr += target.len;
+            ptr = fmt.strcpyEqu(ptr, target);
             ptr[0] = 0;
             ptr += 1;
         }
         if (cmd.cpu) |cpu| {
             ptr[0..6].* = "-mcpu\x00".*;
             ptr += 6;
-            @memcpy(ptr, cpu);
-            ptr += cpu.len;
+            ptr = fmt.strcpyEqu(ptr, cpu);
             ptr[0] = 0;
             ptr += 1;
         }
         if (cmd.code_model) |code_model| {
             ptr[0..9].* = "-mcmodel\x00".*;
             ptr += 9;
-            @memcpy(ptr, @tagName(code_model));
-            ptr += @tagName(code_model).len;
+            ptr = fmt.strcpyEqu(ptr, @tagName(code_model));
             ptr[0] = 0;
             ptr += 1;
         }
@@ -465,16 +455,14 @@ pub const BuildCommand = struct {
         if (cmd.exec_model) |exec_model| {
             ptr[0..13].* = "-mexec-model\x00".*;
             ptr += 13;
-            @memcpy(ptr, exec_model);
-            ptr += exec_model.len;
+            ptr = fmt.strcpyEqu(ptr, exec_model);
             ptr[0] = 0;
             ptr += 1;
         }
         if (cmd.name) |name| {
             ptr[0..7].* = "--name\x00".*;
             ptr += 7;
-            @memcpy(ptr, name);
-            ptr += name.len;
+            ptr = fmt.strcpyEqu(ptr, name);
             ptr[0] = 0;
             ptr += 1;
         }
@@ -483,8 +471,7 @@ pub const BuildCommand = struct {
                 .yes => |arg| {
                     ptr[0..9].* = "-fsoname\x00".*;
                     ptr += 9;
-                    @memcpy(ptr, arg);
-                    ptr += arg.len;
+                    ptr = fmt.strcpyEqu(ptr, arg);
                     ptr[0] = 0;
                     ptr += 1;
                 },
@@ -497,8 +484,7 @@ pub const BuildCommand = struct {
         if (cmd.mode) |mode| {
             ptr[0..3].* = "-O\x00".*;
             ptr += 3;
-            @memcpy(ptr, @tagName(mode));
-            ptr += @tagName(mode).len;
+            ptr = fmt.strcpyEqu(ptr, @tagName(mode));
             ptr[0] = 0;
             ptr += 1;
         }
@@ -512,8 +498,7 @@ pub const BuildCommand = struct {
         if (cmd.main_pkg_path) |main_pkg_path| {
             ptr[0..16].* = "--main-pkg-path\x00".*;
             ptr += 16;
-            @memcpy(ptr, main_pkg_path);
-            ptr += main_pkg_path.len;
+            ptr = fmt.strcpyEqu(ptr, main_pkg_path);
             ptr[0] = 0;
             ptr += 1;
         }
@@ -655,40 +640,35 @@ pub const BuildCommand = struct {
         if (cmd.format) |format| {
             ptr[0..6].* = "-ofmt\x3d".*;
             ptr += 6;
-            @memcpy(ptr, @tagName(format));
-            ptr += @tagName(format).len;
+            ptr = fmt.strcpyEqu(ptr, @tagName(format));
             ptr[0] = 0;
             ptr += 1;
         }
         if (cmd.dirafter) |dirafter| {
             ptr[0..11].* = "-idirafter\x00".*;
             ptr += 11;
-            @memcpy(ptr, dirafter);
-            ptr += dirafter.len;
+            ptr = fmt.strcpyEqu(ptr, dirafter);
             ptr[0] = 0;
             ptr += 1;
         }
         if (cmd.system) |system| {
             ptr[0..9].* = "-isystem\x00".*;
             ptr += 9;
-            @memcpy(ptr, system);
-            ptr += system.len;
+            ptr = fmt.strcpyEqu(ptr, system);
             ptr[0] = 0;
             ptr += 1;
         }
         if (cmd.libc) |libc| {
             ptr[0..7].* = "--libc\x00".*;
             ptr += 7;
-            @memcpy(ptr, libc);
-            ptr += libc.len;
+            ptr = fmt.strcpyEqu(ptr, libc);
             ptr[0] = 0;
             ptr += 1;
         }
         if (cmd.library) |library| {
             ptr[0..10].* = "--library\x00".*;
             ptr += 10;
-            @memcpy(ptr, library);
-            ptr += library.len;
+            ptr = fmt.strcpyEqu(ptr, library);
             ptr[0] = 0;
             ptr += 1;
         }
@@ -696,8 +676,7 @@ pub const BuildCommand = struct {
             for (include) |value| {
                 ptr[0..3].* = "-I\x00".*;
                 ptr += 3;
-                @memcpy(ptr, value);
-                ptr += value.len;
+                ptr = fmt.strcpyEqu(ptr, value);
                 ptr[0] = 0;
                 ptr += 1;
             }
@@ -706,8 +685,7 @@ pub const BuildCommand = struct {
             for (needed_library) |value| {
                 ptr[0..17].* = "--needed-library\x00".*;
                 ptr += 17;
-                @memcpy(ptr, value);
-                ptr += value.len;
+                ptr = fmt.strcpyEqu(ptr, value);
                 ptr[0] = 0;
                 ptr += 1;
             }
@@ -716,8 +694,7 @@ pub const BuildCommand = struct {
             for (library_directory) |value| {
                 ptr[0..20].* = "--library-directory\x00".*;
                 ptr += 20;
-                @memcpy(ptr, value);
-                ptr += value.len;
+                ptr = fmt.strcpyEqu(ptr, value);
                 ptr[0] = 0;
                 ptr += 1;
             }
@@ -725,40 +702,35 @@ pub const BuildCommand = struct {
         if (cmd.link_script) |link_script| {
             ptr[0..9].* = "--script\x00".*;
             ptr += 9;
-            @memcpy(ptr, link_script);
-            ptr += link_script.len;
+            ptr = fmt.strcpyEqu(ptr, link_script);
             ptr[0] = 0;
             ptr += 1;
         }
         if (cmd.version_script) |version_script| {
             ptr[0..17].* = "--version-script\x00".*;
             ptr += 17;
-            @memcpy(ptr, version_script);
-            ptr += version_script.len;
+            ptr = fmt.strcpyEqu(ptr, version_script);
             ptr[0] = 0;
             ptr += 1;
         }
         if (cmd.dynamic_linker) |dynamic_linker| {
             ptr[0..17].* = "--dynamic-linker\x00".*;
             ptr += 17;
-            @memcpy(ptr, dynamic_linker);
-            ptr += dynamic_linker.len;
+            ptr = fmt.strcpyEqu(ptr, dynamic_linker);
             ptr[0] = 0;
             ptr += 1;
         }
         if (cmd.sysroot) |sysroot| {
             ptr[0..10].* = "--sysroot\x00".*;
             ptr += 10;
-            @memcpy(ptr, sysroot);
-            ptr += sysroot.len;
+            ptr = fmt.strcpyEqu(ptr, sysroot);
             ptr[0] = 0;
             ptr += 1;
         }
         if (cmd.entry) |entry| {
             ptr[0..8].* = "--entry\x00".*;
             ptr += 8;
-            @memcpy(ptr, entry);
-            ptr += entry.len;
+            ptr = fmt.strcpyEqu(ptr, entry);
             ptr[0] = 0;
             ptr += 1;
         }
@@ -783,8 +755,7 @@ pub const BuildCommand = struct {
         if (cmd.rpath) |rpath| {
             ptr[0..7].* = "-rpath\x00".*;
             ptr += 7;
-            @memcpy(ptr, rpath);
-            ptr += rpath.len;
+            ptr = fmt.strcpyEqu(ptr, rpath);
             ptr[0] = 0;
             ptr += 1;
         }
@@ -809,8 +780,7 @@ pub const BuildCommand = struct {
         if (cmd.build_id) |build_id| {
             ptr[0..11].* = "--build-id\x3d".*;
             ptr += 11;
-            @memcpy(ptr, @tagName(build_id));
-            ptr += @tagName(build_id).len;
+            ptr = fmt.strcpyEqu(ptr, @tagName(build_id));
             ptr[0] = 0;
             ptr += 1;
         }
@@ -885,8 +855,7 @@ pub const BuildCommand = struct {
             for (lflags) |value| {
                 ptr[0..3].* = "-z\x00".*;
                 ptr += 3;
-                @memcpy(ptr, @tagName(value));
-                ptr += @tagName(value).len;
+                ptr = fmt.strcpyEqu(ptr, @tagName(value));
                 ptr[0] = 0;
                 ptr += 1;
             }
@@ -897,8 +866,7 @@ pub const BuildCommand = struct {
         if (cmd.color) |color| {
             ptr[0..8].* = "--color\x00".*;
             ptr += 8;
-            @memcpy(ptr, @tagName(color));
-            ptr += @tagName(color).len;
+            ptr = fmt.strcpyEqu(ptr, @tagName(color));
             ptr[0] = 0;
             ptr += 1;
         }
@@ -941,8 +909,7 @@ pub const BuildCommand = struct {
         if (cmd.debug_log) |debug_log| {
             ptr[0..12].* = "--debug-log\x00".*;
             ptr += 12;
-            @memcpy(ptr, debug_log);
-            ptr += debug_log.len;
+            ptr = fmt.strcpyEqu(ptr, debug_log);
             ptr[0] = 0;
             ptr += 1;
         }
@@ -2672,8 +2639,7 @@ pub const FormatCommand = struct {
     pub fn formatWriteBuf(cmd: *types.FormatCommand, zig_exe: []const u8, pathname: types.Path, buf: [*]u8) usize {
         @setRuntimeSafety(false);
         var ptr: [*]u8 = buf;
-        @memcpy(ptr, zig_exe);
-        ptr += zig_exe.len;
+        ptr = fmt.strcpyEqu(ptr, zig_exe);
         ptr[0] = 0;
         ptr += 1;
         ptr[0..4].* = "fmt\x00".*;
@@ -2681,8 +2647,7 @@ pub const FormatCommand = struct {
         if (cmd.color) |color| {
             ptr[0..8].* = "--color\x00".*;
             ptr += 8;
-            @memcpy(ptr, @tagName(color));
-            ptr += @tagName(color).len;
+            ptr = fmt.strcpyEqu(ptr, @tagName(color));
             ptr[0] = 0;
             ptr += 1;
         }
@@ -2701,8 +2666,7 @@ pub const FormatCommand = struct {
         if (cmd.exclude) |exclude| {
             ptr[0..10].* = "--exclude\x00".*;
             ptr += 10;
-            @memcpy(ptr, exclude);
-            ptr += exclude.len;
+            ptr = fmt.strcpyEqu(ptr, exclude);
             ptr[0] = 0;
             ptr += 1;
         }
@@ -2853,8 +2817,7 @@ pub const ArchiveCommand = struct {
     pub fn formatWriteBuf(cmd: *types.ArchiveCommand, zig_exe: []const u8, files: []const types.Path, buf: [*]u8) usize {
         @setRuntimeSafety(false);
         var ptr: [*]u8 = buf;
-        @memcpy(ptr, zig_exe);
-        ptr += zig_exe.len;
+        ptr = fmt.strcpyEqu(ptr, zig_exe);
         ptr[0] = 0;
         ptr += 1;
         ptr[0..3].* = "ar\x00".*;
@@ -2862,8 +2825,7 @@ pub const ArchiveCommand = struct {
         if (cmd.format) |format| {
             ptr[0..9].* = "--format\x00".*;
             ptr += 9;
-            @memcpy(ptr, @tagName(format));
-            ptr += @tagName(format).len;
+            ptr = fmt.strcpyEqu(ptr, @tagName(format));
             ptr[0] = 0;
             ptr += 1;
         }
@@ -2874,8 +2836,7 @@ pub const ArchiveCommand = struct {
         if (cmd.output) |output| {
             ptr[0..9].* = "--output\x00".*;
             ptr += 9;
-            @memcpy(ptr, output);
-            ptr += output.len;
+            ptr = fmt.strcpyEqu(ptr, output);
             ptr[0] = 0;
             ptr += 1;
         }
@@ -2923,8 +2884,7 @@ pub const ArchiveCommand = struct {
             ptr[0..1].* = "u".*;
             ptr += 1;
         }
-        @memcpy(ptr, @tagName(cmd.operation));
-        ptr += @tagName(cmd.operation).len;
+        ptr = fmt.strcpyEqu(ptr, @tagName(cmd.operation));
         ptr[0] = 0;
         ptr += 1;
         for (files) |value| {
@@ -3120,8 +3080,7 @@ pub const ObjcopyCommand = struct {
     pub fn formatWriteBuf(cmd: *types.ObjcopyCommand, zig_exe: []const u8, file: types.Path, buf: [*]u8) usize {
         @setRuntimeSafety(false);
         var ptr: [*]u8 = buf;
-        @memcpy(ptr, zig_exe);
-        ptr += zig_exe.len;
+        ptr = fmt.strcpyEqu(ptr, zig_exe);
         ptr[0] = 0;
         ptr += 1;
         ptr[0..8].* = "objcopy\x00".*;
@@ -3129,16 +3088,14 @@ pub const ObjcopyCommand = struct {
         if (cmd.output_target) |output_target| {
             ptr[0..16].* = "--output-target\x00".*;
             ptr += 16;
-            @memcpy(ptr, output_target);
-            ptr += output_target.len;
+            ptr = fmt.strcpyEqu(ptr, output_target);
             ptr[0] = 0;
             ptr += 1;
         }
         if (cmd.only_section) |only_section| {
             ptr[0..15].* = "--only-section\x00".*;
             ptr += 15;
-            @memcpy(ptr, only_section);
-            ptr += only_section.len;
+            ptr = fmt.strcpyEqu(ptr, only_section);
             ptr[0] = 0;
             ptr += 1;
         }
@@ -3164,16 +3121,14 @@ pub const ObjcopyCommand = struct {
         if (cmd.add_gnu_debuglink) |add_gnu_debuglink| {
             ptr[0..20].* = "--add-gnu-debuglink\x00".*;
             ptr += 20;
-            @memcpy(ptr, add_gnu_debuglink);
-            ptr += add_gnu_debuglink.len;
+            ptr = fmt.strcpyEqu(ptr, add_gnu_debuglink);
             ptr[0] = 0;
             ptr += 1;
         }
         if (cmd.extract_to) |extract_to| {
             ptr[0..13].* = "--extract-to\x00".*;
             ptr += 13;
-            @memcpy(ptr, extract_to);
-            ptr += extract_to.len;
+            ptr = fmt.strcpyEqu(ptr, extract_to);
             ptr[0] = 0;
             ptr += 1;
         }
@@ -3317,6 +3272,178 @@ pub const ObjcopyCommand = struct {
         }
     }
 };
+pub const HarecCommand = struct {
+    arch: ?[]const u8 = null,
+    /// Define identifiers
+    defs: ?[]const types.Macro = null,
+    /// Output file
+    output: ?[]const u8 = null,
+    tags: ?[]const []const u8 = null,
+    typedefs: bool = false,
+    namespace: bool = false,
+    pub fn formatWriteBuf(cmd: *types.HarecCommand, harec_exe: []const u8, buf: [*]u8) usize {
+        @setRuntimeSafety(false);
+        var ptr: [*]u8 = buf;
+        ptr = fmt.strcpyEqu(ptr, harec_exe);
+        ptr[0] = 0;
+        ptr += 1;
+        if (cmd.arch) |arch| {
+            ptr[0..3].* = "-a\x00".*;
+            ptr += 3;
+            ptr = fmt.strcpyEqu(ptr, arch);
+            ptr[0] = 0;
+            ptr += 1;
+        }
+        if (cmd.defs) |defs| {
+            ptr += types.Macros.formatWriteBuf(.{ .value = defs }, ptr);
+        }
+        if (cmd.output) |output| {
+            ptr[0..3].* = "-o\x00".*;
+            ptr += 3;
+            ptr = fmt.strcpyEqu(ptr, output);
+            ptr[0] = 0;
+            ptr += 1;
+        }
+        if (cmd.tags) |tags| {
+            for (tags) |value| {
+                ptr[0..2].* = "-T".*;
+                ptr += 2;
+                ptr = fmt.strcpyEqu(ptr, value);
+                ptr[0] = 0;
+                ptr += 1;
+            }
+        }
+        if (cmd.typedefs) {
+            ptr[0..3].* = "-t\x00".*;
+            ptr += 3;
+        }
+        if (cmd.namespace) {
+            ptr[0..3].* = "-N\x00".*;
+            ptr += 3;
+        }
+        return @intFromPtr(ptr) -% @intFromPtr(buf);
+    }
+    pub fn formatLength(cmd: *types.HarecCommand, harec_exe: []const u8) usize {
+        @setRuntimeSafety(false);
+        var len: usize = 0;
+        len +%= harec_exe.len;
+        len +%= 1;
+        if (cmd.arch) |arch| {
+            len +%= 3;
+            len +%= arch.len;
+            len +%= 1;
+        }
+        if (cmd.defs) |defs| {
+            len +%= types.Macros.formatLength(.{ .value = defs });
+        }
+        if (cmd.output) |output| {
+            len +%= 3;
+            len +%= output.len;
+            len +%= 1;
+        }
+        if (cmd.tags) |tags| {
+            for (tags) |value| {
+                len +%= 2;
+                len +%= value.len;
+                len +%= 1;
+            }
+        }
+        if (cmd.typedefs) {
+            len +%= 3;
+        }
+        if (cmd.namespace) {
+            len +%= 3;
+        }
+        return len;
+    }
+    pub fn formatWrite(cmd: *types.HarecCommand, harec_exe: []const u8, array: anytype) void {
+        @setRuntimeSafety(false);
+        array.writeMany(harec_exe);
+        array.writeOne(0);
+        if (cmd.arch) |arch| {
+            array.writeMany("-a\x00");
+            array.writeMany(arch);
+            array.writeOne(0);
+        }
+        if (cmd.defs) |defs| {
+            array.writeFormat(types.Macros{ .value = defs });
+        }
+        if (cmd.output) |output| {
+            array.writeMany("-o\x00");
+            array.writeMany(output);
+            array.writeOne(0);
+        }
+        if (cmd.tags) |tags| {
+            for (tags) |value| {
+                array.writeMany("-T");
+                array.writeMany(value);
+                array.writeOne(0);
+            }
+        }
+        if (cmd.typedefs) {
+            array.writeMany("-t\x00");
+        }
+        if (cmd.namespace) {
+            array.writeMany("-N\x00");
+        }
+    }
+    pub fn formatParseArgs(cmd: *types.HarecCommand, allocator: *types.Allocator, args: [][*:0]u8) void {
+        @setRuntimeSafety(builtin.is_safe);
+        var args_idx: usize = 0;
+        while (args_idx != args.len) : (args_idx +%= 1) {
+            var arg: [:0]const u8 = mem.terminate(args[args_idx], 0);
+            if (mem.testEqualString("-a", arg[0..2])) {
+                if (arg.len == 2) {
+                    args_idx +%= 1;
+                    if (args_idx == args.len) {
+                        return;
+                    }
+                    arg = mem.terminate(args[args_idx], 0);
+                } else {
+                    arg = arg[2..];
+                }
+                cmd.arch = arg;
+            } else if (mem.testEqualString("-o", arg[0..2])) {
+                if (arg.len == 2) {
+                    args_idx +%= 1;
+                    if (args_idx == args.len) {
+                        return;
+                    }
+                    arg = mem.terminate(args[args_idx], 0);
+                } else {
+                    arg = arg[2..];
+                }
+                cmd.output = arg;
+            } else if (mem.testEqualString("-T", arg[0..2])) {
+                if (arg.len == 2) {
+                    args_idx +%= 1;
+                    if (args_idx == args.len) {
+                        return;
+                    }
+                    arg = mem.terminate(args[args_idx], 0);
+                } else {
+                    arg = arg[2..];
+                }
+                if (cmd.tags) |src| {
+                    const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16 *% (src.len +% 1), 8));
+                    @memcpy(dest, src);
+                    dest[src.len] = arg;
+                    cmd.tags = dest[0 .. src.len +% 1];
+                } else {
+                    const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16, 8));
+                    dest[0] = arg;
+                    cmd.tags = dest[0..1];
+                }
+            } else if (mem.testEqualString("-t", arg)) {
+                cmd.typedefs = true;
+            } else if (mem.testEqualString("-N", arg)) {
+                cmd.namespace = true;
+            } else if (mem.testEqualString("--help", arg)) {
+                debug.write(harec_help);
+            }
+        }
+    }
+};
 pub const TableGenCommand = struct {
     /// Use colors in output (default=autodetect)
     color: ?types.AutoOnOff = null,
@@ -3412,8 +3539,7 @@ pub const TableGenCommand = struct {
         if (cmd.color) |color| {
             ptr[0..8].* = "--color\x00".*;
             ptr += 8;
-            @memcpy(ptr, @tagName(color));
-            ptr += @tagName(color).len;
+            ptr = fmt.strcpyEqu(ptr, @tagName(color));
             ptr[0] = 0;
             ptr += 1;
         }
@@ -3424,8 +3550,7 @@ pub const TableGenCommand = struct {
             for (include) |value| {
                 ptr[0..2].* = "-I".*;
                 ptr += 2;
-                @memcpy(ptr, value);
-                ptr += value.len;
+                ptr = fmt.strcpyEqu(ptr, value);
                 ptr[0] = 0;
                 ptr += 1;
             }
@@ -3434,8 +3559,7 @@ pub const TableGenCommand = struct {
             for (dependencies) |value| {
                 ptr[0..3].* = "-d\x00".*;
                 ptr += 3;
-                @memcpy(ptr, value);
-                ptr += value.len;
+                ptr = fmt.strcpyEqu(ptr, value);
                 ptr[0] = 0;
                 ptr += 1;
             }
@@ -3599,8 +3723,7 @@ pub const TableGenCommand = struct {
         if (cmd.output) |output| {
             ptr[0..3].* = "-o\x00".*;
             ptr += 3;
-            @memcpy(ptr, output);
-            ptr += output.len;
+            ptr = fmt.strcpyEqu(ptr, output);
             ptr[0] = 0;
             ptr += 1;
         }
@@ -4055,182 +4178,6 @@ pub const TableGenCommand = struct {
         }
     }
 };
-pub const HarecCommand = struct {
-    arch: ?[]const u8 = null,
-    /// Define identifiers
-    defs: ?[]const types.Macro = null,
-    /// Output file
-    output: ?[]const u8 = null,
-    tags: ?[]const []const u8 = null,
-    typedefs: bool = false,
-    namespace: bool = false,
-    pub fn formatWriteBuf(cmd: *types.HarecCommand, harec_exe: []const u8, buf: [*]u8) usize {
-        @setRuntimeSafety(false);
-        var ptr: [*]u8 = buf;
-        @memcpy(ptr, harec_exe);
-        ptr += harec_exe.len;
-        ptr[0] = 0;
-        ptr += 1;
-        if (cmd.arch) |arch| {
-            ptr[0..3].* = "-a\x00".*;
-            ptr += 3;
-            @memcpy(ptr, arch);
-            ptr += arch.len;
-            ptr[0] = 0;
-            ptr += 1;
-        }
-        if (cmd.defs) |defs| {
-            ptr += types.Macros.formatWriteBuf(.{ .value = defs }, ptr);
-        }
-        if (cmd.output) |output| {
-            ptr[0..3].* = "-o\x00".*;
-            ptr += 3;
-            @memcpy(ptr, output);
-            ptr += output.len;
-            ptr[0] = 0;
-            ptr += 1;
-        }
-        if (cmd.tags) |tags| {
-            for (tags) |value| {
-                ptr[0..2].* = "-T".*;
-                ptr += 2;
-                @memcpy(ptr, value);
-                ptr += value.len;
-                ptr[0] = 0;
-                ptr += 1;
-            }
-        }
-        if (cmd.typedefs) {
-            ptr[0..3].* = "-t\x00".*;
-            ptr += 3;
-        }
-        if (cmd.namespace) {
-            ptr[0..3].* = "-N\x00".*;
-            ptr += 3;
-        }
-        return @intFromPtr(ptr) -% @intFromPtr(buf);
-    }
-    pub fn formatLength(cmd: *types.HarecCommand, harec_exe: []const u8) usize {
-        @setRuntimeSafety(false);
-        var len: usize = 0;
-        len +%= harec_exe.len;
-        len +%= 1;
-        if (cmd.arch) |arch| {
-            len +%= 3;
-            len +%= arch.len;
-            len +%= 1;
-        }
-        if (cmd.defs) |defs| {
-            len +%= types.Macros.formatLength(.{ .value = defs });
-        }
-        if (cmd.output) |output| {
-            len +%= 3;
-            len +%= output.len;
-            len +%= 1;
-        }
-        if (cmd.tags) |tags| {
-            for (tags) |value| {
-                len +%= 2;
-                len +%= value.len;
-                len +%= 1;
-            }
-        }
-        if (cmd.typedefs) {
-            len +%= 3;
-        }
-        if (cmd.namespace) {
-            len +%= 3;
-        }
-        return len;
-    }
-    pub fn formatWrite(cmd: *types.HarecCommand, harec_exe: []const u8, array: anytype) void {
-        @setRuntimeSafety(false);
-        array.writeMany(harec_exe);
-        array.writeOne(0);
-        if (cmd.arch) |arch| {
-            array.writeMany("-a\x00");
-            array.writeMany(arch);
-            array.writeOne(0);
-        }
-        if (cmd.defs) |defs| {
-            array.writeFormat(types.Macros{ .value = defs });
-        }
-        if (cmd.output) |output| {
-            array.writeMany("-o\x00");
-            array.writeMany(output);
-            array.writeOne(0);
-        }
-        if (cmd.tags) |tags| {
-            for (tags) |value| {
-                array.writeMany("-T");
-                array.writeMany(value);
-                array.writeOne(0);
-            }
-        }
-        if (cmd.typedefs) {
-            array.writeMany("-t\x00");
-        }
-        if (cmd.namespace) {
-            array.writeMany("-N\x00");
-        }
-    }
-    pub fn formatParseArgs(cmd: *types.HarecCommand, allocator: *types.Allocator, args: [][*:0]u8) void {
-        @setRuntimeSafety(builtin.is_safe);
-        var args_idx: usize = 0;
-        while (args_idx != args.len) : (args_idx +%= 1) {
-            var arg: [:0]const u8 = mem.terminate(args[args_idx], 0);
-            if (mem.testEqualString("-a", arg[0..2])) {
-                if (arg.len == 2) {
-                    args_idx +%= 1;
-                    if (args_idx == args.len) {
-                        return;
-                    }
-                    arg = mem.terminate(args[args_idx], 0);
-                } else {
-                    arg = arg[2..];
-                }
-                cmd.arch = arg;
-            } else if (mem.testEqualString("-o", arg[0..2])) {
-                if (arg.len == 2) {
-                    args_idx +%= 1;
-                    if (args_idx == args.len) {
-                        return;
-                    }
-                    arg = mem.terminate(args[args_idx], 0);
-                } else {
-                    arg = arg[2..];
-                }
-                cmd.output = arg;
-            } else if (mem.testEqualString("-T", arg[0..2])) {
-                if (arg.len == 2) {
-                    args_idx +%= 1;
-                    if (args_idx == args.len) {
-                        return;
-                    }
-                    arg = mem.terminate(args[args_idx], 0);
-                } else {
-                    arg = arg[2..];
-                }
-                if (cmd.tags) |src| {
-                    const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16 *% (src.len +% 1), 8));
-                    @memcpy(dest, src);
-                    dest[src.len] = arg;
-                    cmd.tags = dest[0 .. src.len +% 1];
-                } else {
-                    const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16, 8));
-                    dest[0] = arg;
-                    cmd.tags = dest[0..1];
-                }
-            } else if (mem.testEqualString("-t", arg)) {
-                cmd.typedefs = true;
-            } else if (mem.testEqualString("-N", arg)) {
-                cmd.namespace = true;
-            } else if (mem.testEqualString("--help", arg)) {
-                debug.write(harec_help);
-            }
-        }
-    }
-};
 const build_help: [:0]const u8 = 
     \\    build-
     \\    -f[no-]emit-bin                 (default=yes) Output machine code
@@ -4380,6 +4327,13 @@ const objcopy_help: [:0]const u8 =
     \\    --add-gnu-debuglink
     \\    --extract-to
 ;
+const harec_help: [:0]const u8 = 
+    \\    -a
+    \\    -o      Output file
+    \\    -T
+    \\    -t
+    \\    -N
+;
 const tblgen_help: [:0]const u8 = 
     \\    --color                         Use colors in output (default=autodetect)
     \\    -I                              Add directories to include search path
@@ -4425,18 +4379,11 @@ const tblgen_help: [:0]const u8 =
     \\    --gen-riscv-target_def          Generate the list of CPU for RISCV
     \\    -o                              Output file
 ;
-const harec_help: [:0]const u8 = 
-    \\    -a
-    \\    -o      Output file
-    \\    -T
-    \\    -t
-    \\    -N
-;
 pub const Command = struct {
     build: *BuildCommand,
     format: *FormatCommand,
     archive: *ArchiveCommand,
     objcopy: *ObjcopyCommand,
-    tblgen: *TableGenCommand,
     harec: *HarecCommand,
+    tblgen: *TableGenCommand,
 };
