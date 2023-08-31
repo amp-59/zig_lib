@@ -2185,6 +2185,16 @@ pub fn GenericOptionalArrays(comptime Int: type, comptime TaggedUnion: type) typ
             addr: usize,
             max_len: Size,
             tag_len: Size,
+            pub fn add(res: *Elem, allocator: *mem.SimpleAllocator, size_of: usize) usize {
+                return allocator.addGenericSize(Size, size_of, 2, &res.addr, &res.max_len, res.tag_len & bit_mask);
+            }
+            pub fn len(res: *Elem) Size {
+                return res.tag_len & bit_mask;
+            }
+            pub fn cast(res: *Elem, comptime tag: ImTag) []Child(tag) {
+                const ptr: [*]Child(tag) = @ptrFromInt(res.addr);
+                return ptr[0..res.len()];
+            }
         };
         const bit_size_of: comptime_int = @bitSizeOf(@typeInfo(ImTag).Enum.tag_type);
         const shift_amt: comptime_int = @bitSizeOf(Int) - bit_size_of;
@@ -2214,19 +2224,15 @@ pub fn GenericOptionalArrays(comptime Int: type, comptime TaggedUnion: type) typ
             ret.tag_len = @shlExact(ret.tag_len, shift_amt);
             return ret;
         }
-        fn addInternal(im: *Im, allocator: *mem.SimpleAllocator, tag: ImTag, size_of: usize) usize {
-            @setRuntimeSafety(builtin.is_safe);
-            const elem: *Elem = im.getInternal(tag) orelse im.create(allocator, tag);
-            const ret: usize = allocator.addGenericSize(Size, size_of, 1, &elem.addr, &elem.max_len, elem.tag_len & bit_mask);
-            elem.tag_len +%= 1;
-            return ret;
-        }
         pub fn set(im: *Im, allocator: *mem.SimpleAllocator, comptime tag: ImTag, val: []Child(tag)) void {
             @setRuntimeSafety(builtin.is_safe);
-            const elem: *Elem = im.create(allocator, tag);
-            elem.addr = @intFromPtr(val.ptr);
-            elem.max_len = @intCast(val.len);
-            elem.tag_len = elem.max_len | (@as(Size, @intFromEnum(tag)) << shift_amt);
+            const res: *Elem = im.create(allocator, tag);
+            res.addr = @intFromPtr(val.ptr);
+            res.max_len = @intCast(val.len);
+            res.tag_len = res.max_len | (@as(Size, @intFromEnum(tag)) << shift_amt);
+        }
+        pub fn elem(im: *Im, allocator: *mem.SimpleAllocator, tag: ImTag) *Elem {
+            return im.getInternal(tag) orelse im.create(allocator, tag);
         }
         pub fn get(im: *const Im, comptime tag: ImTag) []Child(tag) {
             @setRuntimeSafety(builtin.is_safe);
@@ -2237,14 +2243,10 @@ pub fn GenericOptionalArrays(comptime Int: type, comptime TaggedUnion: type) typ
         }
         pub fn add(im: *Im, allocator: *mem.SimpleAllocator, comptime tag: ImTag) *Child(tag) {
             @setRuntimeSafety(builtin.is_safe);
-            return @ptrFromInt(addInternal(im, allocator, tag, sizeOf(tag)));
-        }
-        pub fn len(im: *Im, comptime tag: ImTag) Size {
-            @setRuntimeSafety(builtin.is_safe);
-            if (im.getInternal(tag)) |res| {
-                return res.tag_len & bit_mask;
-            }
-            return 0;
+            const res: *Elem = im.elem(allocator, tag);
+            const ret: usize = res.add(allocator, sizeOf(tag));
+            res.tag_len +%= 1;
+            return @ptrFromInt(ret);
         }
     };
     return U;
@@ -2283,18 +2285,22 @@ pub fn GenericOptionals(comptime TaggedUnion: type) type {
             im.buf_len +%= 1;
             return ret;
         }
-        pub fn set(im: *Im, comptime tag: ImTag, val: Child(tag)) void {
+        pub fn set(im: *Im, allocator: *mem.SimpleAllocator, comptime tag: ImTag, val: Child(tag)) void {
             @setRuntimeSafety(builtin.is_safe);
-            const ptr: *Child(tag) = @ptrFromInt(im.getInternal(tag));
+            const addr: usize = im.getInternal(tag);
+            const ptr: *Child(tag) = if (addr != 0) @ptrFromInt(addr) else im.add(allocator, tag);
             ptr.* = val;
         }
-        pub fn get(im: *Im, comptime tag: ImTag) Child(tag) {
+        pub fn get(im: *Im, comptime tag: ImTag) *Child(tag) {
             @setRuntimeSafety(builtin.is_safe);
-            return @as(*Child(tag), @ptrFromInt(im.getInternal(tag))).*;
+            return @ptrFromInt(im.getInternal(tag));
         }
         pub fn add(im: *Im, allocator: *mem.SimpleAllocator, comptime tag: ImTag) *Child(tag) {
             @setRuntimeSafety(builtin.is_safe);
             return @ptrFromInt(im.createInternal(allocator, tag, sizeOf(tag)));
+        }
+        pub fn check(im: *Im, tag: ImTag) bool {
+            return getInternal(im, tag) != 0;
         }
     };
     return U;
