@@ -767,6 +767,62 @@ export fn formatParseArgsObjcopyCommand(cmd: *types.ObjcopyCommand, allocator: *
         _ = allocator;
     }
 }
+export fn formatParseArgsHarecCommand(cmd: *types.HarecCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
+    @setRuntimeSafety(builtin.is_safe);
+    var args_idx: usize = 0;
+    while (args_idx != args_len) : (args_idx +%= 1) {
+        var arg: [:0]const u8 = mem.terminate(args[args_idx], 0);
+        if (mem.testEqualString("-a", arg[0..2])) {
+            if (arg.len == 2) {
+                args_idx +%= 1;
+                if (args_idx == args_len) {
+                    return;
+                }
+                arg = mem.terminate(args[args_idx], 0);
+            } else {
+                arg = arg[2..];
+            }
+            cmd.arch = arg;
+        } else if (mem.testEqualString("-o", arg[0..2])) {
+            if (arg.len == 2) {
+                args_idx +%= 1;
+                if (args_idx == args_len) {
+                    return;
+                }
+                arg = mem.terminate(args[args_idx], 0);
+            } else {
+                arg = arg[2..];
+            }
+            cmd.output = arg;
+        } else if (mem.testEqualString("-T", arg[0..2])) {
+            if (arg.len == 2) {
+                args_idx +%= 1;
+                if (args_idx == args_len) {
+                    return;
+                }
+                arg = mem.terminate(args[args_idx], 0);
+            } else {
+                arg = arg[2..];
+            }
+            if (cmd.tags) |src| {
+                const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16 *% (src.len +% 1), 8));
+                @memcpy(dest, src);
+                dest[src.len] = arg;
+                cmd.tags = dest[0 .. src.len +% 1];
+            } else {
+                const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16, 8));
+                dest[0] = arg;
+                cmd.tags = dest[0..1];
+            }
+        } else if (mem.testEqualString("-t", arg)) {
+            cmd.typedefs = true;
+        } else if (mem.testEqualString("-N", arg)) {
+            cmd.namespace = true;
+        } else if (mem.testEqualString("--help", arg)) {
+            debug.write(harec_help);
+        }
+    }
+}
 export fn formatParseArgsTableGenCommand(cmd: *types.TableGenCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
     @setRuntimeSafety(builtin.is_safe);
     var args_idx: usize = 0;
@@ -919,62 +975,6 @@ export fn formatParseArgsTableGenCommand(cmd: *types.TableGenCommand, allocator:
         }
     }
 }
-export fn formatParseArgsHarecCommand(cmd: *types.HarecCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
-    @setRuntimeSafety(builtin.is_safe);
-    var args_idx: usize = 0;
-    while (args_idx != args_len) : (args_idx +%= 1) {
-        var arg: [:0]const u8 = mem.terminate(args[args_idx], 0);
-        if (mem.testEqualString("-a", arg[0..2])) {
-            if (arg.len == 2) {
-                args_idx +%= 1;
-                if (args_idx == args_len) {
-                    return;
-                }
-                arg = mem.terminate(args[args_idx], 0);
-            } else {
-                arg = arg[2..];
-            }
-            cmd.arch = arg;
-        } else if (mem.testEqualString("-o", arg[0..2])) {
-            if (arg.len == 2) {
-                args_idx +%= 1;
-                if (args_idx == args_len) {
-                    return;
-                }
-                arg = mem.terminate(args[args_idx], 0);
-            } else {
-                arg = arg[2..];
-            }
-            cmd.output = arg;
-        } else if (mem.testEqualString("-T", arg[0..2])) {
-            if (arg.len == 2) {
-                args_idx +%= 1;
-                if (args_idx == args_len) {
-                    return;
-                }
-                arg = mem.terminate(args[args_idx], 0);
-            } else {
-                arg = arg[2..];
-            }
-            if (cmd.tags) |src| {
-                const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16 *% (src.len +% 1), 8));
-                @memcpy(dest, src);
-                dest[src.len] = arg;
-                cmd.tags = dest[0 .. src.len +% 1];
-            } else {
-                const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16, 8));
-                dest[0] = arg;
-                cmd.tags = dest[0..1];
-            }
-        } else if (mem.testEqualString("-t", arg)) {
-            cmd.typedefs = true;
-        } else if (mem.testEqualString("-N", arg)) {
-            cmd.namespace = true;
-        } else if (mem.testEqualString("--help", arg)) {
-            debug.write(harec_help);
-        }
-    }
-}
 const build_help: [:0]const u8 = 
     \\    build-
     \\    -f[no-]emit-bin                 (default=yes) Output machine code
@@ -1124,6 +1124,13 @@ const objcopy_help: [:0]const u8 =
     \\    --add-gnu-debuglink
     \\    --extract-to
 ;
+const harec_help: [:0]const u8 = 
+    \\    -a
+    \\    -o      Output file
+    \\    -T
+    \\    -t
+    \\    -N
+;
 const tblgen_help: [:0]const u8 = 
     \\    --color                         Use colors in output (default=autodetect)
     \\    -I                              Add directories to include search path
@@ -1168,11 +1175,4 @@ const tblgen_help: [:0]const u8 =
     \\    --gen-dxil-operation            Generate DXIL operation information
     \\    --gen-riscv-target_def          Generate the list of CPU for RISCV
     \\    -o                              Output file
-;
-const harec_help: [:0]const u8 = 
-    \\    -a
-    \\    -o      Output file
-    \\    -T
-    \\    -t
-    \\    -N
 ;
