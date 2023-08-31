@@ -6,14 +6,12 @@ export fn formatWriteBufBuildCommand(cmd: *types.BuildCommand, zig_exe_ptr: [*]c
     const files: []const types.Path = files_ptr[0..files_len];
     @setRuntimeSafety(false);
     var ptr: [*]u8 = buf;
-    @memcpy(ptr, zig_exe);
-    ptr += zig_exe.len;
+    ptr = fmt.strcpyEqu(ptr, zig_exe);
     ptr[0] = 0;
     ptr += 1;
     ptr[0..6].* = "build-".*;
     ptr += 6;
-    @memcpy(ptr, @tagName(cmd.kind));
-    ptr += @tagName(cmd.kind).len;
+    ptr = fmt.strcpyEqu(ptr, @tagName(cmd.kind));
     ptr[0] = 0;
     ptr += 1;
     if (cmd.emit_bin) |emit_bin| {
@@ -163,56 +161,49 @@ export fn formatWriteBufBuildCommand(cmd: *types.BuildCommand, zig_exe_ptr: [*]c
     if (cmd.cache_root) |cache_root| {
         ptr[0..12].* = "--cache-dir\x00".*;
         ptr += 12;
-        @memcpy(ptr, cache_root);
-        ptr += cache_root.len;
+        ptr = fmt.strcpyEqu(ptr, cache_root);
         ptr[0] = 0;
         ptr += 1;
     }
     if (cmd.global_cache_root) |global_cache_root| {
         ptr[0..19].* = "--global-cache-dir\x00".*;
         ptr += 19;
-        @memcpy(ptr, global_cache_root);
-        ptr += global_cache_root.len;
+        ptr = fmt.strcpyEqu(ptr, global_cache_root);
         ptr[0] = 0;
         ptr += 1;
     }
     if (cmd.zig_lib_root) |zig_lib_root| {
         ptr[0..14].* = "--zig-lib-dir\x00".*;
         ptr += 14;
-        @memcpy(ptr, zig_lib_root);
-        ptr += zig_lib_root.len;
+        ptr = fmt.strcpyEqu(ptr, zig_lib_root);
         ptr[0] = 0;
         ptr += 1;
     }
     if (cmd.listen) |listen| {
         ptr[0..9].* = "--listen\x00".*;
         ptr += 9;
-        @memcpy(ptr, @tagName(listen));
-        ptr += @tagName(listen).len;
+        ptr = fmt.strcpyEqu(ptr, @tagName(listen));
         ptr[0] = 0;
         ptr += 1;
     }
     if (cmd.target) |target| {
         ptr[0..8].* = "-target\x00".*;
         ptr += 8;
-        @memcpy(ptr, target);
-        ptr += target.len;
+        ptr = fmt.strcpyEqu(ptr, target);
         ptr[0] = 0;
         ptr += 1;
     }
     if (cmd.cpu) |cpu| {
         ptr[0..6].* = "-mcpu\x00".*;
         ptr += 6;
-        @memcpy(ptr, cpu);
-        ptr += cpu.len;
+        ptr = fmt.strcpyEqu(ptr, cpu);
         ptr[0] = 0;
         ptr += 1;
     }
     if (cmd.code_model) |code_model| {
         ptr[0..9].* = "-mcmodel\x00".*;
         ptr += 9;
-        @memcpy(ptr, @tagName(code_model));
-        ptr += @tagName(code_model).len;
+        ptr = fmt.strcpyEqu(ptr, @tagName(code_model));
         ptr[0] = 0;
         ptr += 1;
     }
@@ -246,16 +237,14 @@ export fn formatWriteBufBuildCommand(cmd: *types.BuildCommand, zig_exe_ptr: [*]c
     if (cmd.exec_model) |exec_model| {
         ptr[0..13].* = "-mexec-model\x00".*;
         ptr += 13;
-        @memcpy(ptr, exec_model);
-        ptr += exec_model.len;
+        ptr = fmt.strcpyEqu(ptr, exec_model);
         ptr[0] = 0;
         ptr += 1;
     }
     if (cmd.name) |name| {
         ptr[0..7].* = "--name\x00".*;
         ptr += 7;
-        @memcpy(ptr, name);
-        ptr += name.len;
+        ptr = fmt.strcpyEqu(ptr, name);
         ptr[0] = 0;
         ptr += 1;
     }
@@ -264,8 +253,7 @@ export fn formatWriteBufBuildCommand(cmd: *types.BuildCommand, zig_exe_ptr: [*]c
             .yes => |arg| {
                 ptr[0..9].* = "-fsoname\x00".*;
                 ptr += 9;
-                @memcpy(ptr, arg);
-                ptr += arg.len;
+                ptr = fmt.strcpyEqu(ptr, arg);
                 ptr[0] = 0;
                 ptr += 1;
             },
@@ -278,8 +266,7 @@ export fn formatWriteBufBuildCommand(cmd: *types.BuildCommand, zig_exe_ptr: [*]c
     if (cmd.mode) |mode| {
         ptr[0..3].* = "-O\x00".*;
         ptr += 3;
-        @memcpy(ptr, @tagName(mode));
-        ptr += @tagName(mode).len;
+        ptr = fmt.strcpyEqu(ptr, @tagName(mode));
         ptr[0] = 0;
         ptr += 1;
     }
@@ -293,8 +280,7 @@ export fn formatWriteBufBuildCommand(cmd: *types.BuildCommand, zig_exe_ptr: [*]c
     if (cmd.main_pkg_path) |main_pkg_path| {
         ptr[0..16].* = "--main-pkg-path\x00".*;
         ptr += 16;
-        @memcpy(ptr, main_pkg_path);
-        ptr += main_pkg_path.len;
+        ptr = fmt.strcpyEqu(ptr, main_pkg_path);
         ptr[0] = 0;
         ptr += 1;
     }
@@ -436,40 +422,35 @@ export fn formatWriteBufBuildCommand(cmd: *types.BuildCommand, zig_exe_ptr: [*]c
     if (cmd.format) |format| {
         ptr[0..6].* = "-ofmt\x3d".*;
         ptr += 6;
-        @memcpy(ptr, @tagName(format));
-        ptr += @tagName(format).len;
+        ptr = fmt.strcpyEqu(ptr, @tagName(format));
         ptr[0] = 0;
         ptr += 1;
     }
     if (cmd.dirafter) |dirafter| {
         ptr[0..11].* = "-idirafter\x00".*;
         ptr += 11;
-        @memcpy(ptr, dirafter);
-        ptr += dirafter.len;
+        ptr = fmt.strcpyEqu(ptr, dirafter);
         ptr[0] = 0;
         ptr += 1;
     }
     if (cmd.system) |system| {
         ptr[0..9].* = "-isystem\x00".*;
         ptr += 9;
-        @memcpy(ptr, system);
-        ptr += system.len;
+        ptr = fmt.strcpyEqu(ptr, system);
         ptr[0] = 0;
         ptr += 1;
     }
     if (cmd.libc) |libc| {
         ptr[0..7].* = "--libc\x00".*;
         ptr += 7;
-        @memcpy(ptr, libc);
-        ptr += libc.len;
+        ptr = fmt.strcpyEqu(ptr, libc);
         ptr[0] = 0;
         ptr += 1;
     }
     if (cmd.library) |library| {
         ptr[0..10].* = "--library\x00".*;
         ptr += 10;
-        @memcpy(ptr, library);
-        ptr += library.len;
+        ptr = fmt.strcpyEqu(ptr, library);
         ptr[0] = 0;
         ptr += 1;
     }
@@ -477,8 +458,7 @@ export fn formatWriteBufBuildCommand(cmd: *types.BuildCommand, zig_exe_ptr: [*]c
         for (include) |value| {
             ptr[0..3].* = "-I\x00".*;
             ptr += 3;
-            @memcpy(ptr, value);
-            ptr += value.len;
+            ptr = fmt.strcpyEqu(ptr, value);
             ptr[0] = 0;
             ptr += 1;
         }
@@ -487,8 +467,7 @@ export fn formatWriteBufBuildCommand(cmd: *types.BuildCommand, zig_exe_ptr: [*]c
         for (needed_library) |value| {
             ptr[0..17].* = "--needed-library\x00".*;
             ptr += 17;
-            @memcpy(ptr, value);
-            ptr += value.len;
+            ptr = fmt.strcpyEqu(ptr, value);
             ptr[0] = 0;
             ptr += 1;
         }
@@ -497,8 +476,7 @@ export fn formatWriteBufBuildCommand(cmd: *types.BuildCommand, zig_exe_ptr: [*]c
         for (library_directory) |value| {
             ptr[0..20].* = "--library-directory\x00".*;
             ptr += 20;
-            @memcpy(ptr, value);
-            ptr += value.len;
+            ptr = fmt.strcpyEqu(ptr, value);
             ptr[0] = 0;
             ptr += 1;
         }
@@ -506,40 +484,35 @@ export fn formatWriteBufBuildCommand(cmd: *types.BuildCommand, zig_exe_ptr: [*]c
     if (cmd.link_script) |link_script| {
         ptr[0..9].* = "--script\x00".*;
         ptr += 9;
-        @memcpy(ptr, link_script);
-        ptr += link_script.len;
+        ptr = fmt.strcpyEqu(ptr, link_script);
         ptr[0] = 0;
         ptr += 1;
     }
     if (cmd.version_script) |version_script| {
         ptr[0..17].* = "--version-script\x00".*;
         ptr += 17;
-        @memcpy(ptr, version_script);
-        ptr += version_script.len;
+        ptr = fmt.strcpyEqu(ptr, version_script);
         ptr[0] = 0;
         ptr += 1;
     }
     if (cmd.dynamic_linker) |dynamic_linker| {
         ptr[0..17].* = "--dynamic-linker\x00".*;
         ptr += 17;
-        @memcpy(ptr, dynamic_linker);
-        ptr += dynamic_linker.len;
+        ptr = fmt.strcpyEqu(ptr, dynamic_linker);
         ptr[0] = 0;
         ptr += 1;
     }
     if (cmd.sysroot) |sysroot| {
         ptr[0..10].* = "--sysroot\x00".*;
         ptr += 10;
-        @memcpy(ptr, sysroot);
-        ptr += sysroot.len;
+        ptr = fmt.strcpyEqu(ptr, sysroot);
         ptr[0] = 0;
         ptr += 1;
     }
     if (cmd.entry) |entry| {
         ptr[0..8].* = "--entry\x00".*;
         ptr += 8;
-        @memcpy(ptr, entry);
-        ptr += entry.len;
+        ptr = fmt.strcpyEqu(ptr, entry);
         ptr[0] = 0;
         ptr += 1;
     }
@@ -564,8 +537,7 @@ export fn formatWriteBufBuildCommand(cmd: *types.BuildCommand, zig_exe_ptr: [*]c
     if (cmd.rpath) |rpath| {
         ptr[0..7].* = "-rpath\x00".*;
         ptr += 7;
-        @memcpy(ptr, rpath);
-        ptr += rpath.len;
+        ptr = fmt.strcpyEqu(ptr, rpath);
         ptr[0] = 0;
         ptr += 1;
     }
@@ -590,8 +562,7 @@ export fn formatWriteBufBuildCommand(cmd: *types.BuildCommand, zig_exe_ptr: [*]c
     if (cmd.build_id) |build_id| {
         ptr[0..11].* = "--build-id\x3d".*;
         ptr += 11;
-        @memcpy(ptr, @tagName(build_id));
-        ptr += @tagName(build_id).len;
+        ptr = fmt.strcpyEqu(ptr, @tagName(build_id));
         ptr[0] = 0;
         ptr += 1;
     }
@@ -666,8 +637,7 @@ export fn formatWriteBufBuildCommand(cmd: *types.BuildCommand, zig_exe_ptr: [*]c
         for (lflags) |value| {
             ptr[0..3].* = "-z\x00".*;
             ptr += 3;
-            @memcpy(ptr, @tagName(value));
-            ptr += @tagName(value).len;
+            ptr = fmt.strcpyEqu(ptr, @tagName(value));
             ptr[0] = 0;
             ptr += 1;
         }
@@ -678,8 +648,7 @@ export fn formatWriteBufBuildCommand(cmd: *types.BuildCommand, zig_exe_ptr: [*]c
     if (cmd.color) |color| {
         ptr[0..8].* = "--color\x00".*;
         ptr += 8;
-        @memcpy(ptr, @tagName(color));
-        ptr += @tagName(color).len;
+        ptr = fmt.strcpyEqu(ptr, @tagName(color));
         ptr[0] = 0;
         ptr += 1;
     }
@@ -722,8 +691,7 @@ export fn formatWriteBufBuildCommand(cmd: *types.BuildCommand, zig_exe_ptr: [*]c
     if (cmd.debug_log) |debug_log| {
         ptr[0..12].* = "--debug-log\x00".*;
         ptr += 12;
-        @memcpy(ptr, debug_log);
-        ptr += debug_log.len;
+        ptr = fmt.strcpyEqu(ptr, debug_log);
         ptr[0] = 0;
         ptr += 1;
     }
@@ -1287,8 +1255,7 @@ export fn formatWriteBufFormatCommand(cmd: *types.FormatCommand, zig_exe_ptr: [*
     const zig_exe: []const u8 = zig_exe_ptr[0..zig_exe_len];
     @setRuntimeSafety(false);
     var ptr: [*]u8 = buf;
-    @memcpy(ptr, zig_exe);
-    ptr += zig_exe.len;
+    ptr = fmt.strcpyEqu(ptr, zig_exe);
     ptr[0] = 0;
     ptr += 1;
     ptr[0..4].* = "fmt\x00".*;
@@ -1296,8 +1263,7 @@ export fn formatWriteBufFormatCommand(cmd: *types.FormatCommand, zig_exe_ptr: [*
     if (cmd.color) |color| {
         ptr[0..8].* = "--color\x00".*;
         ptr += 8;
-        @memcpy(ptr, @tagName(color));
-        ptr += @tagName(color).len;
+        ptr = fmt.strcpyEqu(ptr, @tagName(color));
         ptr[0] = 0;
         ptr += 1;
     }
@@ -1316,8 +1282,7 @@ export fn formatWriteBufFormatCommand(cmd: *types.FormatCommand, zig_exe_ptr: [*
     if (cmd.exclude) |exclude| {
         ptr[0..10].* = "--exclude\x00".*;
         ptr += 10;
-        @memcpy(ptr, exclude);
-        ptr += exclude.len;
+        ptr = fmt.strcpyEqu(ptr, exclude);
         ptr[0] = 0;
         ptr += 1;
     }
@@ -1358,8 +1323,7 @@ export fn formatWriteBufArchiveCommand(cmd: *types.ArchiveCommand, zig_exe_ptr: 
     const files: []const types.Path = files_ptr[0..files_len];
     @setRuntimeSafety(false);
     var ptr: [*]u8 = buf;
-    @memcpy(ptr, zig_exe);
-    ptr += zig_exe.len;
+    ptr = fmt.strcpyEqu(ptr, zig_exe);
     ptr[0] = 0;
     ptr += 1;
     ptr[0..3].* = "ar\x00".*;
@@ -1367,8 +1331,7 @@ export fn formatWriteBufArchiveCommand(cmd: *types.ArchiveCommand, zig_exe_ptr: 
     if (cmd.format) |format| {
         ptr[0..9].* = "--format\x00".*;
         ptr += 9;
-        @memcpy(ptr, @tagName(format));
-        ptr += @tagName(format).len;
+        ptr = fmt.strcpyEqu(ptr, @tagName(format));
         ptr[0] = 0;
         ptr += 1;
     }
@@ -1379,8 +1342,7 @@ export fn formatWriteBufArchiveCommand(cmd: *types.ArchiveCommand, zig_exe_ptr: 
     if (cmd.output) |output| {
         ptr[0..9].* = "--output\x00".*;
         ptr += 9;
-        @memcpy(ptr, output);
-        ptr += output.len;
+        ptr = fmt.strcpyEqu(ptr, output);
         ptr[0] = 0;
         ptr += 1;
     }
@@ -1428,8 +1390,7 @@ export fn formatWriteBufArchiveCommand(cmd: *types.ArchiveCommand, zig_exe_ptr: 
         ptr[0..1].* = "u".*;
         ptr += 1;
     }
-    @memcpy(ptr, @tagName(cmd.operation));
-    ptr += @tagName(cmd.operation).len;
+    ptr = fmt.strcpyEqu(ptr, @tagName(cmd.operation));
     ptr[0] = 0;
     ptr += 1;
     for (files) |value| {
@@ -1502,8 +1463,7 @@ export fn formatWriteBufObjcopyCommand(cmd: *types.ObjcopyCommand, zig_exe_ptr: 
     const zig_exe: []const u8 = zig_exe_ptr[0..zig_exe_len];
     @setRuntimeSafety(false);
     var ptr: [*]u8 = buf;
-    @memcpy(ptr, zig_exe);
-    ptr += zig_exe.len;
+    ptr = fmt.strcpyEqu(ptr, zig_exe);
     ptr[0] = 0;
     ptr += 1;
     ptr[0..8].* = "objcopy\x00".*;
@@ -1511,16 +1471,14 @@ export fn formatWriteBufObjcopyCommand(cmd: *types.ObjcopyCommand, zig_exe_ptr: 
     if (cmd.output_target) |output_target| {
         ptr[0..16].* = "--output-target\x00".*;
         ptr += 16;
-        @memcpy(ptr, output_target);
-        ptr += output_target.len;
+        ptr = fmt.strcpyEqu(ptr, output_target);
         ptr[0] = 0;
         ptr += 1;
     }
     if (cmd.only_section) |only_section| {
         ptr[0..15].* = "--only-section\x00".*;
         ptr += 15;
-        @memcpy(ptr, only_section);
-        ptr += only_section.len;
+        ptr = fmt.strcpyEqu(ptr, only_section);
         ptr[0] = 0;
         ptr += 1;
     }
@@ -1546,16 +1504,14 @@ export fn formatWriteBufObjcopyCommand(cmd: *types.ObjcopyCommand, zig_exe_ptr: 
     if (cmd.add_gnu_debuglink) |add_gnu_debuglink| {
         ptr[0..20].* = "--add-gnu-debuglink\x00".*;
         ptr += 20;
-        @memcpy(ptr, add_gnu_debuglink);
-        ptr += add_gnu_debuglink.len;
+        ptr = fmt.strcpyEqu(ptr, add_gnu_debuglink);
         ptr[0] = 0;
         ptr += 1;
     }
     if (cmd.extract_to) |extract_to| {
         ptr[0..13].* = "--extract-to\x00".*;
         ptr += 13;
-        @memcpy(ptr, extract_to);
-        ptr += extract_to.len;
+        ptr = fmt.strcpyEqu(ptr, extract_to);
         ptr[0] = 0;
         ptr += 1;
     }
@@ -1606,14 +1562,90 @@ export fn formatLengthObjcopyCommand(cmd: *types.ObjcopyCommand, zig_exe_ptr: [*
     len +%= file.formatLength();
     return len;
 }
+export fn formatWriteBufHarecCommand(cmd: *types.HarecCommand, harec_exe_ptr: [*]const u8, harec_exe_len: usize, buf: [*]u8) callconv(.C) usize {
+    const harec_exe: []const u8 = harec_exe_ptr[0..harec_exe_len];
+    @setRuntimeSafety(false);
+    var ptr: [*]u8 = buf;
+    ptr = fmt.strcpyEqu(ptr, harec_exe);
+    ptr[0] = 0;
+    ptr += 1;
+    if (cmd.arch) |arch| {
+        ptr[0..3].* = "-a\x00".*;
+        ptr += 3;
+        ptr = fmt.strcpyEqu(ptr, arch);
+        ptr[0] = 0;
+        ptr += 1;
+    }
+    if (cmd.defs) |defs| {
+        ptr += types.Macros.formatWriteBuf(.{ .value = defs }, ptr);
+    }
+    if (cmd.output) |output| {
+        ptr[0..3].* = "-o\x00".*;
+        ptr += 3;
+        ptr = fmt.strcpyEqu(ptr, output);
+        ptr[0] = 0;
+        ptr += 1;
+    }
+    if (cmd.tags) |tags| {
+        for (tags) |value| {
+            ptr[0..2].* = "-T".*;
+            ptr += 2;
+            ptr = fmt.strcpyEqu(ptr, value);
+            ptr[0] = 0;
+            ptr += 1;
+        }
+    }
+    if (cmd.typedefs) {
+        ptr[0..3].* = "-t\x00".*;
+        ptr += 3;
+    }
+    if (cmd.namespace) {
+        ptr[0..3].* = "-N\x00".*;
+        ptr += 3;
+    }
+    return @intFromPtr(ptr) -% @intFromPtr(buf);
+}
+export fn formatLengthHarecCommand(cmd: *types.HarecCommand, harec_exe_ptr: [*]const u8, harec_exe_len: usize) callconv(.C) usize {
+    const harec_exe: []const u8 = harec_exe_ptr[0..harec_exe_len];
+    @setRuntimeSafety(false);
+    var len: usize = 0;
+    len +%= harec_exe.len;
+    len +%= 1;
+    if (cmd.arch) |arch| {
+        len +%= 3;
+        len +%= arch.len;
+        len +%= 1;
+    }
+    if (cmd.defs) |defs| {
+        len +%= types.Macros.formatLength(.{ .value = defs });
+    }
+    if (cmd.output) |output| {
+        len +%= 3;
+        len +%= output.len;
+        len +%= 1;
+    }
+    if (cmd.tags) |tags| {
+        for (tags) |value| {
+            len +%= 2;
+            len +%= value.len;
+            len +%= 1;
+        }
+    }
+    if (cmd.typedefs) {
+        len +%= 3;
+    }
+    if (cmd.namespace) {
+        len +%= 3;
+    }
+    return len;
+}
 export fn formatWriteBufTableGenCommand(cmd: *types.TableGenCommand, buf: [*]u8) callconv(.C) usize {
     @setRuntimeSafety(false);
     var ptr: [*]u8 = buf;
     if (cmd.color) |color| {
         ptr[0..8].* = "--color\x00".*;
         ptr += 8;
-        @memcpy(ptr, @tagName(color));
-        ptr += @tagName(color).len;
+        ptr = fmt.strcpyEqu(ptr, @tagName(color));
         ptr[0] = 0;
         ptr += 1;
     }
@@ -1624,8 +1656,7 @@ export fn formatWriteBufTableGenCommand(cmd: *types.TableGenCommand, buf: [*]u8)
         for (include) |value| {
             ptr[0..2].* = "-I".*;
             ptr += 2;
-            @memcpy(ptr, value);
-            ptr += value.len;
+            ptr = fmt.strcpyEqu(ptr, value);
             ptr[0] = 0;
             ptr += 1;
         }
@@ -1634,8 +1665,7 @@ export fn formatWriteBufTableGenCommand(cmd: *types.TableGenCommand, buf: [*]u8)
         for (dependencies) |value| {
             ptr[0..3].* = "-d\x00".*;
             ptr += 3;
-            @memcpy(ptr, value);
-            ptr += value.len;
+            ptr = fmt.strcpyEqu(ptr, value);
             ptr[0] = 0;
             ptr += 1;
         }
@@ -1799,8 +1829,7 @@ export fn formatWriteBufTableGenCommand(cmd: *types.TableGenCommand, buf: [*]u8)
     if (cmd.output) |output| {
         ptr[0..3].* = "-o\x00".*;
         ptr += 3;
-        @memcpy(ptr, output);
-        ptr += output.len;
+        ptr = fmt.strcpyEqu(ptr, output);
         ptr[0] = 0;
         ptr += 1;
     }
@@ -1952,87 +1981,6 @@ export fn formatLengthTableGenCommand(cmd: *types.TableGenCommand) callconv(.C) 
         len +%= 3;
         len +%= output.len;
         len +%= 1;
-    }
-    return len;
-}
-export fn formatWriteBufHarecCommand(cmd: *types.HarecCommand, harec_exe_ptr: [*]const u8, harec_exe_len: usize, buf: [*]u8) callconv(.C) usize {
-    const harec_exe: []const u8 = harec_exe_ptr[0..harec_exe_len];
-    @setRuntimeSafety(false);
-    var ptr: [*]u8 = buf;
-    @memcpy(ptr, harec_exe);
-    ptr += harec_exe.len;
-    ptr[0] = 0;
-    ptr += 1;
-    if (cmd.arch) |arch| {
-        ptr[0..3].* = "-a\x00".*;
-        ptr += 3;
-        @memcpy(ptr, arch);
-        ptr += arch.len;
-        ptr[0] = 0;
-        ptr += 1;
-    }
-    if (cmd.defs) |defs| {
-        ptr += types.Macros.formatWriteBuf(.{ .value = defs }, ptr);
-    }
-    if (cmd.output) |output| {
-        ptr[0..3].* = "-o\x00".*;
-        ptr += 3;
-        @memcpy(ptr, output);
-        ptr += output.len;
-        ptr[0] = 0;
-        ptr += 1;
-    }
-    if (cmd.tags) |tags| {
-        for (tags) |value| {
-            ptr[0..2].* = "-T".*;
-            ptr += 2;
-            @memcpy(ptr, value);
-            ptr += value.len;
-            ptr[0] = 0;
-            ptr += 1;
-        }
-    }
-    if (cmd.typedefs) {
-        ptr[0..3].* = "-t\x00".*;
-        ptr += 3;
-    }
-    if (cmd.namespace) {
-        ptr[0..3].* = "-N\x00".*;
-        ptr += 3;
-    }
-    return @intFromPtr(ptr) -% @intFromPtr(buf);
-}
-export fn formatLengthHarecCommand(cmd: *types.HarecCommand, harec_exe_ptr: [*]const u8, harec_exe_len: usize) callconv(.C) usize {
-    const harec_exe: []const u8 = harec_exe_ptr[0..harec_exe_len];
-    @setRuntimeSafety(false);
-    var len: usize = 0;
-    len +%= harec_exe.len;
-    len +%= 1;
-    if (cmd.arch) |arch| {
-        len +%= 3;
-        len +%= arch.len;
-        len +%= 1;
-    }
-    if (cmd.defs) |defs| {
-        len +%= types.Macros.formatLength(.{ .value = defs });
-    }
-    if (cmd.output) |output| {
-        len +%= 3;
-        len +%= output.len;
-        len +%= 1;
-    }
-    if (cmd.tags) |tags| {
-        for (tags) |value| {
-            len +%= 2;
-            len +%= value.len;
-            len +%= 1;
-        }
-    }
-    if (cmd.typedefs) {
-        len +%= 3;
-    }
-    if (cmd.namespace) {
-        len +%= 3;
     }
     return len;
 }
