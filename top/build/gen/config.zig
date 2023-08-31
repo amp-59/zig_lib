@@ -5,8 +5,8 @@ pub const logging_default = .{
     .Acquire = false,
     .Release = false,
     .Attempt = false,
-    .Error = false,
-    .Fault = false,
+    .Error = true,
+    .Fault = true,
 };
 /// Auxiliary products of builder implementation generator go here. These are
 /// generated source files (src) or serialised data (bin). They exist to speed
