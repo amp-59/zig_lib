@@ -3,6 +3,7 @@ const fmt = @import("../fmt.zig");
 const sys = @import("../sys.zig");
 const file = @import("../file.zig");
 const proc = @import("../proc.zig");
+const mach = @import("../mach.zig");
 const debug = @import("../debug.zig");
 const builtin = @import("../builtin.zig");
 
@@ -19,11 +20,10 @@ pub fn aboutGroupNotice(allocator: *mem.SimpleAllocator, node: *types.Node5, sho
     var name_width: u64 = 0;
     var root_width: u64 = 0;
     const buf0: [*]u8 = @ptrFromInt(allocator.allocateRaw(1024 *% 1024, 1));
-    @memset(buf0[0 .. 1024 *% 1024], 'E');
-    var len0: u64 = node.name.len;
+    mach.memset(buf0, 'E', 1024 * 1024);
     const buf1: [*]u8 = @ptrFromInt(allocator.allocateRaw(4096, 1));
-    @memset(buf1[0..4096], 'E');
-    @memcpy(buf0, node.name);
+    mach.memset(buf1, 'E', 4096);
+    var len0: usize = fmt.strcpy(buf0, node.name);
     lengthToplevelCommandNotice(0, node, show_deps, &name_width, &root_width);
     name_width +%= 4;
     name_width &= ~@as(u64, 3);
@@ -41,16 +41,13 @@ pub fn addNotice(node: *types.Node5) void {
     var ptr: [*]u8 = &buf;
     ptr[0..tab.add_s.len].* = tab.add_s.*;
     ptr += tab.add_s.len;
-    @memcpy(ptr, @tagName(node.tag));
-    ptr += @tagName(node.tag).len;
+    ptr = fmt.strcpyEqu(ptr, @tagName(node.tag));
     ptr[0] = '.';
     ptr += 1;
-    @memcpy(ptr, @tagName(task));
-    ptr += @tagName(task).len;
+    ptr = fmt.strcpyEqu(ptr, @tagName(task));
     ptr[0..2].* = ", ".*;
     ptr += 2;
-    @memcpy(ptr, node.name);
-    ptr += node.name.len;
+    ptr = fmt.strcpyEqu(ptr, node.name);
     ptr[0] = ' ';
     ptr += 1;
     const paths: []types.Path = node.lists.get(.paths);
@@ -58,37 +55,32 @@ pub fn addNotice(node: *types.Node5) void {
         .build => {
             ptr[0..5].* = "root=".*;
             ptr += 5;
-            @memcpy(ptr, paths[1].names[1]);
-            ptr += paths[1].names[1].len;
+            ptr = fmt.strcpyEqu(ptr, paths[1].names[1]);
             ptr[0..2].* = ", ".*;
             ptr += 2;
             ptr[0..4].* = "bin=".*;
             ptr += 4;
-            @memcpy(ptr, paths[0].names[1]);
-            ptr += paths[0].names[1].len;
+            ptr = fmt.strcpyEqu(ptr, paths[0].names[1]);
         },
         .format => {
             ptr[0..5].* = "path=".*;
             ptr += 5;
-            @memcpy(ptr, paths[0].names[1]);
-            ptr += paths[0].names[1].len;
+            ptr = fmt.strcpyEqu(ptr, paths[0].names[1]);
         },
         .archive => {
             ptr[0..8].* = "archive=".*;
             ptr += 8;
-            @memcpy(ptr, paths[0].names[1]);
-            ptr += paths[0].names[1].len;
+            ptr = fmt.strcpyEqu(ptr, paths[0].names[1]);
         },
         .objcopy => {
             ptr[0..4].* = "bin=".*;
             ptr += 4;
-            @memcpy(ptr, paths[0].names[1]);
-            ptr += paths[0].names[1].len;
+            ptr = fmt.strcpyEqu(ptr, paths[0].names[1]);
         },
         else => {},
     }
     ptr[0] = '\n';
-    debug.write(buf[0 .. @intFromPtr(ptr - @intFromPtr(&buf)) +% 1]);
+    debug.write(buf[0 .. fmt.strlen(ptr, &buf) +% 1]);
 }
 pub fn aboutBaseMemoryUsageNotice(allocator: *mem.SimpleAllocator) void {
     @setRuntimeSafety(builtin.is_safe);
@@ -101,7 +93,7 @@ pub fn aboutBaseMemoryUsageNotice(allocator: *mem.SimpleAllocator) void {
     ptr += 6;
     ptr[0] = '\n';
     ptr += 1;
-    debug.write(buf[0..@intFromPtr(ptr - @intFromPtr(&buf))]);
+    debug.write(buf[0..fmt.strlen(ptr, &buf)]);
 }
 pub fn aboutProgramSizeNotice() void {
     @setRuntimeSafety(builtin.is_safe);
@@ -112,19 +104,20 @@ pub fn aboutProgramSizeNotice() void {
     const fd: usize = sys.call_noexcept(.open, usize, .{ @intFromPtr(&buf), sys.O.RDONLY, 0 });
     const size: usize = sys.call_noexcept(.lseek, usize, .{ fd, 0, 2 });
     _ = sys.call_noexcept(.close, usize, .{fd});
-    ptr[0..tab.mem_s.len].* = tab.mem_s.*;
-    ptr += tab.mem_s.len;
+    ptr = &buf;
+    ptr[0..tab.size_s.len].* = tab.size_s.*;
+    ptr += tab.size_s.len;
     ptr += fmt.ud64(size).formatWriteBuf(ptr);
     ptr[0..8].* = tab.bytes_s.*;
     ptr += 6;
     ptr[0] = '\n';
-    debug.write(buf[0 .. @intFromPtr(ptr - @intFromPtr(&buf)) +% 1]);
+    debug.write(buf[0 .. fmt.strlen(ptr, &buf) +% 1]);
 }
 pub fn commandLineNotice(node: *const types.Node5) void {
     @setRuntimeSafety(builtin.is_safe);
     var buf: [4096]u8 = undefined;
     var ptr: [*]u8 = &buf;
-    const cmd_args: [][*:0]u8 = node.extra.get(.cmd_args);
+    const cmd_args: [][*:0]u8 = node.lists.get(.cmd_args);
     if (cmd_args.len != 0) {
         ptr[0..tab.cmd_args_s.len].* = tab.cmd_args_s.*;
         ptr += tab.cmd_args_s.len;
@@ -132,7 +125,7 @@ pub fn commandLineNotice(node: *const types.Node5) void {
         ptr[0] = '\n';
         ptr += 1;
     }
-    const run_args: [][*:0]u8 = node.extra.get(.run_args);
+    const run_args: [][*:0]u8 = node.lists.get(.run_args);
     if (run_args.len != 0) {
         ptr[0..tab.run_args_s.len].* = tab.run_args_s.*;
         ptr += tab.run_args_s.len;
@@ -140,7 +133,7 @@ pub fn commandLineNotice(node: *const types.Node5) void {
         ptr[0] = '\n';
         ptr += 1;
     }
-    debug.write(buf[0..@intFromPtr(ptr - @intFromPtr(&buf))]);
+    debug.write(buf[0..fmt.strlen(ptr, &buf)]);
 }
 fn wouldSkip(toplevel: *const types.Node5, node: *const types.Node5) bool {
     return toplevel == node or node.flags.is_hidden or node.flags.is_special;
@@ -237,15 +230,13 @@ fn writeAndWalkInternal(buf: [*]u8, end: [*]u8, tmp: [*]u8, len: usize, node: *c
         (tmp + len)[0..2].* = if (deps_idx == last_idx or len == 0) "  ".* else "| ".*;
         ptr[0] = '\n';
         ptr += 1;
-        @memcpy(ptr, tmp[0..len]);
-        ptr += len;
+        ptr = fmt.strcpyEqu(ptr, tmp[0..len]);
         fin = &ptr[0];
         ptr[0..2].* = "|-".*;
         ptr += 2;
         ptr[0..2].* = if (on_deps.len == 0) "> ".* else "+ ".*;
         ptr += 2;
-        @memcpy(ptr, on_node.name);
-        ptr += on_node.name.len;
+        ptr = fmt.strcpyEqu(ptr, on_node.name);
         if (on_paths.len != 0) {
             ptr += writeSubNode(ptr, len +% 2, on_node, name_width, root_width, on_paths);
         }
@@ -257,7 +248,7 @@ fn writeAndWalkInternal(buf: [*]u8, end: [*]u8, tmp: [*]u8, len: usize, node: *c
     if (fin.* == '|') {
         fin.* = '`';
     }
-    return @intFromPtr(ptr - @intFromPtr(buf));
+    return fmt.strlen(ptr, buf);
 }
 fn primaryInputDisplayName(node: *const types.Node5, paths: []types.Path) [:0]const u8 {
     @setRuntimeSafety(builtin.is_safe);
@@ -272,12 +263,7 @@ fn primaryInputDisplayName(node: *const types.Node5, paths: []types.Path) [:0]co
             ret = paths[0].names[1];
         }
         if (node.tasks.tag == .run) {
-            if (node.flags.is_build_command) {
-                const args: [][*:0]u8 = node.lists.get(.args);
-                ret = mem.terminate(args[args.len -% 1], 0);
-            } else {
-                ret = paths[0].names[1];
-            }
+            ret = paths[0].names[1];
         }
         return ret;
     }
@@ -290,22 +276,15 @@ fn writeSubNode(buf: [*]u8, len: usize, sub_node: *const types.Node5, name_width
     @setRuntimeSafety(builtin.is_safe);
     var count: usize = name_width -% (sub_node.name.len +% len);
     count +%= if (len == 0) 2 else 0;
-    var ptr: [*]u8 = buf;
     const input: [:0]const u8 = primaryInputDisplayName(sub_node, paths);
-    if (input.len != 0) {
-        @memset(ptr[0..count], ' ');
-        ptr += count;
-        @memcpy(ptr, input);
-        ptr += input.len;
-        if (sub_node.descr.len != 0) {
-            count = root_width -% input.len;
-            @memset(ptr[0..count], ' ');
-            ptr += count;
-            @memcpy(ptr, sub_node.descr);
-            ptr += sub_node.descr.len;
-        }
+    var ptr: [*]u8 = fmt.strsetEqu(buf, ' ', count);
+    ptr = fmt.strcpyEqu(ptr, input);
+    if (sub_node.descr.len != 0) {
+        count = root_width -% input.len;
+        ptr = fmt.strsetEqu(ptr, ' ', count);
+        ptr = fmt.strcpyEqu(ptr, sub_node.descr);
     }
-    return @intFromPtr(ptr - @intFromPtr(buf));
+    return fmt.strlen(ptr, buf);
 }
 fn writeToplevelCommandNotice(buf: [*]u8, tmp: [*]u8, len: usize, node: *const types.Node5, show_deps: bool, name_width: usize, root_width: usize) usize {
     @setRuntimeSafety(builtin.is_safe);
@@ -324,23 +303,22 @@ fn writeToplevelCommandNotice(buf: [*]u8, tmp: [*]u8, len: usize, node: *const t
         ptr += 4;
     }
     var last_idx: usize = 0;
-    for (sub_nodes, 0..) |sub_node, idx| {
+    for (sub_nodes, 0..) |sub_node, node_idx| {
         if (wouldSkip(node, sub_node)) {
             continue;
         }
-        last_idx = idx;
+        last_idx = node_idx;
     }
-    for (sub_nodes, 0..) |sub_node, idx| {
+    for (sub_nodes, 0..) |sub_node, node_idx| {
         const sub_sub_nodes: []*types.Node5 = sub_node.lists.get(.nodes)[1..];
         paths = sub_node.lists.get(.paths);
         if (wouldSkip(node, sub_node)) {
             continue;
         }
-        (tmp + len)[0..2].* = if (idx == last_idx or len == 0) "  ".* else "| ".*;
+        (tmp + len)[0..2].* = if (node_idx == last_idx or len == 0) "  ".* else "| ".*;
         ptr[0] = '\n';
         ptr += 1;
-        @memcpy(ptr, tmp[0..len]);
-        ptr += len;
+        ptr = fmt.strcpyEqu(ptr, tmp[0..len]);
         fin = &ptr[0];
         ptr[0..2].* = if (len == 0) "  ".* else "|-".*;
         ptr += 2;
@@ -351,15 +329,184 @@ fn writeToplevelCommandNotice(buf: [*]u8, tmp: [*]u8, len: usize, node: *const t
         {
             ptr += writeSubNode(ptr, len +% 4, sub_node, name_width, root_width, paths);
         }
-        @memcpy(ptr, sub_node.name);
-        ptr += sub_node.name.len;
+        ptr = fmt.strcpyEqu(ptr, sub_node.name);
         ptr += writeToplevelCommandNotice(ptr, tmp, len +% 2, sub_node, show_deps, name_width, root_width);
-        if (idx == last_idx) {
+        if (node_idx == last_idx) {
             break;
         }
     }
     if (fin.* == '|') {
         fin.* = '`';
     }
-    return @intFromPtr(ptr - @intFromPtr(buf));
+    return fmt.strlen(ptr, buf);
+}
+const AboutKind = enum(u8) { @"error", note };
+fn writeAbout(buf: [*]u8, kind: AboutKind) usize {
+    @setRuntimeSafety(builtin.is_safe);
+    var ptr: [*]u8 = buf;
+    switch (kind) {
+        .@"error" => {
+            ptr[0..4].* = "\x1b[1m".*;
+            ptr += 4;
+        },
+        .note => {
+            ptr[0..15].* = "\x1b[0;38;5;250;1m".*;
+            ptr += 15;
+        },
+    }
+    ptr = fmt.strcpyEqu(ptr, @tagName(kind));
+    ptr[0..2].* = ": ".*;
+    ptr += 2;
+    ptr[0..4].* = "\x1b[1m".*;
+    ptr += 4;
+    return fmt.strlen(ptr, buf);
+}
+fn writeTopSrcLoc(buf: [*]u8, extra: [*]u32, bytes: [*:0]u8, err_msg_idx: u32) usize {
+    @setRuntimeSafety(builtin.is_safe);
+    const err: *types.ErrorMessage = @ptrCast(extra + err_msg_idx);
+    const src: *types.SourceLocation = @ptrCast(extra + err.src_loc);
+    buf[0..4].* = "\x1b[1m".*;
+    var ptr: [*]u8 = buf + 4;
+    if (err.src_loc != 0) {
+        const src_file: [:0]const u8 = mem.terminate(bytes + src.src_path, 0);
+        ptr += writeSourceLocation(ptr, src_file, src.line +% 1, src.column +% 1);
+        ptr[0..2].* = ": ".*;
+        ptr += 2;
+    }
+    return fmt.strlen(ptr, buf);
+}
+fn writeError(buf: [*]u8, extra: [*]u32, bytes: [*:0]u8, err_msg_idx: u32, kind: AboutKind) usize {
+    @setRuntimeSafety(builtin.is_safe);
+    const err: *types.ErrorMessage = @ptrCast(extra + err_msg_idx);
+    const src: *types.SourceLocation = @ptrCast(extra + err.src_loc);
+    const notes: [*]u32 = extra + err_msg_idx + types.ErrorMessage.len;
+    var len: usize = writeTopSrcLoc(buf, extra, bytes, err_msg_idx);
+    const pos: u64 = len +% @tagName(kind).len -% 11 -% 2;
+    len +%= writeAbout(buf + len, kind);
+    len +%= writeMessage(buf + len, bytes, err.start, pos);
+    if (err.src_loc == 0) {
+        if (err.count != 1)
+            len +%= writeTimes(buf + len, err.count);
+        for (0..err.notes_len) |idx|
+            len +%= writeError(buf + len, extra, bytes, notes[idx], .note);
+    } else {
+        if (err.count != 1)
+            len +%= writeTimes(buf + len, err.count);
+        if (src.src_line != 0)
+            len +%= writeCaret(buf + len, bytes, src);
+        for (0..err.notes_len) |idx|
+            len +%= writeError(buf + len, extra, bytes, notes[idx], .note);
+        if (src.ref_len != 0)
+            len +%= writeTrace(buf + len, extra, bytes, err.src_loc, src.ref_len);
+    }
+    return len;
+}
+fn writeSourceLocation(buf: [*]u8, pathname: [:0]const u8, line: usize, column: usize) usize {
+    @setRuntimeSafety(builtin.is_safe);
+    var ud64: fmt.Type.Ud64 = .{ .value = line };
+    var ptr: [*]u8 = buf;
+    ptr[0..11].* = "\x1b[38;5;247m".*;
+    ptr += 11;
+    ptr = fmt.strcpyEqu(ptr, pathname);
+    ptr[0] = ':';
+    ptr += 1;
+    ptr += ud64.formatWriteBuf(ptr);
+    ptr[0] = ':';
+    ptr += 1;
+    ud64.value = column;
+    ptr += ud64.formatWriteBuf(ptr);
+    ptr[0..4].* = tab.reset_s.*;
+    return fmt.strlen(ptr, buf) +% 4;
+}
+fn writeTimes(buf: [*]u8, count: u64) u64 {
+    @setRuntimeSafety(builtin.is_safe);
+    var ud64: fmt.Type.Ud64 = .{ .value = count };
+    var ptr: [*]u8 = buf - 1;
+    ptr[0..4].* = tab.faint_s.*;
+    ptr += 4;
+    ptr[0..2].* = " (".*;
+    ptr += 2;
+    ptr += ud64.formatWriteBuf(ptr);
+    ptr[0..7].* = " times)".*;
+    ptr += 7;
+    ptr[0..5].* = tab.new_s.*;
+    return fmt.strlen(ptr, buf) +% 5;
+}
+fn writeCaret(buf: [*]u8, bytes: [*:0]u8, src: *types.SourceLocation) usize {
+    @setRuntimeSafety(builtin.is_safe);
+    const line: [:0]u8 = mem.terminate(bytes + src.src_line, 0);
+    const before_caret: u64 = src.span_main -% src.span_start;
+    const indent: u64 = src.column -% before_caret;
+    const after_caret: u64 = src.span_end -% src.span_main -| 1;
+    var ptr: [*]u8 = fmt.strcpyEqu(buf, line);
+    ptr[0] = '\n';
+    ptr += 1;
+    ptr = fmt.strsetEqu(ptr, ' ', indent);
+    ptr[0..10].* = tab.hi_green_s.*;
+    ptr += 10;
+    ptr = fmt.strsetEqu(ptr, '~', before_caret);
+    ptr[0] = '^';
+    ptr += 1;
+    ptr = fmt.strsetEqu(ptr, '~', after_caret);
+    ptr[0..5].* = tab.new_s.*;
+    return fmt.strlen(ptr, buf) +% tab.new_s.len;
+}
+fn writeMessage(buf: [*]u8, bytes: [*:0]u8, start: usize, indent: usize) usize {
+    @setRuntimeSafety(builtin.is_safe);
+    var ptr: [*]u8 = buf;
+    var next: usize = start;
+    var pos: usize = start;
+    while (bytes[pos] != 0) : (pos +%= 1) {
+        if (bytes[pos] == '\n') {
+            const line: []u8 = bytes[next..pos];
+            ptr = fmt.strcpyEqu(ptr, line);
+            ptr[0] = '\n';
+            ptr += 1;
+            ptr = fmt.strsetEqu(ptr, ' ', indent);
+            next = pos +% 1;
+        }
+    }
+    const line: []u8 = bytes[next..pos];
+    ptr = fmt.strcpyEqu(ptr, line);
+    ptr[0..5].* = tab.new_s.*;
+    return fmt.strlen(ptr, buf) +% tab.new_s.len;
+}
+fn writeTrace(buf: [*]u8, extra: [*]u32, bytes: [*:0]u8, start: usize, ref_len: usize) usize {
+    @setRuntimeSafety(builtin.is_safe);
+    var ref_idx: usize = start +% types.SourceLocation.len;
+    buf[0..11].* = "\x1b[38;5;247m".*;
+    var ptr: [*]u8 = buf + 11;
+    ptr[0..15].* = "referenced by:\n".*;
+    ptr += 15;
+    var len: usize = 0;
+    while (len != ref_len) : (len +%= 1) {
+        const ref_trc: *types.ReferenceTrace = @ptrCast(extra + ref_idx);
+        if (ref_trc.src_loc != 0) {
+            const ref_src: *types.SourceLocation = @ptrCast(extra + ref_trc.src_loc);
+            const src_file: [:0]u8 = mem.terminate(bytes + ref_src.src_path, 0);
+            const decl_name: [:0]u8 = mem.terminate(bytes + ref_trc.decl_name, 0);
+            @memset(ptr[0..4], ' ');
+            ptr += 4;
+            ptr = fmt.strcpyEqu(ptr, decl_name);
+            ptr[0..2].* = ": ".*;
+            ptr += 2;
+            ptr += writeSourceLocation(ptr, src_file, ref_src.line +% 1, ref_src.column +% 1);
+            ptr[0] = '\n';
+            ptr += 1;
+        }
+        ref_idx +%= types.ReferenceTrace.len;
+    }
+    ptr[0..5].* = tab.new_s.*;
+    return (@intFromPtr(ptr) -% @intFromPtr(buf)) +% 5;
+}
+pub fn writeErrors(allocator: *mem.SimpleAllocator, idx: [*]u32) void {
+    @setRuntimeSafety(builtin.is_safe);
+    const extra: [*]u32 = idx + 2;
+    var bytes: [*:0]u8 = @ptrCast(idx);
+    bytes += 8 + (idx[0] *% 4);
+    var buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(1024 *% 1024, 1));
+    for ((extra + extra[1])[0..extra[0]]) |err_msg_idx| {
+        debug.write(buf[0..writeError(buf, extra, bytes, err_msg_idx, .@"error")]);
+    }
+    debug.write(mem.terminate(bytes + extra[2], 0));
 }
