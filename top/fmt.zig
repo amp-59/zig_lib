@@ -38,6 +38,7 @@ pub fn about(comptime s: [:0]const u8) AboutSrc {
 pub const about_blank_s: AboutSrc = about("");
 pub const AboutDest = @TypeOf(@constCast(about_blank_s));
 pub const about_exit_s: AboutSrc = about("exit");
+pub const about_err_len: comptime_int = about_blank_s.len + debug.about.error_s.len;
 pub fn ci(comptime value: comptime_int) []const u8 {
     if (value < 0) {
         const s: []const u8 = @typeName([-value]void);
