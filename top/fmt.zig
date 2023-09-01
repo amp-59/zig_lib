@@ -334,8 +334,7 @@ pub const SourceLocationFormat = struct {
         const ret_addr_fmt: AddrFormat = .{ .value = format.return_address };
         var len: u64 = 4;
         @as(*[4]u8, @ptrCast(buf)).* = "\x1b[1m".*;
-        @memcpy(buf + len, file_name);
-        len +%= len;
+        len +%= strcpy(buf + len, file_name);
         buf[len] = ':';
         len +%= 1;
         len +%= line_fmt.formatWriteBuf(buf + len);
@@ -347,8 +346,7 @@ pub const SourceLocationFormat = struct {
         len +%= ret_addr_fmt.formatWriteBuf(buf + len);
         @as(*[4]u8, @ptrCast(buf + len)).* = " in ".*;
         len +%= 4;
-        @memcpy(buf + len, fn_name);
-        len +%= fn_name.len;
+        len +%= strcpy(buf + len, fn_name);
         @as(*[5]u8, @ptrCast(buf + len)).* = "\x1b[0m\n".*;
         return len +% 4;
     }
@@ -411,7 +409,6 @@ pub const Bytes = struct {
         integer: mem.Bytes,
         remainder: mem.Bytes,
     };
-    const Unit = mem.Bytes.Unit;
     const MajorIntFormat = GenericPolynomialFormat(.{
         .bits = 16,
         .signedness = .unsigned,
@@ -424,7 +421,7 @@ pub const Bytes = struct {
         .radix = 10,
         .width = .{ .fixed = 3 },
     });
-    const fields: []const builtin.Type.EnumField = @typeInfo(Unit).Enum.fields;
+    const fields: []const builtin.Type.EnumField = @typeInfo(mem.Bytes.Unit).Enum.fields;
     pub const max_len: u64 =
         MajorIntFormat.max_len +%
         MinorIntFormat.max_len +% 3; // Unit
@@ -456,8 +453,7 @@ pub const Bytes = struct {
             len +%= 1;
             len +%= format.formatRemainder().formatWriteBuf(buf + len);
         }
-        @memcpy(buf + len, @tagName(format.value.integer.unit));
-        return len +% @tagName(format.value.integer.unit).len;
+        return len +% strcpy(buf + len, @tagName(format.value.integer.unit));
     }
     pub fn formatLength(format: Format) u64 {
         var len: u64 = 0;
@@ -473,12 +469,13 @@ pub const Bytes = struct {
         return len;
     }
     pub fn init(value: u64) Bytes {
+        @setRuntimeSafety(false);
         inline for (fields, 0..) |field, i| {
             const integer: mem.Bytes = mem.Bytes.Unit.to(value, @field(mem.Bytes.Unit, field.name));
             if (integer.count != 0) {
-                const remainder: mem.Bytes = Unit.to(
+                const remainder: mem.Bytes = mem.Bytes.Unit.to(
                     value -| mem.Bytes.bytes(integer),
-                    @field(Unit, fields[if (i != fields.len -% 1) i +% 1 else i].name),
+                    @field(mem.Bytes.Unit, fields[if (i != fields.len -% 1) i +% 1 else i].name),
                 );
                 return .{ .value = .{
                     .integer = integer,
@@ -512,6 +509,9 @@ pub fn GenericChangedIntFormat(comptime fmt_spec: ChangedIntFormatSpec) type {
         const OldIntFormat = GenericPolynomialFormat(fmt_spec.old_fmt_spec);
         const NewIntFormat = GenericPolynomialFormat(fmt_spec.new_fmt_spec);
         const DeltaIntFormat = GenericPolynomialFormat(fmt_spec.del_fmt_spec);
+        const inc_s = fmt_spec.inc_style[0..fmt_spec.inc_style.len];
+        const dec_s = fmt_spec.dec_style[0..fmt_spec.dec_style.len];
+        const no_s = fmt_spec.no_style[0..fmt_spec.no_style.len];
         pub const max_len: comptime_int = OldIntFormat.max_len +% 1 +%
             DeltaIntFormat.max_len +% 5 +%
             fmt_spec.no_style.len +%
@@ -545,22 +545,22 @@ pub fn GenericChangedIntFormat(comptime fmt_spec: ChangedIntFormatSpec) type {
                 const del_fmt: DeltaIntFormat = .{ .value = format.new_value -% format.old_value };
                 buf[len] = '(';
                 len +%= 1;
-                @memcpy(buf + len, fmt_spec.inc_style);
-                len +%= fmt_spec.inc_style.len;
+                @as(*[inc_s.len]u8, @ptrCast(buf + len)).* = inc_s.*;
+                len +%= inc_s.len;
                 len +%= del_fmt.formatWriteBuf(buf + len);
-                @memcpy(buf + len, fmt_spec.no_style);
-                len +%= fmt_spec.no_style.len;
+                @as(*[no_s.len]u8, @ptrCast(buf + len)).* = no_s.*;
+                len +%= no_s.len;
                 buf[len] = ')';
                 len +%= 1;
             } else {
                 const del_fmt: DeltaIntFormat = .{ .value = format.old_value -% format.new_value };
                 buf[len] = '(';
                 len +%= 1;
-                @memcpy(buf + len, fmt_spec.dec_style);
-                len +%= fmt_spec.dec_style.len;
+                @as(*[dec_s.len]u8, @ptrCast(buf + len)).* = dec_s.*;
+                len +%= dec_s.len;
                 len +%= del_fmt.formatWriteBuf(buf + len);
-                @memcpy(buf + len, fmt_spec.no_style);
-                len +%= fmt_spec.no_style.len;
+                @as(*[no_s.len]u8, @ptrCast(buf + len)).* = no_s.*;
+                len +%= no_s.len;
                 buf[len] = ')';
                 len +%= 1;
             }
@@ -573,16 +573,16 @@ pub fn GenericChangedIntFormat(comptime fmt_spec: ChangedIntFormatSpec) type {
             } else if (format.new_value > format.old_value) {
                 const del_fmt: DeltaIntFormat = .{ .value = format.new_value -% format.old_value };
                 len +%= 1;
-                len +%= fmt_spec.inc_style.len;
+                len +%= inc_s.len;
                 len +%= del_fmt.formatLength();
-                len +%= fmt_spec.no_style.len;
+                len +%= no_s.len;
                 len +%= 1;
             } else {
                 const del_fmt: DeltaIntFormat = .{ .value = format.old_value -% format.new_value };
                 len +%= 1;
-                len +%= fmt_spec.dec_style.len;
+                len +%= dec_s.len;
                 len +%= del_fmt.formatLength();
-                len +%= fmt_spec.no_style.len;
+                len +%= no_s.len;
                 len +%= 1;
             }
             return len;
@@ -602,7 +602,7 @@ pub fn GenericChangedIntFormat(comptime fmt_spec: ChangedIntFormatSpec) type {
             len +%= format.formatWriteDeltaBuf(buf + len);
             @memcpy(buf + len, fmt_spec.arrow_style);
             len +%= fmt_spec.arrow_style.len;
-            len +%= new_fmt.formatWriteBuf(buf);
+            len +%= new_fmt.formatWriteBuf(buf + len);
             return len;
         }
         pub fn formatLength(format: Format) u64 {
@@ -629,6 +629,9 @@ pub fn GenericChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type
         old_value: usize,
         new_value: usize,
         const Format: type = @This();
+        const inc_s = fmt_spec.inc_style[0..fmt_spec.inc_style.len];
+        const dec_s = fmt_spec.dec_style[0..fmt_spec.dec_style.len];
+        const no_s = fmt_spec.no_style[0..fmt_spec.no_style.len];
         pub fn formatWrite(format: Format, array: anytype) void {
             const old_fmt: Bytes = bytes(format.old_value);
             const new_fmt: Bytes = bytes(format.new_value);
@@ -660,26 +663,26 @@ pub fn GenericChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type
             const new_fmt: Bytes = bytes(format.new_value);
             var len: u64 = old_fmt.formatWriteBuf(buf);
             if (format.old_value != format.new_value) {
-                if (format.old_value > format.new_value) {
-                    const del_fmt: Bytes = bytes(format.old_value -% format.new_value);
+                if (format.new_value > format.old_value) {
+                    const del_fmt: Bytes = Bytes.init(format.new_value -% format.old_value);
                     buf[len] = '(';
                     len +%= 1;
-                    @memcpy(buf + len, fmt_spec.dec_style);
-                    len +%= fmt_spec.dec_style.len;
+                    @as(*[inc_s.len]u8, @ptrCast(buf + len)).* = inc_s.*;
+                    len +%= inc_s.len;
                     len +%= del_fmt.formatWriteBuf(buf + len);
-                    @memcpy(buf + len, fmt_spec.no_style);
-                    len +%= fmt_spec.no_style.len;
+                    @as(*[no_s.len]u8, @ptrCast(buf + len)).* = no_s.*;
+                    len +%= no_s.len;
                     buf[len] = ')';
                     len +%= 1;
                 } else {
-                    const del_fmt: Bytes = bytes(format.new_value -% format.old_value);
+                    const del_fmt: Bytes = Bytes.init(format.old_value -% format.new_value);
                     buf[len] = '(';
                     len +%= 1;
-                    @memcpy(buf + len, fmt_spec.inc_style);
-                    len +%= fmt_spec.inc_style.len;
+                    @as(*[dec_s.len]u8, @ptrCast(buf + len)).* = dec_s.*;
+                    len +%= dec_s.len;
                     len +%= del_fmt.formatWriteBuf(buf + len);
-                    @memcpy(buf + len, fmt_spec.no_style);
-                    len +%= fmt_spec.no_style.len;
+                    @as(*[no_s.len]u8, @ptrCast(buf + len)).* = no_s.*;
+                    len +%= no_s.len;
                     buf[len] = ')';
                     len +%= 1;
                 }
@@ -695,19 +698,19 @@ pub fn GenericChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type
             var len: usize = 0;
             len +%= old_fmt.formatLength();
             if (format.old_value != format.new_value) {
-                if (format.old_value > format.new_value) {
-                    const del_fmt: Bytes = bytes(format.old_value -% format.new_value);
-                    len +%= 1;
-                    len +%= fmt_spec.dec_style.len;
-                    len +%= del_fmt.formatLength();
-                    len +%= fmt_spec.no_style.len;
-                    len +%= 1;
-                } else {
+                if (format.new_value > format.old_value) {
                     const del_fmt: Bytes = bytes(format.new_value -% format.old_value);
                     len +%= 1;
-                    len +%= fmt_spec.inc_style.len;
+                    len +%= inc_s.len;
                     len +%= del_fmt.formatLength();
-                    len +%= fmt_spec.no_style.len;
+                    len +%= no_s.len;
+                    len +%= 1;
+                } else {
+                    const del_fmt: Bytes = bytes(format.old_value -% format.new_value);
+                    len +%= 1;
+                    len +%= dec_s.len;
+                    len +%= del_fmt.formatLength();
+                    len +%= no_s.len;
                     len +%= 1;
                 }
                 len +%= 4;
