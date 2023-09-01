@@ -244,36 +244,24 @@ pub const FdSpec = struct {
 pub const Bytes = struct {
     count: u64,
     unit: Unit,
-    pub const Unit = enum(u64) {
-        EiB = 1 << 60,
-        PiB = 1 << 50,
-        TiB = 1 << 40,
-        GiB = 1 << 30,
-        MiB = 1 << 20,
-        KiB = 1 << 10,
-        B = 1,
-        fn mask(u: Unit) u64 {
-            const bits: u64 = 0b1111111111;
-            return switch (u) {
-                .EiB => bits << 60,
-                .PiB => bits << 50,
-                .TiB => bits << 40,
-                .GiB => bits << 30,
-                .MiB => bits << 20,
-                .KiB => bits << 10,
-                else => bits,
-            };
-        }
+    const mask: usize = 0b1111111111;
+    pub const Unit = enum(u6) {
+        EiB = 60,
+        PiB = 50,
+        TiB = 40,
+        GiB = 30,
+        MiB = 20,
+        KiB = 10,
+        B = 0,
         pub fn to(count: u64, unit: Unit) Bytes {
-            const amt: u8 = builtin.tzcnt(u64, unit.mask());
             return .{
-                .count = mach.shrx64(count & unit.mask(), amt),
+                .count = (count & (mask << @intFromEnum(unit))) >> @intFromEnum(unit),
                 .unit = unit,
             };
         }
     };
     pub fn bytes(amt: Bytes) u64 {
-        return amt.count * @intFromEnum(amt.unit);
+        return amt.count *% (@as(usize, 1) << @intFromEnum(amt.unit));
     }
 };
 pub noinline fn monitor(comptime T: type, ptr: *T) void {
