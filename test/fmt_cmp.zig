@@ -247,9 +247,8 @@ fn zigLibOptimisedMessage2(futex1: *u32, futex2: *u32, count1: u32, count2: u32,
     var ux64: fmt.Type.Ux64 = .{ .value = @intFromPtr(futex1) };
     var ud64: fmt.Type.Ud64 = .{ .value = futex1.* };
     var buf: [4096]u8 = undefined;
-    var ptr: [*]u8 = &buf;
-    ptr[0..about.len].* = about.*;
-    ptr += about.len;
+    buf[0..about.len].* = about.*;
+    var ptr: [*]u8 = buf[about.len..];
     ptr[0..8].* = "futex1=@".*;
     ptr += 8;
     ptr += ux64.formatWriteBuf(ptr);
