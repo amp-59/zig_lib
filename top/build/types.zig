@@ -113,12 +113,11 @@ pub const Config = struct {
     pub const Value = union(enum) { Int: usize, Bool: bool, String: []const u8 };
     pub fn formatWriteBuf(cfg: Config, buf: [*]u8) u64 {
         @setRuntimeSafety(false);
-        var ptr: [*]u8 = buf;
         var ud64: fmt.Type.Ud64 = .{ .value = cfg.value.Int };
-        ptr[0..12].* = "pub const @\"".*;
-        ptr += 12;
-        @memcpy(ptr, cfg.name);
-        ptr += cfg.name.len;
+        @setRuntimeSafety(builtin.is_safe);
+        buf[0..12].* = "pub const @\"".*;
+        var ptr: [*]u8 = buf + 12;
+        ptr = fmt.strcpyEqu(ptr, cfg.name);
         switch (cfg.value) {
             .Int => {
                 ptr[0..18].* = "\": comptime_int = ".*;
@@ -140,14 +139,13 @@ pub const Config = struct {
                 ptr += 8;
                 ptr[0] = '"';
                 ptr += 1;
-                @memcpy(ptr, value);
-                ptr += value.len;
+                ptr = fmt.strcpyEqu(ptr, value);
                 ptr[0] = '"';
                 ptr += 1;
             },
         }
         ptr[0..2].* = ";\n".*;
-        return @intFromPtr(ptr - @intFromPtr(buf)) +% 2;
+        return fmt.strlen(ptr, buf) +% 2;
     }
     pub fn formatWrite(cfg: Config, array: anytype) void {
         array.writeMany("pub const ");
@@ -169,7 +167,7 @@ pub const Config = struct {
         array.writeMany(";\n");
     }
     pub fn formatLength(cfg: Config) u64 {
-        @setRuntimeSafety(false);
+        @setRuntimeSafety(builtin.is_safe);
         var ud64: fmt.Type.Ud64 = cfg.Int.value;
         var len: u64 = 10 +% cfg.name.len;
         switch (cfg.value) {
@@ -190,7 +188,7 @@ pub const Config = struct {
 pub const Module = struct {
     name: []const u8,
     path: []const u8,
-    deps: ?[]const []const u8 = null,
+    deps: []const []const u8 = &.{},
     pub fn formatWrite(mod: Module, array: anytype) void {
         array.writeMany("--mod\x00");
         array.writeMany(mod.name);
@@ -209,49 +207,33 @@ pub const Module = struct {
         array.writeOne(0);
     }
     pub fn formatWriteBuf(mod: Module, buf: [*]u8) u64 {
-        @setRuntimeSafety(false);
-        var len: u64 = 6;
+        @setRuntimeSafety(builtin.is_safe);
         buf[0..6].* = "--mod\x00".*;
-        @memcpy(buf + len, mod.name);
-        len = len +% mod.name.len;
-        buf[len] = ':';
-        len +%= 1;
-        if (mod.deps) |deps| {
-            for (deps) |dep_name| {
-                @memcpy(buf + len, dep_name);
-                len = len +% dep_name.len;
-                buf[len] = ',';
-                len = len +% 1;
-            }
-            if (deps.len != 0) {
-                len = len -% 1;
-            }
+        var ptr: [*]u8 = fmt.strcpyEqu(buf + 6, mod.name);
+        ptr[0] = ':';
+        ptr += 1;
+        for (mod.deps) |dep_name| {
+            ptr = fmt.strcpyEqu(ptr, dep_name);
+            ptr[0] = ',';
+            ptr += 1;
         }
-        buf[len] = ':';
-        len = len +% 1;
-        @memcpy(buf + len, mod.path);
-        len = len +% mod.path.len;
-        buf[len] = 0;
-        return len +% 1;
+        if (mod.deps.len != 0) {
+            ptr -= 1;
+        }
+        ptr[0] = ':';
+        ptr = fmt.strcpyEqu(ptr + 1, mod.path);
+        ptr[0] = 0;
+        return fmt.strlen(ptr + 1, buf);
     }
     pub fn formatLength(mod: Module) u64 {
-        var len: u64 = 0;
-        len +%= 6;
-        len +%= mod.name.len;
-        len +%= 1;
-        if (mod.deps) |deps| {
-            for (deps) |dep_name| {
-                len +%= dep_name.len;
-                len +%= 1;
-            }
-            if (deps.len != 0) {
-                len -%= 1;
-            }
+        var len: u64 = 6 +% mod.name.len +% 1;
+        for (mod.deps) |dep_name| {
+            len +%= dep_name.len +% 1;
         }
-        len +%= 1;
-        len +%= mod.path.len;
-        len +%= 1;
-        return len;
+        if (mod.deps.len != 0) {
+            len -%= 1;
+        }
+        return len +% 1 +% mod.path.len +% 1;
     }
     pub fn formatParseArgs(allocator: anytype, _: [][*:0]u8, _: *usize, arg: [:0]const u8) Module {
         var idx: usize = 0;
@@ -297,7 +279,7 @@ pub const Module = struct {
 };
 pub const Modules = Aggregate(Module);
 pub const ModuleDependency = struct {
-    import: ?[]const u8 = null,
+    import: []const u8 = &.{},
     name: []const u8,
 };
 pub const ModuleDependencies = struct {
@@ -315,24 +297,23 @@ pub const ModuleDependencies = struct {
         array.overwriteOneBack(0);
     }
     pub fn formatWriteBuf(mod_deps: ModuleDependencies, buf: [*]u8) u64 {
-        @setRuntimeSafety(false);
+        @setRuntimeSafety(builtin.is_safe);
         if (mod_deps.value.len == 0) {
             return 0;
         }
-        var len: u64 = 7;
         buf[0..7].* = "--deps\x00".*;
+        var ptr: [*]u8 = buf + 7;
         for (mod_deps.value) |mod_dep| {
-            if (mod_dep.import) |name| {
-                @memcpy(buf + len, name);
-                len = len +% name.len;
-                buf[len] = '=';
-                len = len +% 1;
+            if (mod_dep.import.len != 0) {
+                ptr = fmt.strcpyEqu(ptr, mod_dep.import);
+                ptr[0] = '=';
+                ptr += 1;
             }
-            @memcpy(buf + len, mod_dep.name);
-            len = len +% mod_dep.name.len;
-            buf[len] = ',';
-            len = len +% 1;
+            ptr = fmt.strcpyEqu(ptr, mod_dep.name);
+            ptr[0] = ',';
+            ptr += 1;
         }
+        const len: usize = fmt.strlen(ptr, buf);
         buf[len -% 1] = 0;
         return len;
     }
@@ -342,9 +323,7 @@ pub const ModuleDependencies = struct {
         }
         var len: u64 = 7;
         for (mod_deps.value) |mod_dep| {
-            if (mod_dep.import) |name| {
-                len +%= name.len +% 1;
-            }
+            len +%= mod_dep.import.len +% @intFromBool(mod_dep.import.len != 0);
             len +%= mod_dep.name.len +% 1;
         }
         return len;
@@ -364,18 +343,16 @@ pub const Macro = struct {
         array.writeOne(0);
     }
     pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
-        @setRuntimeSafety(false);
+        @setRuntimeSafety(builtin.is_safe);
         buf[0..2].* = "-D".*;
-        @memcpy(buf + 2, format.name);
-        var len: u64 = 2 +% format.name.len;
+        var ptr: [*]u8 = fmt.strcpyEqu(buf + 2, format.name);
         if (format.value) |value| {
-            buf[len] = '=';
-            len = len +% 1;
-            @memcpy(buf + len, value);
-            len = len +% value.len;
+            ptr[0] = '=';
+            ptr += 1;
+            ptr = fmt.strcpyEqu(ptr, value);
         }
-        buf[len] = 0;
-        return len +% 1;
+        ptr[0] = 0;
+        return fmt.strlen(ptr, buf);
     }
     pub fn formatLength(format: Format) u64 {
         var len: u64 = 2 +% format.name.len;
@@ -385,7 +362,7 @@ pub const Macro = struct {
         return len +% 1;
     }
     pub fn formatParseArgs(_: anytype, _: [][*:0]u8, _: *usize, arg: [:0]const u8) Macro {
-        @setRuntimeSafety(false);
+        @setRuntimeSafety(builtin.is_safe);
         if (arg.len == 0) {
             @panic(arg);
         }
@@ -420,17 +397,16 @@ pub const CFlags = struct {
         array.writeMany("--\x00");
     }
     pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
-        @setRuntimeSafety(false);
-        var len: u64 = 8;
+        @setRuntimeSafety(builtin.is_safe);
         buf[0..8].* = "-cflags\x00".*;
+        var ptr: [*]u8 = buf + 8;
         for (format.value) |flag| {
-            @memcpy(buf + len, flag);
-            len = len +% flag.len;
-            buf[len] = 0;
-            len = len +% 1;
+            ptr = fmt.strcpyEqu(ptr, flag);
+            ptr[0] = 0;
+            ptr += 1;
         }
-        (buf + len)[0..3].* = "--\x00".*;
-        return len +% 3;
+        ptr[0..3].* = "--\x00".*;
+        return fmt.strlen(ptr, buf);
     }
     pub fn formatLength(format: Format) u64 {
         var len: u64 = 0;
@@ -455,7 +431,7 @@ pub const Path = extern struct {
     names_len: u64 = 1,
     const Format = @This();
     pub fn formatWrite(format: Format, array: anytype) void {
-        @setRuntimeSafety(false);
+        @setRuntimeSafety(builtin.is_safe);
         if (format.names.len != 0) {
             array.writeMany(format.names[0]);
             for (format.names[1..]) |name| {
@@ -466,24 +442,22 @@ pub const Path = extern struct {
         }
     }
     pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
-        @setRuntimeSafety(false);
-        var len: u64 = 0;
+        @setRuntimeSafety(builtin.is_safe);
+        var ptr: [*]u8 = buf;
         if (format.names_len != 0) {
-            @memcpy(buf + len, format.names[0]);
-            len +%= format.names[0].len;
+            ptr = fmt.strcpyEqu(ptr, format.names[0]);
             for (format.names[1..format.names_len]) |name| {
-                buf[len] = '/';
-                len +%= 1;
-                @memcpy(buf + len, name);
-                len +%= name.len;
+                ptr[0] = '/';
+                ptr += 1;
+                ptr = fmt.strcpyEqu(ptr, name);
             }
-            buf[len] = 0;
-            len +%= 1;
+            ptr[0] = 0;
+            ptr += 1;
         }
-        return len;
+        return fmt.strlen(ptr, buf);
     }
     pub fn formatLength(format: Format) u64 {
-        @setRuntimeSafety(false);
+        @setRuntimeSafety(builtin.is_safe);
         var len: u64 = 0;
         if (format.names_len != 0) {
             len +%= format.names[0].len;
@@ -495,7 +469,7 @@ pub const Path = extern struct {
         return len;
     }
     pub fn formatParseArgs(allocator: anytype, _: [][*:0]u8, _: *usize, arg: [:0]const u8) Path {
-        @setRuntimeSafety(false);
+        @setRuntimeSafety(builtin.is_safe);
         if (arg.len == 0) {
             @panic(arg);
         }
@@ -504,13 +478,13 @@ pub const Path = extern struct {
         return .{ .names = names };
     }
     pub fn concatenate(path: Path, allocator: anytype) [:0]u8 {
-        @setRuntimeSafety(false);
+        @setRuntimeSafety(builtin.is_safe);
         const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(path.formatLength(), 1));
         const len: u64 = path.formatWriteBuf(buf);
         return buf[0 .. len -% 1 :0];
     }
     pub fn addName(path: *Path, allocator: anytype) *[:0]const u8 {
-        @setRuntimeSafety(false);
+        @setRuntimeSafety(builtin.is_safe);
         const size_of: comptime_int = @sizeOf([:0]const u8);
         const addr_buf: *u64 = @ptrCast(&path.names);
         const ret: *[:0]const u8 = @ptrFromInt(allocator.addGeneric(size_of, //
@@ -537,7 +511,7 @@ pub const Files = struct {
         }
     }
     pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
-        @setRuntimeSafety(false);
+        @setRuntimeSafety(builtin.is_safe);
         var len: u64 = 0;
         for (format.value) |path| {
             len = len +% path.formatWriteBuf(buf + len);
@@ -659,7 +633,7 @@ fn Aggregate(comptime T: type) type {
             }
         }
         pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
-            @setRuntimeSafety(false);
+            @setRuntimeSafety(builtin.is_safe);
             var len: u64 = 0;
             for (format.value) |value| {
                 len = len +% value.formatWriteBuf(buf + len);
@@ -838,27 +812,25 @@ pub const Node5 = struct {
         nodes: *Node5,
         deps: Depn,
         paths: types.Path,
-
         args: [*:0]u8,
         vars: [*:0]u8,
         cmd_args: [*:0]u8,
         run_args: [*:0]u8,
-
         cfgs: types.Config,
     });
     pub const Extra = mem.GenericOptionals(union(enum) {
         dir_fds: DirFds,
         wait: Wait,
         load: Loadables,
-        basic_stats: BasicStats,
+        stats: BasicStats,
     });
     pub const Stats = struct {
         basic: BasicStats,
         extra: ExtraStats,
     };
     pub const Wait = struct {
-        len: usize,
-        tick: usize,
+        len: usize = 0,
+        tick: usize = 0,
     };
     pub const DirFds = struct {
         build_root: usize,
@@ -868,8 +840,8 @@ pub const Node5 = struct {
     pub const BasicStats = struct {
         status: u8,
         server: u8,
-        del_time: time.TimeSpec,
-        del_size: struct { old_size: usize, new_size: usize },
+        time: time.TimeSpec,
+        size: struct { old: usize, new: usize },
     };
     pub const ExtraStats = struct {
         elf_info_addr: usize,
