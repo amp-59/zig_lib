@@ -91,6 +91,16 @@ pub fn stringLiteralChar(byte: u8) []const u8 {
         },
     }
 }
+pub fn writeSideBarIndex(buf: [*]u8, width: usize, idx: usize) usize {
+    @setRuntimeSafety(false);
+    const len: usize = length(u64, idx, 10);
+    const rem: usize = builtin.message_indent -% (width +% 1);
+    var ptr: [*]u8 = strsetEqu(buf, ' ', width -% len);
+    ptr += ud64(idx).formatWriteBuf(ptr);
+    ptr[0] = ':';
+    ptr += 1;
+    return @intFromPtr(strsetEqu(ptr, ' ', rem)) - @intFromPtr(buf);
+}
 fn maxSigFig(comptime T: type, comptime radix: u7) comptime_int {
     @setRuntimeSafety(false);
     const U = @Type(.{ .Int = .{ .bits = @bitSizeOf(T), .signedness = .unsigned } });
