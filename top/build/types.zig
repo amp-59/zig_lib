@@ -924,7 +924,8 @@ pub const Node5 = struct {
     }
     pub fn addDepn(node: *Node5, allocator: *mem.SimpleAllocator, task: types.Task, on_node: *Node5, on_task: types.Task) void {
         @setRuntimeSafety(builtin.is_safe);
-        const idx: Size = node.lists.len(.nodes);
+        const elem = node.lists.elem(allocator, .nodes);
+        const idx: Size = elem.len();
         const dep: *Depn = node.lists.add(allocator, .deps);
         node.lists.add(allocator, .nodes).* = on_node;
         if (task == .run) {
@@ -995,7 +996,7 @@ pub const Node5 = struct {
     pub fn buildRootFd(node: *Node5) usize {
         @setRuntimeSafety(builtin.is_safe);
         if (node.tag == .worker) {
-            return node.groupNode().buildRoot();
+            return node.groupNode().buildRootFd();
         }
         return node.extra.get(.dir_fds).build_root;
     }
