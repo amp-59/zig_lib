@@ -156,7 +156,7 @@ pub fn Absolute(comptime T: type) type {
         .signedness = .unsigned,
     } });
 }
-pub inline fn absoluteDiff(x: anytype, y: anytype) Absolute(@TypeOf(x + y)) {
+pub fn absoluteDiff(x: anytype, y: anytype) Absolute(@TypeOf(x + y)) {
     return @max(x, y) -% @min(x, y);
 }
 pub inline fn absoluteVal(value: anytype) Absolute(@TypeOf(value)) {
