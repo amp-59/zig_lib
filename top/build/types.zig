@@ -1183,11 +1183,40 @@ pub const Node5 = struct {
         }
         ptr[0..26].* = "pub const build_config=.@\"".*;
         ptr += 26;
-        @memcpy(ptr, node.name);
-        ptr += node.name.len;
+        ptr = fmt.strcpyEqu(ptr, node.name);
         ptr[0..3].* = "\";\n".*;
         ptr += 3;
-        return @intFromPtr(ptr - @intFromPtr(buf));
+        return fmt.strlen(ptr, buf);
+    }
+    pub fn splitArguments(node: *Node5, allocator: *mem.SimpleAllocator, args: [][*:0]u8, cmd_args_idx: usize) void {
+        @setRuntimeSafety(builtin.is_safe);
+        if (node.tag != .group) {
+            return splitArguments(node.groupNode(), allocator, args, cmd_args_idx);
+        }
+        var run_args_idx: usize = cmd_args_idx;
+        while (run_args_idx != args.len) : (run_args_idx +%= 1) {
+            if (mem.testEqualString("--", mem.terminate(args[run_args_idx], 0))) {
+                node.lists.set(allocator, .cmd_args, args[cmd_args_idx..run_args_idx]);
+                run_args_idx +%= 1;
+                node.lists.set(allocator, .run_args, args[run_args_idx..]);
+                break;
+            }
+        } else {
+            node.lists.set(allocator, .cmd_args, args[cmd_args_idx..]);
+        }
+    }
+    pub fn setPrimary(node: *types.Node5, maybe_task: ?types.Task) void {
+        @setRuntimeSafety(builtin.is_safe);
+        if (node.tag == .group) {
+            const task: types.Task = maybe_task orelse node.tasks.tag;
+            for (node.lists.get(.nodes)[1..]) |sub_node| {
+                if (sub_node.tasks.tag == task) {
+                    sub_node.flags.is_primary = true;
+                }
+            }
+        } else {
+            node.flags.is_primary = true;
+        }
     }
     pub fn find(group: *Node5, name: []const u8, sep: u8) ?*Node5 {
         @setRuntimeSafety(builtin.is_safe);
