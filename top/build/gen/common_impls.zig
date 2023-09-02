@@ -5,7 +5,7 @@ const types = @import("./types.zig");
 const config = @import("./config.zig");
 const context: types.Context = @import("root").context;
 const notation: enum { slice, ptrcast, memcpy } = .slice;
-const memcpy: enum { builtin, mach } = .builtin;
+const memcpy: enum { builtin, mach, fmt } = .fmt;
 const CallingConvention = enum { C, Zig };
 const combine_char: bool = true;
 pub const Array = mem.StaticString(64 * 1024 * 1024);
@@ -182,37 +182,53 @@ fn writeIntegerString(array: *Array, arg_string: []const u8, variant: types.Vari
 fn writeKindString(array: *Array, arg_string: []const u8, variant: types.Variant) void {
     switch (variant) {
         .write_buf => {
-            if (memcpy == .builtin) {
-                if (notation == .slice) {
-                    array.writeMany("@memcpy(ptr,");
-                    writeFieldTagname(array, arg_string);
-                    array.writeMany(");\n");
-                } else {
-                    array.writeMany("@memcpy(buf+len,");
-                    writeFieldTagname(array, arg_string);
-                    array.writeMany(");\n");
-                }
-            } else {
-                if (notation == .slice) {
-                    array.writeMany("mach.memcpy(ptr,");
-                    writeFieldTagnamePtr(array, arg_string);
-                    array.writeMany(",");
-                    writeFieldTagnameLen(array, arg_string);
-                    array.writeMany(");\n");
-                } else {
-                    array.writeMany("mach.memcpy(buf+len,");
-                    writeFieldTagnamePtr(array, arg_string);
-                    array.writeMany(",");
-                    writeFieldTagnameLen(array, arg_string);
-                    array.writeMany(");\n");
-                }
+            switch (memcpy) {
+                .builtin => {
+                    if (notation == .slice) {
+                        array.writeMany("@memcpy(ptr,");
+                        writeFieldTagname(array, arg_string);
+                        array.writeMany(");\n");
+                    } else {
+                        array.writeMany("@memcpy(buf+len,");
+                        writeFieldTagname(array, arg_string);
+                        array.writeMany(");\n");
+                    }
+                },
+                .fmt => {
+                    if (notation == .slice) {
+                        array.writeMany("ptr=fmt.strcpyEqu(ptr,");
+                        writeFieldTagname(array, arg_string);
+                        array.writeMany(");\n");
+                    } else {
+                        array.writeMany("len+%=fmt.strcpy(buf+len,");
+                        writeFieldTagname(array, arg_string);
+                        array.writeMany(");\n");
+                    }
+                },
+                .mach => {
+                    if (notation == .slice) {
+                        array.writeMany("mach.memcpy(ptr,");
+                        writeFieldTagnamePtr(array, arg_string);
+                        array.writeMany(",");
+                        writeFieldTagnameLen(array, arg_string);
+                        array.writeMany(");\n");
+                    } else {
+                        array.writeMany("mach.memcpy(buf+len,");
+                        writeFieldTagnamePtr(array, arg_string);
+                        array.writeMany(",");
+                        writeFieldTagnameLen(array, arg_string);
+                        array.writeMany(");\n");
+                    }
+                },
             }
-            if (notation == .slice) {
-                array.writeMany("ptr+=");
-                writeFieldTagnameLen(array, arg_string);
-                array.writeMany(";\n");
-            } else {
-                writeKindString(array, arg_string, .length);
+            if (memcpy != .fmt) {
+                if (notation == .slice) {
+                    array.writeMany("ptr+=");
+                    writeFieldTagnameLen(array, arg_string);
+                    array.writeMany(";\n");
+                } else {
+                    writeKindString(array, arg_string, .length);
+                }
             }
         },
         .write => {
@@ -230,36 +246,51 @@ fn writeKindString(array: *Array, arg_string: []const u8, variant: types.Variant
 fn writeTagString(array: *Array, arg_string: []const u8, variant: types.Variant) void {
     switch (variant) {
         .write_buf => {
-            if (memcpy == .builtin) {
+            switch (memcpy) {
+                .builtin => {
+                    if (notation == .slice) {
+                        array.writeMany("@memcpy(ptr,");
+                        writeOptFieldTagname(array, arg_string);
+                        array.writeMany(");\n");
+                    } else {
+                        array.writeMany("@memcpy(buf+len,");
+                        writeOptFieldTagname(array, arg_string);
+                        array.writeMany(");\n");
+                    }
+                },
+                .fmt => {
+                    if (notation == .slice) {
+                        array.writeMany("ptr=fmt.strcpyEqu(ptr,");
+                        writeOptFieldTagname(array, arg_string);
+                        array.writeMany(");\n");
+                    } else {
+                        array.writeMany("len+=fmt.strcpy(buf+len,");
+                        writeOptFieldTagname(array, arg_string);
+                        array.writeMany(");\n");
+                    }
+                },
+                .mach => {
+                    if (notation == .slice) {
+                        array.writeMany("mach.memcpy(ptr,@tagName(");
+                        array.writeMany(arg_string);
+                        array.writeMany(").ptr,@tagName(");
+                        array.writeMany(arg_string);
+                        array.writeMany(").len);\n");
+                    } else {
+                        array.writeMany("mach.memcpy(buf+len,@tagName(");
+                        array.writeMany(arg_string);
+                        array.writeMany(").ptr,@tagName(");
+                        array.writeMany(arg_string);
+                        array.writeMany(").len);\n");
+                    }
+                },
+            }
+            if (memcpy != .fmt) {
                 if (notation == .slice) {
-                    array.writeMany("@memcpy(ptr,");
-                    writeOptFieldTagname(array, arg_string);
-                    array.writeMany(");\n");
                     array.writeMany("ptr+=@tagName(");
                     array.writeMany(arg_string);
                     array.writeMany(").len;\n");
                 } else {
-                    array.writeMany("@memcpy(buf+len,");
-                    writeOptFieldTagname(array, arg_string);
-                    array.writeMany(");\n");
-                    writeTagString(array, arg_string, .length);
-                }
-            } else {
-                if (notation == .slice) {
-                    array.writeMany("mach.memcpy(ptr,@tagName(");
-                    array.writeMany(arg_string);
-                    array.writeMany(").ptr,@tagName(");
-                    array.writeMany(arg_string);
-                    array.writeMany(").len);\n");
-                    array.writeMany("ptr+=@tagName(");
-                    array.writeMany(arg_string);
-                    array.writeMany(").len;\n");
-                } else {
-                    array.writeMany("mach.memcpy(buf+len,@tagName(");
-                    array.writeMany(arg_string);
-                    array.writeMany(").ptr,@tagName(");
-                    array.writeMany(arg_string);
-                    array.writeMany(").len);\n");
                     writeTagString(array, arg_string, .length);
                 }
             }
@@ -279,37 +310,53 @@ fn writeTagString(array: *Array, arg_string: []const u8, variant: types.Variant)
 fn writeArgString(array: *Array, arg_string: []const u8, variant: types.Variant) void {
     switch (variant) {
         .write_buf => {
-            if (memcpy == .builtin) {
-                if (notation == .slice) {
-                    array.writeMany("@memcpy(ptr,");
-                    array.writeMany(arg_string);
-                    array.writeMany(");\n");
-                } else {
-                    array.writeMany("@memcpy(buf+len,");
-                    array.writeMany(arg_string);
-                    array.writeMany(");\n");
-                }
-            } else {
-                if (notation == .slice) {
-                    array.writeMany("mach.memcpy(ptr,");
-                    array.writeMany(arg_string);
-                    array.writeMany(".ptr,");
-                    array.writeMany(arg_string);
-                    array.writeMany(".len);\n");
-                } else {
-                    array.writeMany("mach.memcpy(buf+len,");
-                    array.writeMany(arg_string);
-                    array.writeMany(".ptr,");
-                    array.writeMany(arg_string);
-                    array.writeMany(".len);\n");
-                }
+            switch (memcpy) {
+                .builtin => {
+                    if (notation == .slice) {
+                        array.writeMany("@memcpy(ptr,");
+                        array.writeMany(arg_string);
+                        array.writeMany(");\n");
+                    } else {
+                        array.writeMany("@memcpy(buf+len,");
+                        array.writeMany(arg_string);
+                        array.writeMany(");\n");
+                    }
+                },
+                .fmt => {
+                    if (notation == .slice) {
+                        array.writeMany("ptr=fmt.strcpyEqu(ptr,");
+                        array.writeMany(arg_string);
+                        array.writeMany(");\n");
+                    } else {
+                        array.writeMany("len+%=fmt.strcpy(buf+len,");
+                        array.writeMany(arg_string);
+                        array.writeMany(");\n");
+                    }
+                },
+                .mach => {
+                    if (notation == .slice) {
+                        array.writeMany("mach.memcpy(ptr,");
+                        array.writeMany(arg_string);
+                        array.writeMany(".ptr,");
+                        array.writeMany(arg_string);
+                        array.writeMany(".len);\n");
+                    } else {
+                        array.writeMany("mach.memcpy(buf+len,");
+                        array.writeMany(arg_string);
+                        array.writeMany(".ptr,");
+                        array.writeMany(arg_string);
+                        array.writeMany(".len);\n");
+                    }
+                },
             }
-            if (notation == .slice) {
-                array.writeMany("ptr+=");
-                array.writeMany(arg_string);
-                array.writeMany(".len;\n");
-            } else {
-                writeArgString(array, arg_string, .length);
+            if (memcpy != .fmt) {
+                if (notation == .slice) {
+                    array.writeMany("ptr+=");
+                    array.writeMany(arg_string);
+                    array.writeMany(".len;\n");
+                } else {
+                    writeArgString(array, arg_string, .length);
+                }
             }
         },
         .write => {
@@ -454,26 +501,30 @@ fn writeOptString(
                     }
                     array.writeMany("\".*;\n");
                 },
-                .memcpy => if (memcpy == .builtin) {
-                    array.writeMany("@memcpy(buf+len,\"");
-                    array.writeMany(opt_string);
-                    if (combine_char and char != types.ParamSpec.immediate) {
-                        array.writeFormat(fmt.esc(char));
-                    }
-                    array.writeMany("\");\n");
-                } else {
-                    array.writeMany("mach.memcpy(buf+len,\"");
-                    array.writeMany(opt_string);
-                    if (combine_char and char != types.ParamSpec.immediate) {
-                        array.writeFormat(fmt.esc(char));
-                    }
-                    array.writeMany("\",");
-                    if (combine_char and char != types.ParamSpec.immediate) {
-                        array.writeFormat(fmt.ud64(opt_string.len +% 1));
-                    } else {
-                        array.writeFormat(fmt.ud64(opt_string.len));
-                    }
-                    array.writeMany(");\n");
+                .memcpy => switch (memcpy) {
+                    .builtin => {
+                        array.writeMany("@memcpy(buf+len,\"");
+                        array.writeMany(opt_string);
+                        if (combine_char and char != types.ParamSpec.immediate) {
+                            array.writeFormat(fmt.esc(char));
+                        }
+                        array.writeMany("\");\n");
+                    },
+                    .fmt => {},
+                    .mach => {
+                        array.writeMany("mach.memcpy(buf+len,\"");
+                        array.writeMany(opt_string);
+                        if (combine_char and char != types.ParamSpec.immediate) {
+                            array.writeFormat(fmt.esc(char));
+                        }
+                        array.writeMany("\",");
+                        if (combine_char and char != types.ParamSpec.immediate) {
+                            array.writeFormat(fmt.ud64(opt_string.len +% 1));
+                        } else {
+                            array.writeFormat(fmt.ud64(opt_string.len));
+                        }
+                        array.writeMany(");\n");
+                    },
                 },
             }
             if (notation == .slice) {
