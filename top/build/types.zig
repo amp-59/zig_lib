@@ -1053,10 +1053,9 @@ pub const Node5 = struct {
                 ptr[0] = sep;
                 ptr += 1;
             }
-            @memcpy(ptr, node.name);
-            ptr += node.name.len;
+            ptr = fmt.strcpyEqu(ptr, node.name);
         }
-        return @intFromPtr(ptr) -% @intFromPtr(buf);
+        return fmt.strlen(ptr, buf);
     }
     pub fn formatLengthNameFull(node: *const Node5) usize {
         @setRuntimeSafety(builtin.is_safe);
@@ -1071,15 +1070,14 @@ pub const Node5 = struct {
         @setRuntimeSafety(builtin.is_safe);
         var ptr: [*]u8 = buf;
         if (node != group) {
-            ptr += node.lists.get(.nodes)[0].formatWriteNameRelative(sep, ptr);
+            ptr += node.lists.get(.nodes)[0].formatWriteNameRelative(group, sep, ptr);
             if (ptr != buf) {
                 ptr[0] = sep;
                 ptr += 1;
             }
-            @memcpy(ptr, node.name);
-            ptr += node.name.len;
+            ptr = fmt.strcpyEqu(ptr, node.name);
         }
-        return @intFromPtr(ptr) -% @intFromPtr(buf);
+        return fmt.strlen(ptr, buf);
     }
     pub fn formatLengthNameRelative(node: *const Node5, group: *const Node5) usize {
         @setRuntimeSafety(builtin.is_safe);
@@ -1108,8 +1106,7 @@ pub const Node5 = struct {
         var ptr: [*]u8 = buf;
         ptr[0..31].* = "pub usingnamespace @import(\"../".*;
         ptr += 31;
-        @memcpy(ptr, paths[1].names[1]);
-        ptr += paths[1].names[1].len;
+        ptr = fmt.strcpyEqu(ptr, paths[1].names[1]);
         ptr[0..4].* = "\");\n".*;
         ptr += 4;
         ptr[0..31].* = "pub const dependencies=struct{\n".*;
@@ -1118,15 +1115,13 @@ pub const Node5 = struct {
             for (dependencies) |dependency| {
                 ptr[0..12].* = "pub const @\"".*;
                 ptr += 12;
-                @memcpy(ptr, dependency.name);
-                ptr += dependency.name.len;
+                ptr = fmt.strcpyEqu(ptr, dependency.name);
                 ptr[0..16].* = "\":?[:0]const u8=".*;
                 ptr += 16;
-                if (dependency.import) |import| {
+                if (dependency.import.len != 0) {
                     ptr[0] = '"';
                     ptr += 1;
-                    @memcpy(ptr, import);
-                    ptr += import.len;
+                    ptr = fmt.strcpyEqu(ptr, dependency.import);
                     ptr[0..3].* = "\";\n".*;
                     ptr += 3;
                 } else {
@@ -1141,14 +1136,12 @@ pub const Node5 = struct {
             for (modules) |module| {
                 ptr[0..12].* = "pub const @\"".*;
                 ptr += 12;
-                @memcpy(ptr, module.name);
-                ptr += module.name.len;
+                ptr = fmt.strcpyEqu(ptr, module.name);
                 ptr[0..15].* = "\":[:0]const u8=".*;
                 ptr += 15;
                 ptr[0] = '"';
                 ptr += 1;
-                @memcpy(ptr, module.path);
-                ptr += module.path.len;
+                ptr = fmt.strcpyEqu(ptr, module.path);
                 ptr[0..3].* = "\";\n".*;
                 ptr += 3;
             }
@@ -1171,8 +1164,7 @@ pub const Node5 = struct {
                     const on_paths: []types.Path = nodes[dep.on_idx].lists.get(.paths);
                     ptr[0..12].* = "pub const @\"".*;
                     ptr += 12;
-                    @memcpy(ptr, nodes[dep.on_idx].name);
-                    ptr += nodes[dep.on_idx].name.len;
+                    ptr = fmt.strcpyEqu(ptr, nodes[dep.on_idx].name);
                     ptr[0..15].* = "\":[:0]const u8=".*;
                     ptr += 15;
                     ptr[0] = '"';
