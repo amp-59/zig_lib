@@ -2461,17 +2461,20 @@ pub fn nsec(value: u64) GenericPolynomialFormat(.{
     return .{ .value = value };
 }
 fn uniformChangedIntFormatSpec(comptime bits: u16, comptime signedness: builtin.Signedness, comptime radix: u16) ChangedIntFormatSpec {
+    const pf = tab.int_prefixes[radix];
     const old_fmt_spec: PolynomialFormatSpec = .{
         .bits = bits,
         .signedness = signedness,
         .width = if (radix == 2) .max else .min,
         .radix = radix,
+        .prefix = if (pf.len == 2) pf[0..2] else null,
     };
     const new_fmt_spec: PolynomialFormatSpec = .{
         .bits = bits,
         .signedness = .unsigned,
         .width = if (radix == 2) .max else .min,
         .radix = radix,
+        .prefix = if (pf.len == 2) pf[0..2] else null,
     };
     return .{
         .old_fmt_spec = old_fmt_spec,
@@ -2621,7 +2624,17 @@ pub const Type = struct {
         .new_fmt_spec = .{ .bits = 64, .signedness = .unsigned, .radix = 10, .width = .min },
         .del_fmt_spec = .{ .bits = 64, .signedness = .unsigned, .radix = 10, .width = .min },
     });
-    pub const BytesDel = GenericChangedBytesFormat(.{});
+    pub const BytesDiff = GenericChangedBytesFormat(.{});
+    pub const BloatDiff = GenericChangedBytesFormat(.{
+        .dec_style = tab.fx.color.fg.green ++ "-",
+        .inc_style = tab.fx.color.fg.red ++ "+",
+        .no_style = tab.fx.none,
+    });
+    pub const AddrDiff = GenericChangedIntFormat(.{
+        .del_fmt_spec = Ux64.spec,
+        .new_fmt_spec = Ux64.spec,
+        .old_fmt_spec = Ux64.spec,
+    });
     pub const Char = struct {
         value: u8,
         const Format = @This();
