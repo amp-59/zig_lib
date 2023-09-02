@@ -11,16 +11,7 @@ const types = @This();
 const tasks = @import("./tasks.zig");
 pub usingnamespace tasks;
 pub const Allocator = mem.SimpleAllocator;
-pub const VTable = struct {
-    build_cmd_core_fns: @import("./build_core.auto.zig") = .{},
-    build_cmd_extra_fns: @import("./build_extra.auto.zig") = .{},
-    format_cmd_core_fns: @import("./format_core.auto.zig") = .{},
-    format_cmd_extra_fns: @import("./format_extra.auto.zig") = .{},
-    archive_cmd_core_fns: @import("./archive_core.auto.zig") = .{},
-    archive_cmd_extra_fns: @import("./archive_extra.auto.zig") = .{},
-    objcopy_cmd_core_fns: @import("./objcopy_core.auto.zig") = .{},
-    objcopy_cmd_extra_fns: @import("./objcopy_extra.auto.zig") = .{},
-};
+pub const VTable = @import("./vtable.zig");
 pub const Node = enum(u8) {
     group,
     worker,
