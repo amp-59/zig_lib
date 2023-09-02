@@ -1635,7 +1635,7 @@ pub fn PointerOneFormat(comptime spec: RenderSpec, comptime Pointer: type) type 
         }
         pub fn formatWriteBuf(format: anytype, buf: [*]u8) usize {
             @setRuntimeSafety(builtin.is_safe);
-            const address: usize = @intFromPtr(format.value);
+            const address: usize = if (@inComptime()) 8 else @intFromPtr(format.value);
             const type_name: []const u8 = comptime typeName(Pointer, spec);
             var len: usize = 0;
             if (child == anyopaque) {
@@ -1674,7 +1674,7 @@ pub fn PointerOneFormat(comptime spec: RenderSpec, comptime Pointer: type) type 
         }
         pub fn formatLength(format: Format) usize {
             var len: usize = 0;
-            const address: usize = @intFromPtr(format.value);
+            const address: usize = if (@inComptime()) 8 else @intFromPtr(format.value);
             const type_name: []const u8 = comptime typeName(Pointer, spec);
             if (child == anyopaque) {
                 const sub_format: SubFormat = .{ .value = address };
