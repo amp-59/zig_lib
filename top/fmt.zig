@@ -2365,6 +2365,15 @@ pub fn ixsize(value: isize) GenericPolynomialFormat(.{
 pub fn bytes(count: usize) Bytes {
     return Bytes.init(count);
 }
+pub fn bloatDiff(old_size: usize, new_size: usize) Type.BloatDiff {
+    return .{ .old_value = old_size, .new_value = new_size };
+}
+pub fn bytesDiff(old_size: usize, new_size: usize) Type.BytesDiff {
+    return .{ .old_value = old_size, .new_value = new_size };
+}
+pub fn addrDiff(old_size: usize, new_size: usize) Type.AddrDiff {
+    return .{ .old_value = old_size, .new_value = new_size };
+}
 pub fn identifier(name: []const u8) IdentifierFormat {
     return .{ .value = name };
 }
