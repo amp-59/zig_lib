@@ -851,8 +851,8 @@ pub const Node5 = struct {
         dyn_loader_addr: usize,
         vtable_addr: usize,
     };
-    var toplevel: *Node5 = undefined;
-    pub fn init(allocator: *mem.SimpleAllocator, name: [:0]const u8, args: [][*:0]u8, vars: [][*:0]u8) *Node5 {
+    pub var toplevel: *Node5 = undefined;
+    pub fn create(allocator: *mem.SimpleAllocator, name: [:0]const u8, args: [][*:0]u8, vars: [][*:0]u8) *Node5 {
         @setRuntimeSafety(builtin.is_safe);
         const node: *Node5 = @ptrFromInt(allocator.allocateRaw(@sizeOf(Node5), @alignOf(Node5)));
         toplevel = node;
