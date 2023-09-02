@@ -1014,11 +1014,17 @@ pub const Node5 = struct {
         }
         return node.extra.get(.dir_fds).output_root;
     }
+    pub fn programArguments() [][*:0]u8 {
+        return toplevel.lists.get(.args);
+    }
+    pub fn environmentVariables() [][*:0]u8 {
+        return toplevel.lists.get(.vars);
+    }
     pub fn vTable() usize {
         @setRuntimeSafety(builtin.is_safe);
         return libraryNode().extra.get(.load).vtable_addr;
     }
-    fn dynLoader() usize {
+    pub fn dynLoader() usize {
         @setRuntimeSafety(builtin.is_safe);
         return Node5.toplevel.extra.get(.loader_addr);
     }
