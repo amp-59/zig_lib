@@ -12,7 +12,7 @@ const testing = zl.testing;
 pub usingnamespace zl.start;
 pub const runtime_assertions: bool = true;
 
-fn testParseInt() !void {
+fn testParseUserInt() !void {
     try debug.expectEqual(usize, 16, try parse.unsigned("0x10"));
     try debug.expectEqual(usize, 2, try parse.unsigned("0b10"));
     try debug.expectEqual(usize, 10, try parse.unsigned("10"));
@@ -56,7 +56,8 @@ fn testParseInt() !void {
     try debug.expectEqual(isize, parse.noexcept.signed("-0o111"), -73);
     try debug.expectEqual(isize, parse.noexcept.signed("-0x111"), -273);
 }
-fn testParseIntExhaustive() !void {
+fn testParseReusableIntExhaustive() !void {
+    var rng: file.DeviceRandomBytes(4096) = .{};
     inline for (2..17) |bits| {
         const radix = switch (bits) {
             1...3 => 2,
@@ -87,49 +88,69 @@ fn testParseIntExhaustive() !void {
     }
     inline for (.{ i1, i2, i4, i8, i16, i32, i64 }) |T| {
         const extrema: math.Extrema = math.extrema(T);
+        const random: T = rng.readOne(T);
         const hex_min_s: []const u8 = fmt.ix(extrema.min).formatConvert().readAll();
         const dec_min_s: []const u8 = fmt.id(extrema.min).formatConvert().readAll();
         const bin_min_s: []const u8 = fmt.ib(extrema.min).formatConvert().readAll();
+        const hex_rng_s: []const u8 = fmt.ix(random).formatConvert().readAll();
+        const dec_rng_s: []const u8 = fmt.id(random).formatConvert().readAll();
+        const bin_rng_s: []const u8 = fmt.ib(random).formatConvert().readAll();
         const hex_max_s: []const u8 = fmt.ix(extrema.max).formatConvert().readAll();
         const dec_max_s: []const u8 = fmt.id(extrema.max).formatConvert().readAll();
         const bin_max_s: []const u8 = fmt.ib(extrema.max).formatConvert().readAll();
         try debug.expectEqual(isize, extrema.min, try parse.signed(hex_min_s));
         try debug.expectEqual(isize, extrema.min, try parse.signed(dec_min_s));
         try debug.expectEqual(isize, extrema.min, try parse.signed(bin_min_s));
+        try debug.expectEqual(isize, random, try parse.signed(hex_rng_s));
+        try debug.expectEqual(isize, random, try parse.signed(dec_rng_s));
+        try debug.expectEqual(isize, random, try parse.signed(bin_rng_s));
         try debug.expectEqual(isize, extrema.max, try parse.signed(hex_max_s));
         try debug.expectEqual(isize, extrema.max, try parse.signed(dec_max_s));
         try debug.expectEqual(isize, extrema.max, try parse.signed(bin_max_s));
         try debug.expectEqual(isize, extrema.min, parse.noexcept.signed(hex_min_s));
         try debug.expectEqual(isize, extrema.min, parse.noexcept.signed(dec_min_s));
         try debug.expectEqual(isize, extrema.min, parse.noexcept.signed(bin_min_s));
+        try debug.expectEqual(isize, random, parse.noexcept.signed(hex_rng_s));
+        try debug.expectEqual(isize, random, parse.noexcept.signed(dec_rng_s));
+        try debug.expectEqual(isize, random, parse.noexcept.signed(bin_rng_s));
         try debug.expectEqual(isize, extrema.max, parse.noexcept.signed(hex_max_s));
         try debug.expectEqual(isize, extrema.max, parse.noexcept.signed(dec_max_s));
         try debug.expectEqual(isize, extrema.max, parse.noexcept.signed(bin_max_s));
     }
     inline for (.{ u1, u2, u4, u8, u16, u32, u64 }) |T| {
         const extrema: math.Extrema = math.extrema(T);
+        const random: T = rng.readOne(T);
         const hex_min_s: []const u8 = fmt.ux(extrema.min).formatConvert().readAll();
         const dec_min_s: []const u8 = fmt.ud(extrema.min).formatConvert().readAll();
         const bin_min_s: []const u8 = fmt.ub(extrema.min).formatConvert().readAll();
+        const hex_rng_s: []const u8 = fmt.ux(random).formatConvert().readAll();
+        const dec_rng_s: []const u8 = fmt.ud(random).formatConvert().readAll();
+        const bin_rng_s: []const u8 = fmt.ub(random).formatConvert().readAll();
         const hex_max_s: []const u8 = fmt.ux(extrema.max).formatConvert().readAll();
         const dec_max_s: []const u8 = fmt.ud(extrema.max).formatConvert().readAll();
         const bin_max_s: []const u8 = fmt.ub(extrema.max).formatConvert().readAll();
         try debug.expectEqual(usize, extrema.min, try parse.unsigned(hex_min_s));
         try debug.expectEqual(usize, extrema.min, try parse.unsigned(dec_min_s));
         try debug.expectEqual(usize, extrema.min, try parse.unsigned(bin_min_s));
+        try debug.expectEqual(usize, random, try parse.unsigned(hex_rng_s));
+        try debug.expectEqual(usize, random, try parse.unsigned(dec_rng_s));
+        try debug.expectEqual(usize, random, try parse.unsigned(bin_rng_s));
         try debug.expectEqual(usize, extrema.max, try parse.unsigned(hex_max_s));
         try debug.expectEqual(usize, extrema.max, try parse.unsigned(dec_max_s));
         try debug.expectEqual(usize, extrema.max, try parse.unsigned(bin_max_s));
         try debug.expectEqual(usize, extrema.min, parse.noexcept.unsigned(hex_min_s));
         try debug.expectEqual(usize, extrema.min, parse.noexcept.unsigned(dec_min_s));
         try debug.expectEqual(usize, extrema.min, parse.noexcept.unsigned(bin_min_s));
+        try debug.expectEqual(usize, random, parse.noexcept.unsigned(hex_rng_s));
+        try debug.expectEqual(usize, random, parse.noexcept.unsigned(dec_rng_s));
+        try debug.expectEqual(usize, random, parse.noexcept.unsigned(bin_rng_s));
         try debug.expectEqual(usize, extrema.max, parse.noexcept.unsigned(hex_max_s));
         try debug.expectEqual(usize, extrema.max, parse.noexcept.unsigned(dec_max_s));
         try debug.expectEqual(usize, extrema.max, parse.noexcept.unsigned(bin_max_s));
     }
 }
 pub fn main() !void {
-    try testParseInt();
-    try testParseIntExhaustive();
+    try testParseUserInt();
+    try testParseReusableIntExhaustive();
     try @import("./parse/float.zig").floatTestMain();
 }
