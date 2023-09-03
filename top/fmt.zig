@@ -35,6 +35,18 @@ pub fn about(comptime s: [:0]const u8) AboutSrc {
     }
     return lhs ++ " " ** (builtin.message_indent - len);
 }
+/// Returns the apparent length of the first colon in the about string.
+pub fn aboutCentre(about_s: AboutSrc) usize {
+    var og: []const u8 = about_s;
+    if (builtin.message_style) |style_s| {
+        og = og[style_s.len..];
+    }
+    for (og, 0..) |byte, idx| {
+        if (byte == ':') {
+            return idx;
+        }
+    }
+}
 pub const about_blank_s: AboutSrc = about("");
 pub const AboutDest = @TypeOf(@constCast(about_blank_s));
 pub const about_exit_s: AboutSrc = about("exit");
