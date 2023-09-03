@@ -199,12 +199,12 @@ pub const STT = enum(u8) {
     HIPROC = 15,
     UNKNOWN = 18,
     HP_OPAQUE = 11,
-});
+};
 pub const VER_FLG_BASE = 0x1;
 pub const VER_FLG_WEAK = 0x2;
 pub const MAGIC = "\x7fELF";
 /// File types
-pub const ET = meta.EnumBitField(enum(u16) {
+pub const ET = enum(u16) {
     /// No file type
     NONE = 0,
     /// Relocatable file
@@ -219,7 +219,7 @@ pub const ET = meta.EnumBitField(enum(u16) {
     pub const LOPROC = 0xff00;
     /// Processor-specific
     pub const HIPROC = 0xffff;
-});
+};
 pub const EI = opaque {
     pub const CLASS = 4;
     pub const DATA = 5;
@@ -1047,13 +1047,12 @@ pub const PF_R = 4;
 pub const PF_MASKOS = 0x0ff00000;
 /// Bits for processor-specific semantics.
 pub const PF_MASKPROC = 0xf0000000;
-pub const PF = meta.EnumBitField(enum(u32) {
-    X = 1,
-    W = 2,
-    R = 4,
-    MASKOS = 0x0ff00000,
-    MASKPROC = 0xf0000000,
-});
+const PF = packed struct(u32) {
+    X: bool = false,
+    W: bool = false,
+    R: bool = false,
+    zb3: u29 = 0,
+};
 // Special section indexes used in Elf{32,64}_Sym.
 pub const SHN_UNDEF = 0;
 pub const SHN_LORESERVE = 0xff00;
