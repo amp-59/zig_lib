@@ -1,4 +1,5 @@
 const mem = @import("./mem.zig");
+const tab = @import("./tab.zig");
 const sys = @import("./sys.zig");
 const fmt = @import("./fmt.zig");
 const file = @import("./file.zig");
