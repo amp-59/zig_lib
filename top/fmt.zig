@@ -443,7 +443,7 @@ pub const Bytes = struct {
         .radix = 10,
         .width = .{ .fixed = 3 },
     });
-    const fields: []const builtin.Type.EnumField = @typeInfo(mem.Bytes.Unit).Enum.fields;
+    const units = meta.tagList(mem.Bytes.Unit);
     pub const max_len: u64 =
         MajorIntFormat.max_len +%
         MinorIntFormat.max_len +% 3; // Unit
@@ -492,12 +492,12 @@ pub const Bytes = struct {
     }
     pub fn init(value: u64) Bytes {
         @setRuntimeSafety(false);
-        inline for (fields, 0..) |field, i| {
-            const integer: mem.Bytes = mem.Bytes.Unit.to(value, @field(mem.Bytes.Unit, field.name));
+        for (units) |unit| {
+            const integer: mem.Bytes = mem.Bytes.Unit.to(value, unit);
             if (integer.count != 0) {
                 const remainder: mem.Bytes = mem.Bytes.Unit.to(
-                    value -| mem.Bytes.bytes(integer),
-                    @field(mem.Bytes.Unit, fields[if (i != fields.len -% 1) i +% 1 else i].name),
+                    value -% integer.count *% (@as(usize, 1) << @intFromEnum(unit)),
+                    @as(mem.Bytes.Unit, @enumFromInt(@min(@intFromEnum(unit) -% 10, 60))),
                 );
                 return .{ .value = .{
                     .integer = integer,
