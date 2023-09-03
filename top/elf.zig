@@ -1188,84 +1188,157 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
     const T = struct {
         ub_info_addr: usize = lb_info_addr,
         ub_sect_addr: usize = lb_sect_addr,
-
         const DynamicLoader = @This();
         pub const Info = extern struct {
             ehdr: Elf64_Ehdr,
-
-            meta_next: usize,
-            meta_finish: usize,
-
-            prog_addr: usize,
-            prog_len: usize,
-
-            links: [links_len]?*Elf64_Shdr,
-            impl: extern struct {
-                shdr: [*]Elf64_Shdr,
-                shstr: [*]u8,
-
-                dynsym: [*]Elf64_Sym,
-                symtab: [*]Elf64_Sym,
-                dynstr: [*]u8,
-                strtab: [*]u8,
+            meta: extern struct {
+                next: usize,
+                finish: usize,
             },
-            pub fn getSectionHeader(info: *Info, tag: Tag) ?*Elf64_Shdr {
-                @setRuntimeSafety(builtin.is_safe);
-                return info.links[@intFromEnum(tag)];
-            }
+            prog: extern struct {
+                addr: usize,
+                len: usize,
+            },
+            shdr: usize,
+            phdr: usize,
+            shstr: usize,
+            impl: Sections,
+            fd: usize,
+            const SectionTag = enum(u8) {
+                @".dynsym",
+                @".dynstr",
+                @".rodata",
+                @".data.rel.ro",
+                @".data",
+                @".data.rodata",
+                @".rodata.data",
+                @".rela.dyn",
+                @".rela.plt",
+                @".text",
+                @".strtab",
+                @".dynamic",
+                @".symtab",
+                @".bss",
+            };
+            const tag_list = meta.tagList(SectionTag);
+            const Sections = extern struct {
+                buf: [tag_list.len]Pair,
+                const Im = @This();
+                const Pair = extern struct {
+                    shdr: ?*Elf64_Shdr,
+                    addr: usize,
+                };
+                pub fn set(im: *Im, tag: SectionTag, shdr: *Elf64_Shdr, addr: usize) void {
+                    @setRuntimeSafety(false);
+                    im.buf[@intFromEnum(tag)] = .{ .shdr = shdr, .addr = addr };
+                }
+                pub fn header(im: *const Im, tag: SectionTag) ?*Elf64_Shdr {
+                    @setRuntimeSafety(false);
+                    return im.buf[@intFromEnum(tag)].shdr;
+                }
+                pub fn section(im: *const Im, tag: SectionTag) usize {
+                    @setRuntimeSafety(false);
+                    return im.buf[@intFromEnum(tag)].addr;
+                }
+            };
             fn allocateMeta(info: *Info, size_of: usize, align_of: usize) sys.ErrorUnion(loader_spec.errors.map, usize) {
                 @setRuntimeSafety(builtin.is_safe);
-                const aligned: usize = mach.alignA64(info.meta_next, align_of);
+                const aligned: usize = mach.alignA64(info.meta.next, align_of);
                 const next: usize = aligned +% size_of;
-                if (next > info.meta_finish) {
+                if (next > info.meta.finish) {
                     const finish: usize = mach.alignA4096(next);
-                    try meta.wrap(mem.map(map(), .{}, .{}, info.meta_finish, finish -% info.meta_finish));
-                    info.meta_finish = finish;
+                    try meta.wrap(mem.map(map(), .{}, .{}, info.meta.finish, finish -% info.meta.finish));
+                    info.meta.finish = finish;
                 }
-                info.meta_next = next;
+                info.meta.next = next;
                 return aligned;
             }
-            fn mapSection(info: *Info, prot: file.Map.Protection, fd: usize, shdr: *Elf64_Shdr) sys.ErrorUnion(loader_spec.errors.map, void) {
-                @setRuntimeSafety(builtin.is_safe);
-                const addr: usize = mach.alignB4096(shdr.sh_addr);
-                const len: usize = mach.alignA4096(shdr.sh_addr +% shdr.sh_size) -% addr;
-                const off: usize = mach.alignB4096(shdr.sh_offset);
-                try meta.wrap(file.map(map(), prot, .{ .fixed_noreplace = true }, fd, info.prog_addr +% addr, len, off));
+            pub fn loadPathname(info: *const Info) [:0]const u8 {
+                const len: *usize = @ptrFromInt(@intFromPtr(info) +% @sizeOf(Info));
+                const ptr: [*:0]const u8 = @ptrFromInt(@intFromPtr(len) +% 8);
+                return ptr[0..len.* :0];
             }
-            fn symbolGeneric(shdr: *Elf64_Shdr, symtab: [*]Elf64_Sym, strtab: [*]u8, sym_name: []const u8) ?*Elf64_Sym {
+            fn mapSegments(info: *Info) sys.ErrorUnion(loader_spec.errors.map, void) {
+                @setRuntimeSafety(builtin.is_safe);
+                var phdr_idx: usize = 1;
+                while (phdr_idx != info.ehdr.e_phnum) : (phdr_idx +%= 1) {
+                    const phdr: *Elf64_Phdr = @ptrFromInt(info.phdr +% (phdr_idx *% info.ehdr.e_phentsize));
+                    if (phdr.p_type == .LOAD and phdr.p_memsz != 0) {
+                        const addr: usize = mach.alignB4096(phdr.p_vaddr);
+                        const len: usize = mach.alignA4096(phdr.p_vaddr +% phdr.p_memsz) -% addr;
+                        const off: usize = mach.alignB4096(phdr.p_offset);
+                        try meta.wrap(file.map(map(), .{ .read = phdr.p_flags.R, .write = phdr.p_flags.W, .exec = phdr.p_flags.X }, .{ .fixed_noreplace = true }, info.fd, info.prog.addr +% addr, len, off));
+                    }
+                }
+            }
+            fn relocateDynamic(info: *Info, shdr: *Elf64_Shdr, rela_dyn: usize) void {
                 @setRuntimeSafety(builtin.is_safe);
                 const max_idx: usize = @divExact(shdr.sh_size, shdr.sh_entsize);
-                var dyn_idx: usize = 1;
-                while (dyn_idx != max_idx) : (dyn_idx +%= 1) {
+                var rela_idx: usize = 1;
+                while (rela_idx != max_idx) : (rela_idx +%= 1) {
+                    const rela: *Elf64_Rela = @ptrFromInt(rela_dyn +% (rela_idx *% shdr.sh_entsize));
+                    const loc: *usize = @ptrFromInt(info.prog.addr +% rela.r_offset);
+                    loc.* = @intCast(rela.r_addend);
+                    loc.* +%= info.prog.addr;
+                }
+            }
+            fn symbolGeneric(shdr: *Elf64_Shdr, symtab: usize, strtab: usize, sym_name: []const u8) ?*Elf64_Sym {
+                @setRuntimeSafety(builtin.is_safe);
+                const max_idx: usize = @divExact(shdr.sh_size, shdr.sh_entsize);
+                var sym_idx: usize = 1;
+                while (sym_idx != max_idx) : (sym_idx +%= 1) {
+                    const sym: *Elf64_Sym = @ptrFromInt(symtab +% (sym_idx *% shdr.sh_entsize));
+                    const str: [*]u8 = @ptrFromInt(strtab +% sym.st_name);
                     var idx: usize = 0;
-                    const sym: [*]Elf64_Sym = symtab + dyn_idx;
-                    const str: [*]u8 = strtab + sym[0].st_name;
                     while (str[idx] != 0) : (idx +%= 1) {
                         if (sym_name[idx] != str[idx]) break;
                     } else {
-                        return @ptrCast(sym);
+                        return sym;
                     }
                 }
                 return null;
             }
-            pub inline fn entry(info: *const Info) usize {
-                return info.prog_addr +% info.ehdr.e_entry;
+            fn readInfo(info: *Info) sys.ErrorUnion(ep2, void) {
+                @setRuntimeSafety(builtin.is_safe);
+                for (tag_list) |tag| {
+                    if (info.sectionHeaderByName(@tagName(tag))) |shdr| {
+                        var len: usize = shdr.sh_size;
+                        if (shdr.sh_type == .SYMTAB or
+                            shdr.sh_type == .DYNSYM)
+                        {
+                            len +%= @divExact(len, shdr.sh_entsize);
+                        }
+                        if (shdr.sh_type == .SYMTAB or
+                            shdr.sh_type == .STRTAB or
+                            shdr.sh_type == .DYNSYM or
+                            shdr.sh_type == .RELA or shdr.sh_type == .REL)
+                        {
+                            shdr.sh_addr = try meta.wrap(info.allocateMeta(len, shdr.sh_addralign));
+                            info.impl.set(tag, shdr, shdr.sh_addr);
+                            try meta.wrap(readAt(info.fd, shdr.sh_offset, @ptrFromInt(shdr.sh_addr), shdr.sh_size));
+                        }
+                    }
+                }
+            }
+            pub fn autoLoad(info: *const Info, vtable: *anyopaque) void {
+                const entry: *const fn (*anyopaque) void = @ptrFromInt(info.prog.addr +% info.ehdr.e_entry);
+                entry(vtable);
             }
             pub inline fn dynamicSymbol(info: *const Info, sym_name: []const u8) ?*Elf64_Sym {
                 @setRuntimeSafety(builtin.is_safe);
                 return symbolGeneric(
-                    info.links[dynsym_idx].?,
-                    info.impl.dynsym,
-                    info.impl.dynstr,
+                    info.impl.header(.@".dynsym") orelse return null,
+                    info.impl.section(.@".dynsym"),
+                    info.impl.section(.@".dynstr"),
                     sym_name,
                 );
             }
             pub inline fn symbol(info: *const Info, sym_name: []const u8) ?*Elf64_Sym {
                 @setRuntimeSafety(builtin.is_safe);
                 return symbolGeneric(
-                    info.links[symtab_idx].?,
-                    info.impl.symtab,
-                    info.impl.strtab,
+                    info.impl.header(.@".symtab") orelse return null,
+                    info.impl.section(.@".symtab"),
+                    info.impl.section(.@".strtab"),
                     sym_name,
                 );
             }
@@ -1274,75 +1347,32 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 const words: [*]usize = @ptrCast(ptrs);
                 for (meta.fieldNames(Pointers), 0..) |field_name, fields_idx| {
                     if (info.dynamicSymbol(field_name)) |ret| {
-                        words[fields_idx] = info.prog_addr +% ret.st_value;
+                        words[fields_idx] = info.prog.addr +% ret.st_value;
                     }
                     if (loader_spec.options.show_defined) {
                         about.aboutDefined(field_name, words[fields_idx]);
                     }
                 }
             }
-            fn readSections(info: *Info) void {
+            pub fn sectionHeaderByName(info: *const Info, name: []const u8) ?*Elf64_Shdr {
                 @setRuntimeSafety(builtin.is_safe);
-                var shdr_idx: usize = 0;
+                var shdr_idx: usize = 1;
                 while (shdr_idx != info.ehdr.e_shnum) : (shdr_idx +%= 1) {
-                    for (&info.links, 0..) |*link, tags_idx| {
-                        if (@intFromPtr(link.*) != 0) {
-                            continue;
-                        }
-                        const shdr: *Elf64_Shdr = &info.impl.shdr[shdr_idx];
-                        var str: [*]u8 = info.impl.shstr + shdr.sh_name;
-                        var idx: usize = 1;
-                        while (str[idx] != 0) : (idx +%= 1) {
-                            if (sections[tags_idx][idx] != str[idx]) break;
-                        } else {
-                            link.* = shdr;
-                            info.prog_len = @max(info.prog_len, shdr.sh_addr +% shdr.sh_size);
-                            break;
-                        }
+                    const shdr: *Elf64_Shdr = @ptrFromInt(info.shdr +% (shdr_idx *% info.ehdr.e_shentsize));
+                    const str: [*]u8 = @ptrFromInt(info.shstr + shdr.sh_name);
+                    if (mem.testEqualString(mem.terminate(str, 0), name)) {
+                        return shdr;
                     }
                 }
-                if (loader_spec.options.show_sections) {
-                    about.readSectionNotice(info);
-                }
+                return null;
             }
-            fn readInfo(info: *Info, fd: usize) sys.ErrorUnion(ep2, void) {
+            pub fn sectionHeaderByIndex(info: *const Info, idx: usize) *Elf64_Shdr {
                 @setRuntimeSafety(builtin.is_safe);
-                const dynsym_shdr: *Elf64_Shdr = info.links[dynsym_idx].?;
-                const dynstr_shdr: *Elf64_Shdr = info.links[dynstr_idx].?;
-                const dynsym_buf: [*]u8 = @ptrFromInt(try meta.wrap(info.allocateMeta(dynsym_shdr.sh_size, 8)));
-                try meta.wrap(readAt(fd, dynsym_shdr.sh_offset, dynsym_buf, dynsym_shdr.sh_size));
-                if (@hasField(Tag, ".symtab")) {
-                    if (info.links[symtab_idx]) |symtab_shdr| {
-                        info.impl.symtab = @ptrFromInt(try meta.wrap(info.allocateMeta(symtab_shdr.sh_size, 8)));
-                        try meta.wrap(readAt(fd, symtab_shdr.sh_offset, @ptrCast(info.impl.symtab), symtab_shdr.sh_size));
-                    }
-                }
-                info.impl.dynstr = @ptrFromInt(try meta.wrap(info.allocateMeta(dynstr_shdr.sh_size, 1)));
-                try meta.wrap(readAt(fd, dynstr_shdr.sh_offset, info.impl.dynstr, dynstr_shdr.sh_size));
-                if (@hasField(Tag, ".strtab")) {
-                    if (info.links[strtab_idx]) |strtab_shdr| {
-                        info.impl.strtab = @ptrFromInt(try meta.wrap(info.allocateMeta(strtab_shdr.sh_size, 1)));
-                        try meta.wrap(readAt(fd, strtab_shdr.sh_offset, @ptrCast(info.impl.strtab), strtab_shdr.sh_size));
-                    }
-                }
-                info.impl.dynsym = @ptrCast(@alignCast(dynsym_buf));
+                return @ptrFromInt(info.shdr +% (info.ehdr.e_shentsize *% idx));
             }
         };
         pub const lb_info_addr: comptime_int = loader_spec.options.lb_info_addr;
         pub const lb_sect_addr: comptime_int = loader_spec.options.lb_sect_addr;
-        pub const links_len: comptime_int = @typeInfo(Tag).Enum.fields.len;
-        const sections = [_][]const u8{
-            ".dynsym",
-            ".dynstr",
-            ".rodata",
-            ".data.rel.ro",
-            ".text",
-            ".strtab",
-            ".dynamic",
-            ".symtab",
-            ".bss",
-        };
-        const Tag = meta.TagFromList(sections ++ loader_spec.options.extra_sections);
         const ep0 = .{
             .throw = loader_spec.errors.open.throw ++ loader_spec.errors.seek.throw ++
                 loader_spec.errors.read.throw ++ loader_spec.errors.map.throw ++
