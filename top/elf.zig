@@ -1389,54 +1389,59 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             .throw = loader_spec.errors.map.throw ++ ep1.throw,
             .abort = loader_spec.errors.map.abort ++ ep1.abort,
         };
-        const dynsym_idx: comptime_int = 0;
-        const dynstr_idx: comptime_int = 1;
-        const rodata_idx: comptime_int = 2;
-        const data_rel_ro_idx: comptime_int = 3;
-        const text_idx: comptime_int = 4;
-        const strtab_idx: comptime_int = 5;
-        const dynamic_idx: comptime_int = 6;
-        const symtab_idx: comptime_int = 7;
-        const bss_idx: comptime_int = 8;
-
-        fn allocateInfo(loader: *DynamicLoader, fd: usize) sys.ErrorUnion(ep2, *Info) {
+        fn allocateInfo(loader: *DynamicLoader, pathname: [:0]const u8) sys.ErrorUnion(ep2, *Info) {
             @setRuntimeSafety(builtin.is_safe);
+            const fd: usize = try meta.wrap(file.open(open(), .{}, pathname));
             const len: usize = mach.alignA4096(try meta.wrap(file.seek(seek(), fd, 0, .end)));
             const addr: usize = mach.alignA4096(@atomicRmw(usize, &loader.ub_info_addr, .Add, len, .SeqCst));
-            try meta.wrap(mem.map(map(), .{}, .{}, addr, 4096));
+            try meta.wrap(mem.map(map(), .{}, .{}, addr, mach.alignA4096(@sizeOf(Info))));
             const info: *Info = @ptrFromInt(addr);
-            info.meta_next = addr +% @sizeOf(Info);
-            info.meta_finish = addr +% 4096;
+            info.fd = fd;
+            info.meta.next = addr +% @sizeOf(Info);
+            info.meta.finish = addr +% 4096;
             try meta.wrap(readAt(fd, 0, @ptrCast(info), @sizeOf(Elf64_Ehdr)));
+            var path: [*]u8 = @ptrFromInt(try meta.wrap(info.allocateMeta(8 +% pathname.len +% 1, 8)));
+            path = fmt.strcpyEqu(path, &@as([8]u8, @bitCast(pathname.len)));
+            fmt.strcpyEqu(path, pathname)[0] = 0;
+            if (info.ehdr.e_type == .DYN) {
+                const phdr_len: usize = info.ehdr.e_phnum *% info.ehdr.e_phentsize;
+                info.phdr = try meta.wrap(info.allocateMeta(phdr_len +% info.ehdr.e_phnum, 8));
+                try meta.wrap(readAt(fd, info.ehdr.e_phoff, @ptrFromInt(info.phdr), phdr_len));
+                try meta.wrap(loader.allocateSegments(info));
+            }
+            about.aboutLoad(info, pathname);
+            if (info.ehdr.e_type == .DYN) {
+                try meta.wrap(info.mapSegments());
+            }
             const shdr_len: usize = info.ehdr.e_shnum *% info.ehdr.e_shentsize;
-            info.impl.shdr = @ptrFromInt(try meta.wrap(info.allocateMeta(shdr_len, 8)));
-            try meta.wrap(readAt(fd, info.ehdr.e_shoff, @ptrCast(info.impl.shdr), shdr_len));
-            const shstr_len: usize = info.impl.shdr[info.ehdr.e_shstrndx].sh_size;
-            info.impl.shstr = @ptrFromInt(try meta.wrap(info.allocateMeta(shstr_len, 1)));
-            try meta.wrap(readAt(fd, info.impl.shdr[info.ehdr.e_shstrndx].sh_offset, info.impl.shstr, shstr_len));
+            info.shdr = try meta.wrap(info.allocateMeta(shdr_len +% info.ehdr.e_shnum, 8));
+            try meta.wrap(readAt(fd, info.ehdr.e_shoff, @ptrFromInt(info.shdr), shdr_len));
+            const shstr_shdr: *Elf64_Shdr = info.sectionHeaderByIndex(info.ehdr.e_shstrndx);
+            info.shstr = try meta.wrap(info.allocateMeta(shstr_shdr.sh_size, 1));
+            try meta.wrap(readAt(fd, shstr_shdr.sh_offset, @ptrFromInt(info.shstr), shstr_shdr.sh_size));
             return info;
         }
-        fn mapSections(loader: *DynamicLoader, fd: usize, info: *Info) sys.ErrorUnion(loader_spec.errors.map, void) {
-            @setRuntimeSafety(builtin.is_safe);
-            info.prog_addr = mach.alignA4096(@atomicRmw(usize, &loader.ub_sect_addr, .Add, info.prog_len, .SeqCst));
-            if (info.links[rodata_idx]) |rodata| {
-                try meta.wrap(info.mapSection(.{ .read = true }, fd, rodata));
+        fn allocateSegments(loader: *DynamicLoader, info: *Info) sys.ErrorUnion(loader_spec.errors.map, void) {
+            var phdr_idx: usize = 1;
+            while (phdr_idx != info.ehdr.e_phnum) : (phdr_idx +%= 1) {
+                const phdr: *Elf64_Phdr = @ptrFromInt(info.phdr +% (phdr_idx *% info.ehdr.e_phentsize));
+                if (phdr.p_type == .LOAD and phdr.p_memsz != 0) {
+                    info.prog.len = @max(info.prog.len, phdr.p_vaddr +% phdr.p_memsz);
+                }
             }
-            if (info.links[text_idx]) |text| {
-                try meta.wrap(info.mapSection(.{ .exec = true }, fd, text));
-            }
-            if (info.links[data_rel_ro_idx]) |data_rel_ro| {
-                try meta.wrap(info.mapSection(.{ .exec = true }, fd, data_rel_ro));
-            }
+            info.prog.addr = mach.alignA4096(@atomicRmw(usize, &loader.ub_sect_addr, .Add, info.prog.len, .SeqCst));
         }
         pub fn load(loader: *DynamicLoader, pathname: [:0]const u8) sys.ErrorUnion(ep0, *Info) {
             @setRuntimeSafety(builtin.is_safe);
-            const fd: usize = try meta.wrap(file.open(open(), pathname));
-            const info: *Info = try meta.wrap(loader.allocateInfo(fd));
-            try meta.wrap(info.readSections());
-            try meta.wrap(loader.mapSections(fd, info));
-            try meta.wrap(info.readInfo(fd));
-            try meta.wrap(file.close(close(), fd));
+            const info: *Info = try meta.wrap(loader.allocateInfo(pathname));
+            try meta.wrap(info.readInfo());
+            if (info.impl.header(.@".rela.dyn")) |rela| {
+                try meta.wrap(info.relocateDynamic(rela, info.impl.section(.@".rela.dyn")));
+            }
+            if (loader_spec.options.show_sections) {
+                about.readSectionNotice(info);
+            }
+            try meta.wrap(file.close(close(), info.fd));
             return info;
         }
         // Consider making function in `file`.
@@ -1477,12 +1482,16 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 .errors = loader_spec.errors.map,
             };
         }
+        fn unmap() mem.UnmapSpec {
+            return .{
+                .logging = loader_spec.logging.unmap,
+                .errors = loader_spec.errors.unmap,
+            };
+        }
         pub const about = struct {
             const load_s: fmt.AboutSrc = fmt.about("load");
             const undef_s: fmt.AboutSrc = fmt.about("undef");
             const dynsym_s: fmt.AboutSrc = fmt.about("dynsym");
-            const symtab_s: fmt.AboutSrc = fmt.about("symtab");
-            const rodata_s: fmt.AboutSrc = fmt.about("rodata");
             const section_s: fmt.AboutSrc = fmt.about("section");
             pub fn aboutDefined(name: []const u8, addr: usize) void {
                 @setRuntimeSafety(builtin.is_safe);
