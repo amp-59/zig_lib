@@ -1500,8 +1500,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 var ux64: fmt.Type.Ux64 = .{ .value = addr };
                 ptr[0..load_s.len].* = load_s.*;
                 ptr += load_s.len;
-                @memcpy(ptr, name);
-                ptr += name.len;
+                ptr = fmt.strcpyEqu(ptr, name);
                 if (addr == 8) {
                     ptr[0..8].* = " = null\n".*;
                     ptr += 8;
@@ -1514,95 +1513,515 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 }
                 debug.write(buf[0..@intFromPtr(ptr - @intFromPtr(&buf))]);
             }
+            fn symbolMatches(shdr: *const Elf64_Shdr) [*]bool {
+                @setRuntimeSafety(builtin.is_safe);
+                return @ptrFromInt(shdr.sh_addr +% shdr.sh_size);
+            }
+            fn sectionMatches(info: *const Info) [*]bool {
+                @setRuntimeSafety(builtin.is_safe);
+                return @ptrFromInt(info.shdr +% (info.ehdr.e_shentsize *% info.ehdr.e_shnum));
+            }
+            fn programMatches(info: *const Info) [*]bool {
+                @setRuntimeSafety(builtin.is_safe);
+                return @ptrFromInt(info.phdr +% (info.ehdr.e_phentsize *% info.ehdr.e_phnum));
+            }
+            fn symbolByIndex(shdr: *const Elf64_Shdr, sym_idx: usize) *Elf64_Sym {
+                @setRuntimeSafety(builtin.is_safe);
+                return @ptrFromInt(shdr.sh_addr +% (shdr.sh_entsize *% sym_idx));
+            }
+            fn sectionName(info: *const Info, shdr: *const Elf64_Shdr) [:0]const u8 {
+                @setRuntimeSafety(builtin.is_safe);
+                return mem.terminate(@ptrFromInt(info.shstr + shdr.sh_name), 0);
+            }
+            fn symbolName(info: *const Info, shdr: *const Elf64_Shdr, sym: *Elf64_Sym) [:0]const u8 {
+                @setRuntimeSafety(builtin.is_safe);
+                const strtab_shdr: *Elf64_Shdr = info.sectionHeaderByIndex(shdr.sh_link);
+                return mem.terminate(@ptrFromInt(strtab_shdr.sh_addr + sym.st_name), 0);
+            }
             pub fn readSectionNotice(info: *const Info) void {
                 @setRuntimeSafety(builtin.is_safe);
                 var ux64: fmt.Type.Ux64 = undefined;
                 var ud64: fmt.Type.Ud64 = undefined;
-                for (info.links, 0..) |link, tags_idx| {
-                    if (link) |shdr| {
-                        var buf: [4096]u8 = undefined;
-                        var ptr: [*]u8 = &buf;
-                        if (@intFromPtr(shdr) == 0) {
-                            continue;
-                        }
-                        ptr[0..section_s.len].* = section_s.*;
-                        ptr += section_s.len;
-                        @memcpy(ptr, sections[tags_idx]);
-                        ptr += sections[tags_idx].len;
-                        ptr[0..2].* = ": ".*;
+                var shdr_idx: usize = 1;
+                var buf: [4096]u8 = undefined;
+                buf[0..section_s.len].* = section_s.*;
+                while (shdr_idx != info.ehdr.e_shnum) : (shdr_idx +%= 1) {
+                    const shdr: *Elf64_Shdr = @ptrFromInt(info.shdr +% (shdr_idx *% info.ehdr.e_shentsize));
+                    const section_name: [:0]const u8 = mem.terminate(@ptrFromInt(info.shstr + shdr.sh_name), 0);
+                    var ptr: [*]u8 = fmt.strcpyEqu(&buf, section_name);
+                    ptr[0..2].* = ", ".*;
+                    ptr += 2;
+                    if (shdr.sh_addr != 0) {
+                        ptr[0..5].* = "addr=".*;
+                        ptr += 5;
+                        ux64.value = info.prog.addr +% shdr.sh_addr;
+                        ptr += ux64.formatWriteBuf(ptr);
+                        ptr[0..2].* = ", ".*;
                         ptr += 2;
-                        if (shdr.sh_addr != 0) {
+                    }
+                    ptr[0..7].* = "offset=".*;
+                    ptr += 7;
+                    ud64.value = shdr.sh_offset;
+                    ptr += ud64.formatWriteBuf(ptr);
+                    ptr[0..7].* = ", size=".*;
+                    ptr += 7;
+                    ud64.value = shdr.sh_size;
+                    ptr += fmt.bytes(shdr.sh_size).formatWriteBuf(ptr);
+                    ptr[0] = '\n';
+                    debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
+                    if (shdr.sh_type == .DYNSYM) {
+                        aboutSymtab(info, shdr, info.impl.section(.@".dynsym"), info.impl.section(.@".dynstr"));
+                    }
+                    if (shdr.sh_type == .SYMTAB) {
+                        aboutSymtab(info, shdr, info.impl.section(.@".symtab"), info.impl.section(.@".strtab"));
+                    }
+                }
+            }
+            fn bestSymbolTable(info: *const Info) ?*Elf64_Shdr {
+                const symtab_idx: comptime_int = @intFromEnum(Info.SectionTag.@".symtab");
+                const dynsym_idx: comptime_int = @intFromEnum(Info.SectionTag.@".dynsym");
+                return info.impl.buf[symtab_idx].shdr orelse info.impl.buf[dynsym_idx].shdr;
+            }
+            fn matchSymbolNameInRange(
+                info2: *const Info,
+                shdr2: *const Elf64_Shdr,
+                shdr_idx2: usize,
+                mats2: [*]bool,
+                name1: [:0]const u8,
+                sym_idx2_from: usize,
+                sym_idx2_to: usize,
+            ) usize {
+                @setRuntimeSafety(builtin.is_safe);
+                var sym_idx2: usize = sym_idx2_from;
+                while (sym_idx2 != sym_idx2_to) : (sym_idx2 +%= 1) {
+                    const sym2: *Elf64_Sym = symbolByIndex(shdr2, sym_idx2);
+                    if (sym2.st_shndx != shdr_idx2) {
+                        continue;
+                    }
+                    const name2: [:0]const u8 = symbolName(info2, shdr2, sym2);
+                    if (mem.testEqualString(name1, name2)) {
+                        mats2[sym_idx2] = true;
+                        return sym_idx2;
+                    }
+                }
+                return 0;
+            }
+            fn matchSectionNameInRange(
+                info2: *const Info,
+                mats2: [*]bool,
+                name1: [:0]const u8,
+                shdr_idx2_from: usize,
+                shdr_idx2_to: usize,
+            ) usize {
+                @setRuntimeSafety(builtin.is_safe);
+                var shdr_idx2: usize = shdr_idx2_from;
+                while (shdr_idx2 != shdr_idx2_to) : (shdr_idx2 +%= 1) {
+                    const shdr2: *Elf64_Shdr = info2.sectionHeaderByIndex(shdr_idx2);
+                    const name2: [:0]const u8 = sectionName(info2, shdr2);
+                    if (mem.testEqualString(name1, name2)) {
+                        mats2[shdr_idx2] = true;
+                        return shdr_idx2;
+                    }
+                }
+                return 0;
+            }
+            pub fn aboutSymtabDifference(
+                info1: *const Info,
+                info2: *const Info,
+                shdr1: *const Elf64_Shdr,
+                shdr2: *const Elf64_Shdr,
+                shndx1: usize,
+                shndx2: usize,
+            ) void {
+                @setRuntimeSafety(builtin.is_safe);
+                const mats1: [*]bool = symbolMatches(shdr1);
+                const mats2: [*]bool = symbolMatches(shdr2);
+                const max_idx1: usize = shdr1.sh_size / shdr1.sh_entsize;
+                const max_idx2: usize = shdr2.sh_size / shdr2.sh_entsize;
+                const strtab1: [*]u8 = @ptrFromInt(info1.sectionHeaderByIndex(shdr1.sh_link).sh_addr);
+                const strtab2: [*]u8 = @ptrFromInt(info2.sectionHeaderByIndex(shdr2.sh_link).sh_addr);
+                var sym_idx1: usize = 1;
+                const sh_name1: [:0]const u8 = sectionName(info1, info1.sectionHeaderByIndex(shndx1));
+                const sh_name2: [:0]const u8 = sectionName(info2, info2.sectionHeaderByIndex(shndx2));
+                while (sym_idx1 != max_idx1) : (sym_idx1 +%= 1) {
+                    var sym_idx2: usize = 1;
+                    const sym1: *Elf64_Sym = symbolByIndex(shdr1, sym_idx1);
+                    if (shndx1 != sym1.st_shndx) {
+                        continue;
+                    }
+                    const name1: [:0]const u8 = symbolName(info1, shdr1, sym1);
+                    if (mem.testEqualManyIn(u8, "__anon", name1)) {
+                        continue;
+                    }
+                    sym_idx2 = blk: {
+                        sym_idx2 = @min(max_idx2, sym_idx1);
+                        var mat_idx: usize = matchSymbolNameInRange(info2, shdr2, shndx2, mats2, name1, sym_idx2, max_idx2);
+                        if (mat_idx != 0) {
+                            break :blk mat_idx;
+                        }
+                        sym_idx2 -|= 5;
+                        sym_idx2 +%= 1;
+                        mat_idx = matchSymbolNameInRange(info2, shdr2, shndx2, mats2, name1, sym_idx2, sym_idx1);
+                        if (mat_idx != 0) {
+                            break :blk mat_idx;
+                        }
+                        mat_idx = matchSymbolNameInRange(info2, shdr2, shndx2, mats2, name1, 1, sym_idx2);
+                        if (mat_idx != 0) {
+                            break :blk mat_idx;
+                        }
+                        if (!mats1[sym_idx1]) {
+                            aboutSymbolRemoved(strtab1, sym1, sym_idx1, sh_name1);
+                        }
+                        continue;
+                    };
+                    mats1[sym_idx1] = true;
+                    const sym2: *Elf64_Sym = symbolByIndex(shdr2, sym_idx2);
+                    aboutSymbolDifference(info1, sym1, info2, strtab2, sym2, sym_idx2, sh_name2);
+                }
+                var sym_idx2: usize = 1;
+                while (sym_idx2 != max_idx2) : (sym_idx2 +%= 1) {
+                    const sym2: *Elf64_Sym = symbolByIndex(shdr2, sym_idx2);
+                    if (sym2.st_shndx != shndx2) {
+                        continue;
+                    }
+                    const name2: [:0]const u8 = symbolName(info2, shdr2, sym2);
+                    if (mem.testEqualManyIn(u8, "__anon", name2)) {
+                        continue;
+                    }
+                    if (!mats2[sym_idx2]) {
+                        aboutSymbolAdded(info2, strtab2, sym2, sym_idx2, sh_name1);
+                    }
+                }
+            }
+            pub fn aboutBinaryDifference(about_s: [:0]const u8, info1: *const Info, info2: *const Info) void {
+                @setRuntimeSafety(builtin.is_safe);
+                const mats1: [*]bool = sectionMatches(info1);
+                const mats2: [*]bool = sectionMatches(info2);
+                const symtab1: ?*Elf64_Shdr = bestSymbolTable(info1);
+                const symtab2: ?*Elf64_Shdr = bestSymbolTable(info2);
+                var shdr_idx1: usize = 1;
+                var shdr_idx2: usize = shdr_idx1;
+                while (shdr_idx1 != info1.ehdr.e_shnum) : (shdr_idx1 +%= 1) {
+                    const shdr1: *Elf64_Shdr = info1.sectionHeaderByIndex(shdr_idx1);
+                    const name1: [:0]const u8 = sectionName(info1, shdr1);
+                    shdr_idx2 = blk: {
+                        shdr_idx2 = shdr_idx1;
+                        var mat_idx: usize = matchSectionNameInRange(info2, mats2, name1, shdr_idx2, info2.ehdr.e_shnum);
+                        if (mat_idx != 0) {
+                            break :blk mat_idx;
+                        }
+                        shdr_idx2 -|= 1;
+                        shdr_idx2 +%= 1;
+                        mat_idx = matchSectionNameInRange(info2, mats2, name1, shdr_idx2, shdr_idx1);
+                        if (mat_idx != 0) {
+                            break :blk mat_idx;
+                        }
+                        mat_idx = matchSectionNameInRange(info2, mats2, name1, 1, shdr_idx2);
+                        if (mat_idx != 0) {
+                            break :blk mat_idx;
+                        }
+                        aboutSectionRemoved(info1, shdr1, shdr_idx1);
+                        continue;
+                    };
+                    mats1[shdr_idx1] = true;
+                    const shdr2: *Elf64_Shdr = info2.sectionHeaderByIndex(shdr_idx2);
+                    aboutSectionDifference(about_s, info2, shdr1, shdr2, shdr_idx2);
+                    aboutSymtabDifference(info1, info2, symtab1 orelse continue, symtab2 orelse continue, shdr_idx1, shdr_idx2);
+                }
+                shdr_idx2 = 1;
+                while (shdr_idx2 != info2.ehdr.e_shnum) : (shdr_idx2 +%= 1) {
+                    const shdr2: *Elf64_Shdr = info2.sectionHeaderByIndex(shdr_idx2);
+                    if (!mats2[shdr_idx2]) {
+                        aboutSectionAdded(info2, shdr2, shdr_idx2);
+                    }
+                }
+            }
+            fn aboutLoad(info: *const Info, pathname: [:0]const u8) void {
+                var buf: [4096]u8 = undefined;
+                buf[0..load_s.len].* = load_s.*;
+                var ptr: [*]u8 = fmt.strcpyEqu(buf[load_s.len..], "ELF-");
+                ptr = fmt.strcpyEqu(ptr, @tagName(info.ehdr.e_type));
+                ptr[0..2].* = ", ".*;
+                ptr += 2;
+                ptr = fmt.strcpyEqu(ptr, @tagName(info.ehdr.e_machine));
+                ptr[0..2].* = ", ".*;
+                ptr += 2;
+                ptr[0..9].* = "sections=".*;
+                ptr += 9;
+                var ud64: fmt.Type.Ud64 = .{ .value = info.ehdr.e_shnum };
+                ptr += ud64.formatWriteBuf(ptr);
+                ptr[0..2].* = ", ".*;
+                ptr += 2;
+                ptr[0..9].* = "segments=".*;
+                ptr += 9;
+                ud64.value = info.ehdr.e_phnum;
+                ptr += ud64.formatWriteBuf(ptr);
+                if (info.ehdr.e_type == .DYN) {
+                    ptr[0..2].* = ", ".*;
+                    ptr += 2;
+                    ptr[0..5].* = "addr=".*;
+                    ptr += 5;
+                    var ux64: fmt.Type.Ux64 = .{ .value = info.prog.addr };
+                    ptr += ux64.formatWriteBuf(ptr);
+                }
+                var pos: usize = 0;
+                for (pathname, 0..) |byte, idx| {
+                    if (byte == '/') pos = idx;
+                }
+                ptr[0..2].* = ", ".*;
+                ptr += 2;
+                ptr[0..5].* = "name=".*;
+                ptr += 5;
+                ptr = fmt.strcpyEqu(ptr, pathname[pos +% 1 ..]);
+                ptr[0] = '\n';
+                ptr += 1;
+                debug.write(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)]);
+            }
+            fn aboutSectionRemoved(info1: *const Info, shdr1: *Elf64_Shdr, shdr_idx1: usize) void {
+                @setRuntimeSafety(builtin.is_safe);
+                var buf: [4096]u8 = undefined;
+                var ptr: [*]u8 = &buf;
+                ptr += fmt.writeSideBarIndex(ptr, 8, shdr_idx1);
+                ptr = fmt.strcpyEqu(ptr, mem.terminate(@ptrFromInt(info1.shstr +% shdr1.sh_name), 0));
+                ptr[0..2].* = ", ".*;
+                ptr += 2;
+                ptr[0..5].* = "addr=".*;
+                ptr += 5;
+                ptr += fmt.uxd(shdr1.sh_addr, 0).formatWriteBuf(ptr);
+                ptr[0..2].* = ", ".*;
+                ptr += 2;
+                ptr[0..5].* = "size=".*;
+                ptr += 5;
+                ptr += fmt.bloatDiff(shdr1.sh_size, 0).formatWriteBuf(ptr);
+                ptr[0] = '\n';
+                ptr += 1;
+                return debug.write(buf[0 .. @intFromPtr(ptr) - @intFromPtr(&buf)]);
+            }
+            fn aboutSectionAdded(info2: *const Info, shdr2: *Elf64_Shdr, shdr_idx2: usize) void {
+                @setRuntimeSafety(builtin.is_safe);
+                var buf: [4096]u8 = undefined;
+                var ptr: [*]u8 = &buf;
+                ptr += fmt.writeSideBarIndex(ptr, 8, shdr_idx2);
+                ptr = fmt.strcpyEqu(ptr, mem.terminate(@ptrFromInt(info2.shstr +% shdr2.sh_name), 0));
+                ptr[0..2].* = ", ".*;
+                ptr += 2;
+                ptr[0..5].* = "addr=".*;
+                ptr += 5;
+                ptr += fmt.uxd(0, shdr2.sh_addr).formatWriteBuf(ptr);
+                ptr[0..2].* = ", ".*;
+                ptr += 2;
+                ptr[0..5].* = "size=".*;
+                ptr += 5;
+                ptr += fmt.bloatDiff(0, shdr2.sh_size).formatWriteBuf(ptr);
+                ptr[0] = '\n';
+                ptr += 1;
+                return debug.write(buf[0 .. @intFromPtr(ptr) - @intFromPtr(&buf)]);
+            }
+            const ascii = @import("./fmt/ascii.zig");
+            fn aboutSectionDifference(about_s: [:0]const u8, info2: *const Info, shdr1: *Elf64_Shdr, shdr2: *Elf64_Shdr, shdr_idx2: usize) void {
+                @setRuntimeSafety(builtin.is_safe);
+                const len: usize = blk: {
+                    var og: []const u8 = about_s;
+                    if (builtin.message_style) |style_s| {
+                        og = og[style_s.len .. og.len -% builtin.message_no_style.len];
+                    }
+                    for (og, 0..) |byte, idx| {
+                        if (byte == ':') {
+                            break :blk og[0..idx].len;
+                        }
+                    }
+                    unreachable;
+                };
+                var buf: [4096]u8 = undefined;
+                var ptr: [*]u8 = &buf;
+                ptr += fmt.writeSideBarIndex(ptr, len, shdr_idx2);
+                ptr = fmt.strcpyEqu(ptr, mem.terminate(@ptrFromInt(info2.shstr + shdr2.sh_name), 0));
+                ptr[0..2].* = ", ".*;
+                ptr += 2;
+                if (shdr1.sh_addr < lb_info_addr and
+                    shdr2.sh_addr < lb_info_addr and
+                    shdr1.sh_addr != shdr2.sh_addr)
+                {
+                    ptr[0..5].* = "addr=".*;
+                    ptr += 5;
+                    ptr += fmt.ux64(shdr2.sh_addr).formatWriteBuf(ptr);
+                    ptr[0..2].* = ", ".*;
+                    ptr += 2;
+                }
+                ptr[0..5].* = "size=".*;
+                ptr += 5;
+                ptr += fmt.bloatDiff(shdr1.sh_size, shdr2.sh_size).formatWriteBuf(ptr);
+                ptr[0] = '\n';
+                ptr += 1;
+                return debug.write(buf[0 .. @intFromPtr(ptr) - @intFromPtr(&buf)]);
+            }
+            fn aboutSymbolIntro(buf: [*]u8, sym_idx: usize, event: enum { add, remove, change }, section_name: [:0]const u8) [*]u8 {
+                var ptr: [*]u8 = fmt.strsetEqu(buf, ' ', 8);
+                const idx_len: usize = fmt.length(usize, sym_idx, 10);
+                ptr[0] = switch (event) {
+                    .add => '+',
+                    .remove => '-',
+                    .change => '~',
+                };
+                ptr += 1;
+                ptr = fmt.strsetEqu(ptr, ' ', (7 +% section_name.len) -% (idx_len +% 1));
+                ptr[0..4].* = tab.fx.style.faint.*;
+                ptr += 4;
+                ptr[0] = '#';
+                ptr += 1;
+                ptr += fmt.ud64(sym_idx).formatWriteBuf(ptr);
+                ptr[0..4].* = tab.fx.none.*;
+                ptr += 4;
+                ptr[0..2].* = ": ".*;
+                ptr += 2;
+                return ptr;
+            }
+            fn aboutSymbolAdded(
+                info2: *const Info,
+                strtab2: [*]u8,
+                sym2: *const Elf64_Sym,
+                sym_idx2: usize,
+                section_name: [:0]const u8,
+            ) void {
+                var buf: [4096]u8 = undefined;
+                @setRuntimeSafety(builtin.is_safe);
+                var ptr: [*]u8 = aboutSymbolIntro(&buf, sym_idx2, .add, section_name);
+                ptr[0..5].* = "addr=".*;
+                ptr += 5;
+                ptr += fmt.ux64(info2.prog.addr +% sym2.st_value).formatWriteBuf(ptr);
+                ptr[0..2].* = ", ".*;
+                ptr += 6;
+                ptr[0..5].* = "size=".*;
+                ptr += 5;
+                ptr[0..5].* = tab.fx.color.fg.red.*;
+                ptr += 5;
+                ptr += fmt.bytes(sym2.st_size).formatWriteBuf(ptr);
+                ptr[0..4].* = tab.fx.none.*;
+                ptr += 4;
+                ptr[0..2].* = ", ".*;
+                ptr += 2;
+                ptr[0..5].* = "name=".*;
+                ptr += 5;
+                ptr += writeBoldShortName(ptr, mem.terminate(strtab2 + sym2.st_name, 0));
+                ptr[0] = '\n';
+                ptr += 1;
+                return debug.write(buf[0 .. @intFromPtr(ptr) - @intFromPtr(&buf)]);
+            }
+            fn aboutSymbolRemoved(
+                strtab1: [*]u8,
+                sym1: *const Elf64_Sym,
+                sym_idx1: usize,
+                section_name: [:0]const u8,
+            ) void {
+                @setRuntimeSafety(builtin.is_safe);
+                var buf: [4096]u8 = undefined;
+                var ptr: [*]u8 = aboutSymbolIntro(&buf, sym_idx1, .remove, section_name);
+                ptr[0..5].* = "addr=".*;
+                ptr += 5;
+                ptr += fmt.ux64(sym1.st_value).formatWriteBuf(ptr);
+                ptr[0..2].* = ", ".*;
+                ptr += 2;
+                ptr[0..5].* = "size=".*;
+                ptr += 5;
+                ptr[0..5].* = tab.fx.color.fg.green.*;
+                ptr += 5;
+                ptr += fmt.bytes(sym1.st_size).formatWriteBuf(ptr);
+                ptr[0..4].* = tab.fx.none.*;
+                ptr += 4;
+                ptr += fmt.bytes(sym1.st_size).formatWriteBuf(ptr);
+                ptr[0..2].* = ", ".*;
+                ptr += 2;
+                ptr[0..5].* = "name=".*;
+                ptr += 5;
+                ptr += writeBoldShortName(ptr, mem.terminate(strtab1 + sym1.st_name, 0));
+                ptr[0] = '\n';
+                ptr += 1;
+                return debug.write(buf[0 .. @intFromPtr(ptr) - @intFromPtr(&buf)]);
+            }
+            fn aboutSymbolDifference(
+                info1: *const Info,
+                sym1: *const Elf64_Sym,
+                info2: *const Info,
+                strtab2: [*]u8,
+                sym2: *const Elf64_Sym,
+                sym_idx2: usize,
+                section_name: [:0]const u8,
+            ) void {
+                @setRuntimeSafety(builtin.is_safe);
+                if (sym1.st_size == sym2.st_size or
+                    sym1.st_shndx > info1.ehdr.e_shnum or
+                    sym2.st_shndx > info2.ehdr.e_shnum)
+                {
+                    return;
+                }
+                var buf: [4096]u8 = undefined;
+                var ptr: [*]u8 = aboutSymbolIntro(&buf, sym_idx2, .change, section_name);
+                ptr[0..5].* = "addr=".*;
+                ptr += 5;
+                ptr += fmt.ux64(sym2.st_value).formatWriteBuf(ptr);
+                ptr[0..2].* = ", ".*;
+                ptr += 2;
+                ptr[0..5].* = "size=".*;
+                ptr += 5;
+                ptr += fmt.bloatDiff(sym1.st_size, sym2.st_size).formatWriteBuf(ptr);
+                ptr[0..2].* = ", ".*;
+                ptr += 2;
+                ptr[0..5].* = "name=".*;
+                ptr += 5;
+                ptr += writeBoldShortName(ptr, mem.terminate(strtab2 + sym2.st_name, 0));
+                ptr[0] = '\n';
+                ptr += 1;
+                return debug.write(buf[0 .. @intFromPtr(ptr) - @intFromPtr(&buf)]);
+            }
+            fn aboutSymtab(info1: *const Info, shdr1: *Elf64_Shdr, symtab1: usize, strtab1: usize) void {
+                @setRuntimeSafety(builtin.is_safe);
+                const max_idx: usize = @divExact(shdr1.sh_size, shdr1.sh_entsize);
+                var ux64: fmt.Type.Ux64 = undefined;
+                var buf: [4096]u8 = undefined;
+                var sym_idx: usize = 1;
+                while (sym_idx != max_idx) : (sym_idx +%= 1) {
+                    const sym1: *Elf64_Sym = @ptrFromInt(symtab1 +% (sym_idx *% shdr1.sh_entsize));
+                    var ptr: [*]u8 = buf[fmt.writeSideBarIndex(&buf, 8, sym_idx)..].ptr;
+                    if (sym1.st_shndx < info1.ehdr.e_shnum) {
+                        const sym_shdr: *Elf64_Shdr = info1.sectionHeaderByIndex(sym1.st_shndx);
+                        ptr = fmt.strcpyEqu(ptr, mem.terminate(@ptrFromInt(info1.shstr + sym_shdr.sh_name), 0));
+                        ptr[0..2].* = ", ".*;
+                        ptr += 2;
+                        if (sym1.st_value != 0) {
                             ptr[0..5].* = "addr=".*;
                             ptr += 5;
-                            ux64.value = info.prog_addr +% shdr.sh_addr;
+                            ux64.value = info1.prog.addr +% sym1.st_value;
                             ptr += ux64.formatWriteBuf(ptr);
                             ptr[0..2].* = ", ".*;
                             ptr += 2;
                         }
-                        ptr[0..7].* = "offset=".*;
-                        ptr += 7;
-                        ud64.value = shdr.sh_offset;
-                        ptr += ud64.formatWriteBuf(ptr);
+                        ptr[0..5].* = "size=".*;
+                        ptr += 5;
+                        ptr += fmt.bytes(sym1.st_size).formatWriteBuf(ptr);
                         ptr[0..2].* = ", ".*;
                         ptr += 2;
-                        ud64.value = shdr.sh_size;
-                        ptr += ud64.formatWriteBuf(ptr);
-                        ptr[0..6].* = " bytes".*;
-                        ptr += 6;
-                        ptr[0] = '\n';
-                        debug.write(buf[0 .. @intFromPtr(ptr - @intFromPtr(&buf)) +% 1]);
-                        if (tags_idx == dynsym_idx and
-                            @intFromPtr(info.impl.dynsym) != 0)
-                        {
-                            writeDynSym(info);
-                        }
                     }
-                }
-            }
-            fn writeDynSym(info: *const Info) void {
-                @setRuntimeSafety(builtin.is_safe);
-                if (@intFromPtr(info.impl.dynsym) == 0) {
-                    return;
-                }
-                const dynsym_shdr: *Elf64_Shdr = info.links[dynsym_idx].?;
-                var dyn_idx: usize = 1;
-                var buf: [4096]u8 = undefined;
-                var ud64: fmt.Type.Ud64 = undefined;
-                var ux64: fmt.Type.Ux64 = undefined;
-                while (dyn_idx < @divExact(dynsym_shdr.sh_size, dynsym_shdr.sh_entsize)) : (dyn_idx +%= 1) {
-                    const sym: Elf64_Sym = info.impl.dynsym[dyn_idx];
-                    var name: [:0]u8 = mem.terminate(info.impl.dynstr + sym.st_name, 0);
-                    var ptr: [*]u8 = &buf;
-                    ptr[0..dynsym_s.len].* = dynsym_s.*;
-                    ptr += dynsym_s.len;
                     ptr[0..5].* = "name=".*;
                     ptr += 5;
-                    @memcpy(ptr, name);
-                    ptr += name.len;
-                    ptr[0..8].* = ", vaddr=".*;
-                    ux64.value = sym.st_value;
-                    ptr += 8;
-                    ptr += ux64.formatWriteBuf(ptr);
-                    ptr[0..7].* = ", size=".*;
-                    ptr += 7;
-                    ud64.value = sym.st_size;
-                    ptr += ud64.formatWriteBuf(ptr);
-                    ptr[0..10].* = ", section=".*;
-                    ptr += 10;
-                    ud64.value = sym.st_shndx;
-                    ptr += ud64.formatWriteBuf(ptr);
-                    ptr[0..2].* = ", ".*;
-                    ptr += 2;
-                    name = symbolSectionName(info, sym);
-                    @memcpy(ptr, name);
-                    ptr += name.len;
+                    ptr = fmt.strcpyEqu(ptr, mem.terminate(@ptrFromInt(strtab1 + sym1.st_name), 0));
                     ptr[0] = '\n';
                     ptr += 1;
-                    debug.write(buf[0 .. @intFromPtr(ptr - @intFromPtr(&buf)) +% 1]);
+                    debug.write(buf[0 .. @intFromPtr(ptr) - @intFromPtr(&buf)]);
                 }
             }
-            fn symbolSectionName(info: *const Info, sym: Elf64_Sym) [:0]u8 {
-                return mem.terminate(info.impl.shstr + info.impl.shdr[sym.st_shndx].sh_name, 0);
+            fn writeBoldShortName(buf: [*]u8, name: []const u8) usize {
+                var idx: usize = 0;
+                var pos: usize = 0;
+                while (idx != name.len) : (idx +%= 1) {
+                    if (name[idx] == '.') pos = idx;
+                }
+                var ptr: [*]u8 = fmt.strcpyEqu(buf, name[0 .. pos +% 1]);
+                ptr[0..8].* = (tab.fx.none ++ tab.fx.style.bold).*;
+                ptr += 8;
+                ptr = fmt.strcpyEqu(ptr, name[pos +% 1 ..]);
+                ptr[0..4].* = tab.fx.none.*;
+                ptr += 4;
+                return @intFromPtr(ptr) - @intFromPtr(buf);
             }
         };
     };
