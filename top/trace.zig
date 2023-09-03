@@ -194,7 +194,7 @@ fn writeExtendedSourceLocation(
     unit: *const dwarf.Unit,
     src: dwarf.SourceLocation,
 ) u64 {
-    @setRuntimeSafety(builtin.is_safe);
+    @setRuntimeSafety(false);
     var ptr: [*]u8 = buf + src.formatWriteBuf(buf);
     ptr[0..2].* = ": ".*;
     ptr += 2;
@@ -350,15 +350,33 @@ fn fastAllocFile(allocator: *Allocator, file_map: *FileMap, pathname: [:0]const 
     var st: file.Status = undefined;
     const fd: usize = sys.call_noexcept(.open, usize, .{ @intFromPtr(pathname.ptr), sys.O.RDONLY, 0 });
     mach.assert(fd < 1024, tab.open_error_s);
+    if (fd >= 1024) {
+        sys.call_noexcept(.exit, void, .{2});
+    }
     var rc: usize = sys.call_noexcept(.fstat, usize, .{ fd, @intFromPtr(&st) });
-    mach.assert(rc == 0, tab.stat_error_s);
-    const buf: []u8 = allocator.allocateAligned(u8, st.size +% 1, 8);
-    rc = sys.call_noexcept(.read, usize, .{ fd, @intFromPtr(buf.ptr), st.size });
-    buf[st.size] = 0;
-    mach.assert(rc == st.size, tab.read_error_s);
+    if (rc != 0) {
+        sys.call_noexcept(.exit, void, .{2});
+    }
+    const addr: usize = allocator.allocateRaw(st.size +% 1, 8);
+    rc = sys.call_noexcept(.read, usize, .{ fd, addr, st.size });
+    var buf: [*]u8 = @ptrFromInt(addr + st.size);
+    buf[0] = 0;
+    if (rc != st.size) {
+        sys.call_noexcept(.exit, void, .{2});
+    }
+    buf -= st.size;
     sys.call_noexcept(.close, void, .{fd});
     const ret: [:0]u8 = buf[0..st.size :0];
     file_map.appendOne(allocator, .{ .key = pathname, .val = ret });
+
+    const cwd_addr: usize = allocator.allocateRaw(4096, 1);
+    rc = sys.call_noexcept(.getcwd, usize, .{ cwd_addr, 4096 });
+    if (rc > 4096) {
+        sys.call_noexcept(.exit, void, .{2});
+    }
+    const cwd: [*]u8 = @ptrFromInt(cwd_addr);
+    dwarf.SourceLocation.cwd = cwd[0..rc :0];
+
     return ret;
 }
 fn maximumSideBarWidth(itr: StackIterator) usize {
@@ -370,10 +388,45 @@ fn maximumSideBarWidth(itr: StackIterator) usize {
     }
     return max_len +% 1;
 }
+
+pub fn printSourceCodeAtAddress(trace: *const debug.Trace, addr: usize) callconv(.C) void {
+    printSourceCodeAtAddresses(trace, 0, &[_]usize{addr}, 1);
+}
+pub fn printSourceCodeAtAddresses(trace: *const debug.Trace, ret_addr: usize, addrs: [*]const usize, addrs_len: usize) callconv(.C) void {
+    @setRuntimeSafety(builtin.is_safe);
+    var allocator: mem.SimpleAllocator = .{ .start = Level.start, .next = Level.start, .finish = Level.start };
+    var buf: []u8 = allocator.allocate(u8, 4096);
+    dwarf.SourceLocation.cwd = file.getCwd(.{ .errors = .{} }, buf);
+    defer allocator.unmap();
+    var file_map: FileMap = FileMap.init(&allocator, 8);
+    const exe_buf: []u8 = fastAllocFile(&allocator, &file_map, tab.self_link_s);
+    var dwarf_info: dwarf.DwarfInfo = dwarf.DwarfInfo.init(@intFromPtr(exe_buf.ptr));
+    dwarf_info.scanAllCompileUnits(&allocator);
+    buf = allocator.allocate(u8, 1024 *% 4096);
+    var len: usize = 0;
+    var width: usize = fmt.ux64(ret_addr).formatLength();
+    for (addrs[0..addrs_len]) |addr| {
+        width = @max(width, fmt.ux64(addr).formatLength());
+    }
+    width *%= @intFromBool(trace.options.write_sidebar);
+    for (addrs[0..addrs_len]) |addr| {
+        if (writeSourceCodeAtAddress(trace, &allocator, &file_map, &dwarf_info, buf.ptr, len, width, addr)) |addr_info| {
+            len = addr_info.finish;
+            dwarf_info.addAddressInfo(&allocator).* = addr_info;
+        }
+    }
+    if (ret_addr != 0) {
+        if (writeSourceCodeAtAddress(trace, &allocator, &file_map, &dwarf_info, buf.ptr, len, width, ret_addr)) |addr_info| {
+            len = addr_info.finish;
+            dwarf_info.addAddressInfo(&allocator).* = addr_info;
+        }
+    }
+    debug.write(buf[0..len]);
+}
+
 pub fn printStackTrace(trace: *const debug.Trace, first_addr: usize, frame_addr: usize) callconv(.C) void {
     @setRuntimeSafety(builtin.is_safe);
     var allocator: Allocator = .{ .start = Level.start, .next = Level.start, .finish = Level.start };
-    defer allocator.unmap();
     var file_map: FileMap = FileMap.init(&allocator, 8);
     const exe_buf: []u8 = fastAllocFile(&allocator, &file_map, tab.self_link_s);
     var dwarf_info: dwarf.DwarfInfo = dwarf.DwarfInfo.init(@intFromPtr(exe_buf.ptr));
@@ -412,9 +465,12 @@ pub fn printStackTrace(trace: *const debug.Trace, first_addr: usize, frame_addr:
             break;
         }
     }
+    allocator.unmap();
 }
 comptime {
     if (builtin.output_mode == .Obj) {
         @export(printStackTrace, .{ .name = "printStackTrace", .linkage = .Strong });
+        @export(printSourceCodeAtAddress, .{ .name = "printSourceCodeAtAddress", .linkage = .Strong });
+        @export(printSourceCodeAtAddresses, .{ .name = "printSourceCodeAtAddresses", .linkage = .Strong });
     }
 }
