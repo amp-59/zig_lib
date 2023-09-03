@@ -876,7 +876,13 @@ pub const ExecuteSpec = struct {
     }
 };
 pub const GetWorkingDirectorySpec = struct {
-    errors: sys.ErrorPolicy = .{ .throw = sys.readlink_errors },
+    errors: sys.ErrorPolicy = .{ .throw = sys.getcwd_errors },
+    return_type: type = u64,
+    logging: debug.Logging.SuccessError = .{},
+    const Specification = @This();
+};
+pub const ChangeWorkingirectorySpec = struct {
+    errors: sys.ErrorPolicy = .{ .throw = sys.chdir_errors },
     return_type: type = u64,
     logging: debug.Logging.SuccessError = .{},
     const Specification = @This();
