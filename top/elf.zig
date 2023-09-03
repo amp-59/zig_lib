@@ -128,7 +128,7 @@ pub const DT = enum(u32) {
     MIPS_RWPLT = 1879048244,
     MIPS_RLD_MAP_REL = 1879048245,
 };
-pub const PT = meta.EnumBitField(enum(u32) {
+pub const PT = enum(u32) {
     NULL = 0,
     LOAD = 1,
     DYNAMIC = 2,
@@ -140,14 +140,14 @@ pub const PT = meta.EnumBitField(enum(u32) {
     NUM = 8,
     LOOS = 1610612736,
     GNU_EH_FRAME = 1685382480,
+    GNU_STACK = 1685382481,
     GNU_RELRO = 1685382482,
     GNU_UNKNOWN = 1685382483,
     LOSUNW = 1879048186,
     HISUNW = 1879048191,
-    GNU_STACK = 1685382481,
     LOPROC = 1879048192,
     HIPROC = 2147483647,
-});
+};
 pub const SHT = enum(u32) {
     NULL = 0,
     PROGBITS = 1,
