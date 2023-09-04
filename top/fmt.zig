@@ -12,7 +12,6 @@ const _render = @import("./render.zig");
 pub const utf8 = @import("./fmt/utf8.zig");
 pub const ascii = @import("./fmt/ascii.zig");
 pub usingnamespace _render;
-
 pub const AboutSrc = blk: {
     var len: usize = 0;
     if (builtin.message_style) |style| {
@@ -37,6 +36,7 @@ pub fn about(comptime s: [:0]const u8) AboutSrc {
 }
 /// Returns the apparent length of the first colon in the about string.
 pub fn aboutCentre(about_s: AboutSrc) usize {
+    @setRuntimeSafety(builtin.is_safe);
     var og: []const u8 = about_s;
     if (builtin.message_style) |style_s| {
         og = og[style_s.len..];
@@ -46,6 +46,7 @@ pub fn aboutCentre(about_s: AboutSrc) usize {
             return idx;
         }
     }
+    return 0;
 }
 pub const about_blank_s: AboutSrc = about("");
 pub const AboutDest = @TypeOf(@constCast(about_blank_s));
@@ -73,7 +74,6 @@ pub fn aboutEqu(dest: [*]u8, src: AboutSrc) [*]u8 {
     return dest + src.len;
 }
 pub fn strcpy(dest: [*]u8, src: []const u8) usize {
-    @setRuntimeSafety(false);
     @memcpy(dest, src);
     return src.len;
 }
@@ -429,7 +429,7 @@ pub const Bytes = struct {
     const Format: type = @This();
     const Value = struct {
         integer: mem.Bytes,
-        remainder: mem.Bytes,
+        remainder: usize,
     };
     const MajorIntFormat = GenericPolynomialFormat(.{
         .bits = 16,
@@ -447,21 +447,14 @@ pub const Bytes = struct {
     pub const max_len: u64 =
         MajorIntFormat.max_len +%
         MinorIntFormat.max_len +% 3; // Unit
-    const default: mem.Bytes = .{
-        .count = 0,
-        .unit = .B,
-    };
-    fn formatRemainder(format: Format) MinorIntFormat {
-        return .{ .value = @as(u10, @intCast((format.value.remainder.count * 1000) / 1024)) };
-    }
-    fn formatInteger(format: Format) MajorIntFormat {
-        return .{ .value = @as(u10, @intCast(format.value.integer.count)) };
-    }
+
     pub fn formatWrite(format: Format, array: anytype) void {
-        if (format.value.remainder.count != 0) {
-            array.writeFormat(format.formatInteger());
+        const major: MajorIntFormat = .{ .value = @as(u10, @truncate(format.value.integer.count)) };
+        const minor: MinorIntFormat = .{ .value = @as(u10, @truncate((format.value.remainder *% 1000) / 1024)) };
+        if (format.value.remainder != 0) {
+            array.writeFormat(major);
             array.writeOne('.');
-            array.writeFormat(format.formatRemainder());
+            array.writeFormat(minor);
             array.writeMany(@tagName(format.value.integer.unit));
         } else {
             array.writeFormat(format.formatInteger());
@@ -469,46 +462,30 @@ pub const Bytes = struct {
         }
     }
     pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
-        var len: u64 = format.formatInteger().formatWriteBuf(buf);
-        if (format.value.remainder.count != 0) {
+        const major: MajorIntFormat = .{ .value = @as(u10, @truncate(format.value.integer.count)) };
+        const minor: MinorIntFormat = .{ .value = @as(u10, @truncate((format.value.remainder *% 1000) / 1024)) };
+        var len: usize = major.formatWriteBuf(buf);
+        if (format.value.remainder != 0) {
             buf[len] = '.';
             len +%= 1;
-            len +%= format.formatRemainder().formatWriteBuf(buf + len);
+            len +%= minor.formatWriteBuf(buf + len);
         }
         return len +% strcpy(buf + len, @tagName(format.value.integer.unit));
     }
-    pub fn formatLength(format: Format) u64 {
-        var len: u64 = 0;
+    pub fn formatLength(format: Format) usize {
+        const major: MajorIntFormat = .{ .value = @as(u10, @truncate(format.value.integer.count)) };
+        const minor: MinorIntFormat = .{ .value = @as(u10, @truncate((format.value.remainder *% 1000) / 1024)) };
+        var len: usize = 0;
         if (format.value.remainder.count != 0) {
-            len +%= format.formatInteger().formatLength();
+            len +%= major.formatLength();
             len +%= 1;
-            len +%= format.formatRemainder().formatLength();
+            len +%= minor.formatLength();
             len +%= @tagName(format.value.integer.unit).len;
         } else {
-            len +%= format.formatInteger().formatLength();
+            len +%= major.formatLength();
             len +%= @tagName(format.value.integer.unit).len;
         }
         return len;
-    }
-    pub fn init(value: u64) Bytes {
-        @setRuntimeSafety(false);
-        for (units) |unit| {
-            const integer: mem.Bytes = mem.Bytes.Unit.to(value, unit);
-            if (integer.count != 0) {
-                const remainder: mem.Bytes = mem.Bytes.Unit.to(
-                    value -% integer.count *% (@as(usize, 1) << @intFromEnum(unit)),
-                    @as(mem.Bytes.Unit, @enumFromInt(@min(@intFromEnum(unit) -% 10, 60))),
-                );
-                return .{ .value = .{
-                    .integer = integer,
-                    .remainder = remainder,
-                } };
-            }
-        }
-        return .{ .value = .{
-            .integer = default,
-            .remainder = default,
-        } };
     }
     pub usingnamespace GenericFormat(Format);
 };
@@ -686,7 +663,7 @@ pub fn GenericChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type
             var len: u64 = old_fmt.formatWriteBuf(buf);
             if (format.old_value != format.new_value) {
                 if (format.new_value > format.old_value) {
-                    const del_fmt: Bytes = Bytes.init(format.new_value -% format.old_value);
+                    const del_fmt: Bytes = bytes(format.new_value -% format.old_value);
                     buf[len] = '(';
                     len +%= 1;
                     @as(*[inc_s.len]u8, @ptrCast(buf + len)).* = inc_s.*;
@@ -697,7 +674,7 @@ pub fn GenericChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type
                     buf[len] = ')';
                     len +%= 1;
                 } else {
-                    const del_fmt: Bytes = Bytes.init(format.old_value -% format.new_value);
+                    const del_fmt: Bytes = bytes(format.old_value -% format.new_value);
                     buf[len] = '(';
                     len +%= 1;
                     @as(*[dec_s.len]u8, @ptrCast(buf + len)).* = dec_s.*;
@@ -2191,7 +2168,7 @@ pub inline fn ud32(value: u32) GenericPolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn ud64(value: u64) GenericPolynomialFormat(.{
+pub fn ud64(value: u64) GenericPolynomialFormat(.{
     .bits = 64,
     .radix = 10,
     .signedness = .unsigned,
@@ -2375,7 +2352,29 @@ pub fn ixsize(value: isize) GenericPolynomialFormat(.{
     return .{ .value = value };
 }
 pub fn bytes(count: usize) Bytes {
-    return Bytes.init(count);
+    const max_idx: comptime_int = Bytes.units.len -% 1;
+    @setRuntimeSafety(false);
+    var ret: Bytes.Value = .{
+        .integer = .{ .count = 0, .unit = .B },
+        .remainder = 0,
+    };
+    var idx: usize = 0;
+    while (idx != Bytes.units.len) : (idx +%= 1) {
+        var unit: mem.Bytes.Unit = Bytes.units[idx];
+        var val: usize = mem.Bytes.mask << @intFromEnum(unit);
+        val &= count;
+        val >>= @intFromEnum(unit);
+        if (val != 0) {
+            ret.integer = .{ .count = val, .unit = unit };
+            unit = Bytes.units[@min(idx +% 1, max_idx)];
+            val = mem.Bytes.mask << @intFromEnum(unit);
+            val &= (count -% ret.integer.count);
+            val >>= @intFromEnum(unit);
+            ret.remainder = val;
+            break;
+        }
+    }
+    return .{ .value = ret };
 }
 pub fn bloatDiff(old_size: usize, new_size: usize) Type.BloatDiff {
     return .{ .old_value = old_size, .new_value = new_size };
