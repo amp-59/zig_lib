@@ -1,4 +1,6 @@
 const sys = @import("./sys.zig");
+const fmt = @import("./fmt.zig");
+const file = @import("./file.zig");
 const meta = @import("./meta.zig");
 const debug = @import("./debug.zig");
 const builtin = @import("./builtin.zig");
@@ -354,4 +356,121 @@ pub fn eventControl(comptime perf_spec: PerfEventControlSpec, fd: u64, ctl: Even
     } else |ioctl_error| {
         return ioctl_error;
     }
+}
+pub const PerfEventsSpec = struct {
+    errors: Errors = .{},
+    logging: Logging = .{},
+    counters: []const CounterPair = &default_counters,
+    const Errors = struct {
+        open: sys.ErrorPolicy = .{ .throw = sys.perf_event_open_errors },
+        read: sys.ErrorPolicy = .{ .throw = sys.read_errors },
+        close: sys.ErrorPolicy = .{ .throw = sys.close_errors },
+    };
+    const Logging = struct {
+        open: debug.Logging.SuccessError = .{},
+        read: debug.Logging.SuccessError = .{},
+        close: debug.Logging.ReleaseError = .{},
+    };
+    const CounterPair = struct {
+        type: Type,
+        counters: []const Measurement,
+    };
+    const default_counters = .{
+        .{ .type = .hardware, .counters = &.{
+            .{ .name = "cycles\t\t\t", .config = .{ .hardware = .cpu_cycles } },
+            .{ .name = "instructions\t\t", .config = .{ .hardware = .instructions } },
+            .{ .name = "cache-references\t", .config = .{ .hardware = .cache_references } },
+            .{ .name = "cache-misses\t\t", .config = .{ .hardware = .cache_misses } },
+            .{ .name = "branch-misses\t\t", .config = .{ .hardware = .branch_misses } },
+        } },
+        .{ .type = .software, .counters = &.{
+            .{ .name = "cpu-clock\t\t", .config = .{ .software = .cpu_clock } },
+            .{ .name = "task-clock\t\t", .config = .{ .software = .task_clock } },
+            .{ .name = "page-faults\t\t", .config = .{ .software = .page_faults } },
+        } },
+    };
+};
+pub fn GenericPerfEvents(comptime events_spec: PerfEventsSpec) type {
+    const T = struct {
+        fds: Fds,
+        res: Results,
+        const PerfEvents = @This();
+        const Fds = [events_spec.counters.len][len]usize;
+        const Results = [events_spec.counters.len][len]usize;
+        const len = blk: {
+            var uniform_min: usize = 0;
+            for (events_spec.counters) |set| {
+                uniform_min = @max(uniform_min, set.counters.len);
+            }
+            break :blk uniform_min;
+        };
+        const event_flags = .{
+            .disabled = true,
+            .exclude_kernel = true,
+            .exclude_hv = true,
+            .inherit = true,
+            .enable_on_exec = true,
+        };
+        const fd_flags = .{
+            .fd_close_on_exec = true,
+        };
+        pub fn openFds(perf_events: *PerfEvents) void {
+            @setRuntimeSafety(builtin.is_safe);
+            const leader_fd: *usize = &perf_events.fds[0][0];
+            leader_fd.* = ~@as(u32, 0);
+            var event: Event = .{ .flags = PerfEvents.event_flags };
+            for (events_spec.counters, 0..) |set, set_idx| {
+                event.type = set.type;
+                var idx: usize = 0;
+                while (idx != set.counters.len) : (idx +%= 1) {
+                    event.config = set.counters[idx].config;
+                    perf_events.fds[set_idx][idx] = eventOpen(open(), &event, .self, .any, leader_fd.*, PerfEvents.fd_flags);
+                }
+            }
+        }
+        pub fn readResults(perf_events: *PerfEvents) void {
+            @setRuntimeSafety(builtin.is_safe);
+            for (events_spec.counters, 0..) |set, set_idx| {
+                var event_idx: usize = 0;
+                while (event_idx != set.counters.len) : (event_idx +%= 1) {
+                    const res: [*]u8 = @ptrCast(&perf_events.res[set_idx][event_idx]);
+                    debug.assertEqual(usize, 8, file.read(read(), perf_events.fds[set_idx][event_idx], res[0..8]));
+                    file.close(close(), perf_events.fds[set_idx][event_idx]);
+                }
+            }
+        }
+        pub fn writeResults(perf_events: *PerfEvents, buf: [*]u8) [*]u8 {
+            @setRuntimeSafety(builtin.is_safe);
+            var ptr: [*]u8 = buf;
+            for (events_spec.counters, 0..) |set, set_idx| {
+                var event_idx: usize = 0;
+                while (event_idx != set.counters.len) : (event_idx +%= 1) {
+                    ptr = fmt.strcpyEqu(ptr, set.counters[event_idx].name);
+                    ptr += fmt.udh(perf_events.res[set_idx][event_idx]).formatWriteBuf(ptr);
+                    ptr[0] = '\n';
+                    ptr += 1;
+                }
+            }
+            return ptr;
+        }
+        fn read() file.ReadSpec {
+            return .{
+                .errors = events_spec.errors.read,
+                .logging = events_spec.logging.read,
+            };
+        }
+        fn close() file.CloseSpec {
+            return .{
+                .errors = events_spec.errors.close,
+                .logging = events_spec.logging.close,
+            };
+        }
+        fn open() PerfEventSpec {
+            return .{
+                .errors = events_spec.errors.open,
+                .logging = events_spec.logging.open,
+            };
+        }
+    };
+    return T;
 }
