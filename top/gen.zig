@@ -297,7 +297,7 @@ pub fn truncateFile(comptime truncate_spec: TruncateSpec, pathname: [:0]const u8
     .abort = truncate_spec.errors.create.abort ++ truncate_spec.errors.write.abort ++
         truncate_spec.errors.close.abort,
 }, truncate_spec.return_type) {
-    const fd: u64 = try meta.wrap(file.create(truncate_spec.create(), pathname, file.mode.regular));
+    const fd: usize = try meta.wrap(file.create(truncate_spec.create(), pathname, file.mode.regular));
     const ret: truncate_spec.return_type = try meta.wrap(file.write(truncate_spec.write(), fd, buf));
     try meta.wrap(file.close(truncate_spec.close(), fd));
     return ret;
@@ -308,7 +308,7 @@ pub fn appendFile(comptime append_spec: AppendSpec, pathname: [:0]const u8, buf:
     .abort = append_spec.errors.open.abort ++ append_spec.errors.write.abort ++
         append_spec.errors.close.abort,
 }, void) {
-    const fd: u64 = try meta.wrap(file.open(append_spec.open(), pathname));
+    const fd: usize = try meta.wrap(file.open(append_spec.open(), pathname));
     const ret: append_spec.return_type = try meta.wrap(file.write(append_spec.write(), fd, buf));
     try meta.wrap(file.close(append_spec.close(), fd));
     return ret;
@@ -319,40 +319,40 @@ pub fn readFile(comptime read_spec: ReadSpec, pathname: [:0]const u8, buf: []rea
     .abort = read_spec.errors.open.abort ++ read_spec.errors.read.abort ++
         read_spec.errors.close.abort,
 }, read_spec.return_type) {
-    const fd: u64 = try meta.wrap(file.open(read_spec.open(), pathname));
+    const fd: usize = try meta.wrap(file.open(read_spec.open(), pathname));
     const ret: read_spec.return_type = try meta.wrap(file.read(read_spec.read(), fd, buf));
     try meta.wrap(file.close(read_spec.close(), fd));
     return ret;
 }
-pub fn truncateFileAt(comptime truncate_spec: TruncateSpec, dir_fd: u64, name: [:0]const u8, buf: []const truncate_spec.child) sys.ErrorUnion(.{
+pub fn truncateFileAt(comptime truncate_spec: TruncateSpec, dir_fd: usize, name: [:0]const u8, buf: []const truncate_spec.child) sys.ErrorUnion(.{
     .throw = truncate_spec.errors.create.throw ++ truncate_spec.errors.write.throw ++
         truncate_spec.errors.close.throw,
     .abort = truncate_spec.errors.create.abort ++ truncate_spec.errors.write.abort ++
         truncate_spec.errors.close.abort,
 }, truncate_spec.return_type) {
-    const fd: u64 = try meta.wrap(file.createAt(truncate_spec.create(), dir_fd, name, file.mode.regular));
+    const fd: usize = try meta.wrap(file.createAt(truncate_spec.create(), dir_fd, name, file.mode.regular));
     const ret: truncate_spec.return_type = try meta.wrap(file.write(truncate_spec.write(), fd, buf));
     try meta.wrap(file.close(truncate_spec.close(), fd));
     return ret;
 }
-pub fn appendFileAt(comptime append_spec: AppendSpec, dir_fd: u64, name: [:0]const u8, buf: []const append_spec.child) sys.ErrorUnion(.{
+pub fn appendFileAt(comptime append_spec: AppendSpec, dir_fd: usize, name: [:0]const u8, buf: []const append_spec.child) sys.ErrorUnion(.{
     .throw = append_spec.errors.open.throw ++ append_spec.errors.write.throw ++
         append_spec.errors.close.throw,
     .abort = append_spec.errors.open.abort ++ append_spec.errors.write.abort ++
         append_spec.errors.close.abort,
 }, void) {
-    const fd: u64 = try meta.wrap(file.openAt(append_spec.open(), dir_fd, name));
+    const fd: usize = try meta.wrap(file.openAt(append_spec.open(), dir_fd, name));
     const ret: append_spec.return_type = try meta.wrap(file.write(append_spec.write(), fd, buf));
     try meta.wrap(file.close(append_spec.close(), fd));
     return ret;
 }
-pub fn readFileAt(comptime read_spec: ReadSpec, dir_fd: u64, name: [:0]const u8, buf: []read_spec.child) sys.ErrorUnion(.{
+pub fn readFileAt(comptime read_spec: ReadSpec, dir_fd: usize, name: [:0]const u8, buf: []read_spec.child) sys.ErrorUnion(.{
     .throw = read_spec.errors.open.throw ++ read_spec.errors.read.throw ++
         read_spec.errors.close.throw,
     .abort = read_spec.errors.open.abort ++ read_spec.errors.read.abort ++
         read_spec.errors.close.abort,
 }, read_spec.return_type) {
-    const fd: u64 = try meta.wrap(file.openAt(read_spec.open(), dir_fd, name));
+    const fd: usize = try meta.wrap(file.openAt(read_spec.open(), dir_fd, name));
     const ret: read_spec.return_type = try meta.wrap(file.read(read_spec.read(), fd, buf));
     try meta.wrap(file.close(read_spec.close(), fd));
     return ret;
