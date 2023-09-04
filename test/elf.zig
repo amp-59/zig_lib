@@ -51,13 +51,13 @@ const AddressSpace = virtual.GenericRegularAddressSpace(virtual.RegularAddressSp
 });
 const LoaderAddressSpace = AddressSpace.SubSpace("Loader");
 
-fn testObjcopyCommand(args: [][*:0]u8, ptrs: *build.Fns) void {
+fn testObjcopyCommand(args: [][*:0]u8, ptrs: *build.VTable) void {
     var format_cmd: build.ObjcopyCommand = .{ .kind = .exe };
     var allocator: mem.SimpleAllocator = .{};
     var buf: [32768]u8 = undefined;
-    ptrs.formatParseArgsObjcopyCommand(&format_cmd, &allocator, args.ptr, args.len);
+    ptrs.objcopy_cmd_core_fns.formatParseArgs(&format_cmd, &allocator, args);
     const paths: [1]build.Path = .{.{ .names = @constCast(&[1][:0]const u8{"one.zig"}) }};
-    var len: usize = ptrs.formatWriteBufObjcopyCommand(&format_cmd, builtin.root.zig_exe.ptr, builtin.root.zig_exe.len, &paths, 1, &buf);
+    var len: usize = ptrs.objcopy_cmd_core_fns.formatWriteBuf(&format_cmd, builtin.root.zig_exe, &paths, &buf);
     var pos: usize = 0;
     for (buf[0..len], 0..) |byte, idx| {
         if (byte == 0) {
@@ -68,13 +68,13 @@ fn testObjcopyCommand(args: [][*:0]u8, ptrs: *build.Fns) void {
         }
     }
 }
-fn testArchiveCommand(args: [][*:0]u8, ptrs: *build.Fns) void {
+fn testArchiveCommand(args: [][*:0]u8, ptrs: *build.VTable) void {
     var format_cmd: build.ArchiveCommand = .{ .operation = .x };
     var allocator: mem.SimpleAllocator = .{};
     var buf: [32768]u8 = undefined;
-    ptrs.formatParseArgsArchiveCommand(&format_cmd, &allocator, args.ptr, args.len);
+    ptrs.archive_cmd_core_fns.formatParseArgs(&format_cmd, &allocator, args);
     const paths: [1]build.Path = .{.{ .names = @constCast(&[1][:0]const u8{"one.zig"}) }};
-    var len: usize = ptrs.formatWriteBufArchiveCommand(&format_cmd, builtin.root.zig_exe.ptr, builtin.root.zig_exe.len, &paths, 1, &buf);
+    var len: usize = ptrs.archive_cmd_core_fns.formatWriteBuf(&format_cmd, builtin.root.zig_exe, &paths, &buf);
     var pos: usize = 0;
     for (buf[0..len], 0..) |byte, idx| {
         if (byte == 0) {
@@ -85,13 +85,13 @@ fn testArchiveCommand(args: [][*:0]u8, ptrs: *build.Fns) void {
         }
     }
 }
-fn testFormatCommand(args: [][*:0]u8, ptrs: *build.Fns) void {
+fn testFormatCommand(args: [][*:0]u8, ptrs: *build.VTable) void {
     var format_cmd: build.FormatCommand = .{ .ast_check = true };
     var allocator: mem.SimpleAllocator = .{};
     var buf: [32768]u8 = undefined;
-    ptrs.formatParseArgsFormatCommand(&format_cmd, &allocator, args.ptr, args.len);
+    ptrs.format_cmd_core_fns.formatParseArgs(&format_cmd, &allocator, args);
     const paths: [1]build.Path = .{.{ .names = @constCast(&[1][:0]const u8{"one.zig"}) }};
-    var len: usize = ptrs.formatWriteBufFormatCommand(&format_cmd, builtin.root.zig_exe.ptr, builtin.root.zig_exe.len, paths[0], &buf);
+    var len: usize = ptrs.format_cmd_core_fns.formatWriteBuf(&format_cmd, builtin.root.zig_exe, paths[0], &buf);
     var pos: usize = 0;
     for (buf[0..len], 0..) |byte, idx| {
         if (byte == 0) {
@@ -102,13 +102,13 @@ fn testFormatCommand(args: [][*:0]u8, ptrs: *build.Fns) void {
         }
     }
 }
-fn testBuildCommand(args: [][*:0]u8, ptrs: *build.Fns) void {
+fn testBuildCommand(args: [][*:0]u8, ptrs: *build.VTable) void {
     var build_cmd: build.BuildCommand = .{ .kind = .exe };
     var allocator: mem.SimpleAllocator = .{};
     var buf: [32768]u8 = undefined;
-    ptrs.formatParseArgsBuildCommand(&build_cmd, &allocator, args.ptr, args.len);
+    ptrs.build_cmd_core_fns.formatParseArgs(&build_cmd, &allocator, args);
     const paths: [1]build.Path = .{.{ .names = @constCast(&[1][:0]const u8{"one.zig"}) }};
-    var len: usize = ptrs.formatWriteBufBuildCommand(&build_cmd, builtin.root.zig_exe.ptr, builtin.root.zig_exe.len, &paths, 1, &buf);
+    var len: usize = ptrs.build_cmd_core_fns.formatWriteBuf(&build_cmd, builtin.root.zig_exe, &paths, &buf);
     var pos: usize = 0;
     for (buf[0..len], 0..) |byte, idx| {
         if (byte == 0) {
@@ -181,7 +181,7 @@ inline fn makeArgs(comptime args: []const [:0]const u8) [][*:0]u8 {
         return &ret;
     }
 }
-noinline fn doIt(loader: *Loader, pathname: [:0]const u8, ptrs: *build.Fns) blk: {
+noinline fn doIt(loader: *Loader, pathname: [:0]const u8, ptrs: *build.VTable) blk: {
     const E = meta.ReturnErrorSet(Loader.load);
     if (E == error{}) {
         break :blk void;
@@ -189,7 +189,9 @@ noinline fn doIt(loader: *Loader, pathname: [:0]const u8, ptrs: *build.Fns) blk:
     break :blk E!void;
 } {
     const info: *Loader.Info = try meta.wrap(loader.load(pathname));
-    info.loadPointers(build.Fns, ptrs);
+    inline for (@typeInfo(build.VTable).Struct.fields) |field| {
+        info.loadPointers(field.type, &@field(ptrs, field.name));
+    }
 }
 const Loader = elf.GenericDynamicLoader(.{
     .options = .{ .show_sections = true, .show_defined = true },
@@ -201,7 +203,7 @@ fn testConcurrentLoading() !void {
     var allocator: mem.SimpleAllocator = .{};
     const stack1: []usize = allocator.allocate(usize, 1024 * 1024);
     const stack2: []usize = allocator.allocate(usize, 1024 * 1024);
-    const ptrs: *build.Fns = allocator.create(build.Fns);
+    const ptrs: *build.VTable = allocator.create(build.VTable);
     var loader: Loader = .{};
     while (count != 100) : (count +%= 1) {
         ptrs.* = .{};
@@ -222,7 +224,7 @@ fn testConcurrentLoading() !void {
                 &loader, builtin.root.dynamic_units._test_writers, ptrs,
             }));
         }
-        const words: *[@sizeOf(build.Fns) / @sizeOf(usize)]usize = @ptrCast(ptrs);
+        const words: *[@sizeOf(build.VTable) / @sizeOf(usize)]usize = @ptrCast(ptrs);
         lo: while (true) {
             for (words) |*word| {
                 if (@atomicLoad(usize, word, .SeqCst) == 8) {
@@ -232,7 +234,7 @@ fn testConcurrentLoading() !void {
                 break;
             }
         }
-        testBuildCommand(makeArgs(&.{ "-OReleaseFast", "-fClang" }), ptrs);
+        testBuildCommand(makeArgs(&.{"-OReleaseFast"}), ptrs);
         testFormatCommand(makeArgs(&.{"--ast_check"}), ptrs);
         testArchiveCommand(makeArgs(&.{"cr"}), ptrs);
         lo: while (true) {
