@@ -97,7 +97,7 @@ const int = [_][:0]const u8{
 };
 pub const esc_hex_sequences = ehxs;
 pub const lit_hex_sequences = lhxs;
-pub const int_prefixes = int;
+pub const int_prefixes = &int;
 // If the programmer can remember to use these, the LHS name may be more helpful
 // to the reader than the RHS expression.
 pub const max_val_u8: u8 = 0xff;
@@ -147,85 +147,85 @@ pub const character_classes = struct {
     pub const print: [7]Range = alnum ++ punct;
 };
 pub const fx = struct {
-    pub const none: [:0]const u8 = "\x1b\x5b\x30\x6d";
+    pub const none = "\x1b\x5b\x30\x6d";
     pub const color = struct {
         pub const fg = struct {
-            pub const black: [:0]const u8 = "\x1b\x5b\x33\x30\x6d";
-            pub const red: [:0]const u8 = "\x1b\x5b\x33\x31\x6d";
-            pub const green: [:0]const u8 = "\x1b\x5b\x33\x32\x6d";
-            pub const yellow: [:0]const u8 = "\x1b\x5b\x33\x33\x6d";
-            pub const blue: [:0]const u8 = "\x1b\x5b\x33\x34\x6d";
-            pub const magenta: [:0]const u8 = "\x1b\x5b\x33\x35\x6d";
-            pub const cyan: [:0]const u8 = "\x1b\x5b\x33\x36\x6d";
-            pub const white: [:0]const u8 = "\x1b\x5b\x33\x37\x6d";
-            pub const hi_red: [:0]const u8 = "\x1b\x5b\x39\x31\x6d";
-            pub const hi_green: [:0]const u8 = "\x1b\x5b\x39\x32\x6d";
-            pub const hi_yellow: [:0]const u8 = "\x1b\x5b\x39\x33\x6d";
-            pub const hi_blue: [:0]const u8 = "\x1b\x5b\x39\x34\x6d";
-            pub const hi_magenta: [:0]const u8 = "\x1b\x5b\x39\x35\x6d";
-            pub const hi_cyan: [:0]const u8 = "\x1b\x5b\x39\x36\x6d";
-            pub const max_red: [:0]const u8 = "\x1b\x5b\x33\x38\x3b\x35\x3b\x31\x39\x36\x6d";
-            pub const max_blue: [:0]const u8 = "\x1b\x5b\x33\x38\x3b\x35\x3b\x32\x37\x6d";
-            pub const dark_green: [:0]const u8 = "\x1b\x5b\x33\x38\x3b\x35\x3b\x32\x32\x6d";
-            pub const max_green_alt: [:0]const u8 = "\x1b\x5b\x33\x38\x3b\x35\x3b\x37\x36\x6d";
-            pub const orange: [:0]const u8 = "\x1b\x5b\x33\x38\x3b\x35\x3b\x32\x30\x32\x6d";
-            pub const purple: [:0]const u8 = "\x1b\x5b\x33\x38\x3b\x35\x3b\x39\x39\x6d";
-            pub const aqua: [:0]const u8 = "\x1b\x5b\x33\x38\x3b\x35\x3b\x31\x35\x33\x6d";
-            pub const max_white: [:0]const u8 = "\x1b\x5b\x33\x38\x3b\x35\x3b\x32\x33\x31\x6d";
-            pub const red24: [:0]const u8 = "\x1b[38;2;233;86;120m";
-            pub const redwine: [:0]const u8 = "\x1b[38;2;209;109;158m";
-            pub const orange24: [:0]const u8 = "\x1b[38;2;233;127;73m";
-            pub const yellow24: [:0]const u8 = "\x1b[38;2;240;198;116m";
-            pub const light_green: [:0]const u8 = "\x1b[38;2;51;229;96m";
-            pub const green24: [:0]const u8 = "\x1b[38;2;175;215;0m";
-            pub const dark_green24: [:0]const u8 = "\x1b[38;2;152;190;101m";
-            pub const white24: [:0]const u8 = "\x1b[38;2;255;255;255;1m";
-            pub const cyan24: [:0]const u8 = "\x1b[38;2;54;208;224m";
-            pub const blue24: [:0]const u8 = "\x1b[38;2;97;175;239m";
-            pub const violet: [:0]const u8 = "\x1b[38;2;178;148;187m";
-            pub const magenta24: [:0]const u8 = "\x1b[38;2;198;120;221m";
-            pub const teal: [:0]const u8 = "\x1b[38;2;26;188;156m";
-            pub const grey: [:0]const u8 = "\x1b[38;2;146;131;116m";
-            pub const brown: [:0]const u8 = "\x1b[38;2;199;134;101m";
-            pub const light_blue: [:0]const u8 = "\x1b[38;2;97;168;255m";
-            pub const light_purple: [:0]const u8 = "\x1b[38;2;193;173;247m";
-            pub const bracket: [:0]const u8 = "\x1b[38;2;128;160;194m";
-            pub const cursor_bg: [:0]const u8 = "\x1b[38;2;79;91;102m";
-            pub const offwhite0: [:0]const u8 = "\x1b[38;2;207;207;194m";
-            pub const offwhite1: [:0]const u8 = "\x1b[38;2;221;218;214m";
-            pub const numeric: [:0]const u8 = "\x1b[38;2;255;115;115m";
-            pub const data_type: [:0]const u8 = "\x1b[38;2;255;255;255m";
-            pub const attribute: [:0]const u8 = "\x1b[38;2;41;128;185m";
+            pub const black = "\x1b\x5b\x33\x30\x6d";
+            pub const red = "\x1b\x5b\x33\x31\x6d";
+            pub const green = "\x1b\x5b\x33\x32\x6d";
+            pub const yellow = "\x1b\x5b\x33\x33\x6d";
+            pub const blue = "\x1b\x5b\x33\x34\x6d";
+            pub const magenta = "\x1b\x5b\x33\x35\x6d";
+            pub const cyan = "\x1b\x5b\x33\x36\x6d";
+            pub const white = "\x1b\x5b\x33\x37\x6d";
+            pub const hi_red = "\x1b\x5b\x39\x31\x6d";
+            pub const hi_green = "\x1b\x5b\x39\x32\x6d";
+            pub const hi_yellow = "\x1b\x5b\x39\x33\x6d";
+            pub const hi_blue = "\x1b\x5b\x39\x34\x6d";
+            pub const hi_magenta = "\x1b\x5b\x39\x35\x6d";
+            pub const hi_cyan = "\x1b\x5b\x39\x36\x6d";
+            pub const max_red = "\x1b\x5b\x33\x38\x3b\x35\x3b\x31\x39\x36\x6d";
+            pub const max_blue = "\x1b\x5b\x33\x38\x3b\x35\x3b\x32\x37\x6d";
+            pub const dark_green = "\x1b\x5b\x33\x38\x3b\x35\x3b\x32\x32\x6d";
+            pub const max_green_alt = "\x1b\x5b\x33\x38\x3b\x35\x3b\x37\x36\x6d";
+            pub const orange = "\x1b\x5b\x33\x38\x3b\x35\x3b\x32\x30\x32\x6d";
+            pub const purple = "\x1b\x5b\x33\x38\x3b\x35\x3b\x39\x39\x6d";
+            pub const aqua = "\x1b\x5b\x33\x38\x3b\x35\x3b\x31\x35\x33\x6d";
+            pub const max_white = "\x1b\x5b\x33\x38\x3b\x35\x3b\x32\x33\x31\x6d";
+            pub const red24 = "\x1b[38;2;233;86;120m";
+            pub const redwine = "\x1b[38;2;209;109;158m";
+            pub const orange24 = "\x1b[38;2;233;127;73m";
+            pub const yellow24 = "\x1b[38;2;240;198;116m";
+            pub const light_green = "\x1b[38;2;51;229;96m";
+            pub const green24 = "\x1b[38;2;175;215;0m";
+            pub const dark_green24 = "\x1b[38;2;152;190;101m";
+            pub const white24 = "\x1b[38;2;255;255;255;1m";
+            pub const cyan24 = "\x1b[38;2;54;208;224m";
+            pub const blue24 = "\x1b[38;2;97;175;239m";
+            pub const violet = "\x1b[38;2;178;148;187m";
+            pub const magenta24 = "\x1b[38;2;198;120;221m";
+            pub const teal = "\x1b[38;2;26;188;156m";
+            pub const grey = "\x1b[38;2;146;131;116m";
+            pub const brown = "\x1b[38;2;199;134;101m";
+            pub const light_blue = "\x1b[38;2;97;168;255m";
+            pub const light_purple = "\x1b[38;2;193;173;247m";
+            pub const bracket = "\x1b[38;2;128;160;194m";
+            pub const cursor_bg = "\x1b[38;2;79;91;102m";
+            pub const offwhite0 = "\x1b[38;2;207;207;194m";
+            pub const offwhite1 = "\x1b[38;2;221;218;214m";
+            pub const numeric = "\x1b[38;2;255;115;115m";
+            pub const data_type = "\x1b[38;2;255;255;255m";
+            pub const attribute = "\x1b[38;2;41;128;185m";
             pub fn shade(comptime index: u8) [:0]const u8 {
                 return mcode(.{ 38, 5, 255 - @min(23, index) });
             }
         };
         pub const bg = struct {
-            pub const black: [:0]const u8 = "\x1b\x5b\x34\x30\x6d";
-            pub const red: [:0]const u8 = "\x1b\x5b\x34\x31\x6d";
-            pub const green: [:0]const u8 = "\x1b\x5b\x34\x32\x6d";
-            pub const yellow: [:0]const u8 = "\x1b\x5b\x34\x33\x6d";
-            pub const blue: [:0]const u8 = "\x1b\x5b\x34\x34\x6d";
-            pub const magenta: [:0]const u8 = "\x1b\x5b\x34\x35\x6d";
-            pub const cyan: [:0]const u8 = "\x1b\x5b\x34\x36\x6d";
-            pub const white: [:0]const u8 = "\x1b\x5b\x34\x37\x6d";
-            pub const hi_red: [:0]const u8 = "\x1b\x5b\x31\x30\x31\x6d";
-            pub const hi_green: [:0]const u8 = "\x1b\x5b\x31\x30\x32\x6d";
-            pub const hi_yellow: [:0]const u8 = "\x1b\x5b\x31\x30\x33\x6d";
-            pub const hi_blue: [:0]const u8 = "\x1b\x5b\x31\x30\x34\x6d";
-            pub const hi_magenta: [:0]const u8 = "\x1b\x5b\x31\x30\x35\x6d";
-            pub const hi_cyan: [:0]const u8 = "\x1b\x5b\x31\x30\x36\x6d";
-            pub const hi_white: [:0]const u8 = "\x1b\x5b\x31\x30\x37\x6d";
+            pub const black = "\x1b\x5b\x34\x30\x6d";
+            pub const red = "\x1b\x5b\x34\x31\x6d";
+            pub const green = "\x1b\x5b\x34\x32\x6d";
+            pub const yellow = "\x1b\x5b\x34\x33\x6d";
+            pub const blue = "\x1b\x5b\x34\x34\x6d";
+            pub const magenta = "\x1b\x5b\x34\x35\x6d";
+            pub const cyan = "\x1b\x5b\x34\x36\x6d";
+            pub const white = "\x1b\x5b\x34\x37\x6d";
+            pub const hi_red = "\x1b\x5b\x31\x30\x31\x6d";
+            pub const hi_green = "\x1b\x5b\x31\x30\x32\x6d";
+            pub const hi_yellow = "\x1b\x5b\x31\x30\x33\x6d";
+            pub const hi_blue = "\x1b\x5b\x31\x30\x34\x6d";
+            pub const hi_magenta = "\x1b\x5b\x31\x30\x35\x6d";
+            pub const hi_cyan = "\x1b\x5b\x31\x30\x36\x6d";
+            pub const hi_white = "\x1b\x5b\x31\x30\x37\x6d";
         };
     };
     pub const style = struct {
-        pub const bold: [:0]const u8 = "\x1b\x5b\x31\x6d";
-        pub const faint: [:0]const u8 = "\x1b\x5b\x32\x6d";
-        pub const italic: [:0]const u8 = "\x1b\x5b\x33\x6d";
-        pub const underline: [:0]const u8 = "\x1b\x5b\x34\x6d";
-        pub const inverted: [:0]const u8 = "\x1b\x5b\x37\x6d";
-        pub const invisible: [:0]const u8 = "\x1b\x5b\x38\x6d";
-        pub const strikeout: [:0]const u8 = "\x1b\x5b\x39\x6d";
+        pub const bold = "\x1b\x5b\x31\x6d";
+        pub const faint = "\x1b\x5b\x32\x6d";
+        pub const italic = "\x1b\x5b\x33\x6d";
+        pub const underline = "\x1b\x5b\x34\x6d";
+        pub const inverted = "\x1b\x5b\x37\x6d";
+        pub const invisible = "\x1b\x5b\x38\x6d";
+        pub const strikeout = "\x1b\x5b\x39\x6d";
     };
     fn mcode(comptime args: anytype) [:0]const u8 {
         comptime var code: [:0]const u8 = "\x1b[";
@@ -277,53 +277,53 @@ const key = struct {
 };
 pub const kw = .{
     // 2
-    .{ "or", .keyword_or },
-    .{ "fn", .keyword_fn },
     .{ "if", .keyword_if },
+    .{ "fn", .keyword_fn },
+    .{ "or", .keyword_or },
     // 3
     .{ "for", .keyword_for },
+    .{ "pub", .keyword_pub },
+    .{ "var", .keyword_var },
+    .{ "try", .keyword_try },
     .{ "and", .keyword_and },
     .{ "asm", .keyword_asm },
-    .{ "var", .keyword_var },
-    .{ "pub", .keyword_pub },
-    .{ "try", .keyword_try },
     // 4
-    .{ "test", .keyword_test },
     .{ "else", .keyword_else },
     .{ "enum", .keyword_enum },
+    .{ "test", .keyword_test },
     // 5
-    .{ "error", .keyword_error },
-    .{ "union", .keyword_union },
+    .{ "const", .keyword_const },
     .{ "while", .keyword_while },
+    .{ "break", .keyword_break },
+    .{ "union", .keyword_union },
     .{ "align", .keyword_align },
+    .{ "catch", .keyword_catch },
+    .{ "defer", .keyword_defer },
+    .{ "error", .keyword_error },
     .{ "async", .keyword_async },
     .{ "await", .keyword_await },
-    .{ "break", .keyword_break },
-    .{ "catch", .keyword_catch },
-    .{ "const", .keyword_const },
-    .{ "defer", .keyword_defer },
     // 6
     .{ "struct", .keyword_struct },
-    .{ "opaque", .keyword_opaque },
-    .{ "orelse", .keyword_orelse },
+    .{ "switch", .keyword_switch },
+    .{ "inline", .keyword_inline },
     .{ "packed", .keyword_packed },
     .{ "resume", .keyword_resume },
+    .{ "orelse", .keyword_orelse },
     .{ "return", .keyword_return },
     .{ "export", .keyword_export },
     .{ "extern", .keyword_extern },
-    .{ "inline", .keyword_inline },
-    .{ "switch", .keyword_switch },
+    .{ "opaque", .keyword_opaque },
     // 7
     .{ "anytype", .keyword_anytype },
-    .{ "suspend", .keyword_suspend },
     .{ "noalias", .keyword_noalias },
+    .{ "suspend", .keyword_suspend },
     // 8
-    .{ "volatile", .keyword_volatile },
-    .{ "errdefer", .keyword_errdefer },
     .{ "comptime", .keyword_comptime },
-    .{ "callconv", .keyword_callconv },
     .{ "continue", .keyword_continue },
     .{ "noinline", .keyword_noinline },
+    .{ "volatile", .keyword_volatile },
+    .{ "errdefer", .keyword_errdefer },
+    .{ "callconv", .keyword_callconv },
     .{ "anyframe", .keyword_anyframe },
     // 9 -- Except for unreachable and usingnamespace, the following keywords
     //      are very cold.
@@ -331,9 +331,9 @@ pub const kw = .{
     .{ "allowzero", .keyword_allowzero },
     .{ "nosuspend", .keyword_nosuspend },
     // 12
+    .{ "unreachable", .keyword_unreachable },
     .{ "linksection", .keyword_linksection },
     .{ "threadlocal", .keyword_threadlocal },
-    .{ "unreachable", .keyword_unreachable },
     // 13
     .{ "usingnamespace", .keyword_usingnamespace },
 };
