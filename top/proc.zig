@@ -551,7 +551,7 @@ pub fn command(comptime spec: CommandSpec, pathname: [:0]const u8, args: spec.ar
         return Status.exit(ret.status);
     }
 }
-pub fn commandAt(comptime spec: CommandSpec, dir_fd: u64, name: [:0]const u8, args: spec.args_type, vars: spec.vars_type) sys.ErrorUnion(.{
+pub fn commandAt(comptime spec: CommandSpec, dir_fd: usize, name: [:0]const u8, args: spec.args_type, vars: spec.vars_type) sys.ErrorUnion(.{
     .throw = spec.errors.execve.throw ++ spec.errors.fork.throw ++ spec.errors.waitpid.throw,
     .abort = spec.errors.execve.abort ++ spec.errors.fork.abort ++ spec.errors.waitpid.abort,
 }, u8) {
