@@ -368,15 +368,6 @@ fn fastAllocFile(allocator: *Allocator, file_map: *FileMap, pathname: [:0]const 
     sys.call_noexcept(.close, void, .{fd});
     const ret: [:0]u8 = buf[0..st.size :0];
     file_map.appendOne(allocator, .{ .key = pathname, .val = ret });
-
-    const cwd_addr: usize = allocator.allocateRaw(4096, 1);
-    rc = sys.call_noexcept(.getcwd, usize, .{ cwd_addr, 4096 });
-    if (rc > 4096) {
-        sys.call_noexcept(.exit, void, .{2});
-    }
-    const cwd: [*]u8 = @ptrFromInt(cwd_addr);
-    dwarf.SourceLocation.cwd = cwd[0..rc :0];
-
     return ret;
 }
 fn maximumSideBarWidth(itr: StackIterator) usize {
@@ -395,6 +386,15 @@ pub fn printSourceCodeAtAddress(trace: *const debug.Trace, addr: usize) callconv
 pub fn printSourceCodeAtAddresses(trace: *const debug.Trace, ret_addr: usize, addrs: [*]const usize, addrs_len: usize) callconv(.C) void {
     @setRuntimeSafety(builtin.is_safe);
     var allocator: mem.SimpleAllocator = .{ .start = Level.start, .next = Level.start, .finish = Level.start };
+    if (dwarf.SourceLocation.cwd.len == 0) {
+        const cwd_addr: usize = allocator.allocateRaw(4096, 1);
+        const rc: usize = sys.call_noexcept(.getcwd, usize, .{ cwd_addr, 4096 });
+        if (rc > 4096) {
+            sys.call_noexcept(.exit, void, .{2});
+        }
+        const cwd: [*]u8 = @ptrFromInt(cwd_addr);
+        dwarf.SourceLocation.cwd = cwd[0 .. rc -% 1 :0];
+    }
     var buf: []u8 = allocator.allocate(u8, 4096);
     dwarf.SourceLocation.cwd = file.getCwd(.{ .errors = .{} }, buf);
     defer allocator.unmap();
@@ -429,6 +429,15 @@ pub fn printStackTrace(trace: *const debug.Trace, first_addr: usize, frame_addr:
     var allocator: Allocator = .{ .start = Level.start, .next = Level.start, .finish = Level.start };
     var file_map: FileMap = FileMap.init(&allocator, 8);
     const exe_buf: []u8 = fastAllocFile(&allocator, &file_map, tab.self_link_s);
+    if (dwarf.SourceLocation.cwd.len == 0) {
+        const cwd_addr: usize = allocator.allocateRaw(4096, 1);
+        const rc: usize = sys.call_noexcept(.getcwd, usize, .{ cwd_addr, 4096 });
+        if (rc > 4096) {
+            sys.call_noexcept(.exit, void, .{2});
+        }
+        const cwd: [*]u8 = @ptrFromInt(cwd_addr);
+        dwarf.SourceLocation.cwd = cwd[0 .. rc -% 1 :0];
+    }
     var dwarf_info: dwarf.DwarfInfo = dwarf.DwarfInfo.init(@intFromPtr(exe_buf.ptr));
     if (dwarf.logging_abbrev_entry or
         dwarf.logging_summary or
