@@ -27,13 +27,13 @@ pub const SourceLocation = struct {
     line: u64,
     column: u64,
     const Format = @This();
-    pub var cwd: [:0]const u8 = undefined;
+    pub var cwd: [:0]const u8 = &.{};
 
     pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
         @as(*[4]u8, @ptrCast(buf)).* = "\x1b[1m".*;
         var len: u64 = 4;
         var ud64: fmt.Type.Ud64 = @bitCast(format.line);
-        if (mem.testEqualString(cwd, format.file[0..cwd.len])) {
+        if (cwd.len != 0 and mem.testEqualString(cwd, format.file[0..cwd.len])) {
             const path: []const u8 = format.file[cwd.len +% 1 ..];
             @memcpy(buf + len, path);
             len +%= path.len;
