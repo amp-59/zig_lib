@@ -89,7 +89,7 @@ pub const Trace = struct {
             syntax: ?[]const Mapping = null,
             pub const Mapping = struct {
                 style: []const u8 = "",
-                tags: []const builtin.parse.Token.Tag = meta.tagList(builtin.parse.Token.Tag),
+                tags: []const builtin.parse.Token.Tag = &meta.tagList(builtin.parse.Token.Tag),
             };
         };
     };
@@ -622,7 +622,7 @@ pub const printSourceCodeAtAddresses = blk: {
 pub noinline fn alarm(error_name: []const u8, st: @TypeOf(@errorReturnTrace()), ret_addr: usize) void {
     @setCold(true);
     @setRuntimeSafety(false);
-    if (builtin.want_stack_traces and builtin.trace.Error) {
+    if (builtin.want_stack_traces and logging_general.Error) {
         if (ret_addr == 0) {
             if (st) |trace| {
                 printSourceCodeAtAddresses(&builtin.trace, ret_addr, trace.instruction_addresses.ptr, trace.index);
@@ -636,7 +636,7 @@ pub noinline fn alarm(error_name: []const u8, st: @TypeOf(@errorReturnTrace()), 
 pub noinline fn panic(message: []const u8, _: @TypeOf(@errorReturnTrace()), ret_addr: ?usize) noreturn {
     @setCold(true);
     @setRuntimeSafety(false);
-    if (builtin.want_stack_traces and builtin.trace.Fault) {
+    if (builtin.want_stack_traces and logging_general.Fault) {
         printStackTrace(&builtin.trace, ret_addr orelse @returnAddress(), 0);
     }
     @call(.always_inline, proc.exitGroupFault, .{ message, builtin.panic_return_value });
