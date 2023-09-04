@@ -32,7 +32,7 @@ pub const DirStreamLogging = struct {
 pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
     return (struct {
         path: [:0]const u8,
-        fd: u64,
+        fd: u32,
         blk: Block,
         count: u64,
         const DirStream = @This();
@@ -68,7 +68,6 @@ pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
         }
         pub const dir_spec: DirStreamSpec = spec;
         const dir_open_spec: file.OpenSpec = .{
-            .options = .{ .directory = true },
             .errors = dir_spec.errors.open,
             .logging = dir_spec.logging.open,
         };
@@ -108,8 +107,8 @@ pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
                 });
             }
         }
-        pub fn initAt(allocator: *Allocator, dirfd: ?u64, name: [:0]const u8) !DirStream {
-            const fd: u64 = try file.openAt(dir_open_spec, dirfd orelse @as(usize, 0) -% 100, name);
+        pub fn initAt(allocator: *Allocator, dir_fd: ?usize, name: [:0]const u8) !DirStream {
+            const fd: usize = try file.openAt(dir_open_spec, .{ .directory = true }, dir_fd orelse file.cwd, name);
             const blk: Block = try meta.wrap(allocator.allocateMany(Block, .{ .bytes = dir_spec.options.initial_size }));
             clear(blk.aligned_byte_address(), dir_spec.options.initial_size);
             var ret: DirStream = .{ .path = name, .fd = fd, .blk = blk, .count = 1 };
@@ -126,7 +125,7 @@ pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
             return ret;
         }
         pub fn init(allocator: *Allocator, pathname: [:0]const u8) !DirStream {
-            const fd: u64 = try file.open(dir_open_spec, pathname);
+            const fd: usize = try file.open(dir_open_spec, .{ .directory = true }, pathname);
             const blk: Block = try meta.wrap(allocator.allocateMany(Block, .{ .bytes = dir_spec.options.initial_size }));
             clear(blk.aligned_byte_address(), dir_spec.options.initial_size);
             var ret: DirStream = .{ .path = pathname, .fd = fd, .blk = blk, .count = 1 };
