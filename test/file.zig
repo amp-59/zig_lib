@@ -33,9 +33,7 @@ const send_spec: file.SendSpec = .{};
 const open_spec: file.OpenSpec = .{
     .options = .{ .read_write = true, .append = true },
 };
-const open_dir_spec: file.OpenSpec = .{
-    .options = .{ .directory = true },
-};
+const open_dir_spec: file.OpenSpec = .{};
 const remove_dir_spec: file.RemoveDirSpec = .{};
 const unlink_spec: file.UnlinkSpec = .{};
 const close_spec: file.CloseSpec = .{};
@@ -81,8 +79,8 @@ pub fn testStatusExtended() !void {
 }
 pub fn testCopyFileRange() !void {
     testing.announce(@src());
-    const src_fd: u64 = try meta.wrap(file.create(create_spec, pathname1, file.mode.regular));
-    const dest_fd: u64 = try meta.wrap(file.create(create_spec, pathname2, file.mode.regular));
+    const src_fd: usize = try meta.wrap(file.create(create_spec, pathname1, file.mode.regular));
+    const dest_fd: usize = try meta.wrap(file.create(create_spec, pathname2, file.mode.regular));
     var rng: file.DeviceRandomBytes(65536) = .{};
     try meta.wrap(file.write(write_spec, src_fd, &rng.readCount(u8, 65536)));
     debug.assertEqual(u64, 0, try meta.wrap(file.seek(seek_spec, src_fd, 0, .set)));
@@ -102,8 +100,8 @@ pub fn testFileOperationsRound1() !void {
     _ = try file.getCwd(.{}, &buf);
     try meta.wrap(file.makeDir(make_dir_spec, test_dir ++ "file_test", file.mode.directory));
     try meta.wrap(file.removeDir(remove_dir_spec, test_dir ++ "file_test"));
-    const src_fd: u64 = try meta.wrap(file.create(create_spec, test_dir ++ "file_test1", file.mode.regular));
-    const dest_fd: u64 = try meta.wrap(file.create(create_spec, test_dir ++ "file_test2", file.mode.regular));
+    const src_fd: usize = try meta.wrap(file.create(create_spec, test_dir ++ "file_test1", file.mode.regular));
+    const dest_fd: usize = try meta.wrap(file.create(create_spec, test_dir ++ "file_test2", file.mode.regular));
     try meta.wrap(file.close(close_spec, dest_fd));
     try meta.wrap(file.close(close_spec, src_fd));
     try meta.wrap(file.unlink(unlink_spec, test_dir ++ "file_test1"));
@@ -111,12 +109,12 @@ pub fn testFileOperationsRound1() !void {
 }
 pub fn testSocketOpenAndClose() !void {
     testing.announce(@src());
-    const unix_tcp_fd: u64 = try file.socket(.{}, .unix, .tcp, .ip);
-    const unix_udp_fd: u64 = try file.socket(.{}, .unix, .udp, .ip);
-    const ipv6_udp_fd: u64 = try file.socket(.{}, .ipv6, .udp, .ip);
-    const ipv6_tcp_fd: u64 = try file.socket(.{}, .ipv6, .tcp, .ip);
-    const ipv4_udp_fd: u64 = try file.socket(.{}, .ipv4, .udp, .ip);
-    const ipv4_tcp_fd: u64 = try file.socket(.{}, .ipv4, .tcp, .ip);
+    const unix_tcp_fd: usize = try file.socket(.{}, .unix, .tcp, .ip);
+    const unix_udp_fd: usize = try file.socket(.{}, .unix, .udp, .ip);
+    const ipv6_udp_fd: usize = try file.socket(.{}, .ipv6, .udp, .ip);
+    const ipv6_tcp_fd: usize = try file.socket(.{}, .ipv6, .tcp, .ip);
+    const ipv4_udp_fd: usize = try file.socket(.{}, .ipv4, .udp, .ip);
+    const ipv4_tcp_fd: usize = try file.socket(.{}, .ipv4, .tcp, .ip);
     try file.close(.{}, ipv4_tcp_fd);
     try file.close(.{}, ipv4_udp_fd);
     try file.close(.{}, ipv6_tcp_fd);
@@ -127,7 +125,7 @@ pub fn testSocketOpenAndClose() !void {
 pub fn testClientIPv4(args: [][*:0]u8) !void {
     testing.announce(@src());
     var addrinfo: file.Socket.Address = file.Socket.AddressIPv4.create(55478, .{ 127, 0, 0, 1 });
-    const fd: u64 = try file.socket(.{ .options = .{ .non_block = false } }, .ipv4, .udp, .ip);
+    const fd: usize = try file.socket(.{ .options = .{ .non_block = false } }, .ipv4, .udp, .ip);
     try file.connect(.{}, fd, &addrinfo, 16);
     var buf: [500]u8 = undefined;
     try file.write(.{}, fd, meta.manyToSlice(args[0]));
@@ -139,7 +137,7 @@ pub fn testClientIPv4(args: [][*:0]u8) !void {
 pub fn testServerIPv4() !void {
     testing.announce(@src());
     var addrinfo: file.Socket.Address = file.Socket.AddressIPv4.create(55478, .{ 127, 0, 0, 1 });
-    const fd: u64 = try file.socket(.{ .options = .{ .non_block = false } }, .ipv4, .udp, .udp);
+    const fd: usize = try file.socket(.{ .options = .{ .non_block = false } }, .ipv4, .udp, .udp);
     try file.bind(.{}, fd, &addrinfo, 16);
     var buf: [500]u8 = undefined;
     var sender_addrinfo: file.Socket.Address = undefined;
@@ -150,7 +148,7 @@ pub fn testServerIPv4() !void {
 pub fn testClientIPv6(args: [][*:0]u8) !void {
     testing.announce(@src());
     var addrinfo: file.Socket.Address = file.Socket.AddressIPv6.create(55480, 0, .{ 0, 0, 0, 0, 0, 0, 0, 0 }, 0);
-    const fd: u64 = try file.socket(.{ .options = .{ .non_block = false } }, .ipv6, .udp, .ip);
+    const fd: usize = try file.socket(.{ .options = .{ .non_block = false } }, .ipv6, .udp, .ip);
     try file.connect(.{}, fd, &addrinfo, 28);
     var buf: [500]u8 = undefined;
     try file.write(.{}, fd, meta.manyToSlice(args[0]));
@@ -162,7 +160,7 @@ pub fn testClientIPv6(args: [][*:0]u8) !void {
 pub fn testServerIPv6() !void {
     testing.announce(@src());
     var addrinfo: file.Socket.Address = file.Socket.AddressIPv6.create(55480, 0, .{ 0, 0, 0, 0, 0, 0, 0, 0 }, 0);
-    const fd: u64 = try file.socket(.{ .options = .{ .non_block = false } }, .ipv6, .udp, .udp);
+    const fd: usize = try file.socket(.{ .options = .{ .non_block = false } }, .ipv6, .udp, .udp);
     try file.bind(.{}, fd, &addrinfo, 28);
     var buf: [500]u8 = undefined;
     var sender_addrinfo: file.Socket.Address = undefined;
@@ -204,11 +202,11 @@ fn testPathIsNot(path: [:0]const u8) !void {
     try debug.expect(try file.pathIsNot(stat_spec, path, .socket));
     try debug.expect(try file.pathIsNot(stat_spec, path, .symbolic_link));
 }
-fn testFileIs(fd: u64) !void {
+fn testFileIs(fd: usize) !void {
     testing.announce(@src());
     try debug.expect(try file.is(stat_spec, fd, .directory));
 }
-fn testFileIsNot(fd: u64) !void {
+fn testFileIsNot(fd: usize) !void {
     testing.announce(@src());
     try debug.expect(try file.isNot(stat_spec, .regular, fd));
     try debug.expect(try file.isNot(stat_spec, .block_special, fd));
@@ -223,7 +221,7 @@ pub fn testFileTests() !void {
     try testPathAssert(path);
     try testPathIs(path);
     try testPathIsNot(path);
-    const fd: u64 = try file.open(open_dir_spec, path);
+    const fd: usize = try file.open(open_dir_spec, .{}, path);
     try testFileIs(fd);
     try testFileIsNot(fd);
     try file.close(close_spec, fd);
@@ -233,27 +231,27 @@ fn testMakeDir() !void {
     testing.announce(@src());
     try meta.wrap(file.makeDir(make_dir_spec, test_dir ++ "file_test", file.mode.directory));
 }
-fn testMakeDirAt(dir_fd: u64) !void {
+fn testMakeDirAt(dir_fd: usize) !void {
     testing.announce(@src());
     try file.makeDirAt(make_dir_spec, dir_fd, "file_test", file.mode.directory);
 }
 fn testPath() !void {
     testing.announce(@src());
-    var path_dir_fd: u64 = try file.path(path_spec, test_dir ++ "file_test/file_test");
+    var path_dir_fd: usize = try file.path(path_spec, test_dir ++ "file_test/file_test");
     try file.close(close_spec, path_dir_fd);
 }
-fn testPathAt(dir_fd: u64) !u64 {
+fn testPathAt(dir_fd: usize) !u64 {
     testing.announce(@src());
     return file.pathAt(path_spec, dir_fd, "file_test");
 }
 fn testCreate() !void {
     testing.announce(@src());
-    const fd: u64 = try file.create(create_spec, test_dir ++ "file_test/file_test/file_test", file.mode.regular);
+    const fd: usize = try file.create(create_spec, test_dir ++ "file_test/file_test/file_test", file.mode.regular);
     try file.close(close_spec, fd);
 }
 fn testPathRegular() !void {
     testing.announce(@src());
-    const path_reg_fd: u64 = try meta.wrap(file.path(file_path_spec, test_dir ++ "file_test/file_test/file_test"));
+    const path_reg_fd: usize = try meta.wrap(file.path(file_path_spec, test_dir ++ "file_test/file_test/file_test"));
     try file.assertNot(stat_spec, path_reg_fd, .unknown);
     try file.assert(stat_spec, path_reg_fd, .regular);
     try meta.wrap(file.close(close_spec, path_reg_fd));
@@ -268,21 +266,21 @@ fn testMakeNode() !void {
 fn testFileOperationsRound2() !void {
     testing.announce(@src());
     try testMakeDir();
-    const dir_fd: u64 = try file.open(open_dir_spec, test_dir ++ "file_test");
+    const dir_fd: usize = try file.open(open_dir_spec, .{ .directory = true }, test_dir ++ "file_test");
     try testMakeDirAt(dir_fd);
     try testPath();
-    var path_dir_fd: u64 = try testPathAt(dir_fd);
+    var path_dir_fd: usize = try testPathAt(dir_fd);
     try testCreate();
     try testPathRegular();
     try testMakeNode();
-    const new_in_fd: u64 = try file.duplicate(.{}, 0);
+    const new_in_fd: usize = try file.duplicate(.{}, 0);
     try file.duplicateTo(.{}, new_in_fd, new_in_fd +% 1);
     try meta.wrap(file.unlinkAt(unlink_spec, path_dir_fd, "file_test"));
     try meta.wrap(file.close(close_spec, path_dir_fd));
     try meta.wrap(file.removeDir(remove_dir_spec, test_dir ++ "file_test/file_test"));
     try meta.wrap(file.removeDir(remove_dir_spec, test_dir ++ "file_test"));
     try meta.wrap(file.close(close_spec, dir_fd));
-    const mem_fd: u64 = try meta.wrap(mem.fd(.{}, "buffer"));
+    const mem_fd: usize = try meta.wrap(mem.fd(.{}, "buffer"));
     try meta.wrap(file.truncate(ftruncate_spec, mem_fd, 4096));
 }
 fn testPathOperations() !void {
@@ -307,7 +305,7 @@ fn testPackedModeStruct() !void {
         .kind = .regular,
     };
     comptime var int: u16 = meta.leastBitCast(mode);
-    var fd: u64 = try meta.wrap(file.create(create_spec, "./0123456789", mode));
+    var fd: usize = try meta.wrap(file.create(create_spec, "./0123456789", mode));
     try file.close(close_spec, fd);
     fd = try file.open(open_spec, "./0123456789");
     const st: file.Status = try file.getStatus(stat_spec, fd);
@@ -353,7 +351,7 @@ fn testStandardChannel() !void {
 }
 fn testLink() !void {
     testing.announce(@src());
-    const fd: u64 = try file.create(create_spec, test_dir ++ "file_test", file.mode.regular);
+    const fd: usize = try file.create(create_spec, test_dir ++ "file_test", file.mode.regular);
     try file.close(close_spec, fd);
     try file.link(link_spec, test_dir ++ "file_test", test_dir ++ "file_test_link");
     try file.unlink(unlink_spec, test_dir ++ "file_test");
@@ -361,7 +359,7 @@ fn testLink() !void {
 }
 fn testSymbolicLink() !void {
     testing.announce(@src());
-    const fd: u64 = try file.create(create_spec, test_dir ++ "file_test", file.mode.regular);
+    const fd: usize = try file.create(create_spec, test_dir ++ "file_test", file.mode.regular);
     try file.close(close_spec, fd);
     try file.symbolicLink(link_spec, test_dir ++ "file_test", test_dir ++ "file_test_link");
     try file.unlink(unlink_spec, test_dir ++ "file_test");
@@ -369,8 +367,8 @@ fn testSymbolicLink() !void {
 }
 fn testLinkAt() !void {
     testing.announce(@src());
-    const dir_fd: u64 = try file.path(path_spec, test_dir);
-    const fd: u64 = try file.createAt(create_spec, dir_fd, "file_test", file.mode.regular);
+    const dir_fd: usize = try file.path(path_spec, test_dir);
+    const fd: usize = try file.createAt(create_spec, dir_fd, "file_test", file.mode.regular);
     try file.close(close_spec, fd);
     try file.linkAt(link_spec, dir_fd, "file_test", dir_fd, "file_test_link");
     try file.unlinkAt(unlink_spec, dir_fd, "file_test");
@@ -379,8 +377,8 @@ fn testLinkAt() !void {
 }
 fn testSymbolicLinkAt() !void {
     testing.announce(@src());
-    const dir_fd: u64 = try file.path(path_spec, test_dir);
-    const fd: u64 = try file.createAt(create_spec, dir_fd, "file_test", file.mode.regular);
+    const dir_fd: usize = try file.path(path_spec, test_dir);
+    const fd: usize = try file.createAt(create_spec, dir_fd, "file_test", file.mode.regular);
     try file.close(close_spec, fd);
     try file.symbolicLinkAt(link_spec, test_dir ++ "file_test", dir_fd, "file_test_link");
     try file.unlinkAt(unlink_spec, dir_fd, "file_test");
