@@ -44,6 +44,9 @@ pub const want_stack_traces: bool = define("want_stack_traces", bool, builtin.mo
 
 /// Determines whether calling `panicUnwrapError` is legal.
 pub const discard_errors: bool = define("discard_errors", bool, true);
+/// Determines whether calling `panicUnwrapError` is legal.
+pub const comptime_errors: bool = define("comptime_errors", bool, true);
+
 /// Determines whether `assert*` functions will be called at runtime.
 pub const runtime_assertions: bool = define("runtime_assertions", bool, builtin.mode == .Debug or builtin.mode == .ReleaseSafe);
 /// Determines whether `static.assert*` functions will be called at compile time.
@@ -203,7 +206,7 @@ pub const my_trace: debug.Trace = .{
 
 /// `E` must be an error type.
 pub fn InternalError(comptime E: type) type {
-    const U = union(enum) {
+    const U = if (comptime_errors) union(enum) {
         /// Return this error for any exception
         throw: E,
         /// Abort the program for any exception
@@ -211,18 +214,29 @@ pub fn InternalError(comptime E: type) type {
         ignore,
         /// Input Zig error type (unused)
         Error: type,
+    } else union(enum) {
+        /// Return this error for any exception
+        throw: E,
+        /// Abort the program for any exception
+        abort,
+        ignore,
     };
     return U;
 }
 /// `E` must be a tagged type.
 pub fn ExternalError(comptime E: type) type {
-    const T = struct {
+    const T = if (comptime_errors) struct {
         /// Throw error if unwrapping yields any of these values
         throw: []const E = &.{},
         /// Abort the program if unwrapping yields any of these values
         abort: []const E = &.{},
         /// Input error value type
         Enum: type = E,
+    } else struct {
+        /// Throw error if unwrapping yields any of these values
+        throw: []const E = &.{},
+        /// Abort the program if unwrapping yields any of these values
+        abort: []const E = &.{},
     };
     return T;
 }
