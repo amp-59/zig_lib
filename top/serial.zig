@@ -340,7 +340,7 @@ pub fn serialWrite(comptime serial_spec: SerialSpec, comptime S: type, allocator
     const bytes: []const u8 = try meta.wrap(
         genericSerializeInternal(allocator, s_ab_addr, value),
     );
-    const fd: u64 = try meta.wrap(
+    const fd: usize = try meta.wrap(
         file.create(create_spec, pathname, file.mode.regular),
     );
     try meta.wrap(
@@ -361,7 +361,7 @@ pub fn serialRead(comptime serial_spec: SerialSpec, comptime S: type, allocator:
     const read_spec: file.ReadSpec = comptime serial_spec.read();
     const close_spec: file.CloseSpec = comptime serial_spec.close();
     const t_ab_addr: u64 = allocator.alignAbove(16);
-    const fd: u64 = try meta.wrap(
+    const fd: usize = try meta.wrap(
         file.open(open_spec, pathname),
     );
     const st: file.Status = try meta.wrap(
