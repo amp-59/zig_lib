@@ -32,7 +32,7 @@ pub const DirStreamLogging = struct {
 pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
     return (struct {
         path: [:0]const u8,
-        fd: u32,
+        fd: usize,
         blk: Block,
         count: u64,
         const DirStream = @This();
