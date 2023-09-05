@@ -118,6 +118,7 @@ fn testIntToString() !void {
 fn testBytesFormat() !void {
     for ([_]struct { []const u8, u64 }{
         .{ "0B", 0 },
+        .{ "1KiB", 1024 },
         .{ "12.224EiB", 14094246983574119504 },
         .{ "3.055GiB", 3281572597 },
         .{ "48.898KiB", 50072 },
@@ -171,6 +172,7 @@ fn testBytesFormat() !void {
         try testing.expectEqualMany(u8, pair[0], fmt.bytes(pair[1]).formatConvert().readAll());
     }
 }
+// There is currently only one implementation of intToString, the `fmt` one.
 fn testEquivalentIntToStringFormat() !void {
     const ubin = fmt.GenericPolynomialFormat(.{ .bits = 1, .radix = 2, .signedness = .unsigned, .width = .max, .prefix = "0b" });
     const sbin = fmt.GenericPolynomialFormat(.{ .bits = 1, .radix = 2, .signedness = .signed, .width = .max, .prefix = "0b" });
