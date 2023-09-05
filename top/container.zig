@@ -505,7 +505,7 @@ const @"1" = opaque {
             reinterpret.writeAnyUnstructured(child, write_spec, memory, @field(fields, field.name));
         }
     }
-    pub inline fn writeFormat(comptime child: type, memory: anytype, format: anytype) void {
+    pub fn writeFormat(comptime child: type, memory: anytype, format: anytype) void {
         const Format: type = @TypeOf(format);
         if (child != u8) {
             @compileError("invalid destination type for format write: " ++ @typeName(child));
