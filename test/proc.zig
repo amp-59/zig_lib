@@ -82,9 +82,9 @@ fn testFindNameInPath(vars: [][*:0]u8) !void {
         .options = .{ .no_follow = false },
     };
     while (itr.next()) |path| {
-        const dir_fd: u64 = file.path(.{}, path) catch continue;
+        const dir_fd: usize = file.path(.{}, path) catch continue;
         defer file.close(.{ .errors = .{} }, dir_fd);
-        const fd: u64 = file.openAt(open_spec, dir_fd, "zig") catch continue;
+        const fd: usize = file.openAt(open_spec, dir_fd, "zig") catch continue;
         defer file.close(.{ .errors = .{} }, fd);
         const st: file.Status = try file.getStatus(.{}, fd);
         if (st.isExecutable(proc.getUserId(), proc.getGroupId())) {
@@ -92,9 +92,9 @@ fn testFindNameInPath(vars: [][*:0]u8) !void {
         }
     }
     while (itr.next()) |path| {
-        const dir_fd: u64 = file.path(.{}, path) catch continue;
+        const dir_fd: usize = file.path(.{}, path) catch continue;
         defer file.close(.{ .errors = .{} }, dir_fd);
-        const fd: u64 = file.openAt(open_spec, dir_fd, "zig") catch continue;
+        const fd: usize = file.openAt(open_spec, dir_fd, "zig") catch continue;
         defer file.close(.{ .errors = .{} }, fd);
         const st: file.Status = try file.getStatus(.{}, fd);
         if (st.isExecutable(proc.getUserId(), proc.getGroupId())) {
