@@ -72,7 +72,14 @@ pub fn isLower(c: u8) bool {
 pub fn isPrint(c: u8) bool {
     return isASCII(c) and !isControl(c);
 }
-pub export fn isWhitespace(c: u8) bool {
+pub fn countPrinting(bytes: []const u8) usize {
+    var ret: usize = 0;
+    for (bytes) |byte| {
+        ret +%= isPrint(byte);
+    }
+    return ret;
+}
+pub fn isWhitespace(c: u8) bool {
     inline for (whitespace) |other| {
         if (c == other) {
             return true;
