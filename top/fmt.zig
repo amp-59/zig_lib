@@ -455,11 +455,10 @@ pub const Bytes = struct {
             array.writeFormat(major);
             array.writeOne('.');
             array.writeFormat(minor);
-            array.writeMany(@tagName(format.value.integer.unit));
         } else {
-            array.writeFormat(format.formatInteger());
-            array.writeMany(@tagName(format.value.integer.unit));
+            array.writeFormat(major);
         }
+        array.writeMany(@tagName(format.value.integer.unit));
     }
     pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
         const major: MajorIntFormat = .{ .value = @as(u10, @truncate(format.value.integer.count)) };
@@ -476,15 +475,14 @@ pub const Bytes = struct {
         const major: MajorIntFormat = .{ .value = @as(u10, @truncate(format.value.integer.count)) };
         const minor: MinorIntFormat = .{ .value = @as(u10, @truncate((format.value.remainder *% 1000) / 1024)) };
         var len: usize = 0;
-        if (format.value.remainder.count != 0) {
+        if (format.value.remainder != 0) {
             len +%= major.formatLength();
             len +%= 1;
             len +%= minor.formatLength();
-            len +%= @tagName(format.value.integer.unit).len;
         } else {
             len +%= major.formatLength();
-            len +%= @tagName(format.value.integer.unit).len;
         }
+        len +%= @tagName(format.value.integer.unit).len;
         return len;
     }
     pub usingnamespace GenericFormat(Format);
