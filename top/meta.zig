@@ -899,13 +899,13 @@ pub fn containerDeclsToBitFieldSets(comptime Container: type, comptime backing_i
     }
     return BitFieldSet.sortSets(c_sets);
 }
-pub fn tagList(comptime E: type) []const E {
+pub fn tagList(comptime E: type) [@typeInfo(E).Enum.fields.len]E {
     const enum_info: builtin.Type.Enum = @typeInfo(E).Enum;
     var ret: [enum_info.fields.len]E = undefined;
     for (enum_info.fields, 0..) |field, index| {
         ret[index] = @as(E, @enumFromInt(field.value));
     }
-    return &ret;
+    return ret;
 }
 pub fn TagFromList(comptime names: []const []const u8) type {
     const tag_type: type = @Type(.{ .Int = .{ .bits = realBitSizeOf(names.len), .signedness = .unsigned } });
