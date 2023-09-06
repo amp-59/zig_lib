@@ -242,9 +242,10 @@ pub const FdSpec = struct {
     }
 };
 pub const Bytes = struct {
-    count: u64,
+    count: usize,
     unit: Unit,
-    const mask: usize = 0b1111111111;
+
+    pub const mask: usize = 0b1111111111;
     pub const Unit = enum(u6) {
         EiB = 60,
         PiB = 50,
@@ -253,14 +254,11 @@ pub const Bytes = struct {
         MiB = 20,
         KiB = 10,
         B = 0,
-        pub fn to(count: u64, unit: Unit) Bytes {
-            return .{
-                .count = (count & (mask << @intFromEnum(unit))) >> @intFromEnum(unit),
-                .unit = unit,
-            };
+        pub fn to(count: usize, unit: Unit) Bytes {
+            return .{ .count = (count & (mask << @intFromEnum(unit))) >> @intFromEnum(unit), .unit = unit };
         }
     };
-    pub fn bytes(amt: Bytes) u64 {
+    pub fn bytes(amt: Bytes) usize {
         return amt.count *% (@as(usize, 1) << @intFromEnum(amt.unit));
     }
 };
@@ -781,7 +779,7 @@ pub const about = opaque {
         ptr += 7;
         debug.write(buf[0..@intFromPtr(ptr - @intFromPtr(&buf))]);
     }
-    fn aboutMemFdPathnameNotice(about_s: fmt.AboutSrc, mem_fd: u64, pathname: [:0]const u8) void {
+    fn aboutMemFdPathnameNotice(about_s: fmt.AboutSrc, mem_fd: usize, pathname: [:0]const u8) void {
         @setRuntimeSafety(false);
         var buf: [4096]u8 = undefined;
         buf[0..about_s.len].* = about_s.*;
