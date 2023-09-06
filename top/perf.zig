@@ -324,20 +324,24 @@ pub const Branch = enum(u5) {
         hv = 3,
     };
 };
-pub const Flags = packed struct(u8) {
+pub const Flags = packed struct(usize) {
     fd_no_group: bool = false,
     fd_output: bool = false,
     pid_cgroup: bool = false,
     fd_close_on_exec: bool = false,
-    zb4: u4 = 0,
+    zb4: @Type(.{.Int = .{.bits = @bitSizeOf(usize) -% 4, .signedness = .unsigned }}) = 0,
 };
 pub const PerfEventSpec = struct {
+    return_type: type = u32,
     logging: debug.Logging.SuccessError = .{},
     errors: sys.ErrorPolicy = .{ .throw = sys.perf_event_open_errors },
 };
-pub fn eventOpen(comptime perf_spec: PerfEventSpec, event: *const Event, pid: Process, cpu: CPU, fd: u64, flags: Flags) sys.ErrorUnion(perf_spec.errors, u64) {
-    if (meta.wrap(sys.call(.perf_event_open, perf_spec.errors, u64, .{
-        @intFromPtr(event), @intFromEnum(pid), @intFromEnum(cpu), fd, @as(u8, @bitCast(flags)),
+pub fn eventOpen(comptime perf_spec: PerfEventSpec, event: *const Event, pid: Process, cpu: CPU, fd: perf_spec.return_type, flags: Flags) sys.ErrorUnion(
+    perf_spec.errors,
+    perf_spec.return_type,
+) {
+    if (meta.wrap(sys.call(.perf_event_open, perf_spec.errors, perf_spec.return_type, .{
+        @intFromPtr(event), @intFromEnum(pid), @intFromEnum(cpu), fd, @bitCast(flags),
     }))) |ret| {
         return ret;
     } else |perf_event_open_error| {
@@ -348,7 +352,7 @@ pub const PerfEventControlSpec = struct {
     logging: debug.Logging.SuccessError = .{},
     errors: sys.ErrorPolicy = .{ .throw = sys.ioctl_errors },
 };
-pub fn eventControl(comptime perf_spec: PerfEventControlSpec, fd: u64, ctl: Event.IOC, apply_group: bool) sys.ErrorUnion(perf_spec.errors, void) {
+pub fn eventControl(comptime perf_spec: PerfEventControlSpec, fd: usize, ctl: Event.IOC, apply_group: bool) sys.ErrorUnion(perf_spec.errors, void) {
     if (meta.wrap(sys.call(.ioctl, perf_spec.errors, void, .{
         fd, @intFromEnum(ctl), @intFromBool(apply_group),
     }))) |ret| {
@@ -395,7 +399,7 @@ pub fn GenericPerfEvents(comptime events_spec: PerfEventsSpec) type {
         fds: Fds,
         res: Results,
         const PerfEvents = @This();
-        const Fds = [events_spec.counters.len][len]usize;
+        const Fds = [events_spec.counters.len][len]u32;
         const Results = [events_spec.counters.len][len]usize;
         const len = blk: {
             var uniform_min: usize = 0;
@@ -416,7 +420,7 @@ pub fn GenericPerfEvents(comptime events_spec: PerfEventsSpec) type {
         };
         pub fn openFds(perf_events: *PerfEvents) void {
             @setRuntimeSafety(builtin.is_safe);
-            const leader_fd: *usize = &perf_events.fds[0][0];
+            const leader_fd: *u32 = &perf_events.fds[0][0];
             leader_fd.* = ~@as(u32, 0);
             var event: Event = .{ .flags = PerfEvents.event_flags };
             for (events_spec.counters, 0..) |set, set_idx| {
