@@ -10,15 +10,15 @@ const builtin = @import("../builtin.zig");
 const tab = @import("./tab.zig");
 const types = @import("./types.zig");
 
-pub fn aboutGroupNotice(allocator: *mem.SimpleAllocator, node: *types.Node5, show_deps: bool) void {
+pub fn aboutGroupNotice(allocator: *types.Allocator, node: *types.Node, show_deps: bool) void {
     @setRuntimeSafety(builtin.is_safe);
     if (node.tag == .worker) {
         return aboutGroupNotice(allocator, node.groupNode(), show_deps);
     }
-    const save: u64 = allocator.next;
-    defer allocator.next = save;
-    var name_width: u64 = 0;
-    var root_width: u64 = 0;
+    const save: usize = allocator.save();
+    defer allocator.restore(save);
+    var name_width: usize = 0;
+    var root_width: usize = 0;
     const buf0: [*]u8 = @ptrFromInt(allocator.allocateRaw(1024 *% 1024, 1));
     mach.memset(buf0, 'E', 1024 * 1024);
     const buf1: [*]u8 = @ptrFromInt(allocator.allocateRaw(4096, 1));
@@ -26,15 +26,15 @@ pub fn aboutGroupNotice(allocator: *mem.SimpleAllocator, node: *types.Node5, sho
     var len0: usize = fmt.strcpy(buf0, node.name);
     lengthToplevelCommandNotice(0, node, show_deps, &name_width, &root_width);
     name_width +%= 4;
-    name_width &= ~@as(u64, 3);
+    name_width &= ~@as(usize, 3);
     root_width +%= 4;
-    root_width &= ~@as(u64, 3);
+    root_width &= ~@as(usize, 3);
     len0 +%= writeToplevelCommandNotice(buf0 + len0, buf1, 0, node, show_deps, name_width, root_width);
     buf0[len0] = '\n';
     len0 +%= 1;
     debug.write(buf0[0..len0]);
 }
-pub fn addNotice(node: *types.Node5) void {
+pub fn addNotice(node: *types.Node) void {
     @setRuntimeSafety(builtin.is_safe);
     const task: types.Task = if (node.flags.is_build_command) .build else node.tasks.tag;
     var buf: [4096]u8 = undefined;
@@ -82,7 +82,7 @@ pub fn addNotice(node: *types.Node5) void {
     ptr[0] = '\n';
     debug.write(buf[0 .. fmt.strlen(ptr, &buf) +% 1]);
 }
-pub fn aboutBaseMemoryUsageNotice(allocator: *mem.SimpleAllocator) void {
+pub fn aboutBaseMemoryUsageNotice(allocator: *types.Allocator) void {
     @setRuntimeSafety(builtin.is_safe);
     var buf: [4096]u8 = undefined;
     var ptr: [*]u8 = &buf;
@@ -113,8 +113,11 @@ pub fn aboutProgramSizeNotice() void {
     ptr[0] = '\n';
     debug.write(buf[0 .. fmt.strlen(ptr, &buf) +% 1]);
 }
-pub fn commandLineNotice(node: *const types.Node5) void {
+pub fn commandLineNotice(node: *types.Node) void {
     @setRuntimeSafety(builtin.is_safe);
+    if (node.tag != .group) {
+        return commandLineNotice(node.groupNode());
+    }
     var buf: [4096]u8 = undefined;
     var ptr: [*]u8 = &buf;
     const cmd_args: [][*:0]u8 = node.lists.get(.cmd_args);
@@ -135,13 +138,13 @@ pub fn commandLineNotice(node: *const types.Node5) void {
     }
     debug.write(buf[0..fmt.strlen(ptr, &buf)]);
 }
-fn wouldSkip(toplevel: *const types.Node5, node: *const types.Node5) bool {
+fn wouldSkip(toplevel: *const types.Node, node: *const types.Node) bool {
     return toplevel == node or node.flags.is_hidden or node.flags.is_special;
 }
-fn lengthAndWalkInternal(len1: usize, node: *const types.Node5, name_width: *usize, root_width: *usize) void {
+fn lengthAndWalkInternal(len1: usize, node: *const types.Node, name_width: *usize, root_width: *usize) void {
     @setRuntimeSafety(builtin.is_safe);
-    const deps: []types.Node5.Depn = node.lists.get(.deps);
-    const nodes: []*types.Node5 = node.lists.get(.nodes);
+    const deps: []types.Node.Depn = node.lists.get(.deps);
+    const nodes: []*types.Node = node.lists.get(.nodes);
     var last_idx: usize = 0;
     for (deps, 0..) |dep, dep_idx| {
         if (wouldSkip(node, nodes[dep.on_idx])) {
@@ -150,7 +153,7 @@ fn lengthAndWalkInternal(len1: usize, node: *const types.Node5, name_width: *usi
         last_idx = dep_idx +% 1;
     }
     for (deps, 0..) |dep, deps_idx| {
-        const on_node: *types.Node5 = nodes[dep.on_idx];
+        const on_node: *types.Node = nodes[dep.on_idx];
         const paths: []types.Path = on_node.lists.get(.paths);
         if (wouldSkip(node, on_node)) {
             continue;
@@ -164,7 +167,7 @@ fn lengthAndWalkInternal(len1: usize, node: *const types.Node5, name_width: *usi
         }
     }
 }
-fn lengthSubNode(len1: usize, sub_node: *const types.Node5, name_width: *usize, root_width: *usize, paths: []types.Path) void {
+fn lengthSubNode(len1: usize, sub_node: *const types.Node, name_width: *usize, root_width: *usize, paths: []types.Path) void {
     @setRuntimeSafety(builtin.is_safe);
     name_width.* = @max(name_width.*, sub_node.name.len +% len1);
     const len: usize = primaryInputDisplayName(sub_node, paths).len;
@@ -174,7 +177,7 @@ fn lengthSubNode(len1: usize, sub_node: *const types.Node5, name_width: *usize, 
         }
     }
 }
-fn lengthToplevelCommandNotice(len1: usize, node: *const types.Node5, show_deps: bool, name_width: *usize, root_width: *usize) void {
+fn lengthToplevelCommandNotice(len1: usize, node: *const types.Node, show_deps: bool, name_width: *usize, root_width: *usize) void {
     @setRuntimeSafety(builtin.is_safe);
     var paths: []types.Path = node.lists.get(.paths);
     if (paths.len != 0) {
@@ -184,7 +187,7 @@ fn lengthToplevelCommandNotice(len1: usize, node: *const types.Node5, show_deps:
         lengthAndWalkInternal(len1, node, name_width, root_width);
     }
     var last_idx: usize = 0;
-    const nodes: []*types.Node5 = node.lists.get(.nodes);
+    const nodes: []*types.Node = node.lists.get(.nodes);
     for (nodes[1..], 0..) |sub_node, nodes_idx| {
         if (wouldSkip(node, sub_node)) {
             continue;
@@ -207,10 +210,10 @@ fn lengthToplevelCommandNotice(len1: usize, node: *const types.Node5, show_deps:
         }
     }
 }
-fn writeAndWalkInternal(buf: [*]u8, end: [*]u8, tmp: [*]u8, len: usize, node: *const types.Node5, name_width: usize, root_width: usize) usize {
+fn writeAndWalkInternal(buf: [*]u8, end: [*]u8, tmp: [*]u8, len: usize, node: *const types.Node, name_width: usize, root_width: usize) usize {
     @setRuntimeSafety(builtin.is_safe);
-    const sub_nodes: []*types.Node5 = node.lists.get(.nodes)[1..];
-    const deps: []types.Node5.Depn = node.lists.get(.deps);
+    const sub_nodes: []*types.Node = node.lists.get(.nodes)[1..];
+    const deps: []types.Node.Depn = node.lists.get(.deps);
     var ptr: [*]u8 = end;
     var fin: *u8 = &buf[0];
     var last_idx: usize = 0;
@@ -221,8 +224,8 @@ fn writeAndWalkInternal(buf: [*]u8, end: [*]u8, tmp: [*]u8, len: usize, node: *c
         last_idx = dep_idx;
     }
     for (deps, 0..) |dep, deps_idx| {
-        const on_node: *types.Node5 = sub_nodes[dep.on_idx];
-        const on_deps: []types.Node5.Depn = on_node.lists.get(.deps);
+        const on_node: *types.Node = sub_nodes[dep.on_idx];
+        const on_deps: []types.Node.Depn = on_node.lists.get(.deps);
         const on_paths = on_node.lists.get(.paths);
         if (wouldSkip(node, on_node)) {
             continue;
@@ -250,7 +253,7 @@ fn writeAndWalkInternal(buf: [*]u8, end: [*]u8, tmp: [*]u8, len: usize, node: *c
     }
     return fmt.strlen(ptr, buf);
 }
-fn primaryInputDisplayName(node: *const types.Node5, paths: []types.Path) [:0]const u8 {
+fn primaryInputDisplayName(node: *const types.Node, paths: []types.Path) [:0]const u8 {
     @setRuntimeSafety(builtin.is_safe);
     if (node.tag == .worker) {
         var ret: [:0]const u8 = undefined;
@@ -272,7 +275,7 @@ fn primaryInputDisplayName(node: *const types.Node5, paths: []types.Path) [:0]co
     }
     return "(null)";
 }
-fn writeSubNode(buf: [*]u8, len: usize, sub_node: *const types.Node5, name_width: usize, root_width: usize, paths: []types.Path) usize {
+fn writeSubNode(buf: [*]u8, len: usize, sub_node: *const types.Node, name_width: usize, root_width: usize, paths: []types.Path) usize {
     @setRuntimeSafety(builtin.is_safe);
     var count: usize = name_width -% (sub_node.name.len +% len);
     count +%= if (len == 0) 2 else 0;
@@ -286,9 +289,9 @@ fn writeSubNode(buf: [*]u8, len: usize, sub_node: *const types.Node5, name_width
     }
     return fmt.strlen(ptr, buf);
 }
-fn writeToplevelCommandNotice(buf: [*]u8, tmp: [*]u8, len: usize, node: *const types.Node5, show_deps: bool, name_width: usize, root_width: usize) usize {
+fn writeToplevelCommandNotice(buf: [*]u8, tmp: [*]u8, len: usize, node: *const types.Node, show_deps: bool, name_width: usize, root_width: usize) usize {
     @setRuntimeSafety(builtin.is_safe);
-    const sub_nodes: []*types.Node5 = node.lists.get(.nodes)[1..];
+    const sub_nodes: []*types.Node = node.lists.get(.nodes)[1..];
     var paths: []types.Path = node.lists.get(.paths);
     var ptr: [*]u8 = buf;
     var fin: *u8 = &buf[0];
@@ -310,7 +313,7 @@ fn writeToplevelCommandNotice(buf: [*]u8, tmp: [*]u8, len: usize, node: *const t
         last_idx = node_idx;
     }
     for (sub_nodes, 0..) |sub_node, node_idx| {
-        const sub_sub_nodes: []*types.Node5 = sub_node.lists.get(.nodes)[1..];
+        const sub_sub_nodes: []*types.Node = sub_node.lists.get(.nodes)[1..];
         paths = sub_node.lists.get(.paths);
         if (wouldSkip(node, sub_node)) {
             continue;
@@ -499,7 +502,7 @@ fn writeTrace(buf: [*]u8, extra: [*]u32, bytes: [*:0]u8, start: usize, ref_len: 
     ptr[0..5].* = tab.new_s.*;
     return (@intFromPtr(ptr) -% @intFromPtr(buf)) +% 5;
 }
-pub fn writeErrors(allocator: *mem.SimpleAllocator, idx: [*]u32) void {
+pub fn writeErrors(allocator: *types.Allocator, idx: [*]u32) void {
     @setRuntimeSafety(builtin.is_safe);
     const extra: [*]u32 = idx + 2;
     var bytes: [*:0]u8 = @ptrCast(idx);
