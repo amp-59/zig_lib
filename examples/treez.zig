@@ -216,7 +216,7 @@ fn writeReadLink(
     array: *Array,
     link_buf: *PrintArray,
     status: *volatile Status,
-    dir_fd: u64,
+    dir_fd: usize,
     base_name: [:0]const u8,
 ) !void {
     const buf: []u8 = link_buf.referManyUndefined(4096);

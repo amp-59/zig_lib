@@ -191,7 +191,7 @@ fn parseInput(allocator: *Allocator, buf: []const u8) Allocator.allocate_payload
     }
     return segments;
 }
-fn writeOutputInnerLoop(fd: u64, file_buf: FixedString, segment: Segment, name: []const u8) anyerror!void {
+fn writeOutputInnerLoop(fd: usize, file_buf: FixedString, segment: Segment, name: []const u8) anyerror!void {
     var name_buf: SegmentName = .{};
     if (segment.jumps) |jumps| {
         var begin: u64 = segment.span.begin;
@@ -263,13 +263,13 @@ fn pruneSectionsOuterLoop(allocator: *Allocator, file_buf: FixedString, segments
     printPassed(name);
     segments.* = next;
 }
-fn writeOutputOuterLoop(allocator: *Allocator, fd: u64, file_buf: FixedString, segments: *Segments) anyerror!void {
+fn writeOutputOuterLoop(allocator: *Allocator, fd: usize, file_buf: FixedString, segments: *Segments) anyerror!void {
     const segment: *Segment = segments.this();
     const name: []const u8 = file_buf.readAll()[segment.span.begin..segment.span.mid];
     try writeOutputInnerLoop(fd, file_buf, segment.*, name);
     if (segment.jumps) |*jump| jump.deinit(allocator);
 }
-fn writeOutput(allocator: *Allocator, fd: u64, file_buf: FixedString, segments: *Segments) anyerror!void {
+fn writeOutput(allocator: *Allocator, fd: usize, file_buf: FixedString, segments: *Segments) anyerror!void {
     try file.write(.{}, fd, preamble);
     segments.goToHead();
     while (segments.next()) |next| {
@@ -288,7 +288,7 @@ fn writeOutput(allocator: *Allocator, fd: u64, file_buf: FixedString, segments: 
 }
 fn fileBuf(allocator: *Allocator, name: [:0]const u8) !FixedString {
     var file_buf: String = String.init(allocator);
-    const fd: u64 = try file.open(input_open_spec, name);
+    const fd: usize = try file.open(input_open_spec, name);
     defer file.close(input_close_spec, fd);
     var st: file.Status = try file.getStatus(.{}, fd);
     try file_buf.increment(allocator, st.size +% 1);
@@ -300,7 +300,7 @@ fn processRequest(options: *const Options, allocator: *Allocator, name: [:0]cons
     var file_buf: FixedString = try fileBuf(allocator, name);
     var segments = try parseInput(allocator, file_buf.readAll());
 
-    const fd: u64 = if (options.output) |output| try file.create(output_file_spec, output, file.mode.regular) else 1;
+    const fd: usize = if (options.output) |output| try file.create(output_file_spec, output, file.mode.regular) else 1;
     defer if (options.output != null) file.close(output_close_spec, fd);
     try writeOutput(allocator, fd, file_buf, &segments);
     segments.deinit(allocator);

@@ -98,8 +98,8 @@ const close_spec: file.CloseSpec = .{
 };
 const stat_spec: file.StatusSpec = .{};
 
-fn fileBuf(allocator: *zig.Allocator.Node, dir_fd: u64, name: [:0]const u8) !zig.SourceArray {
-    const fd: u64 = try file.openAt(open_spec, dir_fd, name);
+fn fileBuf(allocator: *zig.Allocator.Node, dir_fd: usize, name: [:0]const u8) !zig.SourceArray {
+    const fd: usize = try file.openAt(open_spec, dir_fd, name);
     defer file.close(close_spec, fd);
     const st: file.Stat = try file.fstat(stat_spec, fd);
     var file_buf: zig.SourceArray = try zig.SourceArray.init(allocator, st.size);

@@ -61,7 +61,7 @@ pub fn main(args: [][*:0]u8) !void {
     const command: [:0]const u8 = meta.manyToSlice(args[1]);
     const target: [:0]const u8 = meta.manyToSlice(args[2]);
 
-    const fd: u64 = try file.open(open_spec, target);
+    const fd: usize = try file.open(open_spec, target);
     defer file.close(close_spec, fd);
 
     const fbuf_finish: u64 = try file.map(map_spec, fbuf_start, fd);

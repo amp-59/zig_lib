@@ -99,7 +99,7 @@ const Fds = struct {
     }
 };
 fn findPathFd(vars: [][*:0]u8, name: [:0]const u8) !u64 {
-    var dir_fd: u64 = 100;
+    var dir_fd: usize = 100;
     dir_fd = -%dir_fd;
     if (name[0] == '/') {
         return dir_fd;
@@ -139,7 +139,7 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
         return error.MissingArguments;
     }
     const name: [:0]const u8 = meta.manyToSlice(args[1]);
-    const dir_fd: u64 = try findPathFd(vars, name);
+    const dir_fd: usize = try findPathFd(vars, name);
     defer file.close(close_spec, dir_fd);
     var fds: Fds = Fds.init();
     defer fds.deinit();
