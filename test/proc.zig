@@ -66,11 +66,11 @@ fn testCloneAndFutex() !void {
     var allocator: mem.SimpleAllocator = .{};
     var futex1: u32 = 16;
     var futex2: u32 = 16;
-    try proc.clone(.{ .return_type = void }, allocator.allocateRaw(65536, 16), 65536, {}, testFutexWait, .{&futex1});
+    try proc.clone(.{ .return_type = void }, allocator.allocateRaw(65536, 16), 65536, {}, &testFutexWait, .{&futex1});
     try time.sleep(.{}, .{ .nsec = 0x10000 });
-    try proc.clone(.{ .return_type = void }, allocator.allocateRaw(65536, 16), 65536, {}, testFutexWakeOp, .{ &futex1, &futex2 });
+    try proc.clone(.{ .return_type = void }, allocator.allocateRaw(65536, 16), 65536, {}, &testFutexWakeOp, .{ &futex1, &futex2 });
     try time.sleep(.{}, .{ .nsec = 0x20000 });
-    try proc.clone(.{ .return_type = void }, allocator.allocateRaw(65536, 16), 65536, {}, testFutexWake, .{&futex2});
+    try proc.clone(.{ .return_type = void }, allocator.allocateRaw(65536, 16), 65536, {}, &testFutexWake, .{&futex2});
     try debug.expectEqual(u32, 32, futex1);
     try debug.expectEqual(u32, 32, futex2);
 }
@@ -78,13 +78,11 @@ fn testFindNameInPath(vars: [][*:0]u8) !void {
     var itr: proc.PathIterator = .{
         .paths = proc.environmentValue(vars, "PATH").?,
     };
-    const open_spec: file.OpenSpec = .{
-        .options = .{ .no_follow = false },
-    };
+    const open_spec: file.OpenSpec = .{};
     while (itr.next()) |path| {
         const dir_fd: usize = file.path(.{}, path) catch continue;
         defer file.close(.{ .errors = .{} }, dir_fd);
-        const fd: usize = file.openAt(open_spec, dir_fd, "zig") catch continue;
+        const fd: usize = file.openAt(open_spec, .{ .no_follow = true }, dir_fd, "zig") catch continue;
         defer file.close(.{ .errors = .{} }, fd);
         const st: file.Status = try file.getStatus(.{}, fd);
         if (st.isExecutable(proc.getUserId(), proc.getGroupId())) {
@@ -94,7 +92,7 @@ fn testFindNameInPath(vars: [][*:0]u8) !void {
     while (itr.next()) |path| {
         const dir_fd: usize = file.path(.{}, path) catch continue;
         defer file.close(.{ .errors = .{} }, dir_fd);
-        const fd: usize = file.openAt(open_spec, dir_fd, "zig") catch continue;
+        const fd: usize = file.openAt(open_spec, .{ .no_follow = true }, dir_fd, "zig") catch continue;
         defer file.close(.{ .errors = .{} }, fd);
         const st: file.Status = try file.getStatus(.{}, fd);
         if (st.isExecutable(proc.getUserId(), proc.getGroupId())) {
