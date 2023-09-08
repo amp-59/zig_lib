@@ -1931,6 +1931,8 @@ pub const Fn = enum(usize) {
     }
     fn args(comptime function: Fn) comptime_int {
         switch (function) {
+            .getpid,
+            .gettid,
             .fork,
             .getuid,
             .getgid,
@@ -2204,7 +2206,7 @@ pub const sigaction_errors = &[_]ErrorCode{
     .FAULT, .INVAL,
 };
 pub const stat_errors = &[_]ErrorCode{
-    .ACCES,  .BADF,     .FAULT, .INVAL, .LOOP, .NAMETOOLONG, .NOENT, .NOMEM,
+    .ACCES,  .BADF,     .FAULT, .INVAL, .LOOP, .NAMETOOLONG, .NOMEM, .NOENT,
     .NOTDIR, .OVERFLOW,
 };
 pub const statx_errors = &[_]ErrorCode{
