@@ -353,16 +353,16 @@ pub fn uo(value: anytype) GenericPolynomialFormat(.{
 }
 pub const SourceLocationFormat = struct {
     value: builtin.SourceLocation,
-    return_address: u32,
+    return_address: usize,
     const Format: type = @This();
     const LineColFormat = GenericPolynomialFormat(.{
-        .bits = 32,
+        .bits = @bitSizeOf(usize),
         .signedness = .unsigned,
         .radix = 10,
         .width = .min,
     });
     const AddrFormat = GenericPolynomialFormat(.{
-        .bits = 32,
+        .bits = @bitSizeOf(usize),
         .signedness = .unsigned,
         .radix = 16,
         .width = .min,
@@ -441,7 +441,7 @@ pub const SourceLocationFormat = struct {
         return len;
     }
     pub fn init(value: builtin.SourceLocation, ret_addr: ?u64) SourceLocationFormat {
-        return .{ .value = value, .return_address = @as(u32, @intCast(ret_addr orelse @returnAddress())) };
+        return .{ .value = value, .return_address = ret_addr orelse @returnAddress() };
     }
 };
 pub const Bytes = struct {
