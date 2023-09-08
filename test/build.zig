@@ -12,6 +12,7 @@ const build = zl.build;
 const builtin = zl.builtin;
 pub usingnamespace zl.start;
 
+pub const Builder = build.GenericBuilder(.{ .options = .{ .max_thread_count = 8 } });
 pub const message_style = "";
 pub const enable_debugging: bool = true;
 pub const exec_mode = .Run;
@@ -38,23 +39,22 @@ pub const trace: debug.Trace = .{
     .options = .{},
 };
 fn buildRunner(args: [][*:0]u8, vars: [][*:0]u8, comptime Container: anytype) !void {
-    const Node = Container.Node;
-    var address_space: Node.AddressSpace = .{};
-    var thread_space: Node.ThreadSpace = .{};
+    var address_space: Builder.AddressSpace = .{};
+    var thread_space: Builder.ThreadSpace = .{};
     var allocator: build.Allocator = build.Allocator.init_arena(
-        Node.AddressSpace.arena(Node.specification.options.max_thread_count),
+        Builder.AddressSpace.arena(Builder.specification.options.max_thread_count),
     );
-    defer allocator.unmap();
+    defer allocator.unmapAll();
     if (args.len < 5) {
         proc.exitError(error.MissingEnvironmentPaths, 2);
     }
-    const toplevel: *Node = try meta.wrap(Node.init(&allocator, args, vars));
+    const toplevel: *build.Node = try meta.wrap(build.Node.create(&allocator, "toplevel", args, vars));
     try meta.wrap(
         Container.buildMain(&allocator, toplevel),
     );
-    Node.updateCommands(&allocator, toplevel);
+    Builder.updateCommands(&allocator, toplevel);
     try meta.wrap(
-        Node.processCommands(&address_space, &thread_space, &allocator, toplevel),
+        Builder.processCommands(&address_space, &thread_space, &allocator, toplevel),
     );
 }
 const text =
@@ -67,13 +67,13 @@ fn ManyCAndZigBuildTasks(comptime options: anytype) type {
         const Node = build.GenericNode(options);
         fn buildMain(allocator: *build.Allocator, toplevel: *Node) !void {
             @setEvalBranchQuota(~@as(u32, 0));
-            const test_dir_fd: u64 = try file.path(.{}, "test");
+            const test_dir_fd: usize = try file.path(.{}, "test");
             file.makeDirAt(.{}, test_dir_fd, "build", file.mode.directory) catch |err| {
                 if (err != error.FileExists) {
                     return err;
                 }
             };
-            const test_build_dir_fd: u64 = try file.pathAt(.{}, test_dir_fd, "build");
+            const test_build_dir_fd: usize = try file.pathAt(.{}, test_dir_fd, "build");
             file.makeDirAt(.{}, test_build_dir_fd, "stress", file.mode.directory) catch |err| {
                 if (err != error.FileExists) {
                     return err;
@@ -81,7 +81,7 @@ fn ManyCAndZigBuildTasks(comptime options: anytype) type {
             };
             const build_exe_cmd: build.BuildCommand = .{ .kind = .exe, .mode = .ReleaseSmall, .compiler_rt = false };
             const build_obj_cmd: build.BuildCommand = .{ .kind = .obj, .mode = .ReleaseSmall, .compiler_rt = false };
-            const stress_dir_fd: u64 = try file.pathAt(.{}, test_build_dir_fd, "stress");
+            const stress_dir_fd: usize = try file.pathAt(.{}, test_build_dir_fd, "stress");
             const node: *Node = toplevel.addBuild(allocator, build_exe_cmd, "top", "test/build/stress/top.zig");
             try gen.truncateFile(.{ .return_type = void }, "test/build/stress/top.zig", text ++ "pub fn main() void {}");
             inline for (0..4) |x| {
@@ -122,10 +122,7 @@ fn ManyCAndZigBuildTasks(comptime options: anytype) type {
     };
 }
 const SingleThreaded = struct {
-    const Node = build.GenericNode(.{
-        .options = .{ .max_thread_count = 8 },
-    });
-    fn buildMain(allocator: *build.Allocator, toplevel: *Node) !void {
+    fn buildMain(allocator: *build.Allocator, toplevel: *build.Node) !void {
         _ = toplevel.addBuild(allocator, .{ .kind = .exe }, "main", "./build");
     }
 };

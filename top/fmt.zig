@@ -106,6 +106,13 @@ pub fn stringLiteralChar(byte: u8) []const u8 {
 pub const StringLiteralFormat = struct {
     value: []const u8,
     const Format = @This();
+    pub fn formatWrite(format: Format, array: anytype) void {
+        array.writeOne('"');
+        for (format.value) |byte| {
+            array.writeMany(stringLiteralChar(byte));
+        }
+        array.writeOne('"');
+    }
     pub fn formatWritebuf(format: Format, buf: [*]u8) usize {
         buf[0] = '"';
         var ptr: [*]u8 = buf[1..];
