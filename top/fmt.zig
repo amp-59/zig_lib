@@ -103,6 +103,26 @@ pub fn stringLiteralChar(byte: u8) []const u8 {
         },
     }
 }
+pub const StringLiteralFormat = struct {
+    value: []const u8,
+    const Format = @This();
+    pub fn formatWritebuf(format: Format, buf: [*]u8) usize {
+        buf[0] = '"';
+        var ptr: [*]u8 = buf[1..];
+        for (format.value) |byte| {
+            ptr = strcpyEqu(stringLiteralChar(byte));
+        }
+        ptr[0] = '"';
+        ptr += 1;
+    }
+    pub fn formatLength(format: Format) usize {
+        var len: usize = 2;
+        for (format.value) |byte| {
+            len +%= stringLiteralChar(byte).len;
+        }
+        return len;
+    }
+};
 pub fn writeSideBarIndex(buf: [*]u8, width: usize, idx: usize) usize {
     @setRuntimeSafety(false);
     const len: usize = length(u64, idx, 10);

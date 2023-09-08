@@ -17,19 +17,19 @@ pub const AddressSpace = spec.address_space.regular_128;
 const Impl = struct {
     im1: ImArrays = .{},
     im2: ImStruct = .{},
-    const ImArrays = mem.GenericOptionalArrays(union(enum) {
+    const ImArrays = mem.GenericOptionalArrays(mem.SimpleAllocator, usize, union(enum) {
         args: [*:0]u8,
         impl: *Impl,
         deps: struct {},
     });
-    const ImStruct = mem.GenericOptionals(union(enum) {
+    const ImStruct = mem.GenericOptionals(mem.SimpleAllocator, union(enum) {
         image_base: usize,
         cpu: []const u8,
     });
 };
 fn testImplementations() !void {
     var allocator: mem.SimpleAllocator = .{};
-    defer allocator.unmap();
+    defer allocator.unmapAll();
     var impl: Impl = .{};
     impl.im1.add(&allocator, .args).* = @constCast("one");
     impl.im1.add(&allocator, .args).* = @constCast("two");
@@ -37,10 +37,10 @@ fn testImplementations() !void {
     for ([_][]const u8{ "one", "two", "three" }, 0..) |arg, idx| {
         try debug.expectEqual([]const u8, mem.terminate(impl.im1.get(.args)[idx], 0), arg);
     }
-    impl.im2.add(.image_base, &allocator).* = 0x10000;
-    impl.im2.add(.cpu, &allocator).* = "zen2";
-    try debug.expectEqual(usize, impl.im2.get(.image_base), 0x10000);
-    try debug.expectEqual([]const u8, impl.im2.get(.cpu), "zen2");
+    impl.im2.add(&allocator, .image_base).* = 0x10000;
+    impl.im2.add(&allocator, .cpu).* = "zen2";
+    try debug.expectEqual(usize, impl.im2.get(.image_base).*, 0x10000);
+    try debug.expectEqual([]const u8, impl.im2.get(.cpu).*, "zen2");
 }
 fn testProtect() !void {
     testing.announce(@src());
@@ -309,7 +309,7 @@ fn testSimpleAllocator() void {
     var allocator: mem.SimpleAllocator = .{};
     var buf: []u8 = allocator.allocate(u8, 256);
     allocator.deallocate(u8, buf);
-    allocator.unmap();
+    allocator.unmapAll();
 }
 fn testSampleAllReports() !void {
     testing.announce(@src());
