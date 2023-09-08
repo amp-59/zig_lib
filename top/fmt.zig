@@ -2391,16 +2391,13 @@ pub fn bytes(count: usize) Bytes {
     };
     var idx: usize = 0;
     while (idx != Bytes.units.len) : (idx +%= 1) {
-        var unit: mem.Bytes.Unit = Bytes.units[idx];
-        var val: usize = mem.Bytes.mask << @intFromEnum(unit);
-        val &= count;
-        val >>= @intFromEnum(unit);
-        if (val != 0) {
-            ret.integer = .{ .count = val, .unit = unit };
-            unit = Bytes.units[@min(idx +% 1, max_idx)];
-            val = mem.Bytes.mask << @intFromEnum(unit);
-            val &= (count -% ret.integer.count);
-            val >>= @intFromEnum(unit);
+        ret.integer.unit = Bytes.units[idx];
+        var val: usize = count & (mem.Bytes.mask << @intFromEnum(Bytes.units[idx]));
+        ret.integer.count = val >> @intFromEnum(Bytes.units[idx]);
+        if (ret.integer.count != 0) {
+            idx = @min(idx +% 1, max_idx);
+            val = (count -% val) & (mem.Bytes.mask << @intFromEnum(Bytes.units[idx]));
+            val >>= @intFromEnum(Bytes.units[idx]);
             ret.remainder = val;
             break;
         }
