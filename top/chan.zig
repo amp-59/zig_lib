@@ -40,9 +40,9 @@ pub fn GenericChannel(comptime chan_spec: ChannelSpec) type {
         };
         pub fn init() sys.ErrorUnion(chan_spec.errors.pipe, Channel) {
             return .{
-                .in = try meta.wrap(file.makePipe(decls.pipe_spec)),
-                .out = try meta.wrap(file.makePipe(decls.pipe_spec)),
-                .err = try meta.wrap(file.makePipe(decls.pipe_spec)),
+                .in = try meta.wrap(file.makePipe(decls.pipe_spec, .{})),
+                .out = try meta.wrap(file.makePipe(decls.pipe_spec, .{})),
+                .err = try meta.wrap(file.makePipe(decls.pipe_spec, .{})),
             };
         }
         pub fn init_read(chan: Channel) sys.ErrorUnion(.{
