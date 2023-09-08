@@ -469,8 +469,9 @@ pub const Bytes = struct {
         MinorIntFormat.max_len +% 3; // Unit
 
     pub fn formatWrite(format: Format, array: anytype) void {
-        const major: MajorIntFormat = .{ .value = @as(u10, @truncate(format.value.integer.count)) };
-        const minor: MinorIntFormat = .{ .value = @as(u10, @truncate((format.value.remainder *% 1000) / 1024)) };
+        @setRuntimeSafety(builtin.is_safe);
+        const major: MajorIntFormat = .{ .value = @intCast(format.value.integer.count) };
+        const minor: MinorIntFormat = .{ .value = @intCast((format.value.remainder *% 1000) / 1024) };
         if (format.value.remainder != 0) {
             array.writeFormat(major);
             array.writeOne('.');
@@ -481,8 +482,9 @@ pub const Bytes = struct {
         array.writeMany(@tagName(format.value.integer.unit));
     }
     pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
-        const major: MajorIntFormat = .{ .value = @as(u10, @truncate(format.value.integer.count)) };
-        const minor: MinorIntFormat = .{ .value = @as(u10, @truncate((format.value.remainder *% 1000) / 1024)) };
+        @setRuntimeSafety(builtin.is_safe);
+        const major: MajorIntFormat = .{ .value = @intCast(format.value.integer.count) };
+        const minor: MinorIntFormat = .{ .value = @intCast((format.value.remainder *% 1000) / 1024) };
         var len: usize = major.formatWriteBuf(buf);
         if (format.value.remainder != 0) {
             buf[len] = '.';
@@ -492,8 +494,9 @@ pub const Bytes = struct {
         return len +% strcpy(buf + len, @tagName(format.value.integer.unit));
     }
     pub fn formatLength(format: Format) usize {
-        const major: MajorIntFormat = .{ .value = @as(u10, @truncate(format.value.integer.count)) };
-        const minor: MinorIntFormat = .{ .value = @as(u10, @truncate((format.value.remainder *% 1000) / 1024)) };
+        @setRuntimeSafety(builtin.is_safe);
+        const major: MajorIntFormat = .{ .value = @intCast(format.value.integer.count) };
+        const minor: MinorIntFormat = .{ .value = @intCast((format.value.remainder *% 1000) / 1024) };
         var len: usize = 0;
         if (format.value.remainder != 0) {
             len +%= major.formatLength();
