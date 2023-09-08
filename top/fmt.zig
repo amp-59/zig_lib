@@ -745,7 +745,7 @@ pub fn GenericChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type
     return T;
 }
 pub fn GenericRangeFormat(comptime fmt_spec: PolynomialFormatSpec) type {
-    return (struct {
+    const T = struct {
         lower: SubFormat.Int,
         upper: SubFormat.Int,
         const Format: type = @This();
@@ -763,12 +763,13 @@ pub fn GenericRangeFormat(comptime fmt_spec: PolynomialFormatSpec) type {
             const upper_s: SubFormat.StaticString = upper_fmt.formatConvert();
             const lower_s_count: u64 = lower_s.len();
             const upper_s_count: u64 = upper_s.len();
+            const len: usize = if (fmt_spec.prefix) |prefix| prefix.len else 0;
             for (lower_s.readAll(), 0..) |v, i| {
                 if (v != upper_s.readOneAt(i)) {
-                    return (upper_s_count -% lower_s_count) +% i +% 1 +% (lower_s_count -% i) +% 2 +% (upper_s_count -% i) +% 1;
+                    return len +% (upper_s_count -% lower_s_count) +% i +% 1 +% (lower_s_count -% i) +% 2 +% (upper_s_count -% i) +% 1;
                 }
             }
-            return (upper_s_count -% lower_s_count) +% lower_s.len() +% 4;
+            return len +% (upper_s_count -% lower_s_count) +% lower_s.len() +% 4;
         }
         pub fn formatWrite(format: Format, array: anytype) void {
             const lower_fmt: SubFormat = SubFormat{ .value = format.lower };
@@ -776,6 +777,9 @@ pub fn GenericRangeFormat(comptime fmt_spec: PolynomialFormatSpec) type {
             const lower_s: SubFormat.StaticString = lower_fmt.formatConvert();
             const upper_s: SubFormat.StaticString = upper_fmt.formatConvert();
             var idx: u64 = 0;
+            if (fmt_spec.prefix) |prefix| {
+                array.writeMany(prefix);
+            }
             const lower_s_count: u64 = lower_s.len();
             const upper_s_count: u64 = upper_s.len();
             while (idx != lower_s_count) : (idx +%= 1) {
@@ -798,13 +802,15 @@ pub fn GenericRangeFormat(comptime fmt_spec: PolynomialFormatSpec) type {
             return .{ .lower = lower, .upper = upper };
         }
         pub usingnamespace GenericFormat(Format);
-    });
+    };
+    return T;
 }
 pub const AddressRangeFormat = GenericRangeFormat(.{
     .bits = 64,
     .signedness = .unsigned,
     .radix = 16,
     .width = .min,
+    .prefix = "0x",
 });
 pub fn GenericArenaRangeFormat(comptime arena_index: comptime_int) type {
     const arena: mem.Arena = mem.Arena{ .index = arena_index };
@@ -817,6 +823,7 @@ pub fn GenericArenaRangeFormat(comptime arena_index: comptime_int) type {
             .min = arena.begin(),
             .max = arena.end(),
         },
+        .prefix = "0x",
     });
 }
 pub const ChangedAddressRangeFormat = GenericChangedRangeFormat(.{
@@ -827,6 +834,7 @@ pub const ChangedAddressRangeFormat = GenericChangedRangeFormat(.{
         .signedness = .unsigned,
         .radix = 16,
         .width = .min,
+        .prefix = "0x",
     },
 });
 pub fn GenericChangedArenaRangeFormat(comptime arena_index: comptime_int) type {
@@ -837,6 +845,7 @@ pub fn GenericChangedArenaRangeFormat(comptime arena_index: comptime_int) type {
         .radix = 16,
         .width = .max,
         .range = .{ .min = arena.begin(), .max = arena.end() },
+        .prefix = "0x",
     };
     return GenericChangedRangeFormat(.{
         .new_fmt_spec = int_fmt_spec,
@@ -848,6 +857,7 @@ pub fn GenericChangedArenaRangeFormat(comptime arena_index: comptime_int) type {
             .width = .min,
             .range = .{ .max = arena.end() },
         },
+        .prefix = "0x",
     });
 }
 pub const ChangedRangeFormatSpec = struct {
