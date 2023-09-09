@@ -1160,12 +1160,11 @@ pub const LoaderSpec = struct {
     options: Options = .{},
     logging: Logging = .{},
     errors: Errors = .{},
+    AddressSpace: type,
     const Options = struct {
-        lb_info_addr: usize = 0x800000000,
-        lb_sect_addr: usize = 0x1000000000,
         show_elf_header: bool = false,
-        show_defined: bool = false,
         show_sections: bool = false,
+        show_defined: bool = false,
         extra_sections: []const []const u8 = &.{},
     };
     pub const Logging = packed struct {
