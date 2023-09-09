@@ -24,7 +24,7 @@ pub const Kind = enum(u2) {
     dynamic,
     static,
     parametric,
-    pub const list: []const Kind = meta.tagList(Kind);
+    pub const list: []const Kind = &meta.tagList(Kind);
 };
 pub const Layout = enum(u1) {
     structured,
@@ -243,8 +243,8 @@ pub const Container = packed struct {
             array.writeMany(tok.resize_type_name);
         }
     }
-    pub fn formatLength(format: Format) u64 {
-        var len: u64 = 0;
+    pub fn formatLength(format: Format) usize {
+        var len: usize = 0;
         switch (format.kind) {
             .parametric => {
                 len +%= tok.parametric_type_name.len;
