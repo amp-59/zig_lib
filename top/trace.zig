@@ -3,6 +3,7 @@ const sys = @import("./sys.zig");
 const fmt = @import("./fmt.zig");
 const zig = @import("./zig.zig");
 const spec = @import("./spec.zig");
+const proc = @import("./proc.zig");
 const math = @import("./math.zig");
 const mach = @import("./mach.zig");
 const file = @import("./file.zig");
@@ -410,23 +411,27 @@ pub fn printSourceCodeAtAddresses(trace: *const debug.Trace, ret_addr: usize, ad
     }
     width *%= @intFromBool(trace.options.write_sidebar);
     for (addrs[0..addrs_len]) |addr| {
-        if (writeSourceCodeAtAddress(trace, &allocator, &file_map, &dwarf_info, buf.ptr, len, width, addr)) |addr_info| {
+        if (writeSourceCodeAtAddress(trace, &allocator, &file_map, &dwarf_info, buf, len, width, addr)) |addr_info| {
             len = addr_info.finish;
             dwarf_info.addAddressInfo(&allocator).* = addr_info;
         }
     }
     if (ret_addr != 0) {
-        if (writeSourceCodeAtAddress(trace, &allocator, &file_map, &dwarf_info, buf.ptr, len, width, ret_addr)) |addr_info| {
+        if (writeSourceCodeAtAddress(trace, &allocator, &file_map, &dwarf_info, buf, len, width, ret_addr)) |addr_info| {
             len = addr_info.finish;
             dwarf_info.addAddressInfo(&allocator).* = addr_info;
         }
     }
     debug.write(buf[0..len]);
 }
-
 pub fn printStackTrace(trace: *const debug.Trace, first_addr: usize, frame_addr: usize) callconv(.C) void {
     @setRuntimeSafety(builtin.is_safe);
-    var allocator: Allocator = .{ .start = Level.start, .next = Level.start, .finish = Level.start };
+    if (Level.start != 0x600000000000) {
+        return;
+    }
+    debug.aboutWhere(debug.about.note_p0_s, "Requesting stack trace", first_addr, @src());
+    const start: usize = @atomicRmw(usize, &Level.start, .Add, 0x40000000, .SeqCst);
+    var allocator: Allocator = .{ .start = start, .next = start, .finish = start };
     var file_map: FileMap = FileMap.init(&allocator, 8);
     const exe_buf: []u8 = fastAllocFile(&allocator, &file_map, tab.self_link_s);
     if (dwarf.SourceLocation.cwd.len == 0) {
@@ -474,7 +479,7 @@ pub fn printStackTrace(trace: *const debug.Trace, first_addr: usize, frame_addr:
             break;
         }
     }
-    allocator.unmap();
+    allocator.unmapAll();
 }
 comptime {
     if (builtin.output_mode == .Obj) {
