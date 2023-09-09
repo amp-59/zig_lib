@@ -140,6 +140,28 @@ pub const builder = struct {
             .stat = .{},
             .unlink = .{},
         };
+        pub const kill: zl.build.BuilderSpec.Errors = .{
+            .write = .{ .abort = sys.write.errors.all },
+            .read = .{ .abort = sys.read.errors.all },
+            .mknod = .{ .abort = sys.mknod.errors.all },
+            .dup3 = .{ .abort = sys.dup.errors.all },
+            .pipe = .{ .abort = sys.pipe.errors.all },
+            .fork = .{ .abort = sys.fork.errors.all },
+            .execve = .{ .abort = sys.execve.errors.all },
+            .waitpid = .{ .abort = sys.wait.errors.all },
+            .path = .{ .abort = sys.open.errors.all },
+            .map = .{ .abort = sys.mmap.errors.all },
+            .stat = .{ .abort = sys.stat.errors.all_noent },
+            .unmap = .{ .abort = sys.munmap.errors.all },
+            .clock = .{ .abort = sys.clock_gettime.errors.all },
+            .sleep = .{ .abort = sys.nanosleep.errors.all },
+            .create = .{ .abort = sys.open.errors.all },
+            .mkdir = .{ .abort = sys.mkdir.errors.noexcl },
+            .poll = .{ .abort = sys.poll.errors.all },
+            .open = .{ .abort = sys.open.errors.all },
+            .close = .{ .abort = sys.close.errors.all },
+            .unlink = .{ .abort = sys.unlink.errors.all_noent },
+        };
         pub const zen: zl.build.BuilderSpec.Errors = .{
             .write = .{ .abort = sys.write.errors.all },
             .read = .{ .abort = sys.read.errors.all },
@@ -608,17 +630,6 @@ const sys = struct {
             };
         };
     };
-    pub const create = struct {
-        /// Replace existing file
-        pub const truncate_zen: zl.file.CreateSpec = .{
-            .errors = .{ .throw = sys.open.errors.all },
-            .options = .{ .exclusive = false },
-        };
-        pub const truncate_noexcept: zl.file.CreateSpec = .{
-            .errors = .{},
-            .options = .{ .truncate = true, .write = true, .exclusive = false },
-        };
-    };
     pub const open = struct {
         pub const errors = struct {
             pub const all: []const zl.sys.ErrorCode = &.{
@@ -803,6 +814,10 @@ const sys = struct {
                 .ACCES,       .BADF,  .FAULT, .INVAL,  .LOOP,
                 .NAMETOOLONG, .NOENT, .NOMEM, .NOTDIR, .OVERFLOW,
             };
+            pub const all_noent: []const zl.sys.ErrorCode = &.{
+                .ACCES,       .BADF,  .FAULT,  .INVAL,    .LOOP,
+                .NAMETOOLONG, .NOMEM, .NOTDIR, .OVERFLOW,
+            };
         };
     };
     pub const unlink = struct {
@@ -810,6 +825,10 @@ const sys = struct {
             pub const all: []const zl.sys.ErrorCode = &.{
                 .ACCES, .BUSY,  .FAULT,  .IO,   .ISDIR, .LOOP, .NAMETOOLONG,
                 .NOENT, .NOMEM, .NOTDIR, .PERM, .ROFS,  .BADF, .INVAL,
+            };
+            pub const all_noent: []const zl.sys.ErrorCode = &.{
+                .ACCES, .BUSY,   .FAULT, .IO,   .ISDIR, .LOOP,  .NAMETOOLONG,
+                .NOMEM, .NOTDIR, .PERM,  .ROFS, .BADF,  .INVAL,
             };
         };
     };
