@@ -1373,6 +1373,18 @@ pub const about = opaque {
         ptr[0..12].* = " at address ".*;
         ptr += 12;
         ptr += fmt.ux64(info.fields.fault.addr).formatWriteBuf(ptr);
+        const pid: u32 = getProcessId();
+        const tid: u32 = getThreadId();
+        var ud64: fmt.Type.Ud64 = .{ .value = pid };
+        ptr[0..6].* = ", pid=".*;
+        ptr += 6;
+        ptr += ud64.formatWriteBuf(ptr);
+        if (pid != tid) {
+            ptr[0..6].* = ", tid=".*;
+            ptr += 6;
+            ud64.value = tid;
+            ptr += ud64.formatWriteBuf(ptr);
+        }
         ptr[0..2].* = ", ".*;
         ptr += 2;
         ptr += about.exe(ptr[0..4096]);
