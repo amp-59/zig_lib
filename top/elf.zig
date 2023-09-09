@@ -1202,7 +1202,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             fd: usize,
             shdr: usize,
             phdr: usize,
-            shstr: usize,
+            shstr: [*]u8,
             impl: Sections,
 
             const tag_list = meta.tagList(Sections.Tag);
@@ -1216,6 +1216,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                     @".data",
                     @".data.rodata",
                     @".rodata.data",
+                    @".got",
                     @".rela.dyn",
                     @".rela.plt",
                     @".text",
@@ -1267,7 +1268,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                         const addr: usize = mach.alignB4096(phdr.p_vaddr);
                         const len: usize = mach.alignA4096(phdr.p_vaddr +% phdr.p_memsz) -% addr;
                         const off: usize = mach.alignB4096(phdr.p_offset);
-                        try meta.wrap(file.map(map(), .{ .read = phdr.p_flags.R, .write = phdr.p_flags.W, .exec = phdr.p_flags.X }, .{ .fixed_noreplace = true }, info.fd, info.prog.addr +% addr, len, off));
+                        try meta.wrap(file.map(map(), .{ .read = phdr.p_flags.R, .write = phdr.p_flags.W, .exec = phdr.p_flags.X }, .{ .fixed = true }, info.fd, info.prog.addr +% addr, len, off));
                     }
                 }
             }
