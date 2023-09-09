@@ -222,6 +222,9 @@ pub fn Tuple(comptime T: type) type {
     return @Type(tupleInfo(@typeInfo(T).Struct.fields));
 }
 pub fn Args(comptime Fn: type) type {
+    if (@typeInfo(Fn) == .Pointer) {
+        return Args(@typeInfo(Fn).Pointer.child);
+    }
     var tuple_info: builtin.Type.Struct = tuple_info_base;
     for (@typeInfo(Fn).Fn.params, 0..) |arg, i| {
         tuple_info.fields = tuple_info.fields ++ [1]builtin.Type.StructField{structField(arg.type.?, fmt.ci(i), null)};
@@ -1057,8 +1060,14 @@ pub fn FnParamN(comptime function: anytype, comptime index: u64) type {
 }
 pub fn Return(comptime function: anytype) type {
     if (@TypeOf(function) == type) {
+        if (@typeInfo(function) == .Pointer) {
+            return Return(@typeInfo(function).Pointer.child);
+        }
         return @typeInfo(function).Fn.return_type.?;
     } else {
+        if (@typeInfo(@TypeOf(function)) == .Pointer) {
+            return Return(@typeInfo(@TypeOf(function)).Pointer.child);
+        }
         return @typeInfo(@TypeOf(function)).Fn.return_type.?;
     }
 }
