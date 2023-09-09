@@ -745,6 +745,31 @@ pub noinline fn panicUnwrapError(st: ?*builtin.StackTrace, err: anyerror) noretu
     ptr += @errorName(err).len;
     builtin.panic(buf[0..@intFromPtr(ptr - @intFromPtr(&buf))], st, ret_addr);
 }
+pub noinline fn aboutWhere(about_s: []const u8, message: []const u8, ret_addr: ?usize, mb_src: ?builtin.SourceLocation) void {
+    var buf: [4096]u8 = undefined;
+    const pid: u32 = proc.getProcessId();
+    const tid: u32 = proc.getThreadId();
+    var ptr: [*]u8 = fmt.strcpyEqu(&buf, about_s);
+    ptr = fmt.strcpyEqu(ptr, message);
+    ptr[0..6].* = ", pid=".*;
+    ptr += 6;
+    var ud64: fmt.Type.Ud64 = .{ .value = pid };
+    ptr += ud64.formatWriteBuf(ptr);
+    if (pid != tid) {
+        ptr[0..6].* = ", tid=".*;
+        ptr += 6;
+        ud64.value = tid;
+        ptr += ud64.formatWriteBuf(ptr);
+    }
+    if (mb_src) |src| {
+        ptr[0..2].* = ", ".*;
+        ptr += 2;
+        ptr += fmt.SourceLocationFormat.init(src, ret_addr orelse @returnAddress()).formatWriteBuf(ptr);
+    }
+    ptr[0] = '\n';
+    ptr += 1;
+    write(buf[0 .. @intFromPtr(ptr) - @intFromPtr(&buf)]);
+}
 fn checkNonScalarSentinel(expected: comptime_int, actual: anytype) void {
     if (expected != actual) {
         builtin.panicSentinelMismatch(expected, actual);
@@ -829,19 +854,21 @@ pub const about = struct {
     pub const FaultPDest = @TypeOf(@constCast(fault_p0_s));
     pub const error_s = "\x1b[91;1merror\x1b[0m=";
     pub const fault_p0_s = blk: {
-        var lhs: [:0]const u8 = "fault";
-        lhs = builtin.message_prefix ++ lhs;
-        lhs = lhs ++ builtin.message_suffix;
+        var lhs: [:0]const u8 = builtin.message_prefix ++ "fault" ++ builtin.message_suffix;
         const len: usize = lhs.len;
         lhs = "\x1b[1m" ++ lhs ++ builtin.message_no_style;
         break :blk lhs ++ " " ** (builtin.message_indent - len);
     };
     pub const error_p0_s = blk: {
-        var lhs: [:0]const u8 = "error";
-        lhs = builtin.message_prefix ++ lhs;
-        lhs = lhs ++ builtin.message_suffix;
+        var lhs: [:0]const u8 = builtin.message_prefix ++ "error" ++ builtin.message_suffix;
         const len: usize = lhs.len;
         lhs = "\x1b[1m" ++ lhs ++ builtin.message_no_style;
+        break :blk lhs ++ " " ** (builtin.message_indent - len);
+    };
+    pub const note_p0_s = blk: {
+        var lhs: [:0]const u8 = builtin.message_prefix ++ "note" ++ builtin.message_suffix;
+        const len: usize = lhs.len;
+        lhs = "\x1b[96m" ++ lhs ++ builtin.message_no_style;
         break :blk lhs ++ " " ** (builtin.message_indent - len);
     };
     pub const test_1_s = "test failed";
