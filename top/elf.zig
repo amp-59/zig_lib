@@ -1589,6 +1589,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 shdr2: *const Elf64_Shdr,
                 shndx1: usize,
                 shndx2: usize,
+                width: usize,
                 buf: [*]u8,
             ) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
@@ -1599,8 +1600,11 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 const strtab1: [*]u8 = @ptrFromInt(info1.sectionHeaderByIndex(shdr1.sh_link).sh_addr);
                 const strtab2: [*]u8 = @ptrFromInt(info2.sectionHeaderByIndex(shdr2.sh_link).sh_addr);
                 var sym_idx1: usize = 1;
-                const sh_name1: [:0]const u8 = sectionName(info1, info1.sectionHeaderByIndex(shndx1));
-                const sh_name2: [:0]const u8 = sectionName(info2, info2.sectionHeaderByIndex(shndx2));
+                const sh_name1: [:0]const u8 = mem.terminate(info1.shstr + info1.sectionHeaderByIndex(shndx1).sh_name, 0);
+                const sh_name2: [:0]const u8 = mem.terminate(info2.shstr + info2.sectionHeaderByIndex(shndx2).sh_name, 0);
+                if (shdr1.sh_type != shdr2.sh_type) {
+                    return buf;
+                }
                 var ptr: [*]u8 = buf;
                 while (sym_idx1 != max_idx1) : (sym_idx1 +%= 1) {
                     var sym_idx2: usize = 1;
