@@ -212,19 +212,19 @@ fn lengthToplevelCommandNotice(len1: usize, node: *const types.Node, show_deps: 
 }
 fn writeAndWalkInternal(buf: [*]u8, end: [*]u8, tmp: [*]u8, len: usize, node: *const types.Node, name_width: usize, root_width: usize) usize {
     @setRuntimeSafety(builtin.is_safe);
-    const sub_nodes: []*types.Node = node.lists.get(.nodes)[1..];
+    const nodes: []*types.Node = node.lists.get(.nodes);
     const deps: []types.Node.Depn = node.lists.get(.deps);
     var ptr: [*]u8 = end;
     var fin: *u8 = &buf[0];
     var last_idx: usize = 0;
     for (deps, 0..) |dep, dep_idx| {
-        if (wouldSkip(node, sub_nodes[dep.on_idx])) {
+        if (wouldSkip(node, nodes[dep.on_idx])) {
             continue;
         }
         last_idx = dep_idx;
     }
     for (deps, 0..) |dep, deps_idx| {
-        const on_node: *types.Node = sub_nodes[dep.on_idx];
+        const on_node: *types.Node = nodes[dep.on_idx];
         const on_deps: []types.Node.Depn = on_node.lists.get(.deps);
         const on_paths = on_node.lists.get(.paths);
         if (wouldSkip(node, on_node)) {
@@ -275,6 +275,29 @@ fn primaryInputDisplayName(node: *const types.Node, paths: []types.Path) [:0]con
     }
     return "(null)";
 }
+fn primaryInputDisplayNameNoPaths(node: *const types.Node) [:0]const u8 {
+    const paths: []types.Path = node.lists.get(.paths);
+    @setRuntimeSafety(builtin.is_safe);
+    if (node.tag == .worker) {
+        var ret: [:0]const u8 = undefined;
+        if (node.tasks.tag == .build or
+            node.tasks.tag == .archive)
+        {
+            ret = paths[1].names[1];
+        }
+        if (node.tasks.tag == .format) {
+            ret = paths[0].names[1];
+        }
+        if (node.tasks.tag == .run) {
+            ret = paths[0].names[1];
+        }
+        return ret;
+    }
+    if (node.tag == .group) {
+        return node.descr;
+    }
+    return "(null)";
+}
 fn writeSubNode(buf: [*]u8, len: usize, sub_node: *const types.Node, name_width: usize, root_width: usize, paths: []types.Path) usize {
     @setRuntimeSafety(builtin.is_safe);
     var count: usize = name_width -% (sub_node.name.len +% len);
@@ -291,7 +314,7 @@ fn writeSubNode(buf: [*]u8, len: usize, sub_node: *const types.Node, name_width:
 }
 fn writeToplevelCommandNotice(buf: [*]u8, tmp: [*]u8, len: usize, node: *const types.Node, show_deps: bool, name_width: usize, root_width: usize) usize {
     @setRuntimeSafety(builtin.is_safe);
-    const sub_nodes: []*types.Node = node.lists.get(.nodes)[1..];
+    const nodes: []*types.Node = node.lists.get(.nodes);
     var paths: []types.Path = node.lists.get(.paths);
     var ptr: [*]u8 = buf;
     var fin: *u8 = &buf[0];
@@ -306,14 +329,14 @@ fn writeToplevelCommandNotice(buf: [*]u8, tmp: [*]u8, len: usize, node: *const t
         ptr += 4;
     }
     var last_idx: usize = 0;
-    for (sub_nodes, 0..) |sub_node, node_idx| {
+    for (nodes[1..], 0..) |sub_node, node_idx| {
         if (wouldSkip(node, sub_node)) {
             continue;
         }
         last_idx = node_idx;
     }
-    for (sub_nodes, 0..) |sub_node, node_idx| {
-        const sub_sub_nodes: []*types.Node = sub_node.lists.get(.nodes)[1..];
+    for (nodes[1..], 0..) |sub_node, node_idx| {
+        const sub_nodes: []*types.Node = sub_node.lists.get(.nodes);
         paths = sub_node.lists.get(.paths);
         if (wouldSkip(node, sub_node)) {
             continue;
@@ -325,7 +348,7 @@ fn writeToplevelCommandNotice(buf: [*]u8, tmp: [*]u8, len: usize, node: *const t
         fin = &ptr[0];
         ptr[0..2].* = if (len == 0) "  ".* else "|-".*;
         ptr += 2;
-        ptr[0..2].* = if (sub_sub_nodes.len == 1) "- ".* else "o ".*;
+        ptr[0..2].* = if (sub_nodes.len == 1) "- ".* else "o ".*;
         ptr += 2;
         if (sub_node.flags.is_hidden and
             paths.len != 0)
@@ -343,7 +366,100 @@ fn writeToplevelCommandNotice(buf: [*]u8, tmp: [*]u8, len: usize, node: *const t
     }
     return fmt.strlen(ptr, buf);
 }
-const AboutKind = enum(u8) { @"error", note };
+const ColumnWidth = struct {
+    name: usize,
+    input: usize,
+};
+const NodeIterator = struct {
+    node: *const types.Node,
+    idx: usize = 0,
+    max_len: usize = 0,
+    max_idx: usize = 0,
+    nodes: []const *types.Node,
+    deps: []const types.Node.Depn,
+    fn next(itr: *NodeIterator) ?*types.Node {
+        @setRuntimeSafety(false);
+        while (itr.idx != itr.max_len) {
+            const node_idx: usize = if (itr.node.tag == .group)
+                itr.idx
+            else
+                itr.deps[itr.idx].on_idx;
+            const node: *types.Node = itr.nodes[node_idx];
+            itr.idx +%= 1;
+            if (wouldSkip(itr.node, node)) {
+                continue;
+            }
+            itr.max_idx = @max(itr.max_idx, itr.idx);
+            return node;
+        }
+        return null;
+    }
+    fn init(node: *const types.Node) NodeIterator {
+        @setRuntimeSafety(false);
+        var itr: NodeIterator = .{
+            .node = node,
+            .nodes = node.lists.get(.nodes),
+            .deps = node.lists.get(.deps),
+        };
+        itr.idx = @intFromBool(itr.node.tag == .group);
+        itr.max_len = if (node.tag == .group) itr.nodes.len else itr.deps.len;
+        while (itr.next()) |_| {}
+        itr.idx = @intFromBool(itr.node.tag == .group);
+        return itr;
+    }
+};
+fn writeAndWalkColumnWidths(len1: u64, node: *const types.Node, width: *ColumnWidth) void {
+    @setRuntimeSafety(false);
+    var itr: NodeIterator = NodeIterator.init(node);
+    while (itr.next()) |next_node| {
+        writeAndWalkColumnWidths(len1 +% 2, next_node, width);
+        width.name = @max(width.name, len1 +% 4 +% next_node.name.len);
+        width.input = @max(width.input, primaryInputDisplayNameNoPaths(next_node).len);
+    }
+}
+pub fn writeAndWalk(node: *const types.Node) void {
+    @setRuntimeSafety(false);
+    var buf0: [1024 * 1024]u8 = undefined;
+    var buf1: [4096]u8 = undefined;
+    var ptr0: [*]u8 = fmt.strcpyEqu(&buf0, node.name);
+    ptr0[0] = '\n';
+    ptr0 += 1;
+    var width: ColumnWidth = .{ .name = 0, .input = 0 };
+    writeAndWalkColumnWidths(0, node, &width);
+    width.name +%= 4;
+    width.name &= ~@as(usize, 3);
+    width.input +%= 4;
+    width.input &= ~@as(usize, 3);
+    debug.write(buf0[0..fmt.strlen(@This().writeAndWalkInternalNew(ptr0, &buf1, 0, node, &width), &buf0)]);
+}
+fn writeAndWalkInternalNew(buf0: [*]u8, buf1: [*]u8, len1: u64, node: *const types.Node, width: *ColumnWidth) [*]u8 {
+    @setRuntimeSafety(false);
+    var itr: NodeIterator = NodeIterator.init(node);
+    var ptr0: [*]u8 = buf0;
+    var ptr1: [*]u8 = buf1 + len1;
+    while (itr.next()) |next_node| {
+        const input: [:0]const u8 = primaryInputDisplayNameNoPaths(next_node);
+        ptr1[0..2].* = if (itr.idx == itr.max_idx) "  ".* else "| ".*;
+        ptr0 = fmt.strcpyEqu(ptr0, buf1[0..len1]);
+        ptr0[0..2].* = if (itr.idx == itr.max_idx) "`-".* else "|-".*;
+        ptr0 += 2;
+        ptr0[0..2].* = if (1 == itr.max_idx) "> ".* else "+ ".*;
+        ptr0 += 2;
+        ptr0 = fmt.strcpyEqu(ptr0, next_node.name);
+        ptr0 = fmt.strsetEqu(ptr0, ' ', width.name -% (len1 +% 4 +% next_node.name.len));
+        ptr0 = fmt.strcpyEqu(ptr0, input);
+        ptr0 = fmt.strsetEqu(ptr0, ' ', width.input -% input.len);
+        ptr0 = fmt.strcpyEqu(ptr0, next_node.descr);
+        ptr0[0] = '\n';
+        ptr0 += 1;
+        ptr0 = writeAndWalkInternalNew(ptr0, buf1, len1 +% 2, next_node, width);
+    }
+    return ptr0;
+}
+const AboutKind = enum(u8) {
+    @"error",
+    note,
+};
 fn writeAbout(buf: [*]u8, kind: AboutKind) usize {
     @setRuntimeSafety(builtin.is_safe);
     var ptr: [*]u8 = buf;
