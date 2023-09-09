@@ -1528,10 +1528,6 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 @setRuntimeSafety(builtin.is_safe);
                 return @ptrFromInt(shdr.sh_addr +% (shdr.sh_entsize *% sym_idx));
             }
-            fn sectionName(info: *const Info, shdr: *const Elf64_Shdr) [:0]const u8 {
-                @setRuntimeSafety(builtin.is_safe);
-                return mem.terminate(@ptrFromInt(info.shstr + shdr.sh_name), 0);
-            }
             fn symbolName(info: *const Info, shdr: *const Elf64_Shdr, sym: *Elf64_Sym) [:0]const u8 {
                 @setRuntimeSafety(builtin.is_safe);
                 const strtab_shdr: *Elf64_Shdr = info.sectionHeaderByIndex(shdr.sh_link);
