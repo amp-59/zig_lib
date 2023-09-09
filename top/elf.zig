@@ -1186,8 +1186,8 @@ pub const LoaderSpec = struct {
 };
 pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
     const T = struct {
-        ub_info_addr: usize = lb_info_addr,
-        ub_sect_addr: usize = lb_sect_addr,
+        ub_meta_addr: usize = lb_meta_addr,
+        ub_prog_addr: usize = lb_prog_addr,
         const DynamicLoader = @This();
         pub const Info = extern struct {
             ehdr: Elf64_Ehdr,
@@ -1371,8 +1371,8 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 return @ptrFromInt(info.shdr +% (info.ehdr.e_shentsize *% idx));
             }
         };
-        pub const lb_info_addr: comptime_int = loader_spec.options.lb_info_addr;
-        pub const lb_sect_addr: comptime_int = loader_spec.options.lb_sect_addr;
+        pub const lb_meta_addr: comptime_int = loader_spec.AddressSpace.arena(0).lb_addr;
+        pub const lb_prog_addr: comptime_int = loader_spec.AddressSpace.arena(1).lb_addr;
         const ep0 = .{
             .throw = loader_spec.errors.open.throw ++ loader_spec.errors.seek.throw ++
                 loader_spec.errors.read.throw ++ loader_spec.errors.map.throw ++
@@ -1386,14 +1386,14 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             .abort = loader_spec.errors.read.abort ++ loader_spec.errors.seek.abort,
         };
         const ep2 = .{
-            .throw = loader_spec.errors.map.throw ++ ep1.throw,
-            .abort = loader_spec.errors.map.abort ++ ep1.abort,
+            .throw = loader_spec.errors.map.throw ++ loader_spec.errors.open.throw ++ ep1.throw,
+            .abort = loader_spec.errors.map.abort ++ loader_spec.errors.open.abort ++ ep1.abort,
         };
         fn allocateInfo(loader: *DynamicLoader, pathname: [:0]const u8) sys.ErrorUnion(ep2, *Info) {
             @setRuntimeSafety(builtin.is_safe);
             const fd: usize = try meta.wrap(file.open(open(), .{}, pathname));
             const len: usize = mach.alignA4096(try meta.wrap(file.seek(seek(), fd, 0, .end)));
-            const addr: usize = mach.alignA4096(@atomicRmw(usize, &loader.ub_info_addr, .Add, len, .SeqCst));
+            const addr: usize = mach.alignA4096(@atomicRmw(usize, &loader.ub_meta_addr, .Add, len, .SeqCst));
             try meta.wrap(mem.map(map(), .{}, .{}, addr, mach.alignA4096(@sizeOf(Info))));
             const info: *Info = @ptrFromInt(addr);
             info.fd = fd;
@@ -1431,7 +1431,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                     info.prog.len = @max(info.prog.len, phdr.p_vaddr +% phdr.p_memsz);
                 }
             }
-            info.prog.addr = mach.alignA4096(@atomicRmw(usize, &loader.ub_sect_addr, .Add, info.prog.len, .SeqCst));
+            info.prog.addr = mach.alignA4096(@atomicRmw(usize, &loader.ub_prog_addr, .Add, info.prog.len, .SeqCst));
         }
         pub fn load(loader: *DynamicLoader, pathname: [:0]const u8) sys.ErrorUnion(ep0, *Info) {
             @setRuntimeSafety(builtin.is_safe);
