@@ -815,10 +815,13 @@ noinline fn callErrorOrMediaReturnValueFunction(comptime Fn: type, result_addr: 
         @as(*meta.Args(Fn), @ptrFromInt(args_addr)).*,
     );
 }
-pub fn clone(comptime spec: CloneSpec, stack_addr: u64, stack_len: u64, result_ptr: anytype, comptime function: anytype, args: meta.Args(@TypeOf(function))) sys.ErrorUnion(spec.errors, spec.return_type) {
+pub noinline fn clone(comptime spec: CloneSpec, stack_addr: u64, stack_len: u64, result_ptr: anytype, function: anytype, args: meta.Args(@TypeOf(function))) sys.ErrorUnion(spec.errors, spec.return_type) {
     @setRuntimeSafety(false);
     const Context = struct {
-        call: *const @TypeOf(function),
+        call: if (@typeInfo(@TypeOf(function)) == .Pointer)
+            @TypeOf(function)
+        else
+            *const @TypeOf(function),
         ret: *meta.Return(@TypeOf(function)),
         args: meta.Args(@TypeOf(function)),
     };
@@ -834,7 +837,7 @@ pub fn clone(comptime spec: CloneSpec, stack_addr: u64, stack_len: u64, result_p
     const cl_args_addr: u64 = @intFromPtr(&cl_args);
     const cl_args_size: u64 = @sizeOf(CloneArgs);
     const cl_ctx: *Context = @ptrFromInt(stack_addr +% (stack_len -% @sizeOf(Context)));
-    cl_ctx.* = .{ .call = &function, .ret = ret, .args = args };
+    cl_ctx.* = .{ .call = function, .ret = ret, .args = args };
     const rc: i64 = asm volatile (
         \\syscall # clone3
         : [ret] "={rax}" (-> i64),
@@ -1028,7 +1031,7 @@ pub const about = opaque {
               [_] "{rdx}" (buf.len), // message buf len
             : "rcx", "r11", "memory"
         );
-        return if (rc < 0) ~@as(u64, 0) else @as(u64, @intCast(rc));
+        return if (rc < 0) ~@as(u64, 0) else @intCast(rc);
     }
     fn forkNotice(pid: u64) void {
         var buf: [560]u8 = undefined;
