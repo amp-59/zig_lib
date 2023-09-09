@@ -212,13 +212,11 @@ fn writeExtendedSourceLocation(
         const name: []const u8 = form_val.getString(dwarf_info);
         @memcpy(ptr, name);
         ptr += name.len;
-        ptr[0..2].* = ")\n".*;
-        ptr += 2;
-    } else {
-        ptr[0] = '\n';
+        ptr[0] = ')';
         ptr += 1;
     }
-    return @intFromPtr(ptr - @intFromPtr(buf));
+    ptr[0] = '\n';
+    return @intFromPtr(ptr + 1) -% @intFromPtr(buf);
 }
 fn writeSourceContext(
     trace: *const debug.Trace,
