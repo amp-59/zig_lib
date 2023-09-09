@@ -1360,8 +1360,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 var shdr_idx: usize = 1;
                 while (shdr_idx != info.ehdr.e_shnum) : (shdr_idx +%= 1) {
                     const shdr: *Elf64_Shdr = @ptrFromInt(info.shdr +% (shdr_idx *% info.ehdr.e_shentsize));
-                    const str: [*]u8 = @ptrFromInt(info.shstr + shdr.sh_name);
-                    if (mem.testEqualString(mem.terminate(str, 0), name)) {
+                    if (mem.testEqualString(mem.terminate(info.shstr + shdr.sh_name, 0), name)) {
                         return shdr;
                     }
                 }
@@ -1420,8 +1419,8 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             info.shdr = try meta.wrap(info.allocateMeta(shdr_len +% info.ehdr.e_shnum, 8));
             try meta.wrap(readAt(fd, info.ehdr.e_shoff, @ptrFromInt(info.shdr), shdr_len));
             const shstr_shdr: *Elf64_Shdr = info.sectionHeaderByIndex(info.ehdr.e_shstrndx);
-            info.shstr = try meta.wrap(info.allocateMeta(shstr_shdr.sh_size, 1));
-            try meta.wrap(readAt(fd, shstr_shdr.sh_offset, @ptrFromInt(info.shstr), shstr_shdr.sh_size));
+            info.shstr = @ptrFromInt(try meta.wrap(info.allocateMeta(shstr_shdr.sh_size, 1)));
+            try meta.wrap(readAt(fd, shstr_shdr.sh_offset, info.shstr, shstr_shdr.sh_size));
             return info;
         }
         fn allocateSegments(loader: *DynamicLoader, info: *Info) sys.ErrorUnion(loader_spec.errors.map, void) {
@@ -1579,7 +1578,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 var shdr_idx2: usize = shdr_idx2_from;
                 while (shdr_idx2 != shdr_idx2_to) : (shdr_idx2 +%= 1) {
                     const shdr2: *Elf64_Shdr = info2.sectionHeaderByIndex(shdr_idx2);
-                    const name2: [:0]const u8 = sectionName(info2, shdr2);
+                    const name2: [:0]const u8 = mem.terminate(info2.shstr + shdr2.sh_name, 0);
                     if (mem.testEqualString(name1, name2)) {
                         mats2[shdr_idx2] = true;
                         return shdr_idx2;
@@ -1669,7 +1668,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                     const mats1: [*]bool = sectionMatches(info1);
                     const mats2: [*]bool = sectionMatches(info2);
                     const shdr1: *Elf64_Shdr = info1.sectionHeaderByIndex(shdr_idx1);
-                    const name1: [:0]const u8 = sectionName(info1, shdr1);
+                    const name1: [:0]const u8 = mem.terminate(info1.shstr + shdr1.sh_name, 0);
                     shdr_idx2 = blk: {
                         shdr_idx2 = shdr_idx1;
                         var mat_idx: usize = matchSectionNameInRange(info2, mats2, name1, shdr_idx2, info2.ehdr.e_shnum);
@@ -1686,25 +1685,27 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                         if (mat_idx != 0) {
                             break :blk mat_idx;
                         }
-                        ptr = aboutSectionRemoved(info1, shdr1, shdr_idx1, ptr);
+                        ptr = aboutSectionRemoved(info1, shdr1, shdr_idx1, width, ptr);
                         continue;
                     };
                     mats1[shdr_idx1] = true;
                     const shdr2: *Elf64_Shdr = info2.sectionHeaderByIndex(shdr_idx2);
-                    ptr = aboutSectionDifference(about_s, info2, shdr1, shdr2, shdr_idx2, ptr);
-                    ptr = aboutSymtabDifference(info1, info2, symtab1 orelse continue, symtab2 orelse continue, shdr_idx1, shdr_idx2, ptr);
+                    ptr = aboutSectionDifference(info2, shdr1, shdr2, shdr_idx2, width, ptr);
+                    ptr = aboutSymtabDifference(info1, info2, //
+                        symtab1 orelse continue, symtab2 orelse continue, shdr_idx1, shdr_idx2, width, ptr);
                 }
                 shdr_idx2 = 1;
                 while (shdr_idx2 != info2.ehdr.e_shnum) : (shdr_idx2 +%= 1) {
                     const mats2: [*]bool = sectionMatches(info2);
                     const shdr2: *Elf64_Shdr = info2.sectionHeaderByIndex(shdr_idx2);
                     if (!mats2[shdr_idx2]) {
-                        ptr = aboutSectionAdded(info2, shdr2, shdr_idx2, ptr);
+                        ptr = aboutSectionAdded(info2, shdr2, shdr_idx2, width, ptr);
                     }
                 }
                 return ptr;
             }
             fn aboutLoad(info: *const Info, pathname: [:0]const u8) void {
+                @setRuntimeSafety(builtin.is_safe);
                 var buf: [4096]u8 = undefined;
                 buf[0..load_s.len].* = load_s.*;
                 var ptr: [*]u8 = fmt.strcpyEqu(buf[load_s.len..], "ELF-");
@@ -1745,26 +1746,29 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 ptr += 1;
                 debug.write(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)]);
             }
-            fn aboutSectionRemoved(
-                info1: *const Info,
-                shdr1: *Elf64_Shdr,
-                shdr_idx1: usize,
+            fn aboutSection(
+                info2: *const Info,
+                shdr2: *Elf64_Shdr,
+                shdr_idx2: usize,
+                width: usize,
                 buf: [*]u8,
             ) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
                 var ptr: [*]u8 = buf;
-                ptr += fmt.writeSideBarIndex(ptr, 8, shdr_idx1);
-                ptr = fmt.strcpyEqu(ptr, mem.terminate(@ptrFromInt(info1.shstr +% shdr1.sh_name), 0));
-                ptr[0..2].* = ", ".*;
+                ptr += fmt.writeSideBarIndex(ptr, width, shdr_idx2);
+                ptr = fmt.strcpyEqu(ptr, mem.terminate(info2.shstr + shdr2.sh_name, 0));
+                ptr[0..2].* = ": ".*;
                 ptr += 2;
-                ptr[0..5].* = "addr=".*;
-                ptr += 5;
-                ptr += fmt.uxd(shdr1.sh_addr, 0).formatWriteBuf(ptr);
-                ptr[0..2].* = ", ".*;
+                if (shdr2.sh_addr != 0) {
+                    ptr[0..5].* = "addr=".*;
+                    ptr += 5;
+                    ptr += fmt.ux64(shdr2.sh_addr).formatWriteBuf(ptr);
+                    ptr[0..2].* = ", ".*;
+                }
                 ptr += 2;
                 ptr[0..5].* = "size=".*;
                 ptr += 5;
-                ptr += fmt.bloatDiff(shdr1.sh_size, 0).formatWriteBuf(ptr);
+                ptr += fmt.bytes(shdr2.sh_size).formatWriteBuf(ptr);
                 ptr[0] = '\n';
                 ptr += 1;
                 return ptr;
@@ -1773,18 +1777,21 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 info2: *const Info,
                 shdr2: *Elf64_Shdr,
                 shdr_idx2: usize,
+                width: usize,
                 buf: [*]u8,
             ) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
                 var ptr: [*]u8 = buf;
-                ptr += fmt.writeSideBarIndex(ptr, 8, shdr_idx2);
-                ptr = fmt.strcpyEqu(ptr, mem.terminate(@ptrFromInt(info2.shstr +% shdr2.sh_name), 0));
-                ptr[0..2].* = ", ".*;
+                ptr += fmt.writeSideBarIndex(ptr, width, shdr_idx2);
+                ptr = fmt.strcpyEqu(ptr, mem.terminate(info2.shstr + shdr2.sh_name, 0));
+                ptr[0..2].* = ": ".*;
                 ptr += 2;
-                ptr[0..5].* = "addr=".*;
-                ptr += 5;
-                ptr += fmt.uxd(0, shdr2.sh_addr).formatWriteBuf(ptr);
-                ptr[0..2].* = ", ".*;
+                if (shdr2.sh_addr != 0) {
+                    ptr[0..5].* = "addr=".*;
+                    ptr += 5;
+                    ptr += fmt.ux64(shdr2.sh_addr).formatWriteBuf(ptr);
+                    ptr[0..2].* = ", ".*;
+                }
                 ptr += 2;
                 ptr[0..5].* = "size=".*;
                 ptr += 5;
@@ -1793,19 +1800,46 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 ptr += 1;
                 return ptr;
             }
-            fn aboutSectionDifference(
-                about_s: fmt.AboutSrc,
-                info2: *const Info,
+            fn aboutSectionRemoved(
+                info1: *const Info,
                 shdr1: *Elf64_Shdr,
-                shdr2: *Elf64_Shdr,
-                shdr_idx2: usize,
+                shdr_idx1: usize,
+                width: usize,
                 buf: [*]u8,
             ) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
                 var ptr: [*]u8 = buf;
-                ptr += fmt.writeSideBarIndex(ptr, fmt.aboutCentre(about_s), shdr_idx2);
-                ptr = fmt.strcpyEqu(ptr, mem.terminate(@ptrFromInt(info2.shstr + shdr2.sh_name), 0));
-                ptr[0..2].* = ", ".*;
+                ptr += fmt.writeSideBarIndex(ptr, width, shdr_idx1);
+                ptr = fmt.strcpyEqu(ptr, mem.terminate(info1.shstr + shdr1.sh_name, 0));
+                ptr[0..2].* = ": ".*;
+                ptr += 2;
+                if (shdr1.sh_addr != 0) {
+                    ptr[0..5].* = "addr=".*;
+                    ptr += 5;
+                    ptr += fmt.ux64(shdr1.sh_addr).formatWriteBuf(ptr);
+                    ptr[0..2].* = ", ".*;
+                }
+                ptr += 2;
+                ptr[0..5].* = "size=".*;
+                ptr += 5;
+                ptr += fmt.bloatDiff(shdr1.sh_size, 0).formatWriteBuf(ptr);
+                ptr[0] = '\n';
+                ptr += 1;
+                return ptr;
+            }
+            fn aboutSectionDifference(
+                info2: *const Info,
+                shdr1: *Elf64_Shdr,
+                shdr2: *Elf64_Shdr,
+                shdr_idx2: usize,
+                width: usize,
+                buf: [*]u8,
+            ) [*]u8 {
+                @setRuntimeSafety(builtin.is_safe);
+                var ptr: [*]u8 = buf;
+                ptr += fmt.writeSideBarIndex(ptr, width, shdr_idx2);
+                ptr = fmt.strcpyEqu(ptr, mem.terminate(info2.shstr + shdr2.sh_name, 0));
+                ptr[0..2].* = ": ".*;
                 ptr += 2;
                 if (shdr1.sh_addr < lb_info_addr and
                     shdr2.sh_addr < lb_info_addr and
@@ -1828,17 +1862,18 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 sym_idx: usize,
                 event: enum { add, remove, change },
                 section_name: [:0]const u8,
+                width: usize,
                 buf: [*]u8,
             ) [*]u8 {
-                var ptr: [*]u8 = fmt.strsetEqu(buf, ' ', 8);
+                @setRuntimeSafety(builtin.is_safe);
+                var ptr: [*]u8 = fmt.strsetEqu(buf, ' ', width);
                 const idx_len: usize = fmt.length(usize, sym_idx, 10);
                 ptr = fmt.strcpyEqu(ptr, switch (event) {
                     .add => tab.fx.color.fg.red ++ "+" ++ tab.fx.none,
                     .remove => tab.fx.color.fg.green ++ "-" ++ tab.fx.none,
                     .change => tab.fx.color.fg.yellow ++ "~" ++ tab.fx.none,
                 });
-                ptr += 1;
-                ptr = fmt.strsetEqu(ptr, ' ', (7 +% section_name.len) -% (idx_len +% 1));
+                ptr = fmt.strsetEqu(ptr, ' ', (builtin.message_indent -% (width +% 1)) +% (section_name.len -% (idx_len +% 1)));
                 ptr[0..4].* = tab.fx.style.faint.*;
                 ptr += 4;
                 ptr[0] = '#';
