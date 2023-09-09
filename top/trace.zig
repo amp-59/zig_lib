@@ -319,7 +319,7 @@ fn printMessage(buf: [*]u8, addr_info: *dwarf.DwarfInfo.AddressInfo) void {
     var ptr: [*]u8 = &tmp;
     var idx: usize = 0;
     if (addr_info.count != 0) {
-        while (msg[idx] != '\n') idx +%= 1;
+        while (msg[idx] != '\n' and msg[idx] != 0) idx +%= 1;
         @memcpy(ptr, msg[0..idx]);
         ptr += idx;
         ptr[0..2].* = " (".*;
