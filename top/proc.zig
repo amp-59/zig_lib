@@ -476,17 +476,29 @@ pub const Status = struct {
         return status & 0x80;
     }
 };
+pub fn getProcessId() u32 {
+    @setRuntimeSafety(builtin.is_safe);
+    return @intCast(sys.call(.getpid, .{}, u64, .{}));
+}
+pub fn getThreadId() u32 {
+    @setRuntimeSafety(builtin.is_safe);
+    return @intCast(sys.call(.gettid, .{}, u64, .{}));
+}
 pub fn getUserId() u16 {
-    return @as(u16, @truncate(sys.call(.getuid, .{}, u64, .{})));
+    @setRuntimeSafety(builtin.is_safe);
+    return @intCast(sys.call(.getuid, .{}, u64, .{}));
 }
 pub fn getEffectiveUserId() u16 {
-    return @as(u16, @truncate(sys.call(.geteuid, .{}, u64, .{})));
+    @setRuntimeSafety(builtin.is_safe);
+    return @intCast(sys.call(.geteuid, .{}, u64, .{}));
 }
 pub fn getGroupId() u16 {
-    return @as(u16, @truncate(sys.call(.getgid, .{}, u64, .{})));
+    @setRuntimeSafety(builtin.is_safe);
+    return @intCast(sys.call(.getgid, .{}, u64, .{}));
 }
 pub fn getEffectiveGroupId() u16 {
-    return @as(u16, @truncate(sys.call(.getegid, .{}, u64, .{})));
+    @setRuntimeSafety(builtin.is_safe);
+    return @intCast(sys.call(.getegid, .{}, u64, .{}));
 }
 pub fn waitPid(comptime spec: WaitSpec, id: WaitSpec.For) sys.ErrorUnion(spec.errors, spec.return_type) {
     const logging: debug.Logging.SuccessError = comptime spec.logging.override();
