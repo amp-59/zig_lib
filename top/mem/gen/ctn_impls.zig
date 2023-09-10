@@ -916,7 +916,7 @@ fn writeFunctions(allocator: *Allocator, array: *Array, ctn_detail: types.Contai
     }
 }
 fn writeDeclarations(allocator: *Allocator, array: *Array, ctn_detail: types.Container) void {
-    const save: Allocator.Save = allocator.save();
+    const save: usize = allocator.save();
     defer allocator.restore(save);
     const const_decl: *expr.ConstDecl = allocator.duplicate(expr.ConstDecl, .{
         .val_name = tok.array_type_name,

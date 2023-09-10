@@ -354,7 +354,7 @@ pub fn main() !void {
     for (alloc_fn.list) |alloc_fn_info| {
         const ptr_fn_info: ptr_fn.Fn = alloc_fn_info.convert();
         for (types.Kind.list, 0..) |kind, kind_idx| {
-            const save: Allocator.Save = allocator.save();
+            const save: usize = allocator.save();
             defer allocator.restore(save);
             var impl_arg_list_pairs: []ImplArgListPair = allocator.allocate(ImplArgListPair, len[kind_idx]);
             var idx: u64 = 0;
