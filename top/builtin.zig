@@ -45,7 +45,7 @@ pub const want_stack_traces: bool = define("want_stack_traces", bool, builtin.mo
 /// Determines whether calling `panicUnwrapError` is legal.
 pub const discard_errors: bool = define("discard_errors", bool, true);
 /// Determines whether calling `panicUnwrapError` is legal.
-pub const comptime_errors: bool = define("comptime_errors", bool, true);
+pub const comptime_errors: bool = define("comptime_errors", bool, false);
 
 /// Determines whether `assert*` functions will be called at runtime.
 pub const runtime_assertions: bool = define("runtime_assertions", bool, builtin.mode == .Debug or builtin.mode == .ReleaseSafe);
