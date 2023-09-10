@@ -979,7 +979,7 @@ pub fn generateContainers() !void {
     var allocator: Allocator = Allocator.init(&address_space);
     defer allocator.deinit(&address_space);
     var array: Array = Array.init(&allocator, 1024 * 4096);
-    const fd: u64 = try file.open(.{ .options = .{ .read_write = true, .append = true } }, config.container_file_path);
+    const fd: usize = try file.open(.{}, .{ .read_write = true, .append = true }, config.container_file_path);
     var ctn_idx: u64 = 0;
     for (types.Kind.list) |kind| {
         for (details) |ctn_detail| {
