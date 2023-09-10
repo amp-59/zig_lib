@@ -15,7 +15,7 @@ const types = @import("./types.zig");
 const config = @import("./config.zig");
 const ctn_fn = @import("./ctn_fn.zig");
 pub usingnamespace @import("../../start.zig");
-pub const logging_override: debug.Logging.Override = spec.logging.override.silent;
+pub const logging_override: debug.Logging.Override = spec.logging.override.verbose;
 pub const runtime_assertions: bool = false;
 const Array = mem.StaticString(1024 * 1024);
 const validate_all_serial: bool = false;
@@ -181,13 +181,10 @@ fn populateDetails(
     return details;
 }
 fn BinaryFilter(comptime T: type) type {
-    return config.Allocator.allocate_payload(BinaryFilterPayload(T));
-}
-fn BinaryFilterPayload(comptime T: type) type {
     return struct { []const T, []const T };
 }
 fn haveSpec(allocator: *config.Allocator, spec_set: []const []const types.Specifier, p_field: types.Specifier) BinaryFilter([]const types.Specifier) {
-    @setRuntimeSafety(false);
+    @setRuntimeSafety(builtin.is_safe);
     var t: [][]const types.Specifier = try meta.wrap(
         allocator.allocate([]const types.Specifier, spec_set.len),
     );
@@ -211,7 +208,7 @@ fn haveSpec(allocator: *config.Allocator, spec_set: []const []const types.Specif
     return .{ f[0..f_len], t[0..t_len] };
 }
 fn haveTechA(allocator: *config.Allocator, tech_set: []const []const types.Technique, u_field: types.Technique) BinaryFilter([]const types.Technique) {
-    @setRuntimeSafety(false);
+    @setRuntimeSafety(builtin.is_safe);
     var t: [][]const types.Technique = try meta.wrap(
         allocator.allocate([]const types.Technique, tech_set.len),
     );
@@ -237,7 +234,7 @@ fn haveTechA(allocator: *config.Allocator, tech_set: []const []const types.Techn
     return .{ f[0..f_len], t[0..t_len] };
 }
 fn haveTechB(allocator: *config.Allocator, tech_set: []const []const types.Technique, u_tech: types.Techniques.Tag) BinaryFilter([]const types.Technique) {
-    @setRuntimeSafety(false);
+    @setRuntimeSafety(builtin.is_safe);
     var t: [][]const types.Technique = try meta.wrap(
         allocator.allocate([]const types.Technique, tech_set.len),
     );
@@ -475,9 +472,9 @@ fn writeSpecificationDeductionInternal(
     tech_set: []const []const types.Technique,
     q_info: []const types.Technique,
     indices: *types.Implementation.Indices,
-) config.Allocator.allocate_void {
-    @setRuntimeSafety(false);
-    const filtered: BinaryFilterPayload([]const types.Specifier) = try meta.wrap(
+) void {
+    @setRuntimeSafety(builtin.is_safe);
+    const filtered: BinaryFilter([]const types.Specifier) = try meta.wrap(
         haveSpec(allocator, spec_set, p_info[0]),
     );
     if (filtered[1].len != 0) {
@@ -527,11 +524,11 @@ fn writeDeductionTestBoolean(
     tech_set: []const []const types.Technique,
     q_info: []const types.Technique,
     indices: *types.Implementation.Indices,
-) config.Allocator.allocate_void {
-    @setRuntimeSafety(false);
-    const save: config.Allocator.Save = allocator.save();
+) void {
+    @setRuntimeSafety(builtin.is_safe);
+    const save: usize = allocator.save();
     defer allocator.restore(save);
-    const filtered: BinaryFilterPayload([]const types.Technique) = try meta.wrap(
+    const filtered: BinaryFilter([]const types.Technique) = try meta.wrap(
         haveTechA(allocator, tech_set, q_info[0]),
     );
     array.writeMany("if(spec.");
@@ -574,12 +571,12 @@ fn writeDeductionCompareEnumerationInternal(
     q_info: []const types.Technique,
     indices: *types.Implementation.Indices,
     tag_index: u64,
-) config.Allocator.allocate_void {
-    @setRuntimeSafety(false);
+) void {
+    @setRuntimeSafety(builtin.is_safe);
     if (q_info[0].mutually_exclusive.tech_tags.len == tag_index) return;
     const tech: types.Techniques.Tag = q_info[0].mutually_exclusive.tech_tags[tag_index];
     const tech_tag_name: []const u8 = @tagName(tech);
-    const filtered: BinaryFilterPayload([]const types.Technique) = try meta.wrap(
+    const filtered: BinaryFilter([]const types.Technique) = try meta.wrap(
         haveTechB(allocator, tech_set, tech),
     );
     writeSwitchProngOpen(array, tech_tag_name);
@@ -600,8 +597,8 @@ fn writeDeductionCompareEnumeration(
     tech_set: []const []const types.Technique,
     q_info: []const types.Technique,
     indices: *types.Implementation.Indices,
-) config.Allocator.allocate_void {
-    @setRuntimeSafety(false);
+) void {
+    @setRuntimeSafety(builtin.is_safe);
     writeSwitchOpen(array, q_info[0].optTagName());
     try meta.wrap(
         writeDeductionCompareEnumerationInternal(allocator, array, abstract_spec, tech_set_top, p_info, tech_set, q_info, indices, 0),
@@ -617,8 +614,8 @@ inline fn writeDeductionCompareOptionalEnumeration(
     tech_set: []const []const types.Technique,
     q_info: []const types.Technique,
     indices: *types.Implementation.Indices,
-) config.Allocator.allocate_void {
-    @setRuntimeSafety(false);
+) void {
+    @setRuntimeSafety(builtin.is_safe);
     writeOptionalSwitchOpen(array, q_info[0].optTagName());
     try meta.wrap(
         writeDeductionCompareEnumerationInternal(allocator, array, abstract_spec, tech_set_top, p_info, tech_set, q_info, indices, 0),
@@ -634,8 +631,8 @@ fn writeImplementationDeduction(
     tech_set: []const []const types.Technique,
     q_info: []const types.Technique,
     indices: *types.Implementation.Indices,
-) config.Allocator.allocate_void {
-    @setRuntimeSafety(false);
+) void {
+    @setRuntimeSafety(builtin.is_safe);
     if (q_info.len == 0 or tech_set.len == 1) {
         writeReturnImplementation(array, types.Implementation.init(abstract_spec, p_info, tech_set[0], indices.*), p_info);
         indices.ptr +%= 1;
@@ -668,7 +665,7 @@ fn writeSpecificationDeduction(
     tech_set: []const []const types.Technique,
     q_info: []const types.Technique,
     indices: *types.Implementation.Indices,
-) config.Allocator.allocate_void {
+) void {
     array.writeMany("const Parameters");
     array.writeFormat(fmt.ud64(indices.params));
     array.writeMany("=struct{\n");
@@ -684,8 +681,6 @@ fn writeSpecifications(allocator: *config.Allocator, array: *Array) !void {
     for (types.Kind.list) |kind| {
         for (attr.abstract_specs, data.x_p_infos, data.spec_sets, data.tech_sets, data.x_q_infos) |abstract_spec, p_info, spec_set, tech_set, q_info| {
             if (abstract_spec.kind == kind) {
-                const save: config.Allocator.Save = allocator.save();
-                defer allocator.restore(save);
                 try meta.wrap(
                     writeSpecificationDeduction(allocator, array, abstract_spec, p_info, spec_set, tech_set, q_info, &indices),
                 );
@@ -705,9 +700,9 @@ fn writeSpecifications(allocator: *config.Allocator, array: *Array) !void {
     }
     if (!write_separate_source_files) {
         try gen.truncateFile(truncate_spec, config.container_file_path, array.readAll());
+        array.undefineAll();
     }
-    array.undefineAll();
-    const fd: u64 = file.open(spec.generic.noexcept, config.reference_template_path);
+    const fd: usize = file.open(spec.generic.noexcept, .{}, config.reference_template_path);
     array.define(file.read(spec.generic.noexcept, fd, array.referAllUndefined()));
     var spec_idx: u16 = 0;
     for (data.spec_sets) |spec_set| {
@@ -831,7 +826,7 @@ fn validateAllSerial(
     tech_sets: []const []const []const types.Technique,
     impl_details: []const types.Implementation,
 ) !void {
-    @setRuntimeSafety(false);
+    @setRuntimeSafety(builtin.is_safe);
     var f_x_p_infos: []const []const types.Specifier = attr.getParams(allocator);
     var f_x_q_infos: []const []const types.Technique = attr.getOptions(allocator);
     var f_impl_details: []const types.Implementation = attr.getImplDetails(allocator);
@@ -915,12 +910,12 @@ const data = blk: {
     };
 };
 pub fn main() !void {
-    @setRuntimeSafety(false);
+    @setRuntimeSafety(builtin.is_safe);
     @setEvalBranchQuota(1500);
     var address_space: config.AddressSpace = .{};
     var allocator: config.Allocator = try meta.wrap(config.Allocator.init(&address_space));
-    defer allocator.deinit(&address_space);
-    var array: Array = undefined;
+    defer allocator.unmapAll();
+    var array: *Array = allocator.create(Array);
     array.undefineAll();
     file.makeDir(spec.generic.noexcept, config.zig_out_dir, file.mode.directory);
     file.makeDir(spec.generic.noexcept, config.zig_out_src_dir, file.mode.directory);
@@ -928,7 +923,7 @@ pub fn main() !void {
     file.makeDir(spec.generic.noexcept, config.reference_dir_path, file.mode.directory);
     file.makeDir(spec.generic.noexcept, config.container_kinds_path, file.mode.regular);
     array.define(gen.readFile(gen.ReadSpec.noexcept, config.container_template_path, array.referAllUndefined()));
-    try meta.wrap(writeSpecifications(&allocator, &array));
+    try meta.wrap(writeSpecifications(&allocator, array));
     var impl_details: []types.Implementation = allocator.allocate(types.Implementation, 0x400);
     var params_idx: u16 = 0;
     var ctn_idx: u16 = 0;
@@ -954,5 +949,5 @@ pub fn main() !void {
     if (validate_all_serial) {
         try validateAllSerial(&allocator, impl_details[0..ptr_idx]);
     }
-    try writeContainerKinds(&array);
+    try writeContainerKinds(array);
 }
