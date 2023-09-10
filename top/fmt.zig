@@ -48,6 +48,12 @@ pub fn aboutCentre(about_s: AboutSrc) usize {
     }
     return 0;
 }
+pub inline fn aboutInit(comptime about_s: AboutSrc, comptime len: usize) [len]u8 {
+    comptime {
+        const ret: [len -% about_s.len]u8 = undefined;
+        return (about_s ++ ret).*;
+    }
+}
 pub const about_blank_s: AboutSrc = about("");
 pub const AboutDest = @TypeOf(@constCast(about_blank_s));
 pub const about_exit_s: AboutSrc = about("exit");
