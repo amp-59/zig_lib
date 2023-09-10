@@ -6,7 +6,7 @@ const tok = @import("./tok.zig");
 const attr = @import("./attr.zig");
 const types = @import("./types.zig");
 const config = @import("./config.zig");
-pub const list: []const Fn = meta.tagList(Fn);
+pub const list: []const Fn = &meta.tagList(Fn);
 pub const interface_list: []const Fn = blk: {
     var res: []const Fn = &.{};
     for (list) |ptr_fn_info| {
