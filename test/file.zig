@@ -112,12 +112,12 @@ pub fn testFileOperationsRound1() !void {
 }
 pub fn testSocketOpenAndClose() !void {
     testing.announce(@src());
-    const unix_tcp_fd: usize = try file.socket(.{}, .unix, .tcp, .ip);
-    const unix_udp_fd: usize = try file.socket(.{}, .unix, .udp, .ip);
-    const ipv6_udp_fd: usize = try file.socket(.{}, .ipv6, .udp, .ip);
-    const ipv6_tcp_fd: usize = try file.socket(.{}, .ipv6, .tcp, .ip);
-    const ipv4_udp_fd: usize = try file.socket(.{}, .ipv4, .udp, .ip);
-    const ipv4_tcp_fd: usize = try file.socket(.{}, .ipv4, .tcp, .ip);
+    const unix_tcp_fd: usize = try file.socket(.{}, .unix, .{ .conn = .tcp }, .ip);
+    const unix_udp_fd: usize = try file.socket(.{}, .unix, .{ .conn = .udp }, .ip);
+    const ipv6_udp_fd: usize = try file.socket(.{}, .ipv6, .{ .conn = .udp }, .ip);
+    const ipv6_tcp_fd: usize = try file.socket(.{}, .ipv6, .{ .conn = .tcp }, .ip);
+    const ipv4_udp_fd: usize = try file.socket(.{}, .ipv4, .{ .conn = .udp }, .ip);
+    const ipv4_tcp_fd: usize = try file.socket(.{}, .ipv4, .{ .conn = .tcp }, .ip);
     try file.close(.{}, ipv4_tcp_fd);
     try file.close(.{}, ipv4_udp_fd);
     try file.close(.{}, ipv6_tcp_fd);
@@ -128,7 +128,7 @@ pub fn testSocketOpenAndClose() !void {
 pub fn testClientIPv4(args: [][*:0]u8) !void {
     testing.announce(@src());
     var addrinfo: file.Socket.Address = file.Socket.AddressIPv4.create(55478, .{ 127, 0, 0, 1 });
-    const fd: usize = try file.socket(.{ .options = .{ .non_block = false } }, .ipv4, .udp, .ip);
+    const fd: usize = try file.socket(.{}, .ipv4, .{ .conn = .udp }, .ip);
     try file.connect(.{}, fd, &addrinfo, 16);
     var buf: [500]u8 = undefined;
     try file.write(.{}, fd, meta.manyToSlice(args[0]));
@@ -140,7 +140,7 @@ pub fn testClientIPv4(args: [][*:0]u8) !void {
 pub fn testServerIPv4() !void {
     testing.announce(@src());
     var addrinfo: file.Socket.Address = file.Socket.AddressIPv4.create(55478, .{ 127, 0, 0, 1 });
-    const fd: usize = try file.socket(.{ .options = .{ .non_block = false } }, .ipv4, .udp, .udp);
+    const fd: usize = try file.socket(.{}, .ipv4, .{ .conn = .udp }, .udp);
     try file.bind(.{}, fd, &addrinfo, 16);
     var buf: [500]u8 = undefined;
     var sender_addrinfo: file.Socket.Address = undefined;
@@ -151,7 +151,7 @@ pub fn testServerIPv4() !void {
 pub fn testClientIPv6(args: [][*:0]u8) !void {
     testing.announce(@src());
     var addrinfo: file.Socket.Address = file.Socket.AddressIPv6.create(55480, 0, .{ 0, 0, 0, 0, 0, 0, 0, 0 }, 0);
-    const fd: usize = try file.socket(.{ .options = .{ .non_block = false } }, .ipv6, .udp, .ip);
+    const fd: usize = try file.socket(.{}, .ipv6, .{ .conn = .udp }, .ip);
     try file.connect(.{}, fd, &addrinfo, 28);
     var buf: [500]u8 = undefined;
     try file.write(.{}, fd, meta.manyToSlice(args[0]));
@@ -163,7 +163,7 @@ pub fn testClientIPv6(args: [][*:0]u8) !void {
 pub fn testServerIPv6() !void {
     testing.announce(@src());
     var addrinfo: file.Socket.Address = file.Socket.AddressIPv6.create(55480, 0, .{ 0, 0, 0, 0, 0, 0, 0, 0 }, 0);
-    const fd: usize = try file.socket(.{ .options = .{ .non_block = false } }, .ipv6, .udp, .udp);
+    const fd: usize = try file.socket(.{}, .ipv6, .{ .conn = .udp }, .udp);
     try file.bind(.{}, fd, &addrinfo, 28);
     var buf: [500]u8 = undefined;
     var sender_addrinfo: file.Socket.Address = undefined;
