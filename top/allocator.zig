@@ -439,25 +439,27 @@ fn Specs(comptime Allocator: type) type {
     };
 }
 inline fn ArenaAllocatorMetadata(comptime spec: anytype) type {
-    return (struct {
+    const T = struct {
         branches: meta.maybe(spec.options.count_branches, Branches) = .{},
         holder: meta.maybe(spec.options.check_parametric, u64) = 0,
         count: meta.maybe(spec.options.count_allocations, u64) = 0,
         utility: meta.maybe(spec.options.count_useful_bytes, u64) = 0,
-    });
+    };
+    return T;
 }
 inline fn ArenaAllocatorReference(comptime spec: anytype) type {
-    return (struct {
+    const T = struct {
         branches: meta.maybe(spec.options.trace_state, Branches) = .{},
         ub_addr: meta.maybe(spec.options.trace_state, u64) = 0,
         up_addr: meta.maybe(spec.options.trace_state, u64) = 0,
         holder: meta.maybe(spec.options.check_parametric, u64) = 0,
         count: meta.maybe(spec.options.count_allocations, u64) = 0,
         utility: meta.maybe(spec.options.count_useful_bytes, u64) = 0,
-    });
+    };
+    return T;
 }
 pub fn GenericArenaAllocator(comptime spec: ArenaAllocatorSpec) type {
-    return (struct {
+    const T = struct {
         comptime lb_addr: u64 = lb_addr,
         ub_addr: u64,
         up_addr: u64,
@@ -524,7 +526,8 @@ pub fn GenericArenaAllocator(comptime spec: ArenaAllocatorSpec) type {
         comptime {
             debug.assertEqual(u64, 1, unit_alignment);
         }
-    });
+    };
+    return T;
 }
 pub fn GenericRtArenaAllocator(comptime spec: RtArenaAllocatorSpec) type {
     return (struct {
@@ -539,6 +542,20 @@ pub fn GenericRtArenaAllocator(comptime spec: RtArenaAllocatorSpec) type {
         pub const AddressSpace = allocator_spec.AddressSpace;
         pub const allocator_spec: RtArenaAllocatorSpec = spec;
         pub const unit_alignment: u64 = allocator_spec.options.unit_alignment;
+        pub fn init_arena(arena: mem.Arena) Allocator {
+            var allocator: Allocator = undefined;
+            defer Graphics.showWithReference(&allocator, @src());
+            allocator = .{
+                .lb_addr = arena.lb_addr,
+                .ub_addr = arena.lb_addr,
+                .up_addr = arena.lb_addr,
+                .ua_addr = arena.up_addr,
+            };
+            if (Allocator.allocator_spec.options.require_map) {
+                try meta.wrap(Allocator.mapInit(&allocator));
+            }
+            return allocator;
+        }
         pub fn init(address_space: *AddressSpace, arena_index: AddressSpace.Index) Allocator.acquire_allocator {
             var allocator: Allocator = undefined;
             defer Graphics.showWithReference(&allocator, @src());
