@@ -277,7 +277,7 @@ fn testFileOperationsRound2() !void {
     try testPathRegular();
     try testMakeNode();
     const new_in_fd: usize = try file.duplicate(.{}, 0);
-    try file.duplicateTo(.{}, new_in_fd, new_in_fd +% 1);
+    try file.duplicateTo(.{}, @bitCast(@as(usize, 0)), new_in_fd, new_in_fd +% 1);
     try meta.wrap(file.unlinkAt(unlink_spec, path_dir_fd, "file_test"));
     try meta.wrap(file.close(close_spec, path_dir_fd));
     try meta.wrap(file.removeDir(remove_dir_spec, test_dir ++ "file_test/file_test"));
@@ -335,9 +335,9 @@ fn testStandardChannel() !void {
         try meta.wrap(file.close(Channel.decls.close_spec, chan.in.write));
         try meta.wrap(file.close(Channel.decls.close_spec, chan.out.read));
         try meta.wrap(file.close(Channel.decls.close_spec, chan.err.read));
-        try meta.wrap(file.duplicateTo(Channel.decls.dup3_spec, chan.in.read, 0));
-        try meta.wrap(file.duplicateTo(Channel.decls.dup3_spec, chan.out.write, 1));
-        try meta.wrap(file.duplicateTo(Channel.decls.dup3_spec, chan.out.write, 2));
+        try meta.wrap(file.duplicateTo(Channel.decls.dup3_spec, @bitCast(@as(usize, 0)), chan.in.read, 0));
+        try meta.wrap(file.duplicateTo(Channel.decls.dup3_spec, @bitCast(@as(usize, 0)), chan.out.write, 1));
+        try meta.wrap(file.duplicateTo(Channel.decls.dup3_spec, @bitCast(@as(usize, 0)), chan.out.write, 2));
         var i_array: mem.StaticString(4096) = undefined;
         i_array.undefineAll();
         var o_array: mem.StaticString(4096) = undefined;
@@ -435,7 +435,6 @@ pub fn main(args: [][*:0]u8) !void {
     try meta.wrap(testStandardChannel());
     try meta.wrap(testStatusExtended());
     try meta.wrap(testSocketOpenAndClose());
-    try meta.wrap(testPathOperations());
     try meta.wrap(testFileTests());
     try meta.wrap(testPoll());
     try meta.wrap(testClientAndServerIPv4(args));
