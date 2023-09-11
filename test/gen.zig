@@ -5,15 +5,11 @@ const gen = zl.gen;
 const mem = zl.mem;
 const debug = zl.debug;
 const builtin = zl.builtin;
-
 const perf = @import("../top/perf.zig");
-
 pub usingnamespace zl.start;
-
 comptime {
     _ = zl.mach;
 }
-
 pub const Access = enum(u32) {
     pub const file = 0x0;
     pub const exec = 0x1;
@@ -34,6 +30,7 @@ fn testFileContainerDecls() void {
     gen.containerDeclsToBitField(sys.REMAP, usize, "Remap");
     gen.containerDeclsToBitField(sys.MS, usize, "Sync");
     gen.containerDeclsToBitField(sys.O, usize, "Open");
+
     gen.containerDeclsToBitField(sys.RWF, usize, "ReadWrite");
     gen.containerDeclsToBitField(sys.S, usize, "Status");
     gen.containerDeclsToBitField(sys.STATX.ATTR, usize, "StatusExtendedAttributes");

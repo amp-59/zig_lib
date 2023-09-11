@@ -201,7 +201,7 @@ pub const RtArenaAllocatorSpec = struct {
 };
 fn GenericAllocatorInterface(comptime Allocator: type) type {
     const Graphics = GenericArenaAllocatorGraphics(Allocator);
-    return (struct {
+    const T = struct {
         pub inline fn mapped_byte_address(allocator: *const Allocator) u64 {
             return allocator.lb_addr;
         }
@@ -294,7 +294,7 @@ fn GenericAllocatorInterface(comptime Allocator: type) type {
                 allocator.up_addr +%= s_bytes;
             }
         }
-        fn unmapAll(allocator: *Allocator) Allocator.deallocate_void {
+        pub fn unmapAll(allocator: *Allocator) Allocator.deallocate_void {
             const x_bytes: u64 = allocator.mapped_byte_count();
             if (Allocator.allocator_spec.options.count_useful_bytes) {
                 debug.assertBelowOrEqual(u64, allocator.metadata.utility, 0);
@@ -352,7 +352,8 @@ fn GenericAllocatorInterface(comptime Allocator: type) type {
             }
             allocator.ub_addr = allocator.lb_addr;
         }
-    });
+    };
+    return T;
 }
 fn Types(comptime Allocator: type) type {
     return struct {
