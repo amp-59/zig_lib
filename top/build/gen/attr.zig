@@ -1,7 +1,7 @@
 const builtin = @import("../../builtin.zig");
 const types = struct {
     pub usingnamespace @import("./types.zig");
-    pub usingnamespace @import("../types.zig");
+    pub usingnamespace @import("../../build.zig");
 };
 const string_type: types.ProtoTypeDescrMap = .{
     .store = &types.ProtoTypeDescr.init([]const u8),
@@ -1258,6 +1258,6 @@ pub const all: []const types.Attributes = &.{
     zig_format_command_attributes,
     zig_ar_command_attributes,
     zig_objcopy_command_attributes,
-    llvm_tblgen_command_attributes,
     harec_attributes,
+    llvm_tblgen_command_attributes,
 };
