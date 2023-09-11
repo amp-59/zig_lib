@@ -216,13 +216,67 @@ pub const ReadWrite = meta.EnumBitField(enum(u64) {
     data_sync = RWF.DSYNC,
     const RWF = sys.RWF;
 });
-pub const At = meta.EnumBitField(enum(u64) {
-    empty_path = AT.EMPTY_PATH,
-    no_follow = AT.SYMLINK_NOFOLLOW,
-    follow = AT.SYMLINK_FOLLOW,
-    no_auto_mount = AT.NO_AUTOMOUNT,
-    const AT = sys.AT;
-});
+const At = packed struct(usize) {
+    zb0: u8 = 0,
+    SYMLINK_NOFOLLOW: bool = false,
+    REMOVEDIR: bool = false,
+    SYMLINK_FOLLOW: bool = false,
+    NO_AUTOMOUNT: bool = false,
+    EMPTY_PATH: bool = false,
+    zb13: u51 = 0,
+    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
+        var ptr: [*]u8 = buf;
+        if (format.SYMLINK_NOFOLLOW) {
+            ptr += fmt.strcpyEqu(ptr, "SYMLINK_NOFOLLOW");
+        }
+        if (format.REMOVEDIR) {
+            if (ptr != buf) {
+                ptr[0] = '|';
+                ptr += 1;
+            }
+            ptr += fmt.strcpyEqu(ptr, "REMOVEDIR");
+        }
+        if (format.SYMLINK_FOLLOW) {
+            if (ptr != buf) {
+                ptr[0] = '|';
+                ptr += 1;
+            }
+            ptr += fmt.strcpyEqu(ptr, "SYMLINK_FOLLOW");
+        }
+        if (format.NO_AUTOMOUNT) {
+            if (ptr != buf) {
+                ptr[0] = '|';
+                ptr += 1;
+            }
+            ptr += fmt.strcpyEqu(ptr, "NO_AUTOMOUNT");
+        }
+        if (format.EMPTY_PATH) {
+            if (ptr != buf) {
+                ptr[0] = '|';
+                ptr += 1;
+            }
+            ptr += fmt.strcpyEqu(ptr, "EMPTY_PATH");
+        }
+    }
+    pub fn formatLength(format: @This()) usize {
+        var len: usize = 0;
+        if (format.SYMLINK_NOFOLLOW) {
+            len += 16;
+        }
+        if (format.REMOVEDIR) {
+            len += 9;
+        }
+        if (format.SYMLINK_FOLLOW) {
+            len += 14;
+        }
+        if (format.NO_AUTOMOUNT) {
+            len += 12;
+        }
+        if (format.EMPTY_PATH) {
+            len += 10;
+        }
+    }
+};
 pub const Device = extern struct {
     major: u32 = 0,
     minor: u8 = 0,
