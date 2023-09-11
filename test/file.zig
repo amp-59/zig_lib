@@ -22,17 +22,15 @@ const getcwd_spec: file.GetWorkingDirectorySpec = .{};
 const make_dir_spec: file.MakeDirSpec = .{};
 const make_node_spec: file.MakeNodeSpec = .{};
 const seek_spec: file.SeekSpec = .{};
-const create_spec: file.CreateSpec = .{
-    .options = .{ .read = true, .write = true, .append = false },
-};
+const create_spec: file.CreateSpec = .{};
+
 const path_spec: file.PathSpec = .{};
-const file_path_spec: file.PathSpec = .{ .options = .{ .directory = false } };
+const file_path_spec: file.PathSpec = .{};
 const link_spec: file.LinkSpec = .{};
 const copy_spec: file.CopySpec = .{};
 const send_spec: file.SendSpec = .{};
-const open_spec: file.OpenSpec = .{
-    .options = .{ .read_write = true, .append = true },
-};
+const open_spec: file.OpenSpec = .{};
+
 const open_dir_spec: file.OpenSpec = .{};
 const remove_dir_spec: file.RemoveDirSpec = .{};
 const unlink_spec: file.UnlinkSpec = .{};
@@ -52,9 +50,14 @@ const write_spec: file.WriteSpec = .{};
 const pipe_spec: file.MakePipeSpec = .{
     .options = .{ .close_on_exec = false },
 };
+
 const poll_spec: file.PollSpec = .{
     .errors = .{ .throw = sys.poll_errors },
 };
+
+const create_options = .{ .read_write = true, .append = false };
+const path_options = .{ .directory = true, .path = true };
+
 fn testPoll() !void {
     var pollfds: [3]file.PollFd = .{
         .{ .fd = 0, .expect = .{ .input = true } },
