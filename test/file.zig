@@ -82,8 +82,8 @@ pub fn testStatusExtended() !void {
 }
 pub fn testCopyFileRange() !void {
     testing.announce(@src());
-    const src_fd: usize = try meta.wrap(file.create(create_spec, pathname1, file.mode.regular));
-    const dest_fd: usize = try meta.wrap(file.create(create_spec, pathname2, file.mode.regular));
+    const src_fd: usize = try meta.wrap(file.create(create_spec, create_options, pathname1, file.mode.regular));
+    const dest_fd: usize = try meta.wrap(file.create(create_spec, create_options, pathname2, file.mode.regular));
     var rng: file.DeviceRandomBytes(65536) = .{};
     try meta.wrap(file.write(write_spec, src_fd, &rng.readCount(u8, 65536)));
     debug.assertEqual(u64, 0, try meta.wrap(file.seek(seek_spec, src_fd, 0, .set)));
@@ -103,8 +103,8 @@ pub fn testFileOperationsRound1() !void {
     _ = try file.getCwd(.{}, &buf);
     try meta.wrap(file.makeDir(make_dir_spec, test_dir ++ "file_test", file.mode.directory));
     try meta.wrap(file.removeDir(remove_dir_spec, test_dir ++ "file_test"));
-    const src_fd: usize = try meta.wrap(file.create(create_spec, test_dir ++ "file_test1", file.mode.regular));
-    const dest_fd: usize = try meta.wrap(file.create(create_spec, test_dir ++ "file_test2", file.mode.regular));
+    const src_fd: usize = try meta.wrap(file.create(create_spec, create_options, test_dir ++ "file_test1", file.mode.regular));
+    const dest_fd: usize = try meta.wrap(file.create(create_spec, create_options, test_dir ++ "file_test2", file.mode.regular));
     try meta.wrap(file.close(close_spec, dest_fd));
     try meta.wrap(file.close(close_spec, src_fd));
     try meta.wrap(file.unlink(unlink_spec, test_dir ++ "file_test1"));
@@ -249,7 +249,7 @@ fn testPathAt(dir_fd: usize) !u64 {
 }
 fn testCreate() !void {
     testing.announce(@src());
-    const fd: usize = try file.create(create_spec, test_dir ++ "file_test/file_test/file_test", file.mode.regular);
+    const fd: usize = try file.create(create_spec, create_options, test_dir ++ "file_test/file_test/file_test", file.mode.regular);
     try file.close(close_spec, fd);
 }
 fn testPathRegular() !void {
@@ -317,7 +317,7 @@ fn testPackedModeStruct() !void {
         .kind = .regular,
     };
     comptime var int: u16 = meta.leastBitCast(mode);
-    var fd: usize = try meta.wrap(file.create(create_spec, "./0123456789", mode));
+    var fd: usize = try meta.wrap(file.create(create_spec, create_options, "./0123456789", mode));
     try file.close(close_spec, fd);
     fd = try file.open(open_spec, "./0123456789");
     const st: file.Status = try file.getStatus(stat_spec, fd);
@@ -363,7 +363,7 @@ fn testStandardChannel() !void {
 }
 fn testLink() !void {
     testing.announce(@src());
-    const fd: usize = try file.create(create_spec, test_dir ++ "file_test", file.mode.regular);
+    const fd: usize = try file.create(create_spec, create_options, test_dir ++ "file_test", file.mode.regular);
     try file.close(close_spec, fd);
     try file.link(link_spec, test_dir ++ "file_test", test_dir ++ "file_test_link");
     try file.unlink(unlink_spec, test_dir ++ "file_test");
@@ -371,7 +371,7 @@ fn testLink() !void {
 }
 fn testSymbolicLink() !void {
     testing.announce(@src());
-    const fd: usize = try file.create(create_spec, test_dir ++ "file_test", file.mode.regular);
+    const fd: usize = try file.create(create_spec, create_options, test_dir ++ "file_test", file.mode.regular);
     try file.close(close_spec, fd);
     try file.symbolicLink(link_spec, test_dir ++ "file_test", test_dir ++ "file_test_link");
     try file.unlink(unlink_spec, test_dir ++ "file_test");
@@ -379,8 +379,8 @@ fn testSymbolicLink() !void {
 }
 fn testLinkAt() !void {
     testing.announce(@src());
-    const dir_fd: usize = try file.path(path_spec, test_dir);
-    const fd: usize = try file.createAt(create_spec, dir_fd, "file_test", file.mode.regular);
+    const dir_fd: usize = try file.path(path_spec, path_options, test_dir);
+    const fd: usize = try file.createAt(create_spec, create_options, dir_fd, "file_test", file.mode.regular);
     try file.close(close_spec, fd);
     try file.linkAt(link_spec, dir_fd, "file_test", dir_fd, "file_test_link");
     try file.unlinkAt(unlink_spec, dir_fd, "file_test");
@@ -389,8 +389,8 @@ fn testLinkAt() !void {
 }
 fn testSymbolicLinkAt() !void {
     testing.announce(@src());
-    const dir_fd: usize = try file.path(path_spec, test_dir);
-    const fd: usize = try file.createAt(create_spec, dir_fd, "file_test", file.mode.regular);
+    const dir_fd: usize = try file.path(path_spec, path_options, test_dir);
+    const fd: usize = try file.createAt(create_spec, create_options, dir_fd, "file_test", file.mode.regular);
     try file.close(close_spec, fd);
     try file.symbolicLinkAt(link_spec, test_dir ++ "file_test", dir_fd, "file_test_link");
     try file.unlinkAt(unlink_spec, dir_fd, "file_test");
