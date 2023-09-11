@@ -240,12 +240,12 @@ fn testMakeDirAt(dir_fd: usize) !void {
 }
 fn testPath() !void {
     testing.announce(@src());
-    var path_dir_fd: usize = try file.path(path_spec, test_dir ++ "file_test/file_test");
+    var path_dir_fd: usize = try file.path(path_spec, path_options, test_dir ++ "file_test/file_test");
     try file.close(close_spec, path_dir_fd);
 }
 fn testPathAt(dir_fd: usize) !u64 {
     testing.announce(@src());
-    return file.pathAt(path_spec, dir_fd, "file_test");
+    return file.pathAt(path_spec, path_options, dir_fd, "file_test");
 }
 fn testCreate() !void {
     testing.announce(@src());
@@ -254,7 +254,7 @@ fn testCreate() !void {
 }
 fn testPathRegular() !void {
     testing.announce(@src());
-    const path_reg_fd: usize = try meta.wrap(file.path(file_path_spec, test_dir ++ "file_test/file_test/file_test"));
+    const path_reg_fd: usize = try meta.wrap(file.path(file_path_spec, path_options, test_dir ++ "file_test/file_test/file_test"));
     try file.assertNot(stat_spec, path_reg_fd, .unknown);
     try file.assert(stat_spec, path_reg_fd, .regular);
     try meta.wrap(file.close(close_spec, path_reg_fd));
