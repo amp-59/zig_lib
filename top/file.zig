@@ -100,15 +100,41 @@ pub const Kind = enum(u4) {
     symbolic_link = MODE.R.IFLNK,
     const MODE = sys.S;
 };
-pub const Open = struct {
-    pub const Flags = packed struct(usize) {
+pub const Flags = struct {
+    pub const Socket = packed struct(usize) {
+        conn: enum(u2) {
+            tcp = 1,
+            udp = 2,
+            raw = 3,
+        },
+        zb2: u9 = 0,
+        non_block: bool = false,
+        zb12: u7 = 0,
+        close_on_exec: bool = false,
+        zb20: u44 = 0,
+    };
+    pub const Duplicate = packed struct(usize) {
+        zb0: u19 = 0,
+        close_on_exec: bool = false,
+        zb20: u44 = 0,
+    };
+    pub const Pipe = packed struct(usize) {
+        zb0: u11 = 0,
+        non_block: bool = false,
+        zb12: u2 = 0,
+        direct: bool = false,
+        zb15: u4 = 0,
+        close_on_exec: bool = false,
+        zb20: u44 = 0,
+    };
+    pub const Create = packed struct(usize) {
         write_only: bool = false,
         read_write: bool = false,
         zb2: u4 = 0,
-        create: bool = false,
+        create: bool = true,
         exclusive: bool = false,
         no_ctty: bool = true,
-        truncate: bool = false,
+        truncate: bool = true,
         append: bool = false,
         non_block: bool = false,
         dsync: bool = false,
@@ -124,28 +150,49 @@ pub const Open = struct {
         temporary: bool = false,
         zb23: u41 = 0,
     };
-    pub const Options = meta.EnumBitField(enum(u64) {
-        no_cache = OPEN.DIRECT,
-        no_atime = OPEN.NOATIME,
-        no_follow = OPEN.NOFOLLOW,
-        no_block = OPEN.NONBLOCK,
-        no_ctty = OPEN.NOCTTY,
-        close_on_exec = OPEN.CLOEXEC,
-        temporary = OPEN.TMPFILE,
-        directory = OPEN.DIRECTORY,
-        path = OPEN.PATH,
-        append = OPEN.APPEND,
-        truncate = OPEN.TRUNC,
-        create = OPEN.CREAT,
-        read_only = OPEN.RDONLY,
-        write_only = OPEN.WRONLY,
-        read_write = OPEN.RDWR,
-        exclusive = OPEN.EXCL,
-        //file_sync = OPEN.SYNC,
-        data_sync = OPEN.DSYNC,
-        const OPEN = sys.O;
-    });
+    pub const Open = packed struct(usize) {
+        write_only: bool = false,
+        read_write: bool = false,
+        zb2: u4 = 0,
+        create: bool = false,
+        exclusive: bool = false,
+        no_ctty: bool = true,
+        truncate: bool = false,
+        append: bool = false,
+        non_block: bool = true,
+        dsync: bool = false,
+        @"async": bool = false,
+        no_cache: bool = false,
+        zb15: u1 = 0,
+        directory: bool = false,
+        no_follow: bool = false,
+        no_atime: bool = false,
+        close_on_exec: bool = true,
+        zb20: u1 = 0,
+        path: bool = false,
+        temporary: bool = false,
+        zb23: u41 = 0,
+    };
 };
+pub const IOVec = struct {
+    addr: usize,
+    len: usize,
+    pub inline fn any(ptr: *const anyopaque) IOVec {
+        const Pointer = @TypeOf(ptr);
+        return .{
+            .addr = @intFromPtr(ptr),
+            .len = @sizeOf(@typeInfo(Pointer).child),
+        };
+    }
+    pub inline fn slice(ptr: anytype) IOVec {
+        const Pointer = @TypeOf(ptr);
+        return .{
+            .addr = @intFromPtr(ptr.ptr),
+            .len = ptr.len *% @sizeOf(@typeInfo(Pointer).child),
+        };
+    }
+};
+
 pub const Whence = enum(u64) { // set, cur, end
     set = SEEK.SET,
     cur = SEEK.CUR,
