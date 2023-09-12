@@ -80,7 +80,7 @@ fn testFindNameInPath(vars: [][*:0]u8) !void {
     };
     const open_spec: file.OpenSpec = .{};
     while (itr.next()) |path| {
-        const dir_fd: usize = file.path(.{}, path) catch continue;
+        const dir_fd: usize = file.path(.{}, .{ .directory = true, .path = true }, path) catch continue;
         defer file.close(.{ .errors = .{} }, dir_fd);
         const fd: usize = file.openAt(open_spec, .{ .no_follow = true }, dir_fd, "zig") catch continue;
         defer file.close(.{ .errors = .{} }, fd);
@@ -90,7 +90,7 @@ fn testFindNameInPath(vars: [][*:0]u8) !void {
         }
     }
     while (itr.next()) |path| {
-        const dir_fd: usize = file.path(.{}, path) catch continue;
+        const dir_fd: usize = file.path(.{}, .{ .directory = true, .path = true }, path) catch continue;
         defer file.close(.{ .errors = .{} }, dir_fd);
         const fd: usize = file.openAt(open_spec, .{ .no_follow = true }, dir_fd, "zig") catch continue;
         defer file.close(.{ .errors = .{} }, fd);
