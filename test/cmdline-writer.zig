@@ -14,7 +14,7 @@ pub usingnamespace zl.start;
 
 pub const logging_override: debug.Logging.Override = spec.logging.override.verbose;
 
-const Node = build.GenericNode(.{ .options = .{
+pub const Builder = build.GenericBuilder(.{ .options = .{
     .max_cmdline_len = null,
 } });
 
@@ -50,10 +50,10 @@ fn makeArgPtrs(allocator: *mem.SimpleAllocator, args: [:0]u8) [][*:0]u8 {
 }
 pub const exec_mode: build.ExecMode = .Run;
 fn testManyCompileOptionsWithArguments(args: anytype, vars: anytype) !void {
-    var address_space: Node.AddressSpace = .{};
-    var thread_space: Node.ThreadSpace = .{};
+    var address_space: Builder.AddressSpace = .{};
+    var thread_space: Builder.ThreadSpace = .{};
     var allocator: build.Allocator = build.Allocator.init_arena(
-        Node.AddressSpace.arena(Node.specification.options.max_thread_count),
+        Builder.AddressSpace.arena(Builder.specification.options.max_thread_count),
     );
 
     var path: build.Path = .{ .names = @constCast(&[_][:0]const u8{"any"}) };
@@ -71,14 +71,13 @@ fn testManyCompileOptionsWithArguments(args: anytype, vars: anytype) !void {
         .code_model = .default,
         .color = .auto,
         .compiler_rt = false,
-        .cpu = "x86_64",
-        .dynamic = true,
-        .dirafter = "after",
+        //.cpu = "x86_64",
+        //.dynamic = true,
+        //.dirafter = "after",
         .dynamic_linker = "/usr/bin/ld",
         .library_directory = &.{ "/usr/lib64", "/usr/lib32" },
         .include = &.{ "/usr/include", "/usr/include/c++" },
         .each_lib_rpath = true,
-        //.entry = "_start",
         .error_tracing = true,
         .format = .elf,
         .verbose_air = true,
@@ -87,25 +86,25 @@ fn testManyCompileOptionsWithArguments(args: anytype, vars: anytype) !void {
         .lflags = &.{.nodelete},
         .mode = .Debug,
         .strip = true,
-        .dependencies = &.{
-            .{ .name = "zig_lib" },
-            .{ .name = "@build" },
-        },
-        .modules = &.{
-            .{ .name = "zig_lib", .path = builtin.lib_root ++ "/zig_lib.zig" },
-            .{ .name = "@build", .path = "./build.zig" },
-        },
+        //.dependencies = &.{
+        //    .{ .name = "zig_lib" },
+        //    .{ .name = "@build" },
+        //},
+        //.modules = &.{
+        //    .{ .name = "zig_lib", .path = builtin.lib_root ++ "/zig_lib.zig" },
+        //    .{ .name = "@build", .path = "./build.zig" },
+        //},
     };
     if (args.len < 5) {
         proc.exitError(error.MissingEnvironmentPaths, 2);
     }
-    const toplevel: *Node = Node.init(&allocator, args, vars);
-    const g0: *Node = toplevel.addGroup(&allocator, "g0");
-    const t0: *Node = g0.addBuild(&allocator, build_cmd, "target", @src().file);
-    const t1: *Node = g0.addArchive(&allocator, .{ .operation = .r, .create = true }, "lib0", &.{t0});
-    _ = t1;
-    Node.updateCommands(&allocator, toplevel);
-    Node.processCommands(&address_space, &thread_space, &allocator, toplevel);
+    const toplevel: *build.Node = build.Node.create(&allocator, "toplevel", args, vars);
+    const g0: *build.Node = toplevel.addGroup(&allocator, "g0", .{});
+    const t0: *build.Node = g0.addBuild(&allocator, build_cmd, "target", @src().file);
+    _ = t0;
+    //const t1: *build.Node = g0.addArchive(&allocator, .{ .operation = .r, .create = true }, "lib0", &.{t0});
+    Builder.updateCommands(&allocator, toplevel);
+    Builder.processCommands(&address_space, &thread_space, &allocator, toplevel);
 }
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     try testManyCompileOptionsWithArguments(args, vars);
