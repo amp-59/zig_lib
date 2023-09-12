@@ -50,7 +50,7 @@ fn testOtherContainerDecls() void {
     gen.containerDeclsToBitField(perf.Branch.Private, usize, "Private");
 }
 pub fn main() void {
-    var b: bool = mem.unstable(bool, false);
+    var b: bool = mem.unstable(bool, true);
     if (b) gen.allPanicDeclarations();
     if (b) testMemoryContainerDecls();
     if (b) testFileContainerDecls();

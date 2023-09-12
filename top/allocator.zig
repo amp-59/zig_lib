@@ -593,16 +593,15 @@ pub fn GenericRtArenaAllocator(comptime spec: RtArenaAllocatorSpec) type {
     });
 }
 fn GenericIrreversibleInterface(comptime Allocator: type) type {
-    return struct {
+    const T = struct {
         const Graphics = GenericArenaAllocatorGraphics(Allocator);
-        pub const Save = struct { usize };
         pub inline fn create(allocator: *Allocator, comptime s_child: type) Allocator.allocate_payload(*s_child) {
             @setRuntimeSafety(false);
             defer if (Allocator.allocator_spec.options.trace_state) {
                 Graphics.showWithReference(allocator, @src());
             };
             const s_ab_addr: usize = try meta.wrap(
-                allocator.allocateInternal(@sizeOf(s_child), @alignOf(s_child)),
+                allocator.allocateRaw(@sizeOf(s_child), @alignOf(s_child)),
             );
             const ret: *s_child = @ptrFromInt(s_ab_addr);
             if (Allocator.allocator_spec.logging.allocate) {
@@ -616,7 +615,7 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
                 Graphics.showWithReference(allocator, @src());
             };
             const s_ab_addr: usize = try meta.wrap(
-                allocator.allocateInternal(@sizeOf(s_child) *% count, @alignOf(s_child)),
+                allocator.allocateRaw(@sizeOf(s_child) *% count, @alignOf(s_child)),
             );
             const ptr: [*]s_child = @ptrFromInt(s_ab_addr);
             const ret: []s_child = ptr[0..count];
@@ -631,7 +630,7 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
                 Graphics.showWithReference(allocator, @src());
             };
             const s_ab_addr: usize = try meta.wrap(
-                allocator.reallocateInternal(@intFromPtr(buf.ptr), buf.len *% @sizeOf(s_child), count *% @sizeOf(s_child), @alignOf(s_child)),
+                allocator.reallocateRaw(@intFromPtr(buf.ptr), buf.len *% @sizeOf(s_child), count *% @sizeOf(s_child), @alignOf(s_child)),
             );
             const ptr: [*]s_child = @ptrFromInt(s_ab_addr);
             const ret: []s_child = ptr[0..count];
@@ -649,7 +648,7 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
             defer if (Allocator.allocator_spec.options.trace_state) {
                 Graphics.showWithReference(allocator, @src());
             };
-            const s_ab_addr: usize = allocator.allocateInternal(@sizeOf(s_child), s_alignment);
+            const s_ab_addr: usize = allocator.allocateRaw(@sizeOf(s_child), s_alignment);
             const ptr: *align(s_alignment) s_child = @ptrFromInt(s_ab_addr);
             if (Allocator.allocator_spec.logging.allocate) {
                 showCreate(s_child, ptr);
@@ -666,7 +665,7 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
             defer if (Allocator.allocator_spec.options.trace_state) {
                 Graphics.showWithReference(allocator, @src());
             };
-            const s_ab_addr: usize = allocator.allocateInternal(@sizeOf(s_child) *% count, s_alignment);
+            const s_ab_addr: usize = allocator.allocateRaw(@sizeOf(s_child) *% count, s_alignment);
             const ptr: [*]align(s_alignment) s_child = @ptrFromInt(s_ab_addr);
             const ret: []align(s_alignment) s_child = ptr[0..count];
             if (Allocator.allocator_spec.logging.allocate) {
@@ -675,23 +674,20 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
             return ret;
         }
         pub inline fn deallocate(allocator: *Allocator, comptime s_child: type, buf: []s_child) void {
-            allocator.deallocateInternal(@intFromPtr(buf.ptr), buf.len *% @sizeOf(s_child));
+            allocator.deallocateRaw(@intFromPtr(buf.ptr), buf.len *% @sizeOf(s_child));
         }
-        pub inline fn save(allocator: *const Allocator) Save {
-            return .{allocator.unallocated_byte_address()};
+        pub inline fn save(allocator: *const Allocator) usize {
+            return allocator.ub_addr;
         }
-        pub inline fn restore(allocator: *Allocator, state: Save) void {
+        pub inline fn restore(allocator: *Allocator, state: usize) void {
             defer Graphics.showWithReference(allocator, @src());
-            allocator.ub_addr = state[0];
+            allocator.ub_addr = state;
         }
         inline fn alignAbove(value: usize, alignment: usize) usize {
             const mask: usize = alignment -% 1;
             return (value +% mask) & ~mask;
         }
-        pub const allocateRaw = allocateInternal;
-        pub const reallocateRaw = reallocateInternal;
-        pub const deallocateRaw = deallocateInternal;
-        fn allocateInternal(
+        pub fn allocateRaw(
             allocator: *Allocator,
             s_aligned_bytes: usize,
             s_alignment: usize,
@@ -710,7 +706,7 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
             }
             return s_ab_addr;
         }
-        fn reallocateInternal(
+        pub fn reallocateRaw(
             allocator: *Allocator,
             s_ab_addr: usize,
             s_aligned_bytes: usize,
@@ -726,7 +722,7 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
                 allocator.increment(t_up_addr);
                 return s_ab_addr;
             }
-            const t_ab_addr: usize = try meta.wrap(allocator.allocateInternal(t_aligned_bytes, align_of));
+            const t_ab_addr: usize = try meta.wrap(allocator.allocateRaw(t_aligned_bytes, align_of));
             mach.addrcpy(t_ab_addr, s_ab_addr, s_aligned_bytes);
             if (Allocator.allocator_spec.options.count_allocations) {
                 allocator.metadata.count +%= 1;
@@ -736,7 +732,7 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
             }
             return t_ab_addr;
         }
-        fn deallocateInternal(
+        pub fn deallocateRaw(
             allocator: *Allocator,
             s_aligned: usize,
             s_aligned_bytes: usize,
@@ -755,10 +751,21 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
         pub fn addGeneric(allocator: *Allocator, size: usize, init_len: usize, ptr: *usize, max_len: *usize, len: usize) usize {
             const new_max_len: usize = len +% 2;
             if (max_len.* == 0) {
-                ptr.* = allocateInternal(allocator, size *% init_len, 8);
+                ptr.* = allocateRaw(allocator, size *% init_len, 8);
                 max_len.* = init_len;
             } else if (len == max_len.*) {
-                ptr.* = reallocateInternal(allocator, ptr.*, size *% max_len.*, size *% new_max_len, 8);
+                ptr.* = reallocateRaw(allocator, ptr.*, size *% max_len.*, size *% new_max_len, 8);
+                max_len.* = new_max_len;
+            }
+            return ptr.* +% (size *% len);
+        }
+        pub fn addGenericSize(allocator: *Allocator, comptime Size: type, size: usize, init_len: Size, ptr: *usize, max_len: *Size, len: Size) usize {
+            const new_max_len: Size = len +% 2;
+            if (max_len.* == 0) {
+                ptr.* = allocateRaw(allocator, size *% init_len, 8);
+                max_len.* = init_len;
+            } else if (len == max_len.*) {
+                ptr.* = reallocateRaw(allocator, ptr.*, size *% max_len.*, size *% new_max_len, 8);
                 max_len.* = new_max_len;
             }
             return ptr.* +% (size *% len);
@@ -811,6 +818,7 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
             );
         }
     };
+    return T;
 }
 const Journal = struct {
     lists: struct {
