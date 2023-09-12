@@ -103,9 +103,9 @@ pub fn strlen(dest: [*]u8, src: [*]u8) usize {
 }
 pub fn stringLiteralChar(byte: u8) []const u8 {
     switch (byte) {
-        inline else => |value| {
+        inline else => |value| return comptime blk: {
             const res = @typeName([:&[1]u8{value}][]const u8);
-            return res[3 .. res.len -% 12];
+            break :blk res[3 .. res.len -% 12];
         },
     }
 }
@@ -121,12 +121,13 @@ pub const StringLiteralFormat = struct {
     }
     pub fn formatWritebuf(format: Format, buf: [*]u8) usize {
         buf[0] = '"';
-        var ptr: [*]u8 = buf[1..];
+        var ptr: [*]u8 = buf + 1;
         for (format.value) |byte| {
-            ptr = strcpyEqu(stringLiteralChar(byte));
+            ptr = strcpyEqu(ptr, stringLiteralChar(byte));
         }
         ptr[0] = '"';
         ptr += 1;
+        return strlen(ptr, buf);
     }
     pub fn formatLength(format: Format) usize {
         var len: usize = 2;
