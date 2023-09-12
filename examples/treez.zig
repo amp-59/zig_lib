@@ -259,7 +259,7 @@ fn writeAndWalk(
     name: [:0]const u8,
     depth: u64,
 ) !void {
-    const save: Allocator0.Save = allocator_0.save();
+    const save: usize = allocator_0.save();
     defer allocator_0.restore(save);
     var dir: DirStream = try DirStream.initAt(allocator_0, dir_fd, name);
     defer dir.deinit(allocator_0);
