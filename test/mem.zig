@@ -10,7 +10,9 @@ const spec = zl.spec;
 const debug = zl.debug;
 const builtin = zl.builtin;
 const testing = zl.testing;
+
 pub usingnamespace zl.start;
+
 pub const runtime_assertions: bool = true;
 pub const logging_default: debug.Logging.Default = spec.logging.default.verbose;
 pub const AddressSpace = spec.address_space.regular_128;
@@ -245,7 +247,7 @@ fn testUtilityTestFunctions() !void {
     try debug.expectEqual(u64, 8, mem.indexOfNearestEqualMany(u8, "8", "0123456789", 8).?);
     try debug.expectEqual(u64, 4, mem.indexOfNearestEqualMany(u8, "4", "0123456789", 4).?);
     try debug.expectEqual(u64, 0, mem.indexOfNearestEqualMany(u8, "0123456789", "0123456789", 0).?);
-
+    try debug.expect(mem.testEqualManyIn(u8, "__anon", "top.mem.GenericOptionalArrays.U.set__anon_4804"));
     try debug.expectEqual(u64, @as(u64, @bitCast([8]u8{ 0, 0, 0, 0, 0, 5, 5, 5 })), mem.readIntVar(u64, &[3]u8{ 5, 5, 5 }, 3));
 }
 

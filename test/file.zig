@@ -77,7 +77,7 @@ const pathname_link2: [:0]const u8 = test_dir ++ file_name ++ "2";
 pub fn testStatusExtended() !void {
     const Fields = @TypeOf(statx_spec.options.fields);
     const nilx_spec: file.StatusExtendedSpec = comptime spec.add(statx_spec, .{ .options = .{ .fields = builtin.zero(Fields) } });
-    var st: file.StatusExtended = try meta.wrap(file.getStatusExtended(nilx_spec, 0, "/home"));
+    var st: file.StatusExtended = try meta.wrap(file.getStatusExtended(nilx_spec, .{}, 0, "/home"));
     _ = st;
 }
 pub fn testCopyFileRange() !void {
@@ -382,7 +382,7 @@ fn testLinkAt() !void {
     const dir_fd: usize = try file.path(path_spec, path_options, test_dir);
     const fd: usize = try file.createAt(create_spec, create_options, dir_fd, "file_test", file.mode.regular);
     try file.close(close_spec, fd);
-    try file.linkAt(link_spec, dir_fd, "file_test", dir_fd, "file_test_link");
+    try file.linkAt(link_spec, .{}, dir_fd, "file_test", dir_fd, "file_test_link");
     try file.unlinkAt(unlink_spec, dir_fd, "file_test");
     try file.unlinkAt(unlink_spec, dir_fd, "file_test_link");
     try file.close(close_spec, dir_fd);
