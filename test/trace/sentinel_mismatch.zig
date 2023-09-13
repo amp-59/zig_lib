@@ -3,6 +3,7 @@ const zl = @import("../../zig_lib.zig");
 pub usingnamespace zl.start;
 
 pub const panic_return_value: u8 = 0;
+pub const want_stack_traces: bool = true;
 
 pub const trace: zl.debug.Trace = .{
     .options = .{
