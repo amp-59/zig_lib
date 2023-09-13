@@ -531,7 +531,7 @@ pub fn testRelease(comptime AddressSpace: type, address_space: *AddressSpace, in
     const ret: bool = releaseUnset(AddressSpace, address_space, index);
     if (ret) {
         if (logging.Release) {
-            about.arenaReleaseNotice(index, lb_addr, up_addr, spec.label);
+            about.aboutIndexLbAddrUpAddrLabelNotice(about.rel_s, index, lb_addr, up_addr, spec.label);
         }
         if (spec.options.require_unmap) {
             try meta.wrap(releaseUnmap(AddressSpace, address_space));
@@ -547,7 +547,7 @@ pub fn tryReleaseStatic(comptime AddressSpace: type, address_space: *AddressSpac
     const ret: bool = releaseStaticUnset(AddressSpace, address_space, index);
     if (ret) {
         if (logging.Release) {
-            about.arenaReleaseNotice(index, lb_addr, up_addr, spec.label);
+            about.aboutIndexLbAddrUpAddrLabelNotice(about.rel_s, index, lb_addr, up_addr, spec.label);
         }
     }
     return ret;
@@ -559,7 +559,7 @@ pub fn testReleaseElementary(comptime AddressSpace: type, address_space: *Addres
     const ret: bool = releaseElementaryUnset(AddressSpace, address_space);
     if (ret) {
         if (spec.logging.release.Release) {
-            about.arenaReleaseNotice(null, lb_addr, up_addr, spec.label);
+            about.aboutIndexLbAddrUpAddrLabelNotice(about.rel_s, null, lb_addr, up_addr, spec.label);
         }
     }
     return ret;
