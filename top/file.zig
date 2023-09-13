@@ -895,15 +895,14 @@ pub fn execPath(comptime exec_spec: ExecuteSpec, pathname: [:0]const u8, args: e
     exec_spec.errors,
     exec_spec.return_type,
 ) {
-    const filename_buf_addr: u64 = @intFromPtr(pathname.ptr);
-    const args_addr: u64 = @intFromPtr(args.ptr);
-    const vars_addr: u64 = @intFromPtr(vars.ptr);
     const logging: debug.Logging.AttemptError = comptime exec_spec.logging.override();
     if (logging.Attempt) {
         about.executeNotice(pathname, args);
     }
-    if (meta.wrap(sys.call(.execve, exec_spec.errors, exec_spec.return_type, .{ filename_buf_addr, args_addr, vars_addr }))) {
-        @panic("reached unreachable");
+    if (meta.wrap(sys.call(.execve, exec_spec.errors, exec_spec.return_type, .{
+        @intFromPtr(pathname.ptr), @intFromPtr(args.ptr), @intFromPtr(vars.ptr),
+    }))) {
+        proc.exitFault("reached unreachable", 2);
     } else |execve_error| {
         if (logging.Error and logging.Attempt) {
             about.executeErrorBrief(execve_error, pathname);
