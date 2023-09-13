@@ -275,6 +275,7 @@ pub const WaitSpec = struct {
         any,
     };
     fn pid(id: For) u64 {
+        @setRuntimeSafety(builtin.is_safe);
         const val: isize = switch (id) {
             .ppid => 0,
             .any => -1,
@@ -868,7 +869,7 @@ pub noinline fn clone(comptime spec: CloneSpec, stack_addr: u64, stack_len: u64,
         return;
     }
     if (spec.return_type != noreturn) {
-        return @as(spec.return_type, @intCast(rc));
+        return @intCast(rc);
     }
     unreachable;
 }
@@ -1761,7 +1762,7 @@ pub fn exitGroup(rc: u8) noreturn {
     asm volatile (
         \\syscall
         :
-        : [sysno] "{rax}" (231), // linux sys_exit_group
+        : [sysno] "{rax}" (if (builtin.never_exit_group) 60 else 231), // linux sys_exit_group
           [arg1] "{rdi}" (rc), // exit code
     );
     unreachable;
