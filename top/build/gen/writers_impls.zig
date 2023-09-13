@@ -8,7 +8,7 @@ pub usingnamespace config;
 pub const context = .Lib;
 pub fn main() !void {
     var allocator: mem.SimpleAllocator = .{};
-    defer allocator.unmap();
+    defer allocator.unmapAll();
     const array: *common.Array = allocator.create(common.Array);
     const len: usize = try gen.readFile(.{ .return_type = usize }, config.writers_template_path, array.referAllUndefined());
     array.define(len);
