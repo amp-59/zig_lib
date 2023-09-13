@@ -890,13 +890,6 @@ pub const DuplicateSpec = struct {
     const Options = struct {
         close_on_exec: bool = false,
     };
-    fn flags(comptime dup3_spec: Specification) Open.Options {
-        var ret: Open.Options = .{ .val = 0 };
-        if (dup3_spec.options.close_on_exec) {
-            ret.set(.close_on_exec);
-        }
-        return ret;
-    }
 };
 pub fn execPath(comptime exec_spec: ExecuteSpec, pathname: [:0]const u8, args: exec_spec.args_type, vars: exec_spec.vars_type) sys.ErrorUnion(
     exec_spec.errors,
