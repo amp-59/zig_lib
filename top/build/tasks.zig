@@ -2,8 +2,8 @@ const fmt = @import("../fmt.zig");
 const mem = @import("../mem.zig");
 const debug = @import("../debug.zig");
 const parse = @import("../parse.zig");
+const types = @import("../build.zig");
 const builtin = @import("../builtin.zig");
-const types = @import("./types.zig");
 pub const PathUnion = union(enum) {
     yes: ?types.Path,
     no,
@@ -221,6 +221,8 @@ pub const BuildCommand = struct {
     debug_compiler_errors: bool = false,
     /// Enable dumping of the linker's state in JSON
     debug_link_snapshot: bool = false,
+    pub const size_of: comptime_int = @sizeOf(@This());
+    pub const align_of: comptime_int = @alignOf(@This());
     pub fn formatWriteBuf(cmd: *types.BuildCommand, zig_exe: []const u8, files: []const types.Path, buf: [*]u8) usize {
         @setRuntimeSafety(false);
         var ptr: [*]u8 = buf;
@@ -2636,6 +2638,8 @@ pub const FormatCommand = struct {
     ast_check: bool = false,
     /// Exclude file or directory from formatting
     exclude: ?[]const u8 = null,
+    pub const size_of: comptime_int = @sizeOf(@This());
+    pub const align_of: comptime_int = @alignOf(@This());
     pub fn formatWriteBuf(cmd: *types.FormatCommand, zig_exe: []const u8, pathname: types.Path, buf: [*]u8) usize {
         @setRuntimeSafety(false);
         var ptr: [*]u8 = buf;
@@ -2814,6 +2818,8 @@ pub const ArchiveCommand = struct {
         s = 4,
         x = 5,
     },
+    pub const size_of: comptime_int = @sizeOf(@This());
+    pub const align_of: comptime_int = @alignOf(@This());
     pub fn formatWriteBuf(cmd: *types.ArchiveCommand, zig_exe: []const u8, files: []const types.Path, buf: [*]u8) usize {
         @setRuntimeSafety(false);
         var ptr: [*]u8 = buf;
@@ -3077,6 +3083,8 @@ pub const ObjcopyCommand = struct {
     debug_only: bool = false,
     add_gnu_debuglink: ?[]const u8 = null,
     extract_to: ?[]const u8 = null,
+    pub const size_of: comptime_int = @sizeOf(@This());
+    pub const align_of: comptime_int = @alignOf(@This());
     pub fn formatWriteBuf(cmd: *types.ObjcopyCommand, zig_exe: []const u8, file: types.Path, buf: [*]u8) usize {
         @setRuntimeSafety(false);
         var ptr: [*]u8 = buf;
@@ -3281,6 +3289,8 @@ pub const HarecCommand = struct {
     tags: ?[]const []const u8 = null,
     typedefs: bool = false,
     namespace: bool = false,
+    pub const size_of: comptime_int = @sizeOf(@This());
+    pub const align_of: comptime_int = @alignOf(@This());
     pub fn formatWriteBuf(cmd: *types.HarecCommand, harec_exe: []const u8, buf: [*]u8) usize {
         @setRuntimeSafety(false);
         var ptr: [*]u8 = buf;
@@ -3533,6 +3543,8 @@ pub const TableGenCommand = struct {
     gen_riscv_target_def: bool = false,
     /// Output file
     output: ?[]const u8 = null,
+    pub const size_of: comptime_int = @sizeOf(@This());
+    pub const align_of: comptime_int = @alignOf(@This());
     pub fn formatWriteBuf(cmd: *types.TableGenCommand, buf: [*]u8) usize {
         @setRuntimeSafety(false);
         var ptr: [*]u8 = buf;
