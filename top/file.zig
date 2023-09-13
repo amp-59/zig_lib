@@ -362,24 +362,12 @@ pub const Term = opaque {
     });
 };
 pub const Socket = struct {
-    pub const Options = meta.EnumBitField(enum(u64) {
-        non_block = SOCK.NONBLOCK,
-        close_on_exec = SOCK.CLOEXEC,
-        const SOCK = sys.SOCK;
-    });
-    pub const Type = struct {};
     pub const Domain = enum(u16) {
         unix = AF.UNIX,
         ipv4 = AF.INET,
         ipv6 = AF.INET6,
         netlink = AF.NETLINK,
         const AF = sys.AF;
-    };
-    pub const Connection = enum(u64) {
-        tcp = SOCK.STREAM,
-        udp = SOCK.DGRAM,
-        raw = SOCK.RAW,
-        const SOCK = sys.SOCK;
     };
     pub const AddressFamily = enum(u16) {
         ipv4 = AF.INET,
@@ -588,11 +576,12 @@ pub const StatusExtended = extern struct {
         return st.mode.other.read;
     }
 };
-pub const DirectoryEntry = extern struct {
+pub const DirectoryEntry = packed struct {
     inode: u64,
     offset: u64,
     reclen: u16,
-    kind: u8,
+    zb: u4,
+    kind: Kind,
     array: u8,
 };
 pub const TerminalAttributes = extern struct {
