@@ -956,16 +956,15 @@ pub fn execAt(comptime exec_spec: ExecuteSpec, dir_fd: usize, name: [:0]const u8
         return execve_error;
     }
 }
-pub fn read(comptime spec: ReadSpec, fd: u64, read_buf: []spec.child) sys.ErrorUnion(spec.errors, spec.return_type) {
-    const read_buf_addr: u64 = @intFromPtr(read_buf.ptr);
-    const read_count_mul: u64 = @sizeOf(spec.child);
+pub fn read(comptime spec: ReadSpec, fd: usize, read_buf: []spec.child) sys.ErrorUnion(spec.errors, spec.return_type) {
+    @setRuntimeSafety(builtin.is_safe);
     const logging: debug.Logging.SuccessError = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.read, spec.errors, u64, .{ fd, read_buf_addr, read_buf.len *% read_count_mul }))) |ret| {
+    if (meta.wrap(sys.call(.read, spec.errors, usize, .{ fd, @intFromPtr(read_buf.ptr), read_buf.len *% @sizeOf(spec.child) }))) |ret| {
         if (logging.Success) {
-            about.aboutFdMaxLenLenNotice(about.read_s, fd, read_buf.len *% read_count_mul, ret);
+            about.aboutFdMaxLenLenNotice(about.read_s, fd, read_buf.len *% @sizeOf(spec.child), ret);
         }
         if (spec.return_type != void) {
-            return @as(spec.return_type, @intCast(@divExact(ret, read_count_mul)));
+            return @truncate(@divExact(ret, @sizeOf(spec.child)));
         }
     } else |read_error| {
         if (logging.Error) {
@@ -974,19 +973,18 @@ pub fn read(comptime spec: ReadSpec, fd: u64, read_buf: []spec.child) sys.ErrorU
         return read_error;
     }
 }
-pub inline fn readOne(comptime spec: ReadSpec, fd: u64, read_buf: *spec.child) sys.ErrorUnion(spec.errors, spec.return_type) {
+pub inline fn readOne(comptime spec: ReadSpec, fd: usize, read_buf: *spec.child) sys.ErrorUnion(spec.errors, spec.return_type) {
     return read(spec, fd, @as([*]spec.child, @ptrCast(read_buf))[0..1]);
 }
-pub fn write(comptime spec: WriteSpec, fd: u64, write_buf: []const spec.child) sys.ErrorUnion(spec.errors, spec.return_type) {
-    const write_buf_addr: u64 = @intFromPtr(write_buf.ptr);
-    const write_count_mul: u64 = @sizeOf(spec.child);
+pub fn write(comptime spec: WriteSpec, fd: usize, write_buf: []const spec.child) sys.ErrorUnion(spec.errors, spec.return_type) {
+    @setRuntimeSafety(builtin.is_safe);
     const logging: debug.Logging.SuccessError = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.write, spec.errors, u64, .{ fd, write_buf_addr, write_buf.len *% write_count_mul }))) |ret| {
+    if (meta.wrap(sys.call(.write, spec.errors, u64, .{ fd, @intFromPtr(write_buf.ptr), write_buf.len *% @sizeOf(spec.child) }))) |ret| {
         if (logging.Success) {
             about.aboutFdLenNotice(about.write_s, fd, ret);
         }
         if (spec.return_type != void) {
-            return @as(spec.return_type, @intCast(@divExact(ret, write_count_mul)));
+            return @truncate(@divExact(ret, @sizeOf(spec.child)));
         }
     } else |write_error| {
         if (logging.Error) {
