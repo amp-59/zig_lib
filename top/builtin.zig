@@ -39,6 +39,7 @@ pub const message_indent: u8 = define("message_indent", u8, 16);
 /// Sequence used to undo `message_style` if defined.
 pub const message_no_style: [:0]const u8 = "\x1b[0m";
 
+pub const never_exit_group: bool = define("never_exit_group", bool, false);
 pub const have_stack_traces: bool = define("have_stack_traces", bool, false);
 pub const want_stack_traces: bool = define("want_stack_traces", bool, builtin.mode == .Debug and !builtin.strip_debug_info);
 
@@ -797,16 +798,6 @@ pub inline fn identity(any: anytype) @TypeOf(any) {
 }
 pub inline fn equ(comptime T: type, dst: *T, src: T) void {
     dst.* = src;
-}
-pub inline fn arrcpy(buf: [*]u8, comptime any: anytype) u64 {
-    @as(*@TypeOf(any), @ptrCast(buf)).* = any;
-    return any.len;
-}
-pub inline fn memcpy(buf: [*]u8, slice: []const u8) void {
-    mach.memcpy(buf, slice.ptr, slice.len);
-}
-fn @"test"(b: bool) bool {
-    return b;
 }
 pub fn intToPtr(comptime P: type, address: u64) P {
     return @as(P, @ptrFromInt(address));
@@ -1937,6 +1928,7 @@ pub const parse = struct {
             };
         }
         fn invalLen(itr: *TokenIterator) u8 {
+            @setRuntimeSafety(false);
             const byte: u8 = itr.buf[itr.buf_pos];
             if (byte < 0x80) {
                 // Removed carriage return tolerance.
