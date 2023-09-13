@@ -598,38 +598,14 @@ pub const TerminalAttributes = extern struct {
     }
 };
 pub const OpenSpec = struct {
-    options: Options = .{},
-    return_type: type = u64,
+    return_type: type = usize,
     errors: sys.ErrorPolicy = .{ .throw = sys.open_errors },
     logging: debug.Logging.AcquireError = .{},
     const Specification = @This();
-    pub const Options = packed struct(usize) {
-        write_only: bool = false,
-        read_write: bool = false,
-        zb2: u4 = 0,
-        create: bool = false,
-        exclusive: bool = false,
-        no_ctty: bool = true,
-        truncate: bool = false,
-        append: bool = false,
-        non_block: bool = false,
-        dsync: bool = false,
-        @"async": bool = false,
-        no_cache: bool = false,
-        zb15: u1 = 0,
-        directory: bool = false,
-        no_follow: bool = false,
-        no_atime: bool = false,
-        close_on_exec: bool = true,
-        zb20: u1 = 0,
-        path: bool = false,
-        temporary: bool = false,
-        zb23: u41 = 0,
-    };
 };
 pub const ReadSpec = struct {
     child: type = u8,
-    return_type: type = u64,
+    return_type: type = usize,
     errors: sys.ErrorPolicy = .{ .throw = sys.read_errors },
     logging: debug.Logging.SuccessError = .{},
 };
@@ -665,13 +641,13 @@ pub const AccessSpec = struct {
 };
 pub const SeekSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.seek_errors },
-    return_type: type = u64,
+    return_type: type = usize,
     logging: debug.Logging.SuccessError = .{},
 };
 pub const ReadExtraSpec = struct {
     child: type = u8,
     options: Options,
-    return_type: type = u64,
+    return_type: type = usize,
     errors: sys.ErrorPolicy = .{ .throw = sys.read_errors },
     logging: debug.Logging.SuccessError = .{},
     const Options = packed struct(u2) {
@@ -698,25 +674,10 @@ pub const PollSpec = struct {
     logging: debug.Logging.AttemptSuccessError = .{},
 };
 pub const StatusSpec = struct {
-    options: Options = .{},
     errors: sys.ErrorPolicy = .{ .throw = sys.stat_errors },
     logging: debug.Logging.SuccessErrorFault = .{},
     return_type: type = void,
     const Specification = @This();
-    const Options = struct {
-        no_follow: bool = false,
-        empty_path: bool = true,
-    };
-    fn flags(comptime stat_spec: Specification) At {
-        var flags_bitfield: At = .{ .val = 0 };
-        if (stat_spec.options.no_follow) {
-            flags_bitfield.set(.no_follow);
-        }
-        if (stat_spec.options.empty_path) {
-            flags_bitfield.set(.empty_path);
-        }
-        comptime return flags_bitfield;
-    }
 };
 pub const StatusExtendedSpec = struct {
     options: Options = .{},
@@ -730,19 +691,6 @@ pub const StatusExtendedSpec = struct {
         no_auto_mount: bool = true,
         fields: StatusExtended.Fields = .{},
     };
-    pub fn flags(comptime statx_spec: Specification) At {
-        var flags_bitfield: At = .{ .val = 0 };
-        if (statx_spec.options.no_follow) {
-            flags_bitfield.set(.no_follow);
-        }
-        if (statx_spec.options.no_auto_mount) {
-            flags_bitfield.set(.no_auto_mount);
-        }
-        if (statx_spec.options.empty_path) {
-            flags_bitfield.set(.empty_path);
-        }
-        comptime return flags_bitfield;
-    }
 };
 pub const MakePipeSpec = struct {
     options: Options = .{},
@@ -755,40 +703,12 @@ pub const MakePipeSpec = struct {
         direct: bool = false,
         non_block: bool = false,
     };
-    pub fn flags(comptime pipe2_spec: Specification) Open.Options {
-        var flags_bitfield: Open.Options = .{ .val = 0 };
-        if (pipe2_spec.options.close_on_exec) {
-            flags_bitfield.set(.close_on_exec);
-        }
-        if (pipe2_spec.options.direct) {
-            flags_bitfield.set(.direct);
-        }
-        if (pipe2_spec.options.non_block) {
-            flags_bitfield.set(.non_block);
-        }
-        comptime return flags_bitfield;
-    }
 };
 pub const SocketSpec = struct {
-    options: Options = .{},
     errors: sys.ErrorPolicy = .{ .throw = sys.socket_errors },
     logging: debug.Logging.AcquireError = .{},
     return_type: type = u64,
     const Specification = @This();
-    pub const Options = packed struct(u2) {
-        non_block: bool = true,
-        close_on_exec: bool = true,
-    };
-    pub fn flags(comptime spec: SocketSpec) Socket.Options {
-        var flags_bitfield: Socket.Options = .{ .val = 0 };
-        if (spec.options.non_block) {
-            flags_bitfield.set(.non_block);
-        }
-        if (spec.options.close_on_exec) {
-            flags_bitfield.set(.close_on_exec);
-        }
-        comptime return flags_bitfield;
-    }
 };
 pub const BindSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.bind_errors },
@@ -870,75 +790,16 @@ pub const MakePathSpec = struct {
     }
 };
 pub const CreateSpec = struct {
-    options: Options = .{},
     errors: sys.ErrorPolicy = .{ .throw = sys.open_errors },
     return_type: type = u64,
     logging: debug.Logging.AcquireError = .{},
     const Specification = @This();
-    pub const Options = packed struct {
-        exclusive: bool = true,
-        temporary: bool = false,
-        close_on_exec: bool = true,
-        truncate: bool = true,
-        append: bool = false,
-        write: bool = true,
-        read: bool = false,
-    };
-    pub fn flags(comptime creat_spec: Specification) Open.Options {
-        var flags_bitfield: Open.Options = .{ .val = 0 };
-        flags_bitfield.set(.create);
-        if (creat_spec.options.exclusive) {
-            flags_bitfield.set(.exclusive);
-        }
-        if (creat_spec.options.close_on_exec) {
-            flags_bitfield.set(.close_on_exec);
-        }
-        if (creat_spec.options.temporary) {
-            flags_bitfield.set(.temporary);
-        }
-        if (creat_spec.options.read and
-            creat_spec.options.write)
-        {
-            flags_bitfield.set(.read_write);
-        } else if (creat_spec.options.read) {
-            flags_bitfield.set(.read_only);
-        } else {
-            flags_bitfield.set(.write_only);
-        }
-        if (creat_spec.options.append) {
-            flags_bitfield.set(.append);
-        }
-        if (creat_spec.options.truncate) {
-            flags_bitfield.set(.truncate);
-        }
-        comptime return flags_bitfield;
-    }
 };
 pub const PathSpec = struct {
-    options: Options = .{},
     errors: sys.ErrorPolicy = .{ .throw = sys.open_errors },
     return_type: type = u64,
     logging: debug.Logging.AcquireError = .{},
     const Specification = @This();
-    pub const Options = struct {
-        directory: bool = true,
-        no_follow: bool = true,
-        close_on_exec: bool = true,
-    };
-    pub fn flags(comptime spec: PathSpec) Open.Options {
-        var flags_bitfield: Open.Options = .{ .val = 0 };
-        flags_bitfield.set(.path);
-        if (spec.options.no_follow) {
-            flags_bitfield.set(.no_follow);
-        }
-        if (spec.options.close_on_exec) {
-            flags_bitfield.set(.close_on_exec);
-        }
-        if (spec.options.directory) {
-            flags_bitfield.set(.directory);
-        }
-        comptime return flags_bitfield;
-    }
 };
 pub const MakeNodeSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.mkdir_errors },
@@ -969,19 +830,16 @@ pub const GetWorkingDirectorySpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.getcwd_errors },
     return_type: type = u64,
     logging: debug.Logging.SuccessError = .{},
-    const Specification = @This();
 };
 pub const ChangeWorkingirectorySpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.chdir_errors },
     return_type: type = u64,
     logging: debug.Logging.SuccessError = .{},
-    const Specification = @This();
 };
 pub const ReadLinkSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.readlink_errors },
     return_type: type = u64,
     logging: debug.Logging.SuccessError = .{},
-    const Specification = @This();
 };
 pub const CopySpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.copy_file_range_errors },
@@ -1002,16 +860,6 @@ pub const LinkSpec = struct {
         follow: bool = false,
         empty_path: bool = false,
     };
-    fn flags(comptime spec: LinkSpec) At {
-        var flags_bitfield: At = .{ .val = 0 };
-        if (spec.options.follow) {
-            flags_bitfield.set(.follow);
-        }
-        if (spec.options.empty_path) {
-            flags_bitfield.set(.empty_path);
-        }
-        comptime return flags_bitfield;
-    }
 };
 pub const CloseSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = sys.close_errors },
