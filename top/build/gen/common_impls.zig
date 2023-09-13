@@ -14,6 +14,10 @@ pub const Array256 = mem.StaticString(256);
 fn writeSetRuntimeSafety(array: *Array) void {
     array.writeMany("@setRuntimeSafety(false);\n");
 }
+fn writeAllocateRawDecls(array: *Array) void {
+    array.writeMany("pub const size_of: comptime_int = @sizeOf(@This());\n");
+    array.writeMany("pub const align_of: comptime_int = @alignOf(@This());\n");
+}
 fn writeDeclareLength(array: *Array) void {
     array.writeMany("var len:usize=0;\n");
 }
@@ -1825,6 +1829,7 @@ pub fn writeDeclarations(array: *Array, attributes: types.Attributes) void {
     for (attributes.type_decls) |type_decl| {
         array.writeFormat(type_decl);
     }
+    writeAllocateRawDecls(array);
 }
 pub fn writeWriterFunctions(array: *Array, attributes: types.Attributes) void {
     writeWriterFunction(array, attributes, .write_buf);
