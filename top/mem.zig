@@ -1949,7 +1949,7 @@ pub const SimpleAllocator = struct {
         .errors = .{},
         .logging = .{ .Release = false },
     };
-    pub fn unmap(allocator: *Allocator) void {
+    pub fn unmapAll(allocator: *Allocator) void {
         mem.unmap(unmap_spec, allocator.start, allocator.finish -% allocator.start);
         allocator.next = allocator.start;
         allocator.finish = allocator.start;
@@ -1977,10 +1977,10 @@ pub const SimpleAllocator = struct {
         @setRuntimeSafety(builtin.is_safe);
         const new_max_len: usize = len +% 2;
         if (max_len.* == 0) {
-            ptr.* = allocateInternal(allocator, size *% init_len, 8);
+            ptr.* = allocateRaw(allocator, size *% init_len, 8);
             max_len.* = init_len;
         } else if (len == max_len.*) {
-            ptr.* = reallocateInternal(allocator, ptr.*, size *% max_len.*, size *% new_max_len, 8);
+            ptr.* = reallocateRaw(allocator, ptr.*, size *% max_len.*, size *% new_max_len, 8);
             max_len.* = new_max_len;
         }
         return ptr.* +% (size *% len);
@@ -1989,18 +1989,15 @@ pub const SimpleAllocator = struct {
         @setRuntimeSafety(builtin.is_safe);
         const new_max_len: Size = len +% 2;
         if (max_len.* == 0) {
-            ptr.* = allocateInternal(allocator, size *% init_len, 8);
+            ptr.* = allocateRaw(allocator, size *% init_len, 8);
             max_len.* = init_len;
         } else if (len == max_len.*) {
-            ptr.* = reallocateInternal(allocator, ptr.*, size *% max_len.*, size *% new_max_len, 8);
+            ptr.* = reallocateRaw(allocator, ptr.*, size *% max_len.*, size *% new_max_len, 8);
             max_len.* = new_max_len;
         }
         return ptr.* +% (size *% len);
     }
-    pub const allocateRaw = allocateInternal;
-    pub const reallocateRaw = reallocateInternal;
-    pub const deallocateRaw = deallocateInternal;
-    fn allocateInternal(
+    pub fn allocateRaw(
         allocator: *Allocator,
         size_of: usize,
         align_of: usize,
@@ -2017,7 +2014,7 @@ pub const SimpleAllocator = struct {
         allocator.next = next;
         return aligned;
     }
-    fn reallocateInternal(
+    pub fn reallocateRaw(
         allocator: *Allocator,
         old_aligned: usize,
         old_size_of: usize,
@@ -2025,6 +2022,14 @@ pub const SimpleAllocator = struct {
         align_of: usize,
     ) usize {
         @setRuntimeSafety(builtin.is_safe);
+        if (builtin.is_safe) {
+            if (old_aligned > allocator.finish) {
+                debug.panicAddressAboveUpperBound(old_aligned, allocator.finish);
+            }
+            if (old_aligned < allocator.start) {
+                debug.panicAddressBelowLowerBound(old_aligned, allocator.start);
+            }
+        }
         const old_next: usize = old_aligned +% old_size_of;
         const new_next: usize = old_aligned +% new_size_of;
         if (allocator.next == old_next) {
@@ -2037,11 +2042,11 @@ pub const SimpleAllocator = struct {
             allocator.next = new_next;
             return old_aligned;
         }
-        const new_aligned: usize = allocator.allocateInternal(new_size_of, align_of);
+        const new_aligned: usize = allocator.allocateRaw(new_size_of, align_of);
         mach.addrcpy(new_aligned, old_aligned, old_size_of);
         return new_aligned;
     }
-    fn deallocateInternal(
+    pub fn deallocateRaw(
         allocator: *Allocator,
         old_aligned: usize,
         old_size_of: usize,
