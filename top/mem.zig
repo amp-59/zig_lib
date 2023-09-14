@@ -1888,53 +1888,52 @@ pub fn terminate(ptr: [*]const u8, comptime value: u8) [:value]u8 {
     return @constCast(ptr[0..idx :value]);
 }
 pub const SimpleAllocator = struct {
-    start: u64 = 0x40000000,
-    next: u64 = 0x40000000,
-    finish: u64 = 0x40000000,
+    start: usize = 0x40000000,
+    next: usize = 0x40000000,
+    finish: usize = 0x40000000,
     const Allocator = @This();
-    pub const Save = struct { u64 };
-    pub const min_align_of: u64 = if (@hasDecl(builtin.root, "min_align_of")) builtin.root.min_align_of else 8;
+    pub const min_align_of: usize = if (@hasDecl(builtin.root, "min_align_of")) builtin.root.min_align_of else 8;
     pub inline fn create(allocator: *Allocator, comptime T: type) *T {
         @setRuntimeSafety(false);
-        const ret_addr: u64 = allocator.allocateInternal(@sizeOf(T), @max(min_align_of, @alignOf(T)));
+        const ret_addr: usize = allocator.allocateRaw(@sizeOf(T), @max(min_align_of, @alignOf(T)));
         return @ptrFromInt(ret_addr);
     }
     pub inline fn allocate(allocator: *Allocator, comptime T: type, count: usize) []T {
         @setRuntimeSafety(false);
-        const ret_addr: usize = allocator.allocateInternal(@sizeOf(T) *% count, @max(min_align_of, @alignOf(T)));
+        const ret_addr: usize = allocator.allocateRaw(@sizeOf(T) *% count, @max(min_align_of, @alignOf(T)));
         return @as([*]T, @ptrFromInt(ret_addr))[0..count];
     }
     pub inline fn reallocate(allocator: *Allocator, comptime T: type, buf: []T, count: usize) []T {
         @setRuntimeSafety(false);
-        const ret_addr: usize = allocator.reallocateInternal(@intFromPtr(buf.ptr), buf.len *% @sizeOf(T), count *% @sizeOf(T), @max(min_align_of, @alignOf(T)));
+        const ret_addr: usize = allocator.reallocateRaw(@intFromPtr(buf.ptr), buf.len *% @sizeOf(T), count *% @sizeOf(T), @max(min_align_of, @alignOf(T)));
         return @as([*]T, @ptrFromInt(ret_addr))[0..count];
     }
     pub inline fn createAligned(allocator: *Allocator, comptime T: type, comptime align_of: usize) *align(align_of) T {
         @setRuntimeSafety(false);
-        const ret_addr: usize = allocator.allocateInternal(@sizeOf(T), align_of);
+        const ret_addr: usize = allocator.allocateRaw(@sizeOf(T), align_of);
         return @ptrFromInt(ret_addr);
     }
     pub inline fn allocateAligned(allocator: *Allocator, comptime T: type, count: usize, comptime align_of: usize) []align(align_of) T {
         @setRuntimeSafety(false);
-        const ret_addr: usize = allocator.allocateInternal(@sizeOf(T) *% count, align_of);
+        const ret_addr: usize = allocator.allocateRaw(@sizeOf(T) *% count, align_of);
         return @as([*]align(align_of) T, @ptrFromInt(ret_addr))[0..count];
     }
     pub inline fn reallocateAligned(allocator: *Allocator, comptime T: type, buf: []T, count: usize, comptime align_of: usize) []align(align_of) T {
         @setRuntimeSafety(false);
-        const ret_addr: usize = allocator.reallocateInternal(@intFromPtr(buf.ptr), buf.len *% @sizeOf(T), count *% @sizeOf(T), align_of);
+        const ret_addr: usize = allocator.reallocateRaw(@intFromPtr(buf.ptr), buf.len *% @sizeOf(T), count *% @sizeOf(T), align_of);
         return @as([*]align(align_of) T, @ptrFromInt(ret_addr))[0..count];
     }
     pub inline fn destroy(allocator: *Allocator, comptime T: type, ptr: *T) void {
-        allocator.deallocateInternal(@intFromPtr(ptr), @sizeOf(T));
+        allocator.deallocateRaw(@intFromPtr(ptr), @sizeOf(T));
     }
     pub inline fn deallocate(allocator: *Allocator, comptime T: type, buf: []T) void {
-        allocator.deallocateInternal(@intFromPtr(buf.ptr), buf.len *% @sizeOf(T));
+        allocator.deallocateRaw(@intFromPtr(buf.ptr), buf.len *% @sizeOf(T));
     }
-    pub inline fn save(allocator: *const Allocator) Save {
-        return .{allocator.next};
+    pub inline fn save(allocator: *const Allocator) usize {
+        return allocator.next;
     }
-    pub inline fn restore(allocator: *Allocator, state: Save) void {
-        allocator.next = state[0];
+    pub inline fn restore(allocator: *Allocator, state: usize) void {
+        allocator.next = state;
     }
     pub inline fn discard(allocator: *Allocator) void {
         allocator.next = allocator.start;
