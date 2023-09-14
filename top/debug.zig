@@ -744,15 +744,11 @@ pub noinline fn panicInactiveUnionField(active: anytype, wanted: @TypeOf(active)
     @setRuntimeSafety(false);
     const ret_addr: usize = @returnAddress();
     var buf: [1024]u8 = undefined;
-    var ptr: [*]u8 = &buf;
-    @as(*[23]u8, @ptrCast(&buf)).* = "access of union field '".*;
-    ptr += 23;
-    @memcpy(ptr, @tagName(wanted));
-    ptr += @tagName(wanted).len;
+    buf[0..23].* = "access of union field '".*;
+    var ptr: [*]u8 = fmt.strcpyEqu(buf[23..], @tagName(wanted));
     ptr[0..15].* = "' while field '".*;
     ptr += 15;
-    @memcpy(ptr, @tagName(active));
-    ptr += @tagName(active).len;
+    ptr = fmt.strcpyEqu(ptr, @tagName(active));
     ptr[0..11].* = "' is active".*;
     ptr += 11;
     builtin.panic(buf[0..@intFromPtr(ptr - @intFromPtr(&buf))], null, ret_addr);
@@ -764,9 +760,7 @@ pub noinline fn panicUnwrapError(st: ?*builtin.StackTrace, err: anyerror) noretu
     const ret_addr: usize = @returnAddress();
     var buf: [1024]u8 = undefined;
     buf[0..20].* = "error is discarded: ".*;
-    var ptr: [*]u8 = buf[20..];
-    @memcpy(ptr, @errorName(err));
-    ptr += @errorName(err).len;
+    var ptr: [*]u8 = fmt.strcpyEqu(buf[20..], @errorName(err));
     builtin.panic(buf[0..@intFromPtr(ptr - @intFromPtr(&buf))], st, ret_addr);
 }
 pub noinline fn aboutWhere(about_s: []const u8, message: []const u8, ret_addr: ?usize, mb_src: ?builtin.SourceLocation) void {
@@ -892,7 +886,7 @@ pub const about = struct {
     pub const note_p0_s = blk: {
         var lhs: [:0]const u8 = builtin.message_prefix ++ "note" ++ builtin.message_suffix;
         const len: usize = lhs.len;
-        lhs = "\x1b[96m" ++ lhs ++ builtin.message_no_style;
+        lhs = "\x1b[96;1m" ++ lhs ++ builtin.message_no_style;
         break :blk lhs ++ " " ** (builtin.message_indent - len);
     };
     pub const test_1_s = "test failed";
@@ -1132,15 +1126,11 @@ pub const about = struct {
         var len: usize = type_name.len;
         var udsize: fmt.Type.Xd(usize) = .{ .value = alignment };
         @memcpy(buf, type_name);
-        @as(*[23]u8, @ptrCast(buf + len)).* = ": incorrect alignment: ".*;
-        len +%= 23;
-        @memcpy(buf, type_name);
-        len +%= type_name.len;
         @as(*[7]u8, @ptrCast(buf + len)).* = " align(".*;
         len +%= 7;
         len +%= udsize.formatWriteBuf(buf + len);
-        @as(*[3]u8, @ptrCast(buf + len)).* = "): ".*;
-        len +%= 3;
+        @as(*[24]u8, @ptrCast(buf + len)).* = "): incorrect alignment: ".*;
+        len +%= 24;
         udsize.value = address;
         len +%= udsize.formatWriteBuf(buf + len);
         @as(*[4]u8, @ptrCast(buf + len)).* = " == ".*;
