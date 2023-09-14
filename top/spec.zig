@@ -139,6 +139,9 @@ pub const builder = struct {
             .poll = .{},
             .stat = .{},
             .unlink = .{},
+            .link = .{},
+            .seek = .{},
+            .perf_event_open = .{},
         };
         pub const kill: zl.build.BuilderSpec.Errors = .{
             .write = .{ .abort = sys.write.errors.all },
@@ -161,6 +164,9 @@ pub const builder = struct {
             .open = .{ .abort = sys.open.errors.all },
             .close = .{ .abort = sys.close.errors.all },
             .unlink = .{ .abort = sys.unlink.errors.all_noent },
+            .link = .{ .abort = sys.link.errors.all },
+            .seek = .{ .abort = sys.seek.errors.all },
+            .perf_event_open = .{ .abort = sys.perf_event_open.errors.all },
         };
         pub const zen: zl.build.BuilderSpec.Errors = .{
             .write = .{ .abort = sys.write.errors.all },
@@ -181,6 +187,7 @@ pub const builder = struct {
             .mkdir = .{ .throw = sys.mkdir.errors.noexcl },
             .poll = .{ .throw = sys.poll.errors.all },
             .open = .{ .throw = sys.open.errors.all },
+            .seek = .{ .throw = sys.seek.errors.all },
             .close = .{ .abort = sys.close.errors.all },
             .unlink = .{ .abort = sys.unlink.errors.all },
         };
@@ -190,7 +197,21 @@ pub const builder = struct {
         });
     };
     pub const logging = struct {
-        pub const default = .{
+        pub const transcript = blk: {
+            var tmp = builder.logging.default;
+            tmp.show_task_creation = false;
+            tmp.show_task_init = false;
+            tmp.show_task_update = false;
+            tmp.show_user_input = false;
+            tmp.show_task_prep = false;
+            tmp.show_arena_index = true;
+            tmp.show_base_memory_usage = true;
+            tmp.show_program_size = true;
+            tmp.show_waiting_tasks = true;
+            tmp.hide_special = true;
+            break :blk silent;
+        };
+        pub const default: zl.build.BuilderSpec.Logging = .{
             .write = .{},
             .read = .{},
             .mknod = .{},
@@ -579,52 +600,60 @@ const sys = struct {
     };
     pub const mmap = struct {
         pub const errors = struct {
-            pub const all: []const zl.sys.ErrorCode = &.{
+            pub const all = &.{
                 .ACCES, .AGAIN, .BADF,     .EXIST, .INVAL,  .NFILE,
                 .NODEV, .NOMEM, .OVERFLOW, .PERM,  .TXTBSY,
             };
-            pub const mem: []const zl.sys.ErrorCode = &.{
+            pub const mem = &.{
                 .EXIST, .INVAL, .NOMEM,
             };
-            pub const file: []const zl.sys.ErrorCode = &.{
+            pub const file = &.{
                 .EXIST, .INVAL, .NOMEM, .NFILE, .NODEV, .TXTBSY,
             };
         };
     };
     pub const mremap = struct {
         pub const errors = struct {
-            pub const all: []const zl.sys.ErrorCode = &.{
+            pub const all = &.{
                 .AGAIN, .FAULT, .INVAL, .NOMEM,
+            };
+        };
+    };
+    pub const perf_event_open = struct {
+        pub const errors = struct {
+            pub const all = &.{
+                .@"2BIG", .ACCES, .BADF,  .BUSY,      .FAULT,    .INTR, .INVAL, .MFILE, .NODEV,
+                .NOENT,   .NOSPC, .NOSYS, .OPNOTSUPP, .OVERFLOW, .PERM, .SRCH,
             };
         };
     };
     pub const munmap = struct {
         pub const errors = struct {
-            pub const all: []const zl.sys.ErrorCode = &.{.INVAL};
+            pub const all = &.{.INVAL};
         };
     };
     pub const brk = struct {
         pub const errors = struct {
-            pub const all: []const zl.sys.ErrorCode = &.{.NOMEM};
+            pub const all = &.{.NOMEM};
         };
     };
     pub const chdir = struct {
         pub const errors = struct {
-            pub const all: []const zl.sys.ErrorCode = &.{
+            pub const all = &.{
                 .NAMETOOLONG, .LOOP, .ACCES, .IO, .BADF, .FAULT, .NOTDIR, .NOMEM, .NOENT,
             };
         };
     };
     pub const close = struct {
         pub const errors = struct {
-            pub const all: []const zl.sys.ErrorCode = &.{
+            pub const all = &.{
                 .INTR, .IO, .BADF, .NOSPC,
             };
         };
     };
     pub const clone3 = struct {
         pub const errors = struct {
-            pub const all: []const zl.sys.ErrorCode = &.{
+            pub const all = &.{
                 .PERM,      .AGAIN, .INVAL,   .EXIST, .USERS,
                 .OPNOTSUPP, .NOMEM, .RESTART, .BUSY,  .NOSPC,
             };
@@ -632,7 +661,7 @@ const sys = struct {
     };
     pub const open = struct {
         pub const errors = struct {
-            pub const all: []const zl.sys.ErrorCode = &.{
+            pub const all = &.{
                 .ACCES, .FBIG,        .NOTDIR,   .EXIST,  .OPNOTSUPP, .MFILE, .NOSPC,
                 .NOENT, .NAMETOOLONG, .OVERFLOW, .TXTBSY, .AGAIN,     .BADF,  .ISDIR,
                 .LOOP,  .NODEV,       .DQUOT,    .NOMEM,  .ROFS,      .NFILE, .INTR,
@@ -642,21 +671,21 @@ const sys = struct {
     };
     pub const read = struct {
         pub const errors = struct {
-            pub const all: []const zl.sys.ErrorCode = &.{
+            pub const all = &.{
                 .AGAIN, .BADF, .FAULT, .INTR, .INVAL, .IO, .ISDIR,
             };
         };
     };
     pub const clock_gettime = struct {
         pub const errors = struct {
-            pub const all: []const zl.sys.ErrorCode = &.{
+            pub const all = &.{
                 .ACCES, .FAULT, .INVAL, .NODEV, .OPNOTSUPP, .PERM,
             };
         };
     };
     pub const execve = struct {
         pub const errors = struct {
-            pub const all: []const zl.sys.ErrorCode = &.{
+            pub const all = &.{
                 .ACCES, .IO,     .LIBBAD, .NOTDIR,  .MFILE, .NOENT, .NAMETOOLONG, .TXTBSY,
                 .ISDIR, .LOOP,   .NOMEM,  .@"2BIG", .NFILE, .PERM,  .FAULT,       .AGAIN,
                 .INVAL, .NOEXEC,
@@ -665,81 +694,81 @@ const sys = struct {
     };
     pub const fork = struct {
         pub const errors = struct {
-            pub const all: []const zl.sys.ErrorCode = &.{
+            pub const all = &.{
                 .NOSYS, .AGAIN, .NOMEM, .RESTART,
             };
         };
     };
     pub const getcwd = struct {
         pub const errors = struct {
-            pub const all: []const zl.sys.ErrorCode = &.{
+            pub const all = &.{
                 .ACCES, .FAULT, .INVAL, .NAMETOOLONG, .NOENT, .NOMEM, .RANGE,
             };
         };
     };
     pub const getdents = struct {
         pub const errors = struct {
-            pub const all: []const zl.sys.ErrorCode = &.{
+            pub const all = &.{
                 .BADF, .FAULT, .INVAL, .NOENT, .NOTDIR,
             };
         };
     };
     pub const getrandom = struct {
         pub const errors = struct {
-            pub const all: []const zl.sys.ErrorCode = &.{
+            pub const all = &.{
                 .AGAIN, .FAULT, .INTR, .INVAL, .NOSYS,
             };
         };
     };
     pub const dup = struct {
         pub const errors = struct {
-            pub const all: []const zl.sys.ErrorCode = &.{
+            pub const all = &.{
                 .BADF, .BUSY, .INTR, .INVAL, .MFILE,
             };
         };
     };
     pub const dup2 = struct {
         pub const errors = struct {
-            pub const all: []const zl.sys.ErrorCode = &.{
+            pub const all = &.{
                 .BADF, .BUSY, .INTR, .INVAL, .MFILE,
             };
         };
     };
     pub const dup3 = struct {
         pub const errors = struct {
-            pub const all: []const zl.sys.ErrorCode = &.{
+            pub const all = &.{
                 .BADF, .BUSY, .INTR, .INVAL, .MFILE,
             };
         };
     };
     pub const poll = struct {
         pub const errors = struct {
-            pub const all: []const zl.sys.ErrorCode = &.{
+            pub const all = &.{
                 .FAULT, .INTR, .INVAL, .NOMEM,
             };
         };
     };
     pub const ioctl = struct {
         pub const errors = struct {
-            pub const all: []const zl.sys.ErrorCode = &.{
+            pub const all = &.{
                 .NOTTY, .BADF, .FAULT, .INVAL,
             };
         };
     };
     pub const madvise = struct {
         pub const errors = struct {
-            pub const all: []const zl.sys.ErrorCode = &.{
+            pub const all = &.{
                 .ACCES, .AGAIN, .BADF, .INVAL, .IO, .NOMEM, .PERM,
             };
         };
     };
     pub const mkdir = struct {
         pub const errors = struct {
-            pub const all: []const zl.sys.ErrorCode = &.{
+            pub const all = &.{
                 .ACCES,       .BADF,  .DQUOT, .EXIST, .FAULT,  .INVAL, .LOOP, .MLINK,
                 .NAMETOOLONG, .NOENT, .NOMEM, .NOSPC, .NOTDIR, .PERM,  .ROFS,
             };
-            pub const noexcl: []const zl.sys.ErrorCode = &.{
+            pub const noexcl = &.{
                 .ACCES,       .BADF,  .DQUOT, .FAULT, .INVAL,  .LOOP, .MLINK,
                 .NAMETOOLONG, .NOENT, .NOMEM, .NOSPC, .NOTDIR, .PERM, .ROFS,
             };
@@ -747,14 +776,14 @@ const sys = struct {
     };
     pub const memfd_create = struct {
         pub const errors = struct {
-            pub const all: []const zl.sys.ErrorCode = &.{
+            pub const all = &.{
                 .FAULT, .INVAL, .MFILE, .NOMEM,
             };
         };
     };
     pub const truncate = struct {
         pub const errors = struct {
-            pub const all: []const zl.sys.ErrorCode = &.{
+            pub const all = &.{
                 .ACCES,  .FAULT, .FBIG, .INTR,   .IO,    .ISDIR, .LOOP, .NAMETOOLONG,
                 .NOTDIR, .PERM,  .ROFS, .TXTBSY, .INVAL, .BADF,
             };
@@ -762,7 +791,7 @@ const sys = struct {
     };
     pub const mknod = struct {
         pub const errors = struct {
-            pub const all: []const zl.sys.ErrorCode = &.{
+            pub const all = &.{
                 .ACCES,       .BADF,  .DQUOT, .EXIST, .FAULT,  .INVAL, .LOOP,
                 .NAMETOOLONG, .NOENT, .NOMEM, .NOSPC, .NOTDIR, .PERM,  .ROFS,
             };
@@ -770,24 +799,33 @@ const sys = struct {
     };
     pub const open_by_handle_at = struct {
         pub const errors = struct {
-            pub const all: []const zl.sys.ErrorCode = open.errors.all ++ [1]zl.sys.ErrorCode{.STALE};
+            pub const all = open.errors.all ++ [1]zl.sys.ErrorCode{.STALE};
         };
     };
     pub const name_to_handle_at = struct {
         pub const errors = struct {
-            pub const all: []const zl.sys.ErrorCode = open.errors.all ++ [1]zl.sys.ErrorCode{.STALE};
+            pub const all = open.errors.all ++ [1]zl.sys.ErrorCode{.STALE};
+        };
+    };
+    pub const link = struct {
+        pub const errors = struct {
+            pub const all = &.{
+                .ACCES, .BADF,  .DQUOT, .EXIST,  .FAULT, .IO,   .LOOP,  .NAMETOOLONG,
+                .NOENT, .NOMEM, .NOSPC, .NOTDIR, .PERM,  .ROFS, .MLINK, .XDEV,
+                .INVAL,
+            };
         };
     };
     pub const nanosleep = struct {
         pub const errors = struct {
-            pub const all: []const zl.sys.ErrorCode = &.{
+            pub const all = &.{
                 .INTR, .FAULT, .INVAL, .OPNOTSUPP,
             };
         };
     };
     pub const readlink = struct {
         pub const errors = struct {
-            pub const all: []const zl.sys.ErrorCode = &.{
+            pub const all = &.{
                 .ACCES,       .BADF,  .FAULT, .INVAL,  .IO, .LOOP,
                 .NAMETOOLONG, .NOENT, .NOMEM, .NOTDIR,
             };
@@ -795,7 +833,7 @@ const sys = struct {
     };
     pub const rmdir = struct {
         pub const errors = struct {
-            pub const all: []const zl.sys.ErrorCode = &.{
+            pub const all = &.{
                 .ACCES, .BUSY,  .FAULT,  .INVAL,    .LOOP, .NAMETOOLONG,
                 .NOENT, .NOMEM, .NOTDIR, .NOTEMPTY, .PERM, .ROFS,
             };
@@ -803,18 +841,23 @@ const sys = struct {
     };
     pub const sigaction = struct {
         pub const errors = struct {
-            pub const all: []const zl.sys.ErrorCode = &.{
+            pub const all = &.{
                 .FAULT, .INVAL,
             };
         };
     };
+    pub const seek = struct {
+        pub const errors = struct {
+            pub const all = &.{ .BADF, .NXIO, .OVERFLOW, .SPIPE };
+        };
+    };
     pub const stat = struct {
         pub const errors = struct {
-            pub const all: []const zl.sys.ErrorCode = &.{
+            pub const all = &.{
                 .ACCES,       .BADF,  .FAULT, .INVAL,  .LOOP,
                 .NAMETOOLONG, .NOENT, .NOMEM, .NOTDIR, .OVERFLOW,
             };
-            pub const all_noent: []const zl.sys.ErrorCode = &.{
+            pub const all_noent = &.{
                 .ACCES,       .BADF,  .FAULT,  .INVAL,    .LOOP,
                 .NAMETOOLONG, .NOMEM, .NOTDIR, .OVERFLOW,
             };
@@ -822,11 +865,11 @@ const sys = struct {
     };
     pub const unlink = struct {
         pub const errors = struct {
-            pub const all: []const zl.sys.ErrorCode = &.{
+            pub const all = &.{
                 .ACCES, .BUSY,  .FAULT,  .IO,   .ISDIR, .LOOP, .NAMETOOLONG,
                 .NOENT, .NOMEM, .NOTDIR, .PERM, .ROFS,  .BADF, .INVAL,
             };
-            pub const all_noent: []const zl.sys.ErrorCode = &.{
+            pub const all_noent = &.{
                 .ACCES, .BUSY,   .FAULT, .IO,   .ISDIR, .LOOP,  .NAMETOOLONG,
                 .NOMEM, .NOTDIR, .PERM,  .ROFS, .BADF,  .INVAL,
             };
@@ -834,7 +877,7 @@ const sys = struct {
     };
     pub const write = struct {
         pub const errors = struct {
-            pub const all: []const zl.sys.ErrorCode = &.{
+            pub const all = &.{
                 .AGAIN, .BADF,  .DESTADDRREQ, .DQUOT, .FAULT, .FBIG,
                 .INTR,  .INVAL, .IO,          .NOSPC, .PERM,  .PIPE,
             };
@@ -842,21 +885,21 @@ const sys = struct {
     };
     pub const wait = struct {
         pub const errors = struct {
-            pub const all: []const zl.sys.ErrorCode = &.{
+            pub const all = &.{
                 .SRCH, .INTR, .AGAIN, .INVAL, .CHILD,
             };
         };
     };
     pub const waitid = struct {
         pub const errors = struct {
-            pub const all: []const zl.sys.ErrorCode = &.{
+            pub const all = &.{
                 .AGAIN, .CHILD, .INTR, .INVAL, .SRCH,
             };
         };
     };
     pub const pipe = struct {
         pub const errors = struct {
-            pub const all: []const zl.sys.ErrorCode = &.{
+            pub const all = &.{
                 .FAULT, .INVAL, .MFILE, .NFILE, .NOPKG,
             };
         };
