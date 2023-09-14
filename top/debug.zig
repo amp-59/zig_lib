@@ -653,33 +653,28 @@ pub noinline fn panicSignal(message: []const u8, ctx_ptr: *const anyopaque) nore
     }
     @call(.always_inline, proc.exitGroupFault, .{ message, builtin.panic_return_value });
 }
-inline fn panicOutOfBoundsEmpty(buf: [*]u8, idx: usize) usize {
-    var ptr: [*]u8 = buf;
-    var ud64: fmt.Type.Ud64 = .{ .value = idx };
-    ptr[0..10].* = "indexing (".*;
-    ptr += 10;
-    const len: usize = ud64.formatWriteBuf(ptr);
-    ptr += len;
-    ptr[0..18].* = ") into empty array".*;
-    return len +% 28;
-}
 pub noinline fn panicOutOfBounds(idx: usize, max_len: usize) noreturn {
     @setCold(true);
     @setRuntimeSafety(false);
     const ret_addr: usize = @returnAddress();
     var buf: [1024]u8 = undefined;
-    var ptr: [*]u8 = &buf;
+    var ud64: fmt.Type.Ud64 = .{ .value = idx };
     if (max_len == 0) {
-        ptr += panicOutOfBoundsEmpty(ptr, idx);
+        buf[0..10].* = "indexing (".*;
+        var ptr: [*]u8 = buf[10..];
+        ptr += ud64.formatWriteBuf(ptr);
+        ptr[0..18].* = ") into empty array".*;
+        ptr += 18;
+        builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr);
     } else {
-        var ud64: fmt.Type.Ud64 = .{ .value = idx };
-        ptr[0..6].* = "index ".*;
-        ptr += 6;
+        buf[0..6].* = "index ".*;
+        var ptr: [*]u8 = buf[6..];
         ptr += ud64.formatWriteBuf(ptr);
         ptr[0..15].* = " above maximum ".*;
         ptr += 15;
         ud64.value = max_len -% 1;
         ptr += ud64.formatWriteBuf(ptr);
+        builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr);
     }
     builtin.panic(buf[0..@intFromPtr(ptr - @intFromPtr(&buf))], null, ret_addr);
 }
