@@ -329,7 +329,7 @@ pub const Flags = packed struct(usize) {
     fd_output: bool = false,
     pid_cgroup: bool = false,
     fd_close_on_exec: bool = false,
-    zb4: @Type(.{.Int = .{.bits = @bitSizeOf(usize) -% 4, .signedness = .unsigned }}) = 0,
+    zb4: @Type(.{ .Int = .{ .bits = @bitSizeOf(usize) -% 4, .signedness = .unsigned } }) = 0,
 };
 pub const PerfEventSpec = struct {
     return_type: type = u32,
@@ -396,8 +396,8 @@ pub const PerfEventsSpec = struct {
 };
 pub fn GenericPerfEvents(comptime events_spec: PerfEventsSpec) type {
     const T = struct {
-        fds: Fds,
-        res: Results,
+        fds: Fds = builtin.zero(Fds),
+        res: Results = builtin.zero(Results),
         const PerfEvents = @This();
         const Fds = [events_spec.counters.len][len]u32;
         const Results = [events_spec.counters.len][len]usize;
@@ -418,7 +418,7 @@ pub fn GenericPerfEvents(comptime events_spec: PerfEventsSpec) type {
         const fd_flags = .{
             .fd_close_on_exec = true,
         };
-        pub fn openFds(perf_events: *PerfEvents) void {
+        pub fn openFds(perf_events: *PerfEvents) sys.ErrorUnion(events_spec.errors.open, void) {
             @setRuntimeSafety(builtin.is_safe);
             const leader_fd: *u32 = &perf_events.fds[0][0];
             leader_fd.* = ~@as(u32, 0);
@@ -428,27 +428,35 @@ pub fn GenericPerfEvents(comptime events_spec: PerfEventsSpec) type {
                 var idx: usize = 0;
                 while (idx != set.counters.len) : (idx +%= 1) {
                     event.config = set.counters[idx].config;
-                    perf_events.fds[set_idx][idx] = eventOpen(open(), &event, .self, .any, leader_fd.*, PerfEvents.fd_flags);
+                    perf_events.fds[set_idx][idx] = try meta.wrap(eventOpen(open(), &event, .self, .any, leader_fd.*, PerfEvents.fd_flags));
                 }
             }
         }
-        pub fn readResults(perf_events: *PerfEvents) void {
+        pub fn readResults(perf_events: *PerfEvents) sys.ErrorUnion(.{
+            .throw = events_spec.errors.read.throw ++ events_spec.errors.close.throw,
+            .abort = events_spec.errors.read.abort ++ events_spec.errors.close.abort,
+        }, void) {
             @setRuntimeSafety(builtin.is_safe);
             for (events_spec.counters, 0..) |set, set_idx| {
                 var event_idx: usize = 0;
                 while (event_idx != set.counters.len) : (event_idx +%= 1) {
                     const res: [*]u8 = @ptrCast(&perf_events.res[set_idx][event_idx]);
-                    debug.assertEqual(usize, 8, file.read(read(), perf_events.fds[set_idx][event_idx], res[0..8]));
-                    file.close(close(), perf_events.fds[set_idx][event_idx]);
+                    debug.assertEqual(usize, 8, try meta.wrap(file.read(read(), perf_events.fds[set_idx][event_idx], res[0..8])));
+                    try meta.wrap(file.close(close(), perf_events.fds[set_idx][event_idx]));
+                    if (false) {
+                        perf_events.fds[set_idx][event_idx] = @truncate(@as(u64, @bitCast((set.counters[event_idx].config))));
+                    }
                 }
             }
         }
-        pub fn writeResults(perf_events: *PerfEvents, buf: [*]u8) [*]u8 {
+        pub fn writeResults(heading_about_s: ?fmt.AboutSrc, perf_events: *PerfEvents, buf: [*]u8) [*]u8 {
             @setRuntimeSafety(builtin.is_safe);
             var ptr: [*]u8 = buf;
+            const width: usize = fmt.aboutCentre(heading_about_s orelse comptime fmt.about("perf"));
             for (events_spec.counters, 0..) |set, set_idx| {
                 var event_idx: usize = 0;
                 while (event_idx != set.counters.len) : (event_idx +%= 1) {
+                    ptr += fmt.writeSideBarIndex(ptr, width, event_idx);
                     ptr = fmt.strcpyEqu(ptr, set.counters[event_idx].name);
                     ptr += fmt.udh(perf_events.res[set_idx][event_idx]).formatWriteBuf(ptr);
                     ptr[0] = '\n';
