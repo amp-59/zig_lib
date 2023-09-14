@@ -1659,15 +1659,14 @@ const FileEntry = struct {
     buf: [*]u8 = undefined,
     buf_len: u64 = 0,
     fn pathname(entry: *const FileEntry, allocator: *Allocator, dirs: [*]FileEntry) [:0]const u8 {
+        @setRuntimeSafety(false);
         const dirname: []const u8 = dirs[entry.dir_idx].name;
-        const ret: []u8 = allocator.allocate(u8, dirname.len +% entry.name.len +% 2);
-        var len: u64 = 0;
-        @memcpy(ret.ptr, dirname);
-        len +%= dirname.len;
+        const ret: [*]u8 = @ptrFromInt(allocator.allocateRaw(dirname.len +% entry.name.len +% 2, 1));
+        var len: usize = 0;
+        len +%= fmt.strcpy(ret + len, dirname);
         ret[len] = '/';
         len +%= 1;
-        @memcpy(ret.ptr + len, entry.name);
-        len +%= entry.name.len;
+        len +%= fmt.strcpy(ret + len, entry.name);
         ret[len] = 0;
         return ret[0..len :0];
     }
