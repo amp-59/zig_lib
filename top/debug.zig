@@ -658,25 +658,54 @@ pub noinline fn panicOutOfBounds(idx: usize, max_len: usize) noreturn {
     @setRuntimeSafety(false);
     const ret_addr: usize = @returnAddress();
     var buf: [1024]u8 = undefined;
+    buf[0..6].* = "index ".*;
+    var ptr: [*]u8 = buf[5..];
     var ud64: fmt.Type.Ud64 = .{ .value = idx };
     if (max_len == 0) {
-        buf[0..10].* = "indexing (".*;
-        var ptr: [*]u8 = buf[10..];
+        ptr[0..5].* = "ing (".*;
+        ptr += 5;
         ptr += ud64.formatWriteBuf(ptr);
         ptr[0..18].* = ") into empty array".*;
         ptr += 18;
-        builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr);
     } else {
-        buf[0..6].* = "index ".*;
-        var ptr: [*]u8 = buf[6..];
+        ptr += 1;
         ptr += ud64.formatWriteBuf(ptr);
         ptr[0..15].* = " above maximum ".*;
         ptr += 15;
         ud64.value = max_len -% 1;
         ptr += ud64.formatWriteBuf(ptr);
-        builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr);
     }
-    builtin.panic(buf[0..@intFromPtr(ptr - @intFromPtr(&buf))], null, ret_addr);
+    builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr);
+}
+pub noinline fn panicAddressAboveUpperBound(addr: usize, finish: usize) noreturn {
+    @setCold(true);
+    @setRuntimeSafety(false);
+    const ret_addr: usize = @returnAddress();
+    var buf: [1024]u8 = undefined;
+    var ux64: fmt.Type.Ux64 = .{ .value = addr };
+    buf[0..8].* = "address ".*;
+    var ptr: [*]u8 = buf[8..];
+    ptr += ux64.formatWriteBuf(ptr);
+    ptr[0..19].* = " above upper bound ".*;
+    ptr += 19;
+    ux64.value = finish;
+    ptr += ux64.formatWriteBuf(ptr);
+    builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr);
+}
+pub noinline fn panicAddressBelowLowerBound(addr: usize, start: usize) noreturn {
+    @setCold(true);
+    @setRuntimeSafety(false);
+    const ret_addr: usize = @returnAddress();
+    var buf: [1024]u8 = undefined;
+    var ux64: fmt.Type.Ux64 = .{ .value = addr };
+    buf[0..8].* = "address ".*;
+    var ptr: [*]u8 = buf[8..];
+    ptr += ux64.formatWriteBuf(ptr);
+    ptr[0..19].* = " below lower bound ".*;
+    ptr += 19;
+    ux64.value = start;
+    ptr += ux64.formatWriteBuf(ptr);
+    builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr);
 }
 pub noinline fn panicSentinelMismatch(expected: anytype, actual: @TypeOf(expected)) noreturn {
     @setCold(true);
