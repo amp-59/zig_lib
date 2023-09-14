@@ -705,10 +705,9 @@ pub const about = opaque {
         ptr += fmt.ux64(addr +% len).formatWriteBuf(ptr);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr += fmt.ud64(len).formatWriteBuf(ptr);
-        ptr[0..7].* = " bytes\n".*;
-        ptr += 7;
-        debug.write(buf[0..@intFromPtr(ptr - @intFromPtr(&buf))]);
+        ptr += fmt.bytes(len).formatWriteBuf(ptr);
+        ptr[0] = '\n';
+        debug.write(buf[0 .. @intFromPtr(ptr + 1) - @intFromPtr(&buf)]);
     }
     fn aboutAddrLenDescrNotice(about_s: fmt.AboutSrc, addr: u64, len: u64, description_s: []const u8) void {
         @setRuntimeSafety(false);
@@ -721,13 +720,13 @@ pub const about = opaque {
         ptr += fmt.ux64(addr +% len).formatWriteBuf(ptr);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr += fmt.ud64(len).formatWriteBuf(ptr);
-        ptr[0..8].* = " bytes, ".*;
-        ptr += 8;
+        ptr += fmt.bytes(len).formatWriteBuf(ptr);
+        ptr[0..2].* = ", ".*;
+        ptr += 2;
         @memcpy(ptr, description_s);
         ptr += description_s.len;
         ptr[0] = '\n';
-        debug.write(buf[0 .. @intFromPtr(ptr - @intFromPtr(&buf)) +% 1]);
+        debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
     pub fn aboutRemapNotice(about_s: fmt.AboutSrc, old_addr: u64, old_len: u64, maybe_new_addr: ?u64, maybe_new_len: ?u64) void {
         @setRuntimeSafety(false);
@@ -750,10 +749,9 @@ pub const about = opaque {
         ptr += fmt.ux64(new_addr +% new_len).formatWriteBuf(ptr);
         ptr[0..3].* = notation_s.*;
         ptr += 3;
-        ptr += fmt.ud64(abs_diff).formatWriteBuf(ptr);
-        ptr[0..7].* = " bytes\n".*;
-        ptr += 7;
-        debug.write(buf[0..@intFromPtr(ptr - @intFromPtr(&buf))]);
+        ptr += fmt.bytes(abs_diff).formatWriteBuf(ptr);
+        ptr[0] = '\n';
+        debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
     fn aboutIndexLbAddrUpAddrLabelNotice(about_s: fmt.AboutSrc, index: ?u64, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
         @setRuntimeSafety(false);
@@ -774,10 +772,9 @@ pub const about = opaque {
         ptr += fmt.ux64(up_addr).formatWriteBuf(ptr);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr += fmt.ud64(up_addr -% lb_addr).formatWriteBuf(ptr);
-        ptr[0..7].* = " bytes\n".*;
-        ptr += 7;
-        debug.write(buf[0..@intFromPtr(ptr - @intFromPtr(&buf))]);
+        ptr += fmt.bytes(up_addr -% lb_addr).formatWriteBuf(ptr);
+        ptr[0] = '\n';
+        debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
     fn aboutMemFdPathnameNotice(about_s: fmt.AboutSrc, mem_fd: usize, pathname: [:0]const u8) void {
         @setRuntimeSafety(false);
@@ -790,7 +787,7 @@ pub const about = opaque {
         ptr += 9;
         ptr += fmt.ud64(mem_fd).formatWriteBuf(ptr);
         ptr[0] = '\n';
-        debug.write(buf[0 .. @intFromPtr(ptr - @intFromPtr(&buf)) +% 1]);
+        debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
     pub fn aboutAddrLenError(about_s: fmt.AboutSrc, error_name: []const u8, addr: u64, len: u64) void {
         @setRuntimeSafety(false);
@@ -809,10 +806,9 @@ pub const about = opaque {
         ptr += fmt.ux64(addr +% len).formatWriteBuf(ptr);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr += fmt.ud64(len).formatWriteBuf(ptr);
-        ptr[0..7].* = " bytes\n".*;
-        ptr += 7;
-        debug.write(buf[0..@intFromPtr(ptr - @intFromPtr(&buf))]);
+        ptr += fmt.bytes(len).formatWriteBuf(ptr);
+        ptr[0] = '\n';
+        debug.write(buf[0 .. @intFromPtr(ptr + 1) - @intFromPtr(&buf)]);
     }
     pub fn aboutAddrLenDescrError(about_s: fmt.AboutSrc, error_name: []const u8, addr: u64, len: u64, description_s: []const u8) void {
         @setRuntimeSafety(false);
@@ -866,10 +862,9 @@ pub const about = opaque {
         ptr += fmt.ux64(new_addr +% new_len).formatWriteBuf(ptr);
         ptr[0..3].* = notation_s.*;
         ptr += 3;
-        ptr += fmt.ud64(abs_diff).formatWriteBuf(ptr);
-        ptr[0..7].* = " bytes\n".*;
-        ptr += 7;
-        debug.write(buf[0..@intFromPtr(ptr - @intFromPtr(&buf))]);
+        ptr += fmt.bytes(abs_diff).formatWriteBuf(ptr);
+        ptr[0] = '\n';
+        debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
     fn aboutIndexLbAddrUpAddrLabelError(about_s: fmt.AboutSrc, error_name: [:0]const u8, index: ?u64, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
         @setRuntimeSafety(false);
@@ -896,10 +891,9 @@ pub const about = opaque {
         ptr += fmt.ux64(up_addr).formatWriteBuf(ptr);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr += fmt.ud64(up_addr -% lb_addr).formatWriteBuf(ptr);
-        ptr[0..7].* = " bytes\n".*;
-        ptr += 7;
-        debug.write(buf[0..@intFromPtr(ptr - @intFromPtr(&buf))]);
+        ptr += fmt.bytes(up_addr -% lb_addr).formatWriteBuf(ptr);
+        ptr[0] = '\n';
+        debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
     fn aboutPathnameError(about_s: fmt.AboutSrc, error_name: []const u8, pathname: [:0]const u8) void {
         @setRuntimeSafety(false);
