@@ -14,7 +14,6 @@ pub const math = @import("./math.zig");
 pub const file = @import("./file.zig");
 pub const algo = @import("./algo.zig");
 pub const time = @import("./time.zig");
-pub const spec = @import("./spec.zig");
 pub const parse = @import("./parse.zig");
 pub const start = @import("./start.zig");
 pub const debug = @import("./debug.zig");
