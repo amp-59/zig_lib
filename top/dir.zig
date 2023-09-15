@@ -2,7 +2,7 @@ const sys = @import("./sys.zig");
 const mem = @import("./mem.zig");
 const meta = @import("./meta.zig");
 const file = @import("./file.zig");
-const mach = @import("./mach.zig");
+const bits = @import("./bits.zig");
 const debug = @import("./debug.zig");
 const builtin = @import("./builtin.zig");
 pub const DirStreamSpec = struct {
@@ -79,7 +79,8 @@ pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
             return .{ .links = links(dir.blk), .count = dir.count, .index = 0 };
         }
         fn clear(s_lb_addr: u64, s_bytes: u64) void {
-            mach.memset(@as([*]u8, @ptrFromInt(s_lb_addr)), 0, s_bytes);
+            @setRuntimeSafety(false);
+            @memset(@as([*]u8, @ptrFromInt(s_lb_addr))[0..s_bytes], 0);
         }
         fn getDirectoryEntries(dir: *const DirStream) sys.ErrorUnion(spec.errors.getdents, u64) {
             return sys.call(.getdents64, spec.errors.getdents, u64, .{
@@ -103,7 +104,7 @@ pub fn GenericDirStream(comptime spec: DirStreamSpec) type {
             }
             if (dir_spec.options.shrink_after_read) {
                 allocator.resizeManyBelow(Block, &dir.blk, .{
-                    .bytes = mach.alignA(dir.blk.defined_byte_count() +% 48, 8),
+                    .bytes = bits.alignA(dir.blk.defined_byte_count() +% 48, 8),
                 });
             }
         }
