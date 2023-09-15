@@ -3,7 +3,6 @@ const mem = @import("./mem.zig");
 const elf = @import("./elf.zig");
 const fmt = @import("./fmt.zig");
 const proc = @import("./proc.zig");
-const spec = @import("./spec.zig");
 const file = @import("./file.zig");
 const meta = @import("./meta.zig");
 const parse = @import("./parse.zig");
