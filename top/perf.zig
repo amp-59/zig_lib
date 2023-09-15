@@ -486,3 +486,13 @@ pub fn GenericPerfEvents(comptime events_spec: PerfEventsSpec) type {
     };
     return T;
 }
+pub const spec = struct {
+    pub const perf_event_open = struct {
+        pub const errors = struct {
+            pub const all = &.{
+                .@"2BIG", .ACCES, .BADF,  .BUSY,      .FAULT,    .INTR, .INVAL, .MFILE, .NODEV,
+                .NOENT,   .NOSPC, .NOSYS, .OPNOTSUPP, .OVERFLOW, .PERM, .SRCH,
+            };
+        };
+    };
+};
