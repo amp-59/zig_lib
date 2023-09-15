@@ -799,8 +799,12 @@ pub inline fn identity(any: anytype) @TypeOf(any) {
 pub inline fn equ(comptime T: type, dst: *T, src: T) void {
     dst.* = src;
 }
-pub fn intToPtr(comptime P: type, address: u64) P {
-    return @as(P, @ptrFromInt(address));
+pub fn intToPtr(comptime P: type, address: usize) P {
+    const alignment: usize = @typeInfo(P).Pointer.alignment;
+    if (address & (alignment - 1) != 0) {
+        debug.incorrectAlignmentFault(P, address, alignment, @returnAddress());
+    }
+    return @ptrFromInt(address);
 }
 pub inline fn intCast(comptime T: type, value: anytype) T {
     @setRuntimeSafety(false);
@@ -2675,4 +2679,42 @@ pub usingnamespace builtin;
 
 pub fn define(comptime symbol: []const u8, comptime T: type, comptime default: T) T {
     return if (@hasDecl(root, symbol)) @field(root, symbol) else default;
+}
+pub extern fn memset(dest: [*]u8, value: u8, count: usize) void;
+pub extern fn memcpy(noalias dest: [*]u8, noalias src: [*]const u8, len: u64) void;
+pub extern fn memmove(noalias dest: [*]u8, noalias src: [*]const u8, len: u64) callconv(.C) void;
+extern fn __zig_probe_stack() callconv(.C) void;
+comptime {
+    asm (
+        \\.intel_syntax noprefix
+        \\memmove:
+        \\  mov     rcx, rdx
+        \\  rep     movsb byte ptr es:[rdi], byte ptr [rsi]
+        \\  ret
+    );
+}
+comptime {
+    asm (
+        \\.intel_syntax noprefix
+        \\memset:
+        \\  mov     eax, esi
+        \\  mov     rcx, rdx
+        \\  rep     stosb byte ptr es:[rdi], al
+        \\  ret
+    );
+}
+comptime {
+    asm (
+        \\.intel_syntax noprefix
+        \\memcpy:
+        \\  mov     rcx, rdx
+        \\  rep     movsb byte ptr es:[rdi], byte ptr [rsi]
+        \\  ret
+    );
+}
+comptime {
+    asm (
+        \\__zig_probe_stack:
+        \\ret
+    );
 }
