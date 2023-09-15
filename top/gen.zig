@@ -4,10 +4,8 @@ const fmt = @import("./fmt.zig");
 const file = @import("./file.zig");
 const mach = @import("./mach.zig");
 const meta = @import("./meta.zig");
-const spec = @import("./spec.zig");
 const debug = @import("./debug.zig");
 const builtin = @import("./builtin.zig");
-
 pub const TypeDescr = fmt.GenericTypeDescrFormat(.{});
 pub const ListKind = enum {
     Parameter,
@@ -142,6 +140,11 @@ pub const TruncateSpec = struct {
         write: debug.Logging.SuccessError = .{},
         close: debug.Logging.ReleaseError = .{},
     };
+    const create_options = .{
+        .truncate = true,
+        .write_only = true,
+        .exclusive = false,
+    };
     fn errors(comptime truncate_spec: TruncateSpec) sys.ErrorPolicy {
         return .{
             .throw = truncate_spec.errors.open.throw ++ truncate_spec.errors.read.throw ++
@@ -154,7 +157,6 @@ pub const TruncateSpec = struct {
         return .{
             .logging = truncate_spec.logging.create,
             .errors = truncate_spec.errors.create,
-            .options = .{ .truncate = true, .write = true, .exclusive = false },
         };
     }
     fn write(comptime truncate_spec: TruncateSpec) file.WriteSpec {
@@ -207,7 +209,6 @@ pub const AppendSpec = struct {
         return .{
             .logging = append_spec.logging.open,
             .errors = append_spec.errors.open,
-            .options = .{ .append = true, .write_only = true },
         };
     }
     fn write(comptime append_spec: AppendSpec) file.WriteSpec {
@@ -297,7 +298,7 @@ pub fn truncateFile(comptime truncate_spec: TruncateSpec, pathname: [:0]const u8
     .abort = truncate_spec.errors.create.abort ++ truncate_spec.errors.write.abort ++
         truncate_spec.errors.close.abort,
 }, truncate_spec.return_type) {
-    const fd: usize = try meta.wrap(file.create(truncate_spec.create(), pathname, file.mode.regular));
+    const fd: usize = try meta.wrap(file.create(truncate_spec.create(), TruncateSpec.create_options, pathname, file.mode.regular));
     const ret: truncate_spec.return_type = try meta.wrap(file.write(truncate_spec.write(), fd, buf));
     try meta.wrap(file.close(truncate_spec.close(), fd));
     return ret;
@@ -308,7 +309,7 @@ pub fn appendFile(comptime append_spec: AppendSpec, pathname: [:0]const u8, buf:
     .abort = append_spec.errors.open.abort ++ append_spec.errors.write.abort ++
         append_spec.errors.close.abort,
 }, void) {
-    const fd: usize = try meta.wrap(file.open(append_spec.open(), pathname));
+    const fd: usize = try meta.wrap(file.open(append_spec.open(), .{ .append = true, .write_only = true }, pathname));
     const ret: append_spec.return_type = try meta.wrap(file.write(append_spec.write(), fd, buf));
     try meta.wrap(file.close(append_spec.close(), fd));
     return ret;
@@ -319,7 +320,7 @@ pub fn readFile(comptime read_spec: ReadSpec, pathname: [:0]const u8, buf: []rea
     .abort = read_spec.errors.open.abort ++ read_spec.errors.read.abort ++
         read_spec.errors.close.abort,
 }, read_spec.return_type) {
-    const fd: usize = try meta.wrap(file.open(read_spec.open(), pathname));
+    const fd: usize = try meta.wrap(file.open(read_spec.open(), .{ .create = true }, pathname));
     const ret: read_spec.return_type = try meta.wrap(file.read(read_spec.read(), fd, buf));
     try meta.wrap(file.close(read_spec.close(), fd));
     return ret;
@@ -358,103 +359,216 @@ pub fn readFileAt(comptime read_spec: ReadSpec, dir_fd: usize, name: [:0]const u
     return ret;
 }
 pub fn containerDeclsToBitField(comptime Container: type, comptime backing_integer: type, type_name: []const u8) void {
-    const ShiftAmount = builtin.ShiftAmount(backing_integer);
-    const bit_field_sets: []const meta.GenericBitFieldSet(backing_integer) =
-        comptime meta.containerDeclsToBitFieldSets(Container, backing_integer);
-    const size_name: []const u8 = @typeName(backing_integer);
-    var array: mem.StaticString(1024 *% 1024) = undefined;
+    const Fns = struct {
+        const Array = mem.StaticString(1024 *% 1024);
+        const BitFieldSet = meta.GenericBitFieldSet(backing_integer);
+        fn bitSizeOfEnum(set: BitFieldSet) u16 {
+            var value: backing_integer = 0;
+            for (set.pairs) |pair| {
+                value |= pair.value;
+            }
+            return @bitSizeOf(backing_integer) -% (@clz(value) +% @ctz(value));
+        }
+        fn bitSizeOfFields(set: BitFieldSet, bit_offset: u16) u16 {
+            var diff: u16 = 0;
+            for (set.pairs) |pair| {
+                if (pair.value != 0) {
+                    diff = ((@bitSizeOf(backing_integer) -% @clz(pair.value)) -% 1) -% bit_offset;
+                }
+            }
+            return diff +% 1;
+        }
+        fn writeFields(array: *Array, bit_field_sets: []const BitFieldSet) void {
+            var bits: u16 = 0;
+            var diff: u16 = 0;
+            var enum_count: u16 = 0;
+            for (bit_field_sets) |set| {
+                if (set.tag == .E) {
+                    const bit_size_of_enum: u16 = bitSizeOfEnum(set);
+                    array.writeOne('e');
+                    array.writeFormat(fmt.ud16(enum_count));
+                    array.writeMany(":enum(u");
+                    array.writeFormat(fmt.id64(bit_size_of_enum));
+                    array.writeMany("){\n");
+                    for (set.pairs) |pair| {
+                        array.writeFormat(fmt.IdentifierFormat{ .value = pair.name });
+                        array.writeMany("=");
+                        array.writeFormat(fmt.ud64(pair.value >> @intCast(bits)));
+                        array.writeMany(",\n");
+                    }
+                    array.writeMany("},\n");
+                    bits +%= bit_size_of_enum;
+                    enum_count +%= 1;
+                } else {
+                    for (set.pairs) |pair| {
+                        if (pair.value != 0) {
+                            diff = ((@bitSizeOf(backing_integer) -% @clz(pair.value)) -% 1) -% bits;
+                            if (diff >= 1) {
+                                array.writeMany("zb");
+                                array.writeFormat(fmt.ud16(bits));
+                                array.writeMany(":u");
+                                array.writeFormat(fmt.ud16(diff));
+                                array.writeMany("=0,\n");
+                            }
+                            array.writeFormat(fmt.IdentifierFormat{ .value = pair.name });
+                            array.writeMany(":bool=false,\n");
+                            bits +%= diff +% 1;
+                        }
+                    }
+                }
+                diff = @bitSizeOf(backing_integer) -% bits;
+                if (diff >= 1) {
+                    array.writeMany("zb");
+                    array.writeFormat(fmt.ud16(bits));
+                    array.writeMany(":u");
+                    array.writeFormat(fmt.ud16(diff));
+                    array.writeMany("=0,\n");
+                }
+            }
+        }
+        fn writeAssertFunction(array: *Array, size_type_name: []const u8) void {
+            array.writeMany("fn assert(flags:@This(),val:");
+            array.writeMany(size_type_name);
+            array.writeMany(")void{\ndebug.assertEqual(");
+            array.writeMany(size_type_name);
+            array.writeMany(", @as(");
+            array.writeMany(size_type_name);
+            array.writeMany(",@bitCast(flags)),val);\n}\n");
+        }
+        fn writeAssertions(array: *Array, bit_field_sets: []const BitFieldSet) void {
+            var enum_count: u16 = 0;
+            for (bit_field_sets) |set| {
+                if (set.tag == .E) {
+                    var value: backing_integer = 0;
+                    for (set.pairs) |pair| {
+                        value |= pair.value;
+                    }
+                    for (set.pairs) |pair| {
+                        array.writeMany("assert(.{.");
+                        array.writeOne('e');
+                        array.writeFormat(fmt.ud16(enum_count));
+                        array.writeMany("=.");
+                        array.writeFormat(fmt.IdentifierFormat{ .value = pair.name });
+                        array.writeMany("},");
+                        array.writeFormat(fmt.uxsize(pair.value));
+                        array.writeMany(");\n");
+                    }
+                    enum_count +%= 1;
+                } else {
+                    for (set.pairs) |pair| {
+                        if (pair.value != 0) {
+                            array.writeMany("assert(.{.");
+                            array.writeFormat(fmt.IdentifierFormat{ .value = pair.name });
+                            array.writeMany("=true},");
+                            array.writeFormat(fmt.uxsize(pair.value));
+                            array.writeMany(");\n");
+                        }
+                    }
+                }
+            }
+        }
+        fn writeFormatWriteFunction(array: *Array, bit_field_sets: []const BitFieldSet) void {
+            array.writeMany("pub fn formatWriteBuf(format:@This(),buf:[*]u8)usize{\n");
+            array.writeMany("var ptr: [*]u8 = buf;\n");
+            for (bit_field_sets) |set| {
+                var string: fmt.StringLiteralFormat = undefined;
+                for (set.pairs, 0..) |pair, idx| {
+                    string.value = pair.name;
+                    array.writeMany("if(format.");
+                    array.writeFormat(fmt.IdentifierFormat{ .value = pair.name });
+                    array.writeMany("){\n");
+                    if (idx != 0) {
+                        array.writeMany("if(ptr!=buf){\n");
+                        array.writeMany("ptr[0]='|';\n");
+                        array.writeMany("ptr+=1;\n");
+                        array.writeMany("}\n");
+                    }
+                    if (set.tag == .E) {
+                        array.writeMany("ptr+=fmt.strcpyEqu(ptr,@tagName(format.");
+                        array.writeFormat(fmt.IdentifierFormat{ .value = pair.name });
+                        array.writeMany("));\n");
+                        array.writeMany("}\n");
+                    } else {
+                        array.writeMany("ptr+=fmt.strcpyEqu(ptr,");
+                        array.writeFormat(string);
+                        array.writeMany(");\n");
+                        array.writeMany("}\n");
+                    }
+                }
+            }
+            array.writeMany("}\n");
+        }
+        fn writeFormatLengthFunction(array: *Array, bit_field_sets: []const BitFieldSet) void {
+            array.writeMany("pub fn formatLength(format:@This())usize{\n");
+            array.writeMany("var len: usize = 0;\n");
+            for (bit_field_sets, 0..) |set, idx| {
+                var string: fmt.StringLiteralFormat = undefined;
+                for (set.pairs) |pair| {
+                    string.value = pair.name;
+                    array.writeMany("if(format.");
+                    array.writeFormat(fmt.IdentifierFormat{ .value = pair.name });
+                    array.writeMany("){\n");
+                    if (idx != 0) {
+                        array.writeMany("len+%=@intFromBool(len!=0);\n");
+                    }
+                    if (set.tag == .E) {
+                        array.writeMany("len+=@tagName(format.");
+                        array.writeFormat(fmt.IdentifierFormat{ .value = pair.name });
+                        array.writeMany(").len;\n");
+                    } else {
+                        array.writeMany("len+=");
+                        array.writeFormat(fmt.ud64(string.value.len));
+                        array.writeMany(";\n");
+                    }
+                    array.writeMany("}\n");
+                }
+            }
+            array.writeMany("}\n");
+        }
+        fn writeFieldValuePairs(array: *Array, bit_field_sets: []const BitFieldSet) void {
+            array.writeMany("const x: [");
+            array.writeFormat(fmt.ud64(bit_field_sets.len));
+            array.writeMany("]struct{[:0]const u8,");
+            array.writeMany(@typeName(backing_integer));
+            array.writeMany("}=.{");
+            var bits: u16 = 0;
+            for (bit_field_sets) |set| {
+                array.writeMany("// ");
+                if (set.tag == .E) {
+                    const bit_size_of: u16 = bitSizeOfEnum(set);
+                    array.writeFormat(fmt.ud64(bit_size_of));
+                    bits +%= bit_size_of;
+                } else {
+                    const bit_size_of: u16 = bitSizeOfFields(set, bits);
+                    array.writeFormat(fmt.ud64(bit_size_of));
+                    bits +%= bit_size_of;
+                }
+                array.writeMany("\n");
+                for (set.pairs) |pair| {
+                    array.writeMany(".{");
+                    array.writeFormat(fmt.StringLiteralFormat{ .value = pair.name });
+                    array.writeMany(",");
+                    array.writeFormat(fmt.ud64(pair.value));
+                    array.writeMany("},\n");
+                }
+            }
+            array.writeMany("};\n");
+        }
+    };
+    var array: Fns.Array = undefined;
     array.undefineAll();
-    var bits: u16 = 0;
-    var diff: u16 = 0;
-    var enum_count: u16 = 0;
+    const bit_field_sets: []const meta.GenericBitFieldSet(backing_integer) = comptime meta.containerDeclsToBitFieldSets(Container, backing_integer);
     array.writeMany("const ");
     array.writeMany(type_name);
-    array.writeMany("=packed struct(" ++ size_name ++ "){\n");
-    for (bit_field_sets) |set| {
-        if (set.tag == .E) {
-            var value: backing_integer = 0;
-            for (set.pairs) |pair| {
-                value |= pair.value;
-            }
-            const bit_size_of_enum: u16 = @bitSizeOf(backing_integer) -% (@clz(value) +% @ctz(value));
-            const shift_amt: ShiftAmount = meta.bitCast(ShiftAmount, bits);
-            array.writeOne('e');
-            array.writeFormat(fmt.ud16(enum_count));
-            array.writeMany(":enum(u");
-            array.writeFormat(fmt.id64(bit_size_of_enum));
-            array.writeMany("){\n");
-            for (set.pairs) |pair| {
-                array.writeFormat(fmt.IdentifierFormat{ .value = pair.name });
-                array.writeMany("=");
-                array.writeFormat(fmt.ud64(pair.value >> shift_amt));
-                array.writeMany(",\n");
-            }
-            array.writeMany("},\n");
-            bits +%= bit_size_of_enum;
-            enum_count +%= 1;
-        } else {
-            for (set.pairs) |pair| {
-                if (pair.value != 0) {
-                    diff = ((@bitSizeOf(backing_integer) -% @clz(pair.value)) -% 1) -% bits;
-                    if (diff >= 1) {
-                        array.writeMany("zb");
-                        array.writeFormat(fmt.ud16(bits));
-                        array.writeMany(":u");
-                        array.writeFormat(fmt.ud16(diff));
-                        array.writeMany("=0,\n");
-                    }
-                    array.writeFormat(fmt.IdentifierFormat{ .value = pair.name });
-                    array.writeMany(":bool=false,\n");
-                    bits +%= diff +% 1;
-                }
-            }
-        }
-    }
-    diff = @bitSizeOf(backing_integer) -% bits;
-    if (diff >= 1) {
-        array.writeMany("zb");
-        array.writeFormat(fmt.ud16(bits));
-        array.writeMany(":u");
-        array.writeFormat(fmt.ud16(diff));
-        array.writeMany("=0,\n");
-    }
-    array.writeMany("fn assert(flags:@This(),val:" ++ size_name ++ ")void{\ndebug.assertEqual(" ++ size_name ++ ", @as(" ++ size_name ++ ",@bitCast(flags)),val);\n}\n");
+    array.writeMany("=packed struct(" ++ @typeName(backing_integer) ++ "){\n");
+    Fns.writeFields(&array, bit_field_sets);
+    Fns.writeAssertFunction(&array, @typeName(backing_integer));
+    Fns.writeFormatWriteFunction(&array, bit_field_sets);
+    Fns.writeFormatLengthFunction(&array, bit_field_sets);
     array.writeMany("comptime{");
-    enum_count = 0;
-    for (bit_field_sets) |set| {
-        if (set.tag == .E) {
-            var value: backing_integer = 0;
-            for (set.pairs) |pair| {
-                value |= pair.value;
-            }
-            for (set.pairs) |pair| {
-                array.writeMany("assert(.{.");
-                array.writeOne('e');
-                array.writeFormat(fmt.ud16(enum_count));
-                array.writeMany("=.");
-                array.writeFormat(fmt.IdentifierFormat{ .value = pair.name });
-                array.writeMany("},");
-                array.writeFormat(fmt.uxsize(pair.value));
-                array.writeMany(");\n");
-            }
-            enum_count +%= 1;
-        } else {
-            for (set.pairs) |pair| {
-                if (pair.value != 0) {
-                    array.writeMany("assert(.{.");
-                    array.writeFormat(fmt.IdentifierFormat{ .value = pair.name });
-                    array.writeMany("=true},");
-                    array.writeFormat(fmt.uxsize(pair.value));
-                    array.writeMany(");\n");
-                }
-            }
-        }
-    }
-    if (array.readOneBack() != '{') {
-        array.writeMany("}\n");
-    } else {
-        array.undefine("comptime {".len);
-    }
+    Fns.writeAssertions(&array, bit_field_sets);
+    array.writeMany("}\n");
+    Fns.writeFieldValuePairs(&array, bit_field_sets);
     array.writeMany("};\n");
     file.write(.{ .errors = .{} }, 1, array.readAll());
 }
