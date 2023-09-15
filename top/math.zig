@@ -1,5 +1,160 @@
+const bits = @import("./bits.zig");
 const debug = @import("./debug.zig");
 const builtin = @import("./builtin.zig");
+
+pub inline fn sub64(arg1: u64, arg2: u64) u64 {
+    return arg1 -% arg2;
+}
+pub inline fn mul64(arg1: u64, arg2: u64) u64 {
+    return arg1 *% arg2;
+}
+pub inline fn add64(arg1: u64, arg2: u64) u64 {
+    return arg1 +% arg2;
+}
+pub inline fn divT64(arg1: u64, arg2: u64) u64 {
+    return arg1 / arg2;
+}
+pub inline fn sub32(arg1: u32, arg2: u32) u32 {
+    return arg1 -% arg2;
+}
+pub inline fn mul32(arg1: u32, arg2: u32) u32 {
+    return arg1 *% arg2;
+}
+pub inline fn add32(arg1: u32, arg2: u32) u32 {
+    return arg1 +% arg2;
+}
+pub inline fn divT32(arg1: u32, arg2: u32) u32 {
+    return arg1 / arg2;
+}
+pub inline fn sub16(arg1: u16, arg2: u16) u16 {
+    return arg1 -% arg2;
+}
+pub inline fn mul16(arg1: u16, arg2: u16) u16 {
+    return arg1 *% arg2;
+}
+pub inline fn add16(arg1: u16, arg2: u16) u16 {
+    return arg1 +% arg2;
+}
+pub inline fn divT16(arg1: u16, arg2: u16) u16 {
+    return arg1 / arg2;
+}
+pub inline fn sub8(arg1: u8, arg2: u8) u8 {
+    return arg1 -% arg2;
+}
+pub inline fn mul8(arg1: u8, arg2: u8) u8 {
+    return arg1 *% arg2;
+}
+pub inline fn add8(arg1: u8, arg2: u8) u8 {
+    return arg1 +% arg2;
+}
+pub inline fn divT8(arg1: u8, arg2: u8) u8 {
+    return arg1 / arg2;
+}
+/// arg3 +% (arg1 *% arg2)
+pub inline fn mulAdd64(arg1: u64, arg2: u64, arg3: u64) u64 {
+    return add64(mul64(arg1, arg2), arg3);
+}
+/// arg3 +% (arg1 *% arg2)
+pub inline fn mulAdd32(arg1: u32, arg2: u32, arg3: u32) u32 {
+    return add32(mul32(arg1, arg2), arg3);
+}
+/// arg3 +% (arg1 *% arg2)
+pub inline fn mulAdd16(arg1: u16, arg2: u16, arg3: u16) u16 {
+    return add16(mul16(arg1, arg2), arg3);
+}
+/// arg3 +% (arg1 *% arg2)
+pub inline fn mulAdd8(arg1: u8, arg2: u8, arg3: u8) u8 {
+    return add8(mul8(arg1, arg2), arg3);
+}
+/// arg3 -% (arg1 *% arg2)
+pub inline fn mulSub64(arg1: u64, arg2: u64, arg3: u64) u64 {
+    return sub64(arg3, mul64(arg1, arg2));
+}
+/// arg3 -% (arg1 *% arg2)
+pub inline fn mulSub32(arg1: u32, arg2: u32, arg3: u32) u32 {
+    return sub32(arg3, mul32(arg1, arg2));
+}
+/// arg3 -% (arg1 *% arg2)
+pub inline fn mulSub16(arg1: u16, arg2: u16, arg3: u16) u16 {
+    return sub16(arg3, mul16(arg1, arg2));
+}
+/// arg3 -% (arg1 *% arg2)
+pub inline fn mulSub8(arg1: u8, arg2: u8, arg3: u8) u8 {
+    return sub8(arg3, mul8(arg1, arg2));
+}
+pub inline fn subOr64(arg1: u64, arg2: u64, arg3: u64) u64 {
+    return bits.or64(sub64(arg1, arg2), arg3);
+}
+pub inline fn subOr32(arg1: u32, arg2: u32, arg3: u32) u32 {
+    return bits.or32(sub32(arg1, arg2), arg3);
+}
+pub inline fn subOr16(arg1: u16, arg2: u16, arg3: u16) u16 {
+    return bits.or16(sub16(arg1, arg2), arg3);
+}
+pub inline fn subOr8(arg1: u8, arg2: u8, arg3: u8) u8 {
+    return bits.or8(sub8(arg1, arg2), arg3);
+}
+pub inline fn subEqu64(arg1: *u64, arg2: u64) void {
+    arg1.* = sub64(arg1.*, arg2);
+}
+pub inline fn mulEqu64(arg1: *u64, arg2: u64) void {
+    arg1.* = mul64(arg1.*, arg2);
+}
+pub inline fn addEqu64(arg1: *u64, arg2: u64) void {
+    arg1.* = add64(arg1.*, arg2);
+}
+pub inline fn divTEqu64(arg1: *u64, arg2: u64) void {
+    arg1.* = divT64(arg1.*, arg2);
+}
+pub inline fn subEqu32(arg1: *u32, arg2: u32) void {
+    arg1.* = sub32(arg1.*, arg2);
+}
+pub inline fn mulEqu32(arg1: *u32, arg2: u32) void {
+    arg1.* = mul32(arg1.*, arg2);
+}
+pub inline fn addEqu32(arg1: *u32, arg2: u32) void {
+    arg1.* = add32(arg1.*, arg2);
+}
+pub inline fn divTEqu32(arg1: *u32, arg2: u32) void {
+    arg1.* = divT32(arg1.*, arg2);
+}
+pub inline fn subEqu16(arg1: *u16, arg2: u16) void {
+    arg1.* = sub16(arg1.*, arg2);
+}
+pub inline fn mulEqu16(arg1: *u16, arg2: u16) void {
+    arg1.* = mul16(arg1.*, arg2);
+}
+pub inline fn addEqu16(arg1: *u16, arg2: u16) void {
+    arg1.* = add16(arg1.*, arg2);
+}
+pub inline fn divTEqu16(arg1: *u16, arg2: u16) void {
+    arg1.* = divT16(arg1.*, arg2);
+}
+pub inline fn subEqu8(arg1: *u8, arg2: u8) void {
+    arg1.* = sub8(arg1.*, arg2);
+}
+pub inline fn mulEqu8(arg1: *u8, arg2: u8) void {
+    arg1.* = mul8(arg1.*, arg2);
+}
+pub inline fn addEqu8(arg1: *u8, arg2: u8) void {
+    arg1.* = add8(arg1.*, arg2);
+}
+pub inline fn divTEqu8(arg1: *u8, arg2: u8) void {
+    arg1.* = divT8(arg1.*, arg2);
+}
+pub inline fn mulAddEqu64(arg1: *u64, arg2: u64, arg3: u64) void {
+    arg1.* = add64(mul64(arg1.*, arg2), arg3);
+}
+pub inline fn mulAddEqu32(arg1: *u32, arg2: u32, arg3: u32) void {
+    arg1.* = add32(mul32(arg1.*, arg2), arg3);
+}
+pub inline fn mulAddEqu16(arg1: *u16, arg2: u16, arg3: u16) void {
+    arg1.* = add16(mul16(arg1.*, arg2), arg3);
+}
+pub inline fn mulAddEqu8(arg1: *u8, arg2: u8, arg3: u8) void {
+    arg1.* = add8(mul8(arg1.*, arg2), arg3);
+}
+
 pub inline fn sigFigList(comptime T: type, comptime radix: u7) ?[]const T {
     switch (T) {
         u8 => switch (radix) {
