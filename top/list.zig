@@ -1,9 +1,8 @@
 const fmt = @import("./fmt.zig");
 const mem = @import("./mem.zig");
 const meta = @import("./meta.zig");
-const mach = @import("./mach.zig");
+const bits = @import("./bits.zig");
 const file = @import("./file.zig");
-const spec = @import("./spec.zig");
 const debug = @import("./debug.zig");
 const builtin = @import("./builtin.zig");
 pub const ListSpec = struct {
@@ -30,7 +29,7 @@ pub fn GenericLinkedList(comptime list_spec: ListSpec) type {
             }
             pub const Data = opaque {
                 const begin: u64 = if (!link_after) link_size else 0;
-                const len: u64 = mach.alignA64(unit_size, link_alignment);
+                const len: u64 = bits.alignA64(unit_size, link_alignment);
                 const end: u64 = begin +% len;
                 fn addr(t_node_blk: Block) u64 {
                     return t_node_blk.aligned_byte_address() +% Node.Data.begin;
@@ -49,7 +48,7 @@ pub fn GenericLinkedList(comptime list_spec: ListSpec) type {
                 }
             };
             pub const Link = opaque {
-                const begin: u64 = if (link_after) mach.alignA64(unit_size, link_alignment) else 0;
+                const begin: u64 = if (link_after) bits.alignA64(unit_size, link_alignment) else 0;
                 const len: u64 = link_size;
                 const end: u64 = begin +% len;
                 fn addr(t_node_blk: Block) u64 {
@@ -123,7 +122,7 @@ pub fn GenericLinkedList(comptime list_spec: ListSpec) type {
             const low_alignment: u64 = list_spec.low_alignment orelse @alignOf(child);
             const alignment: u64 = builtin.max(u64, link_alignment, low_alignment);
             const offset: u64 = builtin.max(u64, Link.end, Data.end);
-            const size: u64 = mach.alignA64(offset, if (link_after) link_alignment else low_alignment);
+            const size: u64 = bits.alignA64(offset, if (link_after) link_alignment else low_alignment);
         };
         pub const Links = struct {
             major: Block,
@@ -140,19 +139,19 @@ pub fn GenericLinkedList(comptime list_spec: ListSpec) type {
             }
             pub fn next(links: Links) ?Block {
                 const t_next_blk: Block = Node.Link.next(links.major, links.minor);
-                return mach.cmovxZ(t_next_blk.aligned_byte_address() > 0x10000, t_next_blk);
+                return bits.cmovxZ(t_next_blk.aligned_byte_address() > 0x10000, t_next_blk);
             }
             pub fn prev(links: Links) ?Block {
                 const t_prev_blk: Block = Node.Link.prev(links.major, links.minor);
-                return mach.cmovxZ(t_prev_blk.aligned_byte_address() > 0x10000, t_prev_blk);
+                return bits.cmovxZ(t_prev_blk.aligned_byte_address() > 0x10000, t_prev_blk);
             }
             pub fn nextPair(links: *const Links) ?Links {
                 const t_next_blk: Block = Node.Link.next(links.major, links.minor);
-                return mach.cmovxZ(t_next_blk.aligned_byte_address() > 0x10000, Links{ .major = links.minor, .minor = t_next_blk });
+                return bits.cmovxZ(t_next_blk.aligned_byte_address() > 0x10000, Links{ .major = links.minor, .minor = t_next_blk });
             }
             pub fn prevPair(links: *const Links) ?Links {
                 const t_prev_blk: Block = Node.Link.prev(links.major, links.minor);
-                return mach.cmovxZ(t_prev_blk.aligned_byte_address() > 0x10000, Links{ .major = t_prev_blk, .minor = links.major });
+                return bits.cmovxZ(t_prev_blk.aligned_byte_address() > 0x10000, Links{ .major = t_prev_blk, .minor = links.major });
             }
             pub fn toList(links: *Links) List {
                 const index = links.countToHead();
@@ -351,8 +350,8 @@ pub fn GenericLinkedList(comptime list_spec: ListSpec) type {
             switch (list.count) {
                 1, 2 => {
                     const b: bool = index orelse list.index == 0;
-                    const s_node_blk: Block = mach.cmovx(b, list.links.minor, list.links.major);
-                    const t_node_blk: Block = mach.cmovx(b, list.links.major, list.links.minor);
+                    const s_node_blk: Block = bits.cmovx(b, list.links.minor, list.links.major);
+                    const t_node_blk: Block = bits.cmovx(b, list.links.major, list.links.minor);
                     list.links = Links.basicInit(s_node_blk, t_node_blk);
                     list.count -%= 1;
                 },
@@ -433,7 +432,7 @@ pub fn GenericLinkedList(comptime list_spec: ListSpec) type {
         fn getNodeBlock(list: *List, allocator: *Allocator) !Block {
             if (list.save) |s_save_blk| {
                 const t_save_addr: u64 = Node.Link.read(s_save_blk);
-                list.save = mach.cmovxZ(t_save_addr != 0, Block{ .lb_word = t_save_addr });
+                list.save = bits.cmovxZ(t_save_addr != 0, Block{ .lb_word = t_save_addr });
                 return s_save_blk;
             } else {
                 return allocator.allocateStatic(Block, .{ .count = 1 });
@@ -519,7 +518,7 @@ pub fn GenericLinkedList(comptime list_spec: ListSpec) type {
         pub fn deinit(list: *List, allocator: *Allocator) void {
             while (list.save) |s_save_addr| {
                 const t_save_addr: u64 = Node.Link.read(s_save_addr);
-                list.save = mach.cmovxZ(t_save_addr != 0, Block{ .lb_word = t_save_addr });
+                list.save = bits.cmovxZ(t_save_addr != 0, Block{ .lb_word = t_save_addr });
                 allocator.deallocateStatic(Block, s_save_addr, .{ .count = 1 });
             }
             switch (list.count) {
@@ -583,8 +582,8 @@ pub fn GenericLinkedList(comptime list_spec: ListSpec) type {
             const IOAllocator = mem.GenericArenaAllocator(.{
                 .AddressSpace = AddressSpace,
                 .arena_index = AddressSpace.addr_spec.count() -% 1,
-                .errors = spec.allocator.errors.noexcept,
-                .logging = spec.allocator.logging.silent,
+                .errors = mem.spec.allocator.errors.noexcept,
+                .logging = mem.spec.allocator.logging.silent,
             });
             const IOPrintArray = IOAllocator.StructuredHolder(u8);
             pub fn show(list: List, address_space: *AddressSpace) !void {
@@ -595,7 +594,7 @@ pub fn GenericLinkedList(comptime list_spec: ListSpec) type {
                 var tmp: List = list;
                 tmp.goToHead();
                 if (tmp.count <= 1) {
-                    array.appendAny(spec.reinterpret.fmt, &allocator, .{
+                    array.appendAny(mem.spec.reinterpret.fmt, &allocator, .{
                         "head-",    fmt.ud64(tmp.index),
                         ": \t(",    fmt.ux64(tmp.links.major.aligned_byte_address()),
                         "+",        fmt.ud64(tmp.links.major.alignment()),
@@ -607,7 +606,7 @@ pub fn GenericLinkedList(comptime list_spec: ListSpec) type {
                     });
                 } else {
                     if (tmp.links.nextPair()) |links| {
-                        array.appendAny(spec.reinterpret.fmt, &allocator, .{
+                        array.appendAny(mem.spec.reinterpret.fmt, &allocator, .{
                             "head-",   fmt.ud64(tmp.index),
                             ": \t(",   fmt.ux64(tmp.links.major.aligned_byte_address()),
                             "+",       fmt.ud64(tmp.links.major.alignment()),
@@ -623,7 +622,7 @@ pub fn GenericLinkedList(comptime list_spec: ListSpec) type {
                         tmp.index +%= 1;
                     }
                     while (tmp.links.nextPair()) |links| {
-                        array.appendAny(spec.reinterpret.fmt, &allocator, .{
+                        array.appendAny(mem.spec.reinterpret.fmt, &allocator, .{
                             "link-",   fmt.ud64(tmp.index),
                             ": \t",    fmt.ux64(tmp.links.prev().?.aligned_byte_address()),
                             "+",       fmt.ud64(tmp.links.prev().?.alignment()),
@@ -640,7 +639,7 @@ pub fn GenericLinkedList(comptime list_spec: ListSpec) type {
                         tmp.links = links;
                         tmp.index +%= 1;
                     } else {
-                        array.appendAny(spec.reinterpret.fmt, &allocator, .{
+                        array.appendAny(mem.spec.reinterpret.fmt, &allocator, .{
                             "sentinel-", fmt.ud64(tmp.index),
                             ":\t",       fmt.ux64(tmp.links.prev().?.aligned_byte_address()),
                             "+",         fmt.ud64(tmp.links.prev().?.alignment()),
@@ -674,7 +673,7 @@ pub fn GenericLinkedListView(comptime list_spec: ListViewSpec) type {
         pub const Node = opaque {
             pub const Data = opaque {
                 const begin: u64 = if (link_after) 0 else link_size;
-                const end: u64 = begin +% mach.alignA64(unit_size, link_alignment);
+                const end: u64 = begin +% bits.alignA64(unit_size, link_alignment);
                 fn read(s_node_addr: u64) child {
                     return builtin.intToPtr(*child, s_node_addr +% Node.Data.begin).*;
                 }
@@ -686,7 +685,7 @@ pub fn GenericLinkedListView(comptime list_spec: ListViewSpec) type {
                     return builtin.intToPtr(*child, s_node_addr +% Node.Data.begin);
                 }
                 fn node(data: *child) u64 {
-                    return @intFromPtr(data) -% mach.cmov64z(!Node.link_after, link_size);
+                    return @intFromPtr(data) -% bits.cmov64z(!Node.link_after, link_size);
                 }
             };
             pub const Link = opaque {
@@ -765,7 +764,7 @@ pub fn GenericLinkedListView(comptime list_spec: ListViewSpec) type {
             const link_after: bool = link_alignment < low_alignment;
             const max_offset: u64 = @max(Link.end, Data.end);
             pub const alignment: u64 = @max(link_alignment, low_alignment);
-            pub const size: u64 = mach.alignA64(max_offset, if (link_after)
+            pub const size: u64 = bits.alignA64(max_offset, if (link_after)
                 link_alignment
             else
                 low_alignment);
@@ -780,11 +779,11 @@ pub fn GenericLinkedListView(comptime list_spec: ListViewSpec) type {
             }
             fn next(links: Links) ?u64 {
                 const t_next_addr: u64 = Node.Link.next(links.major, links.minor);
-                return mach.cmovxZ(t_next_addr > 0x10000, t_next_addr);
+                return bits.cmovxZ(t_next_addr > 0x10000, t_next_addr);
             }
             fn prev(links: Links) ?u64 {
                 const t_prev_addr: u64 = Node.Link.prev(links.major, links.minor);
-                return mach.cmovxZ(t_prev_addr > 0x10000, t_prev_addr);
+                return bits.cmovxZ(t_prev_addr > 0x10000, t_prev_addr);
             }
             fn nextPair(links: *const Links) ?Links {
                 const t_next_addr: u64 = Node.Link.next(links.major, links.minor);
@@ -964,8 +963,8 @@ pub fn GenericLinkedListView(comptime list_spec: ListViewSpec) type {
                 },
                 1, 2 => {
                     const b: bool = index orelse list.index == 0;
-                    const s_node_addr: u64 = mach.cmov64(b, list.links.minor, list.links.major);
-                    const t_node_addr: u64 = mach.cmov64(b, list.links.major, list.links.minor);
+                    const s_node_addr: u64 = bits.cmov64(b, list.links.minor, list.links.major);
+                    const t_node_addr: u64 = bits.cmov64(b, list.links.major, list.links.minor);
                     list.links = Links.basicInit(s_node_addr, t_node_addr);
                     list.count -%= 1;
                 },
@@ -1095,7 +1094,7 @@ pub fn GenericLinkedListView(comptime list_spec: ListViewSpec) type {
                 var tmp: List = list;
                 tmp.goToHead();
                 if (tmp.count <= 1) {
-                    try array.appendAny(spec.reinterpret.fmt, &allocator, .{
+                    try array.appendAny(mem.spec.reinterpret.fmt, &allocator, .{
                         "head-",    fmt.ud64(tmp.index),
                         ": \t(",    fmt.ux64(tmp.links.major),
                         ',',        fmt.ux64(tmp.links.minor),
@@ -1105,7 +1104,7 @@ pub fn GenericLinkedListView(comptime list_spec: ListViewSpec) type {
                     });
                 } else {
                     if (tmp.links.nextPair()) |links| {
-                        try array.appendAny(spec.reinterpret.fmt, &allocator, .{
+                        try array.appendAny(mem.spec.reinterpret.fmt, &allocator, .{
                             "head-",   fmt.ud64(tmp.index),
                             ": \t(",   fmt.ux64(tmp.links.major),
                             ',',       fmt.ux64(tmp.links.minor),
@@ -1118,7 +1117,7 @@ pub fn GenericLinkedListView(comptime list_spec: ListViewSpec) type {
                         tmp.index +%= 1;
                     }
                     while (tmp.links.nextPair()) |links| {
-                        try array.appendAny(spec.reinterpret.fmt, &allocator, .{
+                        try array.appendAny(mem.spec.reinterpret.fmt, &allocator, .{
                             "link-",   fmt.ud64(tmp.index),
                             ": \t",    fmt.ux64(tmp.links.prev().?),
                             " <- (",   fmt.ux64(tmp.links.major),
@@ -1131,7 +1130,7 @@ pub fn GenericLinkedListView(comptime list_spec: ListViewSpec) type {
                         tmp.links = links;
                         tmp.index +%= 1;
                     } else {
-                        try array.appendAny(spec.reinterpret.fmt, &allocator, .{
+                        try array.appendAny(mem.spec.reinterpret.fmt, &allocator, .{
                             "sentinel-", fmt.ud64(tmp.index),
                             ":\t",       fmt.ux64(tmp.links.prev().?),
                             " <- (",     fmt.ux64(tmp.links.major),
@@ -1248,7 +1247,7 @@ pub const Node4 = opaque {
         return t_f_node_addr;
     }
     pub fn flushConsolidate(r_node_addr: u64) u64 {
-        return mach.cmov64(Node4.kind(r_node_addr) == Node4.F, Node4.link(r_node_addr), r_node_addr);
+        return bits.cmov64(Node4.kind(r_node_addr) == Node4.F, Node4.link(r_node_addr), r_node_addr);
     }
     pub fn prependFlush(t_s_node_addr: u64, r_s_node_addr: u64, r_end: u64) u64 {
         const r_u_node_addr: u64 = r_end -% Node4.size;
