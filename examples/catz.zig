@@ -2,7 +2,7 @@ const zl = @import("../zig_lib.zig");
 const mem = zl.mem;
 const proc = zl.proc;
 const file = zl.file;
-const mach = zl.mach;
+const bits = zl.bits;
 const meta = zl.meta;
 
 pub usingnamespace zl.start;
@@ -22,7 +22,7 @@ pub fn main(args_in: [][*:0]u8) !void {
             continue;
         };
         if (st.mode.kind == .regular) {
-            const len: u64 = mach.alignA64(st.size, 4096);
+            const len: u64 = bits.alignA64(st.size, 4096);
             file.map(.{}, .{}, .{ .visibility = .private }, fd, addr, len, 0) catch {
                 continue;
             };
