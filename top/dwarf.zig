@@ -941,6 +941,7 @@ pub const DwarfInfo = extern struct {
         return ret;
     }
     fn populateUnit(allocator: *Allocator, dwarf_info: *DwarfInfo, unit: *Unit) !void {
+        @setRuntimeSafety(false);
         try parseAbbrevTable(allocator, dwarf_info, unit.abbrev_tab);
         try parseDie(allocator, dwarf_info, unit, unit.info_entry);
         if (logging_summary) {
@@ -960,6 +961,7 @@ pub const DwarfInfo = extern struct {
         }
     }
     pub fn scanAllCompileUnits(dwarf_info: *DwarfInfo, allocator: *Allocator) void {
+        @setRuntimeSafety(false);
         var unit_off: u64 = 0;
         while (unit_off < dwarf_info.impl.info_len) {
             const unit: *Unit = Unit.init(allocator, dwarf_info, dwarf_info.impl.info, unit_off);
@@ -968,7 +970,6 @@ pub const DwarfInfo = extern struct {
                 .qword => 12 +% unit.len,
                 .dword => 4 +% unit.len,
             };
-
             var info_entry: Die = comptime builtin.zero(Die);
             var pos: u64 = unit.info_entry.off +% unit.info_entry.len;
             while (pos < next_off) {
@@ -997,6 +998,7 @@ pub const DwarfInfo = extern struct {
         unit_off: u64,
         next_off: u64,
     ) ?[]const u8 {
+        @setRuntimeSafety(false);
         var depth: i32 = 3;
         var cur_info_entry: Die = info_entry.*;
         while (depth > 0) : (depth -%= 1) {
@@ -1031,6 +1033,7 @@ pub const DwarfInfo = extern struct {
         return null;
     }
     fn parseRange(dwarf_info: *DwarfInfo, unit: *const Unit, info_entry: *Die) Range {
+        @setRuntimeSafety(false);
         if (info_entry.get(.low_pc)) |low_form_val| {
             const low_pc: u64 = switch (low_form_val.*) {
                 .Address => |addr| addr,
@@ -1058,6 +1061,7 @@ pub const DwarfInfo = extern struct {
         dwarf_info: *DwarfInfo,
         abbrev_tab: *AbbrevTable,
     ) !void {
+        @setRuntimeSafety(false);
         const abbrev_bytes: []const u8 = dwarf_info.impl.abbrev[abbrev_tab.off..dwarf_info.impl.abbrev_len];
         while (true) {
             const code = parse.noexcept.readLEB128(u64, abbrev_bytes[abbrev_tab.len..]);
@@ -1102,6 +1106,7 @@ pub const DwarfInfo = extern struct {
         unit: *Unit,
         info_entry: *Die,
     ) !void {
+        @setRuntimeSafety(false);
         const info_entry_bytes: []u8 = dwarf_info.impl.info[info_entry.off..dwarf_info.impl.info_len];
         const code = parse.noexcept.readLEB128(u64, info_entry_bytes);
         info_entry.len = code[1];
@@ -1133,6 +1138,7 @@ pub const DwarfInfo = extern struct {
         }
     }
     fn parseFileEntry(bytes: []u8) ?struct { FileEntry, u64 } {
+        @setRuntimeSafety(false);
         var pos: u64 = 0;
         const name: [:0]const u8 = mem.terminate(bytes.ptr, 0);
         if (name.len == 0) {
@@ -1148,6 +1154,7 @@ pub const DwarfInfo = extern struct {
         return .{ .{ .name = name, .dir_idx = dir_idx[0], .mtime = mtime[0], .size = size[0] }, pos };
     }
     fn parseDirectoryEntry(bytes: []u8) ?struct { FileEntry, u64 } {
+        @setRuntimeSafety(false);
         const dir: [:0]const u8 = mem.terminate(bytes.ptr, 0);
         if (dir.len == 0) {
             return null;
@@ -1155,12 +1162,15 @@ pub const DwarfInfo = extern struct {
         return .{ .{ .name = dir }, dir.len +% 1 };
     }
     fn getLineString(dwarf_info: DwarfInfo, offset: u64) [:0]const u8 {
+        @setRuntimeSafety(false);
         return getStringGeneric(dwarf_info.impl.line_str[0..dwarf_info.impl.line_str_len], offset);
     }
     fn getString(dwarf_info: DwarfInfo, offset: u64) [:0]const u8 {
+        @setRuntimeSafety(false);
         return getStringGeneric(dwarf_info.impl.str[0..dwarf_info.impl.str_len], offset);
     }
     pub fn getSymbolName(dwarf_info: *DwarfInfo, instr_addr: u64) ?[]const u8 {
+        @setRuntimeSafety(false);
         for (dwarf_info.funcs[0..dwarf_info.funcs_len]) |*func| {
             if (instr_addr >= func.range.start and
                 instr_addr < func.range.end)
@@ -1171,6 +1181,7 @@ pub const DwarfInfo = extern struct {
         return null;
     }
     fn readDebugAddr(dwarf_info: DwarfInfo, addr_base: u64, index: u64) u64 {
+        @setRuntimeSafety(false);
         if (dwarf_info.impl.addr_len == 0) {
             proc.exitError(error.InvalidEncoding, 2);
         }
@@ -1196,6 +1207,7 @@ pub const DwarfInfo = extern struct {
         }
     }
     pub fn getAttrString(dwarf_info: *DwarfInfo, unit: *const Unit, form_val: *const FormValue, opt_str: ?[]const u8) []const u8 {
+        @setRuntimeSafety(false);
         switch (form_val.*) {
             .String => |value| {
                 return value;
@@ -1232,6 +1244,7 @@ pub const DwarfInfo = extern struct {
         }
     }
     pub fn findCompileUnit(dwarf_info: *DwarfInfo, target_address: u64) ?*Unit {
+        @setRuntimeSafety(false);
         for (dwarf_info.units[0..dwarf_info.units_len]) |*unit| {
             if (target_address >= unit.range.start and
                 target_address < unit.range.end)
@@ -1528,6 +1541,7 @@ pub const DwarfInfo = extern struct {
     }
 };
 fn getStringGeneric(opt_str: ?[]const u8, offset: u64) [:0]const u8 {
+    @setRuntimeSafety(false);
     const str: []const u8 = opt_str orelse {
         proc.exitError(error.InvalidEncoding, 2);
     };
@@ -1540,7 +1554,7 @@ fn getStringGeneric(opt_str: ?[]const u8, offset: u64) [:0]const u8 {
     return str[offset .. offset +% last :0];
 }
 fn parseFormValue(allocator: *Allocator, unit: *Unit, bytes: []u8, form: Form) struct { FormValue, u64 } {
-    @setRuntimeSafety(builtin.is_safe);
+    @setRuntimeSafety(false);
     switch (form) {
         .addr => return .{ .{ .Address = @as(*align(1) usize, @ptrCast(bytes)).* }, @sizeOf(u64) },
         .block2 => {
