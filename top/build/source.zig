@@ -1,14 +1,9 @@
 const mach = @import("../mach.zig");
 const file = @import("../file.zig");
 const proc = @import("../proc.zig");
-const spec = @import("../spec.zig");
 const builtin = @import("../builtin.zig");
-
 const build = @import("./../build.zig");
-const types = @import("./types.zig");
-
 const Node = builtin.define(type, "Node", undefined);
-
 export fn forwardToExecuteCloneThreaded(
     address_space: *Node.AddressSpace,
     thread_space: *Node.ThreadSpace,
