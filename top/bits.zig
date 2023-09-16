@@ -1,3 +1,32 @@
+pub const RegisterState = extern struct {
+    pub const offset: comptime_int = 40;
+    r8: usize,
+    r9: usize,
+    r10: usize,
+    r11: usize,
+    r12: usize,
+    r13: usize,
+    r14: usize,
+    r15: usize,
+    rdi: usize,
+    rsi: usize,
+    rbp: usize,
+    rbx: usize,
+    rdx: usize,
+    rax: usize,
+    rcx: usize,
+    rsp: usize,
+    rip: usize,
+    eflags: usize,
+    cs: u16,
+    gs: u16,
+    fs: u16,
+    pad0: u16 = undefined,
+    err: usize,
+    trapno: usize,
+    oldmask: usize,
+    cr2: usize,
+};
 pub inline fn shlOr64(arg1: u64, arg2: u64, arg3: u64) u64 {
     return or64(shl64(arg1, arg2), arg3);
 }
