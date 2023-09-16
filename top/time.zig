@@ -1,5 +1,5 @@
 const sys = @import("./sys.zig");
-const mach = @import("./mach.zig");
+const bits = @import("./bits.zig");
 const proc = @import("./proc.zig");
 const meta = @import("./meta.zig");
 const builtin = @import("./builtin.zig");
@@ -91,9 +91,10 @@ pub const ClockSpec = struct {
 };
 pub const ClockGetTime = *fn (Kind, *TimeSpec) u64;
 pub const GetTimeOfDay = *fn (*TimeVal, *TimeZone) u64;
-pub fn get(comptime spec: ClockSpec, kind: Kind) sys.ErrorUnion(spec.errors, TimeSpec) {
+
+pub fn get(comptime clock_spec: ClockSpec, kind: Kind) sys.ErrorUnion(clock_spec.errors, TimeSpec) {
     var ts: TimeSpec = undefined;
-    if (meta.wrap(sys.call(.clock_gettime, spec.errors, void, .{ @intFromEnum(kind), @intFromPtr(&ts) }))) {
+    if (meta.wrap(sys.call(.clock_gettime, clock_spec.errors, void, .{ @intFromEnum(kind), @intFromPtr(&ts) }))) {
         return ts;
     } else |clock_error| {
         return clock_error;
@@ -103,8 +104,8 @@ pub const SleepSpec = struct {
     return_type: type = void,
     errors: sys.ErrorPolicy = .{ .throw = sys.nanosleep_errors },
 };
-pub fn sleep(comptime spec: SleepSpec, ts: TimeSpec) sys.ErrorUnion(spec.errors, void) {
-    meta.wrap(sys.call(.nanosleep, spec.errors, spec.return_type, .{ @intFromPtr(&ts), 0 })) catch |nanosleep_error| {
+pub fn sleep(comptime sleep_spec: SleepSpec, ts: TimeSpec) sys.ErrorUnion(sleep_spec.errors, void) {
+    meta.wrap(sys.call(.nanosleep, sleep_spec.errors, sleep_spec.return_type, .{ @intFromPtr(&ts), 0 })) catch |nanosleep_error| {
         return nanosleep_error;
     };
 }
@@ -114,8 +115,8 @@ pub fn diff(arg1: TimeSpec, arg2: TimeSpec) TimeSpec {
         .nsec = arg1.nsec -% arg2.nsec,
     };
     const j: bool = ret.nsec >= 1_000_000_000;
-    ret.sec -%= mach.cmov64z(j, 1);
-    ret.nsec +%= mach.cmov64z(j, 1_000_000_000);
+    ret.sec -%= bits.cmov64z(j, 1);
+    ret.nsec +%= bits.cmov64z(j, 1_000_000_000);
     return ret;
 }
 pub const DateTime = extern struct {
@@ -186,13 +187,13 @@ pub const DateTime = extern struct {
             const year_day: u64 = blk: {
                 const leap_days: u64 = rem_days +% 31 +% 28 +% leap_day;
                 const leap_year: u64 = days_per_year +% leap_day;
-                break :blk leap_days - mach.cmov64z(leap_year < leap_days, leap_year);
+                break :blk leap_days - bits.cmov64z(leap_year < leap_days, leap_year);
             };
             var months: u8 = 0;
             while (rem_days > days_in_month[months]) : (months +%= 1) {
                 rem_days -%= days_in_month[months];
             }
-            months -%= mach.cmov8z(months > 9, 12);
+            months -%= bits.cmov8z(months > 9, 12);
             const year: u64 = years +% builtin.int(u64, months > 9);
             return .{
                 .yday = @intCast(year_day),
@@ -208,10 +209,10 @@ pub const DateTime = extern struct {
     }
     pub fn pack(dt: DateTime) PackedDateTime {
         return .{
-            .bits = mach.shl64(dt.year, 48) |
-                mach.shl64(dt.wday, 45) | mach.shl64(dt.mon, 41) |
-                mach.shl64(dt.yday, 32) | mach.shl64(dt.mday, 24) |
-                mach.shl64(dt.hour, 16) | mach.shl64(dt.min, 8) |
+            .bits = bits.shl64(dt.year, 48) |
+                bits.shl64(dt.wday, 45) | bits.shl64(dt.mon, 41) |
+                bits.shl64(dt.yday, 32) | bits.shl64(dt.mday, 24) |
+                bits.shl64(dt.hour, 16) | bits.shl64(dt.min, 8) |
                 dt.sec,
         };
     }
@@ -219,28 +220,28 @@ pub const DateTime = extern struct {
 pub const PackedDateTime = extern struct {
     bits: u64,
     pub fn getYear(pdt: PackedDateTime) u64 {
-        return mach.shr64(pdt.bits, 48) + 2000;
+        return bits.shr64(pdt.bits, 48) + 2000;
     }
     pub fn getSecond(pdt: PackedDateTime) u8 {
-        return mach.mask8L(pdt.bits);
+        return bits.mask8L(pdt.bits);
     }
     pub fn getMinute(pdt: PackedDateTime) u8 {
-        return mach.shr64T(u8, pdt.bits, 8);
+        return bits.shr64T(u8, pdt.bits, 8);
     }
     pub fn getHour(pdt: PackedDateTime) u8 {
-        return mach.shr64TM(u8, pdt.bits, 16, 5);
+        return bits.shr64TM(u8, pdt.bits, 16, 5);
     }
     pub fn getMonth(pdt: PackedDateTime) u8 {
-        return mach.shr64TM(u8, pdt.bits, 41, 4) + 1;
+        return bits.shr64TM(u8, pdt.bits, 41, 4) + 1;
     }
     pub fn getWeekDay(pdt: PackedDateTime) u8 {
-        return mach.shr64TM(u8, pdt.bits, 45, 3) + 1;
+        return bits.shr64TM(u8, pdt.bits, 45, 3) + 1;
     }
     pub fn getMonthDay(pdt: PackedDateTime) u8 {
-        return mach.shr64TM(u8, pdt.bits, 24, 5) + 1;
+        return bits.shr64TM(u8, pdt.bits, 24, 5) + 1;
     }
     pub fn getYearDay(pdt: PackedDateTime) u16 {
-        return mach.shr64TM(u16, pdt.bits, 32, 9) + 1;
+        return bits.shr64TM(u16, pdt.bits, 32, 9) + 1;
     }
     pub fn unpack(pdt: PackedDateTime) DateTime {
         return .{
@@ -254,4 +255,13 @@ pub const PackedDateTime = extern struct {
             .year = pdt.getYear(),
         };
     }
+};
+pub const spec = struct {
+    pub const nanosleep = struct {
+        pub const errors = struct {
+            pub const all = &.{
+                .INTR, .FAULT, .INVAL, .OPNOTSUPP,
+            };
+        };
+    };
 };
