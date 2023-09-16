@@ -2,13 +2,10 @@ const zl = @import("../zig_lib.zig");
 const mem = zl.mem;
 const fmt = zl.fmt;
 const debug = zl.debug;
-const virtual = zl.virtual;
 
 pub usingnamespace zl.start;
 
-pub const want_stack_traces: bool = true;
-
-pub const LoaderSpace = virtual.GenericDiscreteAddressSpace(.{
+pub const LoaderSpace = mem.GenericDiscreteAddressSpace(.{
     .index_type = u8,
     .label = "ld",
     .list = &[2]mem.Arena{
