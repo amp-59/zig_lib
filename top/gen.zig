@@ -599,6 +599,16 @@ pub fn allLoggingTypes() !void {
             array.writeMany(f.name);
             array.writeMany(",\n");
         }
+        array.writeMany("    pub fn invert(comptime logging: ");
+        array.writeMany(type_name);
+        array.writeMany(") ");
+        array.writeMany(type_name);
+        array.writeMany(" {\n");
+        array.writeMany("        const tmp: u");
+        array.writeFormat(fmt.ud64(type_descr.type_decl.defn.?.fields.len));
+        array.writeMany(" = @bitCast(logging);\n");
+        array.writeMany("        return @bitCast(~tmp);\n");
+        array.writeMany("    }\n");
         array.writeMany("    pub fn override(comptime logging: ");
         array.writeMany(type_name);
         array.writeMany(") ");
