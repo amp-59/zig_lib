@@ -1,6 +1,7 @@
 const fmt = @import("./fmt.zig");
 const meta = @import("./meta.zig");
-const mach = @import("./mach.zig");
+const bits = @import("./bits.zig");
+const math = @import("./math.zig");
 const proc = @import("./proc.zig");
 const debug = @import("./debug.zig");
 const builtin = @import("./builtin.zig");
@@ -48,7 +49,7 @@ pub inline fn amountReservedToCount(amt: Amount, comptime impl_type: type) u64 {
 }
 pub inline fn amountReservedToBytes(amt: Amount, comptime impl_type: type) u64 {
     return amountOfLengthToBytes(amt, impl_type.high_alignment) +
-        mach.cmov64z(hasSentinel(impl_type), impl_type.high_alignment);
+        bits.cmov64z(hasSentinel(impl_type), impl_type.high_alignment);
 }
 fn writeOneInternal(comptime child: type, next: u64, value: child) void {
     reference.pointerOne(child, next).* = value;
@@ -923,10 +924,10 @@ pub fn StructuredAutomaticView(comptime child: type, comptime sentinel: ?*const 
             return array.impl.writable_byte_count() / child_size;
         }
         fn __at(array: *const Array, offset: u64) u64 {
-            return mach.add64(array.impl.aligned_byte_address(), offset * child_size);
+            return math.add64(array.impl.aligned_byte_address(), offset * child_size);
         }
         fn __len(array: *const Array, offset: u64) u64 {
-            return mach.sub64(len(array), offset);
+            return math.sub64(len(array), offset);
         }
         pub fn readAll(array: *const Array) []const child {
             return reference.pointerSlice(child, array.impl.aligned_byte_address(), len(array));
@@ -1004,10 +1005,10 @@ pub fn StructuredAutomaticStreamView(comptime child: type, comptime sentinel: ?*
             return array.impl.writable_byte_count() / child_size;
         }
         fn __at(array: *const Array, offset: u64) u64 {
-            return mach.add64(array.impl.aligned_byte_address(), offset * child_size);
+            return math.add64(array.impl.aligned_byte_address(), offset * child_size);
         }
         fn __len(array: *const Array, offset: u64) u64 {
-            return mach.sub64(len(array), offset);
+            return math.sub64(len(array), offset);
         }
         pub fn readAll(array: *const Array) []const child {
             return reference.pointerSlice(child, array.impl.aligned_byte_address(), len(array));
@@ -1022,7 +1023,7 @@ pub fn StructuredAutomaticStreamView(comptime child: type, comptime sentinel: ?*
             return reference.pointerSliceWithSentinel(child, array.impl.aligned_byte_address(), len(array), sentinel_value);
         }
         fn __behind(array: *const Array, offset: u64) u64 {
-            return mach.sub64(array.impl.unstreamed_byte_address(), offset * child_size);
+            return math.sub64(array.impl.unstreamed_byte_address(), offset * child_size);
         }
         pub fn unstream(array: *Array, unstream_count: u64) void {
             array.impl.tell(child_size * unstream_count);
@@ -1139,16 +1140,16 @@ pub fn StructuredAutomaticStreamVector(comptime child: type, comptime sentinel: 
             return array.impl.undefined_byte_count() / child_size;
         }
         fn __at(array: *const Array, offset: u64) u64 {
-            return mach.add64(array.impl.aligned_byte_address(), offset * child_size);
+            return math.add64(array.impl.aligned_byte_address(), offset * child_size);
         }
         fn __ad(array: *const Array, offset: u64) u64 {
-            return mach.add64(array.impl.undefined_byte_address(), offset * child_size);
+            return math.add64(array.impl.undefined_byte_address(), offset * child_size);
         }
         fn __len(array: *const Array, offset: u64) u64 {
-            return mach.sub64(len(array), offset);
+            return math.sub64(len(array), offset);
         }
         fn __rem(array: *const Array, offset: u64) u64 {
-            return mach.sub64(avail(array), offset);
+            return math.sub64(avail(array), offset);
         }
         pub fn readAll(array: *const Array) []const child {
             return reference.pointerSlice(child, array.impl.aligned_byte_address(), len(array));
@@ -1163,7 +1164,7 @@ pub fn StructuredAutomaticStreamVector(comptime child: type, comptime sentinel: 
             return reference.pointerSliceWithSentinel(child, array.impl.aligned_byte_address(), len(array), sentinel_value);
         }
         fn __behind(array: *const Array, offset: u64) u64 {
-            return mach.sub64(array.impl.unstreamed_byte_address(), offset * child_size);
+            return math.sub64(array.impl.unstreamed_byte_address(), offset * child_size);
         }
         pub fn unstream(array: *Array, unstream_count: u64) void {
             array.impl.tell(child_size * unstream_count);
@@ -1247,7 +1248,7 @@ pub fn StructuredAutomaticStreamVector(comptime child: type, comptime sentinel: 
             return reference.pointerSliceWithSentinel(child, array.impl.unstreamed_byte_address(), offset, sentinel_value);
         }
         fn __back(array: *const Array, offset: u64) u64 {
-            return mach.sub64(array.impl.undefined_byte_address(), offset * child_size);
+            return math.sub64(array.impl.undefined_byte_address(), offset * child_size);
         }
         pub fn undefine(array: *Array, undefine_count: u64) void {
             array.impl.undefine(child_size * undefine_count);
@@ -1358,16 +1359,16 @@ pub fn StructuredAutomaticVector(comptime child: type, comptime sentinel: ?*cons
             return array.impl.undefined_byte_count() / child_size;
         }
         fn __at(array: *const Array, offset: u64) u64 {
-            return mach.add64(array.impl.aligned_byte_address(), offset * child_size);
+            return math.add64(array.impl.aligned_byte_address(), offset * child_size);
         }
         fn __ad(array: *const Array, offset: u64) u64 {
-            return mach.add64(array.impl.undefined_byte_address(), offset * child_size);
+            return math.add64(array.impl.undefined_byte_address(), offset * child_size);
         }
         fn __len(array: *const Array, offset: u64) u64 {
-            return mach.sub64(len(array), offset);
+            return math.sub64(len(array), offset);
         }
         fn __rem(array: *const Array, offset: u64) u64 {
-            return mach.sub64(avail(array), offset);
+            return math.sub64(avail(array), offset);
         }
         pub fn readAll(array: *const Array) []const child {
             return reference.pointerSlice(child, array.impl.aligned_byte_address(), len(array));
@@ -1421,7 +1422,7 @@ pub fn StructuredAutomaticVector(comptime child: type, comptime sentinel: ?*cons
             return reference.pointerSliceWithSentinel(child, __at(array, offset), __len(array, offset), sentinel_value);
         }
         fn __back(array: *const Array, offset: u64) u64 {
-            return mach.sub64(array.impl.undefined_byte_address(), offset * child_size);
+            return math.sub64(array.impl.undefined_byte_address(), offset * child_size);
         }
         pub fn undefine(array: *Array, undefine_count: u64) void {
             array.impl.undefine(child_size * undefine_count);
@@ -1567,10 +1568,10 @@ pub fn StructuredStaticView(comptime child: type, comptime sentinel: ?*const any
             return array.impl.writable_byte_count() / child_size;
         }
         fn __at(array: *const Array, offset: u64) u64 {
-            return mach.add64(array.impl.aligned_byte_address(), offset * child_size);
+            return math.add64(array.impl.aligned_byte_address(), offset * child_size);
         }
         fn __len(array: *const Array, offset: u64) u64 {
-            return mach.sub64(len(array), offset);
+            return math.sub64(len(array), offset);
         }
         pub fn readAll(array: *const Array) []const child {
             return reference.pointerSlice(child, array.impl.aligned_byte_address(), len(array));
@@ -1666,16 +1667,16 @@ pub fn StructuredStaticStreamVector(comptime child: type, comptime sentinel: ?*c
             return array.impl.undefined_byte_count() / child_size;
         }
         fn __at(array: *const Array, offset: u64) u64 {
-            return mach.add64(array.impl.aligned_byte_address(), offset * child_size);
+            return math.add64(array.impl.aligned_byte_address(), offset * child_size);
         }
         fn __ad(array: *const Array, offset: u64) u64 {
-            return mach.add64(array.impl.undefined_byte_address(), offset * child_size);
+            return math.add64(array.impl.undefined_byte_address(), offset * child_size);
         }
         fn __len(array: *const Array, offset: u64) u64 {
-            return mach.sub64(len(array), offset);
+            return math.sub64(len(array), offset);
         }
         fn __rem(array: *const Array, offset: u64) u64 {
-            return mach.sub64(avail(array), offset);
+            return math.sub64(avail(array), offset);
         }
         pub fn readAll(array: *const Array) []const child {
             return reference.pointerSlice(child, array.impl.aligned_byte_address(), len(array));
@@ -1690,7 +1691,7 @@ pub fn StructuredStaticStreamVector(comptime child: type, comptime sentinel: ?*c
             return reference.pointerSliceWithSentinel(child, array.impl.aligned_byte_address(), len(array), sentinel_value);
         }
         fn __behind(array: *const Array, offset: u64) u64 {
-            return mach.sub64(array.impl.unstreamed_byte_address(), offset * child_size);
+            return math.sub64(array.impl.unstreamed_byte_address(), offset * child_size);
         }
         pub fn unstream(array: *Array, unstream_count: u64) void {
             array.impl.tell(child_size * unstream_count);
@@ -1774,7 +1775,7 @@ pub fn StructuredStaticStreamVector(comptime child: type, comptime sentinel: ?*c
             return reference.pointerSliceWithSentinel(child, array.impl.unstreamed_byte_address(), offset, sentinel_value);
         }
         fn __back(array: *const Array, offset: u64) u64 {
-            return mach.sub64(array.impl.undefined_byte_address(), offset * child_size);
+            return math.sub64(array.impl.undefined_byte_address(), offset * child_size);
         }
         pub fn undefine(array: *Array, undefine_count: u64) void {
             array.impl.undefine(child_size * undefine_count);
@@ -1894,16 +1895,16 @@ pub fn StructuredStaticVector(comptime child: type, comptime sentinel: ?*const a
             return array.impl.undefined_byte_count() / child_size;
         }
         fn __at(array: *const Array, offset: u64) u64 {
-            return mach.add64(array.impl.aligned_byte_address(), offset * child_size);
+            return math.add64(array.impl.aligned_byte_address(), offset * child_size);
         }
         fn __ad(array: *const Array, offset: u64) u64 {
-            return mach.add64(array.impl.undefined_byte_address(), offset * child_size);
+            return math.add64(array.impl.undefined_byte_address(), offset * child_size);
         }
         fn __len(array: *const Array, offset: u64) u64 {
-            return mach.sub64(len(array), offset);
+            return math.sub64(len(array), offset);
         }
         fn __rem(array: *const Array, offset: u64) u64 {
-            return mach.sub64(avail(array), offset);
+            return math.sub64(avail(array), offset);
         }
         pub fn readAll(array: *const Array) []const child {
             return reference.pointerSlice(child, array.impl.aligned_byte_address(), len(array));
@@ -1957,7 +1958,7 @@ pub fn StructuredStaticVector(comptime child: type, comptime sentinel: ?*const a
             return reference.pointerSliceWithSentinel(child, __at(array, offset), __len(array, offset), sentinel_value);
         }
         fn __back(array: *const Array, offset: u64) u64 {
-            return mach.sub64(array.impl.undefined_byte_address(), offset * child_size);
+            return math.sub64(array.impl.undefined_byte_address(), offset * child_size);
         }
         pub fn undefine(array: *Array, undefine_count: u64) void {
             array.impl.undefine(child_size * undefine_count);
@@ -2101,10 +2102,10 @@ pub fn UnstructuredStaticView(comptime bytes: u64, comptime low_alignment: ?u64,
             return array.impl.writable_byte_count() / @sizeOf(child);
         }
         fn __at(array: *const Array, comptime child: type, offset: Amount) u64 {
-            return mach.add64(array.impl.aligned_byte_address(), amountOfTypeToBytes(offset, child));
+            return math.add64(array.impl.aligned_byte_address(), amountOfTypeToBytes(offset, child));
         }
         fn __len(array: *const Array, comptime child: type, offset: Amount) u64 {
-            return mach.sub64(len(array, child), amountToCountOfType(offset, child));
+            return math.sub64(len(array, child), amountToCountOfType(offset, child));
         }
         pub fn readAll(array: *const Array, comptime child: type) []const child {
             return reference.pointerSlice(child, array.impl.aligned_byte_address(), len(array, child));
@@ -2199,16 +2200,16 @@ pub fn UnstructuredStaticStreamVector(comptime bytes: u64, comptime low_alignmen
             return array.impl.undefined_byte_count() / @sizeOf(child);
         }
         fn __at(array: *const Array, comptime child: type, offset: Amount) u64 {
-            return mach.add64(array.impl.aligned_byte_address(), amountOfTypeToBytes(offset, child));
+            return math.add64(array.impl.aligned_byte_address(), amountOfTypeToBytes(offset, child));
         }
         fn __ad(array: *const Array, comptime child: type, offset: Amount) u64 {
-            return mach.add64(array.impl.undefined_byte_address(), amountOfTypeToBytes(offset, child));
+            return math.add64(array.impl.undefined_byte_address(), amountOfTypeToBytes(offset, child));
         }
         fn __len(array: *const Array, comptime child: type, offset: Amount) u64 {
-            return mach.sub64(len(array, child), amountToCountOfType(offset, child));
+            return math.sub64(len(array, child), amountToCountOfType(offset, child));
         }
         fn __rem(array: *const Array, comptime child: type, offset: Amount) u64 {
-            return mach.sub64(avail(array, child), amountToCountOfType(offset, child));
+            return math.sub64(avail(array, child), amountToCountOfType(offset, child));
         }
         pub fn readAll(array: *const Array, comptime child: type) []const child {
             return reference.pointerSlice(child, array.impl.aligned_byte_address(), len(array, child));
@@ -2223,7 +2224,7 @@ pub fn UnstructuredStaticStreamVector(comptime bytes: u64, comptime low_alignmen
             return reference.pointerSliceWithSentinel(child, array.impl.aligned_byte_address(), len(array, child), sentinel_value);
         }
         fn __behind(array: *const Array, comptime child: type, offset: Amount) u64 {
-            return mach.sub64(array.impl.unstreamed_byte_address(), amountOfTypeToBytes(offset, child));
+            return math.sub64(array.impl.unstreamed_byte_address(), amountOfTypeToBytes(offset, child));
         }
         pub fn unstream(array: *Array, comptime child: type, unstream_amount: Amount) void {
             array.impl.tell(amountOfTypeToBytes(unstream_amount, child));
@@ -2307,7 +2308,7 @@ pub fn UnstructuredStaticStreamVector(comptime bytes: u64, comptime low_alignmen
             return reference.pointerSliceWithSentinel(child, array.impl.unstreamed_byte_address(), amountToCountOfType(offset, child), sentinel_value);
         }
         fn __back(array: *const Array, comptime child: type, offset: Amount) u64 {
-            return mach.sub64(array.impl.undefined_byte_address(), amountOfTypeToBytes(offset, child));
+            return math.sub64(array.impl.undefined_byte_address(), amountOfTypeToBytes(offset, child));
         }
         pub fn undefine(array: *Array, comptime child: type, undefine_amount: Amount) void {
             array.impl.undefine(amountOfTypeToBytes(undefine_amount, child));
@@ -2426,16 +2427,16 @@ pub fn UnstructuredStaticVector(comptime bytes: u64, comptime low_alignment: ?u6
             return array.impl.undefined_byte_count() / @sizeOf(child);
         }
         fn __at(array: *const Array, comptime child: type, offset: Amount) u64 {
-            return mach.add64(array.impl.aligned_byte_address(), amountOfTypeToBytes(offset, child));
+            return math.add64(array.impl.aligned_byte_address(), amountOfTypeToBytes(offset, child));
         }
         fn __ad(array: *const Array, comptime child: type, offset: Amount) u64 {
-            return mach.add64(array.impl.undefined_byte_address(), amountOfTypeToBytes(offset, child));
+            return math.add64(array.impl.undefined_byte_address(), amountOfTypeToBytes(offset, child));
         }
         fn __len(array: *const Array, comptime child: type, offset: Amount) u64 {
-            return mach.sub64(len(array, child), amountToCountOfType(offset, child));
+            return math.sub64(len(array, child), amountToCountOfType(offset, child));
         }
         fn __rem(array: *const Array, comptime child: type, offset: Amount) u64 {
-            return mach.sub64(avail(array, child), amountToCountOfType(offset, child));
+            return math.sub64(avail(array, child), amountToCountOfType(offset, child));
         }
         pub fn readAll(array: *const Array, comptime child: type) []const child {
             return reference.pointerSlice(child, array.impl.aligned_byte_address(), len(array, child));
@@ -2489,7 +2490,7 @@ pub fn UnstructuredStaticVector(comptime bytes: u64, comptime low_alignment: ?u6
             return reference.pointerSliceWithSentinel(child, __at(array, child, offset), __len(array, child, offset), sentinel_value);
         }
         fn __back(array: *const Array, comptime child: type, offset: Amount) u64 {
-            return mach.sub64(array.impl.undefined_byte_address(), amountOfTypeToBytes(offset, child));
+            return math.sub64(array.impl.undefined_byte_address(), amountOfTypeToBytes(offset, child));
         }
         pub fn undefine(array: *Array, comptime child: type, undefine_amount: Amount) void {
             array.impl.undefine(amountOfTypeToBytes(undefine_amount, child));
@@ -2677,16 +2678,16 @@ pub fn StructuredStreamVector(comptime child: type, comptime sentinel: ?*const a
             return array.impl.undefined_byte_count() / child_size;
         }
         fn __at(array: *const Array, offset: u64) u64 {
-            return mach.add64(array.impl.aligned_byte_address(), offset * child_size);
+            return math.add64(array.impl.aligned_byte_address(), offset * child_size);
         }
         fn __ad(array: *const Array, offset: u64) u64 {
-            return mach.add64(array.impl.undefined_byte_address(), offset * child_size);
+            return math.add64(array.impl.undefined_byte_address(), offset * child_size);
         }
         fn __len(array: *const Array, offset: u64) u64 {
-            return mach.sub64(len(array), offset);
+            return math.sub64(len(array), offset);
         }
         fn __rem(array: *const Array, offset: u64) u64 {
-            return mach.sub64(avail(array), offset);
+            return math.sub64(avail(array), offset);
         }
         pub fn readAll(array: *const Array) []const child {
             return reference.pointerSlice(child, array.impl.aligned_byte_address(), len(array));
@@ -2701,7 +2702,7 @@ pub fn StructuredStreamVector(comptime child: type, comptime sentinel: ?*const a
             return reference.pointerSliceWithSentinel(child, array.impl.aligned_byte_address(), len(array), sentinel_value);
         }
         fn __behind(array: *const Array, offset: u64) u64 {
-            return mach.sub64(array.impl.unstreamed_byte_address(), offset * child_size);
+            return math.sub64(array.impl.unstreamed_byte_address(), offset * child_size);
         }
         pub fn unstream(array: *Array, unstream_count: u64) void {
             array.impl.tell(child_size * unstream_count);
@@ -2785,7 +2786,7 @@ pub fn StructuredStreamVector(comptime child: type, comptime sentinel: ?*const a
             return reference.pointerSliceWithSentinel(child, array.impl.unstreamed_byte_address(), offset, sentinel_value);
         }
         fn __back(array: *const Array, offset: u64) u64 {
-            return mach.sub64(array.impl.undefined_byte_address(), offset * child_size);
+            return math.sub64(array.impl.undefined_byte_address(), offset * child_size);
         }
         pub fn undefine(array: *Array, undefine_count: u64) void {
             array.impl.undefine(child_size * undefine_count);
@@ -2942,10 +2943,10 @@ pub fn StructuredStreamView(comptime child: type, comptime sentinel: ?*const any
             return array.impl.writable_byte_count() / child_size;
         }
         fn __at(array: *const Array, offset: u64) u64 {
-            return mach.add64(array.impl.aligned_byte_address(), offset * child_size);
+            return math.add64(array.impl.aligned_byte_address(), offset * child_size);
         }
         fn __len(array: *const Array, offset: u64) u64 {
-            return mach.sub64(len(array), offset);
+            return math.sub64(len(array), offset);
         }
         pub fn readAll(array: *const Array) []const child {
             return reference.pointerSlice(child, array.impl.aligned_byte_address(), len(array));
@@ -2960,7 +2961,7 @@ pub fn StructuredStreamView(comptime child: type, comptime sentinel: ?*const any
             return reference.pointerSliceWithSentinel(child, array.impl.aligned_byte_address(), len(array), sentinel_value);
         }
         fn __behind(array: *const Array, offset: u64) u64 {
-            return mach.sub64(array.impl.unstreamed_byte_address(), offset * child_size);
+            return math.sub64(array.impl.unstreamed_byte_address(), offset * child_size);
         }
         pub fn unstream(array: *Array, unstream_count: u64) void {
             array.impl.tell(child_size * unstream_count);
@@ -3080,16 +3081,16 @@ pub fn StructuredVector(comptime child: type, comptime sentinel: ?*const anyopaq
             return array.impl.undefined_byte_count() / child_size;
         }
         fn __at(array: *const Array, offset: u64) u64 {
-            return mach.add64(array.impl.aligned_byte_address(), offset * child_size);
+            return math.add64(array.impl.aligned_byte_address(), offset * child_size);
         }
         fn __ad(array: *const Array, offset: u64) u64 {
-            return mach.add64(array.impl.undefined_byte_address(), offset * child_size);
+            return math.add64(array.impl.undefined_byte_address(), offset * child_size);
         }
         fn __len(array: *const Array, offset: u64) u64 {
-            return mach.sub64(len(array), offset);
+            return math.sub64(len(array), offset);
         }
         fn __rem(array: *const Array, offset: u64) u64 {
-            return mach.sub64(avail(array), offset);
+            return math.sub64(avail(array), offset);
         }
         pub fn readAll(array: *const Array) []const child {
             return reference.pointerSlice(child, array.impl.aligned_byte_address(), len(array));
@@ -3143,7 +3144,7 @@ pub fn StructuredVector(comptime child: type, comptime sentinel: ?*const anyopaq
             return reference.pointerSliceWithSentinel(child, __at(array, offset), __len(array, offset), sentinel_value);
         }
         fn __back(array: *const Array, offset: u64) u64 {
-            return mach.sub64(array.impl.undefined_byte_address(), offset * child_size);
+            return math.sub64(array.impl.undefined_byte_address(), offset * child_size);
         }
         pub fn undefine(array: *Array, undefine_count: u64) void {
             array.impl.undefine(child_size * undefine_count);
@@ -3291,10 +3292,10 @@ pub fn StructuredView(comptime child: type, comptime sentinel: ?*const anyopaque
             return array.impl.writable_byte_count() / child_size;
         }
         fn __at(array: *const Array, offset: u64) u64 {
-            return mach.add64(array.impl.aligned_byte_address(), offset * child_size);
+            return math.add64(array.impl.aligned_byte_address(), offset * child_size);
         }
         fn __len(array: *const Array, offset: u64) u64 {
-            return mach.sub64(len(array), offset);
+            return math.sub64(len(array), offset);
         }
         pub fn readAll(array: *const Array) []const child {
             return reference.pointerSlice(child, array.impl.aligned_byte_address(), len(array));
@@ -3420,16 +3421,16 @@ pub fn UnstructuredStreamVector(comptime high_alignment: u64, comptime low_align
             return array.impl.undefined_byte_count() / @sizeOf(child);
         }
         fn __at(array: *const Array, comptime child: type, offset: Amount) u64 {
-            return mach.add64(array.impl.aligned_byte_address(), amountOfTypeToBytes(offset, child));
+            return math.add64(array.impl.aligned_byte_address(), amountOfTypeToBytes(offset, child));
         }
         fn __ad(array: *const Array, comptime child: type, offset: Amount) u64 {
-            return mach.add64(array.impl.undefined_byte_address(), amountOfTypeToBytes(offset, child));
+            return math.add64(array.impl.undefined_byte_address(), amountOfTypeToBytes(offset, child));
         }
         fn __len(array: *const Array, comptime child: type, offset: Amount) u64 {
-            return mach.sub64(len(array, child), amountToCountOfType(offset, child));
+            return math.sub64(len(array, child), amountToCountOfType(offset, child));
         }
         fn __rem(array: *const Array, comptime child: type, offset: Amount) u64 {
-            return mach.sub64(avail(array, child), amountToCountOfType(offset, child));
+            return math.sub64(avail(array, child), amountToCountOfType(offset, child));
         }
         pub fn readAll(array: *const Array, comptime child: type) []const child {
             return reference.pointerSlice(child, array.impl.aligned_byte_address(), len(array, child));
@@ -3444,7 +3445,7 @@ pub fn UnstructuredStreamVector(comptime high_alignment: u64, comptime low_align
             return reference.pointerSliceWithSentinel(child, array.impl.aligned_byte_address(), len(array, child), sentinel_value);
         }
         fn __behind(array: *const Array, comptime child: type, offset: Amount) u64 {
-            return mach.sub64(array.impl.unstreamed_byte_address(), amountOfTypeToBytes(offset, child));
+            return math.sub64(array.impl.unstreamed_byte_address(), amountOfTypeToBytes(offset, child));
         }
         pub fn unstream(array: *Array, comptime child: type, unstream_amount: Amount) void {
             array.impl.tell(amountOfTypeToBytes(unstream_amount, child));
@@ -3528,7 +3529,7 @@ pub fn UnstructuredStreamVector(comptime high_alignment: u64, comptime low_align
             return reference.pointerSliceWithSentinel(child, array.impl.unstreamed_byte_address(), amountToCountOfType(offset, child), sentinel_value);
         }
         fn __back(array: *const Array, comptime child: type, offset: Amount) u64 {
-            return mach.sub64(array.impl.undefined_byte_address(), amountOfTypeToBytes(offset, child));
+            return math.sub64(array.impl.undefined_byte_address(), amountOfTypeToBytes(offset, child));
         }
         pub fn undefine(array: *Array, comptime child: type, undefine_amount: Amount) void {
             array.impl.undefine(amountOfTypeToBytes(undefine_amount, child));
@@ -3684,10 +3685,10 @@ pub fn UnstructuredStreamView(comptime high_alignment: u64, comptime low_alignme
             return array.impl.writable_byte_count() / @sizeOf(child);
         }
         fn __at(array: *const Array, comptime child: type, offset: Amount) u64 {
-            return mach.add64(array.impl.aligned_byte_address(), amountOfTypeToBytes(offset, child));
+            return math.add64(array.impl.aligned_byte_address(), amountOfTypeToBytes(offset, child));
         }
         fn __len(array: *const Array, comptime child: type, offset: Amount) u64 {
-            return mach.sub64(len(array, child), amountToCountOfType(offset, child));
+            return math.sub64(len(array, child), amountToCountOfType(offset, child));
         }
         pub fn readAll(array: *const Array, comptime child: type) []const child {
             return reference.pointerSlice(child, array.impl.aligned_byte_address(), len(array, child));
@@ -3702,7 +3703,7 @@ pub fn UnstructuredStreamView(comptime high_alignment: u64, comptime low_alignme
             return reference.pointerSliceWithSentinel(child, array.impl.aligned_byte_address(), len(array, child), sentinel_value);
         }
         fn __behind(array: *const Array, comptime child: type, offset: Amount) u64 {
-            return mach.sub64(array.impl.unstreamed_byte_address(), amountOfTypeToBytes(offset, child));
+            return math.sub64(array.impl.unstreamed_byte_address(), amountOfTypeToBytes(offset, child));
         }
         pub fn unstream(array: *Array, comptime child: type, unstream_amount: Amount) void {
             array.impl.tell(amountOfTypeToBytes(unstream_amount, child));
@@ -3821,16 +3822,16 @@ pub fn UnstructuredVector(comptime high_alignment: u64, comptime low_alignment: 
             return array.impl.undefined_byte_count() / @sizeOf(child);
         }
         fn __at(array: *const Array, comptime child: type, offset: Amount) u64 {
-            return mach.add64(array.impl.aligned_byte_address(), amountOfTypeToBytes(offset, child));
+            return math.add64(array.impl.aligned_byte_address(), amountOfTypeToBytes(offset, child));
         }
         fn __ad(array: *const Array, comptime child: type, offset: Amount) u64 {
-            return mach.add64(array.impl.undefined_byte_address(), amountOfTypeToBytes(offset, child));
+            return math.add64(array.impl.undefined_byte_address(), amountOfTypeToBytes(offset, child));
         }
         fn __len(array: *const Array, comptime child: type, offset: Amount) u64 {
-            return mach.sub64(len(array, child), amountToCountOfType(offset, child));
+            return math.sub64(len(array, child), amountToCountOfType(offset, child));
         }
         fn __rem(array: *const Array, comptime child: type, offset: Amount) u64 {
-            return mach.sub64(avail(array, child), amountToCountOfType(offset, child));
+            return math.sub64(avail(array, child), amountToCountOfType(offset, child));
         }
         pub fn readAll(array: *const Array, comptime child: type) []const child {
             return reference.pointerSlice(child, array.impl.aligned_byte_address(), len(array, child));
@@ -3884,7 +3885,7 @@ pub fn UnstructuredVector(comptime high_alignment: u64, comptime low_alignment: 
             return reference.pointerSliceWithSentinel(child, __at(array, child, offset), __len(array, child, offset), sentinel_value);
         }
         fn __back(array: *const Array, comptime child: type, offset: Amount) u64 {
-            return mach.sub64(array.impl.undefined_byte_address(), amountOfTypeToBytes(offset, child));
+            return math.sub64(array.impl.undefined_byte_address(), amountOfTypeToBytes(offset, child));
         }
         pub fn undefine(array: *Array, comptime child: type, undefine_amount: Amount) void {
             array.impl.undefine(amountOfTypeToBytes(undefine_amount, child));
@@ -4031,10 +4032,10 @@ pub fn UnstructuredView(comptime high_alignment: u64, comptime low_alignment: ?u
             return array.impl.writable_byte_count() / @sizeOf(child);
         }
         fn __at(array: *const Array, comptime child: type, offset: Amount) u64 {
-            return mach.add64(array.impl.aligned_byte_address(), amountOfTypeToBytes(offset, child));
+            return math.add64(array.impl.aligned_byte_address(), amountOfTypeToBytes(offset, child));
         }
         fn __len(array: *const Array, comptime child: type, offset: Amount) u64 {
-            return mach.sub64(len(array, child), amountToCountOfType(offset, child));
+            return math.sub64(len(array, child), amountToCountOfType(offset, child));
         }
         pub fn readAll(array: *const Array, comptime child: type) []const child {
             return reference.pointerSlice(child, array.impl.aligned_byte_address(), len(array, child));
@@ -4163,16 +4164,16 @@ pub fn StructuredStreamHolder(comptime Allocator: type, comptime child: type, co
             return array.impl.undefined_byte_count(allocator) / child_size;
         }
         fn __at(array: *const Array, allocator: Allocator, offset: u64) u64 {
-            return mach.add64(array.impl.aligned_byte_address(allocator), offset * child_size);
+            return math.add64(array.impl.aligned_byte_address(allocator), offset * child_size);
         }
         fn __ad(array: *const Array, offset: u64) u64 {
-            return mach.add64(array.impl.undefined_byte_address(), offset * child_size);
+            return math.add64(array.impl.undefined_byte_address(), offset * child_size);
         }
         fn __len(array: *const Array, allocator: Allocator, offset: u64) u64 {
-            return mach.sub64(len(array, allocator), offset);
+            return math.sub64(len(array, allocator), offset);
         }
         fn __rem(array: *const Array, allocator: Allocator, offset: u64) u64 {
-            return mach.sub64(avail(array, allocator), offset);
+            return math.sub64(avail(array, allocator), offset);
         }
         pub fn readAll(array: *const Array, allocator: Allocator) []const child {
             return reference.pointerSlice(child, array.impl.aligned_byte_address(allocator), len(array, allocator));
@@ -4187,7 +4188,7 @@ pub fn StructuredStreamHolder(comptime Allocator: type, comptime child: type, co
             return reference.pointerSliceWithSentinel(child, array.impl.aligned_byte_address(allocator), len(array, allocator), sentinel_value);
         }
         fn __behind(array: *const Array, offset: u64) u64 {
-            return mach.sub64(array.impl.unstreamed_byte_address(), offset * child_size);
+            return math.sub64(array.impl.unstreamed_byte_address(), offset * child_size);
         }
         pub fn unstream(array: *Array, unstream_count: u64) void {
             array.impl.tell(child_size * unstream_count);
@@ -4271,7 +4272,7 @@ pub fn StructuredStreamHolder(comptime Allocator: type, comptime child: type, co
             return reference.pointerSliceWithSentinel(child, array.impl.unstreamed_byte_address(), offset, sentinel_value);
         }
         fn __back(array: *const Array, offset: u64) u64 {
-            return mach.sub64(array.impl.undefined_byte_address(), offset * child_size);
+            return math.sub64(array.impl.undefined_byte_address(), offset * child_size);
         }
         pub fn undefine(array: *Array, undefine_count: u64) void {
             array.impl.undefine(child_size * undefine_count);
@@ -4431,16 +4432,16 @@ pub fn StructuredHolder(comptime Allocator: type, comptime child: type, comptime
             return array.impl.undefined_byte_count(allocator) / child_size;
         }
         fn __at(array: *const Array, allocator: Allocator, offset: u64) u64 {
-            return mach.add64(array.impl.aligned_byte_address(allocator), offset * child_size);
+            return math.add64(array.impl.aligned_byte_address(allocator), offset * child_size);
         }
         fn __ad(array: *const Array, offset: u64) u64 {
-            return mach.add64(array.impl.undefined_byte_address(), offset * child_size);
+            return math.add64(array.impl.undefined_byte_address(), offset * child_size);
         }
         fn __len(array: *const Array, allocator: Allocator, offset: u64) u64 {
-            return mach.sub64(len(array, allocator), offset);
+            return math.sub64(len(array, allocator), offset);
         }
         fn __rem(array: *const Array, allocator: Allocator, offset: u64) u64 {
-            return mach.sub64(avail(array, allocator), offset);
+            return math.sub64(avail(array, allocator), offset);
         }
         pub fn readAll(array: *const Array, allocator: Allocator) []const child {
             return reference.pointerSlice(child, array.impl.aligned_byte_address(allocator), len(array, allocator));
@@ -4494,7 +4495,7 @@ pub fn StructuredHolder(comptime Allocator: type, comptime child: type, comptime
             return reference.pointerSliceWithSentinel(child, __at(array, allocator, offset), __len(array, allocator, offset), sentinel_value);
         }
         fn __back(array: *const Array, offset: u64) u64 {
-            return mach.sub64(array.impl.undefined_byte_address(), offset * child_size);
+            return math.sub64(array.impl.undefined_byte_address(), offset * child_size);
         }
         pub fn undefine(array: *Array, undefine_count: u64) void {
             array.impl.undefine(child_size * undefine_count);
@@ -4685,16 +4686,16 @@ pub fn UnstructuredStreamHolder(comptime Allocator: type, comptime high_alignmen
             return array.impl.undefined_byte_count(allocator) / @sizeOf(child);
         }
         fn __at(array: *const Array, comptime child: type, allocator: Allocator, offset: Amount) u64 {
-            return mach.add64(array.impl.aligned_byte_address(allocator), amountOfTypeToBytes(offset, child));
+            return math.add64(array.impl.aligned_byte_address(allocator), amountOfTypeToBytes(offset, child));
         }
         fn __ad(array: *const Array, comptime child: type, offset: Amount) u64 {
-            return mach.add64(array.impl.undefined_byte_address(), amountOfTypeToBytes(offset, child));
+            return math.add64(array.impl.undefined_byte_address(), amountOfTypeToBytes(offset, child));
         }
         fn __len(array: *const Array, comptime child: type, allocator: Allocator, offset: Amount) u64 {
-            return mach.sub64(len(array, child, allocator), amountToCountOfType(offset, child));
+            return math.sub64(len(array, child, allocator), amountToCountOfType(offset, child));
         }
         fn __rem(array: *const Array, comptime child: type, allocator: Allocator, offset: Amount) u64 {
-            return mach.sub64(avail(array, child, allocator), amountToCountOfType(offset, child));
+            return math.sub64(avail(array, child, allocator), amountToCountOfType(offset, child));
         }
         pub fn readAll(array: *const Array, comptime child: type, allocator: Allocator) []const child {
             return reference.pointerSlice(child, array.impl.aligned_byte_address(allocator), len(array, child, allocator));
@@ -4709,7 +4710,7 @@ pub fn UnstructuredStreamHolder(comptime Allocator: type, comptime high_alignmen
             return reference.pointerSliceWithSentinel(child, array.impl.aligned_byte_address(allocator), len(array, child, allocator), sentinel_value);
         }
         fn __behind(array: *const Array, comptime child: type, offset: Amount) u64 {
-            return mach.sub64(array.impl.unstreamed_byte_address(), amountOfTypeToBytes(offset, child));
+            return math.sub64(array.impl.unstreamed_byte_address(), amountOfTypeToBytes(offset, child));
         }
         pub fn unstream(array: *Array, comptime child: type, unstream_amount: Amount) void {
             array.impl.tell(amountOfTypeToBytes(unstream_amount, child));
@@ -4793,7 +4794,7 @@ pub fn UnstructuredStreamHolder(comptime Allocator: type, comptime high_alignmen
             return reference.pointerSliceWithSentinel(child, array.impl.unstreamed_byte_address(), amountToCountOfType(offset, child), sentinel_value);
         }
         fn __back(array: *const Array, comptime child: type, offset: Amount) u64 {
-            return mach.sub64(array.impl.undefined_byte_address(), amountOfTypeToBytes(offset, child));
+            return math.sub64(array.impl.undefined_byte_address(), amountOfTypeToBytes(offset, child));
         }
         pub fn undefine(array: *Array, comptime child: type, undefine_amount: Amount) void {
             array.impl.undefine(amountOfTypeToBytes(undefine_amount, child));
@@ -4952,16 +4953,16 @@ pub fn UnstructuredHolder(comptime Allocator: type, comptime high_alignment: u64
             return array.impl.undefined_byte_count(allocator) / @sizeOf(child);
         }
         fn __at(array: *const Array, comptime child: type, allocator: Allocator, offset: Amount) u64 {
-            return mach.add64(array.impl.aligned_byte_address(allocator), amountOfTypeToBytes(offset, child));
+            return math.add64(array.impl.aligned_byte_address(allocator), amountOfTypeToBytes(offset, child));
         }
         fn __ad(array: *const Array, comptime child: type, offset: Amount) u64 {
-            return mach.add64(array.impl.undefined_byte_address(), amountOfTypeToBytes(offset, child));
+            return math.add64(array.impl.undefined_byte_address(), amountOfTypeToBytes(offset, child));
         }
         fn __len(array: *const Array, comptime child: type, allocator: Allocator, offset: Amount) u64 {
-            return mach.sub64(len(array, child, allocator), amountToCountOfType(offset, child));
+            return math.sub64(len(array, child, allocator), amountToCountOfType(offset, child));
         }
         fn __rem(array: *const Array, comptime child: type, allocator: Allocator, offset: Amount) u64 {
-            return mach.sub64(avail(array, child, allocator), amountToCountOfType(offset, child));
+            return math.sub64(avail(array, child, allocator), amountToCountOfType(offset, child));
         }
         pub fn readAll(array: *const Array, comptime child: type, allocator: Allocator) []const child {
             return reference.pointerSlice(child, array.impl.aligned_byte_address(allocator), len(array, child, allocator));
@@ -5015,7 +5016,7 @@ pub fn UnstructuredHolder(comptime Allocator: type, comptime high_alignment: u64
             return reference.pointerSliceWithSentinel(child, __at(array, child, allocator, offset), __len(array, child, allocator, offset), sentinel_value);
         }
         fn __back(array: *const Array, comptime child: type, offset: Amount) u64 {
-            return mach.sub64(array.impl.undefined_byte_address(), amountOfTypeToBytes(offset, child));
+            return math.sub64(array.impl.undefined_byte_address(), amountOfTypeToBytes(offset, child));
         }
         pub fn undefine(array: *Array, comptime child: type, undefine_amount: Amount) void {
             array.impl.undefine(amountOfTypeToBytes(undefine_amount, child));
