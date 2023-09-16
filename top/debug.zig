@@ -1704,3 +1704,121 @@ const LoggingExtra = struct {
         }
     };
 };
+pub const spec = struct {
+    pub const logging = struct {
+        pub const default = struct {
+            pub const verbose: Logging.Default = .{
+                .Attempt = true,
+                .Success = true,
+                .Acquire = true,
+                .Release = true,
+                .Error = true,
+                .Fault = true,
+            };
+            pub const silent: Logging.Default = .{
+                .Attempt = false,
+                .Success = false,
+                .Acquire = false,
+                .Release = false,
+                .Error = false,
+                .Fault = false,
+            };
+        };
+        pub const override = struct {
+            pub const verbose: Logging.Override = .{
+                .Attempt = true,
+                .Success = true,
+                .Acquire = true,
+                .Release = true,
+                .Error = true,
+                .Fault = true,
+            };
+            pub const silent: Logging.Override = .{
+                .Attempt = false,
+                .Success = false,
+                .Acquire = false,
+                .Release = false,
+                .Error = false,
+                .Fault = false,
+            };
+        };
+        pub const attempt_error = struct {
+            pub const verbose: debug.Logging.AttemptError =
+                builtin.all(Logging.AttemptError);
+            pub const silent: Logging.AttemptError =
+                builtin.zero(Logging.AttemptError);
+        };
+        pub const attempt_fault = struct {
+            pub const verbose: Logging.AttemptFault =
+                builtin.all(Logging.AttemptFault);
+            pub const silent: Logging.AttemptFault =
+                builtin.zero(Logging.AttemptFault);
+        };
+        pub const attempt_success_error = struct {
+            pub const verbose: Logging.AttemptSuccessError =
+                builtin.all(Logging.AttemptSuccessError);
+            pub const silent: Logging.AttemptSuccessError =
+                builtin.zero(Logging.AttemptSuccessError);
+        };
+        pub const attempt_error_fault = struct {
+            pub const verbose: Logging.AttemptErrorFault =
+                builtin.all(Logging.AttemptErrorFault);
+            pub const silent: Logging.AttemptErrorFault =
+                builtin.zero(Logging.AttemptErrorFault);
+        };
+        pub const success_error = struct {
+            pub const verbose: Logging.SuccessError =
+                builtin.all(Logging.SuccessError);
+            pub const silent: Logging.SuccessError =
+                builtin.zero(Logging.SuccessError);
+        };
+        pub const success_fault = struct {
+            pub const verbose: Logging.SuccessFault =
+                builtin.all(Logging.SuccessFault);
+            pub const silent: Logging.SuccessFault =
+                builtin.zero(Logging.SuccessFault);
+        };
+        pub const success_error_fault = struct {
+            pub const verbose: Logging.SuccessErrorFault =
+                builtin.all(Logging.SuccessErrorFault);
+            pub const silent: Logging.SuccessErrorFault =
+                builtin.zero(Logging.SuccessErrorFault);
+        };
+        pub const acquire_error = struct {
+            pub const verbose: Logging.AcquireError =
+                builtin.all(Logging.AcquireError);
+            pub const silent: Logging.AcquireError =
+                builtin.zero(Logging.AcquireError);
+        };
+        pub const acquire_fault = struct {
+            pub const verbose: Logging.AcquireFault =
+                builtin.all(Logging.AcquireFault);
+            pub const silent: Logging.AcquireFault =
+                builtin.zero(Logging.AcquireFault);
+        };
+        pub const acquire_error_fault = struct {
+            pub const verbose: Logging.AcquireErrorFault =
+                builtin.all(Logging.AcquireErrorFault);
+            pub const silent: Logging.AcquireErrorFault =
+                builtin.zero(Logging.AcquireErrorFault);
+        };
+        pub const release_error = struct {
+            pub const verbose: Logging.ReleaseError =
+                builtin.all(Logging.ReleaseError);
+            pub const silent: Logging.ReleaseError =
+                builtin.zero(Logging.ReleaseError);
+        };
+        pub const release_fault = struct {
+            pub const verbose: Logging.ReleaseFault =
+                builtin.all(Logging.ReleaseFault);
+            pub const silent: Logging.ReleaseFault =
+                builtin.zero(Logging.ReleaseFault);
+        };
+        pub const release_error_fault = struct {
+            pub const verbose: Logging.ReleaseErrorFault =
+                builtin.all(Logging.ReleaseErrorFault);
+            pub const silent: Logging.ReleaseErrorFault =
+                builtin.zero(Logging.ReleaseErrorFault);
+        };
+    };
+};
