@@ -17,7 +17,6 @@ pub usingnamespace zl.start;
 
 pub const runtime_assertions: bool = true;
 pub const logging_default: debug.Logging.Default = spec.logging.default.verbose;
-
 const getcwd_spec: file.GetWorkingDirectorySpec = .{};
 const make_dir_spec: file.MakeDirSpec = .{};
 const make_node_spec: file.MakeNodeSpec = .{};
@@ -74,13 +73,13 @@ const pathname2: [:0]const u8 = test_dir ++ file_name ++ "2";
 const pathname_link1: [:0]const u8 = test_dir ++ file_name ++ "1";
 const pathname_link2: [:0]const u8 = test_dir ++ file_name ++ "2";
 
-pub fn testStatusExtended() !void {
+fn testStatusExtended() !void {
     const Fields = @TypeOf(statx_spec.options.fields);
     const nilx_spec: file.StatusExtendedSpec = comptime spec.add(statx_spec, .{ .options = .{ .fields = builtin.zero(Fields) } });
     var st: file.StatusExtended = try meta.wrap(file.getStatusExtended(nilx_spec, .{}, 0, "/home"));
     _ = st;
 }
-pub fn testCopyFileRange() !void {
+fn testCopyFileRange() !void {
     testing.announce(@src());
     const src_fd: usize = try meta.wrap(file.create(create_spec, create_options, pathname1, file.mode.regular));
     const dest_fd: usize = try meta.wrap(file.create(create_spec, create_options, pathname2, file.mode.regular));
@@ -97,7 +96,7 @@ pub fn testCopyFileRange() !void {
     try meta.wrap(file.unlink(unlink_spec, test_dir ++ "file_test1"));
     try meta.wrap(file.unlink(unlink_spec, test_dir ++ "file_test2"));
 }
-pub fn testFileOperationsRound1() !void {
+fn testFileOperationsRound1() !void {
     testing.announce(@src());
     var buf: [4096]u8 = undefined;
     _ = try file.getCwd(.{}, &buf);
@@ -110,7 +109,7 @@ pub fn testFileOperationsRound1() !void {
     try meta.wrap(file.unlink(unlink_spec, test_dir ++ "file_test1"));
     try meta.wrap(file.unlink(unlink_spec, test_dir ++ "file_test2"));
 }
-pub fn testSocketOpenAndClose() !void {
+fn testSocketOpenAndClose() !void {
     testing.announce(@src());
     const unix_tcp_fd: usize = try file.socket(.{}, .unix, .{ .conn = .tcp }, .ip);
     const unix_udp_fd: usize = try file.socket(.{}, .unix, .{ .conn = .udp }, .ip);
@@ -125,7 +124,7 @@ pub fn testSocketOpenAndClose() !void {
     try file.close(.{}, unix_udp_fd);
     try file.close(.{}, unix_tcp_fd);
 }
-pub fn testClientIPv4(args: [][*:0]u8) !void {
+fn testClientIPv4(args: [][*:0]u8) !void {
     testing.announce(@src());
     var addrinfo: file.Socket.Address = file.Socket.AddressIPv4.create(55478, .{ 127, 0, 0, 1 });
     const fd: usize = try file.socket(.{}, .ipv4, .{ .conn = .udp }, .ip);
@@ -137,7 +136,7 @@ pub fn testClientIPv4(args: [][*:0]u8) !void {
     debug.write(buf[0..len]);
     debug.write("\n");
 }
-pub fn testServerIPv4() !void {
+fn testServerIPv4() !void {
     testing.announce(@src());
     var addrinfo: file.Socket.Address = file.Socket.AddressIPv4.create(55478, .{ 127, 0, 0, 1 });
     const fd: usize = try file.socket(.{}, .ipv4, .{ .conn = .udp }, .udp);
@@ -148,7 +147,7 @@ pub fn testServerIPv4() !void {
     const len: u64 = try file.receiveFrom(.{}, fd, &buf, 0, &sender_addrinfo, &sender_addrlen);
     try file.sendTo(.{ .return_type = void }, fd, buf[0..len], 0, &sender_addrinfo, sender_addrlen);
 }
-pub fn testClientIPv6(args: [][*:0]u8) !void {
+fn testClientIPv6(args: [][*:0]u8) !void {
     testing.announce(@src());
     var addrinfo: file.Socket.Address = file.Socket.AddressIPv6.create(55480, 0, .{ 0, 0, 0, 0, 0, 0, 0, 0 }, 0);
     const fd: usize = try file.socket(.{}, .ipv6, .{ .conn = .udp }, .ip);
@@ -160,7 +159,7 @@ pub fn testClientIPv6(args: [][*:0]u8) !void {
     debug.write(buf[0..len]);
     debug.write("\n");
 }
-pub fn testServerIPv6() !void {
+fn testServerIPv6() !void {
     testing.announce(@src());
     var addrinfo: file.Socket.Address = file.Socket.AddressIPv6.create(55480, 0, .{ 0, 0, 0, 0, 0, 0, 0, 0 }, 0);
     const fd: usize = try file.socket(.{}, .ipv6, .{ .conn = .udp }, .udp);
@@ -171,7 +170,7 @@ pub fn testServerIPv6() !void {
     const len: u64 = try file.receiveFrom(.{}, fd, &buf, 0, &sender_addrinfo, &sender_addrlen);
     try file.sendTo(.{ .return_type = void }, fd, buf[0..len], 0, &sender_addrinfo, sender_addrlen);
 }
-pub fn testClientAndServerIPv4(args: [][*:0]u8) !void {
+fn testClientAndServerIPv4(args: [][*:0]u8) !void {
     testing.announce(@src());
     if (try proc.fork(.{}) == 0) {
         try testServerIPv4();
@@ -180,7 +179,7 @@ pub fn testClientAndServerIPv4(args: [][*:0]u8) !void {
     try time.sleep(.{}, .{ .nsec = 50000 });
     try testClientIPv4(args);
 }
-pub fn testClientAndServerIPv6(args: [][*:0]u8) !void {
+fn testClientAndServerIPv6(args: [][*:0]u8) !void {
     testing.announce(@src());
     if (try proc.fork(.{}) == 0) {
         try testServerIPv6();
@@ -217,7 +216,7 @@ fn testFileIsNot(fd: usize) !void {
     try debug.expect(try file.isNot(stat_spec, .socket, fd));
     try debug.expect(try file.isNot(stat_spec, .symbolic_link, fd));
 }
-pub fn testFileTests() !void {
+fn testFileTests() !void {
     const path: [:0]const u8 = test_dir ++ "file_test";
     testing.announce(@src());
     try file.makeDir(make_dir_spec, path, file.mode.directory);
@@ -254,7 +253,7 @@ fn testCreate() !void {
 }
 fn testPathRegular() !void {
     testing.announce(@src());
-    const path_reg_fd: usize = try meta.wrap(file.path(file_path_spec, path_options, test_dir ++ "file_test/file_test/file_test"));
+    const path_reg_fd: usize = try meta.wrap(file.path(file_path_spec, .{}, test_dir ++ "file_test/file_test/file_test"));
     try file.assertNot(stat_spec, path_reg_fd, .unknown);
     try file.assert(stat_spec, path_reg_fd, .regular);
     try meta.wrap(file.close(close_spec, path_reg_fd));
@@ -427,6 +426,19 @@ fn testSampleReports() void {
     testing.announce(@src());
     file.about.sampleAllReports();
 }
+fn testReadWrite2() !void {
+    var buf1: [1]u8 = undefined;
+    var buf2: [1]u8 = undefined;
+    var buf3: [1]u8 = undefined;
+    var buf4: [1]u8 = undefined;
+    var buf5: [1]u8 = undefined;
+    var buf: [5][]u8 = .{ &buf1, &buf2, &buf3, &buf4, &buf5 };
+
+    const fd: usize = try file.create(create_spec, .{}, test_dir ++ "/file_test1", file.mode.regular);
+    try file.write2(write_spec, .{}, fd, &.{ "1", "2", "3", "4", "5" }, 0);
+    const len: usize = try file.read2(read_spec, .{}, fd, &buf, 0);
+    try debug.expectEqual(usize, 5, len);
+}
 pub fn main(args: [][*:0]u8) !void {
     try meta.wrap(testPreClean());
     try meta.wrap(testBasicDirectoryIterator());
@@ -435,6 +447,7 @@ pub fn main(args: [][*:0]u8) !void {
     try meta.wrap(testStandardChannel());
     try meta.wrap(testStatusExtended());
     try meta.wrap(testSocketOpenAndClose());
+    try meta.wrap(testReadWrite2());
     try meta.wrap(testFileTests());
     try meta.wrap(testPoll());
     try meta.wrap(testClientAndServerIPv4(args));
