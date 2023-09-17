@@ -290,7 +290,7 @@ pub const Elf64_Phdr = extern struct {
 pub const Elf32_Shdr = extern struct {
     sh_name: u32,
     sh_type: SHT,
-    sh_flags: u32,
+    sh_flags: SHF,
     sh_addr: u32,
     sh_offset: u32,
     sh_size: u32,
@@ -302,7 +302,7 @@ pub const Elf32_Shdr = extern struct {
 pub const Elf64_Shdr = extern struct {
     sh_name: u32,
     sh_type: SHT,
-    sh_flags: u64,
+    sh_flags: SHF,
     sh_addr: u64,
     sh_offset: u64,
     sh_size: u64,
@@ -358,13 +358,11 @@ pub const Elf32_Rel = extern struct {
 };
 pub const Elf64_Rel = extern struct {
     r_offset: u64,
-    r_info: u64,
-    pub inline fn r_sym(self: @This()) u32 {
-        return @as(u32, @truncate(self.r_info >> 32));
-    }
-    pub inline fn r_type(self: @This()) u32 {
-        return @as(u32, @truncate(self.r_info & 0xffffffff));
-    }
+    r_info: packed struct(u64) {
+        r_type: R_X86_64,
+        zb32: u24,
+        r_sym: u32,
+    },
 };
 pub const Elf32_Rela = extern struct {
     r_offset: u32,
@@ -379,14 +377,12 @@ pub const Elf32_Rela = extern struct {
 };
 pub const Elf64_Rela = extern struct {
     r_offset: u64,
-    r_info: u64,
+    r_info: packed struct(u64) {
+        r_type: R_X86_64,
+        zb32: u24,
+        r_sym: u32,
+    },
     r_addend: i64,
-    pub inline fn r_sym(self: @This()) u32 {
-        return @as(u32, @truncate(self.r_info >> 32));
-    }
-    pub inline fn r_type(self: @This()) u32 {
-        return @as(u32, @truncate(self.r_info & 0xffffffff));
-    }
 };
 pub const Elf32_Dyn = extern struct {
     d_tag: DT,
@@ -966,93 +962,239 @@ pub const EM = enum(u16) {
     FRV = 0x5441,
     _,
 };
-/// Section data should be writable during execution.
-pub const SHF_WRITE = 0x1;
-/// Section occupies memory during program execution.
-pub const SHF_ALLOC = 0x2;
-/// Section contains executable machine instructions.
-pub const SHF_EXECINSTR = 0x4;
-/// The data in this section may be merged.
-pub const SHF_MERGE = 0x10;
-/// The data in this section is null-terminated strings.
-pub const SHF_STRINGS = 0x20;
-/// A field in this section holds a section header table index.
-pub const SHF_INFO_LINK = 0x40;
-/// Adds special ordering requirements for link editors.
-pub const SHF_LINK_ORDER = 0x80;
-/// This section requires special OS-specific processing to avoid incorrect
-/// behavior.
-pub const SHF_OS_NONCONFORMING = 0x100;
-/// This section is a member of a section group.
-pub const SHF_GROUP = 0x200;
-/// This section holds Thread-Local Storage.
-pub const SHF_TLS = 0x400;
-/// Identifies a section containing compressed data.
-pub const SHF_COMPRESSED = 0x800;
-/// This section is excluded from the final executable or shared library.
-pub const SHF_EXCLUDE = 0x80000000;
-/// Start of target-specific flags.
-pub const SHF_MASKOS = 0x0ff00000;
-/// Bits indicating processor-specific flags.
-pub const SHF_MASKPROC = 0xf0000000;
-/// All sections with the "d" flag are grouped together by the linker to form
-/// the data section and the dp register is set to the start of the section by
-/// the boot code.
-pub const XCORE_SHF_DP_SECTION = 0x10000000;
-/// All sections with the "c" flag are grouped together by the linker to form
-/// the constant pool and the cp register is set to the start of the constant
-/// pool by the boot code.
-pub const XCORE_SHF_CP_SECTION = 0x20000000;
-/// If an object file section does not have this flag set, then it may not hold
-/// more than 2GB and can be freely referred to in objects using smaller code
-/// models. Otherwise, only objects using larger code models can refer to them.
-/// For example, a medium code model object can refer to data in a section that
-/// sets this flag besides being able to refer to data in a section that does
-/// not set it; likewise, a small code model object can refer only to code in a
-/// section that does not set this flag.
-pub const SHF_X86_64_LARGE = 0x10000000;
-/// All sections with the GPREL flag are grouped into a global data area
-/// for faster accesses
-pub const SHF_HEX_GPREL = 0x10000000;
-/// Section contains text/data which may be replicated in other sections.
-/// Linker must retain only one copy.
-pub const SHF_MIPS_NODUPES = 0x01000000;
-/// Linker must generate implicit hidden weak names.
-pub const SHF_MIPS_NAMES = 0x02000000;
-/// Section data local to process.
-pub const SHF_MIPS_LOCAL = 0x04000000;
-/// Do not strip this section.
-pub const SHF_MIPS_NOSTRIP = 0x08000000;
-/// Section must be part of global data area.
-pub const SHF_MIPS_GPREL = 0x10000000;
-/// This section should be merged.
-pub const SHF_MIPS_MERGE = 0x20000000;
-/// Address size to be inferred from section entry size.
-pub const SHF_MIPS_ADDR = 0x40000000;
-/// Section data is string data by default.
-pub const SHF_MIPS_STRING = 0x80000000;
-/// Make code section unreadable when in execute-only mode
-pub const SHF_ARM_PURECODE = 0x2000000;
-const PF_Bitfield = struct {
-    X: bool,
-    W: bool,
-    R: bool,
+pub const SHF = packed struct(usize) {
+    /// Section data should be writable during execution.
+    WRITE: bool = false,
+    /// Section occupies memory during program execution.
+    ALLOC: bool = false,
+    /// Section contains executable machine instructions.
+    EXECINSTR: bool = false,
+    zb3: u1 = 0,
+    /// The data in this section may be merged.
+    MERGE: bool = false,
+    /// The data in this section is null-terminated strings.
+    STRINGS: bool = false,
+    /// A field in this section holds a section header table index.
+    INFO_LINK: bool = false,
+    /// Adds special ordering requirements for link editors.
+    LINK_ORDER: bool = false,
+    /// This section requires special OS-specific processing to avoid incorrect
+    /// behavior.
+    OS_NONCONFORMING: bool = false,
+    /// This section is a member of a section group.
+    GROUP: bool = false,
+    /// This section holds Thread-Local Storage.
+    TLS: bool = false,
+    /// Identifies a section containing compressed data.
+    COMPRESSED: bool = false,
+    zb12: u16 = 0,
+    XCORE_SHF_DP_SECTION: bool = false,
+    XCORE_SHF_CP_SECTION: bool = false,
+    zb30: u1 = 0,
+    /// This section is excluded from the final executable or shared library.
+    EXCLUDE: bool = false,
+    zb32: u32 = 0,
+    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
+        var ptr: [*]u8 = buf;
+        if (format.WRITE) {
+            ptr += fmt.strcpyEqu(ptr, "WRITE");
+        }
+        if (format.ALLOC) {
+            if (ptr != buf) {
+                ptr[0] = '|';
+                ptr += 1;
+            }
+            ptr += fmt.strcpyEqu(ptr, "ALLOC");
+        }
+        if (format.EXECINSTR) {
+            if (ptr != buf) {
+                ptr[0] = '|';
+                ptr += 1;
+            }
+            ptr += fmt.strcpyEqu(ptr, "EXECINSTR");
+        }
+        if (format.MERGE) {
+            if (ptr != buf) {
+                ptr[0] = '|';
+                ptr += 1;
+            }
+            ptr += fmt.strcpyEqu(ptr, "MERGE");
+        }
+        if (format.STRINGS) {
+            if (ptr != buf) {
+                ptr[0] = '|';
+                ptr += 1;
+            }
+            ptr += fmt.strcpyEqu(ptr, "STRINGS");
+        }
+        if (format.INFO_LINK) {
+            if (ptr != buf) {
+                ptr[0] = '|';
+                ptr += 1;
+            }
+            ptr += fmt.strcpyEqu(ptr, "INFO_LINK");
+        }
+        if (format.LINK_ORDER) {
+            if (ptr != buf) {
+                ptr[0] = '|';
+                ptr += 1;
+            }
+            ptr += fmt.strcpyEqu(ptr, "LINK_ORDER");
+        }
+        if (format.OS_NONCONFORMING) {
+            if (ptr != buf) {
+                ptr[0] = '|';
+                ptr += 1;
+            }
+            ptr += fmt.strcpyEqu(ptr, "OS_NONCONFORMING");
+        }
+        if (format.GROUP) {
+            if (ptr != buf) {
+                ptr[0] = '|';
+                ptr += 1;
+            }
+            ptr += fmt.strcpyEqu(ptr, "GROUP");
+        }
+        if (format.TLS) {
+            if (ptr != buf) {
+                ptr[0] = '|';
+                ptr += 1;
+            }
+            ptr += fmt.strcpyEqu(ptr, "TLS");
+        }
+        if (format.COMPRESSED) {
+            if (ptr != buf) {
+                ptr[0] = '|';
+                ptr += 1;
+            }
+            ptr += fmt.strcpyEqu(ptr, "COMPRESSED");
+        }
+        if (format.XCORE_SHF_DP_SECTION) {
+            if (ptr != buf) {
+                ptr[0] = '|';
+                ptr += 1;
+            }
+            ptr += fmt.strcpyEqu(ptr, "XCORE_SHF_DP_SECTION");
+        }
+        if (format.XCORE_SHF_CP_SECTION) {
+            if (ptr != buf) {
+                ptr[0] = '|';
+                ptr += 1;
+            }
+            ptr += fmt.strcpyEqu(ptr, "XCORE_SHF_CP_SECTION");
+        }
+        if (format.EXCLUDE) {
+            if (ptr != buf) {
+                ptr[0] = '|';
+                ptr += 1;
+            }
+            ptr += fmt.strcpyEqu(ptr, "EXCLUDE");
+        }
+    }
+    pub fn formatLength(format: @This()) usize {
+        var len: usize = 0;
+        if (format.WRITE) {
+            len += 5;
+        }
+        if (format.ALLOC) {
+            len += 5;
+        }
+        if (format.EXECINSTR) {
+            len += 9;
+        }
+        if (format.MERGE) {
+            len += 5;
+        }
+        if (format.STRINGS) {
+            len += 7;
+        }
+        if (format.INFO_LINK) {
+            len += 9;
+        }
+        if (format.LINK_ORDER) {
+            len += 10;
+        }
+        if (format.OS_NONCONFORMING) {
+            len += 16;
+        }
+        if (format.GROUP) {
+            len += 5;
+        }
+        if (format.TLS) {
+            len += 3;
+        }
+        if (format.COMPRESSED) {
+            len += 10;
+        }
+        if (format.XCORE_SHF_DP_SECTION) {
+            len += 20;
+        }
+        if (format.XCORE_SHF_CP_SECTION) {
+            len += 20;
+        }
+        if (format.EXCLUDE) {
+            len += 7;
+        }
+    }
+    /// All sections with the "d" flag are grouped together by the linker to form
+    /// the data section and the dp register is set to the start of the section by
+    /// the boot code.
+    pub const XCORE_SHF_DP_SECTION = 0x10000000;
+    /// All sections with the "c" flag are grouped together by the linker to form
+    /// the constant pool and the cp register is set to the start of the constant
+    /// pool by the boot code.
+    pub const XCORE_SHF_CP_SECTION = 0x20000000;
+    pub const HEX = struct {
+        /// All sections with the GPREL flag are grouped into a global data area
+        /// for faster accesses
+        pub const HEX_GPREL = 0x10000000;
+    };
+    pub const ARM = struct {
+        /// Make code section unreadable when in execute-only mode
+        pub const ARM_PURECODE = 0x2000000;
+    };
+    pub const X86_64 = struct {
+        /// If an object file section does not have this flag set, then it may not hold
+        /// more than 2GB and can be freely referred to in objects using smaller code
+        /// models. Otherwise, only objects using larger code models can refer to them.
+        /// For example, a medium code model object can refer to data in a section that
+        /// sets this flag besides being able to refer to data in a section that does
+        /// not set it; likewise, a small code model object can refer only to code in a
+        /// section that does not set this flag.
+        pub const LARGE = 0x10000000;
+    };
+    pub const MIPS = struct {
+        /// Section contains text/data which may be replicated in other sections.
+        /// Linker must retain only one copy.
+        pub const MIPS_NODUPES = 0x01000000;
+        /// Linker must generate implicit hidden weak names.
+        pub const MIPS_NAMES = 0x02000000;
+        /// Section data local to process.
+        pub const MIPS_LOCAL = 0x04000000;
+        /// Do not strip this section.
+        pub const MIPS_NOSTRIP = 0x08000000;
+        /// Section must be part of global data area.
+        pub const MIPS_GPREL = 0x10000000;
+        /// This section should be merged.
+        pub const MIPS_MERGE = 0x20000000;
+        /// Address size to be inferred from section entry size.
+        pub const MIPS_ADDR = 0x40000000;
+        /// Section data is string data by default.
+        pub const MIPS_STRING = 0x80000000;
+    };
 };
-/// Execute
-pub const PF_X = 1;
-/// Write
-pub const PF_W = 2;
-/// Read
-pub const PF_R = 4;
-/// Bits for operating system-specific semantics.
-pub const PF_MASKOS = 0x0ff00000;
-/// Bits for processor-specific semantics.
-pub const PF_MASKPROC = 0xf0000000;
 const PF = packed struct(u32) {
+    /// Execute
     X: bool = false,
+    /// Write
     W: bool = false,
+    /// Read
     R: bool = false,
     zb3: u29 = 0,
+    /// Bits for operating system-specific semantics.
+    pub const PF_MASKOS = 0x0ff00000;
+    /// Bits for processor-specific semantics.
+    pub const PF_MASKPROC = 0xf0000000;
 };
 // Special section indexes used in Elf{32,64}_Sym.
 pub const SHN_UNDEF = 0;
