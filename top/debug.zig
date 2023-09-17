@@ -1,7 +1,7 @@
 const tab = @import("./tab.zig");
 const mem = @import("./mem.zig");
 const fmt = @import("./fmt.zig");
-const mach = @import("./mach.zig");
+const bits = @import("./bits.zig");
 const meta = @import("./meta.zig");
 const proc = @import("./proc.zig");
 const builtin = @import("./builtin.zig");
@@ -150,8 +150,8 @@ pub const Logging = packed struct {
 };
 pub fn loggingTypeTypes() []const type {
     var ret: []const type = &.{};
-    var bits: u6 = 0;
-    while (true) : (bits +%= 1) {
+    var bit_size_of: u16 = 0;
+    while (true) : (bit_size_of +%= 1) {
         var fields: @TypeOf(@typeInfo(Logging.Default).Struct.fields) = &.{};
         const logging: Logging.Default = @as(Logging.Default, @bitCast(bits));
         inline for (@typeInfo(Logging.Default).Struct.fields) |field| {
@@ -498,9 +498,9 @@ pub fn comparisonFailedFault(comptime T: type, symbol: []const u8, arg1: anytype
     var buf: [4096]u8 = undefined;
     const len: u64 = switch (@typeInfo(T)) {
         .Int => about.writeComparisonFailed(T, about_s, symbol, &buf, arg1, arg2, @min(arg1, arg2) > 10_000),
-        .Enum => mach.memcpyMulti(&buf, &[_][]const u8{ about_s, @tagName(arg1), symbol, @tagName(arg2) }),
-        .Type => mach.memcpyMulti(&buf, &[_][]const u8{ about_s, @typeName(arg1), symbol, @typeName(arg2) }),
-        else => mach.memcpyMulti(&buf, &[_][]const u8{ about_s, "unexpected value" }),
+        .Enum => fmt.strcpyMulti(&buf, &[_][]const u8{ about_s, @tagName(arg1), symbol, @tagName(arg2) }),
+        .Type => fmt.strcpyMulti(&buf, &[_][]const u8{ about_s, @typeName(arg1), symbol, @typeName(arg2) }),
+        else => fmt.strcpyMulti(&buf, &[_][]const u8{ about_s, "unexpected value" }),
     };
     builtin.panic(buf[0..len], null, ret_addr);
 }
@@ -511,9 +511,9 @@ pub fn comparisonFailedError(comptime T: type, symbol: []const u8, arg1: anytype
     var buf: [4096]u8 = undefined;
     const len: u64 = switch (@typeInfo(T)) {
         .Int => about.writeComparisonFailed(T, about_s, symbol, &buf, arg1, arg2, @min(arg1, arg2) > 10_000),
-        .Enum => mach.memcpyMulti(&buf, &[_][]const u8{ about_s, @tagName(arg1), symbol, @tagName(arg2) }),
-        .Type => mach.memcpyMulti(&buf, &[_][]const u8{ about_s, @typeName(arg1), symbol, @typeName(arg2) }),
-        else => mach.memcpyMulti(&buf, &[_][]const u8{ about_s, "unexpected value" }),
+        .Enum => fmt.strcpyMulti(&buf, &[_][]const u8{ about_s, @tagName(arg1), symbol, @tagName(arg2) }),
+        .Type => fmt.strcpyMulti(&buf, &[_][]const u8{ about_s, @typeName(arg1), symbol, @typeName(arg2) }),
+        else => fmt.strcpyMulti(&buf, &[_][]const u8{ about_s, "unexpected value" }),
     };
     builtin.alarm(buf[0..len], @errorReturnTrace(), ret_addr orelse @returnAddress());
     return error.UnexpectedValue;
@@ -644,9 +644,9 @@ pub noinline fn panic(message: []const u8, _: @TypeOf(@errorReturnTrace()), ret_
 pub noinline fn panicSignal(message: []const u8, ctx_ptr: *const anyopaque) noreturn {
     @setCold(true);
     @setRuntimeSafety(false);
-    const regs: mach.RegisterState = @as(
-        *mach.RegisterState,
-        @ptrFromInt(@intFromPtr(ctx_ptr) +% mach.RegisterState.offset),
+    const regs: bits.RegisterState = @as(
+        *bits.RegisterState,
+        @ptrFromInt(@intFromPtr(ctx_ptr) +% bits.RegisterState.offset),
     ).*;
     if (builtin.want_stack_traces and builtin.trace.Signal) {
         printStackTrace(&builtin.trace, regs.rip, regs.rbp);
