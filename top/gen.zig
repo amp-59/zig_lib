@@ -411,7 +411,12 @@ pub fn containerDeclsToBitField(comptime Container: type, comptime backing_integ
                                 array.writeMany("=0,\n");
                             }
                             array.writeFormat(fmt.IdentifierFormat{ .value = pair.name });
-                            array.writeMany(":bool=false,\n");
+                            array.writeMany(":bool=");
+                            if (pair.default_value == 0) {
+                                array.writeMany("false,\n");
+                            } else {
+                                array.writeMany("true,\n");
+                            }
                             bits +%= diff +% 1;
                         }
                     }
