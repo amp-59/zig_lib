@@ -31,6 +31,9 @@ pub fn main(args: [][*:0]u8) !void {
     var buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(1024 *% 1024, 1));
     var end: [*]u8 = @ptrFromInt(1);
     var ld: DynamicLoader = .{};
+    if (args.len == 1) {
+        return;
+    }
     if (args.len >= 2) {
         info1 = try ld.load(mem.terminate(args[1], 0));
     }
