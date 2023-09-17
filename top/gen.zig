@@ -331,7 +331,7 @@ pub fn truncateFileAt(comptime truncate_spec: TruncateSpec, dir_fd: usize, name:
     .abort = truncate_spec.errors.create.abort ++ truncate_spec.errors.write.abort ++
         truncate_spec.errors.close.abort,
 }, truncate_spec.return_type) {
-    const fd: usize = try meta.wrap(file.createAt(truncate_spec.create(), dir_fd, name, file.mode.regular));
+    const fd: usize = try meta.wrap(file.createAt(truncate_spec.create(), TruncateSpec.create_options, dir_fd, name, file.mode.regular));
     const ret: truncate_spec.return_type = try meta.wrap(file.write(truncate_spec.write(), fd, buf));
     try meta.wrap(file.close(truncate_spec.close(), fd));
     return ret;
