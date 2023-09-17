@@ -2010,6 +2010,8 @@ pub const Fn = enum(usize) {
             .name_to_handle_at,
             .linkat,
             .perf_event_open,
+            .preadv2,
+            .pwritev2,
             => return 5,
             .copy_file_range,
             .futex,
@@ -2027,6 +2029,196 @@ pub const vFn = enum(u9) {
     gettimeofday,
     time,
 };
+pub const no_errors = &[_]ErrorCode{};
+//    Arch/ABI      arg1  arg2  arg3  arg4  arg5  arg6  arg7  Notes
+//    ──────────────────────────────────────────────────────────────
+//    alpha         a0    a1    a2    a3    a4    a5    -
+//    arc           r0    r1    r2    r3    r4    r5    -
+//    arm/OABI      r0    r1    r2    r3    r4    r5    r6
+//    arm/EABI      r0    r1    r2    r3    r4    r5    r6
+//    arm64         x0    x1    x2    x3    x4    x5    -
+//    blackfin      R0    R1    R2    R3    R4    R5    -
+//    i386          ebx   ecx   edx   esi   edi   ebp   -
+//    ia64          out0  out1  out2  out3  out4  out5  -
+//    m68k          d1    d2    d3    d4    d5    a0    -
+//    microblaze    r5    r6    r7    r8    r9    r10   -
+//    mips/o32      a0    a1    a2    a3    -     -     -     1
+//    mips/n32,64   a0    a1    a2    a3    a4    a5    -
+//    nios2         r4    r5    r6    r7    r8    r9    -
+//    parisc        r26   r25   r24   r23   r22   r21   -
+//    powerpc       r3    r4    r5    r6    r7    r8    r9
+//    powerpc64     r3    r4    r5    r6    r7    r8    -
+//    riscv         a0    a1    a2    a3    a4    a5    -
+//    s390          r2    r3    r4    r5    r6    r7    -
+//    s390x         r2    r3    r4    r5    r6    r7    -
+//    superh        r4    r5    r6    r7    r0    r1    r2
+//    sparc/32      o0    o1    o2    o3    o4    o5    -
+//    sparc/64      o0    o1    o2    o3    o4    o5    -
+//    tile          R00   R01   R02   R03   R04   R05   -
+//    x86-64        rdi   rsi   rdx   r10   r8    r9    -     X
+//    x32           rdi   rsi   rdx   r10   r8    r9    -
+//    xtensa        a6    a3    a4    a5    a8    a9    -
+inline fn syscall0(comptime sys_fn_info: Fn, _: [0]usize) isize {
+    return asm volatile ("syscall # " ++ @tagName(sys_fn_info)
+        : [ret] "={rax}" (-> isize),
+        : [_] "{rax}" (sys_fn_info),
+        : "rax", "rcx", "r11", "memory"
+    );
+}
+inline fn syscall1(comptime sys_fn_info: Fn, args: [1]usize) isize {
+    return asm volatile ("syscall # " ++ @tagName(sys_fn_info)
+        : [ret] "={rax}" (-> isize),
+        : [_] "{rax}" (sys_fn_info),
+          [_] "{rdi}" (args[0]),
+        : "rcx", "r11", "memory"
+    );
+}
+inline fn syscall2(comptime sys_fn_info: Fn, args: [2]usize) isize {
+    return asm volatile ("syscall # " ++ @tagName(sys_fn_info)
+        : [ret] "={rax}" (-> isize),
+        : [_] "{rax}" (sys_fn_info),
+          [_] "{rdi}" (args[0]),
+          [_] "{rsi}" (args[1]),
+        : "rcx", "r11", "memory"
+    );
+}
+inline fn syscall3(comptime sys_fn_info: Fn, args: [3]usize) isize {
+    return asm volatile ("syscall # " ++ @tagName(sys_fn_info)
+        : [ret] "={rax}" (-> isize),
+        : [_] "{rax}" (sys_fn_info),
+          [_] "{rdi}" (args[0]),
+          [_] "{rsi}" (args[1]),
+          [_] "{rdx}" (args[2]),
+        : "rcx", "r11", "memory"
+    );
+}
+inline fn syscall4(comptime sys_fn_info: Fn, args: [4]usize) isize {
+    return asm volatile ("syscall # " ++ @tagName(sys_fn_info)
+        : [_] "={rax}" (-> isize),
+        : [_] "{rax}" (sys_fn_info),
+          [_] "{rdi}" (args[0]),
+          [_] "{rsi}" (args[1]),
+          [_] "{rdx}" (args[2]),
+          [_] "{r10}" (args[3]),
+        : "rcx", "r11", "memory"
+    );
+}
+inline fn syscall5(comptime sys_fn_info: Fn, args: [5]usize) isize {
+    return asm volatile ("syscall # " ++ @tagName(sys_fn_info)
+        : [ret] "={rax}" (-> isize),
+        : [_] "{rax}" (sys_fn_info),
+          [_] "{rdi}" (args[0]),
+          [_] "{rsi}" (args[1]),
+          [_] "{rdx}" (args[2]),
+          [_] "{r10}" (args[3]),
+          [_] "{r8}" (args[4]),
+        : "rcx", "r11", "memory"
+    );
+}
+inline fn syscall6(comptime sys_fn_info: Fn, args: [6]usize) isize {
+    return asm volatile ("syscall # " ++ @tagName(sys_fn_info)
+        : [ret] "={rax}" (-> isize),
+        : [_] "{rax}" (sys_fn_info),
+          [_] "{rdi}" (args[0]),
+          [_] "{rsi}" (args[1]),
+          [_] "{rdx}" (args[2]),
+          [_] "{r10}" (args[3]),
+          [_] "{r8}" (args[4]),
+          [_] "{r9}" (args[5]),
+        : "rcx", "r11", "memory"
+    );
+}
+pub fn ErrorUnion(comptime error_policy: ErrorPolicy, comptime return_type: type) type {
+    if (error_policy.throw.len != 0) {
+        if (@typeInfo(return_type) == .ErrorUnion) {
+            return (builtin.ZigError(ErrorCode, error_policy.throw) ||
+                @typeInfo(return_type).ErrorUnion.error_set)!@typeInfo(return_type).ErrorUnion.payload;
+        } else {
+            return builtin.ZigError(ErrorCode, error_policy.throw)!return_type;
+        }
+    }
+    return return_type;
+}
+pub fn Error(comptime errors: []const ErrorCode) type {
+    return builtin.ZigError(ErrorCode, errors);
+}
+inline fn cast(args: anytype) [args.len]usize {
+    switch (args.len) {
+        0 => return .{},
+        1 => return .{
+            meta.bitCast(usize, args[0]),
+        },
+        2 => return .{
+            meta.bitCast(usize, args[0]),
+            meta.bitCast(usize, args[1]),
+        },
+        3 => return .{
+            meta.bitCast(usize, args[0]),
+            meta.bitCast(usize, args[1]),
+            meta.bitCast(usize, args[2]),
+        },
+        4 => return .{
+            meta.bitCast(usize, args[0]),
+            meta.bitCast(usize, args[1]),
+            meta.bitCast(usize, args[2]),
+            meta.bitCast(usize, args[3]),
+        },
+        5 => return .{
+            meta.bitCast(usize, args[0]),
+            meta.bitCast(usize, args[1]),
+            meta.bitCast(usize, args[2]),
+            meta.bitCast(usize, args[3]),
+            meta.bitCast(usize, args[4]),
+            meta.bitCast(usize, args[5]),
+        },
+        6 => return .{
+            meta.bitCast(usize, args[0]),
+            meta.bitCast(usize, args[1]),
+            meta.bitCast(usize, args[2]),
+            meta.bitCast(usize, args[3]),
+            meta.bitCast(usize, args[4]),
+            meta.bitCast(usize, args[5]),
+        },
+        else => unreachable,
+    }
+}
+const syscalls = .{
+    syscall0, syscall1,
+    syscall2, syscall3,
+    syscall4, syscall5,
+    syscall6,
+};
+pub inline fn call(comptime tag: Fn, comptime errors: ErrorPolicy, comptime return_type: type, args: Fn.Args(tag)) ErrorUnion(errors, return_type) {
+    const ret: isize = (comptime syscalls[tag.args()])(tag, args);
+    if (return_type == noreturn) {
+        unreachable;
+    }
+    if (errors.throw.len != 0) {
+        try builtin.zigErrorThrow(ErrorCode, errors.throw, ret);
+    }
+    if (errors.abort.len != 0) {
+        builtin.zigErrorAbort(ErrorCode, errors.abort, ret);
+    }
+    if (@sizeOf(return_type) == @sizeOf(usize)) {
+        return @as(return_type, @bitCast(ret));
+    }
+    if (return_type != void) {
+        return @as(return_type, @intCast(ret));
+    }
+}
+pub inline fn call_noexcept(comptime tag: Fn, comptime return_type: type, args: Fn.Args(tag)) return_type {
+    const ret: isize = (comptime syscalls[tag.args()])(tag, args);
+    if (return_type == noreturn) {
+        unreachable;
+    }
+    if (@sizeOf(return_type) == @sizeOf(usize)) {
+        return @as(return_type, @bitCast(ret));
+    }
+    if (return_type != void) {
+        return @as(return_type, @intCast(ret));
+    }
+}
+
 pub const brk_errors = &[_]ErrorCode{.NOMEM};
 pub const access_errors = &[_]ErrorCode{
     .ACCES,       .BADF,  .FAULT, .INVAL,  .IO,   .LOOP,
@@ -2232,192 +2424,3 @@ pub const futex_errors = &.{
     .ACCES, .AGAIN, .DEADLK, .FAULT, .INTR, .INVAL,    .NFILE,
     .NOMEM, .NOSYS, .PERM,   .PERM,  .SRCH, .TIMEDOUT,
 };
-pub const no_errors = &[_]ErrorCode{};
-//    Arch/ABI      arg1  arg2  arg3  arg4  arg5  arg6  arg7  Notes
-//    ──────────────────────────────────────────────────────────────
-//    alpha         a0    a1    a2    a3    a4    a5    -
-//    arc           r0    r1    r2    r3    r4    r5    -
-//    arm/OABI      r0    r1    r2    r3    r4    r5    r6
-//    arm/EABI      r0    r1    r2    r3    r4    r5    r6
-//    arm64         x0    x1    x2    x3    x4    x5    -
-//    blackfin      R0    R1    R2    R3    R4    R5    -
-//    i386          ebx   ecx   edx   esi   edi   ebp   -
-//    ia64          out0  out1  out2  out3  out4  out5  -
-//    m68k          d1    d2    d3    d4    d5    a0    -
-//    microblaze    r5    r6    r7    r8    r9    r10   -
-//    mips/o32      a0    a1    a2    a3    -     -     -     1
-//    mips/n32,64   a0    a1    a2    a3    a4    a5    -
-//    nios2         r4    r5    r6    r7    r8    r9    -
-//    parisc        r26   r25   r24   r23   r22   r21   -
-//    powerpc       r3    r4    r5    r6    r7    r8    r9
-//    powerpc64     r3    r4    r5    r6    r7    r8    -
-//    riscv         a0    a1    a2    a3    a4    a5    -
-//    s390          r2    r3    r4    r5    r6    r7    -
-//    s390x         r2    r3    r4    r5    r6    r7    -
-//    superh        r4    r5    r6    r7    r0    r1    r2
-//    sparc/32      o0    o1    o2    o3    o4    o5    -
-//    sparc/64      o0    o1    o2    o3    o4    o5    -
-//    tile          R00   R01   R02   R03   R04   R05   -
-//    x86-64        rdi   rsi   rdx   r10   r8    r9    -     X
-//    x32           rdi   rsi   rdx   r10   r8    r9    -
-//    xtensa        a6    a3    a4    a5    a8    a9    -
-inline fn syscall0(comptime sys_fn_info: Fn, _: [0]usize) isize {
-    return asm volatile ("syscall # " ++ @tagName(sys_fn_info)
-        : [ret] "={rax}" (-> isize),
-        : [_] "{rax}" (sys_fn_info),
-        : "rax", "rcx", "r11", "memory"
-    );
-}
-inline fn syscall1(comptime sys_fn_info: Fn, args: [1]usize) isize {
-    return asm volatile ("syscall # " ++ @tagName(sys_fn_info)
-        : [ret] "={rax}" (-> isize),
-        : [_] "{rax}" (sys_fn_info),
-          [_] "{rdi}" (args[0]),
-        : "rcx", "r11", "memory"
-    );
-}
-inline fn syscall2(comptime sys_fn_info: Fn, args: [2]usize) isize {
-    return asm volatile ("syscall # " ++ @tagName(sys_fn_info)
-        : [ret] "={rax}" (-> isize),
-        : [_] "{rax}" (sys_fn_info),
-          [_] "{rdi}" (args[0]),
-          [_] "{rsi}" (args[1]),
-        : "rcx", "r11", "memory"
-    );
-}
-inline fn syscall3(comptime sys_fn_info: Fn, args: [3]usize) isize {
-    return asm volatile ("syscall # " ++ @tagName(sys_fn_info)
-        : [ret] "={rax}" (-> isize),
-        : [_] "{rax}" (sys_fn_info),
-          [_] "{rdi}" (args[0]),
-          [_] "{rsi}" (args[1]),
-          [_] "{rdx}" (args[2]),
-        : "rcx", "r11", "memory"
-    );
-}
-inline fn syscall4(comptime sys_fn_info: Fn, args: [4]usize) isize {
-    return asm volatile ("syscall # " ++ @tagName(sys_fn_info)
-        : [_] "={rax}" (-> isize),
-        : [_] "{rax}" (sys_fn_info),
-          [_] "{rdi}" (args[0]),
-          [_] "{rsi}" (args[1]),
-          [_] "{rdx}" (args[2]),
-          [_] "{r10}" (args[3]),
-        : "rcx", "r11", "memory"
-    );
-}
-inline fn syscall5(comptime sys_fn_info: Fn, args: [5]usize) isize {
-    return asm volatile ("syscall # " ++ @tagName(sys_fn_info)
-        : [ret] "={rax}" (-> isize),
-        : [_] "{rax}" (sys_fn_info),
-          [_] "{rdi}" (args[0]),
-          [_] "{rsi}" (args[1]),
-          [_] "{rdx}" (args[2]),
-          [_] "{r10}" (args[3]),
-          [_] "{r8}" (args[4]),
-        : "rcx", "r11", "memory"
-    );
-}
-inline fn syscall6(comptime sys_fn_info: Fn, args: [6]usize) isize {
-    return asm volatile ("syscall # " ++ @tagName(sys_fn_info)
-        : [ret] "={rax}" (-> isize),
-        : [_] "{rax}" (sys_fn_info),
-          [_] "{rdi}" (args[0]),
-          [_] "{rsi}" (args[1]),
-          [_] "{rdx}" (args[2]),
-          [_] "{r10}" (args[3]),
-          [_] "{r8}" (args[4]),
-          [_] "{r9}" (args[5]),
-        : "rcx", "r11", "memory"
-    );
-}
-pub fn ErrorUnion(comptime error_policy: ErrorPolicy, comptime return_type: type) type {
-    if (error_policy.throw.len != 0) {
-        if (@typeInfo(return_type) == .ErrorUnion) {
-            return (builtin.ZigError(ErrorCode, error_policy.throw) ||
-                @typeInfo(return_type).ErrorUnion.error_set)!@typeInfo(return_type).ErrorUnion.payload;
-        } else {
-            return builtin.ZigError(ErrorCode, error_policy.throw)!return_type;
-        }
-    }
-    return return_type;
-}
-pub fn Error(comptime errors: []const ErrorCode) type {
-    return builtin.ZigError(ErrorCode, errors);
-}
-inline fn cast(args: anytype) [args.len]usize {
-    switch (args.len) {
-        0 => return .{},
-        1 => return .{
-            meta.bitCast(usize, args[0]),
-        },
-        2 => return .{
-            meta.bitCast(usize, args[0]),
-            meta.bitCast(usize, args[1]),
-        },
-        3 => return .{
-            meta.bitCast(usize, args[0]),
-            meta.bitCast(usize, args[1]),
-            meta.bitCast(usize, args[2]),
-        },
-        4 => return .{
-            meta.bitCast(usize, args[0]),
-            meta.bitCast(usize, args[1]),
-            meta.bitCast(usize, args[2]),
-            meta.bitCast(usize, args[3]),
-        },
-        5 => return .{
-            meta.bitCast(usize, args[0]),
-            meta.bitCast(usize, args[1]),
-            meta.bitCast(usize, args[2]),
-            meta.bitCast(usize, args[3]),
-            meta.bitCast(usize, args[4]),
-            meta.bitCast(usize, args[5]),
-        },
-        6 => return .{
-            meta.bitCast(usize, args[0]),
-            meta.bitCast(usize, args[1]),
-            meta.bitCast(usize, args[2]),
-            meta.bitCast(usize, args[3]),
-            meta.bitCast(usize, args[4]),
-            meta.bitCast(usize, args[5]),
-        },
-        else => unreachable,
-    }
-}
-const syscalls = .{
-    syscall0, syscall1,
-    syscall2, syscall3,
-    syscall4, syscall5,
-    syscall6,
-};
-pub inline fn call(comptime tag: Fn, comptime errors: ErrorPolicy, comptime return_type: type, args: Fn.Args(tag)) ErrorUnion(errors, return_type) {
-    const ret: isize = (comptime syscalls[tag.args()])(tag, args);
-    if (return_type == noreturn) {
-        unreachable;
-    }
-    if (errors.throw.len != 0) {
-        try builtin.zigErrorThrow(ErrorCode, errors.throw, ret);
-    }
-    if (errors.abort.len != 0) {
-        builtin.zigErrorAbort(ErrorCode, errors.abort, ret);
-    }
-    if (@sizeOf(return_type) == @sizeOf(usize)) {
-        return @as(return_type, @bitCast(ret));
-    }
-    if (return_type != void) {
-        return @as(return_type, @intCast(ret));
-    }
-}
-pub inline fn call_noexcept(comptime tag: Fn, comptime return_type: type, args: Fn.Args(tag)) return_type {
-    const ret: isize = (comptime syscalls[tag.args()])(tag, args);
-    if (return_type == noreturn) {
-        unreachable;
-    }
-    if (@sizeOf(return_type) == @sizeOf(usize)) {
-        return @as(return_type, @bitCast(ret));
-    }
-    if (return_type != void) {
-        return @as(return_type, @intCast(ret));
-    }
-}
