@@ -1380,7 +1380,10 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
         ub_prog_addr: usize = lb_prog_addr,
         const DynamicLoader = @This();
         pub const Info = extern struct {
-            ehdr: Elf64_Ehdr,
+            ehdr: *Elf64_Ehdr,
+            shdr: usize,
+            phdr: usize,
+            shstr: [*]u8,
             meta: extern struct {
                 next: usize,
                 finish: usize,
@@ -1390,54 +1393,40 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 len: usize,
             },
             fd: usize,
-            shdr: usize,
-            phdr: usize,
-            shstr: [*]u8,
             impl: Sections,
-
-            const tag_list = meta.tagList(Sections.Tag);
             const Sections = extern struct {
                 buf: [tag_list.len]Pair,
-                const Tag = enum(u8) {
-                    @".dynsym",
-                    @".dynstr",
-                    @".rodata",
-                    @".data.rel.ro",
-                    @".data",
-                    @".data.rodata",
-                    @".rodata.data",
-                    @".got",
-                    @".rela.dyn",
-                    @".rela.plt",
-                    @".text",
-                    @".strtab",
-                    @".dynamic",
-                    @".symtab",
-                    @".bss",
-                };
                 const Pair = extern struct {
                     shdr: ?*Elf64_Shdr,
                     addr: usize,
                 };
-                pub fn set(sects: *Sections, tag: Tag, shdr: *Elf64_Shdr, addr: usize) void {
+                const tag_list: [43]Section = @bitCast([43]u16{
+                    0,  1,  2,  3,  4,  5,  6,  7,
+                    8,  9,  10, 11, 12, 13, 14, 15,
+                    16, 17, 18, 19, 20, 21, 22, 23,
+                    24, 25, 26, 27, 28, 29, 30, 31,
+                    32, 33, 34, 35, 36, 37, 38, 39,
+                    40, 41, 42,
+                });
+                inline fn set(sects: *Sections, tag: Section, shdr: *Elf64_Shdr, addr: usize) void {
                     @setRuntimeSafety(false);
                     sects.buf[@intFromEnum(tag)] = .{ .shdr = shdr, .addr = addr };
                 }
-                pub fn header(sects: *const Sections, tag: Tag) ?*Elf64_Shdr {
+                inline fn header(sects: *const Sections, tag: Section) ?*Elf64_Shdr {
                     @setRuntimeSafety(false);
                     return sects.buf[@intFromEnum(tag)].shdr;
                 }
-                pub fn section(sects: *const Sections, tag: Tag) usize {
+                inline fn section(sects: *const Sections, tag: Section) usize {
                     @setRuntimeSafety(false);
                     return sects.buf[@intFromEnum(tag)].addr;
                 }
             };
             fn allocateMeta(info: *Info, size_of: usize, align_of: usize) sys.ErrorUnion(loader_spec.errors.map, usize) {
                 @setRuntimeSafety(builtin.is_safe);
-                const aligned: usize = mach.alignA64(info.meta.next, align_of);
+                const aligned: usize = bits.alignA64(info.meta.next, align_of);
                 const next: usize = aligned +% size_of;
                 if (next > info.meta.finish) {
-                    const finish: usize = mach.alignA4096(next);
+                    const finish: usize = bits.alignA4096(next);
                     try meta.wrap(mem.map(map(), .{}, .{}, info.meta.finish, finish -% info.meta.finish));
                     info.meta.finish = finish;
                 }
