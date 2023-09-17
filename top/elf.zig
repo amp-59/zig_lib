@@ -1592,27 +1592,39 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
         fn allocateInfo(loader: *DynamicLoader, pathname: [:0]const u8) sys.ErrorUnion(ep2, *Info) {
             @setRuntimeSafety(builtin.is_safe);
             const fd: usize = try meta.wrap(file.open(open(), .{}, pathname));
-            const len: usize = mach.alignA4096(try meta.wrap(file.seek(seek(), fd, 0, .end)));
-            const addr: usize = mach.alignA4096(@atomicRmw(usize, &loader.ub_meta_addr, .Add, len, .SeqCst));
-            try meta.wrap(mem.map(map(), .{}, .{}, addr, mach.alignA4096(@sizeOf(Info))));
-            const info: *Info = @ptrFromInt(addr);
+            const len: usize = bits.alignA4096(try meta.wrap(file.seek(seek(), fd, 0, .end)));
+            const meta_start: usize = bits.alignA4096(@atomicRmw(usize, &loader.ub_meta_addr, .Add, len, .SeqCst));
+            var meta_len: usize = 4096;
+            var meta_finish: usize = meta_start +% meta_len;
+            try meta.wrap(mem.map(map(), .{}, .{}, meta_start, 4096));
+            try meta.wrap(readAt(fd, 0, @ptrFromInt(meta_start), 4096));
+            const ehdr: *Elf64_Ehdr = @ptrFromInt(meta_start);
+            const phdr_start: usize = meta_start +% ehdr.e_phoff;
+            const phdr_finish: usize = phdr_start +% (ehdr.e_phnum *% ehdr.e_phentsize);
+            const meta_next: usize = phdr_finish +% (@sizeOf(Info) +% 8 +% 1 +% pathname.len);
+            if (meta_next > meta_finish) {
+                meta_len +%= bits.alignA4096(meta_next -% meta_finish);
+                try meta.wrap(mem.map(map(), .{}, .{}, meta_start +% 4096, meta_len -% 4096));
+                meta_finish = meta_start +% meta_len;
+            }
+            const info: *Info = @ptrFromInt(phdr_finish);
+            mem.zero(Info, info);
+            info.ehdr = ehdr;
+            info.phdr = phdr_start;
             info.fd = fd;
-            info.meta.next = addr +% @sizeOf(Info);
-            info.meta.finish = addr +% 4096;
-            try meta.wrap(readAt(fd, 0, @ptrCast(info), @sizeOf(Elf64_Ehdr)));
-            var path: [*]u8 = @ptrFromInt(try meta.wrap(info.allocateMeta(8 +% pathname.len +% 1, 8)));
+            info.meta = .{ .next = meta_next, .finish = meta_finish };
+            var path: [*]u8 = @ptrFromInt(phdr_finish +% @sizeOf(Info));
             path = fmt.strcpyEqu(path, &@as([8]u8, @bitCast(pathname.len)));
             fmt.strcpyEqu(path, pathname)[0] = 0;
-            if (info.ehdr.e_type == .DYN) {
-                const phdr_len: usize = info.ehdr.e_phnum *% info.ehdr.e_phentsize;
-                info.phdr = try meta.wrap(info.allocateMeta(phdr_len +% info.ehdr.e_phnum, 8));
-                try meta.wrap(readAt(fd, info.ehdr.e_phoff, @ptrFromInt(info.phdr), phdr_len));
+            if (info.ehdr.e_phnum != 0) {
                 try meta.wrap(loader.allocateSegments(info));
             }
-            if (loader_spec.options.show_elf_header) {
+            if (loader_spec.logging.show_elf_header) {
                 about.aboutLoad(info, pathname);
             }
-            if (info.ehdr.e_type == .DYN) {
+            if (info.ehdr.e_type == .DYN or
+                info.ehdr.e_type == .EXEC)
+            {
                 try meta.wrap(info.mapSegments());
             }
             const shdr_len: usize = info.ehdr.e_shnum *% info.ehdr.e_shentsize;
