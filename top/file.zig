@@ -2,7 +2,7 @@ const sys = @import("./sys.zig");
 const mem = @import("./mem.zig");
 const fmt = @import("./fmt.zig");
 const meta = @import("./meta.zig");
-const mach = @import("./mach.zig");
+const bits = @import("./bits.zig");
 const time = @import("./time.zig");
 const proc = @import("./proc.zig");
 const debug = @import("./debug.zig");
@@ -112,6 +112,44 @@ pub const Flags = struct {
         zb12: u7 = 0,
         close_on_exec: bool = false,
         zb20: u44 = 0,
+    };
+    const MemFd = packed struct(usize) {
+        close_on_exec: bool = false,
+        allow_sealing: bool = false,
+        huge_tlb: bool = false,
+        zb3: u61 = 0,
+        pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
+            var ptr: [*]u8 = buf;
+            if (format.CLOEXEC) {
+                ptr += fmt.strcpyEqu(ptr, "CLOEXEC");
+            }
+            if (format.ALLOW_SEALING) {
+                if (ptr != buf) {
+                    ptr[0] = '|';
+                    ptr += 1;
+                }
+                ptr += fmt.strcpyEqu(ptr, "ALLOW_SEALING");
+            }
+            if (format.HUGETLB) {
+                if (ptr != buf) {
+                    ptr[0] = '|';
+                    ptr += 1;
+                }
+                ptr += fmt.strcpyEqu(ptr, "HUGETLB");
+            }
+        }
+        pub fn formatLength(format: @This()) usize {
+            var len: usize = 0;
+            if (format.CLOEXEC) {
+                len += 7;
+            }
+            if (format.ALLOW_SEALING) {
+                len += 13;
+            }
+            if (format.HUGETLB) {
+                len += 7;
+            }
+        }
     };
     pub const Duplicate = packed struct(usize) {
         zb0: u19 = 0,
