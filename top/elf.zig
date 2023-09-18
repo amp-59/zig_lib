@@ -1767,7 +1767,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 sym_idx2_to: usize,
             ) usize {
                 @setRuntimeSafety(builtin.is_safe);
-                var sym_idx2: usize = sym_idx2_from;
+                var sym_idx2: usize = @min(sym_idx2_from, sym_idx2_to);
                 while (sym_idx2 != sym_idx2_to) : (sym_idx2 +%= 1) {
                     if (mats2[sym_idx2]) {
                         continue;
@@ -1794,7 +1794,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 shdr_idx2_to: usize,
             ) usize {
                 @setRuntimeSafety(builtin.is_safe);
-                var shdr_idx2: usize = shdr_idx2_from;
+                var shdr_idx2: usize = @min(shdr_idx2_from, shdr_idx2_to);
                 while (shdr_idx2 != shdr_idx2_to) : (shdr_idx2 +%= 1) {
                     const shdr2: *Elf64_Shdr = info2.sectionHeaderByIndex(shdr_idx2);
                     const name2: [:0]const u8 = mem.terminate(info2.shstr + shdr2.sh_name, 0);
