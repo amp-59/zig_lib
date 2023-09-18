@@ -1442,7 +1442,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 @setRuntimeSafety(builtin.is_safe);
                 var phdr_idx: usize = 1;
                 while (phdr_idx != info.ehdr.e_phnum) : (phdr_idx +%= 1) {
-                    const phdr: *Elf64_Phdr = @ptrFromInt(info.phdr +% (phdr_idx *% info.ehdr.e_phentsize));
+                    const phdr: *Elf64_Phdr = info.programHeaderByIndex(phdr_idx);
                     if (phdr.p_type == .LOAD and phdr.p_memsz != 0) {
                         var addr: usize = bits.alignB4096(phdr.p_vaddr);
                         const len: usize = bits.alignA4096(phdr.p_vaddr +% phdr.p_memsz) -% addr;
@@ -1570,6 +1570,10 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 @setRuntimeSafety(builtin.is_safe);
                 return @ptrFromInt(info.shdr +% (info.ehdr.e_shentsize *% idx));
             }
+            pub fn programHeaderByIndex(info: *const Info, idx: usize) *Elf64_Phdr {
+                @setRuntimeSafety(builtin.is_safe);
+                return @ptrFromInt(info.phdr +% (info.ehdr.e_phentsize *% idx));
+            }
         };
         pub const lb_meta_addr: comptime_int = loader_spec.AddressSpace.arena(0).lb_addr;
         pub const lb_prog_addr: comptime_int = loader_spec.AddressSpace.arena(1).lb_addr;
@@ -1638,7 +1642,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
         fn allocateSegments(loader: *DynamicLoader, info: *Info) sys.ErrorUnion(loader_spec.errors.map, void) {
             var phdr_idx: usize = 1;
             while (phdr_idx != info.ehdr.e_phnum) : (phdr_idx +%= 1) {
-                const phdr: *Elf64_Phdr = @ptrFromInt(info.phdr +% (phdr_idx *% info.ehdr.e_phentsize));
+                const phdr: *Elf64_Phdr = info.programHeaderByIndex(phdr_idx);
                 if (phdr.p_type == .LOAD and phdr.p_memsz != 0) {
                     info.prog.len = @max(info.prog.len, phdr.p_vaddr +% phdr.p_memsz);
                 }
@@ -1734,10 +1738,6 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             fn programMatches(info: *const Info) [*]bool {
                 @setRuntimeSafety(builtin.is_safe);
                 return @ptrFromInt(info.phdr +% (info.ehdr.e_phentsize *% info.ehdr.e_phnum));
-            }
-            fn sectionByIndex(info: *const Info, shdr_idx: usize) *Elf64_Shdr {
-                @setRuntimeSafety(builtin.is_safe);
-                return @ptrFromInt(info.shdr +% (info.ehdr.e_shentsize *% shdr_idx));
             }
             fn symbolByIndex(shdr: *const Elf64_Shdr, sym_idx: usize) *Elf64_Sym {
                 @setRuntimeSafety(builtin.is_safe);
