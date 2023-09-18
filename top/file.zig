@@ -672,25 +672,25 @@ pub const TerminalAttributes = extern struct {
 };
 pub const OpenSpec = struct {
     return_type: type = usize,
-    errors: sys.ErrorPolicy = .{ .throw = sys.open_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.open.errors.all },
     logging: debug.Logging.AcquireError = .{},
     const Specification = @This();
 };
 pub const ReadSpec = struct {
     child: type = u8,
     return_type: type = usize,
-    errors: sys.ErrorPolicy = .{ .throw = sys.read_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.read.errors.all },
     logging: debug.Logging.SuccessError = .{},
 };
 pub const WriteSpec = struct {
     child: type = u8,
     return_type: type = void,
-    errors: sys.ErrorPolicy = .{ .throw = sys.write_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.write.errors.all },
     logging: debug.Logging.SuccessError = .{},
 };
 pub const SyncSpec = struct {
     options: Options = .{},
-    errors: sys.ErrorPolicy = .{ .throw = sys.sync_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.sync.errors.all },
     return_type: type = void,
     logging: debug.Logging.SuccessError = .{},
     pub const Options = packed struct {
@@ -699,7 +699,7 @@ pub const SyncSpec = struct {
 };
 pub const AccessSpec = struct {
     options: Options = .{},
-    errors: sys.ErrorPolicy = .{ .throw = sys.access_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.access.errors.all },
     return_type: type = u64,
     logging: debug.Logging.SuccessError = .{},
     const Options = packed struct(usize) {
@@ -713,48 +713,23 @@ pub const AccessSpec = struct {
     };
 };
 pub const SeekSpec = struct {
-    errors: sys.ErrorPolicy = .{ .throw = sys.seek_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.seek.errors.all },
     return_type: type = usize,
     logging: debug.Logging.SuccessError = .{},
-};
-pub const ReadExtraSpec = struct {
-    child: type = u8,
-    options: Options,
-    return_type: type = usize,
-    errors: sys.ErrorPolicy = .{ .throw = sys.read_errors },
-    logging: debug.Logging.SuccessError = .{},
-    const Options = packed struct(u2) {
-        no_wait: bool = false,
-        high_priority: bool = false,
-    };
-};
-pub const WriteExtraSpec = struct {
-    child: type = u8,
-    options: Options,
-    return_type: type = void,
-    errors: sys.ErrorPolicy = .{ .throw = sys.write_errors },
-    logging: debug.Logging.SuccessError = .{},
-    pub const Options = packed struct(u4) {
-        append: bool = false,
-        high_priority: bool = false,
-        file_sync: bool = false,
-        data_sync: bool = false,
-    };
 };
 pub const PollSpec = struct {
-    errors: sys.ErrorPolicy = .{ .throw = sys.poll_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.poll.errors.all },
     return_type: type = void,
     logging: debug.Logging.AttemptSuccessError = .{},
 };
 pub const StatusSpec = struct {
-    errors: sys.ErrorPolicy = .{ .throw = sys.stat_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.stat.errors.all },
     logging: debug.Logging.SuccessErrorFault = .{},
     return_type: type = void,
-    const Specification = @This();
 };
 pub const StatusExtendedSpec = struct {
     options: Options = .{},
-    errors: sys.ErrorPolicy = .{ .throw = sys.statx_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.statx.errors.all },
     logging: debug.Logging.SuccessErrorFault = .{},
     return_type: type = void,
     const Specification = @This();
@@ -767,7 +742,7 @@ pub const StatusExtendedSpec = struct {
 };
 pub const MakePipeSpec = struct {
     options: Options = .{},
-    errors: sys.ErrorPolicy = .{ .throw = sys.pipe_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.pipe.errors.all },
     return_type: type = void,
     logging: debug.Logging.AcquireError = .{},
     const Specification = @This();
@@ -778,61 +753,61 @@ pub const MakePipeSpec = struct {
     };
 };
 pub const SocketSpec = struct {
-    errors: sys.ErrorPolicy = .{ .throw = sys.socket_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.socket.errors.all },
     logging: debug.Logging.AcquireError = .{},
     return_type: type = u64,
     const Specification = @This();
 };
 pub const BindSpec = struct {
-    errors: sys.ErrorPolicy = .{ .throw = sys.bind_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.bind.errors.all },
     logging: debug.Logging.AcquireError = .{},
 };
 pub const ListenSpec = struct {
-    errors: sys.ErrorPolicy = .{ .throw = sys.listen_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.listen.errors.all },
     logging: debug.Logging.AttemptSuccessError = .{},
 };
 pub const AcceptSpec = struct {
-    errors: sys.ErrorPolicy = .{ .throw = sys.accept_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.accept.errors.all },
     logging: debug.Logging.AttemptSuccessError = .{},
 };
 pub const ConnectSpec = struct {
-    errors: sys.ErrorPolicy = .{ .throw = sys.connect_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.connect.errors.all },
     return_type: type = void,
     logging: debug.Logging.AttemptSuccessError = .{},
 };
 pub const GetSockNameSpec = struct {
-    errors: sys.ErrorPolicy = .{ .throw = sys.getsockname_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.getsockname.errors.all },
     logging: debug.Logging.SuccessError = .{},
 };
 pub const ReceiveFromSpec = struct {
-    errors: sys.ErrorPolicy = .{ .throw = sys.recv_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.recv.errors.all },
     return_type: type = u64,
     logging: debug.Logging.SuccessError = .{},
 };
 pub const GetPeerNameSpec = struct {
-    errors: sys.ErrorPolicy = .{ .throw = sys.getpeername_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.getpeername.errors.all },
     logging: debug.Logging.SuccessError = .{},
 };
 pub const SendToSpec = struct {
-    errors: sys.ErrorPolicy = .{ .throw = sys.send_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.send.errors.all },
     return_type: type = u64,
     logging: debug.Logging.SuccessError = .{},
 };
 pub const SocketOptionSpec = struct {
-    errors: sys.ErrorPolicy = .{ .throw = sys.sockopt_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.sockopt.errors.all },
     logging: debug.Logging.SuccessError = .{},
 };
 pub const ShutdownSpec = struct {
-    errors: sys.ErrorPolicy = .{ .throw = sys.shutdown_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.shutdown.errors.all },
     logging: debug.Logging.SuccessError = .{},
 };
 pub const MakeDirSpec = struct {
-    errors: sys.ErrorPolicy = .{ .throw = sys.mkdir_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.mkdir.errors.all },
     return_type: type = void,
     logging: debug.Logging.SuccessError = .{},
 };
 pub const GetDirectoryEntriesSpec = struct {
-    errors: sys.ErrorPolicy = .{ .throw = sys.getdents_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.getdents.errors.all },
     return_type: type = u64,
     logging: debug.Logging.SuccessError = .{},
 };
@@ -841,8 +816,8 @@ pub const MakePathSpec = struct {
     logging: MakePathLogging = .{},
     const Specification = @This();
     const MakePathErrors = struct {
-        stat: sys.ErrorPolicy = .{ .throw = sys.mkdir_errors },
-        mkdir: sys.ErrorPolicy = .{ .throw = sys.stat_errors },
+        stat: sys.ErrorPolicy = .{ .throw = spec.mkdir.errors.all },
+        mkdir: sys.ErrorPolicy = .{ .throw = spec.stat.errors.all },
     };
     const MakePathLogging = struct {
         stat: debug.Logging.SuccessErrorFault = .{},
@@ -863,70 +838,58 @@ pub const MakePathSpec = struct {
     }
 };
 pub const CreateSpec = struct {
-    errors: sys.ErrorPolicy = .{ .throw = sys.open_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.open.errors.all },
     return_type: type = u64,
     logging: debug.Logging.AcquireError = .{},
     const Specification = @This();
 };
 pub const PathSpec = struct {
-    errors: sys.ErrorPolicy = .{ .throw = sys.open_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.open.errors.all },
     return_type: type = u64,
     logging: debug.Logging.AcquireError = .{},
     const Specification = @This();
 };
 pub const MakeNodeSpec = struct {
-    errors: sys.ErrorPolicy = .{ .throw = sys.mkdir_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.mkdir.errors.all },
     return_type: type = void,
     logging: debug.Logging.SuccessError = .{},
     const Specification = @This();
 };
 pub const ExecuteSpec = struct {
-    options: Options = .{},
-    errors: sys.ErrorPolicy = .{ .throw = sys.execve_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.execve.errors.all },
     logging: debug.Logging.AttemptError = .{},
     return_type: type = void,
     args_type: type = []const [*:0]u8,
     vars_type: type = []const [*:0]u8,
-    const Specification = @This();
-    const Options = struct {
-        no_follow: bool = false,
-    };
-    fn flags(comptime spec: Specification) At {
-        var flags_bitfield: At = .{ .val = 0 };
-        if (spec.options.no_follow) {
-            flags_bitfield.set(.no_follow);
-        }
-        comptime return flags_bitfield;
-    }
 };
 pub const GetWorkingDirectorySpec = struct {
-    errors: sys.ErrorPolicy = .{ .throw = sys.getcwd_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.getcwd.errors.all },
     return_type: type = u64,
     logging: debug.Logging.SuccessError = .{},
 };
 pub const ChangeWorkingirectorySpec = struct {
-    errors: sys.ErrorPolicy = .{ .throw = sys.chdir_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.chdir.errors.all },
     return_type: type = u64,
     logging: debug.Logging.SuccessError = .{},
 };
 pub const ReadLinkSpec = struct {
-    errors: sys.ErrorPolicy = .{ .throw = sys.readlink_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.readlink.errors.all },
     return_type: type = u64,
     logging: debug.Logging.SuccessError = .{},
 };
 pub const CopySpec = struct {
-    errors: sys.ErrorPolicy = .{ .throw = sys.copy_file_range_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.copy_file_range.errors.all },
     return_type: type = u64,
     logging: debug.Logging.SuccessError = .{},
 };
 pub const SendSpec = struct {
-    errors: sys.ErrorPolicy = .{ .throw = sys.sendfile_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.sendfile.errors.all },
     return_type: type = u64,
     logging: debug.Logging.SuccessError = .{},
 };
 pub const LinkSpec = struct {
     options: Options = .{},
-    errors: sys.ErrorPolicy = .{ .throw = sys.link_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.link.errors.all },
     return_type: type = void,
     logging: debug.Logging.SuccessError = .{},
     const Options = struct {
@@ -935,28 +898,28 @@ pub const LinkSpec = struct {
     };
 };
 pub const CloseSpec = struct {
-    errors: sys.ErrorPolicy = .{ .throw = sys.close_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.close.errors.all },
     return_type: type = void,
     logging: debug.Logging.ReleaseError = .{},
 };
 pub const UnlinkSpec = struct {
-    errors: sys.ErrorPolicy = .{ .throw = sys.unlink_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.unlink.errors.all },
     return_type: type = void,
     logging: debug.Logging.SuccessError = .{},
 };
 pub const RemoveDirSpec = struct {
-    errors: sys.ErrorPolicy = .{ .throw = sys.rmdir_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.rmdir.errors.all },
     return_type: type = void,
     logging: debug.Logging.SuccessError = .{},
 };
 pub const TruncateSpec = struct {
-    errors: sys.ErrorPolicy = .{ .throw = sys.truncate_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.truncate.errors.all },
     return_type: type = void,
     logging: debug.Logging.SuccessError = .{},
 };
 pub const DuplicateSpec = struct {
     options: Options = .{},
-    errors: sys.ErrorPolicy = .{ .throw = sys.dup_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.dup.errors.all },
     return_type: type = u64,
     logging: debug.Logging.SuccessError = .{},
     const Specification = @This();
