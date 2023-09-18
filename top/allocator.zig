@@ -111,10 +111,10 @@ pub const AllocatorLogging = packed struct {
 };
 const _1: mem.Amount = .{ .count = 1 };
 pub const AllocatorErrors = struct {
-    map: sys.ErrorPolicy = .{ .throw = sys.mmap_errors },
-    remap: sys.ErrorPolicy = .{ .throw = sys.mremap_errors },
-    unmap: sys.ErrorPolicy = .{ .abort = sys.munmap_errors },
-    madvise: sys.ErrorPolicy = .{ .throw = sys.madvise_errors },
+    map: sys.ErrorPolicy = .{ .throw = mem.spec.mmap.errors.all },
+    remap: sys.ErrorPolicy = .{ .throw = mem.spec.mremap.errors.all },
+    unmap: sys.ErrorPolicy = .{ .abort = mem.spec.munmap.errors.all },
+    madvise: sys.ErrorPolicy = .{ .throw = mem.spec.madvise.errors.all },
 };
 pub const ArenaAllocatorSpec = struct {
     AddressSpace: type,
@@ -123,12 +123,12 @@ pub const ArenaAllocatorSpec = struct {
     errors: AllocatorErrors = .{},
     logging: AllocatorLogging = .{},
     fn arena(comptime spec: ArenaAllocatorSpec) mem.Arena {
-        if (@TypeOf(spec.AddressSpace.addr_spec) == mem.DiscreteAddressSpaceSpec or
-            @TypeOf(spec.AddressSpace.addr_spec) == mem.RegularAddressSpaceSpec)
+        if (@TypeOf(spec.AddressSpace.specification) == mem.DiscreteAddressSpaceSpec or
+            @TypeOf(spec.AddressSpace.specification) == mem.RegularAddressSpaceSpec)
         {
             return spec.AddressSpace.arena(spec.arena_index);
         }
-        if (@TypeOf(spec.AddressSpace.addr_spec) == mem.ElementaryAddressSpaceSpec) {
+        if (@TypeOf(spec.AddressSpace.specification) == mem.ElementaryAddressSpaceSpec) {
             return spec.AddressSpace.arena();
         }
         @compileError("invalid address space for this allocator");
@@ -138,13 +138,13 @@ pub const ArenaAllocatorSpec = struct {
     fn isMapper(comptime spec: ArenaAllocatorSpec) bool {
         const allocator_is_mapper: bool = spec.options.require_map;
         const address_space_is_mapper: bool = blk: {
-            if (@TypeOf(spec.AddressSpace.addr_spec) == mem.RegularAddressSpaceSpec or
-                @TypeOf(spec.AddressSpace.addr_spec) == mem.ElementaryAddressSpaceSpec)
+            if (@TypeOf(spec.AddressSpace.specification) == mem.RegularAddressSpaceSpec or
+                @TypeOf(spec.AddressSpace.specification) == mem.ElementaryAddressSpaceSpec)
             {
-                break :blk spec.AddressSpace.addr_spec.options.require_map;
+                break :blk spec.AddressSpace.specification.options.require_map;
             }
-            if (@TypeOf(spec.AddressSpace.addr_spec) == mem.DiscreteAddressSpaceSpec) {
-                break :blk spec.AddressSpace.addr_spec.options(spec.arena_index).require_map;
+            if (@TypeOf(spec.AddressSpace.specification) == mem.DiscreteAddressSpaceSpec) {
+                break :blk spec.AddressSpace.specification.options(spec.arena_index).require_map;
             }
             @compileError("invalid address space for this allocator");
         };
@@ -158,13 +158,13 @@ pub const ArenaAllocatorSpec = struct {
     fn isUnmapper(comptime spec: ArenaAllocatorSpec) bool {
         const allocator_is_unmapper: bool = spec.options.require_unmap;
         const address_space_is_unmapper: bool = blk: {
-            if (@TypeOf(spec.AddressSpace.addr_spec) == mem.RegularAddressSpaceSpec or
-                @TypeOf(spec.AddressSpace.addr_spec) == mem.ElementaryAddressSpaceSpec)
+            if (@TypeOf(spec.AddressSpace.specification) == mem.RegularAddressSpaceSpec or
+                @TypeOf(spec.AddressSpace.specification) == mem.ElementaryAddressSpaceSpec)
             {
-                break :blk spec.AddressSpace.addr_spec.options.require_map;
+                break :blk spec.AddressSpace.specification.options.require_map;
             }
-            if (@TypeOf(spec.AddressSpace.addr_spec) == mem.DiscreteAddressSpaceSpec) {
-                break :blk spec.AddressSpace.addr_spec.options(spec.arena_index).require_map;
+            if (@TypeOf(spec.AddressSpace.specification) == mem.DiscreteAddressSpaceSpec) {
+                break :blk spec.AddressSpace.specification.options(spec.arena_index).require_map;
             }
             @compileError("invalid address space for this allocator");
         };
@@ -390,12 +390,12 @@ fn Types(comptime Allocator: type) type {
         pub const acquire_allocator: type = blk: {
             if (map_error_policy.throw.len != 0) {
                 const MMapError = sys.Error(map_error_policy.throw);
-                if (Allocator.AddressSpace.addr_spec.errors.acquire == .throw) {
+                if (Allocator.AddressSpace.specification.errors.acquire == .throw) {
                     break :blk (MMapError || mem.ResourceError)!Allocator;
                 }
                 break :blk MMapError!Allocator;
             }
-            if (Allocator.AddressSpace.addr_spec.errors.acquire == .throw) {
+            if (Allocator.AddressSpace.specification.errors.acquire == .throw) {
                 break :blk mem.ResourceError!Allocator;
             }
             break :blk Allocator;
@@ -403,12 +403,12 @@ fn Types(comptime Allocator: type) type {
         pub const release_allocator: type = blk: {
             if (unmap_error_policy.throw.len != 0) {
                 const MUnmapError = sys.Error(unmap_error_policy.throw);
-                if (Allocator.AddressSpace.addr_spec.errors.release == .throw) {
+                if (Allocator.AddressSpace.specification.errors.release == .throw) {
                     break :blk (MUnmapError || mem.ResourceError)!void;
                 }
                 break :blk MUnmapError!void;
             }
-            if (Allocator.AddressSpace.addr_spec.errors.release == .throw) {
+            if (Allocator.AddressSpace.specification.errors.release == .throw) {
                 break :blk mem.ResourceError!void;
             }
             break :blk void;
@@ -482,7 +482,7 @@ pub fn GenericArenaAllocator(comptime spec: ArenaAllocatorSpec) type {
                 .ub_addr = lb_addr,
                 .up_addr = lb_addr,
             };
-            switch (@TypeOf(AddressSpace.addr_spec)) {
+            switch (@TypeOf(AddressSpace.specification)) {
                 mem.RegularAddressSpaceSpec => {
                     try meta.wrap(mem.acquire(AddressSpace, address_space, spec.arena_index));
                 },
@@ -504,7 +504,7 @@ pub fn GenericArenaAllocator(comptime spec: ArenaAllocatorSpec) type {
             if (Allocator.allocator_spec.options.require_unmap) {
                 try meta.wrap(allocator.unmapAll());
             }
-            switch (@TypeOf(AddressSpace.addr_spec)) {
+            switch (@TypeOf(AddressSpace.specification)) {
                 mem.RegularAddressSpaceSpec => {
                     try meta.wrap(mem.release(AddressSpace, address_space, spec.arena_index));
                 },
