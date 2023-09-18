@@ -246,21 +246,56 @@ pub const Shutdown = enum(u64) {
     read_write = SHUT.RDWR,
     const SHUT = sys.SHUT;
 };
-pub const ReadWrite = meta.EnumBitField(enum(u64) {
-    append = RWF.APPEND,
-    high_priority = RWF.HIPRI,
-    no_wait = RWF.NOWAIT,
-    file_sync = RWF.SYNC,
-    data_sync = RWF.DSYNC,
-    const RWF = sys.RWF;
-});
+const ReadWrite = packed struct(usize) {
+    high_priority: bool = false,
+    data_sync: bool = false,
+    file_sync: bool = false,
+    no_wait: bool = false,
+    append: bool = false,
+    zb5: u59 = 0,
+    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
+        var ptr: [*]u8 = buf;
+        if (format.high_priority) {
+            ptr = fmt.strcpyEqu(ptr, "HIPRI");
+        }
+        if (format.data_sync) {
+            if (ptr != buf) {
+                ptr[0] = '|';
+                ptr += 1;
+            }
+            ptr = fmt.strcpyEqu(ptr, "DSYNC");
+        }
+        if (format.file_sync) {
+            if (ptr != buf) {
+                ptr[0] = '|';
+                ptr += 1;
+            }
+            ptr = fmt.strcpyEqu(ptr, "SYNC");
+        }
+        if (format.no_wait) {
+            if (ptr != buf) {
+                ptr[0] = '|';
+                ptr += 1;
+            }
+            ptr = fmt.strcpyEqu(ptr, "NOWAIT");
+        }
+        if (format.append) {
+            if (ptr != buf) {
+                ptr[0] = '|';
+                ptr += 1;
+            }
+            ptr = fmt.strcpyEqu(ptr, "APPEND");
+        }
+        return fmt.strlen(ptr, buf);
+    }
+};
 const At = packed struct(usize) {
     zb0: u8 = 0,
-    SYMLINK_NOFOLLOW: bool = false,
-    REMOVEDIR: bool = false,
-    SYMLINK_FOLLOW: bool = false,
-    NO_AUTOMOUNT: bool = false,
-    EMPTY_PATH: bool = false,
+    symlink_no_follow: bool = false,
+    remove_dir: bool = false,
+    symlink_follow: bool = false,
+    no_auto_mount: bool = false,
+    empty_path: bool = false,
     zb13: u51 = 0,
     pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
         var ptr: [*]u8 = buf;
