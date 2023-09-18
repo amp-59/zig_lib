@@ -100,7 +100,7 @@ pub fn strsetEqu(dest: [*]u8, byte: u8, len: usize) [*]u8 {
 pub fn strcpyMulti(dest: [*]u8, src: []const []const u8) usize {
     @setRuntimeSafety(false);
     var ptr: [*]u8 = dest;
-    for (src) |str| ptr = strcpyEqu(dest, str);
+    for (src) |str| ptr += strcpy(dest, str);
     return strlen(dest, ptr);
 }
 pub fn strcpyMultiEqu(dest: [*]u8, src: []const []const u8) [*]u8 {
