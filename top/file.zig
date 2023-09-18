@@ -992,15 +992,18 @@ pub fn execAt(comptime exec_spec: ExecuteSpec, dir_fd: usize, name: [:0]const u8
         return execve_error;
     }
 }
-pub fn read(comptime spec: ReadSpec, fd: usize, read_buf: []spec.child) sys.ErrorUnion(spec.errors, spec.return_type) {
+pub fn read(comptime read_spec: ReadSpec, fd: usize, read_buf: []read_spec.child) sys.ErrorUnion(
+    read_spec.errors,
+    read_spec.return_type,
+) {
     @setRuntimeSafety(builtin.is_safe);
-    const logging: debug.Logging.SuccessError = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.read, spec.errors, usize, .{ fd, @intFromPtr(read_buf.ptr), read_buf.len *% @sizeOf(spec.child) }))) |ret| {
+    const logging: debug.Logging.SuccessError = comptime read_spec.logging.override();
+    if (meta.wrap(sys.call(.read, read_spec.errors, usize, .{ fd, @intFromPtr(read_buf.ptr), read_buf.len *% @sizeOf(read_spec.child) }))) |ret| {
         if (logging.Success) {
-            about.aboutFdMaxLenLenNotice(about.read_s, fd, read_buf.len *% @sizeOf(spec.child), ret);
+            about.aboutFdMaxLenLenNotice(about.read_s, fd, read_buf.len *% @sizeOf(read_spec.child), ret);
         }
-        if (spec.return_type != void) {
-            return @truncate(@divExact(ret, @sizeOf(spec.child)));
+        if (read_spec.return_type != void) {
+            return @truncate(@divExact(ret, @sizeOf(read_spec.child)));
         }
     } else |read_error| {
         if (logging.Error) {
@@ -1009,18 +1012,21 @@ pub fn read(comptime spec: ReadSpec, fd: usize, read_buf: []spec.child) sys.Erro
         return read_error;
     }
 }
-pub inline fn readOne(comptime spec: ReadSpec, fd: usize, read_buf: *spec.child) sys.ErrorUnion(spec.errors, spec.return_type) {
-    return read(spec, fd, @as([*]spec.child, @ptrCast(read_buf))[0..1]);
+pub inline fn readOne(comptime read_spec: ReadSpec, fd: usize, read_buf: *read_spec.child) sys.ErrorUnion(
+    read_spec.errors,
+    read_spec.return_type,
+) {
+    return read(read_spec, fd, @as([*]read_spec.child, @ptrCast(read_buf))[0..1]);
 }
-pub fn write(comptime spec: WriteSpec, fd: usize, write_buf: []const spec.child) sys.ErrorUnion(spec.errors, spec.return_type) {
+pub fn write(comptime write_spec: WriteSpec, fd: usize, write_buf: []const write_spec.child) sys.ErrorUnion(write_spec.errors, write_spec.return_type) {
     @setRuntimeSafety(builtin.is_safe);
-    const logging: debug.Logging.SuccessError = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.write, spec.errors, u64, .{ fd, @intFromPtr(write_buf.ptr), write_buf.len *% @sizeOf(spec.child) }))) |ret| {
+    const logging: debug.Logging.SuccessError = comptime write_spec.logging.override();
+    if (meta.wrap(sys.call(.write, write_spec.errors, u64, .{ fd, @intFromPtr(write_buf.ptr), write_buf.len *% @sizeOf(write_spec.child) }))) |ret| {
         if (logging.Success) {
             about.aboutFdLenNotice(about.write_s, fd, ret);
         }
-        if (spec.return_type != void) {
-            return @truncate(@divExact(ret, @sizeOf(spec.child)));
+        if (write_spec.return_type != void) {
+            return @truncate(@divExact(ret, @sizeOf(write_spec.child)));
         }
     } else |write_error| {
         if (logging.Error) {
