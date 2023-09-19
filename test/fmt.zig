@@ -203,6 +203,7 @@ fn testEquivalentIntToStringFormat() !void {
     try testing.expectEqualMany(u8, "0b0", (ubin{ .value = 0 }).formatConvert().readAll());
     try testing.expectEqualMany(u8, "0b1", (ubin{ .value = 1 }).formatConvert().readAll());
     try testing.expectEqualMany(u8, fmt.ub64(uint).readAll(), fmt.ub64(uint).formatConvert().readAll());
+    var buf: [4096]u8 = undefined;
     while (uint < seed +% 0x1000) : (uint +%= 1) {
         const uint_32: u32 = @as(u32, @truncate(uint));
         const uint_16: u16 = @as(u16, @truncate(uint));
@@ -212,45 +213,45 @@ fn testEquivalentIntToStringFormat() !void {
         const sint_16: i16 = @bitReverse(@as(i16, @bitCast(@as(u16, @truncate(uint)))));
         const sint_8: i8 = @bitReverse(@as(i8, @bitCast(@as(u8, @truncate(uint)))));
 
-        try testing.expectEqualMany(u8, fmt.ub64(uint).readAll(), fmt.ub64(uint).formatConvert().readAll());
-        try testing.expectEqualMany(u8, fmt.ub32(uint_32).readAll(), fmt.ub32(uint_32).formatConvert().readAll());
-        try testing.expectEqualMany(u8, fmt.ub16(uint_16).readAll(), fmt.ub16(uint_16).formatConvert().readAll());
-        try testing.expectEqualMany(u8, fmt.ub8(uint_8).readAll(), fmt.ub8(uint_8).formatConvert().readAll());
+        try testing.expectEqualMany(u8, fmt.ub64(uint).readAll(), buf[0..fmt.ub64(uint).formatWriteBuf(&buf)]);
+        try testing.expectEqualMany(u8, fmt.ub32(uint_32).readAll(), buf[0..fmt.ub32(uint_32).formatWriteBuf(&buf)]);
+        try testing.expectEqualMany(u8, fmt.ub16(uint_16).readAll(), buf[0..fmt.ub16(uint_16).formatWriteBuf(&buf)]);
+        try testing.expectEqualMany(u8, fmt.ub8(uint_8).readAll(), buf[0..fmt.ub8(uint_8).formatWriteBuf(&buf)]);
 
-        try testing.expectEqualMany(u8, fmt.uo64(uint).readAll(), fmt.uo64(uint).formatConvert().readAll());
-        try testing.expectEqualMany(u8, fmt.uo32(uint_32).readAll(), fmt.uo32(uint_32).formatConvert().readAll());
-        try testing.expectEqualMany(u8, fmt.uo16(uint_16).readAll(), fmt.uo16(uint_16).formatConvert().readAll());
-        try testing.expectEqualMany(u8, fmt.uo8(uint_8).readAll(), fmt.uo8(uint_8).formatConvert().readAll());
+        try testing.expectEqualMany(u8, fmt.uo64(uint).readAll(), buf[0..fmt.uo64(uint).formatWriteBuf(&buf)]);
+        try testing.expectEqualMany(u8, fmt.uo32(uint_32).readAll(), buf[0..fmt.uo32(uint_32).formatWriteBuf(&buf)]);
+        try testing.expectEqualMany(u8, fmt.uo16(uint_16).readAll(), buf[0..fmt.uo16(uint_16).formatWriteBuf(&buf)]);
+        try testing.expectEqualMany(u8, fmt.uo8(uint_8).readAll(), buf[0..fmt.uo8(uint_8).formatWriteBuf(&buf)]);
 
-        try testing.expectEqualMany(u8, fmt.ud64(uint).readAll(), fmt.ud64(uint).formatConvert().readAll());
-        try testing.expectEqualMany(u8, fmt.ud32(uint_32).readAll(), fmt.ud32(uint_32).formatConvert().readAll());
-        try testing.expectEqualMany(u8, fmt.ud16(uint_16).readAll(), fmt.ud16(uint_16).formatConvert().readAll());
-        try testing.expectEqualMany(u8, fmt.ud8(uint_8).readAll(), fmt.ud8(uint_8).formatConvert().readAll());
+        try testing.expectEqualMany(u8, fmt.ud64(uint).readAll(), buf[0..fmt.ud64(uint).formatWriteBuf(&buf)]);
+        try testing.expectEqualMany(u8, fmt.ud32(uint_32).readAll(), buf[0..fmt.ud32(uint_32).formatWriteBuf(&buf)]);
+        try testing.expectEqualMany(u8, fmt.ud16(uint_16).readAll(), buf[0..fmt.ud16(uint_16).formatWriteBuf(&buf)]);
+        try testing.expectEqualMany(u8, fmt.ud8(uint_8).readAll(), buf[0..fmt.ud8(uint_8).formatWriteBuf(&buf)]);
 
-        try testing.expectEqualMany(u8, fmt.ux64(uint).readAll(), fmt.ux64(uint).formatConvert().readAll());
-        try testing.expectEqualMany(u8, fmt.ux32(uint_32).readAll(), fmt.ux32(uint_32).formatConvert().readAll());
-        try testing.expectEqualMany(u8, fmt.ux16(uint_16).readAll(), fmt.ux16(uint_16).formatConvert().readAll());
-        try testing.expectEqualMany(u8, fmt.ux8(uint_8).readAll(), fmt.ux8(uint_8).formatConvert().readAll());
+        try testing.expectEqualMany(u8, fmt.ux64(uint).readAll(), buf[0..fmt.ux64(uint).formatWriteBuf(&buf)]);
+        try testing.expectEqualMany(u8, fmt.ux32(uint_32).readAll(), buf[0..fmt.ux32(uint_32).formatWriteBuf(&buf)]);
+        try testing.expectEqualMany(u8, fmt.ux16(uint_16).readAll(), buf[0..fmt.ux16(uint_16).formatWriteBuf(&buf)]);
+        try testing.expectEqualMany(u8, fmt.ux8(uint_8).readAll(), buf[0..fmt.ux8(uint_8).formatWriteBuf(&buf)]);
 
-        try testing.expectEqualMany(u8, fmt.ib64(sint_64).readAll(), fmt.ib64(sint_64).formatConvert().readAll());
-        try testing.expectEqualMany(u8, fmt.ib32(sint_32).readAll(), fmt.ib32(sint_32).formatConvert().readAll());
-        try testing.expectEqualMany(u8, fmt.ib16(sint_16).readAll(), fmt.ib16(sint_16).formatConvert().readAll());
-        try testing.expectEqualMany(u8, fmt.ib8(sint_8).readAll(), fmt.ib8(sint_8).formatConvert().readAll());
+        try testing.expectEqualMany(u8, fmt.ib64(sint_64).readAll(), buf[0..fmt.ib64(sint_64).formatWriteBuf(&buf)]);
+        try testing.expectEqualMany(u8, fmt.ib32(sint_32).readAll(), buf[0..fmt.ib32(sint_32).formatWriteBuf(&buf)]);
+        try testing.expectEqualMany(u8, fmt.ib16(sint_16).readAll(), buf[0..fmt.ib16(sint_16).formatWriteBuf(&buf)]);
+        try testing.expectEqualMany(u8, fmt.ib8(sint_8).readAll(), buf[0..fmt.ib8(sint_8).formatWriteBuf(&buf)]);
 
-        try testing.expectEqualMany(u8, fmt.io64(sint_64).readAll(), fmt.io64(sint_64).formatConvert().readAll());
-        try testing.expectEqualMany(u8, fmt.io32(sint_32).readAll(), fmt.io32(sint_32).formatConvert().readAll());
-        try testing.expectEqualMany(u8, fmt.io16(sint_16).readAll(), fmt.io16(sint_16).formatConvert().readAll());
-        try testing.expectEqualMany(u8, fmt.io8(sint_8).readAll(), fmt.io8(sint_8).formatConvert().readAll());
+        try testing.expectEqualMany(u8, fmt.io64(sint_64).readAll(), buf[0..fmt.io64(sint_64).formatWriteBuf(&buf)]);
+        try testing.expectEqualMany(u8, fmt.io32(sint_32).readAll(), buf[0..fmt.io32(sint_32).formatWriteBuf(&buf)]);
+        try testing.expectEqualMany(u8, fmt.io16(sint_16).readAll(), buf[0..fmt.io16(sint_16).formatWriteBuf(&buf)]);
+        try testing.expectEqualMany(u8, fmt.io8(sint_8).readAll(), buf[0..fmt.io8(sint_8).formatWriteBuf(&buf)]);
 
-        try testing.expectEqualMany(u8, fmt.id64(sint_64).readAll(), fmt.id64(sint_64).formatConvert().readAll());
-        try testing.expectEqualMany(u8, fmt.id32(sint_32).readAll(), fmt.id32(sint_32).formatConvert().readAll());
-        try testing.expectEqualMany(u8, fmt.id16(sint_16).readAll(), fmt.id16(sint_16).formatConvert().readAll());
-        try testing.expectEqualMany(u8, fmt.id8(sint_8).readAll(), fmt.id8(sint_8).formatConvert().readAll());
+        try testing.expectEqualMany(u8, fmt.id64(sint_64).readAll(), buf[0..fmt.id64(sint_64).formatWriteBuf(&buf)]);
+        try testing.expectEqualMany(u8, fmt.id32(sint_32).readAll(), buf[0..fmt.id32(sint_32).formatWriteBuf(&buf)]);
+        try testing.expectEqualMany(u8, fmt.id16(sint_16).readAll(), buf[0..fmt.id16(sint_16).formatWriteBuf(&buf)]);
+        try testing.expectEqualMany(u8, fmt.id8(sint_8).readAll(), buf[0..fmt.id8(sint_8).formatWriteBuf(&buf)]);
 
-        try testing.expectEqualMany(u8, fmt.ix64(sint_64).readAll(), fmt.ix64(sint_64).formatConvert().readAll());
-        try testing.expectEqualMany(u8, fmt.ix32(sint_32).readAll(), fmt.ix32(sint_32).formatConvert().readAll());
-        try testing.expectEqualMany(u8, fmt.ix16(sint_16).readAll(), fmt.ix16(sint_16).formatConvert().readAll());
-        try testing.expectEqualMany(u8, fmt.ix8(sint_8).readAll(), fmt.ix8(sint_8).formatConvert().readAll());
+        try testing.expectEqualMany(u8, fmt.ix64(sint_64).readAll(), buf[0..fmt.ix64(sint_64).formatWriteBuf(&buf)]);
+        try testing.expectEqualMany(u8, fmt.ix32(sint_32).readAll(), buf[0..fmt.ix32(sint_32).formatWriteBuf(&buf)]);
+        try testing.expectEqualMany(u8, fmt.ix16(sint_16).readAll(), buf[0..fmt.ix16(sint_16).formatWriteBuf(&buf)]);
+        try testing.expectEqualMany(u8, fmt.ix8(sint_8).readAll(), buf[0..fmt.ix8(sint_8).formatWriteBuf(&buf)]);
     }
 }
 fn testWriteLEB128UnsignedFixed() !void {
@@ -292,6 +293,7 @@ fn testReadLEB128Seq(comptime T: type, comptime N: usize, encoded: []const u8) !
     }
 }
 fn testEquivalentLEBFormatAndParse() !void {
+    testing.announce(@src());
     const test_stream: bool = false;
     const U8 = fmt.GenericLEB128Format(u8);
     const U16 = fmt.GenericLEB128Format(u16);
@@ -421,6 +423,7 @@ fn testEquivalentLEBFormatAndParse() !void {
     try testReadLEB128Seq(u64, 4, "\x81\x01\x3f\x80\x7f\x80\x80\x80\x00");
 }
 fn testBytesToHex() !void {
+    testing.announce(@src());
     const input: []const u8 = "0123456789abcdef";
     var buf0: [2 *% input.len]u8 = undefined;
     var buf1: [2 *% input.len]u8 = undefined;
@@ -431,6 +434,7 @@ fn testBytesToHex() !void {
     try testing.expectEqualMany(u8, input, decoded);
 }
 fn testHexToBytes() !void {
+    testing.announce(@src());
     var buf: [32]u8 = .{0} ** 32;
     var bytes: [64]u8 = .{0} ** 64;
     try testing.expectEqualMany(u8, "90" ** 32, fmt.bytesToHex(&bytes, try fmt.hexToBytes(&buf, "90" ** 32)));
@@ -453,6 +457,7 @@ fn testHexToBytes() !void {
     };
 }
 fn testGenericRangeFormat() !void {
+    testing.announce(@src());
     var array: PrintArray = undefined;
     array.undefineAll();
     const Range = fmt.GenericRangeFormat(.{ .bits = 64, .signedness = .unsigned, .radix = 16, .width = .min });
@@ -465,6 +470,7 @@ pub fn main() !void {
     try testBytesToHex();
     try testHexToBytes();
     try testGenericRangeFormat();
+    try testRenderFunctions();
     // try testEquivalentIntToStringFormat();
     try testEquivalentLEBFormatAndParse();
     try @import("./fmt/utf8.zig").testUtf8();
