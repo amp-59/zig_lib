@@ -10,8 +10,25 @@ const builtin = zl.builtin;
 const testing = zl.testing;
 pub usingnamespace zl.start;
 pub const runtime_assertions: bool = true;
+pub const logging_override: debug.Logging.Override = debug.spec.logging.override.verbose;
+pub const trace: debug.Trace = .{
+    .options = .{ .tokens = builtin.my_trace.options.tokens },
+};
+const AddressSpace = mem.GenericRegularAddressSpace(.{
+    .lb_addr = 0x40000000,
+    .divisions = 128,
+});
+const Allocator = mem.GenericArenaAllocator(.{
+    .AddressSpace = AddressSpace,
+    .arena_index = 1,
+    .logging = mem.spec.allocator.logging.silent,
+});
 const PrintArray = mem.StaticString(4096);
+const Array = Allocator.StructuredHolder(u8);
+const TypeDescr = fmt.GenericTypeDescrFormat(.{});
+const BigTypeDescr = fmt.GenericTypeDescrFormat(.{ .decls = true, .default_field_values = .{ .exact_safe = .{} } });
 const test_size: bool = false;
+
 fn testIntToString() !void {
     const T: type = u64;
     var arg1: T = 0;
