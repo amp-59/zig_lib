@@ -25,7 +25,7 @@ pub fn main(args_in: [][*:0]u8) !void {
         defer file.close(.{ .errors = .{} }, fd);
         const addr: u64 = 0x40000000;
 
-        const len: u64 = mach.alignA64(size, 4096);
+        const len: u64 = bits.alignA64(size, 4096);
         try file.map(.{}, .{}, .{ .visibility = .shared }, fd, addr, len, 0);
         defer mem.unmap(.{ .errors = .{} }, addr, len);
 
