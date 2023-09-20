@@ -7,7 +7,6 @@ const meta = zl.meta;
 const mach = zl.mach;
 const time = zl.time;
 const proc = zl.proc;
-const spec = zl.spec;
 const build = zl.build;
 const debug = zl.debug;
 const builtin = zl.builtin;
@@ -16,8 +15,9 @@ const testing = zl.testing;
 pub usingnamespace zl.start;
 
 pub const runtime_assertions: bool = true;
-pub const logging_default: debug.Logging.Default = spec.logging.default.verbose;
+pub const logging_default: debug.Logging.Default = debug.spec.logging.default.verbose;
 const getcwd_spec: file.GetWorkingDirectorySpec = .{};
+
 const make_dir_spec: file.MakeDirSpec = .{};
 const make_node_spec: file.MakeNodeSpec = .{};
 const seek_spec: file.SeekSpec = .{};
@@ -51,7 +51,7 @@ const pipe_spec: file.MakePipeSpec = .{
 };
 
 const poll_spec: file.PollSpec = .{
-    .errors = .{ .throw = sys.poll_errors },
+    .errors = .{ .throw = file.spec.poll.errors.all },
 };
 
 const create_options = .{ .read_write = true, .append = false };
@@ -73,12 +73,6 @@ const pathname2: [:0]const u8 = test_dir ++ file_name ++ "2";
 const pathname_link1: [:0]const u8 = test_dir ++ file_name ++ "1";
 const pathname_link2: [:0]const u8 = test_dir ++ file_name ++ "2";
 
-fn testStatusExtended() !void {
-    const Fields = @TypeOf(statx_spec.options.fields);
-    const nilx_spec: file.StatusExtendedSpec = comptime spec.add(statx_spec, .{ .options = .{ .fields = builtin.zero(Fields) } });
-    var st: file.StatusExtended = try meta.wrap(file.getStatusExtended(nilx_spec, .{}, 0, "/home"));
-    _ = st;
-}
 fn testCopyFileRange() !void {
     testing.announce(@src());
     const src_fd: usize = try meta.wrap(file.create(create_spec, create_options, pathname1, file.mode.regular));
