@@ -1321,12 +1321,12 @@ pub const LoaderSpec = struct {
         close: debug.Logging.ReleaseError = .{},
     };
     pub const Errors = struct {
-        open: sys.ErrorPolicy = .{ .throw = sys.open_errors },
-        seek: sys.ErrorPolicy = .{ .throw = sys.seek_errors },
-        read: sys.ErrorPolicy = .{ .throw = sys.read_errors },
-        map: sys.ErrorPolicy = .{ .throw = sys.mmap_errors },
-        unmap: sys.ErrorPolicy = .{ .abort = sys.munmap_errors },
-        close: sys.ErrorPolicy = .{ .abort = sys.close_errors },
+        open: sys.ErrorPolicy = .{ .throw = file.spec.open.errors.all },
+        seek: sys.ErrorPolicy = .{ .throw = file.spec.seek.errors.all },
+        read: sys.ErrorPolicy = .{ .throw = file.spec.read.errors.all },
+        map: sys.ErrorPolicy = .{ .throw = mem.spec.mmap.errors.all },
+        unmap: sys.ErrorPolicy = .{ .abort = mem.spec.munmap.errors.all },
+        close: sys.ErrorPolicy = .{ .abort = file.spec.close.errors.all },
     };
 };
 const Section = enum(u16) {
@@ -1818,8 +1818,8 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 @setRuntimeSafety(builtin.is_safe);
                 const mats1: [*]bool = symbolMatches(shdr1);
                 const mats2: [*]bool = symbolMatches(shdr2);
-                const max_idx1: usize = shdr1.sh_size / shdr1.sh_entsize;
-                const max_idx2: usize = shdr2.sh_size / shdr2.sh_entsize;
+                const max_idx1: usize = @divExact(shdr1.sh_size, shdr1.sh_entsize);
+                const max_idx2: usize = @divExact(shdr2.sh_size, shdr2.sh_entsize);
                 const strtab1: [*]u8 = @ptrFromInt(info1.sectionHeaderByIndex(shdr1.sh_link).sh_addr);
                 const strtab2: [*]u8 = @ptrFromInt(info2.sectionHeaderByIndex(shdr2.sh_link).sh_addr);
                 var sym_idx1: usize = 1;
@@ -2019,14 +2019,14 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 ptr += 1;
                 debug.write(buf[0..fmt.strlen(ptr, &buf)]);
             }
-            fn aboutUnknownSection(name: [:0]const u8) void {
+            fn unknownSectionFault(name: [:0]const u8) void {
                 @setRuntimeSafety(false);
                 var buf: [4096]u8 = undefined;
                 buf[0..24].* = "unknown section header: ".*;
                 var ptr: [*]u8 = fmt.strcpyEqu(buf[24..], name);
                 proc.exitFault(buf[0..fmt.strlen(ptr, &buf)], 2);
             }
-            fn aboutUnsupportedRelocation(tag_name: [:0]const u8) void {
+            fn unsupportedRelocationFault(tag_name: [:0]const u8) void {
                 @setRuntimeSafety(false);
                 var buf: [4096]u8 = undefined;
                 buf[0..24].* = "unsupported relocation: ".*;
@@ -2056,7 +2056,6 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                     ptr[0..2].* = ", ".*;
                     ptr += 2;
                     ptr[0..5].* = "name=".*;
-                    //
                     ptr += 5;
                     ptr[0..2].* = ", ".*;
                     ptr += 2;
@@ -2294,7 +2293,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 return ptr;
             }
             fn aboutSymbolAdded(
-                info2: *const Info,
+                _: *const Info,
                 strtab2: [*]u8,
                 sym2: *const Elf64_Sym,
                 sym_idx2: usize,
@@ -2306,7 +2305,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 var ptr: [*]u8 = aboutSymbolIntro(sym_idx2, .add, name_len, width, buf);
                 ptr[0..5].* = "addr=".*;
                 ptr += 5;
-                ptr += fmt.ux64(info2.prog.addr +% sym2.st_value).formatWriteBuf(ptr);
+                ptr += fmt.ux64(sym2.st_value).formatWriteBuf(ptr);
                 ptr[0..2].* = ", ".*;
                 ptr += 6;
                 ptr[0..5].* = "size=".*;
@@ -2415,3 +2414,21 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
     };
     return T;
 }
+pub const spec = struct {
+    pub const loader = struct {
+        pub const logging = struct {
+            pub const verbose = builtin.all(LoaderSpec.Logging);
+            pub const silent = builtin.zero(LoaderSpec.Logging);
+        };
+        pub const errors = struct {
+            pub const noexcept = .{
+                .open = .{},
+                .seek = .{},
+                .read = .{},
+                .map = .{},
+                .unmap = .{},
+                .close = .{},
+            };
+        };
+    };
+};
