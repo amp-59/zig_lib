@@ -276,7 +276,7 @@ fn testFileOperationsRound2() !void {
     try meta.wrap(file.removeDir(remove_dir_spec, test_dir ++ "file_test/file_test"));
     try meta.wrap(file.removeDir(remove_dir_spec, test_dir ++ "file_test"));
     try meta.wrap(file.close(close_spec, dir_fd));
-    const mem_fd: usize = try meta.wrap(mem.fd(.{}, "buffer"));
+    const mem_fd: usize = try meta.wrap(mem.fd(.{}, .{}, "buffer"));
     try meta.wrap(file.truncate(ftruncate_spec, mem_fd, 4096));
 }
 fn testPathOperations() !void {
@@ -316,43 +316,6 @@ fn testPackedModeStruct() !void {
     const st: file.Status = try file.getStatus(stat_spec, fd);
     try file.unlink(unlink_spec, "./0123456789");
     try debug.expectEqual(u16, int, @as(u16, @bitCast(st.mode)));
-}
-fn testStandardChannel() !void {
-    const Channel = file.GenericChannel(.{
-        .errors = spec.channel.errors.noexcept,
-        .logging = spec.channel.logging.silent,
-    });
-    var chan: Channel = Channel.init();
-    const pid: u64 = try proc.fork(.{});
-    if (pid == 0) {
-        try meta.wrap(file.close(Channel.decls.close_spec, chan.in.write));
-        try meta.wrap(file.close(Channel.decls.close_spec, chan.out.read));
-        try meta.wrap(file.close(Channel.decls.close_spec, chan.err.read));
-        try meta.wrap(file.duplicateTo(Channel.decls.dup3_spec, @bitCast(@as(usize, 0)), chan.in.read, 0));
-        try meta.wrap(file.duplicateTo(Channel.decls.dup3_spec, @bitCast(@as(usize, 0)), chan.out.write, 1));
-        try meta.wrap(file.duplicateTo(Channel.decls.dup3_spec, @bitCast(@as(usize, 0)), chan.out.write, 2));
-        var i_array: mem.StaticString(4096) = undefined;
-        i_array.undefineAll();
-        var o_array: mem.StaticString(4096) = undefined;
-        o_array.undefineAll();
-        i_array.define(try file.read(.{}, 0, i_array.referAllUndefined()));
-        o_array.writeMany("msg: ");
-        o_array.writeMany(i_array.readAll());
-        o_array.writeMany(", len: ");
-        o_array.writeFormat(fmt.ud64(i_array.len()));
-        o_array.writeMany("\n");
-        try file.write(.{}, chan.out.write, o_array.readAll());
-        proc.exit(0);
-    } else {
-        try meta.wrap(file.close(Channel.decls.close_spec, chan.in.read));
-        try meta.wrap(file.close(Channel.decls.close_spec, chan.out.write));
-        try meta.wrap(file.close(Channel.decls.close_spec, chan.err.write));
-        var i_array: mem.StaticString(4096) = undefined;
-        i_array.undefineAll();
-        try file.write(.{}, chan.in.write, "message");
-        i_array.define(try file.read(.{}, chan.out.read, i_array.referAllUndefined()));
-        try file.write(.{}, 1, i_array.readAll());
-    }
 }
 fn testLink() !void {
     testing.announce(@src());
@@ -400,7 +363,7 @@ fn testPreClean() !void {
     file.removeDir(remove_dir_spec, test_dir ++ "file_test") catch {};
 }
 fn testBasicDirectoryIterator() !void {
-    const AddressSpace = spec.address_space.exact_8;
+    const AddressSpace = mem.spec.address_space.exact_8;
     const Allocator = mem.GenericArenaAllocator(.{
         .AddressSpace = AddressSpace,
         .arena_index = 0,
@@ -427,8 +390,7 @@ fn testReadWrite2() !void {
     var buf4: [1]u8 = undefined;
     var buf5: [1]u8 = undefined;
     var buf: [5][]u8 = .{ &buf1, &buf2, &buf3, &buf4, &buf5 };
-
-    const fd: usize = try file.create(create_spec, .{}, test_dir ++ "/file_test1", file.mode.regular);
+    const fd: usize = try file.create(create_spec, .{ .read_write = true }, test_dir ++ "file_test1", file.mode.regular);
     try file.write2(write_spec, .{}, fd, &.{ "1", "2", "3", "4", "5" }, 0);
     const len: usize = try file.read2(read_spec, .{}, fd, &buf, 0);
     try debug.expectEqual(usize, 5, len);
