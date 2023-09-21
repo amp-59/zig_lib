@@ -7,10 +7,6 @@ const time = @import("./time.zig");
 const proc = @import("./proc.zig");
 const debug = @import("./debug.zig");
 const builtin = @import("./builtin.zig");
-const _dir = @import("./dir.zig");
-const _chan = @import("./chan.zig");
-pub usingnamespace _dir;
-pub usingnamespace _chan;
 pub const cwd: comptime_int = @as(usize, @bitCast(@as(isize, -100)));
 pub const mode = struct {
     pub const regular: Mode = .{
