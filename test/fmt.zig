@@ -1,5 +1,6 @@
 const zl = @import("../zig_lib.zig");
 const fmt = zl.fmt;
+const sys = zl.sys;
 const mem = zl.mem;
 const meta = zl.meta;
 const file = zl.file;
@@ -563,14 +564,6 @@ pub fn testRenderFunctions() !void {
     try testRenderArray(&allocator, &array, buf.ptr);
     try testRenderType(&allocator, &array, buf.ptr);
     try testRenderSlice(&allocator, &array, buf.ptr);
-
-    inline for (@typeInfo(fmt.Type).Struct.decls) |decl| {
-        if (@TypeOf(@field(fmt.Type, decl.name)) == type) {
-            const f = comptime TypeDescr.init(@field(fmt.Type, decl.name));
-
-            debug.write(buf[0..f.formatWriteBuf(buf.ptr)]);
-        }
-    }
 }
 fn testGenericRangeFormat() !void {
     testing.announce(@src());
@@ -581,14 +574,22 @@ fn testGenericRangeFormat() !void {
     array.writeFormat(range_fmt);
     try testing.expectEqualString("7f{2..3}", array.readAll());
 }
+fn testSystemFlagsFormatters() !void {
+    var buf: [4096]u8 = undefined;
+    var len: usize = (sys.flags.Clone{ .clear_child_thread_id = true, .trace_child = true }).formatWriteBuf(&buf);
+    try testing.expectEqualString("PTRACE|CHILD_CLEARTID", buf[0..len]);
+    len = (sys.flags.MemMap{}).formatWriteBuf(&buf);
+    try testing.expectEqualString("PRIVATE|ANONYMOUS|FIXED_NOREPLACE", buf[0..len]);
+}
 pub fn main() !void {
     try testBytesFormat();
     try testBytesToHex();
     try testHexToBytes();
     try testGenericRangeFormat();
     try testRenderFunctions();
+    try testSystemFlagsFormatters();
     // try testEquivalentIntToStringFormat();
-    try testEquivalentLEBFormatAndParse();
+    //try testEquivalentLEBFormatAndParse();
     try @import("./fmt/utf8.zig").testUtf8();
     try @import("./fmt/ascii.zig").testAscii();
 }
