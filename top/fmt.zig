@@ -1,4 +1,3 @@
-const tab = @import("./tab.zig");
 const mem = @import("./mem.zig");
 const math = @import("./math.zig");
 const meta = @import("./meta.zig");
@@ -7,10 +6,8 @@ const time = @import("./time.zig");
 const debug = @import("./debug.zig");
 const parse = @import("./parse.zig");
 const builtin = @import("./builtin.zig");
-const _render = @import("./render.zig");
 pub const utf8 = @import("./fmt/utf8.zig");
 pub const ascii = @import("./fmt/ascii.zig");
-pub usingnamespace _render;
 pub const AboutSrc = blk: {
     var len: usize = 0;
     if (builtin.message_style) |style| {
@@ -130,7 +127,7 @@ pub const StringLiteralFormat = struct {
         }
         array.writeOne('"');
     }
-    pub fn formatWritebuf(format: Format, buf: [*]u8) usize {
+    pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
         buf[0] = '"';
         var ptr: [*]u8 = buf + 1;
         for (format.value) |byte| {
