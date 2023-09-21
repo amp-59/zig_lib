@@ -183,7 +183,7 @@ pub const RtArenaAllocatorSpec = struct {
     // address space is not.
     fn isMapper(comptime spec: RtArenaAllocatorSpec) bool {
         const allocator_is_mapper: bool = spec.options.require_map;
-        const address_space_is_mapper: bool = spec.AddressSpace.addr_spec.options.require_map;
+        const address_space_is_mapper: bool = spec.AddressSpace.specification.options.require_map;
         if (allocator_is_mapper and address_space_is_mapper) {
             @compileError("both allocator and address space are mappers");
         }
@@ -193,7 +193,7 @@ pub const RtArenaAllocatorSpec = struct {
     // address space is not.
     fn isUnmapper(comptime spec: RtArenaAllocatorSpec) bool {
         const allocator_is_unmapper: bool = spec.options.require_unmap;
-        const address_space_is_unmapper: bool = spec.AddressSpace.addr_spec.options.require_unmap;
+        const address_space_is_unmapper: bool = spec.AddressSpace.specification.options.require_unmap;
         if (allocator_is_unmapper and address_space_is_unmapper) {
             @compileError("both allocator and address space are unmappers");
         }
@@ -363,7 +363,7 @@ fn Types(comptime Allocator: type) type {
             if (Allocator.allocator_spec.isMapper()) {
                 break :blk Allocator.allocator_spec.errors.map;
             } else {
-                break :blk Allocator.AddressSpace.addr_spec.errors.map;
+                break :blk Allocator.AddressSpace.specification.errors.map;
             }
         };
         /// This policy is applied to `deinit` return types.
@@ -371,7 +371,7 @@ fn Types(comptime Allocator: type) type {
             if (Allocator.allocator_spec.isMapper()) {
                 break :blk Allocator.allocator_spec.errors.unmap;
             } else {
-                break :blk Allocator.AddressSpace.addr_spec.errors.unmap;
+                break :blk Allocator.AddressSpace.specification.errors.unmap;
             }
             break :blk .{};
         };
