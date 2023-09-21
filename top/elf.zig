@@ -1822,7 +1822,6 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 const max_idx2: usize = @divExact(shdr2.sh_size, shdr2.sh_entsize);
                 const strtab1: [*]u8 = @ptrFromInt(info1.sectionHeaderByIndex(shdr1.sh_link).sh_addr);
                 const strtab2: [*]u8 = @ptrFromInt(info2.sectionHeaderByIndex(shdr2.sh_link).sh_addr);
-                var sym_idx1: usize = 1;
                 var hidden_count: usize = 0;
                 var hidden_size: usize = 0;
                 const sh_name1: [:0]const u8 = mem.terminate(info1.shstr + info1.sectionHeaderByIndex(shndx1).sh_name, 0);
@@ -1831,64 +1830,67 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                     return buf;
                 }
                 var ptr: [*]u8 = buf;
-                while (sym_idx1 != max_idx1) : (sym_idx1 +%= 1) {
+                {
                     var sym_idx2: usize = 1;
+                    while (sym_idx2 != max_idx2) : (sym_idx2 +%= 1) {
+                        var sym_idx1: usize = 1;
+                        const sym2: *Elf64_Sym = symbolByIndex(shdr2, sym_idx2);
+                        if (shndx2 != sym2.st_shndx) {
+                            continue;
+                        }
+                        const name2: [:0]u8 = symbolName(info2, shdr2, sym2) orelse {
+                            continue;
+                        };
+                        if (loader_spec.logging.hide_mangled_symbols and
+                            maybeExcludeSymbol(sym2, name2))
+                        {
+                            hidden_count +%= 1;
+                            hidden_size +%= sym2.st_size;
+                            continue;
+                        }
+                        sym_idx1 = blk: {
+                            const min_idx1: usize = @min(max_idx1, sym_idx2);
+                            sym_idx1 = min_idx1;
+                            var mat_idx: usize = matchSymbolNameInRange(info1, shdr1, shndx1, mats1, name2, sym_idx1, max_idx1);
+                            if (mat_idx != 0) {
+                                break :blk mat_idx;
+                            }
+                            sym_idx1 -|= 5;
+                            sym_idx1 +%= 1;
+                            mat_idx = matchSymbolNameInRange(info1, shdr1, shndx1, mats1, name2, sym_idx1, min_idx1);
+                            if (mat_idx != 0) {
+                                break :blk mat_idx;
+                            }
+                            mat_idx = matchSymbolNameInRange(info1, shdr1, shndx1, mats1, name2, 1, sym_idx1);
+                            if (mat_idx != 0) {
+                                break :blk mat_idx;
+                            }
+                            if (!mats2[sym_idx2]) {
+                                ptr = aboutSymbolAdded(strtab2, sym2, sym_idx2, sh_name2.len, width, ptr);
+                            }
+                            continue;
+                        };
+                        mats2[sym_idx2] = true;
+                        const sym1: *Elf64_Sym = symbolByIndex(shdr1, sym_idx1);
+                        ptr = aboutSymbolDifference(info2, sym2, info1, strtab1, sym1, sym_idx1, sh_name1.len, width, ptr);
+                    }
+                }
+                var sym_idx1: usize = 1;
+                while (sym_idx1 != max_idx1) : (sym_idx1 +%= 1) {
                     const sym1: *Elf64_Sym = symbolByIndex(shdr1, sym_idx1);
-                    if (shndx1 != sym1.st_shndx) {
+                    if (sym1.st_shndx != shndx1) {
                         continue;
                     }
-                    const name1: [:0]u8 = symbolName(info1, shdr1, sym1) orelse {
+                    const name1: [:0]const u8 = symbolName(info1, shdr1, sym1) orelse {
                         continue;
                     };
                     if (loader_spec.logging.hide_mangled_symbols and
                         maybeExcludeSymbol(sym1, name1))
                     {
-                        hidden_count +%= 1;
-                        hidden_size +%= sym1.st_size;
                         continue;
                     }
-                    sym_idx2 = blk: {
-                        const min_idx2: usize = @min(max_idx2, sym_idx1);
-                        sym_idx2 = min_idx2;
-                        var mat_idx: usize = matchSymbolNameInRange(info2, shdr2, shndx2, mats2, name1, sym_idx2, max_idx2);
-                        if (mat_idx != 0) {
-                            break :blk mat_idx;
-                        }
-                        sym_idx2 -|= 5;
-                        sym_idx2 +%= 1;
-                        mat_idx = matchSymbolNameInRange(info2, shdr2, shndx2, mats2, name1, sym_idx2, min_idx2);
-                        if (mat_idx != 0) {
-                            break :blk mat_idx;
-                        }
-                        mat_idx = matchSymbolNameInRange(info2, shdr2, shndx2, mats2, name1, 1, sym_idx2);
-                        if (mat_idx != 0) {
-                            break :blk mat_idx;
-                        }
-                        if (!mats1[sym_idx1]) {
-                            ptr = aboutSymbolRemoved(strtab1, sym1, sym_idx1, sh_name1.len, width, ptr);
-                        }
-                        continue;
-                    };
-                    mats1[sym_idx1] = true;
-                    const sym2: *Elf64_Sym = symbolByIndex(shdr2, sym_idx2);
-                    ptr = aboutSymbolDifference(info1, sym1, info2, strtab2, sym2, sym_idx2, sh_name2.len, width, ptr);
-                }
-                var sym_idx2: usize = 1;
-                while (sym_idx2 != max_idx2) : (sym_idx2 +%= 1) {
-                    const sym2: *Elf64_Sym = symbolByIndex(shdr2, sym_idx2);
-                    if (sym2.st_shndx != shndx2) {
-                        continue;
-                    }
-                    const name2: [:0]const u8 = symbolName(info2, shdr2, sym2) orelse {
-                        continue;
-                    };
-                    if (loader_spec.logging.hide_mangled_symbols and
-                        maybeExcludeSymbol(sym2, name2))
-                    {
-                        continue;
-                    }
-                    if (!mats2[sym_idx2]) {
-                        ptr = aboutSymbolAdded(info2, strtab2, sym2, sym_idx2, sh_name2.len, width, ptr);
+                    if (!mats1[sym_idx1]) {
+                        ptr = aboutSymbolRemoved(strtab1, sym1, sym_idx1, sh_name1.len, width, ptr);
                     }
                 }
                 return ptr;
@@ -2293,7 +2295,6 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 return ptr;
             }
             fn aboutSymbolAdded(
-                _: *const Info,
                 strtab2: [*]u8,
                 sym2: *const Elf64_Sym,
                 sym_idx2: usize,
