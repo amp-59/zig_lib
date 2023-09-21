@@ -45,8 +45,6 @@ pub const want_stack_traces: bool = define("want_stack_traces", bool, builtin.mo
 
 /// Determines whether calling `panicUnwrapError` is legal.
 pub const discard_errors: bool = define("discard_errors", bool, true);
-/// Determines whether calling `panicUnwrapError` is legal.
-pub const comptime_errors: bool = define("comptime_errors", bool, false);
 
 /// Determines whether `assert*` functions will be called at runtime.
 pub const runtime_assertions: bool = define("runtime_assertions", bool, builtin.mode == .Debug or builtin.mode == .ReleaseSafe);
@@ -207,7 +205,7 @@ pub const my_trace: debug.Trace = .{
 
 /// `E` must be an error type.
 pub fn InternalError(comptime E: type) type {
-    const U = if (comptime_errors) union(enum) {
+    const U = union(enum) {
         /// Return this error for any exception
         throw: E,
         /// Abort the program for any exception
@@ -215,29 +213,18 @@ pub fn InternalError(comptime E: type) type {
         ignore,
         /// Input Zig error type (unused)
         Error: type,
-    } else union(enum) {
-        /// Return this error for any exception
-        throw: E,
-        /// Abort the program for any exception
-        abort,
-        ignore,
     };
     return U;
 }
 /// `E` must be a tagged type.
 pub fn ExternalError(comptime E: type) type {
-    const T = if (comptime_errors) struct {
+    const T = struct {
         /// Throw error if unwrapping yields any of these values
         throw: []const E = &.{},
         /// Abort the program if unwrapping yields any of these values
         abort: []const E = &.{},
         /// Input error value type
         Enum: type = E,
-    } else struct {
-        /// Throw error if unwrapping yields any of these values
-        throw: []const E = &.{},
-        /// Abort the program if unwrapping yields any of these values
-        abort: []const E = &.{},
     };
     return T;
 }
@@ -294,9 +281,9 @@ pub fn BitCount(comptime T: type) type {
     if (@sizeOf(T) == 0) {
         return comptime_int;
     }
-    const bits: T = @bitSizeOf(T);
+    const bit_size_of: T = @bitSizeOf(T);
     return @Type(.{ .Int = .{
-        .bits = bits -% @clz(bits),
+        .bits = bit_size_of -% @clz(bit_size_of),
         .signedness = .unsigned,
     } });
 }
@@ -304,9 +291,9 @@ pub fn ShiftAmount(comptime V: type) type {
     if (@sizeOf(V) == 0) {
         return comptime_int;
     }
-    const bits: V = @bitSizeOf(V);
+    const bit_size_of: V = @bitSizeOf(V);
     return @Type(.{ .Int = .{
-        .bits = bits -% @clz(bits -% 1),
+        .bits = bit_size_of -% @clz(bit_size_of -% 1),
         .signedness = .unsigned,
     } });
 }
@@ -314,9 +301,9 @@ pub fn ShiftValue(comptime A: type) type {
     if (@sizeOf(A) == 0) {
         return comptime_int;
     }
-    const bits: A = ~@as(A, 0);
+    const bit_size_of: A = ~@as(A, 0);
     return @Type(.{ .Int = .{
-        .bits = bits +% 1,
+        .bits = bit_size_of +% 1,
         .signedness = .unsigned,
     } });
 }
