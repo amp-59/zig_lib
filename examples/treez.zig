@@ -6,12 +6,10 @@ const file = zl.file;
 const meta = zl.meta;
 const mach = zl.mach;
 const proc = zl.proc;
-const spec = zl.spec;
 const debug = zl.debug;
 const thread = zl.thread;
 const builtin = zl.builtin;
 pub usingnamespace zl.start;
-pub const logging_override: debug.Logging.Override = spec.logging.override.silent;
 pub const signal_handlers = .{
     .SegmentationFault = false,
     .IllegalInstruction = false,
@@ -50,8 +48,8 @@ const Allocator0 = mem.GenericArenaAllocator(.{
         .trace_clients = false,
         .trace_state = false,
     },
-    .logging = spec.allocator.logging.silent,
-    .errors = spec.allocator.errors.noexcept,
+    .logging = mem.spec.allocator.logging.silent,
+    .errors = mem.spec.allocator.errors.noexcept,
 });
 const Allocator1 = mem.GenericArenaAllocator(.{
     .AddressSpace = AddressSpace,
@@ -78,8 +76,8 @@ const Allocator1 = mem.GenericArenaAllocator(.{
         .trace_clients = false,
         .trace_state = false,
     },
-    .logging = spec.allocator.logging.silent,
-    .errors = spec.allocator.errors.noexcept,
+    .logging = mem.spec.allocator.logging.silent,
+    .errors = mem.spec.allocator.errors.noexcept,
 });
 const PrintArray = mem.StaticString(4096);
 const Array = Allocator1.StructuredStreamHolder(u8);
@@ -87,7 +85,7 @@ const String0 = Allocator0.StructuredHolder(u8);
 const DirStream = file.GenericDirStream(.{
     .Allocator = Allocator0,
     .options = .{},
-    .logging = spec.dir.logging.silent,
+    .logging = file.spec.dir.logging.silent,
 });
 const Filter = meta.EnumBitField(file.Kind);
 const Names = mem.StaticArray([:0]const u8, max_pathname_args);
@@ -222,9 +220,9 @@ fn writeReadLink(
     const buf: []u8 = link_buf.referManyUndefined(4096);
     if (read_link) {
         if (file.readLinkAt(.{}, dir_fd, base_name, buf)) |link_pathname| {
-            array.appendAny(spec.reinterpret.ptr, allocator_1, .{ link_pathname, endl_s });
+            array.appendAny(mem.spec.reinterpret.ptr, allocator_1, .{ link_pathname, endl_s });
         } else |readlink_err| {
-            array.appendAny(spec.reinterpret.ptr, allocator_1, .{ what_s, endl_s });
+            array.appendAny(mem.spec.reinterpret.ptr, allocator_1, .{ what_s, endl_s });
             if (quit_on_error) {
                 return readlink_err;
             }
@@ -233,7 +231,7 @@ fn writeReadLink(
             }
         }
     } else {
-        array.appendAny(spec.reinterpret.ptr, allocator_1, .{ what_s, endl_s });
+        array.appendAny(mem.spec.reinterpret.ptr, allocator_1, .{ what_s, endl_s });
     }
 }
 fn getSymbol(kind: file.Kind) [:0]const u8 {
@@ -278,7 +276,7 @@ fn writeAndWalk(
                 }
                 const arrow_s: [:0]const u8 = if (last) last_link_arrow_s else link_arrow_s;
                 const kind_s: [:0]const u8 = getSymbol(.symbolic_link);
-                array.appendAny(spec.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), arrow_s, kind_s, basename, links_to_s });
+                array.appendAny(mem.spec.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), arrow_s, kind_s, basename, links_to_s });
                 try writeReadLink(allocator_1, array, link_buf, status, dir.fd, basename);
             },
             .regular, .character_special, .block_special, .named_pipe, .socket => |kind| {
@@ -287,7 +285,7 @@ fn writeAndWalk(
                 }
                 const arrow_s: [:0]const u8 = if (last) last_file_arrow_s else file_arrow_s;
                 const kind_s: [:0]const u8 = getSymbol(kind);
-                array.appendAny(spec.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), arrow_s, kind_s, basename, endl_s });
+                array.appendAny(mem.spec.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), arrow_s, kind_s, basename, endl_s });
             },
             .directory => {
                 if (count_dirs) {
@@ -295,7 +293,7 @@ fn writeAndWalk(
                 }
                 const arrow_s: [:0]const u8 = if (last) last_dir_arrow_s else dir_arrow_s;
                 const kind_s: [:0]const u8 = getSymbol(.directory);
-                try meta.wrap(array.appendAny(spec.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), arrow_s, kind_s, basename, endl_s }));
+                try meta.wrap(array.appendAny(mem.spec.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), arrow_s, kind_s, basename, endl_s }));
                 if (track_max_depth) {
                     status.max_depth = builtin.max(u64, status.max_depth, depth +% 1);
                 }
@@ -334,7 +332,7 @@ pub fn main(args: [][*:0]u8) !void {
         defer array.deinit(&allocator_1);
         array.writeMany(arg);
         array.writeMany(if (arg[arg.len -% 1] != '/') "/\n" else "\n");
-        mach.memset(alts_buf.referManyAt(0).ptr, ' ', 4096);
+        @memset(alts_buf.referManyAt(0), ' ');
         if (print_in_second_thread) {
             var tid: u64 = undefined;
             var stack_buf: [16384]u8 align(16) = undefined;
@@ -348,7 +346,6 @@ pub fn main(args: [][*:0]u8) !void {
             };
             status.flag = 255;
             mem.monitor(u8, &status.flag);
-            thread.unmap(.{ .errors = .{} }, 8);
         } else {
             @call(.always_inline, writeAndWalk, .{
                 &allocator_0, &allocator_1, &array, &alts_buf, &link_buf,
