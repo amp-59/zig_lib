@@ -1,8 +1,6 @@
 const zl = @import("../zig_lib.zig");
 const mg = @import("../top/mem/gen.zig");
 
-const virtual = zl.virtual;
-
 pub const spec_sets_0: []const []const []const mg.types.Specifier = &.{
     &.{ &.{ .{ .default = .{
         .tag = .child,
@@ -2137,25 +2135,25 @@ pub const tech_sets_0: []const []const []const mg.types.Technique = &.{
     } }} },
 };
 
-pub const trivial_list: []const virtual.Arena = &.{
+pub const trivial_list: []const zl.mem.Arena = &.{
     .{ .lb_addr = 0x000004000000, .up_addr = 0x010000000000 },
     .{ .lb_addr = 0x010000000000, .up_addr = 0x110000000000 },
     .{ .lb_addr = 0x110000000000, .up_addr = 0x120000000000, .options = .{ .thread_safe = true } },
 };
-pub const simple_list: []const virtual.Arena = &.{
+pub const simple_list: []const zl.mem.Arena = &.{
     .{ .lb_addr = 0x000040000000, .up_addr = 0x010000000000 },
     .{ .lb_addr = 0x100000000000, .up_addr = 0x110000000000, .options = .{ .thread_safe = true } },
     .{ .lb_addr = 0x110000000000, .up_addr = 0x120000000000, .options = .{ .thread_safe = true } },
     .{ .lb_addr = 0x120000000000, .up_addr = 0x130000000000, .options = .{ .thread_safe = true } },
     .{ .lb_addr = 0x7f0000000000, .up_addr = 0x800000000000 },
 };
-pub const rare_sub_list: []const virtual.Arena = &.{
+pub const rare_sub_list: []const zl.mem.Arena = &.{
     .{ .lb_addr = 0x000040000000, .up_addr = 0x010000000000 },
     .{ .lb_addr = 0x110000000000, .up_addr = 0x120000000000, .options = .{ .thread_safe = true } },
     .{ .lb_addr = 0x7f0000000000, .up_addr = 0x800000000000 },
 };
 // zig fmt: off
-pub const complex_list: []const virtual.Arena = &.{
+pub const complex_list: []const zl.mem.Arena = &.{
     .{ .lb_addr = 0x0f0000000000, .up_addr = 0x100000000000 },
     .{ .lb_addr = 0x100000000000, .up_addr = 0x110000000000, .options = .{ .thread_safe = true } }, // [X]
     .{ .lb_addr = 0x110000000000, .up_addr = 0x120000000000, .options = .{ .thread_safe = true } },
