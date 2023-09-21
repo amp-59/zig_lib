@@ -1,6 +1,6 @@
 const fmt = @import("../../fmt.zig");
 const mem = @import("../../mem.zig");
-const mach = @import("../../mach.zig");
+const bits = @import("../../bits.zig");
 const types = @import("./types.zig");
 const config = @import("./config.zig");
 const context: types.Context = @import("root").context;
@@ -1760,7 +1760,7 @@ pub fn writeParserFunctionHelp(array: *Array, attributes: types.Attributes) void
                 array.writeMany(param_spec.string);
             }
             const finish: usize = array.len();
-            max_width = @max(max_width, mach.alignA64(4 +% (finish -% start), 4));
+            max_width = @max(max_width, bits.alignA64(4 +% (finish -% start), 4));
             array.undefine(finish -% start);
         }
     }
