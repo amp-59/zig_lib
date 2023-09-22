@@ -43,23 +43,23 @@ pub const MemFd = struct {
     pub const HUGETLB = 4;
     pub usingnamespace extra.MemFd;
 };
-pub const PROT = struct {
+pub const Prot = struct {
     pub const NONE = 0;
     pub const READ = 1;
     pub const WRITE = 2;
     pub const EXEC = 4;
     pub const GROWSDOWN = 16777216;
     pub const GROWSUP = 33554432;
-    pub usingnamespace extra.PROT;
+    pub usingnamespace extra.Prot;
 };
-pub const REMAP = struct {
+pub const Remap = struct {
     pub const RESIZE = 0;
     pub const MAYMOVE = 1;
     pub const FIXED = 2;
     pub const DONTUNMAP = 4;
-    pub usingnamespace extra.REMAP;
+    pub usingnamespace extra.Remap;
 };
-pub const MADV = struct {
+pub const MAdvise = struct {
     pub const NORMAL = 0;
     pub const RANDOM = 1;
     pub const SEQUENTIAL = 2;
@@ -80,7 +80,7 @@ pub const MADV = struct {
     pub const COLD = 20;
     pub const PAGEOUT = 21;
     pub const HWPOISON = 100;
-    pub usingnamespace extra.MADV;
+    pub usingnamespace extra.MAdvise;
 };
 pub const MCL = struct {
     pub const CURRENT = 1;
@@ -110,12 +110,12 @@ pub const Open = struct {
     pub const TMPFILE = 4194304;
     pub usingnamespace extra.Open;
 };
-pub const LOCK = struct {
+pub const Lock = struct {
     pub const SH = 1;
     pub const EX = 2;
     pub const NB = 4;
     pub const UN = 8;
-    pub usingnamespace extra.LOCK;
+    pub usingnamespace extra.Lock;
 };
 pub const Clone = struct {
     pub const CLEAR_SIGHAND = 0;
@@ -473,4 +473,45 @@ pub const FIO = struct {
     pub const ASYNC = 21586;
     pub const QSIZE = 21600;
     pub usingnamespace extra.FIO;
+};
+pub const UTIME = struct {
+    pub const OMIT = 1073741822;
+    pub const NOW = 1073741823;
+    pub usingnamespace extra.UTIME;
+};
+pub const SEEK = struct {
+    pub const SET = 0;
+    pub const CUR = 1;
+    pub const END = 2;
+    pub const DATA = 3;
+    pub const HOLE = 4;
+    pub usingnamespace extra.SEEK;
+};
+pub const STATX = struct {
+    pub const TYPE = 1;
+    pub const MODE = 2;
+    pub const NLINK = 4;
+    pub const UID = 8;
+    pub const GID = 16;
+    pub const ATIME = 32;
+    pub const MTIME = 64;
+    pub const CTIME = 128;
+    pub const INO = 256;
+    pub const SIZE = 512;
+    pub const BLOCKS = 1024;
+    pub const BTIME = 2048;
+    pub const MNT_ID = 4096;
+    pub usingnamespace extra.STATX;
+};
+pub const STATX_ATTR = struct {
+    pub const COMPRESSED = 4;
+    pub const IMMUTABLE = 16;
+    pub const APPEND = 32;
+    pub const NODUMP = 64;
+    pub const ENCRYPTED = 2048;
+    pub const AUTOMOUNT = 4096;
+    pub const MOUNT_ROOT = 8192;
+    pub const VERITY = 1048576;
+    pub const DAX = 2097152;
+    pub usingnamespace extra.STATX_ATTR;
 };
