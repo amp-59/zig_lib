@@ -290,7 +290,7 @@ pub fn readLEB128(comptime T: type, bytes: []const u8) !struct { T, u8 } {
             }
             value |= ov[0];
             if (byte & 0x80 == 0) {
-                return .{ if (T == Int) value else @as(T, @enumFromInt(value)), idx };
+                return .{ if (T == Int) value else @enumFromInt(value), idx };
             }
         }
         return error.Overflow;
@@ -303,10 +303,10 @@ pub fn readLEB128(comptime T: type, bytes: []const u8) !struct { T, u8 } {
         var value: Abs = 0;
         while (idx != max_idx) {
             const byte: u8 = bytes[idx];
-            const ored: i8 = @as(i8, @bitCast(byte | 0x80));
+            const ored: i8 = @bitCast(byte | 0x80);
             const shift_amt: Shift = idx *% 7;
             idx +%= 1;
-            const ov: struct { Abs, u1 } = @shlWithOverflow(@as(Abs, byte & 0x7f), shift_amt);
+            const ov: struct { Abs, u1 } = @shlWithOverflow(byte & 0x7f, shift_amt);
             if (ov[1] != 0) {
                 if (byte & 0x80 != 0 or
                     @as(Int, @bitCast(ov[0])) >= 0 or
