@@ -334,7 +334,7 @@ pub const Flags = packed struct(usize) {
 pub const PerfEventSpec = struct {
     return_type: type = u32,
     logging: debug.Logging.SuccessError = .{},
-    errors: sys.ErrorPolicy = .{ .throw = sys.perf_event_open_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.perf_event_open.errors.all },
 };
 pub fn eventOpen(comptime perf_spec: PerfEventSpec, event: *const Event, pid: Process, cpu: CPU, fd: perf_spec.return_type, flags: Flags) sys.ErrorUnion(
     perf_spec.errors,
@@ -350,7 +350,7 @@ pub fn eventOpen(comptime perf_spec: PerfEventSpec, event: *const Event, pid: Pr
 }
 pub const PerfEventControlSpec = struct {
     logging: debug.Logging.SuccessError = .{},
-    errors: sys.ErrorPolicy = .{ .throw = sys.ioctl_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.ioctl.errors.all },
 };
 pub fn eventControl(comptime perf_spec: PerfEventControlSpec, fd: usize, ctl: Event.IOC, apply_group: bool) sys.ErrorUnion(perf_spec.errors, void) {
     if (meta.wrap(sys.call(.ioctl, perf_spec.errors, void, .{
@@ -364,11 +364,11 @@ pub fn eventControl(comptime perf_spec: PerfEventControlSpec, fd: usize, ctl: Ev
 pub const PerfEventsSpec = struct {
     errors: Errors = .{},
     logging: Logging = .{},
-    counters: []const CounterPair = &default_counters,
+    counters: []const CounterPair = &default,
     const Errors = struct {
-        open: sys.ErrorPolicy = .{ .throw = sys.perf_event_open_errors },
-        read: sys.ErrorPolicy = .{ .throw = sys.read_errors },
-        close: sys.ErrorPolicy = .{ .throw = sys.close_errors },
+        open: sys.ErrorPolicy = .{ .throw = spec.perf_event_open.errors.all },
+        read: sys.ErrorPolicy = .{ .throw = file.spec.read.errors.all },
+        close: sys.ErrorPolicy = .{ .throw = file.spec.close.errors.all },
     };
     const Logging = struct {
         open: debug.Logging.SuccessError = .{},
@@ -378,20 +378,6 @@ pub const PerfEventsSpec = struct {
     const CounterPair = struct {
         type: Type,
         counters: []const Measurement,
-    };
-    const default_counters = .{
-        .{ .type = .hardware, .counters = &.{
-            .{ .name = "cycles\t\t\t", .config = .{ .hardware = .cpu_cycles } },
-            .{ .name = "instructions\t\t", .config = .{ .hardware = .instructions } },
-            .{ .name = "cache-references\t", .config = .{ .hardware = .cache_references } },
-            .{ .name = "cache-misses\t\t", .config = .{ .hardware = .cache_misses } },
-            .{ .name = "branch-misses\t\t", .config = .{ .hardware = .branch_misses } },
-        } },
-        .{ .type = .software, .counters = &.{
-            .{ .name = "cpu-clock\t\t", .config = .{ .software = .cpu_clock } },
-            .{ .name = "task-clock\t\t", .config = .{ .software = .task_clock } },
-            .{ .name = "page-faults\t\t", .config = .{ .software = .page_faults } },
-        } },
     };
 };
 pub fn GenericPerfEvents(comptime events_spec: PerfEventsSpec) type {
@@ -495,4 +481,18 @@ pub const spec = struct {
             };
         };
     };
+};
+const default = .{
+    .{ .type = .hardware, .counters = &.{
+        .{ .name = "cycles\t\t\t", .config = .{ .hardware = .cpu_cycles } },
+        .{ .name = "instructions\t\t", .config = .{ .hardware = .instructions } },
+        .{ .name = "cache-references\t", .config = .{ .hardware = .cache_references } },
+        .{ .name = "cache-misses\t\t", .config = .{ .hardware = .cache_misses } },
+        .{ .name = "branch-misses\t\t", .config = .{ .hardware = .branch_misses } },
+    } },
+    .{ .type = .software, .counters = &.{
+        .{ .name = "cpu-clock\t\t", .config = .{ .software = .cpu_clock } },
+        .{ .name = "task-clock\t\t", .config = .{ .software = .task_clock } },
+        .{ .name = "page-faults\t\t", .config = .{ .software = .page_faults } },
+    } },
 };
