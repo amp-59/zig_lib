@@ -20,7 +20,6 @@ pub const debug = @import("./debug.zig");
 pub const build = @import("./build.zig");
 pub const trace = @import("./trace.zig");
 pub const dwarf = @import("./dwarf.zig");
-pub const thread = @import("./thread.zig");
 pub const crypto = @import("./crypto.zig");
 pub const serial = @import("./serial.zig");
 pub const target = @import("./target.zig");
