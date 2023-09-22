@@ -24,15 +24,15 @@ const @"test" = struct {
     const time = @import("time.zig");
     const virtual = @import("virtual.zig");
 };
-pub const logging_override: zl.debug.Logging.Override = zl.spec.logging.override.verbose;
-pub const AddressSpace = zl.spec.address_space.exact_8;
+pub const logging_override: zl.debug.Logging.Override = zl.debug.spec.logging.override.verbose;
+pub const AddressSpace = zl.mem.spec.address_space.exact_8;
 const Allocator0 = zl.mem.GenericArenaAllocator(.{
     .arena_index = 0,
-    .AddressSpace = zl.spec.address_space.regular_128,
+    .AddressSpace = zl.mem.spec.address_space.regular_128,
 });
 const Allocator1 = zl.mem.GenericArenaAllocator(.{
     .arena_index = 1,
-    .AddressSpace = zl.spec.address_space.exact_8,
+    .AddressSpace = zl.mem.spec.address_space.exact_8,
 });
 pub const Builder = zl.build.GenericBuilder(.{});
 const List = zl.mem.GenericLinkedList(.{
