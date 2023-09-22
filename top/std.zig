@@ -24,7 +24,6 @@ pub const crypto = @import("./crypto.zig");
 pub const serial = @import("./serial.zig");
 pub const target = @import("./target.zig");
 pub const testing = @import("./testing.zig");
-pub const virtual = @import("./virtual.zig");
 
 pub const Target = target.Target;
 comptime {
