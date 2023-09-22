@@ -3,8 +3,8 @@ const fmt = @import("./fmt.zig");
 const sys = @import("./sys.zig");
 const file = @import("./file.zig");
 const meta = @import("./meta.zig");
-const mach = @import("./mach.zig");
-const spec = @import("./spec.zig");
+const bits = @import("./bits.zig");
+const math = @import("./math.zig");
 const debug = @import("./debug.zig");
 const builtin = @import("./builtin.zig");
 const testing = @import("./testing.zig");
@@ -87,7 +87,7 @@ fn readPointerOne(comptime pointer_info: builtin.Type.Pointer, addr: u64, offset
     @setRuntimeSafety(false);
     const next: @TypeOf(any.*) = toAddress(any.*, addr);
     var len: u64 = offset;
-    len = mach.sub64(mach.alignA64(addr +% len, @alignOf(pointer_info.child)), addr);
+    len = math.sub64(bits.alignA64(addr +% len, @alignOf(pointer_info.child)), addr);
     len +%= @sizeOf(pointer_info.child);
     len = read(addr, len, next);
     any.* = next;
@@ -97,7 +97,7 @@ fn readPointerSlice(comptime pointer_info: builtin.Type.Pointer, addr: u64, offs
     @setRuntimeSafety(false);
     const next: @TypeOf(any.*) = toAddress(any.*, addr);
     var len: u64 = offset;
-    len = mach.sub64(mach.alignA64(addr +% len, @alignOf(pointer_info.child)), addr);
+    len = math.sub64(bits.alignA64(addr +% len, @alignOf(pointer_info.child)), addr);
     len +%= @sizeOf(pointer_info.child) *% (next.len +% @intFromBool(pointer_info.sentinel != null));
     for (next) |*value| {
         len = read(addr, len, value);
@@ -111,7 +111,7 @@ fn readPointerMany(comptime pointer_info: builtin.Type.Pointer, addr: u64, offse
     var len: u64 = offset;
     var idx: u64 = 0;
     while (next[idx] != comptime mem.pointerOpaque(pointer_info.child, pointer_info.sentinel.?).*) idx +%= 1;
-    len = mach.sub64(mach.alignA64(addr +% len, @alignOf(pointer_info.child)), addr);
+    len = math.sub64(bits.alignA64(addr +% len, @alignOf(pointer_info.child)), addr);
     len +%= @sizeOf(pointer_info.child) *% (idx +% 1);
     for (next[0..idx]) |*value| {
         len = read(addr, len, value);
@@ -315,7 +315,6 @@ pub const SerialSpec = struct {
         return .{
             .logging = serial_spec.logging.create,
             .errors = serial_spec.errors.create,
-            .options = .{ .exclusive = false },
         };
     }
     fn open(comptime serial_spec: SerialSpec) file.OpenSpec {
@@ -341,7 +340,7 @@ pub fn serialWrite(comptime serial_spec: SerialSpec, comptime S: type, allocator
         genericSerializeInternal(allocator, s_ab_addr, value),
     );
     const fd: usize = try meta.wrap(
-        file.create(create_spec, pathname, file.mode.regular),
+        file.create(create_spec, .{ .exclusive = false }, pathname, file.mode.regular),
     );
     try meta.wrap(
         file.write(write_spec, fd, bytes),
@@ -362,7 +361,7 @@ pub fn serialRead(comptime serial_spec: SerialSpec, comptime S: type, allocator:
     const close_spec: file.CloseSpec = comptime serial_spec.close();
     const t_ab_addr: u64 = allocator.alignAbove(16);
     const fd: usize = try meta.wrap(
-        file.open(open_spec, pathname),
+        file.open(open_spec, .{}, pathname),
     );
     const st: file.Status = try meta.wrap(
         file.getStatus(stat_spec, fd),
