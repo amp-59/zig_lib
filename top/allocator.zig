@@ -543,7 +543,7 @@ pub fn GenericRtArenaAllocator(comptime spec: RtArenaAllocatorSpec) type {
         pub const AddressSpace = allocator_spec.AddressSpace;
         pub const allocator_spec: RtArenaAllocatorSpec = spec;
         pub const unit_alignment: u64 = allocator_spec.options.unit_alignment;
-        pub fn init_arena(arena: mem.Arena) Allocator {
+        pub fn fromArena(arena: mem.Arena) Allocator {
             var allocator: Allocator = undefined;
             defer Graphics.showWithReference(&allocator, @src());
             allocator = .{
