@@ -1,6 +1,5 @@
 const builtin = @import("builtin");
 const tab = @import("./tab.zig");
-const mach = @import("./mach.zig");
 const meta = @import("./meta.zig");
 const math = @import("./math.zig");
 const debug = @import("./debug.zig");
