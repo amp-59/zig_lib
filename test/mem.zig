@@ -3,19 +3,20 @@ const sys = zl.sys;
 const fmt = zl.fmt;
 const mem = zl.mem;
 const proc = zl.proc;
-const mach = zl.mach;
+const bits = zl.bits;
 const meta = zl.meta;
 const file = zl.file;
-const spec = zl.spec;
 const debug = zl.debug;
 const builtin = zl.builtin;
 const testing = zl.testing;
 
+const tab = @import("./tab.zig");
+
 pub usingnamespace zl.start;
 
 pub const runtime_assertions: bool = true;
-pub const logging_default: debug.Logging.Default = spec.logging.default.verbose;
-pub const AddressSpace = spec.address_space.regular_128;
+pub const logging_default: debug.Logging.Default = debug.spec.logging.default.verbose;
+pub const AddressSpace = mem.spec.address_space.regular_128;
 const Impl = struct {
     im1: ImArrays = .{},
     im2: ImStruct = .{},
@@ -29,6 +30,109 @@ const Impl = struct {
         cpu: []const u8,
     });
 };
+fn arenaFromBits(b: u64) mem.Arena {
+    return .{ .lb_addr = @ctz(b), .up_addr = @ctz(b) + @popCount(b) };
+}
+fn arenaToBits(arena: mem.Arena) u64 {
+    return bits.shl64(bits.shl64(1, arena.up_addr - arena.lb_addr) - 1, arena.lb_addr);
+}
+fn testArenaIntersection() !void {
+    var a: mem.Arena = arenaFromBits(0b000000000111111111110000000000000);
+    var b: mem.Arena = arenaFromBits(0b000000000000000111111111110000000);
+    var x: mem.Intersection(mem.Arena) = mem.intersection2(mem.Arena, a, b).?;
+    try debug.expectEqual(u64, arenaToBits(x.l), 0b0000000000000000000000000000000000000000000000000001111110000000);
+    try debug.expectEqual(u64, arenaToBits(x.x), 0b0000000000000000000000000000000000000000000000111110000000000000);
+    try debug.expectEqual(u64, arenaToBits(x.h), 0b0000000000000000000000000000000000000000111111000000000000000000);
+}
+fn testRegularAddressSpace() !void {
+    const LAddressSpace = mem.GenericRegularAddressSpace(.{ .divisions = 8, .lb_offset = 0x40000000 });
+    var address_space: LAddressSpace = .{};
+    const Allocator = mem.GenericArenaAllocator(.{ .arena_index = 0, .AddressSpace = LAddressSpace });
+    var allocator: Allocator = try Allocator.init(&address_space);
+    defer allocator.deinit(&address_space);
+    var i: u8 = 1;
+    while (i != LAddressSpace.specification.divisions) : (i +%= 1) {
+        try mem.acquire(LAddressSpace, &address_space, i);
+    }
+    try debug.expectEqual(u64, LAddressSpace.specification.divisions, address_space.count());
+}
+fn testDiscreteAddressSpace(comptime list: anytype) !void {
+    const LAddressSpace = mem.GenericDiscreteAddressSpace(.{ .list = list });
+    var address_space: LAddressSpace = .{};
+    const Allocator = mem.GenericArenaAllocator(.{ .arena_index = 0, .AddressSpace = LAddressSpace });
+    var allocator: Allocator = try Allocator.init(&address_space);
+    comptime var idx: u8 = 1;
+    inline while (idx != LAddressSpace.specification.list.len) : (idx +%= 1) {
+        try mem.acquireStatic(LAddressSpace, &address_space, idx);
+    }
+    try debug.expectEqual(u64, LAddressSpace.specification.list.len, address_space.count());
+    idx = 1;
+    inline while (idx != LAddressSpace.specification.list.len) : (idx +%= 1) {
+        mem.releaseStatic(LAddressSpace, &address_space, idx);
+    }
+    allocator.deinit(&address_space);
+    try debug.expectEqual(u64, address_space.count(), 0);
+}
+fn testDiscreteSubSpaceFromDiscrete(comptime sup_spec: mem.DiscreteAddressSpaceSpec, comptime sub_spec: mem.DiscreteAddressSpaceSpec) !void {
+    const LAddressSpace = comptime blk: {
+        var tmp = sup_spec;
+        tmp.subspace = &[_]meta.Generic{mem.generic(sub_spec)};
+        break :blk mem.GenericDiscreteAddressSpace(tmp);
+    };
+    const SubLAddressSpace = LAddressSpace.SubSpace(0);
+    var sub_space: SubLAddressSpace = .{};
+    const Allocator0 = mem.GenericArenaAllocator(.{ .arena_index = 0, .AddressSpace = SubLAddressSpace });
+    const Allocator1 = mem.GenericArenaAllocator(.{ .arena_index = 1, .AddressSpace = SubLAddressSpace });
+    const Allocator2 = mem.GenericArenaAllocator(.{ .arena_index = 2, .AddressSpace = SubLAddressSpace });
+    var allocator_0: Allocator0 = try Allocator0.init(&sub_space);
+    defer allocator_0.deinit(&sub_space);
+    var allocator_1: Allocator1 = try Allocator1.init(&sub_space);
+    defer allocator_1.deinit(&sub_space);
+    var allocator_2: Allocator2 = try Allocator2.init(&sub_space);
+    defer allocator_2.deinit(&sub_space);
+}
+fn testRegularAddressSubSpaceFromDiscrete(comptime sup_spec: mem.DiscreteAddressSpaceSpec) !void {
+    const LAddressSpace = sup_spec.instantiate();
+    const SubLAddressSpace = LAddressSpace.SubSpace(0);
+    var sub_space: SubLAddressSpace = .{};
+    const Allocator0 = mem.GenericArenaAllocator(.{ .arena_index = 0, .AddressSpace = SubLAddressSpace });
+    const Allocator1 = mem.GenericArenaAllocator(.{ .arena_index = 1, .AddressSpace = SubLAddressSpace });
+    const Allocator2 = mem.GenericArenaAllocator(.{ .arena_index = 2, .AddressSpace = SubLAddressSpace });
+    var allocator_0: Allocator0 = try Allocator0.init(&sub_space);
+    defer allocator_0.deinit(&sub_space);
+    var allocator_1: Allocator1 = try Allocator1.init(&sub_space);
+    defer allocator_1.deinit(&sub_space);
+    var allocator_2: Allocator2 = try Allocator2.init(&sub_space);
+    defer allocator_2.deinit(&sub_space);
+}
+fn testTaggedSets() !void {
+    const E = enum(u2) { a, b, c, d };
+    const K = mem.GenericDiscreteAddressSpace(.{
+        .index_type = E,
+        .label = "tagged",
+        .list = &.{
+            .{ .lb_addr = 0x40000000, .up_addr = 0x80000000 },
+            .{ .lb_addr = 0x80000000, .up_addr = 0x100000000 },
+            .{ .lb_addr = 0x100000000, .up_addr = 0x200000000, .options = .{ .thread_safe = true } },
+            .{ .lb_addr = 0x200000000, .up_addr = 0x400000000 },
+        },
+    });
+    var k: K = .{};
+    try debug.expect(k.set(.a));
+    try debug.expect(k.set(.b));
+    try debug.expect(k.set(.c));
+    try debug.expect(k.set(.d));
+    testing.print(fmt.any(k));
+}
+fn Clone(comptime function: anytype) type {
+    return struct {
+        const Fn = @TypeOf(function);
+        const Args = meta.Args(Fn);
+        const Value = meta.ReturnPayload(Fn);
+        const Error = meta.ReturnErrorSet(Fn);
+        const Return = Error!Value;
+    };
+}
 fn testImplementations() !void {
     var allocator: mem.SimpleAllocator = .{};
     defer allocator.unmapAll();
@@ -60,8 +164,8 @@ fn testLowSystemMemoryOperations() !void {
     const end: u64 = 0x10000000;
     var len: u64 = end -% addr;
     try meta.wrap(mem.map(.{}, .{}, .{}, addr, len));
-    try meta.wrap(mem.move(.{}, addr, len, addr +% len));
-    try meta.wrap(mem.protect(.{}, .{ .read = true }, addr +% len, len));
+    try meta.wrap(mem.move(.{}, .{ .may_move = true, .fixed = true }, addr, len, addr +% len));
+    try meta.wrap(mem.protect(.{}, .{ .read = false, .write = false }, addr +% len, len));
     addr +%= len;
     try meta.wrap(mem.resize(.{}, addr, len, len *% 2));
     len *= 2;
@@ -84,8 +188,8 @@ fn testRtAllocatedImplementation() !void {
     const repeats: u64 = 0x100;
     const Allocator = mem.GenericRtArenaAllocator(.{
         .options = .{ .trace_state = false },
-        .logging = spec.allocator.logging.silent,
-        .AddressSpace = spec.address_space.regular_128,
+        .logging = mem.spec.allocator.logging.silent,
+        .AddressSpace = mem.spec.address_space.regular_128,
     });
     var address_space: Allocator.AddressSpace = .{};
     var allocator: Allocator = try Allocator.init(&address_space, 0);
@@ -135,13 +239,13 @@ fn testAllocatedImplementation() !void {
     testing.announce(@src());
     const repeats: u64 = 0x100;
     const Allocator = mem.GenericArenaAllocator(.{
-        // Allocations will begin offset 1GiB into the virtual address space.
+        // Allocations will begin offset 1GiB into the mem address space.
         // This would be 0B, but to avoid the program mapping. Obviously
         // unsound on systems where the program is mapped randomly in the
         // address space.
         .arena_index = 0,
         .options = .{ .trace_state = false },
-        .logging = spec.allocator.logging.silent,
+        .logging = mem.spec.allocator.logging.silent,
         .AddressSpace = AddressSpace,
     });
     var address_space: builtin.VirtualAddressSpace() = .{};
@@ -250,7 +354,6 @@ fn testUtilityTestFunctions() !void {
     try debug.expect(mem.testEqualManyIn(u8, "__anon", "top.mem.GenericOptionalArrays.U.set__anon_4804"));
     try debug.expectEqual(u64, @as(u64, @bitCast([8]u8{ 0, 0, 0, 0, 0, 5, 5, 5 })), mem.readIntVar(u64, &[3]u8{ 5, 5, 5 }, 3));
 }
-
 fn testLallocator() !void {
     testing.announce(@src());
     const AllocatorL = struct {}.GenericLinkedAllocator(.{
@@ -265,7 +368,7 @@ fn testLallocator() !void {
     while (count != 1024) : (count = rng.readOne(u16)) {
         const buf: []u8 = try allocator.allocate(u8, count);
         AllocatorL.Graphics.graphPartitions(allocator);
-        mach.memset(buf.ptr, 0, buf.len);
+        @memset(buf, 0);
         allocator.consolidate();
         allocator.deallocate(buf);
     }
@@ -319,6 +422,25 @@ fn testSampleAllReports() !void {
 }
 pub fn main() !void {
     testSimpleAllocator();
+    try meta.wrap(testArenaIntersection());
+    try meta.wrap(testRegularAddressSpace());
+    try meta.wrap(testTaggedSets());
+    try meta.wrap(testDiscreteAddressSpace(tab.trivial_list));
+    try meta.wrap(testDiscreteAddressSpace(tab.complex_list));
+    try meta.wrap(testDiscreteAddressSpace(tab.simple_list));
+    try meta.wrap(testRegularAddressSubSpaceFromDiscrete(.{
+        .list = tab.complex_list,
+        .subspace = &[_]meta.Generic{mem.generic(.{
+            .lb_addr = tab.complex_list[34].lb_addr,
+            .up_addr = tab.complex_list[42].up_addr,
+            .divisions = 16,
+            .options = .{ .thread_safe = true },
+        })},
+    }));
+    try meta.wrap(testDiscreteSubSpaceFromDiscrete(
+        .{ .list = tab.simple_list },
+        .{ .list = tab.rare_sub_list },
+    ));
     try testImplementations();
     try testMapGenericOverhead();
     try testProtect();
