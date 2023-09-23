@@ -2,11 +2,13 @@ const mem = @import("../../mem.zig");
 const fmt = @import("../../fmt.zig");
 const gen = @import("../../gen.zig");
 const meta = @import("../../meta.zig");
+const math = @import("../../math.zig");
 const debug = @import("../../debug.zig");
 const decls = @import("../decls.zig");
 const config = @import("./config.zig");
 
 pub const Array = mem.StaticString(64 * 1024 * 1024);
+pub const ArrayGST = mem.StaticString(1024 * 1024);
 
 pub usingnamespace @import("../../start.zig");
 
@@ -265,11 +267,11 @@ pub fn ContainerDeclsToBitFieldFormat(comptime backing_integer: type) type {
                     }
                     array.writeMany("for([_]struct{[]const u8,u8}{\n");
                     var start: usize = array.len();
-                    for (set.pairs) |pair| {
+                    for (set.pairs, 0..) |pair, idx| {
                         if (pair.value == 0) {
                             continue;
                         }
-                        if (array.len() -% start > 60) {
+                        if (idx == math.sqrt(usize, set.pairs.len) +% 1) {
                             array.writeMany(",\n");
                             start = array.len();
                         } else if (array.len() != start) {
@@ -319,11 +321,11 @@ pub fn ContainerDeclsToBitFieldFormat(comptime backing_integer: type) type {
                     }
                     array.writeMany("for([_]struct{u8,u8}{\n");
                     var start: usize = array.len();
-                    for (set.pairs) |pair| {
+                    for (set.pairs, 0..) |pair, idx| {
                         if (pair.value == 0) {
                             continue;
                         }
-                        if (array.len() -% start > 60) {
+                        if (idx == math.sqrt(usize, set.pairs.len) +% 1) {
                             array.writeMany(",\n");
                             start = array.len();
                         } else if (array.len() != start) {
@@ -348,6 +350,18 @@ pub fn ContainerDeclsToBitFieldFormat(comptime backing_integer: type) type {
             }
             array.writeMany("return len;\n");
             array.writeMany("}\n");
+        }
+        fn defineGlobalStringTable(format: Format, array: *ArrayGST) usize {
+            var max: usize = 0;
+            for (format.value.sets) |set| {
+                for (set.pairs) |pair| {
+                    if (!mem.testEqualManyIn(u8, pair.decl_name, array.readAll())) {
+                        max = @max(max, pair.decl_name.len);
+                        array.writeMany(pair.decl_name);
+                    }
+                }
+            }
+            return max;
         }
         pub fn formatWrite(format: Format, array: *Array) void {
             array.writeMany("pub const ");
@@ -381,17 +395,27 @@ pub fn main() !void {
     var flags_array: *Array = allocator.create(Array);
     var decls_array: *Array = allocator.create(Array);
     var extra_array: *Array = allocator.create(Array);
+    var gst_array: *ArrayGST = allocator.create(ArrayGST);
     flags_array.define(try gen.readFile(.{ .return_type = usize }, config.flags_template_path, flags_array.referAllUndefined()));
     decls_array.define(try gen.readFile(.{ .return_type = usize }, config.decls_template_path, decls_array.referAllUndefined()));
     extra_array.define(try gen.readFile(.{ .return_type = usize }, config.extra_template_path, extra_array.referAllUndefined()));
+
+    var max_len: usize = 0;
+    inline for (@typeInfo(decls).Struct.decls) |decl| {
+        const value = @field(decls, decl.name);
+        const size = if (@hasDecl(value, "backing_integer")) value.backing_integer else usize;
+        const Format = ContainerDeclsToBitFieldFormat(size);
+        const format: Format = Format.init(value, decl.name);
+        max_len = @max(max_len, format.defineGlobalStringTable(gst_array));
+    }
     inline for (@typeInfo(decls).Struct.decls) |decl| {
         const value = @field(decls, decl.name);
         const size = if (@hasDecl(value, "backing_integer")) value.backing_integer else usize;
         const Format = ContainerDeclsToBitFieldFormat(size);
         const format: Format = Format.init(value, decl.name);
         format.formatWrite(flags_array);
-        format.formatWriteExtra(extra_array);
         format.formatWriteDecls(decls_array);
+        format.formatWriteExtra(extra_array);
     }
     if (config.commit) {
         try gen.truncateFile(.{ .return_type = void }, config.flags_path, flags_array.readAll());
