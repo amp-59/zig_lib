@@ -4,13 +4,12 @@ const mem = zl.mem;
 const file = zl.file;
 const proc = zl.proc;
 const meta = zl.meta;
-const spec = zl.spec;
 const debug = zl.debug;
 const builtin = zl.builtin;
 
 pub usingnamespace zl.start;
 
-pub const AddressSpace = spec.address_space.exact_8;
+pub const AddressSpace = mem.spec.address_space.exact_8;
 pub const runtime_assertions: bool = true;
 
 const Random = file.DeviceRandomBytes(4096);
@@ -36,7 +35,7 @@ const Allocator0 = mem.GenericArenaAllocator(.{
         .require_all_free_deinit = true,
         .trace_state = false,
     },
-    .logging = spec.allocator.logging.silent,
+    .logging = mem.spec.allocator.logging.silent,
 });
 const Allocator1 = mem.GenericArenaAllocator(.{
     .arena_index = 4,
@@ -51,7 +50,7 @@ const Allocator1 = mem.GenericArenaAllocator(.{
         .require_all_free_deinit = true,
         .trace_state = false,
     },
-    .logging = spec.allocator.logging.silent,
+    .logging = mem.spec.allocator.logging.silent,
 });
 const Allocator = Allocator0;
 const LinkedList = mem.GenericLinkedList(.{
