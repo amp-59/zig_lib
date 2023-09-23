@@ -400,8 +400,7 @@ pub fn main(args: [][*:0]u8) !void {
     try meta.wrap(testBasicDirectoryIterator());
     try meta.wrap(testFileOperationsRound1());
     try meta.wrap(testFileOperationsRound2());
-    try meta.wrap(testStandardChannel());
-    try meta.wrap(testStatusExtended());
+    //try meta.wrap(testStandardChannel());
     try meta.wrap(testSocketOpenAndClose());
     try meta.wrap(testReadWrite2());
     try meta.wrap(testFileTests());

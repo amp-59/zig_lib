@@ -2,22 +2,20 @@ const zl = @import("../zig_lib.zig");
 const fmt = zl.fmt;
 const tab = zl.tab;
 const mem = zl.mem;
-const mach = zl.mach;
 const meta = zl.meta;
 const proc = zl.proc;
 const algo = zl.algo;
 const file = zl.file;
 const time = zl.time;
-const spec = zl.spec;
 const debug = zl.debug;
 const parse = zl.parse;
 const crypto = zl.crypto;
 const builtin = zl.builtin;
 const testing = zl.testing;
 pub usingnamespace zl.start;
-pub const logging_override: debug.Logging.Override = spec.logging.override.silent;
+pub const logging_override: debug.Logging.Override = debug.spec.logging.override.silent;
 pub const runtime_assertions: bool = false;
-pub const AddressSpace = spec.address_space.regular_128;
+pub const AddressSpace = mem.spec.address_space.regular_128;
 const show_best_cases: bool = false;
 pub fn write(buf: []u8, off: u64, ss: []const []const u8) u64 {
     var len: u64 = 0;
@@ -31,10 +29,10 @@ pub fn print(buf: []u8, off: u64, ss: []const []const u8) void {
     file.write(.{ .errors = .{} }, 1, buf[0 .. off + write(buf, off, ss)]);
 }
 pub const Allocator = mem.GenericArenaAllocator(.{
-    .AddressSpace = spec.address_space.regular_128,
+    .AddressSpace = mem.spec.address_space.regular_128,
     .arena_index = 1,
-    .logging = spec.allocator.logging.silent,
-    .errors = spec.allocator.errors.noexcept,
+    .logging = mem.spec.allocator.logging.silent,
+    .errors = mem.spec.allocator.errors.noexcept,
 });
 pub const S = struct {
     fn asc(x: anytype, y: anytype) bool {
@@ -54,21 +52,21 @@ pub fn compareSorts() !void {
     const values_1 = @as([*]T, @ptrFromInt(size))[0..(size / @sizeOf(T))];
     const values_2 = @as([*]T, @ptrFromInt(size + size))[0..(size / @sizeOf(T))];
     if (false) {
-        mach.memcpy(@as([*]u8, @ptrFromInt(size + size)), @as([*]const u8, @ptrFromInt(size)), size);
+        @memcpy(@as([*]u8, @ptrFromInt(size + size))[0..size], @as([*]const u8, @ptrFromInt(size)));
         const t_0 = try time.get(.{}, .realtime);
         algo.insertionSort(T, S.asc, builtin.identity, values_2[0 .. values_2.len / 0x10]);
         const t_1 = try time.get(.{}, .realtime);
         testing.printN(4096, .{ "insert: [", fmt.ud64(values_2.len), "]" ++ @typeName(T), "\t = ", fmt.any(time.diff(t_1, t_0)), '\n' });
     }
     {
-        mach.memcpy(@as([*]u8, @ptrFromInt(size + size)), @as([*]const u8, @ptrFromInt(size)), size);
+        @memcpy(@as([*]u8, @ptrFromInt(size + size))[0..size], @as([*]const u8, @ptrFromInt(size)));
         const t_0 = try time.get(.{}, .realtime);
         algo.shellSort(T, S.asc, builtin.identity, values_2);
         const t_1 = try time.get(.{}, .realtime);
         testing.printN(4096, .{ "shell: [", fmt.ud64(values_2.len), "]" ++ @typeName(T), "\t = ", fmt.any(time.diff(t_1, t_0)), '\n' });
     }
     {
-        mach.memcpy(@as([*]u8, @ptrFromInt(size + size)), @as([*]const u8, @ptrFromInt(size)), size);
+        @memcpy(@as([*]u8, @ptrFromInt(size + size))[0..size], @as([*]const u8, @ptrFromInt(size)));
         const t_0 = try time.get(.{}, .realtime);
         algo.layeredShellSort(T, S.asc, values_2);
         const t_1 = try time.get(.{}, .realtime);
