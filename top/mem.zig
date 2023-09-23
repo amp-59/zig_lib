@@ -24,17 +24,6 @@ pub const Sync = struct {
         const MS = sys.MS;
     });
 };
-pub const Prot = struct {
-    pub const Options = meta.EnumBitField(enum(u64) {
-        none = PROT.NONE,
-        read = PROT.READ,
-        write = PROT.WRITE,
-        exec = PROT.EXEC,
-        grows_down = PROT.GROWSDOWN,
-        grows_up = PROT.GROWSUP,
-        const PROT = sys.PROT;
-    });
-};
 pub const Remap = struct {
     pub const Options = meta.EnumBitField(enum(u64) {
         resize = REMAP.RESIZE,
