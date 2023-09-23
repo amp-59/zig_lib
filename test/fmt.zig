@@ -589,7 +589,7 @@ pub fn main() !void {
     try testRenderFunctions();
     try testSystemFlagsFormatters();
     // try testEquivalentIntToStringFormat();
-    //try testEquivalentLEBFormatAndParse();
+    try testEquivalentLEBFormatAndParse();
     try @import("./fmt/utf8.zig").testUtf8();
     try @import("./fmt/ascii.zig").testAscii();
 }
