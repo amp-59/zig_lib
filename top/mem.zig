@@ -1,22 +1,21 @@
 const sys = @import("./sys.zig");
 const fmt = @import("./fmt.zig");
 const meta = @import("./meta.zig");
-const mach = @import("./mach.zig");
+const bits = @import("./bits.zig");
 const math = @import("./math.zig");
 const proc = @import("./proc.zig");
 const debug = @import("./debug.zig");
 const builtin = @import("./builtin.zig");
-const _virtual = @import("./virtual.zig");
 const _reference = @import("./reference.zig");
 const _container = @import("./container.zig");
 const _allocator = @import("./allocator.zig");
 const _list = @import("./list.zig");
 const mem = @This();
-pub usingnamespace _virtual;
 pub usingnamespace _reference;
 pub usingnamespace _container;
 pub usingnamespace _allocator;
 pub usingnamespace _list;
+const word_bit_size: u16 = @bitSizeOf(usize);
 pub const Sync = struct {
     pub const Options = meta.EnumBitField(enum(u64) {
         synchronous = MS.SYNC,
