@@ -16,23 +16,7 @@ pub usingnamespace _container;
 pub usingnamespace _allocator;
 pub usingnamespace _list;
 const word_bit_size: u16 = @bitSizeOf(usize);
-pub const Sync = struct {
-    pub const Options = meta.EnumBitField(enum(u64) {
-        synchronous = MS.SYNC,
-        asynchronous = MS.ASYNC,
-        invalidate = MS.INVALIDATE,
-        const MS = sys.MS;
-    });
-};
-pub const Remap = struct {
-    pub const Options = meta.EnumBitField(enum(u64) {
-        resize = REMAP.RESIZE,
-        may_move = REMAP.MAYMOVE,
-        fixed = REMAP.FIXED,
-        no_unmap = REMAP.DONTUNMAP,
-        const REMAP = sys.REMAP;
-    });
-};
+
 pub const Advice = enum(usize) {
     normal = 0,
     random = 1,
