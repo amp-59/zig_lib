@@ -208,26 +208,7 @@ pub const Flags = struct {
         zb23: u41 = 0,
     };
 };
-pub const IOVec = struct {
-    addr: usize,
-    len: usize,
-    pub inline fn any(ptr: *const anyopaque) IOVec {
-        const Pointer = @TypeOf(ptr);
-        return .{
-            .addr = @intFromPtr(ptr),
-            .len = @sizeOf(@typeInfo(Pointer).child),
-        };
-    }
-    pub inline fn slice(ptr: anytype) IOVec {
-        const Pointer = @TypeOf(ptr);
-        return .{
-            .addr = @intFromPtr(ptr.ptr),
-            .len = ptr.len *% @sizeOf(@typeInfo(Pointer).child),
-        };
-    }
-};
-
-pub const Whence = enum(u64) { // set, cur, end
+pub const Whence = enum(usize) { // set, cur, end
     set = SEEK.SET,
     cur = SEEK.CUR,
     end = SEEK.END,
