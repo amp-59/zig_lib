@@ -193,21 +193,20 @@ pub noinline fn monitor(comptime T: type, ptr: *T) void {
     }
 }
 fn acquireMap(comptime AddressSpace: type, address_space: *AddressSpace) AddressSpace.map_void {
-    const spec: mem.RegularAddressSpaceSpec = AddressSpace.addr_spec;
-    if (address_space.set(spec.divisions)) {
-        return map(AddressSpace.map_spec, .{}, .{}, spec.addressable_byte_address(), spec.addressable_byte_count());
+    if (address_space.set(AddressSpace.specification.divisions)) {
+        return map(AddressSpace.map_spec, .{}, .{}, //
+            AddressSpace.specification.addressable_byte_address(), AddressSpace.specification.addressable_byte_count());
     }
 }
 fn releaseUnmap(comptime AddressSpace: type, address_space: *AddressSpace) AddressSpace.unmap_void {
-    const spec: mem.RegularAddressSpaceSpec = AddressSpace.addr_spec;
     if (address_space.count() == 0 and
-        address_space.unset(spec.divisions))
+        address_space.unset(AddressSpace.specification.divisions))
     {
-        return unmap(AddressSpace.unmap_spec, spec.addressable_byte_address(), spec.addressable_byte_count());
+        return unmap(AddressSpace.unmap_spec, AddressSpace.specification.addressable_byte_address(), AddressSpace.specification.addressable_byte_count());
     }
 }
 fn acquireSet(comptime AddressSpace: type, address_space: *AddressSpace, index: AddressSpace.Index) bool {
-    if (AddressSpace.addr_spec.options.thread_safe) {
+    if (AddressSpace.specification.options.thread_safe) {
         return address_space.atomicSet(index);
     } else {
         return address_space.set(index);
@@ -221,14 +220,14 @@ fn acquireStaticSet(comptime AddressSpace: type, address_space: *AddressSpace, c
     }
 }
 fn acquireElementarySet(comptime AddressSpace: type, address_space: *AddressSpace) bool {
-    if (comptime AddressSpace.addr_spec.options.thread_safe) {
+    if (comptime AddressSpace.specification.options.thread_safe) {
         return address_space.atomicSet();
     } else {
         return address_space.set();
     }
 }
 fn releaseUnset(comptime AddressSpace: type, address_space: *AddressSpace, index: AddressSpace.Index) bool {
-    if (AddressSpace.addr_spec.options.thread_safe) {
+    if (AddressSpace.specification.options.thread_safe) {
         return address_space.atomicUnset(index);
     } else {
         return address_space.unset(index);
