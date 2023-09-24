@@ -64,111 +64,39 @@ pub const Advice = enum(usize) {
         return "(unknown advise)";
     }
 };
-pub const Fd = struct {
-    pub const Options = meta.EnumBitField(enum(u64) {
-        allow_sealing = MFD.ALLOW_SEALING,
-        huge_tlb = MFD.HUGETLB,
-        close_on_exec = MFD.CLOEXEC,
-        const MFD = sys.MFD;
-    });
-};
-pub const Map = struct {
-    pub const Flags = packed struct(usize) {
-        visibility: Visibility = .private,
-        zb2: u2 = 0,
-        fixed: bool = false,
-        anonymous: bool = true,
-        @"32bit": bool = false,
-        zb7: u1 = 0,
-        grows_down: bool = false,
-        zb9: u2 = 0,
-        deny_write: bool = false,
-        executable: bool = false,
-        locked: bool = false,
-        no_reserve: bool = false,
-        populate: bool = false,
-        non_block: bool = false,
-        stack: bool = false,
-        huge_tlb: bool = false,
-        sync: bool = false,
-        fixed_noreplace: bool = true,
-        zb21: u43 = 0,
-    };
-    pub const Visibility = enum(u2) {
-        shared = 1,
-        private = 2,
-        shared_validate = 3,
-    };
-    pub const Protection = packed struct(usize) {
-        read: bool = true,
-        write: bool = true,
-        exec: bool = false,
-        zb3: u21 = 0,
-        grows_down: bool = false,
-        grows_up: bool = false,
-        zb26: u38 = 0,
-    };
-};
 pub const MapSpec = struct {
-    errors: sys.ErrorPolicy = .{ .throw = sys.mmap_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.mmap.errors.all },
     return_type: type = void,
     logging: debug.Logging.AcquireError = .{},
     const Specification = @This();
 };
 pub const SyncSpec = struct {
-    options: Options = .{},
-    errors: sys.ErrorPolicy = .{ .throw = sys.msync_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.msync.errors.all },
     return_type: type = void,
     logging: debug.Logging.AcquireError = .{},
     const Specification = @This();
-    pub const Options = struct {
-        non_block: bool = false,
-        invalidate: bool = false,
-    };
-    pub fn flags(comptime spec: Specification) Sync.Options {
-        var flags_bitfield: Sync.Options = .{ .val = 0 };
-        if (spec.options.non_block) {
-            flags_bitfield.set(.asynchronous);
-        } else {
-            flags_bitfield.set(.synchronous);
-        }
-        if (spec.options.invalidate) {
-            flags_bitfield.set(.invalidate);
-        }
-        comptime return flags_bitfield;
-    }
 };
 pub const MoveSpec = struct {
-    options: Options = .{},
-    errors: sys.ErrorPolicy = .{ .throw = sys.mremap_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.mremap.errors.all },
     return_type: type = void,
     logging: debug.Logging.SuccessError = .{},
     const Specification = @This();
     const Options = struct { no_unmap: bool = false };
-    pub fn flags(comptime spec: Specification) Remap.Options {
-        var flags_bitfield: Remap.Options = .{ .val = 0 };
-        if (spec.options.no_unmap) {
-            flags_bitfield.set(.no_unmap);
-        }
-        flags_bitfield.set(.fixed);
-        flags_bitfield.set(.may_move);
-        comptime return flags_bitfield;
-    }
 };
 pub const RemapSpec = struct {
-    errors: sys.ErrorPolicy = .{ .throw = sys.mremap_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.mremap.errors.all },
     return_type: type = void,
     logging: debug.Logging.SuccessError = .{},
     const Specification = @This();
 };
 pub const UnmapSpec = struct {
-    errors: sys.ErrorPolicy = .{ .throw = sys.munmap_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.munmap.errors.all },
     return_type: type = void,
     logging: debug.Logging.ReleaseError = .{},
     const Specification = @This();
 };
 pub const ProtectSpec = struct {
-    errors: sys.ErrorPolicy = .{ .throw = sys.mprotect_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.mprotect.errors.all },
     return_type: type = void,
     logging: debug.Logging.SuccessError = .{},
     const Specification = @This();
