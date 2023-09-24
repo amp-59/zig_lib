@@ -111,35 +111,15 @@ pub const ProtectSpec = struct {
     };
 };
 pub const AdviseSpec = struct {
-    errors: sys.ErrorPolicy = .{ .throw = sys.madvise_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.madvise.errors.all },
     return_type: type = void,
     logging: debug.Logging.SuccessError = .{},
 };
 pub const FdSpec = struct {
-    options: Options = .{},
-    errors: sys.ErrorPolicy = .{ .throw = sys.memfd_create_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.memfd_create.errors.all },
     return_type: type = u64,
     logging: debug.Logging.AcquireError = .{},
     const Specification = @This();
-    const Options = struct {
-        allow_sealing: bool = false,
-        huge_tlb: bool = false,
-        close_on_exec: bool = true,
-    };
-    const Visibility = enum { shared, shared_validate, private };
-    pub fn flags(comptime spec: FdSpec) mem.Fd.Options {
-        var flags_bitfield: Fd.Options = .{ .val = 0 };
-        if (spec.options.allow_sealing) {
-            flags_bitfield.set(.allow_sealing);
-        }
-        if (spec.options.huge_tlb) {
-            flags_bitfield.set(.huge_tlb);
-        }
-        if (spec.options.close_on_exec) {
-            flags_bitfield.set(.close_on_exec);
-        }
-        comptime return flags_bitfield;
-    }
 };
 pub const Bytes = struct {
     count: usize,
