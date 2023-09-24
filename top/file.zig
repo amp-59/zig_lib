@@ -840,11 +840,13 @@ pub const ExecuteSpec = struct {
     vars_type: type = []const [*:0]u8,
 };
 pub const GetWorkingDirectorySpec = struct {
+    options: struct { init_state: bool = builtin.is_debug } = .{},
     errors: sys.ErrorPolicy = .{ .throw = spec.getcwd.errors.all },
     return_type: type = u64,
     logging: debug.Logging.SuccessError = .{},
 };
 pub const ChangeWorkingirectorySpec = struct {
+    options: struct { update_state: bool = builtin.is_debug } = .{},
     errors: sys.ErrorPolicy = .{ .throw = spec.chdir.errors.all },
     return_type: type = u64,
     logging: debug.Logging.SuccessError = .{},
