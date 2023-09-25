@@ -2027,7 +2027,7 @@ pub fn GenericSimpleMap(comptime Key: type, comptime Value: type) type {
         }
     };
 }
-pub fn GenericOptionalArrays(comptime Int: type, comptime TaggedUnion: type) type {
+pub fn GenericOptionalArrays(comptime Allocator: type, comptime Int: type, comptime TaggedUnion: type) type {
     const U = packed struct {
         buf: [*]Elem = @ptrFromInt(@alignOf(Elem)),
         buf_max_len: Size = 0,
@@ -2038,15 +2038,17 @@ pub fn GenericOptionalArrays(comptime Int: type, comptime TaggedUnion: type) typ
             addr: usize,
             max_len: Size,
             tag_len: Size,
-            pub fn add(res: *Elem, allocator: *mem.SimpleAllocator, size_of: usize) usize {
-                return allocator.addGenericSize(Size, size_of, 2, &res.addr, &res.max_len, res.tag_len & bit_mask);
-            }
             pub fn len(res: *Elem) Size {
                 return res.tag_len & bit_mask;
             }
-            pub fn cast(res: *Elem, comptime tag: ImTag) []Child(tag) {
-                const ptr: [*]Child(tag) = @ptrFromInt(res.addr);
-                return ptr[0..res.len()];
+            pub fn add(res: *Elem, allocator: *Allocator, size_of: usize) usize {
+                return allocator.addGenericSize(Size, size_of, 2, &res.addr, &res.max_len, res.tag_len & bit_mask);
+            }
+            pub fn at(res: *Elem, comptime tag: ImTag, index: usize) *Child(tag) {
+                return @ptrFromInt(res.addr +% (index *% @sizeOf(Child(tag))));
+            }
+            pub fn cast(res: *Elem, comptime tag: ImTag) [*]Child(tag) {
+                return @as([*]Child(tag), @ptrFromInt(res.addr));
             }
         };
         const bit_size_of: comptime_int = @bitSizeOf(@typeInfo(ImTag).Enum.tag_type);
@@ -2069,7 +2071,7 @@ pub fn GenericOptionalArrays(comptime Int: type, comptime TaggedUnion: type) typ
             }
             return null;
         }
-        fn create(im: *Im, allocator: *mem.SimpleAllocator, tag: ImTag) *Elem {
+        pub fn create(im: *Im, allocator: *Allocator, tag: ImTag) *Elem {
             @setRuntimeSafety(builtin.is_safe);
             const ret: *Elem = @ptrFromInt(allocator.addGenericSize(Size, @sizeOf(Elem), 1, @ptrCast(&im.buf), &im.buf_max_len, im.buf_len));
             im.buf_len +%= 1;
@@ -2077,14 +2079,14 @@ pub fn GenericOptionalArrays(comptime Int: type, comptime TaggedUnion: type) typ
             ret.tag_len = @shlExact(ret.tag_len, shift_amt);
             return ret;
         }
-        pub fn set(im: *Im, allocator: *mem.SimpleAllocator, comptime tag: ImTag, val: []Child(tag)) void {
+        pub fn set(im: *Im, allocator: *Allocator, comptime tag: ImTag, val: []Child(tag)) void {
             @setRuntimeSafety(builtin.is_safe);
             const res: *Elem = im.create(allocator, tag);
             res.addr = @intFromPtr(val.ptr);
             res.max_len = @intCast(val.len);
             res.tag_len = res.max_len | (@as(Size, @intFromEnum(tag)) << shift_amt);
         }
-        pub fn elem(im: *Im, allocator: *mem.SimpleAllocator, tag: ImTag) *Elem {
+        pub fn elem(im: *Im, allocator: *Allocator, tag: ImTag) *Elem {
             return im.getInternal(tag) orelse im.create(allocator, tag);
         }
         pub fn get(im: *const Im, comptime tag: ImTag) []Child(tag) {
@@ -2094,7 +2096,7 @@ pub fn GenericOptionalArrays(comptime Int: type, comptime TaggedUnion: type) typ
             }
             return @constCast(&.{});
         }
-        pub fn add(im: *Im, allocator: *mem.SimpleAllocator, comptime tag: ImTag) *Child(tag) {
+        pub fn add(im: *Im, allocator: *Allocator, comptime tag: ImTag) *Child(tag) {
             @setRuntimeSafety(builtin.is_safe);
             const res: *Elem = im.elem(allocator, tag);
             const ret: usize = res.add(allocator, sizeOf(tag));
