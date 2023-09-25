@@ -40,9 +40,9 @@ fn testBasicMetaFunctions() !void {
     try debug.expect(@hasField(E, "three"));
 }
 fn testAlignmentMetaFunctions() !void {
-    try debug.expect(32 == comptime meta.realBitSizeOf(-964392));
-    try debug.expect(8 == comptime meta.realBitSizeOf(-128));
-    try debug.expect(16 == comptime meta.realBitSizeOf(-129));
+    try debug.expect(32 == comptime meta.signedRealBitSize(-964392));
+    try debug.expect(8 == comptime meta.signedRealBitSize(-128));
+    try debug.expect(16 == comptime meta.signedRealBitSize(-129));
     try debug.expect(8 == meta.alignBitSizeOfBelow(u9));
     try debug.expect(8 == meta.alignBitSizeOfAbove(u7));
     try debug.expect(u8 == meta.AlignBitSizeBelow(u9));
@@ -86,6 +86,11 @@ fn testInitializer() !void {
     debug.expectEqual(T, t, .{ .x = 25, .y = 15 }) catch |err| {
         debug.assertEqual(anyerror, error.UnexpectedValue, err);
     };
+}
+fn testGlobalVariables() !void {
+    const gv: []const meta.GlobalVariableDecl = meta.globalVariables(zl.file.CompoundPath);
+    try debug.expectEqualMemory([]const u8, "home", gv[0].name);
+    try debug.expectEqualMemory([]const u8, "cwd", gv[1].name);
 }
 pub fn main(_: anytype, _: [][*:0]u8) !void {
     try testBasicMetaFunctions();
