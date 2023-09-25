@@ -431,15 +431,18 @@ pub fn testReleaseElementary(comptime AddressSpace: type, address_space: *Addres
     }
     return ret;
 }
-pub fn map(comptime spec: MapSpec, prot: Map.Protection, flags: Map.Flags, addr: u64, len: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
-    const logging: debug.Logging.AcquireError = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.mmap, spec.errors, spec.return_type, [6]usize{
+pub fn map(comptime map_spec: MapSpec, prot: sys.flags.MemProt, flags: sys.flags.MemMap, addr: usize, len: usize) sys.ErrorUnion(
+    map_spec.errors,
+    map_spec.return_type,
+) {
+    const logging: debug.Logging.AcquireError = comptime map_spec.logging.override();
+    if (meta.wrap(sys.call(.mmap, map_spec.errors, map_spec.return_type, [6]usize{
         addr, len, @bitCast(prot), @bitCast(flags), 0, 0,
     }))) |ret| {
         if (logging.Acquire) {
             about.aboutAddrLenNotice(about.map_s, addr, len);
         }
-        if (spec.return_type != void) {
+        if (map_spec.return_type != void) {
             return ret;
         }
     } else |map_error| {
