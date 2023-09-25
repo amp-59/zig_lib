@@ -1035,10 +1035,11 @@ pub const about = struct {
         @setRuntimeSafety(builtin.is_safe);
         var len: usize = 29;
         @as(*[29]u8, @ptrCast(buf)).* = "integer cast truncated bits: ".*;
-        len +%= fmt.Type.Xd(U).formatWriteBuf(.{ .value = arg1 }, buf);
-        @as(*[26]u8, @ptrCast(buf + len)).* = (" greater than " ++ @typeName(T) ++ " maximum (").*;
+        len +%= fmt.Type.Xd(U).formatWriteBuf(.{ .value = arg1 }, buf + len);
+        len +%= fmt.strcpy(buf + len, " greater than " ++ @typeName(T) ++ " maximum (");
         len +%= 26;
-        len +%= fmt.ud(~@as(T, 0)).formatWriteBuf(buf);
+        const V = @Type(.{ .Int = .{ .bits = @bitSizeOf(T) -% 1, .signedness = .unsigned } });
+        len +%= fmt.ud(~@as(V, 0)).formatWriteBuf(buf + len);
         buf[len] = ')';
         return len +% 1;
     }
