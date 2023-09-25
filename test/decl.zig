@@ -3,7 +3,6 @@ pub usingnamespace zl.start;
 const @"test" = struct {
     const algo = @import("algo.zig");
     const builtin = @import("builtin.zig");
-    const cmdline = @import("cmdline-writer.zig");
     const container = @import("container.zig");
     const crypto = @import("crypto.zig");
     const file = @import("file.zig");
