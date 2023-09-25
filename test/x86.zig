@@ -3,7 +3,6 @@ const mem = zl.mem;
 const fmt = zl.fmt;
 const x86 = zl.x86;
 const math = zl.math;
-const spec = zl.spec;
 const debug = zl.debug;
 const builtin = zl.builtin;
 const testing = zl.testing;
@@ -12,7 +11,7 @@ const tab = @import("./tab.zig");
 
 pub usingnamespace zl.start;
 
-pub const logging_override: debug.Logging.Override = spec.logging.override.verbose;
+pub const logging_override: debug.Logging.Override = debug.spec.logging.override.verbose;
 pub const runtime_assertions: bool = true;
 
 fn testAssembler() !void {
