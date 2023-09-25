@@ -1822,7 +1822,7 @@ pub const SimpleAllocator = struct {
         allocator.next = allocator.start;
         allocator.finish = allocator.start;
     }
-    pub fn init_arena(arena: mem.Arena) Allocator {
+    pub fn fromArena(arena: mem.Arena) Allocator {
         mem.map(map_spec, .{}, .{}, arena.lb_addr, 4096);
         return .{
             .start = arena.lb_addr,
@@ -1830,13 +1830,14 @@ pub const SimpleAllocator = struct {
             .finish = arena.lb_addr +% 4096,
         };
     }
-    pub fn init_buffer(buf: anytype) Allocator {
+    pub fn fromBuffer(buf: anytype) Allocator {
         return .{
             .start = @intFromPtr(buf.ptr),
             .next = @intFromPtr(buf.ptr),
-            .finish = @intFromPtr(buf.ptr + buf.len),
+            .finish = @intFromPtr(buf.ptr + @sizeOf(meta.Child(@TypeOf(buf)))),
         };
     }
+
     pub fn alignAbove(allocator: *Allocator, alignment: usize) usize {
         const mask: usize = alignment -% 1;
         return (allocator.next +% mask) & ~mask;
@@ -1871,11 +1872,11 @@ pub const SimpleAllocator = struct {
         align_of: usize,
     ) usize {
         @setRuntimeSafety(builtin.is_safe);
-        const aligned: usize = mach.alignA64(allocator.next, align_of);
+        const aligned: usize = bits.alignA64(allocator.next, align_of);
         const next: usize = aligned +% size_of;
         if (next > allocator.finish) {
             const len: usize = allocator.finish -% allocator.start;
-            const finish: usize = mach.alignA64(next, @max(4096, len));
+            const finish: usize = bits.alignA64(next, @max(4096, len));
             map(map_spec, .{}, .{}, allocator.finish, finish -% allocator.finish);
             allocator.finish = finish;
         }
