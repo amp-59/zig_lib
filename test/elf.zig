@@ -8,13 +8,10 @@ const build = zl.build;
 const debug = zl.debug;
 const builtin = zl.builtin;
 const testing = zl.testing;
+
 pub usingnamespace zl.start;
-
 pub const logging_default = debug.spec.logging.default.verbose;
-
 pub const Builder = build.GenericBuilder(.{});
-pub const comptime_errors: bool = false;
-pub const is_safe: bool = true;
 
 const AddressSpace = mem.GenericRegularAddressSpace(mem.RegularAddressSpaceSpec{
     .label = "builder_space",
@@ -131,9 +128,7 @@ fn testEntryAutoLoader() !void {
     const archive_extra_info: *Loader.Info = try meta.wrap(loader.load(builtin.root.dynamic_units.archive_extra));
     const objcopy_core_info: *Loader.Info = try meta.wrap(loader.load(builtin.root.dynamic_units.objcopy));
     const objcopy_extra_info: *Loader.Info = try meta.wrap(loader.load(builtin.root.dynamic_units.objcopy_extra));
-
     var vtable: Builder.FunctionPointers = .{};
-
     build_core_info.autoLoad(&vtable);
     build_extra_info.autoLoad(&vtable);
     format_core_info.autoLoad(&vtable);
@@ -142,7 +137,6 @@ fn testEntryAutoLoader() !void {
     objcopy_extra_info.autoLoad(&vtable);
     archive_core_info.autoLoad(&vtable);
     archive_extra_info.autoLoad(&vtable);
-
     {
         const cmd1 = .{ .kind = .lib, .mode = .ReleaseSafe };
         const cmd2 = .{ .kind = .exe, .mode = .ReleaseFast };
@@ -246,15 +240,69 @@ fn testConcurrentLoading() !void {
             }
             break;
         }
-        try mem.unmap(.{}, Loader.lb_info_addr, loader.ub_info_addr -% Loader.lb_info_addr);
-        loader.ub_info_addr = Loader.lb_info_addr;
-        try mem.unmap(.{}, Loader.lb_sect_addr, loader.ub_sect_addr -% Loader.lb_sect_addr);
-        loader.ub_sect_addr = Loader.lb_sect_addr;
+        try mem.unmap(.{}, Loader.lb_meta_addr, loader.ub_meta_addr -% Loader.lb_meta_addr);
+        loader.ub_meta_addr = Loader.lb_meta_addr;
+        try mem.unmap(.{}, Loader.lb_prog_addr, loader.ub_prog_addr -% Loader.lb_prog_addr);
+        loader.ub_prog_addr = Loader.lb_prog_addr;
         // This is simply to mess up the starting alignment of the loader
-        loader.ub_info_addr += count;
+        loader.ub_meta_addr += count;
+    }
+}
+
+fn quickCompile(comptime builder_spec: build.BuilderSpec, build_cmd: build.BuildCommand, name: []const u8, pathname: []const u8) !void {
+    const LBuilder = build.GenericBuilder(builder_spec);
+    var address_space: LBuilder.AddressSpace = .{};
+    var thread_space: LBuilder.ThreadSpace = .{};
+    var allocator: build.Allocator = build.Allocator.fromArena(
+        LBuilder.AddressSpace.arena(LBuilder.max_thread_count),
+    );
+    var zig_exe = builtin.root.zig_exe.*;
+    var build_root = builtin.root.build_root.*;
+    var cache_root = builtin.root.cache_root.*;
+    var global_cache_root = builtin.root.global_cache_root.*;
+    var args: [5:builtin.zero([*:0]u8)][*:0]u8 = .{
+        undefined,
+        &zig_exe,
+        &build_root,
+        &cache_root,
+        &global_cache_root,
+    };
+    var vars: [0:builtin.zero([*:0]u8)][*:0]u8 = .{};
+    const top: *LBuilder.Node = LBuilder.Node.init(&allocator, "toplevel", &args, &vars);
+    const node: *LBuilder.Node = top.addBuild(&allocator, build_cmd, name, pathname);
+    if (!LBuilder.prepareCommand(&address_space, &thread_space, &allocator, node, node.tasks.tag, LBuilder.max_thread_count)) {
+        return error.FailedToPrepareTask;
+    }
+    if (!LBuilder.executeSubNode(&address_space, &thread_space, &allocator, node, node.tasks.tag)) {
+        return error.FailedToExecuteTask;
+    }
+    allocator.unmapAll();
+}
+
+fn testBasics() !void {
+    var allocator: mem.SimpleAllocator = .{};
+    var buf: []u8 = allocator.allocate(u8, 1024 * 1024);
+    var loader: Loader = .{};
+    if (@hasDecl(builtin.root.dynamic_units, "build")) {
+        const info: *Loader.Info = try loader.load(builtin.root.dynamic_units.build);
+
+        var vtable: Builder.FunctionPointers = .{};
+        const ptr = Loader.about.aboutBinary(null, info, buf.ptr);
+        debug.write(buf[0..fmt.strlen(ptr, buf.ptr)]);
+        if (info.symbol("top.build.tasks.BuildCommand.formatWriteBuf")) |formatWriteBuf| {
+            vtable.build.formatWriteBuf = @ptrFromInt(info.prog.addr +% formatWriteBuf.st_value);
+        }
+        var build_cmd: build.BuildCommand = .{ .kind = .exe };
+        debug.write(buf[0..vtable.build.formatWriteBuf(
+            &build_cmd,
+            builtin.root.zig_exe,
+            &.{build.Path.create(&.{@src().file})},
+            buf.ptr,
+        )]);
     }
 }
 pub fn main() !void {
-    try testConcurrentLoading();
-    try testEntryAutoLoader();
+    try quickCompile(.{
+        .logging = build.spec.logging.silent,
+    }, .{ .kind = .lib }, "build", "../top/build/build.auto.zig");
 }
