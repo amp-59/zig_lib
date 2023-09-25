@@ -8,7 +8,6 @@ const mach = zl.mach;
 const time = zl.time;
 const meta = zl.meta;
 const file = zl.file;
-const spec = zl.spec;
 const debug = zl.debug;
 const build = zl.build;
 const builtin = zl.builtin;
@@ -17,7 +16,7 @@ pub usingnamespace zl.start;
 
 pub const runtime_assertions: bool = true;
 pub const is_safe: bool = true;
-pub const logging_override: debug.Logging.Override = spec.logging.override.verbose;
+pub const logging_override: debug.Logging.Override = debug.spec.logging.override.verbose;
 
 pub const want_stack_traces: bool = true;
 pub const signal_handlers: debug.SignalHandlers = .{
