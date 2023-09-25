@@ -5,30 +5,15 @@ const elf = @import("./elf.zig");
 const meta = @import("./meta.zig");
 const time = @import("./time.zig");
 const file = @import("./file.zig");
-const mach = @import("./mach.zig");
+const bits = @import("./bits.zig");
 const debug = @import("./debug.zig");
 const builtin = @import("./builtin.zig");
+
 pub const SignalAction = extern struct {
     handler: Handler = .{ .set = .default },
-    flags: Options = .{},
+    flags: sys.flags.SignalAction,
     restorer: *const fn () callconv(.Naked) void = restoreRunTime,
     mask: [2]u32 = .{0} ** 2,
-    const Options = packed struct(usize) {
-        no_child_stop: bool = false,
-        no_child_wait: bool = false,
-        siginfo: bool = true,
-        zb3: u7 = 0,
-        unsupported: bool = false,
-        expose_tagbits: bool = false,
-        zb12: u14 = 0,
-        restorer: bool = true,
-        on_stack: bool = false,
-        restart: bool = true,
-        zb29: u1 = 0,
-        no_defer: bool = false,
-        reset_handler: bool = true,
-        zb32: u32 = 0,
-    };
     const Handler = extern union {
         set: enum(usize) { ignore = 1, default = 0 },
         handler: *const fn (sys.SignalCode) void,
