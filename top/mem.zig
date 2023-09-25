@@ -1106,18 +1106,18 @@ fn lhs(comptime T: type, comptime U: type, lu_values: []const T, ax_values: []co
     return lu_values[0..lhs_len];
 }
 fn rhs(comptime T: type, comptime U: type, lu_values: []const T, ax_values: []const U) []const T {
-    const up_addr: u64 = mach.mulAdd64(@intFromPtr(lu_values.ptr), @sizeOf(T), lu_values.len);
-    const xb_addr: u64 = mach.mulAdd64(@intFromPtr(ax_values.ptr), @sizeOf(U), ax_values.len);
+    const up_addr: u64 = math.mulAdd64(@intFromPtr(lu_values.ptr), @sizeOf(T), lu_values.len);
+    const xb_addr: u64 = math.mulAdd64(@intFromPtr(ax_values.ptr), @sizeOf(U), ax_values.len);
     const rhs_len: u64 = @divExact(up_addr -% xb_addr, @sizeOf(T));
     return lu_values[0..rhs_len];
 }
 fn mid(comptime T: type, comptime U: type, values: []const T) []const U {
     const lb_addr: u64 = @intFromPtr(values.ptr);
-    const up_addr: u64 = mach.mulAdd64(lb_addr, @sizeOf(T), values.len);
-    const ab_addr: u64 = mach.alignA64(lb_addr, @alignOf(U));
-    const xb_addr: u64 = mach.alignB64(up_addr, @alignOf(U));
-    const aligned_bytes: u64 = mach.sub64(xb_addr, ab_addr);
-    const mid_len: u64 = mach.div64(aligned_bytes, @sizeOf(U));
+    const up_addr: u64 = math.mulAdd64(lb_addr, @sizeOf(T), values.len);
+    const ab_addr: u64 = bits.alignA64(lb_addr, @alignOf(U));
+    const xb_addr: u64 = bits.alignB64(up_addr, @alignOf(U));
+    const aligned_bytes: u64 = math.sub64(xb_addr, ab_addr);
+    const mid_len: u64 = math.div64(aligned_bytes, @sizeOf(U));
     return @as([*]const U, @ptrFromInt(ab_addr))[0..mid_len];
 }
 fn testEqualArray(comptime T: type, comptime array_info: builtin.Type.Array, arg1: T, arg2: T) bool {
