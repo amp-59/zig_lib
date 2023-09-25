@@ -533,11 +533,10 @@ pub fn advise(comptime advise_spec: AdviseSpec, advice: Advice, addr: u64, len: 
         return madvise_error;
     }
 }
-pub fn fd(comptime spec: FdSpec, pathname: [:0]const u8) sys.ErrorUnion(spec.errors, spec.return_type) {
+pub fn fd(comptime fd_spec: FdSpec, flags: sys.flags.MemFd, pathname: [:0]const u8) sys.ErrorUnion(fd_spec.errors, fd_spec.return_type) {
     const name_buf_addr: u64 = @intFromPtr(pathname.ptr);
-    const flags: mem.Fd.Options = comptime spec.flags();
-    const logging: debug.Logging.AcquireError = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.memfd_create, spec.errors, spec.return_type, .{ name_buf_addr, flags.val }))) |mem_fd| {
+    const logging: debug.Logging.AcquireError = comptime fd_spec.logging.override();
+    if (meta.wrap(sys.call(.memfd_create, fd_spec.errors, fd_spec.return_type, .{ name_buf_addr, @bitCast(flags) }))) |mem_fd| {
         if (logging.Acquire) {
             about.aboutMemFdPathnameNotice(about.memfd_s, mem_fd, pathname);
         }
