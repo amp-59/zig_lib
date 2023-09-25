@@ -548,259 +548,6 @@ pub fn fd(comptime fd_spec: FdSpec, flags: sys.flags.MemFd, pathname: [:0]const 
         return memfd_create_error;
     }
 }
-pub const about = opaque {
-    const map_s: fmt.AboutSrc = fmt.about("map");
-    const acq_s: fmt.AboutSrc = fmt.about("acq");
-    const rel_s: fmt.AboutSrc = fmt.about("rel");
-    const acq_2_s: fmt.AboutSrc = fmt.about("acq-fault\n");
-    const rel_2_s: fmt.AboutSrc = fmt.about("rel-fault\n");
-    const move_s: fmt.AboutSrc = fmt.about("move");
-    const unmap_s: fmt.AboutSrc = fmt.about("unmap");
-    const remap_s: fmt.AboutSrc = fmt.about("remap");
-    const memfd_s: fmt.AboutSrc = fmt.about("memfd");
-    const resize_s: fmt.AboutSrc = fmt.about("resize");
-    const advice_s: fmt.AboutSrc = fmt.about("advice");
-    const protect_s: fmt.AboutSrc = fmt.about("protect");
-    pub fn aboutAddrLenNotice(about_s: fmt.AboutSrc, addr: u64, len: u64) void {
-        @setRuntimeSafety(false);
-        var buf: [4096]u8 = undefined;
-        buf[0..about_s.len].* = about_s.*;
-        var ptr: [*]u8 = buf[about_s.len..];
-        ptr += fmt.ux64(addr).formatWriteBuf(ptr);
-        ptr[0..2].* = "..".*;
-        ptr += 2;
-        ptr += fmt.ux64(addr +% len).formatWriteBuf(ptr);
-        ptr[0..2].* = ", ".*;
-        ptr += 2;
-        ptr += fmt.bytes(len).formatWriteBuf(ptr);
-        ptr[0] = '\n';
-        debug.write(buf[0 .. @intFromPtr(ptr + 1) - @intFromPtr(&buf)]);
-    }
-    fn aboutAddrLenDescrNotice(about_s: fmt.AboutSrc, addr: u64, len: u64, description_s: []const u8) void {
-        @setRuntimeSafety(false);
-        var buf: [4096]u8 = undefined;
-        buf[0..about_s.len].* = about_s.*;
-        var ptr: [*]u8 = buf[about_s.len..];
-        ptr += fmt.ux64(addr).formatWriteBuf(ptr);
-        ptr[0..2].* = "..".*;
-        ptr += 2;
-        ptr += fmt.ux64(addr +% len).formatWriteBuf(ptr);
-        ptr[0..2].* = ", ".*;
-        ptr += 2;
-        ptr += fmt.bytes(len).formatWriteBuf(ptr);
-        ptr[0..2].* = ", ".*;
-        ptr += 2;
-        @memcpy(ptr, description_s);
-        ptr += description_s.len;
-        ptr[0] = '\n';
-        debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
-    }
-    pub fn aboutRemapNotice(about_s: fmt.AboutSrc, old_addr: u64, old_len: u64, maybe_new_addr: ?u64, maybe_new_len: ?u64) void {
-        @setRuntimeSafety(false);
-        var buf: [4096]u8 = undefined;
-        const new_addr: u64 = maybe_new_addr orelse old_addr;
-        const new_len: u64 = maybe_new_len orelse old_len;
-        const abs_diff: u64 = builtin.max(u64, new_len, old_len) -% builtin.min(u64, new_len, old_len);
-        const notation_s: *const [3]u8 = mach.cmovx(new_len < old_len, ", -", ", +");
-        buf[0..about_s.len].* = about_s.*;
-        var ptr: [*]u8 = buf[about_s.len..];
-        ptr += fmt.ux64(old_addr).formatWriteBuf(ptr);
-        ptr[0..2].* = "..".*;
-        ptr += 2;
-        ptr += fmt.ux64(old_addr +% old_len).formatWriteBuf(ptr);
-        ptr[0..4].* = " -> ".*;
-        ptr += 4;
-        ptr += fmt.ux64(new_addr).formatWriteBuf(ptr);
-        ptr[0..2].* = "..".*;
-        ptr += 2;
-        ptr += fmt.ux64(new_addr +% new_len).formatWriteBuf(ptr);
-        ptr[0..3].* = notation_s.*;
-        ptr += 3;
-        ptr += fmt.bytes(abs_diff).formatWriteBuf(ptr);
-        ptr[0] = '\n';
-        debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
-    }
-    fn aboutIndexLbAddrUpAddrLabelNotice(about_s: fmt.AboutSrc, index: ?u64, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
-        @setRuntimeSafety(false);
-        var buf: [4096]u8 = undefined;
-        buf[0..about_s.len].* = about_s.*;
-        var ptr: [*]u8 = buf[about_s.len..];
-        const label_s: []const u8 = label orelse "arena";
-        @memcpy(ptr, label_s);
-        ptr += label_s.len;
-        ptr[0] = '-';
-        ptr += 1;
-        ptr += fmt.ud64(index orelse 0).formatWriteBuf(ptr);
-        ptr[0..2].* = ", ".*;
-        ptr += 2;
-        ptr += fmt.ux64(lb_addr).formatWriteBuf(ptr);
-        ptr[0..2].* = "..".*;
-        ptr += 2;
-        ptr += fmt.ux64(up_addr).formatWriteBuf(ptr);
-        ptr[0..2].* = ", ".*;
-        ptr += 2;
-        ptr += fmt.bytes(up_addr -% lb_addr).formatWriteBuf(ptr);
-        ptr[0] = '\n';
-        debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
-    }
-    fn aboutMemFdPathnameNotice(about_s: fmt.AboutSrc, mem_fd: usize, pathname: [:0]const u8) void {
-        @setRuntimeSafety(false);
-        var buf: [4096]u8 = undefined;
-        buf[0..about_s.len].* = about_s.*;
-        var ptr: [*]u8 = buf[about_s.len..];
-        @memcpy(ptr, pathname);
-        ptr += pathname.len;
-        ptr[0..9].* = ", mem_fd=".*;
-        ptr += 9;
-        ptr += fmt.ud64(mem_fd).formatWriteBuf(ptr);
-        ptr[0] = '\n';
-        debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
-    }
-    pub fn aboutAddrLenError(about_s: fmt.AboutSrc, error_name: []const u8, addr: u64, len: u64) void {
-        @setRuntimeSafety(false);
-        var buf: [4096]u8 = undefined;
-        buf[0..about_s.len].* = about_s.*;
-        var ptr: [*]u8 = buf[about_s.len..];
-        ptr[0..debug.about.error_s.len].* = debug.about.error_s.*;
-        ptr += debug.about.error_s.len;
-        @memcpy(ptr, error_name);
-        ptr += error_name.len;
-        ptr[0..2].* = ", ".*;
-        ptr += 2;
-        ptr += fmt.ux64(addr).formatWriteBuf(ptr);
-        ptr[0..2].* = "..".*;
-        ptr += 2;
-        ptr += fmt.ux64(addr +% len).formatWriteBuf(ptr);
-        ptr[0..2].* = ", ".*;
-        ptr += 2;
-        ptr += fmt.bytes(len).formatWriteBuf(ptr);
-        ptr[0] = '\n';
-        debug.write(buf[0 .. @intFromPtr(ptr + 1) - @intFromPtr(&buf)]);
-    }
-    pub fn aboutAddrLenDescrError(about_s: fmt.AboutSrc, error_name: []const u8, addr: u64, len: u64, description_s: []const u8) void {
-        @setRuntimeSafety(false);
-        var buf: [4096]u8 = undefined;
-        buf[0..about_s.len].* = about_s.*;
-        var ptr: [*]u8 = buf[about_s.len..];
-        ptr[0..debug.about.error_s.len].* = debug.about.error_s.*;
-        ptr += debug.about.error_s.len;
-        @memcpy(ptr, error_name);
-        ptr += error_name.len;
-        ptr[0..2].* = ", ".*;
-        ptr += 2;
-        ptr += fmt.ux64(addr).formatWriteBuf(ptr);
-        ptr[0..2].* = "..".*;
-        ptr += 2;
-        ptr += fmt.ux64(addr +% len).formatWriteBuf(ptr);
-        ptr[0..2].* = ", ".*;
-        ptr += 2;
-        ptr += fmt.ud64(len).formatWriteBuf(ptr);
-        ptr[0..8].* = " bytes, ".*;
-        ptr += 8;
-        @memcpy(ptr, description_s);
-        ptr += description_s.len;
-        ptr[0] = '\n';
-        debug.write(buf[0 .. @intFromPtr(ptr - @intFromPtr(&buf)) +% 1]);
-    }
-    fn aboutRemapError(about_s: fmt.AboutSrc, error_name: []const u8, old_addr: u64, old_len: u64, maybe_new_addr: ?u64, maybe_new_len: ?u64) void {
-        @setRuntimeSafety(false);
-        var buf: [4096]u8 = undefined;
-        const new_addr: u64 = maybe_new_addr orelse old_addr;
-        const new_len: u64 = maybe_new_len orelse old_len;
-        const abs_diff: u64 = builtin.max(u64, new_len, old_len) -% builtin.min(u64, new_len, old_len);
-        const notation_s: *const [3]u8 = mach.cmovx(new_len < old_len, ", -", ", +");
-        buf[0..about_s.len].* = about_s.*;
-        var ptr: [*]u8 = buf[about_s.len..];
-        ptr[0..debug.about.error_s.len].* = debug.about.error_s.*;
-        ptr += debug.about.error_s.len;
-        @memcpy(ptr, error_name);
-        ptr += error_name.len;
-        ptr[0..2].* = ", ".*;
-        ptr += 2;
-        ptr += fmt.ux64(old_addr).formatWriteBuf(ptr);
-        ptr[0..2].* = "..".*;
-        ptr += 2;
-        ptr += fmt.ux64(old_addr +% old_len).formatWriteBuf(ptr);
-        ptr[0..4].* = " -> ".*;
-        ptr += 4;
-        ptr += fmt.ux64(new_addr).formatWriteBuf(ptr);
-        ptr[0..2].* = "..".*;
-        ptr += 2;
-        ptr += fmt.ux64(new_addr +% new_len).formatWriteBuf(ptr);
-        ptr[0..3].* = notation_s.*;
-        ptr += 3;
-        ptr += fmt.bytes(abs_diff).formatWriteBuf(ptr);
-        ptr[0] = '\n';
-        debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
-    }
-    fn aboutIndexLbAddrUpAddrLabelError(about_s: fmt.AboutSrc, error_name: [:0]const u8, index: ?u64, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
-        @setRuntimeSafety(false);
-        var buf: [4096]u8 = undefined;
-        const label_s: []const u8 = label orelse "arena";
-        buf[0..about_s.len].* = about_s.*;
-        var ptr: [*]u8 = buf[about_s.len..];
-        ptr[0..debug.about.error_s.len].* = debug.about.error_s.*;
-        ptr += debug.about.error_s.len;
-        @memcpy(ptr, error_name);
-        ptr += error_name.len;
-        ptr[0..2].* = ", ".*;
-        ptr += 2;
-        @memcpy(ptr, label_s);
-        ptr += label_s.len;
-        ptr[0] = '-';
-        ptr += 1;
-        ptr += fmt.ud64(index orelse 0).formatWriteBuf(ptr);
-        ptr[0..2].* = ", ".*;
-        ptr += 2;
-        ptr += fmt.ux64(lb_addr).formatWriteBuf(ptr);
-        ptr[0..2].* = "..".*;
-        ptr += 2;
-        ptr += fmt.ux64(up_addr).formatWriteBuf(ptr);
-        ptr[0..2].* = ", ".*;
-        ptr += 2;
-        ptr += fmt.bytes(up_addr -% lb_addr).formatWriteBuf(ptr);
-        ptr[0] = '\n';
-        debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
-    }
-    fn aboutPathnameError(about_s: fmt.AboutSrc, error_name: []const u8, pathname: [:0]const u8) void {
-        @setRuntimeSafety(false);
-        var buf: [4096]u8 = undefined;
-        buf[0..about_s.len].* = about_s.*;
-        var ptr: [*]u8 = buf[about_s.len..];
-        ptr[0..debug.about.error_s.len].* = debug.about.error_s.*;
-        ptr += debug.about.error_s.len;
-        @memcpy(ptr, error_name);
-        ptr += error_name.len;
-        ptr[0..2].* = ", ".*;
-        ptr += 2;
-        @memcpy(ptr, pathname);
-        ptr += pathname.len;
-        ptr[0] = '\n';
-        debug.write(buf[0 .. @intFromPtr(ptr - @intFromPtr(&buf)) +% 1]);
-    }
-    pub fn sampleAllReports() void {
-        const about_s: fmt.AboutSrc = comptime fmt.about("about");
-        const pathname1: [:0]const u8 = "/path/to/file1";
-        const fd1: u32 = 8;
-        const addr1: u64 = 4096;
-        const len1: u64 = 4096;
-        const addr2: u64 = 8192;
-        const len2: u64 = 8192;
-        aboutAddrLenNotice(about_s, addr1, len1);
-        aboutAddrLenDescrNotice(about_s, addr1, len1, "<missing>");
-        aboutRemapNotice(about_s, addr1, len1, addr2, len2);
-        aboutRemapNotice(remap_s, addr1, len1, addr2, len2);
-        aboutRemapNotice(resize_s, addr1, len1, null, len2);
-        aboutRemapNotice(move_s, addr1, len1, addr2, null);
-        aboutMemFdPathnameNotice(memfd_s, fd1, pathname1);
-        aboutAddrLenError(about_s, "UnmapError", addr1, len1);
-        aboutAddrLenDescrError(about_s, "ProtectError", addr1, len1, "<missing>");
-        aboutRemapError(remap_s, "RemapError", addr1, len1, addr2, len2);
-        aboutRemapError(resize_s, "ResizeError", addr1, len1, null, len2);
-        aboutRemapError(move_s, "MoveError", addr1, len1, addr2, null);
-        aboutPathnameError(memfd_s, "MemFdError", pathname1);
-    }
-};
 pub fn literalView(comptime s: [:0]const u8) mem.StructuredAutomaticView(u8, &@as(u8, 0), s.len, null, .{}) {
     return .{ .impl = .{ .auto = @as(*const [s.len:0]u8, @ptrCast(s.ptr)).* } };
 }
@@ -2337,3 +2084,1677 @@ pub const toBytes = meta.toBytes;
 // SyncSpec
 // MoveSpec
 // FdSpec
+
+pub const ResourceError = error{ UnderSupply, OverSupply };
+pub const ResourceErrorPolicy = builtin.InternalError(ResourceError);
+pub const RegularAddressSpaceSpec = RegularMultiArena;
+pub const DiscreteAddressSpaceSpec = DiscreteMultiArena;
+
+pub fn DiscreteBitSet(comptime elements: u16, comptime value_type: type, comptime index_type: type) type {
+    const val_bit_size_of: u16 = @bitSizeOf(value_type);
+    if (val_bit_size_of != 1) {
+        @compileError("not yet implemented");
+    }
+    const bit_size_of: u16 = elements * val_bit_size_of;
+    const data_type: type = meta.UniformData(bit_size_of);
+    const data_info: builtin.Type = @typeInfo(data_type);
+    const idx_info: builtin.Type = @typeInfo(index_type);
+    if (data_info == .Array and idx_info != .Enum) {
+        return extern struct {
+            bits: data_type = [1]u64{0} ** data_info.Array.len,
+            pub const BitSet: type = @This();
+            const Word: type = data_info.Array.child;
+            const Shift: type = builtin.ShiftAmount(Word);
+            pub fn get(bit_set: *const BitSet, index: index_type) value_type {
+                @setRuntimeSafety(builtin.is_safe);
+                return bit_set.bits[index / word_bit_size] & (@as(Word, 1) << @intCast((word_bit_size -% 1) -% @rem(index, word_bit_size))) != 0;
+            }
+            pub fn set(bit_set: *BitSet, index: index_type) void {
+                @setRuntimeSafety(builtin.is_safe);
+                bit_set.bits[index / word_bit_size] |= @as(Word, 1) << @intCast((word_bit_size -% 1) -% @rem(index, word_bit_size));
+            }
+            pub fn unset(bit_set: *BitSet, index: index_type) void {
+                @setRuntimeSafety(builtin.is_safe);
+                bit_set.bits[index / word_bit_size] &= ~(@as(Word, 1) << @intCast((word_bit_size -% 1) -% @rem(index, word_bit_size)));
+            }
+        };
+    } else if (data_info == .Int and idx_info != .Enum) {
+        return extern struct {
+            bits: data_type = 0,
+            pub const BitSet: type = @This();
+            const Word: type = data_type;
+            const Shift: type = builtin.ShiftAmount(Word);
+            pub fn get(bit_set: *const BitSet, index: index_type) value_type {
+                @setRuntimeSafety(builtin.is_safe);
+                return bit_set.bits & (@as(Word, 1) << @intCast((data_info.Int.bits -% 1) -% index)) != 0;
+            }
+            pub fn set(bit_set: *BitSet, index: index_type) void {
+                @setRuntimeSafety(builtin.is_safe);
+                bit_set.bits |= @as(Word, 1) << @intCast((data_info.Int.bits -% 1) -% index);
+            }
+            pub fn unset(bit_set: *BitSet, index: index_type) void {
+                @setRuntimeSafety(builtin.is_safe);
+                bit_set.bits &= ~(@as(Word, 1) << @intCast((data_info.Int.bits -% 1) -% index));
+            }
+        };
+    } else if (data_info == .Array and idx_info == .Enum) {
+        return extern struct {
+            bits: data_type = [1]u64{0} ** data_info.Array.len,
+            pub const BitSet: type = @This();
+            const Word: type = data_info.Array.child;
+            const Shift: type = builtin.ShiftAmount(Word);
+            pub fn get(bit_set: *const BitSet, index: index_type) value_type {
+                @setRuntimeSafety(builtin.is_safe);
+                return bit_set.bits[index / word_bit_size] & (@as(Word, 1) << @intCast((word_bit_size -% 1) -% @rem(index, word_bit_size))) != 0;
+            }
+            pub fn set(bit_set: *BitSet, index: index_type) void {
+                @setRuntimeSafety(builtin.is_safe);
+                bit_set.bits[index / word_bit_size] |= @as(Word, 1) << @intCast((word_bit_size -% 1) -% @rem(index, word_bit_size));
+            }
+            pub fn unset(bit_set: *BitSet, index: index_type) void {
+                @setRuntimeSafety(builtin.is_safe);
+                bit_set.bits[index / word_bit_size] &= ~(@as(Word, 1) << @intCast((word_bit_size -% 1) -% @rem(index, word_bit_size)));
+            }
+        };
+    } else if (data_info == .Int and idx_info == .Enum) {
+        return extern struct {
+            bits: data_type = 0,
+            pub const BitSet: type = @This();
+            const Word: type = data_type;
+            const Shift: type = builtin.ShiftAmount(Word);
+            pub fn get(bit_set: *const BitSet, index: index_type) value_type {
+                @setRuntimeSafety(builtin.is_safe);
+                return bit_set.bits & (@as(Word, 1) << @intCast((data_info.Int.bits -% 1) -% @intFromEnum(index))) != 0;
+            }
+            pub fn set(bit_set: *BitSet, index: index_type) void {
+                @setRuntimeSafety(builtin.is_safe);
+                bit_set.bits |= @as(Word, 1) << @intCast((data_info.Int.bits -% 1) -% @intFromEnum(index));
+            }
+            pub fn unset(bit_set: *BitSet, index: index_type) void {
+                @setRuntimeSafety(builtin.is_safe);
+                bit_set.bits &= ~(@as(Word, 1) << @intCast((data_info.Int.bits -% 1) -% @intFromEnum(index)));
+            }
+        };
+    }
+}
+fn ThreadSafeSetBoolInt(comptime elements: u16, comptime index_type: type) type {
+    return extern struct {
+        bytes: [elements]u8 align(8) = builtin.zero([elements]u8),
+        pub const SafeSet: type = @This();
+        const Int = @Type(.{ .Int = .{ .bits = 8 *% elements, .signedness = .unsigned } });
+        const mutexes: comptime_int = @divExact(@sizeOf(@This()), 4);
+        pub fn get(safe_set: *const SafeSet, index: index_type) bool {
+            return safe_set.bytes[index] != 0;
+        }
+        pub fn set(safe_set: *SafeSet, index: index_type) void {
+            safe_set.bytes[index] = 255;
+        }
+        pub fn unset(safe_set: *SafeSet, index: index_type) void {
+            safe_set.bytes[index] = 0;
+        }
+        pub inline fn atomicSet(safe_set: *SafeSet, index: index_type) bool {
+            @setRuntimeSafety(false);
+            return @cmpxchgStrong(u8, &safe_set.bytes[index], 0, 255, .SeqCst, .SeqCst) == null;
+        }
+        pub inline fn atomicUnset(safe_set: *SafeSet, index: index_type) bool {
+            @setRuntimeSafety(false);
+            return @cmpxchgStrong(u8, &safe_set.bytes[index], 255, 0, .SeqCst, .SeqCst) == null;
+        }
+        pub fn mutex(safe_set: *SafeSet, index: index_type) *u32 {
+            @setRuntimeSafety(false);
+            return @as(*u32, @ptrFromInt(bits.alignB64(@intFromPtr(&safe_set.bytes[index]), 4)));
+        }
+        pub fn int(safe_set: *const SafeSet) *const Int {
+            @setRuntimeSafety(false);
+            return @ptrCast(safe_set);
+        }
+    };
+}
+fn ThreadSafeSetBoolEnum(comptime elements: u16, comptime index_type: type) type {
+    return extern struct {
+        bytes: [elements]u8 align(8) = builtin.zero([elements]u8),
+        pub const SafeSet: type = @This();
+        const Int = @Type(.{ .Int = .{ .bits = 8 *% elements, .signedness = .unsigned } });
+        const mutexes: comptime_int = @divExact(@sizeOf(@This()), 4);
+        pub fn get(safe_set: *const SafeSet, index: index_type) bool {
+            return safe_set.bytes[@intFromEnum(index)] != 0;
+        }
+        pub fn set(safe_set: *SafeSet, index: index_type) void {
+            safe_set.bytes[@intFromEnum(index)] = 255;
+        }
+        pub fn unset(safe_set: *SafeSet, index: index_type) void {
+            safe_set.bytes[@intFromEnum(index)] = 0;
+        }
+        pub fn atomicSet(safe_set: *SafeSet, index: index_type) bool {
+            return @cmpxchgStrong(u8, &safe_set.bytes[index], 0, 255, .SeqCst, .SeqCst) == null;
+        }
+        pub fn atomicUnset(safe_set: *SafeSet, index: index_type) bool {
+            return @cmpxchgStrong(u8, &safe_set.bytes[index], 255, 0, .SeqCst, .SeqCst) == null;
+        }
+        pub fn mutex(safe_set: *SafeSet, index: index_type) *u32 {
+            return @as(*u32, @ptrFromInt(bits.alignB64(@intFromPtr(&safe_set.bytes[@intFromEnum(index)]), 4)));
+        }
+        pub fn int(safe_set: *const SafeSet) *const Int {
+            return @ptrCast(safe_set);
+        }
+    };
+}
+fn ThreadSafeSetEnumInt(comptime elements: u16, comptime value_type: type, comptime index_type: type) type {
+    return extern struct {
+        bytes: [elements]value_type align(8) = builtin.zero([elements]value_type),
+        pub const SafeSet: type = @This();
+        const Int = @Type(.{ .Int = .{ .bits = 8 *% elements, .signedness = .unsigned } });
+        const mutexes: comptime_int = @divExact(@sizeOf(@This()), 4);
+        pub fn get(safe_set: *const SafeSet, index: index_type) value_type {
+            return safe_set.bytes[index];
+        }
+        pub fn set(safe_set: *SafeSet, index: index_type, to: value_type) void {
+            safe_set.bytes[index] = to;
+        }
+        pub fn atomicExchange(safe_set: *SafeSet, index: index_type, if_state: value_type, to_state: value_type) bool {
+            return @cmpxchgStrong(value_type, &safe_set.bytes[index], if_state, to_state, .SeqCst, .SeqCst) == null;
+        }
+        pub fn mutex(safe_set: *SafeSet, index: index_type) *u32 {
+            return @as(*u32, @ptrFromInt(bits.alignB64(@intFromPtr(&safe_set.bytes[index]), 4)));
+        }
+        pub fn int(safe_set: *const SafeSet) *const Int {
+            return @ptrCast(safe_set);
+        }
+    };
+}
+fn ThreadSafeSetEnumEnum(comptime elements: u16, comptime value_type: type, comptime index_type: type) type {
+    return extern struct {
+        bytes: [elements]value_type align(8) = builtin.zero([elements]value_type),
+        pub const SafeSet: type = @This();
+        const Int = @Type(.{ .Int = .{ .bits = 8 *% elements, .signedness = .unsigned } });
+        const mutexes: comptime_int = @divExact(@sizeOf(@This()), 4);
+        pub fn get(safe_set: *const SafeSet, index: index_type) value_type {
+            return safe_set.bytes[@intFromEnum(index)];
+        }
+        pub fn set(safe_set: *SafeSet, index: index_type, to: value_type) void {
+            safe_set.bytes[@intFromEnum(index)] = to;
+        }
+        pub fn exchange(safe_set: *SafeSet, index: index_type, if_state: value_type, to_state: value_type) bool {
+            const ret: bool = safe_set.get(index) == if_state;
+            if (ret) safe_set.bytes[@intFromEnum(index)] = to_state;
+            return ret;
+        }
+        pub fn atomicExchange(safe_set: *SafeSet, index: index_type, if_state: value_type, to_state: value_type) callconv(.C) bool {
+            @setRuntimeSafety(false);
+            return @cmpxchgStrong(value_type, &safe_set.bytes[@intFromEnum(index)], if_state, to_state, .SeqCst, .SeqCst) == null;
+        }
+        pub fn mutex(safe_set: *SafeSet, index: index_type) *u32 {
+            @setRuntimeSafety(false);
+            return @as(*u32, @ptrFromInt(bits.alignB64(@intFromPtr(&safe_set.bytes[@intFromEnum(index)]), 4)));
+        }
+        pub fn int(safe_set: *const SafeSet) *const Int {
+            @setRuntimeSafety(false);
+            return @ptrCast(safe_set);
+        }
+    };
+}
+pub fn ThreadSafeSet(comptime elements: u16, comptime value_type: type, comptime index_type: type) type {
+    const idx_info: builtin.Type = @typeInfo(index_type);
+    if (value_type == bool and idx_info != .Enum) {
+        return ThreadSafeSetBoolInt(elements, index_type);
+    } else if (value_type == bool and idx_info == .Enum) {
+        return ThreadSafeSetBoolEnum(elements, index_type);
+    } else if (value_type != bool and idx_info != .Enum) {
+        return ThreadSafeSetEnumInt(elements, value_type, index_type);
+    } else if (value_type != bool and idx_info == .Enum) {
+        return ThreadSafeSetEnumEnum(elements, value_type, index_type);
+    }
+}
+fn GenericMultiSet(
+    comptime addr_spec: DiscreteAddressSpaceSpec,
+    comptime directory: anytype,
+    comptime Fields: type,
+) type {
+    const T = struct {
+        fields: Fields = .{},
+        pub const MultiSet: type = @This();
+        inline fn arenaIndex(comptime index: addr_spec.index_type) addr_spec.index_type {
+            if (@typeInfo(addr_spec.index_type) == .Enum) {
+                comptime return @as(addr_spec.index_type, @enumFromInt(directory[@intFromEnum(index)].arena_index));
+            } else {
+                comptime return directory[index].arena_index;
+            }
+        }
+        inline fn fieldName(comptime index: addr_spec.index_type) []const u8 {
+            if (@typeInfo(addr_spec.index_type) == .Enum) {
+                comptime return directory[@intFromEnum(index)].field_name;
+            } else {
+                comptime return directory[index].field_name;
+            }
+        }
+        pub fn get(multi_set: *const MultiSet, comptime index: addr_spec.index_type) addr_spec.value_type {
+            return @field(multi_set.fields, fieldName(index)).get(arenaIndex(index));
+        }
+        pub fn set(multi_set: *MultiSet, comptime index: addr_spec.index_type) void {
+            @field(multi_set.fields, fieldName(index)).set(arenaIndex(index));
+        }
+        pub fn exchange(
+            multi_set: *MultiSet,
+            comptime index: addr_spec.index_type,
+            if_state: addr_spec.value_type,
+            to_state: addr_spec.value_type,
+        ) bool {
+            return @field(multi_set.fields, fieldName(index)).exchange(arenaIndex(index), if_state, to_state);
+        }
+        pub fn unset(multi_set: *MultiSet, comptime index: addr_spec.index_type) void {
+            @field(multi_set.fields, fieldName(index)).unset(arenaIndex(index));
+        }
+        pub fn atomicSet(multi_set: *MultiSet, comptime index: addr_spec.index_type) bool {
+            return @field(multi_set.fields, fieldName(index)).atomicSet(arenaIndex(index));
+        }
+        pub fn atomicUnset(multi_set: *MultiSet, comptime index: addr_spec.index_type) bool {
+            return @field(multi_set.fields, fieldName(index)).atomicUnset(arenaIndex(index));
+        }
+        pub fn atomicExchange(
+            multi_set: *MultiSet,
+            comptime index: addr_spec.index_type,
+            if_state: addr_spec.value_type,
+            to_state: addr_spec.value_type,
+        ) bool {
+            return @field(multi_set.fields, fieldName(index)).atomicExchange(arenaIndex(index), if_state, to_state);
+        }
+    };
+    return T;
+}
+pub fn Intersection(comptime A: type) type {
+    return extern struct { l: A, x: A, h: A };
+}
+pub fn bounds(any: anytype) Bounds {
+    return .{
+        .lb_addr = @intFromPtr(any.ptr),
+        .up_addr = @intFromPtr(any.ptr) +% any.len,
+    };
+}
+pub fn intersection2(comptime A: type, s_arena: A, t_arena: A) ?Intersection(A) {
+    if (intersection(A, s_arena, t_arena)) |x_arena| {
+        return .{
+            .l = if (@hasField(A, "options")) .{
+                .lb_addr = @min(t_arena.lb_addr, s_arena.lb_addr),
+                .up_addr = x_arena.lb_addr,
+                .options = if (s_arena.lb_addr < t_arena.lb_addr)
+                    s_arena.options
+                else
+                    t_arena.options,
+            } else .{
+                .lb_addr = @min(t_arena.lb_addr, s_arena.lb_addr),
+                .up_addr = x_arena.lb_addr,
+            },
+            .x = x_arena,
+            .h = if (@hasField(A, "options")) .{
+                .lb_addr = x_arena.up_addr,
+                .up_addr = @max(s_arena.up_addr, t_arena.up_addr),
+                .options = if (t_arena.up_addr > s_arena.up_addr)
+                    t_arena.options
+                else
+                    s_arena.options,
+            } else .{
+                .lb_addr = x_arena.up_addr,
+                .up_addr = @max(s_arena.up_addr, t_arena.up_addr),
+            },
+        };
+    }
+    return null;
+}
+pub fn intersection(comptime A: type, s_arena: Arena, t_arena: Arena) ?A {
+    if (builtin.int2v(
+        bool,
+        t_arena.up_addr -% 1 < s_arena.lb_addr,
+        s_arena.up_addr -% 1 < t_arena.lb_addr,
+    )) {
+        return null;
+    }
+    return .{
+        .lb_addr = @max(s_arena.lb_addr, t_arena.lb_addr),
+        .up_addr = @min(s_arena.up_addr, t_arena.up_addr),
+        .options = .{
+            .thread_safe = builtin.int2v(
+                bool,
+                s_arena.options.thread_safe,
+                t_arena.options.thread_safe,
+            ),
+        },
+    };
+}
+pub const Bounds = extern struct {
+    lb_addr: usize,
+    up_addr: usize,
+};
+pub const Vector = extern struct {
+    addr: usize,
+    len: usize,
+    pub inline fn any(ptr: *const anyopaque) Vector {
+        const Pointer = @TypeOf(ptr);
+        return .{
+            .addr = @intFromPtr(ptr),
+            .len = @sizeOf(@typeInfo(Pointer).child),
+        };
+    }
+    pub inline fn slice(ptr: anytype) Vector {
+        const Pointer = @TypeOf(ptr);
+        return .{
+            .addr = @intFromPtr(ptr.ptr),
+            .len = ptr.len *% @sizeOf(@typeInfo(Pointer).child),
+        };
+    }
+};
+pub const Arena = extern struct {
+    lb_addr: usize,
+    up_addr: usize,
+    options: Flags = .{},
+    pub const Flags = packed struct(u8) {
+        thread_safe: bool = false,
+        require_map: bool = false,
+        require_unmap: bool = false,
+        zb3: u5 = 0,
+    };
+};
+pub const AddressSpaceLogging = packed struct {
+    acquire: debug.Logging.AcquireErrorFault = .{},
+    release: debug.Logging.ReleaseErrorFault = .{},
+    map: debug.Logging.AcquireError = .{},
+    unmap: debug.Logging.ReleaseError = .{},
+};
+pub const AddressSpaceErrors = struct {
+    acquire: ResourceErrorPolicy = .{ .throw = error.UnderSupply },
+    release: ResourceErrorPolicy = .abort,
+    map: sys.ErrorPolicy = .{ .throw = spec.mmap.errors.all },
+    unmap: sys.ErrorPolicy = .{ .abort = spec.munmap.errors.all },
+};
+pub const ArenaReference = struct {
+    index: comptime_int,
+    options: ?Arena.Flags = null,
+    fn arena(comptime arena_ref: ArenaReference, comptime AddressSpace: type) Arena {
+        return AddressSpace.arena(arena_ref.index);
+    }
+};
+pub const DiscreteMultiArena = struct {
+    label: ?[]const u8 = null,
+    list: []const Arena,
+    subspace: ?[]const meta.Generic = null,
+    value_type: type = bool,
+    index_type: type = u16,
+    errors: AddressSpaceErrors = .{},
+    logging: AddressSpaceLogging = .{},
+    pub const MultiArena: type = @This();
+    fn Directory(comptime multi_arena: MultiArena) type {
+        return [multi_arena.list.len]struct {
+            field_name: []const u8,
+            arena_index: comptime_int,
+        };
+    }
+    pub fn Implementation(comptime multi_arena: MultiArena) type {
+        debug.assertNotEqual(u64, multi_arena.list.len, 0);
+        var directory: Directory(multi_arena) = undefined;
+        var fields: []const builtin.Type.StructField = meta.empty;
+        var thread_safe_state: bool = multi_arena.list[0].options.thread_safe;
+        var arena_index: comptime_int = 0;
+        for (multi_arena.list, 0..) |super_arena, index| {
+            if (thread_safe_state and !super_arena.options.thread_safe) {
+                const T: type = ThreadSafeSet(arena_index +% 1, multi_arena.value_type, multi_arena.index_type);
+                fields = fields ++ [1]builtin.Type.StructField{meta.structField(T, fmt.ci(fields.len), .{})};
+                directory[index] = .{ .arena_index = 0, .field_name = fmt.ci(fields.len) };
+                arena_index = 1;
+            } else if (!thread_safe_state and super_arena.options.thread_safe) {
+                const T: type = DiscreteBitSet(arena_index +% 1, multi_arena.value_type, multi_arena.index_type);
+                fields = fields ++ [1]builtin.Type.StructField{meta.structField(T, fmt.ci(fields.len), .{})};
+                directory[index] = .{ .arena_index = 0, .field_name = fmt.ci(fields.len) };
+                arena_index = 1;
+            } else {
+                directory[index] = .{ .arena_index = arena_index, .field_name = fmt.ci(fields.len) };
+                arena_index +%= 1;
+            }
+            thread_safe_state = super_arena.options.thread_safe;
+        }
+        const GenericSet = if (thread_safe_state) ThreadSafeSet else DiscreteBitSet;
+        const T: type = GenericSet(arena_index +% 1, multi_arena.value_type, multi_arena.index_type);
+        fields = fields ++ [1]builtin.Type.StructField{meta.structField(T, fmt.ci(fields.len), .{})};
+        if (fields.len == 1) {
+            return fields[0].type;
+        }
+        return GenericMultiSet(multi_arena, directory, @Type(meta.structInfo(.Extern, fields)));
+    }
+    fn referSubRegular(comptime multi_arena: MultiArena, comptime sub_arena: Arena) []const ArenaReference {
+        var map_list: []const ArenaReference = meta.empty;
+        var s_index: multi_arena.index_type = 0;
+        while (s_index <= multi_arena.list.len) : (s_index +%= 1) {
+            const super_arena: Arena = multi_arena.list[s_index];
+            if (super_arena.lb_addr > sub_arena.up_addr) {
+                break;
+            }
+            if (super_arena.intersection(sub_arena) != null) {
+                map_list = map_list ++ [1]ArenaReference{.{
+                    .index = s_index,
+                    .options = multi_arena.list[s_index].options,
+                }};
+            }
+        }
+        return map_list;
+    }
+    fn referSubDiscrete(comptime multi_arena: MultiArena, comptime sub_list: []const Arena) []const ArenaReference {
+        var map_list: []const ArenaReference = meta.empty;
+        var t_index: multi_arena.index_type = 0;
+        while (t_index != sub_list.len) : (t_index +%= 1) {
+            var s_index: multi_arena.index_type = 0;
+            while (s_index != multi_arena.list.len) : (s_index +%= 1) {
+                const s_arena: Arena = multi_arena.list[s_index];
+                const t_arena: Arena = sub_list[t_index];
+                if (s_arena.intersection(t_arena) != null) {
+                    map_list = map_list ++ [1]ArenaReference{.{
+                        .index = s_index,
+                        .options = multi_arena.list[s_index].options,
+                    }};
+                }
+            }
+        }
+        return map_list;
+    }
+    pub fn capacityAll(comptime multi_arena: MultiArena) u64 {
+        return builtin.sub(u64, multi_arena.up_addr, multi_arena.lb_addr);
+    }
+    pub fn capacityAny(comptime multi_arena: MultiArena, comptime index: multi_arena.index_type) u64 {
+        return multi_arena.list[index].up_addr -% multi_arena.list[index].up_addr;
+    }
+    pub fn invert(comptime multi_arena: MultiArena, addr: u64) multi_arena.index_type {
+        var index: multi_arena.index_type = 0;
+        while (index != multi_arena.list.len) : (index +%= 1) {
+            if (addr >= multi_arena.list[index].lb_addr and
+                addr < multi_arena.list[index].up_addr)
+            {
+                return index;
+            }
+        }
+        unreachable;
+    }
+    pub fn arena(comptime multi_arena: MultiArena, index: multi_arena.index_type) Arena {
+        return multi_arena.list[index];
+    }
+    pub fn count(comptime multi_arena: MultiArena) comptime_int {
+        return multi_arena.list.len;
+    }
+    pub fn low(comptime multi_arena: MultiArena, comptime index: multi_arena.index_type) u64 {
+        return multi_arena.list[index].lb_addr;
+    }
+    pub fn high(comptime multi_arena: MultiArena, comptime index: multi_arena.index_type) u64 {
+        return multi_arena.list[index].up_addr;
+    }
+    pub fn instantiate(comptime multi_arena: MultiArena) type {
+        return GenericDiscreteAddressSpace(multi_arena);
+    }
+    pub fn options(comptime multi_arena: MultiArena, comptime index: multi_arena.index_type) Arena.Flags {
+        return multi_arena.list[index].options;
+    }
+};
+pub const RegularMultiArena = struct {
+    /// This will show up in logging.
+    label: ?[]const u8 = null,
+    /// Lower bound of address space. This is used when computing division
+    /// length.
+    lb_addr: u64 = 0,
+    /// Upper bound of address space. This is used when computing division
+    /// length.
+    up_addr: u64 = 1 << 47,
+    /// The first arena starts at this offset in the first division.
+    /// This is an option to allow the largest alignment possible per division
+    /// while avoiding the binary mapping in the first division.
+    lb_offset: u64 = 0,
+    /// The last arena ends at this offset below the end of the last division.
+    up_offset: u64 = 0,
+    divisions: u64 = 64,
+    alignment: u64 = 4096,
+    subspace: ?[]const meta.Generic = null,
+    value_type: type = bool,
+    index_type: type = u16,
+    errors: AddressSpaceErrors = .{},
+    logging: AddressSpaceLogging = .{},
+    options: Arena.Flags = .{},
+    pub const MultiArena = @This();
+    fn Index(comptime multi_arena: MultiArena) type {
+        return multi_arena.index_type;
+    }
+    fn Implementation(comptime multi_arena: MultiArena) type {
+        if (multi_arena.options.thread_safe or
+            @bitSizeOf(multi_arena.value_type) == 8)
+        {
+            return ThreadSafeSet(
+                multi_arena.divisions +% @intFromBool(multi_arena.options.require_map),
+                multi_arena.value_type,
+                multi_arena.index_type,
+            );
+        } else {
+            return DiscreteBitSet(
+                multi_arena.divisions +% @intFromBool(multi_arena.options.require_map),
+                multi_arena.value_type,
+                multi_arena.index_type,
+            );
+        }
+    }
+    pub inline fn addressable_byte_address(comptime multi_arena: MultiArena) u64 {
+        return math.add64(multi_arena.lb_addr, multi_arena.lb_offset);
+    }
+    pub inline fn allocated_byte_address(comptime multi_arena: MultiArena) u64 {
+        return multi_arena.lb_addr;
+    }
+    pub inline fn unallocated_byte_address(comptime multi_arena: MultiArena) u64 {
+        return math.sub64(multi_arena.up_addr, multi_arena.up_offset);
+    }
+    pub inline fn unaddressable_byte_address(comptime multi_arena: MultiArena) u64 {
+        return multi_arena.up_addr;
+    }
+    pub inline fn allocated_byte_count(comptime multi_arena: MultiArena) u64 {
+        return math.sub64(unallocated_byte_address(multi_arena), allocated_byte_address(multi_arena));
+    }
+    pub inline fn addressable_byte_count(comptime multi_arena: MultiArena) u64 {
+        return math.sub64(unaddressable_byte_address(multi_arena), addressable_byte_address(multi_arena));
+    }
+    fn referSubRegular(comptime multi_arena: MultiArena, comptime sub_arena: Arena) []const ArenaReference {
+        var map_list: []const ArenaReference = meta.empty;
+        var max_index: Index(multi_arena) = multi_arena.invert(sub_arena.up_addr);
+        var min_index: Index(multi_arena) = multi_arena.invert(sub_arena.lb_addr);
+        var s_index: Index(multi_arena) = min_index;
+        while (s_index <= max_index) : (s_index +%= 1) {
+            map_list = meta.concat(ArenaReference, map_list, .{
+                .index = s_index,
+                .options = multi_arena.options,
+            });
+        }
+        if (isRegular(multi_arena, map_list)) {
+            return map_list;
+        } else {
+            @compileError("invalid sub address space spec");
+        }
+    }
+    fn referSubDiscrete(comptime multi_arena: MultiArena, comptime sub_list: []const Arena) []const ArenaReference {
+        var map_list: []const ArenaReference = meta.empty;
+        var max_index: Index(multi_arena) = multi_arena.invert(sub_list[sub_list.len -% 1].up_addr);
+        var min_index: Index(multi_arena) = multi_arena.invert(sub_list[0].lb_addr);
+        var s_index: Index(multi_arena) = min_index;
+        while (s_index <= max_index) : (s_index +%= 1) {
+            map_list = meta.concat(ArenaReference, map_list, .{
+                .index = s_index,
+                .options = multi_arena.options,
+            });
+        }
+        if (isRegular(multi_arena, map_list)) {
+            return map_list;
+        } else {
+            @compileError("invalid sub address space spec");
+        }
+    }
+    pub inline fn count(comptime multi_arena: MultiArena) Index(multi_arena) {
+        comptime return multi_arena.divisions;
+    }
+    pub fn capacityAll(comptime multi_arena: MultiArena) u64 {
+        comptime return bits.alignA64(multi_arena.up_addr -% multi_arena.lb_addr, multi_arena.alignment);
+    }
+    pub fn capacityEach(comptime multi_arena: MultiArena) u64 {
+        comptime return @divExact(capacityAll(multi_arena), multi_arena.divisions);
+    }
+    pub fn invert(comptime multi_arena: MultiArena, addr: u64) Index(multi_arena) {
+        return @as(Index(multi_arena), @intCast((addr -% multi_arena.lb_addr) / capacityEach(multi_arena)));
+    }
+    pub fn low(comptime multi_arena: MultiArena, index: Index(multi_arena)) u64 {
+        const offset: u64 = index *% comptime capacityEach(multi_arena);
+        return @max(multi_arena.lb_addr +% multi_arena.lb_offset, multi_arena.lb_addr +% offset);
+    }
+    pub fn high(comptime multi_arena: MultiArena, index: Index(multi_arena)) u64 {
+        const offset: u64 = (index +% 1) *% comptime capacityEach(multi_arena);
+        return @min(multi_arena.up_addr -% multi_arena.up_offset, multi_arena.lb_addr +% offset);
+    }
+    pub fn instantiate(comptime multi_arena: MultiArena) type {
+        return GenericRegularAddressSpace(multi_arena);
+    }
+    pub fn super(comptime multi_arena: MultiArena) Arena {
+        return .{
+            .lb_addr = multi_arena.lb_addr,
+            .up_addr = multi_arena.up_addr,
+            .options = multi_arena.options,
+        };
+    }
+    pub fn arena(comptime multi_arena: MultiArena, index: Index(multi_arena)) Arena {
+        return .{
+            .lb_addr = multi_arena.low(index),
+            .up_addr = multi_arena.high(index),
+            .options = multi_arena.options,
+        };
+    }
+};
+pub fn isRegular(comptime multi_arena: anytype, comptime map_list: []const ArenaReference) bool {
+    var safety: ?bool = null;
+    var addr: ?u64 = null;
+    for (map_list) |item| {
+        if (safety) |prev| {
+            if (item.options) |options| {
+                if (options.thread_safe != prev) {
+                    return false;
+                }
+            }
+        } else {
+            if (item.options) |options| {
+                safety = options.thread_safe;
+            }
+        }
+        if (addr) |prev| {
+            if (multi_arena.low(item.index) == prev) {
+                addr = multi_arena.high(item.index);
+            } else {
+                return false;
+            }
+        } else {
+            addr = multi_arena.high(item.index);
+        }
+    }
+    return true;
+}
+fn RegularTypes(comptime AddressSpace: type) type {
+    return struct {
+        pub const acquire_void: type = blk: {
+            if (AddressSpace.specification.options.require_map and
+                AddressSpace.specification.errors.map.throw.len != 0)
+            {
+                const MMapError = sys.Error(AddressSpace.specification.errors.map.throw);
+                if (AddressSpace.specification.errors.acquire == .throw) {
+                    break :blk (MMapError || ResourceError)!void;
+                }
+                break :blk MMapError!void;
+            }
+            if (AddressSpace.specification.errors.acquire == .throw) {
+                break :blk ResourceError!void;
+            }
+            break :blk void;
+        };
+        pub const acquire_bool: type = blk: {
+            if (AddressSpace.specification.options.require_map and
+                AddressSpace.specification.errors.map.throw.len != 0)
+            {
+                break :blk sys.Error(AddressSpace.specification.errors.map.throw)!bool;
+            }
+            break :blk bool;
+        };
+        pub const release_void: type = blk: {
+            if (AddressSpace.specification.options.require_unmap and
+                AddressSpace.specification.errors.unmap.throw.len != 0)
+            {
+                const MUnmapError = sys.Error(AddressSpace.specification.errors.unmap.throw);
+                if (AddressSpace.specification.errors.release == .throw) {
+                    break :blk (MUnmapError || ResourceError)!void;
+                }
+                break :blk MUnmapError!void;
+            }
+            if (AddressSpace.specification.errors.release == .throw) {
+                break :blk ResourceError!void;
+            }
+            break :blk void;
+        };
+        pub const release_bool: type = blk: {
+            if (AddressSpace.specification.options.require_unmap and
+                AddressSpace.specification.errors.unmap.throw.len != 0)
+            {
+                break :blk sys.Error(AddressSpace.specification.errors.unmap.throw)!bool;
+            }
+            break :blk bool;
+        };
+        pub const map_void: type = blk: {
+            if (AddressSpace.specification.options.require_map and
+                AddressSpace.specification.errors.map.throw.len != 0)
+            {
+                break :blk sys.Error(AddressSpace.specification.errors.map.throw)!void;
+            }
+            break :blk void;
+        };
+        pub const unmap_void: type = blk: {
+            if (AddressSpace.specification.options.require_unmap and
+                AddressSpace.specification.errors.unmap.throw.len != 0)
+            {
+                break :blk sys.Error(AddressSpace.specification.errors.unmap.throw)!void;
+            }
+            break :blk void;
+        };
+    };
+}
+fn DiscreteTypes(comptime AddressSpace: type) type {
+    return struct {
+        pub fn acquire_void(comptime index: AddressSpace.Index) type {
+            if (AddressSpace.specification.options(index).require_map and
+                AddressSpace.specification.errors.map.throw.len != 0)
+            {
+                const MMapError = sys.Error(AddressSpace.specification.errors.map.throw);
+                if (AddressSpace.specification.errors.acquire == .throw) {
+                    return (MMapError || ResourceError)!void;
+                }
+                return MMapError!void;
+            }
+            if (AddressSpace.specification.errors.acquire == .throw) {
+                return ResourceError!void;
+            }
+            return void;
+        }
+        pub fn release_void(comptime index: AddressSpace.Index) type {
+            if (AddressSpace.specification.options(index).require_unmap and
+                AddressSpace.specification.errors.unmap.throw.len != 0)
+            {
+                const MUnmapError = sys.Error(AddressSpace.specification.errors.unmap.throw);
+                if (AddressSpace.specification.errors.release == .throw) {
+                    return (MUnmapError || ResourceError)!void;
+                }
+                return MUnmapError!void;
+            }
+            if (AddressSpace.specification.errors.release == .throw) {
+                return ResourceError!void;
+            }
+            return void;
+        }
+        pub fn map_void(comptime index: AddressSpace.Index) type {
+            if (AddressSpace.specification.options(index).require_map and
+                AddressSpace.specification.errors.map.throw.len != 0)
+            {
+                return sys.Error(AddressSpace.specification.errors.map.throw)!void;
+            }
+            return void;
+        }
+        pub fn unmap_void(comptime index: AddressSpace.Index) type {
+            if (AddressSpace.specification.options(index).require_unmap and
+                AddressSpace.specification.errors.unmap.throw.len != 0)
+            {
+                return sys.Error(AddressSpace.specification.errors.unmap.throw)!void;
+            }
+            return void;
+        }
+    };
+}
+fn Specs(comptime AddressSpace: type) type {
+    return struct {
+        pub const map_spec = .{
+            .errors = AddressSpace.specification.errors.map,
+            .logging = AddressSpace.specification.logging.map,
+        };
+        pub const unmap_spec = .{
+            .errors = AddressSpace.specification.errors.unmap,
+            .logging = AddressSpace.specification.logging.unmap,
+        };
+    };
+}
+/// Regular:
+/// Good:
+///     * Good locality associated with computing the begin and end addresses
+///       using the arena index alone.
+///     * Thread safety is all-or-nothing, therefore requesting atomic
+///       operations from a thread-unsafe address space yields a compile error.
+/// Bad:
+///     * Poor flexibility.
+///     * Results must be tightly constrained or checked.
+///     * Arenas can not be independently configured.
+///     * Thread safety is all-or-nothing, which increases the metadata size
+///       required by each arena from 1 to 8 bits.
+pub fn GenericRegularAddressSpace(comptime addr_spec: RegularAddressSpaceSpec) type {
+    const T = extern struct {
+        impl: RegularAddressSpaceSpec.Implementation(addr_spec) align(8) = defaultValue(addr_spec),
+        pub const RegularAddressSpace = @This();
+        pub const Index: type = addr_spec.index_type;
+        pub const Value: type = addr_spec.value_type;
+        pub const specification: RegularAddressSpaceSpec = addr_spec;
+        pub inline fn get(address_space: *const RegularAddressSpace, index: Index) Value {
+            return address_space.impl.get(index);
+        }
+        pub inline fn unset(address_space: *RegularAddressSpace, index: Index) bool {
+            const ret: bool = address_space.impl.get(index);
+            if (ret) address_space.impl.unset(index);
+            return ret;
+        }
+        pub inline fn set(address_space: *RegularAddressSpace, index: Index) bool {
+            const ret: bool = address_space.impl.get(index);
+            if (!ret) address_space.impl.set(index);
+            return !ret;
+        }
+        pub inline fn exchange(
+            address_space: *RegularAddressSpace,
+            index: Index,
+            if_state: Value,
+            to_state: Value,
+        ) bool {
+            const ret: Value = address_space.impl.get(index);
+            if (ret == if_state) address_space.impl.set(index, to_state);
+            return !ret;
+        }
+        pub inline fn atomicUnset(address_space: *RegularAddressSpace, index: Index) bool {
+            return addr_spec.options.thread_safe and address_space.impl.atomicUnset(index);
+        }
+        pub inline fn atomicSet(address_space: *RegularAddressSpace, index: Index) bool {
+            return addr_spec.options.thread_safe and address_space.impl.atomicSet(index);
+        }
+        pub inline fn atomicExchange(
+            address_space: *RegularAddressSpace,
+            index: Index,
+            comptime if_state: addr_spec.value_type,
+            comptime to_state: addr_spec.value_type,
+        ) bool {
+            return addr_spec.options.thread_safe and
+                address_space.impl.atomicExchange(index, if_state, to_state);
+        }
+        pub fn low(index: Index) u64 {
+            return addr_spec.low(index);
+        }
+        pub fn high(index: Index) u64 {
+            return addr_spec.high(index);
+        }
+        pub fn arena(index: Index) Arena {
+            return addr_spec.arena(index);
+        }
+        pub fn count(address_space: *RegularAddressSpace) u64 {
+            var index: Index = 0;
+            var ret: u64 = 0;
+            while (index != addr_spec.divisions) : (index +%= 1) {
+                ret +%= builtin.int(u64, address_space.impl.get(index));
+            }
+            return ret;
+        }
+        pub usingnamespace Specs(RegularAddressSpace);
+        pub usingnamespace RegularTypes(RegularAddressSpace);
+        pub usingnamespace GenericAddressSpace(RegularAddressSpace);
+    };
+    return T;
+}
+/// Discrete:
+/// Good:
+///     * Arbitrary ranges.
+///     * Maps directly to an arena.
+/// Bad:
+///     * Arena index must be known at compile time.
+///     * Inversion is expensive.
+///     * Constructing the bit set fields can be expensive at compile time.
+pub fn GenericDiscreteAddressSpace(comptime addr_spec: DiscreteAddressSpaceSpec) type {
+    const T = struct {
+        impl: DiscreteAddressSpaceSpec.Implementation(addr_spec) = defaultValue(addr_spec),
+        pub const DiscreteAddressSpace = @This();
+        pub const Index: type = addr_spec.index_type;
+        pub const Value: type = addr_spec.value_type;
+        pub const specification: DiscreteAddressSpaceSpec = addr_spec;
+        pub fn get(address_space: *const DiscreteAddressSpace, comptime index: Index) bool {
+            return address_space.impl.get(index);
+        }
+        pub fn unset(address_space: *DiscreteAddressSpace, comptime index: Index) bool {
+            const ret: addr_spec.value_type = address_space.get(index);
+            if (ret) address_space.impl.unset(index);
+            return ret;
+        }
+        pub fn set(address_space: *DiscreteAddressSpace, comptime index: Index) bool {
+            const ret: addr_spec.value_type = !address_space.get(index);
+            if (ret) address_space.impl.set(index);
+            return ret;
+        }
+        pub fn transform(address_space: *DiscreteAddressSpace, comptime index: Index, if_state: Value, to_state: Value) bool {
+            const ret: Value = address_space.get(index);
+            if (ret == if_state) address_space.impl.transform(index, if_state, to_state);
+            return !ret;
+        }
+        pub fn atomicUnset(address_space: *DiscreteAddressSpace, comptime index: Index) bool {
+            return addr_spec.list[index].options.thread_safe and address_space.impl.atomicUnset(index);
+        }
+        pub fn atomicSet(address_space: *DiscreteAddressSpace, comptime index: Index) bool {
+            return addr_spec.list[index].options.thread_safe and address_space.impl.atomicSet(index);
+        }
+        pub fn atomicExchange(
+            address_space: *DiscreteAddressSpace,
+            comptime index: Index,
+            comptime if_state: addr_spec.value_type,
+            comptime to_state: addr_spec.value_type,
+        ) bool {
+            return addr_spec.list[index].options.thread_safe and
+                address_space.impl.atomicExchange(index, if_state, to_state);
+        }
+        pub inline fn low(comptime index: Index) u64 {
+            return addr_spec.low(index);
+        }
+        pub inline fn high(comptime index: Index) u64 {
+            return addr_spec.high(index);
+        }
+        pub inline fn arena(comptime index: Index) Arena {
+            return addr_spec.arena(index);
+        }
+        pub fn count(address_space: *DiscreteAddressSpace) u64 {
+            comptime var index: Index = 0;
+            var ret: u64 = 0;
+            inline while (index != addr_spec.list.len) : (index +%= 1) {
+                ret +%= builtin.int(u64, address_space.impl.get(index));
+            }
+            return ret;
+        }
+        pub usingnamespace Specs(DiscreteAddressSpace);
+        pub usingnamespace DiscreteTypes(DiscreteAddressSpace);
+        pub usingnamespace GenericAddressSpace(DiscreteAddressSpace);
+    };
+    return T;
+}
+pub const ElementaryAddressSpaceSpec = struct {
+    label: ?[]const u8 = null,
+    lb_addr: u64 = 0x40000000,
+    up_addr: u64 = 0x800000000000,
+    errors: AddressSpaceErrors,
+    logging: AddressSpaceLogging,
+    options: Arena.Flags,
+};
+/// Elementary:
+pub fn GenericElementaryAddressSpace(comptime addr_spec: ElementaryAddressSpaceSpec) type {
+    const T = struct {
+        impl: bool = false,
+        comptime high: fn () u64 = high,
+        comptime low: fn () u64 = low,
+        pub const ElementaryAddressSpace = @This();
+        pub const specification: ElementaryAddressSpaceSpec = addr_spec;
+        pub fn get(address_space: *const ElementaryAddressSpace) bool {
+            return address_space.impl;
+        }
+        pub fn unset(address_space: *ElementaryAddressSpace) bool {
+            const ret: bool = address_space.impl;
+            if (ret) {
+                address_space.impl = false;
+            }
+            return ret;
+        }
+        pub fn set(address_space: *ElementaryAddressSpace) bool {
+            const ret: bool = address_space.impl;
+            if (!ret) {
+                address_space.impl = true;
+            }
+            return !ret;
+        }
+        pub fn atomicSet(address_space: *ElementaryAddressSpace) bool {
+            return @cmpxchgStrong(u8, &address_space.impl, 0, 255, .SeqCst, .SeqCst);
+        }
+        pub fn atomicUnset(address_space: *ElementaryAddressSpace) bool {
+            return @cmpxchgStrong(u8, &address_space.impl, 255, 0, .SeqCst, .SeqCst);
+        }
+        fn low() u64 {
+            return addr_spec.lb_addr;
+        }
+        fn high() u64 {
+            return addr_spec.up_addr;
+        }
+        pub fn arena() Arena {
+            return .{
+                .lb_addr = addr_spec.lb_addr,
+                .up_addr = addr_spec.up_addr,
+                .options = addr_spec.options,
+            };
+        }
+        pub fn count(address_space: *const ElementaryAddressSpace) u8 {
+            return builtin.int(u8, address_space.impl);
+        }
+        pub usingnamespace Specs(ElementaryAddressSpace);
+        pub usingnamespace RegularTypes(ElementaryAddressSpace);
+        pub usingnamespace GenericAddressSpace(ElementaryAddressSpace);
+    };
+    return T;
+}
+fn GenericAddressSpace(comptime AddressSpace: type) type {
+    return extern struct {
+        pub fn formatWrite(address_space: AddressSpace, array: anytype) void {
+            if (@TypeOf(AddressSpace.specification) == DiscreteAddressSpaceSpec) {
+                return AddressSpace.about.formatWriteDiscrete(address_space, array);
+            } else {
+                return AddressSpace.about.formatWriteRegular(address_space, array);
+            }
+        }
+        pub fn formatLength(address_space: AddressSpace) u64 {
+            if (@TypeOf(AddressSpace.specification) == DiscreteAddressSpaceSpec) {
+                return AddressSpace.about.formatLengthDiscrete(address_space);
+            } else {
+                return AddressSpace.about.formatLengthRegular(address_space);
+            }
+        }
+        pub fn invert(addr: u64) AddressSpace.Index {
+            return @as(AddressSpace.Index, @intCast(AddressSpace.specification.invert(addr)));
+        }
+        pub fn SubSpace(comptime label_or_index: anytype) type {
+            return GenericSubSpace(AddressSpace.specification.subspace.?, label_or_index);
+        }
+        const about = struct {
+            const about_set_s: []const u8 = fmt.about("set");
+            const about_set_1_s: []const u8 = fmt.about("unset");
+            fn formatWriteRegular(address_space: AddressSpace, array: anytype) void {
+                var arena_index: AddressSpace.Index = 0;
+                array.writeMany(about_set_s);
+                while (arena_index != comptime AddressSpace.specification.count()) : (arena_index +%= 1) {
+                    if (!address_space.impl.get(arena_index)) {
+                        array.writeFormat(fmt.ud64(arena_index));
+                        array.writeCount(2, ", ".*);
+                    }
+                }
+                arena_index = 0;
+                array.writeMany(about_set_1_s);
+                while (arena_index != comptime AddressSpace.specification.count()) : (arena_index +%= 1) {
+                    if (address_space.impl.get(arena_index)) {
+                        array.writeFormat(fmt.ud64(arena_index));
+                        array.writeCount(2, ", ".*);
+                    }
+                }
+            }
+            fn formatLengthRegular(address_space: AddressSpace) u64 {
+                var len: u64 = 0;
+                var arena_index: AddressSpace.Index = 0;
+                len +%= about_set_s.len;
+                while (arena_index != comptime AddressSpace.specification.count()) : (arena_index +%= 1) {
+                    if (!address_space.impl.get(arena_index)) {
+                        len +%= fmt.length(AddressSpace.Index, arena_index, 10);
+                        len +%= 2;
+                    }
+                }
+                arena_index = 0;
+                len +%= about_set_1_s.len;
+                while (arena_index != comptime AddressSpace.specification.count()) : (arena_index +%= 1) {
+                    if (address_space.impl.get(arena_index)) {
+                        len +%= fmt.length(AddressSpace.Index, arena_index, 10);
+                        len +%= 2;
+                    }
+                }
+                return len;
+            }
+            fn formatWriteDiscrete(address_space: AddressSpace, array: anytype) void {
+                comptime var arena_index: AddressSpace.Index = 0;
+                array.writeMany(about_set_s);
+                inline while (arena_index != comptime AddressSpace.specification.count()) : (arena_index +%= 1) {
+                    if (!address_space.impl.get(arena_index)) {
+                        array.writeFormat(fmt.ud64(arena_index));
+                        array.writeCount(2, ", ".*);
+                    }
+                }
+                arena_index = 0;
+                array.writeMany(about_set_1_s);
+                inline while (arena_index != comptime AddressSpace.specification.count()) : (arena_index +%= 1) {
+                    if (address_space.impl.get(arena_index)) {
+                        array.writeFormat(fmt.ud64(arena_index));
+                        array.writeCount(2, ", ".*);
+                    }
+                }
+            }
+            fn formatLengthDiscrete(address_space: AddressSpace) u64 {
+                var len: u64 = 0;
+                comptime var arena_index: AddressSpace.Index = 0;
+                len +%= about_set_s.len;
+                inline while (arena_index != comptime AddressSpace.specification.count()) : (arena_index +%= 1) {
+                    if (address_space.impl.get(AddressSpace.Index, arena_index)) {
+                        len +%= fmt.length(AddressSpace.Index, arena_index, 10);
+                        len +%= 2;
+                    }
+                }
+                arena_index = 0;
+                len +%= about_set_1_s.len;
+                inline while (arena_index != comptime AddressSpace.specification.count()) : (arena_index +%= 1) {
+                    if (!address_space.impl.get(AddressSpace.Index, arena_index)) {
+                        len +%= fmt.length(AddressSpace.Index, arena_index, 10);
+                        len +%= 2;
+                    }
+                }
+                return len;
+            }
+        };
+    };
+}
+pub fn generic(comptime any: anytype) meta.Generic {
+    const T: type = if (@hasField(@TypeOf(any), "list"))
+        DiscreteMultiArena
+    else
+        RegularMultiArena;
+    return meta.genericCast(T, any);
+}
+pub fn genericSlice(comptime any: anytype) []const meta.Generic {
+    return meta.genericSlice(generic, any);
+}
+fn GenericSubSpace(comptime ss: []const meta.Generic, comptime any: anytype) type {
+    switch (@typeInfo(@TypeOf(any))) {
+        .Int, .ComptimeInt => {
+            return ss[any].cast().instantiate();
+        },
+        else => for (ss) |s| {
+            if (s.cast().label) |label| {
+                if (label.len != any.len) {
+                    continue;
+                }
+                for (label, 0..) |c, i| {
+                    if (c != any[i]) continue;
+                }
+                return s.cast().instantiate();
+            }
+        },
+    }
+}
+fn defaultValue(comptime multi_arena: anytype) multi_arena.Implementation() {
+    var tmp: multi_arena.Implementation() = .{};
+    for (multi_arena.subspace orelse
+        return tmp) |subspace|
+    {
+        for (blk: {
+            if (subspace.type == RegularMultiArena) {
+                break :blk multi_arena.referSubRegular(subspace.cast().super());
+            }
+            if (subspace.type == DiscreteMultiArena) {
+                break :blk multi_arena.referSubDiscrete(subspace.cast().list);
+            }
+        }) |ref| {
+            tmp.set(ref.index);
+        }
+    }
+    return tmp;
+}
+pub const about = opaque {
+    const map_s: fmt.AboutSrc = fmt.about("map");
+    const acq_s: fmt.AboutSrc = fmt.about("acq");
+    const rel_s: fmt.AboutSrc = fmt.about("rel");
+    const acq_2_s: fmt.AboutSrc = fmt.about("acq-fault\n");
+    const rel_2_s: fmt.AboutSrc = fmt.about("rel-fault\n");
+    const move_s: fmt.AboutSrc = fmt.about("move");
+    const unmap_s: fmt.AboutSrc = fmt.about("unmap");
+    const remap_s: fmt.AboutSrc = fmt.about("remap");
+    const memfd_s: fmt.AboutSrc = fmt.about("memfd");
+    const resize_s: fmt.AboutSrc = fmt.about("resize");
+    const advice_s: fmt.AboutSrc = fmt.about("advice");
+    const protect_s: fmt.AboutSrc = fmt.about("protect");
+    pub fn aboutAddrLenNotice(about_s: fmt.AboutSrc, addr: u64, len: u64) void {
+        @setRuntimeSafety(false);
+        var buf: [4096]u8 = undefined;
+        buf[0..about_s.len].* = about_s.*;
+        var ptr: [*]u8 = buf[about_s.len..];
+        ptr += fmt.ux64(addr).formatWriteBuf(ptr);
+        ptr[0..2].* = "..".*;
+        ptr += 2;
+        ptr += fmt.ux64(addr +% len).formatWriteBuf(ptr);
+        ptr[0..2].* = ", ".*;
+        ptr += 2;
+        ptr += fmt.bytes(len).formatWriteBuf(ptr);
+        ptr[0] = '\n';
+        debug.write(buf[0 .. @intFromPtr(ptr + 1) - @intFromPtr(&buf)]);
+    }
+    fn aboutAddrLenDescrNotice(about_s: fmt.AboutSrc, addr: u64, len: u64, description_s: []const u8) void {
+        @setRuntimeSafety(false);
+        var buf: [4096]u8 = undefined;
+        buf[0..about_s.len].* = about_s.*;
+        var ptr: [*]u8 = buf[about_s.len..];
+        ptr += fmt.ux64(addr).formatWriteBuf(ptr);
+        ptr[0..2].* = "..".*;
+        ptr += 2;
+        ptr += fmt.ux64(addr +% len).formatWriteBuf(ptr);
+        ptr[0..2].* = ", ".*;
+        ptr += 2;
+        ptr += fmt.bytes(len).formatWriteBuf(ptr);
+        ptr[0..2].* = ", ".*;
+        ptr += 2;
+        @memcpy(ptr, description_s);
+        ptr += description_s.len;
+        ptr[0] = '\n';
+        debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
+    }
+    pub fn aboutRemapNotice(about_s: fmt.AboutSrc, old_addr: u64, old_len: u64, maybe_new_addr: ?u64, maybe_new_len: ?u64) void {
+        @setRuntimeSafety(false);
+        var buf: [4096]u8 = undefined;
+        const new_addr: u64 = maybe_new_addr orelse old_addr;
+        const new_len: u64 = maybe_new_len orelse old_len;
+        const abs_diff: u64 = builtin.max(u64, new_len, old_len) -% builtin.min(u64, new_len, old_len);
+        const notation_s: *const [3]u8 = bits.cmovx(new_len < old_len, ", -", ", +");
+        buf[0..about_s.len].* = about_s.*;
+        var ptr: [*]u8 = buf[about_s.len..];
+        ptr += fmt.ux64(old_addr).formatWriteBuf(ptr);
+        ptr[0..2].* = "..".*;
+        ptr += 2;
+        ptr += fmt.ux64(old_addr +% old_len).formatWriteBuf(ptr);
+        ptr[0..4].* = " -> ".*;
+        ptr += 4;
+        ptr += fmt.ux64(new_addr).formatWriteBuf(ptr);
+        ptr[0..2].* = "..".*;
+        ptr += 2;
+        ptr += fmt.ux64(new_addr +% new_len).formatWriteBuf(ptr);
+        ptr[0..3].* = notation_s.*;
+        ptr += 3;
+        ptr += fmt.bytes(abs_diff).formatWriteBuf(ptr);
+        ptr[0] = '\n';
+        debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
+    }
+    fn aboutIndexLbAddrUpAddrLabelNotice(about_s: fmt.AboutSrc, index: ?u64, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
+        @setRuntimeSafety(false);
+        var buf: [4096]u8 = undefined;
+        buf[0..about_s.len].* = about_s.*;
+        var ptr: [*]u8 = buf[about_s.len..];
+        const label_s: []const u8 = label orelse "arena";
+        @memcpy(ptr, label_s);
+        ptr += label_s.len;
+        ptr[0] = '-';
+        ptr += 1;
+        ptr += fmt.ud64(index orelse 0).formatWriteBuf(ptr);
+        ptr[0..2].* = ", ".*;
+        ptr += 2;
+        ptr += fmt.ux64(lb_addr).formatWriteBuf(ptr);
+        ptr[0..2].* = "..".*;
+        ptr += 2;
+        ptr += fmt.ux64(up_addr).formatWriteBuf(ptr);
+        ptr[0..2].* = ", ".*;
+        ptr += 2;
+        ptr += fmt.bytes(up_addr -% lb_addr).formatWriteBuf(ptr);
+        ptr[0] = '\n';
+        debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
+    }
+    fn aboutMemFdPathnameNotice(about_s: fmt.AboutSrc, mem_fd: usize, pathname: [:0]const u8) void {
+        @setRuntimeSafety(false);
+        var buf: [4096]u8 = undefined;
+        buf[0..about_s.len].* = about_s.*;
+        var ptr: [*]u8 = buf[about_s.len..];
+        @memcpy(ptr, pathname);
+        ptr += pathname.len;
+        ptr[0..9].* = ", mem_fd=".*;
+        ptr += 9;
+        ptr += fmt.ud64(mem_fd).formatWriteBuf(ptr);
+        ptr[0] = '\n';
+        debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
+    }
+    pub fn aboutAddrLenError(about_s: fmt.AboutSrc, error_name: []const u8, addr: u64, len: u64) void {
+        @setRuntimeSafety(false);
+        var buf: [4096]u8 = undefined;
+        buf[0..about_s.len].* = about_s.*;
+        var ptr: [*]u8 = buf[about_s.len..];
+        ptr[0..debug.about.error_s.len].* = debug.about.error_s.*;
+        ptr += debug.about.error_s.len;
+        @memcpy(ptr, error_name);
+        ptr += error_name.len;
+        ptr[0..2].* = ", ".*;
+        ptr += 2;
+        ptr += fmt.ux64(addr).formatWriteBuf(ptr);
+        ptr[0..2].* = "..".*;
+        ptr += 2;
+        ptr += fmt.ux64(addr +% len).formatWriteBuf(ptr);
+        ptr[0..2].* = ", ".*;
+        ptr += 2;
+        ptr += fmt.bytes(len).formatWriteBuf(ptr);
+        ptr[0] = '\n';
+        debug.write(buf[0 .. @intFromPtr(ptr + 1) - @intFromPtr(&buf)]);
+    }
+    pub fn aboutAddrLenDescrError(about_s: fmt.AboutSrc, error_name: []const u8, addr: u64, len: u64, description_s: []const u8) void {
+        @setRuntimeSafety(false);
+        var buf: [4096]u8 = undefined;
+        buf[0..about_s.len].* = about_s.*;
+        var ptr: [*]u8 = buf[about_s.len..];
+        ptr[0..debug.about.error_s.len].* = debug.about.error_s.*;
+        ptr += debug.about.error_s.len;
+        @memcpy(ptr, error_name);
+        ptr += error_name.len;
+        ptr[0..2].* = ", ".*;
+        ptr += 2;
+        ptr += fmt.ux64(addr).formatWriteBuf(ptr);
+        ptr[0..2].* = "..".*;
+        ptr += 2;
+        ptr += fmt.ux64(addr +% len).formatWriteBuf(ptr);
+        ptr[0..2].* = ", ".*;
+        ptr += 2;
+        ptr += fmt.ud64(len).formatWriteBuf(ptr);
+        ptr[0..8].* = " bytes, ".*;
+        ptr += 8;
+        @memcpy(ptr, description_s);
+        ptr += description_s.len;
+        ptr[0] = '\n';
+        debug.write(buf[0 .. @intFromPtr(ptr - @intFromPtr(&buf)) +% 1]);
+    }
+    fn aboutRemapError(about_s: fmt.AboutSrc, error_name: []const u8, old_addr: u64, old_len: u64, maybe_new_addr: ?u64, maybe_new_len: ?u64) void {
+        @setRuntimeSafety(false);
+        var buf: [4096]u8 = undefined;
+        const new_addr: u64 = maybe_new_addr orelse old_addr;
+        const new_len: u64 = maybe_new_len orelse old_len;
+        const abs_diff: u64 = builtin.max(u64, new_len, old_len) -% builtin.min(u64, new_len, old_len);
+        const notation_s: *const [3]u8 = bits.cmovx(new_len < old_len, ", -", ", +");
+        buf[0..about_s.len].* = about_s.*;
+        var ptr: [*]u8 = buf[about_s.len..];
+        ptr[0..debug.about.error_s.len].* = debug.about.error_s.*;
+        ptr += debug.about.error_s.len;
+        @memcpy(ptr, error_name);
+        ptr += error_name.len;
+        ptr[0..2].* = ", ".*;
+        ptr += 2;
+        ptr += fmt.ux64(old_addr).formatWriteBuf(ptr);
+        ptr[0..2].* = "..".*;
+        ptr += 2;
+        ptr += fmt.ux64(old_addr +% old_len).formatWriteBuf(ptr);
+        ptr[0..4].* = " -> ".*;
+        ptr += 4;
+        ptr += fmt.ux64(new_addr).formatWriteBuf(ptr);
+        ptr[0..2].* = "..".*;
+        ptr += 2;
+        ptr += fmt.ux64(new_addr +% new_len).formatWriteBuf(ptr);
+        ptr[0..3].* = notation_s.*;
+        ptr += 3;
+        ptr += fmt.bytes(abs_diff).formatWriteBuf(ptr);
+        ptr[0] = '\n';
+        debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
+    }
+    fn aboutIndexLbAddrUpAddrLabelError(about_s: fmt.AboutSrc, error_name: [:0]const u8, index: ?u64, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
+        @setRuntimeSafety(false);
+        var buf: [4096]u8 = undefined;
+        const label_s: []const u8 = label orelse "arena";
+        buf[0..about_s.len].* = about_s.*;
+        var ptr: [*]u8 = buf[about_s.len..];
+        ptr[0..debug.about.error_s.len].* = debug.about.error_s.*;
+        ptr += debug.about.error_s.len;
+        @memcpy(ptr, error_name);
+        ptr += error_name.len;
+        ptr[0..2].* = ", ".*;
+        ptr += 2;
+        @memcpy(ptr, label_s);
+        ptr += label_s.len;
+        ptr[0] = '-';
+        ptr += 1;
+        ptr += fmt.ud64(index orelse 0).formatWriteBuf(ptr);
+        ptr[0..2].* = ", ".*;
+        ptr += 2;
+        ptr += fmt.ux64(lb_addr).formatWriteBuf(ptr);
+        ptr[0..2].* = "..".*;
+        ptr += 2;
+        ptr += fmt.ux64(up_addr).formatWriteBuf(ptr);
+        ptr[0..2].* = ", ".*;
+        ptr += 2;
+        ptr += fmt.bytes(up_addr -% lb_addr).formatWriteBuf(ptr);
+        ptr[0] = '\n';
+        debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
+    }
+    fn aboutPathnameError(about_s: fmt.AboutSrc, error_name: []const u8, pathname: [:0]const u8) void {
+        @setRuntimeSafety(false);
+        var buf: [4096]u8 = undefined;
+        buf[0..about_s.len].* = about_s.*;
+        var ptr: [*]u8 = buf[about_s.len..];
+        ptr[0..debug.about.error_s.len].* = debug.about.error_s.*;
+        ptr += debug.about.error_s.len;
+        @memcpy(ptr, error_name);
+        ptr += error_name.len;
+        ptr[0..2].* = ", ".*;
+        ptr += 2;
+        @memcpy(ptr, pathname);
+        ptr += pathname.len;
+        ptr[0] = '\n';
+        debug.write(buf[0 .. @intFromPtr(ptr - @intFromPtr(&buf)) +% 1]);
+    }
+    pub fn sampleAllReports() void {
+        const about_s: fmt.AboutSrc = comptime fmt.about("about");
+        const pathname1: [:0]const u8 = "/path/to/file1";
+        const fd1: u32 = 8;
+        const addr1: u64 = 4096;
+        const len1: u64 = 4096;
+        const addr2: u64 = 8192;
+        const len2: u64 = 8192;
+        aboutAddrLenNotice(about_s, addr1, len1);
+        aboutAddrLenDescrNotice(about_s, addr1, len1, "<missing>");
+        aboutRemapNotice(about_s, addr1, len1, addr2, len2);
+        aboutRemapNotice(remap_s, addr1, len1, addr2, len2);
+        aboutRemapNotice(resize_s, addr1, len1, null, len2);
+        aboutRemapNotice(move_s, addr1, len1, addr2, null);
+        aboutMemFdPathnameNotice(memfd_s, fd1, pathname1);
+        aboutAddrLenError(about_s, "UnmapError", addr1, len1);
+        aboutAddrLenDescrError(about_s, "ProtectError", addr1, len1, "<missing>");
+        aboutRemapError(remap_s, "RemapError", addr1, len1, addr2, len2);
+        aboutRemapError(resize_s, "ResizeError", addr1, len1, null, len2);
+        aboutRemapError(move_s, "MoveError", addr1, len1, addr2, null);
+        aboutPathnameError(memfd_s, "MemFdError", pathname1);
+    }
+};
+pub const spec = struct {
+    pub const msync = struct {
+        pub const errors = struct {
+            pub const all = &.{ .BUSY, .INVAL, .NOMEM };
+        };
+    };
+    pub const memfd_create = struct {
+        pub const errors = struct {
+            pub const all = &.{ .FAULT, .INVAL, .MFILE, .NFILE, .NOMEM, .PERM };
+        };
+    };
+    pub const mprotect = struct {
+        pub const errors = struct {
+            pub const all = &.{ .ACCES, .INVAL, .NOMEM };
+        };
+    };
+    pub const mmap = struct {
+        pub const errors = struct {
+            pub const all = &.{
+                .ACCES, .AGAIN, .BADF,     .EXIST, .INVAL,  .NFILE,
+                .NODEV, .NOMEM, .OVERFLOW, .PERM,  .TXTBSY,
+            };
+            pub const mem = &.{
+                .EXIST, .INVAL, .NOMEM,
+            };
+            pub const file = &.{
+                .EXIST, .INVAL, .NOMEM, .NFILE, .NODEV, .TXTBSY,
+            };
+        };
+    };
+    pub const madvise = struct {
+        pub const errors = struct {
+            pub const all = &.{
+                .ACCES, .AGAIN, .BADF, .INVAL, .IO, .NOMEM, .PERM,
+            };
+        };
+    };
+    pub const mremap = struct {
+        pub const errors = struct {
+            pub const all = &.{
+                .AGAIN, .FAULT, .INVAL, .NOMEM,
+            };
+        };
+    };
+    pub const munmap = struct {
+        pub const errors = struct {
+            pub const all = &.{.INVAL};
+        };
+    };
+    pub const brk = struct {
+        pub const errors = struct {
+            pub const all = &.{.NOMEM};
+        };
+    };
+    pub const address_space = struct {
+        pub const regular_128 = GenericRegularAddressSpace(.{
+            .lb_addr = 0,
+            .lb_offset = 0x40000000,
+            .divisions = 128,
+        });
+        pub const exact_8 = GenericDiscreteAddressSpace(.{
+            .list = &[_]Arena{
+                .{ .lb_addr = 0x00040000000, .up_addr = 0x10000000000 },
+                .{ .lb_addr = 0x10000000000, .up_addr = 0x20000000000 },
+                .{ .lb_addr = 0x20000000000, .up_addr = 0x30000000000 },
+                .{ .lb_addr = 0x30000000000, .up_addr = 0x40000000000 },
+                .{ .lb_addr = 0x40000000000, .up_addr = 0x50000000000 },
+                .{ .lb_addr = 0x50000000000, .up_addr = 0x60000000000 },
+                .{ .lb_addr = 0x60000000000, .up_addr = 0x70000000000 },
+                .{ .lb_addr = 0x70000000000, .up_addr = 0x80000000000 },
+            },
+        });
+    };
+    pub const logging = struct {
+        pub const verbose: AddressSpaceLogging = .{
+            .acquire = debug.spec.logging.acquire_error_fault.verbose,
+            .release = debug.spec.logging.release_error_fault.verbose,
+            .map = debug.spec.logging.acquire_error.verbose,
+            .unmap = debug.spec.logging.release_error.verbose,
+        };
+        pub const silent: AddressSpaceLogging = builtin.zero(AddressSpaceLogging);
+    };
+    pub const errors = struct {
+        pub const noexcept: AddressSpaceErrors = .{
+            .release = .ignore,
+            .acquire = .ignore,
+            .map = .{},
+            .unmap = .{},
+        };
+        pub const zen: AddressSpaceErrors = .{
+            .acquire = .{ .throw = error.UnderSupply },
+            .release = .abort,
+            .map = .{ .throw = mmap.errors.all },
+            .unmap = .{ .abort = munmap.errors.all },
+        };
+    };
+    pub const reinterpret = struct {
+        pub const flat: mem.ReinterpretSpec = .{};
+        pub const ptr: mem.ReinterpretSpec = .{
+            .reference = .{ .dereference = &.{} },
+        };
+        pub const fmt: mem.ReinterpretSpec = reinterpretRecursively(.{
+            .reference = ptr.reference,
+            .aggregate = .{ .iterate = true },
+            .composite = .{ .format = true },
+            .symbol = .{ .tag_name = true },
+        });
+        pub const print: mem.ReinterpretSpec = reinterpretRecursively(.{
+            .reference = ptr.reference,
+            .aggregate = .{ .iterate = true },
+            .composite = .{ .format = true },
+            .symbol = .{ .tag_name = true },
+        });
+        pub const follow: mem.ReinterpretSpec = blk: {
+            var rs_0: mem.ReinterpretSpec = .{};
+            var rs_1: mem.ReinterpretSpec = .{ .reference = .{
+                .dereference = &rs_0,
+            } };
+            rs_1.reference.dereference = &rs_0;
+            rs_0 = .{ .reference = .{
+                .dereference = &rs_1,
+            } };
+            break :blk rs_1;
+        };
+        fn reinterpretRecursively(comptime reinterpret_spec: mem.ReinterpretSpec) mem.ReinterpretSpec {
+            var rs_0: mem.ReinterpretSpec = reinterpret_spec;
+            var rs_1: mem.ReinterpretSpec = reinterpret_spec;
+            rs_0.reference.dereference = &rs_1;
+            rs_1.reference.dereference = &rs_0;
+            return rs_1;
+        }
+    };
+    pub const allocator = struct {
+        pub const options = struct {
+            pub const small: mem.ArenaAllocatorOptions = .{
+                .count_branches = false,
+                .count_allocations = false,
+                .count_useful_bytes = false,
+                .check_parametric = false,
+                .prefer_remap = false,
+            };
+            // TODO: Describe conditions where this is better.
+            pub const fast: mem.ArenaAllocatorOptions = .{
+                .count_branches = false,
+                .count_allocations = true,
+                .count_useful_bytes = true,
+                .check_parametric = false,
+                .require_geometric_growth = true,
+            };
+            pub const debug: mem.ArenaAllocatorOptions = .{
+                .count_branches = true,
+                .count_allocations = true,
+                .count_useful_bytes = true,
+                .check_parametric = true,
+                .trace_state = true,
+                .trace_clients = true,
+            };
+            pub const small_composed: mem.ArenaAllocatorOptions = .{
+                .count_branches = false,
+                .count_allocations = false,
+                .count_useful_bytes = false,
+                .check_parametric = false,
+                .prefer_remap = false,
+                .require_map = false,
+                .require_unmap = false,
+            };
+            pub const fast_composed: mem.ArenaAllocatorOptions = .{
+                .count_branches = false,
+                .count_allocations = true,
+                .count_useful_bytes = true,
+                .check_parametric = false,
+                .require_geometric_growth = true,
+                .require_map = false,
+                .require_unmap = false,
+            };
+            pub const debug_composed: mem.ArenaAllocatorOptions = .{
+                .count_branches = true,
+                .count_allocations = true,
+                .count_useful_bytes = true,
+                .check_parametric = true,
+                .trace_state = true,
+                .trace_clients = true,
+                .require_map = false,
+                .require_unmap = false,
+            };
+        };
+        pub const logging = struct {
+            pub const verbose: mem.AllocatorLogging = .{
+                .head = true,
+                .sentinel = true,
+                .metadata = true,
+                .branches = true,
+                .illegal = true,
+                .map = debug.spec.logging.acquire_error.verbose,
+                .unmap = debug.spec.logging.release_error.verbose,
+                .remap = debug.spec.logging.success_error.verbose,
+                .advise = debug.spec.logging.success_error.verbose,
+                .allocate = true,
+                .reallocate = true,
+                .reinterpret = true,
+                .deallocate = true,
+            };
+            pub const silent: mem.AllocatorLogging = .{
+                .head = false,
+                .sentinel = false,
+                .metadata = false,
+                .branches = false,
+                .illegal = false,
+                .map = debug.spec.logging.acquire_error.silent,
+                .unmap = debug.spec.logging.release_error.silent,
+                .remap = debug.spec.logging.success_error.silent,
+                .advise = debug.spec.logging.success_error.silent,
+                .allocate = false,
+                .reallocate = false,
+                .reinterpret = false,
+                .deallocate = false,
+            };
+        };
+        pub const errors = struct {
+            pub const zen: mem.AllocatorErrors = .{
+                .map = .{ .throw = mmap.errors.mem },
+                .remap = .{ .throw = mremap.errors.all },
+                .unmap = .{ .abort = munmap.errors.all },
+            };
+            pub const noexcept: mem.AllocatorErrors = .{
+                .map = .{},
+                .remap = .{},
+                .unmap = .{},
+            };
+            pub const critical: mem.AllocatorErrors = .{
+                .map = .{ .throw = mmap.errors.mem },
+                .remap = .{ .throw = mremap.errors.all },
+                .unmap = .{ .throw = munmap.errors.all },
+            };
+        };
+    };
+};
+pub fn cpy(comptime T: type, dest: [*]T, src: []const T) void {
+    @setRuntimeSafety(false);
+    @memcpy(dest, src);
+}
+pub fn set(comptime T: type, dest: [*]T, value: T, len: usize) void {
+    @setRuntimeSafety(false);
+    @memset(dest[0..len], value);
+}
+pub fn cpyLen(comptime T: type, dest: [*]T, src: []const T) usize {
+    @setRuntimeSafety(false);
+    @memcpy(dest, src);
+    return src.len;
+}
+pub fn setLen(comptime T: type, dest: [*]T, value: T, len: usize) usize {
+    @setRuntimeSafety(false);
+    @memset(dest[0..len], value);
+    return len;
+}
+pub fn cpyEqu(comptime T: type, dest: [*]T, src: []const T) [*]T {
+    @setRuntimeSafety(false);
+    @memcpy(dest, src);
+    return dest + src.len;
+}
+pub fn setEqu(comptime T: type, dest: [*]T, value: T, len: usize) [*]T {
+    @setRuntimeSafety(false);
+    @memset(dest[0..len], value);
+    return dest + len;
+}
