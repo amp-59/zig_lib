@@ -1893,10 +1893,10 @@ pub const SimpleAllocator = struct {
         @setRuntimeSafety(builtin.is_safe);
         if (builtin.is_safe) {
             if (old_aligned > allocator.finish) {
-                debug.panicAddressAboveUpperBound(old_aligned, allocator.finish);
+                debug.panic_extra.panicAddressAboveUpperBound(old_aligned, allocator.finish);
             }
             if (old_aligned < allocator.start) {
-                debug.panicAddressBelowLowerBound(old_aligned, allocator.start);
+                debug.panic_extra.panicAddressBelowLowerBound(old_aligned, allocator.start);
             }
         }
         const old_next: usize = old_aligned +% old_size_of;
@@ -1904,7 +1904,7 @@ pub const SimpleAllocator = struct {
         if (allocator.next == old_next) {
             if (new_next > allocator.finish) {
                 const len: usize = allocator.finish -% allocator.start;
-                const finish: usize = mach.alignA64(new_next, @max(4096, len));
+                const finish: usize = bits.alignA64(new_next, @max(4096, len));
                 map(map_spec, .{}, .{}, allocator.finish, finish -% allocator.finish);
                 allocator.finish = finish;
             }
@@ -1912,7 +1912,7 @@ pub const SimpleAllocator = struct {
             return old_aligned;
         }
         const new_aligned: usize = allocator.allocateRaw(new_size_of, align_of);
-        mach.addrcpy(new_aligned, old_aligned, old_size_of);
+        addrcpy(new_aligned, old_aligned, old_size_of);
         return new_aligned;
     }
     pub fn deallocateRaw(
