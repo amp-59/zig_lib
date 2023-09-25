@@ -2161,9 +2161,9 @@ pub fn GenericOptionals(comptime Allocator: type, comptime TaggedUnion: type) ty
     return U;
 }
 // Begin standard library ghetto:
-pub fn readIntVar(comptime T: type, buf: []const u8, len: u64) T {
+pub fn readIntVar(comptime T: type, buf: []const u8, len: usize) T {
     @setRuntimeSafety(builtin.is_safe);
-    var ret: [@sizeOf(T)]u8 = undefined;
+    var ret: [@sizeOf(T)]u8 = .{0} ** @sizeOf(T);
     for (ret[@sizeOf(T) -% len ..], 0..) |*byte, idx| {
         byte.* = buf[idx];
     }
@@ -2224,10 +2224,10 @@ pub fn writeIntSliceLittle(comptime T: type, dest: []u8, value: T) void {
         .signedness = .unsigned,
         .bits = @bitSizeOf(T),
     } });
-    var bits = @as(Int, @bitCast(value));
+    var bit_count: Int = @as(Int, @bitCast(value));
     for (dest) |*b| {
-        b.* = @as(u8, @truncate(bits));
-        bits >>= 8;
+        b.* = @as(u8, @truncate(bit_count));
+        bit_count >>= 8;
     }
 }
 pub fn writeIntSliceBig(comptime T: type, dest: []u8, value: T) void {
@@ -2243,12 +2243,12 @@ pub fn writeIntSliceBig(comptime T: type, dest: []u8, value: T) void {
         .signedness = .unsigned,
         .bits = @bitSizeOf(T),
     } });
-    var bits: Int = @as(Int, @bitCast(value));
+    var bit_count: Int = @as(Int, @bitCast(value));
     var idx: usize = dest.len;
     while (idx != 0) {
         idx -%= 1;
         dest[idx] = @as(u8, @truncate(bits));
-        bits >>= 8;
+        bit_count >>= 8;
     }
 }
 pub const writeIntSliceNative = switch (builtin.native_endian) {
