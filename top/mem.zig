@@ -452,10 +452,9 @@ pub fn map(comptime map_spec: MapSpec, prot: sys.flags.MemProt, flags: sys.flags
         return map_error;
     }
 }
-pub fn sync(comptime sync_spec: SyncSpec, addr: u64, len: u64) sys.ErrorUnion(sync_spec.errors, sync_spec.return_type) {
-    const msync_flags: Sync.Options = comptime sync_spec.flags();
+pub fn sync(comptime sync_spec: SyncSpec, flags: sys.flags.Sync, addr: u64, len: u64) sys.ErrorUnion(sync_spec.errors, sync_spec.return_type) {
     const logging: debug.Logging.AcquireError = comptime sync_spec.logging.override();
-    if (meta.wrap(sys.call(.sync, sync_spec.errors, sync_spec.return_type, .{ addr, len, msync_flags.val }))) |ret| {
+    if (meta.wrap(sys.call(.sync, sync_spec.errors, sync_spec.return_type, .{ addr, len, @bitCast(flags) }))) |ret| {
         if (logging.Acquire) {
             about.syncNotice(addr, len);
         }
