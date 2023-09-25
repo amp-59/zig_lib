@@ -2,6 +2,7 @@ const tab = @import("./tab.zig");
 const mem = @import("./mem.zig");
 const fmt = @import("./fmt.zig");
 const bits = @import("./bits.zig");
+const math = @import("./math.zig");
 const meta = @import("./meta.zig");
 const proc = @import("./proc.zig");
 const builtin = @import("./builtin.zig");
@@ -19,12 +20,12 @@ pub const Unexpected = error{
     UnexpectedLength,
 };
 pub const PanicFn = @TypeOf(panic);
-pub const PanicExtraFn = @TypeOf(panicSignal);
-pub const PanicOutOfBoundsFn = @TypeOf(panicOutOfBounds);
-pub const PanicSentinelMismatchFn = @TypeOf(panicSentinelMismatch);
-pub const PanicStartGreaterThanEndFn = @TypeOf(panicStartGreaterThanEnd);
-pub const PanicInactiveUnionFieldFn = @TypeOf(panicInactiveUnionField);
-pub const PanicUnwrapErrorFn = @TypeOf(panicUnwrapError);
+pub const PanicExtraFn = @TypeOf(panic_extra.panicSignal);
+pub const PanicOutOfBoundsFn = @TypeOf(panic_extra.panicOutOfBounds);
+pub const PanicSentinelMismatchFn = @TypeOf(panic_extra.panicSentinelMismatch);
+pub const PanicStartGreaterThanEndFn = @TypeOf(panic_extra.panicStartGreaterThanEnd);
+pub const PanicInactiveUnionFieldFn = @TypeOf(panic_extra.panicInactiveUnionField);
+pub const PanicUnwrapErrorFn = @TypeOf(panic_extra.panicUnwrapError);
 pub const AlarmFn = @TypeOf(alarm);
 pub const SignalHandlers = packed struct {
     /// Report receipt of signal 11 SIGSEGV.
@@ -39,10 +40,10 @@ pub const SignalHandlers = packed struct {
     Trap: bool,
 };
 pub const SignalAlternateStack = struct {
-    /// Address of lowest mapped byte of alternate stack.
-    addr: usize = 0x3f000000,
-    /// Initial mapping length of alternate stack.
-    len: usize = 0x1000000,
+    /// Address of lowest mapped byte.
+    addr: usize,
+    /// Initial mapping length.
+    len: usize,
 };
 pub const Trace = struct {
     /// Show trace on alarm.
@@ -641,128 +642,130 @@ pub noinline fn panic(message: []const u8, _: @TypeOf(@errorReturnTrace()), ret_
     }
     @call(.always_inline, proc.exitGroupFault, .{ message, builtin.panic_return_value });
 }
-pub noinline fn panicSignal(message: []const u8, ctx_ptr: *const anyopaque) noreturn {
-    @setCold(true);
-    @setRuntimeSafety(false);
-    const regs: bits.RegisterState = @as(
-        *bits.RegisterState,
-        @ptrFromInt(@intFromPtr(ctx_ptr) +% bits.RegisterState.offset),
-    ).*;
-    if (builtin.want_stack_traces and builtin.trace.Signal) {
-        printStackTrace(&builtin.trace, regs.rip, regs.rbp);
+pub const panic_extra = struct {
+    pub noinline fn panicSignal(message: []const u8, ctx_ptr: *const anyopaque) noreturn {
+        @setCold(true);
+        @setRuntimeSafety(false);
+        const regs: bits.RegisterState = @as(
+            *bits.RegisterState,
+            @ptrFromInt(@intFromPtr(ctx_ptr) +% bits.RegisterState.offset),
+        ).*;
+        if (builtin.want_stack_traces and builtin.trace.Signal) {
+            printStackTrace(&builtin.trace, regs.rip, regs.rbp);
+        }
+        @call(.always_inline, proc.exitGroupFault, .{ message, builtin.panic_return_value });
     }
-    @call(.always_inline, proc.exitGroupFault, .{ message, builtin.panic_return_value });
-}
-pub noinline fn panicOutOfBounds(idx: usize, max_len: usize) noreturn {
-    @setCold(true);
-    @setRuntimeSafety(false);
-    const ret_addr: usize = @returnAddress();
-    var buf: [1024]u8 = undefined;
-    buf[0..6].* = "index ".*;
-    var ptr: [*]u8 = buf[5..];
-    var ud64: fmt.Type.Ud64 = .{ .value = idx };
-    if (max_len == 0) {
-        ptr[0..5].* = "ing (".*;
-        ptr += 5;
+    pub noinline fn panicOutOfBounds(idx: usize, max_len: usize) noreturn {
+        @setCold(true);
+        @setRuntimeSafety(false);
+        const ret_addr: usize = @returnAddress();
+        var buf: [1024]u8 = undefined;
+        buf[0..6].* = "index ".*;
+        var ptr: [*]u8 = buf[5..];
+        var ud64: fmt.Type.Ud64 = .{ .value = idx };
+        if (max_len == 0) {
+            ptr[0..5].* = "ing (".*;
+            ptr += 5;
+            ptr += ud64.formatWriteBuf(ptr);
+            ptr[0..18].* = ") into empty array".*;
+            ptr += 18;
+        } else {
+            ptr += 1;
+            ptr += ud64.formatWriteBuf(ptr);
+            ptr[0..15].* = " above maximum ".*;
+            ptr += 15;
+            ud64.value = max_len -% 1;
+            ptr += ud64.formatWriteBuf(ptr);
+        }
+        builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr);
+    }
+    pub noinline fn panicAddressAboveUpperBound(addr: usize, finish: usize) noreturn {
+        @setCold(true);
+        @setRuntimeSafety(false);
+        const ret_addr: usize = @returnAddress();
+        var buf: [1024]u8 = undefined;
+        var ux64: fmt.Type.Ux64 = .{ .value = addr };
+        buf[0..8].* = "address ".*;
+        var ptr: [*]u8 = buf[8..];
+        ptr += ux64.formatWriteBuf(ptr);
+        ptr[0..19].* = " above upper bound ".*;
+        ptr += 19;
+        ux64.value = finish;
+        ptr += ux64.formatWriteBuf(ptr);
+        builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr);
+    }
+    pub noinline fn panicAddressBelowLowerBound(addr: usize, start: usize) noreturn {
+        @setCold(true);
+        @setRuntimeSafety(false);
+        const ret_addr: usize = @returnAddress();
+        var buf: [1024]u8 = undefined;
+        var ux64: fmt.Type.Ux64 = .{ .value = addr };
+        buf[0..8].* = "address ".*;
+        var ptr: [*]u8 = buf[8..];
+        ptr += ux64.formatWriteBuf(ptr);
+        ptr[0..19].* = " below lower bound ".*;
+        ptr += 19;
+        ux64.value = start;
+        ptr += ux64.formatWriteBuf(ptr);
+        builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr);
+    }
+    pub noinline fn panicSentinelMismatch(expected: anytype, actual: @TypeOf(expected)) noreturn {
+        @setCold(true);
+        @setRuntimeSafety(false);
+        const ret_addr: usize = @returnAddress();
+        var buf: [1024]u8 = undefined;
+        var ptr: [*]u8 = &buf;
+        var ud64: fmt.Type.Ud64 = .{ .value = expected };
+        ptr[0..28].* = "sentinel mismatch: expected ".*;
+        ptr += 28;
         ptr += ud64.formatWriteBuf(ptr);
-        ptr[0..18].* = ") into empty array".*;
-        ptr += 18;
-    } else {
-        ptr += 1;
+        ptr[0..8].* = ", found ".*;
+        ptr += 8;
+        ud64.value = actual;
         ptr += ud64.formatWriteBuf(ptr);
-        ptr[0..15].* = " above maximum ".*;
+        builtin.panic(buf[0..@intFromPtr(ptr - @intFromPtr(&buf))], null, ret_addr);
+    }
+    pub noinline fn panicStartGreaterThanEnd(lower: usize, upper: usize) noreturn {
+        @setCold(true);
+        @setRuntimeSafety(false);
+        const ret_addr: usize = @returnAddress();
+        var buf: [1024]u8 = undefined;
+        var ptr: [*]u8 = &buf;
+        var ud64: fmt.Type.Ud64 = @bitCast(lower);
+        ptr[0..12].* = "start index ".*;
+        ptr += 12;
+        ptr += ud64.formatWriteBuf(ptr);
+        ptr[0..26].* = " is larger than end index ".*;
+        ptr += 26;
+        ud64 = @bitCast(upper);
+        ptr += ud64.formatWriteBuf(ptr);
+        builtin.panic(buf[0..@intFromPtr(ptr - @intFromPtr(&buf))], null, ret_addr);
+    }
+    pub noinline fn panicInactiveUnionField(active: anytype, wanted: @TypeOf(active)) noreturn {
+        @setCold(true);
+        @setRuntimeSafety(false);
+        const ret_addr: usize = @returnAddress();
+        var buf: [1024]u8 = undefined;
+        buf[0..23].* = "access of union field '".*;
+        var ptr: [*]u8 = fmt.strcpyEqu(buf[23..], @tagName(wanted));
+        ptr[0..15].* = "' while field '".*;
         ptr += 15;
-        ud64.value = max_len -% 1;
-        ptr += ud64.formatWriteBuf(ptr);
+        ptr = fmt.strcpyEqu(ptr, @tagName(active));
+        ptr[0..11].* = "' is active".*;
+        ptr += 11;
+        builtin.panic(buf[0..@intFromPtr(ptr - @intFromPtr(&buf))], null, ret_addr);
     }
-    builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr);
-}
-pub noinline fn panicAddressAboveUpperBound(addr: usize, finish: usize) noreturn {
-    @setCold(true);
-    @setRuntimeSafety(false);
-    const ret_addr: usize = @returnAddress();
-    var buf: [1024]u8 = undefined;
-    var ux64: fmt.Type.Ux64 = .{ .value = addr };
-    buf[0..8].* = "address ".*;
-    var ptr: [*]u8 = buf[8..];
-    ptr += ux64.formatWriteBuf(ptr);
-    ptr[0..19].* = " above upper bound ".*;
-    ptr += 19;
-    ux64.value = finish;
-    ptr += ux64.formatWriteBuf(ptr);
-    builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr);
-}
-pub noinline fn panicAddressBelowLowerBound(addr: usize, start: usize) noreturn {
-    @setCold(true);
-    @setRuntimeSafety(false);
-    const ret_addr: usize = @returnAddress();
-    var buf: [1024]u8 = undefined;
-    var ux64: fmt.Type.Ux64 = .{ .value = addr };
-    buf[0..8].* = "address ".*;
-    var ptr: [*]u8 = buf[8..];
-    ptr += ux64.formatWriteBuf(ptr);
-    ptr[0..19].* = " below lower bound ".*;
-    ptr += 19;
-    ux64.value = start;
-    ptr += ux64.formatWriteBuf(ptr);
-    builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr);
-}
-pub noinline fn panicSentinelMismatch(expected: anytype, actual: @TypeOf(expected)) noreturn {
-    @setCold(true);
-    @setRuntimeSafety(false);
-    const ret_addr: usize = @returnAddress();
-    var buf: [1024]u8 = undefined;
-    var ptr: [*]u8 = &buf;
-    var ud64: fmt.Type.Ud64 = .{ .value = expected };
-    ptr[0..28].* = "sentinel mismatch: expected ".*;
-    ptr += 28;
-    ptr += ud64.formatWriteBuf(ptr);
-    ptr[0..8].* = ", found ".*;
-    ptr += 8;
-    ud64.value = actual;
-    ptr += ud64.formatWriteBuf(ptr);
-    builtin.panic(buf[0..@intFromPtr(ptr - @intFromPtr(&buf))], null, ret_addr);
-}
-pub noinline fn panicStartGreaterThanEnd(lower: usize, upper: usize) noreturn {
-    @setCold(true);
-    @setRuntimeSafety(false);
-    const ret_addr: usize = @returnAddress();
-    var buf: [1024]u8 = undefined;
-    var ptr: [*]u8 = &buf;
-    var ud64: fmt.Type.Ud64 = @bitCast(lower);
-    ptr[0..12].* = "start index ".*;
-    ptr += 12;
-    ptr += ud64.formatWriteBuf(ptr);
-    ptr[0..26].* = " is larger than end index ".*;
-    ptr += 26;
-    ud64 = @bitCast(upper);
-    ptr += ud64.formatWriteBuf(ptr);
-    builtin.panic(buf[0..@intFromPtr(ptr - @intFromPtr(&buf))], null, ret_addr);
-}
-pub noinline fn panicInactiveUnionField(active: anytype, wanted: @TypeOf(active)) noreturn {
-    @setCold(true);
-    @setRuntimeSafety(false);
-    const ret_addr: usize = @returnAddress();
-    var buf: [1024]u8 = undefined;
-    buf[0..23].* = "access of union field '".*;
-    var ptr: [*]u8 = fmt.strcpyEqu(buf[23..], @tagName(wanted));
-    ptr[0..15].* = "' while field '".*;
-    ptr += 15;
-    ptr = fmt.strcpyEqu(ptr, @tagName(active));
-    ptr[0..11].* = "' is active".*;
-    ptr += 11;
-    builtin.panic(buf[0..@intFromPtr(ptr - @intFromPtr(&buf))], null, ret_addr);
-}
-pub noinline fn panicUnwrapError(st: ?*builtin.StackTrace, err: anyerror) noreturn {
-    if (!builtin.discard_errors) {
-        @compileError("error is discarded");
+    pub noinline fn panicUnwrapError(st: ?*builtin.StackTrace, err: anyerror) noreturn {
+        if (!builtin.discard_errors) {
+            @compileError("error is discarded");
+        }
+        const ret_addr: usize = @returnAddress();
+        var buf: [1024]u8 = undefined;
+        buf[0..20].* = "error is discarded: ".*;
+        var ptr: [*]u8 = fmt.strcpyEqu(buf[20..], @errorName(err));
+        builtin.panic(buf[0..@intFromPtr(ptr - @intFromPtr(&buf))], st, ret_addr);
     }
-    const ret_addr: usize = @returnAddress();
-    var buf: [1024]u8 = undefined;
-    buf[0..20].* = "error is discarded: ".*;
-    var ptr: [*]u8 = fmt.strcpyEqu(buf[20..], @errorName(err));
-    builtin.panic(buf[0..@intFromPtr(ptr - @intFromPtr(&buf))], st, ret_addr);
-}
+};
 pub noinline fn aboutWhere(about_s: []const u8, message: []const u8, ret_addr: ?usize, mb_src: ?builtin.SourceLocation) void {
     var buf: [4096]u8 = undefined;
     const pid: u32 = proc.getProcessId();
