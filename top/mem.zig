@@ -481,9 +481,9 @@ pub fn move(comptime move_spec: MoveSpec, flags: sys.flags.Remap, old_addr: u64,
         return mremap_error;
     }
 }
-pub fn resize(comptime spec: RemapSpec, old_addr: u64, old_len: u64, new_len: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
-    const logging: debug.Logging.SuccessError = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.mremap, spec.errors, spec.return_type, .{ old_addr, old_len, new_len, 0, 0 }))) {
+pub fn resize(comptime resize_spec: RemapSpec, old_addr: u64, old_len: u64, new_len: u64) sys.ErrorUnion(resize_spec.errors, resize_spec.return_type) {
+    const logging: debug.Logging.SuccessError = comptime resize_spec.logging.override();
+    if (meta.wrap(sys.call(.mremap, resize_spec.errors, resize_spec.return_type, .{ old_addr, old_len, new_len, 0, 0 }))) {
         if (logging.Success) {
             about.aboutRemapNotice(about.resize_s, old_addr, old_len, null, new_len);
         }
@@ -494,9 +494,9 @@ pub fn resize(comptime spec: RemapSpec, old_addr: u64, old_len: u64, new_len: u6
         return mremap_error;
     }
 }
-pub fn unmap(comptime spec: UnmapSpec, addr: u64, len: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
-    const logging: debug.Logging.ReleaseError = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.munmap, spec.errors, spec.return_type, .{ addr, len }))) {
+pub fn unmap(comptime unmap_spec: UnmapSpec, addr: u64, len: u64) sys.ErrorUnion(unmap_spec.errors, unmap_spec.return_type) {
+    const logging: debug.Logging.ReleaseError = comptime unmap_spec.logging.override();
+    if (meta.wrap(sys.call(.munmap, unmap_spec.errors, unmap_spec.return_type, .{ addr, len }))) {
         if (logging.Release) {
             about.aboutAddrLenNotice(about.unmap_s, addr, len);
         }
@@ -507,9 +507,9 @@ pub fn unmap(comptime spec: UnmapSpec, addr: u64, len: u64) sys.ErrorUnion(spec.
         return unmap_error;
     }
 }
-pub fn protect(comptime spec: ProtectSpec, prot: ProtectSpec.Protection, addr: u64, len: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
-    const logging: debug.Logging.SuccessError = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.mprotect, spec.errors, spec.return_type, .{ addr, len, @as(usize, @bitCast(prot)) }))) {
+pub fn protect(comptime protect_spec: ProtectSpec, prot: ProtectSpec.Protection, addr: u64, len: u64) sys.ErrorUnion(protect_spec.errors, protect_spec.return_type) {
+    const logging: debug.Logging.SuccessError = comptime protect_spec.logging.override();
+    if (meta.wrap(sys.call(.mprotect, protect_spec.errors, protect_spec.return_type, .{ addr, len, @as(usize, @bitCast(prot)) }))) {
         if (logging.Success) {
             about.aboutAddrLenDescrNotice(about.protect_s, addr, len, "<description>");
         }
@@ -520,9 +520,9 @@ pub fn protect(comptime spec: ProtectSpec, prot: ProtectSpec.Protection, addr: u
         return protect_error;
     }
 }
-pub fn advise(comptime spec: AdviseSpec, advice: Advice, addr: u64, len: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
-    const logging: debug.Logging.SuccessError = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.madvise, spec.errors, spec.return_type, .{ addr, len, @intFromEnum(advice) }))) {
+pub fn advise(comptime advise_spec: AdviseSpec, advice: Advice, addr: u64, len: u64) sys.ErrorUnion(advise_spec.errors, advise_spec.return_type) {
+    const logging: debug.Logging.SuccessError = comptime advise_spec.logging.override();
+    if (meta.wrap(sys.call(.madvise, advise_spec.errors, advise_spec.return_type, .{ addr, len, @intFromEnum(advice) }))) {
         if (logging.Success) {
             about.aboutAddrLenDescrNotice(about.advice_s, addr, len, advice.describe());
         }
