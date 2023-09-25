@@ -20,6 +20,12 @@ pub const Builder = build.GenericBuilder(.{
         .max_error_count = 1,
     },
 });
+pub const AbsoluteState = struct {
+    home: [:0]u8,
+    cwd: [:0]u8,
+    proj: [:0]u8,
+    pid: u16,
+};
 pub const message_style = "\x1b[93m";
 pub const enable_debugging: bool = false;
 pub const never_exit_group: bool = true;
