@@ -468,10 +468,9 @@ pub fn sync(comptime sync_spec: SyncSpec, flags: sys.flags.Sync, addr: u64, len:
         return sync_error;
     }
 }
-pub fn move(comptime spec: MoveSpec, old_addr: u64, old_len: u64, new_addr: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
-    const mremap_flags: Remap.Options = comptime spec.flags();
-    const logging: debug.Logging.SuccessError = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.mremap, spec.errors, spec.return_type, .{ old_addr, old_len, old_len, mremap_flags.val, new_addr }))) {
+pub fn move(comptime move_spec: MoveSpec, flags: sys.flags.Remap, old_addr: u64, old_len: u64, new_addr: u64) sys.ErrorUnion(move_spec.errors, move_spec.return_type) {
+    const logging: debug.Logging.SuccessError = comptime move_spec.logging.override();
+    if (meta.wrap(sys.call(.mremap, move_spec.errors, move_spec.return_type, .{ old_addr, old_len, old_len, @bitCast(flags), new_addr }))) {
         if (logging.Success) {
             about.aboutRemapNotice(about.remap_s, old_addr, old_len, new_addr, null);
         }
