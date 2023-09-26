@@ -1227,32 +1227,35 @@ pub fn typeName(comptime T: type) []const u8 {
         else => return type_name,
     };
 }
-fn typeNameDemangle(comptime type_name: []const u8, comptime decl_name: []const u8) []const u8 {
-    var ret: []const u8 = type_name;
-    var index: u64 = type_name.len;
-    while (index != 0) {
-        index -%= 1;
-        if (type_name[index] == '_') {
-            break;
+inline fn typeNameDemangle(comptime type_name: []const u8, comptime decl_name: []const u8) []const u8 {
+    comptime {
+        var ret: []const u8 = type_name;
+        var idx: u64 = type_name.len;
+        while (idx != 0) {
+            idx -%= 1;
+            if (type_name[idx] == '_') {
+                break;
+            }
+            if (type_name[idx] < '0' or
+                type_name[idx] > '9')
+            {
+                return type_name;
+            }
         }
-        if (type_name[index] < '0' or
-            type_name[index] > '9')
-        {
+        const serial = idx;
+        ret = type_name[0..idx];
+        if (ret.len < decl_name.len) {
             return type_name;
         }
-    }
-    const serial = index;
-    ret = type_name[0..index];
-    if (ret.len < decl_name.len) {
-        return type_name;
-    }
-    for (ret[ret.len -% decl_name.len ..], 0..) |c, i| {
-        if (c != decl_name[i]) {
-            return type_name;
+        idx = ret.len -% decl_name.len;
+        while (idx != ret.len) : (idx +%= 1) {
+            if (ret[idx] != decl_name[idx]) {
+                return type_name;
+            }
         }
+        idx -%= decl_name.len;
+        return ret[0..idx] ++ type_name[serial..];
     }
-    index -%= decl_name.len;
-    return ret[0..index] ++ type_name[serial..];
 }
 pub fn typeTypeName(comptime type_id: builtin.TypeId) []const u8 {
     return switch (type_id) {
