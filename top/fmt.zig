@@ -5796,3 +5796,152 @@ pub const standalone = struct {
         return T;
     }
 };
+pub const Type = struct {
+    pub const Ib8 = @TypeOf(ib8(undefined));
+    pub const Ib16 = @TypeOf(ib16(undefined));
+    pub const Ib32 = @TypeOf(ib32(undefined));
+    pub const Ib64 = @TypeOf(ib64(undefined));
+    pub const Ib128 = @TypeOf(ib128(undefined));
+    pub const Io8 = @TypeOf(io8(undefined));
+    pub const Io16 = @TypeOf(io16(undefined));
+    pub const Io32 = @TypeOf(io32(undefined));
+    pub const Io64 = @TypeOf(io64(undefined));
+    pub const Io128 = @TypeOf(io128(undefined));
+    pub const Id8 = @TypeOf(id8(undefined));
+    pub const Id16 = @TypeOf(id16(undefined));
+    pub const Id32 = @TypeOf(id32(undefined));
+    pub const Id64 = @TypeOf(id64(undefined));
+    pub const Id128 = @TypeOf(id128(undefined));
+    pub const Ix8 = @TypeOf(ix8(undefined));
+    pub const Ix16 = @TypeOf(ix16(undefined));
+    pub const Ix32 = @TypeOf(ix32(undefined));
+    pub const Ix64 = @TypeOf(ix64(undefined));
+    pub const Ix128 = @TypeOf(ix128(undefined));
+    pub const Iz8 = @TypeOf(iz8(undefined));
+    pub const Iz16 = @TypeOf(iz16(undefined));
+    pub const Iz32 = @TypeOf(iz32(undefined));
+    pub const Iz64 = @TypeOf(iz64(undefined));
+    pub const Iz128 = @TypeOf(iz128(undefined));
+    pub const Ub8 = @TypeOf(ub8(undefined));
+    pub const Ub16 = @TypeOf(ub16(undefined));
+    pub const Ub32 = @TypeOf(ub32(undefined));
+    pub const Ub64 = @TypeOf(ub64(undefined));
+    pub const Uo8 = @TypeOf(uo8(undefined));
+    pub const Uo16 = @TypeOf(uo16(undefined));
+    pub const Uo32 = @TypeOf(uo32(undefined));
+    pub const Uo64 = @TypeOf(uo64(undefined));
+    pub const Uo128 = @TypeOf(uo128(undefined));
+    pub const Ud8 = @TypeOf(ud8(undefined));
+    pub const Ud16 = @TypeOf(ud16(undefined));
+    pub const Ud32 = @TypeOf(ud32(undefined));
+    pub const Ud64 = @TypeOf(ud64(undefined));
+    pub const Ud128 = @TypeOf(ud128(undefined));
+    pub const Ux8 = @TypeOf(ux8(undefined));
+    pub const Ux16 = @TypeOf(ux16(undefined));
+    pub const Ux32 = @TypeOf(ux32(undefined));
+    pub const Ux64 = @TypeOf(ux64(undefined));
+    pub const Ux128 = @TypeOf(ux128(undefined));
+    pub const Uz8 = @TypeOf(uz8(undefined));
+    pub const Uz16 = @TypeOf(uz16(undefined));
+    pub const Uz32 = @TypeOf(uz32(undefined));
+    pub const Uz64 = @TypeOf(uz64(undefined));
+    pub const Uz128 = @TypeOf(uz128(undefined));
+    pub const Ubsize = @TypeOf(ubsize(undefined));
+    pub const Uosize = @TypeOf(uosize(undefined));
+    pub const Udsize = @TypeOf(udsize(undefined));
+    pub const Uxsize = @TypeOf(uxsize(undefined));
+    pub const Ibsize = @TypeOf(ibsize(undefined));
+    pub const Iosize = @TypeOf(iosize(undefined));
+    pub const Idsize = @TypeOf(idsize(undefined));
+    pub const Ixsize = @TypeOf(ixsize(undefined));
+    pub const Esc = @TypeOf(esc(undefined));
+    pub const NSec = @TypeOf(nsec(undefined));
+    pub const U8xLEB128 = GenericLEB128Format(u8);
+    pub const U16xLEB128 = GenericLEB128Format(u16);
+    pub const U32xLEB128 = GenericLEB128Format(u32);
+    pub const U64xLEB128 = GenericLEB128Format(u64);
+    pub const I8xLEB128 = GenericLEB128Format(i8);
+    pub const I16xLEB128 = GenericLEB128Format(i16);
+    pub const I32xLEB128 = GenericLEB128Format(i32);
+    pub const I64xLEB128 = GenericLEB128Format(i64);
+    pub fn Ib(comptime Int: type) type {
+        return @TypeOf(ib(@as(Int, undefined)));
+    }
+    pub fn Id(comptime Int: type) type {
+        return @TypeOf(id(@as(Int, undefined)));
+    }
+    pub fn Ix(comptime Int: type) type {
+        return @TypeOf(ix(@as(Int, undefined)));
+    }
+    pub fn Ub(comptime Int: type) type {
+        return @TypeOf(ub(@as(Int, undefined)));
+    }
+    pub fn Uo(comptime Int: type) type {
+        return @TypeOf(uo(@as(Int, undefined)));
+    }
+    pub fn Ud(comptime Int: type) type {
+        return @TypeOf(ud(@as(Int, undefined)));
+    }
+    pub fn Ux(comptime Int: type) type {
+        return @TypeOf(ux(@as(Int, undefined)));
+    }
+    pub fn Xb(comptime Int: type) type {
+        if (@typeInfo(Int).Int.signedness == .signed) {
+            return @TypeOf(ib(@as(Int, undefined)));
+        } else {
+            return @TypeOf(ub(@as(Int, undefined)));
+        }
+    }
+    pub fn Xd(comptime Int: type) type {
+        if (@typeInfo(Int).Int.signedness == .signed) {
+            return @TypeOf(id(@as(Int, undefined)));
+        } else {
+            return @TypeOf(ud(@as(Int, undefined)));
+        }
+    }
+    pub fn Xx(comptime Int: type) type {
+        if (@typeInfo(Int).Int.signedness == .signed) {
+            return @TypeOf(ix(@as(Int, undefined)));
+        } else {
+            return @TypeOf(ux(@as(Int, undefined)));
+        }
+    }
+    pub fn Xo(comptime Int: type) type {
+        if (@typeInfo(Int).Int.signedness == .signed) {
+            unreachable;
+        } else {
+            return @TypeOf(uo(@as(Int, undefined)));
+        }
+    }
+    pub const UDel = GenericChangedIntFormat(.{
+        .old_fmt_spec = .{ .bits = 64, .signedness = .unsigned, .radix = 10, .width = .min },
+        .new_fmt_spec = .{ .bits = 64, .signedness = .unsigned, .radix = 10, .width = .min },
+        .del_fmt_spec = .{ .bits = 64, .signedness = .unsigned, .radix = 10, .width = .min },
+    });
+    pub const BytesDiff = GenericChangedBytesFormat(.{});
+    pub const BloatDiff = GenericChangedBytesFormat(.{
+        .dec_style = "\x1b[92m-",
+        .inc_style = "\x1b[91m+",
+        .no_style = "\x1b[0m",
+        .to_from_zero = false,
+    });
+    pub const AddrDiff = GenericChangedIntFormat(.{
+        .del_fmt_spec = Ux64.specification,
+        .new_fmt_spec = Ux64.specification,
+        .old_fmt_spec = Ux64.specification,
+    });
+    pub const Char = struct {
+        value: u8,
+        const Format = @This();
+        pub fn formatWrite(format: Format, array: anytype) void {
+            array.writeOne(format.value);
+        }
+        pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
+            buf[0] = format.value;
+            return 1;
+        }
+        pub fn formatLength(_: Format) usize {
+            return 1;
+        }
+    };
+};
