@@ -693,66 +693,75 @@ pub fn GenericChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type
             }
         }
         // TODO: Merge this with the body for ChangedIntFormat.
-        pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
-            @setRuntimeSafety(builtin.is_safe);
+        pub fn formatWriteBufFull(format: Format, buf: [*]u8) usize {
             const old_fmt: Bytes = bytes(format.old_value);
             const new_fmt: Bytes = bytes(format.new_value);
-            var len: u64 = old_fmt.formatWriteBuf(buf);
+            var ptr: [*]u8 = buf + old_fmt.formatWriteBuf(buf);
             if (format.old_value != format.new_value) {
                 if (format.new_value > format.old_value) {
-                    const del_fmt: Bytes = bytes(format.new_value -% format.old_value);
-                    buf[len] = '(';
-                    len +%= 1;
-                    @as(*[inc_s.len]u8, @ptrCast(buf + len)).* = inc_s.*;
-                    len +%= inc_s.len;
-                    len +%= del_fmt.formatWriteBuf(buf + len);
-                    @as(*[no_s.len]u8, @ptrCast(buf + len)).* = no_s.*;
-                    len +%= no_s.len;
-                    buf[len] = ')';
-                    len +%= 1;
+                    ptr = writeStyledChange(ptr, bytes(format.new_value -% format.old_value), inc_s);
                 } else {
-                    const del_fmt: Bytes = bytes(format.old_value -% format.new_value);
-                    buf[len] = '(';
-                    len +%= 1;
-                    @as(*[dec_s.len]u8, @ptrCast(buf + len)).* = dec_s.*;
-                    len +%= dec_s.len;
-                    len +%= del_fmt.formatWriteBuf(buf + len);
-                    @as(*[no_s.len]u8, @ptrCast(buf + len)).* = no_s.*;
-                    len +%= no_s.len;
-                    buf[len] = ')';
-                    len +%= 1;
+                    ptr = writeStyledChange(ptr, bytes(format.old_value -% format.new_value), dec_s);
                 }
-                @as(*[4]u8, @ptrCast(buf + len)).* = " => ".*;
-                len +%= 4;
-                len +%= new_fmt.formatWriteBuf(buf + len);
+                ptr[0..4].* = " => ".*;
+                ptr += 4;
+                ptr += new_fmt.formatWriteBuf(ptr);
+            }
+            return strlen(ptr, buf);
+        }
+        pub fn formatLengthFull(format: Format) usize {
+            const old_fmt: Bytes = bytes(format.old_value);
+            const new_fmt: Bytes = bytes(format.new_value);
+            var len: usize = old_fmt.formatLength();
+            if (format.old_value != format.new_value) {
+                if (format.new_value > format.old_value) {
+                    len +%= lengthStyledChange(bytes(format.new_value -% format.old_value), inc_s);
+                } else {
+                    len +%= lengthStyledChange(bytes(format.old_value -% format.new_value), dec_s);
+                }
+                len +%= 4 +% new_fmt.formatLength();
             }
             return len;
         }
-        pub fn formatLength(format: Format) u64 {
-            const old_fmt: Bytes = bytes(format.old_value);
-            const new_fmt: Bytes = bytes(format.new_value);
-            var len: usize = 0;
-            len +%= old_fmt.formatLength();
-            if (format.old_value != format.new_value) {
-                if (format.new_value > format.old_value) {
-                    const del_fmt: Bytes = bytes(format.new_value -% format.old_value);
-                    len +%= 1;
-                    len +%= inc_s.len;
-                    len +%= del_fmt.formatLength();
-                    len +%= no_s.len;
-                    len +%= 1;
+        fn writeStyledChange(buf: [*]u8, del_fmt: Bytes, style_s: []const u8) [*]u8 {
+            buf[0] = '(';
+            var ptr: [*]u8 = strcpyEqu(buf + 1, style_s);
+            ptr += del_fmt.formatWriteBuf(ptr);
+            ptr = strcpyEqu(ptr, no_s);
+            ptr[0] = ')';
+            ptr += 1;
+            return ptr;
+        }
+        fn lengthStyledChange(del_fmt: Bytes, style_s: []const u8) usize {
+            return 2 +% style_s.len +% del_fmt.formatLength() +% no_s.len;
+        }
+        pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
+            @setRuntimeSafety(builtin.is_safe);
+            if (fmt_spec.to_from_zero) {
+                return format.formatWriteBufFull(buf);
+            } else {
+                if (format.old_value == 0) {
+                    return strlen(writeStyledChange(buf, bytes(format.new_value), fmt_spec.inc_style), buf);
+                } else if (format.new_value == 0) {
+                    return strlen(writeStyledChange(buf, bytes(format.old_value), fmt_spec.dec_style), buf);
                 } else {
-                    const del_fmt: Bytes = bytes(format.old_value -% format.new_value);
-                    len +%= 1;
-                    len +%= dec_s.len;
-                    len +%= del_fmt.formatLength();
-                    len +%= no_s.len;
-                    len +%= 1;
+                    return format.formatWriteBufFull(buf);
                 }
-                len +%= 4;
-                len +%= new_fmt.formatLength();
             }
-            return len;
+        }
+        pub fn formatLength(format: Format) usize {
+            @setRuntimeSafety(builtin.is_safe);
+            if (fmt_spec.to_from_zero) {
+                return format.formatWriteLengthFull();
+            } else {
+                if (format.old_value == 0) {
+                    return lengthStyledChange(bytes(format.new_value), fmt_spec.inc_style);
+                } else if (format.new_value == 0) {
+                    return lengthStyledChange(bytes(format.old_value), fmt_spec.dec_style);
+                } else {
+                    return format.formatLengthFull();
+                }
+            }
         }
         pub fn init(old_value: u64, new_value: u64) Format {
             return .{ .old_value = old_value, .new_value = new_value };
