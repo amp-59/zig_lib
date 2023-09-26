@@ -1,7 +1,6 @@
 const mem = @import("./mem.zig");
 const math = @import("./math.zig");
 const meta = @import("./meta.zig");
-const mach = @import("./mach.zig");
 const time = @import("./time.zig");
 const debug = @import("./debug.zig");
 const parse = @import("./parse.zig");
