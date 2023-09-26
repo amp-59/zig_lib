@@ -87,7 +87,7 @@ pub const Month = enum {
 };
 pub const ClockSpec = struct {
     return_type: type = TimeSpec,
-    errors: sys.ErrorPolicy = .{ .throw = sys.clock_get_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.clock_get.errors.all },
 };
 pub const ClockGetTime = *fn (Kind, *TimeSpec) u64;
 pub const GetTimeOfDay = *fn (*TimeVal, *TimeZone) u64;
@@ -102,7 +102,7 @@ pub fn get(comptime clock_spec: ClockSpec, kind: Kind) sys.ErrorUnion(clock_spec
 }
 pub const SleepSpec = struct {
     return_type: type = void,
-    errors: sys.ErrorPolicy = .{ .throw = sys.nanosleep_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.nanosleep.errors.all },
 };
 pub fn sleep(comptime sleep_spec: SleepSpec, ts: TimeSpec) sys.ErrorUnion(sleep_spec.errors, void) {
     meta.wrap(sys.call(.nanosleep, sleep_spec.errors, sleep_spec.return_type, .{ @intFromPtr(&ts), 0 })) catch |nanosleep_error| {
@@ -262,6 +262,11 @@ pub const spec = struct {
             pub const all = &.{
                 .INTR, .FAULT, .INVAL, .OPNOTSUPP,
             };
+        };
+    };
+    pub const clock_get = struct {
+        pub const errors = struct {
+            pub const all = &.{ .ACCES, .FAULT, .INVAL, .NODEV, .OPNOTSUPP, .PERM };
         };
     };
 };
