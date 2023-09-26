@@ -1551,6 +1551,15 @@ pub fn writeUnsignedFixedLEB128(comptime width: usize, ptr: *[width]u8, int: @Ty
     }
     ptr[idx] = @as(u8, @truncate(value));
 }
+pub inline fn toStringLiteral(comptime str: []const u8) []const u8 {
+    comptime {
+        var ret: []const u8 = &.{};
+        for (str) |byte| {
+            ret = ret ++ stringLiteralChar(byte);
+        }
+        return ret;
+    }
+}
 pub fn toCamelCases(noalias buf: []u8, names: []const []const u8) []u8 {
     var len: u64 = 0;
     var state: bool = false;
