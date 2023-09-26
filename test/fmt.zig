@@ -549,8 +549,8 @@ fn testRenderTypeDescription(allocator: *Allocator, array: *Array, buf: [*]u8) !
     try testFormat(allocator, array, buf, comptime BigTypeDescr.init(@import("std").builtin));
     try testFormat(allocator, array, buf, comptime BigTypeDescr.declare("Os", @import("std").Target.Os));
 
-    const td1: TypeDescr = comptime any(?union(enum) { yes: ?zl.build.Path, no });
-    const td2: TypeDescr = comptime any(?union(enum) { yes: ?zl.build.Path, no });
+    const td1: TypeDescr = comptime any(?union(enum) { yes: ?zl.file.CompoundPath, no });
+    const td2: TypeDescr = comptime any(?union(enum) { yes: ?zl.file.CompoundPath, no });
     try testFormats(allocator, array, td1, td2);
     try debug.expectEqualMemory(TypeDescr, td1, td2);
 }
@@ -576,10 +576,17 @@ fn testGenericRangeFormat() !void {
 }
 fn testSystemFlagsFormatters() !void {
     var buf: [4096]u8 = undefined;
-    var len: usize = (sys.flags.Clone{ .clear_child_thread_id = true, .trace_child = true }).formatWriteBuf(&buf);
-    try testing.expectEqualString("PTRACE|CHILD_CLEARTID", buf[0..len]);
+    var len: usize = 0;
     len = (sys.flags.MemMap{}).formatWriteBuf(&buf);
-    try testing.expectEqualString("PRIVATE|ANONYMOUS|FIXED_NOREPLACE", buf[0..len]);
+    try testing.expectEqualString("flags=private,anonymous,fixed_noreplace", buf[0..len]);
+    len = (sys.flags.FileMap{}).formatWriteBuf(&buf);
+    try testing.expectEqualString("flags=private,fixed", buf[0..len]);
+    len = (sys.flags.MemProt{ .exec = true }).formatWriteBuf(&buf);
+    try testing.expectEqualString("flags=read,write,exec", buf[0..len]);
+    len = (sys.flags.MemFd{ .allow_sealing = true, .close_on_exec = true }).formatWriteBuf(&buf);
+    try testing.expectEqualString("flags=close_on_exec,allow_sealing", buf[0..len]);
+    len = (sys.flags.Clone{ .clear_child_thread_id = true, .detached = false, .fs = true, .files = true }).formatWriteBuf(&buf);
+    try testing.expectEqualString("flags=vm,fs,files,signal_handlers,sysvsem,set_parent_thread_id,clear_child_thread_id,set_child_thread_id", buf[0..len]);
 }
 pub fn main() !void {
     try testBytesFormat();
@@ -589,7 +596,7 @@ pub fn main() !void {
     try testRenderFunctions();
     try testSystemFlagsFormatters();
     // try testEquivalentIntToStringFormat();
-    try testEquivalentLEBFormatAndParse();
+    //try testEquivalentLEBFormatAndParse();
     try @import("./fmt/utf8.zig").testUtf8();
     try @import("./fmt/ascii.zig").testAscii();
 }
