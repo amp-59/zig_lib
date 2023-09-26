@@ -5,7 +5,6 @@ const mem = zl.mem;
 const meta = zl.meta;
 const proc = zl.proc;
 const math = zl.math;
-const spec = zl.spec;
 const mach = zl.mach;
 const file = zl.file;
 const time = zl.time;
@@ -17,7 +16,7 @@ const perf = @import("../top/perf.zig");
 
 pub usingnamespace zl.start;
 
-pub const logging_override: debug.Logging.Override = spec.logging.override.silent;
+pub const logging_override: debug.Logging.Override = debug.spec.logging.override.silent;
 
 const path_spec: file.PathSpec = .{ .errors = .{} };
 const close_spec: file.CloseSpec = .{ .errors = .{} };
