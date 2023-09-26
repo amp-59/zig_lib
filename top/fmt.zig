@@ -525,15 +525,14 @@ pub const Bytes = struct {
         len +%= @tagName(format.value.integer.unit).len;
         return len;
     }
-    pub usingnamespace GenericFormat(Format);
 };
 pub const ChangedIntFormatSpec = struct {
     old_fmt_spec: PolynomialFormatSpec,
     new_fmt_spec: PolynomialFormatSpec,
     del_fmt_spec: PolynomialFormatSpec,
-    dec_style: []const u8 = tab.fx.color.fg.red ++ "-",
-    inc_style: []const u8 = tab.fx.color.fg.green ++ "+",
-    no_style: []const u8 = tab.fx.none,
+    dec_style: []const u8 = "\x1b[91m-",
+    inc_style: []const u8 = "\x1b[92m+",
+    no_style: []const u8 = "\x1b[0m",
     arrow_style: []const u8 = " => ",
 };
 pub fn GenericChangedIntFormat(comptime fmt_spec: ChangedIntFormatSpec) type {
@@ -652,14 +651,14 @@ pub fn GenericChangedIntFormat(comptime fmt_spec: ChangedIntFormatSpec) type {
             len +%= new_fmt.formatLength();
             return len;
         }
-        pub usingnamespace GenericFormat(Format);
     };
     return T;
 }
 pub const ChangedBytesFormatSpec = struct {
-    dec_style: []const u8 = tab.fx.color.fg.red ++ "-",
-    inc_style: []const u8 = tab.fx.color.fg.green ++ "+",
-    no_style: []const u8 = tab.fx.none,
+    dec_style: []const u8 = "\x1b[91m-",
+    inc_style: []const u8 = "\x1b[92m+",
+    no_style: []const u8 = "\x1b[0m",
+    to_from_zero: bool = false,
 };
 pub fn GenericChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type {
     const T = struct {
