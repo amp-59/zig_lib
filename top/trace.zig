@@ -425,12 +425,12 @@ pub fn printSourceCodeAtAddresses(trace: *const debug.Trace, ret_addr: usize, ad
     debug.write(buf[0..len]);
 }
 pub fn printStackTrace(trace: *const debug.Trace, first_addr: usize, frame_addr: usize) callconv(.C) void {
-    @setRuntimeSafety(builtin.is_safe);
-    if (Level.start != 0x600000000000) {
-        return;
-    }
-    debug.aboutWhere(debug.about.note_p0_s, "Requesting stack trace", first_addr, @src());
+    @setRuntimeSafety(false);
     const start: usize = @atomicRmw(usize, &Level.start, .Add, 0x40000000, .SeqCst);
+    defer Level.start = start;
+    if (start != Level.lb_addr) {
+        return debug.write(working);
+    }
     var allocator: Allocator = .{ .start = start, .next = start, .finish = start };
     var file_map: FileMap = FileMap.init(&allocator, 8);
     const exe_buf: []u8 = fastAllocFile(&allocator, &file_map, tab.self_link_s);
