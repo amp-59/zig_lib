@@ -1112,9 +1112,9 @@ pub const LazyIdentifierFormat = struct {
 pub const IdentifierFormat = struct {
     value: []const u8,
     const Format: type = @This();
-    pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
+    pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
         @setRuntimeSafety(builtin.is_safe);
-        var len: u64 = 0;
+        var len: usize = 0;
         if (isValidId(format.value)) {
             @memcpy(buf, format.value);
             len +%= format.value.len;
