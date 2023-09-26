@@ -1450,7 +1450,7 @@ pub fn GenericEscapedStringFormat(comptime fmt_spec: EscapedStringFormatSpec) ty
 }
 pub fn GenericLEB128Format(comptime Int: type) type {
     const bit_size_of: comptime_int = @bitSizeOf(Int);
-    return struct {
+    return extern struct {
         value: Int,
         const Format = @This();
         pub fn formatWrite(format: Format, array: anytype) void {
@@ -2496,6 +2496,9 @@ pub fn addrDiff(old_size: usize, new_size: usize) Type.AddrDiff {
 pub fn identifier(name: []const u8) IdentifierFormat {
     return .{ .value = name };
 }
+pub const lazyIdentifier = @as(*const fn ([]const u8) LazyIdentifierFormat, @ptrCast(&identifier));
+pub const stringLiteral = @as(*const fn ([]const u8) StringLiteralFormat, @ptrCast(&identifier));
+
 pub fn sourceLocation(value: builtin.SourceLocation, ret_addr: ?u64) SourceLocationFormat {
     return SourceLocationFormat.init(value, ret_addr);
 }
