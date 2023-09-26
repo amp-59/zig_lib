@@ -1091,6 +1091,24 @@ pub fn GenericDateTimeFormat(comptime DateTime: type) type {
     };
     return T;
 }
+pub const LazyIdentifierFormat = struct {
+    value: []const u8,
+    const Format = @This();
+    pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
+        const str: StringLiteralFormat = .{ .value = format.value };
+        buf[0] = '@';
+        const len: usize = str.formatWriteBuf(buf + 1);
+        return 1 +% len;
+    }
+    pub fn formatWrite(format: Format, array: anytype) void {
+        array.writeOne('@');
+        array.writeFormat(StringLiteralFormat{ .value = format.value });
+    }
+    pub fn formatLength(format: Format) usize {
+        const str: StringLiteralFormat = .{ .value = format.value };
+        return str.formatLength() +% 1;
+    }
+};
 pub const IdentifierFormat = struct {
     value: []const u8,
     const Format: type = @This();
