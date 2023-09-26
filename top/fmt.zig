@@ -248,7 +248,7 @@ pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
         const max_abs_value: Abs = fmt_spec.range.max orelse ~@as(Abs, 0);
         const min_digits_count: u16 = length(Abs, min_abs_value, fmt_spec.radix);
         const max_digits_count: u16 = length(Abs, max_abs_value, fmt_spec.radix);
-        pub const spec: PolynomialFormatSpec = fmt_spec;
+        pub const specification: PolynomialFormatSpec = fmt_spec;
         pub const StaticString = mem.StaticString(max_len);
         const max_len: comptime_int = blk: {
             var len: comptime_int = 0;
@@ -301,9 +301,9 @@ pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
                 @as([*]u8, @ptrCast(array.referOneUndefined())),
             }));
         }
-        pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
+        pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
             @setRuntimeSafety(false);
-            var len: u64 = 0;
+            var len: usize = 0;
             if (Abs != Int) {
                 buf[0] = '-';
             }
@@ -316,11 +316,11 @@ pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
                 buf[len] = '0' +% @as(u8, @intFromBool(format.value != 0));
                 len +%= 1;
             } else if (fmt_spec.separator) |separator| {
-                const count: u64 = format.digits();
+                const count: usize = format.digits();
                 var value: Abs = format.absolute();
                 len +%= count;
-                var pos: u64 = 0;
-                var sep: u64 = 0;
+                var pos: usize = 0;
+                var sep: usize = 0;
                 while (sep +% pos != count) : (value /= fmt_spec.radix) {
                     pos +%= 1;
                     buf[len - (sep +% pos)] = separator.character;
@@ -343,7 +343,7 @@ pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
             }
             return len;
         }
-        pub fn formatLength(format: Format) u64 {
+        pub fn formatLength(format: Format) usize {
             var len: u64 = 0;
             if (fmt_spec.prefix) |prefix| {
                 len +%= prefix.len;
@@ -419,17 +419,17 @@ pub const SourceLocationFormat = struct {
         const line_fmt: LineColFormat = .{ .value = format.value.line };
         const column_fmt: LineColFormat = .{ .value = format.value.column };
         const ret_addr_fmt: AddrFormat = .{ .value = format.return_address };
-        array.writeMany(tab.fx.style.bold);
+        array.writeMany("\x1b[1m");
         array.writeMany(file_name);
         array.writeOne(':');
         array.writeFormat(line_fmt);
         array.writeOne(':');
         array.writeFormat(column_fmt);
-        array.writeMany(": " ++ tab.fx.none ++ tab.fx.style.faint);
+        array.writeOne(':');
         array.writeFormat(ret_addr_fmt);
         array.writeMany(" in ");
         array.writeMany(fn_name);
-        array.writeMany(tab.fx.none ++ "\n");
+        array.writeMany("\x1b[0m\n");
     }
     fn functionName(format: SourceLocationFormat) []const u8 {
         var start: u64 = 0;
@@ -445,21 +445,17 @@ pub const SourceLocationFormat = struct {
         const line_fmt: LineColFormat = .{ .value = format.value.line };
         const column_fmt: LineColFormat = .{ .value = format.value.column };
         const ret_addr_fmt: AddrFormat = .{ .value = format.return_address };
-        var len: u64 = 0;
-        len +%= tab.fx.style.bold.len;
+        var len: u64 = 4;
         len +%= file_name.len;
         len +%= 1;
         len +%= line_fmt.formatLength();
         len +%= 1;
         len +%= column_fmt.formatLength();
         len +%= 2;
-        len +%= tab.fx.none.len +% tab.fx.style.faint.len;
         len +%= ret_addr_fmt.formatLength();
         len +%= 4;
         len +%= fn_name.len;
-        len +%= tab.fx.none.len;
-        len +%= 1;
-        return len;
+        return len +% 4;
     }
     pub fn init(value: builtin.SourceLocation, ret_addr: ?u64) SourceLocationFormat {
         return .{ .value = value, .return_address = ret_addr orelse @returnAddress() };
