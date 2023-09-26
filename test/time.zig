@@ -3,12 +3,11 @@ const mem = zl.mem;
 const fmt = zl.fmt;
 const proc = zl.proc;
 const time = zl.time;
-const spec = zl.spec;
 const debug = zl.debug;
 const builtin = zl.builtin;
 const testing = zl.testing;
 
-pub const logging_override: debug.Logging.Override = spec.logging.override.verbose;
+pub const logging_override: debug.Logging.Override = debug.spec.logging.override.verbose;
 pub const runtime_assertions: bool = true;
 
 pub usingnamespace zl.start;
