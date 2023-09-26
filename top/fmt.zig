@@ -1620,6 +1620,32 @@ pub fn untitle(noalias buf: []u8, noalias name: []const u8) []u8 {
     }
     return buf[0..name.len];
 }
+pub fn lowerCase(name: []const u8) LowerCaseFormat {
+    return .{ .value = name };
+}
+pub const LowerCaseFormat = struct {
+    value: []const u8,
+    const Format = @This();
+    pub fn formatWrite(format: Format, array: anytype) void {
+        for (format.value) |byte| {
+            array.writeOne(switch (byte) {
+                'A'...'Z' => byte +% ('a' -% 'A'),
+                else => byte,
+            });
+        }
+    }
+    pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
+        for (format.value, 0..) |byte, idx| {
+            buf[idx] = switch (byte) {
+                'A'...'Z' => byte +% ('a' -% 'A'),
+                else => byte,
+            };
+        }
+    }
+    pub fn formatLength(format: Format) usize {
+        return format.value.len;
+    }
+};
 /// .{ 0xff, 0xff, 0xff, 0xff } => "ffffffff";
 pub fn bytesToHex(dest: []u8, src: []const u8) []const u8 {
     var idx: u64 = 0;
