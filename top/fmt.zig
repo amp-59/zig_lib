@@ -108,6 +108,9 @@ pub fn strcpyMultiEqu(dest: [*]u8, src: []const []const u8) [*]u8 {
 pub fn strlen(dest: [*]u8, src: [*]u8) usize {
     return @intFromPtr(dest) -% @intFromPtr(src);
 }
+pub fn slice(dest: [*]u8, src: [*]u8) []u8 {
+    return src[0..strlen(dest, src)];
+}
 pub fn stringLiteralChar(byte: u8) []const u8 {
     switch (byte) {
         inline else => |value| return comptime blk: {
@@ -208,18 +211,6 @@ pub fn toSymbol(comptime T: type, value: T, comptime radix: u7) u8 {
     } else {
         return result +% dx.d;
     }
-}
-
-fn GenericFormat(comptime Format: type) type {
-    const T = struct {
-        const StaticString = mem.StaticString(Format.max_len);
-        pub fn formatConvert(format: Format) StaticString {
-            var array: StaticString = .{};
-            array.writeFormat(format);
-            return array;
-        }
-    };
-    return T;
 }
 const Separator = struct {
     character: u8 = ',',
