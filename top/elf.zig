@@ -4,6 +4,7 @@ const sys = @import("./sys.zig");
 const fmt = @import("./fmt.zig");
 const file = @import("./file.zig");
 const proc = @import("./proc.zig");
+const algo = @import("./algo.zig");
 const meta = @import("./meta.zig");
 const bits = @import("./bits.zig");
 const debug = @import("./debug.zig");
@@ -1306,15 +1307,17 @@ pub const LoaderSpec = struct {
     AddressSpace: type,
     const Options = struct {
         extra_sections: []const []const u8 = &.{},
+        try_harder_to_match: bool = false,
     };
     pub const Logging = packed struct {
         show_elf_header: bool = false,
-        show_defined: bool = false,
         show_relocations: bool = false,
+        show_mangled_symbols: bool = false,
         hide_mangled_symbols: bool = true,
         hide_unchanged_sections: bool = true,
         open: debug.Logging.AcquireError = .{},
         seek: debug.Logging.SuccessError = .{},
+        stat: debug.Logging.SuccessErrorFault = .{},
         read: debug.Logging.SuccessError = .{},
         map: debug.Logging.AcquireError = .{},
         unmap: debug.Logging.ReleaseError = .{},
@@ -1323,6 +1326,7 @@ pub const LoaderSpec = struct {
     pub const Errors = struct {
         open: sys.ErrorPolicy = .{ .throw = file.spec.open.errors.all },
         seek: sys.ErrorPolicy = .{ .throw = file.spec.seek.errors.all },
+        stat: sys.ErrorPolicy = .{ .throw = file.spec.stat.errors.all },
         read: sys.ErrorPolicy = .{ .throw = file.spec.read.errors.all },
         map: sys.ErrorPolicy = .{ .throw = mem.spec.mmap.errors.all },
         unmap: sys.ErrorPolicy = .{ .abort = mem.spec.munmap.errors.all },
