@@ -960,11 +960,10 @@ pub fn open(comptime open_spec: OpenSpec, flags: sys.flags.Open, pathname: [:0]c
         return open_error;
     }
 }
-pub fn openAt(comptime spec: OpenSpec, dir_fd: u64, name: [:0]const u8) sys.ErrorUnion(spec.errors, spec.return_type) {
+pub fn openAt(comptime open_spec: OpenSpec, flags: Flags.Open, dir_fd: usize, name: [:0]const u8) sys.ErrorUnion(open_spec.errors, open_spec.return_type) {
     const name_buf_addr: u64 = @intFromPtr(name.ptr);
-    const flags: usize = @as(usize, @bitCast(spec.options));
-    const logging: debug.Logging.AcquireError = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.openat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, flags, 0 }))) |fd| {
+    const logging: debug.Logging.AcquireError = comptime open_spec.logging.override();
+    if (meta.wrap(sys.call(.openat, open_spec.errors, open_spec.return_type, .{ dir_fd, name_buf_addr, @bitCast(flags), 0 }))) |fd| {
         if (logging.Acquire) {
             about.aboutDirFdNameFdNotice(about.open_s, dir_fd, name, fd);
         }
@@ -976,47 +975,45 @@ pub fn openAt(comptime spec: OpenSpec, dir_fd: u64, name: [:0]const u8) sys.Erro
         return open_error;
     }
 }
-pub fn socket(comptime spec: SocketSpec, domain: Socket.Domain, connection: Socket.Connection, protocol: Socket.Protocol) sys.ErrorUnion(
-    spec.errors,
-    spec.return_type,
+pub fn socket(comptime socket_spec: SocketSpec, domain: Socket.Domain, flags: Flags.Socket, protocol: Socket.Protocol) sys.ErrorUnion(
+    socket_spec.errors,
+    socket_spec.return_type,
 ) {
-    const flags: Socket.Options = comptime spec.flags();
-    const logging: debug.Logging.AcquireError = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.socket, spec.errors, spec.return_type, .{
-        @intFromEnum(domain), flags.val | @intFromEnum(connection), @intFromEnum(protocol),
+    const logging: debug.Logging.AcquireError = comptime socket_spec.logging.override();
+    if (meta.wrap(sys.call(.socket, socket_spec.errors, socket_spec.return_type, .{
+        @intFromEnum(domain), @bitCast(flags), @intFromEnum(protocol),
     }))) |fd| {
         if (logging.Acquire) {
-            about.socketNotice(fd, domain, connection);
+            about.socketNotice(fd, domain, flags);
         }
         return fd;
     } else |socket_error| {
         if (logging.Error) {
-            about.socketError(socket_error, domain, connection);
+            about.socketError(socket_error, domain, flags);
         }
         return socket_error;
     }
 }
-pub fn socketPair(comptime spec: SocketSpec, domain: Socket.Domain, connection: Socket.Connection, fds: *[2]u32) sys.ErrorUnion(
-    spec.errors,
-    spec.return_type,
+pub fn socketPair(comptime socket_spec: SocketSpec, domain: Socket.Domain, flags: Flags.Socket, fds: *[2]u32) sys.ErrorUnion(
+    socket_spec.errors,
+    socket_spec.return_type,
 ) {
-    const flags: Socket = comptime spec.flags();
-    const logging: debug.Logging.AcquireError = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.socketpair, spec.errors, spec.return_type, .{
-        @intFromEnum(domain), flags.val | @intFromEnum(connection), 0, @intFromPtr(fds),
+    const logging: debug.Logging.AcquireError = comptime socket_spec.logging.override();
+    if (meta.wrap(sys.call(.socketpair, socket_spec.errors, socket_spec.return_type, .{
+        @intFromEnum(domain), @bitCast(flags), 0, @intFromPtr(fds),
     }))) |fd| {
         if (logging.Acquire) {
-            about.socketsNotice(fd, domain, connection);
+            about.socketsNotice(fd, domain, flags);
         }
         return fd;
     } else |socket_error| {
         if (logging.Error) {
-            about.socketsError(socket_error, domain, connection);
+            about.socketsError(socket_error, domain, flags);
         }
         return socket_error;
     }
 }
-pub fn listen(comptime listen_spec: ListenSpec, sock_fd: u64, backlog: u64) sys.ErrorUnion(listen_spec.errors, void) {
+pub fn listen(comptime listen_spec: ListenSpec, sock_fd: usize, backlog: u64) sys.ErrorUnion(listen_spec.errors, void) {
     const logging: debug.Logging.AttemptSuccessError = comptime listen_spec.logging.override();
     if (meta.wrap(sys.call(.listen, listen_spec.errors, void, .{ sock_fd, backlog }))) {
         if (logging.Success) {
@@ -1029,7 +1026,7 @@ pub fn listen(comptime listen_spec: ListenSpec, sock_fd: u64, backlog: u64) sys.
         return listen_error;
     }
 }
-pub fn bind(comptime bind_spec: BindSpec, sock_fd: u64, addr: *Socket.Address, addrlen: u32) sys.ErrorUnion(bind_spec.errors, void) {
+pub fn bind(comptime bind_spec: BindSpec, sock_fd: usize, addr: *Socket.Address, addrlen: u32) sys.ErrorUnion(bind_spec.errors, void) {
     const logging: debug.Logging.AcquireError = comptime bind_spec.logging.override();
     if (meta.wrap(sys.call(.bind, bind_spec.errors, void, .{ sock_fd, @intFromPtr(addr), addrlen }))) {
         if (logging.Acquire) {
@@ -1042,7 +1039,7 @@ pub fn bind(comptime bind_spec: BindSpec, sock_fd: u64, addr: *Socket.Address, a
         return bind_error;
     }
 }
-pub fn accept(comptime accept_spec: AcceptSpec, fd: u64, addr: *Socket.Address, addrlen: *u32) sys.ErrorUnion(
+pub fn accept(comptime accept_spec: AcceptSpec, fd: usize, addr: *Socket.Address, addrlen: *u32) sys.ErrorUnion(
     accept_spec.errors,
     accept_spec.return_type,
 ) {
@@ -1056,7 +1053,7 @@ pub fn accept(comptime accept_spec: AcceptSpec, fd: u64, addr: *Socket.Address, 
         return accept_error;
     }
 }
-pub fn connect(comptime conn_spec: ConnectSpec, fd: u64, addr: *const Socket.Address, addrlen: u64) sys.ErrorUnion(
+pub fn connect(comptime conn_spec: ConnectSpec, fd: usize, addr: *const Socket.Address, addrlen: u64) sys.ErrorUnion(
     conn_spec.errors,
     conn_spec.return_type,
 ) {
@@ -1070,7 +1067,7 @@ pub fn connect(comptime conn_spec: ConnectSpec, fd: u64, addr: *const Socket.Add
         return connect_error;
     }
 }
-pub fn sendTo(comptime send_spec: SendToSpec, fd: u64, buf: []u8, flags: u32, addr: *Socket.Address, addrlen: u32) sys.ErrorUnion(
+pub fn sendTo(comptime send_spec: SendToSpec, fd: usize, buf: []u8, flags: u32, addr: *Socket.Address, addrlen: u32) sys.ErrorUnion(
     send_spec.errors,
     send_spec.return_type,
 ) {
@@ -1086,7 +1083,7 @@ pub fn sendTo(comptime send_spec: SendToSpec, fd: u64, buf: []u8, flags: u32, ad
         return sendto_error;
     }
 }
-pub fn receiveFrom(comptime recv_spec: ReceiveFromSpec, fd: u64, buf: []u8, flags: u32, addr: *Socket.Address, addrlen: *u32) sys.ErrorUnion(
+pub fn receiveFrom(comptime recv_spec: ReceiveFromSpec, fd: usize, buf: []u8, flags: u32, addr: *Socket.Address, addrlen: *u32) sys.ErrorUnion(
     recv_spec.errors,
     recv_spec.return_type,
 ) {
@@ -1103,7 +1100,7 @@ pub fn receiveFrom(comptime recv_spec: ReceiveFromSpec, fd: u64, buf: []u8, flag
         return recvfrom_error;
     }
 }
-fn getSocketName(comptime get_spec: GetSockNameSpec, fd: u64, addr: *Socket.Address, addrlen: *u32) sys.ErrorUnion(
+fn getSocketName(comptime get_spec: GetSockNameSpec, fd: usize, addr: *Socket.Address, addrlen: *u32) sys.ErrorUnion(
     get_spec.errors,
     get_spec.return_type,
 ) {
@@ -1117,7 +1114,7 @@ fn getSocketName(comptime get_spec: GetSockNameSpec, fd: u64, addr: *Socket.Addr
         return getsockname_error;
     }
 }
-fn getPeerName(comptime get_spec: GetPeerNameSpec, fd: u64, addr: *Socket.Address, addrlen: *u32) sys.ErrorUnion(
+fn getPeerName(comptime get_spec: GetPeerNameSpec, fd: usize, addr: *Socket.Address, addrlen: *u32) sys.ErrorUnion(
     get_spec.errors,
     get_spec.return_type,
 ) {
@@ -1131,7 +1128,7 @@ fn getPeerName(comptime get_spec: GetPeerNameSpec, fd: u64, addr: *Socket.Addres
         return getpeername_error;
     }
 }
-fn getSocketOption(comptime get_spec: SocketOptionSpec, fd: u64, level: u64, optname: u32, optval: *u8, optlen: *u32) sys.ErrorUnion(
+fn getSocketOption(comptime get_spec: SocketOptionSpec, fd: usize, level: u64, optname: u32, optval: *u8, optlen: *u32) sys.ErrorUnion(
     get_spec.errors,
     get_spec.return_type,
 ) {
@@ -1145,7 +1142,7 @@ fn getSocketOption(comptime get_spec: SocketOptionSpec, fd: u64, level: u64, opt
         return getsockopt_error;
     }
 }
-fn setSocketOption(comptime set_spec: SocketOptionSpec, fd: u64, level: u64, optname: u32, optval: *u8, optlen: u32) sys.ErrorUnion(
+fn setSocketOption(comptime set_spec: SocketOptionSpec, fd: usize, level: u64, optname: u32, optval: *u8, optlen: u32) sys.ErrorUnion(
     set_spec.errors,
     set_spec.return_type,
 ) {
@@ -1159,7 +1156,7 @@ fn setSocketOption(comptime set_spec: SocketOptionSpec, fd: u64, level: u64, opt
         return setsockopt_error;
     }
 }
-pub fn shutdown(comptime shutdown_spec: ShutdownSpec, fd: u64, how: Shutdown) sys.ErrorUnion(
+pub fn shutdown(comptime shutdown_spec: ShutdownSpec, fd: usize, how: Shutdown) sys.ErrorUnion(
     shutdown_spec.errors,
     shutdown_spec.return_type,
 ) {
@@ -1200,11 +1197,10 @@ pub fn dirname(pathname: [:0]const u8) []const u8 {
 pub fn basename(pathname: [:0]const u8) [:0]const u8 {
     return pathname[indexOfBasenameStart(pathname)..];
 }
-pub fn path(comptime spec: PathSpec, pathname: [:0]const u8) sys.ErrorUnion(spec.errors, spec.return_type) {
+pub fn path(comptime path_spec: PathSpec, flags: Flags.Open, pathname: [:0]const u8) sys.ErrorUnion(path_spec.errors, path_spec.return_type) {
     const pathname_buf_addr: u64 = @intFromPtr(pathname.ptr);
-    const flags: Open.Options = comptime spec.flags();
-    const logging: debug.Logging.AcquireError = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.open, spec.errors, spec.return_type, .{ pathname_buf_addr, flags.val, 0 }))) |fd| {
+    const logging: debug.Logging.AcquireError = comptime path_spec.logging.override();
+    if (meta.wrap(sys.call(.open, path_spec.errors, path_spec.return_type, .{ pathname_buf_addr, @bitCast(flags), 0 }))) |fd| {
         if (logging.Acquire) {
             about.aboutPathnameFdNotice(about.open_s, pathname, fd);
         }
@@ -1216,11 +1212,10 @@ pub fn path(comptime spec: PathSpec, pathname: [:0]const u8) sys.ErrorUnion(spec
         return open_error;
     }
 }
-pub fn pathAt(comptime spec: PathSpec, dir_fd: u64, name: [:0]const u8) sys.ErrorUnion(spec.errors, spec.return_type) {
+pub fn pathAt(comptime path_spec: PathSpec, flags: Flags.Open, dir_fd: usize, name: [:0]const u8) sys.ErrorUnion(path_spec.errors, path_spec.return_type) {
     const name_buf_addr: u64 = @intFromPtr(name.ptr);
-    const flags: Open.Options = comptime spec.flags();
-    const logging: debug.Logging.AcquireError = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.openat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, flags.val, 0 }))) |fd| {
+    const logging: debug.Logging.AcquireError = comptime path_spec.logging.override();
+    if (meta.wrap(sys.call(.openat, path_spec.errors, path_spec.return_type, .{ dir_fd, name_buf_addr, @bitCast(flags), 0 }))) |fd| {
         if (logging.Acquire) {
             about.aboutDirFdNameFdNotice(about.open_s, dir_fd, name, fd);
         }
@@ -1233,16 +1228,16 @@ pub fn pathAt(comptime spec: PathSpec, dir_fd: u64, name: [:0]const u8) sys.Erro
     }
 }
 fn writePath(buf: *[4096]u8, pathname: []const u8) [:0]u8 {
-    mach.memcpy(buf, pathname.ptr, pathname.len);
+    @memcpy(buf, pathname);
     buf[pathname.len] = 0;
     return buf[0..pathname.len :0];
 }
-fn makePathInternal(comptime spec: MakePathSpec, pathname: [:0]u8, comptime file_mode: Mode) sys.ErrorUnion(.{
-    .throw = spec.errors.mkdir.throw ++ spec.errors.stat.throw,
-    .abort = spec.errors.mkdir.abort ++ spec.errors.stat.abort,
+fn makePathInternal(comptime mkpath_spec: MakePathSpec, pathname: [:0]u8, file_mode: Mode) sys.ErrorUnion(.{
+    .throw = mkpath_spec.errors.mkdir.throw ++ mkpath_spec.errors.stat.throw,
+    .abort = mkpath_spec.errors.mkdir.abort ++ mkpath_spec.errors.stat.abort,
 }, void) {
-    const stat_spec: StatusSpec = comptime spec.stat();
-    const make_dir_spec: MakeDirSpec = spec.mkdir();
+    const stat_spec: StatusSpec = comptime mkpath_spec.stat();
+    const make_dir_spec: MakeDirSpec = mkpath_spec.mkdir();
     var st: Status = comptime builtin.zero(Status);
     pathStatus(stat_spec, pathname, &st) catch |err| blk: {
         if (err == error.NoSuchFileOrDirectory) {
@@ -1250,7 +1245,7 @@ fn makePathInternal(comptime spec: MakePathSpec, pathname: [:0]u8, comptime file
             debug.assertEqual(u8, pathname[idx], '/');
             if (idx != 0) {
                 pathname[idx] = 0;
-                try makePathInternal(spec, pathname[0..idx :0], file_mode);
+                try makePathInternal(mkpath_spec, pathname[0..idx :0], file_mode);
                 pathname[idx] = '/';
             }
         }
