@@ -272,10 +272,29 @@ pub fn alignRealBitSizeAbove(count: u16) u16 {
         else => return 512,
     }
 }
-/// Return the smallest real bitSizeOf the integer type required to store the
-/// comptime integer.
-pub fn realBitSizeOf(comptime value: comptime_int) u16 {
-    if (value > 0) {
+/// Return the smallest real bitSizeOf the integer type required to store value
+pub fn unsignedRealBitSize(value: usize) u16 {
+    switch (value) {
+        0...~@as(u8, 0) => return 8,
+        @as(u9, 1) << 8...~@as(u16, 0) => return 16,
+        @as(u17, 1) << 16...~@as(u32, 0) => return 32,
+        @as(u33, 1) << 32...~@as(u64, 0) => return 64,
+    }
+}
+pub fn signedRealBitSize(value: isize) u16 {
+    const xi8: math.Extrema = math.extrema(i8);
+    const xi16: math.Extrema = math.extrema(i16);
+    const xi32: math.Extrema = math.extrema(i32);
+    const xi64: math.Extrema = math.extrema(i64);
+    switch (value) {
+        xi8.min...xi8.max => return 8,
+        xi16.min...xi8.min - 1, xi8.max + 1...xi16.max => return 16,
+        xi32.min...xi16.min - 1, xi16.max + 1...xi32.max => return 32,
+        xi64.min...xi32.min - 1, xi32.max + 1...xi64.max => return 64,
+    }
+}
+pub fn realBitSize(comptime value: comptime_int) comptime_int {
+    if (value >= 0) {
         switch (value) {
             0...~@as(u8, 0) => return 8,
             @as(u9, 1) << 8...~@as(u16, 0) => return 16,
@@ -307,19 +326,19 @@ pub fn realBitSizeOf(comptime value: comptime_int) u16 {
     }
 }
 pub inline fn alignBitSizeOfBelow(comptime T: type) u16 {
-    return alignBitSizeBelow(@bitSizeOf(T));
+    return alignRealBitSizeBelow(@bitSizeOf(T));
 }
 pub inline fn alignBitSizeOfAbove(comptime T: type) u16 {
-    return alignBitSizeAbove(@bitSizeOf(T));
+    return alignRealBitSizeAbove(@bitSizeOf(T));
 }
 pub fn AlignBitSizeBelow(comptime T: type) type {
     var int_type_info: builtin.Type.Int = @typeInfo(T).Int;
-    int_type_info.bits = alignBitSizeBelow(int_type_info.bits);
+    int_type_info.bits = alignRealBitSizeBelow(int_type_info.bits);
     return @Type(.{ .Int = int_type_info });
 }
 pub fn AlignBitSizeAbove(comptime T: type) type {
     var int_type_info: builtin.Type.Int = @typeInfo(T).Int;
-    int_type_info.bits = alignBitSizeAbove(int_type_info.bits);
+    int_type_info.bits = alignRealBitSizeAbove(int_type_info.bits);
     return @Type(.{ .Int = int_type_info });
 }
 
@@ -386,7 +405,7 @@ pub fn LeastRealBitSize(comptime value: anytype) type {
     }
     return @Type(.{
         .Int = .{
-            .bits = alignBitSizeAbove(@bitSizeOf(T) - @clz(value)),
+            .bits = alignRealBitSizeAbove(@bitSizeOf(T) - @clz(value)),
             .signedness = .unsigned,
         },
     });
@@ -460,7 +479,7 @@ pub inline fn leastBitCast(any: anytype) @Type(.{ .Int = .{
     return @as(U, @bitCast(any));
 }
 pub inline fn leastRealBitCast(any: anytype) @Type(.{ .Int = .{
-    .bits = alignBitSizeAbove(@bitSizeOf(@TypeOf(any))),
+    .bits = alignRealBitSizeAbove(@bitSizeOf(@TypeOf(any))),
     .signedness = .unsigned,
 } }) {
     return leastBitCast(any);
