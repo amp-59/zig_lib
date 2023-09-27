@@ -1766,7 +1766,7 @@ pub fn pathTruncate(comptime truncate_spec: TruncateSpec, pathname: [:0]const u8
 }
 // Getting terminal attributes is classed as a resource acquisition.
 const TerminalAttributesSpec = struct {
-    errors: sys.ErrorPolicy = .{ .throw = sys.ioctl_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.ioctl.errors.all },
     return_type: type = void,
     logging: debug.Logging.Default = .{},
 };
@@ -1775,7 +1775,7 @@ const IOControlSpec = struct {
     const TIOC = sys.TIOC;
 };
 
-pub fn duplicate(comptime dup_spec: DuplicateSpec, old_fd: u64) sys.ErrorUnion(dup_spec.errors, dup_spec.return_type) {
+pub fn duplicate(comptime dup_spec: DuplicateSpec, old_fd: usize) sys.ErrorUnion(dup_spec.errors, dup_spec.return_type) {
     const logging: debug.Logging.SuccessError = comptime dup_spec.logging.override();
     if (meta.wrap(sys.call(.dup, dup_spec.errors, dup_spec.return_type, .{old_fd}))) |new_fd| {
         if (logging.Success) {
@@ -1791,10 +1791,9 @@ pub fn duplicate(comptime dup_spec: DuplicateSpec, old_fd: u64) sys.ErrorUnion(d
         return dup_error;
     }
 }
-pub fn duplicateTo(comptime dup3_spec: DuplicateSpec, old_fd: u64, new_fd: u64) sys.ErrorUnion(dup3_spec.errors, void) {
-    const flags: Open.Options = comptime dup3_spec.flags();
+pub fn duplicateTo(comptime dup3_spec: DuplicateSpec, flags: Flags.Duplicate, old_fd: usize, new_fd: usize) sys.ErrorUnion(dup3_spec.errors, void) {
     const logging: debug.Logging.SuccessError = comptime dup3_spec.logging.override();
-    if (meta.wrap(sys.call(.dup3, dup3_spec.errors, void, .{ old_fd, new_fd, flags.val }))) {
+    if (meta.wrap(sys.call(.dup3, dup3_spec.errors, void, .{ old_fd, new_fd, @bitCast(flags) }))) {
         if (logging.Success) {
             about.aboutFdFdNotice(about.dup3_s, "old_fd=", "new_fd=", old_fd, new_fd);
         }
@@ -1805,12 +1804,11 @@ pub fn duplicateTo(comptime dup3_spec: DuplicateSpec, old_fd: u64, new_fd: u64) 
         return dup3_error;
     }
 }
-pub fn makePipe(comptime pipe2_spec: MakePipeSpec) sys.ErrorUnion(pipe2_spec.errors, Pipe) {
+pub fn makePipe(comptime pipe2_spec: MakePipeSpec, flags: Flags.Duplicate) sys.ErrorUnion(pipe2_spec.errors, Pipe) {
     var pipefd: Pipe = undefined;
     const pipefd_addr: u64 = @intFromPtr(&pipefd);
-    const flags: Open.Options = comptime pipe2_spec.flags();
     const logging: debug.Logging.AcquireError = comptime pipe2_spec.logging.override();
-    if (meta.wrap(sys.call(.pipe2, pipe2_spec.errors, void, .{ pipefd_addr, flags.val }))) {
+    if (meta.wrap(sys.call(.pipe2, pipe2_spec.errors, void, .{ pipefd_addr, @bitCast(flags) }))) {
         if (logging.Acquire) {
             about.aboutFdFdNotice(about.pipe_s, "read_fd=", "write_fd=", pipefd.read, pipefd.write);
         }
@@ -1868,17 +1866,31 @@ pub inline fn pollOne(comptime poll_spec: PollSpec, fd: *PollFd, timeout: u32) s
 //  exit_group
 //  fstat
 //  getrandom
-pub fn accessAt(comptime access_spec: AccessSpec, dir_fd: u64, name: [:0]const u8, ok: Access) sys.ErrorUnion(access_spec.errors, void) {
-    if (meta.wrap(sys.call(.faccessat2, access_spec.errors, void, .{
-        dir_fd, @intFromPtr(name.ptr), @as(usize, @bitCast(ok)), @as(usize, @bitCast(access_spec.options)),
+pub fn accessAt(comptime access_spec: AccessSpec, at: sys.flags.At, dir_fd: usize, name: [:0]const u8, ok: Access) sys.ErrorUnion(
+    access_spec.errors,
+    access_spec.return_type,
+) {
+    if (meta.wrap(sys.call(.faccessat2, access_spec.errors, usize, .{
+        dir_fd, @intFromPtr(name.ptr), @bitCast(ok), @bitCast(at),
     }))) |ret| {
+        if (access_spec.return_type == bool) {
+            return ret == 0;
+        }
         return ret;
     } else |access_error| {
         return access_error;
     }
 }
-pub fn access(comptime access_spec: AccessSpec, pathname: [:0]const u8, ok: Access) sys.ErrorUnion(access_spec.errors, void) {
-    if (meta.wrap(sys.call(.access, access_spec.errors, void, .{ @intFromPtr(pathname.ptr), @as(usize, @bitCast(ok)) }))) |ret| {
+pub fn access(comptime access_spec: AccessSpec, pathname: [:0]const u8, ok: Access) sys.ErrorUnion(
+    access_spec.errors,
+    access_spec.return_type,
+) {
+    if (meta.wrap(sys.call(.access, access_spec.errors, usize, .{
+        @intFromPtr(pathname.ptr), @bitCast(ok),
+    }))) |ret| {
+        if (access_spec.return_type == bool) {
+            return ret == 0;
+        }
         return ret;
     } else |access_error| {
         return access_error;
@@ -1924,7 +1936,7 @@ pub fn pathAssert(comptime stat_spec: StatusSpec, pathname: [:0]const u8, kind: 
         return st;
     }
 }
-pub fn isAt(comptime stat_spec: StatusSpec, dir_fd: u64, name: [:0]const u8, kind: Kind) sys.ErrorUnion(
+pub fn isAt(comptime stat_spec: StatusSpec, dir_fd: usize, name: [:0]const u8, kind: Kind) sys.ErrorUnion(
     stat_spec.errors,
     if (stat_spec.return_type == void) bool else stat_spec.return_type,
 ) {
@@ -1935,7 +1947,7 @@ pub fn isAt(comptime stat_spec: StatusSpec, dir_fd: u64, name: [:0]const u8, kin
     }
     return st.mode.kind == kind;
 }
-pub fn isNotAt(comptime stat_spec: StatusSpec, dir_fd: u64, name: [:0]const u8, kind: Kind) sys.ErrorUnion(
+pub fn isNotAt(comptime stat_spec: StatusSpec, dir_fd: usize, name: [:0]const u8, kind: Kind) sys.ErrorUnion(
     stat_spec.errors,
     if (stat_spec.return_type == void) bool else stat_spec.return_type,
 ) {
@@ -1946,16 +1958,16 @@ pub fn isNotAt(comptime stat_spec: StatusSpec, dir_fd: u64, name: [:0]const u8, 
     }
     return st.mode.kind != kind;
 }
-pub fn assertAt(comptime stat_spec: StatusSpec, dir_fd: u64, name: [:0]const u8, kind: Kind) sys.ErrorUnion(
+pub fn assertAt(comptime stat_spec: StatusSpec, at: sys.flags.At, dir_fd: usize, name: [:0]const u8, kind: Kind) sys.ErrorUnion(
     stat_spec.errors,
     stat_spec.return_type,
 ) {
     var st: Status = comptime builtin.zero(Status);
-    try meta.wrap(statusAt(stat_spec, dir_fd, name, &st));
+    try meta.wrap(statusAt(stat_spec, at, dir_fd, name, &st));
     const logging: debug.Logging.SuccessErrorFault = comptime stat_spec.logging.override();
     if (st.mode.kind != kind) {
         if (logging.Fault) {
-            debug.atDirFdMustBeFault(dir_fd, name, kind, st.mode);
+            about.atDirFdMustBeFault(dir_fd, name, kind, st.mode);
         }
         proc.exit(2);
     }
@@ -1963,7 +1975,7 @@ pub fn assertAt(comptime stat_spec: StatusSpec, dir_fd: u64, name: [:0]const u8,
         return st;
     }
 }
-pub fn is(comptime stat_spec: StatusSpec, fd: u64, kind: Kind) sys.ErrorUnion(
+pub fn is(comptime stat_spec: StatusSpec, fd: usize, kind: Kind) sys.ErrorUnion(
     stat_spec.errors,
     if (stat_spec.return_type == void) bool else stat_spec.return_type,
 ) {
@@ -1974,18 +1986,18 @@ pub fn is(comptime stat_spec: StatusSpec, fd: u64, kind: Kind) sys.ErrorUnion(
     }
     return st.mode.kind == kind;
 }
-pub fn isNot(comptime stat_spec: StatusSpec, kind: Kind, fd: u64) sys.ErrorUnion(
+pub fn isNot(comptime stat_spec: StatusSpec, kind: Kind, fd: usize) sys.ErrorUnion(
     stat_spec.errors,
     if (stat_spec.return_type == void) bool else stat_spec.return_type,
 ) {
     var st: Status = comptime builtin.zero(Status);
     try meta.wrap(status(stat_spec, fd, &st));
     if (stat_spec.return_type == ?Status) {
-        return mach.cmovZ(st.mode.kind != kind, st);
+        return bits.cmovZ(st.mode.kind != kind, st);
     }
     return st.mode.kind != kind;
 }
-pub fn assert(comptime stat_spec: StatusSpec, fd: u64, kind: Kind) sys.ErrorUnion(
+pub fn assert(comptime stat_spec: StatusSpec, fd: usize, kind: Kind) sys.ErrorUnion(
     stat_spec.errors,
     stat_spec.return_type,
 ) {
@@ -2003,7 +2015,7 @@ pub fn assert(comptime stat_spec: StatusSpec, fd: u64, kind: Kind) sys.ErrorUnio
         return st;
     }
 }
-pub fn assertNot(comptime stat_spec: StatusSpec, fd: u64, kind: Kind) sys.ErrorUnion(
+pub fn assertNot(comptime stat_spec: StatusSpec, fd: usize, kind: Kind) sys.ErrorUnion(
     stat_spec.errors,
     stat_spec.return_type,
 ) {
@@ -2024,7 +2036,7 @@ pub fn assertNot(comptime stat_spec: StatusSpec, fd: u64, kind: Kind) sys.ErrorU
 fn getTerminalAttributes() void {}
 fn setTerminalAttributes() void {}
 pub fn readRandom(buf: []u8) !void {
-    return sys.call(.getrandom, .{ .throw = sys.getrandom_errors }, void, .{ @intFromPtr(buf.ptr), buf.len, sys.GRND.RANDOM });
+    return sys.call(.getrandom, .{ .throw = spec.getrandom.errors.all }, void, .{ @intFromPtr(buf.ptr), buf.len, sys.GRND.RANDOM });
 }
 pub fn DeviceRandomBytes(comptime bytes: u64) type {
     return struct {
