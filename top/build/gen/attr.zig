@@ -367,7 +367,7 @@ pub const zig_build_command_attributes: types.Attributes = .{
         .{
             .name = "function_sections",
             .string = "-ffunction-sections",
-            .and_no = .{ .string = "-fno-function-section" },
+            .and_no = .{ .string = "-fno-function-sections" },
             .descr = &.{"Places each function in a separate section"},
         },
         .{
