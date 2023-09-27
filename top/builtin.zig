@@ -779,13 +779,6 @@ pub inline fn all(comptime T: type) T {
         return @as(*const T, @ptrCast(&data)).*;
     }
 }
-pub inline fn addr(any: anytype) usize {
-    if (@typeInfo(@TypeOf(any)).Pointer.size == .Slice) {
-        return @intFromPtr(any.ptr);
-    } else {
-        return @intFromPtr(any);
-    }
-}
 pub fn anyOpaque(comptime value: anytype) *const anyopaque {
     const S: type = @TypeOf(value);
     const T = [0:value]S;
@@ -2681,6 +2674,7 @@ pub fn define(comptime symbol: []const u8, comptime T: type, comptime default: T
 pub extern fn memset(dest: [*]u8, value: u8, count: usize) void;
 pub extern fn memcpy(noalias dest: [*]u8, noalias src: [*]const u8, len: u64) void;
 pub extern fn memmove(noalias dest: [*]u8, noalias src: [*]const u8, len: u64) callconv(.C) void;
+
 extern fn __zig_probe_stack() callconv(.C) void;
 comptime {
     asm (
