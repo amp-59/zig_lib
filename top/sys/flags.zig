@@ -1068,15 +1068,14 @@ pub const SignalAction = packed struct(usize) {
         return len;
     }
 };
-pub const SignalStack = packed struct(usize) {
+pub const SignalStack = packed struct(u32) {
     ONSTACK: bool = false,
     DISABLE: bool = false,
     zb2: u29 = 0,
     AUTODISARM: bool = false,
-    zb32: u32 = 0,
     pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
         @setRuntimeSafety(false);
-        var tmp: usize = @bitCast(format);
+        var tmp: u32 = @bitCast(format);
         if (tmp == 0) return 0;
         buf[0..6].* = "flags=".*;
         var len: usize = 6;
@@ -1096,9 +1095,9 @@ pub const SignalStack = packed struct(usize) {
     }
     pub fn formatLength(format: @This()) usize {
         @setRuntimeSafety(false);
-        if (@as(usize, @bitCast(format)) == 0) return 0;
+        if (@as(u32, @bitCast(format)) == 0) return 0;
         var len: usize = 6;
-        var tmp: usize = @bitCast(format);
+        var tmp: u32 = @bitCast(format);
         for ([_]struct { u8, u8 }{
             .{ 7, 0 },   .{ 7, 1 },
             .{ 10, 30 },

@@ -793,7 +793,7 @@ pub const SignalStack = struct {
             \\autodisarm
         ;
     };
-    pub const backing_integer = usize;
+    pub const backing_integer = u32;
 };
 pub const Signal = struct {
     pub const default_values = struct {
