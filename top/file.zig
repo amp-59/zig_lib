@@ -828,29 +828,12 @@ pub fn exec(comptime exec_spec: ExecuteSpec, fd: usize, args: exec_spec.args_typ
     exec_spec.errors,
     exec_spec.return_type,
 ) {
-    const flags: At = comptime exec_spec.flags();
-    const logging: debug.Logging.AttemptError = comptime exec_spec.logging.override();
-    if (logging.Attempt) {
-        about.executeNotice(mem.terminate(args[0], 0), args);
-    }
-    if (meta.wrap(sys.call(.execveat, exec_spec.errors, exec_spec.return_type, .{
-        fd, @intFromPtr(""), @intFromPtr(args.ptr), @intFromPtr(vars.ptr), flags.val,
-    }))) {
-        proc.exitFault("reached unreachable", 2);
-    } else |execve_error| {
-        if (logging.Error and logging.Attempt) {
-            debug.executeErrorBrief(execve_error, args[0]);
-        } else if (logging.Error) {
-            about.executeError(execve_error, args[0], args);
-        }
-        return execve_error;
-    }
+    return execAt(exec_spec, .{ .empty_path = true }, fd, "", args, vars);
 }
-pub fn execAt(comptime exec_spec: ExecuteSpec, dir_fd: usize, name: [:0]const u8, args: exec_spec.args_type, vars: exec_spec.vars_type) sys.ErrorUnion(
+pub fn execAt(comptime exec_spec: ExecuteSpec, flags: sys.flags.At, dir_fd: usize, name: [:0]const u8, args: exec_spec.args_type, vars: exec_spec.vars_type) sys.ErrorUnion(
     exec_spec.errors,
     exec_spec.return_type,
 ) {
-    const flags: At = comptime exec_spec.flags();
     const logging: debug.Logging.AttemptError = comptime exec_spec.logging.override();
     if (logging.Attempt) {
         about.executeNotice(name, args);
