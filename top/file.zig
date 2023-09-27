@@ -582,19 +582,9 @@ pub const SyncSpec = struct {
     };
 };
 pub const AccessSpec = struct {
-    options: Options = .{},
     errors: sys.ErrorPolicy = .{ .throw = spec.access.errors.all },
-    return_type: type = u64,
+    return_type: type = bool,
     logging: debug.Logging.SuccessError = .{},
-    const Options = packed struct(usize) {
-        zb0: u8 = 0,
-        symlink_no_follow: bool = false,
-        access: bool = false,
-        symlink_follow: bool = false,
-        no_automount: bool = false,
-        empty_path: bool = false,
-        zb13: u51 = 0,
-    };
 };
 pub const SeekSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = spec.seek.errors.all },
