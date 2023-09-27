@@ -435,10 +435,9 @@ pub fn GenericPerfEvents(comptime events_spec: PerfEventsSpec) type {
                 }
             }
         }
-        pub fn writeResults(heading_about_s: ?fmt.AboutSrc, perf_events: *PerfEvents, buf: [*]u8) [*]u8 {
+        pub fn writeResults(perf_events: *PerfEvents, width: usize, buf: [*]u8) [*]u8 {
             @setRuntimeSafety(builtin.is_safe);
             var ptr: [*]u8 = buf;
-            const width: usize = fmt.aboutCentre(heading_about_s orelse comptime fmt.about("perf"));
             for (events_spec.counters, 0..) |set, set_idx| {
                 var event_idx: usize = 0;
                 while (event_idx != set.counters.len) : (event_idx +%= 1) {
