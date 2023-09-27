@@ -1378,12 +1378,25 @@ pub fn makeNodeAt(comptime mknod_spec: MakeNodeSpec, dir_fd: usize, name: [:0]co
         return mknod_error;
     }
 }
-pub fn getCwd(comptime spec: GetWorkingDirectorySpec, buf: []u8) sys.ErrorUnion(spec.errors, [:0]const u8) {
-    const buf_addr: u64 = @intFromPtr(buf.ptr);
-    const logging: debug.Logging.SuccessError = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.getcwd, spec.errors, spec.return_type, .{ buf_addr, buf.len }))) |len| {
+pub fn changeCwd(comptime chdir_spec: ChangeWorkingirectorySpec, pathname: [:0]const u8) sys.ErrorUnion(chdir_spec.errors, [:0]const u8) {
+    const buf_addr: u64 = @intFromPtr(pathname.ptr);
+    const logging: debug.Logging.SuccessError = comptime chdir_spec.logging.override();
+    if (meta.wrap(sys.call(.getcwd, chdir_spec.errors, chdir_spec.return_type, .{buf_addr}))) {
+        if (logging.Success) {
+            about.aboutPathnameNotice(about.chdir_s);
+        }
+    } else |chdir_error| {
+        if (logging.Error) {
+            debug.about.aboutError(about.getcwd_s, @errorName(chdir_error));
+        }
+        return chdir_error;
+    }
+}
+pub fn getCwd(comptime getcwd_spec: GetWorkingDirectorySpec, buf: []u8) sys.ErrorUnion(getcwd_spec.errors, [:0]u8) {
+    const logging: debug.Logging.SuccessError = comptime getcwd_spec.logging.override();
+    if (meta.wrap(sys.call(.getcwd, getcwd_spec.errors, getcwd_spec.return_type, .{ @intFromPtr(buf.ptr), buf.len }))) |len| {
         buf[len] = 0;
-        const ret: [:0]const u8 = buf[0 .. len -% 1 :0];
+        const ret: [:0]u8 = buf[0 .. len -% 1 :0];
         if (logging.Success) {
             about.aboutPathnameNotice(about.getcwd_s, ret);
         }
