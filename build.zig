@@ -1,17 +1,13 @@
 pub const zl = @import("./zig_lib.zig");
 const spec = zl.spec;
 const build = zl.build;
-pub const Builder = build.GenericBuilder(.{
-    .options = .{
-        .extensions_policy = .emergency,
-    },
-});
+pub const Builder = build.GenericBuilder(.{});
 const Node = Builder.Node;
 const build_cmd: build.BuildCommand = .{
     .kind = .exe,
     .omit_frame_pointer = false,
     .mode = .Debug,
-    .stack_check = true,
+    .stack_check = false,
     .stack_protector = false,
     .reference_trace = true,
     .single_threaded = true,
