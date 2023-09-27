@@ -262,7 +262,7 @@ fn testAegis256TestVector3(allocator: *mem.SimpleAllocator) !void {
 }
 fn authTestMain() !void {
     var allocator: mem.SimpleAllocator = .{};
-    defer allocator.unmap();
+    defer allocator.unmapAll();
     try testHmacMd5(&allocator);
     try testHmacSha256(&allocator);
     try testHkdfSha256(&allocator);
