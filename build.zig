@@ -1,16 +1,23 @@
 pub const zl = @import("./zig_lib.zig");
 const spec = zl.spec;
 const build = zl.build;
-pub const Node = build.GenericNode(.{});
+pub const Builder = build.GenericBuilder(.{
+    .options = .{
+        .extensions_policy = .emergency,
+    },
+});
+const Node = Builder.Node;
 const build_cmd: build.BuildCommand = .{
     .kind = .exe,
     .omit_frame_pointer = false,
     .mode = .Debug,
-    .stack_check = false,
+    .stack_check = true,
     .stack_protector = false,
     .reference_trace = true,
     .single_threaded = true,
-    .function_sections = false,
+    .function_sections = true,
+    .valgrind = false,
+    .unwind_tables = true,
     .strip = true,
     .compiler_rt = false,
     .gc_sections = true,
@@ -26,6 +33,15 @@ pub fn langGroup(allocator: *build.Allocator, group: *Node) void {
     var lang_build_cmd: build.BuildCommand = build_cmd;
     const slice_layout: *Node = group.addBuild(allocator, lang_build_cmd, "slice_layout", "test/lang/slice_layout.zig");
     slice_layout.descr = "Verify slice layout";
+}
+pub fn sysgenGroup(allocator: *build.Allocator, group: *Builder.Node) void {
+    var sysgen_format_cmd: build.FormatCommand = format_cmd;
+    sysgen_format_cmd.ast_check = false;
+    var impls_build_cmd: build.BuildCommand = build_cmd;
+    const flags: *Builder.Node = group.addBuild(allocator, impls_build_cmd, "flags", "top/sys/gen/flags.zig");
+    const format: *Builder.Node = group.addFormat(allocator, sysgen_format_cmd, "format", "top/sys");
+    flags.descr = "Generate system function option bit field struct definitions";
+    format.addDepn(allocator, .format, flags, .run);
 }
 pub fn traceGroup(allocator: *build.Allocator, group: *Node) void {
     var trace_build_cmd: build.BuildCommand = build_cmd;
@@ -60,9 +76,6 @@ pub fn testGroup(allocator: *build.Allocator, group: *Node) void {
     const file: *Node = group.addBuild(allocator, test_build_cmd, "file", "test/file.zig");
     const list: *Node = group.addBuild(allocator, test_build_cmd, "list", "test/list.zig");
     const fmt: *Node = group.addBuild(allocator, test_build_cmd, "fmt", "test/fmt.zig");
-    const render: *Node = group.addBuild(allocator, test_build_cmd, "render", "test/render.zig");
-    //const thread: *Node = group.addBuild(allocator, test_build_cmd, "thread", "test/thread.zig");
-    const virtual: *Node = group.addBuild(allocator, test_build_cmd, "virtual", "test/virtual.zig");
     const time: *Node = group.addBuild(allocator, test_build_cmd, "time", "test/time.zig");
     const size: *Node = group.addBuild(allocator, test_build_cmd, "size", "test/size_per_config.zig");
     const parse: *Node = group.addBuild(allocator, test_build_cmd, "parse", "test/parse.zig");
@@ -83,8 +96,6 @@ pub fn testGroup(allocator: *build.Allocator, group: *Node) void {
     const utils: *Node = group.addBuild(allocator, test_build_cmd, "utils", "test/crypto/utils.zig");
     const hash: *Node = group.addBuild(allocator, test_build_cmd, "hash", "test/crypto/hash.zig");
     const pcurves: *Node = group.addBuild(allocator, test_build_cmd, "pcurves", "test/crypto/pcurves.zig");
-    const cmdline_writer: *Node = group.addBuild(allocator, test_build_cmd, "cmdline_writer", "test/cmdline-writer.zig");
-    const cmdline_parser: *Node = group.addBuild(allocator, test_build_cmd, "cmdline_parser", "test/cmdline-parser.zig");
     const algo: *Node = group.addBuild(allocator, test_build_cmd, "algo", "test/algo.zig");
     const fmt_cmp: *Node = group.addBuild(allocator, test_build_cmd, "fmt_cmp", "test/fmt_cmp.zig");
     test_build_cmd.modules = &.{.{ .name = "@build", .path = "./build.zig" }};
@@ -93,20 +104,18 @@ pub fn testGroup(allocator: *build.Allocator, group: *Node) void {
     const elf: *Node = group.addBuild(allocator, test_build_cmd, "elf", "test/elf.zig");
     test_build_cmd.strip = false;
     const serial: *Node = group.addBuild(allocator, test_build_cmd, "serial", "test/serial.zig");
-    const build_runner: *Node = group.addBuild(allocator, test_build_cmd, "build_runner", "build_runner.zig");
-    const zls_build_runner: *Node = group.addBuild(allocator, test_build_cmd, "zls_build_runner", "zls_build_runner.zig");
     test_build_cmd.kind = .lib;
     test_build_cmd.mode = .ReleaseSmall;
     test_build_cmd.strip = false;
     test_build_cmd.dynamic = true;
     x86.flags.want_stack_traces = true;
-    build_runner.flags.want_stack_traces = false;
     const test_writers: *Node = group.addBuild(allocator, test_build_cmd, "test_writers", "top/build/writers.zig");
     const test_parsers: *Node = group.addBuild(allocator, test_build_cmd, "test_parsers", "top/build/parsers.zig");
     test_build_cmd.strip = true;
+    x86.flags.want_stack_traces = true;
     const test_symbols: *Node = group.addBuild(allocator, test_build_cmd, "test_symbols", "test/symbols.zig");
-    langGroup(allocator, group.addGroup(allocator, "lang"));
-    traceGroup(allocator, group.addGroup(allocator, "trace"));
+    langGroup(allocator, group.addGroup(allocator, "lang", null));
+    traceGroup(allocator, group.addGroup(allocator, "trace", null));
     x86.descr = "Test x86 assembler/disassembler";
     decls.descr = "Test compilation of all public declarations recursively";
     builtin.descr = "Test builtin functions";
@@ -116,9 +125,6 @@ pub fn testGroup(allocator: *build.Allocator, group: *Node) void {
     file.descr = "Test low level file system operation functions";
     list.descr = "Test library generic linked list";
     fmt.descr = "Test user formatting functions";
-    render.descr = "Test library value rendering functions";
-    //thread.descr = "Test clone and thread-safe compound/tagged sets";
-    virtual.descr = "Test address spaces, sub address spaces, and arenas";
     time.descr = "Test time related functions";
     size.descr = "Test sizes of various things";
     parse.descr = "Test generic parsing function";
@@ -137,20 +143,13 @@ pub fn testGroup(allocator: *build.Allocator, group: *Node) void {
     utils.descr = "Test crypto utility functions";
     hash.descr = "Test hashing functions";
     pcurves.descr = "Test point curve operations";
-    cmdline_writer.descr = "Test generated command line writer functions";
-    cmdline_parser.descr = "Test generated command line parser functions";
     algo.descr = "Test sorting and compression functions";
     fmt_cmp.descr = "Compare formatting methods";
     build_stress.descr = "Try to produce builder errors";
     serial.descr = "Test data serialisation functions";
-    build_runner.descr = "Test library build runner using the library build program";
-    zls_build_runner.descr = "Test ZLS special build runner";
     elf.descr = "Test ELF iterator";
-    cmdline_writer.addToplevelArgs(allocator);
     build_stress.addToplevelArgs(allocator);
     serial.addToplevelArgs(allocator);
-    build_runner.addToplevelArgs(allocator);
-    zls_build_runner.addToplevelArgs(allocator);
     elf.dependOn(allocator, test_symbols);
     elf.dependOn(allocator, test_parsers);
     elf.dependOn(allocator, test_writers);
@@ -205,7 +204,7 @@ pub fn exampleGroup(allocator: *build.Allocator, group: *Node) void {
 pub fn memgenGroup(allocator: *build.Allocator, group: *Node) void {
     var memgen_format_cmd: build.FormatCommand = format_cmd;
     memgen_format_cmd.ast_check = false;
-    const impls = group.addGroup(allocator, "impls");
+    const impls = group.addGroupWithTask(allocator, "impls", .format);
     impls.flags.is_hidden = true;
     var impls_build_cmd: build.BuildCommand = build_cmd;
     const impls_specs: *Node = impls.addBuild(allocator, impls_build_cmd, "specs", "top/mem/gen/specs.zig");
@@ -217,16 +216,33 @@ pub fn memgenGroup(allocator: *build.Allocator, group: *Node) void {
     impls_ptr.descr = "Generate reference implementations";
     impls_ctn.descr = "Generate container implementations";
     impls_alloc.descr = "Generate allocator implementations";
-    impls_ptr.dependOnFull(allocator, .run, impls_specs, .run);
-    impls_ctn.dependOnFull(allocator, .run, impls_specs, .run);
-    impls_alloc.dependOnFull(allocator, .run, impls_specs, .run);
-    generate.dependOnFull(allocator, .format, impls_ptr, .run);
-    generate.dependOnFull(allocator, .format, impls_ctn, .run);
-    generate.dependOnFull(allocator, .format, impls_alloc, .run);
+    impls_ptr.addDepn(allocator, .run, impls_specs, .run);
+    impls_ctn.addDepn(allocator, .run, impls_specs, .run);
+    impls_alloc.addDepn(allocator, .run, impls_specs, .run);
+    generate.addDepn(allocator, .format, impls_ptr, .run);
+    generate.addDepn(allocator, .format, impls_ctn, .run);
+    generate.addDepn(allocator, .format, impls_alloc, .run);
+}
+pub fn buildRunnerTestGroup(allocator: *build.Allocator, group: *Node) void {
+    var test_build_cmd: build.BuildCommand = build_cmd;
+    test_build_cmd.strip = false;
+    test_build_cmd.dependencies = &.{.{ .name = "@build" }};
+    test_build_cmd.modules = &.{.{ .name = "@build", .path = "./build.zig" }};
+    const build_runner: *Node = group.addBuild(allocator, test_build_cmd, "build_runner", "build_runner.zig");
+    const zls_build_runner: *Node = group.addBuild(allocator, test_build_cmd, "zls_build_runner", "zls_build_runner.zig");
+    test_build_cmd.modules = &.{.{ .name = "@build", .path = "./gh_sub/build.zig" }};
+    const gh_build_runner: *Node = group.addBuild(allocator, test_build_cmd, "gh_build_runner", "gh_sub/build_runner.zig");
+    gh_build_runner.flags.want_stack_traces = false;
+    build_runner.flags.want_stack_traces = false;
+    build_runner.descr = "Test library build runner using the library build program";
+    zls_build_runner.descr = "Test ZLS special build runner";
+    build_runner.addToplevelArgs(allocator);
+    gh_build_runner.addToplevelArgs(allocator);
+    zls_build_runner.addToplevelArgs(allocator);
 }
 pub fn regenGroup(allocator: *build.Allocator, group: *Node) void {
     var regen_format_cmd: build.FormatCommand = format_cmd;
-    const impls = group.addGroup(allocator, "impls");
+    const impls = group.addGroupWithTask(allocator, "impls", .format);
     impls.flags.is_hidden = true;
     var impls_build_cmd: build.BuildCommand = build_cmd;
     impls_build_cmd.kind = .obj;
@@ -248,34 +264,31 @@ pub fn regenGroup(allocator: *build.Allocator, group: *Node) void {
     impls_rebuild.dependOn(allocator, impls_format_cmd_fn);
     impls_rebuild.dependOn(allocator, impls_archive_cmd_fn);
     impls_rebuild.dependOn(allocator, impls_objcopy_cmd_fn);
-    format.dependOnFull(allocator, .format, impls_rebuild, .run);
+    format.addDepn(allocator, .format, impls_rebuild, .run);
 }
 pub fn buildgenGroup(allocator: *build.Allocator, group: *Node) void {
     var buildgen_format_cmd: build.FormatCommand = format_cmd;
-    const impls = group.addGroup(allocator, "impls");
+    const impls = group.addGroupWithTask(allocator, "impls", .format);
     impls.flags.is_hidden = true;
     var impls_build_cmd: build.BuildCommand = build_cmd;
     const impls_tasks: *Node = impls.addBuild(allocator, impls_build_cmd, "tasks", "top/build/gen/tasks_impls.zig");
-    const impls_hist_tasks: *Node = impls.addBuild(allocator, impls_build_cmd, "hist_tasks", "top/build/gen/hist_tasks_impls.zig");
     const impls_parsers: *Node = impls.addBuild(allocator, impls_build_cmd, "parsers", "top/build/gen/parsers_impls.zig");
     const impls_writers: *Node = impls.addBuild(allocator, impls_build_cmd, "writers", "top/build/gen/writers_impls.zig");
     const impls_libs: *Node = impls.addBuild(allocator, impls_build_cmd, "libs", "top/build/gen/libs_impls.zig");
     const format: *Node = group.addFormat(allocator, buildgen_format_cmd, "format", "top/build");
     impls_tasks.descr = "Generate builder command line data structures";
-    impls_hist_tasks.descr = "Generate packed summary types for builder history";
     impls_parsers.descr = "Generate exports for builder task command line parser functions";
     impls_libs.descr = "Generate headers and exporters for dynamic loaded functions";
     format.descr = "Reformat generated source code into canonical form";
-    impls_hist_tasks.dependOnFull(allocator, .build, impls_tasks, .run);
-    impls_parsers.dependOnFull(allocator, .build, impls_hist_tasks, .run);
-    impls_writers.dependOnFull(allocator, .build, impls_hist_tasks, .run);
-    impls_libs.dependOnFull(allocator, .build, impls_parsers, .run);
-    impls_libs.dependOnFull(allocator, .build, impls_writers, .run);
-    format.dependOnFull(allocator, .format, impls_libs, .run);
+    impls_parsers.addDepn(allocator, .build, impls_tasks, .run);
+    impls_writers.addDepn(allocator, .build, impls_tasks, .run);
+    impls_libs.addDepn(allocator, .build, impls_parsers, .run);
+    impls_libs.addDepn(allocator, .build, impls_writers, .run);
+    format.addDepn(allocator, .format, impls_libs, .run);
 }
 pub fn targetgenGroup(allocator: *build.Allocator, group: *Node) void {
     var targetgen_format_cmd: build.FormatCommand = format_cmd;
-    const impls = group.addGroup(allocator, "impls");
+    const impls = group.addGroupWithTask(allocator, "impls", .format);
     impls.flags.is_hidden = true;
     var impls_build_cmd: build.BuildCommand = build_cmd;
     const impls_arch: *Node = impls.addBuild(allocator, impls_build_cmd, "arch", "top/target/gen/arch_impls.zig");
@@ -284,14 +297,16 @@ pub fn targetgenGroup(allocator: *build.Allocator, group: *Node) void {
     impls_arch.descr = "Generate target information for supported architectures";
     format.descr = "Reformat generated target information into canonical form";
     impls_target.dependOn(allocator, impls_arch);
-    format.dependOnFull(allocator, .format, impls_target, .run);
+    format.addDepn(allocator, .format, impls_target, .run);
 }
 pub fn buildMain(allocator: *build.Allocator, toplevel: *Node) void {
+    buildRunnerTestGroup(allocator, toplevel.addGroupWithTask(allocator, "br", .build));
     testGroup(allocator, toplevel.addGroupWithTask(allocator, "test", .build));
     userGroup(allocator, toplevel.addGroupWithTask(allocator, "user", .build));
     exampleGroup(allocator, toplevel.addGroupWithTask(allocator, "example", .build));
     memgenGroup(allocator, toplevel.addGroupWithTask(allocator, "memgen", .format));
     regenGroup(allocator, toplevel.addGroupWithTask(allocator, "regen", .format));
+    sysgenGroup(allocator, toplevel.addGroupWithTask(allocator, "sysgen", .format));
     buildgenGroup(allocator, toplevel.addGroupWithTask(allocator, "buildgen", .format));
     targetgenGroup(allocator, toplevel.addGroupWithTask(allocator, "targetgen", .format));
 }
