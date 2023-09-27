@@ -3122,9 +3122,25 @@ pub const about = struct {
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
+    fn aboutFdReadWriteError(about_s: fmt.AboutSrc, error_name: [:0]const u8, fd: usize, flags: sys.flags.ReadWrite) void {
+        @setCold(true);
+        @setRuntimeSafety(false);
+        var buf: [32768]u8 = undefined;
+        buf[0..about_s.len].* = about_s.*;
+        buf[about_s.len..fmt.about_err_len].* = debug.about.error_s.*;
+        var ptr: [*]u8 = fmt.strcpyEqu(buf[fmt.about_err_len..], error_name);
+        ptr[0..5].* = ", fd=".*;
+        ptr += 5;
+        ptr += fmt.ud64(fd).formatWriteBuf(ptr);
+        ptr[0..2].* = ", ".*;
+        ptr += 2;
+        ptr += flags.formatWriteBuf(ptr);
+        ptr[0] = '\n';
+        debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
+    }
     fn aboutFdFdError(about_s: fmt.AboutSrc, error_name: [:0]const u8, fd1_s: anytype, fd2_s: anytype, fd1: u64, fd2: u64) void {
         @setCold(true);
-        @setRuntimeSafety(builtin.is_safe);
+        @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         buf[0..about_s.len].* = about_s.*;
         buf[about_s.len..fmt.about_err_len].* = debug.about.error_s.*;
