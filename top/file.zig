@@ -2394,7 +2394,7 @@ pub const about = struct {
     const socket_file_s: *const [8]u8 = "a socket";
     const symbolic_link_file_s: *const [15]u8 = "a symbolic link";
     fn totalLength(vecs: []const mem.Vector) usize {
-        @setRuntimeSafety(builtin.is_safe);
+        @setRuntimeSafety(false);
         var max_len: usize = 0;
         for (vecs) |vec| {
             max_len +%= vec.len;
@@ -2402,7 +2402,7 @@ pub const about = struct {
         return max_len;
     }
     fn aboutFdNotice(about_s: fmt.AboutSrc, fd: usize) void {
-        @setRuntimeSafety(builtin.is_safe);
+        @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         buf[0..about_s.len].* = about_s.*;
         var ptr: [*]u8 = buf[about_s.len..].ptr;
@@ -2410,7 +2410,7 @@ pub const about = struct {
         ptr += 3;
         ptr += fmt.ud64(fd).formatWriteBuf(ptr);
         ptr[0] = '\n';
-        debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
+        debug.write(buf[0..(@intFromPtr(ptr + 1) -% @intFromPtr(&buf))]);
     }
     pub fn aboutFdAddrLenOffsetNotice(about_s: fmt.AboutSrc, fd: usize, addr: u64, len: u64, offset: usize) void {
         @setRuntimeSafety(false);
@@ -2439,10 +2439,10 @@ pub const about = struct {
         ptr += ud64.formatWriteBuf(ptr);
         ptr[0..7].* = " bytes\n".*;
         ptr += 7;
-        debug.write(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)]);
+        debug.write(buf[0..(@intFromPtr(ptr) -% @intFromPtr(&buf))]);
     }
-    fn aboutFdModeNotice(about_s: fmt.AboutSrc, fd: u64, file_mode: Mode) void {
-        @setRuntimeSafety(builtin.is_safe);
+    fn aboutFdModeNotice(about_s: fmt.AboutSrc, fd: usize, file_mode: Mode) void {
+        @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         buf[0..about_s.len].* = about_s.*;
         var ptr: [*]u8 = buf[about_s.len..].ptr;
@@ -2474,8 +2474,8 @@ pub const about = struct {
         ptr += 7;
         debug.write(buf[0..(@intFromPtr(ptr) -% @intFromPtr(&buf))]);
     }
-    fn aboutFdMaxLenLenNotice(about_s: fmt.AboutSrc, fd: u64, max_len: u64, act_len: u64) void {
-        @setRuntimeSafety(builtin.is_safe);
+    fn aboutFdMaxLenLenNotice(about_s: fmt.AboutSrc, fd: usize, max_len: usize, act_len: usize) void {
+        @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         buf[0..about_s.len].* = about_s.*;
         var ptr: [*]u8 = buf[about_s.len..].ptr;
@@ -2512,15 +2512,15 @@ pub const about = struct {
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
-    fn aboutDirFdNameModeDeviceNotice(about_s: fmt.AboutSrc, dir_fd: u64, name: [:0]const u8, file_mode: Mode, dev: Device) void {
-        @setRuntimeSafety(builtin.is_safe);
+    fn aboutDirFdNameModeDeviceNotice(about_s: fmt.AboutSrc, dir_fd: usize, name: [:0]const u8, file_mode: Mode, dev: Device) void {
+        @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         buf[0..about_s.len].* = about_s.*;
         var ptr: [*]u8 = buf[about_s.len..].ptr;
-        ptr += writeDirFd(ptr, "dir_fd=", dir_fd);
+        ptr = writeDirFd(ptr, "dir_fd=", dir_fd);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr = fmt.strcpyEqu(ptr, name);
+        ptr = writeDisplayPath(ptr, name);
         ptr[0..7].* = ", mode=".*;
         ptr += 7;
         ptr[0..10].* = describeMode(file_mode);
@@ -2546,19 +2546,19 @@ pub const about = struct {
         } else {
             ptr += ud64.formatWriteBuf(ptr);
         }
-        return @intFromPtr(ptr) -% @intFromPtr(buf);
+        return ptr;
     }
     fn aboutPathnameNotice(about_s: fmt.AboutSrc, pathname: [:0]const u8) void {
-        @setRuntimeSafety(builtin.is_safe);
+        @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         buf[0..about_s.len].* = about_s.*;
         var ptr: [*]u8 = buf[about_s.len..].ptr;
-        ptr = fmt.strcpyEqu(ptr, pathname);
+        ptr = writeDisplayPath(ptr, pathname);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
     fn aboutPathnameModeNotice(about_s: fmt.AboutSrc, pathname: [:0]const u8, file_mode: Mode) void {
-        @setRuntimeSafety(builtin.is_safe);
+        @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         buf[0..about_s.len].* = about_s.*;
         var ptr: [*]u8 = fmt.strcpyEqu(buf[about_s.len..], pathname);
@@ -2569,20 +2569,20 @@ pub const about = struct {
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
-    fn aboutPathnameFdNotice(about_s: fmt.AboutSrc, pathname: [:0]const u8, fd: u64) void {
-        @setRuntimeSafety(builtin.is_safe);
+    fn aboutPathnameFdNotice(about_s: fmt.AboutSrc, pathname: [:0]const u8, fd: usize) void {
+        @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         buf[0..about_s.len].* = about_s.*;
         var ptr: [*]u8 = fmt.strcpyEqu(buf[about_s.len..], "fd=");
         ptr += fmt.ud64(fd).formatWriteBuf(ptr);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr = fmt.strcpyEqu(ptr, pathname);
+        ptr = writeDisplayPath(ptr, pathname);
         ptr[0] = '\n';
-        debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
+        debug.write(fmt.slice(ptr + 1, &buf));
     }
-    fn aboutPathnameFdModeNotice(about_s: fmt.AboutSrc, pathname: [:0]const u8, fd: u64, file_mode: Mode) void {
-        @setRuntimeSafety(builtin.is_safe);
+    fn aboutPathnameFdModeNotice(about_s: fmt.AboutSrc, pathname: [:0]const u8, fd: usize, file_mode: Mode) void {
+        @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         buf[0..about_s.len].* = about_s.*;
         var ptr: [*]u8 = fmt.strcpyEqu(buf[about_s.len..], "fd=");
@@ -2590,16 +2590,16 @@ pub const about = struct {
         ptr += ud64.formatWriteBuf(ptr);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr = fmt.strcpyEqu(ptr, pathname);
+        ptr = writeDisplayPath(ptr, pathname);
         ptr[0..7].* = ", mode=".*;
         ptr += 7;
         ptr[0..10].* = describeMode(file_mode);
         ptr += 10;
         ptr[0] = '\n';
-        debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
+        debug.write(fmt.slice(ptr + 1, &buf));
     }
     fn aboutPathnameModeDeviceNotice(about_s: fmt.AboutSrc, pathname: [:0]const u8, file_mode: Mode, dev: Device) void {
-        @setRuntimeSafety(builtin.is_safe);
+        @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         buf[0..about_s.len].* = about_s.*;
         var ptr: [*]u8 = fmt.strcpyEqu(buf[about_s.len..], pathname);
@@ -2616,15 +2616,15 @@ pub const about = struct {
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
-    fn aboutDirFdNameModeNotice(about_s: fmt.AboutSrc, dir_fd: u64, name: [:0]const u8, file_mode: Mode) void {
-        @setRuntimeSafety(builtin.is_safe);
+    fn aboutDirFdNameModeNotice(about_s: fmt.AboutSrc, dir_fd: usize, name: [:0]const u8, file_mode: Mode) void {
+        @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         buf[0..about_s.len].* = about_s.*;
         var ptr: [*]u8 = buf[about_s.len..].ptr;
-        ptr += writeDirFd(ptr, "dir_fd=", dir_fd);
+        ptr = writeDirFd(ptr, "dir_fd=", dir_fd);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr = fmt.strcpyEqu(ptr, name);
+        ptr = writeDisplayPath(ptr, name);
         ptr[0..7].* = ", mode=".*;
         ptr += 7;
         ptr[0..10].* = describeMode(file_mode);
@@ -2632,52 +2632,71 @@ pub const about = struct {
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
-    fn aboutDirFdNameFdNotice(about_s: fmt.AboutSrc, dir_fd: u64, name: [:0]const u8, fd: u64) void {
-        @setRuntimeSafety(builtin.is_safe);
+    fn aboutDirFdNameFdNotice(about_s: fmt.AboutSrc, dir_fd: usize, name: [:0]const u8, fd: usize) void {
+        @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         buf[0..about_s.len].* = about_s.*;
         var ptr: [*]u8 = buf[about_s.len..].ptr;
-        ptr += writeDirFd(ptr, "dir_fd=", dir_fd);
+        ptr = writeDirFd(ptr, "dir_fd=", dir_fd);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr = fmt.strcpyEqu(ptr, name);
+        ptr = writeDisplayPath(ptr, name);
         ptr[0..5].* = ", fd=".*;
         ptr += 5;
         ptr += fmt.ud64(fd).formatWriteBuf(ptr);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
-    fn aboutDirFdNameNotice(about_s: fmt.AboutSrc, dir_fd: u64, name: [:0]const u8) void {
-        @setRuntimeSafety(builtin.is_safe);
+    fn aboutDirFdNameFdModeNotice(about_s: fmt.AboutSrc, dir_fd: usize, name: [:0]const u8, fd: usize, file_mode: Mode) void {
+        @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         buf[0..about_s.len].* = about_s.*;
         var ptr: [*]u8 = buf[about_s.len..].ptr;
-        ptr += writeDirFd(ptr, "dir_fd=", dir_fd);
+        ptr = writeDirFd(ptr, "dir_fd=", dir_fd);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr = fmt.strcpyEqu(ptr, name);
+        ptr = writeDisplayPath(ptr, name);
+        ptr[0..5].* = ", fd=".*;
+        ptr += 5;
+        ptr += fmt.ud64(fd).formatWriteBuf(ptr);
+        ptr[0..7].* = ", mode=".*;
+        ptr += 7;
+        ptr[0..10].* = describeMode(file_mode);
+        ptr += 10;
+        ptr[0] = '\n';
+        debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
+    }
+    fn aboutDirFdNameNotice(about_s: fmt.AboutSrc, dir_fd: usize, name: [:0]const u8) void {
+        @setRuntimeSafety(false);
+        var buf: [32768]u8 = undefined;
+        buf[0..about_s.len].* = about_s.*;
+        var ptr: [*]u8 = buf[about_s.len..].ptr;
+        ptr = writeDirFd(ptr, "dir_fd=", dir_fd);
+        ptr[0..2].* = ", ".*;
+        ptr += 2;
+        ptr = writeDisplayPath(ptr, name);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
     fn aboutDirFdNameDirFdNameNotice(about_s: fmt.AboutSrc, dir_fd1_s: []const u8, relation_s: [:0]const u8, dir_fd2_s: []const u8, dir_fd1: u64, name1: [:0]const u8, dir_fd2: u64, name2: [:0]const u8) void {
-        @setRuntimeSafety(builtin.is_safe);
+        @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         buf[0..about_s.len].* = about_s.*;
         var ptr: [*]u8 = buf[about_s.len..].ptr;
-        ptr += writeDirFd(ptr, dir_fd1_s, dir_fd1);
+        ptr = writeDirFd(ptr, dir_fd1_s, dir_fd1);
         ptr[0..2].* = ", ".*;
         ptr += 2;
         ptr = fmt.strcpyEqu(ptr, name1);
         ptr = fmt.strcpyEqu(ptr, relation_s);
-        ptr += writeDirFd(ptr, dir_fd2_s, dir_fd2);
+        ptr = writeDirFd(ptr, dir_fd2_s, dir_fd2);
         ptr[0..2].* = ", ".*;
         ptr += 2;
         ptr = fmt.strcpyEqu(ptr, name2);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
-    fn socketNotice(fd: u64, dom: Socket.Domain, conn: Socket.Connection) void {
-        @setRuntimeSafety(builtin.is_safe);
+    fn socketNotice(fd: usize, dom: Socket.Domain, flags: Flags.Socket) void {
+        @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         buf[0..socket_s.len].* = socket_s.*;
         var ptr: [*]u8 = buf[socket_s.len..].ptr;
@@ -2689,37 +2708,37 @@ pub const about = struct {
         ptr = fmt.strcpyEqu(ptr, @tagName(dom));
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr = fmt.strcpyEqu(ptr, @tagName(conn));
+        ptr = fmt.strcpyEqu(ptr, @tagName(flags.conn));
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
     fn aboutPathnamePathnameNotice(about_s: fmt.AboutSrc, relation_s: [:0]const u8, pathname1: [:0]const u8, pathname2: [:0]const u8) void {
-        @setRuntimeSafety(builtin.is_safe);
+        @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         buf[0..about_s.len].* = about_s.*;
         var ptr: [*]u8 = buf[about_s.len..].ptr;
-        ptr = fmt.strcpyEqu(ptr, pathname1);
+        ptr = writeDisplayPath(ptr, pathname1);
         ptr = fmt.strcpyEqu(ptr, relation_s);
-        ptr = fmt.strcpyEqu(ptr, pathname2);
+        ptr = writeDisplayPath(ptr, pathname2);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
-    fn aboutPathnameDirFdNameNotice(about_s: fmt.AboutSrc, relation_s: [:0]const u8, pathname: [:0]const u8, dir_fd: u64, name: [:0]const u8) void {
-        @setRuntimeSafety(builtin.is_safe);
+    fn aboutPathnameDirFdNameNotice(about_s: fmt.AboutSrc, relation_s: [:0]const u8, pathname: [:0]const u8, dir_fd: usize, name: [:0]const u8) void {
+        @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         buf[0..about_s.len].* = about_s.*;
         var ptr: [*]u8 = buf[about_s.len..].ptr;
-        ptr = fmt.strcpyEqu(ptr, pathname);
+        ptr = writeDisplayPath(ptr, pathname);
         ptr = fmt.strcpyEqu(ptr, relation_s);
-        ptr += writeDirFd(ptr, "dir_fd=", dir_fd);
+        ptr = writeDirFd(ptr, "dir_fd=", dir_fd);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr = fmt.strcpyEqu(ptr, name);
+        ptr = writeDisplayPath(ptr, name);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
-    fn sendNotice(dest_fd: u64, src_fd: u64, offset: ?*u64, max_count: u64, act_count: u64) void {
-        @setRuntimeSafety(builtin.is_safe);
+    fn sendNotice(dest_fd: usize, src_fd: usize, offset: ?*u64, max_count: u64, act_count: u64) void {
+        @setRuntimeSafety(false);
         if (return) {}
         var buf: [32768]u8 = undefined;
         buf[0..send_s.len].* = send_s.*;
@@ -2748,8 +2767,8 @@ pub const about = struct {
         }
         debug.write(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)]);
     }
-    fn copyNotice(dest_fd: u64, dest_offset: ?*u64, src_fd: u64, src_offset: ?*u64, max_count: u64, act_count: u64) void {
-        @setRuntimeSafety(builtin.is_safe);
+    fn copyNotice(dest_fd: usize, dest_offset: ?*u64, src_fd: usize, src_offset: ?*u64, max_count: u64, act_count: u64) void {
+        @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         buf[0..copy_s.len].* = copy_s.*;
         var ptr: [*]u8 = buf[copy_s.len..].ptr;
@@ -2781,12 +2800,12 @@ pub const about = struct {
         }
         debug.write(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)]);
     }
-    fn aboutPathnameOffsetNotice(about_s: fmt.AboutSrc, pathname: [:0]const u8, offset: u64) void {
-        @setRuntimeSafety(builtin.is_safe);
+    fn aboutPathnameOffsetNotice(about_s: fmt.AboutSrc, pathname: [:0]const u8, offset: usize) void {
+        @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         buf[0..about_s.len].* = about_s.*;
         var ptr: [*]u8 = buf[about_s.len..].ptr;
-        ptr = fmt.strcpyEqu(ptr, pathname);
+        ptr = writeDisplayPath(ptr, pathname);
         ptr[0..10].* = ", offset=".*;
         ptr += 10;
         var ud64: fmt.Type.Ud64 = .{ .value = offset };
@@ -2794,8 +2813,8 @@ pub const about = struct {
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
-    fn aboutFdOffsetNotice(about_s: fmt.AboutSrc, fd: u64, offset: u64) void {
-        @setRuntimeSafety(builtin.is_safe);
+    fn aboutFdOffsetNotice(about_s: fmt.AboutSrc, fd: usize, offset: usize) void {
+        @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         buf[0..about_s.len].* = about_s.*;
         var ptr: [*]u8 = buf[about_s.len..].ptr;
@@ -2810,8 +2829,8 @@ pub const about = struct {
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
-    fn seekNotice(fd: u64, offset: u64, whence: Whence, to: u64) void {
-        @setRuntimeSafety(builtin.is_safe);
+    fn seekNotice(fd: usize, offset: usize, whence: Whence, to: u64) void {
+        @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         buf[0..seek_s.len].* = seek_s.*;
         var ptr: [*]u8 = buf[seek_s.len..].ptr;
@@ -2833,7 +2852,7 @@ pub const about = struct {
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
     fn pollNotice(pollfds: []PollFd, timeout: u64) void {
-        @setRuntimeSafety(builtin.is_safe);
+        @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         buf[0..poll_s.len].* = poll_s.*;
         var ptr: [*]u8 = buf[poll_s.len..].ptr;
@@ -2848,8 +2867,8 @@ pub const about = struct {
         ptr += writePollFds(ptr, pollfds);
         debug.write(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)]);
     }
-    fn listenNotice(sock_fd: u64, backlog: u64) void {
-        @setRuntimeSafety(builtin.is_safe);
+    fn listenNotice(sock_fd: usize, backlog: u64) void {
+        @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         buf[0..listen_s.len].* = listen_s.*;
         var ptr: [*]u8 = buf[listen_s.len..].ptr;
@@ -2863,11 +2882,11 @@ pub const about = struct {
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
     pub fn executeNotice(pathname: [:0]const u8, args: []const [*:0]const u8) void {
-        @setRuntimeSafety(builtin.is_safe);
+        @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         buf[0..execve_s.len].* = execve_s.*;
         var ptr: [*]u8 = buf[execve_s.len..].ptr;
-        ptr = fmt.strcpyEqu(ptr, pathname);
+        ptr = writeDisplayPath(ptr, pathname);
         if (args.len != 0) {
             ptr[0] = ' ';
             ptr += 1;
@@ -2878,7 +2897,7 @@ pub const about = struct {
     }
     pub fn aboutFdAddrLenOffsetError(about_s: fmt.AboutSrc, error_name: []const u8, fd: usize, addr: u64, len: u64, offset: usize) void {
         @setCold(true);
-        @setRuntimeSafety(builtin.is_safe);
+        @setRuntimeSafety(false);
         var buf: [4096]u8 = undefined;
         var ud64: fmt.Type.Ud64 = .{ .value = fd };
         var ux64: fmt.Type.Ux64 = .{ .value = addr };
@@ -2907,38 +2926,58 @@ pub const about = struct {
         ptr += 7;
         debug.write(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)]);
     }
-    fn aboutDirFdNameError(about_s: fmt.AboutSrc, error_name: [:0]const u8, dir_fd: u64, name: [:0]const u8) void {
+    fn aboutDirFdNameError(about_s: fmt.AboutSrc, error_name: [:0]const u8, dir_fd: usize, name: [:0]const u8) void {
         @setCold(true);
-        @setRuntimeSafety(builtin.is_safe);
+        @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         buf[0..about_s.len].* = about_s.*;
         buf[about_s.len..fmt.about_err_len].* = debug.about.error_s.*;
         var ptr: [*]u8 = fmt.strcpyEqu(buf[fmt.about_err_len..], error_name);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr += writeDirFd(ptr, "dir_fd=", dir_fd);
+        ptr = writeDirFd(ptr, "dir_fd=", dir_fd);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr = fmt.strcpyEqu(ptr, name);
+        ptr = writeDisplayPath(ptr, name);
+        ptr[0] = '\n';
+        debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
+    }
+    fn aboutDirFdNameModeError(about_s: fmt.AboutSrc, error_name: [:0]const u8, dir_fd: usize, name: [:0]const u8, file_mode: Mode) void {
+        @setCold(true);
+        @setRuntimeSafety(false);
+        var buf: [32768]u8 = undefined;
+        buf[0..about_s.len].* = about_s.*;
+        buf[about_s.len..fmt.about_err_len].* = debug.about.error_s.*;
+        var ptr: [*]u8 = fmt.strcpyEqu(buf[fmt.about_err_len..], error_name);
+        ptr[0..2].* = ", ".*;
+        ptr += 2;
+        ptr = writeDirFd(ptr, "dir_fd=", dir_fd);
+        ptr[0..2].* = ", ".*;
+        ptr += 2;
+        ptr = writeDisplayPath(ptr, name);
+        ptr[0..7].* = ", mode=".*;
+        ptr += 7;
+        ptr[0..10].* = describeMode(file_mode);
+        ptr += 10;
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
     fn aboutPathnameError(about_s: fmt.AboutSrc, error_name: [:0]const u8, pathname: [:0]const u8) void {
         @setCold(true);
-        @setRuntimeSafety(builtin.is_safe);
+        @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         buf[0..about_s.len].* = about_s.*;
         buf[about_s.len..fmt.about_err_len].* = debug.about.error_s.*;
         var ptr: [*]u8 = fmt.strcpyEqu(buf[fmt.about_err_len..], error_name);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr = fmt.strcpyEqu(ptr, pathname);
+        ptr = writeDisplayPath(ptr, pathname);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
-    fn aboutFdError(about_s: fmt.AboutSrc, error_name: [:0]const u8, fd: u64) void {
+    fn aboutFdError(about_s: fmt.AboutSrc, error_name: [:0]const u8, fd: usize) void {
         @setCold(true);
-        @setRuntimeSafety(builtin.is_safe);
+        @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         buf[0..about_s.len].* = about_s.*;
         buf[about_s.len..fmt.about_err_len].* = debug.about.error_s.*;
@@ -2973,7 +3012,7 @@ pub const about = struct {
     }
     fn aboutPathnamePathnameError(about_s: fmt.AboutSrc, error_name: [:0]const u8, relation_s: [:0]const u8, pathname1: [:0]const u8, pathname2: [:0]const u8) void {
         @setCold(true);
-        @setRuntimeSafety(builtin.is_safe);
+        @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         buf[0..about_s.len].* = about_s.*;
         buf[about_s.len..fmt.about_err_len].* = debug.about.error_s.*;
@@ -2986,48 +3025,48 @@ pub const about = struct {
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
-    fn aboutPathnameDirFdNameError(about_s: fmt.AboutSrc, error_name: [:0]const u8, relation_s: [:0]const u8, pathname: [:0]const u8, dir_fd: u64, name: [:0]const u8) void {
+    fn aboutPathnameDirFdNameError(about_s: fmt.AboutSrc, error_name: [:0]const u8, relation_s: [:0]const u8, pathname: [:0]const u8, dir_fd: usize, name: [:0]const u8) void {
         @setCold(true);
-        @setRuntimeSafety(builtin.is_safe);
+        @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         buf[0..about_s.len].* = about_s.*;
         buf[about_s.len..fmt.about_err_len].* = debug.about.error_s.*;
         var ptr: [*]u8 = fmt.strcpyEqu(buf[fmt.about_err_len..], error_name);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr = fmt.strcpyEqu(ptr, pathname);
+        ptr = writeDisplayPath(ptr, pathname);
         ptr = fmt.strcpyEqu(ptr, relation_s);
-        ptr += writeDirFd(ptr, "dir_fd=", dir_fd);
+        ptr = writeDirFd(ptr, "dir_fd=", dir_fd);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr = fmt.strcpyEqu(ptr, name);
+        ptr = writeDisplayPath(ptr, name);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
     fn aboutDirFdNameDirFdNameError(about_s: fmt.AboutSrc, error_name: [:0]const u8, dir_fd1_s: []const u8, relation_s: [:0]const u8, dir_fd2_s: []const u8, dir_fd1: u64, name1: [:0]const u8, dir_fd2: u64, name2: [:0]const u8) void {
         @setCold(true);
-        @setRuntimeSafety(builtin.is_safe);
+        @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         buf[0..about_s.len].* = about_s.*;
         buf[about_s.len..fmt.about_err_len].* = debug.about.error_s.*;
         var ptr: [*]u8 = fmt.strcpyEqu(buf[fmt.about_err_len..], error_name);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr += writeDirFd(ptr, dir_fd1_s, dir_fd1);
+        ptr = writeDirFd(ptr, dir_fd1_s, dir_fd1);
         ptr[0..2].* = ", ".*;
         ptr += 2;
         ptr = fmt.strcpyEqu(ptr, name1);
         ptr = fmt.strcpyEqu(ptr, relation_s);
-        ptr += writeDirFd(ptr, dir_fd2_s, dir_fd2);
+        ptr = writeDirFd(ptr, dir_fd2_s, dir_fd2);
         ptr[0..2].* = ", ".*;
         ptr += 2;
         ptr = fmt.strcpyEqu(ptr, name2);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
-    fn socketError(socket_error: anytype, dom: Socket.Domain, conn: Socket.Connection) void {
+    fn socketError(socket_error: anytype, dom: Socket.Domain, flags: Flags.Socket) void {
         @setCold(true);
-        @setRuntimeSafety(builtin.is_safe);
+        @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         buf[0..socket_s.len].* = socket_s.*;
         buf[socket_s.len..fmt.about_err_len].* = debug.about.error_s.*;
@@ -3038,13 +3077,13 @@ pub const about = struct {
         ptr = fmt.strcpyEqu(ptr, @tagName(dom));
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr = fmt.strcpyEqu(ptr, @tagName(conn));
+        ptr = fmt.strcpyEqu(ptr, @tagName(flags.conn));
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
-    fn sendError(sendfile_error: anytype, dest_fd: u64, src_fd: u64, offset: ?*u64, max_count: u64) void {
+    fn sendError(sendfile_error: anytype, dest_fd: usize, src_fd: usize, offset: ?*u64, max_count: u64) void {
         @setCold(true);
-        @setRuntimeSafety(builtin.is_safe);
+        @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         buf[0..send_s.len].* = send_s.*;
         buf[send_s.len..fmt.about_err_len].* = debug.about.error_s.*;
@@ -3072,7 +3111,7 @@ pub const about = struct {
         }
         debug.write(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)]);
     }
-    fn copyError(copy_file_range_error: anytype, dest_fd: u64, dest_offset: ?*u64, src_fd: u64, src_offset: ?*u64, max_count: u64) void {
+    fn copyError(copy_file_range_error: anytype, dest_fd: usize, dest_offset: ?*u64, src_fd: usize, src_offset: ?*u64, max_count: u64) void {
         var buf: [32768]u8 = undefined;
         buf[0..copy_s.len].* = copy_s.*;
         buf[copy_s.len..fmt.about_err_len].* = debug.about.error_s.*;
@@ -3103,8 +3142,8 @@ pub const about = struct {
         }
         debug.write(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)]);
     }
-    fn aboutPathnameOffsetError(about_s: fmt.AboutSrc, error_name: []const u8, pathname: [:0]const u8, offset: u64) void {
-        @setRuntimeSafety(builtin.is_safe);
+    fn aboutPathnameOffsetError(about_s: fmt.AboutSrc, error_name: []const u8, pathname: [:0]const u8, offset: usize) void {
+        @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         var ud64: fmt.Type.Ud64 = .{ .value = offset };
         buf[0..about_s.len].* = about_s.*;
@@ -3114,15 +3153,15 @@ pub const about = struct {
         ptr = fmt.strcpyEqu(ptr, error_name);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr = fmt.strcpyEqu(ptr, pathname);
+        ptr = writeDisplayPath(ptr, pathname);
         ptr[0..9].* = ", offset=".*;
         ptr += 9;
         ptr += ud64.formatWriteBuf(ptr);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
-    fn aboutFdOffsetError(about_s: fmt.AboutSrc, error_name: []const u8, fd: u64, offset: u64) void {
-        @setRuntimeSafety(builtin.is_safe);
+    fn aboutFdOffsetError(about_s: fmt.AboutSrc, error_name: []const u8, fd: usize, offset: usize) void {
+        @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         var ud64: fmt.Type.Ud64 = .{ .value = fd };
         buf[0..about_s.len].* = about_s.*;
@@ -3165,8 +3204,8 @@ pub const about = struct {
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
-    fn listenError(listen_error: anytype, sock_fd: u64, backlog: u64) void {
-        @setRuntimeSafety(builtin.is_safe);
+    fn listenError(listen_error: anytype, sock_fd: usize, backlog: u64) void {
+        @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         buf[0..listen_s.len].* = listen_s.*;
         var ptr: [*]u8 = buf[listen_s.len..].ptr;
@@ -3183,7 +3222,7 @@ pub const about = struct {
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
     pub fn executeErrorBrief(exec_error: anytype, pathname: [:0]const u8) void {
-        @setRuntimeSafety(builtin.is_safe);
+        @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         var ptr: [*]u8 = &buf;
         ptr[0..execve_s.len].* = execve_s.*;
@@ -3193,12 +3232,12 @@ pub const about = struct {
         ptr = fmt.strcpyEqu(ptr, @errorName(exec_error));
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr = fmt.strcpyEqu(ptr, pathname);
+        ptr = writeDisplayPath(ptr, pathname);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
     pub fn executeError(exec_error: anytype, pathname: [:0]const u8, args: []const [*:0]const u8) void {
-        @setRuntimeSafety(builtin.is_safe);
+        @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         var ptr: [*]u8 = &buf;
         ptr[0..execve_s.len].* = execve_s.*;
@@ -3208,7 +3247,7 @@ pub const about = struct {
         ptr = fmt.strcpyEqu(ptr, @errorName(exec_error));
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr = fmt.strcpyEqu(ptr, pathname);
+        ptr = writeDisplayPath(ptr, pathname);
         if (args.len != 0) {
             ptr[0] = ' ';
             ptr += 1;
@@ -3218,12 +3257,12 @@ pub const about = struct {
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
     fn pathMustNotBeFault(pathname: [:0]const u8, kind: Kind) void {
-        @setRuntimeSafety(builtin.is_safe);
+        @setRuntimeSafety(false);
         var descr_s: []const u8 = describeKind(kind);
         var buf: [32768]u8 = undefined;
         buf[0..debug.about.fault_p0_s.len].* = debug.about.fault_p0_s.*;
         var ptr: [*]u8 = buf[debug.about.fault_p0_s.len..].ptr;
-        ptr = fmt.strcpyEqu(ptr, pathname);
+        ptr = writeDisplayPath(ptr, pathname);
         ptr[0..13].* = must_not_be_file_s.*;
         ptr += 13;
         ptr = fmt.strcpyEqu(ptr, descr_s);
@@ -3231,12 +3270,12 @@ pub const about = struct {
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
     fn pathMustBeFault(pathname: [:0]const u8, kind: Kind, file_mode: Mode) void {
-        @setRuntimeSafety(builtin.is_safe);
+        @setRuntimeSafety(false);
         var descr_s: []const u8 = describeKind(kind);
         var buf: [32768]u8 = undefined;
         buf[0..debug.about.fault_p0_s.len].* = debug.about.fault_p0_s.*;
         var ptr: [*]u8 = buf[debug.about.fault_p0_s.len..].ptr;
-        ptr = fmt.strcpyEqu(ptr, pathname);
+        ptr = writeDisplayPath(ptr, pathname);
         ptr[0..9].* = must_be_file_s.*;
         ptr += 9;
         ptr = fmt.strcpyEqu(ptr, descr_s);
@@ -3247,8 +3286,8 @@ pub const about = struct {
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
-    fn fdNotKindFault(fd: u64, kind: Kind) void {
-        @setRuntimeSafety(builtin.is_safe);
+    fn fdNotKindFault(fd: usize, kind: Kind) void {
+        @setRuntimeSafety(false);
         var descr_s: []const u8 = describeKind(kind);
         var buf: [32768]u8 = undefined;
         buf[0..debug.about.fault_p0_s.len].* = debug.about.fault_p0_s.*;
@@ -3262,8 +3301,8 @@ pub const about = struct {
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
-    fn fdKindModeFault(fd: u64, kind: Kind, file_mode: Mode) void {
-        @setRuntimeSafety(builtin.is_safe);
+    fn fdKindModeFault(fd: usize, kind: Kind, file_mode: Mode) void {
+        @setRuntimeSafety(false);
         var descr_s: []const u8 = describeKind(kind);
         var buf: [32768]u8 = undefined;
         buf[0..debug.about.fault_p0_s.len].* = debug.about.fault_p0_s.*;
@@ -3312,6 +3351,7 @@ pub const about = struct {
         }
     }
     fn describeMode(file_mode: Mode) [10]u8 {
+        @setRuntimeSafety(false);
         var ret: [10]u8 = [1]u8{'-'} ** 10;
         ret[0] = switch (file_mode.kind) {
             .unknown => '-',
@@ -3341,7 +3381,7 @@ pub const about = struct {
         }
     }
     fn writeUpdateOffset(buf: [*]u8, fd: fmt.Type.Udsize, off: fmt.Type.Udsize) usize {
-        @setRuntimeSafety(builtin.is_safe);
+        @setRuntimeSafety(false);
         var ptr: [*]u8 = buf;
         var len: u64 = 4 -% fd.formatLength();
         @memset(ptr[0..len], ' ');
@@ -3359,7 +3399,7 @@ pub const about = struct {
         return (@intFromPtr(ptr) -% @intFromPtr(buf)) +% 1;
     }
     fn writePollFds(buf: [*]u8, pollfds: []PollFd) usize {
-        @setRuntimeSafety(builtin.is_safe);
+        @setRuntimeSafety(false);
         var ptr: [*]u8 = buf;
         var tmp: [24]u8 = undefined;
         var fd_fmt: fmt.Type.Ud64 = undefined;
@@ -3381,13 +3421,12 @@ pub const about = struct {
         return @intFromPtr(ptr) -% @intFromPtr(buf);
     }
     fn writeEvents(buf: [*]u8, pollfd: *PollFd, about_s: []const u8, off: usize) usize {
-        @setRuntimeSafety(builtin.is_safe);
+        @setRuntimeSafety(false);
         const events: Events = @as(*Events, @ptrFromInt(@intFromPtr(pollfd) + off)).*;
         if (@as(u16, @bitCast(events)) == 0) {
             return 0;
         }
-        @memcpy(buf, about_s);
-        var ptr: [*]u8 = buf + about_s.len;
+        var ptr: [*]u8 = fmt.strcpyEqu(buf, about_s);
         inline for (@typeInfo(Events).Struct.fields) |field| {
             if (field.type != bool) {
                 continue;
@@ -3400,12 +3439,13 @@ pub const about = struct {
         }
         return @intFromPtr(ptr) -% @intFromPtr(buf);
     }
-    pub fn writeArgs(buf: [*]u8, pathname: [:0]const u8, args: []const [*:0]const u8) usize {
+    pub fn writeArgs(buf: [*]u8, pathname: []const u8, args: []const [*:0]const u8) usize {
+        @setRuntimeSafety(false);
         var ptr: [*]u8 = buf;
         var idx: usize = 0;
-        if (mach.testEqualMany8(
+        if (mem.testEqualString(
             pathname,
-            mach.manyToSlice80(@constCast(args[0])),
+            mem.terminate(@constCast(args[0]), 0),
         )) {
             idx +%= 1;
         }
@@ -3443,7 +3483,7 @@ pub const about = struct {
         const fd2: u64 = 4;
         const dir_fd1: u64 = 5;
         const dir_fd2: u64 = 6;
-        var offset: u64 = 4096;
+        var offset: usize = 4096;
         const name1: [:0]const u8 = "file1";
         const name2: [:0]const u8 = "file2";
         const expect: Events = .{ .input = true };
@@ -3489,12 +3529,384 @@ pub const about = struct {
         aboutPathnamePathnameError(about_s, error_name, "->", pathname1, pathname2);
         aboutPathnameDirFdNameError(about_s, error_name, "->", pathname1, dir_fd2, name1);
         aboutDirFdNameDirFdNameError(about_s, error_name, "src_dir_fd=", ", ", "dest_dir_fd=", dir_fd1, name1, dir_fd2, name2);
-        socketError(error.SocketError, .ipv4, .tcp);
+        socketError(error.SocketError, .ipv4, .{ .conn = .tcp });
         sendError(error.SendError, fd1, fd2, &offset, 256);
         copyError(error.CopyError, fd1, &offset, fd2, &offset, 512);
         seekError(error.SeekError, fd1, offset, .set);
         listenError(error.ListenError, fd1, 100);
         executeError(error.ExecError, name1, &.{});
     }
+};
+pub const spec = struct {
+    pub const bind = struct {
+        pub const errors = struct {
+            pub const all = &.{
+                .ACCES,   .ADDRINUSE, .BADF,         .INVAL,
+                .NOTSOCK, .ACCES,     .ADDRNOTAVAIL, .FAULT,
+                .LOOP,
+            };
+        };
+    };
+    pub const recv = struct {
+        pub const errors = struct {
+            pub const all = &.{
+                .AGAIN, .BADF,  .CONNREFUSED, .FAULT,   .INTR,
+                .INVAL, .NOMEM, .NOTCONN,     .NOTSOCK,
+            };
+        };
+    };
+    pub const send = struct {
+        pub const errors = struct {
+            pub const all = &.{
+                .ACCES,     .AGAIN,       .ALREADY, .BADF,
+                .CONNRESET, .DESTADDRREQ, .FAULT,   .INTR,
+                .INVAL,     .ISCONN,      .MSGSIZE, .NOBUFS,
+                .NOMEM,     .NOTCONN,     .NOTSOCK, .OPNOTSUPP,
+                .PIPE,
+            };
+        };
+    };
+    pub const connect = struct {
+        pub const errors = struct {
+            pub const all = &.{
+                .ACCES,      .PERM,        .ADDRINUSE, .ADDRNOTAVAIL, .AGAIN, .ALREADY,
+                .BADF,       .CONNREFUSED, .FAULT,     .INPROGRESS,   .INTR,  .ISCONN,
+                .NETUNREACH, .NOTSOCK,     .PROTOTYPE, .TIMEDOUT,
+            };
+        };
+    };
+    pub const copy_file_range = struct {
+        pub const errors = struct {
+            pub const all = &.{
+                .BADF,  .FBIG,      .INVAL,    .IO,   .ISDIR,  .NOMEM,
+                .NOSPC, .OPNOTSUPP, .OVERFLOW, .PERM, .TXTBSY, .XDEV,
+            };
+        };
+    };
+    pub const sendfile = struct {
+        pub const errors = struct {
+            pub const all = &.{
+                .AGAIN, .FAULT,    .INVAL, .IO,
+                .NOMEM, .OVERFLOW, .SPIPE,
+            };
+        };
+    };
+    pub const sync = struct {
+        pub const errors = struct {
+            pub const all = &.{ .BADF, .IO };
+        };
+    };
+    pub const getrandom = struct {
+        pub const errors = struct {
+            pub const all = &.{
+                .AGAIN, .FAULT, .INTR, .INVAL, .NOSYS,
+            };
+        };
+    };
+    pub const chdir = struct {
+        pub const errors = struct {
+            pub const all = &.{
+                .NAMETOOLONG, .LOOP, .ACCES, .IO, .BADF, .FAULT, .NOTDIR, .NOMEM, .NOENT,
+            };
+        };
+    };
+    pub const open = struct {
+        pub const errors = struct {
+            pub const all = &.{
+                .ACCES, .FBIG,        .NOTDIR,   .EXIST,  .OPNOTSUPP, .MFILE, .NOSPC,
+                .NOENT, .NAMETOOLONG, .OVERFLOW, .TXTBSY, .AGAIN,     .BADF,  .ISDIR,
+                .LOOP,  .NODEV,       .DQUOT,    .NOMEM,  .ROFS,      .NFILE, .INTR,
+                .PERM,  .FAULT,       .INVAL,    .NXIO,   .BUSY,      .STALE,
+            };
+        };
+    };
+    pub const read = struct {
+        pub const errors = struct {
+            pub const all = &.{
+                .AGAIN, .BADF, .FAULT, .INTR, .INVAL, .IO, .ISDIR,
+            };
+        };
+    };
+    pub const clock_gettime = struct {
+        pub const errors = struct {
+            pub const all = &.{
+                .ACCES, .FAULT, .INVAL, .NODEV, .OPNOTSUPP, .PERM,
+            };
+        };
+    };
+    pub const execve = struct {
+        pub const errors = struct {
+            pub const all = &.{
+                .ACCES, .IO,     .LIBBAD, .NOTDIR,  .MFILE, .NOENT, .NAMETOOLONG, .TXTBSY,
+                .ISDIR, .LOOP,   .NOMEM,  .@"2BIG", .NFILE, .PERM,  .FAULT,       .AGAIN,
+                .INVAL, .NOEXEC,
+            };
+        };
+    };
+    pub const fork = struct {
+        pub const errors = struct {
+            pub const all = &.{
+                .NOSYS, .AGAIN, .NOMEM, .RESTART,
+            };
+        };
+    };
+    pub const getcwd = struct {
+        pub const errors = struct {
+            pub const all = &.{
+                .ACCES, .FAULT, .INVAL, .NAMETOOLONG, .NOENT, .NOMEM, .RANGE,
+            };
+        };
+    };
+    pub const getdents = struct {
+        pub const errors = struct {
+            pub const all = &.{
+                .BADF, .FAULT, .INVAL, .NOENT, .NOTDIR,
+            };
+        };
+    };
+    pub const dup = struct {
+        pub const errors = struct {
+            pub const all = &.{
+                .BADF, .BUSY, .INTR, .INVAL, .MFILE,
+            };
+        };
+    };
+    pub const dup2 = struct {
+        pub const errors = struct {
+            pub const all = &.{
+                .BADF, .BUSY, .INTR, .INVAL, .MFILE,
+            };
+        };
+    };
+    pub const dup3 = struct {
+        pub const errors = struct {
+            pub const all = &.{
+                .BADF, .BUSY, .INTR, .INVAL, .MFILE,
+            };
+        };
+    };
+    pub const poll = struct {
+        pub const errors = struct {
+            pub const all = &.{
+                .FAULT, .INTR, .INVAL, .NOMEM,
+            };
+        };
+    };
+    pub const ioctl = struct {
+        pub const errors = struct {
+            pub const all = &.{
+                .NOTTY, .BADF, .FAULT, .INVAL,
+            };
+        };
+    };
+    pub const mkdir = struct {
+        pub const errors = struct {
+            pub const all = &.{
+                .ACCES,       .BADF,  .DQUOT, .EXIST, .FAULT,  .INVAL, .LOOP, .MLINK,
+                .NAMETOOLONG, .NOENT, .NOMEM, .NOSPC, .NOTDIR, .PERM,  .ROFS,
+            };
+            pub const noexcl = &.{
+                .ACCES,       .BADF,  .DQUOT, .FAULT, .INVAL,  .LOOP, .MLINK,
+                .NAMETOOLONG, .NOENT, .NOMEM, .NOSPC, .NOTDIR, .PERM, .ROFS,
+            };
+        };
+    };
+    pub const memfd_create = struct {
+        pub const errors = struct {
+            pub const all = &.{
+                .FAULT, .INVAL, .MFILE, .NOMEM,
+            };
+        };
+    };
+    pub const truncate = struct {
+        pub const errors = struct {
+            pub const all = &.{
+                .ACCES,  .FAULT, .FBIG, .INTR,   .IO,    .ISDIR, .LOOP, .NAMETOOLONG,
+                .NOTDIR, .PERM,  .ROFS, .TXTBSY, .INVAL, .BADF,
+            };
+        };
+    };
+    pub const mknod = struct {
+        pub const errors = struct {
+            pub const all = &.{
+                .ACCES,       .BADF,  .DQUOT, .EXIST, .FAULT,  .INVAL, .LOOP,
+                .NAMETOOLONG, .NOENT, .NOMEM, .NOSPC, .NOTDIR, .PERM,  .ROFS,
+            };
+        };
+    };
+    pub const link = struct {
+        pub const errors = struct {
+            pub const all = &.{
+                .ACCES, .BADF,  .DQUOT, .EXIST,  .FAULT, .IO,   .LOOP,  .NAMETOOLONG,
+                .NOENT, .NOMEM, .NOSPC, .NOTDIR, .PERM,  .ROFS, .MLINK, .XDEV,
+                .INVAL,
+            };
+        };
+    };
+    pub const readlink = struct {
+        pub const errors = struct {
+            pub const all = &.{
+                .ACCES,       .BADF,  .FAULT, .INVAL,  .IO, .LOOP,
+                .NAMETOOLONG, .NOENT, .NOMEM, .NOTDIR,
+            };
+        };
+    };
+    pub const rmdir = struct {
+        pub const errors = struct {
+            pub const all = &.{
+                .ACCES, .BUSY,  .FAULT,  .INVAL,    .LOOP, .NAMETOOLONG,
+                .NOENT, .NOMEM, .NOTDIR, .NOTEMPTY, .PERM, .ROFS,
+            };
+        };
+    };
+    pub const socket = struct {
+        pub const errors = struct {
+            pub const all = &.{ .BADF, .NXIO, .OVERFLOW, .SPIPE };
+        };
+    };
+    pub const seek = struct {
+        pub const errors = struct {
+            pub const all = &.{ .ACCES, .AFNOSUPPORT, .INVAL, .MFILE, .NOBUFS, .NOMEM, .PROTONOSUPPORT };
+        };
+    };
+    pub const stat = struct {
+        pub const errors = struct {
+            pub const all = &.{
+                .ACCES,       .BADF,  .FAULT, .INVAL,  .LOOP,
+                .NAMETOOLONG, .NOENT, .NOMEM, .NOTDIR, .OVERFLOW,
+            };
+            pub const all_noent = &.{
+                .ACCES,       .BADF,  .FAULT,  .INVAL,    .LOOP,
+                .NAMETOOLONG, .NOMEM, .NOTDIR, .OVERFLOW,
+            };
+        };
+    };
+    pub const unlink = struct {
+        pub const errors = struct {
+            pub const all = &.{
+                .ACCES, .BUSY,  .FAULT,  .IO,   .ISDIR, .LOOP, .NAMETOOLONG,
+                .NOENT, .NOMEM, .NOTDIR, .PERM, .ROFS,  .BADF, .INVAL,
+            };
+            pub const all_noent = &.{
+                .ACCES, .BUSY,   .FAULT, .IO,   .ISDIR, .LOOP,  .NAMETOOLONG,
+                .NOMEM, .NOTDIR, .PERM,  .ROFS, .BADF,  .INVAL,
+            };
+        };
+    };
+    pub const write = struct {
+        pub const errors = struct {
+            pub const all = &.{
+                .AGAIN, .BADF,  .DESTADDRREQ, .DQUOT, .FAULT, .FBIG,
+                .INTR,  .INVAL, .IO,          .NOSPC, .PERM,  .PIPE,
+            };
+        };
+    };
+    pub const pipe = struct {
+        pub const errors = struct {
+            pub const all = &.{
+                .FAULT, .INVAL, .MFILE, .NFILE, .NOPKG,
+            };
+        };
+    };
+    pub const listen = struct {
+        pub const errors = struct {
+            pub const all = &.{ .INVAL, .ADDRINUSE, .BADF, .NOTSOCK, .OPNOTSUPP };
+        };
+    };
+    pub const accept = struct {
+        pub const errors = struct {
+            pub const all = &.{ .AGAIN, .BADF, .CONNABORTED, .FAULT, .INTR, .INVAL, .MFILE, .NFILE, .NOBUFS, .NOMEM, .NOTSOCK, .OPNOTSUPP, .PERM, .PROTO };
+        };
+    };
+    pub const getsockname = struct {
+        pub const errors = struct {
+            pub const all = &.{ .BADF, .FAULT, .INVAL, .NOBUFS, .NOTSOCK };
+        };
+    };
+    pub const getpeername = struct {
+        pub const errors = struct {
+            pub const all = &.{ .BADF, .FAULT, .INVAL, .NOBUFS, .NOTCONN, .NOTSOCK };
+        };
+    };
+    pub const sockopt = struct {
+        pub const errors = struct {
+            pub const all = &.{ .BADF, .FAULT, .INVAL, .NOPROTOOPT, .NOTSOCK };
+        };
+    };
+    pub const shutdown = struct {
+        pub const errors = struct {
+            pub const all = &.{ .BADF, .INVAL, .NOTCONN, .NOTSOCK };
+        };
+    };
+    pub const close = struct {
+        pub const errors = struct {
+            pub const all = &.{
+                .INTR, .IO, .BADF, .NOSPC,
+            };
+        };
+    };
+    pub const access = struct {
+        pub const errors = struct {
+            pub const all = &.{
+                .ACCES,       .BADF,  .FAULT, .INVAL,  .IO,   .LOOP,
+                .NAMETOOLONG, .NOENT, .NOMEM, .NOTDIR, .PERM, .ROFS,
+                .TXTBSY,
+            };
+        };
+    };
+    pub const statx = struct {
+        pub const errors = struct {
+            pub const all = &.{
+                .ACCES,  .BADF,        .FAULT, .INVAL,
+                .LOOP,   .NAMETOOLONG, .NOENT, .NOMEM,
+                .NOTDIR,
+            };
+        };
+    };
+    pub const dir = struct {
+        pub const options = struct {
+            pub const eager: DirStreamSpec.Options = .{
+                .init_read_all = true,
+                .shrink_after_read = true,
+                .make_list = true,
+                .close_on_deinit = true,
+            };
+            pub const lazy: DirStreamSpec.Options = .{
+                .init_read_all = false,
+                .shrink_after_read = false,
+                .make_list = false,
+                .close_on_deinit = false,
+            };
+        };
+        pub const logging = struct {
+            pub const silent: DirStreamSpec.Logging = .{
+                .open = debug.spec.logging.acquire_error.silent,
+                .close = debug.spec.logging.release_error.silent,
+                .getdents = debug.spec.logging.success_error.silent,
+            };
+            pub const verbose: DirStreamSpec.Logging = .{
+                .open = debug.spec.logging.acquire_error.verbose,
+                .close = debug.spec.logging.release_error.verbose,
+                .getdents = debug.spec.logging.success_error.verbose,
+            };
+        };
+        pub const errors = struct {
+            pub const zen: DirStreamSpec.Errors = .{
+                .open = .{ .throw = sys.open.errors.all },
+                .close = .{ .abort = sys.open.errors.all },
+                .getdents = .{ .throw = sys.getdents.errors.all },
+            };
+            pub const noexcept: DirStreamSpec.Errors = .{
+                .open = .{},
+                .close = .{},
+                .getdents = .{},
+            };
+            pub const critical: DirStreamSpec.Errors = .{
+                .open = .{ .throw = sys.open.errors.all },
+                .close = .{ .throw = sys.open.errors.all },
+                .getdents = .{ .throw = sys.getdents.errors.all },
+            };
+        };
+    };
 };
 // * Add `executeNoticeBrief`
