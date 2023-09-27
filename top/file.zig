@@ -2079,19 +2079,24 @@ pub fn GenericDirStream(comptime dirs_spec: DirStreamSpec) type {
         pub const ListView = mem.GenericLinkedListView(.{ .child = Entry, .low_alignment = 8 });
         pub const Entry = opaque {
             pub fn possess(dirent: *const Entry, dir: *DirStream) void {
+                @setRuntimeSafety(false);
                 @as(*const Block, @ptrFromInt(@intFromPtr(dirent) +% 0)).* = dir.blk;
                 close(dir_close_spec, dir.fd);
             }
             pub fn entries(dirent: *const Entry) Block {
+                @setRuntimeSafety(false);
                 return @as(*const Block, @ptrFromInt(@intFromPtr(dirent))).*;
             }
             pub fn len(dirent: *const Entry) u16 {
+                @setRuntimeSafety(false);
                 return @as(*const u16, @ptrFromInt(@intFromPtr(dirent) +% 8)).*;
             }
             pub fn kind(dirent: *const Entry) Kind {
+                @setRuntimeSafety(false);
                 return @as(*const Kind, @ptrFromInt(@intFromPtr(dirent) +% 10)).*;
             }
             pub fn name(dirent: *const Entry) [:0]const u8 {
+                @setRuntimeSafety(false);
                 return @as([*:0]u8, @ptrFromInt(@intFromPtr(dirent) +% 11))[0..dirent.len() :0];
             }
         };
@@ -2112,10 +2117,6 @@ pub fn GenericDirStream(comptime dirs_spec: DirStreamSpec) type {
         pub fn list(dir: *DirStream) ListView {
             return .{ .links = links(dir.blk), .count = dir.count, .index = 0 };
         }
-        fn clear(s_lb_addr: u64, s_bytes: u64) void {
-            @setRuntimeSafety(false);
-            @memset(@as([*]u8, @ptrFromInt(s_lb_addr))[0..s_bytes], 0);
-        }
         fn getDirectoryEntries(dir: *const DirStream) sys.ErrorUnion(dirs_spec.errors.getdents, u64) {
             return sys.call(.getdents64, dirs_spec.errors.getdents, u64, .{
                 dir.fd,
@@ -2128,7 +2129,7 @@ pub fn GenericDirStream(comptime dirs_spec: DirStreamSpec) type {
             const t_bytes: u64 = s_bytes * 2;
             const s_impl: Block = dir.blk;
             try meta.wrap(allocator.resizeManyAbove(Block, &dir.blk, .{ .bytes = t_bytes }));
-            clear(s_impl.unwritable_byte_address(), dir.blk.unwritable_byte_address() -% s_impl.unwritable_byte_address());
+            mem.addrset(s_impl.unwritable_byte_address(), 0, dir.blk.unwritable_byte_address() -% s_impl.unwritable_byte_address());
         }
         fn readAll(dir: *DirStream, allocator: *Allocator) !void {
             dir.blk.define(try dir.getDirectoryEntries());
@@ -2145,7 +2146,7 @@ pub fn GenericDirStream(comptime dirs_spec: DirStreamSpec) type {
         pub fn initAt(allocator: *Allocator, dir_fd: ?usize, name: [:0]const u8) !DirStream {
             const fd: usize = try openAt(dir_open_spec, .{ .directory = true }, dir_fd orelse cwd, name);
             const blk: Block = try meta.wrap(allocator.allocateMany(Block, .{ .bytes = dirs_spec.options.initial_size }));
-            clear(blk.aligned_byte_address(), dirs_spec.options.initial_size);
+            mem.addrset(blk.aligned_byte_address(), 0, dirs_spec.options.initial_size);
             var ret: DirStream = .{ .path = name, .fd = fd, .blk = blk, .count = 1 };
             if (dirs_spec.options.init_read_all) {
                 try ret.readAll(allocator);
@@ -2162,7 +2163,7 @@ pub fn GenericDirStream(comptime dirs_spec: DirStreamSpec) type {
         pub fn init(allocator: *Allocator, pathname: [:0]const u8) !DirStream {
             const fd: usize = try open(dir_open_spec, .{ .directory = true }, pathname);
             const blk: Block = try meta.wrap(allocator.allocateMany(Block, .{ .bytes = dirs_spec.options.initial_size }));
-            clear(blk.aligned_byte_address(), dirs_spec.options.initial_size);
+            mem.addrset(blk.aligned_byte_address(), 0, dirs_spec.options.initial_size);
             var ret: DirStream = .{ .path = pathname, .fd = fd, .blk = blk, .count = 1 };
             if (dirs_spec.options.init_read_all) {
                 try ret.readAll(allocator);
