@@ -894,24 +894,65 @@ pub fn write(comptime write_spec: WriteSpec, fd: usize, write_buf: []const write
         return write_error;
     }
 }
-pub inline fn writeOne(comptime spec: WriteSpec, fd: u64, write_val: spec.child) sys.ErrorUnion(spec.errors, spec.return_type) {
-    return write(spec, fd, @as([*]const spec.child, @ptrCast(&write_val))[0..1]);
+pub inline fn writeOne(comptime write_spec: WriteSpec, fd: usize, write_val: write_spec.child) sys.ErrorUnion(write_spec.errors, write_spec.return_type) {
+    return write(write_spec, fd, @as([*]const write_spec.child, @ptrCast(&write_val))[0..1]);
 }
-pub fn writeExtra(comptime write_spec: WriteExtraSpec, write_buf: []const write_spec.child) sys.ErrorUnion(
+pub fn read2(comptime read_spec: Read2Spec, flags: sys.flags.ReadWrite, fd: usize, read_buf: []const mem.Vector, offset: usize) sys.ErrorUnion(
+    read_spec.errors,
+    read_spec.return_type,
+) {
+    @setRuntimeSafety(builtin.is_safe);
+    const logging: debug.Logging.SuccessError = comptime read_spec.logging.override();
+    if (meta.wrap(sys.call(.preadv2, read_spec.errors, usize, .{
+        fd, @intFromPtr(read_buf.ptr), read_buf.len, offset, @bitCast(flags), 0,
+    }))) |ret| {
+        if (logging.Success) {
+            about.aboutFdOffsetReadWriteMaxLenLenNotice(about.read_s, fd, offset, flags, about.totalLength(read_buf), ret);
+        }
+        if (read_spec.return_type != void) {
+            return @truncate(ret);
+        }
+    } else |read_error| {
+        if (logging.Error) {
+            about.aboutFdOffsetReadWriteError(about.read_s, @errorName(read_error), fd, offset, flags);
+        }
+        return read_error;
+    }
+}
+pub fn write2(comptime write_spec: WriteSpec, flags: sys.flags.ReadWrite, fd: usize, write_buf: []const mem.Vector, offset: usize) sys.ErrorUnion(
     write_spec.errors,
     write_spec.return_type,
 ) {
-    _ = write_buf;
+    @setRuntimeSafety(builtin.is_safe);
+    if (write_spec.child != u8) {
+        @compileError("Not yet implemented");
+    }
+    const logging: debug.Logging.SuccessError = comptime write_spec.logging.override();
+    if (meta.wrap(sys.call(.pwritev2, write_spec.errors, usize, .{
+        fd, @intFromPtr(write_buf.ptr), write_buf.len, offset, @bitCast(flags), 0,
+    }))) |ret| {
+        if (logging.Success) {
+            about.aboutFdOffsetReadWriteMaxLenLenNotice(about.write_s, fd, offset, flags, about.totalLength(write_buf), ret);
+        }
+        if (write_spec.return_type != void) {
+            return @truncate(@divExact(ret, @sizeOf(write_spec.child)));
+        }
+    } else |write_error| {
+        if (logging.Error) {
+            about.aboutFdOffsetReadWriteError(about.write_s, @errorName(write_error), fd, offset, flags);
+        }
+        return write_error;
+    }
 }
-pub fn open(comptime spec: OpenSpec, pathname: [:0]const u8) sys.ErrorUnion(spec.errors, spec.return_type) {
+pub fn open(comptime open_spec: OpenSpec, flags: sys.flags.Open, pathname: [:0]const u8) sys.ErrorUnion(open_spec.errors, open_spec.return_type) {
+    @setRuntimeSafety(builtin.is_safe);
     const pathname_buf_addr: u64 = @intFromPtr(pathname.ptr);
-    const flags: usize = @as(usize, @bitCast(spec.options));
-    const logging: debug.Logging.AcquireError = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.open, spec.errors, spec.return_type, .{ pathname_buf_addr, flags, 0 }))) |fd| {
+    const logging: debug.Logging.AcquireError = comptime open_spec.logging.override();
+    if (meta.wrap(sys.call(.open, open_spec.errors, open_spec.return_type, .{ pathname_buf_addr, @bitCast(flags), 0 }))) |fd| {
         if (logging.Acquire) {
             about.aboutPathnameFdNotice(about.open_s, pathname, fd);
         }
-        return fd;
+        return @intCast(fd);
     } else |open_error| {
         if (logging.Error) {
             about.aboutPathnameError(about.open_s, @errorName(open_error), pathname);
