@@ -20,6 +20,11 @@ pub const SignalAction = extern struct {
         action: *const fn (sys.SignalCode, *const SignalInfo, ?*const anyopaque) void,
     };
 };
+pub const SignalStack = extern struct {
+    addr: usize,
+    flags: sys.flags.SignalStack = .{},
+    len: usize,
+};
 pub const SignalInfo = extern struct {
     signo: u32,
     errno: u32,
@@ -245,7 +250,7 @@ pub const FutexOp = enum(u64) {
 pub const WaitSpec = struct {
     options: Options = .{},
     return_type: type = Return,
-    errors: sys.ErrorPolicy = .{ .throw = sys.wait_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.wait.errors.all },
     logging: debug.Logging.SuccessError = .{},
     const Specification = @This();
     const Options = struct {
@@ -269,15 +274,15 @@ pub const WaitSpec = struct {
         };
         return @bitCast(val);
     }
-    fn flags(comptime spec: WaitSpec) Wait {
+    fn flags(comptime wait_spec: WaitSpec) Wait {
         var ret: Wait = .{ .val = 0 };
-        if (spec.options.exited) {
+        if (wait_spec.options.exited) {
             ret.set(.exited);
         }
-        if (spec.options.stopped) {
+        if (wait_spec.options.stopped) {
             ret.set(.stopped);
         }
-        if (spec.options.continued) {
+        if (wait_spec.options.continued) {
             ret.set(.continued);
         }
     }
@@ -285,7 +290,7 @@ pub const WaitSpec = struct {
 pub const WaitIdSpec = struct {
     id_type: IdType = .pid,
     options: Options = .{},
-    errors: sys.ErrorPolicy = .{ .throw = sys.wait_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.wait.errors.all },
     logging: debug.Logging.SuccessError = .{},
     return_type: type = u64,
     const Specification = @This();
@@ -297,169 +302,81 @@ pub const WaitIdSpec = struct {
         no_thread: bool = false,
         all: bool = false,
     };
-    fn flags(comptime spec: WaitIdSpec) WaitId {
+    fn flags(comptime wait_spec: WaitIdSpec) WaitId {
         var ret: WaitId = .{ .val = 0 };
-        if (spec.options.exited) {
+        if (wait_spec.options.exited) {
             ret.set(.exited);
         }
-        if (spec.options.stopped) {
+        if (wait_spec.options.stopped) {
             ret.set(.stopped);
         }
-        if (spec.options.continued) {
+        if (wait_spec.options.continued) {
             ret.set(.continued);
         }
-        if (spec.options.clone) {
+        if (wait_spec.options.clone) {
             ret.set(.clone);
         }
-        if (spec.options.no_thread) {
+        if (wait_spec.options.no_thread) {
             ret.set(.no_thread);
         }
-        if (spec.options.all) {
+        if (wait_spec.options.all) {
             ret.set(.all);
         }
         return ret;
     }
 };
 pub const ForkSpec = struct {
-    errors: sys.ErrorPolicy = .{ .throw = sys.fork_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.fork.errors.all },
     logging: debug.Logging.SuccessError = .{},
-    return_type: type = u64,
-    const Specification = @This();
-};
-pub const CommandSpec = struct {
-    options: Options = .{},
-    errors: Errors = .{},
-    logging: Logging = .{},
-    return_type: type = void,
-    args_type: type = []const [*:0]u8,
-    vars_type: type = []const [*:0]u8,
-    const Specification = @This();
-    pub const Options = struct {
-        no_follow: bool = false,
-    };
-    pub const Logging = packed struct {
-        execve: debug.Logging.AttemptError = .{},
-        fork: debug.Logging.SuccessError = .{},
-        waitpid: debug.Logging.SuccessError = .{},
-    };
-    pub const Errors = struct {
-        execve: sys.ErrorPolicy = .{ .throw = sys.execve_errors },
-        fork: sys.ErrorPolicy = .{ .throw = sys.fork_errors },
-        waitpid: sys.ErrorPolicy = .{ .throw = sys.wait_errors },
-    };
-    fn fork(comptime spec: CommandSpec) ForkSpec {
-        return .{
-            .errors = spec.errors.fork,
-            .logging = spec.logging.fork,
-        };
-    }
-    fn waitpid(comptime spec: CommandSpec) WaitSpec {
-        return .{
-            .errors = spec.errors.waitpid,
-            .logging = spec.logging.waitpid,
-            .return_type = Return,
-        };
-    }
-    fn exec(comptime spec: CommandSpec) file.ExecuteSpec {
-        comptime return .{
-            .errors = spec.errors.execve,
-            .logging = spec.logging.execve,
-            .args_type = spec.args_type,
-            .vars_type = spec.vars_type,
-        };
-    }
-    fn flags(comptime spec: CommandSpec) file.Execute {
-        var flags_bitfield: file.Execute = .{ .val = 0 };
-        if (spec.options.no_follow) {
-            flags_bitfield.set(.no_follow);
-        }
-        return flags_bitfield;
-    }
+    return_type: type = usize,
 };
 pub const CloneSpec = struct {
-    options: Options = .{},
-    errors: sys.ErrorPolicy = .{ .throw = sys.clone_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.clone3.errors.all },
     return_type: type = usize,
     logging: debug.Logging.SuccessError = .{},
-    const Options = struct {
-        address_space: bool = true,
-        file_system: bool = true,
-        files: bool = true,
-        signal_handlers: bool = true,
-        thread: bool = true,
-        sysvsem: bool = true,
-        set_thread_local_storage: bool = true,
-        set_parent_thread_id: bool = true,
-        set_child_thread_id: bool = true,
-        clear_child_thread_id: bool = true,
-        io: bool = false,
-    };
-    const Specification = @This();
-    const CLONE = sys.CLONE;
-    pub inline fn flags(comptime spec: CloneSpec) Clone.Options {
-        var clone_flags: Clone.Options = .{ .val = 0 };
-        if (spec.options.address_space) {
-            clone_flags.set(.vm);
-        }
-        if (spec.options.file_system) {
-            clone_flags.set(.fs);
-        }
-        if (spec.options.files) {
-            clone_flags.set(.files);
-        }
-        if (spec.options.thread) {
-            clone_flags.set(.thread);
-        }
-        if (spec.options.signal_handlers) {
-            clone_flags.set(.signal_handlers);
-        }
-        if (spec.options.set_thread_local_storage) {
-            clone_flags.set(.set_thread_local_storage);
-        }
-        if (spec.options.set_parent_thread_id) {
-            clone_flags.set(.set_parent_thread_id);
-        }
-        if (spec.options.set_child_thread_id) {
-            clone_flags.set(.set_child_thread_id);
-        }
-        if (spec.options.clear_child_thread_id) {
-            clone_flags.set(.clear_child_thread_id);
-        }
-        if (spec.options.io) {
-            clone_flags.set(.io);
-        }
-        return clone_flags;
-    }
 };
 pub const FutexSpec = struct {
-    errors: sys.ErrorPolicy = .{ .throw = sys.futex_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.futex.errors.all },
     return_type: type = void,
     logging: debug.Logging.AttemptSuccessAcquireReleaseError = .{},
 };
 pub const Status = struct {
-    pub inline fn exit(status: u32) u8 {
-        return mach.shr32T(u8, status & 0xff00, 8);
-    }
-    pub inline fn term(status: u32) sys.SignalCode {
-        return @enumFromInt(status & 0x7f);
-    }
-    pub inline fn stop(status: u32) u32 {
-        return Status.exit(status);
-    }
-    pub inline fn ifExited(status: u32) bool {
-        return Status.term(status) == 0;
-    }
-    pub inline fn ifSignaled(status: u32) bool {
-        return status & 0x7f >= 2;
-    }
-    pub inline fn ifStopped(status: u32) bool {
-        return status & 0xff == 0x7f;
-    }
-    pub inline fn ifContinued(status: u32) bool {
-        return status == 0xffff;
-    }
-    pub inline fn coreDump(status: u32) u32 {
-        return status & 0x80;
+    pub extern fn ifSignaled(wstatus: u32) bool;
+    pub extern fn ifExited(wstatus: u32) bool;
+    pub extern fn ifStopped(wstatus: u32) bool;
+    pub extern fn ifContinued(wstatus: u32) bool;
+    pub extern fn termSignal(wstatus: u32) u8;
+    pub extern fn exitStatus(wstatus: u32) u8;
+    pub extern fn stopSignal(wstatus: u32) u8;
+    comptime {
+        asm (
+            \\.intel_syntax noprefix
+            \\ifSignaled:
+            \\    cmp   dil, 127
+            \\    setne al
+            \\    ret
+            \\ifExited:
+            \\    test  dil, 127
+            \\    sete  al
+            \\    ret
+            \\ifStopped:
+            \\    cmp   dil, 127
+            \\    sete  al
+            \\    ret
+            \\ifContinued:
+            \\    cmp   edi, 65535
+            \\    sete  al
+            \\    ret
+            \\termSignal:
+            \\    mov   eax, edi
+            \\    and   al, 127
+            \\    ret
+            \\stopSignal:
+            \\exitStatus:
+            \\    mov   eax, edi
+            \\    shr   eax, 8
+            \\    ret
+        );
     }
 };
 pub fn getProcessId() u32 {
