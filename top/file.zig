@@ -2308,12 +2308,12 @@ pub fn DeviceRandomBytes(comptime bytes: u64) type {
                 @compileError("requested type " ++ @typeName(T) ++ " is too large");
             }
             const s_lb_addr: u64 = random.data.impl.undefined_byte_address();
-            const s_ab_addr: u64 = mach.alignA64(s_lb_addr, low_alignment);
+            const s_ab_addr: u64 = bits.alignA64(s_lb_addr, low_alignment);
             const s_up_addr: u64 = s_ab_addr +% high_alignment;
             if (s_up_addr >= random.data.impl.unwritable_byte_address()) {
                 random.data.undefineAll();
                 const t_lb_addr: u64 = random.data.impl.undefined_byte_address();
-                const t_ab_addr: u64 = mach.alignA64(t_lb_addr, low_alignment);
+                const t_ab_addr: u64 = bits.alignA64(t_lb_addr, low_alignment);
                 const t_up_addr: u64 = t_ab_addr +% high_alignment;
                 sys.call(.getrandom, .{}, void, .{ random.data.impl.aligned_byte_address(), bytes, dev });
                 random.data.define(t_up_addr - t_lb_addr);
@@ -2370,6 +2370,7 @@ pub const about = struct {
     const mknod_s: fmt.AboutSrc = fmt.about("mknod");
     const rmdir_s: fmt.AboutSrc = fmt.about("rmdir");
     const write_s: fmt.AboutSrc = fmt.about("write");
+    const chdir_s: fmt.AboutSrc = fmt.about("chdir");
     const socket_s: fmt.AboutSrc = fmt.about("socket");
     const listen_s: fmt.AboutSrc = fmt.about("listen");
     const create_s: fmt.AboutSrc = fmt.about("create");
@@ -2378,8 +2379,8 @@ pub const about = struct {
     const unlink_s: fmt.AboutSrc = fmt.about("unlink");
     const symlink_s: fmt.AboutSrc = fmt.about("symlink");
     const getdents_s: fmt.AboutSrc = fmt.about("getdents");
-    const unlinkat_s: fmt.AboutSrc = fmt.about("unlink");
     const truncate_s: fmt.AboutSrc = fmt.about("truncate");
+    const readlink_s: fmt.AboutSrc = fmt.about("readlink");
     const must_not_be_file_s: *const [13:0]u8 = " must not be ";
     const must_be_file_s: *const [9:0]u8 = " must be ";
     const is_file_s: *const [5:0]u8 = "; is ";
