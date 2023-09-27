@@ -90,7 +90,7 @@ const DirStream = file.GenericDirStream(.{
 const Filter = meta.EnumBitField(file.Kind);
 const Names = mem.StaticArray([:0]const u8, max_pathname_args);
 const Status = packed struct {
-    flag: meta.maybe(print_in_second_thread, u8) = 0,
+    flag: meta.maybe(print_in_second_thread, u32) = 0,
     file_count: meta.maybe(count_files, u64) = 0,
     dir_count: meta.maybe(count_dirs, u64) = 0,
     link_count: meta.maybe(count_links, u64) = 0,
@@ -129,11 +129,13 @@ const empty_dir_arrow_s: [:0]const u8 = del_s ++ "|-- ";
 const last_empty_dir_arrow_s: [:0]const u8 = del_s ++ "`-- ";
 
 // config constants derived by `message_style` library configuration
-const about_dirs_s: [:0]const u8 = fmt.about("dirs");
-const about_files_s: [:0]const u8 = fmt.about("files");
-const about_links_s: [:0]const u8 = fmt.about("links");
-const about_depth_s: [:0]const u8 = fmt.about("depth");
-const about_errors_s: [:0]const u8 = fmt.about("errors");
+const about = .{
+    .dirs_s = fmt.about("dirs"),
+    .files_s = fmt.about("files"),
+    .links_s = fmt.about("links"),
+    .depth_s = fmt.about("depth"),
+    .errors_s = fmt.about("errors"),
+};
 
 // user config end
 const write_spec: file.WriteSpec = .{
@@ -151,27 +153,27 @@ const thread_spec: proc.CloneSpec = .{
 fn show(status: Status) void {
     var array: PrintArray = .{};
     if (count_dirs) {
-        array.writeMany(about_dirs_s);
+        array.writeMany(about.dirs_s);
         array.writeFormat(fmt.udh(status.dir_count));
         array.writeOne('\n');
     }
     if (count_files) {
-        array.writeMany(about_files_s);
+        array.writeMany(about.files_s);
         array.writeFormat(fmt.udh(status.file_count));
         array.writeOne('\n');
     }
     if (count_links) {
-        array.writeMany(about_links_s);
+        array.writeMany(about.links_s);
         array.writeFormat(fmt.udh(status.link_count));
         array.writeOne('\n');
     }
     if (track_max_depth) {
-        array.writeMany(about_depth_s);
+        array.writeMany(about.depth_s);
         array.writeFormat(fmt.udh(status.max_depth));
         array.writeOne('\n');
     }
     if (count_errors) {
-        array.writeMany(about_errors_s);
+        array.writeMany(about.errors_s);
         array.writeFormat(fmt.udh(status.errors));
         array.writeOne('\n');
     }
@@ -193,21 +195,15 @@ noinline fn printAlong(status: *volatile Status, allocator: *Allocator1, array: 
     }
     show(status.*);
     status.flag = 0;
+    proc.futexWake(.{ .errors = .{} }, @volatileCast(&status.flag), 1);
 }
-inline fn getNames(args: [][*:0]u8) Names {
+fn getNames(args: [][*:0]u8) Names {
     var names: Names = .{};
     var i: u64 = 1;
     while (i != args.len) : (i +%= 1) {
         names.writeOne(meta.manyToSlice(args[i]));
     }
     return names;
-}
-fn conditionalSkip(entry_name: []const u8) bool {
-    return builtin.int3v(
-        entry_name[0] == '.',
-        mem.testEqualMany(u8, "zig-cache", entry_name),
-        mem.testEqualMany(u8, "zig-out", entry_name),
-    );
 }
 fn writeReadLink(
     allocator_1: *Allocator1,
@@ -243,7 +239,7 @@ fn getSymbol(kind: file.Kind) [:0]const u8 {
         .character_special => return "c ",
         .named_pipe => return "p ",
         .socket => return "S ",
-        .unknown => unreachable,
+        .unknown => return "? ",
     }
 }
 fn writeAndWalk(
@@ -306,7 +302,7 @@ fn writeAndWalk(
                     }
                 };
             },
-            .unknown => unreachable,
+            .unknown => {},
         }
     }
 }
@@ -338,19 +334,13 @@ pub fn main(args: [][*:0]u8) !void {
             var stack_buf: [16384]u8 align(16) = undefined;
             const stack_addr: u64 = @intFromPtr(&stack_buf);
             tid = proc.clone(thread_spec, stack_addr, stack_buf.len, {}, printAlong, .{ &status, &allocator_1, &array });
-            @call(.always_inline, writeAndWalk, .{
-                &allocator_0, &allocator_1, &array, &alts_buf, &link_buf,
-                &status,      null,         arg,    0,
-            }) catch if (count_errors) {
+            writeAndWalk(&allocator_0, &allocator_1, &array, &alts_buf, &link_buf, &status, null, arg, 0) catch if (count_errors) {
                 status.errors +%= 1;
             };
             status.flag = 255;
-            mem.monitor(u8, &status.flag);
+            proc.futexWait(.{ .errors = .{} }, &status.flag, 255, &.{ .sec = 1 });
         } else {
-            @call(.always_inline, writeAndWalk, .{
-                &allocator_0, &allocator_1, &array, &alts_buf, &link_buf,
-                &status,      null,         arg,    0,
-            }) catch if (count_errors) {
+            writeAndWalk(&allocator_0, &allocator_1, &array, &alts_buf, &link_buf, &status, null, arg, 0) catch if (count_errors) {
                 status.errors +%= 1;
             };
             debug.write(array.readAll(allocator_1));
