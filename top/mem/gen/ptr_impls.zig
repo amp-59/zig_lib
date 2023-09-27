@@ -3,7 +3,6 @@ const mem = @import("../../mem.zig");
 const fmt = @import("../../fmt.zig");
 const gen = @import("../../gen.zig");
 const file = @import("../../file.zig");
-const spec = @import("../../spec.zig");
 const serial = @import("../../serial.zig");
 const tok = @import("./tok.zig");
 const expr = @import("./expr.zig");

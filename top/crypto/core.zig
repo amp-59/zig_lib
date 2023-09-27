@@ -1,6 +1,6 @@
 const mem = @import("../mem.zig");
 const math = @import("../math.zig");
-const mach = @import("../mach.zig");
+const mach = struct {};
 const debug = @import("../debug.zig");
 const builtin = @import("../builtin.zig");
 const safety: bool = false;
@@ -64,15 +64,15 @@ pub fn GenericKeccakPState(comptime f: comptime_int, comptime capacity: comptime
             }
             if (off < bytes.len) {
                 var padded: [word_size]u8 = [1]u8{0} ** word_size;
-                mach.memcpy(&padded, bytes[off..], bytes.len -% off);
+                builtin.memcpy(&padded, bytes[off..], bytes.len -% off);
                 keccak_p.st[off / word_size] = mem.readIntLittle(Word, padded[0..]);
             }
         }
         pub fn clear(keccak_p: *KeccakP, from: usize, to: usize) void {
-            mach.memset(@as([*]u8, @ptrCast(&keccak_p.st)) + from, 0, to -% from);
+            builtin.memset(@as([*]u8, @ptrCast(&keccak_p.st)) + from, 0, to -% from);
         }
         pub fn secureZero(keccak_p: *KeccakP) void {
-            mach.memset(&keccak_p.st, 0, word_count *% word_size);
+            builtin.memset(&keccak_p.st, 0, word_count *% word_size);
         }
         fn round(keccak_p: *KeccakP, rc: Word) void {
             const st: *[25]Word = &keccak_p.st;
@@ -132,7 +132,7 @@ pub fn GenericKeccakPState(comptime f: comptime_int, comptime capacity: comptime
             }
             if (idx < bytes.len) {
                 var padded: [word_size]u8 = [1]u8{0} ** word_size;
-                mach.memcpy(&padded, bytes[idx..].ptr, bytes.len -% idx);
+                builtin.memcpy(&padded, bytes[idx..].ptr, bytes.len -% idx);
                 keccak_p.st[idx / word_size] ^= mem.readIntLittle(Word, padded[0..]);
             }
         }
@@ -144,14 +144,14 @@ pub fn GenericKeccakPState(comptime f: comptime_int, comptime capacity: comptime
             if (idx < dest.len) {
                 var padded: [word_size]u8 = [1]u8{0} ** word_size;
                 mem.writeIntLittle(Word, padded[0..], keccak_p.st[idx / word_size]);
-                mach.memcpy(dest[idx..].ptr, &padded, dest.len -% idx);
+                builtin.memcpy(dest[idx..].ptr, &padded, dest.len -% idx);
             }
         }
         pub fn absorb(keccak_p: *KeccakP, src: []const u8) void {
             var bytes: []const u8 = src;
             if (keccak_p.offset > 0) {
                 const off: usize = @min(rate -% keccak_p.offset, bytes.len);
-                mach.memcpy(keccak_p.buf[keccak_p.offset..].ptr, bytes.ptr, off);
+                builtin.memcpy(keccak_p.buf[keccak_p.offset..].ptr, bytes.ptr, off);
                 keccak_p.offset +%= off;
                 if (keccak_p.offset == rate) {
                     keccak_p.offset = 0;
@@ -169,7 +169,7 @@ pub fn GenericKeccakPState(comptime f: comptime_int, comptime capacity: comptime
                 bytes = bytes[rate..];
             }
             if (bytes.len > 0) {
-                mach.memcpy(&keccak_p.buf, bytes.ptr, bytes.len);
+                builtin.memcpy(&keccak_p.buf, bytes.ptr, bytes.len);
                 keccak_p.offset = bytes.len;
             }
         }
@@ -421,7 +421,7 @@ pub fn GenericAsconState(comptime endian: builtin.Endian) type {
         /// Initialize the state from a slice of bytes.
         pub fn init(initial_state: [blk_len]u8) AsconState {
             var ret: AsconState = .{ .st = undefined };
-            mach.memcpy(ret.asBytes(), &initial_state, blk_len);
+            builtin.memcpy(ret.asBytes(), &initial_state, blk_len);
             ret.endianSwap();
             return ret;
         }
@@ -464,7 +464,7 @@ pub fn GenericAsconState(comptime endian: builtin.Endian) type {
             }
             if (idx < bytes.len) {
                 var padded: [8]u8 = .{0} ** 8;
-                mach.memcpy(&padded, bytes[idx..].ptr, bytes.len -% idx);
+                builtin.memcpy(&padded, bytes[idx..].ptr, bytes.len -% idx);
                 state.st[idx / 8] = mem.readInt(u64, padded[0..], endian);
             }
         }
@@ -486,7 +486,7 @@ pub fn GenericAsconState(comptime endian: builtin.Endian) type {
             }
             if (idx < bytes.len) {
                 var padded: [8]u8 = .{0} ** 8;
-                mach.memcpy(&padded, bytes[idx..].ptr, bytes.len -% idx);
+                builtin.memcpy(&padded, bytes[idx..].ptr, bytes.len -% idx);
                 state.st[idx / 8] = mem.readInt(u64, padded[0..], endian);
             }
         }
@@ -500,7 +500,7 @@ pub fn GenericAsconState(comptime endian: builtin.Endian) type {
             if (idx < dest.len) {
                 var padded: [8]u8 = .{0} ** 8;
                 mem.writeInt(u64, padded[0..], state.st[idx / 8], endian);
-                mach.memcpy(dest[idx..].ptr, &padded, dest.len -% idx);
+                builtin.memcpy(dest[idx..].ptr, &padded, dest.len -% idx);
             }
         }
         /// Set the words storing the bytes of a given range to zero.
@@ -766,8 +766,8 @@ pub fn ctr(comptime BlockCipher: anytype, block_cipher: BlockCipher, dest: []u8,
     if (off < src.len) {
         mem.writeInt(u128, &counter, counter_int, endian);
         var pad: [BlockCipher.blk_len]u8 = .{0} ** BlockCipher.blk_len;
-        mach.memcpy(&pad, src[off..].ptr, src.len -% off);
+        builtin.memcpy(&pad, src[off..].ptr, src.len -% off);
         block_cipher.xor(&pad, &pad, counter);
-        mach.memcpy(dest[off..].ptr, &pad, src.len -% off);
+        builtin.memcpy(dest[off..].ptr, &pad, src.len -% off);
     }
 }

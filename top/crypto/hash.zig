@@ -1,6 +1,6 @@
 const mem = @import("../mem.zig");
 const math = @import("../math.zig");
-const mach = @import("../mach.zig");
+const bits = @import("../bits.zig");
 const debug = @import("../debug.zig");
 const builtin = @import("../builtin.zig");
 const tab = @import("./tab.zig");
@@ -12,12 +12,7 @@ pub const Sha3_512 = GenericKeccak(1600, 512, 0x06, 24);
 pub const Keccak256 = GenericKeccak(1600, 256, 0x01, 24);
 pub const Keccak512 = GenericKeccak(1600, 512, 0x01, 24);
 const safety: bool = false;
-pub fn GenericKeccak(
-    comptime number: comptime_int,
-    comptime output_bits: comptime_int,
-    comptime delim: u8,
-    comptime rounds: comptime_int,
-) type {
+pub fn GenericKeccak(comptime number: comptime_int, comptime output_bits: comptime_int, comptime delim: u8, comptime rounds: comptime_int) type {
     return struct {
         st: State = .{},
         const Keccak = @This();
@@ -105,7 +100,7 @@ pub fn GenericBlake2s(comptime out_bits: usize) type {
                 ret.h[7] ^= mem.readIntLittle(u32, context[4..8]);
             }
             if (options.key.len != 0) {
-                mach.memset(ret.buf[options.key.len..].ptr, 0, ret.buf.len -% options.key.len);
+                builtin.memset(ret.buf[options.key.len..].ptr, 0, ret.buf.len -% options.key.len);
                 ret.update(options.key);
                 ret.buf_len = 64;
             }
@@ -120,7 +115,7 @@ pub fn GenericBlake2s(comptime out_bits: usize) type {
             var off: usize = 0;
             if (blake_2s.buf_len != 0 and blake_2s.buf_len +% bytes.len > 64) {
                 off +%= 64 -% blake_2s.buf_len;
-                mach.memcpy(blake_2s.buf[blake_2s.buf_len..].ptr, bytes.ptr, off);
+                builtin.memcpy(blake_2s.buf[blake_2s.buf_len..].ptr, bytes.ptr, off);
                 blake_2s.t +%= 64;
                 blake_2s.round(blake_2s.buf[0..], false);
                 blake_2s.buf_len = 0;
@@ -130,15 +125,15 @@ pub fn GenericBlake2s(comptime out_bits: usize) type {
                 blake_2s.round(bytes[off..][0..64], false);
             }
             const rem: []const u8 = bytes[off..];
-            mach.memcpy(blake_2s.buf[blake_2s.buf_len..].ptr, rem.ptr, rem.len);
-            blake_2s.buf_len +%= @as(u8, @intCast(rem.len));
+            builtin.memcpy(blake_2s.buf[blake_2s.buf_len..].ptr, rem.ptr, rem.len);
+            blake_2s.buf_len +%= @intCast(rem.len);
         }
         pub fn final(blake_2s: *Blake2s, dest: []u8) void {
-            mach.memset(blake_2s.buf[blake_2s.buf_len..].ptr, 0, blake_2s.buf.len -% blake_2s.buf_len);
+            builtin.memset(blake_2s.buf[blake_2s.buf_len..].ptr, 0, blake_2s.buf.len -% blake_2s.buf_len);
             blake_2s.t +%= blake_2s.buf_len;
             blake_2s.round(blake_2s.buf[0..], true);
             for (&blake_2s.h) |*x| x.* = mem.nativeToLittle(u32, x.*);
-            mach.memcpy(dest.ptr, @as([*]u8, @ptrCast(&blake_2s.h)), 32);
+            builtin.memcpy(dest.ptr, @as([*]u8, @ptrCast(&blake_2s.h)), 32);
         }
         fn round(blake_2s: *Blake2s, b: *const [64]u8, last: bool) void {
             var m: [16]u32 = undefined;
@@ -216,7 +211,7 @@ pub fn GenericBlake2b(comptime out_bits: usize) type {
                 ret.h[7] ^= mem.readIntLittle(u64, context[8..16]);
             }
             if (options.key.len != 0) {
-                mach.memset(ret.buf[options.key.len..].ptr, 0, ret.buf.len -% options.key.len);
+                builtin.memset(ret.buf[options.key.len..].ptr, 0, ret.buf.len -% options.key.len);
                 ret.update(options.key);
                 ret.buf_len = 128;
             }
@@ -231,7 +226,7 @@ pub fn GenericBlake2b(comptime out_bits: usize) type {
             var off: usize = 0;
             if (blake_2b.buf_len != 0 and blake_2b.buf_len +% bytes.len > 128) {
                 off +%= 128 -% blake_2b.buf_len;
-                mach.memcpy(blake_2b.buf[blake_2b.buf_len..].ptr, bytes.ptr, off);
+                builtin.memcpy(blake_2b.buf[blake_2b.buf_len..].ptr, bytes.ptr, off);
                 blake_2b.t +%= 128;
                 blake_2b.round(blake_2b.buf[0..], false);
                 blake_2b.buf_len = 0;
@@ -241,16 +236,16 @@ pub fn GenericBlake2b(comptime out_bits: usize) type {
                 blake_2b.round(bytes[off..][0..128], false);
             }
             const rem: []const u8 = bytes[off..];
-            mach.memcpy(blake_2b.buf[blake_2b.buf_len..].ptr, rem.ptr, rem.len);
+            builtin.memcpy(blake_2b.buf[blake_2b.buf_len..].ptr, rem.ptr, rem.len);
             blake_2b.buf_len +%= @as(u8, @intCast(rem.len));
         }
         pub fn final(blake_2b: *Blake2b, dest: []u8) void {
             const buf: []u8 = blake_2b.buf[blake_2b.buf_len..];
-            mach.memset(buf.ptr, 0, buf.len);
+            builtin.memset(buf.ptr, 0, buf.len);
             blake_2b.t +%= blake_2b.buf_len;
             blake_2b.round(blake_2b.buf[0..], true);
             for (&blake_2b.h) |*x| x.* = mem.nativeToLittle(u64, x.*);
-            mach.memcpy(dest.ptr, @as([*]u8, @ptrCast(&blake_2b.h)), 64);
+            builtin.memcpy(dest.ptr, @as([*]u8, @ptrCast(&blake_2b.h)), 64);
         }
         fn round(blake_2b: *Blake2b, bytes: *const [128]u8, last: bool) void {
             var m: [16]u64 = undefined;
@@ -291,10 +286,10 @@ pub const CompressVectorized = struct {
     fn g(even: bool, rows: *Rows, m: Lane) void {
         rows[0] +%= rows[1] +% m;
         rows[3] ^= rows[0];
-        rows[3] = math.rotr(Lane, rows[3], mach.cmov8(even, 8, 16));
+        rows[3] = math.rotr(Lane, rows[3], bits.cmov8(even, 8, 16));
         rows[2] +%= rows[3];
         rows[1] ^= rows[2];
-        rows[1] = math.rotr(Lane, rows[1], mach.cmov8(even, 7, 12));
+        rows[1] = math.rotr(Lane, rows[1], bits.cmov8(even, 7, 12));
     }
     fn diagonalize(rows: *Rows) void {
         rows[0] = @shuffle(u32, rows[0], undefined, [_]i32{ 3, 0, 1, 2 });
@@ -436,7 +431,7 @@ pub const Md5 = struct {
         var off: usize = 0;
         if (md5.buf_len != 0 and md5.buf_len +% bytes.len >= 64) {
             off +%= 64 -% md5.buf_len;
-            mach.memcpy(md5.buf[md5.buf_len..].ptr, bytes.ptr, off);
+            builtin.memcpy(md5.buf[md5.buf_len..].ptr, bytes.ptr, off);
             md5.round(&md5.buf);
             md5.buf_len = 0;
         }
@@ -444,18 +439,18 @@ pub const Md5 = struct {
             md5.round(bytes[off..][0..64]);
         }
         const rem: []const u8 = bytes[off..];
-        mach.memcpy(md5.buf[md5.buf_len..].ptr, rem.ptr, rem.len);
+        builtin.memcpy(md5.buf[md5.buf_len..].ptr, rem.ptr, rem.len);
         md5.buf_len +%= @intCast(rem.len);
         md5.total_len +%= bytes.len;
     }
     pub fn final(md5: *Md5, dest: []u8) void {
         @setRuntimeSafety(safety);
-        mach.memset(md5.buf[md5.buf_len..].ptr, 0, md5.buf.len -% md5.buf_len);
+        builtin.memset(md5.buf[md5.buf_len..].ptr, 0, md5.buf.len -% md5.buf_len);
         md5.buf[md5.buf_len] = 0x80;
         md5.buf_len +%= 1;
         if (64 -% md5.buf_len < 8) {
             md5.round(&md5.buf);
-            mach.memset(&md5.buf, 0, 64);
+            builtin.memset(&md5.buf, 0, 64);
         }
         var idx: usize = 1;
         var off: u64 = md5.total_len >> 5;
@@ -530,7 +525,7 @@ fn GenericSha2x64(comptime params: Sha2Params64) type {
             var off: usize = 0;
             if (sha.buf_len != 0 and sha.buf_len +% bytes.len >= 128) {
                 off +%= 128 -% sha.buf_len;
-                mach.memcpy(sha.buf[sha.buf_len..].ptr, bytes.ptr, off);
+                builtin.memcpy(sha.buf[sha.buf_len..].ptr, bytes.ptr, off);
                 sha.round(&sha.buf);
                 sha.buf_len = 0;
             }
@@ -538,7 +533,7 @@ fn GenericSha2x64(comptime params: Sha2Params64) type {
                 sha.round(bytes[off..][0..128]);
             }
             const rem: []const u8 = bytes[off..];
-            mach.memcpy(sha.buf[sha.buf_len..].ptr, rem.ptr, rem.len);
+            builtin.memcpy(sha.buf[sha.buf_len..].ptr, rem.ptr, rem.len);
             sha.buf_len +%= @as(u8, @intCast(bytes[off..].len));
             sha.total_len +%= bytes.len;
         }
@@ -659,7 +654,7 @@ fn GenericShakeLike(comptime security_level: u11, comptime delim: u8, comptime r
                 var off: usize = shake.buf.len -% shake.offset;
                 if (off > 0) {
                     off = @min(off, bytes.len);
-                    mach.memcpy(bytes.ptr, shake.buf[shake.offset..].ptr, off);
+                    builtin.memcpy(bytes.ptr, shake.buf[shake.offset..].ptr, off);
                     bytes = bytes[off..];
                     shake.offset +%= off;
                     if (bytes.len == 0) {
@@ -761,7 +756,7 @@ pub const Blake3 = struct {
                 while (out_word_itr.next()) |out_word| {
                     var word_bytes: [4]u8 = undefined;
                     mem.writeIntLittle(u32, &word_bytes, words[word_counter]);
-                    mach.memcpy(out_word.ptr, &word_bytes, out_word.len);
+                    builtin.memcpy(out_word.ptr, &word_bytes, out_word.len);
                     word_counter +%= 1;
                 }
                 output_block_counter +%= 1;
@@ -784,7 +779,7 @@ pub const Blake3 = struct {
         fn fillBlockBuf(st: *ChunkState, input: []const u8) []const u8 {
             const want: u64 = blk_len -% st.block_len;
             const take: u64 = @min(want, input.len);
-            mach.memcpy(st.block[st.block_len..].ptr, input.ptr, take);
+            builtin.memcpy(st.block[st.block_len..].ptr, input.ptr, take);
             st.block_len +%= @as(u8, @truncate(take));
             return input[take..];
         }
@@ -933,7 +928,7 @@ fn GenericSha2x32(comptime params: Sha2Params32) type {
             var off: usize = 0;
             if (sha.buf_len != 0 and sha.buf_len +% bytes.len >= 64) {
                 off +%= 64 -% sha.buf_len;
-                mach.memcpy(sha.buf[sha.buf_len..].ptr, bytes.ptr, off);
+                builtin.memcpy(sha.buf[sha.buf_len..].ptr, bytes.ptr, off);
                 sha.round(&sha.buf);
                 sha.buf_len = 0;
             }
@@ -941,8 +936,8 @@ fn GenericSha2x32(comptime params: Sha2Params32) type {
                 sha.round(bytes[off..][0..64]);
             }
             const rem: []const u8 = bytes[off..];
-            mach.memcpy(sha.buf[sha.buf_len..].ptr, rem.ptr, rem.len);
-            sha.buf_len +%= @as(u8, @intCast(bytes[off..].len));
+            @memcpy(sha.buf[sha.buf_len..], rem);
+            sha.buf_len +%= @intCast(rem.len);
             sha.total_len +%= bytes.len;
         }
         pub fn peek(sha: Sha2x32) [len]u8 {

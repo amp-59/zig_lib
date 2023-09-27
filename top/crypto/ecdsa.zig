@@ -1,6 +1,5 @@
 const fmt = @import("../fmt.zig");
 const mem = @import("../mem.zig");
-const mach = @import("../mach.zig");
 const file = @import("../file.zig");
 const builtin = @import("../builtin.zig");
 const testing = @import("../testing.zig");
@@ -87,14 +86,14 @@ pub fn GenericEcdsa(comptime Curve: type, comptime Hash: type) type {
                         return error.InvalidEncoding;
                     }
                     const out: []u8 = dest[dest.len -% (x_len -% 1) ..];
-                    mach.memcpy(out.ptr, der.ptr + 3, out.len);
+                    @memcpy(out, der.ptr + 3);
                     if (dest[0] >> 7 == 0) {
                         return error.InvalidEncoding;
                     }
                     return 3 +% out.len;
                 } else {
                     const out: []u8 = dest[dest.len -% x_len ..];
-                    mach.memcpy(out.ptr, der.ptr + 2, out.len);
+                    @memcpy(out, der.ptr + 2);
                     return 2 +% out.len;
                 }
             }
@@ -212,13 +211,13 @@ pub fn GenericEcdsa(comptime Curve: type, comptime Hash: type) type {
         fn reduceToScalar(comptime unreduced_len: usize, s: [unreduced_len]u8) Curve.scalar.Scalar {
             if (unreduced_len >= 48) {
                 var xs: [64]u8 = undefined;
-                mach.memcpy(xs[xs.len -% s.len ..].ptr, &s, unreduced_len);
-                mach.memset(&xs, 0, xs.len -% s.len);
+                builtin.memcpy(xs[xs.len -% s.len ..].ptr, &s, unreduced_len);
+                builtin.memset(&xs, 0, xs.len -% s.len);
                 return Curve.scalar.Scalar.fromBytes64(xs, .Big);
             }
             var xs: [48]u8 = undefined;
-            mach.memcpy(xs[xs.len -% s.len ..].ptr, &s, unreduced_len);
-            mach.memset(&xs, 0, xs.len -% s.len);
+            builtin.memcpy(xs[xs.len -% s.len ..].ptr, &s, unreduced_len);
+            builtin.memset(&xs, 0, xs.len -% s.len);
             return Curve.scalar.Scalar.fromBytes48(xs, .Big);
         }
         fn deterministicScalar(h: [Hash.len]u8, secret_key: Curve.scalar.CompressedScalar, noise: ?[noise_len]u8) Curve.scalar.Scalar {

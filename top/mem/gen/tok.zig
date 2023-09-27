@@ -11,7 +11,8 @@ pub const builtin_namespace: [:0]const u8 = "builtin";
 pub const reference_namespace: [:0]const u8 = "reference";
 pub const container_namespace: [:0]const u8 = "container";
 pub const mem_namespace: [:0]const u8 = "mem";
-pub const mach_namespace: [:0]const u8 = "mach";
+pub const bits_namespace: [:0]const u8 = "bits";
+pub const math_namespace: [:0]const u8 = "math";
 pub const meta_namespace: [:0]const u8 = "meta";
 
 // Feature
@@ -310,25 +311,25 @@ pub const target_double_approximation_counts_param: [:0]const u8 = paramDecl(tar
 // Functions
 
 pub const wrap_fn_name: [:0]const u8 = metaFnName("wrap");
-pub const add_equ_fn_name: [:0]const u8 = machFnName("addEqu");
-pub const sub_equ_fn_name: [:0]const u8 = machFnName("subEqu");
-pub const add_fn_name: [:0]const u8 = machFnName("add");
-pub const sub_fn_name: [:0]const u8 = machFnName("sub");
-pub const aligna_fn_name: [:0]const u8 = machFnName("alignA");
-pub const alignb_fn_name: [:0]const u8 = machFnName("alignB");
-pub const div_trunc_fn_name: [:0]const u8 = machFnName("divT");
-pub const div_exact_fn_name: [:0]const u8 = machFnName("divX");
-pub const and_fn_name: [:0]const u8 = machFnName("and");
-pub const and_not_fn_name: [:0]const u8 = machFnName("andn");
-pub const cmov_fn_name: [:0]const u8 = machFnName("cmov");
-pub const mul_fn_name: [:0]const u8 = machFnName("mul");
-pub const or_fn_name: [:0]const u8 = machFnName("or");
-pub const shl_fn_name: [:0]const u8 = machFnName("shl");
-pub const shr_fn_name: [:0]const u8 = machFnName("shr");
-pub const shl_or_fn_name: [:0]const u8 = machFnName("shlOr");
-pub const sub_or_fn_name: [:0]const u8 = machFnName("subOr");
-pub const mul_add_fn_name: [:0]const u8 = machFnName("mulAdd");
-pub const mul_sub_fn_name: [:0]const u8 = machFnName("mulSub");
+pub const add_equ_fn_name: [:0]const u8 = mathFnName("addEqu");
+pub const sub_equ_fn_name: [:0]const u8 = mathFnName("subEqu");
+pub const add_fn_name: [:0]const u8 = mathFnName("add");
+pub const sub_fn_name: [:0]const u8 = mathFnName("sub");
+pub const aligna_fn_name: [:0]const u8 = bitsFnName("alignA");
+pub const alignb_fn_name: [:0]const u8 = bitsFnName("alignB");
+pub const div_trunc_fn_name: [:0]const u8 = mathFnName("divT");
+pub const div_exact_fn_name: [:0]const u8 = mathFnName("divX");
+pub const and_fn_name: [:0]const u8 = bitsFnName("and");
+pub const and_not_fn_name: [:0]const u8 = bitsFnName("andn");
+pub const cmov_fn_name: [:0]const u8 = bitsFnName("cmov");
+pub const mul_fn_name: [:0]const u8 = mathFnName("mul");
+pub const or_fn_name: [:0]const u8 = bitsFnName("or");
+pub const shl_fn_name: [:0]const u8 = bitsFnName("shl");
+pub const shr_fn_name: [:0]const u8 = bitsFnName("shr");
+pub const shl_or_fn_name: [:0]const u8 = bitsFnName("shlOr");
+pub const sub_or_fn_name: [:0]const u8 = mathFnName("subOr");
+pub const mul_add_fn_name: [:0]const u8 = mathFnName("mulAdd");
+pub const mul_sub_fn_name: [:0]const u8 = mathFnName("mulSub");
 pub const unpack_single_fn_name: [:0]const u8 = if (config.packed_capacity_low) "algo.unpackSingleApproxB" else "algo.unpackSingleApproxA";
 pub const unpack_double_fn_name: [:0]const u8 = if (config.packed_capacity_low) "algo.unpackDoubleApproxS" else "algo.unpackDoubleApproxH";
 pub const partial_unpack_single_fn_name: [:0]const u8 = "algo.partialUnpackSingleApprox";
@@ -424,8 +425,11 @@ pub const list: []const KV = blk: {
 fn metaFnName(comptime name: [:0]const u8) [:0]const u8 {
     return fieldAccess(meta_namespace, name);
 }
-fn machFnName(comptime name: [:0]const u8) [:0]const u8 {
-    return fieldAccess(mach_namespace, name ++ word_type_name[1..]);
+fn bitsFnName(comptime name: [:0]const u8) [:0]const u8 {
+    return fieldAccess(bits_namespace, name ++ word_type_name[1..]);
+}
+fn mathFnName(comptime name: [:0]const u8) [:0]const u8 {
+    return fieldAccess(math_namespace, name ++ word_type_name[1..]);
 }
 fn referenceFnName(comptime name: [:0]const u8) [:0]const u8 {
     return fieldAccess(reference_namespace, name);

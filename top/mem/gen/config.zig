@@ -1,7 +1,5 @@
 //! Control various aspects of `memgen`
 const mem = @import("../../mem.zig");
-const spec = @import("../../spec.zig");
-const serial = @import("../../serial.zig");
 const builtin = @import("../../builtin.zig");
 
 pub const word_size_type: type = u64;
@@ -9,21 +7,16 @@ pub const word_size_type: type = u64;
 pub const Allocator = mem.GenericArenaAllocator(.{
     .AddressSpace = AddressSpace,
     .arena_index = 0,
-    .logging = spec.allocator.logging.silent,
-    .errors = spec.allocator.errors.noexcept,
-    .options = spec.allocator.options.fast,
+    .logging = mem.spec.allocator.logging.silent,
+    .errors = mem.spec.allocator.errors.noexcept,
+    .options = mem.spec.allocator.options.fast,
 });
 pub const AddressSpace = mem.GenericRegularAddressSpace(.{
     .lb_offset = 0x40000000,
     .divisions = 128,
-    .logging = spec.address_space.logging.silent,
-    .errors = spec.address_space.errors.noexcept,
+    .logging = mem.spec.address_space.logging.silent,
+    .errors = mem.spec.address_space.errors.noexcept,
 });
-pub const serial_spec: serial.SerialSpec = .{
-    .Allocator = Allocator,
-    .logging = spec.serializer.logging.silent,
-    .errors = spec.serializer.errors.noexcept,
-};
 
 pub const prefer_operator_wrapper: bool = true;
 /// If `true` approximate length counts are stored in the least significant

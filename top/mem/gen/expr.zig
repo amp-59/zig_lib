@@ -1,7 +1,7 @@
 const mem = @import("../../mem.zig");
 const fmt = @import("../../fmt.zig");
 const gen = @import("../../gen.zig");
-const mach = @import("../../mach.zig");
+const bits = @import("../../bits.zig");
 const builtin = @import("../../builtin.zig");
 const tok = @import("./tok.zig");
 const attr = @import("./attr.zig");
@@ -228,28 +228,28 @@ const Init = struct {
     fn packMore(tag: ExprTag, exprs: []Expr) Expr {
         return .{
             .data1 = @intFromPtr(exprs.ptr),
-            .data2 = mach.shlOr64(@intFromEnum(tag), 56, exprs.len),
+            .data2 = bits.shlOr64(@intFromEnum(tag), 56, exprs.len),
         };
     }
     pub fn constant(value: u64) Expr {
         return .{
             .data1 = value,
-            .data2 = mach.shl64(@intFromEnum(ExprTag.constant), 56),
+            .data2 = bits.shl64(@intFromEnum(ExprTag.constant), 56),
         };
     }
     pub fn symbol(token: [:0]const u8) Expr {
         return .{
             .data1 = @intFromPtr(token.ptr),
-            .data2 = mach.shlOr64(@intFromEnum(ExprTag.symbol), 56, token.len),
+            .data2 = bits.shlOr64(@intFromEnum(ExprTag.symbol), 56, token.len),
         };
     }
     pub fn scrub(count: u64) Expr {
-        return .{ .data1 = count, .data2 = mach.shl64(@intFromEnum(ExprTag.scrub), 56) };
+        return .{ .data1 = count, .data2 = bits.shl64(@intFromEnum(ExprTag.scrub), 56) };
     }
     pub fn @"type"(type_descr: *const gen.TypeDescrFormat) Expr {
         return .{
             .data1 = @intFromPtr(type_descr),
-            .data2 = mach.shl64(@intFromEnum(ExprTag.type), 56),
+            .data2 = bits.shl64(@intFromEnum(ExprTag.type), 56),
         };
     }
     pub fn join(exprs: []Expr) Expr {

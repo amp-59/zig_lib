@@ -1,6 +1,7 @@
 const sys = @import("../sys.zig");
 const fmt = @import("../fmt.zig");
 const math = @import("../math.zig");
+const file = @import("../file.zig");
 const proc = @import("../proc.zig");
 const debug = @import("../debug.zig");
 const builtin = @import("../builtin.zig");
@@ -138,7 +139,7 @@ pub fn secureZero(comptime T: type, _: []T) void {
     }
 }
 pub fn bytes(buf: []u8) void {
-    sys.call(.getrandom, .{ .throw = sys.getrandom_errors }, void, .{
+    sys.call(.getrandom, .{ .throw = file.spec.getrandom.errors.all }, void, .{
         @intFromPtr(buf.ptr),
         buf.len,
         sys.GRND.RANDOM,

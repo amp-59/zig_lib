@@ -1,6 +1,6 @@
 const mem = @import("../mem.zig");
 const math = @import("../math.zig");
-const mach = @import("../mach.zig");
+const mach = struct {};
 const debug = @import("../debug.zig");
 const builtin = @import("../builtin.zig");
 const core = @import("./core.zig");
@@ -210,7 +210,7 @@ fn ChaChaVecImpl(comptime rounds_nb: usize) type {
                 contextFeedback(&x, ctx);
                 var buf: [64]u8 = undefined;
                 hashToBytes(buf[0..], x);
-                mach.memcpy(out[idx..].ptr, &buf, out.len -% idx);
+                builtin.memcpy(out[idx..].ptr, &buf, out.len -% idx);
             }
         }
         fn hchacha20(input: [16]u8, key: [32]u8) [32]u8 {
@@ -338,7 +338,7 @@ fn ChaChaNonVecImpl(comptime rounds_nb: usize) type {
                 contextFeedback(&x, ctx);
                 var buf: [64]u8 = undefined;
                 hashToBytes(buf[0..], x);
-                mach.memcpy(out[idx..].ptr, &buf, out.len -% idx);
+                builtin.memcpy(out[idx..].ptr, &buf, out.len -% idx);
             }
         }
         fn hchacha20(input: [16]u8, key: [32]u8) [32]u8 {
@@ -830,7 +830,7 @@ fn GenericHash(comptime endian: builtin.Endian, comptime shift_key: bool) type {
             @setRuntimeSafety(builtin.is_safe);
             st.pad();
             mem.writeInt(u128, out[0..16], st.acc, endian);
-            mach.memset(@as([*]u8, @ptrCast(st)), 0, @sizeOf(Hash));
+            builtin.memset(@as([*]u8, @ptrCast(st)), 0, @sizeOf(Hash));
         }
         pub fn create(out: *[mac_len]u8, msg: []const u8, key: *const [key_len]u8) void {
             @setRuntimeSafety(builtin.is_safe);
@@ -998,7 +998,7 @@ pub const Poly1305 = struct {
         st.h[1] = (st.h[1] >> 20) | (st.h[2] << 24);
         mem.writeIntLittle(u64, out[0..8], st.h[0]);
         mem.writeIntLittle(u64, out[8..16], st.h[1]);
-        mach.memset(@as([*]u8, @ptrCast(st)), 0, @sizeOf(Poly1305));
+        builtin.memset(@as([*]u8, @ptrCast(st)), 0, @sizeOf(Poly1305));
     }
     pub fn create(out: *[mac_len]u8, msg: []const u8, key: *const [key_len]u8) void {
         var st = Poly1305.init(key);

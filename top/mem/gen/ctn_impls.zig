@@ -4,7 +4,6 @@ const gen = @import("../../gen.zig");
 const proc = @import("../../proc.zig");
 const file = @import("../../file.zig");
 const meta = @import("../../meta.zig");
-const spec = @import("../../spec.zig");
 const debug = @import("../../debug.zig");
 const serial = @import("../../serial.zig");
 const testing = @import("../../testing.zig");

@@ -4,7 +4,6 @@ const gen = @import("../../gen.zig");
 const proc = @import("../../proc.zig");
 const file = @import("../../file.zig");
 const meta = @import("../../meta.zig");
-const spec = @import("../../spec.zig");
 const debug = @import("../../debug.zig");
 const serial = @import("../../serial.zig");
 const testing = @import("../../testing.zig");
@@ -15,7 +14,7 @@ const types = @import("./types.zig");
 const config = @import("./config.zig");
 const ctn_fn = @import("./ctn_fn.zig");
 pub usingnamespace @import("../../start.zig");
-pub const logging_override: debug.Logging.Override = spec.logging.override.verbose;
+pub const logging_override: debug.Logging.Override = debug.spec.logging.override.verbose;
 pub const runtime_assertions: bool = false;
 const Array = mem.StaticString(1024 * 1024);
 const validate_all_serial: bool = false;
@@ -702,8 +701,8 @@ fn writeSpecifications(allocator: *config.Allocator, array: *Array) !void {
         try gen.truncateFile(truncate_spec, config.container_file_path, array.readAll());
         array.undefineAll();
     }
-    const fd: usize = file.open(spec.generic.noexcept, .{}, config.reference_template_path);
-    array.define(file.read(spec.generic.noexcept, fd, array.referAllUndefined()));
+    const fd: usize = file.open(.{ .errors = .{} }, .{}, config.reference_template_path);
+    array.define(file.read(.{ .errors = .{} }, fd, array.referAllUndefined()));
     var spec_idx: u16 = 0;
     for (data.spec_sets) |spec_set| {
         for (spec_set) |specs| {
@@ -917,11 +916,11 @@ pub fn main() !void {
     defer allocator.unmapAll();
     var array: *Array = allocator.create(Array);
     array.undefineAll();
-    file.makeDir(spec.generic.noexcept, config.zig_out_dir, file.mode.directory);
-    file.makeDir(spec.generic.noexcept, config.zig_out_src_dir, file.mode.directory);
-    file.makeDir(spec.generic.noexcept, config.container_dir_path, file.mode.directory);
-    file.makeDir(spec.generic.noexcept, config.reference_dir_path, file.mode.directory);
-    file.makeDir(spec.generic.noexcept, config.container_kinds_path, file.mode.regular);
+    file.makeDir(.{ .errors = .{} }, config.zig_out_dir, file.mode.directory);
+    file.makeDir(.{ .errors = .{} }, config.zig_out_src_dir, file.mode.directory);
+    file.makeDir(.{ .errors = .{} }, config.container_dir_path, file.mode.directory);
+    file.makeDir(.{ .errors = .{} }, config.reference_dir_path, file.mode.directory);
+    file.makeDir(.{ .errors = .{} }, config.container_kinds_path, file.mode.regular);
     array.define(gen.readFile(gen.ReadSpec.noexcept, config.container_template_path, array.referAllUndefined()));
     try meta.wrap(writeSpecifications(&allocator, array));
     var impl_details: []types.Implementation = allocator.allocate(types.Implementation, 0x400);

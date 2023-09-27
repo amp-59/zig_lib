@@ -1,6 +1,6 @@
 const mem = @import("../mem.zig");
 const math = @import("../math.zig");
-const mach = @import("../mach.zig");
+const mach = struct {};
 const debug = @import("../debug.zig");
 const builtin = @import("../builtin.zig");
 const core = @import("./core.zig");
@@ -28,12 +28,12 @@ pub fn GenericHmac(comptime Hash: type) type {
             var i_key_pad: [Hash.blk_len]u8 = .{0} ** Hash.blk_len;
             if (key.len > Hash.blk_len) {
                 Hash.hash(key, scratch[0..Hash.len]);
-                mach.memset(scratch[Hash.len..].ptr, 0, Hash.blk_len);
+                builtin.memset(scratch[Hash.len..].ptr, 0, Hash.blk_len);
             } else if (key.len < Hash.blk_len) {
-                mach.memcpy(&scratch, key.ptr, key.len);
-                mach.memset(scratch[key.len..].ptr, 0, Hash.blk_len);
+                builtin.memcpy(&scratch, key.ptr, key.len);
+                builtin.memset(scratch[key.len..].ptr, 0, Hash.blk_len);
             } else {
-                mach.memcpy(&scratch, key.ptr, key.len);
+                builtin.memcpy(&scratch, key.ptr, key.len);
             }
             for (&ctx.o_key_pad, &i_key_pad, 0..) |*b, *c, i| {
                 b.* = scratch[i] ^ 0x5c;
@@ -105,7 +105,7 @@ fn GenericSipHashStateless(comptime T: type, comptime c_rounds: usize, comptime 
             @setRuntimeSafety(builtin.is_safe);
             sip.msg_len +%= @truncate(bytes.len);
             var buf: [8]u8 = [1]u8{0} ** 8;
-            mach.memcpy(&buf, bytes.ptr, bytes.len);
+            builtin.memcpy(&buf, bytes.ptr, bytes.len);
             buf[7] = sip.msg_len;
             sip.round(&buf);
             sip.v2 ^= if (T == u128) 0xee else 0xff;
@@ -177,7 +177,7 @@ fn GenericSipHash(comptime T: type, comptime c_rounds: usize, comptime d_rounds:
             var off: usize = 0;
             if (sip.buf_len != 0 and sip.buf_len +% bytes.len >= 8) {
                 off +%= 8 -% sip.buf_len;
-                mach.memcpy(sip.buf[sip.buf_len..].ptr, bytes.ptr, off);
+                builtin.memcpy(sip.buf[sip.buf_len..].ptr, bytes.ptr, off);
                 sip.state.update(sip.buf[0..]);
                 sip.buf_len = 0;
             }
@@ -185,7 +185,7 @@ fn GenericSipHash(comptime T: type, comptime c_rounds: usize, comptime d_rounds:
             const end: usize = off +% (rem -% (rem % 8));
             const len: usize = bytes.len -% end;
             sip.state.update(bytes[off..end]);
-            mach.memcpy(sip.buf[sip.buf_len..].ptr, bytes[end..].ptr, len);
+            builtin.memcpy(sip.buf[sip.buf_len..].ptr, bytes[end..].ptr, len);
             sip.buf_len +%= @intCast(len);
         }
         pub fn peek(sip: SipHash) [mac_len]u8 {
@@ -552,7 +552,7 @@ fn GenericAegisMac(comptime T: type) type {
         pub fn update(mac: *AegisMac, bytes: []const u8) void {
             mac.msg_len +%= bytes.len;
             const len: usize = @min(bytes.len, blk_len -% mac.off);
-            mach.memcpy(mac.buf[mac.off..].ptr, bytes.ptr, len);
+            builtin.memcpy(mac.buf[mac.off..].ptr, bytes.ptr, len);
             mac.off +%= len;
             if (mac.off < blk_len) {
                 return;
@@ -564,7 +564,7 @@ fn GenericAegisMac(comptime T: type) type {
                 mac.state.absorb(bytes[idx..][0..blk_len]);
             }
             if (idx != bytes.len) {
-                mach.memcpy(&mac.buf, bytes[idx..].ptr, bytes.len -% idx);
+                builtin.memcpy(&mac.buf, bytes[idx..].ptr, bytes.len -% idx);
                 mac.off = bytes.len -% idx;
             }
         }
@@ -703,7 +703,7 @@ pub fn GenericHkdf(comptime Hmac: type) type {
                 st.update(&counter);
                 var tmp: [prk_len]u8 = .{0} ** prk_len;
                 st.final(tmp[0..prk_len]);
-                mach.memcpy(out[idx..].ptr, &tmp, left);
+                builtin.memcpy(out[idx..].ptr, &tmp, left);
             }
         }
     };
