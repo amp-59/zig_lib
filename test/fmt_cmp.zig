@@ -28,9 +28,6 @@ const debug = zl.debug;
 const builtin = zl.builtin;
 
 pub usingnamespace zl.start;
-comptime {
-    _ = zl.mach;
-}
 
 pub const signal_handlers = .{
     .SegmentationFault = false,
