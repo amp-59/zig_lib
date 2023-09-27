@@ -2455,10 +2455,41 @@ pub const about = struct {
         ptr[0..10].* = describeMode(file_mode);
         ptr += 10;
         ptr[0] = '\n';
-        debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
+        debug.write(buf[0..(@intFromPtr(ptr + 1) -% @intFromPtr(&buf))]);
     }
-    fn aboutFdLenNotice(about_s: fmt.AboutSrc, fd: u64, fd_len: u64) void {
-        @setRuntimeSafety(builtin.is_safe);
+    fn aboutFdStatusNotice(about_s: fmt.AboutSrc, fd: usize, st: *const Status) void {
+        @setRuntimeSafety(false);
+        var buf: [32768]u8 = undefined;
+        buf[0..about_s.len].* = about_s.*;
+        var ptr: [*]u8 = buf[about_s.len..].ptr;
+        ptr[0..3].* = "fd=".*;
+        ptr += 3;
+        var ud64: fmt.Type.Ud64 = .{ .value = fd };
+        ptr += ud64.formatWriteBuf(ptr);
+        ptr[0..8].* = ", inode=".*;
+        ptr += 8;
+        ud64.value = st.ino;
+        ptr += ud64.formatWriteBuf(ptr);
+        ptr[0..6].* = ", dev=".*;
+        ptr += 6;
+        ud64.value = st.dev >> 8;
+        ptr += ud64.formatWriteBuf(ptr);
+        ptr[0] = ':';
+        ptr += 1;
+        ud64.value = st.dev & 0xff;
+        ptr += ud64.formatWriteBuf(ptr);
+        ptr[0..7].* = ", mode=".*;
+        ptr += 7;
+        ptr[0..10].* = describeMode(st.mode);
+        ptr += 10;
+        ptr[0..7].* = ", size=".*;
+        ptr += 7;
+        ptr += fmt.bytes(st.size).formatWriteBuf(ptr);
+        ptr[0] = '\n';
+        debug.write(buf[0..(@intFromPtr(ptr + 1) -% @intFromPtr(&buf))]);
+    }
+    fn aboutFdLenNotice(about_s: fmt.AboutSrc, fd: usize, fd_len: u64) void {
+        @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         buf[0..about_s.len].* = about_s.*;
         var ptr: [*]u8 = buf[about_s.len..].ptr;
