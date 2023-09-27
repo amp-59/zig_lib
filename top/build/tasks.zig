@@ -618,8 +618,8 @@ pub const BuildCommand = struct {
                 ptr[0..20].* = "-ffunction-sections\x00".*;
                 ptr += 20;
             } else {
-                ptr[0..22].* = "-fno-function-section\x00".*;
-                ptr += 22;
+                ptr[0..23].* = "-fno-function-sections\x00".*;
+                ptr += 23;
             }
         }
         if (cmd.strip) |strip| {
@@ -1235,7 +1235,7 @@ pub const BuildCommand = struct {
             if (function_sections) {
                 len +%= 20;
             } else {
-                len +%= 22;
+                len +%= 23;
             }
         }
         if (cmd.strip) |strip| {
@@ -1778,7 +1778,7 @@ pub const BuildCommand = struct {
             if (function_sections) {
                 array.writeMany("-ffunction-sections\x00");
             } else {
-                array.writeMany("-fno-function-section\x00");
+                array.writeMany("-fno-function-sections\x00");
             }
         }
         if (cmd.strip) |strip| {
@@ -2306,7 +2306,7 @@ pub const BuildCommand = struct {
                 cmd.single_threaded = false;
             } else if (mem.testEqualString("-ffunction-sections", arg)) {
                 cmd.function_sections = true;
-            } else if (mem.testEqualString("-fno-function-section", arg)) {
+            } else if (mem.testEqualString("-fno-function-sections", arg)) {
                 cmd.function_sections = false;
             } else if (mem.testEqualString("-fstrip", arg)) {
                 cmd.strip = true;
@@ -4191,7 +4191,7 @@ pub const TableGenCommand = struct {
         }
     }
 };
-const build_help: [:0]const u8 =
+const build_help: [:0]const u8 = 
     \\    build-
     \\    -f[no-]emit-bin                 (default=yes) Output machine code
     \\    -f[no-]emit-asm                 (default=no) Output assembly code (.s)
@@ -4233,7 +4233,7 @@ const build_help: [:0]const u8 =
     \\    -f[no-]reference-trace          How many lines of reference trace should be shown per compile error
     \\    -f[no-]error-tracing            Enable error tracing in `ReleaseFast` mode
     \\    -f[no-]single-threaded          Code assumes there is only one thread
-    \\    -f                              Places each function in a separate section
+    \\    -f[no-]function-sections        Places each function in a separate section
     \\    -f[no-]strip                    Omit debug symbols
     \\    -f[no-]formatted-panics         Enable formatted safety panics
     \\    -ofmt                           Override target object format:
@@ -4306,7 +4306,7 @@ const build_help: [:0]const u8 =
     \\
     \\
 ;
-const format_help: [:0]const u8 =
+const format_help: [:0]const u8 = 
     \\    fmt
     \\    --color         Enable or disable colored error messages
     \\    --stdin         Format code from stdin; output to stdout
@@ -4316,7 +4316,7 @@ const format_help: [:0]const u8 =
     \\
     \\
 ;
-const archive_help: [:0]const u8 =
+const archive_help: [:0]const u8 = 
     \\    ar
     \\    --format    Archive format to create
     \\    --plugin    Ignored for compatibility
@@ -4335,7 +4335,7 @@ const archive_help: [:0]const u8 =
     \\
     \\
 ;
-const objcopy_help: [:0]const u8 =
+const objcopy_help: [:0]const u8 = 
     \\    objcopy
     \\    --output-target
     \\    --only-section
@@ -4348,7 +4348,7 @@ const objcopy_help: [:0]const u8 =
     \\
     \\
 ;
-const harec_help: [:0]const u8 =
+const harec_help: [:0]const u8 = 
     \\    -a
     \\    -o      Output file
     \\    -T
@@ -4357,7 +4357,7 @@ const harec_help: [:0]const u8 =
     \\
     \\
 ;
-const tblgen_help: [:0]const u8 =
+const tblgen_help: [:0]const u8 = 
     \\    --color                         Use colors in output (default=autodetect)
     \\    -I                              Add directories to include search path
     \\    -d                              Add file dependencies
