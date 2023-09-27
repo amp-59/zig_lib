@@ -546,7 +546,7 @@ fn testRistretto255() !void {
 }
 pub fn dhTestMain() !void {
     var allocator: mem.SimpleAllocator = .{};
-    defer allocator.unmap();
+    defer allocator.unmapAll();
     // Ed25519
     try testEd25519KeyPairCreation();
     try testEd25519Signature();
