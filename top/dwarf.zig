@@ -27,28 +27,27 @@ pub const SourceLocation = struct {
     column: u64,
     const Format = @This();
     pub var cwd: [:0]const u8 = &.{};
-
-    pub fn formatWriteBuf(format: Format, buf: [*]u8) u64 {
-        @as(*[4]u8, @ptrCast(buf)).* = "\x1b[1m".*;
-        var len: u64 = 4;
-        var ud64: fmt.Type.Ud64 = @bitCast(format.line);
-        if (cwd.len != 0 and mem.testEqualString(cwd, format.file[0..cwd.len])) {
-            const path: []const u8 = format.file[cwd.len +% 1 ..];
-            @memcpy(buf + len, path);
-            len +%= path.len;
+    pub fn formatWriteBuf(format: Format, buf: [*]u8) [*]u8 {
+        @setRuntimeSafety(builtin.is_safe);
+        buf[0..4].* = "\x1b[1m".*;
+        var ptr: [*]u8 = buf + 4;
+        if (cwd.len != 0 and
+            mem.testEqualString(cwd, format.file[0..cwd.len]))
+        {
+            ptr = fmt.strcpyEqu(ptr, format.file[cwd.len +% 1 ..]);
         } else {
-            @memcpy(buf + len, format.file);
-            len +%= format.file.len;
+            ptr = fmt.strcpyEqu(ptr, format.file);
         }
-        buf[len] = ':';
-        len +%= 1;
-        len +%= ud64.formatWriteBuf(buf + len);
-        buf[len] = ':';
-        len +%= 1;
+        ptr[0] = ':';
+        ptr += 1;
+        var ud64: fmt.Type.Ud64 = .{ .value = format.line };
+        ptr += ud64.formatWriteBuf(ptr);
+        ptr[0] = ':';
+        ptr += 1;
         ud64.value = format.column;
-        len +%= ud64.formatWriteBuf(buf + len);
-        @as(*[4]u8, @ptrCast(buf + len)).* = "\x1b[0m".*;
-        return len +% 4;
+        ptr += ud64.formatWriteBuf(ptr);
+        ptr[0..4].* = "\x1b[0m".*;
+        return ptr + 4;
     }
 };
 pub const LineLocation = struct {
@@ -570,17 +569,16 @@ pub const Unit = extern struct {
     abbrev_tab: *AbbrevTable,
     info_entry: *Die,
     dirs: [*]FileEntry,
-    dirs_max_len: Size,
-    dirs_len: Size,
+    dirs_max_len: usize,
+    dirs_len: usize,
     files: [*]FileEntry,
-    files_max_len: Size,
-    files_len: Size,
-    const Size = usize;
+    files_max_len: usize,
+    files_len: usize,
     fn addDir(unit: *Unit, allocator: *Allocator) *FileEntry {
         @setRuntimeSafety(false);
         const size_of: comptime_int = @sizeOf(FileEntry);
         const addr_buf: *usize = @ptrCast(&unit.dirs);
-        const ret: *FileEntry = @ptrFromInt(allocator.addGenericSize(Size, size_of, 1, addr_buf, &unit.dirs_max_len, unit.dirs_len));
+        const ret: *FileEntry = @ptrFromInt(allocator.addGeneric(size_of, 1, addr_buf, &unit.dirs_max_len, unit.dirs_len));
         unit.dirs_len +%= 1;
         mem.zero(FileEntry, ret);
         return ret;
@@ -589,7 +587,7 @@ pub const Unit = extern struct {
         @setRuntimeSafety(false);
         const size_of: comptime_int = @sizeOf(FileEntry);
         const addr_buf: *usize = @ptrCast(&unit.files);
-        const ret: *FileEntry = @ptrFromInt(allocator.addGenericSize(Size, size_of, 1, addr_buf, &unit.files_max_len, unit.files_len));
+        const ret: *FileEntry = @ptrFromInt(allocator.addGeneric(size_of, 1, addr_buf, &unit.files_max_len, unit.files_len));
         unit.files_len +%= 1;
         mem.zero(FileEntry, ret);
         return ret;
@@ -656,7 +654,7 @@ const AbbrevTable = struct {
         head: extern struct {
             code: u64,
             tag: Tag,
-            children: Children,
+            children: bool,
         },
         kvs: [*]KeyVal,
         kvs_max_len: u64,
@@ -692,7 +690,7 @@ const AbbrevTable = struct {
 pub const Die = extern struct {
     head: extern struct {
         tag: Tag,
-        children: Children,
+        children: bool,
     },
     off: usize,
     len: usize,
