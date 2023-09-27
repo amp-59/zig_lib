@@ -16,7 +16,6 @@ pub usingnamespace _container;
 pub usingnamespace _allocator;
 pub usingnamespace _list;
 const word_bit_size: u16 = @bitSizeOf(usize);
-
 pub const Advice = enum(usize) {
     normal = 0,
     random = 1,
@@ -124,7 +123,6 @@ pub const FdSpec = struct {
 pub const Bytes = struct {
     count: usize,
     unit: Unit,
-
     pub const mask: usize = 0b1111111111;
     pub const Unit = enum(u6) {
         EiB = 60,
@@ -1584,7 +1582,6 @@ pub const SimpleAllocator = struct {
             .finish = @intFromPtr(buf.ptr + @sizeOf(meta.Child(@TypeOf(buf)))),
         };
     }
-
     pub fn alignAbove(allocator: *Allocator, alignment: usize) usize {
         const mask: usize = alignment -% 1;
         return (allocator.next +% mask) & ~mask;
@@ -1679,7 +1676,6 @@ pub fn GenericSimpleArray(comptime T: type) type {
         values_len: u64,
         const Array = @This();
         const Allocator = builtin.define("Allocator", type, mem.SimpleAllocator);
-
         pub fn appendOne(array: *Array, allocator: *Allocator, value: T) void {
             if (array.values_len == array.values.len) {
                 array.values = allocator.reallocate(T, array.values, array.values_len *% 2);
@@ -2084,12 +2080,10 @@ pub const toBytes = meta.toBytes;
 // SyncSpec
 // MoveSpec
 // FdSpec
-
 pub const ResourceError = error{ UnderSupply, OverSupply };
 pub const ResourceErrorPolicy = builtin.InternalError(ResourceError);
 pub const RegularAddressSpaceSpec = RegularMultiArena;
 pub const DiscreteAddressSpaceSpec = DiscreteMultiArena;
-
 pub fn DiscreteBitSet(comptime elements: u16, comptime value_type: type, comptime index_type: type) type {
     const val_bit_size_of: u16 = @bitSizeOf(value_type);
     if (val_bit_size_of != 1) {
