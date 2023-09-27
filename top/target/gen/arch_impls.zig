@@ -1,5 +1,6 @@
 const mem = @import("../../mem.zig");
 const fmt = @import("../../fmt.zig");
+const gen = @import("../../gen.zig");
 const meta = @import("../../meta.zig");
 const file = @import("../../file.zig");
 const proc = @import("../../proc.zig");
@@ -45,9 +46,7 @@ pub fn main() !void {
         }
         array.writeMany("};\n");
         array.writeMany("pub usingnamespace feat.GenericFeatureSet(Feature);\n");
-        const fd: u64 = try file.create(create_spec, pair[1], file.mode.regular);
-        try file.write(.{}, fd, array.readAll());
-        try file.close(.{}, fd);
+        try gen.truncateFile(.{}, pair[1], array.readAll());
         array.undefineAll();
     }
 }

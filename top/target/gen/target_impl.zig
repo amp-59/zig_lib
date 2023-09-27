@@ -1,5 +1,6 @@
 const mem = @import("../../mem.zig");
 const fmt = @import("../../fmt.zig");
+const gen = @import("../../gen.zig");
 const meta = @import("../../meta.zig");
 const file = @import("../../file.zig");
 const proc = @import("../../proc.zig");
@@ -19,7 +20,6 @@ fn writeDeclaration(array: *types.Array, comptime name: []const u8, comptime T: 
     array.writeMany(";\n");
 }
 pub fn main() !void {
-    const fd: u64 = try file.create(create_spec, config.toplevel_source_path, file.mode.regular);
     var allocator: mem.SimpleAllocator = .{};
     var array: *types.Array = allocator.create(types.Array);
     array.undefineAll();
@@ -55,7 +55,6 @@ pub fn main() !void {
         array.writeMany("=@import(\"./target/" ++ pair[1][config.primary_dir.len +% 1 ..] ++ "\");\n");
     }
     array.writeMany("};\n");
-    try file.write(.{}, fd, array.readAll());
-    try file.close(.{}, fd);
+    try gen.truncateFile(.{}, config.toplevel_source_path, array.readAll());
     array.undefineAll();
 }
