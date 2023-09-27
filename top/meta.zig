@@ -803,11 +803,14 @@ fn sortDecls(comptime Container: type) []const builtin.Type.Declaration {
     while (l_idx < sorted.len) : (l_idx +%= 1) {
         var r_idx: usize = l_idx -% 1;
         const x: builtin.Type.Declaration = sorted[l_idx];
-        const x_val = if (@TypeOf(@field(Container, x.name)) != type) @field(Container, x.name) else 0;
+        const x_val = @field(Container, x.name);
+        if (!isInteger(@TypeOf(x_val))) {
+            continue;
+        }
         while (r_idx < sorted.len) : (r_idx -%= 1) {
             const y: builtin.Type.Declaration = sorted[r_idx];
             const y_val = @field(Container, y.name);
-            if (@TypeOf(y_val) == type) {
+            if (!isInteger(@TypeOf(y_val))) {
                 break;
             }
             if (y_val <= x_val) {
@@ -819,7 +822,7 @@ fn sortDecls(comptime Container: type) []const builtin.Type.Declaration {
     }
     for (sorted) |decl| {
         const decl_val = @field(Container, decl.name);
-        if (@TypeOf(decl_val) == type) {
+        if (!isInteger(@TypeOf(decl_val))) {
             continue;
         }
         ret = ret ++ [1]builtin.Type.Declaration{decl};
@@ -829,21 +832,64 @@ fn sortDecls(comptime Container: type) []const builtin.Type.Declaration {
 pub fn containerDeclsToBitFieldSets(comptime Container: type, comptime backing_integer: type) []const GenericBitFieldSet(backing_integer) {
     @setEvalBranchQuota(~@as(u32, 0));
     const BitFieldSet = GenericBitFieldSet(backing_integer);
-    const BitFieldPair = BitFieldSet.BitFieldPair;
-    const decls: []const builtin.Type.Declaration = sortDecls(Container);
+    const decls: []const builtin.Type.Declaration = comptime sortDecls(Container);
     var done: [decls.len]bool = .{false} ** decls.len;
     var c_sets: []const BitFieldSet = &.{};
-    var c_set: []const BitFieldPair = &.{};
-    var x_pairs: []const BitFieldPair = &.{};
+    var c_set: []const BitFieldSet.BitFieldPair = &.{};
+    var x_pairs: []const BitFieldSet.BitFieldPair = &.{};
     var c_val: backing_integer = 0;
     var l_decl_idx: usize = 0;
+    var e_idx: usize = 0;
+    const Local = struct {
+        fn init(comptime decl_name: []const u8, decl_value: backing_integer) BitFieldSet.BitFieldPair {
+            if (@hasDecl(Container, "field_names") and
+                @hasDecl(Container.field_names, decl_name))
+            {
+                if (@hasDecl(Container.default_values, decl_name)) {
+                    return .{
+                        .decl_name = decl_name,
+                        .field_name = @field(Container.field_names, decl_name),
+                        .value = decl_value,
+                        .default_value = @field(Container.default_values, decl_name),
+                    };
+                } else .{
+                    .decl_name = decl_name,
+                    .field_name = @field(Container.field_names, decl_name),
+                    .value = decl_value,
+                };
+            } else {
+                if (@hasDecl(Container, "default_values") and
+                    @hasDecl(Container.default_values, decl_name))
+                {
+                    return .{
+                        .decl_name = decl_name,
+                        .value = decl_value,
+                        .default_value = @field(Container.default_values, decl_name),
+                    };
+                } else {
+                    return .{
+                        .decl_name = decl_name,
+                        .value = decl_value,
+                    };
+                }
+            }
+        }
+        fn setName(idx: usize) []const u8 {
+            if (@hasDecl(Container, "set_names") and
+                idx < Container.set_names.len)
+            {
+                return Container.set_names[idx];
+            }
+            return "e" ++ fmt.cx(idx);
+        }
+    };
     lo: while (l_decl_idx != decls.len) : (l_decl_idx +%= 1) {
         const l_decl: builtin.Type.Declaration = decls[l_decl_idx];
         if (done[l_decl_idx]) {
             continue;
         }
         const l_field = @field(Container, l_decl.name);
-        if (@TypeOf(l_field) == type) {
+        if (!isInteger(@TypeOf(l_field))) {
             continue;
         }
         const l_val: backing_integer = l_field;
@@ -851,9 +897,7 @@ pub fn containerDeclsToBitFieldSets(comptime Container: type, comptime backing_i
             c_val = l_val;
         }
         if (l_val == 0) {
-            x_pairs = x_pairs ++ [1]BitFieldPair{
-                .{ .name = l_decl.name, .value = l_val },
-            };
+            x_pairs = x_pairs ++ [1]BitFieldSet.BitFieldPair{Local.init(l_decl.name, l_field)};
             done[l_decl_idx] = true;
             continue :lo;
         }
@@ -864,7 +908,7 @@ pub fn containerDeclsToBitFieldSets(comptime Container: type, comptime backing_i
             }
             const r_decl: builtin.Type.Declaration = decls[r_decl_idx];
             const r_field = @field(Container, r_decl.name);
-            if (@TypeOf(r_field) == type) {
+            if (!isInteger(@TypeOf(r_field))) {
                 continue;
             }
             const r_val: backing_integer = r_field;
@@ -876,18 +920,12 @@ pub fn containerDeclsToBitFieldSets(comptime Container: type, comptime backing_i
                         };
                         x_pairs = &.{};
                     }
-                    if (!done[l_decl_idx]) {
-                        if (c_set.len == 0) {
-                            c_set = c_set ++ [1]BitFieldPair{
-                                .{ .name = l_decl.name, .value = l_val },
-                            };
-                            done[l_decl_idx] = true;
-                        }
+                    if (!done[l_decl_idx] and c_set.len == 0) {
+                        c_set = c_set ++ [1]BitFieldSet.BitFieldPair{Local.init(l_decl.name, l_val)};
+                        done[l_decl_idx] = true;
                     }
                     if (!done[r_decl_idx]) {
-                        c_set = c_set ++ [1]BitFieldPair{
-                            .{ .name = r_decl.name, .value = r_val },
-                        };
+                        c_set = c_set ++ [1]BitFieldSet.BitFieldPair{Local.init(r_decl.name, r_val)};
                         c_val |= r_val;
                         done[r_decl_idx] = true;
                         r_decl_idx = 0;
@@ -896,15 +934,16 @@ pub fn containerDeclsToBitFieldSets(comptime Container: type, comptime backing_i
             }
         }
         if (c_set.len != 0) {
-            c_sets = c_sets ++ [1]BitFieldSet{
-                .{ .tag = .E, .pairs = BitFieldSet.sortPairs(c_set) },
-            };
+            c_sets = c_sets ++ [1]BitFieldSet{.{
+                .tag = .E,
+                .pairs = BitFieldSet.sortPairs(c_set),
+                .name = Local.setName(e_idx),
+            }};
+            e_idx +%= 1;
             c_set = &.{};
         }
         if (!done[l_decl_idx]) {
-            x_pairs = x_pairs ++ [1]BitFieldPair{
-                .{ .name = l_decl.name, .value = l_val },
-            };
+            x_pairs = x_pairs ++ [1]BitFieldSet.BitFieldPair{Local.init(l_decl.name, l_val)};
             done[l_decl_idx] = true;
         }
     }
@@ -920,7 +959,8 @@ pub fn containerDeclsToBitFieldSets(comptime Container: type, comptime backing_i
     {
         return &[1]BitFieldSet{.{
             .tag = .E,
-            .pairs = c_sets[0].pairs ++ [1]BitFieldPair{c_sets[1].pairs[0]},
+            .pairs = c_sets[0].pairs ++ [1]BitFieldSet.BitFieldPair{c_sets[1].pairs[0]},
+            .name = c_sets[0].name.?,
         }};
     }
     return BitFieldSet.sortSets(c_sets);
@@ -934,12 +974,13 @@ pub fn tagList(comptime E: type) [@typeInfo(E).Enum.fields.len]E {
     return ret;
 }
 pub fn TagFromList(comptime names: []const []const u8) type {
-    const tag_type: type = @Type(.{ .Int = .{ .bits = realBitSizeOf(names.len), .signedness = .unsigned } });
+    const tag_type: type = @Type(.{ .Int = .{ .bits = unsignedRealBitSize(names.len), .signedness = .unsigned } });
     var fields: [names.len]builtin.Type.EnumField = undefined;
     for (names, 0..) |name, value| {
         fields[value] = .{ .name = name, .value = value };
     }
-    return @Type(.{ .Enum = .{ .tag_type = tag_type, .fields = &fields, .decls = &.{}, .is_exhaustive = true } });
+    const Tag = @Type(.{ .Enum = .{ .tag_type = tag_type, .fields = &fields, .decls = &.{}, .is_exhaustive = true } });
+    return Tag;
 }
 pub fn valueList(comptime E: type) []const E {
     const enum_info: builtin.Type.Enum = @typeInfo(E).Enum;
@@ -1355,17 +1396,14 @@ pub fn initializers(comptime T: type, comptime any: T) [@typeInfo(@TypeOf(any)).
 pub fn initialize(comptime T: type, inits: []const Initializer) T {
     var ret: T = undefined;
     for (inits) |init| {
-        mach.memcpy(
-            @as([*]u8, @ptrFromInt(@intFromPtr(&ret) +% init.dest_off)),
-            @as([*]const u8, @ptrFromInt(init.src_addr)),
-            init.src_len,
-        );
+        @memcpy(@as([*]u8, @ptrFromInt(@intFromPtr(&ret) +% init.dest_off)), //
+            @as([*]const u8, @ptrFromInt(init.src_addr))[0..init.src_len]);
     }
     return ret;
 }
 pub fn UniformData(comptime bits: u16) type {
     const word_size: u16 = @bitSizeOf(usize);
-    const real_bits: u16 = alignBitSizeAbove(bits);
+    const real_bits: u16 = alignRealBitSizeAbove(bits);
     switch (bits) {
         0...word_size => {
             return @Type(.{ .Int = .{ .bits = real_bits, .signedness = .unsigned } });
