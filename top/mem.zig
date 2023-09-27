@@ -452,7 +452,7 @@ pub fn map(comptime map_spec: MapSpec, prot: sys.flags.MemProt, flags: sys.flags
         return map_error;
     }
 }
-pub fn sync(comptime sync_spec: SyncSpec, flags: sys.flags.Sync, addr: u64, len: u64) sys.ErrorUnion(sync_spec.errors, sync_spec.return_type) {
+pub fn sync(comptime sync_spec: SyncSpec, flags: sys.flags.MemSync, addr: u64, len: u64) sys.ErrorUnion(sync_spec.errors, sync_spec.return_type) {
     const logging: debug.Logging.AcquireError = comptime sync_spec.logging.override();
     if (meta.wrap(sys.call(.sync, sync_spec.errors, sync_spec.return_type, .{ addr, len, @bitCast(flags) }))) |ret| {
         if (logging.Acquire) {
@@ -1801,7 +1801,7 @@ pub fn GenericOptionalArrays(comptime Allocator: type, comptime Int: type, compt
         const bit_size_of: comptime_int = @bitSizeOf(@typeInfo(ImTag).Enum.tag_type);
         const shift_amt: comptime_int = @bitSizeOf(Int) - bit_size_of;
         const bit_mask: comptime_int = ~@as(Int, 0) >> bit_size_of;
-        const Size = @Type(.{ .Int = .{ .bits = @max(meta.alignBitSizeAbove(bit_size_of), @bitSizeOf(Int)), .signedness = .unsigned } });
+        const Size = @Type(.{ .Int = .{ .bits = @max(meta.alignRealBitSizeAbove(bit_size_of), @bitSizeOf(Int)), .signedness = .unsigned } });
         fn Child(comptime tag: ImTag) type {
             return meta.Field(TaggedUnion, @tagName(tag));
         }
@@ -3565,28 +3565,28 @@ pub const spec = struct {
                 .{ .lb_addr = 0x70000000000, .up_addr = 0x80000000000 },
             },
         });
-    };
-    pub const logging = struct {
-        pub const verbose: AddressSpaceLogging = .{
-            .acquire = debug.spec.logging.acquire_error_fault.verbose,
-            .release = debug.spec.logging.release_error_fault.verbose,
-            .map = debug.spec.logging.acquire_error.verbose,
-            .unmap = debug.spec.logging.release_error.verbose,
+        pub const logging = struct {
+            pub const verbose: AddressSpaceLogging = .{
+                .acquire = debug.spec.logging.acquire_error_fault.verbose,
+                .release = debug.spec.logging.release_error_fault.verbose,
+                .map = debug.spec.logging.acquire_error.verbose,
+                .unmap = debug.spec.logging.release_error.verbose,
+            };
+            pub const silent: AddressSpaceLogging = builtin.zero(AddressSpaceLogging);
         };
-        pub const silent: AddressSpaceLogging = builtin.zero(AddressSpaceLogging);
-    };
-    pub const errors = struct {
-        pub const noexcept: AddressSpaceErrors = .{
-            .release = .ignore,
-            .acquire = .ignore,
-            .map = .{},
-            .unmap = .{},
-        };
-        pub const zen: AddressSpaceErrors = .{
-            .acquire = .{ .throw = error.UnderSupply },
-            .release = .abort,
-            .map = .{ .throw = mmap.errors.all },
-            .unmap = .{ .abort = munmap.errors.all },
+        pub const errors = struct {
+            pub const noexcept: AddressSpaceErrors = .{
+                .release = .ignore,
+                .acquire = .ignore,
+                .map = .{},
+                .unmap = .{},
+            };
+            pub const zen: AddressSpaceErrors = .{
+                .acquire = .{ .throw = error.UnderSupply },
+                .release = .abort,
+                .map = .{ .throw = mmap.errors.all },
+                .unmap = .{ .abort = munmap.errors.all },
+            };
         };
     };
     pub const reinterpret = struct {
