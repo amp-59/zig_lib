@@ -3,7 +3,6 @@ const gen = @import("../../gen.zig");
 const fmt = @import("../../fmt.zig");
 const proc = @import("../../proc.zig");
 const file = @import("../../file.zig");
-const spec = @import("../../spec.zig");
 const mach = @import("../../mach.zig");
 const debug = @import("../../debug.zig");
 const builtin = @import("../../builtin.zig");
@@ -163,12 +162,16 @@ pub fn main() !void {
     inline for (@typeInfo(tasks).Struct.decls) |decl| {
         const Command = @field(tasks, decl.name);
         writeDecl(decl.name, key_array, val_array, conv_array);
-        if (@typeInfo(Command) == .Struct) {
+        if (@TypeOf(Command) == type and @typeInfo(Command) == .Struct) {
             inline for (@typeInfo(Command).Struct.fields) |field| {
                 writeField(field.type, field.name, key_array, val_array, conv_array);
             }
         }
         writeClose(array, key_array, val_array, conv_array);
     }
-    try gen.truncateFile(.{ .return_type = void }, config.hist_tasks_path, array.readAll());
+    if (config.commit) {
+        try gen.truncateFile(.{ .return_type = void }, config.hist_tasks_path, array.readAll());
+    } else {
+        debug.write(array.readAll());
+    }
 }

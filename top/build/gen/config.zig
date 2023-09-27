@@ -19,19 +19,19 @@ pub const build_command_options_path: [:0]const u8 = auxiliaryDataFile("build_co
 pub const format_command_options_path: [:0]const u8 = auxiliaryDataFile("format_command_options");
 
 pub const tasks_path: [:0]const u8 = primarySourceFile("tasks.zig");
-pub const tasks_template_path: [:0]const u8 = builtin.root.build_root ++ "/top/build/gen/tasks-template.zig";
+pub const tasks_template_path: [:0]const u8 = builtin.lib_root ++ "/top/build/gen/tasks-template.zig";
 
 pub const writers_path: [:0]const u8 = primarySourceFile("writers.zig");
-pub const writers_template_path: [:0]const u8 = builtin.root.build_root ++ "/top/build/gen/writers-template.zig";
+pub const writers_template_path: [:0]const u8 = builtin.lib_root ++ "/top/build/gen/writers-template.zig";
 
 pub const hist_tasks_path: [:0]const u8 = primarySourceFile("hist_tasks.zig");
-pub const hist_tasks_template_path: [:0]const u8 = builtin.root.build_root ++ "/top/build/gen/hist_tasks-template.zig";
+pub const hist_tasks_template_path: [:0]const u8 = builtin.lib_root ++ "/top/build/gen/hist_tasks-template.zig";
 
 pub const parsers_path: [:0]const u8 = primarySourceFile("parsers.zig");
-pub const parsers_template_path: [:0]const u8 = builtin.root.build_root ++ "/top/build/gen/parsers-template.zig";
+pub const parsers_template_path: [:0]const u8 = builtin.lib_root ++ "/top/build/gen/parsers-template.zig";
 
 pub fn primarySourceFile(comptime name: [:0]const u8) [:0]const u8 {
-    return if (name[0] != '/') builtin.root.build_root ++ "/top/build/" ++ name else name;
+    return if (name[0] != '/') builtin.lib_root ++ "/top/build/" ++ name else name;
 }
 pub fn auxiliarySourceFile(comptime name: [:0]const u8) [:0]const u8 {
     return if (name[0] != '/') zig_out_src_dir ++ "/" ++ name else name;

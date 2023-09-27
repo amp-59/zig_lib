@@ -6,13 +6,12 @@ const debug = @import("../../debug.zig");
 const builtin = @import("../../builtin.zig");
 const attr = @import("./attr.zig");
 const types = @import("./types.zig");
-const build = @import("../types.zig");
+const build = @import("../../build.zig");
 const config = @import("./config.zig");
 const common = @import("./common_impls.zig");
 pub usingnamespace @import("../../start.zig");
 pub usingnamespace config;
 pub const Array = mem.StaticString(64 * 1024 * 1024);
-const commit: bool = true;
 const MajorVariant = enum {
     library,
     autoloader,
@@ -402,7 +401,6 @@ fn writeInternal(array: *Array, comptime mv: MajorVariant, comptime T: type) voi
         },
     }
 }
-
 fn writeCommandCoreLibrary(array: *Array, comptime Command: type, comptime type_name: []const u8, comptime mv: MajorVariant) !void {
     writeImportBuild(array);
     writeImportMach(array);
@@ -473,34 +471,39 @@ fn writePerfEventsLibrary(array: *Array, comptime mv: MajorVariant) !void {
     try writeOut(array, mv, "perf");
     array.undefineAll();
 }
-fn writeNodeCoreFnsLibrary(array: *Array, comptime mv: MajorVariant) void {
-    const Node5 = @import("../../build.zig").Node5;
+fn writeNodeCoreFnsLibrary(array: *Array, comptime mv: MajorVariant) !void {
+    if (return) {}
+    const Node = builtin.root.Builder.Node;
+    array.writeMany("const types=@import(\"../types.zig\");\n");
+    array.writeMany("const source=types.Node;\n");
     types.ProtoTypeDescr.scope = &.{
-        comptime types.ProtoTypeDescr.declare("types.Node5", Node5).type_decl,
+        comptime types.ProtoTypeDescr.declare("types.Node", Node).type_decl,
+        comptime types.ProtoTypeDescr.declare("types.EnvPaths", build.EnvPaths).type_decl,
         comptime types.ProtoTypeDescr.declare("types.Task", build.Task).type_decl,
         comptime types.ProtoTypeDescr.declare("types.Lock", build.Lock).type_decl,
     };
-    writeSymbol(array, Node5, .ptr_fields_source);
+    writeSymbol(array, Node, .ptr_fields_source);
     writeLoadSignature(array);
-    writeSymbol(array, Node5, .load_assign_source);
+    writeSymbol(array, Node, .load_assign_source);
     writeIfClose(array);
     writeExportLoad(array);
     try writeOut(array, mv, "node_core");
 }
 fn writeOut(array: *Array, comptime mv: MajorVariant, comptime name: [:0]const u8) !void {
-    if (commit) {
+    if (true or config.commit) {
         try gen.truncateFile(.{ .return_type = void }, config.primarySourceFile(name ++ switch (mv) {
             .hybrid => ".hyld.zig",
             .autoloader => ".auto.zig",
             .library => ".dl.zig",
         }), array.readAll());
+        array.undefineAll();
     } else {
         debug.write(array.readAll());
     }
 }
-pub fn main() !void {
+pub fn mainOld() !void {
     var allocator: mem.SimpleAllocator = .{};
-    defer allocator.unmap();
+    defer allocator.unmapAll();
     const array: *common.Array = allocator.create(common.Array);
     switch (MajorVariant.autoloader) {
         inline else => |variant| {
@@ -510,4 +513,74 @@ pub fn main() !void {
             try writeNodeCoreFnsLibrary(array, variant);
         },
     }
+}
+fn writeLoadFromSourcesInternal(
+    array: *Array,
+    comptime ST: type,
+    comptime field_name: []const u8,
+    comptime field_source_names: Fields(meta.Field(ST, field_name)),
+) void {
+    const MF = meta.Field(ST, field_name);
+    switch (@typeInfo(MF)) {
+        else => {
+            array.writeMany(" = ");
+            array.writeMany(field_name);
+        },
+        .Struct => |struct_info| {
+            array.writeMany("=.{\n");
+            inline for (struct_info.fields) |field| {
+                array.writeMany("." ++ field.name);
+                if (@typeInfo(Fields(MF)) == .Struct) {
+                    writeLoadFromSourcesInternal(array, MF, field.name, @field(field_source_names, field.name));
+                } else {
+                    array.writeMany("=" ++ field_source_names ++ "." ++ field.name);
+                }
+                array.writeMany(",\n");
+            }
+            array.writeMany("}");
+        },
+    }
+}
+fn Fields(comptime FunctionPointers: type) type {
+    var struct_fields: []const builtin.Type.StructField = &.{};
+    inline for (@typeInfo(FunctionPointers).Struct.fields) |field| {
+        if (@typeInfo(field.type) == .Struct) {
+            struct_fields = struct_fields ++ .{meta.structField(Fields(field.type), field.name, null)};
+        } else {
+            return []const u8;
+        }
+    }
+    return @Type(meta.structInfo(.Auto, struct_fields));
+}
+fn writeLoadFromSources(
+    array: *Array,
+    comptime ST: type,
+    comptime field_name: [:0]const u8,
+    comptime field_source_names: Fields(meta.Field(ST, field_name)),
+) !void {
+    array.writeMany("const zl= @import(\"zl\");\n");
+    array.writeMany("pub usingnamespace zl.start;\n");
+    array.writeMany("export fn load(fp: *");
+    array.writeMany("zl.builtin.root.Builder.FunctionPointers");
+    array.writeMany(")void{\n");
+    array.writeMany("fp." ++ field_name);
+    writeLoadFromSourcesInternal(array, ST, field_name, field_source_names);
+    array.writeMany(";\n");
+    array.writeMany("}\n");
+    try writeOut(array, MajorVariant.autoloader, field_name);
+}
+pub fn main() !void {
+    var allocator: mem.SimpleAllocator = .{};
+    defer allocator.unmapAll();
+    const array: *common.Array = allocator.create(common.Array);
+    const FunctionPointers = build.GenericBuilder(.{}).FunctionPointers;
+    try writeLoadFromSources(array, FunctionPointers, "about", .{
+        .elf = "zl.builtin.root.Builder.DynamicLoader.about",
+        .perf = "zl.builtin.root.Builder.PerfEvents",
+        .generic = "zl.builtin.root.Builder.about",
+    });
+    try writeLoadFromSources(array, FunctionPointers, "build", "zl.build.GenericCommand(zl.build.BuildCommand)");
+    try writeLoadFromSources(array, FunctionPointers, "format", "zl.build.GenericCommand(zl.build.FormatCommand)");
+    try writeLoadFromSources(array, FunctionPointers, "archive", "zl.build.GenericCommand(zl.build.ArchiveCommand)");
+    try writeLoadFromSources(array, FunctionPointers, "objcopy", "zl.build.GenericCommand(zl.build.ObjcopyCommand)");
 }

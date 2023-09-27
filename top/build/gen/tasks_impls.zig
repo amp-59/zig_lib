@@ -1,5 +1,6 @@
 const mem = @import("../../mem.zig");
 const gen = @import("../../gen.zig");
+const debug = @import("../../debug.zig");
 const attr = @import("./attr.zig");
 const types = @import("./types.zig");
 const config = @import("./config.zig");
@@ -38,5 +39,9 @@ pub fn main() !void {
         array.writeMany(",\n");
     }
     array.writeMany("};\n");
-    try gen.truncateFile(.{ .return_type = void }, config.tasks_path, array.readAll());
+    if (config.commit) {
+        try gen.truncateFile(.{ .return_type = void }, config.tasks_path, array.readAll());
+    } else {
+        debug.write(array.readAll());
+    }
 }

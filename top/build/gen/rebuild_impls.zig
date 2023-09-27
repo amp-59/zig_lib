@@ -17,7 +17,7 @@ const debug = zl.debug;
 const build = zl.build;
 const builtin = zl.builtin;
 pub usingnamespace zl.start;
-pub const exec_mode: build.ExecMode = .Regenerate;
+pub const exec_mode: build.ExecPhase = .Regenerate;
 pub const want_regen_metadata: bool = true;
 pub const runtime_assertions: bool = false;
 pub const logging_override: debug.Logging.Override = .{
@@ -730,7 +730,7 @@ fn addGroup(allocator: *build.Allocator, toplevel: *Node, args: [][*:0]u8) void 
         node.descr = "<description>";
     }
 }
-fn addBuild(allocator: *build.Allocator, kind: build.OutputMode, toplevel: *Node, args: [][*:0]u8) void {
+fn addBuild(allocator: *build.Allocator, kind: build.Output, toplevel: *Node, args: [][*:0]u8) void {
     const name = mem.terminate(args[0], 0);
 
     if (resolveGroup(toplevel, name)) |group| {
@@ -806,7 +806,7 @@ fn parseCommands(allocator: *build.Allocator, toplevel: *Node, args: [][*:0]u8) 
     }
 }
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
-    var build_allocator: build.Allocator = build.Allocator.init_arena(
+    var build_allocator: build.Allocator = build.Allocator.fromArena(
         Node.AddressSpace.arena(Node.specification.options.max_thread_count),
     );
     const toplevel: *Node = buildRunnerInit(args, vars, &build_allocator);

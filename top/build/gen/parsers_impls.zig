@@ -1,13 +1,15 @@
 const mem = @import("../../mem.zig");
 const gen = @import("../../gen.zig");
+const debug = @import("../../debug.zig");
 const attr = @import("./attr.zig");
 const config = @import("./config.zig");
 const common = @import("./common_impls.zig");
 pub usingnamespace @import("../../start.zig");
 pub usingnamespace config;
+pub const context = .Lib;
 pub fn main() !void {
     var allocator: mem.SimpleAllocator = .{};
-    defer allocator.unmap();
+    defer allocator.unmapAll();
     const array: *common.Array = allocator.create(common.Array);
     const len: usize = try gen.readFile(.{ .return_type = usize }, config.parsers_template_path, array.referAllUndefined());
     array.define(len);
@@ -17,5 +19,9 @@ pub fn main() !void {
     for (attr.all) |attributes| {
         common.writeParserFunctionHelp(array, attributes);
     }
-    try gen.truncateFile(.{ .return_type = void }, config.parsers_path, array.readAll());
+    if (config.commit) {
+        try gen.truncateFile(.{ .return_type = void }, config.parsers_path, array.readAll());
+    } else {
+        debug.write(array.readAll());
+    }
 }

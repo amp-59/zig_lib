@@ -1,5 +1,6 @@
 const mem = @import("../../mem.zig");
 const gen = @import("../../gen.zig");
+const debug = @import("../../debug.zig");
 const attr = @import("./attr.zig");
 const config = @import("./config.zig");
 const common = @import("./common_impls.zig");
@@ -15,5 +16,9 @@ pub fn main() !void {
     for (attr.all) |attributes| {
         common.writeWriterFunctions(array, attributes);
     }
-    try gen.truncateFile(.{ .return_type = void }, config.writers_path, array.readAll());
+    if (config.commit) {
+        try gen.truncateFile(.{ .return_type = void }, config.writers_path, array.readAll());
+    } else {
+        debug.write(array.readAll());
+    }
 }

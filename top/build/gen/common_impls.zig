@@ -828,7 +828,10 @@ fn writeWriterFunctionSignature(array: *Array, attributes: types.Attributes, var
     if (context == .Lib) {
         array.writeMany(attributes.type_name);
     }
-    array.writeMany("(cmd:*types.");
+    array.writeMany("(cmd:*");
+    if (context == .Lib) {
+        array.writeMany("tasks.");
+    }
     array.writeMany(attributes.type_name);
     array.writeMany(",");
     for (attributes.params) |param_spec| {
@@ -1179,9 +1182,9 @@ fn writeArgSliceFrom(array: *Array, index: usize) void {
 fn writeArgSliceFromTo(array: *Array, start: usize, end: usize) void {
     array.writeMany("arg[");
     array.writeFormat(fmt.ud64(start));
-    array.writeMany("..");
+    array.writeMany("..@min(arg.len,");
     array.writeFormat(fmt.ud64(end));
-    array.writeMany("]");
+    array.writeMany(")]");
 }
 fn writeAssignCurIndex(array: *Array) void {
     array.writeMany("arg=");
@@ -1589,7 +1592,10 @@ fn writeParserFunctionSignature(array: *Array, calling_convention: CallingConven
         },
         .Zig => array.writeMany("pub fn formatParseArgs"),
     }
-    array.writeMany("(cmd:*types.");
+    array.writeMany("(cmd:*");
+    if (context == .Lib) {
+        array.writeMany("tasks.");
+    }
     array.writeMany(attributes.type_name);
     switch (calling_convention) {
         .C => array.writeMany(",allocator:*types.Allocator,args:[*][*:0]u8,args_len:usize)void{\n"),
@@ -1787,6 +1793,8 @@ pub fn writeParserFunctionHelp(array: *Array, attributes: types.Attributes) void
             array.writeMany("\n");
         }
     }
+    array.writeMany("\\\\\n");
+    array.writeMany("\\\\\n");
     array.writeMany("\n;");
 }
 pub fn writeFields(array: *Array, attributes: types.Attributes) void {
