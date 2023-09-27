@@ -183,7 +183,7 @@ pub const Return = extern struct {
 };
 pub const CloneArgs = extern struct {
     /// Flags bit mask
-    flags: Clone.Options,
+    flags: sys.flags.Clone,
     /// Where to store PID file descriptor (int *)
     pidfd_addr: u64 = 0,
     /// Where to store child TID in child's memory (pid_t *)
