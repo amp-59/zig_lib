@@ -524,7 +524,7 @@ pub const StatusExtended = extern struct {
 };
 pub const DirectoryEntry = packed struct {
     inode: u64,
-    offset: u64,
+    offset: usize,
     reclen: u16,
     zb: u4,
     kind: Kind,
@@ -555,10 +555,21 @@ pub const ReadSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = spec.read.errors.all },
     logging: debug.Logging.SuccessError = .{},
 };
+pub const Read2Spec = struct {
+    return_type: type = usize,
+    errors: sys.ErrorPolicy = .{ .throw = spec.read.errors.all },
+    logging: debug.Logging.SuccessError = .{},
+};
 pub const WriteSpec = struct {
     child: type = u8,
     return_type: type = void,
     errors: sys.ErrorPolicy = .{ .throw = spec.write.errors.all },
+    logging: debug.Logging.SuccessError = .{},
+};
+pub const Write2Spec = struct {
+    child: type = []const u8,
+    return_type: type = usize,
+    errors: sys.ErrorPolicy = .{ .throw = spec.read.errors.all },
     logging: debug.Logging.SuccessError = .{},
 };
 pub const SyncSpec = struct {
