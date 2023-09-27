@@ -3329,8 +3329,30 @@ pub const about = struct {
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
-    fn seekError(seek_error: anytype, fd: u64, offset: u64, whence: Whence) void {
-        @setRuntimeSafety(builtin.is_safe);
+    fn aboutFdOffsetReadWriteError(about_s: fmt.AboutSrc, error_name: []const u8, fd: usize, offset: usize, flags: sys.flags.ReadWrite) void {
+        @setRuntimeSafety(false);
+        var buf: [32768]u8 = undefined;
+        var ud64: fmt.Type.Ud64 = .{ .value = fd };
+        buf[0..about_s.len].* = about_s.*;
+        var ptr: [*]u8 = buf[about_s.len..].ptr;
+        ptr[0..debug.about.error_s.len].* = debug.about.error_s.*;
+        ptr += debug.about.error_s.len;
+        ptr = fmt.strcpyEqu(ptr, error_name);
+        ptr[0..5].* = ", fd=".*;
+        ptr += 5;
+        ptr += ud64.formatWriteBuf(ptr);
+        ptr[0..9].* = ", offset=".*;
+        ptr += 9;
+        ud64.value = offset;
+        ptr += ud64.formatWriteBuf(ptr);
+        ptr[0..2].* = ", ".*;
+        ptr += 2;
+        ptr += flags.formatWriteBuf(ptr);
+        ptr[0] = '\n';
+        debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
+    }
+    fn seekError(seek_error: anytype, fd: usize, offset: usize, whence: Whence) void {
+        @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         buf[0..seek_s.len].* = seek_s.*;
         var ptr: [*]u8 = buf[seek_s.len..].ptr;
