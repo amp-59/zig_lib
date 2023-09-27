@@ -1068,7 +1068,50 @@ pub const SignalAction = packed struct(usize) {
         return len;
     }
 };
-pub const SIG = packed struct(usize) {
+pub const SignalStack = packed struct(usize) {
+    ONSTACK: bool = false,
+    DISABLE: bool = false,
+    zb2: u29 = 0,
+    AUTODISARM: bool = false,
+    zb32: u32 = 0,
+    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
+        @setRuntimeSafety(false);
+        var tmp: usize = @bitCast(format);
+        if (tmp == 0) return 0;
+        buf[0..6].* = "flags=".*;
+        var len: usize = 6;
+        for ([_]struct { []const u8, u8 }{
+            .{ "ONSTACK", 0 },
+            .{ "DISABLE", 1 },
+            .{ "AUTODISARM", 30 },
+        }) |pair| {
+            tmp >>= @truncate(pair[1]);
+            if (tmp & 1 != 0) {
+                buf[len] = ',';
+                len += @intFromBool(len != 6);
+                len += fmt.strcpy(buf + len, pair[0]);
+            }
+        }
+        return len;
+    }
+    pub fn formatLength(format: @This()) usize {
+        @setRuntimeSafety(false);
+        if (@as(usize, @bitCast(format)) == 0) return 0;
+        var len: usize = 6;
+        var tmp: usize = @bitCast(format);
+        for ([_]struct { u8, u8 }{
+            .{ 7, 0 },   .{ 7, 1 },
+            .{ 10, 30 },
+        }) |pair| {
+            tmp >>= @truncate(pair[1]);
+            if (tmp & 1 != 0) {
+                len +%= @intFromBool(len != 0) +% pair[0];
+            }
+        }
+        return len;
+    }
+};
+pub const Signal = packed struct(usize) {
     e0: enum(u5) {
         HUP = 0x1,
         INT = 0x2,

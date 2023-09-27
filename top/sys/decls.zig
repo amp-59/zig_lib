@@ -294,7 +294,13 @@ pub const SignalAction = struct {
     pub const RESETHAND = 2147483648;
     pub usingnamespace extra.SignalAction;
 };
-pub const SIG = struct {
+pub const SignalStack = struct {
+    pub const ONSTACK = 1;
+    pub const DISABLE = 2;
+    pub const AUTODISARM = 2147483648;
+    pub usingnamespace extra.SignalStack;
+};
+pub const Signal = struct {
     pub const DFL = 0;
     pub const HUP = 1;
     pub const INT = 2;
@@ -327,7 +333,7 @@ pub const SIG = struct {
     pub const IO = 29;
     pub const PWR = 30;
     pub const SYS = 31;
-    pub usingnamespace extra.SIG;
+    pub usingnamespace extra.Signal;
 };
 pub const TIOC = struct {
     pub const PKT_DATA = 0;

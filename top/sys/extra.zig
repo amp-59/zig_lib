@@ -776,7 +776,26 @@ pub const SignalAction = struct {
     };
     pub const backing_integer = usize;
 };
-pub const SIG = struct {
+pub const SignalStack = struct {
+    pub const default_values = struct {
+        pub const ONSTACK = false;
+        pub const DISABLE = false;
+        pub const AUTODISARM = false;
+    };
+    const _field_names = struct {
+        pub const ONSTACK = 
+            \\onstack
+        ;
+        pub const DISABLE = 
+            \\disable
+        ;
+        pub const AUTODISARM = 
+            \\autodisarm
+        ;
+    };
+    pub const backing_integer = usize;
+};
+pub const Signal = struct {
     pub const default_values = struct {
         pub const DFL = false;
         pub const HUP = false;
