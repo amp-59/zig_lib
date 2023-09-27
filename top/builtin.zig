@@ -90,7 +90,7 @@ pub const panic_messages = define("panic_messages", type, struct {
     pub const memcpy_alias: [:0]const u8 = "@memcpy arguments alias";
     pub const noreturn_returned: [:0]const u8 = "'noreturn' function returned";
 });
-
+pub const AbsoluteState = define("AbsoluteState", type, void);
 pub const logging_default: debug.Logging.Default = define(
     "logging_default",
     debug.Logging.Default,
@@ -99,9 +99,9 @@ pub const logging_default: debug.Logging.Default = define(
         .Attempt = false,
         // Never report successful actions.
         .Success = false,
-        // Report actions where a resource is acquired when build mode is debug.
+        // Report actions where a resource is acquired when build mode is Debug.
         .Acquire = builtin.mode == .Debug,
-        // Report actions where a resource is released when build mode is debug.
+        // Report actions where a resource is released when build mode is Debug.
         .Release = builtin.mode == .Debug,
         // Report errors when not small.
         .Error = builtin.mode != .ReleaseSmall,
@@ -139,12 +139,22 @@ pub const signal_handlers: debug.SignalHandlers = define(
 /// Enabled if `SegmentationFault` enabled. This is because the alternate stack
 /// is only likely to be useful in the event of stack overflow, which is only
 /// reported by SIGSEGV.
-pub const signal_stack: ?debug.SignalAlternateStack = define(
+pub const signal_stack: mem.Vector = define(
     "signal_stack",
-    ?debug.SignalAlternateStack,
-    if (signal_handlers.SegmentationFault) .{} else null,
+    mem.Vector,
+    .{ .addr = 0x3f000000, .len = 0x1000000 },
 );
-pub const trace: debug.Trace = define("trace", debug.Trace, .{});
+pub const absolute_state = struct {
+    pub const ptr: *AbsoluteState = @ptrFromInt(addr);
+    pub const rem: mem.Vector = .{
+        .addr = addr +% size_of,
+        .len = len -% size_of,
+    };
+    pub const addr: comptime_int = signal_stack.addr -% len;
+    pub const len: comptime_int = bits.alignA4096(size_of);
+    const size_of: comptime_int = @sizeOf(AbsoluteState);
+};
+pub const trace: debug.Trace = define("trace", debug.Trace, my_trace);
 pub const my_trace: debug.Trace = .{
     .Error = true,
     .Fault = true,
