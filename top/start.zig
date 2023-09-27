@@ -6,92 +6,37 @@ const proc = @import("./proc.zig");
 const debug = @import("./debug.zig");
 const builtin = @import("./builtin.zig");
 
-const panic_handlers = struct {
-    pub const panic = debug.panic;
-    pub const panicInactiveUnionField = debug.panicInactiveUnionField;
-    pub const panicOutOfBounds = debug.panicOutOfBounds;
-    pub const panicSentinelMismatch = debug.panicSentinelMismatch;
-    pub const panicStartGreaterThanEnd = debug.panicStartGreaterThanEnd;
-    pub const panicUnwrapError = debug.panicUnwrapError;
-};
-
-comptime {
-    if (builtin.is_zig_lib) {
-        if (@hasDecl(builtin.root, "_start")) {
-            @export(builtin.root._start, .{ .name = "_start" });
-        } else {
-            @export(_0._start, .{ .name = "_start" });
-        }
-    } else {
-        //
-    }
-    if (builtin.output_mode != .Exe) {
-        _ = @import("./mach.zig");
-    }
-}
-
-pub usingnamespace blk: {
-    if (builtin.is_zig_lib) {
-        break :blk _0;
-    } else if (builtin.output_mode == .Exe) {
-        if (!@hasDecl(builtin.root, "_start")) {
-            break :blk _1;
-        }
-    }
-    break :blk panic_handlers;
-};
-
-const _0 = struct {
-    fn _start() callconv(.Naked) void {
-        asm volatile (switch (builtin.cpu.arch) {
-                .x86_64 =>
-                \\ xorl %%ebp, %%ebp
-                \\ movq %%rsp, %[stack]
-                \\ andq $-16, %%rsp
-                \\ callq %[start:P]
-                ,
-                .aarch64, .aarch64_be =>
-                \\ mov fp, #0
-                \\ mov lr, #0
-                \\ mov x0, sp
-                \\ str x0, %[stack]
-                \\ b %[start]
-                ,
-                else => @compileError("unsupported arch"),
-            }
-            : [stack] "=m" (stack),
-            : [start] "X" (&start),
-        );
-    }
-};
+pub const panic = debug.panic;
+pub usingnamespace debug.panic_extra;
 
 pub var stack: usize = undefined;
 
-const _1 = struct {
-    pub export fn _start() callconv(.Naked) void {
-        asm volatile (switch (builtin.cpu.arch) {
-                .x86_64 =>
-                \\ xorl %%ebp, %%ebp
-                \\ movq %%rsp, %[stack]
-                \\ andq $-16, %%rsp
-                \\ callq %[start:P]
-                ,
-                .aarch64, .aarch64_be =>
-                \\ mov fp, #0
-                \\ mov lr, #0
-                \\ mov x0, sp
-                \\ str x0, %[stack]
-                \\ b %[start]
-                ,
-                else => @compileError("unsupported arch"),
-            }
-            : [stack] "=m" (stack),
-            : [start] "X" (&start),
-        );
+pub fn _start() callconv(.Naked) void {
+    asm volatile (switch (builtin.cpu.arch) {
+            .x86_64 =>
+            \\ xorl %%ebp, %%ebp
+            \\ movq %%rsp, %[stack]
+            \\ andq $-16, %%rsp
+            \\ callq %[start:P]
+            ,
+            .aarch64, .aarch64_be =>
+            \\ mov fp, #0
+            \\ mov lr, #0
+            \\ mov x0, sp
+            \\ str x0, %[stack]
+            \\ b %[start]
+            ,
+            else => @compileError("unsupported arch"),
+        }
+        : [stack] "=m" (stack),
+        : [start] "X" (&start),
+    );
+}
+comptime {
+    if (builtin.output_mode == .Exe) {
+        @export(_start, .{ .name = "_start", .linkage = .Strong });
     }
-    pub usingnamespace panic_handlers;
-};
-
+}
 pub fn start() callconv(.C) noreturn {
     @setRuntimeSafety(false);
     @setAlignStack(16);
@@ -141,34 +86,32 @@ pub fn start() callconv(.C) noreturn {
             break :blk_0 .{ args[0..args_len], vars[0..vars_len], auxv };
         }
     };
-    if (@as(u5, @bitCast(builtin.signal_handlers)) != 0) {
-        proc.enableExceptionHandlers();
-    }
+    proc.initializeRuntime();
     if (main_return_type == void) {
         @call(.auto, builtin.root.main, params);
-        proc.exitNotice(0);
+        return proc.exitNotice(0);
     }
     if (main_return_type == u8) {
-        proc.exitNotice(@call(.auto, builtin.root.main, params));
+        return proc.exitNotice(@call(.auto, builtin.root.main, params));
     }
     if (main_return_type_info == .ErrorUnion and
         main_return_type_info.ErrorUnion.payload == void)
     {
         if (@call(.auto, builtin.root.main, params)) {
-            proc.exitNotice(0);
+            return proc.exitNotice(0);
         } else |err| {
             debug.alarm(@errorName(err), @errorReturnTrace(), @returnAddress());
-            proc.exit(@intCast(@intFromError(err)));
+            return proc.exit(@intCast(@intFromError(err)));
         }
     }
     if (main_return_type_info == .ErrorUnion and
         main_return_type_info.ErrorUnion.payload == u8)
     {
         if (@call(.auto, builtin.root.main, params)) |rc| {
-            proc.exitNotice(rc);
+            return proc.exitNotice(rc);
         } else |err| {
             debug.alarm(@errorName(err), @errorReturnTrace(), @returnAddress());
-            proc.exit(@intCast(@intFromError(err)));
+            return proc.exit(@intCast(@intFromError(err)));
         }
     }
     @compileError(@TypeOf(main_return_type_info, .ErrorSet));
