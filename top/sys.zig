@@ -2012,9 +2012,9 @@ pub const Fn = enum(usize) {
             .name_to_handle_at,
             .linkat,
             .perf_event_open,
+            => return 5,
             .preadv2,
             .pwritev2,
-            => return 5,
             .copy_file_range,
             .futex,
             .mmap,
@@ -2191,7 +2191,7 @@ const syscalls = .{
     syscall6,
 };
 pub inline fn call(comptime tag: Fn, comptime errors: ErrorPolicy, comptime return_type: type, args: Fn.Args(tag)) ErrorUnion(errors, return_type) {
-    const ret: isize = (comptime syscalls[tag.args()])(tag, args);
+    const ret: isize = syscalls[tag.args()](tag, args);
     if (return_type == noreturn) {
         unreachable;
     }
@@ -2221,208 +2221,235 @@ pub inline fn call_noexcept(comptime tag: Fn, comptime return_type: type, args: 
     }
 }
 
-//pub const brk_errors = &[_]ErrorCode{.NOMEM};
-//pub const access_errors = &[_]ErrorCode{
-//    .ACCES,       .BADF,  .FAULT, .INVAL,  .IO,   .LOOP,
-//    .NAMETOOLONG, .NOENT, .NOMEM, .NOTDIR, .PERM, .ROFS,
-//    .TXTBSY,
-//};
-//pub const chdir_errors = &[_]ErrorCode{
-//    .NAMETOOLONG, .LOOP, .ACCES, .IO, .BADF, .FAULT, .NOTDIR, .NOMEM, .NOENT,
-//};
-//pub const copy_file_range_errors = &[_]ErrorCode{
-//    .BADF,  .FBIG,      .INVAL,    .IO,   .ISDIR,  .NOMEM,
-//    .NOSPC, .OPNOTSUPP, .OVERFLOW, .PERM, .TXTBSY, .XDEV,
-//};
-//pub const sendfile_errors = &[_]ErrorCode{
-//    .AGAIN, .FAULT,    .INVAL, .IO,
-//    .NOMEM, .OVERFLOW, .SPIPE,
-//};
-//pub const link_errors = &[_]ErrorCode{
-//    .ACCES, .BADF,  .DQUOT, .EXIST,  .FAULT, .IO,   .LOOP,  .NAMETOOLONG,
-//    .NOENT, .NOMEM, .NOSPC, .NOTDIR, .PERM,  .ROFS, .MLINK, .XDEV,
-//    .INVAL,
-//};
-//pub const sync_errors = &[_]ErrorCode{ .BADF, .IO };
-//pub const sync_file_range_errors = &[_]ErrorCode{};
-//pub const close_errors = &[_]ErrorCode{
-//    .INTR, .IO, .BADF, .NOSPC,
-//};
-//pub const clone_errors = &[_]ErrorCode{
-//    .PERM, .AGAIN, .INVAL, .EXIST, .USERS, .OPNOTSUPP, .NOMEM, .RESTART,
-//    .BUSY, .NOSPC,
-//};
-//pub const clock_get_errors = &[_]ErrorCode{
-//    .ACCES, .FAULT, .INVAL, .NODEV, .OPNOTSUPP, .PERM,
-//};
-//pub const execve_errors = &[_]ErrorCode{
-//    .ACCES, .IO,     .LIBBAD, .NOTDIR,  .MFILE, .NOENT, .NAMETOOLONG, .TXTBSY,
-//    .ISDIR, .LOOP,   .NOMEM,  .@"2BIG", .NFILE, .PERM,  .FAULT,       .AGAIN,
-//    .INVAL, .NOEXEC,
-//};
-//pub const execveat_errors = &[_]ErrorCode{
-//    .ACCES, .IO,     .LIBBAD, .NOTDIR,  .MFILE, .NOENT, .NAMETOOLONG, .TXTBSY,
-//    .ISDIR, .LOOP,   .NOMEM,  .@"2BIG", .NFILE, .PERM,  .FAULT,       .AGAIN,
-//    .INVAL, .NOEXEC,
-//};
-//pub const perf_event_open_errors = &[_]ErrorCode{
-//    .@"2BIG", .ACCES, .BADF,  .BUSY,      .FAULT,    .INTR, .INVAL, .MFILE, .NODEV,
-//    .NOENT,   .NOSPC, .NOSYS, .OPNOTSUPP, .OVERFLOW, .PERM, .SRCH,
-//};
-//pub const fork_errors = &[_]ErrorCode{
-//    .NOSYS, .AGAIN, .NOMEM, .RESTART,
-//};
-//pub const command_errors = execve_errors ++ fork_errors ++ wait_errors;
-//pub const getcwd_errors = &[_]ErrorCode{
-//    .ACCES, .FAULT, .INVAL, .NAMETOOLONG, .NOENT, .NOMEM, .RANGE,
-//};
-//pub const getdents_errors = &[_]ErrorCode{
-//    .BADF, .FAULT, .INVAL, .NOENT, .NOTDIR,
-//};
-//pub const getrandom_errors = &[_]ErrorCode{
-//    .AGAIN, .FAULT, .INTR, .INVAL, .NOSYS,
-//};
-//pub const dup_errors = &[_]ErrorCode{
-//    .BADF, .BUSY, .INTR, .INVAL, .MFILE,
-//};
-//pub const pipe_errors = &[_]ErrorCode{
-//    .FAULT, .INVAL, .MFILE, .NFILE, .NOPKG,
-//};
-//pub const poll_errors = &[_]ErrorCode{
-//    .FAULT, .INTR, .INVAL, .NOMEM,
-//};
-//pub const ioctl_errors = &[_]ErrorCode{
-//    .NOTTY, .BADF, .FAULT, .INVAL,
-//};
-//pub const socket_errors = &[_]ErrorCode{
-//    .ACCES, .AFNOSUPPORT, .INVAL, .MFILE,
-//    .NFILE, .NOBUFS,      .NOMEM, .PROTONOSUPPORT,
-//};
-//pub const bind_errors = &[_]ErrorCode{
-//    .ACCES,        .ADDRINUSE, .BADF, .INVAL,       .NOTSOCK, .ACCES,
-//    .ADDRNOTAVAIL, .FAULT,     .LOOP, .NAMETOOLONG, .NOENT,   .NOMEM,
-//    .NOTDIR,       .ROFS,
-//};
-//pub const accept_errors = &[_]ErrorCode{
-//    .AGAIN, .BADF,  .CONNABORTED, .FAULT, .INTR,    .INVAL,
-//    .MFILE, .NFILE, .NOBUFS,      .NOMEM, .NOTSOCK, .OPNOTSUPP,
-//    .PERM,  .PROTO,
-//};
-//pub const listen_errors = &[_]ErrorCode{
-//    .INVAL, .ADDRINUSE, .BADF, .NOTSOCK, .OPNOTSUPP,
-//};
-//pub const connect_errors = &[_]ErrorCode{
-//    .ACCES,    .PERM,    .ADDRINUSE,  .ADDRNOTAVAIL, .AFNOSUPPORT,
-//    .AGAIN,    .ALREADY, .BADF,       .CONNREFUSED,  .FAULT,
-//    .INTR,     .ISCONN,  .NETUNREACH, .NOTSOCK,      .PROTOTYPE,
-//    .TIMEDOUT,
-//};
-//pub const getsockname_errors = &[_]ErrorCode{
-//    .BADF, .FAULT, .INVAL, .NOBUFS, .NOTSOCK,
-//};
-//pub const getpeername_errors = &[_]ErrorCode{
-//    .BADF, .FAULT, .INVAL, .NOBUFS, .NOTCONN, .NOTSOCK,
-//};
-//pub const send_errors = &[_]ErrorCode{
-//    .ACCES,       .AGAIN,  .ALREADY, .BADF,    .CONNRESET,
-//    .DESTADDRREQ, .FAULT,  .INTR,    .INVAL,   .ISCONN,
-//    .MSGSIZE,     .NOBUFS, .NOMEM,   .NOTCONN, .NOTSOCK,
-//    .OPNOTSUPP,   .PIPE,
-//};
-//pub const recv_errors = &[_]ErrorCode{
-//    .AGAIN, .BADF,    .CONNREFUSED, .FAULT, .INTR, .INVAL,
-//    .NOMEM, .NOTCONN, .NOTSOCK,
-//};
-//pub const sockopt_errors = &[_]ErrorCode{
-//    .BADF, .FAULT, .INVAL, .NOPROTOOPT, .NOTSOCK,
-//};
-//pub const shutdown_errors = &[_]ErrorCode{
-//    .BADF, .INVAL, .NOTCONN, .NOTSOCK,
-//};
-//pub const madvise_errors = &[_]ErrorCode{
-//    .ACCES, .AGAIN, .BADF, .INVAL, .IO, .NOMEM, .PERM,
-//};
-//pub const mprotect_errors = &[_]ErrorCode{ .ACCES, .INVAL, .NOMEM };
-//pub const mkdir_noexcl_errors = &[_]ErrorCode{
-//    .ACCES,       .BADF,  .DQUOT, .FAULT, .INVAL,  .LOOP, .MLINK,
-//    .NAMETOOLONG, .NOENT, .NOMEM, .NOSPC, .NOTDIR, .PERM, .ROFS,
-//};
-//pub const mkdir_errors = &[_]ErrorCode{
-//    .ACCES,       .BADF,  .DQUOT, .EXIST, .FAULT,  .INVAL, .LOOP, .MLINK,
-//    .NAMETOOLONG, .NOENT, .NOMEM, .NOSPC, .NOTDIR, .PERM,  .ROFS,
-//};
-//pub const mmap_errors = &[_]ErrorCode{
-//    .ACCES, .AGAIN,  .BADF, .EXIST, .INVAL, .NFILE, .NODEV, .NOMEM, .OVERFLOW,
-//    .PERM,  .TXTBSY,
-//};
-//pub const msync_errors = &[_]ErrorCode{ .BUSY, .INVAL, .NOMEM };
-//pub const memfd_create_errors = &[_]ErrorCode{ .FAULT, .INVAL, .MFILE, .NOMEM };
-//pub const seek_errors = &[_]ErrorCode{ .BADF, .NXIO, .OVERFLOW, .SPIPE };
-//pub const truncate_errors = &[_]ErrorCode{
-//    .ACCES,  .FAULT, .FBIG, .INTR,   .IO,   .ISDIR, .LOOP, .NAMETOOLONG,
-//    .NOTDIR, .PERM,  .ROFS, .TXTBSY, .BADF, .INVAL,
-//};
-//pub const munmap_errors = &[_]ErrorCode{.INVAL};
-//pub const mknod_errors = &[_]ErrorCode{
-//    .ACCES, .BADF,  .DQUOT, .EXIST,  .FAULT, .INVAL, .LOOP, .NAMETOOLONG,
-//    .NOENT, .NOMEM, .NOSPC, .NOTDIR, .PERM,  .ROFS,
-//};
-//pub const mremap_errors = &[_]ErrorCode{
-//    .AGAIN, .FAULT, .INVAL, .NOMEM,
-//};
-//pub const open_errors = &[_]ErrorCode{
-//    .ACCES, .FBIG,        .NOTDIR,   .EXIST,  .OPNOTSUPP, .MFILE, .NOSPC,
-//    .NOENT, .NAMETOOLONG, .OVERFLOW, .TXTBSY, .AGAIN,     .BADF,  .ISDIR,
-//    .LOOP,  .NODEV,       .DQUOT,    .NOMEM,  .ROFS,      .NFILE, .INTR,
-//    .PERM,  .FAULT,       .INVAL,    .NXIO,   .BUSY,
-//};
-//pub const open_by_handle_at_errors = open_errors ++ &[_]ErrorCode{
-//    .BADF, .FAULT, .INVAL, .LOOP, .PERM, .STALE,
-//};
-//pub const name_to_handle_at_errors = open_errors ++ &[_]ErrorCode{
-//    .OVERFLOW, .LOOP, .PERM, .BADF, .FAULT, .INVAL, .NOTDIR, .STALE,
-//};
-//pub const nanosleep_errors = &[_]ErrorCode{
-//    .INTR, .FAULT, .INVAL, .OPNOTSUPP,
-//};
-//pub const readlink_errors = &[_]ErrorCode{
-//    .ACCES,  .BADF, .FAULT, .INVAL, .IO, .LOOP, .NAMETOOLONG, .NOENT, .NOMEM,
-//    .NOTDIR,
-//};
-//pub const read_errors = &[_]ErrorCode{
-//    .AGAIN, .BADF, .FAULT, .INTR, .INVAL, .IO, .ISDIR,
-//};
-//pub const rmdir_errors = &[_]ErrorCode{
-//    .ACCES,  .BUSY,     .FAULT, .INVAL, .LOOP, .NAMETOOLONG, .NOENT, .NOMEM,
-//    .NOTDIR, .NOTEMPTY, .PERM,  .ROFS,
-//};
-//pub const sigaction_errors = &[_]ErrorCode{
-//    .FAULT, .INVAL,
-//};
-//pub const stat_errors = &[_]ErrorCode{
-//    .ACCES,  .BADF,     .FAULT, .INVAL, .LOOP, .NAMETOOLONG, .NOMEM, .NOENT,
-//    .NOTDIR, .OVERFLOW,
-//};
-//pub const statx_errors = &[_]ErrorCode{
-//    .ACCES,  .BADF,        .FAULT, .INVAL,
-//    .LOOP,   .NAMETOOLONG, .NOENT, .NOMEM,
-//    .NOTDIR,
-//};
-//pub const unlink_errors = &[_]ErrorCode{
-//    .ACCES,  .BUSY, .FAULT, .IO,   .ISDIR, .LOOP, .NAMETOOLONG, .NOENT, .NOMEM,
-//    .NOTDIR, .PERM, .ROFS,  .BADF, .INVAL,
-//};
-//pub const wait_errors = &[_]ErrorCode{
-//    .SRCH, .INTR, .AGAIN, .INVAL, .CHILD,
-//};
-//pub const waitid_errors = &[_]ErrorCode{
-//    .AGAIN, .CHILD, .INTR, .INVAL, .SRCH,
-//};
-//pub const write_errors = &[_]ErrorCode{
-//    .AGAIN, .BADF, .DESTADDRREQ, .DQUOT, .FAULT, .FBIG, .INTR, .INVAL, .IO,
-//    .NOSPC, .PERM, .PIPE,
-//};
-//pub const futex_errors = &.{
-//    .ACCES, .AGAIN, .DEADLK, .FAULT, .INTR, .INVAL,    .NFILE,
-//    .NOMEM, .NOSYS, .PERM,   .PERM,  .SRCH, .TIMEDOUT,
-//};
+pub const brk = struct {
+    pub const errors = struct {
+        pub const all = &[_]ErrorCode{.NOMEM};
+    };
+};
+pub const chdir = struct {
+    pub const errors = struct {
+        pub const all = &[_]ErrorCode{ .NAMETOOLONG, .LOOP, .ACCES, .IO, .BADF, .FAULT, .NOTDIR, .NOMEM, .NOENT };
+    };
+};
+pub const copy_file_range = struct {
+    pub const errors = struct {
+        pub const all = &[_]ErrorCode{ .BADF, .FBIG, .INVAL, .IO, .ISDIR, .NOMEM, .NOSPC, .OPNOTSUPP, .OVERFLOW, .PERM, .TXTBSY, .XDEV };
+    };
+};
+pub const sendfile = struct {
+    pub const errors = struct {
+        pub const all = &[_]ErrorCode{ .AGAIN, .FAULT, .INVAL, .IO, .NOMEM, .OVERFLOW, .SPIPE };
+    };
+};
+pub const link = struct {
+    pub const errors = struct {
+        pub const all = &[_]ErrorCode{ .ACCES, .BADF, .DQUOT, .EXIST, .FAULT, .IO, .LOOP, .NAMETOOLONG, .NOENT, .NOMEM, .NOSPC, .NOTDIR, .PERM, .ROFS, .MLINK, .XDEV, .INVAL };
+    };
+};
+pub const sync = struct {
+    pub const errors = struct {
+        pub const all = &[_]ErrorCode{ .BADF, .IO };
+    };
+};
+pub const sync_file_range = struct {
+    pub const errors = struct {
+        pub const all = &[_]ErrorCode{};
+    };
+};
+pub const close = struct {
+    pub const errors = struct {
+        pub const all = &[_]ErrorCode{ .INTR, .IO, .BADF, .NOSPC };
+    };
+};
+pub const clone = struct {
+    pub const errors = struct {
+        pub const all = &[_]ErrorCode{ .PERM, .AGAIN, .INVAL, .EXIST, .USERS, .OPNOTSUPP, .NOMEM, .RESTART, .BUSY, .NOSPC };
+    };
+};
+pub const clock_get = struct {
+    pub const errors = struct {
+        pub const all = &[_]ErrorCode{ .ACCES, .FAULT, .INVAL, .NODEV, .OPNOTSUPP, .PERM };
+    };
+};
+pub const execve = struct {
+    pub const errors = struct {
+        pub const all = &[_]ErrorCode{ .ACCES, .IO, .LIBBAD, .NOTDIR, .MFILE, .NOENT, .NAMETOOLONG, .TXTBSY, .ISDIR, .LOOP, .NOMEM, .@"2BIG", .NFILE, .PERM, .FAULT, .AGAIN, .INVAL, .NOEXEC };
+    };
+};
+pub const execveat = struct {
+    pub const errors = struct {
+        pub const all = &[_]ErrorCode{ .ACCES, .IO, .LIBBAD, .NOTDIR, .MFILE, .NOENT, .NAMETOOLONG, .TXTBSY, .ISDIR, .LOOP, .NOMEM, .@"2BIG", .NFILE, .PERM, .FAULT, .AGAIN, .INVAL, .NOEXEC };
+    };
+};
+pub const perf_event_open = struct {
+    pub const errors = struct {
+        pub const all = &[_]ErrorCode{ .@"2BIG", .ACCES, .BADF, .BUSY, .FAULT, .INTR, .INVAL, .MFILE, .NODEV, .NOENT, .NOSPC, .NOSYS, .OPNOTSUPP, .OVERFLOW, .PERM, .SRCH };
+    };
+};
+pub const fork = struct {
+    pub const errors = struct {
+        pub const all = &[_]ErrorCode{ .NOSYS, .AGAIN, .NOMEM, .RESTART };
+    };
+};
+pub const getcwd = struct {
+    pub const errors = struct {
+        pub const all = &[_]ErrorCode{ .ACCES, .FAULT, .INVAL, .NAMETOOLONG, .NOENT, .NOMEM, .RANGE };
+    };
+};
+pub const getdents = struct {
+    pub const errors = struct {
+        pub const all = &[_]ErrorCode{ .BADF, .FAULT, .INVAL, .NOENT, .NOTDIR };
+    };
+};
+pub const dup = struct {
+    pub const errors = struct {
+        pub const all = &[_]ErrorCode{ .BADF, .BUSY, .INTR, .INVAL, .MFILE };
+    };
+};
+pub const pipe = struct {
+    pub const errors = struct {
+        pub const all = &[_]ErrorCode{ .FAULT, .INVAL, .MFILE, .NFILE, .NOPKG };
+    };
+};
+pub const poll = struct {
+    pub const errors = struct {
+        pub const all = &[_]ErrorCode{ .FAULT, .INTR, .INVAL, .NOMEM };
+    };
+};
+pub const ioctl = struct {
+    pub const errors = struct {
+        pub const all = &[_]ErrorCode{ .NOTTY, .BADF, .FAULT, .INVAL };
+    };
+};
+pub const socket = struct {
+    pub const errors = struct {
+        pub const all = &[_]ErrorCode{ .ACCES, .AFNOSUPPORT, .INVAL, .MFILE, .NFILE, .NOBUFS, .NOMEM, .PROTONOSUPPORT };
+    };
+};
+pub const bind = struct {
+    pub const errors = struct {
+        pub const all = &[_]ErrorCode{ .ACCES, .ADDRINUSE, .BADF, .INVAL, .NOTSOCK, .ACCES, .ADDRNOTAVAIL, .FAULT, .LOOP, .NAMETOOLONG, .NOENT, .NOMEM, .NOTDIR, .ROFS };
+    };
+};
+pub const connect = struct {
+    pub const errors = struct {
+        pub const all = &[_]ErrorCode{ .ACCES, .PERM, .ADDRINUSE, .ADDRNOTAVAIL, .AFNOSUPPORT, .AGAIN, .ALREADY, .BADF, .CONNREFUSED, .FAULT, .INTR, .ISCONN, .NETUNREACH, .NOTSOCK, .PROTOTYPE, .TIMEDOUT };
+    };
+};
+
+pub const madvise = struct {
+    pub const errors = struct {
+        pub const all = &[_]ErrorCode{ .ACCES, .AGAIN, .BADF, .INVAL, .IO, .NOMEM, .PERM };
+    };
+};
+pub const mprotect = struct {
+    pub const errors = struct {
+        pub const all = &[_]ErrorCode{ .ACCES, .INVAL, .NOMEM };
+    };
+};
+pub const mkdir_noexcl = struct {
+    pub const errors = struct {
+        pub const all = &[_]ErrorCode{ .ACCES, .BADF, .DQUOT, .FAULT, .INVAL, .LOOP, .MLINK, .NAMETOOLONG, .NOENT, .NOMEM, .NOSPC, .NOTDIR, .PERM, .ROFS };
+    };
+};
+pub const mkdir = struct {
+    pub const errors = struct {
+        pub const all = &[_]ErrorCode{ .ACCES, .BADF, .DQUOT, .EXIST, .FAULT, .INVAL, .LOOP, .MLINK, .NAMETOOLONG, .NOENT, .NOMEM, .NOSPC, .NOTDIR, .PERM, .ROFS };
+    };
+};
+pub const mmap = struct {
+    pub const errors = struct {
+        pub const all = &[_]ErrorCode{ .ACCES, .AGAIN, .BADF, .EXIST, .INVAL, .NFILE, .NODEV, .NOMEM, .OVERFLOW, .PERM, .TXTBSY };
+    };
+};
+pub const msync = struct {
+    pub const errors = struct {
+        pub const all = &[_]ErrorCode{ .BUSY, .INVAL, .NOMEM };
+    };
+};
+pub const memfd_create = struct {
+    pub const errors = struct {
+        pub const all = &[_]ErrorCode{ .FAULT, .INVAL, .MFILE, .NOMEM };
+    };
+};
+pub const seek = struct {
+    pub const errors = struct {
+        pub const all = &[_]ErrorCode{ .BADF, .NXIO, .OVERFLOW, .SPIPE };
+    };
+};
+pub const truncate = struct {
+    pub const errors = struct {
+        pub const all = &[_]ErrorCode{ .ACCES, .FAULT, .FBIG, .INTR, .IO, .ISDIR, .LOOP, .NAMETOOLONG, .NOTDIR, .PERM, .ROFS, .TXTBSY, .BADF, .INVAL };
+    };
+};
+pub const munmap = struct {
+    pub const errors = struct {
+        pub const all = &[_]ErrorCode{.INVAL};
+    };
+};
+pub const mknod = struct {
+    pub const errors = struct {
+        pub const all = &[_]ErrorCode{ .ACCES, .BADF, .DQUOT, .EXIST, .FAULT, .INVAL, .LOOP, .NAMETOOLONG, .NOENT, .NOMEM, .NOSPC, .NOTDIR, .PERM, .ROFS };
+    };
+};
+pub const mremap = struct {
+    pub const errors = struct {
+        pub const all = &[_]ErrorCode{ .AGAIN, .FAULT, .INVAL, .NOMEM };
+    };
+};
+pub const open = struct {
+    pub const errors = struct {
+        pub const all = &[_]ErrorCode{ .ACCES, .FBIG, .NOTDIR, .EXIST, .OPNOTSUPP, .MFILE, .NOSPC, .NOENT, .NAMETOOLONG, .OVERFLOW, .TXTBSY, .AGAIN, .BADF, .ISDIR, .LOOP, .NODEV, .DQUOT, .NOMEM, .ROFS, .NFILE, .INTR, .PERM, .FAULT, .INVAL, .NXIO, .BUSY };
+    };
+};
+pub const nanosleep = struct {
+    pub const errors = struct {
+        pub const all = &[_]ErrorCode{ .INTR, .FAULT, .INVAL, .OPNOTSUPP };
+    };
+};
+pub const readlink = struct {
+    pub const errors = struct {
+        pub const all = &[_]ErrorCode{ .ACCES, .BADF, .FAULT, .INVAL, .IO, .LOOP, .NAMETOOLONG, .NOENT, .NOMEM, .NOTDIR };
+    };
+};
+pub const read = struct {
+    pub const errors = struct {
+        pub const all = &[_]ErrorCode{ .AGAIN, .BADF, .FAULT, .INTR, .INVAL, .IO, .ISDIR };
+    };
+};
+pub const rmdir = struct {
+    pub const errors = struct {
+        pub const all = &[_]ErrorCode{ .ACCES, .BUSY, .FAULT, .INVAL, .LOOP, .NAMETOOLONG, .NOENT, .NOMEM, .NOTDIR, .NOTEMPTY, .PERM, .ROFS };
+    };
+};
+pub const sigaction = struct {
+    pub const errors = struct {
+        pub const all = &[_]ErrorCode{ .FAULT, .INVAL };
+    };
+};
+pub const stat = struct {
+    pub const errors = struct {
+        pub const all = &[_]ErrorCode{ .ACCES, .BADF, .FAULT, .INVAL, .LOOP, .NAMETOOLONG, .NOMEM, .NOENT, .NOTDIR, .OVERFLOW };
+    };
+};
+
+pub const unlink = struct {
+    pub const errors = struct {
+        pub const all = &[_]ErrorCode{ .ACCES, .BUSY, .FAULT, .IO, .ISDIR, .LOOP, .NAMETOOLONG, .NOENT, .NOMEM, .NOTDIR, .PERM, .ROFS, .BADF, .INVAL };
+    };
+};
+pub const wait = struct {
+    pub const errors = struct {
+        pub const all = &[_]ErrorCode{ .SRCH, .INTR, .AGAIN, .INVAL, .CHILD };
+    };
+};
+pub const waitid = struct {
+    pub const errors = struct {
+        pub const all = &[_]ErrorCode{ .AGAIN, .CHILD, .INTR, .INVAL, .SRCH };
+    };
+};
+pub const write = struct {
+    pub const errors = struct {
+        pub const all = &[_]ErrorCode{ .AGAIN, .BADF, .DESTADDRREQ, .DQUOT, .FAULT, .FBIG, .INTR, .INVAL, .IO, .NOSPC, .PERM, .PIPE };
+    };
+};
