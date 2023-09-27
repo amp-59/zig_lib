@@ -95,11 +95,24 @@ pub const MemFd = struct {
     };
     pub const backing_integer = usize;
 };
-pub const Prot = struct {
+pub const MemSync = struct {
+    pub const default_values = struct {
+        pub const ASYNC = false;
+        pub const INVALIDATE = false;
+        pub const SYNC = false;
+    };
+    pub const field_names = struct {
+        pub const ASYNC = "async";
+        pub const INVALIDATE = "invalidate";
+        pub const SYNC = "sync";
+    };
+    pub const backing_integer = usize;
+};
+pub const MemProt = struct {
     pub const default_values = struct {
         pub const NONE = false;
-        pub const READ = false;
-        pub const WRITE = false;
+        pub const READ = true;
+        pub const WRITE = true;
         pub const EXEC = false;
         pub const GROWSDOWN = false;
         pub const GROWSUP = false;
@@ -265,22 +278,22 @@ pub const Clone = struct {
         pub const CLEAR_SIGHAND = false;
         pub const INTO_CGROUP = false;
         pub const NEWTIME = false;
-        pub const VM = false;
-        pub const FS = false;
-        pub const FILES = false;
-        pub const SIGHAND = false;
+        pub const VM = true;
+        pub const FS = true;
+        pub const FILES = true;
+        pub const SIGHAND = true;
         pub const PIDFD = false;
         pub const PTRACE = false;
         pub const VFORK = false;
-        pub const THREAD = false;
+        pub const THREAD = true;
         pub const NEWNS = false;
-        pub const SYSVSEM = false;
+        pub const SYSVSEM = true;
         pub const SETTLS = false;
-        pub const PARENT_SETTID = false;
-        pub const CHILD_CLEARTID = false;
+        pub const PARENT_SETTID = true;
+        pub const CHILD_CLEARTID = true;
         pub const DETACHED = false;
         pub const UNTRACED = false;
-        pub const CHILD_SETTID = false;
+        pub const CHILD_SETTID = true;
         pub const NEWCGROUP = false;
         pub const NEWUTS = false;
         pub const NEWIPC = false;
@@ -339,7 +352,6 @@ pub const Id = struct {
 pub const Wait = struct {
     pub const default_values = struct {
         pub const NOHANG = false;
-        pub const UNTRACED = false;
         pub const STOPPED = false;
         pub const EXITED = false;
         pub const CONTINUED = false;
@@ -350,7 +362,6 @@ pub const Wait = struct {
     };
     pub const field_names = struct {
         pub const NOHANG = "no_hang";
-        pub const UNTRACED = "untraced";
         pub const STOPPED = "stopped";
         pub const EXITED = "exited";
         pub const CONTINUED = "continued";
@@ -383,7 +394,6 @@ pub const MountAttr = struct {
         pub const NOEXEC = false;
         pub const NOATIME = false;
         pub const STRICTATIME = false;
-        pub const _ATIME = false;
         pub const NODIRATIME = false;
         pub const IDMAP = false;
     };
@@ -395,7 +405,6 @@ pub const MountAttr = struct {
         pub const NOEXEC = "no_exec";
         pub const NOATIME = "no_atime";
         pub const STRICTATIME = "strict_atime";
-        pub const _ATIME = "_atime";
         pub const NODIRATIME = "no_dir_atime";
         pub const IDMAP = "id_map";
     };
@@ -425,348 +434,6 @@ pub const PTrace = struct {
         pub const SETSIGMASK = "set_sigmask";
         pub const SECCOMP_GET_FILTER = "seccomp_get_filter";
         pub const GET_SYSCALL_INFO = "get_syscall_info";
-    };
-    pub const set_names = .{
-        "e0",
-    };
-    pub const backing_integer = usize;
-};
-pub const SO = struct {
-    pub const default_values = struct {
-        pub const DEBUG = false;
-        pub const REUSEADDR = false;
-        pub const TYPE = false;
-        pub const ERROR = false;
-        pub const DONTROUTE = false;
-        pub const BROADCAST = false;
-        pub const SNDBUF = false;
-        pub const RCVBUF = false;
-        pub const KEEPALIVE = false;
-        pub const OOBINLINE = false;
-        pub const NO_CHECK = false;
-        pub const PRIORITY = false;
-        pub const LINGER = false;
-        pub const BSDCOMPAT = false;
-        pub const REUSEPORT = false;
-        pub const PASSCRED = false;
-        pub const PEERCRED = false;
-        pub const RCVLOWAT = false;
-        pub const SNDLOWAT = false;
-        pub const RCVTIMEO_OLD = false;
-        pub const RCVTIMEO = false;
-        pub const SNDTIMEO_OLD = false;
-        pub const SNDTIMEO = false;
-        pub const SECURITY_AUTHENTICATION = false;
-        pub const SECURITY_ENCRYPTION_TRANSPORT = false;
-        pub const SECURITY_ENCRYPTION_NETWORK = false;
-        pub const BINDTODEVICE = false;
-        pub const ATTACH_FILTER = false;
-        pub const GET_FILTER = false;
-        pub const DETACH_FILTER = false;
-        pub const DETACH_BPF = false;
-        pub const PEERNAME = false;
-        pub const TIMESTAMP_OLD = false;
-        pub const TIMESTAMP = false;
-        pub const ACCEPTCONN = false;
-        pub const PEERSEC = false;
-        pub const SNDBUFFORCE = false;
-        pub const RCVBUFFORCE = false;
-        pub const PASSSEC = false;
-        pub const TIMESTAMPNS_OLD = false;
-        pub const TIMESTAMPNS = false;
-        pub const MARK = false;
-        pub const TIMESTAMPING_OLD = false;
-        pub const TIMESTAMPING = false;
-        pub const PROTOCOL = false;
-        pub const DOMAIN = false;
-        pub const RXQ_OVFL = false;
-        pub const WIFI_STATUS = false;
-        pub const SCM_WIFI_STATUS = false;
-        pub const PEEK_OFF = false;
-        pub const NOFCS = false;
-        pub const LOCK_FILTER = false;
-        pub const SELECT_ERR_QUEUE = false;
-        pub const BUSY_POLL = false;
-        pub const MAX_PACING_RATE = false;
-        pub const BPF_EXTENSIONS = false;
-        pub const INCOMING_CPU = false;
-        pub const ATTACH_BPF = false;
-        pub const ATTACH_REUSEPORT_CBPF = false;
-        pub const ATTACH_REUSEPORT_EBPF = false;
-        pub const CNX_ADVICE = false;
-        pub const SCM_TIMESTAMPING_OPT_STATS = false;
-        pub const MEMINFO = false;
-        pub const INCOMING_NAPI_ID = false;
-        pub const COOKIE = false;
-        pub const SCM_TIMESTAMPING_PKTINFO = false;
-        pub const PEERGROUPS = false;
-        pub const ZEROCOPY = false;
-        pub const TXTIME = false;
-        pub const SCM_TXTIME = false;
-        pub const BINDTOIFINDEX = false;
-        pub const TIMESTAMP_NEW = false;
-        pub const TIMESTAMPNS_NEW = false;
-        pub const TIMESTAMPING_NEW = false;
-        pub const RCVTIMEO_NEW = false;
-        pub const SNDTIMEO_NEW = false;
-        pub const DETACH_REUSEPORT_BPF = false;
-        pub const PREFER_BUSY_POLL = false;
-        pub const BUSY_POLL_BUDGET = false;
-        pub const NETNS_COOKIE = false;
-        pub const BUF_LOCK = false;
-        pub const RESERVE_MEM = false;
-        pub const TXREHASH = false;
-    };
-    const _field_names = struct {
-        pub const DEBUG = 
-            \\debug
-        ;
-        pub const REUSEADDR = 
-            \\reuseaddr
-        ;
-        pub const TYPE = 
-            \\type
-        ;
-        pub const ERROR = 
-            \\error
-        ;
-        pub const DONTROUTE = 
-            \\dontroute
-        ;
-        pub const BROADCAST = 
-            \\broadcast
-        ;
-        pub const SNDBUF = 
-            \\sndbuf
-        ;
-        pub const RCVBUF = 
-            \\rcvbuf
-        ;
-        pub const KEEPALIVE = 
-            \\keepalive
-        ;
-        pub const OOBINLINE = 
-            \\oobinline
-        ;
-        pub const NO_CHECK = 
-            \\no_check
-        ;
-        pub const PRIORITY = 
-            \\priority
-        ;
-        pub const LINGER = 
-            \\linger
-        ;
-        pub const BSDCOMPAT = 
-            \\bsdcompat
-        ;
-        pub const REUSEPORT = 
-            \\reuseport
-        ;
-        pub const PASSCRED = 
-            \\passcred
-        ;
-        pub const PEERCRED = 
-            \\peercred
-        ;
-        pub const RCVLOWAT = 
-            \\rcvlowat
-        ;
-        pub const SNDLOWAT = 
-            \\sndlowat
-        ;
-        pub const RCVTIMEO_OLD = 
-            \\rcvtimeo_old
-        ;
-        pub const RCVTIMEO = 
-            \\rcvtimeo
-        ;
-        pub const SNDTIMEO_OLD = 
-            \\sndtimeo_old
-        ;
-        pub const SNDTIMEO = 
-            \\sndtimeo
-        ;
-        pub const SECURITY_AUTHENTICATION = 
-            \\security_authentication
-        ;
-        pub const SECURITY_ENCRYPTION_TRANSPORT = 
-            \\security_encryption_transport
-        ;
-        pub const SECURITY_ENCRYPTION_NETWORK = 
-            \\security_encryption_network
-        ;
-        pub const BINDTODEVICE = 
-            \\bindtodevice
-        ;
-        pub const ATTACH_FILTER = 
-            \\attach_filter
-        ;
-        pub const GET_FILTER = 
-            \\get_filter
-        ;
-        pub const DETACH_FILTER = 
-            \\detach_filter
-        ;
-        pub const DETACH_BPF = 
-            \\detach_bpf
-        ;
-        pub const PEERNAME = 
-            \\peername
-        ;
-        pub const TIMESTAMP_OLD = 
-            \\timestamp_old
-        ;
-        pub const TIMESTAMP = 
-            \\timestamp
-        ;
-        pub const ACCEPTCONN = 
-            \\acceptconn
-        ;
-        pub const PEERSEC = 
-            \\peersec
-        ;
-        pub const SNDBUFFORCE = 
-            \\sndbufforce
-        ;
-        pub const RCVBUFFORCE = 
-            \\rcvbufforce
-        ;
-        pub const PASSSEC = 
-            \\passsec
-        ;
-        pub const TIMESTAMPNS_OLD = 
-            \\timestampns_old
-        ;
-        pub const TIMESTAMPNS = 
-            \\timestampns
-        ;
-        pub const MARK = 
-            \\mark
-        ;
-        pub const TIMESTAMPING_OLD = 
-            \\timestamping_old
-        ;
-        pub const TIMESTAMPING = 
-            \\timestamping
-        ;
-        pub const PROTOCOL = 
-            \\protocol
-        ;
-        pub const DOMAIN = 
-            \\domain
-        ;
-        pub const RXQ_OVFL = 
-            \\rxq_ovfl
-        ;
-        pub const WIFI_STATUS = 
-            \\wifi_status
-        ;
-        pub const SCM_WIFI_STATUS = 
-            \\scm_wifi_status
-        ;
-        pub const PEEK_OFF = 
-            \\peek_off
-        ;
-        pub const NOFCS = 
-            \\nofcs
-        ;
-        pub const LOCK_FILTER = 
-            \\lock_filter
-        ;
-        pub const SELECT_ERR_QUEUE = 
-            \\select_err_queue
-        ;
-        pub const BUSY_POLL = 
-            \\busy_poll
-        ;
-        pub const MAX_PACING_RATE = 
-            \\max_pacing_rate
-        ;
-        pub const BPF_EXTENSIONS = 
-            \\bpf_extensions
-        ;
-        pub const INCOMING_CPU = 
-            \\incoming_cpu
-        ;
-        pub const ATTACH_BPF = 
-            \\attach_bpf
-        ;
-        pub const ATTACH_REUSEPORT_CBPF = 
-            \\attach_reuseport_cbpf
-        ;
-        pub const ATTACH_REUSEPORT_EBPF = 
-            \\attach_reuseport_ebpf
-        ;
-        pub const CNX_ADVICE = 
-            \\cnx_advice
-        ;
-        pub const SCM_TIMESTAMPING_OPT_STATS = 
-            \\scm_timestamping_opt_stats
-        ;
-        pub const MEMINFO = 
-            \\meminfo
-        ;
-        pub const INCOMING_NAPI_ID = 
-            \\incoming_napi_id
-        ;
-        pub const COOKIE = 
-            \\cookie
-        ;
-        pub const SCM_TIMESTAMPING_PKTINFO = 
-            \\scm_timestamping_pktinfo
-        ;
-        pub const PEERGROUPS = 
-            \\peergroups
-        ;
-        pub const ZEROCOPY = 
-            \\zerocopy
-        ;
-        pub const TXTIME = 
-            \\txtime
-        ;
-        pub const SCM_TXTIME = 
-            \\scm_txtime
-        ;
-        pub const BINDTOIFINDEX = 
-            \\bindtoifindex
-        ;
-        pub const TIMESTAMP_NEW = 
-            \\timestamp_new
-        ;
-        pub const TIMESTAMPNS_NEW = 
-            \\timestampns_new
-        ;
-        pub const TIMESTAMPING_NEW = 
-            \\timestamping_new
-        ;
-        pub const RCVTIMEO_NEW = 
-            \\rcvtimeo_new
-        ;
-        pub const SNDTIMEO_NEW = 
-            \\sndtimeo_new
-        ;
-        pub const DETACH_REUSEPORT_BPF = 
-            \\detach_reuseport_bpf
-        ;
-        pub const PREFER_BUSY_POLL = 
-            \\prefer_busy_poll
-        ;
-        pub const BUSY_POLL_BUDGET = 
-            \\busy_poll_budget
-        ;
-        pub const NETNS_COOKIE = 
-            \\netns_cookie
-        ;
-        pub const BUF_LOCK = 
-            \\buf_lock
-        ;
-        pub const RESERVE_MEM = 
-            \\reserve_mem
-        ;
-        pub const TXREHASH = 
-            \\txrehash
-        ;
     };
     pub const set_names = .{
         "e0",
@@ -1000,12 +667,9 @@ pub const IPPORT = struct {
         pub const TTYLINK = false;
         pub const SUPDUP = false;
         pub const EXECSERVER = false;
-        pub const BIFFUDP = false;
         pub const LOGINSERVER = false;
-        pub const WHOSERVER = false;
         pub const CMDSERVER = false;
         pub const EFSSERVER = false;
-        pub const ROUTESERVER = false;
         pub const USERRESERVED = false;
         pub const RESERVED = false;
     };
@@ -1064,23 +728,14 @@ pub const IPPORT = struct {
         pub const EXECSERVER = 
             \\execserver
         ;
-        pub const BIFFUDP = 
-            \\biffudp
-        ;
         pub const LOGINSERVER = 
             \\loginserver
-        ;
-        pub const WHOSERVER = 
-            \\whoserver
         ;
         pub const CMDSERVER = 
             \\cmdserver
         ;
         pub const EFSSERVER = 
             \\efsserver
-        ;
-        pub const ROUTESERVER = 
-            \\routeserver
         ;
         pub const USERRESERVED = 
             \\userreserved
@@ -1098,14 +753,14 @@ pub const SignalAction = struct {
     pub const default_values = struct {
         pub const NOCLDSTOP = false;
         pub const NOCLDWAIT = false;
-        pub const SIGINFO = false;
+        pub const SIGINFO = true;
         pub const UNSUPPORTED = false;
         pub const EXPOSE_TAGBITS = false;
-        pub const RESTORER = false;
+        pub const RESTORER = true;
         pub const ONSTACK = false;
-        pub const RESTART = false;
+        pub const RESTART = true;
         pub const NODEFER = false;
-        pub const RESETHAND = false;
+        pub const RESETHAND = true;
     };
     pub const field_names = struct {
         pub const NOCLDSTOP = "no_child_stop";
@@ -1263,7 +918,6 @@ pub const TIOC = struct {
     pub const default_values = struct {
         pub const PKT_DATA = false;
         pub const PKT_FLUSHREAD = false;
-        pub const SER_TEMT = false;
         pub const PKT_FLUSHWRITE = false;
         pub const PKT_STOP = false;
         pub const PKT_START = false;
@@ -1317,9 +971,6 @@ pub const TIOC = struct {
         ;
         pub const PKT_FLUSHREAD = 
             \\pkt_flushread
-        ;
-        pub const SER_TEMT = 
-            \\ser_temt
         ;
         pub const PKT_FLUSHWRITE = 
             \\pkt_flushwrite
@@ -1513,7 +1164,7 @@ pub const UTIME = struct {
     };
     pub const backing_integer = usize;
 };
-pub const SEEK = struct {
+pub const Seek = struct {
     pub const default_values = struct {
         pub const SET = false;
         pub const CUR = false;
@@ -1521,22 +1172,12 @@ pub const SEEK = struct {
         pub const DATA = false;
         pub const HOLE = false;
     };
-    const _field_names = struct {
-        pub const SET = 
-            \\set
-        ;
-        pub const CUR = 
-            \\cur
-        ;
-        pub const END = 
-            \\end
-        ;
-        pub const DATA = 
-            \\data
-        ;
-        pub const HOLE = 
-            \\hole
-        ;
+    pub const field_names = struct {
+        pub const SET = "set";
+        pub const CUR = "cur";
+        pub const END = "end";
+        pub const DATA = "data";
+        pub const HOLE = "hole";
     };
     pub const set_names = .{
         "e0",
@@ -1598,6 +1239,431 @@ pub const STATX_ATTR = struct {
         pub const MOUNT_ROOT = "mount_root";
         pub const VERITY = "verity";
         pub const DAX = "dax";
+    };
+    pub const backing_integer = usize;
+};
+pub const At = struct {
+    pub const default_values = struct {
+        pub const SYMLINK_NOFOLLOW = false;
+        pub const REMOVEDIR = false;
+        pub const SYMLINK_FOLLOW = false;
+        pub const NO_AUTOMOUNT = false;
+        pub const EMPTY_PATH = false;
+    };
+    pub const field_names = struct {
+        pub const SYMLINK_NOFOLLOW = "symlink_no_follow";
+        pub const REMOVEDIR = "remove_dir";
+        pub const SYMLINK_FOLLOW = "symlink_follow";
+        pub const NO_AUTOMOUNT = "no_automount";
+        pub const EMPTY_PATH = "empty_path";
+    };
+    pub const backing_integer = usize;
+};
+pub const AUX = struct {
+    pub const default_values = struct {
+        pub const EXECFD = false;
+        pub const PHDR = false;
+        pub const PHENT = false;
+        pub const PHNUM = false;
+        pub const PAGESZ = false;
+        pub const BASE = false;
+        pub const FLAGS = false;
+        pub const ENTRY = false;
+        pub const EUID = false;
+        pub const GID = false;
+        pub const EGID = false;
+        pub const PLATFORM = false;
+        pub const HWCAP = false;
+        pub const CLKTCK = false;
+        pub const FPUCW = false;
+        pub const DCACHEBSIZE = false;
+        pub const ICACHEBSIZE = false;
+        pub const UCACHEBSIZE = false;
+        pub const SECURE = false;
+        pub const BASE_PLATFORM = false;
+        pub const RANDOM = false;
+        pub const EXECFN = false;
+        pub const SYSINFO = false;
+        pub const SYSINFO_EHDR = false;
+        pub const L1I_CACHESIZE = false;
+        pub const L1I_CACHEGEOMETRY = false;
+        pub const L1D_CACHESIZE = false;
+        pub const L1D_CACHEGEOMETRY = false;
+        pub const L2_CACHESIZE = false;
+        pub const L2_CACHEGEOMETRY = false;
+        pub const L3_CACHESIZE = false;
+        pub const L3_CACHEGEOMETRY = false;
+    };
+    const _field_names = struct {
+        pub const EXECFD = 
+            \\execfd
+        ;
+        pub const PHDR = 
+            \\phdr
+        ;
+        pub const PHENT = 
+            \\phent
+        ;
+        pub const PHNUM = 
+            \\phnum
+        ;
+        pub const PAGESZ = 
+            \\pagesz
+        ;
+        pub const BASE = 
+            \\base
+        ;
+        pub const FLAGS = 
+            \\flags
+        ;
+        pub const ENTRY = 
+            \\entry
+        ;
+        pub const EUID = 
+            \\euid
+        ;
+        pub const GID = 
+            \\gid
+        ;
+        pub const EGID = 
+            \\egid
+        ;
+        pub const PLATFORM = 
+            \\platform
+        ;
+        pub const HWCAP = 
+            \\hwcap
+        ;
+        pub const CLKTCK = 
+            \\clktck
+        ;
+        pub const FPUCW = 
+            \\fpucw
+        ;
+        pub const DCACHEBSIZE = 
+            \\dcachebsize
+        ;
+        pub const ICACHEBSIZE = 
+            \\icachebsize
+        ;
+        pub const UCACHEBSIZE = 
+            \\ucachebsize
+        ;
+        pub const SECURE = 
+            \\secure
+        ;
+        pub const BASE_PLATFORM = 
+            \\base_platform
+        ;
+        pub const RANDOM = 
+            \\random
+        ;
+        pub const EXECFN = 
+            \\execfn
+        ;
+        pub const SYSINFO = 
+            \\sysinfo
+        ;
+        pub const SYSINFO_EHDR = 
+            \\sysinfo_ehdr
+        ;
+        pub const L1I_CACHESIZE = 
+            \\l1i_cachesize
+        ;
+        pub const L1I_CACHEGEOMETRY = 
+            \\l1i_cachegeometry
+        ;
+        pub const L1D_CACHESIZE = 
+            \\l1d_cachesize
+        ;
+        pub const L1D_CACHEGEOMETRY = 
+            \\l1d_cachegeometry
+        ;
+        pub const L2_CACHESIZE = 
+            \\l2_cachesize
+        ;
+        pub const L2_CACHEGEOMETRY = 
+            \\l2_cachegeometry
+        ;
+        pub const L3_CACHESIZE = 
+            \\l3_cachesize
+        ;
+        pub const L3_CACHEGEOMETRY = 
+            \\l3_cachegeometry
+        ;
+    };
+    pub const set_names = .{
+        "e0",
+    };
+    pub const backing_integer = usize;
+};
+pub const FLOCK = struct {
+    pub const default_values = struct {
+        pub const RDLCK = false;
+        pub const WRLCK = false;
+        pub const UNLCK = false;
+    };
+    const _field_names = struct {
+        pub const RDLCK = 
+            \\rdlck
+        ;
+        pub const WRLCK = 
+            \\wrlck
+        ;
+        pub const UNLCK = 
+            \\unlck
+        ;
+    };
+    pub const backing_integer = usize;
+};
+pub const F = struct {
+    pub const default_values = struct {
+        pub const GETFD = false;
+        pub const SETFD = false;
+        pub const GETFL = false;
+        pub const SETFL = false;
+        pub const GETLK = false;
+        pub const SETLK = false;
+        pub const SETLKW = false;
+        pub const SETOWN = false;
+        pub const GETOWN = false;
+        pub const DUPFD_CLOEXEC = false;
+    };
+    const _field_names = struct {
+        pub const GETFD = 
+            \\getfd
+        ;
+        pub const SETFD = 
+            \\setfd
+        ;
+        pub const GETFL = 
+            \\getfl
+        ;
+        pub const SETFL = 
+            \\setfl
+        ;
+        pub const GETLK = 
+            \\getlk
+        ;
+        pub const SETLK = 
+            \\setlk
+        ;
+        pub const SETLKW = 
+            \\setlkw
+        ;
+        pub const SETOWN = 
+            \\setown
+        ;
+        pub const GETOWN = 
+            \\getown
+        ;
+        pub const DUPFD_CLOEXEC = 
+            \\dupfd_cloexec
+        ;
+    };
+    pub const set_names = .{
+        "e0",
+    };
+    pub const backing_integer = usize;
+};
+pub const SI = struct {
+    pub const default_values = struct {
+        pub const USER = false;
+        pub const KERNEL = false;
+        pub const TKILL = false;
+        pub const SIGIO = false;
+        pub const ASYNCIO = false;
+        pub const MESGQ = false;
+        pub const TIMER = false;
+        pub const QUEUE = false;
+    };
+    const _field_names = struct {
+        pub const USER = 
+            \\user
+        ;
+        pub const KERNEL = 
+            \\kernel
+        ;
+        pub const TKILL = 
+            \\tkill
+        ;
+        pub const SIGIO = 
+            \\sigio
+        ;
+        pub const ASYNCIO = 
+            \\asyncio
+        ;
+        pub const MESGQ = 
+            \\mesgq
+        ;
+        pub const TIMER = 
+            \\timer
+        ;
+        pub const QUEUE = 
+            \\queue
+        ;
+    };
+    pub const set_names = .{
+        "e0",
+    };
+    pub const backing_integer = usize;
+};
+pub const ReadWrite = struct {
+    pub const default_values = struct {
+        pub const HIPRI = false;
+        pub const DSYNC = false;
+        pub const SYNC = false;
+        pub const NOWAIT = false;
+        pub const APPEND = false;
+    };
+    pub const field_names = struct {
+        pub const HIPRI = "high_priority";
+        pub const DSYNC = "data_sync";
+        pub const SYNC = "file_sync";
+        pub const NOWAIT = "no_wait";
+        pub const APPEND = "append";
+    };
+    pub const backing_integer = usize;
+};
+pub const POSIX_FADV = struct {
+    pub const default_values = struct {
+        pub const NORMAL = false;
+        pub const RANDOM = false;
+        pub const SEQUENTIAL = false;
+        pub const WILLNEED = false;
+        pub const DONTNEED = false;
+        pub const NOREUSE = false;
+    };
+    const _field_names = struct {
+        pub const NORMAL = 
+            \\normal
+        ;
+        pub const RANDOM = 
+            \\random
+        ;
+        pub const SEQUENTIAL = 
+            \\sequential
+        ;
+        pub const WILLNEED = 
+            \\willneed
+        ;
+        pub const DONTNEED = 
+            \\dontneed
+        ;
+        pub const NOREUSE = 
+            \\noreuse
+        ;
+    };
+    pub const set_names = .{
+        "e0",
+    };
+    pub const backing_integer = usize;
+};
+pub const ITIMER = struct {
+    pub const default_values = struct {
+        pub const REAL = false;
+        pub const VIRTUAL = false;
+        pub const PROF = false;
+    };
+    const _field_names = struct {
+        pub const REAL = 
+            \\real
+        ;
+        pub const VIRTUAL = 
+            \\virtual
+        ;
+        pub const PROF = 
+            \\prof
+        ;
+    };
+    pub const backing_integer = usize;
+};
+pub const SEGV = struct {
+    pub const default_values = struct {
+        pub const MAPERR = false;
+        pub const ACCERR = false;
+        pub const BNDERR = false;
+        pub const PKUERR = false;
+    };
+    const _field_names = struct {
+        pub const MAPERR = 
+            \\maperr
+        ;
+        pub const ACCERR = 
+            \\accerr
+        ;
+        pub const BNDERR = 
+            \\bnderr
+        ;
+        pub const PKUERR = 
+            \\pkuerr
+        ;
+    };
+    pub const set_names = .{
+        "e0",
+    };
+    pub const backing_integer = usize;
+};
+pub const FS = struct {
+    pub const default_values = struct {
+        pub const SECRM_FL = false;
+        pub const UNRM_FL = false;
+        pub const COMPR_FL = false;
+        pub const SYNC_FL = false;
+        pub const IMMUTABLE_FL = false;
+        pub const APPEND_FL = false;
+        pub const NODUMP_FL = false;
+        pub const NOATIME_FL = false;
+        pub const JOURNAL_DATA_FL = false;
+        pub const NOTAIL_FL = false;
+        pub const DIRSYNC_FL = false;
+        pub const TOPDIR_FL = false;
+        pub const NOCOW_FL = false;
+        pub const PROJINHERIT_FL = false;
+    };
+    const _field_names = struct {
+        pub const SECRM_FL = 
+            \\secrm_fl
+        ;
+        pub const UNRM_FL = 
+            \\unrm_fl
+        ;
+        pub const COMPR_FL = 
+            \\compr_fl
+        ;
+        pub const SYNC_FL = 
+            \\sync_fl
+        ;
+        pub const IMMUTABLE_FL = 
+            \\immutable_fl
+        ;
+        pub const APPEND_FL = 
+            \\append_fl
+        ;
+        pub const NODUMP_FL = 
+            \\nodump_fl
+        ;
+        pub const NOATIME_FL = 
+            \\noatime_fl
+        ;
+        pub const JOURNAL_DATA_FL = 
+            \\journal_data_fl
+        ;
+        pub const NOTAIL_FL = 
+            \\notail_fl
+        ;
+        pub const DIRSYNC_FL = 
+            \\dirsync_fl
+        ;
+        pub const TOPDIR_FL = 
+            \\topdir_fl
+        ;
+        pub const NOCOW_FL = 
+            \\nocow_fl
+        ;
+        pub const PROJINHERIT_FL = 
+            \\projinherit_fl
+        ;
     };
     pub const backing_integer = usize;
 };

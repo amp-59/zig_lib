@@ -538,7 +538,7 @@ pub const Clone = packed struct(u32) {
     trace_child: bool = false,
     vfork: bool = false,
     zb15: u1 = 0,
-    thread: bool = false,
+    thread: bool = true,
     new_namespace: bool = false,
     sysvsem: bool = true,
     set_thread_local_storage: bool = false,
@@ -1231,13 +1231,13 @@ pub const UTIME = enum(usize) {
         return len;
     }
 };
-pub const SEEK = packed struct(usize) {
+pub const Seek = packed struct(usize) {
     e0: enum(u2) {
-        CUR = 0x1,
-        END = 0x2,
-        DATA = 0x3,
+        cur = 0x1,
+        end = 0x2,
+        data = 0x3,
     },
-    HOLE: bool = false,
+    hole: bool = false,
     zb3: u61 = 0,
     pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
         @setRuntimeSafety(false);
@@ -1247,7 +1247,7 @@ pub const SEEK = packed struct(usize) {
         var len: usize = 6;
         len += fmt.strcpy(buf + len, @tagName(format.e0));
         for ([_]struct { []const u8, u8 }{
-            .{ "HOLE", 2 },
+            .{ "hole", 2 },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
             if (tmp & 1 != 0) {
@@ -1398,13 +1398,13 @@ pub const STATX_ATTR = packed struct(usize) {
         return len;
     }
 };
-pub const AT = packed struct(usize) {
+pub const At = packed struct(usize) {
     zb0: u8 = 0,
-    SYMLINK_NOFOLLOW: bool = false,
-    REMOVEDIR: bool = false,
-    SYMLINK_FOLLOW: bool = false,
-    NO_AUTOMOUNT: bool = false,
-    EMPTY_PATH: bool = false,
+    symlink_no_follow: bool = false,
+    remove_dir: bool = false,
+    symlink_follow: bool = false,
+    no_automount: bool = false,
+    empty_path: bool = false,
     zb13: u51 = 0,
     pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
         @setRuntimeSafety(false);
@@ -1413,11 +1413,11 @@ pub const AT = packed struct(usize) {
         buf[0..6].* = "flags=".*;
         var len: usize = 6;
         for ([_]struct { []const u8, u8 }{
-            .{ "SYMLINK_NOFOLLOW", 8 },
-            .{ "REMOVEDIR", 1 },
-            .{ "SYMLINK_FOLLOW", 1 },
-            .{ "NO_AUTOMOUNT", 1 },
-            .{ "EMPTY_PATH", 1 },
+            .{ "symlink_no_follow", 8 },
+            .{ "remove_dir", 1 },
+            .{ "symlink_follow", 1 },
+            .{ "no_automount", 1 },
+            .{ "empty_path", 1 },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
             if (tmp & 1 != 0) {
@@ -1591,12 +1591,12 @@ pub const SI = packed struct(usize) {
         return len;
     }
 };
-pub const RWF = packed struct(usize) {
-    HIPRI: bool = false,
-    DSYNC: bool = false,
-    SYNC: bool = false,
-    NOWAIT: bool = false,
-    APPEND: bool = false,
+pub const ReadWrite = packed struct(usize) {
+    high_priority: bool = false,
+    data_sync: bool = false,
+    file_sync: bool = false,
+    no_wait: bool = false,
+    append: bool = false,
     zb5: u59 = 0,
     pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
         @setRuntimeSafety(false);
@@ -1605,11 +1605,11 @@ pub const RWF = packed struct(usize) {
         buf[0..6].* = "flags=".*;
         var len: usize = 6;
         for ([_]struct { []const u8, u8 }{
-            .{ "HIPRI", 0 },
-            .{ "DSYNC", 1 },
-            .{ "SYNC", 1 },
-            .{ "NOWAIT", 1 },
-            .{ "APPEND", 1 },
+            .{ "high_priority", 0 },
+            .{ "data_sync", 1 },
+            .{ "file_sync", 1 },
+            .{ "no_wait", 1 },
+            .{ "append", 1 },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
             if (tmp & 1 != 0) {

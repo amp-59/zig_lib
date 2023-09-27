@@ -393,13 +393,13 @@ pub const UTIME = struct {
     pub const NOW = 1073741823;
     pub usingnamespace extra.UTIME;
 };
-pub const SEEK = struct {
+pub const Seek = struct {
     pub const SET = 0;
     pub const CUR = 1;
     pub const END = 2;
     pub const DATA = 3;
     pub const HOLE = 4;
-    pub usingnamespace extra.SEEK;
+    pub usingnamespace extra.Seek;
 };
 pub const STATX = struct {
     pub const TYPE = 1;
@@ -435,7 +435,7 @@ pub const At = struct {
     pub const SYMLINK_FOLLOW = 1024;
     pub const NO_AUTOMOUNT = 2048;
     pub const EMPTY_PATH = 4096;
-    pub usingnamespace extra.AT;
+    pub usingnamespace extra.At;
 };
 pub const AUX = struct {
     pub const EXECFD = 2;
@@ -502,13 +502,13 @@ pub const SI = struct {
     pub const QUEUE = 4294967295;
     pub usingnamespace extra.SI;
 };
-pub const RWF = struct {
+pub const ReadWrite = struct {
     pub const HIPRI = 1;
     pub const DSYNC = 2;
     pub const SYNC = 4;
     pub const NOWAIT = 8;
     pub const APPEND = 16;
-    pub usingnamespace extra.RWF;
+    pub usingnamespace extra.ReadWrite;
 };
 pub const POSIX_FADV = struct {
     pub const NORMAL = 0;

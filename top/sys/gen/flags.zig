@@ -6,12 +6,16 @@ const math = @import("../../math.zig");
 const debug = @import("../../debug.zig");
 const decls = @import("../decls.zig");
 const config = @import("./config.zig");
-
 pub const Array = mem.StaticString(64 * 1024 * 1024);
 pub const ArrayGST = mem.StaticString(1024 * 1024);
-
+const prefer_gst = false;
+const GST = struct {
+    array: *ArrayGST,
+    max_end_bits: u16,
+    max_len_bits: u16,
+    max_off_bits: u16,
+};
 pub usingnamespace @import("../../start.zig");
-
 pub fn ContainerDeclsToBitFieldFormat(comptime backing_integer: type) type {
     const T = struct {
         value: Value,
@@ -19,7 +23,6 @@ pub fn ContainerDeclsToBitFieldFormat(comptime backing_integer: type) type {
         const Value = struct { type_name: []const u8, sets: []const BitFieldSet };
         const BitFieldSet = meta.GenericBitFieldSet(backing_integer);
         const bit_size_of: comptime_int = @bitSizeOf(backing_integer);
-
         fn bitSizeOfEnum(set: BitFieldSet) u16 {
             var value: backing_integer = 0;
             for (set.pairs) |pair| {
@@ -40,7 +43,7 @@ pub fn ContainerDeclsToBitFieldFormat(comptime backing_integer: type) type {
             for (set.pairs) |pair| {
                 array.writeFormat(fmt.lazyIdentifier(pair.field_name orelse pair.decl_name));
                 array.writeMany("=");
-                array.writeFormat(fmt.ud64(pair.value >> @intCast(shr_amt)));
+                array.writeFormat(fmt.ux64(pair.value >> @intCast(shr_amt)));
                 array.writeMany(",\n");
             }
         }
@@ -237,15 +240,66 @@ pub fn ContainerDeclsToBitFieldFormat(comptime backing_integer: type) type {
             }
             array.writeMany("}\n}\n");
         }
-        fn formatWriteFormatWriteFunction(format: Format, array: *Array) void {
-            array.writeMany("pub fn formatWriteBuf(format:@This(),buf:[*]u8)usize{\n");
-            array.writeMany("var ptr:[*]u8=buf;\n");
+        fn formatWriteFormatWriteFunction(format: Format, array: *Array, gst: GST) void {
+            const unit: usize = 1;
             var shr_amt: usize = 0;
             var shl_rem: usize = 0;
             var enum_idx: usize = 0;
-            for (format.value.sets) |set| {
+            if (prefer_gst) {
+                for (format.value.sets, 0..) |set, idx| {
+                    if (set.tag == .E) {
+                        continue;
+                    }
+                    array.writeMany("const set");
+                    array.writeFormat(fmt.ud64(idx));
+                    array.writeMany("=[_]u");
+                    array.writeFormat(fmt.ud64(meta.unsignedRealBitSize(unit << @truncate(8 +% gst.max_end_bits +% gst.max_off_bits))));
+                    array.writeMany("{");
+                    for (set.pairs) |pair| {
+                        if (pair.value == 0) {
+                            continue;
+                        }
+                        shl_rem = @ctz(pair.value) -% shr_amt;
+                        shr_amt +%= shl_rem;
+                        const name: []const u8 = pair.field_name orelse pair.decl_name;
+                        var off: usize = mem.indexOfFirstEqualMany(u8, name, gst.array.readAll()).?;
+                        var end: usize = off +% name.len;
+                        const shl_shl: usize = shl_rem << @truncate(gst.max_end_bits +% gst.max_off_bits);
+                        const end_shl: usize = end << @truncate(gst.max_off_bits);
+                        const off_shl: usize = off;
+                        const com: usize = shl_shl | end_shl | off_shl;
+                        end = (com >> @truncate(gst.max_off_bits)) & ((unit << @truncate(gst.max_end_bits)) -% 1);
+                        off = com & ((unit << @truncate(gst.max_off_bits)) -% 1);
+                        array.writeFormat(fmt.ux64(com));
+                        array.writeMany(",");
+                        array.writeMany("// shl=");
+                        array.writeFormat(fmt.ud64(shl_rem));
+                        array.writeMany(", end=");
+                        array.writeFormat(fmt.ud64(end));
+                        array.writeMany(", off=");
+                        array.writeFormat(fmt.ud64(off));
+                        array.writeMany(" => ");
+                        array.writeMany(gst.array.readAll()[off..end]);
+                        array.writeMany("\n");
+                    }
+                    array.writeMany("\n};\n");
+                }
+            }
+
+            array.writeMany("pub fn formatWriteBuf(format:@This(),buf:[*]u8)usize{\n");
+            array.writeMany("@setRuntimeSafety(false);\n");
+            array.writeMany("var tmp:");
+            array.writeMany(@typeName(backing_integer));
+            array.writeMany("=@bitCast(format);\n");
+            array.writeMany("if(tmp==0) return 0;");
+            array.writeMany("buf[0..6].*=\"flags=\".*;\n");
+            array.writeMany("var len:usize=6;\n");
+            shr_amt = 0;
+            shl_rem = 0;
+            enum_idx = 0;
+            for (format.value.sets, 0..) |set, idx| {
                 if (set.tag == .E) {
-                    array.writeMany("ptr=fmt.strcpyEqu(ptr,@tagName(format.");
+                    array.writeMany("len+=fmt.strcpy(buf+len,@tagName(format.");
                     if (set.name) |name| {
                         array.writeFormat(fmt.lazyIdentifier(name));
                     } else {
@@ -260,50 +314,70 @@ pub fn ContainerDeclsToBitFieldFormat(comptime backing_integer: type) type {
                     } else {
                         continue;
                     }
-                    if (shr_amt == 0) {
-                        array.writeMany("var tmp:");
-                        array.writeMany(@typeName(backing_integer));
-                        array.writeMany("=@bitCast(format);\n");
-                    }
-                    array.writeMany("for([_]struct{[]const u8,u8}{\n");
-                    var start: usize = array.len();
-                    for (set.pairs, 0..) |pair, idx| {
-                        if (pair.value == 0) {
-                            continue;
+                    if (prefer_gst) {
+                        array.writeMany("for(set");
+                        array.writeFormat(fmt.ud64(idx));
+                        array.writeMany(")|val|{\n");
+                        array.writeMany("tmp>>=@truncate(val>>");
+                        array.writeFormat(fmt.ud64(gst.max_end_bits +% gst.max_off_bits));
+                        array.writeMany(");\n");
+                        array.writeMany("if(tmp&1!=0){\n");
+                        array.writeMany("ptr[0]=',';\n");
+                        array.writeMany("ptr=fmt.strcpyEqu(ptr+@intFromBool(ptr!=buf),gst[");
+                        array.writeMany("val&");
+                        array.writeFormat(fmt.ux64((unit << @truncate(gst.max_off_bits)) -% 1));
+                        array.writeMany("..(val>>");
+                        array.writeFormat(fmt.ud64(gst.max_off_bits));
+                        array.writeMany(")&");
+                        array.writeFormat(fmt.ux64((unit << @truncate(gst.max_end_bits)) -% 1));
+                        array.writeMany("]);\n");
+                        array.writeMany("}\n");
+                    } else {
+                        array.writeMany("for([_]struct{[]const u8,u8}{\n");
+                        var start: usize = array.len();
+                        for (set.pairs, 0..) |pair, item| {
+                            const name: []const u8 = pair.field_name orelse pair.decl_name;
+                            if (pair.value == 0) {
+                                continue;
+                            }
+                            if (item == math.sqrt(usize, set.pairs.len) +% 1 and (array.len() -% start) > 1080) {
+                                array.writeMany(",\n");
+                                start = array.len();
+                            } else if (array.len() != start) {
+                                array.writeOne(',');
+                            }
+                            shl_rem = @ctz(pair.value) -% shr_amt;
+                            shr_amt +%= shl_rem;
+                            array.writeMany(".{");
+                            array.writeFormat(fmt.stringLiteral(name));
+                            array.writeMany(",");
+                            array.writeFormat(fmt.udsize(shl_rem));
+                            array.writeMany("}");
                         }
-                        if (idx == math.sqrt(usize, set.pairs.len) +% 1) {
-                            array.writeMany(",\n");
-                            start = array.len();
-                        } else if (array.len() != start) {
-                            array.writeOne(',');
-                        }
-                        shl_rem = @ctz(pair.value) -% shr_amt;
-                        shr_amt +%= shl_rem;
-                        array.writeMany(".{");
-                        array.writeFormat(fmt.stringLiteral(pair.decl_name));
-                        array.writeMany(",");
-                        array.writeFormat(fmt.udsize(shl_rem));
-                        array.writeMany("}");
+                        array.writeMany(",})|pair|{\n");
+                        array.writeMany("tmp>>=@truncate(pair[1]);\n");
+                        array.writeMany("if(tmp&1!=0){\n");
+                        array.writeMany("buf[len]=',';\n");
+                        array.writeMany("len+=@intFromBool(len!=6);\n");
+                        array.writeMany("len+=fmt.strcpy(buf+len,pair[0]);\n");
+                        array.writeMany("}\n");
                     }
-                    array.writeMany(",})|pair|{\n");
-                    array.writeMany("tmp>>=@truncate(pair[1]);\n");
-                    array.writeMany("if(tmp&1!=0){\n");
-                    array.writeMany("ptr[0]='|';\n");
-                    array.writeMany("ptr=fmt.strcpyEqu(ptr+@intFromBool(ptr!=buf),pair[0]);\n");
                     array.writeMany("}\n");
                     shr_amt +%= shl_rem +% 1;
-                    array.writeMany("}\n");
                 }
             }
-            array.writeMany("return fmt.strlen(ptr,buf);\n");
+            array.writeMany("return len;\n");
             array.writeMany("}\n");
         }
-        fn formatWriteFormatLengthFunction(format: Format, array: *Array) void {
-            array.writeMany("pub fn formatLength(format:@This())usize{\n");
-            array.writeMany("var len:usize=0;\n");
+        fn formatWriteFormatLengthFunction(format: Format, array: *Array, gst: GST) void {
+            const unit: usize = 1;
             var shr_amt: usize = 0;
             var shl_rem: usize = 0;
-            for (format.value.sets) |set| {
+            array.writeMany("pub fn formatLength(format:@This())usize{\n");
+            array.writeMany("@setRuntimeSafety(false);\n");
+            array.writeMany("if(@as(" ++ @typeName(backing_integer) ++ ",@bitCast(format))==0) return 0;");
+            array.writeMany("var len:usize=6;\n");
+            for (format.value.sets, 0..) |set, idx| {
                 if (set.tag == .E) {
                     array.writeMany("len+%=@tagName(format.");
                     array.writeFormat(fmt.lazyIdentifier(set.name.?));
@@ -319,33 +393,61 @@ pub fn ContainerDeclsToBitFieldFormat(comptime backing_integer: type) type {
                         array.writeMany(@typeName(backing_integer));
                         array.writeMany("=@bitCast(format);\n");
                     }
-                    array.writeMany("for([_]struct{u8,u8}{\n");
-                    var start: usize = array.len();
-                    for (set.pairs, 0..) |pair, idx| {
-                        if (pair.value == 0) {
-                            continue;
+                    if (prefer_gst) {
+                        array.writeMany("for(set");
+                        array.writeFormat(fmt.ud64(idx));
+                        array.writeMany(")|val|{\n");
+                        array.writeMany("tmp>>=@truncate(val>>");
+                        array.writeFormat(fmt.ud64(gst.max_end_bits +% gst.max_off_bits));
+                        array.writeMany(");\n");
+                        array.writeMany("if(tmp&1!=0){\n");
+                        if (gst.max_end_bits == gst.max_off_bits) {
+                            array.writeMany("len=");
+                            array.writeMany("((val>>");
+                            array.writeFormat(fmt.ud64(gst.max_off_bits));
+                            array.writeMany(")-%val)&");
+                            array.writeFormat(fmt.ux64((unit << @truncate(gst.max_off_bits)) -% 1));
+                            array.writeMany(" + @intFromBool(len!=0);\n");
+                        } else {
+                            array.writeMany("len=");
+                            array.writeMany("(val>>");
+                            array.writeFormat(fmt.ud64(gst.max_off_bits));
+                            array.writeMany(")&");
+                            array.writeFormat(fmt.ux64((unit << @truncate(gst.max_end_bits)) -% 1));
+                            array.writeMany(")-%(val&");
+                            array.writeFormat(fmt.ux64((unit << @truncate(gst.max_off_bits)) -% 1));
+                            array.writeMany(" + @intFromBool(len!=0);\n");
                         }
-                        if (idx == math.sqrt(usize, set.pairs.len) +% 1) {
-                            array.writeMany(",\n");
-                            start = array.len();
-                        } else if (array.len() != start) {
-                            array.writeOne(',');
+                        array.writeMany("}\n");
+                    } else {
+                        array.writeMany("for([_]struct{u8,u8}{\n");
+                        var start: usize = array.len();
+                        for (set.pairs, 0..) |pair, item| {
+                            if (pair.value == 0) {
+                                continue;
+                            }
+                            if (item == math.sqrt(usize, set.pairs.len) +% 1) {
+                                array.writeMany(",\n");
+                                start = array.len();
+                            } else if (array.len() != start) {
+                                array.writeOne(',');
+                            }
+                            shl_rem = @ctz(pair.value) -% shr_amt;
+                            shr_amt +%= shl_rem;
+                            array.writeMany(".{");
+                            array.writeFormat(fmt.ud64(pair.decl_name.len));
+                            array.writeMany(",");
+                            array.writeFormat(fmt.ud64(shl_rem));
+                            array.writeMany("}");
                         }
-                        shl_rem = @ctz(pair.value) -% shr_amt;
-                        shr_amt +%= shl_rem;
-                        array.writeMany(".{");
-                        array.writeFormat(fmt.ud64(pair.decl_name.len));
-                        array.writeMany(",");
-                        array.writeFormat(fmt.ud64(shl_rem));
-                        array.writeMany("}");
+                        array.writeMany(",})|pair|{\n");
+                        array.writeMany("tmp>>=@truncate(pair[1]);\n");
+                        array.writeMany("if(tmp&1!=0){\n");
+                        array.writeMany("len+%=@intFromBool(len!=0)+%pair[0];\n");
+                        array.writeMany("}\n");
                     }
-                    array.writeMany(",})|pair|{\n");
-                    array.writeMany("tmp>>=@truncate(pair[1]);\n");
-                    array.writeMany("if(tmp&1!=0){\n");
-                    array.writeMany("len+%=@intFromBool(len!=0)+%pair[0];\n");
-                    array.writeMany("}\n");
-                    array.writeMany("}\n");
                     shr_amt +%= shl_rem +% 1;
+                    array.writeMany("}\n");
                 }
             }
             array.writeMany("return len;\n");
@@ -355,18 +457,18 @@ pub fn ContainerDeclsToBitFieldFormat(comptime backing_integer: type) type {
             var max: usize = 0;
             for (format.value.sets) |set| {
                 for (set.pairs) |pair| {
-                    if (!mem.testEqualManyIn(u8, pair.decl_name, array.readAll())) {
-                        max = @max(max, pair.decl_name.len);
-                        array.writeMany(pair.decl_name);
+                    const name: []const u8 = pair.field_name orelse pair.decl_name;
+                    if (!mem.testEqualManyIn(u8, name, array.readAll())) {
+                        max = @max(max, name.len);
+                        array.writeMany(name);
                     }
                 }
             }
             return max;
         }
-        pub fn formatWrite(format: Format, array: *Array) void {
+        pub fn formatWrite(format: Format, array: *Array, gst: GST) void {
             array.writeMany("pub const ");
             array.writeMany(format.value.type_name);
-
             if (format.value.sets.len == 1 and
                 format.value.sets[0].tag == .E)
             {
@@ -376,8 +478,8 @@ pub fn ContainerDeclsToBitFieldFormat(comptime backing_integer: type) type {
                 array.writeMany("=packed struct(" ++ @typeName(backing_integer) ++ "){\n");
                 format.formatWriteFields(array);
             }
-            format.formatWriteFormatWriteFunction(array);
-            format.formatWriteFormatLengthFunction(array);
+            format.formatWriteFormatWriteFunction(array, gst);
+            format.formatWriteFormatLengthFunction(array, gst);
             array.writeMany("};\n");
         }
         pub fn init(comptime Container: type, type_name: []const u8) Format {
@@ -389,7 +491,6 @@ pub fn ContainerDeclsToBitFieldFormat(comptime backing_integer: type) type {
     };
     return T;
 }
-
 pub fn main() !void {
     var allocator: mem.SimpleAllocator = .{};
     var flags_array: *Array = allocator.create(Array);
@@ -399,7 +500,6 @@ pub fn main() !void {
     flags_array.define(try gen.readFile(.{ .return_type = usize }, config.flags_template_path, flags_array.referAllUndefined()));
     decls_array.define(try gen.readFile(.{ .return_type = usize }, config.decls_template_path, decls_array.referAllUndefined()));
     extra_array.define(try gen.readFile(.{ .return_type = usize }, config.extra_template_path, extra_array.referAllUndefined()));
-
     var max_len: usize = 0;
     inline for (@typeInfo(decls).Struct.decls) |decl| {
         const value = @field(decls, decl.name);
@@ -408,14 +508,34 @@ pub fn main() !void {
         const format: Format = Format.init(value, decl.name);
         max_len = @max(max_len, format.defineGlobalStringTable(gst_array));
     }
+    var gst: GST = .{
+        .array = gst_array,
+        .max_len_bits = meta.unsignedRealBitSize(max_len),
+        .max_off_bits = meta.unsignedRealBitSize(gst_array.len()),
+        .max_end_bits = meta.unsignedRealBitSize(gst_array.len() +% max_len),
+    };
     inline for (@typeInfo(decls).Struct.decls) |decl| {
         const value = @field(decls, decl.name);
         const size = if (@hasDecl(value, "backing_integer")) value.backing_integer else usize;
         const Format = ContainerDeclsToBitFieldFormat(size);
         const format: Format = Format.init(value, decl.name);
-        format.formatWrite(flags_array);
+        format.formatWrite(flags_array, gst);
         format.formatWriteDecls(decls_array);
         format.formatWriteExtra(extra_array);
+    }
+    if (prefer_gst) {
+        flags_array.writeMany("const gst:[");
+        flags_array.writeFormat(fmt.ud64(gst_array.len()));
+        flags_array.writeMany("]u8=.{\n");
+        for (gst_array.readAll(), 0..) |val, idx| {
+            flags_array.writeFormat(fmt.ux64(val));
+            if (idx == 15) {
+                flags_array.writeMany(",\n");
+            } else {
+                flags_array.writeMany(",");
+            }
+        }
+        flags_array.writeMany("};\n");
     }
     if (config.commit) {
         try gen.truncateFile(.{ .return_type = void }, config.flags_path, flags_array.readAll());
@@ -425,4 +545,9 @@ pub fn main() !void {
         debug.write(flags_array.readAll());
         debug.write(extra_array.readAll());
     }
+}
+fn castTable(comptime T: type, gst_array: *ArrayGST) []T {
+    const bytes: [*]u8 = gst_array.referAllDefined().ptr;
+    const values: [*]T = @ptrCast(@alignCast(bytes));
+    return values[0..@divExact(gst_array.len(), @sizeOf(T))];
 }
