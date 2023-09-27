@@ -6,21 +6,23 @@ const mem = @import("./mem.zig");
 const fmt = @import("./fmt.zig");
 const sys = @import("./sys.zig");
 const file = @import("./file.zig");
-const mach = @import("./mach.zig");
 const meta = @import("./meta.zig");
-const spec = @import("./spec.zig");
 const algo = @import("./algo.zig");
 const debug = @import("./debug.zig");
 const builtin = @import("./builtin.zig");
 pub fn announce(src: builtin.SourceLocation) void {
     var buf: [4096]u8 = undefined;
     buf[0] = '\r';
-    buf[1] = '[';
-    mach.memcpy(buf[2..].ptr, &tab.kill.line_right, tab.kill.line_right.len);
-    mach.memcpy(buf[6..].ptr, src.fn_name.ptr, src.fn_name.len);
-    buf[6 +% src.fn_name.len] = ']';
-    buf[7 +% src.fn_name.len] = '\n';
-    debug.write(buf[0 .. 6 +% src.fn_name.len +% 2]);
+    buf[1 .. tab.kill.line_right.len +% 1].* = tab.kill.line_right;
+    var ptr: [*]u8 = buf[1 +% tab.kill.line_right.len ..];
+    ptr[0] = '[';
+    ptr += 1;
+    ptr = fmt.strcpyEqu(ptr, src.fn_name);
+    ptr[0] = ']';
+    ptr += 1;
+    ptr[0] = '\n';
+    ptr += 1;
+    debug.write(buf[0..fmt.strlen(ptr, &buf)]);
 }
 pub fn arrayOfCharsLength(s: []const u8) u64 {
     var len: u64 = 0;
@@ -302,7 +304,11 @@ pub fn printSizeBreakDown(comptime T: type, type_rename: ?[:0]const u8) u64 {
     debug.write(array.readAll());
     return array.readAll().len;
 }
-const reinterpret_spec: mem.ReinterpretSpec = builtin.define("reinterpret_spec", mem.ReinterpretSpec, spec.reinterpret.fmt);
+const reinterpret_spec: mem.ReinterpretSpec = builtin.define("reinterpret_spec", mem.ReinterpretSpec, mem.spec.reinterpret.fmt);
+pub fn printBufN(comptime n: usize, any: anytype) void {
+    var buf: [n]u8 = undefined;
+    debug.write(buf[0..any.formatWriteBuf(&buf)]);
+}
 pub fn printN(comptime n: usize, any: anytype) void {
     var array: mem.StaticString(n) = undefined;
     array.undefineAll();
@@ -312,9 +318,9 @@ pub fn printN(comptime n: usize, any: anytype) void {
 const Static = struct {
     const Allocator = mem.GenericArenaAllocator(.{
         .arena_index = 48,
-        .errors = spec.allocator.errors.noexcept,
-        .logging = spec.allocator.logging.silent,
-        .AddressSpace = spec.address_space.regular_128,
+        .errors = mem.spec.allocator.errors.noexcept,
+        .logging = mem.spec.allocator.logging.silent,
+        .AddressSpace = mem.spec.address_space.regular_128,
     });
     const Array = Allocator.StructuredVector(u8);
     var address_space: Allocator.allocator_spec.AddressSpace = .{};
@@ -361,16 +367,16 @@ pub fn uniqueSet(comptime T: type, set: []const T) void {
         }
     }
 }
-pub fn printResources() !void {
+pub fn printResources() void {
     var buf: [4096]u8 = undefined;
-    const dir_fd: u64 = file.open(.{ .options = .{ .directory = true } }, "/proc/self/fd");
-    var len: u64 = try file.getDirectoryEntries(.{ .errors = .{} }, dir_fd, &buf);
+    const dir_fd: usize = file.open(.{ .errors = .{} }, .{ .directory = true }, "/proc/self/fd");
+    var len: u64 = file.getDirectoryEntries(.{ .errors = .{} }, dir_fd, &buf);
     var off: u64 = 0;
     while (off != len) {
-        const ent: file.DirectoryEntry = builtin.ptrCast(*const file.DirectoryEntry, buf[off..]).*;
+        const ent: *file.DirectoryEntry = @ptrCast(@alignCast(buf[off..]));
         const name: [:0]const u8 = meta.manyToSlice(builtin.ptrCast([*:0]u8, &ent.array));
-        if (ent.kind == sys.S.IFLNKR) {
-            const pathname: [:0]const u8 = try file.readLinkAt(.{}, dir_fd, name, buf[len..]);
+        if (ent.kind == .symbolic_link) {
+            const pathname: [:0]const u8 = file.readLinkAt(.{ .errors = .{} }, dir_fd, name, buf[len..]);
             debug.write(name);
             debug.write(" -> ");
             debug.write(pathname);
@@ -379,10 +385,10 @@ pub fn printResources() !void {
         off +%= ent.reclen;
     }
     file.close(.{ .errors = .{} }, dir_fd);
-    const maps_fd: u64 = try file.open(.{}, "/proc/self/maps");
-    len = try file.read(.{}, maps_fd, &buf);
+    const maps_fd: usize = file.open(.{ .errors = .{} }, .{}, "/proc/self/maps");
+    len = file.read(.{ .errors = .{}, .return_type = usize }, maps_fd, &buf);
     debug.write(buf[0..len]);
-    file.close(.{}, maps_fd);
-    const status_fd: u64 = try file.open(.{}, "/proc/self/status");
-    _ = try file.send(.{}, 1, status_fd, null, ~@as(u64, 0));
+    file.close(.{ .errors = .{} }, maps_fd);
+    const status_fd: usize = file.open(.{ .errors = .{} }, .{}, "/proc/self/status");
+    _ = file.send(.{ .errors = .{} }, 1, status_fd, null, ~@as(u64, 0));
 }
