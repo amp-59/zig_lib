@@ -1,29 +1,9 @@
-const types = @import("./types.zig");
-pub usingnamespace @import("../start.zig");
-const source = types.GenericCommand(types.ObjcopyCommand);
-formatWriteBuf: *const fn (
-    p_0: *types.ObjcopyCommand,
-    p_1: []const u8,
-    p_2: types.Path,
-    p_3: [*]u8,
-) usize = @ptrFromInt(8),
-formatLength: *const fn (
-    p_0: *types.ObjcopyCommand,
-    p_1: []const u8,
-    p_2: types.Path,
-) usize = @ptrFromInt(8),
-formatParseArgs: *const fn (
-    p_0: *types.ObjcopyCommand,
-    p_1: *types.Allocator,
-    p_2: [][*:0]u8,
-) void = @ptrFromInt(8),
-fn load(ptrs: *@This()) callconv(.C) void {
-    ptrs.formatWriteBuf = @ptrCast(&source.formatWriteBuf);
-    ptrs.formatLength = @ptrCast(&source.formatLength);
-    ptrs.formatParseArgs = @ptrCast(&source.formatParseArgs);
-}
-comptime {
-    if (@import("builtin").output_mode != .Exe) {
-        @export(load, .{ .name = "load", .linkage = .Strong });
-    }
+const zl = @import("zl");
+pub usingnamespace zl.start;
+export fn load(fp: *zl.builtin.root.Builder.FunctionPointers) void {
+    fp.objcopy = .{
+        .formatWriteBuf = zl.build.GenericCommand(zl.build.ObjcopyCommand).formatWriteBuf,
+        .formatLength = zl.build.GenericCommand(zl.build.ObjcopyCommand).formatLength,
+        .formatParseArgs = zl.build.GenericCommand(zl.build.ObjcopyCommand).formatParseArgs,
+    };
 }

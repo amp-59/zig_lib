@@ -12,7 +12,9 @@ export fn load(fp: *zl.builtin.root.Builder.FunctionPointers) void {
             .writeBinaryDifference = zl.builtin.root.Builder.DynamicLoader.about.writeBinaryDifference,
         },
         .generic = .{
-            .taskNotice = zl.builtin.root.Builder.about.taskNotice,
+            .aboutTask = zl.builtin.root.Builder.about.aboutTask,
+            .writeErrors = zl.builtin.root.Builder.about.writeErrors,
+            .writeTaskDataConfig = zl.builtin.root.Builder.about.writeTaskDataConfig,
         },
     };
 }
