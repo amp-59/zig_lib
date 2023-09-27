@@ -1,7 +1,7 @@
 const builtin = @import("../../builtin.zig");
 const types = struct {
     pub usingnamespace @import("./types.zig");
-    pub usingnamespace @import("../../build.zig");
+    pub usingnamespace @import("../types.zig");
 };
 const string_type: types.ProtoTypeDescrMap = .{
     .store = &types.ProtoTypeDescr.init([]const u8),
@@ -69,7 +69,7 @@ const code_model_type: types.ProtoTypeDescrMap = .{
     .parse = &types.ProtoTypeDescr.init(builtin.CodeModel),
 };
 const output_mode_type: types.ProtoTypeDescrMap = .{
-    .store = &.{ .type_decl = .{ .name = "types.OutputMode" } },
+    .store = &.{ .type_decl = .{ .name = "types.BinaryOutput" } },
 };
 const output_format_type: types.ProtoTypeDescrMap = .{
     .store = &.{ .type_decl = .{ .name = "?builtin.ObjectFormat" } },
@@ -367,8 +367,8 @@ pub const zig_build_command_attributes: types.Attributes = .{
         .{
             .name = "function_sections",
             .string = "-ffunction-sections",
-            .and_no = .{ .string = "-fno-function-sections" },
-            .descr = &.{"Places each function in a separate sections"},
+            .and_no = .{ .string = "-fno-function-section" },
+            .descr = &.{"Places each function in a separate section"},
         },
         .{
             .name = "strip",
@@ -965,7 +965,7 @@ pub const zig_objcopy_command_attributes: types.Attributes = .{
             .type = optional_string_type,
         },
         .{
-            .name = "file",
+            .name = "path",
             .tag = .{ .param = .formatter },
             .type = .{ .store = &.{ .type_decl = .{ .name = "types.Path" } } },
             .descr = &.{"Target binary"},
