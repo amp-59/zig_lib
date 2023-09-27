@@ -15,7 +15,7 @@ pub usingnamespace _reference;
 pub usingnamespace _container;
 pub usingnamespace _allocator;
 pub usingnamespace _list;
-const word_bit_size: u16 = @bitSizeOf(usize);
+const word_bit_size: comptime_int = @bitSizeOf(usize);
 pub const Advice = enum(usize) {
     normal = 0,
     random = 1,
