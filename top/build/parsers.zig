@@ -1,15 +1,16 @@
 const mem = @import("../mem.zig");
-const types = @import("./types.zig");
 const debug = @import("../debug.zig");
 const parse = @import("../parse.zig");
 const builtin = @import("../builtin.zig");
+const tasks = @import("./tasks.zig");
+const types = @import("./types.zig");
 pub usingnamespace @import("../start.zig");
-export fn formatParseArgsBuildCommand(cmd: *types.BuildCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
+export fn formatParseArgsBuildCommand(cmd: *tasks.BuildCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
     @setRuntimeSafety(builtin.is_safe);
     var args_idx: usize = 0;
     while (args_idx != args_len) : (args_idx +%= 1) {
         var arg: [:0]const u8 = mem.terminate(args[args_idx], 0);
-        if (mem.testEqualString("-femit-bin", arg[0..10])) {
+        if (mem.testEqualString("-femit-bin", arg[0..@min(arg.len, 10)])) {
             if (arg.len > 11 and arg[10] == '=') {
                 cmd.emit_bin = .{ .yes = types.Path.formatParseArgs(
                     allocator,
@@ -22,7 +23,7 @@ export fn formatParseArgsBuildCommand(cmd: *types.BuildCommand, allocator: *type
             }
         } else if (mem.testEqualString("-fno-emit-bin", arg)) {
             cmd.emit_bin = .no;
-        } else if (mem.testEqualString("-femit-asm", arg[0..10])) {
+        } else if (mem.testEqualString("-femit-asm", arg[0..@min(arg.len, 10)])) {
             if (arg.len > 11 and arg[10] == '=') {
                 cmd.emit_asm = .{ .yes = types.Path.formatParseArgs(
                     allocator,
@@ -35,7 +36,7 @@ export fn formatParseArgsBuildCommand(cmd: *types.BuildCommand, allocator: *type
             }
         } else if (mem.testEqualString("-fno-emit-asm", arg)) {
             cmd.emit_asm = .no;
-        } else if (mem.testEqualString("-femit-llvm-ir", arg[0..14])) {
+        } else if (mem.testEqualString("-femit-llvm-ir", arg[0..@min(arg.len, 14)])) {
             if (arg.len > 15 and arg[14] == '=') {
                 cmd.emit_llvm_ir = .{ .yes = types.Path.formatParseArgs(
                     allocator,
@@ -48,7 +49,7 @@ export fn formatParseArgsBuildCommand(cmd: *types.BuildCommand, allocator: *type
             }
         } else if (mem.testEqualString("-fno-emit-llvm-ir", arg)) {
             cmd.emit_llvm_ir = .no;
-        } else if (mem.testEqualString("-femit-llvm-bc", arg[0..14])) {
+        } else if (mem.testEqualString("-femit-llvm-bc", arg[0..@min(arg.len, 14)])) {
             if (arg.len > 15 and arg[14] == '=') {
                 cmd.emit_llvm_bc = .{ .yes = types.Path.formatParseArgs(
                     allocator,
@@ -61,7 +62,7 @@ export fn formatParseArgsBuildCommand(cmd: *types.BuildCommand, allocator: *type
             }
         } else if (mem.testEqualString("-fno-emit-llvm-bc", arg)) {
             cmd.emit_llvm_bc = .no;
-        } else if (mem.testEqualString("-femit-h", arg[0..8])) {
+        } else if (mem.testEqualString("-femit-h", arg[0..@min(arg.len, 8)])) {
             if (arg.len > 9 and arg[8] == '=') {
                 cmd.emit_h = .{ .yes = types.Path.formatParseArgs(
                     allocator,
@@ -74,7 +75,7 @@ export fn formatParseArgsBuildCommand(cmd: *types.BuildCommand, allocator: *type
             }
         } else if (mem.testEqualString("-fno-emit-h", arg)) {
             cmd.emit_h = .no;
-        } else if (mem.testEqualString("-femit-docs", arg[0..11])) {
+        } else if (mem.testEqualString("-femit-docs", arg[0..@min(arg.len, 11)])) {
             if (arg.len > 12 and arg[11] == '=') {
                 cmd.emit_docs = .{ .yes = types.Path.formatParseArgs(
                     allocator,
@@ -87,7 +88,7 @@ export fn formatParseArgsBuildCommand(cmd: *types.BuildCommand, allocator: *type
             }
         } else if (mem.testEqualString("-fno-emit-docs", arg)) {
             cmd.emit_docs = .no;
-        } else if (mem.testEqualString("-femit-analysis", arg[0..15])) {
+        } else if (mem.testEqualString("-femit-analysis", arg[0..@min(arg.len, 15)])) {
             if (arg.len > 16 and arg[15] == '=') {
                 cmd.emit_analysis = .{ .yes = types.Path.formatParseArgs(
                     allocator,
@@ -100,7 +101,7 @@ export fn formatParseArgsBuildCommand(cmd: *types.BuildCommand, allocator: *type
             }
         } else if (mem.testEqualString("-fno-emit-analysis", arg)) {
             cmd.emit_analysis = .no;
-        } else if (mem.testEqualString("-femit-implib", arg[0..13])) {
+        } else if (mem.testEqualString("-femit-implib", arg[0..@min(arg.len, 13)])) {
             if (arg.len > 14 and arg[13] == '=') {
                 cmd.emit_implib = .{ .yes = types.Path.formatParseArgs(
                     allocator,
@@ -215,7 +216,7 @@ export fn formatParseArgsBuildCommand(cmd: *types.BuildCommand, allocator: *type
             cmd.soname = .{ .yes = arg };
         } else if (mem.testEqualString("-fno-soname", arg)) {
             cmd.soname = .no;
-        } else if (mem.testEqualString("-O", arg[0..2])) {
+        } else if (mem.testEqualString("-O", arg[0..@min(arg.len, 2)])) {
             if (arg.len == 2) {
                 args_idx +%= 1;
                 if (args_idx == args_len) {
@@ -298,7 +299,7 @@ export fn formatParseArgsBuildCommand(cmd: *types.BuildCommand, allocator: *type
             cmd.single_threaded = false;
         } else if (mem.testEqualString("-ffunction-sections", arg)) {
             cmd.function_sections = true;
-        } else if (mem.testEqualString("-fno-function-sections", arg)) {
+        } else if (mem.testEqualString("-fno-function-section", arg)) {
             cmd.function_sections = false;
         } else if (mem.testEqualString("-fstrip", arg)) {
             cmd.strip = true;
@@ -365,7 +366,7 @@ export fn formatParseArgsBuildCommand(cmd: *types.BuildCommand, allocator: *type
             } else {
                 return;
             }
-        } else if (mem.testEqualString("-I", arg[0..2])) {
+        } else if (mem.testEqualString("-I", arg[0..@min(arg.len, 2)])) {
             if (arg.len == 2) {
                 args_idx +%= 1;
                 if (args_idx == args_len) {
@@ -514,7 +515,7 @@ export fn formatParseArgsBuildCommand(cmd: *types.BuildCommand, allocator: *type
             } else {
                 return;
             }
-        } else if (mem.testEqualString("-D", arg[0..2])) {
+        } else if (mem.testEqualString("-D", arg[0..@min(arg.len, 2)])) {
             if (arg.len == 2) {
                 args_idx +%= 1;
                 if (args_idx == args_len) {
@@ -619,7 +620,7 @@ export fn formatParseArgsBuildCommand(cmd: *types.BuildCommand, allocator: *type
         }
     }
 }
-export fn formatParseArgsFormatCommand(cmd: *types.FormatCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
+export fn formatParseArgsFormatCommand(cmd: *tasks.FormatCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
     @setRuntimeSafety(builtin.is_safe);
     var args_idx: usize = 0;
     while (args_idx != args_len) : (args_idx +%= 1) {
@@ -656,7 +657,7 @@ export fn formatParseArgsFormatCommand(cmd: *types.FormatCommand, allocator: *ty
         _ = allocator;
     }
 }
-export fn formatParseArgsArchiveCommand(cmd: *types.ArchiveCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
+export fn formatParseArgsArchiveCommand(cmd: *tasks.ArchiveCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
     @setRuntimeSafety(builtin.is_safe);
     var args_idx: usize = 0;
     while (args_idx != args_len) : (args_idx +%= 1) {
@@ -715,7 +716,7 @@ export fn formatParseArgsArchiveCommand(cmd: *types.ArchiveCommand, allocator: *
         _ = allocator;
     }
 }
-export fn formatParseArgsObjcopyCommand(cmd: *types.ObjcopyCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
+export fn formatParseArgsObjcopyCommand(cmd: *tasks.ObjcopyCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
     @setRuntimeSafety(builtin.is_safe);
     var args_idx: usize = 0;
     while (args_idx != args_len) : (args_idx +%= 1) {
@@ -767,12 +768,12 @@ export fn formatParseArgsObjcopyCommand(cmd: *types.ObjcopyCommand, allocator: *
         _ = allocator;
     }
 }
-export fn formatParseArgsHarecCommand(cmd: *types.HarecCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
+export fn formatParseArgsHarecCommand(cmd: *tasks.HarecCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
     @setRuntimeSafety(builtin.is_safe);
     var args_idx: usize = 0;
     while (args_idx != args_len) : (args_idx +%= 1) {
         var arg: [:0]const u8 = mem.terminate(args[args_idx], 0);
-        if (mem.testEqualString("-a", arg[0..2])) {
+        if (mem.testEqualString("-a", arg[0..@min(arg.len, 2)])) {
             if (arg.len == 2) {
                 args_idx +%= 1;
                 if (args_idx == args_len) {
@@ -783,7 +784,7 @@ export fn formatParseArgsHarecCommand(cmd: *types.HarecCommand, allocator: *type
                 arg = arg[2..];
             }
             cmd.arch = arg;
-        } else if (mem.testEqualString("-o", arg[0..2])) {
+        } else if (mem.testEqualString("-o", arg[0..@min(arg.len, 2)])) {
             if (arg.len == 2) {
                 args_idx +%= 1;
                 if (args_idx == args_len) {
@@ -794,7 +795,7 @@ export fn formatParseArgsHarecCommand(cmd: *types.HarecCommand, allocator: *type
                 arg = arg[2..];
             }
             cmd.output = arg;
-        } else if (mem.testEqualString("-T", arg[0..2])) {
+        } else if (mem.testEqualString("-T", arg[0..@min(arg.len, 2)])) {
             if (arg.len == 2) {
                 args_idx +%= 1;
                 if (args_idx == args_len) {
@@ -823,7 +824,7 @@ export fn formatParseArgsHarecCommand(cmd: *types.HarecCommand, allocator: *type
         }
     }
 }
-export fn formatParseArgsTableGenCommand(cmd: *types.TableGenCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
+export fn formatParseArgsTableGenCommand(cmd: *tasks.TableGenCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
     @setRuntimeSafety(builtin.is_safe);
     var args_idx: usize = 0;
     while (args_idx != args_len) : (args_idx +%= 1) {
@@ -841,7 +842,7 @@ export fn formatParseArgsTableGenCommand(cmd: *types.TableGenCommand, allocator:
             } else if (mem.testEqualString("on", arg)) {
                 cmd.color = .on;
             }
-        } else if (mem.testEqualString("-I", arg[0..2])) {
+        } else if (mem.testEqualString("-I", arg[0..@min(arg.len, 2)])) {
             if (arg.len == 2) {
                 args_idx +%= 1;
                 if (args_idx == args_len) {
@@ -861,7 +862,7 @@ export fn formatParseArgsTableGenCommand(cmd: *types.TableGenCommand, allocator:
                 dest[0] = arg;
                 cmd.include = dest[0..1];
             }
-        } else if (mem.testEqualString("-d", arg[0..2])) {
+        } else if (mem.testEqualString("-d", arg[0..@min(arg.len, 2)])) {
             if (arg.len == 2) {
                 args_idx +%= 1;
                 if (args_idx == args_len) {
@@ -959,7 +960,7 @@ export fn formatParseArgsTableGenCommand(cmd: *types.TableGenCommand, allocator:
             cmd.gen_dxil_operation = true;
         } else if (mem.testEqualString("--gen-riscv-target_def", arg)) {
             cmd.gen_riscv_target_def = true;
-        } else if (mem.testEqualString("-o", arg[0..2])) {
+        } else if (mem.testEqualString("-o", arg[0..@min(arg.len, 2)])) {
             if (arg.len == 2) {
                 args_idx +%= 1;
                 if (args_idx == args_len) {
@@ -975,7 +976,7 @@ export fn formatParseArgsTableGenCommand(cmd: *types.TableGenCommand, allocator:
         }
     }
 }
-const build_help: [:0]const u8 = 
+const build_help: [:0]const u8 =
     \\    build-
     \\    -f[no-]emit-bin                 (default=yes) Output machine code
     \\    -f[no-]emit-asm                 (default=no) Output assembly code (.s)
@@ -1017,7 +1018,7 @@ const build_help: [:0]const u8 =
     \\    -f[no-]reference-trace          How many lines of reference trace should be shown per compile error
     \\    -f[no-]error-tracing            Enable error tracing in `ReleaseFast` mode
     \\    -f[no-]single-threaded          Code assumes there is only one thread
-    \\    -f[no-]function-sections        Places each function in a separate sections
+    \\    -f                              Places each function in a separate section
     \\    -f[no-]strip                    Omit debug symbols
     \\    -f[no-]formatted-panics         Enable formatted safety panics
     \\    -ofmt                           Override target object format:
@@ -1087,16 +1088,20 @@ const build_help: [:0]const u8 =
     \\    --debug-log                     Enable printing debug/info log messages for scope
     \\    --debug-compile-errors          Crash with helpful diagnostics at the first compile error
     \\    --debug-link-snapshot           Enable dumping of the linker's state in JSON
+    \\
+    \\
 ;
-const format_help: [:0]const u8 = 
+const format_help: [:0]const u8 =
     \\    fmt
     \\    --color         Enable or disable colored error messages
     \\    --stdin         Format code from stdin; output to stdout
     \\    --check         List non-conforming files and exit with an error if the list is non-empty
     \\    --ast-check     Run zig ast-check on every file
     \\    --exclude       Exclude file or directory from formatting
+    \\
+    \\
 ;
-const archive_help: [:0]const u8 = 
+const archive_help: [:0]const u8 =
     \\    ar
     \\    --format    Archive format to create
     \\    --plugin    Ignored for compatibility
@@ -1112,8 +1117,10 @@ const archive_help: [:0]const u8 =
     \\    s           Create an archive index (cf. ranlib)
     \\    S           do not build a symbol table
     \\    u           update only [files] newer than archive contents
+    \\
+    \\
 ;
-const objcopy_help: [:0]const u8 = 
+const objcopy_help: [:0]const u8 =
     \\    objcopy
     \\    --output-target
     \\    --only-section
@@ -1123,15 +1130,19 @@ const objcopy_help: [:0]const u8 =
     \\    --only-keep-debug
     \\    --add-gnu-debuglink
     \\    --extract-to
+    \\
+    \\
 ;
-const harec_help: [:0]const u8 = 
+const harec_help: [:0]const u8 =
     \\    -a
     \\    -o      Output file
     \\    -T
     \\    -t
     \\    -N
+    \\
+    \\
 ;
-const tblgen_help: [:0]const u8 = 
+const tblgen_help: [:0]const u8 =
     \\    --color                         Use colors in output (default=autodetect)
     \\    -I                              Add directories to include search path
     \\    -d                              Add file dependencies
@@ -1175,4 +1186,6 @@ const tblgen_help: [:0]const u8 =
     \\    --gen-dxil-operation            Generate DXIL operation information
     \\    --gen-riscv-target_def          Generate the list of CPU for RISCV
     \\    -o                              Output file
+    \\
+    \\
 ;

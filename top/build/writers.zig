@@ -1,7 +1,9 @@
 const fmt = @import("../fmt.zig");
+const file = @import("../file.zig");
+const tasks = @import("./tasks.zig");
 const types = @import("./types.zig");
 pub usingnamespace @import("../start.zig");
-export fn formatWriteBufBuildCommand(cmd: *types.BuildCommand, zig_exe_ptr: [*]const u8, zig_exe_len: usize, files_ptr: [*]const types.Path, files_len: usize, buf: [*]u8) callconv(.C) usize {
+export fn formatWriteBufBuildCommand(cmd: *tasks.BuildCommand, zig_exe_ptr: [*]const u8, zig_exe_len: usize, files_ptr: [*]const types.Path, files_len: usize, buf: [*]u8) callconv(.C) usize {
     const zig_exe: []const u8 = zig_exe_ptr[0..zig_exe_len];
     const files: []const types.Path = files_ptr[0..files_len];
     @setRuntimeSafety(false);
@@ -397,8 +399,8 @@ export fn formatWriteBufBuildCommand(cmd: *types.BuildCommand, zig_exe_ptr: [*]c
             ptr[0..20].* = "-ffunction-sections\x00".*;
             ptr += 20;
         } else {
-            ptr[0..23].* = "-fno-function-sections\x00".*;
-            ptr += 23;
+            ptr[0..22].* = "-fno-function-section\x00".*;
+            ptr += 22;
         }
     }
     if (cmd.strip) |strip| {
@@ -705,7 +707,7 @@ export fn formatWriteBufBuildCommand(cmd: *types.BuildCommand, zig_exe_ptr: [*]c
     }
     return @intFromPtr(ptr) -% @intFromPtr(buf);
 }
-export fn formatLengthBuildCommand(cmd: *types.BuildCommand, zig_exe_ptr: [*]const u8, zig_exe_len: usize, files_ptr: [*]const types.Path, files_len: usize) callconv(.C) usize {
+export fn formatLengthBuildCommand(cmd: *tasks.BuildCommand, zig_exe_ptr: [*]const u8, zig_exe_len: usize, files_ptr: [*]const types.Path, files_len: usize) callconv(.C) usize {
     const zig_exe: []const u8 = zig_exe_ptr[0..zig_exe_len];
     const files: []const types.Path = files_ptr[0..files_len];
     @setRuntimeSafety(false);
@@ -1016,7 +1018,7 @@ export fn formatLengthBuildCommand(cmd: *types.BuildCommand, zig_exe_ptr: [*]con
         if (function_sections) {
             len +%= 20;
         } else {
-            len +%= 23;
+            len +%= 22;
         }
     }
     if (cmd.strip) |strip| {
@@ -1251,7 +1253,7 @@ export fn formatLengthBuildCommand(cmd: *types.BuildCommand, zig_exe_ptr: [*]con
     }
     return len;
 }
-export fn formatWriteBufFormatCommand(cmd: *types.FormatCommand, zig_exe_ptr: [*]const u8, zig_exe_len: usize, pathname: types.Path, buf: [*]u8) callconv(.C) usize {
+export fn formatWriteBufFormatCommand(cmd: *tasks.FormatCommand, zig_exe_ptr: [*]const u8, zig_exe_len: usize, pathname: types.Path, buf: [*]u8) callconv(.C) usize {
     const zig_exe: []const u8 = zig_exe_ptr[0..zig_exe_len];
     @setRuntimeSafety(false);
     var ptr: [*]u8 = buf;
@@ -1289,7 +1291,7 @@ export fn formatWriteBufFormatCommand(cmd: *types.FormatCommand, zig_exe_ptr: [*
     ptr += pathname.formatWriteBuf(ptr);
     return @intFromPtr(ptr) -% @intFromPtr(buf);
 }
-export fn formatLengthFormatCommand(cmd: *types.FormatCommand, zig_exe_ptr: [*]const u8, zig_exe_len: usize, pathname: types.Path) callconv(.C) usize {
+export fn formatLengthFormatCommand(cmd: *tasks.FormatCommand, zig_exe_ptr: [*]const u8, zig_exe_len: usize, pathname: types.Path) callconv(.C) usize {
     const zig_exe: []const u8 = zig_exe_ptr[0..zig_exe_len];
     @setRuntimeSafety(false);
     var len: usize = 0;
@@ -1318,7 +1320,7 @@ export fn formatLengthFormatCommand(cmd: *types.FormatCommand, zig_exe_ptr: [*]c
     len +%= pathname.formatLength();
     return len;
 }
-export fn formatWriteBufArchiveCommand(cmd: *types.ArchiveCommand, zig_exe_ptr: [*]const u8, zig_exe_len: usize, files_ptr: [*]const types.Path, files_len: usize, buf: [*]u8) callconv(.C) usize {
+export fn formatWriteBufArchiveCommand(cmd: *tasks.ArchiveCommand, zig_exe_ptr: [*]const u8, zig_exe_len: usize, files_ptr: [*]const types.Path, files_len: usize, buf: [*]u8) callconv(.C) usize {
     const zig_exe: []const u8 = zig_exe_ptr[0..zig_exe_len];
     const files: []const types.Path = files_ptr[0..files_len];
     @setRuntimeSafety(false);
@@ -1398,7 +1400,7 @@ export fn formatWriteBufArchiveCommand(cmd: *types.ArchiveCommand, zig_exe_ptr: 
     }
     return @intFromPtr(ptr) -% @intFromPtr(buf);
 }
-export fn formatLengthArchiveCommand(cmd: *types.ArchiveCommand, zig_exe_ptr: [*]const u8, zig_exe_len: usize, files_ptr: [*]const types.Path, files_len: usize) callconv(.C) usize {
+export fn formatLengthArchiveCommand(cmd: *tasks.ArchiveCommand, zig_exe_ptr: [*]const u8, zig_exe_len: usize, files_ptr: [*]const types.Path, files_len: usize) callconv(.C) usize {
     const zig_exe: []const u8 = zig_exe_ptr[0..zig_exe_len];
     const files: []const types.Path = files_ptr[0..files_len];
     @setRuntimeSafety(false);
@@ -1459,7 +1461,7 @@ export fn formatLengthArchiveCommand(cmd: *types.ArchiveCommand, zig_exe_ptr: [*
     }
     return len;
 }
-export fn formatWriteBufObjcopyCommand(cmd: *types.ObjcopyCommand, zig_exe_ptr: [*]const u8, zig_exe_len: usize, file: types.Path, buf: [*]u8) callconv(.C) usize {
+export fn formatWriteBufObjcopyCommand(cmd: *tasks.ObjcopyCommand, zig_exe_ptr: [*]const u8, zig_exe_len: usize, path: types.Path, buf: [*]u8) callconv(.C) usize {
     const zig_exe: []const u8 = zig_exe_ptr[0..zig_exe_len];
     @setRuntimeSafety(false);
     var ptr: [*]u8 = buf;
@@ -1515,10 +1517,10 @@ export fn formatWriteBufObjcopyCommand(cmd: *types.ObjcopyCommand, zig_exe_ptr: 
         ptr[0] = 0;
         ptr += 1;
     }
-    ptr += file.formatWriteBuf(ptr);
+    ptr += path.formatWriteBuf(ptr);
     return @intFromPtr(ptr) -% @intFromPtr(buf);
 }
-export fn formatLengthObjcopyCommand(cmd: *types.ObjcopyCommand, zig_exe_ptr: [*]const u8, zig_exe_len: usize, file: types.Path) callconv(.C) usize {
+export fn formatLengthObjcopyCommand(cmd: *tasks.ObjcopyCommand, zig_exe_ptr: [*]const u8, zig_exe_len: usize, path: types.Path) callconv(.C) usize {
     const zig_exe: []const u8 = zig_exe_ptr[0..zig_exe_len];
     @setRuntimeSafety(false);
     var len: usize = 0;
@@ -1559,10 +1561,10 @@ export fn formatLengthObjcopyCommand(cmd: *types.ObjcopyCommand, zig_exe_ptr: [*
         len +%= extract_to.len;
         len +%= 1;
     }
-    len +%= file.formatLength();
+    len +%= path.formatLength();
     return len;
 }
-export fn formatWriteBufHarecCommand(cmd: *types.HarecCommand, harec_exe_ptr: [*]const u8, harec_exe_len: usize, buf: [*]u8) callconv(.C) usize {
+export fn formatWriteBufHarecCommand(cmd: *tasks.HarecCommand, harec_exe_ptr: [*]const u8, harec_exe_len: usize, buf: [*]u8) callconv(.C) usize {
     const harec_exe: []const u8 = harec_exe_ptr[0..harec_exe_len];
     @setRuntimeSafety(false);
     var ptr: [*]u8 = buf;
@@ -1605,7 +1607,7 @@ export fn formatWriteBufHarecCommand(cmd: *types.HarecCommand, harec_exe_ptr: [*
     }
     return @intFromPtr(ptr) -% @intFromPtr(buf);
 }
-export fn formatLengthHarecCommand(cmd: *types.HarecCommand, harec_exe_ptr: [*]const u8, harec_exe_len: usize) callconv(.C) usize {
+export fn formatLengthHarecCommand(cmd: *tasks.HarecCommand, harec_exe_ptr: [*]const u8, harec_exe_len: usize) callconv(.C) usize {
     const harec_exe: []const u8 = harec_exe_ptr[0..harec_exe_len];
     @setRuntimeSafety(false);
     var len: usize = 0;
@@ -1639,7 +1641,7 @@ export fn formatLengthHarecCommand(cmd: *types.HarecCommand, harec_exe_ptr: [*]c
     }
     return len;
 }
-export fn formatWriteBufTableGenCommand(cmd: *types.TableGenCommand, buf: [*]u8) callconv(.C) usize {
+export fn formatWriteBufTableGenCommand(cmd: *tasks.TableGenCommand, buf: [*]u8) callconv(.C) usize {
     @setRuntimeSafety(false);
     var ptr: [*]u8 = buf;
     if (cmd.color) |color| {
@@ -1835,7 +1837,7 @@ export fn formatWriteBufTableGenCommand(cmd: *types.TableGenCommand, buf: [*]u8)
     }
     return @intFromPtr(ptr) -% @intFromPtr(buf);
 }
-export fn formatLengthTableGenCommand(cmd: *types.TableGenCommand) callconv(.C) usize {
+export fn formatLengthTableGenCommand(cmd: *tasks.TableGenCommand) callconv(.C) usize {
     @setRuntimeSafety(false);
     var len: usize = 0;
     if (cmd.color) |color| {
