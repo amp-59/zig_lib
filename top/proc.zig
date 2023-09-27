@@ -403,16 +403,16 @@ pub fn getEffectiveGroupId() u16 {
     @setRuntimeSafety(builtin.is_safe);
     return @intCast(sys.call(.getegid, .{}, u64, .{}));
 }
-pub fn waitPid(comptime spec: WaitSpec, id: WaitSpec.For) sys.ErrorUnion(spec.errors, spec.return_type) {
-    const logging: debug.Logging.SuccessError = comptime spec.logging.override();
+pub fn waitPid(comptime wait_spec: WaitSpec, id: WaitSpec.For) sys.ErrorUnion(wait_spec.errors, wait_spec.return_type) {
+    const logging: debug.Logging.SuccessError = comptime wait_spec.logging.override();
     var ret: Return = comptime builtin.all(Return);
     const status_addr: u64 = @intFromPtr(&ret.status);
-    if (meta.wrap(sys.call(.wait4, spec.errors, u32, .{ WaitSpec.pid(id), status_addr, 0, 0, 0 }))) |pid| {
+    if (meta.wrap(sys.call(.wait4, wait_spec.errors, u32, .{ WaitSpec.pid(id), status_addr, 0, 0, 0 }))) |pid| {
         ret.pid = pid;
         if (logging.Success) {
             about.waitNotice(id, ret);
         }
-        if (spec.return_type == Return) {
+        if (wait_spec.return_type == Return) {
             return ret;
         }
     } else |wait_error| {
@@ -422,12 +422,12 @@ pub fn waitPid(comptime spec: WaitSpec, id: WaitSpec.For) sys.ErrorUnion(spec.er
         return wait_error;
     }
 }
-pub fn waitId(comptime spec: WaitIdSpec, id: u64, siginfo: *SignalInfo) sys.ErrorUnion(spec.errors, spec.return_type) {
-    const id_type: u64 = @intFromEnum(spec.id_type);
+pub fn waitId(comptime wait_spec: WaitIdSpec, id: u64, siginfo: *SignalInfo) sys.ErrorUnion(wait_spec.errors, wait_spec.return_type) {
+    const id_type: u64 = @intFromEnum(wait_spec.id_type);
     const siginfo_buf_addr: u64 = @intFromPtr(siginfo);
-    const flags: WaitId = comptime spec.flags();
-    const logging: debug.Logging.SuccessError = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.waitid, spec.errors, spec.return_type, .{ id_type, id, siginfo_buf_addr, flags.val, 0 }))) |pid| {
+    const flags: WaitId = comptime wait_spec.flags();
+    const logging: debug.Logging.SuccessError = comptime wait_spec.logging.override();
+    if (meta.wrap(sys.call(.waitid, wait_spec.errors, wait_spec.return_type, .{ id_type, id, siginfo_buf_addr, flags.val, 0 }))) |pid| {
         return pid;
     } else |wait_error| {
         if (logging.Error) {
@@ -436,9 +436,9 @@ pub fn waitId(comptime spec: WaitIdSpec, id: u64, siginfo: *SignalInfo) sys.Erro
         return wait_error;
     }
 }
-pub fn fork(comptime spec: ForkSpec) sys.ErrorUnion(spec.errors, spec.return_type) {
-    const logging: debug.Logging.SuccessError = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.fork, spec.errors, spec.return_type, .{}))) |pid| {
+pub fn fork(comptime fork_spec: ForkSpec) sys.ErrorUnion(fork_spec.errors, fork_spec.return_type) {
+    const logging: debug.Logging.SuccessError = comptime fork_spec.logging.override();
+    if (meta.wrap(sys.call(.fork, fork_spec.errors, fork_spec.return_type, .{}))) |pid| {
         if (logging.Success and pid != 0) {
             about.forkNotice(pid);
         }
@@ -449,37 +449,6 @@ pub fn fork(comptime spec: ForkSpec) sys.ErrorUnion(spec.errors, spec.return_typ
         }
         return fork_error;
     }
-}
-pub fn command(comptime spec: CommandSpec, pathname: [:0]const u8, args: spec.args_type, vars: spec.vars_type) sys.ErrorUnion(.{
-    .throw = spec.errors.execve.throw ++ spec.errors.fork.throw ++ spec.errors.waitpid.throw,
-    .abort = spec.errors.execve.abort ++ spec.errors.fork.abort ++ spec.errors.waitpid.abort,
-}, u8) {
-    const fork_spec: ForkSpec = comptime spec.fork();
-    const wait_spec: WaitSpec = comptime spec.waitpid();
-    const exec_spec: file.ExecuteSpec = comptime spec.exec();
-    const pid: u64 = try meta.wrap(fork(fork_spec));
-    if (pid == 0) {
-        try meta.wrap(file.execPath(exec_spec, pathname, args, vars));
-    }
-    const ret: wait_spec.return_type = try meta.wrap(waitPid(wait_spec, .{ .pid = pid }));
-    if (wait_spec.return_type != void) {
-        return Status.exit(ret.status);
-    }
-}
-pub fn commandAt(comptime spec: CommandSpec, dir_fd: usize, name: [:0]const u8, args: spec.args_type, vars: spec.vars_type) sys.ErrorUnion(.{
-    .throw = spec.errors.execve.throw ++ spec.errors.fork.throw ++ spec.errors.waitpid.throw,
-    .abort = spec.errors.execve.abort ++ spec.errors.fork.abort ++ spec.errors.waitpid.abort,
-}, u8) {
-    const fork_spec: ForkSpec = comptime spec.fork();
-    const wait_spec: WaitSpec = comptime spec.waitpid();
-    const exec_spec: file.ExecuteSpec = comptime spec.exec();
-    const pid: u64 = try meta.wrap(fork(fork_spec));
-    if (pid == 0) {
-        try meta.wrap(file.execAt(exec_spec, dir_fd, name, args, vars));
-    }
-    var status: u32 = 0;
-    try meta.wrap(waitPid(wait_spec, .{ .pid = pid }, &status));
-    return Status.exit(status);
 }
 pub fn futexWait(comptime futex_spec: FutexSpec, futex: *u32, value: u32, timeout: *const time.TimeSpec) sys.ErrorUnion(
     futex_spec.errors,
@@ -567,99 +536,14 @@ fn futexRequeue(comptime futex_spec: FutexSpec, futex1: *u32, futex2: *u32, coun
     }
 }
 const SignalActionSpec = struct {
-    errors: sys.ErrorPolicy = .{ .throw = sys.sigaction_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.sigaction.errors.all },
     return_type: type = void,
     logging: debug.Logging.SuccessError = .{},
-    options: Options = .{},
-    const Options = packed struct {
-        no_child_stop: bool = false,
-        no_child_wait: bool = false,
-        no_defer: bool = false,
-        on_stack: bool = false,
-        restart: bool = true,
-        reset: bool = true,
-        restorer: bool = false,
-        siginfo: bool = true,
-        unsupported: bool = false,
-    };
-    fn flags(comptime spec: SignalActionSpec) SignalAction.Options {
-        var flags_bitfield: SignalAction.Options = .{ .val = 0 };
-        if (spec.options.no_child_stop) {
-            flags_bitfield.set(.no_child_stop);
-        }
-        if (spec.options.no_child_wait) {
-            flags_bitfield.set(.no_child_wait);
-        }
-        if (spec.options.no_defer) {
-            flags_bitfield.set(.no_defer);
-        }
-        if (spec.options.on_stack) {
-            flags_bitfield.set(.on_stack);
-        }
-        if (spec.options.restart) {
-            flags_bitfield.set(.restart);
-        }
-        if (spec.options.reset) {
-            flags_bitfield.set(.reset);
-        }
-        if (spec.options.restorer) {
-            flags_bitfield.set(.restorer);
-        }
-        if (spec.options.siginfo) {
-            flags_bitfield.set(.siginfo);
-        }
-        if (spec.options.unsupported) {
-            flags_bitfield.set(.unsupported);
-        }
-        return flags_bitfield;
-    }
-};
-pub const SignalStack = extern struct {
-    addr: u64,
-    flags: Options = .{},
-    len: u64,
-    const Options = packed struct(u32) {
-        on_stack: bool = true,
-        disable: bool = false,
-        zb2: u29 = 0,
-        auto_disarm: bool = false,
-    };
 };
 const SignalStackSpec = struct {
-    errors: sys.ErrorPolicy = .{ .throw = sys.sigaction_errors },
+    errors: sys.ErrorPolicy = .{ .throw = spec.sigaction.errors.all },
     return_type: type = void,
     logging: debug.Logging.SuccessError = .{},
-    fn flags(comptime spec: SignalActionSpec) SignalAction.Options {
-        var flags_bitfield: SignalAction.Options = .{ .val = 0 };
-        if (spec.options.no_child_stop) {
-            flags_bitfield.set(.no_child_stop);
-        }
-        if (spec.options.no_child_wait) {
-            flags_bitfield.set(.no_child_wait);
-        }
-        if (spec.options.no_defer) {
-            flags_bitfield.set(.no_defer);
-        }
-        if (spec.options.on_stack) {
-            flags_bitfield.set(.on_stack);
-        }
-        if (spec.options.restart) {
-            flags_bitfield.set(.restart);
-        }
-        if (spec.options.reset) {
-            flags_bitfield.set(.reset);
-        }
-        if (spec.options.restorer) {
-            flags_bitfield.set(.restorer);
-        }
-        if (spec.options.siginfo) {
-            flags_bitfield.set(.siginfo);
-        }
-        if (spec.options.unsupported) {
-            flags_bitfield.set(.unsupported);
-        }
-        return flags_bitfield;
-    }
 };
 pub fn updateSignalAction(
     comptime sigaction_spec: SignalActionSpec,
@@ -670,7 +554,7 @@ pub fn updateSignalAction(
     @setRuntimeSafety(false);
     const logging: debug.Logging.SuccessError = comptime sigaction_spec.logging.override();
     const new_action_buf_addr: u64 = @intFromPtr(&new_action);
-    const old_action_buf_addr: u64 = @intFromPtr(old_action.?);
+    const old_action_buf_addr: u64 = if (old_action) |oa| @intFromPtr(oa) else 0;
     if (meta.wrap(sys.call(.rt_sigaction, sigaction_spec.errors, sigaction_spec.return_type, .{
         @intFromEnum(signo), new_action_buf_addr, old_action_buf_addr, 8,
     }))) {
@@ -718,7 +602,7 @@ noinline fn callErrorOrMediaReturnValueFunction(comptime Fn: type, result_addr: 
         @as(*meta.Args(Fn), @ptrFromInt(args_addr)).*,
     );
 }
-pub noinline fn clone(comptime spec: CloneSpec, stack_addr: u64, stack_len: u64, result_ptr: anytype, function: anytype, args: meta.Args(@TypeOf(function))) sys.ErrorUnion(spec.errors, spec.return_type) {
+pub noinline fn clone(comptime clone_spec: CloneSpec, flags: sys.flags.Clone, stack_addr: u64, stack_len: u64, result_ptr: anytype, function: anytype, args: meta.Args(@TypeOf(function))) sys.ErrorUnion(clone_spec.errors, clone_spec.return_type) {
     @setRuntimeSafety(false);
     const Context = struct {
         call: if (@typeInfo(@TypeOf(function)) == .Pointer)
@@ -729,7 +613,7 @@ pub noinline fn clone(comptime spec: CloneSpec, stack_addr: u64, stack_len: u64,
         args: meta.Args(@TypeOf(function)),
     };
     const cl_args: CloneArgs = .{
-        .flags = comptime spec.flags(),
+        .flags = flags,
         .stack_addr = stack_addr,
         .stack_len = stack_len,
         .child_tid_addr = stack_addr,
@@ -761,16 +645,16 @@ pub noinline fn clone(comptime spec: CloneSpec, stack_addr: u64, stack_len: u64,
         tl_ctx.ret.* = @call(.never_inline, tl_ctx.call, tl_ctx.args);
         exit(0);
     }
-    if (spec.errors.throw.len != 0) {
-        if (rc < 0) try builtin.zigErrorThrow(sys.ErrorCode, spec.errors.throw, rc);
+    if (clone_spec.errors.throw.len != 0) {
+        if (rc < 0) try builtin.zigErrorThrow(sys.ErrorCode, clone_spec.errors.throw, rc);
     }
-    if (spec.errors.abort.len != 0) {
-        if (rc < 0) builtin.zigErrorAbort(sys.ErrorCode, spec.errors.abort, rc);
+    if (clone_spec.errors.abort.len != 0) {
+        if (rc < 0) builtin.zigErrorAbort(sys.ErrorCode, clone_spec.errors.abort, rc);
     }
-    if (spec.return_type == void) {
+    if (clone_spec.return_type == void) {
         return;
     }
-    if (spec.return_type != noreturn) {
+    if (clone_spec.return_type != noreturn) {
         return @intCast(rc);
     }
     unreachable;
@@ -882,21 +766,42 @@ pub fn restoreRunTime() callconv(.Naked) void {
         ),
     }
 }
-pub fn enableExceptionHandlers() void {
+pub inline fn initializeRuntime() void {
     @setRuntimeSafety(false);
-    if (builtin.signal_stack) |stack| {
+    const sighand: comptime_int = @as(u5, @bitCast(builtin.signal_handlers));
+    if (sighand != 0 and
+        @sizeOf(builtin.AbsoluteState) != 0)
+    {
         sys.call_noexcept(.mmap, void, .{
-            stack.addr, stack.len, 0x1 | 0x2, 0x20 | 0x02 | 0x100000, ~@as(u64, 0), 0,
+            builtin.absolute_state.addr, builtin.absolute_state.len +% builtin.signal_stack.len, 0x3, 0x100022, ~@as(u64, 0), 0,
         });
         sys.call_noexcept(.sigaltstack, void, .{
-            @intFromPtr(&SignalStack{ .addr = stack.addr, .len = stack.len }), 0, 0,
+            @intFromPtr(&SignalStack{ .addr = builtin.signal_stack.addr, .len = builtin.signal_stack.len }), 0, 0,
         });
+        updateExceptionHandlers(&.{
+            .flags = .{ .on_stack = true },
+            .handler = .{ .action = about.exceptionHandler },
+            .restorer = restoreRunTime,
+        });
+    } else if (sighand != 0) {
+        sys.call_noexcept(.mmap, void, .{
+            builtin.absolute_state.addr, builtin.absolute_state.len +% builtin.signal_stack.len, 0x3, 0x100022, ~@as(u64, 0), 0,
+        });
+        sys.call_noexcept(.sigaltstack, void, .{
+            @intFromPtr(&SignalStack{ .addr = builtin.signal_stack.addr, .len = builtin.signal_stack.len }), 0, 0,
+        });
+        updateExceptionHandlers(&.{
+            .flags = .{ .on_stack = true },
+            .handler = .{ .action = about.exceptionHandler },
+            .restorer = restoreRunTime,
+        });
+    } else if (@sizeOf(builtin.AbsoluteState) != 0) {
+        sys.call_noexcept(.mmap, void, .{
+            builtin.absolute_state.addr, builtin.absolute_state.len, 0x3, 0x100022, ~@as(u64, 0), 0,
+        });
+    } else {
+        comptime return;
     }
-    updateExceptionHandlers(&.{
-        .flags = .{ .on_stack = builtin.signal_stack != null },
-        .handler = .{ .action = about.exceptionHandler },
-        .restorer = restoreRunTime,
-    });
 }
 fn updateExceptionHandlers(act: *const SignalAction) void {
     @setRuntimeSafety(false);
@@ -906,6 +811,7 @@ fn updateExceptionHandlers(act: *const SignalAction) void {
         .{ builtin.signal_handlers.IllegalInstruction, sys.SIG.ILL },
         .{ builtin.signal_handlers.BusError, sys.SIG.BUS },
         .{ builtin.signal_handlers.FloatingPointError, sys.SIG.FPE },
+        .{ builtin.signal_handlers.Trap, sys.SIG.FPE },
     }) |pair| {
         if (pair[0]) {
             sys.call_noexcept(.rt_sigaction, void, .{ pair[1], sa_new_addr, 0, @sizeOf(@TypeOf(act.mask)) });
@@ -950,7 +856,7 @@ pub const about = opaque {
     fn waitNotice(id: WaitSpec.For, ret: Return) void {
         const if_signaled: bool = Status.ifSignaled(ret.status);
         const if_stopped: bool = Status.ifStopped(ret.status);
-        const code: u64 = if (if_signaled) Status.stop(ret.status) else if (if_stopped) Status.stop(ret.status) else Status.exit(ret.status);
+        const code: u64 = if (if_signaled) Status.termSignal(ret.status) else if (if_stopped) Status.stopSignal(ret.status) else Status.exitStatus(ret.status);
         const status_s: []const u8 =
             if (if_signaled) ", sig=" else if (if_stopped) ", stop=" else ", exit=";
         var ud64: fmt.Type.Ud64 = @bitCast(@as(u64, ret.pid));
@@ -1291,7 +1197,7 @@ pub const about = opaque {
         ptr[0..2].* = ", ".*;
         ptr += 2;
         ptr += about.exe(ptr[0..4096]);
-        debug.panicSignal(buf[0..@intFromPtr(ptr - @intFromPtr(&buf))], ctx.?);
+        debug.panic_extra.panicSignal(buf[0..@intFromPtr(ptr - @intFromPtr(&buf))], ctx.?);
     }
     pub fn sampleAllReports() void {
         var futex0: u32 = 0xf0;
@@ -1447,7 +1353,7 @@ pub fn GenericOptions(comptime Options: type) type {
                     }
                     const arg1: [:0]const u8 = mem.terminate(args.*[index], 0);
                     if (option.long) |long_switch| blk: {
-                        if (mach.testEqualMany8(long_switch, arg1)) {
+                        if (mem.testEqualString(long_switch, arg1)) {
                             option.getOptInternal(&options, args, index, 0);
                             continue :lo;
                         }
@@ -1456,14 +1362,14 @@ pub fn GenericOptions(comptime Options: type) type {
                         }
                         const assign_long_switch: []const u8 = long_switch ++ "=";
                         if (arg1.len >= assign_long_switch.len and
-                            mach.testEqualMany8(assign_long_switch, arg1[0..assign_long_switch.len]))
+                            mem.testEqualString(assign_long_switch, arg1[0..assign_long_switch.len]))
                         {
                             option.getOptInternal(&options, args, index, assign_long_switch.len);
                             continue :lo;
                         }
                     }
                     if (option.short) |short_switch| blk: {
-                        if (mach.testEqualMany8(short_switch, arg1)) {
+                        if (mem.testEqualString(short_switch, arg1)) {
                             option.getOptInternal(&options, args, index, 0);
                             continue :lo;
                         }
@@ -1471,7 +1377,7 @@ pub fn GenericOptions(comptime Options: type) type {
                             break :blk;
                         }
                         if (arg1.len >= short_switch.len and
-                            mach.testEqualMany8(short_switch, arg1[0..short_switch.len]))
+                            mem.testEqualString(short_switch, arg1[0..short_switch.len]))
                         {
                             option.getOptInternal(&options, args, index, short_switch.len);
                             continue :lo;
@@ -1479,11 +1385,11 @@ pub fn GenericOptions(comptime Options: type) type {
                     }
                 }
                 const arg1: [:0]const u8 = mem.terminate(args.*[index], 0);
-                if (mach.testEqualMany8("--", arg1)) {
+                if (mem.testEqualString("--", arg1)) {
                     shift(args, index);
                     break :lo;
                 }
-                if (mach.testEqualMany8("--help", arg1)) {
+                if (mem.testEqualString("--help", arg1)) {
                     Option.about.optionNotice(all_options);
                     exitNotice(0);
                 }
@@ -1597,14 +1503,14 @@ pub fn exitGroupNotice(return_code: u8) noreturn {
     }
     exitGroup(return_code);
 }
-pub fn exitError(exit_error: anytype, return_code: u8) noreturn {
+pub fn exitError(exit_error: anyerror, return_code: u8) noreturn {
     @setCold(true);
     if (debug.logging_general.Fault) {
         debug.about.errorRcNotice(@errorName(exit_error), return_code);
     }
     exit(return_code);
 }
-pub fn exitGroupError(exit_error: anytype, return_code: u8) noreturn {
+pub fn exitGroupError(exit_error: anyerror, return_code: u8) noreturn {
     @setCold(true);
     if (debug.logging_general.Fault) {
         debug.about.errorRcNotice(@errorName(exit_error), return_code);
@@ -1625,7 +1531,7 @@ pub fn exitGroupFault(message: []const u8, return_code: u8) noreturn {
     }
     exitGroup(return_code);
 }
-pub fn exitErrorFault(exit_error: anytype, message: []const u8, return_code: u8) noreturn {
+pub fn exitErrorFault(exit_error: anyerror, message: []const u8, return_code: u8) noreturn {
     @setCold(true);
     if (debug.logging_general.Fault and
         debug.logging_general.Error)
@@ -1638,7 +1544,7 @@ pub fn exitErrorFault(exit_error: anytype, message: []const u8, return_code: u8)
     }
     exitGroup(return_code);
 }
-pub fn exitGroupErrorFault(exit_error: anytype, message: []const u8, return_code: u8) noreturn {
+pub fn exitGroupErrorFault(exit_error: anyerror, message: []const u8, return_code: u8) noreturn {
     @setCold(true);
     if (debug.logging_general.Fault and
         debug.logging_general.Error)
@@ -1669,3 +1575,54 @@ pub fn exitGroup(rc: u8) noreturn {
     );
     unreachable;
 }
+pub const spec = struct {
+    pub const wait = struct {
+        pub const errors = struct {
+            pub const all = &.{
+                .SRCH, .INTR, .AGAIN, .INVAL, .CHILD,
+            };
+        };
+    };
+    pub const waitid = struct {
+        pub const errors = struct {
+            pub const all = &.{
+                .AGAIN, .CHILD, .INTR, .INVAL, .SRCH,
+            };
+        };
+    };
+    pub const sigaction = struct {
+        pub const errors = struct {
+            pub const all = &.{
+                .FAULT, .INVAL,
+            };
+        };
+    };
+    pub const close = struct {
+        pub const errors = struct {
+            pub const all = &.{
+                .INTR, .IO, .BADF, .NOSPC,
+            };
+        };
+    };
+    pub const fork = struct {
+        pub const errors = struct {
+            pub const all = &.{ .AGAIN, .NOMEM, .NOSYS, .RESTART };
+        };
+    };
+    pub const clone3 = struct {
+        pub const errors = struct {
+            pub const all = &.{
+                .PERM,      .AGAIN, .INVAL,   .EXIST, .USERS,
+                .OPNOTSUPP, .NOMEM, .RESTART, .BUSY,  .NOSPC,
+            };
+        };
+    };
+    pub const futex = struct {
+        pub const errors = struct {
+            pub const all = &.{
+                .ACCES, .AGAIN, .DEADLK, .FAULT, .INTR, .INVAL,    .NFILE,
+                .NOMEM, .NOSYS, .PERM,   .PERM,  .SRCH, .TIMEDOUT,
+            };
+        };
+    };
+};
