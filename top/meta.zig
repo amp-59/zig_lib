@@ -533,6 +533,7 @@ pub inline fn sliceToArrayPointer(comptime any: anytype) SliceToArrayPointer(@Ty
 /// Union(Enum(Int))    => Int,
 /// Optional(Any)       => Any,
 /// Array(Any)          => Any,
+/// Pointer(Array(Any)) => Any,
 /// Pointer(Any)        => Any,
 pub fn Child(comptime T: type) type {
     switch (@typeInfo(T)) {
@@ -750,12 +751,16 @@ pub fn EnumBitField(comptime E: type) type {
 }
 pub fn GenericBitFieldSet(comptime backing_integer: type) type {
     return struct {
+        name: ?[]const u8 = null,
         tag: enum { E, F },
         pairs: []const BitFieldPair,
+
         const BitFieldSet = @This();
         const BitFieldPair = struct {
-            name: []const u8,
+            decl_name: []const u8,
             value: backing_integer,
+            field_name: ?[]const u8 = null,
+            default_value: bool = false,
         };
         fn sortSets(sets: []const BitFieldSet) []const BitFieldSet {
             var sorted: [sets.len]BitFieldSet = sliceToArrayPointer(sets).*;
