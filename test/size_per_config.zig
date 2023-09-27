@@ -3,14 +3,11 @@ const mem = zl.mem;
 const sys = zl.sys;
 const fmt = zl.fmt;
 const proc = zl.proc;
-const mach = zl.mach;
 const time = zl.time;
 const meta = zl.meta;
-const spec = zl.spec;
 const debug = zl.debug;
 const builtin = zl.builtin;
 
-pub usingnamespace mach;
 pub usingnamespace zl.start;
 
 // pub const AddressSpace = mem.GenericRegularAddressSpace(.{
@@ -18,15 +15,15 @@ pub usingnamespace zl.start;
 //    .lb_offset = 0x40000000,
 //    .divisions = 64,
 pub const AddressSpace = mem.GenericElementaryAddressSpace(.{
-    .errors = spec.address_space.errors.noexcept,
-    .logging = spec.address_space.logging.silent,
+    .errors = mem.spec.address_space.errors.noexcept,
+    .logging = mem.spec.address_space.logging.silent,
     .options = .{},
 });
 const Allocator = mem.GenericArenaAllocator(.{
     .AddressSpace = AddressSpace,
     //.arena_index = 0,
-    .errors = spec.allocator.errors.noexcept,
-    .logging = spec.allocator.logging.silent,
+    .errors = mem.spec.allocator.errors.noexcept,
+    .logging = mem.spec.allocator.logging.silent,
 });
 
 const map_spec: mem.MapSpec = .{
