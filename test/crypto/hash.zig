@@ -1,7 +1,6 @@
 const zl = @import("../../zig_lib.zig");
 const fmt = zl.fmt;
 const mem = zl.mem;
-const mach = zl.mach;
 const meta = zl.meta;
 const proc = zl.proc;
 const debug = zl.debug;
@@ -22,7 +21,7 @@ pub const signal_handlers: debug.SignalHandlers = .{
 pub const htest = struct {
     pub fn assertEqualHash(allocator: *mem.SimpleAllocator, comptime Hasher: anytype, expected_hex: [:0]const u8, input: []const u8) !void {
         const hash_buf: []u8 = allocator.allocate(u8, Hasher.len *% 2);
-        mach.memset(hash_buf.ptr, 0, hash_buf.len);
+        @memset(hash_buf, 0);
         if (meta.fnParams(Hasher.hash).len == 3) {
             Hasher.hash(input, hash_buf[0..Hasher.len], .{});
         } else {
@@ -32,7 +31,7 @@ pub const htest = struct {
     }
     pub fn assertEqual(allocator: *mem.SimpleAllocator, expected_hex: [:0]const u8, input: []const u8) !void {
         const bytes_buf: []u8 = allocator.allocate(u8, expected_hex.len);
-        mach.memset(bytes_buf.ptr, 0, bytes_buf.len);
+        @memset(bytes_buf, 0);
         for (bytes_buf[0 .. bytes_buf.len / 2], 0..) |*byte, idx| {
             byte.* = parse.ux(u8, expected_hex[2 * idx .. 2 * idx + 2]);
         }
@@ -979,6 +978,6 @@ pub fn hashTestMain() !void {
         try testSha256Streaming(&allocator);
         try testSha256AlignedFinal();
     }
-    allocator.unmap();
+    allocator.unmapAll();
 }
 pub const main = hashTestMain;
