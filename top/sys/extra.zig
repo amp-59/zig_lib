@@ -329,7 +329,7 @@ pub const Clone = struct {
         pub const NEWNET = "new_net";
         pub const IO = "io";
     };
-    pub const backing_integer = u32;
+    pub const backing_integer = usize;
 };
 pub const Id = struct {
     pub const default_values = struct {
@@ -782,16 +782,10 @@ pub const SignalStack = struct {
         pub const DISABLE = false;
         pub const AUTODISARM = false;
     };
-    const _field_names = struct {
-        pub const ONSTACK =
-            \\onstack
-        ;
-        pub const DISABLE =
-            \\disable
-        ;
-        pub const AUTODISARM =
-            \\autodisarm
-        ;
+    pub const field_names = struct {
+        pub const ONSTACK = "on_stack";
+        pub const DISABLE = "disable";
+        pub const AUTODISARM = "auto_disarm";
     };
     pub const backing_integer = u32;
 };

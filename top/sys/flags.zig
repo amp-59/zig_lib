@@ -527,7 +527,7 @@ pub const Lock = packed struct(usize) {
         return len;
     }
 };
-pub const Clone = packed struct(u32) {
+pub const Clone = packed struct(usize) {
     zb0: u7 = 0,
     new_time: bool = false,
     vm: bool = true,
@@ -554,9 +554,10 @@ pub const Clone = packed struct(u32) {
     new_pid: bool = false,
     new_net: bool = false,
     io: bool = false,
+    zb32: u32 = 0,
     pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
         @setRuntimeSafety(false);
-        var tmp: u32 = @bitCast(format);
+        var tmp: usize = @bitCast(format);
         if (tmp == 0) return 0;
         buf[0..6].* = "flags=".*;
         var len: usize = 6;
@@ -597,9 +598,9 @@ pub const Clone = packed struct(u32) {
     }
     pub fn formatLength(format: @This()) usize {
         @setRuntimeSafety(false);
-        if (@as(u32, @bitCast(format)) == 0) return 0;
+        if (@as(usize, @bitCast(format)) == 0) return 0;
         var len: usize = 6;
-        var tmp: u32 = @bitCast(format);
+        var tmp: usize = @bitCast(format);
         for ([_]struct { u8, u8 }{
             .{ 7, 7 },  .{ 2, 1 },  .{ 2, 1 }, .{ 5, 1 },
             .{ 7, 1 },  .{ 5, 1 },  .{ 6, 1 }, .{ 5, 1 },
@@ -1069,10 +1070,10 @@ pub const SignalAction = packed struct(usize) {
     }
 };
 pub const SignalStack = packed struct(u32) {
-    ONSTACK: bool = false,
-    DISABLE: bool = false,
+    on_stack: bool = false,
+    disable: bool = false,
     zb2: u29 = 0,
-    AUTODISARM: bool = false,
+    auto_disarm: bool = false,
     pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
         @setRuntimeSafety(false);
         var tmp: u32 = @bitCast(format);
@@ -1080,9 +1081,9 @@ pub const SignalStack = packed struct(u32) {
         buf[0..6].* = "flags=".*;
         var len: usize = 6;
         for ([_]struct { []const u8, u8 }{
-            .{ "ONSTACK", 0 },
-            .{ "DISABLE", 1 },
-            .{ "AUTODISARM", 30 },
+            .{ "on_stack", 0 },
+            .{ "disable", 1 },
+            .{ "auto_disarm", 30 },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
             if (tmp & 1 != 0) {
