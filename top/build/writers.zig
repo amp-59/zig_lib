@@ -399,8 +399,8 @@ export fn formatWriteBufBuildCommand(cmd: *tasks.BuildCommand, zig_exe_ptr: [*]c
             ptr[0..20].* = "-ffunction-sections\x00".*;
             ptr += 20;
         } else {
-            ptr[0..22].* = "-fno-function-section\x00".*;
-            ptr += 22;
+            ptr[0..23].* = "-fno-function-sections\x00".*;
+            ptr += 23;
         }
     }
     if (cmd.strip) |strip| {
@@ -1018,7 +1018,7 @@ export fn formatLengthBuildCommand(cmd: *tasks.BuildCommand, zig_exe_ptr: [*]con
         if (function_sections) {
             len +%= 20;
         } else {
-            len +%= 22;
+            len +%= 23;
         }
     }
     if (cmd.strip) |strip| {
