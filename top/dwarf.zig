@@ -1072,7 +1072,7 @@ pub const DwarfInfo = extern struct {
             const ent: *AbbrevTable.Entry = abbrev_tab.addEntry(allocator);
             ent.head = .{
                 .tag = tag[0],
-                .children = @as(Children, @enumFromInt(abbrev_bytes[abbrev_tab.len])),
+                .children = abbrev_bytes[abbrev_tab.len] == 1,
                 .code = code[0],
             };
             abbrev_tab.len +%= 1;
@@ -1296,7 +1296,7 @@ pub const DwarfInfo = extern struct {
                 }
             } else {
                 while (true) {
-                    const kind: RLE = @as(RLE, @enumFromInt(buf[pos]));
+                    const kind: RLE = @enumFromInt(buf[pos]);
                     pos +%= 1;
                     switch (kind) {
                         .end_of_list => break,
