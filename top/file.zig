@@ -2393,8 +2393,15 @@ pub const about = struct {
     const named_pipe_file_s: *const [12]u8 = "a named pipe";
     const socket_file_s: *const [8]u8 = "a socket";
     const symbolic_link_file_s: *const [15]u8 = "a symbolic link";
-
-    fn aboutFdNotice(about_s: fmt.AboutSrc, fd: u64) void {
+    fn totalLength(vecs: []const mem.Vector) usize {
+        @setRuntimeSafety(builtin.is_safe);
+        var max_len: usize = 0;
+        for (vecs) |vec| {
+            max_len +%= vec.len;
+        }
+        return max_len;
+    }
+    fn aboutFdNotice(about_s: fmt.AboutSrc, fd: usize) void {
         @setRuntimeSafety(builtin.is_safe);
         var buf: [32768]u8 = undefined;
         buf[0..about_s.len].* = about_s.*;
