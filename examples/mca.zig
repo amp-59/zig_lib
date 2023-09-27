@@ -5,7 +5,6 @@ const fmt = zl.fmt;
 const proc = zl.proc;
 const meta = zl.meta;
 const file = zl.file;
-const spec = zl.spec;
 const build = zl.build;
 const debug = zl.debug;
 const builtin = zl.builtin;
@@ -20,7 +19,7 @@ pub const logging_override: debug.Logging.Override = .{
     .Error = false,
     .Fault = false,
 };
-pub const AddressSpace = spec.address_space.regular_128;
+pub const AddressSpace = mem.spec.address_space.regular_128;
 
 const input_open_spec: file.OpenSpec = .{};
 const input_close_spec: file.CloseSpec = .{
