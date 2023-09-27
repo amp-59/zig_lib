@@ -292,12 +292,12 @@ pub const SerialSpec = struct {
         stat: debug.Logging.SuccessErrorFault = .{},
     };
     pub const Errors = struct {
-        create: sys.ErrorPolicy = .{ .throw = sys.open_errors },
-        open: sys.ErrorPolicy = .{ .throw = sys.open_errors },
-        stat: sys.ErrorPolicy = .{ .throw = sys.stat_errors },
-        read: sys.ErrorPolicy = .{ .throw = sys.read_errors },
-        write: sys.ErrorPolicy = .{ .throw = sys.write_errors },
-        close: sys.ErrorPolicy = .{ .abort = sys.close_errors },
+        create: sys.ErrorPolicy = .{ .throw = file.spec.open.errors.all },
+        open: sys.ErrorPolicy = .{ .throw = file.spec.open.errors.all },
+        stat: sys.ErrorPolicy = .{ .throw = file.spec.stat.errors.all },
+        read: sys.ErrorPolicy = .{ .throw = file.spec.read.errors.all },
+        write: sys.ErrorPolicy = .{ .throw = file.spec.write.errors.all },
+        close: sys.ErrorPolicy = .{ .abort = file.spec.close.errors.all },
     };
     fn stat(comptime serial_spec: SerialSpec) file.StatusSpec {
         return .{ .logging = serial_spec.logging.stat, .errors = serial_spec.errors.stat };
