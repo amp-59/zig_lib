@@ -2,14 +2,15 @@ const fmt = @import("../fmt.zig");
 const mem = @import("../mem.zig");
 const debug = @import("../debug.zig");
 const parse = @import("../parse.zig");
-const types = @import("../build.zig");
 const builtin = @import("../builtin.zig");
+const types = @import("./types.zig");
+const tasks = @import("./tasks.zig");
 pub const PathUnion = union(enum) {
     yes: ?types.Path,
     no,
 };
 pub const BuildCommand = struct {
-    kind: types.OutputMode,
+    kind: types.BinaryOutput,
     /// (default=yes) Output machine code
     emit_bin: ?PathUnion = null,
     /// (default=no) Output assembly code (.s)
@@ -89,7 +90,7 @@ pub const BuildCommand = struct {
     error_tracing: ?bool = null,
     /// Code assumes there is only one thread
     single_threaded: ?bool = null,
-    /// Places each function in a separate sections
+    /// Places each function in a separate section
     function_sections: ?bool = null,
     /// Omit debug symbols
     strip: ?bool = null,
@@ -223,7 +224,7 @@ pub const BuildCommand = struct {
     debug_link_snapshot: bool = false,
     pub const size_of: comptime_int = @sizeOf(@This());
     pub const align_of: comptime_int = @alignOf(@This());
-    pub fn formatWriteBuf(cmd: *types.BuildCommand, zig_exe: []const u8, files: []const types.Path, buf: [*]u8) usize {
+    pub fn formatWriteBuf(cmd: *BuildCommand, zig_exe: []const u8, files: []const types.Path, buf: [*]u8) usize {
         @setRuntimeSafety(false);
         var ptr: [*]u8 = buf;
         ptr = fmt.strcpyEqu(ptr, zig_exe);
@@ -617,8 +618,8 @@ pub const BuildCommand = struct {
                 ptr[0..20].* = "-ffunction-sections\x00".*;
                 ptr += 20;
             } else {
-                ptr[0..23].* = "-fno-function-sections\x00".*;
-                ptr += 23;
+                ptr[0..22].* = "-fno-function-section\x00".*;
+                ptr += 22;
             }
         }
         if (cmd.strip) |strip| {
@@ -925,7 +926,7 @@ pub const BuildCommand = struct {
         }
         return @intFromPtr(ptr) -% @intFromPtr(buf);
     }
-    pub fn formatLength(cmd: *types.BuildCommand, zig_exe: []const u8, files: []const types.Path) usize {
+    pub fn formatLength(cmd: *BuildCommand, zig_exe: []const u8, files: []const types.Path) usize {
         @setRuntimeSafety(false);
         var len: usize = 0;
         len +%= zig_exe.len;
@@ -1234,7 +1235,7 @@ pub const BuildCommand = struct {
             if (function_sections) {
                 len +%= 20;
             } else {
-                len +%= 23;
+                len +%= 22;
             }
         }
         if (cmd.strip) |strip| {
@@ -1469,7 +1470,7 @@ pub const BuildCommand = struct {
         }
         return len;
     }
-    pub fn formatWrite(cmd: *types.BuildCommand, zig_exe: []const u8, files: []const types.Path, array: anytype) void {
+    pub fn formatWrite(cmd: *BuildCommand, zig_exe: []const u8, files: []const types.Path, array: anytype) void {
         @setRuntimeSafety(false);
         array.writeMany(zig_exe);
         array.writeOne(0);
@@ -1777,7 +1778,7 @@ pub const BuildCommand = struct {
             if (function_sections) {
                 array.writeMany("-ffunction-sections\x00");
             } else {
-                array.writeMany("-fno-function-sections\x00");
+                array.writeMany("-fno-function-section\x00");
             }
         }
         if (cmd.strip) |strip| {
@@ -2011,12 +2012,12 @@ pub const BuildCommand = struct {
             array.writeMany("--debug-link-snapshot\x00");
         }
     }
-    pub fn formatParseArgs(cmd: *types.BuildCommand, allocator: *types.Allocator, args: [][*:0]u8) void {
+    pub fn formatParseArgs(cmd: *BuildCommand, allocator: *types.Allocator, args: [][*:0]u8) void {
         @setRuntimeSafety(builtin.is_safe);
         var args_idx: usize = 0;
         while (args_idx != args.len) : (args_idx +%= 1) {
             var arg: [:0]const u8 = mem.terminate(args[args_idx], 0);
-            if (mem.testEqualString("-femit-bin", arg[0..10])) {
+            if (mem.testEqualString("-femit-bin", arg[0..@min(arg.len, 10)])) {
                 if (arg.len > 11 and arg[10] == '=') {
                     cmd.emit_bin = .{ .yes = types.Path.formatParseArgs(
                         allocator,
@@ -2029,7 +2030,7 @@ pub const BuildCommand = struct {
                 }
             } else if (mem.testEqualString("-fno-emit-bin", arg)) {
                 cmd.emit_bin = .no;
-            } else if (mem.testEqualString("-femit-asm", arg[0..10])) {
+            } else if (mem.testEqualString("-femit-asm", arg[0..@min(arg.len, 10)])) {
                 if (arg.len > 11 and arg[10] == '=') {
                     cmd.emit_asm = .{ .yes = types.Path.formatParseArgs(
                         allocator,
@@ -2042,7 +2043,7 @@ pub const BuildCommand = struct {
                 }
             } else if (mem.testEqualString("-fno-emit-asm", arg)) {
                 cmd.emit_asm = .no;
-            } else if (mem.testEqualString("-femit-llvm-ir", arg[0..14])) {
+            } else if (mem.testEqualString("-femit-llvm-ir", arg[0..@min(arg.len, 14)])) {
                 if (arg.len > 15 and arg[14] == '=') {
                     cmd.emit_llvm_ir = .{ .yes = types.Path.formatParseArgs(
                         allocator,
@@ -2055,7 +2056,7 @@ pub const BuildCommand = struct {
                 }
             } else if (mem.testEqualString("-fno-emit-llvm-ir", arg)) {
                 cmd.emit_llvm_ir = .no;
-            } else if (mem.testEqualString("-femit-llvm-bc", arg[0..14])) {
+            } else if (mem.testEqualString("-femit-llvm-bc", arg[0..@min(arg.len, 14)])) {
                 if (arg.len > 15 and arg[14] == '=') {
                     cmd.emit_llvm_bc = .{ .yes = types.Path.formatParseArgs(
                         allocator,
@@ -2068,7 +2069,7 @@ pub const BuildCommand = struct {
                 }
             } else if (mem.testEqualString("-fno-emit-llvm-bc", arg)) {
                 cmd.emit_llvm_bc = .no;
-            } else if (mem.testEqualString("-femit-h", arg[0..8])) {
+            } else if (mem.testEqualString("-femit-h", arg[0..@min(arg.len, 8)])) {
                 if (arg.len > 9 and arg[8] == '=') {
                     cmd.emit_h = .{ .yes = types.Path.formatParseArgs(
                         allocator,
@@ -2081,7 +2082,7 @@ pub const BuildCommand = struct {
                 }
             } else if (mem.testEqualString("-fno-emit-h", arg)) {
                 cmd.emit_h = .no;
-            } else if (mem.testEqualString("-femit-docs", arg[0..11])) {
+            } else if (mem.testEqualString("-femit-docs", arg[0..@min(arg.len, 11)])) {
                 if (arg.len > 12 and arg[11] == '=') {
                     cmd.emit_docs = .{ .yes = types.Path.formatParseArgs(
                         allocator,
@@ -2094,7 +2095,7 @@ pub const BuildCommand = struct {
                 }
             } else if (mem.testEqualString("-fno-emit-docs", arg)) {
                 cmd.emit_docs = .no;
-            } else if (mem.testEqualString("-femit-analysis", arg[0..15])) {
+            } else if (mem.testEqualString("-femit-analysis", arg[0..@min(arg.len, 15)])) {
                 if (arg.len > 16 and arg[15] == '=') {
                     cmd.emit_analysis = .{ .yes = types.Path.formatParseArgs(
                         allocator,
@@ -2107,7 +2108,7 @@ pub const BuildCommand = struct {
                 }
             } else if (mem.testEqualString("-fno-emit-analysis", arg)) {
                 cmd.emit_analysis = .no;
-            } else if (mem.testEqualString("-femit-implib", arg[0..13])) {
+            } else if (mem.testEqualString("-femit-implib", arg[0..@min(arg.len, 13)])) {
                 if (arg.len > 14 and arg[13] == '=') {
                     cmd.emit_implib = .{ .yes = types.Path.formatParseArgs(
                         allocator,
@@ -2222,7 +2223,7 @@ pub const BuildCommand = struct {
                 cmd.soname = .{ .yes = arg };
             } else if (mem.testEqualString("-fno-soname", arg)) {
                 cmd.soname = .no;
-            } else if (mem.testEqualString("-O", arg[0..2])) {
+            } else if (mem.testEqualString("-O", arg[0..@min(arg.len, 2)])) {
                 if (arg.len == 2) {
                     args_idx +%= 1;
                     if (args_idx == args.len) {
@@ -2305,7 +2306,7 @@ pub const BuildCommand = struct {
                 cmd.single_threaded = false;
             } else if (mem.testEqualString("-ffunction-sections", arg)) {
                 cmd.function_sections = true;
-            } else if (mem.testEqualString("-fno-function-sections", arg)) {
+            } else if (mem.testEqualString("-fno-function-section", arg)) {
                 cmd.function_sections = false;
             } else if (mem.testEqualString("-fstrip", arg)) {
                 cmd.strip = true;
@@ -2372,7 +2373,7 @@ pub const BuildCommand = struct {
                 } else {
                     return;
                 }
-            } else if (mem.testEqualString("-I", arg[0..2])) {
+            } else if (mem.testEqualString("-I", arg[0..@min(arg.len, 2)])) {
                 if (arg.len == 2) {
                     args_idx +%= 1;
                     if (args_idx == args.len) {
@@ -2521,7 +2522,7 @@ pub const BuildCommand = struct {
                 } else {
                     return;
                 }
-            } else if (mem.testEqualString("-D", arg[0..2])) {
+            } else if (mem.testEqualString("-D", arg[0..@min(arg.len, 2)])) {
                 if (arg.len == 2) {
                     args_idx +%= 1;
                     if (args_idx == args.len) {
@@ -2640,7 +2641,7 @@ pub const FormatCommand = struct {
     exclude: ?[]const u8 = null,
     pub const size_of: comptime_int = @sizeOf(@This());
     pub const align_of: comptime_int = @alignOf(@This());
-    pub fn formatWriteBuf(cmd: *types.FormatCommand, zig_exe: []const u8, pathname: types.Path, buf: [*]u8) usize {
+    pub fn formatWriteBuf(cmd: *FormatCommand, zig_exe: []const u8, pathname: types.Path, buf: [*]u8) usize {
         @setRuntimeSafety(false);
         var ptr: [*]u8 = buf;
         ptr = fmt.strcpyEqu(ptr, zig_exe);
@@ -2677,7 +2678,7 @@ pub const FormatCommand = struct {
         ptr += pathname.formatWriteBuf(ptr);
         return @intFromPtr(ptr) -% @intFromPtr(buf);
     }
-    pub fn formatLength(cmd: *types.FormatCommand, zig_exe: []const u8, pathname: types.Path) usize {
+    pub fn formatLength(cmd: *FormatCommand, zig_exe: []const u8, pathname: types.Path) usize {
         @setRuntimeSafety(false);
         var len: usize = 0;
         len +%= zig_exe.len;
@@ -2705,7 +2706,7 @@ pub const FormatCommand = struct {
         len +%= pathname.formatLength();
         return len;
     }
-    pub fn formatWrite(cmd: *types.FormatCommand, zig_exe: []const u8, pathname: types.Path, array: anytype) void {
+    pub fn formatWrite(cmd: *FormatCommand, zig_exe: []const u8, pathname: types.Path, array: anytype) void {
         @setRuntimeSafety(false);
         array.writeMany(zig_exe);
         array.writeOne(0);
@@ -2731,7 +2732,7 @@ pub const FormatCommand = struct {
         }
         array.writeFormat(pathname);
     }
-    pub fn formatParseArgs(cmd: *types.FormatCommand, allocator: *types.Allocator, args: [][*:0]u8) void {
+    pub fn formatParseArgs(cmd: *FormatCommand, allocator: *types.Allocator, args: [][*:0]u8) void {
         @setRuntimeSafety(builtin.is_safe);
         var args_idx: usize = 0;
         while (args_idx != args.len) : (args_idx +%= 1) {
@@ -2820,7 +2821,7 @@ pub const ArchiveCommand = struct {
     },
     pub const size_of: comptime_int = @sizeOf(@This());
     pub const align_of: comptime_int = @alignOf(@This());
-    pub fn formatWriteBuf(cmd: *types.ArchiveCommand, zig_exe: []const u8, files: []const types.Path, buf: [*]u8) usize {
+    pub fn formatWriteBuf(cmd: *ArchiveCommand, zig_exe: []const u8, files: []const types.Path, buf: [*]u8) usize {
         @setRuntimeSafety(false);
         var ptr: [*]u8 = buf;
         ptr = fmt.strcpyEqu(ptr, zig_exe);
@@ -2898,7 +2899,7 @@ pub const ArchiveCommand = struct {
         }
         return @intFromPtr(ptr) -% @intFromPtr(buf);
     }
-    pub fn formatLength(cmd: *types.ArchiveCommand, zig_exe: []const u8, files: []const types.Path) usize {
+    pub fn formatLength(cmd: *ArchiveCommand, zig_exe: []const u8, files: []const types.Path) usize {
         @setRuntimeSafety(false);
         var len: usize = 0;
         len +%= zig_exe.len;
@@ -2957,7 +2958,7 @@ pub const ArchiveCommand = struct {
         }
         return len;
     }
-    pub fn formatWrite(cmd: *types.ArchiveCommand, zig_exe: []const u8, files: []const types.Path, array: anytype) void {
+    pub fn formatWrite(cmd: *ArchiveCommand, zig_exe: []const u8, files: []const types.Path, array: anytype) void {
         @setRuntimeSafety(false);
         array.writeMany(zig_exe);
         array.writeOne(0);
@@ -3014,7 +3015,7 @@ pub const ArchiveCommand = struct {
             array.writeFormat(value);
         }
     }
-    pub fn formatParseArgs(cmd: *types.ArchiveCommand, allocator: *types.Allocator, args: [][*:0]u8) void {
+    pub fn formatParseArgs(cmd: *ArchiveCommand, allocator: *types.Allocator, args: [][*:0]u8) void {
         @setRuntimeSafety(builtin.is_safe);
         var args_idx: usize = 0;
         while (args_idx != args.len) : (args_idx +%= 1) {
@@ -3085,7 +3086,7 @@ pub const ObjcopyCommand = struct {
     extract_to: ?[]const u8 = null,
     pub const size_of: comptime_int = @sizeOf(@This());
     pub const align_of: comptime_int = @alignOf(@This());
-    pub fn formatWriteBuf(cmd: *types.ObjcopyCommand, zig_exe: []const u8, file: types.Path, buf: [*]u8) usize {
+    pub fn formatWriteBuf(cmd: *ObjcopyCommand, zig_exe: []const u8, path: types.Path, buf: [*]u8) usize {
         @setRuntimeSafety(false);
         var ptr: [*]u8 = buf;
         ptr = fmt.strcpyEqu(ptr, zig_exe);
@@ -3140,10 +3141,10 @@ pub const ObjcopyCommand = struct {
             ptr[0] = 0;
             ptr += 1;
         }
-        ptr += file.formatWriteBuf(ptr);
+        ptr += path.formatWriteBuf(ptr);
         return @intFromPtr(ptr) -% @intFromPtr(buf);
     }
-    pub fn formatLength(cmd: *types.ObjcopyCommand, zig_exe: []const u8, file: types.Path) usize {
+    pub fn formatLength(cmd: *ObjcopyCommand, zig_exe: []const u8, path: types.Path) usize {
         @setRuntimeSafety(false);
         var len: usize = 0;
         len +%= zig_exe.len;
@@ -3183,10 +3184,10 @@ pub const ObjcopyCommand = struct {
             len +%= extract_to.len;
             len +%= 1;
         }
-        len +%= file.formatLength();
+        len +%= path.formatLength();
         return len;
     }
-    pub fn formatWrite(cmd: *types.ObjcopyCommand, zig_exe: []const u8, file: types.Path, array: anytype) void {
+    pub fn formatWrite(cmd: *ObjcopyCommand, zig_exe: []const u8, path: types.Path, array: anytype) void {
         @setRuntimeSafety(false);
         array.writeMany(zig_exe);
         array.writeOne(0);
@@ -3225,9 +3226,9 @@ pub const ObjcopyCommand = struct {
             array.writeMany(extract_to);
             array.writeOne(0);
         }
-        array.writeFormat(file);
+        array.writeFormat(path);
     }
-    pub fn formatParseArgs(cmd: *types.ObjcopyCommand, allocator: *types.Allocator, args: [][*:0]u8) void {
+    pub fn formatParseArgs(cmd: *ObjcopyCommand, allocator: *types.Allocator, args: [][*:0]u8) void {
         @setRuntimeSafety(builtin.is_safe);
         var args_idx: usize = 0;
         while (args_idx != args.len) : (args_idx +%= 1) {
@@ -3291,7 +3292,7 @@ pub const HarecCommand = struct {
     namespace: bool = false,
     pub const size_of: comptime_int = @sizeOf(@This());
     pub const align_of: comptime_int = @alignOf(@This());
-    pub fn formatWriteBuf(cmd: *types.HarecCommand, harec_exe: []const u8, buf: [*]u8) usize {
+    pub fn formatWriteBuf(cmd: *HarecCommand, harec_exe: []const u8, buf: [*]u8) usize {
         @setRuntimeSafety(false);
         var ptr: [*]u8 = buf;
         ptr = fmt.strcpyEqu(ptr, harec_exe);
@@ -3333,7 +3334,7 @@ pub const HarecCommand = struct {
         }
         return @intFromPtr(ptr) -% @intFromPtr(buf);
     }
-    pub fn formatLength(cmd: *types.HarecCommand, harec_exe: []const u8) usize {
+    pub fn formatLength(cmd: *HarecCommand, harec_exe: []const u8) usize {
         @setRuntimeSafety(false);
         var len: usize = 0;
         len +%= harec_exe.len;
@@ -3366,7 +3367,7 @@ pub const HarecCommand = struct {
         }
         return len;
     }
-    pub fn formatWrite(cmd: *types.HarecCommand, harec_exe: []const u8, array: anytype) void {
+    pub fn formatWrite(cmd: *HarecCommand, harec_exe: []const u8, array: anytype) void {
         @setRuntimeSafety(false);
         array.writeMany(harec_exe);
         array.writeOne(0);
@@ -3397,12 +3398,12 @@ pub const HarecCommand = struct {
             array.writeMany("-N\x00");
         }
     }
-    pub fn formatParseArgs(cmd: *types.HarecCommand, allocator: *types.Allocator, args: [][*:0]u8) void {
+    pub fn formatParseArgs(cmd: *HarecCommand, allocator: *types.Allocator, args: [][*:0]u8) void {
         @setRuntimeSafety(builtin.is_safe);
         var args_idx: usize = 0;
         while (args_idx != args.len) : (args_idx +%= 1) {
             var arg: [:0]const u8 = mem.terminate(args[args_idx], 0);
-            if (mem.testEqualString("-a", arg[0..2])) {
+            if (mem.testEqualString("-a", arg[0..@min(arg.len, 2)])) {
                 if (arg.len == 2) {
                     args_idx +%= 1;
                     if (args_idx == args.len) {
@@ -3413,7 +3414,7 @@ pub const HarecCommand = struct {
                     arg = arg[2..];
                 }
                 cmd.arch = arg;
-            } else if (mem.testEqualString("-o", arg[0..2])) {
+            } else if (mem.testEqualString("-o", arg[0..@min(arg.len, 2)])) {
                 if (arg.len == 2) {
                     args_idx +%= 1;
                     if (args_idx == args.len) {
@@ -3424,7 +3425,7 @@ pub const HarecCommand = struct {
                     arg = arg[2..];
                 }
                 cmd.output = arg;
-            } else if (mem.testEqualString("-T", arg[0..2])) {
+            } else if (mem.testEqualString("-T", arg[0..@min(arg.len, 2)])) {
                 if (arg.len == 2) {
                     args_idx +%= 1;
                     if (args_idx == args.len) {
@@ -3545,7 +3546,7 @@ pub const TableGenCommand = struct {
     output: ?[]const u8 = null,
     pub const size_of: comptime_int = @sizeOf(@This());
     pub const align_of: comptime_int = @alignOf(@This());
-    pub fn formatWriteBuf(cmd: *types.TableGenCommand, buf: [*]u8) usize {
+    pub fn formatWriteBuf(cmd: *TableGenCommand, buf: [*]u8) usize {
         @setRuntimeSafety(false);
         var ptr: [*]u8 = buf;
         if (cmd.color) |color| {
@@ -3741,7 +3742,7 @@ pub const TableGenCommand = struct {
         }
         return @intFromPtr(ptr) -% @intFromPtr(buf);
     }
-    pub fn formatLength(cmd: *types.TableGenCommand) usize {
+    pub fn formatLength(cmd: *TableGenCommand) usize {
         @setRuntimeSafety(false);
         var len: usize = 0;
         if (cmd.color) |color| {
@@ -3890,7 +3891,7 @@ pub const TableGenCommand = struct {
         }
         return len;
     }
-    pub fn formatWrite(cmd: *types.TableGenCommand, array: anytype) void {
+    pub fn formatWrite(cmd: *TableGenCommand, array: anytype) void {
         @setRuntimeSafety(false);
         if (cmd.color) |color| {
             array.writeMany("--color\x00");
@@ -4037,7 +4038,7 @@ pub const TableGenCommand = struct {
             array.writeOne(0);
         }
     }
-    pub fn formatParseArgs(cmd: *types.TableGenCommand, allocator: *types.Allocator, args: [][*:0]u8) void {
+    pub fn formatParseArgs(cmd: *TableGenCommand, allocator: *types.Allocator, args: [][*:0]u8) void {
         @setRuntimeSafety(builtin.is_safe);
         var args_idx: usize = 0;
         while (args_idx != args.len) : (args_idx +%= 1) {
@@ -4055,7 +4056,7 @@ pub const TableGenCommand = struct {
                 } else if (mem.testEqualString("on", arg)) {
                     cmd.color = .on;
                 }
-            } else if (mem.testEqualString("-I", arg[0..2])) {
+            } else if (mem.testEqualString("-I", arg[0..@min(arg.len, 2)])) {
                 if (arg.len == 2) {
                     args_idx +%= 1;
                     if (args_idx == args.len) {
@@ -4075,7 +4076,7 @@ pub const TableGenCommand = struct {
                     dest[0] = arg;
                     cmd.include = dest[0..1];
                 }
-            } else if (mem.testEqualString("-d", arg[0..2])) {
+            } else if (mem.testEqualString("-d", arg[0..@min(arg.len, 2)])) {
                 if (arg.len == 2) {
                     args_idx +%= 1;
                     if (args_idx == args.len) {
@@ -4173,7 +4174,7 @@ pub const TableGenCommand = struct {
                 cmd.gen_dxil_operation = true;
             } else if (mem.testEqualString("--gen-riscv-target_def", arg)) {
                 cmd.gen_riscv_target_def = true;
-            } else if (mem.testEqualString("-o", arg[0..2])) {
+            } else if (mem.testEqualString("-o", arg[0..@min(arg.len, 2)])) {
                 if (arg.len == 2) {
                     args_idx +%= 1;
                     if (args_idx == args.len) {
@@ -4232,7 +4233,7 @@ const build_help: [:0]const u8 =
     \\    -f[no-]reference-trace          How many lines of reference trace should be shown per compile error
     \\    -f[no-]error-tracing            Enable error tracing in `ReleaseFast` mode
     \\    -f[no-]single-threaded          Code assumes there is only one thread
-    \\    -f[no-]function-sections        Places each function in a separate sections
+    \\    -f                              Places each function in a separate section
     \\    -f[no-]strip                    Omit debug symbols
     \\    -f[no-]formatted-panics         Enable formatted safety panics
     \\    -ofmt                           Override target object format:
@@ -4302,6 +4303,8 @@ const build_help: [:0]const u8 =
     \\    --debug-log                     Enable printing debug/info log messages for scope
     \\    --debug-compile-errors          Crash with helpful diagnostics at the first compile error
     \\    --debug-link-snapshot           Enable dumping of the linker's state in JSON
+    \\
+    \\
 ;
 const format_help: [:0]const u8 = 
     \\    fmt
@@ -4310,6 +4313,8 @@ const format_help: [:0]const u8 =
     \\    --check         List non-conforming files and exit with an error if the list is non-empty
     \\    --ast-check     Run zig ast-check on every file
     \\    --exclude       Exclude file or directory from formatting
+    \\
+    \\
 ;
 const archive_help: [:0]const u8 = 
     \\    ar
@@ -4327,6 +4332,8 @@ const archive_help: [:0]const u8 =
     \\    s           Create an archive index (cf. ranlib)
     \\    S           do not build a symbol table
     \\    u           update only [files] newer than archive contents
+    \\
+    \\
 ;
 const objcopy_help: [:0]const u8 = 
     \\    objcopy
@@ -4338,6 +4345,8 @@ const objcopy_help: [:0]const u8 =
     \\    --only-keep-debug
     \\    --add-gnu-debuglink
     \\    --extract-to
+    \\
+    \\
 ;
 const harec_help: [:0]const u8 = 
     \\    -a
@@ -4345,6 +4354,8 @@ const harec_help: [:0]const u8 =
     \\    -T
     \\    -t
     \\    -N
+    \\
+    \\
 ;
 const tblgen_help: [:0]const u8 = 
     \\    --color                         Use colors in output (default=autodetect)
@@ -4390,6 +4401,8 @@ const tblgen_help: [:0]const u8 =
     \\    --gen-dxil-operation            Generate DXIL operation information
     \\    --gen-riscv-target_def          Generate the list of CPU for RISCV
     \\    -o                              Output file
+    \\
+    \\
 ;
 pub const Command = struct {
     build: *BuildCommand,
