@@ -22,30 +22,27 @@ const meta = zl.meta;
 const debug = zl.debug;
 const build = zl.build;
 const builtin = zl.builtin;
+pub const AbsoluteState = struct {
+    home: [:0]u8,
+    cwd: [:0]u8,
+    proj: [:0]u8,
+    pid: u16,
+};
 pub usingnamespace zl.start;
-pub const Node =
-    if (@hasDecl(root, "Node"))
-    root.Node
-else
-    build.GenericNode(.{ .options = .{} });
 pub const message_style: [:0]const u8 =
     if (@hasDecl(root, "message_style"))
     root.message_style
 else
     "\x1b[3m";
-pub const enable_debugging: bool =
-    if (@hasDecl(root, "enable_debugging"))
-    root.enable_debugging
-else
-    false;
+pub const enable_debugging: bool = false;
 pub const logging_override: debug.Logging.Override =
     if (@hasDecl(root, "logging_override")) root.logging_override else .{
-    .Attempt = false,
-    .Success = false,
-    .Acquire = false,
-    .Release = false,
-    .Error = false,
-    .Fault = false,
+    .Attempt = enable_debugging,
+    .Success = enable_debugging,
+    .Acquire = enable_debugging,
+    .Release = enable_debugging,
+    .Error = enable_debugging,
+    .Fault = enable_debugging,
 };
 pub const exec_mode = .Run;
 pub const want_stack_traces: bool = enable_debugging;
@@ -70,6 +67,7 @@ pub const trace: debug.Trace = .{
     .Signal = enable_debugging,
     .options = .{},
 };
+pub const Builder = build.GenericBuilder(.{});
 pub const BuildConfig = struct {
     packages: []Pkg,
     include_dirs: []const []const u8,
@@ -191,30 +189,38 @@ fn jsonWriteBuf(cfg: *const BuildConfig, buf: [*]u8) usize {
     ptr[0] = '}';
     return @intFromPtr(ptr - @intFromPtr(buf)) +% 1;
 }
-fn lengthModules(node: *Node) usize {
+fn lengthModules(node: *Builder.Node) usize {
     @setRuntimeSafety(builtin.is_safe);
+    var itr: Builder.Node.Iterator = Builder.Node.Iterator.init(node);
     var len: usize = 0;
-    for (node.impl.nodes[1..node.impl.nodes_len]) |sub_node| {
+    while (itr.next()) |sub_node| {
         if (sub_node.tag == .group) {
             len +%= lengthModules(sub_node);
         }
-        if (sub_node.tag == .worker and sub_node.task.tag == .build) {
-            if (sub_node.task.cmd.build.modules) |mods| {
+        if (sub_node.tag == .worker and
+            sub_node.tasks.tag == .build and
+            sub_node.flags.have_task_data)
+        {
+            if (sub_node.tasks.cmd.build.modules) |mods| {
                 len +%= mods.len;
             }
         }
     }
     return len;
 }
-fn writeModulesBuf(pkgs: [*]BuildConfig.Pkg, node: *Node) usize {
+fn writeModulesBuf(pkgs: [*]BuildConfig.Pkg, node: *Builder.Node) usize {
     @setRuntimeSafety(builtin.is_safe);
+    var itr: Builder.Node.Iterator = Builder.Node.Iterator.init(node);
     var len: usize = 0;
-    for (node.impl.nodes[1..node.impl.nodes_len]) |sub_node| {
+    while (itr.next()) |sub_node| {
         if (sub_node.tag == .group) {
             len +%= writeModulesBuf(pkgs, sub_node);
         }
-        if (sub_node.tag == .worker and sub_node.task.tag == .build) {
-            if (sub_node.task.cmd.build.modules) |mods| {
+        if (sub_node.tag == .worker and
+            sub_node.tasks.tag == .build and
+            sub_node.flags.have_task_data)
+        {
+            if (sub_node.tasks.cmd.build.modules) |mods| {
                 for (mods) |mod| {
                     pkgs[len] = .{ .name = mod.name, .path = mod.path };
                     len +%= 1;
@@ -225,23 +231,20 @@ fn writeModulesBuf(pkgs: [*]BuildConfig.Pkg, node: *Node) usize {
     return len;
 }
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) void {
-    @setRuntimeSafety(builtin.is_safe);
-    var allocator: build.Allocator = build.Allocator.init_arena(
-        Node.AddressSpace.arena(Node.specification.options.max_thread_count),
+    var allocator: build.Allocator = build.Allocator.fromArena(
+        Builder.AddressSpace.arena(Builder.max_thread_count),
     );
     if (args.len < 5) {
-        proc.exitError(error.MissingEnvironmentPaths, 2);
+        zl.proc.exitError(error.MissingEnvironmentPaths, 2);
     }
-    const toplevel: *Node = Node.init(&allocator, args, vars);
-    try meta.wrap(
-        root.buildMain(&allocator, toplevel),
-    );
-    const pkgs_len: u64 = lengthModules(toplevel);
+    const top: *Builder.Node = Builder.Node.init(&allocator, "toplevel", args, vars);
+    root.buildMain(&allocator, top);
+    const pkgs_len: usize = lengthModules(top);
     const pkgs: []BuildConfig.Pkg = try meta.wrap(
         allocator.allocate(BuildConfig.Pkg, pkgs_len),
     );
     const cfg: BuildConfig = .{
-        .packages = pkgs[0..writeModulesBuf(pkgs.ptr, toplevel)],
+        .packages = pkgs[0..writeModulesBuf(pkgs.ptr, top)],
         .include_dirs = &.{},
     };
     const buf: []u8 = try meta.wrap(
