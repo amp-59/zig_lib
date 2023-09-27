@@ -2063,7 +2063,41 @@ pub const DirStreamSpec = struct {
         getdents: debug.Logging.SuccessError = .{},
     };
 };
-
+pub const SimplePath = struct {
+    name: [:0]const u8,
+};
+pub const CompoundPath = extern struct {
+    names: [*][:0]const u8 = @ptrFromInt(8),
+    names_len: usize = 0,
+    names_max_len: usize = 0,
+    pub fn addName(cp: *CompoundPath, allocator: anytype) *[:0]const u8 {
+        @setRuntimeSafety(builtin.is_safe);
+        const size_of: comptime_int = @sizeOf([:0]const u8);
+        const addr_buf: *u64 = @ptrCast(&cp.names);
+        const ret: *[:0]const u8 = @ptrFromInt(allocator.addGeneric(size_of, //
+            2, addr_buf, &cp.names_max_len, cp.names_len));
+        cp.names_len +%= 1;
+        return ret;
+    }
+    pub fn hasExtension(cp: *const CompoundPath, ext: [:0]const u8) bool {
+        @setRuntimeSafety(builtin.is_safe);
+        const name: [:0]const u8 = cp.names[cp.names_len -% 1];
+        return mem.testEqualString(ext, name[name.len -% 4 ..]);
+    }
+    pub fn status(cp: *const CompoundPath, comptime stat_spec: StatusSpec, st: *Status) void {
+        @setRuntimeSafety(builtin.is_safe);
+        var buf: [4096:0]u8 = undefined;
+        statusAt(stat_spec, .{}, cwd, buf[0 .. cp.formatWriteBuf(&buf) -% 1 :0], st);
+    }
+    pub fn concatenate(cp: *const CompoundPath, allocator: anytype) [:0]u8 {
+        @setRuntimeSafety(builtin.is_safe);
+        var buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(cp.formatLength(), 1));
+        const len: usize = cp.formatWriteBuf(buf) -% 1;
+        buf[len] = 0;
+        return buf[0..len :0];
+    }
+    pub usingnamespace fmt.PathFormat(CompoundPath);
+};
 pub fn GenericDirStream(comptime dirs_spec: DirStreamSpec) type {
     return (struct {
         path: [:0]const u8,
