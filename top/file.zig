@@ -1256,19 +1256,18 @@ fn makePathInternal(comptime mkpath_spec: MakePathSpec, pathname: [:0]u8, file_m
         return error.NotADirectory;
     }
 }
-pub fn makePath(comptime spec: MakePathSpec, pathname: []const u8, comptime file_mode: Mode) sys.ErrorUnion(.{
-    .throw = spec.errors.mkdir.throw ++ spec.errors.stat.throw,
-    .abort = spec.errors.mkdir.abort ++ spec.errors.stat.abort,
+pub fn makePath(comptime mkpath_spec: MakePathSpec, pathname: []const u8, file_mode: Mode) sys.ErrorUnion(.{
+    .throw = mkpath_spec.errors.mkdir.throw ++ mkpath_spec.errors.stat.throw,
+    .abort = mkpath_spec.errors.mkdir.abort ++ mkpath_spec.errors.stat.abort,
 }, void) {
     var buf: [4096:0]u8 = undefined;
     const name: [:0]u8 = writePath(&buf, pathname);
-    return makePathInternal(spec, name, file_mode);
+    return makePathInternal(mkpath_spec, name, file_mode);
 }
-pub fn create(comptime spec: CreateSpec, pathname: [:0]const u8, comptime file_mode: Mode) sys.ErrorUnion(spec.errors, spec.return_type) {
+pub fn create(comptime creat_spec: CreateSpec, flags: Flags.Create, pathname: [:0]const u8, file_mode: Mode) sys.ErrorUnion(creat_spec.errors, creat_spec.return_type) {
     const pathname_buf_addr: u64 = @intFromPtr(pathname.ptr);
-    const flags: Open.Options = comptime spec.flags();
-    const logging: debug.Logging.AcquireError = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.open, spec.errors, spec.return_type, .{ pathname_buf_addr, flags.val, @as(u16, @bitCast(file_mode)) & 0xfff }))) |fd| {
+    const logging: debug.Logging.AcquireError = comptime creat_spec.logging.override();
+    if (meta.wrap(sys.call(.open, creat_spec.errors, creat_spec.return_type, .{ pathname_buf_addr, @bitCast(flags), @as(u16, @bitCast(file_mode)) & 0xfff }))) |fd| {
         if (logging.Acquire) {
             about.aboutPathnameFdModeNotice(about.create_s, pathname, fd, file_mode);
         }
@@ -1280,25 +1279,24 @@ pub fn create(comptime spec: CreateSpec, pathname: [:0]const u8, comptime file_m
         return open_error;
     }
 }
-pub fn createAt(comptime spec: CreateSpec, dir_fd: u64, name: [:0]const u8, comptime file_mode: Mode) sys.ErrorUnion(spec.errors, spec.return_type) {
+pub fn createAt(comptime creat_spec: CreateSpec, flags: Flags.Create, dir_fd: usize, name: [:0]const u8, file_mode: Mode) sys.ErrorUnion(creat_spec.errors, creat_spec.return_type) {
     const name_buf_addr: u64 = @intFromPtr(name.ptr);
-    const flags: Open.Options = comptime spec.flags();
-    const logging: debug.Logging.AcquireError = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.openat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, flags.val, @as(u16, @bitCast(file_mode)) & 0xfff }))) |fd| {
+    const logging: debug.Logging.AcquireError = comptime creat_spec.logging.override();
+    if (meta.wrap(sys.call(.openat, creat_spec.errors, creat_spec.return_type, .{ dir_fd, name_buf_addr, @bitCast(flags), @as(u16, @bitCast(file_mode)) & 0xfff }))) |fd| {
         if (logging.Acquire) {
-            about.aboutDirFdNameFdNotice(about.create_s, dir_fd, name, fd);
+            about.aboutDirFdNameFdModeNotice(about.create_s, dir_fd, name, fd, file_mode);
         }
         return fd;
     } else |open_error| {
         if (logging.Error) {
-            about.aboutDirFdNameError(about.create_s, @errorName(open_error), dir_fd, name);
+            about.aboutDirFdNameModeError(about.create_s, @errorName(open_error), dir_fd, name, file_mode);
         }
         return open_error;
     }
 }
-pub fn close(comptime spec: CloseSpec, fd: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
-    const logging: debug.Logging.ReleaseError = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.close, spec.errors, spec.return_type, .{fd}))) {
+pub fn close(comptime close_spec: CloseSpec, fd: usize) sys.ErrorUnion(close_spec.errors, close_spec.return_type) {
+    const logging: debug.Logging.ReleaseError = comptime close_spec.logging.override();
+    if (meta.wrap(sys.call(.close, close_spec.errors, close_spec.return_type, .{fd}))) {
         if (logging.Release) {
             about.aboutFdNotice(about.close_s, fd);
         }
@@ -1309,10 +1307,10 @@ pub fn close(comptime spec: CloseSpec, fd: u64) sys.ErrorUnion(spec.errors, spec
         return close_error;
     }
 }
-pub fn makeDir(comptime spec: MakeDirSpec, pathname: [:0]const u8, comptime file_mode: Mode) sys.ErrorUnion(spec.errors, spec.return_type) {
+pub fn makeDir(comptime mkdir_spec: MakeDirSpec, pathname: [:0]const u8, comptime file_mode: Mode) sys.ErrorUnion(mkdir_spec.errors, mkdir_spec.return_type) {
     const pathname_buf_addr: u64 = @intFromPtr(pathname.ptr);
-    const logging: debug.Logging.SuccessError = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.mkdir, spec.errors, spec.return_type, .{ pathname_buf_addr, @as(u16, @bitCast(file_mode)) }))) {
+    const logging: debug.Logging.SuccessError = comptime mkdir_spec.logging.override();
+    if (meta.wrap(sys.call(.mkdir, mkdir_spec.errors, mkdir_spec.return_type, .{ pathname_buf_addr, @as(u16, @bitCast(file_mode)) }))) {
         if (logging.Success) {
             about.aboutPathnameModeNotice(about.mkdir_s, pathname, file_mode);
         }
@@ -1323,10 +1321,10 @@ pub fn makeDir(comptime spec: MakeDirSpec, pathname: [:0]const u8, comptime file
         return mkdir_error;
     }
 }
-pub fn makeDirAt(comptime spec: MakeDirSpec, dir_fd: u64, name: [:0]const u8, comptime file_mode: Mode) sys.ErrorUnion(spec.errors, spec.return_type) {
+pub fn makeDirAt(comptime mkdir_spec: MakeDirSpec, dir_fd: usize, name: [:0]const u8, comptime file_mode: Mode) sys.ErrorUnion(mkdir_spec.errors, mkdir_spec.return_type) {
     const name_buf_addr: u64 = @intFromPtr(name.ptr);
-    const logging: debug.Logging.SuccessError = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.mkdirat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, @as(u16, @bitCast(file_mode)) }))) {
+    const logging: debug.Logging.SuccessError = comptime mkdir_spec.logging.override();
+    if (meta.wrap(sys.call(.mkdirat, mkdir_spec.errors, mkdir_spec.return_type, .{ dir_fd, name_buf_addr, @as(u16, @bitCast(file_mode)) }))) {
         if (logging.Success) {
             about.aboutDirFdNameModeNotice(about.mkdir_s, dir_fd, name, file_mode);
         }
@@ -1337,7 +1335,7 @@ pub fn makeDirAt(comptime spec: MakeDirSpec, dir_fd: u64, name: [:0]const u8, co
         return mkdir_error;
     }
 }
-pub fn getDirectoryEntries(comptime getdents_spec: GetDirectoryEntriesSpec, dir_fd: u64, stream_buf: []u8) sys.ErrorUnion(getdents_spec.errors, getdents_spec.return_type) {
+pub fn getDirectoryEntries(comptime getdents_spec: GetDirectoryEntriesSpec, dir_fd: usize, stream_buf: []u8) sys.ErrorUnion(getdents_spec.errors, getdents_spec.return_type) {
     const stream_buf_addr: u64 = @intFromPtr(stream_buf.ptr);
     const logging: debug.Logging.SuccessError = comptime getdents_spec.logging.override();
     if (meta.wrap(sys.call(.getdents64, getdents_spec.errors, getdents_spec.return_type, .{ dir_fd, stream_buf_addr, stream_buf.len }))) |ret| {
@@ -1352,10 +1350,10 @@ pub fn getDirectoryEntries(comptime getdents_spec: GetDirectoryEntriesSpec, dir_
         return getdents_error;
     }
 }
-pub fn makeNode(comptime spec: MakeNodeSpec, pathname: [:0]const u8, comptime file_mode: Mode, comptime dev: Device) sys.ErrorUnion(spec.errors, spec.return_type) {
+pub fn makeNode(comptime mknod_spec: MakeNodeSpec, pathname: [:0]const u8, file_mode: Mode, dev: Device) sys.ErrorUnion(mknod_spec.errors, mknod_spec.return_type) {
     const pathname_buf_addr: u64 = @intFromPtr(pathname.ptr);
-    const logging: debug.Logging.SuccessError = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.mknod, spec.errors, spec.return_type, .{ pathname_buf_addr, @as(u16, @bitCast(file_mode)), @as(u64, @bitCast(dev)) }))) {
+    const logging: debug.Logging.SuccessError = comptime mknod_spec.logging.override();
+    if (meta.wrap(sys.call(.mknod, mknod_spec.errors, mknod_spec.return_type, .{ pathname_buf_addr, @as(u16, @bitCast(file_mode)), @as(u64, @bitCast(dev)) }))) {
         if (logging.Success) {
             about.aboutPathnameModeDeviceNotice(about.mknod_s, pathname, file_mode, dev);
         }
@@ -1366,10 +1364,10 @@ pub fn makeNode(comptime spec: MakeNodeSpec, pathname: [:0]const u8, comptime fi
         return mknod_error;
     }
 }
-pub fn makeNodeAt(comptime spec: MakeNodeSpec, dir_fd: u64, name: [:0]const u8, comptime file_mode: Mode, comptime dev: Device) sys.ErrorUnion(spec.errors, spec.return_type) {
+pub fn makeNodeAt(comptime mknod_spec: MakeNodeSpec, dir_fd: usize, name: [:0]const u8, file_mode: Mode, dev: Device) sys.ErrorUnion(mknod_spec.errors, mknod_spec.return_type) {
     const name_buf_addr: u64 = @intFromPtr(name.ptr);
-    const logging: debug.Logging.SuccessError = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.mknodat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, @as(u16, @bitCast(file_mode)), @as(u64, @bitCast(dev)) }))) {
+    const logging: debug.Logging.SuccessError = comptime mknod_spec.logging.override();
+    if (meta.wrap(sys.call(.mknodat, mknod_spec.errors, mknod_spec.return_type, .{ dir_fd, name_buf_addr, @as(u16, @bitCast(file_mode)), @as(u64, @bitCast(dev)) }))) {
         if (logging.Success) {
             about.aboutDirFdNameModeDeviceNotice(about.mknod_s, dir_fd, name, file_mode, dev);
         }
