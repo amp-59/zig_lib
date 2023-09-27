@@ -2525,8 +2525,66 @@ pub const about = struct {
         ptr += 7;
         debug.write(buf[0..(@intFromPtr(ptr) -% @intFromPtr(&buf))]);
     }
+    fn aboutFdReadWriteMaxLenLenNotice(about_s: fmt.AboutSrc, fd: usize, flags: sys.flags.ReadWrite, max_len: usize, act_len: usize) void {
+        @setRuntimeSafety(false);
+        var buf: [32768]u8 = undefined;
+        buf[0..about_s.len].* = about_s.*;
+        var ptr: [*]u8 = buf[about_s.len..].ptr;
+        ptr[0..3].* = "fd=".*;
+        ptr += 3;
+        var ud64: fmt.Type.Ud64 = .{ .value = fd };
+        ptr += ud64.formatWriteBuf(ptr);
+        ptr[0..2].* = ", ".*;
+        ptr += 2;
+        ud64.value = flags.formatWriteBuf(ptr);
+        if (ud64.value != 0) {
+            ptr += ud64.value;
+            ptr[0..2].* = ", ".*;
+            ptr += 2;
+        }
+        ud64.value = act_len;
+        ptr += ud64.formatWriteBuf(ptr);
+        ptr[0] = '/';
+        ptr += 1;
+        ud64.value = max_len;
+        ptr += ud64.formatWriteBuf(ptr);
+        ptr[0..7].* = " bytes\n".*;
+        ptr += 7;
+        debug.write(buf[0..(@intFromPtr(ptr) -% @intFromPtr(&buf))]);
+    }
+    fn aboutFdOffsetReadWriteMaxLenLenNotice(about_s: fmt.AboutSrc, fd: usize, offset: usize, flags: sys.flags.ReadWrite, max_len: usize, act_len: usize) void {
+        @setRuntimeSafety(false);
+        var buf: [32768]u8 = undefined;
+        buf[0..about_s.len].* = about_s.*;
+        var ptr: [*]u8 = buf[about_s.len..].ptr;
+        ptr[0..3].* = "fd=".*;
+        ptr += 3;
+        var ud64: fmt.Type.Ud64 = .{ .value = fd };
+        ptr += ud64.formatWriteBuf(ptr);
+        ptr[0..9].* = ", offset=".*;
+        ptr += 9;
+        ud64.value = offset;
+        ptr += ud64.formatWriteBuf(ptr);
+        ptr[0..2].* = ", ".*;
+        ptr += 2;
+        ud64.value = flags.formatWriteBuf(ptr);
+        if (ud64.value != 0) {
+            ptr += ud64.value;
+            ptr[0..2].* = ", ".*;
+            ptr += 2;
+        }
+        ud64.value = act_len;
+        ptr += ud64.formatWriteBuf(ptr);
+        ptr[0] = '/';
+        ptr += 1;
+        ud64.value = max_len;
+        ptr += ud64.formatWriteBuf(ptr);
+        ptr[0..7].* = " bytes\n".*;
+        ptr += 7;
+        debug.write(buf[0..(@intFromPtr(ptr) -% @intFromPtr(&buf))]);
+    }
     fn aboutFdFdNotice(about_s: fmt.AboutSrc, fd1_s: anytype, fd2_s: anytype, fd1: u64, fd2: u64) void {
-        @setRuntimeSafety(builtin.is_safe);
+        @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         buf[0..about_s.len].* = about_s.*;
         var ptr: [*]u8 = buf[about_s.len..].ptr;
