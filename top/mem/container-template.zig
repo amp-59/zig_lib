@@ -1,7 +1,8 @@
 const fmt = @import("../fmt.zig");
 const proc = @import("../proc.zig");
 const meta = @import("../meta.zig");
-const mach = @import("../mach.zig");
+const bits = @import("../bits.zig");
+const math = @import("../math.zig");
 const debug = @import("../debug.zig");
 const builtin = @import("../builtin.zig");
 const reference = @import("./ptr.zig");
@@ -49,7 +50,7 @@ pub inline fn amountReservedToCount(amt: Amount, comptime impl_type: type) u64 {
 }
 pub inline fn amountReservedToBytes(amt: Amount, comptime impl_type: type) u64 {
     return amountOfLengthToBytes(amt, impl_type.high_alignment) +
-        mach.cmov64z(hasSentinel(impl_type), impl_type.high_alignment);
+        bits.cmov64z(hasSentinel(impl_type), impl_type.high_alignment);
 }
 fn writeOneInternal(comptime child: type, next: u64, value: child) void {
     reference.pointerOne(child, next).* = value;

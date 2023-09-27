@@ -238,7 +238,7 @@ fn GenericAllocatorInterface(comptime Allocator: type) type {
             return mach.sub64(unaddressable_byte_address(allocator), unmapped_byte_address(allocator));
         }
         pub inline fn alignAbove(allocator: *Allocator, comptime alignment: u64) u64 {
-            allocator.ub_addr = mach.alignA64(allocator.ub_addr, alignment);
+            allocator.ub_addr = bits.alignA64(allocator.ub_addr, alignment);
             return allocator.ub_addr;
         }
         pub fn allocate(allocator: *Allocator, s_up_addr: u64) void {
@@ -316,7 +316,7 @@ fn GenericAllocatorInterface(comptime Allocator: type) type {
             return allocator.unmap(x_bytes);
         }
         pub fn unmapAbove(allocator: *Allocator, s_up_addr: u64) Allocator.deallocate_void {
-            const t_ua_addr: u64 = mach.alignA64(s_up_addr, 4096);
+            const t_ua_addr: u64 = bits.alignA64(s_up_addr, 4096);
             const t_bytes: u64 = mach.sub64(t_ua_addr, mapped_byte_address(allocator));
             const x_bytes: u64 = mach.sub64(mapped_byte_count(allocator), t_bytes);
             if (Allocator.allocator_spec.options.count_useful_bytes) {
@@ -328,7 +328,7 @@ fn GenericAllocatorInterface(comptime Allocator: type) type {
             return allocator.unmap(x_bytes);
         }
         pub fn mapBelow(allocator: *Allocator, s_up_addr: u64) Allocator.allocate_void {
-            const t_ua_addr: u64 = mach.alignA64(s_up_addr, 4096);
+            const t_ua_addr: u64 = bits.alignA64(s_up_addr, 4096);
             const x_bytes: u64 = mach.sub64(t_ua_addr, allocator.unmapped_byte_address());
             const t_bytes: u64 = mach.add64(allocator.mapped_byte_count(), x_bytes);
             if (Allocator.allocator_spec.options.max_acquire) |max| {
@@ -1655,7 +1655,7 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
         }
         fn createRaw(allocator: *Allocator, s_aligned_bytes: u64, alignment: u64) u64 {
             const s_lb_addr: u64 = allocator.unallocated_byte_address();
-            const s_ab_addr: u64 = mach.alignA64(s_lb_addr, alignment);
+            const s_ab_addr: u64 = bits.alignA64(s_lb_addr, alignment);
             const s_up_addr: u64 = s_ab_addr +% s_aligned_bytes;
             if (Allocator.allocator_spec.options.require_map and
                 s_up_addr > allocator.unmapped_byte_address())
@@ -1682,7 +1682,7 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
             defer Graphics.showWithReference(allocator, @src());
             const s_aligned_bytes: u64 = @sizeOf(T) *% count;
             const s_lb_addr: u64 = allocator.unallocated_byte_address();
-            const s_ab_addr: u64 = mach.alignA64(s_lb_addr, @alignOf(T));
+            const s_ab_addr: u64 = bits.alignA64(s_lb_addr, @alignOf(T));
             const s_up_addr: u64 = s_ab_addr +% s_aligned_bytes;
             if (Allocator.allocator_spec.options.require_map and
                 s_up_addr > allocator.unmapped_byte_address())
@@ -1701,7 +1701,7 @@ fn GenericIrreversibleInterface(comptime Allocator: type) type {
             defer Graphics.showWithReference(allocator, @src());
             const s_aligned_bytes: u64 = @sizeOf(T) *% (count +% 1);
             const s_lb_addr: u64 = allocator.unallocated_byte_address();
-            const s_ab_addr: u64 = mach.alignA64(s_lb_addr, @alignOf(T));
+            const s_ab_addr: u64 = bits.alignA64(s_lb_addr, @alignOf(T));
             const s_up_addr: u64 = s_ab_addr +% s_aligned_bytes;
             if (Allocator.allocator_spec.options.require_map and
                 s_up_addr > allocator.unmapped_byte_address())

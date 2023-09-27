@@ -1,4 +1,5 @@
-const mach = @import("../mach.zig");
+const bits = @import("../bits.zig");
+const math = @import("../math.zig");
 const algo = @import("../algo.zig");
 fn automatic_storage_address(impl: anytype) u64 {
     return @intFromPtr(impl) + @offsetOf(@TypeOf(impl.*), "auto");
