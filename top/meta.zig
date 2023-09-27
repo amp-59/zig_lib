@@ -1,7 +1,6 @@
 const fmt = @import("./fmt.zig");
 const mem = @import("./mem.zig");
 const math = @import("./math.zig");
-const mach = @import("./mach.zig");
 const debug = @import("./debug.zig");
 const builtin = @import("./builtin.zig");
 pub const Empty = struct {};
@@ -248,7 +247,7 @@ pub inline fn call(comptime function: anytype, arguments: anytype) @TypeOf(@call
     }
 }
 /// Align `count` below to bitSizeOf smallest real word bit count
-pub fn alignBitSizeBelow(comptime count: comptime_int) u16 {
+pub fn alignRealBitSizeBelow(count: u16) u16 {
     switch (count) {
         0...7 => return 0,
         8...15 => return 8,
@@ -261,7 +260,7 @@ pub fn alignBitSizeBelow(comptime count: comptime_int) u16 {
     }
 }
 /// Align `count` above to bitSizeOf smallest real word bit count
-pub fn alignBitSizeAbove(comptime count: comptime_int) u16 {
+pub fn alignRealBitSizeAbove(count: u16) u16 {
     switch (count) {
         0 => return 0,
         1...8 => return 8,
