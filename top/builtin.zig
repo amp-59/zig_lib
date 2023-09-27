@@ -1,5 +1,7 @@
 const builtin = @import("builtin");
+const mem = @import("./mem.zig");
 const tab = @import("./tab.zig");
+const bits = @import("./bits.zig");
 const meta = @import("./meta.zig");
 const math = @import("./math.zig");
 const debug = @import("./debug.zig");
@@ -51,11 +53,11 @@ pub const runtime_assertions: bool = define("runtime_assertions", bool, builtin.
 pub const comptime_assertions: bool = define("comptime_assertions", bool, builtin.mode == .Debug);
 
 pub const panic = define("panic", debug.PanicFn, debug.panic);
-pub const panicSentinelMismatch = define("panicSentinelMismatch", debug.PanicSentinelMismatchFn, debug.panicSentinelMismatch);
-pub const panicUnwrapError = define("panicUnwrapError", debug.PanicUnwrapErrorFn, debug.panicUnwrapError);
-pub const panicOutOfBounds = define("panicOutOfBounds", debug.PanicOutOfBoundsFn, debug.panicOutOfBounds);
-pub const panicStartGreaterThanEnd = define("startGreaterThanEnd", debug.PanicStartGreaterThanEndFn, debug.panicStartGreaterThanEnd);
-pub const panicInactiveUnionField = define("panicInactiveUnionField", debug.PanicInactiveUnionFieldFn, debug.panicInactiveUnionField);
+pub const panicSentinelMismatch = define("panicSentinelMismatch", debug.PanicSentinelMismatchFn, debug.panic_extra.panicSentinelMismatch);
+pub const panicUnwrapError = define("panicUnwrapError", debug.PanicUnwrapErrorFn, debug.panic_extra.panicUnwrapError);
+pub const panicOutOfBounds = define("panicOutOfBounds", debug.PanicOutOfBoundsFn, debug.panic_extra.panicOutOfBounds);
+pub const panicStartGreaterThanEnd = define("startGreaterThanEnd", debug.PanicStartGreaterThanEndFn, debug.panic_extra.panicStartGreaterThanEnd);
+pub const panicInactiveUnionField = define("panicInactiveUnionField", debug.PanicInactiveUnionFieldFn, debug.panic_extra.panicInactiveUnionField);
 pub const alarm = define("alarm", debug.AlarmFn, debug.alarm);
 
 pub const panic_return_value: u8 = define("panic_return_value", u8, 2);
