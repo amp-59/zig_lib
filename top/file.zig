@@ -3492,26 +3492,49 @@ pub const about = struct {
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
-    fn atDirFdMustBeFault(dir_fd: u64, name: [:0]const u8, kind: Kind, file_mode: Mode) void {
-        _ = file_mode;
-        _ = kind;
-        _ = name;
+    fn atDirFdMustBeFault(dir_fd: usize, name: [:0]const u8, kind: Kind, file_mode: Mode) void {
+        @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         var ptr: [*]u8 = &buf;
         ptr += fmt.ud64(dir_fd).formatWriteBuf(ptr);
-        //debug.logAlwaysAIO(&buf, &[_][]const u8{ file_2_s, "dir_fd=", dir_fd_s, ", ", name, must_be_s, describeKind(kind), "; is ", describeKind(file_mode.kind), "\n" });
-        debug.write(buf[0..(@intFromPtr(ptr) -% @intFromPtr(&buf))]);
+        ptr[0..file_s.len].* = file_s.*;
+        ptr += file_s.len;
+        if (name[0] != '/') {
+            ptr = writeDirFd(ptr, "dir_fd=", dir_fd);
+        }
+        ptr[0..2].* = ", ".*;
+        ptr += 2;
+        ptr = writeDisplayPath(ptr, name);
+        ptr[0..must_be_file_s.len].* = must_be_file_s.*;
+        ptr += must_be_file_s.len;
+        ptr = fmt.strcpyEqu(ptr, describeKind(kind));
+        ptr[0..5].* = "; is ".*;
+        ptr += 5;
+        ptr = fmt.strcpyEqu(ptr, describeKind(file_mode.kind));
+        ptr[0] = '\n';
+        debug.write(buf[0..(@intFromPtr(ptr + 1) -% @intFromPtr(&buf))]);
     }
-    fn atDirFdMustNotBeFault(dir_fd: u64, name: [:0]const u8, kind: Kind) void {
-        _ = kind;
-        _ = name;
+    fn atDirFdMustNotBeFault(dir_fd: usize, name: [:0]const u8, kind: Kind) void {
+        @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         var ptr: [*]u8 = &buf;
         ptr += fmt.ud64(dir_fd).formatWriteBuf(ptr);
-        //debug.logAlwaysAIO(&buf, &[_][]const u8{ file_2_s, "dir_fd=", dir_fd_s, ", ", name, must_not_be_s, describeKind(kind), "\n" });
+        ptr[0..file_s.len].* = file_s.*;
+        ptr += file_s.len;
+        if (name[0] != '/') {
+            ptr = writeDirFd(ptr, "dir_fd=", dir_fd);
+        }
+        ptr[0..2].* = ", ".*;
+        ptr += 2;
+        ptr = writeDisplayPath(ptr, name);
+        ptr[0..must_not_be_file_s.len].* = must_not_be_file_s.*;
+        ptr += must_not_be_file_s.len;
+        ptr = fmt.strcpyEqu(ptr, describeKind(kind));
+        ptr[0] = '\n';
         debug.write(buf[0..(@intFromPtr(ptr) -% @intFromPtr(&buf))]);
     }
     fn describePerms(buf: []u8, perms: Perms) void {
+        @setRuntimeSafety(false);
         if (perms.read) {
             buf[0] = 'r';
         }
