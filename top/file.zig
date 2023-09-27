@@ -1408,11 +1408,11 @@ pub fn getCwd(comptime getcwd_spec: GetWorkingDirectorySpec, buf: []u8) sys.Erro
         return getcwd_error;
     }
 }
-pub fn readLink(comptime spec: ReadLinkSpec, pathname: [:0]const u8, buf: []u8) sys.ErrorUnion(spec.errors, [:0]const u8) {
+pub fn readLink(comptime readlink_spec: ReadLinkSpec, pathname: [:0]const u8, buf: []u8) sys.ErrorUnion(readlink_spec.errors, [:0]const u8) {
     const pathname_buf_addr: u64 = @intFromPtr(pathname.ptr);
     const buf_addr: u64 = @intFromPtr(buf.ptr);
-    const logging: debug.Logging.SuccessError = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.readlink, spec.errors, spec.return_type, .{ pathname_buf_addr, buf_addr, buf.len }))) |len| {
+    const logging: debug.Logging.SuccessError = comptime readlink_spec.logging.override();
+    if (meta.wrap(sys.call(.readlink, readlink_spec.errors, readlink_spec.return_type, .{ pathname_buf_addr, buf_addr, buf.len }))) |len| {
         return buf[0..len :0];
     } else |readlink_error| {
         if (logging.Error) {
@@ -1421,11 +1421,11 @@ pub fn readLink(comptime spec: ReadLinkSpec, pathname: [:0]const u8, buf: []u8) 
         return readlink_error;
     }
 }
-pub fn readLinkAt(comptime spec: ReadLinkSpec, dir_fd: u64, name: [:0]const u8, buf: []u8) sys.ErrorUnion(spec.errors, [:0]const u8) {
+pub fn readLinkAt(comptime readlink_spec: ReadLinkSpec, dir_fd: usize, name: [:0]const u8, buf: []u8) sys.ErrorUnion(readlink_spec.errors, [:0]const u8) {
     const name_buf_addr: u64 = @intFromPtr(name.ptr);
     const buf_addr: u64 = @intFromPtr(buf.ptr);
-    const logging: debug.Logging.SuccessError = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.readlinkat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, buf_addr, buf.len }))) |len| {
+    const logging: debug.Logging.SuccessError = comptime readlink_spec.logging.override();
+    if (meta.wrap(sys.call(.readlinkat, readlink_spec.errors, readlink_spec.return_type, .{ dir_fd, name_buf_addr, buf_addr, buf.len }))) |len| {
         buf[len] = 0;
         return buf[0..len :0];
     } else |readlink_error| {
@@ -1435,10 +1435,10 @@ pub fn readLinkAt(comptime spec: ReadLinkSpec, dir_fd: u64, name: [:0]const u8, 
         return readlink_error;
     }
 }
-pub fn unlink(comptime spec: UnlinkSpec, pathname: [:0]const u8) sys.ErrorUnion(spec.errors, spec.return_type) {
+pub fn unlink(comptime unlink_spec: UnlinkSpec, pathname: [:0]const u8) sys.ErrorUnion(unlink_spec.errors, unlink_spec.return_type) {
     const pathname_buf_addr: u64 = @intFromPtr(pathname.ptr);
-    const logging: debug.Logging.SuccessError = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.unlink, spec.errors, spec.return_type, .{pathname_buf_addr}))) {
+    const logging: debug.Logging.SuccessError = comptime unlink_spec.logging.override();
+    if (meta.wrap(sys.call(.unlink, unlink_spec.errors, unlink_spec.return_type, .{pathname_buf_addr}))) {
         if (logging.Success) {
             about.aboutPathnameNotice(about.unlink_s, pathname);
         }
@@ -1449,10 +1449,10 @@ pub fn unlink(comptime spec: UnlinkSpec, pathname: [:0]const u8) sys.ErrorUnion(
         return unlink_error;
     }
 }
-pub fn unlinkAt(comptime spec: UnlinkSpec, dir_fd: u64, name: [:0]const u8) sys.ErrorUnion(spec.errors, spec.return_type) {
+pub fn unlinkAt(comptime unlink_spec: UnlinkSpec, dir_fd: usize, name: [:0]const u8) sys.ErrorUnion(unlink_spec.errors, unlink_spec.return_type) {
     const name_buf_addr: u64 = @intFromPtr(name.ptr);
-    const logging: debug.Logging.SuccessError = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.unlinkat, spec.errors, spec.return_type, .{ dir_fd, name_buf_addr, 0 }))) {
+    const logging: debug.Logging.SuccessError = comptime unlink_spec.logging.override();
+    if (meta.wrap(sys.call(.unlinkat, unlink_spec.errors, unlink_spec.return_type, .{ dir_fd, name_buf_addr, 0 }))) {
         if (logging.Success) {
             about.aboutDirFdNameNotice(about.unlink_s, dir_fd, name);
         }
@@ -1463,10 +1463,10 @@ pub fn unlinkAt(comptime spec: UnlinkSpec, dir_fd: u64, name: [:0]const u8) sys.
         return unlinkat_error;
     }
 }
-pub fn removeDir(comptime spec: RemoveDirSpec, pathname: [:0]const u8) sys.ErrorUnion(spec.errors, spec.return_type) {
+pub fn removeDir(comptime rmdir_spec: RemoveDirSpec, pathname: [:0]const u8) sys.ErrorUnion(rmdir_spec.errors, rmdir_spec.return_type) {
     const pathname_buf_addr: u64 = @intFromPtr(pathname.ptr);
-    const logging: debug.Logging.SuccessError = comptime spec.logging.override();
-    if (sys.call(.rmdir, spec.errors, spec.return_type, .{pathname_buf_addr})) {
+    const logging: debug.Logging.SuccessError = comptime rmdir_spec.logging.override();
+    if (sys.call(.rmdir, rmdir_spec.errors, rmdir_spec.return_type, .{pathname_buf_addr})) {
         if (logging.Success) {
             about.aboutPathnameNotice(about.rmdir_s, pathname);
         }
@@ -1477,13 +1477,13 @@ pub fn removeDir(comptime spec: RemoveDirSpec, pathname: [:0]const u8) sys.Error
         return rmdir_error;
     }
 }
-pub fn pathStatus(comptime spec: StatusSpec, pathname: [:0]const u8, st: *Status) sys.ErrorUnion(spec.errors, spec.return_type) {
+pub fn pathStatus(comptime stat_spec: StatusSpec, pathname: [:0]const u8, st: *Status) sys.ErrorUnion(stat_spec.errors, stat_spec.return_type) {
     const pathname_buf_addr: u64 = @intFromPtr(pathname.ptr);
     const st_buf_addr: u64 = @intFromPtr(st);
-    const logging: debug.Logging.SuccessErrorFault = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.stat, spec.errors, void, .{ pathname_buf_addr, st_buf_addr }))) {
+    const logging: debug.Logging.SuccessErrorFault = comptime stat_spec.logging.override();
+    if (meta.wrap(sys.call(.stat, stat_spec.errors, void, .{ pathname_buf_addr, st_buf_addr }))) {
         if (logging.Success) {
-            about.aboutPathnameModeNotice(about.file_s, pathname, st.mode);
+            about.aboutDirFdNameStatusNotice(about.file_s, cwd, pathname, st);
         }
     } else |stat_error| {
         if (logging.Error) {
@@ -1492,12 +1492,12 @@ pub fn pathStatus(comptime spec: StatusSpec, pathname: [:0]const u8, st: *Status
         return stat_error;
     }
 }
-pub fn status(comptime spec: StatusSpec, fd: usize, st: *Status) sys.ErrorUnion(spec.errors, spec.return_type) {
+pub fn status(comptime stat_spec: StatusSpec, fd: usize, st: *Status) sys.ErrorUnion(stat_spec.errors, stat_spec.return_type) {
     const st_buf_addr: usize = @intFromPtr(st);
-    const logging: debug.Logging.SuccessErrorFault = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.fstat, spec.errors, void, .{ fd, st_buf_addr }))) {
+    const logging: debug.Logging.SuccessErrorFault = comptime stat_spec.logging.override();
+    if (meta.wrap(sys.call(.fstat, stat_spec.errors, void, .{ fd, st_buf_addr }))) {
         if (logging.Success) {
-            about.aboutFdModeNotice(about.stat_s, fd, st.mode);
+            about.aboutFdStatusNotice(about.stat_s, fd, st);
         }
     } else |stat_error| {
         if (logging.Error) {
@@ -1506,14 +1506,16 @@ pub fn status(comptime spec: StatusSpec, fd: usize, st: *Status) sys.ErrorUnion(
         return stat_error;
     }
 }
-pub fn statusAt(comptime spec: StatusSpec, dir_fd: usize, name: [:0]const u8, st: *Status) sys.ErrorUnion(spec.errors, spec.return_type) {
+pub fn statusAt(comptime stat_spec: StatusSpec, at: sys.flags.At, dir_fd: usize, name: [:0]const u8, st: *Status) sys.ErrorUnion(
+    stat_spec.errors,
+    stat_spec.return_type,
+) {
     const name_buf_addr: usize = @intFromPtr(name.ptr);
     const st_buf_addr: usize = @intFromPtr(st);
-    const flags: At = comptime spec.flags();
-    const logging: debug.Logging.SuccessErrorFault = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.newfstatat, spec.errors, void, .{ dir_fd, name_buf_addr, st_buf_addr, flags.val }))) {
+    const logging: debug.Logging.SuccessErrorFault = comptime stat_spec.logging.override();
+    if (meta.wrap(sys.call(.newfstatat, stat_spec.errors, void, .{ dir_fd, name_buf_addr, st_buf_addr, @bitCast(at) }))) {
         if (logging.Success) {
-            about.aboutDirFdNameModeNotice(about.stat_s, dir_fd, name, st.mode);
+            about.aboutDirFdNameStatusNotice(about.stat_s, dir_fd, name, st);
         }
     } else |stat_error| {
         if (logging.Error) {
@@ -1522,15 +1524,17 @@ pub fn statusAt(comptime spec: StatusSpec, dir_fd: usize, name: [:0]const u8, st
         return stat_error;
     }
 }
-pub fn statusExtended(comptime spec: StatusExtendedSpec, fd: usize, pathname: [:0]const u8, st: *StatusExtended) sys.ErrorUnion(spec.errors, spec.return_type) {
+pub fn statusExtended(comptime stat_spec: StatusExtendedSpec, at: sys.flags.At, fd: usize, pathname: [:0]const u8, st: *StatusExtended) sys.ErrorUnion(
+    stat_spec.errors,
+    stat_spec.return_type,
+) {
     const pathname_buf_addr: u64 = @intFromPtr(pathname.ptr);
     const st_buf_addr: u64 = @intFromPtr(st);
-    const flags: At = comptime spec.flags();
-    const mask: usize = @bitCast(spec.options.fields);
-    const logging: debug.Logging.SuccessErrorFault = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.statx, spec.errors, void, .{ fd, pathname_buf_addr, flags.val, mask, st_buf_addr }))) {
+    const mask: usize = @bitCast(stat_spec.options.fields);
+    const logging: debug.Logging.SuccessErrorFault = comptime stat_spec.logging.override();
+    if (meta.wrap(sys.call(.statx, stat_spec.errors, void, .{ fd, pathname_buf_addr, @bitCast(at), mask, st_buf_addr }))) {
         if (logging.Success) {
-            about.aboutDirFdNameModeNotice(about.stat_s, fd, pathname, st.mode);
+            about.aboutDirFdNameStatusNotice(about.stat_s, fd, pathname, @ptrCast(st));
         }
     } else |stat_error| {
         if (logging.Error) {
@@ -1539,27 +1543,33 @@ pub fn statusExtended(comptime spec: StatusExtendedSpec, fd: usize, pathname: [:
         return stat_error;
     }
 }
-pub fn getPathStatus(comptime spec: StatusSpec, pathname: [:0]const u8) sys.ErrorUnion(spec.errors, Status) {
+pub fn getPathStatus(comptime stat_spec: StatusSpec, pathname: [:0]const u8) sys.ErrorUnion(stat_spec.errors, Status) {
     var st: Status = undefined;
-    try meta.wrap(pathStatus(spec, pathname, &st));
+    try meta.wrap(pathStatus(stat_spec, pathname, &st));
     return st;
 }
-pub fn getStatus(comptime spec: StatusSpec, fd: usize) sys.ErrorUnion(spec.errors, Status) {
+pub fn getStatus(comptime stat_spec: StatusSpec, fd: usize) sys.ErrorUnion(stat_spec.errors, Status) {
     var st: Status = undefined;
-    try meta.wrap(status(spec, fd, &st));
+    try meta.wrap(status(stat_spec, fd, &st));
     return st;
 }
-pub fn getStatusAt(comptime spec: StatusSpec, dir_fd: usize, name: [:0]const u8) sys.ErrorUnion(spec.errors, Status) {
+pub fn getStatusAt(comptime stat_spec: StatusSpec, dir_fd: usize, name: [:0]const u8) sys.ErrorUnion(
+    stat_spec.errors,
+    Status,
+) {
     var st: StatusExtended = undefined;
-    try meta.wrap(statusAt(spec, dir_fd, name, &st));
+    try meta.wrap(statusAt(stat_spec, dir_fd, name, &st));
     return st;
 }
-pub fn getStatusExtended(comptime spec: StatusExtendedSpec, fd: usize, pathname: [:0]const u8) sys.ErrorUnion(spec.errors, StatusExtended) {
+pub fn getStatusExtended(comptime stat_spec: StatusExtendedSpec, at: sys.flags.At, fd: usize, pathname: [:0]const u8) sys.ErrorUnion(
+    stat_spec.errors,
+    StatusExtended,
+) {
     var st: StatusExtended = undefined;
-    try meta.wrap(statusExtended(spec, fd, pathname, &st));
+    try meta.wrap(statusExtended(stat_spec, at, fd, pathname, &st));
     return st;
 }
-pub fn map(comptime map_spec: mem.MapSpec, prot: Map.Protection, flags: Map.Flags, fd: u64, addr: u64, len: u64, off: u64) sys.ErrorUnion(map_spec.errors, map_spec.return_type) {
+pub fn map(comptime map_spec: mem.MapSpec, prot: Map.Protection, flags: Map.Flags, fd: usize, addr: u64, len: u64, off: u64) sys.ErrorUnion(map_spec.errors, map_spec.return_type) {
     const logging: debug.Logging.AcquireError = comptime map_spec.logging.override();
     if (meta.wrap(sys.call(.mmap, map_spec.errors, map_spec.return_type, [6]usize{ addr, len, @bitCast(prot), @bitCast(flags), fd, off }))) |ret| {
         if (logging.Acquire) {
@@ -1573,7 +1583,7 @@ pub fn map(comptime map_spec: mem.MapSpec, prot: Map.Protection, flags: Map.Flag
         return map_error;
     }
 }
-pub fn send(comptime send_spec: SendSpec, dest_fd: u64, src_fd: u64, offset: ?*u64, count: u64) sys.ErrorUnion(
+pub fn send(comptime send_spec: SendSpec, dest_fd: usize, src_fd: usize, offset: ?*u64, count: u64) sys.ErrorUnion(
     send_spec.errors,
     send_spec.return_type,
 ) {
@@ -1594,7 +1604,7 @@ pub fn send(comptime send_spec: SendSpec, dest_fd: u64, src_fd: u64, offset: ?*u
         return sendfile_error;
     }
 }
-pub fn copy(comptime copy_spec: CopySpec, dest_fd: u64, dest_offset: ?*u64, src_fd: u64, src_offset: ?*u64, count: u64) sys.ErrorUnion(
+pub fn copy(comptime copy_spec: CopySpec, dest_fd: usize, dest_offset: ?*u64, src_fd: usize, src_offset: ?*u64, count: u64) sys.ErrorUnion(
     copy_spec.errors,
     copy_spec.return_type,
 ) {
@@ -1632,14 +1642,13 @@ pub fn link(comptime link_spec: LinkSpec, from_pathname: [:0]const u8, to_pathna
         return link_error;
     }
 }
-pub fn linkAt(comptime link_spec: LinkSpec, src_dir_fd: u64, from_name: [:0]const u8, dest_dir_fd: u64, to_name: [:0]const u8) sys.ErrorUnion(
+pub fn linkAt(comptime link_spec: LinkSpec, at: sys.flags.At, src_dir_fd: usize, from_name: [:0]const u8, dest_dir_fd: usize, to_name: [:0]const u8) sys.ErrorUnion(
     link_spec.errors,
     link_spec.return_type,
 ) {
     const logging: debug.Logging.SuccessError = comptime link_spec.logging.override();
-    const flags: At = comptime link_spec.flags();
     if (meta.wrap(sys.call(.linkat, link_spec.errors, link_spec.return_type, .{
-        src_dir_fd, @intFromPtr(from_name.ptr), dest_dir_fd, @intFromPtr(to_name.ptr), flags.val,
+        src_dir_fd, @intFromPtr(from_name.ptr), dest_dir_fd, @intFromPtr(to_name.ptr), @bitCast(at),
     }))) |ret| {
         if (logging.Success) {
             about.aboutDirFdNameDirFdNameNotice(about.link_s, "src_dir_fd=", " -> ", "dest_dir_fd=", src_dir_fd, from_name, dest_dir_fd, to_name);
@@ -1671,7 +1680,7 @@ pub fn symbolicLink(comptime link_spec: LinkSpec, from_pathname: [:0]const u8, t
         return symlink_error;
     }
 }
-pub fn symbolicLinkAt(comptime link_spec: LinkSpec, pathname: [:0]const u8, dir_fd: u64, name: [:0]const u8) sys.ErrorUnion(
+pub fn symbolicLinkAt(comptime link_spec: LinkSpec, pathname: [:0]const u8, dir_fd: usize, name: [:0]const u8) sys.ErrorUnion(
     link_spec.errors,
     link_spec.return_type,
 ) {
@@ -1690,7 +1699,7 @@ pub fn symbolicLinkAt(comptime link_spec: LinkSpec, pathname: [:0]const u8, dir_
         return symlinkat_error;
     }
 }
-pub fn sync(comptime sync_spec: SyncSpec, fd: u64) sys.ErrorUnion(sync_spec.errors, sync_spec.return_type) {
+pub fn sync(comptime sync_spec: SyncSpec, fd: usize) sys.ErrorUnion(sync_spec.errors, sync_spec.return_type) {
     const logging: debug.Logging.SuccessError = comptime sync_spec.logging.override();
     const syscall: sys.Fn = if (sync_spec.options.flush_metadata) .fsync else .fdatasync;
     if (meta.wrap(sys.call(syscall, sync_spec.errors, sync_spec.return_type, .{fd}))) |ret| {
@@ -1705,7 +1714,7 @@ pub fn sync(comptime sync_spec: SyncSpec, fd: u64) sys.ErrorUnion(sync_spec.erro
         return sync_error;
     }
 }
-pub fn seek(comptime seek_spec: SeekSpec, fd: u64, offset: u64, whence: Whence) sys.ErrorUnion(
+pub fn seek(comptime seek_spec: SeekSpec, fd: usize, offset: usize, whence: Whence) sys.ErrorUnion(
     seek_spec.errors,
     seek_spec.return_type,
 ) {
@@ -1724,9 +1733,9 @@ pub fn seek(comptime seek_spec: SeekSpec, fd: u64, offset: u64, whence: Whence) 
         return seek_error;
     }
 }
-pub fn truncate(comptime spec: TruncateSpec, fd: u64, offset: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
-    const logging: debug.Logging.SuccessError = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.ftruncate, spec.errors, spec.return_type, .{ fd, offset }))) |ret| {
+pub fn truncate(comptime truncate_spec: TruncateSpec, fd: usize, offset: usize) sys.ErrorUnion(truncate_spec.errors, truncate_spec.return_type) {
+    const logging: debug.Logging.SuccessError = comptime truncate_spec.logging.override();
+    if (meta.wrap(sys.call(.ftruncate, truncate_spec.errors, truncate_spec.return_type, .{ fd, offset }))) |ret| {
         if (logging.Success) {
             about.aboutFdOffsetNotice(about.truncate_s, fd, offset);
         }
@@ -1738,9 +1747,12 @@ pub fn truncate(comptime spec: TruncateSpec, fd: u64, offset: u64) sys.ErrorUnio
         return truncate_error;
     }
 }
-pub fn pathTruncate(comptime spec: TruncateSpec, pathname: [:0]const u8, offset: u64) sys.ErrorUnion(spec.errors, spec.return_type) {
-    const logging: debug.Logging.SuccessError = comptime spec.logging.override();
-    if (meta.wrap(sys.call(.truncate, spec.errors, spec.return_type, .{ @intFromPtr(pathname.ptr), offset }))) |ret| {
+pub fn pathTruncate(comptime truncate_spec: TruncateSpec, pathname: [:0]const u8, offset: usize) sys.ErrorUnion(
+    truncate_spec.errors,
+    truncate_spec.return_type,
+) {
+    const logging: debug.Logging.SuccessError = comptime truncate_spec.logging.override();
+    if (meta.wrap(sys.call(.truncate, truncate_spec.errors, truncate_spec.return_type, .{ @intFromPtr(pathname.ptr), offset }))) |ret| {
         if (logging.Success) {
             about.aboutPathnameOffsetNotice(about.truncate_s, pathname, offset);
         }
