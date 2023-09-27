@@ -17,19 +17,16 @@ pub usingnamespace zl.start;
 pub const runtime_assertions: bool = true;
 pub const logging_default: debug.Logging.Default = debug.spec.logging.default.verbose;
 const getcwd_spec: file.GetWorkingDirectorySpec = .{};
-
 const make_dir_spec: file.MakeDirSpec = .{};
 const make_node_spec: file.MakeNodeSpec = .{};
 const seek_spec: file.SeekSpec = .{};
 const create_spec: file.CreateSpec = .{};
-
 const path_spec: file.PathSpec = .{};
 const file_path_spec: file.PathSpec = .{};
 const link_spec: file.LinkSpec = .{};
 const copy_spec: file.CopySpec = .{};
 const send_spec: file.SendSpec = .{};
 const open_spec: file.OpenSpec = .{};
-
 const open_dir_spec: file.OpenSpec = .{};
 const remove_dir_spec: file.RemoveDirSpec = .{};
 const unlink_spec: file.UnlinkSpec = .{};
@@ -45,6 +42,7 @@ const make_path_spec: file.MakePathSpec = .{
     .logging = .{},
 };
 const read_spec: file.ReadSpec = .{};
+const read2_spec: file.Read2Spec = .{};
 const write_spec: file.WriteSpec = .{};
 const pipe_spec: file.MakePipeSpec = .{
     .options = .{ .close_on_exec = false },
@@ -391,8 +389,8 @@ fn testReadWrite2() !void {
     var buf5: [1]u8 = undefined;
     var buf: [5][]u8 = .{ &buf1, &buf2, &buf3, &buf4, &buf5 };
     const fd: usize = try file.create(create_spec, .{ .read_write = true }, test_dir ++ "file_test1", file.mode.regular);
-    try file.write2(write_spec, .{}, fd, &.{ "1", "2", "3", "4", "5" }, 0);
-    const len: usize = try file.read2(read_spec, .{}, fd, &buf, 0);
+    try file.write2(write_spec, .{}, fd, @ptrCast(&[_][]const u8{ "1", "2", "3", "4", "5" }), 0);
+    const len: usize = try file.read2(read2_spec, .{ .high_priority = true }, fd, @ptrCast(&buf), 0);
     try debug.expectEqual(usize, 5, len);
 }
 pub fn main(args: [][*:0]u8) !void {
@@ -400,9 +398,7 @@ pub fn main(args: [][*:0]u8) !void {
     try meta.wrap(testBasicDirectoryIterator());
     try meta.wrap(testFileOperationsRound1());
     try meta.wrap(testFileOperationsRound2());
-    //try meta.wrap(testStandardChannel());
     try meta.wrap(testSocketOpenAndClose());
-    try meta.wrap(testReadWrite2());
     try meta.wrap(testFileTests());
     try meta.wrap(testPoll());
     try meta.wrap(testClientAndServerIPv4(args));
@@ -413,4 +409,5 @@ pub fn main(args: [][*:0]u8) !void {
     try meta.wrap(testSymbolicLink());
     try meta.wrap(testSymbolicLinkAt());
     try meta.wrap(testSampleReports());
+    try meta.wrap(testReadWrite2());
 }
