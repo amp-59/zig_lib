@@ -1635,6 +1635,23 @@ const static = opaque {
         return true;
     }
 };
+const GlobalVariableDecl = struct {
+    name: []const u8,
+    type: type,
+};
+pub inline fn globalVariables(comptime T: type) []const GlobalVariableDecl {
+    comptime {
+        var ret: []const GlobalVariableDecl = &.{};
+        for (@typeInfo(T).Struct.decls) |decl| {
+            const ptr = &@field(T, decl.name);
+            const Pointer = @TypeOf(ptr);
+            if (!@typeInfo(Pointer).Pointer.is_const) {
+                ret = ret ++ [1]GlobalVariableDecl{.{ .name = decl.name, .type = Pointer }};
+            }
+        }
+        return ret;
+    }
+}
 pub const Bits64 = @Vector(64, bool);
 pub const Bits32 = @Vector(32, bool);
 pub const Bits16 = @Vector(16, bool);
