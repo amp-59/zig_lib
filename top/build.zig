@@ -3235,7 +3235,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         ret = paths[0].names[1];
                     }
                     if (node.tasks.tag == .run) {
-                        ret = paths[0].names[1];
+                        ret = mem.terminate(node.getRunArgs()[0], 0);
                     }
                     return ret;
                 }
