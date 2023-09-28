@@ -731,21 +731,15 @@ pub fn auxiliaryValue(auxv: *const anyopaque, comptime tag: AuxiliaryVectorEntry
 pub fn environmentValue(vars: [][*:0]u8, key: [:0]const u8) ?[:0]u8 {
     @setRuntimeSafety(builtin.is_safe);
     for (vars) |key_value| {
-        const key_len: u64 = blk: {
+        var idx: usize = blk: {
             var idx: usize = 0;
             while (key_value[idx] != '=') idx +%= 1;
             break :blk idx;
         };
-        if (!mem.testEqualString(key, key_value[0..key_len])) {
+        if (!mem.testEqualString(key, key_value[0..idx])) {
             continue;
         }
-        const val_idx: usize = key_len +% 1;
-        const end_idx: usize = blk: {
-            var idx: usize = val_idx;
-            while (key_value[idx] != 0) idx +%= 1;
-            break :blk idx;
-        };
-        return key_value[val_idx..end_idx :0];
+        return mem.terminate(key_value + idx + 1, 0);
     }
     return null;
 }
