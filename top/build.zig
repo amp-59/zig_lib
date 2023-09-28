@@ -130,7 +130,7 @@ pub const BuilderSpec = struct {
     pub const Options = struct {
         /// The maximum number of threads in addition to main.
         /// max_thread_count=0 is single-threaded.
-        max_thread_count: u8 = 0,
+        max_thread_count: u8 = 8,
         /// Allow this many errors before exiting the thread group.
         /// A value of `null` will attempt to report all errors and exit from main.
         max_error_count: ?u8 = 0,
@@ -617,6 +617,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     len: usize,
                     max_len: usize,
                     fn add(res: *List, allocator: *Allocator, tag: Lists.Tag) usize {
+                        defer res.len +%= 1;
                         return allocator.addGeneric(
                             (@intFromEnum(tag) >> 8),
                             (@intFromEnum(tag) >> 4) & 0xf,
@@ -640,8 +641,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
                 fn add(lists: *Lists, allocator: *Allocator, tag: Lists.Tag) usize {
                     @setRuntimeSafety(false);
-                    defer lists.buf[@as(u4, @truncate(@intFromEnum(tag)))].len +%= 1;
-                    return lists.buf[@as(u4, @truncate(@intFromEnum(tag)))].add(allocator, tag);
+                    return lists.buf[@intFromEnum(tag) & 0xf].add(allocator, tag);
                 }
                 fn get(lists: *const Lists, tag: Lists.Tag) usize {
                     @setRuntimeSafety(false);
@@ -956,7 +956,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 const node: *Node = createNode(allocator, group, .worker, .run);
                 node.flags = .{};
                 node.name = duplicate(allocator, name);
-                for (args) |arg| node.add(allocator, [*:0]u8, .run_args).* = duplicate(allocator, arg);
+                for (args) |arg| node.addRunArg(allocator).* = duplicate(allocator, arg);
                 initializeCommand(allocator, node);
                 return node;
             }
@@ -1732,14 +1732,15 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
         }
         fn taskArgs(allocator: *Allocator, node: *Node, tag: Node.Lists.Tag) [][*:0]u8 {
-            const args: *const []const [*:0]u8 = @ptrFromInt(node.lists.get(tag));
-            const grp_args: *const []const [*:0]u8 = @ptrFromInt(node.groupNode().lists.get(tag));
+            @setRuntimeSafety(builtin.is_safe);
+            const args: *const []const usize = @ptrFromInt(node.lists.get(tag));
+            const grp_args: *const []const usize = @ptrFromInt(node.groupNode().lists.get(tag));
             const args_len: usize = args.len +% (if (node.flags.is_primary) grp_args.len else 0);
-            const ret: [*][*:0]u8 = @ptrFromInt(allocator.allocateRaw(8 *% (args_len +% 1), 8));
+            const ret: [*]usize = @ptrFromInt(allocator.allocateRaw(8 *% (args_len +% 1), 8));
             @memcpy(ret, args.*);
             @memcpy(ret + args.len, grp_args.*);
-            ret[args.len +% grp_args.len] = comptime builtin.zero([*:0]u8);
-            return ret[0..args_len];
+            ret[args.len +% grp_args.len] = 0;
+            return @ptrCast(ret[0..args_len]);
         }
         fn buildTaskArgs(allocator: *Allocator, node: *Node, paths: []file.CompoundPath) ?[][*:0]u8 {
             @setRuntimeSafety(builtin.is_safe);
@@ -3491,7 +3492,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     };
                 }
                 if (builder_spec.options.trace_compile_errors) {
-                    return trace.printCompileErrors(allocator, msg);
+                    return trace.printCompileErrors(allocator, &builtin.trace, msg);
                 }
                 const extra: [*]u32 = @ptrCast(@alignCast(msg + 8));
                 var bytes: [*:0]u8 = msg;
