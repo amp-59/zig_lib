@@ -8,11 +8,15 @@ const build = zl.build;
 const debug = zl.debug;
 const builtin = zl.builtin;
 const testing = zl.testing;
-
 pub usingnamespace zl.start;
 pub const logging_default = debug.spec.logging.default.verbose;
 pub const Builder = build.GenericBuilder(.{});
-
+pub const AbsoluteState = struct {
+    home: [:0]u8,
+    cwd: [:0]u8,
+    proj: [:0]u8,
+    pid: u16,
+};
 const AddressSpace = mem.GenericRegularAddressSpace(mem.RegularAddressSpaceSpec{
     .label = "builder_space",
     .lb_addr = 0x40000000,
@@ -49,7 +53,6 @@ const AddressSpace = mem.GenericRegularAddressSpace(mem.RegularAddressSpaceSpec{
     }),
 });
 const LoaderAddressSpace = AddressSpace.SubSpace("Loader");
-
 fn testObjcopyCommand(args: [][*:0]u8, ptrs: *Builder.FunctionPointers) void {
     var format_cmd: build.ObjcopyCommand = .{ .kind = .exe };
     var allocator: mem.SimpleAllocator = .{};
@@ -142,7 +145,6 @@ fn testEntryAutoLoader() !void {
         const cmd2 = .{ .kind = .exe, .mode = .ReleaseFast };
         const core = vtable.build_cmd_core_fns;
         const extra = vtable.build_cmd_extra_fns;
-
         var buf: [4096]u8 = undefined;
         var len: usize = 0;
         const zig_exe: []const u8 = builtin.root.zig_exe;
@@ -176,7 +178,6 @@ noinline fn doIt(loader: *Loader, pathname: [:0]const u8, ptrs: *Builder.Functio
     const info: *Loader.Info = try meta.wrap(loader.load(pathname));
     inline for (@typeInfo(Builder.FunctionPointers).Struct.fields) |field| {
         const load: *fn (*@TypeOf(@field(ptrs, field.name))) void = @ptrFromInt(info.ehdr.e_entry);
-
         load(&@field(ptrs, field.name));
     }
 }
@@ -192,7 +193,6 @@ fn testConcurrentLoading() !void {
     _ = archive_core;
     const objcopy_core = "../top/build/objcopy.auto.zig";
     _ = objcopy_core;
-
     var count: usize = 0;
     var allocator: mem.SimpleAllocator = .{};
     const stack1: []usize = allocator.allocate(usize, 1024 * 1024);
@@ -248,7 +248,6 @@ fn testConcurrentLoading() !void {
         loader.ub_meta_addr += count;
     }
 }
-
 fn quickCompile(comptime builder_spec: build.BuilderSpec, build_cmd: build.BuildCommand, name: []const u8, pathname: []const u8) !void {
     const LBuilder = build.GenericBuilder(builder_spec);
     var address_space: LBuilder.AddressSpace = .{};
@@ -278,14 +277,12 @@ fn quickCompile(comptime builder_spec: build.BuilderSpec, build_cmd: build.Build
     }
     allocator.unmapAll();
 }
-
 fn testBasics() !void {
     var allocator: mem.SimpleAllocator = .{};
     var buf: []u8 = allocator.allocate(u8, 1024 * 1024);
     var loader: Loader = .{};
     if (@hasDecl(builtin.root.dynamic_units, "build")) {
         const info: *Loader.Info = try loader.load(builtin.root.dynamic_units.build);
-
         var vtable: Builder.FunctionPointers = .{};
         const ptr = Loader.about.aboutBinary(null, info, buf.ptr);
         debug.write(buf[0..fmt.strlen(ptr, buf.ptr)]);
