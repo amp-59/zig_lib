@@ -232,32 +232,6 @@ pub fn buildRunnerTestGroup(allocator: *build.Allocator, group: *Node) void {
     build_runner.addToplevelArgs(allocator);
     zls_build_runner.addToplevelArgs(allocator);
 }
-pub fn regenGroup(allocator: *build.Allocator, group: *Node) void {
-    var regen_format_cmd: build.FormatCommand = format_cmd;
-    const impls = group.addGroupWithTask(allocator, "impls", .format);
-    impls.flags.is_hidden = true;
-    var impls_build_cmd: build.BuildCommand = build_cmd;
-    impls_build_cmd.kind = .obj;
-    impls_build_cmd.gc_sections = false;
-    impls_build_cmd.modules = &.{.{ .name = "@build", .path = "./build.zig" }};
-    impls_build_cmd.dependencies = &.{.{ .name = "@build" }};
-    const impls_build_cmd_fn: *Node = impls.addBuild(allocator, impls_build_cmd, "build_cmd_fn", "top/build/build.h.zig");
-    const impls_format_cmd_fn: *Node = impls.addBuild(allocator, impls_build_cmd, "format_cmd_fn", "top/build/format.h.zig");
-    const impls_archive_cmd_fn: *Node = impls.addBuild(allocator, impls_build_cmd, "archive_cmd_fn", "top/build/archive.h.zig");
-    const impls_objcopy_cmd_fn: *Node = impls.addBuild(allocator, impls_build_cmd, "objcopy_cmd_fn", "top/build/objcopy.h.zig");
-    impls_build_cmd.kind = .exe;
-    impls_build_cmd.gc_sections = true;
-    const impls_rebuild: *Node = impls.addBuild(allocator, impls_build_cmd, "rebuild", "top/build/gen/rebuild_impls.zig");
-    const format: *Node = group.addFormat(allocator, regen_format_cmd, "format", "top/build/rebuild.zig");
-    impls_rebuild.descr = "Regenerate build program maybe adding new elements";
-    format.descr = "Reformat regenerated build program into canonical form";
-    impls_rebuild.addToplevelArgs(allocator);
-    impls_rebuild.dependOn(allocator, impls_build_cmd_fn);
-    impls_rebuild.dependOn(allocator, impls_format_cmd_fn);
-    impls_rebuild.dependOn(allocator, impls_archive_cmd_fn);
-    impls_rebuild.dependOn(allocator, impls_objcopy_cmd_fn);
-    format.addDepn(allocator, .format, impls_rebuild, .run);
-}
 pub fn buildgenGroup(allocator: *build.Allocator, group: *Node) void {
     var buildgen_format_cmd: build.FormatCommand = format_cmd;
     const impls = group.addGroupWithTask(allocator, "impls", .run);
@@ -298,7 +272,6 @@ pub fn buildMain(allocator: *build.Allocator, toplevel: *Node) void {
 
     exampleGroup(allocator, toplevel.addGroupWithTask(allocator, "example", .build));
     memgenGroup(allocator, toplevel.addGroupWithTask(allocator, "memgen", .format));
-    regenGroup(allocator, toplevel.addGroupWithTask(allocator, "regen", .format));
     sysgenGroup(allocator, toplevel.addGroupWithTask(allocator, "sysgen", .format));
     buildgenGroup(allocator, toplevel.addGroupWithTask(allocator, "buildgen", .format));
     targetgenGroup(allocator, toplevel.addGroupWithTask(allocator, "targetgen", .format));
@@ -310,4 +283,3 @@ pub fn install(b: *@import("std").Build.Builder) void {
 pub usingnamespace struct {
     pub const build = if (@hasDecl(@import("root"), "dependencies")) install else zl.build;
 };
-//
