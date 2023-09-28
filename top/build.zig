@@ -8,6 +8,7 @@ const bits = @import("./bits.zig");
 const meta = @import("./meta.zig");
 const proc = @import("./proc.zig");
 const time = @import("./time.zig");
+const trace = @import("./trace.zig");
 const debug = @import("./debug.zig");
 const builtin = @import("./builtin.zig");
 const testing = @import("./testing.zig");
@@ -256,8 +257,13 @@ pub const BuilderSpec = struct {
         analysis_ext: [:0]const u8 = ".json",
         /// Extension for documentation files.
         docs_ext: [:0]const u8 = ".html",
+        /// Use library traces for compile error messages.
+        trace_compile_errors: bool = true,
         /// (Devel.) Exclude `writeErrors` from dynamic extensions.
         eager_compile_errors: bool = false,
+        /// (Devel.) Start dependencies in new threads regardless of
+        /// total number.
+        eager_multi_threading: bool = true,
     };
     pub const Logging = packed struct {
         /// Report exchanges on task lock state:
@@ -2025,27 +2031,17 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 if (builder_spec.options.add_stack_traces_debug_executables) {
                     if (node.flags.want_stack_traces) {
                         if (!node.hasDebugInfo()) {
-                            // NU: disabled stripping by requirement of request 'want_stack_traces'
                             node.tasks.cmd.build.strip = false;
                         }
-                        // NU: Added dependency to node by request 'want_stack_traces'
                         node.dependOn(allocator, node.sh.extns.trace);
-                        if (builder_spec.logging.show_task_update) {
-                            //about.aboutNode(node, .add_stack_traces_debug_executables, .want_stack_traces, //
-                            //    .{ .add_bin_path = node.sh.extns.trace.getPaths()[0] });
-                            //
-                        }
                         if (node.flags.want_build_config) {
-                            // NU: Added configuration constant to node build configuration.
                             node.addConfigBool(allocator, "have_stack_traces", true);
-                            if (builder_spec.logging.show_task_update) {
-                                //
-                            }
                         }
                     }
                 }
                 if (have_lazy) {
                     if (max_thread_count != 0 and
+                        builder_spec.options.eager_multi_threading or
                         (node.tag == .group and node.getNodes().len > 2) or
                         (node.tag == .worker and node.getDepns().len > 1))
                     {
@@ -2179,8 +2175,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         ) bool {
             @setRuntimeSafety(builtin.is_safe);
             if (have_lazy and node.flags.is_dynamic_extension) {
-                //const pathname: [:0]const u8 = node.getPaths()[0].concatenate(allocator);
-                //node.sh.dl.load(pathname);
+                // TODO: Load library if available.
             }
             if (exchange(node, task, .ready, .blocking, max_thread_count)) {
                 try meta.wrap(tryAcquireThread(address_space, thread_space, allocator, node, task, max_thread_count));
@@ -2409,9 +2404,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         ) void {
             @setRuntimeSafety(false);
             const save: usize = allocator.save();
-            var hdr: Message.ServerHeader = undefined;
             var fd: [1]file.PollFd = .{.{ .fd = out.read, .expect = .{ .input = true } }};
             while (try meta.wrap(file.poll(poll(), &fd, builder_spec.options.timeout_milliseconds))) {
+                var hdr: Message.ServerHeader = undefined;
                 mem.zero(Message.ServerHeader, &hdr);
                 try meta.wrap(file.readOne(read3(), out.read, &hdr));
                 const msg: [*:0]u8 = @ptrFromInt(allocator.allocateRaw(hdr.bytes_len +% 64, 4));
@@ -2449,12 +2444,11 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 try meta.wrap(file.duplicateTo(dup3(), .{}, in.read, 0));
                 try meta.wrap(file.duplicateTo(dup3(), .{}, out.write, 1));
                 try meta.wrap(file.execPath(execve(), node.zigExe(), args, node.sh.vars));
-            } else {
-                try meta.wrap(file.close(close(), in.read));
-                try meta.wrap(file.close(close(), out.write));
-                try meta.wrap(file.write(write2(), in.write, update_exit_message[0..1]));
-                try meta.wrap(serverLoop(allocator, node, results, file_stats, dest_pathname, out));
             }
+            try meta.wrap(file.close(close(), in.read));
+            try meta.wrap(file.close(close(), out.write));
+            try meta.wrap(file.write(write2(), in.write, update_exit_message[0..1]));
+            try meta.wrap(serverLoop(allocator, node, results, file_stats, dest_pathname, out));
             if (results.server != builder_spec.options.compiler_unexpected_status) {
                 try meta.wrap(file.write(write2(), in.write, update_exit_message[1..2]));
             }
@@ -3354,32 +3348,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
                 return fmt.strlen(ptr, buf);
             }
-            fn writeError(buf: [*]u8, extra: [*]u32, bytes: [*:0]u8, err_msg_idx: u32, kind: AboutKind) usize {
-                @setRuntimeSafety(builtin.is_safe);
-                const err: *ErrorMessage = @ptrCast(extra + err_msg_idx);
-                const src: *SourceLocation = @ptrCast(extra + err.src_loc);
-                const notes: [*]u32 = extra + err_msg_idx + ErrorMessage.len;
-                var len: usize = writeTopSrcLoc(buf, extra, bytes, err_msg_idx);
-                const pos: u64 = len +% @tagName(kind).len -% 11 -% 2;
-                len +%= writeAbout(buf + len, kind);
-                len +%= writeMessage(buf + len, bytes, err.start, pos);
-                if (err.src_loc == 0) {
-                    if (err.count != 1)
-                        len +%= writeTimes(buf + len, err.count);
-                    for (0..err.notes_len) |idx|
-                        len +%= writeError(buf + len, extra, bytes, notes[idx], .note);
-                } else {
-                    if (err.count != 1)
-                        len +%= writeTimes(buf + len, err.count);
-                    if (src.src_line != 0)
-                        len +%= writeCaret(buf + len, bytes, src);
-                    for (0..err.notes_len) |idx|
-                        len +%= writeError(buf + len, extra, bytes, notes[idx], .note);
-                    if (src.ref_len != 0)
-                        len +%= writeTrace(buf + len, extra, bytes, err.src_loc, src.ref_len);
-                }
-                return len;
-            }
             fn writeSourceLocation(buf: [*]u8, pathname: [:0]const u8, line: usize, column: usize) usize {
                 @setRuntimeSafety(builtin.is_safe);
                 var ud64: fmt.Type.Ud64 = .{ .value = line };
@@ -3477,6 +3445,59 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
                 ptr[0..5].* = "\x1b[0m\n".*;
                 return (@intFromPtr(ptr) -% @intFromPtr(buf)) +% 5;
+            }
+            fn writeError(buf: [*]u8, extra: [*]u32, bytes: [*:0]u8, err_msg_idx: u32, kind: AboutKind) usize {
+                @setRuntimeSafety(builtin.is_safe);
+                const err: *ErrorMessage = @ptrCast(extra + err_msg_idx);
+                const src: *SourceLocation = @ptrCast(extra + err.src_loc);
+                const notes: [*]u32 = extra + err_msg_idx + ErrorMessage.len;
+                var len: usize = writeTopSrcLoc(buf, extra, bytes, err_msg_idx);
+                const pos: u64 = len +% @tagName(kind).len -% 11 -% 2;
+                len +%= writeAbout(buf + len, kind);
+                len +%= writeMessage(buf + len, bytes, err.start, pos);
+                if (err.src_loc == 0) {
+                    if (err.count != 1) {
+                        len +%= writeTimes(buf + len, err.count);
+                    }
+                    for (0..err.notes_len) |idx| {
+                        len +%= writeError(buf + len, extra, bytes, notes[idx], .note);
+                    }
+                } else {
+                    if (err.count != 1) {
+                        len +%= writeTimes(buf + len, err.count);
+                    }
+                    if (src.src_line != 0) {
+                        len +%= writeCaret(buf + len, bytes, src);
+                    }
+                    for (0..err.notes_len) |idx| {
+                        len +%= writeError(buf + len, extra, bytes, notes[idx], .note);
+                    }
+                    if (src.ref_len != 0) {
+                        len +%= writeTrace(buf + len, extra, bytes, err.src_loc, src.ref_len);
+                    }
+                }
+                return len;
+            }
+            pub fn writeErrors(allocator: *Allocator, node: *Node, msg: [*:0]u8) void {
+                @setRuntimeSafety(builtin.is_safe);
+                if (!builder_spec.options.eager_compile_errors and
+                    have_lazy and builtin.output_mode == .Exe)
+                {
+                    return if (defined(node.sh.fp.about.generic.writeErrors)) {
+                        node.sh.fp.about.generic.writeErrors(allocator, node, msg);
+                    };
+                }
+                if (builder_spec.options.trace_compile_errors) {
+                    return trace.printCompileErrors(allocator, msg);
+                }
+                const extra: [*]u32 = @ptrCast(@alignCast(msg + 8));
+                var bytes: [*:0]u8 = msg;
+                bytes += 8 + ((extra - 2)[0] *% 4);
+                var buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(1024 *% 1024, 1));
+                for ((extra + extra[1])[0..extra[0]]) |err_msg_idx| {
+                    debug.write(buf[0..writeError(buf, extra, bytes, err_msg_idx, .@"error")]);
+                }
+                debug.write(mem.terminate(bytes + extra[2], 0));
             }
             fn aboutPhase(node: *Node) fmt.AboutSrc {
                 switch (node.sh.mode) {
@@ -3700,24 +3721,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 ptr[0..3].* = "};\n".*;
                 ptr += 3;
                 return ptr;
-            }
-            pub fn writeErrors(allocator: *Allocator, node: *Node, msg: [*:0]u8) void {
-                @setRuntimeSafety(builtin.is_safe);
-                if (!builder_spec.options.eager_compile_errors and
-                    have_lazy and builtin.output_mode == .Exe)
-                {
-                    return if (defined(node.sh.fp.about.generic.writeErrors)) {
-                        node.sh.fp.about.generic.writeErrors(allocator, node, msg);
-                    };
-                }
-                const extra: [*]u32 = @ptrCast(@alignCast(msg + 8));
-                var bytes: [*:0]u8 = msg;
-                bytes += 8 + ((extra - 2)[0] *% 4);
-                var buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(1024 *% 1024, 1));
-                for ((extra + extra[1])[0..extra[0]]) |err_msg_idx| {
-                    debug.write(buf[0..writeError(buf, extra, bytes, err_msg_idx, .@"error")]);
-                }
-                debug.write(mem.terminate(bytes + extra[2], 0));
             }
             fn writeFromTo(buf: [*]u8, old: State, new: State) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
@@ -4117,11 +4120,11 @@ pub fn GenericCommand(comptime Command: type) type {
         //pub fn renderWriteBuf(cmd: *const Command, buf: [*]u8) callconv(.C) usize {
         //    return fmt.render(render_spec, cmd.*).formatWriteBuf(buf);
         //}
-        const gen = @import("./gen.zig");
-        const Editor = gen.StructEditor(Command);
-        pub const fieldEditDistance = Editor.fieldEditDistance;
-        pub const writeFieldEditDistance = Editor.writeFieldEditDistance;
-        pub const indexOfCommonLeastDifference = Editor.indexOfCommonLeastDifference;
+        //const gen = @import("./gen.zig");
+        //const Editor = gen.StructEditor(Command);
+        //pub const fieldEditDistance = Editor.fieldEditDistance;
+        //pub const writeFieldEditDistance = Editor.writeFieldEditDistance;
+        //pub const indexOfCommonLeastDifference = Editor.indexOfCommonLeastDifference;
         pub const formatWriteBuf = Command.formatWriteBuf;
         pub const formatLength = Command.formatLength;
         pub const formatParseArgs = Command.formatParseArgs;
