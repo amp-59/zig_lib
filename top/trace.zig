@@ -275,13 +275,11 @@ fn writeTrace(buf: [*]u8, extra: [*]u32, bytes: [*:0]u8, start: usize, ref_len: 
     ptr[0..5].* = "\x1b[0m\n".*;
     return (@intFromPtr(ptr) -% @intFromPtr(buf)) +% 5;
 }
-
 fn writeCompileError(allocator: *Allocator, buf: [*]u8, extra: [*]u32, bytes: [*:0]u8, err_msg_idx: u32, kind: AboutKind, file_map: *FileMap) [*]u8 {
     @setRuntimeSafety(builtin.is_safe);
     const err: *build.ErrorMessage = @ptrCast(extra + err_msg_idx);
     const src: *build.SourceLocation = @ptrCast(extra + err.src_loc);
     const notes: [*]u32 = extra + err_msg_idx + build.ErrorMessage.len;
-
     buf[0..7].* = "\x1b[1;92m".*;
     var ptr: [*]u8 = buf + 7;
     const pathname: [:0]const u8 = mem.terminate(bytes + src.src_path, 0);
@@ -292,7 +290,6 @@ fn writeCompileError(allocator: *Allocator, buf: [*]u8, extra: [*]u32, bytes: [*
     }
     ptr += writeAbout(ptr, kind);
     ptr += writeMessage(ptr, bytes, err.start, fmt.strlen(ptr, buf) +% @tagName(kind).len -% 11 -% 2);
-
     if (err.src_loc == 0) {
         if (err.count != 1) {
             ptr += writeTimes(ptr, err.count);
@@ -306,7 +303,7 @@ fn writeCompileError(allocator: *Allocator, buf: [*]u8, extra: [*]u32, bytes: [*
         }
         if (src.src_line != 0) {
             ptr = writeSourceContextNoAddr(&builtin.trace, allocator, file_map, ptr, 8, src, pathname);
-            ptr = writeLastLine(ptr, &builtin.trace, 8);
+            ptr = writeLastLine(&builtin.trace, ptr, 8);
         }
         for (0..err.notes_len) |idx| {
             ptr = writeCompileError(allocator, ptr, extra, bytes, notes[idx], .note, file_map);
@@ -317,9 +314,9 @@ fn writeCompileError(allocator: *Allocator, buf: [*]u8, extra: [*]u32, bytes: [*
     }
     return ptr;
 }
-
 pub fn printCompileErrors(allocator: *Allocator, msg: [*:0]u8) void {
     @setRuntimeSafety(builtin.is_safe);
+    const save: usize = allocator.save();
     const extra: [*]u32 = @ptrCast(@alignCast(msg + 8));
     var file_map: FileMap = FileMap.init(allocator, 8);
     var bytes: [*:0]u8 = msg;
@@ -329,8 +326,8 @@ pub fn printCompileErrors(allocator: *Allocator, msg: [*:0]u8) void {
         debug.write(fmt.slice(writeCompileError(allocator, buf, extra, bytes, err_msg_idx, .@"error", &file_map), buf));
     }
     debug.write(mem.terminate(bytes + extra[2], 0));
+    allocator.restore(save);
 }
-
 const Level = struct {
     var start: usize = lb_addr;
 
@@ -384,7 +381,7 @@ pub const StackIterator = struct {
         return @as(*usize, @ptrFromInt(pc[0])).*;
     }
 };
-fn writeLastLine(buf: [*]u8, trace: *const debug.Trace, width: u64) [*]u8 {
+fn writeLastLine(trace: *const debug.Trace, buf: [*]u8, width: u64) [*]u8 {
     @setRuntimeSafety(false);
     var idx: u64 = 0;
     var ptr: [*]u8 = buf;
