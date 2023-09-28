@@ -281,6 +281,10 @@ pub fn extrema(comptime Int: type) Extrema {
         },
     }
 }
+// Sue me
+pub fn sqrt(comptime Num: type, value: Num) Num {
+    return @intFromFloat(@sqrt(@as(f64, @floatFromInt(value))));
+}
 /// Cast an integer to a different integer type. If the value doesn't fit,
 /// return null.
 pub fn cast(comptime Int: type, i: anytype) ?Int {
