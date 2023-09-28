@@ -1468,13 +1468,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         fn initializeFileSystem(allocator: *Allocator, node: *Node, st: *file.Status) void {
             @setRuntimeSafety(builtin.is_safe);
             const dir_fds: *Node.DirFds = @ptrFromInt(allocator.allocateRaw(@sizeOf(Node.DirFds), @alignOf(Node.DirFds)));
-            node.extra.file_stats = @ptrFromInt(allocator.allocateRaw(@sizeOf(Node.FileStats), @alignOf(Node.FileStats)));
-            if (builder_spec.options.enable_current_working_directory and
-                node.flags.is_top)
-            {
-                builtin.absolute_state.ptr.cwd = file.getCwd(getcwd(), //
-                    @as([*]u8, @ptrFromInt(allocator.allocateRaw(4097, 1)))[0..4096 :0]);
-            }
             dir_fds.build_root = try meta.wrap(file.openAt(open(), dir_options, file.cwd, node.buildRoot()));
             for ([4][:0]const u8{
                 builder_spec.options.cache_dir,
@@ -1615,6 +1608,16 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 node.extra.dir_fds = node.groupNode().extra.dir_fds;
             }
             if (node.flags.is_top) {
+                if (proc.environmentValue(node.sh.vars, "PWD")) |cwd| {
+                    builtin.absolute_state.ptr.cwd = cwd;
+                } else {
+                    builtin.absolute_state.ptr.cwd = &.{};
+                }
+                if (proc.environmentValue(node.sh.vars, "HOME")) |home| {
+                    builtin.absolute_state.ptr.home = home;
+                } else {
+                    builtin.absolute_state.ptr.home = &.{};
+                }
                 if (max_thread_count != 0) {
                     mem.map(map(), .{}, .{}, stack_lb_addr, stack_up_addr -% stack_lb_addr);
                 }
