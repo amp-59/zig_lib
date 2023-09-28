@@ -378,6 +378,20 @@ pub const noexcept = struct {
             unreachable;
         }
     }
+    pub fn unsignedLEB128(bytes: [*]const u8) struct { usize, u8 } {
+        const max_idx: comptime_int = (@bitSizeOf(usize) +% 6) / 7;
+        var value: usize = 0;
+        var idx: u8 = 0;
+        while (idx != max_idx) {
+            const byte: usize = bytes[idx];
+            value |= (byte & 0x7f) << @truncate(idx *% 7);
+            idx +%= 1;
+            if (byte & 0x80 == 0) {
+                return .{ value, idx };
+            }
+        }
+        unreachable;
+    }
     pub fn unsignedRadix(str: []const u8, radix: u8) usize {
         @setRuntimeSafety(builtin.is_safe);
         var res: usize = 0;
