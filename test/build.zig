@@ -28,8 +28,7 @@ pub const AbsoluteState = struct {
 };
 pub const message_style = "\x1b[93m";
 pub const enable_debugging: bool = false;
-pub const never_exit_group: bool = true;
-pub const exec_mode = .Run;
+pub const never_exit_group: bool = false;
 pub const want_stack_traces: bool = enable_debugging;
 pub const logging_override: debug.Logging.Override = .{
     .Attempt = enable_debugging,
