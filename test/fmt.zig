@@ -586,7 +586,7 @@ fn testSystemFlagsFormatters() !void {
     len = (sys.flags.MemFd{ .allow_sealing = true, .close_on_exec = true }).formatWriteBuf(&buf);
     try testing.expectEqualString("flags=close_on_exec,allow_sealing", buf[0..len]);
     len = (sys.flags.Clone{ .clear_child_thread_id = true, .detached = false, .fs = true, .files = true }).formatWriteBuf(&buf);
-    try testing.expectEqualString("flags=vm,fs,files,signal_handlers,sysvsem,set_parent_thread_id,clear_child_thread_id,set_child_thread_id", buf[0..len]);
+    try testing.expectEqualString("flags=vm,fs,files,signal_handlers,thread,sysvsem,set_parent_thread_id,clear_child_thread_id,set_child_thread_id", buf[0..len]);
 }
 pub fn main() !void {
     try testBytesFormat();
@@ -595,7 +595,7 @@ pub fn main() !void {
     try testGenericRangeFormat();
     try testRenderFunctions();
     try testSystemFlagsFormatters();
-    // try testEquivalentIntToStringFormat();
+    //try testEquivalentIntToStringFormat();
     //try testEquivalentLEBFormatAndParse();
     try @import("./fmt/utf8.zig").testUtf8();
     try @import("./fmt/ascii.zig").testAscii();

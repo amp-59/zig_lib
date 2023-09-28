@@ -8,7 +8,7 @@ const mem = struct {
 };
 pub usingnamespace zl.start;
 pub fn main() void {
-    if (false) {
+    if (true) {
         const Auto = mem.AutomaticStructuredReadWriteResize(.{
             .count = 256,
             .child = u8,
