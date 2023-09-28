@@ -467,6 +467,14 @@ pub fn PathFormat(comptime Format: type) type {
             }
             return strlen(end - 1, buf);
         }
+        pub fn writeDisplayPath(buf: [*]u8, pathname: [:0]const u8) [*]u8 {
+            @setRuntimeSafety(false);
+            return buf + (Format{
+                .names = @constCast(@ptrCast(&pathname)),
+                .names_len = 1,
+                .names_max_len = 1,
+            }).formatWriteBufDisplay(buf);
+        }
         pub fn formatWriteBufLiteral(format: Format, buf: [*]u8) usize {
             @setRuntimeSafety(builtin.is_safe);
             var ptr: [*]u8 = buf;
