@@ -47,14 +47,6 @@ pub const SourceLocation = struct {
         ptr[0..4].* = "\x1b[0m".*;
         return ptr + 4;
     }
-    fn fromBundleLocation(src: build.SourceLocation, bytes: [:0]u8) SourceLocation {
-        const pathname: [:0]const u8 = mem.terminate(bytes + src.src_path, 0);
-        return .{
-            .file = pathname,
-            .line = src.line +% 1,
-            .column = src.column +% 1,
-        };
-    }
 };
 pub const LineLocation = struct {
     start: usize = 0,
@@ -120,10 +112,10 @@ fn writeTopSrcLoc(buf: [*]u8, extra: [*]u32, bytes: [*:0]u8, err_msg_idx: u32) u
     return fmt.strlen(ptr, buf);
 }
 fn writeSourceContextNoAddr(
-    trace: *const debug.Trace,
-    allocator: *Allocator,
-    file_map: *FileMap,
     buf: [*]u8,
+    allocator: *Allocator,
+    trace: *const debug.Trace,
+    file_map: *FileMap,
     width: usize,
     src: *build.SourceLocation,
     pathname: [:0]const u8,
@@ -170,8 +162,8 @@ fn writeSourceContextNoAddr(
                 ptr[0] = '\n';
                 ptr += 1;
             }
-            if (src.src_line != 0 and
-                (src.line +% 1) == line and trace.options.write_caret)
+            if (trace.options.write_caret and
+                src.line +% 1 == line)
             {
                 ptr = writeCaretNoAddr(ptr, trace, width, src);
             }
@@ -247,13 +239,52 @@ fn writeMessage(buf: [*]u8, bytes: [*:0]u8, start: usize, indent: usize) usize {
     ptr[0..5].* = "\x1b[0m\n".*;
     return fmt.strlen(ptr, buf) +% 5;
 }
+fn writeExtendedTrace(
+    buf: [*]u8,
+    allocator: *Allocator,
+    trace: *const debug.Trace,
+    file_map: *FileMap,
+    extra: [*]u32,
+    bytes: [*:0]u8,
+    start: usize,
+    ref_len: usize,
+) [*]u8 {
+    @setRuntimeSafety(builtin.is_safe);
+    var ref_idx: usize = start +% build.SourceLocation.len;
+    var ptr: [*]u8 = buf;
+    var len: usize = 0;
+    while (len != ref_len) : (len +%= 1) {
+        const ref_trc: *build.ReferenceTrace = @ptrCast(extra + ref_idx);
+        if (ref_trc.src_loc != 0) {
+            const src: *build.SourceLocation = @ptrCast(extra + ref_trc.src_loc);
+            const pathname: [:0]u8 = mem.terminate(bytes + src.src_path, 0);
+            const decl_name: [:0]u8 = mem.terminate(bytes + ref_trc.decl_name, 0);
+            ptr += writeSourceLocation(ptr, pathname, src.line +% 1, src.column +% 1);
+            ptr[0..2].* = ": ".*;
+            ptr += 2;
+            ptr += writeAbout(ptr, .note);
+            ptr[0..11].* = "\x1b[38;5;247m".*;
+            ptr += 11;
+            ptr[0..15].* = "referenced by '".*;
+            ptr += 15;
+            ptr = fmt.strcpyEqu(ptr, decl_name);
+            ptr[0..2].* = "'\n".*;
+            ptr += 2;
+            ptr = writeSourceContextNoAddr(ptr, allocator, trace, file_map, 8, src, pathname);
+            ptr = writeLastLine(ptr, trace, 8);
+        }
+        ref_idx +%= build.ReferenceTrace.len;
+    }
+    ptr[0..4].* = "\x1b[0m".*;
+    return ptr + 4;
+}
 fn writeTrace(buf: [*]u8, extra: [*]u32, bytes: [*:0]u8, start: usize, ref_len: usize) usize {
     @setRuntimeSafety(builtin.is_safe);
     var ref_idx: usize = start +% build.SourceLocation.len;
     buf[0..11].* = "\x1b[38;5;247m".*;
     var ptr: [*]u8 = buf + 11;
-    ptr[0..15].* = "referenced by:\n".*;
-    ptr += 15;
+    ptr[0..16].* = "\nreferenced by:\n".*;
+    ptr += 16;
     var len: usize = 0;
     while (len != ref_len) : (len +%= 1) {
         const ref_trc: *build.ReferenceTrace = @ptrCast(extra + ref_idx);
@@ -275,7 +306,16 @@ fn writeTrace(buf: [*]u8, extra: [*]u32, bytes: [*:0]u8, start: usize, ref_len: 
     ptr[0..5].* = "\x1b[0m\n".*;
     return (@intFromPtr(ptr) -% @intFromPtr(buf)) +% 5;
 }
-fn writeCompileError(allocator: *Allocator, buf: [*]u8, extra: [*]u32, bytes: [*:0]u8, err_msg_idx: u32, kind: AboutKind, file_map: *FileMap) [*]u8 {
+fn writeCompileError(
+    buf: [*]u8,
+    allocator: *Allocator,
+    trace: *const debug.Trace,
+    extra: [*]u32,
+    bytes: [*:0]u8,
+    err_msg_idx: u32,
+    kind: AboutKind,
+    file_map: *FileMap,
+) [*]u8 {
     @setRuntimeSafety(builtin.is_safe);
     const err: *build.ErrorMessage = @ptrCast(extra + err_msg_idx);
     const src: *build.SourceLocation = @ptrCast(extra + err.src_loc);
@@ -295,26 +335,27 @@ fn writeCompileError(allocator: *Allocator, buf: [*]u8, extra: [*]u32, bytes: [*
             ptr += writeTimes(ptr, err.count);
         }
         for (0..err.notes_len) |idx| {
-            ptr = writeCompileError(allocator, ptr, extra, bytes, notes[idx], .note, file_map);
+            ptr = writeCompileError(ptr, allocator, trace, extra, bytes, notes[idx], .note, file_map);
         }
     } else {
         if (err.count != 1) {
             ptr += writeTimes(ptr, err.count);
         }
+
         if (src.src_line != 0) {
-            ptr = writeSourceContextNoAddr(&builtin.trace, allocator, file_map, ptr, 8, src, pathname);
-            ptr = writeLastLine(&builtin.trace, ptr, 8);
+            ptr = writeSourceContextNoAddr(ptr, allocator, trace, file_map, 8, src, pathname);
+            ptr = writeLastLine(ptr, trace, 8);
         }
         for (0..err.notes_len) |idx| {
-            ptr = writeCompileError(allocator, ptr, extra, bytes, notes[idx], .note, file_map);
+            ptr = writeCompileError(ptr, allocator, trace, extra, bytes, notes[idx], .note, file_map);
         }
         if (src.ref_len != 0) {
-            ptr += writeTrace(ptr, extra, bytes, err.src_loc, src.ref_len);
+            ptr = writeExtendedTrace(ptr, allocator, trace, file_map, extra, bytes, err.src_loc, src.ref_len);
         }
     }
     return ptr;
 }
-pub fn printCompileErrors(allocator: *Allocator, msg: [*:0]u8) void {
+pub fn printCompileErrors(allocator: *Allocator, trace: *const debug.Trace, msg: [*:0]u8) void {
     @setRuntimeSafety(builtin.is_safe);
     const save: usize = allocator.save();
     const extra: [*]u32 = @ptrCast(@alignCast(msg + 8));
@@ -323,7 +364,7 @@ pub fn printCompileErrors(allocator: *Allocator, msg: [*:0]u8) void {
     bytes += 8 +% (extra - 2)[0] *% 4;
     var buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(1024 *% 1024, 1));
     for ((extra + extra[1])[0..extra[0]]) |err_msg_idx| {
-        debug.write(fmt.slice(writeCompileError(allocator, buf, extra, bytes, err_msg_idx, .@"error", &file_map), buf));
+        debug.write(fmt.slice(writeCompileError(buf, allocator, trace, extra, bytes, err_msg_idx, .@"error", &file_map), buf));
     }
     debug.write(mem.terminate(bytes + extra[2], 0));
     allocator.restore(save);
@@ -381,7 +422,7 @@ pub const StackIterator = struct {
         return @as(*usize, @ptrFromInt(pc[0])).*;
     }
 };
-fn writeLastLine(trace: *const debug.Trace, buf: [*]u8, width: u64) [*]u8 {
+fn writeLastLine(buf: [*]u8, trace: *const debug.Trace, width: u64) [*]u8 {
     @setRuntimeSafety(false);
     var idx: u64 = 0;
     var ptr: [*]u8 = buf;
@@ -584,7 +625,7 @@ fn writeSourceCodeAtAddress(
                 var ptr: [*]u8 = buf + pos;
                 ptr = writeExtendedSourceLocation(dwarf_info, ptr, addr, unit, src);
                 ptr = writeSourceContext(trace, allocator, file_map, ptr, width, addr, src);
-                ptr = writeLastLine(trace, ptr, width);
+                ptr = writeLastLine(ptr, trace, width);
                 return .{ .addr = addr, .start = pos, .finish = pos +% @intFromPtr(ptr - @intFromPtr(buf)) };
             }
         }
