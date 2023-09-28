@@ -264,7 +264,7 @@ pub fn regenGroup(allocator: *build.Allocator, group: *Node) void {
 }
 pub fn buildgenGroup(allocator: *build.Allocator, group: *Node) void {
     var buildgen_format_cmd: build.FormatCommand = format_cmd;
-    const impls = group.addGroupWithTask(allocator, "impls", .format);
+    const impls = group.addGroupWithTask(allocator, "impls", .run);
     impls.flags.is_hidden = true;
     var impls_build_cmd: build.BuildCommand = build_cmd;
     const impls_tasks: *Node = impls.addBuild(allocator, impls_build_cmd, "tasks", "top/build/gen/tasks_impls.zig");
@@ -284,7 +284,7 @@ pub fn buildgenGroup(allocator: *build.Allocator, group: *Node) void {
 }
 pub fn targetgenGroup(allocator: *build.Allocator, group: *Node) void {
     var targetgen_format_cmd: build.FormatCommand = format_cmd;
-    const impls = group.addGroupWithTask(allocator, "impls", .format);
+    const impls = group.addGroupWithTask(allocator, "impls", .run);
     impls.flags.is_hidden = true;
     var impls_build_cmd: build.BuildCommand = build_cmd;
     const impls_arch: *Node = impls.addBuild(allocator, impls_build_cmd, "arch", "top/target/gen/arch_impls.zig");
@@ -299,6 +299,7 @@ pub fn buildMain(allocator: *build.Allocator, toplevel: *Node) void {
     buildRunnerTestGroup(allocator, toplevel.addGroupWithTask(allocator, "br", .build));
     testGroup(allocator, toplevel.addGroupWithTask(allocator, "test", .build));
     userGroup(allocator, toplevel.addGroupWithTask(allocator, "user", .build));
+
     exampleGroup(allocator, toplevel.addGroupWithTask(allocator, "example", .build));
     memgenGroup(allocator, toplevel.addGroupWithTask(allocator, "memgen", .format));
     regenGroup(allocator, toplevel.addGroupWithTask(allocator, "regen", .format));
@@ -313,3 +314,4 @@ pub fn install(b: *@import("std").Build.Builder) void {
 pub usingnamespace struct {
     pub const build = if (@hasDecl(@import("root"), "dependencies")) install else zl.build;
 };
+//
