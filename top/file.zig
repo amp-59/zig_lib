@@ -2643,7 +2643,7 @@ pub const about = struct {
         ptr = writeDirFd(ptr, "dir_fd=", dir_fd);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr = writeDisplayPath(ptr, name);
+        ptr = CompoundPath.writeDisplayPath(ptr, name);
         ptr[0..7].* = ", mode=".*;
         ptr += 7;
         ptr[0..10].* = describeMode(file_mode);
@@ -2669,7 +2669,7 @@ pub const about = struct {
             ptr[0..2].* = ", ".*;
             ptr += 2;
         }
-        ptr = writeDisplayPath(ptr, name);
+        ptr = CompoundPath.writeDisplayPath(ptr, name);
         ptr[0..8].* = ", inode=".*;
         ptr += 8;
         var ud64: fmt.Type.Ud64 = .{ .value = st.ino };
@@ -2692,18 +2692,6 @@ pub const about = struct {
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
-    fn writeDisplayPath(buf: [*]u8, name: [:0]const u8) [*]u8 {
-        @setRuntimeSafety(false);
-        if (false) {
-            return fmt.strcpyEqu(buf, name);
-        } else {
-            return buf + (CompoundPath{
-                .names = @constCast(@ptrCast(&name)),
-                .names_len = 1,
-                .names_max_len = 1,
-            }).formatWriteBufDisplay(buf);
-        }
-    }
     fn writeDirFd(buf: [*]u8, dir_fd_s: []const u8, dir_fd: usize) [*]u8 {
         @setRuntimeSafety(false);
         var ptr: [*]u8 = fmt.strcpyEqu(buf, dir_fd_s);
@@ -2721,7 +2709,7 @@ pub const about = struct {
         var buf: [32768]u8 = undefined;
         buf[0..about_s.len].* = about_s.*;
         var ptr: [*]u8 = buf[about_s.len..].ptr;
-        ptr = writeDisplayPath(ptr, pathname);
+        ptr = CompoundPath.writeDisplayPath(ptr, pathname);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
@@ -2745,7 +2733,7 @@ pub const about = struct {
         ptr += fmt.ud64(fd).formatWriteBuf(ptr);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr = writeDisplayPath(ptr, pathname);
+        ptr = CompoundPath.writeDisplayPath(ptr, pathname);
         ptr[0] = '\n';
         debug.write(fmt.slice(ptr + 1, &buf));
     }
@@ -2758,7 +2746,7 @@ pub const about = struct {
         ptr += ud64.formatWriteBuf(ptr);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr = writeDisplayPath(ptr, pathname);
+        ptr = CompoundPath.writeDisplayPath(ptr, pathname);
         ptr[0..7].* = ", mode=".*;
         ptr += 7;
         ptr[0..10].* = describeMode(file_mode);
@@ -2792,7 +2780,7 @@ pub const about = struct {
         ptr = writeDirFd(ptr, "dir_fd=", dir_fd);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr = writeDisplayPath(ptr, name);
+        ptr = CompoundPath.writeDisplayPath(ptr, name);
         ptr[0..7].* = ", mode=".*;
         ptr += 7;
         ptr[0..10].* = describeMode(file_mode);
@@ -2808,7 +2796,7 @@ pub const about = struct {
         ptr = writeDirFd(ptr, "dir_fd=", dir_fd);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr = writeDisplayPath(ptr, name);
+        ptr = CompoundPath.writeDisplayPath(ptr, name);
         ptr[0..5].* = ", fd=".*;
         ptr += 5;
         ptr += fmt.ud64(fd).formatWriteBuf(ptr);
@@ -2823,7 +2811,7 @@ pub const about = struct {
         ptr = writeDirFd(ptr, "dir_fd=", dir_fd);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr = writeDisplayPath(ptr, name);
+        ptr = CompoundPath.writeDisplayPath(ptr, name);
         ptr[0..5].* = ", fd=".*;
         ptr += 5;
         ptr += fmt.ud64(fd).formatWriteBuf(ptr);
@@ -2842,7 +2830,7 @@ pub const about = struct {
         ptr = writeDirFd(ptr, "dir_fd=", dir_fd);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr = writeDisplayPath(ptr, name);
+        ptr = CompoundPath.writeDisplayPath(ptr, name);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
@@ -2885,9 +2873,9 @@ pub const about = struct {
         var buf: [32768]u8 = undefined;
         buf[0..about_s.len].* = about_s.*;
         var ptr: [*]u8 = buf[about_s.len..].ptr;
-        ptr = writeDisplayPath(ptr, pathname1);
+        ptr = CompoundPath.writeDisplayPath(ptr, pathname1);
         ptr = fmt.strcpyEqu(ptr, relation_s);
-        ptr = writeDisplayPath(ptr, pathname2);
+        ptr = CompoundPath.writeDisplayPath(ptr, pathname2);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
@@ -2896,12 +2884,12 @@ pub const about = struct {
         var buf: [32768]u8 = undefined;
         buf[0..about_s.len].* = about_s.*;
         var ptr: [*]u8 = buf[about_s.len..].ptr;
-        ptr = writeDisplayPath(ptr, pathname);
+        ptr = CompoundPath.writeDisplayPath(ptr, pathname);
         ptr = fmt.strcpyEqu(ptr, relation_s);
         ptr = writeDirFd(ptr, "dir_fd=", dir_fd);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr = writeDisplayPath(ptr, name);
+        ptr = CompoundPath.writeDisplayPath(ptr, name);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
@@ -2973,7 +2961,7 @@ pub const about = struct {
         var buf: [32768]u8 = undefined;
         buf[0..about_s.len].* = about_s.*;
         var ptr: [*]u8 = buf[about_s.len..].ptr;
-        ptr = writeDisplayPath(ptr, pathname);
+        ptr = CompoundPath.writeDisplayPath(ptr, pathname);
         ptr[0..10].* = ", offset=".*;
         ptr += 10;
         var ud64: fmt.Type.Ud64 = .{ .value = offset };
@@ -3054,7 +3042,7 @@ pub const about = struct {
         var buf: [32768]u8 = undefined;
         buf[0..execve_s.len].* = execve_s.*;
         var ptr: [*]u8 = buf[execve_s.len..].ptr;
-        ptr = writeDisplayPath(ptr, pathname);
+        ptr = CompoundPath.writeDisplayPath(ptr, pathname);
         if (args.len != 0) {
             ptr[0] = ' ';
             ptr += 1;
@@ -3106,7 +3094,7 @@ pub const about = struct {
         ptr = writeDirFd(ptr, "dir_fd=", dir_fd);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr = writeDisplayPath(ptr, name);
+        ptr = CompoundPath.writeDisplayPath(ptr, name);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
@@ -3122,7 +3110,7 @@ pub const about = struct {
         ptr = writeDirFd(ptr, "dir_fd=", dir_fd);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr = writeDisplayPath(ptr, name);
+        ptr = CompoundPath.writeDisplayPath(ptr, name);
         ptr[0..7].* = ", mode=".*;
         ptr += 7;
         ptr[0..10].* = describeMode(file_mode);
@@ -3139,7 +3127,7 @@ pub const about = struct {
         var ptr: [*]u8 = fmt.strcpyEqu(buf[fmt.about_err_len..], error_name);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr = writeDisplayPath(ptr, pathname);
+        ptr = CompoundPath.writeDisplayPath(ptr, pathname);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
@@ -3218,12 +3206,12 @@ pub const about = struct {
         var ptr: [*]u8 = fmt.strcpyEqu(buf[fmt.about_err_len..], error_name);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr = writeDisplayPath(ptr, pathname);
+        ptr = CompoundPath.writeDisplayPath(ptr, pathname);
         ptr = fmt.strcpyEqu(ptr, relation_s);
         ptr = writeDirFd(ptr, "dir_fd=", dir_fd);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr = writeDisplayPath(ptr, name);
+        ptr = CompoundPath.writeDisplayPath(ptr, name);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
@@ -3337,7 +3325,7 @@ pub const about = struct {
         ptr = fmt.strcpyEqu(ptr, error_name);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr = writeDisplayPath(ptr, pathname);
+        ptr = CompoundPath.writeDisplayPath(ptr, pathname);
         ptr[0..9].* = ", offset=".*;
         ptr += 9;
         ptr += ud64.formatWriteBuf(ptr);
@@ -3438,7 +3426,7 @@ pub const about = struct {
         ptr = fmt.strcpyEqu(ptr, @errorName(exec_error));
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr = writeDisplayPath(ptr, pathname);
+        ptr = CompoundPath.writeDisplayPath(ptr, pathname);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
@@ -3453,7 +3441,7 @@ pub const about = struct {
         ptr = fmt.strcpyEqu(ptr, @errorName(exec_error));
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr = writeDisplayPath(ptr, pathname);
+        ptr = CompoundPath.writeDisplayPath(ptr, pathname);
         if (args.len != 0) {
             ptr[0] = ' ';
             ptr += 1;
@@ -3468,7 +3456,7 @@ pub const about = struct {
         var buf: [32768]u8 = undefined;
         buf[0..debug.about.fault_p0_s.len].* = debug.about.fault_p0_s.*;
         var ptr: [*]u8 = buf[debug.about.fault_p0_s.len..].ptr;
-        ptr = writeDisplayPath(ptr, pathname);
+        ptr = CompoundPath.writeDisplayPath(ptr, pathname);
         ptr[0..13].* = must_not_be_file_s.*;
         ptr += 13;
         ptr = fmt.strcpyEqu(ptr, descr_s);
@@ -3481,7 +3469,7 @@ pub const about = struct {
         var buf: [32768]u8 = undefined;
         buf[0..debug.about.fault_p0_s.len].* = debug.about.fault_p0_s.*;
         var ptr: [*]u8 = buf[debug.about.fault_p0_s.len..].ptr;
-        ptr = writeDisplayPath(ptr, pathname);
+        ptr = CompoundPath.writeDisplayPath(ptr, pathname);
         ptr[0..9].* = must_be_file_s.*;
         ptr += 9;
         ptr = fmt.strcpyEqu(ptr, descr_s);
@@ -3538,7 +3526,7 @@ pub const about = struct {
         }
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr = writeDisplayPath(ptr, name);
+        ptr = CompoundPath.writeDisplayPath(ptr, name);
         ptr[0..must_be_file_s.len].* = must_be_file_s.*;
         ptr += must_be_file_s.len;
         ptr = fmt.strcpyEqu(ptr, describeKind(kind));
@@ -3560,7 +3548,7 @@ pub const about = struct {
         }
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        ptr = writeDisplayPath(ptr, name);
+        ptr = CompoundPath.writeDisplayPath(ptr, name);
         ptr[0..must_not_be_file_s.len].* = must_not_be_file_s.*;
         ptr += must_not_be_file_s.len;
         ptr = fmt.strcpyEqu(ptr, describeKind(kind));
