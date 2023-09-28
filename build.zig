@@ -226,14 +226,10 @@ pub fn buildRunnerTestGroup(allocator: *build.Allocator, group: *Node) void {
     test_build_cmd.modules = &.{.{ .name = "@build", .path = "./build.zig" }};
     const build_runner: *Node = group.addBuild(allocator, test_build_cmd, "build_runner", "build_runner.zig");
     const zls_build_runner: *Node = group.addBuild(allocator, test_build_cmd, "zls_build_runner", "zls_build_runner.zig");
-    test_build_cmd.modules = &.{.{ .name = "@build", .path = "./gh_sub/build.zig" }};
-    const gh_build_runner: *Node = group.addBuild(allocator, test_build_cmd, "gh_build_runner", "gh_sub/build_runner.zig");
-    gh_build_runner.flags.want_stack_traces = false;
     build_runner.flags.want_stack_traces = false;
     build_runner.descr = "Test library build runner using the library build program";
     zls_build_runner.descr = "Test ZLS special build runner";
     build_runner.addToplevelArgs(allocator);
-    gh_build_runner.addToplevelArgs(allocator);
     zls_build_runner.addToplevelArgs(allocator);
 }
 pub fn regenGroup(allocator: *build.Allocator, group: *Node) void {
