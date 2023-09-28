@@ -60,7 +60,7 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
         zl.proc.exitError(error.MissingEnvironmentPaths, 2);
     }
     const top: *Builder.Node = Builder.Node.init(&allocator, "toplevel", args, vars);
-    root.buildMain(&allocator, top);
+    try zl.meta.wrap(root.buildMain(&allocator, top));
     try zl.meta.wrap(Builder.processCommands(&address_space, &thread_space, &allocator, top));
     allocator.unmapAll();
 }
