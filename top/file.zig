@@ -358,15 +358,16 @@ pub const Socket = struct {
         mh = 135,
     };
 };
+
 pub const Status = extern struct {
     dev: u64,
     ino: u64,
     nlink: u64,
     mode: Mode,
-    @"0": [2]u8,
+    zb240: u16,
     uid: u32,
     gid: u32,
-    @"1": [4]u8,
+    zbA: u32 = 0,
     rdev: u64,
     size: u64,
     blksize: u64,
@@ -374,7 +375,9 @@ pub const Status = extern struct {
     atime: time.TimeSpec,
     mtime: time.TimeSpec,
     ctime: time.TimeSpec,
-    @"2": [24]u8,
+    zbB: u64 = 0,
+    zbC: u64 = 0,
+    zbD: u64 = 0,
     pub fn isExecutable(st: *const Status, user_id: u16, group_id: u16) bool {
         if (user_id == st.uid) {
             return st.mode.owner.execute;
@@ -490,7 +493,7 @@ pub const StatusExtended = extern struct {
     }
 };
 pub const DirectoryEntry = packed struct {
-    inode: u64,
+    inode: usize,
     offset: usize,
     reclen: u16,
     zb: u4,
@@ -510,11 +513,15 @@ pub const TerminalAttributes = extern struct {
         return termios.special[@intFromEnum(tag)];
     }
 };
+pub const AccessSpec = struct {
+    errors: sys.ErrorPolicy = .{ .throw = spec.access.errors.all },
+    return_type: type = bool,
+    logging: debug.Logging.SuccessError = .{},
+};
 pub const OpenSpec = struct {
     return_type: type = usize,
     errors: sys.ErrorPolicy = .{ .throw = spec.open.errors.all },
     logging: debug.Logging.AcquireError = .{},
-    const Specification = @This();
 };
 pub const ReadSpec = struct {
     child: type = u8,
@@ -540,17 +547,8 @@ pub const Write2Spec = struct {
     logging: debug.Logging.SuccessError = .{},
 };
 pub const SyncSpec = struct {
-    options: Options = .{},
     errors: sys.ErrorPolicy = .{ .throw = spec.sync.errors.all },
     return_type: type = void,
-    logging: debug.Logging.SuccessError = .{},
-    pub const Options = packed struct {
-        flush_metadata: bool = true,
-    };
-};
-pub const AccessSpec = struct {
-    errors: sys.ErrorPolicy = .{ .throw = spec.access.errors.all },
-    return_type: type = bool,
     logging: debug.Logging.SuccessError = .{},
 };
 pub const SeekSpec = struct {
