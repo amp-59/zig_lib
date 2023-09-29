@@ -282,6 +282,48 @@ pub const MemProt = packed struct(usize) {
         return len;
     }
 };
+pub const FileProt = packed struct(usize) {
+    read: bool = true,
+    write: bool = true,
+    exec: bool = false,
+    zb3: u61 = 0,
+    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
+        @setRuntimeSafety(false);
+        var tmp: usize = @bitCast(format);
+        if (tmp == 0) return 0;
+        buf[0..6].* = "flags=".*;
+        var len: usize = 6;
+        for ([_]struct { []const u8, u8 }{
+            .{ "read", 0 },
+            .{ "write", 1 },
+            .{ "exec", 1 },
+        }) |pair| {
+            tmp >>= @truncate(pair[1]);
+            if (tmp & 1 != 0) {
+                buf[len] = ',';
+                len += @intFromBool(len != 6);
+                len += fmt.strcpy(buf + len, pair[0]);
+            }
+        }
+        return len;
+    }
+    pub fn formatLength(format: @This()) usize {
+        @setRuntimeSafety(false);
+        if (@as(usize, @bitCast(format)) == 0) return 0;
+        var len: usize = 6;
+        var tmp: usize = @bitCast(format);
+        for ([_]struct { u8, u8 }{
+            .{ 4, 0 }, .{ 5, 1 },
+            .{ 4, 1 },
+        }) |pair| {
+            tmp >>= @truncate(pair[1]);
+            if (tmp & 1 != 0) {
+                len +%= @intFromBool(len != 0) +% pair[0];
+            }
+        }
+        return len;
+    }
+};
 pub const Remap = packed struct(usize) {
     may_move: bool = false,
     fixed: bool = false,
@@ -1488,6 +1530,109 @@ pub const At = packed struct(usize) {
         return len;
     }
 };
+pub const AtStatX = packed struct(usize) {
+    zb0: u8 = 0,
+    symlink_no_follow: bool = false,
+    zb9: u2 = 0,
+    no_automount: bool = false,
+    empty_path: bool = false,
+    FORCE_SYNC: bool = false,
+    DONT_SYNC: bool = false,
+    SYNC_TYPE: bool = false,
+    zb15: u49 = 0,
+    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
+        @setRuntimeSafety(false);
+        var tmp: usize = @bitCast(format);
+        if (tmp == 0) return 0;
+        buf[0..6].* = "flags=".*;
+        var len: usize = 6;
+        for ([_]struct { []const u8, u8 }{
+            .{ "symlink_no_follow", 8 },
+            .{ "no_automount", 3 },
+            .{ "empty_path", 1 },
+            .{ "FORCE_SYNC", 1 },
+            .{ "DONT_SYNC", 1 },
+            .{ "SYNC_TYPE", 18446744073709551615 },
+        }) |pair| {
+            tmp >>= @truncate(pair[1]);
+            if (tmp & 1 != 0) {
+                buf[len] = ',';
+                len += @intFromBool(len != 6);
+                len += fmt.strcpy(buf + len, pair[0]);
+            }
+        }
+        return len;
+    }
+    pub fn formatLength(format: @This()) usize {
+        @setRuntimeSafety(false);
+        if (@as(usize, @bitCast(format)) == 0) return 0;
+        var len: usize = 6;
+        var tmp: usize = @bitCast(format);
+        for ([_]struct { u8, u8 }{
+            .{ 16, 8 }, .{ 12, 3 },
+            .{ 10, 1 }, .{ 10, 1 },
+            .{ 9, 1 },  .{ 9, 18446744073709551615 },
+        }) |pair| {
+            tmp >>= @truncate(pair[1]);
+            if (tmp & 1 != 0) {
+                len +%= @intFromBool(len != 0) +% pair[0];
+            }
+        }
+        return len;
+    }
+};
+pub const DN = packed struct(usize) {
+    ACCESS: bool = false,
+    MODIFY: bool = false,
+    CREATE: bool = false,
+    DELETE: bool = false,
+    RENAME: bool = false,
+    ATTRIB: bool = false,
+    zb6: u25 = 0,
+    MULTISHOT: bool = false,
+    zb32: u32 = 0,
+    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
+        @setRuntimeSafety(false);
+        var tmp: usize = @bitCast(format);
+        if (tmp == 0) return 0;
+        buf[0..6].* = "flags=".*;
+        var len: usize = 6;
+        for ([_]struct { []const u8, u8 }{
+            .{ "ACCESS", 0 },
+            .{ "MODIFY", 1 },
+            .{ "CREATE", 1 },
+            .{ "DELETE", 1 },
+            .{ "RENAME", 1 },
+            .{ "ATTRIB", 1 },
+            .{ "MULTISHOT", 26 },
+        }) |pair| {
+            tmp >>= @truncate(pair[1]);
+            if (tmp & 1 != 0) {
+                buf[len] = ',';
+                len += @intFromBool(len != 6);
+                len += fmt.strcpy(buf + len, pair[0]);
+            }
+        }
+        return len;
+    }
+    pub fn formatLength(format: @This()) usize {
+        @setRuntimeSafety(false);
+        if (@as(usize, @bitCast(format)) == 0) return 0;
+        var len: usize = 6;
+        var tmp: usize = @bitCast(format);
+        for ([_]struct { u8, u8 }{
+            .{ 6, 0 },  .{ 6, 1 }, .{ 6, 1 },
+            .{ 6, 1 },  .{ 6, 1 }, .{ 6, 1 },
+            .{ 9, 26 },
+        }) |pair| {
+            tmp >>= @truncate(pair[1]);
+            if (tmp & 1 != 0) {
+                len +%= @intFromBool(len != 0) +% pair[0];
+            }
+        }
+        return len;
+    }
+};
 pub const AUX = enum(usize) {
     EXECFD = 0x2,
     PHDR = 0x3,
@@ -1677,6 +1822,32 @@ pub const ReadWrite = packed struct(usize) {
                 len +%= @intFromBool(len != 0) +% pair[0];
             }
         }
+        return len;
+    }
+};
+pub const RWH_WRITE_LIFE = packed struct(usize) {
+    e0: enum(u3) {
+        NONE = 0x1,
+        SHORT = 0x2,
+        MEDIUM = 0x3,
+        LONG = 0x4,
+        EXTREME = 0x5,
+    },
+    zb3: u61 = 0,
+    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
+        @setRuntimeSafety(false);
+        var tmp: usize = @bitCast(format);
+        if (tmp == 0) return 0;
+        buf[0..6].* = "flags=".*;
+        var len: usize = 6;
+        len += fmt.strcpy(buf + len, @tagName(format.e0));
+        return len;
+    }
+    pub fn formatLength(format: @This()) usize {
+        @setRuntimeSafety(false);
+        if (@as(usize, @bitCast(format)) == 0) return 0;
+        var len: usize = 6;
+        len +%= @tagName(format.e0).len;
         return len;
     }
 };

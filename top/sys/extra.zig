@@ -127,6 +127,21 @@ pub const MemProt = struct {
     };
     pub const backing_integer = usize;
 };
+pub const FileProt = struct {
+    pub const default_values = struct {
+        pub const NONE = false;
+        pub const READ = true;
+        pub const WRITE = true;
+        pub const EXEC = false;
+    };
+    pub const field_names = struct {
+        pub const NONE = "none";
+        pub const READ = "read";
+        pub const WRITE = "write";
+        pub const EXEC = "exec";
+    };
+    pub const backing_integer = usize;
+};
 pub const Remap = struct {
     pub const default_values = struct {
         pub const RESIZE = false;
@@ -1272,6 +1287,58 @@ pub const At = struct {
     };
     pub const backing_integer = usize;
 };
+pub const AtStatX = struct {
+    pub const default_values = struct {
+        pub const SYNC_AS_STAT = false;
+        pub const SYMLINK_NOFOLLOW = false;
+        pub const NO_AUTOMOUNT = false;
+        pub const EMPTY_PATH = false;
+        pub const FORCE_SYNC = false;
+        pub const DONT_SYNC = false;
+        pub const SYNC_TYPE = false;
+    };
+    pub const field_names = struct {
+        pub const SYMLINK_NOFOLLOW = "symlink_no_follow";
+        pub const NO_AUTOMOUNT = "no_automount";
+        pub const EMPTY_PATH = "empty_path";
+    };
+    pub const backing_integer = usize;
+};
+pub const DN = struct {
+    pub const default_values = struct {
+        pub const ACCESS = false;
+        pub const MODIFY = false;
+        pub const CREATE = false;
+        pub const DELETE = false;
+        pub const RENAME = false;
+        pub const ATTRIB = false;
+        pub const MULTISHOT = false;
+    };
+    const _field_names = struct {
+        pub const ACCESS = 
+            \\access
+        ;
+        pub const MODIFY = 
+            \\modify
+        ;
+        pub const CREATE = 
+            \\create
+        ;
+        pub const DELETE = 
+            \\delete
+        ;
+        pub const RENAME = 
+            \\rename
+        ;
+        pub const ATTRIB = 
+            \\attrib
+        ;
+        pub const MULTISHOT = 
+            \\multishot
+        ;
+    };
+    pub const backing_integer = usize;
+};
 pub const AUX = struct {
     pub const default_values = struct {
         pub const EXECFD = false;
@@ -1535,6 +1602,40 @@ pub const ReadWrite = struct {
         pub const SYNC = "file_sync";
         pub const NOWAIT = "no_wait";
         pub const APPEND = "append";
+    };
+    pub const backing_integer = usize;
+};
+pub const RWH_WRITE_LIFE = struct {
+    pub const default_values = struct {
+        pub const NOT_SET = false;
+        pub const NONE = false;
+        pub const SHORT = false;
+        pub const MEDIUM = false;
+        pub const LONG = false;
+        pub const EXTREME = false;
+    };
+    const _field_names = struct {
+        pub const NOT_SET = 
+            \\not_set
+        ;
+        pub const NONE = 
+            \\none
+        ;
+        pub const SHORT = 
+            \\short
+        ;
+        pub const MEDIUM = 
+            \\medium
+        ;
+        pub const LONG = 
+            \\long
+        ;
+        pub const EXTREME = 
+            \\extreme
+        ;
+    };
+    pub const set_names = .{
+        "e0",
     };
     pub const backing_integer = usize;
 };

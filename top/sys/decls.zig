@@ -58,6 +58,13 @@ pub const MemProt = struct {
     pub const GROWSUP = 33554432;
     pub usingnamespace extra.MemProt;
 };
+pub const FileProt = struct {
+    pub const NONE = 0;
+    pub const READ = 1;
+    pub const WRITE = 2;
+    pub const EXEC = 4;
+    pub usingnamespace extra.FileProt;
+};
 pub const Remap = struct {
     pub const RESIZE = 0;
     pub const MAYMOVE = 1;
@@ -443,6 +450,26 @@ pub const At = struct {
     pub const EMPTY_PATH = 4096;
     pub usingnamespace extra.At;
 };
+pub const AtStatX = struct {
+    pub const SYNC_AS_STAT = 0;
+    pub const SYMLINK_NOFOLLOW = 256;
+    pub const NO_AUTOMOUNT = 2048;
+    pub const EMPTY_PATH = 4096;
+    pub const FORCE_SYNC = 8192;
+    pub const DONT_SYNC = 16384;
+    pub const SYNC_TYPE = 24576;
+    pub usingnamespace extra.AtStatX;
+};
+pub const DN = struct {
+    pub const ACCESS = 1;
+    pub const MODIFY = 2;
+    pub const CREATE = 4;
+    pub const DELETE = 8;
+    pub const RENAME = 16;
+    pub const ATTRIB = 32;
+    pub const MULTISHOT = 2147483648;
+    pub usingnamespace extra.DN;
+};
 pub const AUX = struct {
     pub const EXECFD = 2;
     pub const PHDR = 3;
@@ -515,6 +542,15 @@ pub const ReadWrite = struct {
     pub const NOWAIT = 8;
     pub const APPEND = 16;
     pub usingnamespace extra.ReadWrite;
+};
+pub const RWH_WRITE_LIFE = struct {
+    pub const NOT_SET = 0;
+    pub const NONE = 1;
+    pub const SHORT = 2;
+    pub const MEDIUM = 3;
+    pub const LONG = 4;
+    pub const EXTREME = 5;
+    pub usingnamespace extra.RWH_WRITE_LIFE;
 };
 pub const POSIX_FADV = struct {
     pub const NORMAL = 0;
