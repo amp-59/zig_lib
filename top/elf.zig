@@ -1631,7 +1631,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             }
             return info;
         }
-        fn loadSegments(loader: *DynamicLoader, info: *Info) void {
+        fn loadSegments(loader: *DynamicLoader, info: *Info) sys.ErrorUnion(loader_spec.errors.map, void) {
             if (info.ehdr.e_phnum != 0) {
                 var phdr_idx: usize = 1;
                 while (phdr_idx != info.ehdr.e_phnum) : (phdr_idx +%= 1) {
@@ -1642,9 +1642,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 }
                 info.prog.addr = bits.alignA4096(@atomicRmw(usize, &loader.ub_prog_addr, .Add, info.prog.len, .SeqCst));
             }
-            if (info.ehdr.e_type == .DYN or
-                info.ehdr.e_type == .EXEC)
-            {
+            if (info.ehdr.e_type == .DYN or info.ehdr.e_type == .EXEC) {
                 try meta.wrap(info.mapSegments());
             }
         }
@@ -1656,8 +1654,8 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
         pub fn load(loader: *DynamicLoader, pathname: [:0]const u8) sys.ErrorUnion(ep0, *Info) {
             @setRuntimeSafety(builtin.is_safe);
             const info: *Info = try meta.wrap(loader.allocateInfo(pathname));
-            loader.loadSegments(info);
-            info.readInfo();
+            try meta.wrap(loader.loadSegments(info));
+            try meta.wrap(info.readInfo());
             try meta.wrap(file.close(close(), info.fd));
             return info;
         }
@@ -2020,7 +2018,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 }
                 return len;
             }
-            pub fn writeBinary(info1: *Info, width: usize, buf: [*]u8) [*]u8 {
+            pub fn writeBinary(buf: [*]u8, info1: *Info, width: usize) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
                 const symtab1: ?*Elf64_Shdr = bestSymbolTable(info1);
                 var shdr_idx1: usize = 1;
@@ -2037,7 +2035,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 }
                 return ptr;
             }
-            pub fn writeBinaryDifference(info1: *const Info, info2: *const Info, width: usize, buf: [*]u8) [*]u8 {
+            pub fn writeBinaryDifference(buf: [*]u8, info1: *const Info, info2: *const Info, width: usize) [*]u8 {
                 @setRuntimeSafety(false);
                 const symtab1: ?*Elf64_Shdr = bestSymbolTable(info1);
                 const symtab2: ?*Elf64_Shdr = bestSymbolTable(info2);
