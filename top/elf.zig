@@ -1,6 +1,7 @@
 const mem = @import("./mem.zig");
 const tab = @import("./tab.zig");
 const sys = @import("./sys.zig");
+const x86 = @import("./x86.zig");
 const fmt = @import("./fmt.zig");
 const file = @import("./file.zig");
 const proc = @import("./proc.zig");
@@ -1730,6 +1731,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 matched,
                 mangled,
                 hidden,
+                pc_addr,
             };
             fn symbolMatches(shdr: *const Elf64_Shdr) [*]CmpMat {
                 @setRuntimeSafety(builtin.is_safe);
@@ -1812,10 +1814,10 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             pub fn writeSymtabDifference(
                 buf: [*]u8,
                 info1: *const Info,
-                info2: *const Info,
                 shdr1: *const Elf64_Shdr,
-                shdr2: *const Elf64_Shdr,
                 shndx1: usize,
+                info2: *const Info,
+                shdr2: *const Elf64_Shdr,
                 shndx2: usize,
                 width: usize,
             ) [*]u8 {
@@ -1878,8 +1880,11 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                         };
                         mats2[sym_idx2] = .matched;
                         const sym1: *Elf64_Sym = symbolByIndex(shdr1, sym_idx1);
-                        ptr = writeSymbolDifference(ptr, info1, sym1, mats1[sym_idx1], //
-                            info2, strtab2, sym2, mats2[sym_idx2], sym_idx2, sh_name2.len, width);
+                        ptr = @call(.auto, writeSymbolDifference, .{
+                            ptr,      info1,        sym1,  mats1[sym_idx1],
+                            info2,    strtab2,      sym2,  mats2[sym_idx2],
+                            sym_idx2, sh_name2.len, width,
+                        });
                     }
                 }
                 var sym_idx1: usize = 1;
@@ -2073,7 +2078,11 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                         mats2[shdr_idx2] = .matched;
                         const shdr1: *Elf64_Shdr = info1.sectionHeaderByIndex(shdr_idx1);
                         ptr = writeSectionDifference(ptr, info2, shdr1, shdr2, shdr_idx2, width);
-                        ptr = writeSymtabDifference(ptr, info1, info2, symtab1 orelse continue, symtab2 orelse continue, shdr_idx1, shdr_idx2, width);
+                        ptr = @call(.auto, writeSymtabDifference, .{
+                            ptr,       info1, symtab1 orelse continue,
+                            shdr_idx1, info2, symtab2 orelse continue,
+                            shdr_idx2, width,
+                        });
                     }
                 }
                 var shdr_idx1: usize = 1;
@@ -2338,7 +2347,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             }
             fn writeSymbolIntro(
                 buf: [*]u8,
-                sym_idx: usize,
+                value: usize,
                 event: CmpMat,
                 name_len: usize,
                 width: usize,
@@ -2346,30 +2355,43 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 @setRuntimeSafety(builtin.is_safe);
                 var ptr: [*]u8 = fmt.strsetEqu(buf, ' ', width);
                 ptr = fmt.strcpyEqu(ptr, switch (event) {
-                    else => tab.fx.color.fg.hi_magenta ++ "?" ++ tab.fx.none,
+                    else => "|",
+                    .hidden => tab.fx.color.fg.hi_magenta ++ "?" ++ tab.fx.none,
                     .added => tab.fx.color.fg.red ++ "+" ++ tab.fx.none,
                     .removed => tab.fx.color.fg.green ++ "-" ++ tab.fx.none,
                     .matched => tab.fx.color.fg.yellow ++ "~" ++ tab.fx.none,
                     .moved => tab.fx.color.fg.yellow ++ "*" ++ tab.fx.none,
                 });
-                if (event == .hidden) {
-                    ptr = fmt.strsetEqu(ptr, ' ', //
-                        (builtin.message_indent +% name_len -% width));
-                    ptr[0] = ' ';
-                    ptr += 1;
-                } else {
-                    ptr = fmt.strsetEqu(ptr, ' ', //
-                        (builtin.message_indent -% (width +% 1)) +% //
-                        (name_len -% (fmt.length(usize, sym_idx, 10) +% 1)));
-                    ptr[0..4].* = tab.fx.style.faint.*;
-                    ptr += 4;
-                    ptr[0] = '#';
-                    ptr += 1;
-                    ptr += fmt.ud64(sym_idx).formatWriteBuf(ptr);
-                    ptr[0..4].* = tab.fx.none.*;
-                    ptr += 4;
-                    ptr[0..2].* = ": ".*;
-                    ptr += 2;
+                switch (event) {
+                    .hidden => {
+                        ptr = fmt.strsetEqu(ptr, ' ', (builtin.message_indent +% name_len -% width));
+                        ptr[0] = ' ';
+                        ptr += 1;
+                    },
+                    .pc_addr => {
+                        ptr = fmt.strsetEqu(ptr, ' ', 14 +% (builtin.message_indent -% (width +% 1)) +%
+                            (name_len -% (fmt.length(usize, value, 10) +% 1)));
+                        ptr[0..4].* = tab.fx.style.faint.*;
+                        ptr += 4;
+                        ptr += fmt.ux64(value).formatWriteBuf(ptr);
+                        ptr[0..4].* = tab.fx.none.*;
+                        ptr += 4;
+                        ptr[0..2].* = ": ".*;
+                        ptr += 2;
+                    },
+                    else => {
+                        ptr = fmt.strsetEqu(ptr, ' ', (builtin.message_indent -% (width +% 1)) +%
+                            (name_len -% (fmt.length(usize, value, 10) +% 1)));
+                        ptr[0..4].* = tab.fx.style.faint.*;
+                        ptr += 4;
+                        ptr[0] = '#';
+                        ptr += 1;
+                        ptr += fmt.ud64(value).formatWriteBuf(ptr);
+                        ptr[0..4].* = tab.fx.none.*;
+                        ptr += 4;
+                        ptr[0..2].* = ": ".*;
+                        ptr += 2;
+                    },
                 }
                 return ptr;
             }
