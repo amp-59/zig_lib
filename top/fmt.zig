@@ -207,7 +207,7 @@ pub fn toSymbol(comptime T: type, value: T, comptime radix: u7) u8 {
     if (@bitSizeOf(T) < 8) {
         return toSymbol(u8, value, radix);
     }
-    const result: u8 = @as(u8, @intCast(@rem(value, radix)));
+    const result: u8 = @truncate(@rem(value, radix));
     const dx = .{
         .d = @as(u8, '9' -% 9),
         .x = @as(u8, 'f' -% 15),
@@ -641,8 +641,8 @@ pub const Bytes = struct {
 
     pub fn formatWrite(format: Format, array: anytype) void {
         @setRuntimeSafety(builtin.is_safe);
-        const major: MajorIntFormat = .{ .value = @intCast(format.value.integer.count) };
-        const minor: MinorIntFormat = .{ .value = @intCast((format.value.remainder *% 1000) / 1024) };
+        const major: MajorIntFormat = .{ .value = @truncate(format.value.integer.count) };
+        const minor: MinorIntFormat = .{ .value = @truncate((format.value.remainder *% 1000) / 1024) };
         if (format.value.remainder != 0) {
             array.writeFormat(major);
             array.writeOne('.');
@@ -654,8 +654,8 @@ pub const Bytes = struct {
     }
     pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
         @setRuntimeSafety(builtin.is_safe);
-        const major: MajorIntFormat = .{ .value = @intCast(format.value.integer.count) };
-        const minor: MinorIntFormat = .{ .value = @intCast((format.value.remainder *% 1000) / 1024) };
+        const major: MajorIntFormat = .{ .value = @truncate(format.value.integer.count) };
+        const minor: MinorIntFormat = .{ .value = @truncate((format.value.remainder *% 1000) / 1024) };
         var len: usize = major.formatWriteBuf(buf);
         if (format.value.remainder != 0) {
             buf[len] = '.';
@@ -666,8 +666,8 @@ pub const Bytes = struct {
     }
     pub fn formatLength(format: Format) usize {
         @setRuntimeSafety(builtin.is_safe);
-        const major: MajorIntFormat = .{ .value = @intCast(format.value.integer.count) };
-        const minor: MinorIntFormat = .{ .value = @intCast((format.value.remainder *% 1000) / 1024) };
+        const major: MajorIntFormat = .{ .value = @truncate(format.value.integer.count) };
+        const minor: MinorIntFormat = .{ .value = @truncate((format.value.remainder *% 1000) / 1024) };
         var len: usize = 0;
         if (format.value.remainder != 0) {
             len +%= major.formatLength();
@@ -1716,7 +1716,7 @@ pub fn writeUnsignedFixedLEB128(comptime width: usize, ptr: *[width]u8, int: @Ty
 } })) void {
     const T = @TypeOf(int);
     const U = if (@typeInfo(T).Int.bits < 8) u8 else T;
-    var value = @as(U, @intCast(int));
+    var value: U = @intCast(int);
     var idx: usize = 0;
     while (idx != width -% 1) : (idx +%= 1) {
         const byte: u8 = @as(u8, @truncate(value)) | 0x80;
@@ -2942,8 +2942,8 @@ pub fn ArrayFormat(comptime spec: RenderSpec, comptime Array: type) type {
         const array_info: builtin.Type = @typeInfo(Array);
         const child: type = array_info.Array.child;
         const type_name: []const u8 = @typeName(Array);
-        const max_len: usize = (type_name.len +% 2) +% array_info.Array.len *% (ChildFormat.max_len +% 2);
-        const omit_trailing_comma: bool = spec.omit_trailing_comma orelse true;
+        const max_len: comptime_int = (type_name.len +% 2) +% array_info.Array.len *% (ChildFormat.max_len +% 2);
+        const omit_trailing_comma: comptime_int = @intFromBool(spec.omit_trailing_comma orelse true);
         const child_spec: RenderSpec = blk: {
             var tmp: RenderSpec = spec;
             tmp.infer_type_names = @typeInfo(child) == .Struct;
@@ -2969,7 +2969,7 @@ pub fn ArrayFormat(comptime spec: RenderSpec, comptime Array: type) type {
                         array.writeCount(2, ", ".*);
                     }
                 }
-                if (omit_trailing_comma) {
+                if (omit_trailing_comma != 0) {
                     array.overwriteCountBack(2, " }".*);
                 } else {
                     array.writeOne('}');
@@ -3001,7 +3001,7 @@ pub fn ArrayFormat(comptime spec: RenderSpec, comptime Array: type) type {
                         len +%= 2;
                     }
                 }
-                if (omit_trailing_comma) {
+                if (omit_trailing_comma != 0) {
                     @as(*[2]u8, @ptrCast(buf + (len -% 2))).* = " }".*;
                 } else {
                     buf[len] = '}';
@@ -3023,7 +3023,9 @@ pub fn ArrayFormat(comptime spec: RenderSpec, comptime Array: type) type {
                     len +%= element_format.formatLength() +% 2;
                 }
             }
-            if (!omit_trailing_comma and format.value.len != 0) {
+            if (omit_trailing_comma == 0 and
+                format.value.len != 0)
+            {
                 len +%= 1;
             }
             return len;
@@ -4705,7 +4707,6 @@ pub fn PointerManyFormat(comptime spec: RenderSpec, comptime Pointer: type) type
         const Format = @This();
         const ChildFormat: type = AnyFormat(spec, child);
         const type_info: builtin.Type = @typeInfo(Pointer);
-        const type_name: []const u8 = typeName(Pointer, spec);
         const child: type = type_info.Pointer.child;
         pub fn formatWrite(format: Format, array: anytype) void {
             if (spec.forward)
@@ -4722,7 +4723,7 @@ pub fn PointerManyFormat(comptime spec: RenderSpec, comptime Pointer: type) type
                 const slice_fmt: slice_fmt_type = .{ .value = format.value[0..len :sentinel] };
                 writeFormat(array, slice_fmt);
             } else {
-                array.writeMany(type_name ++ "{ ... }");
+                array.writeMany(@typeName(Pointer) ++ "{ ... }");
             }
         }
         pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
