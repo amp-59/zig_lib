@@ -1136,7 +1136,7 @@ pub const parse = struct {
         };
     };
     pub const TokenIterator = struct {
-        buf: [:0]const u8,
+        buf: [:0]u8,
         buf_pos: usize,
         inval: ?Token,
         const State = enum {
