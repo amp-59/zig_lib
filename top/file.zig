@@ -52,39 +52,6 @@ pub const Access = packed struct(usize) {
     read: bool = false,
     zb3: u61 = 0,
 };
-pub const Map = struct {
-    pub const Flags = packed struct(usize) {
-        visibility: Visibility = .private,
-        zb2: u2 = 0,
-        fixed: bool = true,
-        anonymous: bool = false,
-        @"32bit": bool = false,
-        zb7: u1 = 0,
-        grows_down: bool = false,
-        zb9: u2 = 0,
-        deny_write: bool = true,
-        executable: bool = false,
-        locked: bool = false,
-        no_reserve: bool = false,
-        populate: bool = true,
-        non_block: bool = false,
-        stack: bool = false,
-        huge_tlb: bool = false,
-        sync: bool = false,
-        fixed_noreplace: bool = false,
-        zb21: u43 = 0,
-    };
-    pub const Visibility = enum { shared, shared_validate, private };
-    pub const Protection = packed struct(usize) {
-        read: bool = true,
-        write: bool = false,
-        exec: bool = false,
-        zb3: u21 = 0,
-        grows_down: bool = false,
-        grows_up: bool = false,
-        zb26: u38 = 0,
-    };
-};
 pub const Kind = enum(u4) {
     unknown = 0,
     regular = MODE.R.IFREG,
