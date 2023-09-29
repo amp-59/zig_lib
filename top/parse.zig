@@ -347,7 +347,7 @@ pub const noexcept = struct {
             var value: Int = 0;
             while (idx != max_idx) {
                 const byte: Int = bytes[idx];
-                const ov: struct { Int, u1 } = @shlWithOverflow(byte & 0x7f, idx *% 7);
+                const ov = @shlWithOverflow(byte & 0x7f, idx *% 7);
                 idx +%= 1;
                 value |= ov[0];
                 if (byte & 0x80 == 0) {
@@ -366,7 +366,7 @@ pub const noexcept = struct {
                 const byte: u8 = bytes[idx];
                 const shift_amt: Shift = idx *% 7;
                 idx +%= 1;
-                const ov: struct { Abs, u1 } = @shlWithOverflow(@as(Abs, byte & 0x7f), shift_amt);
+                const ov = @shlWithOverflow(@as(Abs, byte & 0x7f), shift_amt);
                 value |= ov[0];
                 if (byte & 0x80 == 0) {
                     if (byte & 0x40 != 0 and idx != max_idx) {
