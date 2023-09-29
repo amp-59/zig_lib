@@ -567,17 +567,9 @@ pub const StatusSpec = struct {
     return_type: type = void,
 };
 pub const StatusExtendedSpec = struct {
-    options: Options = .{},
     errors: sys.ErrorPolicy = .{ .throw = spec.statx.errors.all },
     logging: debug.Logging.SuccessErrorFault = .{},
     return_type: type = void,
-    const Specification = @This();
-    pub const Options = struct {
-        no_follow: bool = false,
-        empty_path: bool = false,
-        no_auto_mount: bool = true,
-        fields: StatusExtended.Fields = .{},
-    };
 };
 pub const MakePipeSpec = struct {
     options: Options = .{},
@@ -759,15 +751,16 @@ pub const TruncateSpec = struct {
     logging: debug.Logging.SuccessError = .{},
 };
 pub const DuplicateSpec = struct {
-    options: Options = .{},
     errors: sys.ErrorPolicy = .{ .throw = spec.dup.errors.all },
     return_type: type = u64,
     logging: debug.Logging.SuccessError = .{},
-    const Specification = @This();
-    const Options = struct {
-        close_on_exec: bool = false,
-    };
 };
+pub const Duplicate3Spec = struct {
+    errors: sys.ErrorPolicy = .{ .throw = spec.dup3.errors.all },
+    return_type: type = void,
+    logging: debug.Logging.SuccessError = .{},
+};
+
 pub fn execPath(comptime exec_spec: ExecuteSpec, pathname: [:0]const u8, args: exec_spec.args_type, vars: exec_spec.vars_type) sys.ErrorUnion(
     exec_spec.errors,
     exec_spec.return_type,
