@@ -1253,73 +1253,6 @@ export fn formatLengthBuildCommand(cmd: *tasks.BuildCommand, zig_exe_ptr: [*]con
     }
     return len;
 }
-export fn formatWriteBufFormatCommand(cmd: *tasks.FormatCommand, zig_exe_ptr: [*]const u8, zig_exe_len: usize, pathname: types.Path, buf: [*]u8) callconv(.C) usize {
-    const zig_exe: []const u8 = zig_exe_ptr[0..zig_exe_len];
-    @setRuntimeSafety(false);
-    var ptr: [*]u8 = buf;
-    ptr = fmt.strcpyEqu(ptr, zig_exe);
-    ptr[0] = 0;
-    ptr += 1;
-    ptr[0..4].* = "fmt\x00".*;
-    ptr += 4;
-    if (cmd.color) |color| {
-        ptr[0..8].* = "--color\x00".*;
-        ptr += 8;
-        ptr = fmt.strcpyEqu(ptr, @tagName(color));
-        ptr[0] = 0;
-        ptr += 1;
-    }
-    if (cmd.stdin) {
-        ptr[0..8].* = "--stdin\x00".*;
-        ptr += 8;
-    }
-    if (cmd.check) {
-        ptr[0..8].* = "--check\x00".*;
-        ptr += 8;
-    }
-    if (cmd.ast_check) {
-        ptr[0..12].* = "--ast-check\x00".*;
-        ptr += 12;
-    }
-    if (cmd.exclude) |exclude| {
-        ptr[0..10].* = "--exclude\x00".*;
-        ptr += 10;
-        ptr = fmt.strcpyEqu(ptr, exclude);
-        ptr[0] = 0;
-        ptr += 1;
-    }
-    ptr += pathname.formatWriteBuf(ptr);
-    return @intFromPtr(ptr) -% @intFromPtr(buf);
-}
-export fn formatLengthFormatCommand(cmd: *tasks.FormatCommand, zig_exe_ptr: [*]const u8, zig_exe_len: usize, pathname: types.Path) callconv(.C) usize {
-    const zig_exe: []const u8 = zig_exe_ptr[0..zig_exe_len];
-    @setRuntimeSafety(false);
-    var len: usize = 0;
-    len +%= zig_exe.len;
-    len +%= 1;
-    len +%= 4;
-    if (cmd.color) |color| {
-        len +%= 8;
-        len +%= @tagName(color).len;
-        len +%= 1;
-    }
-    if (cmd.stdin) {
-        len +%= 8;
-    }
-    if (cmd.check) {
-        len +%= 8;
-    }
-    if (cmd.ast_check) {
-        len +%= 12;
-    }
-    if (cmd.exclude) |exclude| {
-        len +%= 10;
-        len +%= exclude.len;
-        len +%= 1;
-    }
-    len +%= pathname.formatLength();
-    return len;
-}
 export fn formatWriteBufArchiveCommand(cmd: *tasks.ArchiveCommand, zig_exe_ptr: [*]const u8, zig_exe_len: usize, files_ptr: [*]const types.Path, files_len: usize, buf: [*]u8) callconv(.C) usize {
     const zig_exe: []const u8 = zig_exe_ptr[0..zig_exe_len];
     const files: []const types.Path = files_ptr[0..files_len];
@@ -1984,5 +1917,703 @@ export fn formatLengthTableGenCommand(cmd: *tasks.TableGenCommand) callconv(.C) 
         len +%= output.len;
         len +%= 1;
     }
+    return len;
+}
+export fn formatWriteBufLLCCommand(cmd: *tasks.LLCCommand, buf: [*]u8) callconv(.C) usize {
+    @setRuntimeSafety(false);
+    var ptr: [*]u8 = buf;
+    if (cmd.color) {
+        ptr[0..8].* = "--color\x00".*;
+        ptr += 8;
+    }
+    if (cmd.include) |include| {
+        for (include) |value| {
+            ptr[0..3].* = "-I\x00".*;
+            ptr += 3;
+            ptr = fmt.strcpyEqu(ptr, value);
+            ptr[0] = 0;
+            ptr += 1;
+        }
+    }
+    if (cmd.optimize) |optimize| {
+        ptr[0..3].* = "-O\x00".*;
+        ptr += 3;
+        ptr = fmt.strcpyEqu(ptr, @tagName(optimize));
+        ptr[0] = 0;
+        ptr += 1;
+    }
+    if (cmd.emit_addrsig) {
+        ptr[0..10].* = "--addrsig\x00".*;
+        ptr += 10;
+    }
+    if (cmd.align_loops) |align_loops| {
+        ptr[0..14].* = "--align-loops\x00".*;
+        ptr += 14;
+        ptr += fmt.Type.Ud64.formatWriteBuf(.{ .value = align_loops }, ptr);
+        ptr[0] = 0;
+        ptr += 1;
+    }
+    if (cmd.aarch64_use_aa) {
+        ptr[0..17].* = "--aarch64-use-aa\x00".*;
+        ptr += 17;
+    }
+    if (cmd.abort_on_max_devirt_iterations_reached) {
+        ptr[0..41].* = "--abort-on-max-devirt-iterations-reached\x00".*;
+        ptr += 41;
+    }
+    if (cmd.allow_ginsert_as_artifact) {
+        ptr[0..28].* = "--allow-ginsert-as-artifact\x00".*;
+        ptr += 28;
+    }
+    if (cmd.amdgpu_bypass_slow_div) {
+        ptr[0..25].* = "--amdgpu-bypass-slow-div\x00".*;
+        ptr += 25;
+    }
+    if (cmd.amdgpu_disable_loop_alignment) {
+        ptr[0..32].* = "--amdgpu-disable-loop-alignment\x00".*;
+        ptr += 32;
+    }
+    if (cmd.amdgpu_dpp_combine) {
+        ptr[0..21].* = "--amdgpu-dpp-combine\x00".*;
+        ptr += 21;
+    }
+    if (cmd.amdgpu_dump_hsa_metadata) {
+        ptr[0..27].* = "--amdgpu-dump-hsa-metadata\x00".*;
+        ptr += 27;
+    }
+    if (cmd.amdgpu_enable_merge_m0) {
+        ptr[0..25].* = "--amdgpu-enable-merge-m0\x00".*;
+        ptr += 25;
+    }
+    if (cmd.amdgpu_enable_power_sched) {
+        ptr[0..28].* = "--amdgpu-enable-power-sched\x00".*;
+        ptr += 28;
+    }
+    if (cmd.amdgpu_sdwa_peephole) {
+        ptr[0..23].* = "--amdgpu-sdwa-peephole\x00".*;
+        ptr += 23;
+    }
+    if (cmd.amdgpu_use_aa_in_codegen) {
+        ptr[0..27].* = "--amdgpu-use-aa-in-codegen\x00".*;
+        ptr += 27;
+    }
+    if (cmd.amdgpu_verify_hsa_metadata) {
+        ptr[0..29].* = "--amdgpu-verify-hsa-metadata\x00".*;
+        ptr += 29;
+    }
+    if (cmd.amdgpu_vgpr_index_mode) {
+        ptr[0..25].* = "--amdgpu-vgpr-index-mode\x00".*;
+        ptr += 25;
+    }
+    if (cmd.asm_show_inst) {
+        ptr[0..16].* = "--asm-show-inst\x00".*;
+        ptr += 16;
+    }
+    if (cmd.asm_verbose) {
+        ptr[0..14].* = "--asm-verbose\x00".*;
+        ptr += 14;
+    }
+    if (cmd.atomic_counter_update_promoted) {
+        ptr[0..33].* = "--atomic-counter-update-promoted\x00".*;
+        ptr += 33;
+    }
+    if (cmd.atomic_first_counter) {
+        ptr[0..23].* = "--atomic-first-counter\x00".*;
+        ptr += 23;
+    }
+    if (cmd.bounds_checking_single_trap) {
+        ptr[0..30].* = "--bounds-checking-single-trap\x00".*;
+        ptr += 30;
+    }
+    if (cmd.cs_profile_generate) {
+        ptr[0..22].* = "--cs-profile-generate\x00".*;
+        ptr += 22;
+    }
+    if (cmd.data_sections) {
+        ptr[0..16].* = "--data-sections\x00".*;
+        ptr += 16;
+    }
+    if (cmd.debug_entry_values) {
+        ptr[0..21].* = "--debug-entry-values\x00".*;
+        ptr += 21;
+    }
+    if (cmd.debug_info_correlate) {
+        ptr[0..23].* = "--debug-info-correlate\x00".*;
+        ptr += 23;
+    }
+    if (cmd.debugify_quiet) {
+        ptr[0..17].* = "--debugify-quiet\x00".*;
+        ptr += 17;
+    }
+    if (cmd.disable_promote_alloca_to_lds) {
+        ptr[0..32].* = "--disable-promote-alloca-to-lds\x00".*;
+        ptr += 32;
+    }
+    if (cmd.disable_promote_alloca_to_vector) {
+        ptr[0..35].* = "--disable-promote-alloca-to-vector\x00".*;
+        ptr += 35;
+    }
+    if (cmd.disable_simplify_libcalls) {
+        ptr[0..28].* = "--disable-simplify-libcalls\x00".*;
+        ptr += 28;
+    }
+    if (cmd.disable_tail_calls) {
+        ptr[0..21].* = "--disable-tail-calls\x00".*;
+        ptr += 21;
+    }
+    if (cmd.do_counter_promotion) {
+        ptr[0..23].* = "--do-counter-promotion\x00".*;
+        ptr += 23;
+    }
+    if (cmd.dwarf64) {
+        ptr[0..10].* = "--dwarf64\x00".*;
+        ptr += 10;
+    }
+    if (cmd.emit_call_site_info) {
+        ptr[0..22].* = "--emit-call-site-info\x00".*;
+        ptr += 22;
+    }
+    if (cmd.emulated_tls) {
+        ptr[0..15].* = "--emulated-tls\x00".*;
+        ptr += 15;
+    }
+    if (cmd.enable_approx_func_fp_math) {
+        ptr[0..29].* = "--enable-approx-func-fp-math\x00".*;
+        ptr += 29;
+    }
+    if (cmd.enable_cse_in_irtranslator) {
+        ptr[0..29].* = "--enable-cse-in-irtranslator\x00".*;
+        ptr += 29;
+    }
+    if (cmd.enable_cse_in_legalizer) {
+        ptr[0..26].* = "--enable-cse-in-legalizer\x00".*;
+        ptr += 26;
+    }
+    if (cmd.enable_emscripten_cxx_exceptions) {
+        ptr[0..35].* = "--enable-emscripten-cxx-exceptions\x00".*;
+        ptr += 35;
+    }
+    if (cmd.enable_emscripten_sjlj) {
+        ptr[0..25].* = "--enable-emscripten-sjlj\x00".*;
+        ptr += 25;
+    }
+    if (cmd.enable_gvn_hoist) {
+        ptr[0..19].* = "--enable-gvn-hoist\x00".*;
+        ptr += 19;
+    }
+    if (cmd.enable_gvn_sink) {
+        ptr[0..18].* = "--enable-gvn-sink\x00".*;
+        ptr += 18;
+    }
+    if (cmd.enable_jmc_instrument) {
+        ptr[0..24].* = "--enable-jmc-instrument\x00".*;
+        ptr += 24;
+    }
+    if (cmd.enable_name_compression) {
+        ptr[0..26].* = "--enable-name-compression\x00".*;
+        ptr += 26;
+    }
+    if (cmd.enable_no_infs_fp_math) {
+        ptr[0..25].* = "--enable-no-infs-fp-math\x00".*;
+        ptr += 25;
+    }
+    if (cmd.enable_no_nans_fp_math) {
+        ptr[0..25].* = "--enable-no-nans-fp-math\x00".*;
+        ptr += 25;
+    }
+    if (cmd.enable_no_signed_zeros_fp_math) {
+        ptr[0..33].* = "--enable-no-signed-zeros-fp-math\x00".*;
+        ptr += 33;
+    }
+    if (cmd.enable_no_trapping_fp_math) {
+        ptr[0..29].* = "--enable-no-trapping-fp-math\x00".*;
+        ptr += 29;
+    }
+    if (cmd.enable_split_backedge_in_load_pre) {
+        ptr[0..24].* = "--enable-unsafe-fp-math\x00".*;
+        ptr += 24;
+    }
+    if (cmd.enable_unsafe_fp_math) {
+        ptr[0..24].* = "--enable-unsafe-fp-math\x00".*;
+        ptr += 24;
+    }
+    if (cmd.experimental_debug_variable_locations) {
+        ptr[0..40].* = "--experimental-debug-variable-locations\x00".*;
+        ptr += 40;
+    }
+    if (cmd.fatal_warnings) {
+        ptr[0..17].* = "--fatal-warnings\x00".*;
+        ptr += 17;
+    }
+    if (cmd.force_dwarf_frame_section) {
+        ptr[0..28].* = "--force-dwarf-frame-section\x00".*;
+        ptr += 28;
+    }
+    if (cmd.function_sections) {
+        ptr[0..20].* = "--function-sections\x00".*;
+        ptr += 20;
+    }
+    if (cmd.generate_merged_base_profiles) {
+        ptr[0..32].* = "--generate-merged-base-profiles\x00".*;
+        ptr += 32;
+    }
+    if (cmd.hash_based_counter_split) {
+        ptr[0..27].* = "--hash-based-counter-split\x00".*;
+        ptr += 27;
+    }
+    if (cmd.hot_cold_split) {
+        ptr[0..17].* = "--hot-cold-split\x00".*;
+        ptr += 17;
+    }
+    if (cmd.ignore_xcoff_visibility) {
+        ptr[0..26].* = "--ignore-xcoff-visibility\x00".*;
+        ptr += 26;
+    }
+    if (cmd.import_all_index) {
+        ptr[0..19].* = "--import-all-index\x00".*;
+        ptr += 19;
+    }
+    if (cmd.incremental_linker_compatible) {
+        ptr[0..32].* = "--incremental-linker-compatible\x00".*;
+        ptr += 32;
+    }
+    if (cmd.instcombine_code_sinking) {
+        ptr[0..27].* = "--instcombine-code-sinking\x00".*;
+        ptr += 27;
+    }
+    if (cmd.instcombine_negator_enabled) {
+        ptr[0..30].* = "--instcombine-negator-enabled\x00".*;
+        ptr += 30;
+    }
+    if (cmd.instrprof_atomic_counter_update_all) {
+        ptr[0..38].* = "--instrprof-atomic-counter-update-all\x00".*;
+        ptr += 38;
+    }
+    if (cmd.mips16_constant_islands) {
+        ptr[0..26].* = "--mips16-constant-islands\x00".*;
+        ptr += 26;
+    }
+    if (cmd.mips16_hard_float) {
+        ptr[0..20].* = "--mips16-hard-float\x00".*;
+        ptr += 20;
+    }
+    if (cmd.mir_strip_debugify_only) {
+        ptr[0..26].* = "--mir-strip-debugify-only\x00".*;
+        ptr += 26;
+    }
+    if (cmd.mno_compound) {
+        ptr[0..15].* = "--mno-compound\x00".*;
+        ptr += 15;
+    }
+    if (cmd.mno_fixup) {
+        ptr[0..12].* = "--mno-fixup\x00".*;
+        ptr += 12;
+    }
+    if (cmd.mno_ldc1_sdc1) {
+        ptr[0..16].* = "--mno-ldc1-sdc1\x00".*;
+        ptr += 16;
+    }
+    if (cmd.mno_pairing) {
+        ptr[0..14].* = "--mno-pairing\x00".*;
+        ptr += 14;
+    }
+    if (cmd.mwarn_missing_parenthesis) {
+        ptr[0..28].* = "--mwarn-missing-parenthesis\x00".*;
+        ptr += 28;
+    }
+    if (cmd.mwarn_noncontigious_register) {
+        ptr[0..31].* = "--mwarn-noncontigious-register\x00".*;
+        ptr += 31;
+    }
+    if (cmd.mwarn_sign_mismatch) {
+        ptr[0..22].* = "--mwarn-sign-mismatch\x00".*;
+        ptr += 22;
+    }
+    if (cmd.no_deprecated_warn) {
+        ptr[0..21].* = "--no-deprecated-warn\x00".*;
+        ptr += 21;
+    }
+    if (cmd.no_discriminators) {
+        ptr[0..20].* = "--no-discriminators\x00".*;
+        ptr += 20;
+    }
+    if (cmd.no_type_check) {
+        ptr[0..16].* = "--no-type-check\x00".*;
+        ptr += 16;
+    }
+    if (cmd.no_warn) {
+        ptr[0..10].* = "--no-warn\x00".*;
+        ptr += 10;
+    }
+    if (cmd.no_xray_index) {
+        ptr[0..16].* = "--no-xray-index\x00".*;
+        ptr += 16;
+    }
+    if (cmd.nozero_initialized_in_bss) {
+        ptr[0..28].* = "--nozero-initialized-in-bss\x00".*;
+        ptr += 28;
+    }
+    if (cmd.nvptx_sched4reg) {
+        ptr[0..18].* = "--nvptx-sched4reg\x00".*;
+        ptr += 18;
+    }
+    if (cmd.opaque_pointers) {
+        ptr[0..18].* = "--opaque-pointers\x00".*;
+        ptr += 18;
+    }
+    if (cmd.poison_checking_function_local) {
+        ptr[0..33].* = "--poison-checking-function-local\x00".*;
+        ptr += 33;
+    }
+    if (cmd.print_pipeline_passes) {
+        ptr[0..24].* = "--print-pipeline-passes\x00".*;
+        ptr += 24;
+    }
+    if (cmd.r600_ir_structurize) {
+        ptr[0..22].* = "--r600-ir-structurize\x00".*;
+        ptr += 22;
+    }
+    if (cmd.relax_elf_relocations) {
+        ptr[0..24].* = "--relax-elf-relocations\x00".*;
+        ptr += 24;
+    }
+    return @intFromPtr(ptr) -% @intFromPtr(buf);
+}
+export fn formatLengthLLCCommand(cmd: *tasks.LLCCommand) callconv(.C) usize {
+    @setRuntimeSafety(false);
+    var len: usize = 0;
+    if (cmd.color) {
+        len +%= 8;
+    }
+    if (cmd.include) |include| {
+        for (include) |value| {
+            len +%= 3;
+            len +%= value.len;
+            len +%= 1;
+        }
+    }
+    if (cmd.optimize) |optimize| {
+        len +%= 3;
+        len +%= @tagName(optimize).len;
+        len +%= 1;
+    }
+    if (cmd.emit_addrsig) {
+        len +%= 10;
+    }
+    if (cmd.align_loops) |align_loops| {
+        len +%= 14;
+        len +%= fmt.Type.Ud64.formatLength(.{ .value = align_loops });
+        len +%= 1;
+    }
+    if (cmd.aarch64_use_aa) {
+        len +%= 17;
+    }
+    if (cmd.abort_on_max_devirt_iterations_reached) {
+        len +%= 41;
+    }
+    if (cmd.allow_ginsert_as_artifact) {
+        len +%= 28;
+    }
+    if (cmd.amdgpu_bypass_slow_div) {
+        len +%= 25;
+    }
+    if (cmd.amdgpu_disable_loop_alignment) {
+        len +%= 32;
+    }
+    if (cmd.amdgpu_dpp_combine) {
+        len +%= 21;
+    }
+    if (cmd.amdgpu_dump_hsa_metadata) {
+        len +%= 27;
+    }
+    if (cmd.amdgpu_enable_merge_m0) {
+        len +%= 25;
+    }
+    if (cmd.amdgpu_enable_power_sched) {
+        len +%= 28;
+    }
+    if (cmd.amdgpu_sdwa_peephole) {
+        len +%= 23;
+    }
+    if (cmd.amdgpu_use_aa_in_codegen) {
+        len +%= 27;
+    }
+    if (cmd.amdgpu_verify_hsa_metadata) {
+        len +%= 29;
+    }
+    if (cmd.amdgpu_vgpr_index_mode) {
+        len +%= 25;
+    }
+    if (cmd.asm_show_inst) {
+        len +%= 16;
+    }
+    if (cmd.asm_verbose) {
+        len +%= 14;
+    }
+    if (cmd.atomic_counter_update_promoted) {
+        len +%= 33;
+    }
+    if (cmd.atomic_first_counter) {
+        len +%= 23;
+    }
+    if (cmd.bounds_checking_single_trap) {
+        len +%= 30;
+    }
+    if (cmd.cs_profile_generate) {
+        len +%= 22;
+    }
+    if (cmd.data_sections) {
+        len +%= 16;
+    }
+    if (cmd.debug_entry_values) {
+        len +%= 21;
+    }
+    if (cmd.debug_info_correlate) {
+        len +%= 23;
+    }
+    if (cmd.debugify_quiet) {
+        len +%= 17;
+    }
+    if (cmd.disable_promote_alloca_to_lds) {
+        len +%= 32;
+    }
+    if (cmd.disable_promote_alloca_to_vector) {
+        len +%= 35;
+    }
+    if (cmd.disable_simplify_libcalls) {
+        len +%= 28;
+    }
+    if (cmd.disable_tail_calls) {
+        len +%= 21;
+    }
+    if (cmd.do_counter_promotion) {
+        len +%= 23;
+    }
+    if (cmd.dwarf64) {
+        len +%= 10;
+    }
+    if (cmd.emit_call_site_info) {
+        len +%= 22;
+    }
+    if (cmd.emulated_tls) {
+        len +%= 15;
+    }
+    if (cmd.enable_approx_func_fp_math) {
+        len +%= 29;
+    }
+    if (cmd.enable_cse_in_irtranslator) {
+        len +%= 29;
+    }
+    if (cmd.enable_cse_in_legalizer) {
+        len +%= 26;
+    }
+    if (cmd.enable_emscripten_cxx_exceptions) {
+        len +%= 35;
+    }
+    if (cmd.enable_emscripten_sjlj) {
+        len +%= 25;
+    }
+    if (cmd.enable_gvn_hoist) {
+        len +%= 19;
+    }
+    if (cmd.enable_gvn_sink) {
+        len +%= 18;
+    }
+    if (cmd.enable_jmc_instrument) {
+        len +%= 24;
+    }
+    if (cmd.enable_name_compression) {
+        len +%= 26;
+    }
+    if (cmd.enable_no_infs_fp_math) {
+        len +%= 25;
+    }
+    if (cmd.enable_no_nans_fp_math) {
+        len +%= 25;
+    }
+    if (cmd.enable_no_signed_zeros_fp_math) {
+        len +%= 33;
+    }
+    if (cmd.enable_no_trapping_fp_math) {
+        len +%= 29;
+    }
+    if (cmd.enable_split_backedge_in_load_pre) {
+        len +%= 24;
+    }
+    if (cmd.enable_unsafe_fp_math) {
+        len +%= 24;
+    }
+    if (cmd.experimental_debug_variable_locations) {
+        len +%= 40;
+    }
+    if (cmd.fatal_warnings) {
+        len +%= 17;
+    }
+    if (cmd.force_dwarf_frame_section) {
+        len +%= 28;
+    }
+    if (cmd.function_sections) {
+        len +%= 20;
+    }
+    if (cmd.generate_merged_base_profiles) {
+        len +%= 32;
+    }
+    if (cmd.hash_based_counter_split) {
+        len +%= 27;
+    }
+    if (cmd.hot_cold_split) {
+        len +%= 17;
+    }
+    if (cmd.ignore_xcoff_visibility) {
+        len +%= 26;
+    }
+    if (cmd.import_all_index) {
+        len +%= 19;
+    }
+    if (cmd.incremental_linker_compatible) {
+        len +%= 32;
+    }
+    if (cmd.instcombine_code_sinking) {
+        len +%= 27;
+    }
+    if (cmd.instcombine_negator_enabled) {
+        len +%= 30;
+    }
+    if (cmd.instrprof_atomic_counter_update_all) {
+        len +%= 38;
+    }
+    if (cmd.mips16_constant_islands) {
+        len +%= 26;
+    }
+    if (cmd.mips16_hard_float) {
+        len +%= 20;
+    }
+    if (cmd.mir_strip_debugify_only) {
+        len +%= 26;
+    }
+    if (cmd.mno_compound) {
+        len +%= 15;
+    }
+    if (cmd.mno_fixup) {
+        len +%= 12;
+    }
+    if (cmd.mno_ldc1_sdc1) {
+        len +%= 16;
+    }
+    if (cmd.mno_pairing) {
+        len +%= 14;
+    }
+    if (cmd.mwarn_missing_parenthesis) {
+        len +%= 28;
+    }
+    if (cmd.mwarn_noncontigious_register) {
+        len +%= 31;
+    }
+    if (cmd.mwarn_sign_mismatch) {
+        len +%= 22;
+    }
+    if (cmd.no_deprecated_warn) {
+        len +%= 21;
+    }
+    if (cmd.no_discriminators) {
+        len +%= 20;
+    }
+    if (cmd.no_type_check) {
+        len +%= 16;
+    }
+    if (cmd.no_warn) {
+        len +%= 10;
+    }
+    if (cmd.no_xray_index) {
+        len +%= 16;
+    }
+    if (cmd.nozero_initialized_in_bss) {
+        len +%= 28;
+    }
+    if (cmd.nvptx_sched4reg) {
+        len +%= 18;
+    }
+    if (cmd.opaque_pointers) {
+        len +%= 18;
+    }
+    if (cmd.poison_checking_function_local) {
+        len +%= 33;
+    }
+    if (cmd.print_pipeline_passes) {
+        len +%= 24;
+    }
+    if (cmd.r600_ir_structurize) {
+        len +%= 22;
+    }
+    if (cmd.relax_elf_relocations) {
+        len +%= 24;
+    }
+    return len;
+}
+export fn formatWriteBufFormatCommand(cmd: *tasks.FormatCommand, zig_exe_ptr: [*]const u8, zig_exe_len: usize, pathname: types.Path, buf: [*]u8) callconv(.C) usize {
+    const zig_exe: []const u8 = zig_exe_ptr[0..zig_exe_len];
+    @setRuntimeSafety(false);
+    var ptr: [*]u8 = buf;
+    ptr = fmt.strcpyEqu(ptr, zig_exe);
+    ptr[0] = 0;
+    ptr += 1;
+    ptr[0..4].* = "fmt\x00".*;
+    ptr += 4;
+    if (cmd.color) |color| {
+        ptr[0..8].* = "--color\x00".*;
+        ptr += 8;
+        ptr = fmt.strcpyEqu(ptr, @tagName(color));
+        ptr[0] = 0;
+        ptr += 1;
+    }
+    if (cmd.stdin) {
+        ptr[0..8].* = "--stdin\x00".*;
+        ptr += 8;
+    }
+    if (cmd.check) {
+        ptr[0..8].* = "--check\x00".*;
+        ptr += 8;
+    }
+    if (cmd.ast_check) {
+        ptr[0..12].* = "--ast-check\x00".*;
+        ptr += 12;
+    }
+    if (cmd.exclude) |exclude| {
+        ptr[0..10].* = "--exclude\x00".*;
+        ptr += 10;
+        ptr = fmt.strcpyEqu(ptr, exclude);
+        ptr[0] = 0;
+        ptr += 1;
+    }
+    ptr += pathname.formatWriteBuf(ptr);
+    return @intFromPtr(ptr) -% @intFromPtr(buf);
+}
+export fn formatLengthFormatCommand(cmd: *tasks.FormatCommand, zig_exe_ptr: [*]const u8, zig_exe_len: usize, pathname: types.Path) callconv(.C) usize {
+    const zig_exe: []const u8 = zig_exe_ptr[0..zig_exe_len];
+    @setRuntimeSafety(false);
+    var len: usize = 0;
+    len +%= zig_exe.len;
+    len +%= 1;
+    len +%= 4;
+    if (cmd.color) |color| {
+        len +%= 8;
+        len +%= @tagName(color).len;
+        len +%= 1;
+    }
+    if (cmd.stdin) {
+        len +%= 8;
+    }
+    if (cmd.check) {
+        len +%= 8;
+    }
+    if (cmd.ast_check) {
+        len +%= 12;
+    }
+    if (cmd.exclude) |exclude| {
+        len +%= 10;
+        len +%= exclude.len;
+        len +%= 1;
+    }
+    len +%= pathname.formatLength();
     return len;
 }
