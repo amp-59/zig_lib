@@ -20,6 +20,9 @@ pub const File = enum(u8) {
     analysis = analysis,
     zig = zig,
     c = c,
+    dir = dir,
+    cfg = cfg,
+    unknown,
 
     const exe = 0;
     const lib = 1;
@@ -33,6 +36,8 @@ pub const File = enum(u8) {
     const analysis = 9;
     const zig = 10;
     const c = 11;
+    const dir = 12;
+    const cfg = 13;
 };
 pub const BinaryOutput = enum(u8) {
     exe = File.exe,
