@@ -13,7 +13,7 @@ export fn load(fp: *zl.builtin.root.Builder.FunctionPointers) void {
         },
         .generic = .{
             .aboutTask = zl.builtin.root.Builder.about.aboutTask,
-            .writeErrors = zl.builtin.root.Builder.about.writeErrors,
+            .printErrors = zl.builtin.root.Builder.about.printErrors,
             .writeTaskDataConfig = zl.builtin.root.Builder.about.writeTaskDataConfig,
         },
     };

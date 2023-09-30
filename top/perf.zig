@@ -405,7 +405,7 @@ pub fn GenericPerfEvents(comptime events_spec: PerfEventsSpec) type {
             .fd_close_on_exec = true,
         };
         pub fn openFds(perf_events: *PerfEvents) sys.ErrorUnion(events_spec.errors.open, void) {
-            @setRuntimeSafety(builtin.is_safe);
+            @setRuntimeSafety(false);
             const leader_fd: *u32 = &perf_events.fds[0][0];
             leader_fd.* = ~@as(u32, 0);
             var event: Event = .{ .flags = PerfEvents.event_flags };
@@ -422,7 +422,7 @@ pub fn GenericPerfEvents(comptime events_spec: PerfEventsSpec) type {
             .throw = events_spec.errors.read.throw ++ events_spec.errors.close.throw,
             .abort = events_spec.errors.read.abort ++ events_spec.errors.close.abort,
         }, void) {
-            @setRuntimeSafety(builtin.is_safe);
+            @setRuntimeSafety(false);
             for (events_spec.counters, 0..) |set, set_idx| {
                 var event_idx: usize = 0;
                 while (event_idx != set.counters.len) : (event_idx +%= 1) {
@@ -436,7 +436,7 @@ pub fn GenericPerfEvents(comptime events_spec: PerfEventsSpec) type {
             }
         }
         pub fn writeResults(perf_events: *PerfEvents, width: usize, buf: [*]u8) [*]u8 {
-            @setRuntimeSafety(builtin.is_safe);
+            @setRuntimeSafety(false);
             var ptr: [*]u8 = buf;
             for (events_spec.counters, 0..) |set, set_idx| {
                 var event_idx: usize = 0;
