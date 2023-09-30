@@ -288,6 +288,7 @@ pub fn sqrt(comptime Num: type, value: Num) Num {
 /// Cast an integer to a different integer type. If the value doesn't fit,
 /// return null.
 pub fn cast(comptime Int: type, i: anytype) ?Int {
+    @setRuntimeSafety(false);
     const x: Extrema = extrema(Int);
     if (i <= x.max and i >= x.min) {
         return @intCast(i);
