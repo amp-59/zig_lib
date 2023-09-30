@@ -101,7 +101,7 @@ pub fn start() callconv(.C) noreturn {
             return proc.exitNotice(0);
         } else |err| {
             debug.alarm(@errorName(err), @errorReturnTrace(), @returnAddress());
-            return proc.exit(@intCast(@intFromError(err)));
+            return proc.exit(@truncate(@intFromError(err)));
         }
     }
     if (main_return_type_info == .ErrorUnion and
@@ -111,7 +111,7 @@ pub fn start() callconv(.C) noreturn {
             return proc.exitNotice(rc);
         } else |err| {
             debug.alarm(@errorName(err), @errorReturnTrace(), @returnAddress());
-            return proc.exit(@intCast(@intFromError(err)));
+            return proc.exit(@truncate(@intFromError(err)));
         }
     }
     @compileError(@TypeOf(main_return_type_info, .ErrorSet));
