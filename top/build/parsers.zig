@@ -620,43 +620,6 @@ export fn formatParseArgsBuildCommand(cmd: *tasks.BuildCommand, allocator: *type
         }
     }
 }
-export fn formatParseArgsFormatCommand(cmd: *tasks.FormatCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
-    @setRuntimeSafety(builtin.is_safe);
-    var args_idx: usize = 0;
-    while (args_idx != args_len) : (args_idx +%= 1) {
-        var arg: [:0]const u8 = mem.terminate(args[args_idx], 0);
-        if (mem.testEqualString("--color", arg)) {
-            args_idx +%= 1;
-            if (args_idx == args_len) {
-                return;
-            }
-            arg = mem.terminate(args[args_idx], 0);
-            if (mem.testEqualString("auto", arg)) {
-                cmd.color = .auto;
-            } else if (mem.testEqualString("off", arg)) {
-                cmd.color = .off;
-            } else if (mem.testEqualString("on", arg)) {
-                cmd.color = .on;
-            }
-        } else if (mem.testEqualString("--stdin", arg)) {
-            cmd.stdin = true;
-        } else if (mem.testEqualString("--check", arg)) {
-            cmd.check = true;
-        } else if (mem.testEqualString("--ast-check", arg)) {
-            cmd.ast_check = true;
-        } else if (mem.testEqualString("--exclude", arg)) {
-            args_idx +%= 1;
-            if (args_idx != args_len) {
-                cmd.exclude = mem.terminate(args[args_idx], 0);
-            } else {
-                return;
-            }
-        } else if (mem.testEqualString("--help", arg)) {
-            debug.write(format_help);
-        }
-        _ = allocator;
-    }
-}
 export fn formatParseArgsArchiveCommand(cmd: *tasks.ArchiveCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
     @setRuntimeSafety(builtin.is_safe);
     var args_idx: usize = 0;
@@ -976,6 +939,265 @@ export fn formatParseArgsTableGenCommand(cmd: *tasks.TableGenCommand, allocator:
         }
     }
 }
+export fn formatParseArgsLLCCommand(cmd: *tasks.LLCCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
+    @setRuntimeSafety(builtin.is_safe);
+    var args_idx: usize = 0;
+    while (args_idx != args_len) : (args_idx +%= 1) {
+        var arg: [:0]const u8 = mem.terminate(args[args_idx], 0);
+        if (mem.testEqualString("--color", arg)) {
+            cmd.color = true;
+        } else if (mem.testEqualString("-I", arg[0..@min(arg.len, 2)])) {
+            if (arg.len == 2) {
+                args_idx +%= 1;
+                if (args_idx == args_len) {
+                    return;
+                }
+                arg = mem.terminate(args[args_idx], 0);
+            } else {
+                arg = arg[2..];
+            }
+            if (cmd.include) |src| {
+                const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16 *% (src.len +% 1), 8));
+                @memcpy(dest, src);
+                dest[src.len] = arg;
+                cmd.include = dest[0 .. src.len +% 1];
+            } else {
+                const dest: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16, 8));
+                dest[0] = arg;
+                cmd.include = dest[0..1];
+            }
+        } else if (mem.testEqualString("-O", arg[0..@min(arg.len, 2)])) {
+            if (arg.len == 2) {
+                args_idx +%= 1;
+                if (args_idx == args_len) {
+                    return;
+                }
+                arg = mem.terminate(args[args_idx], 0);
+            } else {
+                arg = arg[2..];
+            }
+            if (mem.testEqualString("0", arg)) {
+                cmd.optimize = .@"0";
+            } else if (mem.testEqualString("1", arg)) {
+                cmd.optimize = .@"1";
+            } else if (mem.testEqualString("2", arg)) {
+                cmd.optimize = .@"2";
+            } else if (mem.testEqualString("3", arg)) {
+                cmd.optimize = .@"3";
+            }
+        } else if (mem.testEqualString("--addrsig", arg)) {
+            cmd.emit_addrsig = true;
+        } else if (mem.testEqualString("--align-loops", arg)) {
+            args_idx +%= 1;
+            if (args_idx != args_len) {
+                cmd.align_loops = parse.ud(usize, mem.terminate(args[args_idx], 0));
+            } else {
+                return;
+            }
+        } else if (mem.testEqualString("--aarch64-use-aa", arg)) {
+            cmd.aarch64_use_aa = true;
+        } else if (mem.testEqualString("--abort-on-max-devirt-iterations-reached", arg)) {
+            cmd.abort_on_max_devirt_iterations_reached = true;
+        } else if (mem.testEqualString("--allow-ginsert-as-artifact", arg)) {
+            cmd.allow_ginsert_as_artifact = true;
+        } else if (mem.testEqualString("--amdgpu-bypass-slow-div", arg)) {
+            cmd.amdgpu_bypass_slow_div = true;
+        } else if (mem.testEqualString("--amdgpu-disable-loop-alignment", arg)) {
+            cmd.amdgpu_disable_loop_alignment = true;
+        } else if (mem.testEqualString("--amdgpu-dpp-combine", arg)) {
+            cmd.amdgpu_dpp_combine = true;
+        } else if (mem.testEqualString("--amdgpu-dump-hsa-metadata", arg)) {
+            cmd.amdgpu_dump_hsa_metadata = true;
+        } else if (mem.testEqualString("--amdgpu-enable-merge-m0", arg)) {
+            cmd.amdgpu_enable_merge_m0 = true;
+        } else if (mem.testEqualString("--amdgpu-enable-power-sched", arg)) {
+            cmd.amdgpu_enable_power_sched = true;
+        } else if (mem.testEqualString("--amdgpu-sdwa-peephole", arg)) {
+            cmd.amdgpu_sdwa_peephole = true;
+        } else if (mem.testEqualString("--amdgpu-use-aa-in-codegen", arg)) {
+            cmd.amdgpu_use_aa_in_codegen = true;
+        } else if (mem.testEqualString("--amdgpu-verify-hsa-metadata", arg)) {
+            cmd.amdgpu_verify_hsa_metadata = true;
+        } else if (mem.testEqualString("--amdgpu-vgpr-index-mode", arg)) {
+            cmd.amdgpu_vgpr_index_mode = true;
+        } else if (mem.testEqualString("--asm-show-inst", arg)) {
+            cmd.asm_show_inst = true;
+        } else if (mem.testEqualString("--asm-verbose", arg)) {
+            cmd.asm_verbose = true;
+        } else if (mem.testEqualString("--atomic-counter-update-promoted", arg)) {
+            cmd.atomic_counter_update_promoted = true;
+        } else if (mem.testEqualString("--atomic-first-counter", arg)) {
+            cmd.atomic_first_counter = true;
+        } else if (mem.testEqualString("--bounds-checking-single-trap", arg)) {
+            cmd.bounds_checking_single_trap = true;
+        } else if (mem.testEqualString("--cs-profile-generate", arg)) {
+            cmd.cs_profile_generate = true;
+        } else if (mem.testEqualString("--data-sections", arg)) {
+            cmd.data_sections = true;
+        } else if (mem.testEqualString("--debug-entry-values", arg)) {
+            cmd.debug_entry_values = true;
+        } else if (mem.testEqualString("--debug-info-correlate", arg)) {
+            cmd.debug_info_correlate = true;
+        } else if (mem.testEqualString("--debugify-quiet", arg)) {
+            cmd.debugify_quiet = true;
+        } else if (mem.testEqualString("--disable-promote-alloca-to-lds", arg)) {
+            cmd.disable_promote_alloca_to_lds = true;
+        } else if (mem.testEqualString("--disable-promote-alloca-to-vector", arg)) {
+            cmd.disable_promote_alloca_to_vector = true;
+        } else if (mem.testEqualString("--disable-simplify-libcalls", arg)) {
+            cmd.disable_simplify_libcalls = true;
+        } else if (mem.testEqualString("--disable-tail-calls", arg)) {
+            cmd.disable_tail_calls = true;
+        } else if (mem.testEqualString("--do-counter-promotion", arg)) {
+            cmd.do_counter_promotion = true;
+        } else if (mem.testEqualString("--dwarf64", arg)) {
+            cmd.dwarf64 = true;
+        } else if (mem.testEqualString("--emit-call-site-info", arg)) {
+            cmd.emit_call_site_info = true;
+        } else if (mem.testEqualString("--emulated-tls", arg)) {
+            cmd.emulated_tls = true;
+        } else if (mem.testEqualString("--enable-approx-func-fp-math", arg)) {
+            cmd.enable_approx_func_fp_math = true;
+        } else if (mem.testEqualString("--enable-cse-in-irtranslator", arg)) {
+            cmd.enable_cse_in_irtranslator = true;
+        } else if (mem.testEqualString("--enable-cse-in-legalizer", arg)) {
+            cmd.enable_cse_in_legalizer = true;
+        } else if (mem.testEqualString("--enable-emscripten-cxx-exceptions", arg)) {
+            cmd.enable_emscripten_cxx_exceptions = true;
+        } else if (mem.testEqualString("--enable-emscripten-sjlj", arg)) {
+            cmd.enable_emscripten_sjlj = true;
+        } else if (mem.testEqualString("--enable-gvn-hoist", arg)) {
+            cmd.enable_gvn_hoist = true;
+        } else if (mem.testEqualString("--enable-gvn-sink", arg)) {
+            cmd.enable_gvn_sink = true;
+        } else if (mem.testEqualString("--enable-jmc-instrument", arg)) {
+            cmd.enable_jmc_instrument = true;
+        } else if (mem.testEqualString("--enable-name-compression", arg)) {
+            cmd.enable_name_compression = true;
+        } else if (mem.testEqualString("--enable-no-infs-fp-math", arg)) {
+            cmd.enable_no_infs_fp_math = true;
+        } else if (mem.testEqualString("--enable-no-nans-fp-math", arg)) {
+            cmd.enable_no_nans_fp_math = true;
+        } else if (mem.testEqualString("--enable-no-signed-zeros-fp-math", arg)) {
+            cmd.enable_no_signed_zeros_fp_math = true;
+        } else if (mem.testEqualString("--enable-no-trapping-fp-math", arg)) {
+            cmd.enable_no_trapping_fp_math = true;
+        } else if (mem.testEqualString("--enable-unsafe-fp-math", arg)) {
+            cmd.enable_split_backedge_in_load_pre = true;
+        } else if (mem.testEqualString("--enable-unsafe-fp-math", arg)) {
+            cmd.enable_unsafe_fp_math = true;
+        } else if (mem.testEqualString("--experimental-debug-variable-locations", arg)) {
+            cmd.experimental_debug_variable_locations = true;
+        } else if (mem.testEqualString("--fatal-warnings", arg)) {
+            cmd.fatal_warnings = true;
+        } else if (mem.testEqualString("--force-dwarf-frame-section", arg)) {
+            cmd.force_dwarf_frame_section = true;
+        } else if (mem.testEqualString("--function-sections", arg)) {
+            cmd.function_sections = true;
+        } else if (mem.testEqualString("--generate-merged-base-profiles", arg)) {
+            cmd.generate_merged_base_profiles = true;
+        } else if (mem.testEqualString("--hash-based-counter-split", arg)) {
+            cmd.hash_based_counter_split = true;
+        } else if (mem.testEqualString("--hot-cold-split", arg)) {
+            cmd.hot_cold_split = true;
+        } else if (mem.testEqualString("--ignore-xcoff-visibility", arg)) {
+            cmd.ignore_xcoff_visibility = true;
+        } else if (mem.testEqualString("--import-all-index", arg)) {
+            cmd.import_all_index = true;
+        } else if (mem.testEqualString("--incremental-linker-compatible", arg)) {
+            cmd.incremental_linker_compatible = true;
+        } else if (mem.testEqualString("--instcombine-code-sinking", arg)) {
+            cmd.instcombine_code_sinking = true;
+        } else if (mem.testEqualString("--instcombine-negator-enabled", arg)) {
+            cmd.instcombine_negator_enabled = true;
+        } else if (mem.testEqualString("--instrprof-atomic-counter-update-all", arg)) {
+            cmd.instrprof_atomic_counter_update_all = true;
+        } else if (mem.testEqualString("--mips16-constant-islands", arg)) {
+            cmd.mips16_constant_islands = true;
+        } else if (mem.testEqualString("--mips16-hard-float", arg)) {
+            cmd.mips16_hard_float = true;
+        } else if (mem.testEqualString("--mir-strip-debugify-only", arg)) {
+            cmd.mir_strip_debugify_only = true;
+        } else if (mem.testEqualString("--mno-compound", arg)) {
+            cmd.mno_compound = true;
+        } else if (mem.testEqualString("--mno-fixup", arg)) {
+            cmd.mno_fixup = true;
+        } else if (mem.testEqualString("--mno-ldc1-sdc1", arg)) {
+            cmd.mno_ldc1_sdc1 = true;
+        } else if (mem.testEqualString("--mno-pairing", arg)) {
+            cmd.mno_pairing = true;
+        } else if (mem.testEqualString("--mwarn-missing-parenthesis", arg)) {
+            cmd.mwarn_missing_parenthesis = true;
+        } else if (mem.testEqualString("--mwarn-noncontigious-register", arg)) {
+            cmd.mwarn_noncontigious_register = true;
+        } else if (mem.testEqualString("--mwarn-sign-mismatch", arg)) {
+            cmd.mwarn_sign_mismatch = true;
+        } else if (mem.testEqualString("--no-deprecated-warn", arg)) {
+            cmd.no_deprecated_warn = true;
+        } else if (mem.testEqualString("--no-discriminators", arg)) {
+            cmd.no_discriminators = true;
+        } else if (mem.testEqualString("--no-type-check", arg)) {
+            cmd.no_type_check = true;
+        } else if (mem.testEqualString("--no-warn", arg)) {
+            cmd.no_warn = true;
+        } else if (mem.testEqualString("--no-xray-index", arg)) {
+            cmd.no_xray_index = true;
+        } else if (mem.testEqualString("--nozero-initialized-in-bss", arg)) {
+            cmd.nozero_initialized_in_bss = true;
+        } else if (mem.testEqualString("--nvptx-sched4reg", arg)) {
+            cmd.nvptx_sched4reg = true;
+        } else if (mem.testEqualString("--opaque-pointers", arg)) {
+            cmd.opaque_pointers = true;
+        } else if (mem.testEqualString("--poison-checking-function-local", arg)) {
+            cmd.poison_checking_function_local = true;
+        } else if (mem.testEqualString("--print-pipeline-passes", arg)) {
+            cmd.print_pipeline_passes = true;
+        } else if (mem.testEqualString("--r600-ir-structurize", arg)) {
+            cmd.r600_ir_structurize = true;
+        } else if (mem.testEqualString("--relax-elf-relocations", arg)) {
+            cmd.relax_elf_relocations = true;
+        } else if (mem.testEqualString("--help", arg)) {
+            debug.write(llc_help);
+        }
+    }
+}
+export fn formatParseArgsFormatCommand(cmd: *tasks.FormatCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
+    @setRuntimeSafety(builtin.is_safe);
+    var args_idx: usize = 0;
+    while (args_idx != args_len) : (args_idx +%= 1) {
+        var arg: [:0]const u8 = mem.terminate(args[args_idx], 0);
+        if (mem.testEqualString("--color", arg)) {
+            args_idx +%= 1;
+            if (args_idx == args_len) {
+                return;
+            }
+            arg = mem.terminate(args[args_idx], 0);
+            if (mem.testEqualString("auto", arg)) {
+                cmd.color = .auto;
+            } else if (mem.testEqualString("off", arg)) {
+                cmd.color = .off;
+            } else if (mem.testEqualString("on", arg)) {
+                cmd.color = .on;
+            }
+        } else if (mem.testEqualString("--stdin", arg)) {
+            cmd.stdin = true;
+        } else if (mem.testEqualString("--check", arg)) {
+            cmd.check = true;
+        } else if (mem.testEqualString("--ast-check", arg)) {
+            cmd.ast_check = true;
+        } else if (mem.testEqualString("--exclude", arg)) {
+            args_idx +%= 1;
+            if (args_idx != args_len) {
+                cmd.exclude = mem.terminate(args[args_idx], 0);
+            } else {
+                return;
+            }
+        } else if (mem.testEqualString("--help", arg)) {
+            debug.write(format_help);
+        }
+        _ = allocator;
+    }
+}
 const build_help: [:0]const u8 =
     \\    build-
     \\    -f[no-]emit-bin                 (default=yes) Output machine code
@@ -1091,16 +1313,6 @@ const build_help: [:0]const u8 =
     \\
     \\
 ;
-const format_help: [:0]const u8 =
-    \\    fmt
-    \\    --color         Enable or disable colored error messages
-    \\    --stdin         Format code from stdin; output to stdout
-    \\    --check         List non-conforming files and exit with an error if the list is non-empty
-    \\    --ast-check     Run zig ast-check on every file
-    \\    --exclude       Exclude file or directory from formatting
-    \\
-    \\
-;
 const archive_help: [:0]const u8 =
     \\    ar
     \\    --format    Archive format to create
@@ -1186,6 +1398,106 @@ const tblgen_help: [:0]const u8 =
     \\    --gen-dxil-operation            Generate DXIL operation information
     \\    --gen-riscv-target_def          Generate the list of CPU for RISCV
     \\    -o                              Output file
+    \\
+    \\
+;
+const llc_help: [:0]const u8 =
+    \\    --color                                     Use colors in output (default=autodetect)
+    \\    -I                                          Add directories to include search path
+    \\    -O                                          Optimization level. [-O0, -O1, -O2, or -O3] (default='-O2')
+    \\    --addrsig                                   Emit an address-significance table
+    \\    --align-loops                               Default alignment for loops
+    \\    --aarch64-use-aa                            Enable the use of AA during codegen.
+    \\    --abort-on-max-devirt-iterations-reached    Abort when the max iterations for devirtualization CGSCC repeat pass is reached
+    \\    --allow-ginsert-as-artifact                 Allow G_INSERT to be considered an artifact. Hack around AMDGPU test infinite loops.
+    \\    --amdgpu-bypass-slow-div                    Skip 64-bit divide for dynamic 32-bit values
+    \\    --amdgpu-disable-loop-alignment             Do not align and prefetch loops
+    \\    --amdgpu-dpp-combine                        Enable DPP combiner
+    \\    --amdgpu-dump-hsa-metadata                  Dump AMDGPU HSA Metadata
+    \\    --amdgpu-enable-merge-m0                    Merge and hoist M0 initializations
+    \\    --amdgpu-enable-power-sched                 Enable scheduling to minimize mAI power bursts
+    \\    --amdgpu-sdwa-peephole                      Enable SDWA peepholer
+    \\    --amdgpu-use-aa-in-codegen                  Enable the use of AA during codegen.
+    \\    --amdgpu-verify-hsa-metadata                Verify AMDGPU HSA Metadata
+    \\    --amdgpu-vgpr-index-mode                    Use GPR indexing mode instead of movrel for vector indexing
+    \\    --asm-show-inst                             Emit internal instruction representation to assembly file
+    \\    --asm-verbose                               Add comments to directives.
+    \\    --atomic-counter-update-promoted            Do counter update using atomic fetch add  for promoted counters only
+    \\    --atomic-first-counter                      Use atomic fetch add for first counter in a function (usually the entry counter)
+    \\    --bounds-checking-single-trap               Use one trap block per function
+    \\    --cs-profile-generate                       Perform context sensitive PGO instrumentation
+    \\    --data-sections                             Emit data into separate sections
+    \\    --debug-entry-values                        Enable debug info for the debug entry values.
+    \\    --debug-info-correlate                      Use debug info to correlate profiles.
+    \\    --debugify-quiet                            Suppress verbose debugify output
+    \\    --disable-promote-alloca-to-lds             Disable promote alloca to LDS
+    \\    --disable-promote-alloca-to-vector          Disable promote alloca to vector
+    \\    --disable-simplify-libcalls                 Disable simplify-libcalls
+    \\    --disable-tail-calls                        Never emit tail calls
+    \\    --do-counter-promotion                      Do counter register promotion
+    \\    --dwarf64                                   Generate debugging info in the 64-bit DWARF format
+    \\    --emit-call-site-info                       Emit call site debug information, if debug information is enabled.
+    \\    --emulated-tls                              Use emulated TLS model
+    \\    --enable-approx-func-fp-math                Enable FP math optimizations that assume approx func
+    \\    --enable-cse-in-irtranslator                Should enable CSE in irtranslator
+    \\    --enable-cse-in-legalizer                   Should enable CSE in Legalizer
+    \\    --enable-emscripten-cxx-exceptions          WebAssembly Emscripten-style exception handling
+    \\    --enable-emscripten-sjlj                    WebAssembly Emscripten-style setjmp/longjmp handling
+    \\    --enable-gvn-hoist                          Enable the GVN hoisting pass (default = off)
+    \\    --enable-gvn-sink                           Enable the GVN sinking pass (default = off)
+    \\    --enable-jmc-instrument                     Instrument functions with a call to __CheckForDebuggerJustMyCode
+    \\    --enable-name-compression                   Enable name/filename string compression
+    \\    --enable-no-infs-fp-math                    Enable FP math optimizations that assume no +-Infs
+    \\    --enable-no-nans-fp-math                    Enable FP math optimizations that assume no NaNs
+    \\    --enable-no-signed-zeros-fp-math            Enable FP math optimizations that assume the sign of 0 is insignificant
+    \\    --enable-no-trapping-fp-math                Enable setting the FP exceptions build attribute not to use exceptions
+    \\    --enable-unsafe-fp-math                     [MISSING]
+    \\    --enable-unsafe-fp-math                     Enable optimizations that may decrease FP precision
+    \\    --experimental-debug-variable-locations     Use experimental new value-tracking variable locations
+    \\    --fatal-warnings                            Treat warnings as errors
+    \\    --force-dwarf-frame-section                 Always emit a debug frame section.
+    \\    --function-sections                         Emit functions into separate sections
+    \\    --generate-merged-base-profiles             When generating nested context-sensitive profiles, always generate extra base profile for function with all its context profiles merged into it.
+    \\    --hash-based-counter-split                  Rename counter variable of a comdat function based on cfg hash
+    \\    --hot-cold-split                            Enable hot-cold splitting pass
+    \\    --ignore-xcoff-visibility                   Not emit the visibility attribute for asm in AIX OS or give all symbols 'unspecified' visibility in XCOFF object file
+    \\    --import-all-index                          Import all external functions in index.
+    \\    --incremental-linker-compatible             When used with filetype=obj, emit an object file which can be used with an incremental linker
+    \\    --instcombine-code-sinking                  Enable code sinking
+    \\    --instcombine-negator-enabled               Should we attempt to sink negations?
+    \\    --instrprof-atomic-counter-update-all       Make all profile counter updates atomic (for testing only)
+    \\    --mips16-constant-islands                   Enable mips16 constant islands.
+    \\    --mips16-hard-float                         Enable mips16 hard float.
+    \\    --mir-strip-debugify-only                   Should mir-strip-debug only strip debug info from debugified modules by default
+    \\    --mno-compound                              Disable looking for compound instructions for Hexagon
+    \\    --mno-fixup                                 Disable fixing up resolved relocations for Hexagon
+    \\    --mno-ldc1-sdc1                             Expand double precision loads and stores to their single precision counterparts
+    \\    --mno-pairing                               Disable looking for duplex instructions for Hexagon
+    \\    --mwarn-missing-parenthesis                 Warn for missing parenthesis around predicate registers
+    \\    --mwarn-noncontigious-register              Warn for register names that arent contigious
+    \\    --mwarn-sign-mismatch                       Warn for mismatching a signed and unsigned value
+    \\    --no-deprecated-warn                        Suppress all deprecated warnings
+    \\    --no-discriminators                         Disable generation of discriminator information.
+    \\    --no-type-check                             Suppress type errors (Wasm)
+    \\    --no-warn                                   Suppress all warnings
+    \\    --no-xray-index                             Don't emit xray_fn_idx section
+    \\    --nozero-initialized-in-bss                 Don't place zero-initialized symbols into bss section
+    \\    --nvptx-sched4reg                           NVPTX Specific: schedule for register pressue
+    \\    --opaque-pointers                           Use opaque pointers
+    \\    --poison-checking-function-local            Check that returns are non-poison (for testing)
+    \\    --print-pipeline-passes                     Print a '-passes' compatible string describing the pipeline (best-effort only).
+    \\    --r600-ir-structurize                       Use StructurizeCFG IR pass
+    \\    --relax-elf-relocations                     Emit GOTPCRELX/REX_GOTPCRELX instead of GOTPCREL on x86-64 ELF
+    \\
+    \\
+;
+const format_help: [:0]const u8 =
+    \\    fmt
+    \\    --color         Enable or disable colored error messages
+    \\    --stdin         Format code from stdin; output to stdout
+    \\    --check         List non-conforming files and exit with an error if the list is non-empty
+    \\    --ast-check     Run zig ast-check on every file
+    \\    --exclude       Exclude file or directory from formatting
     \\
     \\
 ;
