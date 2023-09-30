@@ -2191,6 +2191,7 @@ const syscalls = .{
     syscall6,
 };
 pub inline fn call(comptime tag: Fn, comptime errors: ErrorPolicy, comptime return_type: type, args: Fn.Args(tag)) ErrorUnion(errors, return_type) {
+    @setRuntimeSafety(false);
     const ret: isize = syscalls[tag.args()](tag, args);
     if (return_type == noreturn) {
         unreachable;
@@ -2205,10 +2206,11 @@ pub inline fn call(comptime tag: Fn, comptime errors: ErrorPolicy, comptime retu
         return @as(return_type, @bitCast(ret));
     }
     if (return_type != void) {
-        return @as(return_type, @intCast(ret));
+        return @intCast(ret);
     }
 }
 pub inline fn call_noexcept(comptime tag: Fn, comptime return_type: type, args: Fn.Args(tag)) return_type {
+    @setRuntimeSafety(false);
     const ret: isize = (comptime syscalls[tag.args()])(tag, args);
     if (return_type == noreturn) {
         unreachable;
@@ -2217,7 +2219,7 @@ pub inline fn call_noexcept(comptime tag: Fn, comptime return_type: type, args: 
         return @as(return_type, @bitCast(ret));
     }
     if (return_type != void) {
-        return @as(return_type, @intCast(ret));
+        return @intCast(ret);
     }
 }
 
