@@ -195,56 +195,32 @@ pub fn assert(b: bool) void {
 }
 pub fn assertBelow(comptime T: type, arg1: T, arg2: T) void {
     if (builtin.runtime_assertions and arg1 >= arg2) {
-        if (@inComptime()) {
-            debug.static.comparisonFailed(T, " < ", arg1, arg2);
-        } else {
-            debug.comparisonFailedFault(T, " < ", arg1, arg2, @returnAddress());
-        }
+        debug.comparisonFailedFault(T, " < ", arg1, arg2, @returnAddress());
     }
 }
 pub fn assertBelowOrEqual(comptime T: type, arg1: T, arg2: T) void {
     if (builtin.runtime_assertions and arg1 > arg2) {
-        if (@inComptime()) {
-            debug.static.comparisonFailed(T, " <= ", arg1, arg2);
-        } else {
-            debug.comparisonFailedFault(T, " <= ", arg1, arg2, @returnAddress());
-        }
+        debug.comparisonFailedFault(T, " <= ", arg1, arg2, @returnAddress());
     }
 }
 pub fn assertEqual(comptime T: type, arg1: T, arg2: T) void {
     if (builtin.runtime_assertions and !mem.testEqual(T, arg1, arg2)) {
-        if (@inComptime()) {
-            debug.static.comparisonFailed(T, " == ", arg1, arg2);
-        } else {
-            debug.comparisonFailedFault(T, " == ", arg1, arg2, @returnAddress());
-        }
+        debug.comparisonFailedFault(T, " == ", arg1, arg2, @returnAddress());
     }
 }
 pub fn assertNotEqual(comptime T: type, arg1: T, arg2: T) void {
     if (builtin.runtime_assertions and mem.testEqual(T, arg1, arg2)) {
-        if (@inComptime()) {
-            debug.static.comparisonFailed(T, " != ", arg1, arg2);
-        } else {
-            debug.comparisonFailedFault(T, " != ", arg1, arg2, @returnAddress());
-        }
+        debug.comparisonFailedFault(T, " != ", arg1, arg2, @returnAddress());
     }
 }
 pub fn assertAboveOrEqual(comptime T: type, arg1: T, arg2: T) void {
     if (builtin.runtime_assertions and arg1 < arg2) {
-        if (@inComptime()) {
-            debug.static.comparisonFailed(T, " >= ", arg1, arg2);
-        } else {
-            debug.comparisonFailedFault(T, " >= ", arg1, arg2, @returnAddress());
-        }
+        debug.comparisonFailedFault(T, " >= ", arg1, arg2, @returnAddress());
     }
 }
 pub fn assertAbove(comptime T: type, arg1: T, arg2: T) void {
     if (builtin.runtime_assertions and arg1 <= arg2) {
-        if (@inComptime()) {
-            debug.static.comparisonFailed(T, " > ", arg1, arg2);
-        } else {
-            debug.comparisonFailedFault(T, " > ", arg1, arg2, @returnAddress());
-        }
+        debug.comparisonFailedFault(T, " > ", arg1, arg2, @returnAddress());
     }
 }
 pub fn assertEqualWord(arg1: *align(1) const u32, arg2: *align(1) const u32) void {
@@ -515,7 +491,7 @@ pub fn incorrectAlignmentError(comptime T: type, address: usize, alignment: usiz
     var buf: [4096]u8 = undefined;
     const ptr: [*]u8 = about.writeIncorrectAlignment(@typeName(T), &buf, address, alignment, remainder);
     if (@inComptime()) @compileError(fmt.slice(ptr, &buf));
-    builtin.alarm(if (@inComptime()) @compileError(fmt.slice(ptr, &buf)) else buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr orelse @returnAddress());
+    builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr orelse @returnAddress());
     return error.IncorrectAlignment;
 }
 pub fn incorrectAlignmentFault(comptime T: type, address: usize, alignment: usize, ret_addr: usize) noreturn {
@@ -612,7 +588,7 @@ pub fn sampleAllReports() void {
 }
 pub fn write(buf: []const u8) void {
     if (@inComptime()) {
-        return @compileLog(buf);
+        @compileError(buf);
     } else {
         asm volatile (
             \\syscall # write
