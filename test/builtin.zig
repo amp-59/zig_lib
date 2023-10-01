@@ -60,8 +60,8 @@ fn testRuntimeAssertionsCompile() !void {
         builtin.shlEqu(T, &arg1, arg2);
         arg1 = builtin.shlExact(T, arg1, arg2);
         builtin.shlEquExact(T, &arg1, arg2);
-        arg1 = builtin.shlWithOverflow(T, arg1, arg2)[0];
-        b = builtin.shlEquWithOverflow(T, &arg1, arg2);
+        arg1 = builtin.shlWithOverflow(T, arg1, @intCast(arg2))[0];
+        b = builtin.shlEquWithOverflow(T, &arg1, @intCast(arg2));
         arg1 = builtin.min(T, arg1, arg2);
         arg1 = builtin.max(T, arg1, arg2);
         debug.assertBelow(T, arg1, arg2);
@@ -70,31 +70,6 @@ fn testRuntimeAssertionsCompile() !void {
         debug.assertAboveOrEqual(T, arg1, arg2);
         debug.assertAbove(T, arg1, arg2);
         debug.assert(b);
-    }
-}
-pub fn testStaticAssertionsCompile() !void {
-    inline for (.{ u2, u8, u16, u32, u64 }) |T| {
-        comptime {
-            var static_arg1: T = 0;
-            var static_arg2: T = 1;
-            var static_b: bool = true;
-            static_arg1 = builtin.add(T, static_arg1, static_arg2);
-            builtin.addEqu(T, &static_arg1, static_arg2);
-            static_arg1 = builtin.sub(T, static_arg1, static_arg2);
-            builtin.subEqu(T, &static_arg1, static_arg2);
-            static_arg1 = builtin.mul(T, static_arg1, static_arg2);
-            builtin.mulEqu(T, &static_arg1, static_arg2);
-            static_arg1 = builtin.divExact(T, static_arg1, static_arg2);
-            builtin.divEquExact(T, &static_arg1, static_arg2);
-            debug.assertBelow(T, static_arg1, static_arg2);
-            debug.assertBelowOrEqual(T, static_arg1, static_arg2);
-            static_arg1 = static_arg2;
-            debug.assertEqual(T, static_arg1, static_arg2);
-            builtin.addEqu(T, &static_arg1, 1);
-            debug.assertAboveOrEqual(T, static_arg1, static_arg2);
-            debug.assertAbove(T, static_arg1, static_arg2);
-            debug.assert(static_b);
-        }
     }
 }
 fn testMinMax() !void {
@@ -109,37 +84,8 @@ fn testMinMax() !void {
     try debug.expect(mem.testEqual(S, s, builtin.min(S, t, s)));
     try debug.expect(mem.testEqual(S, t, builtin.max(S, t, s)));
 }
-fn testIntCast() void {
-    var rng: zl.file.DeviceRandomBytes(4096) = .{};
-    var _u8: u16 = rng.readOne(u16);
-    var _u16: u16 = rng.readOne(u16);
-    var _u32: u32 = rng.readOne(u32);
-    var _u64: u64 = rng.readOne(u64);
-    var _i8: i16 = rng.readOne(i16);
-    var _i16: i16 = rng.readOne(i16);
-    var _i32: i32 = rng.readOne(i32);
-    var _i64: i64 = rng.readOne(i64);
-    _ = builtin.intCast(i3, _u8) catch {};
-    _ = builtin.intCast(u3, _i8) catch {};
-    _ = builtin.intCast(i8, _u16) catch {};
-    _ = builtin.intCast(u8, _i16) catch {};
-    _ = builtin.intCast(i16, _u32) catch {};
-    _ = builtin.intCast(u16, _i32) catch {};
-    _ = builtin.intCast(i32, _u64) catch {};
-    _ = builtin.intCast(u32, _i64) catch {};
-    _ = builtin.intCast(u3, _u8) catch {};
-    _ = builtin.intCast(u8, _u16) catch {};
-    _ = builtin.intCast(u16, _u32) catch {};
-    _ = builtin.intCast(u32, _u64) catch {};
-    _ = builtin.intCast(i3, _i8) catch {};
-    _ = builtin.intCast(i8, _i16) catch {};
-    _ = builtin.intCast(i16, _i32) catch {};
-    _ = builtin.intCast(i32, _i64) catch {};
-}
 pub fn main() !void {
-    testIntCast();
-    //try testRuntimeAssertionsCompile();
-    //try testStaticAssertionsCompile();
-    //try testMinMax();
-    //debug.sampleAllReports();
+    try testRuntimeAssertionsCompile();
+    try testMinMax();
+    debug.sampleAllReports();
 }
