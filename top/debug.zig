@@ -70,6 +70,9 @@ pub const Trace = struct {
         write_sidebar: bool = true,
         /// Write extra line to indicate column.
         write_caret: bool = true,
+        /// Writer full source location context for reference trace entries
+        /// (Compile errors only)
+        write_full_ref_trace: bool = false,
         /// Define composition of stack trace text.
         tokens: Tokens = .{},
         pub const Tokens = struct {
