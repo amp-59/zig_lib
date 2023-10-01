@@ -107,11 +107,16 @@ pub fn strcpyMultiEqu(dest: [*]u8, src: []const []const u8) [*]u8 {
 }
 pub fn strlen(end: [*]u8, buf: [*]u8) usize {
     @setRuntimeSafety(false);
+    if (@inComptime()) {
+        var len: usize = 0;
+        while (buf + len != end) len +%= 1;
+        return len;
+    }
     return @intFromPtr(end) -% @intFromPtr(buf);
 }
 pub fn slice(end: [*]u8, buf: [*]u8) []u8 {
     @setRuntimeSafety(false);
-    return buf[0 .. @intFromPtr(end) -% @intFromPtr(buf)];
+    return buf[0..strlen(end, buf)];
 }
 pub fn print(end: [*]u8, buf: [*]u8) void {
     @setRuntimeSafety(false);
