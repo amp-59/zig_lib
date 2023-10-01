@@ -8,7 +8,6 @@ const file = @import("./file.zig");
 const debug = @import("./debug.zig");
 const dwarf = @import("./dwarf.zig");
 const builtin = @import("./builtin.zig");
-pub const panic = debug.panic;
 
 pub usingnamespace @import("./start.zig");
 
