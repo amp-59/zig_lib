@@ -1212,7 +1212,7 @@ pub const Seek = struct {
     };
     pub const backing_integer = usize;
 };
-pub const STATX = struct {
+pub const StatX = struct {
     pub const default_values = struct {
         pub const TYPE = false;
         pub const MODE = false;
@@ -1295,7 +1295,6 @@ pub const AtStatX = struct {
         pub const EMPTY_PATH = false;
         pub const FORCE_SYNC = false;
         pub const DONT_SYNC = false;
-        pub const SYNC_TYPE = false;
     };
     pub const field_names = struct {
         pub const SYMLINK_NOFOLLOW = "symlink_no_follow";

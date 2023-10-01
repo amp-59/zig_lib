@@ -414,7 +414,7 @@ pub const Seek = struct {
     pub const HOLE = 4;
     pub usingnamespace extra.Seek;
 };
-pub const STATX = struct {
+pub const StatX = struct {
     pub const TYPE = 1;
     pub const MODE = 2;
     pub const NLINK = 4;
@@ -428,7 +428,7 @@ pub const STATX = struct {
     pub const BLOCKS = 1024;
     pub const BTIME = 2048;
     pub const MNT_ID = 4096;
-    pub usingnamespace extra.STATX;
+    pub usingnamespace extra.StatX;
 };
 pub const STATX_ATTR = struct {
     pub const COMPRESSED = 4;
@@ -457,7 +457,6 @@ pub const AtStatX = struct {
     pub const EMPTY_PATH = 4096;
     pub const FORCE_SYNC = 8192;
     pub const DONT_SYNC = 16384;
-    pub const SYNC_TYPE = 24576;
     pub usingnamespace extra.AtStatX;
 };
 pub const DN = struct {

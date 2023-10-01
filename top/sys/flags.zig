@@ -1360,7 +1360,7 @@ pub const Seek = packed struct(usize) {
         return len;
     }
 };
-pub const STATX = packed struct(usize) {
+pub const StatX = packed struct(usize) {
     type: bool = false,
     mode: bool = false,
     nlink: bool = false,
@@ -1538,7 +1538,6 @@ pub const AtStatX = packed struct(usize) {
     empty_path: bool = false,
     FORCE_SYNC: bool = false,
     DONT_SYNC: bool = false,
-    SYNC_TYPE: bool = false,
     zb15: u49 = 0,
     pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
         @setRuntimeSafety(false);
@@ -1552,7 +1551,6 @@ pub const AtStatX = packed struct(usize) {
             .{ "empty_path", 1 },
             .{ "FORCE_SYNC", 1 },
             .{ "DONT_SYNC", 1 },
-            .{ "SYNC_TYPE", 18446744073709551615 },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
             if (tmp & 1 != 0) {
@@ -1571,7 +1569,7 @@ pub const AtStatX = packed struct(usize) {
         for ([_]struct { u8, u8 }{
             .{ 16, 8 }, .{ 12, 3 },
             .{ 10, 1 }, .{ 10, 1 },
-            .{ 9, 1 },  .{ 9, 18446744073709551615 },
+            .{ 9, 1 },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
             if (tmp & 1 != 0) {
