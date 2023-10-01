@@ -442,112 +442,128 @@ pub fn intCastTruncatedBitsFault(comptime T: type, comptime U: type, lim: T, arg
 }
 pub fn subCausedOverflowError(comptime T: type, arg1: T, arg2: T, ret_addr: ?usize) Error {
     @setCold(true);
-    @setRuntimeSafety(builtin.is_safe);
+    @setRuntimeSafety(false);
     var buf: [4096]u8 = undefined;
-    const len: u64 = about.writeSubCausedOverflow(T, @typeName(T), &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
-    builtin.alarm(buf[0..len], null, ret_addr orelse @returnAddress());
+    const ptr: [*]u8 = about.writeSubCausedOverflow(meta.BestInt(T), @typeName(T), &buf, math.extrema(T).min, arg1, arg2);
+    if (@inComptime()) @compileError(fmt.slice(ptr, &buf));
+    builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr orelse @returnAddress());
     return error.SubCausedOverflow;
 }
 pub fn subCausedOverflowFault(comptime T: type, arg1: T, arg2: T, ret_addr: usize) noreturn {
     @setCold(true);
-    @setRuntimeSafety(builtin.is_safe);
+    @setRuntimeSafety(false);
     var buf: [4096]u8 = undefined;
-    const len: u64 = about.writeSubCausedOverflow(T, @typeName(T), &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
-    builtin.panic(buf[0..len], null, ret_addr);
+    const ptr: [*]u8 = about.writeSubCausedOverflow(meta.BestInt(T), @typeName(T), &buf, math.extrema(T).min, arg1, arg2);
+    if (@inComptime()) @compileError(fmt.slice(ptr, &buf));
+    builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr);
 }
 pub fn addCausedOverflowError(comptime T: type, arg1: T, arg2: T, ret_addr: ?usize) Error {
     @setCold(true);
-    @setRuntimeSafety(builtin.is_safe);
+    @setRuntimeSafety(false);
     var buf: [4096]u8 = undefined;
-    const len: u64 = about.writeAddCausedOverflow(T, @typeName(T), &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
-    builtin.alarm(buf[0..len], null, ret_addr orelse @returnAddress());
+    const ptr: [*]u8 = about.writeAddCausedOverflow(meta.BestInt(T), @typeName(T), &buf, math.extrema(T).max, arg1, arg2);
+    if (@inComptime()) @compileError(fmt.slice(ptr, &buf));
+    builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr orelse @returnAddress());
     return error.AddCausedOverflow;
 }
 pub fn addCausedOverflowFault(comptime T: type, arg1: T, arg2: T, ret_addr: usize) noreturn {
     @setCold(true);
-    @setRuntimeSafety(builtin.is_safe);
+    @setRuntimeSafety(false);
     var buf: [4096]u8 = undefined;
-    const len: u64 = about.writeAddCausedOverflow(T, @typeName(T), &buf, arg1, arg2, @min(arg1, arg2) > 10_000);
-    builtin.panic(buf[0..len], null, ret_addr);
+    const ptr: [*]u8 = about.writeAddCausedOverflow(meta.BestInt(T), @typeName(T), &buf, math.extrema(T).max, arg1, arg2);
+    if (@inComptime()) @compileError(fmt.slice(ptr, &buf));
+    builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr);
 }
 pub fn mulCausedOverflowError(comptime T: type, arg1: T, arg2: T, ret_addr: ?usize) Error {
     @setCold(true);
-    @setRuntimeSafety(builtin.is_safe);
+    @setRuntimeSafety(false);
     var buf: [4096]u8 = undefined;
-    const len: u64 = about.writeMulCausedOverflow(T, @typeName(T), &buf, arg1, arg2);
-    builtin.alarm(buf[0..len], null, ret_addr orelse @returnAddress());
+    const ptr: [*]u8 = about.writeMulCausedOverflow(meta.BestInt(T), @typeName(T), &buf, arg1, arg2);
+    if (@inComptime()) @compileError(fmt.slice(ptr, &buf));
+    builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr orelse @returnAddress());
     return error.MulCausedOverflow;
 }
 pub fn mulCausedOverflowFault(comptime T: type, arg1: T, arg2: T, ret_addr: usize) noreturn {
     @setCold(true);
-    @setRuntimeSafety(builtin.is_safe);
+    @setRuntimeSafety(false);
     var buf: [4096]u8 = undefined;
-    const len: u64 = about.writeMulCausedOverflow(T, @typeName(T), &buf, arg1, arg2);
-    builtin.panic(buf[0..len], null, ret_addr);
+    const ptr: [*]u8 = about.writeMulCausedOverflow(meta.BestInt(T), @typeName(T), &buf, arg1, arg2);
+    if (@inComptime()) @compileError(fmt.slice(ptr, &buf));
+    builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr);
 }
 pub fn exactDivisionWithRemainderError(comptime T: type, arg1: T, arg2: T, result: T, remainder: T, ret_addr: ?usize) Error {
     @setCold(true);
-    @setRuntimeSafety(builtin.is_safe);
+    @setRuntimeSafety(false);
     var buf: [4096]u8 = undefined;
-    const len: u64 = about.writeExactDivisionWithRemainder(T, @typeName(T), &buf, arg1, arg2, result, remainder);
-    builtin.alarm(buf[0..len], null, ret_addr orelse @returnAddress());
+    const ptr: [*]u8 = about.writeExactDivisionWithRemainder(meta.BestInt(T), @typeName(T), &buf, arg1, arg2, result, remainder);
+    if (@inComptime()) @compileError(fmt.slice(ptr, &buf));
+    builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr orelse @returnAddress());
     return error.ExactDivisionWithRemainder;
 }
 pub fn exactDivisionWithRemainderFault(comptime T: type, arg1: T, arg2: T, result: T, remainder: T, ret_addr: usize) noreturn {
     @setCold(true);
-    @setRuntimeSafety(builtin.is_safe);
+    @setRuntimeSafety(false);
     var buf: [4096]u8 = undefined;
-    const len: u64 = about.writeExactDivisionWithRemainder(T, @typeName(T), &buf, arg1, arg2, result, remainder);
-    builtin.panic(buf[0..len], null, ret_addr);
+    const ptr: [*]u8 = about.writeExactDivisionWithRemainder(meta.BestInt(T), @typeName(T), &buf, arg1, arg2, result, remainder);
+    if (@inComptime()) @compileError(fmt.slice(ptr, &buf));
+    builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr);
 }
 pub fn incorrectAlignmentError(comptime T: type, address: usize, alignment: usize, ret_addr: ?usize) Error {
     @setCold(true);
-    @setRuntimeSafety(builtin.is_safe);
+    @setRuntimeSafety(false);
     const remainder: usize = address & (@typeInfo(T).Pointer.alignment -% 1);
     var buf: [4096]u8 = undefined;
-    const len: u64 = about.writeIncorrectAlignment(@typeName(T), &buf, address, alignment, remainder);
-    builtin.alarm(buf[0..len], null, ret_addr orelse @returnAddress());
+    const ptr: [*]u8 = about.writeIncorrectAlignment(@typeName(T), &buf, address, alignment, remainder);
+    if (@inComptime()) @compileError(fmt.slice(ptr, &buf));
+    builtin.alarm(if (@inComptime()) @compileError(fmt.slice(ptr, &buf)) else buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr orelse @returnAddress());
     return error.IncorrectAlignment;
 }
 pub fn incorrectAlignmentFault(comptime T: type, address: usize, alignment: usize, ret_addr: usize) noreturn {
     @setCold(true);
-    @setRuntimeSafety(builtin.is_safe);
+    @setRuntimeSafety(false);
     const remainder: usize = address & (@typeInfo(T).Pointer.alignment -% 1);
     var buf: [4096]u8 = undefined;
-    const len: u64 = about.writeIncorrectAlignment(@typeName(T), &buf, address, alignment, remainder);
-    builtin.panic(buf[0..len], null, ret_addr);
+    const ptr: [*]u8 = about.writeIncorrectAlignment(@typeName(T), &buf, address, alignment, remainder);
+    if (@inComptime()) @compileError(fmt.slice(ptr, &buf));
+    builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr);
 }
 pub fn comparisonFailedFault(comptime T: type, symbol: []const u8, arg1: anytype, arg2: @TypeOf(arg1), ret_addr: usize) noreturn {
     @setCold(true);
-    @setRuntimeSafety(builtin.is_safe);
-    const about_s: []const u8 = @typeName(T) ++ " failed assertion: ";
+    @setRuntimeSafety(false);
     var buf: [4096]u8 = undefined;
-    const len: u64 = switch (@typeInfo(T)) {
-        .Int => about.writeComparisonFailed(T, about_s, symbol, &buf, arg1, arg2, @min(arg1, arg2) > 10_000),
-        .Enum => fmt.strcpyMulti(&buf, &[_][]const u8{ about_s, @tagName(arg1), symbol, @tagName(arg2) }),
-        .Type => fmt.strcpyMulti(&buf, &[_][]const u8{ about_s, @typeName(arg1), symbol, @typeName(arg2) }),
-        else => fmt.strcpyMulti(&buf, &[_][]const u8{ about_s, "unexpected value" }),
+    buf[0..@typeName(T).len].* = @typeName(T).*;
+    var ptr: [*]u8 = buf[@typeName(T).len..];
+    ptr[0..19].* = " failed assertion: ".*;
+    ptr = switch (@typeInfo(T)) {
+        .Int => about.writeComparisonFailed(T, symbol, ptr + 19, arg1, arg2),
+        .Enum => fmt.strcpyEqu(fmt.strcpyEqu(fmt.strcpyEqu(ptr + 19, @tagName(arg1)), symbol), @tagName(arg2)),
+        .Type => fmt.strcpyEqu(fmt.strcpyEqu(fmt.strcpyEqu(ptr + 19, @typeName(arg1)), symbol), @typeName(arg2)),
+        else => fmt.strcpyEqu(ptr, "unexpected value"),
     };
-    builtin.panic(buf[0..len], null, ret_addr);
+    if (@inComptime()) @compileError(fmt.slice(ptr, &buf));
+    builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr);
 }
 pub fn comparisonFailedError(comptime T: type, symbol: []const u8, arg1: anytype, arg2: @TypeOf(arg1), ret_addr: ?usize) Unexpected {
     @setCold(true);
-    @setRuntimeSafety(builtin.is_safe);
-    const about_s: []const u8 = @typeName(T) ++ " failed test: ";
+    @setRuntimeSafety(false);
     var buf: [4096]u8 = undefined;
-    const len: u64 = switch (@typeInfo(T)) {
-        .Int => about.writeComparisonFailed(T, about_s, symbol, &buf, arg1, arg2, @min(arg1, arg2) > 10_000),
-        .Enum => fmt.strcpyMulti(&buf, &[_][]const u8{ about_s, @tagName(arg1), symbol, @tagName(arg2) }),
-        .Type => fmt.strcpyMulti(&buf, &[_][]const u8{ about_s, @typeName(arg1), symbol, @typeName(arg2) }),
-        else => fmt.strcpyMulti(&buf, &[_][]const u8{ about_s, "unexpected value" }),
+    buf[0..@typeName(T).len].* = @typeName(T).*;
+    var ptr: [*]u8 = buf[@typeName(T).len..];
+    ptr[0..14].* = " failed test: ".*;
+    ptr = switch (@typeInfo(T)) {
+        .Int => about.writeComparisonFailed(T, symbol, ptr + 14, arg1, arg2),
+        .Enum => fmt.strcpyEqu(fmt.strcpyEqu(fmt.strcpyEqu(ptr + 14, @tagName(arg1)), symbol), @tagName(arg2)),
+        .Type => fmt.strcpyEqu(fmt.strcpyEqu(fmt.strcpyEqu(ptr + 14, @typeName(arg1)), symbol), @typeName(arg2)),
+        else => fmt.strcpyEqu(ptr, "unexpected value"),
     };
-    builtin.alarm(buf[0..len], @errorReturnTrace(), ret_addr orelse @returnAddress());
+    if (@inComptime()) @compileError(fmt.slice(ptr, &buf));
+    builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr orelse @returnAddress());
     return error.UnexpectedValue;
 }
 pub fn sampleAllReports() void {
-    inline for (.{ u16, u32, u64, usize }) |T| {
-        var arg1: T = 2048;
-        var arg2: T = 4098;
+    inline for (.{ u16, u32, u64, usize, i16, i32, i64, isize }) |T| {
+        comptime var arg1: comptime_int = ~@as(T, 0);
+        comptime var arg2: comptime_int = ~@as(T, 0);
         var result: T = 2;
         const remainder: T = 2;
         expectEqual(T, arg1, arg2) catch {};
