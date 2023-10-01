@@ -2,12 +2,10 @@ const fmt = @import("../fmt.zig");
 const mem = @import("../mem.zig");
 const file = @import("../file.zig");
 const builtin = @import("../builtin.zig");
-
 pub const Path = file.CompoundPath;
-
 pub const Allocator = mem.SimpleAllocator;
-
 pub const File = enum(u8) {
+    // Formats
     exe = exe,
     lib = lib,
     obj = obj,
@@ -23,7 +21,6 @@ pub const File = enum(u8) {
     dir = dir,
     cfg = cfg,
     unknown,
-
     const exe = 0;
     const lib = 1;
     const obj = 2;
@@ -319,7 +316,6 @@ pub const CFlags = struct {
         return len;
     }
 };
-
 pub const Files = struct {
     value: []const Path,
     const Format = @This();

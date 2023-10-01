@@ -459,36 +459,6 @@ fn writeExtraLibraries(array: *Array, comptime mv: MajorVariant) !void {
     try writeOutCommandExtraLibrary(array, mv, "objcopy_extra", build.ObjcopyCommand, "types.ObjcopyCommand");
     try writeOutCommandExtraLibrary(array, mv, "archive_extra", build.ArchiveCommand, "types.ArchiveCommand");
 }
-
-fn writePerfEventsLibrary(array: *Array, comptime mv: MajorVariant) !void {
-    const perf = @import("../perf.zig");
-    array.writeMany("const source=@import(\"perf.zig\");\n");
-    writeImportMach(array);
-    const fds_fmt = comptime types.ProtoTypeDescr.declare("Fds", perf.Fds);
-    array.writeFormat(fds_fmt);
-    types.ProtoTypeDescr.scope = &.{fds_fmt.type_decl};
-    writeInternal(array, mv, perf);
-    try writeOut(array, mv, "perf");
-    array.undefineAll();
-}
-fn writeNodeCoreFnsLibrary(array: *Array, comptime mv: MajorVariant) !void {
-    if (return) {}
-    const Node = builtin.root.Builder.Node;
-    array.writeMany("const types=@import(\"../types.zig\");\n");
-    array.writeMany("const source=types.Node;\n");
-    types.ProtoTypeDescr.scope = &.{
-        comptime types.ProtoTypeDescr.declare("types.Node", Node).type_decl,
-        comptime types.ProtoTypeDescr.declare("types.EnvPaths", build.EnvPaths).type_decl,
-        comptime types.ProtoTypeDescr.declare("types.Task", build.Task).type_decl,
-        comptime types.ProtoTypeDescr.declare("types.Lock", build.Lock).type_decl,
-    };
-    writeSymbol(array, Node, .ptr_fields_source);
-    writeLoadSignature(array);
-    writeSymbol(array, Node, .load_assign_source);
-    writeIfClose(array);
-    writeExportLoad(array);
-    try writeOut(array, mv, "node_core");
-}
 fn writeOut(array: *Array, comptime mv: MajorVariant, comptime name: [:0]const u8) !void {
     if (true or config.commit) {
         try gen.truncateFile(.{ .return_type = void }, config.primarySourceFile(name ++ switch (mv) {
@@ -499,19 +469,6 @@ fn writeOut(array: *Array, comptime mv: MajorVariant, comptime name: [:0]const u
         array.undefineAll();
     } else {
         debug.write(array.readAll());
-    }
-}
-pub fn mainOld() !void {
-    var allocator: mem.SimpleAllocator = .{};
-    defer allocator.unmapAll();
-    const array: *common.Array = allocator.create(common.Array);
-    switch (MajorVariant.autoloader) {
-        inline else => |variant| {
-            try writeCoreLibraries(array, variant);
-            try writeExtraLibraries(array, variant);
-            try writePerfEventsLibrary(array, variant);
-            try writeNodeCoreFnsLibrary(array, variant);
-        },
     }
 }
 fn writeLoadFromSourcesInternal(
