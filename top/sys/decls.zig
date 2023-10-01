@@ -102,7 +102,6 @@ pub const MCL = struct {
     pub usingnamespace extra.MCL;
 };
 pub const Open = struct {
-    pub const LARGEFILE = 0;
     pub const RDONLY = 0;
     pub const WRONLY = 1;
     pub const RDWR = 2;
@@ -122,6 +121,26 @@ pub const Open = struct {
     pub const PATH = 2097152;
     pub const TMPFILE = 4194304;
     pub usingnamespace extra.Open;
+};
+pub const Create = struct {
+    pub const RDONLY = 0;
+    pub const WRONLY = 1;
+    pub const RDWR = 2;
+    pub const CREAT = 64;
+    pub const EXCL = 128;
+    pub const NOCTTY = 256;
+    pub const TRUNC = 512;
+    pub const APPEND = 1024;
+    pub const NONBLOCK = 2048;
+    pub const DSYNC = 4096;
+    pub const ASYNC = 8192;
+    pub const DIRECT = 16384;
+    pub const NOFOLLOW = 131072;
+    pub const NOATIME = 262144;
+    pub const CLOEXEC = 524288;
+    pub const PATH = 2097152;
+    pub const TMPFILE = 4194304;
+    pub usingnamespace extra.Create;
 };
 pub const Lock = struct {
     pub const SH = 1;

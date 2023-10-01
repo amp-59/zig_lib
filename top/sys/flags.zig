@@ -510,12 +510,84 @@ pub const Open = packed struct(usize) {
         var len: usize = 6;
         var tmp: usize = @bitCast(format);
         for ([_]struct { u8, u8 }{
-            .{ 6, 0 }, .{ 4, 1 }, .{ 5, 5 },
-            .{ 4, 1 }, .{ 6, 1 }, .{ 5, 1 },
-            .{ 6, 1 }, .{ 8, 1 }, .{ 5, 1 },
-            .{ 5, 1 }, .{ 6, 1 }, .{ 9, 2 },
-            .{ 8, 1 }, .{ 7, 1 }, .{ 7, 1 },
-            .{ 4, 2 }, .{ 7, 1 },
+            .{ 6, 0 }, .{ 4, 1 }, .{ 5, 5 }, .{ 4, 1 },
+            .{ 6, 1 }, .{ 5, 1 }, .{ 6, 1 }, .{ 8, 1 },
+            .{ 5, 1 }, .{ 5, 1 }, .{ 6, 1 }, .{ 9, 2 },
+            .{ 8, 1 }, .{ 7, 1 }, .{ 7, 1 }, .{ 4, 2 },
+            .{ 7, 1 },
+        }) |pair| {
+            tmp >>= @truncate(pair[1]);
+            if (tmp & 1 != 0) {
+                len +%= @intFromBool(len != 0) +% pair[0];
+            }
+        }
+        return len;
+    }
+};
+pub const Create = packed struct(usize) {
+    write_only: bool = false,
+    read_write: bool = true,
+    zb2: u4 = 0,
+    create: bool = true,
+    exclusive: bool = false,
+    no_ctty: bool = false,
+    truncate: bool = true,
+    append: bool = false,
+    non_block: bool = false,
+    data_sync: bool = false,
+    @"async": bool = false,
+    direct: bool = false,
+    zb15: u2 = 0,
+    no_follow: bool = false,
+    no_atime: bool = false,
+    close_on_exec: bool = false,
+    zb20: u1 = 0,
+    path: bool = false,
+    tmpfile: bool = false,
+    zb23: u41 = 0,
+    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
+        @setRuntimeSafety(false);
+        var tmp: usize = @bitCast(format);
+        if (tmp == 0) return 0;
+        buf[0..6].* = "flags=".*;
+        var len: usize = 6;
+        for ([_]struct { []const u8, u8 }{
+            .{ "write_only", 0 },
+            .{ "read_write", 1 },
+            .{ "create", 5 },
+            .{ "exclusive", 1 },
+            .{ "no_ctty", 1 },
+            .{ "truncate", 1 },
+            .{ "append", 1 },
+            .{ "non_block", 1 },
+            .{ "data_sync", 1 },
+            .{ "async", 1 },
+            .{ "direct", 1 },
+            .{ "no_follow", 3 },
+            .{ "no_atime", 1 },
+            .{ "close_on_exec", 1 },
+            .{ "path", 2 },
+            .{ "tmpfile", 1 },
+        }) |pair| {
+            tmp >>= @truncate(pair[1]);
+            if (tmp & 1 != 0) {
+                buf[len] = ',';
+                len += @intFromBool(len != 6);
+                len += fmt.strcpy(buf + len, pair[0]);
+            }
+        }
+        return len;
+    }
+    pub fn formatLength(format: @This()) usize {
+        @setRuntimeSafety(false);
+        if (@as(usize, @bitCast(format)) == 0) return 0;
+        var len: usize = 6;
+        var tmp: usize = @bitCast(format);
+        for ([_]struct { u8, u8 }{
+            .{ 6, 0 }, .{ 4, 1 }, .{ 5, 5 }, .{ 4, 1 },
+            .{ 6, 1 }, .{ 5, 1 }, .{ 6, 1 }, .{ 8, 1 },
+            .{ 5, 1 }, .{ 5, 1 }, .{ 6, 1 }, .{ 8, 3 },
+            .{ 7, 1 }, .{ 7, 1 }, .{ 4, 2 }, .{ 7, 1 },
         }) |pair| {
             tmp >>= @truncate(pair[1]);
             if (tmp & 1 != 0) {
