@@ -12,7 +12,7 @@ const builtin = @import("./builtin.zig");
 pub const SignalAction = extern struct {
     handler: Handler = .{ .set = .default },
     flags: sys.flags.SignalAction,
-    restorer: *const fn () callconv(.Naked) void = restoreRunTime,
+    restorer: *const fn () callconv(.Naked) void = restoreRuntime,
     mask: [2]u32 = .{0} ** 2,
     const Handler = extern union {
         set: enum(usize) { ignore = 1, default = 0 },
@@ -743,7 +743,7 @@ pub fn environmentValue(vars: [][*:0]u8, key: [:0]const u8) ?[:0]u8 {
     }
     return null;
 }
-pub fn restoreRunTime() callconv(.Naked) void {
+pub fn restoreRuntime() callconv(.Naked) void {
     switch (builtin.zig_backend) {
         .stage2_c => asm volatile (
             \\ movl %[number], %%eax
@@ -775,7 +775,7 @@ pub inline fn initializeRuntime() void {
         updateExceptionHandlers(&.{
             .flags = .{ .on_stack = true },
             .handler = .{ .action = about.exceptionHandler },
-            .restorer = restoreRunTime,
+            .restorer = restoreRuntime,
         });
     } else if (sighand != 0) {
         sys.call_noexcept(.mmap, void, .{
@@ -787,7 +787,7 @@ pub inline fn initializeRuntime() void {
         updateExceptionHandlers(&.{
             .flags = .{ .on_stack = true },
             .handler = .{ .action = about.exceptionHandler },
-            .restorer = restoreRunTime,
+            .restorer = restoreRuntime,
         });
     } else if (@sizeOf(builtin.AbsoluteState) != 0) {
         sys.call_noexcept(.mmap, void, .{
