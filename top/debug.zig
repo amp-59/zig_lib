@@ -12,6 +12,7 @@ pub const Error = error{
     AddCausedOverflow,
     MulCausedOverflow,
     LeftShiftCausedOverflow,
+    IntCastTruncatedBits,
     ExactDivisionWithRemainder,
     IncorrectAlignment,
 };
