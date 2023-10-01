@@ -218,6 +218,10 @@ pub fn toSymbol(comptime T: type, value: T, comptime radix: u7) u8 {
         return result +% dx.d;
     }
 }
+pub const FormatBuf = struct {
+    formatWriteBuf: *const fn (*const anyopaque, [*]u8) usize,
+    format: *const anyopaque,
+};
 const Separator = struct {
     character: u8 = ',',
     digits: comptime_int = 3,
