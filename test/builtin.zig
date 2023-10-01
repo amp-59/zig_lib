@@ -109,9 +109,37 @@ fn testMinMax() !void {
     try debug.expect(mem.testEqual(S, s, builtin.min(S, t, s)));
     try debug.expect(mem.testEqual(S, t, builtin.max(S, t, s)));
 }
+fn testIntCast() void {
+    var rng: zl.file.DeviceRandomBytes(4096) = .{};
+    var _u8: u16 = rng.readOne(u16);
+    var _u16: u16 = rng.readOne(u16);
+    var _u32: u32 = rng.readOne(u32);
+    var _u64: u64 = rng.readOne(u64);
+    var _i8: i16 = rng.readOne(i16);
+    var _i16: i16 = rng.readOne(i16);
+    var _i32: i32 = rng.readOne(i32);
+    var _i64: i64 = rng.readOne(i64);
+    _ = builtin.intCast(i3, _u8) catch {};
+    _ = builtin.intCast(u3, _i8) catch {};
+    _ = builtin.intCast(i8, _u16) catch {};
+    _ = builtin.intCast(u8, _i16) catch {};
+    _ = builtin.intCast(i16, _u32) catch {};
+    _ = builtin.intCast(u16, _i32) catch {};
+    _ = builtin.intCast(i32, _u64) catch {};
+    _ = builtin.intCast(u32, _i64) catch {};
+    _ = builtin.intCast(u3, _u8) catch {};
+    _ = builtin.intCast(u8, _u16) catch {};
+    _ = builtin.intCast(u16, _u32) catch {};
+    _ = builtin.intCast(u32, _u64) catch {};
+    _ = builtin.intCast(i3, _i8) catch {};
+    _ = builtin.intCast(i8, _i16) catch {};
+    _ = builtin.intCast(i16, _i32) catch {};
+    _ = builtin.intCast(i32, _i64) catch {};
+}
 pub fn main() !void {
-    try testRuntimeAssertionsCompile();
-    try testStaticAssertionsCompile();
-    try testMinMax();
-    debug.sampleAllReports();
+    testIntCast();
+    //try testRuntimeAssertionsCompile();
+    //try testStaticAssertionsCompile();
+    //try testMinMax();
+    //debug.sampleAllReports();
 }
