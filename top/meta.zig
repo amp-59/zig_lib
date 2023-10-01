@@ -281,6 +281,19 @@ pub fn unsignedRealBitSize(value: usize) u16 {
         @as(u33, 1) << 32...~@as(u64, 0) => return 64,
     }
 }
+pub fn BestInt(comptime T: type) type {
+    if (@bitSizeOf(T) <= @bitSizeOf(usize)) {
+        return @Type(.{ .Int = .{
+            .bits = @bitSizeOf(usize),
+            .signedness = @typeInfo(T).Int.signedness,
+        } });
+    } else {
+        return @Type(.{ .Int = .{
+            .bits = realBitSize(@bitSizeOf(T)),
+            .signedness = @typeInfo(T).Int.signedness,
+        } });
+    }
+}
 pub fn signedRealBitSize(value: isize) u16 {
     const xi8: math.Extrema = math.extrema(i8);
     const xi16: math.Extrema = math.extrema(i16);
