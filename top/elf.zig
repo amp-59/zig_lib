@@ -1309,6 +1309,13 @@ pub const LoaderSpec = struct {
     const Options = struct {
         extra_sections: []const []const u8 = &.{},
         try_harder_to_match: bool = false,
+        exclude_size_below: usize = 128,
+        exclude_terms: []const []const u8 = &[_][]const u8{
+            "__anon",
+            "__struct",
+            "__union",
+            "__enum",
+        },
     };
     pub const Logging = packed struct {
         show_elf_header: bool = false,
@@ -1847,7 +1854,8 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                             continue;
                         };
                         if (loader_spec.logging.hide_mangled_symbols and
-                            maybeExcludeSymbol(mats2, sym_idx2, name2))
+                            maybeExcludeSymbol(mats2, sym_idx2, name2) and
+                            sym2.st_size < loader_spec.options.exclude_size_below)
                         {
                             hidden_count +%= 1;
                             hidden_size +%= sym2.st_size;
@@ -1970,7 +1978,8 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                             continue;
                         };
                         if (loader_spec.logging.hide_mangled_symbols and
-                            maybeExcludeSymbol(mats1, sym_idx1, name1))
+                            maybeExcludeSymbol(mats1, sym_idx1, name1) and
+                            sym1.st_size < loader_spec.options.exclude_size_below)
                         {
                             hidden_count +%= 1;
                             hidden_size +%= sym1.st_size;
@@ -2570,12 +2579,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             }
             fn maybeExcludeSymbol(mats: [*]CmpMat, sym_idx: usize, name: []const u8) bool {
                 @setRuntimeSafety(builtin.is_safe);
-                for ([_][]const u8{
-                    "__anon",
-                    "__struct",
-                    "__union",
-                    "__enum",
-                }) |suffix| {
+                for (loader_spec.options.exclude_terms) |suffix| {
                     if (mem.testEqualManyIn(u8, suffix, name)) {
                         if (@intFromPtr(mats) > lb_meta_addr) {
                             mats[sym_idx] = .mangled;
