@@ -526,7 +526,7 @@ const @"1" = opaque {
                 const len_0: usize = memory.impl.undefined_byte_address();
                 format.formatWrite(memory);
                 const len_1: usize = memory.impl.undefined_byte_address();
-                const t_len: usize = builtin.sub(usize, len_1, len_0);
+                const t_len: usize = len_1 -% len_0;
                 if (s_len < t_len) {
                     formatLengthFault(what, " >= ", s_len, t_len);
                 }
@@ -535,7 +535,7 @@ const @"1" = opaque {
                 const len_0: usize = memory.impl.undefined_byte_address();
                 format.formatWrite(memory);
                 const len_1: usize = memory.impl.undefined_byte_address();
-                const t_len: usize = builtin.sub(usize, len_1, len_0);
+                const t_len: usize = len_1 -% len_0;
                 if (t_len != s_len) {
                     formatLengthFault(what, " == ", s_len, t_len);
                 }
