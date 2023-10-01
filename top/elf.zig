@@ -2446,7 +2446,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 ptr += 2;
                 ptr[0..5].* = "name=".*;
                 ptr += 5;
-                ptr += writeBoldShortName(ptr, mem.terminate(strtab1 + sym1.st_name, 0));
+                ptr = writeBoldShortName(ptr, mem.terminate(strtab1 + sym1.st_name, 0));
                 ptr[0] = '\n';
                 ptr += 1;
                 return ptr;
@@ -2473,7 +2473,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 ptr += 2;
                 ptr[0..5].* = "name=".*;
                 ptr += 5;
-                ptr += writeBoldShortName(ptr, mem.terminate(strtab2 + sym2.st_name, 0));
+                ptr = writeBoldShortName(ptr, mem.terminate(strtab2 + sym2.st_name, 0));
                 ptr[0] = '\n';
                 ptr += 1;
                 return ptr;
@@ -2500,7 +2500,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 ptr += 2;
                 ptr[0..5].* = "name=".*;
                 ptr += 5;
-                ptr += writeBoldShortName(ptr, mem.terminate(strtab1 + sym1.st_name, 0));
+                ptr = writeBoldShortName(ptr, mem.terminate(strtab1 + sym1.st_name, 0));
                 ptr[0] = '\n';
                 ptr += 1;
                 return ptr;
@@ -2539,7 +2539,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 ptr += 2;
                 ptr[0..5].* = "name=".*;
                 ptr += 5;
-                ptr += writeBoldShortName(ptr, mem.terminate(strtab2 + sym2.st_name, 0));
+                ptr = writeBoldShortName(ptr, mem.terminate(strtab2 + sym2.st_name, 0));
                 ptr[0] = '\n';
                 ptr += 1;
                 return ptr;
@@ -2568,7 +2568,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 ptr += 2;
                 ptr[0..5].* = "name=".*;
                 ptr += 5;
-                ptr += writeRenamedBoldShortName(
+                ptr = writeRenamedBoldShortName(
                     ptr,
                     mem.terminate(strtab1 + sym1.st_name, 0),
                     mem.terminate(strtab2 + sym2.st_name, 0),
@@ -2589,16 +2589,31 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 }
                 return false;
             }
-            fn writeBoldShortName(buf: [*]u8, name: [:0]u8) usize {
+            fn writeBoldShortName(buf: [*]u8, name: [:0]u8) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
                 const pos: usize = mem.indexOfLastEqualOne(u8, '.', name) orelse 0;
-                var ptr: [*]u8 = fmt.strcpyEqu(buf, name[0..pos]);
+                var to: usize = pos;
+                if (to > 80) {
+                    if (mem.indexOfFirstEqualOne(u8, '(', name[0..pos])) |end| {
+                        to = end;
+                    }
+                    while (to > 80) {
+                        to = mem.indexOfLastEqualOne(u8, '.', name[0..to]) orelse break;
+                    }
+                }
+                var ptr: [*]u8 = fmt.strcpyEqu(buf, name[0..to]);
+                if (to != pos and
+                    name[to] == '(' and name[pos -% 1] == ')')
+                {
+                    ptr[0..5].* = "(...)".*;
+                    ptr += 5;
+                }
                 ptr[0..8].* = (tab.fx.none ++ tab.fx.style.bold).*;
                 ptr += 8;
                 ptr = fmt.strcpyEqu(ptr, name[pos..]);
                 ptr[0..4].* = tab.fx.none.*;
                 ptr += 4;
-                return @intFromPtr(ptr) - @intFromPtr(buf);
+                return ptr;
             }
             fn writeChangedNameSegment(buf: [*]u8, name1: []const u8, name2: []const u8) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
