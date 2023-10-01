@@ -270,7 +270,7 @@ pub inline fn setErrorPolicy(
     comptime S: type,
     comptime new: InternalError(S.Error),
 ) void {
-    static.assert(@hasDecl(S, "error_policy"));
+    debug.assert(@hasDecl(S, "error_policy"));
     S.error_policy.* = new;
 }
 /// `S` must be a container type. This function should be called within `S`, to
@@ -279,7 +279,7 @@ pub inline fn createErrorPolicy(
     comptime S: type,
     comptime new: InternalError(S.Error),
 ) *InternalError(S.Error) {
-    static.assert(@hasDecl(S, "Error"));
+    debug.assert(@hasDecl(S, "Error"));
     var value: *InternalError(S.Error) = ptr(InternalError(S.Error));
     value.* = new;
     return value;
@@ -382,13 +382,9 @@ inline fn normalAddAssign(comptime T: type, arg1: *T, arg2: T) void {
     arg1.* = normalAddReturn(T, arg1.*, arg2);
 }
 inline fn normalAddReturn(comptime T: type, arg1: T, arg2: T) T {
-    const result: Overflow(T) = overflowingAddReturn(T, arg1, arg2);
+    const result = @addWithOverflow(arg1, arg2);
     if (runtime_assertions and result[1] != 0) {
-        if (@inComptime()) {
-            debug.static.addCausedOverflow(T, arg1, arg2);
-        } else {
-            debug.addCausedOverflowFault(T, arg1, arg2, @returnAddress());
-        }
+        debug.addCausedOverflowFault(T, arg1, arg2, @returnAddress());
     }
     return result[0];
 }
@@ -396,13 +392,9 @@ inline fn normalSubAssign(comptime T: type, arg1: *T, arg2: T) void {
     arg1.* = normalSubReturn(T, arg1.*, arg2);
 }
 inline fn normalSubReturn(comptime T: type, arg1: T, arg2: T) T {
-    const result: Overflow(T) = overflowingSubReturn(T, arg1, arg2);
+    const result = @subWithOverflow(arg1, arg2);
     if (runtime_assertions and result[1] != 0) {
-        if (@inComptime()) {
-            debug.static.subCausedOverflow(T, arg1, arg2);
-        } else {
-            debug.subCausedOverflowFault(T, arg1, arg2, @returnAddress());
-        }
+        debug.subCausedOverflowFault(T, arg1, arg2, @returnAddress());
     }
     return result[0];
 }
@@ -410,13 +402,9 @@ inline fn normalMulAssign(comptime T: type, arg1: *T, arg2: T) void {
     arg1.* = normalMulReturn(T, arg1.*, arg2);
 }
 inline fn normalMulReturn(comptime T: type, arg1: T, arg2: T) T {
-    const result: Overflow(T) = overflowingMulReturn(T, arg1, arg2);
+    const result = @mulWithOverflow(arg1, arg2);
     if (runtime_assertions and result[1] != 0) {
-        if (@inComptime()) {
-            debug.static.mulCausedOverflow(T, arg1, arg2);
-        } else {
-            debug.mulCausedOverflowFault(T, arg1, arg2, @returnAddress());
-        }
+        debug.mulCausedOverflowFault(T, arg1, arg2, @returnAddress());
     }
     return result[0];
 }
@@ -427,11 +415,7 @@ inline fn exactDivisionReturn(comptime T: type, arg1: T, arg2: T) T {
     const result: T = arg1 / arg2;
     const remainder: T = normalSubReturn(T, arg1, (result * arg2));
     if (runtime_assertions and remainder != 0) {
-        if (@inComptime()) {
-            debug.static.exactDivisionWithRemainder(T, arg1, arg2, result, remainder);
-        } else {
-            debug.exactDivisionWithRemainderFault(T, arg1, arg2, result, remainder, @returnAddress());
-        }
+        debug.exactDivisionWithRemainderFault(T, arg1, arg2, result, remainder, @returnAddress());
     }
     return result;
 }
@@ -532,36 +516,24 @@ inline fn exactShlAssign(comptime T: type, arg1: *T, arg2: T) void {
     arg1.* = @shlExact(arg1.*, intCast(ShiftAmount(T), arg2));
 }
 inline fn overflowingAddAssign(comptime T: type, arg1: *T, arg2: T) bool {
-    const result: Overflow(T) = @addWithOverflow(arg1.*, arg2);
+    const result = @addWithOverflow(arg1.*, arg2);
     arg1.* = result[0];
     return result[1] != 0;
-}
-inline fn overflowingAddReturn(comptime T: type, arg1: T, arg2: T) Overflow(T) {
-    return @addWithOverflow(arg1, arg2);
 }
 inline fn overflowingSubAssign(comptime T: type, arg1: *T, arg2: T) bool {
-    const result: Overflow(T) = @subWithOverflow(arg1.*, arg2);
+    const result = @subWithOverflow(arg1.*, arg2);
     arg1.* = result[0];
     return result[1] != 0;
-}
-inline fn overflowingSubReturn(comptime T: type, arg1: T, arg2: T) Overflow(T) {
-    return @subWithOverflow(arg1, arg2);
 }
 inline fn overflowingMulAssign(comptime T: type, arg1: *T, arg2: T) bool {
-    const result: Overflow(T) = @mulWithOverflow(arg1.*, arg2);
+    const result = @mulWithOverflow(arg1.*, arg2);
     arg1.* = result[0];
     return result[1] != 0;
-}
-inline fn overflowingMulReturn(comptime T: type, arg1: T, arg2: T) Overflow(T) {
-    return @mulWithOverflow(arg1, arg2);
 }
 inline fn overflowingShlAssign(comptime T: type, arg1: *T, arg2: T) bool {
-    const result: Overflow(T) = @shlWithOverflow(arg1.*, intCast(ShiftAmount(T), arg2));
+    const result = @shlWithOverflow(arg1.*, intCast(ShiftAmount(T), arg2));
     arg1.* = result[0];
     return result[1] != 0;
-}
-inline fn overflowingShlReturn(comptime T: type, arg1: T, arg2: T) Overflow(T) {
-    return @shlWithOverflow(arg1, intCast(ShiftAmount(T), arg2));
 }
 pub fn add(comptime T: type, arg1: T, arg2: T) T {
     return normalAddReturn(T, arg1, arg2);
@@ -581,8 +553,8 @@ pub fn addEquSat(comptime T: type, arg1: *T, arg2: T) void {
 pub fn addEquWrap(comptime T: type, arg1: *T, arg2: T) void {
     wrappingAddAssign(T, arg1, arg2);
 }
-pub fn addWithOverflow(comptime T: type, arg1: T, arg2: T) Overflow(T) {
-    return overflowingAddReturn(T, arg1, arg2);
+pub fn addWithOverflow(comptime T: type, arg1: T, arg2: T) struct { T, u1 } {
+    return @addWithOverflow(arg1, arg2);
 }
 pub fn addEquWithOverflow(comptime T: type, arg1: *T, arg2: T) bool {
     return overflowingAddAssign(T, arg1, arg2);
@@ -605,8 +577,8 @@ pub fn subEquSat(comptime T: type, arg1: *T, arg2: T) void {
 pub fn subEquWrap(comptime T: type, arg1: *T, arg2: T) void {
     wrappingSubAssign(T, arg1, arg2);
 }
-pub fn subWithOverflow(comptime T: type, arg1: T, arg2: T) Overflow(T) {
-    return overflowingSubReturn(T, arg1, arg2);
+pub fn subWithOverflow(comptime T: type, arg1: T, arg2: T) struct { T, u1 } {
+    return @subWithOverflow(arg1, arg2);
 }
 pub fn subEquWithOverflow(comptime T: type, arg1: *T, arg2: T) bool {
     return overflowingSubAssign(T, arg1, arg2);
@@ -629,8 +601,8 @@ pub fn mulEquSat(comptime T: type, arg1: *T, arg2: T) void {
 pub fn mulEquWrap(comptime T: type, arg1: *T, arg2: T) void {
     wrappingMulAssign(T, arg1, arg2);
 }
-pub fn mulWithOverflow(comptime T: type, arg1: T, arg2: T) Overflow(T) {
-    return overflowingMulReturn(T, arg1, arg2);
+pub fn mulWithOverflow(comptime T: type, arg1: T, arg2: T) struct { T, u1 } {
+    return @mulWithOverflow(arg1, arg2);
 }
 pub fn mulEquWithOverflow(comptime T: type, arg1: *T, arg2: T) bool {
     return overflowingMulAssign(T, arg1, arg2);
@@ -701,8 +673,8 @@ pub fn shlExact(comptime T: type, arg1: T, arg2: T) T {
 pub fn shlEquExact(comptime T: type, arg1: *T, arg2: T) void {
     exactShlAssign(T, arg1, arg2);
 }
-pub fn shlWithOverflow(comptime T: type, arg1: T, arg2: T) Overflow(T) {
-    return overflowingShlReturn(T, arg1, arg2);
+pub fn shlWithOverflow(comptime T: type, arg1: T, arg2: ShiftAmount(T)) struct { T, u1 } {
+    return @shlWithOverflow(arg1, arg2);
 }
 pub fn shlEquWithOverflow(comptime T: type, arg1: *T, arg2: T) bool {
     return overflowingShlAssign(T, arg1, arg2);
@@ -804,76 +776,6 @@ pub fn intCast(comptime T: type, value: anytype) T {
     }
     return @intCast(value);
 }
-pub const static = struct {
-    pub fn assert(comptime b: bool) void {
-        if (!b) {
-            @compileError(debug.about_assertion_1_s);
-        }
-    }
-    pub fn expect(b: bool) !void {
-        if (!b) {
-            return error.Unexpected;
-        }
-    }
-    fn normalAddAssign(comptime T: type, comptime arg1: *T, comptime arg2: T) void {
-        const result: Overflow(T) = overflowingAddReturn(T, arg1.*, arg2);
-        if (runtime_assertions and result[1] != 0) {
-            debug.static.addCausedOverflow(T, arg1.*, arg2);
-        }
-        arg1.* = result[0];
-    }
-    fn normalAddReturn(comptime T: type, comptime arg1: T, comptime arg2: T) T {
-        const result: Overflow(T) = overflowingAddReturn(T, arg1, arg2);
-        if (runtime_assertions and result[1] != 0) {
-            debug.static.addCausedOverflow(T, arg1, arg2);
-        }
-        return result[0];
-    }
-    fn normalSubAssign(comptime T: type, comptime arg1: *T, comptime arg2: T) void {
-        const result: Overflow(T) = overflowingSubReturn(T, arg1.*, arg2);
-        if (runtime_assertions and arg1.* < arg2) {
-            debug.static.subCausedOverflow(T, arg1.*, arg2);
-        }
-        arg1.* = result[0];
-    }
-    fn normalSubReturn(comptime T: type, comptime arg1: T, comptime arg2: T) T {
-        const result: Overflow(T) = overflowingSubReturn(T, arg1, arg2);
-        if (runtime_assertions and result[1] != 0) {
-            debug.static.subCausedOverflow(T, arg1, arg2);
-        }
-        return result[0];
-    }
-    fn normalMulAssign(comptime T: type, comptime arg1: *T, comptime arg2: T) void {
-        const result: Overflow(T) = overflowingMulReturn(T, arg1.*, arg2);
-        if (runtime_assertions and result[1] != 0) {
-            debug.static.mulCausedOverflow(T, arg1.*, arg2);
-        }
-        arg1.* = result[0];
-    }
-    fn normalMulReturn(comptime T: type, comptime arg1: T, comptime arg2: T) T {
-        const result: Overflow(T) = overflowingMulReturn(T, arg1, arg2);
-        if (runtime_assertions and result[1] != 0) {
-            debug.static.mulCausedOverflow(T, arg1, arg2);
-        }
-        return result[0];
-    }
-    fn exactDivisionAssign(comptime T: type, comptime arg1: *T, comptime arg2: T) void {
-        const result: T = arg1.* / arg2;
-        const remainder: T = static.normalSubReturn(T, arg1.*, (result * arg2));
-        if (runtime_assertions and remainder != 0) {
-            debug.static.exactDivisionWithRemainder(T, arg1.*, arg2, result, remainder);
-        }
-        arg1.* = result;
-    }
-    fn exactDivisionReturn(comptime T: type, comptime arg1: T, comptime arg2: T) T {
-        const result: T = arg1 / arg2;
-        const remainder: T = static.normalSubReturn(T, arg1, (result * arg2));
-        if (runtime_assertions and remainder != 0) {
-            debug.static.exactDivisionWithRemainder(T, arg1, arg2, result, remainder);
-        }
-        return result;
-    }
-};
 pub const parse = struct {
     const KV = struct { []const u8, Token.Tag };
     pub const Token = struct {
@@ -2179,9 +2081,9 @@ pub fn VirtualAddressSpace() type {
     }
     return root.AddressSpace;
 }
-fn Overflow(comptime T: type) type {
-    return struct { T, u1 };
-}
+//fn Overflow(comptime T: type) type {
+//    return struct { T, u1 };
+//}
 pub const native_endian: zig.Endian = switch (builtin.cpu.arch) {
     .avr,
     .arm,
