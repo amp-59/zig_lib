@@ -12,10 +12,6 @@ pub const root = @import("root");
 /// target information.
 pub const is_zig_lib: bool = @hasDecl(@import("std"), "zig_lib");
 
-/// Determines whether the library should provide `_start`
-pub const has_start_in_root: bool = @hasDecl(root, "_start");
-pub const is_executable: bool = builtin.output_mode == .Exe;
-
 /// Determines `@setRuntimeSafety` for many scopes.
 pub const is_safe: bool = define("is_safe", bool, builtin.mode == .ReleaseSafe);
 pub const is_small: bool = define("is_small", bool, builtin.mode == .ReleaseSmall);
@@ -792,21 +788,21 @@ pub inline fn equ(comptime T: type, dst: *T, src: T) void {
 }
 pub fn intToPtr(comptime P: type, address: usize) P {
     const alignment: usize = @typeInfo(P).Pointer.alignment;
-    if (address & (alignment - 1) != 0) {
+    if (address & (alignment -% 1) != 0) {
         debug.incorrectAlignmentFault(P, address, alignment, @returnAddress());
     }
     return @ptrFromInt(address);
 }
-pub inline fn intCast(comptime T: type, value: anytype) T {
+pub fn intCast(comptime T: type, value: anytype) T {
     @setRuntimeSafety(false);
-    const U: type = @TypeOf(value);
-    if (@bitSizeOf(T) > @bitSizeOf(U)) {
-        return value;
+    const extrema: math.Extrema = math.extrema(T);
+    if (value > extrema.max) {
+        return debug.intCastTruncatedBitsFault(T, @TypeOf(value), extrema.max, value, @returnAddress());
     }
-    if (runtime_assertions and value > ~@as(T, 0)) {
-        debug.intCastTruncatedBitsFault(T, U, value, @returnAddress());
+    if (value < extrema.min) {
+        return debug.intCastTruncatedBitsFault(T, @TypeOf(value), extrema.min, value, @returnAddress());
     }
-    return @as(T, @truncate(value));
+    return @intCast(value);
 }
 pub const static = struct {
     pub fn assert(comptime b: bool) void {
