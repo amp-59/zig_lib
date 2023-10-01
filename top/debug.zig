@@ -423,12 +423,22 @@ pub fn expectEqualMemory(comptime T: type, arg1: T, arg2: T) debug.Unexpected!vo
         },
     }
 }
-pub fn intCastTruncatedBitsFault(comptime T: type, comptime U: type, arg: U, ret_addr: usize) noreturn {
+pub fn intCastTruncatedBitsError(comptime T: type, comptime U: type, lim: T, arg: U, ret_addr: ?usize) Error {
     @setCold(true);
-    @setRuntimeSafety(builtin.is_safe);
+    @setRuntimeSafety(false);
     var buf: [4096]u8 = undefined;
-    const len: u64 = about.writeIntCastTruncatedBits(T, U, &buf, arg);
-    builtin.panic(buf[0..len], null, ret_addr);
+    const ptr: [*]u8 = about.writeIntCastTruncatedBits(T, U, &buf, lim, arg);
+    if (@inComptime()) @compileError(fmt.slice(ptr, &buf));
+    builtin.alarm(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr orelse @returnAddress());
+    return error.IntCastTruncatedBits;
+}
+pub fn intCastTruncatedBitsFault(comptime T: type, comptime U: type, lim: T, arg: U, ret_addr: usize) noreturn {
+    @setCold(true);
+    @setRuntimeSafety(false);
+    var buf: [4096]u8 = undefined;
+    const ptr: [*]u8 = about.writeIntCastTruncatedBits(meta.BestInt(T), U, &buf, lim, arg);
+    if (@inComptime()) @compileError(fmt.slice(ptr, &buf));
+    builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr);
 }
 pub fn subCausedOverflowError(comptime T: type, arg1: T, arg2: T, ret_addr: ?usize) Error {
     @setCold(true);
