@@ -576,14 +576,33 @@ pub fn sampleAllReports() void {
         addCausedOverflowError(T, arg1, arg2, null) catch {};
         mulCausedOverflowError(T, arg1, arg2, null) catch {};
         exactDivisionWithRemainderError(T, arg1, arg2, result, remainder, null) catch {};
-        incorrectAlignmentError(*T, arg2, remainder, null) catch {};
-        subCausedOverflowError(T, ~arg1, ~arg2, null) catch {};
-        addCausedOverflowError(T, ~arg1, ~arg2, null) catch {};
-        mulCausedOverflowError(T, ~arg1, ~arg2, null) catch {};
-        exactDivisionWithRemainderError(T, ~arg1, ~arg2, result, remainder, null) catch {};
-        incorrectAlignmentError(*T, ~arg2, remainder, null) catch {};
+        if (@typeInfo(T).Int.signedness == .unsigned)
+            incorrectAlignmentError(*T, arg2, remainder, null) catch {};
     }
-
+    var _u8: u8 = 128;
+    var _u16: u16 = 32768;
+    var _u32: u32 = 2147483648;
+    var _u64: u64 = ~@as(i64, 0) +% 1;
+    var _i8: i8 = -128;
+    var _i16: i16 = -32768;
+    var _i32: i32 = -2147483648;
+    var _i64: i64 = ~@as(i64, 0);
+    _ = expectCast(i3, _u8) catch {};
+    _ = expectCast(u3, _i8) catch {};
+    _ = expectCast(i8, _u16) catch {};
+    _ = expectCast(u8, _i16) catch {};
+    _ = expectCast(i16, _u32) catch {};
+    _ = expectCast(u16, _i32) catch {};
+    _ = expectCast(i32, _u64) catch {};
+    _ = expectCast(u32, _i64) catch {};
+    _ = expectCast(u3, _u8) catch {};
+    _ = expectCast(u8, _u16) catch {};
+    _ = expectCast(u16, _u32) catch {};
+    _ = expectCast(u32, _u64) catch {};
+    _ = expectCast(i3, _i8) catch {};
+    _ = expectCast(i8, _i16) catch {};
+    _ = expectCast(i16, _i32) catch {};
+    _ = expectCast(i32, _i64) catch {};
     about.faultNotice("message");
     about.errorNotice(@errorName(error.Error));
     about.errorFaultNotice(@errorName(error.Error), "message");
