@@ -342,6 +342,17 @@ pub fn expectAbove(comptime T: type, arg1: T, arg2: T) debug.Unexpected!void {
         return debug.comparisonFailedError(T, " > ", arg1, arg2, @returnAddress());
     }
 }
+pub fn expectCast(comptime T: type, value: anytype) Error!T {
+    @setRuntimeSafety(false);
+    const extrema: math.Extrema = math.extrema(T);
+    if (value > extrema.max) {
+        return intCastTruncatedBitsError(T, @TypeOf(value), extrema.max, value, @returnAddress());
+    }
+    if (value < extrema.min) {
+        return intCastTruncatedBitsError(T, @TypeOf(value), extrema.min, value, @returnAddress());
+    }
+    return @intCast(value);
+}
 pub fn expectEqualMemory(comptime T: type, arg1: T, arg2: T) debug.Unexpected!void {
     switch (@typeInfo(T)) {
         else => @compileError(@typeName(T)),
