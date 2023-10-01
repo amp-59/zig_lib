@@ -1493,9 +1493,12 @@ pub fn pathStatus(comptime stat_spec: StatusSpec, pathname: [:0]const u8, st: *S
     const pathname_buf_addr: u64 = @intFromPtr(pathname.ptr);
     const st_buf_addr: u64 = @intFromPtr(st);
     const logging: debug.Logging.SuccessErrorFault = comptime stat_spec.logging.override();
-    if (meta.wrap(sys.call(.stat, stat_spec.errors, void, .{ pathname_buf_addr, st_buf_addr }))) {
+    if (meta.wrap(sys.call(.stat, stat_spec.errors, void, .{ pathname_buf_addr, st_buf_addr }))) |ret| {
         if (logging.Success) {
             about.aboutDirFdNameStatusNotice(about.file_s, cwd, pathname, st);
+        }
+        if (stat_spec.return_type != void) {
+            return @bitCast(ret);
         }
     } else |stat_error| {
         if (logging.Error) {
@@ -1513,7 +1516,9 @@ pub fn status(comptime stat_spec: StatusSpec, fd: usize, st: *Status) sys.ErrorU
         if (logging.Success) {
             about.aboutFdStatusNotice(about.stat_s, fd, st);
         }
-        return @bitCast(ret);
+        if (stat_spec.return_type != void) {
+            return @bitCast(ret);
+        }
     } else |stat_error| {
         if (logging.Error) {
             about.aboutFdError(about.stat_s, @errorName(stat_error), fd);
