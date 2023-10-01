@@ -24,6 +24,8 @@ pub const DynamicLoader = zl.elf.GenericDynamicLoader(.{
     .AddressSpace = LoaderSpace,
 });
 const about_s: fmt.AboutSrc = fmt.about("xelf");
+const width: usize = fmt.aboutCentre(about_s);
+
 pub fn main(args: [][*:0]u8) !void {
     var allocator: mem.SimpleAllocator = .{};
     var info1: *DynamicLoader.Info = @ptrFromInt(8);
@@ -38,10 +40,10 @@ pub fn main(args: [][*:0]u8) !void {
         info1 = try ld.load(mem.terminate(args[1], 0));
     }
     if (args.len == 2) {
-        end = DynamicLoader.about.writeBinary(about_s, info1, buf);
+        end = DynamicLoader.about.writeBinary(buf, info1, width);
     } else {
         info2 = try ld.load(mem.terminate(args[2], 0));
-        end = DynamicLoader.about.writeBinaryDifference(about_s, info1, info2, buf);
+        end = DynamicLoader.about.writeBinaryDifference(buf, info1, info2, width);
     }
     debug.write(buf[0..fmt.strlen(end, buf)]);
 }
