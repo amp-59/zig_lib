@@ -1425,20 +1425,33 @@ pub fn order(comptime T: type, l_values: []const T, r_values: []const T) math.Or
     }
     return math.order(l_values.len, r_values.len);
 }
-pub fn orderedMatches(comptime T: type, l_values: []const T, r_values: []const T) u64 {
+pub fn sequentialMatches(values1: []const u8, values2: []const u8) usize {
     @setRuntimeSafety(builtin.is_safe);
-    const j: bool = l_values.len < r_values.len;
-    const s_values: []const T = if (j) l_values else r_values;
-    const t_values: []const T = if (j) r_values else l_values;
-    var l_idx: u64 = 0;
-    var mats: u64 = 0;
-    while (l_idx +% mats < s_values.len) : (l_idx +%= 1) {
-        var r_idx: u64 = 0;
-        while (r_idx != t_values.len) : (r_idx +%= 1) {
-            mats +%= @intFromBool(s_values[l_idx +% mats] == t_values[r_idx]);
+    var idx1: usize = 0;
+    var idx2: usize = 0;
+    var mats: usize = 0;
+    while (true) {
+        if (@intFromBool(idx1 == values1.len) &
+            @intFromBool(idx2 == values2.len) != 0)
+        {
+            return mats;
+        }
+        if (values1[idx1] == values2[idx2]) {
+            idx1 +%= 1;
+            idx2 +%= 1;
+            mats +%= 1;
+        } else if ((values1.len -% idx1) > (values2.len -% idx2)) {
+            idx1 +%= 1;
+        } else if ((values2.len -% idx2) > (values1.len -% idx1)) {
+            idx2 +%= 1;
+        } else {
+            idx1 +%= 1;
+            idx2 +%= 1;
         }
     }
-    return mats;
+}
+pub fn sequentialDifference(values1: []const u8, values2: []const u8) usize {
+    return (values1.len +% values2.len) -% sequentialMatches(values1, values2);
 }
 pub fn editDistance(l_values: []const u8, r_values: []const u8) usize {
     @setRuntimeSafety(builtin.is_safe);
