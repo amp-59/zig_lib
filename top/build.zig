@@ -717,32 +717,47 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         .node = node,
                         .nodes = node.getNodes(),
                         .depns = node.getDepns(),
+                        .idx = @intFromBool(node.flags.kind == .group),
                     };
-                    itr.idx = @intFromBool(itr.node.tag == .group);
-                    itr.max_len = if (node.tag == .group) itr.nodes.len else itr.depns.len;
+                    itr.max_len = itr.maxLength(node);
                     while (itr.next()) |_| {}
-                    itr.idx = @intFromBool(itr.node.tag == .group);
+                    itr.idx = @intFromBool(node.flags.kind == .group);
                     return itr;
                 }
                 pub fn next(itr: *Iterator) ?*Node {
                     @setRuntimeSafety(false);
                     while (itr.idx != itr.max_len) {
-                        const node_idx: usize = if (itr.node.tag == .group)
-                            itr.idx
-                        else
-                            itr.depns[itr.idx].on_idx;
+                        const node_idx: usize = itr.nodeIndex();
                         const node: *Node = itr.nodes[node_idx];
                         itr.idx +%= 1;
-                        if (itr.node == node or
-                            node.flags.is_hidden or
-                            node.flags.is_special)
-                        {
-                            continue;
-                        }
                         itr.max_idx = @max(itr.max_idx, itr.idx);
                         return node;
                     }
                     return null;
+                }
+                fn maybeHide(itr: *Iterator, node: *const Node) bool {
+                    @setRuntimeSafety(false);
+                    if (itr.node == node or node.flags.is_hidden) {
+                        return true;
+                    }
+                    if (builder_spec.show_special) {
+                        return false;
+                    }
+                    return node.flags.is_special;
+                }
+                fn maxLength(itr: *Iterator, node: *const Node) usize {
+                    @setRuntimeSafety(false);
+                    if (node.flags.kind == .group) {
+                        return itr.nodes.len;
+                    }
+                    return itr.depns.len;
+                }
+                fn nodeIndex(itr: *Iterator) usize {
+                    @setRuntimeSafety(false);
+                    if (itr.node.flags.kind == .group) {
+                        return itr.idx;
+                    }
+                    return itr.depns[itr.idx].node_idx;
                 }
             };
             pub const Extra = struct {
