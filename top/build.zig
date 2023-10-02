@@ -717,47 +717,40 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         .node = node,
                         .nodes = node.getNodes(),
                         .depns = node.getDepns(),
-                        .idx = @intFromBool(node.flags.kind == .group),
+                        .idx = @intFromBool(node.flags.is_group),
                     };
-                    itr.max_len = itr.maxLength(node);
+                    if (node.flags.is_group) {
+                        itr.max_len = itr.nodes.len;
+                    } else {
+                        itr.max_len = itr.depns.len;
+                    }
                     while (itr.next()) |_| {}
-                    itr.idx = @intFromBool(node.flags.kind == .group);
+                    itr.idx = @intFromBool(node.flags.is_group);
                     return itr;
                 }
                 pub fn next(itr: *Iterator) ?*Node {
                     @setRuntimeSafety(false);
                     while (itr.idx != itr.max_len) {
-                        const node_idx: usize = itr.nodeIndex();
-                        const node: *Node = itr.nodes[node_idx];
+                        const node: *Node =
+                            if (itr.node.flags.is_group)
+                            itr.nodes[itr.idx]
+                        else
+                            itr.nodes[itr.depns[itr.idx].node_idx];
                         itr.idx +%= 1;
+                        if (itr.node == node or
+                            node.flags.is_hidden)
+                        {
+                            continue;
+                        }
+                        if (!builder_spec.logging.show_special and
+                            node.flags.is_special)
+                        {
+                            continue;
+                        }
                         itr.max_idx = @max(itr.max_idx, itr.idx);
                         return node;
                     }
                     return null;
-                }
-                fn maybeHide(itr: *Iterator, node: *const Node) bool {
-                    @setRuntimeSafety(false);
-                    if (itr.node == node or node.flags.is_hidden) {
-                        return true;
-                    }
-                    if (builder_spec.show_special) {
-                        return false;
-                    }
-                    return node.flags.is_special;
-                }
-                fn maxLength(itr: *Iterator, node: *const Node) usize {
-                    @setRuntimeSafety(false);
-                    if (node.flags.kind == .group) {
-                        return itr.nodes.len;
-                    }
-                    return itr.depns.len;
-                }
-                fn nodeIndex(itr: *Iterator) usize {
-                    @setRuntimeSafety(false);
-                    if (itr.node.flags.kind == .group) {
-                        return itr.idx;
-                    }
-                    return itr.depns[itr.idx].node_idx;
                 }
             };
             pub const Extra = struct {
