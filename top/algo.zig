@@ -184,6 +184,7 @@ pub fn desc(x: anytype, y: anytype) bool {
 }
 /// insert: [524288]u64 = top.time.TimeSpec{ .sec = 27, .nsec = 365636807, }
 pub fn insertionSort(comptime T: type, comptime comparison: anytype, comptime transform: anytype, values: []T) void {
+    @setRuntimeSafety(false);
     var i: u64 = 1;
     while (i != values.len) : (i +%= 1) {
         const x: T = values[i];
@@ -195,13 +196,14 @@ pub fn insertionSort(comptime T: type, comptime comparison: anytype, comptime tr
     }
 }
 /// shell: [524288]u64 = top.time.TimeSpec{ .nsec = 568540594, }
-pub fn shellSort(comptime T: type, comptime comparison: anytype, comptime transform: anytype, values: []T) void {
+pub fn shellSort(comptime T: type, comptime comparison: anytype, values: []T) void {
+    @setRuntimeSafety(false);
     var gap: u64 = values.len / 2;
     while (gap != 0) : (gap /= 2) {
         var i: u64 = gap;
         while (i != values.len) : (i +%= 1) {
             var j: u64 = i -% gap;
-            while (j < values.len and comparison(transform(values[j]), transform(values[j +% gap]))) : (j -%= gap) {
+            while (j < values.len and comparison(values[j], values[j +% gap])) : (j -%= gap) {
                 const k: u64 = j +% gap;
                 const values_k: T = values[j];
                 values[j] = values[k];
@@ -219,6 +221,7 @@ pub fn layeredShellSort(comptime T: type, comptime comparison: anytype, values: 
 }
 /// radix: [524288]u64 = top.time.TimeSpec{ .nsec = 86801419, }
 pub fn radixSort(allocator: anytype, comptime T: type, values_0: []T) void {
+    @setRuntimeSafety(false);
     const save = allocator.save();
     defer allocator.restore(save);
     var values_1: []T = allocator.allocate(T, values_0.len);
@@ -240,6 +243,7 @@ pub fn radixSort(allocator: anytype, comptime T: type, values_0: []T) void {
     }
 }
 pub fn isSorted(comptime T: type, comptime comparison: anytype, values: []T) bool {
+    @setRuntimeSafety(false);
     if (values.len == 0) {
         return true;
     }
