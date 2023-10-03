@@ -882,7 +882,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 const addr: usize = allocator.allocateRaw(value.len +% name.len +% 2, 1);
                 fmt.strcpyEqu(@ptrFromInt(addr), name)[0] = 0;
                 fmt.strcpyEqu(@ptrFromInt(addr +% name.len +% 1), value)[0] = 0;
-                node.addConfig(allocator).data = @intCast(addr);
+                node.addConfig(allocator).data = addr;
             }
             pub fn addConfigBool(node: *Node, allocator: *Allocator, name: []const u8, value: bool) void {
                 @setRuntimeSafety(builtin.is_safe);
@@ -890,7 +890,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 const ptr: *bool = @ptrFromInt(addr);
                 ptr.* = value;
                 fmt.strcpyEqu(@ptrFromInt(addr +% 1), name)[0] = 0;
-                node.addConfig(allocator).data = @intCast((1 << Config.shift_amt) | addr);
+                node.addConfig(allocator).data = (1 << Config.shift_amt) | addr;
             }
             pub fn addConfigInt(node: *Node, allocator: *Allocator, name: []const u8, value: isize) void {
                 @setRuntimeSafety(builtin.is_safe);
@@ -915,22 +915,43 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 fmt.strcpyEqu(@ptrFromInt(addr +% 16))[0] = 0;
                 node.addConfig(allocator).data = (16 << Config.shift_amt) | addr;
             }
+            pub fn addToplevelArgs(node: *Node, allocator: *Allocator) void {
+                @setRuntimeSafety(builtin.is_safe);
+                node.addRunArg(allocator).* = node.zigExe();
+                node.addRunArg(allocator).* = node.buildRoot();
+                node.addRunArg(allocator).* = node.cacheRoot();
+                node.addRunArg(allocator).* = node.globalCacheRoot();
+            }
+            inline fn addDefineConfigs(node: *Node, allocator: *Allocator) void {
+                @setRuntimeSafety(builtin.is_safe);
+                node.addConfigBool(allocator, "is_safe", false);
+                node.addConfigString(allocator, "message_style", fmt.toStringLiteral(builtin.message_style orelse "null"));
+                node.addConfigString(allocator, "message_prefix", fmt.toStringLiteral(builtin.message_prefix));
+                node.addConfigString(allocator, "message_suffix", fmt.toStringLiteral(builtin.message_suffix));
+                node.addConfigInt(allocator, "message_indent", builtin.message_indent);
+            }
+            inline fn addBuildContextConfigs(node: *Node, allocator: *Allocator) void {
+                @setRuntimeSafety(builtin.is_safe);
+                node.addConfigString(allocator, "zig_exe", node.zigExe());
+                node.addConfigString(allocator, "build_root", node.buildRoot());
+                node.addConfigString(allocator, "cache_root", node.cacheRoot());
+                node.addConfigString(allocator, "global_cache_root", node.cacheRoot());
+            }
             pub fn init(allocator: *Allocator, name: []const u8, args: [][*:0]u8, vars: [][*:0]u8) *Node {
                 @setRuntimeSafety(builtin.is_safe);
                 const sh: *Shared = @ptrFromInt(allocator.allocateRaw(@sizeOf(Shared), @alignOf(Shared)));
-                sh.mode = .Init;
                 sh.top = @ptrFromInt(allocator.allocateRaw(Node.size_of, Node.align_of));
-                sh.top.addNode(allocator).* = sh.top;
                 sh.top.sh = sh;
-                sh.top.flags = .{ .is_top = true };
+                sh.top.flags = .{ .is_top = true, .is_group = true };
+                sh.top.addNode(allocator).* = sh.top;
                 sh.top.name = duplicate(allocator, name);
-                sh.top.tag = .group;
-                sh.top.addPath(allocator).addName(allocator).* = duplicate(allocator, mem.terminate(args[1], 0));
-                sh.top.addPath(allocator).addName(allocator).* = duplicate(allocator, mem.terminate(args[2], 0));
-                sh.top.addPath(allocator).addName(allocator).* = duplicate(allocator, mem.terminate(args[3], 0));
-                sh.top.addPath(allocator).addName(allocator).* = duplicate(allocator, mem.terminate(args[4], 0));
+                sh.top.addPath(allocator, .zig_compiler_exe).addName(allocator).* = duplicate(allocator, mem.terminate(args[1], 0));
+                sh.top.addPath(allocator, .build_root).addName(allocator).* = duplicate(allocator, mem.terminate(args[2], 0));
+                sh.top.addPath(allocator, .cache_root).addName(allocator).* = duplicate(allocator, mem.terminate(args[3], 0));
+                sh.top.addPath(allocator, .global_cache_root).addName(allocator).* = duplicate(allocator, mem.terminate(args[4], 0));
                 sh.args = args;
                 sh.vars = vars;
+                sh.mode = .Init;
                 initializeGroup(allocator, sh.top);
                 initializeExtensions(allocator, sh.top);
                 sh.mode = .Main;
@@ -938,15 +959,13 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             pub fn addGroup(group: *Node, allocator: *Allocator, name: []const u8, env_paths: ?EnvPaths) *Node {
                 @setRuntimeSafety(builtin.is_safe);
-                const node: *Node = createNode(allocator, group, .group, .null);
-                node.flags = .{};
+                const node: *Node = createNode(allocator, group, .{ .is_group = true }, .any, omni_lock);
                 node.name = duplicate(allocator, name);
-                node.tasks.tag = .any;
                 if (env_paths) |paths| {
-                    node.addPath(allocator).addName(allocator).* = paths.zig_exe;
-                    node.addPath(allocator).addName(allocator).* = paths.build_root;
-                    node.addPath(allocator).addName(allocator).* = paths.cache_root;
-                    node.addPath(allocator).addName(allocator).* = paths.global_cache_root;
+                    node.addPath(allocator, .zig_compiler_exe).addName(allocator).* = paths.zig_exe;
+                    node.addPath(allocator, .build_root).addName(allocator).* = paths.build_root;
+                    node.addPath(allocator, .cache_root).addName(allocator).* = paths.cache_root;
+                    node.addPath(allocator, .global_cache_root).addName(allocator).* = paths.global_cache_root;
                 } else {
                     node.lists.set(file.CompoundPath, .paths, group.getPaths());
                 }
@@ -955,10 +974,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             pub fn addBuild(group: *Node, allocator: *Allocator, build_cmd: tasks.BuildCommand, name: []const u8, root_pathname: []const u8) *Node {
                 @setRuntimeSafety(builtin.is_safe);
-                const node: *Node = createNode(allocator, group, .worker, .build);
+                const node: *Node = createNode(allocator, group, .{}, .build, obj_lock);
                 node.tasks.cmd.build = @ptrFromInt(allocator.allocateRaw(tasks.BuildCommand.size_of, tasks.BuildCommand.align_of));
                 node.tasks.cmd.build.* = build_cmd;
-                node.flags = .{};
                 node.name = duplicate(allocator, name);
                 node.addBinaryOutputPath(allocator, @enumFromInt(@intFromEnum(build_cmd.kind)));
                 node.addSourceInputPath(allocator, duplicate(allocator, root_pathname));
@@ -967,10 +985,10 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             pub fn addFormat(group: *Node, allocator: *Allocator, format_cmd: tasks.FormatCommand, name: []const u8, dest_pathname: []const u8) *Node {
                 @setRuntimeSafety(builtin.is_safe);
-                const node: *Node = createNode(allocator, group, .worker, .format);
+                have_format = true;
+                const node: *Node = createNode(allocator, group, .{}, .format, format_lock);
                 node.tasks.cmd.format = @ptrFromInt(allocator.allocateRaw(tasks.FormatCommand.size_of, tasks.FormatCommand.align_of));
                 node.tasks.cmd.format.* = format_cmd;
-                node.flags = .{};
                 node.name = duplicate(allocator, name);
                 node.addSourceInputPath(allocator, duplicate(allocator, dest_pathname));
                 initializeCommand(allocator, node);
@@ -978,10 +996,10 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             pub fn addArchive(group: *Node, allocator: *Allocator, archive_cmd: tasks.ArchiveCommand, name: []const u8, dest_pathname: []const u8) *Node {
                 @setRuntimeSafety(builtin.is_safe);
-                const node: *Node = createNode(allocator, group, .worker, .archive);
+                have_archive = true;
+                const node: *Node = createNode(allocator, group, .{}, .archive, archive_lock);
                 node.tasks.cmd.archive = @ptrFromInt(allocator.allocateRaw(tasks.ArchiveCommand.size_of, tasks.ArchiveCommand.align_of));
                 node.tasks.cmd.archive.* = archive_cmd;
-                node.flags = .{};
                 node.name = duplicate(allocator, name);
                 node.addSourceInputPath(allocator, duplicate(allocator, dest_pathname));
                 initializeCommand(allocator, node);
@@ -989,9 +1007,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             pub fn addObjcopy(group: *Node, allocator: *Allocator, objcopy_cmd: tasks.ObjcopyCommand, name: []const u8, dest_pathname: []const u8) *Node {
                 @setRuntimeSafety(builtin.is_safe);
-                const node: *Node = createNode(allocator, group, .worker, .objcopy);
+                have_objcopy = true;
+                const node: *Node = createNode(allocator, group, .{}, .objcopy, objcopy_lock);
                 node.tasks.cmd.objcopy = @ptrFromInt(allocator.allocateRaw(tasks.ObjcopyCommand.size_of, tasks.objcopyCommand.align_of));
-                node.flags = .{};
                 node.name = duplicate(allocator, name);
                 node.tasks.cmd.objcopy.* = objcopy_cmd;
                 node.addSourceInputPath(allocator, duplicate(allocator, dest_pathname));
