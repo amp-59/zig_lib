@@ -14,6 +14,7 @@ pub usingnamespace @import("./start.zig");
 var working: []const u8 = &.{};
 
 pub const Allocator = mem.SimpleAllocator;
+
 pub const WorkingFile = struct {
     itr: builtin.parse.TokenIterator,
     loc: LineLocation,

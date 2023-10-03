@@ -327,40 +327,40 @@ pub inline fn absoluteVal(value: anytype) Absolute(@TypeOf(value)) {
         return -value;
     }
     if (Int != Abs and value < 0) {
-        return @as(Abs, @bitCast(-value));
+        return @intCast(-value);
     }
-    return @as(Abs, @intCast(value));
+    return @intCast(value);
 }
 /// Returns the sum of arg1 and b. Returns an error on overflow.
-pub fn mul(comptime T: type, arg1: T, arg2: T) (error{Overflow}!T) {
+pub fn mul(comptime T: type, arg1: T, arg2: T) error{MulCausedOverflow}!T {
     if (@inComptime()) {
         return arg1 * arg2;
     }
     const res: struct { T, u1 } = @mulWithOverflow(arg1, arg2);
     if (res[1] != 0) {
-        return error.Overflow;
+        return error.MulCausedOverflow;
     }
     return res[0];
 }
 /// Returns the sum of arg1 and b. Returns an error on overflow.
-pub fn add(comptime T: type, arg1: T, arg2: T) (error{Overflow}!T) {
+pub fn add(comptime T: type, arg1: T, arg2: T) error{AddCausedOverflow}!T {
     if (@inComptime()) {
         return arg1 + arg2;
     }
     const res: struct { T, u1 } = @addWithOverflow(arg1, arg2);
     if (res[1] != 0) {
-        return error.Overflow;
+        return error.AddCausedOverflow;
     }
     return res[0];
 }
 /// Returns arg1 - b, or an error on overflow.
-pub fn sub(comptime T: type, arg1: T, arg2: T) (error{Overflow}!T) {
+pub fn sub(comptime T: type, arg1: T, arg2: T) error{SubCausedOverflow}!T {
     if (@inComptime()) {
         return arg1 - arg2;
     }
     const res: struct { T, u1 } = @subWithOverflow(arg1, arg2);
     if (res[1] != 0) {
-        return error.Overflow;
+        return error.SubCausedOverflow;
     }
     return res[0];
 }
