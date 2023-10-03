@@ -6,7 +6,6 @@ const proc = zl.proc;
 const file = zl.file;
 const mach = zl.mach;
 const meta = zl.meta;
-const spec = zl.spec;
 const build = zl.build;
 const debug = zl.debug;
 const serial = zl.serial;
@@ -16,7 +15,7 @@ const tab = @import("./tab.zig");
 
 pub usingnamespace zl.start;
 
-pub const logging_override: debug.Logging.Override = spec.logging.override.verbose;
+pub const logging_override: debug.Logging.Override = debug.spec.logging.override.verbose;
 pub const signal_handlers: debug.SignalHandlers = .{
     .SegmentationFault = true,
     .BusError = true,
@@ -28,11 +27,11 @@ pub const runtime_assertions: bool = true;
 pub const comptime_assertions: bool = false;
 const test_real_examples: bool = true;
 const Allocator = mem.GenericArenaAllocator(.{
-    .AddressSpace = spec.address_space.exact_8,
+    .AddressSpace = mem.spec.address_space.exact_8,
     .arena_index = 0,
-    .logging = spec.allocator.logging.silent,
-    .errors = spec.allocator.errors.noexcept,
-    .options = spec.allocator.options.small,
+    .logging = mem.spec.allocator.logging.silent,
+    .errors = mem.spec.allocator.errors.noexcept,
+    .options = mem.spec.allocator.options.small,
 });
 const AddressSpace = Allocator.AddressSpace;
 const Variety = struct {
@@ -47,26 +46,29 @@ pub fn testVarietyStructure(address_space: *Allocator.AddressSpace) !void {
         .{ .x = &.{ "four,", "five,", "six," }, .y = "four,five,six\n\n" },
     }}}};
     const Return = @TypeOf(@constCast(v));
-    try meta.wrap(serial.serialWrite(serial_spec, @TypeOf(v), &allocator, builtin.absolutePath("zig-out/bin/variety_0"), v));
-    const u: Return = try meta.wrap(serial.serialRead(serial_spec, Return, &allocator, builtin.absolutePath("zig-out/bin/variety_0")));
-    try meta.wrap(serial.serialWrite(serial_spec, @TypeOf(u), &allocator, builtin.absolutePath("zig-out/bin/variety_1"), u));
-    const t: Return = try meta.wrap(serial.serialRead(serial_spec, Return, &allocator, builtin.absolutePath("zig-out/bin/variety_1")));
+
+    try meta.wrap(Serializer.serialWrite(@TypeOf(v), &allocator, builtin.absolutePath("zig-out/bin/variety_0"), v));
+    const u: Return = try meta.wrap(Serializer.serialRead(Return, &allocator, builtin.absolutePath("zig-out/bin/variety_0")));
+    try meta.wrap(Serializer.serialWrite(@TypeOf(u), &allocator, builtin.absolutePath("zig-out/bin/variety_1"), u));
+    const t: Return = try meta.wrap(Serializer.serialRead(Return, &allocator, builtin.absolutePath("zig-out/bin/variety_1")));
+
     debug.assertEqualMemory(Return, u, t);
 }
-const serial_spec: serial.SerialSpec = .{
+const Serializer = serial.GenericSerializer(.{
     .Allocator = Allocator,
-    .logging = spec.serializer.logging.silent,
-    .errors = spec.serializer.errors.noexcept,
-};
+    .logging = serial.spec.serializer.logging.silent,
+    .errors = serial.spec.serializer.errors.all,
+});
+
 pub fn testLargeStructure(address_space: *Allocator.AddressSpace) !void {
     var allocator: Allocator = try Allocator.init(address_space);
     defer allocator.deinit(address_space);
-    try meta.wrap(serial.serialWrite(serial_spec, []const mg.types.AbstractSpecification, &allocator, builtin.absolutePath("zig-out/bin/variety_0"), mg.attr.abstract_specs));
+    try meta.wrap(Serializer.serialWrite([]const mg.types.AbstractSpecification, &allocator, builtin.absolutePath("zig-out/bin/variety_0"), mg.attr.abstract_specs));
     const spec_sets_b: []const mg.types.AbstractSpecification =
-        try meta.wrap(serial.serialRead(serial_spec, []const mg.types.AbstractSpecification, &allocator, builtin.absolutePath("zig-out/bin/variety_0")));
-    try meta.wrap(serial.serialWrite(serial_spec, []const mg.types.AbstractSpecification, &allocator, builtin.absolutePath("zig-out/bin/variety_0"), spec_sets_b));
+        try meta.wrap(Serializer.serialRead([]const mg.types.AbstractSpecification, &allocator, builtin.absolutePath("zig-out/bin/variety_0")));
+    try meta.wrap(Serializer.serialWrite([]const mg.types.AbstractSpecification, &allocator, builtin.absolutePath("zig-out/bin/variety_0"), spec_sets_b));
     const spec_sets_c: []const mg.types.AbstractSpecification =
-        try meta.wrap(serial.serialRead(serial_spec, []const mg.types.AbstractSpecification, &allocator, builtin.absolutePath("zig-out/bin/variety_0")));
+        try meta.wrap(Serializer.serialRead([]const mg.types.AbstractSpecification, &allocator, builtin.absolutePath("zig-out/bin/variety_0")));
     debug.assertEqualMemory([]const mg.types.AbstractSpecification, spec_sets_b, spec_sets_c);
 }
 const Node = build.GenericNode(.{});
@@ -102,17 +104,17 @@ var build_cmd: build.BuildCommand = .{
 pub fn testLongComplexCase(address_space: *AddressSpace) !void {
     var allocator: Allocator = try Allocator.init(address_space);
     defer allocator.deinit(address_space);
-    try meta.wrap(serial.serialWrite(serial_spec, []const []const []const mg.types.Specifier, &allocator, builtin.absolutePath("zig-out/bin/spec"), tab.spec_sets_0));
-    const spec_sets_1: [][][]mg.types.Specifier = try meta.wrap(serial.serialRead(serial_spec, []const []const []const mg.types.Specifier, &allocator, builtin.absolutePath("zig-out/bin/spec")));
+    try meta.wrap(Serializer.serialWrite([]const []const []const mg.types.Specifier, &allocator, builtin.absolutePath("zig-out/bin/spec"), tab.spec_sets_0));
+    const spec_sets_1: [][][]mg.types.Specifier = try meta.wrap(Serializer.serialRead([]const []const []const mg.types.Specifier, &allocator, builtin.absolutePath("zig-out/bin/spec")));
     try debug.expectEqualMemory([]const []const []const mg.types.Specifier, tab.spec_sets_0, spec_sets_1);
-    try meta.wrap(serial.serialWrite(serial_spec, []const []const mg.types.Specifier, &allocator, builtin.absolutePath("zig-out/bin/spec"), tab.spec_sets_0[0]));
-    const spec_set_1: [][]mg.types.Specifier = try meta.wrap(serial.serialRead(serial_spec, [][]mg.types.Specifier, &allocator, builtin.absolutePath("zig-out/bin/spec")));
+    try meta.wrap(Serializer.serialWrite([]const []const mg.types.Specifier, &allocator, builtin.absolutePath("zig-out/bin/spec"), tab.spec_sets_0[0]));
+    const spec_set_1: [][]mg.types.Specifier = try meta.wrap(Serializer.serialRead([][]mg.types.Specifier, &allocator, builtin.absolutePath("zig-out/bin/spec")));
     try debug.expectEqualMemory([]const []const mg.types.Specifier, spec_set_1, tab.spec_sets_0[0]);
-    try meta.wrap(serial.serialWrite(serial_spec, []const mg.types.Specifier, &allocator, builtin.absolutePath("zig-out/bin/spec"), tab.spec_sets_0[0][0]));
-    const specs_1: []mg.types.Specifier = try meta.wrap(serial.serialRead(serial_spec, []mg.types.Specifier, &allocator, builtin.absolutePath("zig-out/bin/spec")));
+    try meta.wrap(Serializer.serialWrite([]const mg.types.Specifier, &allocator, builtin.absolutePath("zig-out/bin/spec"), tab.spec_sets_0[0][0]));
+    const specs_1: []mg.types.Specifier = try meta.wrap(Serializer.serialRead([]mg.types.Specifier, &allocator, builtin.absolutePath("zig-out/bin/spec")));
     try debug.expectEqualMemory([]const mg.types.Specifier, specs_1, tab.spec_sets_0[0][0]);
-    try meta.wrap(serial.serialWrite(serial_spec, mg.types.Specifier, &allocator, builtin.absolutePath("zig-out/bin/spec"), tab.spec_sets_0[0][0][0]));
-    const spec_1: mg.types.Specifier = try meta.wrap(serial.serialRead(serial_spec, mg.types.Specifier, &allocator, builtin.absolutePath("zig-out/bin/spec")));
+    try meta.wrap(Serializer.serialWrite(mg.types.Specifier, &allocator, builtin.absolutePath("zig-out/bin/spec"), tab.spec_sets_0[0][0][0]));
+    const spec_1: mg.types.Specifier = try meta.wrap(Serializer.serialRead(mg.types.Specifier, &allocator, builtin.absolutePath("zig-out/bin/spec")));
     try debug.expectEqualMemory(mg.types.Specifier, spec_1, tab.spec_sets_0[0][0][0]);
 }
 pub fn testWriteSerialFeatures(address_space: *AddressSpace) !void {
@@ -145,12 +147,12 @@ pub fn testWriteSerialFeatures(address_space: *AddressSpace) !void {
         {
             var allocator: Allocator = try Allocator.init(address_space);
             defer allocator.deinit(address_space);
-            try meta.wrap(serial.serialWrite(serial_spec, S, &allocator, "zig-out/bin/serial_feature_test", s));
+            try meta.wrap(Serializer.serialWrite(S, &allocator, "zig-out/bin/serial_feature_test", s));
         }
         {
             var allocator: Allocator = try Allocator.init(address_space);
             defer allocator.deinit(address_space);
-            const t: S = try meta.wrap(serial.serialRead(serial_spec, S, &allocator, "zig-out/bin/serial_feature_test"));
+            const t: S = try meta.wrap(Serializer.serialRead(S, &allocator, "zig-out/bin/serial_feature_test"));
             try debug.expectEqualMemory(S, s, t);
         }
     }
