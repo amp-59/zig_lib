@@ -6,38 +6,89 @@ pub const Path = file.CompoundPath;
 pub const Allocator = mem.SimpleAllocator;
 
 pub const File = enum(u8) {
-    compiler_executable,
-    build_root,
-    cache_root,
-    global_cache_root,
-    output_exe_generic,
-    output_exe_cached,
-    input_exe_generic,
-    output_lib_generic,
-    input_lib_generic,
-    input_ar_generic,
-    output_ar_generic,
-    output_obj_generic,
-    input_obj_generic,
-    input_zig_source_generic,
-    input_zig_source_config,
-    input_asm_source_generic,
-    output_asm_source_generic,
-    input_c_source_generic,
-    output_c_source_generic,
-    input_c_source_header,
-    output_c_source_header,
-    input_cxx_source_generic,
-    input_llvm_ir_generic,
-    output_llvm_ir_generic,
-    input_llvm_bc_generic,
-    output_llvm_bc_generic,
-    file_system_target_generic,
+    // zig fmt: off
+    /// All names relative to this absolute path.
+    /// Root group nodes store a path and file handle to this directory.
+    build_root = 1,
+    /// Temporary state files here.
+    /// Root group nodes store a path and file handle to this directory.
+    cache_root = 2,
+    /// Not our business (yet).
+    /// Root group nodes store a path and file handle to this directory.
+    global_cache_root = 3,
+
+    /// Root group nodes store a file handle to this directory.
+    output_root = 4,
+
+    /// Executables and objects link here.
+    /// Root group nodes store a file handle to this directory.
+    config_root = 5,
+
+    /// Executables and objects link here.
+    /// Root group nodes store a file handle to this directory.
+    bin_output_root = 6,
+    /// Libraries and archives link here.
+    /// Root group nodes store a file handle to this directory.
+    lib_output_root = 7,
+    /// All sources (assembly, IR, and high level code) link here.
+    /// Root group nodes store a file handle to this directory.
+    aux_output_root = 8,
+
+    zig_compiler_exe = 9,
+    llc_compiler_exe = 10,
+    cc_compiler_exe = 11,
+    cxx_compiler_exe = 12,
+
+    cached_generic      = @bitCast(Traits{ .is_cached = true, .no = 0 }),
+    cached_exe          = @bitCast(Traits{ .is_cached = true, .no = 1 }),
+    cached_lib          = @bitCast(Traits{ .is_cached = true, .no = 2 }),
+    cached_obj          = @bitCast(Traits{ .is_cached = true, .no = 3 }),
+
+    output_generic      = @bitCast(Traits{ .is_output = true, .no = 0 }),
+    output_exe          = @bitCast(Traits{ .is_output = true, .no = 1 }),
+    output_lib          = @bitCast(Traits{ .is_output = true, .no = 2 }),
+    output_obj          = @bitCast(Traits{ .is_output = true, .no = 3 }),
+    output_ar           = @bitCast(Traits{ .is_output = true, .no = 4 }),
+
+    output_asm          = @bitCast(Traits{ .is_output = true, .is_source = true, .no = 0 }),
+    output_c            = @bitCast(Traits{ .is_output = true, .is_source = true, .no = 1 }),
+    output_zir          = @bitCast(Traits{ .is_output = true, .is_source = true, .no = 2 }),
+    output_llvm_ir      = @bitCast(Traits{ .is_output = true, .is_source = true, .no = 3 }),
+    output_llvm_bc      = @bitCast(Traits{ .is_output = true, .is_source = true, .no = 4 }),
+    output_c_header     = @bitCast(Traits{ .is_output = true, .is_source = true, .no = 5 }),
+
+    input_generic       = @bitCast(Traits{ .is_input = true, .no = 0 }),
+    input_exe           = @bitCast(Traits{ .is_input = true, .no = 1 }),
+    input_lib           = @bitCast(Traits{ .is_input = true, .no = 2 }),
+    input_obj           = @bitCast(Traits{ .is_input = true, .no = 3 }),
+    input_ar            = @bitCast(Traits{ .is_input = true, .no = 4 }),
+
+    input_zig           = @bitCast(Traits{ .is_input = true, .is_source = true, .no = 0 }),
+    input_zig_config    = @bitCast(Traits{ .is_input = true, .is_source = true, .no = 1 }),
+    input_asm           = @bitCast(Traits{ .is_input = true, .is_source = true, .no = 2 }),
+    input_c             = @bitCast(Traits{ .is_input = true, .is_source = true, .no = 3 }),
+    input_c_header      = @bitCast(Traits{ .is_input = true, .is_source = true, .no = 4 }),
+    input_cxx           = @bitCast(Traits{ .is_input = true, .is_source = true, .no = 5 }),
+    input_cxx_header    = @bitCast(Traits{ .is_input = true, .is_source = true, .no = 6 }),
+    input_llvm_zir      = @bitCast(Traits{ .is_input = true, .is_source = true, .no = 7 }),
+    input_llvm_ir       = @bitCast(Traits{ .is_input = true, .is_source = true, .no = 8 }),
+    input_llvm_bc       = @bitCast(Traits{ .is_input = true, .is_source = true, .no = 9 }),
+
+    _,
+    // zig fmt: on
+    pub const Traits = packed struct(u8) {
+        no: u4 = 0,
+        is_cached: bool = false,
+        is_output: bool = false,
+        is_input: bool = false,
+        is_source: bool = false,
+    };
 };
+
 pub const BinaryOutput = enum(u8) {
-    exe = @intFromEnum(File.output_exe_generic),
-    lib = @intFromEnum(File.output_lib_generic),
-    obj = @intFromEnum(File.output_obj_generic),
+    exe = @intFromEnum(File.output_exe),
+    lib = @intFromEnum(File.output_lib),
+    obj = @intFromEnum(File.output_obj),
 };
 pub const AutoOnOff = enum {
     auto,
