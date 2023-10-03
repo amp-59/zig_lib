@@ -732,7 +732,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     } else {
                         itr.max_len = itr.depns.len;
                     }
-                    while (itr.next()) |_| {}
+                    while (itr.next()) |_| {
+                        continue;
+                    }
                     itr.idx = @intFromBool(node.flags.is_group);
                     return itr;
                 }
@@ -804,6 +806,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 @setRuntimeSafety(false);
                 return @as(*[]file.CompoundPath, @ptrFromInt(node.lists.get(.paths))).*;
             }
+            fn getFiles(node: *const Node) []File {
+                return @as(*[]File, @ptrFromInt(node.lists.get(.files))).*;
+            }
             pub fn getConfigs(node: *const Node) []Config {
                 @setRuntimeSafety(false);
                 return @as(*[]Config, @ptrFromInt(node.lists.get(.cfgs))).*;
@@ -820,19 +825,45 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 @setRuntimeSafety(false);
                 return @as(*[]Depn, @ptrFromInt(node.lists.get(.depns))).*;
             }
+            fn getFile(node: *const Node, path: *const file.CompoundPath) File {
+                return @as(*[]File, @ptrFromInt(node.lists.get(.files)))[
+                    @divExact(@intFromPtr(node.getPaths().ptr) -% @intFromPtr(path), @sizeOf(File))
+                ];
+            }
+            fn getFilePath(node: *Node, key: File.Key) ?*file.CompoundPath {
+                @setRuntimeSafety(false);
+                const files = node.getFiles();
+                const paths = node.getPaths();
+                var idx: usize = 0;
+                while (idx != files.len) : (idx +%= 1) {
+                    if ((@intFromEnum(files[idx].tag) ^ 0xf) &
+                        @as(u8, @bitCast(key)) != 0)
+                    {
+                        return @ptrCast(paths.ptr + files[idx].path_idx);
+                    }
+                }
+                return null;
+            }
             /// Allocate a node pointer.
             pub fn addNode(node: *Node, allocator: *Allocator) **Node {
                 @setRuntimeSafety(false);
                 return @ptrFromInt(node.lists.add(allocator, .nodes));
             }
-            /// Allocate a path.
-            pub fn addPath(node: *Node, allocator: *Allocator) *file.CompoundPath {
+            fn addFile(node: *Node, allocator: *Allocator) *File {
                 @setRuntimeSafety(false);
-                return @ptrFromInt(node.lists.add(allocator, .paths));
+                return @ptrFromInt(node.lists.add(allocator, .files));
             }
-            fn addStat(node: *Node, allocator: *Allocator) *file.Status {
+            /// Allocate a path.
+            pub fn addPath(node: *Node, allocator: *Allocator, tag: types.File) *file.CompoundPath {
                 @setRuntimeSafety(false);
-                return @ptrFromInt(node.lists.add(allocator, .stats));
+                const list: *Lists.List = @ptrFromInt(node.lists.get(.paths));
+                const fs: *File = node.addFile(allocator);
+                fs.* = .{
+                    .path_idx = @intCast(list.len),
+                    .tag = tag,
+                    .st = @ptrFromInt(allocator.allocateRaw(144, 8)),
+                };
+                return @ptrFromInt(list.add(allocator, .paths));
             }
             pub fn addCmdArg(node: *Node, allocator: *Allocator) *[*:0]u8 {
                 @setRuntimeSafety(false);
