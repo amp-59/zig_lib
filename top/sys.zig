@@ -2211,7 +2211,7 @@ pub inline fn call(comptime tag: Fn, comptime errors: ErrorPolicy, comptime retu
 }
 pub inline fn call_noexcept(comptime tag: Fn, comptime return_type: type, args: Fn.Args(tag)) return_type {
     @setRuntimeSafety(false);
-    const ret: isize = (comptime syscalls[tag.args()])(tag, args);
+    const ret: isize = syscalls[tag.args()](tag, args);
     if (return_type == noreturn) {
         unreachable;
     }
