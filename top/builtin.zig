@@ -758,7 +758,7 @@ pub inline fn identity(any: anytype) @TypeOf(any) {
 pub inline fn equ(comptime T: type, dst: *T, src: T) void {
     dst.* = src;
 }
-pub fn intToPtr(comptime P: type, address: usize) P {
+pub fn ptrFromInt(comptime P: type, address: usize) P {
     const alignment: usize = @typeInfo(P).Pointer.alignment;
     if (address & (alignment -% 1) != 0) {
         debug.incorrectAlignmentFault(P, address, alignment, @returnAddress());
