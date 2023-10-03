@@ -401,6 +401,10 @@ pub const BuilderSpec = struct {
     };
 };
 pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
+    comptime var have_run: bool = false;
+    comptime var have_format: bool = false;
+    comptime var have_archive: bool = false;
+    comptime var have_objcopy: bool = false;
     const T = struct {
         /// Program arguments
         args: [][*:0]u8,
