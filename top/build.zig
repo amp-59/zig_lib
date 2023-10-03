@@ -1455,7 +1455,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             allocator.restore(@intFromPtr(buf));
             node.flags.have_config_root = true;
         }
-        pub fn outputRelative(allocator: *Allocator, node: *Node, kind: types.Output) [:0]u8 {
+        pub fn outputRelative(allocator: *Allocator, node: *Node, kind: types.File) [:0]u8 {
             @setRuntimeSafety(builtin.is_safe);
             var buf: [4096]u8 = undefined;
             const name: []u8 = if (builder_spec.options.naming_policy == .full_name) blk: {
@@ -1463,16 +1463,13 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 break :blk buf[0..len];
             } else node.name;
             return concatenate(allocator, switch (kind) {
-                .exe => &[_][]const u8{ binary_prefix, name },
-                .ar => &[_][]const u8{ archive_prefix, name, builder_spec.options.ar_ext },
-                .obj => &[_][]const u8{ binary_prefix, name, builder_spec.options.obj_ext },
-                .lib => &[_][]const u8{ library_prefix, name, builder_spec.options.lib_ext },
-                .llvm_ir => &[_][]const u8{ auxiliary_prefix, name, builder_spec.options.llvm_ir_ext },
-                .llvm_bc => &[_][]const u8{ auxiliary_prefix, name, builder_spec.options.llvm_bc_ext },
-                .h => &[_][]const u8{ auxiliary_prefix, name, builder_spec.options.h_ext },
-                .docs => &[_][]const u8{ auxiliary_prefix, name, builder_spec.options.docs_ext },
-                .analysis => &[_][]const u8{ auxiliary_prefix, name, builder_spec.options.analysis_ext },
-                else => &[_][]const u8{ auxiliary_prefix, name, builder_spec.options.asm_ext },
+                .output_exe => &[_][]const u8{ binary_prefix, name },
+                .output_ar => &[_][]const u8{ archive_prefix, name, builder_spec.options.ar_ext },
+                .output_obj => &[_][]const u8{ binary_prefix, name, builder_spec.options.obj_ext },
+                .output_lib => &[_][]const u8{ library_prefix, name, builder_spec.options.lib_ext },
+                .output_llvm_ir => &[_][]const u8{ auxiliary_prefix, name, builder_spec.options.llvm_ir_ext },
+                .output_llvm_bc => &[_][]const u8{ auxiliary_prefix, name, builder_spec.options.llvm_bc_ext },
+                else => proc.exitErrorFault(error.InvalidOutput, @tagName(kind), 2),
             });
         }
         fn shallowCacheCheck(file_stats: *Node.FileStats, dest_pathname: [:0]const u8, root_pathname: [:0]const u8) u8 {
@@ -1566,30 +1563,26 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             ));
             node.extra.dir_fds = dir_fds;
         }
-        fn addDefineConfigs(allocator: *Allocator, node: *Node) void {
-            node.addConfigBool(allocator, "is_safe", builtin.is_safe);
-            node.addConfigString(allocator, "message_style", fmt.toStringLiteral(builtin.message_style orelse "null"));
-            node.addConfigString(allocator, "message_prefix", fmt.toStringLiteral(builtin.message_prefix));
-            node.addConfigString(allocator, "message_suffix", fmt.toStringLiteral(builtin.message_suffix));
-            node.addConfigInt(allocator, "message_indent", builtin.message_indent);
-        }
-        fn addBuildContextConfigs(allocator: *Allocator, node: *Node) void {
-            node.addConfigString(allocator, "zig_exe", node.zigExe());
-            node.addConfigString(allocator, "build_root", node.buildRoot());
-            node.addConfigString(allocator, "cache_root", node.cacheRoot());
-            node.addConfigString(allocator, "global_cache_root", node.cacheRoot());
-        }
-        fn createNode(allocator: *Allocator, group: *Node, tag: Node.Tag, task_tag: Task) *Node {
+        fn createNode(allocator: *Allocator, group: *Node, flags: Node.Flags, task_tag: Task, lock: Lock) *Node {
             @setRuntimeSafety(builtin.is_safe);
             const node: *Node = @ptrFromInt(allocator.allocateRaw(Node.size_of, Node.align_of));
             group.addNode(allocator).* = node;
             node.addNode(allocator).* = group;
             node.sh = group.sh;
-            node.tag = tag;
             node.tasks.tag = task_tag;
+            node.flags = flags;
+            node.lock = lock;
             return node;
         }
         const zig_lib_module = "zl::" ++ builtin.lib_root ++ "/zig_lib.zig";
+        const names = [_][2][:0]const u8{
+            .{ "proc", "top/build/proc.auto.zig" },
+            .{ "about", "top/build/about.auto.zig" },
+            .{ "build", "top/build/build.auto.zig" },
+            .{ "format", "top/build/format.auto.zig" },
+            .{ "archive", "top/build/archive.auto.zig" },
+            .{ "objcopy", "top/build/objcopy.auto.zig" },
+        };
         pub fn initializeExtensions(allocator: *Allocator, top: *Node) void {
             @setRuntimeSafety(builtin.is_safe);
             if (have_lazy or have_size) {
