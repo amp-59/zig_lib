@@ -336,7 +336,7 @@ pub fn mul(comptime T: type, arg1: T, arg2: T) error{MulCausedOverflow}!T {
     if (@inComptime()) {
         return arg1 * arg2;
     }
-    const res: struct { T, u1 } = @mulWithOverflow(arg1, arg2);
+    const res = @mulWithOverflow(arg1, arg2);
     if (res[1] != 0) {
         return error.MulCausedOverflow;
     }
@@ -347,7 +347,7 @@ pub fn add(comptime T: type, arg1: T, arg2: T) error{AddCausedOverflow}!T {
     if (@inComptime()) {
         return arg1 + arg2;
     }
-    const res: struct { T, u1 } = @addWithOverflow(arg1, arg2);
+    const res = @addWithOverflow(arg1, arg2);
     if (res[1] != 0) {
         return error.AddCausedOverflow;
     }
@@ -358,7 +358,7 @@ pub fn sub(comptime T: type, arg1: T, arg2: T) error{SubCausedOverflow}!T {
     if (@inComptime()) {
         return arg1 - arg2;
     }
-    const res: struct { T, u1 } = @subWithOverflow(arg1, arg2);
+    const res = @subWithOverflow(arg1, arg2);
     if (res[1] != 0) {
         return error.SubCausedOverflow;
     }
