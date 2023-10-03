@@ -21,11 +21,8 @@ pub const logging_override: debug.Logging.Override = debug.spec.logging.override
 const path_spec: file.PathSpec = .{ .errors = .{} };
 const close_spec: file.CloseSpec = .{ .errors = .{} };
 const fork_spec: proc.ForkSpec = .{ .errors = .{} };
+const access_spec: proc.ForkSpec = .{ .errors = .{} };
 const wait_spec: proc.WaitSpec = .{ .errors = .{}, .return_type = void };
-
-comptime {
-    _ = mach;
-}
 
 fn findPathFd(vars: [][*:0]u8, name: [:0]const u8) !u64 {
     var dir_fd: usize = 100;
@@ -33,7 +30,7 @@ fn findPathFd(vars: [][*:0]u8, name: [:0]const u8) !u64 {
     if (name[0] == '/') {
         return dir_fd;
     }
-    if (file.accessAt(.{}, dir_fd, name, .{ .exec = true })) {
+    if (file.accessAt(access_spec, .{ .symlink_follow = true }, dir_fd, name, .{ .exec = true })) {
         return dir_fd;
     } else |err| {
         if (err != error.NoSuchFileOrDirectory and
