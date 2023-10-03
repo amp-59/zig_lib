@@ -1598,7 +1598,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 .cache_root = lib_cache_root,
                 .global_cache_root = top.globalCacheRoot(),
             });
-            zero.flags = .{};
             zero.flags.is_special = true;
             top.sh.extns = @ptrFromInt(allocator.allocateRaw(
                 @sizeOf(Extensions),
@@ -1610,19 +1609,11 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     @alignOf(FunctionPointers),
                 ));
                 mem.zero(FunctionPointers, top.sh.fp);
-                for (@as(*[6]*Node, @ptrCast(top.sh.extns)), extensions[0..6]) |*extn, names| {
-                    const node: *Node = createNode(allocator, zero, .worker, .build);
-                    node.tasks.lock = obj_lock;
-                    node.name = @constCast(names[0]);
-                    node.addBinaryOutputPath(allocator, .lib);
-                    node.addSourceInputPath(allocator, names[1]);
-                    node.flags = .{
-                        .is_dynamic_extension = true,
-                        .want_builder_decl = true,
-                        .want_build_config = true,
-                        .want_define_decls = true,
-                        .have_task_data = false,
-                    };
+                for (@as(*[6]*Node, @ptrCast(top.sh.extns)), &names) |*extn, pair| {
+                    const node: *Node = createNode(allocator, zero, extn_flags, .build, obj_lock);
+                    node.name = @constCast(pair[0]);
+                    node.addBinaryOutputPath(allocator, .output_lib);
+                    node.addSourceInputPath(allocator, pair[1]);
                     for ([_][:0]const u8{
                         node.zigExe(),        "build-lib",
                         "--cache-dir",        node.cacheRoot(),
