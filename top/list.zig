@@ -36,15 +36,15 @@ pub fn GenericLinkedList(comptime list_spec: ListSpec) type {
                 }
                 fn read(s_node_blk: Block) child {
                     const s_data_addr: u64 = Node.Data.addr(s_node_blk);
-                    return builtin.intToPtr(*child, s_data_addr).*;
+                    return builtin.ptrFromInt(*child, s_data_addr).*;
                 }
                 fn write(s_node_blk: Block, s_data: child) void {
                     const s_data_addr: u64 = Node.Data.addr(s_node_blk);
-                    builtin.intToPtr(*child, s_data_addr).* = s_data;
+                    builtin.ptrFromInt(*child, s_data_addr).* = s_data;
                 }
                 fn refer(s_node_blk: Block) *child {
                     const s_data_addr: u64 = Node.Data.addr(s_node_blk);
-                    return builtin.intToPtr(*child, s_data_addr);
+                    return builtin.ptrFromInt(*child, s_data_addr);
                 }
             };
             pub const Link = opaque {
@@ -55,20 +55,20 @@ pub fn GenericLinkedList(comptime list_spec: ListSpec) type {
                     return t_node_blk.aligned_byte_address() +% Node.Link.begin;
                 }
                 fn read(s_node_blk: Block) u64 {
-                    return builtin.intToPtr(*u64, Node.Link.addr(s_node_blk)).*;
+                    return builtin.ptrFromInt(*u64, Node.Link.addr(s_node_blk)).*;
                 }
                 fn refer(s_node_blk: Block) *u64 {
-                    return builtin.intToPtr(*u64, Node.Link.addr(s_node_blk));
+                    return builtin.ptrFromInt(*u64, Node.Link.addr(s_node_blk));
                 }
                 fn mutate(t_node_blk: Block, b_node_blk: Block, a_node_blk: Block) void {
-                    builtin.intToPtr(*u64, Node.Link.addr(t_node_blk)).* = (b_node_blk.lb_word ^ a_node_blk.lb_word);
+                    builtin.ptrFromInt(*u64, Node.Link.addr(t_node_blk)).* = (b_node_blk.lb_word ^ a_node_blk.lb_word);
                 }
                 fn prev(s_node_blk: Block, t_node_blk: Block) Block {
-                    const x_addr: u64 = builtin.intToPtr(*u64, Node.Link.addr(s_node_blk)).*;
+                    const x_addr: u64 = builtin.ptrFromInt(*u64, Node.Link.addr(s_node_blk)).*;
                     return Block{ .lb_word = x_addr ^ t_node_blk.lb_word };
                 }
                 fn next(s_node_blk: Block, t_node_blk: Block) Block {
-                    const x_addr: u64 = builtin.intToPtr(*u64, Node.Link.addr(t_node_blk)).*;
+                    const x_addr: u64 = builtin.ptrFromInt(*u64, Node.Link.addr(t_node_blk)).*;
                     return Block{ .lb_word = s_node_blk.lb_word ^ x_addr };
                 }
                 fn integrateAfter(s_node_blk: Block, t_node_blk: Block, a_node_blk: Block, s_data: child) Links {
@@ -675,14 +675,14 @@ pub fn GenericLinkedListView(comptime list_spec: ListViewSpec) type {
                 const begin: u64 = if (link_after) 0 else link_size;
                 const end: u64 = begin +% bits.alignA64(unit_size, link_alignment);
                 fn read(s_node_addr: u64) child {
-                    return builtin.intToPtr(*child, s_node_addr +% Node.Data.begin).*;
+                    return builtin.ptrFromInt(*child, s_node_addr +% Node.Data.begin).*;
                 }
                 fn write(s_node_addr: u64, data: child) void {
                     const s_data_addr: u64 = s_node_addr +% Node.Data.begin;
-                    builtin.intToPtr(*child, s_data_addr).* = data;
+                    builtin.ptrFromInt(*child, s_data_addr).* = data;
                 }
                 fn refer(s_node_addr: u64) *child {
-                    return builtin.intToPtr(*child, s_node_addr +% Node.Data.begin);
+                    return builtin.ptrFromInt(*child, s_node_addr +% Node.Data.begin);
                 }
                 fn node(data: *child) u64 {
                     return @intFromPtr(data) -% bits.cmov64z(!Node.link_after, link_size);
@@ -693,24 +693,24 @@ pub fn GenericLinkedListView(comptime list_spec: ListViewSpec) type {
                 const end: u64 = begin +% link_size;
                 fn refer(s_node_addr: u64) *u64 {
                     const s_link_addr: u64 = s_node_addr +% Node.Link.begin;
-                    return builtin.intToPtr(*u64, s_link_addr);
+                    return builtin.ptrFromInt(*u64, s_link_addr);
                 }
                 fn read(s_node_addr: u64) u64 {
                     const s_link_addr: u64 = s_node_addr +% Node.Link.begin;
-                    return builtin.intToPtr(*u64, s_link_addr).*;
+                    return builtin.ptrFromInt(*u64, s_link_addr).*;
                 }
                 pub fn mutate(t_node_addr: u64, b_node_addr: u64, a_node_addr: u64) void {
                     const t_link_addr: u64 = t_node_addr +% Node.Link.begin;
-                    builtin.intToPtr(*u64, t_link_addr).* = (b_node_addr ^ a_node_addr);
+                    builtin.ptrFromInt(*u64, t_link_addr).* = (b_node_addr ^ a_node_addr);
                 }
                 fn prev(s_node_addr: u64, t_node_addr: u64) u64 {
                     const s_link_addr: u64 = s_node_addr +% Node.Link.begin;
-                    const x_addr: u64 = builtin.intToPtr(*u64, s_link_addr).*;
+                    const x_addr: u64 = builtin.ptrFromInt(*u64, s_link_addr).*;
                     return x_addr ^ t_node_addr;
                 }
                 fn next(s_node_addr: u64, t_node_addr: u64) u64 {
                     const t_link_addr: u64 = t_node_addr +% Node.Link.begin;
-                    const x_addr: u64 = builtin.intToPtr(*u64, t_link_addr).*;
+                    const x_addr: u64 = builtin.ptrFromInt(*u64, t_link_addr).*;
                     return x_addr ^ s_node_addr;
                 }
                 fn integrateAfter(s_node_addr: u64, t_node_addr: u64, a_node_addr: u64, data: child) Links {
