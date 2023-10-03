@@ -424,7 +424,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         fp: *FunctionPointers,
         /// Number of errors since processing user command line.
         errors: u8,
-
         // Enables lazy features.
         const have_lazy: bool = builder_spec.options.extensions_policy == .emergency;
         // Enables --list command line option.
@@ -477,8 +476,23 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             /// Full build command producing static linkable object
             trace: *Node,
         };
+        pub const File = struct {
+            /// What this file represents to the node.
+            tag: types.File,
+            /// The index of the path this file corresponds to in the node
+            /// `paths` list.
+            path_idx: u16,
+            /// File descriptor.
+            fd: u32 = 0,
+            /// Status for this file. Whether this pointer is valid is lazily
+            /// determined. It will never be valid within the main phase.
+            st: *file.Status,
+            const Key = packed union {
+                tag: types.File,
+                traits: types.File.Traits,
+            };
+        };
         pub const Node = struct {
-            tag: Tag,
             /// The node's 'first' name. Must be unique within the parent group.
             /// Names will only be checked for uniqueness once: when the node is
             /// added to its group with any of the `add(Build|Format|Archive|...)`
