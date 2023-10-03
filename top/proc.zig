@@ -838,7 +838,7 @@ pub const about = opaque {
     }
     fn forkNotice(pid: u64) void {
         var buf: [560]u8 = undefined;
-        const ud64: fmt.Type.Ud64 = @bitCast(@as(u64, pid));
+        const ud64: fmt.Type.Ud64 = .{ .value = pid };
         buf[0..fork_s.len].* = fork_s.*;
         var ptr: [*]u8 = buf[fork_s.len..];
         ptr[0..4].* = "pid=".*;
@@ -853,18 +853,16 @@ pub const about = opaque {
         const code: u64 = if (if_signaled) Status.termSignal(ret.status) else if (if_stopped) Status.stopSignal(ret.status) else Status.exitStatus(ret.status);
         const status_s: []const u8 =
             if (if_signaled) ", sig=" else if (if_stopped) ", stop=" else ", exit=";
-        var ud64: fmt.Type.Ud64 = @bitCast(@as(u64, ret.pid));
+        var ud64: fmt.Type.Ud64 = .{ .value = ret.pid };
         var buf: [560]u8 = undefined;
         buf[0..wait_s.len].* = wait_s.*;
         var ptr: [*]u8 = buf[wait_s.len..];
-        @memcpy(ptr, @tagName(id));
-        ptr += @tagName(id).len;
+        ptr = fmt.strcpyEqu(ptr, @tagName(id));
         ptr[0..6].* = ", pid=".*;
         ptr += 6;
         ptr += ud64.formatWriteBuf(ptr);
-        @memcpy(ptr, status_s);
-        ptr += status_s.len;
-        ud64 = @bitCast(code);
+        ptr = fmt.strcpyEqu(ptr, status_s);
+        ud64.value = code;
         ptr += ud64.formatWriteBuf(ptr);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr - @intFromPtr(&buf)) + 1]);
@@ -922,7 +920,7 @@ pub const about = opaque {
         ud64.value = timeout.nsec;
         ptr += ud64.formatWriteBuf(ptr);
         ptr[0] = '\n';
-        debug.write(buf[0..(@intFromPtr(ptr - @intFromPtr(&buf)) +% 1)]);
+        debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
     fn futexWakeAttempt(futex: *u32, count: u64) void {
         var buf: [256]u8 = undefined;
@@ -941,7 +939,7 @@ pub const about = opaque {
         ud64.value = count;
         ptr += ud64.formatWriteBuf(ptr);
         ptr[0] = '\n';
-        debug.write(buf[0..(@intFromPtr(ptr - @intFromPtr(&buf)) +% 1)]);
+        debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
     fn futexWakeNotice(futex: *u32, count: u64, ret: u64) void {
         var buf: [256]u8 = undefined;
@@ -964,7 +962,7 @@ pub const about = opaque {
         ud64.value = ret;
         ptr += ud64.formatWriteBuf(ptr);
         ptr[0] = '\n';
-        debug.write(buf[0..(@intFromPtr(ptr - @intFromPtr(&buf)) +% 1)]);
+        debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
     fn futexWakeOpAttempt(futex1: *u32, futex2: *u32, count1: u32, count2: u32, _: FutexOp.WakeOp) void {
         var buf: [256]u8 = undefined;
@@ -995,7 +993,7 @@ pub const about = opaque {
         ud64.value = count2;
         ptr += ud64.formatWriteBuf(ptr);
         ptr[0] = '\n';
-        debug.write(buf[0..(@intFromPtr(ptr - @intFromPtr(&buf)) +% 1)]);
+        debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
     fn futexWakeOpNotice(futex1: *u32, futex2: *u32, count1: u32, count2: u32, _: FutexOp.WakeOp, ret: u64) void {
         var buf: [256]u8 = undefined;
@@ -1030,11 +1028,11 @@ pub const about = opaque {
         ud64.value = ret;
         ptr += ud64.formatWriteBuf(ptr);
         ptr[0] = '\n';
-        debug.write(buf[0..(@intFromPtr(ptr - @intFromPtr(&buf)) +% 1)]);
+        debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
     fn signalActionError(rt_sigaction_error: anytype, signo: sys.SignalCode, handler: SignalAction.Handler) void {
         const handler_raw: usize = @bitCast(handler);
-        var ux64: fmt.Type.Ux64 = @bitCast(handler_raw);
+        var ux64: fmt.Type.Ux64 = .{ .value = handler_raw };
         var buf: [256]u8 = undefined;
         buf[0..sig_s.len].* = sig_s.*;
         var ptr: [*]u8 = buf[sig_s.len..];
@@ -1051,11 +1049,10 @@ pub const about = opaque {
         if (handler_raw > 1) {
             ptr += ux64.formatWriteBuf(ptr);
         } else {
-            @memcpy(ptr, if (handler_raw == 1) "ignore" else "default");
-            ptr += (8 -% handler_raw);
+            ptr = fmt.strcpyEqu(ptr, if (handler_raw == 1) "ignore" else "default");
         }
         ptr[0] = '\n';
-        debug.write(buf[0 .. @intFromPtr(ptr - @intFromPtr(&buf)) +% 1]);
+        debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
     fn signalStackError(sigaltstack_error: anytype, new_st: SignalStack) void {
         var buf: [256]u8 = undefined;
@@ -1072,7 +1069,7 @@ pub const about = opaque {
         ux64.value = new_st.addr +% new_st.len;
         ptr += ux64.formatWriteBuf(ptr);
         ptr[0] = '\n';
-        debug.write(buf[0..(@intFromPtr(ptr - @intFromPtr(&buf)) +% 1)]);
+        debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
     fn futexWaitError(futex_error: anytype, futex: *u32, value: u32, timeout: *const time.TimeSpec) void {
         @setRuntimeSafety(builtin.is_safe);
@@ -1102,7 +1099,7 @@ pub const about = opaque {
         ud64.value = timeout.nsec;
         ptr += ud64.formatWriteBuf(ptr);
         ptr[0] = '\n';
-        debug.write(buf[0..(@intFromPtr(ptr - @intFromPtr(&buf)) +% 1)]);
+        debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
     fn futexWakeError(futex_error: anytype, futex: *u32, count: u64) void {
         @setRuntimeSafety(builtin.is_safe);
@@ -1126,7 +1123,7 @@ pub const about = opaque {
         ud64.value = count;
         ptr += ud64.formatWriteBuf(ptr);
         ptr[0] = '\n';
-        debug.write(buf[0..(@intFromPtr(ptr - @intFromPtr(&buf)) +% 1)]);
+        debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
     fn futexWakeOpError(futex_error: anytype, futex1: *u32, futex2: *u32, count1: u32, count2: u32, _: FutexOp.WakeOp) void {
         @setRuntimeSafety(false);
@@ -1162,7 +1159,7 @@ pub const about = opaque {
         ud64.value = count2;
         ptr += ud64.formatWriteBuf(ptr);
         ptr[0] = '\n';
-        debug.write(buf[0..(@intFromPtr(ptr - @intFromPtr(&buf)) +% 1)]);
+        debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
     pub fn exceptionHandler(sig: sys.SignalCode, info: *const SignalInfo, ctx: ?*const anyopaque) noreturn {
         @setRuntimeSafety(false);
@@ -1171,8 +1168,7 @@ pub const about = opaque {
         var buf: [8192]u8 = undefined;
         buf[0..3].* = "SIG".*;
         var ptr: [*]u8 = buf[3..];
-        @memcpy(ptr, @tagName(sig));
-        ptr += @tagName(sig).len;
+        ptr = fmt.strcpyEqu(ptr, @tagName(sig));
         ptr[0..12].* = " at address ".*;
         ptr += 12;
         ptr += fmt.ux64(info.fields.fault.addr).formatWriteBuf(ptr);
@@ -1191,7 +1187,7 @@ pub const about = opaque {
         ptr[0..2].* = ", ".*;
         ptr += 2;
         ptr += about.exe(ptr[0..4096]);
-        debug.panic_extra.panicSignal(buf[0..@intFromPtr(ptr - @intFromPtr(&buf))], ctx.?);
+        debug.panic_extra.panicSignal(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], ctx.?);
     }
     pub fn sampleAllReports() void {
         var futex0: u32 = 0xf0;
@@ -1421,7 +1417,7 @@ pub fn GenericOptions(comptime Options: type) type {
                 for (all_options) |option| {
                     const min: u64 = @intFromPtr(ptr - @intFromPtr(&buf));
                     if (option.long) |long_switch| {
-                        if (mem.orderedMatches(u8, bad_opt, long_switch) >
+                        if (mem.sequentialMatches(bad_opt, long_switch) >
                             @max(bad_opt.len, long_switch.len) / 2)
                         {
                             @memcpy(ptr, about_opt_s);

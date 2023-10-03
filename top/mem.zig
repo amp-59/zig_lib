@@ -1425,6 +1425,9 @@ pub fn order(comptime T: type, l_values: []const T, r_values: []const T) math.Or
     }
     return math.order(l_values.len, r_values.len);
 }
+pub fn sequentialDifference(values1: []const u8, values2: []const u8) usize {
+    return @max(values1.len, values2.len) -% sequentialMatches(values1, values2);
+}
 pub fn sequentialMatches(values1: []const u8, values2: []const u8) usize {
     @setRuntimeSafety(builtin.is_safe);
     var idx1: usize = 0;
@@ -1449,9 +1452,6 @@ pub fn sequentialMatches(values1: []const u8, values2: []const u8) usize {
             idx2 +%= 1;
         }
     }
-}
-pub fn sequentialDifference(values1: []const u8, values2: []const u8) usize {
-    return (values1.len +% values2.len) -% sequentialMatches(values1, values2);
 }
 pub fn editDistance(l_values: []const u8, r_values: []const u8) usize {
     @setRuntimeSafety(builtin.is_safe);
