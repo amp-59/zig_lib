@@ -1018,15 +1018,16 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             pub fn addRun(group: *Node, allocator: *Allocator, name: []const u8, args: []const []const u8) *Node {
                 @setRuntimeSafety(builtin.is_safe);
-                const node: *Node = createNode(allocator, group, .worker, .run);
-                node.flags = .{};
+                have_run = true;
+                const node: *Node = createNode(allocator, group, .{}, .run, run_lock);
                 node.name = duplicate(allocator, name);
                 for (args) |arg| node.addRunArg(allocator).* = duplicate(allocator, arg);
                 initializeCommand(allocator, node);
                 return node;
             }
             fn addSourceInputPath(node: *Node, allocator: *Allocator, name: [:0]const u8) void {
-                const root_path: *file.CompoundPath = node.addPath(allocator);
+                @setRuntimeSafety(builtin.is_safe);
+                const root_path: *file.CompoundPath = node.addPath(allocator, classifySourceInputName(name));
                 root_path.* = .{};
                 root_path.addName(allocator).* = node.buildRoot();
                 root_path.addName(allocator).* = name;
@@ -1034,32 +1035,26 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     about.aboutNode(node, null, null, .{ .add_src_path = root_path });
                 }
             }
-            fn addBinaryOutputPath(node: *Node, allocator: *Allocator, kind: types.BinaryOutput) void {
-                const binary_path: *file.CompoundPath = node.addPath(allocator);
+            fn addBinaryOutputPath(node: *Node, allocator: *Allocator, kind: types.File) void {
+                @setRuntimeSafety(builtin.is_safe);
+                const binary_path: *file.CompoundPath = node.addPath(allocator, kind);
                 binary_path.* = .{};
                 binary_path.addName(allocator).* = node.buildRoot();
-                binary_path.addName(allocator).* = outputRelative(allocator, node, @enumFromInt(@intFromEnum(kind)));
+                binary_path.addName(allocator).* = outputRelative(allocator, node, kind);
                 if (builder_spec.logging.show_task_update) {
                     about.aboutNode(node, null, null, .{ .add_bin_path = binary_path });
                 }
             }
-            pub fn addToplevelArgs(node: *Node, allocator: *Allocator) void {
-                @setRuntimeSafety(builtin.is_safe);
-                node.addRunArg(allocator).* = node.zigExe();
-                node.addRunArg(allocator).* = node.buildRoot();
-                node.addRunArg(allocator).* = node.cacheRoot();
-                node.addRunArg(allocator).* = node.globalCacheRoot();
-            }
             pub fn addDepn(node: *Node, allocator: *Allocator, task: Task, on_node: *Node, on_task: Task) void {
                 @setRuntimeSafety(builtin.is_safe);
-                const elem: []*Node = node.getNodes();
-                const idx: usize = elem.len;
+                const list: []*Node = node.getNodes();
+                const node_idx: u16 = @intCast(list.len);
                 const depn: *Depn = @ptrFromInt(node.lists.add(allocator, .depns));
                 node.addNode(allocator).* = on_node;
                 const on_paths: []file.CompoundPath = on_node.getPaths();
                 if (task == .build) {
                     if (on_task == .archive) {
-                        node.addPath(allocator).* = on_paths[0];
+                        node.addPath(allocator, .input_ar).* = on_paths[0];
                         if (builder_spec.logging.show_task_update) {
                             about.aboutNode(node, null, null, .{ .add_depn_trailing_path = &on_paths[0] });
                         }
@@ -1068,7 +1063,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         on_task == .build and
                         on_node.tasks.cmd.build.kind == .obj)
                     {
-                        node.addPath(allocator).* = on_paths[0];
+                        node.addPath(allocator, .input_obj).* = on_paths[0];
                         if (builder_spec.logging.show_task_update) {
                             about.aboutNode(node, null, null, .{ .add_depn_trailing_path = &on_paths[0] });
                         }
@@ -1079,13 +1074,13 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         on_task == .build and
                         on_node.tasks.cmd.build.kind == .obj)
                     {
-                        node.addPath(allocator).* = on_paths[0];
+                        node.addPath(allocator, .input_ar).* = on_paths[0];
                         if (builder_spec.logging.show_task_update) {
                             about.aboutNode(node, null, null, .{ .add_depn_trailing_path = &on_paths[0] });
                         }
                     }
                 }
-                depn.* = .{ .task = task, .on_task = on_task, .on_state = .finished, .on_idx = @intCast(idx) };
+                depn.* = .{ .task = task, .on_task = on_task, .on_state = .finished, .node_idx = node_idx };
             }
             pub fn dependOn(node: *Node, allocator: *Allocator, on_node: *Node) void {
                 node.addDepn(
@@ -1111,63 +1106,59 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             pub fn zigExe(node: *Node) [:0]u8 {
                 @setRuntimeSafety(builtin.is_safe);
-                if (node.tag == .worker) {
+                if (!node.flags.is_group) {
                     return node.groupNode().zigExe();
                 }
                 return @constCast(node.getPaths()[0].names[0]);
             }
             pub fn buildRoot(node: *Node) [:0]u8 {
                 @setRuntimeSafety(builtin.is_safe);
-                if (node.tag == .worker) {
+                if (!node.flags.is_group) {
                     return node.groupNode().buildRoot();
                 }
                 return @constCast(node.getPaths()[1].names[0]);
             }
             pub fn cacheRoot(node: *Node) [:0]u8 {
                 @setRuntimeSafety(builtin.is_safe);
-                if (node.tag == .worker) {
+                if (!node.flags.is_group) {
                     return node.groupNode().cacheRoot();
                 }
                 return @constCast(node.getPaths()[2].names[0]);
             }
             pub fn globalCacheRoot(node: *Node) [:0]u8 {
                 @setRuntimeSafety(builtin.is_safe);
-                if (node.tag == .worker) {
+                if (!node.flags.is_group) {
                     return node.groupNode().globalCacheRoot();
                 }
                 return @constCast(node.getPaths()[3].names[0]);
             }
             pub fn buildRootFd(node: *Node) usize {
                 @setRuntimeSafety(builtin.is_safe);
-                if (node.tag == .worker) {
+                if (!node.flags.is_group) {
                     return node.groupNode().buildRootFd();
                 }
                 return node.extra.dir_fds.?.build_root;
             }
             pub fn configRootFd(node: *Node) usize {
                 @setRuntimeSafety(builtin.is_safe);
-                if (node.tag == .worker) {
+                if (!node.flags.is_group) {
                     return node.groupNode().configRootFd();
                 }
                 return node.extra.dir_fds.?.config_root;
             }
             pub fn outputRootFd(node: *Node) usize {
                 @setRuntimeSafety(builtin.is_safe);
-                if (node.tag == .worker) {
+                if (!node.flags.is_group) {
                     return node.groupNode().outputRootFd();
                 }
                 return node.extra.dir_fds.?.output_root;
             }
             pub fn cacheRootFd(node: *Node) usize {
                 @setRuntimeSafety(builtin.is_safe);
-                if (node.tag == .worker) {
+                if (!node.flags.is_group) {
                     return node.groupNode().cacheRootFd();
                 }
                 return node.extra.dir_fds.?.cache_root;
-            }
-            pub fn topNode(node: *Node) *Node {
-                @setRuntimeSafety(builtin.is_safe);
-                return if (node.flags.is_top) node else topNode(node.getNodes()[0]);
             }
             pub fn hasDebugInfo(node: *Node) bool {
                 @setRuntimeSafety(builtin.is_safe);
@@ -1187,7 +1178,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     return 0;
                 }
                 const nodes: []*Node = node.getNodes();
-                if (!node.flags.is_top and nodes.len != 0) {
+                if (nodes.len != 0) {
                     ptr += nodes[0].formatWriteNameFull(sep, ptr);
                     if (ptr != buf) {
                         ptr[0] = sep;
@@ -1199,11 +1190,11 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             pub fn formatLengthNameFull(node: *const Node) usize {
                 @setRuntimeSafety(builtin.is_safe);
-                var len: usize = 0;
-                if (!node.flags.is_top) {
-                    len +%= node.getNodes()[0].formatLengthNameFull();
-                    len +%= @intFromBool(len != 0) +% node.name.len;
+                if (node.flags.is_top) {
+                    return 0;
                 }
+                var len: usize = node.getNodes()[0].formatLengthNameFull();
+                len +%= @intFromBool(len != 0) +% node.name.len;
                 return len;
             }
             pub fn formatWriteNameRelative(node: *const Node, group: *const Node, sep: u8, buf: [*]u8) usize {
@@ -1250,7 +1241,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             pub fn splitArguments(node: *Node, allocator: *Allocator, args: [][*:0]u8, cmd_args_idx: usize) void {
                 @setRuntimeSafety(builtin.is_safe);
-                if (node.tag != .group) {
+                if (!node.flags.is_group) {
                     return splitArguments(node.groupNode(), allocator, args, cmd_args_idx);
                 }
                 var run_args_idx: usize = cmd_args_idx;
@@ -1267,7 +1258,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             }
             pub fn setPrimary(node: *Node, task: Task) void {
                 @setRuntimeSafety(builtin.is_safe);
-                if (node.tag == .group) {
+                if (node.flags.is_group) {
                     for (node.getNodes()[1..]) |sub_node| {
                         if (sub_node.tasks.tag == task) {
                             sub_node.flags.is_primary = true;
@@ -1308,7 +1299,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 const sub_name: []const u8 = name[idx..];
                 idx = 1;
                 while (idx != nodes.len) : (idx +%= 1) {
-                    if (nodes[idx].tag == .group and
+                    if (nodes[idx].flags.is_group and
                         mem.testEqualString(group_name, nodes[idx].name))
                     {
                         return find(nodes[idx], sub_name, sep);
@@ -1439,14 +1430,12 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             .compiler_rt = false,
             .image_base = 65536,
         };
-        const extensions = [_][2][:0]const u8{
-            .{ "proc", "top/build/proc.auto.zig" },
-            .{ "about", "top/build/about.auto.zig" },
-            .{ "build", "top/build/build.auto.zig" },
-            .{ "format", "top/build/format.auto.zig" },
-            .{ "archive", "top/build/archive.auto.zig" },
-            .{ "objcopy", "top/build/objcopy.auto.zig" },
-            .{ "trace", "top/trace.zig" },
+        const extn_flags = .{
+            .is_dynamic_extension = true,
+            .want_builder_decl = true,
+            .want_build_config = true,
+            .want_define_decls = true,
+            .have_task_data = false,
         };
         pub fn configRootRelative(allocator: *Allocator, node: *Node) [:0]u8 {
             @setRuntimeSafety(builtin.is_safe);
