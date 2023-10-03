@@ -501,23 +501,23 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             name: [:0]u8,
             /// Description text to be printed with task listing.
             descr: [:0]const u8,
-            /// Description text to be printed with task listing.
             tasks: Tasks,
             flags: Flags,
             lists: Lists,
             extra: Extra,
+            lock: Lock,
             /// Pointer to the shared state. May consider storing allocators
             /// and address spaces here to make UX more convenient. It also
             /// saves a number of paramters in many functions.
             sh: *Shared,
             pub const size_of: comptime_int = @sizeOf(Node);
             pub const align_of: comptime_int = @alignOf(Node);
-            pub const Tag = enum(u8) {
-                group,
-                worker,
-            };
             pub const Flags = packed struct(u32) {
+                /// (Internal) Whether the node is a parameter to the user
+                /// defined function `buildMain`.
                 is_top: bool = false,
+                /// (Internal) Whether the node has the group command property.
+                is_group: bool = false,
                 /// (Internal) Whether the node is maintained and defined by
                 /// this library.
                 is_special: bool = false,
@@ -530,9 +530,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 /// (Internal) Whether independent nodes will be processed in
                 /// parallel.
                 is_single_threaded: bool = false,
-                /// (Internal) Whether a build task command may be invoked with
-                /// `run` to run the output executable on build completion.
-                is_executable: bool = false,
                 /// (Internal) Whether to execute `autoLoad` functions on
                 /// completion of build tasks.
                 is_dynamic_extension: bool = false,
@@ -552,15 +549,16 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 /// (Internal) Whether the configuration root source for a
                 /// build task exists.
                 have_config_root: bool = false,
-
                 /// Whether to create a configuration root. Enables usage of
                 /// configuration constants.
                 want_build_config: bool = false,
                 /// Whether to monitor build/run performance counters.
                 want_perf_events: bool = false,
-                /// Whether to display section/symbol differences between updated output binaries.
+                /// Whether to display section/symbol differences between
+                /// updated output binaries.
                 want_binary_analysis: bool = false,
-                /// Whether to write `Builder` declaration to build configuration.
+                /// Whether to write `Builder` declaration to build
+                /// configuration.
                 want_builder_decl: bool = false,
                 /// Whether to write builtin configuration constants to build
                 /// configuration.
@@ -572,13 +570,11 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 /// Define the compiler path, build root, cache root, and global
                 /// cache root as declarations to the build configuration root.
                 want_build_context: bool = true,
-                /// Whether modification times of output binaries and root sources may
-                /// be used to determine a cache hit. Useful for generated files.
-                /// This check is performed by the builder.
+                /// Whether modification times of output binaries and root
+                /// sources may be used to determine a cache hit. Useful for
+                /// generated files. This check is performed by the builder.
                 want_shallow_cache_check: bool = false,
-
-                // Reserved
-                _: u11 = undefined,
+                zb: u11 = 0,
             };
             const Tasks = struct {
                 /// Primary (default) task for this node.
