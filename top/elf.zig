@@ -1308,7 +1308,7 @@ pub const LoaderSpec = struct {
     AddressSpace: type,
     const Options = struct {
         extra_sections: []const []const u8 = &.{},
-        try_harder_to_match: bool = false,
+        try_harder_to_match: bool = true,
         exclude_size_below: usize = 128,
         exclude_terms: []const []const u8 = &[_][]const u8{
             "__anon",
@@ -1320,9 +1320,10 @@ pub const LoaderSpec = struct {
     pub const Logging = packed struct {
         show_elf_header: bool = false,
         show_relocations: bool = false,
-        show_mangled_symbols: bool = false,
-        hide_mangled_symbols: bool = true,
-        hide_unchanged_sections: bool = true,
+        show_mangled_symbols: bool = true,
+        show_unchanged_sections: bool = true,
+        show_unchanged_symbols: bool = true,
+
         open: debug.Logging.AcquireError = .{},
         seek: debug.Logging.SuccessError = .{},
         stat: debug.Logging.SuccessErrorFault = .{},
@@ -1506,7 +1507,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             fn readInfo(info: *Info) sys.ErrorUnion(ep2, void) {
                 @setRuntimeSafety(builtin.is_safe);
                 const shdr_len: usize = info.ehdr.e_shnum *% info.ehdr.e_shentsize;
-                info.shdr = try meta.wrap(info.allocateMeta(shdr_len +% info.ehdr.e_shnum, 8));
+                info.shdr = try meta.wrap(info.allocateMeta(shdr_len +% (info.ehdr.e_shnum *% @sizeOf(about.Match)), 8));
                 try meta.wrap(readAt(info.fd, info.ehdr.e_shoff, info.shdr, shdr_len));
                 const shstr_shdr: *Elf64_Shdr = info.sectionHeaderByIndex(info.ehdr.e_shstrndx);
                 info.shstr = try meta.wrap(info.allocateMeta(shstr_shdr.sh_size, 1));
@@ -1521,18 +1522,17 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                     if (shdr.sh_type == .SYMTAB or
                         shdr.sh_type == .DYNSYM)
                     {
-                        len +%= @divExact(len, shdr.sh_entsize);
+                        len +%= @divExact(len, shdr.sh_entsize) *% @sizeOf(about.Match);
                     }
-                    const name: [:0]const u8 = info.sectionName(shdr);
                     const tag: Section = for (Sections.tag_list) |tag| {
-                        if (mem.testEqualString(name, @tagName(tag))) {
+                        if (mem.testEqualString(info.sectionName(shdr), @tagName(tag))) {
                             shdr.sh_addr = try meta.wrap(info.allocateMeta(len, shdr.sh_addralign));
                             info.impl.set(tag, shdr, shdr.sh_addr);
                             try meta.wrap(readAt(info.fd, shdr.sh_offset, shdr.sh_addr, shdr.sh_size));
                             break tag;
                         }
                     } else {
-                        proc.exitErrorFault(error.UnknownSection, name, 2);
+                        proc.exitErrorFault(error.UnknownSection, info.sectionName(shdr), 2);
                     };
                     if (shdr.sh_type == .REL or
                         shdr.sh_type == .RELA)
@@ -1730,25 +1730,89 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             const reloc_s: fmt.AboutSrc = fmt.about("reloc");
             const dynsym_s: fmt.AboutSrc = fmt.about("dynsym");
             const section_s: fmt.AboutSrc = fmt.about("section");
-            const CmpMat = enum(u8) {
-                unknown = 0,
-                added,
-                removed,
-                moved,
-                matched,
-                mangled,
-                hidden,
-                pc_addr,
+            const Match = struct {
+                idx: u32 = 0,
+                tag: Tag = .unknown,
+                const Tag = enum(u8) {
+                    unknown = 0,
+                    pc_addr,
+                    added,
+                    removed,
+                    moved,
+                    matched,
+                    hidden,
+                    mangled,
+                    /// These require considerable effort
+                    renamed_mangled,
+                    renamed_namespace,
+                    renamed,
+                };
             };
-            fn symbolMatches(shdr: *const Elf64_Shdr) [*]CmpMat {
+            fn nameIndices(name: [:0]u8) NameIndices {
+                var idx: u32 = 0;
+                var ret: NameIndices = .{};
+                while (idx < name.len) : (idx +%= 1) {
+                    if (name[idx] == '.') {
+                        ret.spos = idx;
+                    } else if (name[idx] == '_') {
+                        if (name[idx +% 1] == '_') {
+                            ret.mpos = idx;
+                        }
+                    }
+                }
+                return ret;
+            }
+            const ColumnWidth = packed struct(usize) {
+                /// Character width of address column
+                addr: u16 = 0,
+                /// Character width of size column
+                size: u16 = 0,
+                /// Character width of name column
+                name: u32 = 0,
+            };
+            const NameIndices = packed struct(usize) {
+                /// Mangled name start position.
+                mpos: u32 = 0,
+                /// Short name start position.
+                spos: u32 = 0,
+                fn namespace(nidx: NameIndices, name: [:0]u8) []u8 {
+                    @setRuntimeSafety(builtin.is_safe);
+                    return name[0..nidx.spos];
+                }
+                fn mangler(nidx: NameIndices, name: [:0]u8) [:0]u8 {
+                    @setRuntimeSafety(builtin.is_safe);
+                    return name[nidx.mpos..];
+                }
+                fn mangled(nidx: NameIndices, name: [:0]u8) [:0]u8 {
+                    @setRuntimeSafety(builtin.is_safe);
+                    return name[nidx.spos..];
+                }
+                fn short(nidx: NameIndices, name: [:0]u8) []u8 {
+                    @setRuntimeSafety(builtin.is_safe);
+                    if (nidx.mpos > nidx.spos) {
+                        return name[nidx.spos..nidx.mpos];
+                    } else {
+                        return name[nidx.spos..];
+                    }
+                }
+            };
+            fn maybeSortInPlace(st_shdr1: *Elf64_Shdr) void {
+                @setRuntimeSafety(builtin.is_safe);
+                if (st_shdr1.sh_entsize == @sizeOf(Elf64_Sym)) {
+                    const max_idx1: usize = st_shdr1.sh_size / st_shdr1.sh_entsize;
+                    const st: [*]Elf64_Sym = @ptrFromInt(st_shdr1.sh_addr);
+                    algo.shellSort(Elf64_Sym, sortSym, st[1..max_idx1]);
+                }
+            }
+            fn symbolMatches(shdr: *const Elf64_Shdr) [*]Match {
                 @setRuntimeSafety(builtin.is_safe);
                 return @ptrFromInt(shdr.sh_addr +% shdr.sh_size);
             }
-            fn sectionMatches(info: *const Info) [*]CmpMat {
+            fn sectionMatches(info: *const Info) [*]Match {
                 @setRuntimeSafety(builtin.is_safe);
                 return @ptrFromInt(info.shdr +% (info.ehdr.e_shentsize *% info.ehdr.e_shnum));
             }
-            fn programMatches(info: *const Info) [*]CmpMat {
+            fn programMatches(info: *const Info) [*]Match {
                 @setRuntimeSafety(builtin.is_safe);
                 return @ptrFromInt(info.phdr +% (info.ehdr.e_phentsize *% info.ehdr.e_phnum));
             }
@@ -1759,8 +1823,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             fn symbolName(info: *const Info, shdr: *const Elf64_Shdr, sym: *Elf64_Sym) ?[:0]u8 {
                 @setRuntimeSafety(builtin.is_safe);
                 if (shdr.sh_link != 0) {
-                    const strtab_shdr: *Elf64_Shdr = info.sectionHeaderByIndex(shdr.sh_link);
-                    return mem.terminate(@ptrFromInt(strtab_shdr.sh_addr + sym.st_name), 0);
+                    return mem.terminate(@ptrFromInt(info.sectionHeaderByIndex(shdr.sh_link).sh_addr + sym.st_name), 0);
                 }
                 return null;
             }
@@ -1774,18 +1837,18 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 info1: *const Info,
                 shdr1: *const Elf64_Shdr,
                 shdr_idx1: usize,
-                mats1: [*]CmpMat,
+                mats1: [*]Match,
                 name1: [:0]u8,
                 sym_idx2_from: usize,
                 sym_idx2_to: usize,
             ) usize {
                 @setRuntimeSafety(builtin.is_safe);
-                var sym_idx1: usize = @min(sym_idx2_from, sym_idx2_to);
-                while (sym_idx1 != sym_idx2_to) : (sym_idx1 +%= 1) {
-                    if (mats1[sym_idx1] != .unknown) {
+                var sym_idx2: usize = @min(sym_idx2_from, sym_idx2_to);
+                while (sym_idx2 != sym_idx2_to) : (sym_idx2 +%= 1) {
+                    if (mats1[sym_idx2].tag != .unknown) {
                         continue;
                     }
-                    const sym2: *Elf64_Sym = symbolByIndex(shdr1, sym_idx1);
+                    const sym2: *Elf64_Sym = symbolByIndex(shdr1, sym_idx2);
                     if (sym2.st_shndx != shdr_idx1) {
                         continue;
                     }
@@ -1793,15 +1856,13 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                         continue;
                     };
                     if (mem.testEqualString(name1, name2)) {
-                        mats1[sym_idx1] = .matched;
-                        return sym_idx1;
+                        return sym_idx2;
                     }
                 }
                 return 0;
             }
             fn matchSectionNameInRange(
                 info2: *const Info,
-                mats2: [*]CmpMat,
                 name1: [:0]const u8,
                 shdr_idx2_from: usize,
                 shdr_idx2_to: usize,
@@ -1812,93 +1873,128 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                     const shdr2: *Elf64_Shdr = info2.sectionHeaderByIndex(shdr_idx2);
                     const name2: [:0]const u8 = info2.sectionName(shdr2);
                     if (mem.testEqualString(name1, name2)) {
-                        mats2[shdr_idx2] = .matched;
                         return shdr_idx2;
                     }
                 }
                 return 0;
             }
+            fn compareSymbolBytes(info1: *const Info, sym1: *Elf64_Sym, info2: *const Info, sym2: *Elf64_Sym) bool {
+                @setRuntimeSafety(builtin.is_safe);
+                const bytes1: [*]u8 = @ptrFromInt(info1.prog.addr +% sym1.st_value);
+                const bytes2: [*]u8 = @ptrFromInt(info2.prog.addr +% sym2.st_value);
+                return mem.testEqualString(bytes1[0..sym1.st_size], bytes2[0..sym2.st_size]);
+            }
+            fn compareSizes(sym1: *Elf64_Sym, sym2: *Elf64_Sym, min_size_diff: *usize) bool {
+                @setRuntimeSafety(builtin.is_safe);
+                const size_diff: usize =
+                    @max(sym1.st_size, sym2.st_size) -%
+                    @min(sym1.st_size, sym2.st_size);
+                const ret: bool = size_diff < min_size_diff.*;
+                if (ret) {
+                    min_size_diff.* = size_diff;
+                }
+                return ret;
+            }
             pub fn writeSymtabDifference(
                 buf: [*]u8,
                 info1: *const Info,
-                shdr1: *const Elf64_Shdr,
+                shdr1: *Elf64_Shdr,
                 shndx1: usize,
                 info2: *const Info,
-                shdr2: *const Elf64_Shdr,
+                shdr2: *Elf64_Shdr,
                 shndx2: usize,
                 width: usize,
             ) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
-                const mats1: [*]CmpMat = symbolMatches(shdr1);
-                const mats2: [*]CmpMat = symbolMatches(shdr2);
+                const mats1: [*]Match = symbolMatches(shdr1);
+                const mats2: [*]Match = symbolMatches(shdr2);
                 const max_idx1: usize = @divExact(shdr1.sh_size, shdr1.sh_entsize);
                 const max_idx2: usize = @divExact(shdr2.sh_size, shdr2.sh_entsize);
                 const strtab1: [*]u8 = @ptrFromInt(info1.sectionHeaderByIndex(shdr1.sh_link).sh_addr);
                 const strtab2: [*]u8 = @ptrFromInt(info2.sectionHeaderByIndex(shdr2.sh_link).sh_addr);
                 const sh_name1: [:0]const u8 = info1.sectionName(info1.sectionHeaderByIndex(shndx1));
                 const sh_name2: [:0]const u8 = info2.sectionName(info2.sectionHeaderByIndex(shndx2));
+                maybeSortInPlace(shdr1);
+                maybeSortInPlace(shdr2);
                 var hidden_count: usize = 0;
                 var hidden_size: usize = 0;
                 if (shdr1.sh_type != shdr2.sh_type) {
                     return buf;
                 }
                 var ptr: [*]u8 = buf;
-                {
-                    var sym_idx2: usize = 1;
-                    while (sym_idx2 != max_idx2) : (sym_idx2 +%= 1) {
-                        const sym2: *Elf64_Sym = symbolByIndex(shdr2, sym_idx2);
-                        if (shndx2 != sym2.st_shndx) {
-                            continue;
-                        }
-                        const name2: [:0]u8 = symbolName(info2, shdr2, sym2) orelse {
-                            continue;
-                        };
-                        if (loader_spec.logging.hide_mangled_symbols and
-                            maybeExcludeSymbol(mats2, sym_idx2, name2) and
-                            sym2.st_size < loader_spec.options.exclude_size_below)
-                        {
-                            hidden_count +%= 1;
-                            hidden_size +%= sym2.st_size;
-                            continue;
-                        } else if (loader_spec.logging.show_mangled_symbols and
-                            maybeExcludeSymbol(mats2, sym_idx2, name2))
-                        {
-                            continue;
-                        }
-                        var sym_idx1: usize = 1;
-                        sym_idx1 = blk: {
-                            const min_idx1: usize = @min(max_idx1, sym_idx2);
-                            sym_idx1 = min_idx1;
-                            var mat_idx: usize = matchSymbolNameInRange(info1, shdr1, shndx1, mats1, name2, sym_idx1, max_idx1);
-                            if (mat_idx != 0) {
-                                break :blk mat_idx;
-                            }
-                            sym_idx1 -|= 5;
-                            sym_idx1 +%= 1;
-                            mat_idx = matchSymbolNameInRange(info1, shdr1, shndx1, mats1, name2, sym_idx1, min_idx1);
-                            if (mat_idx != 0) {
-                                break :blk mat_idx;
-                            }
-                            mat_idx = matchSymbolNameInRange(info1, shdr1, shndx1, mats1, name2, 1, sym_idx1);
-                            if (mat_idx != 0) {
-                                break :blk mat_idx;
-                            }
-                            ptr = writeSymbolAdded(ptr, strtab2, sym2, sym_idx2, sh_name2.len, width);
-                            continue;
-                        };
-                        mats2[sym_idx2] = .matched;
-                        const sym1: *Elf64_Sym = symbolByIndex(shdr1, sym_idx1);
-                        ptr = @call(.auto, writeSymbolDifference, .{
-                            ptr,      info1,        sym1,  mats1[sym_idx1],
-                            info2,    strtab2,      sym2,  mats2[sym_idx2],
-                            sym_idx2, sh_name2.len, width,
-                        });
+                var sym_idx2: usize = 1;
+                while (sym_idx2 != max_idx2) : (sym_idx2 +%= 1) {
+                    const sym2: *Elf64_Sym = symbolByIndex(shdr2, sym_idx2);
+                    if (shndx2 != sym2.st_shndx) {
+                        continue;
                     }
+                    const name2: [:0]u8 = symbolName(info2, shdr2, sym2) orelse {
+                        continue;
+                    };
+                    const name_idx2: NameIndices = nameIndices(name2);
+                    if (!loader_spec.logging.show_mangled_symbols and
+                        name_idx2.mpos != 0 and
+                        sym2.st_size < loader_spec.options.exclude_size_below)
+                    {
+                        hidden_count +%= 1;
+                        hidden_size +%= sym2.st_size;
+                        continue;
+                    }
+                    var sym_idx1: usize = 1;
+                    sym_idx1 = blk: {
+                        const min_idx1: usize = @min(max_idx1, sym_idx2);
+                        sym_idx1 = min_idx1;
+                        var mat_idx: usize = matchSymbolNameInRange(info1, shdr1, shndx1, mats1, name2, sym_idx1, max_idx1);
+                        if (mat_idx != 0) {
+                            break :blk mat_idx;
+                        }
+                        sym_idx1 -|= 5;
+                        sym_idx1 +%= 1;
+                        mat_idx = matchSymbolNameInRange(info1, shdr1, shndx1, mats1, name2, sym_idx1, min_idx1);
+                        if (mat_idx != 0) {
+                            break :blk mat_idx;
+                        }
+                        mat_idx = matchSymbolNameInRange(info1, shdr1, shndx1, mats1, name2, 1, sym_idx1);
+                        if (mat_idx != 0) {
+                            break :blk mat_idx;
+                        }
+                        mats2[sym_idx2].tag = .added;
+                        continue;
+                    };
+                    const sym1: *Elf64_Sym = symbolByIndex(shdr1, sym_idx1);
+                    if (name_idx2.mpos != 0) {
+                        if (!compareSymbolBytes(info1, sym1, info2, sym2)) {
+                            mats2[sym_idx2].tag = .added;
+                            continue;
+                        }
+                    }
+                    mats1[sym_idx1] = .{
+                        .tag = .matched,
+                        .idx = @intCast(sym_idx2),
+                    };
+                    mats2[sym_idx2] = .{
+                        .tag = .matched,
+                        .idx = @intCast(sym_idx1),
+                    };
                 }
-                var sym_idx1: usize = 1;
-                if (loader_spec.options.try_harder_to_match) {
+                sym_idx2 = 1;
+                while (sym_idx2 != max_idx2) : (sym_idx2 +%= 1) {
+                    if (mats2[sym_idx2].tag != .added) {
+                        continue;
+                    }
+                    const sym2: *Elf64_Sym = symbolByIndex(shdr2, sym_idx2);
+                    if (shndx2 != sym2.st_shndx) {
+                        continue;
+                    }
+                    const name2: [:0]u8 = symbolName(info2, shdr2, sym2) orelse {
+                        continue;
+                    };
+                    const name_idx2: NameIndices = nameIndices(name2);
+                    var mat_size_diff: usize = 0;
+                    mat_size_diff -%= 1;
+                    var sym_idx1: usize = 1;
                     while (sym_idx1 != max_idx1) : (sym_idx1 +%= 1) {
-                        if (mats1[sym_idx1] != .unknown) {
+                        if (mats1[sym_idx1].tag != .unknown) {
                             continue;
                         }
                         const sym1: *Elf64_Sym = symbolByIndex(shdr1, sym_idx1);
@@ -1908,63 +2004,77 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                         const name1: [:0]u8 = symbolName(info1, shdr1, sym1) orelse {
                             continue;
                         };
-                        if (loader_spec.logging.hide_mangled_symbols and
-                            !maybeExcludeSymbol(mats1, sym_idx1, name1))
-                        {
-                            continue;
-                        } else if (loader_spec.logging.show_mangled_symbols and
-                            !maybeExcludeSymbol(mats1, sym_idx1, name1))
-                        {
-                            continue;
-                        } else {
-                            hidden_count +%= 1;
-                            hidden_size +%= sym1.st_size;
+                        const name_idx1: NameIndices = nameIndices(name1);
+                        if (compareSymbolBytes(info1, sym1, info2, sym2)) {
+                            mats2[sym_idx2] = .{
+                                .tag = if (name_idx2.mpos != 0) .renamed_mangled else .renamed,
+                                .idx = @intCast(sym_idx1),
+                            };
+                            break;
                         }
-                        for (mats2[1..max_idx2], 0..) |mat2, sym_idx2| {
-                            if (mat2 != .mangled) {
-                                continue;
-                            }
-                            const sym2: *Elf64_Sym = symbolByIndex(shdr2, sym_idx2);
-                            if (shndx2 != sym2.st_shndx) {
-                                continue;
-                            }
-                            if (sym1.st_size != sym2.st_size or
-                                sym1.st_size == 0)
-                            {
-                                continue;
-                            }
-                            if (sym1.st_value == sym2.st_value) {
-                                continue;
-                            }
-                            if (loader_spec.options._experimental_matching) {
-                                const pos1: usize = mem.indexOfLastEqualOne(u8, '.', name1) orelse name1.len;
-                                const name2: [:0]u8 = symbolName(info2, shdr2, sym2) orelse {
-                                    continue;
-                                };
-                                const pos2: usize = mem.indexOfLastEqualOne(u8, '.', name2) orelse name2.len;
-                                if (mem.testEqualString(name1[0..pos1], name2[0..pos2])) {}
-                                const pos3: usize = mem.indexOfLastEqualMany(u8, "__", name1) orelse name1.len;
-                                const pos4: usize = mem.indexOfLastEqualMany(u8, "__", name2) orelse name2.len;
-                                if (mem.testEqualString(name1[pos1..pos3], name2[pos2..pos4])) {}
-                                if (mats1[sym_idx1] == .mangled and
-                                    mats2[sym_idx2] == .mangled)
-                                {
-                                    if (mem.testEqualString(name1[pos3..], name2[pos4..])) {}
-                                }
-                            }
-                            const bytes1: [*]u8 = @ptrFromInt(info1.prog.addr +% sym1.st_value);
-                            const bytes2: [*]u8 = @ptrFromInt(info2.prog.addr +% sym2.st_value);
-                            if (!mem.testEqualString(bytes1[0..sym1.st_size], bytes2[0..sym2.st_size])) {
-                                continue;
-                            }
-                            if (mats1[sym_idx1] == .mangled and
-                                mats2[sym_idx2] == .mangled)
-                            {
-                                mats1[sym_idx1] = .moved;
-                                mats2[sym_idx2] = .moved;
-                                ptr = writeSymbolMoved(ptr, strtab1, sym1, strtab2, sym2, sym_idx2, sh_name2.len, width);
-                            }
+                        if (name_idx2.mpos & name_idx1.mpos != 0 and
+                            mem.testEqualString(name_idx2.short(name2), name_idx1.short(name1)) and
+                            compareSizes(sym1, sym2, &mat_size_diff))
+                        {
+                            mats2[sym_idx2] = .{
+                                .tag = .renamed_mangled,
+                                .idx = @intCast(sym_idx1),
+                            };
                         }
+                        if (name_idx2.spos & name_idx1.spos != 0 and
+                            mem.testEqualString(name_idx2.short(name2), name_idx1.short(name1)) and
+                            compareSizes(sym1, sym2, &mat_size_diff))
+                        {
+                            mats2[sym_idx2] = .{
+                                .tag = .renamed_namespace,
+                                .idx = @intCast(sym_idx1),
+                            };
+                        }
+                    }
+                    sym_idx1 = mats2[sym_idx2].idx;
+                    if (sym_idx1 != 0) {
+                        mats1[sym_idx1] = .{
+                            .tag = mats2[sym_idx2].tag,
+                            .idx = @intCast(sym_idx2),
+                        };
+                    }
+                }
+                var sym_idx1: usize = 1;
+                sym_idx2 = 1;
+                while (sym_idx2 != max_idx2) : (sym_idx2 +%= 1) {
+                    const sym2: *Elf64_Sym = symbolByIndex(shdr2, sym_idx2);
+                    if (mats2[sym_idx2].tag == .unknown) {
+                        continue;
+                    }
+                    if (sym2.st_shndx != shndx2) {
+                        continue;
+                    }
+                    const name2: [:0]u8 = symbolName(info2, shdr2, sym2) orelse {
+                        continue;
+                    };
+                    const name_idx2: NameIndices = nameIndices(name2);
+                    if (!loader_spec.logging.show_mangled_symbols and
+                        name_idx2.mpos != 0 and
+                        sym2.st_size < loader_spec.options.exclude_size_below)
+                    {
+                        hidden_count +%= 1;
+                        hidden_size +%= sym2.st_size;
+                    } else {
+                        if (mats2[sym_idx2].tag == .added) {
+                            ptr = writeSymbolAdded(ptr, strtab2, sym2, sym_idx2, sh_name2.len, width);
+                            continue;
+                        }
+                        sym_idx1 = mats2[sym_idx2].idx;
+                        const sym1: *Elf64_Sym = symbolByIndex(shdr1, sym_idx1);
+                        const name1: [:0]u8 = symbolName(info1, shdr1, sym1) orelse {
+                            continue;
+                        };
+                        const name_idx1: NameIndices = nameIndices(name1);
+                        ptr = @call(.auto, writeSymbolDifference, .{
+                            ptr,       sym1,     mats1[sym_idx1], name1,
+                            name_idx1, sym2,     mats2[sym_idx2], name2,
+                            name_idx2, sym_idx2, sh_name2.len,    width,
+                        });
                     }
                 }
                 sym_idx1 = 1;
@@ -1973,52 +2083,26 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                     if (sym1.st_shndx != shndx1) {
                         continue;
                     }
-                    if (mats1[sym_idx1] == .unknown) {
-                        const name1: [:0]const u8 = symbolName(info1, shdr1, sym1) orelse {
-                            continue;
-                        };
-                        if (loader_spec.logging.hide_mangled_symbols and
-                            maybeExcludeSymbol(mats1, sym_idx1, name1) and
-                            sym1.st_size < loader_spec.options.exclude_size_below)
-                        {
-                            hidden_count +%= 1;
-                            hidden_size +%= sym1.st_size;
-                            continue;
-                        }
-                        mats1[sym_idx1] = .removed;
+                    if (mats1[sym_idx1].tag != .unknown) {
+                        continue;
+                    }
+                    const name1: [:0]u8 = symbolName(info1, shdr1, sym1) orelse {
+                        continue;
+                    };
+                    const name_idx1: NameIndices = nameIndices(name1);
+                    if (!loader_spec.logging.show_mangled_symbols and
+                        name_idx1.mpos != 0 and
+                        sym1.st_size < loader_spec.options.exclude_size_below)
+                    {
+                        hidden_count +%= 1;
+                        hidden_size +%= sym1.st_size;
+                    } else {
+                        mats1[sym_idx1].tag = .removed;
                         ptr = writeSymbolRemoved(ptr, strtab1, sym1, sym_idx1, sh_name1.len, width);
                     }
                 }
                 return ptr;
             }
-            fn progressiveMatch(values1: []const u8, values2: []const u8) usize {
-                var idx1: usize = 0;
-                var idx2: usize = 0;
-                var idx: *usize = if (values1.len < values2.len) &idx1 else &idx2;
-                var ret: usize = 0;
-                while (!(idx1 == values1.len or idx2 == values2.len)) : (idx.* +%= 1) {
-                    if (values1[idx1] == values2[idx2]) {
-                        idx1 +%= 1;
-                        idx2 +%= 1;
-                        ret +%= 1;
-                    } else {
-                        idx = if (values1.len -% idx1 < values2.len -% idx2) &idx1 else &idx2;
-                    }
-                }
-                return ret;
-            }
-            fn maybeSortInPlace(st_shdr1: *Elf64_Shdr) void {
-                if (st_shdr1.sh_entsize == @sizeOf(Elf64_Sym)) {
-                    const max_idx1: usize = st_shdr1.sh_size / st_shdr1.sh_entsize;
-                    const st: [*]Elf64_Sym = @ptrFromInt(st_shdr1.sh_addr);
-                    algo.shellSort(Elf64_Sym, sortSym, builtin.identity, st[1..max_idx1]);
-                }
-            }
-            const ColumnWidth = struct {
-                addr: usize = 0,
-                size: usize = 0,
-                name: usize = 0,
-            };
             pub fn lengthBinary(info1: *Info, _: usize) usize {
                 @setRuntimeSafety(builtin.is_safe);
                 var sects: ColumnWidth = .{};
@@ -2041,9 +2125,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                     maybeSortInPlace(st_shdr1);
                 }
                 while (shdr_idx1 != info1.ehdr.e_shnum) : (shdr_idx1 +%= 1) {
-                    const mats1: [*]CmpMat = sectionMatches(info1);
                     const shdr1: *Elf64_Shdr = info1.sectionHeaderByIndex(shdr_idx1);
-                    mats1[shdr_idx1] = .matched;
                     ptr = writeSection(ptr, info1, shdr1, shdr_idx1, width);
                     ptr = writeSymtab(ptr, info1, symtab1 orelse continue, shdr_idx1, width);
                 }
@@ -2053,52 +2135,57 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 @setRuntimeSafety(false);
                 const symtab1: ?*Elf64_Shdr = bestSymbolTable(info1);
                 const symtab2: ?*Elf64_Shdr = bestSymbolTable(info2);
-                const mats1: [*]CmpMat = sectionMatches(info1);
-                const mats2: [*]CmpMat = sectionMatches(info2);
-                @memset(mats1[0..info1.ehdr.e_shnum], .unknown);
-                @memset(mats2[0..info2.ehdr.e_shnum], .unknown);
+                const mats1: [*]Match = sectionMatches(info1);
+                const mats2: [*]Match = sectionMatches(info2);
+                @memset(mats1[0..info1.ehdr.e_shnum], .{ .tag = .unknown, .idx = 0 });
+                @memset(mats2[0..info2.ehdr.e_shnum], .{ .tag = .unknown, .idx = 0 });
                 var ptr: [*]u8 = buf;
-                {
-                    var shdr_idx2: usize = 1;
-                    while (shdr_idx2 != info2.ehdr.e_shnum) : (shdr_idx2 +%= 1) {
-                        const shdr2: *Elf64_Shdr = info2.sectionHeaderByIndex(shdr_idx2);
-                        const name2: [:0]u8 = info2.sectionName(shdr2);
-                        var shdr_idx1: usize = 1;
-                        shdr_idx1 = blk: {
-                            const min_idx1: usize = @min(info1.ehdr.e_shnum, shdr_idx2);
-                            shdr_idx1 = min_idx1;
-                            var mat_idx: usize = matchSectionNameInRange(info1, mats1, name2, shdr_idx1, info1.ehdr.e_shnum);
-                            if (mat_idx != 0) {
-                                break :blk mat_idx;
-                            }
-                            shdr_idx1 -|= 5;
-                            shdr_idx1 +%= 1;
-                            mat_idx = matchSectionNameInRange(info1, mats1, name2, shdr_idx1, min_idx1);
-                            if (mat_idx != 0) {
-                                break :blk mat_idx;
-                            }
-                            mat_idx = matchSectionNameInRange(info1, mats1, name2, 1, shdr_idx1);
-                            if (mat_idx != 0) {
-                                break :blk mat_idx;
-                            }
-                            ptr = writeSectionAdded(ptr, info2, shdr2, shdr_idx2, width);
-                            continue;
-                        };
-                        mats2[shdr_idx2] = .matched;
-                        const shdr1: *Elf64_Shdr = info1.sectionHeaderByIndex(shdr_idx1);
-                        ptr = writeSectionDifference(ptr, info2, shdr1, shdr2, shdr_idx2, width);
-                        ptr = @call(.auto, writeSymtabDifference, .{
-                            ptr,       info1, symtab1 orelse continue,
-                            shdr_idx1, info2, symtab2 orelse continue,
-                            shdr_idx2, width,
-                        });
-                    }
+                var shdr_idx2: usize = 1;
+                while (shdr_idx2 != info2.ehdr.e_shnum) : (shdr_idx2 +%= 1) {
+                    const shdr2: *Elf64_Shdr = info2.sectionHeaderByIndex(shdr_idx2);
+                    const name2: [:0]u8 = info2.sectionName(shdr2);
+                    var shdr_idx1: usize = 1;
+                    shdr_idx1 = blk: {
+                        const min_idx1: usize = @min(info1.ehdr.e_shnum, shdr_idx2);
+                        shdr_idx1 = min_idx1;
+                        var mat_idx: usize = matchSectionNameInRange(info1, name2, shdr_idx1, info1.ehdr.e_shnum);
+                        if (mat_idx != 0) {
+                            break :blk mat_idx;
+                        }
+                        shdr_idx1 -|= 5;
+                        shdr_idx1 +%= 1;
+                        mat_idx = matchSectionNameInRange(info1, name2, shdr_idx1, min_idx1);
+                        if (mat_idx != 0) {
+                            break :blk mat_idx;
+                        }
+                        mat_idx = matchSectionNameInRange(info1, name2, 1, shdr_idx1);
+                        if (mat_idx != 0) {
+                            break :blk mat_idx;
+                        }
+                        mats2[shdr_idx2].tag = .added;
+                        continue;
+                    };
+                    mats1[shdr_idx1] = .{
+                        .idx = @truncate(shdr_idx2),
+                        .tag = .matched,
+                    };
+                    mats2[shdr_idx2] = .{
+                        .idx = @truncate(shdr_idx1),
+                        .tag = .matched,
+                    };
+                    const shdr1: *Elf64_Shdr = info1.sectionHeaderByIndex(shdr_idx1);
+                    ptr = writeSectionDifference(ptr, info2, shdr1, shdr2, shdr_idx2, width);
+                    ptr = @call(.auto, writeSymtabDifference, .{
+                        ptr,       info1, symtab1 orelse continue,
+                        shdr_idx1, info2, symtab2 orelse continue,
+                        shdr_idx2, width,
+                    });
                 }
                 var shdr_idx1: usize = 1;
                 while (shdr_idx1 != info1.ehdr.e_shnum) : (shdr_idx1 +%= 1) {
                     const shdr1: *Elf64_Shdr = info1.sectionHeaderByIndex(shdr_idx1);
-                    if (mats1[shdr_idx1] == .unknown) {
-                        mats1[shdr_idx1] = .removed;
+                    if (mats1[shdr_idx1].tag == .unknown) {
+                        mats1[shdr_idx1].tag = .removed;
                         ptr = writeSectionRemoved(ptr, info1, shdr1, shdr_idx1, width);
                     }
                 }
@@ -2115,7 +2202,6 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 const strtab1: [*]u8 = @ptrFromInt(info1.sectionHeaderByIndex(st_shdr1.sh_link).sh_addr);
                 const max_idx1: usize = st_shdr1.sh_size / st_shdr1.sh_entsize;
                 const shdr1: *Elf64_Shdr = info1.sectionHeaderByIndex(shndx1);
-                const mats1: [*]CmpMat = symbolMatches(shdr1);
                 const section_name: [:0]const u8 = info1.sectionName(shdr1);
                 var hidden_size: usize = 0;
                 var hidden_count: usize = 0;
@@ -2126,11 +2212,13 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                     if (shndx1 != sym1.st_shndx) {
                         continue;
                     }
-                    const name1: [:0]const u8 = symbolName(info1, st_shdr1, sym1) orelse {
+                    const name1: [:0]u8 = symbolName(info1, st_shdr1, sym1) orelse {
                         continue;
                     };
-                    if (loader_spec.logging.hide_mangled_symbols and
-                        maybeExcludeSymbol(mats1, sym_idx1, name1))
+                    const name_idx1: NameIndices = nameIndices(name1);
+                    if (!loader_spec.logging.show_mangled_symbols and
+                        name_idx1.mpos != 0 and
+                        sym1.st_size < loader_spec.options.exclude_size_below)
                     {
                         hidden_count +%= 1;
                         hidden_size +%= sym1.st_size;
@@ -2357,7 +2445,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             fn writeSymbolIntro(
                 buf: [*]u8,
                 value: usize,
-                event: CmpMat,
+                event: Match.Tag,
                 name_len: usize,
                 width: usize,
             ) [*]u8 {
@@ -2507,26 +2595,28 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             }
             fn writeSymbolDifference(
                 buf: [*]u8,
-                info1: *const Info,
                 sym1: *const Elf64_Sym,
-                mat1: CmpMat,
-                info2: *const Info,
-                strtab2: [*]u8,
+                mat1: Match,
+                name1: [:0]u8,
+                name_idx1: NameIndices,
                 sym2: *const Elf64_Sym,
-                mat2: CmpMat,
+                mat2: Match,
+                name2: [:0]u8,
+                name_idx2: NameIndices,
                 sym_idx2: usize,
                 name_len: usize,
                 width: usize,
             ) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
-                if (mat1 != mat2 or
-                    sym1.st_size == sym2.st_size or
-                    sym1.st_shndx > info1.ehdr.e_shnum or
-                    sym2.st_shndx > info2.ehdr.e_shnum)
+                if (mat1.tag != mat2.tag) {
+                    return buf;
+                }
+                if (!loader_spec.logging.show_unchanged_symbols and
+                    sym1.st_size == sym2.st_size)
                 {
                     return buf;
                 }
-                var ptr: [*]u8 = writeSymbolIntro(buf, sym_idx2, mat2, name_len, width);
+                var ptr: [*]u8 = writeSymbolIntro(buf, sym_idx2, mat2.tag, name_len, width);
                 ptr[0..5].* = "addr=".*;
                 ptr += 5;
                 ptr += fmt.ux64(sym2.st_value).formatWriteBuf(ptr);
@@ -2539,7 +2629,13 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 ptr += 2;
                 ptr[0..5].* = "name=".*;
                 ptr += 5;
-                ptr = writeBoldShortName(ptr, mem.terminate(strtab2 + sym2.st_name, 0));
+                if (@as(usize, @bitCast(name_idx1)) !=
+                    @as(usize, @bitCast(name_idx2)))
+                {
+                    ptr = writeRenamedBoldShortName(ptr, name1, name_idx1, name2, name_idx2);
+                } else {
+                    ptr = writeBoldShortName(ptr, name2);
+                }
                 ptr[0] = '\n';
                 ptr += 1;
                 return ptr;
@@ -2576,18 +2672,6 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 ptr[0] = '\n';
                 ptr += 1;
                 return ptr;
-            }
-            fn maybeExcludeSymbol(mats: [*]CmpMat, sym_idx: usize, name: []const u8) bool {
-                @setRuntimeSafety(builtin.is_safe);
-                for (loader_spec.options.exclude_terms) |suffix| {
-                    if (mem.testEqualManyIn(u8, suffix, name)) {
-                        if (@intFromPtr(mats) > lb_meta_addr) {
-                            mats[sym_idx] = .mangled;
-                        }
-                        return true;
-                    }
-                }
-                return false;
             }
             fn writeBoldShortName(buf: [*]u8, name: [:0]u8) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
@@ -2629,7 +2713,13 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 ptr += 5;
                 return ptr;
             }
-            fn writeRenamedBoldShortName(buf: [*]u8, name1: [:0]u8, name2: [:0]u8) usize {
+            fn writeRenamedBoldShortName(
+                buf: [*]u8,
+                name1: [:0]u8,
+                name_idx1: NameIndices,
+                name2: [:0]u8,
+                name_idx2: NameIndices,
+            ) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
                 // For now only look at three points of renaming:
                 // top.elf.writeRename__anon_1023
@@ -2644,15 +2734,13 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 // TODO: First round of rename detection should focus on symbols
                 // `added` in file2 and `unknown` in file1.
                 //
-                const pos1: usize = mem.indexOfLastEqualOne(u8, '.', name1) orelse 0;
-                const pos2: usize = mem.indexOfLastEqualOne(u8, '.', name2) orelse 0;
-                var ptr: [*]u8 = writeChangedNameSegment(buf, name1[0..pos1], name2[0..pos2]);
+                var ptr: [*]u8 = writeChangedNameSegment(buf, name1[0..name_idx1.spos], name2[0..name_idx1.spos]);
                 ptr[0..8].* = (tab.fx.none ++ tab.fx.style.bold).*;
                 ptr += 8;
-                ptr = writeChangedNameSegment(ptr, name1[pos1..], name2[pos2..]);
+                ptr = writeChangedNameSegment(ptr, name1[name_idx1.spos..], name2[name_idx2.spos..]);
                 ptr[0..4].* = tab.fx.none.*;
                 ptr += 4;
-                return @intFromPtr(ptr) - @intFromPtr(buf);
+                return ptr;
             }
         };
     };
