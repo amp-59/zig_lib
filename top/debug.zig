@@ -682,10 +682,7 @@ pub const panic_extra = struct {
     pub noinline fn panicSignal(message: []const u8, ctx_ptr: *const anyopaque) noreturn {
         @setCold(true);
         @setRuntimeSafety(false);
-        const regs: bits.RegisterState = @as(
-            *bits.RegisterState,
-            @ptrFromInt(@intFromPtr(ctx_ptr) +% bits.RegisterState.offset),
-        ).*;
+        const regs: bits.RegisterState = @as(*bits.RegisterState, @ptrFromInt(@intFromPtr(ctx_ptr) +% bits.RegisterState.offset)).*;
         if (builtin.want_stack_traces and builtin.trace.Signal) {
             printStackTrace(&builtin.trace, regs.rip, regs.rbp);
         }
@@ -720,9 +717,9 @@ pub const panic_extra = struct {
         @setRuntimeSafety(false);
         const ret_addr: usize = @returnAddress();
         var buf: [1024]u8 = undefined;
-        var ux64: fmt.Type.Ux64 = .{ .value = addr };
         buf[0..8].* = "address ".*;
         var ptr: [*]u8 = buf[8..];
+        var ux64: fmt.Type.Ux64 = .{ .value = addr };
         ptr += ux64.formatWriteBuf(ptr);
         ptr[0..19].* = " above upper bound ".*;
         ptr += 19;
@@ -735,9 +732,9 @@ pub const panic_extra = struct {
         @setRuntimeSafety(false);
         const ret_addr: usize = @returnAddress();
         var buf: [1024]u8 = undefined;
-        var ux64: fmt.Type.Ux64 = .{ .value = addr };
         buf[0..8].* = "address ".*;
         var ptr: [*]u8 = buf[8..];
+        var ux64: fmt.Type.Ux64 = .{ .value = addr };
         ptr += ux64.formatWriteBuf(ptr);
         ptr[0..19].* = " below lower bound ".*;
         ptr += 19;
@@ -750,9 +747,9 @@ pub const panic_extra = struct {
         @setRuntimeSafety(false);
         const ret_addr: usize = @returnAddress();
         var buf: [1024]u8 = undefined;
-        var ud64: fmt.Type.Ud64 = .{ .value = expected };
         buf[0..28].* = "sentinel mismatch: expected ".*;
         var ptr: [*]u8 = buf[28..];
+        var ud64: fmt.Type.Ud64 = .{ .value = expected };
         ptr += ud64.formatWriteBuf(ptr);
         ptr[0..8].* = ", found ".*;
         ptr += 8;
@@ -765,13 +762,13 @@ pub const panic_extra = struct {
         @setRuntimeSafety(false);
         const ret_addr: usize = @returnAddress();
         var buf: [1024]u8 = undefined;
-        var ud64: fmt.Type.Ud64 = @bitCast(lower);
         buf[0..12].* = "start index ".*;
         var ptr: [*]u8 = buf[12..];
+        var ud64: fmt.Type.Ud64 = .{ .value = lower };
         ptr += ud64.formatWriteBuf(ptr);
         ptr[0..26].* = " is larger than end index ".*;
         ptr += 26;
-        ud64 = @bitCast(upper);
+        ud64.value = upper;
         ptr += ud64.formatWriteBuf(ptr);
         builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr);
     }
