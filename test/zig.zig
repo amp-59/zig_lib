@@ -556,7 +556,7 @@ fn testNullByteBeforeEof() !void {
     try testTokenize("/// NUL\x00\n", &.{ .doc_comment, .invalid });
 }
 fn testTokenize(source: [:0]const u8, expected_token_tags: []const builtin.parse.Token.Tag) !void {
-    var tokenizer = builtin.parse.TokenIterator{ .buf = source, .buf_pos = 0, .inval = null };
+    var tokenizer = builtin.parse.TokenIterator{ .buf = @constCast(source), .buf_pos = 0, .inval = null };
     for (expected_token_tags) |expected_token_tag| {
         const token = tokenizer.next();
         try debug.expectEqual(builtin.parse.Token.Tag, expected_token_tag, token.tag);
