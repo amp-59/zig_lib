@@ -579,25 +579,19 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             const Tasks = struct {
                 /// Primary (default) task for this node.
                 tag: Task,
-                /// State information for any tasks associated with this node.
-                lock: Lock,
                 /// Compile command information for this node. Can be a pointer to any
                 /// command struct.
-                cmd: tasks.Command = undefined,
+                cmd: tasks.Command,
             };
             pub const Depn = struct {
                 /// The node holding this dependency will block on this task ...
                 task: Task,
-                /// Until node given by nodes[on_idx] has ...
-                on_idx: usize,
                 /// This task ...
                 on_task: Task,
-                /// In this state.
+                /// In this state ...
                 on_state: State,
-            };
-            pub const File = extern struct {
-                kind: types.File,
-                stat: file.Status,
+                ///  For node given by this index.
+                node_idx: u16,
             };
             pub const Lists = extern struct {
                 buf: [len]List,
@@ -619,7 +613,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     /// format
                     ///     [0] <build_root> / <path/to/target>
                     paths = 3 | item(file.CompoundPath, 2),
-                    stats = 6 | item(File, 3),
+                    files = 6 | item(File, 3),
                     cmd_args = 1 | item([*:0]u8, 1),
                     run_args = 2 | item([*:0]u8, 1),
                     fn item(comptime T: type, comptime init_len: comptime_int) u16 {
@@ -630,7 +624,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     addr: usize,
                     len: usize,
                     max_len: usize,
-                    fn add(res: *List, allocator: *Allocator, tag: Lists.Tag) usize {
+                    fn add(res: *List, allocator: *Allocator, tag: Tag) usize {
                         defer res.len +%= 1;
                         return allocator.addGeneric(
                             (@intFromEnum(tag) >> 8),
@@ -641,7 +635,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         );
                     }
                 };
-                pub fn set(lists: *Lists, comptime T: type, tag: Lists.Tag, val: []const T) void {
+                pub fn set(lists: *Lists, comptime T: type, tag: Tag, val: []const T) void {
                     @setRuntimeSafety(false);
                     lists.buf[@intFromEnum(tag) & 0xf] = .{
                         .addr = @intFromPtr(val.ptr),
@@ -649,19 +643,19 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                         .max_len = val.len,
                     };
                 }
-                fn list(lists: *Lists, tag: Lists.Tag) *List {
+                fn list(lists: *Lists, tag: Tag) *List {
                     @setRuntimeSafety(false);
                     return &lists.buf[@intFromEnum(tag) & 0xf];
                 }
-                fn add(lists: *Lists, allocator: *Allocator, tag: Lists.Tag) usize {
+                fn add(lists: *Lists, allocator: *Allocator, tag: Tag) usize {
                     @setRuntimeSafety(false);
                     return lists.buf[@intFromEnum(tag) & 0xf].add(allocator, tag);
                 }
-                fn get(lists: *const Lists, tag: Lists.Tag) usize {
+                fn get(lists: *const Lists, tag: Tag) usize {
                     @setRuntimeSafety(false);
                     return @intFromPtr(&lists.buf[@intFromEnum(tag) & 0xf]);
                 }
-                const len: usize = @typeInfo(Lists.Tag).Enum.fields.len;
+                const len: usize = @typeInfo(Tag).Enum.fields.len;
             };
             pub const Config = extern struct {
                 data: u64,
