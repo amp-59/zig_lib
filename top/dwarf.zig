@@ -536,7 +536,7 @@ pub const Unit = extern struct {
         const buf: [*]u8 = bytes + unit_off;
         const ret: *Unit = dwarf_info.addUnit(allocator);
         ret.off = unit_off;
-        ret.word_size = @as(WordSize, @enumFromInt(@as(u8, 4) << @intFromBool(@as(*align(1) u32, @ptrCast(buf)).* == ~@as(u32, 0))));
+        ret.word_size = @enumFromInt(@as(u8, 4) << @intFromBool(@as(*align(1) u32, @ptrCast(buf)).* == ~@as(u32, 0)));
         switch (ret.word_size) {
             .qword => ret.len = @as(*align(1) u64, @ptrCast(buf + 4)).*,
             .dword => ret.len = @as(*align(1) u32, @ptrCast(buf)).*,
@@ -556,7 +556,10 @@ pub const Unit = extern struct {
         {
             proc.exitError(error.InvalidDWARFVersion, 2);
         }
-        ret.abbrev_tab = allocator.create(AbbrevTable);
+        ret.abbrev_tab = @ptrFromInt(allocator.allocateRaw(
+            @sizeOf(AbbrevTable),
+            @alignOf(AbbrevTable),
+        ));
         pos +%= 2;
         if (ret.version >= 5) {
             if (@as(UT, @enumFromInt(buf[pos])) != .compile) {
@@ -579,7 +582,10 @@ pub const Unit = extern struct {
             ret.addr_size = buf[pos];
             pos +%= 1;
         }
-        ret.info_entry = allocator.create(Die);
+        ret.info_entry = @ptrFromInt(allocator.allocateRaw(
+            @sizeOf(Die),
+            @alignOf(Die),
+        ));
         ret.info_entry.off = unit_off +% pos;
         return ret;
     }
@@ -618,10 +624,7 @@ const AbbrevTable = struct {
         @setRuntimeSafety(builtin.is_safe);
         const size_of: comptime_int = @sizeOf(AbbrevTable.Entry);
         const addr_buf: *usize = @ptrCast(&table.ents);
-        const ret: *AbbrevTable.Entry = @as(
-            *AbbrevTable.Entry,
-            @ptrFromInt(allocator.addGeneric(size_of, 1, addr_buf, &table.ents_max_len, table.ents_len)),
-        );
+        const ret: *AbbrevTable.Entry = @ptrFromInt(allocator.addGeneric(size_of, 1, addr_buf, &table.ents_max_len, table.ents_len));
         table.ents_len +%= 1;
         mem.zero(AbbrevTable.Entry, ret);
         return ret;
@@ -1341,16 +1344,13 @@ pub const DwarfInfo = extern struct {
             pos +%= 1;
         }
         const is_stmt: bool = buf[pos] != 0;
-        pos +%= 1;
-        const line_base: i8 = @as(i8, @bitCast(buf[pos]));
-        pos +%= 1;
-        const line_range: u8 = buf[pos];
-        pos +%= 1;
-        const opcode_base: u8 = buf[pos];
-        pos +%= 1;
-        var opcode_lens: []u8 = allocator.allocate(u8, opcode_base -% 1);
+        const line_base: i8 = @bitCast(buf[pos +% 1]);
+        const line_range: u8 = buf[pos +% 2];
+        const opcode_base: u8 = buf[pos +% 3];
+        pos +%= 4;
+        var opcode_lens: [*]u8 = @ptrFromInt(allocator.allocateRaw(opcode_base -% 1, 1));
         var idx: usize = 0;
-        while (idx < opcode_base -% 1) : (idx +%= 1) {
+        while (idx != opcode_base -% 1) : (idx +%= 1) {
             opcode_lens[idx] = buf[pos];
             pos +%= 1;
         }
@@ -1378,7 +1378,7 @@ pub const DwarfInfo = extern struct {
             const opcode: u8 = buf[pos];
             pos +%= 1;
             if (opcode == @intFromEnum(LNS.extended_op)) {
-                const op_size = parse.noexcept.readLEB128(u64, bytes[pos..]);
+                const op_size = parse.noexcept.unsignedLEB128(buf + pos);
                 pos +%= op_size[1];
                 if (op_size[0] < 1) {
                     proc.exitError(error.InvalidEncoding, 2);
@@ -1432,7 +1432,7 @@ pub const DwarfInfo = extern struct {
                         prog.state.is_basic_block = false;
                     },
                     LNS.advance_pc => {
-                        const arg = parse.noexcept.readLEB128(usize, bytes[pos..]);
+                        const arg = parse.noexcept.unsignedLEB128(buf + pos);
                         pos +%= arg[1];
                         prog.state.addr +%= arg[0] *% min_instr_len;
                     },
@@ -1442,12 +1442,12 @@ pub const DwarfInfo = extern struct {
                         prog.state.line +%= arg[0];
                     },
                     LNS.set_file => {
-                        const arg = parse.noexcept.readLEB128(usize, bytes[pos..]);
+                        const arg = parse.noexcept.unsignedLEB128(buf + pos);
                         pos +%= arg[1];
                         prog.state.file = arg[0];
                     },
                     LNS.set_column => {
-                        const arg = parse.noexcept.readLEB128(u64, bytes[pos..]);
+                        const arg = parse.noexcept.unsignedLEB128(buf + pos);
                         pos +%= arg[1];
                         prog.state.column = arg[0];
                     },
@@ -1467,7 +1467,7 @@ pub const DwarfInfo = extern struct {
                         prog.state.addr +%= arg;
                     },
                     else => {
-                        if (opcode -% 1 >= opcode_lens.len) {
+                        if (opcode -% 1 >= opcode_base) {
                             proc.exitError(error.InvalidEncoding, 2);
                         }
                         pos +%= opcode_lens[opcode -% 1];
@@ -1785,77 +1785,65 @@ const about = struct {
             }
         }
     }
-    fn debugDieNotice(info_entry: *Die) !void {
+    fn debugDieNotice(info_entry: *Die) void {
         @setRuntimeSafety(builtin.is_safe);
         var buf: [32768]u8 = undefined;
-        var tmp: [24]u8 = undefined;
-        var len: usize = debug_entry_s.len;
         var id64: fmt.Type.Id64 = undefined;
-        @as(fmt.AboutDest, @ptrCast(&buf)).* = debug_entry_s.*;
-        @memcpy(buf[len..].ptr, @tagName(info_entry.head.tag));
-        len +%= @tagName(info_entry.head.tag).len;
-        buf[len] = '\n';
-        len +%= 1;
+        buf[0..debug_entry_s.len].* = debug_entry_s.*;
+        var ptr: [*]u8 = buf[debug_entry_s.len..];
+        ptr = fmt.strcpyEqu(ptr, @tagName(info_entry.head.tag));
+        ptr[0] = '\n';
+        ptr += 1;
         for (info_entry.kvs[0..info_entry.kvs_len], 0..) |*kv, kv_idx| {
-            id64 = @bitCast(kv_idx);
-            const tmp_len: usize = id64.formatWriteBuf(&tmp);
-            @as(*[4]u8, @ptrCast(buf[len..].ptr)).* = "    ".*;
-            len +%= 4 -% tmp_len;
-            @memcpy(buf[len..].ptr, tmp[0..tmp_len]);
-            len +%= tmp_len;
-            buf[len] = ':';
-            len +%= 1;
-            @memset(buf[len .. len +% 11], ' ');
-            len +%= 11;
-            @memcpy(buf[len..].ptr, @tagName(kv.key));
-            len +%= @tagName(kv.key).len;
-            @as(*[2]u8, @ptrCast(buf[len..].ptr)).* = ": ".*;
-            len +%= 2;
-            @memcpy(buf[len..], @tagName(kv.val));
-            len +%= @tagName(kv.val).len;
-            @as(*[3]u8, @ptrCast(buf[len..].ptr)).* = " = ".*;
-            len +%= 3;
+            ptr += fmt.writeSideBarIndex(ptr, 4, kv_idx);
+            ptr = fmt.strcpyEqu(ptr, @tagName(kv.key));
+            ptr[0..2].* = ": ".*;
+            ptr += 2;
+            ptr = fmt.strcpyEqu(ptr, @tagName(kv.val));
+            ptr[0..3].* = " = ".*;
+            ptr += 3;
             switch (kv.val) {
                 .Address => |addr| {
                     id64.value = @bitCast(addr);
-                    len +%= id64.formatWriteBuf(buf[len..].ptr);
+                    ptr += id64.formatWriteBuf(ptr);
                 },
                 .AddrOffset => |addrx| {
                     id64.value = @bitCast(addrx);
-                    len +%= id64.formatWriteBuf(buf[len..].ptr);
+                    ptr += id64.formatWriteBuf(ptr);
                 },
                 .Block => |block| {
-                    debug.write(buf[0..len]);
-                    len = 0;
+                    debug.write(fmt.slice(ptr, &buf));
+                    ptr = &buf;
                     debug.write(block);
                 },
                 .Const => |val| {
                     id64 = @bitCast(val.payload);
-                    len +%= id64.formatWriteBuf(buf[len..].ptr);
+                    ptr += id64.formatWriteBuf(ptr);
                 },
-                .StrPtr => |ptr| {
+                .StrPtr => |strptr| {
                     if (DwarfInfo.active) |dwarf_info| {
-                        debug.write(buf[0..len]);
-                        len = 0;
-                        debug.write(dwarf_info.getString(ptr));
+                        debug.write(fmt.slice(ptr, &buf));
+                        ptr = buf[0..];
+                        debug.write(dwarf_info.getString(strptr));
                     } else {
-                        buf[len] = '@';
-                        len +%= 1;
-                        id64.value = @bitCast(ptr);
-                        len +%= id64.formatWriteBuf(buf[len..].ptr);
+                        ptr[0] = '@';
+                        ptr += 1;
+                        id64.value = @bitCast(strptr);
+                        ptr += id64.formatWriteBuf(ptr);
                     }
                 },
                 .Ref => |ref| {
-                    buf[len] = '@';
-                    len +%= 1;
+                    ptr[0] = '@';
+                    ptr += 1;
                     id64.value = @bitCast(ref);
-                    len +%= id64.formatWriteBuf(buf[len..].ptr);
+                    ptr += id64.formatWriteBuf(ptr);
                 },
                 else => {},
             }
-            buf[len] = '\n';
-            debug.write(buf[0 .. len +% 1]);
-            len = 0;
+            ptr[0] = '\n';
+            ptr += 1;
+            debug.write(fmt.slice(ptr, &buf));
+            ptr = buf[0..];
         }
     }
 };
