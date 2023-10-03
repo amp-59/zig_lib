@@ -22,6 +22,8 @@ pub const message_style: [:0]const u8 =
     if (@hasDecl(root, "message_style")) root.message_style else "\x1b[2m";
 pub const enable_debugging: bool =
     if (@hasDecl(root, "enable_debugging")) root.enable_debugging else false;
+pub const trace: zl.debug.Trace =
+    if (@hasDecl(root, "trace")) root.trace else zl.builtin.my_trace;
 pub const logging_override: zl.debug.Logging.Override = .{
     .Attempt = enable_debugging,
     .Success = enable_debugging,
@@ -44,11 +46,6 @@ pub const signal_handlers = .{
     .FloatingPointError = enable_debugging,
     .Trap = enable_debugging,
     .SegmentationFault = enable_debugging,
-};
-pub const trace: zl.debug.Trace = .{
-    .Error = enable_debugging,
-    .Fault = enable_debugging,
-    .Signal = enable_debugging,
 };
 pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     var address_space: Builder.AddressSpace = .{};
