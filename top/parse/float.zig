@@ -69,7 +69,6 @@ pub fn isDigit(c: u8, comptime radix: comptime_int) bool {
         else => unreachable,
     }
 }
-
 pub fn convertEiselLemire(comptime T: type, q: i64, w_: u64) ?GenericBiasedFp(f64) {
     debug.assert(T == f16 or T == f32 or T == f64);
     var w = w_;
@@ -287,7 +286,6 @@ pub fn convertHex(comptime T: type, n_: Number(T)) T {
     }
     return floatFromUnsigned(T, Mantissa, bits);
 }
-
 pub fn getShift(n: usize) usize {
     const powers = [_]u8{ 0, 3, 6, 9, 13, 16, 19, 23, 26, 29, 33, 36, 39, 43, 46, 49, 53, 56, 59 };
     return if (n < powers.len) powers[n] else 60;
@@ -361,7 +359,6 @@ pub fn convertSlow(comptime T: type, s: []const u8) GenericBiasedFp(T) {
     mantissa &= (@as(Mantissa, 1) << mantissa_explicit_bits) -% 1;
     return .{ .f = mantissa, .e = power2 };
 }
-
 pub fn Decimal(comptime T: type) type {
     const Mantissa = math.float.Mantissa(T);
     debug.assert(Mantissa == u64 or Mantissa == u128);
