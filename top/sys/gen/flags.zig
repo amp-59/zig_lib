@@ -285,7 +285,6 @@ pub fn ContainerDeclsToBitFieldFormat(comptime backing_integer: type) type {
                     array.writeMany("\n};\n");
                 }
             }
-
             array.writeMany("pub fn formatWriteBuf(format:@This(),buf:[*]u8)usize{\n");
             array.writeMany("@setRuntimeSafety(false);\n");
             array.writeMany("var tmp:");
@@ -322,9 +321,9 @@ pub fn ContainerDeclsToBitFieldFormat(comptime backing_integer: type) type {
                         array.writeFormat(fmt.ud64(gst.max_end_bits +% gst.max_off_bits));
                         array.writeMany(");\n");
                         array.writeMany("if(tmp&1!=0){\n");
-                        array.writeMany("ptr[0]=',';\n");
-                        array.writeMany("ptr=fmt.strcpyEqu(ptr+@intFromBool(ptr!=buf),gst[");
-                        array.writeMany("val&");
+                        array.writeMany("buf[len]=',';\n");
+                        array.writeMany("len+%=@intFromBool(len!=6);\n");
+                        array.writeMany("len+%=fmt.strcpy(buf+len,gst[val&");
                         array.writeFormat(fmt.ux64((unit << @truncate(gst.max_off_bits)) -% 1));
                         array.writeMany("..(val>>");
                         array.writeFormat(fmt.ud64(gst.max_off_bits));
