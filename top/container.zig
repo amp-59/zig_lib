@@ -545,29 +545,28 @@ const @"1" = opaque {
         }
     }
     fn formatLengthFault(format_type_name: []const u8, operator_symbol: anytype, s_len: u64, t_len: u64) noreturn {
-        const help_read: bool = t_len > 99_999;
-        const notation: []const u8 = if (help_read) ", i.e. " else "\n";
         var buf: [32768]u8 = undefined;
-        const ptr: [*]u8 = &buf;
-        var len: usize = 0;
-        var ud64: fmt.Type.Ud64 = @bitCast(t_len);
-        @memcpy(ptr, format_type_name);
-        len +%= format_type_name.len;
-        len +%= ud64.formatWriteBuf(ptr + len);
-        @as(*[operator_symbol.len]u8, @ptrCast(ptr + len)).* = operator_symbol.*;
-        len +%= operator_symbol.len;
-        ud64 = @bitCast(s_len);
-        len +%= ud64.formatWriteBuf(ptr + len);
-        @memcpy(ptr + len, notation);
-        if (help_read) {
-            buf[len] = '0';
-            len +%= 1;
-            @as(*[operator_symbol.len]u8, @ptrCast(ptr + len)).* = operator_symbol.*;
-            len +%= operator_symbol.len;
-            ud64 = @bitCast(t_len -% s_len);
-            len +%= ud64.formatWriteBuf(ptr + len);
+        var ptr: [*]u8 = &buf;
+        var ud64: fmt.Type.Ud64 = .{ .value = t_len };
+        ptr = fmt.strcpyEqu(ptr, format_type_name);
+        ptr += ud64.formatWriteBuf(ptr);
+        ptr[0..operator_symbol.len].* = operator_symbol.*;
+        ptr += operator_symbol.len;
+        ud64.value = s_len;
+        ptr += ud64.formatWriteBuf(ptr);
+        if (t_len > 99_999) {
+            ptr[0..7].* = ", i.e. ".*;
+            ptr += 7;
+            ptr[0] = '0';
+            ptr += 1;
+            ptr[0..operator_symbol.len].* = operator_symbol.*;
+            ptr += operator_symbol.len;
+            ud64.value = t_len -% s_len;
+            ptr += ud64.formatWriteBuf(ptr);
         }
-        @panic(ptr[0..len]);
+        ptr[0] = '\n';
+        ptr += 1;
+        @panic(buf[0 .. @intFromPtr(ptr) - @intFromPtr(&buf)]);
     }
     pub fn lengthAny(comptime child: type, comptime write_spec: ReinterpretSpec, any: anytype) u64 {
         const dst_type: type = child;
@@ -4933,7 +4932,7 @@ pub fn UnstructuredStreamHolder(comptime Allocator: type, comptime high_alignmen
 }
 pub fn UnstructuredHolder(comptime Allocator: type, comptime high_alignment: u64, comptime low_alignment: ?u64, comptime options: Parameters6.Options) type {
     const params: Parameters6 = params6(Allocator, high_alignment, low_alignment, options);
-    return (struct {
+    const T = struct {
         impl: Implementation,
         const Array = @This();
         pub const Implementation: type = spec.deduce(.read_write_resize, params.options);
@@ -5151,7 +5150,8 @@ pub fn UnstructuredHolder(comptime Allocator: type, comptime high_alignment: u64
             try meta.wrap(array.increment(child, allocator, .{ .count = reinterpret.lengthAny(child, write_spec, any) }));
             array.writeAny(child, write_spec, any);
         }
-    });
+    };
+    return T;
 }
 fn params0(comptime child: type, comptime sentinel: ?*const anyopaque, comptime count: u64, comptime low_alignment: ?u64, comptime options: Parameters0.Options) Parameters0 {
     return .{
