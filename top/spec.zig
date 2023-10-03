@@ -193,44 +193,6 @@ pub const builder = struct {
         pub const silent: zl.build.BuilderSpec.Logging = zl.builtin.zero(zl.build.BuilderSpec.Logging);
     };
 };
-pub const serializer = struct {
-    pub const errors = struct {
-        pub const noexcept: zl.serial.SerialSpec.Errors = .{
-            .create = .{},
-            .open = .{},
-            .close = .{},
-            .stat = .{},
-            .read = .{},
-            .write = .{},
-        };
-        pub const critical: zl.serial.SerialSpec.Errors = .{
-            .create = .{ .throw = sys.open.errors.all },
-            .open = .{ .throw = sys.open.errors.all },
-            .close = .{ .throw = sys.close.errors.all },
-            .stat = .{ .throw = sys.stat.errors.all },
-            .read = .{ .throw = sys.read.errors.all },
-            .write = .{ .throw = sys.write.errors.all },
-        };
-    };
-    pub const logging = struct {
-        pub const verbose: zl.serial.SerialSpec.Logging = .{
-            .create = spec.logging.acquire_error.verbose,
-            .open = spec.logging.acquire_error.verbose,
-            .close = spec.logging.release_error.verbose,
-            .read = spec.logging.success_error.verbose,
-            .write = spec.logging.success_error.verbose,
-            .stat = spec.logging.success_error_fault.verbose,
-        };
-        pub const silent: zl.serial.SerialSpec.Logging = .{
-            .create = spec.logging.acquire_error.silent,
-            .open = spec.logging.acquire_error.silent,
-            .close = spec.logging.release_error.silent,
-            .read = spec.logging.success_error.silent,
-            .write = spec.logging.success_error.silent,
-            .stat = spec.logging.success_error_fault.silent,
-        };
-    };
-};
 pub const file = struct {
     pub const map = struct {
         pub const flags = struct {
