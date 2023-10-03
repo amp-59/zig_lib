@@ -254,15 +254,15 @@ pub const PolynomialFormatSpec = struct {
     separator: ?Separator = null,
 };
 pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
-    const T = packed struct {
+    const T = struct {
         value: Int,
         const Format: type = @This();
         pub const Int: type = @Type(.{ .Int = .{ .bits = fmt_spec.bits, .signedness = fmt_spec.signedness } });
         pub const Abs: type = @Type(.{ .Int = .{ .bits = fmt_spec.bits, .signedness = .unsigned } });
-        const min_abs_value: Abs = fmt_spec.range.min orelse 0;
-        const max_abs_value: Abs = fmt_spec.range.max orelse ~@as(Abs, 0);
-        const min_digits_count: u16 = length(Abs, min_abs_value, fmt_spec.radix);
-        const max_digits_count: u16 = length(Abs, max_abs_value, fmt_spec.radix);
+        const min_abs_value: comptime_int = fmt_spec.range.min orelse 0;
+        const max_abs_value: comptime_int = fmt_spec.range.max orelse ~@as(Abs, 0);
+        const min_digits_count: comptime_int = length(Abs, min_abs_value, fmt_spec.radix);
+        const max_digits_count: comptime_int = length(Abs, max_abs_value, fmt_spec.radix);
         pub const specification: PolynomialFormatSpec = fmt_spec;
         pub const StaticString = mem.StaticString(max_len);
         const max_len: comptime_int = blk: {
@@ -284,9 +284,9 @@ pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
         };
         inline fn absolute(format: Format) Abs {
             if (format.value < 0) {
-                return 1 +% ~@as(Abs, @bitCast(format.value));
+                return @bitCast(1 +% ~format.value);
             } else {
-                return @as(Abs, @bitCast(format.value));
+                return @bitCast(format.value);
             }
         }
         inline fn digits(format: Format) usize {
@@ -303,12 +303,6 @@ pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
             } else {
                 return digits_len;
             }
-        }
-        pub fn formatConvert(format: Format) StaticString {
-            var array: StaticString = undefined;
-            array.undefineAll();
-            array.writeFormat(format);
-            return array;
         }
         pub fn formatWrite(format: Format, array: anytype) void {
             array.define(@call(.always_inline, formatWriteBuf, .{
@@ -367,6 +361,12 @@ pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
                 len +%= 1;
             }
             return len +% format.digits();
+        }
+        pub fn formatConvert(format: Format) StaticString {
+            var array: StaticString = undefined;
+            array.undefineAll();
+            array.writeFormat(format);
+            return array;
         }
     };
     return T;
@@ -1205,6 +1205,44 @@ pub fn GenericDateTimeFormat(comptime DateTime: type) type {
             format.formatWrite(&array);
             return array;
         }
+
+        pub fn formatWrite(format: Format, array: anytype) void {
+            array.writeFormat(yr(format.value.getYear()));
+            array.writeOne('-');
+            array.writeFormat(mon(format.value.getMonth()));
+            array.writeOne('-');
+            array.writeFormat(mday(format.value.getMonthDay()));
+            array.writeOne(' ');
+            array.writeFormat(hr(format.value.getHour()));
+            array.writeOne(':');
+            array.writeFormat(min(format.value.getMinute()));
+            array.writeOne(':');
+            array.writeFormat(sec(format.value.getSecond()));
+            if (@hasDecl(DateTime, "getNanoseconds")) {
+                array.writeOne('.');
+                array.writeFormat(sec(format.value.getNanoSecond()));
+                @compileError("TODO: sig.fig. Formatter");
+            }
+        }
+        pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
+            var ptr: [*]u8 = buf + yr(format.value.getYear()).formatWriteBuf(buf);
+            ptr[0] = '-';
+            ptr += 1;
+            ptr += mon(format.value.getMonth()).formatWriteBuf(ptr);
+            ptr[0] = '-';
+            ptr += 1;
+            ptr += mday(format.value.getMonthDay()).formatWriteBuf(ptr);
+            ptr[0] = ' ';
+            ptr += 1;
+            ptr += hr(format.value.getHour()).formatWriteBuf(ptr);
+            ptr[0] = ':';
+            ptr += 1;
+            ptr += min(format.value.getMinute()).formatWriteBuf(ptr);
+            ptr[0] = ':';
+            ptr += 1;
+            ptr += sec(format.value.getSecond()).formatWriteBuf(ptr);
+            return @intFromPtr(ptr) -% @intFromPtr(buf);
+        }
         pub fn formatLength(format: Format) usize {
             if (builtin.is_small) {
                 if (@hasDecl(DateTime, "getNanoseconds")) {
@@ -1231,24 +1269,6 @@ pub fn GenericDateTimeFormat(comptime DateTime: type) type {
                     @compileError("TODO: sig.fig. Formatter");
                 }
                 return len;
-            }
-        }
-        pub fn formatWrite(format: Format, array: anytype) void {
-            array.writeFormat(yr(format.value.getYear()));
-            array.writeOne('-');
-            array.writeFormat(mon(format.value.getMonth()));
-            array.writeOne('-');
-            array.writeFormat(mday(format.value.getMonthDay()));
-            array.writeOne(' ');
-            array.writeFormat(hr(format.value.getHour()));
-            array.writeOne(':');
-            array.writeFormat(min(format.value.getMinute()));
-            array.writeOne(':');
-            array.writeFormat(sec(format.value.getSecond()));
-            if (@hasDecl(DateTime, "getNanoseconds")) {
-                array.writeOne('.');
-                array.writeFormat(sec(format.value.getNanoSecond()));
-                @compileError("TODO: sig.fig. Formatter");
             }
         }
     };
