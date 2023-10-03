@@ -100,8 +100,7 @@ pub fn start() callconv(.C) noreturn {
         if (@call(.auto, builtin.root.main, params)) {
             return proc.exitNotice(0);
         } else |err| {
-            debug.alarm(@errorName(err), @errorReturnTrace(), @returnAddress());
-            return proc.exit(@truncate(@intFromError(err)));
+            return proc.exitError(err, @truncate(@intFromError(err)));
         }
     }
     if (main_return_type_info == .ErrorUnion and
@@ -110,8 +109,7 @@ pub fn start() callconv(.C) noreturn {
         if (@call(.auto, builtin.root.main, params)) |rc| {
             return proc.exitNotice(rc);
         } else |err| {
-            debug.alarm(@errorName(err), @errorReturnTrace(), @returnAddress());
-            return proc.exit(@truncate(@intFromError(err)));
+            return proc.exitError(err, @truncate(@intFromError(err)));
         }
     }
     @compileError(@TypeOf(main_return_type_info, .ErrorSet));
