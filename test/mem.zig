@@ -47,9 +47,9 @@ fn testArenaIntersection() !void {
 fn testRegularAddressSpace() !void {
     const LAddressSpace = mem.GenericRegularAddressSpace(.{ .divisions = 8, .lb_offset = 0x40000000 });
     var address_space: LAddressSpace = .{};
-    const Allocator = mem.GenericArenaAllocator(.{ .arena_index = 0, .AddressSpace = LAddressSpace });
-    var allocator: Allocator = try Allocator.init(&address_space);
-    defer allocator.deinit(&address_space);
+    const Allocator = mem.GenericRtArenaAllocator(.{ .AddressSpace = LAddressSpace });
+    var allocator: Allocator = try Allocator.init(&address_space, 0);
+    defer allocator.deinit(&address_space, 0);
     var i: u8 = 1;
     while (i != LAddressSpace.specification.divisions) : (i +%= 1) {
         try mem.acquire(LAddressSpace, &address_space, i);
@@ -420,12 +420,20 @@ fn testSampleAllReports() !void {
     testing.announce(@src());
     mem.about.sampleAllReports();
 }
+fn testSequentialMatches() !void {
+    try debug.expectEqual(usize, 4, mem.sequentialMatches("onetwo", "oeto"));
+    try debug.expectEqual(usize, 439, mem.sequentialMatches(
+        @embedFile("../top/build/forwardToExecuteCloneThreaded.s"),
+        @embedFile("../top/build/forwardToExecuteCloneThreaded4.s"),
+    ));
+}
 pub fn main() !void {
-    testSimpleAllocator();
-    try meta.wrap(testArenaIntersection());
     try meta.wrap(testRegularAddressSpace());
-    try meta.wrap(testTaggedSets());
     try meta.wrap(testDiscreteAddressSpace(tab.trivial_list));
+    testSimpleAllocator();
+    try meta.wrap(testSequentialMatches());
+    try meta.wrap(testArenaIntersection());
+    try meta.wrap(testTaggedSets());
     try meta.wrap(testDiscreteAddressSpace(tab.complex_list));
     try meta.wrap(testDiscreteAddressSpace(tab.simple_list));
     try meta.wrap(testRegularAddressSubSpaceFromDiscrete(.{
