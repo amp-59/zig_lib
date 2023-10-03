@@ -4,74 +4,40 @@ const file = @import("../file.zig");
 const builtin = @import("../builtin.zig");
 pub const Path = file.CompoundPath;
 pub const Allocator = mem.SimpleAllocator;
+
 pub const File = enum(u8) {
-    // Formats
-    exe = exe,
-    lib = lib,
-    obj = obj,
-    ar = ar,
-    @"asm" = @"asm",
-    llvm_ir = llvm_ir,
-    llvm_bc = llvm_bc,
-    h = h,
-    docs = docs,
-    analysis = analysis,
-    zig = zig,
-    c = c,
-    dir = dir,
-    cfg = cfg,
-    unknown,
-    const exe = 0;
-    const lib = 1;
-    const obj = 2;
-    const ar = 3;
-    const @"asm" = 4;
-    const llvm_ir = 5;
-    const llvm_bc = 6;
-    const h = 7;
-    const docs = 8;
-    const analysis = 9;
-    const zig = 10;
-    const c = 11;
-    const dir = 12;
-    const cfg = 13;
+    compiler_executable,
+    build_root,
+    cache_root,
+    global_cache_root,
+    output_exe_generic,
+    output_exe_cached,
+    input_exe_generic,
+    output_lib_generic,
+    input_lib_generic,
+    input_ar_generic,
+    output_ar_generic,
+    output_obj_generic,
+    input_obj_generic,
+    input_zig_source_generic,
+    input_zig_source_config,
+    input_asm_source_generic,
+    output_asm_source_generic,
+    input_c_source_generic,
+    output_c_source_generic,
+    input_c_source_header,
+    output_c_source_header,
+    input_cxx_source_generic,
+    input_llvm_ir_generic,
+    output_llvm_ir_generic,
+    input_llvm_bc_generic,
+    output_llvm_bc_generic,
+    file_system_target_generic,
 };
 pub const BinaryOutput = enum(u8) {
-    exe = File.exe,
-    lib = File.lib,
-    obj = File.obj,
-};
-pub const AuxiliaryOutput = enum(u8) {
-    ar = File.ar,
-    @"asm" = File.@"asm",
-    llvm_ir = File.llvm_ir,
-    llvm_bc = File.llvm_bc,
-    h = File.h,
-    docs = File.docs,
-    analysis = File.analysis,
-};
-pub const Output = enum(u8) {
-    exe = File.exe,
-    lib = File.lib,
-    obj = File.obj,
-    ar = File.ar,
-    @"asm" = File.@"asm",
-    llvm_ir = File.llvm_ir,
-    llvm_bc = File.llvm_bc,
-    h = File.h,
-    docs = File.docs,
-    analysis = File.analysis,
-};
-pub const Input = enum(u8) {
-    lib = File.lib,
-    obj = File.obj,
-    ar = File.ar,
-    @"asm" = File.@"asm",
-    llvm_ir = File.llvm_ir,
-    llvm_bc = File.llvm_bc,
-    h = File.h,
-    zig = File.zig,
-    c = File.c,
+    exe = @intFromEnum(File.output_exe_generic),
+    lib = @intFromEnum(File.output_lib_generic),
+    obj = @intFromEnum(File.output_obj_generic),
 };
 pub const AutoOnOff = enum {
     auto,
