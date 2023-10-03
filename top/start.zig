@@ -51,37 +51,37 @@ pub fn start() callconv(.C) noreturn {
             break :blk_0 .{};
         }
         if (main_type_info.Fn.params.len == 1) {
-            const args_len: u64 = @as(*u64, @ptrFromInt(stack)).*;
-            const args_addr: u64 = stack +% 8;
+            const args_len: usize = @as(*usize, @ptrFromInt(stack)).*;
+            const args_addr: usize = stack +% 8;
             const args: [*][*:0]u8 = @ptrFromInt(args_addr);
             break :blk_0 .{args[0..args_len]};
         }
         if (main_type_info.Fn.params.len == 2) {
-            const args_len: u64 = @as(*u64, @ptrFromInt(stack)).*;
-            const args_addr: u64 = stack +% 8;
-            const vars_addr: u64 = stack +% 16 +% (args_len * 8);
+            const args_len: usize = @as(*usize, @ptrFromInt(stack)).*;
+            const args_addr: usize = stack +% 8;
+            const vars_addr: usize = stack +% 16 +% (args_len * 8);
             const args: [*][*:0]u8 = @ptrFromInt(args_addr);
             const vars: [*][*:0]u8 = @ptrFromInt(vars_addr);
-            const vars_len: u64 = blk_1: {
-                var len: u64 = 0;
-                while (@intFromPtr(vars[len]) != 0) len += 1;
+            const vars_len: usize = blk_1: {
+                var len: usize = 0;
+                while (@intFromPtr(vars[len]) != 0) len +%= 1;
                 break :blk_1 len;
             };
             break :blk_0 .{ args[0..args_len], vars[0..vars_len] };
         }
         if (main_type_info.Fn.params.len == 3) {
             const auxv_type: type = main_type_info.Fn.params[2].type orelse *const anyopaque;
-            const args_len: u64 = @as(*u64, @ptrFromInt(stack)).*;
-            const args_addr: u64 = stack +% 8;
-            const vars_addr: u64 = args_addr +% 8 +% (args_len * 8);
+            const args_len: usize = @as(*usize, @ptrFromInt(stack)).*;
+            const args_addr: usize = stack +% 8;
+            const vars_addr: usize = args_addr +% 8 +% (args_len * 8);
             const args: [*][*:0]u8 = @ptrFromInt(args_addr);
             const vars: [*][*:0]u8 = @ptrFromInt(vars_addr);
-            const vars_len: u64 = blk_1: {
-                var len: u64 = 0;
-                while (@intFromPtr(vars[len]) != 0) len += 1;
+            const vars_len: usize = blk_1: {
+                var len: usize = 0;
+                while (@intFromPtr(vars[len]) != 0) len +%= 1;
                 break :blk_1 len;
             };
-            const auxv_addr: u64 = vars_addr +% 8 +% (vars_len * 8);
+            const auxv_addr: usize = vars_addr +% 8 +% (vars_len * 8);
             const auxv: auxv_type = @ptrFromInt(auxv_addr);
             break :blk_0 .{ args[0..args_len], vars[0..vars_len], auxv };
         }
