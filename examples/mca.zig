@@ -25,9 +25,7 @@ const input_open_spec: file.OpenSpec = .{};
 const input_close_spec: file.CloseSpec = .{
     .errors = .{},
 };
-const output_file_spec: file.CreateSpec = .{
-    .options = .{ .exclusive = false },
-};
+const output_file_spec: file.CreateSpec = .{};
 const output_close_spec: file.CloseSpec = .{
     .errors = .{},
 };
@@ -197,7 +195,7 @@ fn writeOutputInnerLoop(fd: usize, file_buf: FixedString, segment: Segment, name
         for (jumps.readAll(), 0..) |idx_1, j| {
             if (j == 0) {
                 name_buf.undefineAll();
-                name_buf.writeAny(spec.reinterpret.ptr, .{ mca_begin_s.*, name, '\n' });
+                name_buf.writeAny(mem.spec.reinterpret.ptr, .{ mca_begin_s.*, name, '\n' });
                 try file.write(.{}, fd, name_buf.readAll());
                 var section_text: []const u8 = file_buf.readAll()[begin..idx_1];
                 if (mem.testEqualManyBack(u8, "ret\n", section_text)) {
@@ -208,7 +206,7 @@ fn writeOutputInnerLoop(fd: usize, file_buf: FixedString, segment: Segment, name
                 const sub_region: []const u8 = file_buf.readManyAt(begin +% 1);
                 name_buf.undefineAll();
                 if (mem.indexOfFirstEqualOne(u8, ':', sub_region)) |colon| {
-                    name_buf.writeAny(spec.reinterpret.ptr, .{ mca_begin_s.*, name, "_", sub_region[0..colon], "\n" });
+                    name_buf.writeAny(mem.spec.reinterpret.ptr, .{ mca_begin_s.*, name, "_", sub_region[0..colon], "\n" });
                 }
                 try file.write(.{}, fd, name_buf.readAll());
                 var section_text: []const u8 = file_buf.readAll()[begin..idx_1];
@@ -219,7 +217,7 @@ fn writeOutputInnerLoop(fd: usize, file_buf: FixedString, segment: Segment, name
                 name_buf.undefineAll();
 
                 if (mem.indexOfFirstEqualOne(u8, ':', sub_region)) |colon| {
-                    name_buf.writeAny(spec.reinterpret.ptr, .{ mca_end_s.*, name, "_", sub_region[0..colon], '\n' });
+                    name_buf.writeAny(mem.spec.reinterpret.ptr, .{ mca_end_s.*, name, "_", sub_region[0..colon], '\n' });
                 }
                 try file.write(.{}, fd, name_buf.readAll());
             }
@@ -228,7 +226,7 @@ fn writeOutputInnerLoop(fd: usize, file_buf: FixedString, segment: Segment, name
         const sub_region: []const u8 = file_buf.readManyAt(begin +% 1);
         name_buf.undefineAll();
         if (mem.indexOfFirstEqualOne(u8, ':', sub_region)) |colon| {
-            name_buf.writeAny(spec.reinterpret.ptr, .{ mca_begin_s.*, name, "_", sub_region[0..colon], '\n' });
+            name_buf.writeAny(mem.spec.reinterpret.ptr, .{ mca_begin_s.*, name, "_", sub_region[0..colon], '\n' });
         }
         try file.write(.{}, fd, name_buf.readAll());
         var section_text: []const u8 = file_buf.readAll()[begin..segment.span.end];
@@ -238,12 +236,12 @@ fn writeOutputInnerLoop(fd: usize, file_buf: FixedString, segment: Segment, name
         try file.write(.{}, fd, section_text);
         name_buf.undefineAll();
         if (mem.indexOfFirstEqualOne(u8, ':', sub_region)) |colon| {
-            name_buf.writeAny(spec.reinterpret.ptr, .{ mca_end_s.*, name, "_", sub_region[0..colon], '\n', mca_end_s.*, name, '\n' });
+            name_buf.writeAny(mem.spec.reinterpret.ptr, .{ mca_end_s.*, name, "_", sub_region[0..colon], '\n', mca_end_s.*, name, '\n' });
         }
         try file.write(.{}, fd, name_buf.readAll());
     } else {
         name_buf.undefineAll();
-        name_buf.writeAny(spec.reinterpret.ptr, .{ mca_begin_s.*, name, '\n' });
+        name_buf.writeAny(mem.spec.reinterpret.ptr, .{ mca_begin_s.*, name, '\n' });
         try file.write(.{}, fd, name_buf.readAll());
         var section_text: []const u8 = file_buf.readAll()[segment.span.begin..segment.span.end];
         if (mem.testEqualManyBack(u8, "ret\n", section_text)) {
@@ -251,7 +249,7 @@ fn writeOutputInnerLoop(fd: usize, file_buf: FixedString, segment: Segment, name
         }
         try file.write(.{}, fd, section_text);
         name_buf.undefineAll();
-        name_buf.writeAny(spec.reinterpret.ptr, .{ mca_end_s.*, name, '\n' });
+        name_buf.writeAny(mem.spec.reinterpret.ptr, .{ mca_end_s.*, name, '\n' });
         try file.write(.{}, fd, name_buf.readAll());
     }
 }
@@ -287,7 +285,7 @@ fn writeOutput(allocator: *Allocator, fd: usize, file_buf: FixedString, segments
 }
 fn fileBuf(allocator: *Allocator, name: [:0]const u8) !FixedString {
     var file_buf: String = String.init(allocator);
-    const fd: usize = try file.open(input_open_spec, name);
+    const fd: usize = try file.open(input_open_spec, .{}, name);
     defer file.close(input_close_spec, fd);
     var st: file.Status = try file.getStatus(.{}, fd);
     try file_buf.increment(allocator, st.size +% 1);
@@ -298,8 +296,7 @@ fn fileBuf(allocator: *Allocator, name: [:0]const u8) !FixedString {
 fn processRequest(options: *const Options, allocator: *Allocator, name: [:0]const u8) anyerror!void {
     var file_buf: FixedString = try fileBuf(allocator, name);
     var segments = try parseInput(allocator, file_buf.readAll());
-
-    const fd: usize = if (options.output) |output| try file.create(output_file_spec, output, file.mode.regular) else 1;
+    const fd: usize = if (options.output) |output| try file.create(output_file_spec, .{ .exclusive = false, .read_write = true }, output, file.mode.regular) else 1;
     defer if (options.output != null) file.close(output_close_spec, fd);
     try writeOutput(allocator, fd, file_buf, &segments);
     segments.deinit(allocator);
