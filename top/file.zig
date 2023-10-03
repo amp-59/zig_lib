@@ -2986,11 +2986,11 @@ pub const about = struct {
         ptr += 7;
         ud64.value = src_fd;
         if (src_offset) |off| {
-            ptr += writeUpdateOffset(ptr, ud64, @bitCast(off.*));
+            ptr += writeUpdateOffset(ptr, ud64, .{ .value = off.* });
         }
         ud64.value = dest_fd;
         if (dest_offset) |off| {
-            ptr += writeUpdateOffset(ptr, ud64, @bitCast(off.*));
+            ptr += writeUpdateOffset(ptr, ud64, .{ .value = off.* });
         }
         debug.write(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)]);
     }
@@ -3317,7 +3317,7 @@ pub const about = struct {
         ptr[0..7].* = " bytes\n".*;
         ptr += 7;
         if (offset) |off| {
-            ptr += writeUpdateOffset(ptr, @bitCast(src_fd), @bitCast(off.*));
+            ptr += writeUpdateOffset(ptr, .{ .value = src_fd }, .{ .value = off.* });
         }
         debug.write(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)]);
     }
@@ -3345,10 +3345,10 @@ pub const about = struct {
         ptr[0..7].* = " bytes\n".*;
         ptr += 7;
         if (src_offset) |off| {
-            ptr += writeUpdateOffset(ptr, @bitCast(src_fd), @bitCast(off.*));
+            ptr += writeUpdateOffset(ptr, .{ .value = src_fd }, .{ .value = off.* });
         }
         if (dest_offset) |off| {
-            ptr += writeUpdateOffset(ptr, @bitCast(dest_fd), @bitCast(off.*));
+            ptr += writeUpdateOffset(ptr, .{ .value = dest_fd }, .{ .value = off.* });
         }
         debug.write(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)]);
     }
