@@ -71,7 +71,7 @@ pub const Event = extern struct {
     sample_max_stack: u16 = 0,
     /// Align to u64
     zb: u16 = 0,
-    pub const Flags = packed struct {
+    pub const Flags = packed struct(usize) {
         /// off by default
         disabled: bool = false,
         /// children inherit it

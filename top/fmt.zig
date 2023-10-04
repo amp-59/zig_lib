@@ -2985,6 +2985,7 @@ pub fn ArrayFormat(comptime spec: RenderSpec, comptime Array: type) type {
             } else {
                 array.writeMany(type_name);
                 array.writeCount(2, "{ ".*);
+
                 if (spec.enable_comptime_iterator and comptime requireComptime(child)) {
                     inline for (format.value) |element| {
                         const sub_format: ChildFormat = .{ .value = element };
