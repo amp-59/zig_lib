@@ -478,6 +478,11 @@ pub const AtStatX = struct {
     pub const DONT_SYNC = 16384;
     pub usingnamespace extra.AtStatX;
 };
+pub const AtAccess = struct {
+    pub const AT_SYMLINK_NOFOLLOW = 256;
+    pub const AT_EACCESS = 512;
+    pub usingnamespace extra.AtAccess;
+};
 pub const DN = struct {
     pub const ACCESS = 1;
     pub const MODIFY = 2;

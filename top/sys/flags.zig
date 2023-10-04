@@ -1651,6 +1651,47 @@ pub const AtStatX = packed struct(usize) {
         return len;
     }
 };
+pub const AtAccess = packed struct(usize) {
+    zb0: u8 = 0,
+    symlink_no_follow: bool = false,
+    effective_access: bool = false,
+    zb10: u54 = 0,
+    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
+        @setRuntimeSafety(false);
+        var tmp: usize = @bitCast(format);
+        if (tmp == 0) return 0;
+        buf[0..6].* = "flags=".*;
+        var len: usize = 6;
+        for ([_]struct { []const u8, u8 }{
+            .{ "symlink_no_follow", 8 },
+            .{ "effective_access", 1 },
+        }) |pair| {
+            tmp >>= @truncate(pair[1]);
+            if (tmp & 1 != 0) {
+                buf[len] = ',';
+                len += @intFromBool(len != 6);
+                len += fmt.strcpy(buf + len, pair[0]);
+            }
+        }
+        return len;
+    }
+    pub fn formatLength(format: @This()) usize {
+        @setRuntimeSafety(false);
+        if (@as(usize, @bitCast(format)) == 0) return 0;
+        var len: usize = 6;
+        var tmp: usize = @bitCast(format);
+        for ([_]struct { u8, u8 }{
+            .{ 19, 8 },
+            .{ 10, 1 },
+        }) |pair| {
+            tmp >>= @truncate(pair[1]);
+            if (tmp & 1 != 0) {
+                len +%= @intFromBool(len != 0) +% pair[0];
+            }
+        }
+        return len;
+    }
+};
 pub const DN = packed struct(usize) {
     ACCESS: bool = false,
     MODIFY: bool = false,

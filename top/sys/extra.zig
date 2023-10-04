@@ -1342,6 +1342,17 @@ pub const AtStatX = struct {
     };
     pub const backing_integer = usize;
 };
+pub const AtAccess = struct {
+    pub const default_values = struct {
+        pub const AT_SYMLINK_NOFOLLOW = false;
+        pub const AT_EACCESS = false;
+    };
+    pub const field_names = struct {
+        pub const AT_SYMLINK_NOFOLLOW = "symlink_no_follow";
+        pub const AT_EACCESS = "effective_access";
+    };
+    pub const backing_integer = usize;
+};
 pub const DN = struct {
     pub const default_values = struct {
         pub const ACCESS = false;
