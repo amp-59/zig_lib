@@ -16,13 +16,20 @@ const perf = @import("../top/perf.zig");
 
 pub usingnamespace zl.start;
 
-pub const logging_override: debug.Logging.Override = debug.spec.logging.override.silent;
+pub const logging_default: debug.Logging.Default = .{
+    .Success = false,
+    .Acquire = false,
+    .Attempt = false,
+    .Release = false,
+    .Error = true,
+    .Fault = true,
+};
 
-const path_spec: file.PathSpec = .{ .errors = .{} };
-const close_spec: file.CloseSpec = .{ .errors = .{} };
-const fork_spec: proc.ForkSpec = .{ .errors = .{} };
-const access_spec: proc.ForkSpec = .{ .errors = .{} };
-const wait_spec: proc.WaitSpec = .{ .errors = .{}, .return_type = void };
+const path_spec: file.PathSpec = .{};
+const close_spec: file.CloseSpec = .{};
+const fork_spec: proc.ForkSpec = .{};
+const access_spec: file.AccessSpec = .{};
+const wait_spec: proc.WaitSpec = .{ .return_type = void };
 
 fn findPathFd(vars: [][*:0]u8, name: [:0]const u8) !u64 {
     var dir_fd: usize = 100;
@@ -30,7 +37,7 @@ fn findPathFd(vars: [][*:0]u8, name: [:0]const u8) !u64 {
     if (name[0] == '/') {
         return dir_fd;
     }
-    if (file.accessAt(access_spec, .{ .symlink_follow = true }, dir_fd, name, .{ .exec = true })) {
+    if (file.accessAt(access_spec, .{ .symlink_no_follow = false }, dir_fd, name, .{ .exec = true })) |_| {
         return dir_fd;
     } else |err| {
         if (err != error.NoSuchFileOrDirectory and
@@ -43,22 +50,22 @@ fn findPathFd(vars: [][*:0]u8, name: [:0]const u8) !u64 {
         .paths = proc.environmentValue(vars, "PATH").?,
     };
     while (itr.next()) |dirname| {
-        dir_fd = file.path(path_spec, .{}, dirname);
-        if (file.accessAt(.{}, dir_fd, name, .{ .exec = true })) {
+        dir_fd = try file.path(path_spec, .{}, dirname);
+        if (file.accessAt(.{}, .{ .symlink_no_follow = false }, dir_fd, name, .{ .exec = true })) |_| {
             itr.done();
             return dir_fd;
         } else |_| {
-            file.close(close_spec, dir_fd);
+            try file.close(close_spec, dir_fd);
         }
     }
     return error.NoExecutableInPath;
 }
 fn forwardExec(args: [][*:0]u8, vars: [][*:0]u8, dir_fd: usize, name: [:0]const u8) !void {
-    const pid: usize = proc.fork(fork_spec);
+    const pid: usize = try proc.fork(fork_spec);
     if (pid == 0) {
-        return file.execAt(.{}, dir_fd, name, args[1..], vars);
+        return file.execAt(.{}, .{}, dir_fd, name, args[1..], vars);
     }
-    proc.waitPid(wait_spec, .{ .pid = pid });
+    try proc.waitPid(wait_spec, .{ .pid = pid });
 }
 const PerfEvents = perf.GenericPerfEvents(.{});
 
@@ -68,12 +75,12 @@ pub fn main(args: [][*:0]u8, vars: [][*:0]u8) !void {
     }
     const name: [:0]const u8 = meta.manyToSlice(args[1]);
     const dir_fd: usize = try findPathFd(vars, name);
-    defer file.close(close_spec, dir_fd);
     var pes: PerfEvents = .{};
     var buf: [4096]u8 = undefined;
     try pes.openFds();
     try forwardExec(args, vars, dir_fd, name);
     try pes.readResults();
-    const ptr: [*]u8 = pes.writeResults(&buf);
+    const ptr: [*]u8 = pes.writeResults(name.len, &buf);
     debug.write(buf[0..fmt.strlen(ptr, &buf)]);
+    try file.close(close_spec, dir_fd);
 }
