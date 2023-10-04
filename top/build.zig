@@ -1654,15 +1654,17 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 for (pair[2]) |arg|
                     node.addCmdArg(allocator).* = @constCast(arg);
                 extn.* = node;
-                if (have_lazy and node.flags.is_dynamic_extension) {
-                    if (node.getFile(.{ .tag = .output_lib })) |fs| {
-                        node.getPaths()[fs.path_idx].status(stat(), fs.st);
-                        if (fs.st.mode.kind != .unknown) {
-                            var buf: [4096]u8 = undefined;
-                            var len: usize = node.getPaths()[fs.path_idx].formatWriteBuf(&buf);
-                            len -%= 1;
-                            node.sh.dl.load(buf[0..len :0]).autoLoad(node.sh.fp);
-                        }
+            }
+        }
+        fn loadASAP(node: *Node) void {
+            if (have_lazy and node.flags.is_dynamic_extension) {
+                if (node.getFile(.{ .tag = .output_lib })) |fs| {
+                    node.getPaths()[fs.path_idx].status(stat(), fs.st);
+                    if (fs.st.mode.kind != .unknown) {
+                        var buf: [4096]u8 = undefined;
+                        var len: usize = node.getPaths()[fs.path_idx].formatWriteBuf(&buf);
+                        len -%= 1;
+                        node.sh.dl.load(buf[0..len :0]).autoLoad(node.sh.fp);
                     }
                 }
             }
