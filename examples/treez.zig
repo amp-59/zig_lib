@@ -147,7 +147,6 @@ const map_spec: thread.MapSpec = .{
 };
 const thread_spec: proc.CloneSpec = .{
     .errors = .{},
-    .options = .{},
     .return_type = u64,
 };
 fn show(status: Status) void {
@@ -333,7 +332,7 @@ pub fn main(args: [][*:0]u8) !void {
             var tid: u64 = undefined;
             var stack_buf: [16384]u8 align(16) = undefined;
             const stack_addr: u64 = @intFromPtr(&stack_buf);
-            tid = proc.clone(thread_spec, stack_addr, stack_buf.len, {}, printAlong, .{ &status, &allocator_1, &array });
+            tid = proc.clone(thread_spec, .{}, stack_addr, stack_buf.len, {}, printAlong, .{ &status, &allocator_1, &array });
             writeAndWalk(&allocator_0, &allocator_1, &array, &alts_buf, &link_buf, &status, null, arg, 0) catch if (count_errors) {
                 status.errors +%= 1;
             };
