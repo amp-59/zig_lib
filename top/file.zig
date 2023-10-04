@@ -797,12 +797,12 @@ pub fn execAt(comptime exec_spec: ExecuteSpec, flags: sys.flags.At, dir_fd: usiz
         about.executeNotice(name, args);
     }
     if (meta.wrap(sys.call(.execveat, exec_spec.errors, exec_spec.return_type, .{
-        dir_fd, @intFromPtr(name.ptr), @intFromPtr(args.ptr), @intFromPtr(vars.ptr), flags.val,
+        dir_fd, @intFromPtr(name.ptr), @intFromPtr(args.ptr), @intFromPtr(vars.ptr), @bitCast(flags),
     }))) {
         proc.exitFault("reached unreachable", 2);
     } else |execve_error| {
         if (logging.Error and logging.Attempt) {
-            debug.executeErrorBrief(execve_error, name);
+            about.executeErrorBrief(execve_error, name);
         } else if (logging.Error) {
             about.executeError(execve_error, name, args);
         }
@@ -1904,7 +1904,7 @@ pub inline fn pollOne(comptime poll_spec: PollSpec, fd: *PollFd, timeout: u32) s
 //  sendto
 //  setsockopt
 
-pub fn accessAt(comptime access_spec: AccessSpec, at: sys.flags.At, dir_fd: usize, name: [:0]const u8, ok: Access) sys.ErrorUnion(
+pub fn accessAt(comptime access_spec: AccessSpec, at: sys.flags.AtAccess, dir_fd: usize, name: [:0]const u8, ok: Access) sys.ErrorUnion(
     access_spec.errors,
     access_spec.return_type,
 ) {
@@ -3274,7 +3274,7 @@ pub const about = struct {
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
-    fn socketError(socket_error: anytype, dom: Socket.Domain, flags: Flags.Socket) void {
+    fn socketError(socket_error: anyerror, dom: Socket.Domain, flags: Flags.Socket) void {
         @setCold(true);
         @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
@@ -3291,7 +3291,7 @@ pub const about = struct {
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
-    fn sendError(sendfile_error: anytype, dest_fd: usize, src_fd: usize, offset: ?*u64, max_count: u64) void {
+    fn sendError(sendfile_error: anyerror, dest_fd: usize, src_fd: usize, offset: ?*u64, max_count: u64) void {
         @setCold(true);
         @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
@@ -3321,7 +3321,7 @@ pub const about = struct {
         }
         debug.write(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)]);
     }
-    fn copyError(copy_file_range_error: anytype, dest_fd: usize, dest_offset: ?*u64, src_fd: usize, src_offset: ?*u64, max_count: u64) void {
+    fn copyError(copy_file_range_error: anyerror, dest_fd: usize, dest_offset: ?*u64, src_fd: usize, src_offset: ?*u64, max_count: u64) void {
         var buf: [32768]u8 = undefined;
         buf[0..copy_s.len].* = copy_s.*;
         buf[copy_s.len..fmt.about_err_len].* = debug.about.error_s.*;
@@ -3411,7 +3411,7 @@ pub const about = struct {
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
-    fn seekError(seek_error: anytype, fd: usize, offset: usize, whence: Whence) void {
+    fn seekError(seek_error: anyerror, fd: usize, offset: usize, whence: Whence) void {
         @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         buf[0..seek_s.len].* = seek_s.*;
@@ -3436,7 +3436,7 @@ pub const about = struct {
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
-    fn listenError(listen_error: anytype, sock_fd: usize, backlog: u64) void {
+    fn listenError(listen_error: anyerror, sock_fd: usize, backlog: u64) void {
         @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         buf[0..listen_s.len].* = listen_s.*;
@@ -3453,7 +3453,7 @@ pub const about = struct {
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
-    pub fn executeErrorBrief(exec_error: anytype, pathname: [:0]const u8) void {
+    pub fn executeErrorBrief(exec_error: anyerror, pathname: [:0]const u8) void {
         @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         var ptr: [*]u8 = &buf;
@@ -3468,7 +3468,7 @@ pub const about = struct {
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
-    pub fn executeError(exec_error: anytype, pathname: [:0]const u8, args: []const [*:0]const u8) void {
+    pub fn executeError(exec_error: anyerror, pathname: [:0]const u8, args: []const [*:0]const u8) void {
         @setRuntimeSafety(false);
         var buf: [32768]u8 = undefined;
         var ptr: [*]u8 = &buf;
