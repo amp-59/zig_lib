@@ -40,8 +40,7 @@ pub fn sysgenGroup(allocator: *build.Allocator, group: *Builder.Node) void {
     format.addDepn(allocator, .format, flags, .run);
 }
 pub fn traceGroup(allocator: *build.Allocator, group: *Node) void {
-    var trace_build_cmd: build.BuildCommand = build_cmd;
-    trace_build_cmd.strip = false;
+    var trace_build_cmd: build.BuildCommand = .{ .kind = .exe, .function_sections = true, .gc_sections = false };
     const access_inactive: *Node = group.addBuild(allocator, trace_build_cmd, "access_inactive", "test/trace/access_inactive.zig");
     const assertion_failed: *Node = group.addBuild(allocator, trace_build_cmd, "assertion_failed", "test/trace/assertion_failed.zig");
     const out_of_bounds: *Node = group.addBuild(allocator, trace_build_cmd, "out_of_bounds", "test/trace/out_of_bounds.zig");
@@ -50,6 +49,7 @@ pub fn traceGroup(allocator: *build.Allocator, group: *Node) void {
     const stack_overflow: *Node = group.addBuild(allocator, trace_build_cmd, "stack_overflow", "test/trace/stack_overflow.zig");
     const start_gt_end: *Node = group.addBuild(allocator, trace_build_cmd, "start_gt_end", "test/trace/start_gt_end.zig");
     const static_exe: *Node = group.addBuild(allocator, trace_build_cmd, "static_exe", "test/trace/static_exe.zig");
+    const minimal_full: *Node = group.addBuild(allocator, trace_build_cmd, "minimal_full", "test/trace/minimal_full.zig");
     trace_build_cmd.kind = .obj;
     trace_build_cmd.gc_sections = false;
     const static_obj: *Node = group.addBuild(allocator, trace_build_cmd, "static_obj", "test/trace/static_obj.zig");
@@ -60,6 +60,7 @@ pub fn traceGroup(allocator: *build.Allocator, group: *Node) void {
     sentinel_mismatch.descr = "Test stack trace for sentinel mismatch (panicSentinelMismatch)";
     stack_overflow.descr = "Test stack trace for stack overflow";
     start_gt_end.descr = "Test stack trace for out-of-bounds (panicStartGreaterThanEnd)";
+    minimal_full.descr = "Test binary composition with all traces possible";
     static_exe.dependOn(allocator, static_obj);
 }
 pub fn testGroup(allocator: *build.Allocator, group: *Node) void {
@@ -78,6 +79,7 @@ pub fn testGroup(allocator: *build.Allocator, group: *Node) void {
     const crypto: *Node = group.addBuild(allocator, test_build_cmd, "crypto", "test/crypto.zig");
     const zig: *Node = group.addBuild(allocator, test_build_cmd, "zig", "test/zig.zig");
     const mem: *Node = group.addBuild(allocator, test_build_cmd, "mem", "test/mem.zig");
+    const grep: *Node = group.addRun(allocator, "grep", &.{ "/usr/bin/grep", "Node", "./build.zig" });
     mem.flags.want_stack_traces = true;
     const mem2: *Node = group.addBuild(allocator, test_build_cmd, "mem2", "test/mem2.zig");
     const x86: *Node = group.addBuild(allocator, test_build_cmd, "x86", "test/x86.zig");
@@ -129,6 +131,7 @@ pub fn testGroup(allocator: *build.Allocator, group: *Node) void {
     mem.descr = "Test low level memory management functions and basic container/allocator usage";
     mem2.descr = "Test v2 low level memory implementation";
     proc.descr = "Test process related functions";
+    grep.descr = "Test run command works";
     rng.descr = "Test random number generation functions";
     ecdsa.descr = "Test ECDSA";
     aead.descr = "Test authenticated encryption functions and types";
@@ -180,6 +183,7 @@ pub fn exampleGroup(allocator: *build.Allocator, group: *Node) void {
     const pathsplit: *Node = group.addBuild(allocator, example_build_cmd, "pathsplit", "examples/pathsplit.zig");
     const declprint: *Node = group.addBuild(allocator, example_build_cmd, "declprint", "examples/declprint.zig");
     const treez: *Node = group.addBuild(allocator, example_build_cmd, "treez", "examples/treez.zig");
+    const elfcmp: *Node = group.addBuild(allocator, example_build_cmd, "elfcmp", "examples/elfcmp.zig");
     example_build_cmd.mode = .Debug;
     example_build_cmd.strip = false;
     const statz: *Node = group.addBuild(allocator, example_build_cmd, "statz", "examples/statz.zig");
@@ -196,6 +200,7 @@ pub fn exampleGroup(allocator: *build.Allocator, group: *Node) void {
     declprint.descr = "Useful for printing declarations";
     treez.descr = "Example program useful for listing the contents of directories in a tree-like format";
     statz.descr = "Build statistics file reader";
+    elfcmp.descr = "Wrapper for ELF size comparison";
 }
 pub fn memgenGroup(allocator: *build.Allocator, group: *Node) void {
     var memgen_format_cmd: build.FormatCommand = format_cmd;
@@ -269,7 +274,6 @@ pub fn buildMain(allocator: *build.Allocator, toplevel: *Node) void {
     buildRunnerTestGroup(allocator, toplevel.addGroupWithTask(allocator, "br", .build));
     testGroup(allocator, toplevel.addGroupWithTask(allocator, "test", .build));
     userGroup(allocator, toplevel.addGroupWithTask(allocator, "user", .build));
-
     exampleGroup(allocator, toplevel.addGroupWithTask(allocator, "example", .build));
     memgenGroup(allocator, toplevel.addGroupWithTask(allocator, "memgen", .format));
     sysgenGroup(allocator, toplevel.addGroupWithTask(allocator, "sysgen", .format));
