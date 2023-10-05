@@ -254,7 +254,7 @@ pub const PolynomialFormatSpec = struct {
     separator: ?Separator = null,
 };
 pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
-    const T = struct {
+    const T = extern struct {
         value: Int,
         const Format: type = @This();
         pub const Int: type = @Type(.{ .Int = .{ .bits = fmt_spec.bits, .signedness = fmt_spec.signedness } });
@@ -857,6 +857,7 @@ pub fn GenericChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type
         }
         // TODO: Merge this with the body for ChangedIntFormat.
         pub fn formatWriteBufFull(format: Format, buf: [*]u8) usize {
+            @setRuntimeSafety(builtin.is_safe);
             const old_fmt: Bytes = bytes(format.old_value);
             const new_fmt: Bytes = bytes(format.new_value);
             var ptr: [*]u8 = buf + old_fmt.formatWriteBuf(buf);
@@ -887,6 +888,7 @@ pub fn GenericChangedBytesFormat(comptime fmt_spec: ChangedBytesFormatSpec) type
             return len;
         }
         fn writeStyledChange(buf: [*]u8, del_fmt: Bytes, style_s: []const u8) [*]u8 {
+            @setRuntimeSafety(builtin.is_safe);
             buf[0] = '(';
             var ptr: [*]u8 = strcpyEqu(buf + 1, style_s);
             ptr += del_fmt.formatWriteBuf(ptr);
@@ -2137,514 +2139,6 @@ pub inline fn ix(value: anytype) GenericPolynomialFormat(.{
 }) {
     return .{ .value = value };
 }
-pub inline fn ib8(value: i8) GenericPolynomialFormat(.{
-    .bits = 8,
-    .radix = 2,
-    .signedness = .signed,
-    .width = .max,
-    .prefix = "0b",
-}) {
-    return .{ .value = value };
-}
-pub inline fn ib16(value: i16) GenericPolynomialFormat(.{
-    .bits = 16,
-    .radix = 2,
-    .signedness = .signed,
-    .width = .max,
-    .prefix = "0b",
-}) {
-    return .{ .value = value };
-}
-pub inline fn ib32(value: i32) GenericPolynomialFormat(.{
-    .bits = 32,
-    .radix = 2,
-    .signedness = .signed,
-    .width = .max,
-    .prefix = "0b",
-}) {
-    return .{ .value = value };
-}
-pub inline fn ib64(value: i64) GenericPolynomialFormat(.{
-    .bits = 64,
-    .radix = 2,
-    .signedness = .signed,
-    .width = .max,
-    .prefix = "0b",
-}) {
-    return .{ .value = value };
-}
-pub inline fn ib128(value: i128) GenericPolynomialFormat(.{
-    .bits = 128,
-    .radix = 2,
-    .signedness = .signed,
-    .width = .max,
-    .prefix = "0b",
-}) {
-    return .{ .value = value };
-}
-pub inline fn io8(value: i8) GenericPolynomialFormat(.{
-    .bits = 8,
-    .radix = 8,
-    .signedness = .signed,
-    .width = .min,
-    .prefix = "0o",
-}) {
-    return .{ .value = value };
-}
-pub inline fn io16(value: i16) GenericPolynomialFormat(.{
-    .bits = 16,
-    .radix = 8,
-    .signedness = .signed,
-    .width = .min,
-    .prefix = "0o",
-}) {
-    return .{ .value = value };
-}
-pub inline fn io32(value: i32) GenericPolynomialFormat(.{
-    .bits = 32,
-    .radix = 8,
-    .signedness = .signed,
-    .width = .min,
-    .prefix = "0o",
-}) {
-    return .{ .value = value };
-}
-pub inline fn io64(value: i64) GenericPolynomialFormat(.{
-    .bits = 64,
-    .radix = 8,
-    .signedness = .signed,
-    .width = .min,
-    .prefix = "0o",
-}) {
-    return .{ .value = value };
-}
-pub inline fn io128(value: i128) GenericPolynomialFormat(.{
-    .bits = 128,
-    .radix = 8,
-    .signedness = .signed,
-    .width = .min,
-    .prefix = "0o",
-}) {
-    return .{ .value = value };
-}
-pub inline fn id8(value: i8) GenericPolynomialFormat(.{
-    .bits = 8,
-    .radix = 10,
-    .signedness = .signed,
-    .width = .min,
-}) {
-    return .{ .value = value };
-}
-pub inline fn id16(value: i16) GenericPolynomialFormat(.{
-    .bits = 16,
-    .radix = 10,
-    .signedness = .signed,
-    .width = .min,
-}) {
-    return .{ .value = value };
-}
-pub inline fn id32(value: i32) GenericPolynomialFormat(.{
-    .bits = 32,
-    .radix = 10,
-    .signedness = .signed,
-    .width = .min,
-}) {
-    return .{ .value = value };
-}
-pub inline fn id64(value: i64) GenericPolynomialFormat(.{
-    .bits = 64,
-    .radix = 10,
-    .signedness = .signed,
-    .width = .min,
-}) {
-    return .{ .value = value };
-}
-pub inline fn id128(value: i128) GenericPolynomialFormat(.{
-    .bits = 128,
-    .radix = 10,
-    .signedness = .signed,
-    .width = .min,
-}) {
-    return .{ .value = value };
-}
-pub inline fn ix8(value: i8) GenericPolynomialFormat(.{
-    .bits = 8,
-    .radix = 16,
-    .signedness = .signed,
-    .width = .min,
-    .prefix = "0x",
-}) {
-    return .{ .value = value };
-}
-pub inline fn ix16(value: i16) GenericPolynomialFormat(.{
-    .bits = 16,
-    .radix = 16,
-    .signedness = .signed,
-    .width = .min,
-    .prefix = "0x",
-}) {
-    return .{ .value = value };
-}
-pub inline fn ix32(value: i32) GenericPolynomialFormat(.{
-    .bits = 32,
-    .radix = 16,
-    .signedness = .signed,
-    .width = .min,
-    .prefix = "0x",
-}) {
-    return .{ .value = value };
-}
-pub inline fn ix64(value: i64) GenericPolynomialFormat(.{
-    .bits = 64,
-    .radix = 16,
-    .signedness = .signed,
-    .width = .min,
-    .prefix = "0x",
-}) {
-    return .{ .value = value };
-}
-pub inline fn ix128(value: i128) GenericPolynomialFormat(.{
-    .bits = 128,
-    .radix = 16,
-    .signedness = .signed,
-    .width = .min,
-    .prefix = "0x",
-}) {
-    return .{ .value = value };
-}
-pub inline fn iz8(value: i8) GenericPolynomialFormat(.{
-    .bits = 8,
-    .radix = 36,
-    .signedness = .signed,
-    .width = .min,
-    .prefix = "0z",
-}) {
-    return .{ .value = value };
-}
-pub inline fn iz16(value: i16) GenericPolynomialFormat(.{
-    .bits = 16,
-    .radix = 36,
-    .signedness = .signed,
-    .width = .min,
-    .prefix = "0z",
-}) {
-    return .{ .value = value };
-}
-pub inline fn iz32(value: i32) GenericPolynomialFormat(.{
-    .bits = 32,
-    .radix = 36,
-    .signedness = .signed,
-    .width = .min,
-    .prefix = "0z",
-}) {
-    return .{ .value = value };
-}
-pub inline fn iz64(value: i64) GenericPolynomialFormat(.{
-    .bits = 64,
-    .radix = 36,
-    .signedness = .signed,
-    .width = .min,
-    .prefix = "0z",
-}) {
-    return .{ .value = value };
-}
-pub inline fn iz128(value: i128) GenericPolynomialFormat(.{
-    .bits = 128,
-    .radix = 36,
-    .signedness = .signed,
-    .width = .min,
-    .prefix = "0z",
-}) {
-    return .{ .value = value };
-}
-pub inline fn ub8(value: u8) GenericPolynomialFormat(.{
-    .bits = 8,
-    .radix = 2,
-    .signedness = .unsigned,
-    .width = .max,
-    .prefix = "0b",
-}) {
-    return .{ .value = value };
-}
-pub inline fn ub16(value: u16) GenericPolynomialFormat(.{
-    .bits = 16,
-    .radix = 2,
-    .signedness = .unsigned,
-    .width = .max,
-    .prefix = "0b",
-}) {
-    return .{ .value = value };
-}
-pub inline fn ub32(value: u32) GenericPolynomialFormat(.{
-    .bits = 32,
-    .radix = 2,
-    .signedness = .unsigned,
-    .width = .max,
-    .prefix = "0b",
-}) {
-    return .{ .value = value };
-}
-pub inline fn ub64(value: u64) GenericPolynomialFormat(.{
-    .bits = 64,
-    .radix = 2,
-    .signedness = .unsigned,
-    .width = .max,
-    .prefix = "0b",
-}) {
-    return .{ .value = value };
-}
-pub inline fn uo8(value: u8) GenericPolynomialFormat(.{
-    .bits = 8,
-    .radix = 8,
-    .signedness = .unsigned,
-    .width = .min,
-    .prefix = "0o",
-}) {
-    return .{ .value = value };
-}
-pub inline fn uo16(value: u16) GenericPolynomialFormat(.{
-    .bits = 16,
-    .radix = 8,
-    .signedness = .unsigned,
-    .width = .min,
-    .prefix = "0o",
-}) {
-    return .{ .value = value };
-}
-pub inline fn uo32(value: u32) GenericPolynomialFormat(.{
-    .bits = 32,
-    .radix = 8,
-    .signedness = .unsigned,
-    .width = .min,
-    .prefix = "0o",
-}) {
-    return .{ .value = value };
-}
-pub inline fn uo64(value: u64) GenericPolynomialFormat(.{
-    .bits = 64,
-    .radix = 8,
-    .signedness = .unsigned,
-    .width = .min,
-    .prefix = "0o",
-}) {
-    return .{ .value = value };
-}
-pub inline fn uo128(value: u128) GenericPolynomialFormat(.{
-    .bits = 128,
-    .radix = 8,
-    .signedness = .unsigned,
-    .width = .min,
-    .prefix = "0o",
-}) {
-    return .{ .value = value };
-}
-pub inline fn ud8(value: u8) GenericPolynomialFormat(.{
-    .bits = 8,
-    .radix = 10,
-    .signedness = .unsigned,
-    .width = .min,
-}) {
-    return .{ .value = value };
-}
-pub inline fn ud16(value: u16) GenericPolynomialFormat(.{
-    .bits = 16,
-    .radix = 10,
-    .signedness = .unsigned,
-    .width = .min,
-}) {
-    return .{ .value = value };
-}
-pub inline fn ud32(value: u32) GenericPolynomialFormat(.{
-    .bits = 32,
-    .radix = 10,
-    .signedness = .unsigned,
-    .width = .min,
-}) {
-    return .{ .value = value };
-}
-pub fn ud64(value: u64) GenericPolynomialFormat(.{
-    .bits = 64,
-    .radix = 10,
-    .signedness = .unsigned,
-    .width = .min,
-}) {
-    return .{ .value = value };
-}
-pub inline fn ud128(value: u128) GenericPolynomialFormat(.{
-    .bits = 128,
-    .radix = 10,
-    .signedness = .unsigned,
-    .width = .min,
-}) {
-    return .{ .value = value };
-}
-pub inline fn ux8(value: u8) GenericPolynomialFormat(.{
-    .bits = 8,
-    .radix = 16,
-    .signedness = .unsigned,
-    .width = .min,
-    .prefix = "0x",
-}) {
-    return .{ .value = value };
-}
-pub inline fn esc(value: u8) GenericPolynomialFormat(.{
-    .bits = 8,
-    .radix = 16,
-    .signedness = .unsigned,
-    .width = .max,
-    .prefix = "\\x",
-}) {
-    return .{ .value = value };
-}
-pub inline fn ux16(value: u16) GenericPolynomialFormat(.{
-    .bits = 16,
-    .radix = 16,
-    .signedness = .unsigned,
-    .width = .min,
-    .prefix = "0x",
-}) {
-    return .{ .value = value };
-}
-pub inline fn ux32(value: u32) GenericPolynomialFormat(.{
-    .bits = 32,
-    .radix = 16,
-    .signedness = .unsigned,
-    .width = .min,
-    .prefix = "0x",
-}) {
-    return .{ .value = value };
-}
-pub inline fn ux64(value: u64) GenericPolynomialFormat(.{
-    .bits = 64,
-    .radix = 16,
-    .signedness = .unsigned,
-    .width = .min,
-    .prefix = "0x",
-}) {
-    return .{ .value = value };
-}
-pub inline fn ux128(value: u128) GenericPolynomialFormat(.{
-    .bits = 128,
-    .radix = 16,
-    .signedness = .unsigned,
-    .width = .min,
-    .prefix = "0x",
-}) {
-    return .{ .value = value };
-}
-pub inline fn uz8(value: u8) GenericPolynomialFormat(.{
-    .bits = 8,
-    .radix = 36,
-    .signedness = .unsigned,
-    .width = .min,
-    .prefix = "0z",
-}) {
-    return .{ .value = value };
-}
-pub inline fn uz16(value: u16) GenericPolynomialFormat(.{
-    .bits = 16,
-    .radix = 36,
-    .signedness = .unsigned,
-    .width = .min,
-    .prefix = "0z",
-}) {
-    return .{ .value = value };
-}
-pub inline fn uz32(value: u32) GenericPolynomialFormat(.{
-    .bits = 32,
-    .radix = 36,
-    .signedness = .unsigned,
-    .width = .min,
-    .prefix = "0z",
-}) {
-    return .{ .value = value };
-}
-pub inline fn uz64(value: u64) GenericPolynomialFormat(.{
-    .bits = 64,
-    .radix = 36,
-    .signedness = .unsigned,
-    .width = .min,
-    .prefix = "0z",
-}) {
-    return .{ .value = value };
-}
-pub inline fn uz128(value: u128) GenericPolynomialFormat(.{
-    .bits = 128,
-    .radix = 36,
-    .signedness = .unsigned,
-    .width = .min,
-    .prefix = "0z",
-}) {
-    return .{ .value = value };
-}
-pub fn ubsize(value: usize) GenericPolynomialFormat(.{
-    .bits = @bitSizeOf(usize),
-    .radix = 2,
-    .signedness = .unsigned,
-    .width = .max,
-    .prefix = "0b",
-}) {
-    return .{ .value = value };
-}
-pub fn uosize(value: usize) GenericPolynomialFormat(.{
-    .bits = @bitSizeOf(usize),
-    .radix = 8,
-    .signedness = .unsigned,
-    .width = .min,
-    .prefix = "0o",
-}) {
-    return .{ .value = value };
-}
-pub fn udsize(value: usize) GenericPolynomialFormat(.{
-    .bits = @bitSizeOf(usize),
-    .radix = 10,
-    .signedness = .unsigned,
-    .width = .min,
-}) {
-    return .{ .value = value };
-}
-pub fn uxsize(value: usize) GenericPolynomialFormat(.{
-    .bits = @bitSizeOf(usize),
-    .radix = 16,
-    .signedness = .unsigned,
-    .width = .min,
-    .prefix = "0x",
-}) {
-    return .{ .value = value };
-}
-pub fn ibsize(value: isize) GenericPolynomialFormat(.{
-    .bits = @bitSizeOf(isize),
-    .radix = 2,
-    .signedness = .signed,
-    .width = .max,
-    .prefix = "0b",
-}) {
-    return .{ .value = value };
-}
-pub fn iosize(value: isize) GenericPolynomialFormat(.{
-    .bits = @bitSizeOf(isize),
-    .radix = 8,
-    .signedness = .signed,
-    .width = .min,
-}) {
-    return .{ .value = value };
-}
-pub fn idsize(value: isize) GenericPolynomialFormat(.{
-    .bits = @bitSizeOf(isize),
-    .radix = 10,
-    .signedness = .signed,
-    .width = .min,
-}) {
-    return .{ .value = value };
-}
-pub fn ixsize(value: isize) GenericPolynomialFormat(.{
-    .bits = @bitSizeOf(isize),
-    .radix = 16,
-    .signedness = .signed,
-    .width = .min,
-}) {
-    return .{ .value = value };
-}
 pub fn bytes(count: usize) Bytes {
     const max_idx: comptime_int = Bytes.units.len -% 1;
     @setRuntimeSafety(false);
@@ -2756,13 +2250,7 @@ pub fn dt(value: time.DateTime) GenericDateTimeFormat(time.DateTime) {
 pub fn pdt(value: time.PackedDateTime) GenericDateTimeFormat(time.PackedDateTime) {
     return .{ .value = value };
 }
-pub fn nsec(value: u64) GenericPolynomialFormat(.{
-    .bits = 64,
-    .signedness = .unsigned,
-    .radix = 10,
-    .width = .{ .fixed = 9 },
-    .range = .{ .min = 0, .max = 999999999 },
-}) {
+pub fn nsec(value: u64) Type.NSec {
     return .{ .value = value };
 }
 fn uniformChangedIntFormatSpec(comptime bits: u16, comptime signedness: builtin.Signedness, comptime radix: u16) ChangedIntFormatSpec {
@@ -5981,66 +5469,639 @@ pub const standalone = struct {
         return T;
     }
 };
+pub inline fn ib8(value: i8) Type.Ib8 {
+    return .{ .value = value };
+}
+pub inline fn ib16(value: i16) Type.Ib16 {
+    return .{ .value = value };
+}
+pub inline fn ib32(value: i32) Type.Ib32 {
+    return .{ .value = value };
+}
+pub inline fn ib64(value: i64) Type.Ib64 {
+    return .{ .value = value };
+}
+pub inline fn ib128(value: i128) Type.Ib128 {
+    return .{ .value = value };
+}
+pub inline fn io8(value: i8) Type.Io8 {
+    return .{ .value = value };
+}
+pub inline fn io16(value: i16) Type.Io16 {
+    return .{ .value = value };
+}
+pub inline fn io32(value: i32) Type.Io32 {
+    return .{ .value = value };
+}
+pub inline fn io64(value: i64) Type.Io64 {
+    return .{ .value = value };
+}
+pub inline fn io128(value: i128) Type.Io128 {
+    return .{ .value = value };
+}
+pub inline fn id8(value: i8) Type.Id8 {
+    return .{ .value = value };
+}
+pub inline fn id16(value: i16) Type.Id16 {
+    return .{ .value = value };
+}
+pub inline fn id32(value: i32) Type.Id32 {
+    return .{ .value = value };
+}
+pub inline fn id64(value: i64) Type.Id64 {
+    return .{ .value = value };
+}
+pub inline fn id128(value: i128) Type.Id128 {
+    return .{ .value = value };
+}
+pub inline fn ix8(value: i8) Type.Ix8 {
+    return .{ .value = value };
+}
+pub inline fn ix16(value: i16) Type.Ix16 {
+    return .{ .value = value };
+}
+pub inline fn ix32(value: i32) Type.Ix32 {
+    return .{ .value = value };
+}
+pub inline fn ix64(value: i64) Type.Ix64 {
+    return .{ .value = value };
+}
+pub inline fn ix128(value: i128) Type.Ix128 {
+    return .{ .value = value };
+}
+pub inline fn iz8(value: i8) Type.Iz8 {
+    return .{ .value = value };
+}
+pub inline fn iz16(value: i16) Type.Iz16 {
+    return .{ .value = value };
+}
+pub inline fn iz32(value: i32) Type.Iz32 {
+    return .{ .value = value };
+}
+pub inline fn iz64(value: i64) Type.Iz64 {
+    return .{ .value = value };
+}
+pub inline fn iz128(value: i128) Type.Iz128 {
+    return .{ .value = value };
+}
+pub inline fn ub8(value: u8) Type.Ub8 {
+    return .{ .value = value };
+}
+pub inline fn ub16(value: u16) Type.Ub16 {
+    return .{ .value = value };
+}
+pub inline fn ub32(value: u32) Type.Ub32 {
+    return .{ .value = value };
+}
+pub inline fn ub64(value: u64) Type.Ub64 {
+    return .{ .value = value };
+}
+pub inline fn uo8(value: u8) Type.Uo8 {
+    return .{ .value = value };
+}
+pub inline fn uo16(value: u16) Type.Uo16 {
+    return .{ .value = value };
+}
+pub inline fn uo32(value: u32) Type.Uo32 {
+    return .{ .value = value };
+}
+pub inline fn uo64(value: u64) Type.Uo64 {
+    return .{ .value = value };
+}
+pub inline fn uo128(value: u128) Type.Uo128 {
+    return .{ .value = value };
+}
+pub inline fn ud8(value: u8) Type.Ud8 {
+    return .{ .value = value };
+}
+pub inline fn ud16(value: u16) Type.Ud16 {
+    return .{ .value = value };
+}
+pub inline fn ud32(value: u32) Type.Ud32 {
+    return .{ .value = value };
+}
+pub fn ud64(value: u64) Type.Ud64 {
+    return .{ .value = value };
+}
+pub inline fn ud128(value: u128) Type.Ud128 {
+    return .{ .value = value };
+}
+pub inline fn ux8(value: u8) Type.Ux8 {
+    return .{ .value = value };
+}
+pub inline fn esc(value: u8) Type.Esc {
+    return .{ .value = value };
+}
+pub inline fn ux16(value: u16) Type.Ux16 {
+    return .{ .value = value };
+}
+pub inline fn ux32(value: u32) Type.Ux32 {
+    return .{ .value = value };
+}
+pub inline fn ux64(value: u64) Type.Ux64 {
+    return .{ .value = value };
+}
+pub inline fn ux128(value: u128) Type.Ux128 {
+    return .{ .value = value };
+}
+pub inline fn uz8(value: u8) Type.Uz8 {
+    return .{ .value = value };
+}
+pub inline fn uz16(value: u16) Type.Uz16 {
+    return .{ .value = value };
+}
+pub inline fn uz32(value: u32) Type.Uz32 {
+    return .{ .value = value };
+}
+pub inline fn uz64(value: u64) Type.Uz64 {
+    return .{ .value = value };
+}
+pub inline fn uz128(value: u128) Type.Uz128 {
+    return .{ .value = value };
+}
+pub inline fn ubsize(value: usize) Type.Ubsize {
+    return .{ .value = value };
+}
+pub inline fn uosize(value: usize) Type.Uosize {
+    return .{ .value = value };
+}
+pub inline fn udsize(value: usize) Type.Udsize {
+    return .{ .value = value };
+}
+pub inline fn uxsize(value: usize) Type.Uxsize {
+    return .{ .value = value };
+}
+pub inline fn ibsize(value: isize) Type.Ibsize {
+    return .{ .value = value };
+}
+pub inline fn iosize(value: isize) Type.Iosize {
+    return .{ .value = value };
+}
+pub inline fn idsize(value: isize) Type.Idsize {
+    return .{ .value = value };
+}
+pub inline fn ixsize(value: isize) Type.Ixsize {
+    return .{ .value = value };
+}
+pub const writeIb8: *const fn (i8, [*]u8) usize = @ptrCast(&Type.Ib8.formatWriteBuf);
+pub const writeIb16: *const fn (i16, [*]u8) usize = @ptrCast(&Type.Ib16.formatWriteBuf);
+pub const writeIb32: *const fn (i32, [*]u8) usize = @ptrCast(&Type.Ib32.formatWriteBuf);
+pub const writeIb64: *const fn (i64, [*]u8) usize = @ptrCast(&Type.Ib64.formatWriteBuf);
+pub const writeIb128: *const fn (i128, [*]u8) usize = @ptrCast(&Type.Ib128.formatWriteBuf);
+pub const writeIo8: *const fn (i8, [*]u8) usize = @ptrCast(&Type.Io8.formatWriteBuf);
+pub const writeIo16: *const fn (i16, [*]u8) usize = @ptrCast(&Type.Io16.formatWriteBuf);
+pub const writeIo32: *const fn (i32, [*]u8) usize = @ptrCast(&Type.Io32.formatWriteBuf);
+pub const writeIo64: *const fn (i64, [*]u8) usize = @ptrCast(&Type.Io64.formatWriteBuf);
+pub const writeIo128: *const fn (i128, [*]u8) usize = @ptrCast(&Type.Io128.formatWriteBuf);
+pub const writeId8: *const fn (i8, [*]u8) usize = @ptrCast(&Type.Id8.formatWriteBuf);
+pub const writeId16: *const fn (i16, [*]u8) usize = @ptrCast(&Type.Id16.formatWriteBuf);
+pub const writeId32: *const fn (i32, [*]u8) usize = @ptrCast(&Type.Id32.formatWriteBuf);
+pub const writeId64: *const fn (i64, [*]u8) usize = @ptrCast(&Type.Id64.formatWriteBuf);
+pub const writeId128: *const fn (i128, [*]u8) usize = @ptrCast(&Type.Id128.formatWriteBuf);
+pub const writeIx8: *const fn (i8, [*]u8) usize = @ptrCast(&Type.Ix8.formatWriteBuf);
+pub const writeIx16: *const fn (i16, [*]u8) usize = @ptrCast(&Type.Ix16.formatWriteBuf);
+pub const writeIx32: *const fn (i32, [*]u8) usize = @ptrCast(&Type.Ix32.formatWriteBuf);
+pub const writeIx64: *const fn (i64, [*]u8) usize = @ptrCast(&Type.Ix64.formatWriteBuf);
+pub const writeIx128: *const fn (i128, [*]u8) usize = @ptrCast(&Type.Ix128.formatWriteBuf);
+pub const writeIz8: *const fn (i8, [*]u8) usize = @ptrCast(&Type.Iz8.formatWriteBuf);
+pub const writeIz16: *const fn (i16, [*]u8) usize = @ptrCast(&Type.Iz16.formatWriteBuf);
+pub const writeIz32: *const fn (i32, [*]u8) usize = @ptrCast(&Type.Iz32.formatWriteBuf);
+pub const writeIz64: *const fn (i64, [*]u8) usize = @ptrCast(&Type.Iz64.formatWriteBuf);
+pub const writeIz128: *const fn (i128, [*]u8) usize = @ptrCast(&Type.Iz128.formatWriteBuf);
+pub const writeUb8: *const fn (u8, [*]u8) usize = @ptrCast(&Type.Ub8.formatWriteBuf);
+pub const writeUb16: *const fn (u16, [*]u8) usize = @ptrCast(&Type.Ub16.formatWriteBuf);
+pub const writeUb32: *const fn (u32, [*]u8) usize = @ptrCast(&Type.Ub32.formatWriteBuf);
+pub const writeUb64: *const fn (u64, [*]u8) usize = @ptrCast(&Type.Ub64.formatWriteBuf);
+pub const writeUo8: *const fn (u8, [*]u8) usize = @ptrCast(&Type.Uo8.formatWriteBuf);
+pub const writeUo16: *const fn (u16, [*]u8) usize = @ptrCast(&Type.Uo16.formatWriteBuf);
+pub const writeUo32: *const fn (u32, [*]u8) usize = @ptrCast(&Type.Uo32.formatWriteBuf);
+pub const writeUo64: *const fn (u64, [*]u8) usize = @ptrCast(&Type.Uo64.formatWriteBuf);
+pub const writeUo128: *const fn (u128, [*]u8) usize = @ptrCast(&Type.Uo128.formatWriteBuf);
+pub const writeUd8: *const fn (u8, [*]u8) usize = @ptrCast(&Type.Ud8.formatWriteBuf);
+pub const writeUd16: *const fn (u16, [*]u8) usize = @ptrCast(&Type.Ud16.formatWriteBuf);
+pub const writeUd32: *const fn (u32, [*]u8) usize = @ptrCast(&Type.Ud32.formatWriteBuf);
+pub const writeUd64: *const fn (Type.Ud64, [*]u8) usize = Type.Ud64.formatWriteBuf;
+pub const writeUd128: *const fn (u128, [*]u8) usize = @ptrCast(&Type.Ud128.formatWriteBuf);
+pub const writeUx8: *const fn (u8, [*]u8) usize = @ptrCast(&Type.Ux8.formatWriteBuf);
+pub const writeEsc: *const fn (u8, [*]u8) usize = @ptrCast(&Type.Esc.formatWriteBuf);
+pub const writeUx16: *const fn (u16, [*]u8) usize = @ptrCast(&Type.Ux16.formatWriteBuf);
+pub const writeUx32: *const fn (u32, [*]u8) usize = @ptrCast(&Type.Ux32.formatWriteBuf);
+pub const writeUx64: *const fn (u64, [*]u8) usize = @ptrCast(&Type.Ux64.formatWriteBuf);
+pub const writeUx128: *const fn (u128, [*]u8) usize = @ptrCast(&Type.Ux128.formatWriteBuf);
+pub const writeUz8: *const fn (u8, [*]u8) usize = @ptrCast(&Type.Uz8.formatWriteBuf);
+pub const writeUz16: *const fn (u16, [*]u8) usize = @ptrCast(&Type.Uz16.formatWriteBuf);
+pub const writeUz32: *const fn (u32, [*]u8) usize = @ptrCast(&Type.Uz32.formatWriteBuf);
+pub const writeUz64: *const fn (u64, [*]u8) usize = @ptrCast(&Type.Uz64.formatWriteBuf);
+pub const writeUz128: *const fn (u128, [*]u8) usize = @ptrCast(&Type.Uz128.formatWriteBuf);
+pub const writeUbsize: *const fn (usize, [*]u8) usize = @ptrCast(&Type.Ubsize.formatWriteBuf);
+pub const writeUosize: *const fn (usize, [*]u8) usize = @ptrCast(&Type.Uosize.formatWriteBuf);
+pub const writeUdsize: *const fn (usize, [*]u8) usize = @ptrCast(&Type.Udsize.formatWriteBuf);
+pub const writeUxsize: *const fn (usize, [*]u8) usize = @ptrCast(&Type.Uxsize.formatWriteBuf);
+pub const writeIbsize: *const fn (isize, [*]u8) usize = @ptrCast(&Type.Ibsize.formatWriteBuf);
+pub const writeIosize: *const fn (isize, [*]u8) usize = @ptrCast(&Type.Iosize.formatWriteBuf);
+pub const writeIdsize: *const fn (isize, [*]u8) usize = @ptrCast(&Type.Idsize.formatWriteBuf);
+pub const writeIxsize: *const fn (isize, [*]u8) usize = @ptrCast(&Type.Ixsize.formatWriteBuf);
+
 pub const Type = struct {
-    pub const Ib8 = @TypeOf(ib8(undefined));
-    pub const Ib16 = @TypeOf(ib16(undefined));
-    pub const Ib32 = @TypeOf(ib32(undefined));
-    pub const Ib64 = @TypeOf(ib64(undefined));
-    pub const Ib128 = @TypeOf(ib128(undefined));
-    pub const Io8 = @TypeOf(io8(undefined));
-    pub const Io16 = @TypeOf(io16(undefined));
-    pub const Io32 = @TypeOf(io32(undefined));
-    pub const Io64 = @TypeOf(io64(undefined));
-    pub const Io128 = @TypeOf(io128(undefined));
-    pub const Id8 = @TypeOf(id8(undefined));
-    pub const Id16 = @TypeOf(id16(undefined));
-    pub const Id32 = @TypeOf(id32(undefined));
-    pub const Id64 = @TypeOf(id64(undefined));
-    pub const Id128 = @TypeOf(id128(undefined));
-    pub const Ix8 = @TypeOf(ix8(undefined));
-    pub const Ix16 = @TypeOf(ix16(undefined));
-    pub const Ix32 = @TypeOf(ix32(undefined));
-    pub const Ix64 = @TypeOf(ix64(undefined));
-    pub const Ix128 = @TypeOf(ix128(undefined));
-    pub const Iz8 = @TypeOf(iz8(undefined));
-    pub const Iz16 = @TypeOf(iz16(undefined));
-    pub const Iz32 = @TypeOf(iz32(undefined));
-    pub const Iz64 = @TypeOf(iz64(undefined));
-    pub const Iz128 = @TypeOf(iz128(undefined));
-    pub const Ub8 = @TypeOf(ub8(undefined));
-    pub const Ub16 = @TypeOf(ub16(undefined));
-    pub const Ub32 = @TypeOf(ub32(undefined));
-    pub const Ub64 = @TypeOf(ub64(undefined));
-    pub const Uo8 = @TypeOf(uo8(undefined));
-    pub const Uo16 = @TypeOf(uo16(undefined));
-    pub const Uo32 = @TypeOf(uo32(undefined));
-    pub const Uo64 = @TypeOf(uo64(undefined));
-    pub const Uo128 = @TypeOf(uo128(undefined));
-    pub const Ud8 = @TypeOf(ud8(undefined));
-    pub const Ud16 = @TypeOf(ud16(undefined));
-    pub const Ud32 = @TypeOf(ud32(undefined));
-    pub const Ud64 = @TypeOf(ud64(undefined));
-    pub const Ud128 = @TypeOf(ud128(undefined));
-    pub const Ux8 = @TypeOf(ux8(undefined));
-    pub const Ux16 = @TypeOf(ux16(undefined));
-    pub const Ux32 = @TypeOf(ux32(undefined));
-    pub const Ux64 = @TypeOf(ux64(undefined));
-    pub const Ux128 = @TypeOf(ux128(undefined));
-    pub const Uz8 = @TypeOf(uz8(undefined));
-    pub const Uz16 = @TypeOf(uz16(undefined));
-    pub const Uz32 = @TypeOf(uz32(undefined));
-    pub const Uz64 = @TypeOf(uz64(undefined));
-    pub const Uz128 = @TypeOf(uz128(undefined));
-    pub const Ubsize = @TypeOf(ubsize(undefined));
-    pub const Uosize = @TypeOf(uosize(undefined));
-    pub const Udsize = @TypeOf(udsize(undefined));
-    pub const Uxsize = @TypeOf(uxsize(undefined));
-    pub const Ibsize = @TypeOf(ibsize(undefined));
-    pub const Iosize = @TypeOf(iosize(undefined));
-    pub const Idsize = @TypeOf(idsize(undefined));
-    pub const Ixsize = @TypeOf(ixsize(undefined));
-    pub const Esc = @TypeOf(esc(undefined));
-    pub const NSec = @TypeOf(nsec(undefined));
+    pub const Ib8 = GenericPolynomialFormat(.{
+        .bits = 8,
+        .radix = 2,
+        .signedness = .signed,
+        .width = .max,
+        .prefix = "0b",
+    });
+    pub const Ib16 = GenericPolynomialFormat(.{
+        .bits = 16,
+        .radix = 2,
+        .signedness = .signed,
+        .width = .max,
+        .prefix = "0b",
+    });
+    pub const Ib32 = GenericPolynomialFormat(.{
+        .bits = 32,
+        .radix = 2,
+        .signedness = .signed,
+        .width = .max,
+        .prefix = "0b",
+    });
+    pub const Ib64 = GenericPolynomialFormat(.{
+        .bits = 64,
+        .radix = 2,
+        .signedness = .signed,
+        .width = .max,
+        .prefix = "0b",
+    });
+    pub const Ib128 = GenericPolynomialFormat(.{
+        .bits = 128,
+        .radix = 2,
+        .signedness = .signed,
+        .width = .max,
+        .prefix = "0b",
+    });
+    pub const Io8 = GenericPolynomialFormat(.{
+        .bits = 8,
+        .radix = 8,
+        .signedness = .signed,
+        .width = .min,
+        .prefix = "0o",
+    });
+    pub const Io16 = GenericPolynomialFormat(.{
+        .bits = 16,
+        .radix = 8,
+        .signedness = .signed,
+        .width = .min,
+        .prefix = "0o",
+    });
+    pub const Io32 = GenericPolynomialFormat(.{
+        .bits = 32,
+        .radix = 8,
+        .signedness = .signed,
+        .width = .min,
+        .prefix = "0o",
+    });
+    pub const Io64 = GenericPolynomialFormat(.{
+        .bits = 64,
+        .radix = 8,
+        .signedness = .signed,
+        .width = .min,
+        .prefix = "0o",
+    });
+    pub const Io128 = GenericPolynomialFormat(.{
+        .bits = 128,
+        .radix = 8,
+        .signedness = .signed,
+        .width = .min,
+        .prefix = "0o",
+    });
+    pub const Id8 = GenericPolynomialFormat(.{
+        .bits = 8,
+        .radix = 10,
+        .signedness = .signed,
+        .width = .min,
+    });
+    pub const Id16 = GenericPolynomialFormat(.{
+        .bits = 16,
+        .radix = 10,
+        .signedness = .signed,
+        .width = .min,
+    });
+    pub const Id32 = GenericPolynomialFormat(.{
+        .bits = 32,
+        .radix = 10,
+        .signedness = .signed,
+        .width = .min,
+    });
+    pub const Id64 = GenericPolynomialFormat(.{
+        .bits = 64,
+        .radix = 10,
+        .signedness = .signed,
+        .width = .min,
+    });
+    pub const Id128 = GenericPolynomialFormat(.{
+        .bits = 128,
+        .radix = 10,
+        .signedness = .signed,
+        .width = .min,
+    });
+    pub const Ix8 = GenericPolynomialFormat(.{
+        .bits = 8,
+        .radix = 16,
+        .signedness = .signed,
+        .width = .min,
+        .prefix = "0x",
+    });
+    pub const Ix16 = GenericPolynomialFormat(.{
+        .bits = 16,
+        .radix = 16,
+        .signedness = .signed,
+        .width = .min,
+        .prefix = "0x",
+    });
+    pub const Ix32 = GenericPolynomialFormat(.{
+        .bits = 32,
+        .radix = 16,
+        .signedness = .signed,
+        .width = .min,
+        .prefix = "0x",
+    });
+    pub const Ix64 = GenericPolynomialFormat(.{
+        .bits = 64,
+        .radix = 16,
+        .signedness = .signed,
+        .width = .min,
+        .prefix = "0x",
+    });
+    pub const Ix128 = GenericPolynomialFormat(.{
+        .bits = 128,
+        .radix = 16,
+        .signedness = .signed,
+        .width = .min,
+        .prefix = "0x",
+    });
+    pub const Iz8 = GenericPolynomialFormat(.{
+        .bits = 8,
+        .radix = 36,
+        .signedness = .signed,
+        .width = .min,
+        .prefix = "0z",
+    });
+    pub const Iz16 = GenericPolynomialFormat(.{
+        .bits = 16,
+        .radix = 36,
+        .signedness = .signed,
+        .width = .min,
+        .prefix = "0z",
+    });
+    pub const Iz32 = GenericPolynomialFormat(.{
+        .bits = 32,
+        .radix = 36,
+        .signedness = .signed,
+        .width = .min,
+        .prefix = "0z",
+    });
+    pub const Iz64 = GenericPolynomialFormat(.{
+        .bits = 64,
+        .radix = 36,
+        .signedness = .signed,
+        .width = .min,
+        .prefix = "0z",
+    });
+    pub const Iz128 = GenericPolynomialFormat(.{
+        .bits = 128,
+        .radix = 36,
+        .signedness = .signed,
+        .width = .min,
+        .prefix = "0z",
+    });
+    pub const Ub8 = GenericPolynomialFormat(.{
+        .bits = 8,
+        .radix = 2,
+        .signedness = .unsigned,
+        .width = .max,
+        .prefix = "0b",
+    });
+    pub const Ub16 = GenericPolynomialFormat(.{
+        .bits = 16,
+        .radix = 2,
+        .signedness = .unsigned,
+        .width = .max,
+        .prefix = "0b",
+    });
+    pub const Ub32 = GenericPolynomialFormat(.{
+        .bits = 32,
+        .radix = 2,
+        .signedness = .unsigned,
+        .width = .max,
+        .prefix = "0b",
+    });
+    pub const Ub64 = GenericPolynomialFormat(.{
+        .bits = 64,
+        .radix = 2,
+        .signedness = .unsigned,
+        .width = .max,
+        .prefix = "0b",
+    });
+    pub const Uo8 = GenericPolynomialFormat(.{
+        .bits = 8,
+        .radix = 8,
+        .signedness = .unsigned,
+        .width = .min,
+        .prefix = "0o",
+    });
+    pub const Uo16 = GenericPolynomialFormat(.{
+        .bits = 16,
+        .radix = 8,
+        .signedness = .unsigned,
+        .width = .min,
+        .prefix = "0o",
+    });
+    pub const Uo32 = GenericPolynomialFormat(.{
+        .bits = 32,
+        .radix = 8,
+        .signedness = .unsigned,
+        .width = .min,
+        .prefix = "0o",
+    });
+    pub const Uo64 = GenericPolynomialFormat(.{
+        .bits = 64,
+        .radix = 8,
+        .signedness = .unsigned,
+        .width = .min,
+        .prefix = "0o",
+    });
+    pub const Uo128 = GenericPolynomialFormat(.{
+        .bits = 128,
+        .radix = 8,
+        .signedness = .unsigned,
+        .width = .min,
+        .prefix = "0o",
+    });
+    pub const Ud8 = GenericPolynomialFormat(.{
+        .bits = 8,
+        .radix = 10,
+        .signedness = .unsigned,
+        .width = .min,
+    });
+    pub const Ud16 = GenericPolynomialFormat(.{
+        .bits = 16,
+        .radix = 10,
+        .signedness = .unsigned,
+        .width = .min,
+    });
+    pub const Ud32 = GenericPolynomialFormat(.{
+        .bits = 32,
+        .radix = 10,
+        .signedness = .unsigned,
+        .width = .min,
+    });
+    pub const Ud64 = GenericPolynomialFormat(.{
+        .bits = 64,
+        .radix = 10,
+        .signedness = .unsigned,
+        .width = .min,
+    });
+    pub const Ud128 = GenericPolynomialFormat(.{
+        .bits = 128,
+        .radix = 10,
+        .signedness = .unsigned,
+        .width = .min,
+    });
+    pub const Ux8 = GenericPolynomialFormat(.{
+        .bits = 8,
+        .radix = 16,
+        .signedness = .unsigned,
+        .width = .min,
+        .prefix = "0x",
+    });
+    pub const Ux16 = GenericPolynomialFormat(.{
+        .bits = 16,
+        .radix = 16,
+        .signedness = .unsigned,
+        .width = .min,
+        .prefix = "0x",
+    });
+    pub const Ux32 = GenericPolynomialFormat(.{
+        .bits = 32,
+        .radix = 16,
+        .signedness = .unsigned,
+        .width = .min,
+        .prefix = "0x",
+    });
+    pub const Ux64 = GenericPolynomialFormat(.{
+        .bits = 64,
+        .radix = 16,
+        .signedness = .unsigned,
+        .width = .min,
+        .prefix = "0x",
+    });
+    pub const Ux128 = GenericPolynomialFormat(.{
+        .bits = 128,
+        .radix = 16,
+        .signedness = .unsigned,
+        .width = .min,
+        .prefix = "0x",
+    });
+    pub const Uz8 = GenericPolynomialFormat(.{
+        .bits = 8,
+        .radix = 36,
+        .signedness = .unsigned,
+        .width = .min,
+        .prefix = "0z",
+    });
+    pub const Uz16 = GenericPolynomialFormat(.{
+        .bits = 16,
+        .radix = 36,
+        .signedness = .unsigned,
+        .width = .min,
+        .prefix = "0z",
+    });
+    pub const Uz32 = GenericPolynomialFormat(.{
+        .bits = 32,
+        .radix = 36,
+        .signedness = .unsigned,
+        .width = .min,
+        .prefix = "0z",
+    });
+    pub const Uz64 = GenericPolynomialFormat(.{
+        .bits = 64,
+        .radix = 36,
+        .signedness = .unsigned,
+        .width = .min,
+        .prefix = "0z",
+    });
+    pub const Uz128 = GenericPolynomialFormat(.{
+        .bits = 128,
+        .radix = 36,
+        .signedness = .unsigned,
+        .width = .min,
+        .prefix = "0z",
+    });
+    pub const Ubsize = GenericPolynomialFormat(.{
+        .bits = @bitSizeOf(usize),
+        .radix = 2,
+        .signedness = .unsigned,
+        .width = .max,
+        .prefix = "0b",
+    });
+    pub const Uosize = GenericPolynomialFormat(.{
+        .bits = @bitSizeOf(usize),
+        .radix = 8,
+        .signedness = .unsigned,
+        .width = .min,
+        .prefix = "0o",
+    });
+    pub const Udsize = GenericPolynomialFormat(.{
+        .bits = @bitSizeOf(usize),
+        .radix = 10,
+        .signedness = .unsigned,
+        .width = .min,
+    });
+    pub const Uxsize = GenericPolynomialFormat(.{
+        .bits = @bitSizeOf(usize),
+        .radix = 16,
+        .signedness = .unsigned,
+        .width = .min,
+        .prefix = "0x",
+    });
+    pub const Ibsize = GenericPolynomialFormat(.{
+        .bits = @bitSizeOf(isize),
+        .radix = 2,
+        .signedness = .signed,
+        .width = .max,
+        .prefix = "0b",
+    });
+    pub const Iosize = GenericPolynomialFormat(.{
+        .bits = @bitSizeOf(isize),
+        .radix = 8,
+        .signedness = .signed,
+        .width = .min,
+    });
+    pub const Idsize = GenericPolynomialFormat(.{
+        .bits = @bitSizeOf(isize),
+        .radix = 10,
+        .signedness = .signed,
+        .width = .min,
+    });
+    pub const Ixsize = GenericPolynomialFormat(.{
+        .bits = @bitSizeOf(isize),
+        .radix = 16,
+        .signedness = .signed,
+        .width = .min,
+    });
+    pub const Esc = GenericPolynomialFormat(.{
+        .bits = 8,
+        .radix = 16,
+        .signedness = .unsigned,
+        .width = .max,
+        .prefix = "\\x",
+    });
+    pub const NSec = GenericPolynomialFormat(.{
+        .bits = 64,
+        .signedness = .unsigned,
+        .radix = 10,
+        .width = .{ .fixed = 9 },
+        .range = .{ .min = 0, .max = 999999999 },
+    });
     pub const U8xLEB128 = GenericLEB128Format(u8);
     pub const U16xLEB128 = GenericLEB128Format(u16);
     pub const U32xLEB128 = GenericLEB128Format(u32);
