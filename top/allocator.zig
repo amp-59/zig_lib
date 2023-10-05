@@ -1543,7 +1543,7 @@ fn GenericConfiguration(comptime Allocator: type) type {
     };
 }
 fn GenericInterface(comptime Allocator: type) type {
-    return opaque {
+    const T = struct {
         const Graphics = GenericArenaAllocatorGraphics(Allocator);
         const Intermediate = GenericArenaAllocatorIntermediate(Allocator);
         const Implementation = GenericArenaAllocatorImplementation(Allocator);
@@ -2432,9 +2432,10 @@ fn GenericInterface(comptime Allocator: type) type {
             }
         }
     };
+    return T;
 }
 fn GenericArenaAllocatorIntermediate(comptime Allocator: type) type {
-    return opaque {
+    const T = struct {
         const Graphics = GenericArenaAllocatorGraphics(Allocator);
         const Implementation = GenericArenaAllocatorImplementation(Allocator);
         fn allocateStaticUnitAligned(allocator: *Allocator, n_count: u64, s_aligned_bytes: u64, s_up_addr: u64) Allocator.allocate_void {
@@ -2628,9 +2629,10 @@ fn GenericArenaAllocatorIntermediate(comptime Allocator: type) type {
             }
         }
     };
+    return T;
 }
 fn GenericArenaAllocatorImplementation(comptime Allocator: type) type {
-    return opaque {
+    const T = struct {
         const Graphics = GenericArenaAllocatorGraphics(Allocator);
         fn allocateStaticAnyAlignedAddressable(allocator: *Allocator, n_count: u64, s_aligned_bytes: u64, s_up_addr: u64) void {
             defer Graphics.showWithReference(allocator, @src());
@@ -3381,6 +3383,7 @@ fn GenericArenaAllocatorImplementation(comptime Allocator: type) type {
             }
         }
     };
+    return T;
 }
 const about = opaque {
     const PrintArray = mem.StaticString(8192);
