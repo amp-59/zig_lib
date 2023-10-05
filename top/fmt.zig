@@ -2323,12 +2323,22 @@ pub const RenderSpec = struct {
     enable_comptime_iterator: bool = false,
     address_view: bool = false,
     forward: bool = false,
-    names: struct {
+    names: Names = .{},
+    views: Views = .{},
+    decls: Decls = .{},
+    const Names = struct {
         len_field_suffix: []const u8 = "_len",
         max_len_field_suffix: []const u8 = "_max_len",
         tag_field_suffix: []const u8 = "_tag",
-    } = .{},
-    views: packed struct(u6) {
+    };
+    const Decls = packed struct(u2) {
+        /// Prefer existing formatter declarations if present (unions and structs)
+        forward_formatter: bool = false,
+        /// Prefer `ContainerFormat` over `StructFormat` for apparent library
+        /// container types.
+        forward_container: bool = false,
+    };
+    const Views = packed struct(u6) {
         /// Represents a normal slice where all values are to be shown, maybe used in extern structs.
         /// field_name: [*]T,
         /// field_name_len: usize,
@@ -2352,14 +2362,7 @@ pub const RenderSpec = struct {
         extern_tagged_union: bool = true,
         /// Represents `anytype`
         generic_type_cast: bool = true,
-    } = .{},
-    decls: packed struct(u2) {
-        /// Prefer existing formatter declarations if present (unions and structs)
-        forward_formatter: bool = false,
-        /// Prefer `ContainerFormat` over `StructFormat` for apparent library
-        /// container types.
-        forward_container: bool = false,
-    } = .{},
+    };
 };
 pub inline fn any(value: anytype) AnyFormat(.{}, @TypeOf(value)) {
     return .{ .value = value };
