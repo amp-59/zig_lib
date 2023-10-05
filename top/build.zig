@@ -668,7 +668,25 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     var str: [:0]const u8 = mem.terminate(@ptrFromInt(addr +% disp), 0);
                     buf[0..12].* = "pub const @\"".*;
                     var ptr: [*]u8 = fmt.strcpyEqu(buf + 12, str);
-                    if (disp == 0) {
+                    if (disp == 1) {
+                        const val: *bool = @ptrFromInt(addr);
+                        ptr[0..7].* = "\":bool=".*;
+                        ptr += 7;
+                        ptr[0..5].* = if (val.*) "true\x00".* else "false".*;
+                        ptr += @as(usize, 5) -% @intFromBool(val.*);
+                    } else if (disp == 8) {
+                        const val: *isize = @ptrFromInt(addr);
+                        ptr[0..15].* = "\":comptime_int=".*;
+                        ptr += 15;
+                        var id64: fmt.Type.Id64 = .{ .value = val.* };
+                        ptr += id64.formatWriteBuf(ptr);
+                    } else if (disp == 16) {
+                        const fp: **fn (*const anyopaque, [*]u8) usize = @ptrFromInt(addr);
+                        const val: *const anyopaque = @ptrFromInt(addr +% 8);
+                        ptr[0..2].* = "\"=".*;
+                        ptr += 2;
+                        ptr += @call(.auto, fp.*, .{ val, ptr });
+                    } else {
                         str = mem.terminate(str.ptr + str.len + 1, 0);
                         ptr[0..2].* = "\"=".*;
                         ptr += 2;
@@ -686,27 +704,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                             ptr[0] = '\n';
                         }
                         ptr += 1;
-                    }
-                    if (disp == 1) {
-                        const val: *bool = @ptrFromInt(addr);
-                        ptr[0..7].* = "\":bool=".*;
-                        ptr += 7;
-                        ptr[0..5].* = if (val.*) "true\x00".* else "false".*;
-                        ptr += @as(usize, 5) -% @intFromBool(val.*);
-                    }
-                    if (disp == 8) {
-                        const val: *isize = @ptrFromInt(addr);
-                        ptr[0..15].* = "\":comptime_int=".*;
-                        ptr += 15;
-                        var id64: fmt.Type.Id64 = .{ .value = val.* };
-                        ptr += id64.formatWriteBuf(ptr);
-                    }
-                    if (disp == 16) {
-                        const fp: **fn (*const anyopaque, [*]u8) usize = @ptrFromInt(addr);
-                        const val: *usize = @ptrFromInt(addr +% 8);
-                        ptr[0..2].* = "\"=".*;
-                        ptr += 2;
-                        ptr += @call(.auto, fp.*, .{ val, ptr });
                     }
                     ptr[0..2].* = ";\n".*;
                     return @intFromPtr(ptr + 2) -% @intFromPtr(buf);
@@ -806,7 +803,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 @setRuntimeSafety(false);
                 return @as(*[]file.CompoundPath, @ptrFromInt(node.lists.get(.paths))).*;
             }
-            fn getFiles(node: *const Node) []File {
+            pub fn getFiles(node: *const Node) []File {
                 return @as(*[]File, @ptrFromInt(node.lists.get(.files))).*;
             }
             pub fn getConfigs(node: *const Node) []Config {
@@ -825,7 +822,20 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 @setRuntimeSafety(false);
                 return @as(*[]Depn, @ptrFromInt(node.lists.get(.depns))).*;
             }
-            fn getFile(node: *Node, key: File.Key) ?*File {
+            /// Examples:
+            ///
+            /// Get output binaries for build tasks by tag:
+            /// .{ .tag = output_exe }
+            /// .{ .tag = output_lib }
+            /// .{ .tag = output_obj }
+            ///     ...
+            ///
+            /// Get input or output by traits:
+            /// .{ .traits = .{ .output = true } }
+            /// .{ .traits = .{ .input = true } }
+            ///     ...
+            ///
+            pub fn getFile(node: *Node, key: File.Key) ?*File {
                 @setRuntimeSafety(false);
                 const files: []File = node.getFiles();
                 var idx: usize = 0;
@@ -838,6 +848,14 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
                 return null;
             }
+            pub fn getPath(node: *const Node, fs: *const File) ?*file.CompoundPath {
+                const traits: types.File.Traits = @bitCast(@intFromEnum(fs.tag));
+                const paths: []file.CompoundPath = node.getPaths();
+                if (!traits.is_cached) {
+                    return @ptrCast(paths.ptr + fs.path_idx);
+                }
+                return null;
+            }
             /// Allocate a node pointer.
             pub fn addNode(node: *Node, allocator: *Allocator) **Node {
                 @setRuntimeSafety(false);
@@ -847,7 +865,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 @setRuntimeSafety(false);
                 return @ptrFromInt(node.lists.add(allocator, .files));
             }
-            /// Allocate a path.
             pub fn addPath(node: *Node, allocator: *Allocator, tag: types.File) *file.CompoundPath {
                 @setRuntimeSafety(false);
                 const list: *Lists.List = @ptrFromInt(node.lists.get(.paths));
@@ -1774,8 +1791,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             actionFn: *const fn (*AddressSpace, *ThreadSpace, *Allocator, *Node, Task, AddressSpace.Index) bool,
         ) void {
             @setRuntimeSafety(builtin.is_safe);
+            const nodes: []*Node = node.getNodes();
             if (actionFn(address_space, thread_space, allocator, node, task, arena_index)) {
-                const nodes: []*Node = node.getNodes();
                 if (node.flags.is_group) {
                     for (nodes[1..]) |sub| {
                         recursiveAction(address_space, thread_space, allocator, sub, task, arena_index, actionFn);
