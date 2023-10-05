@@ -6,10 +6,12 @@ const math = @import("./math.zig");
 const proc = @import("./proc.zig");
 const debug = @import("./debug.zig");
 const builtin = @import("./builtin.zig");
+
 const _reference = @import("./reference.zig");
 const _container = @import("./container.zig");
 const _allocator = @import("./allocator.zig");
 const _list = @import("./list.zig");
+
 const mem = @This();
 pub usingnamespace _reference;
 pub usingnamespace _container;
@@ -67,47 +69,31 @@ pub const MapSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = spec.mmap.errors.all },
     return_type: type = void,
     logging: debug.Logging.AcquireError = .{},
-    const Specification = @This();
 };
 pub const SyncSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = spec.msync.errors.all },
     return_type: type = void,
     logging: debug.Logging.AcquireError = .{},
-    const Specification = @This();
 };
 pub const MoveSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = spec.mremap.errors.all },
     return_type: type = void,
     logging: debug.Logging.SuccessError = .{},
-    const Specification = @This();
-    const Options = struct { no_unmap: bool = false };
 };
 pub const RemapSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = spec.mremap.errors.all },
     return_type: type = void,
     logging: debug.Logging.SuccessError = .{},
-    const Specification = @This();
 };
 pub const UnmapSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = spec.munmap.errors.all },
     return_type: type = void,
     logging: debug.Logging.ReleaseError = .{},
-    const Specification = @This();
 };
 pub const ProtectSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = spec.mprotect.errors.all },
     return_type: type = void,
     logging: debug.Logging.SuccessError = .{},
-    const Specification = @This();
-    const Protection = packed struct(usize) {
-        read: bool = true,
-        write: bool = true,
-        exec: bool = false,
-        zb3: u21 = 0,
-        grows_down: bool = false,
-        grows_up: bool = false,
-        zb26: u38 = 0,
-    };
 };
 pub const AdviseSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = spec.madvise.errors.all },
@@ -118,7 +104,6 @@ pub const FdSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = spec.memfd_create.errors.all },
     return_type: type = u64,
     logging: debug.Logging.AcquireError = .{},
-    const Specification = @This();
 };
 pub const Bytes = struct {
     count: usize,
@@ -246,8 +231,8 @@ fn releaseElementaryUnset(comptime AddressSpace: type, address_space: *AddressSp
     }
 }
 pub fn acquire(comptime AddressSpace: type, address_space: *AddressSpace, index: AddressSpace.Index) AddressSpace.acquire_void {
-    const lb_addr: u64 = AddressSpace.low(index);
-    const up_addr: u64 = AddressSpace.high(index);
+    const lb_addr: usize = AddressSpace.low(index);
+    const up_addr: usize = AddressSpace.high(index);
     const logging: debug.Logging.AcquireErrorFault = comptime AddressSpace.specification.logging.acquire.override();
     if (acquireSet(AddressSpace, address_space, index)) {
         if (AddressSpace.specification.options.require_map) {
@@ -266,8 +251,8 @@ pub fn acquire(comptime AddressSpace: type, address_space: *AddressSpace, index:
     }
 }
 pub fn acquireStatic(comptime AddressSpace: type, address_space: *AddressSpace, comptime index: AddressSpace.Index) AddressSpace.acquire_void(index) {
-    const lb_addr: u64 = comptime AddressSpace.low(index);
-    const up_addr: u64 = comptime AddressSpace.high(index);
+    const lb_addr: usize = comptime AddressSpace.low(index);
+    const up_addr: usize = comptime AddressSpace.high(index);
     const logging: debug.Logging.AcquireErrorFault = comptime AddressSpace.specification.logging.acquire.override();
     if (acquireStaticSet(AddressSpace, address_space, index)) {
         if (logging.Acquire) {
@@ -283,8 +268,8 @@ pub fn acquireStatic(comptime AddressSpace: type, address_space: *AddressSpace, 
     }
 }
 pub fn acquireElementary(comptime AddressSpace: type, address_space: *AddressSpace) AddressSpace.acquire_void {
-    const lb_addr: u64 = address_space.low();
-    const up_addr: u64 = address_space.high();
+    const lb_addr: usize = address_space.low();
+    const up_addr: usize = address_space.high();
     const logging: debug.Logging.AcquireErrorFault = comptime AddressSpace.specification.logging.acquire.override();
     if (acquireElementarySet(AddressSpace, address_space)) {
         if (logging.Acquire) {
@@ -300,8 +285,8 @@ pub fn acquireElementary(comptime AddressSpace: type, address_space: *AddressSpa
     }
 }
 pub fn release(comptime AddressSpace: type, address_space: *AddressSpace, index: AddressSpace.Index) AddressSpace.release_void {
-    const lb_addr: u64 = AddressSpace.low(index);
-    const up_addr: u64 = AddressSpace.high(index);
+    const lb_addr: usize = AddressSpace.low(index);
+    const up_addr: usize = AddressSpace.high(index);
     const logging: debug.Logging.ReleaseErrorFault = comptime AddressSpace.specification.logging.release.override();
     if (releaseUnset(AddressSpace, address_space, index)) {
         if (logging.Release) {
@@ -320,8 +305,8 @@ pub fn release(comptime AddressSpace: type, address_space: *AddressSpace, index:
     }
 }
 pub fn releaseStatic(comptime AddressSpace: type, address_space: *AddressSpace, comptime index: AddressSpace.Index) AddressSpace.release_void(index) {
-    const lb_addr: u64 = comptime AddressSpace.low(index);
-    const up_addr: u64 = comptime AddressSpace.high(index);
+    const lb_addr: usize = comptime AddressSpace.low(index);
+    const up_addr: usize = comptime AddressSpace.high(index);
     const logging: debug.Logging.ReleaseErrorFault = comptime AddressSpace.specification.logging.release.override();
     if (releaseStaticUnset(AddressSpace, address_space, index)) {
         if (logging.Release) {
@@ -337,8 +322,8 @@ pub fn releaseStatic(comptime AddressSpace: type, address_space: *AddressSpace, 
     }
 }
 pub fn releaseElementary(comptime AddressSpace: type, address_space: *AddressSpace) AddressSpace.release_void {
-    const lb_addr: u64 = address_space.low();
-    const up_addr: u64 = address_space.high();
+    const lb_addr: usize = address_space.low();
+    const up_addr: usize = address_space.high();
     if (releaseElementaryUnset(AddressSpace, address_space)) {
         if (AddressSpace.specification.logging.release.Release) {
             about.aboutIndexLbAddrUpAddrLabelNotice(about.rel_s, null, lb_addr, up_addr, AddressSpace.specification.label);
@@ -353,8 +338,8 @@ pub fn releaseElementary(comptime AddressSpace: type, address_space: *AddressSpa
     }
 }
 pub fn testAcquire(comptime AddressSpace: type, address_space: *AddressSpace, index: AddressSpace.Index) AddressSpace.acquire_bool {
-    const lb_addr: u64 = AddressSpace.low(index);
-    const up_addr: u64 = AddressSpace.high(index);
+    const lb_addr: usize = AddressSpace.low(index);
+    const up_addr: usize = AddressSpace.high(index);
     const logging: debug.Logging.AcquireErrorFault = comptime AddressSpace.specification.logging.acquire.override();
     const ret: bool = acquireSet(AddressSpace, address_space, index);
     if (ret) {
@@ -368,8 +353,8 @@ pub fn testAcquire(comptime AddressSpace: type, address_space: *AddressSpace, in
     return ret;
 }
 pub fn testAcquireStatic(comptime AddressSpace: type, address_space: *AddressSpace, comptime index: AddressSpace.Index) AddressSpace.acquire_bool(index) {
-    const lb_addr: u64 = comptime AddressSpace.low(index);
-    const up_addr: u64 = comptime AddressSpace.high(index);
+    const lb_addr: usize = comptime AddressSpace.low(index);
+    const up_addr: usize = comptime AddressSpace.high(index);
     const logging: debug.Logging.AcquireErrorFault = comptime AddressSpace.specification.logging.acquire.override();
     const ret: bool = acquireStaticSet(AddressSpace, address_space, index);
     if (ret) {
@@ -380,8 +365,8 @@ pub fn testAcquireStatic(comptime AddressSpace: type, address_space: *AddressSpa
     return ret;
 }
 pub fn testAcquireElementary(comptime AddressSpace: type, address_space: *AddressSpace) AddressSpace.acquire_bool {
-    const lb_addr: u64 = comptime address_space.low();
-    const up_addr: u64 = comptime address_space.high();
+    const lb_addr: usize = comptime address_space.low();
+    const up_addr: usize = comptime address_space.high();
     const logging: debug.Logging.AcquireErrorFault = comptime AddressSpace.specification.logging.acquire.override();
     const ret: bool = acquireElementarySet(AddressSpace, address_space);
     if (ret) {
@@ -392,8 +377,8 @@ pub fn testAcquireElementary(comptime AddressSpace: type, address_space: *Addres
     return ret;
 }
 pub fn testRelease(comptime AddressSpace: type, address_space: *AddressSpace, index: AddressSpace.Index) AddressSpace.release_bool {
-    const lb_addr: u64 = AddressSpace.low(index);
-    const up_addr: u64 = AddressSpace.high(index);
+    const lb_addr: usize = AddressSpace.low(index);
+    const up_addr: usize = AddressSpace.high(index);
     const logging: debug.Logging.ReleaseErrorFault = comptime AddressSpace.specification.logging.release.override();
     const ret: bool = releaseUnset(AddressSpace, address_space, index);
     if (ret) {
@@ -407,8 +392,8 @@ pub fn testRelease(comptime AddressSpace: type, address_space: *AddressSpace, in
     return ret;
 }
 pub fn tryReleaseStatic(comptime AddressSpace: type, address_space: *AddressSpace, comptime index: AddressSpace.Index) AddressSpace.release_bool(index) {
-    const lb_addr: u64 = comptime AddressSpace.low(index);
-    const up_addr: u64 = comptime AddressSpace.high(index);
+    const lb_addr: usize = comptime AddressSpace.low(index);
+    const up_addr: usize = comptime AddressSpace.high(index);
     const logging: debug.Logging.ReleaseErrorFault = comptime AddressSpace.specification.logging.release.override();
     const ret: bool = releaseStaticUnset(AddressSpace, address_space, index);
     if (ret) {
@@ -419,8 +404,8 @@ pub fn tryReleaseStatic(comptime AddressSpace: type, address_space: *AddressSpac
     return ret;
 }
 pub fn testReleaseElementary(comptime AddressSpace: type, address_space: *AddressSpace) AddressSpace.release_bool {
-    const lb_addr: u64 = comptime address_space.low();
-    const up_addr: u64 = comptime address_space.high();
+    const lb_addr: usize = comptime address_space.low();
+    const up_addr: usize = comptime address_space.high();
     const ret: bool = releaseElementaryUnset(AddressSpace, address_space);
     if (ret) {
         if (AddressSpace.specification.logging.release.Release) {
@@ -450,7 +435,7 @@ pub fn map(comptime map_spec: MapSpec, prot: sys.flags.MemProt, flags: sys.flags
         return map_error;
     }
 }
-pub fn sync(comptime sync_spec: SyncSpec, flags: sys.flags.MemSync, addr: u64, len: u64) sys.ErrorUnion(sync_spec.errors, sync_spec.return_type) {
+pub fn sync(comptime sync_spec: SyncSpec, flags: sys.flags.MemSync, addr: usize, len: usize) sys.ErrorUnion(sync_spec.errors, sync_spec.return_type) {
     const logging: debug.Logging.AcquireError = comptime sync_spec.logging.override();
     if (meta.wrap(sys.call(.sync, sync_spec.errors, sync_spec.return_type, .{ addr, len, @bitCast(flags) }))) |ret| {
         if (logging.Acquire) {
@@ -466,7 +451,7 @@ pub fn sync(comptime sync_spec: SyncSpec, flags: sys.flags.MemSync, addr: u64, l
         return sync_error;
     }
 }
-pub fn move(comptime move_spec: MoveSpec, flags: sys.flags.Remap, old_addr: u64, old_len: u64, new_addr: u64) sys.ErrorUnion(move_spec.errors, move_spec.return_type) {
+pub fn move(comptime move_spec: MoveSpec, flags: sys.flags.Remap, old_addr: usize, old_len: usize, new_addr: usize) sys.ErrorUnion(move_spec.errors, move_spec.return_type) {
     const logging: debug.Logging.SuccessError = comptime move_spec.logging.override();
     if (meta.wrap(sys.call(.mremap, move_spec.errors, move_spec.return_type, .{ old_addr, old_len, old_len, @bitCast(flags), new_addr }))) {
         if (logging.Success) {
@@ -479,7 +464,7 @@ pub fn move(comptime move_spec: MoveSpec, flags: sys.flags.Remap, old_addr: u64,
         return mremap_error;
     }
 }
-pub fn resize(comptime resize_spec: RemapSpec, old_addr: u64, old_len: u64, new_len: u64) sys.ErrorUnion(resize_spec.errors, resize_spec.return_type) {
+pub fn resize(comptime resize_spec: RemapSpec, old_addr: usize, old_len: usize, new_len: usize) sys.ErrorUnion(resize_spec.errors, resize_spec.return_type) {
     const logging: debug.Logging.SuccessError = comptime resize_spec.logging.override();
     if (meta.wrap(sys.call(.mremap, resize_spec.errors, resize_spec.return_type, .{ old_addr, old_len, new_len, 0, 0 }))) {
         if (logging.Success) {
@@ -492,7 +477,7 @@ pub fn resize(comptime resize_spec: RemapSpec, old_addr: u64, old_len: u64, new_
         return mremap_error;
     }
 }
-pub fn unmap(comptime unmap_spec: UnmapSpec, addr: u64, len: u64) sys.ErrorUnion(unmap_spec.errors, unmap_spec.return_type) {
+pub fn unmap(comptime unmap_spec: UnmapSpec, addr: usize, len: usize) sys.ErrorUnion(unmap_spec.errors, unmap_spec.return_type) {
     const logging: debug.Logging.ReleaseError = comptime unmap_spec.logging.override();
     if (meta.wrap(sys.call(.munmap, unmap_spec.errors, unmap_spec.return_type, .{ addr, len }))) {
         if (logging.Release) {
@@ -505,20 +490,20 @@ pub fn unmap(comptime unmap_spec: UnmapSpec, addr: u64, len: u64) sys.ErrorUnion
         return unmap_error;
     }
 }
-pub fn protect(comptime protect_spec: ProtectSpec, prot: ProtectSpec.Protection, addr: u64, len: u64) sys.ErrorUnion(protect_spec.errors, protect_spec.return_type) {
+pub fn protect(comptime protect_spec: ProtectSpec, prot: sys.flags.MemProt, addr: usize, len: usize) sys.ErrorUnion(protect_spec.errors, protect_spec.return_type) {
     const logging: debug.Logging.SuccessError = comptime protect_spec.logging.override();
     if (meta.wrap(sys.call(.mprotect, protect_spec.errors, protect_spec.return_type, .{ addr, len, @as(usize, @bitCast(prot)) }))) {
         if (logging.Success) {
-            about.aboutAddrLenDescrNotice(about.protect_s, addr, len, "<description>");
+            about.aboutAddrLenMemProtNotice(about.protect_s, addr, len, prot);
         }
     } else |protect_error| {
         if (logging.Error) {
-            about.aboutAddrLenDescrError(about.protect_s, @errorName(protect_error), addr, len, "<description>");
+            about.aboutAddrLenMemProtError(about.protect_s, @errorName(protect_error), addr, len, prot);
         }
         return protect_error;
     }
 }
-pub fn advise(comptime advise_spec: AdviseSpec, advice: Advice, addr: u64, len: u64) sys.ErrorUnion(advise_spec.errors, advise_spec.return_type) {
+pub fn advise(comptime advise_spec: AdviseSpec, advice: Advice, addr: usize, len: usize) sys.ErrorUnion(advise_spec.errors, advise_spec.return_type) {
     const logging: debug.Logging.SuccessError = comptime advise_spec.logging.override();
     if (meta.wrap(sys.call(.madvise, advise_spec.errors, advise_spec.return_type, .{ addr, len, @intFromEnum(advice) }))) {
         if (logging.Success) {
@@ -532,7 +517,7 @@ pub fn advise(comptime advise_spec: AdviseSpec, advice: Advice, addr: u64, len: 
     }
 }
 pub fn fd(comptime fd_spec: FdSpec, flags: sys.flags.MemFd, pathname: [:0]const u8) sys.ErrorUnion(fd_spec.errors, fd_spec.return_type) {
-    const name_buf_addr: u64 = @intFromPtr(pathname.ptr);
+    const name_buf_addr: usize = @intFromPtr(pathname.ptr);
     const logging: debug.Logging.AcquireError = comptime fd_spec.logging.override();
     if (meta.wrap(sys.call(.memfd_create, fd_spec.errors, fd_spec.return_type, .{ name_buf_addr, @bitCast(flags) }))) |mem_fd| {
         if (logging.Acquire) {
@@ -845,24 +830,24 @@ pub const AbstractSpec = union(enum) {
     }
 };
 fn lhs(comptime T: type, comptime U: type, lu_values: []const T, ax_values: []const U) []const T {
-    const lb_addr: u64 = @intFromPtr(lu_values.ptr);
-    const ab_addr: u64 = @intFromPtr(ax_values.ptr);
-    const lhs_len: u64 = @divExact(ab_addr -% lb_addr, @sizeOf(T));
+    const lb_addr: usize = @intFromPtr(lu_values.ptr);
+    const ab_addr: usize = @intFromPtr(ax_values.ptr);
+    const lhs_len: usize = @divExact(ab_addr -% lb_addr, @sizeOf(T));
     return lu_values[0..lhs_len];
 }
 fn rhs(comptime T: type, comptime U: type, lu_values: []const T, ax_values: []const U) []const T {
-    const up_addr: u64 = math.mulAdd64(@intFromPtr(lu_values.ptr), @sizeOf(T), lu_values.len);
-    const xb_addr: u64 = math.mulAdd64(@intFromPtr(ax_values.ptr), @sizeOf(U), ax_values.len);
-    const rhs_len: u64 = @divExact(up_addr -% xb_addr, @sizeOf(T));
+    const up_addr: usize = math.mulAdd64(@intFromPtr(lu_values.ptr), @sizeOf(T), lu_values.len);
+    const xb_addr: usize = math.mulAdd64(@intFromPtr(ax_values.ptr), @sizeOf(U), ax_values.len);
+    const rhs_len: usize = @divExact(up_addr -% xb_addr, @sizeOf(T));
     return lu_values[0..rhs_len];
 }
 fn mid(comptime T: type, comptime U: type, values: []const T) []const U {
-    const lb_addr: u64 = @intFromPtr(values.ptr);
-    const up_addr: u64 = math.mulAdd64(lb_addr, @sizeOf(T), values.len);
-    const ab_addr: u64 = bits.alignA64(lb_addr, @alignOf(U));
-    const xb_addr: u64 = bits.alignB64(up_addr, @alignOf(U));
-    const aligned_bytes: u64 = math.sub64(xb_addr, ab_addr);
-    const mid_len: u64 = math.div64(aligned_bytes, @sizeOf(U));
+    const lb_addr: usize = @intFromPtr(values.ptr);
+    const up_addr: usize = math.mulAdd64(lb_addr, @sizeOf(T), values.len);
+    const ab_addr: usize = bits.alignA64(lb_addr, @alignOf(U));
+    const xb_addr: usize = bits.alignB64(up_addr, @alignOf(U));
+    const aligned_bytes: usize = math.sub64(xb_addr, ab_addr);
+    const mid_len: usize = math.div64(aligned_bytes, @sizeOf(U));
     return @as([*]const U, @ptrFromInt(ab_addr))[0..mid_len];
 }
 fn testEqualArray(comptime T: type, comptime array_info: builtin.Type.Array, arg1: T, arg2: T) bool {
@@ -1687,7 +1672,7 @@ pub const SimpleAllocator = struct {
 pub fn GenericSimpleArray(comptime T: type) type {
     return struct {
         values: []T,
-        values_len: u64,
+        values_len: usize,
         const Array = @This();
         const Allocator = builtin.define("Allocator", type, mem.SimpleAllocator);
         pub fn appendOne(array: *Array, allocator: *Allocator, value: T) void {
@@ -1730,7 +1715,7 @@ pub fn GenericSimpleArray(comptime T: type) type {
 pub fn GenericSimpleMap(comptime Key: type, comptime Value: type) type {
     return struct {
         pairs: []*Pair,
-        pairs_len: u64,
+        pairs_len: usize,
         const Array = @This();
         const Allocator = builtin.define("Allocator", type, mem.SimpleAllocator);
         const Pair = struct {
@@ -2561,13 +2546,13 @@ pub const DiscreteMultiArena = struct {
         }
         return map_list;
     }
-    pub fn capacityAll(comptime multi_arena: MultiArena) u64 {
+    pub fn capacityAll(comptime multi_arena: MultiArena) comptime_int {
         return builtin.sub(u64, multi_arena.up_addr, multi_arena.lb_addr);
     }
-    pub fn capacityAny(comptime multi_arena: MultiArena, comptime index: multi_arena.index_type) u64 {
+    pub fn capacityAny(comptime multi_arena: MultiArena, comptime index: multi_arena.index_type) comptime_int {
         return multi_arena.list[index].up_addr -% multi_arena.list[index].up_addr;
     }
-    pub fn invert(comptime multi_arena: MultiArena, addr: u64) multi_arena.index_type {
+    pub fn invert(comptime multi_arena: MultiArena, addr: usize) multi_arena.index_type {
         var index: multi_arena.index_type = 0;
         while (index != multi_arena.list.len) : (index +%= 1) {
             if (addr >= multi_arena.list[index].lb_addr and
@@ -2584,10 +2569,10 @@ pub const DiscreteMultiArena = struct {
     pub fn count(comptime multi_arena: MultiArena) comptime_int {
         return multi_arena.list.len;
     }
-    pub fn low(comptime multi_arena: MultiArena, comptime index: multi_arena.index_type) u64 {
+    pub fn low(comptime multi_arena: MultiArena, comptime index: multi_arena.index_type) comptime_int {
         return multi_arena.list[index].lb_addr;
     }
-    pub fn high(comptime multi_arena: MultiArena, comptime index: multi_arena.index_type) u64 {
+    pub fn high(comptime multi_arena: MultiArena, comptime index: multi_arena.index_type) comptime_int {
         return multi_arena.list[index].up_addr;
     }
     pub fn instantiate(comptime multi_arena: MultiArena) type {
@@ -2602,10 +2587,10 @@ pub const RegularMultiArena = struct {
     label: ?[]const u8 = null,
     /// Lower bound of address space. This is used when computing division
     /// length.
-    lb_addr: u64 = 0,
+    lb_addr: usize = 0,
     /// Upper bound of address space. This is used when computing division
     /// length.
-    up_addr: u64 = 1 << 47,
+    up_addr: usize = 1 << 47,
     /// The first arena starts at this offset in the first division.
     /// This is an option to allow the largest alignment possible per division
     /// while avoiding the binary mapping in the first division.
@@ -2641,22 +2626,22 @@ pub const RegularMultiArena = struct {
             );
         }
     }
-    pub inline fn addressable_byte_address(comptime multi_arena: MultiArena) u64 {
+    pub fn addressable_byte_address(comptime multi_arena: MultiArena) comptime_int {
         return math.add64(multi_arena.lb_addr, multi_arena.lb_offset);
     }
-    pub inline fn allocated_byte_address(comptime multi_arena: MultiArena) u64 {
+    pub fn allocated_byte_address(comptime multi_arena: MultiArena) comptime_int {
         return multi_arena.lb_addr;
     }
-    pub inline fn unallocated_byte_address(comptime multi_arena: MultiArena) u64 {
+    pub fn unallocated_byte_address(comptime multi_arena: MultiArena) comptime_int {
         return math.sub64(multi_arena.up_addr, multi_arena.up_offset);
     }
-    pub inline fn unaddressable_byte_address(comptime multi_arena: MultiArena) u64 {
+    pub fn unaddressable_byte_address(comptime multi_arena: MultiArena) comptime_int {
         return multi_arena.up_addr;
     }
-    pub inline fn allocated_byte_count(comptime multi_arena: MultiArena) u64 {
+    pub fn allocated_byte_count(comptime multi_arena: MultiArena) comptime_int {
         return math.sub64(unallocated_byte_address(multi_arena), allocated_byte_address(multi_arena));
     }
-    pub inline fn addressable_byte_count(comptime multi_arena: MultiArena) u64 {
+    pub fn addressable_byte_count(comptime multi_arena: MultiArena) comptime_int {
         return math.sub64(unaddressable_byte_address(multi_arena), addressable_byte_address(multi_arena));
     }
     fn referSubRegular(comptime multi_arena: MultiArena, comptime sub_arena: Arena) []const ArenaReference {
@@ -2702,16 +2687,14 @@ pub const RegularMultiArena = struct {
     pub fn capacityEach(comptime multi_arena: MultiArena) u64 {
         comptime return @divExact(capacityAll(multi_arena), multi_arena.divisions);
     }
-    pub fn invert(comptime multi_arena: MultiArena, addr: u64) Index(multi_arena) {
+    pub fn invert(comptime multi_arena: MultiArena, addr: usize) Index(multi_arena) {
         return @as(Index(multi_arena), @intCast((addr -% multi_arena.lb_addr) / capacityEach(multi_arena)));
     }
     pub fn low(comptime multi_arena: MultiArena, index: Index(multi_arena)) u64 {
-        const offset: u64 = index *% comptime capacityEach(multi_arena);
-        return @max(multi_arena.lb_addr +% multi_arena.lb_offset, multi_arena.lb_addr +% offset);
+        return @max(multi_arena.lb_addr +% multi_arena.lb_offset, multi_arena.lb_addr +% (index *% comptime capacityEach(multi_arena)));
     }
     pub fn high(comptime multi_arena: MultiArena, index: Index(multi_arena)) u64 {
-        const offset: u64 = (index +% 1) *% comptime capacityEach(multi_arena);
-        return @min(multi_arena.up_addr -% multi_arena.up_offset, multi_arena.lb_addr +% offset);
+        return @min(multi_arena.up_addr -% multi_arena.up_offset, multi_arena.lb_addr +% ((index +% 1) *% comptime capacityEach(multi_arena)));
     }
     pub fn instantiate(comptime multi_arena: MultiArena) type {
         return GenericRegularAddressSpace(multi_arena);
@@ -3039,8 +3022,8 @@ pub fn GenericDiscreteAddressSpace(comptime addr_spec: DiscreteAddressSpaceSpec)
 }
 pub const ElementaryAddressSpaceSpec = struct {
     label: ?[]const u8 = null,
-    lb_addr: u64 = 0x40000000,
-    up_addr: u64 = 0x800000000000,
+    lb_addr: usize = 0x40000000,
+    up_addr: usize = 0x800000000000,
     errors: AddressSpaceErrors,
     logging: AddressSpaceLogging,
     options: Arena.Flags,
@@ -3099,7 +3082,7 @@ pub fn GenericElementaryAddressSpace(comptime addr_spec: ElementaryAddressSpaceS
     return T;
 }
 fn GenericAddressSpace(comptime AddressSpace: type) type {
-    return extern struct {
+    const T = extern struct {
         pub fn formatWrite(address_space: AddressSpace, array: anytype) void {
             if (@TypeOf(AddressSpace.specification) == DiscreteAddressSpaceSpec) {
                 return AddressSpace.about.formatWriteDiscrete(address_space, array);
@@ -3114,7 +3097,7 @@ fn GenericAddressSpace(comptime AddressSpace: type) type {
                 return AddressSpace.about.formatLengthRegular(address_space);
             }
         }
-        pub fn invert(addr: u64) AddressSpace.Index {
+        pub fn invert(addr: usize) AddressSpace.Index {
             return @as(AddressSpace.Index, @intCast(AddressSpace.specification.invert(addr)));
         }
         pub fn SubSpace(comptime label_or_index: anytype) type {
@@ -3142,7 +3125,7 @@ fn GenericAddressSpace(comptime AddressSpace: type) type {
                 }
             }
             fn formatLengthRegular(address_space: AddressSpace) u64 {
-                var len: u64 = 0;
+                var len: usize = 0;
                 var arena_index: AddressSpace.Index = 0;
                 len +%= about_set_s.len;
                 while (arena_index != comptime AddressSpace.specification.count()) : (arena_index +%= 1) {
@@ -3180,7 +3163,7 @@ fn GenericAddressSpace(comptime AddressSpace: type) type {
                 }
             }
             fn formatLengthDiscrete(address_space: AddressSpace) u64 {
-                var len: u64 = 0;
+                var len: usize = 0;
                 comptime var arena_index: AddressSpace.Index = 0;
                 len +%= about_set_s.len;
                 inline while (arena_index != comptime AddressSpace.specification.count()) : (arena_index +%= 1) {
@@ -3201,6 +3184,7 @@ fn GenericAddressSpace(comptime AddressSpace: type) type {
             }
         };
     };
+    return T;
 }
 pub fn generic(comptime any: anytype) meta.Generic {
     const T: type = if (@hasField(@TypeOf(any), "list"))
@@ -3261,7 +3245,7 @@ pub const about = opaque {
     const resize_s: fmt.AboutSrc = fmt.about("resize");
     const advice_s: fmt.AboutSrc = fmt.about("advice");
     const protect_s: fmt.AboutSrc = fmt.about("protect");
-    pub fn aboutAddrLenNotice(about_s: fmt.AboutSrc, addr: u64, len: u64) void {
+    pub fn aboutAddrLenNotice(about_s: fmt.AboutSrc, addr: usize, len: usize) void {
         @setRuntimeSafety(false);
         var buf: [4096]u8 = undefined;
         buf[0..about_s.len].* = about_s.*;
@@ -3276,7 +3260,7 @@ pub const about = opaque {
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) - @intFromPtr(&buf)]);
     }
-    fn aboutAddrLenDescrNotice(about_s: fmt.AboutSrc, addr: u64, len: u64, description_s: []const u8) void {
+    fn aboutAddrLenDescrNotice(about_s: fmt.AboutSrc, addr: usize, len: usize, description_s: []const u8) void {
         @setRuntimeSafety(false);
         var buf: [4096]u8 = undefined;
         buf[0..about_s.len].* = about_s.*;
@@ -3290,17 +3274,34 @@ pub const about = opaque {
         ptr += fmt.bytes(len).formatWriteBuf(ptr);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        @memcpy(ptr, description_s);
-        ptr += description_s.len;
+        ptr = fmt.strcpyEqu(ptr, description_s);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
-    pub fn aboutRemapNotice(about_s: fmt.AboutSrc, old_addr: u64, old_len: u64, maybe_new_addr: ?u64, maybe_new_len: ?u64) void {
+    fn aboutAddrLenMemProtNotice(about_s: fmt.AboutSrc, addr: usize, len: usize, prot: sys.flags.MemProt) void {
         @setRuntimeSafety(false);
         var buf: [4096]u8 = undefined;
-        const new_addr: u64 = maybe_new_addr orelse old_addr;
-        const new_len: u64 = maybe_new_len orelse old_len;
-        const abs_diff: u64 = builtin.max(u64, new_len, old_len) -% builtin.min(u64, new_len, old_len);
+        buf[0..about_s.len].* = about_s.*;
+        var ptr: [*]u8 = buf[about_s.len..];
+        ptr += fmt.ux64(addr).formatWriteBuf(ptr);
+        ptr[0..2].* = "..".*;
+        ptr += 2;
+        ptr += fmt.ux64(addr +% len).formatWriteBuf(ptr);
+        ptr[0..2].* = ", ".*;
+        ptr += 2;
+        ptr += fmt.bytes(len).formatWriteBuf(ptr);
+        ptr[0..2].* = ", ".*;
+        ptr += 2;
+        ptr += prot.formatWriteBuf(ptr);
+        ptr[0] = '\n';
+        debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
+    }
+    pub fn aboutRemapNotice(about_s: fmt.AboutSrc, old_addr: usize, old_len: usize, maybe_new_addr: ?u64, maybe_new_len: ?u64) void {
+        @setRuntimeSafety(false);
+        var buf: [4096]u8 = undefined;
+        const new_addr: usize = maybe_new_addr orelse old_addr;
+        const new_len: usize = maybe_new_len orelse old_len;
+        const abs_diff: u64 = @max(new_len, old_len) -% @min(new_len, old_len);
         const notation_s: *const [3]u8 = bits.cmovx(new_len < old_len, ", -", ", +");
         buf[0..about_s.len].* = about_s.*;
         var ptr: [*]u8 = buf[about_s.len..];
@@ -3320,7 +3321,7 @@ pub const about = opaque {
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
-    fn aboutIndexLbAddrUpAddrLabelNotice(about_s: fmt.AboutSrc, index: ?u64, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
+    fn aboutIndexLbAddrUpAddrLabelNotice(about_s: fmt.AboutSrc, index: ?u64, lb_addr: usize, up_addr: usize, label: ?[]const u8) void {
         @setRuntimeSafety(false);
         var buf: [4096]u8 = undefined;
         buf[0..about_s.len].* = about_s.*;
@@ -3348,23 +3349,17 @@ pub const about = opaque {
         var buf: [4096]u8 = undefined;
         buf[0..about_s.len].* = about_s.*;
         var ptr: [*]u8 = buf[about_s.len..];
-        @memcpy(ptr, pathname);
-        ptr += pathname.len;
+        ptr = fmt.strcpyEqu(ptr, pathname);
         ptr[0..9].* = ", mem_fd=".*;
         ptr += 9;
         ptr += fmt.ud64(mem_fd).formatWriteBuf(ptr);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
-    pub fn aboutAddrLenError(about_s: fmt.AboutSrc, error_name: []const u8, addr: u64, len: u64) void {
+    pub fn aboutAddrLenError(about_s: fmt.AboutSrc, error_name: []const u8, addr: usize, len: usize) void {
         @setRuntimeSafety(false);
         var buf: [4096]u8 = undefined;
-        buf[0..about_s.len].* = about_s.*;
-        var ptr: [*]u8 = buf[about_s.len..];
-        ptr[0..debug.about.error_s.len].* = debug.about.error_s.*;
-        ptr += debug.about.error_s.len;
-        @memcpy(ptr, error_name);
-        ptr += error_name.len;
+        var ptr: [*]u8 = debug.about.writeAboutError(&buf, about_s, error_name);
         ptr[0..2].* = ", ".*;
         ptr += 2;
         ptr += fmt.ux64(addr).formatWriteBuf(ptr);
@@ -3377,15 +3372,10 @@ pub const about = opaque {
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) - @intFromPtr(&buf)]);
     }
-    pub fn aboutAddrLenDescrError(about_s: fmt.AboutSrc, error_name: []const u8, addr: u64, len: u64, description_s: []const u8) void {
+    pub fn aboutAddrLenDescrError(about_s: fmt.AboutSrc, error_name: []const u8, addr: usize, len: usize, description_s: []const u8) void {
         @setRuntimeSafety(false);
         var buf: [4096]u8 = undefined;
-        buf[0..about_s.len].* = about_s.*;
-        var ptr: [*]u8 = buf[about_s.len..];
-        ptr[0..debug.about.error_s.len].* = debug.about.error_s.*;
-        ptr += debug.about.error_s.len;
-        @memcpy(ptr, error_name);
-        ptr += error_name.len;
+        var ptr: [*]u8 = debug.about.writeAboutError(&buf, about_s, error_name);
         ptr[0..2].* = ", ".*;
         ptr += 2;
         ptr += fmt.ux64(addr).formatWriteBuf(ptr);
@@ -3400,21 +3390,34 @@ pub const about = opaque {
         @memcpy(ptr, description_s);
         ptr += description_s.len;
         ptr[0] = '\n';
-        debug.write(buf[0 .. @intFromPtr(ptr - @intFromPtr(&buf)) +% 1]);
+        debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
-    fn aboutRemapError(about_s: fmt.AboutSrc, error_name: []const u8, old_addr: u64, old_len: u64, maybe_new_addr: ?u64, maybe_new_len: ?u64) void {
+    pub fn aboutAddrLenMemProtError(about_s: fmt.AboutSrc, error_name: []const u8, addr: usize, len: usize, prot: sys.flags.MemProt) void {
         @setRuntimeSafety(false);
         var buf: [4096]u8 = undefined;
-        const new_addr: u64 = maybe_new_addr orelse old_addr;
-        const new_len: u64 = maybe_new_len orelse old_len;
-        const abs_diff: u64 = builtin.max(u64, new_len, old_len) -% builtin.min(u64, new_len, old_len);
-        const notation_s: *const [3]u8 = bits.cmovx(new_len < old_len, ", -", ", +");
-        buf[0..about_s.len].* = about_s.*;
-        var ptr: [*]u8 = buf[about_s.len..];
-        ptr[0..debug.about.error_s.len].* = debug.about.error_s.*;
-        ptr += debug.about.error_s.len;
-        @memcpy(ptr, error_name);
-        ptr += error_name.len;
+        var ptr: [*]u8 = debug.about.writeAboutError(&buf, about_s, error_name);
+        ptr[0..2].* = ", ".*;
+        ptr += 2;
+        ptr += fmt.ux64(addr).formatWriteBuf(ptr);
+        ptr[0..2].* = "..".*;
+        ptr += 2;
+        ptr += fmt.ux64(addr +% len).formatWriteBuf(ptr);
+        ptr[0..2].* = ", ".*;
+        ptr += 2;
+        ptr += fmt.ud64(len).formatWriteBuf(ptr);
+        ptr[0..8].* = " bytes, ".*;
+        ptr += 8;
+        ptr += prot.formatWriteBuf(ptr);
+        ptr[0] = '\n';
+        debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
+    }
+    fn aboutRemapError(about_s: fmt.AboutSrc, error_name: []const u8, old_addr: usize, old_len: usize, maybe_new_addr: ?u64, maybe_new_len: ?u64) void {
+        @setRuntimeSafety(false);
+        var buf: [4096]u8 = undefined;
+        const new_addr: usize = maybe_new_addr orelse old_addr;
+        const new_len: usize = maybe_new_len orelse old_len;
+        const abs_diff: u64 = @max(new_len, old_len) -% @min(new_len, old_len);
+        var ptr: [*]u8 = debug.about.writeAboutError(&buf, about_s, error_name);
         ptr[0..2].* = ", ".*;
         ptr += 2;
         ptr += fmt.ux64(old_addr).formatWriteBuf(ptr);
@@ -3427,26 +3430,20 @@ pub const about = opaque {
         ptr[0..2].* = "..".*;
         ptr += 2;
         ptr += fmt.ux64(new_addr +% new_len).formatWriteBuf(ptr);
-        ptr[0..3].* = notation_s.*;
+        ptr[0..3].* = if (new_len < old_len) ", -".* else ", +".*;
         ptr += 3;
         ptr += fmt.bytes(abs_diff).formatWriteBuf(ptr);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
-    fn aboutIndexLbAddrUpAddrLabelError(about_s: fmt.AboutSrc, error_name: [:0]const u8, index: ?u64, lb_addr: u64, up_addr: u64, label: ?[]const u8) void {
+    fn aboutIndexLbAddrUpAddrLabelError(about_s: fmt.AboutSrc, error_name: [:0]const u8, index: ?usize, lb_addr: usize, up_addr: usize, label: ?[]const u8) void {
         @setRuntimeSafety(false);
-        var buf: [4096]u8 = undefined;
         const label_s: []const u8 = label orelse "arena";
-        buf[0..about_s.len].* = about_s.*;
-        var ptr: [*]u8 = buf[about_s.len..];
-        ptr[0..debug.about.error_s.len].* = debug.about.error_s.*;
-        ptr += debug.about.error_s.len;
-        @memcpy(ptr, error_name);
-        ptr += error_name.len;
+        var buf: [4096]u8 = undefined;
+        var ptr: [*]u8 = debug.about.writeAboutError(&buf, about_s, error_name);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        @memcpy(ptr, label_s);
-        ptr += label_s.len;
+        ptr = fmt.strcpyEqu(ptr, label_s);
         ptr[0] = '-';
         ptr += 1;
         ptr += fmt.ud64(index orelse 0).formatWriteBuf(ptr);
@@ -3465,16 +3462,10 @@ pub const about = opaque {
     fn aboutPathnameError(about_s: fmt.AboutSrc, error_name: []const u8, pathname: [:0]const u8) void {
         @setRuntimeSafety(false);
         var buf: [4096]u8 = undefined;
-        buf[0..about_s.len].* = about_s.*;
-        var ptr: [*]u8 = buf[about_s.len..];
-        ptr[0..debug.about.error_s.len].* = debug.about.error_s.*;
-        ptr += debug.about.error_s.len;
-        @memcpy(ptr, error_name);
-        ptr += error_name.len;
+        var ptr: [*]u8 = debug.about.writeAboutError(&buf, about_s, error_name);
         ptr[0..2].* = ", ".*;
         ptr += 2;
-        @memcpy(ptr, pathname);
-        ptr += pathname.len;
+        ptr = fmt.strcpyEqu(ptr, pathname);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr - @intFromPtr(&buf)) +% 1]);
     }
