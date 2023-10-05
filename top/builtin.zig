@@ -314,450 +314,6 @@ pub fn ShiftValue(comptime A: type) type {
         .signedness = .unsigned,
     } });
 }
-pub fn tzcnt(comptime T: type, value: T) BitCount(T) {
-    return @ctz(value);
-}
-pub fn lzcnt(comptime T: type, value: T) BitCount(T) {
-    return @clz(value);
-}
-pub fn popcnt(comptime T: type, value: T) BitCount(T) {
-    return @popCount(value);
-}
-pub fn mod(comptime T: type, numerator: anytype, denominator: anytype) T {
-    return intCast(@mod(numerator, denominator));
-}
-pub fn rem(comptime T: type, numerator: anytype, denominator: anytype) T {
-    return intCast(T, @rem(numerator, denominator));
-}
-pub fn int(comptime T: type, value: bool) T {
-    return @intFromBool(value);
-}
-pub fn int2a(comptime T: type, value1: bool, value2: bool) T {
-    const ret: u1 = @intFromBool(value1) & @intFromBool(value2);
-    if (T == bool) {
-        return @bitCast(ret);
-    } else {
-        return intCast(T, ret);
-    }
-}
-pub fn int2v(comptime T: type, value1: bool, value2: bool) T {
-    const ret: u1 = @intFromBool(value1) | @intFromBool(value2);
-    if (T == bool) {
-        return @bitCast(ret);
-    } else {
-        return intCast(T, ret);
-    }
-}
-pub fn int3a(comptime T: type, value1: bool, value2: bool, value3: bool) T {
-    const ret: u1 = @intFromBool(value1) & @intFromBool(value2) & @intFromBool(value3);
-    if (T == bool) {
-        return @as(bool, @bitCast(ret));
-    } else {
-        return intCast(T, ret);
-    }
-}
-pub fn int3v(comptime T: type, value1: bool, value2: bool, value3: bool) T {
-    const ret: u1 = @intFromBool(value1) | @intFromBool(value2) | @intFromBool(value3);
-    if (T == bool) {
-        return @as(bool, @bitCast(ret));
-    } else {
-        return intCast(T, ret);
-    }
-}
-pub fn ended(comptime T: type, value: T, endian: zig.Endian) T {
-    if (endian == native_endian) {
-        return value;
-    } else {
-        return @byteSwap(value);
-    }
-}
-fn ArithWithOverflowReturn(comptime T: type) type {
-    const S = struct {
-        value: T,
-        overflowed: bool,
-    };
-    return S;
-}
-inline fn normalAddAssign(comptime T: type, arg1: *T, arg2: T) void {
-    arg1.* = normalAddReturn(T, arg1.*, arg2);
-}
-inline fn normalAddReturn(comptime T: type, arg1: T, arg2: T) T {
-    const result = @addWithOverflow(arg1, arg2);
-    if (runtime_assertions and result[1] != 0) {
-        debug.addCausedOverflowFault(T, arg1, arg2, @returnAddress());
-    }
-    return result[0];
-}
-inline fn normalSubAssign(comptime T: type, arg1: *T, arg2: T) void {
-    arg1.* = normalSubReturn(T, arg1.*, arg2);
-}
-inline fn normalSubReturn(comptime T: type, arg1: T, arg2: T) T {
-    const result = @subWithOverflow(arg1, arg2);
-    if (runtime_assertions and result[1] != 0) {
-        debug.subCausedOverflowFault(T, arg1, arg2, @returnAddress());
-    }
-    return result[0];
-}
-inline fn normalMulAssign(comptime T: type, arg1: *T, arg2: T) void {
-    arg1.* = normalMulReturn(T, arg1.*, arg2);
-}
-inline fn normalMulReturn(comptime T: type, arg1: T, arg2: T) T {
-    const result = @mulWithOverflow(arg1, arg2);
-    if (runtime_assertions and result[1] != 0) {
-        debug.mulCausedOverflowFault(T, arg1, arg2, @returnAddress());
-    }
-    return result[0];
-}
-inline fn exactDivisionAssign(comptime T: type, arg1: *T, arg2: T) void {
-    arg1.* = exactDivisionReturn(T, arg1.*, arg2);
-}
-inline fn exactDivisionReturn(comptime T: type, arg1: T, arg2: T) T {
-    const result: T = arg1 / arg2;
-    const remainder: T = normalSubReturn(T, arg1, (result * arg2));
-    if (runtime_assertions and remainder != 0) {
-        debug.exactDivisionWithRemainderFault(T, arg1, arg2, result, remainder, @returnAddress());
-    }
-    return result;
-}
-inline fn saturatingAddAssign(comptime T: type, arg1: *T, arg2: T) void {
-    arg1.* +|= arg2;
-}
-inline fn saturatingAddReturn(comptime T: type, arg1: T, arg2: T) T {
-    return arg1 +| arg2;
-}
-inline fn saturatingSubAssign(comptime T: type, arg1: *T, arg2: T) void {
-    arg1.* -|= arg2;
-}
-inline fn saturatingSubReturn(comptime T: type, arg1: T, arg2: T) T {
-    return arg1 -| arg2;
-}
-inline fn saturatingMulAssign(comptime T: type, arg1: *T, arg2: T) void {
-    arg1.* *|= arg2;
-}
-inline fn saturatingMulReturn(comptime T: type, arg1: T, arg2: T) T {
-    return arg1 *| arg2;
-}
-inline fn wrappingAddAssign(comptime T: type, arg1: *T, arg2: T) void {
-    arg1.* +%= arg2;
-}
-inline fn wrappingAddReturn(comptime T: type, arg1: T, arg2: T) T {
-    return arg1 +% arg2;
-}
-inline fn wrappingSubAssign(comptime T: type, arg1: *T, arg2: T) void {
-    arg1.* -%= arg2;
-}
-inline fn wrappingSubReturn(comptime T: type, arg1: T, arg2: T) T {
-    return arg1 -% arg2;
-}
-inline fn wrappingMulAssign(comptime T: type, arg1: *T, arg2: T) void {
-    arg1.* *%= arg2;
-}
-inline fn wrappingMulReturn(comptime T: type, arg1: T, arg2: T) T {
-    return arg1 *% arg2;
-}
-inline fn normalDivisionAssign(comptime T: type, arg1: *T, arg2: T) void {
-    arg1.* /= arg2;
-}
-inline fn normalDivisionReturn(comptime T: type, arg1: T, arg2: T) T {
-    return arg1 / arg2;
-}
-inline fn normalOrReturn(comptime T: type, arg1: T, arg2: T) T {
-    return arg1 | arg2;
-}
-inline fn normalOrAssign(comptime T: type, arg1: *T, arg2: T) void {
-    arg1.* |= arg2;
-}
-inline fn normalAndReturn(comptime T: type, arg1: T, arg2: T) T {
-    return arg1 & arg2;
-}
-inline fn normalAndAssign(comptime T: type, arg1: *T, arg2: T) void {
-    arg1.* &= arg2;
-}
-inline fn normalXorReturn(comptime T: type, arg1: T, arg2: T) T {
-    return arg1 ^ arg2;
-}
-inline fn normalXorAssign(comptime T: type, arg1: *T, arg2: T) void {
-    arg1.* ^= arg2;
-}
-inline fn normalShrReturn(comptime T: type, arg1: T, arg2: T) T {
-    return arg1 >> intCast(ShiftAmount(T), arg2);
-}
-inline fn normalShrAssign(comptime T: type, arg1: *T, arg2: T) void {
-    arg1.* >>= intCast(ShiftAmount(T), arg2);
-}
-inline fn normalShlReturn(comptime T: type, arg1: T, arg2: T) T {
-    return arg1 << intCast(ShiftAmount(T), arg2);
-}
-inline fn normalShlAssign(comptime T: type, arg1: *T, arg2: T) void {
-    arg1.* <<= intCast(ShiftAmount(T), arg2);
-}
-inline fn truncatedDivisionAssign(comptime T: type, arg1: *T, arg2: T) void {
-    arg1.* = @divTrunc(arg1.*, arg2);
-}
-inline fn truncatedDivisionReturn(comptime T: type, arg1: T, arg2: T) T {
-    return @divTrunc(arg1, arg2);
-}
-inline fn flooredDivisionAssign(comptime T: type, arg1: *T, arg2: T) void {
-    arg1.* = @divFloor(arg1.*, arg2);
-}
-inline fn flooredDivisionReturn(comptime T: type, arg1: T, arg2: T) T {
-    return @divFloor(arg1, arg2);
-}
-inline fn exactShrReturn(comptime T: type, arg1: T, arg2: T) T {
-    return @shrExact(arg1, intCast(ShiftAmount(T), arg2));
-}
-inline fn exactShrAssign(comptime T: type, arg1: *T, arg2: T) void {
-    arg1.* = @shrExact(arg1.*, intCast(ShiftAmount(T), arg2));
-}
-inline fn exactShlReturn(comptime T: type, arg1: T, arg2: T) T {
-    return @shlExact(arg1, intCast(ShiftAmount(T), arg2));
-}
-inline fn exactShlAssign(comptime T: type, arg1: *T, arg2: T) void {
-    arg1.* = @shlExact(arg1.*, intCast(ShiftAmount(T), arg2));
-}
-inline fn overflowingAddAssign(comptime T: type, arg1: *T, arg2: T) bool {
-    const result = @addWithOverflow(arg1.*, arg2);
-    arg1.* = result[0];
-    return result[1] != 0;
-}
-inline fn overflowingSubAssign(comptime T: type, arg1: *T, arg2: T) bool {
-    const result = @subWithOverflow(arg1.*, arg2);
-    arg1.* = result[0];
-    return result[1] != 0;
-}
-inline fn overflowingMulAssign(comptime T: type, arg1: *T, arg2: T) bool {
-    const result = @mulWithOverflow(arg1.*, arg2);
-    arg1.* = result[0];
-    return result[1] != 0;
-}
-inline fn overflowingShlAssign(comptime T: type, arg1: *T, arg2: T) bool {
-    const result = @shlWithOverflow(arg1.*, intCast(ShiftAmount(T), arg2));
-    arg1.* = result[0];
-    return result[1] != 0;
-}
-pub fn add(comptime T: type, arg1: T, arg2: T) T {
-    return normalAddReturn(T, arg1, arg2);
-}
-pub fn addSat(comptime T: type, arg1: T, arg2: T) T {
-    return saturatingAddReturn(T, arg1, arg2);
-}
-pub fn addWrap(comptime T: type, arg1: T, arg2: T) T {
-    return wrappingAddReturn(T, arg1, arg2);
-}
-pub fn addEqu(comptime T: type, arg1: *T, arg2: T) void {
-    normalAddAssign(T, arg1, arg2);
-}
-pub fn addEquSat(comptime T: type, arg1: *T, arg2: T) void {
-    saturatingAddAssign(T, arg1, arg2);
-}
-pub fn addEquWrap(comptime T: type, arg1: *T, arg2: T) void {
-    wrappingAddAssign(T, arg1, arg2);
-}
-pub fn addWithOverflow(comptime T: type, arg1: T, arg2: T) struct { T, u1 } {
-    return @addWithOverflow(arg1, arg2);
-}
-pub fn addEquWithOverflow(comptime T: type, arg1: *T, arg2: T) bool {
-    return overflowingAddAssign(T, arg1, arg2);
-}
-pub fn sub(comptime T: type, arg1: T, arg2: T) T {
-    return normalSubReturn(T, arg1, arg2);
-}
-pub fn subSat(comptime T: type, arg1: T, arg2: T) T {
-    return saturatingSubReturn(T, arg1, arg2);
-}
-pub fn subWrap(comptime T: type, arg1: T, arg2: T) T {
-    return wrappingSubReturn(T, arg1, arg2);
-}
-pub fn subEqu(comptime T: type, arg1: *T, arg2: T) void {
-    normalSubAssign(T, arg1, arg2);
-}
-pub fn subEquSat(comptime T: type, arg1: *T, arg2: T) void {
-    saturatingSubAssign(T, arg1, arg2);
-}
-pub fn subEquWrap(comptime T: type, arg1: *T, arg2: T) void {
-    wrappingSubAssign(T, arg1, arg2);
-}
-pub fn subWithOverflow(comptime T: type, arg1: T, arg2: T) struct { T, u1 } {
-    return @subWithOverflow(arg1, arg2);
-}
-pub fn subEquWithOverflow(comptime T: type, arg1: *T, arg2: T) bool {
-    return overflowingSubAssign(T, arg1, arg2);
-}
-pub fn mul(comptime T: type, arg1: T, arg2: T) T {
-    return normalMulReturn(T, arg1, arg2);
-}
-pub fn mulSat(comptime T: type, arg1: T, arg2: T) T {
-    return saturatingMulReturn(T, arg1, arg2);
-}
-pub fn mulWrap(comptime T: type, arg1: T, arg2: T) T {
-    return wrappingMulReturn(T, arg1, arg2);
-}
-pub fn mulEqu(comptime T: type, arg1: *T, arg2: T) void {
-    normalMulAssign(T, arg1, arg2);
-}
-pub fn mulEquSat(comptime T: type, arg1: *T, arg2: T) void {
-    saturatingMulAssign(T, arg1, arg2);
-}
-pub fn mulEquWrap(comptime T: type, arg1: *T, arg2: T) void {
-    wrappingMulAssign(T, arg1, arg2);
-}
-pub fn mulWithOverflow(comptime T: type, arg1: T, arg2: T) struct { T, u1 } {
-    return @mulWithOverflow(arg1, arg2);
-}
-pub fn mulEquWithOverflow(comptime T: type, arg1: *T, arg2: T) bool {
-    return overflowingMulAssign(T, arg1, arg2);
-}
-pub fn div(comptime T: type, arg1: T, arg2: T) T {
-    return normalDivisionReturn(T, arg1, arg2);
-}
-pub fn divEqu(comptime T: type, arg1: *T, arg2: T) void {
-    normalDivisionAssign(T, arg1, arg2);
-}
-pub fn divExact(comptime T: type, arg1: T, arg2: T) T {
-    return exactDivisionReturn(T, arg1, arg2);
-}
-pub fn divEquExact(comptime T: type, arg1: *T, arg2: T) void {
-    return exactDivisionAssign(T, arg1, arg2);
-}
-pub fn divEquTrunc(comptime T: type, arg1: *T, arg2: T) void {
-    truncatedDivisionAssign(T, arg1, arg2);
-}
-pub fn divTrunc(comptime T: type, arg1: T, arg2: T) T {
-    return truncatedDivisionReturn(T, arg1, arg2);
-}
-pub fn divEquFloor(comptime T: type, arg1: *T, arg2: T) void {
-    flooredDivisionAssign(T, arg1, arg2);
-}
-pub fn divFloor(comptime T: type, arg1: T, arg2: T) T {
-    return flooredDivisionReturn(T, arg1, arg2);
-}
-pub fn @"and"(comptime T: type, arg1: T, arg2: T) T {
-    return normalAndReturn(T, arg1, arg2);
-}
-pub fn andEqu(comptime T: type, arg1: *T, arg2: T) void {
-    normalAndAssign(T, arg1, arg2);
-}
-pub fn @"or"(comptime T: type, arg1: T, arg2: T) T {
-    return normalOrReturn(T, arg1, arg2);
-}
-pub fn orEqu(comptime T: type, arg1: *T, arg2: T) void {
-    normalOrAssign(T, arg1, arg2);
-}
-pub fn xor(comptime T: type, arg1: T, arg2: T) T {
-    return normalXorReturn(T, arg1, arg2);
-}
-pub fn xorEqu(comptime T: type, arg1: *T, arg2: T) void {
-    normalXorAssign(T, arg1, arg2);
-}
-pub fn shr(comptime T: type, arg1: T, arg2: T) T {
-    return normalShrReturn(T, arg1, arg2);
-}
-pub fn shrEqu(comptime T: type, arg1: *T, arg2: T) void {
-    normalShrAssign(T, arg1, arg2);
-}
-pub fn shrExact(comptime T: type, arg1: T, arg2: T) T {
-    return exactShrReturn(T, arg1, arg2);
-}
-pub fn shrEquExact(comptime T: type, arg1: *T, arg2: T) void {
-    exactShrAssign(T, arg1, arg2);
-}
-pub fn shl(comptime T: type, arg1: T, arg2: T) T {
-    return normalShlReturn(T, arg1, arg2);
-}
-pub fn shlEqu(comptime T: type, arg1: *T, arg2: T) void {
-    normalShlAssign(T, arg1, arg2);
-}
-pub fn shlExact(comptime T: type, arg1: T, arg2: T) T {
-    return exactShlReturn(T, arg1, arg2);
-}
-pub fn shlEquExact(comptime T: type, arg1: *T, arg2: T) void {
-    exactShlAssign(T, arg1, arg2);
-}
-pub fn shlWithOverflow(comptime T: type, arg1: T, arg2: ShiftAmount(T)) struct { T, u1 } {
-    return @shlWithOverflow(arg1, arg2);
-}
-pub fn shlEquWithOverflow(comptime T: type, arg1: *T, arg2: T) bool {
-    return overflowingShlAssign(T, arg1, arg2);
-}
-pub fn min(comptime T: type, arg1: T, arg2: T) T {
-    if (@typeInfo(T) == .Int or @typeInfo(T) == .ComptimeInt or
-        @typeInfo(T) == .Float or @typeInfo(T) == .ComptimeFloat or
-        @typeInfo(T) == .Vector)
-    {
-        return @min(arg1, arg2);
-    } else {
-        const U: type = @Type(.{ .Int = .{ .bits = @bitSizeOf(T), .signedness = .unsigned } });
-        if (@as(*const U, @ptrCast(&arg1)).* <
-            @as(*const U, @ptrCast(&arg2)).*)
-        {
-            return arg1;
-        } else {
-            return arg2;
-        }
-    }
-}
-pub fn max(comptime T: type, arg1: T, arg2: T) T {
-    if (@typeInfo(T) == .Int or @typeInfo(T) == .ComptimeInt or
-        @typeInfo(T) == .Float or @typeInfo(T) == .ComptimeFloat or
-        @typeInfo(T) == .Vector)
-    {
-        return @max(arg1, arg2);
-    } else {
-        const U: type = @Type(.{ .Int = .{ .bits = @bitSizeOf(T), .signedness = .unsigned } });
-        if (@as(*const U, @ptrCast(&arg1)).* >
-            @as(*const U, @ptrCast(&arg2)).*)
-        {
-            return arg1;
-        } else {
-            return arg2;
-        }
-    }
-}
-pub fn ptr(comptime T: type) *T {
-    var ret: T = zero(T);
-    return &ret;
-}
-pub fn diff(comptime T: type, arg1: T, arg2: T) T {
-    return subWrap(T, max(T, arg1, arg2), min(T, arg1, arg2));
-}
-pub fn cmov(comptime T: type, b: bool, argt: T, argf: T) T {
-    return if (b) argt else argf;
-}
-pub fn isComptime() bool {
-    var b: bool = false;
-    return @TypeOf(if (b) @as(u32, 0) else @as(u8, 0)) == u8;
-}
-pub inline fn ptrCast(comptime T: type, any: anytype) T {
-    @setRuntimeSafety(false);
-    if (@typeInfo(@TypeOf(any)).Pointer.size == .Slice) {
-        return @as(T, @ptrCast(@constCast(any.ptr)));
-    } else {
-        return @as(T, @ptrCast(@constCast(any)));
-    }
-}
-pub inline fn zero(comptime T: type) T {
-    comptime {
-        const data: [@sizeOf(T)]u8 align(@max(1, @alignOf(T))) = .{@as(u8, 0)} ** @sizeOf(T);
-        return @as(*const T, @ptrCast(&data)).*;
-    }
-}
-pub inline fn all(comptime T: type) T {
-    comptime {
-        const data: [@sizeOf(T)]u8 align(@max(1, @alignOf(T))) = .{~@as(u8, 0)} ** @sizeOf(T);
-        return @as(*const T, @ptrCast(&data)).*;
-    }
-}
-pub fn anyOpaque(comptime value: anytype) *const anyopaque {
-    const S: type = @TypeOf(value);
-    const T = [0:value]S;
-    return @typeInfo(T).Array.sentinel.?;
-}
-pub inline fn identity(any: anytype) @TypeOf(any) {
-    return any;
-}
-pub inline fn equ(comptime T: type, dst: *T, src: T) void {
-    dst.* = src;
-}
 pub fn ptrFromInt(comptime P: type, address: usize) P {
     const alignment: usize = @typeInfo(P).Pointer.alignment;
     if (address & (alignment -% 1) != 0) {
@@ -2607,4 +2163,448 @@ comptime {
         \\__zig_probe_stack:
         \\ret
     );
+}
+pub fn tzcnt(comptime T: type, value: T) BitCount(T) {
+    return @ctz(value);
+}
+pub fn lzcnt(comptime T: type, value: T) BitCount(T) {
+    return @clz(value);
+}
+pub fn popcnt(comptime T: type, value: T) BitCount(T) {
+    return @popCount(value);
+}
+pub fn mod(comptime T: type, numerator: anytype, denominator: anytype) T {
+    return intCast(@mod(numerator, denominator));
+}
+pub fn rem(comptime T: type, numerator: anytype, denominator: anytype) T {
+    return intCast(T, @rem(numerator, denominator));
+}
+pub fn int(comptime T: type, value: bool) T {
+    return @intFromBool(value);
+}
+pub fn int2a(comptime T: type, value1: bool, value2: bool) T {
+    const ret: u1 = @intFromBool(value1) & @intFromBool(value2);
+    if (T == bool) {
+        return @bitCast(ret);
+    } else {
+        return intCast(T, ret);
+    }
+}
+pub fn int2v(comptime T: type, value1: bool, value2: bool) T {
+    const ret: u1 = @intFromBool(value1) | @intFromBool(value2);
+    if (T == bool) {
+        return @bitCast(ret);
+    } else {
+        return intCast(T, ret);
+    }
+}
+pub fn int3a(comptime T: type, value1: bool, value2: bool, value3: bool) T {
+    const ret: u1 = @intFromBool(value1) & @intFromBool(value2) & @intFromBool(value3);
+    if (T == bool) {
+        return @as(bool, @bitCast(ret));
+    } else {
+        return intCast(T, ret);
+    }
+}
+pub fn int3v(comptime T: type, value1: bool, value2: bool, value3: bool) T {
+    const ret: u1 = @intFromBool(value1) | @intFromBool(value2) | @intFromBool(value3);
+    if (T == bool) {
+        return @as(bool, @bitCast(ret));
+    } else {
+        return intCast(T, ret);
+    }
+}
+pub fn ended(comptime T: type, value: T, endian: zig.Endian) T {
+    if (endian == native_endian) {
+        return value;
+    } else {
+        return @byteSwap(value);
+    }
+}
+fn ArithWithOverflowReturn(comptime T: type) type {
+    const S = struct {
+        value: T,
+        overflowed: bool,
+    };
+    return S;
+}
+inline fn normalAddAssign(comptime T: type, arg1: *T, arg2: T) void {
+    arg1.* = normalAddReturn(T, arg1.*, arg2);
+}
+inline fn normalAddReturn(comptime T: type, arg1: T, arg2: T) T {
+    const result = @addWithOverflow(arg1, arg2);
+    if (runtime_assertions and result[1] != 0) {
+        debug.addCausedOverflowFault(T, arg1, arg2, @returnAddress());
+    }
+    return result[0];
+}
+inline fn normalSubAssign(comptime T: type, arg1: *T, arg2: T) void {
+    arg1.* = normalSubReturn(T, arg1.*, arg2);
+}
+inline fn normalSubReturn(comptime T: type, arg1: T, arg2: T) T {
+    const result = @subWithOverflow(arg1, arg2);
+    if (runtime_assertions and result[1] != 0) {
+        debug.subCausedOverflowFault(T, arg1, arg2, @returnAddress());
+    }
+    return result[0];
+}
+inline fn normalMulAssign(comptime T: type, arg1: *T, arg2: T) void {
+    arg1.* = normalMulReturn(T, arg1.*, arg2);
+}
+inline fn normalMulReturn(comptime T: type, arg1: T, arg2: T) T {
+    const result = @mulWithOverflow(arg1, arg2);
+    if (runtime_assertions and result[1] != 0) {
+        debug.mulCausedOverflowFault(T, arg1, arg2, @returnAddress());
+    }
+    return result[0];
+}
+inline fn exactDivisionAssign(comptime T: type, arg1: *T, arg2: T) void {
+    arg1.* = exactDivisionReturn(T, arg1.*, arg2);
+}
+inline fn exactDivisionReturn(comptime T: type, arg1: T, arg2: T) T {
+    const result: T = arg1 / arg2;
+    const remainder: T = normalSubReturn(T, arg1, (result * arg2));
+    if (runtime_assertions and remainder != 0) {
+        debug.exactDivisionWithRemainderFault(T, arg1, arg2, result, remainder, @returnAddress());
+    }
+    return result;
+}
+inline fn saturatingAddAssign(comptime T: type, arg1: *T, arg2: T) void {
+    arg1.* +|= arg2;
+}
+inline fn saturatingAddReturn(comptime T: type, arg1: T, arg2: T) T {
+    return arg1 +| arg2;
+}
+inline fn saturatingSubAssign(comptime T: type, arg1: *T, arg2: T) void {
+    arg1.* -|= arg2;
+}
+inline fn saturatingSubReturn(comptime T: type, arg1: T, arg2: T) T {
+    return arg1 -| arg2;
+}
+inline fn saturatingMulAssign(comptime T: type, arg1: *T, arg2: T) void {
+    arg1.* *|= arg2;
+}
+inline fn saturatingMulReturn(comptime T: type, arg1: T, arg2: T) T {
+    return arg1 *| arg2;
+}
+inline fn wrappingAddAssign(comptime T: type, arg1: *T, arg2: T) void {
+    arg1.* +%= arg2;
+}
+inline fn wrappingAddReturn(comptime T: type, arg1: T, arg2: T) T {
+    return arg1 +% arg2;
+}
+inline fn wrappingSubAssign(comptime T: type, arg1: *T, arg2: T) void {
+    arg1.* -%= arg2;
+}
+inline fn wrappingSubReturn(comptime T: type, arg1: T, arg2: T) T {
+    return arg1 -% arg2;
+}
+inline fn wrappingMulAssign(comptime T: type, arg1: *T, arg2: T) void {
+    arg1.* *%= arg2;
+}
+inline fn wrappingMulReturn(comptime T: type, arg1: T, arg2: T) T {
+    return arg1 *% arg2;
+}
+inline fn normalDivisionAssign(comptime T: type, arg1: *T, arg2: T) void {
+    arg1.* /= arg2;
+}
+inline fn normalDivisionReturn(comptime T: type, arg1: T, arg2: T) T {
+    return arg1 / arg2;
+}
+inline fn normalOrReturn(comptime T: type, arg1: T, arg2: T) T {
+    return arg1 | arg2;
+}
+inline fn normalOrAssign(comptime T: type, arg1: *T, arg2: T) void {
+    arg1.* |= arg2;
+}
+inline fn normalAndReturn(comptime T: type, arg1: T, arg2: T) T {
+    return arg1 & arg2;
+}
+inline fn normalAndAssign(comptime T: type, arg1: *T, arg2: T) void {
+    arg1.* &= arg2;
+}
+inline fn normalXorReturn(comptime T: type, arg1: T, arg2: T) T {
+    return arg1 ^ arg2;
+}
+inline fn normalXorAssign(comptime T: type, arg1: *T, arg2: T) void {
+    arg1.* ^= arg2;
+}
+inline fn normalShrReturn(comptime T: type, arg1: T, arg2: T) T {
+    return arg1 >> intCast(ShiftAmount(T), arg2);
+}
+inline fn normalShrAssign(comptime T: type, arg1: *T, arg2: T) void {
+    arg1.* >>= intCast(ShiftAmount(T), arg2);
+}
+inline fn normalShlReturn(comptime T: type, arg1: T, arg2: T) T {
+    return arg1 << intCast(ShiftAmount(T), arg2);
+}
+inline fn normalShlAssign(comptime T: type, arg1: *T, arg2: T) void {
+    arg1.* <<= intCast(ShiftAmount(T), arg2);
+}
+inline fn truncatedDivisionAssign(comptime T: type, arg1: *T, arg2: T) void {
+    arg1.* = @divTrunc(arg1.*, arg2);
+}
+inline fn truncatedDivisionReturn(comptime T: type, arg1: T, arg2: T) T {
+    return @divTrunc(arg1, arg2);
+}
+inline fn flooredDivisionAssign(comptime T: type, arg1: *T, arg2: T) void {
+    arg1.* = @divFloor(arg1.*, arg2);
+}
+inline fn flooredDivisionReturn(comptime T: type, arg1: T, arg2: T) T {
+    return @divFloor(arg1, arg2);
+}
+inline fn exactShrReturn(comptime T: type, arg1: T, arg2: T) T {
+    return @shrExact(arg1, intCast(ShiftAmount(T), arg2));
+}
+inline fn exactShrAssign(comptime T: type, arg1: *T, arg2: T) void {
+    arg1.* = @shrExact(arg1.*, intCast(ShiftAmount(T), arg2));
+}
+inline fn exactShlReturn(comptime T: type, arg1: T, arg2: T) T {
+    return @shlExact(arg1, intCast(ShiftAmount(T), arg2));
+}
+inline fn exactShlAssign(comptime T: type, arg1: *T, arg2: T) void {
+    arg1.* = @shlExact(arg1.*, intCast(ShiftAmount(T), arg2));
+}
+inline fn overflowingAddAssign(comptime T: type, arg1: *T, arg2: T) bool {
+    const result = @addWithOverflow(arg1.*, arg2);
+    arg1.* = result[0];
+    return result[1] != 0;
+}
+inline fn overflowingSubAssign(comptime T: type, arg1: *T, arg2: T) bool {
+    const result = @subWithOverflow(arg1.*, arg2);
+    arg1.* = result[0];
+    return result[1] != 0;
+}
+inline fn overflowingMulAssign(comptime T: type, arg1: *T, arg2: T) bool {
+    const result = @mulWithOverflow(arg1.*, arg2);
+    arg1.* = result[0];
+    return result[1] != 0;
+}
+inline fn overflowingShlAssign(comptime T: type, arg1: *T, arg2: T) bool {
+    const result = @shlWithOverflow(arg1.*, intCast(ShiftAmount(T), arg2));
+    arg1.* = result[0];
+    return result[1] != 0;
+}
+pub fn add(comptime T: type, arg1: T, arg2: T) T {
+    return normalAddReturn(T, arg1, arg2);
+}
+pub fn addSat(comptime T: type, arg1: T, arg2: T) T {
+    return saturatingAddReturn(T, arg1, arg2);
+}
+pub fn addWrap(comptime T: type, arg1: T, arg2: T) T {
+    return wrappingAddReturn(T, arg1, arg2);
+}
+pub fn addEqu(comptime T: type, arg1: *T, arg2: T) void {
+    normalAddAssign(T, arg1, arg2);
+}
+pub fn addEquSat(comptime T: type, arg1: *T, arg2: T) void {
+    saturatingAddAssign(T, arg1, arg2);
+}
+pub fn addEquWrap(comptime T: type, arg1: *T, arg2: T) void {
+    wrappingAddAssign(T, arg1, arg2);
+}
+pub fn addWithOverflow(comptime T: type, arg1: T, arg2: T) struct { T, u1 } {
+    return @addWithOverflow(arg1, arg2);
+}
+pub fn addEquWithOverflow(comptime T: type, arg1: *T, arg2: T) bool {
+    return overflowingAddAssign(T, arg1, arg2);
+}
+pub fn sub(comptime T: type, arg1: T, arg2: T) T {
+    return normalSubReturn(T, arg1, arg2);
+}
+pub fn subSat(comptime T: type, arg1: T, arg2: T) T {
+    return saturatingSubReturn(T, arg1, arg2);
+}
+pub fn subWrap(comptime T: type, arg1: T, arg2: T) T {
+    return wrappingSubReturn(T, arg1, arg2);
+}
+pub fn subEqu(comptime T: type, arg1: *T, arg2: T) void {
+    normalSubAssign(T, arg1, arg2);
+}
+pub fn subEquSat(comptime T: type, arg1: *T, arg2: T) void {
+    saturatingSubAssign(T, arg1, arg2);
+}
+pub fn subEquWrap(comptime T: type, arg1: *T, arg2: T) void {
+    wrappingSubAssign(T, arg1, arg2);
+}
+pub fn subWithOverflow(comptime T: type, arg1: T, arg2: T) struct { T, u1 } {
+    return @subWithOverflow(arg1, arg2);
+}
+pub fn subEquWithOverflow(comptime T: type, arg1: *T, arg2: T) bool {
+    return overflowingSubAssign(T, arg1, arg2);
+}
+pub fn mul(comptime T: type, arg1: T, arg2: T) T {
+    return normalMulReturn(T, arg1, arg2);
+}
+pub fn mulSat(comptime T: type, arg1: T, arg2: T) T {
+    return saturatingMulReturn(T, arg1, arg2);
+}
+pub fn mulWrap(comptime T: type, arg1: T, arg2: T) T {
+    return wrappingMulReturn(T, arg1, arg2);
+}
+pub fn mulEqu(comptime T: type, arg1: *T, arg2: T) void {
+    normalMulAssign(T, arg1, arg2);
+}
+pub fn mulEquSat(comptime T: type, arg1: *T, arg2: T) void {
+    saturatingMulAssign(T, arg1, arg2);
+}
+pub fn mulEquWrap(comptime T: type, arg1: *T, arg2: T) void {
+    wrappingMulAssign(T, arg1, arg2);
+}
+pub fn mulWithOverflow(comptime T: type, arg1: T, arg2: T) struct { T, u1 } {
+    return @mulWithOverflow(arg1, arg2);
+}
+pub fn mulEquWithOverflow(comptime T: type, arg1: *T, arg2: T) bool {
+    return overflowingMulAssign(T, arg1, arg2);
+}
+pub fn div(comptime T: type, arg1: T, arg2: T) T {
+    return normalDivisionReturn(T, arg1, arg2);
+}
+pub fn divEqu(comptime T: type, arg1: *T, arg2: T) void {
+    normalDivisionAssign(T, arg1, arg2);
+}
+pub fn divExact(comptime T: type, arg1: T, arg2: T) T {
+    return exactDivisionReturn(T, arg1, arg2);
+}
+pub fn divEquExact(comptime T: type, arg1: *T, arg2: T) void {
+    return exactDivisionAssign(T, arg1, arg2);
+}
+pub fn divEquTrunc(comptime T: type, arg1: *T, arg2: T) void {
+    truncatedDivisionAssign(T, arg1, arg2);
+}
+pub fn divTrunc(comptime T: type, arg1: T, arg2: T) T {
+    return truncatedDivisionReturn(T, arg1, arg2);
+}
+pub fn divEquFloor(comptime T: type, arg1: *T, arg2: T) void {
+    flooredDivisionAssign(T, arg1, arg2);
+}
+pub fn divFloor(comptime T: type, arg1: T, arg2: T) T {
+    return flooredDivisionReturn(T, arg1, arg2);
+}
+pub fn @"and"(comptime T: type, arg1: T, arg2: T) T {
+    return normalAndReturn(T, arg1, arg2);
+}
+pub fn andEqu(comptime T: type, arg1: *T, arg2: T) void {
+    normalAndAssign(T, arg1, arg2);
+}
+pub fn @"or"(comptime T: type, arg1: T, arg2: T) T {
+    return normalOrReturn(T, arg1, arg2);
+}
+pub fn orEqu(comptime T: type, arg1: *T, arg2: T) void {
+    normalOrAssign(T, arg1, arg2);
+}
+pub fn xor(comptime T: type, arg1: T, arg2: T) T {
+    return normalXorReturn(T, arg1, arg2);
+}
+pub fn xorEqu(comptime T: type, arg1: *T, arg2: T) void {
+    normalXorAssign(T, arg1, arg2);
+}
+pub fn shr(comptime T: type, arg1: T, arg2: T) T {
+    return normalShrReturn(T, arg1, arg2);
+}
+pub fn shrEqu(comptime T: type, arg1: *T, arg2: T) void {
+    normalShrAssign(T, arg1, arg2);
+}
+pub fn shrExact(comptime T: type, arg1: T, arg2: T) T {
+    return exactShrReturn(T, arg1, arg2);
+}
+pub fn shrEquExact(comptime T: type, arg1: *T, arg2: T) void {
+    exactShrAssign(T, arg1, arg2);
+}
+pub fn shl(comptime T: type, arg1: T, arg2: T) T {
+    return normalShlReturn(T, arg1, arg2);
+}
+pub fn shlEqu(comptime T: type, arg1: *T, arg2: T) void {
+    normalShlAssign(T, arg1, arg2);
+}
+pub fn shlExact(comptime T: type, arg1: T, arg2: T) T {
+    return exactShlReturn(T, arg1, arg2);
+}
+pub fn shlEquExact(comptime T: type, arg1: *T, arg2: T) void {
+    exactShlAssign(T, arg1, arg2);
+}
+pub fn shlWithOverflow(comptime T: type, arg1: T, arg2: ShiftAmount(T)) struct { T, u1 } {
+    return @shlWithOverflow(arg1, arg2);
+}
+pub fn shlEquWithOverflow(comptime T: type, arg1: *T, arg2: T) bool {
+    return overflowingShlAssign(T, arg1, arg2);
+}
+pub fn min(comptime T: type, arg1: T, arg2: T) T {
+    if (@typeInfo(T) == .Int or @typeInfo(T) == .ComptimeInt or
+        @typeInfo(T) == .Float or @typeInfo(T) == .ComptimeFloat or
+        @typeInfo(T) == .Vector)
+    {
+        return @min(arg1, arg2);
+    } else {
+        const U: type = @Type(.{ .Int = .{ .bits = @bitSizeOf(T), .signedness = .unsigned } });
+        if (@as(*const U, @ptrCast(&arg1)).* <
+            @as(*const U, @ptrCast(&arg2)).*)
+        {
+            return arg1;
+        } else {
+            return arg2;
+        }
+    }
+}
+pub fn max(comptime T: type, arg1: T, arg2: T) T {
+    if (@typeInfo(T) == .Int or @typeInfo(T) == .ComptimeInt or
+        @typeInfo(T) == .Float or @typeInfo(T) == .ComptimeFloat or
+        @typeInfo(T) == .Vector)
+    {
+        return @max(arg1, arg2);
+    } else {
+        const U: type = @Type(.{ .Int = .{ .bits = @bitSizeOf(T), .signedness = .unsigned } });
+        if (@as(*const U, @ptrCast(&arg1)).* >
+            @as(*const U, @ptrCast(&arg2)).*)
+        {
+            return arg1;
+        } else {
+            return arg2;
+        }
+    }
+}
+pub fn ptr(comptime T: type) *T {
+    var ret: T = zero(T);
+    return &ret;
+}
+pub fn diff(comptime T: type, arg1: T, arg2: T) T {
+    return subWrap(T, max(T, arg1, arg2), min(T, arg1, arg2));
+}
+pub fn cmov(comptime T: type, b: bool, argt: T, argf: T) T {
+    return if (b) argt else argf;
+}
+pub fn isComptime() bool {
+    var b: bool = false;
+    return @TypeOf(if (b) @as(u32, 0) else @as(u8, 0)) == u8;
+}
+pub inline fn ptrCast(comptime T: type, any: anytype) T {
+    @setRuntimeSafety(false);
+    if (@typeInfo(@TypeOf(any)).Pointer.size == .Slice) {
+        return @as(T, @ptrCast(@constCast(any.ptr)));
+    } else {
+        return @as(T, @ptrCast(@constCast(any)));
+    }
+}
+pub inline fn zero(comptime T: type) T {
+    comptime {
+        const data: [@sizeOf(T)]u8 align(@max(1, @alignOf(T))) = .{@as(u8, 0)} ** @sizeOf(T);
+        return @as(*const T, @ptrCast(&data)).*;
+    }
+}
+pub inline fn all(comptime T: type) T {
+    comptime {
+        const data: [@sizeOf(T)]u8 align(@max(1, @alignOf(T))) = .{~@as(u8, 0)} ** @sizeOf(T);
+        return @as(*const T, @ptrCast(&data)).*;
+    }
+}
+pub fn anyOpaque(comptime value: anytype) *const anyopaque {
+    const S: type = @TypeOf(value);
+    const T = [0:value]S;
+    return @typeInfo(T).Array.sentinel.?;
+}
+pub inline fn identity(any: anytype) @TypeOf(any) {
+    return any;
+}
+pub inline fn equ(comptime T: type, dst: *T, src: T) void {
+    dst.* = src;
 }
