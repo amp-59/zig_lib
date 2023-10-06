@@ -192,20 +192,7 @@ pub const BuilderSpec = struct {
         /// constants and caching special modules.
         enable_build_config: bool = true,
         /// Compile builder features as required.
-        extensions_policy: enum {
-            none,
-            emergency,
-            const _PolicyNext = struct {
-                // Restore dynamic environment from the cache
-                restore_dyn_env: bool = false,
-                // Save dynamic environment to the cache
-                save_dyn_env: bool = false,
-                // Try to load the library at initialisation
-                try_init_load: bool = false,
-                // If this succeeds, do not bother recompiling
-                init_load_ok: bool = false,
-            };
-        } = .emergency,
+        extensions_policy: enum { none, emergency } = .emergency,
         /// Output naming strategy.
         naming_policy: enum { directories, first_name, full_name } = .full_name,
         /// Name separators for identifiers, commands, and output file names.
@@ -264,6 +251,14 @@ pub const BuilderSpec = struct {
         /// (Devel.) Start dependencies in new threads regardless of
         /// total number.
         eager_multi_threading: bool = true,
+        /// (Devel.) Restore dynamic environment from the cache.
+        restore_dyn_env: bool = false,
+        /// (Devel.) Save dynamic environment to the cache.
+        save_dyn_env: bool = false,
+        /// (Devel.) Try to load the library at initialisation.
+        try_init_load: bool = false,
+        /// (Devel.) If this succeeds, do not bother recompiling.
+        init_load_ok: bool = false,
     };
     pub const Logging = packed struct {
         /// Report exchanges on task lock state:
