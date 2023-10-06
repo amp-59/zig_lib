@@ -401,13 +401,13 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
     comptime var have_archive: bool = false;
     comptime var have_objcopy: bool = false;
     const T = struct {
-        /// Program arguments
+        /// Program arguments.
         args: [][*:0]u8,
-        /// Environment variables
+        /// Environment variables.
         vars: [][*:0]u8,
-        /// Phase of execution
+        /// Phase of execution.
         mode: ExecPhase,
-        /// Special toplevel node, initialised by the args[1..5]
+        /// Special toplevel node, initialised by the args[1..5].
         top: *Node,
         /// Special library node, build root is always zig_lib.
         lib: *Node,
@@ -460,15 +460,15 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             proc: *Node,
             /// Required for rendering.
             about: *Node,
-            /// Required for build commands using task struct
+            /// Required for build commands using task struct.
             build: *Node,
-            /// Required for format commands using task struct
+            /// Required for format commands using task struct.
             format: *Node,
-            /// Required for archive commands using task struct
+            /// Required for archive commands using task struct.
             archive: *Node,
-            /// Required for objcopy commands using task struct
+            /// Required for objcopy commands using task struct.
             objcopy: *Node,
-            /// Full build command producing static linkable object
+            /// Full build command producing static linkable object.
             trace: *Node,
         };
         pub const File = struct {
@@ -476,7 +476,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             tag: types.File,
             /// The index of the path this file corresponds to in the node
             /// `paths` list.
-            path_idx: u16,
+            path_idx: u16 = undefined,
             /// File descriptor.
             fd: u32 = 0,
             /// Status for this file. Whether this pointer is valid is lazily
