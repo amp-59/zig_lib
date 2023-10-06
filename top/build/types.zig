@@ -73,8 +73,19 @@ pub const File = enum(u8) {
     input_llvm_zir      = @bitCast(Traits{ .is_input = true, .is_source = true, .no = 7 }),
     input_llvm_ir       = @bitCast(Traits{ .is_input = true, .is_source = true, .no = 8 }),
     input_llvm_bc       = @bitCast(Traits{ .is_input = true, .is_source = true, .no = 9 }),
-
     _,
+
+    pub fn toggle(tag: *File, traits: Traits) bool {
+        @setRuntimeSafety(builtin.is_safe);
+        const val: File = @enumFromInt(@intFromEnum(tag.*) ^ @as(u8, @bitCast(traits)));
+        const ret: bool = @popCount(@intFromEnum(val)) == @popCount(@intFromEnum(tag.*));
+        if (ret) {
+            tag.* = val;
+        }
+        return ret;
+
+    }
+
     // zig fmt: on
     pub const Traits = packed struct(u8) {
         no: u4 = 0,
