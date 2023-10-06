@@ -203,7 +203,8 @@ pub const my_trace: debug.Trace = .{
                 .tags = parse.Token.Tag.container_keyword,
             }, .{
                 .style = &tab.fx.color.fg.white24,
-                .tags = parse.Token.Tag.cond_keyword,
+                .tags = parse.Token.Tag.cond_keyword ++
+                    parse.Token.Tag.qual_keyword,
             }, .{
                 .style = &tab.fx.color.fg.yellow24,
                 .tags = parse.Token.Tag.goto_keyword ++
