@@ -681,8 +681,11 @@ pub noinline fn panic(message: []const u8, _: @TypeOf(@errorReturnTrace()), ret_
 pub const panic_extra = struct {
     pub fn checkNonScalarSentinel(expected: anytype, actual: @TypeOf(expected)) void {
         @setRuntimeSafety(false);
+        if (!builtin.permit_non_scalar_sentinel) {
+            @compileError("non-scalar sentinel type forbidden");
+        }
         if (!mem.testEqual(@TypeOf(expected), expected, actual)) {
-            builtin.panicSentinelMismatch(expected, actual);
+            @call(.always_inline, builtin.panicSentinelMismatch, .{ expected, actual });
         }
     }
     pub fn addErrRetTraceAddr(st: *builtin.StackTrace, ret_addr: usize) void {
@@ -760,7 +763,7 @@ pub const panic_extra = struct {
         ptr += ux64.formatWriteBuf(ptr);
         builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr);
     }
-    pub noinline fn panicSentinelMismatch(expected: anytype, actual: @TypeOf(expected)) noreturn {
+    pub fn panicSentinelMismatch(expected: anytype, actual: @TypeOf(expected)) noreturn {
         @setCold(true);
         @setRuntimeSafety(false);
         const ret_addr: usize = @returnAddress();
@@ -880,7 +883,7 @@ pub const about = struct {
         buf[0..fmt.about_exit_s.len].* = fmt.about_exit_s.*;
         ptr[0..3].* = "rc=".*;
         ptr += 3;
-        ptr += fmt.writeUd64(rc, ptr);
+        ptr += fmt.writeUd64(.{ .value = rc }, ptr);
         ptr[0] = '\n';
         ptr += 1;
         write(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)]);
@@ -891,7 +894,7 @@ pub const about = struct {
         var ptr: [*]u8 = writeAboutError(&buf, error_p0_s, error_name);
         ptr[0..5].* = ", rc=".*;
         ptr += 5;
-        ptr += fmt.ud64(rc).formatWriteBuf(ptr);
+        ptr += fmt.writeUd64(.{ .value = rc }, ptr);
         ptr[0] = '\n';
         ptr += 1;
         write(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)]);
@@ -905,7 +908,7 @@ pub const about = struct {
         ptr = fmt.strcpyEqu(ptr, message);
         ptr[0..5].* = ", rc=".*;
         ptr += 5;
-        ptr += fmt.ud64(rc).formatWriteBuf(ptr);
+        ptr += fmt.writeUd64(.{ .value = rc }, ptr);
         ptr[0] = '\n';
         ptr += 1;
         write(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)]);
@@ -941,7 +944,7 @@ pub const about = struct {
         ptr += fmt.writeUd64(.{ .value = rc }, ptr);
         ptr[0] = '\n';
         ptr += 1;
-        write(fmt.slice(ptr, &buf));
+        write(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)]);
     }
     pub fn errorFaultNotice(error_name: []const u8, message: []const u8) void {
         @setRuntimeSafety(builtin.is_safe);
