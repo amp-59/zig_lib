@@ -661,6 +661,10 @@ fn writeSourceContext(
                 ptr = writeSideBar(ptr, trace, width, .{ .line_no = work.loc.line });
             }
             if (trace.options.tokens.syntax) |syntax| {
+                if (work.itr.buf_pos > work.loc.start) {
+                    work.itr.buf_pos = work.loc.start;
+                    backTrackToLine(&work.itr);
+                }
                 while (work.itr.buf_pos <= work.loc.start) {
                     tok = work.itr.next();
                 }
@@ -694,7 +698,6 @@ fn writeSourceContext(
     }
     return ptr;
 }
-
 fn writeSourceCodeAtAddress(
     trace: *const debug.Trace,
     allocator: *Allocator,
@@ -718,7 +721,7 @@ fn writeSourceCodeAtAddress(
                 ptr = writeExtendedSourceLocation(dwarf_info, ptr, addr, unit, src);
                 ptr = writeSourceContext(trace, allocator, file_map, ptr, width, addr, src);
                 ptr = writeLastLine(ptr, trace, width);
-                return .{ .addr = addr, .start = pos, .finish = pos +% @intFromPtr(ptr - @intFromPtr(buf)) };
+                return .{ .addr = addr, .start = pos, .finish = pos +% (@intFromPtr(ptr) -% @intFromPtr(buf)) };
             }
         }
     }
@@ -742,7 +745,7 @@ fn printMessage(allocator: *mem.SimpleAllocator, buf: [*]u8, addr_info: *dwarf.D
     @setRuntimeSafety(false);
     const msg: []u8 = buf[addr_info.start..addr_info.finish];
     if (addr_info.count != 0) {
-        const new: [*]u8 = @ptrFromInt(allocator.allocateRaw(msg.len +% 32, 1));
+        const new: [*]u8 = @ptrFromInt(allocator.allocateRaw(msg.len +% 32, 64));
         const save: usize = allocator.next;
         var end: usize = 0;
         while (msg[end] != '\n') : (end +%= 1) new[end] = msg[end];
