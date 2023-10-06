@@ -679,6 +679,24 @@ pub noinline fn panic(message: []const u8, _: @TypeOf(@errorReturnTrace()), ret_
     @call(.always_inline, proc.exitGroupFault, .{ message, builtin.panic_return_value });
 }
 pub const panic_extra = struct {
+    pub fn checkNonScalarSentinel(expected: anytype, actual: @TypeOf(expected)) void {
+        @setRuntimeSafety(false);
+        if (!mem.testEqual(@TypeOf(expected), expected, actual)) {
+            builtin.panicSentinelMismatch(expected, actual);
+        }
+    }
+    pub fn addErrRetTraceAddr(st: *builtin.StackTrace, ret_addr: usize) void {
+        @setRuntimeSafety(false);
+        if (st.index < st.instruction_addresses.len) {
+            st.instruction_addresses[st.index] = ret_addr;
+        }
+        st.index +%= 1;
+    }
+    pub noinline fn returnError(st: *builtin.StackTrace) void {
+        @setCold(true);
+        @setRuntimeSafety(false);
+        addErrRetTraceAddr(st, @returnAddress());
+    }
     pub noinline fn panicSignal(message: []const u8, ctx_ptr: *const anyopaque) noreturn {
         @setCold(true);
         @setRuntimeSafety(false);
@@ -749,12 +767,10 @@ pub const panic_extra = struct {
         var buf: [1024]u8 = undefined;
         buf[0..28].* = "sentinel mismatch: expected ".*;
         var ptr: [*]u8 = buf[28..];
-        var ud64: fmt.Type.Ud64 = .{ .value = expected };
-        ptr += ud64.formatWriteBuf(ptr);
+        ptr += fmt.any(expected).formatWriteBuf(ptr);
         ptr[0..8].* = ", found ".*;
         ptr += 8;
-        ud64.value = actual;
-        ptr += ud64.formatWriteBuf(ptr);
+        ptr += fmt.any(actual).formatWriteBuf(ptr);
         builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr);
     }
     pub noinline fn panicStartGreaterThanEnd(lower: usize, upper: usize) noreturn {
@@ -764,12 +780,10 @@ pub const panic_extra = struct {
         var buf: [1024]u8 = undefined;
         buf[0..12].* = "start index ".*;
         var ptr: [*]u8 = buf[12..];
-        var ud64: fmt.Type.Ud64 = .{ .value = lower };
-        ptr += ud64.formatWriteBuf(ptr);
+        ptr += fmt.writeUd64(@bitCast(lower), ptr);
         ptr[0..26].* = " is larger than end index ".*;
         ptr += 26;
-        ud64.value = upper;
-        ptr += ud64.formatWriteBuf(ptr);
+        ptr += fmt.writeUd64(@bitCast(upper), ptr);
         builtin.panic(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)], null, ret_addr);
     }
     pub noinline fn panicInactiveUnionField(active: anytype, wanted: @TypeOf(active)) noreturn {
@@ -805,13 +819,11 @@ pub noinline fn aboutWhere(about_s: []const u8, message: []const u8, ret_addr: ?
     ptr = fmt.strcpyEqu(ptr, message);
     ptr[0..6].* = ", pid=".*;
     ptr += 6;
-    var ud64: fmt.Type.Ud64 = .{ .value = pid };
-    ptr += ud64.formatWriteBuf(ptr);
+    ptr += fmt.writeUd64(.{ .value = pid }, ptr);
     if (pid != tid) {
         ptr[0..6].* = ", tid=".*;
         ptr += 6;
-        ud64.value = tid;
-        ptr += ud64.formatWriteBuf(ptr);
+        ptr += fmt.writeUd64(.{ .value = tid }, ptr);
     }
     if (mb_src) |src| {
         ptr[0..2].* = ", ".*;
@@ -821,22 +833,6 @@ pub noinline fn aboutWhere(about_s: []const u8, message: []const u8, ret_addr: ?
     ptr[0] = '\n';
     ptr += 1;
     write(buf[0 .. @intFromPtr(ptr) - @intFromPtr(&buf)]);
-}
-fn checkNonScalarSentinel(expected: comptime_int, actual: anytype) void {
-    if (expected != actual) {
-        builtin.panicSentinelMismatch(expected, actual);
-    }
-}
-fn addErrRetTraceAddr(st: *builtin.StackTrace, ret_addr: usize) void {
-    if (st.addrs_len < st.addrs.len) {
-        st.addrs[st.addrs_len] = ret_addr;
-    }
-    st.addrs_len +%= 1;
-}
-noinline fn returnError(st: *builtin.StackTrace) void {
-    @setCold(true);
-    @setRuntimeSafety(false);
-    addErrRetTraceAddr(st, @returnAddress());
 }
 pub const about = struct {
     pub const ErrorSrc = @TypeOf(error_s);
@@ -884,7 +880,7 @@ pub const about = struct {
         buf[0..fmt.about_exit_s.len].* = fmt.about_exit_s.*;
         ptr[0..3].* = "rc=".*;
         ptr += 3;
-        ptr += fmt.ud64(rc).formatWriteBuf(ptr);
+        ptr += fmt.writeUd64(rc, ptr);
         ptr[0] = '\n';
         ptr += 1;
         write(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)]);
@@ -942,7 +938,7 @@ pub const about = struct {
         ptr = fmt.strcpyEqu(ptr, message);
         ptr[0..5].* = ", rc=".*;
         ptr += 5;
-        ptr += fmt.ud64(rc).formatWriteBuf(ptr);
+        ptr += fmt.writeUd64(.{ .value = rc }, ptr);
         ptr[0] = '\n';
         ptr += 1;
         write(fmt.slice(ptr, &buf));

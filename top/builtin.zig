@@ -41,7 +41,10 @@ pub const have_stack_traces: bool = define("have_stack_traces", bool, false);
 pub const want_stack_traces: bool = define("want_stack_traces", bool, builtin.mode == .Debug and !builtin.strip_debug_info);
 
 /// Determines whether calling `panicUnwrapError` is legal.
-pub const discard_errors: bool = define("discard_errors", bool, true);
+pub const permit_discard_errors: bool = define("discard_errors", bool, true);
+
+/// Determines whether calling `panicUnwrapError` is legal.
+pub const permit_non_scalar_sentinel: bool = define("permit_non_scalar_sentinel", bool, true);
 
 /// Determines whether `assert*` functions will be called at runtime.
 pub const runtime_assertions: bool = define("runtime_assertions", bool, builtin.mode == .Debug or builtin.mode == .ReleaseSafe);
@@ -172,37 +175,37 @@ pub const my_trace: debug.Trace = .{
                 .style = "",
                 .tags = parse.Token.Tag.other,
             }, .{
-                .style = tab.fx.color.fg.orange24,
+                .style = &tab.fx.color.fg.orange24,
                 .tags = &.{.number_literal},
             }, .{
-                .style = tab.fx.color.fg.yellow24,
+                .style = &tab.fx.color.fg.yellow24,
                 .tags = &.{.char_literal},
             }, .{
-                .style = tab.fx.color.fg.light_green,
+                .style = &tab.fx.color.fg.light_green,
                 .tags = parse.Token.Tag.strings,
             }, .{
-                .style = tab.fx.color.fg.bracket,
+                .style = &tab.fx.color.fg.bracket,
                 .tags = parse.Token.Tag.bracket,
             }, .{
-                .style = tab.fx.color.fg.magenta24,
+                .style = &tab.fx.color.fg.magenta24,
                 .tags = parse.Token.Tag.operator,
             }, .{
-                .style = tab.fx.color.fg.red24,
+                .style = &tab.fx.color.fg.red24,
                 .tags = parse.Token.Tag.builtin_fn,
             }, .{
-                .style = tab.fx.color.fg.cyan24,
+                .style = &tab.fx.color.fg.cyan24,
                 .tags = parse.Token.Tag.macro_keyword,
             }, .{
-                .style = tab.fx.color.fg.light_purple,
+                .style = &tab.fx.color.fg.light_purple,
                 .tags = parse.Token.Tag.call_keyword,
             }, .{
-                .style = tab.fx.color.fg.redwine,
+                .style = &tab.fx.color.fg.redwine,
                 .tags = parse.Token.Tag.container_keyword,
             }, .{
-                .style = tab.fx.color.fg.white24,
+                .style = &tab.fx.color.fg.white24,
                 .tags = parse.Token.Tag.cond_keyword,
             }, .{
-                .style = tab.fx.color.fg.yellow24,
+                .style = &tab.fx.color.fg.yellow24,
                 .tags = parse.Token.Tag.goto_keyword ++
                     parse.Token.Tag.value_keyword,
             } },
