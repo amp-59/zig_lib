@@ -1240,10 +1240,10 @@ pub const DwarfInfo = extern struct {
             var pos: u64 = ranges_offset;
             if (unit.version < 5) {
                 while (true) {
-                    const begin_addr: u64 = @as(*align(1) usize, @ptrCast(buf + pos)).*;
-                    pos +%= @sizeOf(usize);
-                    const end_addr: u64 = @as(*align(1) usize, @ptrCast(buf + pos)).*;
-                    pos +%= @sizeOf(usize);
+                    const begin_addr: u64 = @as(*align(1) u64, @ptrCast(buf + pos)).*;
+                    pos +%= @sizeOf(u64);
+                    const end_addr: u64 = @as(*align(1) u64, @ptrCast(buf + pos)).*;
+                    pos +%= @sizeOf(u64);
                     if (begin_addr == 0 and end_addr == 0) {
                         break;
                     }
@@ -1251,7 +1251,9 @@ pub const DwarfInfo = extern struct {
                         base_address = end_addr;
                         continue;
                     }
-                    if (target_address >= base_address + begin_addr and target_address < base_address + end_addr) {
+                    if (target_address >= base_address + begin_addr and
+                        target_address <= base_address + end_addr)
+                    {
                         return unit;
                     }
                 }
