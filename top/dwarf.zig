@@ -1392,7 +1392,7 @@ pub const DwarfInfo = extern struct {
             }
         }
         pos +%= 1;
-        var prog: LineNumberProgram = LineNumberProgram.init(is_stmt, instr_addr);
+        var prog: LineNumberProgram = LineNumberProgram.init(is_stmt);
         pos = next_off;
         while (pos < next_unit_off) {
             const opcode: u8 = buf[pos];
@@ -1403,12 +1403,12 @@ pub const DwarfInfo = extern struct {
                 if (op_size[0] < 1) {
                     proc.exitError(error.InvalidEncoding, 2);
                 }
-                var sub_op: u8 = buf[pos];
+                const sub_op: u8 = buf[pos];
                 pos +%= 1;
                 switch (@as(LNE, @enumFromInt(sub_op))) {
                     LNE.end_sequence => {
                         prog.state.is_end_sequence = true;
-                        if (prog.checkLineMatch(allocator, unit)) |info| {
+                        if (prog.checkLineMatch(allocator, unit, instr_addr)) |info| {
                             return info;
                         }
                         prog.reset();
@@ -1439,14 +1439,14 @@ pub const DwarfInfo = extern struct {
                 const inc_line: i32 = @as(i32, line_base) +% @as(i32, adjusted_opcode % line_range);
                 prog.state.line +%= inc_line;
                 prog.state.addr +%= inc_addr;
-                if (prog.checkLineMatch(allocator, unit)) |info| {
+                if (prog.checkLineMatch(allocator, unit, instr_addr)) |info| {
                     return info;
                 }
                 prog.state.is_basic_block = false;
             } else {
                 switch (@as(LNS, @enumFromInt(opcode))) {
                     LNS.copy => {
-                        if (prog.checkLineMatch(allocator, unit)) |info| {
+                        if (prog.checkLineMatch(allocator, unit, instr_addr)) |info| {
                             return info;
                         }
                         prog.state.is_basic_block = false;
@@ -1495,7 +1495,7 @@ pub const DwarfInfo = extern struct {
                 }
             }
         }
-        return null;
+        proc.exitError(error.InvalidEncoding, 2);
     }
 };
 fn getStringGeneric(opt_str: ?[]const u8, offset: u64) [:0]const u8 {
@@ -1644,8 +1644,6 @@ const FileEntry = struct {
 };
 // TODO: Inline this abstraction.
 const LineNumberProgram = struct {
-    /// Target address for this iteration
-    addr: u64,
     /// Previous valid line state (if any)
     prev: ?State,
     /// Current line state
