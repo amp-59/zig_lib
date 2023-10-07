@@ -749,59 +749,61 @@ const Constant = struct {
 pub const DwarfInfo = extern struct {
     /// All `AbbrevTable`s listed by this DwarfInfo.
     abbrev_tabs: [*]AbbrevTable,
-    abbrev_tabs_max_len: u64,
-    abbrev_tabs_len: u64,
+    abbrev_tabs_max_len: usize,
+    abbrev_tabs_len: usize,
     /// All compile `Unit`s listed by this DwarfInfo.
     units: [*]Unit,
-    units_max_len: u64,
-    units_len: u64,
+    units_max_len: usize,
+    units_len: usize,
     /// All functions encountered while scanning for `Unit`s.
     funcs: [*]Func,
-    funcs_max_len: u64,
-    funcs_len: u64,
+    funcs_max_len: usize,
+    funcs_len: usize,
     /// All addresses requested from this `DwarfInfo`.
     addr_info: [*]AddressInfo,
-    addr_info_max_len: u64,
-    addr_info_len: u64,
+    addr_info_max_len: usize,
+    addr_info_len: usize,
+    /// All unique source locations.
+    src_locs: [*]trace.SourceLocation,
+    src_locs_max_len: usize,
+    src_locs_len: usize,
     impl: extern struct {
         info: [*]u8,
-        info_len: u64,
+        info_len: usize,
         abbrev: [*]u8,
-        abbrev_len: u64,
+        abbrev_len: usize,
         str: [*]u8,
-        str_len: u64,
+        str_len: usize,
         str_offsets: [*]u8,
-        str_offsets_len: u64,
+        str_offsets_len: usize,
         line: [*]u8,
-        line_len: u64,
+        line_len: usize,
         line_str: [*]u8,
-        line_str_len: u64,
+        line_str_len: usize,
         ranges: [*]u8,
-        ranges_len: u64,
+        ranges_len: usize,
         loclists: [*]u8,
-        loclists_len: u64,
+        loclists_len: usize,
         rnglists: [*]u8,
-        rnglists_len: u64,
+        rnglists_len: usize,
         addr: [*]u8,
-        addr_len: u64,
+        addr_len: usize,
         names: [*]u8,
-        names_len: u64,
+        names_len: usize,
         frame: [*]u8,
-        frame_len: u64,
+        frame_len: usize,
     },
     pub var active: ?*DwarfInfo = null;
     pub const AddressInfo = struct {
         /// Lookup address.
-        addr: u64 = 0,
+        addr: usize,
         /// Number of requests for this address.
         count: u32 = 0,
+
         /// Offset of message in output buffer.
-        start: u64 = 0,
+        start: [*]u8,
         /// End of message in output buffer.
-        finish: u64 = 0,
-        pub fn message(addr_info: *const AddressInfo, buf: [*]u8) []const u8 {
-            return buf[addr_info.start..addr_info.finish];
-        }
+        finish: [*]u8,
     };
     const names: [12][]const u8 = .{
         ".debug_info",
