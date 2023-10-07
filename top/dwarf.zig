@@ -1012,37 +1012,44 @@ pub const DwarfInfo = extern struct {
         abbrev_tab: *AbbrevTable,
     ) void {
         @setRuntimeSafety(is_safe);
-        const abbrev_bytes: []const u8 = dwarf_info.impl.abbrev[abbrev_tab.off..dwarf_info.impl.abbrev_len];
+        const abbrev_bytes: [*]u8 = dwarf_info.impl.abbrev + abbrev_tab.off;
         while (true) {
-            const code = parse.noexcept.readLEB128(u64, abbrev_bytes[abbrev_tab.len..]);
+            const code = parse.noexcept.unsignedLEB128(abbrev_bytes + abbrev_tab.len);
             abbrev_tab.len +%= code[1];
             if (code[0] == 0) {
                 break;
             }
-            const tag = parse.noexcept.readLEB128(Tag, abbrev_bytes[abbrev_tab.len..]);
+            const tag = parse.noexcept.unsignedLEB128(abbrev_bytes + abbrev_tab.len);
             abbrev_tab.len +%= tag[1];
             const ent: *AbbrevTable.Entry = abbrev_tab.addEntry(allocator);
             ent.head = .{
-                .tag = tag[0],
+                .tag = @enumFromInt(tag[0]),
                 .children = abbrev_bytes[abbrev_tab.len] == 1,
                 .code = code[0],
             };
             abbrev_tab.len +%= 1;
             while (true) {
-                const attr = parse.noexcept.readLEB128(Attr, abbrev_bytes[abbrev_tab.len..]);
+                const attr = parse.noexcept.unsignedLEB128(abbrev_bytes + abbrev_tab.len);
                 abbrev_tab.len +%= attr[1];
-                const form = parse.noexcept.readLEB128(Form, abbrev_bytes[abbrev_tab.len..]);
+                const form = parse.noexcept.unsignedLEB128(abbrev_bytes + abbrev_tab.len);
                 abbrev_tab.len +%= form[1];
-                if (attr[0] == .null and form[0] == .null) {
+                if (attr[0] == 0 and form[0] == 0) {
                     break;
                 }
                 const kv: *AbbrevTable.Entry.KeyVal = ent.addKeyVal(allocator);
-                if (form[0] == .implicit_const) {
-                    const payload = parse.noexcept.readLEB128(i64, abbrev_bytes[abbrev_tab.len..]);
+                if (form[0] == @intFromEnum(Form.implicit_const)) {
+                    const payload = parse.noexcept.signedLEB128(abbrev_bytes + abbrev_tab.len);
                     abbrev_tab.len +%= payload[1];
-                    kv.* = .{ .attr = attr[0], .form = form[0], .payload = payload[0] };
+                    kv.* = .{
+                        .attr = @enumFromInt(attr[0]),
+                        .form = @enumFromInt(form[0]),
+                        .payload = payload[0],
+                    };
                 } else {
-                    kv.* = .{ .attr = attr[0], .form = form[0] };
+                    kv.* = .{
+                        .attr = @enumFromInt(attr[0]),
+                        .form = @enumFromInt(form[0]),
+                    };
                 }
             }
         }
