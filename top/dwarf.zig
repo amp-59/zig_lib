@@ -1668,18 +1668,17 @@ const LineNumberProgram = struct {
         lnp.prev = null;
         lnp.state = .{ .is_stmt = lnp.is_stmt };
     }
-    fn init(is_stmt: bool, addr: u64) LineNumberProgram {
+    fn init(is_stmt: bool) LineNumberProgram {
         return .{
             .is_stmt = is_stmt,
-            .addr = addr,
             .prev = null,
             .state = .{ .is_stmt = is_stmt },
         };
     }
-    fn checkLineMatch(lnp: *LineNumberProgram, allocator: *Allocator, unit: *const Unit) ?trace.SourceLocation {
+    fn checkLineMatch(lnp: *LineNumberProgram, allocator: *Allocator, unit: *const Unit, addr: usize) ?trace.SourceLocation {
         if (lnp.prev) |prev| {
-            if (lnp.addr >= prev.addr and
-                lnp.addr <= lnp.state.addr)
+            if (addr >= prev.addr and
+                addr <= lnp.state.addr)
             {
                 if (prev.file == 0) {
                     proc.exitError(error.InvalidEncoding, 2);
