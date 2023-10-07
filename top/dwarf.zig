@@ -884,6 +884,14 @@ pub const DwarfInfo = extern struct {
         mem.zero(AddressInfo, ret);
         return ret;
     }
+    pub fn addSourceLocation(dwarf_info: *DwarfInfo, allocator: *Allocator) *trace.SourceLocation {
+        @setRuntimeSafety(is_safe);
+        const addr_buf: *usize = @ptrCast(&dwarf_info.src_locs);
+        const ret: *trace.SourceLocation = @ptrFromInt(allocator.addGeneric(@sizeOf(trace.SourceLocation), 1, addr_buf, &dwarf_info.src_locs_max_len, dwarf_info.src_locs_len));
+        dwarf_info.src_locs_len +%= 1;
+        mem.zero(trace.SourceLocation, ret);
+        return ret;
+    }
     fn populateUnit(allocator: *Allocator, dwarf_info: *DwarfInfo, unit: *Unit) void {
         @setRuntimeSafety(is_safe);
         parseAbbrevTable(allocator, dwarf_info, unit.abbrev_tab);
