@@ -39,55 +39,52 @@ pub const File = enum(u8) {
     cc_compiler_exe = 11,
     cxx_compiler_exe = 12,
 
-    cached_generic      = @bitCast(Traits{ .is_cached = true, .no = 0 }),
-    cached_exe          = @bitCast(Traits{ .is_cached = true, .no = 1 }),
-    cached_lib          = @bitCast(Traits{ .is_cached = true, .no = 2 }),
-    cached_obj          = @bitCast(Traits{ .is_cached = true, .no = 3 }),
+    cached_generic      = @bitCast(Flags{ .is_cached = true, .no = 0 }),
+    cached_exe          = @bitCast(Flags{ .is_cached = true, .no = 1 }),
+    cached_lib          = @bitCast(Flags{ .is_cached = true, .no = 2 }),
+    cached_obj          = @bitCast(Flags{ .is_cached = true, .no = 3 }),
 
-    output_generic      = @bitCast(Traits{ .is_output = true, .no = 0 }),
-    output_exe          = @bitCast(Traits{ .is_output = true, .no = 1 }),
-    output_lib          = @bitCast(Traits{ .is_output = true, .no = 2 }),
-    output_obj          = @bitCast(Traits{ .is_output = true, .no = 3 }),
-    output_ar           = @bitCast(Traits{ .is_output = true, .no = 4 }),
+    output_generic      = @bitCast(Flags{ .is_output = true, .no = 0 }),
+    output_exe          = @bitCast(Flags{ .is_output = true, .no = 1 }),
+    output_lib          = @bitCast(Flags{ .is_output = true, .no = 2 }),
+    output_obj          = @bitCast(Flags{ .is_output = true, .no = 3 }),
+    output_ar           = @bitCast(Flags{ .is_output = true, .no = 4 }),
 
-    output_asm          = @bitCast(Traits{ .is_output = true, .is_source = true, .no = 0 }),
-    output_c            = @bitCast(Traits{ .is_output = true, .is_source = true, .no = 1 }),
-    output_zir          = @bitCast(Traits{ .is_output = true, .is_source = true, .no = 2 }),
-    output_llvm_ir      = @bitCast(Traits{ .is_output = true, .is_source = true, .no = 3 }),
-    output_llvm_bc      = @bitCast(Traits{ .is_output = true, .is_source = true, .no = 4 }),
-    output_c_header     = @bitCast(Traits{ .is_output = true, .is_source = true, .no = 5 }),
+    output_asm          = @bitCast(Flags{ .is_output = true, .is_source = true, .no = 0 }),
+    output_c            = @bitCast(Flags{ .is_output = true, .is_source = true, .no = 1 }),
+    output_zir          = @bitCast(Flags{ .is_output = true, .is_source = true, .no = 2 }),
+    output_llvm_ir      = @bitCast(Flags{ .is_output = true, .is_source = true, .no = 3 }),
+    output_llvm_bc      = @bitCast(Flags{ .is_output = true, .is_source = true, .no = 4 }),
+    output_c_header     = @bitCast(Flags{ .is_output = true, .is_source = true, .no = 5 }),
 
-    input_generic       = @bitCast(Traits{ .is_input = true, .no = 0 }),
-    input_exe           = @bitCast(Traits{ .is_input = true, .no = 1 }),
-    input_lib           = @bitCast(Traits{ .is_input = true, .no = 2 }),
-    input_obj           = @bitCast(Traits{ .is_input = true, .no = 3 }),
-    input_ar            = @bitCast(Traits{ .is_input = true, .no = 4 }),
+    input_generic       = @bitCast(Flags{ .is_input = true, .no = 0 }),
+    input_exe           = @bitCast(Flags{ .is_input = true, .no = 1 }),
+    input_lib           = @bitCast(Flags{ .is_input = true, .no = 2 }),
+    input_obj           = @bitCast(Flags{ .is_input = true, .no = 3 }),
+    input_ar            = @bitCast(Flags{ .is_input = true, .no = 4 }),
 
-    input_zig           = @bitCast(Traits{ .is_input = true, .is_source = true, .no = 0 }),
-    input_zig_config    = @bitCast(Traits{ .is_input = true, .is_source = true, .no = 1 }),
-    input_asm           = @bitCast(Traits{ .is_input = true, .is_source = true, .no = 2 }),
-    input_c             = @bitCast(Traits{ .is_input = true, .is_source = true, .no = 3 }),
-    input_c_header      = @bitCast(Traits{ .is_input = true, .is_source = true, .no = 4 }),
-    input_cxx           = @bitCast(Traits{ .is_input = true, .is_source = true, .no = 5 }),
-    input_cxx_header    = @bitCast(Traits{ .is_input = true, .is_source = true, .no = 6 }),
-    input_llvm_zir      = @bitCast(Traits{ .is_input = true, .is_source = true, .no = 7 }),
-    input_llvm_ir       = @bitCast(Traits{ .is_input = true, .is_source = true, .no = 8 }),
-    input_llvm_bc       = @bitCast(Traits{ .is_input = true, .is_source = true, .no = 9 }),
+    input_zig           = @bitCast(Flags{ .is_input = true, .is_source = true, .no = 0 }),
+    input_zig_config    = @bitCast(Flags{ .is_input = true, .is_source = true, .no = 1 }),
+    input_asm           = @bitCast(Flags{ .is_input = true, .is_source = true, .no = 2 }),
+    input_c             = @bitCast(Flags{ .is_input = true, .is_source = true, .no = 3 }),
+    input_c_header      = @bitCast(Flags{ .is_input = true, .is_source = true, .no = 4 }),
+    input_cxx           = @bitCast(Flags{ .is_input = true, .is_source = true, .no = 5 }),
+    input_cxx_header    = @bitCast(Flags{ .is_input = true, .is_source = true, .no = 6 }),
+    input_llvm_zir      = @bitCast(Flags{ .is_input = true, .is_source = true, .no = 7 }),
+    input_llvm_ir       = @bitCast(Flags{ .is_input = true, .is_source = true, .no = 8 }),
+    input_llvm_bc       = @bitCast(Flags{ .is_input = true, .is_source = true, .no = 9 }),
     _,
-
-    pub fn toggle(tag: *File, traits: Traits) bool {
+    // zig fmt: on
+    pub fn toggle(tag: *File, flags: Flags) bool {
         @setRuntimeSafety(builtin.is_safe);
-        const val: File = @enumFromInt(@intFromEnum(tag.*) ^ @as(u8, @bitCast(traits)));
+        const val: File = @enumFromInt(@intFromEnum(tag.*) ^ @as(u8, @bitCast(flags)));
         const ret: bool = @popCount(@intFromEnum(val)) == @popCount(@intFromEnum(tag.*));
         if (ret) {
             tag.* = val;
         }
         return ret;
-
     }
-
-    // zig fmt: on
-    pub const Traits = packed struct(u8) {
+    pub const Flags = packed struct(u8) {
         no: u4 = 0,
         is_cached: bool = false,
         is_output: bool = false,
