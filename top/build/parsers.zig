@@ -615,7 +615,7 @@ export fn formatParseArgsBuildCommand(cmd: *tasks.BuildCommand, allocator: *type
             cmd.debug_compiler_errors = true;
         } else if (mem.testEqualString("--debug-link-snapshot", arg)) {
             cmd.debug_link_snapshot = true;
-        } else if (mem.testEqualString("--help", arg)) {
+        } else {
             debug.write(build_help);
         }
     }
@@ -673,7 +673,7 @@ export fn formatParseArgsArchiveCommand(cmd: *tasks.ArchiveCommand, allocator: *
             cmd.no_symbol_table = true;
         } else if (mem.testEqualString("u", arg)) {
             cmd.update = true;
-        } else if (mem.testEqualString("--help", arg)) {
+        } else {
             debug.write(archive_help);
         }
         _ = allocator;
@@ -725,7 +725,7 @@ export fn formatParseArgsObjcopyCommand(cmd: *tasks.ObjcopyCommand, allocator: *
             } else {
                 return;
             }
-        } else if (mem.testEqualString("--help", arg)) {
+        } else {
             debug.write(objcopy_help);
         }
         _ = allocator;
@@ -782,7 +782,7 @@ export fn formatParseArgsHarecCommand(cmd: *tasks.HarecCommand, allocator: *type
             cmd.typedefs = true;
         } else if (mem.testEqualString("-N", arg)) {
             cmd.namespace = true;
-        } else if (mem.testEqualString("--help", arg)) {
+        } else {
             debug.write(harec_help);
         }
     }
@@ -934,7 +934,7 @@ export fn formatParseArgsTableGenCommand(cmd: *tasks.TableGenCommand, allocator:
                 arg = arg[2..];
             }
             cmd.output = arg;
-        } else if (mem.testEqualString("--help", arg)) {
+        } else {
             debug.write(tblgen_help);
         }
     }
@@ -1156,7 +1156,7 @@ export fn formatParseArgsLLCCommand(cmd: *tasks.LLCCommand, allocator: *types.Al
             cmd.r600_ir_structurize = true;
         } else if (mem.testEqualString("--relax-elf-relocations", arg)) {
             cmd.relax_elf_relocations = true;
-        } else if (mem.testEqualString("--help", arg)) {
+        } else {
             debug.write(llc_help);
         }
     }
@@ -1192,7 +1192,7 @@ export fn formatParseArgsFormatCommand(cmd: *tasks.FormatCommand, allocator: *ty
             } else {
                 return;
             }
-        } else if (mem.testEqualString("--help", arg)) {
+        } else {
             debug.write(format_help);
         }
         _ = allocator;
