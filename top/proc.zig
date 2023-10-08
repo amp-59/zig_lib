@@ -265,7 +265,7 @@ pub const WaitSpec = struct {
         any,
     };
     fn pid(id: For) u64 {
-        @setRuntimeSafety(builtin.is_safe);
+        @setRuntimeSafety(false);
         const val: isize = switch (id) {
             .ppid => 0,
             .any => -1,
@@ -380,27 +380,27 @@ pub const Status = struct {
     }
 };
 pub fn getProcessId() u32 {
-    @setRuntimeSafety(builtin.is_safe);
+    @setRuntimeSafety(false);
     return @intCast(sys.call(.getpid, .{}, u64, .{}));
 }
 pub fn getThreadId() u32 {
-    @setRuntimeSafety(builtin.is_safe);
+    @setRuntimeSafety(false);
     return @intCast(sys.call(.gettid, .{}, u64, .{}));
 }
 pub fn getUserId() u16 {
-    @setRuntimeSafety(builtin.is_safe);
+    @setRuntimeSafety(false);
     return @intCast(sys.call(.getuid, .{}, u64, .{}));
 }
 pub fn getEffectiveUserId() u16 {
-    @setRuntimeSafety(builtin.is_safe);
+    @setRuntimeSafety(false);
     return @intCast(sys.call(.geteuid, .{}, u64, .{}));
 }
 pub fn getGroupId() u16 {
-    @setRuntimeSafety(builtin.is_safe);
+    @setRuntimeSafety(false);
     return @intCast(sys.call(.getgid, .{}, u64, .{}));
 }
 pub fn getEffectiveGroupId() u16 {
-    @setRuntimeSafety(builtin.is_safe);
+    @setRuntimeSafety(false);
     return @intCast(sys.call(.getegid, .{}, u64, .{}));
 }
 pub fn waitPid(comptime wait_spec: WaitSpec, id: WaitSpec.For) sys.ErrorUnion(wait_spec.errors, wait_spec.return_type) {
