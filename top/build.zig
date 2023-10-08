@@ -256,9 +256,9 @@ pub const BuilderSpec = struct {
         /// (Devel.) Save dynamic environment to the cache.
         save_dyn_env: bool = false,
         /// (Devel.) Try to load the library at initialisation.
-        try_init_load: bool = false,
+        try_init_load: bool = true,
         /// (Devel.) If this succeeds, do not bother recompiling.
-        init_load_ok: bool = false,
+        init_load_ok: bool = true,
     };
     pub const Logging = packed struct {
         /// Report exchanges on task lock state:
@@ -296,7 +296,7 @@ pub const BuilderSpec = struct {
         /// Show when tasks have been waiting for a while with a list of blockers.
         show_waiting_tasks: bool = false,
         /// Never list special nodes among or allow explicit building.
-        show_special: bool = false,
+        show_special: bool = true,
         /// --
         show_output_destination: bool = false,
         /// Report `open` Acquire and Error.
