@@ -613,9 +613,10 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             /// Status for this file. Whether this pointer is valid is lazily
             /// determined. It will never be valid within the main phase.
             st: *file.Status,
-            const Key = packed union {
+            pub const Key = packed union {
                 tag: types.File,
-                traits: types.File.Traits,
+                flags: types.File.Flags,
+                id: u8,
             };
         };
         pub const Node = struct {
@@ -627,17 +628,21 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             name: [:0]u8,
             /// Description text to be printed with task listing.
             descr: [:0]const u8,
+            /// Stores task information. e.g.
+            /// `node.tasks.cmd.build.mode = .ReleaseFast;`
             tasks: Tasks,
+            /// (Internal)
             flags: Flags,
+            /// (Internal)
             lists: Lists,
+            /// (Internal)
             extra: Extra,
+            /// (Internal)
             lock: Lock,
             /// Pointer to the shared state. May consider storing allocators
             /// and address spaces here to make UX more convenient. It also
             /// saves a number of paramters in many functions.
             sh: *Shared,
-            pub const size_of: comptime_int = @sizeOf(Node);
-            pub const align_of: comptime_int = @alignOf(Node);
             pub const Flags = packed struct(u32) {
                 /// (Internal) Whether the node is a parameter to the user
                 /// defined function `buildMain`.
@@ -742,7 +747,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                     files = 6 | item(File, 3),
                     cmd_args = 1 | item([*:0]u8, 1),
                     run_args = 2 | item([*:0]u8, 1),
-                    fn item(comptime T: type, comptime init_len: comptime_int) u16 {
+                    inline fn item(comptime T: type, comptime init_len: comptime_int) u16 {
                         return @as(u16, @sizeOf(T) << 8) | init_len << 4;
                     }
                 };
@@ -891,7 +896,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 wait: ?*Wait = null,
                 results: ?*Results = null,
                 perf_events: ?*PerfEvents = null,
-                file_stats: ?*FileStats = null,
                 info_before: ?*DynamicLoader.Info = null,
                 info_after: ?*DynamicLoader.Info = null,
             };
@@ -912,14 +916,10 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 output_root: usize,
             };
             pub const Results = struct {
-                status: u8,
                 server: u8,
+                status: u8,
+                signal: u8,
                 time: time.TimeSpec,
-            };
-            pub const FileStats = struct {
-                input: file.Status,
-                cached: file.Status,
-                output: file.Status,
             };
             pub fn getNodes(node: *const Node) []*Node {
                 @setRuntimeSafety(false);
