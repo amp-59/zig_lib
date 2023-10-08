@@ -1,34 +1,100 @@
 const zl = @import("../../zig_lib.zig");
 
 pub usingnamespace zl.start;
-pub const panic_return_value: u8 = 0;
 
-export fn causeSentinelMismatch() void {
-    var a: [4096]u8 = undefined;
-    const b: [:0]u8 = a[0..512 :0];
-    b[256] = 'b';
+const do_it: bool = true;
+
+pub const logging_override: zl.debug.Logging.Override = .{
+    .Attempt = true,
+    .Acquire = true,
+    .Release = true,
+    .Error = true,
+    .Success = true,
+    .Fault = true,
+};
+pub const logging_default: zl.debug.Logging.Default = .{
+    .Attempt = true,
+    .Acquire = true,
+    .Release = true,
+    .Error = true,
+    .Success = true,
+    .Fault = true,
+};
+fn causePanicSentinelMismatch() void {
+    var b: bool = zl.mem.unstable(bool, false);
+    if (b) {
+        var a: [4096]u8 = undefined;
+        const c: [:0]u8 = a[0..512 :0];
+        c[256] = 'b';
+    }
 }
-
-export fn causePanic() void {
-    var a: [512]u8 = undefined;
-    var x: u64 = 0x10000;
-    var y: u64 = 0x10010;
-    zl.debug.assertEqual(u64, x, y);
-    var u: union(enum(u8)) {
-        a: u64,
-        b: u32,
-    } = .{ .a = 25 };
-    u.a = u.b;
-    var idx: usize = 512;
-    a[idx] = 'a';
-    var b: [:0]u8 = a[0..512 :0];
-    b[256] = 'b';
-    a[0] = 'a';
-    b = a[@intFromPtr(&a)..512 :0];
-    b[256] = 'b';
-    causePanic();
-    unreachable;
+fn causePanicSentinelMismatchNonScalarSentinel() void {
+    var b: bool = zl.mem.unstable(bool, false);
+    if (b) {
+        const S = struct { x: usize = 0 };
+        var a: [256:.{}]S = undefined;
+        a[0] = .{ .x = 25 };
+        a[1] = .{};
+        const c: u8 = @intCast(a[0..2 :.{}][0].x);
+        _ = c;
+    }
+}
+fn causePanicReachedUnreachable() void {
+    var b: bool = zl.mem.unstable(bool, false);
+    if (b) {
+        var x: u64 = 0x10000;
+        var y: u64 = 0x10010;
+        if (x < y) {
+            unreachable;
+        }
+    }
+}
+fn causePanicInactiveUnionField() void {
+    var b: bool = zl.mem.unstable(bool, false);
+    if (b) {
+        var u: union(enum(u8)) {
+            a: u64 = 0,
+            b: u32 = 1,
+        } = .{ .a = 25 };
+        u.a = u.b;
+    }
+}
+fn causePanicUnwrapError(err: anyerror, idx: usize) void {
+    var b: bool = zl.mem.unstable(bool, false);
+    if (b) {
+        if (idx != 5) {
+            causePanicUnwrapError(err, idx +% 1);
+            err catch unreachable;
+        }
+    }
+}
+fn causePanicStartGreaterThanEnd() void {
+    var b: bool = zl.mem.unstable(bool, false);
+    if (b) {
+        var a: [512]u8 = undefined;
+        const s: []u8 = a[@intFromPtr(&a)..256];
+        s[0] = 'a';
+    }
+}
+fn causePanicOutOfBounds() void {
+    var b: bool = zl.mem.unstable(bool, false);
+    if (b) {
+        var a: [512]u8 = undefined;
+        var idx: usize = 512;
+        a[idx] = 'a';
+    }
 }
 pub fn main() void {
-    causePanic();
+    //var b: bool = zl.mem.unstable(bool, true);
+    //if (b) {
+
+    causePanicOutOfBounds();
+    causePanicInactiveUnionField();
+    causePanicReachedUnreachable();
+    causePanicSentinelMismatch();
+    causePanicStartGreaterThanEnd();
+    causePanicUnwrapError(error.Which, 1);
+
+    //}
+    //causePanicSentinelMismatchNonScalarSentinel();
 }
