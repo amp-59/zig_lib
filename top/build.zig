@@ -956,28 +956,82 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             /// .{ .tag = output_obj }
             ///     ...
             ///
-            /// Get input or output by traits:
-            /// .{ .traits = .{ .output = true } }
-            /// .{ .traits = .{ .input = true } }
+            /// Get input or output by flags:
+            /// .{ .flags = .{ .output = true } }
+            /// .{ .flags = .{ .input = true } }
             ///     ...
             ///
             pub fn getFile(node: *Node, key: File.Key) ?*File {
                 @setRuntimeSafety(false);
                 const files: []File = node.getFiles();
                 var idx: usize = 0;
+                var mat_idx: usize = 0;
+                var mat_pc: u16 = 0;
                 while (idx != files.len) : (idx +%= 1) {
-                    if ((@intFromEnum(files[idx].tag) ^ 0xf) &
-                        @as(u8, @bitCast(key)) != 0)
-                    {
+                    const tag_bits: u8 = @intFromEnum(files[idx].tag);
+                    if (tag_bits == key.id) {
                         return @ptrCast(files.ptr + idx);
+                    } else {
+                        const idx_pc: u16 = @popCount(tag_bits & key.id);
+                        if (idx_pc > mat_pc) {
+                            mat_pc = idx_pc;
+                            mat_idx = idx;
+                        }
                     }
+                }
+                if (mat_pc != 0) {
+                    return @ptrCast(files.ptr + mat_idx);
                 }
                 return null;
             }
-            pub fn getPath(node: *const Node, fs: *const File) ?*file.CompoundPath {
-                const traits: types.File.Traits = @bitCast(@intFromEnum(fs.tag));
+            fn createFileList(node: *const Node, allocator: *Allocator, key: File.Key) []File {
+                @setRuntimeSafety(false);
+                const files: []File = node.getFiles();
+                var idx: usize = 0;
+                var len: usize = 0;
+                while (idx != files.len) : (idx +%= 1) {
+                    len +%= @intFromBool(@intFromEnum(files[idx].tag) & key.id != 0);
+                }
+                var buf: [*]File = @ptrFromInt(allocator.allocateRaw(
+                    len *% @sizeOf(File),
+                    @alignOf(File),
+                ));
+                len = 0;
+                while (idx != files.len) : (idx +%= 1) {
+                    if (@intFromEnum(files[idx].tag) & key.id != 0) {
+                        buf[len] = files[idx];
+                        len +%= 1;
+                    }
+                }
+                return buf[0..len];
+            }
+            fn createPathList(node: *const Node, allocator: *Allocator, key: File.Key) []file.CompoundPath {
+                @setRuntimeSafety(false);
+                const files: []File = node.getFiles();
+                var len: usize = 0;
+                var idx: usize = 0;
+                while (idx != files.len) : (idx +%= 1) {
+                    len +%= @intFromBool(@intFromEnum(files[idx].tag) & key.id != 0);
+                }
+                var buf: [*]file.CompoundPath = @ptrFromInt(allocator.allocateRaw(
+                    len *% @sizeOf(file.CompoundPath),
+                    @alignOf(file.CompoundPath),
+                ));
+                len = 0;
+                while (idx != files.len) : (idx +%= 1) {
+                    if (@intFromEnum(files[idx].tag) & key.id != 0) {
+                        if (getFilePath(node, @ptrCast(files.ptr + idx))) |path| {
+                            buf[len] = path.*;
+                            len +%= 1;
+                        }
+                    }
+                }
+                return buf[0..len];
+            }
+            pub fn getFilePath(node: *const Node, fs: *const File) ?*file.CompoundPath {
+                const flags: types.File.Flags = @bitCast(@intFromEnum(fs.tag));
                 const paths: []file.CompoundPath = node.getPaths();
-                if (!traits.is_cached) {
+                if (!flags.is_cached) {
                     return @ptrCast(paths.ptr + fs.path_idx);
                 }
                 return null;
