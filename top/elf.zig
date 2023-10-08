@@ -1733,19 +1733,33 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
             const Match = struct {
                 idx: u32 = 0,
                 tag: Tag = .unknown,
+                flags: Flags = .{},
                 const Tag = enum(u8) {
                     unknown = 0,
-                    pc_addr,
                     added,
                     removed,
-                    moved,
                     matched,
-                    hidden,
-                    mangled,
-                    /// These require considerable effort
-                    renamed_mangled,
-                    renamed_namespace,
-                    renamed,
+                };
+                const Flags = packed struct(u8) {
+                    /// The name is in some way mangled (contains '__')
+                    /// and initial matches are insufficient.
+                    is_mangled: bool = false,
+
+                    /// Not shown in single view.
+                    has_small_size: bool = false,
+
+                    has_same_bytes: bool = false,
+                    has_same_size: bool = false,
+
+                    /// The local name is different.
+                    is_renamed: bool = false,
+                    /// The namespace is different.
+                    is_relocated: bool = false,
+
+                    /// Whether the symbol is only present in the 'after' binary
+                    is_new: bool = false,
+                    /// Whether the symbol is only present in the 'before' binary
+                    is_old: bool = false,
                 };
             };
             fn nameIndices(name: [:0]u8) NameIndices {
@@ -1932,8 +1946,9 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                         continue;
                     };
                     const name_idx2: NameIndices = nameIndices(name2);
+                    mats2[sym_idx2].flags.is_mangled = name_idx2.mpos != 0;
                     if (!loader_spec.logging.show_mangled_symbols and
-                        name_idx2.mpos != 0 and
+                        mats2[sym_idx2].flags.is_mangled and
                         sym2.st_size < loader_spec.options.exclude_size_below)
                     {
                         hidden_count +%= 1;
@@ -1962,20 +1977,17 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                         continue;
                     };
                     const sym1: *Elf64_Sym = symbolByIndex(shdr1, sym_idx1);
-                    if (name_idx2.mpos != 0) {
-                        if (!compareSymbolBytes(info1, sym1, info2, sym2)) {
+                    if (mats2[sym_idx2].flags.is_mangled) {
+                        mats2[sym_idx2].flags.has_same_bytes = compareSymbolBytes(info1, sym1, info2, sym2);
+                        if (!mats2[sym_idx2].flags.has_same_bytes) {
                             mats2[sym_idx2].tag = .added;
                             continue;
                         }
                     }
-                    mats1[sym_idx1] = .{
-                        .tag = .matched,
-                        .idx = @intCast(sym_idx2),
-                    };
-                    mats2[sym_idx2] = .{
-                        .tag = .matched,
-                        .idx = @intCast(sym_idx1),
-                    };
+                    mats2[sym_idx2].tag = .matched;
+                    mats2[sym_idx2].idx = @intCast(sym_idx1);
+                    mats1[sym_idx1] = mats2[sym_idx2];
+                    mats1[sym_idx1].idx = @intCast(sym_idx2);
                 }
                 sym_idx2 = 1;
                 while (sym_idx2 != max_idx2) : (sym_idx2 +%= 1) {
@@ -2006,37 +2018,30 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                         };
                         const name_idx1: NameIndices = nameIndices(name1);
                         if (compareSymbolBytes(info1, sym1, info2, sym2)) {
-                            mats2[sym_idx2] = .{
-                                .tag = if (name_idx2.mpos != 0) .renamed_mangled else .renamed,
-                                .idx = @intCast(sym_idx1),
-                            };
+                            mats2[sym_idx2].tag = .matched;
+                            mats2[sym_idx2].idx = @intCast(sym_idx1);
+                            mats2[sym_idx2].flags.has_same_bytes = true;
                             break;
                         }
                         if (name_idx2.mpos & name_idx1.mpos != 0 and
                             mem.testEqualString(name_idx2.short(name2), name_idx1.short(name1)) and
                             compareSizes(sym1, sym2, &mat_size_diff))
                         {
-                            mats2[sym_idx2] = .{
-                                .tag = .renamed_mangled,
-                                .idx = @intCast(sym_idx1),
-                            };
+                            mats2[sym_idx2].tag = .matched;
+                            mats2[sym_idx2].idx = @intCast(sym_idx1);
                         }
                         if (name_idx2.spos & name_idx1.spos != 0 and
                             mem.testEqualString(name_idx2.short(name2), name_idx1.short(name1)) and
                             compareSizes(sym1, sym2, &mat_size_diff))
                         {
-                            mats2[sym_idx2] = .{
-                                .tag = .renamed_namespace,
-                                .idx = @intCast(sym_idx1),
-                            };
+                            mats2[sym_idx2].tag = .matched;
+                            mats2[sym_idx2].idx = @intCast(sym_idx1);
                         }
                     }
                     sym_idx1 = mats2[sym_idx2].idx;
                     if (sym_idx1 != 0) {
-                        mats1[sym_idx1] = .{
-                            .tag = mats2[sym_idx2].tag,
-                            .idx = @intCast(sym_idx2),
-                        };
+                        mats1[sym_idx1].tag = mats2[sym_idx2].tag;
+                        mats1[sym_idx1].idx = @intCast(sym_idx2);
                     }
                 }
                 var sym_idx1: usize = 1;
@@ -2112,7 +2117,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 while (shdr_idx1 != info1.ehdr.e_shnum) : (shdr_idx1 +%= 1) {
                     const shdr1: *Elf64_Shdr = info1.sectionHeaderByIndex(shdr_idx1);
                     const name1: [:0]const u8 = info1.sectionName(shdr1);
-                    sects.name = @max(sects.name, name1.len);
+                    sects.name = @intCast(@max(sects.name, name1.len));
                 }
                 return len;
             }
@@ -2442,7 +2447,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 ptr += 1;
                 return ptr;
             }
-            fn writeSymbolIntro(
+            fn writeSymbolPcAddr(
                 buf: [*]u8,
                 value: usize,
                 event: Match.Tag,
@@ -2459,37 +2464,62 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                     .matched => tab.fx.color.fg.yellow ++ "~" ++ tab.fx.none,
                     .moved => tab.fx.color.fg.yellow ++ "*" ++ tab.fx.none,
                 });
-                switch (event) {
-                    .hidden => {
-                        ptr = fmt.strsetEqu(ptr, ' ', (builtin.message_indent +% name_len -% width));
-                        ptr[0] = ' ';
-                        ptr += 1;
-                    },
-                    .pc_addr => {
-                        ptr = fmt.strsetEqu(ptr, ' ', 14 +% (builtin.message_indent -% (width +% 1)) +%
-                            (name_len -% (fmt.length(usize, value, 10) +% 1)));
-                        ptr[0..4].* = tab.fx.style.faint.*;
-                        ptr += 4;
-                        ptr += fmt.ux64(value).formatWriteBuf(ptr);
-                        ptr[0..4].* = tab.fx.none.*;
-                        ptr += 4;
-                        ptr[0..2].* = ": ".*;
-                        ptr += 2;
-                    },
-                    else => {
-                        ptr = fmt.strsetEqu(ptr, ' ', (builtin.message_indent -% (width +% 1)) +%
-                            (name_len -% (fmt.length(usize, value, 10) +% 1)));
-                        ptr[0..4].* = tab.fx.style.faint.*;
-                        ptr += 4;
-                        ptr[0] = '#';
-                        ptr += 1;
-                        ptr += fmt.ud64(value).formatWriteBuf(ptr);
-                        ptr[0..4].* = tab.fx.none.*;
-                        ptr += 4;
-                        ptr[0..2].* = ": ".*;
-                        ptr += 2;
-                    },
-                }
+                ptr = fmt.strsetEqu(ptr, ' ', 14 +% (builtin.message_indent -% (width +% 1)) +%
+                    (name_len -% (fmt.length(usize, value, 10) +% 1)));
+                ptr[0..4].* = tab.fx.style.faint;
+                ptr += 4;
+                ptr += fmt.ux64(value).formatWriteBuf(ptr);
+                ptr[0..4].* = tab.fx.none;
+                ptr += 4;
+                ptr[0..2].* = ": ".*;
+                ptr += 2;
+                return ptr;
+            }
+            fn writeSymbolGeneric(
+                buf: [*]u8,
+                style_s: []const u8,
+                style_b: u8,
+                name_len: usize,
+                width: usize,
+            ) [*]u8 {
+                @setRuntimeSafety(builtin.is_safe);
+                var ptr: [*]u8 = fmt.strsetEqu(buf, ' ', width);
+                ptr = fmt.strcpyEqu(ptr, style_s);
+                ptr[0] = style_b;
+                ptr += 1;
+                ptr[0..4].* = tab.fx.none;
+                ptr += 4;
+                ptr = fmt.strsetEqu(ptr, ' ', (builtin.message_indent +% name_len -% width));
+                ptr[0] = ' ';
+                ptr += 1;
+                return ptr;
+            }
+            fn writeSymbolIntro(
+                buf: [*]u8,
+                value: usize,
+                event: Match.Tag,
+                name_len: usize,
+                width: usize,
+            ) [*]u8 {
+                @setRuntimeSafety(builtin.is_safe);
+                var ptr: [*]u8 = fmt.strsetEqu(buf, ' ', width);
+                ptr = fmt.strcpyEqu(ptr, switch (event) {
+                    else => "|",
+                    .added => tab.fx.color.fg.red ++ "+" ++ tab.fx.none,
+                    .removed => tab.fx.color.fg.green ++ "-" ++ tab.fx.none,
+                    .matched => tab.fx.color.fg.yellow ++ "~" ++ tab.fx.none,
+                });
+                ptr = fmt.strsetEqu(ptr, ' ', (builtin.message_indent -% (width +% 1)) +%
+                    (name_len -% (fmt.length(usize, value, 10) +% 1)));
+                ptr[0..4].* = tab.fx.style.faint;
+                ptr += 4;
+                ptr[0] = '#';
+                ptr += 1;
+                ptr += fmt.ud64(value).formatWriteBuf(ptr);
+                ptr[0..4].* = tab.fx.none;
+                ptr += 4;
+                ptr[0..2].* = ": ".*;
+                ptr += 2;
                 return ptr;
             }
             fn writeExcluded(
@@ -2500,14 +2530,14 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 hidden_size: usize,
             ) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
-                var ptr: [*]u8 = writeSymbolIntro(buf, hidden_count, .hidden, name_len, width);
-                ptr[0..4].* = tab.fx.style.faint.*;
+                var ptr: [*]u8 = writeSymbolGeneric(buf, &tab.fx.color.fg.magenta, '?', name_len, width);
+                ptr[0..4].* = tab.fx.style.faint;
                 ptr += 4;
                 ptr += fmt.ud64(hidden_count).formatWriteBuf(ptr);
                 ptr[0..9].* = " hidden, ".*;
                 ptr += 9;
                 ptr += fmt.bytes(hidden_size).formatWriteBuf(ptr);
-                ptr[0..4].* = tab.fx.none.*;
+                ptr[0..4].* = tab.fx.none;
                 ptr += 4;
                 ptr[0] = '\n';
                 return ptr + 1;
@@ -2532,9 +2562,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 ptr += fmt.bytes(sym1.st_size).formatWriteBuf(ptr);
                 ptr[0..2].* = ", ".*;
                 ptr += 2;
-                ptr[0..5].* = "name=".*;
-                ptr += 5;
-                ptr = writeBoldShortName(ptr, mem.terminate(strtab1 + sym1.st_name, 0));
+                ptr = writeName(ptr, &tab.fx.style.bold, mem.terminate(strtab1 + sym1.st_name, 0));
                 ptr[0] = '\n';
                 ptr += 1;
                 return ptr;
@@ -2561,7 +2589,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 ptr += 2;
                 ptr[0..5].* = "name=".*;
                 ptr += 5;
-                ptr = writeBoldShortName(ptr, mem.terminate(strtab2 + sym2.st_name, 0));
+                ptr = writeName(ptr, &tab.fx.style.bold, mem.terminate(strtab2 + sym2.st_name, 0));
                 ptr[0] = '\n';
                 ptr += 1;
                 return ptr;
@@ -2588,7 +2616,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 ptr += 2;
                 ptr[0..5].* = "name=".*;
                 ptr += 5;
-                ptr = writeBoldShortName(ptr, mem.terminate(strtab1 + sym1.st_name, 0));
+                ptr = writeName(ptr, &tab.fx.style.bold, mem.terminate(strtab1 + sym1.st_name, 0));
                 ptr[0] = '\n';
                 ptr += 1;
                 return ptr;
@@ -2608,72 +2636,30 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 width: usize,
             ) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
-                if (mat1.tag != mat2.tag) {
-                    return buf;
-                }
-                if (!loader_spec.logging.show_unchanged_symbols and
+                if (mat1.tag != mat2.tag or
+                    !loader_spec.logging.show_unchanged_symbols and
                     sym1.st_size == sym2.st_size)
                 {
                     return buf;
                 }
+                var size_diff: fmt.Type.BloatDiff = fmt.bloatDiff(sym1.st_size, sym2.st_size);
                 var ptr: [*]u8 = writeSymbolIntro(buf, sym_idx2, mat2.tag, name_len, width);
                 ptr[0..5].* = "addr=".*;
                 ptr += 5;
-                ptr += fmt.ux64(sym2.st_value).formatWriteBuf(ptr);
+                ptr += fmt.writeUx64(@bitCast(sym2.st_value), ptr);
                 ptr[0..2].* = ", ".*;
                 ptr += 2;
                 ptr[0..5].* = "size=".*;
                 ptr += 5;
-                ptr += fmt.bloatDiff(sym1.st_size, sym2.st_size).formatWriteBuf(ptr);
+                ptr += size_diff.formatWriteBuf(ptr);
                 ptr[0..2].* = ", ".*;
                 ptr += 2;
-                ptr[0..5].* = "name=".*;
-                ptr += 5;
-                if (@as(usize, @bitCast(name_idx1)) !=
-                    @as(usize, @bitCast(name_idx2)))
-                {
-                    ptr = writeRenamedBoldShortName(ptr, name1, name_idx1, name2, name_idx2);
-                } else {
-                    ptr = writeBoldShortName(ptr, name2);
-                }
+                ptr = writeCompoundName(ptr, name1, name_idx1, mat1, name2, name_idx2, mat2, name_len, width);
                 ptr[0] = '\n';
                 ptr += 1;
                 return ptr;
             }
-            fn writeSymbolMoved(
-                buf: [*]u8,
-                strtab1: [*]u8,
-                sym1: *const Elf64_Sym,
-                strtab2: [*]u8,
-                sym2: *const Elf64_Sym,
-                sym_idx2: usize,
-                name_len: usize,
-                width: usize,
-            ) [*]u8 {
-                @setRuntimeSafety(builtin.is_safe);
-                var ptr: [*]u8 = writeSymbolIntro(buf, sym_idx2, .moved, name_len, width);
-                ptr[0..5].* = "addr=".*;
-                ptr += 5;
-                ptr += fmt.ux64(sym2.st_value).formatWriteBuf(ptr);
-                ptr[0..2].* = ", ".*;
-                ptr += 6;
-                ptr[0..5].* = "size=".*;
-                ptr += 5;
-                ptr += fmt.bytes(sym2.st_size).formatWriteBuf(ptr);
-                ptr[0..2].* = ", ".*;
-                ptr += 2;
-                ptr[0..5].* = "name=".*;
-                ptr += 5;
-                ptr = writeRenamedBoldShortName(
-                    ptr,
-                    mem.terminate(strtab1 + sym1.st_name, 0),
-                    mem.terminate(strtab2 + sym2.st_name, 0),
-                );
-                ptr[0] = '\n';
-                ptr += 1;
-                return ptr;
-            }
-            fn writeBoldShortName(buf: [*]u8, name: [:0]u8) [*]u8 {
+            fn writeName(buf: [*]u8, style_s: []const u8, name: []const u8) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
                 const pos: usize = mem.indexOfLastEqualOne(u8, '.', name) orelse 0;
                 var to: usize = pos;
@@ -2692,53 +2678,82 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                     ptr[0..5].* = "(...)".*;
                     ptr += 5;
                 }
-                ptr[0..8].* = (tab.fx.none ++ tab.fx.style.bold).*;
-                ptr += 8;
+                ptr[0..4].* = tab.fx.none;
+                ptr += 4;
+                ptr = fmt.strcpyEqu(ptr, style_s);
                 ptr = fmt.strcpyEqu(ptr, name[pos..]);
-                ptr[0..4].* = tab.fx.none.*;
+                ptr[0..4].* = tab.fx.none;
                 ptr += 4;
                 return ptr;
             }
-            fn writeChangedNameSegment(buf: [*]u8, name1: []const u8, name2: []const u8) [*]u8 {
-                @setRuntimeSafety(builtin.is_safe);
-                if (mem.testEqualString(name1, name2)) {
-                    return fmt.strcpyEqu(buf, name2);
-                }
-                buf[0..6].* = ("{" ++ tab.fx.color.fg.blue).*;
-                var ptr: [*]u8 = fmt.strcpyEqu(buf + 6, name1);
-                ptr[0..11].* = (tab.fx.none ++ "=>" ++ tab.fx.color.fg.yellow).*;
-                ptr += 11;
-                ptr = fmt.strcpyEqu(ptr, name2);
-                ptr[0..5].* = (tab.fx.none ++ "}").*;
-                ptr += 5;
-                return ptr;
-            }
-            fn writeRenamedBoldShortName(
+            fn writeCompoundName(
                 buf: [*]u8,
                 name1: [:0]u8,
                 name_idx1: NameIndices,
+                mat1: Match,
                 name2: [:0]u8,
                 name_idx2: NameIndices,
+                mat2: Match,
+                name_len: usize,
+                width: usize,
             ) [*]u8 {
+                _ = mat2;
+                _ = mat1;
                 @setRuntimeSafety(builtin.is_safe);
-                // For now only look at three points of renaming:
-                // top.elf.writeRename__anon_1023
-                // ^~~~~~~ ^~~~~~~~~~~^~~~~~~~~~~
-                // |        \         |
-                // Namespace |        Mangler
-                //           Name
-                //
-                // Mangler comparison is in larger incomplete block in
-                // `aboutSymtabDifference`.
-                //
-                // TODO: First round of rename detection should focus on symbols
-                // `added` in file2 and `unknown` in file1.
-                //
-                var ptr: [*]u8 = writeChangedNameSegment(buf, name1[0..name_idx1.spos], name2[0..name_idx1.spos]);
-                ptr[0..8].* = (tab.fx.none ++ tab.fx.style.bold).*;
-                ptr += 8;
-                ptr = writeChangedNameSegment(ptr, name1[name_idx1.spos..], name2[name_idx2.spos..]);
-                ptr[0..4].* = tab.fx.none.*;
+                var name_seg1: []const u8 = name1[0..name_idx1.spos];
+                var name_seg2: []const u8 = name2[0..name_idx2.spos];
+                var ptr: [*]u8 = buf;
+                if (mem.testEqualString(name_seg1, name_seg2)) {
+                    ptr[0..5].* = "name=".*;
+                    ptr += 5;
+                    ptr = writeName(ptr, &tab.fx.style.bold, name_seg2);
+                } else {
+                    ptr -= 2;
+                    ptr[0] = '\n';
+                    ptr += 1;
+                    ptr = writeSymbolGeneric(ptr, "", ':', name_len, width);
+                    ptr[0..5].* = "name=".*;
+                    ptr += 5;
+                    ptr[0] = '{';
+                    ptr += 1;
+                    ptr[0..5].* = tab.fx.color.fg.blue;
+                    ptr += 5;
+                    ptr = writeName(ptr, "", name_seg1);
+                    ptr[0..5].* = tab.fx.color.fg.yellow;
+                    ptr += 5;
+                    ptr[0..2].* = "=>".*;
+                    ptr += 2;
+                    ptr = writeName(ptr, "", name_seg2);
+                    ptr[0..4].* = tab.fx.none;
+                    ptr += 4;
+                    ptr[0] = '}';
+                    ptr += 1;
+                }
+                name_seg1 = name1[name_idx1.spos +% @intFromBool(name1[name_idx1.spos] == '.') ..];
+                name_seg2 = name2[name_idx2.spos +% @intFromBool(name2[name_idx2.spos] == '.') ..];
+                if (mem.testEqualString(name_seg1, name_seg2)) {
+                    ptr[0] = '.';
+                    ptr += 1;
+                    ptr = writeName(ptr, &tab.fx.style.bold, name_seg2);
+                } else {
+                    ptr[0] = '.';
+                    ptr += 1;
+                    ptr[0] = '{';
+                    ptr += 1;
+                    ptr[0..5].* = tab.fx.color.fg.blue;
+                    ptr += 5;
+                    ptr = writeName(ptr, &tab.fx.style.bold, name_seg1);
+                    ptr[0..5].* = tab.fx.color.fg.yellow;
+                    ptr += 5;
+                    ptr[0..2].* = "=>".*;
+                    ptr += 2;
+                    ptr = writeName(ptr, &tab.fx.style.bold, name_seg2);
+                    ptr[0..4].* = tab.fx.none;
+                    ptr += 4;
+                    ptr[0] = '}';
+                    ptr += 1;
+                }
+                ptr[0..4].* = tab.fx.none;
                 ptr += 4;
                 return ptr;
             }
