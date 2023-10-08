@@ -454,7 +454,138 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         const library_prefix = builder_spec.options.output_dir ++ "/" ++ builder_spec.options.lib_out_dir ++ "/lib";
         const archive_prefix = builder_spec.options.output_dir ++ "/" ++ builder_spec.options.lib_out_dir ++ "/lib";
         const auxiliary_prefix = builder_spec.options.output_dir ++ "/" ++ builder_spec.options.aux_out_dir ++ "/";
-        const Extensions = struct {
+        pub const ThreadSpace = mem.GenericRegularAddressSpace(.{
+            .label = "thread",
+            .index_type = u8,
+            .lb_addr = stack_lb_addr,
+            .up_addr = stack_up_addr,
+            .divisions = max_thread_count,
+            .alignment = 4096,
+            .options = .{ .thread_safe = true },
+        });
+        pub const AddressSpace = mem.GenericRegularAddressSpace(.{
+            .label = "arena",
+            .index_type = u8,
+            .lb_addr = arena_lb_addr,
+            .up_addr = arena_up_addr,
+            .divisions = max_arena_count,
+            .alignment = 4096,
+            .options = .{ .thread_safe = false },
+        });
+        pub const LoaderSpace = mem.GenericDiscreteAddressSpace(.{
+            .index_type = u8,
+            .label = "ld",
+            .list = &[2]mem.Arena{
+                .{ .lb_addr = load_meta_lb_addr, .up_addr = load_meta_up_addr },
+                .{ .lb_addr = load_prog_lb_addr, .up_addr = load_prog_up_addr },
+            },
+        });
+        pub const DynamicLoader = elf.GenericDynamicLoader(.{
+            .options = .{},
+            .logging = dyn_loader_logging,
+            .errors = dyn_loader_errors,
+            .AddressSpace = LoaderSpace,
+        });
+        pub const PerfEvents = perf.GenericPerfEvents(.{
+            .logging = perf_events_logging,
+            .errors = perf_events_errors,
+        });
+        const update_exit_message: [2]Message.ClientHeader = .{
+            .{ .tag = .update, .bytes_len = 0 },
+            .{ .tag = .exit, .bytes_len = 0 },
+        };
+        const address_space_options = .{
+            .thread_safe = true,
+            .require_map = false,
+            .require_unmap = false,
+        };
+        const thread_space_options = .{
+            .thread_safe = true,
+            .require_map = false,
+            .require_unmap = false,
+        };
+        const open_options = .{
+            .no_follow = true,
+        };
+        const create_truncate_options = .{
+            .read_write = true,
+            .exclusive = false,
+            .truncate = true,
+        };
+        const thread_map_options = .{
+            .grows_down = true,
+        };
+        const pipe_options = .{
+            .close_on_exec = false,
+        };
+        const dir_options = .{
+            .directory = true,
+            .path = true,
+        };
+        const allocator_errors = .{
+            .map = builder_spec.errors.map,
+            .remap = builder_spec.errors.map,
+            .unmap = builder_spec.errors.unmap,
+        };
+        const address_space_errors = .{
+            .release = .ignore,
+            .acquire = .ignore,
+            .map = builder_spec.errors.map,
+            .unmap = builder_spec.errors.unmap,
+        };
+        const dyn_loader_errors = .{
+            .open = builder_spec.errors.open,
+            .seek = builder_spec.errors.seek,
+            .stat = builder_spec.errors.stat,
+            .read = builder_spec.errors.read,
+            .close = builder_spec.errors.close,
+            .map = builder_spec.errors.map,
+            .unmap = builder_spec.errors.unmap,
+        };
+        const dyn_loader_logging = .{
+            .show_unchanged_sections = true,
+            .show_unchanged_symbols = false,
+            .show_mangled_symbols = true,
+            .open = builder_spec.logging.open,
+            .seek = builder_spec.logging.seek,
+            .stat = builder_spec.logging.stat,
+            .read = builder_spec.logging.read,
+            .close = builder_spec.logging.close,
+            .map = builder_spec.logging.map,
+            .unmap = builder_spec.logging.unmap,
+        };
+        const perf_events_errors = .{
+            .open = builder_spec.errors.perf_event_open,
+            .read = builder_spec.errors.read,
+            .close = builder_spec.errors.close,
+        };
+        const perf_events_logging = .{
+            .open = builder_spec.logging.perf_event_open,
+            .read = builder_spec.logging.read,
+            .close = builder_spec.logging.close,
+        };
+        const trace_build_cmd = .{
+            .kind = .obj,
+            .dynamic = true,
+            .omit_frame_pointer = false,
+            .mode = .ReleaseSmall,
+            .stack_check = false,
+            .stack_protector = false,
+            .reference_trace = true,
+            .single_threaded = true,
+            .function_sections = false,
+            .strip = true,
+            .compiler_rt = false,
+            .image_base = 65536,
+        };
+        const extn_flags = .{
+            .is_dynamic_extension = true,
+            .want_builder_decl = true,
+            .want_build_config = true,
+            .want_define_decls = true,
+            .have_task_data = false,
+        };
+        pub const Extensions = struct {
             /// Raw commands build commands producing dynamic library
             /// Required for multi-threading.
             proc: *Node,
@@ -1313,137 +1444,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
                 return null;
             }
-        };
-        pub const ThreadSpace = mem.GenericRegularAddressSpace(.{
-            .label = "thread",
-            .index_type = u8,
-            .lb_addr = stack_lb_addr,
-            .up_addr = stack_up_addr,
-            .divisions = max_thread_count,
-            .alignment = 4096,
-            .options = .{ .thread_safe = true },
-        });
-        pub const AddressSpace = mem.GenericRegularAddressSpace(.{
-            .label = "arena",
-            .index_type = u8,
-            .lb_addr = arena_lb_addr,
-            .up_addr = arena_up_addr,
-            .divisions = max_arena_count,
-            .alignment = 4096,
-            .options = .{ .thread_safe = false },
-        });
-        pub const LoaderSpace = mem.GenericDiscreteAddressSpace(.{
-            .index_type = u8,
-            .label = "ld",
-            .list = &[2]mem.Arena{
-                .{ .lb_addr = load_meta_lb_addr, .up_addr = load_meta_up_addr },
-                .{ .lb_addr = load_prog_lb_addr, .up_addr = load_prog_up_addr },
-            },
-        });
-        pub const DynamicLoader = elf.GenericDynamicLoader(.{
-            .options = .{},
-            .logging = dyn_loader_logging,
-            .errors = dyn_loader_errors,
-            .AddressSpace = LoaderSpace,
-        });
-        pub const PerfEvents = perf.GenericPerfEvents(.{
-            .logging = perf_events_logging,
-            .errors = perf_events_errors,
-        });
-        const update_exit_message: [2]Message.ClientHeader = .{
-            .{ .tag = .update, .bytes_len = 0 },
-            .{ .tag = .exit, .bytes_len = 0 },
-        };
-        const address_space_options = .{
-            .thread_safe = true,
-            .require_map = false,
-            .require_unmap = false,
-        };
-        const thread_space_options = .{
-            .thread_safe = true,
-            .require_map = false,
-            .require_unmap = false,
-        };
-        const open_options = .{
-            .no_follow = true,
-        };
-        const create_truncate_options = .{
-            .read_write = true,
-            .exclusive = false,
-            .truncate = true,
-        };
-        const thread_map_options = .{
-            .grows_down = true,
-        };
-        const pipe_options = .{
-            .close_on_exec = false,
-        };
-        const dir_options = .{
-            .directory = true,
-            .path = true,
-        };
-        const allocator_errors = .{
-            .map = builder_spec.errors.map,
-            .remap = builder_spec.errors.map,
-            .unmap = builder_spec.errors.unmap,
-        };
-        const address_space_errors = .{
-            .release = .ignore,
-            .acquire = .ignore,
-            .map = builder_spec.errors.map,
-            .unmap = builder_spec.errors.unmap,
-        };
-        const dyn_loader_errors = .{
-            .open = builder_spec.errors.open,
-            .seek = builder_spec.errors.seek,
-            .stat = builder_spec.errors.stat,
-            .read = builder_spec.errors.read,
-            .close = builder_spec.errors.close,
-            .map = builder_spec.errors.map,
-            .unmap = builder_spec.errors.unmap,
-        };
-        const dyn_loader_logging = .{
-            .show_unchanged_sections = true,
-            .show_unchanged_symbols = false,
-            .show_mangled_symbols = true,
-            .open = builder_spec.logging.open,
-            .seek = builder_spec.logging.seek,
-            .stat = builder_spec.logging.stat,
-            .read = builder_spec.logging.read,
-            .close = builder_spec.logging.close,
-            .map = builder_spec.logging.map,
-            .unmap = builder_spec.logging.unmap,
-        };
-        const perf_events_errors = .{
-            .open = builder_spec.errors.perf_event_open,
-            .read = builder_spec.errors.read,
-            .close = builder_spec.errors.close,
-        };
-        const perf_events_logging = .{
-            .open = builder_spec.logging.perf_event_open,
-            .read = builder_spec.logging.read,
-            .close = builder_spec.logging.close,
-        };
-        const trace_build_cmd = .{
-            .kind = .obj,
-            .dynamic = true,
-            .omit_frame_pointer = false,
-            .mode = .ReleaseSmall,
-            .stack_check = false,
-            .stack_protector = false,
-            .reference_trace = true,
-            .single_threaded = true,
-            .function_sections = false,
-            .strip = true,
-            .compiler_rt = false,
-            .image_base = 65536,
-        };
-        const extn_flags = .{
-            .is_dynamic_extension = true,
-            .want_builder_decl = true,
-            .want_build_config = true,
-            .want_define_decls = true,
-            .have_task_data = false,
         };
         pub fn configRootRelative(allocator: *Allocator, node: *Node) [:0]u8 {
             @setRuntimeSafety(builtin.is_safe);
