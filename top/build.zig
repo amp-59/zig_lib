@@ -1097,13 +1097,13 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 name: []const u8,
                 formatWriteBuf: *const fn (*const anyopaque, [*]u8) usize,
                 format: *const anyopaque,
-            ) Config {
+            ) void {
                 @setRuntimeSafety(builtin.is_safe);
                 const addr: usize = allocator.allocateRaw(16 +% name.len +% 1, 8);
                 const ptrs: *[2]usize = @ptrFromInt(addr);
                 ptrs[0] = @intFromPtr(formatWriteBuf);
                 ptrs[1] = @intFromPtr(format);
-                fmt.strcpyEqu(@ptrFromInt(addr +% 16))[0] = 0;
+                fmt.strcpyEqu(@ptrFromInt(addr +% 16), name)[0] = 0;
                 node.addConfig(allocator).data = (16 << Config.shift_amt) | addr;
             }
             pub fn addToplevelArgs(node: *Node, allocator: *Allocator) void {
