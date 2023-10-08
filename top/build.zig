@@ -1536,7 +1536,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 else => proc.exitErrorFault(error.InvalidOutput, @tagName(kind), 2),
             });
         }
-        fn shallowCacheCheck(file_stats: *Node.FileStats, dest_pathname: [:0]const u8, root_pathname: [:0]const u8) u8 {
+        inline fn shallowCacheCheck(file_stats: *Node.FileStats, dest_pathname: [:0]const u8, root_pathname: [:0]const u8) u8 {
             @setRuntimeSafety(builtin.is_safe);
             try meta.wrap(file.statusAt(stat(), .{}, file.cwd, dest_pathname, &file_stats.input));
             try meta.wrap(file.statusAt(stat(), .{}, file.cwd, root_pathname, &file_stats.output));
@@ -1557,7 +1557,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             return (st1.mode.kind != .unknown and st2.mode.kind != .unknown) and
                 ((st1.dev == st2.dev) and (st1.ino == st2.ino));
         }
-        fn validateUserPath(pathname: [:0]const u8) void {
+        inline fn validateUserPath(pathname: [:0]const u8) void {
             @setRuntimeSafety(builtin.is_safe);
             var dot_dot: bool = false;
             var sep_sep: bool = false;
@@ -1598,7 +1598,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             "-dynamic", "--listen", "-",  "--deps", "zl",
             "--entry",  "load",     "-z", "defs",
         };
-        /// Common to all dynamic extensions.
         export const extn_args1 = [_][*:0]const u8{
             "-OReleaseSmall",
             "-fstrip",
@@ -1629,7 +1628,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             .{ "archive", "top/build/archive.auto.zig", &extn_args3 },
             .{ "objcopy", "top/build/objcopy.auto.zig", &extn_args3 },
         };
-        pub fn initializeExtensions(allocator: *Allocator, top: *Node) void {
+        inline fn initializeExtensions(allocator: *Allocator, top: *Node) void {
             @setRuntimeSafety(builtin.is_safe);
             const zero: *Node = top.addGroup(allocator, "zero", .{
                 .zig_exe = top.zigExe(),
