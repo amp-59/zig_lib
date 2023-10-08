@@ -122,7 +122,6 @@ pub const logging_override: debug.Logging.Override = define(
         .Fault = null,
     },
 );
-
 /// All enabled in build mode `Debug`.
 pub const signal_handlers: debug.SignalHandlers = define(
     "signal_handlers",
@@ -2121,7 +2120,7 @@ const std_lib = struct {
     pub const ExternOptions = std.builtin.ExternOptions;
     pub const CompilerBackend = std.builtin.CompilerBackend;
     pub const TestFn = std.builtin.TestFn;
-    pub const Mode = std.builtin.Mode;
+    pub const Mode = OptimizeMode;
 };
 pub usingnamespace zig;
 pub usingnamespace builtin;
