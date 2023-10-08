@@ -1468,6 +1468,8 @@ pub fn refAllDeclsInternal(comptime T: type, comptime types: []const type, compt
                             }
                         }
                         refAllDeclsInternal(@field(T, decl.name), types ++ [1]type{@field(T, decl.name)}, black_list);
+                    } else if (@typeInfo(@TypeOf(@field(T, decl.name))) == .Fn) {
+                        _ = &@field(T, decl.name);
                     }
                 }
             }
@@ -1495,6 +1497,8 @@ pub fn refAllDecls(comptime T: type, comptime black_list: ?[]const []const u8) v
                     if (@TypeOf(@field(T, decl.name)) == type) {
                         refAllDeclsInternal(@field(T, decl.name), types ++ [1]type{@field(T, decl.name)}, black_list);
                     }
+                } else if (@typeInfo(@TypeOf(@field(T, decl.name))) == .Fn) {
+                    _ = &@field(T, decl.name);
                 }
             }
         }
