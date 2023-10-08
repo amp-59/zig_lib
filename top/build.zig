@@ -1131,22 +1131,22 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             pub fn init(allocator: *Allocator, name: []const u8, args: [][*:0]u8, vars: [][*:0]u8) *Node {
                 @setRuntimeSafety(builtin.is_safe);
                 const sh: *Shared = @ptrFromInt(allocator.allocateRaw(@sizeOf(Shared), @alignOf(Shared)));
-                sh.top = @ptrFromInt(allocator.allocateRaw(Node.size_of, Node.align_of));
-                sh.top.sh = sh;
-                sh.top.flags = .{ .is_top = true, .is_group = true };
-                sh.top.addNode(allocator).* = sh.top;
-                sh.top.name = duplicate(allocator, name);
-                sh.top.addPath(allocator, .zig_compiler_exe).addName(allocator).* = duplicate(allocator, mem.terminate(args[1], 0));
-                sh.top.addPath(allocator, .build_root).addName(allocator).* = duplicate(allocator, mem.terminate(args[2], 0));
-                sh.top.addPath(allocator, .cache_root).addName(allocator).* = duplicate(allocator, mem.terminate(args[3], 0));
-                sh.top.addPath(allocator, .global_cache_root).addName(allocator).* = duplicate(allocator, mem.terminate(args[4], 0));
+                const node: *Node = @ptrFromInt(allocator.allocateRaw(@sizeOf(Node), @alignOf(Node)));
+                sh.top = node;
                 sh.args = args;
                 sh.vars = vars;
-                sh.mode = .Init;
-                initializeGroup(allocator, sh.top);
-                initializeExtensions(allocator, sh.top);
+                node.sh = sh;
+                node.flags = .{ .is_top = true, .is_group = true };
+                node.addNode(allocator).* = node;
+                node.name = duplicate(allocator, name);
+                node.addPath(allocator, .zig_compiler_exe).addName(allocator).* = duplicate(allocator, mem.terminate(args[1], 0));
+                node.addPath(allocator, .build_root).addName(allocator).* = duplicate(allocator, mem.terminate(args[2], 0));
+                node.addPath(allocator, .cache_root).addName(allocator).* = duplicate(allocator, mem.terminate(args[3], 0));
+                node.addPath(allocator, .global_cache_root).addName(allocator).* = duplicate(allocator, mem.terminate(args[4], 0));
+                initializeGroup(allocator, node);
+                initializeExtensions(allocator, node);
                 sh.mode = .Main;
-                return sh.top;
+                return node;
             }
             pub fn addGroup(group: *Node, allocator: *Allocator, name: []const u8, env_paths: ?EnvPaths) *Node {
                 @setRuntimeSafety(builtin.is_safe);
