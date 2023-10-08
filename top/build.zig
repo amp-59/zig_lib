@@ -1659,6 +1659,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             for (raw_extns, names) |*extn, pair| {
                 const node: *Node = createNode(allocator, zero, extn_flags, .build, obj_lock);
                 node.name = mem.terminate(pair[0], 0);
+                node.flags.is_special = true;
                 node.addBinaryOutputPath(allocator, .output_lib);
                 node.addSourceInputPath(allocator, mem.terminate(pair[1], 0));
                 for ([_][:0]const u8{
@@ -1674,20 +1675,28 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 for (pair[2]) |arg|
                     node.addCmdArg(allocator).* = @constCast(arg);
                 extn.* = node;
-            }
-        }
-        fn loadASAP(node: *Node) void {
-            if (have_lazy and node.flags.is_dynamic_extension) {
-                if (node.getFile(.{ .tag = .output_lib })) |fs| {
-                    node.getPaths()[fs.path_idx].status(stat(), fs.st);
-                    if (fs.st.mode.kind != .unknown) {
-                        var buf: [4096]u8 = undefined;
-                        var len: usize = node.getPaths()[fs.path_idx].formatWriteBuf(&buf);
-                        len -%= 1;
-                        node.sh.dl.load(buf[0..len :0]).autoLoad(node.sh.fp);
-                    }
+                if (builder_spec.options.try_init_load) {
+                    mapImmediate(allocator, node);
                 }
             }
+        }
+        fn classifySourceInputName(name: []const u8) types.File {
+            @setRuntimeSafety(builtin.is_safe);
+            for ([_]struct { [:0]const u8, types.File }{
+                .{ builder_spec.options.zig_ext, .input_zig },
+                .{ builder_spec.options.h_ext, .input_c },
+                .{ builder_spec.options.lib_ext, .input_lib },
+                .{ builder_spec.options.ar_ext, .input_ar },
+                .{ builder_spec.options.obj_ext, .input_obj },
+                .{ builder_spec.options.asm_ext, .input_asm },
+                .{ builder_spec.options.llvm_bc_ext, .input_llvm_bc },
+                .{ builder_spec.options.llvm_ir_ext, .input_llvm_ir },
+            }) |pair| {
+                if (mem.testEqualString(name[name.len -% pair[0].len ..], pair[0])) {
+                    return pair[1];
+                }
+            }
+            return .input_generic;
         }
         pub fn initializeGroup(allocator: *Allocator, node: *Node) void {
             @setRuntimeSafety(builtin.is_safe);
