@@ -1201,8 +1201,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 have_objcopy = true;
                 const node: *Node = createNode(allocator, group, .{}, .objcopy, objcopy_lock);
                 node.tasks.cmd.objcopy = @ptrFromInt(allocator.allocateRaw(tasks.ObjcopyCommand.size_of, tasks.objcopyCommand.align_of));
-                node.name = duplicate(allocator, name);
                 node.tasks.cmd.objcopy.* = objcopy_cmd;
+                node.name = duplicate(allocator, name);
                 node.addSourceInputPath(allocator, duplicate(allocator, dest_pathname));
                 initializeCommand(allocator, node);
                 return node;
@@ -1300,28 +1300,28 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 if (!node.flags.is_group) {
                     return node.groupNode().zigExe();
                 }
-                return @constCast(node.getPaths()[0].names[0]);
+                return node.getPaths()[0].names[0];
             }
             pub fn buildRoot(node: *Node) [:0]u8 {
                 @setRuntimeSafety(builtin.is_safe);
                 if (!node.flags.is_group) {
                     return node.groupNode().buildRoot();
                 }
-                return @constCast(node.getPaths()[1].names[0]);
+                return node.getPaths()[1].names[0];
             }
             pub fn cacheRoot(node: *Node) [:0]u8 {
                 @setRuntimeSafety(builtin.is_safe);
                 if (!node.flags.is_group) {
                     return node.groupNode().cacheRoot();
                 }
-                return @constCast(node.getPaths()[2].names[0]);
+                return node.getPaths()[2].names[0];
             }
             pub fn globalCacheRoot(node: *Node) [:0]u8 {
                 @setRuntimeSafety(builtin.is_safe);
                 if (!node.flags.is_group) {
                     return node.groupNode().globalCacheRoot();
                 }
-                return @constCast(node.getPaths()[3].names[0]);
+                return node.getPaths()[3].names[0];
             }
             pub fn buildRootFd(node: *Node) usize {
                 @setRuntimeSafety(builtin.is_safe);
