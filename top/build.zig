@@ -1449,23 +1449,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
                 return @intFromPtr(ptr) -% @intFromPtr(buf);
             }
-            pub fn splitArguments(node: *Node, allocator: *Allocator, args: [][*:0]u8, cmd_args_idx: usize) void {
-                @setRuntimeSafety(builtin.is_safe);
-                if (!node.flags.is_group) {
-                    return splitArguments(node.groupNode(), allocator, args, cmd_args_idx);
-                }
-                var run_args_idx: usize = cmd_args_idx;
-                while (run_args_idx != args.len) : (run_args_idx +%= 1) {
-                    if (mem.testEqualString("--", mem.terminate(args[run_args_idx], 0))) {
-                        node.lists.set([*:0]u8, .cmd_args, args[cmd_args_idx..run_args_idx]);
-                        run_args_idx +%= 1;
-                        node.lists.set([*:0]u8, .run_args, args[run_args_idx..]);
-                        break;
-                    }
-                } else {
-                    node.lists.set([*:0]u8, .cmd_args, args[cmd_args_idx..]);
-                }
-            }
             pub fn setPrimary(node: *Node, task: Task) void {
                 @setRuntimeSafety(builtin.is_safe);
                 if (node.flags.is_group) {
@@ -1597,56 +1580,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 }
             }
         }
-        fn initializeFileSystem(allocator: *Allocator, node: *Node, st: *file.Status) void {
-            @setRuntimeSafety(builtin.is_safe);
-            const dir_fds: *Node.DirFds = @ptrFromInt(allocator.allocateRaw(@sizeOf(Node.DirFds), @alignOf(Node.DirFds)));
-            dir_fds.build_root = try meta.wrap(file.openAt(open(), dir_options, file.cwd, node.buildRoot()));
-            for ([4][:0]const u8{
-                builder_spec.options.cache_dir,
-                builder_spec.options.output_dir,
-                builder_spec.options.config_dir,
-                builder_spec.options.stat_dir,
-            }) |name| {
-                mem.zero(file.Status, st);
-                try meta.wrap(file.statusAt(stat(), .{}, dir_fds.build_root, name, st));
-                if (st.mode.kind == .unknown) {
-                    try meta.wrap(file.makeDirAt(mkdir(), dir_fds.build_root, name, file.mode.directory));
-                }
-            }
-            dir_fds.output_root = try meta.wrap(file.openAt(
-                open(),
-                dir_options,
-                dir_fds.build_root,
-                builder_spec.options.output_dir,
-            ));
-            for ([3][:0]const u8{
-                builder_spec.options.exe_out_dir,
-                builder_spec.options.lib_out_dir,
-                builder_spec.options.aux_out_dir,
-            }) |name| {
-                mem.zero(file.Status, st);
-                try meta.wrap(file.statusAt(stat(), .{}, dir_fds.output_root, name, st));
-                if (st.mode.kind == .unknown) {
-                    try meta.wrap(file.makeDirAt(mkdir(), dir_fds.output_root, name, file.mode.directory));
-                }
-            }
-            dir_fds.cache_root = try meta.wrap(file.openAt(
-                open(),
-                dir_options,
-                dir_fds.build_root,
-                builder_spec.options.cache_dir,
-            ));
-            dir_fds.config_root = try meta.wrap(file.openAt(
-                open(),
-                dir_options,
-                dir_fds.build_root,
-                builder_spec.options.config_dir,
-            ));
-            node.extra.dir_fds = dir_fds;
-        }
         fn createNode(allocator: *Allocator, group: *Node, flags: Node.Flags, task_tag: Task, lock: Lock) *Node {
             @setRuntimeSafety(builtin.is_safe);
-            const node: *Node = @ptrFromInt(allocator.allocateRaw(Node.size_of, Node.align_of));
+            const node: *Node = @ptrFromInt(allocator.allocateRaw(@sizeOf(Node), @alignOf(Node)));
             group.addNode(allocator).* = node;
             node.addNode(allocator).* = group;
             node.sh = group.sh;
@@ -1760,21 +1696,55 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             if (node.flags.is_top or
                 !sameFile(&st[0], node.groupNode().buildRoot(), &st[1], node.buildRoot()))
             {
-                initializeFileSystem(allocator, node, &st[0]);
+                const dir_fds: *Node.DirFds = @ptrFromInt(allocator.allocateRaw(@sizeOf(Node.DirFds), @alignOf(Node.DirFds)));
+                dir_fds.build_root = try meta.wrap(file.openAt(open(), dir_options, file.cwd, node.buildRoot()));
+                for ([4][:0]const u8{
+                    builder_spec.options.cache_dir,
+                    builder_spec.options.output_dir,
+                    builder_spec.options.config_dir,
+                    builder_spec.options.stat_dir,
+                }) |name| {
+                    mem.zero(file.Status, &st[0]);
+                    try meta.wrap(file.statusAt(stat(), .{}, dir_fds.build_root, name, &st[0]));
+                    if (st[0].mode.kind == .unknown) {
+                        try meta.wrap(file.makeDirAt(mkdir(), dir_fds.build_root, name, file.mode.directory));
+                    }
+                }
+                dir_fds.output_root = try meta.wrap(file.openAt(
+                    open(),
+                    dir_options,
+                    dir_fds.build_root,
+                    builder_spec.options.output_dir,
+                ));
+                for ([3][:0]const u8{
+                    builder_spec.options.exe_out_dir,
+                    builder_spec.options.lib_out_dir,
+                    builder_spec.options.aux_out_dir,
+                }) |name| {
+                    mem.zero(file.Status, &st[0]);
+                    try meta.wrap(file.statusAt(stat(), .{}, dir_fds.output_root, name, &st[0]));
+                    if (st[0].mode.kind == .unknown) {
+                        try meta.wrap(file.makeDirAt(mkdir(), dir_fds.output_root, name, file.mode.directory));
+                    }
+                }
+                dir_fds.cache_root = try meta.wrap(file.openAt(
+                    open(),
+                    dir_options,
+                    dir_fds.build_root,
+                    builder_spec.options.cache_dir,
+                ));
+                dir_fds.config_root = try meta.wrap(file.openAt(
+                    open(),
+                    dir_options,
+                    dir_fds.build_root,
+                    builder_spec.options.config_dir,
+                ));
+                node.extra.dir_fds = dir_fds;
             } else {
                 node.extra.dir_fds = node.groupNode().extra.dir_fds;
             }
             if (node.flags.is_top) {
-                if (proc.environmentValue(node.sh.vars, "PWD")) |cwd| {
-                    builtin.absolute_state.ptr.cwd = cwd;
-                } else {
-                    builtin.absolute_state.ptr.cwd = @constCast(&.{});
-                }
-                if (proc.environmentValue(node.sh.vars, "HOME")) |home| {
-                    builtin.absolute_state.ptr.home = home;
-                } else {
-                    builtin.absolute_state.ptr.home = @constCast(&.{});
-                }
+                proc.initialiseAbsoluteState(node.sh.vars);
                 if (max_thread_count != 0) {
                     mem.map(map(), .{}, .{}, stack_lb_addr, stack_up_addr -% stack_lb_addr);
                 }
