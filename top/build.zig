@@ -1415,7 +1415,26 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 const paths: []file.CompoundPath = node.getPaths();
                 var ptr: [*]u8 = buf;
                 if (have_lazy and node.flags.want_builder_decl) {
-                    ptr = about.writeBuilderSpec(ptr);
+                    buf[0..124].* =
+                        \\const zl = @import("zl");
+                        \\pub const AbsoluteState=struct{
+                        \\home:[:0]const u8,
+                        \\cwd:[:0]const u8,
+                        \\proj:[:0]const u8,
+                        \\pid:u16,};
+                    .*;
+                    ptr += 124;
+                    ptr = fmt.strcpyEqu(ptr, "pub const Builder=zl.build.GenericBuilder(.{.options=");
+                    ptr = fmt.strcpyEqu(ptr, comptime fmt.cx(builtin.root.Builder.specification.options));
+                    ptr -= 1;
+                    ptr[0..2].* = ",}".*;
+                    ptr += 2;
+                    ptr = fmt.strcpyEqu(ptr, ",.logging=");
+                    ptr = fmt.strcpyEqu(ptr, comptime fmt.cx(builtin.root.Builder.specification.logging));
+                    ptr -= 1;
+                    ptr[0..2].* = ",}".*;
+                    ptr += 2;
+                    ptr = fmt.strcpyEqu(ptr, ",.errors=zl.build.spec.errors.kill(),});\n");
                 }
                 ptr[0..31].* = "pub usingnamespace @import(\"../".*;
                 ptr += 31;
