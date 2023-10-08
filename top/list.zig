@@ -581,7 +581,7 @@ pub fn GenericLinkedList(comptime list_spec: ListSpec) type {
             const AddressSpace = builtin.VirtualAddressSpace();
             const IOAllocator = mem.GenericArenaAllocator(.{
                 .AddressSpace = AddressSpace,
-                .arena_index = AddressSpace.addr_spec.count() -% 1,
+                .arena_index = AddressSpace.specification.count() -% 1,
                 .errors = mem.spec.allocator.errors.noexcept,
                 .logging = mem.spec.allocator.logging.silent,
             });
@@ -773,8 +773,8 @@ pub fn GenericLinkedListView(comptime list_spec: ListViewSpec) type {
             major: u64,
             minor: u64,
             pub fn basicInit(s_node_addr: u64, t_node_addr: u64) Links {
-                Node.Link.mutate(s_node_addr, Node.Link.head_mask, 0, t_node_addr);
-                Node.Link.mutate(t_node_addr, Node.Link.tail_mask, s_node_addr, 0);
+                Node.Link.mutate(s_node_addr, 0, t_node_addr);
+                Node.Link.mutate(t_node_addr, s_node_addr, 0);
                 return .{ .major = s_node_addr, .minor = t_node_addr };
             }
             fn next(links: Links) ?u64 {
