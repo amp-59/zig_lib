@@ -1324,7 +1324,7 @@ pub const LoaderSpec = struct {
         show_unchanged_sections: bool = true,
         show_unchanged_symbols: bool = true,
 
-        open: debug.Logging.AcquireError = .{},
+        open: debug.Logging.AttemptAcquireError = .{},
         seek: debug.Logging.SuccessError = .{},
         stat: debug.Logging.SuccessErrorFault = .{},
         read: debug.Logging.SuccessError = .{},
@@ -2268,8 +2268,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 var ptr: [*]u8 = buf[about.reloc_s.len..];
                 ptr[0..7].* = "offset=".*;
                 ptr += 7;
-                var ud64: fmt.Type.Ux64 = .{ .value = rela.r_offset };
-                ptr += ud64.formatWriteBuf(ptr);
+                ptr = fmt.writeUd64(ptr, rela.r_offset);
                 ptr[0..2].* = ", ".*;
                 ptr += 2;
                 ptr[0..5].* = "type=".*;
@@ -2280,8 +2279,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 if (rela.r_info.r_sym != 0) {
                     ptr[0..4].* = "sym=".*;
                     ptr += 4;
-                    ud64.value = rela.r_info.r_sym;
-                    ptr += ud64.formatWriteBuf(ptr);
+                    ptr = fmt.writeUd64(ptr, rela.r_sym);
                     ptr[0..2].* = ", ".*;
                     ptr += 2;
                     ptr[0..5].* = "name=".*;
@@ -2289,10 +2287,9 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                     ptr[0..2].* = ", ".*;
                     ptr += 2;
                 }
-                var id64: fmt.Type.Id64 = .{ .value = rela.r_addend };
                 ptr[0..7].* = "addend=".*;
                 ptr += 7;
-                ptr += id64.formatWriteBuf(ptr);
+                ptr = fmt.writeId64(ptr, rela.r_addend);
                 ptr[0] = '\n';
                 ptr += 1;
                 debug.write(buf[0..fmt.strlen(ptr, &buf)]);
@@ -2646,7 +2643,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 var ptr: [*]u8 = writeSymbolIntro(buf, sym_idx2, mat2.tag, name_len, width);
                 ptr[0..5].* = "addr=".*;
                 ptr += 5;
-                ptr += fmt.writeUx64(@bitCast(sym2.st_value), ptr);
+                ptr = fmt.writeUx64(ptr, sym2.st_value);
                 ptr[0..2].* = ", ".*;
                 ptr += 2;
                 ptr[0..5].* = "size=".*;
@@ -2729,8 +2726,10 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                     ptr[0] = '}';
                     ptr += 1;
                 }
-                name_seg1 = name1[name_idx1.spos +% @intFromBool(name1[name_idx1.spos] == '.') ..];
-                name_seg2 = name2[name_idx2.spos +% @intFromBool(name2[name_idx2.spos] == '.') ..];
+                name_seg1 = name1[name_idx1.spos +%
+                    @intFromBool(name1[name_idx1.spos] == '.') ..];
+                name_seg2 = name2[name_idx2.spos +%
+                    @intFromBool(name2[name_idx2.spos] == '.') ..];
                 if (mem.testEqualString(name_seg1, name_seg2)) {
                     ptr[0] = '.';
                     ptr += 1;
