@@ -2016,7 +2016,7 @@ pub const BuildCommand = struct {
         @setRuntimeSafety(builtin.is_safe);
         var args_idx: usize = 0;
         while (args_idx != args.len) : (args_idx +%= 1) {
-            var arg: [:0]const u8 = mem.terminate(args[args_idx], 0);
+            var arg: [:0]u8 = mem.terminate(args[args_idx], 0);
             if (mem.testEqualString("-femit-bin", arg[0..@min(arg.len, 10)])) {
                 if (arg.len > 11 and arg[10] == '=') {
                     cmd.emit_bin = .{ .yes = types.Path.formatParseArgs(
@@ -2622,7 +2622,7 @@ pub const BuildCommand = struct {
                 cmd.debug_compiler_errors = true;
             } else if (mem.testEqualString("--debug-link-snapshot", arg)) {
                 cmd.debug_link_snapshot = true;
-            } else if (mem.testEqualString("--help", arg)) {
+            } else {
                 debug.write(build_help);
             }
         }
@@ -2877,7 +2877,7 @@ pub const ArchiveCommand = struct {
         @setRuntimeSafety(builtin.is_safe);
         var args_idx: usize = 0;
         while (args_idx != args.len) : (args_idx +%= 1) {
-            var arg: [:0]const u8 = mem.terminate(args[args_idx], 0);
+            var arg: [:0]u8 = mem.terminate(args[args_idx], 0);
             if (mem.testEqualString("--format", arg)) {
                 args_idx +%= 1;
                 if (args_idx == args.len) {
@@ -2926,7 +2926,7 @@ pub const ArchiveCommand = struct {
                 cmd.no_symbol_table = true;
             } else if (mem.testEqualString("u", arg)) {
                 cmd.update = true;
-            } else if (mem.testEqualString("--help", arg)) {
+            } else {
                 debug.write(archive_help);
             }
             _ = allocator;
@@ -3090,7 +3090,7 @@ pub const ObjcopyCommand = struct {
         @setRuntimeSafety(builtin.is_safe);
         var args_idx: usize = 0;
         while (args_idx != args.len) : (args_idx +%= 1) {
-            var arg: [:0]const u8 = mem.terminate(args[args_idx], 0);
+            var arg: [:0]u8 = mem.terminate(args[args_idx], 0);
             if (mem.testEqualString("--output-target", arg)) {
                 args_idx +%= 1;
                 if (args_idx != args.len) {
@@ -3132,7 +3132,7 @@ pub const ObjcopyCommand = struct {
                 } else {
                     return;
                 }
-            } else if (mem.testEqualString("--help", arg)) {
+            } else {
                 debug.write(objcopy_help);
             }
             _ = allocator;
@@ -3260,7 +3260,7 @@ pub const HarecCommand = struct {
         @setRuntimeSafety(builtin.is_safe);
         var args_idx: usize = 0;
         while (args_idx != args.len) : (args_idx +%= 1) {
-            var arg: [:0]const u8 = mem.terminate(args[args_idx], 0);
+            var arg: [:0]u8 = mem.terminate(args[args_idx], 0);
             if (mem.testEqualString("-a", arg[0..@min(arg.len, 2)])) {
                 if (arg.len == 2) {
                     args_idx +%= 1;
@@ -3307,7 +3307,7 @@ pub const HarecCommand = struct {
                 cmd.typedefs = true;
             } else if (mem.testEqualString("-N", arg)) {
                 cmd.namespace = true;
-            } else if (mem.testEqualString("--help", arg)) {
+            } else {
                 debug.write(harec_help);
             }
         }
@@ -3900,7 +3900,7 @@ pub const TableGenCommand = struct {
         @setRuntimeSafety(builtin.is_safe);
         var args_idx: usize = 0;
         while (args_idx != args.len) : (args_idx +%= 1) {
-            var arg: [:0]const u8 = mem.terminate(args[args_idx], 0);
+            var arg: [:0]u8 = mem.terminate(args[args_idx], 0);
             if (mem.testEqualString("--color", arg)) {
                 args_idx +%= 1;
                 if (args_idx == args.len) {
@@ -4043,7 +4043,7 @@ pub const TableGenCommand = struct {
                     arg = arg[2..];
                 }
                 cmd.output = arg;
-            } else if (mem.testEqualString("--help", arg)) {
+            } else {
                 debug.write(tblgen_help);
             }
         }
@@ -5133,7 +5133,7 @@ pub const LLCCommand = struct {
         @setRuntimeSafety(builtin.is_safe);
         var args_idx: usize = 0;
         while (args_idx != args.len) : (args_idx +%= 1) {
-            var arg: [:0]const u8 = mem.terminate(args[args_idx], 0);
+            var arg: [:0]u8 = mem.terminate(args[args_idx], 0);
             if (mem.testEqualString("--color", arg)) {
                 cmd.color = true;
             } else if (mem.testEqualString("-I", arg[0..@min(arg.len, 2)])) {
@@ -5346,7 +5346,7 @@ pub const LLCCommand = struct {
                 cmd.r600_ir_structurize = true;
             } else if (mem.testEqualString("--relax-elf-relocations", arg)) {
                 cmd.relax_elf_relocations = true;
-            } else if (mem.testEqualString("--help", arg)) {
+            } else {
                 debug.write(llc_help);
             }
         }
@@ -5460,7 +5460,7 @@ pub const FormatCommand = struct {
         @setRuntimeSafety(builtin.is_safe);
         var args_idx: usize = 0;
         while (args_idx != args.len) : (args_idx +%= 1) {
-            var arg: [:0]const u8 = mem.terminate(args[args_idx], 0);
+            var arg: [:0]u8 = mem.terminate(args[args_idx], 0);
             if (mem.testEqualString("--color", arg)) {
                 args_idx +%= 1;
                 if (args_idx == args.len) {
@@ -5487,7 +5487,7 @@ pub const FormatCommand = struct {
                 } else {
                     return;
                 }
-            } else if (mem.testEqualString("--help", arg)) {
+            } else {
                 debug.write(format_help);
             }
             _ = allocator;

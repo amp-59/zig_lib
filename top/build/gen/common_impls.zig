@@ -1608,7 +1608,7 @@ fn writeParserFunctionSignature(array: *Array, calling_convention: CallingConven
         .C => array.writeMany("while(args_idx!=args_len):(args_idx+%=1){\n"),
         .Zig => array.writeMany("while(args_idx!=args.len):(args_idx+%=1){\n"),
     }
-    array.writeMany("const arg:[:0]u8=mem.terminate(args[args_idx],0);\n");
+    array.writeMany("var arg:[:0]u8=mem.terminate(args[args_idx],0);\n");
 }
 fn writeFlagWithInverse(array: *Array, param_spec: types.ParamSpec, no_param_spec: types.InverseParamSpec) void {
     var yes_idx: usize = 0;

@@ -9,7 +9,7 @@ export fn formatParseArgsBuildCommand(cmd: *tasks.BuildCommand, allocator: *type
     @setRuntimeSafety(builtin.is_safe);
     var args_idx: usize = 0;
     while (args_idx != args_len) : (args_idx +%= 1) {
-        const arg: [:0]u8 = mem.terminate(args[args_idx], 0);
+        var arg: [:0]u8 = mem.terminate(args[args_idx], 0);
         if (mem.testEqualString("-femit-bin", arg[0..@min(arg.len, 10)])) {
             if (arg.len > 11 and arg[10] == '=') {
                 cmd.emit_bin = .{ .yes = types.Path.formatParseArgs(
@@ -624,7 +624,7 @@ export fn formatParseArgsArchiveCommand(cmd: *tasks.ArchiveCommand, allocator: *
     @setRuntimeSafety(builtin.is_safe);
     var args_idx: usize = 0;
     while (args_idx != args_len) : (args_idx +%= 1) {
-        const arg: [:0]u8 = mem.terminate(args[args_idx], 0);
+        var arg: [:0]u8 = mem.terminate(args[args_idx], 0);
         if (mem.testEqualString("--format", arg)) {
             args_idx +%= 1;
             if (args_idx == args_len) {
@@ -683,7 +683,7 @@ export fn formatParseArgsObjcopyCommand(cmd: *tasks.ObjcopyCommand, allocator: *
     @setRuntimeSafety(builtin.is_safe);
     var args_idx: usize = 0;
     while (args_idx != args_len) : (args_idx +%= 1) {
-        const arg: [:0]u8 = mem.terminate(args[args_idx], 0);
+        var arg: [:0]u8 = mem.terminate(args[args_idx], 0);
         if (mem.testEqualString("--output-target", arg)) {
             args_idx +%= 1;
             if (args_idx != args_len) {
@@ -735,7 +735,7 @@ export fn formatParseArgsHarecCommand(cmd: *tasks.HarecCommand, allocator: *type
     @setRuntimeSafety(builtin.is_safe);
     var args_idx: usize = 0;
     while (args_idx != args_len) : (args_idx +%= 1) {
-        const arg: [:0]u8 = mem.terminate(args[args_idx], 0);
+        var arg: [:0]u8 = mem.terminate(args[args_idx], 0);
         if (mem.testEqualString("-a", arg[0..@min(arg.len, 2)])) {
             if (arg.len == 2) {
                 args_idx +%= 1;
@@ -791,7 +791,7 @@ export fn formatParseArgsTableGenCommand(cmd: *tasks.TableGenCommand, allocator:
     @setRuntimeSafety(builtin.is_safe);
     var args_idx: usize = 0;
     while (args_idx != args_len) : (args_idx +%= 1) {
-        const arg: [:0]u8 = mem.terminate(args[args_idx], 0);
+        var arg: [:0]u8 = mem.terminate(args[args_idx], 0);
         if (mem.testEqualString("--color", arg)) {
             args_idx +%= 1;
             if (args_idx == args_len) {
@@ -943,7 +943,7 @@ export fn formatParseArgsLLCCommand(cmd: *tasks.LLCCommand, allocator: *types.Al
     @setRuntimeSafety(builtin.is_safe);
     var args_idx: usize = 0;
     while (args_idx != args_len) : (args_idx +%= 1) {
-        const arg: [:0]u8 = mem.terminate(args[args_idx], 0);
+        var arg: [:0]u8 = mem.terminate(args[args_idx], 0);
         if (mem.testEqualString("--color", arg)) {
             cmd.color = true;
         } else if (mem.testEqualString("-I", arg[0..@min(arg.len, 2)])) {
@@ -1165,7 +1165,7 @@ export fn formatParseArgsFormatCommand(cmd: *tasks.FormatCommand, allocator: *ty
     @setRuntimeSafety(builtin.is_safe);
     var args_idx: usize = 0;
     while (args_idx != args_len) : (args_idx +%= 1) {
-        const arg: [:0]u8 = mem.terminate(args[args_idx], 0);
+        var arg: [:0]u8 = mem.terminate(args[args_idx], 0);
         if (mem.testEqualString("--color", arg)) {
             args_idx +%= 1;
             if (args_idx == args_len) {
