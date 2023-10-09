@@ -78,15 +78,14 @@ pub fn timingSafeCompare(comptime T: type, a: []const T, b: []const T, endian: b
 /// Add two integers serialized as arrays of the same size, in constant time.
 /// The result is stored into `result`, and `true` is returned if an overflow occurred.
 pub fn timingSafeAdd(comptime T: type, a: []const T, b: []const T, result: []T, endian: builtin.Endian) bool {
-    const Overflow = struct { T, u1 };
     const len: usize = a.len;
     debug.assert(len == b.len and len == result.len);
     var carry: u1 = 0;
     if (endian == .Little) {
         var idx: usize = 0;
         while (idx < len) : (idx +%= 1) {
-            const ov1: Overflow = @addWithOverflow(a[idx], b[idx]);
-            const ov2: Overflow = @addWithOverflow(ov1[0], carry);
+            const ov1 = @addWithOverflow(a[idx], b[idx]);
+            const ov2 = @addWithOverflow(ov1[0], carry);
             result[idx] = ov2[0];
             carry = ov1[1] | ov2[1];
         }
@@ -94,8 +93,8 @@ pub fn timingSafeAdd(comptime T: type, a: []const T, b: []const T, result: []T, 
         var idx: usize = len;
         while (idx != 0) {
             idx -%= 1;
-            const ov1: Overflow = @addWithOverflow(a[idx], b[idx]);
-            const ov2: Overflow = @addWithOverflow(ov1[0], carry);
+            const ov1 = @addWithOverflow(a[idx], b[idx]);
+            const ov2 = @addWithOverflow(ov1[0], carry);
             result[idx] = ov2[0];
             carry = ov1[1] | ov2[1];
         }
@@ -107,13 +106,12 @@ pub fn timingSafeAdd(comptime T: type, a: []const T, b: []const T, result: []T, 
 pub fn timingSafeSub(comptime T: type, a: []const T, b: []const T, result: []T, endian: builtin.Endian) bool {
     const len = a.len;
     debug.assert(len == b.len and len == result.len);
-    const Overflow = struct { T, u1 };
     var borrow: u1 = 0;
     if (endian == .Little) {
         var idx: usize = 0;
         while (idx < len) : (idx +%= 1) {
-            const ov1: Overflow = @subWithOverflow(a[idx], b[idx]);
-            const ov2: Overflow = @subWithOverflow(ov1[0], borrow);
+            const ov1 = @subWithOverflow(a[idx], b[idx]);
+            const ov2 = @subWithOverflow(ov1[0], borrow);
             result[idx] = ov2[0];
             borrow = ov1[1] | ov2[1];
         }
@@ -121,8 +119,8 @@ pub fn timingSafeSub(comptime T: type, a: []const T, b: []const T, result: []T, 
         var idx: usize = len;
         while (idx != 0) {
             idx -%= 1;
-            const ov1: Overflow = @subWithOverflow(a[idx], b[idx]);
-            const ov2: Overflow = @subWithOverflow(ov1[0], borrow);
+            const ov1 = @subWithOverflow(a[idx], b[idx]);
+            const ov2 = @subWithOverflow(ov1[0], borrow);
             result[idx] = ov2[0];
             borrow = ov1[1] | ov2[1];
         }
