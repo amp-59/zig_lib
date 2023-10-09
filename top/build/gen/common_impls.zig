@@ -1559,7 +1559,7 @@ fn writeParserFunctionBody(array: *Array, calling_convention: CallingConvention,
         }
     }
     array.undefine(5);
-    array.writeMany("else if (mem.testEqualString(\"--help\", arg)){\n");
+    array.writeMany("else {\n");
     array.writeMany("debug.write(");
     array.writeMany(attributes.fn_name);
     array.writeMany("_help);\n");
@@ -1608,7 +1608,7 @@ fn writeParserFunctionSignature(array: *Array, calling_convention: CallingConven
         .C => array.writeMany("while(args_idx!=args_len):(args_idx+%=1){\n"),
         .Zig => array.writeMany("while(args_idx!=args.len):(args_idx+%=1){\n"),
     }
-    array.writeMany("var arg:[:0]const u8=mem.terminate(args[args_idx],0);\n");
+    array.writeMany("const arg:[:0]u8=mem.terminate(args[args_idx],0);\n");
 }
 fn writeFlagWithInverse(array: *Array, param_spec: types.ParamSpec, no_param_spec: types.InverseParamSpec) void {
     var yes_idx: usize = 0;
@@ -1735,13 +1735,10 @@ fn unhandledCommandFieldAndNo(param_spec: types.ParamSpec, no_param_spec: types.
 }
 fn unhandledCommandField(param_spec: types.ParamSpec) void {
     var buf: [4096]u8 = undefined;
-    var len: usize = 0;
-    @memcpy(buf[len..].ptr, param_spec.name);
-    len +%= param_spec.name.len;
-    buf[len..][0..5].* = "tag: ".*;
-    len +%= 5;
-    len +%= fmt.render(.{ .infer_type_names = true }, param_spec.tag).formatWriteBuf(buf[len..].ptr);
-    @panic(buf[0..len]);
+    var ptr: [*]u8 = fmt.strcpyEqu(&buf, param_spec.name);
+    ptr[0..5].* = "tag: ".*;
+    ptr += fmt.render(.{ .infer_type_names = true }, param_spec.tag).formatWriteBuf(ptr);
+    @panic(fmt.slice(ptr, &buf));
 }
 pub fn writeParserFunction(
     array: *Array,
