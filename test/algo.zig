@@ -51,26 +51,19 @@ pub fn compareSorts() !void {
     try file.readRandom(rnbuf);
     const values_1 = @as([*]T, @ptrFromInt(size))[0..(size / @sizeOf(T))];
     const values_2 = @as([*]T, @ptrFromInt(size + size))[0..(size / @sizeOf(T))];
-    if (false) {
+    if (true) {
         @memcpy(@as([*]u8, @ptrFromInt(size + size))[0..size], @as([*]const u8, @ptrFromInt(size)));
         const t_0 = try time.get(.{}, .realtime);
-        algo.insertionSort(T, S.asc, builtin.identity, values_2[0 .. values_2.len / 0x10]);
+        algo.insertionSort(T, S.asc, values_2[0 .. values_2.len / 10]);
         const t_1 = try time.get(.{}, .realtime);
-        testing.printN(4096, .{ "insert: [", fmt.ud64(values_2.len), "]" ++ @typeName(T), "\t = ", fmt.any(time.diff(t_1, t_0)), '\n' });
+        testing.printN(4096, .{ "insert: [", fmt.ud64(values_2.len / 10), "]" ++ @typeName(T), "\t = ", fmt.any(time.diff(t_1, t_0)), '\n' });
     }
     {
         @memcpy(@as([*]u8, @ptrFromInt(size + size))[0..size], @as([*]const u8, @ptrFromInt(size)));
         const t_0 = try time.get(.{}, .realtime);
-        algo.shellSort(T, S.asc, builtin.identity, values_2);
+        algo.shellSort(T, S.asc, values_2);
         const t_1 = try time.get(.{}, .realtime);
         testing.printN(4096, .{ "shell: [", fmt.ud64(values_2.len), "]" ++ @typeName(T), "\t = ", fmt.any(time.diff(t_1, t_0)), '\n' });
-    }
-    {
-        @memcpy(@as([*]u8, @ptrFromInt(size + size))[0..size], @as([*]const u8, @ptrFromInt(size)));
-        const t_0 = try time.get(.{}, .realtime);
-        algo.layeredShellSort(T, S.asc, values_2);
-        const t_1 = try time.get(.{}, .realtime);
-        testing.printN(4096, .{ "lshell: [", fmt.ud64(values_2.len), "]" ++ @typeName(T), "\t = ", fmt.any(time.diff(t_1, t_0)), '\n' });
     }
     {
         var address_space: AddressSpace = .{};
