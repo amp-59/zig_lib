@@ -183,62 +183,55 @@ pub fn desc(x: anytype, y: anytype) bool {
     return x < y;
 }
 /// insert: [524288]u64 = top.time.TimeSpec{ .sec = 27, .nsec = 365636807, }
-pub fn insertionSort(comptime T: type, comptime comparison: anytype, comptime transform: anytype, values: []T) void {
+pub fn insertionSort(comptime T: type, comptime comparison: anytype, values: []T) void {
     @setRuntimeSafety(false);
-    var i: u64 = 1;
-    while (i != values.len) : (i +%= 1) {
-        const x: T = values[i];
-        var j: u64 = i -% 1;
-        while (j >= 0 and comparison(transform(values[j]), transform(x))) : (j -%= 1) {
-            values[j +% 1] = values[j];
+    var idx: usize = 1;
+    while (idx != values.len) : (idx +%= 1) {
+        const value: T = values[idx];
+        var end: usize = idx -% 1;
+        while (end >= 0 and comparison(values[end], value)) : (end -%= 1) {
+            values[end +% 1] = values[end];
         }
-        values[j +% 1] = x;
+        values[end +% 1] = value;
     }
 }
 /// shell: [524288]u64 = top.time.TimeSpec{ .nsec = 568540594, }
 pub fn shellSort(comptime T: type, comptime comparison: anytype, values: []T) void {
     @setRuntimeSafety(false);
-    var gap: u64 = values.len / 2;
+    var gap: usize = values.len / 2;
     while (gap != 0) : (gap /= 2) {
-        var i: u64 = gap;
-        while (i != values.len) : (i +%= 1) {
-            var j: u64 = i -% gap;
-            while (j < values.len and comparison(values[j], values[j +% gap])) : (j -%= gap) {
-                const k: u64 = j +% gap;
-                const values_k: T = values[j];
-                values[j] = values[k];
-                values[k] = values_k;
+        var idx: usize = gap;
+        while (idx != values.len) : (idx +%= 1) {
+            var end: usize = idx -% gap;
+            while (end < values.len and comparison(values[end], values[end +% gap])) : (end -%= gap) {
+                const pos: usize = end +% gap;
+                const value: T = values[end];
+                values[end] = values[pos];
+                values[pos] = value;
             }
         }
     }
 }
-/// lshell: [524288]u64 = top.time.TimeSpec{ .nsec = 253526823, }
-pub fn layeredShellSort(comptime T: type, comptime comparison: anytype, values: []T) void {
-    if (isSorted(T, comparison, values)) return;
-    shellSort(T, comparison, approx, values);
-    shellSort(T, comparison, approxDouble, values);
-    shellSort(T, comparison, builtin.identity, values);
-}
 /// radix: [524288]u64 = top.time.TimeSpec{ .nsec = 86801419, }
-pub fn radixSort(allocator: anytype, comptime T: type, values_0: []T) void {
+pub fn radixSort(allocator: anytype, comptime T: type, values0: []T) void {
     @setRuntimeSafety(false);
-    const save = allocator.save();
+    const save: usize = allocator.save();
     defer allocator.restore(save);
-    var values_1: []T = allocator.allocate(T, values_0.len);
+    var values1: []T = allocator.allocate(T, values0.len);
     var bit: T = 1;
     while (bit != 0) : (bit <<= 1) {
-        var len_0: u64 = 0;
-        var len_1: u64 = 0;
-        for (values_0) |value_0| {
+        var len0: usize = 0;
+        var len1: usize = 0;
+        for (values0) |value_0| {
             const j: bool = value_0 & bit == bit;
-            const t: *T = if (j) &values_1[len_1] else &values_0[len_0];
-            len_0 +%= ~@intFromBool(j);
-            len_1 +%= @intFromBool(j);
+            const t: *T = if (j) &values1[len1] else &values0[len0];
+            len0 +%= ~@intFromBool(j);
+            len1 +%= @intFromBool(j);
             t.* = value_0;
         }
-        for (values_1[0..len_1]) |value_1| {
-            values_0[len_0] = value_1;
-            len_0 +%= 1;
+        for (values1[0..len1]) |value_1| {
+            values0[len0] = value_1;
+            len0 +%= 1;
         }
     }
 }
@@ -247,10 +240,10 @@ pub fn isSorted(comptime T: type, comptime comparison: anytype, values: []T) boo
     if (values.len == 0) {
         return true;
     }
-    var i: u64 = 0;
+    var idx: usize = 0;
     var prev: T = values[0];
-    while (i != values.len) : (i +%= 1) {
-        const next: T = values[i];
+    while (idx != values.len) : (idx +%= 1) {
+        const next: T = values[idx];
         if (comparison(prev, next)) {
             return false;
         }
