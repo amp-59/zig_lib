@@ -282,85 +282,88 @@ pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
             }
             break :blk len;
         };
-        inline fn absolute(format: Format) Abs {
-            if (format.value < 0) {
-                return @bitCast(1 +% ~format.value);
-            } else {
-                return @bitCast(format.value);
-            }
+        pub fn formatWrite(format: Format, array: anytype) void {
+            @setRuntimeSafety(false);
+            const buf: [*]u8 = @ptrCast(array.referOneUndefined());
+            array.define(strlen(writeInt(buf, format.value), buf));
         }
-        inline fn digits(format: Format) usize {
-            if (fmt_spec.radix > max_abs_value) {
-                return 1;
+        pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
+            return strlen(writeInt(buf, format.value), buf);
+        }
+        pub fn writeInt(buf: [*]u8, value: Int) [*]u8 {
+            @setRuntimeSafety(false);
+            if (Abs != Int) {
+                buf[0] = '-';
             }
-            const digits_len: usize = switch (fmt_spec.width) {
-                .min => length(Abs, format.absolute(), fmt_spec.radix),
+            var ptr: [*]u8 = buf + @intFromBool(value < 0);
+            if (fmt_spec.prefix) |prefix| {
+                ptr[0..prefix.len].* = prefix.*;
+                ptr += prefix.len;
+            }
+            var abs: Abs = @bitCast(if (value < 0) 1 +% ~value else value);
+            if (fmt_spec.radix > max_abs_value) {
+                ptr[0] = if (value == 0) '0' else '1';
+                ptr += 1;
+            } else if (fmt_spec.separator) |separator| {
+                var count: usize =
+                    if (fmt_spec.radix <= max_abs_value) switch (fmt_spec.width) {
+                    .min => length(Abs, abs, fmt_spec.radix),
+                    .max => max_digits_count,
+                    .fixed => |fixed| fixed,
+                } else 1;
+                count +%= (count -% 1) / separator.digits;
+                ptr += count;
+                var pos: usize = 0;
+                var sep: usize = 0;
+                while (sep +% pos != count) : (abs /= fmt_spec.radix) {
+                    pos +%= 1;
+                    (ptr - (sep +% pos))[0] = separator.character;
+                    sep +%= @intFromBool(pos / separator.digits != 0) &
+                        @intFromBool(pos % separator.digits == 1);
+                    (ptr - (sep +% pos))[0] =
+                        toSymbol(Abs, abs, fmt_spec.radix);
+                }
+            } else {
+                var count: usize =
+                    if (fmt_spec.radix <= max_abs_value) switch (fmt_spec.width) {
+                    .min => length(Abs, abs, fmt_spec.radix),
+                    .max => max_digits_count,
+                    .fixed => |fixed| fixed,
+                } else 1;
+                ptr += count;
+                var pos: u64 = 0;
+                while (pos != count) : (abs /= fmt_spec.radix) {
+                    pos +%= 1;
+                    (ptr - pos)[0] =
+                        toSymbol(Abs, abs, fmt_spec.radix);
+                }
+            }
+            return ptr;
+        }
+        pub fn lengthInt(value: Int) usize {
+            const abs: Abs = @bitCast(if (value < 0) 1 +% ~value else value);
+            var len: usize = 0;
+            if (fmt_spec.prefix) |prefix| {
+                len +%= prefix.len;
+            }
+            if (value < 0) {
+                len +%= 1;
+            }
+            if (fmt_spec.radix > max_abs_value) {
+                return len +% 1;
+            }
+            var count: usize = switch (fmt_spec.width) {
+                .min => length(Abs, abs, fmt_spec.radix),
                 .max => max_digits_count,
                 .fixed => |fixed| fixed,
             };
             if (fmt_spec.separator) |s| {
-                return digits_len +% (digits_len -% 1) / s.digits;
-            } else {
-                return digits_len;
+                count +%= (count -% 1) / s.digits;
             }
-        }
-        pub fn formatWrite(format: Format, array: anytype) void {
-            array.define(@call(.always_inline, formatWriteBuf, .{
-                format,
-                @as([*]u8, @ptrCast(array.referOneUndefined())),
-            }));
-        }
-        pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
-            @setRuntimeSafety(false);
-            var len: usize = 0;
-            if (Abs != Int) {
-                buf[0] = '-';
-            }
-            len +%= @intFromBool(format.value < 0);
-            if (fmt_spec.prefix) |prefix| {
-                @as(*[prefix.len]u8, @ptrCast(buf + len)).* = prefix.*;
-                len +%= prefix.len;
-            }
-            if (fmt_spec.radix > max_abs_value) {
-                buf[len] = '0' +% @as(u8, @intFromBool(format.value != 0));
-                len +%= 1;
-            } else if (fmt_spec.separator) |separator| {
-                const count: usize = format.digits();
-                var value: Abs = format.absolute();
-                len +%= count;
-                var pos: usize = 0;
-                var sep: usize = 0;
-                while (sep +% pos != count) : (value /= fmt_spec.radix) {
-                    pos +%= 1;
-                    buf[len - (sep +% pos)] = separator.character;
-                    const b0: bool = pos / separator.digits != 0;
-                    const b1: bool = pos % separator.digits == 1;
-                    sep +%= @intFromBool(b0) & @intFromBool(b1);
-                    buf[len -% (sep +% pos)] =
-                        toSymbol(Abs, value, fmt_spec.radix);
-                }
-            } else {
-                const count: u64 = format.digits();
-                var value: Abs = format.absolute();
-                len +%= count;
-                var pos: u64 = 0;
-                while (pos != count) : (value /= fmt_spec.radix) {
-                    pos +%= 1;
-                    buf[len -% pos] =
-                        toSymbol(Abs, value, fmt_spec.radix);
-                }
-            }
-            return len;
+            return len +% count;
         }
         pub fn formatLength(format: Format) usize {
-            var len: usize = 0;
-            if (fmt_spec.prefix) |prefix| {
-                len +%= prefix.len;
-            }
-            if (format.value < 0) {
-                len +%= 1;
-            }
-            return len +% format.digits();
+            return lengthInt(format.value);
         }
         pub fn formatConvert(format: Format) StaticString {
             var array: StaticString = undefined;
