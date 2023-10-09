@@ -559,11 +559,11 @@ pub fn updateSignalAction(
         @intFromEnum(signo), new_action_buf_addr, old_action_buf_addr, 8,
     }))) {
         if (logging.Success) {
-            debug.signalActionNotice(signo, new_action.handler);
+            about.signalActionNotice(signo, new_action.handler);
         }
     } else |rt_sigaction_error| {
         if (logging.Error) {
-            debug.signalActionError(rt_sigaction_error, signo, new_action.handler);
+            about.signalActionError(rt_sigaction_error, signo, new_action.handler);
         }
         return rt_sigaction_error;
     }
@@ -578,17 +578,15 @@ pub fn updateSignalStack(
 ) {
     @setRuntimeSafety(false);
     const logging: debug.Logging.SuccessError = comptime sigaltstack_spec.logging.override();
-    const new_stack_buf_addr: u64 = @intFromPtr(&new_stack);
-    const old_stack_buf_addr: u64 = if (old_stack) |old| @intFromPtr(old) else 0;
     if (meta.wrap(sys.call(.sigaltstack, sigaltstack_spec.errors, sigaltstack_spec.return_type, .{
-        new_stack_buf_addr, old_stack_buf_addr, 8,
+        @intFromPtr(&new_stack), @intFromPtr(old_stack), 8,
     }))) {
         if (logging.Success) {
-            debug.signalStackNotice(new_stack, old_stack);
+            about.signalStackNotice(new_stack, old_stack);
         }
     } else |sigaltstack_error| {
         if (logging.Error) {
-            debug.signalStackError(sigaltstack_error, new_stack);
+            about.signalStackError(sigaltstack_error, new_stack);
         }
         return sigaltstack_error;
     }
