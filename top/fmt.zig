@@ -424,8 +424,7 @@ pub fn PathFormat(comptime Format: type) type {
         };
         fn formatWriteBufDisplay0(format: Format, buf: [*]u8) usize {
             @setRuntimeSafety(builtin.is_safe);
-            const end: [*]u8 = buf + format.formatWriteBuf(buf);
-            return strlen(end - 1, buf);
+            return format.formatWriteBuf(buf) -% 1;
         }
         fn formatWriteBufDisplay1(format: Format, buf: [*]u8) usize {
             @setRuntimeSafety(builtin.is_safe);
@@ -437,9 +436,9 @@ pub fn PathFormat(comptime Format: type) type {
                 mem.testEqualString(pathname, buf[0..pathname.len]))
             {
                 buf[0] = '.';
-                return strlen(strcpyEqu(buf + 1, buf[pathname.len..len]), buf);
+                return @intFromPtr(strcpyEqu(buf + 1, buf[pathname.len..len])) -% @intFromPtr(buf);
             }
-            return strlen(end - 1, buf);
+            return @intFromPtr(end - 1) -% @intFromPtr(buf);
         }
         fn formatWriteBufDisplay2(format: Format, buf: [*]u8) usize {
             @setRuntimeSafety(builtin.is_safe);
@@ -453,12 +452,12 @@ pub fn PathFormat(comptime Format: type) type {
                     mem.testEqualString(pathname, buf[0..pathname.len]))
                 {
                     buf[0] = subst;
-                    return strlen(strcpyEqu(buf + 1, buf[pathname.len..len]), buf);
+                    return @intFromPtr(strcpyEqu(buf + 1, buf[pathname.len..len])) -% @intFromPtr(buf);
                 }
                 pathname = builtin.absolute_state.ptr.home;
                 subst = '~';
             }
-            return strlen(end - 1, buf);
+            return @intFromPtr(end - 1) -% @intFromPtr(buf);
         }
         fn formatWriteBufDisplay3(format: Format, buf: [*]u8) usize {
             @setRuntimeSafety(builtin.is_safe);
@@ -472,12 +471,12 @@ pub fn PathFormat(comptime Format: type) type {
                     mem.testEqualString(pathname, buf[0..pathname.len]))
                 {
                     buf[0] = subst;
-                    return strlen(strcpyEqu(buf + 1, buf[pathname.len..len]), buf);
+                    return @intFromPtr(strcpyEqu(buf + 1, buf[pathname.len..len])) -% @intFromPtr(buf);
                 }
                 pathname = builtin.absolute_state.ptr.home;
                 subst = '~';
             }
-            return strlen(end - 1, buf);
+            return @intFromPtr(end - 1) -% @intFromPtr(buf);
         }
         pub fn writeDisplayPath(buf: [*]u8, pathname: [:0]const u8) [*]u8 {
             @setRuntimeSafety(false);
@@ -500,7 +499,7 @@ pub fn PathFormat(comptime Format: type) type {
                     }
                 }
             }
-            return strlen(ptr, buf);
+            return @intFromPtr(ptr) -% @intFromPtr(buf);
         }
         pub fn formatWriteBuf(format: Format, buf: [*]u8) usize {
             @setRuntimeSafety(builtin.is_safe);
@@ -515,7 +514,7 @@ pub fn PathFormat(comptime Format: type) type {
                 ptr[0] = 0;
                 ptr += 1;
             }
-            return strlen(ptr, buf);
+            return @intFromPtr(ptr) -% @intFromPtr(buf);
         }
         pub fn formatLength(format: Format) usize {
             @setRuntimeSafety(builtin.is_safe);
