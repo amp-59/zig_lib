@@ -995,6 +995,38 @@ pub fn TagFromList(comptime names: []const []const u8) type {
     const Tag = @Type(.{ .Enum = .{ .tag_type = tag_type, .fields = &fields, .decls = &.{}, .is_exhaustive = true } });
     return Tag;
 }
+pub fn TagFromOffsets(comptime Struct: type) type {
+    var fields: []const builtin.Type.EnumField = &.{};
+    for (@typeInfo(Struct).Struct.fields) |field| {
+        fields = fields ++ [1]builtin.Type.EnumField{.{
+            .name = field.name,
+            .value = @offsetOf(Struct, field.name),
+        }};
+    }
+    const Tag = @Type(.{ .Enum = .{
+        .tag_type = LeastBitSize(fields[fields.len -% 1].value),
+        .fields = fields,
+        .decls = &.{},
+        .is_exhaustive = true,
+    } });
+    return Tag;
+}
+pub fn TagFromBitOffsets(comptime Struct: type) type {
+    var fields: []const builtin.Type.EnumField = &.{};
+    for (@typeInfo(Struct).Struct.fields) |field| {
+        fields = fields ++ [1]builtin.Type.EnumField{.{
+            .name = field.name,
+            .value = @bitOffsetOf(Struct, field.name),
+        }};
+    }
+    const Tag = @Type(.{ .Enum = .{
+        .tag_type = LeastBitSize(fields[fields.len -% 1].value),
+        .fields = fields,
+        .decls = &.{},
+        .is_exhaustive = true,
+    } });
+    return Tag;
+}
 pub fn valueList(comptime E: type) []const E {
     const enum_info: builtin.Type.Enum = @typeInfo(E).Enum;
     var ret: [enum_info.fields.len]LeastRealBitSize(enum_info.tag_type) = undefined;
