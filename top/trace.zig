@@ -795,6 +795,42 @@ fn maximumSideBarWidth(itr: StackIterator) usize {
     }
     return max_len +% 1;
 }
+fn debugFindMoreAddresses(
+    trace: *const debug.Trace,
+    allocator: *Allocator,
+    file_map: *FileMap,
+    dwarf_info: *dwarf.DwarfInfo,
+    buf: [*]u8,
+    width: usize,
+    addr: usize,
+) [*]u8 {
+    var ptr: [*]u8 = buf;
+    var disp: usize = 1;
+    var b: bool = true;
+    var a: bool = true;
+    while (true) : (disp +%= 0x1) {
+        if (b) {
+            if (writeSourceCodeAtAddress(trace, allocator, file_map, dwarf_info, ptr, width, addr -% disp)) |addr_info| {
+                ptr = addr_info.finish;
+                dwarf_info.addAddressInfo(allocator).* = addr_info;
+            } else {
+                b = false;
+            }
+        }
+        if (a) {
+            if (writeSourceCodeAtAddress(trace, allocator, file_map, dwarf_info, ptr, width, addr +% disp)) |addr_info| {
+                ptr = addr_info.finish;
+                dwarf_info.addAddressInfo(allocator).* = addr_info;
+            } else {
+                a = false;
+            }
+        }
+        if (!a and !b) {
+            break;
+        }
+    }
+    return ptr;
+}
 pub fn printSourceCodeAtAddress(trace: *const debug.Trace, addr: usize) callconv(.C) void {
     printSourceCodeAtAddresses(trace, 0, &[_]usize{addr}, 1);
 }
