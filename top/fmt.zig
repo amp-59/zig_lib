@@ -528,9 +528,9 @@ pub fn PathFormat(comptime Format: type) type {
             }
             return len;
         }
-        pub fn formatParseArgs(allocator: anytype, _: [][*:0]u8, _: *usize, arg: [:0]const u8) Format {
+        pub fn formatParseArgs(allocator: anytype, _: [][*:0]u8, _: *usize, arg: [:0]u8) Format {
             @setRuntimeSafety(builtin.is_safe);
-            const names: [*][:0]const u8 = @ptrFromInt(allocator.allocateRaw(16, 8));
+            const names: [*][:0]u8 = @ptrFromInt(allocator.allocateRaw(16, 8));
             names[0] = arg;
             return .{ .names = names, .names_len = 1, .names_max_len = 1 };
         }
@@ -1209,7 +1209,6 @@ pub fn GenericDateTimeFormat(comptime DateTime: type) type {
             format.formatWrite(&array);
             return array;
         }
-
         pub fn formatWrite(format: Format, array: anytype) void {
             array.writeFormat(yr(format.value.getYear()));
             array.writeOne('-');
@@ -3421,7 +3420,7 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
                 break :blk (@typeName(Union).len +% 2) +% 1 +% meta.maxDeclLength(Union) +% 3 +% max_field_len +% 2;
             }
         };
-        pub fn formatWriteEnumField(format: Format, array: anytype) void {
+        fn formatWriteEnumField(format: Format, array: anytype) void {
             const enum_info: builtin.Type = @typeInfo(fields[0].type);
             const w: enum_info.Enum.tag_type = @field(format.value, fields[1].name);
             array.writeMany("bit_field(" ++ @typeName(enum_info.Enum.tag_type) ++ "){ ");
@@ -3460,7 +3459,7 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
                 }
             }
         }
-        pub fn formatWriteBufEnumField(format: Format, buf: [*]u8) usize {
+        fn formatWriteBufEnumField(format: Format, buf: [*]u8) usize {
             const enum_info: builtin.Type = @typeInfo(fields[0].type);
             const w: enum_info.Enum.tag_type = @field(format.value, fields[1].name);
             @as(*[10]u8, @ptrCast(buf)).* = "bit_field(".*;
@@ -3510,7 +3509,7 @@ pub fn UnionFormat(comptime spec: RenderSpec, comptime Union: type) type {
             }
             return len;
         }
-        pub fn formatLengthEnumField(format: Format) usize {
+        fn formatLengthEnumField(format: Format) usize {
             const enum_info: builtin.Type = @typeInfo(fields[0].type);
             const w: enum_info.Enum.tag_type = @field(format.value, fields[1].name);
             var len: usize = 10;
