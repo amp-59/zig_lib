@@ -251,7 +251,7 @@ pub const ReadSpec = struct {
         close: sys.ErrorPolicy = .{ .throw = file.spec.close.errors.all },
     };
     const Logging = struct {
-        open: debug.Logging.AcquireError = .{},
+        open: debug.Logging.AttemptAcquireError = .{},
         read: debug.Logging.SuccessError = .{},
         close: debug.Logging.ReleaseError = .{},
     };
