@@ -8,6 +8,7 @@ const file = @import("./file.zig");
 const debug = @import("./debug.zig");
 const dwarf = @import("./dwarf.zig");
 const builtin = @import("./builtin.zig");
+const testing = @import("./testing.zig");
 
 pub usingnamespace @import("./start.zig");
 
@@ -292,9 +293,9 @@ fn writeCompileErrorCaretStandard(buf: [*]u8, bytes: [*:0]u8, src: *CompileSourc
 }
 fn writeCompileErrorCaretTrace(buf: [*]u8, trace: *const debug.Trace, width: u64, src: *CompileSourceLocation) [*]u8 {
     @setRuntimeSafety(false);
-    const before_caret: u64 = (src.span_main -% src.span_start);
-    const indent: u64 = (src.column -% before_caret);
-    const after_caret: u64 = src.span_end -% src.span_main -| 1;
+    const before_caret: usize = src.span_main -% src.span_start;
+    const indent: usize = src.column -% before_caret;
+    const after_caret: usize = src.span_end -% src.span_main -| 1;
     var ptr: [*]u8 = buf;
     if (trace.options.write_sidebar) {
         ptr = writeSideBar(ptr, trace, width, .none);
@@ -467,12 +468,6 @@ pub fn printCompileErrorsTrace(allocator: *Allocator, trace: *const debug.Trace,
 const Level = struct {
     var start: usize = lb_addr;
     const lb_addr: usize = 0x600000000000;
-};
-const tab = .{
-    .self_link_s = "/proc/self/exe",
-    .open_error_s = "could not open executable",
-    .stat_error_s = "could not stat executable",
-    .read_error_s = "could not read executable",
 };
 const Number = union(enum) {
     pc_addr: u64,
@@ -704,7 +699,6 @@ fn writeSourceCodeAtAddress(
     file_map: *FileMap,
     dwarf_info: *dwarf.DwarfInfo,
     buf: [*]u8,
-    pos: u64,
     width: u64,
     addr: u64,
 ) ?dwarf.DwarfInfo.AddressInfo {
@@ -741,12 +735,12 @@ fn writeNTimes(buf: [*]u8, count: usize) [*]u8 {
     ptr += 12;
     return ptr;
 }
-fn printMessage(allocator: *mem.SimpleAllocator, buf: [*]u8, addr_info: *dwarf.DwarfInfo.AddressInfo) void {
+fn printMessage(allocator: *mem.SimpleAllocator, addr_info: *dwarf.DwarfInfo.AddressInfo) void {
     @setRuntimeSafety(false);
-    const msg: []u8 = buf[addr_info.start..addr_info.finish];
+    const msg: []u8 = fmt.slice(addr_info.finish, addr_info.start);
     if (addr_info.count != 0) {
-        const new: [*]u8 = @ptrFromInt(allocator.allocateRaw(msg.len +% 32, 64));
         const save: usize = allocator.next;
+        const new: [*]u8 = @ptrFromInt(allocator.allocateRaw(msg.len +% 32, 64));
         var end: usize = 0;
         while (msg[end] != '\n') : (end +%= 1) new[end] = msg[end];
         var ptr: [*]u8 = writeNTimes(new + end, addr_info.count);
@@ -811,30 +805,31 @@ pub fn printSourceCodeAtAddresses(trace: *const debug.Trace, ret_addr: usize, ad
     var buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(4096, 1));
     defer allocator.unmapAll();
     var file_map: FileMap = FileMap.init(&allocator, 8);
-    var dwarf_info: dwarf.DwarfInfo = dwarf.DwarfInfo.init(@intFromPtr(allocateFile(&allocator, tab.self_link_s).ptr));
+    var dwarf_info: dwarf.DwarfInfo = dwarf.DwarfInfo.init(@intFromPtr(allocateFile(&allocator, "/proc/self/exe").ptr));
     dwarf_info.scanAllCompileUnits(&allocator);
     buf = @ptrFromInt(allocator.allocateRaw(1024 *% 4096, 1));
     @memset(buf[0 .. 1024 *% 4096], 0);
-    var len: usize = 0;
+    var ptr: [*]u8 = buf;
     var width: usize = fmt.ux64(ret_addr).formatLength();
     for (addrs[0..addrs_len]) |addr| {
         width = @max(width, fmt.ux64(addr).formatLength());
     }
     width *%= @intFromBool(trace.options.write_sidebar);
     for (addrs[0..addrs_len]) |addr| {
-        if (writeSourceCodeAtAddress(trace, &allocator, &file_map, &dwarf_info, buf, len, width, addr)) |addr_info| {
-            len = addr_info.finish;
+        if (writeSourceCodeAtAddress(trace, &allocator, &file_map, &dwarf_info, buf, width, addr)) |addr_info| {
+            ptr = addr_info.finish;
             dwarf_info.addAddressInfo(&allocator).* = addr_info;
         }
     }
     if (ret_addr != 0) {
-        if (writeSourceCodeAtAddress(trace, &allocator, &file_map, &dwarf_info, buf, len, width, ret_addr)) |addr_info| {
-            len = addr_info.finish;
+        if (writeSourceCodeAtAddress(trace, &allocator, &file_map, &dwarf_info, buf, width, ret_addr)) |addr_info| {
+            ptr = addr_info.finish;
             dwarf_info.addAddressInfo(&allocator).* = addr_info;
         }
     }
-    debug.write(buf[0..len]);
+    fmt.print(ptr, buf);
 }
+
 pub fn printStackTrace(trace: *const debug.Trace, first_addr: usize, frame_addr: usize) callconv(.C) void {
     @setRuntimeSafety(false);
     const start: usize = @atomicRmw(usize, &Level.start, .Add, 0x40000000, .SeqCst);
@@ -844,17 +839,11 @@ pub fn printStackTrace(trace: *const debug.Trace, first_addr: usize, frame_addr:
     }
     var allocator: Allocator = .{ .start = start, .next = start, .finish = start };
     var file_map: FileMap = FileMap.init(&allocator, 8);
-    var dwarf_info: dwarf.DwarfInfo = dwarf.DwarfInfo.init(@intFromPtr(allocateFile(&allocator, tab.self_link_s).ptr));
-    if (dwarf.logging_abbrev_entry or
-        dwarf.logging_summary or
-        dwarf.logging_info_entry)
-    {
-        dwarf.DwarfInfo.active = &dwarf_info;
-    }
+    var dwarf_info: dwarf.DwarfInfo = dwarf.DwarfInfo.init(@intFromPtr(allocateFile(&allocator, "/proc/self/exe").ptr));
+
     dwarf_info.scanAllCompileUnits(&allocator);
-    var buf: []u8 = allocator.allocate(u8, 1024 *% 4096);
-    working = buf;
-    var len: usize = 0;
+    const buf: [*]u8 = @ptrFromInt(allocator.allocateRaw(1024 *% 4096, 1));
+    var ptr: [*]u8 = buf;
     var itr: StackIterator = if (frame_addr != 0) .{
         .first_addr = null,
         .frame_addr = frame_addr,
@@ -864,19 +853,19 @@ pub fn printStackTrace(trace: *const debug.Trace, first_addr: usize, frame_addr:
     };
     const width: usize = if (trace.options.write_sidebar) maximumSideBarWidth(itr) else 0;
     if (frame_addr != 0) {
-        if (writeSourceCodeAtAddress(trace, &allocator, &file_map, &dwarf_info, buf.ptr, len, width, first_addr)) |addr_info| {
-            len = addr_info.finish;
+        if (writeSourceCodeAtAddress(trace, &allocator, &file_map, &dwarf_info, ptr, width, first_addr)) |addr_info| {
+            ptr = addr_info.finish;
             dwarf_info.addAddressInfo(&allocator).* = addr_info;
         }
     }
     while (itr.next()) |addr| {
-        if (writeSourceCodeAtAddress(trace, &allocator, &file_map, &dwarf_info, buf[len..].ptr, len, width, addr)) |addr_info| {
-            len = addr_info.finish;
+        if (writeSourceCodeAtAddress(trace, &allocator, &file_map, &dwarf_info, ptr, width, addr)) |addr_info| {
+            ptr = addr_info.finish;
             dwarf_info.addAddressInfo(&allocator).* = addr_info;
         }
     }
     for (dwarf_info.addr_info[0..dwarf_info.addr_info_len], 1..) |*addr_info, idx| {
-        printMessage(&allocator, buf.ptr, addr_info);
+        printMessage(&allocator, addr_info);
         if (idx == trace.options.max_depth) {
             break;
         }
