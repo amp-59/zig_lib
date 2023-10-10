@@ -5647,65 +5647,124 @@ pub inline fn idsize(value: isize) Type.Idsize {
 pub inline fn ixsize(value: isize) Type.Ixsize {
     return .{ .value = value };
 }
-pub const writeIb8: *const fn (Type.Ib8, [*]u8) usize = @ptrCast(&Type.Ib8.formatWriteBuf);
-pub const writeIb16: *const fn (Type.Ib16, [*]u8) usize = @ptrCast(&Type.Ib16.formatWriteBuf);
-pub const writeIb32: *const fn (Type.Ib32, [*]u8) usize = @ptrCast(&Type.Ib32.formatWriteBuf);
-pub const writeIb64: *const fn (Type.Ib64, [*]u8) usize = @ptrCast(&Type.Ib64.formatWriteBuf);
-pub const writeIb128: *const fn (Type.Ib128, [*]u8) usize = @ptrCast(&Type.Ib128.formatWriteBuf);
-pub const writeIo8: *const fn (Type.Io8, [*]u8) usize = @ptrCast(&Type.Io8.formatWriteBuf);
-pub const writeIo16: *const fn (Type.Io16, [*]u8) usize = @ptrCast(&Type.Io16.formatWriteBuf);
-pub const writeIo32: *const fn (Type.Io32, [*]u8) usize = @ptrCast(&Type.Io32.formatWriteBuf);
-pub const writeIo64: *const fn (Type.Io64, [*]u8) usize = @ptrCast(&Type.Io64.formatWriteBuf);
-pub const writeIo128: *const fn (Type.Io128, [*]u8) usize = @ptrCast(&Type.Io128.formatWriteBuf);
-pub const writeId8: *const fn (Type.Id8, [*]u8) usize = @ptrCast(&Type.Id8.formatWriteBuf);
-pub const writeId16: *const fn (Type.Id16, [*]u8) usize = @ptrCast(&Type.Id16.formatWriteBuf);
-pub const writeId32: *const fn (Type.Id32, [*]u8) usize = @ptrCast(&Type.Id32.formatWriteBuf);
-pub const writeId64: *const fn (Type.Id64, [*]u8) usize = @ptrCast(&Type.Id64.formatWriteBuf);
-pub const writeId128: *const fn (Type.Id128, [*]u8) usize = @ptrCast(&Type.Id128.formatWriteBuf);
-pub const writeIx8: *const fn (Type.Ix8, [*]u8) usize = @ptrCast(&Type.Ix8.formatWriteBuf);
-pub const writeIx16: *const fn (Type.Ix16, [*]u8) usize = @ptrCast(&Type.Ix16.formatWriteBuf);
-pub const writeIx32: *const fn (Type.Ix32, [*]u8) usize = @ptrCast(&Type.Ix32.formatWriteBuf);
-pub const writeIx64: *const fn (Type.Ix64, [*]u8) usize = @ptrCast(&Type.Ix64.formatWriteBuf);
-pub const writeIx128: *const fn (Type.Ix128, [*]u8) usize = @ptrCast(&Type.Ix128.formatWriteBuf);
-pub const writeIz8: *const fn (Type.Iz8, [*]u8) usize = @ptrCast(&Type.Iz8.formatWriteBuf);
-pub const writeIz16: *const fn (Type.Iz16, [*]u8) usize = @ptrCast(&Type.Iz16.formatWriteBuf);
-pub const writeIz32: *const fn (Type.Iz32, [*]u8) usize = @ptrCast(&Type.Iz32.formatWriteBuf);
-pub const writeIz64: *const fn (Type.Iz64, [*]u8) usize = @ptrCast(&Type.Iz64.formatWriteBuf);
-pub const writeIz128: *const fn (Type.Iz128, [*]u8) usize = @ptrCast(&Type.Iz128.formatWriteBuf);
-pub const writeUb8: *const fn (Type.Ub8, [*]u8) usize = @ptrCast(&Type.Ub8.formatWriteBuf);
-pub const writeUb16: *const fn (Type.Ub16, [*]u8) usize = @ptrCast(&Type.Ub16.formatWriteBuf);
-pub const writeUb32: *const fn (Type.Ub32, [*]u8) usize = @ptrCast(&Type.Ub32.formatWriteBuf);
-pub const writeUb64: *const fn (Type.Ub64, [*]u8) usize = @ptrCast(&Type.Ub64.formatWriteBuf);
-pub const writeUo8: *const fn (Type.Uo8, [*]u8) usize = @ptrCast(&Type.Uo8.formatWriteBuf);
-pub const writeUo16: *const fn (Type.Uo16, [*]u8) usize = @ptrCast(&Type.Uo16.formatWriteBuf);
-pub const writeUo32: *const fn (Type.Uo32, [*]u8) usize = @ptrCast(&Type.Uo32.formatWriteBuf);
-pub const writeUo64: *const fn (Type.Uo64, [*]u8) usize = @ptrCast(&Type.Uo64.formatWriteBuf);
-pub const writeUo128: *const fn (Type.Uo128, [*]u8) usize = @ptrCast(&Type.Uo128.formatWriteBuf);
-pub const writeUd8: *const fn (Type.Ud8, [*]u8) usize = @ptrCast(&Type.Ud8.formatWriteBuf);
-pub const writeUd16: *const fn (Type.Ud16, [*]u8) usize = @ptrCast(&Type.Ud16.formatWriteBuf);
-pub const writeUd32: *const fn (Type.Ud32, [*]u8) usize = @ptrCast(&Type.Ud32.formatWriteBuf);
-pub const writeUd64: *const fn (Type.Ud64, [*]u8) usize = Type.Ud64.formatWriteBuf;
-pub const writeUd128: *const fn (Type.Ud128, [*]u8) usize = @ptrCast(&Type.Ud128.formatWriteBuf);
-pub const writeUx8: *const fn (Type.Ux8, [*]u8) usize = @ptrCast(&Type.Ux8.formatWriteBuf);
-pub const writeEsc: *const fn (Type.Esc, [*]u8) usize = @ptrCast(&Type.Esc.formatWriteBuf);
-pub const writeUx16: *const fn (Type.Ux16, [*]u8) usize = @ptrCast(&Type.Ux16.formatWriteBuf);
-pub const writeUx32: *const fn (Type.Ux32, [*]u8) usize = @ptrCast(&Type.Ux32.formatWriteBuf);
-pub const writeUx64: *const fn (Type.Ux64, [*]u8) usize = @ptrCast(&Type.Ux64.formatWriteBuf);
-pub const writeUx128: *const fn (Type.Ux128, [*]u8) usize = @ptrCast(&Type.Ux128.formatWriteBuf);
-pub const writeUz8: *const fn (Type.Uz8, [*]u8) usize = @ptrCast(&Type.Uz8.formatWriteBuf);
-pub const writeUz16: *const fn (Type.Uz16, [*]u8) usize = @ptrCast(&Type.Uz16.formatWriteBuf);
-pub const writeUz32: *const fn (Type.Uz32, [*]u8) usize = @ptrCast(&Type.Uz32.formatWriteBuf);
-pub const writeUz64: *const fn (Type.Uz64, [*]u8) usize = @ptrCast(&Type.Uz64.formatWriteBuf);
-pub const writeUz128: *const fn (Type.Uz128, [*]u8) usize = @ptrCast(&Type.Uz128.formatWriteBuf);
-pub const writeUbsize: *const fn (Type.Ubsize, [*]u8) usize = @ptrCast(&Type.Ubsize.formatWriteBuf);
-pub const writeUosize: *const fn (Type.Uosize, [*]u8) usize = @ptrCast(&Type.Uosize.formatWriteBuf);
-pub const writeUdsize: *const fn (Type.Udsize, [*]u8) usize = @ptrCast(&Type.Udsize.formatWriteBuf);
-pub const writeUxsize: *const fn (Type.Uxsize, [*]u8) usize = @ptrCast(&Type.Uxsize.formatWriteBuf);
-pub const writeIbsize: *const fn (Type.Ibsize, [*]u8) usize = @ptrCast(&Type.Ibsize.formatWriteBuf);
-pub const writeIosize: *const fn (Type.Iosize, [*]u8) usize = @ptrCast(&Type.Iosize.formatWriteBuf);
-pub const writeIdsize: *const fn (Type.Idsize, [*]u8) usize = @ptrCast(&Type.Idsize.formatWriteBuf);
-pub const writeIxsize: *const fn (Type.Ixsize, [*]u8) usize = @ptrCast(&Type.Ixsize.formatWriteBuf);
-
+pub const writeIb8: fn ([*]u8, i8) [*]u8 = Type.Ib8.writeInt;
+pub const writeIb16: fn ([*]u8, i16) [*]u8 = Type.Ib16.writeInt;
+pub const writeIb32: fn ([*]u8, i32) [*]u8 = Type.Ib32.writeInt;
+pub const writeIb64: fn ([*]u8, i64) [*]u8 = Type.Ib64.writeInt;
+pub const writeIb128: fn ([*]u8, i128) [*]u8 = Type.Ib128.writeInt;
+pub const writeIo8: fn ([*]u8, i8) [*]u8 = Type.Io8.writeInt;
+pub const writeIo16: fn ([*]u8, i16) [*]u8 = Type.Io16.writeInt;
+pub const writeIo32: fn ([*]u8, i32) [*]u8 = Type.Io32.writeInt;
+pub const writeIo64: fn ([*]u8, i64) [*]u8 = Type.Io64.writeInt;
+pub const writeIo128: fn ([*]u8, i128) [*]u8 = Type.Io128.writeInt;
+pub const writeId8: fn ([*]u8, i8) [*]u8 = Type.Id8.writeInt;
+pub const writeId16: fn ([*]u8, i16) [*]u8 = Type.Id16.writeInt;
+pub const writeId32: fn ([*]u8, i32) [*]u8 = Type.Id32.writeInt;
+pub const writeId64: fn ([*]u8, i64) [*]u8 = Type.Id64.writeInt;
+pub const writeId128: fn ([*]u8, i128) [*]u8 = Type.Id128.writeInt;
+pub const writeIx8: fn ([*]u8, i8) [*]u8 = Type.Ix8.writeInt;
+pub const writeIx16: fn ([*]u8, i16) [*]u8 = Type.Ix16.writeInt;
+pub const writeIx32: fn ([*]u8, i32) [*]u8 = Type.Ix32.writeInt;
+pub const writeIx64: fn ([*]u8, i64) [*]u8 = Type.Ix64.writeInt;
+pub const writeIx128: fn ([*]u8, i128) [*]u8 = Type.Ix128.writeInt;
+pub const writeIz8: fn ([*]u8, i8) [*]u8 = Type.Iz8.writeInt;
+pub const writeIz16: fn ([*]u8, i16) [*]u8 = Type.Iz16.writeInt;
+pub const writeIz32: fn ([*]u8, i32) [*]u8 = Type.Iz32.writeInt;
+pub const writeIz64: fn ([*]u8, i64) [*]u8 = Type.Iz64.writeInt;
+pub const writeIz128: fn ([*]u8, i128) [*]u8 = Type.Iz128.writeInt;
+pub const writeUb8: fn ([*]u8, u8) [*]u8 = Type.Ub8.writeInt;
+pub const writeUb16: fn ([*]u8, u16) [*]u8 = Type.Ub16.writeInt;
+pub const writeUb32: fn ([*]u8, u32) [*]u8 = Type.Ub32.writeInt;
+pub const writeUb64: fn ([*]u8, u64) [*]u8 = Type.Ub64.writeInt;
+pub const writeUo8: fn ([*]u8, u8) [*]u8 = Type.Uo8.writeInt;
+pub const writeUo16: fn ([*]u8, u16) [*]u8 = Type.Uo16.writeInt;
+pub const writeUo32: fn ([*]u8, u32) [*]u8 = Type.Uo32.writeInt;
+pub const writeUo64: fn ([*]u8, u64) [*]u8 = Type.Uo64.writeInt;
+pub const writeUo128: fn ([*]u8, u128) [*]u8 = Type.Uo128.writeInt;
+pub const writeUd8: fn ([*]u8, u8) [*]u8 = Type.Ud8.writeInt;
+pub const writeUd16: fn ([*]u8, u16) [*]u8 = Type.Ud16.writeInt;
+pub const writeUd32: fn ([*]u8, u32) [*]u8 = Type.Ud32.writeInt;
+pub const writeUd64: fn ([*]u8, u64) [*]u8 = Type.Ud64.writeInt;
+pub const writeUd128: fn ([*]u8, u128) [*]u8 = Type.Ud128.writeInt;
+pub const writeUx8: fn ([*]u8, u8) [*]u8 = Type.Ux8.writeInt;
+pub const writeEsc: fn (Type.Esc, [*]u8) [*]u8 = Type.Esc.writeInt;
+pub const writeUx16: fn ([*]u8, u16) [*]u8 = Type.Ux16.writeInt;
+pub const writeUx32: fn ([*]u8, u32) [*]u8 = Type.Ux32.writeInt;
+pub const writeUx64: fn ([*]u8, u64) [*]u8 = Type.Ux64.writeInt;
+pub const writeUx128: fn ([*]u8, u128) [*]u8 = Type.Ux128.writeInt;
+pub const writeUz8: fn ([*]u8, u8) [*]u8 = Type.Uz8.writeInt;
+pub const writeUz16: fn ([*]u8, u16) [*]u8 = Type.Uz16.writeInt;
+pub const writeUz32: fn ([*]u8, u32) [*]u8 = Type.Uz32.writeInt;
+pub const writeUz64: fn ([*]u8, u64) [*]u8 = Type.Uz64.writeInt;
+pub const writeUz128: fn ([*]u8, u128) [*]u8 = Type.Uz128.writeInt;
+pub const writeUbsize: fn ([*]u8, usize) [*]u8 = Type.Ubsize.writeInt;
+pub const writeUosize: fn ([*]u8, usize) [*]u8 = Type.Uosize.writeInt;
+pub const writeUdsize: fn ([*]u8, usize) [*]u8 = Type.Udsize.writeInt;
+pub const writeUxsize: fn ([*]u8, usize) [*]u8 = Type.Uxsize.writeInt;
+pub const writeIbsize: fn ([*]u8, isize) [*]u8 = Type.Ibsize.writeInt;
+pub const writeIosize: fn ([*]u8, isize) [*]u8 = Type.Iosize.writeInt;
+pub const writeIdsize: fn ([*]u8, isize) [*]u8 = Type.Idsize.writeInt;
+pub const writeIxsize: fn ([*]u8, isize) [*]u8 = Type.Ixsize.writeInt;
+pub inline fn writeBin(comptime T: type) fn ([*]u8, T) [*]u8 {
+    switch (T) {
+        usize => return writeUbsize,
+        isize => return writeIbsize,
+        u64 => return writeUb64,
+        i64 => return writeIb64,
+        u8 => return writeUb8,
+        u16 => return writeUb16,
+        u32 => return writeUb32,
+        i8 => return writeIb8,
+        i16 => return writeIb16,
+        i32 => return writeIb32,
+        else => return Type.Xb(T).writeInt,
+    }
+}
+pub inline fn writeOct(comptime T: type) fn ([*]u8, T) [*]u8 {
+    switch (T) {
+        usize => return writeUosize,
+        isize => return writeIosize,
+        u64 => return writeUo64,
+        i64 => return writeIo64,
+        u8 => return writeUo8,
+        u16 => return writeUo16,
+        u32 => return writeUo32,
+        i8 => return writeIo8,
+        i16 => return writeIo16,
+        i32 => return writeIo32,
+        else => return Type.Xo(T).writeInt,
+    }
+}
+pub inline fn writeDec(comptime T: type) fn ([*]u8, T) [*]u8 {
+    switch (T) {
+        usize => return writeUdsize,
+        isize => return writeIdsize,
+        u64 => return writeUd64,
+        i64 => return writeId64,
+        u8 => return writeUd8,
+        u16 => return writeUd16,
+        u32 => return writeUd32,
+        i8 => return writeId8,
+        i16 => return writeId16,
+        i32 => return writeId32,
+        else => return Type.Xd(T).writeInt,
+    }
+}
+pub inline fn writeHex(comptime T: type) fn ([*]u8, T) [*]u8 {
+    switch (T) {
+        usize => return writeUxsize,
+        isize => return writeIxsize,
+        u64 => return writeUx64,
+        i64 => return writeIx64,
+        u8 => return writeUx8,
+        u16 => return writeUx16,
+        u32 => return writeUx32,
+        i8 => return writeIx8,
+        i16 => return writeIx16,
+        i32 => return writeIx32,
+        else => return Type.Xx(T).writeInt,
+    }
+}
 pub const Type = struct {
     pub const Ib8 = GenericPolynomialFormat(.{
         .bits = 8,
@@ -6135,28 +6194,28 @@ pub const Type = struct {
     pub fn Ux(comptime Int: type) type {
         return @TypeOf(ux(@as(Int, undefined)));
     }
-    pub fn Xb(comptime Int: type) type {
+    pub inline fn Xb(comptime Int: type) type {
         if (@typeInfo(Int).Int.signedness == .signed) {
             return @TypeOf(ib(@as(Int, undefined)));
         } else {
             return @TypeOf(ub(@as(Int, undefined)));
         }
     }
-    pub fn Xd(comptime Int: type) type {
+    pub inline fn Xd(comptime Int: type) type {
         if (@typeInfo(Int).Int.signedness == .signed) {
             return @TypeOf(id(@as(Int, undefined)));
         } else {
             return @TypeOf(ud(@as(Int, undefined)));
         }
     }
-    pub fn Xx(comptime Int: type) type {
+    pub inline fn Xx(comptime Int: type) type {
         if (@typeInfo(Int).Int.signedness == .signed) {
             return @TypeOf(ix(@as(Int, undefined)));
         } else {
             return @TypeOf(ux(@as(Int, undefined)));
         }
     }
-    pub fn Xo(comptime Int: type) type {
+    pub inline fn Xo(comptime Int: type) type {
         if (@typeInfo(Int).Int.signedness == .signed) {
             unreachable;
         } else {
