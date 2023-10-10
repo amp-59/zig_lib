@@ -1,5 +1,6 @@
 const sys = @import("./sys.zig");
 const fmt = @import("./fmt.zig");
+const mem = @import("./mem.zig");
 const file = @import("./file.zig");
 const meta = @import("./meta.zig");
 const debug = @import("./debug.zig");
@@ -27,11 +28,11 @@ pub const Process = enum(usize) {
 };
 pub const Event = extern struct {
     /// Major type: hardware/software/tracepoint/etc.
-    type: Type = undefined,
+    type: Type,
     /// Size of the attr structure, for fwd/bwd compat.
     size: u32 = @sizeOf(Event),
     /// Type specific configuration information.
-    config: Config = undefined,
+    config: Config,
     sample_period_or_freq: u64 = 0,
     sample_type: u64 = 0,
     read_format: Format = .{},
@@ -408,12 +409,16 @@ pub fn GenericPerfEvents(comptime events_spec: PerfEventsSpec) type {
             @setRuntimeSafety(false);
             const leader_fd: *u32 = &perf_events.fds[0][0];
             leader_fd.* = ~@as(u32, 0);
-            var event: Event = .{ .flags = PerfEvents.event_flags };
+            var event: Event = undefined;
             for (events_spec.counters, 0..) |set, set_idx| {
-                event.type = set.type;
                 var idx: usize = 0;
                 while (idx != set.counters.len) : (idx +%= 1) {
-                    event.config = set.counters[idx].config;
+                    mem.zero(Event, &event);
+                    event = .{
+                        .flags = PerfEvents.event_flags,
+                        .type = set.type,
+                        .config = set.counters[idx].config,
+                    };
                     perf_events.fds[set_idx][idx] = try meta.wrap(eventOpen(open(), &event, .self, .any, leader_fd.*, PerfEvents.fd_flags));
                 }
             }
