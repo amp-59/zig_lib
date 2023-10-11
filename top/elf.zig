@@ -996,148 +996,6 @@ pub const SHF = packed struct(usize) {
     /// This section is excluded from the final executable or shared library.
     EXCLUDE: bool = false,
     zb32: u32 = 0,
-    pub fn formatWriteBuf(format: @This(), buf: [*]u8) usize {
-        var ptr: [*]u8 = buf;
-        if (format.WRITE) {
-            ptr += fmt.strcpyEqu(ptr, "WRITE");
-        }
-        if (format.ALLOC) {
-            if (ptr != buf) {
-                ptr[0] = '|';
-                ptr += 1;
-            }
-            ptr += fmt.strcpyEqu(ptr, "ALLOC");
-        }
-        if (format.EXECINSTR) {
-            if (ptr != buf) {
-                ptr[0] = '|';
-                ptr += 1;
-            }
-            ptr += fmt.strcpyEqu(ptr, "EXECINSTR");
-        }
-        if (format.MERGE) {
-            if (ptr != buf) {
-                ptr[0] = '|';
-                ptr += 1;
-            }
-            ptr += fmt.strcpyEqu(ptr, "MERGE");
-        }
-        if (format.STRINGS) {
-            if (ptr != buf) {
-                ptr[0] = '|';
-                ptr += 1;
-            }
-            ptr += fmt.strcpyEqu(ptr, "STRINGS");
-        }
-        if (format.INFO_LINK) {
-            if (ptr != buf) {
-                ptr[0] = '|';
-                ptr += 1;
-            }
-            ptr += fmt.strcpyEqu(ptr, "INFO_LINK");
-        }
-        if (format.LINK_ORDER) {
-            if (ptr != buf) {
-                ptr[0] = '|';
-                ptr += 1;
-            }
-            ptr += fmt.strcpyEqu(ptr, "LINK_ORDER");
-        }
-        if (format.OS_NONCONFORMING) {
-            if (ptr != buf) {
-                ptr[0] = '|';
-                ptr += 1;
-            }
-            ptr += fmt.strcpyEqu(ptr, "OS_NONCONFORMING");
-        }
-        if (format.GROUP) {
-            if (ptr != buf) {
-                ptr[0] = '|';
-                ptr += 1;
-            }
-            ptr += fmt.strcpyEqu(ptr, "GROUP");
-        }
-        if (format.TLS) {
-            if (ptr != buf) {
-                ptr[0] = '|';
-                ptr += 1;
-            }
-            ptr += fmt.strcpyEqu(ptr, "TLS");
-        }
-        if (format.COMPRESSED) {
-            if (ptr != buf) {
-                ptr[0] = '|';
-                ptr += 1;
-            }
-            ptr += fmt.strcpyEqu(ptr, "COMPRESSED");
-        }
-        if (format.XCORE_SHF_DP_SECTION) {
-            if (ptr != buf) {
-                ptr[0] = '|';
-                ptr += 1;
-            }
-            ptr += fmt.strcpyEqu(ptr, "XCORE_SHF_DP_SECTION");
-        }
-        if (format.XCORE_SHF_CP_SECTION) {
-            if (ptr != buf) {
-                ptr[0] = '|';
-                ptr += 1;
-            }
-            ptr += fmt.strcpyEqu(ptr, "XCORE_SHF_CP_SECTION");
-        }
-        if (format.EXCLUDE) {
-            if (ptr != buf) {
-                ptr[0] = '|';
-                ptr += 1;
-            }
-            ptr += fmt.strcpyEqu(ptr, "EXCLUDE");
-        }
-    }
-    pub fn formatLength(format: @This()) usize {
-        var len: usize = 0;
-        if (format.WRITE) {
-            len += 5;
-        }
-        if (format.ALLOC) {
-            len += 5;
-        }
-        if (format.EXECINSTR) {
-            len += 9;
-        }
-        if (format.MERGE) {
-            len += 5;
-        }
-        if (format.STRINGS) {
-            len += 7;
-        }
-        if (format.INFO_LINK) {
-            len += 9;
-        }
-        if (format.LINK_ORDER) {
-            len += 10;
-        }
-        if (format.OS_NONCONFORMING) {
-            len += 16;
-        }
-        if (format.GROUP) {
-            len += 5;
-        }
-        if (format.TLS) {
-            len += 3;
-        }
-        if (format.COMPRESSED) {
-            len += 10;
-        }
-        if (format.XCORE_SHF_DP_SECTION) {
-            len += 20;
-        }
-        if (format.XCORE_SHF_CP_SECTION) {
-            len += 20;
-        }
-        if (format.EXCLUDE) {
-            len += 7;
-        }
-    }
     /// All sections with the "d" flag are grouped together by the linker to form
     /// the data section and the dp register is set to the start of the section by
     /// the boot code.
@@ -1302,28 +1160,15 @@ pub const STV = enum(u8) {
     PROTECTED = 3,
 };
 pub const LoaderSpec = struct {
-    options: Options = .{},
     logging: Logging = .{},
     errors: Errors = .{},
     AddressSpace: type,
-    const Options = struct {
-        extra_sections: []const []const u8 = &.{},
-        try_harder_to_match: bool = true,
-        exclude_size_below: usize = 128,
-        exclude_terms: []const []const u8 = &[_][]const u8{
-            "__anon",
-            "__struct",
-            "__union",
-            "__enum",
-        },
-    };
     pub const Logging = packed struct {
         show_elf_header: bool = false,
         show_relocations: bool = false,
         show_mangled_symbols: bool = true,
         show_unchanged_sections: bool = true,
         show_unchanged_symbols: bool = true,
-
         open: debug.Logging.AttemptAcquireError = .{},
         seek: debug.Logging.SuccessError = .{},
         stat: debug.Logging.SuccessErrorFault = .{},
@@ -2106,6 +1951,9 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                         ptr = writeSymbolRemoved(ptr, strtab1, sym1, sym_idx1, sh_name1.len, width);
                     }
                 }
+                if (hidden_size != 0) {
+                    ptr = writeExcluded(ptr, sh_name2.len, width, hidden_count, hidden_size);
+                }
                 return ptr;
             }
             pub fn lengthBinary(info1: *Info, _: usize) usize {
@@ -2245,24 +2093,22 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 buf[0..about.meta_s.len].* = about.meta_s.*;
                 var ptr: [*]u8 = fmt.strcpyEqu(buf[24..], name);
                 ptr[0] = '\n';
-                ptr += 1;
-                debug.write(buf[0..fmt.strlen(ptr, &buf)]);
+                debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
             }
             fn unknownSectionFault(name: [:0]const u8) void {
                 @setRuntimeSafety(false);
                 var buf: [4096]u8 = undefined;
                 buf[0..24].* = "unknown section header: ".*;
-                var ptr: [*]u8 = fmt.strcpyEqu(buf[24..], name);
-                proc.exitFault(buf[0..fmt.strlen(ptr, &buf)], 2);
+                proc.exitFault(buf[0 .. @intFromPtr(fmt.strcpyEqu(buf[24..], name)) -% @intFromPtr(&buf)], 2);
             }
             fn unsupportedRelocationFault(tag_name: [:0]const u8) void {
                 @setRuntimeSafety(false);
                 var buf: [4096]u8 = undefined;
                 buf[0..24].* = "unsupported relocation: ".*;
-                var ptr: [*]u8 = fmt.strcpyEqu(buf[24..], tag_name);
-                proc.exitFault(buf[0..fmt.strlen(ptr, &buf)], 2);
+                proc.exitFault(buf[0 .. @intFromPtr(fmt.strcpyEqu(buf[24..], tag_name)) -% @intFromPtr(&buf)], 2);
             }
             fn aboutRelocation(rela: *Elf64_Rela) void {
+                @setRuntimeSafety(builtin.is_safe);
                 var buf: [4096]u8 = undefined;
                 buf[0..about.reloc_s.len].* = about.reloc_s.*;
                 var ptr: [*]u8 = buf[about.reloc_s.len..];
@@ -2279,7 +2125,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 if (rela.r_info.r_sym != 0) {
                     ptr[0..4].* = "sym=".*;
                     ptr += 4;
-                    ptr = fmt.writeUd64(ptr, rela.r_sym);
+                    ptr = fmt.writeUd64(ptr, rela.r_info.r_sym);
                     ptr[0..2].* = ", ".*;
                     ptr += 2;
                     ptr[0..5].* = "name=".*;
@@ -2295,7 +2141,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 debug.write(buf[0..fmt.strlen(ptr, &buf)]);
             }
             fn aboutLoad(info: *const Info, pathname: [:0]const u8) void {
-                @setRuntimeSafety(false);
+                @setRuntimeSafety(builtin.is_safe);
                 var buf: [4096]u8 = undefined;
                 buf[0..load_s.len].* = load_s.*;
                 var ptr: [*]u8 = fmt.strcpyEqu(buf[load_s.len..], "ELF-");
@@ -2307,14 +2153,12 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 ptr += 2;
                 ptr[0..9].* = "sections=".*;
                 ptr += 9;
-                var ud64: fmt.Type.Ud64 = .{ .value = info.ehdr.e_shnum };
-                ptr += ud64.formatWriteBuf(ptr);
+                ptr = fmt.writeUd64(ptr, info.ehdr.e_shnum);
                 ptr[0..2].* = ", ".*;
                 ptr += 2;
                 ptr[0..9].* = "segments=".*;
                 ptr += 9;
-                ud64.value = info.ehdr.e_phnum;
-                ptr += ud64.formatWriteBuf(ptr);
+                ptr = fmt.writeUd64(ptr, info.ehdr.e_phnum);
                 if (info.ehdr.e_type == .DYN) {
                     ptr[0..2].* = ", ".*;
                     ptr += 2;
@@ -2359,8 +2203,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 ptr += 5;
                 ptr += fmt.bytes(shdr2.sh_size).formatWriteBuf(ptr);
                 ptr[0] = '\n';
-                ptr += 1;
-                return ptr;
+                return ptr + 1;
             }
             fn writeSectionAdded(
                 buf: [*]u8,
@@ -2385,8 +2228,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 ptr += 5;
                 ptr += fmt.bloatDiff(0, shdr2.sh_size).formatWriteBuf(ptr);
                 ptr[0] = '\n';
-                ptr += 1;
-                return ptr;
+                return ptr + 1;
             }
             fn writeSectionRemoved(
                 buf: [*]u8,
@@ -2411,8 +2253,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 ptr += 5;
                 ptr += fmt.bloatDiff(shdr1.sh_size, 0).formatWriteBuf(ptr);
                 ptr[0] = '\n';
-                ptr += 1;
-                return ptr;
+                return ptr + 1;
             }
             fn writeSectionDifference(
                 buf: [*]u8,
@@ -2441,8 +2282,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 ptr += 5;
                 ptr += fmt.bloatDiff(shdr1.sh_size, shdr2.sh_size).formatWriteBuf(ptr);
                 ptr[0] = '\n';
-                ptr += 1;
-                return ptr;
+                return ptr + 1;
             }
             fn writeSymbolPcAddr(
                 buf: [*]u8,
@@ -2488,8 +2328,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 ptr += 4;
                 ptr = fmt.strsetEqu(ptr, ' ', (builtin.message_indent +% name_len -% width));
                 ptr[0] = ' ';
-                ptr += 1;
-                return ptr;
+                return ptr + 1;
             }
             fn writeSymbolIntro(
                 buf: [*]u8,
@@ -2561,8 +2400,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 ptr += 2;
                 ptr = writeName(ptr, &tab.fx.style.bold, mem.terminate(strtab1 + sym1.st_name, 0));
                 ptr[0] = '\n';
-                ptr += 1;
-                return ptr;
+                return ptr + 1;
             }
             fn writeSymbolAdded(
                 buf: [*]u8,
@@ -2588,8 +2426,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 ptr += 5;
                 ptr = writeName(ptr, &tab.fx.style.bold, mem.terminate(strtab2 + sym2.st_name, 0));
                 ptr[0] = '\n';
-                ptr += 1;
-                return ptr;
+                return ptr + 1;
             }
             fn writeSymbolRemoved(
                 buf: [*]u8,
@@ -2615,8 +2452,7 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 ptr += 5;
                 ptr = writeName(ptr, &tab.fx.style.bold, mem.terminate(strtab1 + sym1.st_name, 0));
                 ptr[0] = '\n';
-                ptr += 1;
-                return ptr;
+                return ptr + 1;
             }
             fn writeSymbolDifference(
                 buf: [*]u8,
@@ -2651,10 +2487,9 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 ptr += size_diff.formatWriteBuf(ptr);
                 ptr[0..2].* = ", ".*;
                 ptr += 2;
-                ptr = writeCompoundName(ptr, name1, name_idx1, mat1, name2, name_idx2, mat2, name_len, width);
+                ptr = writeCompoundName(ptr, name1, name_idx1, name2, name_idx2, name_len, width);
                 ptr[0] = '\n';
-                ptr += 1;
-                return ptr;
+                return ptr + 1;
             }
             fn writeName(buf: [*]u8, style_s: []const u8, name: []const u8) [*]u8 {
                 @setRuntimeSafety(builtin.is_safe);
@@ -2687,15 +2522,13 @@ pub fn GenericDynamicLoader(comptime loader_spec: LoaderSpec) type {
                 buf: [*]u8,
                 name1: [:0]u8,
                 name_idx1: NameIndices,
-                mat1: Match,
+                // mat1: Match,
                 name2: [:0]u8,
                 name_idx2: NameIndices,
-                mat2: Match,
+                // mat2: Match,
                 name_len: usize,
                 width: usize,
             ) [*]u8 {
-                _ = mat2;
-                _ = mat1;
                 @setRuntimeSafety(builtin.is_safe);
                 var name_seg1: []const u8 = name1[0..name_idx1.spos];
                 var name_seg2: []const u8 = name2[0..name_idx2.spos];
