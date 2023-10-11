@@ -13,6 +13,7 @@ const testing = @import("./testing.zig");
 pub usingnamespace @import("./start.zig");
 
 var working: []const u8 = &.{};
+const test_pc_range: bool = false;
 
 pub const Allocator = mem.SimpleAllocator;
 
@@ -711,11 +712,21 @@ fn writeSourceCodeAtAddress(
     } else {
         if (dwarf_info.findCompileUnit(addr)) |unit| {
             if (dwarf_info.getSourceLocation(allocator, unit, addr)) |src| {
-                var ptr: [*]u8 = buf + pos;
-                ptr = writeExtendedSourceLocation(dwarf_info, ptr, addr, unit, src);
+                if (test_pc_range) {
+                    for (dwarf_info.src_locs[0..dwarf_info.src_locs_len]) |*src_loc| {
+                        if (src_loc.column == src.column and
+                            src_loc.line == src.line and
+                            mem.testEqualString(src.file, src_loc.file))
+                        {
+                            return null;
+                        }
+                    }
+                    dwarf_info.addSourceLocation(allocator).* = src;
+                }
+                var ptr: [*]u8 = writeExtendedSourceLocation(dwarf_info, buf, addr, unit, src);
                 ptr = writeSourceContext(trace, allocator, file_map, ptr, width, addr, src);
                 ptr = writeLastLine(ptr, trace, width);
-                return .{ .addr = addr, .start = pos, .finish = pos +% (@intFromPtr(ptr) -% @intFromPtr(buf)) };
+                return .{ .addr = addr, .start = buf, .finish = ptr };
             }
         }
     }
