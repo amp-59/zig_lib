@@ -2550,6 +2550,38 @@ export fn formatLengthLLCCommand(cmd: *tasks.LLCCommand) callconv(.C) usize {
     }
     return len;
 }
+export fn formatWriteBufFetchCommand(cmd: *tasks.FetchCommand, zig_exe_ptr: [*]const u8, zig_exe_len: usize, buf: [*]u8) callconv(.C) usize {
+    const zig_exe: []const u8 = zig_exe_ptr[0..zig_exe_len];
+    @setRuntimeSafety(false);
+    var ptr: [*]u8 = buf;
+    ptr = fmt.strcpyEqu(ptr, zig_exe);
+    ptr[0] = 0;
+    ptr += 1;
+    ptr[0..5].* = "fetch".*;
+    ptr += 5;
+    if (cmd.global_cache_root) |global_cache_root| {
+        ptr[0..19].* = "--global-cache-dir\x00".*;
+        ptr += 19;
+        ptr = fmt.strcpyEqu(ptr, global_cache_root);
+        ptr[0] = 0;
+        ptr += 1;
+    }
+    return @intFromPtr(ptr) -% @intFromPtr(buf);
+}
+export fn formatLengthFetchCommand(cmd: *tasks.FetchCommand, zig_exe_ptr: [*]const u8, zig_exe_len: usize) callconv(.C) usize {
+    const zig_exe: []const u8 = zig_exe_ptr[0..zig_exe_len];
+    @setRuntimeSafety(false);
+    var len: usize = 0;
+    len +%= zig_exe.len;
+    len +%= 1;
+    len +%= 5;
+    if (cmd.global_cache_root) |global_cache_root| {
+        len +%= 19;
+        len +%= global_cache_root.len;
+        len +%= 1;
+    }
+    return len;
+}
 export fn formatWriteBufFormatCommand(cmd: *tasks.FormatCommand, zig_exe_ptr: [*]const u8, zig_exe_len: usize, pathname: types.Path, buf: [*]u8) callconv(.C) usize {
     const zig_exe: []const u8 = zig_exe_ptr[0..zig_exe_len];
     @setRuntimeSafety(false);

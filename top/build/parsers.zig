@@ -1161,6 +1161,24 @@ export fn formatParseArgsLLCCommand(cmd: *tasks.LLCCommand, allocator: *types.Al
         }
     }
 }
+export fn formatParseArgsFetchCommand(cmd: *tasks.FetchCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
+    @setRuntimeSafety(builtin.is_safe);
+    var args_idx: usize = 0;
+    while (args_idx != args_len) : (args_idx +%= 1) {
+        var arg: [:0]u8 = mem.terminate(args[args_idx], 0);
+        if (mem.testEqualString("--global-cache-dir", arg)) {
+            args_idx +%= 1;
+            if (args_idx != args_len) {
+                cmd.global_cache_root = mem.terminate(args[args_idx], 0);
+            } else {
+                return;
+            }
+        } else {
+            debug.write(fetch_help);
+        }
+        _ = allocator;
+    }
+}
 export fn formatParseArgsFormatCommand(cmd: *tasks.FormatCommand, allocator: *types.Allocator, args: [*][*:0]u8, args_len: usize) void {
     @setRuntimeSafety(builtin.is_safe);
     var args_idx: usize = 0;
@@ -1488,6 +1506,12 @@ const llc_help: [:0]const u8 =
     \\    --print-pipeline-passes                     Print a '-passes' compatible string describing the pipeline (best-effort only).
     \\    --r600-ir-structurize                       Use StructurizeCFG IR pass
     \\    --relax-elf-relocations                     Emit GOTPCRELX/REX_GOTPCRELX instead of GOTPCREL on x86-64 ELF
+    \\
+    \\
+;
+const fetch_help: [:0]const u8 =
+    \\    fetch
+    \\    --global-cache-dir      Override the global cache directory
     \\
     \\
 ;
