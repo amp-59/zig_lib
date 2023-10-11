@@ -859,6 +859,31 @@ pub const zig_ar_command_attributes: types.Attributes = .{
         },
     },
 };
+pub const zig_fetch_command_attributes: types.Attributes = .{
+    .type_name = "FetchCommand",
+    .fn_name = "fetch",
+    .type_fn_name = "GenericBuildCommand",
+    .params = &.{
+        .{
+            .name = "zig_exe",
+            .tag = .{ .param = .string },
+            .type = string_type,
+        },
+        .{
+            .string = "fetch",
+            .tag = .{ .literal = .string },
+            .char = types.ParamSpec.immediate,
+        },
+        .{
+            .name = "global_cache_root",
+            .string = "--global-cache-dir",
+            .tag = .{ .optional_field = .string },
+            .type = optional_string_type,
+            .descr = &.{"Override the global cache directory"},
+        },
+    },
+};
+
 pub const zig_format_command_attributes: types.Attributes = .{
     .type_name = "FormatCommand",
     .fn_name = "format",
@@ -1850,13 +1875,25 @@ pub const llvm_llc_command_attributes: types.Attributes = .{
             .string = "--r600-ir-structurize",
             .descr = &.{"Use StructurizeCFG IR pass"},
         },
-        //  --rdf-dump                                                            -
+        .{
+            .name = "rdf_dump",
+            .string = "--rdf-dump",
+            .descr = &.{"-"},
+        },
         //  --rdf-limit=<uint>                                                    -
         .{
             .name = "relax_elf_relocations",
             .string = "--relax-elf-relocations",
             .descr = &.{"Emit GOTPCRELX/REX_GOTPCRELX instead of GOTPCREL on x86-64 ELF"},
         },
+        //enum {
+        //    static,
+        //    pic,
+        //    dynamic_no_pic,
+        //    ropi,
+        //    rwpi,
+        //    @"ropi-rwpi",
+        //};
         //  --relocation-model=<value>                                            - Choose relocation model
         //    =static                                                             -   Non-relocatable code
         //    =pic                                                                -   Fully relocatable, position independent code
@@ -1949,5 +1986,6 @@ pub const all: []const types.Attributes = &.{
     harec_attributes,
     llvm_tblgen_command_attributes,
     llvm_llc_command_attributes,
+    zig_fetch_command_attributes,
     zig_format_command_attributes,
 };
