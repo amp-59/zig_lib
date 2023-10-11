@@ -166,7 +166,7 @@ pub fn writeSideBarIndex(buf: [*]u8, width: usize, idx: usize) usize {
     ptr += ud64(idx).formatWriteBuf(ptr);
     ptr[0] = ':';
     ptr += 1;
-    return @intFromPtr(strsetEqu(ptr, ' ', rem)) - @intFromPtr(buf);
+    return @intFromPtr(strsetEqu(ptr, ' ', rem)) -% @intFromPtr(buf);
 }
 pub fn writeSideBarSubHeading(buf: [*]u8, width: usize, heading: []const u8) usize {
     @setRuntimeSafety(false);
@@ -175,7 +175,7 @@ pub fn writeSideBarSubHeading(buf: [*]u8, width: usize, heading: []const u8) usi
     ptr = strcpyEqu(ptr, heading);
     ptr[0] = ':';
     ptr += 1;
-    return @intFromPtr(strsetEqu(ptr, ' ', rem)) - @intFromPtr(buf);
+    return @intFromPtr(strsetEqu(ptr, ' ', rem)) -% @intFromPtr(buf);
 }
 fn maxSigFig(comptime T: type, comptime radix: u7) comptime_int {
     @setRuntimeSafety(false);
@@ -2259,6 +2259,7 @@ fn uniformChangedIntFormatSpec(comptime bits: u16, comptime signedness: builtin.
         2 => "0b",
         8 => "0o",
         16 => "0x",
+        else => "",
     };
     const old_fmt_spec: PolynomialFormatSpec = .{
         .bits = bits,
@@ -5687,7 +5688,7 @@ pub const writeUd32: fn ([*]u8, u32) [*]u8 = Type.Ud32.writeInt;
 pub const writeUd64: fn ([*]u8, u64) [*]u8 = Type.Ud64.writeInt;
 pub const writeUd128: fn ([*]u8, u128) [*]u8 = Type.Ud128.writeInt;
 pub const writeUx8: fn ([*]u8, u8) [*]u8 = Type.Ux8.writeInt;
-pub const writeEsc: fn (Type.Esc, [*]u8) [*]u8 = Type.Esc.writeInt;
+pub const writeEsc: fn ([*]u8, u8) [*]u8 = Type.Esc.writeInt;
 pub const writeUx16: fn ([*]u8, u16) [*]u8 = Type.Ux16.writeInt;
 pub const writeUx32: fn ([*]u8, u32) [*]u8 = Type.Ux32.writeInt;
 pub const writeUx64: fn ([*]u8, u64) [*]u8 = Type.Ux64.writeInt;
