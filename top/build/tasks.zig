@@ -5352,6 +5352,71 @@ pub const LLCCommand = struct {
         }
     }
 };
+pub const FetchCommand = struct {
+    /// Override the global cache directory
+    global_cache_root: ?[]const u8 = null,
+    pub const size_of: comptime_int = @sizeOf(@This());
+    pub const align_of: comptime_int = @alignOf(@This());
+    pub fn formatWriteBuf(cmd: *FetchCommand, zig_exe: []const u8, buf: [*]u8) usize {
+        @setRuntimeSafety(false);
+        var ptr: [*]u8 = buf;
+        ptr = fmt.strcpyEqu(ptr, zig_exe);
+        ptr[0] = 0;
+        ptr += 1;
+        ptr[0..5].* = "fetch".*;
+        ptr += 5;
+        if (cmd.global_cache_root) |global_cache_root| {
+            ptr[0..19].* = "--global-cache-dir\x00".*;
+            ptr += 19;
+            ptr = fmt.strcpyEqu(ptr, global_cache_root);
+            ptr[0] = 0;
+            ptr += 1;
+        }
+        return @intFromPtr(ptr) -% @intFromPtr(buf);
+    }
+    pub fn formatLength(cmd: *FetchCommand, zig_exe: []const u8) usize {
+        @setRuntimeSafety(false);
+        var len: usize = 0;
+        len +%= zig_exe.len;
+        len +%= 1;
+        len +%= 5;
+        if (cmd.global_cache_root) |global_cache_root| {
+            len +%= 19;
+            len +%= global_cache_root.len;
+            len +%= 1;
+        }
+        return len;
+    }
+    pub fn formatWrite(cmd: *FetchCommand, zig_exe: []const u8, array: anytype) void {
+        @setRuntimeSafety(false);
+        array.writeMany(zig_exe);
+        array.writeOne(0);
+        array.writeMany("fetch");
+        if (cmd.global_cache_root) |global_cache_root| {
+            array.writeMany("--global-cache-dir\x00");
+            array.writeMany(global_cache_root);
+            array.writeOne(0);
+        }
+    }
+    pub fn formatParseArgs(cmd: *FetchCommand, allocator: *types.Allocator, args: [][*:0]u8) void {
+        @setRuntimeSafety(builtin.is_safe);
+        var args_idx: usize = 0;
+        while (args_idx != args.len) : (args_idx +%= 1) {
+            var arg: [:0]u8 = mem.terminate(args[args_idx], 0);
+            if (mem.testEqualString("--global-cache-dir", arg)) {
+                args_idx +%= 1;
+                if (args_idx != args.len) {
+                    cmd.global_cache_root = mem.terminate(args[args_idx], 0);
+                } else {
+                    return;
+                }
+            } else {
+                debug.write(fetch_help);
+            }
+            _ = allocator;
+        }
+    }
+};
 pub const FormatCommand = struct {
     /// Enable or disable colored error messages
     color: ?types.AutoOnOff = null,
@@ -5787,6 +5852,12 @@ const llc_help: [:0]const u8 =
     \\
     \\
 ;
+const fetch_help: [:0]const u8 =
+    \\    fetch
+    \\    --global-cache-dir      Override the global cache directory
+    \\
+    \\
+;
 const format_help: [:0]const u8 =
     \\    fmt
     \\    --color         Enable or disable colored error messages
@@ -5804,5 +5875,6 @@ pub const Command = struct {
     harec: *HarecCommand,
     tblgen: *TableGenCommand,
     llc: *LLCCommand,
+    fetch: *FetchCommand,
     format: *FormatCommand,
 };
