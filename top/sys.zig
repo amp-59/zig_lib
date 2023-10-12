@@ -1226,7 +1226,7 @@ pub const IPPORT = struct {
     pub const RESERVED = 1024;
     pub const USERRESERVED = 5000;
 };
-pub const ErrorCode = enum(isize) {
+pub const ErrorCode = enum(comptime_int) {
     NULL = 0, // No error
     PERM = -1, // Operation not permitted
     NOENT = -2, // No such file or directory
@@ -1502,7 +1502,8 @@ pub const ErrorCode = enum(isize) {
     }
 };
 pub const ErrorPolicy = builtin.ExternalError(ErrorCode);
-pub const SignalCode = enum(u32) {
+pub const SignalCode = enum(usize) {
+    NULL = 0,
     HUP = 1,
     INT = 2,
     QUIT = 3,
@@ -1567,7 +1568,7 @@ pub const SignalCode = enum(u32) {
     }
 };
 pub const SignalPolicy = builtin.ExternalError(SignalCode);
-pub const Fn = enum(usize) {
+pub const Fn = enum(comptime_int) {
     read = 0,
     write = 1,
     open = 2,
@@ -2025,7 +2026,7 @@ pub const Fn = enum(usize) {
         }
     }
 };
-pub const vFn = enum(u9) {
+pub const vFn = enum(comptime_int) {
     clock_gettime,
     getcpu,
     gettimeofday,
@@ -2061,16 +2062,17 @@ pub const no_errors = &[_]ErrorCode{};
 //    x32           rdi   rsi   rdx   r10   r8    r9    -
 //    xtensa        a6    a3    a4    a5    a8    a9    -
 inline fn syscall0(comptime sys_fn_info: Fn, _: [0]usize) isize {
+    const sys_no: usize = @intFromEnum(sys_fn_info);
     return asm volatile ("syscall # " ++ @tagName(sys_fn_info)
         : [ret] "={rax}" (-> isize),
-        : [_] "{rax}" (sys_fn_info),
+        : [_] "{rax}" (sys_no),
         : "rax", "rcx", "r11", "memory"
     );
 }
 inline fn syscall1(comptime sys_fn_info: Fn, args: [1]usize) isize {
     return asm volatile ("syscall # " ++ @tagName(sys_fn_info)
         : [ret] "={rax}" (-> isize),
-        : [_] "{rax}" (sys_fn_info),
+        : [_] "{rax}" (@as(usize, @intFromEnum(sys_fn_info))),
           [_] "{rdi}" (args[0]),
         : "rcx", "r11", "memory"
     );
@@ -2078,7 +2080,7 @@ inline fn syscall1(comptime sys_fn_info: Fn, args: [1]usize) isize {
 inline fn syscall2(comptime sys_fn_info: Fn, args: [2]usize) isize {
     return asm volatile ("syscall # " ++ @tagName(sys_fn_info)
         : [ret] "={rax}" (-> isize),
-        : [_] "{rax}" (sys_fn_info),
+        : [_] "{rax}" (@as(usize, @intFromEnum(sys_fn_info))),
           [_] "{rdi}" (args[0]),
           [_] "{rsi}" (args[1]),
         : "rcx", "r11", "memory"
@@ -2087,7 +2089,7 @@ inline fn syscall2(comptime sys_fn_info: Fn, args: [2]usize) isize {
 inline fn syscall3(comptime sys_fn_info: Fn, args: [3]usize) isize {
     return asm volatile ("syscall # " ++ @tagName(sys_fn_info)
         : [ret] "={rax}" (-> isize),
-        : [_] "{rax}" (sys_fn_info),
+        : [_] "{rax}" (@as(usize, @intFromEnum(sys_fn_info))),
           [_] "{rdi}" (args[0]),
           [_] "{rsi}" (args[1]),
           [_] "{rdx}" (args[2]),
@@ -2097,7 +2099,7 @@ inline fn syscall3(comptime sys_fn_info: Fn, args: [3]usize) isize {
 inline fn syscall4(comptime sys_fn_info: Fn, args: [4]usize) isize {
     return asm volatile ("syscall # " ++ @tagName(sys_fn_info)
         : [_] "={rax}" (-> isize),
-        : [_] "{rax}" (sys_fn_info),
+        : [_] "{rax}" (@as(usize, @intFromEnum(sys_fn_info))),
           [_] "{rdi}" (args[0]),
           [_] "{rsi}" (args[1]),
           [_] "{rdx}" (args[2]),
@@ -2108,7 +2110,7 @@ inline fn syscall4(comptime sys_fn_info: Fn, args: [4]usize) isize {
 inline fn syscall5(comptime sys_fn_info: Fn, args: [5]usize) isize {
     return asm volatile ("syscall # " ++ @tagName(sys_fn_info)
         : [ret] "={rax}" (-> isize),
-        : [_] "{rax}" (sys_fn_info),
+        : [_] "{rax}" (@as(usize, @intFromEnum(sys_fn_info))),
           [_] "{rdi}" (args[0]),
           [_] "{rsi}" (args[1]),
           [_] "{rdx}" (args[2]),
@@ -2120,7 +2122,7 @@ inline fn syscall5(comptime sys_fn_info: Fn, args: [5]usize) isize {
 inline fn syscall6(comptime sys_fn_info: Fn, args: [6]usize) isize {
     return asm volatile ("syscall # " ++ @tagName(sys_fn_info)
         : [ret] "={rax}" (-> isize),
-        : [_] "{rax}" (sys_fn_info),
+        : [_] "{rax}" (@as(usize, @intFromEnum(sys_fn_info))),
           [_] "{rdi}" (args[0]),
           [_] "{rsi}" (args[1]),
           [_] "{rdx}" (args[2]),
@@ -2338,7 +2340,6 @@ pub const connect = struct {
         pub const all = &[_]ErrorCode{ .ACCES, .PERM, .ADDRINUSE, .ADDRNOTAVAIL, .AFNOSUPPORT, .AGAIN, .ALREADY, .BADF, .CONNREFUSED, .FAULT, .INTR, .ISCONN, .NETUNREACH, .NOTSOCK, .PROTOTYPE, .TIMEDOUT };
     };
 };
-
 pub const madvise = struct {
     pub const errors = struct {
         pub const all = &[_]ErrorCode{ .ACCES, .AGAIN, .BADF, .INVAL, .IO, .NOMEM, .PERM };
