@@ -248,7 +248,7 @@ fn testConcurrentLoading() !void {
         loader.ub_meta_addr += count;
     }
 }
-fn quickCompile(comptime builder_spec: build.BuilderSpec, build_cmd: build.BuildCommand, name: []const u8, pathname: []const u8) !void {
+fn quickCompile(comptime builder_spec: build.BuilderSpec, build_cmd: build.BuildCommand, name: [:0]const u8, pathname: []const u8) !void {
     const LBuilder = build.GenericBuilder(builder_spec);
     var address_space: LBuilder.AddressSpace = .{};
     var thread_space: LBuilder.ThreadSpace = .{};
