@@ -394,6 +394,8 @@ fn testReadWrite2() !void {
     try debug.expectEqual(usize, 5, len);
 }
 pub fn main(args: [][*:0]u8) !void {
+    meta.refAllDecls(zl.file, &.{});
+
     try meta.wrap(testPreClean());
     try meta.wrap(testBasicDirectoryIterator());
     try meta.wrap(testFileOperationsRound1());
