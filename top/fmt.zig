@@ -305,40 +305,36 @@ pub fn GenericPolynomialFormat(comptime fmt_spec: PolynomialFormatSpec) type {
                 ptr[0] = if (value == 0) '0' else '1';
                 ptr += 1;
             } else if (fmt_spec.separator) |separator| {
-                var count: usize =
-                    if (fmt_spec.radix <= max_abs_value) switch (fmt_spec.width) {
+                var count: usize = switch (fmt_spec.width) {
                     .min => length(Abs, abs, fmt_spec.radix),
                     .max => max_digits_count,
                     .fixed => |fixed| fixed,
-                } else 1;
+                };
                 count +%= (count -% 1) / separator.digits;
-                ptr += count;
+                const ret: [*]u8 = ptr + count;
                 var pos: usize = 0;
-                var sep: usize = 0;
-                while (sep +% pos != count) : (abs /= fmt_spec.radix) {
+                while (count != pos) : (abs /= fmt_spec.radix) {
                     pos +%= 1;
-                    (ptr - (sep +% pos))[0] = separator.character;
-                    sep +%= @intFromBool(pos / separator.digits != 0) &
+                    ptr[count -% pos] = separator.character;
+                    count -%=
+                        @intFromBool(pos > separator.digits) &
                         @intFromBool(pos % separator.digits == 1);
-                    (ptr - (sep +% pos))[0] =
-                        toSymbol(Abs, abs, fmt_spec.radix);
+                    ptr[count -% pos] = toSymbol(Abs, abs, fmt_spec.radix);
                 }
+                return ret;
             } else {
-                var count: usize =
-                    if (fmt_spec.radix <= max_abs_value) switch (fmt_spec.width) {
+                var count: usize = switch (fmt_spec.width) {
                     .min => length(Abs, abs, fmt_spec.radix),
                     .max => max_digits_count,
                     .fixed => |fixed| fixed,
-                } else 1;
-                ptr += count;
-                var pos: u64 = 0;
-                while (pos != count) : (abs /= fmt_spec.radix) {
-                    pos +%= 1;
-                    (ptr - pos)[0] =
-                        toSymbol(Abs, abs, fmt_spec.radix);
+                };
+                const ret: [*]u8 = ptr + count;
+                while (count != 0) : (abs /= fmt_spec.radix) {
+                    count -%= 1;
+                    ptr[count] = toSymbol(Abs, abs, fmt_spec.radix);
                 }
+                return ret;
             }
-            return ptr;
         }
         pub fn lengthInt(value: Int) usize {
             const abs: Abs = @bitCast(if (value < 0) 1 +% ~value else value);
