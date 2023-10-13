@@ -18,14 +18,6 @@
 //! perf:           task-clock		50,470
 //! perf:           page-faults		1
 const zl = @import("../zig_lib.zig");
-const fmt = zl.fmt;
-const mem = zl.mem;
-const spec = zl.spec;
-const proc = zl.proc;
-const mach = zl.mach;
-const time = zl.time;
-const debug = zl.debug;
-const builtin = zl.builtin;
 
 pub usingnamespace zl.start;
 
@@ -36,7 +28,7 @@ pub const signal_handlers = .{
     .FloatingPointError = false,
     .Trap = false,
 };
-const about = fmt.about("futex");
+const about = zl.fmt.about("futex");
 
 /// build-exe:      fmt_cmp_test, ReleaseFast, stripped, exit=[updated,0], 624(+1584) => 2208 bytes, 0.197s [0]
 /// perf:           cycles		530,416,380
@@ -63,7 +55,7 @@ fn standardLibFormatter(futex1: *u32, futex2: *u32, count1: u32, count2: u32, re
     std.fmt.format(fbu.writer(), "{s}futex1=@0x{x}, word1={}, max1={}, futex2=@0x{x}, word2={}, max2={}, res={}\n", .{
         about, @intFromPtr(futex1), futex1.*, count1, @intFromPtr(futex2), futex2.*, count2, ret,
     }) catch {};
-    debug.write(fbu.buffer[0..fbu.pos]);
+    zl.debug.write(fbu.buffer[0..fbu.pos]);
 }
 /// build-exe:      fmt_cmp_test, ReleaseFast, stripped, exit=[updated,0], 2208(-144) => 2064 bytes, 0.186s [0]
 /// perf:           cycles		517,930,037
@@ -84,20 +76,35 @@ fn standardLibFormatter(futex1: *u32, futex2: *u32, count1: u32, count2: u32, re
 /// perf:           task-clock		75,690
 /// perf:           page-faults		3
 fn zigLibContainerFormatter(futex1: *u32, futex2: *u32, count1: u32, count2: u32, ret: u64) void {
-    var array: mem.StaticArray(u8, 4096) = undefined;
+    var array: zl.mem.StaticArray(u8, 4096) = undefined;
     array.undefineAll();
-    array.writeAny(spec.reinterpret.fmt, .{
-        about,                         "futex1=@",
-        fmt.ux64(@intFromPtr(futex1)), ", word1=",
-        fmt.ud64(futex1.*),            ", max1=",
-        fmt.ud64(count1),              ", futex2=@",
-        fmt.ux64(@intFromPtr(futex2)), ", word2=",
-        fmt.ud64(futex2.*),            ", max2=",
-        fmt.ud64(count2),              ", res=",
-        fmt.ud64(ret),                 '\n',
+    array.writeAny(zl.mem.spec.reinterpret.fmt, .{
+        about,                            "futex1=@",
+        zl.fmt.ux64(@intFromPtr(futex1)), ", word1=",
+        zl.fmt.ud64(futex1.*),            ", max1=",
+        zl.fmt.ud64(count1),              ", futex2=@",
+        zl.fmt.ux64(@intFromPtr(futex2)), ", word2=",
+        zl.fmt.ud64(futex2.*),            ", max2=",
+        zl.fmt.ud64(count2),              ", res=",
+        zl.fmt.ud64(ret),                 '\n',
     });
-    debug.write(array.readAll());
+    zl.debug.write(array.readAll());
 }
+//fn zigLibContainerV2Formatter(futex1: *u32, futex2: *u32, count1: u32, count2: u32, ret: u64) void {
+//    var array: mem2.ctn.AutomaticStructuredReadWriteResize(.{ .child = u8, .count = 4096, .low_alignment = 1, .sentinel = null }) = undefined;
+//    array.undefineAll();
+//    array.writeAny(.{}, .{
+//        about,                         "futex1=@",
+//        fmt.ux64(@intFromPtr(futex1)), ", word1=",
+//        fmt.ud64(futex1.*),            ", max1=",
+//        fmt.ud64(count1),              ", futex2=@",
+//        fmt.ux64(@intFromPtr(futex2)), ", word2=",
+//        fmt.ud64(futex2.*),            ", max2=",
+//        fmt.ud64(count2),              ", res=",
+//        fmt.ud64(ret),                 '\n',
+//    });
+//    debug.write(array.readAll());
+//}
 /// build-exe:      fmt_cmp_test, ReleaseFast, stripped, exit=[updated,0], 2064(+184) => 2248 bytes, 0.149s [0]
 /// perf:           cycles		340,785,354
 /// perf:           instructions	400,799,176
@@ -117,95 +124,128 @@ fn zigLibContainerFormatter(futex1: *u32, futex2: *u32, count1: u32, count2: u32
 /// perf:           task-clock		78,320
 /// perf:           page-faults		3
 fn zigLibContainerWriteSlices(futex1: *u32, futex2: *u32, count1: u32, count2: u32, ret: u64) void {
-    var array: mem.StaticArray(u8, 4096) = undefined;
+    var array: zl.mem.StaticArray(u8, 4096) = undefined;
     array.undefineAll();
     array.writeMany(about);
     array.writeMany("futex1=@");
-    array.writeFormat(fmt.ux64(@intFromPtr(futex1)));
+    array.writeFormat(zl.fmt.ux64(@intFromPtr(futex1)));
     array.writeMany(", word1=");
-    array.writeFormat(fmt.ud64(futex1.*));
+    array.writeFormat(zl.fmt.ud64(futex1.*));
     array.writeMany(", max1=");
-    array.writeFormat(fmt.ud64(count1));
+    array.writeFormat(zl.fmt.ud64(count1));
     array.writeMany(", futex2=@");
-    array.writeFormat(fmt.ux64(@intFromPtr(futex2)));
+    array.writeFormat(zl.fmt.ux64(@intFromPtr(futex2)));
     array.writeMany(", word2=");
-    array.writeFormat(fmt.ud64(futex2.*));
+    array.writeFormat(zl.fmt.ud64(futex2.*));
     array.writeMany(", max2=");
-    array.writeFormat(fmt.ud64(count2));
+    array.writeFormat(zl.fmt.ud64(count2));
     array.writeMany(", res=");
-    array.writeFormat(fmt.ud64(ret));
+    array.writeFormat(zl.fmt.ud64(ret));
     array.writeMany("\n");
-    debug.write(array.readAll());
+    zl.debug.write(array.readAll());
 }
-/// Debug: Equal fastest build
-/// Debug: Worst performance
-/// Release: Worst performance
-///
-/// build-exe:      fmt_cmp_test, ReleaseFast, stripped, exit=[updated,0], 2248(-336) => 1912 bytes, 0.095s [0]
-/// perf:           cycles		212,928,489
-/// perf:           instructions	243,001,296
-/// perf:           cache-references	14,988,114
-/// perf:           cache-misses	3,529,613
-/// perf:           branch-misses	2,007,214
-/// perf:           cpu-clock		200,010,117
-/// perf:           task-clock		195,777,735
-/// perf:           page-faults		7,796
-/// run:            perf, exit=0, 0.146s [0]
-/// perf:           cycles		2,798
-/// perf:           instructions	1,376
-/// perf:           cache-references	129
-/// perf:           cache-misses	45
-/// perf:           branch-misses	34
-/// perf:           cpu-clock		76,040
-/// perf:           task-clock		71,780
-/// perf:           page-faults		3
-fn zigLibBasicMessage(futex1: *u32, futex2: *u32, count1: u32, count2: u32, ret: u64) void {
-    const addr1_s: []const u8 = fmt.old.ux64(@intFromPtr(futex1)).readAll();
-    const word1_s: []const u8 = fmt.old.ud64(futex1.*).readAll();
-    const addr2_s: []const u8 = fmt.old.ux64(@intFromPtr(futex2)).readAll();
-    const word2_s: []const u8 = fmt.old.ud64(futex2.*).readAll();
-    const count1_s: []const u8 = fmt.old.ud64(count1).readAll();
-    const count2_s: []const u8 = fmt.old.ud64(count2).readAll();
-    const ret_s: []const u8 = fmt.old.ud64(ret).readAll();
-    var buf: [4096]u8 = undefined;
-    var len: usize = 0;
-    for (&[_][]const u8{
-        about,    "futex1=@", addr1_s,  ", word1=",
-        word1_s,  ", max1=",  count1_s, ", futex2=@",
-        addr2_s,  ", word2=", word2_s,  ", max2=",
-        count2_s, ", res=",   ret_s,    "\n",
-    }) |s| {
-        @memcpy(buf[len..].ptr, s);
-        len +%= s.len;
-    }
-    debug.write(buf[0..len]);
+/// build-exe:      test.fmt_cmp => ./zig-out/bin/test-fmt_cmp, ReleaseFast, stripped, exit=[updated] [1]
+///      size:      2.117KiB
+///         1:      .text: size=1.403KiB
+///         2:      .bss: size=8B
+///         3:      .comment: size=19B
+///         4:      .shstrtab: size=31B
+///      perf:      0.150s
+///         0:      cycles		240,141,342
+///         1:      instructions	247,805,504
+///         2:      cache-references	22,079,486
+///         3:      cache-misses	5,811,580
+///         4:      branch-misses	2,343,267
+///         0:      cpu-clock		247,479,840
+///         1:      task-clock		243,930,840
+///         2:      page-faults		6,547
+/// futex:          futex1=@0x7ffe4104fa04, word1=240, max1=1, futex2=@0x7ffe4104fa00, word2=241, max2=0, res=2
+/// build-run:      test.fmt_cmp, exit=0 [0]
+///      perf:      0.000s
+///         0:      cycles		2,011
+///         1:      instructions	928
+///         2:      cache-references	74
+///         3:      cache-misses	2
+///         4:      branch-misses	32
+///         0:      cpu-clock		107,070
+///         1:      task-clock		102,970
+///         2:      page-faults		2
+fn zigLibContainerWriteArrays(futex1: *u32, futex2: *u32, count1: u32, count2: u32, ret: u64) void {
+    var array: zl.mem.StaticArray(u8, 4096) = undefined;
+    array.undefineAll();
+    array.writeCount(about.len, about.*);
+    array.writeCount(8, "futex1=@".*);
+    array.writeFormat(zl.fmt.ux64(@intFromPtr(futex1)));
+    array.writeCount(8, ", word1=".*);
+    array.writeFormat(zl.fmt.ud64(futex1.*));
+    array.writeCount(7, ", max1=".*);
+    array.writeFormat(zl.fmt.ud64(count1));
+    array.writeCount(10, ", futex2=@".*);
+    array.writeFormat(zl.fmt.ux64(@intFromPtr(futex2)));
+    array.writeCount(8, ", word2=".*);
+    array.writeFormat(zl.fmt.ud64(futex2.*));
+    array.writeCount(7, ", max2=".*);
+    array.writeFormat(zl.fmt.ud64(count2));
+    array.writeCount(6, ", res=".*);
+    array.writeFormat(zl.fmt.ud64(ret));
+    array.writeCount(1, "\n".*);
+    zl.debug.write(array.readAll());
 }
+//fn zigLibContainerV2WriteSlices(futex1: *u32, futex2: *u32, count1: u32, count2: u32, ret: u64) void {
+//    var array: mem2.ctn.AutomaticStructuredReadWriteResize(.{ .child = u8, .count = 4096 }) = undefined;
+//    array.undefineAll();
+//    array.writeMany(about);
+//    array.writeMany("futex1=@");
+//    array.writeFormat(fmt.ux64(@intFromPtr(futex1)));
+//    array.writeMany(", word1=");
+//    array.writeFormat(fmt.ud64(futex1.*));
+//    array.writeMany(", max1=");
+//    array.writeFormat(fmt.ud64(count1));
+//    array.writeMany(", futex2=@");
+//    array.writeFormat(fmt.ux64(@intFromPtr(futex2)));
+//    array.writeMany(", word2=");
+//    array.writeFormat(fmt.ud64(futex2.*));
+//    array.writeMany(", max2=");
+//    array.writeFormat(fmt.ud64(count2));
+//    array.writeMany(", res=");
+//    array.writeFormat(fmt.ud64(ret));
+//    array.writeMany("\n");
+//    debug.write(array.readAll());
+//}
 /// Debug: Equal fastest build
 /// Debug: Best performance
 /// Release: Best performance
 ///
-/// build-exe:      fmt_cmp_test, ReleaseFast, stripped, exit=[updated,0], 1912(-672) => 1240 bytes, 0.104s [0]
-/// perf:           cycles		232,995,260
-/// perf:           instructions	253,933,468
-/// perf:           cache-references	18,027,332
-/// perf:           cache-misses	4,348,917
-/// perf:           branch-misses	2,307,413
-/// perf:           cpu-clock		209,579,110
-/// perf:           task-clock		205,246,128
-/// perf:           page-faults		7,691
-/// run:            perf, exit=0, 0.167s [0]
-/// perf:           cycles		1,658
-/// perf:           instructions	513
-/// perf:           cache-references	72
-/// perf:           cache-misses	30
-/// perf:           branch-misses	15
-/// perf:           cpu-clock		77,590
-/// perf:           task-clock		73,380
-/// perf:           page-faults		3
+/// build-exe:      test.fmt_cmp => ./zig-out/bin/test-fmt_cmp, ReleaseFast, stripped, exit=[updated] [1]
+///      size:      2.117KiB(-568B) => 1.562KiB
+///         2:      .text: addr=0x11170, size=1.403KiB(-656B) => 781B
+///         3:      .bss: size=8B
+///         4:      .comment: size=19B
+///         5:      .shstrtab: size=31B(+8B) => 39B
+///      perf:      0.129s
+///         0:      cycles		143,067,107
+///         1:      instructions	128,161,384
+///         2:      cache-references	12,529,475
+///         3:      cache-misses	3,760,978
+///         4:      branch-misses	1,510,359
+///         0:      cpu-clock		236,627,510
+///         1:      task-clock		232,678,460
+///         2:      page-faults		5,753
+/// futex:          futex1=@0x7ffdafde0374, word1=240, max1=1, futex2=@0x7ffdafde0370, word2=241, max2=0, res=2
+/// build-run:      test.fmt_cmp, exit=0 [0]
+///      perf:      0.000s
+///         0:      cycles		2,346
+///         1:      instructions	824
+///         2:      cache-references	68
+///         3:      cache-misses	5
+///         4:      branch-misses	27
+///         0:      cpu-clock		91,580
+///         1:      task-clock		88,140
+///         2:      page-faults		3
 fn zigLibOptimisedMessage(futex1: *u32, futex2: *u32, count1: u32, count2: u32, ret: u64) void {
     @setRuntimeSafety(false);
-    var ux64: fmt.Type.Ux64 = .{ .value = @intFromPtr(futex1) };
-    var ud64: fmt.Type.Ud64 = .{ .value = futex1.* };
+    var ux64: zl.fmt.Type.Ux64 = .{ .value = @intFromPtr(futex1) };
+    var ud64: zl.fmt.Type.Ud64 = .{ .value = futex1.* };
     var bytes: [4096]u8 = undefined;
     var buf: [*]u8 = &bytes;
     @as(*[about.len]u8, @ptrCast(buf)).* = about.*;
@@ -237,12 +277,12 @@ fn zigLibOptimisedMessage(futex1: *u32, futex2: *u32, count1: u32, count2: u32, 
     ud64.value = ret;
     len +%= ud64.formatWriteBuf(buf + len);
     buf[len] = '\n';
-    debug.write(buf[0 .. len +% 1]);
+    zl.debug.write(buf[0 .. len +% 1]);
 }
 fn zigLibOptimisedMessage2(futex1: *u32, futex2: *u32, count1: u32, count2: u32, ret: u64) void {
     @setRuntimeSafety(false);
-    var ux64: fmt.Type.Ux64 = .{ .value = @intFromPtr(futex1) };
-    var ud64: fmt.Type.Ud64 = .{ .value = futex1.* };
+    var ux64: zl.fmt.Type.Ux64 = .{ .value = @intFromPtr(futex1) };
+    var ud64: zl.fmt.Type.Ud64 = .{ .value = futex1.* };
     var buf: [4096]u8 = undefined;
     buf[0..about.len].* = about.*;
     var ptr: [*]u8 = buf[about.len..];
@@ -273,7 +313,36 @@ fn zigLibOptimisedMessage2(futex1: *u32, futex2: *u32, count1: u32, count2: u32,
     ud64.value = ret;
     ptr += ud64.formatWriteBuf(ptr);
     ptr[0] = '\n';
-    debug.write(buf[0 .. (@intFromPtr(ptr) -% @intFromPtr(&buf)) +% 1]);
+    zl.debug.write(buf[0 .. (@intFromPtr(ptr) -% @intFromPtr(&buf)) +% 1]);
+}
+fn zigLibOptimisedMessage3(futex1: *u32, futex2: *u32, count1: u32, count2: u32, ret: u64) void {
+    @setRuntimeSafety(false);
+    var buf: [4096]u8 = undefined;
+    buf[0..about.len].* = about.*;
+    var ptr: [*]u8 = buf[about.len..];
+    ptr[0..8].* = "futex1=@".*;
+    ptr += 8;
+    ptr = zl.fmt.writeUx64(ptr, @intFromPtr(futex1));
+    ptr[0..8].* = ", word1=".*;
+    ptr += 8;
+    ptr = zl.fmt.writeUx64(ptr, futex1.*);
+    ptr[0..7].* = ", max1=".*;
+    ptr += 7;
+    ptr = zl.fmt.writeUd64(ptr, count1);
+    ptr[0..10].* = ", futex2=@".*;
+    ptr += 10;
+    ptr = zl.fmt.writeUx64(ptr, @intFromPtr(futex2));
+    ptr[0..8].* = ", word2=".*;
+    ptr += 8;
+    ptr = zl.fmt.writeUx64(ptr, futex2.*);
+    ptr[0..7].* = ", max2=".*;
+    ptr += 7;
+    ptr = zl.fmt.writeUd64(ptr, count2);
+    ptr[0..6].* = ", res=".*;
+    ptr += 6;
+    ptr = zl.fmt.writeUd64(ptr, ret);
+    ptr[0] = '\n';
+    zl.debug.write(buf[0..(@intFromPtr(ptr + 1) -% @intFromPtr(&buf))]);
 }
 pub fn main() void {
     var futex0: u32 = 0xf0;
@@ -281,10 +350,14 @@ pub fn main() void {
     var count1: u32 = 1;
     var count2: u32 = 0;
     var ret: u64 = 2;
+
     //standardLibFormatter(&futex0, &futex1, count1, count2, ret);
     //zigLibContainerFormatter(&futex0, &futex1, count1, count2, ret);
+    //zigLibContainerV2Formatter(&futex0, &futex1, count1, count2, ret);
     //zigLibContainerWriteSlices(&futex0, &futex1, count1, count2, ret);
-    //zigLibBasicMessage(&futex0, &futex1, count1, count2, ret);
+    //zigLibContainerV2WriteSlices(&futex0, &futex1, count1, count2, ret);
+    //zigLibContainerWriteArrays(&futex0, &futex1, count1, count2, ret);
     //zigLibOptimisedMessage(&futex0, &futex1, count1, count2, ret);
-    zigLibOptimisedMessage2(&futex0, &futex1, count1, count2, ret);
+    //zigLibOptimisedMessage2(&futex0, &futex1, count1, count2, ret);
+    zigLibOptimisedMessage3(&futex0, &futex1, count1, count2, ret);
 }
