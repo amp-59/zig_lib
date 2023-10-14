@@ -435,14 +435,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
         errors: u8,
         // Enables lazy features.
         const have_lazy: bool = builder_spec.options.extensions_policy == .emergency;
-        // Enables --list command line option.
-        const have_list: bool = builder_spec.options.list_command != null;
-        // Enables --perf command line option.
-        const have_perf: bool = builder_spec.options.perf_command != null;
-        // Enables --size command line option.
-        const have_size: bool = builder_spec.options.size_command != null;
-        // Enables --trace command line option.
-        const have_trace: bool = builder_spec.options.trace_command != null;
         pub const Shared = @This();
         pub const specification = &builder_spec;
         pub const max_thread_count: comptime_int = builder_spec.options.max_thread_count;
@@ -463,11 +455,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             (max_thread_count * stack_aligned_bytes) +%
             (max_arena_count * arena_aligned_bytes) +%
             load_meta_aligned_bytes +% load_prog_aligned_bytes;
-        const lib_cache_root = builtin.lib_root ++ "/" ++ builder_spec.options.cache_dir;
-        const binary_prefix = builder_spec.options.output_dir ++ "/" ++ builder_spec.options.exe_out_dir ++ "/";
-        const library_prefix = builder_spec.options.output_dir ++ "/" ++ builder_spec.options.lib_out_dir ++ "/lib";
-        const archive_prefix = builder_spec.options.output_dir ++ "/" ++ builder_spec.options.lib_out_dir ++ "/lib";
-        const auxiliary_prefix = builder_spec.options.output_dir ++ "/" ++ builder_spec.options.aux_out_dir ++ "/";
         pub const ThreadSpace = mem.GenericRegularAddressSpace(.{
             .label = "thread",
             .index_type = u8,
@@ -495,7 +482,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             },
         });
         pub const DynamicLoader = elf.GenericDynamicLoader(.{
-            .options = .{},
             .logging = dyn_loader_logging,
             .errors = dyn_loader_errors,
             .AddressSpace = LoaderSpace,
@@ -557,9 +543,9 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             .unmap = builder_spec.errors.unmap,
         };
         const dyn_loader_logging = .{
-            .show_unchanged_sections = true,
             .show_unchanged_symbols = false,
             .show_mangled_symbols = true,
+            .show_anonymous_symbols = false,
             .open = builder_spec.logging.open,
             .seek = builder_spec.logging.seek,
             .stat = builder_spec.logging.stat,
