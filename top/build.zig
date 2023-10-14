@@ -294,11 +294,11 @@ pub const BuilderSpec = struct {
         /// Show when tasks have been waiting for a while with a list of blockers.
         show_waiting_tasks: bool = false,
         /// Never list special nodes among or allow explicit building.
-        show_special: bool = true,
+        show_special: bool = false,
         /// --
         show_output_destination: bool = false,
         /// Report `open` Acquire and Error.
-        open: debug.Logging.AcquireError = .{},
+        open: debug.Logging.AttemptAcquireError = .{},
         /// Report `seek` Acquire and Error.
         seek: debug.Logging.SuccessError = .{},
         /// Report `close` Release and Error.
@@ -395,9 +395,25 @@ pub const BuilderSpec = struct {
 };
 pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
     comptime var have_run: bool = false;
+    comptime var have_fetch: bool = false;
     comptime var have_format: bool = false;
     comptime var have_archive: bool = false;
     comptime var have_objcopy: bool = false;
+    // Enables --list command line option.
+    comptime var have_list: bool = builder_spec.options.list_command != null;
+    // Enables --perf command line option.
+    comptime var have_perf: bool = builder_spec.options.perf_command != null;
+    // Enables --size command line option.
+    comptime var have_size: bool = builder_spec.options.size_command != null;
+    // Enables --trace command line option.
+    comptime var have_trace: bool = builder_spec.options.trace_command != null;
+    const lib_cache_root = builtin.lib_root ++ "/" ++ builder_spec.options.cache_dir;
+    const binary_prefix = builder_spec.options.output_dir ++ "/" ++ builder_spec.options.exe_out_dir ++ "/";
+    const library_prefix = builder_spec.options.output_dir ++ "/" ++ builder_spec.options.lib_out_dir ++ "/lib";
+    const archive_prefix = builder_spec.options.output_dir ++ "/" ++ builder_spec.options.lib_out_dir ++ "/lib";
+    const auxiliary_prefix = builder_spec.options.output_dir ++ "/" ++ builder_spec.options.aux_out_dir ++ "/";
+    const options_s = fmt.cx(builder_spec.options);
+    const logging_s = fmt.cx(builder_spec.logging);
     const T = struct {
         /// Program arguments.
         args: [][*:0]u8,
