@@ -165,7 +165,7 @@ pub const BuilderSpec = struct {
         /// Debug with debugging symbols included
         add_stack_traces_to_debug_executables: bool = true,
         /// Add size statistics for all ELF outputs.
-        add_elf_comparison_report: bool = true,
+        add_comparison_report_to_elf: bool = true,
         /// Allow usage of current working directory, to shorten displayed
         /// pathnames.
         enable_current_working_directory: bool = true,
@@ -601,23 +601,6 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             objcopy: *Node,
             /// Full build command producing static linkable object.
             trace: *Node,
-        };
-        pub const File = struct {
-            /// What this file represents to the node.
-            tag: types.File,
-            /// The index of the path this file corresponds to in the node
-            /// `paths` list.
-            path_idx: u16 = undefined,
-            /// File descriptor.
-            fd: u32 = 0,
-            /// Status for this file. Whether this pointer is valid is lazily
-            /// determined. It will never be valid within the main phase.
-            st: *file.Status,
-            pub const Key = packed union {
-                tag: types.File,
-                flags: types.File.Flags,
-                id: u8,
-            };
         };
         pub const Node = struct {
             /// The node's 'first' name. Must be unique within the parent group.
