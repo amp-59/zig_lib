@@ -93,6 +93,8 @@ pub const Task = enum(u8) {
     archive = 5,
     /// (Worker) zig objcopy
     objcopy = 6,
+    /// (Worker) zig fetch
+    fetch = 7,
 };
 pub const State = enum(u8) {
     /// The task does not exist for the target.
