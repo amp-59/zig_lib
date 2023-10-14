@@ -159,9 +159,13 @@ pub const BuilderSpec = struct {
         sleep_nanoseconds: usize = 50000,
         /// Time in milliseconds allowed per build node.
         timeout_milliseconds: usize = 1000 * 60 * 60 * 24,
+        /// Add run task for all executable build outputs.
+        add_run_task_to_executables: bool = true,
         /// Enable stack traces in runtime errors for executables where mode is
         /// Debug with debugging symbols included
-        add_stack_traces_debug_executables: bool = true,
+        add_stack_traces_to_debug_executables: bool = true,
+        /// Add size statistics for all ELF outputs.
+        add_elf_comparison_report: bool = true,
         /// Allow usage of current working directory, to shorten displayed
         /// pathnames.
         enable_current_working_directory: bool = true,
@@ -170,8 +174,6 @@ pub const BuilderSpec = struct {
         enable_home_directory: bool = false,
         /// Add build configuration for Zig sources.
         init_config_zig_sources: bool = true,
-        /// Add run task for all executable build outputs.
-        init_executables: bool = true,
         /// Nodes with this name prefix are hidden in pre.
         init_hidden_by_name_prefix: ?u8 = '_',
         /// (Recommended) Pass --main-pkg-path=<build_root> for all compile commands.
@@ -252,9 +254,9 @@ pub const BuilderSpec = struct {
         /// (Devel.) Save dynamic environment to the cache.
         save_dyn_env: bool = false,
         /// (Devel.) Try to load the library at initialisation.
-        try_init_load: bool = true,
+        try_init_load: bool = false,
         /// (Devel.) If this succeeds, do not bother recompiling.
-        init_load_ok: bool = true,
+        init_load_ok: bool = false,
     };
     pub const Logging = packed struct {
         /// Report exchanges on task lock state:
