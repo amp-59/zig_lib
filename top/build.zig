@@ -115,20 +115,14 @@ pub const State = enum(u8) {
     finished = 32,
 };
 pub const Allocator = types.Allocator;
-pub const Lock = mem.ThreadSafeSet(7, State, Task);
+pub const Lock = mem.ThreadSafeSet(8, State, Task);
 pub const BuilderSpec = struct {
     /// Builder options.
     options: Options = .{},
     /// Logging for system calls called by the builder.
-    logging: Logging = if (builtin.is_safe)
-        builtin.all(BuilderSpec.Logging)
-    else
-        builtin.zero(BuilderSpec.Logging),
+    logging: Logging = .{},
     /// Errors for system calls called by builder.
-    errors: Errors = if (builtin.is_safe)
-        spec.errors.kill()
-    else
-        spec.errors.noexcept(),
+    errors: Errors = .{},
     pub const Options = struct {
         /// The maximum number of threads in addition to main.
         /// max_thread_count=0 is single-threaded.
