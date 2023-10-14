@@ -2,88 +2,22 @@ const fmt = @import("../fmt.zig");
 const mem = @import("../mem.zig");
 const file = @import("../file.zig");
 const builtin = @import("../builtin.zig");
+
 pub const Path = file.CompoundPath;
 pub const Allocator = mem.SimpleAllocator;
 
-pub const File = enum(u8) {
-    // zig fmt: off
-    /// All names relative to this absolute path.
-    /// Root group nodes store a path and file handle to this directory.
-    build_root = 1,
-    /// Temporary state files here.
-    /// Root group nodes store a path and file handle to this directory.
-    cache_root = 2,
-    /// Not our business (yet).
-    /// Root group nodes store a path and file handle to this directory.
-    global_cache_root = 3,
-
-    /// Root group nodes store a file handle to this directory.
-    output_root = 4,
-
-    /// Executables and objects link here.
-    /// Root group nodes store a file handle to this directory.
-    config_root = 5,
-
-    /// Executables and objects link here.
-    /// Root group nodes store a file handle to this directory.
-    bin_output_root = 6,
-    /// Libraries and archives link here.
-    /// Root group nodes store a file handle to this directory.
-    lib_output_root = 7,
-    /// All sources (assembly, IR, and high level code) link here.
-    /// Root group nodes store a file handle to this directory.
-    aux_output_root = 8,
-
-    zig_compiler_exe = 9,
-    llc_compiler_exe = 10,
-    cc_compiler_exe = 11,
-    cxx_compiler_exe = 12,
-
-    cached_generic      = @bitCast(Flags{ .is_cached = true, .no = 0 }),
-    cached_exe          = @bitCast(Flags{ .is_cached = true, .no = 1 }),
-    cached_lib          = @bitCast(Flags{ .is_cached = true, .no = 2 }),
-    cached_obj          = @bitCast(Flags{ .is_cached = true, .no = 3 }),
-
-    output_generic      = @bitCast(Flags{ .is_output = true, .no = 0 }),
-    output_exe          = @bitCast(Flags{ .is_output = true, .no = 1 }),
-    output_lib          = @bitCast(Flags{ .is_output = true, .no = 2 }),
-    output_obj          = @bitCast(Flags{ .is_output = true, .no = 3 }),
-    output_ar           = @bitCast(Flags{ .is_output = true, .no = 4 }),
-
-    output_asm          = @bitCast(Flags{ .is_output = true, .is_source = true, .no = 1 }),
-    output_c            = @bitCast(Flags{ .is_output = true, .is_source = true, .no = 2 }),
-    output_zir          = @bitCast(Flags{ .is_output = true, .is_source = true, .no = 3 }),
-    output_llvm_ir      = @bitCast(Flags{ .is_output = true, .is_source = true, .no = 4 }),
-    output_llvm_bc      = @bitCast(Flags{ .is_output = true, .is_source = true, .no = 5 }),
-    output_c_header     = @bitCast(Flags{ .is_output = true, .is_source = true, .no = 6 }),
-
-    input_generic       = @bitCast(Flags{ .is_input = true, .no = 0 }),
-    input_exe           = @bitCast(Flags{ .is_input = true, .no = 1 }),
-    input_lib           = @bitCast(Flags{ .is_input = true, .no = 2 }),
-    input_obj           = @bitCast(Flags{ .is_input = true, .no = 3 }),
-    input_ar            = @bitCast(Flags{ .is_input = true, .no = 4 }),
-
-    input_zig_source    = @bitCast(Flags{ .is_input = true, .is_source = true, .no = 1 }),
-    input_zig_config    = @bitCast(Flags{ .is_input = true, .is_source = true, .no = 2 }),
-    input_asm           = @bitCast(Flags{ .is_input = true, .is_source = true, .no = 3 }),
-    input_c_source      = @bitCast(Flags{ .is_input = true, .is_source = true, .no = 4 }),
-    input_c_header      = @bitCast(Flags{ .is_input = true, .is_source = true, .no = 5 }),
-    input_cxx_source    = @bitCast(Flags{ .is_input = true, .is_source = true, .no = 6 }),
-    input_cxx_header    = @bitCast(Flags{ .is_input = true, .is_source = true, .no = 7 }),
-    input_zig_ir        = @bitCast(Flags{ .is_input = true, .is_source = true, .no = 8 }),
-    input_llvm_ir       = @bitCast(Flags{ .is_input = true, .is_source = true, .no = 9 }),
-    input_llvm_bc       = @bitCast(Flags{ .is_input = true, .is_source = true, .no = 10 }),
-    _,
-    // zig fmt: on
-    pub fn toggle(tag: *File, flags: Flags) bool {
-        @setRuntimeSafety(builtin.is_safe);
-        const val: File = @enumFromInt(@intFromEnum(tag.*) ^ @as(u8, @bitCast(flags)));
-        const ret: bool = @popCount(@intFromEnum(val)) == @popCount(@intFromEnum(tag.*));
-        if (ret) {
-            tag.* = val;
-        }
-        return ret;
-    }
+pub const File = struct {
+    /// What this file represents to the node.
+    key: Key,
+    /// The index of the path this file corresponds to in the node
+    /// `paths` list.
+    path_idx: u16 = undefined,
+    /// File descriptor.
+    fd: u32 = 0,
+    /// Status for this file. Whether this pointer is valid is lazily
+    /// determined. It will never be valid within the main phase.
+    st: *file.Status,
+    pub const Key = extern union { tag: Tag, flags: Flags, id: u8 };
     pub const Flags = packed struct(u8) {
         no: u4 = 0,
         is_cached: bool = false,
@@ -91,13 +25,163 @@ pub const File = enum(u8) {
         is_input: bool = false,
         is_source: bool = false,
     };
+    pub const Tag = enum(u8) {
+        // zig fmt: off
+        /// All names relative to this absolute path.
+        /// Root group nodes store a path and file handle to this directory.
+        build_root = 1,
+        /// Temporary state files here.
+        /// Root group nodes store a path and file handle to this directory.
+        cache_root = 2,
+        /// Not our business (yet).
+        /// Root group nodes store a path and file handle to this directory.
+        global_cache_root = 3,
+
+        /// Root group nodes store a file handle to this directory.
+        output_root = 4,
+
+        /// Executables and objects link here.
+        /// Root group nodes store a file handle to this directory.
+        config_root = 5,
+
+        /// Executables and objects link here.
+        /// Root group nodes store a file handle to this directory.
+        bin_output_root = 6,
+        /// Libraries and archives link here.
+        /// Root group nodes store a file handle to this directory.
+        lib_output_root = 7,
+        /// All sources (assembly, IR, and high level code) link here.
+        /// Root group nodes store a file handle to this directory.
+        aux_output_root = 8,
+
+        zig_compiler_exe = 9,
+        llc_compiler_exe = 10,
+        cc_compiler_exe = 11,
+        cxx_compiler_exe = 12,
+
+        cached_generic      = @bitCast(Flags{ .is_cached = true, .no = 0 }),
+        cached_exe          = @bitCast(Flags{ .is_cached = true, .no = 1 }),
+        cached_lib          = @bitCast(Flags{ .is_cached = true, .no = 2 }),
+        cached_obj          = @bitCast(Flags{ .is_cached = true, .no = 3 }),
+
+        output_generic      = @bitCast(Flags{ .is_output = true, .no = 0 }),
+        output_exe          = @bitCast(Flags{ .is_output = true, .no = 1 }),
+        output_lib          = @bitCast(Flags{ .is_output = true, .no = 2 }),
+        output_obj          = @bitCast(Flags{ .is_output = true, .no = 3 }),
+        output_ar           = @bitCast(Flags{ .is_output = true, .no = 4 }),
+
+        output_asm          = @bitCast(Flags{ .is_output = true, .is_source = true, .no = 1 }),
+        output_c            = @bitCast(Flags{ .is_output = true, .is_source = true, .no = 2 }),
+        output_zir          = @bitCast(Flags{ .is_output = true, .is_source = true, .no = 3 }),
+        output_llvm_ir      = @bitCast(Flags{ .is_output = true, .is_source = true, .no = 4 }),
+        output_llvm_bc      = @bitCast(Flags{ .is_output = true, .is_source = true, .no = 5 }),
+        output_h            = @bitCast(Flags{ .is_output = true, .is_source = true, .no = 6 }),
+
+        input_generic       = @bitCast(Flags{ .is_input = true, .no = 0 }),
+        input_exe           = @bitCast(Flags{ .is_input = true, .no = 1 }),
+        input_lib           = @bitCast(Flags{ .is_input = true, .no = 2 }),
+        input_obj           = @bitCast(Flags{ .is_input = true, .no = 3 }),
+        input_ar            = @bitCast(Flags{ .is_input = true, .no = 4 }),
+
+        input_zig           = @bitCast(Flags{ .is_input = true, .is_source = true, .no = 1 }),
+        input_asm           = @bitCast(Flags{ .is_input = true, .is_source = true, .no = 2 }),
+        input_c             = @bitCast(Flags{ .is_input = true, .is_source = true, .no = 3 }),
+        input_h             = @bitCast(Flags{ .is_input = true, .is_source = true, .no = 4 }),
+        input_cc            = @bitCast(Flags{ .is_input = true, .is_source = true, .no = 5 }),
+        input_hh            = @bitCast(Flags{ .is_input = true, .is_source = true, .no = 6 }),
+        input_zig_ir        = @bitCast(Flags{ .is_input = true, .is_source = true, .no = 7 }),
+        input_llvm_ir       = @bitCast(Flags{ .is_input = true, .is_source = true, .no = 8 }),
+        input_llvm_bc       = @bitCast(Flags{ .is_input = true, .is_source = true, .no = 9 }),
+        _,
+        // zig fmt: on
+        pub fn toggle(tag: *Tag, flags: Flags) bool {
+            @setRuntimeSafety(builtin.is_safe);
+            const new_tag: File.Tag = @enumFromInt(@intFromEnum(tag.*) ^ @as(u8, @bitCast(flags)));
+            const ret: bool = @bitCast(@intFromBool(@popCount(@intFromEnum(new_tag)) ==
+                @popCount(@intFromEnum(tag.*))) & @intFromBool(new_tag != tag.*));
+            if (ret) tag.* = new_tag;
+            return ret;
+        }
+    };
+};
+pub const BinaryOutput = enum(u8) {
+    exe = @intFromEnum(File.Tag.output_exe),
+    lib = @intFromEnum(File.Tag.output_lib),
+    obj = @intFromEnum(File.Tag.output_obj),
+};
+pub const Lists = extern struct {
+    buf: [len]List,
+    const Key = extern union { tag: Tag, info: Info, id: u32 };
+    const Info = extern struct {
+        idx: u8,
+        size_of: u8,
+        align_of: u8,
+        init_len: u8,
+    };
+    pub const Tag = enum(u32) {
+        /// For groups, lists elements. For workers, lists dependencies.
+        /// The zeroth element of this list is always the node's parent node.
+        nodes = @bitCast(Info{ .idx = 0, .size_of = @sizeOf(usize), .init_len = 1, .align_of = @alignOf(usize) }),
+        depns = @bitCast(Info{ .idx = 1, .size_of = @sizeOf(usize), .init_len = 1, .align_of = @alignOf(usize) }),
+        confs = @bitCast(Info{ .idx = 2, .size_of = @sizeOf(usize), .init_len = 1, .align_of = @alignOf(usize) }),
+
+        /// Key:
+        /// build
+        ///     [0] <build_root> / <output_dir/(bin|lib)> / <(lib)long_name>
+        ///     [1] <build_root> / <path/to/source>
+        ///     [2] <config_root> / <long_name> (want_build_config=true)
+        ///     ...
+        /// archive
+        ///     [0] <build_root> / <output_dir/lib> / lib<long_name>
+        ///     ...
+        /// format
+        ///     [0] <build_root> / <path/to/target>
+        paths = @bitCast(Info{ .idx = 3, .size_of = @sizeOf(Path), .init_len = 1, .align_of = @alignOf(Path) }),
+        files = @bitCast(Info{ .idx = 4, .size_of = @sizeOf(File), .init_len = 1, .align_of = @alignOf(File) }),
+
+        /// Used by raw commands and groups to distribute command arguments.
+        cmd_args = @bitCast(Info{ .idx = 5, .size_of = @sizeOf([*:0]u8), .init_len = 4, .align_of = @alignOf([*:0]u8) }),
+        run_args = @bitCast(Info{ .idx = 6, .size_of = @sizeOf([*:0]u8), .init_len = 4, .align_of = @alignOf([*:0]u8) }),
+    };
+    pub const List = extern struct {
+        addr: usize,
+        len: usize,
+        max_len: usize,
+        pub fn add(res: *List, allocator: *Allocator, key: Key) usize {
+            defer res.len +%= 1;
+            return allocator.addGeneric(
+                key.info.size_of,
+                key.info.align_of,
+                key.info.init_len,
+                &res.addr,
+                &res.max_len,
+                res.len,
+            );
+        }
+    };
+    pub fn set(lists: *Lists, comptime T: type, tag: Tag, val: []const T) void {
+        @setRuntimeSafety(false);
+        lists.buf[@intFromEnum(tag) & 0xff] = .{
+            .addr = @intFromPtr(val.ptr),
+            .len = val.len,
+            .max_len = val.len,
+        };
+    }
+    pub fn list(lists: *Lists, tag: Tag) *List {
+        @setRuntimeSafety(false);
+        return &lists.buf[@intFromEnum(tag) & 0xf];
+    }
+    pub fn add(lists: *Lists, allocator: *Allocator, tag: Tag) usize {
+        @setRuntimeSafety(false);
+        return lists.buf[@intFromEnum(tag) & 0xf].add(allocator, @bitCast(@intFromEnum(tag)));
+    }
+    pub fn get(lists: *const Lists, tag: Tag) usize {
+        @setRuntimeSafety(false);
+        return @intFromPtr(&lists.buf[@intFromEnum(tag) & 0xf]);
+    }
+    const len: usize = @typeInfo(Tag).Enum.fields.len;
 };
 
-pub const BinaryOutput = enum(u8) {
-    exe = @intFromEnum(File.output_exe),
-    lib = @intFromEnum(File.output_lib),
-    obj = @intFromEnum(File.output_obj),
-};
 pub const AutoOnOff = enum {
     auto,
     off,
