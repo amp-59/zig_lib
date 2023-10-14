@@ -406,6 +406,12 @@ fn testGenericRangeFormat() !void {
     array.writeFormat(range_fmt);
     try testing.expectEqualString("7f{2..3}", array.readAll());
 }
+fn testIntToStringWithSeparators() !void {
+    var buf: [4096]u8 = undefined;
+    var len: usize = fmt.udh(10_000_000).formatWriteBuf(&buf);
+
+    try testing.expectEqualString("10,000,000", buf[0..len]);
+}
 fn testSystemFlagsFormatters() !void {
     var buf: [4096]u8 = undefined;
     var len: usize = 0;
