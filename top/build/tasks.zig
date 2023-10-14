@@ -832,7 +832,7 @@ pub const BuildCommand = struct {
             ptr += types.ModuleDependencies.formatWriteBuf(.{ .value = dependencies }, ptr);
         }
         if (cmd.cflags) |cflags| {
-            ptr += types.CFlags.formatWriteBuf(.{ .value = cflags }, ptr);
+            ptr += types.ExtraFlags.formatWriteBuf(.{ .value = cflags }, ptr);
         }
         if (cmd.link_libc) {
             ptr[0..4].* = "-lc\x00".*;
@@ -1398,7 +1398,7 @@ pub const BuildCommand = struct {
             len +%= types.ModuleDependencies.formatLength(.{ .value = dependencies });
         }
         if (cmd.cflags) |cflags| {
-            len +%= types.CFlags.formatLength(.{ .value = cflags });
+            len +%= types.ExtraFlags.formatLength(.{ .value = cflags });
         }
         if (cmd.link_libc) {
             len +%= 4;
@@ -1941,7 +1941,7 @@ pub const BuildCommand = struct {
             array.writeFormat(types.ModuleDependencies{ .value = dependencies });
         }
         if (cmd.cflags) |cflags| {
-            array.writeFormat(types.CFlags{ .value = cflags });
+            array.writeFormat(types.ExtraFlags{ .value = cflags });
         }
         if (cmd.link_libc) {
             array.writeMany("-lc\x00");
