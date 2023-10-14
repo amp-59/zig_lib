@@ -433,6 +433,7 @@ pub fn main() !void {
     try testGenericRangeFormat();
     try testRenderFunctions();
     try testSystemFlagsFormatters();
+    try testIntToStringWithSeparators();
     //try testEquivalentIntToStringFormat();
     try @import("./fmt/utf8.zig").testUtf8();
     try @import("./fmt/ascii.zig").testAscii();
