@@ -617,11 +617,11 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
             /// (Internal)
             flags: Flags,
             /// (Internal)
-            lists: Lists,
-            /// (Internal)
             extra: Extra,
             /// (Internal)
             lock: Lock,
+            /// (Internal)
+            lists: types.Lists,
             /// Pointer to the shared state. May consider storing allocators
             /// and address spaces here to make UX more convenient. It also
             /// saves a number of paramters in many functions.
@@ -688,6 +688,8 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 /// sources may be used to determine a cache hit. Useful for
                 /// generated files. This check is performed by the builder.
                 want_shallow_cache_check: bool = false,
+
+                // Padding
                 zb: u11 = 0,
             };
             const Tasks = struct {
@@ -697,7 +699,7 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 /// command struct.
                 cmd: tasks.Command,
             };
-            pub const Depn = struct {
+            pub const Depn = packed struct(usize) {
                 /// The node holding this dependency will block on this task ...
                 task: Task,
                 /// This task ...
@@ -705,80 +707,17 @@ pub fn GenericBuilder(comptime builder_spec: BuilderSpec) type {
                 /// In this state ...
                 on_state: State,
                 ///  For node given by this index.
-                node_idx: u16,
+                node_idx: u32,
+
+                // Padding
+                zb: u8 = 0,
             };
-            pub const Lists = extern struct {
-                buf: [len]List,
-                const Tag = enum(u16) {
-                    /// For groups, lists elements. For workers, lists dependencies.
-                    /// The zeroth element of this list is always the node's parent node.
-                    nodes = 0 | item(*Node, 1),
-                    depns = 4 | item(Depn, 1),
-                    cfgs = 5 | item(Config, 1),
-                    /// Key:
-                    /// build
-                    ///     [0] <build_root> / <output_dir/(bin|lib)> / <(lib)long_name>
-                    ///     [1] <build_root> / <path/to/source>
-                    ///     [2] <config_root> / <long_name> (want_build_config=true)
-                    ///     ...
-                    /// archive
-                    ///     [0] <build_root> / <output_dir/lib> / lib<long_name>
-                    ///     ...
-                    /// format
-                    ///     [0] <build_root> / <path/to/target>
-                    paths = 3 | item(file.CompoundPath, 2),
-                    files = 6 | item(File, 3),
-                    cmd_args = 1 | item([*:0]u8, 1),
-                    run_args = 2 | item([*:0]u8, 1),
-                    inline fn item(comptime T: type, comptime init_len: comptime_int) u16 {
-                        return @as(u16, @sizeOf(T) << 8) | init_len << 4;
-                    }
-                };
-                pub const List = extern struct {
-                    addr: usize,
-                    len: usize,
-                    max_len: usize,
-                    fn add(res: *List, allocator: *Allocator, tag: Tag) usize {
-                        defer res.len +%= 1;
-                        return allocator.addGeneric(
-                            (@intFromEnum(tag) >> 8),
-                            (@intFromEnum(tag) >> 4) & 0xf,
-                            &res.addr,
-                            &res.max_len,
-                            res.len,
-                        );
-                    }
-                };
-                pub fn set(lists: *Lists, comptime T: type, tag: Tag, val: []const T) void {
-                    @setRuntimeSafety(false);
-                    lists.buf[@intFromEnum(tag) & 0xf] = .{
-                        .addr = @intFromPtr(val.ptr),
-                        .len = val.len,
-                        .max_len = val.len,
-                    };
-                }
-                fn list(lists: *Lists, tag: Tag) *List {
-                    @setRuntimeSafety(false);
-                    return &lists.buf[@intFromEnum(tag) & 0xf];
-                }
-                fn add(lists: *Lists, allocator: *Allocator, tag: Tag) usize {
-                    @setRuntimeSafety(false);
-                    return lists.buf[@intFromEnum(tag) & 0xf].add(allocator, tag);
-                }
-                fn get(lists: *const Lists, tag: Tag) usize {
-                    @setRuntimeSafety(false);
-                    return @intFromPtr(&lists.buf[@intFromEnum(tag) & 0xf]);
-                }
-                const len: usize = @typeInfo(Tag).Enum.fields.len;
-            };
-            pub const Config = extern struct {
+            pub const Conf = extern struct {
                 data: u64,
-                const shift_amt: comptime_int = @bitSizeOf(usize) -% 8;
-                const ml_str_bit: comptime_int = 1 << (shift_amt +% 4);
-                pub fn formatWriteBuf(cfg: Config, buf: [*]u8) u64 {
+                pub fn formatWriteBuf(cfg: Conf, buf: [*]u8) u64 {
                     @setRuntimeSafety(builtin.is_safe);
-                    const addr: usize = cfg.data & ((1 << shift_amt) -% 1);
-                    const disp: usize = cfg.data >> shift_amt;
+                    const addr: usize = cfg.data & ((1 << (@bitSizeOf(usize) -% 8)) -% 1);
+                    const disp: usize = cfg.data >> (@bitSizeOf(usize) -% 8);
                     var str: [:0]const u8 = mem.terminate(@ptrFromInt(addr +% disp), 0);
                     buf[0..12].* = "pub const @\"".*;
                     var ptr: [*]u8 = fmt.strcpyEqu(buf + 12, str);
