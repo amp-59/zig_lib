@@ -78,7 +78,6 @@ fn testFindNameInPath(vars: [][*:0]u8) !void {
         .paths = proc.environmentValue(vars, "PATH").?,
     };
     const open_spec: file.OpenSpec = .{};
-
     while (itr.next()) |path| {
         const dir_fd: usize = file.path(.{}, .{ .directory = true, .path = true }, path) catch continue;
         defer file.close(.{ .errors = .{} }, dir_fd);
@@ -98,11 +97,19 @@ fn testFindNameInPath(vars: [][*:0]u8) !void {
         }
     }
 }
+pub fn testUpdateSignal() !void {
+    var new_action: proc.SignalAction = .{
+        .flags = .{},
+        .handler = .{ .set = .ignore },
+    };
+    try proc.updateSignalAction(.{}, .SEGV, new_action, null);
+}
 pub fn main(_: [][*:0]u8, vars: [][*:0]u8, aux: anytype) !void {
     _ = aux;
     if (builtin.strip_debug_info) {
         try testCloneAndFutex();
     }
+    try testUpdateSignal();
     try testFindNameInPath(vars);
     proc.about.sampleAllReports();
 }
