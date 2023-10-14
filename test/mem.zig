@@ -356,9 +356,11 @@ fn testUtilityTestFunctions() !void {
 }
 fn testLallocator() !void {
     testing.announce(@src());
-    const AllocatorL = struct {}.GenericLinkedAllocator(.{
+    const AllocatorL = mem.GenericLinkedAllocator(.{
         .AddressSpace = AddressSpace,
         .arena_index = 0,
+        .errors = mem.spec.allocator.errors.noexcept,
+        .logging = mem.spec.allocator.logging.silent,
     });
     var rng: file.DeviceRandomBytes(65536) = .{};
     var address_space: AddressSpace = .{};
@@ -366,16 +368,16 @@ fn testLallocator() !void {
     defer allocator.deinit(&address_space);
     var count: u64 = rng.readOne(u16);
     while (count != 1024) : (count = rng.readOne(u16)) {
-        const buf: []u8 = try allocator.allocate(u8, count);
+        const buf: []u8 = try meta.wrap(allocator.allocate(u8, count));
         AllocatorL.Graphics.graphPartitions(allocator);
         @memset(buf, 0);
         allocator.consolidate();
-        allocator.deallocate(buf);
+        allocator.deallocate(u8, buf);
     }
     allocator.deallocateAll();
     var allocations: [16]?[]u8 = .{null} ** 16;
     for (&allocations, 0..) |*buf, idx| {
-        buf.* = try allocator.allocate(u8, idx +% 1);
+        buf.* = try meta.wrap(allocator.allocate(u8, idx +% 1));
     }
     for (0..0x10000) |_| {
         for (&allocations) |*buf| {
@@ -383,15 +385,15 @@ fn testLallocator() !void {
                 const sz: u16 = rng.readOne(u8);
                 switch (rng.readOne(enum { Deallocate, Reallocate })) {
                     .Deallocate => {
-                        allocator.deallocate(allocation);
+                        allocator.deallocate(u8, allocation);
                         buf.* = null;
                     },
                     .Reallocate => {
                         if (sz > allocation.len) {
-                            if (allocator.reallocate(u8, allocation, sz)) |ret| {
+                            if (meta.wrap(allocator.reallocate(u8, allocation, sz))) |ret| {
                                 buf.* = ret;
                             } else |_| {
-                                allocator.deallocate(allocation);
+                                allocator.deallocate(u8, allocation);
                                 buf.* = null;
                                 buf.* = try allocator.allocate(u8, rng.readOne(u8));
                             }
@@ -400,7 +402,7 @@ fn testLallocator() !void {
                 }
             } else {
                 if (rng.readOne(u8) != 0) {
-                    buf.* = try allocator.allocate(u8, rng.readOne(u8));
+                    buf.* = try meta.wrap(allocator.allocate(u8, rng.readOne(u8)));
                 }
             }
         }
