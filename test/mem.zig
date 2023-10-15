@@ -429,6 +429,7 @@ fn testSequentialMatches() !void {
     ));
 }
 pub fn main() !void {
+    meta.refAllDecls(mem, &.{});
     try testLallocator();
     try meta.wrap(testRegularAddressSpace());
     try meta.wrap(testDiscreteAddressSpace(tab.trivial_list));
