@@ -3,18 +3,17 @@ const mem = zl.mem;
 const fmt = zl.fmt;
 const proc = zl.proc;
 const file = zl.file;
-const spec = zl.spec;
 const debug = zl.debug;
 const builtin = zl.builtin;
 
-pub const AddressSpace = spec.address_space.regular_128;
+pub const AddressSpace = mem.spec.address_space.regular_128;
 pub usingnamespace zl.start;
 
 const Allocator = mem.GenericArenaAllocator(.{
     .AddressSpace = AddressSpace,
     .arena_index = 0,
-    .logging = spec.allocator.logging.silent,
-    .errors = spec.allocator.errors.noexcept,
+    .logging = allocator.spec.logging.silent,
+    .errors = allocator.spec.errors.noexcept,
 });
 const Array = Allocator.StructuredHolder(u8);
 
@@ -25,7 +24,7 @@ pub fn main() !void {
     var array: Array = Array.init(&allocator);
     defer array.deinit(&allocator);
 
-    array.appendAny(spec.reinterpret.fmt, &allocator, .{
+    array.appendAny(mem.spec.reinterpret.fmt, &allocator, .{
         "example ",
         fmt.ud64(@intFromPtr(&allocator)),
         " using dynamic memory\n",
