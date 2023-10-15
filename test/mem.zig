@@ -47,7 +47,7 @@ fn testArenaIntersection() !void {
 fn testRegularAddressSpace() !void {
     const LAddressSpace = mem.GenericRegularAddressSpace(.{ .divisions = 8, .lb_offset = 0x40000000 });
     var address_space: LAddressSpace = .{};
-    const Allocator = mem.GenericRtArenaAllocator(.{ .AddressSpace = LAddressSpace });
+    const Allocator = mem.dynamic.GenericRtArenaAllocator(.{ .AddressSpace = LAddressSpace });
     var allocator: Allocator = try Allocator.init(&address_space, 0);
     defer allocator.deinit(&address_space, 0);
     var i: u8 = 1;
@@ -59,7 +59,7 @@ fn testRegularAddressSpace() !void {
 fn testDiscreteAddressSpace(comptime list: anytype) !void {
     const LAddressSpace = mem.GenericDiscreteAddressSpace(.{ .list = list });
     var address_space: LAddressSpace = .{};
-    const Allocator = mem.GenericArenaAllocator(.{ .arena_index = 0, .AddressSpace = LAddressSpace });
+    const Allocator = mem.dynamic.GenericArenaAllocator(.{ .arena_index = 0, .AddressSpace = LAddressSpace });
     var allocator: Allocator = try Allocator.init(&address_space);
     comptime var idx: u8 = 1;
     inline while (idx != LAddressSpace.specification.list.len) : (idx +%= 1) {
@@ -81,9 +81,9 @@ fn testDiscreteSubSpaceFromDiscrete(comptime sup_spec: mem.DiscreteAddressSpaceS
     };
     const SubLAddressSpace = LAddressSpace.SubSpace(0);
     var sub_space: SubLAddressSpace = .{};
-    const Allocator0 = mem.GenericArenaAllocator(.{ .arena_index = 0, .AddressSpace = SubLAddressSpace });
-    const Allocator1 = mem.GenericArenaAllocator(.{ .arena_index = 1, .AddressSpace = SubLAddressSpace });
-    const Allocator2 = mem.GenericArenaAllocator(.{ .arena_index = 2, .AddressSpace = SubLAddressSpace });
+    const Allocator0 = mem.dynamic.GenericArenaAllocator(.{ .arena_index = 0, .AddressSpace = SubLAddressSpace });
+    const Allocator1 = mem.dynamic.GenericArenaAllocator(.{ .arena_index = 1, .AddressSpace = SubLAddressSpace });
+    const Allocator2 = mem.dynamic.GenericArenaAllocator(.{ .arena_index = 2, .AddressSpace = SubLAddressSpace });
     var allocator_0: Allocator0 = try Allocator0.init(&sub_space);
     defer allocator_0.deinit(&sub_space);
     var allocator_1: Allocator1 = try Allocator1.init(&sub_space);
@@ -95,9 +95,9 @@ fn testRegularAddressSubSpaceFromDiscrete(comptime sup_spec: mem.DiscreteAddress
     const LAddressSpace = sup_spec.instantiate();
     const SubLAddressSpace = LAddressSpace.SubSpace(0);
     var sub_space: SubLAddressSpace = .{};
-    const Allocator0 = mem.GenericArenaAllocator(.{ .arena_index = 0, .AddressSpace = SubLAddressSpace });
-    const Allocator1 = mem.GenericArenaAllocator(.{ .arena_index = 1, .AddressSpace = SubLAddressSpace });
-    const Allocator2 = mem.GenericArenaAllocator(.{ .arena_index = 2, .AddressSpace = SubLAddressSpace });
+    const Allocator0 = mem.dynamic.GenericArenaAllocator(.{ .arena_index = 0, .AddressSpace = SubLAddressSpace });
+    const Allocator1 = mem.dynamic.GenericArenaAllocator(.{ .arena_index = 1, .AddressSpace = SubLAddressSpace });
+    const Allocator2 = mem.dynamic.GenericArenaAllocator(.{ .arena_index = 2, .AddressSpace = SubLAddressSpace });
     var allocator_0: Allocator0 = try Allocator0.init(&sub_space);
     defer allocator_0.deinit(&sub_space);
     var allocator_1: Allocator1 = try Allocator1.init(&sub_space);
@@ -186,9 +186,9 @@ fn testMapGenericOverhead() !void {
 fn testRtAllocatedImplementation() !void {
     testing.announce(@src());
     const repeats: u64 = 0x100;
-    const Allocator = mem.GenericRtArenaAllocator(.{
+    const Allocator = mem.dynamic.GenericRtArenaAllocator(.{
         .options = .{ .trace_state = false },
-        .logging = mem.spec.allocator.logging.silent,
+        .logging = mem.dynamic.spec.logging.silent,
         .AddressSpace = mem.spec.address_space.regular_128,
     });
     var address_space: Allocator.AddressSpace = .{};
@@ -238,14 +238,14 @@ fn testRtAllocatedImplementation() !void {
 fn testAllocatedImplementation() !void {
     testing.announce(@src());
     const repeats: u64 = 0x100;
-    const Allocator = mem.GenericArenaAllocator(.{
+    const Allocator = mem.dynamic.GenericArenaAllocator(.{
         // Allocations will begin offset 1GiB into the mem address space.
         // This would be 0B, but to avoid the program mapping. Obviously
         // unsound on systems where the program is mapped randomly in the
         // address space.
         .arena_index = 0,
         .options = .{ .trace_state = false },
-        .logging = mem.spec.allocator.logging.silent,
+        .logging = mem.dynamic.spec.logging.silent,
         .AddressSpace = AddressSpace,
     });
     var address_space: builtin.VirtualAddressSpace() = .{};
@@ -291,13 +291,13 @@ fn testAllocatedImplementation() !void {
 fn testAutomaticImplementation() !void {
     testing.announce(@src());
     {
-        const array = mem.view("Hello, World!12340x1fee1dead");
+        const array = mem.array.view("Hello, World!12340x1fee1dead");
         try testing.expectEqualMany(u8, array.readAll(), "Hello, World!12340x1fee1dead");
         try testing.expectEqualMany(u8, "World!", &array.readCountAt("World!".len, "Hello, ".len));
         try debug.expectEqual(u64, array.readAll().len, array.impl.allocated_byte_count());
     }
     {
-        const StaticString = mem.StructuredAutomaticStreamVector(u8, null, 256, 1, .{});
+        const StaticString = mem.array.StructuredAutomaticStreamVector(u8, null, 256, 1, .{});
         var array: StaticString = .{};
         array.writeMany("Hello, world!");
         array.writeCount(4, "1234".*);
@@ -309,7 +309,7 @@ fn testAutomaticImplementation() !void {
         try testing.expectEqualMany(u8, "Hello, ", array.readManyBehind("Hello, ".len));
     }
     {
-        const VectorBool = mem.StructuredAutomaticStreamVector(bool, null, 256, 1, .{});
+        const VectorBool = mem.array.StructuredAutomaticStreamVector(bool, null, 256, 1, .{});
         var bit_set: VectorBool = .{};
         bit_set.writeCount(4, .{ true, false, false, true });
         try testing.expectEqualMany(bool, bit_set.readAll(), &.{ true, false, false, true });
@@ -356,16 +356,15 @@ fn testUtilityTestFunctions() !void {
 }
 fn testLallocator() !void {
     testing.announce(@src());
-    const AllocatorL = mem.GenericLinkedAllocator(.{
+    const AllocatorL = mem.dynamic.GenericLinkedAllocator(.{
         .AddressSpace = AddressSpace,
-        .arena_index = 0,
-        .errors = mem.spec.allocator.errors.noexcept,
-        .logging = mem.spec.allocator.logging.silent,
+        .errors = mem.dynamic.spec.errors.noexcept,
+        .logging = mem.dynamic.spec.logging.silent,
     });
     var rng: file.DeviceRandomBytes(65536) = .{};
     var address_space: AddressSpace = .{};
-    var allocator: AllocatorL = try AllocatorL.init(&address_space);
-    defer allocator.deinit(&address_space);
+    var allocator: AllocatorL = try AllocatorL.init(&address_space, 0);
+    defer allocator.deinit(&address_space, 0);
     var count: u64 = rng.readOne(u16);
     while (count != 1024) : (count = rng.readOne(u16)) {
         const buf: []u8 = try meta.wrap(allocator.allocate(u8, count));
@@ -430,6 +429,7 @@ fn testSequentialMatches() !void {
     ));
 }
 pub fn main() !void {
+    try testLallocator();
     try meta.wrap(testRegularAddressSpace());
     try meta.wrap(testDiscreteAddressSpace(tab.trivial_list));
     testSimpleAllocator();
