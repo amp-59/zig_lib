@@ -93,6 +93,7 @@ fn testGlobalVariables() !void {
     try debug.expectEqualMemory([]const u8, "cwd", gv[1].name);
 }
 pub fn main(_: anytype, _: [][*:0]u8) !void {
+    zl.meta.refAllDecls(meta, &.{});
     try testBasicMetaFunctions();
     try testBitCastMetaFunctions();
     try testAlignmentMetaFunctions();

@@ -262,11 +262,16 @@ pub fn zigErrorThrow(comptime Value: type, comptime values: []const Value, ret: 
 /// program on success.
 pub fn zigErrorAbort(comptime Value: type, comptime values: []const Value, ret: isize) void {
     @setRuntimeSafety(false);
+    var name: []const u8 = undefined;
     inline for (values) |value| {
         if (ret == @intFromEnum(value)) {
-            debug.panic(value.errorName(), null, @returnAddress());
+            name = comptime value.errorName();
+            break;
         }
+    } else {
+        return;
     }
+    debug.panic(name, null, @returnAddress());
 }
 /// `S` must be a container type.
 pub inline fn setErrorPolicy(
@@ -317,23 +322,41 @@ pub fn ShiftValue(comptime A: type) type {
         .signedness = .unsigned,
     } });
 }
-pub fn ptrFromInt(comptime P: type, address: usize) P {
-    const alignment: usize = @typeInfo(P).Pointer.alignment;
-    if (address & (alignment -% 1) != 0) {
-        debug.incorrectAlignmentFault(P, address, alignment, @returnAddress());
+pub fn ptrFromInt(comptime Pointer: type, address: usize) Pointer {
+    @setRuntimeSafety(false);
+    const alignment: usize = @typeInfo(Pointer).Pointer.alignment;
+    if (address != bits.alignA(address, alignment)) {
+        debug.incorrectAlignmentFault(@typeName(@typeInfo(Pointer).Pointer.child), address, alignment, @returnAddress());
     }
     return @ptrFromInt(address);
 }
-pub fn intCast(comptime T: type, value: anytype) T {
+pub fn intCast(comptime Int: type, value: anytype) Int {
     @setRuntimeSafety(false);
-    const extrema: math.Extrema = math.extrema(T);
+    const extrema: math.Extrema = math.extrema(Int);
     if (value > extrema.max) {
-        return debug.intCastTruncatedBitsFault(T, @TypeOf(value), extrema.max, value, @returnAddress());
+        return debug.intCastTruncatedBitsFault(Int, @TypeOf(value), extrema.max, value, @returnAddress());
     }
     if (value < extrema.min) {
-        return debug.intCastTruncatedBitsFault(T, @TypeOf(value), extrema.min, value, @returnAddress());
+        return debug.intCastTruncatedBitsFault(Int, @TypeOf(value), extrema.min, value, @returnAddress());
     }
     return @intCast(value);
+}
+pub fn enumFromInt(comptime Enum: type, value: meta.BestInt(Enum)) Enum {
+    @setRuntimeSafety(false);
+    comptime var field_values: []const meta.BestInt(Enum) = &.{};
+    comptime {
+        inline for (@typeInfo(Enum).Enum.fields) |field| {
+            field_values = field_values ++ .{field.value};
+        }
+    }
+    for (field_values) |field_value| {
+        if (value == field_value) {
+            break;
+        }
+    } else {
+        return debug.invalidEnumValueFault(meta.BestInt(Enum), @typeName(Enum), field_values, value, @returnAddress());
+    }
+    return @enumFromInt(value);
 }
 pub const parse = struct {
     const KV = struct { []const u8, Token.Tag };
@@ -1587,7 +1610,7 @@ pub const parse = struct {
             .doc_comment,
             .container_doc_comment,
             => return "a document comment",
-            else => return tag.lexeme(),
+            else => return lexeme(tag).?,
         }
     }
     pub fn keyword(str: []const u8) ?Token.Tag {
@@ -1810,7 +1833,7 @@ const zig_lib = struct {
         line: u32,
         column: u32,
     };
-    pub const TypeId = enum(u5) {
+    pub const TypeId = enum(comptime_int) {
         Type = 0,
         Void = 1,
         Bool = 2,
