@@ -15,14 +15,14 @@ pub const runtime_assertions: bool = true;
 const Random = file.DeviceRandomBytes(4096);
 const String = Allocator0.StructuredVector(u8);
 
-const ptr_wr_spec: mem.ReinterpretSpec = .{
+const ptr_wr_spec: mem.array.ReinterpretSpec = .{
     .reference = .{ .dereference = &.{} },
 };
 const T = struct {
     i: u64,
     j: u64 = 0xdeadbeef,
 };
-const Allocator0 = mem.GenericArenaAllocator(.{
+const Allocator0 = mem.dynamic.GenericArenaAllocator(.{
     .arena_index = 0,
     .AddressSpace = AddressSpace,
     .options = .{
@@ -35,9 +35,9 @@ const Allocator0 = mem.GenericArenaAllocator(.{
         .require_all_free_deinit = true,
         .trace_state = false,
     },
-    .logging = mem.spec.allocator.logging.silent,
+    .logging = mem.dynamic.spec.logging.silent,
 });
-const Allocator1 = mem.GenericArenaAllocator(.{
+const Allocator1 = mem.dynamic.GenericArenaAllocator(.{
     .arena_index = 4,
     .AddressSpace = AddressSpace,
     .options = .{
@@ -50,10 +50,10 @@ const Allocator1 = mem.GenericArenaAllocator(.{
         .require_all_free_deinit = true,
         .trace_state = false,
     },
-    .logging = mem.spec.allocator.logging.silent,
+    .logging = mem.dynamic.spec.logging.silent,
 });
 const Allocator = Allocator0;
-const LinkedList = mem.GenericLinkedList(.{
+const LinkedList = mem.list.GenericLinkedList(.{
     .child = T,
     .low_alignment = 8,
     .Allocator = Allocator0,
