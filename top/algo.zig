@@ -198,8 +198,8 @@ pub fn insertionSort(comptime T: type, comptime comparison: anytype, values: []T
 /// shell: [524288]u64 = top.time.TimeSpec{ .nsec = 568540594, }
 pub fn shellSort(comptime T: type, comptime comparison: anytype, values: []T) void {
     @setRuntimeSafety(false);
-    var gap: usize = values.len / 2;
-    while (gap != 0) : (gap /= 2) {
+    var gap: usize = values.len >> 1;
+    while (gap != 0) : (gap >>= 1) {
         var idx: usize = gap;
         while (idx != values.len) : (idx +%= 1) {
             var end: usize = idx -% gap;
