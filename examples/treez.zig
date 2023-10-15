@@ -23,7 +23,7 @@ pub const AddressSpace = mem.GenericRegularAddressSpace(.{
     .divisions = 32,
     .errors = .{ .acquire = .ignore, .release = .ignore },
 });
-const Allocator0 = mem.GenericArenaAllocator(.{
+const Allocator0 = mem.dynamic.GenericArenaAllocator(.{
     .AddressSpace = AddressSpace,
     .arena_index = 0,
     .options = .{
@@ -48,10 +48,10 @@ const Allocator0 = mem.GenericArenaAllocator(.{
         .trace_clients = false,
         .trace_state = false,
     },
-    .logging = mem.spec.allocator.logging.silent,
-    .errors = mem.spec.allocator.errors.noexcept,
+    .logging = mem.dynamic.spec.logging.silent,
+    .errors = mem.dynamic.spec.errors.noexcept,
 });
-const Allocator1 = mem.GenericArenaAllocator(.{
+const Allocator1 = mem.dynamic.GenericArenaAllocator(.{
     .AddressSpace = AddressSpace,
     .arena_index = 1,
     .options = .{
@@ -76,10 +76,10 @@ const Allocator1 = mem.GenericArenaAllocator(.{
         .trace_clients = false,
         .trace_state = false,
     },
-    .logging = mem.spec.allocator.logging.silent,
-    .errors = mem.spec.allocator.errors.noexcept,
+    .logging = mem.dynamic.spec.logging.silent,
+    .errors = mem.dynamic.spec.errors.noexcept,
 });
-const PrintArray = mem.StaticString(4096);
+const PrintArray = mem.array.StaticString(4096);
 const Array = Allocator1.StructuredStreamHolder(u8);
 const String0 = Allocator0.StructuredHolder(u8);
 const DirStream = file.GenericDirStream(.{
@@ -88,7 +88,7 @@ const DirStream = file.GenericDirStream(.{
     .logging = file.spec.dir.logging.silent,
 });
 const Filter = meta.EnumBitField(file.Kind);
-const Names = mem.StaticArray([:0]const u8, max_pathname_args);
+const Names = mem.array.StaticArray([:0]const u8, max_pathname_args);
 const Status = packed struct {
     flag: meta.maybe(print_in_second_thread, u32) = 0,
     file_count: meta.maybe(count_files, u64) = 0,
@@ -215,9 +215,9 @@ fn writeReadLink(
     const buf: []u8 = link_buf.referManyUndefined(4096);
     if (read_link) {
         if (file.readLinkAt(.{}, dir_fd, base_name, buf)) |link_pathname| {
-            array.appendAny(mem.spec.reinterpret.ptr, allocator_1, .{ link_pathname, endl_s });
+            array.appendAny(mem.array.spec.reinterpret.ptr, allocator_1, .{ link_pathname, endl_s });
         } else |readlink_err| {
-            array.appendAny(mem.spec.reinterpret.ptr, allocator_1, .{ what_s, endl_s });
+            array.appendAny(mem.array.spec.reinterpret.ptr, allocator_1, .{ what_s, endl_s });
             if (quit_on_error) {
                 return readlink_err;
             }
@@ -226,7 +226,7 @@ fn writeReadLink(
             }
         }
     } else {
-        array.appendAny(mem.spec.reinterpret.ptr, allocator_1, .{ what_s, endl_s });
+        array.appendAny(mem.array.spec.reinterpret.ptr, allocator_1, .{ what_s, endl_s });
     }
 }
 fn getSymbol(kind: file.Kind) [:0]const u8 {
@@ -271,7 +271,7 @@ fn writeAndWalk(
                 }
                 const arrow_s: [:0]const u8 = if (last) last_link_arrow_s else link_arrow_s;
                 const kind_s: [:0]const u8 = getSymbol(.symbolic_link);
-                array.appendAny(mem.spec.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), arrow_s, kind_s, basename, links_to_s });
+                array.appendAny(mem.array.spec.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), arrow_s, kind_s, basename, links_to_s });
                 try writeReadLink(allocator_1, array, link_buf, status, dir.fd, basename);
             },
             .regular, .character_special, .block_special, .named_pipe, .socket => |kind| {
@@ -280,7 +280,7 @@ fn writeAndWalk(
                 }
                 const arrow_s: [:0]const u8 = if (last) last_file_arrow_s else file_arrow_s;
                 const kind_s: [:0]const u8 = getSymbol(kind);
-                array.appendAny(mem.spec.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), arrow_s, kind_s, basename, endl_s });
+                array.appendAny(mem.array.spec.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), arrow_s, kind_s, basename, endl_s });
             },
             .directory => {
                 if (count_dirs) {
@@ -288,7 +288,7 @@ fn writeAndWalk(
                 }
                 const arrow_s: [:0]const u8 = if (last) last_dir_arrow_s else dir_arrow_s;
                 const kind_s: [:0]const u8 = getSymbol(.directory);
-                try meta.wrap(array.appendAny(mem.spec.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), arrow_s, kind_s, basename, endl_s }));
+                try meta.wrap(array.appendAny(mem.array.spec.reinterpret.ptr, allocator_1, .{ alts_buf.readAll(), arrow_s, kind_s, basename, endl_s }));
                 if (track_max_depth) {
                     status.max_depth = builtin.max(u64, status.max_depth, depth +% 1);
                 }
