@@ -31,8 +31,8 @@ pub fn print(buf: []u8, off: u64, ss: []const []const u8) void {
 pub const Allocator = mem.GenericArenaAllocator(.{
     .AddressSpace = mem.spec.address_space.regular_128,
     .arena_index = 1,
-    .logging = mem.spec.allocator.logging.silent,
-    .errors = mem.spec.allocator.errors.noexcept,
+    .logging = mem.dynamic.spec.logging.silent,
+    .errors = mem.dynamic.spec.errors.noexcept,
 });
 pub const S = struct {
     fn asc(x: anytype, y: anytype) bool {
