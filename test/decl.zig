@@ -2,21 +2,21 @@ const zl = @import("../zig_lib.zig");
 pub usingnamespace zl.start;
 pub const logging_override: zl.debug.Logging.Override = zl.debug.spec.logging.override.verbose;
 pub const AddressSpace = zl.mem.spec.address_space.exact_8;
-const Allocator0 = zl.mem.GenericArenaAllocator(.{
+const Allocator0 = zl.mem.dynamic.GenericArenaAllocator(.{
     .arena_index = 0,
     .AddressSpace = zl.mem.spec.address_space.regular_128,
 });
-const Allocator1 = zl.mem.GenericArenaAllocator(.{
+const Allocator1 = zl.mem.dynamic.GenericArenaAllocator(.{
     .arena_index = 1,
     .AddressSpace = zl.mem.spec.address_space.exact_8,
 });
 pub const Builder = zl.build.GenericBuilder(.{});
-const List = zl.mem.GenericLinkedList(.{
+const List = zl.mem.list.GenericLinkedList(.{
     .child = u8,
     .low_alignment = 1,
     .Allocator = Allocator0,
 });
-const ListView = zl.mem.GenericLinkedListView(.{
+const ListView = zl.mem.list.GenericLinkedListView(.{
     .child = u8,
     .low_alignment = 1,
 });
