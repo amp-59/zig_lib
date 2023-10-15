@@ -10,7 +10,11 @@ const testing = zl.testing;
 pub usingnamespace zl.start;
 pub const runtime_assertions = false;
 pub const discard_errors: bool = true;
-pub fn main() !void {}
+
+pub fn main() !void {
+    var buf: [65536]u8 = undefined;
+    try crypto.tls.init("hostname", &buf);
+}
 // With host.len == 10
 pub const blank_header: [1477]u8 = .{
     22,  3,   1,   5,   202, 1,   0,   5,
