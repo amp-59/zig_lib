@@ -16,6 +16,8 @@ pub fn GenericHmac(comptime Hash: type) type {
         o_key_pad: [Hash.blk_len]u8,
         hash: Hash,
         const Hmac = @This();
+        const init_hash: comptime_int = @intFromBool(@hasDecl(Hash, "init"));
+
         pub const mac_len: usize = Hash.len;
         pub fn create(out: *[Hash.len]u8, msg: []const u8, key: []const u8) void {
             var ctx: Hmac = Hmac.init(key);
@@ -39,7 +41,7 @@ pub fn GenericHmac(comptime Hash: type) type {
                 b.* = scratch[i] ^ 0x5c;
                 c.* = scratch[i] ^ 0x36;
             }
-            ctx.hash = Hash.init();
+            ctx.hash = if (init_hash == 1) Hash.init() else .{};
             ctx.hash.update(&i_key_pad);
             return ctx;
         }
@@ -49,7 +51,7 @@ pub fn GenericHmac(comptime Hash: type) type {
         pub fn final(ctx: *Hmac, out: *[Hash.len]u8) void {
             var scratch: [Hash.len]u8 = .{0} ** Hash.len;
             ctx.hash.final(&scratch);
-            var ohash: Hash = Hash.init();
+            var ohash: Hash = if (init_hash == 1) Hash.init() else .{};
             ohash.update(&ctx.o_key_pad);
             ohash.update(&scratch);
             ohash.final(out);

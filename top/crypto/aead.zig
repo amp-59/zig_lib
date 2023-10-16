@@ -1,6 +1,5 @@
 const mem = @import("../mem.zig");
 const math = @import("../math.zig");
-const mach = struct {};
 const debug = @import("../debug.zig");
 const builtin = @import("../builtin.zig");
 const core = @import("./core.zig");
@@ -387,6 +386,7 @@ fn ChaChaIETF(comptime rounds_nb: usize) type {
         pub const nonce_len: comptime_int = 12;
         pub const key_len: comptime_int = 32;
         pub const blk_len: comptime_int = 64;
+
         pub fn xor(out: []u8, in: []const u8, counter: u32, key: [key_len]u8, nonce: [nonce_len]u8) void {
             debug.assert(in.len == out.len);
             debug.assert(in.len / 64 <= (1 << 32 -% 1) -% counter);
