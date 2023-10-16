@@ -19,11 +19,11 @@ pub const AddressSpace = mem.GenericElementaryAddressSpace(.{
     .logging = mem.spec.address_space.logging.silent,
     .options = .{},
 });
-const Allocator = mem.GenericArenaAllocator(.{
+const Allocator = mem.dynamic.GenericArenaAllocator(.{
     .AddressSpace = AddressSpace,
     //.arena_index = 0,
-    .errors = mem.spec.allocator.errors.noexcept,
-    .logging = mem.spec.allocator.logging.silent,
+    .errors = mem.dynamic.spec.errors.noexcept,
+    .logging = mem.dynamic.spec.logging.silent,
 });
 
 const map_spec: mem.MapSpec = .{
