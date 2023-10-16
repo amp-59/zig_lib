@@ -3,7 +3,6 @@ const mem = zl.mem;
 const file = zl.file;
 const meta = zl.meta;
 const proc = zl.proc;
-const spec = zl.spec;
 const debug = zl.debug;
 const builtin = zl.builtin;
 const testing = zl.testing;
@@ -12,7 +11,7 @@ const Allocator = mem.GenericArenaAllocator(.{
     .AddressSpace = AddressSpace,
 });
 pub usingnamespace zl.start;
-pub const AddressSpace = spec.address_space.regular_128;
+pub const AddressSpace = mem.spec.address_space.regular_128;
 pub fn testAutomaticAppend(comptime reinterpret_spec: mem.ReinterpretSpec, comptime dst_type: type, expected: []const dst_type, any: anytype) void {
     const Array = mem.StaticArray(dst_type, 4096);
     var array: Array = .{};
