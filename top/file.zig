@@ -521,7 +521,7 @@ pub const AccessSpec = struct {
 pub const OpenSpec = struct {
     return_type: type = usize,
     errors: sys.ErrorPolicy = .{ .throw = spec.open.errors.all },
-    logging: debug.Logging.AcquireError = .{},
+    logging: debug.Logging.AttemptAcquireError = .{},
 };
 pub const ReadSpec = struct {
     child: type = u8,
@@ -707,7 +707,7 @@ pub const ChangeWorkingirectorySpec = struct {
 };
 pub const ReadLinkSpec = struct {
     errors: sys.ErrorPolicy = .{ .throw = spec.readlink.errors.all },
-    return_type: type = u64,
+    return_type: type = [:0]const u8,
     logging: debug.Logging.SuccessError = .{},
 };
 pub const CopySpec = struct {
@@ -914,7 +914,10 @@ pub fn open(comptime open_spec: OpenSpec, flags: sys.flags.Open, pathname: [:0]c
 ) {
     @setRuntimeSafety(builtin.is_safe);
     const pathname_buf_addr: u64 = @intFromPtr(pathname.ptr);
-    const logging: debug.Logging.AcquireError = comptime open_spec.logging.override();
+    const logging: debug.Logging.AttemptAcquireError = comptime open_spec.logging.override();
+    if (logging.Attempt) {
+        about.aboutPathnameNotice(about.open_s, pathname);
+    }
     if (meta.wrap(sys.call(.open, open_spec.errors, open_spec.return_type, .{ pathname_buf_addr, @bitCast(flags), 0 }))) |fd| {
         if (logging.Acquire) {
             about.aboutPathnameFdNotice(about.open_s, pathname, fd);
@@ -932,7 +935,7 @@ pub fn openAt(comptime open_spec: OpenSpec, flags: Flags.Open, dir_fd: usize, na
     open_spec.return_type,
 ) {
     const name_buf_addr: u64 = @intFromPtr(name.ptr);
-    const logging: debug.Logging.AcquireError = comptime open_spec.logging.override();
+    const logging: debug.Logging.AttemptAcquireError = comptime open_spec.logging.override();
     if (meta.wrap(sys.call(.openat, open_spec.errors, open_spec.return_type, .{ dir_fd, name_buf_addr, @bitCast(flags), 0 }))) |fd| {
         if (logging.Acquire) {
             about.aboutDirFdNameFdNotice(about.open_s, dir_fd, name, fd);
@@ -1350,7 +1353,9 @@ pub fn makeNode(comptime mknod_spec: MakeNodeSpec, pathname: [:0]const u8, file_
 ) {
     const pathname_buf_addr: u64 = @intFromPtr(pathname.ptr);
     const logging: debug.Logging.SuccessError = comptime mknod_spec.logging.override();
-    if (meta.wrap(sys.call(.mknod, mknod_spec.errors, mknod_spec.return_type, .{ pathname_buf_addr, @as(u16, @bitCast(file_mode)), @as(u64, @bitCast(dev)) }))) {
+    if (meta.wrap(sys.call(.mknod, mknod_spec.errors, mknod_spec.return_type, .{
+        pathname_buf_addr, @as(u16, @bitCast(file_mode)), @bitCast(dev),
+    }))) {
         if (logging.Success) {
             about.aboutPathnameModeDeviceNotice(about.mknod_s, pathname, file_mode, dev);
         }
@@ -1367,7 +1372,9 @@ pub fn makeNodeAt(comptime mknod_spec: MakeNodeSpec, dir_fd: usize, name: [:0]co
 ) {
     const name_buf_addr: u64 = @intFromPtr(name.ptr);
     const logging: debug.Logging.SuccessError = comptime mknod_spec.logging.override();
-    if (meta.wrap(sys.call(.mknodat, mknod_spec.errors, mknod_spec.return_type, .{ dir_fd, name_buf_addr, @as(u16, @bitCast(file_mode)), @as(u64, @bitCast(dev)) }))) {
+    if (meta.wrap(sys.call(.mknodat, mknod_spec.errors, mknod_spec.return_type, .{
+        dir_fd, name_buf_addr, @as(u16, @bitCast(file_mode)), @bitCast(dev),
+    }))) {
         if (logging.Success) {
             about.aboutDirFdNameModeDeviceNotice(about.mknod_s, dir_fd, name, file_mode, dev);
         }
@@ -1408,12 +1415,20 @@ pub fn getCwd(comptime getcwd_spec: GetWorkingDirectorySpec, buf: []u8) sys.Erro
         return getcwd_error;
     }
 }
-pub fn readLink(comptime readlink_spec: ReadLinkSpec, pathname: [:0]const u8, buf: []u8) sys.ErrorUnion(readlink_spec.errors, [:0]const u8) {
+pub fn readLink(comptime readlink_spec: ReadLinkSpec, pathname: [:0]const u8, buf: []u8) sys.ErrorUnion(
+    readlink_spec.errors,
+    readlink_spec.return_type,
+) {
     const pathname_buf_addr: u64 = @intFromPtr(pathname.ptr);
     const buf_addr: u64 = @intFromPtr(buf.ptr);
     const logging: debug.Logging.SuccessError = comptime readlink_spec.logging.override();
-    if (meta.wrap(sys.call(.readlink, readlink_spec.errors, readlink_spec.return_type, .{ pathname_buf_addr, buf_addr, buf.len }))) |len| {
-        return buf[0..len :0];
+    if (meta.wrap(sys.call(.readlink, readlink_spec.errors, usize, .{ pathname_buf_addr, buf_addr, buf.len }))) |len| {
+        buf[len] = 0;
+        const ret: [:0]u8 = buf[0..len :0];
+        if (logging.Success) {
+            about.aboutPathnameNotice(about.readlink_s, ret);
+        }
+        return ret;
     } else |readlink_error| {
         if (logging.Error) {
             about.aboutPathnameError(about.readlink_s, @errorName(readlink_error), pathname);
@@ -1421,11 +1436,14 @@ pub fn readLink(comptime readlink_spec: ReadLinkSpec, pathname: [:0]const u8, bu
         return readlink_error;
     }
 }
-pub fn readLinkAt(comptime readlink_spec: ReadLinkSpec, dir_fd: usize, name: [:0]const u8, buf: []u8) sys.ErrorUnion(readlink_spec.errors, [:0]const u8) {
+pub fn readLinkAt(comptime readlink_spec: ReadLinkSpec, dir_fd: usize, name: [:0]const u8, buf: []u8) sys.ErrorUnion(
+    readlink_spec.errors,
+    readlink_spec.return_type,
+) {
     const name_buf_addr: u64 = @intFromPtr(name.ptr);
     const buf_addr: u64 = @intFromPtr(buf.ptr);
     const logging: debug.Logging.SuccessError = comptime readlink_spec.logging.override();
-    if (meta.wrap(sys.call(.readlinkat, readlink_spec.errors, readlink_spec.return_type, .{ dir_fd, name_buf_addr, buf_addr, buf.len }))) |len| {
+    if (meta.wrap(sys.call(.readlinkat, readlink_spec.errors, usize, .{ dir_fd, name_buf_addr, buf_addr, buf.len }))) |len| {
         buf[len] = 0;
         return buf[0..len :0];
     } else |readlink_error| {
@@ -2095,8 +2113,8 @@ pub const DirStreamSpec = struct {
         close: sys.ErrorPolicy = .{ .abort = spec.close.errors.all },
         getdents: sys.ErrorPolicy = .{ .throw = spec.getdents.errors.all },
     };
-    pub const Logging = struct {
-        open: debug.Logging.AcquireError = .{},
+    pub const Logging = packed struct {
+        open: debug.Logging.AttemptAcquireError = .{},
         close: debug.Logging.ReleaseError = .{},
         getdents: debug.Logging.SuccessError = .{},
     };
@@ -2105,7 +2123,7 @@ pub const SimplePath = struct {
     name: [:0]const u8,
 };
 pub const CompoundPath = extern struct {
-    names: [*][:0]const u8 = @ptrFromInt(8),
+    names: [*][:0]u8 = @ptrFromInt(8),
     names_len: usize = 0,
     names_max_len: usize = 0,
     pub fn addName(cp: *CompoundPath, allocator: anytype) *[:0]const u8 {
@@ -2113,7 +2131,7 @@ pub const CompoundPath = extern struct {
         const size_of: comptime_int = @sizeOf([:0]const u8);
         const addr_buf: *u64 = @ptrCast(&cp.names);
         const ret: *[:0]const u8 = @ptrFromInt(allocator.addGeneric(size_of, //
-            2, addr_buf, &cp.names_max_len, cp.names_len));
+            2, 8, addr_buf, &cp.names_max_len, cp.names_len));
         cp.names_len +%= 1;
         return ret;
     }
@@ -2143,12 +2161,12 @@ pub fn GenericDirStream(comptime dirs_spec: DirStreamSpec) type {
         blk: Block,
         count: u64,
         const DirStream = @This();
-        const Block = mem.ReadWriteResizeUnstructuredDisjunctAlignment(.{
+        const Block = mem.pointer.ReadWriteResizeUnstructuredDisjunctAlignment(.{
             .low_alignment = 8,
             .high_alignment = 8,
         });
         pub const Allocator = dirs_spec.Allocator;
-        pub const ListView = mem.GenericLinkedListView(.{ .child = Entry, .low_alignment = 8 });
+        pub const ListView = mem.list.GenericLinkedListView(.{ .child = Entry, .low_alignment = 8 });
         pub const Entry = opaque {
             pub fn possess(dirent: *const Entry, dir: *DirStream) void {
                 @setRuntimeSafety(false);
@@ -2364,7 +2382,7 @@ const List = opaque {
 };
 pub fn DeviceRandomBytes(comptime bytes: u64) type {
     return struct {
-        data: mem.StaticString(bytes) = .{},
+        data: mem.array.StaticString(bytes) = .{},
         const Random = @This();
         const dev: u64 = if (builtin.is_fast)
             sys.GRND.INSECURE
@@ -2538,25 +2556,9 @@ pub const about = struct {
         ptr += 3;
         var ud64: fmt.Type.Ud64 = .{ .value = fd };
         ptr += ud64.formatWriteBuf(ptr);
-        ptr[0..8].* = ", inode=".*;
-        ptr += 8;
-        ud64.value = st.ino;
-        ptr += ud64.formatWriteBuf(ptr);
-        ptr[0..6].* = ", dev=".*;
-        ptr += 6;
-        ud64.value = st.dev >> 8;
-        ptr += ud64.formatWriteBuf(ptr);
-        ptr[0] = ':';
-        ptr += 1;
-        ud64.value = st.dev & 0xff;
-        ptr += ud64.formatWriteBuf(ptr);
-        ptr[0..7].* = ", mode=".*;
-        ptr += 7;
-        ptr[0..10].* = describeMode(st.mode);
-        ptr += 10;
-        ptr[0..7].* = ", size=".*;
-        ptr += 7;
-        ptr += fmt.bytes(st.size).formatWriteBuf(ptr);
+        ptr[0..2].* = ", ".*;
+        ptr += 2;
+        ptr = writeStatus(ptr, st);
         ptr[0] = '\n';
         debug.write(buf[0..(@intFromPtr(ptr + 1) -% @intFromPtr(&buf))]);
     }
@@ -2708,29 +2710,13 @@ pub const about = struct {
             ptr += 2;
         }
         ptr = CompoundPath.writeDisplayPath(ptr, name);
-        ptr[0..8].* = ", inode=".*;
-        ptr += 8;
-        var ud64: fmt.Type.Ud64 = .{ .value = st.ino };
-        ptr += ud64.formatWriteBuf(ptr);
-        ptr[0..6].* = ", dev=".*;
-        ptr += 6;
-        ud64.value = st.dev >> 8;
-        ptr += ud64.formatWriteBuf(ptr);
-        ptr[0] = ':';
-        ptr += 1;
-        ud64.value = st.dev & 0xff;
-        ptr += ud64.formatWriteBuf(ptr);
-        ptr[0..7].* = ", mode=".*;
-        ptr += 7;
-        ptr[0..10].* = describeMode(st.mode);
-        ptr += 10;
-        ptr[0..7].* = ", size=".*;
-        ptr += 7;
-        ptr += fmt.bytes(st.size).formatWriteBuf(ptr);
+        ptr[0..2].* = ", ".*;
+        ptr += 2;
+        ptr = writeStatus(ptr, st);
         ptr[0] = '\n';
         debug.write(buf[0 .. @intFromPtr(ptr + 1) -% @intFromPtr(&buf)]);
     }
-    fn writeDirFd(buf: [*]u8, dir_fd_s: []const u8, dir_fd: usize) [*]u8 {
+    pub fn writeDirFd(buf: [*]u8, dir_fd_s: []const u8, dir_fd: usize) [*]u8 {
         @setRuntimeSafety(false);
         var ptr: [*]u8 = fmt.strcpyEqu(buf, dir_fd_s);
         var ud64: fmt.Type.Ud64 = .{ .value = dir_fd };
@@ -2986,11 +2972,11 @@ pub const about = struct {
         ptr += 7;
         ud64.value = src_fd;
         if (src_offset) |off| {
-            ptr += writeUpdateOffset(ptr, ud64, .{ .value = off.* });
+            ptr = writeUpdateOffset(ptr, ud64, .{ .value = off.* });
         }
         ud64.value = dest_fd;
         if (dest_offset) |off| {
-            ptr += writeUpdateOffset(ptr, ud64, .{ .value = off.* });
+            ptr = writeUpdateOffset(ptr, ud64, .{ .value = off.* });
         }
         debug.write(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)]);
     }
@@ -3058,7 +3044,7 @@ pub const about = struct {
         ptr += fmt.ud64(timeout).formatWriteBuf(ptr);
         ptr[0..3].* = "ms\n".*;
         ptr += 3;
-        ptr += writePollFds(ptr, pollfds);
+        ptr = writePollFds(ptr, pollfds);
         debug.write(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)]);
     }
     fn listenNotice(sock_fd: usize, backlog: u64) void {
@@ -3317,7 +3303,7 @@ pub const about = struct {
         ptr[0..7].* = " bytes\n".*;
         ptr += 7;
         if (offset) |off| {
-            ptr += writeUpdateOffset(ptr, .{ .value = src_fd }, .{ .value = off.* });
+            ptr = writeUpdateOffset(ptr, .{ .value = src_fd }, .{ .value = off.* });
         }
         debug.write(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)]);
     }
@@ -3345,10 +3331,10 @@ pub const about = struct {
         ptr[0..7].* = " bytes\n".*;
         ptr += 7;
         if (src_offset) |off| {
-            ptr += writeUpdateOffset(ptr, .{ .value = src_fd }, .{ .value = off.* });
+            ptr = writeUpdateOffset(ptr, .{ .value = src_fd }, .{ .value = off.* });
         }
         if (dest_offset) |off| {
-            ptr += writeUpdateOffset(ptr, .{ .value = dest_fd }, .{ .value = off.* });
+            ptr = writeUpdateOffset(ptr, .{ .value = dest_fd }, .{ .value = off.* });
         }
         debug.write(buf[0 .. @intFromPtr(ptr) -% @intFromPtr(&buf)]);
     }
@@ -3635,7 +3621,29 @@ pub const about = struct {
             .symbolic_link => return symbolic_link_file_s,
         }
     }
-    fn writeUpdateOffset(buf: [*]u8, fd: fmt.Type.Udsize, off: fmt.Type.Udsize) usize {
+    pub fn writeStatus(buf: [*]u8, st: *const Status) [*]u8 {
+        buf[0..6].* = "inode=".*;
+        var ptr: [*]u8 = buf + 6;
+        var ud64: fmt.Type.Ud64 = .{ .value = st.ino };
+        ptr += ud64.formatWriteBuf(ptr);
+        ptr[0..6].* = ", dev=".*;
+        ptr += 6;
+        ud64.value = st.dev >> 8;
+        ptr += ud64.formatWriteBuf(ptr);
+        ptr[0] = ':';
+        ptr += 1;
+        ud64.value = st.dev & 0xff;
+        ptr += ud64.formatWriteBuf(ptr);
+        ptr[0..7].* = ", mode=".*;
+        ptr += 7;
+        ptr[0..10].* = describeMode(st.mode);
+        ptr += 10;
+        ptr[0..7].* = ", size=".*;
+        ptr += 7;
+        ptr += fmt.bytes(st.size).formatWriteBuf(ptr);
+        return ptr;
+    }
+    fn writeUpdateOffset(buf: [*]u8, fd: fmt.Type.Udsize, off: fmt.Type.Udsize) [*]u8 {
         @setRuntimeSafety(false);
         var ptr: [*]u8 = buf;
         var len: u64 = 4 -% fd.formatLength();
@@ -3651,9 +3659,9 @@ pub const about = struct {
         ptr += 7;
         ptr += off.formatWriteBuf(ptr);
         ptr[0] = '\n';
-        return (@intFromPtr(ptr) -% @intFromPtr(buf)) +% 1;
+        return ptr;
     }
-    fn writePollFds(buf: [*]u8, pollfds: []PollFd) usize {
+    fn writePollFds(buf: [*]u8, pollfds: []PollFd) [*]u8 {
         @setRuntimeSafety(false);
         var ptr: [*]u8 = buf;
         var tmp: [24]u8 = undefined;
@@ -3673,7 +3681,7 @@ pub const about = struct {
             ptr[0] = '\n';
             ptr += 1;
         }
-        return @intFromPtr(ptr) -% @intFromPtr(buf);
+        return ptr;
     }
     fn writeEvents(buf: [*]u8, pollfd: *PollFd, about_s: []const u8, off: usize) usize {
         @setRuntimeSafety(false);
@@ -3723,7 +3731,7 @@ pub const about = struct {
         if (idx != args.len) {
             ptr[0..9].* = " ... and ".*;
             ptr += 9;
-            ptr += fmt.ud64(args.len -% idx).formatWriteBuf(ptr);
+            ptr = fmt.writeUd64(ptr, args.len -% idx);
             ptr[0..16].* = " more args ... \n".*;
             ptr += 16;
         }
@@ -4134,16 +4142,8 @@ pub const spec = struct {
             };
         };
         pub const logging = struct {
-            pub const silent: DirStreamSpec.Logging = .{
-                .open = debug.spec.logging.acquire_error.silent,
-                .close = debug.spec.logging.release_error.silent,
-                .getdents = debug.spec.logging.success_error.silent,
-            };
-            pub const verbose: DirStreamSpec.Logging = .{
-                .open = debug.spec.logging.acquire_error.verbose,
-                .close = debug.spec.logging.release_error.verbose,
-                .getdents = debug.spec.logging.success_error.verbose,
-            };
+            pub const silent: DirStreamSpec.Logging = builtin.zero(DirStreamSpec.Logging);
+            pub const verbose: DirStreamSpec.Logging = builtin.all(DirStreamSpec.Logging);
         };
         pub const errors = struct {
             pub const zen: DirStreamSpec.Errors = .{
