@@ -3,12 +3,10 @@ const mem = zl.mem;
 const fmt = zl.fmt;
 const proc = zl.proc;
 const meta = zl.meta;
-const spec = zl.spec;
-const virtual = zl.virtual;
 const testing = zl.testing;
 
 pub usingnamespace zl.start;
-pub const AddressSpace = virtual.GenericRegularAddressSpace(multi_arena);
+pub const AddressSpace = mem.GenericRegularAddressSpace(multi_arena);
 
 // This is 1GiB. I allow this much for the binary mapping. Not sure if sound,
 // but the binary mapping should start at ~64K, so it would need to be big to
@@ -18,27 +16,27 @@ const size: u64 = 1024 * 1024;
 const count: u64 = 1024;
 const finish: u64 = start + (size * count);
 
-const Allocator = mem.GenericRtArenaAllocator(.{
+const Allocator = mem.dynamic.GenericRtArenaAllocator(.{
     .AddressSpace = AddressSpace,
-    .logging = spec.allocator.logging.verbose,
+    .logging = mem.dynamic.spec.logging.verbose,
     .options = .{
         .require_map = false,
         .require_unmap = false,
     },
 });
-const multi_arena: virtual.RegularMultiArena = .{
+const multi_arena: mem.RegularMultiArena = .{
     .label = "1024x1MiB",
     .lb_addr = start,
     .up_addr = finish,
     .divisions = count,
-    .logging = spec.address_space.logging.verbose,
+    .logging = mem.spec.address_space.logging.verbose,
     .options = .{
         .require_map = true,
         .require_unmap = true,
     },
 };
 
-const Allocators = mem.StaticArray(Allocator, count);
+const Allocators = mem.array.StaticArray(Allocator, count);
 
 fn init(address_space: *AddressSpace, allocators: *Allocators) !void {
     var arena_index: AddressSpace.Index = 0;
