@@ -516,18 +516,16 @@ pub const Unit = extern struct {
     files_len: usize,
     fn addDir(unit: *Unit, allocator: *Allocator) *FileEntry {
         @setRuntimeSafety(is_safe);
-        const size_of: comptime_int = @sizeOf(FileEntry);
         const addr_buf: *usize = @ptrCast(&unit.dirs);
-        const ret: *FileEntry = @ptrFromInt(allocator.addGeneric(size_of, 1, addr_buf, &unit.dirs_max_len, unit.dirs_len));
+        const ret: *FileEntry = @ptrFromInt(allocator.addGeneric(@sizeOf(FileEntry), @alignOf(FileEntry), 1, addr_buf, &unit.dirs_max_len, unit.dirs_len));
         unit.dirs_len +%= 1;
         mem.zero(FileEntry, ret);
         return ret;
     }
     fn addFile(unit: *Unit, allocator: *Allocator) *FileEntry {
         @setRuntimeSafety(is_safe);
-        const size_of: comptime_int = @sizeOf(FileEntry);
         const addr_buf: *usize = @ptrCast(&unit.files);
-        const ret: *FileEntry = @ptrFromInt(allocator.addGeneric(size_of, 1, addr_buf, &unit.files_max_len, unit.files_len));
+        const ret: *FileEntry = @ptrFromInt(allocator.addGeneric(@sizeOf(FileEntry), @alignOf(FileEntry), 1, addr_buf, &unit.files_max_len, unit.files_len));
         unit.files_len +%= 1;
         mem.zero(FileEntry, ret);
         return ret;
@@ -613,9 +611,8 @@ const AbbrevTable = struct {
         };
         fn addKeyVal(entry: *Entry, allocator: *Allocator) *KeyVal {
             @setRuntimeSafety(is_safe);
-            const size_of: comptime_int = @sizeOf(KeyVal);
             const addr_buf: *usize = @ptrCast(&entry.kvs);
-            const ret: *KeyVal = @ptrFromInt(allocator.addGeneric(size_of, 1, addr_buf, &entry.kvs_max_len, entry.kvs_len));
+            const ret: *KeyVal = @ptrFromInt(allocator.addGeneric(@sizeOf(KeyVal), @alignOf(KeyVal), 1, addr_buf, &entry.kvs_max_len, entry.kvs_len));
             entry.kvs_len +%= 1;
             mem.zero(KeyVal, ret);
             return ret;
@@ -623,9 +620,8 @@ const AbbrevTable = struct {
     };
     fn addEntry(table: *AbbrevTable, allocator: *Allocator) *AbbrevTable.Entry {
         @setRuntimeSafety(is_safe);
-        const size_of: comptime_int = @sizeOf(AbbrevTable.Entry);
         const addr_buf: *usize = @ptrCast(&table.ents);
-        const ret: *AbbrevTable.Entry = @ptrFromInt(allocator.addGeneric(size_of, 1, addr_buf, &table.ents_max_len, table.ents_len));
+        const ret: *AbbrevTable.Entry = @ptrFromInt(allocator.addGeneric(@sizeOf(AbbrevTable.Entry), @alignOf(AbbrevTable.Entry), 1, addr_buf, &table.ents_max_len, table.ents_len));
         table.ents_len +%= 1;
         mem.zero(AbbrevTable.Entry, ret);
         return ret;
@@ -647,11 +643,10 @@ pub const Die = extern struct {
     };
     fn addKeyVal(info_entry: *Die, allocator: *Allocator) *KeyVal {
         @setRuntimeSafety(is_safe);
-        const size_of: comptime_int = @sizeOf(KeyVal);
         const addr_buf: *u64 = @as(*u64, @ptrCast(&info_entry.kvs));
         const ret: *KeyVal = @as(
             *KeyVal,
-            @ptrFromInt(allocator.addGeneric(size_of, 1, addr_buf, &info_entry.kvs_max_len, info_entry.kvs_len)),
+            @ptrFromInt(allocator.addGeneric(@sizeOf(KeyVal), @alignOf(KeyVal), 1, addr_buf, &info_entry.kvs_max_len, info_entry.kvs_len)),
         );
         info_entry.kvs_len +%= 1;
         return ret;
@@ -855,7 +850,7 @@ pub const DwarfInfo = extern struct {
     fn addAbbrevTable(dwarf_info: *DwarfInfo, allocator: *Allocator) *AbbrevTable {
         @setRuntimeSafety(is_safe);
         const addr_buf: *usize = @ptrCast(&dwarf_info.abbrev_tabs);
-        const ret: *AbbrevTable = @ptrFromInt(allocator.addGeneric(@sizeOf(AbbrevTable), 1, addr_buf, &dwarf_info.abbrev_tabs_max_len, dwarf_info.abbrev_tabs_len));
+        const ret: *AbbrevTable = @ptrFromInt(allocator.addGeneric(@sizeOf(AbbrevTable), @alignOf(AbbrevTable), 1, addr_buf, &dwarf_info.abbrev_tabs_max_len, dwarf_info.abbrev_tabs_len));
         dwarf_info.abbrev_tabs_len +%= 1;
         mem.zero(AbbrevTable, ret);
         return ret;
@@ -863,7 +858,7 @@ pub const DwarfInfo = extern struct {
     fn addUnit(dwarf_info: *DwarfInfo, allocator: *Allocator) *Unit {
         @setRuntimeSafety(is_safe);
         const addr_buf: *usize = @ptrCast(&dwarf_info.units);
-        const ret: *Unit = @ptrFromInt(allocator.addGeneric(@sizeOf(Unit), 1, addr_buf, &dwarf_info.units_max_len, dwarf_info.units_len));
+        const ret: *Unit = @ptrFromInt(allocator.addGeneric(@sizeOf(Unit), @alignOf(Unit), 1, addr_buf, &dwarf_info.units_max_len, dwarf_info.units_len));
         dwarf_info.units_len +%= 1;
         mem.zero(Unit, ret);
         return ret;
@@ -871,7 +866,7 @@ pub const DwarfInfo = extern struct {
     fn addFunc(dwarf_info: *DwarfInfo, allocator: *Allocator) *Func {
         @setRuntimeSafety(is_safe);
         const addr_buf: *usize = @ptrCast(&dwarf_info.funcs);
-        const ret: *Func = @ptrFromInt(allocator.addGeneric(@sizeOf(Func), 1, addr_buf, &dwarf_info.funcs_max_len, dwarf_info.funcs_len));
+        const ret: *Func = @ptrFromInt(allocator.addGeneric(@sizeOf(Func), @alignOf(Func), 1, addr_buf, &dwarf_info.funcs_max_len, dwarf_info.funcs_len));
         dwarf_info.funcs_len +%= 1;
         mem.zero(Func, ret);
         return ret;
@@ -879,7 +874,7 @@ pub const DwarfInfo = extern struct {
     pub fn addAddressInfo(dwarf_info: *DwarfInfo, allocator: *Allocator) *AddressInfo {
         @setRuntimeSafety(is_safe);
         const addr_buf: *usize = @ptrCast(&dwarf_info.addr_info);
-        const ret: *AddressInfo = @ptrFromInt(allocator.addGeneric(@sizeOf(AddressInfo), 1, addr_buf, &dwarf_info.addr_info_max_len, dwarf_info.addr_info_len));
+        const ret: *AddressInfo = @ptrFromInt(allocator.addGeneric(@sizeOf(AddressInfo), @alignOf(AddressInfo), 1, addr_buf, &dwarf_info.addr_info_max_len, dwarf_info.addr_info_len));
         dwarf_info.addr_info_len +%= 1;
         mem.zero(AddressInfo, ret);
         return ret;
@@ -887,7 +882,7 @@ pub const DwarfInfo = extern struct {
     pub fn addSourceLocation(dwarf_info: *DwarfInfo, allocator: *Allocator) *trace.SourceLocation {
         @setRuntimeSafety(is_safe);
         const addr_buf: *usize = @ptrCast(&dwarf_info.src_locs);
-        const ret: *trace.SourceLocation = @ptrFromInt(allocator.addGeneric(@sizeOf(trace.SourceLocation), 1, addr_buf, &dwarf_info.src_locs_max_len, dwarf_info.src_locs_len));
+        const ret: *trace.SourceLocation = @ptrFromInt(allocator.addGeneric(@sizeOf(trace.SourceLocation), @alignOf(trace.SourceLocation), 1, addr_buf, &dwarf_info.src_locs_max_len, dwarf_info.src_locs_len));
         dwarf_info.src_locs_len +%= 1;
         mem.zero(trace.SourceLocation, ret);
         return ret;
