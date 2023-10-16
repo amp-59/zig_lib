@@ -26,12 +26,12 @@ pub const signal_handlers: debug.SignalHandlers = .{
 pub const runtime_assertions: bool = true;
 pub const comptime_assertions: bool = false;
 const test_real_examples: bool = true;
-const Allocator = mem.GenericArenaAllocator(.{
+const Allocator = mem.dynamic.GenericArenaAllocator(.{
     .AddressSpace = mem.spec.address_space.exact_8,
     .arena_index = 0,
-    .logging = mem.spec.allocator.logging.silent,
-    .errors = mem.spec.allocator.errors.noexcept,
-    .options = mem.spec.allocator.options.small,
+    .logging = mem.dynamic.spec.logging.silent,
+    .errors = mem.dynamic.spec.errors.noexcept,
+    .options = mem.dynamic.spec.options.small,
 });
 const AddressSpace = Allocator.AddressSpace;
 const Variety = struct {
