@@ -19,12 +19,12 @@ const AddressSpace = mem.GenericRegularAddressSpace(.{
     .lb_addr = 0x40000000,
     .divisions = 128,
 });
-const Allocator = mem.GenericArenaAllocator(.{
+const Allocator = mem.dynamic.GenericArenaAllocator(.{
     .AddressSpace = AddressSpace,
     .arena_index = 1,
-    .logging = mem.spec.allocator.logging.silent,
+    .logging = mem.dynamic.spec.logging.silent,
 });
-const PrintArray = mem.StaticString(4096);
+const PrintArray = mem.array.StaticString(4096);
 const Array = Allocator.StructuredHolder(u8);
 const TypeDescr = fmt.GenericTypeDescrFormat(.{});
 const BigTypeDescr = fmt.GenericTypeDescrFormat(.{ .decls = true, .default_field_values = .{ .exact_safe = .{} } });
@@ -425,6 +425,48 @@ fn testSystemFlagsFormatters() !void {
     try testing.expectEqualString("flags=close_on_exec,allow_sealing", buf[0..len]);
     len = (sys.flags.Clone{ .clear_child_thread_id = true, .detached = false, .fs = true, .files = true }).formatWriteBuf(&buf);
     try testing.expectEqualString("flags=vm,fs,files,signal_handlers,thread,sysvsem,set_parent_thread_id,clear_child_thread_id,set_child_thread_id", buf[0..len]);
+}
+fn testStringLitChar() void {
+    var lens: [5][256]u8 = .{.{255}} ** 5;
+    var lens_lens: [5]usize = .{0} ** 5;
+    for (0..256) |byte| {
+        const seqn = fmt.stringLiteralChar(@intCast(byte));
+        const idx: usize = lens_lens[seqn.len];
+        lens_lens[seqn.len] +%= 1;
+        lens[seqn.len][idx] = @intCast(byte);
+    }
+    debug.write("switch(byte){\n");
+    var prev: u8 = 0;
+    var last: u8 = 0;
+    for (lens, 0..) |len, idx| {
+        for (len[0..lens_lens[idx]]) |byte| {
+            if (byte == prev + 1) {
+                //
+            } else if (last != prev) {
+                debug.write("...");
+                debug.write(fmt.ud64(prev).formatConvert().readAll());
+                debug.write(", ");
+                debug.write(fmt.ud64(byte).formatConvert().readAll());
+                last = byte;
+            } else {
+                debug.write(", ");
+                debug.write(fmt.ud64(byte).formatConvert().readAll());
+                last = byte;
+            }
+            prev = byte;
+        }
+        if (last != prev) {
+            debug.write("...");
+            debug.write(fmt.ud64(prev).formatConvert().readAll());
+        }
+        if (lens_lens[idx] != 0) {
+            debug.write(" => ");
+            debug.write(fmt.ud64(idx).formatConvert().readAll());
+            debug.write(",\n");
+            last = prev;
+        }
+    }
+    debug.write("}\n");
 }
 pub fn main() !void {
     try testBytesFormat();
