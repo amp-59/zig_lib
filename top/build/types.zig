@@ -19,7 +19,7 @@ pub const File = struct {
     st: *file.Status,
     pub const Key = extern union { tag: Tag, flags: Flags, id: u8 };
     pub const Flags = packed struct(u8) {
-        no: u4 = 0,
+        idx: u4 = 0,
         is_cached: bool = false,
         is_output: bool = false,
         is_input: bool = false,
@@ -59,39 +59,39 @@ pub const File = struct {
         cc_compiler_exe = 11,
         cxx_compiler_exe = 12,
 
-        cached_generic      = @bitCast(Flags{ .is_cached = true, .no = 0 }),
-        cached_exe          = @bitCast(Flags{ .is_cached = true, .no = 1 }),
-        cached_lib          = @bitCast(Flags{ .is_cached = true, .no = 2 }),
-        cached_obj          = @bitCast(Flags{ .is_cached = true, .no = 3 }),
+        cached_generic      = @bitCast(Flags{ .idx = 0, .is_cached = true }),
+        cached_exe          = @bitCast(Flags{ .idx = 1, .is_cached = true }),
+        cached_lib          = @bitCast(Flags{ .idx = 2, .is_cached = true }),
+        cached_obj          = @bitCast(Flags{ .idx = 3, .is_cached = true }),
 
-        output_generic      = @bitCast(Flags{ .is_output = true, .no = 0 }),
-        output_exe          = @bitCast(Flags{ .is_output = true, .no = 1 }),
-        output_lib          = @bitCast(Flags{ .is_output = true, .no = 2 }),
-        output_obj          = @bitCast(Flags{ .is_output = true, .no = 3 }),
-        output_ar           = @bitCast(Flags{ .is_output = true, .no = 4 }),
+        output_generic      = @bitCast(Flags{ .idx = 0, .is_output = true }),
+        output_exe          = @bitCast(Flags{ .idx = 1, .is_output = true }),
+        output_lib          = @bitCast(Flags{ .idx = 2, .is_output = true }),
+        output_obj          = @bitCast(Flags{ .idx = 3, .is_output = true }),
+        output_ar           = @bitCast(Flags{ .idx = 4, .is_output = true }),
 
-        output_asm          = @bitCast(Flags{ .is_output = true, .is_source = true, .no = 1 }),
-        output_c            = @bitCast(Flags{ .is_output = true, .is_source = true, .no = 2 }),
-        output_zir          = @bitCast(Flags{ .is_output = true, .is_source = true, .no = 3 }),
-        output_llvm_ir      = @bitCast(Flags{ .is_output = true, .is_source = true, .no = 4 }),
-        output_llvm_bc      = @bitCast(Flags{ .is_output = true, .is_source = true, .no = 5 }),
-        output_h            = @bitCast(Flags{ .is_output = true, .is_source = true, .no = 6 }),
+        output_asm          = @bitCast(Flags{ .idx = 1, .is_output = true, .is_source = true }),
+        output_c            = @bitCast(Flags{ .idx = 2, .is_output = true, .is_source = true }),
+        output_zir          = @bitCast(Flags{ .idx = 3, .is_output = true, .is_source = true }),
+        output_llvm_ir      = @bitCast(Flags{ .idx = 4, .is_output = true, .is_source = true }),
+        output_llvm_bc      = @bitCast(Flags{ .idx = 5, .is_output = true, .is_source = true }),
+        output_h            = @bitCast(Flags{ .idx = 6, .is_output = true, .is_source = true }),
 
-        input_generic       = @bitCast(Flags{ .is_input = true, .no = 0 }),
-        input_exe           = @bitCast(Flags{ .is_input = true, .no = 1 }),
-        input_lib           = @bitCast(Flags{ .is_input = true, .no = 2 }),
-        input_obj           = @bitCast(Flags{ .is_input = true, .no = 3 }),
-        input_ar            = @bitCast(Flags{ .is_input = true, .no = 4 }),
+        input_generic       = @bitCast(Flags{ .idx = 0, .is_input = true }),
+        input_exe           = @bitCast(Flags{ .idx = 1, .is_input = true }),
+        input_lib           = @bitCast(Flags{ .idx = 2, .is_input = true }),
+        input_obj           = @bitCast(Flags{ .idx = 3, .is_input = true }),
+        input_ar            = @bitCast(Flags{ .idx = 4, .is_input = true }),
 
-        input_zig           = @bitCast(Flags{ .is_input = true, .is_source = true, .no = 1 }),
-        input_asm           = @bitCast(Flags{ .is_input = true, .is_source = true, .no = 2 }),
-        input_c             = @bitCast(Flags{ .is_input = true, .is_source = true, .no = 3 }),
-        input_h             = @bitCast(Flags{ .is_input = true, .is_source = true, .no = 4 }),
-        input_cc            = @bitCast(Flags{ .is_input = true, .is_source = true, .no = 5 }),
-        input_hh            = @bitCast(Flags{ .is_input = true, .is_source = true, .no = 6 }),
-        input_zig_ir        = @bitCast(Flags{ .is_input = true, .is_source = true, .no = 7 }),
-        input_llvm_ir       = @bitCast(Flags{ .is_input = true, .is_source = true, .no = 8 }),
-        input_llvm_bc       = @bitCast(Flags{ .is_input = true, .is_source = true, .no = 9 }),
+        input_zig           = @bitCast(Flags{ .idx = 1, .is_input = true, .is_source = true }),
+        input_asm           = @bitCast(Flags{ .idx = 2, .is_input = true, .is_source = true }),
+        input_c             = @bitCast(Flags{ .idx = 3, .is_input = true, .is_source = true }),
+        input_h             = @bitCast(Flags{ .idx = 4, .is_input = true, .is_source = true }),
+        input_cc            = @bitCast(Flags{ .idx = 5, .is_input = true, .is_source = true }),
+        input_hh            = @bitCast(Flags{ .idx = 6, .is_input = true, .is_source = true }),
+        input_zig_ir        = @bitCast(Flags{ .idx = 7, .is_input = true, .is_source = true }),
+        input_llvm_ir       = @bitCast(Flags{ .idx = 8, .is_input = true, .is_source = true }),
+        input_llvm_bc       = @bitCast(Flags{ .idx = 9, .is_input = true, .is_source = true }),
         _,
         // zig fmt: on
         pub fn toggle(tag: *Tag, flags: Flags) bool {
@@ -124,7 +124,6 @@ pub const Lists = extern struct {
         nodes = @bitCast(Info{ .idx = 0, .size_of = @sizeOf(usize), .init_len = 1, .align_of = @alignOf(usize) }),
         depns = @bitCast(Info{ .idx = 1, .size_of = @sizeOf(usize), .init_len = 1, .align_of = @alignOf(usize) }),
         confs = @bitCast(Info{ .idx = 2, .size_of = @sizeOf(usize), .init_len = 1, .align_of = @alignOf(usize) }),
-
         /// Key:
         /// build
         ///     [0] <build_root> / <output_dir/(bin|lib)> / <(lib)long_name>
@@ -138,7 +137,6 @@ pub const Lists = extern struct {
         ///     [0] <build_root> / <path/to/target>
         paths = @bitCast(Info{ .idx = 3, .size_of = @sizeOf(Path), .init_len = 1, .align_of = @alignOf(Path) }),
         files = @bitCast(Info{ .idx = 4, .size_of = @sizeOf(File), .init_len = 1, .align_of = @alignOf(File) }),
-
         /// Used by raw commands and groups to distribute command arguments.
         cmd_args = @bitCast(Info{ .idx = 5, .size_of = @sizeOf([*:0]u8), .init_len = 4, .align_of = @alignOf([*:0]u8) }),
         run_args = @bitCast(Info{ .idx = 6, .size_of = @sizeOf([*:0]u8), .init_len = 4, .align_of = @alignOf([*:0]u8) }),
@@ -200,7 +198,7 @@ pub const BuildId = enum(u8) {
     none,
     _,
 };
-pub const LinkerFlags = enum {
+pub const LinkFlags = enum {
     nodelete,
     notext,
     defs,
@@ -337,6 +335,9 @@ pub const ModuleDependencies = struct {
         }
         return len;
     }
+    pub fn formatParseArgs(_: anytype, _: [][*:0]u8, _: *usize, _: [:0]const u8) []const ModuleDependency {
+        @panic("Not yet implemented");
+    }
 };
 pub const Macro = struct {
     name: []const u8,
@@ -390,7 +391,7 @@ pub const Macro = struct {
     }
 };
 pub const Macros = Aggregate(Macro);
-pub const CFlags = struct {
+pub const ExtraFlags = struct {
     value: []const []const u8,
     const Format = @This();
     pub fn formatWrite(format: Format, array: anytype) void {
@@ -412,6 +413,7 @@ pub const CFlags = struct {
             ptr += 1;
         }
         ptr[0..3].* = "--\x00".*;
+        ptr += 3;
         return @intFromPtr(ptr) -% @intFromPtr(buf);
     }
     pub fn formatLength(format: Format) u64 {
@@ -423,6 +425,29 @@ pub const CFlags = struct {
         }
         len +%= 3;
         return len;
+    }
+    pub fn formatParseArgs(allocator: *Allocator, args: [][*:0]u8, arg_idx: *usize, _: [:0]const u8) ?[]const []const u8 {
+        @setRuntimeSafety(builtin.is_safe);
+        var idx: usize = arg_idx.*;
+        var end: usize = idx;
+        while (end != args.len) : (end +%= 1) {
+            if (mem.testEqualString("--", mem.terminate(args[end], 0))) {
+                arg_idx.* = end;
+                idx +%= 1;
+                break;
+            }
+        }
+        const len: usize = end -% idx;
+        if (len == 0) {
+            return null;
+        }
+        var buf: [*][]const u8 = @ptrFromInt(allocator.allocateRaw(16 *% len, 8));
+        var pos: usize = 0;
+        while (idx != end) : (idx +%= 1) {
+            buf[pos] = mem.terminate(args[idx], 0);
+            pos +%= 1;
+        }
+        return buf[0..len];
     }
 };
 pub const Files = struct {
